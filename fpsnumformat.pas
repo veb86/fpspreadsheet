@@ -14,7 +14,13 @@ type
   {@@ Set of characters }
   TsDecsChars = set of char;
 
-  {@@ Tokens used by the elements of the number format parser }
+  {@@ Tokens used by the elements of the number format parser. If, e.g. a
+    format string is "0.000" then the number format parser detects the following
+    three tokens
+
+      - nftIntZeroDigit with integer value 1  (i.e. 1 zero-digit for the integer part)
+      - nftDecSep (i.e. decimal separator)
+      - ntZeroDecs with integer value 2 (i.e. 3 decimal places. }
   TsNumFormatToken = (
     nftGeneral,            // token for "general" number format
     nftText,               // must be quoted, stored in TextValue
@@ -63,42 +69,72 @@ type
     nftEmptyCharWidth,
     nftTextFormat);
 
+  {@@ Element of the parsed number format sequence. Each element is identified
+    by a token and has optional parameters stored as integer, float, and/or text. }
   TsNumFormatElement = record
+    {@@ Token identifying the number format element }
     Token: TsNumFormatToken;
+    {@@ Integer value associated with the number format element }
     IntValue: Integer;
+    {@@ Floating point value associated with the number format element }
     FloatValue: Double;
+    {@@ String value associated with the number format element }
     TextValue: String;
   end;
 
+  {@@ Array of parsed number format elements }
   TsNumFormatElements = array of TsNumFormatElement;
 
+  {@@ Summary information classifying a number format section }
   TsNumFormatKind = (nfkPercent, nfkExp, nfkCurrency, nfkFraction,
     nfkDate, nfkTime, nfkTimeInterval, nfkHasColor, nfkHasThSep, nfkHasFactor);
+
+  {@@ Set of summary elements classifying and describing a number format ssection }
   TsNumFormatKinds = set of TsNumFormatKind;
 
+  {@@ Number format string can be composed of several parts separated by a
+    semicolon. The number format parser extracts the format information into
+    individual sections for each part }
   TsNumFormatSection = record
+    {@@ Parser number format elements used by this section }
     Elements: TsNumFormatElements;
+    {@@ Summary information describing the section }
     Kind: TsNumFormatKinds;
+    {@@ Reconstructed number format identifier for the builtin fps formats }
     NumFormat: TsNumberFormat;
+    {@@ Number of decimal places used by the format string }
     Decimals: Byte;
+    {@@ Factor by which a number will be multiplied before converting to string }
     Factor: Double;
+    {@@ Digits to be used for the integer part of a fraction }
     FracInt: Integer;
+    {@@ Digits to be used for the numerator part of a fraction }
     FracNumerator: Integer;
+    {@@ Digits to be used for the denominator part of a fraction }
     FracDenominator: Integer;
+    {@@ Currency string to be used in case of currency/accounting formats }
     CurrencySymbol: String;
+    {@@ Color to be used when displaying the converted string }
     Color: TsColor;
   end;
+
+  {@@ Pointer to a parsed number format section }
   PsNumFormatSection = ^TsNumFormatSection;
 
+  {@@ Array of parsed number format sections }
   TsNumFormatSections = array of TsNumFormatSection;
 
   { TsNumFormatParams }
+
+  {@@ Describes a pared number format and provides all the information to
+    convert a number to a number or date/time string. }
   TsNumFormatParams = class(TObject)
   private
   protected
     function GetNumFormat: TsNumberFormat; virtual;
     function GetNumFormatStr: String; virtual;
   public
+    {@@ Array of the format sections }
     Sections: TsNumFormatSections;
     procedure DeleteElement(ASectionIndex, AElementIndex: Integer);
     procedure InsertElement(ASectionIndex, AElementIndex: Integer;
@@ -113,8 +149,11 @@ type
   end;
 
   { TsNumFormatList }
+
+  {@@ Class of number format parameters }
   TsNumFormatParamsClass = class of TsNumFormatParams;
 
+  {@@ List containing parsed number format parameters }
   TsNumFormatList = class(TFPList)
   private
     FOwnsData: Boolean;
@@ -193,6 +232,10 @@ uses
   fpsUtils, fpsNumFormatParser;
 
 const
+  {@@ Array of format strings identifying the order of number and
+    currency symbol of a positive currency value. The number is expected at
+    index 0, the currency symbol at index 1 of the parameter array of the
+    fpc format() function. }
   POS_CURR_FMT: array[0..3] of string = (
     // Format parameter 0 is "value", parameter 1 is "currency symbol"
     ('%1:s%0:s'),        // 0: $1
@@ -200,6 +243,11 @@ const
     ('%1:s %0:s'),       // 2: $ 1
     ('%0:s %1:s')        // 3: 1 $
   );
+  {@@ Array of format strings identifying the order of number and
+    currency symbol of a negative currency value. This sign is shown
+    by a dash character ("-") or by means of brackets. The number
+    is expected at index 0, the currency symbol at index 1 of the
+    parameter array for the fpc format() function. }
   NEG_CURR_FMT: array[0..15] of string = (
     ('(%1:s%0:s)'),      //  0: ($1)
     ('-%1:s%0:s'),       //  1: -$1
@@ -224,19 +272,26 @@ const
 {==============================================================================}
 
 type
+  {@@ Set of parsed number format tokens }
   TsNumFormatTokenSet = set of TsNumFormatToken;
 
 const
+  {@@ Set of tokens which terminate a number }
   TERMINATING_TOKENS: TsNumFormatTokenSet =
     [nftSpace, nftText, nftEscaped, nftPercent, nftCurrSymbol, nftSign, nftSignBracket];
+  {@@ Set of tokens which describe the integer part of a number }
   INT_TOKENS: TsNumFormatTokenSet =
     [nftIntOptDigit, nftIntZeroDigit, nftIntSpaceDigit];
+  {@@ Set of tokens which describe the decimals of a number }
   DECS_TOKENS: TsNumFormatTokenSet =
     [nftZeroDecs, nftOptDecs, nftSpaceDecs];
+  {@@ Set of tokens which describe the numerator of a fraction }
   FRACNUM_TOKENS: TsNumFormatTokenSet =
     [nftFracNumOptDigit, nftFracNumZeroDigit, nftFracNumSpaceDigit];
+  {@@ Set of tokens which describe the denominator of a fraction }
   FRACDENOM_TOKENS: TsNumFormatTokenSet =
     [nftFracDenomOptDigit, nftFracDenomZeroDigit, nftFracDenomSpaceDigit, nftFracDenom];
+  {@@ Set of tokens which describe the exponent in exponential presentation of a number }
   EXP_TOKENS: TsNumFormatTokenSet =
     [nftExpDigits];   // todo: expand by optional digits (0.00E+#)
 
@@ -1205,9 +1260,15 @@ begin
   end;
 end;
 
-{ Creates a format string for the given number format section section.
+{@@ ----------------------------------------------------------------------------
+  Creates a format string for the specified parsed number format section.
   The format string is created according to Excel convention (which is used by
-  ODS as well }
+  ODS as well.
+
+  @param  ASection  Parsed section of number format elements as created by the
+                    number format parser
+  @return Excel-compatible format string
+-------------------------------------------------------------------------------}
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
 var
   element: TsNumFormatElement;
@@ -1660,6 +1721,13 @@ end;
 {                             TsNumFormatParams                                }
 {==============================================================================}
 
+{@@ ----------------------------------------------------------------------------
+  Deletes a parsed format element from the specified format section.
+
+  @param  ASectionIndex   Index of the format section containing the element to
+                          be deleted
+  @param  AElementIndex   Index of the format element to be deleted
+-------------------------------------------------------------------------------}
 procedure TsNumFormatParams.DeleteElement(ASectionIndex, AElementIndex: Integer);
 var
   i, n: Integer;
@@ -1673,7 +1741,15 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates the built-in number format identifier from the pared number format
+  sections and elements
 
+  @return  Built-in number format identifer if the format is a built into
+           fpspreadsheet, or nfCustom otherwise
+
+  @see     TsNumFormat
+-------------------------------------------------------------------------------}
 function TsNumFormatParams.GetNumFormat: TsNumberFormat;
 begin
   Result := nfCustom;
@@ -1692,6 +1768,12 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Constructs the number format string fromt the parsed sections and elements.
+  The format sysmbols are selected according to Excel syntax.
+
+  @return  Excel-compatible number format string.
+-------------------------------------------------------------------------------}
 function TsNumFormatParams.GetNumFormatStr: String;
 var
   i: Integer;
@@ -1704,6 +1786,18 @@ begin
     Result := '';
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Inserts a parsed format token into the specified format section before the
+  specified element.
+
+  @param  ASectionIndex   Index of the parsed format section into which the
+                          token is to be inserted
+  @param  AElementIndex   Index of the format element before which the token
+                          is to be inserted
+  @param  AToken          Parsed format token to be inserted
+
+  @see    TsNumFormatToken
+-------------------------------------------------------------------------------}
 procedure TsNumFormatParams.InsertElement(ASectionIndex, AElementIndex: Integer;
   AToken: TsNumFormatToken);
 var
@@ -1719,6 +1813,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Checks whether the parsed format sections passed as a parameter is identical
+  with the interal section array.
+
+  @param  ASections  Array of parsed format sections to be compared with the
+                     internal format sections
+-------------------------------------------------------------------------------}
 function TsNumFormatParams.SectionsEqualTo(ASections: TsNumFormatSections): Boolean;
 var
   i, j: Integer;
@@ -1783,6 +1884,12 @@ begin
   Result := true;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines the currency symbol used by the format sequence
+
+  @param  AValue  String containing the currency symbol to be used in the
+                  converted numbers
+-------------------------------------------------------------------------------}
 procedure TsNumFormatParams.SetCurrSymbol(AValue: String);
 var
   section: TsNumFormatSection;
@@ -1801,6 +1908,12 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Adds or modifies parsed format tokens such that the specified number of
+  decimal places is shown
+
+  @param  AValue  Number of decimal places to be shown
+-------------------------------------------------------------------------------}
 procedure TsNumFormatParams.SetDecimals(AValue: byte);
 var
   section: TsNumFormatSection;
@@ -1822,6 +1935,15 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  If AEnable is true a format section for negative number is added (or an
+  existing one is modified) such that negative numbers are displayed in red.
+  If AEnable is false the format tokens are modified such that negative values
+  are displayed in black
+
+  @param  AEnable  The format tokens are modified such as to display negative
+                   values in red if AEnable is true.
+-------------------------------------------------------------------------------}
 procedure TsNumFormatParams.SetNegativeRed(AEnable: Boolean);
 var
   el: Integer;
@@ -1858,6 +1980,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Inserts a thousand separator token into the format elements at the
+  appropriate position, or removes it
+
+  @param  AEnable   A thousand separator is inserted if AEnable is true, or else
+                    deleted.
+-------------------------------------------------------------------------------}
 procedure TsNumFormatParams.SetThousandSep(AEnable: Boolean);
 var
   section: TsNumFormatSection;

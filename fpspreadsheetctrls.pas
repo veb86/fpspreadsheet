@@ -164,6 +164,9 @@ const
 
 type
   { IsSpreadsheetControl }
+
+  {@@ Interface which allows the workbook source to notify linked controls of
+    changes in the associated workbook. }
   IsSpreadsheetControl = interface [GUID_SpreadsheetControl]
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);

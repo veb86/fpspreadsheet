@@ -467,7 +467,7 @@ type
     coEqual, coNotEqual, coLess, coGreater, coLessEqual, coGreaterEqual
   );
 
-  {@@ Number/cell formatting. Only uses a subset of the default formats,
+  {@@ Builtin number formats. Only uses a subset of the default formats,
       enough to be able to read/write date/time values.
       nfCustom allows to apply a format string directly. }
   TsNumberFormat = (
