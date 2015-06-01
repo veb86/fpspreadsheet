@@ -230,7 +230,7 @@ implementation
 
 uses
   StrUtils, Variants, LazFileUtils, URIParser,
-  fpsStrings, fpsStreams, fpsExprParser;
+  fpsStrings, fpsStreams, fpsClasses, fpsExprParser;
 
 const
   { OpenDocument general XML constants }
