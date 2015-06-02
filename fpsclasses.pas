@@ -278,7 +278,7 @@ begin
         begin
           rc := curr^;
           if LongInt(rc.Col) < FStartCol then
-            dec(rc.Row);
+            dec(LongInt(rc.Row));
           rc.Col := FEndCol;
           FCurrentNode := FTree.FindNearest(@rc);
           if FCurrentNode <> nil then begin
