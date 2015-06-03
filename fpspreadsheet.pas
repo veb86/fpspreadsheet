@@ -1,7 +1,6 @@
-{ fpspreadsheet }
-
 {@@ ----------------------------------------------------------------------------
-  Unit fpspreadsheet reads and writes spreadsheet documents.
+  Unit fpspreadsheet implements <b>spreadsheet documents</b> and their
+  properties and methods.
 
   AUTHORS: Felipe Monteiro de Carvalho, Reinier Olislagers, Werner Pamler
 

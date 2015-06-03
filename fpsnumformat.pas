@@ -1,3 +1,12 @@
+{@@ ----------------------------------------------------------------------------
+  Unit fpsNumFormat contains classes and procedures to analyze and process
+  <b>number formats</b>.
+
+  AUTHORS: Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+            distribution, for details about the license.
+-------------------------------------------------------------------------------}
 unit fpsNumFormat;
 
 {$ifdef fpc}

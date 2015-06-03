@@ -1,5 +1,6 @@
 {@@ ----------------------------------------------------------------------------
-  Utility functions and declarations for FPSpreadsheet
+  Unit fpsUtils provides a variety of <b>utility functions</b> used
+  throughout the fpspreadsheet library.
 
   LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
            distribution, for details about the license.

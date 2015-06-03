@@ -1,3 +1,12 @@
+{@@ ----------------------------------------------------------------------------
+  Unit fpsTypes collects the most <b>fundamental declarations</b> used
+  throughout the fpspreadsheet library.
+
+  AUTHORS: Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+            distribution, for details about the license.
+-------------------------------------------------------------------------------}
 unit fpsTypes;
 
 {$mode objfpc}{$H+}

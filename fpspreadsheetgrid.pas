@@ -1,14 +1,14 @@
-{ fpspreadsheetgrid }
-
 {@@ ----------------------------------------------------------------------------
-  Grid component which can load and write data from/to FPSpreadsheet documents.
+  Unit fpspreadsheet implements a <b>grid</b> component which can load and
+  write data from/to FPSpreadsheet documents.
+
   Can either be used alone or in combination with a TsWorkbookSource component.
-  The latter case requires less written code.
+  The latter method requires less written code.
 
-AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
+  AUTHORS: Felipe Monteiro de Carvalho, Werner Pamler
 
-LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
-         distribution, for details about the license.
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
 -------------------------------------------------------------------------------}
 unit fpspreadsheetgrid;
 
