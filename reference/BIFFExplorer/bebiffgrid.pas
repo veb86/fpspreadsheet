@@ -530,8 +530,8 @@ begin
 end;
 
 
-procedure TBIFFGrid.SetBIFFNodeData(AData: TBIFFNodeData; ABuffer: TBIFFBuffer;
-  AFormat: TsSpreadsheetFormat);
+procedure TBIFFGrid.SetBIFFNodeData(AData: TBIFFNodeData;
+  ABuffer: TBIFFBuffer; AFormat: TsSpreadsheetFormat);
 begin
   if AData = nil then
     exit;

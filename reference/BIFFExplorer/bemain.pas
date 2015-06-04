@@ -110,6 +110,7 @@ type
     procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormDropFiles(Sender: TObject; const FileNames: array of String);
     procedure FormShow(Sender: TObject);
     procedure GridClick(Sender: TObject);
     procedure HexGridPrepareCanvas(sender: TObject; aCol, aRow: Integer;
@@ -674,6 +675,13 @@ begin
     FreeAndNil(MemStream);
   if OLEStorage <> nil then
     FreeAndNil(OLEStorage);
+end;
+
+
+procedure TMainForm.FormDropFiles(Sender: TObject;
+  const FileNames: array of String);
+begin
+  LoadFile(FileNames[0]);
 end;
 
 
