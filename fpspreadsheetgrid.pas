@@ -3789,7 +3789,8 @@ begin
     FWorkbookSource.AddListener(self);
 
   FOwnsWorkbook := (FWorkbookSource = nil);
-  ListenerNotification([lniWorksheet, lniSelection]);
+  if not (csDestroying in ComponentState) then
+    ListenerNotification([lniWorksheet, lniSelection]);
 end;
 
 {@@ ----------------------------------------------------------------------------

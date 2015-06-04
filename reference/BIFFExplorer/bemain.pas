@@ -1201,10 +1201,13 @@ begin
       if recType = $003C then begin // CONTINUE record
         prevnode := BIFFTree.GetPrevious(node);
         prevdata := GetNodeData(prevnode);
-        if prevdata.RecordID = $01B6 then // TXO record
+        if prevdata.RecordID = $00FC then  // SST record
+          data.Tag := BIFFNODE_SST_CONTINUE
+        else
+        if prevdata.RecordID = $01B6 then  // TXO record
           data.Tag := BIFFNODE_TXO_CONTINUE1
         else
-        if prevdata.RecordID = $003C then // CONTINUE record
+        if prevdata.RecordID = $003C then  // CONTINUE record
         begin
           prevnode := BIFFTree.GetPrevious(prevnode);
           prevdata := GetNodeData(prevnode);
