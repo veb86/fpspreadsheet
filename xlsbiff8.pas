@@ -550,6 +550,7 @@ begin
     //Asian phonetics
     //Read Asian phonetics Length (not used)
     AsianPhoneticBytes := DWordLEtoN(AStream.ReadDWord);
+    dec(PendingRecordSize,4);
   end;
   if StringFlags and 8 = 8 then begin
     //Rich string
@@ -597,7 +598,7 @@ begin
     //Rich string (This only happened in BIFF8)
     for j := 1 to RunsCounter do begin
       if (PendingRecordSize <= 0) then begin
-        //A CONTINUE may happend here
+        //A CONTINUE may happened here
         RecordType := WordLEToN(AStream.ReadWord);
         RecordSize := WordLEToN(AStream.ReadWord);
         if RecordType <> INT_EXCEL_ID_CONTINUE then begin
@@ -616,6 +617,7 @@ begin
     //Read Asian phonetics, discarded as not used.
     SetLength(AnsiStrValue, AsianPhoneticBytes);
     AStream.ReadBuffer(AnsiStrValue[1], AsianPhoneticBytes);
+    dec(PendingRecordSize, AsianPhoneticBytes);
   end;
 end;
 
