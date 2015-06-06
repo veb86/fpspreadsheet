@@ -61,7 +61,7 @@ type
     ttCell, ttCellRange, ttNumber, ttString, ttIdentifier,
     ttPlus, ttMinus, ttMul, ttDiv, ttConcat, ttPercent, ttPower, ttLeft, ttRight,
     ttLessThan, ttLargerThan, ttEqual, ttNotEqual, ttLessThanEqual, ttLargerThanEqual,
-    ttListSep, ttTrue, ttFalse, ttError, ttEOF
+    ttListSep, ttTrue, ttFalse, ttMissingArg, ttError, ttEOF
   );
 
   TsExprFloat = Double;
@@ -84,7 +84,7 @@ type
   TsFormulaDialect = (fdExcel, fdOpenDocument);
 
   TsResultType = (rtEmpty, rtBoolean, rtInteger, rtFloat, rtDateTime, rtString,
-    rtCell, rtCellRange, rtHyperlink, rtError, rtAny);
+    rtCell, rtCellRange, rtHyperlink, rtError, rtMissingArg, rtAny);
   TsResultTypes = set of TsResultType;
 
   TsExpressionResult = record
@@ -408,6 +408,15 @@ type
     function NodeType : TsResultType; override;
     // For inspection
     property ConstValue: TsExpressionResult read FValue;
+  end;
+
+  { TsMissingArgExprNode }
+  TsMissingArgExprNode = class(TsExprNode)
+  protected
+    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    function AsString: String; override;
+    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
+    function NodeType: TsResultType; override;
   end;
 
   TsExprIdentifierType = (itVariable, itFunctionCallBack, itFunctionHandler);
@@ -1666,6 +1675,7 @@ var
   AI: Integer;
   optional: Boolean;
   token: String;
+  prevTokenType: TsTokenType;
 begin
 {$ifdef debugexpr} Writeln('Primitive : ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
   SetLength(Args, 0);
@@ -1692,7 +1702,7 @@ begin
   else if (TokenType = ttCellRange) then
     Result := TsCellRangeExprNode.Create(self, FWorksheet, CurrentToken)
   else if (TokenType = ttError) then
-    Result := tsConstExprNode.CreateError(self, CurrentToken)
+    Result := TsConstExprNode.CreateError(self, CurrentToken)
   else if not (TokenType in [ttIdentifier]) then
     ParserError(Format(SerrUnknownTokenAtPos, [Scanner.Pos, CurrentToken]))
   else
@@ -1729,12 +1739,19 @@ begin
       AI := 0;
       try
         repeat
+          prevTokenType := TokenType;
           GetToken;
           // Check if we must enlarge the argument array
           if (lCount < 0) and (AI = Length(Args)) then
           begin
             SetLength(Args, AI+1);
             Args[AI] := nil;
+          end;
+          if (prevTokenType in [ttLeft, ttListSep]) and (TokenType in [ttListSep, ttRight]) then
+          begin
+            Args[AI] := TsMissingArgExprNode.Create;
+            inc(AI);
+            Continue;
           end;
           Args[AI] := Level1;
           inc(AI);
@@ -1910,6 +1927,11 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
       fekErr:
         begin
           ANode := TsConstExprNode.CreateError(self, TsErrorValue(AFormula[AIndex].IntValue));
+          dec(AIndex);
+        end;
+      fekMissingArg:
+        begin
+          ANode := TsMissingArgExprNode.Create;
           dec(AIndex);
         end;
 
@@ -2699,6 +2721,8 @@ begin
     err := errIllegalRef
   else if AVAlue = '#NAME?' then
     err := errWrongName
+  else if AValue = '#N/A' then
+    err := errArgError
   else if AValue = '#FORMULA?' then
     err := errFormulaNotSupported
   else
@@ -2745,6 +2769,28 @@ begin
   end;
 end;
 
+
+{ TsMissingExprNode }
+
+function TsMissingArgExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
+begin
+  Result := RPNMissingARg(ANext);
+end;
+
+function TsMissingArgExprNode.AsString: String;
+begin
+  Result := '';
+end;
+
+procedure TsMissingArgExprNode.GetNodeValue(out Result: TsExpressionResult);
+begin
+  Result.ResultType := rtMissingArg;
+end;
+
+function TsMissingArgExprNode.NodeType: TsResultType;
+begin
+  Result := rtMissingArg;
+end;
 
 { TsUPlusExprNode }
 
@@ -3675,7 +3721,8 @@ begin
   begin
     if (S <> '') then
       S := S + Parser.FFormatSettings.ListSeparator;
-    S := S + FArgumentNodes[i].AsString;
+    if Assigned(FArgumentNodes[i]) then
+      S := S + FArgumentNodes[i].AsString;
   end;
   S := '(' + S + ')';
   Result := FID.Name + S;
@@ -3716,6 +3763,9 @@ begin
 
   for i := 0 to Length(FArgumentNodes)-1 do
   begin
+    if FArgumentNodes[i] = nil then
+      Continue;
+
     rta := FArgumentNodes[i].NodeType;
 
     if i+1 <= Length(FID.ParameterTypes) then
