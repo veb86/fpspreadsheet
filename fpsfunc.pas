@@ -574,7 +574,7 @@ begin
     n := ArgToInt(Args[1])
   else
     n := 1;
-  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger] then
+  if Args[0].ResultType in [rtCell, rtDateTime, rtFloat, rtInteger] then
     dt := ArgToDateTime(Args[0])
   else
   if Args[0].ResultType in [rtString] then
