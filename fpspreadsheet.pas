@@ -3782,6 +3782,8 @@ begin
   isPercent := Pos('%', AValue) = Length(AValue);
   if isPercent then Delete(AValue, Length(AValue), 1);
 
+  ACell^.FormulaValue := '';
+
   if TryStrToCurrency(AValue, number, currSym, FWorkbook.FormatSettings) then
   begin
     WriteCurrency(ACell, number, nfCurrencyRed, -1, currSym);
@@ -4322,7 +4324,8 @@ begin
   end;
 
   // Store formula in cell
-  ACell^.ContentType := cctFormula;
+  if AFormula <> '' then
+    ACell^.ContentType := cctFormula;
   ACell^.FormulaValue := AFormula;
   ChangedCell(ACell^.Row, ACell^.Col);
 end;

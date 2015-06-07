@@ -3057,11 +3057,17 @@ procedure TsEqualExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
 begin
-  if HasError(AResult) then
-    exit;
-
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
+
+  if Left.HasError(AResult) and Right.HasError(AResult) then
+  begin
+    AResult := BooleanResult(LRes.ResError = RRes.ResError);
+    exit;
+  end;
+
+  if HasError(AResult) then
+    exit;
 
   if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) = ArgToString(RRes))
