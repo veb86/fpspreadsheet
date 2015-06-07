@@ -42,7 +42,6 @@
 // To do:
 // Remove exceptions, use error message strings instead
 // Cell reference not working (--> formula CELL!)
-// Missing arguments
 // Keep spaces in formula
 
 {$mode objfpc}
@@ -110,10 +109,8 @@ type
   private
     FParser: TsExpressionParser;
   protected
-//    procedure CheckNodeType(ANode: TsExprNode; Allowed: TsResultTypes);
-    // A procedure with var saves an implicit try/finally in each node
-    // A marked difference in execution speed.
-    procedure GetNodeValue(out Result: TsExpressionResult); virtual; abstract;
+    procedure GetNodeValue(out AResult: TsExpressionResult); virtual; abstract;
+    function HasError(out AResult: TsExpressionResult): boolean; virtual;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; virtual; abstract;
     function AsString: string; virtual; abstract;
@@ -131,11 +128,10 @@ type
     FLeft: TsExprNode;
     FRight: TsExprNode;
   protected
-    //procedure CheckSameNodeTypes; virtual;
+    function HasError(out AResult: TsExpressionResult): Boolean; override;
   public
     constructor Create(AParser: TsExpressionParser; ALeft, ARight: TsExprNode);
     destructor Destroy; override;
-//    procedure Check; override;
     property Left: TsExprNode read FLeft;
     property Right: TsExprNode read FRight;
   end;
@@ -144,16 +140,12 @@ type
   { TsBooleanOperationExprNode }
   TsBooleanOperationExprNode = class(TsBinaryOperationExprNode)
   public
-//    procedure Check; override;
     function NodeType: TsResultType; override;
   end;
 
   { TsBooleanResultExprNode }
   TsBooleanResultExprNode = class(TsBinaryOperationExprNode)
-  protected
-//    procedure CheckSameNodeTypes; override;
   public
-//    procedure Check; override;
     function NodeType: TsResultType; override;
   end;
   TsBooleanResultExprNodeClass = class of TsBooleanResultExprNode;
@@ -161,7 +153,7 @@ type
   { TsEqualExprNode }
   TsEqualExprNode = class(TsBooleanResultExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -170,22 +162,19 @@ type
   { TsNotEqualExprNode }
   TsNotEqualExprNode = class(TsEqualExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
   end;
 
   { TsOrderingExprNode }
-  TsOrderingExprNode = class(TsBooleanResultExprNode)
-  public
-//    procedure Check; override;
-  end;
+  TsOrderingExprNode = class(TsBooleanResultExprNode);
 
   { TsLessExprNode }
   TsLessExprNode = class(TsOrderingExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -194,7 +183,7 @@ type
   { TsGreaterExprNode }
   TsGreaterExprNode = class(TsOrderingExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -203,7 +192,7 @@ type
   { TsLessEqualExprNode }
   TsLessEqualExprNode = class(TsGreaterExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -212,7 +201,7 @@ type
   { TsGreaterEqualExprNode }
   TsGreaterEqualExprNode = class(TsLessExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
@@ -221,28 +210,23 @@ type
   { TsConcatExprNode }
   TsConcatExprNode = class(TsBinaryOperationExprNode)
   protected
-//    procedure CheckSameNodeTypes; override;
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
-//    procedure Check; override;
     function NodeType: TsResultType; override;
   end;
 
   { TsMathOperationExprNode }
   TsMathOperationExprNode = class(TsBinaryOperationExprNode)
-  protected
-//    procedure CheckSameNodeTypes; override;
   public
-//    procedure Check; override;
     function NodeType: TsResultType; override;
   end;
 
   { TsAddExprNode }
   TsAddExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -251,7 +235,7 @@ type
   { TsSubtractExprNode }
   TsSubtractExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -260,7 +244,7 @@ type
   { TsMultiplyExprNode }
   TsMultiplyExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -269,7 +253,7 @@ type
   { TsDivideExprNode }
   TsDivideExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -279,7 +263,7 @@ type
   { TsPowerExprNode }
   TsPowerExprNode = class(TsMathOperationExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string ; override;
@@ -297,21 +281,22 @@ type
     property Operand: TsExprNode read FOperand;
   end;
 
-  { TsConvertExprNode }
-  TsConvertExprNode = class(TsUnaryOperationExprNode)
-    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
-    function AsString: String; override;
-  end;
-
   { TsNotExprNode }
   TsNotExprNode = class(TsUnaryOperationExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
     procedure Check; override;
     function NodeType: TsResultType; override;
+  end;
+
+  (*
+  { TsConvertExprNode }
+  TsConvertExprNode = class(TsUnaryOperationExprNode)
+    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
+    function AsString: String; override;
   end;
 
   { TsConvertToIntExprNode }
@@ -344,7 +329,7 @@ type
 //    procedure Check; override;
     function NodeType: TsResultType; override;
   end;
-
+                     *)
   { TsUPlusExprNode }
   TsUPlusExprNode = class(TsUnaryOperationExprNode)
   protected
@@ -393,9 +378,8 @@ type
   private
     FValue: TsExpressionResult;
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
-    procedure Check; override;
     constructor CreateString(AParser: TsExpressionParser; AValue: String);
     constructor CreateInteger(AParser: TsExpressionParser; AValue: Int64);
     constructor CreateDateTime(AParser: TsExpressionParser; AValue: TDateTime);
@@ -413,7 +397,7 @@ type
   { TsMissingArgExprNode }
   TsMissingArgExprNode = class(TsExprNode)
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
     function AsString: String; override;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function NodeType: TsResultType; override;
@@ -539,7 +523,7 @@ type
     PResult: PsExpressionResult;
     FResultType: TsResultType;
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     constructor CreateIdentifier(AParser: TsExpressionParser; AID: TsExprIdentifierDef);
     function NodeType: TsResultType; override;
@@ -549,7 +533,6 @@ type
   { TsVariableExprNode }
   TsVariableExprNode = class(TsIdentifierExprNode)
   public
-    procedure Check; override;
     function AsString: string; override;
     Function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
   end;
@@ -695,15 +678,15 @@ type
     FDestCell: PCell;
 //    FActiveCell: PCell;
     procedure CheckEOF;
-    procedure CheckNodes(var ALeft, ARight: TsExprNode);
-    function ConvertNode(Todo: TsExprNode; ToType: TsResultType): TsExprNode;
+//    procedure CheckNodes(var ALeft, ARight: TsExprNode);
+//    function ConvertNode(Todo: TsExprNode; ToType: TsResultType): TsExprNode;
     function GetAsBoolean: Boolean;
     function GetAsDateTime: TDateTime;
     function GetAsFloat: TsExprFloat;
     function GetAsInteger: Int64;
     function GetAsString: String;
     function GetRPNFormula: TsRPNFormula;
-    function MatchNodes(Todo, Match: TsExprNode): TsExprNode;
+//    function MatchNodes(Todo, Match: TsExprNode): TsExprNode;
     procedure SetBuiltIns(const AValue: TsBuiltInExprCategories);
     procedure SetIdentifiers(const AValue: TsExprIdentifierDefs);
     procedure SetRPNFormula(const AFormula: TsRPNFormula);
@@ -830,6 +813,8 @@ function EmptyResult: TsExpressionResult;
 function ErrorResult(const AValue: TsErrorValue): TsExpressionResult;
 function FloatResult(const AValue: TsExprFloat): TsExpressionResult;
 function IntegerResult(const AValue: Integer): TsExpressionResult;
+function IsInteger(const AValue: TsExpressionResult): Boolean;
+function IsString(const AValue: TsExpressionResult): Boolean;
 function StringResult(const AValue: String): TsExpressionResult;
 
 procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
@@ -1275,12 +1260,13 @@ begin
 end;
 
 { If the result types differ, they are converted to a common type if possible. }
+{
 procedure TsExpressionParser.CheckNodes(var ALeft, ARight: TsExprNode);
 begin
   ALeft := MatchNodes(ALeft, ARight);
   ARight := MatchNodes(ARight, ALeft);
 end;
-
+ }
 procedure TsExpressionParser.CheckResultType(const Res: TsExpressionResult;
   AType: TsResultType); inline;
 begin
@@ -1294,7 +1280,7 @@ begin
   FHashList.Clear;
   FreeAndNil(FExprNode);
 end;
-
+                                     (*
 function TsExpressionParser.ConvertNode(ToDo: TsExprNode;
   ToType: TsResultType): TsExprNode;
 begin
@@ -1311,7 +1297,7 @@ begin
       end;
   end;
 end;
-
+                                       *)
 { Prepares copy mode: The formula is contained in ASourceCell and will be
   modified such as seen from ADestCell. }
 procedure TsExpressionParser.PrepareCopyMode(ASourceCell, ADestCell: PCell);
@@ -1501,7 +1487,7 @@ begin
       GetToken;
       CheckEOF;
       Right := Level3;
-      CheckNodes(Result, right);
+      //CheckNodes(Result, right);
       case tt of
         ttLessthan         : C := TsLessExprNode;
         ttLessthanEqual    : C := TsLessEqualExprNode;
@@ -1533,7 +1519,7 @@ begin
       GetToken;
       CheckEOF;
       right := Level4;
-      CheckNodes(Result, right);
+      //CheckNodes(Result, right);
       case tt of
         ttPlus  : Result := TsAddExprNode.Create(self, Result, right);
         ttMinus : Result := TsSubtractExprNode.Create(self, Result, right);
@@ -1559,7 +1545,7 @@ begin
       tt := TokenType;
       GetToken;
       right := Level5;
-      CheckNodes(Result, right);
+      //CheckNodes(Result, right);
       case tt of
         ttMul : Result := TsMultiplyExprNode.Create(self, Result, right);
         ttDiv : Result := TsDivideExprNode.Create(self, Result, right);
@@ -1584,7 +1570,7 @@ begin
       tt := TokenType;
       GetToken;
       right := Level6;
-      CheckNodes(Result, right);
+      //CheckNodes(Result, right);
       Result := TsPowerExprNode.Create(self, Result, right);
     end;
   except
@@ -1689,7 +1675,7 @@ begin
   end;
                         }
 end;
-
+                                  (*
 { Checks types of todo and match. If ToDO can be converted to it matches
   the type of match, then a node is inserted.
   For binary operations, this function is called for both operands. }
@@ -1713,7 +1699,7 @@ begin
         Result := ConvertNode(ToDo, rtDateTime);
     end;
   end;
-end;
+end;                                *)
 
 procedure TsExpressionParser.ParserError(Msg: String);
 begin
@@ -2013,7 +1999,7 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
           dec(AIndex);
           CreateNodeFromRPN(right, AIndex);
           CreateNodeFromRPN(left, AIndex);
-          CheckNodes(left, right);
+          //CheckNodes(left, right);
           case fek of
             fekAdd         : ANode := TsAddExprNode.Create(self, left, right);
             fekSub         : ANode := TsSubtractExprNode.Create(self, left, right);
@@ -2609,32 +2595,22 @@ end;
 {------------------------------------------------------------------------------}
 
 { TsExprNode }
+
 procedure TsExprNode.Check;
 begin
 end;
 
-  {
-procedure TsExprNode.CheckNodeType(ANode: TsExprNode; Allowed: TsResultTypes);
-var
-  S: String;
-  A: TsResultType;
+function TsExprNode.HasError(out AResult: TsExpressionResult): Boolean;
 begin
-  if (ANode = nil) then
-    RaiseParserError(SErrNoNodeToCheck);
-  if not (ANode.NodeType in Allowed) then
+  GetNodeValue(AResult);
+  if AResult.ResultType = rtError then
   begin
-    S := '';
-    for A := Low(TsResultType) to High(TsResultType) do
-      if A in Allowed then
-      begin
-        if S <> '' then
-          S := S + ',';
-        S := S + ResultTypeName(A);
-      end;
-    RaiseParserError(SInvalidNodeType, [ResultTypeName(ANode.NodeType), S, ANode.AsString]);
-  end;
+    Result := true;
+    AResult := ErrorResult(AResult.ResError);
+  end else
+    Result := false;
 end;
-   }
+
 function TsExprNode.NodeValue: TsExpressionResult;
 begin
   GetNodeValue(Result);
@@ -2679,37 +2655,15 @@ begin
   FreeAndNil(FRight);
   inherited Destroy;
 end;
-  {
-procedure TsBinaryOperationExprNode.Check;
+
+function TsBinaryOperationExprNode.HasError(out AResult: TsExpressionResult): Boolean;
 begin
-  if not Assigned(Left) then
-    RaiseParserError(SErrNoLeftOperand,[classname]);
-  if not Assigned(Right) then
-    RaiseParserError(SErrNoRightOperand,[classname]);
+  Result := Left.HasError(AResult) or Right.HasError(AResult);
 end;
 
-procedure TsBinaryOperationExprNode.CheckSameNodeTypes;
-var
-  LT, RT: TsResultType;
-begin
-  LT := Left.NodeType;
-  RT := Right.NodeType;
-  if (RT <> LT) then
-    RaiseParserError(SErrTypesDoNotMatch, [ResultTypeName(LT), ResultTypeName(RT), Left.AsString, Right.AsString])
-end;
-}
 
 { TsBooleanOperationExprNode }
 
-{
-procedure TsBooleanOperationExprNode.Check;
-begin
-  inherited Check;
-  CheckNodeType(Left,  [rtBoolean, rtCell, rtError, rtEmpty]);
-  CheckNodeType(Right, [rtBoolean, rtCell, rtError, rtEmpty]);
-  CheckSameNodeTypes;
-end;
-}
 function TsBooleanOperationExprNode.NodeType: TsResultType;
 begin
   Result := Left.NodeType;
@@ -2790,19 +2744,14 @@ begin
   CreateError(AParser, err);
 end;
 
-procedure TsConstExprNode.Check;
-begin
-  // Nothing to check;
-end;
-
 function TsConstExprNode.NodeType: TsResultType;
 begin
   Result := FValue.ResultType;
 end;
 
-procedure TsConstExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsConstExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
-  Result := FValue;
+  AResult := FValue;
 end;
 
 function TsConstExprNode.AsString: string;
@@ -2842,9 +2791,10 @@ begin
   Result := '';
 end;
 
-procedure TsMissingArgExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsMissingArgExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
-  Result.ResultType := rtMissingArg;
+  AResult.ResultType := rtMissingArg;
+  AResult.ResInteger := 0;
 end;
 
 function TsMissingArgExprNode.NodeType: TsResultType;
@@ -3064,12 +3014,12 @@ begin
     RaiseParserError(SErrNoNotOperation, [ResultTypeName(Operand.NodeType), Operand.AsString])
 end;
 
-procedure TsNotExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsNotExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
-  Operand.GetNodeValue(Result);
-  case Result.ResultType of
-    rtBoolean : Result.ResBoolean := not Result.ResBoolean;
-    rtEmpty   : Result := BooleanResult(true);
+  Operand.GetNodeValue(AResult);
+  case AResult.ResultType of
+    rtBoolean : AResult.ResBoolean := not AResult.ResBoolean;
+    rtEmpty   : AResult := BooleanResult(true);    // This is according to Excel
   end
 end;
 
@@ -3080,17 +3030,6 @@ end;
 
 
 { TsBooleanResultExprNode }
-  {
-procedure TsBooleanResultExprNode.Check;
-begin
-  inherited Check;
-  //CheckSameNodeTypes;
-end;
-
-procedure TsBooleanResultExprNode.CheckSameNodeTypes;
-begin
-  // Same node types are checked in GetNodevalue
-end;                              }
 
 function TsBooleanResultExprNode.NodeType: TsResultType;
 begin
@@ -3114,40 +3053,20 @@ begin
   Result := Left.AsString + '=' + Right.AsString;
 end;
 
-procedure TsEqualExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsEqualExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  RRes: TsExpressionResult;
+  LRes, RRes: TsExpressionResult;
 begin
-  Left.GetNodeValue(Result);
+  if HasError(AResult) then
+    exit;
+
+  Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
-  if (Result.ResultType in [rtInteger, rtFloat, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtInteger, rtFloat, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ArgToFloat(Result) = ArgToFloat(RRes))
+  if IsString(LRes) and IsString(RRes) then
+    AResult := BooleanResult(ArgToString(LRes) = ArgToString(RRes))
   else
-  if (Result.ResultType in [rtString, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtString, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ArgToString(Result) = ArgToString(RRes))
-  else
-  if (Result.ResultType in [rtDateTime, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtDateTime, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ArgToDateTime(Result) = ArgToDateTime(RRes))
-  else
-  if (Result.ResultType in [rtBoolean, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtBoolean, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ArgToBoolean(Result) = ArgToBoolean(RRes))
-  else
-  if (Result.ResultType = rtError)
-    then Result := ErrorResult(Result.ResError)
-  else
-  if (RRes.ResultType = rtError)
-    then Result := ErrorResult(RRes.ResError)
-  else
-    Result := BooleanResult(false);
+    AResult := BooleanResult(ArgToFloat(LRes) = ArgToFloat(RRes));
 end;
 
 
@@ -3167,24 +3086,12 @@ begin
   Result := Left.AsString + '<>' + Right.AsString;
 end;
 
-procedure TsNotEqualExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsNotEqualExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
-  inherited GetNodeValue(Result);
-  Result.ResBoolean := not Result.ResBoolean;
+  inherited GetNodeValue(AResult);
+  if AResult.ResultType <> rtError then
+    AResult.ResBoolean := not AResult.ResBoolean;
 end;
-
-
-{ TsOrderingExprNode }
-  {
-procedure TsOrderingExprNode.Check;
-const
-  AllowedTypes = [rtBoolean, rtInteger, rtFloat, rtDateTime, rtString, rtEmpty, rtError, rtCell];
-begin
-  CheckNodeType(Left, AllowedTypes);
-  CheckNodeType(Right, AllowedTypes);
-  inherited Check;
-end;
-   }
 
 
 { TsLessExprNode }
@@ -3203,34 +3110,20 @@ begin
   Result := Left.AsString + '<' + Right.AsString;
 end;
 
-procedure TsLessExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsLessExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  RRes: TsExpressionResult;
+  LRes, RRes: TsExpressionResult;
 begin
-  Left.GetNodeValue(Result);
+  if HasError(AResult) then
+    exit;
+
+  Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
-  if (Result.ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ArgToFloat(Result) < ArgToFloat(RRes))
+
+  if IsString(LRes) and IsString(RRes) then
+    AResult := BooleanResult(ArgToString(LRes) < ArgToString(RRes))
   else
-  if (Result.ResultType in [rtString, rtInteger, rtFloat, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtString, rtInteger, rtFloat, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ArgToString(Result) < ArgToString(RRes))
-  else
-  if (Result.ResultType in [rtBoolean, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtBoolean, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ord(ArgToBoolean(Result)) < ord(ArgToBoolean(RRes)))
-  else
-  if (Result.ResultType = rtError)
-    then Result := ErrorResult(Result.ResError)
-  else
-  if (RRes.ResultType = rtError)
-    then Result := ErrorResult(RRes.ResError)
-  else
-    Result := ErrorResult(errWrongType);
+    AResult := BooleanResult(ArgToFloat(LRes) < ArgToFloat(RRes));
 end;
 
 
@@ -3250,34 +3143,20 @@ begin
   Result := Left.AsString + '>' + Right.AsString;
 end;
 
-procedure TsGreaterExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsGreaterExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  RRes: TsExpressionResult;
+  LRes, RRes: TsExpressionResult;
 begin
-  Left.GetNodeValue(Result);
+  if HasError(AResult) then
+    exit;
+
+  Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
-  if (Result.ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ArgToFloat(Result) > ArgToFloat(RRes))
+
+  if IsString(LRes) and IsString(RRes) then
+    AResult := BooleanResult(ArgToString(LRes) > ArgToString(RRes))
   else
-  if (Result.ResultType in [rtString, rtInteger, rtFloat, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtString, rtInteger, rtFloat, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ArgToString(Result) > ArgToString(RRes))
-  else
-  if (Result.ResultType in [rtBoolean, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtBoolean, rtCell, rtEmpty])
-  then
-    Result := BooleanResult(ord(ArgToBoolean(Result)) > ord(ArgToBoolean(RRes)))
-  else
-  if (Result.ResultType = rtError)
-    then Result := ErrorResult(Result.ResError)
-  else
-  if (RRes.ResultType = rtError)
-    then Result := ErrorResult(RRes.ResError)
-  else
-    Result := ErrorResult(errWrongType);
+    AResult := BooleanResult(ArgToFloat(LRes) > ArgToFloat(RRes));
 end;
 
 
@@ -3297,10 +3176,20 @@ begin
   Result := Left.AsString + '>=' + Right.AsString;
 end;
 
-procedure TsGreaterEqualExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsGreaterEqualExprNode.GetNodeValue(out AResult: TsExpressionResult);
+var
+  LRes, RRes: TsExpressionResult;
 begin
-  inherited GetNodeValue(Result);
-  Result.ResBoolean := not Result.ResBoolean;
+  if HasError(AResult) then
+    exit;
+
+  Left.GetNodeValue(LRes);
+  Right.GetNodeValue(RRes);
+
+  if IsString(LRes) and IsString(RRes) then
+    AResult := BooleanResult(ArgToString(LRes) >= ArgToString(RRes))
+  else
+    AResult := BooleanResult(ArgToFloat(LRes) >= ArgToFloat(RRes));
 end;
 
 
@@ -3320,10 +3209,20 @@ begin
   Result := Left.AsString + '<=' + Right.AsString;
 end;
 
-procedure TsLessEqualExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsLessEqualExprNode.GetNodeValue(out AResult: TsExpressionResult);
+var
+  LRes, RRes: TsExpressionResult;
 begin
-  inherited GetNodeValue(Result);
-  Result.ResBoolean := not Result.ResBoolean;
+  if HasError(AResult) then
+    exit;
+
+  Left.GetNodeValue(LRes);
+  Right.GetNodeValue(RRes);
+
+  if IsString(LRes) and IsString(RRes) then
+    AResult := BooleanResult(ArgToString(LRes) <= ArgToString(RRes))
+  else
+    AResult := BooleanResult(ArgToFloat(LRes) <= ArgToFloat(RRes));
 end;
 
 
@@ -3341,40 +3240,18 @@ function TsConcatExprNode.AsString: string;
 begin
   Result := Left.AsString + '&' + Right.AsString;
 end;
-    {
-procedure TsConcatExprNode.Check;
-begin
-  inherited Check;
-  //CheckNodeType(Left, [rtString, rtCell, rtEmpty, rtError]);
-  //CheckNodeType(Right, [rtString, rtCell, rtEmpty, rtError]);
-end;
 
-procedure TsConcatExprNode.CheckSameNodeTypes;
-begin
-  // Same node types are checked in GetNodevalue
-end;
-     }
-procedure TsConcatExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsConcatExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  RRes : TsExpressionResult;
+  LRes, RRes : TsExpressionResult;
 begin
-  Left.GetNodeValue(Result);
-  if (Result.ResultType = rtError)
-    then exit;
-  Right.GetNodeValue(RRes);
-  if RRes.ResultType = rtError then
-    Result := ErrorResult(RRes.ResError);
+  if HasError(AResult) then
+    exit;
 
-  Result := StringResult(ArgToString(Result) + ArgToString(RRes));
-  {
-  if (Result.ResultType in [rtString, rtCell]) and (RRes.ResultType in [rtString, rtCell])
-    then Result := StringResult(ArgToString(Result) + ArgToString(RRes))
-  else
-  if (RRes.ResultType = rtError)
-    then Result := ErrorResult(RRes.ResError)
-  else
-    Result := ErrorResult(errWrongType);
-    }
+  Left.GetNodeValue(LRes);
+  Right.GetNodeValue(RRes);
+
+  AResult := StringResult(ArgToString(LRes) + ArgToString(RRes));
 end;
 
 function TsConcatExprNode.NodeType: TsResultType;
@@ -3384,22 +3261,6 @@ end;
 
 
 { TsMathOperationExprNode }
-                          {
-procedure TsMathOperationExprNode.Check;
-const
-  AllowedTypes  = [rtInteger, rtFloat, rtDateTime, rtCell, rtEmpty, rtError];
-begin
-  inherited Check;
-  CheckNodeType(Left, AllowedTypes);
-  CheckNodeType(Right, AllowedTypes);
-  CheckSameNodeTypes;
-end;
-
-procedure TsMathOperationExprNode.CheckSameNodeTypes;
-begin
-  // Same node types are checked in GetNodevalue
-end;
- }
 
 function TsMathOperationExprNode.NodeType: TsResultType;
 begin
@@ -3423,30 +3284,20 @@ begin
   Result := Left.AsString + '+' + Right.AsString;
 end;
 
-procedure TsAddExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsAddExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  RRes: TsExpressionResult;
+  LRes, RRes: TsExpressionResult;
 begin
-  Left.GetNodeValue(Result);
-  if Result.ResultType = rtError then
+  if HasError(AResult) then
     exit;
 
+  Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
-  if RRes.ResultType = rtError then
-  begin
-    Result := ErrorResult(RRes.ResError);
-    exit;
-  end;
 
-  if (Result.ResultType in [rtInteger, {rtCell, }rtEmpty]) and
-     (RRes.ResultType in [rtInteger, {rtCell, }rtEmpty])
-  then
-    Result := IntegerResult(ArgToInt(Result) + ArgToInt(RRes))
+  if IsInteger(LRes) and IsInteger(RRes) then
+    AResult := IntegerResult(ArgToInt(LRes) + ArgToInt(RRes))
   else
-  if (Result.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty])
-  then
-    Result := FloatResult(ArgToFloat(Result) + ArgToFloat(RRes));
+    AResult := FloatResult(ArgToFloat(LRes) + ArgToFloat(RRes));
 end;
 
 
@@ -3466,30 +3317,21 @@ begin
   Result := Left.AsString + '-' + Right.asString;
 end;
 
-procedure TsSubtractExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsSubtractExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  RRes: TsExpressionResult;
+  lRes, RRes: TsExpressionResult;
 begin
-  Left.GetNodeValue(Result);
-  if Result.ResultType = rtError then
+  if HasError(AResult) then
     exit;
 
+  Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
-  if RRes.ResultType = rtError then
-  begin
-    Result := ErrorResult(RRes.ResError);
-    exit;
-  end;
 
-  if (Result.ResultType in [rtInteger, {rtCell, }rtEmpty]) and
-     (RRes.ResultType in [rtInteger, {rtCell, }rtEmpty])
+  if IsInteger(LRes) and IsInteger(RRes)
   then
-    Result := IntegerResult(ArgToInt(Result) - ArgToInt(RRes))
+    AResult := IntegerResult(ArgToInt(LRes) - ArgToInt(RRes))
   else
-  if (Result.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty])
-  then
-    Result := FloatResult(ArgToFloat(Result) - ArgToFloat(RRes));
+    AResult := FloatResult(ArgToFloat(LRes) - ArgToFloat(RRes))
 end;
 
 
@@ -3509,30 +3351,20 @@ begin
   Result := Left.AsString + '*' + Right.AsString;
 end;
 
-procedure TsMultiplyExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsMultiplyExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  RRes: TsExpressionResult;
+  LRes, RRes: TsExpressionResult;
 begin
-  Left.GetNodeValue(Result);
-  if Result.ResultType = rtError then
+  if HasError(AResult) then
     exit;
 
+  Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
-  if RRes.ResultType = rtError then
-  begin
-    Result := ErrorResult(RRes.ResError);
-    exit;
+  try
+    AResult := FloatResult(ArgToFloat(LRes) * ArgToFloat(RRes));
+  except
+    on EInvalidArgument do AResult := ErrorResult(errOverflow);
   end;
-
-  if (Result.ResultType in [rtInteger, {rtCell, }rtEmpty]) and
-     (RRes.ResultType in [rtInteger, {rtCell, }rtEmpty])
-  then
-    Result := IntegerResult(ArgToInt(Result) * ArgToInt(RRes))
-  else
-  if (Result.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty])
-  then
-    Result := FloatResult(ArgToFloat(Result) * ArgToFloat(RRes));
 end;
 
 
@@ -3552,31 +3384,26 @@ begin
   Result := Left.AsString + '/' + Right.asString;
 end;
 
-procedure TsDivideExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsDivideExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  RRes: TsExpressionResult;
+  LRes, RRes: TsExpressionResult;
   y: TsExprFloat;
 begin
-  Left.GetNodeValue(Result);
-  if Result.ResultType = rtError then
+  if HasError(AResult) then
     exit;
 
+  Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
-  if RRes.ResultType = rtError then
-  begin
-    Result := ErrorResult(RRes.ResError);
-    exit;
-  end;
 
-  if (Result.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty])
-  then begin
-    y := ArgToFloat(RRes);
-    if y = 0.0 then
-      Result := ErrorResult(errDivideByZero)
-    else
-      Result := FloatResult(ArgToFloat(Result) / y);
-  end;
+  y := ArgToFloat(RRes);
+  if y = 0.0 then
+    AResult := ErrorResult(errDivideByZero)
+  else
+    try
+      AResult := FloatResult(ArgToFloat(LRes) / y);
+    except
+      on EInvalidArgument do AResult := ErrorResult(errOverflow);
+    end;
 end;
 
 function TsDivideExprNode.NodeType: TsResultType;
@@ -3601,104 +3428,25 @@ begin
   Result := Left.AsString + '^' + Right.AsString;
 end;
 
-procedure TsPowerExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsPowerExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  RRes: TsExpressionResult;
+  LRes, RRes: TsExpressionResult;
 begin
-  Left.GetNodeValue(Result);
-  if Result.ResultType = rtError then
+  if HasError(AResult) then
     exit;
 
+  Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
-  if RRes.ResultType = rtError then
-  begin
-    Result := ErrorResult(RRes.ResError);
-    exit;
+  try
+    AResult := FloatResult(Power(ArgToFloat(LRes), ArgToFloat(RRes)));
+  except
+    on E: EInvalidArgument do AResult := ErrorResult(errOverflow);
   end;
-
-  if (Result.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty]) and
-     (RRes.ResultType in [rtFloat, rtInteger, rtDateTime, rtCell, rtEmpty])
-  then
-    try
-      Result := FloatResult(Power(ArgToFloat(Result), ArgToFloat(RRes)));
-    except
-      on E: EInvalidArgument do Result := ErrorResult(errOverflow);
-    end;
 end;
 
 function TsPowerExprNode.NodeType: TsResultType;
 begin
   Result := rtFloat;
-end;
-
-
-{ TsConvertExprNode }
-
-function TsConvertExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
-begin
-  Result := Operand.AsRPNItem(ANext);
-end;
-
-function TsConvertExprNode.AsString: String;
-begin
-  Result := Operand.AsString;
-end;
-
-
-{ TsIntToFloatExprNode }
-   {
-procedure TsConvertToIntExprNode.Check;
-begin
-  inherited Check;
-  CheckNodeType(Operand, [rtInteger, rtCell])
-end;
-  }
-procedure TsIntToFloatExprNode.GetNodeValue(out Result: TsExpressionResult);
-begin
-  Operand.GetNodeValue(Result);
-  if Result.ResultType in [rtInteger, rtCell] then
-    Result := FloatResult(ArgToInt(Result));
-end;
-
-function TsIntToFloatExprNode.NodeType: TsResultType;
-begin
-  Result := rtFloat;
-end;
-
-
-{ TsIntToDateTimeExprNode }
-
-function TsIntToDateTimeExprNode.NodeType: TsResultType;
-begin
-  Result := rtDatetime;
-end;
-
-procedure TsIntToDateTimeExprNode.GetNodeValue(out Result: TsExpressionResult);
-begin
-  Operand.GetnodeValue(Result);
-  if Result.ResultType in [rtInteger, rtCell] then
-    Result := DateTimeResult(ArgToInt(Result));
-end;
-
-
-{ TsFloatToDateTimeExprNode }
-   {
-procedure TsFloatToDateTimeExprNode.Check;
-begin
-  inherited Check;
-  CheckNodeType(Operand, [rtFloat, rtCell]);
-end;
-  }
-function TsFloatToDateTimeExprNode.NodeType: TsResultType;
-begin
-  Result := rtDateTime;
-end;
-
-procedure TsFloatToDateTimeExprNode.GetNodeValue(out Result: TsExpressionResult);
-begin
-  Operand.GetNodeValue(Result);
-  if Result.ResultType in [rtFloat, rtCell] then
-    Result := DateTimeResult(ArgToFloat(Result));
 end;
 
 
@@ -3718,19 +3466,14 @@ begin
   Result := FResultType;
 end;
 
-procedure TsIdentifierExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsIdentifierExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
-  Result := PResult^;
-  Result.ResultType := FResultType;
+  AResult := PResult^;
+  AResult.ResultType := FResultType;
 end;
 
 
 { TsVariableExprNode }
-
-procedure TsVariableExprNode.Check;
-begin
-  // Do nothing;
-end;
 
 function TsVariableExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
 begin
@@ -3800,17 +3543,6 @@ var
   i : Integer;
 begin
   for i := 0 to Length(FArgumentParams)-1 do
-  {
-    case FArgumentParams[i].ResultType of
-      rtEmpty: FID.FValue.ResultType := rtEmpty;
-      rtError: if FID.FValue.ResultType <> rtError then
-               begin
-                 FID.FValue.ResultType := rtError;
-                 FID.FValue.ResError := FArgumentParams[i].ResError;
-               end;
-      else     FArgumentNodes[i].GetNodeValue(FArgumentParams[i]);
-    end;
-    }
     FArgumentNodes[i].GetNodeValue(FArgumentParams[i]);
 end;
 
@@ -4035,12 +3767,7 @@ end;
 
 function TsCellRangeExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
 begin
-  {
-  if (FRow1 = FRow2) and (FCol1 = FCol2) then
-    Result := RPNCellRef(FRow1, FCol1, FFlags, ANext)
-  else
-  }
-    Result := RPNCellRange(FRow1, FCol1, FRow2, FCol2, FFlags, ANext);
+  Result := RPNCellRange(FRow1, FCol1, FRow2, FCol2, FFlags, ANext);
 end;
 
 function TsCellRangeExprNode.AsString: string;
@@ -4141,10 +3868,10 @@ begin
   end;
 end;
 
+{ Utility function for the built-in math functions. Accepts also integers and
+ other data types in place of floating point arguments. To be called in
+ builtins or user-defined callbacks having float results or arguments. }
 function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
-// Utility function for the built-in math functions. Accepts also integers and
-// other data types in place of floating point arguments. To be called in
-// builtins or user-defined callbacks having float results or arguments.
 var
   cell: PCell;
   s: String;
@@ -4288,7 +4015,7 @@ end;
 
 
 {------------------------------------------------------------------------------}
-{   Conversion simple data types to ExpressionResults                          }
+{   Conversion of simple data types to ExpressionResults                          }
 {------------------------------------------------------------------------------}
 
 function BooleanResult(AValue: Boolean): TsExpressionResult;
@@ -4339,25 +4066,64 @@ begin
   Result.ResInteger := AValue;
 end;
 
+function IsInteger(const AValue: TsExpressionResult): Boolean;
+var
+  i: Int64;
+  cell: PCell;
+begin
+  Result := false;
+  case AValue.ResultType of
+    rtString : Result := TryStrToInt64(AValue.ResString, i);
+    rtInteger: Result := true;
+    rtFloat  : Result := (frac(AValue.ResFloat) = 0);
+    rtEmpty  : Result := true;
+    rtCell   : begin
+                 cell := AValue.Worksheet.FindCell(AValue.ResRow, AValue.ResCol);
+                 if Assigned(cell) then
+                   case cell^.ContentType of
+                     cctNumber:
+                       Result := frac(cell^.NumberValue) = 0.0;
+                     cctDateTime:
+                       Result := frac(cell^.DateTimeValue) = 0.0;
+                     cctUTF8String:
+                       Result := TryStrToInt64(cell^.UTF8StringValue, i);
+                   end;
+               end;
+  end;
+end;
+
+function IsString(const AValue: TsExpressionResult): Boolean;
+var
+  cell: PCell;
+begin
+  Result := false;
+  case AValue.ResultType of
+    rtString: Result := true;
+    rtCell  : begin
+                cell := AValue.Worksheet.FindCell(AValue.ResRow, AValue.ResCol);
+                Result := (cell <> nil) and (cell^.ContentType = cctUTF8String);
+              end;
+  end;
+end;
+
 function StringResult(const AValue: string): TsExpressionResult;
 begin
   Result.ResultType := rtString;
   Result.ResString := AValue;
 end;
 
-{------------------------------------------------------------------------------}
-{@@
+{@@ ---------------------------------------------------------------------------
   Registers a non-built-in function:
 
-  @param AName        Name of the function as used for calling it in the spreadsheet
-  @param AResultType  A character classifying the data type of the function result:
-                        'I' integer
-                        'F' floating point number
-                        'D' date/time value
-                        'S' string
-                        'B' boolean value (TRUE/FALSE)
-                        'R' cell range, can also be used for functions requiring
-                            a cell "reference", like "CELL(..)"
+  @param AName       Name of the function as used for calling it in the spreadsheet
+  @param AResultType A character classifying the data type of the function result:
+                       'I' integer
+                       'F' floating point number
+                       'D' date/time value
+                       'S' string
+                       'B' boolean value (TRUE/FALSE)
+                       'R' cell range, can also be used for functions requiring
+                           a cell "reference", like "CELL(..)"
   @param AParamTypes A string with result type symbols for each parameter of the
                      function. Symbols as used for "ResultType" with these
                      additions:
@@ -4371,8 +4137,7 @@ end;
                      section 3.11.
   @param ACallBack   Address of the procedure called when the formula is
                      calculated.
-}
-{------------------------------------------------------------------------------}
+-------------------------------------------------------------------------------}
 procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
   const AParamTypes: String; const AExcelCode: Integer; ACallback: TsExprFunctionCallBack);
 begin
@@ -4386,6 +4151,7 @@ begin
   with BuiltinIdentifiers do
     AddFunction(bcUser, AName, AResultType, AParamTypes, AExcelCode, ACallBack);
 end;
+
 
 { TsBuiltInExprIdentifierDef }
 
@@ -4405,4 +4171,5 @@ initialization
 
 finalization
   FreeBuiltins;
+
 end.

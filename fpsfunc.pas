@@ -1400,6 +1400,21 @@ begin
     Result := ErrorResult(errWrongType);
 end;
 
+procedure fpsERRORTYPE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+//  ERROR.TYPE(value)
+// returns the numeric representation of one of the errors in Excel.
+// "value" can be one of the following Excel error values
+//   #NULL! 	#DIV/0! 	#VALUE! 	#REF! 	#NAME? 	#NUM!   #N/A 	#GETTING_DATA
+var
+  cell: PCell;
+begin
+  if (Args[0].ResultType = rtError) and (ord(Args[0].ResError) <= ord(errArgError))
+  then
+    Result := IntegerResult(ord(Args[0].ResError))
+  else
+    Result := EmptyResult; //ErrorResult(errArgError);
+end;
+
 procedure fpsISBLANK(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 //  ISBLANK( value )
 // Checks for blank or null values.
@@ -1683,6 +1698,7 @@ begin
     // Info functions
     cat := bcInfo;
     //AddFunction(cat, 'CELL',      '?', 'Sr',   INT_EXCEL_SHEET_FUNC_CELL,       @fpsCELL);
+    AddFunction(cat, 'ERROR.TYPE','I', '?',    INT_EXCEL_SHEET_FUNC_ERRORTYPE,  @fpsERRORTYPE);
     AddFunction(cat, 'ISBLANK',   'B', '?',    INT_EXCEL_SHEET_FUNC_ISBLANK,    @fpsISBLANK);
     AddFunction(cat, 'ISERR',     'B', '?',    INT_EXCEL_SHEET_FUNC_ISERR,      @fpsISERR);
     AddFunction(cat, 'ISERROR',   'B', '?',    INT_EXCEL_SHEET_FUNC_ISERROR,    @fpsISERROR);
