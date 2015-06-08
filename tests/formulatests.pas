@@ -138,7 +138,6 @@ begin
     // Write out all test formulas
     // All formulas are in column B
     {$I testcases_calcrpnformula.inc}
-//    WriteRPNFormulaSamples(MyWorksheet, AFormat, true, UseRPNFormula);
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;

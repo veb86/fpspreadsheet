@@ -270,6 +270,20 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := FloatResult(cellB1*0.01);
 
+  // Exotic test case from OpenOffice test file
+  inc(Row);
+  formula := '200%%';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNNumber(200,
+      RPNFunc(fekPercent,
+      RPNFunc(fekPercent, nil)))))
+  else
+    MyWorksheet.WriteFormula(row, 1, formula);
+  SetLength(sollvalues, Row+1);
+  sollValues[Row] := FloatResult(0.02);
+
   // Power symbol
   inc(Row);
   formula := '2^0.5';
