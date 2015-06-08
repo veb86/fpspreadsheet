@@ -4347,25 +4347,25 @@ begin
   if FWorksheet.IsMergeBase(ACell) then
   begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
-    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
-    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+    rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + rowsSpannedStr;
   end else
     spannedStr := '';
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   if fmt.UsedFormattingFields <> [] then
     AppendToStream(AStream, Format(
-      '<table:table-cell table:style-name="ce%d" %s>', [ACell^.FormatIndex, spannedStr]),
+      '<table:table-cell table:style-name="ce%d"%s>', [ACell^.FormatIndex, spannedStr]),
       comment,
       '</table:table-cell>')
   else
   if comment <> '' then
     AppendToStream(AStream,
-      '<table:table-cell ' + spannedStr + '>' + comment + '</table:table-cell>')
+      '<table:table-cell' + spannedStr + '>' + comment + '</table:table-cell>')
   else
     AppendToStream(AStream,
-      '<table:table-cell ' + spannedStr + '/>');
+      '<table:table-cell' + spannedStr + '/>');
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5086,9 +5086,9 @@ begin
   if FWorksheet.IsMergeBase(ACell) then
   begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
-    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
-    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+    rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + rowsSpannedStr;
   end else
     spannedStr := '';
 
@@ -5111,39 +5111,39 @@ begin
     cctNumber:
       begin
         valuetype := 'float';
-        value := 'office:value="' + Format('%g', [ACell^.NumberValue], FPointSeparatorSettings) + '"';
+        value := ' office:value="' + Format('%g', [ACell^.NumberValue], FPointSeparatorSettings) + '"';
       end;
     cctDateTime:
       if trunc(ACell^.DateTimeValue) = 0 then
       begin
         valuetype := 'time';
-        value := 'office:time-value="' + FormatDateTime(ISO8601FormatTimeOnly, ACell^.DateTimeValue) + '"';
+        value := ' office:time-value="' + FormatDateTime(ISO8601FormatTimeOnly, ACell^.DateTimeValue) + '"';
       end
       else
       begin
         valuetype := 'date';
         if frac(ACell^.DateTimeValue) = 0.0 then
-          value := 'office:date-value="' + FormatDateTime(ISO8601FormatDateOnly, ACell^.DateTimeValue) + '"'
+          value := ' office:date-value="' + FormatDateTime(ISO8601FormatDateOnly, ACell^.DateTimeValue) + '"'
         else
-          value := 'office:date-value="' + FormatDateTime(ISO8601FormatExtended, ACell^.DateTimeValue) + '"';
+          value := ' office:date-value="' + FormatDateTime(ISO8601FormatExtended, ACell^.DateTimeValue) + '"';
       end;
     cctUTF8String:
       begin
         valuetype := 'string';
-        value := 'office:string-value="' + ACell^.UTF8StringValue +'"';
+        value := ' office:string-value="' + ACell^.UTF8StringValue +'"';
         valueStr := '<text:p>' + ACell^.UTF8StringValue + '</text:p>';
       end;
     cctBool:
       begin
         valuetype := 'boolean';
-        value := 'office:boolean-value="' + BoolToStr(ACell^.BoolValue, 'true', 'false') + '"';
+        value := ' office:boolean-value="' + BoolToStr(ACell^.BoolValue, 'true', 'false') + '"';
       end;
     cctError:
       begin
         // Strange: but in case of an error, Open/LibreOffice always writes a
         // float value 0 to the cell
         valuetype := 'float';
-        value := 'office:value="0"';
+        value := ' office:value="0"';
       end;
   end;
 
@@ -5154,7 +5154,7 @@ begin
     data type. Seems to work... }
   if FWorksheet.GetCalcState(ACell) = csCalculated then
     AppendToStream(AStream, Format(
-      '<table:table-cell table:formula="=%s" office:value-type="%s" %s %s %s>' +
+      '<table:table-cell table:formula="=%s" office:value-type="%s"%s%s%s>' +
         comment +
         valueStr +
       '</table:table-cell>', [
@@ -5163,7 +5163,7 @@ begin
   else
   begin
     AppendToStream(AStream, Format(
-      '<table:table-cell table:formula="=%s" %s %s', [
+      '<table:table-cell table:formula="=%s"%s%s', [
         formula, lStyle, spannedStr]));
     if comment <> '' then
       AppendToStream(AStream, '>' + comment + '</table:table-cell>')
@@ -5198,7 +5198,7 @@ begin
   // Style
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   if fmt.UsedFormattingFields <> [] then
-    lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
+    lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '"'
   else
     lStyle := '';
 
@@ -5209,9 +5209,9 @@ begin
   if FWorksheet.IsMergeBase(ACell) then
   begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
-    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
-    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+    rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + rowsSpannedStr;
   end else
     spannedStr := '';
 
@@ -5253,7 +5253,7 @@ begin
 
   // Write it ...
   AppendToStream(AStream, Format(
-    '<table:table-cell office:value-type="string" %s %s>' +
+    '<table:table-cell office:value-type="string"%s%s>' +
       comment +
       textp +
     '</table:table-cell>', [
@@ -5298,7 +5298,7 @@ begin
       if (nfkCurrency in nfSection.Kind) then
         valtype := 'currency'
     end;
-    lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" ';
+    lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '"';
   end else
     lStyle := '';
 
@@ -5309,9 +5309,9 @@ begin
   if FWorksheet.IsMergeBase(ACell) then
   begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
-    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
-    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+    rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + rowsSpannedStr;
   end else
     spannedStr := '';
 
@@ -5330,7 +5330,7 @@ begin
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   AppendToStream(AStream, Format(
-    '<table:table-cell office:value-type="%s" office:value="%s" %s %s >' +
+    '<table:table-cell office:value-type="%s" office:value="%s"%s%s >' +
       comment +
       '<text:p>%s</text:p>' +
     '</table:table-cell>', [

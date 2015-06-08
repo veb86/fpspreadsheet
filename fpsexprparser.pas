@@ -1259,14 +1259,6 @@ begin
     ParserError(SErrUnexpectedEndOfExpression);
 end;
 
-{ If the result types differ, they are converted to a common type if possible. }
-{
-procedure TsExpressionParser.CheckNodes(var ALeft, ARight: TsExprNode);
-begin
-  ALeft := MatchNodes(ALeft, ARight);
-  ARight := MatchNodes(ARight, ALeft);
-end;
- }
 procedure TsExpressionParser.CheckResultType(const Res: TsExpressionResult;
   AType: TsResultType); inline;
 begin
@@ -1280,24 +1272,7 @@ begin
   FHashList.Clear;
   FreeAndNil(FExprNode);
 end;
-                                     (*
-function TsExpressionParser.ConvertNode(ToDo: TsExprNode;
-  ToType: TsResultType): TsExprNode;
-begin
-  Result := ToDo;
-  case ToDo.NodeType of
-    rtInteger :
-      case ToType of
-        rtFloat    : Result := TsIntToFloatExprNode.Create(self, Result);
-        rtDateTime : Result := TsIntToDateTimeExprNode.Create(self, Result);
-      end;
-    rtFloat :
-      case ToType of
-        rtDateTime : Result := TsFloatToDateTimeExprNode.Create(self, Result);
-      end;
-  end;
-end;
-                                       *)
+
 { Prepares copy mode: The formula is contained in ASourceCell and will be
   modified such as seen from ADestCell. }
 procedure TsExpressionParser.PrepareCopyMode(ASourceCell, ADestCell: PCell);
@@ -1487,7 +1462,6 @@ begin
       GetToken;
       CheckEOF;
       Right := Level3;
-      //CheckNodes(Result, right);
       case tt of
         ttLessthan         : C := TsLessExprNode;
         ttLessthanEqual    : C := TsLessEqualExprNode;
@@ -1519,7 +1493,6 @@ begin
       GetToken;
       CheckEOF;
       right := Level4;
-      //CheckNodes(Result, right);
       case tt of
         ttPlus  : Result := TsAddExprNode.Create(self, Result, right);
         ttMinus : Result := TsSubtractExprNode.Create(self, Result, right);
@@ -1545,7 +1518,6 @@ begin
       tt := TokenType;
       GetToken;
       right := Level5;
-      //CheckNodes(Result, right);
       case tt of
         ttMul : Result := TsMultiplyExprNode.Create(self, Result, right);
         ttDiv : Result := TsDivideExprNode.Create(self, Result, right);
@@ -1570,7 +1542,6 @@ begin
       tt := TokenType;
       GetToken;
       right := Level6;
-      //CheckNodes(Result, right);
       Result := TsPowerExprNode.Create(self, Result, right);
     end;
   except
@@ -1581,13 +1552,10 @@ end;
 
 function TsExpressionParser.Level6: TsExprNode;
 var
-  //isPlus, isMinus: Boolean;
   signs: String;
   i: Integer;
 begin
 {$ifdef debugexpr} Writeln('Level 6 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
-//  isPlus := false;
-//  isMinus := false;
   signs := '';
   while (TokenType in [ttPlus, ttMinus]) do
   begin
@@ -1595,10 +1563,6 @@ begin
       ttPlus  : signs := signs + '+';
       ttMinus : signs := signs + '-';
     end;
-    {
-    isPlus := (TokenType = ttPlus);
-    isMinus := (TokenType = ttMinus);
-    }
     GetToken;
   end;
   Result := Level7;
@@ -1610,23 +1574,11 @@ begin
     end;
     dec(i);
   end;
-{
-  if isPlus then
-    Result := TsUPlusExprNode.Create(self, Result);
-  if isMinus then
-    Result := TsUMinusExprNode.Create(self, Result);
-    }
 
   while TokenType = ttPercent do begin
     Result := TsPercentExprNode.Create(self, Result);
     GetToken;
   end;
-  {
-  if TokenType = ttPercent then begin
-    Result := TsPercentExprNode.Create(self, Result);
-    GetToken;
-  end;
-  }
 end;
 
 function TsExpressionParser.Level7: TsExprNode;
@@ -1653,53 +1605,7 @@ begin
   end
   else
     Result := Primitive;
-                             {
-  if TokenType = ttPower then
-  begin
-    try
-      CheckEOF;
-      GetToken;
-      Right := Level1; //Primitive;
-      CheckNodes(Result, right);
-      Result := TsPowerExprNode.Create(self, Result, Right);
-      //GetToken;
-    except
-      Result.Free;
-      raise;
-    end;
-  end;             }
-                       {
-  if TokenType = ttPercent then begin
-    Result := TsPercentExprNode.Create(self, Result);
-    GetToken;
-  end;
-                        }
 end;
-                                  (*
-{ Checks types of todo and match. If ToDO can be converted to it matches
-  the type of match, then a node is inserted.
-  For binary operations, this function is called for both operands. }
-function TsExpressionParser.MatchNodes(ToDo, Match: TsExprNode): TsExprNode;
-var
-  TT, MT : TsResultType;
-begin
-  Result := ToDo;
-  TT := ToDo.NodeType;
-  MT := Match.NodeType;
-  if TT <> MT then
-  begin
-    if TT = rtInteger then
-    begin
-      if (MT in [rtFloat, rtDateTime]) then
-        Result := ConvertNode(ToDo, MT);
-    end
-    else if (TT = rtFloat) then
-    begin
-      if (MT = rtDateTime) then
-        Result := ConvertNode(ToDo, rtDateTime);
-    end;
-  end;
-end;                                *)
 
 procedure TsExpressionParser.ParserError(Msg: String);
 begin
@@ -2057,14 +1963,7 @@ begin
   CreateNodeFromRPN(FExprNode, index);
   if Assigned(FExprNode) then FExprNode.Check;
 end;
-(*
-{ Signals that the parser is in SharedFormulaMode, i.e. there is an active cell
-  to which all relative addresses have to be adapted. }
-function TsExpressionParser.SharedFormulaMode: Boolean;
-begin
-  Result := (ActiveCell <> nil) and (ActiveCell^.SharedFormulaBase <> nil);
-end;
-  *)
+
 function TsExpressionParser.TokenType: TsTokenType;
 begin
   Result := FScanner.TokenType;
@@ -2236,10 +2135,6 @@ begin
     if ID.ExcelCode = AExcelCode then exit;
     dec(Result);
   end;
-  {
-  while (Result >= 0) and (GetI(Result).ExcelCode = AExcelCode) do
-    dec(Result);
-    }
 end;
 
 procedure TsExprIdentifierDefs.SetI(AIndex: Integer;
@@ -2816,16 +2711,7 @@ function TsUPlusExprNode.AsString: String;
 begin
   Result := '+' + TrimLeft(Operand.AsString);
 end;
-   {
-procedure TsUPlusExprNode.Check;
-const
-  AllowedTokens = [rtInteger, rtFloat, rtCell, rtEmpty, rtError];
-begin
-  inherited;
-  if not (Operand.NodeType in AllowedTokens) then
-    RaiseParserError(SErrNoUPlus, [ResultTypeName(Operand.NodeType), Operand.AsString])
-end;
-  }
+
 procedure TsUPlusExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;
@@ -2875,16 +2761,7 @@ function TsUMinusExprNode.AsString: String;
 begin
   Result := '-' + TrimLeft(Operand.AsString);
 end;
-  {
-procedure TsUMinusExprNode.Check;
-const
-  AllowedTokens = [rtInteger, rtFloat, rtCell, rtEmpty, rtError];
-begin
-  inherited;
-  if not (Operand.NodeType in AllowedTokens) then
-    RaiseParserError(SErrNoNegation, [ResultTypeName(Operand.NodeType), Operand.AsString])
-end;
-   }
+
 procedure TsUMinusExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;

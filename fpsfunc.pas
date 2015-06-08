@@ -212,7 +212,13 @@ begin
     exit;
   end;
 
-  if Length(Args) = 2 then begin
+  if (Length(Args) = 2) then
+  begin
+    if (Args[1].ResultType = rtMissingArg) then
+    begin
+      Result := ErrorResult(errOverflow);  // #NUM! as tested by Excel
+      exit;
+    end;
     base := ArgToFloat(Args[1]);
     if base < 0 then begin
       Result := ErrorResult(errOverflow);  // #NUM!
@@ -698,19 +704,19 @@ var
 begin
   s := ArgToString(Args[0]);
   if s = '' then
-    Result.ResultType := rtEmpty
+    Result := EmptyResult
+  else
+  if Length(Args) > 2 then
+    Result := ErrorResult(errArgError)
   else
   begin
     if Length(Args) = 1 then
       count := 1
     else
-    if Args[1].ResultType in [rtInteger, rtFloat] then
-      count := ArgToInt(Args[1])
+    if Args[1].ResultType = rtMissingArg then
+      count := 1
     else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
+      count := ArgToInt(Args[1]);
     Result := StringResult(UTF8LeftStr(s, count));
   end;
 end;
@@ -780,18 +786,19 @@ var
 begin
   s := ArgToString(Args[0]);
   if s = '' then
-    Result.ResultType := rtEmpty
-  else begin
+    Result := EmptyResult
+  else
+  if Length(Args) > 2 then
+    Result := ErrorResult(errArgError)
+  else
+  begin
     if Length(Args) = 1 then
       count := 1
     else
-    if Args[1].ResultType in [rtInteger, rtFloat] then
-      count := ArgToInt(Args[1])
+    if Args[1].ResultType = rtMissingArg then
+      count := 1
     else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
+      count := ArgToInt(Args[1]);
     Result := StringResult(UTF8RightStr(s, count));
   end;
 end;
