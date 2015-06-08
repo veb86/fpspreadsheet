@@ -20,6 +20,7 @@ type
     CgFormats: TCheckGroup;
     CgRowCount: TCheckGroup;
     CbVirtualModeOnly: TCheckBox;
+    CbSingleCol: TCheckBox;
     LblCancel: TLabel;
     Panel1: TPanel;
     Memo: TMemo;
@@ -213,6 +214,7 @@ var
   Tm: DWORD;
   fName, S: string;
   k: Integer;
+  numCols: Integer;
 begin
   MyWorkbook := TsWorkbook.Create;
   try
@@ -220,6 +222,11 @@ begin
       Log := 'Test aborted';
       exit;
     end;
+
+    if CbSingleCol.Checked then
+      numCols := 1
+    else
+      numCols := COLCOUNT;
 
     MyWorksheet := MyWorkbook.AddWorksheet('Sheet1');
     MyWorkbook.Options := Options;
@@ -231,7 +238,7 @@ begin
       if boVirtualMode in Options then
       begin
         MyWorkbook.VirtualRowCount := Rows;
-        MyWorkbook.VirtualColCount := COLCOUNT;
+        MyWorkbook.VirtualColCount := numCols;
         case RgContent.ItemIndex of
           0: MyWorkbook.OnWriteCellData := @WriteCellStringHandler;
           1: MyWorkbook.OnWriteCellData := @WriteCellNumberHandler;
@@ -250,13 +257,13 @@ begin
             end;
           end;
           case RgContent.ItemIndex of
-            0: for ACol := 0 to COLCOUNT-1 do begin
+            0: for ACol := 0 to numCols-1 do begin
                  S := 'Xy' + IntToStr(ARow) + 'x' + IntToStr(ACol);
                  MyWorksheet.WriteUTF8Text(ARow, ACol, S);
                end;
-            1: for ACol := 0 to COLCOUNT-1 do
+            1: for ACol := 0 to numCols-1 do
                  MyWorksheet.WriteNumber(ARow, ACol, 1E5*ARow + ACol);
-            2: for ACol := 0 to COLCOUNT-1 do
+            2: for ACol := 0 to numCols-1 do
                  if (odd(ARow) and odd(ACol)) or odd(ARow+ACol) then
                  begin
                    S := 'Xy' + IntToStr(ARow) + 'x' + IntToStr(ACol);
@@ -332,11 +339,14 @@ var
   i, len: Integer;
   s: String;
   rows: Integer;
+  numCols: Integer;
 begin
   WriteToIni;
 
   FEscape := false;
   EnableControls(false);
+
+  if CbSingleCol.Checked then numCols := 1 else numCols := COLCOUNT;
 
   Memo.Append     ('Running: Reading TsWorkbook from various file formats');
   Memo.Append     ('         Worksheet contains ' + CONTENT_TEXT[RgContent.ItemIndex]);
@@ -370,7 +380,7 @@ begin
         continue;
 
       rows := GetRowCount(i);
-      s := Format('%7.0nx%d', [1.0*rows, COLCOUNT]);
+      s := Format('%7.0nx%d', [1.0*rows, numCols]);
 
       if CbVirtualModeOnly.Checked then begin
         RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
@@ -396,11 +406,13 @@ var
   Rows: integer;
   s: String;
   i, len: Integer;
+  numCols: Integer;
 begin
   WriteToIni;
 
   FEscape := false;
   EnableControls(false);
+  if CbSingleCol.Checked then numCols := 1 else numCols := COLCOUNT;
 
   Memo.Append     ('Running: Building TsWorkbook and writing to different file formats');
   Memo.Append     ('         Worksheet contains ' + CONTENT_TEXT[RgContent.ItemIndex]);
@@ -433,7 +445,7 @@ begin
       if not CgRowCount.Checked[i] then
         continue;
       Rows := GetRowCount(i);
-      s := Format('%7.0nx%d', [1.0*Rows, COLCOUNT]);
+      s := Format('%7.0nx%d', [1.0*Rows, numCols]);
       if CbVirtualModeOnly.Checked then begin
         RunWriteTest(2, Rows, s + '  [boVM      ]', [boVirtualMode]);
         RunWriteTest(4, Rows, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);

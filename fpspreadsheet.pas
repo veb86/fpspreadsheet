@@ -910,8 +910,8 @@ begin
 
   FFirstRowIndex := $FFFFFFFF;
   FFirstColIndex := $FFFFFFFF;
-  FLastRowIndex := 0;
-  FLastColIndex := 0;
+  FLastRowIndex := $FFFFFFFF;
+  FLastColIndex := $FFFFFFFF;
 
   FActiveCellRow := Cardinal(-1);
   FActiveCellCol := Cardinal(-1);
@@ -1873,9 +1873,9 @@ begin
     else FFirstColIndex := Min(FFirstColIndex, ACol);
   if FFirstRowIndex = $FFFFFFFF then FFirstRowIndex := GetFirstRowIndex(true)
     else FFirstRowIndex := Min(FFirstRowIndex, ARow);
-  if FLastColIndex = 0 then FLastColIndex := GetLastColIndex(true)
+  if FLastColIndex = $FFFFFFFF then FLastColIndex := GetLastColIndex(true)
     else FLastColIndex := Max(FLastColIndex, ACol);
-  if FLastRowIndex = 0 then FLastRowIndex := GetLastRowIndex(true)
+  if FLastRowIndex = $FFFFFFFF then FLastRowIndex := GetLastRowIndex(true)
     else FLastRowIndex := Max(FLastRowIndex, ARow);
 end;
 
@@ -2103,7 +2103,7 @@ function TsWorksheet.GetLastColIndex(AForceCalculation: Boolean = false): Cardin
 var
   i: Integer;
 begin
-  if AForceCalculation then
+  if AForceCalculation or (FLastColIndex = $FFFFFFFF) then
   begin
     // Traverse the tree from lowest to highest.
     // Since tree primary sort order is on row highest col could exist anywhere.
@@ -2206,7 +2206,7 @@ function TsWorksheet.GetLastRowIndex(AForceCalculation: Boolean = false): Cardin
 var
   i: Integer;
 begin
-  if AForceCalculation then
+  if AForceCalculation or (FLastRowIndex = $FFFFFFFF) then
   begin
     // Index of highest row with at least one existing cell
     Result := GetLastOccupiedRowIndex;
@@ -5459,10 +5459,10 @@ begin
     FillChar(Result^, SizeOf(TCol), #0);
     Result^.Col := ACol;
     FCols.Add(Result);
-    if FFirstColIndex = 0
+    if FFirstColIndex = $FFFFFFFF
       then FFirstColIndex := GetFirstColIndex(true)
       else FFirstColIndex := Min(FFirstColIndex, ACol);
-    if FLastColIndex = 0
+    if FLastColIndex = $FFFFFFFF
       then FLastColIndex := GetLastColIndex(true)
       else FLastColIndex := Max(FLastColIndex, ACol);
   end;
