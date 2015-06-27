@@ -1,8 +1,8 @@
-﻿; This is a Doc-O-Matic version 6.4.2.1326 project file.
+﻿; This is a Doc-O-Matic version 7.0.1.1645 project file.
 ; This file is maintained by Doc-O-Matic, do not edit manually.
 
 [AutoTexts]
-Empty=0
+Empty=1
 Saved=1
 Text0=This is unknown %SYMBOLNAME%.
 Text1=This is class %SYMBOLNAME%.
@@ -29,15 +29,16 @@ Name2=Help 2
 
 [Configurations\Help 2\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\AdditionalFiles]
 Count=4
-File0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\footer-bkg-whitegradient.gif
-File1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\header-bkg-whitegradient.gif
-File2=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_fullframegradient.gif
-File3=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_titlebkg.jpg
+File0=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\footer-bkg-whitegradient.gif
+File1=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\header-bkg-whitegradient.gif
+File2=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\html_fullframegradient.gif
+File3=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\html_titlebkg.jpg
 
 [Configurations\Help 2\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\General]
 ClearDirectoryBeforeExport=0
 HelpKind=2
 OutputDir=output
+OutputXHTML=0
 TargetBOM=1
 TargetCodepage=utf-8
 
@@ -64,6 +65,14 @@ Help2PluginNamespace=0
 Help2PluginNamespaceName=MS.VSIPCC+
 Help2RegisterType=0
 Help2UnregisterNamespace=1
+Help3BookName=
+Help3Catalog=vs
+Help3Locale=en-us
+Help3PackageFilename=
+Help3Product=MyProduct
+Help3ProductVersion=100
+Help3RegisterBook=1
+Help3Vendor=MyCompany
 HelpCompiler=
 HTMLHelp2Filename=
 HTMLHelpDisplayFontScaleButton=0
@@ -77,8 +86,8 @@ WindowPosition_Top=0
 
 [Configurations\Help 2\Image Paths]
 Count=2
-Path0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics
-Path1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\en
+Path0=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics
+Path1=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\en
 
 [Configurations\Help 2\Output Options]
 ClassHierarchyLayoutOutputDir=output
@@ -88,17 +97,18 @@ ID={D3A588E0-9472-11D3-BDD1-0080C8BA053D}
 
 [Configurations\HTML Help\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\AdditionalFiles]
 Count=4
-File0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\footer-bkg-whitegradient.gif
-File1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\header-bkg-whitegradient.gif
-File2=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_fullframegradient.gif
-File3=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_titlebkg.jpg
+File0=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\footer-bkg-whitegradient.gif
+File1=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\header-bkg-whitegradient.gif
+File2=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\html_fullframegradient.gif
+File3=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\html_titlebkg.jpg
 
 [Configurations\HTML Help\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\General]
 ClearDirectoryBeforeExport=0
 HelpKind=1
 OutputDir=output
+OutputXHTML=0
 TargetBOM=0
-TargetCodepage=windows-1252
+TargetCodepage=utf-8
 
 [Configurations\HTML Help\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\General Build Options]
 ShowDocumentation=1
@@ -123,7 +133,15 @@ Help2PluginNamespace=0
 Help2PluginNamespaceName=MS.VSIPCC+
 Help2RegisterType=0
 Help2UnregisterNamespace=1
-HelpCompiler=C:\Program Files\HTML Help Workshop\hhc.exe
+Help3BookName=
+Help3Catalog=vs
+Help3Locale=en-us
+Help3PackageFilename=
+Help3Product=MyProduct
+Help3ProductVersion=100
+Help3RegisterBook=1
+Help3Vendor=MyCompany
+HelpCompiler=C:\Program Files (X86)\HTML Help Workshop\hhc.exe
 HTMLHelp2Filename=
 HTMLHelpDisplayFontScaleButton=0
 HTMLHelpFilename=
@@ -136,8 +154,8 @@ WindowPosition_Top=0
 
 [Configurations\HTML Help\Image Paths]
 Count=2
-Path0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics
-Path1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\en
+Path0=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics
+Path1=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\en
 
 [Configurations\HTML Help\Output Options]
 ClassHierarchyLayoutOutputDir=output
@@ -147,15 +165,16 @@ ID={D3A588E0-9472-11D3-BDD1-0080C8BA053D}
 
 [Configurations\HTML\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\AdditionalFiles]
 Count=4
-File0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\footer-bkg-whitegradient.gif
-File1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\header-bkg-whitegradient.gif
-File2=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_fullframegradient.gif
-File3=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\html_titlebkg.jpg
+File0=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\footer-bkg-whitegradient.gif
+File1=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\header-bkg-whitegradient.gif
+File2=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\html_fullframegradient.gif
+File3=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\html_titlebkg.jpg
 
 [Configurations\HTML\{D3A588E0-9472-11D3-BDD1-0080C8BA053D}\General]
 ClearDirectoryBeforeExport=0
 HelpKind=0
 OutputDir=output
+OutputXHTML=0
 TargetBOM=0
 TargetCodepage=utf-8
 
@@ -182,6 +201,14 @@ Help2PluginNamespace=0
 Help2PluginNamespaceName=MS.VSIPCC+
 Help2RegisterType=0
 Help2UnregisterNamespace=1
+Help3BookName=
+Help3Catalog=vs
+Help3Locale=en-us
+Help3PackageFilename=
+Help3Product=MyProduct
+Help3ProductVersion=100
+Help3RegisterBook=1
+Help3Vendor=MyCompany
 HelpCompiler=
 HTMLHelp2Filename=
 HTMLHelpDisplayFontScaleButton=0
@@ -195,8 +222,8 @@ WindowPosition_Top=0
 
 [Configurations\HTML\Image Paths]
 Count=2
-Path0=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics
-Path1=..\..\..\..\Program Files\Doc-O-Matic 6 Express\graphics\en
+Path0=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics
+Path1=..\..\..\..\..\..\..\Programme\Doc-O-Matic 7 Express\graphics\en
 
 [Configurations\HTML\Output Options]
 ClassHierarchyLayoutOutputDir=output
@@ -205,14 +232,14 @@ ClassHierarchyLayoutOutputDir=output
 ID={D3A588E0-9472-11D3-BDD1-0080C8BA053D}
 
 [General]
-Author=Felipe Monteiro de Carvalho
+Author=Felipe Monteiro de Carvalho and Werner Pamler
 AuthorEmail=
-Copyright=Copyright (c) 2008
+Copyright=Copyright (c) 2008-2015
 Summary=Free Pascal Spreadsheet Library
 Title=FPSpreadsheet
 VersionBuild=0
 VersionMajor=1
-VersionMinor=0
+VersionMinor=6
 VersionRelease=0
 
 [Macro Header Files]
@@ -246,11 +273,11 @@ TrailerChars=-+~/#
 WallCharacters="#$%&'*+-/=@[\]^_`{|}~
 
 [Project File Info]
-Version=604
+Version=700
 
 [Section\0]
 Count=3
-Description=Contains a short summary of the purpose of an object. This text usually contains one or two sentenses.
+Description=Contains a short summary of the purpose of an object. This text usually contains one or two sentences.
 DisplayName=Summary
 EditorName=
 JavaDocTags=
@@ -714,6 +741,20 @@ Value2=Inputs
 Value3=Input
 XMLDocTags=
 
+[Section\40]
+Count=2
+Description=Contains information on the license
+DisplayName=License
+EditorName=
+JavaDocTags=license
+OutputFind=
+OutputReplace=
+SectionFlags=15
+Type=0
+Value0=License
+Value1=Licenses
+XMLDocTags=
+
 [Section\5]
 Count=4
 Description=Used to generally describe the return value of a global or member function.
@@ -794,7 +835,7 @@ Value1=Seealso
 XMLDocTags=
 
 [Sections]
-Count=40
+Count=41
 DefID=1
 ID0=0
 ID1=1
@@ -831,6 +872,7 @@ ID37=37
 ID38=38
 ID39=39
 ID4=4
+ID40=40
 ID5=5
 ID6=6
 ID7=7
@@ -839,8 +881,12 @@ ID9=9
 SavedValues=1
 
 [Source Files]
-Count=1
-File0=fpspreadsheet.pas
+Count=5
+File0=..\..\fpsnumformat.pas
+File1=..\..\fpspreadsheet.pas
+File2=..\..\fpspreadsheetctrls.pas
+File3=..\..\fpspreadsheetgrid.pas
+File4=..\..\fpsutils.pas
 
 [Source Include Directories]
 Count=0
