@@ -15,6 +15,7 @@ type
 
   TForm1 = class(TForm)
     Bevel1: TBevel;
+    BtnSaveResults: TButton;
     BtnWrite: TButton;
     BtnRead: TButton;
     CgFormats: TCheckGroup;
@@ -26,17 +27,22 @@ type
     Memo: TMemo;
     ParameterPanel: TPanel;
     RgContent: TRadioGroup;
+    SaveDialog: TSaveDialog;
     StatusBar: TStatusBar;
     procedure BtnReadClick(Sender: TObject);
+    procedure BtnSaveResultsClick(Sender: TObject);
     procedure BtnWriteClick(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
     procedure FormKeyPress(Sender: TObject; var Key: char);
   private
     { private declarations }
     FDir: String;
     FEscape: Boolean;
     FCurFormat: TsSpreadsheetFormat;
+    FErrCounter: Integer;
+    FErrLog: TStringList;
     procedure EnableControls(AEnable: Boolean);
     function  GetRowCount(AIndex: Integer): Integer;
     procedure ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
@@ -88,6 +94,13 @@ const
   SPREAD_FORMAT: array[0..4] of TsSpreadsheetFormat = (sfOpenDocument, sfOOXML, sfExcel8, sfExcel5, sfExcel2);
 
   COLCOUNT = 100;
+
+function LeftPad(AText: String; ALength: Integer): String;
+begin
+  Result := AText;
+  while Length(Result) < ALength do Result := ' ' + Result;
+end;
+
 
 { TForm1 }
 
@@ -191,12 +204,16 @@ begin
             ok := true;
             break;
           except
+            on E:Exception do begin
+              inc(FErrCounter);
+              FErrLog.Add(Format('[%d] = %s', [FErrCounter, E.Message]));
+            end;
           end;
         finally
           MyWorkbook.Free;
         end;
       end;
-      if not ok then Log := Log + ' xxxx  ';
+      if not ok then Log := Log + LeftPad(Format('[%d]',[FErrCounter]),5) + '  ';
     end;
 
   finally
@@ -274,8 +291,11 @@ begin
         end;
       end;
     except
-      on E: Exception do
-        Log := Log + format('xxxx   ', [(GetTickCount - Tm) / 1000]);
+      on E: Exception do begin
+        inc(FErrCounter);
+        FErrLog.Add(Format('[%d] = %s', [FErrCounter, E.Message]));
+        Log := Log + LeftPad(Format('[%d]',[FErrCounter]),5) + '  ';
+      end;
     end;
 
     fname :=  Trim(Log);
@@ -345,6 +365,7 @@ begin
 
   FEscape := false;
   EnableControls(false);
+  FErrLog.Clear;
 
   if CbSingleCol.Checked then numCols := 1 else numCols := COLCOUNT;
 
@@ -394,11 +415,21 @@ begin
 
       Memo.Append(DupeString('-', len));
     end;
+    if FErrLog.Text <> '' then
+      Memo.Append(FErrLog.Text);
     Memo.Append('Ready');
   finally
     Memo.Append('');
     EnableControls(true);
   end;
+end;
+
+procedure TForm1.BtnSaveResultsClick(Sender: TObject);
+begin
+  if SaveDialog.Filename <> '' then
+    SaveDialog.InitialDir := ExtractFileDir(SaveDialog.Filename);
+  if SaveDialog.Execute then
+    Memo.Lines.SaveToFile(SaveDialog.Filename);
 end;
 
 procedure TForm1.BtnWriteClick(Sender: TObject);
@@ -412,6 +443,7 @@ begin
 
   FEscape := false;
   EnableControls(false);
+  FErrLog.Clear;
   if CbSingleCol.Checked then numCols := 1 else numCols := COLCOUNT;
 
   Memo.Append     ('Running: Building TsWorkbook and writing to different file formats');
@@ -478,6 +510,7 @@ procedure TForm1.EnableControls(AEnable: Boolean);
 begin
   BtnWrite.Enabled := AEnable;
   BtnRead.Enabled := AEnable;
+  BtnSaveResults.Enabled := AEnable;
   RgContent.Enabled := AEnable;
   CgFormats.Enabled := AEnable;
   CgRowCount.Enabled := AEnable;
@@ -504,7 +537,14 @@ begin
   CgRowCount.Checked[rc30k] := true;
   CgRowCount.Checked[rc40k] := true;
 
+  FErrLog := TStringList.Create;
+
   ReadFromIni;
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  FErrLog.Free;
 end;
 
 procedure TForm1.FormKeyPress(Sender: TObject; var Key: char);
