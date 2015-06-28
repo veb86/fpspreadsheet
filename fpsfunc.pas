@@ -1412,8 +1412,6 @@ procedure fpsERRORTYPE(var Result: TsExpressionResult; const Args: TsExprParamet
 // returns the numeric representation of one of the errors in Excel.
 // "value" can be one of the following Excel error values
 //   #NULL! 	#DIV/0! 	#VALUE! 	#REF! 	#NAME? 	#NUM!   #N/A 	#GETTING_DATA
-var
-  cell: PCell;
 begin
   if (Args[0].ResultType = rtError) and (ord(Args[0].ResError) <= ord(errArgError))
   then

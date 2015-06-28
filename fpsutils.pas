@@ -18,7 +18,7 @@ unit fpsutils;
 interface
 
 uses
-  Classes, SysUtils, StrUtils,
+  Classes, SysUtils, //StrUtils,
   fpstypes;
 
 // Exported types

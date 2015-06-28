@@ -239,7 +239,7 @@ Summary=Free Pascal Spreadsheet Library
 Title=FPSpreadsheet
 VersionBuild=0
 VersionMajor=1
-VersionMinor=6
+VersionMinor=7
 VersionRelease=0
 
 [Macro Header Files]

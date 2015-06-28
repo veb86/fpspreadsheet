@@ -398,6 +398,7 @@ type
   TsMissingArgExprNode = class(TsExprNode)
   protected
     procedure GetNodeValue(out AResult: TsExpressionResult); override;
+  public
     function AsString: String; override;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function NodeType: TsResultType; override;
@@ -869,15 +870,17 @@ resourcestring
   SErrInvalidCell = 'No valid cell address specification : %s';
   SErrInvalidCellRange = 'No valid cell range specification : %s';
   SErrNoOperand = 'No operand for unary operation %s';
+  { -- currently not used:
   SErrNoLeftOperand = 'No left operand for binary operation %s';
   SErrNoRightOperand = 'No left operand for binary operation %s';
   SErrNoNegation = 'Cannot negate expression of type %s: %s';
   SErrNoUPlus = 'Cannot perform unary plus operation on type %s: %s';
-  SErrNoNOTOperation = 'Cannot perform NOT operation on expression of type %s: %s';
-  SErrNoPercentOperation = 'Cannot perform percent operation on expression of type %s: %s';
   SErrTypesDoNotMatch = 'Type mismatch: %s<>%s for expressions "%s" and "%s".';
   SErrNoNodeToCheck = 'Internal error: No node to check !';
   SInvalidNodeType = 'Node type (%s) not in allowed types (%s) for expression: %s';
+  }
+  SErrNoNOTOperation = 'Cannot perform NOT operation on expression of type %s: %s';
+  SErrNoPercentOperation = 'Cannot perform percent operation on expression of type %s: %s';
   SErrUnterminatedExpression = 'Badly terminated expression. Found token at position %d : %s';
   SErrDuplicateIdentifier = 'An identifier with name "%s" already exists.';
   SErrInvalidResultCharacter = '"%s" is not a valid return type indicator';
@@ -1531,7 +1534,6 @@ end;
 
 function TsExpressionParser.Level5: TsExprNode;
 var
-  tt: TsTokenType;
   right: TsExprNode;
 begin
   {$ifdef debugexpr} Writeln('Level 5 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
@@ -1539,7 +1541,6 @@ begin
   try
     while (TokenType = ttPower) do
     begin
-      tt := TokenType;
       GetToken;
       right := Level6;
       Result := TsPowerExprNode.Create(self, Result, right);
@@ -1583,7 +1584,6 @@ end;
 
 function TsExpressionParser.Level7: TsExprNode;
 var
-  Right: TsExprNode;
   currToken: String;
 begin
 {$ifdef debugexpr} Writeln('Level 7 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
