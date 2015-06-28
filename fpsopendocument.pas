@@ -26,7 +26,10 @@ unit fpsopendocument;
   {$mode objfpc}{$H+}
 {$endif}
 
+{$I fps.inc}
+
 {.$define FPSPREADDEBUG} //used to be XLSDEBUG
+
 interface
 
 uses
@@ -230,6 +233,9 @@ implementation
 
 uses
   StrUtils, Variants, LazFileUtils, URIParser,
+ {$IFDEF FPS_VARISBOOL}
+  fpsPatches,
+ {$ENDIF}
   fpsStrings, fpsStreams, fpsClasses, fpsExprParser;
 
 const
