@@ -868,8 +868,8 @@ begin
           case section.Elements[el].IntValue of
             1: result := result + IntToStr(day);
             2: result := Result + IfThen(day < 10, '0'+IntToStr(day), IntToStr(day));
-            3: Result := Result + fs.ShortDayNames[DayOfWeek(day)];
-            4: Result := Result + fs.LongDayNames[DayOfWeek(day)];
+            3: Result := Result + fs.ShortDayNames[DayOfWeek(AValue)];
+            4: Result := Result + fs.LongDayNames[DayOfWeek(AValue)];
           end;
 
         nftHour:
