@@ -1172,7 +1172,8 @@ var
   wideStr: widestring;
 begin
   wideStr := ReadWideString(AStream, HAS_8BITLEN);
-  Result := UTF8Encode(wideStr);
+//  Result := UTF8Encode(wideStr);   // wp: this leads to string encoding error with fpc 3.0 (no UTF8RTL)
+  Result := UTF16ToUTF8(wideStr);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadStringRecord(AStream: TStream);
