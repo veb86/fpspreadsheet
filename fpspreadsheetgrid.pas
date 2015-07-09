@@ -891,16 +891,26 @@ end;
 procedure TsCustomWorksheetGrid.AutoAdjustColumn(ACol: Integer);
 var
   gRow: Integer;  // row in grid coordinates
-  r: Cardinal;
-  lastRow: Cardinal;
   w, maxw: Integer;
   txt: String;
+  cell: PCell;
 begin
   if Worksheet = nil then
     exit;
 
-  lastRow := Worksheet.GetLastOccupiedRowIndex;
   maxw := -1;
+  for cell in Worksheet.Cells.GetColEnumerator(GetWorkSheetCol(ACol)) do
+  begin
+    gRow := GetGridRow(cell^.Row);
+    txt := GetCellText(ACol, gRow);
+    if txt = '' then
+      Continue;
+    w := RichTextWidth(Canvas, Workbook, Rect(0, 0, MaxInt, MaxInt), txt,
+      Worksheet.ReadCellFontIndex(cell), cell^.RichTextParams,
+      Worksheet.ReadTextRotation(cell), false);
+    if w > maxw then maxw := w;
+  end;
+  {
   for r := 0 to lastRow do
   begin
     gRow := GetGridRow(r);
@@ -909,6 +919,7 @@ begin
     w := Canvas.TextWidth(txt);
     if (txt <> '') and (w > maxw) then maxw := w;
   end;
+  }
   if maxw > -1 then
     maxw := maxw + 2*constCellPadding
   else
@@ -2635,11 +2646,11 @@ var
   lCell: PCell;
   s: String;
   wrapped: Boolean;
-  txtR: TRect;
   cellR: TRect;
-  flags: Cardinal;
   r1,c1,r2,c2: Cardinal;
   fmt: PsCellFormat;
+  fntIndex: Integer;
+  txtRot: TsTextRotation;
 begin
   Result := 0;
   if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
@@ -2650,6 +2661,7 @@ begin
   lCell := Worksheet.FindCell(ARow-FHeaderCount, ACol-FHeaderCount);
   if lCell <> nil then
   begin
+    cellR := CellRect(ACol, ARow);
     if Worksheet.IsMerged(lCell) then
     begin
       Worksheet.FindMergedRange(lCell, r1, c1, r2, c2);
@@ -2658,12 +2670,38 @@ begin
         // determination since only the height of the first row of the block
         // (containing the merge base cell) would change which is very confusing.
         exit;
+      cellR := CellRect(c1+FHeaderCount, ARow);
+      cellR.Right := CellRect(c2+FHeaderCount, ARow).Right;
     end;
+    InflateRect(cellR, -constCellPadding, -constCellPadding);
+
     s := GetCellText(ACol, ARow);
     if s = '' then
       exit;
+
     DoPrepareCanvas(ACol, ARow, []);
+
     fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+    if (uffFont in fmt^.UsedFormattingFields) then
+      fntIndex := fmt^.FontIndex else fntIndex := DEFAULT_FONTINDEX;
+    if (uffTextRotation in fmt^.UsedFormattingFields) then
+      txtRot := fmt^.TextRotation else txtRot := trHorizontal;
+    wrapped := (uffWordWrap in fmt^.UsedFormattingFields);
+
+    case txtRot of
+      trHorizontal: ;
+      rt90DegreeClockwiseRotation,
+      rt90DegreeCounterClockwiseRotation:
+        cellR := Rect(0, 0, MaxInt, MaxInt);
+      rtStacked:
+        cellR := Rect(0, 0, MaxInt, MaxInt);
+    end;
+
+    Result := RichTextHeight(Canvas, Workbook, cellR, s, fntIndex,
+                lCell^.RichTextParams, txtRot, wrapped)
+            + 2 * constCellPadding;
+
+            (*
     wrapped := (uffWordWrap in fmt^.UsedFormattingFields)
       or (fmt^.TextRotation = rtStacked);
     // *** multi-line text ***
@@ -2700,6 +2738,7 @@ begin
       then
         Result := Canvas.TextWidth(s) + 2*constCellPadding;
     end;
+    *)
   end;
 end;
 
@@ -2760,8 +2799,7 @@ end;
 function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer): String;
 var
   cell: PCell;
-  r, c, i: Integer;
-  s: String;
+  r, c: Integer;
 begin
   Result := '';
 

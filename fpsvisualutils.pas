@@ -21,9 +21,18 @@ procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRe
   AWordwrap: Boolean; AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
   ARotation: TsTextRotation);
 
+function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; AMaxRect: TRect;
+  const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
+  ATextRotation: TsTextRotation; AWordWrap: Boolean): Integer;
+
+function RichTextHeight(ACanvas: TCanvas; AWorkbook: TsWorkbook; AMaxRect: TRect;
+  const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
+  ATextRotation: TsTextRotation; AWordWrap: Boolean): Integer;
+
+{
 function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; const AText: String;
   AFontIndex: Integer; ARichTextParams: TsRichTextParams): Integer;
-
+}
 
 implementation
 
@@ -163,10 +172,11 @@ begin
   end;
 end;
 
-procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRect;
-  const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
-  AWordwrap: Boolean; AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
-  ARotation: TsTextRotation);
+procedure InternalDrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook;
+  const ARect: TRect; const AText: String; AFontIndex: Integer;
+  ARichTextParams: TsRichTextParams; AWordwrap: Boolean;
+  AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
+  ARotation: TsTextRotation; var Width,Height: Integer; AMeasureOnly: Boolean);
 type
   TLineInfo = record
     pStart, pEnd: PChar;
@@ -183,7 +193,7 @@ var
   iRtp: Integer;
   lineInfo: TLineInfo;
   lineInfos: Array of TLineInfo = nil;
-  totalHeight, stackPeriod: Integer;
+  totalHeight, linelen, stackPeriod: Integer;
 
   procedure InitFont(P: PChar; out rtState: TRtState;
     PendingRtpIndex: Integer; out AHeight: Integer);
@@ -426,6 +436,7 @@ begin
   else
     iRtp := -1;
   totalHeight := 0;
+  linelen := 0;
 
   Convert_sFont_to_Font(AWorkbook.GetFont(AFontIndex), ACanvas.Font);
   if ARotation = rtStacked then
@@ -444,6 +455,7 @@ begin
       NextRtpIndex := iRtp;
       ScanLine(pEnd, NumSpaces, NextRtpIndex, Width, Height);
       totalHeight := totalHeight + Height;
+      linelen := Max(linelen, Width);
       iRtp := NextRtpIndex;
       p := pEnd;
       case p^ of
@@ -456,6 +468,14 @@ begin
       end;
     end;
   until p^ = #0;
+
+  Width := linelen;
+  if ARotation = rtStacked then
+    Height := Length(lineinfos) * stackperiod
+  else
+    Height := totalHeight;
+  if AMeasureOnly then
+    exit;
 
   // Draw lines
   // 1/ get starting point of line
@@ -540,12 +560,59 @@ begin
   end;
 end;
 
-function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; const AText: String;
-  AFontIndex: Integer; ARichTextParams: TsRichTextParams): Integer;
+procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRect;
+  const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
+  AWordwrap: Boolean; AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
+  ARotation: TsTextRotation);
+var
+  w,h: Integer;
+begin
+  InternalDrawRichText(ACanvas, AWorkbook, ARect, AText, AFontIndex,
+    ARichTextParams, AWordWrap, AHorAlignment, AVertAlignment, ARotation,
+    w, h, false);
+end;
+
+function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; AMaxRect: TRect;
+  const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
+  ATextRotation: TsTextRotation; AWordWrap: Boolean): Integer;
+var
+  h, w: Integer;
+begin
+  InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
+    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation,
+    w, h, true);
+  case ATextRotation of
+    trHorizontal, rtStacked:
+      Result := w;
+    rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation:
+      Result := h;
+  end;
+end;
+
+function RichTextHeight(ACanvas: TCanvas; AWorkbook: TsWorkbook; AMaxRect: TRect;
+  const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
+  ATextRotation: TsTextRotation; AWordWrap: Boolean): Integer;
+var
+  h, w: Integer;
+begin
+  InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
+    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation,
+    w, h, true);
+  case ATextRotation of
+    trHorizontal, rtStacked:
+      Result := h;
+    rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation:
+      Result := w;
+  end;
+end;
+            (*
+function GetRichTextExtent(ACanvas: TCanvas; AWorkbook: TsWorkbook;
+  const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
+  ATextRotation: TsTextRotation): TSize;
 var
   s: String;
   p: Integer;
-  w, n: Integer;
+  len, height: Integer;
   rtp, next_rtp: TsRichTextParam;
   fnt, fnt0: TsFont;
 begin
@@ -557,9 +624,24 @@ begin
 
   if Length(ARichTextParams) = 0 then
   begin
-    Result := ACanvas.TextWidth(AText);
-    if fnt0.Position <> fpNormal then
-      Result := Round(Result * SUBSCRIPT_SUPERSCRIPT_FACTOR);
+    Result := ACanvas.TextExtent(AText);
+    if ATextRotation = trHorizontal then
+      exit;
+    len := Result.cx;
+    height := Result.cy;
+    case ATextRotation of
+      rt90DegreeClockwiseRotation,
+      rt90DegreeCounterClockwiseRotation:
+        begin
+          Result.CX := height;
+          Result.CY := len;
+        end;
+      rtStacked:
+        begin
+          Result.CX := ACanvas.TextWidth('M');
+          Restul.CY := UTF8Length(AText) * height;
+        end;
+    end;
     exit;
   end;
 
@@ -602,5 +684,5 @@ begin
     inc(p);
   end;
 end;
-
+              *)
 end.
