@@ -2791,6 +2791,7 @@ begin
     if cell <> nil then
     begin
       Result := TrimToCell(cell);
+      {
       if Worksheet.ReadTextRotation(cell) = rtStacked then
       begin
         s := Result;
@@ -2801,6 +2802,7 @@ begin
           if i < Length(s) then Result := Result + LineEnding;
         end;
       end;
+      }
     end;
   end;
 end;

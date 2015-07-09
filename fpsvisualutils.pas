@@ -486,7 +486,7 @@ begin
         case AHorAlignment of
           haLeft  : xpos := ARect.Left + stackPeriod div 2;
           haRight : xpos := ARect.Right - totalHeight + stackPeriod div 2;
-          haCenter: xpos := (ARect.Left + ARect.Right - totalHeight) div 2;
+          haCenter: xpos := (ARect.Left + ARect.Right - (Length(lineInfos)-1) * stackPeriod) div 2;
         end;
       end;
   end;
