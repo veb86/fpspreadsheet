@@ -1547,7 +1547,7 @@ var
 begin
   // Paper size
   w := WordLEToN(AStream.ReadWord);
-  if (w >= 0) and (w <= High(PAPER_SIZES)) then
+  if (w <= High(PAPER_SIZES)) then
   begin
     FWorksheet.PageLayout.PageWidth := PAPER_SIZES[w, 0];
     FWorksheet.PageLayout.PageHeight := PAPER_SIZES[w, 1];

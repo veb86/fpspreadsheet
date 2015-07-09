@@ -403,6 +403,9 @@ type
   {@@ Set of font styles }
   TsFontStyles = set of TsFontStyle;
 
+  {@@ Font position (subscript or superscript) }
+  TsFontPosition = (fpNormal, fpSubscript, fpSuperscript);
+
   {@@ Font record used in fpspreadsheet. Contains the font name, the font size
       (in points), the font style, and the font color. }
   TsFont = class
@@ -414,7 +417,19 @@ type
     Style: TsFontStyles;
     {@@ Text color given as rgb value }
     Color: TsColor;
+    {@@ Text position }
+    Position: TsFontPosition;
   end;
+
+  {@@ Parameter describing formatting of an text range in cell text }
+  TsRichTextParam = record
+    FontIndex: Integer;
+    StartIndex: Integer;  // zero-based
+    EndIndex: Integer;    // zero-based, next character!
+  end;
+
+  {@@ Parameters describing formatting of text ranges in cell text }
+  TsRichTextParams = array of TsRichTextParam;
 
   {@@ Indicates the border for a cell. If included in the CellBorders set the
       corresponding border is drawn in the style defined by the CellBorderStyle. }
@@ -583,7 +598,8 @@ type
     { Index of format record in the workbook's FCellFormatList }
     FormatIndex: Integer;
     { Cell content }
-    UTF8StringValue: String;   // Strings cannot be part of a variant record
+    UTF8StringValue: String;     // Strings cannot be part of a variant record
+    RichTextParams: TsRichTextParams;  // Formatting of individual text ranges
     FormulaValue: String;
     case ContentType: TCellContentType of  // variant part must be at the end
       cctEmpty      : ();      // has no data at all

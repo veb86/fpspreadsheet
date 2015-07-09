@@ -1525,7 +1525,7 @@ var
   sfnt: TsFont;
 begin
   sfnt := TsFont.Create;
-  Convert_Font_to_sFont(Workbook, GetDialog.Font, sfnt);
+  Convert_Font_to_sFont(GetDialog.Font, sfnt);
   Worksheet.WriteFont(ACell, Workbook.AddFont(sfnt));
 end;
 
@@ -1550,7 +1550,7 @@ begin
       else
         sfnt := Workbook.GetDefaultFont;
     end;
-    Convert_sFont_to_Font(Workbook, sfnt, fnt);
+    Convert_sFont_to_Font(sfnt, fnt);
     GetDialog.Font.Assign(fnt);
   finally
     fnt.Free;

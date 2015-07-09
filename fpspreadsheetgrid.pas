@@ -168,10 +168,16 @@ type
     function GetEditText(ACol, ARow: Integer): String; override;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
     procedure HeaderSized(IsColumn: Boolean; AIndex: Integer); override;
+    procedure InternalDrawTextInCell(AText: String; ARect: TRect;
+      ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
+      ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
+      ARichTextParams: TsRichTextParams);
+    {
     procedure InternalDrawTextInCell(AText, AMeasureText: String; ARect: TRect;
       AJustification: Byte; ACellHorAlign: TsHorAlignment;
       ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
-      ATextWrap, ReplaceTooLong: Boolean);
+      ATextWrap, ReplaceTooLong: Boolean; ARichTextParams: TsRichTextParams);
+      }
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
@@ -1164,7 +1170,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
 begin
-  fpsVisualUtils.Convert_sFont_to_Font(Workbook, sFont, AFont);
+  fpsVisualUtils.Convert_sFont_to_Font(sFont, AFont);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1176,7 +1182,7 @@ end;
 procedure TsCustomWorksheetGrid.Convert_Font_to_sFont(AFont: TFont;
   sFont: TsFont);
 begin
-  fpsVisualUtils.Convert_Font_to_sFont(Workbook, AFont, sFont);
+  fpsVisualUtils.Convert_Font_to_sFont(AFont, sFont);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2081,6 +2087,7 @@ var
   horAlign: TsHorAlignment;
   vertAlign: TsVertAlignment;
   txtRot: TsTextRotation;
+  fntIndex: Integer;
   lCell: PCell;
   justif: Byte;
   fmt: PsCellFormat;
@@ -2110,10 +2117,29 @@ begin
   // Cells
   fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
   wrapped := (uffWordWrap in fmt^.UsedFormattingFields) or (fmt^.TextRotation = rtStacked);
-  txtRot := fmt^.TextRotation;
-  vertAlign := fmt^.VertAlignment;
-  if vertAlign = vaDefault then vertAlign := vaBottom;
-  if fmt^.HorAlignment <> haDefault then
+  if (uffTextRotation in fmt^.UsedFormattingFields)
+    then txtRot := fmt^.TextRotation
+    else txtRot := trHorizontal;
+  if (uffVertAlign in fmt^.UsedFormattingFields)
+    then vertAlign := fmt^.VertAlignment
+    else vertAlign := vaDefault;
+  if vertAlign = vaDefault then
+    vertAlign := vaBottom;
+  if (uffHorAlign in fmt^.UsedFormattingFields)
+    then horAlign := fmt^.HorAlignment
+    else horAlign := haDefault;
+  if (horAlign = haDefault) then
+  begin
+    if (lCell^.ContentType in [cctNumber, cctDateTime]) then
+      horAlign := haRight
+    else
+    if (lCell^.ContentType in [cctBool]) then
+      horAlign := haCenter
+    else
+      horAlign := haLeft;
+  end;
+        {
+  fmt^.HorAlignment <> haDefault then
     horAlign := fmt^.HorAlignment
   else
   begin
@@ -2121,11 +2147,14 @@ begin
       horAlign := haRight
     else
       horAlign := haLeft;
-  end;
+  end;   }
+
+  if (uffFont in fmt^.UsedFormattingFields)
+    then fntIndex := fmt^.FontIndex
+    else fntIndex := DEFAULT_FONTINDEX;
 
   InflateRect(ARect, -constCellPadding, -constCellPadding);
 
-//  txt := GetCellText(ACol, ARow);
   txt := GetCellText(GetGridRow(lCell^.Col), GetGridCol(lCell^.Row));
   if txt = '' then
     exit;
@@ -2151,8 +2180,12 @@ begin
         vaBottom: justif := 0;
       end;
   end;
+  InternalDrawTextInCell(txt, ARect, horAlign, vertAlign, txtRot, wrapped,
+    fntIndex, lCell^.RichTextParams);
+{
   InternalDrawTextInCell(txt, txt, ARect, justif, horAlign, vertAlign,
-    txtRot, wrapped, false);
+    txtRot, wrapped, false, lCell^.RichTextParams);
+    }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3084,18 +3117,34 @@ end;
   @param ACellVertAlign   Is the VertAlignment property stored in the cell
   @param ATextRot         Determines the rotation angle of the text.
   @param ATextWrap        Determines if the text can wrap into multiple lines
-  @param ReplaceTooLang   If true too-long texts are replaced by a series of
-                          # chars filling the cell.
+  @param AFontIndex       Font index to be used for drawing non-rich-text.
+  @param ARichTextParams  an array of character and font index combinations for
+                          rich-text formatting of text in cell
 
   @Note The reason to separate AJustification from ACellHorAlign and ACelVertAlign is
   the output of nfAccounting formatted numbers where the numbers are always
   right-aligned, and the currency symbol is left-aligned.
   THIS FEATURE IS CURRENTLY NO LONGER SUPPORTED.
 -------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText: String;
+  ARect: TRect; ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
+  ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
+  ARichTextParams: TsRichTextParams);
+begin
+  // Since - due to the rich-text mode - characters are drawn individually their
+  // background occasionally overpaints the prev characters (italic). To avoid
+  // this we do not paint the character background - it is not needed anyway.
+  Canvas.Brush.Style := bsClear;
+
+  // Work horse for text drawing, both standard text and rich-text
+  DrawRichText(Canvas, Workbook, ARect, AText, AFontIndex, ARichTextParams,
+    ATextWrap, ACellHorAlign, ACellVertAlign, ATextRot);
+end;
+(*
 procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText, AMeasureText: String;
   ARect: TRect; AJustification: Byte; ACellHorAlign: TsHorAlignment;
   ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
-  ATextWrap, ReplaceTooLong: Boolean);
+  ATextWrap, ReplaceTooLong: Boolean; ARichTextParams: TsRichTextParams);
 var
   ts: TTextStyle;
   flags: Cardinal;
@@ -3281,7 +3330,7 @@ begin
     end;
   end;
 end;
-
+  *)
 {@@ ----------------------------------------------------------------------------
   Standard key handling method inherited from TCustomGrid. Is overridden to
   catch the ESC key during editing in order to restore the old cell text

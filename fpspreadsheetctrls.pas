@@ -2675,6 +2675,7 @@ var
   r1, r2, c1, c2: Cardinal;
   fmt: TsCellFormat;
   numFmt: TsNumFormatParams;
+  rtp: TsRichTextParam;
 begin
   if (ACell <> nil) then
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex)
@@ -2691,6 +2692,17 @@ begin
            fmt.FontIndex,
            Workbook.GetFontAsString(fmt.FontIndex)
          ]));
+
+  if (ACell <> nil) and (Length(ACell^.RichTextParams) > 0) then
+  begin
+    s := '';
+    for rtp in ACell^.RichTextParams do
+      s := Format('%s; Font #%d @ %d-%d', [s, rtp.FontIndex, rtp.StartIndex, rtp.EndIndex]);
+    Delete(s, 1, 2);
+    if s = '' then s := '(none)';
+    AStrings.Add('Rich-text parameters='+s);
+  end else
+    AStrings.Add('Rich-text parameters=(none)');
 
   if (ACell=nil) or not (uffTextRotation in fmt.UsedFormattingFields)
     then AStrings.Add('TextRotation=(default)')

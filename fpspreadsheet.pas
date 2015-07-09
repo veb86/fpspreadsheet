@@ -172,6 +172,7 @@ type
     function  ReadCellBorderStyle(ACell: PCell; ABorder: TsCellBorder): TsCellBorderStyle;
     function  ReadCellBorderStyles(ACell: PCell): TsCellBorderStyles;
     function  ReadCellFont(ACell: PCell): TsFont;
+    function  ReadCellFontIndex(ACell: PCell): Integer;
     function  ReadCellFormat(ACell: PCell): TsCellFormat;
     function  ReadHorAlignment(ACell: PCell): TsHorAlignment;
     procedure ReadNumFormat(ACell: PCell; out ANumFormat: TsNumberFormat;
@@ -239,7 +240,8 @@ type
       AFormula: TsRPNFormula); overload;
 
     function WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring): PCell; overload;
-    procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
+//    procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
+    procedure WriteUTF8Text(ACell: PCell; AText: String; ARichTextparams: TsRichTextParams = nil); overload;
 
     { Writing of cell attributes }
     function WriteBackground(ARow, ACol: Cardinal; AStyle: TsFillStyle;
@@ -286,9 +288,11 @@ type
     procedure WriteDecimals(ACell: PCell; ADecimals: Byte); overload;
 
     function  WriteFont(ARow, ACol: Cardinal; const AFontName: String;
-      AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
+      AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor;
+      APosition: TsFontPosition = fpNormal): Integer; overload;
     function  WriteFont(ACell: PCell; const AFontName: String;
-      AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer; overload;
+      AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor;
+      APosition: TsFontPosition = fpNormal): Integer; overload;
     function WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer): PCell; overload;
     procedure WriteFont(ACell: PCell; AFontIndex: Integer); overload;
     function WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer; overload;
@@ -644,12 +648,12 @@ type
     function GetPointerToCellFormat(AIndex: Integer): PsCellFormat;
 
     { Font handling }
-    function AddFont(const AFontName: String; ASize: Single;
-      AStyle: TsFontStyles; AColor: TsColor): Integer; overload;
+    function AddFont(const AFontName: String; ASize: Single; AStyle: TsFontStyles;
+      AColor: TsColor; APosition: TsFontPosition = fpNormal): Integer; overload;
     function AddFont(const AFont: TsFont): Integer; overload;
     procedure DeleteFont(AFontIndex: Integer);
-    function FindFont(const AFontName: String; ASize: Single;
-      AStyle: TsFontStyles; AColor: TsColor): Integer;
+    function FindFont(const AFontName: String; ASize: Single; AStyle: TsFontStyles;
+      AColor: TsColor; APosition: TsFontPosition = fpNormal): Integer;
     function GetBuiltinFontCount: Integer;
     function GetDefaultFont: TsFont;
     function GetDefaultFontSize: Single;
@@ -660,7 +664,8 @@ type
     procedure InitFonts;
     procedure RemoveAllFonts;
     procedure ReplaceFont(AFontIndex: Integer; AFontName: String;
-      ASize: Single; AStyle: TsFontStyles; AColor: TsColor);
+      ASize: Single; AStyle: TsFontStyles; AColor: TsColor;
+      APosition: TsFontPosition = fpNormal);
     procedure SetDefaultFont(const AFontName: String; ASize: Single);
 
     { Number format handling }
@@ -2710,8 +2715,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Determines the font used by a specified cell. Returns the workbook's default
-  font if the cell does not exist. Considers the uffBold and uffFont formatting
-  fields of the cell
+  font if the cell does not exist.
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadCellFont(ACell: PCell): TsFont;
 var
@@ -2725,6 +2729,23 @@ begin
   end;
   if Result = nil then
     Result := Workbook.GetDefaultFont;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines the index of the font used by a specified cell, referring to the
+  workbooks font list. Returns 0 (the default font index) if the cell does not
+  exist.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadCellFontIndex(ACell: PCell): Integer;
+var
+  fmt: PsCellFormat;
+begin
+  Result := DEFAULT_FONTINDEX;
+  if ACell <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    Result := fmt^.FontIndex;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3460,9 +3481,11 @@ end;
   @param  ACell     Pointer to the cell
   @param  AText     The text to be written encoded in utf-8
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: ansistring);
+procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: String;
+  ARichTextParams: TsRichTextParams = nil);
 var
   r, c: Cardinal;
+  i: Integer;
   hyperlink: TsHyperlink;
 begin
   if ACell = nil then
@@ -3498,6 +3521,12 @@ begin
 
   ACell^.ContentType := cctUTF8String;
   ACell^.UTF8StringValue := AText;
+
+  if Length(ARichTextParams) > 0 then begin
+    SetLength(ACell^.RichTextParams, Length(ARichTextParams));
+    for i:=0 to High(ARichTextParams) do
+      ACell^.RichTextParams[i] := ARichTextParams[i];
+  end;
 
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
@@ -4558,12 +4587,16 @@ end;
   @param  AFontSize   Size of the font, in points
   @param  AFontStyle  Set with font style attributes
                       (don't use those of unit "graphics" !)
+  @param  AFontColor  RGB value of the font's color
+  @param  APosition   Specifies sub- or superscript text
   @return Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFont(ARow, ACol: Cardinal; const AFontName: String;
-  AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer;
+  AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor;
+  APosition: TsFontPosition = fpNormal): Integer;
 begin
-  Result := WriteFont(GetCell(ARow, ACol), AFontName, AFontSize, AFontStyle, AFontColor);
+  Result := WriteFont(GetCell(ARow, ACol), AFontName, AFontSize, AFontStyle,
+    AFontColor, APosition);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4576,10 +4609,13 @@ end;
   @param  AFontSize   Size of the font, in points
   @param  AFontStyle  Set with font style attributes
                       (don't use those of unit "graphics" !)
+  @param  AFontColor  RGB value of the font's color
+  @param  APosition   Specified subscript or superscript text.
   @return Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFont(ACell: PCell; const AFontName: String;
-  AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor): Integer;
+  AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor;
+  APosition: TsFontPosition = fpNormal): Integer;
 var
   fmt: TsCellFormat;
 begin
@@ -4589,9 +4625,9 @@ begin
     Exit;
   end;
 
-  Result := FWorkbook.FindFont(AFontName, AFontSize, AFontStyle, AFontColor);
+  Result := FWorkbook.FindFont(AFontName, AFontSize, AFontStyle, AFontColor, APosition);
   if Result = -1 then
-    result := FWorkbook.AddFont(AFontName, AFontSize, AFontStyle, AFontColor);
+    result := FWorkbook.AddFont(AFontName, AFontSize, AFontStyle, AFontColor, APosition);
 
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   Include(fmt.UsedFormattingFields, uffFont);
@@ -7036,10 +7072,12 @@ end;
   @param ASize      Size of the font in points
   @param AStyle     Style of the font, a combination of TsFontStyle elements
   @param AColor     RGB valoe of the font color
+  @param APosition  Specifies subscript or superscript text.
   @return           Index of the font in the workbook's font list
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddFont(const AFontName: String; ASize: Single;
-  AStyle: TsFontStyles; AColor: TsColor): Integer;
+  AStyle: TsFontStyles; AColor: TsColor;
+  APosition: TsFontPosition = fpNormal): Integer;
 var
   fnt: TsFont;
 begin
@@ -7048,6 +7086,7 @@ begin
   fnt.Size := ASize;
   fnt.Style := AStyle;
   fnt.Color := AColor;
+  fnt.Position := APosition;
   Result := AddFont(fnt);
 end;
 
@@ -7088,10 +7127,11 @@ end;
   @param ASize      Size of the font in points
   @param AStyle     Style of the font, a combination of TsFontStyle elements
   @param AColor     RGB value of the font color
+  @param APosition  Specified subscript or superscript text.
   @return           Index of the font in the font list, or -1 if not found.
 -------------------------------------------------------------------------------}
 function TsWorkbook.FindFont(const AFontName: String; ASize: Single;
-  AStyle: TsFontStyles; AColor: TsColor): Integer;
+  AStyle: TsFontStyles; AColor: TsColor; APosition: TsFontPosition = fpNormal): Integer;
 const
   EPS = 1e-3;
 var
@@ -7104,7 +7144,8 @@ begin
        SameText(AFontName, fnt.FontName) and
        SameValue(ASize, fnt.Size, EPS) and   // careful when comparing floating point numbers
       (AStyle = fnt.Style) and
-      (AColor = fnt.Color)
+      (AColor = fnt.Color) and
+      (APosition = fnt.Position)
     then
       exit;
   end;
@@ -7164,17 +7205,19 @@ end;
   Replaces the built-in font at a specific index with different font parameters
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.ReplaceFont(AFontIndex: Integer; AFontName: String;
-  ASize: Single; AStyle: TsFontStyles; AColor: TsColor);
+  ASize: Single; AStyle: TsFontStyles; AColor: TsColor;
+  APosition: TsFontPosition = fpNormal);
 var
   fnt: TsFont;
 begin
-  if (AFontIndex < FBuiltinFontCount) and (AFontIndex <> 4) then
+  if (AFontIndex < FBuiltinFontCount) then //and (AFontIndex <> 4) then
   begin
     fnt := TsFont(FFontList[AFontIndex]);
     fnt.FontName := AFontName;
     fnt.Size := ASize;
     fnt.Style := AStyle;
     fnt.Color := AColor;
+    fnt.Position := APosition;
   end;
 end;
 
@@ -7255,6 +7298,8 @@ begin
     if (fssItalic in fnt.Style) then Result := Result + '; italic';
     if (fssUnderline in fnt.Style) then Result := Result + '; underline';
     if (fssStrikeout in fnt.Style) then result := Result + '; strikeout';
+    if fnt.Position = fpSubscript then Result := Result + '; subscript';
+    if fnt.Position = fpSuperscript then Result := Result + '; superscript';
   end else
     Result := '';
 end;

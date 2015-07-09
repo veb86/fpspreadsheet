@@ -74,7 +74,7 @@ type
     procedure ReadDateMode(ANode: TDOMNode);
     procedure ReadFileVersion(ANode: TDOMNode);
     procedure ReadFills(ANode: TDOMNode);
-    procedure ReadFont(ANode: TDOMNode);
+    function ReadFont(ANode: TDOMNode): Integer;
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadHeaderFooter(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadHyperlinks(ANode: TDOMNode);
@@ -130,6 +130,7 @@ type
     procedure WriteComments(AWorksheet: TsWorksheet);
     procedure WriteDimension(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteFillList(AStream: TStream);
+    procedure WriteFont(AStream: TStream; AFont: TsFont; ATag: String);
     procedure WriteFontList(AStream: TStream);
     procedure WriteHeaderFooter(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet);
@@ -205,7 +206,7 @@ var
 implementation
 
 uses
-  variants, fileutil, strutils, math, lazutf8, uriparser,
+  variants, strutils, math, lazutf8, LazFileUtils, uriparser,
   {%H-}fpsPatches, fpsStrings, fpsStreams, fpsNumFormatParser, fpsClasses;
 
 const
@@ -339,6 +340,8 @@ begin
   for j := FHyperlinkList.Count-1 downto 0 do TObject(FHyperlinkList[j]).Free;
   FHyperlinkList.Free;
 
+  for j := FSharedStrings.Count-1 downto 0 do
+    if FSharedstrings.Objects[j] <> nil then FSharedStrings.Objects[j].Free;
   FSharedStrings.Free;
   FSharedFormulaBaseList.Free;   // Don't free items, they are worksheet cells
 
@@ -533,6 +536,10 @@ var
   number: Double;
   fmt: TsCellFormat;
   numFmt: TsNumFormatParams = nil;
+  ms: TMemoryStream;
+  n: Integer;
+  rtp: TsRichTextParam;
+  richTextParams: TsRichTextParams;
 begin
   if ANode = nil then
     exit;
@@ -626,7 +633,30 @@ begin
   if s = 's' then begin
     // String from shared strings table
     sstIndex := StrToInt(dataStr);
-    AWorksheet.WriteUTF8Text(cell, FSharedStrings[sstIndex]);
+    // Standard cell, no rich-text parameters
+    if FSharedStrings.Objects[sstIndex] = nil then
+      AWorksheet.WriteUTF8Text(cell, FSharedStrings[sstIndex])
+    else
+    begin
+      // Read rich-text parameters from the stream stored in the Objects of the stringlist
+      ms := TMemoryStream(FSharedStrings.Objects[sstIndex]);
+      ms.Position := 0;
+      n := ms.ReadWord;   // Count of array elements
+      SetLength(richTextParams, 0);
+      while (n > 0) do begin
+        ms.ReadBuffer(rtp, SizeOf(TsRichTextParam));
+        // Consider only those richtext parameters with font different from cell font
+        if rtp.FontIndex <> fmt.FontIndex then begin
+          SetLength(richTextParams, Length(richTextParams)+1);
+          richTextParams[High(richTextParams)] := rtp;
+        end;
+        dec(n);
+      end;
+      AWorksheet.WriteUTF8Text(cell,
+        FSharedStrings[sstIndex],
+        richTextParams
+      );
+    end;
   end else
   if s = 'str' then
     // literal string
@@ -1035,7 +1065,10 @@ begin
   end;
 end;
 
-procedure TsSpreadOOXMLReader.ReadFont(ANode: TDOMNode);
+{ Reads the font described by the specified node. If the node is already
+  contained in the font list the font's index is returned; otherwise the
+  new font is added to the list and its index is returned. }
+function TsSpreadOOXMLReader.ReadFont(ANode: TDOMNode): Integer;
 var
   node: TDOMNode;
   fnt: TsFont;
@@ -1043,53 +1076,77 @@ var
   fntSize: Single;
   fntStyles: TsFontStyles;
   fntColor: TsColor;
+  fntPos: TsFontPosition;
   nodename: String;
   s: String;
 begin
   fnt := Workbook.GetDefaultFont;
-  if fnt <> nil then begin
+  if fnt <> nil then
+  begin
     fntName := fnt.FontName;
     fntSize := fnt.Size;
     fntStyles := fnt.Style;
     fntColor := fnt.Color;
-  end else begin
+    fntPos := fnt.Position;
+  end else
+  begin
     fntName := DEFAULT_FONTNAME;
     fntSize := DEFAULT_FONTSIZE;
     fntStyles := [];
     fntColor := scBlack;
+    fntPos := fpNormal;
   end;
 
   node := ANode.FirstChild;
-  while node <> nil do begin
+  while node <> nil do
+  begin
     nodename := node.NodeName;
-    if nodename = 'name' then begin
+    if (nodename = 'name') or (nodename = 'rFont') then
+    begin
       s := GetAttrValue(node, 'val');
       if s <> '' then fntName := s;
     end
     else
-    if nodename = 'sz' then begin
+    if nodename = 'sz' then
+    begin
       s := GetAttrValue(node, 'val');
       if s <> '' then fntSize := StrToFloat(s);
     end
     else
-    if nodename = 'b' then begin
+    if nodename = 'b' then
+    begin
       if GetAttrValue(node, 'val') <> 'false'
         then fntStyles := fntStyles + [fssBold];
     end
     else
-    if nodename = 'i' then begin
+    if nodename = 'i' then
+    begin
       if GetAttrValue(node, 'val') <> 'false'
         then fntStyles := fntStyles + [fssItalic];
     end
     else
-    if nodename = 'u' then begin
+    if nodename = 'u' then
+    begin
       if GetAttrValue(node, 'val') <> 'false'
         then fntStyles := fntStyles+ [fssUnderline]
     end
     else
-    if nodename = 'strike' then begin
+    if nodename = 'strike' then
+    begin
       if GetAttrValue(node, 'val') <> 'false'
         then fntStyles := fntStyles + [fssStrikeout];
+    end
+    else
+    if nodename = 'vertAlign' then
+    begin
+      s := GetAttrValue(node, 'val');
+      if s = 'superscript' then
+        fntPos := fpSuperscript
+      else
+      if s = 'subscript' then
+        fntPos := fpSubscript
+      else
+        fntPos := fpNormal;
     end
     else
     if nodename = 'color' then
@@ -1097,13 +1154,28 @@ begin
     node := node.NextSibling;
   end;
 
+  // Check whether font is already contained in font list
+  for Result := 0 to FFontList.Count-1 do
+  begin
+    fnt := TsFont(FFontList[Result]);
+    if (fnt.FontName = fntName) and
+       (fnt.Size = fntSize) and
+       (fnt.Style = fntStyles) and
+       (fnt.Color = fntColor) and
+       (fnt.Position = fntPos)
+    then
+      exit;
+  end;
+
+  // Font not yet stored --> create a new font and store it in list
   fnt := TsFont.Create;
   fnt.FontName := fntName;
   fnt.Size := fntSize;
   fnt.Style := fntStyles;
   fnt.Color := fntColor;
+  fnt.Position := fntPos;
 
-  FFontList.Add(fnt);
+  Result := FFontList.Add(fnt);
 end;
 
 procedure TsSpreadOOXMLReader.ReadFonts(ANode: TDOMNode);
@@ -1486,11 +1558,16 @@ var
   valuenode: TDOMNode;
   childnode: TDOMNode;
   nodename: String;
-  s: String;
+  s, sval: String;
+  fntIndex, startIndex, count: Integer;
+  richTextParams: TsRichTextParams;
+  ms: TMemoryStream;
+  fnt: TsFont;
 begin
   while Assigned(ANode) do begin
     if ANode.NodeName = 'si' then begin
       s := '';
+      richTextParams := nil;
       valuenode := ANode.FirstChild;
       while valuenode <> nil do begin
         nodename := valuenode.NodeName;
@@ -1498,15 +1575,56 @@ begin
           s := GetNodeValue(valuenode)
         else
         if nodename = 'r' then begin
+          fntIndex := -1;
+          startIndex := -1;
+          count := -1;
           childnode := valuenode.FirstChild;
           while childnode <> nil do begin
-            s := s + GetNodeValue(childnode);
+            nodename := childnode.NodeName;
+            if nodename = 't' then
+            begin
+              startIndex := Length(s);
+              sval := GetNodevalue(childNode);
+              s := s + sval;
+              count := Length(sval);
+              if fntIndex <> -1 then
+              begin
+                SetLength(richTextParams, Length(richTextParams)+1);
+                richTextParams[Length(richTextParams)-1].StartIndex := startIndex;
+                richTextParams[Length(richTextParams)-1].EndIndex := startIndex + count;
+                richTextParams[Length(richTextParams)-1].FontIndex := fntIndex;
+              end;
+            end
+            else if nodename = 'rPr' then begin
+              fntIndex := ReadFont(childnode);
+              // Here we store the font in the internal font list of the reader.
+              // But this fontindex may be different from the one needed for the
+              // workbook's font list. We fix this here.
+              fnt := TsFont(FFontList[fntIndex]);
+              fntIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.style, fnt.Color, fnt.Position);
+              if fntIndex = -1 then
+                fntIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+              if startIndex <> -1 then begin
+                SetLength(richTextParams, Length(richTextParams)+1);
+                richTextParams[Length(richTextParams)-1].StartIndex := startIndex;
+                richTextParams[Length(richTextParams)-1].EndIndex := startIndex + count;
+                richTextParams[Length(richTextParams)-1].FontIndex := fntIndex;
+              end;
+            end;
             childnode := childnode.NextSibling;
           end;
         end;
         valuenode := valuenode.NextSibling;
       end;
-      FSharedStrings.Add(s);
+      if Length(richTextParams) = 0 then
+        FSharedStrings.Add(s)
+      else
+      begin
+        ms := TMemoryStream.Create;
+        ms.WriteWord(Length(richTextParams));
+        ms.WriteBuffer(richTextParams[0], SizeOf(TsRichTextParam)*Length(richTextParams));
+        FSharedStrings.AddObject(s, ms);
+      end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -1732,14 +1850,6 @@ begin
       FreeAndNil(Doc);
     end;
 
-    // process the sharedstrings.xml file
-    if FileExists(FilePath + OOXML_PATH_XL_STRINGS) then begin
-      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STRINGS);
-      DeleteFile(FilePath + OOXML_PATH_XL_STRINGS);
-      ReadSharedStrings(Doc.DocumentElement.FindNode('si'));
-      FreeAndNil(Doc);
-    end;
-
     // process the workbook.xml file
     if not FileExists(FilePath + OOXML_PATH_XL_WORKBOOK) then
       raise Exception.CreateFmt(rsDefectiveInternalStructure, ['xlsx']);
@@ -1760,6 +1870,14 @@ begin
       ReadBorders(Doc.DocumentElement.FindNode('borders'));
       ReadNumFormats(Doc.DocumentElement.FindNode('numFmts'));
       ReadCellXfs(Doc.DocumentElement.FindNode('cellXfs'));
+      FreeAndNil(Doc);
+    end;
+
+    // process the sharedstrings.xml file
+    if FileExists(FilePath + OOXML_PATH_XL_STRINGS) then begin
+      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STRINGS);
+      DeleteFile(FilePath + OOXML_PATH_XL_STRINGS);
+      ReadSharedStrings(Doc.DocumentElement.FindNode('si'));
       FreeAndNil(Doc);
     end;
 
@@ -2211,35 +2329,49 @@ begin
     '</fills>');
 end;
 
-{ Writes the fontlist of the workbook to the stream. The font id used in xf
-  records is given by the index of a font in the list. Therefore, we have
-  to write an empty record for font #4 which is nil due to compatibility with BIFF }
+{ Writes font parameters to the stream.
+  ATag is "font" for the entry in "styles.xml", or "rPr" for the entry for
+  richtext parameters in the shared string list. }
+procedure TsSpreadOOXMLWriter.WriteFont(AStream: TStream; AFont: TsFont;
+  ATag: String);
+var
+  s: String;
+begin
+  s := '';
+  s := s + Format('<sz val="%g" />', [AFont.Size], FPointSeparatorSettings);
+  s := s + Format('<name val="%s" />', [AFont.FontName]);
+  if (fssBold in AFont.Style) then
+    s := s + '<b />';
+  if (fssItalic in AFont.Style) then
+    s := s + '<i />';
+  if (fssUnderline in AFont.Style) then
+    s := s + '<u />';
+  if (fssStrikeout in AFont.Style) then
+    s := s + '<strike />';
+  if AFont.Color <> scBlack then
+    s := s + Format('<color rgb="%s" />', [Copy(ColorToHTMLColorStr(AFont.Color), 2, MaxInt)]);
+  case AFont.Position of
+    fpSubscript  : s := s + '<vertAlign val="subscript" />';
+    fpSuperscript: s := s + '<vertAlign val="superscript" />';
+  end;
+  AppendToStream(AStream, Format(
+    '<%s>%s</%s>', [ATag, s, ATag]));
+end;
+
+{ Writes the fontlist of the workbook to the stream. }
 procedure TsSpreadOOXMLWriter.WriteFontList(AStream: TStream);
 var
   i: Integer;
   font: TsFont;
-  s: String;
 begin
-  AppendToStream(FSStyles, Format(
-      '<fonts count="%d">', [Workbook.GetFontCount]));
+  AppendToStream(AStream, Format(
+    '<fonts count="%d">', [Workbook.GetFontCount]));
   for i:=0 to Workbook.GetFontCount-1 do begin
     font := Workbook.GetFont(i);
-    s := Format('<sz val="%g" /><name val="%s" />', [font.Size, font.FontName], FPointSeparatorSettings);
-    if (fssBold in font.Style) then
-      s := s + '<b />';
-    if (fssItalic in font.Style) then
-      s := s + '<i />';
-    if (fssUnderline in font.Style) then
-      s := s + '<u />';
-    if (fssStrikeout in font.Style) then
-      s := s + '<strike />';
-    if font.Color <> scBlack then
-      s := s + Format('<color rgb="%s" />', [Copy(ColorToHTMLColorStr(font.Color), 2, MaxInt)]);
-    AppendToStream(AStream,
-      '<font>', s, '</font>');
+    WriteFont(AStream, font, 'font');
   end;
   AppendToStream(AStream,
-      '</fonts>');
+    '</fonts>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteHeaderFooter(AStream: TStream;
@@ -3500,8 +3632,11 @@ begin
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
   AppendToStream(AStream, Format(
-    '<c r="%s" s="%d" t="s"><v>%d</v></c>', [CellPosText, lStyleIndex, FSharedStringsCount]));
-
+    '<c r="%s" s="%d" t="s">'+
+      '<v>%d</v>'+
+    '</c>',
+    [CellPosText, lStyleIndex, FSharedStringsCount]
+  ));
   inc(FSharedStringsCount);
 end;
 
