@@ -428,7 +428,6 @@ begin
   totalHeight := 0;
 
   Convert_sFont_to_Font(AWorkbook.GetFont(AFontIndex), ACanvas.Font);
-
   if ARotation = rtStacked then
     stackPeriod := ACanvas.TextWidth('M') * 2;
 
@@ -444,10 +443,7 @@ begin
       FirstRtpIndex := iRtp;
       NextRtpIndex := iRtp;
       ScanLine(pEnd, NumSpaces, NextRtpIndex, Width, Height);
-      if ARotation = rtStacked then
-        totalHeight := totalHeight + stackPeriod
-      else
-        totalHeight := totalHeight + Height;
+      totalHeight := totalHeight + Height;
       iRtp := NextRtpIndex;
       p := pEnd;
       case p^ of
@@ -462,6 +458,7 @@ begin
   until p^ = #0;
 
   // Draw lines
+  // 1/ get starting point of line
   case ARotation of
     trHorizontal:
       case AVertAlignment of
@@ -483,14 +480,16 @@ begin
       end;
     rtStacked:
       begin
+        totalHeight := (Length(lineinfos) - 1) * stackperiod;
         case AHorAlignment of
           haLeft  : xpos := ARect.Left + stackPeriod div 2;
           haRight : xpos := ARect.Right - totalHeight + stackPeriod div 2;
-          haCenter: xpos := (ARect.Left + ARect.Right - (Length(lineInfos)-1) * stackPeriod) div 2;
+          haCenter: xpos := (ARect.Left + ARect.Right - totalHeight) div 2;
         end;
       end;
   end;
 
+  // 2/ Draw line by line and respect text rotation
   for lineInfo in lineInfos do begin
     with lineInfo do
     begin
