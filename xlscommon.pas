@@ -353,14 +353,18 @@ type
     FIncompleteNoteLength: Word;
     FFirstNumFormatIndexInFile: Integer;
     FPalette: TsPalette;
+
     procedure AddBuiltinNumFormats; override;
-    procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual; //overload;
+    procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
+    procedure ApplyRichTextFormattingRuns(ACell: PCell;
+      ARuns: TsRichTextFormattingRuns);
     // Extracts a number out of an RK value
     function DecodeRKValue(const ARK: DWORD): Double;
     // Returns the numberformat for a given XF record
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); virtual;
     procedure FixColors;
+    function FixFontIndex(AFontIndex: Integer): Integer;
     // Tries to find if a number cell is actually a date/datetime/time cell and retrieves the value
     function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat;
       ANumberFormatStr: String; out ADateTime: TDateTime): Boolean;
@@ -838,6 +842,46 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Converts the rich-text formatting run data as read from the file to the
+  internal format used by the cell.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ApplyRichTextFormattingRuns(ACell: PCell;
+  ARuns: TsRichTextFormattingRuns);
+var
+  fntIndex: Integer;
+  cellFntIndex: Integer;
+  cellStr: String;
+  i: Integer;
+begin
+  if Length(ARuns) = 0 then
+    exit;
+
+  cellStr := ACell^.UTF8StringValue;
+  cellFntIndex := FWorksheet.ReadCellFontIndex(ACell);
+
+  SetLength(ACell^.RichTextParams, 0);
+  for i := 0 to High(ARuns) do begin
+    // Make sure that the fontindex defined in the formatting runs array points to
+    // the workbook's fontlist, not to the reader's fontlist.
+    fntIndex := FixFontIndex(ARuns[i].FontIndex);
+    // Ony fonts different from the cell's standard font are considered to be
+    // elements in the TsRichTextParams array used by the cell.
+    if fntIndex <> cellFntIndex then
+    begin
+      SetLength(ACell^.RichTextParams, Length(ACell^.RichTextParams)+1);
+      with ACell^.RichTextParams[High(ACell^.RichTextParams)] do
+      begin
+        FontIndex := fntIndex;
+        StartIndex := ARuns[i].FirstIndex;
+        if i < High(ARuns) then
+          EndIndex := ARuns[i+1].FirstIndex else
+          EndIndex := Length(cellStr);
+      end;
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Extracts a number out of an RK value.
   Valid since BIFF3.
 -------------------------------------------------------------------------------}
@@ -932,6 +976,21 @@ begin
     FixColor(fmt^.BorderStyles[cbDiagUp].Color);
     FixColor(fmt^.BorderStyles[cbDiagDown].Color);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts the index of a font in the reader fontlist to the index of this font
+  in the workbook's fontlist. If the font is not yet contained in the workbook
+  fontlist it is added.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFFReader.FixFontIndex(AFontIndex: Integer): Integer;
+var
+  fnt: TsFont;
+begin
+  fnt := TsFont(FFontList[AFontIndex]);
+  Result := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+  if Result = -1 then
+    Result := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
 end;
 
 {@@ ----------------------------------------------------------------------------

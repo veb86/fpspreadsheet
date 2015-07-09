@@ -516,18 +516,20 @@ end;
 procedure TsSpreadBIFF5Reader.ReadRichString(AStream: TStream);
 var
   L: Word;
-  B: BYTE;
+  B, F: Byte;
   ARow, ACol: Cardinal;
   XF: Word;
-  AStrValue: ansistring;
+  ansistr: ansistring;
+  valueStr: UTF8String;
   cell: PCell;
+  rtfRuns: TsRichTextFormattingRuns;
 begin
   ReadRowColXF(AStream, ARow, ACol, XF);
 
   { Byte String with 16-bit size }
-  L := WordLEtoN(AStream.ReadWord());
-  SetLength(AStrValue,L);
-  AStream.ReadBuffer(AStrValue[1], L);
+  L := WordLEtoN(AStream.ReadWord);
+  SetLength(ansistr, L);
+  AStream.ReadBuffer(ansistr[1], L);
 
   { Create cell }
   if FIsVirtualMode then begin
@@ -537,16 +539,20 @@ begin
     cell := FWorksheet.AddCell(ARow, ACol);
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(cell, ISO_8859_1ToUTF8(AStrValue));
-  //Read formatting runs (not supported)
+  valueStr := ConvertEncoding(ansistr, FCodePage, encodingUTF8);
+  FWorksheet.WriteUTF8Text(cell, valuestr);
+
+  // Read rich-text formatting runs
   B := AStream.ReadByte;
+  SetLength(rtfRuns, B);
   for L := 0 to B-1 do begin
-    AStream.ReadByte; // First formatted character
-    AStream.ReadByte; // Index to FONT record
+    rtfRuns[L].FirstIndex := AStream.ReadByte; // Index of first formatted character
+    rtfRuns[L].FontIndex := AStream.ReadByte;  // Index of font used
   end;
 
   { Add attributes to cell }
   ApplyCellFormatting(cell, XF);
+  ApplyRichTextFormattingRuns(cell, rtfRuns);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -626,7 +632,7 @@ var
   dw: DWord;
   fill: Word;
   fs: TsFillStyle;
-  fnt: TsFont;
+//  fnt: TsFont;
 begin
   InitFormatRecord(fmt);
   fmt.ID := FCellFormatList.Count;
@@ -638,10 +644,13 @@ begin
   // Font index
   i := WordLEToN(rec.FontIndex);
   if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
+  fmt.FontIndex := FixFontIndex(i);
+  {
   fnt := TsFont(FFontList[i]);
   fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
   if fmt.FontIndex = -1 then
     fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+    }
   if fmt.FontIndex > 1 then
     Include(fmt.UsedFormattingFields, uffFont);
 

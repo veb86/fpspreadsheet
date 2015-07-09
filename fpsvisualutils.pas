@@ -263,7 +263,6 @@ var
   procedure ScanLine(var P: PChar; var NumSpaces: Integer;
     var PendingRtpIndex: Integer; var width, height: Integer);
   var
-    ch: Char;
     pEOL: PChar;
     savedSpaces: Integer;
     savedWidth: Integer;
@@ -273,6 +272,8 @@ var
     dw, h: Integer;
     fntpos: TsFontPosition;
     spaceFound: Boolean;
+    s: utf8String;
+    charLen: Integer;
   begin
     NumSpaces := 0;
 
@@ -299,15 +300,15 @@ var
       UpdateFont(p, rtState, PendingRtpIndex, h, fntpos);
       if h > height then height := h;
 
-      ch := p^;
-      case ch of
+      s := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
+      case p^ of
         ' ': begin
                spaceFound := true;
                pEOL := p;
                savedWidth := width;
                savedSpaces := NumSpaces;
                savedRtpIndex := PendingRtpIndex;
-               dw := Math.IfThen(ARotation = rtStacked, h, ACanvas.TextWidth(ch));
+               dw := Math.IfThen(ARotation = rtStacked, h, ACanvas.TextWidth(s));
                if width + dw < MaxWidth then
                begin
                  inc(NumSpaces);
@@ -324,7 +325,7 @@ var
                exit;
              end;
         else begin
-               dw := Math.IfThen(ARotation = rtStacked, h, ACanvas.TextWidth(ch));
+               dw := Math.IfThen(ARotation = rtStacked, h, ACanvas.TextWidth(s));
                width := width + dw;
                if width > maxWidth then
                begin
@@ -345,69 +346,70 @@ var
              end;
       end;
 
-      inc(P, UTF8CharacterLength(p));
+      inc(p, charLen);
     end;
   end;
 
   procedure DrawLine(pStart, pEnd: PChar; x,y, hLine: Integer; PendingRtpIndex: Integer);
   var
-    ch: Char;
     p: PChar;
     rtState: TRtState;
     h, w: Integer;
     fntpos: TsFontPosition;
+    s: utf8String;
+    charLen: Integer;
   begin
     p := pStart;
     InitFont(p, rtState, PendingRtpIndex, h);
     while p^ <> #0 do begin
+      s := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
       UpdateFont(p, rtState, PendingRtpIndex, h, fntpos);
-      ch := p^;
       case ARotation of
         trHorizontal:
           begin
             ACanvas.Font.Orientation := 0;
             case fntpos of
-              fpNormal     : ACanvas.TextOut(x, y, ch);
-              fpSubscript  : ACanvas.TextOut(x, y + hLine div 2, ch);
-              fpSuperscript: ACanvas.TextOut(x, y - hLine div 6, ch);
+              fpNormal     : ACanvas.TextOut(x, y, s);
+              fpSubscript  : ACanvas.TextOut(x, y + hLine div 2, s);
+              fpSuperscript: ACanvas.TextOut(x, y - hLine div 6, s);
             end;
-            inc(x, ACanvas.TextWidth(ch));
+            inc(x, ACanvas.TextWidth(s));
           end;
         rt90DegreeClockwiseRotation:
           begin
             ACanvas.Font.Orientation := -900;
             case fntpos of
-              fpNormal     : ACanvas.TextOut(x, y, ch);
-              fpSubscript  : ACanvas.TextOut(x - hLine div 2, y, ch);
-              fpSuperscript: ACanvas.TextOut(x + hLine div 6, y, ch);
+              fpNormal     : ACanvas.TextOut(x, y, s);
+              fpSubscript  : ACanvas.TextOut(x - hLine div 2, y, s);
+              fpSuperscript: ACanvas.TextOut(x + hLine div 6, y, s);
             end;
-            inc(y, ACanvas.TextWidth(ch));
+            inc(y, ACanvas.TextWidth(s));
           end;
         rt90DegreeCounterClockwiseRotation:
           begin
             ACanvas.Font.Orientation := +900;
             case fntpos of
-              fpNormal     : ACanvas.TextOut(x, y, ch);
-              fpSubscript  : ACanvas.TextOut(x + hLine div 2, y, ch);
-              fpSuperscript: ACanvas.TextOut(x - hLine div 6, y, ch);
+              fpNormal     : ACanvas.TextOut(x, y, s);
+              fpSubscript  : ACanvas.TextOut(x + hLine div 2, y, s);
+              fpSuperscript: ACanvas.TextOut(x - hLine div 6, y, s);
             end;
-            dec(y, ACanvas.TextWidth(ch));
+            dec(y, ACanvas.TextWidth(s));
           end;
         rtStacked:
           begin
             ACanvas.Font.Orientation := 0;
-            w := ACanvas.TextWidth(ch);
+            w := ACanvas.TextWidth(s);
             // chars centered around x
             case fntpos of
-              fpNormal     : ACanvas.TextOut(x - w div 2, y, ch);
-              fpSubscript  : ACanvas.TextOut(x - w div 2, y + hLine div 2, ch);
-              fpSuperscript: ACanvas.TextOut(x - w div 2, y - hLine div 6, ch);
+              fpNormal     : ACanvas.TextOut(x - w div 2, y, s);
+              fpSubscript  : ACanvas.TextOut(x - w div 2, y + hLine div 2, s);
+              fpSuperscript: ACanvas.TextOut(x - w div 2, y - hLine div 6, s);
             end;
             inc(y, h);
           end;
       end;
 
-      inc(P, UTF8CharacterLength(p));
+      inc(P, charLen);
       if P >= PEnd then break;
     end;
   end;
@@ -425,11 +427,10 @@ begin
     iRtp := -1;
   totalHeight := 0;
 
+  Convert_sFont_to_Font(AWorkbook.GetFont(AFontIndex), ACanvas.Font);
+
   if ARotation = rtStacked then
-  begin
-    Convert_sFont_to_Font(AWorkbook.GetFont(AFontIndex), ACanvas.Font);
     stackPeriod := ACanvas.TextWidth('M') * 2;
-  end;
 
   // Get layout of lines:
   // "lineinfos" collect data on where lines start and end, their width and
