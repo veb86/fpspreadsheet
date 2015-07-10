@@ -924,6 +924,7 @@ var
   XF: Word;
   AStrValue: ansistring;
   cell: PCell;
+  rtfRuns: TsRichTextFormattingRuns;
 begin
   ReadRowColXF(AStream, ARow, ACol, XF);
 
@@ -940,15 +941,18 @@ begin
 
   { Save the data }
   FWorksheet.WriteUTF8Text(cell, AStrValue);
-  //Read formatting runs (not supported)
+
+  // Read rich-text formatting runs
   B := WordLEtoN(AStream.ReadWord);
+  SetLength(rtfRuns, B);
   for L := 0 to B-1 do begin
-    AStream.ReadWord; // First formatted character
-    AStream.ReadWord; // Index to FONT record
+    rtfRuns[L].FirstIndex := WordLEToN(AStream.ReadWord); // Index of first formatted character
+    rtfRuns[L].FontIndex := WordLEToN(AStream.ReadByte);  // Index of font used
   end;
 
   {Add attributes}
   ApplyCellFormatting(cell, XF);
+  ApplyRichTextFormattingRuns(cell, rtfRuns);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -1235,7 +1239,7 @@ begin
 
   // Font index
   i := WordLEToN(rec.FontIndex);
-  if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
+//  if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
   fnt := TsFont(FFontList[i]);
   fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
   if fmt.FontIndex = -1 then
@@ -1396,6 +1400,7 @@ var
   lOptions: Word;
   lColor: Word;
   lWeight: Word;
+  lEsc: Word;
   Len: Byte;
   font: TsFont;
 begin
@@ -1434,7 +1439,13 @@ begin
   if lWeight = 700 then Include(font.Style, fssBold);
 
   { Escape type }
-  AStream.ReadWord();
+  { Escapement type }
+  lEsc := WordLEToN(AStream.ReadWord);
+  case lEsc of
+    0: ;
+    1: font.Position := fpSuperscript;
+    2: font.Position := fpSubscript;
+  end;
 
   { Underline type }
   if AStream.ReadByte > 0 then Include(font.Style, fssUnderline);
@@ -1459,6 +1470,9 @@ begin
     the font index in the internal list (= index in file) is not the same as the
     index the font will have in the workbook's fontlist! }
   FFontList.Add(font);
+
+  { Excel does not have zero-based font #4! }
+  if FFontList.Count = 4 then FFontList.Add(nil);
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -328,10 +328,10 @@ var
              end;
         #13,
         #10: begin
-               dec(p);
-               width := savedWidth;
-               numSpaces := savedspaces;
-               PendingRtpIndex := savedRtpIndex;
+             //  dec(p);
+               //width := savedWidth;
+               //numSpaces := savedspaces;
+               //PendingRtpIndex := savedRtpIndex;
                exit;
              end;
         else begin

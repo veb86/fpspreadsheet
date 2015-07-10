@@ -643,7 +643,7 @@ begin
 
   // Font index
   i := WordLEToN(rec.FontIndex);
-  if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
+//  if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
   fmt.FontIndex := FixFontIndex(i);
   {
   fnt := TsFont(FFontList[i]);
@@ -823,6 +823,7 @@ var
   lOptions: Word;
   lColor: Word;
   lWeight: Word;
+  lEsc: Word;
   Len: Byte;
   fontname: ansistring;
   font: TsFont;
@@ -859,10 +860,15 @@ begin
 
   { Font weight }
   lWeight := WordLEToN(AStream.ReadWord);
-  if lWeight = 700 then Include(font.Style, fssBold);
+  if lWeight >= 700 then Include(font.Style, fssBold);
 
   { Escapement type }
-  AStream.ReadWord();
+  lEsc := WordLEToN(AStream.ReadWord);
+  case lEsc of
+    0: ;
+    1: font.Position := fpSuperscript;
+    2: font.Position := fpSubscript;
+  end;
 
   { Underline type }
   if AStream.ReadByte > 0 then Include(font.Style, fssUnderline);
@@ -889,6 +895,9 @@ begin
     as the font index in the internal list may be different from the index in
     the workbook's list. }
   FFontList.Add(font);
+
+  { Excel does not have zero-based font #4! }
+  if FFontList.Count = 4 then FFontList.Add(nil);
 end;
 
 // Read the FORMAT record for formatting numerical data

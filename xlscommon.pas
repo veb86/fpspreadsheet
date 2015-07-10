@@ -988,9 +988,14 @@ var
   fnt: TsFont;
 begin
   fnt := TsFont(FFontList[AFontIndex]);
-  Result := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
-  if Result = -1 then
-    Result := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+  if fnt = nil then       // damned font 4!
+    Result := -1
+  else
+  begin
+    Result := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+    if Result = -1 then
+      Result := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
