@@ -70,19 +70,19 @@ type
   TsSpreadBIFF8Reader = class(TsSpreadBIFFReader)
   private
     PendingRecordSize: SizeInt;
-    FWorksheetNames: TStringList;
-    FCurrentWorksheet: Integer;
     FSharedStringTable: TStringList;
     FCommentList: TObjectList;
     FCommentPending: Boolean;
     FCommentID: Integer;
     FCommentLen: Integer;
-    function ReadWideString(const AStream: TStream; const ALength: WORD): WideString; overload;
-    function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
-    procedure ReadWorkbookGlobals(AStream: TStream);
-    procedure ReadWorksheet(AStream: TStream);
     procedure ReadBoundsheet(AStream: TStream);
-    function ReadString(const AStream: TStream; const ALength: WORD): String;
+    function ReadString(const AStream: TStream; const ALength: Word;
+      out ARichTextRuns: TsRichTextFormattingRuns): String;
+    function ReadUnformattedWideString(const AStream: TStream;
+      const ALength: Word): WideString;
+    function ReadWideString(const AStream: TStream; const ALength: Word;
+      out ARichTextRuns: TsRichTextFormattingRuns): WideString; overload;
+    function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
   protected
     procedure PopulatePalette; override;
     procedure ReadCONTINUE(const AStream: TStream);
@@ -96,7 +96,7 @@ type
     procedure ReadMergedCells(const AStream: TStream);
     procedure ReadNOTE(const AStream: TStream);
     procedure ReadOBJ(const AStream: TStream);
-    procedure ReadRichString(const AStream: TStream);
+//    procedure ReadRichString(const AStream: TStream);
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); override;
     procedure ReadRPNCellAddressOffset(AStream: TStream;
@@ -106,15 +106,18 @@ type
     procedure ReadRPNCellRangeOffset(AStream: TStream;
       out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
       out AFlags: TsRelFlags); override;
+    procedure ReadRSTRING(AStream: TStream);
     procedure ReadSST(const AStream: TStream);
     function ReadString_8bitLen(AStream: TStream): String; override;
     procedure ReadStringRecord(AStream: TStream); override;
     procedure ReadTXO(const AStream: TStream);
+    procedure ReadWorkbookGlobals(AStream: TStream); override;
+    procedure ReadWorksheet(AStream: TStream); override;
     procedure ReadXF(const AStream: TStream);
   public
     destructor Destroy; override;
     { General reading methods }
-    procedure ReadFromFile(AFileName: string); override;
+//    procedure ReadFromFile(AFileName: string); override;
     procedure ReadFromStream(AStream: TStream); override;
   end;
 
@@ -141,7 +144,7 @@ type
     procedure WriteHyperlinkToolTip(AStream: TStream; const ARow, ACol: Cardinal;
       const ATooltip: String);
     procedure WriteIndex(AStream: TStream);
-    procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
+    procedure WriteLABEL(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteMSODrawing1(AStream: TStream; ANumShapes: Word; AComment: PsComment);
@@ -388,6 +391,13 @@ type
     SSTIndex: DWord;
   end;
 
+  TBiff8_RichTextFormattingRun = packed record
+    FirstIndex: Word;
+    FontIndex: Word;
+  end;
+
+  TBiff8_RichTextFormattingRuns = array of TBiff8_RichTextFormattingRun;
+
   TBIFF8_XFRecord = packed record
     RecordID: Word;
     RecordSize: Word;
@@ -426,11 +436,23 @@ type
 { TsSpreadBIFF8Reader }
 
 destructor TsSpreadBIFF8Reader.Destroy;
+var
+  j: Integer;
 begin
-  if Assigned(FSharedStringTable) then FSharedStringTable.Free;
-  if Assigned(FCommentList) then FCommentList.Free;
+  if Assigned(FSharedStringTable) then
+  begin
+    for j := FSharedStringTable.Count-1 downto 0 do
+      if FSharedStringTable.Objects[j] <> nil then
+        FSharedStringTable.Objects[j].Free;
+    FSharedStringTable.Free;
+  end;
+
+  if Assigned(FCommentList) then
+    FCommentList.Free;
+
   inherited;
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Populates the reader's default palette using the BIFF8 default colors.
@@ -451,9 +473,10 @@ procedure TsSpreadBIFF8Reader.ReadCONTINUE(const AStream: TStream);
 var
   commentStr: String;
   comment: TBIFF8Comment;
+  rtRuns: TsRichTextFormattingRuns;
 begin
   if FCommentPending then begin
-    commentStr := ReadWideString(AStream, FCommentLen);
+    commentStr := ReadWideString(AStream, FCommentLen, rtRuns);
     if commentStr <> '' then
     begin
       comment := TBIFF8Comment.Create;
@@ -529,8 +552,107 @@ begin
   end;
 end;
 
-function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
+{ Reads a unicode string which does not contain rich-text information.
+  This is needed for the RSTRING record. }
+function TsSpreadBIFF8Reader.ReadUnformattedWideString(const AStream: TStream;
   const ALength: WORD): WideString;
+var
+  flags: Byte;
+  DecomprStrValue: WideString;
+  AnsiStrValue: ansistring;
+  //RunsCounter: Word;
+  //AsianPhoneticBytes: DWord;
+  i: Integer;
+  j: SizeUInt;
+  len: SizeInt;
+  recType: Word;
+  recSize: Word;
+  C: WideChar;
+begin
+  flags := AStream.ReadByte;
+  dec(PendingRecordSize);
+  {
+  if StringFlags and 4 = 4 then begin
+    //Asian phonetics
+    //Read Asian phonetics Length (not used)
+    AsianPhoneticBytes := DWordLEtoN(AStream.ReadDWord);
+    dec(PendingRecordSize,4);
+  end;
+  if StringFlags and 8 = 8 then begin
+    //Rich string
+    RunsCounter := WordLEtoN(AStream.ReadWord);
+    dec(PendingRecordSize,2);
+  end;
+  }
+  if flags and 1 = 1 Then begin
+    //String is WideStringLE
+    if (ALength * SizeOf(WideChar)) > PendingRecordSize then begin
+      SetLength(Result, PendingRecordSize div 2);
+      AStream.ReadBuffer(Result[1], PendingRecordSize);
+      Dec(PendingRecordSize, PendingRecordSize);
+    end else begin
+      SetLength(Result, ALength);
+      AStream.ReadBuffer(Result[1], ALength * SizeOf(WideChar));
+      Dec(PendingRecordSize, ALength * SizeOf(WideChar));
+    end;
+    Result := WideStringLEToN(Result);
+  end else begin
+    // String is 1 byte per char, this is UTF-16 with the high byte ommited
+    // because it is zero, so decompress and then convert
+    len := ALength;
+    SetLength(DecomprStrValue, len);
+    for i := 1 to len do
+    begin
+      C := WideChar(AStream.ReadByte);  // Read 1 byte, but put it into a 2-byte char
+      DecomprStrValue[i] := C;
+      dec(PendingRecordSize);
+      if (PendingRecordSize <= 0) and (i < len) then begin
+        //A CONTINUE may have happened here
+        recType := WordLEToN(AStream.ReadWord);
+        recSize := WordLEToN(AStream.ReadWord);
+        if recType <> INT_EXCEL_ID_CONTINUE then begin
+          raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
+        end else begin
+          PendingRecordSize := RecordSize;
+          DecomprStrValue := copy(DecomprStrValue,1,i) + ReadUnformattedWideString(AStream, ALength-i);
+          break;
+        end;
+      end;
+    end;
+    Result := DecomprStrValue;
+  end;
+  {
+  if StringFlags and 8 = 8 then begin
+    // Rich string (This only occurs in BIFF8)
+    SetLength(ARichTextRuns, RunsCounter);
+    for j := 0 to RunsCounter - 1 do begin
+      if (PendingRecordSize <= 0) then begin
+        // A CONTINUE may happened here
+        RecordType := WordLEToN(AStream.ReadWord);
+        RecordSize := WordLEToN(AStream.ReadWord);
+        if RecordType <> INT_EXCEL_ID_CONTINUE then begin
+          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
+        end else begin
+          PendingRecordSize := RecordSize;
+        end;
+      end;
+      ARichTextRuns[j].FirstIndex := WordLEToN(AStream.ReadWord);
+      ARichTextRuns[j].FontIndex := WordLEToN(AStream.ReadWord);
+      dec(PendingRecordSize, 2*2);
+    end;
+  end;
+  if StringFlags and 4 = 4 then begin
+    //Asian phonetics
+    //Read Asian phonetics, discarded as not used.
+    SetLength(AnsiStrValue, AsianPhoneticBytes);
+    AStream.ReadBuffer(AnsiStrValue[1], AsianPhoneticBytes);
+    dec(PendingRecordSize, AsianPhoneticBytes);
+  end;
+  }
+end;
+
+function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
+  const ALength: WORD; out ARichTextRuns: TsRichTextFormattingRuns): WideString;
 var
   StringFlags: BYTE;
   DecomprStrValue: WideString;
@@ -544,21 +666,21 @@ var
   RecordSize: WORD;
   C: WideChar;
 begin
-  StringFlags:=AStream.ReadByte;
+  StringFlags := AStream.ReadByte;
   Dec(PendingRecordSize);
   if StringFlags and 4 = 4 then begin
-    //Asian phonetics
-    //Read Asian phonetics Length (not used)
+    // Asian phonetics
+    // Read Asian phonetics Length (not used)
     AsianPhoneticBytes := DWordLEtoN(AStream.ReadDWord);
     dec(PendingRecordSize,4);
   end;
   if StringFlags and 8 = 8 then begin
-    //Rich string
+    // Rich string
     RunsCounter := WordLEtoN(AStream.ReadWord);
     dec(PendingRecordSize,2);
   end;
   if StringFlags and 1 = 1 Then begin
-    //String is WideStringLE
+    // String is WideStringLE
     if (ALength*SizeOf(WideChar)) > PendingRecordSize then begin
       SetLength(Result, PendingRecordSize div 2);
       AStream.ReadBuffer(Result[1], PendingRecordSize);
@@ -584,10 +706,10 @@ begin
         RecordType := WordLEToN(AStream.ReadWord);
         RecordSize := WordLEToN(AStream.ReadWord);
         if RecordType <> INT_EXCEL_ID_CONTINUE then begin
-          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
+          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
         end else begin
           PendingRecordSize := RecordSize;
-          DecomprStrValue := copy(DecomprStrValue,1,i) + ReadWideString(AStream, ALength-i);
+          DecomprStrValue := copy(DecomprStrValue,1,i) + ReadWideString(AStream, ALength-i, ARichTextRuns);
           break;
         end;
       end;
@@ -595,26 +717,27 @@ begin
     Result := DecomprStrValue;
   end;
   if StringFlags and 8 = 8 then begin
-    //Rich string (This only happened in BIFF8)
-    for j := 1 to RunsCounter do begin
+    // Rich string (This only occurs in BIFF8)
+    SetLength(ARichTextRuns, RunsCounter);
+    for j := 0 to RunsCounter - 1 do begin
       if (PendingRecordSize <= 0) then begin
-        //A CONTINUE may happened here
+        // A CONTINUE may happened here
         RecordType := WordLEToN(AStream.ReadWord);
         RecordSize := WordLEToN(AStream.ReadWord);
         if RecordType <> INT_EXCEL_ID_CONTINUE then begin
-          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
+          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
         end else begin
           PendingRecordSize := RecordSize;
         end;
       end;
-      AStream.ReadWord;
-      AStream.ReadWord;
+      ARichTextRuns[j].FirstIndex := WordLEToN(AStream.ReadWord);
+      ARichTextRuns[j].FontIndex := WordLEToN(AStream.ReadWord);
       dec(PendingRecordSize, 2*2);
     end;
   end;
   if StringFlags and 4 = 4 then begin
-    //Asian phonetics
-    //Read Asian phonetics, discarded as not used.
+    // Asian phonetics
+    // Read Asian phonetics, discarded as not used.
     SetLength(AnsiStrValue, AsianPhoneticBytes);
     AStream.ReadBuffer(AnsiStrValue[1], AsianPhoneticBytes);
     dec(PendingRecordSize, AsianPhoneticBytes);
@@ -625,13 +748,14 @@ function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
   const AUse8BitLength: Boolean): WideString;
 var
   Len: Word;
+  rtRuns: TsRichTextFormattingRuns;
 begin
   if AUse8BitLength then
     Len := AStream.ReadByte()
   else
     Len := WordLEtoN(AStream.ReadWord());
 
-  Result := ReadWideString(AStream, Len);
+  Result := ReadWideString(AStream, Len, rtRuns);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadWorkbookGlobals(AStream: TStream);
@@ -730,7 +854,7 @@ begin
     //(RSTRING) This record stores a formatted text cell (Rich-Text).
     // In BIFF8 it is usually replaced by the LABELSST record. Excel still
     // uses this record, if it copies formatted text cells to the clipboard.
-    INT_EXCEL_ID_RSTRING       : ReadRichString(AStream);
+    INT_EXCEL_ID_RSTRING       : ReadRSTRING(AStream);
 
     // (RK) This record represents a cell that contains an RK value
     // (encoded integer or floating-point value). If a floating-point
@@ -764,6 +888,7 @@ procedure TsSpreadBIFF8Reader.ReadBoundsheet(AStream: TStream);
 var
   Len: Byte;
   WideName: WideString;
+  rtRuns: TsRichTextFormattingRuns;
 begin
   { Absolute stream position of the BOF record of the sheet represented
     by this record }
@@ -780,15 +905,27 @@ begin
   Len := AStream.ReadByte();
 
   { Read string with flags }
-  WideName:=ReadWideString(AStream,Len);
+  WideName:=ReadWideString(AStream, Len, rtRuns);
 
   FWorksheetNames.Add(UTF8Encode(WideName));
 end;
 
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
-  const ALength: WORD): String;
+  const ALength: WORD; out ARichTextRuns: TsRichTextFormattingRuns): String;
 begin
-  Result := UTF16ToUTF8(ReadWideString(AStream, ALength));
+  Result := UTF16ToUTF8(ReadWideString(AStream, ALength, ARichTextRuns));
+end;
+                                  (*
+procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: String);
+var
+  FileStream: TFileStream;
+begin
+  FileStream := TFileStream.Create(AFilename, fmOpenRead or fmShareDenyNone);
+  try
+    ReadFromStream(FileStream);
+  finally
+    FileStream.Free;
+  end;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string);
@@ -819,7 +956,32 @@ begin
     OLEStorage.Free;
   end;
 end;
+                                *)
+procedure TsSpreadBIFF8Reader.ReadFromStream(AStream: TStream);
+var
+  OLEStream: TMemoryStream;
+  OLEStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
+begin
+  OLEStream := TMemoryStream.Create;
+  try
+    // Only one stream is necessary for any number of worksheets
+    OLEStorage := TOLEStorage.Create;
+    try
+      OLEDocument.Stream := OLEStream;
+      OLEStorage.ReadOLEStream(AStream, OLEDocument, 'Workbook');
+    finally
+      OLEStorage.Free;
+    end;
 
+    InternalReadFromStream(OLEStream);
+
+  finally
+    OLEStream.Free;
+  end;
+end;
+(*
+  const AStrea
 procedure TsSpreadBIFF8Reader.ReadFromStream(AStream: TStream);
 var
   BIFF8EOF: Boolean;
@@ -861,14 +1023,16 @@ begin
   { Finalizations }
   FWorksheetNames.Free;
 end;
+    *)
 
 procedure TsSpreadBIFF8Reader.ReadLABEL(AStream: TStream);
 var
   L: Word;
   ARow, ACol: Cardinal;
   XF: Word;
-  WideStrValue: WideString;
+  wideStrValue: WideString;
   cell: PCell;
+  rtfRuns: TsRichTextFormattingRuns;
 begin
   { BIFF Record data: Row, Column, XF Index }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -876,8 +1040,8 @@ begin
   { Byte String with 16-bit size }
   L := WordLEtoN(AStream.ReadWord());
 
-  { Read string with flags }
-  WideStrValue:=ReadWideString(AStream,L);
+  { Read wide string with flags }
+  wideStrValue := ReadWideString(AStream, L, rtfRuns);
 
   { Save the data }
   if FIsVirtualMode then begin
@@ -886,10 +1050,11 @@ begin
   end else
     cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
 
-  FWorksheet.WriteUTF8Text(cell, UTF16ToUTF8(WideStrValue));
+  FWorksheet.WriteUTF8Text(cell, UTF16ToUTF8(wideStrValue));
 
   {Add attributes}
   ApplyCellFormatting(cell, XF);
+  ApplyRichTextFormattingRuns(cell, rtfRuns);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -915,14 +1080,14 @@ begin
     );
   end;
 end;
-
+                                                 (*
 procedure TsSpreadBIFF8Reader.ReadRichString(const AStream: TStream);
 var
   L: Word;
   B: WORD;
   ARow, ACol: Cardinal;
   XF: Word;
-  AStrValue: ansistring;
+  strValue: string;
   cell: PCell;
   rtfRuns: TsRichTextFormattingRuns;
 begin
@@ -930,7 +1095,7 @@ begin
 
   { Byte String with 16-bit size }
   L := WordLEtoN(AStream.ReadWord());
-  AStrValue:=ReadString(AStream,L);        // ???? shouldn't this be a unicode string ????
+  strValue := ReadString(AStream, L, rtfRuns);
 
   { Create cell }
   if FIsVirtualMode then begin
@@ -940,8 +1105,9 @@ begin
     cell := FWorksheet.AddCell(ARow, ACol);
 
   { Save the data }
-  FWorksheet.WriteUTF8Text(cell, AStrValue);
+  FWorksheet.WriteUTF8Text(cell, strValue);
 
+  {
   // Read rich-text formatting runs
   B := WordLEtoN(AStream.ReadWord);
   SetLength(rtfRuns, B);
@@ -949,7 +1115,7 @@ begin
     rtfRuns[L].FirstIndex := WordLEToN(AStream.ReadWord); // Index of first formatted character
     rtfRuns[L].FontIndex := WordLEToN(AStream.ReadByte);  // Index of font used
   end;
-
+   }
   {Add attributes}
   ApplyCellFormatting(cell, XF);
   ApplyRichTextFormattingRuns(cell, rtfRuns);
@@ -957,7 +1123,7 @@ begin
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
-
+                                                   *)
 { Reads the cell address used in an RPN formula element. Evaluates the corresponding
   bits to distinguish between absolute and relative addresses.
   Overriding the implementation in xlscommon. }
@@ -1059,7 +1225,51 @@ begin
   if (c1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
   if (c2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
   if (c2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
+end;
 
+procedure TsSpreadBIFF8Reader.ReadRSTRING(AStream: TStream);
+var
+  j: Integer;
+  L: Word;
+  ARow, ACol: Cardinal;
+  XF: Word;
+  wideStrValue: WideString;
+  cell: PCell;
+  rtfRuns: TsRichTextFormattingRuns;
+begin
+  { BIFF Record data: Row, Column, XF Index }
+  ReadRowColXF(AStream, ARow, ACol, XF);
+
+  { Byte String with 16-bit size }
+  L := WordLEtoN(AStream.ReadWord());
+
+  { Read wide string without flags }
+  wideStrValue := ReadUnformattedWideString(AStream, L);
+
+  { Rich-tech formatting runs }
+  L := WordLEToN(AStream.ReadWord);
+  SetLength(rtfRuns, L);
+  for j := 0 to L-1 do
+  begin
+    rtfRuns[j].FirstIndex := WordLEToN(AStream.ReadWord);
+    rtfRuns[j].FontIndex := WordLEToN(AStream.ReadWord);
+  end;
+
+  { Save the data }
+  if FIsVirtualMode then begin
+    InitCell(ARow, ACol, FVirtualCell);        // "virtual" cell
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
+
+  FWorksheet.WriteUTF8Text(cell, UTF16ToUTF8(wideStrValue));
+
+  {Add attributes}
+  ApplyCellFormatting(cell, XF);
+  ApplyRichTextFormattingRuns(cell, rtfRuns);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadSST(const AStream: TStream);
@@ -1068,32 +1278,38 @@ var
   StringLength, CurStrLen: WORD;
   LString: String;
   ContinueIndicator: WORD;
+  rtfRuns: TsRichTextFormattingRuns;
+  ms: TMemoryStream;
 begin
   //Reads the shared string table, only compatible with BIFF8
   if not Assigned(FSharedStringTable) then begin
     //First time SST creation
     FSharedStringTable:=TStringList.Create;
 
-    DWordLEtoN(AStream.ReadDWord); //Apparences not used
-    Items:=DWordLEtoN(AStream.ReadDWord);
-    Dec(PendingRecordSize,8);
+    // Total number of strings in the workbook, not used
+    DWordLEtoN(AStream.ReadDWord);
+
+    // Number of following strings
+    Items := DWordLEtoN(AStream.ReadDWord);
+    Dec(PendingRecordSize, 8);
   end else begin
     //A second record must not happend. Garbage so skip.
     Exit;
   end;
-  while Items>0 do begin
-    StringLength:=0;
-    StringLength:=WordLEtoN(AStream.ReadWord);
-    Dec(PendingRecordSize,2);
-    LString:='';
+
+  while Items > 0 do begin
+    StringLength := 0;
+    StringLength := WordLEtoN(AStream.ReadWord);
+    Dec(PendingRecordSize ,2);
+    LString := '';
 
     // This loop takes care of the string being split between the STT and the CONTINUE, or between CONTINUE records
-    while PendingRecordSize>0 do
+    while PendingRecordSize > 0 do
     begin
-      if StringLength>0 then
+      if StringLength > 0 then
       begin
         //Read a stream of zero length reads all the stream.
-        LString:=LString+ReadString(AStream, StringLength);
+        LString := LString + ReadString(AStream, StringLength, rtfRuns);
       end
       else
       begin
@@ -1104,7 +1320,7 @@ begin
       end;
 
       // Check if the record finished and we need a CONTINUE record to go on
-      if (PendingRecordSize<=0) and (Items>1) then
+      if (PendingRecordSize <= 0) and (Items > 1) then
       begin
         //A Continue will happend, read the
         //tag and continue linking...
@@ -1112,19 +1328,32 @@ begin
         if ContinueIndicator<>INT_EXCEL_ID_CONTINUE then begin
           Raise Exception.Create('[TsSpreadBIFF8Reader.ReadSST] Expected CONTINUE record not found.');
         end;
-        PendingRecordSize:=WordLEtoN(AStream.ReadWord);
+        PendingRecordSize := WordLEtoN(AStream.ReadWord);
         CurStrLen := Length(UTF8ToUTF16(LString));
-        if StringLength<CurStrLen then Exception.Create('[TsSpreadBIFF8Reader.ReadSST] StringLength<CurStrLen');
+        if StringLength < CurStrLen then
+          Exception.Create('[TsSpreadBIFF8Reader.ReadSST] StringLength<CurStrLen');
         Dec(StringLength, CurStrLen); //Dec the used chars
-        if StringLength=0 then break;
+        if StringLength = 0 then break;
       end else begin
         break;
       end;
     end;
-    FSharedStringTable.Add(LString);
+
+    if Length(rtfRuns) = 0 then
+      FSharedStringTable.Add(LString)
+    else
+    begin
+      ms := TMemoryStream.Create;
+      ms.WriteWord(Length(rtfRuns));
+      ms.WriteBuffer(rtfRuns[0], SizeOf(TsRichTextFormattingRun)*Length(rtfRuns));
+      ms.Position := 0;
+      FSharedStringTable.AddObject(LString, ms);
+    end;
+
     {$ifdef FPSPREADDEBUG}
     WriteLn('Adding shared string: ' + LString);
     {$endif}
+
     dec(Items);
   end;
 end;
@@ -1136,6 +1365,9 @@ var
   SSTIndex: DWORD;
   rec: TBIFF8_LabelSSTRecord;
   cell: PCell;
+  ms: TMemoryStream;
+  rtfRuns: TsRichTextFormattingRuns;
+  j, n: Integer;
 begin
   rec.Row := 0;  // to silence the compiler...
 
@@ -1148,7 +1380,7 @@ begin
 
   if SizeInt(SSTIndex) >= FSharedStringTable.Count then begin
     raise Exception.CreateFmt(rsIndexInSSTOutOfRange, [
-      Integer(SSTIndex),FSharedStringTable.Count-1
+      Integer(SSTIndex), FSharedStringTable.Count-1
     ]);
   end;
 
@@ -1161,8 +1393,17 @@ begin
 
   FWorksheet.WriteUTF8Text(cell, FSharedStringTable[SSTIndex]);
 
-  {Add attributes}
+  { Add attributes }
   ApplyCellFormatting(cell, XF);
+
+  { Add rich text formatting }
+  ms := TMemoryStream(FSharedStringTable.Objects[SSTIndex]);
+  if ms <> nil then begin
+    n := ms.ReadWord;
+    SetLength(rtfRuns, n);
+    ms.ReadBuffer(rtfRuns[0], n*SizeOf(TsRichTextFormattingRun));
+    ApplyRichTextFormattingRuns(cell, rtfRuns);
+  end;
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -1238,12 +1479,7 @@ begin
   AStream.ReadBuffer(rec.FontIndex, SizeOf(rec) - 2*SizeOf(word));
 
   // Font index
-  i := WordLEToN(rec.FontIndex);
-//  if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
-  fnt := TsFont(FFontList[i]);
-  fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
-  if fmt.FontIndex = -1 then
-    fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  fmt.FontIndex := FixFontIndex(WordLEToN(rec.FontIndex));
   if fmt.FontIndex > 1 then
     Include(fmt.UsedFormattingFields, uffFont);
 
@@ -1400,9 +1636,9 @@ var
   lOptions: Word;
   lColor: Word;
   lWeight: Word;
-  lEsc: Word;
   Len: Byte;
   font: TsFont;
+  rtfRuns: TsRichTextFormattingRuns;
 begin
   font := TsFont.Create;
 
@@ -1438,14 +1674,8 @@ begin
   lWeight := WordLEToN(AStream.ReadWord);
   if lWeight = 700 then Include(font.Style, fssBold);
 
-  { Escape type }
   { Escapement type }
-  lEsc := WordLEToN(AStream.ReadWord);
-  case lEsc of
-    0: ;
-    1: font.Position := fpSuperscript;
-    2: font.Position := fpSubscript;
-  end;
+  font.Position := TsFontPosition(WordLEToN(AStream.ReadWord));
 
   { Underline type }
   if AStream.ReadByte > 0 then Include(font.Style, fssUnderline);
@@ -1464,7 +1694,7 @@ begin
 
   { Font name: Unicodestring, char count in 1 byte }
   Len := AStream.ReadByte();
-  font.FontName := ReadString(AStream, Len);
+  font.FontName := ReadString(AStream, Len, rtfRuns);  // rtfRuns is not used here.
 
   { Add font to internal font list; will be transferred to workbook later because
     the font index in the internal list (= index in file) is not the same as the
@@ -1495,7 +1725,8 @@ begin
     exit;
 
   // 2 var. Number format string (Unicode string, 16-bit string length, ➜2.5.3)
-  fmtString := UTF8Encode(ReadWideString(AStream, False));
+//  fmtString := UTF8Encode(ReadWideString(AStream, False));
+  fmtString := UTF16ToUTF8(ReadWideString(AStream, False));
 
   // Add to the list at the specified index. If necessary insert empty strings
   while NumFormatList.Count <= fmtIndex do NumFormatList.Add('');
@@ -1511,12 +1742,13 @@ procedure TsSpreadBIFF8Reader.ReadHeaderFooter(AStream: TStream;
 var
   s: widestring;
   len: word;
+  rtfRuns: TsRichTextFormattingRuns;
 begin
   if RecordSize = 0 then
     exit;
 
   len := WordLEToN(AStream.ReadWord);
-  s := ReadWideString(AStream, len);
+  s := ReadWideString(AStream, len, rtfRuns);
   if AIsHeader then
     FWorksheet.PageLayout.Headers[1] := UTF8Encode(s)
   else
@@ -1772,7 +2004,7 @@ var
 begin
   { Write workbook globals }
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
-  WriteCodePage(AStream, 'ucs2le'); // = utf8
+  WriteCodePage(AStream, 'ucs2le'); // = utf-16
   WriteWindow1(AStream);
   WriteFonts(AStream);
   WriteNumFormats(AStream);
@@ -2046,7 +2278,7 @@ begin
     AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_NORMAL));
 
   { Escapement type }
-  AStream.WriteWord(WordToLE(0));
+  AStream.WriteWord(WordToLE(ord(AFont.Position)));
 
   { Underline type }
   if fssUnderline in AFont.Style then
@@ -2081,6 +2313,10 @@ begin
     WriteFONT(AStream, Workbook.GetFont(i));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 FORMAT record
+  ("Format" is to be understood as "number format" here).
+-------------------------------------------------------------------------------}
 procedure TsSpreadBiff8Writer.WriteFORMAT(AStream: TStream;
   ANumFormatStr: String; ANumFormatIndex: Integer);
 type
@@ -2122,6 +2358,433 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 HEADER or FOOTER record, depending on AIsHeader.
+  Overridden because of wide string
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHeaderFooter(AStream: TStream;
+  AIsHeader: Boolean);
+var
+  wideStr: WideString;
+  len: Integer;
+  id: Word;
+begin
+  with FWorksheet.PageLayout do
+    if AIsHeader then
+    begin
+      if (Headers[HEADER_FOOTER_INDEX_ALL] = '') then
+        exit;
+      wideStr := UTF8Decode(Headers[HEADER_FOOTER_INDEX_ALL]);
+      id := INT_EXCEL_ID_HEADER;
+    end else
+    begin
+      if (Footers[HEADER_FOOTER_INDEX_ALL] = '') then
+        exit;
+      wideStr := UTF8Decode(Footers[HEADER_FOOTER_INDEX_ALL]);
+      id := INT_EXCEL_ID_FOOTER;
+    end;
+  len := Length(wideStr);
+
+  { BIFF record header }
+  WriteBiffHeader(AStream, id, 3 + len*sizeOf(wideChar));
+
+  { 16-bit string length }
+  AStream.WriteWord(WordToLE(len));
+
+  { Widestring flags, 1=regular unicode LE string }
+  AStream.WriteByte(1);
+
+  { Characters }
+  AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * SizeOf(WideChar));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 HYPERLINK record
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHyperlink(AStream: TStream;
+  AHyperlink: PsHyperlink; AWorksheet: TsWorksheet);
+var
+  temp: TStream;
+  guid: TGUID;
+  widestr: widestring;
+  ansistr: ansistring;
+  descr: String;
+  fn: String;
+  flags: DWord;
+  size: Integer;
+  cell: PCell;
+  target, bookmark: String;
+  u: TUri;
+  isInternal: Boolean;
+  dirUpCounter: Integer;
+begin
+  cell := AWorksheet.FindCell(AHyperlink^.Row, AHyperlink^.Col);
+  if (cell = nil) or (AHyperlink^.Target='') then
+    exit;
+
+  descr := AWorksheet.ReadAsUTF8Text(cell);      // Hyperlink description
+  SplitHyperlink(AHyperlink^.Target, target, bookmark);
+  u := ParseURI(AHyperlink^.Target);
+  isInternal := (target = '') and (bookmark <> '');
+  fn := '';        // Name of local file
+  if target <> '' then
+  begin
+    if (u.Protocol='') then
+      fn := target
+    else
+      UriToFileName(target, fn);
+    ForcePathDelims(fn);
+  end;
+
+  // Since the length of the record is not known in the first place we write
+  // the data to a temporary stream at first.
+  temp := TMemoryStream.Create;
+  try
+    { Cell range using the same hyperlink - we support only single cells }
+    temp.WriteWord(WordToLE(cell^.Row));   // first row
+    temp.WriteWord(WordToLE(cell^.Row));   // last row
+    temp.WriteWord(WordToLE(cell^.Col));   // first column
+    temp.WriteWord(WordToLE(cell^.Col));   // last column
+
+    { GUID of standard link }
+    guid := StringToGuid('{79EAC9D0-BAF9-11CE-8C82-00AA004BA90B}');
+    temp.WriteBuffer(guid, SizeOf(guid));
+
+    { unknown }
+    temp.WriteDWord(DWordToLe($00000002));
+
+    { option flags }
+    flags := 0;
+    if isInternal then
+      flags := MASK_HLINK_TEXTMARK or MASK_HLINK_DESCRIPTION
+    else
+      flags := MASK_HLINK_LINK;
+    if SameText(u.Protocol, 'file') then
+      flags := flags or MASK_HLINK_ABSOLUTE;
+    if descr <> AHyperlink^.Target then
+      flags := flags or MASK_HLINK_DESCRIPTION;  // has description
+    if bookmark <> '' then
+      flags := flags or MASK_HLINK_TEXTMARK;     // link contains a bookmark
+    temp.WriteDWord(DWordToLE(flags));
+
+    { description }
+    if flags and MASK_HLINK_DESCRIPTION <> 0 then
+    begin
+      widestr := UTF8Decode(descr);
+      { Character count incl trailing zero }
+      temp.WriteDWord(DWordToLE(Length(wideStr) + 1));
+      { Character array (16-bit characters), plus trailing zeros }
+      temp.WriteBuffer(wideStr[1], (Length(wideStr)+1)*SizeOf(widechar));
+    end;
+
+    if target <> '' then
+    begin
+      if (fn <> '') then  // URI is a local file
+      begin
+       { GUID of file moniker }
+        guid := StringToGuid('{00000303-0000-0000-C000-000000000046}');
+        temp.WriteBuffer(guid, SizeOf(guid));
+        { Convert to ansi - should be DOS 8.3, but this is not necessary }
+        ansistr := UTF8ToAnsi(fn);
+        { Directory-up level counter  }
+        dirUpCounter := 0;
+        if not FileNameIsAbsolute(ansistr) then
+          while (pos ('..' + PathDelim, ansistr) = 1) do
+          begin
+            inc(dirUpCounter);
+            Delete(ansistr, 1, Length('..'+PathDelim));
+          end;
+        temp.WriteWord(WordToLE(dirUpCounter));
+        { Character count of file name incl trailing zero }
+        temp.WriteDWord(DWordToLe(Length(ansistr)+1));
+        { Character array of file name (8-bit characters), plus trailing zero }
+        temp.WriteBuffer(ansistr[1], Length(ansistr)+1);
+        { Unknown }
+        temp.WriteDWord(DWordToLE($DEADFFFF));
+        temp.WriteDWord(0);
+        temp.WriteDWord(0);
+        temp.WriteDWord(0);
+        temp.WriteDWord(0);
+        temp.WriteDWord(0);
+        { Size of following file link fields }
+        widestr := UTF8ToUTF16(fn);
+        size := 4 + 2 + Length(wideStr)*SizeOf(widechar);
+        temp.WriteDWord(DWordToLE(size));
+        if size > 0 then
+        begin
+          { Character count of extended file name }
+          temp.WriteDWord(DWordToLE(Length(widestr)*SizeOf(WideChar)));
+          { Unknown }
+          temp.WriteWord(WordToLE($0003));
+          { Character array, 16-bit characters, NOT ZERO-TERMINATED! }
+          temp.WriteBuffer(widestr[1], Length(wideStr)*SizeOf(WideChar));
+        end;
+      end
+      else begin  { Hyperlink target is a URL }
+        widestr := UTF8Decode(target);
+        { GUID of URL Moniker }
+        guid := StringToGUID('{79EAC9E0-BAF9-11CE-8C82-00AA004BA90B}');
+        temp.WriteBuffer(guid, SizeOf(guid));
+        { Character count incl trailing zero }
+        temp.WriteDWord(DWordToLE(Length(wideStr)+1)*SizeOf(wideChar));
+        { Character array plus trailing zero (16-bit characters), plus trailing zeros }
+        temp.WriteBuffer(wideStr[1], (length(wideStr)+1)*SizeOf(wideChar));
+      end;
+    end; // hkURI
+
+    // Hyperlink contains a text mark (#)
+    if bookmark <> '' then
+    begin
+      // Convert to 16-bit characters
+      widestr := UTF8Decode(bookmark);
+      { Character count of text mark, incl trailing zero }
+      temp.WriteDWord(DWordToLE(Length(wideStr) + 1));
+      { Character array (16-bit characters) plus trailing zeros }
+      temp.WriteBuffer(wideStr[1], (Length(wideStr)+1) * SizeOf(WideChar));
+    end;
+
+    { BIFF record header }
+    WriteBIFFHeader(AStream, INT_EXCEL_ID_HYPERLINK, temp.Size);
+
+    { Record data }
+    temp.Position := 0;
+    AStream.CopyFrom(temp, temp.Size);
+
+  finally
+    temp.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes all hyperlinks
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHyperlinks(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  hyperlink: PsHyperlink;
+begin
+  for hyperlink in AWorksheet.Hyperlinks do begin
+    { Write HYPERLINK record }
+    WriteHyperlink(AStream, hyperlink, AWorksheet);
+    { Write HYPERLINK TOOLTIP record }
+    if hyperlink^.Tooltip <> '' then
+      WriteHyperlinkTooltip(AStream, hyperlink^.Row, hyperlink^.Col, hyperlink^.Tooltip);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a HYPERLINK TOOLTIP record
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteHyperlinkTooltip(AStream: TStream;
+  const ARow, ACol: Cardinal; const ATooltip: String);
+var
+  widestr: widestring;
+begin
+  widestr := UTF8Decode(ATooltip);
+
+  { BIFF record header }
+  WriteBiffHeader(AStream, INT_EXCEL_ID_HLINKTOOLTIP,
+    10 + (Length(wideStr)+1) * SizeOf(widechar));
+
+  { Repeated record ID }
+  AStream.WriteWord(WordToLe(INT_EXCEL_ID_HLINKTOOLTIP));
+
+  { Cell range using the same hyperlink tooltip - we support only single cells }
+  AStream.WriteWord(WordToLE(ARow));   // first row
+  AStream.WriteWord(WordToLE(ARow));   // last row
+  AStream.WriteWord(WordToLE(ACol));   // first column
+  AStream.WriteWord(WordToLE(ACol));   // last column
+
+  { Tooltop characters, no length, but trailing zero }
+  AStream.WriteBuffer(wideStr[1], (Length(widestr)+1)*SizeOf(wideChar));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 8 INDEX record
+
+    nm = (rl - rf - 1) / 32 + 1 (using integer division)
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteIndex(AStream: TStream);
+begin
+  { BIFF Record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_INDEX, 16);
+
+  { Not used }
+  AStream.WriteDWord(DWordToLE(0));
+
+  { Index to first used row, rf, 0 based }
+  AStream.WriteDWord(DWordToLE(0));
+
+  { Index to first row of unused tail of sheet, rl, last used row + 1, 0 based }
+  AStream.WriteDWord(DWordToLE(0));
+
+  { Absolute stream position of the DEFCOLWIDTH record of the current sheet.
+    If it doesn't exist, the offset points to where it would occur. }
+  AStream.WriteDWord(DWordToLE($00));
+
+  { Array of nm absolute stream positions of the DBCELL record of each Row Block }
+
+  { OBS: It seems to be no problem just ignoring this part of the record }
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Depending on the presence of Rich-text formatting information in the cell
+  record, writes an Excel 8 LABEL record (string cell value only), or
+  RSTRING record (string cell value + rich-text formatting runs)
+
+  If the string length exceeds 32758 bytes, the string will be truncated,
+  a note will be left in the workbooks log.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteLABEL(AStream: TStream;
+  const ARow, ACol: Cardinal; const AValue: String; ACell: PCell);
+const
+  //limit for this format: 32767 bytes - header (see reclen below):
+  //37267-8-1=32758
+  MAXBYTES = 32758;
+var
+  L: Word;
+  WideValue: WideString;
+  rec: TBIFF8_LabelRecord;
+  rtfRuns: TBiff8_RichTextFormattingRuns;
+  buf: array of byte;
+  j, nRuns: Integer;
+  fmt: PsCellFormat;
+  useRTF: Boolean;
+  fntIndex: Word;
+begin
+  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
+    exit;
+
+  WideValue := UTF8Decode(AValue); //to UTF16
+  if WideValue = '' then begin
+    // Badly formatted UTF8String (maybe ANSI?)
+    if Length(AValue)<>0 then begin
+      //Quite sure it was an ANSI string written as UTF8, so raise exception.
+      raise Exception.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [GetCellString(ARow,ACol)]);
+    end;
+    Exit;
+  end;
+
+  if Length(WideValue) > MAXBYTES then begin
+    // Rather than lose data when reading it, let the application programmer deal
+    // with the problem or purposefully ignore it.
+    SetLength(WideValue, MAXBYTES); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
+    Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
+      MAXBYTES, GetCellString(ARow, ACol)
+    ]);
+  end;
+  L := Length(WideValue);
+
+  useRTF := (Length(ACell^.RichTextParams) > 0);
+
+  { BIFF record header }
+  rec.RecordID := WordToLE(IfThen(useRTF, INT_EXCEL_ID_RSTRING, INT_EXCEL_ID_LABEL));
+  rec.RecordSize := WordToLE(SizeOf(rec) - SizeOf(TsBIFFHeader) + L * SizeOf(WideChar));
+
+  { Prepare rich-text formatting runs }
+  if useRTF then
+  begin
+    fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    nRuns := 0;
+    for j:=0 to High(ACell^.RichTextParams) do
+    begin
+      SetLength(rtfRuns, nRuns + 1);
+      fntIndex := ACell^.RichTextParams[j].FontIndex;
+      if fntIndex >= 4 then
+        inc(fntIndex);  // Font #4 does not exist in BIFF
+      rtfRuns[nRuns].FontIndex := WordLEToN(fntIndex);
+      rtfRuns[nRuns].FirstIndex := WordLEToN(ACell^.RichTextParams[j].StartIndex);
+      inc(nRuns);
+      if (ACell^.RichTextParams[j].EndIndex < L) and
+         (ACell^.RichTextParams[j].EndIndex <> ACell^.RichTextParams[j+1].StartIndex)   // wp: j+1 needs to be checked!
+      then begin
+        SetLength(rtfRuns, nRuns + 1);
+        fntIndex := fmt^.FontIndex;
+        if fntIndex >= 4 then
+          inc(fntIndex);
+        rtfRuns[nRuns].FontIndex := WordLEToN(fntIndex);
+        rtfRuns[nRuns].FirstIndex := WordLEToN(ACell^.RichTextParams[j].EndIndex);
+        inc(nRuns);
+      end;
+    end;
+
+    // Adjust BIFF record size for appended formatting runs
+    inc(rec.RecordSize, SizeOf(word) + nRuns * SizeOf(TBiff8_RichTextFormattingRun));
+  end;
+
+  { BIFF record data }
+  rec.Row := WordToLE(ARow);
+  rec.Col := WordToLE(ACol);
+
+  { Index to XF record, according to formatting }
+  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+
+  { Byte String with 16-bit length }
+  rec.TextLen := WordToLE(L);
+
+  { Byte flags }
+  rec.TextFlags := 1;                     // means regular unicode LE encoding
+
+  { Copy the text characters into a buffer immediately after rec }
+  SetLength(buf, SizeOf(rec) + L*SizeOf(WideChar));
+  Move(rec, buf[0], SizeOf(Rec));
+  Move(WideStringToLE(WideValue)[1], buf[SizeOf(Rec)], L*SizeOf(WideChar));
+
+  { Write out buffer }
+  AStream.WriteBuffer(buf[0], SizeOf(rec) + L*SizeOf(WideChar));
+
+  { Write rich-text information in case of RSTRING record }
+  if useRTF then
+  begin
+    { Write number of rich-text formatting runs }
+    AStream.WriteWord(WordToLE(nRuns));
+
+    { Write array of rich-text formatting runs }
+    AStream.WriteBuffer(rtfRuns[0], nRuns * SizeOf(TBiff8_RichTextFormattingRun));
+  end;
+
+  { Clean up }
+  SetLength(buf, 0);
+  SetLength(rtfRuns, 0);
+end;
+
+procedure TsSpreadBIFF8Writer.WriteMergedCells(AStream: TStream;
+  AWorksheet: TsWorksheet);
+const
+  MAX_PER_RECORD = 1026;
+var
+  n0, n: Integer;
+  rng: PsCellRange;
+  newRecord: Boolean;
+begin
+  n0 := AWorksheet.MergedCells.Count;
+  n := Min(n0, MAX_PER_RECORD);
+  newRecord := true;
+  for rng in AWorksheet.MergedCells do
+  begin
+    if newRecord then
+    begin
+      newRecord := false;
+      { BIFF record header }
+      WriteBIFFHeader(AStream, INT_EXCEL_ID_MERGEDCELLS, 2 + n*8);
+      { Number of cell ranges in this record }
+      AStream.WriteWord(WordToLE(n));
+    end;
+    { Write range data }
+    AStream.WriteWord(WordToLE(rng^.Row1));
+    AStream.WriteWord(WordToLE(rng^.Row2));
+    AStream.WriteWord(WordToLE(rng^.Col1));
+    AStream.WriteWord(WordToLE(rng^.Col2));
+
+    dec(n);
+    if n = 0 then begin
+      newRecord := true;
+      dec(n0, MAX_PER_RECORD);
+      n := Min(n0, MAX_PER_RECORD);
+    end;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2439,390 +3102,13 @@ begin
   AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * SizeOf(WideChar));
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Writes an Excel 8 INDEX record
-
-    nm = (rl - rf - 1) / 32 + 1 (using integer division)
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteIndex(AStream: TStream);
-begin
-  { BIFF Record header }
-  WriteBIFFHeader(AStream, INT_EXCEL_ID_INDEX, 16);
-
-  { Not used }
-  AStream.WriteDWord(DWordToLE(0));
-
-  { Index to first used row, rf, 0 based }
-  AStream.WriteDWord(DWordToLE(0));
-
-  { Index to first row of unused tail of sheet, rl, last used row + 1, 0 based }
-  AStream.WriteDWord(DWordToLE(0));
-
-  { Absolute stream position of the DEFCOLWIDTH record of the current sheet.
-    If it doesn't exist, the offset points to where it would occur. }
-  AStream.WriteDWord(DWordToLE($00));
-
-  { Array of nm absolute stream positions of the DBCELL record of each Row Block }
-  
-  { OBS: It seems to be no problem just ignoring this part of the record }
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Writes an Excel 8 HEADER or FOOTER record, depending on AIsHeader.
-  Overridden because of wide string
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteHeaderFooter(AStream: TStream;
-  AIsHeader: Boolean);
-var
-  wideStr: WideString;
-  len: Integer;
-  id: Word;
-begin
-  with FWorksheet.PageLayout do
-    if AIsHeader then
-    begin
-      if (Headers[HEADER_FOOTER_INDEX_ALL] = '') then
-        exit;
-      wideStr := UTF8Decode(Headers[HEADER_FOOTER_INDEX_ALL]);
-      id := INT_EXCEL_ID_HEADER;
-    end else
-    begin
-      if (Footers[HEADER_FOOTER_INDEX_ALL] = '') then
-        exit;
-      wideStr := UTF8Decode(Footers[HEADER_FOOTER_INDEX_ALL]);
-      id := INT_EXCEL_ID_FOOTER;
-    end;
-  len := Length(wideStr);
-
-  { BIFF record header }
-  WriteBiffHeader(AStream, id, 3 + len*sizeOf(wideChar));
-
-  { 16-bit string length }
-  AStream.WriteWord(WordToLE(len));
-
-  { Widestring flags, 1=regular unicode LE string }
-  AStream.WriteByte(1);
-
-  { Characters }
-  AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * SizeOf(WideChar));
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Writes an Excel 8 HYPERLINK record
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteHyperlink(AStream: TStream;
-  AHyperlink: PsHyperlink; AWorksheet: TsWorksheet);
-var
-  temp: TStream;
-  guid: TGUID;
-  widestr: widestring;
-  ansistr: ansistring;
-  descr: String;
-  fn: String;
-  flags: DWord;
-  size: Integer;
-  cell: PCell;
-  target, bookmark: String;
-  u: TUri;
-  isInternal: Boolean;
-  dirUpCounter: Integer;
-begin
-  cell := AWorksheet.FindCell(AHyperlink^.Row, AHyperlink^.Col);
-  if (cell = nil) or (AHyperlink^.Target='') then
-    exit;
-
-  descr := AWorksheet.ReadAsUTF8Text(cell);      // Hyperlink description
-  SplitHyperlink(AHyperlink^.Target, target, bookmark);
-  u := ParseURI(AHyperlink^.Target);
-  isInternal := (target = '') and (bookmark <> '');
-  fn := '';        // Name of local file
-  if target <> '' then
-  begin
-    if (u.Protocol='') then
-      fn := target
-    else
-      UriToFileName(target, fn);
-    ForcePathDelims(fn);
-  end;
-
-  // Since the length of the record is not known in the first place we write
-  // the data to a temporary stream at first.
-  temp := TMemoryStream.Create;
-  try
-    { Cell range using the same hyperlink - we support only single cells }
-    temp.WriteWord(WordToLE(cell^.Row));   // first row
-    temp.WriteWord(WordToLE(cell^.Row));   // last row
-    temp.WriteWord(WordToLE(cell^.Col));   // first column
-    temp.WriteWord(WordToLE(cell^.Col));   // last column
-
-    { GUID of standard link }
-    guid := StringToGuid('{79EAC9D0-BAF9-11CE-8C82-00AA004BA90B}');
-    temp.WriteBuffer(guid, SizeOf(guid));
-
-    { unknown }
-    temp.WriteDWord(DWordToLe($00000002));
-
-    { option flags }
-    flags := 0;
-    if isInternal then
-      flags := MASK_HLINK_TEXTMARK or MASK_HLINK_DESCRIPTION
-    else
-      flags := MASK_HLINK_LINK;
-    if SameText(u.Protocol, 'file') then
-      flags := flags or MASK_HLINK_ABSOLUTE;
-    if descr <> AHyperlink^.Target then
-      flags := flags or MASK_HLINK_DESCRIPTION;  // has description
-    if bookmark <> '' then
-      flags := flags or MASK_HLINK_TEXTMARK;     // link contains a bookmark
-    temp.WriteDWord(DWordToLE(flags));
-
-    { description }
-    if flags and MASK_HLINK_DESCRIPTION <> 0 then
-    begin
-      widestr := UTF8Decode(descr);
-      { Character count incl trailing zero }
-      temp.WriteDWord(DWordToLE(Length(wideStr) + 1));
-      { Character array (16-bit characters), plus trailing zeros }
-      temp.WriteBuffer(wideStr[1], (Length(wideStr)+1)*SizeOf(widechar));
-    end;
-
-    if target <> '' then
-    begin
-      if (fn <> '') then  // URI is a local file
-      begin
-       { GUID of file moniker }
-        guid := StringToGuid('{00000303-0000-0000-C000-000000000046}');
-        temp.WriteBuffer(guid, SizeOf(guid));
-        { Convert to ansi - should be DOS 8.3, but this is not necessary }
-        ansistr := UTF8ToAnsi(fn);
-        { Directory-up level counter  }
-        dirUpCounter := 0;
-        if not FileNameIsAbsolute(ansistr) then
-          while (pos ('..' + PathDelim, ansistr) = 1) do
-          begin
-            inc(dirUpCounter);
-            Delete(ansistr, 1, Length('..'+PathDelim));
-          end;
-        temp.WriteWord(WordToLE(dirUpCounter));
-        { Character count of file name incl trailing zero }
-        temp.WriteDWord(DWordToLe(Length(ansistr)+1));
-        { Character array of file name (8-bit characters), plus trailing zero }
-        temp.WriteBuffer(ansistr[1], Length(ansistr)+1);
-        { Unknown }
-        temp.WriteDWord(DWordToLE($DEADFFFF));
-        temp.WriteDWord(0);
-        temp.WriteDWord(0);
-        temp.WriteDWord(0);
-        temp.WriteDWord(0);
-        temp.WriteDWord(0);
-        { Size of following file link fields }
-        widestr := UTF8ToUTF16(fn);
-        size := 4 + 2 + Length(wideStr)*SizeOf(widechar);
-        temp.WriteDWord(DWordToLE(size));
-        if size > 0 then
-        begin
-          { Character count of extended file name }
-          temp.WriteDWord(DWordToLE(Length(widestr)*SizeOf(WideChar)));
-          { Unknown }
-          temp.WriteWord(WordToLE($0003));
-          { Character array, 16-bit characters, NOT ZERO-TERMINATED! }
-          temp.WriteBuffer(widestr[1], Length(wideStr)*SizeOf(WideChar));
-        end;
-      end
-      else begin  { Hyperlink target is a URL }
-        widestr := UTF8Decode(target);
-        { GUID of URL Moniker }
-        guid := StringToGUID('{79EAC9E0-BAF9-11CE-8C82-00AA004BA90B}');
-        temp.WriteBuffer(guid, SizeOf(guid));
-        { Character count incl trailing zero }
-        temp.WriteDWord(DWordToLE(Length(wideStr)+1)*SizeOf(wideChar));
-        { Character array plus trailing zero (16-bit characters), plus trailing zeros }
-        temp.WriteBuffer(wideStr[1], (length(wideStr)+1)*SizeOf(wideChar));
-      end;
-    end; // hkURI
-
-    // Hyperlink contains a text mark (#)
-    if bookmark <> '' then
-    begin
-      // Convert to 16-bit characters
-      widestr := UTF8Decode(bookmark);
-      { Character count of text mark, incl trailing zero }
-      temp.WriteDWord(DWordToLE(Length(wideStr) + 1));
-      { Character array (16-bit characters) plus trailing zeros }
-      temp.WriteBuffer(wideStr[1], (Length(wideStr)+1) * SizeOf(WideChar));
-    end;
-
-    { BIFF record header }
-    WriteBIFFHeader(AStream, INT_EXCEL_ID_HYPERLINK, temp.Size);
-
-    { Record data }
-    temp.Position := 0;
-    AStream.CopyFrom(temp, temp.Size);
-
-  finally
-    temp.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Writes all hyperlinks
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteHyperlinks(AStream: TStream;
-  AWorksheet: TsWorksheet);
-var
-  hyperlink: PsHyperlink;
-begin
-  for hyperlink in AWorksheet.Hyperlinks do begin
-    { Write HYPERLINK record }
-    WriteHyperlink(AStream, hyperlink, AWorksheet);
-    { Write HYPERLINK TOOLTIP record }
-    if hyperlink^.Tooltip <> '' then
-      WriteHyperlinkTooltip(AStream, hyperlink^.Row, hyperlink^.Col, hyperlink^.Tooltip);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Writes a HYPERLINK TOOLTIP record
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteHyperlinkTooltip(AStream: TStream;
-  const ARow, ACol: Cardinal; const ATooltip: String);
-var
-  widestr: widestring;
-begin
-  widestr := UTF8Decode(ATooltip);
-
-  { BIFF record header }
-  WriteBiffHeader(AStream, INT_EXCEL_ID_HLINKTOOLTIP,
-    10 + (Length(wideStr)+1) * SizeOf(widechar));
-
-  { Repeated record ID }
-  AStream.WriteWord(WordToLe(INT_EXCEL_ID_HLINKTOOLTIP));
-
-  { Cell range using the same hyperlink tooltip - we support only single cells }
-  AStream.WriteWord(WordToLE(ARow));   // first row
-  AStream.WriteWord(WordToLE(ARow));   // last row
-  AStream.WriteWord(WordToLE(ACol));   // first column
-  AStream.WriteWord(WordToLE(ACol));   // last column
-
-  { Tooltop characters, no length, but trailing zero }
-  AStream.WriteBuffer(wideStr[1], (Length(widestr)+1)*SizeOf(wideChar));
-end;
-
-
-{@@ ----------------------------------------------------------------------------
-  Writes an Excel 8 LABEL record (string cell value)
-
-  If the string length exceeds 32758 bytes, the string will be truncated,
-  a note will be left in the workbooks log.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteLabel(AStream: TStream; const ARow,
-  ACol: Cardinal; const AValue: string; ACell: PCell);
-const
-  //limit for this format: 32767 bytes - header (see reclen below):
-  //37267-8-1=32758
-  MAXBYTES = 32758;
-var
-  L: Word;
-  WideValue: WideString;
-  rec: TBIFF8_LabelRecord;
-  buf: array of byte;
-begin
-  if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
-    exit;
-
-  WideValue := UTF8Decode(AValue); //to UTF16
-  if WideValue = '' then begin
-    // Badly formatted UTF8String (maybe ANSI?)
-    if Length(AValue)<>0 then begin
-      //Quite sure it was an ANSI string written as UTF8, so raise exception.
-      raise Exception.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [GetCellString(ARow,ACol)]);
-    end;
-    Exit;
-  end;
-
-  if Length(WideValue) > MAXBYTES then begin
-    // Rather than lose data when reading it, let the application programmer deal
-    // with the problem or purposefully ignore it.
-    SetLength(WideValue, MAXBYTES); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
-    Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
-      MAXBYTES, GetCellString(ARow, ACol)
-    ]);
-  end;
-  L := Length(WideValue);
-
-  { BIFF record header }
-  rec.RecordID := WordToLE(INT_EXCEL_ID_LABEL);
-  rec.RecordSize := 8 + 1 + L * SizeOf(WideChar);
-
-  { BIFF record data }
-  rec.Row := WordToLE(ARow);
-  rec.Col := WordToLE(ACol);
-
-  { Index to XF record, according to formatting }
-  rec.XFIndex := WordToLE(FindXFIndex(ACell));
-
-  { Byte String with 16-bit length }
-  rec.TextLen := WordToLE(L);
-
-  { Byte flags, 1 means regular unicode LE encoding }
-  rec.TextFlags := 1;
-
-  { Copy the text characters into a buffer immediately after rec }
-  SetLength(buf, SizeOf(rec) + L*SizeOf(WideChar));
-  Move(rec, buf[0], SizeOf(Rec));
-  Move(WideStringToLE(WideValue)[1], buf[SizeOf(Rec)], L*SizeOf(WideChar));
-
-  { Write out }
-  AStream.WriteBuffer(buf[0], SizeOf(rec) + L*SizeOf(WideChar));
-
-  { Clean up }
-  SetLength(buf, 0);
-end;
-
-procedure TsSpreadBIFF8Writer.WriteMergedCells(AStream: TStream;
-  AWorksheet: TsWorksheet);
-const
-  MAX_PER_RECORD = 1026;
-var
-  n0, n: Integer;
-  rng: PsCellRange;
-  newRecord: Boolean;
-begin
-  n0 := AWorksheet.MergedCells.Count;
-  n := Min(n0, MAX_PER_RECORD);
-  newRecord := true;
-  for rng in AWorksheet.MergedCells do
-  begin
-    if newRecord then
-    begin
-      newRecord := false;
-      { BIFF record header }
-      WriteBIFFHeader(AStream, INT_EXCEL_ID_MERGEDCELLS, 2 + n*8);
-      { Number of cell ranges in this record }
-      AStream.WriteWord(WordToLE(n));
-    end;
-    { Write range data }
-    AStream.WriteWord(WordToLE(rng^.Row1));
-    AStream.WriteWord(WordToLE(rng^.Row2));
-    AStream.WriteWord(WordToLE(rng^.Col1));
-    AStream.WriteWord(WordToLE(rng^.Col2));
-
-    dec(n);
-    if n = 0 then begin
-      newRecord := true;
-      dec(n0, MAX_PER_RECORD);
-      n := Min(n0, MAX_PER_RECORD);
-    end;
-  end;
-end;
-
 {@@-----------------------------------------------------------------------------
   Writes an Excel 8 STYLE record
 
   Registers the name of a user-defined style or specific options
   for a built-in cell style.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteStyle(AStream: TStream);
+procedure TsSpreadBIFF8Writer.WriteSTYLE(AStream: TStream);
 begin
   { BIFF record header }
   WriteBiffHeader(AStream, INT_EXCEL_ID_STYLE, 4);

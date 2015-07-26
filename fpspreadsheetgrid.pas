@@ -598,17 +598,6 @@ uses
   fpCanvas, fpsStrings, fpsUtils, fpsVisualUtils, fpsNumFormat;
 
 const
-  {@@ Translation of the fpspreadsheet type of horizontal text alignment to that
-      used in the graphics unit. }
-  HOR_ALIGNMENTS: array[haLeft..haRight] of TAlignment = (
-    taLeftJustify, taCenter, taRightJustify
-  );
-  {@@ Translation of the fpspreadsheet type of vertical text alignment to that
-      used in the graphics unit. }
-  VERT_ALIGNMENTS: array[TsVertAlignment] of TTextLayout = (
-    tlBottom, tlTop, tlCenter, tlBottom
-  );
-
   {@@ Default number of columns prepared for a new empty worksheet }
   DEFAULT_COL_COUNT = 26;
   {@@ Default number of rows prepared for a new empty worksheet }
@@ -2100,7 +2089,7 @@ var
   txtRot: TsTextRotation;
   fntIndex: Integer;
   lCell: PCell;
-  justif: Byte;
+//  justif: Byte;
   fmt: PsCellFormat;
 begin
   if (Worksheet = nil) then
@@ -2169,7 +2158,7 @@ begin
   txt := GetCellText(GetGridRow(lCell^.Col), GetGridCol(lCell^.Row));
   if txt = '' then
     exit;
-
+                        {
   case txtRot of
     trHorizontal:
       case horAlign of
@@ -2190,7 +2179,7 @@ begin
         vaCenter: justif := 1;
         vaBottom: justif := 0;
       end;
-  end;
+  end;                   }
   InternalDrawTextInCell(txt, ARect, horAlign, vertAlign, txtRot, wrapped,
     fntIndex, lCell^.RichTextParams);
 {

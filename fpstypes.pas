@@ -404,7 +404,7 @@ type
   TsFontStyles = set of TsFontStyle;
 
   {@@ Font position (subscript or superscript) }
-  TsFontPosition = (fpNormal, fpSubscript, fpSuperscript);
+  TsFontPosition = (fpNormal, fpSuperscript, fpSubscript);  // Keep order for compatibility with xls!
 
   {@@ Font record used in fpspreadsheet. Contains the font name, the font size
       (in points), the font style, and the font color. }
@@ -432,7 +432,7 @@ type
   TsRichTextParams = array of TsRichTextParam;
 
   {@@ Excel rich-text formatting run }
-  TsRichTextFormattingRun = record
+  TsRichTextFormattingRun = packed record
     FirstIndex: Integer;
     FontIndex: Integer;
   end;

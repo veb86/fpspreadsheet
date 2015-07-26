@@ -35,6 +35,7 @@ type
   public
     procedure WriteOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AOverwriteExisting: Boolean = False; const AStreamName: UTF8String='Book');
     procedure ReadOLEFile(AFileName: string; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
+    procedure ReadOLEStream(AStream: TStream; AOLEDocument: TOLEDocument; const AStreamName: UTF8String='Book');
     procedure FreeOLEDocumentData(AOLEDocument: TOLEDocument);
   end;
 
@@ -88,12 +89,31 @@ procedure TOLEStorage.ReadOLEFile(AFileName: string;
   AOLEDocument: TOLEDocument; const AStreamName: UTF8String);
 var
   RealFile: TFileStream;
+begin
+  RealFile:=TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+  try
+    ReadOLEStream(RealFile, AOLEDocument, AStreamName);
+  finally
+    RealFile.Free;
+  end;
+end;
+
+
+procedure TOLEStorage.ReadOLEStream(AStream: TStream; AOLEDocument: TOLEDocument;
+  const AStreamName: UTF8String = 'Book');
+var
   fsOLE: TVirtualLayer_OLE;
   OLEStream: TStream;
   VLAbsolutePath: UTF8String;
 begin
   VLAbsolutePath:='/'+AStreamName; //Virtual layer always use absolute paths.
+  fsOLE := TVirtualLayer_OLE.Create(AStream);
   try
+    fsOLE.Initialize(); //Initialize the OLE container.
+    OLEStream := fsOLE.CreateStream(VLAbsolutePath, fmOpenRead);
+    try
+
+             {
     RealFile:=nil;
     RealFile:=TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
     try
@@ -114,12 +134,25 @@ begin
       finally
         OLEStream.Free;
       end;
+      }
+      if Assigned(OLEStream) then begin
+        if not AssigneD(AOLEDocument.Stream) then
+          AOLEDocument.Stream := TMemoryStream.Create
+        else
+          (AOLEDocument.Stream as TMemoryStream).Clear;
+        AOLEDocument.Stream.CopyFrom(OLEStream, OLEStream.Size);
+      end;
     finally
-      fsOLE.Free;
+      OLEStream.Free;
     end;
+  finally
+    fsOLE.Free;
+  end;
+  {
   finally
     RealFile.Free;
   end;
+  }
 end;
 
 {@@

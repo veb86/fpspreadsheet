@@ -196,7 +196,7 @@ var
   totalHeight, linelen, stackPeriod: Integer;
 
   procedure InitFont(P: PChar; out rtState: TRtState;
-    PendingRtpIndex: Integer; out AHeight: Integer);
+    PendingRtpIndex: Integer; out AHeight: Integer; out AFontPos: TsFontPosition);
   var
     fnt: TsFont;
     hasRtp: Boolean;
@@ -216,12 +216,13 @@ var
     Convert_sFont_to_Font(fnt, ACanvas.Font);
     AHeight := ACanvas.TextHeight('Tg');
     if (fnt <> nil) and (fnt.Position <> fpNormal) then
-      ACanvas.Font.Size := round(ACanvas.Font.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
+      ACanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
+    AFontPos := fnt.Position;
   end;
 
   procedure UpdateFont(P:PChar; var rtState: TRtState;
     var PendingRtpIndex: Integer; var AHeight: Integer;
-    out AFontPos: TsFontPosition);
+    var AFontPos: TsFontPosition);
   var
     hasRtp: Boolean;
     rtp: TsRichTextParam;
@@ -238,7 +239,8 @@ var
         Convert_sFont_to_Font(fnt, ACanvas.Font);
         AHeight := ACanvas.TextHeight('Tg');
         if fnt.Position <> fpNormal then
-          ACanvas.Font.Size := round(ACanvas.Font.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
+          ACanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
+        AFontPos := fnt.Position;
         rtState := rtEnter;
       end else
       if (p - pStartText >= rtp.EndIndex) and (rtState = rtEnter) then
@@ -264,10 +266,10 @@ var
         Convert_sFont_to_Font(fnt, ACanvas.Font);
         AHeight := ACanvas.TextHeight('Tg');
         if fnt.Position <> fpNormal then
-          ACanvas.Font.Size := round(ACanvas.Font.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
+          ACanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
+        AFontPos := fnt.Position;
       end;
     end;
-    AFontPos := fnt.Position;
   end;
 
   procedure ScanLine(var P: PChar; var NumSpaces: Integer;
@@ -287,7 +289,7 @@ var
   begin
     NumSpaces := 0;
 
-    InitFont(p, rtState, PendingRtpIndex, h);
+    InitFont(p, rtState, PendingRtpIndex, h, fntpos);
     height := h;
 
     pEOL := p;
@@ -365,12 +367,12 @@ var
     p: PChar;
     rtState: TRtState;
     h, w: Integer;
-    fntpos: TsFontPosition;
+    fntpos: TsFontPosition = fpNormal;
     s: utf8String;
     charLen: Integer;
   begin
     p := pStart;
-    InitFont(p, rtState, PendingRtpIndex, h);
+    InitFont(p, rtState, PendingRtpIndex, h, fntpos);
     while p^ <> #0 do begin
       s := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
       UpdateFont(p, rtState, PendingRtpIndex, h, fntpos);

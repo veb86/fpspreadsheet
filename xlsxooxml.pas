@@ -130,7 +130,7 @@ type
     procedure WriteComments(AWorksheet: TsWorksheet);
     procedure WriteDimension(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteFillList(AStream: TStream);
-    procedure WriteFont(AStream: TStream; AFont: TsFont; ATag: String);
+    procedure WriteFont(AStream: TStream; AFont: TsFont; UseInStyleNode: Boolean);
     procedure WriteFontList(AStream: TStream);
     procedure WriteHeaderFooter(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet);
@@ -749,9 +749,9 @@ begin
       if (s1 <> '') and (s2 <> '0') then
       begin
         fnt := TsFont(FFontList.Items[StrToInt(s1)]);
-        fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+        fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
         if fmt.FontIndex = -1 then
-          fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+          fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
         if fmt.FontIndex > 0 then
           Include(fmt.UsedFormattingFields, uffFont);
       end;
@@ -1065,9 +1065,8 @@ begin
   end;
 end;
 
-{ Reads the font described by the specified node. If the node is already
-  contained in the font list the font's index is returned; otherwise the
-  new font is added to the list and its index is returned. }
+{ Reads the font described by the specified node and stores it in the reader's
+  FontList. }
 function TsSpreadOOXMLReader.ReadFont(ANode: TDOMNode): Integer;
 var
   node: TDOMNode;
@@ -1079,6 +1078,7 @@ var
   fntPos: TsFontPosition;
   nodename: String;
   s: String;
+  acceptDuplicates: Boolean;
 begin
   fnt := Workbook.GetDefaultFont;
   if fnt <> nil then
@@ -1097,6 +1097,7 @@ begin
     fntPos := fpNormal;
   end;
 
+  acceptDuplicates := true;
   node := ANode.FirstChild;
   while node <> nil do
   begin
@@ -1105,6 +1106,7 @@ begin
     begin
       s := GetAttrValue(node, 'val');
       if s <> '' then fntName := s;
+      if nodename = 'rFont' then acceptDuplicates := false;
     end
     else
     if nodename = 'sz' then
@@ -1115,26 +1117,26 @@ begin
     else
     if nodename = 'b' then
     begin
-      if GetAttrValue(node, 'val') <> 'false'
-        then fntStyles := fntStyles + [fssBold];
+      if GetAttrValue(node, 'val') <> 'false' then
+        fntStyles := fntStyles + [fssBold];
     end
     else
     if nodename = 'i' then
     begin
-      if GetAttrValue(node, 'val') <> 'false'
-        then fntStyles := fntStyles + [fssItalic];
+      if GetAttrValue(node, 'val') <> 'false' then
+        fntStyles := fntStyles + [fssItalic];
     end
     else
     if nodename = 'u' then
     begin
-      if GetAttrValue(node, 'val') <> 'false'
-        then fntStyles := fntStyles+ [fssUnderline]
+      if GetAttrValue(node, 'val') <> 'false' then
+        fntStyles := fntStyles+ [fssUnderline]
     end
     else
     if nodename = 'strike' then
     begin
-      if GetAttrValue(node, 'val') <> 'false'
-        then fntStyles := fntStyles + [fssStrikeout];
+      if GetAttrValue(node, 'val') <> 'false' then
+        fntStyles := fntStyles + [fssStrikeout];
     end
     else
     if nodename = 'vertAlign' then
@@ -1154,20 +1156,26 @@ begin
     node := node.NextSibling;
   end;
 
-  // Check whether font is already contained in font list
-  for Result := 0 to FFontList.Count-1 do
-  begin
-    fnt := TsFont(FFontList[Result]);
-    if (fnt.FontName = fntName) and
-       (fnt.Size = fntSize) and
-       (fnt.Style = fntStyles) and
-       (fnt.Color = fntColor) and
-       (fnt.Position = fntPos)
-    then
-      exit;
+  // If this method is called when reading the sharedstrings.xml duplicate
+  // fonts should not be added to the reader's fontList.
+  // As a function result we return the index of the already existing font.
+  if not acceptDuplicates then
+    for Result := 0 to FFontList.Count-1 do
+    begin
+      fnt := TsFont(FFontList[Result]);
+      if SameText(fnt.FontName, fntName) and
+         (fnt.Size = fntSize) and
+         (fnt.Style = fntStyles) and
+         (fnt.Color = fntColor) and
+         (fnt.Position = fntPos)
+      then
+        exit;
   end;
 
-  // Font not yet stored --> create a new font and store it in list
+  // Create a font record and store it in the reader's fontlist.
+  // In case of fonts in styles.xml (nodename = "name"), do no look for
+  // duplicates because this will screw up the font index
+  // used in the xf records
   fnt := TsFont.Create;
   fnt.FontName := fntName;
   fnt.Size := fntSize;
@@ -1812,9 +1820,13 @@ begin
   FixRows(AWorksheet);
 end;
 
-procedure TsSpreadOOXMLReader.ReadFromFile(AFileName: string);
+{ In principle, this method could be simplified by calling ReadFromStream which
+  is essentially a duplication of ReadFromFile. But ReadFromStream leads to
+  worse memory usage. --> KEEP READFROMFILE INTACT }
+procedure TsSpreadOOXMLReader.ReadFromFile(AFilename: String);
 var
   Doc : TXMLDocument;
+  RelsNode: TDOMNode;
   FilePath : string;
   UnZip : TUnZipper;
   FileList : TStringList;
@@ -1822,6 +1834,7 @@ var
   i: Integer;
   fn: String;
   fn_comments: String;
+  XMLStream: TStream;
 begin
   //unzip "content.xml" of "AFileName" to folder "FilePath"
   FilePath := GetTempDir(false);
@@ -1927,6 +1940,7 @@ begin
       else
         // this sheet does not have any cell comments
         continue;
+
       // Extract texts from the comments file found and apply to worksheet.
       if fn_comments <> '' then
       begin
@@ -1939,6 +1953,7 @@ begin
           FreeAndNil(Doc);
         end;
       end;
+      // Add hyperlinks to cells
       ApplyHyperlinks(FWorksheet);
     end;  // for
 
@@ -1949,12 +1964,172 @@ begin
 end;
 
 procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream);
+var
+  Doc : TXMLDocument;
+  RelsNode: TDOMNode;
+  SheetList: TStringList;
+  i: Integer;
+  fn: String;
+  fn_comments: String;
+  XMLStream: TStream;
+begin
+  Doc := nil;
+  SheetList := TStringList.Create;
+  try
+    // Retrieve theme colors
+    XMLStream := TMemoryStream.Create;
+    try
+      if UnzipToStream(AStream, OOXML_PATH_XL_THEME, XMLStream) then
+      begin
+        ReadXMLStream(Doc, XMLStream);
+        ReadThemeElements(Doc.DocumentElement.FindNode('a:themeElements'));
+        FreeAndNil(Doc);
+      end;
+    finally
+      XMLStream.Free;
+    end;
+
+    // process the workbook.xml file
+    XMLStream := TMemoryStream.Create;
+    try
+      if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
+        raise Exception.CreateFmt(rsDefectiveInternalStructure, ['xlsx']);
+      ReadXMLStream(Doc, XMLStream);
+      ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
+      ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
+      ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
+      FreeAndNil(Doc);
+    finally
+      XMLStream.Free;
+    end;
+
+    // process the styles.xml file
+    XMLStream := TMemoryStream.Create;
+    try
+      // Should always exist, just to make sure...
+      if UnzipToStream(AStream, OOXML_PATH_XL_STYLES, XMLStream) then
+      begin
+        ReadXMLStream(Doc, XMLStream);
+        ReadPalette(Doc.DocumentElement.FindNode('colors'));
+        ReadFonts(Doc.DocumentElement.FindNode('fonts'));
+        ReadFills(Doc.DocumentElement.FindNode('fills'));
+        ReadBorders(Doc.DocumentElement.FindNode('borders'));
+        ReadNumFormats(Doc.DocumentElement.FindNode('numFmts'));
+        ReadCellXfs(Doc.DocumentElement.FindNode('cellXfs'));
+        FreeAndNil(Doc);
+      end;
+    finally
+      XMLStream.Free;
+    end;
+
+    // process the sharedstrings.xml file
+    // To do: Use buffered stream instead since shared strings may be large
+    XMLStream := TMemoryStream.Create;
+    try
+      if UnzipToStream(AStream, OOXML_PATH_XL_STRINGS, XMLStream) then
+      begin
+        ReadXMLStream(Doc, XMLStream);
+        ReadSharedStrings(Doc.DocumentElement.FindNode('si'));
+        FreeAndNil(Doc);
+      end;
+    finally
+      XMLStream.Free;
+    end;
+
+    // read worksheets
+    for i:=0 to SheetList.Count-1 do begin
+      // Create worksheet
+      FWorksheet := FWorkbook.AddWorksheet(SheetList[i], true);
+
+      // unzip sheet file
+      XMLStream := TMemoryStream.Create;
+      try
+        fn := OOXML_PATH_XL_WORKSHEETS + Format('sheet%d.xml', [i+1]);
+        if not UnzipToStream(AStream, fn, XMLStream) then
+          Continue;
+        ReadXMLStream(Doc, XMLStream);
+      finally
+        XMLStream.Free;
+      end;
+
+      // Sheet data, formats, etc.
+      ReadSheetViews(Doc.DocumentElement.FindNode('sheetViews'), FWorksheet);
+      ReadSheetFormatPr(Doc.DocumentElement.FindNode('sheetFormatPr'), FWorksheet);
+      ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
+      ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
+      ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
+      ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'));
+      ReadPrintOptions(Doc.DocumentElement.FindNode('printOptions'), FWorksheet);
+      ReadPageMargins(Doc.DocumentElement.FindNode('pageMargins'), FWorksheet);
+      ReadPageSetup(Doc.DocumentElement.FindNode('pageSetup'), FWorksheet);
+      ReadHeaderFooter(Doc.DocumentElement.FindNode('headerFooter'), FWorksheet);
+
+      FreeAndNil(Doc);
+
+      { Comments:
+        The comments are stored in separate "comments<n>.xml" files (n = 1, 2, ...)
+        The relationship which comment belongs to which sheet file must be
+        retrieved from the "sheet<n>.xml.rels" file (n = 1, 2, ...).
+        The rels file contains also the second part of the hyperlink data. }
+      fn := OOXML_PATH_XL_WORKSHEETS_RELS + Format('sheet%d.xml.rels', [i+1]);
+      XMLStream := TMemoryStream.Create;
+      try
+        if UnzipToStream(AStream, fn, XMLStream) then
+        begin
+          // Find exact name of comments<n>.xml file
+          ReadXMLStream(Doc, XMLStream);
+          RelsNode := Doc.DocumentElement.FindNode('Relationship');
+          fn_comments := FindCommentsFileName(RelsNode);
+          // Get hyperlink data
+          ReadHyperlinks(RelsNode);
+          FreeAndNil(Doc);
+        end else
+        if (SheetList.Count = 1) then
+          // If the workbook has only one sheet then the sheet.xml.rels file
+          // is missing
+          fn_comments := 'comments1.xml'
+        else
+          // This sheet does not have any cell comments at all
+          continue;
+      finally
+        XMLStream.Free;
+      end;
+
+      // Extract texts from the comments file found and apply to worksheet.
+      if fn_comments <> '' then
+      begin
+        fn := OOXML_PATH_XL + fn_comments;
+        XMLStream := TMemoryStream.Create;
+        try
+          if UnzipToStream(AStream, fn, XMLStream) then
+          begin
+            ReadXMLStream(Doc, XMLStream);
+            ReadComments(Doc.DocumentElement.FindNode('commentList'), FWorksheet);
+            FreeAndNil(Doc);
+          end;
+        finally
+          XMLStream.Free;
+        end;
+      end;
+
+      // Add hyperlinks to cells
+      ApplyHyperlinks(FWorksheet);
+    end;  // for
+
+  finally
+    SheetList.Free;
+    FreeAndNil(Doc);
+  end;
+end;
+
+                                             (*
+procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream);
 begin
   Unused(AStream);
   raise Exception.Create('[TsSpreadOOXMLReader.ReadFromStream] '+
                          'Method not implemented. Use "ReadFromFile" instead.');
 end;
-
+                                               *)
 
 {------------------------------------------------------------------------------}
 {                             TsSpreadOOXMLWriter                              }
@@ -2331,15 +2506,19 @@ end;
 
 { Writes font parameters to the stream.
   ATag is "font" for the entry in "styles.xml", or "rPr" for the entry for
-  richtext parameters in the shared string list. }
+  richtext parameters in the shared string list.
+  ANameTag is "name" for the entry in "styles.xml", or "rFont" for the entry}
 procedure TsSpreadOOXMLWriter.WriteFont(AStream: TStream; AFont: TsFont;
-  ATag: String);
+  UseInStyleNode: Boolean);
+const
+  TAG: Array[boolean] of string = ('rPr', 'font');
+  NAME_TAG: Array[boolean] of String = ('rFont', 'name');
 var
   s: String;
 begin
   s := '';
   s := s + Format('<sz val="%g" />', [AFont.Size], FPointSeparatorSettings);
-  s := s + Format('<name val="%s" />', [AFont.FontName]);
+  s := s + Format('<%s val="%s" />', [NAME_TAG[UseInStyleNode], AFont.FontName]);
   if (fssBold in AFont.Style) then
     s := s + '<b />';
   if (fssItalic in AFont.Style) then
@@ -2355,7 +2534,7 @@ begin
     fpSuperscript: s := s + '<vertAlign val="superscript" />';
   end;
   AppendToStream(AStream, Format(
-    '<%s>%s</%s>', [ATag, s, ATag]));
+    '<%s>%s</%s>', [TAG[UseInStyleNode], s, TAG[UseInStyleNode]]));
 end;
 
 { Writes the fontlist of the workbook to the stream. }
@@ -2368,7 +2547,7 @@ begin
     '<fonts count="%d">', [Workbook.GetFontCount]));
   for i:=0 to Workbook.GetFontCount-1 do begin
     font := Workbook.GetFont(i);
-    WriteFont(AStream, font, 'font');
+    WriteFont(AStream, font, true);
   end;
   AppendToStream(AStream,
     '</fonts>');
@@ -3601,13 +3780,19 @@ end;
 procedure TsSpreadOOXMLWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
 const
-  MAXBYTES = 32767; //limit for this format
+  MAXBYTES = 32767;  // limit for this format
 var
   CellPosText: string;
   lStyleIndex: Cardinal;
   ResultingValue: string;
+  fnt: TsFont;
+  n: Integer;
+  i: Integer;
+  L: Integer;
+  rtParam: TsRichTextParam;
+  txt: String;
 begin
-  // Office 2007-2010 (at least) support no more characters in a cell;
+  // Office 2007-2010 (at least) supports no more characters in a cell;
   if Length(AValue) > MAXBYTES then
   begin
     ResultingValue := Copy(AValue, 1, MAXBYTES); //may chop off multicodepoint UTF8 characters but well...
@@ -3618,16 +3803,79 @@ begin
   else
     ResultingValue := AValue;
 
-  if not ValidXMLText(ResultingValue) then
+  txt := ResultingValue;
+  if not ValidXMLText(txt) then
     Workbook.AddErrorMsg(
       rsInvalidCharacterInCell, [
       GetCellString(ARow, ACol)
     ]);
 
-  AppendToStream(FSSharedStrings,
-    '<si>' +
-      '<t>' + ResultingValue + '</t>' +
-    '</si>');
+  { Write string to SharedString table }
+
+  if Length(ACell^.RichTextParams) = 0 then
+    // unformatted string
+    AppendToStream(FSSharedStrings,
+      '<si>' +
+        '<t>' + txt + '</t>' +
+      '</si>')
+  else
+  begin
+    // rich-text formatted string
+    L := UTF8Length(Resultingvalue);
+    AppendToStream(FSSharedStrings,
+      '<si>');
+    rtParam := ACell^.RichTextParams[0];
+    if rtParam.StartIndex > 0 then
+    begin
+      txt := UTF8Copy(ResultingValue, 1, rtParam.StartIndex);
+      ValidXMLText(txt);
+      AppendToStream(FSSharedStrings,
+        '<r>' +
+          '<t>' + txt + '</t>' +
+        '</r>'
+      );
+    end;
+    for i := 0 to High(ACell^.RichTextParams) do
+    begin
+      rtParam := ACell^.RichTextParams[i];
+      fnt := FWorkbook.GetFont(rtParam.FontIndex);
+      n := rtParam.EndIndex - rtParam.StartIndex;
+      txt := UTF8Copy(Resultingvalue, rtParam.StartIndex+1, n);
+      ValidXMLText(txt);
+      AppendToStream(FSSharedStrings,
+        '<r>');
+      WriteFont(FSSharedStrings, fnt, false);  // <rPr> ... font data ... </rPr>
+      AppendToStream(FSSharedStrings,
+          '<t>' + txt + '</t>' +
+        '</r>'
+      );
+      if (rtParam.EndIndex < L) and (i = High(ACell^.RichTextParams)) then
+      begin
+        txt := UTF8Copy(ResultingValue, rtParam.EndIndex+1, MaxInt);
+        ValidXMLText(txt);
+        AppendToStream(FSSharedStrings,
+          '<r>' +
+            '<t>' + txt + '</t>' +
+          '</r>'
+        )
+      end else
+      if (i < High(ACell^.RichTextParams)) and (rtParam.EndIndex < ACell^.RichTextParams[i+1].StartIndex)
+      then begin
+        n := ACell^.RichTextParams[i+1].StartIndex - rtParam.EndIndex;
+        txt := UTF8Copy(Resultingvalue, rtParam.EndIndex+1, n);
+        ValidXMLText(txt);
+        AppendToStream(FSSharedStrings,
+          '<r>' +
+            '<t>' + txt + '</t>' +
+          '</r>'
+        );
+      end;
+    end;
+    AppendToStream(FSSharedStrings,
+      '</si>');
+  end;
+
+  { Write shared string index to cell record }
 
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);

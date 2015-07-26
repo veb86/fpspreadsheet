@@ -149,6 +149,7 @@ type
   private
     FColumnStyleList: TFPList;
     FRowStyleList: TFPList;
+    FRichTextFontList: TStringList;
     FHeaderFooterFontList: TObjectList;
 
     // Routines to write parts of files
@@ -163,6 +164,7 @@ type
     procedure WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteTableSettings(AStream: TStream);
     procedure WriteTableStyles(AStream: TStream);
+    procedure WriteTextStyles(AStream: TStream);
     procedure WriteVirtualCells(AStream: TStream; ASheet: TsWorksheet);
 
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -232,7 +234,7 @@ type
 implementation
 
 uses
-  StrUtils, Variants, LazFileUtils, URIParser,
+  StrUtils, Variants, LazFileUtils, URIParser, LazUTF8,
  {$IFDEF FPS_VARISBOOL}
   fpsPatches,
  {$ENDIF}
@@ -958,7 +960,7 @@ end;
   The function result is false if a style with the given name could not be found }
 function TsSpreadOpenDocReader.ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
 var
-  fmt: PsCellFormat;
+  fmt: TsCellFormat;
   styleIndex: Integer;
   i: Integer;
 begin
@@ -980,8 +982,14 @@ begin
       exit;
     styleIndex := TColumnData(FColumnList[i]).DefaultCellStyleIndex;
   end;
-  fmt := FCellFormatList.Items[styleIndex];
-  ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+  fmt := FCellFormatList.Items[styleIndex]^;
+  if (styleIndex = 0) and FWorksheet.HasHyperlink(ACell) then
+  begin
+    // Make sure to use hyperlink font for hyperlink cells in case of default cell style
+    fmt.FontIndex := HYPERLINK_FONTINDEX;
+    Include(fmt.UsedFormattingFields, uffFont);
+  end;
+  ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt);
 
   Result := true;
 end;
@@ -1660,7 +1668,9 @@ var
   fntSize: Single;
   fntStyles: TsFontStyles;
   fntColor: TsColor;
+  fntPosition: TsFontPosition;
   s: String;
+  p: Integer;
 begin
   if ANode = nil then
   begin
@@ -1687,8 +1697,19 @@ begin
   if not ((s = '') or (s = 'none')) then
     Include(fntStyles, fssUnderline);
   s := GetAttrValue(ANode, 'style:text-line-through-style');
+  if s = '' then s := GetAttrValue(ANode, 'style:text-line-through-type');
   if not ((s = '') or (s = 'none')) then
     Include(fntStyles, fssStrikeout);
+
+  fntPosition := fpNormal;
+  s := GetAttrValue(ANode, 'style:text-position');
+  if Length(s) >= 3 then
+  begin
+    if (s[3] = 'b') or (s[1] = '-') then
+      fntPosition := fpSubscript
+    else
+      fntPosition := fpSuperscript;
+  end;
 
   s := GetAttrValue(ANode, 'fo:color');
   if s <> '' then
@@ -1703,13 +1724,13 @@ begin
   end else
   if (APreferredIndex > -1) then
   begin
-    FWorkbook.ReplaceFont(APreferredIndex, fntName, fntSize, fntStyles, fntColor);
+    FWorkbook.ReplaceFont(APreferredIndex, fntName, fntSize, fntStyles, fntColor, fntPosition);
     Result := APreferredIndex;
   end else
   begin
-    Result := FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor);
+    Result := FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor, fntPosition);
     if Result = -1 then
-      Result := FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor);
+      Result := FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor, fntPosition);
   end;
 end;
 
@@ -1825,6 +1846,10 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
+{ In principle, this method could be simplified by calling ReadFromStream which
+  is essentially a duplication of ReadFromFile. But ReadFromStream leads to
+  worse memory usage. --> KEEP READFROMFILE INTACT
+  See fpspeedtest, ods 20k x 100 cells --> out of mem in Win7-32 bit, 4 GB}
 procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string);
 var
   Doc : TXMLDocument;
@@ -1935,12 +1960,132 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream);
+var
+  Doc : TXMLDocument;
+//  FilePath : string;
+//  UnZip : TUnZipper;
+//  FileList : TStringList;
+  BodyNode, SpreadSheetNode, TableNode: TDOMNode;
+  StylesNode: TDOMNode;
+  OfficeSettingsNode: TDOMNode;
+  nodename: String;
+  pageLayout: PsPageLayout;
+  XMLStream: TStream;
+begin
+  {
+  //unzip files into AFileName path
+  FilePath := GetTempDir(false);
+  UnZip := TUnZipper.Create;
+  FileList := TStringList.Create;
+  try
+    FileList.Add('styles.xml');
+    FileList.Add('content.xml');
+    FileList.Add('settings.xml');
+    UnZip.OutputPath := FilePath;
+    Unzip.UnZipFiles(AFileName,FileList);
+  finally
+    FreeAndNil(FileList);
+    FreeAndNil(UnZip);
+  end; //try
+   }
+  Doc := nil;
+  try
+    // process the styles.xml file
+    XMLStream := TMemoryStream.Create;
+    try
+      if UnzipToStream(AStream, 'styles.xml', XMLStream) then
+        ReadXMLStream(Doc, XMLStream);
+    finally
+      XMLStream.Free;
+    end;
+
+    StylesNode := Doc.DocumentElement.FindNode('office:styles');
+    ReadNumFormats(StylesNode);
+    ReadStyles(StylesNode);
+    ReadAutomaticStyles(Doc.DocumentElement.FindNode('office:automatic-styles'));
+    ReadMasterStyles(Doc.DocumentElement.FindNode('office:master-styles'));
+    FreeAndNil(Doc);
+
+    //process the content.xml file
+    XMLStream := TMemoryStream.Create;
+    try
+      if UnzipToStream(AStream, 'content.xml', XMLStream) then
+        ReadXMLStream(Doc, XMLStream);
+    finally
+      XMLStream.Free;
+    end;
+
+    StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
+    ReadNumFormats(StylesNode);
+    ReadStyles(StylesNode);
+
+    BodyNode := Doc.DocumentElement.FindNode('office:body');
+    if not Assigned(BodyNode) then
+      raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:body" not found.');
+
+    SpreadSheetNode := BodyNode.FindNode('office:spreadsheet');
+    if not Assigned(SpreadSheetNode) then
+      raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:spreadsheet" not found.');
+
+    ReadDateMode(SpreadSheetNode);
+
+    //process each table (sheet)
+    TableNode := SpreadSheetNode.FindNode('table:table');
+    while Assigned(TableNode) do
+    begin
+      nodename := TableNode.Nodename;
+      // These nodes occur due to leading spaces which are not skipped
+      // automatically any more due to PreserveWhiteSpace option applied
+      // to ReadXMLFile
+      if nodeName <> 'table:table' then
+      begin
+        TableNode := TableNode.NextSibling;
+        continue;
+      end;
+      FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode, 'table:name'), true);
+      // Collect column styles used
+      ReadColumns(TableNode);
+      // Process each row inside the sheet and process each cell of the row
+      ReadRowsAndCells(TableNode);
+      // Read page layout
+      pageLayout := ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'));
+      if pageLayout <> nil then
+        FWorksheet.PageLayout := pagelayout^;
+      // Handle columns and rows
+      ApplyColWidths;
+      // Page layout
+      FixCols(FWorksheet);
+      FixRows(FWorksheet);
+      // Continue with next table
+      TableNode := TableNode.NextSibling;
+    end; //while Assigned(TableNode)
+
+    FreeAndNil(Doc);
+
+    // process the settings.xml file (Note: it does not always exist!)
+    XMLStream := TMemoryStream.Create;
+    try
+      if UnzipToStream(AStream, 'settings.xml', XMLStream) then
+      begin
+        ReadXMLStream(Doc, XMLStream);
+        OfficeSettingsNode := Doc.DocumentElement.FindNode('office:settings');
+        ReadSettings(OfficeSettingsNode);
+      end;
+    finally
+      XMLStream.Free;
+    end;
+
+  finally
+    FreeAndNil(Doc);
+  end;
+end;
+{
 begin
   Unused(AStream);
   raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] '+
                          'Method not implemented. Use "ReadFromFile" instead.');
 end;
-
+ }
 procedure TsSpreadOpenDocReader.ReadHeaderFooterFont(ANode: TDOMNode;
   var AFontName: String; var AFontSize: Double;
   var AFontStyle: TsHeaderFooterFontStyles; var AFontColor: TsColor);
@@ -1998,13 +2143,16 @@ end;
 procedure TsSpreadOpenDocReader.ReadLabel(ARow, ACol: Cardinal;
   ACellNode: TDOMNode);
 var
-  cellText: String;
+  cellText, spanText: String;
   styleName: String;
   childnode: TDOMNode;
   subnode: TDOMNode;
   nodeName: String;
   cell: PCell;
   hyperlink: string;
+  fmt: TsCellFormat;
+  rtParams: TsRichTextParams;
+  idx: Integer;
 
   procedure AddToCellText(AText: String);
   begin
@@ -2020,6 +2168,7 @@ begin
     like below is much better: }
   cellText := '';
   hyperlink := '';
+  SetLength(rtParams, 0);
   childnode := ACellNode.FirstChild;
   while Assigned(childnode) do
   begin
@@ -2041,7 +2190,21 @@ begin
               AddToCellText(subnode.TextContent);
             end;
           'text:span':
-            AddToCellText(subnode.TextContent);
+            begin
+              spanText := subnode.TextContent;
+              stylename := GetAttrValue(subnode, 'text:style-name');
+              if stylename <> '' then begin
+                idx := FCellFormatList.FindIndexOfName(stylename);
+                if idx > -1 then
+                begin
+                  SetLength(rtParams, Length(rtParams)+1);
+                  rtParams[High(rtParams)].FontIndex := FCellFormatList[idx]^.FontIndex;
+                  rtParams[High(rtParams)].StartIndex := Length(cellText);
+                  rtParams[High(rtParams)].EndIndex := Length(cellText + spanText);
+                end;
+              end;
+              AddToCelLText(spanText);
+            end;
         end;
         subnode := subnode.NextSibling;
       end;
@@ -2056,7 +2219,7 @@ begin
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
 
-  FWorkSheet.WriteUTF8Text(cell, cellText);
+  FWorkSheet.WriteUTF8Text(cell, cellText, rtParams);
   if hyperlink <> '' then
   begin
     // ODS sees relative paths relative to the internal own file structure
@@ -2917,6 +3080,7 @@ var
   nodeName: String;
   family: String;
   styleName: String;
+  parentstyle: String;
   fmt: TsCellFormat;
   numFmtIndexDefault: Integer;
   numFmtName: String;
@@ -2925,6 +3089,7 @@ var
   numFmtParams: TsNumFormatParams;
   clr: TsColor;
   s: String;
+  idx: Integer;
 
   procedure SetBorderStyle(ABorder: TsCellBorder; AStyleValue: String);
   const
@@ -3013,6 +3178,7 @@ begin
     if nodeName = 'style:style' then
     begin
       family := GetAttrValue(styleNode, 'style:family');
+      parentstyle := GetAttrValue(stylenode, 'style:parent-style-name');
 
       // Column styles
       if family = 'table-column' then
@@ -3028,6 +3194,13 @@ begin
         styleName := GetAttrValue(styleNode, 'style:name');
 
         InitFormatRecord(fmt);
+
+        if parentstyle <> '' then
+        begin
+          idx := FCellFormatList.FindIndexOfName(parentstyle);
+          if idx > -1 then
+            fmt := FCellFormatList[idx]^;
+        end;
         fmt.Name := styleName;
 
         numFmtIndex := -1;
@@ -3173,8 +3346,28 @@ begin
           end;
           styleChildNode := styleChildNode.NextSibling;
         end;
-
         FCellFormatList.Add(fmt);
+      end
+      else
+      if family = 'text' then
+      begin
+        // "Rich-text formatting run" style
+        styleName := GetAttrValue(styleNode, 'style:name');
+        styleChildNode := styleNode.FirstChild;
+        while Assigned(styleChildNode) do
+        begin
+          nodeName := styleChildNode.NodeName;
+          if nodeName = 'style:text-properties' then
+          begin
+            InitFormatRecord(fmt);
+            fmt.Name := styleName;
+            fmt.FontIndex := ReadFont(styleChildNode);
+            if fmt.FontIndex > 0 then
+              Include(fmt.UsedFormattingFields, uffFont);
+            FCellFormatList.Add(fmt);
+          end;
+          styleChildNode := stylechildNode.NextSibling;
+        end;
       end;
     end;
     styleNode := styleNode.NextSibling;
@@ -3410,6 +3603,9 @@ begin
   FSMetaInfManifest.Position := 0;
 end;
 
+{ Writes the node "office:automatic-styles". Although this node occurs in both
+  "contents.xml" and "styles.xml" files, this method is called only for writing
+  to "styles.xml". }
 procedure TsSpreadOpenDocWriter.WriteAutomaticStyles(AStream: TStream);
 var
   i: Integer;
@@ -3640,11 +3836,12 @@ begin
   AppendToStream(FSContent,
       '<office:automatic-styles>');
 
-  WriteNumFormats(FSContent);
-  WriteColStyles(FSContent);
-  WriteRowStyles(FSContent);
-  WriteTableStyles(FSContent);
-  WriteCellStyles(FSContent);
+  WriteNumFormats(FSContent);        // "N1" ...
+  WriteColStyles(FSContent);         // "co1" ...
+  WriteRowStyles(FSContent);         // "ro1" ...
+  WriteTableStyles(FSContent);       // "ta1" ...
+  WriteCellStyles(FSContent);        // "ce1" ...
+  WriteTextStyles(FSContent);        // "T1" ...
 
   AppendToStream(FSContent,
       '</office:automatic-styles>');
@@ -4221,6 +4418,7 @@ begin
 
   FColumnStyleList := TFPList.Create;
   FRowStyleList := TFPList.Create;
+  FRichTextFontList := TStringList.Create;
   FHeaderFooterFontList := TObjectList.Create;
 
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
@@ -4242,6 +4440,7 @@ begin
   for j:=FRowStyleList.Count-1 downto 0 do TObject(FRowStyleList[j]).Free;
   FRowStyleList.Free;
 
+  FRichTextFontList.Free;    // Do not destroy fonts, they are owned by Workbook
   FHeaderFooterFontList.Free;
 
   inherited Destroy;
@@ -4614,6 +4813,12 @@ begin
   if fssStrikeout in AFont.Style then
     Result := Result + 'style:text-line-through-style="solid" ';
 
+  if AFont.Position = fpSubscript then
+    Result := Result + 'style:text-position="sub 58%" ';
+
+  if AFont.Position = fpSuperscript then
+    Result := Result + 'style:text-position="super 58%" ';
+
   if AFont.Color <> defFnt.Color then
     Result := Result + Format('fo:color="%s" ', [ColorToHTMLColorStr(AFont.Color)]);
 end;
@@ -4879,9 +5084,44 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocWriter.WriteTextStyles(AStream: TStream);
+var
+  cell: PCell;
+  rtp: TsRichTextParam;
+  styleCounter: Integer;
+  fnt: TsFont;
+  fntStr: String;
+  styleName: String;
+  sheet: TsWorksheet;
+  i: Integer;
+begin
+  styleCounter := 0;
+  for i := 0 to FWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    for cell in sheet.Cells do
+    begin
+      if Length(cell^.RichTextParams) = 0 then
+        Continue;
+      for rtp in cell^.RichTextParams do
+      begin
+        inc(styleCounter);
+        stylename := Format('T%d', [stylecounter]);
+        fnt := FWorkbook.GetFont(rtp.FontIndex);
+        FRichTextFontList.AddObject(stylename, fnt);
+        fntStr := WriteFontStyleXMLAsString(fnt);
+        AppendToStream(AStream,
+          '<style:style style:name="' + stylename + '" style:family="text">' +
+            '<style:text-properties ' + fntStr + '/>' +
+          '</style:style>');
+      end;
+    end;
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
-  Creates an XML string for inclusion of the textrotation style option into the
+  Creates an XML string for inclusion of the text rotation style option into the
   written file from the textrotation setting in the format cell.
   Is called from WriteStyles (via WriteStylesXMLAsString).
 -------------------------------------------------------------------------------}
@@ -5196,8 +5436,11 @@ var
   txt: ansistring;
   textp, target, bookmark, comment: String;
   fmt: TsCellFormat;
+  fnt: TsFont;
   hyperlink: PsHyperlink;
   u: TUri;
+  i, idx, n, len: Integer;
+  rtParam: TsRichTextParam;
 begin
   Unused(ARow, ACol);
 
@@ -5254,8 +5497,52 @@ begin
       '</text:p>', [target, txt]);
 
   end else
+  begin
     // No hyperlink, normal text only
-    textp := '<text:p>' + txt + '</text:p>';
+    if Length(ACell^.RichTextParams) = 0 then
+      // Standard text formatting
+      textp := '<text:p>' + txt + '</text:p>'
+    else
+    begin
+      // "Rich-text" formatting
+      len := UTF8Length(AValue);
+      textp := '<text:p>';
+      rtParam := ACell^.RichTextParams[0];
+      if rtParam.StartIndex > 0 then
+      begin
+        txt := UTF8Copy(AValue, 1, rtParam.StartIndex);
+        ValidXMLText(txt);
+        textp := textp + txt;
+      end;
+      for i := 0 to High(ACell^.RichTextParams) do
+      begin
+        rtParam := ACell^.RichTextParams[i];
+        fnt := FWorkbook.GetFont(rtParam.FontIndex);
+        idx := FRichTextFontList.IndexOfObject(fnt);
+        n := rtParam.EndIndex - rtParam.StartIndex;
+        txt := UTF8Copy(AValue, rtParam.StartIndex+1, n);
+        ValidXMLText(txt);
+        textp := textp +
+          '<text:span text:style-name="' + FRichTextFontList[idx] + '">' +
+            txt +
+          '</text:span>';
+        if (rtParam.EndIndex < len) and (i = High(ACell^.RichTextParams)) then
+        begin
+          txt := UTF8Copy(AValue, rtParam.EndIndex+1, MaxInt);
+          ValidXMLText(txt);
+          textp := textp + txt;
+        end else
+        if (i < High(ACell^.RichTextParams)) and (rtParam.EndIndex < ACell^.RichTextParams[i+1].StartIndex)
+        then begin
+          n := ACell^.RichTextParams[i+1].StartIndex - rtParam.EndIndex;
+          txt := UTF8Copy(AValue, rtParam.EndIndex+1, n);
+          ValidXMLText(txt);
+          textp := textp + txt;
+        end;
+      end;
+      textp := textp + '</text:p>';
+    end;
+  end;
 
   // Write it ...
   AppendToStream(AStream, Format(

@@ -1,3 +1,14 @@
+{**
+  Unit: fpspreadsheet
+
+  implements **spreadsheet documents** and their  properties and methods.
+
+  AUTHORS: Felipe Monteiro de Carvalho, Reinier Olislagers, Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
+}
+
 {@@ ----------------------------------------------------------------------------
   Unit fpspreadsheet implements <b>spreadsheet documents</b> and their
   properties and methods.
@@ -30,6 +41,18 @@ type
   TsWorkbook = class;
   TsBasicSpreadReader = class;
   TsBasicSpreadWriter = class;
+
+  {**
+    Type: TRow -- record containing information about a spreadsheet row
+
+    Members:
+      - Row -- The index of the row (beginning with 0)
+      - Height -- The height of the row (expressed as line count of the default font)
+
+    Notes:
+      - Only rows with heights that cannot be derived from the font height have
+        a row record.
+    }
 
   {@@ The record TRow contains information about a spreadsheet row:
     @param Row   The index of the row (beginning with 0)
@@ -239,9 +262,10 @@ type
     procedure WriteRPNFormula(ACell: PCell;
       AFormula: TsRPNFormula); overload;
 
-    function WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring): PCell; overload;
-//    procedure WriteUTF8Text(ACell: PCell; AText: ansistring); overload;
-    procedure WriteUTF8Text(ACell: PCell; AText: String; ARichTextparams: TsRichTextParams = nil); overload;
+    function WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring;
+      ARichTextParams: TsRichTextParams = nil): PCell; overload;
+    procedure WriteUTF8Text(ACell: PCell; AText: String;
+      ARichTextparams: TsRichTextParams = nil); overload;
 
     { Writing of cell attributes }
     function WriteBackground(ARow, ACol: Cardinal; AStyle: TsFillStyle;
@@ -890,9 +914,9 @@ begin
 end;
 
 
-{*******************************************************************************
-*                           TsWorksheet                                        *
-*******************************************************************************}
+{------------------------------------------------------------------------------}
+{                           TsWorksheet                                        }
+{------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsWorksheet class.
@@ -3461,15 +3485,22 @@ end;
   On formats that don't support unicode, the text will be converted
   to ISO Latin 1.
 
-  @param  ARow      The row of the cell
-  @param  ACol      The column of the cell
-  @param  AText     The text to be written encoded in utf-8
+  @param  ARow             The row of the cell
+  @param  ACol             The column of the cell
+  @param  AText            The text to be written encoded in utf-8
+  @param  ARichTextParams  Array of formatting instructions for characters or
+                           groups of characters (see TsRichTextParam).
+
   @return Pointer to cell created or used
+
+  @see    TsRichTextParams
+  @see    TsRichTextParam
 -------------------------------------------------------------------------------}
-function TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring): PCell;
+function TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring;
+  ARichTextParams: TsRichTextParams = nil): PCell;
 begin
   Result := GetCell(ARow, ACol);
-  WriteUTF8Text(Result, AText);
+  WriteUTF8Text(Result, AText, ARichTextParams);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3478,8 +3509,13 @@ end;
   On formats that don't support unicode, the text will be converted
   to ISO Latin 1.
 
-  @param  ACell     Pointer to the cell
-  @param  AText     The text to be written encoded in utf-8
+  @param  ACell            Pointer to the cell
+  @param  AText            The text to be written encoded in utf-8
+  @param  ARichTextParams  Array of formatting instructions for characters or
+                           groups of characters (see TsRichTextParam).
+
+  @see    TsRichTextParams
+  @see    TsRichTextParam
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: String;
   ARichTextParams: TsRichTextParams = nil);
@@ -3537,6 +3573,7 @@ end;
   @param  ARow         Cell row index
   @param  ACol         Cell column index
   @param  ANumber      Number to be written
+
   @return Pointer to cell created or used
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double): PCell;
@@ -6032,9 +6069,9 @@ begin
 end;
 
 
-{*******************************************************************************
-*                              TsWorkbook                                      *
-*******************************************************************************}
+{------------------------------------------------------------------------------}
+{                              TsWorkbook                                      }
+{------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
   Helper method called before reading the workbook. Clears the error log.
@@ -7664,9 +7701,9 @@ begin
 end;
    *)
 
-{*******************************************************************************
-*                          TsBasicSpreadReaderWriter                           *
-*******************************************************************************}
+{------------------------------------------------------------------------------}
+{                          TsBasicSpreadReaderWriter                           }
+{------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the reader/writer. Has the workbook to be read/written as a
@@ -7696,9 +7733,9 @@ begin
 end;
 
 
-{*******************************************************************************
-*                             TsBasicSpreadWriter                              *
-*******************************************************************************}
+{------------------------------------------------------------------------------}
+{                             TsBasicSpreadWriter                              }
+{------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
   Checks limitations of the writer, e.g max row/column count
@@ -7724,5 +7761,4 @@ initialization
 finalization
   SetLength(GsSpreadFormats, 0);
 
-end.
-
+end.   {** End Unit: fpspreadsheet }

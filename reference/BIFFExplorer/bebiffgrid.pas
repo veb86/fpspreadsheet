@@ -101,6 +101,7 @@ type
     procedure ShowRefreshAll;
     procedure ShowRightMargin;
     procedure ShowRK;
+    procedure ShowRString;
     procedure ShowRow;
     procedure ShowSelection;
     procedure ShowSharedFormula;
@@ -132,7 +133,12 @@ type
       ACharCount: Integer; out AString: String; out ANumbytes: Integer); overload;
     procedure ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
       out AString: String; out ANumBytes: Integer;
+      out ARichTextRuns: TsRichTextFormattingRuns;
+      out ABufIndexOfFirstRichTextRun: LongWord;
       IgnoreCompressedFlag: Boolean = false); overload;
+    procedure ExtractString(ABufIndex: Integer; ALenbytes: Byte; AUnicode: Boolean;
+      out AString: String; out ANumBytes: Integer;
+      IgnoreCompressedFlag: Boolean=False); overload;
     procedure PopulateGrid;
     procedure ShowInRow(var ARow: Integer; var AOffs: LongWord; ASize: Word;
       AValue,ADescr: String; ADescrOnly: Boolean = false);
@@ -225,7 +231,7 @@ end;
   The string is assumed to be a UTF16 string if AUnicode=true, otherwise it is
   an ansi string. }
 procedure TBIFFGrid.ExtractString(ABufIndex: Integer; AUnicode: Boolean;
-  ACharCount: Integer;out AString: String; out ANumbytes: Integer);
+  ACharCount: Integer; out AString: String; out ANumbytes: Integer);
 var
   sa: AnsiString;
   sw: WideString;
@@ -265,7 +271,21 @@ begin
 end;
 
 procedure TBIFFGrid.ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
-  out AString: String; out ANumBytes: Integer; IgnoreCompressedFlag: Boolean = false);
+  out AString: String; out ANumBytes: Integer;
+  IgnoreCompressedFlag: Boolean = false);
+var
+  rtfRuns: TsRichTextFormattingRuns;
+  rtfIndex: LongWord;
+begin
+  ExtractString(ABufIndex, ALenbytes, AUnicode, AString, ANumBytes,
+    rtfRuns, rtfIndex, IgnoreCompressedFlag);
+end;
+
+procedure TBIFFGrid.ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
+  out AString: String; out ANumBytes: Integer;
+  out ARichTextRuns: TsRichTextFormattingRuns;
+  out ABufIndexOfFirstRichTextRun: LongWord;
+  IgnoreCompressedFlag: Boolean = false);
 var
   ls: Integer;    // Character count of string
   w: Word;
@@ -273,12 +293,17 @@ var
   optn: Byte;
   n: Integer;     // Byte count in string character array
   asianPhoneticBytes: DWord;
-  richRuns: Word;
+  numRichRuns: Word;
   offs: Integer;
+  rtfBufIndex: Int64;
+  rtfIndex: Integer;
 begin
+  ABufIndexOfFirstRichTextRun := LongWord(-1);
+  SetLength(ARichTextRuns, 0);
+
   if Length(FBuffer) = 0 then begin
     AString := '';
-      ANumBytes := 0;
+    ANumBytes := 0;
     exit;
   end;
   if ALenBytes = 1 then
@@ -291,13 +316,16 @@ begin
     offs := ALenBytes;
     optn := FBuffer[ABufIndex + ALenBytes];
     inc(offs, 1);
+
     if optn and $08 <> 0 then  // rich text
     begin
       Move(FBuffer[ABufIndex + offs], w, 2);
-      richRuns := WordLEToN(w);
+      numRichRuns := WordLEToN(w);
       inc(offs, 2);
     end else
-      richRuns := 0;
+      numRichRuns := 0;
+    SetLength(ARichTextRuns, numRichRuns);
+
     if optn and $04 <> 0 then  // Asian phonetic
     begin
       Move(FBuffer[ABufIndex + offs], dw, 4);
@@ -305,16 +333,31 @@ begin
       inc(offs, 4);
     end else
       asianPhoneticBytes := 0;
+
     if (optn  and $01 = 0) and (not IgnoreCompressedFlag) then
       // compressed --> 1 byte per character
       ExtractString(ABufIndex + offs, false, ls, AString, n)
     else
       // non-compressed unicode
       ExtractString(ABufIndex + offs, true, ls, AString, n);
-    ANumBytes := offs + n + richRuns * 4 + asianPhoneticBytes;
+
+    ANumBytes := offs + n + numRichRuns * 4 + asianPhoneticBytes;
+
+    rtfIndex := 0;
+    rtfBufIndex := ABufIndex + offs + n;
+    ABufIndexOfFirstRichTextRun := rtfBufIndex;
+    while rtfIndex < numRichRuns do begin
+      Move(FBuffer[rtfBufIndex], w, 2);
+      ARichTextRuns[rtfIndex].FirstIndex := WordLEToN(w);
+      Move(FBuffer[rtfBufIndex+2], w, 2);
+      ARichTextRuns[rtfIndex].FontIndex := WordLEToN(w);
+      inc(rtfIndex);
+      inc(rtfBufIndex, 4);
+    end;
   end else
   begin
     // ansi string
+    SetLength(ARichTextRuns, 0);  // no rich text formatting for ansi strings
     ExtractString(ABufIndex + ALenBytes, false, ls, AString, n);
     ANumbytes := ALenBytes + n;
   end;
@@ -471,6 +514,8 @@ begin
       ShowMulBlank;
     $00BD:
       ShowMulRK;
+    $00D6:
+      ShowRString;
     $00D7:
       ShowDBCell;
     $00DA:
@@ -1235,12 +1280,14 @@ var
   sa: ansistring;
   sw: widestring;
   ls: Integer;
-  i: Integer;
+  i, j: Integer;
   w: Word;
   n: Integer;
   run: Integer;
   total2: Integer;
   optn: Byte;
+  rtfRuns: TsRichTextFormattingRuns;
+  rtfBufferIndex: LongWord;
 begin
   case FInfo of
     BIFFNODE_TXO_CONTINUE1:
@@ -1345,9 +1392,20 @@ begin
         for i:=FCounterSST+1 to FTotalSST do
         begin
           FCounterSST := i;
-          ExtractString(FBufferIndex, 2, true, s, numBytes);
+          ExtractString(FBufferIndex, 2, true, s, numBytes, rtfRuns, rtfBufferIndex);
           ShowInRow(FCurrRow, FBufferIndex, numBytes, s, Format('Shared string #%d', [i]));
           inc(n);
+          if Length(rtfRuns) > 0 then begin
+            numBytes := 2;
+            for j:=0 to High(rtfRuns) do
+            begin
+              ShowInRow(FCurrRow, rtfBufferIndex, 2, IntToStr(rtfRuns[j].FirstIndex),
+                Format('Rich-Text formatting run #%d, index of first character', [j]));
+              ShowInRow(FCurrRow, rtfBufferIndex, 2, IntToStr(rtfRuns[j].FontIndex),
+                Format('Rich-Text formatting run #%d, font index', [j]));
+              inc(n, 2);
+            end;
+          end;
           if FPendingCharCount > 0 then
           begin
             FInfo := BIFFNODE_SST_CONTINUE;
@@ -1838,6 +1896,7 @@ var
   ansiStr: AnsiString;
   s: String;
   i, n: Integer;
+  rtfRuns: TsRichTextFormattingRuns;
 begin
   BeginUpdate;
   RowCount := FixedRows + 1000;
@@ -2112,7 +2171,7 @@ begin
     numBytes := 2;
     Move(FBuffer[FBufferIndex], w, numBytes);
     w := WordLEToN(w);
-    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(2), 'Color index');
+    ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w), 'Color index');
 
     numBytes := 2;
     Move(FBuffer[FBufferIndex], w, numBytes);
@@ -3309,6 +3368,7 @@ begin
     'Index to XF record');
 end;
 
+// Called for LABEL
 procedure TBIFFGrid.ShowLabelCell;
 var
   numBytes: Integer;
@@ -4997,6 +5057,72 @@ begin
 end;
 
 
+procedure TBIFFGrid.ShowRString;
+var
+  numBytes: Integer;
+  b: Byte;
+  w: Word;
+  s: String;
+  len: Integer;
+  j: Integer;
+  wideStr: wideString;
+  ansiStr: ansiString;
+begin
+  if FFormat < sfExcel5 then
+    exit;
+
+  RowCount := FixedRows + 5;
+
+  ShowRowColData(FBufferIndex);
+
+  numBytes := 2;
+  Move(FBuffer[FBufferIndex], w, numBytes);
+  w := WordLEToN(w);
+  ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
+    'Index of XF record');
+
+  // String length
+  Move(FBuffer[FBufferIndex], w, 2);
+  len := WordLEToN(w);
+
+  if FFormat = sfExcel8 then
+  begin
+    SetLength(widestr, len);
+    Move(FBuffer[FBufferIndex+3], widestr[1], len*2);
+    s := UTF8Encode(WideStringLEToN(widestr));
+    numbytes := 3 + len*2;
+  end else
+  begin
+    SetLength(ansistr, len);
+    Move(FBuffer[FBufferIndex+2], ansistr[1], len);
+    s := AnsiToUTF8(ansistr);
+    numbytes := 2 + len;
+  end;
+
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+    Format('%s string, 16-bit string length', [GetStringType]));
+
+  // Number of rich-text formatting runs
+  numbytes := IfThen(FFormat = sfExcel8, 2, 1);
+  Move(FBuffer[FBufferIndex], w, numbytes);
+  len := WordLEToN(w);
+  ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(len),
+    'Count of rich-text formatting runs');
+
+  // Formatting run data
+  RowCount := RowCount + 2*len;
+  for j:=0 to len-1 do
+  begin
+    Move(FBuffer[FBufferIndex], w, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+      Format('Rich-Text formatting run #%d, index of first character', [j]));
+    Move(FBuffer[FBufferIndex], w, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(WordLEToN(w)),
+      Format('Rich-Text formatting run #%d, font index', [j]));
+  end;
+end;
+
+
 procedure TBIFFGrid.ShowSelection;
 var
   numBytes: Integer;
@@ -5195,7 +5321,10 @@ var
   numBytes: Integer;
   s: String;
   total1, total2: DWord;
-  i, n: Integer;
+  i, j, n: Integer;
+  rtfRuns: TsRichTextFormattingRuns;
+  rtfIndex: LongWord;
+  w: Word;
 begin
   numBytes := 4;
   Move(FBuffer[FBufferIndex], total1, numBytes);
@@ -5204,7 +5333,7 @@ begin
   total2 := DWordLEToN(total2);
   FTotalSST := total2;
 
-  RowCount := FixedRows + 2 + total2;
+  RowCount := FixedRows + 1000;
 
   ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(total1),
     'Total number of shared strings in the workbook');
@@ -5215,10 +5344,22 @@ begin
   n := 0;
   for i:=1 to FTotalSST do begin
     FCounterSST := i;
-    ExtractString(FBufferIndex, 2, true, s, numBytes);  // BIFF8 only --> 2 length bytes
+    ExtractString(FBufferIndex, 2, true, s, numBytes, rtfRuns, rtfIndex);  // BIFF8 only --> 2 length bytes
     inc(n);
-    if FPendingCharCount = 0 then
-      ShowInRow(FCurrRow, FBufferIndex, numBytes, s, Format('Shared string #%d', [i]))
+    if FPendingCharCount = 0 then begin
+      ShowInRow(FCurrRow, FBufferIndex, numbytes, s, IfThen(Length(rtfRuns) > 0,
+        Format('Shared string #%d (Count of Rich-Text formatting runs: %d)', [i, Length(rtfRuns)]),
+        Format('Shared string #%d', [i])));
+//       ShowInRow(FCurrRow, FBufferIndex, numBytes, s, Format('Shared string #%d', [i]));
+      for j:=0 to High(rtfRuns) do
+      begin
+        ShowInRow(FCurrRow, rtfIndex, 2, IntToStr(rtfRuns[j].FirstIndex),
+          Format('  Rich-Text formatting run #%d, index of first character', [j]));
+        ShowInRow(FCurrRow, rtfIndex, 2, IntToStr(rtfRuns[j].FontIndex),
+          Format('  Rich-Text formatting run #%d, font index', [j]));
+        inc(n, 2);
+      end;
+    end
     else
     begin
       ShowInRow(FCurrRow, FBufferIndex, numbytes, s, Format('Shared string #%d - partial (--> CONTINUE)', [i]));

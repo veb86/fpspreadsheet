@@ -1253,6 +1253,9 @@ end;
 procedure TsNumFormatParser.ScanFormat;
 var
   done: Boolean;
+  s: String;
+  n: Integer;
+  uch: Cardinal;
 begin
   done := false;
   while (FCurrent < FEnd) and (FStatus = psOK) and (not done) do begin
@@ -1270,7 +1273,15 @@ begin
       '_':  // Excel: Leave width of next character empty
         begin
           FToken := NextToken;
-          AddElement(nftEmptyCharWidth, FToken);
+          uch := UTF8CharacterToUnicode(FCurrent, n);
+          if n > 1 then
+          begin
+            AddElement(nftEmptyCharWidth, UnicodeToUTF8(uch));
+            inc(FCurrent, n-1);
+            FToken := NextToken;
+            Continue;
+          end else
+            AddElement(nftEmptyCharWidth, FToken);
         end;
       '@':  // Excel: Indicates text format
         begin
@@ -1301,7 +1312,13 @@ begin
           Exit;
         end;
       else
-        AddElement(nftText, FToken);
+        uch := UTF8CharacterToUnicode(FCurrent, n);
+        if n > 1 then
+        begin
+          AddElement(nftText, UnicodeToUTF8(uch));
+          inc(FCurrent, n-1);
+        end else
+          AddElement(nftText, FToken);
     end;
     FToken := NextToken;
   end;

@@ -353,6 +353,8 @@ type
     FIncompleteNoteLength: Word;
     FFirstNumFormatIndexInFile: Integer;
     FPalette: TsPalette;
+    FWorksheetNames: TStrings;
+    FCurrentWorksheet: Integer;
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
@@ -437,6 +439,10 @@ type
     procedure ReadVCENTER(AStream: TStream);
     // Read WINDOW2 record (gridlines, sheet headers)
     procedure ReadWindow2(AStream: TStream); virtual;
+    procedure ReadWorkbookGlobals(AStream: TStream); virtual;
+    procedure ReadWorksheet(AStream: TStream); virtual;
+
+    procedure InternalReadFromStream(AStream: TStream);
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -946,10 +952,6 @@ end;
   everything is known.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.FixColors;
-var
-  i: Integer;
-  fnt: TsFont;
-  fmt: PsCellFormat;
 
   procedure FixColor(var AColor: TsColor);
   begin
@@ -957,7 +959,17 @@ var
       AColor := FPalette[AColor and $00FFFFFF];
   end;
 
+var
+  i: Integer;
+  fnt: TsFont;
+  fmt: PsCellFormat;
 begin
+  for i:=0 to FFontList.Count-1 do
+  begin
+    fnt := TsFont(FFontList[i]);
+    if fnt <> nil then FixColor(fnt.Color);
+  end;
+
   for i:=0 to FWorkbook.GetFontCount - 1 do
   begin
     fnt := FWorkbook.GetFont(i);
@@ -2254,6 +2266,17 @@ begin
     FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
 end;
 
+{ Reads the workbook globals. }
+procedure TsSpreadBIFFReader.ReadWorkbookGlobals(AStream: TStream);
+begin
+  // To be overridden by BIFF5 and BIFF8
+end;
+
+procedure TsSpreadBIFFReader.ReadWorksheet(AStream: TStream);
+begin
+  // To be overridden by BIFF5 and BIFF8
+end;
+
 {@@ ----------------------------------------------------------------------------
   Populates the reader's palette by default colors. Will be overwritten if the
   file contains a palette on its own
@@ -2261,6 +2284,64 @@ end;
 procedure TsSpreadBIFFReader.PopulatePalette;
 begin
   FPalette.AddBuiltinColors;
+end;
+
+procedure TsSpreadBIFFReader.InternalReadFromStream(AStream: TStream);
+var
+  BIFFEOF: Boolean;
+begin
+{  OLEStream := TMemoryStream.Create;
+  try
+    OLEStorage := TOLEStorage.Create;
+    try
+      // Only one stream is necessary for any number of worksheets
+      OLEDocument.Stream := AStream; //OLEStream;
+      OLEStorage.ReadOLEStream(AStream, OLEDocument, AStreamName);
+    finally
+      OLEStorage.Free;
+    end;
+ }
+
+    // Check if the operation succeeded
+    if AStream.Size = 0 then
+      raise Exception.Create('[TsSpreadBIFFReader.InternalReadFromStream] Reading of OLE document failed');
+
+    // Rewind the stream and read from it
+    AStream.Position := 0;
+
+    {Initializations }
+    FWorksheetNames := TStringList.Create;
+    try
+      FCurrentWorksheet := 0;
+      BIFFEOF := false;
+
+      { Read workbook globals }
+      ReadWorkbookGlobals(AStream);
+
+      { Check for the end of the file }
+      if AStream.Position >= AStream.Size then
+        BIFFEOF := true;
+
+      { Now read all worksheets }
+      while not BIFFEOF do
+      begin
+        ReadWorksheet(AStream);
+
+        // Check for the end of the file
+        if AStream.Position >= AStream.Size then
+          BIFFEOF := true;
+
+        // Final preparations
+        inc(FCurrentWorksheet);
+        // It can happen in files written by Office97 that the OLE directory is
+        // at the end of the file.
+        if FCurrentWorksheet = FWorksheetNames.Count then
+          BIFFEOF := true;
+      end;
+    finally
+      { Finalization }
+      FreeAndNil(FWorksheetNames);
+    end;
 end;
 
 

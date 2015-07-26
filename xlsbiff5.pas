@@ -73,9 +73,6 @@ type
   { TsSpreadBIFF5Reader }
 
   TsSpreadBIFF5Reader = class(TsSpreadBIFFReader)
-  private
-    FWorksheetNames: TStringList;
-    FCurrentWorksheet: Integer;
   protected
     procedure PopulatePalette; override;
     { Record writing methods }
@@ -83,15 +80,15 @@ type
     procedure ReadFONT(const AStream: TStream);
     procedure ReadFORMAT(AStream: TStream); override;
     procedure ReadLABEL(AStream: TStream); override;
-    procedure ReadWorkbookGlobals(AStream: TStream);
-    procedure ReadWorksheet(AStream: TStream);
-    procedure ReadRichString(AStream: TStream);
+    procedure ReadRSTRING(AStream: TStream);
     procedure ReadStandardWidth(AStream: TStream; ASheet: TsWorksheet);
     procedure ReadStringRecord(AStream: TStream); override;
+    procedure ReadWorkbookGlobals(AStream: TStream); override;
+    procedure ReadWorksheet(AStream: TStream); override;
     procedure ReadXF(AStream: TStream);
   public
     { General reading methods }
-    procedure ReadFromFile(AFileName: string); override;
+//    procedure ReadFromFile(AFileName: string); override;
     procedure ReadFromStream(AStream: TStream); override;
   end;
 
@@ -323,6 +320,13 @@ type
     TextLen: Word;
   end;
 
+  TBiff5_RichTextFormattingRun = packed record
+    FirstIndex: Byte;
+    FontIndex: Byte;
+  end;
+
+  TBiff5_RichTextFormattingRuns = array of TBiff5_RichTextFormattingRun;
+
   TBIFF5_XFRecord = packed record
     RecordID: Word;
     RecordSize: Word;
@@ -426,7 +430,7 @@ begin
       INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
       INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
       INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
-      INT_EXCEL_ID_RSTRING       : ReadRichString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+      INT_EXCEL_ID_RSTRING       : ReadRString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
       INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
       INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
       INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
@@ -508,12 +512,11 @@ begin
 
   SetLength(s, Len);
   AStream.ReadBuffer(s[1], Len*SizeOf(AnsiChar));
-//  sheetName := AnsiToUTF8(s);
   sheetName := ConvertEncoding(s, FCodePage, EncodingUTF8);
   FWorksheetNames.Add(sheetName);
 end;
 
-procedure TsSpreadBIFF5Reader.ReadRichString(AStream: TStream);
+procedure TsSpreadBIFF5Reader.ReadRSTRING(AStream: TStream);
 var
   L: Word;
   B, F: Byte;
@@ -593,6 +596,7 @@ begin
   FIncompleteCell := nil;
 end;
 
+(*
 procedure TsSpreadBIFF5Reader.ReadFromFile(AFileName: string);
 var
   MemStream: TMemoryStream;
@@ -620,7 +624,7 @@ begin
     OLEStorage.Free;
   end;
 end;
-
+*)
 procedure TsSpreadBIFF5Reader.ReadXF(AStream: TStream);
 var
   rec: TBIFF5_XFRecord;
@@ -642,15 +646,7 @@ begin
   AStream.ReadBuffer(rec.FontIndex, SizeOf(rec) - 2*SizeOf(Word));
 
   // Font index
-  i := WordLEToN(rec.FontIndex);
-//  if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
-  fmt.FontIndex := FixFontIndex(i);
-  {
-  fnt := TsFont(FFontList[i]);
-  fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
-  if fmt.FontIndex = -1 then
-    fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
-    }
+  fmt.FontIndex := FixFontIndex(WordLEToN(rec.FontIndex));
   if fmt.FontIndex > 1 then
     Include(fmt.UsedFormattingFields, uffFont);
 
@@ -782,7 +778,92 @@ end;
 
 procedure TsSpreadBIFF5Reader.ReadFromStream(AStream: TStream);
 var
+  OLEStream: TMemoryStream;
+  OLEStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
+begin
+  OLEStream := TMemoryStream.Create;
+  try
+    OLEStorage := TOLEStorage.Create;
+    try
+      // Only one stream is necessary for any number of worksheets
+      OLEDocument.Stream := OLEStream;
+      OLEStorage.ReadOLEStream(AStream, OLEDocument, 'Book');
+    finally
+      OLEStorage.Free;
+    end;
+    InternalReadFromStream(OLEStream);
+  finally
+    OLEStream.Free;
+  end;
+end;
+
+(*
+procedure TsSpreadBIFF5Reader.ReadFromStream(AStream: TStream);
+var
   BIFF5EOF: Boolean;
+  OLEStream: TMemoryStream;
+  OLEStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
+begin
+  OLEStream := TMemoryStream.Create;
+  try
+    OLEStorage := TOLEStorage.Create;
+    try
+      // Only one stream is necessary for any number of worksheets
+      OLEDocument.Stream := OLEStream;
+      OLEStorage.ReadOLEStream(AStream, OLEDocument);
+    finally
+      OLEStorage.Free;
+    end;
+
+    // Check if the operation succeeded
+    if OLEStream.Size = 0 then
+      raise Exception.Create('[TsSpreadBIFF5Reader.ReadFromFile] Reading of OLE document failed');
+
+    // Rewind the stream and read from it
+    OLEStream.Position := 0;
+
+    {Initializations }
+    FWorksheetNames := TStringList.Create;
+    try
+      FCurrentWirksheet := 0;
+      BIFF5EOF := false;
+
+      { Read workbook globals }
+      ReadWorkbookGlobals(OLEStream);
+
+      { Check for the end of the file }
+      if OLEStream.Position >= AStream.Size then
+        BIFF5EOF := true;
+
+      { Now read all worksheets }
+      while not BIFF5EOF do
+      begin
+        ReadWorksheet(OLEStream);
+
+        // Check for the end of the fild
+        if OLEStream.Position >= OLEStream.Size then
+          BIFF5EOF := true;
+
+        // Final preparations
+        inc(FCurrentWorksheet);
+        // It can happen in files written by Office97 that the OLE directory is
+        // at the end of the file.
+        if FCurrentWorksheet = FWorksheetNames.Count then
+          BIFF5EOF := true;
+      end;
+
+    finally
+      { Finalization }
+      FreeAndNil(FWorksheetNames);
+    end;
+  finally
+    OLEStream.Free;
+  end;
+end;
+    *)
+(*
 begin
   { Initializations }
 
@@ -815,6 +896,7 @@ begin
   { Finalization }
   FWorksheetNames.Free;
 end;
+*)
 
 procedure TsSpreadBIFF5Reader.ReadFont(const AStream: TStream);
 var
@@ -1253,7 +1335,7 @@ begin
     AStream.WriteWord(WordToLE(INT_FONT_WEIGHT_NORMAL));
 
   { Escapement type }
-  AStream.WriteWord(0);
+  AStream.WriteWord(WordToLE(ord(AFont.Position)));
 
   { Underline type }
   if fssUnderline in AFont.Style then
@@ -1369,12 +1451,16 @@ end;
 procedure TsSpreadBIFF5Writer.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
 const
-  MAXBYTES = 255; //limit for this format
+  MAXBYTES = 255;  // Limit for this BIFF5
 var
   L: Word;
   AnsiValue: ansistring;
   rec: TBIFF5_LabelRecord;
   buf: array of byte;
+  useRTF: Boolean;
+  fmt: PsCellFormat;
+  run, j: Integer;
+  rtfRuns: TBiff5_RichTextformattingRuns;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
@@ -1401,9 +1487,40 @@ begin
   end;
   L := Length(AnsiValue);
 
+  useRTF := (Length(ACell^.RichTextParams) > 0);
+
   { BIFF record header }
-  rec.RecordID := WordToLE(INT_EXCEL_ID_LABEL);
-  rec.RecordSize := WordToLE(8 + L);
+  rec.RecordID := WordToLE(IfThen(useRTF, INT_EXCEL_ID_RSTRING, INT_EXCEL_ID_LABEL));
+  rec.RecordSize := WordToLE(SizeOf(rec) - SizeOf(TsBIFFHeader) + L);
+
+  { Prepare rich-text formatting runs }
+  if useRTF then
+  begin
+    fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    run := 0;
+    for j:=0 to High(ACell^.RichTextParams) do
+    begin
+      SetLength(rtfRuns, run + 1);
+      rtfRuns[run].FirstIndex := ACell^.RichTextParams[j].StartIndex;
+      rtfRuns[run].FontIndex := ACell^.RichTextParams[j].FontIndex;
+      if rtfRuns[run].FontIndex >= 4 then
+        inc(rtfRuns[run].FontIndex);  // Font #4 does not exist in BIFF
+      inc(run);
+      if (ACell^.RichTextParams[j].EndIndex < L) and
+         (ACell^.RichTextParams[j].EndIndex <> ACell^.RichTextParams[j+1].StartIndex)    // wp: j+1 needs to be checked!
+      then begin
+        SetLength(rtfRuns, run+1);
+        rtfRuns[run].FirstIndex := ACell^.RichTextParams[j].EndIndex;
+        rtfRuns[run].FontIndex := fmt^.FontIndex;
+        if rtfRuns[run].FontIndex >= 4 then
+          inc(rtfRuns[run].FontIndex);
+        inc(run);
+      end;
+    end;
+
+    // Adjust BIFF record size for appended formatting runs
+    inc(rec.RecordSize, SizeOf(byte) + run * SizeOf(TBiff5_RichTextFormattingRun));
+  end;
 
   { BIFF record data }
   rec.Row := WordToLE(ARow);
@@ -1416,15 +1533,25 @@ begin
   rec.TextLen := WordToLE(L);
 
   { Copy the text characters into a buffer immediately after rec }
-  SetLength(buf, SizeOf(rec) + SizeOf(ansiChar)*L);
+  SetLength(buf, SizeOf(rec) + L);
   Move(rec, buf[0], SizeOf(rec));
-  Move(AnsiValue[1], buf[SizeOf(rec)], L*SizeOf(ansiChar));
+  Move(AnsiValue[1], buf[SizeOf(rec)], L);
 
-  { Write out }
-  AStream.WriteBuffer(buf[0], SizeOf(Rec) + SizeOf(ansiChar)*L);
+  { Write out buffer }
+  AStream.WriteBuffer(buf[0], SizeOf(Rec) + L);
+
+  { Write rich-text information in case of RSTRING record }
+  if useRTF then
+  begin
+    { Write number of rich-text formatting runs }
+    AStream.WriteByte(run);
+    { Write rich-text formatting runs }
+    AStream.WriteBuffer(rtfRuns[0], run * SizeOf(TBiff5_RichTextFormattingRun));
+  end;
 
   { Clean up }
   SetLength(buf, 0);
+  SetLength(rtfRuns, 0);
 end;
 
 {@@ ----------------------------------------------------------------------------
