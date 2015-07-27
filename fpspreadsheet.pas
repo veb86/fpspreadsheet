@@ -22,6 +22,7 @@ unit fpspreadsheet;
 
 {$ifdef fpc}
   {$mode delphi}{$H+}
+//  {$mode objpas}{$H+}
 {$endif}
 
 {$include fps.inc}
@@ -389,6 +390,11 @@ type
     function  GetCell(AddressStr: String): PCell; overload;
     function  GetCellCount: Cardinal;
 
+    function  FindNextCellInCol(ARow, ACol: Cardinal): PCell;
+    function  FindNextCellInRow(ARow, ACol: Cardinal): PCell;
+    function  FindPrevCellInCol(ARow, ACol: Cardinal): PCell;
+    function  FindPrevCellInRow(ARow, ACol: Cardinal): PCell;
+
     function  GetFirstColIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastColIndex(AForceCalculation: Boolean = false): Cardinal;
     function  GetLastColNumber: Cardinal; deprecated 'Use GetLastColIndex';
@@ -433,6 +439,10 @@ type
     function GetSelectionAsString: String;
     function GetSelectionCount: Integer;
     procedure SetSelection(const ASelection: TsCellRangeArray);
+
+    // Searching
+    function Search(ASearchText: String; AOptions: TsSearchOptions;
+      AStartRow: Cardinal = $FFFFFFFF; AStartCol: Cardinal = $FFFFFFFF): PCell;
 
     // Comments
     function FindComment(ACell: PCell): PsComment;
@@ -711,6 +721,11 @@ type
     function UsesColor(AColorIndex: TsColor): Boolean;
                         *)
 
+    { Searching }
+    function Search(ASearchText: String; AOptions: TsSearchOptions;
+      AStartSheet: TsWorksheet = nil; AStartRow: Cardinal = $FFFFFFFF;
+      AStartCol: Cardinal = $FFFFFFFF): PCell;
+
     { Utilities }
     procedure UpdateCaches;
 
@@ -806,7 +821,7 @@ procedure CopyCellFormat(AFromCell, AToCell: PCell);
 implementation
 
 uses
-  Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
+  Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser, RegExpr,
   fpsStrings, uvirtuallayer_ole,
   fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
   fpsNumFormatParser;
@@ -860,8 +875,8 @@ var
 begin
   Assert(AFromCell <> nil);
   Assert(AToCell <> nil);
-  sourceSheet := TsWorksheet(AFromCell.Worksheet);
-  destSheet := TsWorksheet(AToCell.Worksheet);
+  sourceSheet := TsWorksheet(AFromCell^.Worksheet);
+  destSheet := TsWorksheet(AToCell^.Worksheet);
   if (sourceSheet=nil) or (destSheet=nil) or (sourceSheet.Workbook = destSheet.Workbook) then
     AToCell^.FormatIndex := AFromCell^.FormatIndex
   else
@@ -891,19 +906,19 @@ end;
 
 function CompareCells(Item1, Item2: Pointer): Integer;
 begin
-  result := LongInt(PCell(Item1).Row) - PCell(Item2).Row;
+  result := LongInt(PCell(Item1)^.Row) - PCell(Item2)^.Row;
   if Result = 0 then
-    Result := LongInt(PCell(Item1).Col) - PCell(Item2).Col;
+    Result := LongInt(PCell(Item1)^.Col) - PCell(Item2)^.Col;
 end;
 
 function CompareRows(Item1, Item2: Pointer): Integer;
 begin
-  Result := LongInt(PRow(Item1).Row) - PRow(Item2).Row;
+  Result := LongInt(PRow(Item1)^.Row) - PRow(Item2)^.Row;
 end;
 
 function CompareCols(Item1, Item2: Pointer): Integer;
 begin
-  Result := LongInt(PCol(Item1).Col) - PCol(Item2).Col;
+  Result := LongInt(PCol(Item1)^.Col) - PCol(Item2)^.Col;
 end;
 
 function CompareMergedCells(Item1, Item2: Pointer): Integer;
@@ -1938,6 +1953,56 @@ begin
     Result := nil;
 end;
 
+function TsWorksheet.FindNextCellInCol(ARow, ACol: Cardinal): PCell;
+var
+  last: Cardinal;
+begin
+  last := GetLastRowIndex;
+  if ARow = last then
+    Result := nil
+  else
+    repeat
+      inc(ARow);
+      Result := FindCell(ARow, ACol);
+    until (Result <> nil) or (ARow = last);
+end;
+
+function TsWorksheet.FindNextCellInRow(ARow, ACol: Cardinal): PCell;
+var
+  last: Cardinal;
+begin
+  last := GetLastColIndex;
+  if ACol = last then
+    Result := nil
+  else
+    Repeat
+      inc(ACol);
+      Result := Findcell(ARow, ACol);
+    until (Result <> nil) or (ACol = last);
+end;
+
+function TsWorksheet.FindPrevCellInCol(ARow, ACol: Cardinal): PCell;
+begin
+  if ARow = 0 then
+    Result := nil
+  else
+    repeat
+      dec(ARow);
+      Result := FindCell(ARow, ACol);
+    until (Result <> nil) or (ARow = 0);
+end;
+
+function TsWorksheet.FindPrevCellInRow(ARow, ACol: Cardinal): PCell;
+begin
+  if ACol = 0 then
+    Result := nil
+  else
+    repeat
+      dec(ACol);
+      Result := FindCell(ARow, ACol);
+    until (Result <> nil) or (ACol = 0);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Obtains an allocated cell at the desired location.
 
@@ -2732,7 +2797,7 @@ begin
   if ACell <> nil then
   begin
     fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-    for b in fmt.Border do
+    for b in fmt^.Border do
       Result[b] := fmt^.BorderStyles[b];
   end;
 end;
@@ -2812,7 +2877,7 @@ begin
     fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
     if (uffNumberFormat in fmt^.UsedFormattingFields) then
     begin
-      numFmt := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+      numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
       if numFmt <> nil then
       begin
         ANumFormat := numFmt.NumFormat;
@@ -3466,6 +3531,185 @@ begin
   SetLength(FSelection, Length(ASelection));
   for i:=0 to High(FSelection) do
     FSelection[i] := ASelection[i];
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Searches the cell containing a specified text. The search begins with the
+  cell "AStartCell". A set of options is respected. Returns a pointer to the
+  first cell meeting the criteria.
+-------------------------------------------------------------------------------}
+function TsWorksheet.Search(ASearchText: String; AOptions: TsSearchOptions;
+  AStartRow: Cardinal = $FFFFFFFF; AStartCol: Cardinal = $FFFFFFFF): PCell;
+var
+  regex: TRegExpr;
+  cell, startCell: PCell;
+  r, c: Cardinal;
+  firstR, firstC, lastR, lastC: Cardinal;
+
+  function CellMatches(ACell: PCell): boolean;
+  var
+    txt: String;
+  begin
+    txt := ReadAsUTF8Text(ACell);
+    if (soRegularExpr in AOptions) then
+      Result := regex.Exec(txt)
+    else
+    if (soIgnoreCase in AOptions) then
+      txt := UTF8Lowercase(txt);
+    if (soCompareFullCell in AOptions) then
+      exit(txt = ASearchText);
+    if UTF8Pos(ASearchText, txt) > 0 then
+      exit(true);
+    Result := false;
+  end;
+
+begin
+  Result := nil;
+  regex := nil;
+  firstR := 0;
+  firstC := 0;
+  lastR := GetLastRowIndex;
+  lastC := GetLastColIndex;
+
+  // Find first occupied cell to start with
+  if (soBackward in AOptions) then
+  begin
+    if AStartRow = $FFFFFFFF then AStartRow := lastR;
+    if AStartCol = $FFFFFFFF then AStartCol := lastC;
+  end else
+  begin
+    if AStartRow = $FFFFFFFF then AStartRow := firstR;
+    if AStartCol = $FFFFFFFF then AStartCol := firstC;
+  end;
+  startcell := FindCell(AStartRow, AStartCol);
+  if startcell = nil then
+    // Backward search along rows
+    if (AOptions * [soBackward, soAlongRows] = [soBackward, soAlongRows]) then
+    begin
+      startcell := FindPrevCellInRow(AStartRow, AStartCol);
+      // Not found in this row? Go to previous row
+      while (startcell = nil) and (AStartRow > 0) do begin
+        AStartCol := lastC;
+        dec(AStartRow);
+        startcell := FindPrevCellInRow(AStartRow, AStartCol);
+      end;
+    end
+    else
+    // Backward search along columns
+    if (AOptions * [soBackward, soAlongRows] = [soBackward]) then
+    begin
+      startcell := FindPrevCellInCol(AStartRow, AStartCol);
+      // not found in this column? Go to previous column.
+      while (startcell = nil) and (AStartcol > 0) do begin
+        AStartRow := lastR;
+        dec(AStartCol);
+        startcell := FindPrevCellInCol(AStartRow, AStartCol);
+      end;
+    end
+    else
+    // Forward search along rows
+    if (AOptions * [soBackward, soAlongRows] = [soAlongRows]) then
+    begin
+      startcell := FindNextCellInRow(AStartRow, AStartCol);
+      // Not found in this row? Proceed to next row
+      while (startcell = nil) and (AStartRow <= lastR) do begin
+        AStartCol := firstC;
+        inc(AStartRow);
+        startcell := FindNextCellInRow(AStartRow, AStartCol);
+      end;
+    end
+    else
+    // Forward search along columns
+    if (AOptions * [soBackward, soAlongRows] = []) then
+    begin
+      startCell := FindNextCellInCol(AStartRow, AStartCol);
+      // Not found in this column? Proceed to next column
+      while (startcell = nil) and (AStartCol <= lastC) do begin
+        AStartRow := firstR;
+        inc(AStartCol);
+        startcell := FindNextCellinCol(AStartRow, AStartCol);
+      end;
+    end;
+
+  // Still no occupied cell found for starting? Nothing to do...
+  if startcell = nil then
+    exit;
+
+  // Iterate through cells in order defined by the search options
+  try
+    if soRegularExpr in AOptions then
+    begin
+      regex := TRegExpr.Create;
+      regex.Expression := ASearchText
+    end else
+    if soIgnoreCase in AOptions then
+      ASearchText := UTF8Lowercase(ASearchText);
+
+    // Perform backward search along rows
+    if (AOptions * [soBackward, soAlongRows] = [soBackward, soAlongRows]) then
+    begin
+      r := startCell^.Row;
+      for cell in Cells.GetReverseRowEnumerator(r, startCell^.Col) do
+        if CellMatches(cell) then exit(cell);
+      if r = 0 then
+        exit;
+      while r > 0 do begin
+        dec(r);
+        for cell in Cells.GetReverseRowEnumerator(r) do
+          if CellMatches(cell) then exit(cell);
+      end;
+    end
+    else
+    // Perform forward search along rows
+    if (AOptions * [soBackward, soAlongRows] = [soAlongRows]) then
+    begin
+      r := startCell^.Row;
+      for cell in Cells.GetRowEnumerator(r, startCell^.Col) do
+        if CellMatches(cell) then exit(cell);
+      if r = lastR then
+        exit;
+      while (r < lastR) do
+      begin
+        inc(r);
+        for cell in Cells.GetRowEnumerator(r) do
+          if CellMatches(cell) then exit(cell);
+      end;
+    end
+    else
+    // Perform backward search along columns
+    if (AOptions * [soBackward, soAlongRows] = [soBackward]) then
+    begin
+      c := startCell^.Col;
+      for cell in Cells.GetReverseColEnumerator(c, 0, startCell^.Row) do
+        if CellMatches(cell) then exit(cell);
+      if c = 0 then
+        exit;
+      while (c > 0) do
+      begin
+        dec(c);
+        for cell in Cells.GetReverseColEnumerator(c) do
+          if CellMatches(cell) then exit(cell);
+      end;
+    end
+    else
+    // Perform forward search along columns
+    if (AOptions * [soBackward, soAlongRows] = []) then
+    begin
+      c := startCell^.Col;
+      for cell in Cells.GetColEnumerator(c, startCell^.Row) do
+        if CellMatches(cell) then exit(cell);
+      if c = lastC then
+        exit;
+      while (c < lastC) do
+      begin
+        inc(c);
+        for cell in Cells.GetColEnumerator(c) do
+          if CellMatches(cell) then exit(cell);
+      end;
+    end;
+  finally
+    if regex <> nil then regex.Free;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6096,7 +6340,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.PrepareBeforeSaving;
 var
-  sheet: TsWorksheet;
+  sheet: pointer;
 begin
   // Clear error log
   FLog.Clear;
@@ -6107,7 +6351,7 @@ begin
   // Calculated formulas (if requested)
   if (boCalcBeforeSaving in FOptions) then
     for sheet in FWorksheets do
-      sheet.CalcFormulas;
+      TsWorksheet(sheet).CalcFormulas;
 
   // Abort if virtual mode is active without an event handler
   if (boVirtualMode in FOptions) and not Assigned(FOnWriteCellData) then
@@ -6119,10 +6363,10 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.Recalc;
 var
-  sheet: TsWorksheet;
+  sheet: pointer;
 begin
   for sheet in FWorksheets do
-    sheet.CalcFormulas;
+    TsWorksheet(sheet).CalcFormulas;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6132,6 +6376,65 @@ procedure TsWorkbook.RemoveWorksheetsCallback(data, arg: pointer);
 begin
   Unused(arg);
   TsWorksheet(data).Free;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Searches the entire workbook for the first cell (after AStartCell) containing
+  a specified text.
+-------------------------------------------------------------------------------}
+function TsWorkbook.Search(ASearchText: String; AOptions: TsSearchOptions;
+  AStartSheet: TsWorksheet = nil; AStartRow: Cardinal = $FFFFFFFF;
+  AStartCol: Cardinal = $FFFFFFFF): PCell;
+var
+  i, idxSheet: Integer;
+  sheet: TsWorksheet;
+begin
+  // Setup missing default parameters
+  if soBackward in AOptions then
+  begin
+    if (AStartRow = $FFFFFFFF) and (AStartCol = $FFFFFFFF) and (AStartSheet = nil)
+      then AStartsheet := GetWorksheetByIndex(GetWorksheetCount-1);
+    if AStartRow = $FFFFFFFF then
+      AStartRow := AStartsheet.GetLastRowIndex;
+    if AStartCol = $FFFFFFFF then
+      AStartCol := AStartsheet.GetLastColIndex;
+  end else
+  begin
+    if (AStartRow = $FFFFFFFF) and (AStartCol = $FFFFFFFF) and (AStartSheet = nil)
+      then AStartsheet := GetWorksheetByIndex(0);
+    if (AStartRow = $FFFFFFFF) then
+      AStartRow := AStartsheet.GetFirstRowIndex;
+    if (AStartCol = $FFFFFFFF) then
+      AStartCol := AStartsheet.GetFirstColIndex;
+  end;
+  if AStartSheet = nil then
+    AStartSheet := ActiveWorksheet;
+
+  // Search this worksheet
+  Result := AStartSheet.Search(ASearchText, AOptions, AStartRow, AStartCol);
+  if Result <> nil then
+    exit;
+
+  // If not found continue with other sheets in requested order...
+  idxSheet := GetWorksheetIndex(AStartSheet);
+  if (soBackward in AOptions) then
+    // ... backward
+    for i := idxSheet - 1 downto 0 do
+    begin
+      sheet := GetWorksheetByIndex(i);
+      Result := sheet.Search(ASearchText, AOptions);
+      if Result <> nil then
+        exit;
+    end
+  else
+    // ... forward
+    for i := idxSheet + 1 to GetWorksheetCount-1 do
+    begin
+      sheet := GetWorksheetByIndex(i);
+      Result := sheet.Search(ASearchText, AOptions);
+      if Result <> nil then
+        exit;
+    end;
 end;
 
 {@@ ----------------------------------------------------------------------------

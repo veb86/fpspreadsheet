@@ -60,7 +60,7 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="8">
+    <Units Count="9">
       <Unit0>
         <Filename Value="demo_ctrls.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -117,6 +117,14 @@
         <ResourceBaseClass Value="Form"/>
         <UnitName Value="sNumFormatForm"/>
       </Unit7>
+      <Unit8>
+        <Filename Value="..\shared\ssearchform.pas"/>
+        <IsPartOfProject Value="True"/>
+        <ComponentName Value="SearchForm"/>
+        <HasResources Value="True"/>
+        <ResourceBaseClass Value="Form"/>
+        <UnitName Value="sSearchForm"/>
+      </Unit8>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

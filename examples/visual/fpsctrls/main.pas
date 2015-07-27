@@ -21,6 +21,7 @@ type
     AcSettingsCSVParams: TAction;
     AcSettingsCurrency: TAction;
     AcSettingsFormatSettings: TAction;
+    AcSearch: TAction;
     AcViewInspector: TAction;
     ActionList: TActionList;
     AcFileExit: TFileExit;
@@ -61,6 +62,8 @@ type
     MenuItem128: TMenuItem;
     MenuItem129: TMenuItem;
     MenuItem130: TMenuItem;
+    MenuItem131: TMenuItem;
+    MenuItem132: TMenuItem;
     MnuSettings: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -299,6 +302,7 @@ type
     ToolButton38: TToolButton;
     ToolButton39: TToolButton;
     TbCommentAdd: TToolButton;
+    ToolButton4: TToolButton;
     ToolButton40: TToolButton;
     ToolButton41: TToolButton;
     ToolButton42: TToolButton;
@@ -317,6 +321,7 @@ type
     ToolButton52: TToolButton;
     ToolButton53: TToolButton;
     ToolButton54: TToolButton;
+    ToolButton55: TToolButton;
     ToolButton6: TToolButton;
     ToolButton7: TToolButton;
     ToolButton8: TToolButton;
@@ -333,6 +338,7 @@ type
       AWorkbook: TsWorkbook; var ANumFormatStr: String);
     procedure AcRowAddExecute(Sender: TObject);
     procedure AcRowDeleteExecute(Sender: TObject);
+    procedure AcSearchExecute(Sender: TObject);
     procedure AcSettingsCSVParamsExecute(Sender: TObject);
     procedure AcSettingsCurrencyExecute(Sender: TObject);
     procedure AcSettingsFormatSettingsExecute(Sender: TObject);
@@ -344,6 +350,7 @@ type
       const AHyperlink: TsHyperlink);
   private
     { private declarations }
+    procedure SearchFound(Sender: TObject; ACell: PCell);
     procedure UpdateCaption;
   protected
     procedure ReadFromIni;
@@ -364,7 +371,7 @@ uses
   LCLIntf, inifiles, uriparser,
   fpsUtils, fpsCSV,
   sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm,
-  sHyperlinkForm, sNumFormatForm;
+  sHyperlinkForm, sNumFormatForm, sSearchForm;
 
 function CreateIni: TCustomIniFile;
 begin
@@ -476,6 +483,14 @@ begin
   WorksheetGrid.Row := r;
 end;
 
+procedure TMainForm.AcSearchExecute(Sender: TObject);
+begin
+  if SearchForm = nil then
+    SearchForm := TSearchForm.Create(self);
+  SearchForm.OnFound := @SearchFound;
+  SearchForm.Execute(WorkbookSource.Workbook, DefaultSearchParams);
+end;
+
 procedure TMainForm.AcSettingsCSVParamsExecute(Sender: TObject);
 var
   F: TCSVParamsForm;
@@ -568,6 +583,22 @@ begin
   end;
 end;
 
+procedure TMainForm.SearchFound(Sender: TObject; ACell: PCell);
+begin
+  // There could be status message "search string found", here
+end;
+
+procedure TMainForm.UpdateCaption;
+begin
+  if WorkbookSource = nil then
+    Caption := 'demo_ctrls'
+  else
+    Caption := Format('demo_ctrls - "%s" [%s]', [
+      AnsiToUTF8(WorkbookSource.Filename),
+      GetFileFormatName(WorkbookSource.Workbook.FileFormat)
+    ]);
+end;
+
 procedure TMainForm.WriteToIni;
 var
   ini: TCustomIniFile;
@@ -594,17 +625,6 @@ begin
     else
       ShowMessage('Hyperlink ' + AHyperlink.Target + ' clicked');
   end;
-end;
-
-procedure TMainForm.UpdateCaption;
-begin
-  if WorkbookSource = nil then
-    Caption := 'demo_ctrls'
-  else
-    Caption := Format('demo_ctrls - "%s" [%s]', [
-      AnsiToUTF8(WorkbookSource.Filename),
-      GetFileFormatName(WorkbookSource.Workbook.FileFormat)
-    ]);
 end;
 
 end.

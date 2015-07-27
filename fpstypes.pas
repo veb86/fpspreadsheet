@@ -676,6 +676,12 @@ type
   {@@ Pointer to a page layout record }
   PsPageLayout = ^TsPageLayout;
 
+  {@@ Search option }
+  TsSearchOption = (soCompareFullCell, soIgnoreCase, soRegularExpr,
+    soBackward, soAlongRows);
+  TsSearchOptions = set of TsSearchOption;
+
+
 const
   {@@ Indexes to be used for the various headers and footers }
   HEADER_FOOTER_INDEX_FIRST   = 0;
