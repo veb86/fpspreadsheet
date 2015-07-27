@@ -116,8 +116,6 @@ type
     procedure ReadXF(const AStream: TStream);
   public
     destructor Destroy; override;
-    { General reading methods }
-//    procedure ReadFromFile(AFileName: string); override;
     procedure ReadFromStream(AStream: TStream); override;
   end;
 
@@ -764,6 +762,10 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
+  if FCommentList = nil
+    then FCommentList := TObjectList.Create
+    else FCommentList.Clear;
+
   if Assigned(FSharedStringTable) then FreeAndNil(FSharedStringTable);
 
   while (not SectionEOF) do begin
