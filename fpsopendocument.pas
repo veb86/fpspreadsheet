@@ -4794,10 +4794,10 @@ begin
   defFnt := Workbook.GetDefaultFont;
   if AFont = nil then AFont := defFnt;
 
-  if AFont.FontName <> defFnt.FontName then
+//  if AFont.FontName <> defFnt.FontName then
     Result := Result + Format('style:font-name="%s" ', [AFont.FontName]);
 
-  if AFont.Size <> defFnt.Size then
+//  if AFont.Size <> defFnt.Size then
     Result := Result + Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
       [AFont.Size, AFont.Size, AFont.Size], FPointSeparatorSettings);
 
@@ -5433,14 +5433,54 @@ var
   rowsSpannedStr: String;
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
-  txt: ansistring;
-  textp, target, bookmark, comment: String;
+  totaltxt, target, bookmark, comment: String;
   fmt: TsCellFormat;
   fnt: TsFont;
+  fntName: String;
   hyperlink: PsHyperlink;
   u: TUri;
-  i, idx, n, len: Integer;
+  i, idx, fntidx, len: Integer;
   rtParam: TsRichTextParam;
+  wideStr, txt: WideString;
+  ch: WideChar;
+
+  function NewLine(var idx: Integer): Boolean;
+  begin
+    if (wideStr[idx] = #13) or (wideStr[idx] = #10) then
+    begin
+      Result := true;
+      if (idx < len) and (
+         ((wideStr[idx] = #13) and (wideStr[idx+1] = #10)) or
+         ((wideStr[idx] = #10) and (wideStr[idx+1] = #13)) ) then inc(idx);
+    end else
+      Result := false;
+  end;
+
+  procedure AppendTxt(NewLine: Boolean; FntStyle: String);
+  var
+    s: String;
+  begin
+    s := UTF8Encode(txt);
+    ValidXMLText(s);
+    {
+    if FntStyle <> '' then
+      FntStyle := ' text:style-name="' + FntStyle + '"';
+      }
+    if NewLine and (s = '') then
+      totaltxt := totaltxt + '</text:p><text:p>'
+    else
+    begin
+      if FntStyle = '' then
+        totaltxt := totaltxt + s
+      else
+        totaltxt := totaltxt +
+          '<text:span text:style-name="' + FntStyle + '">' + s + '</text:span>';
+      if NewLine then
+        totaltxt := totaltxt + '</text:p><text:p>';
+    end;
+    txt := '';
+  end;
+
 begin
   Unused(ARow, ACol);
 
@@ -5464,9 +5504,9 @@ begin
   end else
     spannedStr := '';
 
-  // Check for invalid characters
-  txt := AValue;
-  if not ValidXMLText(txt) then
+  // Check for invalid characters, get the error message
+  totaltxt := AValue;
+  if not ValidXMLText(totaltxt) then
     Workbook.AddErrorMsg(
       rsInvalidCharacterInCell, [
       GetCellString(ARow, ACol)
@@ -5491,56 +5531,93 @@ begin
     if (bookmark <> '') then
       target := target + '#' + bookmark;
 
-    textp := Format(
+    totaltxt := Format(
       '<text:p>'+
         '<text:a xlink:href="%s" xlink:type="simple">%s</text:a>'+
-      '</text:p>', [target, txt]);
-
-  end else
+      '</text:p>', [target, totaltxt]);
+  end
+  else
   begin
     // No hyperlink, normal text only
     if Length(ACell^.RichTextParams) = 0 then
       // Standard text formatting
-      textp := '<text:p>' + txt + '</text:p>'
+      totaltxt := '<text:p>' + totaltxt + '</text:p>'
     else
     begin
       // "Rich-text" formatting
-      len := UTF8Length(AValue);
-      textp := '<text:p>';
+      wideStr := UTF8Encode(AValue);  // Convert to unicode
+      // Before the first formatted section which has the cell's format
+      len := Length(wideStr);
+      totaltxt := '<text:p>';
       rtParam := ACell^.RichTextParams[0];
+      idx := 1;
+      txt := '';
       if rtParam.StartIndex > 0 then
       begin
-        txt := UTF8Copy(AValue, 1, rtParam.StartIndex);
-        ValidXMLText(txt);
-        textp := textp + txt;
+        while (idx <= len) and (idx <= rtParam.StartIndex) do
+        begin
+          ch := wideStr[idx];
+          if NewLine(idx) then
+            AppendTxt(true, '')
+          else
+            txt := txt + ch;
+          inc(idx);
+        end;
+        if txt <> '' then
+          AppendTxt(false, '');
+//          totaltxt := totaltxt + UTF8Encode(txt);
       end;
+      txt := '';
       for i := 0 to High(ACell^.RichTextParams) do
       begin
+        // Formatted part of the string according the RichTextParam
         rtParam := ACell^.RichTextParams[i];
         fnt := FWorkbook.GetFont(rtParam.FontIndex);
-        idx := FRichTextFontList.IndexOfObject(fnt);
-        n := rtParam.EndIndex - rtParam.StartIndex;
-        txt := UTF8Copy(AValue, rtParam.StartIndex+1, n);
-        ValidXMLText(txt);
-        textp := textp +
-          '<text:span text:style-name="' + FRichTextFontList[idx] + '">' +
-            txt +
-          '</text:span>';
+        fntidx := FRichTextFontList.IndexOfObject(fnt);
+        fntName := FRichTextFontList[fntIdx];
+        while (idx <= len) and (idx <= rtParam.EndIndex) do
+        begin
+          ch := wideStr[idx];
+          if NewLine(idx) then
+            AppendTxt(true, fntName)
+          else
+            txt := txt + ch;
+          inc(idx);
+        end;
+        if txt <> '' then
+          AppendTxt(false, fntName);
+        // Unformatted part at end of string (cell's format)
         if (rtParam.EndIndex < len) and (i = High(ACell^.RichTextParams)) then
         begin
-          txt := UTF8Copy(AValue, rtParam.EndIndex+1, MaxInt);
-          ValidXMLText(txt);
-          textp := textp + txt;
-        end else
+          while (idx <= len) do
+          begin
+            ch := wideStr[idx];
+            if NewLine(idx) then
+              AppendTxt(true, '')
+            else
+              txt := txt + ch;
+            inc(idx);
+          end;
+          if txt <> '' then
+            AppendTxt(false, '');
+        end
+        else
+        // Unformatted part between formatted parts (cll's format)
         if (i < High(ACell^.RichTextParams)) and (rtParam.EndIndex < ACell^.RichTextParams[i+1].StartIndex)
         then begin
-          n := ACell^.RichTextParams[i+1].StartIndex - rtParam.EndIndex;
-          txt := UTF8Copy(AValue, rtParam.EndIndex+1, n);
-          ValidXMLText(txt);
-          textp := textp + txt;
+          while (idx <= len) and (idx <= ACell^.RichTextParams[i+1].StartIndex) do begin
+            ch := wideStr[idx];
+            if NewLine(idx) then
+              AppendTxt(true, '')
+            else
+              txt := txt + ch;
+            inc(idx);
+          end;
+          if txt <> '' then
+            AppendTxt(false, '');
         end;
       end;
-      textp := textp + '</text:p>';
+      totaltxt := totaltxt + '</text:p>';
     end;
   end;
 
@@ -5548,7 +5625,7 @@ begin
   AppendToStream(AStream, Format(
     '<table:table-cell office:value-type="string"%s%s>' +
       comment +
-      textp +
+      totaltxt +
     '</table:table-cell>', [
     lStyle, spannedStr
   ]));
