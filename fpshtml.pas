@@ -268,8 +268,11 @@ begin
   AppendToStream(AStream,
     '<body>');
   if HTMLParams.SheetIndex < 0 then      // active sheet
+  begin
+    if FWorkbook.ActiveWorksheet = nil then
+      FWorkbook.SelectWorksheet(FWorkbook.GetWorksheetByIndex(0));
     WriteWorksheet(AStream, FWorkbook.ActiveWorksheet)
-  else
+  end else
   if HTMLParams.SheetIndex = MaxInt then  // all sheets
     for i:=0 to FWorkbook.GetWorksheetCount-1 do
       WriteWorksheet(AStream, FWorkbook.GetWorksheetByIndex(i))
@@ -453,6 +456,7 @@ end;
 
 procedure TsHTMLWriter.WriteToStream(AStream: TStream);
 begin
+  FWorkbook.UpdateCaches;
   AppendToStream(AStream,
     '<!DOCTYPE html>' +
     '<html>' +
