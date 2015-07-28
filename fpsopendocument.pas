@@ -4794,12 +4794,10 @@ begin
   defFnt := Workbook.GetDefaultFont;
   if AFont = nil then AFont := defFnt;
 
-//  if AFont.FontName <> defFnt.FontName then
-    Result := Result + Format('style:font-name="%s" ', [AFont.FontName]);
+  Result := Result + Format('style:font-name="%s" ', [AFont.FontName]);
 
-//  if AFont.Size <> defFnt.Size then
-    Result := Result + Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
-      [AFont.Size, AFont.Size, AFont.Size], FPointSeparatorSettings);
+  Result := Result + Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
+    [AFont.Size, AFont.Size, AFont.Size], FPointSeparatorSettings);
 
   if fssBold in AFont.Style then
     Result := Result + 'fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold" ';

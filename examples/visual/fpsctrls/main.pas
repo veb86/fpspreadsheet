@@ -22,6 +22,7 @@ type
     AcSettingsCurrency: TAction;
     AcSettingsFormatSettings: TAction;
     AcSearch: TAction;
+    AcShowGridLines: TAction;
     AcViewInspector: TAction;
     ActionList: TActionList;
     AcFileExit: TFileExit;
@@ -64,6 +65,8 @@ type
     MenuItem130: TMenuItem;
     MenuItem131: TMenuItem;
     MenuItem132: TMenuItem;
+    MenuItem133: TMenuItem;
+    MenuItem134: TMenuItem;
     MnuSettings: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -342,6 +345,8 @@ type
     procedure AcSettingsCSVParamsExecute(Sender: TObject);
     procedure AcSettingsCurrencyExecute(Sender: TObject);
     procedure AcSettingsFormatSettingsExecute(Sender: TObject);
+    procedure AcShowGridLinesExecute(Sender: TObject);
+    procedure AcShowGridLinesUpdate(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure HyperlinkHandler(Sender: TObject; ACaption: String;
       var AHyperlink: TsHyperlink);
@@ -411,6 +416,7 @@ begin
     6: WorkbookSource.FileFormat := sfExcel2;        // Excel 2.1
     7: WorkbookSource.FileFormat := sfOpenDocument;  // Open/LibreOffice
     8: WorkbookSource.FileFormat := sfCSV;           // Text files
+//    9: WorkbookSource.FileFormat := sfHTML;          // HTML files
   end;
   WorkbookSource.FileName := UTF8ToAnsi(AcFileOpen.Dialog.FileName);  // this loads the file
   UpdateCaption;
@@ -430,7 +436,8 @@ begin
       4: fmt := sfExcel2;
       5: fmt := sfOpenDocument;
       6: fmt := sfCSV;
-      7: fmt := sfWikiTable_WikiMedia;
+      7: fmt := sfHTML;
+      8: fmt := sfWikiTable_WikiMedia;
     end;
     WorkbookSource.SaveToSpreadsheetFile(UTF8ToAnsi(AcFileSaveAs.Dialog.FileName), fmt);
     UpdateCaption;
@@ -535,6 +542,16 @@ begin
   finally
     F.Free;
   end;
+end;
+
+procedure TMainForm.AcShowGridLinesExecute(Sender: TObject);
+begin
+  WorksheetGrid.ShowGridLines := AcShowGridLines.Checked;
+end;
+
+procedure TMainForm.AcShowGridLinesUpdate(Sender: TObject);
+begin
+  AcShowGridLines.Checked := WorksheetGrid.ShowGridLines;
 end;
 
 { Toggles the spreadsheet inspector on and off }

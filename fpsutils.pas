@@ -800,6 +800,7 @@ begin
     sfooxml               : Result := 'OOXML';
     sfOpenDocument        : Result := 'Open Document';
     sfCSV                 : Result := 'CSV';
+    sfHTML                : Result := 'HTML';
     sfWikiTable_Pipes     : Result := 'WikiTable Pipes';
     sfWikiTable_WikiMedia : Result := 'WikiTable WikiMedia';
     else                    Result := rsUnknownSpreadsheetFormat;
@@ -821,6 +822,7 @@ begin
     sfOOXML               : Result := STR_OOXML_EXCEL_EXTENSION;
     sfOpenDocument        : Result := STR_OPENDOCUMENT_CALC_EXTENSION;
     sfCSV                 : Result := STR_COMMA_SEPARATED_EXTENSION;
+    sfHTML                : Result := STR_HTML_EXTENSION;
     sfWikiTable_Pipes     : Result := STR_WIKITABLE_PIPES_EXTENSION;
     sfWikiTable_WikiMedia : Result := STR_WIKITABLE_WIKIMEDIA_EXTENSION;
     else                    raise Exception.Create(rsUnknownSpreadsheetFormat);
@@ -846,6 +848,7 @@ begin
     STR_OOXML_EXCEL_EXTENSION         : SheetType := sfOOXML;
     STR_OPENDOCUMENT_CALC_EXTENSION   : SheetType := sfOpenDocument;
     STR_COMMA_SEPARATED_EXTENSION     : SheetType := sfCSV;
+    STR_HTML_EXTENSION, '.htm'        : SheetType := sfHTML;
     STR_WIKITABLE_PIPES_EXTENSION     : SheetType := sfWikiTable_Pipes;
     STR_WIKITABLE_WIKIMEDIA_EXTENSION : SheetType := sfWikiTable_WikiMedia;
     else                                Result := False;
@@ -1503,17 +1506,16 @@ end;
 -------------------------------------------------------------------------------}
 function UTF8TextToXMLText(AText: ansistring): ansistring;
 var
-  Idx:Integer;
-  WrkStr, AppoSt:ansistring;
+  Idx: Integer;
+  AppoSt:ansistring;
 begin
-  WrkStr:='';
-
-  for Idx:=1 to Length(AText) do
+  Result := '';
+  idx := 1;
+  while idx <= Length(AText) do
   begin
     case AText[Idx] of
       '&': begin
-        AppoSt:=Copy(AText, Idx, 6);
-
+        AppoSt := Copy(AText, Idx, 6);
         if (Pos('&amp;',  AppoSt) = 1) or
            (Pos('&lt;',   AppoSt) = 1) or
            (Pos('&gt;',   AppoSt) = 1) or
@@ -1522,26 +1524,33 @@ begin
            (Pos('&#37;',  AppoSt) = 1)     // %
         then begin
           //'&' is the first char of a special chat, it must not be converted
-          WrkStr:=WrkStr + AText[Idx];
+          Result := Result + AText[Idx];
         end else begin
-          WrkStr:=WrkStr + '&amp;';
+          Result := Result + '&amp;';
         end;
       end;
-      '<': WrkStr:=WrkStr + '&lt;';
-      '>': WrkStr:=WrkStr + '&gt;';
-      '"': WrkStr:=WrkStr + '&quot;';
-      '''':WrkStr:=WrkStr + '&apos;';
-      '%': WrkStr:=WrkStr + '&#37;';
+      '<': Result := Result + '&lt;';
+      '>': Result := Result + '&gt;';
+      '"': Result := Result + '&quot;';
+      '''':Result := Result + '&apos;';
+      '%': Result := Result + '&#37;';
+      #10: begin
+             Result := Result + '<br />';
+             if (idx < Length(AText)) and (AText[idx+1] = #13) then inc(idx);
+           end;
+      #13: begin
+             Result := Result + '<br />';
+             if (idx < Length(AText)) and (AText[idx+1] = #10) then inc(idx);
+           end;
       {
       #10: WrkStr := WrkStr + '&#10;';
       #13: WrkStr := WrkStr + '&#13;';
       }
     else
-      WrkStr:=WrkStr + AText[Idx];
+      Result := Result + AText[Idx];
     end;
+    inc(idx);
   end;
-
-  Result:=WrkStr;
 end;
 
 {@@ ----------------------------------------------------------------------------

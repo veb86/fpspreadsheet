@@ -954,7 +954,7 @@ object MainForm: TMainForm
       Category = 'File'
       Caption = 'Save &as ...'
       Dialog.Title = 'AcSaveFileAs'
-      Dialog.Filter = 'Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|WikiTable (WikiMedia-Format, *.wikitable_wikimedia)|*.wikitable_wikimedia'
+      Dialog.Filter = 'Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|HTML files (*.html; *.htm)|*.html;*.htm|WikiTable (WikiMedia-Format, *.wikitable_wikimedia)|*.wikitable_wikimedia'
       Hint = 'Save spreadsheet'
       ImageIndex = 45
       BeforeExecute = AcFileSaveAsBeforeExecute
@@ -1561,6 +1561,14 @@ object MainForm: TMainForm
       ImageIndex = 70
       OnExecute = AcSearchExecute
       ShortCut = 16454
+    end
+    object AcShowGridLines: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'Grid lines'
+      Checked = True
+      OnExecute = AcShowGridLinesExecute
+      OnUpdate = AcShowGridLinesUpdate
     end
   end
   object ImageList: TImageList
@@ -5093,6 +5101,13 @@ object MainForm: TMainForm
     end
     object MnuView: TMenuItem
       Caption = 'View'
+      object MenuItem134: TMenuItem
+        Action = AcShowGridLines
+        AutoCheck = True
+      end
+      object MenuItem133: TMenuItem
+        Caption = '-'
+      end
       object MenuItem52: TMenuItem
         Action = AcViewInspector
         AutoCheck = True

@@ -19,7 +19,8 @@ uses
 type
   {@@ File formats supported by fpspreadsheet }
   TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8,
-   sfOOXML, sfOpenDocument, sfCSV, sfWikiTable_Pipes, sfWikiTable_WikiMedia);
+   sfOOXML, sfOpenDocument, sfCSV, sfHTML,
+   sfWikiTable_Pipes, sfWikiTable_WikiMedia);
 
   {@@ Flag set during reading or writing of a workbook }
   TsReadWriteFlag = (rwfNormal, rwfRead, rwfWrite);
@@ -40,6 +41,8 @@ const
   STR_OPENDOCUMENT_CALC_EXTENSION = '.ods';
   {@@ Default extension of <b>comma-separated-values</b> file }
   STR_COMMA_SEPARATED_EXTENSION = '.csv';
+  {@@ Default extension for <b>HTML</b> files }
+  STR_HTML_EXTENSION = '.html';
   {@@ Default extension of <b>wikitable files</b> in <b>pipes</b> format}
   STR_WIKITABLE_PIPES_EXTENSION = '.wikitable_pipes';
   {@@ Default extension of <b>wikitable files</b> in <b>wikimedia</b> format }
@@ -59,7 +62,7 @@ const
   {@@ Index of bold default font in workbook's font list }
   BOLD_FONTINDEX = 2;
   {@@ Index of italic default font in workbook's font list - not used directly }
-  INTALIC_FONTINDEX = 3;
+  ITALIC_FONTINDEX = 3;
 
   {@@ Takes account of effect of cell margins on row height by adding this
       value to the nominal row height. Note that this is an empirical value
