@@ -35,9 +35,12 @@ type            (*
   TsHTMLWriter = class(TsCustomSpreadWriter)
   private
     FPointSeparatorSettings: TFormatSettings;
+//    function CellFormatAsString(ACell: PCell; ForThisTag: String): String;
+    function CellFormatAsString(AFormat: PsCellFormat; ATagName: String): String;
     function GetBackgroundAsStyle(AFill: TsFillPattern): String;
     function GetBorderAsStyle(ABorder: TsCellBorders; const ABorderStyles: TsCellBorderStyles): String;
     function GetColWidthAsAttr(AColIndex: Integer): String;
+    function GetDefaultHorAlignAsStyle(ACell: PCell): String;
     function GetFontAsStyle(AFontIndex: Integer): String;
     function GetGridBorderAsStyle: String;
     function GetHorAlignAsStyle(AHorAlign: TsHorAlignment): String;
@@ -48,10 +51,10 @@ type            (*
     function GetWordWrapAsStyle(AWordWrap: Boolean): String;
     function IsHyperlinkTarget(ACell: PCell; out ABookmark: String): Boolean;
     procedure WriteBody(AStream: TStream);
+    procedure WriteStyles(AStream: TStream);
     procedure WriteWorksheet(AStream: TStream; ASheet: TsWorksheet);
 
   protected
-    function CellFormatAsString(ACell: PCell; ForThisTag: String): String;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
@@ -92,7 +95,7 @@ var
 implementation
 
 uses
-  LazUTF8, URIParser, Math,
+  LazUTF8, URIParser, Math, StrUtils,
   fpsUtils;
 
 constructor TsHTMLWriter.Create(AWorkbook: TsWorkbook);
@@ -111,7 +114,7 @@ destructor TsHTMLWriter.Destroy;
 begin
   inherited Destroy;
 end;
-
+               (*
 function TsHTMLWriter.CellFormatAsString(ACell: PCell; ForThisTag: String): String;
 var
   fmt: PsCellFormat;
@@ -130,6 +133,21 @@ begin
           Result := Result + GetGridBorderAsStyle;
       end else
       begin
+        if (uffBackground in fmt^.UsedFormattingFields) then
+          Result := Result + GetBackgroundAsStyle(fmt^.Background);
+        if (uffFont in fmt^.UsedFormattingFields) then
+          Result := Result + GetFontAsStyle(fmt^.FontIndex);
+        if (uffTextRotation in fmt^.UsedFormattingFields) then
+          Result := Result + GetTextRotationAsStyle(fmt^.TextRotation);
+        if (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haDefault) then
+          Result := Result + GetHorAlignAsStyle(fmt^.HorAlignment)
+        else
+          case ACell^.ContentType of
+            cctNumber    : Result := Result + GetHorAlignAsStyle(haRight);
+            cctDateTime  : Result := Result + GetHorAlignAsStyle(haLeft);
+            cctBool      : Result := Result + GetHorAlignAsStyle(haCenter);
+            else           Result := Result + GetHorAlignAsStyle(haLeft);
+          end;
         if (uffVertAlign in fmt^.UsedFormattingFields) then
           Result := Result + GetVertAlignAsStyle(fmt^.VertAlignment);
         if (uffBorder in fmt^.UsedFormattingFields) then
@@ -138,17 +156,17 @@ begin
           if soShowGridLines in FWorksheet.Options then
             Result := Result + GetGridBorderAsStyle;
         end;
-        if (uffBackground in fmt^.UsedFormattingFields) then
-          Result := Result + GetBackgroundAsStyle(fmt^.Background);
         if (uffFont in fmt^.UsedFormattingFields) then
-          Result := Result + GetFontAsStyle(fmt^.FontIndex);
+          Result := Result + GetFontAsStyle(fmt^.FontIndex);   {
         if (uffTextRotation in fmt^.UsedFormattingFields) then
-          Result := Result + GetTextRotationAsStyle(fmt^.TextRotation);
+          Result := Result + GetTextRotation(fmt^.TextRotation);}
+        Result := Result + GetWordwrapAsStyle(uffWordwrap in fmt^.UsedFormattingFields);
       end;
     'div', 'p':
       begin
         if fmt = nil then
           exit;
+        {
         if (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haDefault) then
           Result := Result + GetHorAlignAsStyle(fmt^.HorAlignment)
         else
@@ -163,10 +181,42 @@ begin
         if (uffTextRotation in fmt^.UsedFormattingFields) then
           Result := Result + GetTextRotation(fmt^.TextRotation);}
         Result := Result + GetWordwrapAsStyle(uffWordwrap in fmt^.UsedFormattingFields);
+        }
       end;
   end;
   if Result <> '' then
     Result := ' style="' + Result +'"';
+end;
+         *)
+function TsHTMLWriter.CellFormatAsString(AFormat: PsCellFormat; ATagName: String): String;
+begin
+  Result := '';
+
+  if (uffBackground in AFormat^.UsedFormattingFields) then
+    Result := Result + GetBackgroundAsStyle(AFormat^.Background);
+
+  if (uffFont in AFormat^.UsedFormattingFields) then
+    Result := Result + GetFontAsStyle(AFormat^.FontIndex);
+
+  if (uffTextRotation in AFormat^.UsedFormattingFields) then
+    Result := Result + GetTextRotationAsStyle(AFormat^.TextRotation);
+
+  if (uffHorAlign in AFormat^.UsedFormattingFields) and (AFormat^.HorAlignment <> haDefault) then
+    Result := Result + GetHorAlignAsStyle(AFormat^.HorAlignment);
+
+  if (uffVertAlign in AFormat^.UsedFormattingFields) then
+    Result := Result + GetVertAlignAsStyle(AFormat^.VertAlignment);
+
+  if (uffBorder in AFormat^.UsedFormattingFields) then
+    Result := Result + GetBorderAsStyle(AFormat^.Border, AFormat^.BorderStyles);
+  {
+  else begin
+    if soShowGridLines in FWorksheet.Options then
+      Result := Result + GetGridBorderAsStyle;
+  end;
+  }
+
+  Result := Result + GetWordwrapAsStyle(uffWordwrap in AFormat^.UsedFormattingFields);
 end;
 
 function TsHTMLWriter.GetBackgroundAsStyle(AFill: TsFillPattern): String;
@@ -261,6 +311,18 @@ begin
   Result:= Format(' width="%.1fpt"', [w], FPointSeparatorSettings);
 end;
 
+function TsHTMLWriter.GetDefaultHorAlignAsStyle(ACell: PCell): String;
+begin
+  Result := '';
+  if ACell = nil then
+    exit;
+  case ACell^.ContentType of
+    cctNumber  : Result := GetHorAlignAsStyle(haRight);
+    cctDateTime: Result := GetHorAlignAsStyle(haRight);
+    cctBool    : Result := GetHorAlignAsStyle(haCenter);
+  end;
+end;
+
 function TsHTMLWriter.GetFontAsStyle(AFontIndex: Integer): String;
 var
   font: TsFont;
@@ -284,7 +346,10 @@ end;
 
 function TsHTMLWriter.GetGridBorderAsStyle: String;
 begin
-  Result := 'border:1px solid lightgrey;';
+  if (soShowGridLines in FWorksheet.Options) then
+    Result := 'border:1px solid lightgrey;'
+  else
+    Result := '';
 end;
 
 function TsHTMLWriter.GetHorAlignAsStyle(AHorAlign: TsHorAlignment): String;
@@ -352,7 +417,7 @@ begin
   if AWordwrap then
     Result := 'word-wrap:break-word;'
   else
-    Result := 'white-space:nowrap';
+    Result := 'white-space:nowrap;';
 end;
 
 function TsHTMLWriter.IsHyperlinkTarget(ACell: PCell; out ABookmark: String): Boolean;
@@ -418,43 +483,32 @@ end;
 { Write boolean cell to stream formatted as string }
 procedure TsHTMLWriter.WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: Boolean; ACell: PCell);
-var
-  s: String;
-  style: String;
 begin
   Unused(AStream);
   Unused(ARow, ACol, ACell);
-  if AValue then
-    s := HTMLParams.TrueText
-  else
-    s := HTMLParams.FalseText;
   AppendToStream(AStream,
-    '<div' + style + '>' + s + '</div>');
+    '<div>' + IfThen(AValue, HTMLParams.TrueText, HTMLParams.FalseText) + '</div>');
 end;
 
 { Write date/time values in the same way they are displayed in the sheet }
 procedure TsHTMLWriter.WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: TDateTime; ACell: PCell);
 var
-  style: String;
   s: String;
 begin
-  style := CellFormatAsString(ACell, 'div');
   s := FWorksheet.ReadAsUTF8Text(ACell);
   AppendToStream(AStream,
-    '<div' + style + '>' + s + '</div>');
+    '<div>' + s + '</div>');
 end;
 
 procedure TsHTMLWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 var
-  style: String;
   s: String;
 begin
-  style := CellFormatAsString(ACell, 'div');
   s := FWOrksheet.ReadAsUTF8Text(ACell);
   AppendToStream(AStream,
-    '<div' + style + '>' + s + '</div>');
+    '<div>' + s + '</div>');
 end;
 
 { HTML does not support formulas, but we can write the formula results to
@@ -496,7 +550,8 @@ begin
   if txt = '' then
     exit;
 
-  style := CellFormatAsString(ACell, 'div');
+  style := ''; //CellFormatAsString(ACell, 'div');
+  cellfnt := FWorksheet.ReadCellFont(ACell);
 
   // Hyperlink
   target := '';
@@ -532,18 +587,21 @@ begin
   begin
     // Standard text formatting
     ValidXMLText(txt);
-    if target <> '' then txt := Format('<a href="%s">%s</a>', [target, txt]);
+    if target <> '' then
+      txt := Format('<a href="%s">%s</a>', [target, txt]);
+    if cellFnt.Position <> fpNormal then
+      txt := Format('<%0:s>%1:s</%0:s>', [ESCAPEMENT_TAG[cellFnt.Position], txt]);
     AppendToStream(AStream,
       '<div' + bookmark + style + '>' + txt + '</div>')
   end else
   begin
-    // "Rich-text" formatting
-    cellfnt := FWorksheet.ReadCellFont(ACell);
+    // "Rich-text" formatted string
     len := UTF8Length(AValue);
     textp := '<div' + bookmark + style + '>';
     if target <> '' then
       textp := textp + '<a href="' + target + '">';
     rtParam := ACell^.RichTextParams[0];
+    // Part before first formatted section (has cell fnt)
     if rtParam.StartIndex > 0 then
     begin
       txt := UTF8Copy(AValue, 1, rtParam.StartIndex);
@@ -554,6 +612,7 @@ begin
     end;
     for i := 0 to High(ACell^.RichTextParams) do
     begin
+      // formatted section
       rtParam := ACell^.RichTextParams[i];
       fnt := FWorkbook.GetFont(rtParam.FontIndex);
       style := GetFontAsStyle(rtParam.FontIndex);
@@ -565,17 +624,23 @@ begin
       if fnt.Position <> fpNormal then
         txt := Format('<%0:s>%1:s</%0:s>', [ESCAPEMENT_TAG[fnt.Position], txt]);
       textp := textp + '<span' + style +'>' + txt + '</span>';
+      // unformatted section before end
       if (rtParam.EndIndex < len) and (i = High(ACell^.RichTextParams)) then
       begin
         txt := UTF8Copy(AValue, rtParam.EndIndex+1, MaxInt);
         ValidXMLText(txt);
+        if cellFnt.Position <> fpNormal then
+          txt := Format('<%0:s>%1:s</%0:s>', [ESCAPEMENT_TAG[cellFnt.Position], txt]);
         textp := textp + txt;
       end else
+      // unformatted section between two formatted sections
       if (i < High(ACell^.RichTextParams)) and (rtParam.EndIndex < ACell^.RichTextParams[i+1].StartIndex)
       then begin
         n := ACell^.RichTextParams[i+1].StartIndex - rtParam.EndIndex;
         txt := UTF8Copy(AValue, rtParam.EndIndex+1, n);
         ValidXMLText(txt);
+        if cellFnt.Position <> fpNormal then
+          txt := Format('<%0:s>%1:s</%0:s>', [ESCAPEMENT_TAG[cellFnt.Position], txt]);
         textp := textp + txt;
       end;
     end;
@@ -591,15 +656,11 @@ procedure TsHTMLWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: double; ACell: PCell);
 var
   s: String;
-  style: String;
 begin
   Unused(ARow, ACol);
-
-  style := CellFormatAsString(ACell, 'div');
-
   s := FWorksheet.ReadAsUTF8Text(ACell, FWorkbook.FormatSettings);
   AppendToStream(AStream,
-    '<div' + style + '>' + s + '</div>');
+    '<div>' + s + '</div>');
 end;
 
 procedure TsHTMLWriter.WriteToStream(AStream: TStream);
@@ -609,11 +670,32 @@ begin
     '<!DOCTYPE html>' +
     '<html>' +
       '<head>'+
-        '<meta charset="utf-8">' +
+        '<meta charset="utf-8">');
+  WriteStyles(AStream);
+  AppendToStream(AStream,
       '</head>');
       WriteBody(AStream);
   AppendToStream(AStream,
     '</html>');
+end;
+
+procedure TsHTMLWriter.WriteStyles(AStream: TStream);
+var
+  i: Integer;
+  fmt: PsCellFormat;
+  fmtStr: String;
+begin
+  AppendToStream(AStream,
+    '<style>');
+  for i:=0 to FWorkbook.GetNumCellFormats-1 do begin
+    fmt := FWorkbook.GetPointerToCellFormat(i);
+    fmtStr := CellFormatAsString(fmt, 'td');
+    if fmtStr <> '' then
+      fmtStr := Format('td.style%d {%s}', [i+1, fmtStr]);
+    AppendToStream(AStream, fmtStr);
+  end;
+  AppendToStream(AStream,
+    '</style>');
 end;
 
 procedure TsHTMLWriter.WriteToStrings(AStrings: TStrings);
@@ -634,13 +716,11 @@ procedure TsHTMLWriter.WriteWorksheet(AStream: TStream; ASheet: TsWorksheet);
 var
   r, rFirst, rLast: Cardinal;
   c, cFirst, cLast: Cardinal;
-  txt: String;
   cell: PCell;
-  style: String;
+  style, s: String;
   fixedLayout: Boolean;
   col: PCol;
-  row: PRow;
-  w, h: Single;
+  fmt: PsCellFormat;
 begin
   FWorksheet := ASheet;
 
@@ -721,8 +801,29 @@ begin
       // Pointer to current cell in loop
       cell := FWorksheet.FindCell(r, c);
 
-      // Cell formatting
-      style := CellFormatAsString(cell, 'td');    // this contains the 'style="..."'
+      // Cell formatting via predefined styles ("class")
+      style := '';
+      fmt := nil;
+      if cell <> nil then
+      begin
+        style := Format(' class="style%d"', [cell^.FormatIndex+1]);
+        fmt := FWorkbook.GetPointerToCellFormat(cell^.FormatIndex);
+      end;
+
+      // Overriding differences between html and fps formatting
+      s := '';
+      if (fmt = nil) then
+        s := s + GetGridBorderAsStyle
+      else begin
+        if ((not (uffBorder in fmt^.UsedFormattingFields)) or (fmt^.Border = [])) then
+          s := s + GetGridBorderAsStyle;
+        if ((not (uffHorAlign in fmt^.UsedFormattingFields)) or (fmt^.HorAlignment = haDefault)) then
+          s := s + GetDefaultHorAlignAsStyle(cell);
+        if ((not (uffVertAlign in fmt^.UsedFormattingFields)) or (fmt^.VertAlignment = vaDefault)) then
+          s := s + GetVertAlignAsStyle(vaBottom);
+      end;
+      if s <> '' then
+        style := style + ' style="' + s + '"';
 
       if not HTMLParams.ShowRowColHeaders then
       begin

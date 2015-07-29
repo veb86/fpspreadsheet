@@ -41,7 +41,7 @@ uses
 
 const
 {@@ Font size factor for sub-/superscript characters }
-  SUBSCRIPT_SUPERSCRIPT_FACTOR = 0.6;
+  SUBSCRIPT_SUPERSCRIPT_FACTOR = 0.66;
 
 {@@ ----------------------------------------------------------------------------
   Converts a spreadsheet font to a font used for painting (TCanvas.Font).
