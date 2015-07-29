@@ -1,5 +1,5 @@
 {
-htmltablewrite.lpr
+htmlwrite.lpr
 
 Demonstrates how to write a table in html format using the fpspreadsheet library
 }

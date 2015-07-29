@@ -658,7 +658,7 @@ var
   RunsCounter: WORD;
   AsianPhoneticBytes: DWORD;
   i: Integer;
-  j: SizeUInt;
+  j: Integer; //j: SizeUInt;
   lLen: SizeInt;
   RecordType: WORD;
   RecordSize: WORD;
@@ -666,16 +666,16 @@ var
 begin
   StringFlags := AStream.ReadByte;
   Dec(PendingRecordSize);
+  if StringFlags and 8 = 8 then begin
+    // Rich string
+    RunsCounter := WordLEtoN(AStream.ReadWord);
+    dec(PendingRecordSize,2);
+  end;
   if StringFlags and 4 = 4 then begin
     // Asian phonetics
     // Read Asian phonetics Length (not used)
     AsianPhoneticBytes := DWordLEtoN(AStream.ReadDWord);
     dec(PendingRecordSize,4);
-  end;
-  if StringFlags and 8 = 8 then begin
-    // Rich string
-    RunsCounter := WordLEtoN(AStream.ReadWord);
-    dec(PendingRecordSize,2);
   end;
   if StringFlags and 1 = 1 Then begin
     // String is WideStringLE
@@ -717,7 +717,7 @@ begin
   if StringFlags and 8 = 8 then begin
     // Rich string (This only occurs in BIFF8)
     SetLength(ARichTextRuns, RunsCounter);
-    for j := 0 to RunsCounter - 1 do begin
+    for j := 0 to SmallInt(RunsCounter) - 1 do begin
       if (PendingRecordSize <= 0) then begin
         // A CONTINUE may happened here
         RecordType := WordLEToN(AStream.ReadWord);
@@ -1814,10 +1814,15 @@ begin
     begin
       // Size of character array incl trailing zero
       size := DWordLEToN(AStream.ReadDWord);
-      len := size div 2 -1;
       // Character array of URL (16-bit-characters, with trailing zero word)
+      // See 3 lines below: This buffer is too large!
+      len := size div 2 - 1;
       SetLength(wideStr, len);
       AStream.ReadBuffer(wideStr[1], size);
+      // The buffer can be larger than the space occupied by the wideStr.
+      // --> Find true string length and convert wide string to utf-8.
+      len := StrLen(PWideChar(widestr));
+      SetLength(widestr, len);
       link := UTF8Encode(widestr);
     end else
     // Check for local file

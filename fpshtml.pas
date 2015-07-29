@@ -34,14 +34,19 @@ type            (*
               *)
   TsHTMLWriter = class(TsCustomSpreadWriter)
   private
-    FFormatSettings: TFormatSettings;
+    FPointSeparatorSettings: TFormatSettings;
     function GetBackgroundAsStyle(AFill: TsFillPattern): String;
     function GetBorderAsStyle(ABorder: TsCellBorders; const ABorderStyles: TsCellBorderStyles): String;
+    function GetColWidthAsAttr(AColIndex: Integer): String;
     function GetFontAsStyle(AFontIndex: Integer): String;
+    function GetGridBorderAsStyle: String;
     function GetHorAlignAsStyle(AHorAlign: TsHorAlignment): String;
-    function GetTextRotation(ATextRot: TsTextRotation): String;
+    function GetMergedRangeAsStyle(AMergeBase: PCell): String;
+    function GetRowHeightAsAttr(ARowIndex: Integer): String;
+    function GetTextRotationAsStyle(ATextRot: TsTextRotation): String;
     function GetVertAlignAsStyle(AVertAlign: TsVertAlignment): String;
     function GetWordWrapAsStyle(AWordWrap: Boolean): String;
+    function IsHyperlinkTarget(ACell: PCell; out ABookmark: String): Boolean;
     procedure WriteBody(AStream: TStream);
     procedure WriteWorksheet(AStream: TStream; ASheet: TsWorksheet);
 
@@ -64,19 +69,22 @@ type            (*
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
     procedure WriteToStream(AStream: TStream); override;
     procedure WriteToStrings(AStrings: TStrings); override;
   end;
 
   TsHTMLParams = record
     SheetIndex: Integer;             // W: Index of the sheet to be written
+    ShowRowColHeaders: Boolean;      // RW: Show row/column headers
     TrueText: String;                // RW: String for boolean TRUE
     FalseText: String;               // RW: String for boolean FALSE
   end;
 
 var
   HTMLParams: TsHTMLParams = (
-    SheetIndex: -1;       // -1 = active sheet, MaxInt = all sheets
+    SheetIndex: -1;                  // -1 = active sheet, MaxInt = all sheets
+    ShowRowColHeaders: false;
     TrueText: 'TRUE';
     FalseText: 'FALSE';
   );
@@ -84,11 +92,24 @@ var
 implementation
 
 uses
-  LazUTF8, fpsUtils;
+  LazUTF8, URIParser, Math,
+  fpsUtils;
 
 constructor TsHTMLWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
+
+  // No design limiations in table size
+  // http://stackoverflow.com/questions/4311283/max-columns-in-html-table
+  FLimitations.MaxColCount := MaxInt;
+  FLimitations.MaxRowCount := MaxInt;
+end;
+
+destructor TsHTMLWriter.Destroy;
+begin
+  inherited Destroy;
 end;
 
 function TsHTMLWriter.CellFormatAsString(ACell: PCell; ForThisTag: String): String;
@@ -104,9 +125,9 @@ begin
     'td':
       if ACell = nil then
       begin
-        Result := 'border-collapse:collapse; ';
+        Result := 'border-collapse:collapse;';
         if soShowGridLines in FWorksheet.Options then
-          Result := Result + 'border:1px solid lightgrey; '
+          Result := Result + GetGridBorderAsStyle;
       end else
       begin
         if (uffVertAlign in fmt^.UsedFormattingFields) then
@@ -114,16 +135,15 @@ begin
         if (uffBorder in fmt^.UsedFormattingFields) then
           Result := Result + GetBorderAsStyle(fmt^.Border, fmt^.BorderStyles)
         else begin
-          Result := Result + 'border-collapse:collapse; ';
           if soShowGridLines in FWorksheet.Options then
-            Result := Result + 'border:1px solid lightgrey; ';
+            Result := Result + GetGridBorderAsStyle;
         end;
         if (uffBackground in fmt^.UsedFormattingFields) then
           Result := Result + GetBackgroundAsStyle(fmt^.Background);
         if (uffFont in fmt^.UsedFormattingFields) then
           Result := Result + GetFontAsStyle(fmt^.FontIndex);
         if (uffTextRotation in fmt^.UsedFormattingFields) then
-          Result := Result + GetTextRotation(fmt^.TextRotation);
+          Result := Result + GetTextRotationAsStyle(fmt^.TextRotation);
       end;
     'div', 'p':
       begin
@@ -161,7 +181,12 @@ function TsHTMLWriter.GetBorderAsStyle(ABorder: TsCellBorders;
   const ABorderStyles: TsCellBorderStyles): String;
 const
   BORDER_NAMES: array[TsCellBorder] of string = (
-    'border-top', 'border-left', 'border-right', 'border-bottom', '', ''
+    'border-top',    // cbNorth
+    'border-left',   // cbWest
+    'border-right',  // cbEast
+    'border-bottom', // cbSouth
+    '',              // cbDiagUp
+    ''               // cbDiagDown
   );
   LINESTYLE_NAMES: array[TsLineStyle] of string = (
     'thin solid',    // lsThin
@@ -169,33 +194,80 @@ const
     'thin dashed',   // lsDashed
     'thin dotted',   // lsDotted
     'thick solid',   // lsThick,
-    'thin double',   // lsDouble,
+    'double',        // lsDouble,
     '1px solid'      // lsHair
   );
 var
   cb: TsCellBorder;
+  allEqual: Boolean;
+  bs: TsCellBorderStyle;
 begin
-  Result := 'border-collape:collapse';
+  Result := 'border-collape:collapse;';
+  if ABorder = [cbNorth, cbEast, cbWest, cbSouth] then
+  begin
+    allEqual := true;
+    bs := ABorderStyles[cbNorth];
+    for cb in TsCellBorder do
+    begin
+      if bs.LineStyle <> ABorderStyles[cb].LineStyle then
+      begin
+        allEqual := false;
+        break;
+      end;
+      if bs.Color <> ABorderStyles[cb].Color then
+      begin
+        allEqual := false;
+        break;
+      end;
+    end;
+    if allEqual then
+    begin
+      Result := 'border:' +
+        LINESTYLE_NAMES[bs.LineStyle] + ' ' +
+        ColorToHTMLColorStr(bs.Color) + ';';
+      exit;
+    end;
+  end;
+
   for cb in TsCellBorder do
   begin
     if BORDER_NAMES[cb] = '' then
       continue;
-    Result := Result + BORDER_NAMES[cb] + ':' +
-      LINESTYLE_NAMES[ABorderStyles[cb].LineStyle] + ' ' +
-      ColorToHTMLColorStr(ABorderStyles[cb].Color) + ';';
+    if cb in ABorder then
+      Result := Result + BORDER_NAMES[cb] + ':' +
+        LINESTYLE_NAMES[ABorderStyles[cb].LineStyle] + ' ' +
+        ColorToHTMLColorStr(ABorderStyles[cb].Color) + ';';
   end;
+end;
+
+function TsHTMLWriter.GetColWidthAsAttr(AColIndex: Integer): String;
+var
+  col: PCol;
+  w: Single;
+  rLast: Cardinal;
+begin
+  if AColIndex < 0 then  // Row header column
+  begin
+    rLast := FWorksheet.GetLastRowIndex;
+    w := Length(IntToStr(rLast)) + 2;
+  end else
+  begin
+    w := FWorksheet.DefaultColWidth;
+    col := FWorksheet.FindCol(AColIndex);
+    if col <> nil then
+      w := col^.Width;
+  end;
+  w := w * FWorkbook.GetDefaultFont.Size;
+  Result:= Format(' width="%.1fpt"', [w], FPointSeparatorSettings);
 end;
 
 function TsHTMLWriter.GetFontAsStyle(AFontIndex: Integer): String;
 var
-  fs: TFormatSettings;
   font: TsFont;
 begin
-  fs := DefaultFormatSettings;
-  fs.DecimalSeparator := '.';
   font := FWorkbook.GetFont(AFontIndex);
   Result := Format('font-family:''%s'';font-size:%.1fpt;color:%s;', [
-    font.FontName, font.Size, ColorToHTMLColorStr(font.Color)], fs);
+    font.FontName, font.Size, ColorToHTMLColorStr(font.Color)], FPointSeparatorSettings);
   if fssBold in font.Style then
     Result := Result + 'font-weight:700;';
   if fssItalic in font.Style then
@@ -210,6 +282,11 @@ begin
     Result := Result + 'text-decoration:line-through;';
 end;
 
+function TsHTMLWriter.GetGridBorderAsStyle: String;
+begin
+  Result := 'border:1px solid lightgrey;';
+end;
+
 function TsHTMLWriter.GetHorAlignAsStyle(AHorAlign: TsHorAlignment): String;
 begin
   case AHorAlign of
@@ -219,7 +296,33 @@ begin
   end;
 end;
 
-function TsHTMLWriter.GetTextRotation(ATextRot: TsTextRotation): String;
+function TsHTMLWriter.GetMergedRangeAsStyle(AMergeBase: PCell): String;
+var
+  r1, r2, c1, c2: Cardinal;
+begin
+  Result := '';
+  FWorksheet.FindMergedRange(AMergeBase, r1, c1, r2, c2);
+  if c1 <> c2 then
+    Result := Result + ' colspan="' + IntToStr(c2-c1+1) + '"';
+  if r1 <> r2 then
+    Result := Result + ' rowspan="' + IntToStr(r2-r1+1) + '"';
+end;
+
+function TsHTMLWriter.GetRowHeightAsAttr(ARowIndex: Integer): String;
+var
+  h: Single;
+  row: PRow;
+begin
+  h := FWorksheet.DefaultRowHeight;
+  row := FWorksheet.FindRow(ARowIndex);
+  if row <> nil then
+    h := row^.Height;
+  h := (h + ROW_HEIGHT_CORRECTION) * FWorkbook.GetDefaultFont.Size;
+  Result := Format(' height="%.1fpt"', [h], FPointSeparatorSettings);
+end;
+
+
+function TsHTMLWriter.GetTextRotationAsStyle(ATextRot: TsTextRotation): String;
 begin
   Result := '';
   case ATextRot of
@@ -249,8 +352,38 @@ begin
   if AWordwrap then
     Result := 'word-wrap:break-word;'
   else
-    Result := 'white-space:nowrap'; //-moz-pre-wrap -o-pre-wrap pre-wrap;';
-                          { Firefox      Opera        Chrome  }
+    Result := 'white-space:nowrap';
+end;
+
+function TsHTMLWriter.IsHyperlinkTarget(ACell: PCell; out ABookmark: String): Boolean;
+var
+  sheet: TsWorksheet;
+  hyperlink: PsHyperlink;
+  target, sh: String;
+  i, r, c: Cardinal;
+begin
+  Result := false;
+  if ACell = nil then
+    exit;
+
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    for hyperlink in sheet.Hyperlinks do
+    begin
+      SplitHyperlink(hyperlink^.Target, target, ABookmark);
+      if (target <> '') or (ABookmark = '') then
+        continue;
+      if ParseSheetCellString(ABookmark, sh, r, c) then
+        if (sh = TsWorksheet(ACell^.Worksheet).Name) and
+           (r = ACell^.Row) and (c = ACell^.Col)
+        then
+          exit(true);
+      if (sheet = FWorksheet) and  ParseCellString(ABookmark, r, c) then
+        if (r = ACell^.Row) and (c = ACell^.Col) then
+          exit(true);
+    end;
+  end;
 end;
 
 procedure TsHTMLWriter.WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
@@ -347,13 +480,15 @@ procedure TsHTMLWriter.WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
 const
   ESCAPEMENT_TAG: Array[TsFontPosition] of String = ('', 'sup', 'sub');
 var
-  L: TStringList;
   style: String;
   i, n, len: Integer;
-  txt, textp: String;
+  txt, textp, target, bookmark: String;
   rtParam: TsRichTextParam;
   fnt, cellfnt: TsFont;
   escapement: String;
+  hyperlink: PsHyperlink;
+  isTargetCell: Boolean;
+  u: TUri;
 begin
   Unused(ARow, ACol, AValue);
 
@@ -363,19 +498,51 @@ begin
 
   style := CellFormatAsString(ACell, 'div');
 
+  // Hyperlink
+  target := '';
+  if FWorksheet.HasHyperlink(ACell) then
+  begin
+    hyperlink := FWorksheet.FindHyperlink(ACell);
+    SplitHyperlink(hyperlink^.Target, target, bookmark);
+
+    n := Length(hyperlink^.Target);
+    i := Length(target);
+    len := Length(bookmark);
+
+    if (target <> '') and (pos('file:', target) = 0) then
+    begin
+      u := ParseURI(target);
+      if u.Protocol = '' then
+        target := '../' + target;
+    end;
+
+    // ods absolutely wants "/" path delimiters in the file uri!
+    FixHyperlinkPathdelims(target);
+
+    if (bookmark <> '') then
+      target := target + '#' + bookmark;
+  end;
+
+  // Activate hyperlink target if it is within the same file
+  isTargetCell := IsHyperlinkTarget(ACell, bookmark);
+  if isTargetCell then bookmark := ' id="' + bookmark + '"' else bookmark := '';
+
   // No hyperlink, normal text only
   if Length(ACell^.RichTextParams) = 0 then
   begin
     // Standard text formatting
     ValidXMLText(txt);
+    if target <> '' then txt := Format('<a href="%s">%s</a>', [target, txt]);
     AppendToStream(AStream,
-      '<div' + style + '>' + txt + '</div>')
+      '<div' + bookmark + style + '>' + txt + '</div>')
   end else
   begin
     // "Rich-text" formatting
     cellfnt := FWorksheet.ReadCellFont(ACell);
     len := UTF8Length(AValue);
-    textp := '<div' + style + '>';
+    textp := '<div' + bookmark + style + '>';
+    if target <> '' then
+      textp := textp + '<a href="' + target + '">';
     rtParam := ACell^.RichTextParams[0];
     if rtParam.StartIndex > 0 then
     begin
@@ -412,24 +579,11 @@ begin
         textp := textp + txt;
       end;
     end;
-    textp := textp + '</div>';
+    if target <> '' then
+      textp := textp + '</a></div>' else
+      textp := textp + '</div>';
     AppendToStream(AStream, textp);
   end;
-
-{
-  L := TStringList.Create;
-  try
-    L.Text := ACell^.UTF8StringValue;
-    if L.Count = 1 then
-      AppendToStream(AStream,
-        '<div' + style + '>' + s + '</div>')
-    else
-    for i := 0 to L.Count-1 do
-      AppendToStream(AStream, '<p><div'+ style + '>' + L[i] + '</div></p>');
-  finally
-    L.Free;
-  end;
-  }
 end;
 
 { Writes a number cell to the stream. }
@@ -439,17 +593,11 @@ var
   s: String;
   style: String;
 begin
-  Unused(AStream);
   Unused(ARow, ACol);
 
   style := CellFormatAsString(ACell, 'div');
 
-  {
-  if HTMLParams.NumberFormat <> '' then
-    s := Format(HTMLParams.NumberFormat, [AValue], FFormatSettings)
-  else
-  }
-  s := FWorksheet.ReadAsUTF8Text(ACell, FFormatSettings);
+  s := FWorksheet.ReadAsUTF8Text(ACell, FWorkbook.FormatSettings);
   AppendToStream(AStream,
     '<div' + style + '>' + s + '</div>');
 end;
@@ -461,7 +609,6 @@ begin
     '<!DOCTYPE html>' +
     '<html>' +
       '<head>'+
-    //    '<title>Written by FPSpreadsheet</title>' +
         '<meta charset="utf-8">' +
       '</head>');
       WriteBody(AStream);
@@ -492,8 +639,8 @@ var
   style: String;
   fixedLayout: Boolean;
   col: PCol;
-  w: Single;
-  fs: TFormatSettings;
+  row: PRow;
+  w, h: Single;
 begin
   FWorksheet := ASheet;
 
@@ -501,9 +648,6 @@ begin
   cFirst := FWorksheet.GetFirstColIndex;
   rLast := FWorksheet.GetLastOccupiedRowIndex;
   cLast := FWorksheet.GetLastOccupiedColIndex;
-
-  fs := DefaultFormatSettings;
-  fs.DecimalSeparator := '.';
 
   fixedLayout := false;
   for c:=cFirst to cLast do
@@ -520,7 +664,7 @@ begin
 
   style := style + 'border-collapse:collapse; ';
   if soShowGridLines in FWorksheet.Options then
-    style := style + 'border:1px solid lightgrey; ';
+    style := style + GetGridBorderAsStyle;
 
   if fixedLayout then
     style := style + 'table-layout:fixed; '
@@ -530,37 +674,89 @@ begin
   AppendToStream(AStream,
     '<div>' +
       '<table style="' + style + '">');
+
+  if HTMLParams.ShowRowColHeaders then
+  begin
+    // width of row-header column
+    style := '';
+    if soShowGridLines in FWorksheet.Options then
+      style := style + GetGridBorderAsStyle;
+    if style <> '' then
+      style := ' style="' + style + '"';
+    style := style + GetColWidthAsAttr(-1);
+    AppendToStream(AStream,
+        '<th' + style + '/>');
+    // Column headers
+    for c := cFirst to cLast do
+    begin
+      style := '';
+      if soShowGridLines in FWorksheet.Options then
+        style := style + GetGridBorderAsStyle;
+      if style <> '' then
+        style := ' style="' + style + '"';
+      if fixedLayout then
+        style := style + GetColWidthAsAttr(c);
+      AppendToStream(AStream,
+        '<th' + style + '>' + GetColString(c) + '</th>');
+    end;
+  end;
+
   for r := rFirst to rLast do begin
     AppendToStream(AStream,
         '<tr>');
-      for c := cFirst to cLast do begin
-        cell := FWorksheet.FindCell(r, c);
-        style := CellFormatAsString(cell, 'td');
 
-        if (c = cFirst) then
-        begin
-          w := FWorksheet.DefaultColWidth;
-          if fixedLayout then
-          begin
-            col := FWorksheet.GetCol(c);
-            if col <> nil then
-              w := col^.Width;
-            style := Format(' width="%.1fpt"', [w*FWorkbook.GetDefaultFont.Size], fs) + style;
-          end;
-        end;
+    // Row headers
+    if HTMLParams.ShowRowColHeaders then begin
+      style := '';
+      if soShowGridLines in FWorksheet.Options then
+        style := style + GetGridBorderAsStyle;
+      if style <> '' then
+        style := ' style="' + style + '"';
+      style := style + GetRowHeightAsAttr(r);
+      AppendToStream(AStream,
+          '<th' + style + '>' + IntToStr(r+1) + '</th>');
+    end;
 
-        if (cell = nil) or (cell^.ContentType = cctEmpty) then
-          AppendToStream(AStream,
-            '<td' + style + ' />')
-        else
-        begin
-          AppendToStream(AStream,
-            '<td' + style + '>');
-          WriteCellToStream(AStream, cell);
-          AppendToStream(AStream,
-            '</td>');
-        end;
+    for c := cFirst to cLast do begin
+      // Pointer to current cell in loop
+      cell := FWorksheet.FindCell(r, c);
+
+      // Cell formatting
+      style := CellFormatAsString(cell, 'td');    // this contains the 'style="..."'
+
+      if not HTMLParams.ShowRowColHeaders then
+      begin
+        // Column width
+        if fixedLayout then
+          style := GetColWidthAsAttr(c) + style;
+
+        // Row heights (should be in "tr", but does not work there)
+        style := GetRowHeightAsAttr(r) + style;
       end;
+
+      // Merged cells
+      if FWorksheet.IsMerged(cell) then
+      begin
+        if FWorksheet.IsMergeBase(cell) then
+          style := style + GetMergedRangeAsStyle(cell)
+        else
+          Continue;
+      end;
+
+      if (cell = nil) or (cell^.ContentType = cctEmpty) then
+        // Empty cell
+        AppendToStream(AStream,
+          '<td' + style + ' />')
+      else
+      begin
+        // Cell with data
+        AppendToStream(AStream,
+          '<td' + style + '>');
+        WriteCellToStream(AStream, cell);
+        AppendToStream(AStream,
+          '</td>');
+      end;
+    end;
     AppendToStream(AStream,
         '</tr>');
   end;
