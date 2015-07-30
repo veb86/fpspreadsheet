@@ -460,6 +460,7 @@ type
     FPalette: TsPalette;
     procedure AddBuiltinNumFormats; override;
     function FindXFIndex(ACell: PCell): Integer; virtual;
+    function FixLineEnding(const AText: String): String;
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
     function GetPrintOptions: Word; virtual;
@@ -2412,6 +2413,28 @@ end;
 function TsSpreadBIFFWriter.FindXFIndex(ACell: PCell): Integer;
 begin
   Result := LAST_BUILTIN_XF + ACell^.FormatIndex;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  The line separator for multi-line text in label cells is accepted by xls
+  to be either CRLF or LF, CR does not work.
+  This procedure replaces accidentally used single CR characters by LF.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFFWriter.FixLineEnding(const AText: String): String;
+var
+  i: Integer;
+begin
+  Result := AText;
+  if Result = '' then
+    exit;
+  // if the last character is a #13 it cannot be part of a CRLF --> replace by #10
+  if Result[Length(Result)] = #13 then
+    Result[Length(Result)] := #10;
+  // In the rest of the string replace all #13 (which are not followed by a #10)
+  // by #10.
+  for i:=1 to Length(Result)-1 do
+    if (Result[i] = #13) and (Result[i+1] <> #10) then
+      Result[i] := #10;
 end;
 
 function TsSpreadBIFFWriter.GetLastRowIndex(AWorksheet: TsWorksheet): Integer;

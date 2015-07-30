@@ -1465,7 +1465,7 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
-  ansiValue := ConvertEncoding(AValue, encodingUTF8, FCodePage);
+  ansiValue := ConvertEncoding(FixLineEnding(AValue), encodingUTF8, FCodePage);
   if AnsiValue = '' then begin
     // Bad formatted UTF8String (maybe ANSI?)
     if Length(AValue) <> 0 then begin

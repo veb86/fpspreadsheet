@@ -1836,7 +1836,7 @@ begin
 
   if AValue = '' then Exit; // Writing an empty text doesn't work
 
-  AnsiText := UTF8ToISO_8859_1(AValue);
+  AnsiText := UTF8ToISO_8859_1(FixLineEnding(AValue));
 
   if Length(AnsiText) > MAXBYTES then begin
     // BIFF 5 does not support labels/text bigger than 255 chars,

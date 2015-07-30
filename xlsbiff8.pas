@@ -141,7 +141,7 @@ type
     procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteHyperlinkToolTip(AStream: TStream; const ARow, ACol: Cardinal;
       const ATooltip: String);
-    procedure WriteIndex(AStream: TStream);
+    procedure WriteINDEX(AStream: TStream);
     procedure WriteLABEL(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
@@ -2613,7 +2613,7 @@ end;
 
     nm = (rl - rf - 1) / 32 + 1 (using integer division)
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteIndex(AStream: TStream);
+procedure TsSpreadBIFF8Writer.WriteINDEX(AStream: TStream);
 begin
   { BIFF Record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_INDEX, 16);
@@ -2664,7 +2664,7 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
-  WideValue := UTF8Decode(AValue); //to UTF16
+  WideValue := UTF8Decode(FixLineEnding(AValue)); //to UTF16
   if WideValue = '' then begin
     // Badly formatted UTF8String (maybe ANSI?)
     if Length(AValue)<>0 then begin

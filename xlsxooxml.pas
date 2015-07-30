@@ -3853,7 +3853,7 @@ begin
     // unformatted string
     AppendToStream(FSSharedStrings,
       '<si>' +
-        '<t>' + txt + '</t>' +
+        '<t xml:space="preserve">' + txt + '</t>' +
       '</si>')
   else
   begin
@@ -3868,7 +3868,7 @@ begin
       ValidXMLText(txt);
       AppendToStream(FSSharedStrings,
         '<r>' +
-          '<t>' + txt + '</t>' +
+          '<t xml:space="preserve">' + txt + '</t>' +
         '</r>'
       );
     end;
@@ -3883,7 +3883,7 @@ begin
         '<r>');
       WriteFont(FSSharedStrings, fnt, false);  // <rPr> ... font data ... </rPr>
       AppendToStream(FSSharedStrings,
-          '<t>' + txt + '</t>' +
+          '<t xml:space="preserve">' + txt + '</t>' +
         '</r>'
       );
       if (rtParam.EndIndex < L) and (i = High(ACell^.RichTextParams)) then
@@ -3892,7 +3892,7 @@ begin
         ValidXMLText(txt);
         AppendToStream(FSSharedStrings,
           '<r>' +
-            '<t>' + txt + '</t>' +
+            '<t xml:space="preserve">' + txt + '</t>' +
           '</r>'
         )
       end else
@@ -3903,7 +3903,7 @@ begin
         ValidXMLText(txt);
         AppendToStream(FSSharedStrings,
           '<r>' +
-            '<t>' + txt + '</t>' +
+            '<t xml:space="preserve">' + txt + '</t>' +
           '</r>'
         );
       end;

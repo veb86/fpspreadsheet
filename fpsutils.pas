@@ -52,7 +52,7 @@ function WordLEtoN(AValue: Word): Word;
 function DWordLEtoN(AValue: Cardinal): Cardinal;
 function WideStringLEToN(const AValue: WideString): WideString;
 
-// Other routines
+// Cell, column and row strings
 function ParseIntervalString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ACount: Cardinal;
   out ADirection: TsSelectionDirection): Boolean;
@@ -1534,6 +1534,7 @@ begin
       '"': Result := Result + '&quot;';
       '''':Result := Result + '&apos;';
       '%': Result := Result + '&#37;';
+      {     this breaks multi-line labels in xlsx
       #10: begin
              Result := Result + '<br />';
              if (idx < Length(AText)) and (AText[idx+1] = #13) then inc(idx);
@@ -1542,6 +1543,7 @@ begin
              Result := Result + '<br />';
              if (idx < Length(AText)) and (AText[idx+1] = #10) then inc(idx);
            end;
+           }
       {
       #10: WrkStr := WrkStr + '&#10;';
       #13: WrkStr := WrkStr + '&#13;';
