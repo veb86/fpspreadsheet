@@ -1657,12 +1657,12 @@ var
       lsDashed, lsDotted,
       lsThick, lsDouble,
       lsHair              : Result := ALineStyle;
-      lsMediumDash        : Result := lsMedium;
-      lsDashDot           : Result := lsDashed;
-      lsMediumDashDot     : Result := lsMedium;
+      lsMediumDash        : Result := lsDashed;
+      lsDashDot           : Result := lsDotted;
+      lsMediumDashDot     : Result := lsDashed;
       lsDashDotDot        : Result := lsDotted;
-      lsMediumDashDotDot  : Result := lsMedium;
-      lsSlantDashDot      : Result := lsMedium;
+      lsMediumDashDotDot  : Result := lsDashed;
+      lsSlantDashDot      : Result := lsDashed;
       else raise Exception.Create('[TsSpreadBIFF5Writer.WriteXF] Linestyle not supported.');
     end;
   end;

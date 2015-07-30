@@ -1549,34 +1549,34 @@ begin
   if dw <> 0 then
   begin
     Include(fmt.Border, cbWest);
-    fmt.BorderStyles[cbWest].LineStyle := TsLineStyle(dw);
+    fmt.BorderStyles[cbWest].LineStyle := TsLineStyle(dw-1);
     Include(fmt.UsedFormattingFields, uffBorder);
   end;
   dw := rec.Border_BkGr1 and MASK_XF_BORDER_RIGHT;
   if dw <> 0 then
   begin
     Include(fmt.Border, cbEast);
-    fmt.BorderStyles[cbEast].LineStyle := TsLineStyle(dw shr 4);
+    fmt.BorderStyles[cbEast].LineStyle := TsLineStyle((dw shr 4)-1);
     Include(fmt.UsedFormattingFields, uffBorder);
   end;
   dw := rec.Border_BkGr1 and MASK_XF_BORDER_TOP;
   if dw <> 0 then
   begin
     Include(fmt.Border, cbNorth);
-    fmt.BorderStyles[cbNorth].LineStyle := TsLineStyle(dw shr 8);
+    fmt.BorderStyles[cbNorth].LineStyle := TsLineStyle((dw shr 8)-1);
     Include(fmt.UsedFormattingFields, uffBorder);
   end;
   dw := rec.Border_BkGr1 and MASK_XF_BORDER_BOTTOM;
   if dw <> 0 then
   begin
     Include(fmt.Border, cbSouth);
-    fmt.BorderStyles[cbSouth].LineStyle := TsLineStyle(dw shr 12);
+    fmt.BorderStyles[cbSouth].LineStyle := TsLineStyle((dw shr 12)-1);
     Include(fmt.UsedFormattingFields, uffBorder);
   end;
   dw := rec.Border_BkGr2 and MASK_XF_BORDER_DIAGONAL;
   if dw <> 0 then
   begin
-    fmt.BorderStyles[cbDiagUp].LineStyle := TsLineStyle(dw shr 21);
+    fmt.BorderStyles[cbDiagUp].LineStyle := TsLineStyle((dw shr 21)-1);
     fmt.BorderStyles[cbDiagDown].LineStyle := fmt.BorderStyles[cbDiagUp].LineStyle;
     if rec.Border_BkGr1 and MASK_XF_BORDER_SHOW_DIAGONAL_UP <> 0 then
       Include(fmt.Border, cbDiagUp);

@@ -1593,7 +1593,9 @@ const
       ABorderStyle.LineStyle := lsDotted;
 
     // Tuning the rectangle to avoid issues at the grid borders and to get nice corners
-    if (ABorderStyle.LineStyle in [lsMedium, lsThick, lsDouble]) then begin
+    if (ABorderStyle.LineStyle in [lsMedium, lsMediumDash, lsMediumDashDot,
+      lsMediumDashDotDot, lsSlantDashDot, lsThick, lsDouble]) then
+    begin
       if ACol = ColCount-1 then
       begin
         if (ADrawDirection = drawVert) and (ACoord = ARect.Right-1) and width3
@@ -1607,7 +1609,8 @@ const
         dec(ARect.Bottom);
       end;
     end;
-    if ABorderStyle.LineStyle in [lsMedium, lsThick] then
+    if ABorderStyle.LineStyle in [lsMedium, lsMediumDash, lsMediumDashDot,
+      lsMediumDashDotDot, lsSlantDashDot, lsThick] then
     begin
       if (ADrawDirection = drawHor) then
         dec(ARect.Right, 1)
@@ -1617,7 +1620,8 @@ const
 
     // Painting
     case ABorderStyle.LineStyle of
-      lsThin, lsMedium, lsThick, lsDotted, lsDashed:
+      lsThin, lsMedium, lsThick, lsDotted, lsDashed, lsDashDot, lsDashDotDot,
+      lsMediumDash, lsMediumDashDot, lsMediumDashDotDot, lsSlantDashDot:
         case ADrawDirection of
           drawHor     : Canvas.Line(ARect.Left, ACoord, ARect.Right, ACoord);
           drawVert    : Canvas.Line(ACoord, ARect.Top, ACoord, ARect.Bottom);

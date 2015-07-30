@@ -291,12 +291,12 @@ const
   // lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair
   // lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot, lsSlantDashDot
   BORDER_LINESTYLES: array[TsLineStyle] of string = (
-    'solid', 'solid', 'dashed', 'fine-dashed', 'solid', 'double', 'dotted',
-    'dashed', 'dash-dot', 'dash-dot', 'dash-dot-dot', 'dash-dot-dot', 'slanted-dash-dot'    // to be checked!
+    'solid', 'solid', 'dashed', 'fine-dashed', 'solid', 'double-thin', 'dotted',
+    'dashed', 'dash-dot', 'dash-dot', 'dash-dot-dot', 'dash-dot-dot', 'dash-dot'
     );
   BORDER_LINEWIDTHS: array[TsLinestyle] of string =
-    ('0.002cm', '2pt',     '0.002cm', '0.002cm', '3pt', '0.039cm', '0.002cm',
-     '2pt',     '0.002cm', '2pt',     '0.002cm', '2pt', '2pt');
+    ('0.74pt', '1.76pt', '0.74pt', '0.74pt', '2.49pt', '0.74pt', '0.74pt',
+     '1.76pt', '0.74pt', '1.76pt', '0.74pt', '1.76pt', '1.76pt');
 
   FALSE_TRUE: Array[boolean] of String = ('false', 'true');
 
@@ -3118,7 +3118,9 @@ var
       for i:=0 to L.Count-1 do
       begin
         s := L[i];
-        if (s = 'solid') or (s = 'dashed') or (s = 'fine-dashed') or (s = 'dotted') or (s = 'double')
+        if (s = 'solid') or (s = 'dashed') or (s = 'fine-dashed') or
+           (s = 'dotted') or (s = 'double') or (s = 'dash-dot') or
+           (s = 'dash-dot-dot') or (s = 'double-thin')
         then begin
           linestyle := s;
           continue;
@@ -3146,19 +3148,31 @@ var
       fmt.BorderStyles[ABorder].LineStyle := lsThin;
       if (linestyle = 'solid') then
       begin
-        if (wid >= 3 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsThick
-        else if (wid >= 2 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsMedium
+        if (wid >= 2.4 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsThick
+        else if (wid >= 1.7 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsMedium
       end else
       if (linestyle = 'dotted') then
         fmt.BorderStyles[ABorder].LineStyle := lsHair
       else
       if (linestyle = 'dashed') then
-        fmt.BorderStyles[ABorder].LineStyle := lsDashed
-      else
+      begin
+        if (wid >= 1.7 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsMediumDash
+        else fmt.BorderStyles[ABorder].LineStyle := lsDashed
+      end else
+      if (linestyle = 'dash-dot') then
+      begin
+        if (wid >= 1.7 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsMediumDashDot
+        else fmt.BorderStyles[ABorder].LineStyle := lsDashDot
+      end else
+      if (linestyle = 'dash-dot-dot') then
+      begin
+        if (wid >= 1.7 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsMediumDashDotDot
+        else fmt.BorderStyles[ABorder].LineStyle := lsDashDotDot
+      end else
       if (linestyle = 'fine-dashed') then
         fmt.BorderStyles[ABorder].LineStyle := lsDotted
       else
-      if (linestyle = 'double') then
+      if (linestyle = 'double') or (linestyle = 'double-thin') then
         fmt.BorderStyles[ABorder].LineStyle := lsDouble;
       fmt.BorderStyles[ABorder].Color := IfThen(rgb = scNotDefined, scBlack, rgb);
     finally
