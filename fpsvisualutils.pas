@@ -601,9 +601,9 @@ begin
     ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation,
     w, h, true);
   case ATextRotation of
-    trHorizontal, rtStacked:
+    trHorizontal:
       Result := h;
-    rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation:
+    rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation, rtStacked:
       Result := w;
   end;
 end;
