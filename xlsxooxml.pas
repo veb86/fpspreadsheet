@@ -1021,16 +1021,18 @@ end;
 
 procedure TsSpreadOOXMLReader.ReadFills(ANode: TDOMNode);
 var
-  fillNode, patternNode, colorNode: TDOMNode;
+  fillNode, patternNode, colorNode, stopNode: TDOMNode;
   nodeName: String;
   filldata: TFillListData;
   patt: String;
   fgclr: TsColor;
   bgclr: TsColor;
+  msg: String;
 begin
   if ANode = nil then
     exit;
 
+  msg := '';
   fillNode := ANode.FirstChild;
   while Assigned(fillNode) do begin
     nodename := fillNode.NodeName;
@@ -1058,11 +1060,46 @@ begin
         fillData.FgColor := fgclr;
         fillData.BgColor := bgclr;
         FFillList.Add(fillData);
-      end;
+      end else
+      if nodeName = 'gradientFill' then
+      begin
+        // We do not support gradient fills yet. As a replacement, we read
+        // the first color of the gradient and use it for a solid fill
+        // This is required in order to keep the fill numbering intact.
+        stopNode := patternNode.FirstChild;
+        while Assigned(stopNode) do begin
+          nodeName := stopNode.NodeName;
+          if nodeName = 'stop' then begin
+            colorNode := stopNode.FirstChild;
+            while Assigned(colorNode) do begin
+              nodeName := colorNode.NodeName;
+              if nodeName = 'color' then
+              begin
+                bgclr := ReadColor(colorNode);
+                fgclr := bgclr;
+                break;
+              end;
+              colorNode := colorNode.NextSibling;
+            end;
+            break;
+          end;
+          stopNode := stopNode.NextSibling;
+        end;
+
+        // Store in FFillList:
+        fillData := TFillListData.Create;
+        fillData.PatternType := 'GradientFill '+IntToStr(FFillList.Count);
+        fillData.FgColor := fgclr;
+        fillData.BgColor := bgclr;
+        FFillList.Add(fillData);
+      end else
+        raise Exception.Create('[TsSpreadOOXLReader.ReadFills] Unsupported pattern node ' + nodeName);
       patternNode := patternNode.NextSibling;
     end;
     fillNode := fillNode.NextSibling;
   end;
+
+  msg := IntToStr(FFillList.Count) + ' items';
 end;
 
 { Reads the font described by the specified node and stores it in the reader's
