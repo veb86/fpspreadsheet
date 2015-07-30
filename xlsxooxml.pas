@@ -440,7 +440,7 @@ procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
 
     if s = 'thin' then
       ABorderStyle.LineStyle := lsThin
-    else if (pos('medium', s) = 1) or (pos('slant', s) = 1) then
+    else if s = 'medium'then
       ABorderStyle.LineStyle := lsMedium
     else if s = 'thick' then
       ABorderStyle.LineStyle := lsThick
@@ -451,7 +451,19 @@ procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
     else if s = 'double' then
       ABorderStyle.LineStyle := lsDouble
     else if s = 'hair' then
-      ABorderStyle.LineStyle := lsHair;
+      ABorderStyle.LineStyle := lsHair
+    else if s = 'dashDot' then
+      ABorderStyle.LineStyle := lsDashDot
+    else if s = 'dashDotDot' then
+      ABorderStyle.LineStyle := lsDashDotDot
+    else if s = 'mediumDashed' then
+      ABorderStyle.LineStyle := lsMediumDash
+    else if s = 'mediumDashDot' then
+      ABorderStyle.LineSTyle := lsMediumDashDot
+    else if s = 'mediumDashDotDot' then
+      ABorderStyle.LineStyle := lsMediumDashDotDot
+    else if s = 'slantDashDot' then
+      ABorderStyle.LineStyle := lsSlantDashDot;
 
     colorNode := ANode.FirstChild;
     while Assigned(colorNode) do begin
@@ -2335,8 +2347,12 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteBorderList(AStream: TStream);
 const
+  // lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair,
+  // lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot,
+  // lsSlantDashDot
   LINESTYLE_NAME: Array[TsLineStyle] of String = (
-     'thin', 'medium', 'dashed', 'dotted', 'thick', 'double', 'hair');
+     'thin', 'medium', 'dashed', 'dotted', 'thick', 'double', 'hair',
+     'mediumDashed', 'dashDot', 'mediumDashDot', 'dashDotDot', 'mediumDashDotDot', 'slantDashDot');
 
   procedure WriteBorderStyle(AStream: TStream; AFormatRecord: PsCellFormat;
     ABorder: TsCellBorder; ABorderName: String);

@@ -451,7 +451,9 @@ type
   TsCellBorders = set of TsCellBorder;
 
   {@@ Line style (for cell borders) }
-  TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair);
+  TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair,
+    lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot,
+    lsSlantDashDot);
 
   {@@ The Cell border style reocrd contains the linestyle and color of a cell
       border. There is a CellBorderStyle for each border. }

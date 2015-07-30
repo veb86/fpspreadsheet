@@ -288,11 +288,15 @@ const
   DATEMODE_1904_BASE=1462; //1/1/1904 in FPC TDateTime
 
 const
-  // lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair)
-  BORDER_LINESTYLES: array[TsLineStyle] of string =
-    ('solid', 'solid', 'dashed', 'fine-dashed', 'solid', 'double', 'dotted');
+  // lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair
+  // lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot, lsSlantDashDot
+  BORDER_LINESTYLES: array[TsLineStyle] of string = (
+    'solid', 'solid', 'dashed', 'fine-dashed', 'solid', 'double', 'dotted',
+    'dashed', 'dash-dot', 'dash-dot', 'dash-dot-dot', 'dash-dot-dot', 'slanted-dash-dot'    // to be checked!
+    );
   BORDER_LINEWIDTHS: array[TsLinestyle] of string =
-    ('0.002cm', '2pt', '0.002cm', '0.002cm', '3pt', '0.039cm', '0.002cm');
+    ('0.002cm', '2pt',     '0.002cm', '0.002cm', '3pt', '0.039cm', '0.002cm',
+     '2pt',     '0.002cm', '2pt',     '0.002cm', '2pt', '2pt');
 
   FALSE_TRUE: Array[boolean] of String = ('false', 'true');
 

@@ -245,7 +245,13 @@ const
     'thin dotted',   // lsDotted
     'thick solid',   // lsThick,
     'double',        // lsDouble,
-    '1px solid'      // lsHair
+    '1px solid',     // lsHair
+    'medium dashed', // lsMediumDash     --- not all available in HTML...
+    'thin dashed',   // lsDashDot
+    'medium dashed', // lsMediumDashDot
+    'thin dotted',   // lsDashDotDot
+    'medium dashed', // lsMediumDashDotDot
+    'medium dashed'  // lsSlantedDashDot
   );
 var
   cb: TsCellBorder;

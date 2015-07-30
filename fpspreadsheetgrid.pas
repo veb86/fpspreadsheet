@@ -1569,9 +1569,11 @@ const
   const
     // TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair);
     PEN_STYLES: array[TsLineStyle] of TPenStyle =
-      (psSolid, psSolid, psDash, psDot, psSolid, psSolid, psSolid);
+      (psSolid, psSolid, psDash, psDot, psSolid, psSolid, psSolid,
+       psDash, psDashDot, psDashDot, psDashDotDot, psDashDotDot, psDashDot);
     PEN_WIDTHS: array[TsLineStyle] of Integer =
-      (1, 2, 1, 1, 3, 1, 1);
+      (1, 2, 1, 1, 3, 1, 1,
+       2, 1, 2, 1, 2, 2);
   var
     width3: Boolean;     // line is 3 pixels wide
     deltax, deltay: Integer;

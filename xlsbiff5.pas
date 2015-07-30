@@ -1649,6 +1649,24 @@ var
   dw1, dw2: DWord;
   nfParams: TsNumFormatParams;
   nfs: String;
+
+  function FixLineStyle(ALineStyle: TsLineStyle): TsLineStyle;
+  begin
+    case ALineStyle of
+      lsThin, lsMedium,
+      lsDashed, lsDotted,
+      lsThick, lsDouble,
+      lsHair              : Result := ALineStyle;
+      lsMediumDash        : Result := lsMedium;
+      lsDashDot           : Result := lsDashed;
+      lsMediumDashDot     : Result := lsMedium;
+      lsDashDotDot        : Result := lsDotted;
+      lsMediumDashDotDot  : Result := lsMedium;
+      lsSlantDashDot      : Result := lsMedium;
+      else raise Exception.Create('[TsSpreadBIFF5Writer.WriteXF] Linestyle not supported.');
+    end;
+  end;
+
 begin
   { BIFF record header }
   rec.RecordID := WordToLE(INT_EXCEL_ID_XF);
@@ -1736,13 +1754,13 @@ begin
              (PaletteIndex(AFormatRecord^.BorderStyles[cbWest].Color) shl 16) or     // Left line color
              (PaletteIndex(AFormatRecord^.BorderStyles[cbEast].Color) shl 23);       // Right line color
       if cbSouth in AFormatRecord^.Border then
-        dw1 := dw1 or ((DWord(AFormatRecord^.BorderStyles[cbSouth].LineStyle)+1) shl 22);
+        dw1 := dw1 or ((DWord(FixLineStyle(AFormatRecord^.BorderStyles[cbSouth].LineStyle))+1) shl 22);
       if cbNorth in AFormatRecord^.Border then
-        dw2 := dw2 or  (DWord(AFormatRecord^.BorderStyles[cbNorth].LineStyle)+1);
+        dw2 := dw2 or  (DWord(FixLineStyle(AFormatRecord^.BorderStyles[cbNorth].LineStyle))+1);
       if cbWest in AFormatRecord^.Border then
-        dw2 := dw2  or ((DWord(AFormatRecord^.BorderStyles[cbWest].LineStyle)+1) shl 3);
+        dw2 := dw2  or ((DWord(FixLineStyle(AFormatRecord^.BorderStyles[cbWest].LineStyle))+1) shl 3);
       if cbEast in AFormatRecord^.Border then
-        dw2 := dw2  or ((DWord(AFormatRecord^.BorderStyles[cbEast].LineStyle)+1) shl 6);
+        dw2 := dw2  or ((DWord(FixLineStyle(AFormatRecord^.BorderStyles[cbEast].LineStyle))+1) shl 6);
     end;
   end;
   rec.Border_BkGr1 := dw1;

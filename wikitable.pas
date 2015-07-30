@@ -371,7 +371,8 @@ procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
       ('top', 'left', 'right', 'bottom', '', '');
     // (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair)
     LINESTYLES: array[TsLineStyle] of string =
-      ('1pt solid', 'medium solid', 'dashed', 'dotted', 'thick solid', 'double', 'dotted');
+      ('1pt solid', 'medium solid', 'dashed', 'dotted', 'thick solid', 'double', 'dotted',
+       'mediumDash', 'dashDot', 'mediumDashDot', 'dashDotDot', 'mediumDashDotDot', 'slantDashDot');  // to be checked!
   var
     ls: TsLineStyle;
     clr: TsColor;
