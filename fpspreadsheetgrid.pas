@@ -171,7 +171,7 @@ type
     procedure InternalDrawTextInCell(AText: String; ARect: TRect;
       ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
       ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
-      ARichTextParams: TsRichTextParams);
+      AOverrideTextColor: TColor; ARichTextParams: TsRichTextParams);
     {
     procedure InternalDrawTextInCell(AText, AMeasureText: String; ARect: TRect;
       AJustification: Byte; ACellHorAlign: TsHorAlignment;
@@ -1437,6 +1437,9 @@ begin
         if fssStrikeout in fnt.Style then Include(style, fsStrikeout);
         Canvas.Font.Style := style;
       end;
+
+      // Text color is handled by "InternalDrawRichText"
+      {
       // Read text color from number format if available
       if not IsNaN(lCell^.NumberValue) and (numFmt <> nil) then
       begin
@@ -1452,6 +1455,8 @@ begin
           Canvas.Font.Color := clr and $00FFFFFF;
         end;
       end;
+      }
+
       // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
     end;
   end;
@@ -2089,8 +2094,10 @@ var
   txtRot: TsTextRotation;
   fntIndex: Integer;
   lCell: PCell;
-//  justif: Byte;
   fmt: PsCellFormat;
+  numfmt: TsNumFormatParams;
+  numFmtColor: TColor;
+  sidx: Integer;   // number format section index
 begin
   if (Worksheet = nil) then
     exit;
@@ -2115,16 +2122,26 @@ begin
   end;
 
   // Cells
+  txt := GetCellText(GetGridRow(lCell^.Col), GetGridCol(lCell^.Row));
+  if txt = '' then
+    exit;
+
   fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
   wrapped := (uffWordWrap in fmt^.UsedFormattingFields) or (fmt^.TextRotation = rtStacked);
+
+  // Text rotation
   if (uffTextRotation in fmt^.UsedFormattingFields)
     then txtRot := fmt^.TextRotation
     else txtRot := trHorizontal;
+
+  // vertical alignment
   if (uffVertAlign in fmt^.UsedFormattingFields)
     then vertAlign := fmt^.VertAlignment
     else vertAlign := vaDefault;
   if vertAlign = vaDefault then
     vertAlign := vaBottom;
+
+  // Horizontal alignment
   if (uffHorAlign in fmt^.UsedFormattingFields)
     then horAlign := fmt^.HorAlignment
     else horAlign := haDefault;
@@ -2138,54 +2155,34 @@ begin
     else
       horAlign := haLeft;
   end;
-        {
-  fmt^.HorAlignment <> haDefault then
-    horAlign := fmt^.HorAlignment
-  else
-  begin
-    if (lCell^.ContentType in [cctNumber, cctDateTime]) then
-      horAlign := haRight
-    else
-      horAlign := haLeft;
-  end;   }
 
+  // Font index
   if (uffFont in fmt^.UsedFormattingFields)
     then fntIndex := fmt^.FontIndex
     else fntIndex := DEFAULT_FONTINDEX;
 
+  // Font color as derived from number format
+  numFmtColor := clNone;
+  if not IsNaN(lCell^.NumberValue) and (uffNumberFormat in fmt^.UsedFormattingFields) then
+  begin
+    numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
+    if numFmt <> nil then
+    begin
+      sidx := 0;
+      if (Length(numFmt.Sections) > 1) and (lCell^.NumberValue < 0) then
+        sidx := 1
+      else
+      if (Length(numFmt.Sections) > 2) and (lCell^.NumberValue = 0) then
+        sidx := 2;
+      if (nfkHasColor in numFmt.Sections[sidx].Kind) then
+        numFmtColor := numFmt.Sections[sidx].Color and $00FFFFFF;
+    end;
+  end;
+
   InflateRect(ARect, -constCellPadding, -constCellPadding);
 
-  txt := GetCellText(GetGridRow(lCell^.Col), GetGridCol(lCell^.Row));
-  if txt = '' then
-    exit;
-                        {
-  case txtRot of
-    trHorizontal:
-      case horAlign of
-        haLeft   : justif := 0;
-        haCenter : justif := 1;
-        haRight  : justif := 2;
-      end;
-    rtStacked,
-    rt90DegreeClockwiseRotation:
-      case vertAlign of
-        vaTop   : justif := 0;
-        vaCenter: justif := 1;
-        vaBottom: justif := 2;
-      end;
-    rt90DegreeCounterClockwiseRotation:
-      case vertAlign of
-        vaTop   : justif := 2;
-        vaCenter: justif := 1;
-        vaBottom: justif := 0;
-      end;
-  end;                   }
   InternalDrawTextInCell(txt, ARect, horAlign, vertAlign, txtRot, wrapped,
-    fntIndex, lCell^.RichTextParams);
-{
-  InternalDrawTextInCell(txt, txt, ARect, justif, horAlign, vertAlign,
-    txtRot, wrapped, false, lCell^.RichTextParams);
-    }
+    fntIndex, numfmtColor, lCell^.RichTextParams);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3158,7 +3155,7 @@ end;
 procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText: String;
   ARect: TRect; ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
   ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
-  ARichTextParams: TsRichTextParams);
+  AOverrideTextColor: TColor; ARichTextParams: TsRichTextParams);
 begin
   // Since - due to the rich-text mode - characters are drawn individually their
   // background occasionally overpaints the prev characters (italic). To avoid
@@ -3167,7 +3164,7 @@ begin
 
   // Work horse for text drawing, both standard text and rich-text
   DrawRichText(Canvas, Workbook, ARect, AText, AFontIndex, ARichTextParams,
-    ATextWrap, ACellHorAlign, ACellVertAlign, ATextRot);
+    ATextWrap, ACellHorAlign, ACellVertAlign, ATextRot, AOverrideTextColor);
 end;
 (*
 procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText, AMeasureText: String;

@@ -19,7 +19,7 @@ function WrapText(ACanvas: TCanvas; const AText: string; AMaxWidth: integer): st
 procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRect;
   const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
   AWordwrap: Boolean; AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
-  ARotation: TsTextRotation);
+  ARotation: TsTextRotation; AOverrideTextColor: TColor);
 
 function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; AMaxRect: TRect;
   const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
@@ -176,7 +176,8 @@ procedure InternalDrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook;
   const ARect: TRect; const AText: String; AFontIndex: Integer;
   ARichTextParams: TsRichTextParams; AWordwrap: Boolean;
   AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
-  ARotation: TsTextRotation; var Width,Height: Integer; AMeasureOnly: Boolean);
+  ARotation: TsTextRotation; AOverrideTextColor: TColor;
+  var Width,Height: Integer; AMeasureOnly: Boolean);
 type
   TLineInfo = record
     pStart, pEnd: PChar;
@@ -376,6 +377,8 @@ var
     while p^ <> #0 do begin
       s := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
       UpdateFont(p, rtState, PendingRtpIndex, h, fntpos);
+      if AOverrideTextColor <> clNone then
+        ACanvas.Font.Color := AOverrideTextColor;
       case ARotation of
         trHorizontal:
           begin
@@ -441,6 +444,7 @@ begin
   linelen := 0;
 
   Convert_sFont_to_Font(AWorkbook.GetFont(AFontIndex), ACanvas.Font);
+
   if ARotation = rtStacked then
     stackPeriod := ACanvas.TextWidth('M') * 2;
 
@@ -565,13 +569,13 @@ end;
 procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRect;
   const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
   AWordwrap: Boolean; AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
-  ARotation: TsTextRotation);
+  ARotation: TsTextRotation; AOverrideTextColor: TColor);
 var
   w,h: Integer;
 begin
   InternalDrawRichText(ACanvas, AWorkbook, ARect, AText, AFontIndex,
     ARichTextParams, AWordWrap, AHorAlignment, AVertAlignment, ARotation,
-    w, h, false);
+    AOverrideTextColor, w, h, false);
 end;
 
 function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; AMaxRect: TRect;
@@ -581,7 +585,7 @@ var
   h, w: Integer;
 begin
   InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
-    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation,
+    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone,
     w, h, true);
   case ATextRotation of
     trHorizontal, rtStacked:
@@ -598,7 +602,7 @@ var
   h, w: Integer;
 begin
   InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
-    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation,
+    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone,
     w, h, true);
   case ATextRotation of
     trHorizontal:
