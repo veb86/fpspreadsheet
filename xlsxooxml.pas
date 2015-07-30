@@ -440,7 +440,7 @@ procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
 
     if s = 'thin' then
       ABorderStyle.LineStyle := lsThin
-    else if s = 'medium' then
+    else if (pos('medium', s) = 1) or (pos('slant', s) = 1) then
       ABorderStyle.LineStyle := lsMedium
     else if s = 'thick' then
       ABorderStyle.LineStyle := lsThick
