@@ -10,8 +10,8 @@
     but WITHOUT ANY WARRANTY; without even the implied warranty of
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
- **********************************************************************}
-{
+ ******************************************************************************}
+ (*
   Copy from the zipper unit from FPC 2.7.1
 
   Remove it after a new FPC with the fixes from this unit is released - 
@@ -33,7 +33,7 @@
       - TDecompressor.UpdC32: dto.
       - TUnZipper.ReadZipDirectory: in "FZipStream.Seek()", at end, cast
         "Extra_field_length" to Int64 to avoid compiler warning.
-}
+ ******************************************************************************)
 
 {$mode objfpc}
 {$h+}
