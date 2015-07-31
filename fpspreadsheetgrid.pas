@@ -3491,6 +3491,7 @@ procedure TsCustomWorksheetGrid.ListenerNotification(AChangedItems: TsNotificati
   AData: Pointer = nil);
 var
   grow, gcol: Integer;
+  cell: PCell;
 begin
   Unused(AData);
 
@@ -3519,13 +3520,28 @@ begin
 
   // Cell value or format changed
   if (lniCell in AChangedItems) then
+  begin
+    cell := PCell(AData);
+    if (cell <> nil) then begin
+      grow := GetGridRow(cell^.Row);
+      gcol := GetGridCol(cell^.Col);
+      if grow >= RowCount then
+        RowCount := grow + 1;
+      if gcol >= ColCount then
+        ColCount := gcol + 1;
+    end;
     Invalidate;
+  end;
 
   // Selection changed
   if (lniSelection in AChangedItems) and (Worksheet <> nil) then
   begin
     grow := GetGridRow(Worksheet.ActiveCellRow);
     gcol := GetGridCol(Worksheet.ActiveCellCol);
+    if grow >= RowCount then
+      RowCount := grow + 1;
+    if gcol >= ColCount then
+      ColCount := gcol + 1;
     if (grow <> Row) or (gcol <> Col) then
       MoveExtend(false, gcol, grow);
   end;
@@ -3541,6 +3557,8 @@ begin
   if (lniRow in AChangedItems) and (Worksheet <> nil) then
   begin
     grow := GetGridRow({%H-}PtrInt(AData));
+    if grow >= RowCount then
+      RowCount := grow + 1;
     RowHeights[grow] := CalcAutoRowHeight(grow);
   end;
 end;

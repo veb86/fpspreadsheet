@@ -1519,6 +1519,7 @@ begin
     if CellUsedInFormula(ARow, ACol) then
       CalcFormulas;
   end;
+
   if Assigned(FOnChangeCell) then
     FOnChangeCell(Self, ARow, ACol);
 end;
