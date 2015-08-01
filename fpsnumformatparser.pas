@@ -1253,7 +1253,6 @@ end;
 procedure TsNumFormatParser.ScanFormat;
 var
   done: Boolean;
-  s: String;
   n: Integer;
   uch: Cardinal;
 begin

@@ -460,6 +460,7 @@ var
   F: TNumFormatForm;
   sample: Double;
 begin
+  Unused(AWorkbook);
   F := TNumFormatForm.Create(nil);
   try
     F.Position := poMainFormCenter;

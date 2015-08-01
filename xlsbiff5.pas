@@ -519,7 +519,7 @@ end;
 procedure TsSpreadBIFF5Reader.ReadRSTRING(AStream: TStream);
 var
   L: Word;
-  B, F: Byte;
+  B: Byte;
   ARow, ACol: Cardinal;
   XF: Word;
   ansistr: ansistring;
@@ -629,7 +629,7 @@ procedure TsSpreadBIFF5Reader.ReadXF(AStream: TStream);
 var
   rec: TBIFF5_XFRecord;
   fmt: TsCellFormat;
-  i, cidx: Integer;
+  cidx: Integer;
   nfparams: TsNumFormatParams;
   nfs: String;
   b: Byte;

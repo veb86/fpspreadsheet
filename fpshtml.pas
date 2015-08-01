@@ -8,30 +8,38 @@ uses
   Classes, SysUtils, fasthtmlparser,
   fpstypes, fpspreadsheet, fpsReaderWriter;
 
-type            (*
+type
+  TsHTMLTokenKind = (htkTABLE, htkTR, htkTH, htkTD, htkDIV, htkSPAN, htkP);
+ {
+  TsHTMLToken = class
+    Kind: TsHTMLTokenKind;
+    Parent: TsHTMLToken;
+    Children
+}
   TsHTMLReader = class(TsCustomSpreadReader)
   private
-    FWorksheetName: String;
     FFormatSettings: TFormatSettings;
-    function IsBool(AText: String; out AValue: Boolean): Boolean;
-    function IsDateTime(AText: String; out ADateTime: TDateTime;
-      out ANumFormat: TsNumberFormat): Boolean;
-    function IsNumber(AText: String; out ANumber: Double; out ANumFormat: TsNumberFormat;
-      out ADecimals: Integer; out ACurrencySymbol, AWarning: String): Boolean;
-    function IsQuotedText(var AText: String): Boolean;
-    procedure ReadCellValue(ARow, ACol: Cardinal; AText: String);
+    parser: THTMLParser;
+    FInTable: Boolean;
+    FInSubTable: Boolean;
+    FInCell: Boolean;
+    FInSpan: Boolean;
+    FInA: Boolean;
+    FInHeader: Boolean;
+    FTableCounter: Integer;
+    FCurrRow, FCurrCol: LongInt;
+    FCelLText: String;
+    procedure TagFoundHandler(NoCaseTag, ActualTag: string);
+    procedure TextFoundHandler(AText: String);
   protected
-    procedure ReadBlank(AStream: TStream); override;
-    procedure ReadFormula(AStream: TStream); override;
-    procedure ReadLabel(AStream: TStream); override;
-    procedure ReadNumber(AStream: TStream); override;
+    procedure ProcessCellValue(ARow, ACol: LongInt; AText: String);
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    procedure ReadFromFile(AFileName: String); override;
+    destructor Destroy; override;
     procedure ReadFromStream(AStream: TStream); override;
     procedure ReadFromStrings(AStrings: TStrings); override;
   end;
-              *)
+
   TsHTMLWriter = class(TsCustomSpreadWriter)
   private
     FPointSeparatorSettings: TFormatSettings;
@@ -78,26 +86,523 @@ type            (*
   end;
 
   TsHTMLParams = record
+    TableIndex: Integer;             // R: Index of the table in the HTML file
     SheetIndex: Integer;             // W: Index of the sheet to be written
     ShowRowColHeaders: Boolean;      // RW: Show row/column headers
+    DetectContentType: Boolean;      // R: try to convert strings to content types
+    NumberFormat: String;            // W: if empty write numbers like in sheet, otherwise use this format
+    AutoDetectNumberFormat: Boolean; // R: automatically detects decimal/thousand separator used in numbers
     TrueText: String;                // RW: String for boolean TRUE
     FalseText: String;               // RW: String for boolean FALSE
+    FormatSettings: TFormatSettings; // RW: add'l parameters for conversion
   end;
 
 var
   HTMLParams: TsHTMLParams = (
+    TableIndex: -1;                  // -1 = all tables
     SheetIndex: -1;                  // -1 = active sheet, MaxInt = all sheets
     ShowRowColHeaders: false;
+    DetectContentType: true;
+    NumberFormat: '';
+    AutoDetectNumberFormat: true;
     TrueText: 'TRUE';
     FalseText: 'FALSE';
-  );
+  {%H-});
 
 implementation
 
 uses
-  LazUTF8, URIParser, Math, StrUtils,
-  fpsUtils;
+  LazUTF8, URIParser, StrUtils,
+  fpsUtils, fpsHTMLUtils, fpsNumFormat;
+                   (*
+type
+  THTMLEntity = record
+    E: String;
+    Ch: String;
+  end;
 
+const
+  HTMLEntities: array[0..251] of THTMLEntity = (
+  // A
+    (E: 'Acirc';  Ch: 'Â'),  // 0
+    (E: 'acirc';  Ch: 'â'),
+    (E: 'acute';  Ch: '´'),
+    (E: 'AElig';  Ch: 'Æ'),
+    (E: 'aelig';  Ch: 'æ'),
+    (E: 'Agrave'; Ch: 'À'),
+    (E: 'agrave'; Ch: 'à'),
+    (E: 'alefsym';Ch: 'ℵ'),
+    (E: 'Alpha';  Ch: 'Α'),
+    (E: 'alpha';  Ch: 'α'),
+    (E: 'amp';    Ch: '&'),  // 10
+    (E: 'and';    Ch: '∧'),
+    (E: 'ang';    Ch: '∠'),
+    (E: 'apos';   Ch: ''''),
+    (E: 'Aring';  Ch: 'Å'),
+    (E: 'aring';  Ch: 'å'),
+    (E: 'asymp';  Ch: '≈'),
+    (E: 'Atilde'; Ch: 'Ã'),
+    (E: 'atilde'; Ch: 'ã'),
+    (E: 'Auml';   Ch: 'Ä'),
+    (E: 'auml';   Ch: 'ä'),  // 20
+  // B
+    (E: 'bdquo';  Ch: '„'),  // 21
+    (E: 'Beta';   Ch: 'Β'),
+    (E: 'beta';   Ch: 'β'),
+    (E: 'brvbar'; Ch: '¦'),
+    (E: 'bull';   Ch: '•'),
+  // C
+    (E: 'cap';    Ch: '∩'),  // 26
+    (E: 'Ccedil'; Ch: 'Ç'),
+    (E: 'ccedil'; Ch: 'ç'),
+    (E: 'cedil';  Ch: '¸'),
+    (E: 'cent';   Ch: '¢'),  // 39
+    (E: 'Chi';    Ch: 'Χ'),
+    (E: 'chi';    Ch: 'χ'),
+    (E: 'circ';   Ch: 'ˆ'),
+    (E: 'clubs';  Ch: '♣'),
+    (E: 'cong';   Ch: '≅'),  // approximately equal
+    (E: 'copy';   Ch: '©'),
+    (E: 'crarr';  Ch: '↵'),  // carriage return
+    (E: 'cup';    Ch: '∪'),
+    (E: 'curren'; Ch: '¤'),
+  // D
+    (E: 'Dagger'; Ch: '‡'),  // 40
+    (E: 'dagger'; Ch: '†'),
+    (E: 'dArr';   Ch: '⇓'),  // wide down-arrow
+    (E: 'darr';   Ch: '↓'),  // narrow down-arrow
+    (E: 'deg';    Ch: '°'),
+    (E: 'Delta';  Ch: 'Δ'),
+    (E: 'delta';  Ch: 'δ'),
+    (E: 'diams';  Ch: '♦'),
+    (E: 'divide'; Ch: '÷'),
+  // E
+    (E: 'Eacute'; Ch: 'É'),
+    (E: 'eacute'; Ch: 'é'),
+    (E: 'Ecirc';  Ch: 'Ê'),
+    (E: 'ecirc';  Ch: 'ê'),
+    (E: 'Egrave'; Ch: 'È'),
+    (E: 'egrave'; Ch: 'è'),
+    (E: 'empty';  Ch: '∅'),
+    (E: 'emsp';   Ch: ' '),  // Space character width of "m"
+    (E: 'ensp';   Ch: ' '),  // Space character width of "n"
+    (E: 'Epsilon';Ch: 'Ε'),  // capital epsilon
+    (E: 'epsilon';Ch: 'ε'),
+    (E: 'equiv';  Ch: '≡'),
+    (E: 'Eta';    Ch: 'Η'),
+    (E: 'eta';    Ch: 'η'),
+    (E: 'ETH';    Ch: 'Ð'),
+    (E: 'eth';    Ch: 'ð'),
+    (E: 'Euml';   Ch: 'Ë'),
+    (E: 'euml';   Ch: 'ë'),
+    (E: 'euro';   Ch: '€'),
+    (E: 'exist';  Ch: '∃'),
+  // F
+    (E: 'fnof';   Ch: 'ƒ'),
+    (E: 'forall'; Ch: '∀'),
+    (E: 'frac12'; Ch: '½'),
+    (E: 'frac14'; Ch: '¼'),
+    (E: 'frac34'; Ch: '¾'),
+    (E: 'frasl';  Ch: '⁄'),
+  // G
+    (E: 'Gamma';  Ch: 'Γ'),
+    (E: 'gamma';  Ch: 'γ'),
+    (E: 'ge';     Ch: '≥'),
+    (E: 'gt';     Ch: '>'),
+  // H
+    (E: 'hArr';   Ch: '⇔'),  // wide horizontal double arrow
+    (E: 'harr';   Ch: '↔'),  // narrow horizontal double arrow
+    (E: 'hearts'; Ch: '♥'),
+    (E: 'hellip'; Ch: '…'),
+  // I
+    (E: 'Iacute'; Ch: 'Í'),
+    (E: 'iacute'; Ch: 'í'),
+    (E: 'Icirc';  Ch: 'Î'),
+    (E: 'icirc';  Ch: 'î'),
+    (E: 'iexcl';  Ch: '¡'),
+    (E: 'Igrave'; Ch: 'Ì'),
+    (E: 'igrave'; Ch: 'ì'),
+    (E: 'image';  Ch: 'ℑ'),  //
+    (E: 'infin';  Ch: '∞'),
+    (E: 'int';    Ch: '∫'),
+    (E: 'Iota';   Ch: 'Ι'),
+    (E: 'iota';   Ch: 'ι'),
+    (E: 'iquest'; Ch: '¿'),
+    (E: 'isin';   Ch: '∈'),
+    (E: 'Iuml';   Ch: 'Ï'),
+    (E: 'iuml';   Ch: 'ï'),
+  // K
+    (E: 'Kappa';  Ch: 'Κ'),
+    (E: 'kappa';  Ch: 'κ'),
+  // L
+    (E: 'Lambda'; Ch: 'Λ'),
+    (E: 'lambda'; Ch: 'λ'),
+    (E: 'lang';   Ch: '⟨'),  // Left-pointing angle bracket
+    (E: 'laquo';  Ch: '«'),
+    (E: 'lArr';   Ch: '⇐'),  // Left-pointing wide arrow
+    (E: 'larr';   Ch: '←'),
+    (E: 'lceil';  Ch: '⌈'),  // Left ceiling
+    (E: 'ldquo';  Ch: '“'),
+    (E: 'le';     Ch: '≤'),
+    (E: 'lfloor'; Ch: '⌊'),  // Left floor
+    (E: 'lowast'; Ch: '∗'),  // Low asterisk
+    (E: 'loz';    Ch: '◊'),
+    (E: 'lrm';    Ch: '‎'),  // Left-to-right mark
+    (E: 'lsaquo'; Ch: '‹'),
+    (E: 'lsquo';  Ch: '‘'),
+    (E: 'lt';     Ch: '<'),
+  // M
+    (E: 'macr';   Ch: '¯'),
+    (E: 'mdash';  Ch: '—'),
+    (E: 'micro';  Ch: 'µ'),
+    (E: 'middot'; Ch: '·'),
+    (E: 'minus';  Ch: '−'),
+    (E: 'Mu';     Ch: 'Μ'),
+    (E: 'mu';     Ch: 'μ'),
+  // N
+    (E: 'nabla';  Ch: '∇'),
+    (E: 'nbsp';   Ch: ' '),
+    (E: 'ndash';  Ch: '–'),
+    (E: 'ne';     Ch: '≠'),
+    (E: 'ni';     Ch: '∋'),
+    (E: 'not';    Ch: '¬'),
+    (E: 'notin';  Ch: '∉'),  // math: "not in"
+    (E: 'nsub';   Ch: '⊄'),  // math: "not a subset of"
+    (E: 'Ntilde'; Ch: 'Ñ'),
+    (E: 'ntilde'; Ch: 'ñ'),
+    (E: 'Nu';     Ch: 'Ν'),
+    (E: 'nu';     Ch: 'ν'),
+  // O
+    (E: 'Oacute'; Ch: 'Ó'),
+    (E: 'oacute'; Ch: 'ó'),
+    (E: 'Ocirc';  Ch: 'Ô'),
+    (E: 'ocirc';  Ch: 'ô'),
+    (E: 'OElig';  Ch: 'Œ'),
+    (E: 'oelig';  Ch: 'œ'),
+    (E: 'Ograve'; Ch: 'Ò'),
+    (E: 'ograve'; Ch: 'ò'),
+    (E: 'oline';  Ch: '‾'),
+    (E: 'Omega';  Ch: 'Ω'),
+    (E: 'omega';  Ch: 'ω'),
+    (E: 'Omicron';Ch: 'Ο'),
+    (E: 'omicron';Ch: 'ο'),
+    (E: 'oplus';  Ch: '⊕'),  // Circled plus
+    (E: 'or';     Ch: '∨'),
+    (E: 'ordf';   Ch: 'ª'),
+    (E: 'ordm';   Ch: 'º'),
+    (E: 'Oslash'; Ch: 'Ø'),
+    (E: 'oslash'; Ch: 'ø'),
+    (E: 'Otilde'; Ch: 'Õ'),
+    (E: 'otilde'; Ch: 'õ'),
+    (E: 'otimes'; Ch: '⊗'),  // Circled times
+    (E: 'Ouml';   Ch: 'Ö'),
+    (E: 'ouml';   Ch: 'ö'),
+  // P
+    (E: 'para';   Ch: '¶'),
+    (E: 'part';   Ch: '∂'),
+    (E: 'permil'; Ch: '‰'),
+    (E: 'perp';   Ch: '⊥'),
+    (E: 'Phi';    Ch: 'Φ'),
+    (E: 'phi';    Ch: 'φ'),
+    (E: 'Pi';     Ch: 'Π'),
+    (E: 'pi';     Ch: 'π'),  // lower-case pi
+    (E: 'piv';    Ch: 'ϖ'),
+    (E: 'plusmn'; Ch: '±'),
+    (E: 'pound';  Ch: '£'),
+    (E: 'Prime';  Ch: '″'),
+    (E: 'prime';  Ch: '′'),
+    (E: 'prod';   Ch: '∏'),
+    (E: 'prop';   Ch: '∝'),
+    (E: 'Psi';    Ch: 'Ψ'),
+    (E: 'psi';    Ch: 'ψ'),
+  // Q
+    (E: 'quot';   Ch: '"'),
+  // R
+    (E: 'radic';  Ch: '√'),
+    (E: 'rang';   Ch: '⟩'),  // right-pointing angle bracket
+    (E: 'raquo';  Ch: '»'),
+    (E: 'rArr';   Ch: '⇒'),
+    (E: 'rarr';   Ch: '→'),
+    (E: 'rceil';  Ch: '⌉'),  // right ceiling
+    (E: 'rdquo';  Ch: '”'),
+    (E: 'real';   Ch: 'ℜ'),  // R in factura
+    (E: 'reg';    Ch: '®'),
+    (E: 'rfloor'; Ch: '⌋'),  // Right floor
+    (E: 'Rho';    Ch: 'Ρ'),
+    (E: 'rho';    Ch: 'ρ'),
+    (E: 'rlm';    Ch: ''),   // right-to-left mark
+    (E: 'rsaquo'; Ch: '›'),
+    (E: 'rsquo';  Ch: '’'),
+
+  // S
+    (E: 'sbquo';  Ch: '‚'),
+    (E: 'Scaron'; Ch: 'Š'),
+    (E: 'scaron'; Ch: 'š'),
+    (E: 'sdot';   Ch: '⋅'),  // math: dot operator
+    (E: 'sect';   Ch: '§'),
+    (E: 'shy';    Ch: ''),   // conditional hyphen
+    (E: 'Sigma';  Ch: 'Σ'),
+    (E: 'sigma';  Ch: 'σ'),
+    (E: 'sigmaf'; Ch: 'ς'),
+    (E: 'sim';    Ch: '∼'),  // similar
+    (E: 'spades'; Ch: '♠'),
+    (E: 'sub';    Ch: '⊂'),
+    (E: 'sube';   Ch: '⊆'),
+    (E: 'sum';    Ch: '∑'),
+    (E: 'sup';    Ch: '⊃'),
+    (E: 'sup1';   Ch: '¹'),
+    (E: 'sup2';   Ch: '²'),
+    (E: 'sup3';   Ch: '³'),
+    (E: 'supe';   Ch: '⊇'),
+    (E: 'szlig';  Ch: 'ß'),
+  //T
+    (E: 'Tau';    Ch: 'Τ'),
+    (E: 'tau';    Ch: 'τ'),
+    (E: 'there4'; Ch: '∴'),
+    (E: 'Theta';  Ch: 'Θ'),
+    (E: 'theta';  Ch: 'θ'),
+    (E: 'thetasym';Ch: 'ϑ'),
+    (E: 'thinsp'; Ch: ' '),  // thin space
+    (E: 'THORN';  Ch: 'Þ'),
+    (E: 'thorn';  Ch: 'þ'),
+    (E: 'tilde';  Ch: '˜'),
+    (E: 'times';  Ch: '×'),
+    (E: 'trade';  Ch: '™'),
+  // U
+    (E: 'Uacute'; Ch: 'Ú'),
+    (E: 'uacute'; Ch: 'ú'),
+    (E: 'uArr';   Ch: '⇑'),  // wide up-arrow
+    (E: 'uarr';   Ch: '↑'),
+    (E: 'Ucirc';  Ch: 'Û'),
+    (E: 'ucirc';  Ch: 'û'),
+    (E: 'Ugrave'; Ch: 'Ù'),
+    (E: 'ugrave'; Ch: 'ù'),
+    (E: 'uml';    Ch: '¨'),
+    (E: 'upsih';  Ch: 'ϒ'),
+    (E: 'Upsilon';Ch: 'Υ'),
+    (E: 'upsilon';Ch: 'υ'),
+    (E: 'Uuml';   Ch: 'Ü'),
+    (E: 'uuml';   Ch: 'ü'),
+  // W
+    (E: 'weierp'; Ch: '℘'),  // Script Capital P; Weierstrass Elliptic Function
+  // X
+    (E: 'Xi';     Ch: 'Ξ'),
+    (E: 'xi';     Ch: 'ξ'),
+  // Y
+    (E: 'Yacute'; Ch: 'Ý'),
+    (E: 'yacute'; Ch: 'ý'),
+    (E: 'yen';    Ch: '¥'),
+    (E: 'Yuml';   Ch: 'Ÿ'),
+    (E: 'yuml';   Ch: 'ÿ'),
+  // Z
+    (E: 'Zeta';   Ch: 'Ζ'),
+    (E: 'zeta';   Ch: 'ζ'),
+    (E: 'zwj';    Ch: ''),   // Zero-width joiner
+    (E: 'zwnj';   Ch: ''),   // Zero-width non-joiner
+
+    (E: '#160';   Ch: ' ')   // numerical value of "&nbsp;"
+  );
+                     *)
+{==============================================================================}
+{                             TsHTMLReader                                     }
+{==============================================================================}
+
+constructor TsHTMLReader.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create(AWorkbook);
+  FFormatSettings := HTMLParams.FormatSettings;
+  ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
+  FTableCounter := -1;
+end;
+
+destructor TsHTMLReader.Destroy;
+begin
+  FreeAndNil(parser);
+  inherited Destroy;
+end;
+
+procedure TsHTMLReader.ReadFromStream(AStream: TStream);
+var
+  list: TStringList;
+begin
+  list := TStringList.Create;
+  try
+    list.LoadFromStream(AStream);
+    ReadFromStrings(list);
+    if FWorkbook.GetWorksheetCount = 0 then
+    begin
+      FWorkbook.AddErrorMsg('Requested table not found, or no tables in html file');
+      FWorkbook.AddWorksheet('Dummy');
+    end;
+  finally
+    list.Free;
+  end;
+end;
+
+procedure TsHTMLReader.ReadFromStrings(AStrings: TStrings);
+begin
+  // Create html parser
+  FreeAndNil(parser);
+  parser := THTMLParser.Create(AStrings.Text);
+  parser.OnFoundTag := @TagFoundHandler;
+  parser.OnFoundText := @TextFoundHandler;
+  // Execute the html parser
+  parser.Exec;
+end;
+
+procedure TsHTMLReader.ProcessCellValue(ARow, ACol: LongInt; AText: String);
+var
+  cell: PCell;
+  dblValue: Double;
+  dtValue: TDateTime;
+  boolValue: Boolean;
+  nf: TsNumberFormat;
+  decs: Integer;
+  currSym: String;
+  warning: String;
+begin
+  // Empty strings are blank cells -- nothing to do
+  if (AText = '') then
+    exit;
+
+  cell := FWorksheet.AddCell(ARow, ACol);
+
+  // Do not try to interpret the strings. --> everything is a LABEL cell.
+  if not HTMLParams.DetectContentType then
+  begin
+    FWorksheet.WriteUTF8Text(cell, AText);
+    exit;
+  end;
+
+  // Check for a NUMBER or CURRENCY cell
+  if IsNumberValue(AText, HTMLParams.AutoDetectNumberFormat, FFormatSettings,
+    dblValue, nf, decs, currSym, warning) then
+  begin
+    if currSym <> '' then
+      FWorksheet.WriteCurrency(cell, dblValue, nfCurrency, decs, currSym)
+    else
+      FWorksheet.WriteNumber(cell, dblValue, nf, decs);
+    if warning <> '' then
+      FWorkbook.AddErrorMsg('Cell %s: %s', [GetCellString(ARow, ACol), warning]);
+    exit;
+  end;
+
+  // Check for a DATE/TIME cell
+  // No idea how to apply the date/time formatsettings here...
+  if IsDateTimevalue(AText, FFormatSettings, dtValue, nf) then
+  begin
+    FWorksheet.WriteDateTime(cell, dtValue, nf);
+    exit;
+  end;
+
+  // Check for a BOOLEAN cell
+  if IsBoolValue(AText, HTMLParams.TrueText, HTMLParams.FalseText, boolValue) then
+  begin
+    FWorksheet.WriteBoolValue(cell, boolValue);
+    exit;
+  end;
+
+  // What is left is handled as a TEXT cell
+  FWorksheet.WriteUTF8Text(cell, AText);
+end;
+
+
+procedure TsHTMLReader.TagFoundHandler(NoCaseTag, ActualTag: string);
+begin
+  if pos('<TABLE', NoCaseTag) = 1 then
+  begin
+    inc(FTableCounter);
+    if HTMLParams.TableIndex < 0 then  // all tables
+    begin
+      FWorksheet := FWorkbook.AddWorksheet(Format('Table #%d', [FTableCounter+1]));
+      FInTable := true;
+      FCurrRow := -1;
+      FCurrCol := -1;
+    end else
+    if FTableCounter = HTMLParams.TableIndex then
+    begin
+      FWorksheet := FWorkbook.AddWorksheet(Format('Table #%d', [FTableCounter+1]));
+      FInTable := true;
+      FCurrRow := -1;
+      FCurrCol := -1;
+    end;
+  end else
+  if ((NoCaseTag = '<TR>') or (pos('<TR ', NoCaseTag) = 1)) and FInTable then
+  begin
+    inc(FCurrRow);
+    FCurrCol := -1;
+  end else
+  if ((NoCaseTag = '<TD>') or (pos('<TD ', NoCaseTag) = 1)) and FInTable then
+  begin
+    FInCell := true;
+    inc(FCurrCol);
+    FCellText := '';
+  end else
+  if ((NoCaseTag = '<TH>') or (pos('<TH ', NoCaseTag) = 1)) and FInTable then
+  begin
+    FInCell := true;
+    FCellText := '';
+  end else
+  if pos('<SPAN', NoCaseTag) = 1 then
+  begin
+    if FInCell then
+      FInSpan := true;
+  end else
+  if pos('<A', NoCaseTag) = 1 then
+  begin
+    if FInCell then
+      FInA := true
+  end else
+  if (pos('<H', NoCaseTag) = 1) and (NoCaseTag[3] in ['1', '2', '3', '4', '5', '6']) then
+  begin
+    if FInCell then
+      FInHeader := true;
+  end else
+  if ((NoCaseTag = '<BR>') or (pos('<BR ', NoCaseTag) = 1)) and FInCell then
+    FCellText := FCellText + LineEnding
+  else
+    case NoCaseTag of
+      '</TABLE>':
+        if FInTable then FInTable := false;
+      '</TD>', '</TH>':
+        if FInCell then
+        begin
+          ProcessCellValue(FCurrRow, FCurrCol, FCellText);
+          FInCell := false;
+        end;
+      '</A>':
+        if FInCell then FInA := false;
+      '</SPAN>':
+        if FInCell then FInSpan := false;
+      '<H1/>', '<H2/>', '<H3/>', '<H4/>', '<H5/>', '<H6/>':
+        if FinCell then FInHeader := false;
+      '<TR/>', '<TR />':
+        if FInTable then inc(FCurrRow);
+      '<TD/>', '<TD />':
+        if FInCell then inc(FCurrCol);
+      '<TH/>', '<TH />':
+        if FInCell then inc(FCurrCol);
+    end;
+end;
+
+procedure TsHTMLReader.TextFoundHandler(AText: String);
+begin
+  if FInCell then
+  begin
+    AText := CleanHTMLString(AText);
+    if AText <> '' then
+    begin
+      if FCellText = '' then
+        FCellText := AText
+      else
+        FCellText := FCellText + ' ' + AText;
+    end;
+  end;
+end;
+
+{==============================================================================}
+{                             TsHTMLWriter                                     }
+{==============================================================================}
 constructor TsHTMLWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
@@ -493,7 +998,7 @@ begin
   Unused(AStream);
   Unused(ARow, ACol, ACell);
   AppendToStream(AStream,
-    '<div>' + IfThen(AValue, HTMLParams.TrueText, HTMLParams.FalseText) + '</div>');
+    '<div>' + StrUtils.IfThen(AValue, HTMLParams.TrueText, HTMLParams.FalseText) + '</div>');
 end;
 
 { Write date/time values in the same way they are displayed in the sheet }
@@ -502,6 +1007,7 @@ procedure TsHTMLWriter.WriteDateTime(AStream: TStream; const ARow, ACol: Cardina
 var
   s: String;
 begin
+  Unused(AValue);
   s := FWorksheet.ReadAsUTF8Text(ACell);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
@@ -512,6 +1018,7 @@ procedure TsHTMLWriter.WriteError(AStream: TStream;
 var
   s: String;
 begin
+  Unused(AValue);
   s := FWOrksheet.ReadAsUTF8Text(ACell);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
@@ -663,7 +1170,7 @@ procedure TsHTMLWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
 var
   s: String;
 begin
-  Unused(ARow, ACol);
+  Unused(ARow, ACol, AValue);
   s := FWorksheet.ReadAsUTF8Text(ACell, FWorkbook.FormatSettings);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
@@ -873,7 +1380,8 @@ begin
 end;
 
 initialization
-  RegisterSpreadFormat(nil, TsHTMLWriter, sfHTML);
+  InitFormatSettings(HTMLParams.FormatSettings);
+  RegisterSpreadFormat(TsHTMLReader, TsHTMLWriter, sfHTML);
 
 end.
 

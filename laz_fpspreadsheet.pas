@@ -13,7 +13,8 @@ uses
   uvirtuallayer_ole_helpers, uvirtuallayer_ole_types, uvirtuallayer_stream, 
   fpolebasic, wikitable, fpsNumFormatParser, fpsfunc, fpsRPN, fpsStrings, 
   fpscsv, fpsCsvDocument, fpspatches, fpsTypes, xlsEscher, fpsReaderWriter, 
-  fpsNumFormat, fpsclasses, fpsHeaderFooterParser, fpsPalette, fpsHTML;
+  fpsNumFormat, fpsclasses, fpsHeaderFooterParser, fpsPalette, fpsHTML, 
+  fpshtmlutils;
 
 implementation
 

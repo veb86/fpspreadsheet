@@ -557,31 +557,14 @@ function TsSpreadBIFF8Reader.ReadUnformattedWideString(const AStream: TStream;
 var
   flags: Byte;
   DecomprStrValue: WideString;
-  AnsiStrValue: ansistring;
-  //RunsCounter: Word;
-  //AsianPhoneticBytes: DWord;
   i: Integer;
-  j: SizeUInt;
   len: SizeInt;
   recType: Word;
-  recSize: Word;
+  {%H-}recSize: Word;
   C: WideChar;
 begin
   flags := AStream.ReadByte;
   dec(PendingRecordSize);
-  {
-  if StringFlags and 4 = 4 then begin
-    //Asian phonetics
-    //Read Asian phonetics Length (not used)
-    AsianPhoneticBytes := DWordLEtoN(AStream.ReadDWord);
-    dec(PendingRecordSize,4);
-  end;
-  if StringFlags and 8 = 8 then begin
-    //Rich string
-    RunsCounter := WordLEtoN(AStream.ReadWord);
-    dec(PendingRecordSize,2);
-  end;
-  }
   if flags and 1 = 1 Then begin
     //String is WideStringLE
     if (ALength * SizeOf(WideChar)) > PendingRecordSize then begin
@@ -619,34 +602,6 @@ begin
     end;
     Result := DecomprStrValue;
   end;
-  {
-  if StringFlags and 8 = 8 then begin
-    // Rich string (This only occurs in BIFF8)
-    SetLength(ARichTextRuns, RunsCounter);
-    for j := 0 to RunsCounter - 1 do begin
-      if (PendingRecordSize <= 0) then begin
-        // A CONTINUE may happened here
-        RecordType := WordLEToN(AStream.ReadWord);
-        RecordSize := WordLEToN(AStream.ReadWord);
-        if RecordType <> INT_EXCEL_ID_CONTINUE then begin
-          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
-        end else begin
-          PendingRecordSize := RecordSize;
-        end;
-      end;
-      ARichTextRuns[j].FirstIndex := WordLEToN(AStream.ReadWord);
-      ARichTextRuns[j].FontIndex := WordLEToN(AStream.ReadWord);
-      dec(PendingRecordSize, 2*2);
-    end;
-  end;
-  if StringFlags and 4 = 4 then begin
-    //Asian phonetics
-    //Read Asian phonetics, discarded as not used.
-    SetLength(AnsiStrValue, AsianPhoneticBytes);
-    AStream.ReadBuffer(AnsiStrValue[1], AsianPhoneticBytes);
-    dec(PendingRecordSize, AsianPhoneticBytes);
-  end;
-  }
 end;
 
 function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
@@ -1369,7 +1324,7 @@ var
   cell: PCell;
   ms: TMemoryStream;
   rtfRuns: TsRichTextFormattingRuns;
-  j, n: Integer;
+  n: Integer;
 begin
   rec.Row := 0;  // to silence the compiler...
 
@@ -1450,16 +1405,6 @@ begin
 end;
 
 procedure TsSpreadBIFF8Reader.ReadXF(const AStream: TStream);
-                                 (*
-  function FixLineStyle(dw: DWord): TsLineStyle;
-  { Not all line styles defined in BIFF8 are supported by fpspreadsheet. }
-  begin
-    case dw of
-      $01..$07: result := TsLineStyle(dw-1);
-      else Result := lsDashed;
-    end;
-  end;
-  *)
 var
   rec: TBIFF8_XFRecord;
   fmt: TsCellFormat;
@@ -1469,9 +1414,7 @@ var
   fs: TsFillStyle;
   nfs: String;
   nfParams: TsNumFormatParams;
-  i: Integer;
   iclr: Integer;
-  fnt: TsFont;
 begin
   InitFormatRecord(fmt);
   fmt.ID := FCellFormatList.Count;

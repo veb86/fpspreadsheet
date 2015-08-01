@@ -325,6 +325,7 @@ type
   // Adjusts Excel float (date, date/time, time) with the file's base date to get a TDateTime
   function ConvertExcelDateTimeToDateTime
     (const AExcelDateNum: Double; ADateMode: TDateMode): TDateTime;
+
   // Adjusts TDateTime with the file's base date to get
   // an Excel float value representing a time/date/datetime
   function ConvertDateTimeToExcelDateTime
@@ -332,6 +333,7 @@ type
 
   // Converts the error byte read from cells or formulas to fps error value
   function ConvertFromExcelError(AValue: Byte): TsErrorValue;
+
   // Converts an fps error value to the byte code needed in xls files
   function ConvertToExcelError(AValue: TsErrorValue): byte;
 
@@ -665,6 +667,16 @@ begin
     case ADateMode of
       dm1900:
         begin
+          {
+          Result := AExcelDateNum + DATEMODE_1900_BASE - 1.0;
+          // Excel and Lotus 1-2-3 incorrectly assume that 1900 was a leap year
+          // Therefore all dates before March 01 are off by 1.
+          // The old fps implementation corrected only Feb 29, but all days are
+          // wrong!
+          if AExcelDateNum < 61 then
+            Result := Result + 1.0;
+            }
+
           // Check for Lotus 1-2-3 bug with 1900 leap year
           if AExcelDateNum=61.0 then
             // 29 feb does not exist, change to 28
@@ -693,9 +705,12 @@ begin
   begin
     case ADateMode of
     dm1900:
-      result:=ADateTime-DATEMODE_1900_BASE+1.0;
+      begin
+        Result := ADateTime - DATEMODE_1900_BASE + 1.0;
+        // if Result < 61 then Result := Result - 1.0;
+      end;
     dm1904:
-      result:=ADateTime-DATEMODE_1904_BASE;
+      Result := ADateTime - DATEMODE_1904_BASE;
     else
       raise Exception.CreateFmt('ConvertDateTimeToExcelDateTime: unknown datemode %d. Please correct fpspreadsheet source code. ', [ADateMode]);
     end;
@@ -2271,11 +2286,13 @@ end;
 procedure TsSpreadBIFFReader.ReadWorkbookGlobals(AStream: TStream);
 begin
   // To be overridden by BIFF5 and BIFF8
+  Unused(AStream);
 end;
 
 procedure TsSpreadBIFFReader.ReadWorksheet(AStream: TStream);
 begin
   // To be overridden by BIFF5 and BIFF8
+  Unused(AStream);
 end;
 
 {@@ ----------------------------------------------------------------------------

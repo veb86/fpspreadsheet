@@ -1,15 +1,16 @@
 {
-csvread.dpr
+htmlread.dpr
 
-Demonstrates how to read a CSV file using the fpspreadsheet library
+Demonstrates how to read a html file using the fpspreadsheet library.
+IMPORTANT: Requires the output file of the htmlwrite demo.
 }
 
-program csvread;
+program htmlread;
 
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, LazUTF8, fpstypes, fpsutils, fpspreadsheet, fpscsv;
+  Classes, SysUtils, LazUTF8, fpstypes, fpsutils, fpspreadsheet, fpshtml;
 
 var
   MyWorkbook: TsWorkbook;
@@ -18,26 +19,26 @@ var
   MyDir: string;
   i: Integer;
   CurCell: PCell;
+
 begin
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
-  InputFileName := MyDir + 'test' + STR_COMMA_SEPARATED_EXTENSION;
+  InputFileName := MyDir + 'test' + STR_HTML_EXTENSION;
   if not FileExists(InputFileName) then begin
-    WriteLn('Input file ', InputFileName, ' does not exist. Please run csvwrite first.');
+    WriteLn('Input file ', InputFileName, ' does not exist. Please run htmlwrite first.');
     Halt;
   end;
 
   WriteLn('Opening input file ', InputFilename);
 
-  // Tab-delimited
-  CSVParams.Delimiter := #9;
-  CSVParams.QuoteChar := '''';
+  // Parameters
+  HTMLParams.TableIndex := 0;
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
-    MyWorkbook.ReadFromFile(InputFilename, sfCSV);
+    MyWorkbook.ReadFromFile(InputFilename, sfHTML);
 
     MyWorksheet := MyWorkbook.GetFirstWorksheet;
 
@@ -48,9 +49,6 @@ begin
 
     for CurCell in MyWorksheet.Cells do
     begin
-      if HasFormula(CurCell) then
-        WriteLn('Row: ', CurCell^.Row, ' Col: ', CurCell^.Col, ' Formula: ', MyWorksheet.ReadFormulaAsString(CurCell))
-      else
       WriteLn(
         'Row: ', CurCell^.Row,
         ' Col: ', CurCell^.Col,
@@ -62,5 +60,11 @@ begin
     // Finalization
     MyWorkbook.Free;
   end;
+
+ {$IFDEF MSWINDOWS}
+  WriteLn;
+  WriteLn('Press ENTER to exit.');
+  ReadLn;
+ {$ENDIF}
 end.
 

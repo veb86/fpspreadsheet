@@ -641,7 +641,7 @@ object MainForm: TMainForm
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.xls'
-    Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv'
+    Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|HTML files (*.html; *.htm)|*.html;*.htm|Comma-delimited files (*.csv)|*.csv'
     Options = [ofExtensionDifferent, ofEnableSizing, ofViewDetail]
     left = 312
     top = 160
@@ -943,7 +943,7 @@ object MainForm: TMainForm
     object AcFileOpen: TFileOpen
       Category = 'File'
       Caption = '&Open ...'
-      Dialog.Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv'
+      Dialog.Filter = 'All supported spreadsheet files|*.xls;*.xlsx;*.ods;*.csv;*.html;*.htm|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|HTML files (*.html; *.htm)|*.html;*.htm'
       Dialog.Options = [ofExtensionDifferent, ofFileMustExist, ofEnableSizing, ofViewDetail]
       Hint = 'Open spreadsheet file'
       ImageIndex = 44

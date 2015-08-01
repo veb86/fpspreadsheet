@@ -212,12 +212,18 @@ function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
   AFormatSettings: TFormatSettings): String;
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 
+function IsBoolValue(const AText, ATrueText, AFalseText: String;
+  out AValue: Boolean): Boolean;
+
 function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean; overload;
 function IsCurrencyFormat(ANumFormat: TsNumFormatParams): Boolean; overload;
 
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean; overload;
 function IsDateTimeFormat(AFormatStr: String): Boolean; overload;
 function IsDateTimeFormat(ANumFormat: TsNumFormatParams): Boolean; overload;
+
+function IsDateTimeValue(AText: String; const AFormatSettings: TFormatSettings;
+  out ADateTime: TDateTime; out ANumFormat: TsNumberFormat): Boolean;
 
 function IsDateFormat(ANumFormat: TsNumFormatParams): Boolean;
 
@@ -226,6 +232,11 @@ function IsTimeFormat(AFormatStr: String): Boolean; overload;
 function IsTimeFormat(ANumFormat: TsNumFormatParams): Boolean; overload;
 function IsLongTimeFormat(AFormatStr: String; ATimeSeparator: char): Boolean; overload;
 
+function IsNumberValue(AText: String; AutoDetectNumberFormat: Boolean;
+  const AFormatSettings: TFormatSettings; out ANumber: Double;
+  out ANumFormat: TsNumberFormat; out ADecimals: Integer;
+  out ACurrencySymbol, AWarning: String): Boolean;
+
 function IsTimeIntervalFormat(ANumFormat: TsNumFormatParams): Boolean;
 
 function MakeLongDateFormat(ADateFormat: String): String;
@@ -233,12 +244,15 @@ function MakeShortDateFormat(ADateFormat: String): String;
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 function StripAMPM(const ATimeFormatString: String): String;
 
+procedure InitFormatSettings(out AFormatSettings: TFormatSettings);
+procedure ReplaceFormatSettings(var AFormatSettings: TFormatSettings;
+  const ADefaultFormats: TFormatSettings);
 
 implementation
 
 uses
   StrUtils, Math,
-  fpsUtils, fpsNumFormatParser;
+  fpsUtils, fpsNumFormatParser, fpsCurrency;
 
 const
   {@@ Array of format strings identifying the order of number and
@@ -1409,6 +1423,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Checks whether the specified text corresponds to a boolean value. For this,
+  it must match the specified TRUE and FALSE text phrases.
+-------------------------------------------------------------------------------}
+function IsBoolValue(const AText, ATrueText, AFalseText: String;
+  out AValue: Boolean): Boolean;
+begin
+  if SameText(AText, ATrueText) then
+  begin
+    AValue := true;
+    Result := true;
+  end else
+  if SameText(AText, AFalseText) then
+  begin
+    AValue := false;
+    Result := true;
+  end else
+    Result := false;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Checks whether the given number format code is for currency,
   i.e. requires a currency symbol.
 
@@ -1480,6 +1514,55 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Checks whether the specified text corresponds to a date/time value and returns
+  true, its numerical value and its built-in numberformat if it is.
+-------------------------------------------------------------------------------}
+function IsDateTimeValue(AText: String; const AFormatSettings: TFormatSettings;
+  out ADateTime: TDateTime; out ANumFormat: TsNumberFormat): Boolean;
+
+  { Test whether the text is formatted according to a built-in date/time format.
+    Converts the obtained date/time value back to a string and compares. }
+  function TestFormat(lNumFmt: TsNumberFormat): Boolean;
+  var
+    fmt: string;
+  begin
+    fmt := BuildDateTimeFormatString(lNumFmt, AFormatSettings);
+    Result := FormatDateTime(fmt, ADateTime, AFormatSettings) = AText;
+    if Result then ANumFormat := lNumFmt;
+  end;
+
+begin
+  Result := TryStrToDateTime(AText, ADateTime, AFormatSettings);
+  if Result then
+  begin
+    ANumFormat := nfCustom;
+    if abs(ADateTime) > 1 then      // this is most probably a date
+    begin
+      if TestFormat(nfShortDateTime) then
+        exit;
+      if TestFormat(nfLongDate) then
+        exit;
+      if TestFormat(nfShortDate) then
+        exit;
+      if TestFormat(nfMonthYear) then
+        exit;
+      if TestFormat(nfDayMonth) then
+        exit;
+    end else
+    begin                           // this case is time-only
+      if TestFormat(nfLongTimeAM) then
+        exit;
+      if TestFormat(nfLongTime) then
+        exit;
+      if TestFormat(nfShortTimeAM) then
+        exit;
+      if TestFormat(nfShortTime) then
+        exit;
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Checks whether the specified number format parameters apply to a date value.
 
   @param   ANumFormat   Number format parameters
@@ -1547,6 +1630,102 @@ begin
   for i:=1 to Length(AFormatStr) do
     if AFormatStr[i] = ATimeSeparator then inc(n);
   Result := (n=2);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the specified text corresponds to a numerical value. If it is
+  then the function result is TRUE, and the number value and its formatting
+  parameters are returned.
+-------------------------------------------------------------------------------}
+function IsNumberValue(AText: String; AutoDetectNumberFormat: Boolean;
+  const AFormatSettings: TFormatSettings;
+  out ANumber: Double; out ANumFormat: TsNumberFormat; out ADecimals: Integer;
+  out ACurrencySymbol, AWarning: String): Boolean;
+var
+  p: Integer;
+  DecSep, ThousSep: Char;
+begin
+  Result := false;
+  AWarning := '';
+
+  // To detect whether the text is a currency value we look for the currency
+  // string. If we find it, we delete it and convert the remaining string to
+  // a number.
+  ACurrencySymbol := AFormatSettings.CurrencyString;
+  if RemoveCurrencySymbol(ACurrencySymbol, AText) then
+  begin
+    if IsNegative(AText) then
+    begin
+      if AText = '' then
+        exit;
+      AText := '-' + AText;
+    end;
+  end else
+    ACurrencySymbol := '';
+
+  if AutoDetectNumberFormat then
+    Result := TryStrToFloatAuto(AText, ANumber, DecSep, ThousSep, AWarning)
+  else begin
+    Result := TryStrToFloat(AText, ANumber, AFormatSettings);
+    if Result then
+    begin
+      if pos(AFormatSettings.DecimalSeparator, AText) = 0
+        then DecSep := #0
+        else DecSep := AFormatSettings.DecimalSeparator;
+      if pos(AFormatSettings.ThousandSeparator, AText) = 0
+        then ThousSep := #0
+        else ThousSep := AFormatSettings.ThousandSeparator;
+    end;
+  end;
+
+  // Try to determine the number format
+  if Result then
+  begin
+    if ThousSep <> #0 then
+      ANumFormat := nfFixedTh
+    else
+      ANumFormat := nfGeneral;
+    // count number of decimal places and try to catch special formats
+    ADecimals := 0;
+    if DecSep <> #0 then
+    begin
+      // Go to the decimal separator and search towards the end of the string
+      p := pos(DecSep, AText) + 1;
+      while (p <= Length(AText)) do begin
+        // exponential format
+        if AText[p] in ['+', '-', 'E', 'e'] then
+        begin
+          ANumFormat := nfExp;
+          break;
+        end else
+        // percent format
+        if AText[p] = '%' then
+        begin
+          ANumFormat := nfPercentage;
+          break;
+        end else
+        begin
+          inc(p);
+          inc(ADecimals);
+        end;
+      end;
+      if (ADecimals > 0) and (ADecimals < 9) and (ANumFormat = nfGeneral) then
+        // "no formatting" assumed if there are "many" decimals
+        ANumFormat := nfFixed;
+    end else
+    begin
+      p := Length(AText);
+      while (p > 0) do begin
+        case AText[p] of
+          '%'     : ANumFormat := nfPercentage;
+          'e', 'E': ANumFormat := nfExp;
+          else      dec(p);
+        end;
+        break;
+      end;
+    end;
+  end else
+    ACurrencySymbol := '';
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1682,6 +1861,99 @@ begin
       Result := Result + ATimeFormatString[i];
     inc(i);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initializes the FormatSettings of file a import/export parameters record to
+  default values which can be replaced by the FormatSettings of the
+  workbook's FormatSettings
+-------------------------------------------------------------------------------}
+procedure InitFormatSettings(out AFormatSettings: TFormatSettings);
+var
+  i: Integer;
+begin
+  with AFormatSettings do
+  begin
+    CurrencyFormat := Byte(-1);
+    NegCurrFormat := Byte(-1);
+    ThousandSeparator := #0;
+    DecimalSeparator := #0;
+    CurrencyDecimals := Byte(-1);
+    DateSeparator := #0;
+    TimeSeparator := #0;
+    ListSeparator := #0;
+    CurrencyString := '';
+    ShortDateFormat := '';
+    LongDateFormat := '';
+    TimeAMString := '';
+    TimePMString := '';
+    ShortTimeFormat := '';
+    LongTimeFormat := '';
+    for i:=1 to 12 do
+    begin
+      ShortMonthNames[i] := '';
+      LongMonthNames[i] := '';
+    end;
+    for i:=1 to 7 do
+    begin
+      ShortDayNames[i] := '';
+      LongDayNames[i] := '';
+    end;
+    TwoDigitYearCenturyWindow := Word(-1);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Replaces in AFormatSettings all members marked as having default values (#0,
+  -1, '') by the corresponding values of the ADefaultFormats record
+-------------------------------------------------------------------------------}
+procedure ReplaceFormatSettings(var AFormatSettings: TFormatSettings;
+  const ADefaultFormats: TFormatSettings);
+var
+  i: Integer;
+begin
+  if AFormatSettings.CurrencyFormat = Byte(-1) then
+    AFormatSettings.CurrencyFormat := ADefaultFormats.CurrencyFormat;
+  if AFormatSettings.NegCurrFormat = Byte(-1) then
+    AFormatSettings.NegCurrFormat := ADefaultFormats.NegCurrFormat;
+  if AFormatSettings.ThousandSeparator = #0 then
+    AFormatSettings.ThousandSeparator := ADefaultFormats.ThousandSeparator;
+  if AFormatSettings.DecimalSeparator = #0 then
+    AFormatSettings.DecimalSeparator := ADefaultFormats.DecimalSeparator;
+  if AFormatSettings.CurrencyDecimals = Byte(-1) then
+    AFormatSettings.CurrencyDecimals := ADefaultFormats.CurrencyDecimals;
+  if AFormatSettings.DateSeparator = #0 then
+    AFormatSettings.DateSeparator := ADefaultFormats.DateSeparator;
+  if AFormatSettings.TimeSeparator = #0 then
+    AFormatSettings.TimeSeparator := ADefaultFormats.TimeSeparator;
+  if AFormatSettings.ListSeparator = #0 then
+    AFormatSettings.ListSeparator := ADefaultFormats.ListSeparator;
+  if AFormatSettings.CurrencyString = '' then
+    AFormatSettings.CurrencyString := ADefaultFormats.CurrencyString;
+  if AFormatSettings.ShortDateFormat = '' then
+    AFormatSettings.ShortDateFormat := ADefaultFormats.ShortDateFormat;
+  if AFormatSettings.LongDateFormat = '' then
+    AFormatSettings.LongDateFormat := ADefaultFormats.LongDateFormat;
+  if AFormatSettings.ShortTimeFormat = '' then
+    AFormatSettings.ShortTimeFormat := ADefaultFormats.ShortTimeFormat;
+  if AFormatSettings.LongTimeFormat = '' then
+    AFormatSettings.LongTimeFormat := ADefaultFormats.LongTimeFormat;
+  for i:=1 to 12 do
+  begin
+    if AFormatSettings.ShortMonthNames[i] = '' then
+      AFormatSettings.ShortMonthNames[i] := ADefaultFormats.ShortMonthNames[i];
+    if AFormatSettings.LongMonthNames[i] = '' then
+      AFormatSettings.LongMonthNames[i] := ADefaultFormats.LongMonthNames[i];
+  end;
+  for i:=1 to 7 do
+  begin
+    if AFormatSettings.ShortDayNames[i] = '' then
+      AFormatSettings.ShortDayNames[i] := ADefaultFormats.ShortDayNames[i];
+    if AFormatSettings.LongDayNames[i] = '' then
+      AFormatSettings.LongDayNames[i] := ADefaultFormats.LongDayNames[i];
+  end;
+  if AFormatSettings.TwoDigitYearCenturyWindow = Word(-1) then
+    AFormatSettings.TwoDigitYearCenturyWindow := ADefaultFormats.TwoDigitYearCenturyWindow;
 end;
 
 

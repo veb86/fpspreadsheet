@@ -13,11 +13,6 @@ type
   private
     FWorksheetName: String;
     FFormatSettings: TFormatSettings;
-    function IsBool(AText: String; out AValue: Boolean): Boolean;
-    function IsDateTime(AText: String; out ADateTime: TDateTime;
-      out ANumFormat: TsNumberFormat): Boolean;
-    function IsNumber(AText: String; out ANumber: Double; out ANumFormat: TsNumberFormat;
-      out ADecimals: Integer; out ACurrencySymbol, AWarning: String): Boolean;
     function IsQuotedText(var AText: String): Boolean;
     procedure ReadCellValue(ARow, ACol: Cardinal; AText: String);
   protected
@@ -96,93 +91,7 @@ implementation
 uses
   //StrUtils,
   DateUtils, LConvEncoding, Math,
-  fpsUtils, fpsCurrency, fpsNumFormat;
-
-{ Initializes the FormatSettings of the CSVParams to default values which
-  can be replaced by the FormatSettings of the workbook's FormatSettings }
-procedure InitCSVFormatSettings;
-var
-  i: Integer;
-begin
-  with CSVParams.FormatSettings do
-  begin
-    CurrencyFormat := Byte(-1);
-    NegCurrFormat := Byte(-1);
-    ThousandSeparator := #0;
-    DecimalSeparator := #0;
-    CurrencyDecimals := Byte(-1);
-    DateSeparator := #0;
-    TimeSeparator := #0;
-    ListSeparator := #0;
-    CurrencyString := '';
-    ShortDateFormat := '';
-    LongDateFormat := '';
-    TimeAMString := '';
-    TimePMString := '';
-    ShortTimeFormat := '';
-    LongTimeFormat := '';
-    for i:=1 to 12 do
-    begin
-      ShortMonthNames[i] := '';
-      LongMonthNames[i] := '';
-    end;
-    for i:=1 to 7 do
-    begin
-      ShortDayNames[i] := '';
-      LongDayNames[i] := '';
-    end;
-    TwoDigitYearCenturyWindow := Word(-1);
-  end;
-end;
-
-procedure ReplaceFormatSettings(var AFormatSettings: TFormatSettings;
-  const ADefaultFormats: TFormatSettings);
-var
-  i: Integer;
-begin
-  if AFormatSettings.CurrencyFormat = Byte(-1) then
-    AFormatSettings.CurrencyFormat := ADefaultFormats.CurrencyFormat;
-  if AFormatSettings.NegCurrFormat = Byte(-1) then
-    AFormatSettings.NegCurrFormat := ADefaultFormats.NegCurrFormat;
-  if AFormatSettings.ThousandSeparator = #0 then
-    AFormatSettings.ThousandSeparator := ADefaultFormats.ThousandSeparator;
-  if AFormatSettings.DecimalSeparator = #0 then
-    AFormatSettings.DecimalSeparator := ADefaultFormats.DecimalSeparator;
-  if AFormatSettings.CurrencyDecimals = Byte(-1) then
-    AFormatSettings.CurrencyDecimals := ADefaultFormats.CurrencyDecimals;
-  if AFormatSettings.DateSeparator = #0 then
-    AFormatSettings.DateSeparator := ADefaultFormats.DateSeparator;
-  if AFormatSettings.TimeSeparator = #0 then
-    AFormatSettings.TimeSeparator := ADefaultFormats.TimeSeparator;
-  if AFormatSettings.ListSeparator = #0 then
-    AFormatSettings.ListSeparator := ADefaultFormats.ListSeparator;
-  if AFormatSettings.CurrencyString = '' then
-    AFormatSettings.CurrencyString := ADefaultFormats.CurrencyString;
-  if AFormatSettings.ShortDateFormat = '' then
-    AFormatSettings.ShortDateFormat := ADefaultFormats.ShortDateFormat;
-  if AFormatSettings.LongDateFormat = '' then
-    AFormatSettings.LongDateFormat := ADefaultFormats.LongDateFormat;
-  if AFormatSettings.ShortTimeFormat = '' then
-    AFormatSettings.ShortTimeFormat := ADefaultFormats.ShortTimeFormat;
-  if AFormatSettings.LongTimeFormat = '' then
-    AFormatSettings.LongTimeFormat := ADefaultFormats.LongTimeFormat;
-  for i:=1 to 12 do
-  begin
-    if AFormatSettings.ShortMonthNames[i] = '' then
-      AFormatSettings.ShortMonthNames[i] := ADefaultFormats.ShortMonthNames[i];
-    if AFormatSettings.LongMonthNames[i] = '' then
-      AFormatSettings.LongMonthNames[i] := ADefaultFormats.LongMonthNames[i];
-  end;
-  for i:=1 to 7 do
-  begin
-    if AFormatSettings.ShortDayNames[i] = '' then
-      AFormatSettings.ShortDayNames[i] := ADefaultFormats.ShortDayNames[i];
-    if AFormatSettings.LongDayNames[i] = '' then
-      AFormatSettings.LongDayNames[i] := ADefaultFormats.LongDayNames[i];
-  end;
-  if AFormatSettings.TwoDigitYearCenturyWindow = Word(-1) then
-    AFormatSettings.TwoDigitYearCenturyWindow := ADefaultFormats.TwoDigitYearCenturyWindow;
-end;
+  fpsUtils, fpsNumFormat;
 
 function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 begin
@@ -205,152 +114,6 @@ begin
   FWorksheetName := 'Sheet1';  // will be replaced by filename
   FFormatSettings := CSVParams.FormatSettings;
   ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
-end;
-
-function TsCSVReader.IsBool(AText: String; out AValue: Boolean): Boolean;
-begin
-  if SameText(AText, CSVParams.TrueText) then
-  begin
-    AValue := true;
-    Result := true;
-  end else
-  if SameText(AText, CSVParams.FalseText) then
-  begin
-    AValue := false;
-    Result := true;
-  end else
-    Result := false;
-end;
-
-function TsCSVReader.IsDateTime(AText: String; out ADateTime: TDateTime;
-  out ANumFormat: TsNumberFormat): Boolean;
-
-  { Test whether the text is formatted according to a built-in date/time format.
-    Converts the obtained date/time value back to a string and compares. }
-  function TestFormat(lNumFmt: TsNumberFormat): Boolean;
-  var
-    fmt: string;
-  begin
-    fmt := BuildDateTimeFormatString(lNumFmt, FFormatSettings);
-    Result := FormatDateTime(fmt, ADateTime, FFormatSettings) = AText;
-    if Result then ANumFormat := lNumFmt;
-  end;
-
-begin
-  Result := TryStrToDateTime(AText, ADateTime, FFormatSettings);
-  if Result then
-  begin
-    ANumFormat := nfCustom;
-    if abs(ADateTime) > 1 then       // this is most probably a date
-    begin
-      if TestFormat(nfShortDateTime) then
-        exit;
-      if TestFormat(nfLongDate) then
-        exit;
-      if TestFormat(nfShortDate) then
-        exit;
-    end else
-    begin          // this case is time-only
-      if TestFormat(nfLongTimeAM) then
-        exit;
-      if TestFormat(nfLongTime) then
-        exit;
-      if TestFormat(nfShortTimeAM) then
-        exit;
-      if TestFormat(nfShortTime) then
-        exit;
-    end;
-  end;
-end;
-
-function TsCSVReader.IsNumber(AText: String; out ANumber: Double;
-  out ANumFormat: TsNumberFormat; out ADecimals: Integer;
-  out ACurrencySymbol, AWarning: String): Boolean;
-var
-  p: Integer;
-  DecSep, ThousSep: Char;
-begin
-  Result := false;
-  AWarning := '';
-
-  // To detect whether the text is a currency value we look for the currency
-  // string. If we find it, we delete it and convert the remaining string to
-  // a number.
-  ACurrencySymbol := FFormatSettings.CurrencyString;
-  if RemoveCurrencySymbol(ACurrencySymbol, AText) then
-  begin
-    if IsNegative(AText) then
-    begin
-      if AText = '' then
-        exit;
-      AText := '-' + AText;
-    end;
-  end else
-    ACurrencySymbol := '';
-
-  if CSVParams.AutoDetectNumberFormat then
-    Result := TryStrToFloatAuto(AText, ANumber, DecSep, ThousSep, AWarning)
-  else begin
-    Result := TryStrToFloat(AText, ANumber, FFormatSettings);
-    if Result then
-    begin
-      if pos(FFormatSettings.DecimalSeparator, AText) = 0
-        then DecSep := #0
-        else DecSep := FFormatSettings.DecimalSeparator;
-      if pos(CSVParams.FormatSettings.ThousandSeparator, AText) = 0
-        then ThousSep := #0
-        else ThousSep := FFormatSettings.ThousandSeparator;
-    end;
-  end;
-
-  // Try to determine the number format
-  if Result then
-  begin
-    if ThousSep <> #0 then
-      ANumFormat := nfFixedTh
-    else
-      ANumFormat := nfGeneral;
-    // count number of decimal places and try to catch special formats
-    ADecimals := 0;
-    if DecSep <> #0 then
-    begin
-      // Go to the decimal separator and search towards the end of the string
-      p := pos(DecSep, AText) + 1;
-      while (p <= Length(AText)) do begin
-        // exponential format
-        if AText[p] in ['+', '-', 'E', 'e'] then
-        begin
-          ANumFormat := nfExp;
-          break;
-        end else
-        // percent format
-        if AText[p] = '%' then
-        begin
-          ANumFormat := nfPercentage;
-          break;
-        end else
-        begin
-          inc(p);
-          inc(ADecimals);
-        end;
-      end;
-      if (ADecimals > 0) and (ADecimals < 9) and (ANumFormat = nfGeneral) then
-        // "no formatting" assumed if there are "many" decimals
-        ANumFormat := nfFixed;
-    end else
-    begin
-      p := Length(AText);
-      while (p > 0) do begin
-        case AText[p] of
-          '%'     : ANumFormat := nfPercentage;
-          'e', 'E': ANumFormat := nfExp;
-          else      dec(p);
-        end;
-        break;
-      end;
-    end;
-  end else
-    ACurrencySymbol := '';
 end;
 
 { Checks if text is quoted; strips any starting and ending quotes }
@@ -399,7 +162,8 @@ begin
   end;
 
   // Check for a NUMBER or CURRENCY cell
-  if IsNumber(AText, dblValue, nf, decs, currSym, warning) then
+  if IsNumberValue(AText, CSVParams.AutoDetectNumberFormat, FFormatSettings,
+    dblValue, nf, decs, currSym, warning) then
   begin
     if currSym <> '' then
       FWorksheet.WriteCurrency(cell, dblValue, nfCurrency, decs, currSym)
@@ -412,14 +176,14 @@ begin
 
   // Check for a DATE/TIME cell
   // No idea how to apply the date/time formatsettings here...
-  if IsDateTime(AText, dtValue, nf) then
+  if IsDateTimeValue(AText, FFormatSettings, dtValue, nf) then
   begin
     FWorksheet.WriteDateTime(cell, dtValue, nf);
     exit;
   end;
 
   // Check for a BOOLEAN cell
-  if IsBool(AText, boolValue) then
+  if IsBoolValue(AText, CSVParams.TrueText, CSVParams.FalseText, boolValue) then
   begin
     FWorksheet.WriteBoolValue(cell, boolValue);
     exit;
@@ -656,7 +420,7 @@ end;
 
 
 initialization
-  InitCSVFormatSettings;
+  InitFormatSettings(CSVParams.FormatSettings);
   RegisterSpreadFormat(TsCSVReader, TsCSVWriter, sfCSV);
 
 end.
