@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, fasthtmlparser,
-  fpstypes, fpspreadsheet, fpsReaderWriter;
+  fpstypes, fpspreadsheet, fpsReaderWriter, fpsHTMLUtils;
 
 type
   TsHTMLTokenKind = (htkTABLE, htkTR, htkTH, htkTD, htkDIV, htkSPAN, htkP);
@@ -29,10 +29,13 @@ type
     FTableCounter: Integer;
     FCurrRow, FCurrCol: LongInt;
     FCelLText: String;
+    FAttrList: TsHTMLAttrList;
+    FColSpan, FRowSpan: Integer;
+    procedure ExtractMergedRange;
     procedure TagFoundHandler(NoCaseTag, ActualTag: string);
     procedure TextFoundHandler(AText: String);
   protected
-    procedure ProcessCellValue(ARow, ACol: LongInt; AText: String);
+    procedure AddCell(ARow, ACol: LongInt; AText: String);
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
@@ -113,7 +116,7 @@ implementation
 
 uses
   LazUTF8, URIParser, StrUtils,
-  fpsUtils, fpsHTMLUtils, fpsNumFormat;
+  fpsUtils, fpsNumFormat;
                    (*
 type
   THTMLEntity = record
@@ -413,44 +416,17 @@ begin
   FFormatSettings := HTMLParams.FormatSettings;
   ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
   FTableCounter := -1;
+  FAttrList := TsHTMLAttrList.Create;
 end;
 
 destructor TsHTMLReader.Destroy;
 begin
+  FreeAndNil(FAttrList);
   FreeAndNil(parser);
   inherited Destroy;
 end;
 
-procedure TsHTMLReader.ReadFromStream(AStream: TStream);
-var
-  list: TStringList;
-begin
-  list := TStringList.Create;
-  try
-    list.LoadFromStream(AStream);
-    ReadFromStrings(list);
-    if FWorkbook.GetWorksheetCount = 0 then
-    begin
-      FWorkbook.AddErrorMsg('Requested table not found, or no tables in html file');
-      FWorkbook.AddWorksheet('Dummy');
-    end;
-  finally
-    list.Free;
-  end;
-end;
-
-procedure TsHTMLReader.ReadFromStrings(AStrings: TStrings);
-begin
-  // Create html parser
-  FreeAndNil(parser);
-  parser := THTMLParser.Create(AStrings.Text);
-  parser.OnFoundTag := @TagFoundHandler;
-  parser.OnFoundText := @TextFoundHandler;
-  // Execute the html parser
-  parser.Exec;
-end;
-
-procedure TsHTMLReader.ProcessCellValue(ARow, ACol: LongInt; AText: String);
+procedure TsHTMLReader.AddCell(ARow, ACol: LongInt; AText: String);
 var
   cell: PCell;
   dblValue: Double;
@@ -466,6 +442,10 @@ begin
     exit;
 
   cell := FWorksheet.AddCell(ARow, ACol);
+
+  // Merged cells
+  if (FColSpan > 0) or (FRowSpan > 0) then
+    FWorksheet.MergeCells(ARow, ACol, ARow + FRowSpan, ACol + FColSpan);
 
   // Do not try to interpret the strings. --> everything is a LABEL cell.
   if not HTMLParams.DetectContentType then
@@ -506,6 +486,49 @@ begin
   FWorksheet.WriteUTF8Text(cell, AText);
 end;
 
+procedure TsHTMLReader.ExtractMergedRange;
+var
+  idx: Integer;
+begin
+  FColSpan := 0;
+  FRowSpan := 0;
+  idx := FAttrList.IndexOfName('colspan');
+  if idx > -1 then
+    FColSpan := StrToInt(FAttrList[idx].Value) - 1;
+  idx := FAttrList.IndexOfName('rowspan');
+  if idx > -1 then
+    FRowSpan := StrToInt(FAttrList[idx].Value) - 1;
+  // -1 to compensate for correct determination of the range end cell
+end;
+
+procedure TsHTMLReader.ReadFromStream(AStream: TStream);
+var
+  list: TStringList;
+begin
+  list := TStringList.Create;
+  try
+    list.LoadFromStream(AStream);
+    ReadFromStrings(list);
+    if FWorkbook.GetWorksheetCount = 0 then
+    begin
+      FWorkbook.AddErrorMsg('Requested table not found, or no tables in html file');
+      FWorkbook.AddWorksheet('Dummy');
+    end;
+  finally
+    list.Free;
+  end;
+end;
+
+procedure TsHTMLReader.ReadFromStrings(AStrings: TStrings);
+begin
+  // Create html parser
+  FreeAndNil(parser);
+  parser := THTMLParser.Create(AStrings.Text);
+  parser.OnFoundTag := @TagFoundHandler;
+  parser.OnFoundText := @TextFoundHandler;
+  // Execute the html parser
+  parser.Exec;
+end;
 
 procedure TsHTMLReader.TagFoundHandler(NoCaseTag, ActualTag: string);
 begin
@@ -537,6 +560,8 @@ begin
     FInCell := true;
     inc(FCurrCol);
     FCellText := '';
+    FAttrList.Parse(ActualTag);
+    ExtractMergedRange;
   end else
   if ((NoCaseTag = '<TH>') or (pos('<TH ', NoCaseTag) = 1)) and FInTable then
   begin
@@ -567,7 +592,19 @@ begin
       '</TD>', '</TH>':
         if FInCell then
         begin
-          ProcessCellValue(FCurrRow, FCurrCol, FCellText);
+//          inc(FCurrCol);
+          while FWorksheet.isMerged(FWorksheet.FindCell(FCurrRow, FCurrRow)) do
+            inc(FCurrRow);
+            {
+          if FWorksheet.IsMerged(FWorksheet.FindCell(FCurrRow, FCurrCol)) then
+          begin
+            repeat
+              inc(FCurrRow);
+            until not FWorksheet.IsMerged(FWorksheet.FindCell(FCurrRow, FCurrCol));
+            dec(FCurrCol);
+          end;
+          }
+          AddCell(FCurrRow, FCurrCol, FCellText);
           FInCell := false;
         end;
       '</A>':
@@ -576,12 +613,11 @@ begin
         if FInCell then FInSpan := false;
       '<H1/>', '<H2/>', '<H3/>', '<H4/>', '<H5/>', '<H6/>':
         if FinCell then FInHeader := false;
-      '<TR/>', '<TR />':
+      '<TR/>', '<TR />':                     // empty rows
         if FInTable then inc(FCurrRow);
-      '<TD/>', '<TD />':
-        if FInCell then inc(FCurrCol);
-      '<TH/>', '<TH />':
-        if FInCell then inc(FCurrCol);
+      '<TD/>', '<TD />', '<TH/>', '<TH />':  // empty cells
+        if FInCell then
+          inc(FCurrCol);
     end;
 end;
 

@@ -5,18 +5,34 @@ unit fpsHTMLUtils;
 interface
 
 uses
-  Classes, SysUtils;
+  Classes, SysUtils, contnrs;
 
 type
-  THTMLEntity = record
+  TsHTMLEntity = record
     E: String;
     Ch: String;
     N: Word;
   end;
 
-
-function IsHTMLEntity(AText: PChar; out AEntity: THTMLEntity): Boolean;
 function CleanHTMLString(AText: String): String;
+function IsHTMLEntity(AText: PChar; out AEntity: TsHTMLEntity): Boolean;
+
+type
+  TsHTMLAttr = class
+    Name: String;
+    Value: String;
+    constructor Create(AName, AValue: String);
+  end;
+
+  TsHTMLAttrList = class(TObjectList)
+  private
+    function GetItem(AIndex: Integer): TsHTMLAttr;
+    procedure SetItem(AIndex: Integer; AValue: TsHTMLAttr);
+  public
+    function IndexOfName(AName: String): Integer;
+    procedure Parse(AHTML: String);
+    property Items[AIndex: Integer]: TsHTMLAttr read GetItem write SetItem; default;
+  end;
 
 
 implementation
@@ -26,7 +42,7 @@ uses
 
 const
   // http://unicode.e-workers.de/entities.php
-  HTMLEntities: array[0..250] of THTMLEntity = (
+  HTMLEntities: array[0..250] of TsHTMLEntity = (
   // A
     (E: 'Acirc';  Ch: 'Â';  N: 194),   // 0
     (E: 'acirc';  Ch: 'â';  N: 226),
@@ -305,7 +321,7 @@ const
     (E: 'zwnj';   Ch: '';   N: 8204)    // Zero-width non-joiner
   );
 
-function IsHTMLEntity(AText: PChar; out AEntity: THTMLEntity): Boolean;
+function IsHTMLEntity(AText: PChar; out AEntity: TsHTMLEntity): Boolean;
 
   function Compare(s: String): Boolean;
   var
@@ -357,7 +373,7 @@ end;
 function CleanHTMLString(AText: String): String;
 var
   len: Integer;
-  ent: THTMLEntity;
+  ent: TsHTMLEntity;
   P: PChar;
   ch: Char;
 begin
@@ -395,6 +411,88 @@ begin
     inc(P);
   end;
 end;
+
+
+{==============================================================================}
+{                                TsHTMLAttr                                    }
+{==============================================================================}
+
+constructor TsHTMLAttr.Create(AName, AValue: String);
+begin
+  Name := AName;
+  Value := AValue;
+end;
+
+
+{==============================================================================}
+{                              TsHTMLAttrList                                  }
+{==============================================================================}
+
+function TsHTMLAttrList.GetItem(AIndex: Integer): TsHTMLAttr;
+begin
+  Result := TsHTMLAttr(inherited GetItem(AIndex));
+end;
+
+function TsHTMLAttrList.IndexOfName(AName: String): Integer;
+begin
+  AName := Lowercase(AName);
+  for Result := 0 to Count-1 do
+    if GetItem(Result).Name = AName then
+      exit;
+  Result := -1;
+end;
+
+{ AHTML is a HTML string beginning with a < tag. Seeks the first space to split
+  off the HTML tag. Then seeks for = and " characters to extract the attributes
+  which are split into name/value pairs at the = character. The value part is
+  unquoted. }
+procedure TsHTMLAttrList.Parse(AHTML: String);
+var
+  i: Integer;
+  len: Integer;
+  value, nam: String;
+begin
+  Clear;
+  if (AHTML[1] <> '<') then           // just for simplification
+    raise Exception.Create('[THTMLAttrList.Parse] HTML tags expected.');
+
+  // Find first space
+  i := 1;
+  len := Length(AHTML);
+  while (i <= len) and (AHTML[i] <> ' ') do inc(i);
+
+  // Parse attribute string
+  nam := '';
+  while (i <= len) do
+  begin
+    case AHTML[i] of
+      '=': begin
+             inc(i);
+             if AHTML[i] <> '"' then
+               raise Exception.Create('[THTMLAttrList.Parse] Quotation marks expected.');
+             value := '';
+             inc(i);   // skip the initial '"'
+             while (AHTML[i] <> '"') do
+             begin
+               value := value + AHTML[i];
+               inc(i);
+             end;
+             inc(i);  // skip the final '"'
+             Add(TsHTMLAttr.Create(lowercase(nam), value));
+             nam := '';
+           end;
+      ' ', '/', '>': ;
+      else nam := nam + AHTML[i];
+    end;
+    inc(i);
+  end;
+end;
+
+procedure TsHTMLAttrList.SetItem(AIndex: Integer; AValue: TsHTMLAttr);
+begin
+  inherited SetItem(AIndex, AValue);
+end;
+
 
 end.
 
