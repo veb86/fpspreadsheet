@@ -637,7 +637,9 @@ type
     destructor Destroy; override;
 
     class function GetFormatFromFileHeader(const AFileName: TFileName;
-      out SheetType: TsSpreadsheetFormat): Boolean;
+      out SheetType: TsSpreadsheetFormat): Boolean; overload;
+    class function GetFormatFromFileHeader(AStream: TStream;
+      out SheetType: TsSpreadsheetFormat): Boolean; overload;
     function CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsBasicSpreadReader;
     function CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsBasicSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
@@ -6504,6 +6506,25 @@ end;
 -------------------------------------------------------------------------------}
 class function TsWorkbook.GetFormatFromFileHeader(const AFileName: TFileName;
   out SheetType: TsSpreadsheetFormat): Boolean;
+var
+  stream: TStream;
+begin
+  stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
+  try
+    Result := GetFormatFromFileHeader(stream, SheetType)
+  finally
+    stream.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Helper method for determining the spreadsheet type. Read the first few bytes
+  of a stream and determines the spreadsheet type from the characteristic
+  signature. Only implemented for xls where several file types have the same
+  extension.
+-------------------------------------------------------------------------------}
+class function TsWorkbook.GetFormatFromFileHeader(AStream: TStream;
+  out SheetType: TsSpreadsheetFormat): Boolean; overload;
 const
   BIFF2_HEADER: array[0..3] of byte = (
     $09,$00, $04,$00);  // they are common to all BIFF2 files that I've seen
@@ -6526,51 +6547,47 @@ const
 
 var
   buf: packed array[0..7] of byte = (0,0,0,0,0,0,0,0);
-  stream: TStream;
   i: Integer;
   ok: Boolean;
 begin
   Result := false;
-  stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
-  try
-    // Read first 8 bytes
-    stream.ReadBuffer(buf, 8);
+  if AStream = nil then
+    exit;
 
-    // Check for Excel 2
-    ok := true;
-    for i:=0 to High(BIFF2_HEADER) do
-      if buf[i] <> BIFF2_HEADER[i] then
-      begin
-        ok := false;
-        break;
-      end;
-    if ok then
+  // Read first 8 bytes
+  AStream.ReadBuffer(buf, 8);
+
+  // Check for Excel 2
+  ok := true;
+  for i:=0 to High(BIFF2_HEADER) do
+    if buf[i] <> BIFF2_HEADER[i] then
     begin
-      SheetType := sfExcel2;
-      Exit(True);
+      ok := false;
+      break;
     end;
+  if ok then
+  begin
+    SheetType := sfExcel2;
+    Exit(True);
+  end;
 
-    // Check for Excel 5 or 8
-    for i:=0 to High(BIFF58_HEADER) do
-      if buf[i] <> BIFF58_HEADER[i] then
-        exit;
+  // Check for Excel 5 or 8
+  for i:=0 to High(BIFF58_HEADER) do
+    if buf[i] <> BIFF58_HEADER[i] then
+      exit;
 
-    // Now we know that the file is a Microsoft compound document.
+  // Now we know that the file is a Microsoft compound document.
 
-    // We check for Excel 5 in which the stream is named "Book"
-    if ValidOLEStream(stream, 'Book') then begin
-      SheetType := sfExcel5;
-      exit(True);
-    end;
+  // We check for Excel 5 in which the stream is named "Book"
+  if ValidOLEStream(AStream, 'Book') then begin
+    SheetType := sfExcel5;
+    exit(True);
+  end;
 
-    // Now we check for Excel 8 which names the stream "Workbook"
-    if ValidOLEStream(stream, 'Workbook') then begin
-      SheetType := sfExcel8;
-      exit(True);
-    end;
-
-  finally
-    stream.Free;
+  // Now we check for Excel 8 which names the stream "Workbook"
+  if ValidOLEStream(AStream, 'Workbook') then begin
+    SheetType := sfExcel8;
+    exit(True);
   end;
 end;
 
