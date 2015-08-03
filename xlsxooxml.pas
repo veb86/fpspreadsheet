@@ -2004,7 +2004,8 @@ begin
         fn_comments := 'comments1.xml'
       else
         // this sheet does not have any cell comments
-        continue;
+        fn_comments := '';
+        //continue;
 
       // Extract texts from the comments file found and apply to worksheet.
       if fn_comments <> '' then
@@ -2161,7 +2162,8 @@ begin
           fn_comments := 'comments1.xml'
         else
           // This sheet does not have any cell comments at all
-          continue;
+          fn_comments := '';
+          //continue;
       finally
         XMLStream.Free;
       end;
