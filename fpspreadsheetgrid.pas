@@ -237,9 +237,9 @@ type
     procedure InsertCol(AGridCol: Integer);
     procedure InsertRow(AGridRow: Integer);
     procedure LoadFromSpreadsheetFile(AFileName: string;
-      AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
+      AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
-      AWorksheetIndex: Integer = 0); overload;
+      AWorksheetIndex: Integer = -1); overload;
     procedure NewWorkbook(AColCount, ARowCount: Integer);
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
@@ -3433,6 +3433,7 @@ end;
   @param   AFileName        Name of the file to be loaded
   @param   AFormat          Spreadsheet file format assumed for the file
   @param   AWorksheetIndex  Index of the worksheet to be displayed in the grid
+                            (If empty then the active worksheet is loaded)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
@@ -3461,6 +3462,7 @@ end;
 
   @param   AFileName        Name of the file to be loaded
   @param   AWorksheetIndex  Index of the worksheet to be shown in the grid
+                            (If empty then the active worksheet is loaded)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);

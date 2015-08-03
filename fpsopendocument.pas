@@ -89,6 +89,7 @@ type
     FPageLayoutList: TFPList;
     FMasterPageList: TFPList;
     FHeaderFooterFontList: TObjectList;
+    FActiveSheet: String;
     FDateMode: TDateMode;
     // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
@@ -1865,6 +1866,7 @@ var
   OfficeSettingsNode: TDOMNode;
   nodename: String;
   pageLayout: PsPageLayout;
+  sheet: TsWorksheet;
 begin
   //unzip files into AFileName path
   FilePath := GetTempDir(false);
@@ -1958,6 +1960,12 @@ begin
       ReadSettings(OfficeSettingsNode);
     end;
 
+    // Active sheet
+    if FActiveSheet <> '' then
+      sheet := FWorkbook.GetWorksheetByName(FActiveSheet) else
+      sheet := FWorkbook.GetWorksheetByIndex(0);
+    FWorkbook.SelectWorksheet(sheet);
+
   finally
     if Assigned(Doc) then Doc.Free;
   end;
@@ -1966,32 +1974,14 @@ end;
 procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream);
 var
   Doc : TXMLDocument;
-//  FilePath : string;
-//  UnZip : TUnZipper;
-//  FileList : TStringList;
   BodyNode, SpreadSheetNode, TableNode: TDOMNode;
   StylesNode: TDOMNode;
   OfficeSettingsNode: TDOMNode;
   nodename: String;
   pageLayout: PsPageLayout;
   XMLStream: TStream;
+  sheet: TsWorksheet;
 begin
-  {
-  //unzip files into AFileName path
-  FilePath := GetTempDir(false);
-  UnZip := TUnZipper.Create;
-  FileList := TStringList.Create;
-  try
-    FileList.Add('styles.xml');
-    FileList.Add('content.xml');
-    FileList.Add('settings.xml');
-    UnZip.OutputPath := FilePath;
-    Unzip.UnZipFiles(AFileName,FileList);
-  finally
-    FreeAndNil(FileList);
-    FreeAndNil(UnZip);
-  end; //try
-   }
   Doc := nil;
   try
     // process the styles.xml file
@@ -2079,17 +2069,17 @@ begin
       XMLStream.Free;
     end;
 
+    // Active sheet
+    if FActiveSheet <> '' then
+      sheet := FWorkbook.GetWorksheetByName(FActiveSheet) else
+      sheet := FWorkbook.GetWorksheetByIndex(0);
+    FWorkbook.SelectWorksheet(sheet);
+
   finally
     FreeAndNil(Doc);
   end;
 end;
-{
-begin
-  Unused(AStream);
-  raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] '+
-                         'Method not implemented. Use "ReadFromFile" instead.');
-end;
- }
+
 procedure TsSpreadOpenDocReader.ReadHeaderFooterFont(ANode: TDOMNode;
   var AFontName: String; var AFontSize: Double;
   var AFontStyle: TsHeaderFooterFontStyles; var AFontColor: TsColor);
@@ -2997,6 +2987,11 @@ begin
               if (nodeName = 'config:config-item') then
               begin
                 cfgName := lowercase(GetAttrValue(cfgEntryItemNode, 'config:name'));
+                if cfgName = 'activetable' then
+                begin
+                  cfgValue := GetNodeValue(cfgEntryItemNode);
+                  FActiveSheet := cfgValue;
+                end else
                 if cfgName = 'showgrid' then
                 begin
                   cfgValue := GetNodeValue(cfgEntryItemNode);
@@ -3734,15 +3729,18 @@ var
   i: Integer;
   showGrid, showHeaders: Boolean;
   sheet: TsWorksheet;
+  actSheet: String;
 begin
   // Open/LibreOffice allow to change showGrid and showHeaders only globally.
   // As a compromise, we check whether there is at least one page with these
   // settings off. Then we assume it to be valid also for the other sheets.
   showGrid := true;
   showHeaders := true;
+  actSheet := 'Table1';
   for i:=0 to Workbook.GetWorksheetCount-1 do
   begin
     sheet := Workbook.GetWorksheetByIndex(i);
+    if sheet = Workbook.ActiveWorksheet then actSheet := sheet.Name;
     if not (soShowGridLines in sheet.Options) then showGrid := false;
     if not (soShowHeaders in sheet.Options) then showHeaders := false;
   end;
@@ -3758,7 +3756,7 @@ begin
         '<config:config-item-set config:name="ooo:view-settings">' +
          '<config:config-item-map-indexed config:name="Views">' +
             '<config:config-item-map-entry>' +
-              '<config:config-item config:name="ActiveTable" config:type="string">Tabelle1</config:config-item>' +
+              '<config:config-item config:name="ActiveTable" config:type="string">'+actSheet+'</config:config-item>' +
               '<config:config-item config:name="ZoomValue" config:type="int">100</config:config-item>' +
               '<config:config-item config:name="PageViewZoomValue" config:type="int">100</config:config-item>' +
               '<config:config-item config:name="ShowPageBreakPreview" config:type="boolean">false</config:config-item>' +

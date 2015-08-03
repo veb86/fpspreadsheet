@@ -3147,6 +3147,7 @@ procedure TsSpreadBIFF8Writer.WriteWINDOW2(AStream: TStream;
   ASheet: TsWorksheet);
 var
   Options: Word;
+  actSheet: TsWorksheet;
 begin
   { BIFF Record header }
   WriteBiffHeader(AStream, INT_EXCEL_ID_WINDOW2, 18);
@@ -3155,10 +3156,12 @@ begin
   Options :=
     MASK_WINDOW2_OPTION_SHOW_ZERO_VALUES or
     MASK_WINDOW2_OPTION_AUTO_GRIDLINE_COLOR or
-    MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS or
+    MASK_WINDOW2_OPTION_SHOW_OUTLINE_SYMBOLS;
+{or
     MASK_WINDOW2_OPTION_SHEET_SELECTED or
-    MASK_WINDOW2_OPTION_SHEET_ACTIVE;
-   { Bug 0026386 -> every sheet must be selected/active, otherwise Excel cannot print }
+    MASK_WINDOW2_OPTION_SHEET_ACTIVE;}
+   { Bug 0026386 -> every sheet must be selected/active, otherwise Excel cannot print
+     ---> wp: after changes for issue 0028452: this is not necessary any more. }
 
   if (soShowGridLines in ASheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHOW_GRID_LINES;
@@ -3166,6 +3169,11 @@ begin
     Options := Options or MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS;
   if (soHasFrozenPanes in ASheet.Options) and ((ASheet.LeftPaneWidth > 0) or (ASheet.TopPaneHeight > 0)) then
     Options := Options or MASK_WINDOW2_OPTION_PANES_ARE_FROZEN;
+  if FWorkbook.ActiveWorksheet <> nil then
+    actSheet := FWorkbook.ActiveWorksheet else
+    actSheet := Fworkbook.GetWorksheetByIndex(0);
+  if (ASheet = actSheet) then
+    Options := Options or MASK_WINDOW2_OPTION_SHEET_ACTIVE or MASK_WINDOW2_OPTION_SHEET_SELECTED;
   AStream.WriteWord(WordToLE(Options));
 
   { Index to first visible row }

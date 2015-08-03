@@ -76,7 +76,7 @@ type
     procedure CellSelectedHandler(Sender: TObject; ARow, ACol: Cardinal);
     procedure InternalCreateNewWorkbook;
     procedure InternalLoadFromFile(AFileName: string; AAutoDetect: Boolean;
-      AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
+      AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1);
     procedure SetFileName(const AFileName: TFileName);
     procedure SetOptions(AValue: TsWorkbookOptions);
 //    procedure WorkbookChangedPaletteHandler(Sender: TObject);
@@ -105,9 +105,9 @@ type
     procedure CreateNewWorkbook;
 
     procedure LoadFromSpreadsheetFile(AFileName: string;
-      AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0); overload;
+      AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
-      AWorksheetIndex: Integer = 0); overload;
+      AWorksheetIndex: Integer = -1); overload;
 
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
@@ -835,7 +835,7 @@ end;
   @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.InternalLoadFromFile(AFileName: string;
-  AAutoDetect: Boolean; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
+  AAutoDetect: Boolean; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1);
 begin
   // Create a new empty workbook
   InternalCreateNewWorkbook;
@@ -851,6 +851,12 @@ begin
     EnableControls;
   end;
 
+  if AWorksheetIndex = -1 then
+  begin
+    if FWorkbook.ActiveWorksheet <> nil then
+      AWorksheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet) else
+      AWorksheetIndex := 0;
+  end;
   SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
 
   // If required, display loading error message
@@ -879,9 +885,10 @@ end;
   @param  AFilename        Name of the spreadsheet file to be loaded
   @param  AFormat          Spreadsheet file format assumed for the file
   @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
+                           (If empty then the active worksheet is loaded)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.LoadFromSpreadsheetFile(AFileName: string;
-  AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = 0);
+  AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1);
 begin
   InternalLoadFromFile(AFileName, false, AFormat, AWorksheetIndex);
 end;
@@ -895,9 +902,10 @@ end;
 
   @param  AFilename        Name of the spreadsheet file to be loaded
   @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
+                           (If empty then the active worksheet is loaded)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.LoadFromSpreadsheetFile(AFileName: string;
-  AWorksheetIndex: Integer = 0);
+  AWorksheetIndex: Integer = -1);
 const
   sfNotNeeded = sfExcel8;
   // The parameter AFormat if InternalLoadFromFile is not needed here,
@@ -924,6 +932,17 @@ var
   I: IsSpreadsheetControl;
   C: TComponent;
 begin
+  {
+  // Select worksheet in tab control first
+  if lniWorksheet in AChangedItems then
+    for j:=0 to FListeners.Count-1 do begin
+      C := TComponent(FListeners[j]);
+      if C is TsWorkbookTabControl then begin
+        C.GetInterface(GUID_SpreadsheetControl, I);
+        I.ListenerNotification(AChangedItems, AData);
+      end;
+    end;
+   }
   for j:=0 to FListeners.Count-1 do begin
     C := TComponent(FListeners[j]);
     if C.GetInterface(GUID_SpreadsheetControl, I) then
@@ -1275,7 +1294,9 @@ procedure TsWorkbookSource.WorkbookOpenedHandler(Sender: TObject);
 begin
   Unused(Sender);
   NotifyListeners([lniWorkbook]);
-  SelectWorksheet(FWorkbook.GetFirstWorksheet);
+  if FWorkbook.ActiveWorksheet = nil then
+    SelectWorksheet(FWorkbook.GetFirstWorksheet) else
+    SelectWorksheet(FWorkbook.ActiveWorksheet);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1478,9 +1499,16 @@ begin
   begin
     inc(FLockCount);    // avoid WorkbookSelect message when adding each tab
     GetSheetList(Tabs);
+    {
     if (lniWorkbook in AChangedItems) then
       TabIndex := 0
     else
+    }
+    if (lniWorkbook in AChangedItems) and (Workbook <> nil) then
+    begin
+      i := Workbook.GetWorksheetIndex(Workbook.ActiveWorksheet);
+      if i > -1 then TabIndex := i else TabIndex := 0
+    end else
     if (lniWorksheetAdd in AChangedItems) then
       TabIndex := Tabs.Count-1
     else

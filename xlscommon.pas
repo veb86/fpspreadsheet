@@ -2280,6 +2280,9 @@ begin
     FWorksheet.Options := FWorksheet.Options + [soHasFrozenPanes]
   else
     FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
+
+  if (flags and MASK_WINDOW2_OPTION_SHEET_ACTIVE <> 0) then
+    FWorkbook.SelectWorksheet(FWorksheet);
 end;
 
 { Reads the workbook globals. }

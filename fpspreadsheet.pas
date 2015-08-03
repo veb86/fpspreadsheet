@@ -735,7 +735,7 @@ type
     procedure ClearErrorList;
 
     {@@ Identifies the "active" worksheet (only for visual controls)}
-    property ActiveWorksheet: TsWorksheet read FActiveWorksheet;
+    property ActiveWorksheet: TsWorksheet read FActiveWorksheet write SelectWorksheet;
     {@@ Retrieves error messages collected during reading/writing }
     property ErrorMsg: String read GetErrorMsg;
     {@@ Filename of the saved workbook }
@@ -7110,7 +7110,10 @@ begin
   if (AWorksheet <> nil) and (FWorksheets.IndexOf(AWorksheet) = -1) then
     raise Exception.Create('[TsWorkbook.SelectSheet] Worksheet does not belong to the workbook');
   FActiveWorksheet := AWorksheet;
-  if Assigned(FOnSelectWorksheet) then FOnSelectWorksheet(self, AWorksheet);
+  if FReadWriteFlag = rwfRead then
+    exit;
+  if Assigned(FOnSelectWorksheet) then
+    FOnSelectWorksheet(self, AWorksheet);
 end;
 
 {@@ ----------------------------------------------------------------------------

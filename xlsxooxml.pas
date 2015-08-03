@@ -65,6 +65,7 @@ type
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
     procedure ApplyHyperlinks(AWorksheet: TsWorksheet);
     function FindCommentsFileName(ANode: TDOMNode): String;
+    procedure ReadActiveSheet(ANode: TDOMNode; out ActiveSheetIndex: Integer);
     procedure ReadBorders(ANode: TDOMNode);
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadCellXfs(ANode: TDOMNode);
@@ -419,6 +420,20 @@ begin
     ANode := ANode.NextSibling;
   end;
   Result := '';
+end;
+
+procedure TsSpreadOOXMLReader.ReadActiveSheet(ANode: TDOMNode;
+  out ActiveSheetIndex: Integer);
+var
+  S: string;
+  i: Integer;
+begin
+  ActiveSheetIndex := -1;
+  if ANode = nil then
+    Exit;
+  S := GetAttrValue(ANode.FindNode('workbookView'), 'activeTab');
+  if TryStrToInt(S, i) then
+	  ActiveSheetIndex := i;
 end;
 
 procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
@@ -1883,7 +1898,7 @@ var
   i: Integer;
   fn: String;
   fn_comments: String;
-  XMLStream: TStream;
+  actSheetIndex: Integer;
 begin
   //unzip "content.xml" of "AFileName" to folder "FilePath"
   FilePath := GetTempDir(false);
@@ -1920,6 +1935,7 @@ begin
     ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
     ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
     ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
+    ReadActiveSheet(Doc.DocumentElement.FindNode('bookViews'), actSheetIndex);
     FreeAndNil(Doc);
 
     // process the styles.xml file
@@ -2004,6 +2020,10 @@ begin
       end;
       // Add hyperlinks to cells
       ApplyHyperlinks(FWorksheet);
+
+      // Active worksheet
+      if i = actSheetIndex then
+        FWorkbook.SelectWorksheet(FWorksheet);
     end;  // for
 
   finally
@@ -2021,6 +2041,7 @@ var
   fn: String;
   fn_comments: String;
   XMLStream: TStream;
+  actSheetIndex: Integer;
 begin
   Doc := nil;
   SheetList := TStringList.Create;
@@ -2047,6 +2068,7 @@ begin
       ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
       ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
       ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
+      ReadActiveSheet(Doc.DocumentElement.FindNode('bookViews'), actSheetIndex);
       FreeAndNil(Doc);
     finally
       XMLStream.Free;
@@ -2163,6 +2185,10 @@ begin
 
       // Add hyperlinks to cells
       ApplyHyperlinks(FWorksheet);
+
+      // Active worksheet
+      if i = actSheetIndex then
+        FWorkbook.SelectWorksheet(FWorksheet);
     end;  // for
 
   finally
@@ -3371,6 +3397,7 @@ end;
 procedure TsSpreadOOXMLWriter.WriteContent;
 var
   i, counter: Integer;
+  actTab: String;
 begin
   { --- WorkbookRels --- }
   { Workbook relations - Mark relation to all sheets }
@@ -3396,6 +3423,9 @@ begin
 
   { --- Workbook --- }
   { Global workbook data - Mark all sheets }
+  actTab := IfThen(FWorkbook.ActiveWorksheet = nil, '',
+    'activeTab="' + IntToStr(FWorkbook.GetWorksheetIndex(FWOrkbook.ActiveWorksheet)) + '"');
+
   AppendToStream(FSWorkbook,
     XML_HEADER);
   AppendToStream(FSWorkbook, Format(
@@ -3406,7 +3436,7 @@ begin
       '<workbookPr defaultThemeVersion="124226" />');
   AppendToStream(FSWorkbook,
       '<bookViews>' +
-        '<workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" />' +
+        '<workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" ' + actTab + '/>' +
       '</bookViews>');
   AppendToStream(FSWorkbook,
       '<sheets>');
