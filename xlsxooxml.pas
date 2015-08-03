@@ -2419,9 +2419,12 @@ procedure TsSpreadOOXMLWriter.WriteCols(AStream: TStream; AWorksheet: TsWorkshee
 var
   col: PCol;
   c: Integer;
+  w: Single;
 begin
+  {
   if AWorksheet.Cols.Count = 0 then
     exit;
+  }
 
   AppendToStream(AStream,
     '<cols>');
@@ -2429,10 +2432,13 @@ begin
   for c:=0 to AWorksheet.GetLastColIndex do begin
     col := AWorksheet.FindCol(c);
     if col <> nil then
-      AppendToStream(AStream, Format(
-        '<col min="%d" max="%d" width="%g" customWidth="1" />',
-        [c+1, c+1, col^.Width], FPointSeparatorSettings)
-      );
+      w := col^.Width
+    else
+      w := AWorksheet.DefaultColWidth;
+    AppendToStream(AStream, Format(
+      '<col min="%d" max="%d" width="%g" customWidth="1" />',
+      [c+1, c+1, w], FPointSeparatorSettings)
+    );
   end;
 
   AppendToStream(AStream,
