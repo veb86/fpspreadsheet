@@ -6795,6 +6795,7 @@ begin
     inc(FLockCount);
     try
       ok := false;
+      AStream.Position := 0;
       AReader.ReadFromStream(AStream);
       ok := true;
     finally

@@ -31,6 +31,8 @@ type
     FCelLText: String;
     FAttrList: TsHTMLAttrList;
     FColSpan, FRowSpan: Integer;
+    FHRef: String;
+    procedure ExtractHRef;
     procedure ExtractMergedRange;
     procedure TagFoundHandler(NoCaseTag, ActualTag: string);
     procedure TextFoundHandler(AText: String);
@@ -444,8 +446,17 @@ begin
   cell := FWorksheet.AddCell(ARow, ACol);
 
   // Merged cells
-  if (FColSpan > 0) or (FRowSpan > 0) then
+  if (FColSpan > 0) or (FRowSpan > 0) then begin
     FWorksheet.MergeCells(ARow, ACol, ARow + FRowSpan, ACol + FColSpan);
+    FRowSpan := 0;
+    FColSpan := 0;
+  end;
+
+  // Hyperlink
+  if FHRef <> '' then begin
+    FWorksheet.WriteHyperlink(cell, FHRef);
+    FHRef := '';
+  end;
 
   // Do not try to interpret the strings. --> everything is a LABEL cell.
   if not HTMLParams.DetectContentType then
@@ -484,6 +495,16 @@ begin
 
   // What is left is handled as a TEXT cell
   FWorksheet.WriteUTF8Text(cell, AText);
+end;
+
+procedure TsHTMLReader.ExtractHRef;
+var
+  idx: Integer;
+begin
+  FHRef := '';
+  idx := FAttrList.IndexOfName('href');
+  if idx > -1 then
+    FHRef := FAttrList[idx].Value;
 end;
 
 procedure TsHTMLReader.ExtractMergedRange;
@@ -566,6 +587,7 @@ begin
   if ((NoCaseTag = '<TH>') or (pos('<TH ', NoCaseTag) = 1)) and FInTable then
   begin
     FInCell := true;
+    inc(FCurrCol);
     FCellText := '';
   end else
   if pos('<SPAN', NoCaseTag) = 1 then
@@ -573,10 +595,11 @@ begin
     if FInCell then
       FInSpan := true;
   end else
-  if pos('<A', NoCaseTag) = 1 then
+  if (pos('<A', NoCaseTag) = 1) and FInCell then
   begin
-    if FInCell then
-      FInA := true
+    FInA := true;
+    FAttrList.Parse(ActualTag);
+    ExtractHRef;
   end else
   if (pos('<H', NoCaseTag) = 1) and (NoCaseTag[3] in ['1', '2', '3', '4', '5', '6']) then
   begin
