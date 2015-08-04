@@ -1751,6 +1751,7 @@ var
   childNode: TDOMNode;
   nodeName: String;
   s: String;
+  actRow, actCol: Cardinal;
 begin
   if ANode = nil then
     exit;
@@ -1777,6 +1778,14 @@ begin
             if s <> '' then AWorksheet.LeftPaneWidth := StrToInt(s);
             s := GetAttrValue(childNode, 'ySplit');
             if s <> '' then AWorksheet.TopPaneHeight := StrToInt(s);
+          end;
+        end else
+        if nodeName = 'selection' then begin
+          s := GetAttrValue(childnode, 'activeCell');
+          if s <> '' then
+          begin
+            ParseCellString(s, actRow, actCol);
+            AWorksheet.SelectCell(actRow, actCol);
           end;
         end;
         childNode := childNode.NextSibling;
@@ -3025,6 +3034,8 @@ var
   topRightCell: String;
   bottomLeftCell: String;
   bottomRightCell: String;
+  actCell: String;
+  tabSel: String;
 begin
   // Show gridlines ?
   showGridLines := StrUtils.IfThen(soShowGridLines in AWorksheet.Options, ' ', 'showGridLines="0" ');
@@ -3032,63 +3043,86 @@ begin
   // Show headers?
   showHeaders := StrUtils.IfThen(soShowHeaders in AWorksheet.Options, ' ', 'showRowColHeaders="0" ');
 
+  // Active cell
+  if (AWorksheet.ActiveCellRow <> cardinal(-1)) and (AWorksheet.ActiveCellCol <> cardinal(-1)) then
+    actCell := GetCellString(AWorksheet.ActiveCellRow, AWorksheet.ActiveCellCol) else
+    actCell := '';
+
+  // Selected tab?
+  tabSel := StrUtils.IfThen(AWorksheet = FWorkbook.ActiveWorksheet, 'tabSelected="1" ', '');
+
   // No frozen panes
   if not (soHasFrozenPanes in AWorksheet.Options) or
      ((AWorksheet.LeftPaneWidth = 0) and (AWorksheet.TopPaneHeight = 0))
   then
+  begin
+    if actCell = '' then actCell := 'A1';
     AppendToStream(AStream, Format(
       '<sheetViews>' +
-        '<sheetView workbookViewId="0" %s%s/>' +
+        '<sheetView workbookViewId="0" %s%s%s>' +
+          '<selection activeCell="%s" sqref="%s" />' +
+        '</sheetView>' +
       '</sheetViews>', [
-      showGridLines, showHeaders
+      showGridLines, showHeaders, tabSel,
+      actCell, actCell
     ]))
-  else
+  end else
   begin  // Frozen panes
     topRightCell := GetCellString(0, AWorksheet.LeftPaneWidth, [rfRelRow, rfRelCol]);
     bottomLeftCell := GetCellString(AWorksheet.TopPaneHeight, 0, [rfRelRow, rfRelCol]);
     bottomRightCell := GetCellString(AWorksheet.TopPaneHeight, AWorksheet.LeftPaneWidth, [rfRelRow, rfRelCol]);
     if (AWorksheet.LeftPaneWidth > 0) and (AWorksheet.TopPaneHeight > 0) then
+    begin
+      if actCell = '' then
+        actCell := bottomRightcell;
       AppendToStream(AStream, Format(
         '<sheetViews>' +
-          '<sheetView workbookViewId="0" %s%s>'+
+          '<sheetView workbookViewId="0" %s%s%s>'+
             '<pane xSplit="%d" ySplit="%d" topLeftCell="%s" activePane="bottomRight" state="frozen" />' +
             '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
             '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
             '<selection pane="bottomRight" activeCell="%s" sqref="%s" />' +
           '</sheetView>' +
         '</sheetViews>', [
-        showGridLines, showHeaders,
+        showGridLines, showHeaders, tabSel,
         AWorksheet.LeftPaneWidth, AWorksheet.TopPaneHeight, bottomRightCell,
         topRightCell, topRightCell,
         bottomLeftCell, bottomLeftCell,
-        bottomRightCell, bottomrightCell
+        actCell, actCell
       ]))
-    else
+    end else
     if (AWorksheet.LeftPaneWidth > 0) then
+    begin
+      if actCell = '' then
+        actCell := topRightCell;
       AppendToStream(AStream, Format(
         '<sheetViews>' +
-          '<sheetView workbookViewId="0" %s%s>'+
+          '<sheetView workbookViewId="0" %s%s%s>'+
             '<pane xSplit="%d" topLeftCell="%s" activePane="topRight" state="frozen" />' +
             '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
           '</sheetView>' +
         '</sheetViews>', [
-        showGridLines, showHeaders,
+        showGridLines, showHeaders, tabSel,
         AWorksheet.LeftPaneWidth, topRightCell,
-        topRightCell, topRightCell
+        actCell, actCell
       ]))
-    else
+    end else
     if (AWorksheet.TopPaneHeight > 0) then
+    begin
+      if actCell = '' then
+        actCell := bottomLeftCell;
       AppendToStream(AStream, Format(
         '<sheetViews>'+
-          '<sheetView workbookViewId="0" %s%s>'+
+          '<sheetView workbookViewId="0" %s%s%s>'+
              '<pane ySplit="%d" topLeftCell="%s" activePane="bottomLeft" state="frozen" />'+
              '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
           '</sheetView>'+
         '</sheetViews>', [
-        showGridLines, showHeaders,
+        showGridLines, showHeaders, tabSel,
         AWorksheet.TopPaneHeight, bottomLeftCell,
-        bottomLeftCell, bottomLeftCell
+        actCell, actCell
       ]));
+    end;
   end;
 end;
 

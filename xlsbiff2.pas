@@ -504,6 +504,7 @@ begin
       INT_EXCEL_ID_PRINTHEADERS: ReadPrintHeaders(AStream);
       INT_EXCEL_ID_RIGHTMARGIN : ReadMargin(AStream, 1);
       INT_EXCEL_ID_ROW         : ReadRowInfo(AStream);
+      INT_EXCEL_ID_SELECTION   : ReadSELECTION(AStream);
       INT_EXCEL_ID_STRING      : ReadStringRecord(AStream);
       INT_EXCEL_ID_TOPMARGIN   : ReadMargin(AStream, 2);
       INT_EXCEL_ID_DEFROWHEIGHT: ReadDefRowHeight(AStream);

@@ -2961,6 +2961,7 @@ var
   sheet: TsWorksheet;
   vsm, hsm, hsp, vsp: Integer;
   showGrid, showHeaders: Boolean;
+  actCol, actRow: Cardinal;
   i: Integer;
 begin
   showGrid := true;
@@ -3027,14 +3028,14 @@ begin
                           begin
                             cfgName := GetAttrValue(node, 'config:name');
                             cfgValue := GetNodeValue(node);
-                            if cfgName = 'VerticalSplitMode' then
-                              vsm := StrToInt(cfgValue)
-                            else if cfgName = 'HorizontalSplitMode' then
-                              hsm := StrToInt(cfgValue)
-                            else if cfgName = 'VerticalSplitPosition' then
-                              vsp := StrToInt(cfgValue)
-                            else if cfgName = 'HorizontalSplitPosition' then
-                              hsp := StrToInt(cfgValue);
+                            case cfgName of
+                              'CursorPositionX': actCol := StrToInt(cfgValue);
+                              'CursorPositionY': actRow := StrToInt(cfgValue);
+                              'VerticalSplitMode': vsm := StrToInt(cfgValue);
+                              'HorizontalSplitMode': hsm := StrToInt(cfgValue);
+                              'VerticalSplitPosition': vsp := StrToInt(cfgValue);
+                              'HorizontalSplitPosition': hsp := StrToInt(cfgValue);
+                            end;
                           end;
                           node := node.NextSibling;
                         end;
@@ -3046,6 +3047,8 @@ begin
                         end else
                           sheet.Options := sheet.Options - [soHasFrozenPanes];
                       end;
+                      // Active cell
+                      sheet.SelectCell(actRow, actCol);
                     end;
                   end;
                   cfgTableItemNode := cfgTableItemNode.NextSibling;
@@ -5023,9 +5026,10 @@ procedure TsSpreadOpenDocWriter.WriteTableSettings(AStream: TStream);
 var
   i: Integer;
   sheet: TsWorkSheet;
-  hsm: Integer;  // HorizontalSplitMode
-  vsm: Integer;  // VerticalSplitMode
-  asr: Integer;  // ActiveSplitRange
+  hsm: Integer;         // HorizontalSplitMode
+  vsm: Integer;         // VerticalSplitMode
+  asr: Integer;         // ActiveSplitRange
+  actX, actY: Integer;  // Active cell col/row index
 begin
   for i:=0 to Workbook.GetWorksheetCount-1 do
   begin
@@ -5051,10 +5055,20 @@ begin
     end;
     {showGrid := (soShowGridLines in sheet.Options);}
 
+    if (sheet.ActiveCellRow <> cardinal(-1)) and (sheet.ActiveCellCol <> cardinal(-1)) then
+    begin
+      actX := sheet.ActiveCellCol;
+      actY := sheet.ActiveCellRow;
+    end else
+    begin
+      actX := sheet.LeftPaneWidth;
+      actY := sheet.TopPaneHeight;
+    end;
+
     AppendToStream(AStream,
-        '<config:config-item config:name="CursorPositionX" config:type="int">'+IntToStr(sheet.LeftPaneWidth)+'</config:config-item>');
+        '<config:config-item config:name="CursorPositionX" config:type="int">'+IntToStr(actX)+'</config:config-item>');
     AppendToStream(AStream,
-        '<config:config-item config:name="CursorPositionY" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>');
+        '<config:config-item config:name="CursorPositionY" config:type="int">'+IntToStr(actY)+'</config:config-item>');
     AppendToStream(AStream,
         '<config:config-item config:name="HorizontalSplitMode" config:type="short">'+IntToStr(hsm)+'</config:config-item>');
     AppendToStream(AStream,

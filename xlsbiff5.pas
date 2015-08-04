@@ -431,6 +431,7 @@ begin
       INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
       INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
       INT_EXCEL_ID_RSTRING       : ReadRString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+      INT_EXCEL_ID_SELECTION     : ReadSELECTION(AStream);
       INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
       INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
       INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);

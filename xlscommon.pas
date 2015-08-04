@@ -431,6 +431,7 @@ type
     function ReadRPNTokenArray(AStream: TStream; ACell: PCell;
       ASharedFormulaBase: PCell = nil): Boolean;
     function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
+    procedure ReadSELECTION(AStream: TStream);
     procedure ReadSharedFormula(AStream: TStream);
     procedure ReadSHEETPR(AStream: TStream);
 
@@ -543,7 +544,7 @@ type
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); virtual;
 
     // Writes out a SELECTION record
-    procedure WriteSelection(AStream: TStream; ASheet: TsWorksheet; APane: Byte);
+    procedure WriteSELECTION(AStream: TStream; ASheet: TsWorksheet; APane: Byte);
     procedure WriteSelections(AStream: TStream; ASheet: TsWorksheet);
     (*
     // Writes out a shared formula
@@ -2164,6 +2165,35 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads a SELECTION record containing the currently selected cell
+  Valid for BIFF2-BIFF8.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadSELECTION(AStream: TStream);
+var
+  actPane: byte;
+  actRow, actCol: Word;
+  rngIndex: Word;
+  i, numRanges: Word;
+begin
+  // Active pane
+  actPane := AStream.ReadByte;
+
+  // Row index of the active cell
+  actRow := WordLEToN(AStream.ReadWord);
+
+  // Column index of the active cell
+  actCol := WordLEToN(AStream.ReadWord);
+
+  // Index into the following range list which contains the active cell
+  rngIndex := WordLEToN(AStream.ReadWord);
+
+  // Count of selected ranges
+  // Selected ranges --> ignore
+
+  FWorksheet.SelectCell(actRow, actCol);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads a SHAREDFMLA record, i.e. reads cell range coordinates and a rpn
   formula. The formula is applied to all cells in the range. The formula is
   stored only in the top/left cell of the range.
@@ -3695,29 +3725,34 @@ end;
   APane is 0..3 (see below)
   Valid for BIFF2-BIFF8
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteSelection(AStream: TStream;
+procedure TsSpreadBIFFWriter.WriteSELECTION(AStream: TStream;
   ASheet: TsWorksheet; APane: Byte);
 var
   activeCellRow, activeCellCol: Word;
 begin
-  case APane of
-    0: begin   // right-bottom
-         activeCellRow := ASheet.TopPaneHeight;
-         activeCellCol := ASheet.LeftPaneWidth;
-       end;
-    1: begin   // right-top
-         activeCellRow := 0;
-         activeCellCol := ASheet.LeftPaneWidth;
-       end;
-    2: begin   // left-bottom
-         activeCellRow := ASheet.TopPaneHeight;
-         activeCellCol := 0;
-       end;
-    3: begin   // left-top
-         activeCellRow := 0;
-         activeCellCol := 0;
-       end;
-  end;
+  if FWorkbook.ActiveWorksheet <> nil then
+  begin
+    activeCellRow := FWorksheet.ActiveCellRow;
+    activeCellCol := FWorksheet.ActiveCellCol;
+  end else
+    case APane of
+      0: begin   // right-bottom
+           activeCellRow := ASheet.TopPaneHeight;
+           activeCellCol := ASheet.LeftPaneWidth;
+         end;
+      1: begin   // right-top
+           activeCellRow := 0;
+           activeCellCol := ASheet.LeftPaneWidth;
+         end;
+      2: begin   // left-bottom
+           activeCellRow := ASheet.TopPaneHeight;
+           activeCellCol := 0;
+         end;
+      3: begin   // left-top
+           activeCellRow := 0;
+           activeCellCol := 0;
+         end;
+    end;
 
   { BIFF record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_SELECTION, 15);
@@ -3963,6 +3998,8 @@ end;
   Valid for BIFF5-BIFF8.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteWindow1(AStream: TStream);
+var
+  actSheet: Integer;
 begin
   { BIFF Record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_WINDOW1, 18);
@@ -3986,7 +4023,10 @@ begin
    MASK_WINDOW1_OPTION_WORKSHEET_TAB_VISIBLE));
 
   { Index to active (displayed) worksheet }
-  AStream.WriteWord(WordToLE($00));
+  if FWorkbook.ActiveWorksheet = nil then
+    actSheet := 0 else
+    actSheet := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet);
+  AStream.WriteWord(WordToLE(actSheet));
 
   { Index of first visible tab in the worksheet tab bar }
   AStream.WriteWord(WordToLE($00));

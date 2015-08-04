@@ -819,6 +819,7 @@ begin
     // This record replaces the record INTEGER written in BIFF2.
     INT_EXCEL_ID_RK            : ReadRKValue(AStream);
 
+    INT_EXCEL_ID_SELECTION     : ReadSELECTION(AStream);
     INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
     INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
     INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
