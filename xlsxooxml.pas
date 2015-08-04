@@ -556,9 +556,10 @@ var
   addr, s: String;
   rowIndex, colIndex: Cardinal;
   cell, sharedformulabase: PCell;
-  datanode: TDOMNode;
+  datanode, tnode: TDOMNode;
   dataStr: String;
   formulaStr: String;
+  nodeName: String;
   sstIndex: Integer;
   number: Double;
   fmt: TsCellFormat;
@@ -600,10 +601,21 @@ begin
   formulaStr := '';
   while Assigned(datanode) do
   begin
-    if datanode.NodeName = 'v' then
+    nodeName := datanode.NodeName;
+    if nodeName = 'v' then
       dataStr := GetNodeValue(datanode)
     else
-    if (boReadFormulas in FWorkbook.Options) and (datanode.NodeName = 'f') then
+    if nodeName = 'is' then
+    begin
+      tnode := datanode.FirstChild;
+      while Assigned(tnode) do begin
+        nodename := tnode.NodeName;
+        if nodename = 't' then
+          dataStr := dataStr + GetNodeValue(tnode);
+        tnode := tnode.NextSibling;
+      end;
+    end else
+    if (boReadFormulas in FWorkbook.Options) and (nodeName = 'f') then
     begin
       // Formula to cell
       formulaStr := GetNodeValue(datanode);
@@ -685,7 +697,7 @@ begin
       );
     end;
   end else
-  if s = 'str' then
+  if (s = 'str') or (s = 'inlineStr') then
     // literal string
     AWorksheet.WriteUTF8Text(cell, datastr)
   else
@@ -960,23 +972,28 @@ var
   col, col1, col2: Cardinal;
   w: Double;
   s: String;
+  nodeName: String;
 begin
   if ANode = nil then
     exit;
 
   colNode := ANode.FirstChild;
   while Assigned(colNode) do begin
-    s := GetAttrValue(colNode, 'customWidth');
-    if s = '1' then begin
-      s := GetAttrValue(colNode, 'min');
-      if s <> '' then col1 := StrToInt(s)-1 else col1 := 0;
-      s := GetAttrValue(colNode, 'max');
-      if s <> '' then col2 := StrToInt(s)-1 else col2 := col1;
-      s := GetAttrValue(colNode, 'width');
-      if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
-        if not SameValue(w, AWorksheet.DefaultColWidth, EPS) then
-          for col := col1 to col2 do
-            AWorksheet.WriteColWidth(col, w);
+    nodeName := colNode.NodeName;
+    if nodename = 'col' then
+    begin
+      s := GetAttrValue(colNode, 'customWidth');
+      if s = '1' then begin
+        s := GetAttrValue(colNode, 'min');
+        if s <> '' then col1 := StrToInt(s)-1 else col1 := 0;
+        s := GetAttrValue(colNode, 'max');
+        if s <> '' then col2 := StrToInt(s)-1 else col2 := col1;
+        s := GetAttrValue(colNode, 'width');
+        if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
+          if not SameValue(w, AWorksheet.DefaultColWidth, EPS) then
+            for col := col1 to col2 do
+              AWorksheet.WriteColWidth(col, w);
+      end;
     end;
     colNode := colNode.NextSibling;
   end;
