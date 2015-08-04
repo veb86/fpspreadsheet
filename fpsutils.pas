@@ -86,6 +86,8 @@ function GetCellRangeString(ARange: TsCellRange;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
+function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
+
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
 function GetFileFormatExt(AFormat: TsSpreadsheetFormat): String;
 function GetFormatFromFileName(const AFileName: TFileName;
@@ -759,6 +761,32 @@ function GetCellRangeString(ARange: TsCellRange;
 begin
   Result := GetCellRangeString(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2,
     AFlags, Compact);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the error value code from a string. Result is false, if the string does
+  not match one of the predefined error strings.
+
+  @param   AErrorStr   Error string
+  @param   AErr        Corresponding error value code (type TsErrorValue)
+  @result  TRUE if error code could be determined from the error string,
+           FALSE otherwise.
+-------------------------------------------------------------------------------}
+function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
+begin
+  Result := true;
+  case AErrorStr of
+    '#NULL!'   : AErr := errEmptyIntersection;
+    '#DIV/0!'  : AErr := errDivideByZero;
+    '#VALUE!'  : AErr := errWrongType;
+    '#REF!'    : AErr := errIllegalRef;
+    '#NAME?'   : AErr := errWrongName;
+    '#NUM!'    : AErr := errOverflow;
+    '#N/A'     : AErr := errArgError;
+    '#FORMULA?': AErr := errFormulaNotSupported;
+    ''         : AErr := errOK;
+    else         Result := false;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

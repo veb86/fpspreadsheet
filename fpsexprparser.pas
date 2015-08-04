@@ -1005,7 +1005,9 @@ var
   C: Char;
 begin
   C := CurrentChar;
-  while (not IsWordDelim(C)) and (C <> cNull) do
+  while (C in ['A', 'D', 'E', 'F', 'I', 'L', 'M', 'N', 'O', 'R', 'U', 'V', '0', '!', '?', '/', '#']) do
+//  while (C in ['D','I','V','/','0', 'N', 'U', 'L', 'V', 'A', 'E', 'R', 'F', 'M', '!', '?']) do
+//  while ((not IsWordDelim(C) or (C in ['/', '0', '!', '?'])) and (C <> cNull) do
   begin
     FToken := FToken + C;
     C := NextPos;
@@ -2630,6 +2632,8 @@ begin
     err := errIllegalRef
   else if AVAlue = '#NAME?' then
     err := errWrongName
+  else if AValue = '#NUM!' then
+    err := errOverflow
   else if AValue = '#N/A' then
     err := errArgError
   else if AValue = '#FORMULA?' then

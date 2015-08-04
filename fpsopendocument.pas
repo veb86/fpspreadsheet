@@ -91,23 +91,18 @@ type
     FHeaderFooterFontList: TObjectList;
     FActiveSheet: String;
     FDateMode: TDateMode;
-    // Applies internally stored column widths to current worksheet
     procedure ApplyColWidths;
-    // Applies a style to a cell
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
-    // Extracts a boolean value from the xml node
     function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
-    // Extracts the date/time value from the xml node
     function ExtractDateTimeFromNode(ANode: TDOMNode;
       ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
-    // Searches a column style by its column index or its name in the StyleList
+    function ExtractErrorFromNode(ANode: TDOMNode; out AErrorValue: TsErrorValue): Boolean;
     function FindColumnByCol(AColIndex: Integer): Integer;
     function FindColStyleByName(AStyleName: String): integer;
     function FindNumFormatByName(ANumFmtName: String): Integer;
     function FindRowStyleByName(AStyleName: String): Integer;
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
-    // Figures out the base year for times in this file (dates are unambiguous)
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
     function ReadFont(ANode: TDOMnode; APreferredIndex: Integer = -1): Integer;
     procedure ReadHeaderFooterFont(ANode: TDOMNode; var AFontName: String;
@@ -131,6 +126,7 @@ type
     procedure ReadBoolean(ARow, ACol: Cardinal; ACellNode: TDOMNode);
     procedure ReadComment(ARow, ACol: Cardinal; ACellNode: TDOMNode);
     procedure ReadDateTime(ARow, ACol: Cardinal; ACellNode: TDOMNode);
+    procedure ReadError(ARow, ACol: Cardinal; ACellNode: TDOMNode);
     procedure ReadFormula(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
     procedure ReadLabel(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
     procedure ReadNumber(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
@@ -1105,6 +1101,46 @@ begin
   end;
 end;
 
+function TsSpreadOpenDocReader.ExtractErrorFromNode(ANode: TDOMNode;
+  out AErrorValue: TsErrorValue): Boolean;
+var
+  s: String;
+begin
+  s := GetAttrValue(ANode, 'table:formula');
+  if s = '' then
+  begin
+    AErrorValue := errOK;
+    Result := true;
+    exit;
+  end;
+  if pos('of:', s) = 1 then Delete(s, 1, 3);
+  Delete(s, 1, 1);  // Delete '='
+  if s = '' then
+  begin
+    AErrorValue := errOK;
+    Result := true;
+    exit;
+  end;
+
+  Result := TryStrToErrorValue(s, AErrorValue);
+  if not Result then
+  begin
+    s := ANode.NodeName;
+    ANode:= ANode.FirstChild;
+    while Assigned(ANode) do
+    begin
+      s := ANode.NodeName;
+      if s = 'text:p' then
+      begin
+        s := GetNodeValue(ANode);
+        Result := TryStrToErrorValue(s, AErrorValue);
+        exit;
+      end;
+      ANode := ANode.NextSibling;
+    end;
+  end;
+end;
+
 function TsSpreadOpenDocReader.FindColumnByCol(AColIndex: Integer): Integer;
 begin
   for Result := 0 to FColumnList.Count-1 do
@@ -1637,6 +1673,31 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
+procedure TsSpreadOpenDocReader.ReadError(ARow, ACol: Cardinal;
+  ACellNode: TDOMNode);
+var
+  styleName: String;
+  cell: PCell;
+  errValue: TsErrorValue;
+begin
+  if FIsVirtualMode then
+  begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.AddCell(ARow, ACol);
+
+  if ExtractErrorFromNode(ACellNode, errValue) then
+    FWorkSheet.WriteErrorValue(cell, errValue) else
+    FWorksheet.WriteUTF8Text(cell, 'ERROR');
+
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(cell, stylename);
+
+  if FIsVirtualMode then
+    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+end;
+
 procedure TsSpreadOpenDocReader.ReadDateMode(SpreadSheetNode: TDOMNode);
 var
   CalcSettingsNode, NullDateNode: TDOMNode;
@@ -1747,7 +1808,8 @@ var
   stylename: String;
   floatValue: Double;
   boolValue: Boolean;
-  valueType: String;
+  errorValue: TsErrorValue;
+  valueType, calcExtValueType: String;
   valueStr: String;
   node: TDOMNode;
   parser: TsSpreadsheetParser;
@@ -1760,7 +1822,7 @@ begin
     InitCell(ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := FWorksheet.GetCell(ARow, ACol);   // Don't use AddCell here
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
@@ -1794,6 +1856,7 @@ begin
   // Read formula results
   valueType := GetAttrValue(ACellNode, 'office:value-type');
   valueStr := GetAttrValue(ACellNode, 'office:value');
+  calcExtValueType := GetAttrValue(ACellNode, 'calcext:value-type');
   // ODS wants a 0 in the NumberValue field in case of an error. If there is
   // no error, this value will be corrected below.
   cell^.NumberValue := 0.0;
@@ -1828,7 +1891,7 @@ begin
     FWorkSheet.WriteDateTime(cell, floatValue);
   end else
   // (c) text
-  if (valueType = 'string') then
+  if (valueType = 'string') and (calcextValueType <> 'error') then
   begin
     node := ACellNode.FindNode('text:p');
     if (node <> nil) and (node.FirstChild <> nil) then
@@ -1842,6 +1905,12 @@ begin
   begin
     boolValue := ExtractBoolFromNode(ACellNode);
     FWorksheet.WriteBoolValue(cell, boolValue);
+  end else
+  if (calcextValuetype = 'error') then
+  begin
+    if ExtractErrorFromNode(ACellNode, errorValue) then
+      FWorksheet.WriteErrorValue(cell, errorValue) else
+      FWorksheet.WriteUTF8Text(cell, 'ERROR');
   end else
   // (e) Text
   if (valueStr <> '') then
@@ -2835,31 +2904,33 @@ begin
         paramFormula := GetAttrValue(CellNode, 'table:formula');
         tableStyleName := GetAttrValue(CellNode, 'table:style-name');
 
-        if paramValueType = 'string' then
-          ReadLabel(row, col, cellNode)
-        else
-        if (paramValueType = 'float') or (paramValueType = 'percentage') or
-           (paramValueType = 'currency')
-        then
-          ReadNumber(row, col, cellNode)
-        else if (paramValueType = 'date') or (paramValueType = 'time') then
-          ReadDateTime(row, col, cellNode)
-        else if (paramValueType = 'boolean') then
-          ReadBoolean(row, col, cellNode)
-        else if (paramValueType = '') and (tableStyleName <> '') then
-          ReadBlank(row, col, cellNode);
-        { NOTE: Empty cells having no cell format, but a column format only,
-          are skipped here. --> Currently the reader does not detect the format
-          of empty cells correctly.
-          It would work if the "(tableStyleName <> '')" would be omitted, but
-          then the reader would create a record for all 1E9 cells prepared by
-          the Excel2007 export --> crash!
-          The column format is available in the FColumnList, but since the usage
-          of colsSpanned in the row it is possible to miss the correct column format.
-          Pretty nasty situation! }
-
         if ParamFormula <> '' then
-          ReadFormula(row, col, cellNode);
+          ReadFormula(row, col, cellNode)
+        else
+        begin
+          if paramValueType = 'string' then
+            ReadLabel(row, col, cellNode)
+          else
+          if (paramValueType = 'float') or (paramValueType = 'percentage') or
+             (paramValueType = 'currency')
+          then
+            ReadNumber(row, col, cellNode)
+          else if (paramValueType = 'date') or (paramValueType = 'time') then
+            ReadDateTime(row, col, cellNode)
+          else if (paramValueType = 'boolean') then
+            ReadBoolean(row, col, cellNode)
+          else if (paramValueType = '') and (tableStyleName <> '') then
+            ReadBlank(row, col, cellNode);
+          { NOTE: Empty cells having no cell format, but a column format only,
+            are skipped here. --> Currently the reader does not detect the format
+            of empty cells correctly.
+            It would work if the "(tableStyleName <> '')" would be omitted, but
+            then the reader would create a record for all 1E9 cells prepared by
+            the Excel2007 export --> crash!
+            The column format is available in the FColumnList, but since the usage
+            of colsSpanned in the row it is possible to miss the correct column format.
+            Pretty nasty situation! }
+          end;
 
         // Read cell comment
         ReadComment(row, col, cellNode);
@@ -2917,6 +2988,9 @@ begin
 
     rowNode := rowNode.NextSibling;
   end; // while Assigned(rowNode)
+
+  cell := FWorksheet.FindCell(2, 1);
+
 end;
 
 procedure TsSpreadOpenDocReader.ReadRowStyle(AStyleNode: TDOMNode);
@@ -3821,6 +3895,48 @@ begin
   AppendToStream(FSContent,
     XML_HEADER);
   AppendToStream(FSContent,
+    '<office:document-content ' +
+      'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" '+
+      'xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0" '+
+      'xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0" '+
+      'xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0" '+
+      'xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0" '+
+      'xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0" '+
+      'xmlns:xlink="http://www.w3.org/1999/xlink" '+
+      'xmlns:dc="http://purl.org/dc/elements/1.1/" '+
+      'xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" '+
+      'xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0" '+
+      'xmlns:presentation="urn:oasis:names:tc:opendocument:xmlns:presentation:1.0" '+
+      'xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0" '+
+      'xmlns:chart="urn:oasis:names:tc:opendocument:xmlns:chart:1.0" '+
+      'xmlns:dr3d="urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0" '+
+      'xmlns:math="http://www.w3.org/1998/Math/MathML" '+
+      'xmlns:form="urn:oasis:names:tc:opendocument:xmlns:form:1.0" '+
+      'xmlns:script="urn:oasis:names:tc:opendocument:xmlns:script:1.0" '+
+      'xmlns:ooo="http://openoffice.org/2004/office" '+
+      'xmlns:ooow="http://openoffice.org/2004/writer" '+
+      'xmlns:oooc="http://openoffice.org/2004/calc" '+
+      'xmlns:dom="http://www.w3.org/2001/xml-events" '+
+      'xmlns:xforms="http://www.w3.org/2002/xforms" '+
+      'xmlns:xsd="http://www.w3.org/2001/XMLSchema" '+
+      'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" '+
+      'xmlns:rpt="http://openoffice.org/2005/report" '+
+      'xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2" '+
+      'xmlns:xhtml="http://www.w3.org/1999/xhtml" '+
+      'xmlns:grddl="http://www.w3.org/2003/g/data-view#" '+
+      'xmlns:tableooo="http://openoffice.org/2009/table" '+
+      'xmlns:drawooo="http://openoffice.org/2010/draw" '+
+      'xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0" '+
+      'xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0" '+
+      'xmlns:field="urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0" '+
+      'xmlns:formx="urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0" '+
+      'xmlns:css3t="http://www.w3.org/TR/css3-text/" '+
+      'xmlns:rdfa="http://docs.oasis-open.org/opendocument/meta/rdfa#" '+
+      'office:version="1.2">' +
+    '<office:scripts />'
+  );
+
+{
     '<office:document-content xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
         '" xmlns:fo="'     + SCHEMAS_XMLNS_FO +
         '" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/' +
@@ -3843,7 +3959,7 @@ begin
         '" xmlns:xsd="'    + SCHEMAS_XMLNS_XSD +
         '" xmlns:xsi="'    + SCHEMAS_XMLNS_XSI + '">' +
       '<office:scripts />');
-
+}
   // Fonts
   AppendToStream(FSContent,
       '<office:font-face-decls>');
@@ -4797,11 +4913,68 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
+var
+  fmt: PsCellFormat;
+  lStyle: String;
+  comment: String;
+  rowsSpannedStr, colsSpannedStr: String;
+  spannedStr: String;
+  valueStr: String;
+  r1,c1,r2,c2: Cardinal;
 begin
-  Unused(AStream);
   Unused(ARow, ACol);
-  Unused(AValue, ACell);
-  // ??
+
+  fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  if fmt^.UsedFormattingFields <> [] then
+    lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
+  else
+    lStyle := '';
+
+  // Comment
+  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
+
+  // Merged?
+  if FWorksheet.IsMergeBase(ACell) then
+  begin
+    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    spannedStr := colsSpannedStr + rowsSpannedStr;
+  end else
+    spannedStr := '';
+
+  // Displayed value
+  valueStr := GetErrorValueStr(ACell^.ErrorValue);
+
+  // Hyperlink
+  if FWorksheet.HasHyperlink(ACell) then
+    FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
+
+  // Write to stream
+  AppendToStream(AStream, Format(
+    '<table:table-cell table:formula="%s" office:value-type="string"%s%s>'+
+      'office:string-value="" calcext:value-type="error">' +
+      comment +
+      '<text:p>%s</text:p>' +
+    '</table:table-cell>', [
+    valueStr, lStyle, spannedStr,
+    valueStr
+  ]));
+       (*
+  <table:table-cell table:formula="of:=#N/A" office:value-type="string"
+    office:string-value="" calcext:value-type="error">
+    <text:p>#NV</text:p>
+    </table:table-cell>
+
+  AppendToStream(AStream, Format(
+    '<table:table-cell office:value-type="%s" office:boolean-value="%s" %s %s >' +
+      comment +
+      '<text:p>%s</text:p>' +
+    '</table:table-cell>', [
+    valType, StrValue, lStyle, spannedStr,
+    DisplayStr
+  ]));
+         *)
 end;
 
 function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(AFont: TsFont): String;
@@ -5413,11 +5586,15 @@ begin
         value := ' office:boolean-value="' + BoolToStr(ACell^.BoolValue, 'true', 'false') + '"';
       end;
     cctError:
+      if HasFormula(ACell) then
       begin
-        // Strange: but in case of an error, Open/LibreOffice always writes a
-        // float value 0 to the cell
-        valuetype := 'float';
+        // Open/LibreOffice always writes a float value 0 to the cell
+        valuetype := 'float';                // error as result of a formula
         value := ' office:value="0"';
+      end else
+      begin
+        valuetype := 'string" calcext:value-type="error';   // an error "constant"
+        value := ' office:value=""';
       end;
   end;
 

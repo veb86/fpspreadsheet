@@ -3818,9 +3818,9 @@ var
   CellValueText: String;
   lStyleIndex: Integer;
 begin
-  CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
+  CellPosText := GetCellString(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
-  if AValue then CellValueText := '1' else CellValueText := '0';
+  CellValueText := StrUtils.IfThen(AValue, '1', '0');
   AppendToStream(AStream, Format(
     '<c r="%s" s="%d" t="b"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
 end;
@@ -3830,10 +3830,16 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
+var
+  CellPosText: String;
+  CellValueText: String;
+  lStyleIndex: Integer;
 begin
-  Unused(AStream);
-  Unused(ARow, ACol);
-  Unused(AValue, ACell);
+  CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
+  lStyleIndex := GetStyleIndex(ACell);
+  CellValueText := GetErrorValueStr(ACell^.ErrorValue);
+  AppendToStream(AStream, Format(
+    '<c r="%s" s="%d" t="e"><v>%s</v></c>', [CellPosText, lStyleIndex, CellValueText]));
 end;
 
 {@@ ----------------------------------------------------------------------------
