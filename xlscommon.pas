@@ -387,7 +387,7 @@ type
     procedure ReadDateMode(AStream: TStream);
     // Reads the default column width
     procedure ReadDefColWidth(AStream: TStream);
-    // Reas the default row height
+    // Read the default row height
     procedure ReadDefRowHeight(AStream: TStream);
     // Read FORMAT record (cell formatting)
     procedure ReadFormat(AStream: TStream); virtual;

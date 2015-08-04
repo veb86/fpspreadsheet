@@ -131,7 +131,7 @@ type
     procedure WriteComments(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
-    procedure WriteFont(AStream: TStream; AFont: TsFont);
+    procedure WriteFONT(AStream: TStream; AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
       ANumFormatIndex: Integer); override;
@@ -1242,7 +1242,7 @@ begin
   //Reads the shared string table, only compatible with BIFF8
   if not Assigned(FSharedStringTable) then begin
     //First time SST creation
-    FSharedStringTable:=TStringList.Create;
+    FSharedStringTable := TStringList.Create;
 
     // Total number of strings in the workbook, not used
     DWordLEtoN(AStream.ReadDWord);
@@ -2188,7 +2188,7 @@ end;
   Writes an Excel 8 FONT record.
   The font data is passed as an instance of TsFont
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteFont(AStream: TStream; AFont: TsFont);
+procedure TsSpreadBIFF8Writer.WriteFONT(AStream: TStream; AFont: TsFont);
 var
   Len: Byte;
   WideFontName: WideString;
@@ -2599,11 +2599,13 @@ var
   WideValue: WideString;
   rec: TBIFF8_LabelRecord;
   rtfRuns: TBiff8_RichTextFormattingRuns;
+  rtParam: TsRichTextParam;
   buf: array of byte;
-  j, nRuns: Integer;
+  i, nRuns: Integer;
   fmt: PsCellFormat;
   useRTF: Boolean;
   fntIndex: Word;
+  cellfntIndex: Word;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
@@ -2638,25 +2640,34 @@ begin
   if useRTF then
   begin
     fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    cellFntIndex := fmt^.FontIndex;
+    if cellFntIndex >= 4 then inc(cellFntIndex);
     nRuns := 0;
-    for j:=0 to High(ACell^.RichTextParams) do
+    for i := 0 to High(ACell^.RichTextParams) do
     begin
+      // formatted part according to RichTextParams
+      rtParam := ACell^.RichTextParams[i];
       SetLength(rtfRuns, nRuns + 1);
-      fntIndex := ACell^.RichTextParams[j].FontIndex;
+      fntIndex := rtParam.FontIndex;
       if fntIndex >= 4 then
         inc(fntIndex);  // Font #4 does not exist in BIFF
       rtfRuns[nRuns].FontIndex := WordLEToN(fntIndex);
-      rtfRuns[nRuns].FirstIndex := WordLEToN(ACell^.RichTextParams[j].StartIndex);
+      rtfRuns[nRuns].FirstIndex := WordLEToN(rtParam.StartIndex);
       inc(nRuns);
-      if (ACell^.RichTextParams[j].EndIndex < L) and
-         (ACell^.RichTextParams[j].EndIndex <> ACell^.RichTextParams[j+1].StartIndex)   // wp: j+1 needs to be checked!
-      then begin
+      // Unformatted part at end?
+      if (rtParam.EndIndex < L) and (i = High(ACell^.RichTextParams)) then
+      begin
         SetLength(rtfRuns, nRuns + 1);
-        fntIndex := fmt^.FontIndex;
-        if fntIndex >= 4 then
-          inc(fntIndex);
-        rtfRuns[nRuns].FontIndex := WordLEToN(fntIndex);
-        rtfRuns[nRuns].FirstIndex := WordLEToN(ACell^.RichTextParams[j].EndIndex);
+        rtfRuns[nRuns].FontIndex := WordLEToN(cellFntIndex);
+        rtfRuns[nRuns].FirstIndex := WordLEToN(rtParam.EndIndex);
+        inc(nRuns);
+      end else
+      // Unformatted part between two formatted parts?
+      if (i < High(ACell^.RichTextParams)) and (rtParam.EndIndex < ACell^.RichTextParams[i+1].StartIndex) then
+      begin
+        SetLengtH(rtfRuns, nRuns + 1);
+        rtfRuns[nRuns].FontIndex := WordLEToN(cellFntIndex);
+        rtfRuns[nRuns].FirstIndex := WordLEToN(rtParam.EndIndex);
         inc(nRuns);
       end;
     end;
