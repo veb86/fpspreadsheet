@@ -36,7 +36,9 @@ type
     FHRef: String;
     procedure ExtractBackgroundColor;
     procedure ExtractHRef;
+    procedure ExtractHorAlign;
     procedure ExtractMergedRange;
+    procedure ExtractVertAlign;
     procedure InitFont(AFont: TsFont);
     procedure InitCellFormat;
     procedure TagFoundHandler(NoCaseTag, ActualTag: string);
@@ -531,6 +533,29 @@ begin
   end;
 end;
 
+procedure TsHTMLReader.ExtractHorAlign;
+var
+  idx: Integer;
+  s: String;
+begin
+  idx := FAttrList.IndexOfName('align');         // html tag
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('text-align');  // value taken from "style"
+  if idx > -1 then
+  begin
+    case FAttrList[idx].Value of
+      'left'   : FCurrCellFormat.HorAlignment := haLeft;
+      'center' : FCurrCellFormat.HorAlignment := haCenter;
+      'right'  : FCurrCellFormat.HorAlignment := haRight;
+      // -- not implemented in fps
+      // 'justify'
+      // 'char"
+      else      exit;
+    end;
+    Include(FCurrCellFormat.UsedFormattingFields, uffHorAlign);
+  end;
+end;
+
 procedure TsHTMLReader.ExtractHRef;
 var
   idx: Integer;
@@ -556,6 +581,26 @@ begin
   // -1 to compensate for correct determination of the range end cell
 end;
 
+procedure TsHTMLReader.ExtractVertAlign;
+var
+  idx: Integer;
+  s: String;
+begin
+  idx := FAttrList.IndexOfName('valign');      // html tag
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('vertical-align');  // style tag
+  if idx > -1 then
+  begin
+    case FAttrList[idx].Value of
+      'top'   : FCurrCellFormat.VertAlignment := vaTop;
+      'middle': FCurrCellFormat.VertAlignment := vaCenter;
+      'bottom': FCurrCellFormat.VertAlignment := vaBottom;
+      else      exit;  // others not supported
+    end;
+    Include(FCurrCellFormat.UsedFormattingFields, uffVertAlign);
+  end;
+end;
+
 procedure TsHTMLReader.InitFont(AFont: TsFont);
 var
   fnt: TsFont;
@@ -575,6 +620,10 @@ begin
 
   // HTML tables, by default, have word-wrapped cell texts.
   Include(FCurrCellFormat.UsedFormattingFields, uffWordwrap);
+
+  // Vertical alignment, by default, is "middle"
+  FCurrCellFormat.VertAlignment := vaCenter;
+  Include(FCurrCellFormat.UsedFormattingFields, uffVertAlign);
 end;
 
 procedure TsHTMLReader.ReadFromStream(AStream: TStream);
@@ -640,6 +689,8 @@ begin
     FAttrList.Parse(ActualTag);
     ExtractMergedRange;
     ExtractBackgroundColor;
+    ExtractHorAlign;
+    ExtractVertAlign;
   end else
   if ((NoCaseTag = '<TH>') or (pos('<TH ', NoCaseTag) = 1)) and FInTable then
   begin
