@@ -31,6 +31,7 @@ type
     FCurrRow, FCurrCol: LongInt;
     FCurrCellFormat: TsCellFormat;
     FCellFont: TsFont;
+    FCurrFont: TsFont;
     FCellText: String;
     FAttrList: TsHTMLAttrList;
     FColSpan, FRowSpan: Integer;
@@ -148,10 +149,12 @@ begin
   FTableCounter := -1;
   FAttrList := TsHTMLAttrList.Create;
   FCellFont := TsFont.Create;
+  FCurrFont := TsFont.Create;
 end;
 
 destructor TsHTMLReader.Destroy;
 begin
+  FreeAndNil(FCurrFont);
   FreeAndNil(FCellFont);
   FreeAndNil(FAttrList);
   FreeAndNil(parser);
@@ -480,6 +483,11 @@ begin
       FInTable := true;
       FCurrRow := -1;
       FCurrCol := -1;
+      InitFont(FCurrFont);
+      FAttrList.Parse(ActualTag);
+      ExtractFont(FCurrFont);
+      FWorkbook.ReplaceFont(DEFAULT_FONTINDEX, FCurrFont.FontName, FCurrFont.Size,
+        FCurrFont.Style, FCurrFont.Color, FCurrFont.Position);
     end else
     if FTableCounter = HTMLParams.TableIndex then
     begin
