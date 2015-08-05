@@ -40,7 +40,8 @@ type
 implementation
 
 uses
-  Strings;
+  Strings,
+  fpsUtils;
 
 const
   // http://unicode.e-workers.de/entities.php
@@ -481,7 +482,7 @@ begin
                inc(i);
              end;
              inc(i);  // skip the final '"'
-             Add(TsHTMLAttr.Create(lowercase(nam), value));
+             Add(TsHTMLAttr.Create(lowercase(trim(nam)), trim(value)));
              nam := '';
            end;
       ' ', '/', '>': ;
@@ -514,12 +515,16 @@ begin
   begin
     case AStyle[i] of
       ':': begin  // name-value separator
+             inc(i);  // skip ':'
              while (i <= len) and (AStyle[i] = ' ') do inc(i);  // skip white space
              value := '';
              while (i <= len) and (AStyle[i] <> ';') do
+             begin
                value := value + AStyle[i];
-             inc(i);  // skip final ';'
-             Add(TsHTMLAttr.Create(lowercase(nam), value));
+               inc(i);
+             end;
+          //   inc(i);  // skip final ';'
+             Add(TsHTMLAttr.Create(lowercase(trim(nam)), UnquoteStr(trim(value))));
              nam := '';
            end;
       ' ': ;

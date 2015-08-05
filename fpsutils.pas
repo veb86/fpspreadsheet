@@ -131,6 +131,8 @@ function TintedColor(AColor: TsColor; tint: Double): TsColor;
 
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
+function UnquoteStr(AString: String): String;
+
 function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
   ASortPriority: TsSortPriority = spNumAlpha): TsSortParams;
 
@@ -1467,16 +1469,14 @@ end;
            compatible with the TColor data type of the graphics unit.
 -------------------------------------------------------------------------------}
 function HTMLColorStrToColor(AValue: String): TsColor;
+var
+  c: Integer;
 begin
   if AValue = '' then
     Result := scNotDefined
   else
   if AValue[1] = '#' then begin
     AValue[1] := '$';
-    Result := LongRGBToExcelPhysical(DWord(StrToInt(AValue)));
-  end else
-  if AValue[1] in ['0'..'9','A'..'F', 'a'..'f'] then begin
-    AValue := '$' + AValue;
     Result := LongRGBToExcelPhysical(DWord(StrToInt(AValue)));
   end else begin
     AValue := lowercase(AValue);
@@ -1505,7 +1505,11 @@ begin
     else if AValue = 'green' then
       Result := $008000
     else if AValue = 'olive' then
-      Result := $008080;
+      Result := $008080
+    else if TryStrToInt('$' + AValue, c) then
+      Result := LongRGBToExcelPhysical(DWord(StrToInt('$' + AValue)))
+    else
+      Result := scNotDefined
   end;
 end;
 
@@ -1659,6 +1663,21 @@ begin
     end
   else
     RemoveChars(0, coEqual);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes quotation characters which enclose a string
+-------------------------------------------------------------------------------}
+function UnquoteStr(AString: String): String;
+begin
+  Result := AString;
+  if Result = '' then exit;
+  if ((Result[1] = '''') and (Result[Length(Result)] = '''')) or
+     (Result[1] = '"') and (Result[Length(Result)] = '"') then
+  begin
+    Delete(Result, 1, 1);
+    Delete(Result, Length(Result), 1);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

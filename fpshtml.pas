@@ -18,6 +18,7 @@ type
 }
   TsHTMLReader = class(TsCustomSpreadReader)
   private
+    FPointSeparatorSettings: TFormatSettings;
     FFormatSettings: TFormatSettings;
     parser: THTMLParser;
     FInTable: Boolean;
@@ -35,6 +36,7 @@ type
     FColSpan, FRowSpan: Integer;
     FHRef: String;
     procedure ExtractBackgroundColor;
+    procedure ExtractFont(AFont: TsFont);
     procedure ExtractHRef;
     procedure ExtractHorAlign;
     procedure ExtractMergedRange;
@@ -124,297 +126,12 @@ var
 implementation
 
 uses
-  LazUTF8, URIParser, StrUtils,
+  LazUTF8, URIParser, StrUtils, Math,
   fpsUtils, fpsNumFormat;
-                   (*
-type
-  THTMLEntity = record
-    E: String;
-    Ch: String;
-  end;
 
 const
-  HTMLEntities: array[0..251] of THTMLEntity = (
-  // A
-    (E: 'Acirc';  Ch: 'Â'),  // 0
-    (E: 'acirc';  Ch: 'â'),
-    (E: 'acute';  Ch: '´'),
-    (E: 'AElig';  Ch: 'Æ'),
-    (E: 'aelig';  Ch: 'æ'),
-    (E: 'Agrave'; Ch: 'À'),
-    (E: 'agrave'; Ch: 'à'),
-    (E: 'alefsym';Ch: 'ℵ'),
-    (E: 'Alpha';  Ch: 'Α'),
-    (E: 'alpha';  Ch: 'α'),
-    (E: 'amp';    Ch: '&'),  // 10
-    (E: 'and';    Ch: '∧'),
-    (E: 'ang';    Ch: '∠'),
-    (E: 'apos';   Ch: ''''),
-    (E: 'Aring';  Ch: 'Å'),
-    (E: 'aring';  Ch: 'å'),
-    (E: 'asymp';  Ch: '≈'),
-    (E: 'Atilde'; Ch: 'Ã'),
-    (E: 'atilde'; Ch: 'ã'),
-    (E: 'Auml';   Ch: 'Ä'),
-    (E: 'auml';   Ch: 'ä'),  // 20
-  // B
-    (E: 'bdquo';  Ch: '„'),  // 21
-    (E: 'Beta';   Ch: 'Β'),
-    (E: 'beta';   Ch: 'β'),
-    (E: 'brvbar'; Ch: '¦'),
-    (E: 'bull';   Ch: '•'),
-  // C
-    (E: 'cap';    Ch: '∩'),  // 26
-    (E: 'Ccedil'; Ch: 'Ç'),
-    (E: 'ccedil'; Ch: 'ç'),
-    (E: 'cedil';  Ch: '¸'),
-    (E: 'cent';   Ch: '¢'),  // 39
-    (E: 'Chi';    Ch: 'Χ'),
-    (E: 'chi';    Ch: 'χ'),
-    (E: 'circ';   Ch: 'ˆ'),
-    (E: 'clubs';  Ch: '♣'),
-    (E: 'cong';   Ch: '≅'),  // approximately equal
-    (E: 'copy';   Ch: '©'),
-    (E: 'crarr';  Ch: '↵'),  // carriage return
-    (E: 'cup';    Ch: '∪'),
-    (E: 'curren'; Ch: '¤'),
-  // D
-    (E: 'Dagger'; Ch: '‡'),  // 40
-    (E: 'dagger'; Ch: '†'),
-    (E: 'dArr';   Ch: '⇓'),  // wide down-arrow
-    (E: 'darr';   Ch: '↓'),  // narrow down-arrow
-    (E: 'deg';    Ch: '°'),
-    (E: 'Delta';  Ch: 'Δ'),
-    (E: 'delta';  Ch: 'δ'),
-    (E: 'diams';  Ch: '♦'),
-    (E: 'divide'; Ch: '÷'),
-  // E
-    (E: 'Eacute'; Ch: 'É'),
-    (E: 'eacute'; Ch: 'é'),
-    (E: 'Ecirc';  Ch: 'Ê'),
-    (E: 'ecirc';  Ch: 'ê'),
-    (E: 'Egrave'; Ch: 'È'),
-    (E: 'egrave'; Ch: 'è'),
-    (E: 'empty';  Ch: '∅'),
-    (E: 'emsp';   Ch: ' '),  // Space character width of "m"
-    (E: 'ensp';   Ch: ' '),  // Space character width of "n"
-    (E: 'Epsilon';Ch: 'Ε'),  // capital epsilon
-    (E: 'epsilon';Ch: 'ε'),
-    (E: 'equiv';  Ch: '≡'),
-    (E: 'Eta';    Ch: 'Η'),
-    (E: 'eta';    Ch: 'η'),
-    (E: 'ETH';    Ch: 'Ð'),
-    (E: 'eth';    Ch: 'ð'),
-    (E: 'Euml';   Ch: 'Ë'),
-    (E: 'euml';   Ch: 'ë'),
-    (E: 'euro';   Ch: '€'),
-    (E: 'exist';  Ch: '∃'),
-  // F
-    (E: 'fnof';   Ch: 'ƒ'),
-    (E: 'forall'; Ch: '∀'),
-    (E: 'frac12'; Ch: '½'),
-    (E: 'frac14'; Ch: '¼'),
-    (E: 'frac34'; Ch: '¾'),
-    (E: 'frasl';  Ch: '⁄'),
-  // G
-    (E: 'Gamma';  Ch: 'Γ'),
-    (E: 'gamma';  Ch: 'γ'),
-    (E: 'ge';     Ch: '≥'),
-    (E: 'gt';     Ch: '>'),
-  // H
-    (E: 'hArr';   Ch: '⇔'),  // wide horizontal double arrow
-    (E: 'harr';   Ch: '↔'),  // narrow horizontal double arrow
-    (E: 'hearts'; Ch: '♥'),
-    (E: 'hellip'; Ch: '…'),
-  // I
-    (E: 'Iacute'; Ch: 'Í'),
-    (E: 'iacute'; Ch: 'í'),
-    (E: 'Icirc';  Ch: 'Î'),
-    (E: 'icirc';  Ch: 'î'),
-    (E: 'iexcl';  Ch: '¡'),
-    (E: 'Igrave'; Ch: 'Ì'),
-    (E: 'igrave'; Ch: 'ì'),
-    (E: 'image';  Ch: 'ℑ'),  //
-    (E: 'infin';  Ch: '∞'),
-    (E: 'int';    Ch: '∫'),
-    (E: 'Iota';   Ch: 'Ι'),
-    (E: 'iota';   Ch: 'ι'),
-    (E: 'iquest'; Ch: '¿'),
-    (E: 'isin';   Ch: '∈'),
-    (E: 'Iuml';   Ch: 'Ï'),
-    (E: 'iuml';   Ch: 'ï'),
-  // K
-    (E: 'Kappa';  Ch: 'Κ'),
-    (E: 'kappa';  Ch: 'κ'),
-  // L
-    (E: 'Lambda'; Ch: 'Λ'),
-    (E: 'lambda'; Ch: 'λ'),
-    (E: 'lang';   Ch: '⟨'),  // Left-pointing angle bracket
-    (E: 'laquo';  Ch: '«'),
-    (E: 'lArr';   Ch: '⇐'),  // Left-pointing wide arrow
-    (E: 'larr';   Ch: '←'),
-    (E: 'lceil';  Ch: '⌈'),  // Left ceiling
-    (E: 'ldquo';  Ch: '“'),
-    (E: 'le';     Ch: '≤'),
-    (E: 'lfloor'; Ch: '⌊'),  // Left floor
-    (E: 'lowast'; Ch: '∗'),  // Low asterisk
-    (E: 'loz';    Ch: '◊'),
-    (E: 'lrm';    Ch: '‎'),  // Left-to-right mark
-    (E: 'lsaquo'; Ch: '‹'),
-    (E: 'lsquo';  Ch: '‘'),
-    (E: 'lt';     Ch: '<'),
-  // M
-    (E: 'macr';   Ch: '¯'),
-    (E: 'mdash';  Ch: '—'),
-    (E: 'micro';  Ch: 'µ'),
-    (E: 'middot'; Ch: '·'),
-    (E: 'minus';  Ch: '−'),
-    (E: 'Mu';     Ch: 'Μ'),
-    (E: 'mu';     Ch: 'μ'),
-  // N
-    (E: 'nabla';  Ch: '∇'),
-    (E: 'nbsp';   Ch: ' '),
-    (E: 'ndash';  Ch: '–'),
-    (E: 'ne';     Ch: '≠'),
-    (E: 'ni';     Ch: '∋'),
-    (E: 'not';    Ch: '¬'),
-    (E: 'notin';  Ch: '∉'),  // math: "not in"
-    (E: 'nsub';   Ch: '⊄'),  // math: "not a subset of"
-    (E: 'Ntilde'; Ch: 'Ñ'),
-    (E: 'ntilde'; Ch: 'ñ'),
-    (E: 'Nu';     Ch: 'Ν'),
-    (E: 'nu';     Ch: 'ν'),
-  // O
-    (E: 'Oacute'; Ch: 'Ó'),
-    (E: 'oacute'; Ch: 'ó'),
-    (E: 'Ocirc';  Ch: 'Ô'),
-    (E: 'ocirc';  Ch: 'ô'),
-    (E: 'OElig';  Ch: 'Œ'),
-    (E: 'oelig';  Ch: 'œ'),
-    (E: 'Ograve'; Ch: 'Ò'),
-    (E: 'ograve'; Ch: 'ò'),
-    (E: 'oline';  Ch: '‾'),
-    (E: 'Omega';  Ch: 'Ω'),
-    (E: 'omega';  Ch: 'ω'),
-    (E: 'Omicron';Ch: 'Ο'),
-    (E: 'omicron';Ch: 'ο'),
-    (E: 'oplus';  Ch: '⊕'),  // Circled plus
-    (E: 'or';     Ch: '∨'),
-    (E: 'ordf';   Ch: 'ª'),
-    (E: 'ordm';   Ch: 'º'),
-    (E: 'Oslash'; Ch: 'Ø'),
-    (E: 'oslash'; Ch: 'ø'),
-    (E: 'Otilde'; Ch: 'Õ'),
-    (E: 'otilde'; Ch: 'õ'),
-    (E: 'otimes'; Ch: '⊗'),  // Circled times
-    (E: 'Ouml';   Ch: 'Ö'),
-    (E: 'ouml';   Ch: 'ö'),
-  // P
-    (E: 'para';   Ch: '¶'),
-    (E: 'part';   Ch: '∂'),
-    (E: 'permil'; Ch: '‰'),
-    (E: 'perp';   Ch: '⊥'),
-    (E: 'Phi';    Ch: 'Φ'),
-    (E: 'phi';    Ch: 'φ'),
-    (E: 'Pi';     Ch: 'Π'),
-    (E: 'pi';     Ch: 'π'),  // lower-case pi
-    (E: 'piv';    Ch: 'ϖ'),
-    (E: 'plusmn'; Ch: '±'),
-    (E: 'pound';  Ch: '£'),
-    (E: 'Prime';  Ch: '″'),
-    (E: 'prime';  Ch: '′'),
-    (E: 'prod';   Ch: '∏'),
-    (E: 'prop';   Ch: '∝'),
-    (E: 'Psi';    Ch: 'Ψ'),
-    (E: 'psi';    Ch: 'ψ'),
-  // Q
-    (E: 'quot';   Ch: '"'),
-  // R
-    (E: 'radic';  Ch: '√'),
-    (E: 'rang';   Ch: '⟩'),  // right-pointing angle bracket
-    (E: 'raquo';  Ch: '»'),
-    (E: 'rArr';   Ch: '⇒'),
-    (E: 'rarr';   Ch: '→'),
-    (E: 'rceil';  Ch: '⌉'),  // right ceiling
-    (E: 'rdquo';  Ch: '”'),
-    (E: 'real';   Ch: 'ℜ'),  // R in factura
-    (E: 'reg';    Ch: '®'),
-    (E: 'rfloor'; Ch: '⌋'),  // Right floor
-    (E: 'Rho';    Ch: 'Ρ'),
-    (E: 'rho';    Ch: 'ρ'),
-    (E: 'rlm';    Ch: ''),   // right-to-left mark
-    (E: 'rsaquo'; Ch: '›'),
-    (E: 'rsquo';  Ch: '’'),
+  MIN_FONTSIZE = 6;
 
-  // S
-    (E: 'sbquo';  Ch: '‚'),
-    (E: 'Scaron'; Ch: 'Š'),
-    (E: 'scaron'; Ch: 'š'),
-    (E: 'sdot';   Ch: '⋅'),  // math: dot operator
-    (E: 'sect';   Ch: '§'),
-    (E: 'shy';    Ch: ''),   // conditional hyphen
-    (E: 'Sigma';  Ch: 'Σ'),
-    (E: 'sigma';  Ch: 'σ'),
-    (E: 'sigmaf'; Ch: 'ς'),
-    (E: 'sim';    Ch: '∼'),  // similar
-    (E: 'spades'; Ch: '♠'),
-    (E: 'sub';    Ch: '⊂'),
-    (E: 'sube';   Ch: '⊆'),
-    (E: 'sum';    Ch: '∑'),
-    (E: 'sup';    Ch: '⊃'),
-    (E: 'sup1';   Ch: '¹'),
-    (E: 'sup2';   Ch: '²'),
-    (E: 'sup3';   Ch: '³'),
-    (E: 'supe';   Ch: '⊇'),
-    (E: 'szlig';  Ch: 'ß'),
-  //T
-    (E: 'Tau';    Ch: 'Τ'),
-    (E: 'tau';    Ch: 'τ'),
-    (E: 'there4'; Ch: '∴'),
-    (E: 'Theta';  Ch: 'Θ'),
-    (E: 'theta';  Ch: 'θ'),
-    (E: 'thetasym';Ch: 'ϑ'),
-    (E: 'thinsp'; Ch: ' '),  // thin space
-    (E: 'THORN';  Ch: 'Þ'),
-    (E: 'thorn';  Ch: 'þ'),
-    (E: 'tilde';  Ch: '˜'),
-    (E: 'times';  Ch: '×'),
-    (E: 'trade';  Ch: '™'),
-  // U
-    (E: 'Uacute'; Ch: 'Ú'),
-    (E: 'uacute'; Ch: 'ú'),
-    (E: 'uArr';   Ch: '⇑'),  // wide up-arrow
-    (E: 'uarr';   Ch: '↑'),
-    (E: 'Ucirc';  Ch: 'Û'),
-    (E: 'ucirc';  Ch: 'û'),
-    (E: 'Ugrave'; Ch: 'Ù'),
-    (E: 'ugrave'; Ch: 'ù'),
-    (E: 'uml';    Ch: '¨'),
-    (E: 'upsih';  Ch: 'ϒ'),
-    (E: 'Upsilon';Ch: 'Υ'),
-    (E: 'upsilon';Ch: 'υ'),
-    (E: 'Uuml';   Ch: 'Ü'),
-    (E: 'uuml';   Ch: 'ü'),
-  // W
-    (E: 'weierp'; Ch: '℘'),  // Script Capital P; Weierstrass Elliptic Function
-  // X
-    (E: 'Xi';     Ch: 'Ξ'),
-    (E: 'xi';     Ch: 'ξ'),
-  // Y
-    (E: 'Yacute'; Ch: 'Ý'),
-    (E: 'yacute'; Ch: 'ý'),
-    (E: 'yen';    Ch: '¥'),
-    (E: 'Yuml';   Ch: 'Ÿ'),
-    (E: 'yuml';   Ch: 'ÿ'),
-  // Z
-    (E: 'Zeta';   Ch: 'Ζ'),
-    (E: 'zeta';   Ch: 'ζ'),
-    (E: 'zwj';    Ch: ''),   // Zero-width joiner
-    (E: 'zwnj';   Ch: ''),   // Zero-width non-joiner
-
-    (E: '#160';   Ch: ' ')   // numerical value of "&nbsp;"
-  );
-                     *)
 {==============================================================================}
 {                             TsHTMLReader                                     }
 {==============================================================================}
@@ -424,6 +141,10 @@ begin
   inherited Create(AWorkbook);
   FFormatSettings := HTMLParams.FormatSettings;
   ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
+
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
+
   FTableCounter := -1;
   FAttrList := TsHTMLAttrList.Create;
   FCellFont := TsFont.Create;
@@ -462,6 +183,9 @@ begin
   if fntIndex = -1 then
     fntIndex := FWorkbook.AddFont(FCellFont.FontName, FCellFont.Size,
       FCellFont.Style, FCellFont.Color, FCellFont.Position);
+  if fntIndex <> 0 then
+    Include(FCurrCellFormat.UsedFormattingFields, uffFont) else
+    Exclude(FCurrCellFormat.UsedFormattingFields, uffFont);
   FCurrCellFormat.FontIndex := fntIndex;
   cell^.FormatIndex := FWorkbook.AddCellFormat(FCurrCellFormat);
 
@@ -531,6 +255,96 @@ begin
     FCurrCellFormat.Background.Style := fsSolidFill;  // No other fill styles in html
     Include(FCurrCellFormat.UsedFormattingFields, uffBackground);
   end;
+end;
+
+procedure TsHTMLReader.ExtractFont(AFont: TsFont);
+const
+  Factor = 1.2;
+var
+  idx: Integer;
+  L: TStringList;
+  i, ip, im: Integer;
+  s: String;
+  f: Double;
+  defFntSize: Single;
+begin
+  // style tags
+  idx := FAttrList.IndexOfName('font-family');
+  if idx > -1 then begin
+    L := TStringList.Create;
+    try
+      L.StrictDelimiter := true;
+      L.DelimitedText := FAttrList[idx].Value;
+      AFont.FontName := L[0];
+    finally
+      L.Free;
+    end;
+  end;
+
+  idx := FAttrList.IndexOfName('font-size');
+  if idx > -1 then begin
+    defFntSize := FWorkbook.GetDefaultFont.Size;
+    s := FAttrList[idx].Value;
+    case s of
+      'medium',   '3' : AFont.Size := defFntSize;
+      'large',    '4' : AFont.Size := defFntSize*FACTOR;
+      'x-large',  '5' : AFont.Size := defFntSize*FACTOR*FACTOR;
+      'xx-large', '6' : AFont.Size := defFntSize*FACTOR*FACTOR*FACTOR;
+      'small',    '2' : AFont.Size := Max(MIN_FONTSIZE, defFntSize/FACTOR);
+      'x-small'       : AFont.Size := Max(MIN_FONTSIZE, defFntSize/FACTOR/FACTOR);
+      'xx-small', '1' : AFont.Size := Max(MIN_FONTSIZE, defFntSize/FACTOR/FACTOR/FACTOR);
+      'larger'        : AFont.Size := AFont.Size * FACTOR;
+      'smaller'       : AFont.Size := Max(MIN_FONTSIZE, AFont.Size / FACTOR);
+      else
+        i := 0;
+        im := 0;
+        ip := pos('%', s);
+        if ip = 0 then begin
+          im := pos('rem', s);
+          if im = 0 then
+            im := pos('em', s);
+        end;
+        if (ip > 0) then i := ip else
+          if (im > 0) then i := im;
+        if i > 0 then
+        begin
+          s := copy(s, 1, i-1);
+          if TryStrToFloat(s, f, FPointSeparatorSettings) then
+          begin
+            if ip > 0 then f := f * 0.01;
+            AFont.Size := Max(MIN_FONTSIZE, abs(f) * defFntSize);
+          end;
+        end else
+          AFont.Size := Max(MIN_FONTSIZE, HTMLLengthStrToPts(s));
+    end;
+  end;
+
+  idx := FAttrList.IndexOfName('font-style');
+  if idx > -1 then
+    case FAttrList[idx].Value of
+      'normal'  : Exclude(AFont.Style, fssItalic);
+      'italic'  : Include(AFont.Style, fssItalic);
+      'oblique' : Include(AFont.Style, fssItalic);
+    end;
+
+  idx := FAttrList.IndexOfName('font-weight');
+  if idx > -1 then
+  begin
+    s := FAttrList[idx].Value;
+    if TryStrToInt(s, i) and (i >= 700) then Include(AFont.Style, fssBold);
+  end;
+
+  idx := FAttrList.IndexOfName('text-decoration');
+  if idx > -1 then
+  begin
+    s := FAttrList[idx].Value;
+    if pos('underline', s) <> 0 then Include(AFont.Style, fssUnderline);
+    if pos('line-through', s) <> 0 then Include(AFont.Style, fssStrikeout);
+  end;
+
+  idx := FAttrList.IndexOfName('color');
+  if idx > -1 then
+    AFont.Color := HTMLColorStrToColor(FAttrList[idx].Value);
 end;
 
 procedure TsHTMLReader.ExtractHorAlign;
@@ -691,6 +505,7 @@ begin
     ExtractBackgroundColor;
     ExtractHorAlign;
     ExtractVertAlign;
+    ExtractFont(FCellFont);
   end else
   if ((NoCaseTag = '<TH>') or (pos('<TH ', NoCaseTag) = 1)) and FInTable then
   begin
