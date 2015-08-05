@@ -28,12 +28,17 @@ type
     FInHeader: Boolean;
     FTableCounter: Integer;
     FCurrRow, FCurrCol: LongInt;
-    FCelLText: String;
+    FCurrCellFormat: TsCellFormat;
+    FCellFont: TsFont;
+    FCellText: String;
     FAttrList: TsHTMLAttrList;
     FColSpan, FRowSpan: Integer;
     FHRef: String;
+    procedure ExtractBackgroundColor;
     procedure ExtractHRef;
     procedure ExtractMergedRange;
+    procedure InitFont(AFont: TsFont);
+    procedure InitCellFormat;
     procedure TagFoundHandler(NoCaseTag, ActualTag: string);
     procedure TextFoundHandler(AText: String);
   protected
@@ -419,10 +424,12 @@ begin
   ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
   FTableCounter := -1;
   FAttrList := TsHTMLAttrList.Create;
+  FCellFont := TsFont.Create;
 end;
 
 destructor TsHTMLReader.Destroy;
 begin
+  FreeAndNil(FCellFont);
   FreeAndNil(FAttrList);
   FreeAndNil(parser);
   inherited Destroy;
@@ -438,12 +445,23 @@ var
   decs: Integer;
   currSym: String;
   warning: String;
+  fntIndex: Integer;
 begin
   // Empty strings are blank cells -- nothing to do
   if (AText = '') then
     exit;
 
+  // Create cell
   cell := FWorksheet.AddCell(ARow, ACol);
+
+  // Format
+  fntIndex := FWorkbook.FindFont(FCellFont.FontName, FCellFont.Size,
+    FCellFont.Style, FCellFont.Color, FCellFont.Position);
+  if fntIndex = -1 then
+    fntIndex := FWorkbook.AddFont(FCellFont.FontName, FCellFont.Size,
+      FCellFont.Style, FCellFont.Color, FCellFont.Position);
+  FCurrCellFormat.FontIndex := fntIndex;
+  cell^.FormatIndex := FWorkbook.AddCellFormat(FCurrCellFormat);
 
   // Merged cells
   if (FColSpan > 0) or (FRowSpan > 0) then begin
@@ -497,6 +515,22 @@ begin
   FWorksheet.WriteUTF8Text(cell, AText);
 end;
 
+procedure TsHTMLReader.ExtractBackgroundColor;
+var
+  idx: Integer;
+begin
+  idx := FAttrList.IndexOfName('bgcolor');             // html tag
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('background-color');  // value taken from "style"
+  if idx > -1 then
+  begin
+    FCurrCellFormat.Background.BgColor := HTMLColorStrToColor(FAttrList[idx].Value);
+    FCurrCellFormat.Background.FgColor := FCurrCellFormat.Background.BgColor;
+    FCurrCellFormat.Background.Style := fsSolidFill;  // No other fill styles in html
+    Include(FCurrCellFormat.UsedFormattingFields, uffBackground);
+  end;
+end;
+
 procedure TsHTMLReader.ExtractHRef;
 var
   idx: Integer;
@@ -520,6 +554,27 @@ begin
   if idx > -1 then
     FRowSpan := StrToInt(FAttrList[idx].Value) - 1;
   // -1 to compensate for correct determination of the range end cell
+end;
+
+procedure TsHTMLReader.InitFont(AFont: TsFont);
+var
+  fnt: TsFont;
+begin
+  fnt := FWorkbook.GetDefaultFont;
+  AFont.FontName := fnt.FontName;
+  AFont.Size := fnt.Size;
+  AFont.Style := fnt.Style;
+  AFont.Color := fnt.Color;
+  AFont.Position := fnt.Position;
+end;
+
+procedure TsHTMLReader.InitCellFormat;
+begin
+  InitFormatRecord(FCurrCellFormat);
+  InitFont(FCellFont);
+
+  // HTML tables, by default, have word-wrapped cell texts.
+  Include(FCurrCellFormat.UsedFormattingFields, uffWordwrap);
 end;
 
 procedure TsHTMLReader.ReadFromStream(AStream: TStream);
@@ -581,8 +636,10 @@ begin
     FInCell := true;
     inc(FCurrCol);
     FCellText := '';
+    InitCellFormat;
     FAttrList.Parse(ActualTag);
     ExtractMergedRange;
+    ExtractBackgroundColor;
   end else
   if ((NoCaseTag = '<TH>') or (pos('<TH ', NoCaseTag) = 1)) and FInTable then
   begin

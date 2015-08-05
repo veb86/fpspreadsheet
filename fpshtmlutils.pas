@@ -28,6 +28,8 @@ type
   private
     function GetItem(AIndex: Integer): TsHTMLAttr;
     procedure SetItem(AIndex: Integer; AValue: TsHTMLAttr);
+  protected
+    procedure ParseStyle(AStyle: String);
   public
     function IndexOfName(AName: String): Integer;
     procedure Parse(AHTML: String);
@@ -42,6 +44,7 @@ uses
 
 const
   // http://unicode.e-workers.de/entities.php
+  // http://www.utf8-zeichentabelle.de/unicode-utf8-table.pl
   HTMLEntities: array[0..250] of TsHTMLEntity = (
   // A
     (E: 'Acirc';  Ch: 'Â';  N: 194),   // 0
@@ -51,7 +54,7 @@ const
     (E: 'aelig';  Ch: 'æ';  N: 230),
     (E: 'Agrave'; Ch: 'À';  N: 192),
     (E: 'agrave'; Ch: 'à';  N: 224),
-    (E: 'alefsym';Ch: 'ℵ';  N: 8501),
+    (E: 'alefsym';Ch: #$E2#$84#$B5;  N: 8501),
     (E: 'Alpha';  Ch: 'Α';  N: 913),
     (E: 'alpha';  Ch: 'α';  N: 945),
     (E: 'amp';    Ch: '&';  N: 38),    // 10
@@ -81,15 +84,15 @@ const
     (E: 'chi';    Ch: 'χ';  N: 967),
     (E: 'circ';   Ch: 'ˆ';  N: 710),
     (E: 'clubs';  Ch: '♣';  N: 9827),
-    (E: 'cong';   Ch: '≅';  N: 8773),  // approximately equal
+    (E: 'cong';   Ch: #$E2#$89#$85;  N: 8773),  // approximately equal
     (E: 'copy';   Ch: '©';  N: 169),
-    (E: 'crarr';  Ch: '↵';  N: 8629),  // carriage return
+    (E: 'crarr';  Ch: #$E2#$86#$B5;  N: 8629),  // carriage return
     (E: 'cup';    Ch: '∪';  N: 8746),
     (E: 'curren'; Ch: '¤';  N: 164),
   // D
     (E: 'Dagger'; Ch: '‡';  N: 8225),  // 40
     (E: 'dagger'; Ch: '†';  N: 8224),
-    (E: 'dArr';   Ch: '⇓';  N: 8659),  // wide down-arrow
+    (E: 'dArr';   Ch: #$E2#$87#$93;  N: 8659),  // wide down-arrow
     (E: 'darr';   Ch: '↓';  N: 8595),  // narrow down-arrow
     (E: 'deg';    Ch: '°';  N: 176),
     (E: 'Delta';  Ch: 'Δ';  N: 916),
@@ -103,9 +106,9 @@ const
     (E: 'ecirc';  Ch: 'ê';  N: 234),
     (E: 'Egrave'; Ch: 'È';  N: 200),
     (E: 'egrave'; Ch: 'è';  N: 232),
-    (E: 'empty';  Ch: '∅';  N: 8709),
-    (E: 'emsp';   Ch: ' ';  N: 8195),  // Space character width of "m"
-    (E: 'ensp';   Ch: ' ';  N: 8194),  // Space character width of "n"
+    (E: 'empty';  Ch: #$e2#$88#$85;  N: 8709),
+    (E: 'emsp';   Ch: #$E2#$80#$83;  N: 8195),  // Space character width of "m"
+    (E: 'ensp';   Ch: #$E2#$80#$82;  N: 8194),  // Space character width of "n"
     (E: 'Epsilon';Ch: 'Ε';  N: 917),   // capital epsilon
     (E: 'epsilon';Ch: 'ε';  N: 949),
     (E: 'equiv';  Ch: '≡';  N: 8801),  // 60
@@ -142,7 +145,7 @@ const
     (E: 'iexcl';  Ch: '¡';  N: 161),
     (E: 'Igrave'; Ch: 'Ì';  N: 204),
     (E: 'igrave'; Ch: 'ì';  N: 236),   // 90
-    (E: 'image';  Ch: 'ℑ';  N: 2465),  // I in factura
+    (E: 'image';  Ch: #$E2#$84#$91;  N: 2465),  // I in factura
     (E: 'infin';  Ch: '∞';  N: 8734),
     (E: 'int';    Ch: '∫';  N: 8747),
     (E: 'Iota';   Ch: 'Ι';  N: 921),
@@ -159,13 +162,13 @@ const
     (E: 'lambda'; Ch: 'λ';  N: 955),
     (E: 'lang';   Ch: '⟨';  N: 9001),  // Left-pointing angle bracket
     (E: 'laquo';  Ch: '«';  N: 171),
-    (E: 'lArr';   Ch: '⇐';  N: 8656),  // Left-pointing wide arrow
+    (E: 'lArr';   Ch: #$E2#$87#$90;  N: 8656),  // Left-pointing wide arrow
     (E: 'larr';   Ch: '←';  N: 8592),
     (E: 'lceil';  Ch: '⌈';  N: 8968),  // Left ceiling
     (E: 'ldquo';  Ch: '“';  N: 8220),
     (E: 'le';     Ch: '≤';  N: 8804),  // 110
     (E: 'lfloor'; Ch: '⌊';  N: 8970),  // Left floor
-    (E: 'lowast'; Ch: '∗';  N: 8727),  // Low asterisk
+    (E: 'lowast'; Ch: #$e2#$88#$97;  N: 8727),  // Low asterisk
     (E: 'loz';    Ch: '◊';  N: 9674),
     (E: 'lrm';    Ch: '‎';  N: 8206),  // Left-to-right mark
     (E: 'lsaquo'; Ch: '‹';  N: 8249),
@@ -186,8 +189,8 @@ const
     (E: 'ne';     Ch: '≠';  N: 8800),
     (E: 'ni';     Ch: '∋';  N: 8715),
     (E: 'not';    Ch: '¬';  N: 172),   // 130
-    (E: 'notin';  Ch: '∉';  N: 8713),  // math: "not in"
-    (E: 'nsub';   Ch: '⊄';  N: 8836),  // math: "not a subset of"
+    (E: 'notin';  Ch: #$e2#$88#$89;  N: 8713),  // math: "not in"
+    (E: 'nsub';   Ch: #$e2#$8a#$84;  N: 8836),  // math: "not a subset of"
     (E: 'Ntilde'; Ch: 'Ñ';  N: 209),
     (E: 'ntilde'; Ch: 'ñ';  N: 241),
     (E: 'Nu';     Ch: 'Ν';  N: 925),
@@ -206,7 +209,7 @@ const
     (E: 'omega';  Ch: 'ω';  N: 969),
     (E: 'Omicron';Ch: 'Ο';  N: 927),
     (E: 'omicron';Ch: 'ο';  N: 959),
-    (E: 'oplus';  Ch: '⊕';  N: 8853),  // Circled plus
+    (E: 'oplus';  Ch: #$e2#$8a#$95;  N: 8853),  // Circled plus
     (E: 'or';     Ch: '∨';  N: 8744),
     (E: 'ordf';   Ch: 'ª';  N: 170),
     (E: 'ordm';   Ch: 'º';  N: 186),
@@ -214,7 +217,7 @@ const
     (E: 'oslash'; Ch: 'ø';  N: 248),
     (E: 'Otilde'; Ch: 'Õ';  N: 213),
     (E: 'otilde'; Ch: 'õ';  N: 245),
-    (E: 'otimes'; Ch: '⊗';  N: 8855),  // Circled times
+    (E: 'otimes'; Ch: #$E2#$8A#$97;  N: 8855),  // Circled times
     (E: 'Ouml';   Ch: 'Ö';  N: 214),
     (E: 'ouml';   Ch: 'ö';  N: 246),
   // P
@@ -245,7 +248,7 @@ const
     (E: 'rarr';   Ch: '→';  N: 8594),
     (E: 'rceil';  Ch: '⌉';  N: 8969),  // right ceiling
     (E: 'rdquo';  Ch: '”';  N: 8221),
-    (E: 'real';   Ch: 'ℜ';  N: 8476),  // R in factura
+    (E: 'real';   Ch: #$E2#$84#$9C;  N: 8476),  // R in factura
     (E: 'reg';    Ch: '®';  N: 174),
     (E: 'rfloor'; Ch: '⌋';  N: 8971),  // Right floor
     (E: 'Rho';    Ch: 'Ρ';  N: 929),
@@ -258,13 +261,13 @@ const
     (E: 'sbquo';  Ch: '‚';  N: 8218),
     (E: 'Scaron'; Ch: 'Š';  N: 352),
     (E: 'scaron'; Ch: 'š';  N: 353),
-    (E: 'sdot';   Ch: '⋅';  N: 8901),  // math: dot operator
+    (E: 'sdot';   Ch: #$E2#$8B#$85;  N: 8901),  // math: dot operator
     (E: 'sect';   Ch: '§';  N: 167),
-    (E: 'shy';    Ch: '';   N: 173),   // conditional hyphen
+    (E: 'shy';    Ch: #$C2#$AD; N: 173),   // conditional hyphen
     (E: 'Sigma';  Ch: 'Σ';  N: 931),
     (E: 'sigma';  Ch: 'σ';  N: 963),
     (E: 'sigmaf'; Ch: 'ς';  N: 962),
-    (E: 'sim';    Ch: '∼';  N: 8764),  // similar
+    (E: 'sim';    Ch: #$E2#$88#$BC;  N: 8764),  // similar
     (E: 'spades'; Ch: '♠';  N: 9824),
     (E: 'sub';    Ch: '⊂';  N: 8834),
     (E: 'sube';   Ch: '⊆';  N: 8838),
@@ -282,7 +285,7 @@ const
     (E: 'Theta';  Ch: 'Θ';  N: 920),
     (E: 'theta';  Ch: 'θ';  N: 952),
     (E: 'thetasym';Ch: 'ϑ'; N: 977),
-    (E: 'thinsp'; Ch: ' ';  N: 8201),  // thin space
+    (E: 'thinsp'; Ch: #$E2#$80#$89;  N: 8201),  // thin space
     (E: 'THORN';  Ch: 'Þ';  N: 222),
     (E: 'thorn';  Ch: 'þ';  N: 254),
     (E: 'tilde';  Ch: '˜';  N: 732),
@@ -291,7 +294,7 @@ const
   // U
     (E: 'Uacute'; Ch: 'Ú';  N: 218),
     (E: 'uacute'; Ch: 'ú';  N: 250),
-    (E: 'uArr';   Ch: '⇑';  N: 8657),  // wide up-arrow
+    (E: 'uArr';   Ch: #$E2#$87#$91;  N: 8657),  // wide up-arrow
     (E: 'uarr';   Ch: '↑';  N: 8593),
     (E: 'Ucirc';  Ch: 'Û';  N: 219),
     (E: 'ucirc';  Ch: 'û';  N: 251),
@@ -304,7 +307,7 @@ const
     (E: 'Uuml';   Ch: 'Ü';  N: 220),
     (E: 'uuml';   Ch: 'ü';  N: 252),
   // W
-    (E: 'weierp'; Ch: '℘';  N: 8472),  // Script Capital P; Weierstrass Elliptic Function
+    (E: 'weierp'; Ch: #$E2#$84#$98;  N: 8472),  // Script Capital P; Weierstrass Elliptic Function
   // X
     (E: 'Xi';     Ch: 'Ξ';  N: 926),
     (E: 'xi';     Ch: 'ξ';  N: 958),
@@ -483,6 +486,44 @@ begin
            end;
       ' ', '/', '>': ;
       else nam := nam + AHTML[i];
+    end;
+    inc(i);
+  end;
+
+  i := IndexOfName('style');
+  if i > -1 then ParseStyle(Items[i].Value);
+end;
+
+{ AStyle is the value part of a 'style="...."' HTML string. Splits the into
+  individual records at the semicolons (;) and into name-value pairs at the
+  colon (:). Adds the name-value pairs to the list. }
+procedure TsHTMLAttrList.ParseStyle(AStyle: String);
+var
+  i, len: Integer;
+  value, nam: String;
+begin
+  i := 1;
+  len := Length(AStyle);
+
+  // skip white space
+  while (i <= len) and (AStyle[i] = ' ') do inc(i);
+
+  // iterate through string
+  nam := '';
+  while (i <= len) do
+  begin
+    case AStyle[i] of
+      ':': begin  // name-value separator
+             while (i <= len) and (AStyle[i] = ' ') do inc(i);  // skip white space
+             value := '';
+             while (i <= len) and (AStyle[i] <> ';') do
+               value := value + AStyle[i];
+             inc(i);  // skip final ';'
+             Add(TsHTMLAttr.Create(lowercase(nam), value));
+             nam := '';
+           end;
+      ' ': ;
+      else nam := nam + AStyle[i];
     end;
     inc(i);
   end;

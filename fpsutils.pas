@@ -1474,6 +1474,10 @@ begin
   if AValue[1] = '#' then begin
     AValue[1] := '$';
     Result := LongRGBToExcelPhysical(DWord(StrToInt(AValue)));
+  end else
+  if AValue[1] in ['0'..'9','A'..'F', 'a'..'f'] then begin
+    AValue := '$' + AValue;
+    Result := LongRGBToExcelPhysical(DWord(StrToInt(AValue)));
   end else begin
     AValue := lowercase(AValue);
     if AValue = 'red' then
