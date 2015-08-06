@@ -27,6 +27,7 @@ type
     FInSpan: Boolean;
     FInA: Boolean;
     FInHeader: Boolean;
+    FEncoding: String;
     FTableCounter: Integer;
     FCurrRow, FCurrCol: LongInt;
     FCurrCellFormat: TsCellFormat;
@@ -36,12 +37,13 @@ type
     FAttrList: TsHTMLAttrList;
     FColSpan, FRowSpan: Integer;
     FHRef: String;
-    procedure ExtractBackgroundColor;
-    procedure ExtractFont(AFont: TsFont);
-    procedure ExtractHRef;
-    procedure ExtractHorAlign;
-    procedure ExtractMergedRange;
-    procedure ExtractVertAlign;
+    procedure ReadBackgroundColor;
+    procedure ReadEncoding;
+    procedure ReadFont(AFont: TsFont);
+    procedure ReadHRef;
+    procedure ReadHorAlign;
+    procedure ReadMergedRange;
+    procedure ReadVertAlign;
     procedure InitFont(AFont: TsFont);
     procedure InitCellFormat;
     procedure TagFoundHandler(NoCaseTag, ActualTag: string);
@@ -127,7 +129,7 @@ var
 implementation
 
 uses
-  LazUTF8, URIParser, StrUtils, Math,
+  LConvEncoding, LazUTF8, URIParser, StrUtils, Math,
   fpsUtils, fpsNumFormat;
 
 const
@@ -140,6 +142,8 @@ const
 constructor TsHTMLReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  FEncoding := EncodingUTF8;
+
   FFormatSettings := HTMLParams.FormatSettings;
   ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
 
@@ -244,7 +248,7 @@ begin
   FWorksheet.WriteUTF8Text(cell, AText);
 end;
 
-procedure TsHTMLReader.ExtractBackgroundColor;
+procedure TsHTMLReader.ReadBackgroundColor;
 var
   idx: Integer;
 begin
@@ -260,7 +264,91 @@ begin
   end;
 end;
 
-procedure TsHTMLReader.ExtractFont(AFont: TsFont);
+procedure TsHTMLReader.ReadEncoding;
+
+  function FoundEncoding(AString: string): Boolean;
+  // https://encoding.spec.whatwg.org/#encodings
+  begin
+    Result := true;
+    case AString of
+      'utf-8', 'utf8', 'unicode-1-1-utf-8':
+        FEncoding := 'utf8';
+      'cp1250', 'windows-1250', 'x-cp1250':
+        FEncoding := 'cp1250';
+      'cp1251', 'windows-1251', 'x-cp1251':
+        FEncoding := 'cp1251';
+      'ansi_x3.4-1968', 'ascii', 'cp1252', 'cp819', 'csisolatin1', 'ibm819',
+      'iso-8859-1', 'iso-ir-100', 'iso8859-1', 'iso88591', 'iso_8859-1',
+      'iso_8859-1:1987', 'l1', 'latin1', 'us-ascii', 'windows-1252', 'x-cp1252':
+        FEncoding := 'cp1252';
+      'cp1253', 'windows-1253', 'x-cp1253':
+        FEncoding := 'cp1253';
+      'cp1254', 'csisolatin5', 'iso-8859-9', 'iso-ir-148', 'iso8859-9', 'iso88599',
+      'iso_8859-9', 'iso_8859-9:1989', 'l5', 'latin5', 'windows-1254', 'x-cp1254':
+        FEncoding := 'cp1254';
+      'cp1255', 'windows-1255', 'x-cp1255':
+        FEncoding := 'cp1255';
+      'cp1256', 'windows-1256', 'x-cp1256':
+        FEncoding := 'cp1256';
+      'cp1257', 'windows-1257', 'x-cp1257':
+        FEncoding := 'cp1257';
+      'cp1258', 'windows-1258', 'x-cp1258':
+        FEncoding := 'cp1258';
+      '866', 'cp866', 'csibm866', 'ibm866':
+        FEncoding := 'cp866';
+      'dos-874', 'iso-8859-11', 'iso8859-11', 'iso885911', 'tis-620', 'windows-874':
+        FEncoding := 'cp874';
+      'csisolatin2', 'iso-8859-2', 'iso-ir-101', 'iso8859-2', 'iso88592',
+      'iso_8859-2', 'iso_8859-2:1987', 'l2', 'latin2':
+        FEncoding := 'cpiso88592';
+      'csisolatin9', 'iso-8859-15', 'iso8859-15', 'iso885915', 'iso_8859-15', 'l9':
+        FEncoding := 'cpiso885915';
+      'csmacintosh', 'mac', 'macintosh', 'x-mac-roman':
+        FEncoding := 'mactintosh';
+      'cskoi8r', 'koi', 'koi8', 'koi8-r', 'koi8_r':
+        FEncoding := 'koi8';
+      'utf-16be':
+        FEncoding := 'ucs2be';
+      'utf-16', 'utf-16le':
+        FEncoding := 'ucs2le';
+      else
+        // Above site notes also some asian code pages which are not supported by
+        // Lazarus encoding utilities.
+        Result := false;
+    end;
+  end;
+
+var
+  idx, p: Integer;
+  s: String;
+begin
+  // HTML 5
+  idx := FAttrList.IndexOfName('charset');
+  if idx > -1 then begin
+    s := Lowercase(FAttrList[idx].Value);
+    if (s <> '') and FoundEncoding(s) then exit;
+  end;
+
+  // HTML 4
+  idx := FAttrList.IndexOfName('http-equiv');
+  if idx > -1 then
+  begin
+    idx := FAttrList.IndexOfName('content');
+    if idx > -1 then begin
+      s := Lowercase(FAttrList[idx].Value);
+      p := pos('charset', s);
+      if p > 0 then
+      begin
+        s := copy(s, p+Length('charset')+1, MaxInt);
+        p := pos(';', s);
+        if p > 0 then s := copy(s, 1, p-1);
+        if (s <> '') and FoundEncoding(s) then exit;
+      end;
+    end;
+  end;
+end;
+
+procedure TsHTMLReader.ReadFont(AFont: TsFont);
 const
   Factor = 1.2;
 var
@@ -350,7 +438,7 @@ begin
     AFont.Color := HTMLColorStrToColor(FAttrList[idx].Value);
 end;
 
-procedure TsHTMLReader.ExtractHorAlign;
+procedure TsHTMLReader.ReadHorAlign;
 var
   idx: Integer;
   s: String;
@@ -373,7 +461,7 @@ begin
   end;
 end;
 
-procedure TsHTMLReader.ExtractHRef;
+procedure TsHTMLReader.ReadHRef;
 var
   idx: Integer;
 begin
@@ -383,7 +471,7 @@ begin
     FHRef := FAttrList[idx].Value;
 end;
 
-procedure TsHTMLReader.ExtractMergedRange;
+procedure TsHTMLReader.ReadMergedRange;
 var
   idx: Integer;
 begin
@@ -398,7 +486,7 @@ begin
   // -1 to compensate for correct determination of the range end cell
 end;
 
-procedure TsHTMLReader.ExtractVertAlign;
+procedure TsHTMLReader.ReadVertAlign;
 var
   idx: Integer;
   s: String;
@@ -474,6 +562,11 @@ end;
 
 procedure TsHTMLReader.TagFoundHandler(NoCaseTag, ActualTag: string);
 begin
+  if pos('<META', NoCaseTag) = 1 then
+  begin
+    FAttrList.Parse(ActualTag);
+    ReadEncoding;
+  end else
   if pos('<TABLE', NoCaseTag) = 1 then
   begin
     inc(FTableCounter);
@@ -485,7 +578,7 @@ begin
       FCurrCol := -1;
       InitFont(FCurrFont);
       FAttrList.Parse(ActualTag);
-      ExtractFont(FCurrFont);
+      ReadFont(FCurrFont);
       FWorkbook.ReplaceFont(DEFAULT_FONTINDEX, FCurrFont.FontName, FCurrFont.Size,
         FCurrFont.Style, FCurrFont.Color, FCurrFont.Position);
     end else
@@ -509,11 +602,11 @@ begin
     FCellText := '';
     InitCellFormat;
     FAttrList.Parse(ActualTag);
-    ExtractMergedRange;
-    ExtractBackgroundColor;
-    ExtractHorAlign;
-    ExtractVertAlign;
-    ExtractFont(FCellFont);
+    ReadMergedRange;
+    ReadBackgroundColor;
+    ReadHorAlign;
+    ReadVertAlign;
+    ReadFont(FCellFont);
   end else
   if ((NoCaseTag = '<TH>') or (pos('<TH ', NoCaseTag) = 1)) and FInTable then
   begin
@@ -530,7 +623,7 @@ begin
   begin
     FInA := true;
     FAttrList.Parse(ActualTag);
-    ExtractHRef;
+    ReadHRef;
   end else
   if (pos('<H', NoCaseTag) = 1) and (NoCaseTag[3] in ['1', '2', '3', '4', '5', '6']) then
   begin
@@ -579,7 +672,7 @@ procedure TsHTMLReader.TextFoundHandler(AText: String);
 begin
   if FInCell then
   begin
-    AText := CleanHTMLString(AText);
+    AText := CleanHTMLString(ConvertEncoding(AText, FEncoding, EncodingUTF8));
     if AText <> '' then
     begin
       if FCellText = '' then
