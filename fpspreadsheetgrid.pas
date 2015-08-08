@@ -1878,7 +1878,7 @@ begin
     // Because of possible cell overflow from cells left of the visible range
     // we have to seek to the left for the first occupied text cell
     // and start painting from here.
-    if FTextOverflow and (sr <> Cardinal(-1)) and Assigned(Worksheet) then
+    if FTextOverflow and (sr <> UNASSIGNED_ROW_COL_INDEX) and Assigned(Worksheet) then
       while (gc > FixedCols) do
       begin
         dec(gc);
@@ -1904,7 +1904,7 @@ begin
     // Now find the last column. Again text can overflow into the visible area
     // from cells to the right.
     gcLast := Right;
-    if FTextOverflow and (sr <> Cardinal(-1)) and Assigned(Worksheet) then
+    if FTextOverflow and (sr <> UNASSIGNED_ROW_COL_INDEX) and Assigned(Worksheet) then
     begin
       gcLastUsed := GetGridCol(scLastUsed);
       while (gcLast < ColCount-1) and (gcLast < gcLastUsed) do begin
@@ -3011,7 +3011,7 @@ end;
 function TsCustomWorksheetGrid.GetWorksheetCol(AGridCol: Integer): cardinal;
 begin
   if (FHeaderCount > 0) and (AGridCol = 0) then
-    Result := Cardinal(-1)
+    Result := UNASSIGNED_ROW_COL_INDEX
   else
     Result := AGridCol - FHeaderCount;
 end;
@@ -3027,7 +3027,7 @@ end;
 function TsCustomWorksheetGrid.GetWorksheetRow(AGridRow: Integer): Cardinal;
 begin
   if (FHeaderCount > 0) and (AGridRow = 0) then
-    Result := Cardinal(-1)
+    Result := UNASSIGNED_ROW_COL_INDEX
   else
     Result := AGridRow - FHeaderCount;
 end;

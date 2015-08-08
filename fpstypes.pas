@@ -51,6 +51,9 @@ const
   {@@ Maximum count of worksheet columns}
   MAX_COL_COUNT = 65535;
 
+  {@@ Unassigned row/col index }
+  UNASSIGNED_ROW_COL_INDEX = $FFFFFFFF;
+
   {@@ Name of the default font}
   DEFAULT_FONTNAME = 'Arial';
   {@@ Size of the default font}
@@ -426,14 +429,20 @@ type
 
   {@@ Parameter describing formatting of an text range in cell text }
   TsRichTextParam = record
+    FirstIndex: Integer;  // 1-based utf8 character index
+    FontIndex: Integer;
+    HyperlinkIndex: Integer;
+    {
     FontIndex: Integer;
     StartIndex: Integer;  // zero-based
     EndIndex: Integer;    // zero-based, next character!
+    }
   end;
 
   {@@ Parameters describing formatting of text ranges in cell text }
   TsRichTextParams = array of TsRichTextParam;
 
+  (*
   {@@ Excel rich-text formatting run }
   TsRichTextFormattingRun = packed record
     FirstIndex: Integer;
@@ -442,6 +451,7 @@ type
 
   {@@ Array of Excel rich-text formatting runs }
   TsRichTextFormattingRuns = array of TsRichTextFormattingRun;
+    *)
 
   {@@ Indicates the border for a cell. If included in the CellBorders set the
       corresponding border is drawn in the style defined by the CellBorderStyle. }

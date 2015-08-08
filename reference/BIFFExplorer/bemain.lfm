@@ -175,22 +175,22 @@ object MainForm: TMainForm
             OnSelection = HexGridSelection
             ColWidths = (
               28
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              21
-              26
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              20
+              24
             )
             Cells = (
               16
@@ -261,22 +261,22 @@ object MainForm: TMainForm
             OnClick = GridClick
             OnSelection = AlphaGridSelection
             ColWidths = (
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              17
-              18
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
+              16
             )
             Cells = (
               16
@@ -415,7 +415,6 @@ object MainForm: TMainForm
       Width = 419
       Align = alClient
       ButtonStyle = bsTriangle
-      Colors.UnfocusedColor = clMedGray
       DefaultText = 'Node'
       Header.AutoSizeIndex = 4
       Header.Columns = <      

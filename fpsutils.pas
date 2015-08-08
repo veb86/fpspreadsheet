@@ -131,6 +131,7 @@ function TintedColor(AColor: TsColor; tint: Double): TsColor;
 
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
+procedure FixLineEndings(var AText: String; var ARichTextParams: TsRichTextParams);
 function UnquoteStr(AString: String): String;
 
 function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
@@ -1663,6 +1664,34 @@ begin
     end
   else
     RemoveChars(0, coEqual);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Replaces CRLF line endings by LF (#10) alone because this is what xml returns.
+  This is required to keep the character indexes of the rich text formatting
+  runs in synch when reading xml files.
+-------------------------------------------------------------------------------}
+procedure FixLineEndings(var AText: String; var ARichTextParams: TsRichTextParams);
+var
+  i, j: Integer;
+begin
+  if AText = '' then
+    exit;
+
+  i := 1;
+  if AText[Length(AText)] = #13 then
+    Delete(AText, Length(AText), 1);
+
+  while i <= Length(AText) - 1 do
+  begin
+    if (AText[i] = #13) and (AText[i+1] = #10) then
+    begin
+      Delete(AText, i, 1);
+      for j := 0 to High(ARichTextParams) do
+        if ARichTextParams[j].FirstIndex > i then dec(ARichTextParams[j].FirstIndex);
+    end;
+    inc(i);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

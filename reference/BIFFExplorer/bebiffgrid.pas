@@ -12,6 +12,11 @@ type
 
   TBIFFDetailsEvent = procedure(Sender: TObject; ADetails: TStrings) of object;
 
+  TRichTextFormattingRun = packed record
+    FirstIndex, fontIndex: Word;
+  end;
+  TRichTextFormattingRuns = array of TRichTextFormattingRun;
+
   TBIFFGrid = class(TStringGrid)
   private
     FRecType: Word;
@@ -133,7 +138,7 @@ type
       ACharCount: Integer; out AString: String; out ANumbytes: Integer); overload;
     procedure ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
       out AString: String; out ANumBytes: Integer;
-      out ARichTextRuns: TsRichTextFormattingRuns;
+      out ARichTextRuns: TRichTextFormattingRuns;
       out ABufIndexOfFirstRichTextRun: LongWord;
       IgnoreCompressedFlag: Boolean = false); overload;
     procedure ExtractString(ABufIndex: Integer; ALenbytes: Byte; AUnicode: Boolean;
@@ -274,7 +279,7 @@ procedure TBIFFGrid.ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode:
   out AString: String; out ANumBytes: Integer;
   IgnoreCompressedFlag: Boolean = false);
 var
-  rtfRuns: TsRichTextFormattingRuns;
+  rtfRuns: TRichTextFormattingRuns;
   rtfIndex: LongWord;
 begin
   ExtractString(ABufIndex, ALenbytes, AUnicode, AString, ANumBytes,
@@ -283,7 +288,7 @@ end;
 
 procedure TBIFFGrid.ExtractString(ABufIndex: Integer; ALenBytes: Byte; AUnicode: Boolean;
   out AString: String; out ANumBytes: Integer;
-  out ARichTextRuns: TsRichTextFormattingRuns;
+  out ARichTextRuns: TRichTextFormattingRuns;
   out ABufIndexOfFirstRichTextRun: LongWord;
   IgnoreCompressedFlag: Boolean = false);
 var
@@ -1286,7 +1291,7 @@ var
   run: Integer;
   total2: Integer;
   optn: Byte;
-  rtfRuns: TsRichTextFormattingRuns;
+  rtfRuns: TRichTextFormattingRuns;
   rtfBufferIndex: LongWord;
 begin
   case FInfo of
@@ -1896,7 +1901,7 @@ var
   ansiStr: AnsiString;
   s: String;
   i, n: Integer;
-  rtfRuns: TsRichTextFormattingRuns;
+  rtfRuns: TRichTextFormattingRuns;
 begin
   BeginUpdate;
   RowCount := FixedRows + 1000;
@@ -5322,7 +5327,7 @@ var
   s: String;
   total1, total2: DWord;
   i, j, n: Integer;
-  rtfRuns: TsRichTextFormattingRuns;
+  rtfRuns: TRichTextFormattingRuns;
   rtfIndex: LongWord;
   w: Word;
 begin

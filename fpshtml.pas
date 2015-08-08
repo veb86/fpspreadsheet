@@ -1198,9 +1198,9 @@ begin
       textp := textp + '<a href="' + target + '">';
     rtParam := ACell^.RichTextParams[0];
     // Part before first formatted section (has cell fnt)
-    if rtParam.StartIndex > 0 then
+    if rtParam.FirstIndex > 1 then
     begin
-      txt := UTF8Copy(AValue, 1, rtParam.StartIndex);
+      txt := UTF8Copy(AValue, 1, rtParam.FirstIndex - 1);
       ValidXMLText(txt);
       if cellfnt.Position <> fpNormal then
         txt := Format('<%0:s>%1:s</%0:s>', [ESCAPEMENT_TAG[cellFnt.Position], txt]);
@@ -1214,31 +1214,14 @@ begin
       style := GetFontAsStyle(rtParam.FontIndex);
       if style <> '' then
         style := ' style="' + style +'"';
-      n := rtParam.EndIndex - rtParam.StartIndex;
-      txt := UTF8Copy(AValue, rtParam.StartIndex+1, n);
+      if i = High(ACell^.RichTextParams) then
+        n := len - rtParam.FirstIndex else
+        n := ACell^.RichTextParams[i+1].FirstIndex - rtParam.FirstIndex;
+      txt := UTF8Copy(AValue, rtParam.FirstIndex, n);
       ValidXMLText(txt);
       if fnt.Position <> fpNormal then
         txt := Format('<%0:s>%1:s</%0:s>', [ESCAPEMENT_TAG[fnt.Position], txt]);
       textp := textp + '<span' + style +'>' + txt + '</span>';
-      // unformatted section before end
-      if (rtParam.EndIndex < len) and (i = High(ACell^.RichTextParams)) then
-      begin
-        txt := UTF8Copy(AValue, rtParam.EndIndex+1, MaxInt);
-        ValidXMLText(txt);
-        if cellFnt.Position <> fpNormal then
-          txt := Format('<%0:s>%1:s</%0:s>', [ESCAPEMENT_TAG[cellFnt.Position], txt]);
-        textp := textp + txt;
-      end else
-      // unformatted section between two formatted sections
-      if (i < High(ACell^.RichTextParams)) and (rtParam.EndIndex < ACell^.RichTextParams[i+1].StartIndex)
-      then begin
-        n := ACell^.RichTextParams[i+1].StartIndex - rtParam.EndIndex;
-        txt := UTF8Copy(AValue, rtParam.EndIndex+1, n);
-        ValidXMLText(txt);
-        if cellFnt.Position <> fpNormal then
-          txt := Format('<%0:s>%1:s</%0:s>', [ESCAPEMENT_TAG[cellFnt.Position], txt]);
-        textp := textp + txt;
-      end;
     end;
     if target <> '' then
       textp := textp + '</a></div>' else

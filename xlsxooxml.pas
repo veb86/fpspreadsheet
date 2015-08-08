@@ -566,8 +566,6 @@ var
   numFmt: TsNumFormatParams = nil;
   ms: TMemoryStream;
   n: Integer;
-  rtp: TsRichTextParam;
-  richTextParams: TsRichTextParams;
 begin
   if ANode = nil then
     exit;
@@ -672,29 +670,15 @@ begin
   if s = 's' then begin
     // String from shared strings table
     sstIndex := StrToInt(dataStr);
-    // Standard cell, no rich-text parameters
-    if FSharedStrings.Objects[sstIndex] = nil then
-      AWorksheet.WriteUTF8Text(cell, FSharedStrings[sstIndex])
-    else
+    AWorksheet.WriteUTF8Text(cell, FSharedStrings[sstIndex]);
+    // Read rich-text parameters from the stream stored in the Objects of the stringlist
+    if FSharedStrings.Objects[sstIndex] <> nil then
     begin
-      // Read rich-text parameters from the stream stored in the Objects of the stringlist
       ms := TMemoryStream(FSharedStrings.Objects[sstIndex]);
       ms.Position := 0;
       n := ms.ReadWord;   // Count of array elements
-      SetLength(richTextParams, 0);
-      while (n > 0) do begin
-        ms.ReadBuffer(rtp, SizeOf(TsRichTextParam));
-        // Consider only those richtext parameters with font different from cell font
-        if rtp.FontIndex <> fmt.FontIndex then begin
-          SetLength(richTextParams, Length(richTextParams)+1);
-          richTextParams[High(richTextParams)] := rtp;
-        end;
-        dec(n);
-      end;
-      AWorksheet.WriteUTF8Text(cell,
-        FSharedStrings[sstIndex],
-        richTextParams
-      );
+      SetLength(cell^.RichTextParams, n);
+      ms.ReadBuffer(cell^.RichTextParams[0], n*SizeOf(TsRichTextParam));
     end;
   end else
   if (s = 'str') or (s = 'inlineStr') then
@@ -1646,43 +1630,36 @@ procedure TsSpreadOOXMLReader.ReadSharedStrings(ANode: TDOMNode);
 var
   valuenode: TDOMNode;
   childnode: TDOMNode;
+  innernode: TDOMNode;
   nodename: String;
-  s, sval: String;
-  fntIndex, startIndex, count: Integer;
-  richTextParams: TsRichTextParams;
+  totaltxt, sval: String;
+  fntIndex: Integer;
+  rtParams: TsRichTextParams;
   ms: TMemoryStream;
   fnt: TsFont;
 begin
   while Assigned(ANode) do begin
     if ANode.NodeName = 'si' then begin
-      s := '';
-      richTextParams := nil;
+      totaltxt := '';
+//      rtParams := nil;
+      SetLength(rtParams, 0);
       valuenode := ANode.FirstChild;
       while valuenode <> nil do begin
         nodename := valuenode.NodeName;
         if nodename = 't' then
-          s := GetNodeValue(valuenode)
+          // this is unformatted text
+          totaltxt := GetNodeValue(valuenode)
         else
         if nodename = 'r' then begin
+          // all rich-text formatted texts are defined by r nodes
           fntIndex := -1;
-          startIndex := -1;
-          count := -1;
           childnode := valuenode.FirstChild;
           while childnode <> nil do begin
             nodename := childnode.NodeName;
             if nodename = 't' then
             begin
-              startIndex := Length(s);
-              sval := GetNodevalue(childNode);
-              s := s + sval;
-              count := Length(sval);
-              if fntIndex <> -1 then
-              begin
-                SetLength(richTextParams, Length(richTextParams)+1);
-                richTextParams[Length(richTextParams)-1].StartIndex := startIndex;
-                richTextParams[Length(richTextParams)-1].EndIndex := startIndex + count;
-                richTextParams[Length(richTextParams)-1].FontIndex := fntIndex;
-              end;
+              sval := GetNodeValue(childNode);
+              totaltxt := totaltxt + sval;
             end
             else if nodename = 'rPr' then begin
               fntIndex := ReadFont(childnode);
@@ -1693,26 +1670,24 @@ begin
               fntIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.style, fnt.Color, fnt.Position);
               if fntIndex = -1 then
                 fntIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
-              if startIndex <> -1 then begin
-                SetLength(richTextParams, Length(richTextParams)+1);
-                richTextParams[Length(richTextParams)-1].StartIndex := startIndex;
-                richTextParams[Length(richTextParams)-1].EndIndex := startIndex + count;
-                richTextParams[Length(richTextParams)-1].FontIndex := fntIndex;
-              end;
+              SetLength(rtParams, Length(rtParams)+1);
+              rtParams[High(rtParams)].FirstIndex := UTF8Length(totaltxt) + 1;
+              rtParams[High(rtParams)].FontIndex := fntIndex;
+              rtParams[High(rtParams)].HyperlinkIndex := -1;
             end;
             childnode := childnode.NextSibling;
           end;
         end;
         valuenode := valuenode.NextSibling;
       end;
-      if Length(richTextParams) = 0 then
-        FSharedStrings.Add(s)
+      if Length(rtParams) = 0 then
+        FSharedStrings.Add(totaltxt)
       else
       begin
         ms := TMemoryStream.Create;
-        ms.WriteWord(Length(richTextParams));
-        ms.WriteBuffer(richTextParams[0], SizeOf(TsRichTextParam)*Length(richTextParams));
-        FSharedStrings.AddObject(s, ms);
+        ms.WriteWord(Length(rtParams));
+        ms.WriteBuffer(rtParams[0], SizeOf(TsRichTextParam)*Length(rtParams));
+        FSharedStrings.AddObject(totaltxt, ms);
       end;
     end;
     ANode := ANode.NextSibling;
@@ -2318,19 +2293,6 @@ begin
       end;
     end;
   end;
-
-  {
-  // Index 1 is also pre-defined (gray 25%)
-  for i:=2 to High(FFillList) do begin
-    fmt := FFillList[i];
-    if (fmt <> nil) and (uffBackgroundColor in fmt^.UsedFormattingFields) then
-      if (AFormat^.BackgroundColor = fmt^.BackgroundColor) then
-      begin
-        Result := i;
-        exit;
-      end;
-  end;
-   }
 
    // Not found --> return -1
   Result := -1;
@@ -3852,6 +3814,7 @@ var
   CellValueText: String;
   lStyleIndex: Integer;
 begin
+  Unused(AValue);
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
   CellValueText := GetErrorValueStr(ACell^.ErrorValue);
@@ -3934,9 +3897,7 @@ var
   lStyleIndex: Cardinal;
   ResultingValue: string;
   fnt: TsFont;
-  n: Integer;
-  i: Integer;
-  L: Integer;
+  i, n, L: Integer;
   rtParam: TsRichTextParam;
   txt: String;
 begin
@@ -3951,6 +3912,7 @@ begin
   else
     ResultingValue := AValue;
 
+  { Check for invalid characters }
   txt := ResultingValue;
   if not ValidXMLText(txt) then
     Workbook.AddErrorMsg(
@@ -3959,7 +3921,6 @@ begin
     ]);
 
   { Write string to SharedString table }
-
   if Length(ACell^.RichTextParams) = 0 then
     // unformatted string
     AppendToStream(FSSharedStrings,
@@ -3969,13 +3930,15 @@ begin
   else
   begin
     // rich-text formatted string
+    FixLineEndings(ResultingValue, ACell^.RichTextParams);
     L := UTF8Length(Resultingvalue);
     AppendToStream(FSSharedStrings,
       '<si>');
     rtParam := ACell^.RichTextParams[0];
-    if rtParam.StartIndex > 0 then
+    if rtParam.FirstIndex > 1 then
     begin
-      txt := UTF8Copy(ResultingValue, 1, rtParam.StartIndex);
+      // Unformatted part before first format
+      txt := UTF8Copy(ResultingValue, 1, rtParam.FirstIndex - 1);
       ValidXMLText(txt);
       AppendToStream(FSSharedStrings,
         '<r>' +
@@ -3987,8 +3950,12 @@ begin
     begin
       rtParam := ACell^.RichTextParams[i];
       fnt := FWorkbook.GetFont(rtParam.FontIndex);
-      n := rtParam.EndIndex - rtParam.StartIndex;
-      txt := UTF8Copy(Resultingvalue, rtParam.StartIndex+1, n);
+      // Calculate count of characters in this format section
+      if i = High(ACell^.RichTextParams) then
+        n := L - rtParam.FirstIndex + 1 else
+        n := ACell^.RichTextParams[i+1].FirstIndex - rtParam.FirstIndex;
+      // Partial string having this format
+      txt := UTF8Copy(Resultingvalue, rtParam.FirstIndex, n);
       ValidXMLText(txt);
       AppendToStream(FSSharedStrings,
         '<r>');
@@ -3997,34 +3964,12 @@ begin
           '<t xml:space="preserve">' + txt + '</t>' +
         '</r>'
       );
-      if (rtParam.EndIndex < L) and (i = High(ACell^.RichTextParams)) then
-      begin
-        txt := UTF8Copy(ResultingValue, rtParam.EndIndex+1, MaxInt);
-        ValidXMLText(txt);
-        AppendToStream(FSSharedStrings,
-          '<r>' +
-            '<t xml:space="preserve">' + txt + '</t>' +
-          '</r>'
-        )
-      end else
-      if (i < High(ACell^.RichTextParams)) and (rtParam.EndIndex < ACell^.RichTextParams[i+1].StartIndex)
-      then begin
-        n := ACell^.RichTextParams[i+1].StartIndex - rtParam.EndIndex;
-        txt := UTF8Copy(Resultingvalue, rtParam.EndIndex+1, n);
-        ValidXMLText(txt);
-        AppendToStream(FSSharedStrings,
-          '<r>' +
-            '<t xml:space="preserve">' + txt + '</t>' +
-          '</r>'
-        );
-      end;
     end;
     AppendToStream(FSSharedStrings,
       '</si>');
   end;
 
   { Write shared string index to cell record }
-
   CellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
   AppendToStream(AStream, Format(

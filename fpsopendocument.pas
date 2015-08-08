@@ -2261,12 +2261,12 @@ begin
                 if idx > -1 then
                 begin
                   SetLength(rtParams, Length(rtParams)+1);
+                  rtParams[High(rtParams)].FirstIndex := UTF8Length(cellText) + 1;  // 1-based character index
                   rtParams[High(rtParams)].FontIndex := FCellFormatList[idx]^.FontIndex;
-                  rtParams[High(rtParams)].StartIndex := Length(cellText);
-                  rtParams[High(rtParams)].EndIndex := Length(cellText + spanText);
+                  rtParams[High(rtParams)].HyperlinkIndex := -1;  // TO DO !!!!
                 end;
               end;
-              AddToCelLText(spanText);
+              AddToCellText(spanText);
             end;
         end;
         subnode := subnode.NextSibling;
@@ -5644,7 +5644,7 @@ var
   fntName: String;
   hyperlink: PsHyperlink;
   u: TUri;
-  i, idx, fntidx, len: Integer;
+  i, idx, endidx, fntidx, len: Integer;
   rtParam: TsRichTextParam;
   wideStr, txt: WideString;
   ch: WideChar;
@@ -5750,16 +5750,16 @@ begin
     else
     begin
       // "Rich-text" formatting
-      wideStr := UTF8Encode(AValue);  // Convert to unicode
-      // Before the first formatted section which has the cell's format
+      wideStr := UTF8Decode(AValue);  // Convert to unicode
+      // Before the first formatted section having the cell's format
       len := Length(wideStr);
       totaltxt := '<text:p>';
       rtParam := ACell^.RichTextParams[0];
       idx := 1;
       txt := '';
-      if rtParam.StartIndex > 0 then
+      if rtParam.FirstIndex > 1 then
       begin
-        while (idx <= len) and (idx <= rtParam.StartIndex) do
+        while (idx <= len) and (idx < rtParam.FirstIndex) do
         begin
           ch := wideStr[idx];
           if NewLine(idx) then
@@ -5770,17 +5770,19 @@ begin
         end;
         if txt <> '' then
           AppendTxt(false, '');
-//          totaltxt := totaltxt + UTF8Encode(txt);
       end;
       txt := '';
       for i := 0 to High(ACell^.RichTextParams) do
       begin
-        // Formatted part of the string according the RichTextParam
+        // Formatted parts of the string according the RichTextParams
         rtParam := ACell^.RichTextParams[i];
         fnt := FWorkbook.GetFont(rtParam.FontIndex);
         fntidx := FRichTextFontList.IndexOfObject(fnt);
         fntName := FRichTextFontList[fntIdx];
-        while (idx <= len) and (idx <= rtParam.EndIndex) do
+        if i < High(ACell^.RichTextParams) then
+          endidx := ACell^.RichTextParams[i+1].FirstIndex-1 else
+          endidx := len;
+        while (idx <= len) and (idx <= endidx) do
         begin
           ch := wideStr[idx];
           if NewLine(idx) then
@@ -5791,36 +5793,6 @@ begin
         end;
         if txt <> '' then
           AppendTxt(false, fntName);
-        // Unformatted part at end of string (cell's format)
-        if (rtParam.EndIndex < len) and (i = High(ACell^.RichTextParams)) then
-        begin
-          while (idx <= len) do
-          begin
-            ch := wideStr[idx];
-            if NewLine(idx) then
-              AppendTxt(true, '')
-            else
-              txt := txt + ch;
-            inc(idx);
-          end;
-          if txt <> '' then
-            AppendTxt(false, '');
-        end
-        else
-        // Unformatted part between formatted parts (cll's format)
-        if (i < High(ACell^.RichTextParams)) and (rtParam.EndIndex < ACell^.RichTextParams[i+1].StartIndex)
-        then begin
-          while (idx <= len) and (idx <= ACell^.RichTextParams[i+1].StartIndex) do begin
-            ch := wideStr[idx];
-            if NewLine(idx) then
-              AppendTxt(true, '')
-            else
-              txt := txt + ch;
-            inc(idx);
-          end;
-          if txt <> '' then
-            AppendTxt(false, '');
-        end;
       end;
       totaltxt := totaltxt + '</text:p>';
     end;

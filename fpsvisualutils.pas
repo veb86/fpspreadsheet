@@ -176,129 +176,120 @@ procedure InternalDrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook;
   const ARect: TRect; const AText: String; AFontIndex: Integer;
   ARichTextParams: TsRichTextParams; AWordwrap: Boolean;
   AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
-  ARotation: TsTextRotation; AOverrideTextColor: TColor;
-  var Width,Height: Integer; AMeasureOnly: Boolean);
+  ARotation: TsTextRotation; AOverrideTextColor: TColor; AMeasureOnly: Boolean;
+  var AWidth, AHeight: Integer);
 type
   TLineInfo = record
     pStart, pEnd: PChar;
     NumSpaces: Integer;
-    FirstRtpIndex: Integer;
-    NextRtpIndex: Integer;
+    BeginsWithFontOfRtpIndex: Integer;
     Width: Integer;
     Height: Integer;
   end;
-  TRtState = (rtEnter, rtExit);
 var
   xpos, ypos: Integer;
   p, pStartText: PChar;
-  iRtp: Integer;
+  rtpIndex: Integer;
   lineInfo: TLineInfo;
   lineInfos: Array of TLineInfo = nil;
   totalHeight, linelen, stackPeriod: Integer;
+  charPos: Integer;
+  fontpos: TsFontPosition;
+  fontHeight: Integer;
 
-  procedure InitFont(P: PChar; out rtState: TRtState;
-    PendingRtpIndex: Integer; out AHeight: Integer; out AFontPos: TsFontPosition);
+  procedure InitFont(out ARtpFontIndex: Integer; out AFontHeight: Integer;
+    out AFontPos: TsFontPosition);
   var
     fnt: TsFont;
-    hasRtp: Boolean;
-    rtp: TsRichTextParam;
+    rtParam: TsRichTextParam;
   begin
-    fnt := AWorkbook.GetFont(AFontIndex);
-    hasRtp := PendingRtpIndex >= 0;
-    if hasRTP and (PendingRtpIndex < Length(ARichTextParams)) then begin
-      rtp := ARichTextParams[PendingRtpIndex];
-      if p - pStartText >= rtp.StartIndex then
-      begin
-        fnt := AWorkbook.GetFont(rtp.FontIndex);
-        rtState := rtEnter;
-      end else
-        rtState := rtExit;
+    if (Length(ARichTextParams) > 0) and (charPos >= ARichTextParams[0].FirstIndex) then
+    begin
+      ARtpFontIndex := 0;
+      fnt := AWorkbook.GetFont(ARichTextParams[0].FontIndex);
+    end else
+    begin
+      ARtpFontIndex := -1;
+      fnt := AWorkbook.GetFont(AFontIndex);
     end;
     Convert_sFont_to_Font(fnt, ACanvas.Font);
-    AHeight := ACanvas.TextHeight('Tg');
+    AFontHeight := ACanvas.TextHeight('Tg');
     if (fnt <> nil) and (fnt.Position <> fpNormal) then
       ACanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
     AFontPos := fnt.Position;
   end;
 
-  procedure UpdateFont(P:PChar; var rtState: TRtState;
-    var PendingRtpIndex: Integer; var AHeight: Integer;
-    var AFontPos: TsFontPosition);
+  procedure UpdateFont(ACharPos: Integer; var ARtpFontIndex: Integer;
+    var AFontHeight: Integer; var AFontPos: TsFontPosition);
   var
-    hasRtp: Boolean;
-    rtp: TsRichTextParam;
+    rtParam: TsRichTextParam;
     fnt: TsFont;
+    endPos: Integer;
   begin
-    fnt := AWorkbook.GetFont(AFontIndex);
-    hasRtp := PendingRtpIndex >= 0;
-    if hasRtp and (PendingRtpIndex < Length(ARichTextParams)) then
-    begin
-      rtp := ARichTextParams[PendingRtpIndex];
-      if (p - pStartText >= rtp.StartIndex) and (rtState = rtExit) then
-      begin
-        fnt := AWorkbook.GetFont(rtp.FontIndex);
-        Convert_sFont_to_Font(fnt, ACanvas.Font);
-        AHeight := ACanvas.TextHeight('Tg');
-        if fnt.Position <> fpNormal then
-          ACanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
-        AFontPos := fnt.Position;
-        rtState := rtEnter;
-      end else
-      if (p - pStartText >= rtp.EndIndex) and (rtState = rtEnter) then
-      begin
-        inc(PendingRtpIndex);
-        if PendingRtpIndex = Length(ARichTextparams) then
-        begin
-          fnt := AWorkbook.GetFont(AFontIndex);
-          rtState := rtExit;
-        end else
-        begin
-          rtp := ARichTextParams[PendingRtpIndex];
-          if (p - pStartText < rtp.StartIndex) then
-          begin
-            fnt := AWorkbook.GetFont(AFontIndex);
-            rtState := rtExit;
-          end else
-          begin
-            fnt := AWorkbook.GetFont(rtp.FontIndex);
-            rtState := rtEnter;
-          end;
-        end;
-        Convert_sFont_to_Font(fnt, ACanvas.Font);
-        AHeight := ACanvas.TextHeight('Tg');
-        if fnt.Position <> fpNormal then
-          ACanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
-        AFontPos := fnt.Position;
-      end;
+    if ARtpFontIndex = High(ARichTextParams) then
+      endPos := MaxInt
+    else begin
+      rtParam := ARichTextParams[ARtpFontIndex + 1];
+      endPos := rtParam.FirstIndex;
+    end;
+
+    if ACharPos >= endPos then begin
+      inc(ARtpFontIndex);
+      rtParam := ARichTextParams[ARtpFontIndex];
+      fnt := AWorkbook.GetFont(rtParam.FontIndex);
+      Convert_sFont_to_Font(fnt, ACanvas.Font);
+      AFontHeight := ACanvas.TextHeight('Tg');
+      if fnt.Position <> fpNormal then
+        ACanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
+      AFontPos := fnt.Position;
     end;
   end;
 
+  { Scans the line for a possible line break. The max width is determined by
+    the size of the rectangle ARect passed to the outer procedure:
+    rectangle width in case of horizontal painting, rectangle height in case
+    of vertical painting. Line breaks can occure at spaces or cr/lf characters,
+    or, if not found, at any character reaching the max width.
+
+    Parameters:
+
+    P              defines where the scan starts. At the end of the routine it
+                   points to the first character of the next line.
+    ANumSpaces     is how many spaces were found between the start and end value
+                   of P.
+    ARtpFontIndex  At input, this is the index of the rich-text formatting
+                   parameter value used for the font at line start. At output,
+                   it is the index which will be valid at next line start.
+    ALineWidth     the pixel width of the line seen along drawing direction, i.e.
+                   in case of stacked text it is the character height times
+                   character count in the line (!)
+    ALineHeight    The height of the line as seen vertical to the drawing
+                   direction. Normally this is the height of the largest font
+                   found in the line; in case of stacked text it is the
+                   standardized width of a character. }
   procedure ScanLine(var P: PChar; var NumSpaces: Integer;
-    var PendingRtpIndex: Integer; var width, height: Integer);
+    var ARtpFontIndex: Integer; var ALineWidth, ALineHeight: Integer);
   var
     pEOL: PChar;
     savedSpaces: Integer;
     savedWidth: Integer;
     savedRtpIndex: Integer;
     maxWidth: Integer;
-    rtState: TRtState;
-    dw, h: Integer;
-    fntpos: TsFontPosition;
+    dw: Integer;
     spaceFound: Boolean;
     s: utf8String;
-    charLen: Integer;
+    charLen: Integer;    // Number of bytes of current utf8 character
   begin
     NumSpaces := 0;
 
-    InitFont(p, rtState, PendingRtpIndex, h, fntpos);
-    height := h;
-
-    pEOL := p;
-    width := 0;
+    ALineHeight := fontHeight;
+    ALineWidth := 0;
     savedWidth := 0;
     savedSpaces := 0;
-    savedRtpIndex := PendingRtpIndex;
+    savedRtpIndex := ARtpFontIndex;
     spaceFound := false;
+    pEOL := p;
+
     if AWordwrap then
     begin
       if ARotation = trHorizontal then
@@ -310,48 +301,55 @@ var
       maxWidth := MaxInt;
 
     while p^ <> #0 do begin
-      UpdateFont(p, rtState, PendingRtpIndex, h, fntpos);
-      if h > height then height := h;
+      UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
+      ALineHeight := Max(fontHeight, ALineHeight);
 
       s := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
       case p^ of
         ' ': begin
                spaceFound := true;
                pEOL := p;
-               savedWidth := width;
+               savedWidth := ALineWidth;
                savedSpaces := NumSpaces;
-               savedRtpIndex := PendingRtpIndex;
-               dw := Math.IfThen(ARotation = rtStacked, h, ACanvas.TextWidth(s));
-               if width + dw < MaxWidth then
+               savedRtpIndex := ARtpFontIndex;
+               dw := Math.IfThen(ARotation = rtStacked, fontHeight, ACanvas.TextWidth(s));
+               if ALineWidth + dw < MaxWidth then
                begin
                  inc(NumSpaces);
-                 width := width + dw;
+                 ALineWidth := ALineWidth + dw;
                end else
                  break;
              end;
-        #13,
+        #13: begin
+               inc(p);
+               inc(charPos);
+               if p^ = #10 then
+               begin
+                 inc(p);
+                 inc(charPos);
+               end;
+               break;
+             end;
         #10: begin
-             //  dec(p);
-               //width := savedWidth;
-               //numSpaces := savedspaces;
-               //PendingRtpIndex := savedRtpIndex;
-               exit;
+               inc(p);
+               inc(charPos);
+               break;
              end;
         else begin
-               dw := Math.IfThen(ARotation = rtStacked, h, ACanvas.TextWidth(s));
-               width := width + dw;
-               if width > maxWidth then
+               dw := Math.IfThen(ARotation = rtStacked, fontHeight, ACanvas.TextWidth(s));
+               ALineWidth := ALineWidth + dw;
+               if ALineWidth > maxWidth then
                begin
                  if spaceFound then
                  begin
                    p := pEOL;
-                   width := savedWidth;
+                   ALineWidth := savedWidth;
                    NumSpaces := savedSpaces;
-                   PendingRtpIndex := savedRtpIndex;
+                   ARtpFontIndex := savedRtpIndex;
                  end else
                  begin
-                   width := width - dw;
-                   if width = 0 then
+                   ALineWidth := ALineWidth - dw;
+                   if ALineWidth = 0 then
                      inc(p);
                  end;
                  break;
@@ -360,53 +358,76 @@ var
       end;
 
       inc(p, charLen);
+      inc(charPos);
     end;
+    UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
   end;
 
-  procedure DrawLine(pStart, pEnd: PChar; x,y, hLine: Integer; PendingRtpIndex: Integer);
+  { Paints the text between the pointers pStart and pEnd.
+    Starting point for the text location is given by the coordinates x/y, i.e.
+    text alignment is already corrected. In case of sub/superscripts, the
+    characters reduced in size are shifted vertical to drawing direction by a
+    fraction of the line height (ALineHeight).
+    ARtpFontIndex is the index of the rich-text formatting param used to at line
+    start for font selection; it will advance automatically along the line }
+  procedure DrawLine(pStart, pEnd: PChar; x,y, ALineHeight: Integer;
+    ARtpFontIndex: Integer);
   var
     p: PChar;
-    rtState: TRtState;
-    h, w: Integer;
-    fntpos: TsFontPosition = fpNormal;
+    w: Integer;
     s: utf8String;
     charLen: Integer;
   begin
     p := pStart;
-    InitFont(p, rtState, PendingRtpIndex, h, fntpos);
     while p^ <> #0 do begin
       s := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
-      UpdateFont(p, rtState, PendingRtpIndex, h, fntpos);
+      UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
       if AOverrideTextColor <> clNone then
         ACanvas.Font.Color := AOverrideTextColor;
+      case p^ of
+        #10: begin
+               inc(p);
+               inc(charPos);
+               break;
+             end;
+        #13: begin
+               inc(p);
+               inc(charPos);
+               if p^ = #10 then begin
+                 inc(p);
+                 inc(charpos);
+               end;
+               break;
+             end;
+      end;
       case ARotation of
         trHorizontal:
           begin
             ACanvas.Font.Orientation := 0;
-            case fntpos of
+            case fontpos of
               fpNormal     : ACanvas.TextOut(x, y, s);
-              fpSubscript  : ACanvas.TextOut(x, y + hLine div 2, s);
-              fpSuperscript: ACanvas.TextOut(x, y - hLine div 6, s);
+              fpSubscript  : ACanvas.TextOut(x, y + ALineHeight div 2, s);
+              fpSuperscript: ACanvas.TextOut(x, y - ALineHeight div 6, s);
             end;
             inc(x, ACanvas.TextWidth(s));
           end;
         rt90DegreeClockwiseRotation:
           begin
             ACanvas.Font.Orientation := -900;
-            case fntpos of
+            case fontpos of
               fpNormal     : ACanvas.TextOut(x, y, s);
-              fpSubscript  : ACanvas.TextOut(x - hLine div 2, y, s);
-              fpSuperscript: ACanvas.TextOut(x + hLine div 6, y, s);
+              fpSubscript  : ACanvas.TextOut(x - ALineHeight div 2, y, s);
+              fpSuperscript: ACanvas.TextOut(x + ALineHeight div 6, y, s);
             end;
             inc(y, ACanvas.TextWidth(s));
           end;
         rt90DegreeCounterClockwiseRotation:
           begin
             ACanvas.Font.Orientation := +900;
-            case fntpos of
+            case fontpos of
               fpNormal     : ACanvas.TextOut(x, y, s);
-              fpSubscript  : ACanvas.TextOut(x + hLine div 2, y, s);
-              fpSuperscript: ACanvas.TextOut(x - hLine div 6, y, s);
+              fpSubscript  : ACanvas.TextOut(x + ALineHeight div 2, y, s);
+              fpSuperscript: ACanvas.TextOut(x - ALineHeight div 6, y, s);
             end;
             dec(y, ACanvas.TextWidth(s));
           end;
@@ -415,18 +436,20 @@ var
             ACanvas.Font.Orientation := 0;
             w := ACanvas.TextWidth(s);
             // chars centered around x
-            case fntpos of
+            case fontpos of
               fpNormal     : ACanvas.TextOut(x - w div 2, y, s);
-              fpSubscript  : ACanvas.TextOut(x - w div 2, y + hLine div 2, s);
-              fpSuperscript: ACanvas.TextOut(x - w div 2, y - hLine div 6, s);
+              fpSubscript  : ACanvas.TextOut(x - w div 2, y + ALineHeight div 2, s);
+              fpSuperscript: ACanvas.TextOut(x - w div 2, y - ALineHeight div 6, s);
             end;
-            inc(y, h);
+            inc(y, fontHeight);
           end;
       end;
 
       inc(P, charLen);
+      inc(charPos);
       if P >= PEnd then break;
     end;
+    UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
   end;
 
 begin
@@ -435,56 +458,50 @@ begin
 
   p := PChar(AText);
   pStartText := p;   // first char of text
-
-  if (Length(ARichTextParams) > 0) then
-    iRTP := 0
-  else
-    iRtp := -1;
+  charPos := 1;      // Counter for utf8 character position
   totalHeight := 0;
   linelen := 0;
 
   Convert_sFont_to_Font(AWorkbook.GetFont(AFontIndex), ACanvas.Font);
-
   if ARotation = rtStacked then
     stackPeriod := ACanvas.TextWidth('M') * 2;
 
-  // Get layout of lines:
-  // "lineinfos" collect data on where lines start and end, their width and
+  // (1) Get layout of lines
+  //  ======================
+  // "lineinfos" collect data for where lines start and end, their width and
   // height, the rich-text parameter index range, and the number of spaces
   // (for text justification)
+  InitFont(rtpIndex, fontheight, fontpos);
   repeat
     SetLength(lineInfos, Length(lineInfos)+1);
     with lineInfos[High(lineInfos)] do begin
       pStart := p;
       pEnd := p;
-      FirstRtpIndex := iRtp;
-      NextRtpIndex := iRtp;
-      ScanLine(pEnd, NumSpaces, NextRtpIndex, Width, Height);
+      BeginsWithFontOfRtpIndex := rtpIndex;
+      ScanLine(pEnd, NumSpaces, rtpIndex, Width, Height);
       totalHeight := totalHeight + Height;
       linelen := Max(linelen, Width);
-      iRtp := NextRtpIndex;
       p := pEnd;
-      case p^ of
-        ' ': while (p^ <> #0) and (p^ = ' ') do inc(p);
-        #13: begin
-               inc(p);
-               if p^ = #10 then inc(p);
-             end;
-        #10: inc(p);
-      end;
+      if p^ = ' ' then
+        while (p^ <> #0) and (p^ = ' ') do begin
+          inc(p);
+          inc(charPos);
+        end;
     end;
   until p^ = #0;
 
-  Width := linelen;
+  AWidth := linelen;
   if ARotation = rtStacked then
-    Height := Length(lineinfos) * stackperiod
+    AHeight := Length(lineinfos) * stackperiod  // to be understood horizontally
   else
-    Height := totalHeight;
+    AHeight := totalHeight;
   if AMeasureOnly then
     exit;
 
-  // Draw lines
-  // 1/ get starting point of line
+  // (2) Draw lines
+  // ==============
+  // 2a) get starting point of line
+  // ------------------------------
   case ARotation of
     trHorizontal:
       case AVertAlignment of
@@ -515,7 +532,10 @@ begin
       end;
   end;
 
-  // 2/ Draw line by line and respect text rotation
+  // (2b) Draw line by line and respect text rotation
+  // ------------------------------------------------
+  charPos := 1;      // Counter for utf8 character position
+  InitFont(rtpIndex, fontheight, fontpos);
   for lineInfo in lineInfos do begin
     with lineInfo do
     begin
@@ -528,7 +548,7 @@ begin
               haRight  : xpos := ARect.Right - Width;
               haCenter : xpos := (ARect.Left + ARect.Right - Width) div 2;
             end;
-            DrawLine(pStart, pEnd, xpos, ypos, Height, FirstRtpIndex);
+            DrawLine(pStart, pEnd, xpos, ypos, Height, BeginsWithFontOfRtpIndex);
             inc(ypos, Height);
           end;
         rt90DegreeClockwiseRotation:
@@ -538,7 +558,7 @@ begin
               vaBottom : ypos := ARect.Bottom - Width;
               vaCenter : ypos := (ARect.Top + ARect.Bottom - Width) div 2;
             end;
-            DrawLine(pStart, pEnd, xpos, ypos, Height, FirstRtpIndex);
+            DrawLine(pStart, pEnd, xpos, ypos, Height, BeginsWithFontOfRtpIndex);
             dec(xpos, Height);
           end;
         rt90DegreeCounterClockwiseRotation:
@@ -548,7 +568,7 @@ begin
               vaBottom : ypos := ARect.Bottom;
               vaCenter : ypos := (ARect.Top + ARect.Bottom + Width) div 2;
             end;
-            DrawLine(pStart, pEnd, xpos, ypos, Height, FirstRtpIndex);
+            DrawLine(pStart, pEnd, xpos, ypos, Height, BeginsWithFontOfRtpIndex);
             inc(xpos, Height);
           end;
         rtStacked:
@@ -558,7 +578,7 @@ begin
               vaBottom : ypos := ARect.Bottom - Width;
               vaCenter : ypos := (ARect.Top + ARect.Bottom - Width) div 2;
             end;
-            DrawLine(pStart, pEnd, xpos, ypos, Height, FirstRtpIndex);
+            DrawLine(pStart, pEnd, xpos, ypos, Height, BeginsWithFontOfRtpIndex);
             inc(xpos, stackPeriod);
           end;
       end;
@@ -575,7 +595,7 @@ var
 begin
   InternalDrawRichText(ACanvas, AWorkbook, ARect, AText, AFontIndex,
     ARichTextParams, AWordWrap, AHorAlignment, AVertAlignment, ARotation,
-    AOverrideTextColor, w, h, false);
+    AOverrideTextColor, false, w, h);
 end;
 
 function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; AMaxRect: TRect;
@@ -585,8 +605,8 @@ var
   h, w: Integer;
 begin
   InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
-    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone,
-    w, h, true);
+    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone, true,
+    w, h);
   case ATextRotation of
     trHorizontal, rtStacked:
       Result := w;
@@ -602,8 +622,8 @@ var
   h, w: Integer;
 begin
   InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
-    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone,
-    w, h, true);
+    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone, true,
+    w, h);
   case ATextRotation of
     trHorizontal:
       Result := h;

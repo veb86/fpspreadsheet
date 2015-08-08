@@ -442,7 +442,8 @@ type
 
     // Searching
     function Search(ASearchText: String; AOptions: TsSearchOptions;
-      AStartRow: Cardinal = $FFFFFFFF; AStartCol: Cardinal = $FFFFFFFF): PCell;
+      AStartRow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+      AStartCol: Cardinal = UNASSIGNED_ROW_COL_INDEX): PCell;
 
     // Comments
     function FindComment(ACell: PCell): PsComment;
@@ -725,8 +726,8 @@ type
 
     { Searching }
     function Search(ASearchText: String; AOptions: TsSearchOptions;
-      AStartSheet: TsWorksheet = nil; AStartRow: Cardinal = $FFFFFFFF;
-      AStartCol: Cardinal = $FFFFFFFF): PCell;
+      AStartSheet: TsWorksheet = nil; AStartRow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+      AStartCol: Cardinal = UNASSIGNED_ROW_COL_INDEX): PCell;
 
     { Utilities }
     procedure UpdateCaches;
@@ -954,13 +955,13 @@ begin
   FDefaultColWidth := 12;
   FDefaultRowHeight := 1;
 
-  FFirstRowIndex := $FFFFFFFF;
-  FFirstColIndex := $FFFFFFFF;
-  FLastRowIndex := $FFFFFFFF;
-  FLastColIndex := $FFFFFFFF;
+  FFirstRowIndex := UNASSIGNED_ROW_COL_INDEX;
+  FFirstColIndex := UNASSIGNED_ROW_COL_INDEX;
+  FLastRowIndex := UNASSIGNED_ROW_COL_INDEX;
+  FLastColIndex := UNASSIGNED_ROW_COL_INDEX;
 
-  FActiveCellRow := Cardinal(-1);
-  FActiveCellCol := Cardinal(-1);
+  FActiveCellRow := UNASSIGNED_ROW_COL_INDEX;  // Cardinal(-1);
+  FActiveCellCol := UNASSIGNED_ROW_COL_INDEX;  // Cardinal(-1);
 
   FOptions := [soShowGridLines, soShowHeaders];
 end;
@@ -1916,14 +1917,22 @@ end;
 function TsWorksheet.AddCell(ARow, ACol: Cardinal): PCell;
 begin
   Result := Cells.AddCell(ARow, ACol);
-  if FFirstColIndex = $FFFFFFFF then FFirstColIndex := GetFirstColIndex(true)
-    else FFirstColIndex := Min(FFirstColIndex, ACol);
-  if FFirstRowIndex = $FFFFFFFF then FFirstRowIndex := GetFirstRowIndex(true)
-    else FFirstRowIndex := Min(FFirstRowIndex, ARow);
-  if FLastColIndex = $FFFFFFFF then FLastColIndex := GetLastColIndex(true)
-    else FLastColIndex := Max(FLastColIndex, ACol);
-  if FLastRowIndex = $FFFFFFFF then FLastRowIndex := GetLastRowIndex(true)
-    else FLastRowIndex := Max(FLastRowIndex, ARow);
+
+  if FFirstColIndex = UNASSIGNED_ROW_COL_INDEX then
+    FFirstColIndex := GetFirstColIndex(true) else
+    FFirstColIndex := Min(FFirstColIndex, ACol);
+
+  if FFirstRowIndex = UNASSIGNED_ROW_COL_INDEX then
+    FFirstRowIndex := GetFirstRowIndex(true) else
+    FFirstRowIndex := Min(FFirstRowIndex, ARow);
+
+  if FLastColIndex = UNASSIGNED_ROW_COL_INDEX then
+    FLastColIndex := GetLastColIndex(true) else
+    FLastColIndex := Max(FLastColIndex, ACol);
+
+  if FLastRowIndex = UNASSIGNED_ROW_COL_INDEX then
+    FLastRowIndex := GetLastRowIndex(true) else
+    FLastRowIndex := Max(FLastRowIndex, ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2160,7 +2169,7 @@ var
 begin
   if AForceCalculation then
   begin
-    Result := Cardinal(-1);
+    Result := UNASSIGNED_ROW_COL_INDEX;
     for cell in FCells do
       Result := Math.Min(Result, cell^.Col);
     // In addition, there may be column records defining the column width even
@@ -2174,7 +2183,7 @@ begin
   else
   begin
     Result := FFirstColIndex;
-    if Result = cardinal(-1) then
+    if Result = UNASSIGNED_ROW_COL_INDEX then
       Result := GetFirstColIndex(true);
   end;
 end;
@@ -2200,7 +2209,7 @@ function TsWorksheet.GetLastColIndex(AForceCalculation: Boolean = false): Cardin
 var
   i: Integer;
 begin
-  if AForceCalculation or (FLastColIndex = $FFFFFFFF) then
+  if AForceCalculation or (FLastColIndex = UNASSIGNED_ROW_COL_INDEX) then
   begin
     // Traverse the tree from lowest to highest.
     // Since tree primary sort order is on row highest col could exist anywhere.
@@ -2265,7 +2274,7 @@ var
 begin
   if AForceCalculation then
   begin
-    Result := $FFFFFFFF;
+    Result := UNASSIGNED_ROW_COL_INDEX;
     cell := FCells.GetFirstCell;
     if cell <> nil then Result := cell^.Row;
     // In addition, there may be row records even for rows without cells.
@@ -2278,7 +2287,7 @@ begin
   else
   begin
     Result := FFirstRowIndex;
-    if Result = Cardinal(-1) then
+    if Result = UNASSIGNED_ROW_COL_INDEX then
       Result := GetFirstRowIndex(true);
   end;
 end;
@@ -2303,7 +2312,7 @@ function TsWorksheet.GetLastRowIndex(AForceCalculation: Boolean = false): Cardin
 var
   i: Integer;
 begin
-  if AForceCalculation or (FLastRowIndex = $FFFFFFFF) then
+  if AForceCalculation or (FLastRowIndex = UNASSIGNED_ROW_COL_INDEX) then
   begin
     // Index of highest row with at least one existing cell
     Result := GetLastOccupiedRowIndex;
@@ -3542,7 +3551,8 @@ end;
   first cell meeting the criteria.
 -------------------------------------------------------------------------------}
 function TsWorksheet.Search(ASearchText: String; AOptions: TsSearchOptions;
-  AStartRow: Cardinal = $FFFFFFFF; AStartCol: Cardinal = $FFFFFFFF): PCell;
+  AStartRow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+  AStartCol: Cardinal = UNASSIGNED_ROW_COL_INDEX): PCell;
 var
   regex: TRegExpr;
   cell, startCell: PCell;
@@ -3577,12 +3587,12 @@ begin
   // Find first occupied cell to start with
   if (soBackward in AOptions) then
   begin
-    if AStartRow = $FFFFFFFF then AStartRow := lastR;
-    if AStartCol = $FFFFFFFF then AStartCol := lastC;
+    if AStartRow = UNASSIGNED_ROW_COL_INDEX then AStartRow := lastR;
+    if AStartCol = UNASSIGNED_ROW_COL_INDEX then AStartCol := lastC;
   end else
   begin
-    if AStartRow = $FFFFFFFF then AStartRow := firstR;
-    if AStartCol = $FFFFFFFF then AStartCol := firstC;
+    if AStartRow = UNASSIGNED_ROW_COL_INDEX then AStartRow := firstR;
+    if AStartCol = UNASSIGNED_ROW_COL_INDEX then AStartCol := firstC;
   end;
   startcell := FindCell(AStartRow, AStartCol);
   if startcell = nil then
@@ -3805,11 +3815,10 @@ begin
   ACell^.ContentType := cctUTF8String;
   ACell^.UTF8StringValue := AText;
 
-  if Length(ARichTextParams) > 0 then begin
-    SetLength(ACell^.RichTextParams, Length(ARichTextParams));
+  SetLength(ACell^.RichTextParams, Length(ARichTextParams));
+  if Length(ARichTextParams) > 0 then
     for i:=0 to High(ARichTextParams) do
       ACell^.RichTextParams[i] := ARichTextParams[i];
-  end;
 
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
@@ -5779,10 +5788,10 @@ begin
     FillChar(Result^, SizeOf(TCol), #0);
     Result^.Col := ACol;
     FCols.Add(Result);
-    if FFirstColIndex = $FFFFFFFF
+    if FFirstColIndex = UNASSIGNED_ROW_COL_INDEX
       then FFirstColIndex := GetFirstColIndex(true)
       else FFirstColIndex := Min(FFirstColIndex, ACol);
-    if FLastColIndex = $FFFFFFFF
+    if FLastColIndex = UNASSIGNED_ROW_COL_INDEX
       then FLastColIndex := GetLastColIndex(true)
       else FLastColIndex := Max(FLastColIndex, ACol);
   end;
@@ -6386,8 +6395,8 @@ end;
   a specified text.
 -------------------------------------------------------------------------------}
 function TsWorkbook.Search(ASearchText: String; AOptions: TsSearchOptions;
-  AStartSheet: TsWorksheet = nil; AStartRow: Cardinal = $FFFFFFFF;
-  AStartCol: Cardinal = $FFFFFFFF): PCell;
+  AStartSheet: TsWorksheet = nil; AStartRow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+  AStartCol: Cardinal = UNASSIGNED_ROW_COL_INDEX): PCell;
 var
   i, idxSheet: Integer;
   sheet: TsWorksheet;
@@ -6395,19 +6404,19 @@ begin
   // Setup missing default parameters
   if soBackward in AOptions then
   begin
-    if (AStartRow = $FFFFFFFF) and (AStartCol = $FFFFFFFF) and (AStartSheet = nil)
+    if (AStartRow = UNASSIGNED_ROW_COL_INDEX) and (AStartCol = UNASSIGNED_ROW_COL_INDEX) and (AStartSheet = nil)
       then AStartsheet := GetWorksheetByIndex(GetWorksheetCount-1);
-    if AStartRow = $FFFFFFFF then
+    if AStartRow = UNASSIGNED_ROW_COL_INDEX then
       AStartRow := AStartsheet.GetLastRowIndex;
-    if AStartCol = $FFFFFFFF then
+    if AStartCol = UNASSIGNED_ROW_COL_INDEX then
       AStartCol := AStartsheet.GetLastColIndex;
   end else
   begin
-    if (AStartRow = $FFFFFFFF) and (AStartCol = $FFFFFFFF) and (AStartSheet = nil)
+    if (AStartRow = UNASSIGNED_ROW_COL_INDEX) and (AStartCol = UNASSIGNED_ROW_COL_INDEX) and (AStartSheet = nil)
       then AStartsheet := GetWorksheetByIndex(0);
-    if (AStartRow = $FFFFFFFF) then
+    if (AStartRow = UNASSIGNED_ROW_COL_INDEX) then
       AStartRow := AStartsheet.GetFirstRowIndex;
-    if (AStartCol = $FFFFFFFF) then
+    if (AStartCol = UNASSIGNED_ROW_COL_INDEX) then
       AStartCol := AStartsheet.GetFirstColIndex;
   end;
   if AStartSheet = nil then

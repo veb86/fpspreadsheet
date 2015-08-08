@@ -77,11 +77,11 @@ type
     FCommentLen: Integer;
     procedure ReadBoundsheet(AStream: TStream);
     function ReadString(const AStream: TStream; const ALength: Word;
-      out ARichTextRuns: TsRichTextFormattingRuns): String;
+      out ARichTextParams: TsRichTextParams): String;
     function ReadUnformattedWideString(const AStream: TStream;
       const ALength: Word): WideString;
     function ReadWideString(const AStream: TStream; const ALength: Word;
-      out ARichTextRuns: TsRichTextFormattingRuns): WideString; overload;
+      out ARichTextParams: TsRichTextParams): WideString; overload;
     function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
   protected
     procedure PopulatePalette; override;
@@ -471,10 +471,10 @@ procedure TsSpreadBIFF8Reader.ReadCONTINUE(const AStream: TStream);
 var
   commentStr: String;
   comment: TBIFF8Comment;
-  rtRuns: TsRichTextFormattingRuns;
+  rtParams: TsRichTextParams;
 begin
   if FCommentPending then begin
-    commentStr := ReadWideString(AStream, FCommentLen, rtRuns);
+    commentStr := ReadWideString(AStream, FCommentLen, rtParams);
     if commentStr <> '' then
     begin
       comment := TBIFF8Comment.Create;
@@ -605,7 +605,7 @@ begin
 end;
 
 function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
-  const ALength: WORD; out ARichTextRuns: TsRichTextFormattingRuns): WideString;
+  const ALength: WORD; out ARichTextParams: TsRichTextParams): WideString;
 var
   StringFlags: BYTE;
   DecomprStrValue: WideString;
@@ -662,7 +662,7 @@ begin
           Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
         end else begin
           PendingRecordSize := RecordSize;
-          DecomprStrValue := copy(DecomprStrValue,1,i) + ReadWideString(AStream, ALength-i, ARichTextRuns);
+          DecomprStrValue := copy(DecomprStrValue,1,i) + ReadWideString(AStream, ALength-i, ARichTextParams);
           break;
         end;
       end;
@@ -671,7 +671,7 @@ begin
   end;
   if StringFlags and 8 = 8 then begin
     // Rich string (This only occurs in BIFF8)
-    SetLength(ARichTextRuns, RunsCounter);
+    SetLength(ARichTextParams, RunsCounter);
     for j := 0 to SmallInt(RunsCounter) - 1 do begin
       if (PendingRecordSize <= 0) then begin
         // A CONTINUE may happened here
@@ -683,8 +683,10 @@ begin
           PendingRecordSize := RecordSize;
         end;
       end;
-      ARichTextRuns[j].FirstIndex := WordLEToN(AStream.ReadWord);
-      ARichTextRuns[j].FontIndex := WordLEToN(AStream.ReadWord);
+      // character start index: 0-based in file, 1-based in fps
+      ARichTextParams[j].FirstIndex := WordLEToN(AStream.ReadWord) + 1;
+      ARichTextParams[j].FontIndex := WordLEToN(AStream.ReadWord);
+      ARichTextParams[j].HyperlinkIndex := -1;
       dec(PendingRecordSize, 2*2);
     end;
   end;
@@ -701,14 +703,14 @@ function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
   const AUse8BitLength: Boolean): WideString;
 var
   Len: Word;
-  rtRuns: TsRichTextFormattingRuns;
+  rtParams: TsRichTextParams;
 begin
   if AUse8BitLength then
     Len := AStream.ReadByte()
   else
     Len := WordLEtoN(AStream.ReadWord());
 
-  Result := ReadWideString(AStream, Len, rtRuns);
+  Result := ReadWideString(AStream, Len, rtParams);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadWorkbookGlobals(AStream: TStream);
@@ -846,7 +848,7 @@ procedure TsSpreadBIFF8Reader.ReadBoundsheet(AStream: TStream);
 var
   Len: Byte;
   WideName: WideString;
-  rtRuns: TsRichTextFormattingRuns;
+  rtParams: TsRichTextParams;
 begin
   { Absolute stream position of the BOF record of the sheet represented
     by this record }
@@ -863,15 +865,15 @@ begin
   Len := AStream.ReadByte();
 
   { Read string with flags }
-  WideName:=ReadWideString(AStream, Len, rtRuns);
+  WideName:=ReadWideString(AStream, Len, rtParams);
 
   FWorksheetNames.Add(UTF8Encode(WideName));
 end;
 
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
-  const ALength: WORD; out ARichTextRuns: TsRichTextFormattingRuns): String;
+  const ALength: WORD; out ARichTextParams: TsRichTextParams): String;
 begin
-  Result := UTF16ToUTF8(ReadWideString(AStream, ALength, ARichTextRuns));
+  Result := UTF16ToUTF8(ReadWideString(AStream, ALength, ARichTextParams));
 end;
                                   (*
 procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: String);
@@ -985,12 +987,14 @@ end;
 
 procedure TsSpreadBIFF8Reader.ReadLABEL(AStream: TStream);
 var
-  L: Word;
+  L, i: Word;
   ARow, ACol: Cardinal;
   XF: Word;
   wideStrValue: WideString;
   cell: PCell;
-  rtfRuns: TsRichTextFormattingRuns;
+  rtParams: TsRichTextParams;
+  fntIndex: Integer;
+  fnt: TsFont;
 begin
   { BIFF Record data: Row, Column, XF Index }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -999,7 +1003,7 @@ begin
   L := WordLEtoN(AStream.ReadWord());
 
   { Read wide string with flags }
-  wideStrValue := ReadWideString(AStream, L, rtfRuns);
+  wideStrValue := ReadWideString(AStream, L, rtParams);
 
   { Save the data }
   if FIsVirtualMode then begin
@@ -1010,9 +1014,27 @@ begin
 
   FWorksheet.WriteUTF8Text(cell, UTF16ToUTF8(wideStrValue));
 
-  {Add attributes}
+  { Add attributes }
   ApplyCellFormatting(cell, XF);
-  ApplyRichTextFormattingRuns(cell, rtfRuns);
+
+  { Apply rich-text formatting }
+  if Length(rtParams) > 0 then begin
+    SetLength(cell^.RichTextParams, Length(rtParams));
+    for i := 0 to High(rtParams) do
+    begin
+      // Character index where format starts: 0-based in file, 1-based in fps
+      cell^.RichTextParams[i].FirstIndex := rtParams[i].FirstIndex + 1;
+      // Font index of new format - need to adjust index!
+      fntIndex := rtParams[i].FontIndex;
+      fnt := TsFont(FFontList[fntIndex]);
+      fntIndex := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      if fntIndex = -1 then
+        fntIndex := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      cell^.RichTextParams[i].FontIndex := fntIndex;
+      // Hyperlink index, not used here
+      cell^.RichTextParams[i].HyperlinkIndex := -1;
+    end;
+  end;
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -1187,44 +1209,57 @@ end;
 
 procedure TsSpreadBIFF8Reader.ReadRSTRING(AStream: TStream);
 var
-  j: Integer;
-  L: Word;
+  j, L: Word;
   ARow, ACol: Cardinal;
   XF: Word;
   wideStrValue: WideString;
   cell: PCell;
-  rtfRuns: TsRichTextFormattingRuns;
+  rtfRuns: TBiff8_RichTextFormattingRuns;
+  fntIndex: Integer;
+  fnt: TsFont;
 begin
   { BIFF Record data: Row, Column, XF Index }
   ReadRowColXF(AStream, ARow, ACol, XF);
 
-  { Byte String with 16-bit size }
+  { Data string: 16-bit length }
   L := WordLEtoN(AStream.ReadWord());
 
-  { Read wide string without flags }
+  { Read wide string plus flag, but without processing it }
   wideStrValue := ReadUnformattedWideString(AStream, L);
 
-  { Rich-tech formatting runs }
-  L := WordLEToN(AStream.ReadWord);
-  SetLength(rtfRuns, L);
-  for j := 0 to L-1 do
-  begin
-    rtfRuns[j].FirstIndex := WordLEToN(AStream.ReadWord);
-    rtfRuns[j].FontIndex := WordLEToN(AStream.ReadWord);
-  end;
-
-  { Save the data }
+  { Create cell }
   if FIsVirtualMode then begin
     InitCell(ARow, ACol, FVirtualCell);        // "virtual" cell
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
 
+  { Save the data string}
   FWorksheet.WriteUTF8Text(cell, UTF16ToUTF8(wideStrValue));
+
+  { Read rich-text formatting runs }
+  L := WordLEToN(AStream.ReadWord);
+  SetLength(cell^.RichTextParams, L);
+  SetLength(rtfRuns, L);
+  AStream.ReadBuffer(rtfRuns[0], L * SizeOf(TBiff8_RichTextFormattingRun));
+  for j := 0 to L-1 do
+  begin
+    // Index of the font. Be aware that the index in the file is not
+    // necessarily the same as the index used by the workbook!
+    fntIndex := WordLEToN(rtfRuns[j].FontIndex);
+    fnt := TsFont(FFontList[fntIndex]);
+    fntIndex := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+    if fntIndex = -1 then
+      fntIndex := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+    cell^.RichTextParams[j].FontIndex := fntIndex;
+    // Index of the first character using this font: 0-based in file, 1-based in fps
+    cell^.RichTextParams[j].FirstIndex := WordLEToN(rtfRuns[j].FirstIndex) + 1;
+    // Hyperlink index - not used by biff
+    cell^.RichTextParams[j].HyperlinkIndex := -1;
+  end;
 
   {Add attributes}
   ApplyCellFormatting(cell, XF);
-  ApplyRichTextFormattingRuns(cell, rtfRuns);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -1236,7 +1271,7 @@ var
   StringLength, CurStrLen: WORD;
   LString: String;
   ContinueIndicator: WORD;
-  rtfRuns: TsRichTextFormattingRuns;
+  rtParams: TsRichTextParams;
   ms: TMemoryStream;
 begin
   //Reads the shared string table, only compatible with BIFF8
@@ -1265,10 +1300,8 @@ begin
     while PendingRecordSize > 0 do
     begin
       if StringLength > 0 then
-      begin
         //Read a stream of zero length reads all the stream.
-        LString := LString + ReadString(AStream, StringLength, rtfRuns);
-      end
+        LString := LString + ReadString(AStream, StringLength, rtParams)
       else
       begin
         //String of 0 chars in length, so just read it empty, reading only the mandatory flags
@@ -1282,9 +1315,9 @@ begin
       begin
         //A Continue will happend, read the
         //tag and continue linking...
-        ContinueIndicator:=WordLEtoN(AStream.ReadWord);
-        if ContinueIndicator<>INT_EXCEL_ID_CONTINUE then begin
-          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadSST] Expected CONTINUE record not found.');
+        ContinueIndicator := WordLEtoN(AStream.ReadWord);
+        if ContinueIndicator <> INT_EXCEL_ID_CONTINUE then begin
+          raise Exception.Create('[TsSpreadBIFF8Reader.ReadSST] Expected CONTINUE record not found.');
         end;
         PendingRecordSize := WordLEtoN(AStream.ReadWord);
         CurStrLen := Length(UTF8ToUTF16(LString));
@@ -1297,13 +1330,13 @@ begin
       end;
     end;
 
-    if Length(rtfRuns) = 0 then
+    if Length(rtParams) = 0 then
       FSharedStringTable.Add(LString)
     else
     begin
       ms := TMemoryStream.Create;
-      ms.WriteWord(Length(rtfRuns));
-      ms.WriteBuffer(rtfRuns[0], SizeOf(TsRichTextFormattingRun)*Length(rtfRuns));
+      ms.WriteWord(Length(rtParams));
+      ms.WriteBuffer(rtParams[0], SizeOf(TsRichTextParam)*Length(rtParams));
       ms.Position := 0;
       FSharedStringTable.AddObject(LString, ms);
     end;
@@ -1324,13 +1357,15 @@ var
   rec: TBIFF8_LabelSSTRecord;
   cell: PCell;
   ms: TMemoryStream;
-  rtfRuns: TsRichTextFormattingRuns;
-  n: Integer;
+  i, n: Integer;
+  rtParams: TsRichTextParams;
+  fnt: TsFont;
+  fntIndex: Integer;
 begin
   rec.Row := 0;  // to silence the compiler...
 
   { Read entire record, starting at Row }
-  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF8_LabelSSTRecord) - 2*SizeOf(Word));
+  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF8_LabelSSTRecord) - SizeOf(TsBiffHeader));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
   XF := WordLEToN(rec.XFIndex);
@@ -1357,10 +1392,21 @@ begin
   { Add rich text formatting }
   ms := TMemoryStream(FSharedStringTable.Objects[SSTIndex]);
   if ms <> nil then begin
-    n := ms.ReadWord;
-    SetLength(rtfRuns, n);
-    ms.ReadBuffer(rtfRuns[0], n*SizeOf(TsRichTextFormattingRun));
-    ApplyRichTextFormattingRuns(cell, rtfRuns);
+    n := WordLEToN(ms.ReadWord);
+    SetLength(rtParams, n);
+    ms.ReadBuffer(rtParams[0], n*SizeOf(TsRichTextParam));
+    SetLength(cell^.RichTextParams, n);
+    for i:=0 to n-1 do
+    begin
+      cell^.RichTextParams[i].FirstIndex := rtParams[i].FirstIndex;
+      fntIndex := rtParams[i].FontIndex;
+      fnt := TsFont(FFontList[fntIndex]);
+      fntIndex := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      if fntIndex = -1 then
+        fntIndex := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      cell^.RichTextParams[i].FontIndex := fntIndex;
+      cell^.RichTextParams[i].HyperlinkIndex := -1;
+    end;
   end;
 
   if FIsVirtualMode then
@@ -1584,7 +1630,7 @@ var
   lWeight: Word;
   Len: Byte;
   font: TsFont;
-  rtfRuns: TsRichTextFormattingRuns;
+  rtParams: TsRichTextParams;
 begin
   font := TsFont.Create;
 
@@ -1640,7 +1686,7 @@ begin
 
   { Font name: Unicodestring, char count in 1 byte }
   Len := AStream.ReadByte();
-  font.FontName := ReadString(AStream, Len, rtfRuns);  // rtfRuns is not used here.
+  font.FontName := ReadString(AStream, Len, rtParams);  // rtParams is not used here.
 
   { Add font to internal font list; will be transferred to workbook later because
     the font index in the internal list (= index in file) is not the same as the
@@ -1688,13 +1734,13 @@ procedure TsSpreadBIFF8Reader.ReadHeaderFooter(AStream: TStream;
 var
   s: widestring;
   len: word;
-  rtfRuns: TsRichTextFormattingRuns;
+  rtParams: TsRichTextParams;
 begin
   if RecordSize = 0 then
     exit;
 
   len := WordLEToN(AStream.ReadWord);
-  s := ReadWideString(AStream, len, rtfRuns);
+  s := ReadWideString(AStream, len, rtParams);
   if AIsHeader then
     FWorksheet.PageLayout.Headers[1] := UTF8Encode(s)
   else
@@ -2596,85 +2642,42 @@ const
   MAXBYTES = 32758;
 var
   L: Word;
-  WideValue: WideString;
+  WideStr: WideString;
   rec: TBIFF8_LabelRecord;
-  rtfRuns: TBiff8_RichTextFormattingRuns;
-  rtParam: TsRichTextParam;
   buf: array of byte;
   i, nRuns: Integer;
-  fmt: PsCellFormat;
-  useRTF: Boolean;
-  fntIndex: Word;
-  cellfntIndex: Word;
+  rtfRuns: TBiff8_RichTextFormattingRuns;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
-  WideValue := UTF8Decode(FixLineEnding(AValue)); //to UTF16
-  if WideValue = '' then begin
+  WideStr := UTF8Decode(FixLineEnding(AValue)); //to UTF16
+  if WideStr = '' then begin
     // Badly formatted UTF8String (maybe ANSI?)
     if Length(AValue)<>0 then begin
       //Quite sure it was an ANSI string written as UTF8, so raise exception.
-      raise Exception.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [GetCellString(ARow,ACol)]);
+      raise Exception.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [GetCellString(ARow, ACol)]);
     end;
     Exit;
   end;
 
-  if Length(WideValue) > MAXBYTES then begin
+  if Length(WideStr) > MAXBYTES then begin   // <-------- wp: Factor 2 missing? ---------
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
-    SetLength(WideValue, MAXBYTES); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
+    SetLength(WideStr, MAXBYTES); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
     Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
       MAXBYTES, GetCellString(ARow, ACol)
     ]);
   end;
-  L := Length(WideValue);
-
-  useRTF := (Length(ACell^.RichTextParams) > 0);
+  L := Length(WideStr);
+  nRuns := Length(ACell^.RichTextParams);
 
   { BIFF record header }
-  rec.RecordID := WordToLE(IfThen(useRTF, INT_EXCEL_ID_RSTRING, INT_EXCEL_ID_LABEL));
-  rec.RecordSize := WordToLE(SizeOf(rec) - SizeOf(TsBIFFHeader) + L * SizeOf(WideChar));
-
-  { Prepare rich-text formatting runs }
-  if useRTF then
-  begin
-    fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
-    cellFntIndex := fmt^.FontIndex;
-    if cellFntIndex >= 4 then inc(cellFntIndex);
-    nRuns := 0;
-    for i := 0 to High(ACell^.RichTextParams) do
-    begin
-      // formatted part according to RichTextParams
-      rtParam := ACell^.RichTextParams[i];
-      SetLength(rtfRuns, nRuns + 1);
-      fntIndex := rtParam.FontIndex;
-      if fntIndex >= 4 then
-        inc(fntIndex);  // Font #4 does not exist in BIFF
-      rtfRuns[nRuns].FontIndex := WordLEToN(fntIndex);
-      rtfRuns[nRuns].FirstIndex := WordLEToN(rtParam.StartIndex);
-      inc(nRuns);
-      // Unformatted part at end?
-      if (rtParam.EndIndex < L) and (i = High(ACell^.RichTextParams)) then
-      begin
-        SetLength(rtfRuns, nRuns + 1);
-        rtfRuns[nRuns].FontIndex := WordLEToN(cellFntIndex);
-        rtfRuns[nRuns].FirstIndex := WordLEToN(rtParam.EndIndex);
-        inc(nRuns);
-      end else
-      // Unformatted part between two formatted parts?
-      if (i < High(ACell^.RichTextParams)) and (rtParam.EndIndex < ACell^.RichTextParams[i+1].StartIndex) then
-      begin
-        SetLengtH(rtfRuns, nRuns + 1);
-        rtfRuns[nRuns].FontIndex := WordLEToN(cellFntIndex);
-        rtfRuns[nRuns].FirstIndex := WordLEToN(rtParam.EndIndex);
-        inc(nRuns);
-      end;
-    end;
-
-    // Adjust BIFF record size for appended formatting runs
-    inc(rec.RecordSize, SizeOf(word) + nRuns * SizeOf(TBiff8_RichTextFormattingRun));
-  end;
+  rec.RecordID := WordToLE(IfThen(nRuns > 0, INT_EXCEL_ID_RSTRING, INT_EXCEL_ID_LABEL));
+  rec.RecordSize := SizeOf(TBiff8_LabelRecord) - SizeOf(TsBiffHeader) + L *SizeOf(WideChar);
+  if nRuns > 0 then
+    inc(rec.RecordSize, SizeOf(Word) + nRuns * SizeOf(TBiff8_RichTextFormattingRun));
+  rec.RecordSize := WordToLE(rec.RecordSize);
 
   { BIFF record data }
   rec.Row := WordToLE(ARow);
@@ -2688,28 +2691,40 @@ begin
 
   { Byte flags }
   rec.TextFlags := 1;                     // means regular unicode LE encoding
+  // Excel does not write the Rich-Text flag probably because rich-text info
+  // is located differently in the RSTRING record.
 
   { Copy the text characters into a buffer immediately after rec }
   SetLength(buf, SizeOf(rec) + L*SizeOf(WideChar));
   Move(rec, buf[0], SizeOf(Rec));
-  Move(WideStringToLE(WideValue)[1], buf[SizeOf(Rec)], L*SizeOf(WideChar));
+  Move(WideStringToLE(WideStr)[1], buf[SizeOf(Rec)], L*SizeOf(WideChar));
 
   { Write out buffer }
   AStream.WriteBuffer(buf[0], SizeOf(rec) + L*SizeOf(WideChar));
 
   { Write rich-text information in case of RSTRING record }
-  if useRTF then
+  if (nRuns > 0) then
   begin
     { Write number of rich-text formatting runs }
     AStream.WriteWord(WordToLE(nRuns));
 
     { Write array of rich-text formatting runs }
+    SetLength(rtfRuns, nRuns);
+    for i:=0 to nRuns-1 do
+    begin
+      // index of first character of formatted part, 0-based in file, 1-based in fps
+      rtfRuns[i].FirstIndex := WordToLE(ACell^.RichTextParams[i].FirstIndex - 1);
+      // Index of new font. Be aware of font #4 missing in BIFF!
+      if ACell^.RichTextParams[i].FontIndex >= 4 then
+        rtfRuns[i].FontIndex := WordToLE(ACell^.RichTextParams[i].FontIndex + 1) else
+        rtfRuns[i].FontIndex := WordToLE(ACell^.RichTextParams[i].FontIndex);
+    end;
     AStream.WriteBuffer(rtfRuns[0], nRuns * SizeOf(TBiff8_RichTextFormattingRun));
   end;
 
   { Clean up }
-  SetLength(buf, 0);
   SetLength(rtfRuns, 0);
+  SetLength(buf, 0);
 end;
 
 procedure TsSpreadBIFF8Writer.WriteMergedCells(AStream: TStream;

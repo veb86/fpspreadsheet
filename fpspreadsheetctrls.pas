@@ -2725,7 +2725,7 @@ begin
   begin
     s := '';
     for rtp in ACell^.RichTextParams do
-      s := Format('%s; Font #%d @ %d-%d', [s, rtp.FontIndex, rtp.StartIndex, rtp.EndIndex]);
+      s := Format('%s; Font #%d after pos %d', [s, rtp.FontIndex, rtp.FirstIndex]);
     Delete(s, 1, 2);
     if s = '' then s := '(none)';
     AStrings.Add('Rich-text parameters='+s);

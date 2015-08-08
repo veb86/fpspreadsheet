@@ -360,8 +360,10 @@ type
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
+    (*
     procedure ApplyRichTextFormattingRuns(ACell: PCell;
       ARuns: TsRichTextFormattingRuns);
+      *)
     // Extracts a number out of an RK value
     function DecodeRKValue(const ARK: DWORD): Double;
     // Returns the numberformat for a given XF record
@@ -863,7 +865,7 @@ begin
       ACell^.FormatIndex := 0;
   end;
 end;
-
+                                        (*
 {@@ ----------------------------------------------------------------------------
   Converts the rich-text formatting run data as read from the file to the
   internal format used by the cell.
@@ -903,7 +905,7 @@ begin
     end;
   end;
 end;
-
+      *)
 {@@ ----------------------------------------------------------------------------
   Extracts a number out of an RK value.
   Valid since BIFF3.
