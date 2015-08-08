@@ -425,6 +425,7 @@ type
     Color: TsColor;
     {@@ Text position }
     Position: TsFontPosition;
+    procedure CopyOf(AFont: TsFont);
   end;
 
   {@@ Parameter describing formatting of an text range in cell text }
@@ -706,6 +707,15 @@ const
 
 
 implementation
+
+procedure TsFont.CopyOf(AFont: TsFont);
+begin
+  FontName := AFont.FontName;
+  Size := AFont.Size;
+  Style := AFont.Style;
+  Color := AFont.Color;
+  Position := AFont.Position;
+end;
 
 end.
 

@@ -31,6 +31,7 @@ type
     FTableCounter: Integer;
     FCurrRow, FCurrCol: LongInt;
     FCurrCellFormat: TsCellFormat;
+    FCurrRichTextParams: TsRichTextParams;
     FCellFont: TsFont;
     FCurrFont: TsFont;
     FCellText: String;
@@ -50,6 +51,9 @@ type
     procedure TextFoundHandler(AText: String);
   protected
     procedure AddCell(ARow, ACol: LongInt; AText: String);
+    function AddFont(AFont: TsFont): Integer;
+    procedure AddRichTextParam(AFont: TsFont);
+    procedure FixRichTextParams(var AParams: TsRichTextParams);
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
@@ -157,6 +161,8 @@ begin
 end;
 
 destructor TsHTMLReader.Destroy;
+var
+  i: Integer;
 begin
   FreeAndNil(FCurrFont);
   FreeAndNil(FCellFont);
@@ -176,6 +182,7 @@ var
   currSym: String;
   warning: String;
   fntIndex: Integer;
+  fnt: TsFont;
 begin
   // Empty strings are blank cells -- nothing to do
   if (AText = '') then
@@ -184,16 +191,29 @@ begin
   // Create cell
   cell := FWorksheet.AddCell(ARow, ACol);
 
-  // Format
-  fntIndex := FWorkbook.FindFont(FCellFont.FontName, FCellFont.Size,
-    FCellFont.Style, FCellFont.Color, FCellFont.Position);
-  if fntIndex = -1 then
-    fntIndex := FWorkbook.AddFont(FCellFont.FontName, FCellFont.Size,
+  // Format, rich-text formatting parameters
+  // Reject non-used runs; adapt font index to the workbook.
+  FixRichTextParams(FCurrRichTextParams);
+  // There is only one formatting run which extends across the entire cell
+  // --> replace the cell font by that of the formatting run and ignore the run.
+  if (Length(FCurrRichTextParams) = 1) and (FCurrRichTextParams[0].FirstIndex = 1) then
+  begin
+    FCurrCellFormat.FontIndex := FCurrRichTextParams[0].FontIndex;
+    SetLength(FCurrRichTextParams, 0);
+  end else
+  begin
+    // Get cell font and use it in the cell format
+    fntIndex := FWorkbook.FindFont(FCellFont.FontName, FCellFont.Size,
       FCellFont.Style, FCellFont.Color, FCellFont.Position);
-  if fntIndex <> 0 then
+    if fntIndex = -1 then
+      fntIndex := FWorkbook.AddFont(FCellFont.FontName, FCellFont.Size,
+        FCellFont.Style, FCellFont.Color, FCellFont.Position);
+    FCurrCellFormat.FontIndex := fntIndex;
+  end;
+  if FCurrCellFormat.FontIndex > 0 then
     Include(FCurrCellFormat.UsedFormattingFields, uffFont) else
     Exclude(FCurrCellFormat.UsedFormattingFields, uffFont);
-  FCurrCellFormat.FontIndex := fntIndex;
+  // Store the cell format in the workbook
   cell^.FormatIndex := FWorkbook.AddCellFormat(FCurrCellFormat);
 
   // Merged cells
@@ -209,10 +229,10 @@ begin
     FHRef := '';
   end;
 
-  // Do not try to interpret the strings. --> everything is a LABEL cell.
+  // Case: Do not try to interpret the strings. --> everything is a LABEL cell.
   if not HTMLParams.DetectContentType then
   begin
-    FWorksheet.WriteUTF8Text(cell, AText);
+    FWorksheet.WriteUTF8Text(cell, AText, FCurrRichTextParams);
     exit;
   end;
 
@@ -245,7 +265,86 @@ begin
   end;
 
   // What is left is handled as a TEXT cell
-  FWorksheet.WriteUTF8Text(cell, AText);
+  FWorksheet.WriteUTF8Text(cell, AText, FCurrRichTextParams);
+end;
+
+{ Stores a font in the internal font list. Does not allow duplicates. }
+function TsHTMLReader.AddFont(AFont: TsFont): Integer;
+const
+  EPS = 1e-3;
+var
+  i: Integer;
+  fnt: TsFont;
+begin
+  // Is the font already stored in the internal font list?
+  for Result := 0 to FFontList.Count-1 do
+  begin
+    fnt := TsFont(FFontList.Items[Result]);
+    if (fnt <> nil) and
+       SameText(AFont.FontName, fnt.FontName) and
+       SameValue(AFont.Size, fnt.Size, EPS) and
+       (AFont.Style = fnt.Style) and
+       (AFont.Color = fnt.Color) and
+       (AFont.Position = fnt.Position)
+    then
+      exit;
+  end;
+
+  // No. Create a new font and add it to the list.
+  fnt := TsFont.Create;
+  fnt.CopyOf(AFont);
+  Result := FFontList.Add(fnt);
+end;
+
+procedure TsHTMLReader.AddRichTextParam(AFont: TsFont);
+var
+  n: Integer;
+begin
+  n := Length(FCurrRichTextParams);
+  SetLength(FCurrRichTextParams, n+1);
+  with FCurrRichTextParams[n] do
+  begin
+    FirstIndex := UTF8Length(FCellText) + 1;
+    FontIndex := AddFont(AFont);
+    HyperlinkIndex := -1;
+  end;
+end;
+
+{ Remove "zero-width" rich-text parameters, and retain the parameter added last }
+procedure TsHTMLReader.FixRichTextParams(var AParams: TsRichTextParams);
+var
+  i: Integer;
+  rtp, nextrtp: TsRichTextParam;
+  fnt: TsFont;
+  fntIndex: Integer;
+begin
+  if Length(AParams) = 0 then
+    exit;
+
+  // Remove temporary rich-text parameters which were overwritten by their
+  // follower.
+  i := High(AParams) - 1;
+  while i >= 0 do
+  begin
+    rtp := AParams[i];
+    nextrtp := AParams[i+1];
+    if rtp.FirstIndex = nextrtp.FirstIndex then
+    begin
+      rtp.FontIndex := nextrtp.FontIndex;
+      SetLength(AParams, Length(AParams)-1);
+    end;
+    dec(i);
+  end;
+
+  // Replace the internal list font index by the font index of the workbook.
+  for i:=0 to High(FCurrRichTextParams) do
+  begin
+    fnt := TsFont(FFontList[FCurrRichTextParams[i].FontIndex]);
+    fntIndex := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+    if fntIndex = -1 then
+      fntIndex := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+    FCurrRichTextParams[i].FontIndex := fntIndex;
+  end;
 end;
 
 procedure TsHTMLReader.ReadBackgroundColor;
@@ -529,6 +628,9 @@ begin
   // Vertical alignment, by default, is "middle"
   FCurrCellFormat.VertAlignment := vaCenter;
   Include(FCurrCellFormat.UsedFormattingFields, uffVertAlign);
+
+  // Clear rich-text parameter list
+  SetLength(FCurrRichTextParams, 0);
 end;
 
 procedure TsHTMLReader.ReadFromStream(AStream: TStream);
@@ -570,32 +672,33 @@ begin
   if pos('<TABLE', NoCaseTag) = 1 then
   begin
     inc(FTableCounter);
-    if HTMLParams.TableIndex < 0 then  // all tables
-    begin
-      FWorksheet := FWorkbook.AddWorksheet(Format('Table #%d', [FTableCounter+1]));
-      FInTable := true;
-      FCurrRow := -1;
-      FCurrCol := -1;
-      InitFont(FCurrFont);
-      FAttrList.Parse(ActualTag);
-      ReadFont(FCurrFont);
-      FWorkbook.ReplaceFont(DEFAULT_FONTINDEX, FCurrFont.FontName, FCurrFont.Size,
-        FCurrFont.Style, FCurrFont.Color, FCurrFont.Position);
-    end else
-    if FTableCounter = HTMLParams.TableIndex then
-    begin
-      FWorksheet := FWorkbook.AddWorksheet(Format('Table #%d', [FTableCounter+1]));
-      FInTable := true;
-      FCurrRow := -1;
-      FCurrCol := -1;
-    end;
+    if (HTMLParams.TableIndex >= 0) and (FTableCounter <> HTMLParams.TableIndex) then
+      exit;
+    FWorksheet := FWorkbook.AddWorksheet(Format('Table #%d', [FTableCounter+1]));
+    FInTable := true;
+    FCurrRow := -1;
+    FCurrCol := -1;
+    InitFont(FCurrFont);
+    FAttrList.Parse(ActualTag);
+    ReadFont(FCurrFont);
+    FWorkbook.ReplaceFont(DEFAULT_FONTINDEX, FCurrFont.FontName, FCurrFont.Size,
+      FCurrFont.Style, FCurrFont.Color, FCurrFont.Position);
+    FCellFont.CopyOf(FCurrFont);
   end else
-  if ((NoCaseTag = '<TR>') or (pos('<TR ', NoCaseTag) = 1)) and FInTable then
+  if (NoCaseTag = '</TABLE>') and FInTable then
+    FInTable := false
+  else
+  if not FInTable then
+    exit;
+
+  // The next tags are processed only within a <TABLE> context
+  if (NoCaseTag = '<TR>') or (pos('<TR ', NoCaseTag) = 1) or (NoCaseTag = '<TR/>') then
   begin
     inc(FCurrRow);
     FCurrCol := -1;
   end else
-  if ((NoCaseTag = '<TD>') or (pos('<TD ', NoCaseTag) = 1)) and FInTable then
+  if (NoCaseTag = '<TD>') or (pos('<TD ', NoCaseTag) = 1) or (NoCaseTag = '<TD/>') or
+     (NoCaseTag = '<TH>') or (pos('<TH ', NoCaseTag) = 1) or (NoCaseTag = '<TH/>') then
   begin
     FInCell := true;
     inc(FCurrCol);
@@ -607,65 +710,101 @@ begin
     ReadHorAlign;
     ReadVertAlign;
     ReadFont(FCellFont);
+    if NoCaseTag[3] = 'H' then begin
+      Include(FCellFont.Style, fssBold);
+      FCurrCellFormat.HorAlignment := haCenter;
+      Include(FCurrCellFormat.UsedFormattingFields, uffHorAlign);
+    end;
+    FCurrFont.CopyOf(FCellFont);
   end else
-  if ((NoCaseTag = '<TH>') or (pos('<TH ', NoCaseTag) = 1)) and FInTable then
+  if (NoCaseTag = '</TD>') or (NoCaseTag = '</TH>') then
   begin
-    FInCell := true;
-    inc(FCurrCol);
-    FCellText := '';
-  end else
-  if pos('<SPAN', NoCaseTag) = 1 then
-  begin
-    if FInCell then
-      FInSpan := true;
-  end else
-  if (pos('<A', NoCaseTag) = 1) and FInCell then
+    while FWorksheet.isMerged(FWorksheet.FindCell(FCurrRow, FCurrRow)) do
+      inc(FCurrRow);
+    AddCell(FCurrRow, FCurrCol, FCellText);
+    FInCell := false;
+  end;
+  if not FInCell then
+    exit;
+
+  // The next tags are processed only within a <TD> or <TH> context.
+  if (pos('<A', NoCaseTag) = 1) then
   begin
     FInA := true;
     FAttrList.Parse(ActualTag);
     ReadHRef;
   end else
-  if (pos('<H', NoCaseTag) = 1) and (NoCaseTag[3] in ['1', '2', '3', '4', '5', '6']) then
+  if NoCaseTag = '</A>' then
+    FInA := false
+  else
+  if (NoCaseTag = '<B>') or (NoCaseTag = '<STRONG>') or
+     (NoCaseTag = '</B>') or (NoCaseTag = '</STRONG>') then
+  begin
+    if NoCaseTag[2] = '/' then
+      Exclude(FCurrFont.Style, fssBold) else
+      Include(FCurrFont.Style, fssBold);
+    AddRichTextParam(FCurrFont);
+  end else
+  if (NoCaseTag = '<I>') or (NoCaseTag = '<EM>') or
+     (NoCaseTag = '</I>') or (NoCaseTag = '</EM>') then
+  begin
+    if NoCaseTag[2] = '/' then
+      Exclude(FCurrFont.Style, fssItalic) else
+      Include(FCurrFont.Style, fssItalic);
+    AddRichTextParam(FCurrFont);
+  end else
+  if (NoCaseTag = '<U>') or (NoCaseTag = '<INS>') or
+     (NoCaseTag = '</U>') or (NoCaseTag = '</INS>') then
+  begin
+    if NoCaseTag[2] = '/' then
+      Exclude(FCurrFont.Style, fssUnderline) else
+      Include(FCurrFont.Style, fssUnderline);
+    AddRichTextParam(FCurrFont);
+  end else
+  if (NoCaseTag = '<S>') or (NoCaseTag = '<DEL>') or
+     (NoCaseTag = '</S>') or (NoCaseTag = '</DEL>') then
+  begin
+    if NoCaseTag[2] = '/' then
+      Exclude(FCurrFont.Style, fssStrikeout) else
+      Include(FCurrFont.Style, fssStrikeout);
+    AddRichTextParam(FCurrFont);
+  end else
+  if (NoCaseTag = '<SUB>') or (NoCaseTag = '</SUB>') then
+  begin
+    if NoCaseTag[2] = '/' then
+      FCurrFont.Position := fpNormal else
+      FCurrFont.Position := fpSubscript;
+    AddRichTextParam(FCurrFont);
+  end else
+  if (NoCaseTag = '<SUP>') or (NoCaseTag = '</SUP>') then
+  begin
+    if NoCaseTag[2] = '/' then
+      FCurrFont.Position := fpNormal else
+      FCurrFont.Position := fpSuperscript;
+    AddRichTextParam(FCurrFont);
+  end
+  else
+  if ((NoCaseTag = '<BR>') or (pos('<BR ', NoCaseTag) = 1)) then
+    FCellText := FCellText + LineEnding;
+  (*
+
+  {
+  if (pos('<H', NoCaseTag) = 1) and (NoCaseTag[3] in ['1'..'9']) then
   begin
     if FInCell then
       FInHeader := true;
-  end else
-  if ((NoCaseTag = '<BR>') or (pos('<BR ', NoCaseTag) = 1)) and FInCell then
-    FCellText := FCellText + LineEnding
+  end else              }
   else
     case NoCaseTag of
-      '</TABLE>':
-        if FInTable then FInTable := false;
-      '</TD>', '</TH>':
-        if FInCell then
-        begin
-//          inc(FCurrCol);
-          while FWorksheet.isMerged(FWorksheet.FindCell(FCurrRow, FCurrRow)) do
-            inc(FCurrRow);
-            {
-          if FWorksheet.IsMerged(FWorksheet.FindCell(FCurrRow, FCurrCol)) then
-          begin
-            repeat
-              inc(FCurrRow);
-            until not FWorksheet.IsMerged(FWorksheet.FindCell(FCurrRow, FCurrCol));
-            dec(FCurrCol);
-          end;
-          }
-          AddCell(FCurrRow, FCurrCol, FCellText);
-          FInCell := false;
-        end;
-      '</A>':
-        if FInCell then FInA := false;
       '</SPAN>':
         if FInCell then FInSpan := false;
       '<H1/>', '<H2/>', '<H3/>', '<H4/>', '<H5/>', '<H6/>':
         if FinCell then FInHeader := false;
-      '<TR/>', '<TR />':                     // empty rows
-        if FInTable then inc(FCurrRow);
       '<TD/>', '<TD />', '<TH/>', '<TH />':  // empty cells
         if FInCell then
           inc(FCurrCol);
     end;
+    *)
 end;
 
 procedure TsHTMLReader.TextFoundHandler(AText: String);

@@ -472,16 +472,22 @@ begin
     case AHTML[i] of
       '=': begin
              inc(i);
-             if AHTML[i] <> '"' then
-               raise Exception.Create('[THTMLAttrList.Parse] Quotation marks expected.');
              value := '';
-             inc(i);   // skip the initial '"'
-             while (AHTML[i] <> '"') do
+             if AHTML[i] = '"' then
              begin
-               value := value + AHTML[i];
-               inc(i);
-             end;
-             inc(i);  // skip the final '"'
+               inc(i);  // skip the initial '"'
+               while AHTML[i] <> '"' do
+               begin
+                 value := value + AHTML[i];
+                 inc(i);
+               end;
+               inc(i);  // skip the final '"'
+             end else
+               while not (AHTML[i] in [' ', '>', '/']) do
+               begin
+                 value := value + AHTML[i];
+                 inc(i);
+               end;
              Add(TsHTMLAttr.Create(lowercase(trim(nam)), trim(value)));
              nam := '';
            end;
