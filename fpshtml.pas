@@ -458,8 +458,9 @@ var
   f: Double;
   defFntSize: Single;
 begin
-  // style tags
-  idx := FAttrList.IndexOfName('font-family');
+  idx := FAttrList.IndexOfName('font-family');    // style tag
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('face');         // html tag
   if idx > -1 then begin
     L := TStringList.Create;
     try
@@ -472,6 +473,8 @@ begin
   end;
 
   idx := FAttrList.IndexOfName('font-size');
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('size');
   if idx > -1 then begin
     defFntSize := FWorkbook.GetDefaultFont.Size;
     s := FAttrList[idx].Value;
@@ -710,7 +713,7 @@ begin
     ReadHorAlign;
     ReadVertAlign;
     ReadFont(FCellFont);
-    if NoCaseTag[3] = 'H' then begin
+    if NoCaseTag[3] = 'H' then begin        // for <TH>
       Include(FCellFont.Style, fssBold);
       FCurrCellFormat.HorAlignment := haCenter;
       Include(FCurrCellFormat.UsedFormattingFields, uffHorAlign);
@@ -782,8 +785,19 @@ begin
       FCurrFont.Position := fpNormal else
       FCurrFont.Position := fpSuperscript;
     AddRichTextParam(FCurrFont);
-  end
-  else
+  end else
+  if (pos('<FONT ', NoCaseTag) = 1) then
+  begin
+    FAttrList.Parse(ActualTag);
+    ReadFont(FCurrFont);
+    AddRichTextparam(FCurrFont);
+  end else
+  if (pos('<SPAN ', NoCaseTag) = 1) then
+  begin
+    FAttrList.Parse(ActualTag);
+    ReadFont(FCurrFont);
+    AddRichTextParam(FCurrFont);
+  end else
   if ((NoCaseTag = '<BR>') or (pos('<BR ', NoCaseTag) = 1)) then
     FCellText := FCellText + LineEnding;
   (*
