@@ -6,27 +6,16 @@ interface
 
 uses
   Classes, SysUtils, fasthtmlparser,
-  fpstypes, fpspreadsheet, fpsReaderWriter, fpsHTMLUtils;
+  fpstypes, fpspreadsheet, fpsClasses, fpsReaderWriter, fpsHTMLUtils;
 
 type
-  TsHTMLTokenKind = (htkTABLE, htkTR, htkTH, htkTD, htkDIV, htkSPAN, htkP);
- {
-  TsHTMLToken = class
-    Kind: TsHTMLTokenKind;
-    Parent: TsHTMLToken;
-    Children
-}
   TsHTMLReader = class(TsCustomSpreadReader)
   private
     FPointSeparatorSettings: TFormatSettings;
     FFormatSettings: TFormatSettings;
     parser: THTMLParser;
     FInTable: Boolean;
-    FInSubTable: Boolean;
     FInCell: Boolean;
-    FInSpan: Boolean;
-    FInA: Boolean;
-    FInHeader: Boolean;
     FEncoding: String;
     FTableCounter: Integer;
     FCurrRow, FCurrCol: LongInt;
@@ -38,6 +27,7 @@ type
     FAttrList: TsHTMLAttrList;
     FColSpan, FRowSpan: Integer;
     FHRef: String;
+    FFontStack: TsIntegerStack;
     procedure ReadBackgroundColor;
     procedure ReadEncoding;
     procedure ReadFont(AFont: TsFont);
@@ -47,12 +37,18 @@ type
     procedure ReadVertAlign;
     procedure InitFont(AFont: TsFont);
     procedure InitCellFormat;
+    procedure ProcessCellTags(NoCaseTag, Actualtag: String);
+    procedure ProcessEndTags(NoCaseTag, ActualTag: String);
+    procedure ProcessFontPosition(AFontPosition: TsFontPosition);
+    procedure ProcessFontSizeAndStyle(AFontSize: Integer; AFontStyle: TsFontStyles);
+    procedure ProcessFontStyle(AFontStyle: TsFontStyle);
+    procedure ProcessFontRestore;
     procedure TagFoundHandler(NoCaseTag, ActualTag: string);
     procedure TextFoundHandler(AText: String);
   protected
     procedure AddCell(ARow, ACol: LongInt; AText: String);
     function AddFont(AFont: TsFont): Integer;
-    procedure AddRichTextParam(AFont: TsFont);
+    procedure AddRichTextParam(AFont: TsFont; AHyperlinkIndex: Integer = -1);
     procedure FixRichTextParams(var AParams: TsRichTextParams);
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -158,12 +154,15 @@ begin
   FAttrList := TsHTMLAttrList.Create;
   FCellFont := TsFont.Create;
   FCurrFont := TsFont.Create;
+
+  FFontStack := TsIntegerStack.Create;
 end;
 
 destructor TsHTMLReader.Destroy;
 var
   i: Integer;
 begin
+  FreeAndNil(FFontStack);
   FreeAndNil(FCurrFont);
   FreeAndNil(FCellFont);
   FreeAndNil(FAttrList);
@@ -287,33 +286,46 @@ begin
        (AFont.Color = fnt.Color) and
        (AFont.Position = fnt.Position)
     then
+      // Yes. Return the font index.
       exit;
   end;
 
-  // No. Create a new font and add it to the list.
+  // No. Create a new font, add it to the list, and return the new index.
   fnt := TsFont.Create;
   fnt.CopyOf(AFont);
   Result := FFontList.Add(fnt);
 end;
 
-procedure TsHTMLReader.AddRichTextParam(AFont: TsFont);
+procedure TsHTMLReader.AddRichTextParam(AFont: TsFont; AHyperlinkIndex: Integer = -1);
 var
+  len: Integer;
+  fntIndex: Integer;
   n: Integer;
 begin
   n := Length(FCurrRichTextParams);
-  SetLength(FCurrRichTextParams, n+1);
-  with FCurrRichTextParams[n] do
+  len := UTF8Length(FCellText);
+  fntIndex := AddFont(AFont);
+  if (n > 0) and (FCurrRichTextparams[n-1].FirstIndex = len+1) then
   begin
-    FirstIndex := UTF8Length(FCellText) + 1;
-    FontIndex := AddFont(AFont);
-    HyperlinkIndex := -1;
+    // Avoid adding another rich-text parameter for the same text location:
+    // Update the previous one
+    FCurrRichTextParams[n-1].FontIndex := fntIndex;
+    FCurrRichTextParams[n-1].HyperlinkIndex := AHyperlinkIndex;
+  end else
+  begin
+    // Add a new rich-text parameter
+    SetLength(FCurrRichTextParams, n+1);
+    FCurrRichTextParams[n].FirstIndex := len + 1;
+    FCurrRichTextParams[n].FontIndex := fntIndex;
+    FCurrRichTextParams[n].HyperlinkIndex := AHyperlinkIndex;
   end;
 end;
 
-{ Remove "zero-width" rich-text parameters, and retain the parameter added last }
+{ Remove "zero-width" rich-text parameters, and retain the parameter added last.
+  Replace the font index by the one used in the workbook. }
 procedure TsHTMLReader.FixRichTextParams(var AParams: TsRichTextParams);
 var
-  i: Integer;
+  i, j: Integer;
   rtp, nextrtp: TsRichTextParam;
   fnt: TsFont;
   fntIndex: Integer;
@@ -322,15 +334,21 @@ begin
     exit;
 
   // Remove temporary rich-text parameters which were overwritten by their
-  // follower.
+  // follower. This should not happen, just in case...
   i := High(AParams) - 1;
   while i >= 0 do
   begin
-    rtp := AParams[i];
     nextrtp := AParams[i+1];
+    rtp := AParams[i];
     if rtp.FirstIndex = nextrtp.FirstIndex then
     begin
       rtp.FontIndex := nextrtp.FontIndex;
+      for j:=i+1 to High(AParams)-1 do
+      begin
+        AParams[j].FirstIndex := AParams[j+1].FirstIndex;
+        AParams[j].FontIndex := AParams[j+1].FontIndex;
+        AParams[j].HyperlinkIndex := AParams[j+1].HyperlinkIndex;
+      end;
       SetLength(AParams, Length(AParams)-1);
     end;
     dec(i);
@@ -345,6 +363,164 @@ begin
       fntIndex := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
     FCurrRichTextParams[i].FontIndex := fntIndex;
   end;
+end;
+
+procedure TsHTMLReader.ProcessCellTags(NoCaseTag, ActualTag: String);
+begin
+  // Pre-sort to speed up finding the tag
+  case NoCaseTag[2] of
+    'A': if (pos('<A', NoCaseTag) = 1) then
+         begin
+           FFontStack.Push(AddFont(FCurrFont));
+           FCurrFont.FontName := 'Arial';
+           //FCurrFont.Size := 10;  use current size
+           FCurrFont.Color := scBlue;
+           FCurrFont.Style := [fssUnderline];
+           FCurrFont.Position := fpNormal;
+           FAttrList.Parse(ActualTag);
+           ReadHRef;
+           AddRichTextParam(FCurrFont);
+         end;
+    'B': if (NoCaseTag = '<B>') then
+           ProcessFontStyle(fssBold)
+         else
+         if (NoCaseTag = '<BR>') or (NoCaseTag = '<BR/>') or (pos('<BR ', NoCaseTag) = 1) then
+           FCellText := FCellText + LineEnding;
+    'D': if (NoCaseTag = '<DEL>') then
+           ProcessFontStyle(fssStrikeout);
+    'E': if (NoCaseTag = '<EM>') then
+           ProcessFontStyle(fssItalic);
+    'F': if (pos('<FONT ', NoCaseTag) = 1) then
+         begin
+           FFontStack.Push(AddFont(FCurrFont));
+           FAttrList.Parse(ActualTag);
+           ReadFont(FCurrFont);
+           AddRichTextparam(FCurrFont);
+         end;
+    'H': case NoCaseTag[3] of
+           '1': ProcessFontSizeAndStyle(16, [fssBold]);
+           '2': ProcessFontSizeAndStyle(14, [fssBold]);
+           '3': ProcessFontSizeAndStyle(12, [fssBold]);
+           '4': ProcessFontSizeAndStyle(12, [fssItalic]);
+           '5': ProcessFontSizeAndStyle(10, [fssBold]);
+           '6': ProcessFontSizeAndStyle(10, [fssItalic]);
+         end;
+    'I': case NoCaseTag of
+           '<I>'     : ProcessFontStyle(fssItalic);
+           '<INS>'   : ProcessFontStyle(fssUnderline);
+         end;
+    'P': if (NoCaseTag = '<P>') or (pos('<P ', NoCaseTag) = 1) then
+         begin
+           if FCellText <> '' then
+             FCellText := FCellText + LineEnding;
+           FFontStack.Push(AddFont(FCurrFont));
+           FAttrList.Parse(ActualTag);
+           ReadFont(FCurrFont);
+           AddRichTextParam(FCurrFont);
+         end;
+    'S': case NoCaseTag of
+           '<STRONG>': ProcessFontStyle(fssBold);
+           '<S>'     : ProcessFontStyle(fssStrikeout);
+           '<SUB>'   : ProcessFontPosition(fpSubscript);
+           '<SUP>'   : ProcessFontPosition(fpSuperscript);
+           else
+             if (pos('<SPAN ', NoCaseTag) = 1) then
+             begin
+               FFontStack.Push(AddFont(FCurrFont));
+               FAttrList.Parse(ActualTag);
+               ReadFont(FCurrFont);
+               AddRichTextparam(FCurrFont);
+             end;
+         end;
+    'U': if (NoCaseTag = '<U>') then
+           ProcessFontStyle(fssUnderline);
+  end;
+end;
+
+procedure TsHTMLReader.ProcessEndTags(NoCaseTag, ActualTag: String);
+begin
+  if not FInTable then exit;
+
+  if (NoCaseTag = '</TABLE>') then
+  begin
+    FInTable := false;
+    exit;
+  end;
+
+  if not FInCell then exit;
+
+  if (NoCaseTag = '</TD>') or (NoCaseTag = '</TH>') then
+  begin
+    while FWorksheet.isMerged(FWorksheet.FindCell(FCurrRow, FCurrRow)) do
+      inc(FCurrRow);
+    AddCell(FCurrRow, FCurrCol, FCellText);
+    FInCell := false;
+    exit;
+  end;
+
+  // Pre-sort to speed up finding the tag
+  case NoCaseTag[3] of
+    'A': if (NoCaseTag = '</A>') then begin
+           ProcessFontRestore;
+           FCellText := FCellText + ' ';
+         end;
+    'B': if (NoCaseTag = '</B>') then
+           ProcessFontRestore;
+    'D': if (NoCaseTag = '</DEL>') then
+           ProcessFontRestore;
+    'E': if (NoCaseTag = '</EM>') then
+           ProcessFontRestore;
+    'F': if (NoCaseTag = '</FONT>') then
+           ProcessFontRestore;
+    'H': if (NoCaseTag[4] in ['1'..'9']) then
+           ProcessFontRestore;
+    'I': if (NoCaseTag = '</I>') or (NoCaseTag = '</INS>') then
+           ProcessFontRestore;
+    'P': if (NoCaseTag = '</P>') then
+         begin
+           ProcessFontRestore;
+           if FCellText <> '' then FCellText := FCellText + LineEnding;
+         end;
+    'S': if (NoCaseTag = '</SUB>') or (NoCaseTag = '</SUP>') or
+            (NoCaseTag = '</S>') or (NoCaseTag = '</SPAN>') or
+            (NoCaseTag = '</STRONG>')
+         then
+           ProcessFontRestore;
+    'U': if (NoCaseTag = '</U>') then
+           ProcessFontRestore;
+  end;
+end;
+
+procedure TsHTMLReader.ProcessFontPosition(AFontPosition: TsFontPosition);
+begin
+  FFontStack.Push(AddFont(FCurrFont));
+  FCurrFont.Position := AFontPosition;
+  AddRichTextParam(FCurrFont);
+end;
+
+procedure TsHTMLReader.ProcessFontSizeAndStyle(AFontSize: Integer;
+  AFontStyle: TsFontStyles);
+begin
+  FFontStack.Push(AddFont(FCurrFont));
+  FCurrFont.Size := AFontSize;
+  FCurrFont.Style := AFontStyle;
+  AddRichTextparam(FCurrFont);
+end;
+
+procedure TsHTMLReader.ProcessFontStyle(AFontStyle: TsFontStyle);
+begin
+  FFontStack.Push(AddFont(FCurrFont));
+  Include(FCurrFont.Style, AFontStyle);
+  AddRichTextParam(FCurrFont);
+end;
+
+procedure TsHTMLReader.ProcessFontRestore;
+var
+  fntIndex: Integer;
+begin
+  fntIndex := FFontStack.Pop;
+  FCurrFont.CopyOf(TsFont(FFontList[fntIndex]));
+  AddRichTextParam(FCurrFont);
 end;
 
 procedure TsHTMLReader.ReadBackgroundColor;
@@ -489,26 +665,33 @@ begin
       'larger'        : AFont.Size := AFont.Size * FACTOR;
       'smaller'       : AFont.Size := Max(MIN_FONTSIZE, AFont.Size / FACTOR);
       else
-        i := 0;
-        im := 0;
-        ip := pos('%', s);
-        if ip = 0 then begin
-          im := pos('rem', s);
-          if im = 0 then
-            im := pos('em', s);
-        end;
-        if (ip > 0) then i := ip else
-          if (im > 0) then i := im;
-        if i > 0 then
+        if s[1] in ['+', '-'] then
         begin
-          s := copy(s, 1, i-1);
-          if TryStrToFloat(s, f, FPointSeparatorSettings) then
-          begin
-            if ip > 0 then f := f * 0.01;
-            AFont.Size := Max(MIN_FONTSIZE, abs(f) * defFntSize);
-          end;
+          TryStrToInt(s, i);
+          AFont.Size := defFntSize * IntPower(FACTOR, i);
         end else
-          AFont.Size := Max(MIN_FONTSIZE, HTMLLengthStrToPts(s));
+        begin
+          i := 0;
+          im := 0;
+          ip := pos('%', s);
+          if ip = 0 then begin
+            im := pos('rem', s);
+            if im = 0 then
+              im := pos('em', s);
+          end;
+          if (ip > 0) then i := ip else
+            if (im > 0) then i := im;
+          if i > 0 then
+          begin
+            s := copy(s, 1, i-1);
+            if TryStrToFloat(s, f, FPointSeparatorSettings) then
+            begin
+              if ip > 0 then f := f * 0.01;
+              AFont.Size := Max(MIN_FONTSIZE, abs(f) * defFntSize);
+            end;
+          end else
+            AFont.Size := Max(MIN_FONTSIZE, HTMLLengthStrToPts(s));
+        end;
     end;
   end;
 
@@ -667,11 +850,19 @@ end;
 
 procedure TsHTMLReader.TagFoundHandler(NoCaseTag, ActualTag: string);
 begin
+  if (Length(NoCaseTag) > 1) and (NoCaseTag[2] = '/') then
+  begin
+    ProcessEndTags(NoCaseTag, ActualTag);
+    exit;
+  end;
+
   if pos('<META', NoCaseTag) = 1 then
   begin
     FAttrList.Parse(ActualTag);
     ReadEncoding;
-  end else
+    exit;
+  end;
+
   if pos('<TABLE', NoCaseTag) = 1 then
   begin
     inc(FTableCounter);
@@ -687,10 +878,9 @@ begin
     FWorkbook.ReplaceFont(DEFAULT_FONTINDEX, FCurrFont.FontName, FCurrFont.Size,
       FCurrFont.Style, FCurrFont.Color, FCurrFont.Position);
     FCellFont.CopyOf(FCurrFont);
-  end else
-  if (NoCaseTag = '</TABLE>') and FInTable then
-    FInTable := false
-  else
+    exit;
+  end;
+
   if not FInTable then
     exit;
 
@@ -719,87 +909,15 @@ begin
       Include(FCurrCellFormat.UsedFormattingFields, uffHorAlign);
     end;
     FCurrFont.CopyOf(FCellFont);
-  end else
-  if (NoCaseTag = '</TD>') or (NoCaseTag = '</TH>') then
-  begin
-    while FWorksheet.isMerged(FWorksheet.FindCell(FCurrRow, FCurrRow)) do
-      inc(FCurrRow);
-    AddCell(FCurrRow, FCurrCol, FCellText);
-    FInCell := false;
+    FFontStack.Push(AddFont(FCurrFont));
+    exit;
   end;
+
   if not FInCell then
     exit;
 
   // The next tags are processed only within a <TD> or <TH> context.
-  if (pos('<A', NoCaseTag) = 1) then
-  begin
-    FInA := true;
-    FAttrList.Parse(ActualTag);
-    ReadHRef;
-  end else
-  if NoCaseTag = '</A>' then
-    FInA := false
-  else
-  if (NoCaseTag = '<B>') or (NoCaseTag = '<STRONG>') or
-     (NoCaseTag = '</B>') or (NoCaseTag = '</STRONG>') then
-  begin
-    if NoCaseTag[2] = '/' then
-      Exclude(FCurrFont.Style, fssBold) else
-      Include(FCurrFont.Style, fssBold);
-    AddRichTextParam(FCurrFont);
-  end else
-  if (NoCaseTag = '<I>') or (NoCaseTag = '<EM>') or
-     (NoCaseTag = '</I>') or (NoCaseTag = '</EM>') then
-  begin
-    if NoCaseTag[2] = '/' then
-      Exclude(FCurrFont.Style, fssItalic) else
-      Include(FCurrFont.Style, fssItalic);
-    AddRichTextParam(FCurrFont);
-  end else
-  if (NoCaseTag = '<U>') or (NoCaseTag = '<INS>') or
-     (NoCaseTag = '</U>') or (NoCaseTag = '</INS>') then
-  begin
-    if NoCaseTag[2] = '/' then
-      Exclude(FCurrFont.Style, fssUnderline) else
-      Include(FCurrFont.Style, fssUnderline);
-    AddRichTextParam(FCurrFont);
-  end else
-  if (NoCaseTag = '<S>') or (NoCaseTag = '<DEL>') or
-     (NoCaseTag = '</S>') or (NoCaseTag = '</DEL>') then
-  begin
-    if NoCaseTag[2] = '/' then
-      Exclude(FCurrFont.Style, fssStrikeout) else
-      Include(FCurrFont.Style, fssStrikeout);
-    AddRichTextParam(FCurrFont);
-  end else
-  if (NoCaseTag = '<SUB>') or (NoCaseTag = '</SUB>') then
-  begin
-    if NoCaseTag[2] = '/' then
-      FCurrFont.Position := fpNormal else
-      FCurrFont.Position := fpSubscript;
-    AddRichTextParam(FCurrFont);
-  end else
-  if (NoCaseTag = '<SUP>') or (NoCaseTag = '</SUP>') then
-  begin
-    if NoCaseTag[2] = '/' then
-      FCurrFont.Position := fpNormal else
-      FCurrFont.Position := fpSuperscript;
-    AddRichTextParam(FCurrFont);
-  end else
-  if (pos('<FONT ', NoCaseTag) = 1) then
-  begin
-    FAttrList.Parse(ActualTag);
-    ReadFont(FCurrFont);
-    AddRichTextparam(FCurrFont);
-  end else
-  if (pos('<SPAN ', NoCaseTag) = 1) then
-  begin
-    FAttrList.Parse(ActualTag);
-    ReadFont(FCurrFont);
-    AddRichTextParam(FCurrFont);
-  end else
-  if ((NoCaseTag = '<BR>') or (pos('<BR ', NoCaseTag) = 1)) then
-    FCellText := FCellText + LineEnding;
+  ProcessCellTags(NoCaseTag, ActualTag);
   (*
 
   {

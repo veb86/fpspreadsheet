@@ -192,6 +192,14 @@ type
     property Items[AIndex: Integer]: PsCellFormat read GetItem write SetItem; default;
   end;
 
+  { TsIntegerStack }
+  TsIntegerStack = class
+  private
+    FValues: Array of Integer;
+  public
+    procedure Push(AValue: Integer);
+    function Pop: Integer;
+  end;
 
 implementation
 
@@ -1293,6 +1301,24 @@ end;
 procedure TsCellFormatList.SetItem(AIndex: Integer; const AValue: PsCellFormat);
 begin
   inherited Items[AIndex] := AValue;
+end;
+
+{******************************************************************************}
+{                              TsIntegerStack                                  }
+{******************************************************************************}
+
+procedure TsIntegerStack.Push(AValue: Integer);
+begin
+  SetLength(FValues, Length(FValues)+1);
+  FValues[High(FValues)] := AValue;
+end;
+
+function TsIntegerStack.Pop: Integer;
+begin
+  if Length(FValues) = 0 then
+    raise Exception.Create('[TsIntegerStack.Pop] Stack empty');
+  Result := FValues[High(FValues)];
+  SetLength(FValues, Length(FValues)-1);
 end;
 
 end.
