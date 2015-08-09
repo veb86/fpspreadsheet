@@ -385,7 +385,7 @@ begin
            ProcessFontStyle(fssBold)
          else
          if (NoCaseTag = '<BR>') or (NoCaseTag = '<BR/>') or (pos('<BR ', NoCaseTag) = 1) then
-           FCellText := FCellText + LineEnding;
+           FCellText := FCellText + #10; //LineEnding;
     'D': if (NoCaseTag = '<DEL>') then
            ProcessFontStyle(fssStrikeout);
     'E': if (NoCaseTag = '<EM>') then
@@ -398,12 +398,12 @@ begin
            AddRichTextparam(FCurrFont);
          end;
     'H': case NoCaseTag[3] of
-           '1': ProcessFontSizeAndStyle(16, [fssBold]);
-           '2': ProcessFontSizeAndStyle(14, [fssBold]);
-           '3': ProcessFontSizeAndStyle(12, [fssBold]);
-           '4': ProcessFontSizeAndStyle(12, [fssItalic]);
-           '5': ProcessFontSizeAndStyle(10, [fssBold]);
-           '6': ProcessFontSizeAndStyle(10, [fssItalic]);
+           '1': ProcessFontSizeAndStyle(16, [fssBold]);     // <H1>
+           '2': ProcessFontSizeAndStyle(14, [fssBold]);     // <H2>
+           '3': ProcessFontSizeAndStyle(12, [fssBold]);     // <H3>
+           '4': ProcessFontSizeAndStyle(12, [fssItalic]);   // <H4>
+           '5': ProcessFontSizeAndStyle(10, [fssBold]);     // <H5>
+           '6': ProcessFontSizeAndStyle(10, [fssItalic]);   // <H6>
          end;
     'I': case NoCaseTag of
            '<I>'     : ProcessFontStyle(fssItalic);
@@ -412,7 +412,7 @@ begin
     'P': if (NoCaseTag = '<P>') or (pos('<P ', NoCaseTag) = 1) then
          begin
            if FCellText <> '' then
-             FCellText := FCellText + LineEnding;
+             FCellText := FCellText + #10; //LineEnding;
            FFontStack.Push(AddFont(FCurrFont));
            FAttrList.Parse(ActualTag);
            ReadFont(FCurrFont);
@@ -479,7 +479,7 @@ begin
     'P': if (NoCaseTag = '</P>') then
          begin
            ProcessFontRestore;
-           if FCellText <> '' then FCellText := FCellText + LineEnding;
+           if FCellText <> '' then FCellText := FCellText + #10; //LineEnding;
          end;
     'S': if (NoCaseTag = '</SUB>') or (NoCaseTag = '</SUP>') or
             (NoCaseTag = '</S>') or (NoCaseTag = '</SPAN>') or
@@ -918,38 +918,41 @@ begin
 
   // The next tags are processed only within a <TD> or <TH> context.
   ProcessCellTags(NoCaseTag, ActualTag);
-  (*
-
-  {
-  if (pos('<H', NoCaseTag) = 1) and (NoCaseTag[3] in ['1'..'9']) then
-  begin
-    if FInCell then
-      FInHeader := true;
-  end else              }
-  else
-    case NoCaseTag of
-      '</SPAN>':
-        if FInCell then FInSpan := false;
-      '<H1/>', '<H2/>', '<H3/>', '<H4/>', '<H5/>', '<H6/>':
-        if FinCell then FInHeader := false;
-      '<TD/>', '<TD />', '<TH/>', '<TH />':  // empty cells
-        if FInCell then
-          inc(FCurrCol);
-    end;
-    *)
 end;
 
 procedure TsHTMLReader.TextFoundHandler(AText: String);
+// Todo: find correct way to retain spaces
+// Example:
+//    <td>123<b>abc</b>  is rendered by browser as  123abc  (with abc bold)
+//    <td>123
+//        <b>abc</b>     is rendered as 123 abc
+// The current way is not good.
+var
+  beginsWithLineEnding, endsWithLineEnding: Boolean;
 begin
   if FInCell then
   begin
+    beginsWithLineEnding := (AText <> '') and (AText[1] in [#13, #10]);
+    endsWithLineEnding := (AText <> '') and (AText[Length(AText)] in [#13,#10]);
     AText := CleanHTMLString(ConvertEncoding(AText, FEncoding, EncodingUTF8));
     if AText <> '' then
     begin
       if FCellText = '' then
         FCellText := AText
       else
+      if beginsWithLineEnding then
+        FCellText := FCellText + ' ' + AText
+      else
+      if endsWithLineEnding then
+        FCelLText := FCelLText + AText + ' '
+      else
+        FCellText := FCellText + AText;
+      {
+      if FCellText[Length(FCellText)] = #10 then
+        FCellText := FCellText + AText
+      else
         FCellText := FCellText + ' ' + AText;
+        }
     end;
   end;
 end;

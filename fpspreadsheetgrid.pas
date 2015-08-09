@@ -1991,16 +1991,18 @@ begin
         begin
           // merged cells
           FDrawingCell := Worksheet.FindMergeBase(cell);
-          Worksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2);
-          gr := GetGridRow(sr1);
-          if Worksheet.HasComment(FDrawingCell) then
-            commentcell_rct := CellRect(GetGridCol(sc2), gr)
-          else
-            commentcell_rct := Rect(0,0,0,0);
-          ColRowToOffSet(False, True, gr, rct.Top, tmp);
-          ColRowToOffSet(False, True, gr + integer(sr2) - integer(sr1), tmp, rct.Bottom);
-          gc := GetGridCol(sc1);
-          gcNext := gc + (sc2 - sc1) + 1;
+          if Worksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2) then
+          begin
+            gr := GetGridRow(sr1);
+            if Worksheet.HasComment(FDrawingCell) then
+              commentcell_rct := CellRect(GetGridCol(sc2), gr)
+            else
+              commentcell_rct := Rect(0,0,0,0);
+            ColRowToOffSet(False, True, gr, rct.Top, tmp);
+            ColRowToOffSet(False, True, gr + integer(sr2) - integer(sr1), tmp, rct.Bottom);
+            gc := GetGridCol(sc1);
+            gcNext := gc + (sc2 - sc1) + 1;
+          end;
         end;
       end;
 

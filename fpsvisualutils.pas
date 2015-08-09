@@ -270,14 +270,15 @@ var
   procedure ScanLine(var P: PChar; var NumSpaces: Integer;
     var ARtpFontIndex: Integer; var ALineWidth, ALineHeight: Integer);
   var
-    pEOL: PChar;
+    pWordStart: PChar;
+    EOL: Boolean;
     savedSpaces: Integer;
     savedWidth: Integer;
-    savedRtpIndex: Integer;
+    savedCharPos: Integer;
+    savedRtpFontIndex: Integer;
     maxWidth: Integer;
     dw: Integer;
-    spaceFound: Boolean;
-    s: utf8String;
+    lineChar: utf8String;
     charLen: Integer;    // Number of bytes of current utf8 character
   begin
     NumSpaces := 0;
@@ -286,9 +287,6 @@ var
     ALineWidth := 0;
     savedWidth := 0;
     savedSpaces := 0;
-    savedRtpIndex := ARtpFontIndex;
-    spaceFound := false;
-    pEOL := p;
 
     if AWordwrap then
     begin
@@ -300,67 +298,89 @@ var
     else
       maxWidth := MaxInt;
 
-    while p^ <> #0 do begin
-      UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
-      ALineHeight := Max(fontHeight, ALineHeight);
+    UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
+    ALineHeight := Max(fontHeight, ALineHeight);
 
-      s := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
+    while p^ <> #0 do begin
       case p^ of
-        ' ': begin
-               spaceFound := true;
-               pEOL := p;
-               savedWidth := ALineWidth;
-               savedSpaces := NumSpaces;
-               savedRtpIndex := ARtpFontIndex;
-               dw := Math.IfThen(ARotation = rtStacked, fontHeight, ACanvas.TextWidth(s));
-               if ALineWidth + dw < MaxWidth then
-               begin
-                 inc(NumSpaces);
-                 ALineWidth := ALineWidth + dw;
-               end else
-                 break;
-             end;
         #13: begin
                inc(p);
-               inc(charPos);
+               inc(charpos);
                if p^ = #10 then
                begin
                  inc(p);
-                 inc(charPos);
-               end;
-               break;
-             end;
-        #10: begin
-               inc(p);
-               inc(charPos);
-               break;
-             end;
-        else begin
-               dw := Math.IfThen(ARotation = rtStacked, fontHeight, ACanvas.TextWidth(s));
-               ALineWidth := ALineWidth + dw;
-               if ALineWidth > maxWidth then
-               begin
-                 if spaceFound then
-                 begin
-                   p := pEOL;
-                   ALineWidth := savedWidth;
-                   NumSpaces := savedSpaces;
-                   ARtpFontIndex := savedRtpIndex;
-                 end else
-                 begin
-                   ALineWidth := ALineWidth - dw;
-                   if ALineWidth = 0 then
-                     inc(p);
-                 end;
+                 inc(charpos);
                  break;
                end;
              end;
+        #10: begin
+               inc(p);
+               inc(charpos);
+               break;
+             end;
+        ' ': begin
+               savedWidth := ALineWidth;
+               savedSpaces := NumSpaces;
+               // Find next word
+               while p^ = ' ' do
+               begin
+                 UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
+                 ALineHeight := Max(fontHeight, ALineHeight);
+                 dw := Math.IfThen(ARotation = rtStacked, fontHeight, ACanvas.TextWidth(' '));
+                 ALineWidth := ALineWidth + dw;
+                 inc(NumSpaces);
+                 inc(p);
+                 inc(charPos);
+               end;
+               if ALineWidth >= maxWidth then
+               begin
+                 ALineWidth := savedWidth;
+                 NumSpaces := savedSpaces;
+                 break;
+               end;
+             end;
+        else begin
+               // Bere begins a new word. Find end of this word and check if
+               // it fits into the line.
+               // Store the data valid for the word start.
+               pWordStart := p;
+               savedCharPos := charpos;
+               savedRtpFontIndex := ARtpFontIndex;
+               EOL := false;
+               while (p^ <> #0) and (p^ <> #13) and (p^ <> #10) and (p^ <> ' ') do
+               begin
+                 UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
+                 ALineHeight := Max(fontHeight, ALineHeight);
+                 lineChar := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
+                 dw := Math.IfThen(ARotation = rtStacked, fontHeight, ACanvas.TextWidth(lineChar));
+                 ALineWidth := ALineWidth + dw;
+                 if ALineWidth > maxWidth then
+                 begin
+                   // The line exeeds the max line width.
+                   // There are two cases:
+                   if NumSpaces > 0 then
+                   begin
+                     // (a) This is not the only word: Go back to where this
+                     // word began. We had stored everything needed!
+                     p := pWordStart;
+                     charpos := savedCharPos;
+                     ALineWidth := savedWidth;
+                     ARtpFontIndex := savedRtpFontIndex;
+                   end;
+                   // (b) This is the only word in the line --> we break at the
+                   // current cursor position.
+                   EOL := true;
+                   break;
+                 end;
+                 inc(p);
+                 inc(charPos);
+               end;
+               if EOL then break;
+             end;
       end;
-
-      inc(p, charLen);
-      inc(charPos);
     end;
     UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
+    ALineHeight := Max(fontHeight, ALineHeight);
   end;
 
   { Paints the text between the pointers pStart and pEnd.
@@ -482,11 +502,13 @@ begin
       totalHeight := totalHeight + Height;
       linelen := Max(linelen, Width);
       p := pEnd;
+      {
       if p^ = ' ' then
         while (p^ <> #0) and (p^ = ' ') do begin
           inc(p);
           inc(charPos);
         end;
+        }
     end;
   until p^ = #0;
 
