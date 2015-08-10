@@ -154,6 +154,7 @@ begin
   FAttrList := TsHTMLAttrList.Create;
   FCellFont := TsFont.Create;
   FCurrFont := TsFont.Create;
+  InitFont(FCurrFont);
 
   FFontStack := TsIntegerStack.Create;
 end;
@@ -385,9 +386,16 @@ begin
            ProcessFontStyle(fssBold)
          else
          if (NoCaseTag = '<BR>') or (NoCaseTag = '<BR/>') or (pos('<BR ', NoCaseTag) = 1) then
-           FCellText := FCellText + #10; //LineEnding;
+           FCellText := FCellText + FPS_LINE_ENDING;
     'D': if (NoCaseTag = '<DEL>') then
-           ProcessFontStyle(fssStrikeout);
+           ProcessFontStyle(fssStrikeout)
+         else if pos('<DIV ', NoCaseTag) = 1 then
+         begin
+           FFontStack.Push(AddFont(FCurrFont));
+           FAttrList.Parse(ActualTag);
+           ReadFont(FCurrFont);
+           AddRichTextParam(FCurrFont);
+         end;
     'E': if (NoCaseTag = '<EM>') then
            ProcessFontStyle(fssItalic);
     'F': if (pos('<FONT ', NoCaseTag) = 1) then
@@ -412,7 +420,7 @@ begin
     'P': if (NoCaseTag = '<P>') or (pos('<P ', NoCaseTag) = 1) then
          begin
            if FCellText <> '' then
-             FCellText := FCellText + #10; //LineEnding;
+             FCellText := FCellText + FPS_LINE_ENDING;
            FFontStack.Push(AddFont(FCurrFont));
            FAttrList.Parse(ActualTag);
            ReadFont(FCurrFont);
@@ -441,9 +449,13 @@ procedure TsHTMLReader.ProcessEndTags(NoCaseTag, ActualTag: String);
 begin
   if not FInTable then exit;
 
+  if (NoCaseTag = '</BODY>') then
+    ProcessFontRestore;
+
   if (NoCaseTag = '</TABLE>') then
   begin
     FInTable := false;
+    ProcessFontRestore;
     exit;
   end;
 
@@ -455,6 +467,7 @@ begin
       inc(FCurrRow);
     AddCell(FCurrRow, FCurrCol, FCellText);
     FInCell := false;
+    FCurrFont.CopyOf(TsFont(FFontList[FFontStack.Pop]));
     exit;
   end;
 
@@ -466,7 +479,7 @@ begin
          end;
     'B': if (NoCaseTag = '</B>') then
            ProcessFontRestore;
-    'D': if (NoCaseTag = '</DEL>') then
+    'D': if (NoCaseTag = '</DEL>') or (NoCaseTag = '</DIV>') then
            ProcessFontRestore;
     'E': if (NoCaseTag = '</EM>') then
            ProcessFontRestore;
@@ -479,7 +492,7 @@ begin
     'P': if (NoCaseTag = '</P>') then
          begin
            ProcessFontRestore;
-           if FCellText <> '' then FCellText := FCellText + #10; //LineEnding;
+           if FCellText <> '' then FCellText := FCellText + FPS_LINE_ENDING;
          end;
     'S': if (NoCaseTag = '</SUB>') or (NoCaseTag = '</SUP>') or
             (NoCaseTag = '</S>') or (NoCaseTag = '</SPAN>') or
@@ -863,6 +876,12 @@ begin
     exit;
   end;
 
+  if pos('<BODY ', NoCaseTag) = 1 then
+  begin
+    InitFont(FCurrFont);
+    FAttrList.Parse(ActualTag);
+    ReadFont(FCurrFont);
+  end else
   if pos('<TABLE', NoCaseTag) = 1 then
   begin
     inc(FTableCounter);
@@ -872,7 +891,7 @@ begin
     FInTable := true;
     FCurrRow := -1;
     FCurrCol := -1;
-    InitFont(FCurrFont);
+    FFontStack.Push(AddFont(FCurrFont));
     FAttrList.Parse(ActualTag);
     ReadFont(FCurrFont);
     FWorkbook.ReplaceFont(DEFAULT_FONTINDEX, FCurrFont.FontName, FCurrFont.Size,
@@ -896,20 +915,20 @@ begin
     FInCell := true;
     inc(FCurrCol);
     FCellText := '';
+    FFontStack.Push(AddFont(FCurrFont));
     InitCellFormat;
     FAttrList.Parse(ActualTag);
     ReadMergedRange;
     ReadBackgroundColor;
     ReadHorAlign;
     ReadVertAlign;
-    ReadFont(FCellFont);
+    ReadFont(FCurrFont);
     if NoCaseTag[3] = 'H' then begin        // for <TH>
-      Include(FCellFont.Style, fssBold);
+      Include(FCurrFont.Style, fssBold);
       FCurrCellFormat.HorAlignment := haCenter;
       Include(FCurrCellFormat.UsedFormattingFields, uffHorAlign);
     end;
-    FCurrFont.CopyOf(FCellFont);
-    FFontStack.Push(AddFont(FCurrFont));
+    FCellFont.CopyOf(FCurrFont);
     exit;
   end;
 

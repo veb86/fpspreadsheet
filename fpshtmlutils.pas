@@ -401,7 +401,10 @@ begin
   end;
 
   if AText = '' then
+  begin
+    if hasStartSpace or hasEndSpace then Result := ' ';
     exit;
+  end;
 
   // Replace HTML entities by their counter part UTF8 characters
   P := @AText[1];

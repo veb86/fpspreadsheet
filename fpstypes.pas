@@ -72,6 +72,10 @@ const
       and may be wrong. }
   ROW_HEIGHT_CORRECTION = 0.2;
 
+  {@@ Line ending character in cell texts with fixed line break. Using a
+      unique value simplifies many things... }
+  FPS_LINE_ENDING = #10;
+
 
 type
 
