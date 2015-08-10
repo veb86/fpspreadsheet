@@ -376,28 +376,46 @@ end;
 
 function CleanHTMLString(AText: String): String;
 var
-  len: Integer;
   ent: TsHTMLEntity;
   P: PChar;
   ch: Char;
+  hasStartSpace, hasEndSpace: Boolean;
 begin
   Result := '';
 
   // Remove leading and trailing spaces and line endings coming from formatted
-  // source lines
-  while (Length(AText) > 0) and (AText[1] in [#9, #10, #13, ' ']) do
-    Delete(AText, 1,1);
+  // source lines. Retain 1 single space, at the end even without spaces found.
+  // No idea if this is 100% correct - at least, looks good.
+  hasStartSpace := false;
+  while (Length(AText) > 0) and (AText[1] in [#9, #13, #10, ' ']) do
+  begin
+    if AText[1] = ' ' then hasStartSpace := true; // A leading space will be added later
+    Delete(AText, 1, 1);
+  end;
+
+  hasEndSpace := false;
   while (Length(AText) > 0) and (AText[Length(AText)] in [#9, #10, #13, ' ']) do
+  begin
+    hasEndSpace := true;                 // A trailing space will be added later
     Delete(AText, Length(AText), 1);
+  end;
+
   if AText = '' then
     exit;
 
   // Replace HTML entities by their counter part UTF8 characters
-  len := Length(AText);
   P := @AText[1];
   while (P^ <> #0) do begin
     ch := P^;
     case ch of
+      ' ': begin
+             // collapse multiple spaces to a single space (HTML spec)
+             // http://stackoverflow.com/questions/24615355/browser-white-space-rendering
+             Result := Result + ' ';
+             inc(P);
+             while (P^ = ' ') do inc(P);
+             dec(P);
+           end;
       '&': begin
              inc(P);
              if (P <> nil) and IsHTMLEntity(P, ent) then
@@ -414,6 +432,10 @@ begin
     end;
     inc(P);
   end;
+
+  // Add leading and trailing spaces from above.
+  if hasStartSpace then Result := ' ' + Result;
+  if hasEndSpace then Result := Result + ' ';
 end;
 
 

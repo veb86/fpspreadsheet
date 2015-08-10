@@ -921,38 +921,16 @@ begin
 end;
 
 procedure TsHTMLReader.TextFoundHandler(AText: String);
-// Todo: find correct way to retain spaces
-// Example:
-//    <td>123<b>abc</b>  is rendered by browser as  123abc  (with abc bold)
-//    <td>123
-//        <b>abc</b>     is rendered as 123 abc
-// The current way is not good.
-var
-  beginsWithLineEnding, endsWithLineEnding: Boolean;
 begin
   if FInCell then
   begin
-    beginsWithLineEnding := (AText <> '') and (AText[1] in [#13, #10]);
-    endsWithLineEnding := (AText <> '') and (AText[Length(AText)] in [#13,#10]);
     AText := CleanHTMLString(ConvertEncoding(AText, FEncoding, EncodingUTF8));
     if AText <> '' then
     begin
       if FCellText = '' then
         FCellText := AText
       else
-      if beginsWithLineEnding then
-        FCellText := FCellText + ' ' + AText
-      else
-      if endsWithLineEnding then
-        FCelLText := FCelLText + AText + ' '
-      else
         FCellText := FCellText + AText;
-      {
-      if FCellText[Length(FCellText)] = #10 then
-        FCellText := FCellText + AText
-      else
-        FCellText := FCellText + ' ' + AText;
-        }
     end;
   end;
 end;
