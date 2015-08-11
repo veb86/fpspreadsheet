@@ -29,6 +29,7 @@ type
     FHRef: String;
     FFontStack: TsIntegerStack;
     procedure ReadBackgroundColor;
+    procedure ReadBorder;
     procedure ReadEncoding;
     procedure ReadFont(AFont: TsFont);
     procedure ReadHRef;
@@ -393,6 +394,10 @@ begin
          begin
            FFontStack.Push(AddFont(FCurrFont));
            FAttrList.Parse(ActualTag);
+           ReadBackgroundColor;
+           ReadBorder;
+           ReadHorAlign;
+           ReadVertAlign;
            ReadFont(FCurrFont);
            AddRichTextParam(FCurrFont);
          end;
@@ -423,6 +428,10 @@ begin
              FCellText := FCellText + FPS_LINE_ENDING;
            FFontStack.Push(AddFont(FCurrFont));
            FAttrList.Parse(ActualTag);
+           ReadBackgroundColor;
+           ReadBorder;
+           ReadHorAlign;
+           ReadVertAlign;
            ReadFont(FCurrFont);
            AddRichTextParam(FCurrFont);
          end;
@@ -436,6 +445,10 @@ begin
              begin
                FFontStack.Push(AddFont(FCurrFont));
                FAttrList.Parse(ActualTag);
+               ReadBackgroundColor;
+               ReadBorder;
+               ReadHorAlign;
+               ReadVertAlign;
                ReadFont(FCurrFont);
                AddRichTextparam(FCurrFont);
              end;
@@ -463,8 +476,8 @@ begin
 
   if (NoCaseTag = '</TD>') or (NoCaseTag = '</TH>') then
   begin
-    while FWorksheet.isMerged(FWorksheet.FindCell(FCurrRow, FCurrRow)) do
-      inc(FCurrRow);
+    while FWorksheet.IsMerged(FWorksheet.FindCell(FCurrRow, FCurrCol)) do
+      inc(FCurrCol);
     AddCell(FCurrRow, FCurrCol, FCellText);
     FInCell := false;
     FCurrFont.CopyOf(TsFont(FFontList[FFontStack.Pop]));
@@ -549,6 +562,109 @@ begin
     FCurrCellFormat.Background.FgColor := FCurrCellFormat.Background.BgColor;
     FCurrCellFormat.Background.Style := fsSolidFill;  // No other fill styles in html
     Include(FCurrCellFormat.UsedFormattingFields, uffBackground);
+  end;
+end;
+
+procedure TsHTMLReader.ReadBorder;
+var
+  idx: Integer;
+  cb: TsCellBorders;
+  value: String;
+
+  procedure ReadBorderAttribs(AValue: String; var ABorderStyle: TsCellBorderStyle);
+  var
+    L: TStringList;
+    bs: TsCellBorderStyle;
+    w: String;
+    style: String;
+    color: String;
+  begin
+    L := TStringList.Create;
+    try
+      L.StrictDelimiter := true;
+      L.Delimiter := ' ';
+      L.DelimitedText := AValue;
+      w := L[0];
+      if L.Count > 1 then style := L[1] else style := '';
+      if L.Count > 2 then color := L[2] else color := '';
+      if (w = '1px') and (style = 'solid') then
+        ABorderStyle.LineStyle := lsHair
+      else
+      if (w = 'thin') or (w = '1px') then
+        case style of
+          'solid'  : ABorderStyle.LineStyle := lsThin;
+          'dashed' : ABorderStyle.LineStyle := lsDashed;
+          'dotted' : ABorderStyle.LineStyle := lsDotted;
+        end
+      else
+      if (w = 'medium') then
+        case style of
+          'solid'  : ABorderStyle.LineStyle := lsMedium;
+          'dashed' : ABorderStyle.LineStyle := lsMediumDash;
+        end
+      else
+      if (w = 'thick') and (style = 'solid') then
+        ABorderStyle.LineStyle := lsThick
+      else
+      if (w = 'double') then begin
+        ABorderStyle.LineStyle := lsDouble;
+        if L.Count > 1 then color := L[1];
+      end;
+      if color <> '' then
+        ABorderStyle.Color := HTMLColorStrToColor(color);
+    finally
+      L.Free;
+    end;
+  end;
+
+begin
+  cb := [];
+  idx := FAttrList.IndexOfName('border');
+  if idx <> -1 then
+  begin
+    value := FAttrList[idx].Value;
+    ReadBorderAttribs(value, FCurrCellFormat.BorderStyles[cbNorth]);
+    FCurrCellFormat.BorderStyles[cbEast] := FCurrCellFormat.BorderStyles[cbNorth];
+    FCurrCellFormat.BorderStyles[cbSouth] := FCurrCellFormat.BorderStyles[cbNorth];
+    FCurrCellFormat.BorderStyles[cbWest] := FCurrCellFormat.BorderStyles[cbNorth];
+    FCurrCellFormat.Border := FCurrCellFormat.Border + [cbNorth, cbSouth, cbEast, cbWest];
+    Include(FCurrCellFormat.UsedFormattingFields, uffBorder);
+  end;
+
+  idx := FAttrList.IndexOfName('border-left');
+  if idx <> -1 then
+  begin
+    Include(FCurrCellFormat.Border, cbWest);
+    value := FAttrList[idx].Value;
+    ReadBorderAttribs(value, FCurrCellFormat.BorderStyles[cbWest]);
+    Include(FCurrCellFormat.UsedFormattingFields, uffBorder);
+  end;
+
+  idx := FAttrList.IndexOfName('border-right');
+  if idx <> -1 then
+  begin
+    Include(FCurrCellFormat.Border, cbEast);
+    value := FAttrList[idx].Value;
+    ReadBorderAttribs(value, FCurrCellFormat.BorderStyles[cbEast]);
+    Include(FCurrCellFormat.UsedFormattingFields, uffBorder);
+  end;
+
+  idx := FAttrList.IndexofName('border-top');
+  if idx <> -1 then
+  begin
+    Include(FCurrCellFormat.Border, cbNorth);
+    value := FAttrList[idx].Value;
+    ReadBorderAttribs(value, FCurrCellFormat.BorderStyles[cbNorth]);
+    Include(FCurrCellFormat.UsedFormattingFields, uffBorder);
+  end;
+
+  idx := FAttrList.IndexOfName('border-bottom');
+  if idx <> -1 then
+  begin
+    Include(FCurrCellFormat.Border, cbSouth);
+    value := FAttrList[idx].Value;
+    ReadBorderAttribs(value, FCurrCellFormat.BorderStyles[cbSouth]);
+    Include(FCurrCellFormat.UsedFormattingFields, uffBorder);
   end;
 end;
 
@@ -920,6 +1036,7 @@ begin
     FAttrList.Parse(ActualTag);
     ReadMergedRange;
     ReadBackgroundColor;
+    ReadBorder;
     ReadHorAlign;
     ReadVertAlign;
     ReadFont(FCurrFont);
