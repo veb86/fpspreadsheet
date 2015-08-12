@@ -174,9 +174,12 @@ type
     procedure UpdateCaches;
 
     { Reading of values }
-    function  ReadAsUTF8Text(ARow, ACol: Cardinal): string; overload;
-    function  ReadAsUTF8Text(ACell: PCell): string; overload;
-    function  ReadAsUTF8Text(ACell: PCell; AFormatSettings: TFormatSettings): string; overload;
+    function  ReadAsText(ARow, ACol: Cardinal): string; overload;
+    function  ReadAsText(ACell: PCell): string; overload;
+    function  ReadAsText(ACell: PCell; AFormatSettings: TFormatSettings): string; overload;
+    function  ReadAsUTF8Text(ARow, ACol: Cardinal): string; overload; deprecated 'Use ReadAsText';
+    function  ReadAsUTF8Text(ACell: PCell): string; overload; deprecated 'Use ReadAsText';
+    function  ReadAsUTF8Text(ACell: PCell; AFormatSettings: TFormatSettings): string; overload; deprecated 'Use ReadAsText';
     function  ReadAsNumber(ARow, ACol: Cardinal): Double; overload;
     function  ReadAsNumber(ACell: PCell): Double; overload;
     function  ReadAsDateTime(ARow, ACol: Cardinal; out AResult: TDateTime): Boolean; overload;
@@ -263,10 +266,17 @@ type
     procedure WriteRPNFormula(ACell: PCell;
       AFormula: TsRPNFormula); overload;
 
-    function WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring;
+    function WriteText(ARow, ACol: Cardinal; AText: String;
       ARichTextParams: TsRichTextParams = nil): PCell; overload;
-    procedure WriteUTF8Text(ACell: PCell; AText: String;
+    procedure WriteText(ACell: PCell; AText: String;
       ARichTextparams: TsRichTextParams = nil); overload;
+    function WriteTextAsHTML(ARow, ACol: Cardinal; AText: String): PCell; overload;
+    procedure WriteTextAsHTML(ACell: PCell; AText: String); overload;
+
+    function WriteUTF8Text(ARow, ACol: Cardinal; AText: String;
+      ARichTextParams: TsRichTextParams = nil): PCell; overload; deprecated 'Use WriteText';
+    procedure WriteUTF8Text(ACell: PCell; AText: String;
+      ARichTextparams: TsRichTextParams = nil); overload; deprecated 'Use WriteText';
 
     { Writing of cell attributes }
     function WriteBackground(ARow, ACol: Cardinal; AStyle: TsFillStyle;
@@ -826,7 +836,7 @@ implementation
 uses
   Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser, RegExpr,
   fpsStrings, uvirtuallayer_ole,
-  fpsUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
+  fpsUtils, fpsHTMLUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
   fpsNumFormatParser;
 
 (*
@@ -1481,7 +1491,7 @@ begin
   // Detect whether the cell already has a hyperlink, but has no other content.
   if HasHyperlink(ACell) then
     noCellText := (ACell^.ContentType = cctUTF8String) and
-      (GetDisplayText(ReadHyperlink(ACell).Target) = ReadAsUTF8Text(ACell));
+      (GetDisplayText(ReadHyperlink(ACell).Target) = ReadAsText(ACell));
 
   // Attach the hyperlink to the cell
   FHyperlinks.AddHyperlink(ACell^.Row, ACell^.Col, ATarget, ATooltip);
@@ -2085,7 +2095,7 @@ begin
   Result := 0;
   if (ACell <> nil) and (ACell^.ContentType = cctNumber) then
   begin
-    s := ReadAsUTF8Text(ACell);
+    s := ReadAsText(ACell);
     p := pos(Workbook.FormatSettings.DecimalSeparator, s);
     if p > 0 then
     begin
@@ -2367,9 +2377,14 @@ end;
   @param  ACol      The column of the cell
   @return The text representation of the cell
 -------------------------------------------------------------------------------}
-function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): string; //ansistring;
+function TsWorksheet.ReadAsText(ARow, ACol: Cardinal): string;
 begin
-  Result := ReadAsUTF8Text(GetCell(ARow, ACol));
+  Result := ReadAsText(GetCell(ARow, ACol));
+end;
+
+function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): string;
+begin
+  Result := ReadAsText(GetCell(ARow, ACol));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2381,9 +2396,14 @@ end;
   @param  ACell     Pointer to the cell
   @return The text representation of the cell
 -------------------------------------------------------------------------------}
-function TsWorksheet.ReadAsUTF8Text(ACell: PCell): string; //ansistring;
+function TsWorksheet.ReadAsText(ACell: PCell): string;
 begin
-  Result := ReadAsUTF8Text(ACell, FWorkbook.FormatSettings);
+  Result := ReadAsText(ACell, FWorkbook.FormatSettings);
+end;
+
+function TsWorksheet.ReadAsUTF8Text(ACell: PCell): string;
+begin
+  Result := ReadAsText(ACell, FWorkbook.FormatSettings);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2397,7 +2417,7 @@ end;
                            of numbers and date/times.
   @return The text representation of the cell
 -------------------------------------------------------------------------------}
-function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
+function TsWorksheet.ReadAsText(ACell: PCell;
   AFormatSettings: TFormatSettings): string;
 var
   fmt: PsCellFormat;
@@ -2462,6 +2482,12 @@ begin
           if hyperlink <> nil then Result := hyperlink^.Target;
         end;
     end;
+end;
+
+function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
+  AFormatSettings: TFormatSettings): string;
+begin
+  Result := ReadAsText(ACell, AFormatSettings);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3563,7 +3589,7 @@ var
   var
     txt: String;
   begin
-    txt := ReadAsUTF8Text(ACell);
+    txt := ReadAsText(ACell);
     if (soRegularExpr in AOptions) then
       Result := regex.Exec(txt)
     else
@@ -3753,18 +3779,22 @@ end;
   @see    TsRichTextParams
   @see    TsRichTextParam
 -------------------------------------------------------------------------------}
-function TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: ansistring;
+function TsWorksheet.WriteText(ARow, ACol: Cardinal; AText: String;
   ARichTextParams: TsRichTextParams = nil): PCell;
 begin
   Result := GetCell(ARow, ACol);
-  WriteUTF8Text(Result, AText, ARichTextParams);
+  WriteText(Result, AText, ARichTextParams);
+end;
+
+function TsWorksheet.WriteUTF8Text(ARow, ACol: Cardinal; AText: String;
+  ARichTextParams: TsRichTextParams = nil): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteText(Result, AText, ARichTextParams);
 end;
 
 {@@ ----------------------------------------------------------------------------
   Writes UTF-8 encoded text to a cell.
-
-  On formats that don't support unicode, the text will be converted
-  to ISO Latin 1.
 
   @param  ACell            Pointer to the cell
   @param  AText            The text to be written encoded in utf-8
@@ -3774,7 +3804,7 @@ end;
   @see    TsRichTextParams
   @see    TsRichTextParam
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: String;
+procedure TsWorksheet.WriteText(ACell: PCell; AText: String;
   ARichTextParams: TsRichTextParams = nil);
 var
   r, c: Cardinal;
@@ -3821,6 +3851,71 @@ begin
       ACell^.RichTextParams[i] := ARichTextParams[i];
 
   ChangedCell(ACell^.Row, ACell^.Col);
+end;
+
+procedure TsWorksheet.WriteUTF8Text(ACell: PCell; AText: String;
+  ARichTextParams: TsRichTextParams = nil);
+begin
+  WriteText(ACell, AText, ARichTextParams);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes text containing HTML codes to a cell. Here are the allowed HTML codes:
+    <b>, <strong>  ... bold text
+    <i>, <em> ........ italic text
+    <u>, <ins> ....... underlined text
+    <s>, <del> ....... strike-out text
+    <sub> ............ subscript
+    <sup> ............ superscript
+    <font tags> ...... full font selection. "tags" can be:
+                       face="..." ... font name
+                       size="..." ... font size, in pt, em, px, % (add units!)
+                       color="..." .. font color (e.g. red, or #FF0000).
+
+  @param  ARow         The row of the cell
+  @param  ACol         The column of the cell
+  @param  AText        The text containing the html codes
+
+  @return Pointer to cell created or used
+
+  @see    TsRichTextParams
+  @see    TsRichTextParam
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteTextAsHTML(ARow, ACol: Cardinal; AText: String): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteTextAsHTML(Result, AText);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes text containing HTML codes to a cell. Here are the allowed HTML codes:
+    <b>, <strong>  ... bold text
+    <i>, <em> ........ italic text
+    <u>, <ins> ....... underlined text
+    <s>, <del> ....... strike-out text
+    <sub> ............ subscript
+    <sup> ............ superscript
+    <font tags> ...... full font selection. "tags" can be:
+                       face="..." ... font name
+                       size="..." ... font size, in pt, em, px, % (add units!)
+                       color="..." .. font color (e.g. red, or #FF0000).
+
+  @param  ACell        Pointer to the cell
+  @param  AText        The text containing the html codes
+
+  @see    TsRichTextParams
+  @see    TsRichTextParam
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteTextAsHTML(ACell: PCell; AText: String);
+var
+  plainText: String;
+  rtParams: TsRichTextParams;
+begin
+  if ACell = nil then
+    exit;
+
+  HTMLToRichText(FWorkbook, ReadCellFont(ACell), AText, plainText, rtParams);
+  WriteText(ACell, plainText, rtParams);
 end;
 
 {@@ ----------------------------------------------------------------------------

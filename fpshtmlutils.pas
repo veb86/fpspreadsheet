@@ -5,7 +5,7 @@ unit fpsHTMLUtils;
 interface
 
 uses
-  Classes, SysUtils, contnrs;
+  Classes, SysUtils, contnrs, fpstypes, fpspreadsheet;
 
 type
   TsHTMLEntity = record
@@ -36,12 +36,15 @@ type
     property Items[AIndex: Integer]: TsHTMLAttr read GetItem write SetItem; default;
   end;
 
+procedure HTMLToRichText(AWorkbook: TsWorkbook; AFont: TsFont;
+  const AHTMLText: String; out APlainText: String;
+  out ARichTextParams: TsRichTextParams);
 
 implementation
 
 uses
-  Strings,
-  fpsUtils;
+  math, Strings, lazUtf8, fasthtmlparser,
+  fpsUtils, fpsClasses;
 
 const
   // http://unicode.e-workers.de/entities.php
@@ -569,6 +572,344 @@ begin
   inherited SetItem(AIndex, AValue);
 end;
 
+
+{==============================================================================}
+{                         HTML-to-Rich-text conversion                         }
+{==============================================================================}
+type
+  TsHTMLAnalyzer = class(THTMLParser)
+  private
+    FWorkbook: TsWorkbook;
+    FPlainText: String;
+    FRichTextParams: TsRichTextParams;
+    FAttrList: TsHTMLAttrList;
+    FFontStack: TsIntegerStack;
+    FCurrFont: TsFont;
+    FPointSeparatorSettings: TFormatSettings;
+    function AddFont(AFont: TsFont): Integer;
+    procedure AddRichTextParam(AFont: TsFont; AHyperlinkIndex: Integer = -1);
+    procedure ProcessFontRestore;
+    procedure ReadFont(AFont: TsFont);
+    procedure TagFoundHandler(NoCaseTag, ActualTag: string);
+    procedure TextFoundHandler(AText: string);
+  public
+    constructor Create(AWorkbook: TsWorkbook; AFont: TsFont; AText: String);
+    destructor Destroy; override;
+    property PlainText: String read FPlainText;
+    property RichTextParams: TsRichTextParams read FRichTextParams;
+  end;
+
+constructor TsHTMLAnalyzer.Create(AWorkbook: TsWorkbook; AFont: TsFont;
+  AText: String);
+begin
+  if AWorkbook = nil then
+    raise Exception.Create('[TsHTMLAnalyzer.Create] Workbook required.');
+  if AFont = nil then
+    raise Exception.Create('[TsHTMLAnalyzer.Create] Font required.');
+
+  inherited Create(AText);
+  FWorkbook := AWorkbook;
+
+  OnFoundTag := @TagFoundHandler;
+  OnFoundText := @TextFoundHandler;
+
+  FPlainText := '';
+  SetLength(FRichTextParams, 0);
+
+  FAttrList := TsHTMLAttrList.Create;
+  FCurrFont := TsFont.Create;
+  FCurrFont.CopyOf(AFont);
+
+  FFontStack := TsIntegerStack.Create;
+
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
+end;
+
+destructor TsHTMLAnalyzer.Destroy;
+begin
+  FreeAndNil(FFontStack);
+  FreeAndNil(FCurrFont);
+  FreeAndNil(FAttrList);
+  inherited Destroy;
+end;
+
+{ Stores a font in the workbook's font list. Does not allow duplicates. }
+function TsHTMLAnalyzer.AddFont(AFont: TsFont): Integer;
+const
+  EPS = 1e-3;
+var
+  i: Integer;
+  fnt: TsFont;
+begin
+  // Is the font already stored in the workbook's font list?
+  Result := FWorkbook.FindFont(AFont.FontName, AFont.Size, AFont.Style, AFont.Color, AFont.Position);
+  if Result = -1 then
+  begin
+    // No. Create a new font, add it to the list, and return the new index.
+    fnt := TsFont.Create;
+    fnt.CopyOf(AFont);
+    Result := FWorkbook.AddFont(fnt);
+  end;
+end;
+
+procedure TsHTMLAnalyzer.AddRichTextParam(AFont: TsFont;
+  AHyperlinkIndex: Integer = -1);
+var
+  len: Integer;
+  fntIndex: Integer;
+  n: Integer;
+begin
+  n := Length(FRichTextParams);
+  len := UTF8Length(FPlainText);
+  fntIndex := AddFont(AFont);
+  if (n > 0) and (FRichTextparams[n-1].FirstIndex = len+1) then
+  begin
+    // Avoid adding another rich-text parameter for the same text location:
+    // Update the previous one
+    FRichTextParams[n-1].FontIndex := fntIndex;
+    FRichTextParams[n-1].HyperlinkIndex := AHyperlinkIndex;
+  end else
+  begin
+    // Add a new rich-text parameter
+    SetLength(FRichTextParams, n+1);
+    FRichTextParams[n].FirstIndex := len + 1;
+    FRichTextParams[n].FontIndex := fntIndex;
+    FRichTextParams[n].HyperlinkIndex := AHyperlinkIndex;
+  end;
+end;
+
+procedure TsHTMLAnalyzer.ProcessFontRestore;
+var
+  fntIndex: Integer;
+begin
+  fntIndex := FFontStack.Pop;
+  if fntIndex > -1 then
+  begin
+    FCurrFont.CopyOf(FWorkbook.GetFont(fntIndex));
+    AddRichTextParam(FCurrFont);
+  end;
+end;
+
+procedure TsHTMLAnalyzer.ReadFont(AFont: TsFont);
+const
+  FACTOR = 1.2;
+  MIN_FONTSIZE = 6;
+var
+  idx: Integer;
+  L: TStringList;
+  i, ip, im: Integer;
+  s: String;
+  f: Double;
+  defFntSize: Single;
+begin
+  idx := FAttrList.IndexOfName('font-family');    // style tag
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('face');         // html tag
+  if idx > -1 then begin
+    L := TStringList.Create;
+    try
+      L.StrictDelimiter := true;
+      L.DelimitedText := FAttrList[idx].Value;
+      AFont.FontName := L[0];
+    finally
+      L.Free;
+    end;
+  end;
+
+  idx := FAttrList.IndexOfName('font-size');
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('size');
+  if idx > -1 then begin
+    defFntSize := FWorkbook.GetDefaultFont.Size;
+    s := FAttrList[idx].Value;
+    case s of
+      'medium',   '3' : AFont.Size := defFntSize;
+      'large',    '4' : AFont.Size := defFntSize*FACTOR;
+      'x-large',  '5' : AFont.Size := defFntSize*FACTOR*FACTOR;
+      'xx-large', '6' : AFont.Size := defFntSize*FACTOR*FACTOR*FACTOR;
+      'small',    '2' : AFont.Size := Max(MIN_FONTSIZE, defFntSize/FACTOR);
+      'x-small'       : AFont.Size := Max(MIN_FONTSIZE, defFntSize/FACTOR/FACTOR);
+      'xx-small', '1' : AFont.Size := Max(MIN_FONTSIZE, defFntSize/FACTOR/FACTOR/FACTOR);
+      'larger'        : AFont.Size := AFont.Size * FACTOR;
+      'smaller'       : AFont.Size := Max(MIN_FONTSIZE, AFont.Size / FACTOR);
+      else
+        if s[1] in ['+', '-'] then
+        begin
+          TryStrToInt(s, i);
+          AFont.Size := defFntSize * IntPower(FACTOR, i);
+        end else
+        begin
+          i := 0;
+          im := 0;
+          ip := pos('%', s);
+          if ip = 0 then begin
+            im := pos('rem', s);
+            if im = 0 then
+              im := pos('em', s);
+          end;
+          if (ip > 0) then i := ip else
+            if (im > 0) then i := im;
+          if i > 0 then
+          begin
+            s := copy(s, 1, i-1);
+            if TryStrToFloat(s, f, FPointSeparatorSettings) then
+            begin
+              if ip > 0 then f := f * 0.01;
+              AFont.Size := Max(MIN_FONTSIZE, abs(f) * defFntSize);
+            end;
+          end else
+            AFont.Size := Max(MIN_FONTSIZE, HTMLLengthStrToPts(s));
+        end;
+    end;
+  end;
+
+  idx := FAttrList.IndexOfName('font-style');
+  if idx > -1 then
+    case FAttrList[idx].Value of
+      'normal'  : Exclude(AFont.Style, fssItalic);
+      'italic'  : Include(AFont.Style, fssItalic);
+      'oblique' : Include(AFont.Style, fssItalic);
+    end;
+
+  idx := FAttrList.IndexOfName('font-weight');
+  if idx > -1 then
+  begin
+    s := FAttrList[idx].Value;
+    if TryStrToInt(s, i) and (i >= 700) then Include(AFont.Style, fssBold);
+  end;
+
+  idx := FAttrList.IndexOfName('text-decoration');
+  if idx > -1 then
+  begin
+    s := FAttrList[idx].Value;
+    if pos('underline', s) <> 0 then Include(AFont.Style, fssUnderline);
+    if pos('line-through', s) <> 0 then Include(AFont.Style, fssStrikeout);
+  end;
+
+  idx := FAttrList.IndexOfName('color');
+  if idx > -1 then
+    AFont.Color := HTMLColorStrToColor(FAttrList[idx].Value);
+end;
+
+procedure TsHTMLAnalyzer.TagFoundHandler(NoCaseTag, ActualTag: String);
+begin
+  case NoCaseTag[2] of
+    'B': case NoCaseTag of
+           '<B>'  : begin
+                      FFontStack.Push(AddFont(FCurrFont));
+                      Include(FCurrFont.Style, fssBold);
+                      AddRichTextParam(FCurrFont);
+                    end;
+           '<BR>',
+           '<BR/>': FPlainText := FPlainText + FPS_LINE_ENDING;
+           else     if (pos('<BR ', NoCaseTag) = 1) then
+                      FPlainText := FPlainText + FPS_LINE_ENDING;
+         end;
+    'D': if (NoCaseTag = '<DEL>') then
+         begin
+           FFontStack.Push(AddFont(FCurrFont));
+           Include(FCurrFont.Style, fssStrikeout);
+           AddRichTextParam(FCurrFont);
+         end;
+    'E': if (NoCaseTag = '<EM>') then
+         begin
+           FFontStack.Push(AddFont(FCurrFont));
+           Include(FCurrFont.Style, fssItalic);
+           AddRichTextParam(FCurrFont);
+         end;
+    'F': if (pos('<FONT ', NoCaseTag) = 1) then
+         begin
+           FFontStack.Push(AddFont(FCurrFont));
+           FAttrList.Parse(ActualTag);
+           ReadFont(FCurrFont);
+           AddRichTextparam(FCurrFont);
+         end;
+    'I': case NoCaseTag of
+           '<I>'  : begin
+                      FFontStack.Push(AddFont(FCurrFont));
+                      Include(FCurrFont.Style, fssItalic);
+                      AddRichTextParam(FCurrFont);
+                    end;
+           '<INS>': begin
+                      FFontStack.Push(AddFont(FCurrFont));
+                      Include(FCurrFont.Style, fssUnderline);
+                      AddRichTextParam(FCurrFont);
+                    end;
+         end;
+    'S': case NoCaseTag of
+           '<S>'  : begin
+                      FFontStack.Push(AddFont(FCurrFont));
+                      Include(FCurrFont.Style, fssStrikeout);
+                      AddRichTextParam(FCurrFont);
+                    end;
+           '<STRONG>':begin
+                       FFontStack.Push(AddFont(FCurrFont));
+                       Include(FCurrFont.Style, fssBold);
+                       AddRichTextParam(FCurrFont);
+                    end;
+           '<SUB>': begin
+                      FFontStack.Push(AddFont(FCurrFont));
+                      FCurrFont.Position := fpSubscript;
+                      AddRichTextParam(FCurrFont);
+                    end;
+           '<SUP>': begin
+                      FFontStack.Push(AddFont(FCurrFont));
+                      FCurrFont.Position := fpSuperscript;
+                      AddRichTextParam(FCurrFont);
+                    end;
+         end;
+    'U': if (NoCaseTag = '<U>') then
+         begin
+           FFontStack.Push(AddFont(FCurrFont));
+           Include(FCurrFont.Style, fssUnderline);
+           AddRichTextParam(FCurrFont);
+         end;
+    '/': case NoCaseTag[3] of
+           'B': if (NoCaseTag) = '</B>' then ProcessFontRestore;
+           'D': if (NoCaseTag) = '</DEL>' then ProcessFontRestore;
+           'E': if (NoCaseTag) = '</EM>' then ProcessFontRestore;
+           'F': if (NoCaseTag) = '</FONT>' then ProcessFontRestore;
+           'I': if (NoCaseTag = '</I>') or (NoCaseTag = '</INS>') then ProcessFontRestore;
+           'S': if (NoCaseTag = '</S>') or (NoCaseTag = '</STRONG>') or
+                   (NoCaseTag = '</SUB>') or (NoCaseTag = '</SUP>') then ProcessFontRestore;
+           'U': if (NoCaseTag = '</U>') then ProcessFontRestore;
+         end;
+  end;
+end;
+
+procedure TsHTMLAnalyzer.TextFoundHandler(AText: String);
+begin
+  AText := CleanHTMLString(AText);
+  if AText <> '' then
+  begin
+    if FPlainText = '' then
+      FPlainText := AText
+    else
+      FPlainText := FPlainText + AText;
+  end;
+end;
+
+
+
+procedure HTMLToRichText(AWorkbook: TsWorkbook; AFont: TsFont;
+  const AHTMLText: String; out APlainText: String;
+  out ARichTextParams: TsRichTextParams);
+var
+  analyzer: TsHTMLAnalyzer;
+  j: Integer;
+begin
+  analyzer := TsHTMLAnalyzer.Create(AWorkbook, AFont, AHTMLText + '<end>');
+  try
+    analyzer.Exec;
+    APlainText := analyzer.PlainText;
+    SetLength(ARichTextParams, Length(analyzer.RichTextParams));
+    for j:=0 to High(ARichTextParams) do
+      ARichTextParams[j] := analyzer.RichTextParams[j];
+  finally
+    analyzer.Free;
+  end;
+end;
 
 end.
 

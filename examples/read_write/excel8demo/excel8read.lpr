@@ -50,7 +50,7 @@ begin
     begin
       Write('Row: ', CurCell^.Row,
        ' Col: ', CurCell^.Col, ' Value: ',
-       UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row,
+       UTF8ToConsole(MyWorkSheet.ReadAsText(CurCell^.Row,
          CurCell^.Col))
        );
       if HasFormula(CurCell) then

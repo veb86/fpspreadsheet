@@ -162,8 +162,6 @@ begin
 end;
 
 destructor TsHTMLReader.Destroy;
-var
-  i: Integer;
 begin
   FreeAndNil(FFontStack);
   FreeAndNil(FCurrFont);
