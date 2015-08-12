@@ -1316,9 +1316,12 @@ end;
 function TsIntegerStack.Pop: Integer;
 begin
   if Length(FValues) = 0 then
-    raise Exception.Create('[TsIntegerStack.Pop] Stack empty');
-  Result := FValues[High(FValues)];
-  SetLength(FValues, Length(FValues)-1);
+    Result := -1
+  else
+  begin
+    Result := FValues[High(FValues)];
+    SetLength(FValues, Length(FValues)-1);
+  end;
 end;
 
 end.

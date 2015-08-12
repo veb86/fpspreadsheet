@@ -35,7 +35,9 @@ type
     procedure ReadHRef;
     procedure ReadHorAlign;
     procedure ReadMergedRange;
+    procedure ReadTextRot;
     procedure ReadVertAlign;
+    procedure ReadWordwrap;
     procedure InitFont(AFont: TsFont);
     procedure InitCellFormat;
     procedure ProcessCellTags(NoCaseTag, Actualtag: String);
@@ -61,7 +63,6 @@ type
   TsHTMLWriter = class(TsCustomSpreadWriter)
   private
     FPointSeparatorSettings: TFormatSettings;
-//    function CellFormatAsString(ACell: PCell; ForThisTag: String): String;
     function CellFormatAsString(AFormat: PsCellFormat; ATagName: String): String;
     function GetBackgroundAsStyle(AFill: TsFillPattern): String;
     function GetBorderAsStyle(ABorder: TsCellBorders; const ABorderStyles: TsCellBorderStyles): String;
@@ -397,7 +398,9 @@ begin
            ReadBackgroundColor;
            ReadBorder;
            ReadHorAlign;
+           ReadTextRot;
            ReadVertAlign;
+           ReadWordwrap;
            ReadFont(FCurrFont);
            AddRichTextParam(FCurrFont);
          end;
@@ -432,6 +435,8 @@ begin
            ReadBorder;
            ReadHorAlign;
            ReadVertAlign;
+           ReadWordwrap;
+           ReadTextRot;
            ReadFont(FCurrFont);
            AddRichTextParam(FCurrFont);
          end;
@@ -449,6 +454,8 @@ begin
                ReadBorder;
                ReadHorAlign;
                ReadVertAlign;
+               ReadWordwrap;
+               ReadTextRot;
                ReadFont(FCurrFont);
                AddRichTextparam(FCurrFont);
              end;
@@ -459,6 +466,8 @@ begin
 end;
 
 procedure TsHTMLReader.ProcessEndTags(NoCaseTag, ActualTag: String);
+var
+  fntIndex: Integer;
 begin
   if not FInTable then exit;
 
@@ -480,7 +489,9 @@ begin
       inc(FCurrCol);
     AddCell(FCurrRow, FCurrCol, FCellText);
     FInCell := false;
-    FCurrFont.CopyOf(TsFont(FFontList[FFontStack.Pop]));
+    fntIndex := FFontStack.Pop;
+    if fntIndex <> -1 then
+      FCurrFont.CopyOf(TsFont(FFontList[fntIndex]));
     exit;
   end;
 
@@ -545,8 +556,11 @@ var
   fntIndex: Integer;
 begin
   fntIndex := FFontStack.Pop;
-  FCurrFont.CopyOf(TsFont(FFontList[fntIndex]));
-  AddRichTextParam(FCurrFont);
+  if fntIndex > -1 then
+  begin
+    FCurrFont.CopyOf(TsFont(FFontList[fntIndex]));
+    AddRichTextParam(FCurrFont);
+  end;
 end;
 
 procedure TsHTMLReader.ReadBackgroundColor;
@@ -587,9 +601,6 @@ var
       w := L[0];
       if L.Count > 1 then style := L[1] else style := '';
       if L.Count > 2 then color := L[2] else color := '';
-      if (w = '1px') and (style = 'solid') then
-        ABorderStyle.LineStyle := lsHair
-      else
       if (w = 'thin') or (w = '1px') then
         case style of
           'solid'  : ABorderStyle.LineStyle := lsThin;
@@ -900,6 +911,61 @@ begin
   // -1 to compensate for correct determination of the range end cell
 end;
 
+procedure TsHTMLReader.ReadTextRot;
+var
+  idx: Integer;
+  value, s: String;
+  p: PChar;
+  f: Double;
+begin
+{
+  // No - text rotation is too complicated...
+
+  idx := FAttrList.IndexOfName('transform');
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('-moz-transform,');
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('-o-transform');
+  if idx = -1 then
+    idx := FAttrList.IndexOfName('-wegkit-transform');
+  if idx <> -1 then
+  begin
+    value := FAttrList[idx].Value;
+    p := @value[1];
+    while (p <> #0) do begin
+      if p^ = '(' then
+      begin
+        s := '';
+        inc(p);
+        while (p^ <> #0) and (p^ in ['0'..'9', '.', '+', '-']) do
+        begin
+          s := s + p^;
+          inc(p);
+        end;
+        break;
+      end else
+        inc(p);
+    end;
+    if TryStrToFloat(s, f, FPointSeparatorSettings) then begin
+      if f >= 45.0 then
+        FCurrCellFormat.TextRotation := rt90DegreeClockwiseRotation
+      else if f <= -45 then
+        FCurrCellFormat.TextRotation := rt90DegreeCounterClockwiseRotation
+    end;
+    Include(FCurrCellFormat.UsedFormattingFields, uffTextRotation);
+    exit;
+  end;
+
+  idx := FAttrList.IndexOfName('text-orientation');
+  if idx <> -1 then
+    if FAttrList[idx].Value = 'upright' then
+    begin
+      FCurrCellFormat.TextRotation := rtStacked;
+      Include(FCurrCellFormat.UsedFormattingfields, uffTextRotation);
+    end;
+  }
+end;
+
 procedure TsHTMLReader.ReadVertAlign;
 var
   idx: Integer;
@@ -917,6 +983,30 @@ begin
       else      exit;  // others not supported
     end;
     Include(FCurrCellFormat.UsedFormattingFields, uffVertAlign);
+  end;
+end;
+
+procedure TsHTMLReader.ReadWordwrap;
+var
+  idx: Integer;
+begin
+  idx := FAttrList.IndexOfName('word-wrap');
+  if idx <> -1 then
+  begin
+    if FAttrList[idx].Value = 'break-word' then begin
+      Include(FCurrCellFormat.UsedFormattingFields, uffWordwrap);
+      exit;
+    end;
+  end;
+
+  idx := FAttrList.IndexOfName('white-space');
+  if idx <> -1 then
+  begin
+    if FAttrList[idx].Value = 'nowrap' then
+    begin
+      Exclude(FCurrCellFormat.UsedFormattingFields, uffWordwrap);
+      exit;
+    end;
   end;
 end;
 
@@ -1038,7 +1128,9 @@ begin
     ReadBackgroundColor;
     ReadBorder;
     ReadHorAlign;
+    ReadTextRot;
     ReadVertAlign;
+    ReadWordwrap;
     ReadFont(FCurrFont);
     if NoCaseTag[3] = 'H' then begin        // for <TH>
       Include(FCurrFont.Style, fssBold);
@@ -1090,81 +1182,9 @@ destructor TsHTMLWriter.Destroy;
 begin
   inherited Destroy;
 end;
-               (*
-function TsHTMLWriter.CellFormatAsString(ACell: PCell; ForThisTag: String): String;
-var
-  fmt: PsCellFormat;
-begin
-  Result := '';
-  if ACell <> nil then
-    fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex)
-  else
-    fmt := nil;
-  case ForThisTag of
-    'td':
-      if ACell = nil then
-      begin
-        Result := 'border-collapse:collapse;';
-        if soShowGridLines in FWorksheet.Options then
-          Result := Result + GetGridBorderAsStyle;
-      end else
-      begin
-        if (uffBackground in fmt^.UsedFormattingFields) then
-          Result := Result + GetBackgroundAsStyle(fmt^.Background);
-        if (uffFont in fmt^.UsedFormattingFields) then
-          Result := Result + GetFontAsStyle(fmt^.FontIndex);
-        if (uffTextRotation in fmt^.UsedFormattingFields) then
-          Result := Result + GetTextRotationAsStyle(fmt^.TextRotation);
-        if (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haDefault) then
-          Result := Result + GetHorAlignAsStyle(fmt^.HorAlignment)
-        else
-          case ACell^.ContentType of
-            cctNumber    : Result := Result + GetHorAlignAsStyle(haRight);
-            cctDateTime  : Result := Result + GetHorAlignAsStyle(haLeft);
-            cctBool      : Result := Result + GetHorAlignAsStyle(haCenter);
-            else           Result := Result + GetHorAlignAsStyle(haLeft);
-          end;
-        if (uffVertAlign in fmt^.UsedFormattingFields) then
-          Result := Result + GetVertAlignAsStyle(fmt^.VertAlignment);
-        if (uffBorder in fmt^.UsedFormattingFields) then
-          Result := Result + GetBorderAsStyle(fmt^.Border, fmt^.BorderStyles)
-        else begin
-          if soShowGridLines in FWorksheet.Options then
-            Result := Result + GetGridBorderAsStyle;
-        end;
-        if (uffFont in fmt^.UsedFormattingFields) then
-          Result := Result + GetFontAsStyle(fmt^.FontIndex);   {
-        if (uffTextRotation in fmt^.UsedFormattingFields) then
-          Result := Result + GetTextRotation(fmt^.TextRotation);}
-        Result := Result + GetWordwrapAsStyle(uffWordwrap in fmt^.UsedFormattingFields);
-      end;
-    'div', 'p':
-      begin
-        if fmt = nil then
-          exit;
-        {
-        if (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haDefault) then
-          Result := Result + GetHorAlignAsStyle(fmt^.HorAlignment)
-        else
-          case ACell^.ContentType of
-            cctNumber    : Result := Result + GetHorAlignAsStyle(haRight);
-            cctDateTime  : Result := Result + GetHorAlignAsStyle(haLeft);
-            cctBool      : Result := Result + GetHorAlignAsStyle(haCenter);
-            else           Result := Result + GetHorAlignAsStyle(haLeft);
-          end;
-        if (uffFont in fmt^.UsedFormattingFields) then
-          Result := Result + GetFontAsStyle(fmt^.FontIndex);   {
-        if (uffTextRotation in fmt^.UsedFormattingFields) then
-          Result := Result + GetTextRotation(fmt^.TextRotation);}
-        Result := Result + GetWordwrapAsStyle(uffWordwrap in fmt^.UsedFormattingFields);
-        }
-      end;
-  end;
-  if Result <> '' then
-    Result := ' style="' + Result +'"';
-end;
-         *)
-function TsHTMLWriter.CellFormatAsString(AFormat: PsCellFormat; ATagName: String): String;
+
+function TsHTMLWriter.CellFormatAsString(AFormat: PsCellFormat;
+  ATagName: String): String;
 begin
   Result := '';
 
@@ -1372,17 +1392,19 @@ end;
 function TsHTMLWriter.GetTextRotationAsStyle(ATextRot: TsTextRotation): String;
 begin
   Result := '';
+  (*   --- no - this is not working
   case ATextRot of
     trHorizontal: ;
     rt90DegreeClockwiseRotation:
-      Result := 'writing-mode:vertical-rl;transform:rotate(90deg);'; //-moz-transform: rotate(90deg);';
+      Result := 'writing-mode:vertical-rl;transform-origin:left top 0;transform:rotate(90deg);'; //-moz-transform: rotate(90deg);';
 //      Result := 'writing-mode:vertical-rl;text-orientation:sideways-right;-moz-transform: rotate(-90deg);';
     rt90DegreeCounterClockwiseRotation:
-      Result := 'writing-mode:vertical-rt;transform:rotate(-90deg);'; //-moz-transform: rotate(-90deg);';
+      Result := 'writing-mode:vertical-rt;transform-origin:left top 0;transform:rotate(-90deg);'; //-moz-transform: rotate(-90deg);';
 //    Result := 'writing-mode:vertical-rt;text-orientation:sideways-left;-moz-transform: rotate(-90deg);';
     rtStacked:
       Result := 'writing-mode:vertical-rt;text-orientation:upright;';
   end;
+  *)
 end;
 
 function TsHTMLWriter.GetVertAlignAsStyle(AVertAlign: TsVertAlignment): String;
@@ -1516,7 +1538,7 @@ end;
 procedure TsHTMLWriter.WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: string; ACell: PCell);
 const
-  ESCAPEMENT_TAG: Array[TsFontPosition] of String = ('', 'sup', 'sub');
+  ESCAPEMENT_TAG: array[TsFontPosition] of String = ('', 'sup', 'sub');
 var
   style: String;
   i, n, len: Integer;
@@ -1534,7 +1556,7 @@ begin
   if txt = '' then
     exit;
 
-  style := ''; //CellFormatAsString(ACell, 'div');
+  style := '';
   cellfnt := FWorksheet.ReadCellFont(ACell);
 
   // Hyperlink
@@ -1653,16 +1675,16 @@ var
   fmtStr: String;
 begin
   AppendToStream(AStream,
-    '<style>');
+    '<style>' + LineEnding);
   for i:=0 to FWorkbook.GetNumCellFormats-1 do begin
     fmt := FWorkbook.GetPointerToCellFormat(i);
     fmtStr := CellFormatAsString(fmt, 'td');
     if fmtStr <> '' then
-      fmtStr := Format('td.style%d {%s}', [i+1, fmtStr]);
+      fmtStr := Format('  td.style%d {%s}' + LineEnding, [i+1, fmtStr]);
     AppendToStream(AStream, fmtStr);
   end;
   AppendToStream(AStream,
-    '</style>');
+    '</style>' + LineEnding);
 end;
 
 procedure TsHTMLWriter.WriteToStrings(AStrings: TStrings);
@@ -1719,8 +1741,8 @@ begin
     style := style + 'table-layout:auto; width:100%; ';
 
   AppendToStream(AStream,
-    '<div>' +
-      '<table style="' + style + '">');
+    '<div>' + LineEnding +
+      '<table style="' + style + '">' + LineEnding);
 
   if HTMLParams.ShowRowColHeaders then
   begin
@@ -1732,7 +1754,7 @@ begin
       style := ' style="' + style + '"';
     style := style + GetColWidthAsAttr(-1);
     AppendToStream(AStream,
-        '<th' + style + '/>');
+        '  <th' + style + '/>' + LineEnding);
     // Column headers
     for c := cFirst to cLast do
     begin
@@ -1744,13 +1766,13 @@ begin
       if fixedLayout then
         style := style + GetColWidthAsAttr(c);
       AppendToStream(AStream,
-        '<th' + style + '>' + GetColString(c) + '</th>');
+        '  <th' + style + '>' + GetColString(c) + '</th>' + LineEnding);
     end;
   end;
 
   for r := rFirst to rLast do begin
     AppendToStream(AStream,
-        '<tr>');
+        '<tr>' + LineEnding);
 
     // Row headers
     if HTMLParams.ShowRowColHeaders then begin
@@ -1761,7 +1783,7 @@ begin
         style := ' style="' + style + '"';
       style := style + GetRowHeightAsAttr(r);
       AppendToStream(AStream,
-          '<th' + style + '>' + IntToStr(r+1) + '</th>');
+          '  <th' + style + '>' + IntToStr(r+1) + '</th>' + LineEnding);
     end;
 
     for c := cFirst to cLast do begin
@@ -1814,22 +1836,22 @@ begin
       if (cell = nil) or (cell^.ContentType = cctEmpty) then
         // Empty cell
         AppendToStream(AStream,
-          '<td' + style + ' />')
+          '  <td' + style + ' />' + LineEnding)
       else
       begin
         // Cell with data
         AppendToStream(AStream,
-          '<td' + style + '>');
+          '  <td' + style + '>');
         WriteCellToStream(AStream, cell);
         AppendToStream(AStream,
-          '</td>');
+          '</td>' + LineEnding);
       end;
     end;
     AppendToStream(AStream,
-        '</tr>');
+        '</tr>' + LineEnding);
   end;
   AppendToStream(AStream,
-      '</table>' +
+      '</table>' + LineEnding +
     '</div>');
 end;
 
