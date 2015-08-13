@@ -148,6 +148,7 @@ procedure InitPageLayout(out APageLayout: TsPageLayout);
 procedure CopyCellValue(AFromCell, AToCell: PCell);
 function HasFormula(ACell: PCell): Boolean;
 function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean;
+function SameFont(AFont1, AFont2: TsFont): Boolean;
 
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
@@ -1911,6 +1912,26 @@ begin
     end;
     Result := true;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether two fonts are equal
+
+  @param  AFormat1  Pointer to the first font to be compared
+  @param  AFormat2  Pointer to the second font to be compared
+-------------------------------------------------------------------------------}
+function SameFont(AFont1, AFont2: TsFont): Boolean;
+const
+  EPS = 1E-3;
+begin
+  Result := (AFont1 <> nil) and (AFont2 <> nil) and
+            SameText(AFont1.FontName, AFont2.FontName) and
+            SameValue(AFont1.Size, AFont2.Size, EPS) and
+            (AFont1.Color = AFont2.Color) and
+            (AFont1.Style = AFont2.Style) and
+            (AFont1.Position = AFont2.Position);
+  if (AFont1 = nil) and (AFont2 = nil) then
+    Result := true;
 end;
 
 {@@ ----------------------------------------------------------------------------

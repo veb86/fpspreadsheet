@@ -40,6 +40,11 @@ procedure HTMLToRichText(AWorkbook: TsWorkbook; AFont: TsFont;
   const AHTMLText: String; out APlainText: String;
   out ARichTextParams: TsRichTextParams);
 
+procedure RichTextToHTML(AWorkbook: TsWorkbook; AFont: TsFont;
+  const APlainText: String; const ARichTextParams: TsRichTextParams;
+  out AHTMLText: String);
+
+
 implementation
 
 uses
@@ -891,7 +896,10 @@ begin
 end;
 
 
-
+{@@ ----------------------------------------------------------------------------
+  Extracts rich-text parameters out of an html-formatted string and returns the
+  plain text
+-------------------------------------------------------------------------------}
 procedure HTMLToRichText(AWorkbook: TsWorkbook; AFont: TsFont;
   const AHTMLText: String; out APlainText: String;
   out ARichTextParams: TsRichTextParams);
@@ -908,6 +916,213 @@ begin
       ARichTextParams[j] := analyzer.RichTextParams[j];
   finally
     analyzer.Free;
+  end;
+end;
+
+
+{==============================================================================}
+{                         Rich-text-to-HTML conversion                         }
+{==============================================================================}
+
+type
+  TsChangeFlag = (cfFontName, cfFontSize, cfFontColor, cfFontPosition,
+    cfBold, cfItalic, cfUnderline, cfStrikeout);
+  TsChangeFlags = set of TsChangeFlag;
+
+  TsHTMLComposer = class
+  private
+    FPointSeparatorSettings: TFormatSettings;
+    FWorkbook: TsWorkbook;
+    FBaseFont: TsFont;
+    FPlainText: String;
+    FRichTextParams: TsRichTextParams;
+    FChangedParams: array of TsChangeFlags;
+    FFonts: array of TsFont;
+    FHTMLText: String;
+    function FindChangedParams(AStartIndex: Integer): Integer;
+    procedure GetFontsFromWorkbook;
+    function GetTextOfRichTextParam(AIndex: Integer): String;
+    procedure StoreChangedParams(AIndex: Integer);
+  protected
+  public
+    constructor Create(AWorkbook: TsWorkbook; AFont: TsFont);
+    function Exec(const APlainText: String; const ARichTextParams: TsRichTextParams): String;
+  end;
+
+constructor TsHTMLComposer.Create(AWorkbook: TsWorkbook; AFont: TsFont);
+begin
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
+  FWorkbook := AWorkbook;
+  FBaseFont := AFont;
+end;
+
+function TsHTMLComposer.Exec(const APlainText: String;
+  const ARichTextParams: TsRichTextParams): String;
+var
+  i: Integer;
+begin
+  if Length(ARichTextParams) = 0 then
+  begin
+    Result := FPlainText;
+    exit;
+  end;
+
+  FRichTextParams := ARichTextParams;
+  FPlainText := APlainText;
+
+  GetFontsFromWorkbook;
+  SetLength(FChangedParams, Length(FRichTextParams));
+
+  if FRichTextParams[0].FirstIndex > 1 then
+    Result := GetTextOfRichTextParam(-1) else
+    Result := '';
+
+  for i:=0 to High(FRichTextParams) do
+  begin
+    // Remember what is changed in this step
+    StoreChangedParams(i);
+    // Find when these items were changed before
+    //  j := FindChangedParams(i);  --- not needed in the simple version
+    // For the changed items add an open tag
+    // NOTE: This is a simple version: every opened tag is closed afterwards!
+    // In a more advanced version, shared properties should be kept. This is
+    // what FChangedParams was introduced for!
+    if [cfFontName, cfFontSize, cfFontColor] * FChangedparams[i] <> [] then
+    begin
+      Result := Result + '<font';
+      if cfFontName in FChangedParams[i] then
+        Result := Result + ' face="' + FFonts[i].FontName + '"';
+      if cfFontSize in FChangedParams[i] then
+        Result := Result + ' size="' + Format('%.gpt', [FFonts[i].Size], FPointSeparatorSettings) + '"';
+      if cfFontColor in FChangedParams[i] then
+        Result := Result + ' color="' + ColorToHTMLColorStr(FFonts[i].Color) + '"';
+    end;
+    if (cfBold in FChangedParams[i]) then
+      Result := Result + '<b>';
+    if (cfItalic in FChangedParams[i]) then
+      Result := Result + '<i>';
+    if (cfUnderline in FChangedParams[i]) then
+      Result := Result + '<u>';
+    if (cfStrikeout in FChangedParams[i]) then
+      Result := Result + '<s>';
+    if (cfFontPosition in FChangedParams[i]) then
+    begin
+      if FFonts[i].Position = fpSuperscript then Result := Result + '<sup>';
+      if FFonts[i].Position = fpSubscript then Result := Result + '<sub>';
+    end;
+    // Add the node text
+    Result := Result + GetTextOfRichTextParam(i);
+    // Add closing tags (reverse order as opening!)
+    if (cfFontPosition in FChangedParams[i]) then
+    begin
+      if FFonts[i].Position = fpSubscript then Result := Result + '</sub>';
+      if FFonts[i].Position = fpSuperscript then Result := Result + '</sup>';
+    end;
+    if (cfStrikeout in FChangedParams[i]) then
+      Result := Result + '</s>';
+    if (cfUnderline in FChangedParams[i]) then
+      Result := Result + '</u>';
+    if (cfItalic in FChangedParams[i]) then
+      Result := Result + '</i>';
+    if (cfBold in FChangedParams[i]) then
+      Result := Result + '</b>';
+    if [cfFontName, cfFontSize, cfFontColor] * FChangedParams[i] <> [] then
+      Result := Result + '</font';
+  end;
+end;
+
+{ Going back from AStartIndex find the changed parameter flags in which all
+  flags are used like in the one at AStartIndex. }
+function TsHTMLComposer.FindChangedParams(AStartIndex: Integer): Integer;
+var
+  cp: TsChangeFlags;
+begin
+  cp := FChangedParams[AStartIndex];
+  Result := AStartIndex - 1;
+  while (Result >= 0) and (cp * FChangedParams[Result] <> cp) do
+    dec(Result);
+end;
+
+procedure TsHTMLComposer.GetFontsFromWorkbook;
+var
+  i: Integer;
+begin
+  SetLength(FFonts, Length(FRichTextParams));
+  for i:=0 to High(FFonts) do
+    FFonts[i] := FWorkbook.GetFont(FRichTextParams[i].FontIndex);
+end;
+
+function TsHTMLComposer.GetTextOfRichTextParam(AIndex: Integer): String;
+var
+  p1, p2: Integer;
+begin
+  if AIndex = -1 then
+    Result := UTF8Copy(FPlainText, 1, FRichTextParams[0].FirstIndex-1)
+  else
+  if AIndex <= High(FRichTextParams) then
+  begin
+    p1 := FRichTextParams[AIndex].FirstIndex;
+    if AIndex < High(FRichTextparams) then
+      p2 := FRichTextParams[AIndex+1].FirstIndex else
+      p2 := UTF8Length(FPlainText) + 1;
+    Result := UTF8Copy(FPlaiNText, p1, p2-p1);
+  end else
+    Result := '';
+end;
+
+{ Entering the rich-text parameter region with the specified index. Detects
+  the font differences to the preceding section. }
+procedure TsHTMLComposer.StoreChangedParams(AIndex: Integer);
+const
+  EPS = 1e-3;
+var
+  fnt1, fnt2: TsFont;
+begin
+  // Font in previous section
+  if AIndex = 0 then
+    fnt1 := FBaseFont else
+    fnt1 := FFonts[AIndex-1];
+  // Font in current (new) section
+  fnt2 := FFonts[AIndex];
+  if not SameText(fnt1.FontName, fnt2.FontName) then
+    Include(FChangedParams[AIndex], cfFontName);
+  if not SameValue(fnt1.Size, fnt2.Size, EPS) then
+    Include(FChangedParams[Aindex], cfFontSize);
+  if fnt1.Color <> fnt2.Color then
+    Include(FChangedParams[AIndex], cfFontColor);
+  if fnt1.Position <> fnt2.Position then
+    Include(FChangedParams[AIndex], cfFontPosition);
+  if (fnt1.Style * [fssBold] <> fnt2.Style * [fssBold]) then
+    Include(FChangedParams[Aindex], cfBold);
+  if (fnt1.Style * [fssItalic] <> fnt2.Style * [fssItalic]) then
+    Include(FChangedParams[AIndex], cfItalic);
+  if (fnt1.Style * [fssUnderline] <> fnt2.style * [fssUnderline]) then
+    Include(FChangedParams[AIndex], cfUnderline);
+  if (fnt1.STyle * [fssStrikeout] <> fnt2.Style * [fssStrikeout]) then
+    Include(FChangedParams[AIndex], cfStrikeout);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Constructs a html-coded string from a plain text string and
+  rich-text parameters
+-------------------------------------------------------------------------------}
+procedure RichTextToHTML(AWorkbook: TsWorkbook; AFont: TsFont;
+  const APlainText: String; const ARichTextParams: TsRichTextParams;
+  out AHTMLText: String);
+var
+  composer: TsHTMLComposer;
+begin
+  if Length(ARichTextParams) = 0 then
+    AHTMLText := APlainText
+  else begin
+    composer := TsHTMLComposer.Create(AWorkbook, AFont);
+    try
+      AHTMLText := composer.Exec(APlainText, ARichTextParams);
+    finally
+      composer.Free;
+    end;
   end;
 end;
 
