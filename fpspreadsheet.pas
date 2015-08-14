@@ -4183,6 +4183,8 @@ var
   numFmtParams: TsNumFormatParams;
   maxDig: Integer;
   isMixed: Boolean;
+  rtParams: TsRichTextParams;
+  plain: String;
 begin
   if ACell = nil then
     exit;
@@ -4252,7 +4254,8 @@ begin
     exit;
   end;
 
-  WriteUTF8Text(ACell, AValue);
+  HTMLToRichText(FWorkbook, ReadcellFont(ACell), AValue, plain, rtParams);
+  WriteUTF8Text(ACell, plain, rtParams);
 end;
 
 {@@ ----------------------------------------------------------------------------

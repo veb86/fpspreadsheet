@@ -212,6 +212,7 @@ type
   TsCellEdit = class(TMemo, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
+    FShowHTMLText: Boolean;
     function GetSelectedCell: PCell;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
@@ -234,6 +235,7 @@ type
     {@@ Refers to the underlying worksheet to which the edited cell belongs. }
     property Worksheet: TsWorksheet read GetWorksheet;
   published
+    property ShowHTMLText: Boolean read FShowHTMLText write FShowHTMLText default true;
     {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
   end;
@@ -462,7 +464,7 @@ implementation
 
 uses
   Types, Math, TypInfo, LCLType, LCLProc, Dialogs, Forms,
-  fpsStrings, fpsUtils, fpsNumFormat;
+  fpsStrings, fpsUtils, fpsNumFormat, fpsHTMLUtils;
 
 {@@ ----------------------------------------------------------------------------
   Registers the spreadsheet components in the Lazarus component palette,
@@ -1577,6 +1579,7 @@ end;
 constructor TsCellEdit.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  FShowHTMLText := True;
   WantReturns := false;
   WantTabs := false;
   AutoSize := true;
@@ -1748,6 +1751,14 @@ begin
             Lines.Text := FormatDateTime('ddddd', ACell^.DateTimevalue)
           else                                      // both
             Lines.Text := FormatDateTime('c', ACell^.DateTimeValue);
+        cctUTF8String:
+          if FShowHTMLText then
+          begin
+            RichTextToHTML(Workbook, Worksheet.ReadCellFont(ACell),
+              ACell^.UTF8StringValue, ACell^.RichTextParams, s);
+            Lines.Text := s;
+          end else
+            Lines.Text := ACell^.UTF8StringValue;
         else
           Lines.Text := Worksheet.ReadAsUTF8Text(ACell);
       end;

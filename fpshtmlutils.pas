@@ -988,47 +988,54 @@ begin
     // NOTE: This is a simple version: every opened tag is closed afterwards!
     // In a more advanced version, shared properties should be kept. This is
     // what FChangedParams was introduced for!
-    if [cfFontName, cfFontSize, cfFontColor] * FChangedparams[i] <> [] then
+    if not SameFont(FBaseFont, FFonts[i]) then
     begin
-      Result := Result + '<font';
-      if cfFontName in FChangedParams[i] then
-        Result := Result + ' face="' + FFonts[i].FontName + '"';
-      if cfFontSize in FChangedParams[i] then
-        Result := Result + ' size="' + Format('%.gpt', [FFonts[i].Size], FPointSeparatorSettings) + '"';
-      if cfFontColor in FChangedParams[i] then
-        Result := Result + ' color="' + ColorToHTMLColorStr(FFonts[i].Color) + '"';
-    end;
-    if (cfBold in FChangedParams[i]) then
-      Result := Result + '<b>';
-    if (cfItalic in FChangedParams[i]) then
-      Result := Result + '<i>';
-    if (cfUnderline in FChangedParams[i]) then
-      Result := Result + '<u>';
-    if (cfStrikeout in FChangedParams[i]) then
-      Result := Result + '<s>';
-    if (cfFontPosition in FChangedParams[i]) then
-    begin
-      if FFonts[i].Position = fpSuperscript then Result := Result + '<sup>';
-      if FFonts[i].Position = fpSubscript then Result := Result + '<sub>';
+      if [cfFontName, cfFontSize, cfFontColor] * FChangedparams[i] <> [] then
+      begin
+        Result := Result + '<font';
+        if cfFontName in FChangedParams[i] then
+          Result := Result + ' face="' + FFonts[i].FontName + '"';
+        if cfFontSize in FChangedParams[i] then
+          Result := Result + ' size="' + Format('%.gpt', [FFonts[i].Size], FPointSeparatorSettings) + '"';
+        if cfFontColor in FChangedParams[i] then
+          Result := Result + ' color="' + ColorToHTMLColorStr(FFonts[i].Color) + '"';
+        Result := Result + '>';
+      end;
+      if (cfBold in FChangedParams[i]) then
+        Result := Result + '<b>';
+      if (cfItalic in FChangedParams[i]) then
+        Result := Result + '<i>';
+      if (cfUnderline in FChangedParams[i]) then
+        Result := Result + '<u>';
+      if (cfStrikeout in FChangedParams[i]) then
+        Result := Result + '<s>';
+      if (cfFontPosition in FChangedParams[i]) then
+      begin
+        if FFonts[i].Position = fpSuperscript then Result := Result + '<sup>';
+        if FFonts[i].Position = fpSubscript then Result := Result + '<sub>';
+      end;
     end;
     // Add the node text
     Result := Result + GetTextOfRichTextParam(i);
     // Add closing tags (reverse order as opening!)
-    if (cfFontPosition in FChangedParams[i]) then
+    if not SameFont(FBaseFont, FFonts[i]) then
     begin
-      if FFonts[i].Position = fpSubscript then Result := Result + '</sub>';
-      if FFonts[i].Position = fpSuperscript then Result := Result + '</sup>';
+      if (cfFontPosition in FChangedParams[i]) then
+      begin
+        if FFonts[i].Position = fpSubscript then Result := Result + '</sub>';
+        if FFonts[i].Position = fpSuperscript then Result := Result + '</sup>';
+      end;
+      if (cfStrikeout in FChangedParams[i]) then
+        Result := Result + '</s>';
+      if (cfUnderline in FChangedParams[i]) then
+        Result := Result + '</u>';
+      if (cfItalic in FChangedParams[i]) then
+        Result := Result + '</i>';
+      if (cfBold in FChangedParams[i]) then
+        Result := Result + '</b>';
+      if [cfFontName, cfFontSize, cfFontColor] * FChangedParams[i] <> [] then
+        Result := Result + '</font>';
     end;
-    if (cfStrikeout in FChangedParams[i]) then
-      Result := Result + '</s>';
-    if (cfUnderline in FChangedParams[i]) then
-      Result := Result + '</u>';
-    if (cfItalic in FChangedParams[i]) then
-      Result := Result + '</i>';
-    if (cfBold in FChangedParams[i]) then
-      Result := Result + '</b>';
-    if [cfFontName, cfFontSize, cfFontColor] * FChangedParams[i] <> [] then
-      Result := Result + '</font';
   end;
 end;
 
