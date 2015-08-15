@@ -45,9 +45,10 @@ type
   private
     { Private declarations }
     FWorkbookSource: TsWorkbookSource;
-    FOwnedWorkbook: TsWorkbook;
-    FOwnsWorkbook: Boolean;
-    FOwnedWorksheet: TsWorksheet;
+    FInternalWorkbookSource: TsWorkbookSource;
+//    FOwnedWorkbook: TsWorkbook;
+//    FOwnsWorkbook: Boolean;
+//    FOwnedWorksheet: TsWorksheet;
     FHeaderCount: Integer;
     FInitColCount: Integer;
     FInitRowCount: Integer;
@@ -103,6 +104,7 @@ type
     function GetVertAlignment(ACol, ARow: Integer): TsVertAlignment;
     function GetVertAlignments(ARect: TGridRect): TsVertAlignment;
     function GetWorkbook: TsWorkbook;
+    function GetWorkbookSource: TsWorkbookSource;
     function GetWorksheet: TsWorksheet;
     function GetWordwrap(ACol, ARow: Integer): Boolean;
     function GetWordwraps(ARect: TGridRect): Boolean;
@@ -180,7 +182,7 @@ type
       }
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
-    procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
+//    procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
     procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
@@ -846,6 +848,7 @@ end;
 -------------------------------------------------------------------------------}
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
+  FInternalWorkbookSource := TsWorkbookSource.Create(self); //AOwner);
   inherited Create(AOwner);
   AutoAdvance := aaDown;
   ExtendedSelect := true;
@@ -856,7 +859,7 @@ begin
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
   FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
-  FOwnsWorkbook := true;
+  SetWorkbookSource(FInternalWorkbookSource);
  {$IFNDEF FPS_NO_GRID_MULTISELECT}
   RangeSelectMode := rsmMulti;
  {$ENDIF}
@@ -867,8 +870,11 @@ end;
 -------------------------------------------------------------------------------}
 destructor TsCustomWorksheetGrid.Destroy;
 begin
-  if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
-  if FOwnsWorkbook then FreeAndNil(FOwnedWorkbook);
+  SetWorkbookSource(nil);
+  if FInternalWorkbookSource <> nil then
+    FInternalWorkbookSource.RemoveListener(self);  // will be destroyed automatically
+//    FreeAndNil(FInternalWorkbookSource);
+//  end;
   FreeAndNil(FCellFont);
   inherited Destroy;
 end;
@@ -1265,6 +1271,12 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.CreateNewWorkbook;
 begin
+  GetWorkbookSource.CreateNewWorkbook;
+  if FReadFormulas then
+    Workbook.Options := Workbook.Options + [boReadFormulas] else
+    Workbook.Options := Workbook.Options - [boReadFormulas];
+  SetAutoCalc(FAutoCalc);
+  {
   if FOwnsWorkbook then
     FreeAndNil(FOwnedWorkbook);
 
@@ -1280,6 +1292,7 @@ begin
       FOwnedWorkbook.Options := FOwnedWorkbook.Options - [boReadFormulas];
     SetAutoCalc(FAutoCalc);
   end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3396,7 +3409,7 @@ begin
   //  CreateNewWorkbook;
     NewWorkbook(FInitColCount, FInitRowCount);
 end;
-
+                               (*
 {@@ ----------------------------------------------------------------------------
   Loads the worksheet into the grid and displays its contents.
 
@@ -3407,6 +3420,7 @@ begin
   if FWorkbookSource <> nil then
     exit;
 
+  GetWorkbookSource.LoadFro
   FOwnedWorksheet := AWorksheet;
   if FOwnedWorksheet <> nil then begin
     inc(FLockSetup);
@@ -3427,7 +3441,7 @@ begin
   end;
   Setup;
 end;
-
+                                 *)
 {@@ ----------------------------------------------------------------------------
   Creates a new workbook and loads the given file into it. The file is assumed
   to have the given file format. Shows the sheet with the given sheet index.
@@ -3440,6 +3454,8 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
 begin
+  GetWorkbookSource.LoadfromSpreadsheetFile(AFileName, AFormat, AWorksheetIndex);
+  {
   if FOwnsWorkbook then
     FreeAndNil(FOwnedWorkbook);
 
@@ -3456,6 +3472,7 @@ begin
       EndUpdate;
     end;
   end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3469,6 +3486,8 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
 begin
+  GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AWorksheetIndex);
+  {
   if FOwnsWorkbook then
     FreeAndNil(FOwnedWorkbook);
 
@@ -3485,6 +3504,7 @@ begin
       EndUpdate;
     end;
   end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3711,6 +3731,8 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.NewWorkbook(AColCount, ARowCount: Integer);
 begin
+  GetWorkbookSource.CreateNewWorkbook;
+  {
   if FOwnsWorkbook then
     FreeAndNil(FOwnedWorkbook);
 
@@ -3731,6 +3753,7 @@ begin
       EndUpdate;
     end;
   end;
+  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3810,8 +3833,11 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.SelectSheetByIndex(AIndex: Integer);
 begin
+  GetWorkbookSource.SelectWorksheet(Workbook.GetWorksheetByIndex(AIndex));
+  {
   if Workbook <> nil then
     LoadFromWorksheet(Workbook.GetWorksheetByIndex(AIndex));
+    }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3882,17 +3908,21 @@ begin
   if AValue = FWorkbookSource then
     exit;
 
-  if FOwnsWorkbook then
-    FreeAndNil(FOwnedWorkbook);
-
   if FWorkbookSource <> nil then
     FWorkbookSource.RemoveListener(self);
-  FWorkbookSource := AValue;
-  if FWorkbookSource <> nil then
-    FWorkbookSource.AddListener(self);
+  FInternalWorkbookSource.RemoveListener(self);
 
-  FOwnsWorkbook := (FWorkbookSource = nil);
-  if not (csDestroying in ComponentState) then
+  if (AValue = FInternalWorkbookSource) or (AValue = nil) then
+  begin
+    FWorkbookSource := nil;
+    FInternalWorkbookSource.AddListener(self);
+  end else
+  begin
+    FWorkbookSource := AValue;
+    FWorkbookSource.AddListener(self);
+  end;
+
+  if not (csDestroying in ComponentState) and Assigned(Parent) then
     ListenerNotification([lniWorksheet, lniSelection]);
 end;
 
@@ -4348,18 +4378,19 @@ end;
 
 function TsCustomWorksheetGrid.GetWorkbook: TsWorkbook;
 begin
+  Result := GetWorkbookSource.Workbook;
+end;
+
+function TsCustomWorksheetGrid.GetWorkbookSource: TsWorkbookSource;
+begin
   if FWorkbookSource <> nil then
-    Result := FWorkbookSource.Workbook
-  else
-    Result := FOwnedWorkbook;
+    Result := FWorkbookSource else
+    Result := FInternalWorkbookSource;
 end;
 
 function TsCustomWorksheetGrid.GetWorksheet: TsWorksheet;
 begin
-  if FWorkbookSource <> nil then
-    Result := FWorkbooksource.Worksheet
-  else
-    Result := FOwnedWorksheet;
+  Result := GetWorkbookSource.Worksheet;
 end;
 
 function TsCustomWorksheetGrid.GetWordwrap(ACol, ARow: Integer): Boolean;

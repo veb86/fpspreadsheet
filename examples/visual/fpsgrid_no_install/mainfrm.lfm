@@ -45,6 +45,31 @@ object Form1: TForm1
       OnClick = BtnSaveClick
       TabOrder = 2
     end
+    object Label1: TLabel
+      Left = 288
+      Height = 15
+      Top = 11
+      Width = 144
+      Caption = 'Enter value for cell [AB110]:'
+      ParentColor = False
+    end
+    object EdCellValue: TEdit
+      Left = 439
+      Height = 23
+      Top = 7
+      Width = 137
+      TabOrder = 3
+      Text = 'Test'
+    end
+    object BtnEnterText: TButton
+      Left = 584
+      Height = 25
+      Top = 6
+      Width = 75
+      Caption = 'Enter text'
+      OnClick = BtnEnterTextClick
+      TabOrder = 4
+    end
   end
   object TabControl: TTabControl
     Left = 0

@@ -6,8 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, Menus, ExtCtrls, ActnList, Spin, Buttons,
-  ButtonPanel, fpspreadsheetgrid, fpspreadsheet, {%H-}fpsallformats;
+  StdCtrls, Menus, ExtCtrls, ActnList, Spin, Buttons, ButtonPanel,
+  fpspreadsheetgrid, fpspreadsheet, fpsallformats, fpspreadsheetctrls;
 
 type
 
@@ -17,16 +17,21 @@ type
     BtnOpen: TButton;
     BtnSave: TButton;
     BtnNew: TButton;
+    BtnEnterText: TButton;
+    EdNewCellText: TEdit;
+    Label2: TLabel;
     SheetsCombo: TComboBox;
     Label1: TLabel;
     OpenDialog: TOpenDialog;
     Panel1: TPanel;
     Panel2: TPanel;
     SaveDialog: TSaveDialog;
+    sWorkbookSource1: TsWorkbookSource;
     WorksheetGrid: TsWorksheetGrid;
     procedure BtnNewClick(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
+    procedure BtnEnterTextClick(Sender: TObject);
     procedure SheetsComboSelect(Sender: TObject);
   private
     { private declarations }
@@ -139,6 +144,11 @@ begin
         MessageDlg(err, mtError, [mbOK], 0);
     end;
   end;
+end;
+
+procedure TForm1.BtnEnterTextClick(Sender: TObject);
+begin
+  WorksheetGrid.Worksheet.WriteText(109, 27, EdNewCellText.Text);
 end;
 
 procedure TForm1.SheetsComboSelect(Sender: TObject);

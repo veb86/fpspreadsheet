@@ -67,7 +67,6 @@
         <ComponentName Value="Form1"/>
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
-        <UnitName Value="mainfrm"/>
       </Unit1>
       <Unit2>
         <Filename Value="..\..\fpshelpers.pas"/>

@@ -45,6 +45,31 @@ object Form1: TForm1
       OnClick = BtnNewClick
       TabOrder = 2
     end
+    object Label2: TLabel
+      Left = 296
+      Height = 15
+      Top = 13
+      Width = 132
+      Caption = 'New text for cell [AB110]:'
+      ParentColor = False
+    end
+    object EdNewCellText: TEdit
+      Left = 451
+      Height = 23
+      Top = 9
+      Width = 104
+      TabOrder = 3
+      Text = 'Test'
+    end
+    object BtnEnterText: TButton
+      Left = 566
+      Height = 25
+      Top = 8
+      Width = 75
+      Caption = 'Set text'
+      OnClick = BtnEnterTextClick
+      TabOrder = 4
+    end
   end
   object WorksheetGrid: TsWorksheetGrid
     Left = 0
@@ -97,6 +122,10 @@ object Form1: TForm1
       TabOrder = 0
       Text = 'Sheet 1'
     end
+  end
+  object sWorkbookSource1: TsWorkbookSource
+    AutoDetectFormat = False
+    Options = []
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.xls'

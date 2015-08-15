@@ -17,10 +17,14 @@ type
     BtnNew: TButton;
     BtnLoad: TButton;
     BtnSave: TButton;
+    BtnEnterText: TButton;
     ButtonPanel: TPanel;
+    EdCellValue: TEdit;
+    Label1: TLabel;
     OpenDialog: TOpenDialog;
     SaveDialog: TSaveDialog;
     TabControl: TTabControl;
+    procedure BtnEnterTextClick(Sender: TObject);
     procedure BtnLoadClick(Sender: TObject);
     procedure BtnNewClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
@@ -83,6 +87,12 @@ begin
   begin
     LoadFile(OpenDialog.FileName);
   end;
+end;
+
+procedure TForm1.BtnEnterTextClick(Sender: TObject);
+begin
+  Grid.Worksheet.WriteText(109, 27, EdCellValue.Text);
+  Grid.Worksheet.SelectCell(109, 27);
 end;
 
 procedure TForm1.BtnNewClick(Sender: TObject);

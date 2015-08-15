@@ -927,7 +927,7 @@ var
   clrName: String;
   i: Integer;
 begin
-  if WorksheetGrid.Workbook <> nil then begin
+  if (WorksheetGrid.Workbook <> nil) and (FPalette <> nil) then begin
     Items.Clear;
     Items.AddObject('no fill', TObject(PtrInt(clNone)));
     for i:=0 to FPalette.Count-1 do begin
