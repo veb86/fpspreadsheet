@@ -136,6 +136,7 @@ begin
     Screen.Cursor := crHourglass;
     try
       WorksheetGrid.SaveToSpreadsheetFile(UTF8ToAnsi(SaveDialog.FileName));
+      //WorksheetGrid.WorkbookSource.SaveToSpreadsheetFile(UTF8ToAnsi(SaveDialog.FileName));     // works as well
     finally
       Screen.Cursor := crDefault;
       // Show a message in case of error(s)

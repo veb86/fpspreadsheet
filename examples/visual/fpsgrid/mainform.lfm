@@ -79,6 +79,7 @@ object Form1: TForm1
     FrozenCols = 0
     FrozenRows = 0
     ReadFormulas = False
+    WorkbookSource = WorksheetGrid.internal
     Align = alClient
     AutoAdvance = aaDown
     ColCount = 27

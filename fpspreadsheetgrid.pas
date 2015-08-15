@@ -263,7 +263,7 @@ type
 
     { public properties }
     {@@ Link to the workbook }
-    property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+    property WorkbookSource: TsWorkbookSource read GetWorkbookSource write SetWorkbookSource;
     {@@ Currently selected worksheet of the workbook }
     property Worksheet: TsWorksheet read GetWorksheet;
     {@@ Workbook displayed in the grid }
@@ -849,6 +849,7 @@ end;
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   FInternalWorkbookSource := TsWorkbookSource.Create(self); //AOwner);
+  FInternalWorkbookSource.Name := 'internal';
   inherited Create(AOwner);
   AutoAdvance := aaDown;
   ExtendedSelect := true;
@@ -873,8 +874,6 @@ begin
   SetWorkbookSource(nil);
   if FInternalWorkbookSource <> nil then
     FInternalWorkbookSource.RemoveListener(self);  // will be destroyed automatically
-//    FreeAndNil(FInternalWorkbookSource);
-//  end;
   FreeAndNil(FCellFont);
   inherited Destroy;
 end;
@@ -4348,6 +4347,13 @@ begin
     end;
 end;
 
+function TsCustomWorksheetGrid.GetWorkbookSource: TsWorkbookSource;
+begin
+  if FWorkbookSource <> nil then
+    Result := FWorkbookSource else
+    Result := FInternalWorkbookSource;
+end;
+
 function TsCustomWorksheetGrid.GetVertAlignment(ACol, ARow: Integer): TsVertAlignment;
 var
   cell: PCell;
@@ -4379,13 +4385,6 @@ end;
 function TsCustomWorksheetGrid.GetWorkbook: TsWorkbook;
 begin
   Result := GetWorkbookSource.Workbook;
-end;
-
-function TsCustomWorksheetGrid.GetWorkbookSource: TsWorkbookSource;
-begin
-  if FWorkbookSource <> nil then
-    Result := FWorkbookSource else
-    Result := FInternalWorkbookSource;
 end;
 
 function TsCustomWorksheetGrid.GetWorksheet: TsWorksheet;
