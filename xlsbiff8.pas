@@ -523,18 +523,18 @@ var
   subrecID, subrecSize: Word;
   streamPos, p: Int64;
   streamSize: Int64;
-  lastSubRec: Boolean;
   objType: Word;
   objID: Word;
 begin
   streamSize := AStream.Size;
-  lastSubRec := false;
-  while not lastSubRec do begin
+  while true do
+  begin
     subrecID := WordLEToN(AStream.ReadWord);
     subrecSize := WordLEToN(AStream.ReadWord);
     streamPos := AStream.Position;
     case subrecID of
       INT_EXCEL_OBJID_FTCMO:  // common object data
+        // This is the first sub-record of the OBJ record.
         begin
           objType := WordLEToN(AStream.ReadWord);
           objID := WordLEToN(AStream.ReadWord);
@@ -545,9 +545,30 @@ begin
           end else
             FCommentPending := false;
         end;
+
+      INT_EXCEL_OBJID_FTLBSDATA:
+        if subrecSize = $1FEE then   // this cannot be the true sub-record size !!!
+          // https://mail-archives.apache.org/mod_mbox/poi-dev/200409.mbox/%3CC1ECA5ECAA06A64D88D955E9E152680D32A5C5@SNOWBALL2.asc.com.au%3E
+          // "Every sheet I have looked at seems to have a 16 byte ftLbsData sub-record."
+          subrecSize := 16
+          // NOTE:
+          // This is a risky assumption. A more robust implementation must look at
+          // the individual elements of this subrecord, see https://searchcode.com/codesearch/view/47124816/
+        else
+        if subrecSize = 0 then
+        // From MS doc: "If cbFContinued is 0x0000, all of the fields in this
+        // structure except ft and cbFContinued MUST NOT exist."
+          exit;  // We exit because the stream position cannot advance any more!
+
       INT_EXCEL_OBJID_FTEND:
-        lastSubRec := true;
+        // This is the last sub-record.
+        exit;
     end;
+
+    // The structure of the OBJ records is very chaotic. Therefore, it can easily
+    // occur that we are lost and read beyond stream end: Check for stream end
+    // and store an error. Normal reading will we resumed at the correct position
+    // by the main reading loop.
     p := streamPos + subrecSize;
     if p < streamSize then
       AStream.Position := p
