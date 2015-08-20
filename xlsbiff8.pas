@@ -521,11 +521,13 @@ end;
 procedure TsSpreadBIFF8Reader.ReadOBJ(const AStream: TStream);
 var
   subrecID, subrecSize: Word;
-  streamPos: Int64;
+  streamPos, p: Int64;
+  streamSize: Int64;
   lastSubRec: Boolean;
   objType: Word;
   objID: Word;
 begin
+  streamSize := AStream.Size;
   lastSubRec := false;
   while not lastSubRec do begin
     subrecID := WordLEToN(AStream.ReadWord);
@@ -546,7 +548,13 @@ begin
       INT_EXCEL_OBJID_FTEND:
         lastSubRec := true;
     end;
-    AStream.Position := streamPos + subrecSize;
+    p := streamPos + subrecSize;
+    if p < streamSize then
+      AStream.Position := p
+    else begin
+      FWorkbook.AddErrorMsg(Format(rsFileStructureError, ['OBJ', streamPos]));
+      exit;
+    end;
   end;
 end;
 

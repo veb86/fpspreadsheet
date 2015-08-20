@@ -43,6 +43,7 @@ resourcestring
   rsWorksheetNotFound1 = 'Worksheet not found.';
   rsInvalidWorksheetName = '"%s" is not a valid worksheet name.';
   rsDefectiveInternalStructure = 'Defective internal structure of %s file.';
+  rsFileStructureError = 'File structure error in %s record, position %d.';
   rsUnknownDataType = 'Unknown data type.';
   rsUnknownErrorType = 'Unknown error type.';
   rsTruncateTooLongCellText = 'Text value exceeds %d character limit in cell %s '+
