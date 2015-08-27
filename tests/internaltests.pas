@@ -33,6 +33,7 @@ type
     procedure TearDown; override;
 
     procedure FractionTest(AMaxDigits: Integer);
+    procedure WriteToStreamTest(AFormat: TsSpreadsheetFormat);
 
   published
     // Tests getting Excel style A1 cell locations from row/column based locations.
@@ -53,6 +54,9 @@ type
     // Test buffered stream
     procedure TestReadBufStream;
     procedure TestWriteBufStream;
+    // Test write to stream
+    procedure TestWriteToStream_Biff8;
+    procedure TestWriteToStream_Biff5;
     // Test fractions
 //    procedure FractionTest_0;
     procedure FractionTest_1;
@@ -382,6 +386,73 @@ begin
     stream.Free;
   end;
 end;
+
+procedure TSpreadInternalTests.WriteToStreamTest(AFormat: TsSpreadsheetFormat);
+var
+  myworkbook: TsWorkbook;
+  myworksheet: TsWorksheet;
+  memstream: TMemoryStream;
+  filestream: TMemoryStream;
+  tempFile: String;
+  pf, pm: Pointer;
+  i, p: Integer;
+begin
+  tempFile := GetTempFileName;
+
+  myworkbook := TsWorkbook.Create;
+  myworksheet := myworkbook.AddWorksheet('Test');
+  memstream := TMemoryStream.Create;
+  filestream := TMemoryStream.Create;
+  try
+    myworksheet.WriteText(0, 0, 'Text');
+    myworksheet.WriteNumber(0, 1, 12.345);
+    myworksheet.WriteDateTime(0, 2, now() );
+
+    // Write to file
+    myworkbook.WriteToFile(tempfile, AFormat);
+
+    // Write to memory stream
+    myworkbook.WriteToStream(memstream, AFormat);
+
+    // Determine length of "used" data, there seems to be scap at the end
+    memstream.Position := 0;
+    myworkbook.ReadFromStream(memstream, AFormat);
+    p := memstream.Position;
+
+    // Read file back into memory stream
+    filestream.LoadFromFile(tempfile);
+
+    // Compare both streams
+    CheckEquals(filestream.Size, memstream.Size, 'Stream size mismatch');
+
+    pf := filestream.Memory;
+    pm := memStream.Memory;
+    for i:=0 to p-1 do
+    begin
+      CheckEquals(PByte(pf)^, PByte(pm)^, 'Stream mismatch at position ' + IntToStr(i));
+      inc(pf);
+      inc(pm);
+    end;
+
+  finally
+    filestream.Free;
+    memstream.Free;
+    myworkbook.Free;
+  end;
+
+  DeleteFile(tempFile);
+end;
+
+procedure TSpreadInternalTests.TestWriteToStream_Biff5;
+begin
+  WriteToStreamTest(sfExcel5);
+end;
+
+procedure TSpreadInternalTests.TestWriteToStream_Biff8;
+begin
+  WriteToStreamTest(sfExcel8);
+end;
+
 
 procedure TSpreadInternalTests.TestCellString;
 var

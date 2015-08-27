@@ -531,7 +531,7 @@ procedure TVirtualLayer_OLE.Format();
 begin
   FFATIndirect.Initialize(true);
   FFATIndirect.Free;
-  FFATIndirect:=TFATIndirect.Create(FVirtualLayerStream);
+  FFATIndirect := TFATIndirect.Create(FVirtualLayerStream);
   Self.Initialize();
 end;
 
