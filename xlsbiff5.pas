@@ -96,6 +96,7 @@ type
 
   TsSpreadBIFF5Writer = class(TsSpreadBIFFWriter)
   protected
+    procedure InternalWriteToStream(AStream: TStream);
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
@@ -1077,49 +1078,13 @@ begin
   FCodePage := Excel5Settings.CodePage;
 end;
 
-
-{@@ ----------------------------------------------------------------------------
-  Writes an Excel BIFF5 file to the disc
-
-  The BIFF 5 writer overrides this method because BIFF 5 is written as
-  an OLE document, and our current OLE document writing method involves:
-
-     1 - Writing the BIFF data to a memory stream
-     2 - Write the memory stream data to disk using COM functions
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF5Writer.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean);
-var
-  Stream: TStream;
-  OutputStorage: TOLEStorage;
-  OLEDocument: TOLEDocument;
-begin
-  if (boBufStream in Workbook.Options) then begin
-    Stream := TBufStream.Create
-  end else
-    Stream := TMemoryStream.Create;
-
-  OutputStorage := TOLEStorage.Create;
-  try
-    WriteToStream(Stream);
-
-    // Only one stream is necessary for any number of worksheets
-    OLEDocument.Stream := Stream;
-
-    OutputStorage.WriteOLEFile(AFileName, OLEDocument, AOverwriteExisting);
-  finally
-    Stream.Free;
-    OutputStorage.Free;
-  end;
-end;
-
 {@@ ----------------------------------------------------------------------------
   Writes an Excel BIFF5 record structure
 
   Be careful as this method doesn't write the OLE part of the document,
   just the BIFF records
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF5Writer.WriteToStream(AStream: TStream);
+procedure TsSpreadBIFF5Writer.InternalWriteToStream(AStream: TStream);
 var
   CurrentPos: Int64;
   Boundsheets: array of Int64;
@@ -1195,6 +1160,67 @@ begin
   { Cleanup }
 
   SetLength(Boundsheets, 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel BIFF5 file to the disc
+
+  The BIFF 5 writer overrides this method because BIFF 5 is written as
+  an OLE document, and our current OLE document writing method involves:
+
+     1 - Writing the BIFF data to a memory stream
+     2 - Write the memory stream data to disk using COM functions
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF5Writer.WriteToFile(const AFileName: string;
+  const AOverwriteExisting: Boolean);
+var
+  stream: TStream;
+  OutputStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
+begin
+  if (boBufStream in Workbook.Options) then
+    stream := TBufStream.Create else
+    stream := TMemoryStream.Create;
+  try
+    InternalWriteToStream(stream);
+    OutputStorage := TOLEStorage.Create;
+    try
+      // Only one stream is necessary for any number of worksheets
+      OLEDocument.Stream := stream;
+      OutputStorage.WriteOLEFile(AFileName, OLEDocument, AOverwriteExisting);
+    finally
+      OutputStorage.Free;
+    end;
+  finally
+    stream.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel BIFF5 record structure to a stream containing the OLE
+  envelope of the document.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF5Writer.WriteToStream(AStream: TStream);
+var
+  OutputStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
+  stream: TStream;
+begin
+  if (boBufStream in Workbook.Options) then
+    stream := TBufStream.Create else
+    stream := TMemoryStream.Create;
+  try
+    InternalWriteToStream(stream);
+    OutputStorage := TOLEStorage.Create;
+    try
+      OLEDocument.Stream := stream;
+      OutputStorage.WriteOLEStream(AStream, OLEDocument);
+    finally
+      OutputStorage.Free;
+    end;
+  finally
+    stream.Free;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -124,6 +124,8 @@ type
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
   protected
     function GetPrintOptions: Word; override;
+    procedure InternalWriteToStream(AStream: TStream);
+
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
@@ -1979,47 +1981,12 @@ Begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Writes an Excel BIFF8 file to the disc
-
-  The BIFF 8 writer overrides this method because BIFF 8 is written
-  as an OLE document, and our current OLE document writing method involves:
-
-         1 - Writing the BIFF data to a memory stream
-         2 - Write the memory stream data to disk using COM functions
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean);
-var
-  Stream: TStream;
-  OutputStorage: TOLEStorage;
-  OLEDocument: TOLEDocument;
-begin
-  if (boBufStream in Workbook.Options) then begin
-    Stream := TBufStream.Create
-  end else
-    Stream := TMemoryStream.Create;
-
-  OutputStorage := TOLEStorage.Create;
-  try
-    WriteToStream(Stream);
-
-    // Only one stream is necessary for any number of worksheets
-    OLEDocument.Stream := Stream;
-
-    OutputStorage.WriteOLEFile(AFileName, OLEDocument, AOverwriteExisting, 'Workbook');
-  finally
-    Stream.Free;
-    OutputStorage.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Writes an Excel BIFF8 record structure to a stream
 
   Be careful as this method doesn't write the OLE part of the document,
   just the BIFF records
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream);
+procedure TsSpreadBIFF8Writer.InternalWriteToStream(AStream: TStream);
 const
   isBIFF8 = true;
 var
@@ -2096,9 +2063,72 @@ begin
 
     WriteEOF(AStream);
   end;
-  
+
   { Cleanup }
   SetLength(Boundsheets, 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel BIFF8 file to the disc
+
+  The BIFF 8 writer overrides this method because BIFF 8 is written
+  as an OLE document, and our current OLE document writing method involves:
+
+         1 - Writing the BIFF data to a memory stream
+         2 - Write the memory stream data to disk using COM functions
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteToFile(const AFileName: string;
+  const AOverwriteExisting: Boolean);
+var
+  Stream: TStream;
+  OutputStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
+begin
+  if (boBufStream in Workbook.Options) then begin
+    Stream := TBufStream.Create
+  end else
+    Stream := TMemoryStream.Create;
+  try
+    InternalWriteToStream(Stream);
+    OutputStorage := TOLEStorage.Create;
+    try
+      // Only one stream is necessary for any number of worksheets
+      OLEDocument.Stream := Stream;
+      OutputStorage.WriteOLEFile(AFileName, OLEDocument, AOverwriteExisting, 'Workbook');
+    finally
+      OutputStorage.Free;
+    end;
+  finally
+    Stream.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel BIFF8 record structure to a stream containing the OLE
+  envelope of the document.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream);
+var
+  OutputStorage: TOLEStorage;
+  OLEDocument: TOLEDocument;
+  stream: TStream;
+begin
+  if (boBufStream in Workbook.Options) then
+    stream := TBufStream.Create else
+    stream := TMemoryStream.Create;
+  try
+    InternalWriteToStream(stream);
+    OutputStorage := TOLEStorage.Create;
+    try
+      // Only one stream is necessary for any number of worksheets
+      OLEDocument.Stream := stream;
+      OutputStorage.WriteOLEStream(AStream, OLEDocument, 'Workbook');
+    finally
+      OutputStorage.Free;
+    end;
+  finally
+    stream.Free;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
