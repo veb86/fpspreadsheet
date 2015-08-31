@@ -7627,6 +7627,10 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbook.FindFont(const AFontName: String; ASize: Single;
   AStyle: TsFontStyles; AColor: TsColor; APosition: TsFontPosition = fpNormal): Integer;
+begin
+  Result := FindFontInList(FFontList, AFontName, ASize, AStyle, AColor, APosition);
+end;
+{
 const
   EPS = 1e-3;
 var
@@ -7646,6 +7650,7 @@ begin
   end;
   Result := -1;
 end;
+ }
 
 {@@ ----------------------------------------------------------------------------
   Initializes the font list by adding 5 fonts:

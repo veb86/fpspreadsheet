@@ -994,7 +994,7 @@ begin
       begin
         Result := Result + '<font';
         if cfFontName in FChangedParams[i] then
-          Result := Result + ' face="' + FFonts[i].FontName + '"';
+          Result := Result + ' face="' + UnquoteStr(FFonts[i].FontName) + '"';
         if cfFontSize in FChangedParams[i] then
           Result := Result + ' size="' + Format('%.gpt', [FFonts[i].Size], FPointSeparatorSettings) + '"';
         if cfFontColor in FChangedParams[i] then

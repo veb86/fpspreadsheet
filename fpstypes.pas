@@ -429,6 +429,8 @@ type
     Color: TsColor;
     {@@ Text position }
     Position: TsFontPosition;
+    constructor Create(AFontName: String; ASize: Single; AStyle: TsFontStyles;
+      AColor: TsColor; APosition: TsFontPosition); overload;
     procedure CopyOf(AFont: TsFont);
   end;
 
@@ -711,6 +713,16 @@ const
 
 
 implementation
+
+constructor TsFont.Create(AFontName: String; ASize: Single; AStyle: TsFontStyles;
+  AColor: TsColor; APosition: TsFontPosition);
+begin
+  FontName := AFontName;
+  Size := ASize;
+  Style := AStyle;
+  Color := AColor;
+  Position := APosition;
+end;
 
 procedure TsFont.CopyOf(AFont: TsFont);
 begin

@@ -211,7 +211,7 @@ var
   j: Integer;
 begin
   for j:=FFontList.Count-1 downto 0 do
-    if FFontList[j] <> nil then TObject(FFontList[j]).Free;
+    if FFontList[j] <> nil then TObject(FFontList[j]).Free;   // font #4 can add a nil!
   FreeAndNil(FFontList);
 
   FreeAndNil(FNumFormatList);

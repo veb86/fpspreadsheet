@@ -91,6 +91,8 @@ type
     FHeaderFooterFontList: TObjectList;
     FActiveSheet: String;
     FDateMode: TDateMode;
+    FFontFaces: TStringList;
+    FRichTextFontList: TFPList;
     procedure ApplyColWidths;
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
     function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
@@ -104,7 +106,11 @@ type
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
-    function ReadFont(ANode: TDOMnode; APreferredIndex: Integer = -1): Integer;
+    procedure ReadFont(ANode: TDOMNode; var AFontName: String;
+      var AFontSize: Single; var AFontStyle: TsFontStyles; var AFontColor: TsColor;
+      var AFontPosition: TsFontPosition);
+//    function ReadFont(ANode: TDOMnode; APreferredIndex: Integer = -1): Integer;
+    procedure ReadFontFaces(ANode: TDOMNode);
     procedure ReadHeaderFooterFont(ANode: TDOMNode; var AFontName: String;
       var AFontSize: Double; var AFontStyle: TsHeaderFooterFontStyles;
       var AFontColor: TsColor);
@@ -887,6 +893,8 @@ begin
   FPageLayoutList := TFPList.Create;
   FMasterPageList := TFPList.Create;
   FHeaderFooterFontList := TObjectList.Create;  // frees objects
+  FFontFaces := TStringList.Create;
+  FRichTextFontList := TFPList.Create;
 
   // Initial base date in case it won't be read from file
   FDateMode := dm1899;
@@ -896,6 +904,11 @@ destructor TsSpreadOpenDocReader.Destroy;
 var
   j: integer;
 begin
+  FFontFaces.Free;
+
+  for j := FRichTextFontList.Count-1 downto 0 do TObject(FRichTextFontList[j]).Free;
+  FreeAndNil(FRichTextFontList);
+
   for j := FColumnList.Count-1 downto 0 do TObject(FColumnList[j]).Free;
   FColumnList.Free;
 
@@ -1722,6 +1735,68 @@ begin
     raise Exception.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
 end;
 
+{ Reads font data from an xml node and returns the font elements. }
+procedure TsSpreadOpenDocReader.ReadFont(ANode: TDOMNode; var AFontName: String;
+  var AFontSize: Single; var AFontStyle: TsFontStyles; var AFontColor: TsColor;
+  var AFontPosition: TsFontPosition);
+var
+  stylename, s: String;
+  i, p: Integer;
+begin
+  if ANode = nil then
+    exit;
+
+  stylename := GetAttrValue(ANode, 'style:font-name');
+  if stylename <> '' then
+    // Look for the true font name in the FFontFaces list. The items in
+    // FFontfaces are "style name"|"font name" pairs.
+    for i:=0 to FFontFaces.Count-1 do
+    begin
+      p := pos('|', FFontFaces[i]);
+      if p > 0 then begin
+        s := copy(FFontfaces[i], 1, p-1);  // The first part is the style name
+        if s = styleName then
+        begin
+          AFontName := copy(FFontfaces[i], p+1, MaxInt);
+          // the second part is the font name
+          break;
+        end;
+      end;
+    end;
+  // In all other case, leave the AFontName of the input untouched.
+
+  s := GetAttrValue(ANode, 'fo:font-size');
+  if s <> '' then
+    AFontSize := HTMLLengthStrToPts(s);
+
+  if GetAttrValue(ANode, 'fo:font-style') = 'italic' then
+    Include(AFontStyle, fssItalic);
+  if GetAttrValue(ANode, 'fo:font-weight') = 'bold' then
+    Include(AFontStyle, fssBold);
+  s := GetAttrValue(ANode, 'style:text-underline-style');
+  if not ((s = '') or (s = 'none')) then
+    Include(AFontStyle, fssUnderline);
+  s := GetAttrValue(ANode, 'style:text-line-through-style');
+  if s = '' then s := GetAttrValue(ANode, 'style:text-line-through-type');
+  if not ((s = '') or (s = 'none')) then
+    Include(AFontStyle, fssStrikeout);
+
+  s := GetAttrValue(ANode, 'style:text-position');
+  if Length(s) >= 3 then
+  begin
+    if (s[3] = 'b') or (s[1] = '-') then
+      AFontPosition := fpSubscript
+    else
+      AFontPosition := fpSuperscript;
+  end;
+
+  s := GetAttrValue(ANode, 'fo:color');
+  if s <> '' then
+    AFontColor := HTMLColorStrToColor(s);
+end;
+
+
+                            (*
 { Reads font data from an xml node, adds the font to the workbooks FontList
   (if not yet contained), and returns the index in the font list.
   If the font is a special font (such as DefaultFont, or HyperlinkFont) then
@@ -1736,6 +1811,7 @@ var
   fntColor: TsColor;
   fntPosition: TsFontPosition;
   s: String;
+  i: Integer;
   p: Integer;
 begin
   if ANode = nil then
@@ -1746,7 +1822,22 @@ begin
 
   fntName := GetAttrValue(ANode, 'style:font-name');
   if fntName = '' then
-    fntName := FWorkbook.GetFont(0).FontName;
+    fntName := FWorkbook.GetDefaultFont.FontName
+  else
+    // Look for the true font name in the FFontFaces list. The items in
+    // FFontfaces are "style name"|"font name" pairs.
+    for i:=0 to FFontFaces.Count-1 do
+    begin
+      p := pos('|', FFontFaces[i]);
+      if p > 0 then begin
+        s := copy(FFontfaces[i], 1, p-1);
+        if s = fntName then
+        begin
+          fntName := copy(FFontfaces[i], p+1, MaxInt);
+          break;
+        end;
+      end;
+    end;
 
   s := GetAttrValue(ANode, 'fo:font-size');
   if s <> '' then
@@ -1797,6 +1888,31 @@ begin
     Result := FWorkbook.FindFont(fntName, fntSize, fntStyles, fntColor, fntPosition);
     if Result = -1 then
       Result := FWorkbook.AddFont(fntName, fntSize, fntStyles, fntColor, fntPosition);
+  end;
+end;
+                              *)
+{ Collects the fontnames associated with a style-name in the list FFontfaces.
+  stylenames and fontnames are packed into a single string using | as a
+  separator. }
+procedure TsSpreadOpenDocReader.ReadFontFaces(ANode: TDOMNode);
+var
+  faceNode: TDOMNode;
+  nodename: String;
+  stylename: String;
+  fontfamily: String;
+begin
+  faceNode := ANode.FirstChild;
+  while Assigned(faceNode) do
+  begin
+    nodename := faceNode.NodeName;
+    if nodename = 'style:font-face' then
+    begin
+      stylename := GetAttrValue(faceNode, 'style:name');
+      fontfamily := GetAttrValue(faceNode, 'svg:font-family');
+      if FFontFaces.IndexOf(stylename + '|' + fontfamily) = -1 then
+        FFontFaces.Add(stylename + '|' + fontfamily);
+    end;
+    faceNode := faceNode.NextSibling;
   end;
 end;
 
@@ -1958,6 +2074,8 @@ begin
     ReadXMLFile(Doc, FilePath+'styles.xml');
     DeleteFile(FilePath+'styles.xml');
 
+    ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
+
     StylesNode := Doc.DocumentElement.FindNode('office:styles');
     ReadNumFormats(StylesNode);
     ReadStyles(StylesNode);
@@ -1974,6 +2092,7 @@ begin
     ReadXMLFile(Doc, FilePath+'content.xml');
     DeleteFile(FilePath+'content.xml');
 
+    ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
     StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
     ReadNumFormats(StylesNode);
     ReadStyles(StylesNode);
@@ -2062,6 +2181,8 @@ begin
       XMLStream.Free;
     end;
 
+    ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
+
     StylesNode := Doc.DocumentElement.FindNode('office:styles');
     ReadNumFormats(StylesNode);
     ReadStyles(StylesNode);
@@ -2078,6 +2199,7 @@ begin
       XMLStream.Free;
     end;
 
+    ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
     StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
     ReadNumFormats(StylesNode);
     ReadStyles(StylesNode);
@@ -2213,9 +2335,11 @@ var
   nodeName: String;
   cell: PCell;
   hyperlink: string;
-  fmt: TsCellFormat;
   rtParams: TsRichTextParams;
   idx: Integer;
+  rtFntIndex, fntIndex: Integer;
+  rtFnt, fnt: TsFont;
+  fmt: PsCellFormat;
 
   procedure AddToCellText(AText: String);
   begin
@@ -2225,10 +2349,23 @@ var
   end;
 
 begin
-  { We were forced to activate PreserveWhiteSpace in the DOMParser in order to
-    catch the spaces inserted in formatting texts. However, this adds lots of
-    garbage into the cellText if is is read by means of above statement. Done
-    like below is much better: }
+  // Initalize cell
+  if FIsVirtualMode then
+  begin
+    InitCell(ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := FWorksheet.AddCell(ARow, ACol);
+
+  // Apply style to cell
+  // We do this already here because we need the cell font for rich-text
+  styleName := GetAttrValue(ACellNode, 'table:style-name');
+  ApplyStyleToCell(cell, stylename);
+  fmt := FWorkbook.GetPointerToCellFormat(cell^.FormatIndex);
+  fntIndex := fmt^.FontIndex;
+  fnt := FWorkbook.GetFont(fntIndex);
+
+  // Prepare reading of node data
   cellText := '';
   hyperlink := '';
   SetLength(rtParams, 0);
@@ -2246,7 +2383,16 @@ begin
         nodename := subnode.NodeName;
         case nodename of
           '#text' :
-            AddToCellText(subnode.TextContent);
+            begin
+              if Length(rtParams) > 0 then
+              begin
+                SetLength(rtParams, Length(rtParams) + 1);
+                rtParams[High(rtParams)].FirstIndex := UTF8Length(cellText) + 1;
+                rtParams[High(rtParams)].FontIndex := fntIndex;
+                rtParams[High(rtParams)].HyperlinkIndex := -1;  // TO DO !!!!
+              end;
+              AddToCellText(subnode.TextContent);
+            end;
           'text:a':     // "hyperlink anchor"
             begin
               hyperlink := GetAttrValue(subnode, 'xlink:href');
@@ -2260,9 +2406,23 @@ begin
                 idx := FCellFormatList.FindIndexOfName(stylename);
                 if idx > -1 then
                 begin
+                  rtFntIndex := FCellFormatList[idx]^.FontIndex;
+                  rtFnt := TsFont(FRichTextFontList[rtFntIndex]);
+                  // Replace missing font elements by those from the cell font
+                  if rtFnt.FontName = '' then rtFnt.FontName := fnt.FontName;
+                  if rtFnt.Size = -1 then rtFnt.Size := fnt.Size;
+                  if rtFnt.Style = [] then rtFnt.Style := fnt.Style;
+                  if rtFnt.Color = scNone then rtFnt.Color := fnt.Color;
+                  if rtFnt.Position = fpNormal then rtFnt.Position := fnt.Position;
+                  // Find this font in the workbook's font list
+                  rtfntIndex := FWorkbook.FindFont(rtFnt.FontName, rtFnt.Size, rtFnt.Style, rtFnt.Color, rtFnt.Position);
+                  // If not found add to font list
+                  if rtfntIndex = -1 then
+                    rtfntIndex := FWorkbook.AddFont(rtFnt.FontName, rtFnt.Size, rtFnt.Style, rtFnt.Color, rtFnt.Position);
+                  // Use this font index in the rich-text parameter
                   SetLength(rtParams, Length(rtParams)+1);
                   rtParams[High(rtParams)].FirstIndex := UTF8Length(cellText) + 1;  // 1-based character index
-                  rtParams[High(rtParams)].FontIndex := FCellFormatList[idx]^.FontIndex;
+                  rtParams[High(rtParams)].FontIndex := rtFntIndex;
                   rtParams[High(rtParams)].HyperlinkIndex := -1;  // TO DO !!!!
                 end;
               end;
@@ -2275,13 +2435,6 @@ begin
     childnode := childnode.NextSibling;
   end;
 
-  if FIsVirtualMode then
-  begin
-    InitCell(ARow, ACol, FVirtualCell);
-    cell := @FVirtualCell;
-  end else
-    cell := FWorksheet.AddCell(ARow, ACol);
-
   FWorkSheet.WriteUTF8Text(cell, cellText, rtParams);
   if hyperlink <> '' then
   begin
@@ -2293,9 +2446,6 @@ begin
     FWorksheet.WriteHyperlink(cell, hyperlink);
     FWorksheet.WriteFont(cell, HYPERLINK_FONTINDEX);
   end;
-
-  styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(cell, stylename);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -3164,6 +3314,13 @@ var
   numFmtIndex: Integer;
   numFmtParams: TsNumFormatParams;
   clr: TsColor;
+  fnt: TsFont;
+  fntName: String;
+  fntSize: Single;
+  fntStyle: TsFontStyles;
+  fntColor: TsColor;
+  fntPos: TsFontPosition;
+  fntIndex: Integer;
   s: String;
   idx: Integer;
 
@@ -3263,7 +3420,37 @@ begin
     nodeName := styleNode.NodeName;
     if nodeName = 'style:default-style' then
     begin
-      ReadFont(styleNode.FindNode('style:text-properties'), DEFAULT_FONTINDEX);
+      family := GetAttrValue(stylenode, 'style:family');
+      if family = 'table-cell' then begin
+        InitFormatRecord(fmt);
+        fmt.Name := 'Default';
+        fnt := FWorkbook.GetFont(fmt.FontIndex);
+        fntName := fnt.FontName;
+        fntSize := fnt.Size;
+        fntStyle := fnt.Style;
+        fntColor := fnt.Color;
+        fntPos := fnt.Position;
+        styleChildNode := stylenode.FirstChild;
+        while Assigned(styleChildNode) do begin
+          nodename := styleChildNode.NodeName;
+          if nodename = 'style:text-properties' then
+            ReadFont(
+              styleNode.FindNode('style:text-properties'),
+              fntName, fntSize, fntStyle, fntColor, fntPos
+            )
+//            fmt.FontIndex := ReadFont(styleNode.FindNode('style:text-properties'), DEFAULT_FONTINDEX)
+          else
+          if nodename = 'style:paragraph-properties' then;
+            // not used;
+          styleChildNode := styleChildNode.nextSibling;
+        end;
+        fmt.FontIndex := FWorkbook.FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+        if fmt.FontIndex = -1 then
+          fmt.FontIndex := FWorkbook.AddFont(fntname, fntsize, fntstyle, fntColor, fntPos);
+        if fmt.FontIndex > 0 then
+          Include(fmt.UsedFormattingFields, uffFont);
+        FCellFormatList.Add(fmt);
+      end;
     end else
     if nodeName = 'style:style' then
     begin
@@ -3293,6 +3480,13 @@ begin
         end;
         fmt.Name := styleName;
 
+        fnt := FWorkbook.GetFont(fmt.FontIndex);
+        fntName := fnt.FontName;
+        fntSize := fnt.Size;
+        fntStyle := fnt.Style;
+        fntColor := fnt.Color;
+        fntPos := fnt.Position;
+
         numFmtIndex := -1;
         numFmtName := GetAttrValue(styleNode, 'style:data-style-name');
         if numFmtName <> '' then numFmtIndex := FindNumFormatByName(numFmtName);
@@ -3313,15 +3507,28 @@ begin
           nodeName := styleChildNode.NodeName;
           if nodeName = 'style:text-properties' then
           begin
+            ReadFont(styleChildNode, fntName, fntSize, fntStyle, fntColor, fntPos);
             if SameText(stylename, 'Default') then
-              fmt.FontIndex := ReadFont(styleChildNode, DEFAULT_FONTINDEX)
-            else
+            begin
+              FWorkbook.ReplaceFont(DEFAULT_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
+              fmt.FontIndex := DEFAULT_FONTINDEX;
+              //fntIndex := ReadFont(styleChildNode, DEFAULT_FONTINDEX)
+            end else
             if SameText(stylename, 'Excel_20_Built-in_20_Hyperlink') then
-              fmt.FontIndex := ReadFont(styleChildNode, HYPERLINK_FONTINDEX)
-            else
-              fmt.FontIndex := ReadFont(styleChildNode);
+            begin
+              FWorkbook.ReplaceFont(HYPERLINK_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
+              fmt.FontIndex := HYPERLINK_FONTINDEX;
+              //fntIndex := ReadFont(styleChildNode, HYPERLINK_FONTINDEX)
+            end else
+            begin
+              fmt.FontIndex := FWorkbook.FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+              if fmt.FontIndex = -1 then
+                fmt.FontIndex := FWorkbook.AddFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+            end;
             if fmt.FontIndex > 0 then
               Include(fmt.UsedFormattingFields, uffFont);
+//              fntIndex := ReadFont(styleChildNode);
+  //          fnt := FWorkbook.GetFont(fntIndex);
           end else
           if nodeName = 'style:table-cell-properties' then
           begin
@@ -3442,6 +3649,7 @@ begin
       if family = 'text' then
       begin
         // "Rich-text formatting run" style
+        // Nodes are named "T1", "T2", etc.
         styleName := GetAttrValue(styleNode, 'style:name');
         styleChildNode := styleNode.FirstChild;
         while Assigned(styleChildNode) do
@@ -3449,12 +3657,38 @@ begin
           nodeName := styleChildNode.NodeName;
           if nodeName = 'style:text-properties' then
           begin
+            // Setup default values which identify font elements to be replaced
+            // by the cell font value
+            fntName := '';
+            fntSize := -1;
+            fntStyle := [];
+            fntColor := scNone;
+            fntPos := fpNormal;
+            ReadFont(styleChildNode, fntName, fntSize, fntStyle, fntColor, fntPos);
+            // Does this font already exist in the FRichTextFontList?
+            fntIndex := FindFontInList(FRichTextFontList, fntName, fntSize, fntStyle, fntColor, fntPos);
+            // No - add the font to the list.
+            if fntIndex = -1 then
+            begin
+              fnt := TsFont.Create(fntName, fntSize, fntStyle, fntColor, fntPos);
+              fntIndex := FRichTextFontList.Add(fnt);
+            end;
+
+            // Store this is in a dummy format in the cell format list
             InitFormatRecord(fmt);
             fmt.Name := styleName;
-            fmt.FontIndex := ReadFont(styleChildNode);
+            fmt.FontIndex := fntIndex;
+            Include(fmt.UsedFormattingFields, uffFont);
+            FCellFormatList.Add(fmt);
+            {
+            fmt.FontIndex := FWorkbook.FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+            if fmt.FontIndex = -1 then
+              fmt.FontIndex := FWorkbook.AddFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+//            fmt.FontIndex := ReadFont(styleChildNode);
             if fmt.FontIndex > 0 then
               Include(fmt.UsedFormattingFields, uffFont);
             FCellFormatList.Add(fmt);
+            }
           end;
           styleChildNode := stylechildNode.NextSibling;
         end;

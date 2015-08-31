@@ -201,6 +201,9 @@ type
     function Pop: Integer;
   end;
 
+  function FindFontInList(AFontList: TFPList; AFontName: String; ASize: Single;
+    AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Integer;
+
 implementation
 
 uses
@@ -1322,6 +1325,31 @@ begin
     Result := FValues[High(FValues)];
     SetLength(FValues, Length(FValues)-1);
   end;
+end;
+
+{******************************************************************************}
+{                             Utilities                                        }
+{******************************************************************************}
+function FindFontInList(AFontList: TFPList; AFontName: String; ASize: Single;
+  AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Integer;
+const
+  EPS = 1e-3;
+var
+  fnt: TsFont;
+begin
+  for Result := 0 to AFontList.Count-1 do
+  begin
+    fnt := TsFont(AFontList.Items[Result]);
+    if (fnt <> nil) and
+       SameText(AFontName, fnt.FontName) and
+       SameValue(ASize, fnt.Size, EPS) and   // careful when comparing floating point numbers
+      (AStyle = fnt.Style) and
+      (AColor = fnt.Color) and
+      (APos = fnt.Position)
+    then
+      exit;
+  end;
+  Result := -1;
 end;
 
 end.
