@@ -1565,9 +1565,16 @@ var
   toRow, toCol: LongInt;
   row1, col1, row2, col2: Cardinal;
   hyperlink: PsHyperlink;
+  fnt: TsFont;
+  fntIndex: Integer;
+  srcSheet: TsWorksheet;
+  i: Integer;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
+
+  // Short-cut for source worksheet
+  srcSheet := TsWorksheet(AFromcell^.Worksheet);
 
   // Remember the row and column indexes of the destination cell.
   toRow := AToCell^.Row;
@@ -1603,6 +1610,22 @@ begin
   hyperlink := FindHyperlink(AFromCell);
   if hyperlink <> nil then
     WriteHyperlink(AToCell, hyperlink^.Target, hyperlink^.Tooltip);
+
+  // Copy rich text parameters
+  if (AFromCell^.ContentType = cctUTF8String) and (Length(AFromCell^.RichTextParams) > 0) then
+  begin
+    SetLength(AToCell^.RichTextParams, Length(AFromCell^.RichTextParams));
+    // Make sure that fonts exist at destination
+    for i := 0 to High(AFromCell^.RichTextParams) do
+    begin
+      AToCell^.RichTextParams[i] := AFromCell^.RichTextParams[i];
+      fnt := srcSheet.Workbook.GetFont(AFromCell^.RichTextParams[i].FontIndex);
+      fntIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      if fntIndex = -1 then
+        fntIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      AToCell^.RichTextParams[i].FontIndex := fntIndex;
+    end;
+  end;
 
   // Notify visual controls of possibly changed row heights.
   ChangedFont(AToCell^.Row, AToCell^.Col);
@@ -3810,6 +3833,7 @@ var
   r, c: Cardinal;
   i: Integer;
   hyperlink: TsHyperlink;
+  fmt: TsCellFormat;
 begin
   if ACell = nil then
     exit;
@@ -3826,9 +3850,11 @@ begin
     end;
   end;
 
+  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+
   if (AText = '') then
   begin
-    if (Workbook.GetCellFormat(ACell^.FormatIndex).UsedFormattingFields = []) and
+    if (fmt.UsedFormattingFields = []) and
        (ACell^.Flags * [cfHyperlink, cfHasComment, cfMerged] = []) and
        (ACell^.FormulaValue = '')
     then
