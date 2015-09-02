@@ -148,7 +148,9 @@ procedure InitPageLayout(out APageLayout: TsPageLayout);
 procedure CopyCellValue(AFromCell, AToCell: PCell);
 function HasFormula(ACell: PCell): Boolean;
 function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean;
-function SameFont(AFont1, AFont2: TsFont): Boolean;
+function SameFont(AFont1, AFont2: TsFont): Boolean; overload;
+function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
+  AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Boolean; overload;
 
 function GetUniqueTempDir(Global: Boolean): String;
 
@@ -1919,21 +1921,39 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether two fonts are equal
 
-  @param  AFormat1  Pointer to the first font to be compared
-  @param  AFormat2  Pointer to the second font to be compared
+  @param  AFont1  Pointer to the first font to be compared
+  @param  AFont2  Pointer to the second font to be compared
 -------------------------------------------------------------------------------}
 function SameFont(AFont1, AFont2: TsFont): Boolean;
 const
   EPS = 1E-3;
 begin
-  Result := (AFont1 <> nil) and (AFont2 <> nil) and
-            SameText(AFont1.FontName, AFont2.FontName) and
-            SameValue(AFont1.Size, AFont2.Size, EPS) and
-            (AFont1.Color = AFont2.Color) and
-            (AFont1.Style = AFont2.Style) and
-            (AFont1.Position = AFont2.Position);
   if (AFont1 = nil) and (AFont2 = nil) then
-    Result := true;
+    Result := true
+  else
+  if (AFont2 <> nil) then
+    Result := SameFont(AFont1, AFont2.FontName, AFont2.Size, AFont2.Style, AFont2.Color, AFont2.Position)
+  else
+    Result := false;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether two fonts are equal
+
+  @param  AFont1  Pointer to the first font to be compared
+  @param  AFont2  Pointer to the second font to be compared
+-------------------------------------------------------------------------------}
+function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
+  AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Boolean;
+const
+  EPS = 1E-3;
+begin
+  Result := (AFont <> nil) and
+            SameText(AFont.FontName, AFontName) and
+            SameValue(AFont.Size, AFontSize, EPS) and
+            (AFont.Style = AStyle) and
+            (AFont.Color = AColor) and
+            (AFont.Position = APos);
 end;
 
 {@@ ----------------------------------------------------------------------------
