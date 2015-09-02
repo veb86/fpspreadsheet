@@ -1902,7 +1902,7 @@ var
   actSheetIndex: Integer;
 begin
   //unzip "content.xml" of "AFileName" to folder "FilePath"
-  FilePath := GetTempDir(false);
+  FilePath := GetUniqueTempDir(false);
   UnZip := TUnZipper.Create;
   FileList := TStringList.Create;
   try
@@ -2029,6 +2029,7 @@ begin
     end;  // for
 
   finally
+    RemoveDir(FilePath);
     SheetList.Free;
     FreeAndNil(Doc);
   end;

@@ -150,6 +150,8 @@ function HasFormula(ACell: PCell): Boolean;
 function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean;
 function SameFont(AFont1, AFont2: TsFont): Boolean;
 
+function GetUniqueTempDir(Global: Boolean): String;
+
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String); inline; overload;
@@ -170,7 +172,7 @@ var
 implementation
 
 uses
-  Math, lazutf8, fpsStrings;
+  Math, lazutf8, lazfileutils, fpsStrings;
 
 {******************************************************************************}
 {                       Endianess helper functions                             }
@@ -1932,6 +1934,29 @@ begin
             (AFont1.Position = AFont2.Position);
   if (AFont1 = nil) and (AFont2 = nil) then
     Result := true;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Constructs a string of length "Len" containing random uppercase characters
+-------------------------------------------------------------------------------}
+function GetRandomString(Len: Integer): String;
+begin
+  Result := '';
+  While Length(Result) < Len do
+    Result := Result + char(ord('A') + random(26));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Constructs a unique folder name in the temp directory of the OS
+-------------------------------------------------------------------------------}
+function GetUniqueTempDir(Global: Boolean): String;
+var
+  tempdir: String;
+begin
+  tempdir := AppendPathDelim(GetTempDir(Global));
+  repeat
+    Result := tempdir + AppendPathDelim(GetRandomString(8));
+  until not DirectoryExists(Result);
 end;
 
 {@@ ----------------------------------------------------------------------------

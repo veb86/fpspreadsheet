@@ -2054,7 +2054,7 @@ var
   sheet: TsWorksheet;
 begin
   //unzip files into AFileName path
-  FilePath := GetTempDir(false);
+  FilePath := GetUniqueTempDir(false);
   UnZip := TUnZipper.Create;
   FileList := TStringList.Create;
   try
@@ -2155,6 +2155,7 @@ begin
     FWorkbook.SelectWorksheet(sheet);
 
   finally
+    RemoveDir(FilePath);
     if Assigned(Doc) then Doc.Free;
   end;
 end;
