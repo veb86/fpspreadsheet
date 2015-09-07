@@ -355,7 +355,9 @@ type
       const AHyperlink: TsHyperlink);
   private
     { private declarations }
-    procedure SearchFound(Sender: TObject; ACell: PCell);
+    procedure SearchClose(Sender: TObject; var CloseAction: TCloseAction);
+    procedure SearchFound(Sender: TObject; AFound: Boolean;
+      AWorksheet: TsWorksheet; ARow, ACol: Cardinal);
     procedure UpdateCaption;
   protected
     procedure ReadFromIni;
@@ -496,7 +498,9 @@ begin
   if SearchForm = nil then
     SearchForm := TSearchForm.Create(self);
   SearchForm.OnFound := @SearchFound;
-  SearchForm.Execute(WorkbookSource.Workbook, DefaultSearchParams);
+  SearchForm.OnClose := @SearchClose;
+  SearchForm.SearchParams := DefaultSearchParams;
+  SearchForm.Execute(WorkbookSource.Workbook);
 end;
 
 procedure TMainForm.AcSettingsCSVParamsExecute(Sender: TObject);
@@ -601,9 +605,30 @@ begin
   end;
 end;
 
-procedure TMainForm.SearchFound(Sender: TObject; ACell: PCell);
+procedure TMainForm.SearchClose(Sender: TObject; var CloseAction: TCloseAction);
 begin
-  // There could be status message "search string found", here
+  Unused(CloseAction);
+  DefaultSearchParams := TSearchForm(Sender).SearchParams;
+end;
+
+procedure TMainForm.SearchFound(Sender: TObject; AFound: Boolean;
+  AWorksheet: TsWorksheet; ARow, ACol: Cardinal);
+begin
+  Unused(AWorksheet, ARow, ACol);
+
+  if AFound then
+  begin
+    //
+  end
+  else
+  begin
+    DefaultSearchParams := TSearchForm(Sender).SearchParams;
+    MessageDlg(
+      Format('The search text "%s" could not be found.', [DefaultSearchParams.SearchText]),
+      mtInformation,
+      [mbOK], 0
+    );
+  end;
 end;
 
 procedure TMainForm.UpdateCaption;

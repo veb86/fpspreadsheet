@@ -1,12 +1,12 @@
 object SearchForm: TSearchForm
   Left = 238
-  Height = 271
+  Height = 272
   Top = 157
-  Width = 392
+  Width = 483
   BorderStyle = bsDialog
   Caption = 'Search'
-  ClientHeight = 271
-  ClientWidth = 392
+  ClientHeight = 272
+  ClientWidth = 483
   FormStyle = fsStayOnTop
   OnClose = FormClose
   OnCreate = FormCreate
@@ -24,16 +24,16 @@ object SearchForm: TSearchForm
     Left = 93
     Height = 23
     Top = 14
-    Width = 283
+    Width = 374
     Anchors = [akTop, akLeft, akRight]
     ItemHeight = 15
     TabOrder = 0
   end
   object CgSearchOptions: TCheckGroup
-    Left = 19
+    Left = 16
     Height = 163
     Top = 53
-    Width = 189
+    Width = 192
     AutoFill = True
     Caption = 'Search options'
     ChildSizing.LeftRightSpacing = 6
@@ -45,24 +45,24 @@ object SearchForm: TSearchForm
     ChildSizing.Layout = cclLeftToRightThenTopToBottom
     ChildSizing.ControlsPerLine = 1
     ClientHeight = 143
-    ClientWidth = 185
+    ClientWidth = 188
     Items.Strings = (
-      'Compare full cell '
-      'Ignore case'
+      'Compare entire cell '
+      'Match case'
       'Regular expression'
-      'Backwards'
       'Search along rows'
+      'Continue at start/end'
     )
     TabOrder = 1
     Data = {
       050000000202020202
     }
   end
-  object RgSearchSource: TRadioGroup
-    Left = 237
-    Height = 75
+  object RgSearchWithin: TRadioGroup
+    Left = 232
+    Height = 67
     Top = 53
-    Width = 139
+    Width = 232
     AutoFill = True
     Caption = 'Search within'
     ChildSizing.LeftRightSpacing = 6
@@ -70,39 +70,43 @@ object SearchForm: TSearchForm
     ChildSizing.EnlargeVertical = crsHomogenousChildResize
     ChildSizing.ShrinkHorizontal = crsScaleChilds
     ChildSizing.ShrinkVertical = crsScaleChilds
-    ChildSizing.Layout = cclLeftToRightThenTopToBottom
-    ChildSizing.ControlsPerLine = 1
-    ClientHeight = 55
-    ClientWidth = 135
+    ChildSizing.Layout = cclTopToBottomThenLeftToRight
+    ChildSizing.ControlsPerLine = 2
+    ClientHeight = 47
+    ClientWidth = 228
+    ColumnLayout = clVerticalThenHorizontal
+    Columns = 2
     ItemIndex = 0
     Items.Strings = (
-      'worksheet'
       'workbook'
+      'worksheet'
+      'column'
+      'row'
     )
     TabOrder = 2
   end
   object ButtonPanel: TPanel
     Left = 0
     Height = 38
-    Top = 233
-    Width = 392
+    Top = 234
+    Width = 483
     Align = alBottom
     BevelOuter = bvNone
     ClientHeight = 38
-    ClientWidth = 392
+    ClientWidth = 483
     TabOrder = 3
     object Bevel1: TBevel
       Left = 6
       Height = 3
       Top = 0
-      Width = 380
+      Width = 471
       Align = alTop
       BorderSpacing.Left = 6
       BorderSpacing.Right = 6
       Shape = bsTopLine
     end
     object BtnSearchBack: TBitBtn
-      Left = 149
+      Left = 240
       Height = 25
       Top = 7
       Width = 75
@@ -149,18 +153,19 @@ object SearchForm: TSearchForm
       Visible = False
     end
     object BtnClose: TBitBtn
-      Left = 309
+      Left = 400
       Height = 25
       Top = 7
       Width = 75
       Anchors = [akTop, akRight]
+      Cancel = True
       DefaultCaption = True
       Kind = bkClose
       ModalResult = 11
       TabOrder = 1
     end
     object BtnSearch: TBitBtn
-      Left = 229
+      Left = 320
       Height = 25
       Top = 7
       Width = 75
@@ -208,10 +213,10 @@ object SearchForm: TSearchForm
     end
   end
   object RgSearchStart: TRadioGroup
-    Left = 237
-    Height = 75
-    Top = 141
-    Width = 139
+    Left = 232
+    Height = 56
+    Top = 160
+    Width = 232
     AutoFill = True
     Caption = 'Start search at'
     ChildSizing.LeftRightSpacing = 6
@@ -220,13 +225,14 @@ object SearchForm: TSearchForm
     ChildSizing.ShrinkHorizontal = crsScaleChilds
     ChildSizing.ShrinkVertical = crsScaleChilds
     ChildSizing.Layout = cclLeftToRightThenTopToBottom
-    ChildSizing.ControlsPerLine = 1
-    ClientHeight = 55
-    ClientWidth = 135
+    ChildSizing.ControlsPerLine = 2
+    ClientHeight = 36
+    ClientWidth = 228
+    Columns = 2
     ItemIndex = 0
     Items.Strings = (
-      'beginning/end'
       'active cell'
+      'beginning/end'
     )
     TabOrder = 4
   end

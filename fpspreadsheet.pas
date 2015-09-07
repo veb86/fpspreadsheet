@@ -450,11 +450,6 @@ type
     function GetSelectionCount: Integer;
     procedure SetSelection(const ASelection: TsCellRangeArray);
 
-    // Searching
-    function Search(ASearchText: String; AOptions: TsSearchOptions;
-      AStartRow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
-      AStartCol: Cardinal = UNASSIGNED_ROW_COL_INDEX): PCell;
-
     // Comments
     function FindComment(ACell: PCell): PsComment;
     function HasComment(ACell: PCell): Boolean;
@@ -617,6 +612,7 @@ type
     FFileName: String;
     FLockCount: Integer;
     FLog: TStringList;
+    FSearchEngine: TObject;
 
     { Setter/Getter }
     function GetErrorMsg: String;
@@ -733,12 +729,13 @@ type
       ABigEndian: Boolean = false);
     function UsesColor(AColorIndex: TsColor): Boolean;
                         *)
-
+              (*
     { Searching }
-    function Search(ASearchText: String; AOptions: TsSearchOptions;
-      AStartSheet: TsWorksheet = nil; AStartRow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
-      AStartCol: Cardinal = UNASSIGNED_ROW_COL_INDEX): PCell;
-
+    function SearchFirst(ASearchText: String; AParams: TsSearchParams;
+      out AWorksheet: TsWorksheet; out ARow, ACol: Cardinal): Boolean;
+    function SearchNext(out AWorksheet: TsWorksheet;
+      out ARow, ACol: Cardinal): Boolean;
+                *)
     { Utilities }
     procedure UpdateCaches;
 
@@ -834,7 +831,7 @@ procedure CopyCellFormat(AFromCell, AToCell: PCell);
 implementation
 
 uses
-  Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser, RegExpr,
+  Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
   fpsStrings, uvirtuallayer_ole,
   fpsUtils, fpsHTMLUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
   fpsNumFormatParser;
@@ -3595,186 +3592,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Searches the cell containing a specified text. The search begins with the
-  cell "AStartCell". A set of options is respected. Returns a pointer to the
-  first cell meeting the criteria.
--------------------------------------------------------------------------------}
-function TsWorksheet.Search(ASearchText: String; AOptions: TsSearchOptions;
-  AStartRow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
-  AStartCol: Cardinal = UNASSIGNED_ROW_COL_INDEX): PCell;
-var
-  regex: TRegExpr;
-  cell, startCell: PCell;
-  r, c: Cardinal;
-  firstR, firstC, lastR, lastC: Cardinal;
-
-  function CellMatches(ACell: PCell): boolean;
-  var
-    txt: String;
-  begin
-    txt := ReadAsText(ACell);
-    if (soRegularExpr in AOptions) then
-      Result := regex.Exec(txt)
-    else
-    if (soIgnoreCase in AOptions) then
-      txt := UTF8Lowercase(txt);
-    if (soCompareFullCell in AOptions) then
-      exit(txt = ASearchText);
-    if UTF8Pos(ASearchText, txt) > 0 then
-      exit(true);
-    Result := false;
-  end;
-
-begin
-  Result := nil;
-  regex := nil;
-  firstR := 0;
-  firstC := 0;
-  lastR := GetLastRowIndex;
-  lastC := GetLastColIndex;
-
-  // Find first occupied cell to start with
-  if (soBackward in AOptions) then
-  begin
-    if AStartRow = UNASSIGNED_ROW_COL_INDEX then AStartRow := lastR;
-    if AStartCol = UNASSIGNED_ROW_COL_INDEX then AStartCol := lastC;
-  end else
-  begin
-    if AStartRow = UNASSIGNED_ROW_COL_INDEX then AStartRow := firstR;
-    if AStartCol = UNASSIGNED_ROW_COL_INDEX then AStartCol := firstC;
-  end;
-  startcell := FindCell(AStartRow, AStartCol);
-  if startcell = nil then
-    // Backward search along rows
-    if (AOptions * [soBackward, soAlongRows] = [soBackward, soAlongRows]) then
-    begin
-      startcell := FindPrevCellInRow(AStartRow, AStartCol);
-      // Not found in this row? Go to previous row
-      while (startcell = nil) and (AStartRow > 0) do begin
-        AStartCol := lastC;
-        dec(AStartRow);
-        startcell := FindPrevCellInRow(AStartRow, AStartCol);
-      end;
-    end
-    else
-    // Backward search along columns
-    if (AOptions * [soBackward, soAlongRows] = [soBackward]) then
-    begin
-      startcell := FindPrevCellInCol(AStartRow, AStartCol);
-      // not found in this column? Go to previous column.
-      while (startcell = nil) and (AStartcol > 0) do begin
-        AStartRow := lastR;
-        dec(AStartCol);
-        startcell := FindPrevCellInCol(AStartRow, AStartCol);
-      end;
-    end
-    else
-    // Forward search along rows
-    if (AOptions * [soBackward, soAlongRows] = [soAlongRows]) then
-    begin
-      startcell := FindNextCellInRow(AStartRow, AStartCol);
-      // Not found in this row? Proceed to next row
-      while (startcell = nil) and (AStartRow <= lastR) do begin
-        AStartCol := firstC;
-        inc(AStartRow);
-        startcell := FindNextCellInRow(AStartRow, AStartCol);
-      end;
-    end
-    else
-    // Forward search along columns
-    if (AOptions * [soBackward, soAlongRows] = []) then
-    begin
-      startCell := FindNextCellInCol(AStartRow, AStartCol);
-      // Not found in this column? Proceed to next column
-      while (startcell = nil) and (AStartCol <= lastC) do begin
-        AStartRow := firstR;
-        inc(AStartCol);
-        startcell := FindNextCellinCol(AStartRow, AStartCol);
-      end;
-    end;
-
-  // Still no occupied cell found for starting? Nothing to do...
-  if startcell = nil then
-    exit;
-
-  // Iterate through cells in order defined by the search options
-  try
-    if soRegularExpr in AOptions then
-    begin
-      regex := TRegExpr.Create;
-      regex.Expression := ASearchText
-    end else
-    if soIgnoreCase in AOptions then
-      ASearchText := UTF8Lowercase(ASearchText);
-
-    // Perform backward search along rows
-    if (AOptions * [soBackward, soAlongRows] = [soBackward, soAlongRows]) then
-    begin
-      r := startCell^.Row;
-      for cell in Cells.GetReverseRowEnumerator(r, startCell^.Col) do
-        if CellMatches(cell) then exit(cell);
-      if r = 0 then
-        exit;
-      while r > 0 do begin
-        dec(r);
-        for cell in Cells.GetReverseRowEnumerator(r) do
-          if CellMatches(cell) then exit(cell);
-      end;
-    end
-    else
-    // Perform forward search along rows
-    if (AOptions * [soBackward, soAlongRows] = [soAlongRows]) then
-    begin
-      r := startCell^.Row;
-      for cell in Cells.GetRowEnumerator(r, startCell^.Col) do
-        if CellMatches(cell) then exit(cell);
-      if r = lastR then
-        exit;
-      while (r < lastR) do
-      begin
-        inc(r);
-        for cell in Cells.GetRowEnumerator(r) do
-          if CellMatches(cell) then exit(cell);
-      end;
-    end
-    else
-    // Perform backward search along columns
-    if (AOptions * [soBackward, soAlongRows] = [soBackward]) then
-    begin
-      c := startCell^.Col;
-      for cell in Cells.GetReverseColEnumerator(c, 0, startCell^.Row) do
-        if CellMatches(cell) then exit(cell);
-      if c = 0 then
-        exit;
-      while (c > 0) do
-      begin
-        dec(c);
-        for cell in Cells.GetReverseColEnumerator(c) do
-          if CellMatches(cell) then exit(cell);
-      end;
-    end
-    else
-    // Perform forward search along columns
-    if (AOptions * [soBackward, soAlongRows] = []) then
-    begin
-      c := startCell^.Col;
-      for cell in Cells.GetColEnumerator(c, startCell^.Row) do
-        if CellMatches(cell) then exit(cell);
-      if c = lastC then
-        exit;
-      while (c < lastC) do
-      begin
-        inc(c);
-        for cell in Cells.GetColEnumerator(c) do
-          if CellMatches(cell) then exit(cell);
-      end;
-    end;
-  finally
-    if regex <> nil then regex.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Helper method to update internal caching variables
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.UpdateCaches;
@@ -6513,66 +6330,37 @@ begin
   Unused(arg);
   TsWorksheet(data).Free;
 end;
-
+                         (*
 {@@ ----------------------------------------------------------------------------
-  Searches the entire workbook for the first cell (after AStartCell) containing
-  a specified text.
+  Searches the first cell matching the ASearchText according to the
+  specified AParams.
+  Use SearchNext for subsequent calls for the next occurances.
+  The function result is TRUE if the search text has been found. In this case
+  AWorksheet, ARow and ACol specify the cell containing the search text.
 -------------------------------------------------------------------------------}
-function TsWorkbook.Search(ASearchText: String; AOptions: TsSearchOptions;
-  AStartSheet: TsWorksheet = nil; AStartRow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
-  AStartCol: Cardinal = UNASSIGNED_ROW_COL_INDEX): PCell;
-var
-  i, idxSheet: Integer;
-  sheet: TsWorksheet;
+function TsWorkbook.SearchFirst(ASearchText: String; AParams: TsSearchParams;
+  out AWorksheet: TsWorksheet; out ARow, ACol: Cardinal): Boolean;
 begin
-  // Setup missing default parameters
-  if soBackward in AOptions then
-  begin
-    if (AStartRow = UNASSIGNED_ROW_COL_INDEX) and (AStartCol = UNASSIGNED_ROW_COL_INDEX) and (AStartSheet = nil)
-      then AStartsheet := GetWorksheetByIndex(GetWorksheetCount-1);
-    if AStartRow = UNASSIGNED_ROW_COL_INDEX then
-      AStartRow := AStartsheet.GetLastRowIndex;
-    if AStartCol = UNASSIGNED_ROW_COL_INDEX then
-      AStartCol := AStartsheet.GetLastColIndex;
-  end else
-  begin
-    if (AStartRow = UNASSIGNED_ROW_COL_INDEX) and (AStartCol = UNASSIGNED_ROW_COL_INDEX) and (AStartSheet = nil)
-      then AStartsheet := GetWorksheetByIndex(0);
-    if (AStartRow = UNASSIGNED_ROW_COL_INDEX) then
-      AStartRow := AStartsheet.GetFirstRowIndex;
-    if (AStartCol = UNASSIGNED_ROW_COL_INDEX) then
-      AStartCol := AStartsheet.GetFirstColIndex;
-  end;
-  if AStartSheet = nil then
-    AStartSheet := ActiveWorksheet;
-
-  // Search this worksheet
-  Result := AStartSheet.Search(ASearchText, AOptions, AStartRow, AStartCol);
-  if Result <> nil then
-    exit;
-
-  // If not found continue with other sheets in requested order...
-  idxSheet := GetWorksheetIndex(AStartSheet);
-  if (soBackward in AOptions) then
-    // ... backward
-    for i := idxSheet - 1 downto 0 do
-    begin
-      sheet := GetWorksheetByIndex(i);
-      Result := sheet.Search(ASearchText, AOptions);
-      if Result <> nil then
-        exit;
-    end
-  else
-    // ... forward
-    for i := idxSheet + 1 to GetWorksheetCount-1 do
-    begin
-      sheet := GetWorksheetByIndex(i);
-      Result := sheet.Search(ASearchText, AOptions);
-      if Result <> nil then
-        exit;
-    end;
+  FreeAndNil(FSearchEngine);
+  FSearchEngine := TsSearchEngine.Create(self);
+  with (FSearchEngine as TsSearchEngine) do
+    Result := FindFirst(ASearchText, AParams, AWorksheet, ARow, ACol);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Searches the next cell matching the text and params specified a the preceding
+  call to SearchFirst.
+  The function result is TRUE if the search text has been found. In this case
+  AWorksheet, ARow and ACol specify the cell containing the search text.
+-------------------------------------------------------------------------------}
+function TsWorkbook.SearchNext(out AWorksheet: TsWorksheet;
+  out ARow, ACol: Cardinal): Boolean;
+begin
+  if FSearchEngine = nil then
+    Result := false else
+    Result := (FSearchEngine as TsSearchEngine).FindNext(AWorksheet, ARow, ACol);
+end;
+             *)
 {@@ ----------------------------------------------------------------------------
   Helper method to update internal caching variables
 -------------------------------------------------------------------------------}
@@ -6628,6 +6416,8 @@ begin
   FFontList.Free;
 
   FLog.Free;
+  FreeAndNil(FSearchEngine);
+
   inherited Destroy;
 end;
 

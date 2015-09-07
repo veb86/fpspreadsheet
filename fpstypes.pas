@@ -698,18 +698,31 @@ type
   {@@ Pointer to a page layout record }
   PsPageLayout = ^TsPageLayout;
 
-  {@@ Search option }
-  TsSearchOption = (soCompareFullCell, soIgnoreCase, soRegularExpr,
-    soBackward, soAlongRows);
-  TsSearchOptions = set of TsSearchOption;
-
-
 const
   {@@ Indexes to be used for the various headers and footers }
   HEADER_FOOTER_INDEX_FIRST   = 0;
   HEADER_FOOTER_INDEX_ODD     = 1;
   HEADER_FOOTER_INDEX_EVEN    = 2;
   HEADER_FOOTER_INDEX_ALL     = 1;
+
+
+type
+  {@@ Search option }
+  TsSearchOption = (soCompareEntireCell, soMatchCase, soRegularExpr, soAlongRows,
+    soBackward, soWrapDocument, soEntireDocument);
+
+  {@@ A set of search options }
+  TsSearchOptions = set of TsSearchOption;
+
+  {@@ Defines which part of document is scanned }
+  TsSearchWithin = (swWorkbook, swWorksheet, swColumn, swRow);
+
+  {@@ Search parameters }
+  TsSearchParams = record
+    SearchText: String;
+    Options: TsSearchOptions;
+    Within: TsSearchWithin;
+  end;
 
 
 implementation
