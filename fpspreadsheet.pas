@@ -737,6 +737,9 @@ type
       out ARow, ACol: Cardinal): Boolean;
                 *)
     { Utilities }
+    procedure DisableNotifications;
+    procedure EnableNotifications;
+    function NotificationsEnabled: Boolean;
     procedure UpdateCaches;
 
     { Error messages }
@@ -1530,7 +1533,7 @@ begin
       CalcFormulas;
   end;
 
-  if Assigned(FOnChangeCell) then
+  if FWorkbook.NotificationsEnabled and Assigned(FOnChangeCell) then
     FOnChangeCell(Self, ARow, ACol);
 end;
 
@@ -1543,7 +1546,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.ChangedFont(ARow, ACol: Cardinal);
 begin
-  if FWorkbook.FReadWriteFlag = rwfRead then
+  if (FWorkbook.FReadWriteFlag = rwfRead) or not FWorkbook.NotificationsEnabled then
     exit;
   if Assigned(FOnChangeFont) then
     FOnChangeFont(Self, ARow, ACol);
@@ -3521,6 +3524,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.SelectCell(ARow, ACol: Cardinal);
 begin
+  if not FWorkbook.NotificationsEnabled then
+    exit;
+
   FActiveCellRow := ARow;
   FActiveCellCol := ACol;
   if Assigned(FOnSelectCell) then
@@ -6361,6 +6367,31 @@ begin
     Result := (FSearchEngine as TsSearchEngine).FindNext(AWorksheet, ARow, ACol);
 end;
              *)
+
+{@@ ----------------------------------------------------------------------------
+  Helper method to disable notification of visual controls
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.DisableNotifications;
+begin
+  inc(FLockCount);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Helper method to enable notification of visual controls
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.EnableNotifications;
+begin
+  dec(FLockCount);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Helper method to determine whether visual controls are notified of changes
+-------------------------------------------------------------------------------}
+function TsWorkbook.NotificationsEnabled: Boolean;
+begin
+  Result := (FLockCount = 0);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Helper method to update internal caching variables
 -------------------------------------------------------------------------------}

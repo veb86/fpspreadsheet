@@ -724,6 +724,19 @@ type
     Within: TsSearchWithin;
   end;
 
+  {@@ Replace option }
+  TsReplaceOption = (roReplaceEntirecell, roReplaceAll, roConfirm);
+
+  {@@ A set of replace options }
+  TsReplaceOptions = set of TsReplaceOption;
+
+  {@@ Replace parameters }
+  TsReplaceParams = record
+    ReplaceText: String;
+    Options: TsReplaceOptions;
+  end;
+
+
 
 implementation
 

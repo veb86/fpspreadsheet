@@ -500,6 +500,7 @@ begin
   SearchForm.OnFound := @SearchFound;
   SearchForm.OnClose := @SearchClose;
   SearchForm.SearchParams := DefaultSearchParams;
+  SearchForm.ReplaceParams := DefaultReplaceParams;
   SearchForm.Execute(WorkbookSource.Workbook);
 end;
 
@@ -609,6 +610,7 @@ procedure TMainForm.SearchClose(Sender: TObject; var CloseAction: TCloseAction);
 begin
   Unused(CloseAction);
   DefaultSearchParams := TSearchForm(Sender).SearchParams;
+  DefaultReplaceParams := TSearchForm(Sender).ReplaceParams;
 end;
 
 procedure TMainForm.SearchFound(Sender: TObject; AFound: Boolean;

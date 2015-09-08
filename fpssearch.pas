@@ -8,14 +8,21 @@ uses
   Classes, SysUtils, RegExpr, fpstypes, fpspreadsheet;
 
 type
+  TsConfirmReplacementEvent = procedure (Sender: TObject; AWorksheet: TsWorksheet;
+    ARow, ACol: Cardinal; const ASearchText, AReplaceText: String;
+    var Allow: Boolean) of object;
+
   TsSearchEngine = class
   private
     FWorkbook: TsWorkbook;
     FSearchText: String;
-    FParams: TsSearchParams;
+    FSearchParams: TsSearchParams;
+    FReplaceParams: TsReplaceParams;
     FCurrSel: Integer;
     FRegEx: TRegExpr;
+    FOnConfirmReplacement: TsConfirmReplacementEvent;
   protected
+    function ExecReplace(AWorksheet: TsWorksheet; ARow, ACol: Cardinal): boolean;
     function ExecSearch(var AWorksheet: TsWorksheet;
       var ARow, ACol: Cardinal): Boolean;
     procedure GotoFirst(out AWorksheet: TsWorksheet; out ARow, ACol: Cardinal);
@@ -34,10 +41,19 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook);
     destructor Destroy; override;
-    function FindFirst(const ASearchText: String; const AParams: TsSearchParams;
+    function FindFirst(const ASearchParams: TsSearchParams;
       out AWorksheet: TsWorksheet; out ARow, ACol: Cardinal): Boolean;
-    function FindNext(const ASearchText: String; const AParams: TsSearchParams;
+    function FindNext(const ASearchParams: TsSearchParams;
       var AWorksheet: TsWorksheet; var ARow, ACol: Cardinal): Boolean;
+    function ReplaceFirst(const ASearchParams: TsSearchParams;
+      const AReplaceParams: TsReplaceParams;
+      out AWorksheet: TsWorksheet; out ARow, ACol: Cardinal): Boolean;
+    function ReplaceNext(const ASearchParams: TsSearchParams;
+      const AReplaceParams: TsReplaceParams;
+      var AWorksheet: TsWorksheet; var ARow, ACol: Cardinal): Boolean;
+
+    property OnConfirmReplacement: TsConfirmReplacementEvent
+      read FOnConfirmReplacement write FOnConfirmReplacement;
   end;
 
 implementation
@@ -57,6 +73,44 @@ begin
   inherited Destroy;
 end;
 
+function TsSearchEngine.ExecReplace(AWorksheet: TsWorksheet; ARow, ACol: Cardinal) : Boolean;
+var
+  res: Integer;
+  s: String;
+  allow: Boolean;
+  flags: TReplaceFlags;
+begin
+  if roConfirm in FReplaceParams.Options then
+  begin
+    allow := false;
+    if Assigned(FOnConfirmReplacement) then
+    begin
+      FOnConfirmReplacement(self, AWorksheet, ARow, ACol,
+        FSearchParams.SearchText, FReplaceParams.ReplaceText, allow);
+      if not allow then
+        exit(false);
+    end else
+      raise Exception.Create('[TsSearchEngine.ExecReplace] OnConfirmReplacement handler needed.');
+  end;
+
+  if roReplaceEntireCell in FReplaceParams.Options then
+    AWorksheet.WriteCellValueAsString(ARow, ACol, FReplaceParams.ReplaceText)
+  else begin
+    s := AWorksheet.ReadAsText(ARow, ACol);
+    if soCompareEntireCell in FSearchParams.Options then
+      AWorksheet.WriteCellValueAsString(ARow, ACol, FReplaceParams.ReplaceText)
+    else
+    begin
+      flags := [];
+      if not (soMatchCase in FSearchParams.Options) then
+        Include(flags, rfIgnoreCase);
+      s := UTF8StringReplace(s, FSearchparams.SearchText, FReplaceParams.ReplaceText, flags);
+      AWorksheet.WritecellValueAsString(ARow, ACol, s);
+      // to do: RegEx to be added
+    end;
+  end;
+end;
+
 function TsSearchEngine.ExecSearch(var AWorksheet: TsWorksheet;
   var ARow, ACol: Cardinal): Boolean;
 var
@@ -70,7 +124,7 @@ begin
   complete := false;
   while (not complete) and (not Matches(AWorksheet, ARow, ACol)) do
   begin
-    if soBackward in FParams.Options then
+    if soBackward in FSearchParams.Options then
       complete := not GotoPrev(AWorkSheet, ARow, ACol) else
       complete := not GotoNext(AWorkSheet, ARow, ACol);
     // Avoid infinite loop if search phrase does not exist in document.
@@ -90,28 +144,26 @@ begin
   end;
 end;
 
-function TsSearchEngine.FindFirst(const ASearchText: String;
-  const AParams: TsSearchParams; out AWorksheet: TsWorksheet;
-  out ARow, ACol: Cardinal): Boolean;
+function TsSearchEngine.FindFirst(const ASearchParams: TsSearchParams;
+  out AWorksheet: TsWorksheet; out ARow, ACol: Cardinal): Boolean;
 begin
-  FParams := AParams;
-  PrepareSearchText(ASearchText);
+  FSearchParams := ASearchParams;
+  PrepareSearchText(FSearchParams.SearchText);
 
-  if soBackward in FParams.Options then
+  if soBackward in FSearchParams.Options then
     GotoLast(AWorksheet, ARow, ACol) else
     GotoFirst(AWorksheet, ARow, ACol);
 
   Result := ExecSearch(AWorksheet, ARow, ACol);
 end;
 
-function TsSearchEngine.FindNext(const ASearchText: String;
-  const AParams: TsSearchParams; var AWorksheet: TsWorksheet;
-  var ARow, ACol: Cardinal): Boolean;
+function TsSearchEngine.FindNext(const ASearchParams: TsSearchParams;
+  var AWorksheet: TsWorksheet; var ARow, ACol: Cardinal): Boolean;
 begin
-  FParams := AParams;
-  PrepareSearchText(ASearchText);
+  FSearchParams := ASearchParams;
+  PrepareSearchText(FSearchParams.SearchText);
 
-  if soBackward in FParams.Options then
+  if soBackward in FSearchParams.Options then
     GotoPrev(AWorksheet, ARow, ACol) else
     GotoNext(AWorksheet, ARow, ACol);
 
@@ -121,9 +173,9 @@ end;
 procedure TsSearchEngine.GotoFirst(out AWorksheet: TsWorksheet;
   out ARow, ACol: Cardinal);
 begin
-  if soEntireDocument in FParams.Options then
+  if soEntireDocument in FSearchParams.Options then
     // Search entire document forward from start
-    case FParams.Within of
+    case FSearchParams.Within of
       swWorkbook :
         begin
           AWorksheet := FWorkbook.GetWorksheetByIndex(0);
@@ -153,6 +205,7 @@ begin
   begin
     // Search starts at active cell
     AWorksheet := FWorkbook.ActiveWorksheet;
+    if AWorksheet = nil then AWorksheet := FWorkbook.GetFirstWorksheet;
     ARow := AWorksheet.ActiveCellRow;
     ACol := AWorksheet.ActiveCellCol;
   end;
@@ -164,9 +217,9 @@ var
   cell: PCell;
   sel: TsCellRangeArray;
 begin
-  if soEntireDocument in FParams.Options then
+  if soEntireDocument in FSearchParams.Options then
     // Search entire document backward from end
-    case FParams.Within of
+    case FSearchParams.Within of
       swWorkbook :
         begin
           AWorksheet := FWorkbook.GetWorksheetByIndex(FWorkbook.GetWorksheetCount-1);
@@ -212,7 +265,7 @@ begin
   if GotoNextInWorksheet(AWorksheet, ARow, ACol) then
     exit;
 
-  case FParams.Within of
+  case FSearchParams.Within of
     swWorkbook:
       begin
         // Need to go to next sheet
@@ -225,7 +278,7 @@ begin
           exit;
         end;
         // Continue search with first worksheet
-        if (soWrapDocument in FParams.Options) then
+        if (soWrapDocument in FSearchParams.Options) then
         begin
           AWorksheet := FWorkbook.GetWorksheetByIndex(0);
           ARow := 0;
@@ -235,21 +288,21 @@ begin
       end;
 
     swWorksheet:
-      if soWrapDocument in FParams.Options then begin
+      if soWrapDocument in FSearchParams.Options then begin
         ARow := 0;
         ACol := 0;
         exit;
       end;
 
     swColumn:
-      if soWrapDocument in FParams.Options then begin
+      if soWrapDocument in FSearchParams.Options then begin
         ARow := 0;
         ACol := AWorksheet.ActiveCellCol;
         exit;
       end;
 
     swRow:
-      if soWrapDocument in FParams.Options then begin
+      if soWrapDocument in FSearchParams.Options then begin
         ARow := AWorksheet.ActiveCellRow;
         ACol := 0;
         exit;
@@ -264,12 +317,12 @@ function TsSearchEngine.GotoNextInWorksheet(AWorksheet: TsWorksheet;
   var ARow, ACol: Cardinal): Boolean;
 begin
   Result := true;
-  if (soAlongRows in FParams.Options) or (FParams.Within = swRow) then
+  if (soAlongRows in FSearchParams.Options) or (FSearchParams.Within = swRow) then
   begin
     inc(ACol);
     if ACol <= AWorksheet.GetLastColIndex then
       exit;
-    if (FParams.Within <> swRow) then
+    if (FSearchParams.Within <> swRow) then
     begin
       ACol := 0;
       inc(ARow);
@@ -277,12 +330,12 @@ begin
         exit;
     end;
   end else
-  if not (soAlongRows in FParams.Options) or (FParams.Within = swColumn) then
+  if not (soAlongRows in FSearchParams.Options) or (FSearchParams.Within = swColumn) then
   begin
     inc(ARow);
     if ARow <= AWorksheet.GetLastRowIndex then
       exit;
-    if (FParams.Within <> swColumn) then
+    if (FSearchParams.Within <> swColumn) then
     begin
       ARow := 0;
       inc(ACol);
@@ -305,7 +358,7 @@ begin
   if GotoPrevInWorksheet(AWorksheet, ARow, ACol) then
     exit;
 
-  case FParams.Within of
+  case FSearchParams.Within of
     swWorkbook:
       begin
         // Need to go to previous sheet
@@ -317,7 +370,7 @@ begin
           ACol := AWorksheet.GetlastColIndex;
           exit;
         end;
-        if (soWrapDocument in FParams.Options) then
+        if (soWrapDocument in FSearchParams.Options) then
         begin
           AWorksheet := FWorkbook.GetWorksheetByIndex(FWorkbook.GetWorksheetCount-1);
           ARow := AWorksheet.GetLastRowIndex;
@@ -327,7 +380,7 @@ begin
       end;
 
     swWorksheet:
-      if soWrapDocument in FParams.Options then
+      if soWrapDocument in FSearchParams.Options then
       begin
         ARow := AWorksheet.GetLastRowIndex;
         ACol := AWorksheet.GetLastColIndex;
@@ -335,7 +388,7 @@ begin
       end;
 
     swColumn:
-      if soWrapDocument in FParams.Options then
+      if soWrapDocument in FSearchParams.Options then
       begin
         ARow := AWorksheet.GetLastRowIndex;
         ACol := AWorksheet.ActiveCellCol;
@@ -343,7 +396,7 @@ begin
       end;
 
     swRow:
-      if soWrapDocument in FParams.Options then
+      if soWrapDocument in FSearchParams.Options then
       begin
         ARow := AWorksheet.ActiveCellRow;
         ACol := AWorksheet.GetLastColIndex;
@@ -358,13 +411,13 @@ function TsSearchEngine.GotoPrevInWorksheet(AWorksheet: TsWorksheet;
   var ARow, ACol: Cardinal): Boolean;
 begin
   Result := true;
-  if (soAlongRows in FParams.Options) or (FParams.Within = swRow) then
+  if (soAlongRows in FSearchParams.Options) or (FSearchParams.Within = swRow) then
   begin
     if ACol > 0 then begin
       dec(ACol);
       exit;
     end;
-    if (FParams.Within <> swRow) then
+    if (FSearchParams.Within <> swRow) then
     begin
       ACol := AWorksheet.GetLastColIndex;
       if ARow > 0 then
@@ -374,13 +427,13 @@ begin
       end;
     end;
   end else
-  if not (soAlongRows in FParams.Options) or (FParams.Within = swColumn) then
+  if not (soAlongRows in FSearchParams.Options) or (FSearchParams.Within = swColumn) then
   begin
     if ARow > 0 then begin
       dec(ARow);
       exit;
     end;
-    if (FParams.Within <> swColumn) then
+    if (FSearchParams.Within <> swColumn) then
     begin
       ARow := AWorksheet.GetlastRowIndex;
       if ACol > 0 then
@@ -404,13 +457,13 @@ begin
     celltxt := AWorksheet.ReadAsText(cell) else
     celltxt := '';
 
-  if soRegularExpr in FParams.Options then
+  if soRegularExpr in FSearchParams.Options then
     Result := FRegEx.Exec(celltxt)
   else
   begin
-    if not (soMatchCase in FParams.Options) then
+    if not (soMatchCase in FSearchParams.Options) then
       celltxt := UTF8Lowercase(celltxt);
-    if soCompareEntireCell in FParams.Options then
+    if soCompareEntireCell in FSearchParams.Options then
       exit(celltxt = FSearchText);
     if UTF8Pos(FSearchText, celltxt) > 0 then
       exit(true);
@@ -420,15 +473,71 @@ end;
 
 procedure TsSearchEngine.PrepareSearchText(const ASearchText: String);
 begin
-  if soRegularExpr in FParams.Options then
+  if soRegularExpr in FSearchParams.Options then
   begin
     FreeAndNil(FRegEx);
     FRegEx := TRegExpr.Create;
     FRegEx.Expression := ASearchText
   end else
-  if (soMatchCase in FParams.Options) then
+  if (soMatchCase in FSearchParams.Options) then
     FSearchText := ASearchText else
     FSearchText := UTF8Lowercase(ASearchText);
+end;
+
+function TsSearchEngine.ReplaceFirst(const ASearchParams: TsSearchParams;
+  const AReplaceParams: TsReplaceParams; out AWorksheet: TsWorksheet;
+  out ARow, ACol: Cardinal): Boolean;
+var
+  r,c: Cardinal;
+  sheet: TsWorksheet;
+begin
+  Result := FindFirst(ASearchParams, AWorksheet, ARow, ACol);
+  if Result then
+  begin
+    FReplaceParams := AReplaceParams;
+    Result := ExecReplace(AWorksheet, ARow, ACol);
+    if roReplaceAll in FReplaceParams.Options then
+    begin
+      FWorkbook.DisableNotifications;
+      while FindNext(FSearchParams, AWorksheet, ARow, ACol) do
+      begin
+        r := ARow;
+        c := ACol;
+        sheet := AWorksheet;
+        ExecReplace(AWorksheet, ARow, ACol);
+      end;
+      FWorkbook.EnableNotifications;
+      sheet.SelectCell(r, c);
+    end;
+  end;
+end;
+
+function TsSearchEngine.ReplaceNext(const ASearchParams: TsSearchParams;
+  const AReplaceParams: TsReplaceParams; var AWorksheet: TsWorksheet;
+  var ARow, ACol: Cardinal): Boolean;
+var
+  r, c: Cardinal;
+  sheet: TsWorksheet;
+begin
+  Result := FindNext(ASearchParams, AWorksheet, ARow, ACol);
+  if Result then
+  begin
+    FReplaceParams := AReplaceParams;
+    Result := ExecReplace(AWorksheet, ARow, ACol);
+    if roReplaceAll in FReplaceParams.Options then
+    begin
+      FWorkbook.DisableNotifications;
+      while FindNext(FSearchParams, AWorksheet, ARow, ACol) do
+      begin
+        r := ARow;
+        c := ACol;
+        sheet := AWorksheet;
+        ExecReplace(AWorksheet, ARow, ACol);
+      end;
+      FWorkbook.EnableNotifications;
+      sheet.SelectCell(r, c);
+    end;
+  end;
 end;
 
 end.

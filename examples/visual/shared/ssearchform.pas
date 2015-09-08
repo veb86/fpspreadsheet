@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs,
-  StdCtrls, ExtCtrls, Buttons, fpsTypes, fpspreadsheet, fpsSearch;
+  StdCtrls, ExtCtrls, Buttons, ComCtrls, fpsTypes, fpspreadsheet, fpsSearch;
 
 type
   TsSearchEvent = procedure (Sender: TObject; AFound: Boolean;
@@ -20,29 +20,46 @@ type
     BtnClose: TBitBtn;
     BtnSearch: TBitBtn;
     CbSearchText: TComboBox;
-    CgSearchOptions: TCheckGroup;
+    CbReplaceText: TComboBox;
+    CgOptions: TCheckGroup;
     LblSearchText: TLabel;
     ButtonPanel: TPanel;
+    LblSearchText1: TLabel;
+    SearchParamsPanel: TPanel;
+    SearchTextPanel: TPanel;
     RgSearchStart: TRadioGroup;
     RgSearchWithin: TRadioGroup;
+    ReplaceTextPanel: TPanel;
+    TabControl: TTabControl;
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    procedure SearchButtonClick(Sender: TObject);
+    procedure ExecuteClick(Sender: TObject);
+    procedure TabControlChange(Sender: TObject);
+    procedure TabControlChanging(Sender: TObject; var AllowChange: Boolean);
   private
     { private declarations }
     FSearchEngine: TsSearchEngine;
     FWorkbook: TsWorkbook;
     FFoundWorksheet: TsWorksheet;
     FFoundRow, FFoundCol: Cardinal;
+    FSearchParams: TsSearchParams;
+    FReplaceParams: TsReplaceParams;
     FOnFound: TsSearchEvent;
-    function GetParams: TsSearchParams;
-    procedure SetParams(const AValue: TsSearchParams);
+    function GetReplaceParams: TsReplaceParams;
+    function GetSearchParams: TsSearchParams;
+    procedure SetReplaceParams(const AValue: TsReplaceParams);
+    procedure SetSearchParams(const AValue: TsSearchParams);
+  protected
+    procedure ConfirmReplacementHandler(Sender: TObject; AWorksheet: TsWorksheet;
+      ARow, ACol: Cardinal; const ASearchText, AReplaceText: String; var Allow: Boolean);
+    procedure PopulateOptions;
   public
     { public declarations }
     procedure Execute(AWorkbook: TsWorkbook);
     property Workbook: TsWorkbook read FWorkbook;
-    property SearchParams: TsSearchParams read GetParams write SetParams;
+    property SearchParams: TsSearchParams read GetSearchParams write SetSearchParams;
+    property ReplaceParams: TsReplaceParams read GetReplaceParams write SetReplaceParams;
     property OnFound: TsSearchEvent read FOnFound write FOnFound;
   end;
 
@@ -53,6 +70,10 @@ var
     SearchText: '';
     Options: [];
     Within: swWorksheet
+  );
+  DefaultReplaceParams: TsReplaceParams = (
+    ReplaceText: '';
+    Options: [roConfirm]
   );
 
 
@@ -66,19 +87,106 @@ uses
 const
   MAX_SEARCH_ITEMS      = 10;
 
+  // Search & replace
   COMPARE_ENTIRE_CELL   = 0;
   MATCH_CASE            = 1;
   REGULAR_EXPRESSION    = 2;
   SEARCH_ALONG_ROWS     = 3;
   CONTINUE_AT_START_END = 4;
+  // Replace only
+  REPLACE_ENTIRE_CELL   = 5;
+  REPLACE_ALL           = 6;
+  CONFIRM_REPLACEMENT   = 7;
 
+  BASE_HEIGHT           = 340;  // Design height of SearchForm
+
+  SEARCH_TAB            = 0;
+  REPLACE_TAB           = 1;
 
 { TSearchForms }
+
+procedure TSearchForm.ConfirmReplacementHandler(Sender: TObject;
+  AWorksheet: TsWorksheet; ARow, ACol: Cardinal;
+  const ASearchText, AReplaceText: String; var Allow: Boolean);
+begin
+  Unused(AWorksheet, ARow, ACol);
+  Unused(ASearchText, AReplaceText);
+  Allow := MessageDlg('Replace?', mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+end;
 
 procedure TSearchForm.Execute(AWorkbook: TsWorkbook);
 begin
   FWorkbook := AWorkbook;
   Show;
+end;
+
+procedure TSearchForm.ExecuteClick(Sender: TObject);
+var
+  sp: TsSearchParams;
+  rp: TsReplaceParams;
+  found: Boolean;
+  crs: TCursor;
+begin
+  sp := GetSearchParams;
+  if sp.SearchText = '' then
+    exit;
+
+  if TabControl.TabIndex = REPLACE_TAB then
+    rp := GetReplaceParams;
+
+  if CbSearchText.Items.IndexOf(sp.SearchText) = -1 then
+  begin
+    CbSearchText.Items.Insert(0, sp.SearchText);
+    while CbSearchText.Items.Count > MAX_SEARCH_ITEMS do
+      CbSearchText.Items.Delete(CbSearchText.Items.Count-1);
+  end;
+
+  if (TabControl.TabIndex = REPLACE_TAB) and
+     (CbReplaceText.Items.IndexOf(rp.ReplaceText) = -1) then
+  begin
+    CbReplaceText.items.Insert(0, rp.ReplaceText);
+    while CbReplaceText.Items.Count > MAX_SEARCH_ITEMS do
+      CbReplaceText.Items.Delete(CbReplaceText.Items.Count-1);
+  end;
+
+  crs := Screen.Cursor;
+  try
+    Screen.Cursor := crHourglass;
+    if FSearchEngine = nil then
+    begin
+      FSearchEngine := TsSearchEngine.Create(FWorkbook);
+      FSearchEngine.OnConfirmReplacement := @ConfirmReplacementHandler;
+      if (soBackward in sp.Options) then
+        Include(sp.Options, soBackward) else
+        Exclude(sp.Options, soBackward);
+      case Tabcontrol.TabIndex of
+        0: found := FSearchEngine.FindFirst(sp, FFoundWorksheet, FFoundRow, FFoundCol);
+        1: found := FSearchEngine.ReplaceFirst(sp, rp, FFoundWorksheet, FFoundRow, FFoundCol);
+      end;
+    end else
+    begin
+      if (Sender = BtnSearchBack) then
+        Include(sp.Options, soBackward) else
+        Exclude(sp.Options, soBackward);
+      // User may select a different worksheet/different cell to continue search!
+      FFoundWorksheet := FWorkbook.ActiveWorksheet;
+      FFoundRow := FFoundWorksheet.ActiveCellRow;
+      FFoundCol := FFoundWorksheet.ActiveCellCol;
+      case TabControl.TabIndex of
+        0: found := FSearchEngine.FindNext(sp, FFoundWorksheet, FFoundRow, FFoundCol);
+        1: found := FSearchEngine.ReplaceNext(sp, rp, FFoundWorksheet, FFoundRow, FFoundCol);
+      end;
+    end;
+
+  finally
+    Screen.Cursor := crs;
+  end;
+
+  if Assigned(FOnFound) then
+    FOnFound(self, found, FFoundWorksheet, FFoundRow, FFoundCol);
+
+  BtnSearchBack.Visible := true;
+  BtnSearch.Caption := 'Next';
 end;
 
 procedure TSearchForm.FormClose(Sender: TObject; var CloseAction: TCloseAction);
@@ -97,6 +205,7 @@ end;
 procedure TSearchForm.FormCreate(Sender: TObject);
 begin
   Position := poMainFormCenter;
+  PopulateOptions;
 end;
 
 procedure TSearchForm.FormShow(Sender: TObject);
@@ -109,78 +218,115 @@ begin
   FFoundWorksheet := nil;
 end;
 
-function TSearchForm.GetParams: TsSearchParams;
+function TSearchForm.GetReplaceParams: TsReplaceParams;
+begin
+  if TabControl.TabIndex = 0 then
+    Result := FReplaceParams
+  else
+  begin
+    Result.ReplaceText := CbReplaceText.Text;
+    Result.Options := [];
+    if CgOptions.Checked[REPLACE_ENTIRE_CELL] then
+      Include(Result.Options, roReplaceEntireCell);
+    if CgOptions.Checked[REPLACE_ALL] then
+      Include(Result.Options, roReplaceAll);
+    if CgOptions.Checked[CONFIRM_REPLACEMENT] then
+      Include(Result.Options, roConfirm);
+    FReplaceParams := Result;
+  end;
+end;
+
+function TSearchForm.GetSearchParams: TsSearchParams;
 begin
   Result.SearchText := CbSearchText.Text;
   Result.Options := [];
-  if CgSearchOptions.Checked[COMPARE_ENTIRE_CELL] then
+  if CgOptions.Checked[COMPARE_ENTIRE_CELL] then
     Include(Result.Options, soCompareEntireCell);
-  if CgSearchOptions.Checked[MATCH_CASE] then
+  if CgOptions.Checked[MATCH_CASE] then
     Include(Result.Options, soMatchCase);
-  if CgSearchOptions.Checked[REGULAR_EXPRESSION] then
+  if CgOptions.Checked[REGULAR_EXPRESSION] then
     Include(Result.Options, soRegularExpr);
-  if CgSearchOptions.Checked[SEARCH_ALONG_ROWS] then
+  if CgOptions.Checked[SEARCH_ALONG_ROWS] then
     Include(Result.Options, soAlongRows);
-  if CgSearchOptions.Checked[CONTINUE_AT_START_END] then
+  if CgOptions.Checked[CONTINUE_AT_START_END] then
     Include(Result.Options, soWrapDocument);
   if RgSearchStart.ItemIndex = 1 then
     Include(Result.Options, soEntireDocument);
   Result.Within := TsSearchWithin(RgSearchWithin.ItemIndex);
 end;
 
-procedure TSearchForm.SearchButtonClick(Sender: TObject);
-var
-  params: TsSearchParams;
-  found: Boolean;
+procedure TSearchForm.PopulateOptions;
 begin
-  params := GetParams;
-  if params.SearchText = '' then
-    exit;
-
-  if CbSearchText.Items.IndexOf(params.SearchText) = -1 then
+  with CgOptions.Items do
   begin
-    CbSearchText.Items.Insert(0, params.SearchText);
-    while CbSearchText.Items.Count > MAX_SEARCH_ITEMS do
-      CbSearchText.Items.Delete(CbSearchText.Items.Count-1);
+    Clear;
+    Add('Compare entire cell');
+    Add('Match case');
+    Add('Regular expression');
+    Add('Search along rows');
+    Add('Continue at start/end');
+    if TabControl.TabIndex = REPLACE_TAB then
+    begin
+      Add('Replace entire cell');
+      Add('Replace all');
+      Add('Confirm replacement');
+    end;
   end;
-
-  if FSearchEngine = nil then
-  begin
-    FSearchEngine := TsSearchEngine.Create(FWorkbook);
-    if (soBackward in params.Options) then
-      Include(params.Options, soBackward) else
-      Exclude(params.Options, soBackward);
-    found := FSearchEngine.FindFirst(params.SearchText, params, FFoundWorksheet, FFoundRow, FFoundCol);
-  end else
-  begin
-    if (Sender = BtnSearchBack) then
-      Include(params.Options, soBackward) else
-      Exclude(params.Options, soBackward);
-    // User may select a different worksheet/different cell to continue search!
-    FFoundWorksheet := FWorkbook.ActiveWorksheet;
-    FFoundRow := FFoundWorksheet.ActiveCellRow;
-    FFoundCol := FFoundWorksheet.ActiveCellCol;
-    found := FSearchEngine.FindNext(params.SearchText, params, FFoundWorksheet, FFoundRow, FFoundCol);
-  end;
-
-  if Assigned(FOnFound) then
-    FOnFound(self, found, FFoundWorksheet, FFoundRow, FFoundCol);
-
-  BtnSearchBack.Visible := true;
-  BtnSearch.Caption := 'Next';
 end;
 
-procedure TSearchForm.SetParams(const AValue: TsSearchParams);
+procedure TSearchForm.SetSearchParams(const AValue: TsSearchParams);
 begin
   CbSearchText.Text := Avalue.SearchText;
-  CgSearchOptions.Checked[COMPARE_ENTIRE_CELL] := (soCompareEntireCell in AValue.Options);
-  CgSearchOptions.Checked[MATCH_CASE] := (soMatchCase in AValue.Options);
-  CgSearchOptions.Checked[REGULAR_EXPRESSION] := (soRegularExpr in Avalue.Options);
-  CgSearchOptions.Checked[SEARCH_ALONG_ROWS] := (soAlongRows in AValue.Options);
-  CgSearchOptions.Checked[CONTINUE_AT_START_END] := (soWrapDocument in Avalue.Options);
+  CgOptions.Checked[COMPARE_ENTIRE_CELL] := (soCompareEntireCell in AValue.Options);
+  CgOptions.Checked[MATCH_CASE] := (soMatchCase in AValue.Options);
+  CgOptions.Checked[REGULAR_EXPRESSION] := (soRegularExpr in Avalue.Options);
+  CgOptions.Checked[SEARCH_ALONG_ROWS] := (soAlongRows in AValue.Options);
+  CgOptions.Checked[CONTINUE_AT_START_END] := (soWrapDocument in Avalue.Options);
   RgSearchWithin.ItemIndex := ord(AValue.Within);
   RgSearchStart.ItemIndex := ord(soEntireDocument in AValue.Options);
 end;
+
+procedure TSearchForm.SetReplaceParams(const AValue: TsReplaceParams);
+begin
+  FReplaceParams := AValue;
+  if TabControl.TabIndex = REPLACE_TAB then
+  begin
+    CbReplaceText.Text := AValue.ReplaceText;
+    CgOptions.Checked[REPLACE_ENTIRE_CELL] := (roReplaceEntireCell in AValue.Options);
+    CgOptions.Checked[REPLACE_ALL] := (roReplaceAll in AValue.Options);
+    CgOptions.Checked[CONFIRM_REPLACEMENT] := (roConfirm in AValue.Options);
+  end;
+end;
+
+procedure TSearchForm.TabControlChange(Sender: TObject);
+var
+  h, d: Integer;
+begin
+  ReplaceTextPanel.Visible := (TabControl.TabIndex = REPLACE_TAB);
+  PopulateOptions;
+  SetSearchParams(FSearchParams);
+  SetReplaceParams(FReplaceParams);
+  h := RgSearchStart.Top + RgSearchStart.Height - CgOptions.Top;
+  if TabControl.TabIndex = 0 then
+  begin
+    CgOptions.Height := h;
+    Height := BASE_HEIGHT - ReplaceTextPanel.Height;
+  end else
+  begin
+    d := 3 * 16;
+    CgOptions.Height := h + d;
+    Height := BASE_HEIGHT + d;
+  end;
+end;
+
+procedure TSearchForm.TabControlChanging(Sender: TObject;
+  var AllowChange: Boolean);
+begin
+  AllowChange := true;
+  FSearchParams := GetSearchParams;
+  FReplaceParams := GetReplaceParams;
+end;
+
 
 end.
 
