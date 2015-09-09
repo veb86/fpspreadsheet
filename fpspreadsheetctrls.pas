@@ -286,9 +286,11 @@ type
   private
     FWorkbookSource: TsWorkbookSource;
     FFormatItem: TsCellFormatItem;
+    FColorRectOffset: Integer;
     FColorRectWidth: Integer;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
+    procedure SetColorRectOffset(AValue: Integer);
     procedure SetColorRectWidth(AValue: Integer);
     procedure SetFormatItem(AValue: TsCellFormatItem);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
@@ -318,6 +320,8 @@ type
   published
     {@@ Identifies the cell format property to be used in the combobox }
     property CellFormatItem: TsCellFormatItem read FFormatItem write SetFormatItem;
+    {@@ Margin around the color box }
+    property ColorRectOffset: Integer read FColorRectOffset write SetColorRectOffset default 2;
     {@@ Width of the color box shown for the color-related format items }
     property ColorRectWidth: Integer read FColorRectWidth write SetColorRectWidth default 10;
     {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
@@ -463,7 +467,7 @@ procedure Register;
 implementation
 
 uses
-  Types, Math, TypInfo, LCLType, LCLProc, Dialogs, Forms,
+  Types, Math, StrUtils, TypInfo, LCLType, LCLProc, Dialogs, Forms,
   fpsStrings, fpsUtils, fpsNumFormat, fpsHTMLUtils;
 
 {@@ ----------------------------------------------------------------------------
@@ -1911,6 +1915,7 @@ constructor TsCellCombobox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FColorRectWidth := 10;
+  FColorRectOffset := 2;
   ItemHeight := -1;
 end;
 
@@ -2001,11 +2006,11 @@ begin
 
   if FFormatItem in [cfiFontColor, cfiBackgroundColor, cfiBorderColor] then
   begin
-    r.Top := ARect.Top + 2;
-    r.Bottom := ARect.Bottom - 2;
-    r.Left := ARect.Left + 2;
+    r.Top := ARect.Top + FColorRectOffset;
+    r.Bottom := ARect.Bottom - FColorRectOffset;
+    r.Left := ARect.Left + FColorRectOffset;
     if FColorRectWidth = -1 then
-      r.Right := ARect.Right - 2
+      r.Right := ARect.Right - FColorRectOffset
     else
       r.Right := r.Left + FColorRectWidth;
     Exclude(AState, odPainted);
@@ -2049,7 +2054,7 @@ begin
     if FColorRectWidth > -1 then
     begin
       r := ARect;
-      inc(r.Left, FColorRectWidth + 4);
+      inc(r.Left, FColorRectWidth + 2*FColorRectOffset);
       inherited DrawItem(AIndex, BidiFlipRect(r, ARect, UseRightToLeftAlignment), AState);
     end;
   end else
@@ -2192,6 +2197,7 @@ procedure TsCellCombobox.Populate;
 var
   i: Integer;
   clr: TsColor;
+  noText: Boolean;
 begin
   if Workbook = nil then
     exit;
@@ -2205,13 +2211,14 @@ begin
     cfiFontColor,
     cfiBorderColor:
       begin
+        noText := (FColorRectWidth = -1);
         Items.Clear;
         if FFormatItem = cfiBackgroundColor then
-          Items.AddObject('(none)', TObject(scTransparent));
+          Items.AddObject(IfThen(noText, '', '(none)'), TObject(scTransparent));
         for i:=0 to ComboColors.Count-1 do
         begin
           clr := ComboColors[i];
-          Items.AddObject(GetColorName(clr), TObject(PtrInt(clr)));
+          Items.AddObject(IfThen(noText, '', GetColorName(clr)), TObject(PtrInt(clr)));
         end;
       end;
     else
@@ -2269,6 +2276,17 @@ procedure TsCellCombobox.Select;
 begin
   inherited Select;
   ProcessItem;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the ColorRectOffset property
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.SetColorRectOffset(AValue: Integer);
+begin
+  if FColorRectOffset = AValue then
+    exit;
+  FColorRectOffset := AValue;
+  Invalidate;
 end;
 
 {@@ ----------------------------------------------------------------------------

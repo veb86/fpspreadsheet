@@ -240,7 +240,7 @@ object MainForm: TMainForm
       Action = AcNumFormatPercentage
     end
     object ToolButton23: TToolButton
-      Left = 898
+      Left = 896
       Height = 26
       Top = 0
       Width = 5
@@ -286,7 +286,7 @@ object MainForm: TMainForm
       Action = AcBackgroundColorDialog
     end
     object ToolButton31: TToolButton
-      Left = 857
+      Left = 855
       Height = 26
       Top = 0
       Width = 5
@@ -294,7 +294,7 @@ object MainForm: TMainForm
       Style = tbsDivider
     end
     object TbBorders: TToolButton
-      Left = 862
+      Left = 860
       Hint = 'Top border'
       Top = 0
       Caption = 'Top'
@@ -311,7 +311,7 @@ object MainForm: TMainForm
       Style = tbsDivider
     end
     object ToolButton5: TToolButton
-      Left = 903
+      Left = 901
       Top = 0
       Action = AcMergeCells
     end
@@ -366,6 +366,7 @@ object MainForm: TMainForm
       Top = 0
       Width = 48
       CellFormatItem = cfiFontColor
+      ColorRectOffset = 3
       ColorRectWidth = -1
       WorkbookSource = WorkbookSource
       DropDownCount = 24
@@ -378,8 +379,9 @@ object MainForm: TMainForm
       Height = 24
       Hint = 'Background color'
       Top = 0
-      Width = 48
+      Width = 46
       CellFormatItem = cfiBackgroundColor
+      ColorRectOffset = 3
       ColorRectWidth = -1
       WorkbookSource = WorkbookSource
       DropDownCount = 24
