@@ -52,7 +52,8 @@ type
     procedure SetSearchParams(const AValue: TsSearchParams);
   protected
     procedure ConfirmReplacementHandler(Sender: TObject; AWorksheet: TsWorksheet;
-      ARow, ACol: Cardinal; const ASearchText, AReplaceText: String; var Allow: Boolean);
+      ARow, ACol: Cardinal; const ASearchText, AReplaceText: String;
+      var AConfirmReplacement: TsConfirmReplacementResult);
     procedure PopulateOptions;
   public
     { public declarations }
@@ -106,12 +107,16 @@ const
 { TSearchForms }
 
 procedure TSearchForm.ConfirmReplacementHandler(Sender: TObject;
-  AWorksheet: TsWorksheet; ARow, ACol: Cardinal;
-  const ASearchText, AReplaceText: String; var Allow: Boolean);
+  AWorksheet: TsWorksheet; ARow, ACol: Cardinal; const ASearchText, AReplaceText: String;
+  var AConfirmReplacement: TsConfirmReplacementResult);
 begin
   Unused(AWorksheet, ARow, ACol);
   Unused(ASearchText, AReplaceText);
-  Allow := MessageDlg('Replace?', mtConfirmation, [mbYes, mbNo], 0) = mrYes;
+  case MessageDlg('Replace?', mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+    mrYes: AConfirmReplacement := crReplace;
+    mrNo : AConfirmReplacement := crIgnore;
+    mrCancel: AConfirmReplacement := crAbort;
+  end;
 end;
 
 procedure TSearchForm.Execute(AWorkbook: TsWorkbook);

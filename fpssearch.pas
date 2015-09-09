@@ -8,9 +8,11 @@ uses
   Classes, SysUtils, RegExpr, fpstypes, fpspreadsheet;
 
 type
+  TsConfirmReplacementResult = (crReplace, crIgnore, crAbort);
+
   TsConfirmReplacementEvent = procedure (Sender: TObject; AWorksheet: TsWorksheet;
     ARow, ACol: Cardinal; const ASearchText, AReplaceText: String;
-    var Allow: Boolean) of object;
+    var AResult: TsConfirmReplacementResult) of object;
 
   TsSearchEngine = class
   private
@@ -19,6 +21,7 @@ type
     FSearchParams: TsSearchParams;
     FReplaceParams: TsReplaceParams;
     FRegEx: TRegExpr;
+    FStopping: Boolean;
     FOnConfirmReplacement: TsConfirmReplacementEvent;
   protected
     function ExecReplace(AWorksheet: TsWorksheet; ARow, ACol: Cardinal): boolean;
@@ -75,18 +78,21 @@ end;
 function TsSearchEngine.ExecReplace(AWorksheet: TsWorksheet; ARow, ACol: Cardinal) : Boolean;
 var
   s: String;
-  allow: Boolean;
   flags: TReplaceFlags;
+  confirmation: TsConfirmReplacementResult;
 begin
   if roConfirm in FReplaceParams.Options then
   begin
-    allow := false;
     if Assigned(FOnConfirmReplacement) then
     begin
+      confirmation := crReplace;
       FOnConfirmReplacement(self, AWorksheet, ARow, ACol,
-        FSearchParams.SearchText, FReplaceParams.ReplaceText, allow);
-      if not allow then
-        exit(false);
+        FSearchParams.SearchText, FReplaceParams.ReplaceText, confirmation);
+      case confirmation of
+        crReplace: ;
+        crIgnore : exit(false);
+        crAbort  : begin FStopping := true; exit(false); end;
+      end;
     end else
       raise Exception.Create('[TsSearchEngine.ExecReplace] OnConfirmReplacement handler needed.');
   end;
@@ -484,22 +490,38 @@ var
   r,c: Cardinal;
   sheet: TsWorksheet;
 begin
+  FStopping := false;
+
+  if AReplaceParams.Options * [roReplaceAll, roConfirm] = [roReplaceAll] then
+    FWorkbook.DisableNotifications;
+
   Result := FindFirst(ASearchParams, AWorksheet, ARow, ACol);
+  r := ARow;
+  c := ACol;
+  sheet := AWorksheet;
+
   if Result then
   begin
     FReplaceParams := AReplaceParams;
     Result := ExecReplace(AWorksheet, ARow, ACol);
     if roReplaceAll in FReplaceParams.Options then
     begin
-      FWorkbook.DisableNotifications;
-      while FindNext(FSearchParams, AWorksheet, ARow, ACol) do
+      while (not FStopping) and FindNext(FSearchParams, AWorksheet, ARow, ACol) do
       begin
         r := ARow;
         c := ACol;
         sheet := AWorksheet;
         ExecReplace(AWorksheet, ARow, ACol);
       end;
-      FWorkbook.EnableNotifications;
+    end;
+  end;
+
+  if AReplaceParams.Options * [roReplaceAll, roConfirm] = [roReplaceAll] then
+  begin
+    FWorkbook.EnableNotifications;
+    if Result then
+    begin
+      FWorkbook.SelectWorksheet(sheet);
       sheet.SelectCell(r, c);
     end;
   end;
@@ -512,7 +534,16 @@ var
   r, c: Cardinal;
   sheet: TsWorksheet;
 begin
+  FStopping := false;
+
+  if AReplaceParams.Options * [roReplaceAll, roConfirm] = [roReplaceAll] then
+    FWorkbook.DisableNotifications;
+
   Result := FindNext(ASearchParams, AWorksheet, ARow, ACol);
+  r := ARow;
+  c := ACol;
+  sheet := AWorksheet;
+
   if Result then
   begin
     FReplaceParams := AReplaceParams;
@@ -520,14 +551,22 @@ begin
     if roReplaceAll in FReplaceParams.Options then
     begin
       FWorkbook.DisableNotifications;
-      while FindNext(FSearchParams, AWorksheet, ARow, ACol) do
+      while (not FStopping) and FindNext(FSearchParams, AWorksheet, ARow, ACol) do
       begin
         r := ARow;
         c := ACol;
         sheet := AWorksheet;
         ExecReplace(AWorksheet, ARow, ACol);
       end;
-      FWorkbook.EnableNotifications;
+    end;
+  end;
+
+  if AReplaceParams.Options * [roReplaceAll, roConfirm] = [roReplaceAll] then
+  begin
+    FWorkbook.EnableNotifications;
+    if Result then
+    begin
+      FWorkbook.SelectWorksheet(sheet);
       sheet.SelectCell(r, c);
     end;
   end;
