@@ -113,6 +113,8 @@ begin
       // to do: RegEx to be added
     end;
   end;
+
+  Result := true;
 end;
 
 function TsSearchEngine.ExecSearch(var AWorksheet: TsWorksheet;
@@ -492,6 +494,7 @@ var
 begin
   FStopping := false;
 
+  // Lock the visual components in case of "replace all" and "no confirmation"
   if AReplaceParams.Options * [roReplaceAll, roConfirm] = [roReplaceAll] then
     FWorkbook.DisableNotifications;
 
@@ -516,6 +519,8 @@ begin
     end;
   end;
 
+  // Unlock the visual components in case of "replace all" and "no confirmation"
+  // and select the last replaced cell
   if AReplaceParams.Options * [roReplaceAll, roConfirm] = [roReplaceAll] then
   begin
     FWorkbook.EnableNotifications;
@@ -536,6 +541,7 @@ var
 begin
   FStopping := false;
 
+  // Lock the visual components in case of "replace all" and "no confirmation"
   if AReplaceParams.Options * [roReplaceAll, roConfirm] = [roReplaceAll] then
     FWorkbook.DisableNotifications;
 
@@ -550,7 +556,6 @@ begin
     Result := ExecReplace(AWorksheet, ARow, ACol);
     if roReplaceAll in FReplaceParams.Options then
     begin
-      FWorkbook.DisableNotifications;
       while (not FStopping) and FindNext(FSearchParams, AWorksheet, ARow, ACol) do
       begin
         r := ARow;
@@ -561,6 +566,8 @@ begin
     end;
   end;
 
+  // Unlock the visual components in case of "replace all" and "no confirmation"
+  // and select the last replaced cell
   if AReplaceParams.Options * [roReplaceAll, roConfirm] = [roReplaceAll] then
   begin
     FWorkbook.EnableNotifications;
