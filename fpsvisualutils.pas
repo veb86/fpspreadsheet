@@ -201,7 +201,6 @@ var
     out AFontPos: TsFontPosition);
   var
     fnt: TsFont;
-    rtParam: TsRichTextParam;
   begin
     if (Length(ARichTextParams) > 0) and (charPos >= ARichTextParams[0].FirstIndex) then
     begin
@@ -613,7 +612,8 @@ procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRe
   AWordwrap: Boolean; AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
   ARotation: TsTextRotation; AOverrideTextColor: TColor);
 var
-  w,h: Integer;
+  w: Integer = 0;
+  h: Integer = 0;
 begin
   InternalDrawRichText(ACanvas, AWorkbook, ARect, AText, AFontIndex,
     ARichTextParams, AWordWrap, AHorAlignment, AVertAlignment, ARotation,
@@ -624,7 +624,8 @@ function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; AMaxRect: TRect;
   const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
   ATextRotation: TsTextRotation; AWordWrap: Boolean): Integer;
 var
-  h, w: Integer;
+  h: Integer = 0;
+  w: Integer = 0;
 begin
   InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
     ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone, true,
@@ -641,7 +642,8 @@ function RichTextHeight(ACanvas: TCanvas; AWorkbook: TsWorkbook; AMaxRect: TRect
   const AText: String; AFontIndex: Integer; ARichTextParams: TsRichTextParams;
   ATextRotation: TsTextRotation; AWordWrap: Boolean): Integer;
 var
-  h, w: Integer;
+  h: Integer = 0;
+  w: Integer = 0;
 begin
   InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
     ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone, true,

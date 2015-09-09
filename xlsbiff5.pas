@@ -1500,10 +1500,8 @@ var
   AnsiValue: ansistring;
   rec: TBIFF5_LabelRecord;
   buf: array of byte;
-  fmt: PsCellFormat;
   i, nRuns: Integer;
   rtfRuns: TBIFF5_RichTextFormattingRuns;
-  fntIndex, cellFntIndex: Integer;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;

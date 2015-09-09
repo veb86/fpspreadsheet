@@ -1356,8 +1356,6 @@ var
   isSelected: Boolean;
   fgcolor, bgcolor: TColor;
   numFmt: TsNumFormatParams;
-  sidx: Integer;
-  clr: Integer;
 begin
   GetSelectedState(AState, isSelected);
   Canvas.Font.Assign(Font);

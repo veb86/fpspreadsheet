@@ -182,7 +182,6 @@ var
   currSym: String;
   warning: String;
   fntIndex: Integer;
-  fnt: TsFont;
 begin
   // Empty strings are blank cells -- nothing to do
   if (AText = '') then
@@ -273,7 +272,6 @@ function TsHTMLReader.AddFont(AFont: TsFont): Integer;
 const
   EPS = 1e-3;
 var
-  i: Integer;
   fnt: TsFont;
 begin
   // Is the font already stored in the internal font list?
@@ -467,6 +465,7 @@ procedure TsHTMLReader.ProcessEndTags(NoCaseTag, ActualTag: String);
 var
   fntIndex: Integer;
 begin
+  Unused(ActualTag);
   if not FInTable then exit;
 
   if (NoCaseTag = '</BODY>') then
@@ -580,13 +579,11 @@ end;
 procedure TsHTMLReader.ReadBorder;
 var
   idx: Integer;
-  cb: TsCellBorders;
   value: String;
 
   procedure ReadBorderAttribs(AValue: String; var ABorderStyle: TsCellBorderStyle);
   var
     L: TStringList;
-    bs: TsCellBorderStyle;
     w: String;
     style: String;
     color: String;
@@ -627,7 +624,6 @@ var
   end;
 
 begin
-  cb := [];
   idx := FAttrList.IndexOfName('border');
   if idx <> -1 then
   begin
@@ -864,7 +860,6 @@ end;
 procedure TsHTMLReader.ReadHorAlign;
 var
   idx: Integer;
-  s: String;
 begin
   idx := FAttrList.IndexOfName('align');         // html tag
   if idx = -1 then
@@ -910,11 +905,6 @@ begin
 end;
 
 procedure TsHTMLReader.ReadTextRot;
-var
-  idx: Integer;
-  value, s: String;
-  p: PChar;
-  f: Double;
 begin
 {
   // No - text rotation is too complicated...
@@ -967,7 +957,6 @@ end;
 procedure TsHTMLReader.ReadVertAlign;
 var
   idx: Integer;
-  s: String;
 begin
   idx := FAttrList.IndexOfName('valign');      // html tag
   if idx = -1 then
@@ -1184,6 +1173,7 @@ end;
 function TsHTMLWriter.CellFormatAsString(AFormat: PsCellFormat;
   ATagName: String): String;
 begin
+  Unused(ATagName);
   Result := '';
 
   if (uffBackground in AFormat^.UsedFormattingFields) then
@@ -1389,6 +1379,7 @@ end;
 
 function TsHTMLWriter.GetTextRotationAsStyle(ATextRot: TsTextRotation): String;
 begin
+  Unused(ATextRot);
   Result := '';
   (*   --- no - this is not working
   case ATextRot of
@@ -1498,7 +1489,7 @@ procedure TsHTMLWriter.WriteDateTime(AStream: TStream; const ARow, ACol: Cardina
 var
   s: String;
 begin
-  Unused(AValue);
+  Unused(AValue, ACol, ARow);
   s := FWorksheet.ReadAsUTF8Text(ACell);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
@@ -1509,7 +1500,7 @@ procedure TsHTMLWriter.WriteError(AStream: TStream;
 var
   s: String;
 begin
-  Unused(AValue);
+  Unused(AValue, ACol, ARow);
   s := FWOrksheet.ReadAsUTF8Text(ACell);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
@@ -1543,7 +1534,6 @@ var
   txt, textp, target, bookmark: String;
   rtParam: TsRichTextParam;
   fnt, cellfnt: TsFont;
-  escapement: String;
   hyperlink: PsHyperlink;
   isTargetCell: Boolean;
   u: TUri;

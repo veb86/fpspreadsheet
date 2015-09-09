@@ -163,7 +163,6 @@ object SearchForm: TSearchForm
       BevelOuter = bvNone
       ClientHeight = 33
       ClientWidth = 467
-      Color = clNone
       ParentColor = False
       TabOrder = 1
       object LblSearchText: TLabel
@@ -193,7 +192,6 @@ object SearchForm: TSearchForm
       BevelOuter = bvNone
       ClientHeight = 33
       ClientWidth = 467
-      Color = clNone
       ParentColor = False
       TabOrder = 2
       Visible = False
@@ -224,7 +222,6 @@ object SearchForm: TSearchForm
       BevelOuter = bvNone
       ClientHeight = 196
       ClientWidth = 467
-      Color = clNone
       ParentColor = False
       TabOrder = 3
       object CgOptions: TCheckGroup

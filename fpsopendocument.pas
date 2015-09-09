@@ -5157,7 +5157,7 @@ var
   valueStr: String;
   r1,c1,r2,c2: Cardinal;
 begin
-  Unused(ARow, ACol);
+  Unused(ARow, ACol, AValue);
 
   fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
   if fmt^.UsedFormattingFields <> [] then

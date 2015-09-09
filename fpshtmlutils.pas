@@ -48,7 +48,7 @@ procedure RichTextToHTML(AWorkbook: TsWorkbook; AFont: TsFont;
 implementation
 
 uses
-  math, Strings, lazUtf8, fasthtmlparser,
+  math, lazUtf8, fasthtmlparser, //Strings,
   fpsUtils, fpsClasses;
 
 const
@@ -349,9 +349,9 @@ function IsHTMLEntity(AText: PChar; out AEntity: TsHTMLEntity): Boolean;
   end;
 
 var
-  j, k: Integer;
+  k: Integer;
   equ: Boolean;
-  ch1, ch2: Char;
+  ch1: Char;
   P: PChar;
 
 begin
@@ -366,7 +366,6 @@ begin
       if ch1 = '#' then
       begin
         inc(P);
-        ch2 := P^;
         if ch1 = 'x' then
           equ := Compare(Format('#x%x', [HTMLEntities[k].N]))
         else
@@ -644,7 +643,6 @@ function TsHTMLAnalyzer.AddFont(AFont: TsFont): Integer;
 const
   EPS = 1e-3;
 var
-  i: Integer;
   fnt: TsFont;
 begin
   // Is the font already stored in the workbook's font list?
@@ -938,7 +936,6 @@ type
     FRichTextParams: TsRichTextParams;
     FChangedParams: array of TsChangeFlags;
     FFonts: array of TsFont;
-    FHTMLText: String;
     function FindChangedParams(AStartIndex: Integer): Integer;
     procedure GetFontsFromWorkbook;
     function GetTextOfRichTextParam(AIndex: Integer): String;

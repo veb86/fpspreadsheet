@@ -204,6 +204,11 @@ end;
 
 procedure TSearchForm.FormCreate(Sender: TObject);
 begin
+ {$IFDEF MSWINDOWS}
+  SearchTextPanel.Color := clNone;
+  ReplaceTextPanel.Color := clNone;
+  SearchParamsPanel.Color := clNone;
+ {$ENDIF}
   Position := poMainFormCenter;
   PopulateOptions;
 end;

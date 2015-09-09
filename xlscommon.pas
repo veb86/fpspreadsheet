@@ -2172,10 +2172,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadSELECTION(AStream: TStream);
 var
-  actPane: byte;
+  {%H-}actPane: byte;
+  {%H-}rngIndex: Word;
   actRow, actCol: Word;
-  rngIndex: Word;
-  i, numRanges: Word;
 begin
   // Active pane
   actPane := AStream.ReadByte;

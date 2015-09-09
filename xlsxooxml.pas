@@ -1055,12 +1055,10 @@ var
   patt: String;
   fgclr: TsColor;
   bgclr: TsColor;
-  msg: String;
 begin
   if ANode = nil then
     exit;
 
-  msg := '';
   fillNode := ANode.FirstChild;
   while Assigned(fillNode) do begin
     nodename := fillNode.NodeName;
@@ -1126,8 +1124,6 @@ begin
     end;
     fillNode := fillNode.NextSibling;
   end;
-
-  msg := IntToStr(FFillList.Count) + ' items';
 end;
 
 { Reads the font described by the specified node and stores it in the reader's
@@ -1630,7 +1626,6 @@ procedure TsSpreadOOXMLReader.ReadSharedStrings(ANode: TDOMNode);
 var
   valuenode: TDOMNode;
   childnode: TDOMNode;
-  innernode: TDOMNode;
   nodename: String;
   totaltxt, sval: String;
   fntIndex: Integer;
@@ -1891,7 +1886,6 @@ end;
 procedure TsSpreadOOXMLReader.ReadFromFile(AFilename: String);
 var
   Doc : TXMLDocument;
-  RelsNode: TDOMNode;
   FilePath : string;
   UnZip : TUnZipper;
   FileList : TStringList;

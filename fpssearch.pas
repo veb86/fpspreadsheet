@@ -18,7 +18,6 @@ type
     FSearchText: String;
     FSearchParams: TsSearchParams;
     FReplaceParams: TsReplaceParams;
-    FCurrSel: Integer;
     FRegEx: TRegExpr;
     FOnConfirmReplacement: TsConfirmReplacementEvent;
   protected
@@ -75,7 +74,6 @@ end;
 
 function TsSearchEngine.ExecReplace(AWorksheet: TsWorksheet; ARow, ACol: Cardinal) : Boolean;
 var
-  res: Integer;
   s: String;
   allow: Boolean;
   flags: TReplaceFlags;
@@ -115,7 +113,7 @@ function TsSearchEngine.ExecSearch(var AWorksheet: TsWorksheet;
   var ARow, ACol: Cardinal): Boolean;
 var
   complete: boolean;
-  r, c: LongInt;
+  r, c: Cardinal;
   sheet: TsWorksheet;
 begin
   sheet := AWorksheet;
@@ -213,9 +211,6 @@ end;
 
 procedure TsSearchEngine.GotoLast(out AWorksheet: TsWorksheet;
   out ARow, ACol: Cardinal);
-var
-  cell: PCell;
-  sel: TsCellRangeArray;
 begin
   if soEntireDocument in FSearchParams.Options then
     // Search entire document backward from end
@@ -258,7 +253,6 @@ function TsSearchEngine.GotoNext(var AWorksheet: TsWorksheet;
   var ARow, ACol: Cardinal): Boolean;
 var
   idx: Integer;
-  sel: TsCellRangeArray;
 begin
   Result := true;
 
@@ -351,7 +345,6 @@ function TsSearchEngine.GotoPrev(var AWorksheet: TsWorksheet;
   var ARow, ACol: Cardinal): Boolean;
 var
   idx: Integer;
-  sel: TsCellRangeArray;
 begin
   Result := true;
 

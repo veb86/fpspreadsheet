@@ -34,7 +34,7 @@ uses
  {$ELSE}
   fpszipper,
  {$ENDIF}
-  fpsStreams;
+  fpsStreams, fpsUtils;
 
 {------------------------------------------------------------------------------}
 {                                 Utilities                                    }
@@ -114,6 +114,7 @@ end;
 procedure TStreamUnzipper.CreateStream(Sender: TObject; var AStream: TStream;
   AItem: TFullZipFileEntry);
 begin
+  Unused(AItem);
   FSuccess := True;
   AStream := FOutputStream;
 end;
@@ -121,6 +122,7 @@ end;
 procedure TStreamUnzipper.DoneStream(Sender: TObject; var AStream: TStream;
   AItem: TFullZipFileEntry);
 begin
+  Unused(AItem);
   AStream := nil;
 end;
 
