@@ -380,6 +380,9 @@ uses
   sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm,
   sHyperlinkForm, sNumFormatForm, sSearchForm;
 
+var
+  SEARCH_DLG_POS: TPoint = (X: -1; Y: -1);
+
 function CreateIni: TCustomIniFile;
 begin
   Result := TMemIniFile.Create(GetAppConfigFile(false));
@@ -496,7 +499,15 @@ end;
 procedure TMainForm.AcSearchExecute(Sender: TObject);
 begin
   if SearchForm = nil then
-    SearchForm := TSearchForm.Create(self);
+    SearchForm := TSearchForm.Create(self)
+  else
+  if not SearchForm.Showing then
+  begin
+    SearchForm.Position := poDesigned;
+    SearchForm.Left := SEARCH_DLG_POS.X;
+    SearchForm.Top := SEARCH_DLG_POS.Y;
+  end else
+    SearchForm.BringToFront;
   SearchForm.OnFound := @SearchFound;
   SearchForm.OnClose := @SearchClose;
   SearchForm.SearchParams := DefaultSearchParams;
@@ -611,6 +622,8 @@ begin
   Unused(CloseAction);
   DefaultSearchParams := TSearchForm(Sender).SearchParams;
   DefaultReplaceParams := TSearchForm(Sender).ReplaceParams;
+  SEARCH_DLG_POS.X := SearchForm.Left;
+  SEARCH_DLG_POS.Y := SearchForm.Top;
 end;
 
 procedure TMainForm.SearchFound(Sender: TObject; AFound: Boolean;

@@ -104,19 +104,46 @@ const
   SEARCH_TAB            = 0;
   REPLACE_TAB           = 1;
 
+var
+  CONFIRM_REPLACEMENT_DLG_X: Integer = -1;
+  CONFIRM_REPLACEMENT_DLG_Y: Integer = -1;
+
 { TSearchForms }
 
 procedure TSearchForm.ConfirmReplacementHandler(Sender: TObject;
   AWorksheet: TsWorksheet; ARow, ACol: Cardinal; const ASearchText, AReplaceText: String;
   var AConfirmReplacement: TsConfirmReplacementResult);
+var
+  F: TForm;
 begin
   Unused(AWorksheet, ARow, ACol);
   Unused(ASearchText, AReplaceText);
+  F := CreateMessageDialog('Replace?', mtConfirmation, [mbYes, mbNo, mbCancel]);
+  try
+    if (CONFIRM_REPLACEMENT_DLG_X = -1) then
+      F.Position := poMainformCenter
+    else begin
+      F.Position := poDesigned;
+      F.Left := CONFIRM_REPLACEMENT_DLG_X;
+      F.Top := CONFIRM_REPLACEMENT_DLG_Y;
+    end;
+    case F.ShowModal of
+      mrYes: AConfirmReplacement := crReplace;
+      mrNo : AConfirmReplacement := crIgnore;
+      mrCancel: AConfirmReplacement := crAbort;
+    end;
+    CONFIRM_REPLACEMENT_DLG_X := F.Left;
+    CONFIRM_REPLACEMENT_DLG_Y := F.Top;
+  finally
+    F.Free;
+  end;
+  {
   case MessageDlg('Replace?', mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
     mrYes: AConfirmReplacement := crReplace;
     mrNo : AConfirmReplacement := crIgnore;
     mrCancel: AConfirmReplacement := crAbort;
   end;
+  }
 end;
 
 procedure TSearchForm.Execute(AWorkbook: TsWorkbook);
