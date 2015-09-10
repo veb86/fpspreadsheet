@@ -31,10 +31,10 @@ type
     RgSearchWithin: TRadioGroup;
     ReplaceTextPanel: TPanel;
     TabControl: TTabControl;
+    procedure ExecuteClick(Sender: TObject);
     procedure FormClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure FormCreate(Sender: TObject);
     procedure FormShow(Sender: TObject);
-    procedure ExecuteClick(Sender: TObject);
     procedure TabControlChange(Sender: TObject);
     procedure TabControlChanging(Sender: TObject; var AllowChange: Boolean);
   private
@@ -197,16 +197,19 @@ begin
       end;
     end else
     begin
+      // Adjust "backward" option according to the button clicked
       if (Sender = BtnSearchBack) then
         Include(sp.Options, soBackward) else
         Exclude(sp.Options, soBackward);
+      // Begin searching at current position
+      Exclude(sp.Options, soEntireDocument);
       // User may select a different worksheet/different cell to continue search!
       FFoundWorksheet := FWorkbook.ActiveWorksheet;
       FFoundRow := FFoundWorksheet.ActiveCellRow;
       FFoundCol := FFoundWorksheet.ActiveCellCol;
       case TabControl.TabIndex of
-        0: found := FSearchEngine.FindNext(sp, FFoundWorksheet, FFoundRow, FFoundCol);
-        1: found := FSearchEngine.ReplaceNext(sp, rp, FFoundWorksheet, FFoundRow, FFoundCol);
+        0: found := FSearchEngine.FindFirst(sp, FFoundWorksheet, FFoundRow, FFoundCol);
+        1: found := FSearchEngine.ReplaceFirst(sp, rp, FFoundWorksheet, FFoundRow, FFoundCol);
       end;
     end;
 
