@@ -99,7 +99,7 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
-    procedure ReadFromFile(AFileName: string); override;
+//    procedure ReadFromFile(AFileName: string); override;
     procedure ReadFromStream(AStream: TStream); override;
   end;
 
@@ -1879,7 +1879,7 @@ begin
   FixCols(AWorksheet);
   FixRows(AWorksheet);
 end;
-
+    (*
 { In principle, this method could be simplified by calling ReadFromStream which
   is essentially a duplication of ReadFromFile. But ReadFromStream leads to
   worse memory usage. --> KEEP READFROMFILE INTACT }
@@ -2028,7 +2028,7 @@ begin
     FreeAndNil(Doc);
   end;
 end;
-
+  *)
 procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream);
 var
   Doc : TXMLDocument;
@@ -2039,12 +2039,24 @@ var
   fn_comments: String;
   XMLStream: TStream;
   actSheetIndex: Integer;
+
+  function CreateXMLStream: TStream;
+  begin
+    if boFileStream in FWorkbook.Options then
+      Result := TFileStream.Create(GetTempFileName, fmCreate)
+    else
+    if boBufStream in FWorkbook.Options then
+      Result := TBufStream.Create(GetTempFileName, fmCreate)
+    else
+      Result := TMemoryStream.Create;
+  end;
+
 begin
   Doc := nil;
   SheetList := TStringList.Create;
   try
     // Retrieve theme colors
-    XMLStream := TMemoryStream.Create;
+    XMLStream := CreateXMLStream;
     try
       if UnzipToStream(AStream, OOXML_PATH_XL_THEME, XMLStream) then
       begin
@@ -2057,7 +2069,7 @@ begin
     end;
 
     // process the workbook.xml file
-    XMLStream := TMemoryStream.Create;
+    XMLStream := CreateXMLStream;
     try
       if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
         raise Exception.CreateFmt(rsDefectiveInternalStructure, ['xlsx']);
@@ -2072,7 +2084,7 @@ begin
     end;
 
     // process the styles.xml file
-    XMLStream := TMemoryStream.Create;
+    XMLStream := CreateXMLStream;
     try
       // Should always exist, just to make sure...
       if UnzipToStream(AStream, OOXML_PATH_XL_STYLES, XMLStream) then
@@ -2092,7 +2104,7 @@ begin
 
     // process the sharedstrings.xml file
     // To do: Use buffered stream instead since shared strings may be large
-    XMLStream := TMemoryStream.Create;
+    XMLStream := CreateXMLStream;
     try
       if UnzipToStream(AStream, OOXML_PATH_XL_STRINGS, XMLStream) then
       begin
@@ -2110,7 +2122,7 @@ begin
       FWorksheet := FWorkbook.AddWorksheet(SheetList[i], true);
 
       // unzip sheet file
-      XMLStream := TMemoryStream.Create;
+      XMLStream := CreateXMLStream;
       try
         fn := OOXML_PATH_XL_WORKSHEETS + Format('sheet%d.xml', [i+1]);
         if not UnzipToStream(AStream, fn, XMLStream) then
@@ -2140,7 +2152,7 @@ begin
         retrieved from the "sheet<n>.xml.rels" file (n = 1, 2, ...).
         The rels file contains also the second part of the hyperlink data. }
       fn := OOXML_PATH_XL_WORKSHEETS_RELS + Format('sheet%d.xml.rels', [i+1]);
-      XMLStream := TMemoryStream.Create;
+      XMLStream := CreateXMLStream;
       try
         if UnzipToStream(AStream, fn, XMLStream) then
         begin
@@ -2168,7 +2180,7 @@ begin
       if fn_comments <> '' then
       begin
         fn := OOXML_PATH_XL + fn_comments;
-        XMLStream := TMemoryStream.Create;
+        XMLStream := CreateXMLStream;
         try
           if UnzipToStream(AStream, fn, XMLStream) then
           begin
@@ -2466,6 +2478,9 @@ begin
 
   // Create the comments stream
   SetLength(FSComments, FCurSheetNum + 1);
+  if boFileStream in FWorkbook.Options then
+    FSComments[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsCMNT%d', [FCurSheetNum])), fmCreate)
+  else
   if (boBufStream in Workbook.Options) then
     FSComments[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsCMNT%d', [FCurSheetNum])))
   else
@@ -3216,6 +3231,9 @@ begin
     exit;
 
   SetLength(FSVmlDrawings, FCurSheetNum + 1);
+  if boFileStream in FWorkbook.Options then
+    FSVmlDrawings[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsVMLD%d', [FCurSheetNum])), fmCreate)
+  else
   if (boBufStream in Workbook.Options) then
     FSVmlDrawings[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsVMLD%d', [FCurSheetNum])))
   else
@@ -3290,6 +3308,9 @@ begin
     exit;
 
   // Create stream
+  if boFileStream in FWorkbook.Options then
+    FSSheetRels[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsWSR%d', [FCurSheetNum])), fmCreate)
+  else
   if (boBufStream in Workbook.Options) then
     FSSheetRels[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsWSR%d', [FCurSheetNum])))
   else
@@ -3530,6 +3551,9 @@ begin
   SetLength(FSSheets, FCurSheetNum + 1);
 
   // Create the stream
+  if boFileStream in FWorkbook.Options then
+    FSSheets[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsSH%d', [FCurSheetNum])), fmCreate)
+  else
   if (boBufStream in Workbook.Options) then
     FSSheets[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsSH%d', [FCurSheetNum])))
   else
@@ -3578,7 +3602,18 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.CreateStreams;
 begin
-  if (boBufStream in Workbook.Options) then begin
+  if boFileStream in FWorkbook.Options then
+  begin
+    FSContentTypes := TFileStream.Create(GetTempFileName('', 'fpsCT'), fmCreate);
+    FSRelsRels := TFileStream.Create(GetTempFileName('', 'fpsRR'), fmCreate);
+    FSWorkbookRels := TFileStream.Create(GetTempFileName('', 'fpsWBR'), fmCreate);
+    FSWorkbook := TFileStream.Create(GetTempFileName('', 'fpsWB'), fmCreate);
+    FSStyles := TFileStream.Create(GetTempFileName('', 'fpsSTY'), fmCreate);
+    FSSharedStrings := TFileStream.Create(GetTempFileName('', 'fpsSS'), fmCreate);
+    FSSharedStrings_complete := TFileStream.Create(GetTempFileName('', 'fpsSSC'), fmCreate);
+  end else
+  if (boBufStream in Workbook.Options) then
+  begin
     FSContentTypes := TBufStream.Create(GetTempFileName('', 'fpsCT'));
     FSRelsRels := TBufStream.Create(GetTempFileName('', 'fpsRR'));
     FSWorkbookRels := TBufStream.Create(GetTempFileName('', 'fpsWBR'));

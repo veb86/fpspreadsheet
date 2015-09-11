@@ -152,7 +152,7 @@ function SameFont(AFont1, AFont2: TsFont): Boolean; overload;
 function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
   AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Boolean; overload;
 
-function GetUniqueTempDir(Global: Boolean): String;
+//function GetUniqueTempDir(Global: Boolean): String;
 
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
@@ -1965,7 +1965,7 @@ begin
   While Length(Result) < Len do
     Result := Result + char(ord('A') + random(26));
 end;
-
+  (*
 {@@ ----------------------------------------------------------------------------
   Constructs a unique folder name in the temp directory of the OS
 -------------------------------------------------------------------------------}
@@ -1978,7 +1978,7 @@ begin
     Result := tempdir + AppendPathDelim(GetRandomString(8));
   until not DirectoryExists(Result);
 end;
-
+    *)
 {@@ ----------------------------------------------------------------------------
   Appends a string to a stream
 

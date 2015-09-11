@@ -142,7 +142,7 @@ type
     destructor Destroy; override;
 
     { General reading methods }
-    procedure ReadFromFile(AFileName: string); override;
+(*    procedure ReadFromFile(AFileName: string); override;*)
     procedure ReadFromStream(AStream: TStream); override;
   end;
 
@@ -2035,7 +2035,7 @@ begin
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
-
+    (*
 { In principle, this method could be simplified by calling ReadFromStream which
   is essentially a duplication of ReadFromFile. But ReadFromStream leads to
   worse memory usage. --> KEEP READFROMFILE INTACT
@@ -2159,7 +2159,7 @@ begin
     if Assigned(Doc) then Doc.Free;
   end;
 end;
-
+  *)
 procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream);
 var
   Doc : TXMLDocument;
@@ -2170,11 +2170,23 @@ var
   pageLayout: PsPageLayout;
   XMLStream: TStream;
   sheet: TsWorksheet;
+
+  function CreateXMLStream: TStream;
+  begin
+    if boFileStream in FWorkbook.Options then
+      Result := TFileStream.Create(GetTempFileName, fmCreate)
+    else
+    if boBufStream in FWorkbook.Options then
+      Result := TBufStream.Create(GetTempFileName, fmCreate)
+    else
+      Result := TMemoryStream.Create;
+  end;
+
 begin
   Doc := nil;
   try
     // process the styles.xml file
-    XMLStream := TMemoryStream.Create;
+    XMLStream := CreateXMLStream;
     try
       if UnzipToStream(AStream, 'styles.xml', XMLStream) then
         ReadXMLStream(Doc, XMLStream);
@@ -2192,7 +2204,7 @@ begin
     FreeAndNil(Doc);
 
     //process the content.xml file
-    XMLStream := TMemoryStream.Create;
+    XMLStream := CreateXMLStream;
     try
       if UnzipToStream(AStream, 'content.xml', XMLStream) then
         ReadXMLStream(Doc, XMLStream);
@@ -2249,7 +2261,7 @@ begin
     FreeAndNil(Doc);
 
     // process the settings.xml file (Note: it does not always exist!)
-    XMLStream := TMemoryStream.Create;
+    XMLStream := CreateXMLStream;
     try
       if UnzipToStream(AStream, 'settings.xml', XMLStream) then
       begin
@@ -3712,6 +3724,15 @@ end;
   single xlsx file. }
 procedure TsSpreadOpenDocWriter.CreateStreams;
 begin
+  if boFileStream in FWorkbook.Options then
+  begin
+    FSMeta := TFileStream.Create(GetTempFileName('', 'fpsM'), fmCreate);
+    FSSettings := TFileStream.Create(GetTempFileName('', 'fpsS'), fmCreate);
+    FSStyles := TFileStream.Create(GetTempFileName('', 'fpsSTY'), fmCreate);
+    FSContent := TFileStream.Create(GetTempFileName('', 'fpsC'), fmCreate);
+    FSMimeType := TFileStream.Create(GetTempFileName('', 'fpsMT'), fmCreate);
+    FSMetaInfManifest := TFileStream.Create(GetTempFileName('', 'fpsMIM'), fmCreate);
+  end else
   if (boBufStream in Workbook.Options) then
   begin
     FSMeta := TBufStream.Create(GetTempFileName('', 'fpsM'));

@@ -21,11 +21,11 @@ type
     CgFormats: TCheckGroup;
     CgRowCount: TCheckGroup;
     CbVirtualModeOnly: TCheckBox;
-    CbSingleCol: TCheckBox;
     LblCancel: TLabel;
     Panel1: TPanel;
     Memo: TMemo;
     ParameterPanel: TPanel;
+    RgColCount: TRadioGroup;
     RgContent: TRadioGroup;
     SaveDialog: TSaveDialog;
     StatusBar: TStatusBar;
@@ -43,6 +43,8 @@ type
     FCurFormat: TsSpreadsheetFormat;
     FErrCounter: Integer;
     FErrLog: TStringList;
+    procedure BoldCheckgroup(AGroup: TCheckGroup);
+    procedure BoldRadiogroup(AGroup: TRadioGroup);
     procedure EnableControls(AEnable: Boolean);
     function  GetRowCount(AIndex: Integer): Integer;
     procedure ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
@@ -78,6 +80,7 @@ const
   fmtXLS8 = 2;
   fmtXLS5 = 3;
   fmtXLS2 = 4;
+  fmtCSV  = 5;
 
   rc10k = 0;
   rc20k = 1;
@@ -90,10 +93,10 @@ const
   CONTENT_PREFIX: array[0..2] of Char = ('S', 'N', 'M');
   CONTENT_TEXT: array[0..2] of string = ('strings only', 'numbers only', '50% strings and 50% numbers');
 
-  FORMAT_EXT: array[0..4] of String = ('.ods', '.xlsx', '.xls', '_b5.xls', '_b2.xls');
-  SPREAD_FORMAT: array[0..4] of TsSpreadsheetFormat = (sfOpenDocument, sfOOXML, sfExcel8, sfExcel5, sfExcel2);
+  FORMAT_EXT: array[0..5] of String = ('.ods', '.xlsx', '.xls', '_b5.xls', '_b2.xls', '.csv');
+  SPREAD_FORMAT: array[0..5] of TsSpreadsheetFormat = (sfOpenDocument, sfOOXML, sfExcel8, sfExcel5, sfExcel2, sfCSV);
 
-  COLCOUNT = 100;
+  COLCOUNT: array[0..2] of Integer = (1, 10, 100);
 
 function LeftPad(AText: String; ALength: Integer): String;
 begin
@@ -149,13 +152,10 @@ var
   MyWorkbook: TsWorkbook;
   Tm: DWord;
   fName, s: String;
-  i, j: Integer;
+  k: Integer;
   F: File;
-  ok: Boolean;
 begin
-  Unused(idx);
-
-  s := Trim(Log);
+  s := Trim(Log);     // needed for file name generation
   Log := Log + '         ';
   try
     if FEscape then begin
@@ -163,57 +163,63 @@ begin
       exit;
     end;
 
-    for i := 0 to CgFormats.Items.Count-1 do begin
+    for k := 0 to CgFormats.Items.Count-1 do begin
       if FEscape then begin
         Log := 'Test aborted';
         exit;
       end;
 
-      if not CgFormats.Checked[i] then
+      if not CgFormats.Checked[k] then
         continue;
 
-      FCurFormat := SPREAD_FORMAT[i];
+      FCurFormat := SPREAD_FORMAT[k];
       StatusMsg('Reading ' + GetFileFormatName(FCurFormat));
 
-      ok := false;
-      for j:=1 to 4 do begin
-        if FEscape then begin
-          Log := 'Test aborted';
-          exit;
-        end;
-
-        fName := FDir + CONTENT_PREFIX[RgContent.ItemIndex] + Copy(s, 1, Pos(' ', s)-1) + '_' + IntToStr(j) + FORMAT_EXT[i];
-        if not FileExists(fname) then
-          continue;
-        AssignFile(F, fname);
-        Reset(F);
-        if FileSize(F) = 0 then
-          continue;
-        CloseFile(F);
-
-        MyWorkbook := TsWorkbook.Create;
-        try
-          Application.ProcessMessages;
-          MyWorkbook.Options := Options;
-          if boVirtualMode in Options then
-            MyWorkbook.OnReadCellData := @ReadCellDataHandler;
-          Tm := GetTickCount;
-          try
-            MyWorkbook.ReadFromFile(fname, SPREAD_FORMAT[i]);
-            Log := Log + format('%5.1f  ', [(GetTickCount - Tm) / 1000]);
-            ok := true;
-            break;
-          except
-            on E:Exception do begin
-              inc(FErrCounter);
-              FErrLog.Add(Format('[%d] = %s', [FErrCounter, E.Message]));
-            end;
-          end;
-        finally
-          MyWorkbook.Free;
-        end;
+      if (SPREAD_FORMAT[k] = sfCSV) and (idx in [2, 4, 6, 8]) then
+      begin
+        Log := Log + '   -   ';              // No virtual mode for CSV
+        continue;
       end;
-      if not ok then Log := Log + LeftPad(Format('[%d]',[FErrCounter]),5) + '  ';
+
+      fName := FDir + CONTENT_PREFIX[RgContent.ItemIndex] + Copy(s, 1, Pos(' ', s)-1) + '_' + IntToStr(idx) + FORMAT_EXT[k];
+      if not FileExists(fname) then
+      begin
+        inc(FErrCounter);
+        FErrLog.Add(Format('[%d] = File not found.', [FErrCounter]));
+        Log := Log + LeftPad(Format('[%d]',[FErrCounter]),5) + '  ';
+        continue;
+      end;
+      AssignFile(F, fname);
+      Reset(F);
+      if FileSize(F) = 0 then
+      begin
+        inc(FErrCounter);
+        FErrLog.Add(Format('[%d] = File size zero.', [FErrCounter]));
+        Log := Log + LeftPad(Format('[%d]',[FErrCounter]),5) + '  ';
+        continue;
+      end;
+      CloseFile(F);
+
+      MyWorkbook := TsWorkbook.Create;
+      try
+        Application.ProcessMessages;
+        MyWorkbook.Options := Options;
+        if boVirtualMode in Options then
+          MyWorkbook.OnReadCellData := @ReadCellDataHandler;
+        Tm := GetTickCount;
+        try
+          MyWorkbook.ReadFromFile(fname, SPREAD_FORMAT[k]);
+          Log := Log + format('%5.1f  ', [(GetTickCount - Tm) / 1000]);
+        except
+          on E:Exception do begin
+            inc(FErrCounter);
+            FErrLog.Add(Format('[%d] = %s', [FErrCounter, E.Message]));
+            Log := Log + LeftPad(Format('[%d]',[FErrCounter]),5) + '  ';
+          end;
+        end;
+      finally
+        MyWorkbook.Free;
+      end;
     end;
 
   finally
@@ -240,10 +246,7 @@ begin
       exit;
     end;
 
-    if CbSingleCol.Checked then
-      numCols := 1
-    else
-      numCols := COLCOUNT;
+    numCols := COLCOUNT[RgColCount.ItemIndex];
 
     MyWorksheet := MyWorkbook.AddWorksheet('Sheet1');
     MyWorkbook.Options := Options;
@@ -302,10 +305,10 @@ begin
     fname := CONTENT_PREFIX[RgContent.ItemIndex] + copy(fname, 1, pos(' ', fname)-1);
     fname := FDir + fname + '_' + IntToStr(idx);
 
-    if Idx in [2, 4]  then
+    if Idx in [2, 4, 6, 8]  then
       Log := Log +  '     -   '    // No build time in virtual mode
     else
-      Log := Log + '  ' + format('%5.1f  ', [(GetTickCount - Tm) / 1000]);
+      Log := Log + '  ' + Format('%5.1f  ', [(GetTickCount - Tm) / 1000]);
 
     for k := 0 to CgFormats.Items.Count-1 do
     begin
@@ -323,8 +326,12 @@ begin
       try
         Application.ProcessMessages;
         Tm := GetTickCount;
-        MyWorkbook.WriteToFile(fname + FORMAT_EXT[k], SPREAD_FORMAT[k], true);
-        Log := Log + Format('%5.1f  ', [(GetTickCount - Tm) / 1000]);
+        if (SPREAD_FORMAT[k] = sfCSV) and (Idx in [2, 4, 6, 8]) then
+          Log := Log + '   -   '              // No virtual mode for CSV
+        else begin
+          MyWorkbook.WriteToFile(fname + FORMAT_EXT[k], SPREAD_FORMAT[k], true);
+          Log := Log + Format('%5.1f  ', [(GetTickCount - Tm) / 1000]);
+        end;
       except
         on E: Exception do
           Log := Log + ' xxxx  ';
@@ -354,6 +361,24 @@ begin
   Result := StrToInt(s) * 1000;
 end;
 
+procedure TForm1.BoldCheckgroup(AGroup: TCheckGroup);
+var
+  i: Integer;
+begin
+  for i:=0 to AGroup.ControlCount-1 do
+    TCheckbox(AGroup.Controls[i]).ParentFont := false;
+  AGroup.Font.Style := [fsBold];
+end;
+
+procedure TForm1.BoldRadiogroup(AGroup: TRadioGroup);
+var
+  i: Integer;
+begin
+  for i:=0 to AGroup.ControlCount-1 do
+    TRadioButton(AGroup.Controls[i]).ParentFont := false;
+  AGroup.Font.Style := [fsBold];
+end;
+
 procedure TForm1.BtnReadClick(Sender: TObject);
 var
   i, len: Integer;
@@ -367,26 +392,28 @@ begin
   EnableControls(false);
   FErrLog.Clear;
 
-  if CbSingleCol.Checked then numCols := 1 else numCols := COLCOUNT;
+  numCols := COLCOUNT[RgColCount.ItemIndex];
 
   Memo.Append     ('Running: Reading TsWorkbook from various file formats');
   Memo.Append     ('         Worksheet contains ' + CONTENT_TEXT[RgContent.ItemIndex]);
   Memo.Append     ('         (Times in seconds)');
      //'-----------                        .ods  .xlsx  biff8  biff5  biff2');
      //'Rows x Cols  Options       Build  Write  Write  Write  Write  Write'
-  s := '--------------------------------  ';
+  s := '---------------------------------------  ';
   if CgFormats.Checked[fmtODS]  then s := s + ' .ods  ';
   if CgFormats.Checked[fmtXLSX] then s := s + '.xlsx  ';
   if CgFormats.Checked[fmtXLS8] then s := s + 'biff8  ';
   if CgFormats.Checked[fmtXLS5] then s := s + 'biff5  ';
-  if CgFormats.Checked[fmtXLS2] then s := s + 'biff2';
+  if CgFormats.Checked[fmtXLS2] then s := s + 'biff2  ';
+  if CgFormats.Checked[fmtCSV]  then s := s + ' .csv';
   Memo.Append(TrimRight(s));
-  s := 'Rows x Cols  Options              ';
+  s := 'Rows x Cols  Options                     ';
   if CgFormats.Checked[fmtODS]  then s := s + ' Read  ';
   if CgFormats.Checked[fmtXLSX] then s := s + ' Read  ';
   if CgFormats.Checked[fmtXLS8] then s := s + ' Read  ';
   if CgFormats.Checked[fmtXLS5] then s := s + ' Read  ';
-  if CgFormats.Checked[fmtXLS2] then s := s + ' Read';
+  if CgFormats.Checked[fmtXLS2] then s := s + ' Read  ';
+  if CgFormats.Checked[fmtCSV]  then s := s + ' Read';
   s := TrimRight(s);
   Memo.Append(s);
   len := Length(s);
@@ -402,15 +429,19 @@ begin
 
       rows := GetRowCount(i);
       s := Format('%7.0nx%d', [1.0*rows, numCols]);
+      if numCols < 10 then s := s + '  ' else if numCols < 100 then s := s + ' ';
 
       if CbVirtualModeOnly.Checked then begin
-        RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
-        RunReadTest(4, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
+        RunReadTest(2, s + '  [boVM            ]', [boVirtualMode]);
+        RunReadTest(4, s + '  [boVM, boBS      ]', [boVirtualMode, boBufStream]);
+        RunReadTest(6, s + '  [boVM,       boFS]', [boVirtualMode, boFileStream]);
       end else begin
-        RunReadTest(1, s + '  [          ]', []);
-        RunReadTest(2, s + '  [boVM      ]', [boVirtualMode]);
-        RunReadTest(3, s + '  [      boBS]', [boBufStream]);
-        RunReadTest(4, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
+        RunReadTest(1, s + '  [                ]', []);
+        RunReadTest(2, s + '  [boVM            ]', [boVirtualMode]);
+        RunReadTest(3, s + '  [      boBS      ]', [boBufStream]);
+        RunReadTest(4, s + '  [boVM, boBS      ]', [boVirtualMode, boBufStream]);
+        RunReadTest(5, s + '  [            boFS]', [boFileStream]);
+        RunReadTest(6, s + '  [boVM,       boFS]', [boVirtualMode, boFileStream]);
       end;
 
       Memo.Append(DupeString('-', len));
@@ -444,26 +475,28 @@ begin
   FEscape := false;
   EnableControls(false);
   FErrLog.Clear;
-  if CbSingleCol.Checked then numCols := 1 else numCols := COLCOUNT;
+  numCols := COLCOUNT[RgColCount.ItemIndex];
 
   Memo.Append     ('Running: Building TsWorkbook and writing to different file formats');
   Memo.Append     ('         Worksheet contains ' + CONTENT_TEXT[RgContent.ItemIndex]);
   Memo.Append     ('         (Times in seconds)');
      //'-----------                        .ods  .xlsx  biff8  biff5  biff2');
      //'Rows x Cols  Options       Build  Write  Write  Write  Write  Write'
-  s := '--------------------------------  ';
+  s := '---------------------------------------  ';
   if CgFormats.Checked[fmtODS]  then s := s + ' .ods  ';
   if CgFormats.Checked[fmtXLSX] then s := s + '.xlsx  ';
   if CgFormats.Checked[fmtXLS8] then s := s + 'biff8  ';
   if CgFormats.Checked[fmtXLS5] then s := s + 'biff5  ';
-  if CgFormats.Checked[fmtXLS2] then s := s + 'biff2';
+  if CgFormats.Checked[fmtXLS2] then s := s + 'biff2  ';
+  if CgFormats.Checked[fmtCSV]  then s := s + ' .csv';
   Memo.Append(TrimRight(s));
-  s := 'Rows x Cols  Options       Build  ';
+  s := 'Rows x Cols  Options              Build  ';
   if CgFormats.Checked[fmtODS]  then s := s + 'Write  ';
   if CgFormats.Checked[fmtXLSX] then s := s + 'Write  ';
   if CgFormats.Checked[fmtXLS8] then s := s + 'Write  ';
   if CgFormats.Checked[fmtXLS5] then s := s + 'Write  ';
-  if CgFormats.Checked[fmtXLS2] then s := s + 'Write';
+  if CgFormats.Checked[fmtXLS2] then s := s + 'Write  ';
+  if CgFormats.Checked[fmtCSV]  then s := s + 'Write';
   s := TrimRight(s);
   len := Length(s);
   Memo.Append(s);
@@ -478,14 +511,18 @@ begin
         continue;
       Rows := GetRowCount(i);
       s := Format('%7.0nx%d', [1.0*Rows, numCols]);
+      if numCols < 10 then s := s + '  ' else if numCols < 100 then s := s + ' ';
       if CbVirtualModeOnly.Checked then begin
-        RunWriteTest(2, Rows, s + '  [boVM      ]', [boVirtualMode]);
-        RunWriteTest(4, Rows, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
+        RunWriteTest(2, Rows, s + '  [boVM            ]', [boVirtualMode]);
+        RunWriteTest(4, Rows, s + '  [boVM, boBS      ]', [boVirtualMode, boBufStream]);
+        RunWriteTest(6, Rows, s + '  [boVM,       boFS]', [boVirtualMode, boFileStream]);
       end else begin
-        RunWriteTest(1, Rows, s + '  [          ]', []);
-        RunWriteTest(2, Rows, s + '  [boVM      ]', [boVirtualMode]);
-        RunWriteTest(3, Rows, s + '  [      boBS]', [boBufStream]);
-        RunWriteTest(4, Rows, s + '  [boVM, boBS]', [boVirtualMode, boBufStream]);
+        RunWriteTest(1, Rows, s + '  [                ]', []);
+        RunWriteTest(2, Rows, s + '  [boVM            ]', [boVirtualMode]);
+        RunWriteTest(3, Rows, s + '  [      boBS      ]', [boBufStream]);
+        RunWriteTest(4, Rows, s + '  [boVM, boBS      ]', [boVirtualMode, boBufStream]);
+        RunWriteTest(5, Rows, s + '  [            boFS]', [boFileStream]);
+        RunWriteTest(6, Rows, s + '  [boVM,       boFS]', [boVirtualMode, boFileStream]);
       end;
       Memo.Append(DupeString('-', len));
     end;
@@ -514,6 +551,7 @@ begin
   RgContent.Enabled := AEnable;
   CgFormats.Enabled := AEnable;
   CgRowCount.Enabled := AEnable;
+  RgColCount.Enabled := AEnable;
   LblCancel.Visible := not AEnable;
   StatusMsg('');
   Application.ProcessMessages;
@@ -531,6 +569,7 @@ begin
   CgFormats.Checked[fmtXLS8] := true;
   CgFormats.Checked[fmtXLS5] := true;
   CgFormats.Checked[fmtXLS2] := true;
+  CgFormats.Checked[fmtCSV] := true;
 
   CgRowCount.Checked[rc10k] := true;
   CgRowCount.Checked[rc20k] := true;
@@ -540,6 +579,11 @@ begin
   FErrLog := TStringList.Create;
 
   ReadFromIni;
+
+  BoldRadiogroup(RgContent);
+  BoldRadiogroup(RgColCount);
+  BoldCheckGroup(CgFormats);
+  BoldCheckGroup(CgRowCount);
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
@@ -564,6 +608,7 @@ begin
   try
     CbVirtualModeOnly.Checked := ini.ReadBool('Parameters', 'VirtualModeOnly', CbVirtualModeOnly.Checked);
     RgContent.ItemIndex := ini.ReadInteger('Parameters', 'Content', RgContent.ItemIndex);
+    RgColCount.ItemIndex := Ini.ReadInteger('Parameters', 'ColCount', RgColCount.ItemIndex);
 
     n := Ini.ReadInteger('Parameters', 'Formats', $1F);
     CgFormats.Checked[fmtODS]  := n and $01 <> 0;
@@ -571,6 +616,7 @@ begin
     CgFormats.Checked[fmtXLS8] := n and $04 <> 0;
     CgFormats.Checked[fmtXLS5] := n and $08 <> 0;
     CgFormats.Checked[fmtXLS2] := n and $10 <> 0;
+    CgFormats.Checked[fmtCSV]  := n and $20 <> 0;
 
     n := Ini.ReadInteger('Parameters', 'RowCount', $0F);
     CgRowCount.Checked[rc10k] := n and $01 <> 0;
@@ -593,8 +639,9 @@ var
 begin
   ini := TMemIniFile.Create(ChangeFileExt(Application.ExeName, '.ini'));
   try
-    ini.WriteBool('Parameters', 'VirtualModeOnly', CbVirtualModeOnly.Checked);
+    ini.WriteBool   ('Parameters', 'VirtualModeOnly', CbVirtualModeOnly.Checked);
     ini.WriteInteger('Parameters', 'Content', RgContent.ItemIndex);
+    ini.WriteInteger('Parameters', 'ColCount', RgColCount.ItemIndex);
 
     n := 0;
     if CgFormats.Checked[fmtODS]  then n := n or $1;
@@ -602,6 +649,7 @@ begin
     if CgFormats.Checked[fmtXLS8] then n := n or $4;
     if CgFormats.Checked[fmtXLS5] then n := n or $8;
     if CgFormats.Checked[fmtXLS2] then n := n or $10;
+    if CgFormats.Checked[fmtCSV]  then n := n or $20;
     ini.WriteInteger('Parameters', 'Formats', n);
 
     n := 0;

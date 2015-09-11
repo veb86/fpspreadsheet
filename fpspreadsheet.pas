@@ -549,6 +549,9 @@ type
                                for writing (a memory stream swapping to disk) or
                                reading (a file stream pre-reading chunks of data
                                to memory)
+    @param  boFileStream       Uses file streams and temporary files during
+                               reading and writing. Lowest memory consumptions,
+                               but slow.
     @param  boAutoCalc         Automatically recalculate rpn formulas whenever
                                a cell value changes.
     @param  boCalcBeforeSaving Calculates formulas before saving the file.
@@ -558,8 +561,8 @@ type
                                a precaution since formulas not correctly
                                implemented by fpspreadsheet could crash the
                                reading operation. }
-  TsWorkbookOption = (boVirtualMode, boBufStream, boAutoCalc, boCalcBeforeSaving,
-    boReadFormulas);
+  TsWorkbookOption = (boVirtualMode, boBufStream, boFileStream,
+    boAutoCalc, boCalcBeforeSaving, boReadFormulas);
 
   {@@ Set of option flags for the workbook }
   TsWorkbookOptions = set of TsWorkbookOption;

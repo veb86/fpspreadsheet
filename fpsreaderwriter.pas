@@ -296,12 +296,24 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.ReadFromFile(AFileName: string);
 var
-  stream: TStream;
+  stream, fs: TStream;
 begin
+  if (boFileStream in Workbook.Options) then
+    stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone)
+  else
   if (boBufStream in Workbook.Options) then
     stream := TBufStream.Create(AFileName, fmOpenRead + fmShareDenyNone)
   else
-    stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
+  begin
+    stream := TMemoryStream.Create;
+    fs := TFileStream.Create(AFilename, fmOpenRead + fmShareDenyNone);
+    try
+      (stream as TMemoryStream).CopyFrom(fs, fs.Size);
+      stream.Position := 0;
+    finally
+      fs.Free;
+    end;
+  end;
 
   try
     ReadFromStream(stream);
@@ -605,13 +617,18 @@ begin
   else
     lMode := fmCreate;
 
+  if (boFileStream in FWorkbook.Options) then
+    OutputFile := TFileStream.Create(AFileName, lMode)
+  else
   if (boBufStream in Workbook.Options) then
     OutputFile := TBufStream.Create(AFileName, lMode)
   else
-    OutputFile := TFileStream.Create(AFileName, lMode);
+    OutputFile := TMemoryStream.Create;
 
   try
     WriteToStream(OutputFile);
+    if OutputFile is TMemoryStream then
+      (OutputFile as TMemoryStream).SaveToFile(AFileName);
   finally
     OutputFile.Free;
   end;

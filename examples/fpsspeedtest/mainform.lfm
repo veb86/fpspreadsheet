@@ -1,11 +1,11 @@
 object Form1: TForm1
   Left = 445
-  Height = 593
+  Height = 676
   Top = 178
-  Width = 780
+  Width = 785
   Caption = 'fpsSpeedTest'
-  ClientHeight = 593
-  ClientWidth = 780
+  ClientHeight = 676
+  ClientWidth = 785
   KeyPreview = True
   OnCloseQuery = FormCloseQuery
   OnCreate = FormCreate
@@ -15,19 +15,19 @@ object Form1: TForm1
   object StatusBar: TStatusBar
     Left = 0
     Height = 23
-    Top = 570
-    Width = 780
+    Top = 653
+    Width = 785
     Panels = <>
   end
   object Panel1: TPanel
     Left = 0
     Height = 52
     Top = 0
-    Width = 780
+    Width = 785
     Align = alTop
     BevelOuter = bvNone
     ClientHeight = 52
-    ClientWidth = 780
+    ClientWidth = 785
     TabOrder = 1
     object BtnWrite: TButton
       Left = 8
@@ -42,7 +42,7 @@ object Form1: TForm1
       Left = 184
       Height = 39
       Top = 6
-      Width = 488
+      Width = 493
       Anchors = [akTop, akLeft, akRight]
       AutoSize = False
       Caption = 'Press ESC to cancel when current file is completely written.'#13#10'This may take some time...'
@@ -60,7 +60,7 @@ object Form1: TForm1
       TabOrder = 1
     end
     object BtnSaveResults: TButton
-      Left = 680
+      Left = 685
       Height = 29
       Top = 12
       Width = 91
@@ -72,12 +72,12 @@ object Form1: TForm1
   end
   object ParameterPanel: TPanel
     Left = 0
-    Height = 514
+    Height = 597
     Top = 56
     Width = 182
     Align = alLeft
     BevelOuter = bvNone
-    ClientHeight = 514
+    ClientHeight = 597
     ClientWidth = 182
     TabOrder = 2
     object CbVirtualModeOnly: TCheckBox
@@ -114,7 +114,7 @@ object Form1: TForm1
     end
     object CgFormats: TCheckGroup
       Left = 8
-      Height = 137
+      Height = 156
       Top = 140
       Width = 160
       AutoFill = True
@@ -127,7 +127,7 @@ object Form1: TForm1
       ChildSizing.ShrinkVertical = crsScaleChilds
       ChildSizing.Layout = cclLeftToRightThenTopToBottom
       ChildSizing.ControlsPerLine = 1
-      ClientHeight = 117
+      ClientHeight = 136
       ClientWidth = 156
       Items.Strings = (
         'ods'
@@ -135,16 +135,17 @@ object Form1: TForm1
         'xls (BIFF 8)'
         'xls (BIFF 5)'
         'xls (BIFF 2)'
+        'csv'
       )
       TabOrder = 2
       Data = {
-        050000000202020202
+        06000000020202020202
       }
     end
     object CgRowCount: TCheckGroup
       Left = 8
       Height = 177
-      Top = 295
+      Top = 312
       Width = 160
       AutoFill = True
       Caption = 'Row count'
@@ -172,12 +173,28 @@ object Form1: TForm1
         0700000002020202020202
       }
     end
-    object CbSingleCol: TCheckBox
-      Left = 16
-      Height = 19
-      Top = 480
-      Width = 96
-      Caption = 'Single column'
+    object RgColCount: TRadioGroup
+      Left = 8
+      Height = 80
+      Top = 504
+      Width = 160
+      AutoFill = True
+      Caption = 'Column count'
+      ChildSizing.LeftRightSpacing = 6
+      ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+      ChildSizing.EnlargeVertical = crsHomogenousChildResize
+      ChildSizing.ShrinkHorizontal = crsScaleChilds
+      ChildSizing.ShrinkVertical = crsScaleChilds
+      ChildSizing.Layout = cclLeftToRightThenTopToBottom
+      ChildSizing.ControlsPerLine = 1
+      ClientHeight = 60
+      ClientWidth = 156
+      ItemIndex = 2
+      Items.Strings = (
+        '1'
+        '10'
+        '100'
+      )
       TabOrder = 4
     end
   end
@@ -185,15 +202,15 @@ object Form1: TForm1
     Left = 0
     Height = 4
     Top = 52
-    Width = 780
+    Width = 785
     Align = alTop
     Shape = bsTopLine
   end
   object Memo: TMemo
     Left = 182
-    Height = 514
+    Height = 597
     Top = 56
-    Width = 598
+    Width = 603
     Align = alClient
     Font.Height = -12
     Font.Name = 'Courier New'
