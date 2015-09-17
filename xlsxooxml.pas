@@ -1173,7 +1173,7 @@ begin
     if nodename = 'sz' then
     begin
       s := GetAttrValue(node, 'val');
-      if s <> '' then fntSize := StrToFloat(s);
+      if s <> '' then fntSize := StrToFloat(s, FPointSeparatorSettings);
     end
     else
     if nodename = 'b' then
