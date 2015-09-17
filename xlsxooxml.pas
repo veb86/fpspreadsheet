@@ -1762,9 +1762,9 @@ begin
           if s = 'frozen' then begin
             AWorksheet.Options := AWorksheet.Options + [soHasFrozenPanes];
             s := GetAttrValue(childNode, 'xSplit');
-            if s <> '' then AWorksheet.LeftPaneWidth := StrToInt(s);
+            if s <> '' then AWorksheet.LeftPaneWidth := round(StrToFloat(s, FPointSeparatorSettings));
             s := GetAttrValue(childNode, 'ySplit');
-            if s <> '' then AWorksheet.TopPaneHeight := StrToInt(s);
+            if s <> '' then AWorksheet.TopPaneHeight := round(StrToFloat(s, FPointSeparatorSettings));
           end;
         end else
         if nodeName = 'selection' then begin
