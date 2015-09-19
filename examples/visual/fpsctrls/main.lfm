@@ -342,7 +342,7 @@ object MainForm: TMainForm
       CellFormatItem = cfiFontName
       WorkbookSource = WorkbookSource
       DropDownCount = 24
-      ItemIndex = 89
+      ItemIndex = 95
       TabOrder = 0
       Text = 'Arial'
     end
@@ -372,7 +372,6 @@ object MainForm: TMainForm
       DropDownCount = 24
       ItemIndex = 0
       TabOrder = 2
-      Text = 'black'
     end
     object BackgroundColorCombobox: TsCellCombobox
       Left = 809
@@ -387,7 +386,6 @@ object MainForm: TMainForm
       DropDownCount = 24
       ItemIndex = 0
       TabOrder = 3
-      Text = '(none)'
     end
     object ToolButton45: TToolButton
       Left = 559
@@ -643,7 +641,7 @@ object MainForm: TMainForm
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.xls'
-    Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|HTML files (*.html; *.htm)|*.html;*.htm|Comma-delimited files (*.csv)|*.csv'
+    Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel XP/2003 XML spreadsheet (*.xml)|*.xml|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|HTML files (*.html; *.htm)|*.html;*.htm|Comma-separated text files (*.csv; *.txt)|*.csv;*.txt'
     Options = [ofExtensionDifferent, ofEnableSizing, ofViewDetail]
     left = 312
     top = 160
@@ -945,7 +943,7 @@ object MainForm: TMainForm
     object AcFileOpen: TFileOpen
       Category = 'File'
       Caption = '&Open ...'
-      Dialog.Filter = 'All supported spreadsheet files|*.xls;*.xlsx;*.ods;*.csv;*.html;*.htm|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|HTML files (*.html; *.htm)|*.html;*.htm'
+      Dialog.Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel XP/2003 XML spreadsheet (*.xml)|*.xml|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|HTML files (*.html; *.htm)|*.html;*.htm|Comma-separated text files (*.csv; *.txt)|*.csv;*.txt'
       Dialog.Options = [ofExtensionDifferent, ofFileMustExist, ofEnableSizing, ofViewDetail]
       Hint = 'Open spreadsheet file'
       ImageIndex = 44
@@ -956,7 +954,7 @@ object MainForm: TMainForm
       Category = 'File'
       Caption = 'Save &as ...'
       Dialog.Title = 'AcSaveFileAs'
-      Dialog.Filter = 'Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|HTML files (*.html; *.htm)|*.html;*.htm|WikiTable (WikiMedia-Format, *.wikitable_wikimedia)|*.wikitable_wikimedia'
+      Dialog.Filter = 'Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel XP/2003 XML spreadsheets (*.xml)|*.xml|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|HTML files (*.html; *.htm)|*.html;*.htm|WikiTable (WikiMedia-Format, *.wikitable_wikimedia)|*.wikitable_wikimedia'
       Hint = 'Save spreadsheet'
       ImageIndex = 45
       BeforeExecute = AcFileSaveAsBeforeExecute

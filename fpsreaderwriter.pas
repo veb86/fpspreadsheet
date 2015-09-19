@@ -102,7 +102,7 @@ type
     procedure ListAllNumFormats; virtual;
 
     { Helpers for writing }
-    procedure WriteCellToStream(AStream: TStream; ACell: PCell);
+    procedure WriteCellToStream(AStream: TStream; ACell: PCell); virtual;
     procedure WriteCellsToStream(AStream: TStream; ACells: TsCells);
 
     { Record writing methods }

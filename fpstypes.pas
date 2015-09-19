@@ -18,7 +18,7 @@ uses
 
 type
   {@@ File formats supported by fpspreadsheet }
-  TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8,
+  TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8, sfExcelXML,
    sfOOXML, sfOpenDocument, sfCSV, sfHTML,
    sfWikiTable_Pipes, sfWikiTable_WikiMedia);
 
@@ -33,8 +33,10 @@ type
   end;
 
 const
-  {@@ Default binary <b>Excel</b> file extension}
+  {@@ Default binary <b>Excel</b> file extension (<= Excel 97) }
   STR_EXCEL_EXTENSION = '.xls';
+  {@@ Default xml <b>Excel</v> file extension (Excel XP, 2003) }
+  STR_XML_EXCEL_EXTENSION = '.xml';
   {@@ Default xml <b>Excel</b> file extension (>= Excel 2007) }
   STR_OOXML_EXCEL_EXTENSION = '.xlsx';
   {@@ Default <b>OpenDocument</b> spreadsheet file extension }

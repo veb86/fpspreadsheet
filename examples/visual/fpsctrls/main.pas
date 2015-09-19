@@ -415,13 +415,14 @@ begin
   case AcFileOpen.Dialog.FilterIndex of
     1: WorkbookSource.AutoDetectFormat := true;      // All spreadsheet files
     2: WorkbookSource.AutoDetectFormat := true;      // All Excel files
-    3: WorkbookSource.FileFormat := sfOOXML;         // Excel 2007+
-    4: WorkbookSource.FileFormat := sfExcel8;        // Excel 97-2003
-    5: WorkbookSource.FileFormat := sfExcel5;        // Excel 5.0
-    6: WorkbookSource.FileFormat := sfExcel2;        // Excel 2.1
-    7: WorkbookSource.FileFormat := sfOpenDocument;  // Open/LibreOffice
-    8: WorkbookSource.FileFormat := sfCSV;           // Text files
-//    9: WorkbookSource.FileFormat := sfHTML;          // HTML files
+    3: WorkbookSource.FileFormat := sfOOXML;         // Excel 2007+ (OOXML)
+    4: WorkbookSource.FileFormat := sfExcelXML;      // Excel XP, 2003 (ExcelXML)
+    5: WorkbookSource.FileFormat := sfExcel8;        // Excel 97-2003
+    6: WorkbookSource.FileFormat := sfExcel5;        // Excel 5.0
+    7: WorkbookSource.FileFormat := sfExcel2;        // Excel 2.1
+    8: WorkbookSource.FileFormat := sfOpenDocument;  // Open/LibreOffice
+    9: WorkbookSource.FileFormat := sfCSV;           // Text files
+   10: WorkbookSource.FileFormat := sfHTML;          // HTML files
   end;
   WorkbookSource.FileName := UTF8ToAnsi(AcFileOpen.Dialog.FileName);  // this loads the file
   UpdateCaption;
@@ -436,13 +437,14 @@ begin
   try
     case AcFileSaveAs.Dialog.FilterIndex of
       1: fmt := sfOOXML;
-      2: fmt := sfExcel8;
-      3: fmt := sfExcel5;
-      4: fmt := sfExcel2;
-      5: fmt := sfOpenDocument;
-      6: fmt := sfCSV;
-      7: fmt := sfHTML;
-      8: fmt := sfWikiTable_WikiMedia;
+      2: fmt := sfExcelXML;
+      3: fmt := sfExcel8;
+      4: fmt := sfExcel5;
+      5: fmt := sfExcel2;
+      6: fmt := sfOpenDocument;
+      7: fmt := sfCSV;
+      8: fmt := sfHTML;
+      9: fmt := sfWikiTable_WikiMedia;
     end;
     WorkbookSource.SaveToSpreadsheetFile(UTF8ToAnsi(AcFileSaveAs.Dialog.FileName), fmt);
     UpdateCaption;

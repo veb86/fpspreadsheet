@@ -171,6 +171,7 @@ var
   {@@ FPC format settings for which all strings have been converted to UTF8 }
   UTF8FormatSettings: TFormatSettings;
 
+
 implementation
 
 uses
