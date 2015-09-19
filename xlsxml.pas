@@ -388,20 +388,20 @@ begin
     if uffHorAlign in fmt^.UsedFormattingFields then
       case fmt^.HorAlignment of
         haDefault: ;
-        haLeft   : fmtHor := 'ss:Horizontal="Left"';
-        haCenter : fmtHor := 'ss:Horizontal="Center"';
-        haRight  : fmtHor := 'ss:Horizontal="Right"';
+        haLeft   : fmtHor := 'ss:Horizontal="Left" ';
+        haCenter : fmtHor := 'ss:Horizontal="Center" ';
+        haRight  : fmtHor := 'ss:Horizontal="Right" ';
         else
           raise Exception.Create('[TsSpreadXMLWriter.WriteStyle] Horizontal alignment cannot be handled.');
       end;
 
     // Vertical alignment
-    fmtVert := 'ss:Vertical="Bottom"';
+    fmtVert := 'ss:Vertical="Bottom" ';
     if uffVertAlign in fmt^.UsedFormattingFields then
       case fmt^.VertAlignment of
         vaDefault: ;
-        vaTop    : fmtVert := 'ss:Vertical="Top"';
-        vaCenter : fmtVert := 'ss:Vertical="Center"';
+        vaTop    : fmtVert := 'ss:Vertical="Top" ';
+        vaCenter : fmtVert := 'ss:Vertical="Center" ';
         vaBottom : ;
         else
           raise Exception.Create('[TsSpreadXMLWriter.WriteStyle] Vertical alignment cannot be handled.');
@@ -409,16 +409,16 @@ begin
 
     // Wrap text
     if uffWordwrap in fmt^.UsedFormattingFields then
-      fmtWrap := 'ss:WrapText="1"' else
+      fmtWrap := 'ss:WrapText="1" ' else
       fmtWrap := '';
 
     // Text rotation
     fmtRot := '';
     if uffTextRotation in fmt^.UsedFormattingFields then
       case fmt^.TextRotation of
-        rt90DegreeClockwiseRotation        : fmtRot := 'ss:Rotate="-90"';
-        rt90DegreeCounterClockwiseRotation : fmtRot := 'ss:Rotate="90"';
-        rtStacked                          : fmtRot := 'ss:VerticalText="1"';
+        rt90DegreeClockwiseRotation        : fmtRot := 'ss:Rotate="-90" ';
+        rt90DegreeCounterClockwiseRotation : fmtRot := 'ss:Rotate="90" ';
+        rtStacked                          : fmtRot := 'ss:VerticalText="1" ';
       end;
 
     // Write all the alignment, text rotation and wordwrap attributes to stream
