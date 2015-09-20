@@ -19,6 +19,11 @@ type
   private
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
+    function GetCommentStr(ACell: PCell): String;
+    function GetHyperlinkStr(ACell: PCell): String;
+    function GetIndexStr(AIndex: Integer): String;
+    function GetMergeStr(ACell: PCell): String;
+    function GetStyleStr(ACell: PCell): String;
     procedure WriteCells(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
     procedure WriteStyles(AStream: TStream);
@@ -65,15 +70,51 @@ uses
 const
   FMT_OFFSET = 61;
 
+const
+  { TsFillStyle = (
+    fsNoFill, fsSolidFill,
+    fsGray75, fsGray50, fsGray25, fsGray12, fsGray6,
+    fsStripeHor, fsStripeVert, fsStripeDiagUp, fsStripeDiagDown,
+    fsThinStripeHor, fsThinStripeVert, fsThinStripeDiagUp, fsThinStripeDiagDown,
+    fsHatchDiag, fsThinHatchDiag, fsThickHatchDiag, fsThinHatchHor) }
+  FILL_NAMES: array[TsFillStyle] of string = (
+    '', 'Solid',
+    'Gray75', 'Gray50', 'Gray25', 'Gray12', 'Gray0625',
+    'HorzStripe', 'VertStripe', 'DiagStripe', 'ReverseDiagStripe',
+    'ThinHorzStripe', 'ThinVertStripe', 'ThinDiagStripe', 'ThinReverseDiagStripe',
+    'DiagCross', 'ThinDiagCross', 'ThickDiagCross', 'ThinHorzCross'
+  );
+
+  {TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth, cbDiagUp, cbDiagDown); }
+  BORDER_NAMES: array[TsCellBorder] of string = (
+    'Top', 'Left', 'Right', 'Bottom', 'DiagonalRight', 'DiagonalLeft'
+  );
+
+  { TsLineStyle = (
+    lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair,
+    lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot,
+    lsSlantDashDot) }
+  LINE_STYLES: array[TsLineStyle] of string = (
+    'Continuous', 'Continuous', 'Dash', 'Dot', 'Continuous', 'Double', 'Continuous',
+    'Dash', 'DashDot', 'DashDot', 'DashDotDot', 'DashDotDot',
+    'SlantDashDot'
+  );
+  LINE_WIDTHS: array[TsLineStyle] of Integer = (
+    1, 2, 1, 1, 3, 3, 0,
+    2, 1, 2, 1, 2,
+    2
+  );
+
 function GetCellContentTypeStr(ACell: PCell): String;
 begin
   case ACell^.ContentType of
-    cctNumber    : Result := 'Number';
-    cctUTF8String: Result := 'String';
-    cctDateTime  : Result := 'DateTime';
-    cctBool      : Result := 'Boolean';
-    cctError     : Result := 'Error';
-    else           raise Exception.Create('Content type error in cell ' + GetCellString(ACell^.Row, ACell^.Col));
+    cctNumber     : Result := 'Number';
+    cctUTF8String : Result := 'String';
+    cctDateTime   : Result := 'DateTime';
+    cctBool       : Result := 'Boolean';
+    cctError      : Result := 'Error';
+  else
+    raise Exception.Create('Content type error in cell ' + GetCellString(ACell^.Row, ACell^.Col));
   end;
 end;
 
@@ -100,43 +141,64 @@ begin
   FLimitations.MaxRowCount := 65536;
 end;
 
-procedure TsSpreadExcelXMLWriter.WriteBlank(AStream: TStream;
-  const ARow, ACol: Cardinal; ACell: PCell);
+function TsSpreadExcelXMLWriter.GetCommentStr(ACell: PCell): String;
 var
-  styleStr: String;
-  hyperlink: PsHyperlink;
-  hyperlinkStr: String;
   comment: PsComment;
-  commentStr: String;
 begin
-  if ACell^.FormatIndex > 0 then
-    styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
-    styleStr := '';
-
-  hyperlink := FWorksheet.FindHyperlink(ACell);
-  if Assigned(hyperlink) then
-    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
-    hyperlinkStr := '';
-
+  Result := '';
   comment := FWorksheet.FindComment(ACell);
   if Assigned(comment) then
-//    commentStr := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>' else
-    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
-    commentStr := '';
+    Result := '<Comment><Data>' + comment^.Text + '</Data></Comment>';
+  // If there will be some rich-text-like formatting in the future, use
+  //  Result := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>':
+end;
 
+function TsSpreadExcelXMLWriter.GetHyperlinkStr(ACell: PCell): String;
+var
+  hyperlink: PsHyperlink;
+begin
+  Result := '';
+  hyperlink := FWorksheet.FindHyperlink(ACell);
+  if Assigned(hyperlink) then
+    Result := ' ss:HRef="' + hyperlink^.Target + '"';
+end;
+
+function TsSpreadExcelXMLWriter.GetIndexStr(AIndex: Integer): String;
+begin
+  Result := Format(' ss:Index="%d"', [AIndex]);
+end;
+
+function TsSpreadExcelXMLWriter.GetMergeStr(ACell: PCell): String;
+var
+  r1, c1, r2, c2: Cardinal;
+begin
+  Result := '';
+  if FWorksheet.IsMerged(ACell) then begin
+    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    if c2 > c1 then
+      Result := Result + Format(' ss:MergeAcross="%d"', [c2-c1]);
+    if r2 > r1 then
+      Result := Result + Format(' ss:MergeDown="%d"', [r2-r1]);
+  end;
+end;
+
+function TsSpreadExcelXMLWriter.GetStyleStr(ACell: PCell): String;
+begin
+  Result := '';
+  if ACell^.FormatIndex > 0 then
+    Result := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]);
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteBlank(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+begin
   AppendToStream(AStream, Format(
-    '    <Cell%s%s>' +                     // style, hyperlink
-           '%s' +                            // Comment <Comment>...</Comment>
+    '    <Cell%s%s%s%s>' +              // colIndex, style, hyperlink, merge
+           '%s' +                       // Comment <Comment>...</Comment>
          '</Cell>' + LineEnding, [
-    styleStr, hyperlinkStr,
-    commentStr
+    GetIndexStr(ACol+1), GetStyleStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    GetCommentStr(ACell)
   ]));
-
-  {
-  AppendToStream(AStream, Format(
-    '    <Cell%s />' + LineEnding,
-    [styleStr])
-  );       }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteBool(AStream: TStream;
@@ -145,11 +207,6 @@ var
   valueStr: String;
   formulaStr: String;
   cctStr: String;
-  stylestr: String;
-  hyperlink: PsHyperlink;
-  hyperlinkStr: String;
-  comment: PsComment;
-  commentStr: String;
 begin
   valueStr := StrUtils.IfThen(AValue, '1', '0');
   cctStr := 'Boolean';
@@ -159,37 +216,19 @@ begin
     formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
     cctStr := GetCellContentTypeStr(ACell);
   end;
-  if ACell^.FormatIndex > 0 then
-    styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
-    styleStr := '';
-
-  hyperlink := FWorksheet.FindHyperlink(ACell);
-  if Assigned(hyperlink) then
-    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
-    hyperlinkStr := '';
-
-  comment := FWorksheet.FindComment(ACell);
-  if Assigned(comment) then
-    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
-    commentStr := '';
 
   AppendToStream(AStream, Format(
-    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
-           '<Data ss:Type="%s">' +           // data type
-             '%s' +                          // value string
+    '    <Cell%s%s%s%s%s>' +          // colIndex, style, formula, hyperlink, merge
+           '<Data ss:Type="%s">' +    // data type
+             '%s' +                   // value string
            '</Data>' +
-           '%s' +                            // Comment <Comment>...</Comment>
+           '%s' +                     // Comment <Comment>...</Comment>
          '</Cell>' + LineEnding, [
-    styleStr, formulaStr, hyperlinkStr,
+    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     cctStr,
     valueStr,
-    commentStr
+    GetCommentStr(ACell)
   ]));
-
-  {
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s><Data ss:Type="%s">%s</Data></Cell>' + LineEnding,
-    [styleStr, formulaStr, cctStr, valueStr]));  }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteCells(AStream: TStream; AWorksheet: TsWorksheet);
@@ -215,11 +254,12 @@ begin
     for c := c1 to c2 do
     begin
       cell := AWorksheet.FindCell(r, c);
-      if cell = nil then
-        AppendToStream(AStream,
-          '    <Cell />' + LineEnding)
-      else
+      if cell <> nil then
+      begin
+        if FWorksheet.IsMerged(cell) and not FWorksheet.IsMergeBase(cell) then
+          Continue;
         WriteCellToStream(AStream, cell);
+      end;
     end;
     AppendToStream(AStream,
           '  </Row>' + LineEnding);
@@ -256,14 +296,9 @@ var
   valueStr: String;
   formulaStr: String;
   cctStr: String;
-  styleStr: STring;
   ExcelDate: TDateTime;
   nfp: TsNumFormatParams;
   fmt: PsCellFormat;
-  hyperlink: PsHyperlink;
-  hyperlinkStr: String;
-  comment: PsComment;
-  commentStr: String;
 begin
   ExcelDate := AValue;
   fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
@@ -283,37 +318,19 @@ begin
     formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
     cctStr := GetCellContentTypeStr(ACell);
   end;
-  if ACell^.FormatIndex > 0 then
-    styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
-    styleStr := '';
 
-  hyperlink := FWorksheet.FindHyperlink(ACell);
-  if Assigned(hyperlink) then
-    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
-    hyperlinkStr := '';
-
-  comment := FWorksheet.FindComment(ACell);
-  if Assigned(comment) then
-    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
-    commentStr := '';
   AppendToStream(AStream, Format(
-    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
-           '<Data ss:Type="%s">' +           // data type
-             '%s' +                          // value string
+    '    <Cell%s%s%s%s%s>' +          // colIndex, style, formula, hyperlink, merge
+           '<Data ss:Type="%s">' +    // data type
+             '%s' +                   // value string
            '</Data>' +
-           '%s' +                            // Comment <Comment>...</Comment>
+           '%s' +                     // Comment <Comment>...</Comment>
          '</Cell>' + LineEnding, [
-    styleStr, formulaStr, hyperlinkStr,
+    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     cctStr,
     valueStr,
-    commentStr
+    GetCommentStr(ACell)
   ]));
-
-  {
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s><Data ss:Type="%s">%s</Data></Cell>' + LineEnding,
-    [styleStr, formulaStr, cctStr, valueStr])
-  );               }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteError(AStream: TStream;
@@ -322,11 +339,6 @@ var
   valueStr: String;
   cctStr: String;
   formulaStr: String;
-  styleStr: String;
-  hyperlink: PsHyperlink;
-  hyperlinkStr: String;
-  comment: PsComment;
-  commentStr: String;
 begin
   valueStr := GetErrorValueStr(AValue);
 
@@ -338,40 +350,18 @@ begin
     formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
   end;
 
-  if ACell^.FormatIndex > 0 then
-    styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
-    styleStr := '';
-
-  hyperlink := FWorksheet.FindHyperlink(ACell);
-  if Assigned(hyperlink) then
-    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
-    hyperlinkStr := '';
-
-  comment := FWorksheet.FindComment(ACell);
-  if Assigned(comment) then
-//    commentStr := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>' else
-    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
-    commentStr := '';
-
   AppendToStream(AStream, Format(
-    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
-           '<Data ss:Type="%s">' +           // data type
-             '%s' +                          // value string
+    '    <Cell%s%s%s%s%s>' +        // colIndex, style, formula, hyperlink, merge
+           '<Data ss:Type="%s">' +  // data type
+             '%s' +                 // value string
            '</Data>' +
-           '%s' +                            // Comment <Comment>...</Comment>
+           '%s' +                   // Comment <Comment>...</Comment>
          '</Cell>' + LineEnding, [
-    styleStr, formulaStr, hyperlinkStr,
+    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     cctStr,
     valueStr,
-    commentStr
+    GetCommentStr(ACell)
   ]));
-
-  {
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s><Data ss:Type="%s">%s</Data></Cell>' + LineEnding,
-    [styleStr, formulaStr, cctStr, valueStr])
-  );
-  }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteLabel(AStream: TStream; const ARow,
@@ -380,13 +370,8 @@ var
   valueStr: String;
   cctStr: String;
   formulaStr: String;
-  styleStr: String;
   xmlnsStr: String;
   dataTagStr: String;
-  comment: PsComment;
-  commentStr: String;
-  hyperlink: PsHyperlink;
-  hyperlinkStr: String;
 begin
   if Length(ACell^.RichTextParams) > 0 then
   begin
@@ -395,7 +380,7 @@ begin
       FWorksheet.ReadCellFont(ACell),
       AValue,
       ACell^.RichTextParams,
-      valueStr,      // html-formatted rich text
+      valueStr,             // html-formatted rich text
       'html:', tcProperCase
     );
     xmlnsStr := ' xmlns="http://www.w3.org/TR/REC-html40"';
@@ -419,33 +404,18 @@ begin
     formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
   end;
 
-  if ACell^.FormatIndex > 0 then
-    styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
-    styleStr := '';
-
-  hyperlink := FWorksheet.FindHyperlink(ACell);
-  if Assigned(hyperlink) then
-    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
-    hyperlinkStr := '';
-
-  comment := FWorksheet.FindComment(ACell);
-  if Assigned(comment) then
-//    commentStr := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>' else
-    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
-    commentStr := '';
-
   AppendToStream(AStream, Format(
-    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
-           '<%sData ss:Type="%s"%s>'+        // "ss:", data type, "xmlns=.."
-             '%s' +                          // value string
-           '</%sData>' +                     // "ss:"
-           '%s' +                            // Comment
+    '    <Cell%s%s%s%s%s>' +           // colIndex, style, formula, hyperlink, merge
+           '<%sData ss:Type="%s"%s>'+  // "ss:", data type, "xmlns=.."
+             '%s' +                    // value string
+           '</%sData>' +               // "ss:"
+           '%s' +                      // Comment
          '</Cell>' + LineEnding, [
-    styleStr, formulaStr, hyperlinkStr,
+    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     dataTagStr, cctStr, xmlnsStr,
     valueStr,
     dataTagStr,
-    commentStr
+    GetCommentStr(ACell)
   ]));
 end;
 
@@ -454,11 +424,6 @@ procedure TsSpreadExcelXMLWriter.WriteNumber(AStream: TStream; const ARow, ACol:
 var
   formulaStr: String;
   cctStr: String;
-  styleStr: String;
-  hyperlink: PsHyperlink;
-  hyperlinkStr: String;
-  comment: PsComment;
-  commentStr: String;
 begin
   cctStr := 'Number';
   if HasFormula(ACell) then
@@ -466,74 +431,22 @@ begin
     cctStr := GetCellContentTypeStr(ACell);
     formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
   end;
-  if ACell^.FormatIndex > 0 then
-    styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
-    styleStr := '';
-
-  hyperlink := FWorksheet.FindHyperlink(ACell);
-  if Assigned(hyperlink) then
-    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
-    hyperlinkStr := '';
-
-  comment := FWorksheet.FindComment(ACell);
-  if Assigned(comment) then
-    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
-    commentStr := '';
 
   AppendToStream(AStream, Format(
-    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
-           '<Data ss:Type="%s">' +           // data type
-             '%g' +                          // value
+    '    <Cell%s%s%s%s%s>' +        // colIndex, style, formula, hyperlink, merge
+           '<Data ss:Type="%s">' +  // data type
+             '%g' +                 // value
            '</Data>' +
-           '%s' +                            // Comment <Comment>...</Comment>
+           '%s' +                   // Comment <Comment>...</Comment>
          '</Cell>' + LineEnding, [
-    styleStr, formulaStr, hyperlinkStr,
+    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     cctStr,
     AValue,
-    commentStr
+    GetCommentStr(ACell)
   ]));
-                                {
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s><Data ss:Type="%s">%g</Data></Cell>' + LineEnding,
-    [styleStr, formulaStr, cctStr, AValue], FPointSeparatorSettings)
-  );                             }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteStyle(AStream: TStream; AIndex: Integer);
-const
-  { TsFillStyle = (
-    fsNoFill, fsSolidFill,
-    fsGray75, fsGray50, fsGray25, fsGray12, fsGray6,
-    fsStripeHor, fsStripeVert, fsStripeDiagUp, fsStripeDiagDown,
-    fsThinStripeHor, fsThinStripeVert, fsThinStripeDiagUp, fsThinStripeDiagDown,
-    fsHatchDiag, fsThinHatchDiag, fsThickHatchDiag, fsThinHatchHor) }
-  FILL_NAMES: array[TsFillStyle] of string = (
-    '', 'Solid',
-    'Gray75', 'Gray50', 'Gray25', 'Gray12', 'Gray0625',
-    'HorzStripe', 'VertStripe', 'DiagStripe', 'ReverseDiagStripe',
-    'ThinHorzStripe', 'ThinVertStripe', 'ThinDiagStripe', 'ThinReverseDiagStripe',
-    'DiagCross', 'ThinDiagCross', 'ThickDiagCross', 'ThinHorzCross'
-  );
-
-  {TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth, cbDiagUp, cbDiagDown); }
-  BORDER_NAMES: array[TsCellBorder] of string = (
-    'Top', 'Left', 'Right', 'Bottom', 'DiagonalRight', 'DiagonalLeft'
-  );
-
-  { TsLineStyle = (
-    lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair,
-    lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot,
-    lsSlantDashDot) }
-  LINE_STYLES: array[TsLineStyle] of string = (
-    'Continuous', 'Continuous', 'Dash', 'Dot', 'Continuous', 'Double', 'Continuous',
-    'Dash', 'DashDot', 'DashDot', 'DashDotDot', 'DashDotDot',
-    'SlantDashDot'
-  );
-  LINE_WIDTHS: array[TsLineStyle] of Integer = (
-    1, 2, 1, 1, 3, 3, 0,
-    2, 1, 2, 1, 2,
-    2
-  );
 var
   fmt: PsCellFormat;
   deffnt, fnt: TsFont;
