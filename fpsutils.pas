@@ -80,6 +80,9 @@ function GetColString(AColIndex: Integer): String;
 
 function GetCellString(ARow,ACol: Cardinal;
   AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
+function GetCellString_R1C1(ARow, ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
+  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String;
+
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 function GetCellRangeString(ARange: TsCellRange;
@@ -716,6 +719,46 @@ begin
     RELCHAR[rfRelRow in AFlags], ARow+1
   ]);
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Calculates a cell address string in R1C1 notation from zero-based column and
+  row indexes and the relative address state flags.
+
+  @param   ARow        Zero-based row index
+  @param   ACol        Zero-based column index
+  @param   AFlags      An optional set containing an entry for column and row
+                       if these addresses are relative. By default, relative
+                       addresses are assumed.
+  @param   @ARefRow    Zero-based row index of the reference cell in case of
+                       relative address.
+  @param   @ARefCol    Zero-based column index of the reference cell in case of
+                       relative address.
+  @return  Excel type of cell address in R1C1 notation.
+-------------------------------------------------------------------------------}
+function GetCellString_R1C1(ARow, ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
+  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String;
+var
+  delta: LongInt;
+begin
+  if rfRelRow in AFlags then
+  begin
+    delta := LongInt(ARow) - LongInt(ARefRow);
+    if delta = 0 then
+      Result := 'R' else
+      Result := 'R[' + IntToStr(delta) + ']';
+  end else
+    Result := 'R' + IntToStr(ARow+1);
+
+  if rfRelCol in AFlags then
+  begin
+    delta := LongInt(ACol) - LongInt(ARefCol);
+    if delta = 0 then
+      Result := Result + 'C' else
+      Result := Result + 'C[' + IntToStr(delta) + ']';
+  end else
+    Result := Result + 'C' + IntToStr(ACol+1);
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Calculates a cell range address string from zero-based column and row indexes

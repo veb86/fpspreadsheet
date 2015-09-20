@@ -36,7 +36,7 @@ begin
 
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.SetDefaultFont('Calibri', 9);
+  MyWorkbook.SetDefaultFont('Calibri', 10);
   MyWorkbook.FormatSettings.CurrencyFormat := 2;
   MyWorkbook.FormatSettings.NegCurrFormat := 14;
   MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving];
@@ -138,19 +138,7 @@ begin
   MyWorksheet.WriteText(8, 3, 'Colors...');
   MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
   MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
-//  MyWorksheet.WriteComment(8, 3, 'This is font "Courier New", Size 12.');
-
-                                         {}
-    {
-  // Uncomment this to test large XLS files
-  for i := 50 to 1000 do
-  begin
-//    MyWorksheet.WriteUTF8Text(i, 0, ParamStr(0));
-//    MyWorksheet.WriteUTF8Text(i, 1, ParamStr(0));
-//    MyWorksheet.WriteUTF8Text(i, 2, ParamStr(0));
-    MyWorksheet.WriteUTF8Text(i, 3, ParamStr(0));
-  end;
-     }
+  MyWorksheet.WriteComment(8, 3, 'This is font "Courier New", Size 12.');
 
   // Write the string formula E1 = A1 + B1 ...
   MyWorksheet.WriteFormula(0, 4, 'A1+B1');

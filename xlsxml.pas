@@ -1,15 +1,15 @@
-{@@ ----------------------------------------------------------------------------
-  Unit: xlsxml
+{-------------------------------------------------------------------------------
+Unit     : xlsxml
 
-  implements a reader and writer for the SpreadsheetXML format.
-  This document was introduced by Microsoft for Excel XP and 2003.
+Implements a reader and writer for the SpreadsheetXML format.
+This document was introduced by Microsoft for Excel XP and 2003.
 
-  REFERENCE: https://msdn.microsoft.com/en-us/library/aa140066%28v=office.15%29.aspx
+REFERENCE: https://msdn.microsoft.com/en-us/library/aa140066%28v=office.15%29.aspx
 
-  AUTHOR   : Werner Pamler
+AUTHOR   : Werner Pamler
 
-  LICENSE  : See the file COPYING.modifiedLGPL.txt, included in the Lazarus
-             distribution, for details about the license.
+LICENSE  : For details about the license, see the file
+           COPYING.modifiedLGPL.txt included in the Lazarus distribution.
 -------------------------------------------------------------------------------}
 
 unit xlsxml;
@@ -34,6 +34,7 @@ type
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
     function GetCommentStr(ACell: PCell): String;
+    function GetFormulaStr(ACell: PCell): String;
     function GetHyperlinkStr(ACell: PCell): String;
     function GetIndexStr(AIndex: Integer): String;
     function GetMergeStr(ACell: PCell): String;
@@ -180,6 +181,16 @@ begin
   //  Result := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>':
 end;
 
+function TsSpreadExcelXMLWriter.GetFormulaStr(ACell: PCell): String;
+begin
+  if HasFormula(ACell) then
+  begin
+    Result := UTF8TextToXMLText(FWorksheet.ConvertFormulaDialect(ACell, fdExcelR1C1));
+    Result := ' ss:Formula="=' + Result + '"';
+  end else
+    Result := '';
+end;
+
 function TsSpreadExcelXMLWriter.GetHyperlinkStr(ACell: PCell): String;
 var
   hyperlink: PsHyperlink;
@@ -230,20 +241,7 @@ end;
 
 procedure TsSpreadExcelXMLWriter.WriteBool(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: boolean; ACell: PCell);
-var
-  valueStr: String;
-  formulaStr: String;
-  cctStr: String;
 begin
-  valueStr := StrUtils.IfThen(AValue, '1', '0');
-  cctStr := 'Boolean';
-  formulaStr := '';
-  if HasFormula(ACell) then
-  begin
-    formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
-    cctStr := GetCellContentTypeStr(ACell);
-  end;
-
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' +         // colIndex, style, formula, hyperlink, merge
       '<Data ss:Type="%s">' +    // data type
@@ -251,9 +249,9 @@ begin
       '</Data>' +
       '%s' +                     // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
-    cctStr,
-    valueStr,
+    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Boolean'),
+    StrUtils.IfThen(AValue, '1', '0'),
     GetCommentStr(ACell)
   ]));
 end;
@@ -268,8 +266,12 @@ begin
   c1 := 0;
   r2 := AWorksheet.GetLastRowIndex;
   c2 := AWorksheet.GetLastColIndex;
-  AppendToStream(AStream, TABLE_INDENT +
-    '<Table>' + LF);
+  AppendToStream(AStream, TABLE_INDENT + Format(
+    '<Table ss:ExpandedColumnCount="%d" ss:ExpandedRowCount="%d" ' +
+      'x:FullColumns="1" x:FullRows="1">' + LF, [
+      AWorksheet.GetLastColIndex + 1, AWorksheet.GetLastRowIndex + 1
+    ]));
+
   for c := c1 to c2 do
     AppendToStream(AStream, COL_INDENT +
       '<Column ss:Width="80" />' + LF);
@@ -321,8 +323,6 @@ procedure TsSpreadExcelXMLWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var
   valueStr: String;
-  formulaStr: String;
-  cctStr: String;
   ExcelDate: TDateTime;
   nfp: TsNumFormatParams;
   fmt: PsCellFormat;
@@ -341,14 +341,6 @@ begin
   end;
   valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', ExcelDate);
 
-  cctStr := 'DateTime';
-  formulaStr := '';
-  if HasFormula(ACell) then
-  begin
-    formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
-    cctStr := GetCellContentTypeStr(ACell);
-  end;
-
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge
       '<Data ss:Type="%s">' +                // data type
@@ -356,8 +348,8 @@ begin
       '</Data>' + LF + CELL_INDENT +
       '%s' +                                 // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
-    cctStr,
+    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'DateTime'),
     valueStr,
     GetCommentStr(ACell)
   ]));
@@ -365,21 +357,7 @@ end;
 
 procedure TsSpreadExcelXMLWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
-var
-  valueStr: String;
-  cctStr: String;
-  formulaStr: String;
 begin
-  valueStr := GetErrorValueStr(AValue);
-
-  formulaStr := '';
-  cctStr := 'Error';
-  if HasFormula(ACell) then
-  begin
-    cctStr := GetCellContentTypeStr(ACell);
-    formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
-  end;
-
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge
       '<Data ss:Type="%s">' +                // data type
@@ -387,9 +365,9 @@ begin
       '</Data>' + LF + CELL_INDENT +
       '%s' +                                 // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
-    cctStr,
-    valueStr,
+    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Error'),
+    GetErrorValueStr(AValue),
     GetCommentStr(ACell)
   ]));
 end;
@@ -415,7 +393,6 @@ procedure TsSpreadExcelXMLWriter.WriteLabel(AStream: TStream; const ARow,
 var
   valueStr: String;
   cctStr: String;
-  formulaStr: String;
   xmlnsStr: String;
   dataTagStr: String;
 begin
@@ -445,10 +422,8 @@ begin
 
   cctStr := 'String';
   if HasFormula(ACell) then
-  begin
-    cctStr := GetCellContentTypeStr(ACell);
-    formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
-  end;
+    cctStr := GetCellContentTypeStr(ACell) else
+    cctStr := 'String';
 
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge
@@ -457,7 +432,7 @@ begin
       '</%sData>' + LF + CELL_INDENT +       // "ss:"
       '%s' +                                 // Comment
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
     dataTagStr, cctStr, xmlnsStr,
     valueStr,
     dataTagStr,
@@ -467,17 +442,7 @@ end;
 
 procedure TsSpreadExcelXMLWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: double; ACell: PCell);
-var
-  formulaStr: String;
-  cctStr: String;
 begin
-  cctStr := 'Number';
-  if HasFormula(ACell) then
-  begin
-    cctStr := GetCellContentTypeStr(ACell);
-    formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
-  end;
-
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT +  // colIndex, style, formula, hyperlink, merge
       '<Data ss:Type="%s">' +                 // data type
@@ -485,11 +450,11 @@ begin
       '</Data>' + LF + CELL_INDENT +
       '%s' +                                  // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
-    cctStr,
+    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Number'),
     AValue,
-    GetCommentStr(ACell)
-  ]));
+    GetCommentStr(ACell)], FPointSeparatorSettings)
+  );
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteStyle(AStream: TStream; AIndex: Integer);
@@ -596,7 +561,7 @@ begin
     begin
       nfp := FWorkbook.GetNumberFormat(fmt^.NumberFormatIndex);
       AppendToStream(AStream, Format(INDENT3 +
-        '<NumberFormat ss:Format="%s"/>' + LF, [nfp.NumFormatStr]));
+        '<NumberFormat ss:Format="%s"/>' + LF, [UTF8TextToXMLText(nfp.NumFormatStr)]));
     end;
 
     // Background
@@ -608,7 +573,7 @@ begin
         s := s + 'ss:PatternColor="' + ColorToHTMLColorStr(fill.FgColor) + '" ';
       s := s + 'ss:Pattern="' + FILL_NAMES[fill.Style] + '"';
       AppendToStream(AStream, INDENT3 +
-        '<Interior ' + s + '/>')
+        '<Interior ' + s + '/>' + LF)
     end;
 
     // Borders

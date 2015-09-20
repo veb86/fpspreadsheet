@@ -375,6 +375,7 @@ type
     function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;
     procedure CalcFormula(ACell: PCell);
     procedure CalcFormulas;
+    function ConvertFormulaDialect(ACell: PCell; ADialect: TsFormulaDialect): String;
     function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
     function GetCalcState(ACell: PCell): TsCalcState;
     procedure SetCalcState(ACell: PCell; AValue: TsCalcState);
@@ -2673,6 +2674,26 @@ begin
       end;
   end else
     Result := False;
+end;
+
+function TsWorksheet.ConvertFormulaDialect(ACell: PCell;
+  ADialect: TsFormulaDialect): String;
+var
+  parser: TsSpreadsheetParser;
+begin
+  if ACell^.Formulavalue <> '' then
+  begin
+    parser := TsSpreadsheetParser.Create(self);
+    try
+      parser.Expression := ACell^.FormulaValue;
+      parser.Dialect := ADialect;
+      parser.PrepareCopyMode(ACell, ACell);
+      Result := parser.Expression;
+    finally
+      parser.Free;
+    end;
+  end else
+    Result := '';
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -1955,12 +1955,12 @@ begin
       p := pos('=', formula);
       Delete(formula, 1, p);
     end;
-    // ... convert to Excel dialect used by fps by defailt
+    // ... convert to Excel "A1" dialect used by fps by defailt
     parser := TsSpreadsheetParser.Create(FWorksheet);
     try
       parser.Dialect := fdOpenDocument;
       parser.LocalizedExpression[FPointSeparatorSettings] := formula;
-      parser.Dialect := fdExcel;
+      parser.Dialect := fdExcelA1;
       formula := parser.Expression;
     finally
       parser.Free;

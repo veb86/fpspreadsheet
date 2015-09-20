@@ -143,6 +143,9 @@ type
       Simplifies the task of format writers which need RPN }
   TsRPNFormula = array of TsFormulaElement;
 
+  {@@ Formula dialect }
+  TsFormulaDialect = (fdExcelA1, fdExcelR1C1, fdOpenDocument);
+
   {@@ Describes the <b>type of content</b> in a cell of a TsWorksheet }
   TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String,
     cctDateTime, cctBool, cctError);

@@ -80,8 +80,6 @@ type
   TsExpressionParser = class;
   TsBuiltInExpressionManager = class;
 
-  TsFormulaDialect = (fdExcel, fdOpenDocument);
-
   TsResultType = (rtEmpty, rtBoolean, rtInteger, rtFloat, rtDateTime, rtString,
     rtCell, rtCellRange, rtHyperlink, rtError, rtMissingArg, rtAny);
   TsResultTypes = set of TsResultType;
@@ -1222,7 +1220,7 @@ end;
 constructor TsExpressionParser.Create(AWorksheet: TsWorksheet);
 begin
   inherited Create;
-  FDialect := fdExcel;
+  FDialect := fdExcelA1;
   FWorksheet := AWorksheet;
   FIdentifiers := TsExprIdentifierDefs.Create(TsExprIdentifierDef);
   FIdentifiers.FParser := Self;
@@ -3555,9 +3553,16 @@ end;
 
 function TsCellExprNode.AsString: string;
 begin
+  case FParser.Dialect of
+    fdExcelA1      : Result := GetCellString(GetRow, GetCol, FFlags);
+    fdExcelR1C1    : Result := GetCellString_R1C1(GetRow, GetCol, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
+    fdOpenDocument : Result := '[.' + GetCellString(GetRow, GetCol, FFlags) + ']';
+  end;
+  {
   Result := GetCellString(GetRow, GetCol, FFlags);
   if FParser.Dialect = fdOpenDocument then
     Result := '[.' + Result + ']';
+  }
 end;
 
 procedure TsCellExprNode.Check;
