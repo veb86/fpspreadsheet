@@ -104,14 +104,39 @@ procedure TsSpreadExcelXMLWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 var
   styleStr: String;
+  hyperlink: PsHyperlink;
+  hyperlinkStr: String;
+  comment: PsComment;
+  commentStr: String;
 begin
   if ACell^.FormatIndex > 0 then
     styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
     styleStr := '';
+
+  hyperlink := FWorksheet.FindHyperlink(ACell);
+  if Assigned(hyperlink) then
+    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
+    hyperlinkStr := '';
+
+  comment := FWorksheet.FindComment(ACell);
+  if Assigned(comment) then
+//    commentStr := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>' else
+    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
+    commentStr := '';
+
+  AppendToStream(AStream, Format(
+    '    <Cell%s%s>' +                     // style, hyperlink
+           '%s' +                            // Comment <Comment>...</Comment>
+         '</Cell>' + LineEnding, [
+    styleStr, hyperlinkStr,
+    commentStr
+  ]));
+
+  {
   AppendToStream(AStream, Format(
     '    <Cell%s />' + LineEnding,
     [styleStr])
-  );
+  );       }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteBool(AStream: TStream;
@@ -121,6 +146,10 @@ var
   formulaStr: String;
   cctStr: String;
   stylestr: String;
+  hyperlink: PsHyperlink;
+  hyperlinkStr: String;
+  comment: PsComment;
+  commentStr: String;
 begin
   valueStr := StrUtils.IfThen(AValue, '1', '0');
   cctStr := 'Boolean';
@@ -134,9 +163,33 @@ begin
     styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
     styleStr := '';
 
+  hyperlink := FWorksheet.FindHyperlink(ACell);
+  if Assigned(hyperlink) then
+    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
+    hyperlinkStr := '';
+
+  comment := FWorksheet.FindComment(ACell);
+  if Assigned(comment) then
+    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
+    commentStr := '';
+
+  AppendToStream(AStream, Format(
+    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
+           '<Data ss:Type="%s">' +           // data type
+             '%s' +                          // value string
+           '</Data>' +
+           '%s' +                            // Comment <Comment>...</Comment>
+         '</Cell>' + LineEnding, [
+    styleStr, formulaStr, hyperlinkStr,
+    cctStr,
+    valueStr,
+    commentStr
+  ]));
+
+  {
   AppendToStream(AStream, Format(
     '    <Cell%s%s><Data ss:Type="%s">%s</Data></Cell>' + LineEnding,
-    [styleStr, formulaStr, cctStr, valueStr]));
+    [styleStr, formulaStr, cctStr, valueStr]));  }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteCells(AStream: TStream; AWorksheet: TsWorksheet);
@@ -207,6 +260,10 @@ var
   ExcelDate: TDateTime;
   nfp: TsNumFormatParams;
   fmt: PsCellFormat;
+  hyperlink: PsHyperlink;
+  hyperlinkStr: String;
+  comment: PsComment;
+  commentStr: String;
 begin
   ExcelDate := AValue;
   fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
@@ -230,10 +287,33 @@ begin
     styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
     styleStr := '';
 
+  hyperlink := FWorksheet.FindHyperlink(ACell);
+  if Assigned(hyperlink) then
+    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
+    hyperlinkStr := '';
+
+  comment := FWorksheet.FindComment(ACell);
+  if Assigned(comment) then
+    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
+    commentStr := '';
+  AppendToStream(AStream, Format(
+    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
+           '<Data ss:Type="%s">' +           // data type
+             '%s' +                          // value string
+           '</Data>' +
+           '%s' +                            // Comment <Comment>...</Comment>
+         '</Cell>' + LineEnding, [
+    styleStr, formulaStr, hyperlinkStr,
+    cctStr,
+    valueStr,
+    commentStr
+  ]));
+
+  {
   AppendToStream(AStream, Format(
     '    <Cell%s%s><Data ss:Type="%s">%s</Data></Cell>' + LineEnding,
     [styleStr, formulaStr, cctStr, valueStr])
-  );
+  );               }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteError(AStream: TStream;
@@ -243,8 +323,13 @@ var
   cctStr: String;
   formulaStr: String;
   styleStr: String;
+  hyperlink: PsHyperlink;
+  hyperlinkStr: String;
+  comment: PsComment;
+  commentStr: String;
 begin
   valueStr := GetErrorValueStr(AValue);
+
   formulaStr := '';
   cctStr := 'Error';
   if HasFormula(ACell) then
@@ -252,14 +337,41 @@ begin
     cctStr := GetCellContentTypeStr(ACell);
     formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
   end;
+
   if ACell^.FormatIndex > 0 then
     styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
     styleStr := '';
 
+  hyperlink := FWorksheet.FindHyperlink(ACell);
+  if Assigned(hyperlink) then
+    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
+    hyperlinkStr := '';
+
+  comment := FWorksheet.FindComment(ACell);
+  if Assigned(comment) then
+//    commentStr := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>' else
+    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
+    commentStr := '';
+
+  AppendToStream(AStream, Format(
+    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
+           '<Data ss:Type="%s">' +           // data type
+             '%s' +                          // value string
+           '</Data>' +
+           '%s' +                            // Comment <Comment>...</Comment>
+         '</Cell>' + LineEnding, [
+    styleStr, formulaStr, hyperlinkStr,
+    cctStr,
+    valueStr,
+    commentStr
+  ]));
+
+  {
   AppendToStream(AStream, Format(
     '    <Cell%s%s><Data ss:Type="%s">%s</Data></Cell>' + LineEnding,
     [styleStr, formulaStr, cctStr, valueStr])
   );
+  }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteLabel(AStream: TStream; const ARow,
@@ -269,10 +381,12 @@ var
   cctStr: String;
   formulaStr: String;
   styleStr: String;
-  xmlns: String;
+  xmlnsStr: String;
   dataTagStr: String;
   comment: PsComment;
   commentStr: String;
+  hyperlink: PsHyperlink;
+  hyperlinkStr: String;
 begin
   if Length(ACell^.RichTextParams) > 0 then
   begin
@@ -284,7 +398,7 @@ begin
       valueStr,      // html-formatted rich text
       'html:', tcProperCase
     );
-    xmlns := ' xmlns="http://www.w3.org/TR/REC-html40"';
+    xmlnsStr := ' xmlns="http://www.w3.org/TR/REC-html40"';
     dataTagStr := 'ss:';
   end else
   begin
@@ -294,7 +408,7 @@ begin
         rsInvalidCharacterInCell, [
         GetCellString(ARow, ACol)
       ]);
-    xmlns := '';
+    xmlnsStr := '';
     dataTagStr := '';
   end;
 
@@ -309,6 +423,11 @@ begin
     styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
     styleStr := '';
 
+  hyperlink := FWorksheet.FindHyperlink(ACell);
+  if Assigned(hyperlink) then
+    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
+    hyperlinkStr := '';
+
   comment := FWorksheet.FindComment(ACell);
   if Assigned(comment) then
 //    commentStr := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>' else
@@ -316,11 +435,19 @@ begin
     commentStr := '';
 
   AppendToStream(AStream, Format(
-    '    <Cell%s%s><%sData ss:Type="%s"%s>%s</%sData>%s</Cell>' + LineEnding,
-    [styleStr, formulaStr, dataTagStr, cctStr, xmlns, valueStr, dataTagStr, commentStr])
-  );
+    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
+           '<%sData ss:Type="%s"%s>'+        // "ss:", data type, "xmlns=.."
+             '%s' +                          // value string
+           '</%sData>' +                     // "ss:"
+           '%s' +                            // Comment
+         '</Cell>' + LineEnding, [
+    styleStr, formulaStr, hyperlinkStr,
+    dataTagStr, cctStr, xmlnsStr,
+    valueStr,
+    dataTagStr,
+    commentStr
+  ]));
 end;
-
 
 procedure TsSpreadExcelXMLWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: double; ACell: PCell);
@@ -328,6 +455,10 @@ var
   formulaStr: String;
   cctStr: String;
   styleStr: String;
+  hyperlink: PsHyperlink;
+  hyperlinkStr: String;
+  comment: PsComment;
+  commentStr: String;
 begin
   cctStr := 'Number';
   if HasFormula(ACell) then
@@ -339,10 +470,33 @@ begin
     styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
     styleStr := '';
 
+  hyperlink := FWorksheet.FindHyperlink(ACell);
+  if Assigned(hyperlink) then
+    hyperlinkStr := ' ss:HRef="' + hyperlink^.Target + '"' else
+    hyperlinkStr := '';
+
+  comment := FWorksheet.FindComment(ACell);
+  if Assigned(comment) then
+    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
+    commentStr := '';
+
+  AppendToStream(AStream, Format(
+    '    <Cell%s%s%s>' +                     // style, formula, hyperlink
+           '<Data ss:Type="%s">' +           // data type
+             '%g' +                          // value
+           '</Data>' +
+           '%s' +                            // Comment <Comment>...</Comment>
+         '</Cell>' + LineEnding, [
+    styleStr, formulaStr, hyperlinkStr,
+    cctStr,
+    AValue,
+    commentStr
+  ]));
+                                {
   AppendToStream(AStream, Format(
     '    <Cell%s%s><Data ss:Type="%s">%g</Data></Cell>' + LineEnding,
     [styleStr, formulaStr, cctStr, AValue], FPointSeparatorSettings)
-  );
+  );                             }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteStyle(AStream: TStream; AIndex: Integer);
