@@ -1,3 +1,17 @@
+{@@ ----------------------------------------------------------------------------
+  Unit: xlsxml
+
+  implements a reader and writer for the SpreadsheetXML format.
+  This document was introduced by Microsoft for Excel XP and 2003.
+
+  REFERENCE: https://msdn.microsoft.com/en-us/library/aa140066%28v=office.15%29.aspx
+
+  AUTHOR   : Werner Pamler
+
+  LICENSE  : See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+             distribution, for details about the license.
+-------------------------------------------------------------------------------}
+
 unit xlsxml;
 
 {$ifdef fpc}
@@ -70,7 +84,18 @@ uses
   fpsStrings, fpsUtils, fpsStreams, fpsNumFormat, fpsHTMLUtils;
 
 const
-  FMT_OFFSET = 61;
+  FMT_OFFSET   = 61;
+  INDENT1      = '  ';
+  INDENT2      = '    ';
+  INDENT3      = '      ';
+  INDENT4      = '        ';
+  INDENT5      = '          ';
+  VALUE_INDENT = INDENT5;
+  CELL_INDENT  = INDENT4;
+  ROW_INDENT   = INDENT3;
+  COL_INDENT   = INDENT3;
+  TABLE_INDENT = INDENT2;
+  LF           = LineEnding;
 
 const
   { TsFillStyle = (
@@ -150,7 +175,7 @@ begin
   Result := '';
   comment := FWorksheet.FindComment(ACell);
   if Assigned(comment) then
-    Result := '<Comment><Data>' + comment^.Text + '</Data></Comment>';
+    Result := INDENT1 + '<Comment><Data>' + comment^.Text + '</Data></Comment>' + LF + CELL_INDENT;
   // If there will be some rich-text-like formatting in the future, use
   //  Result := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>':
 end;
@@ -194,10 +219,10 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 begin
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s%s%s>' +              // colIndex, style, hyperlink, merge
-           '%s' +                       // Comment <Comment>...</Comment>
-         '</Cell>' + LineEnding, [
+  AppendToStream(AStream, Format(CELL_INDENT +
+    '<Cell%s%s%s%s>' +              // colIndex, style, hyperlink, merge
+      '%s' +                        // Comment <Comment>...</Comment>
+    '</Cell>' + LF, [
     GetIndexStr(ACol+1), GetStyleStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
     GetCommentStr(ACell)
   ]));
@@ -219,13 +244,13 @@ begin
     cctStr := GetCellContentTypeStr(ACell);
   end;
 
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s%s%s%s>' +          // colIndex, style, formula, hyperlink, merge
-           '<Data ss:Type="%s">' +    // data type
-             '%s' +                   // value string
-           '</Data>' +
-           '%s' +                     // Comment <Comment>...</Comment>
-         '</Cell>' + LineEnding, [
+  AppendToStream(AStream, Format(CELL_INDENT +
+    '<Cell%s%s%s%s%s>' +         // colIndex, style, formula, hyperlink, merge
+      '<Data ss:Type="%s">' +    // data type
+        '%s' +                   // value string
+      '</Data>' +
+      '%s' +                     // Comment <Comment>...</Comment>
+    '</Cell>' + LF, [
     GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     cctStr,
     valueStr,
@@ -243,16 +268,16 @@ begin
   c1 := 0;
   r2 := AWorksheet.GetLastRowIndex;
   c2 := AWorksheet.GetLastColIndex;
-  AppendToStream(AStream,
-          '<Table>' + LineEnding);
+  AppendToStream(AStream, TABLE_INDENT +
+    '<Table>' + LF);
   for c := c1 to c2 do
-    AppendToStream(AStream,
-          '  <Column ss:Width="80" />' + LineEnding);
+    AppendToStream(AStream, COL_INDENT +
+      '<Column ss:Width="80" />' + LF);
 
   for r := r1 to r2 do
   begin
-    AppendToStream(AStream,
-          '  <Row>' + LineEnding);
+    AppendToStream(AStream, ROW_INDENT +
+      '<Row>' + LF);
     for c := c1 to c2 do
     begin
       cell := AWorksheet.FindCell(r, c);
@@ -263,12 +288,12 @@ begin
         WriteCellToStream(AStream, cell);
       end;
     end;
-    AppendToStream(AStream,
-          '  </Row>' + LineEnding);
+    AppendToStream(AStream, ROW_INDENT +
+      '</Row>' + LF);
   end;
 
-  AppendToStream(AStream,
-          '</Table>' + LineEnding);
+  AppendToStream(AStream, TABLE_INDENT +
+    '</Table>' + LF);
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteCellToStream(AStream: TStream; ACell: PCell);
@@ -324,13 +349,13 @@ begin
     cctStr := GetCellContentTypeStr(ACell);
   end;
 
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s%s%s%s>' +          // colIndex, style, formula, hyperlink, merge
-           '<Data ss:Type="%s">' +    // data type
-             '%s' +                   // value string
-           '</Data>' +
-           '%s' +                     // Comment <Comment>...</Comment>
-         '</Cell>' + LineEnding, [
+  AppendToStream(AStream, Format(CELL_INDENT +
+    '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge
+      '<Data ss:Type="%s">' +                // data type
+        '%s' +                               // value string
+      '</Data>' + LF + CELL_INDENT +
+      '%s' +                                 // Comment <Comment>...</Comment>
+    '</Cell>' + LF, [
     GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     cctStr,
     valueStr,
@@ -355,13 +380,13 @@ begin
     formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
   end;
 
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s%s%s%s>' +        // colIndex, style, formula, hyperlink, merge
-           '<Data ss:Type="%s">' +  // data type
-             '%s' +                 // value string
-           '</Data>' +
-           '%s' +                   // Comment <Comment>...</Comment>
-         '</Cell>' + LineEnding, [
+  AppendToStream(AStream, Format(CELL_INDENT +
+    '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge
+      '<Data ss:Type="%s">' +                // data type
+        '%s' +                               // value string
+      '</Data>' + LF + CELL_INDENT +
+      '%s' +                                 // Comment <Comment>...</Comment>
+    '</Cell>' + LF, [
     GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     cctStr,
     valueStr,
@@ -374,15 +399,15 @@ var
   datemodeStr: String;
 begin
   if FDateMode = dm1904 then
-    datemodeStr := '  <Date1904/>' + LineEnding else
+    datemodeStr := INDENT2 + '<Date1904/>' + LF else
     datemodeStr := '';
 
-  AppendToStream(AStream,
-    '<ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">' + LineEnding +
-      datemodeStr +
-      '<ProtectStructure>False</ProtectStructure>' + LineEnding +
-      '<ProtectWindows>False</ProtectWindows>' + LineEnding +
-    '</ExcelWorkbook>' + LineEnding);
+  AppendToStream(AStream, INDENT1 +
+    '<ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">' + LF +
+      datemodeStr + INDENT2 +
+      '<ProtectStructure>False</ProtectStructure>' + LF + INDENT2 +
+      '<ProtectWindows>False</ProtectWindows>' + LF + INDENT1 +
+    '</ExcelWorkbook>' + LF);
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteLabel(AStream: TStream; const ARow,
@@ -425,13 +450,13 @@ begin
     formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
   end;
 
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s%s%s%s>' +           // colIndex, style, formula, hyperlink, merge
-           '<%sData ss:Type="%s"%s>'+  // "ss:", data type, "xmlns=.."
-             '%s' +                    // value string
-           '</%sData>' +               // "ss:"
-           '%s' +                      // Comment
-         '</Cell>' + LineEnding, [
+  AppendToStream(AStream, Format(CELL_INDENT +
+    '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge
+      '<%sData ss:Type="%s"%s>'+             // "ss:", data type, "xmlns=.."
+        '%s' +                               // value string
+      '</%sData>' + LF + CELL_INDENT +       // "ss:"
+      '%s' +                                 // Comment
+    '</Cell>' + LF, [
     GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     dataTagStr, cctStr, xmlnsStr,
     valueStr,
@@ -453,13 +478,13 @@ begin
     formulaStr := Format(' ss:Formula="=%s"', [ACell^.FormulaValue]);
   end;
 
-  AppendToStream(AStream, Format(
-    '    <Cell%s%s%s%s%s>' +        // colIndex, style, formula, hyperlink, merge
-           '<Data ss:Type="%s">' +  // data type
-             '%g' +                 // value
-           '</Data>' +
-           '%s' +                   // Comment <Comment>...</Comment>
-         '</Cell>' + LineEnding, [
+  AppendToStream(AStream, Format(CELL_INDENT +
+    '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT +  // colIndex, style, formula, hyperlink, merge
+      '<Data ss:Type="%s">' +                 // data type
+        '%g' +                                // value
+      '</Data>' + LF + CELL_INDENT +
+      '%s' +                                  // Comment <Comment>...</Comment>
+    '</Cell>' + LF, [
     GetIndexStr(ACol+1), GetStyleStr(ACell), formulaStr, GetHyperlinkStr(ACell), GetMergeStr(ACell),
     cctStr,
     AValue,
@@ -480,21 +505,21 @@ begin
   deffnt := FWorkbook.GetDefaultFont;
   if AIndex = 0 then
   begin
-    AppendToStream(AStream, Format(
-      '  <Style ss:ID="Default" ss:Name="Normal">' + LineEnding +
-      '    <Aligment ss:Vertical="Bottom" />' + LineEnding +
-      '    <Borders />' + LineEnding +
-      '    <Font ss:FontName="%s" x:Family="Swiss" ss:Size="%d" ss:Color="%s" />' + LineEnding +
-      '    <Interior />' + LineEnding +
-      '    <NumberFormat />' + LineEnding +
-      '    <Protection />' + LineEnding +
-      '  </Style>' + LineEnding,
+    AppendToStream(AStream, Format(INDENT2 +
+      '<Style ss:ID="Default" ss:Name="Normal">' + LF + INDENT3 +
+        '<Aligment ss:Vertical="Bottom" />' + LF + INDENT3 +
+        '<Borders />' + LF + INDENT3 +
+        '<Font ss:FontName="%s" x:Family="Swiss" ss:Size="%d" ss:Color="%s" />' + LF + INDENT3 +
+        '<Interior />' + LF + INDENT3 +
+        '<NumberFormat />' + LF + INDENT3 +
+        '<Protection />' + LF + INDENT2 +
+      '</Style>' + LF,
       [deffnt.FontName, round(deffnt.Size), ColorToHTMLColorStr(deffnt.Color)] )
     )
   end else
   begin
-    AppendToStream(AStream, Format(
-      '  <Style ss:ID="s%d">' + LineEnding, [AIndex + FMT_OFFSET]));
+    AppendToStream(AStream, Format(INDENT2 +
+      '<Style ss:ID="s%d">' + LF, [AIndex + FMT_OFFSET]));
 
     fmt := FWorkbook.GetPointerToCellFormat(AIndex);
 
@@ -537,8 +562,8 @@ begin
       end;
 
     // Write all the alignment, text rotation and wordwrap attributes to stream
-    AppendToStream(AStream, Format(
-      '    <Alignment %s%s%s%s />' + LineEnding,
+    AppendToStream(AStream, Format(INDENT3 +
+      '<Alignment %s%s%s%s />' + LF,
       [fmtHor, fmtVert, fmtWrap, fmtRot])
     );
 
@@ -562,16 +587,16 @@ begin
       if fssStrikeout in fnt.Style then
         s := s + 'ss:StrikeThrough="1" ';
       if s <> '' then
-        AppendToStream(AStream,
-          '    <Font ' + s + '/>' + LineEnding);
+        AppendToStream(AStream, INDENT3 +
+          '<Font ' + s + '/>' + LF);
     end;
 
     // Number Format
     if (uffNumberFormat in fmt^.UsedFormattingFields) then
     begin
       nfp := FWorkbook.GetNumberFormat(fmt^.NumberFormatIndex);
-      AppendToStream(AStream, Format(
-        '    <NumberFormat ss:Format="%s"/>' + LineEnding, [nfp.NumFormatStr]));
+      AppendToStream(AStream, Format(INDENT3 +
+        '<NumberFormat ss:Format="%s"/>' + LF, [nfp.NumFormatStr]));
     end;
 
     // Background
@@ -582,8 +607,8 @@ begin
       if not (fill.Style in [fsNoFill, fsSolidFill]) then
         s := s + 'ss:PatternColor="' + ColorToHTMLColorStr(fill.FgColor) + '" ';
       s := s + 'ss:Pattern="' + FILL_NAMES[fill.Style] + '"';
-      AppendToStream(AStream,
-        '    <Interior ' + s + '/>')
+      AppendToStream(AStream, INDENT3 +
+        '<Interior ' + s + '/>')
     end;
 
     // Borders
@@ -593,22 +618,22 @@ begin
       for cb in TsCellBorder do
         if cb in fmt^.Border then begin
           cbs := fmt^.BorderStyles[cb];
-          s := s + Format('      <Border ss:Position="%s" ss:LineStyle="%s"', [
+          s := s + INDENT4 + Format('<Border ss:Position="%s" ss:LineStyle="%s"', [
             BORDER_NAMES[cb], LINE_STYLES[cbs.LineStyle]]);
           if fmt^.BorderStyles[cb].LineStyle <> lsHair then
             s := Format('%s ss:Weight="%d"', [s, LINE_WIDTHS[cbs.LineStyle]]);
           if fmt^.BorderStyles[cb].Color <> scBlack then
             s := Format('%s ss:Color="%s"', [s, ColorToHTMLColorStr(cbs.Color)]);
-          s := s + '/>' + LineEnding;
+          s := s + '/>' + LF;
         end;
       if s <> '' then
-        AppendToStream(AStream,
-          '    <Borders>' + LineEnding + s +
-          '    </Borders>' + LineEnding);
+        AppendToStream(AStream, INDENT3 +
+          '   <Borders>' + LF + s +
+          '   </Borders>' + LF);
     end;
 
-    AppendToStream(AStream,
-      '  </Style>' + LineEnding);
+    AppendToStream(AStream, INDENT2 +
+      '</Style>' + LF);
   end;
 end;
 
@@ -616,11 +641,11 @@ procedure TsSpreadExcelXMLWriter.WriteStyles(AStream: TStream);
 var
   i: Integer;
 begin
-  AppendToStream(AStream,
-    '<Styles>' + LineEnding);
+  AppendToStream(AStream, INDENT1 +
+    '<Styles>' + LF);
   for i:=0 to FWorkbook.GetNumCellFormats-1 do WriteStyle(AStream, i);
-  AppendToStream(AStream,
-    '</Styles>' + LineEnding);
+  AppendToStream(AStream, INDENT1 +
+    '</Styles>' + LF);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -654,15 +679,15 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteToStream(AStream: TStream);
 begin
   AppendToStream(AStream,
-    '<?xml version="1.0"?>' + LineEnding +
-    '<?mso-application progid="Excel.Sheet"?>' + LineEnding
+    '<?xml version="1.0"?>' + LF +
+    '<?mso-application progid="Excel.Sheet"?>' + LF
   );
   AppendToStream(AStream,
-    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"' + LineEnding +
-    ' xmlns:o="urn:schemas-microsoft-com:office:office"' + LineEnding +
-    ' xmlns:x="urn:schemas-microsoft-com:office:excel"' + LineEnding +
-    ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"' + LineEnding +
-    ' xmlns:html="http://www.w3.org/TR/REC-html40">' + LineEnding);
+    '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"' + LF +
+    '          xmlns:o="urn:schemas-microsoft-com:office:office"' + LF +
+    '          xmlns:x="urn:schemas-microsoft-com:office:excel"' + LF +
+    '          xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"' + LF +
+    '          xmlns:html="http://www.w3.org/TR/REC-html40">' + LF);
 
   WriteExcelWorkbook(AStream);
   WriteStyles(AStream);
@@ -677,11 +702,10 @@ procedure TsSpreadExcelXMLWriter.WriteWorksheet(AStream: TStream;
 begin
   FWorksheet := AWorksheet;
   AppendToStream(AStream, Format(
-    '<Worksheet ss:Name="%s">' + LineEnding, [AWorksheet.Name])
-  );
+    '  <Worksheet ss:Name="%s">' + LF, [AWorksheet.Name]) );
   WriteCells(AStream, AWorksheet);
   AppendToStream(AStream,
-    '</Worksheet>' + LineEnding
+    '  </Worksheet>' + LF
   );
 end;
 
