@@ -271,6 +271,8 @@ var
   styleStr: String;
   xmlns: String;
   dataTagStr: String;
+  comment: PsComment;
+  commentStr: String;
 begin
   if Length(ACell^.RichTextParams) > 0 then
   begin
@@ -307,9 +309,15 @@ begin
     styleStr := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]) else
     styleStr := '';
 
+  comment := FWorksheet.FindComment(ACell);
+  if Assigned(comment) then
+//    commentStr := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>' else
+    commentStr := '<Comment><Data>'+comment^.Text+'</Data></Comment>' else
+    commentStr := '';
+
   AppendToStream(AStream, Format(
-    '    <Cell%s%s><%sData ss:Type="%s"%s>%s</%sData></Cell>' + LineEnding,
-    [styleStr, formulaStr, dataTagStr, cctStr, xmlns, valueStr, dataTagStr])
+    '    <Cell%s%s><%sData ss:Type="%s"%s>%s</%sData>%s</Cell>' + LineEnding,
+    [styleStr, formulaStr, dataTagStr, cctStr, xmlns, valueStr, dataTagStr, commentStr])
   );
 end;
 
@@ -457,6 +465,14 @@ begin
         s := s + Format('ss:Size="%g" ', [fnt.Size], FPointSeparatorSettings);
       if fnt.Color <> deffnt.Color then
         s := s + Format('ss:Color="%s" ', [ColorToHTMLColorStr(fnt.Color)]);
+      if fssBold in fnt.Style then
+        s := s + 'ss:Bold="1" ';
+      if fssItalic in fnt.Style then
+        s := s + 'ss:Italic="1" ';
+      if fssUnderline in fnt.Style then
+        s := s + 'ss:Underline="Single" ';    // or "Double", not supported by fps
+      if fssStrikeout in fnt.Style then
+        s := s + 'ss:StrikeThrough="1" ';
       if s <> '' then
         AppendToStream(AStream,
           '    <Font ' + s + '/>' + LineEnding);
