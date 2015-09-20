@@ -661,9 +661,9 @@ function ConvertExcelDateTimeToDateTime(const AExcelDateNum: Double;
   ADateMode: TDateMode): TDateTime;
 begin
   // Time only:
-  if (AExcelDateNum<1) and (AExcelDateNum>=0)  then
+  if (AExcelDateNum < 1) and (AExcelDateNum >= 0)  then
   begin
-    Result:=AExcelDateNum;
+    Result := AExcelDateNum;
   end
   else
   begin
@@ -699,7 +699,7 @@ end;
 function ConvertDateTimeToExcelDateTime(const ADateTime: TDateTime;
   ADateMode: TDateMode): Double;
 begin
-  // Time only:
+  // Time only
   if (ADateTime<1) and (ADateTime>=0) then
   begin
     Result:=ADateTime;

@@ -25,9 +25,11 @@ type
     function GetMergeStr(ACell: PCell): String;
     function GetStyleStr(ACell: PCell): String;
     procedure WriteCells(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
     procedure WriteStyles(AStream: TStream);
     procedure WriteWorksheet(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteWorksheets(AStream: TStream);
 
   protected
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
@@ -302,12 +304,15 @@ var
 begin
   ExcelDate := AValue;
   fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
-  // Times have an offset by 1 day - for some unknown reason.
+  // Times have an offset of 1 day!
   if (fmt <> nil) and (uffNumberFormat in fmt^.UsedFormattingFields) then
   begin
     nfp := FWorkbook.GetNumberFormat(fmt^.NumberFormatIndex);
     if IsTimeIntervalFormat(nfp) or IsTimeFormat(nfp) then
-      ExcelDate := AValue + 1.0;
+      case FDateMode of
+        dm1900: ExcelDate := AValue + DATEMODE_1900_BASE;
+        dm1904: ExcelDate := AValue + DATEMODE_1904_BASE;
+      end;
   end;
   valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', ExcelDate);
 
@@ -362,6 +367,22 @@ begin
     valueStr,
     GetCommentStr(ACell)
   ]));
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteExcelWorkbook(AStream: TStream);
+var
+  datemodeStr: String;
+begin
+  if FDateMode = dm1904 then
+    datemodeStr := '  <Date1904/>' + LineEnding else
+    datemodeStr := '';
+
+  AppendToStream(AStream,
+    '<ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">' + LineEnding +
+      datemodeStr +
+      '<ProtectStructure>False</ProtectStructure>' + LineEnding +
+      '<ProtectWindows>False</ProtectWindows>' + LineEnding +
+    '</ExcelWorkbook>' + LineEnding);
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteLabel(AStream: TStream; const ARow,
@@ -631,8 +652,6 @@ end;
   Writes an ExcelXML document to a stream
 -------------------------------------------------------------------------------}
 procedure TsSpreadExcelXMLWriter.WriteToStream(AStream: TStream);
-var
-  i: Integer;
 begin
   AppendToStream(AStream,
     '<?xml version="1.0"?>' + LineEnding +
@@ -645,12 +664,9 @@ begin
     ' xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"' + LineEnding +
     ' xmlns:html="http://www.w3.org/TR/REC-html40">' + LineEnding);
 
+  WriteExcelWorkbook(AStream);
   WriteStyles(AStream);
-
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
-    FWorksheet := FWorkbook.GetWorksheetByIndex(i);
-    WriteWorksheet(AStream, FWorksheet);
-  end;
+  WriteWorksheets(AStream);
 
   AppendToStream(AStream,
     '</Workbook>');
@@ -659,6 +675,7 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteWorksheet(AStream: TStream;
   AWorksheet: TsWorksheet);
 begin
+  FWorksheet := AWorksheet;
   AppendToStream(AStream, Format(
     '<Worksheet ss:Name="%s">' + LineEnding, [AWorksheet.Name])
   );
@@ -666,6 +683,14 @@ begin
   AppendToStream(AStream,
     '</Worksheet>' + LineEnding
   );
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteWorksheets(AStream: TStream);
+var
+  i: Integer;
+begin
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do
+    WriteWorksheet(AStream, FWorkbook.GetWorksheetByIndex(i));
 end;
 
 
