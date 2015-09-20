@@ -36,19 +36,21 @@ type
     property Items[AIndex: Integer]: TsHTMLAttr read GetItem write SetItem; default;
   end;
 
+  TsTagCase = (tcLowercase, tcUppercase, tcProperCase);
+
 procedure HTMLToRichText(AWorkbook: TsWorkbook; AFont: TsFont;
   const AHTMLText: String; out APlainText: String;
   out ARichTextParams: TsRichTextParams);
 
 procedure RichTextToHTML(AWorkbook: TsWorkbook; AFont: TsFont;
   const APlainText: String; const ARichTextParams: TsRichTextParams;
-  out AHTMLText: String);
+  out AHTMLText: String; APrefix:String = ''; ATagCase: TsTagCase = tcLowercase);
 
 
 implementation
 
 uses
-  math, lazUtf8, fasthtmlparser, //Strings,
+  math, lazUtf8, fasthtmlparser, StrUtils, //Strings,
   fpsUtils, fpsClasses;
 
 const
@@ -936,22 +938,29 @@ type
     FRichTextParams: TsRichTextParams;
     FChangedParams: array of TsChangeFlags;
     FFonts: array of TsFont;
+    FPrefix: String;
+    FTagCase: TsTagCase;
     function FindChangedParams(AStartIndex: Integer): Integer;
     procedure GetFontsFromWorkbook;
     function GetTextOfRichTextParam(AIndex: Integer): String;
     procedure StoreChangedParams(AIndex: Integer);
   protected
+    function FixTagCase(ATag: String): String;
   public
-    constructor Create(AWorkbook: TsWorkbook; AFont: TsFont);
+    constructor Create(AWorkbook: TsWorkbook; AFont: TsFont; APrefix: String = '';
+      ATagCase: TsTagCase = tcLowercase);
     function Exec(const APlainText: String; const ARichTextParams: TsRichTextParams): String;
   end;
 
-constructor TsHTMLComposer.Create(AWorkbook: TsWorkbook; AFont: TsFont);
+constructor TsHTMLComposer.Create(AWorkbook: TsWorkbook; AFont: TsFont;
+  APrefix: String = ''; ATagCase: TsTagCase = tcLowercase);
 begin
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
   FWorkbook := AWorkbook;
   FBaseFont := AFont;
+  FPrefix := APrefix;
+  FTagCase := ATagCase;
 end;
 
 function TsHTMLComposer.Exec(const APlainText: String;
@@ -989,27 +998,29 @@ begin
     begin
       if [cfFontName, cfFontSize, cfFontColor] * FChangedparams[i] <> [] then
       begin
-        Result := Result + '<font';
+        Result := Result + '<' + FixTagCase('font');
         if cfFontName in FChangedParams[i] then
-          Result := Result + ' face="' + UnquoteStr(FFonts[i].FontName) + '"';
+          Result := Result + ' ' + FPrefix + FixTagCase('face') + '="' + UnquoteStr(FFonts[i].FontName) + '"';
         if cfFontSize in FChangedParams[i] then
-          Result := Result + ' size="' + Format('%.gpt', [FFonts[i].Size], FPointSeparatorSettings) + '"';
+          Result := Result + ' ' + FPrefix + FixTagCase('size') + '="' + Format('%.gpt', [FFonts[i].Size], FPointSeparatorSettings) + '"';
         if cfFontColor in FChangedParams[i] then
-          Result := Result + ' color="' + ColorToHTMLColorStr(FFonts[i].Color) + '"';
+          Result := Result + ' ' + FPrefix + FixTagCase('color') + '="' + ColorToHTMLColorStr(FFonts[i].Color) + '"';
         Result := Result + '>';
       end;
       if (cfBold in FChangedParams[i]) then
-        Result := Result + '<b>';
+        Result := Result + '<' + FixTagCase('b') + '>';
       if (cfItalic in FChangedParams[i]) then
-        Result := Result + '<i>';
+        Result := Result + '<' + FixTagCase('i') + '>';
       if (cfUnderline in FChangedParams[i]) then
-        Result := Result + '<u>';
+        Result := Result + '<' + FixTagCase('u') + '>';
       if (cfStrikeout in FChangedParams[i]) then
-        Result := Result + '<s>';
+        Result := Result + '<' + FixTagCase('s') + '>';
       if (cfFontPosition in FChangedParams[i]) then
       begin
-        if FFonts[i].Position = fpSuperscript then Result := Result + '<sup>';
-        if FFonts[i].Position = fpSubscript then Result := Result + '<sub>';
+        if FFonts[i].Position = fpSuperscript then
+          Result := Result + '<' + FixTagCase('sup') + '>';
+        if FFonts[i].Position = fpSubscript then
+          Result := Result + '<' + FixTagCase('sub') + '>';
       end;
     end;
     // Add the node text
@@ -1019,19 +1030,21 @@ begin
     begin
       if (cfFontPosition in FChangedParams[i]) then
       begin
-        if FFonts[i].Position = fpSubscript then Result := Result + '</sub>';
-        if FFonts[i].Position = fpSuperscript then Result := Result + '</sup>';
+        if FFonts[i].Position = fpSubscript then
+          Result := Result + '</' + FixTagCase('sub') + '>';
+        if FFonts[i].Position = fpSuperscript then
+          Result := Result + '</' + FixTagCase('sup') + '>';
       end;
       if (cfStrikeout in FChangedParams[i]) then
-        Result := Result + '</s>';
+        Result := Result + '</' + FixTagCase('s') + '>';
       if (cfUnderline in FChangedParams[i]) then
-        Result := Result + '</u>';
+        Result := Result + '</' + FixTagCase('u') + '>';
       if (cfItalic in FChangedParams[i]) then
-        Result := Result + '</i>';
+        Result := Result + '</' + FixTagCase('i') + '>';
       if (cfBold in FChangedParams[i]) then
-        Result := Result + '</b>';
+        Result := Result + '</' + FixTagCase('b') + '>';
       if [cfFontName, cfFontSize, cfFontColor] * FChangedParams[i] <> [] then
-        Result := Result + '</font>';
+        Result := Result + '</' + FixTagCase('font') + '>';
     end;
   end;
 end;
@@ -1046,6 +1059,21 @@ begin
   Result := AStartIndex - 1;
   while (Result >= 0) and (cp * FChangedParams[Result] <> cp) do
     dec(Result);
+end;
+
+function TsHTMLComposer.FixTagCase(ATag: String): String;
+begin
+  case FTagCase of
+    tcLowercase:
+      Result := Lowercase(ATag);
+    tcUppercase:
+      Result := Uppercase(ATag);
+    tcProperCase:
+      begin
+        Result := Lowercase(ATag);
+        Result[1] := UpCase(Result[1]);
+      end;
+  end;
 end;
 
 procedure TsHTMLComposer.GetFontsFromWorkbook;
@@ -1114,14 +1142,14 @@ end;
 -------------------------------------------------------------------------------}
 procedure RichTextToHTML(AWorkbook: TsWorkbook; AFont: TsFont;
   const APlainText: String; const ARichTextParams: TsRichTextParams;
-  out AHTMLText: String);
+  out AHTMLText: String; APrefix: String = ''; ATagCase: TsTagCase = tcLowercase);
 var
   composer: TsHTMLComposer;
 begin
   if Length(ARichTextParams) = 0 then
     AHTMLText := APlainText
   else begin
-    composer := TsHTMLComposer.Create(AWorkbook, AFont);
+    composer := TsHTMLComposer.Create(AWorkbook, AFont, APrefix, ATagCase);
     try
       AHTMLText := composer.Exec(APlainText, ARichTextParams);
     finally

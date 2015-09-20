@@ -60,7 +60,7 @@ implementation
 
 uses
   StrUtils, Math,
-  fpsStrings, fpsUtils, fpsStreams, fpsNumFormat;
+  fpsStrings, fpsUtils, fpsStreams, fpsNumFormat, fpsHTMLUtils;
 
 const
   FMT_OFFSET = 61;
@@ -269,15 +269,34 @@ var
   cctStr: String;
   formulaStr: String;
   styleStr: String;
+  xmlns: String;
+  dataTagStr: String;
 begin
-  valueStr := AValue;
-  if not ValidXMLText(valueStr) then
-    Workbook.AddErrorMsg(
-      rsInvalidCharacterInCell, [
-      GetCellString(ARow, ACol)
-    ]);
-  cctStr := 'String';
+  if Length(ACell^.RichTextParams) > 0 then
+  begin
+    RichTextToHTML(
+      FWorkbook,
+      FWorksheet.ReadCellFont(ACell),
+      AValue,
+      ACell^.RichTextParams,
+      valueStr,      // html-formatted rich text
+      'html:', tcProperCase
+    );
+    xmlns := ' xmlns="http://www.w3.org/TR/REC-html40"';
+    dataTagStr := 'ss:';
+  end else
+  begin
+    valueStr := AValue;
+    if not ValidXMLText(valueStr) then
+      Workbook.AddErrorMsg(
+        rsInvalidCharacterInCell, [
+        GetCellString(ARow, ACol)
+      ]);
+    xmlns := '';
+    dataTagStr := '';
+  end;
 
+  cctStr := 'String';
   if HasFormula(ACell) then
   begin
     cctStr := GetCellContentTypeStr(ACell);
@@ -289,8 +308,8 @@ begin
     styleStr := '';
 
   AppendToStream(AStream, Format(
-    '    <Cell%s%s><Data ss:Type="%s">%s</Data></Cell>' + LineEnding,
-    [styleStr, formulaStr, cctStr, valueStr])
+    '    <Cell%s%s><%sData ss:Type="%s"%s>%s</%sData></Cell>' + LineEnding,
+    [styleStr, formulaStr, dataTagStr, cctStr, xmlns, valueStr, dataTagStr])
   );
 end;
 
