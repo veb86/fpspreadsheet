@@ -261,25 +261,63 @@ var
   c, c1, c2: Cardinal;
   r, r1, r2: Cardinal;
   cell: PCell;
+  rowheightStr: String;
+  colwidthStr: String;
+  defFnt: TsFont;
+  col: PCol;
+  row: PRow;
+  cw_fact, rh_fact: Double;
 begin
+  defFnt := FWorkbook.GetDefaultFont;
+  cw_fact := defFnt.Size * 0.5;  // ColWidthFactor = Approx width of "0" character in pts
+  rh_fact := defFnt.Size;        // RowHeightFactor = Height of a single line
+
   r1 := 0;
   c1 := 0;
   r2 := AWorksheet.GetLastRowIndex;
   c2 := AWorksheet.GetLastColIndex;
   AppendToStream(AStream, TABLE_INDENT + Format(
     '<Table ss:ExpandedColumnCount="%d" ss:ExpandedRowCount="%d" ' +
-      'x:FullColumns="1" x:FullRows="1">' + LF, [
-      AWorksheet.GetLastColIndex + 1, AWorksheet.GetLastRowIndex + 1
-    ]));
+      'x:FullColumns="1" x:FullRows="1" ' +
+      'ss:DefaultColumnWidth="%.2f" ' +
+      'ss:DefaultRowHeight="%.2f">' + LF,
+      [
+      AWorksheet.GetLastColIndex + 1, AWorksheet.GetLastRowIndex + 1,
+      FWorksheet.DefaultColWidth * cw_fact,
+      (FWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * rh_fact
+      ],
+      FPointSeparatorSettings
+    ));
 
   for c := c1 to c2 do
-    AppendToStream(AStream, COL_INDENT +
-      '<Column ss:Width="80" />' + LF);
+  begin
+    col := FWorksheet.FindCol(c);
+    // column width in the worksheet is in multiples of the "0" character width.
+    // In the xml file, it is needed in pts.
+    if Assigned(col) then
+      colwidthStr := Format(' ss:Width="%0.2f"',
+        [col^.Width * cw_fact],
+        FPointSeparatorSettings)
+    else
+      colwidthStr := '';
+    AppendToStream(AStream, COL_INDENT + Format(
+      '<Column ss:Index="%d" ss:AutoFitWidth="0"%s />' + LF, [c+1, colWidthStr]));
+  end;
 
   for r := r1 to r2 do
   begin
-    AppendToStream(AStream, ROW_INDENT +
-      '<Row>' + LF);
+    row := FWorksheet.FindRow(r);
+    // Row height in the worksheet is in multiples of the default font height
+    // In the xml file, it is needed in pts.
+    if Assigned(row) then
+      rowheightStr := Format(' ss:Height="%.2f"',
+        [(row^.Height + ROW_HEIGHT_CORRECTION) * rh_fact],
+        FPointSeparatorSettings
+      )
+    else
+      rowheightStr := '';
+    AppendToStream(AStream, ROW_INDENT + Format(
+      '<Row ss:AutoFitHeight="1"%s>' + LF, [rowheightStr]));
     for c := c1 to c2 do
     begin
       cell := AWorksheet.FindCell(r, c);

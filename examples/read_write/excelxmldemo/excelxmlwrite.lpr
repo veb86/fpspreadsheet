@@ -1,10 +1,14 @@
-{
-excelxmlwrite.lpr
+{ ------------------------------------------------------------------------------
+                             excelxmlwrite.lpr
 
-Demonstrates how to write an Excel XP/2003 xml file using the fpspreadsheet library
+  Demonstrates how to write an Excel XP/2003 xml file using the fpspreadsheet
+  library
 
-AUTHORS: Werner Pamler
-}
+  AUTHORS: Werner Pamler
+
+  LICENSE  : For details about the license, see the file
+             COPYING.modifiedLGPL.txt included in the Lazarus distribution.
+-------------------------------------------------------------------------------}
 program excelxmlwrite;
 
 {$mode delphi}{$H+}
