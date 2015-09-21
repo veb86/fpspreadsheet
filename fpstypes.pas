@@ -454,17 +454,6 @@ type
   {@@ Parameters describing formatting of text ranges in cell text }
   TsRichTextParams = array of TsRichTextParam;
 
-  (*
-  {@@ Excel rich-text formatting run }
-  TsRichTextFormattingRun = packed record
-    FirstIndex: Integer;
-    FontIndex: Integer;
-  end;
-
-  {@@ Array of Excel rich-text formatting runs }
-  TsRichTextFormattingRuns = array of TsRichTextFormattingRun;
-    *)
-
   {@@ Indicates the border for a cell. If included in the CellBorders set the
       corresponding border is drawn in the style defined by the CellBorderStyle. }
   TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth, cbDiagUp, cbDiagDown);

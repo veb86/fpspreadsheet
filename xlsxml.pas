@@ -35,9 +35,14 @@ type
     FPointSeparatorSettings: TFormatSettings;
     function GetCommentStr(ACell: PCell): String;
     function GetFormulaStr(ACell: PCell): String;
+    function GetFrozenPanesStr(AWorksheet: TsWorksheet; AIndent: String): String;
     function GetHyperlinkStr(ACell: PCell): String;
     function GetIndexStr(AIndex: Integer): String;
+    function GetLayoutStr(AWorksheet: TsWorksheet): String;
     function GetMergeStr(ACell: PCell): String;
+    function GetPageFooterStr(AWorksheet: TsWorksheet): String;
+    function GetPageHeaderStr(AWorksheet: TsWorksheet): String;
+    function GetPageMarginStr(AWorksheet: TsWorksheet): String;
     function GetStyleStr(ACell: PCell): String;
     procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
@@ -87,20 +92,22 @@ uses
 
 const
   FMT_OFFSET   = 61;
+
   INDENT1      = '  ';
   INDENT2      = '    ';
   INDENT3      = '      ';
   INDENT4      = '        ';
   INDENT5      = '          ';
-  VALUE_INDENT = INDENT5;
-  CELL_INDENT  = INDENT4;
+  TABLE_INDENT = INDENT2;
   ROW_INDENT   = INDENT3;
   COL_INDENT   = INDENT3;
-  TABLE_INDENT = INDENT2;
+  CELL_INDENT  = INDENT4;
+  VALUE_INDENT = INDENT5;
+
   LF           = LineEnding;
 
 const
-  { TsFillStyle = (
+  {TsFillStyle = (
     fsNoFill, fsSolidFill,
     fsGray75, fsGray50, fsGray25, fsGray12, fsGray6,
     fsStripeHor, fsStripeVert, fsStripeDiagUp, fsStripeDiagDown,
@@ -119,7 +126,7 @@ const
     'Top', 'Left', 'Right', 'Bottom', 'DiagonalRight', 'DiagonalLeft'
   );
 
-  { TsLineStyle = (
+  {TsLineStyle = (
     lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair,
     lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot,
     lsSlantDashDot) }
@@ -192,6 +199,43 @@ begin
     Result := '';
 end;
 
+function TsSpreadExcelXMLWriter.GetFrozenPanesStr(AWorksheet: TsWorksheet;
+  AIndent: String): String;
+var
+  activePane: Integer;
+begin
+  if (soHasFrozenPanes in AWorksheet.Options) then
+  begin
+    Result := AIndent +
+        '<FreezePanes/>' + LF + AIndent +
+        '<FrozenNoSplit/>' + LF;
+
+    if FWorksheet.LeftPaneWidth > 0 then
+      Result := Result + AIndent +
+        '<SplitVertical>1</SplitVertical>' + LF + AIndent +
+        '<LeftColumnRightPane>' + IntToStr(FWorksheet.LeftPaneWidth) + '</LeftColumnRightPane>' + LF;
+
+    if FWorksheet.TopPaneHeight > 0 then
+      Result := Result + AIndent +
+        '<SplitHorizontal>1</SplitHorizontal>' + LF + AIndent +
+        '<TopRowBottomPane>' + IntToStr(FWorksheet.TopPaneHeight) + '</TopRowBottomPane>' + LF;
+
+    if (FWorksheet.LeftPaneWidth = 0) and (FWorkSheet.TopPaneHeight = 0) then
+      activePane := 3
+    else
+    if (FWorksheet.LeftPaneWidth = 0) then
+      activePane := 2
+    else
+    if (FWorksheet.TopPaneHeight = 0) then
+      activePane := 1
+    else
+      activePane := 0;
+    Result := Result + AIndent +
+      '<ActivePane>' + IntToStr(activePane) + '</ActivePane>' + LF;
+  end else
+    Result := '';
+end;
+
 function TsSpreadExcelXMLWriter.GetHyperlinkStr(ACell: PCell): String;
 var
   hyperlink: PsHyperlink;
@@ -207,6 +251,20 @@ begin
   Result := Format(' ss:Index="%d"', [AIndex]);
 end;
 
+function TsSpreadExcelXMLWriter.GetLayoutStr(AWorksheet: TsWorksheet): String;
+begin
+  Result := '';
+  if AWorksheet.PageLayout.Orientation = spoLandscape then
+    Result := Result + ' x:Orientation="Landscape"';
+  if (poHorCentered in AWorksheet.PageLayout.Options) then
+    Result := Result + ' x:CenterHorizontal="1"';
+  if (poVertCentered in AWorksheet.PageLayout.Options) then
+    Result := Result + ' x:CenterVertical="1"';
+  if (poUseStartPageNumber in AWorksheet.PageLayout.Options) then
+    Result := Result + ' x:StartPageNumber="' + IntToStr(AWorksheet.PageLayout.StartPageNumber) + '"';
+  Result := '<Layout' + Result + '/>';
+end;
+
 function TsSpreadExcelXMLWriter.GetMergeStr(ACell: PCell): String;
 var
   r1, c1, r2, c2: Cardinal;
@@ -219,6 +277,33 @@ begin
     if r2 > r1 then
       Result := Result + Format(' ss:MergeDown="%d"', [r2-r1]);
   end;
+end;
+
+function TsSpreadExcelXMLWriter.GetPageFooterStr(AWorksheet: TsWorksheet): String;
+begin
+  Result := Format('x:Margin="%g"', [mmToIn(AWorksheet.PageLayout.FooterMargin)], FPointSeparatorSettings);
+  if (AWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL] <> '') then
+    Result := Result + ' x:Data="' + UTF8TextToXMLText(AWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL], true) + '"';
+  Result := '<Footer ' + result + '/>';
+end;
+
+function TsSpreadExcelXMLWriter.GetPageHeaderStr(AWorksheet: TsWorksheet): String;
+begin
+  Result := Format('x:Margin="%g"', [mmToIn(AWorksheet.PageLayout.HeaderMargin)], FPointSeparatorSettings);
+  if (AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL] <> '') then
+    Result := Result + ' x:Data="' + UTF8TextToXMLText(AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL], true) + '"';
+  Result := '<Header ' + Result + '/>';
+end;
+
+function TsSpreadExcelXMLWriter.GetPageMarginStr(AWorksheet: TsWorksheet): String;
+begin
+  Result := Format('x:Bottom="%g" x:Left="%g" x:Right="%g" x:Top="%g"', [
+    mmToIn(AWorksheet.PageLayout.BottomMargin),
+    mmToIn(AWorksheet.PageLayout.LeftMargin),
+    mmToIn(AWorksheet.PageLayout.RightMargin),
+    mmToIn(AWorksheet.PageLayout.TopMargin)
+    ], FPointSeparatorSettings);
+  Result := '<PageMargins ' + Result + '/>';
 end;
 
 function TsSpreadExcelXMLWriter.GetStyleStr(ACell: PCell): String;
@@ -370,7 +455,7 @@ begin
   end else
   begin
     valueStr := AValue;
-    if not ValidXMLText(valueStr) then
+    if not ValidXMLText(valueStr, true, true) then
       Workbook.AddErrorMsg(
         rsInvalidCharacterInCell, [
         GetCellString(ARow, ACol)
@@ -552,8 +637,8 @@ begin
         end;
       if s <> '' then
         AppendToStream(AStream, INDENT3 +
-          '   <Borders>' + LF + s +
-          '   </Borders>' + LF);
+          '<Borders>' + LF + s + INDENT3 +
+          '</Borders>' + LF);
     end;
 
     AppendToStream(AStream, INDENT2 +
@@ -716,62 +801,63 @@ end;
 
 procedure TsSpreadExcelXMLWriter.WriteWorksheetOptions(AStream: TStream;
   AWorksheet: TsWorksheet);
-const
-  ORIENTATION_NAME: Array[TsPageOrientation] of string = ('Portrait', 'Landscape');
 var
   footerStr, headerStr: String;
-  hcenterStr, vcenterStr: String;
-  startpageStr: String;
   hideGridStr: String;
   hideHeadersStr: String;
+  frozenStr: String;
+  layoutStr: String;
+  marginStr: String;
+  selectedStr: String;
 begin
-  if (AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL] <> '') then
-    headerStr := ' x:Data="' + UTF8TextToXMLText(AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL]) + '"' else
-    headerStr := '';
+  // Orientation, some PageLayout.Options
+  layoutStr := GetLayoutStr(AWorksheet);
+  if layoutStr <> '' then layoutStr := INDENT4 + layoutStr + LF;
 
-  if (AWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL] <> '') then
-    footerStr := ' x:Data="' + UTF8TextToXMLText(AWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL]) + '"' else
-    footerStr := '';
+  // Header
+  headerStr := GetPageHeaderStr(AWorksheet);
+  if headerStr <> '' then headerStr := INDENT4 + headerStr + LF;
 
-  if (poHorCentered in AWorksheet.PageLayout.Options) then
-    hcenterStr := ' x:CenterHorizontal="1"' else
-    hcenterStr := '';
+  // Footer
+  footerStr := GetPageFooterStr(AWorksheet);
+  if footerStr <> '' then footerStr := INDENT4 + footerStr + LF;
 
-  if (poVertCentered in AWorksheet.PageLayout.Options) then
-    vcenterStr := ' x:CenterVertical="1"' else
-    vcenterStr := '';
+  // Page margins
+  marginStr := GetPageMarginStr(AWorksheet);
+  if marginStr <> '' then marginStr := INDENT4 + marginStr + LF;
 
-  if (poUseStartPageNumber in AWorksheet.PageLayout.Options) then
-    startpageStr := ' x:StartPageNumber="' + IntToStr(AWorksheet.PageLayout.StartPageNumber) + '"' else
-    startpageStr := '';
-
+  // Show/hide grid lines
   if not (soShowGridLines in AWorksheet.Options) then
     hideGridStr := INDENT3 + '<DoNotDisplayGridlines/>' + LF else
     hideGridStr := '';
 
+  // Show/hide column/row headers
   if not (soShowHeaders in AWorksheet.Options) then
     hideHeadersStr := INDENT3 + '<DoNotDisplayHeadings/>' + LF else
     hideHeadersStr := '';
 
-  AppendToStream(AStream, INDENT2 + Format(
+  if FWorkbook.ActiveWorksheet = AWorksheet then
+    selectedStr := INDENT3 + '<Selected/>' + LF else
+    selectedStr := '';
+
+  // Frozen panes
+  frozenStr := GetFrozenPanesStr(AWorksheet, INDENT3);
+
+  // Put it all together...
+  AppendToStream(AStream, INDENT2 +
     '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">' + LF + INDENT3 +
-      '<PageSetup>' + LF + INDENT4 +
-        '<Layout x:Orientation="%s"%s%s%s/>' + LF + INDENT4 +
-        '<Header x:Margin="%g"%s/>' + LF + INDENT4 +
-        '<Footer x:Margin="%g"%s/>' + LF + INDENT4 +
-        '<PageMargins x:Bottom="%g" x:Left="%g" ' +
-          'x:Right="%g" x:Top="%g"/>' + LF + INDENT3 +
+      '<PageSetup>' + LF +
+        layoutStr +
+        headerStr +
+        footerStr +
+        marginStr + INDENT3 +
       '</PageSetup>' + LF +
+      selectedStr +
+      frozenStr +
       hideGridStr +
       hideHeadersStr + INDENT2 +
-    '</WorksheetOptions>', [
-    ORIENTATION_NAME[AWorksheet.PageLayout.Orientation], hcenterStr, vcenterStr, startpageStr,      // >Layout ..
-    mmToIn(AWorksheet.PageLayout.HeaderMargin), headerStr,                                          // <Header ..
-    mmToIn(AWorksheet.PageLayout.FooterMargin), footerStr,                                          // <Footer ...
-    mmToIn(AWorksheet.PageLayout.BottomMargin), mmToIn(AWorksheet.PageLayout.LeftMargin),           // <PageMargins ..
-    mmToIn(AWorksheet.PageLayout.RightMargin), mmToIn(AWorksheet.PageLayout.TopMargin)
-    ], FPointSeparatorSettings
-  ));
+    '</WorksheetOptions>' + LF
+  );
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteWorksheets(AStream: TStream);

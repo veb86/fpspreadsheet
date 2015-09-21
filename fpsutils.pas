@@ -119,8 +119,9 @@ function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double; inline;
 function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer; inline;
 function HTMLLengthStrToPts(AValue: String; DefaultUnits: String = 'pt'): Double;
 
-function UTF8TextToXMLText(AText: ansistring): ansistring;
-function ValidXMLText(var AText: ansistring; ReplaceSpecialChars: Boolean = true): Boolean;
+function UTF8TextToXMLText(AText: ansistring; ProcessLineEndings: Boolean = false): ansistring;
+function ValidXMLText(var AText: ansistring; ReplaceSpecialChars: Boolean = true;
+  ProcessLineEndings: Boolean = false): Boolean;
 
 function ColorToHTMLColorStr(AValue: TsColor; AExcelDialect: Boolean = false): String;
 function HTMLColorStrToColor(AValue: String): TsColor;
@@ -1587,10 +1588,13 @@ end;
   Converts a string encoded in UTF8 to a string usable in XML. For this purpose,
   some characters must be translated.
 
-  @param   AText  input string encoded as UTF8
+  @param   AText               Input string encoded as UTF8
+  @param   ProcessLineEndings  If TRUE line ending characters are replaced by
+                               their HTML entities (e.g., #10 --> '&#10;'
   @return  String usable in XML with some characters replaced by the HTML codes.
 -------------------------------------------------------------------------------}
-function UTF8TextToXMLText(AText: ansistring): ansistring;
+function UTF8TextToXMLText(AText: ansistring;
+  ProcessLineEndings: Boolean = false): ansistring;
 var
   Idx: Integer;
   AppoSt:ansistring;
@@ -1620,6 +1624,8 @@ begin
       '"': Result := Result + '&quot;';
       '''':Result := Result + '&apos;';
       '%': Result := Result + '&#37;';
+      #10: if ProcessLineEndings then Result := Result + '&#10;';
+      #13: if ProcessLineEndings then Result := Result + '&#13;';
       {     this breaks multi-line labels in xlsx
       #10: begin
              Result := Result + '<br />';
@@ -1652,10 +1658,13 @@ end;
   @param  AText                String to be checked. Is replaced by valid string.
   @param  ReplaceSpecialChars  Special characters are replaced by their HTML
                                codes (e.g. '>' --> '&gt;')
+  @param  ProcessLineEndings   If TRUE line ending characters are replaced by
+                               their HTML entities.
   @return FALSE if characters < #32 were replaced, TRUE otherwise.
 -------------------------------------------------------------------------------}
 function ValidXMLText(var AText: ansistring;
-  ReplaceSpecialChars: Boolean = true): Boolean;
+  ReplaceSpecialChars: Boolean = true;
+  ProcessLineEndings: Boolean = false): Boolean;
 const
   BOX = #$E2#$8E#$95;
 var
@@ -1671,7 +1680,7 @@ begin
       Result := false;
     end;
   if ReplaceSpecialChars then
-    AText := UTF8TextToXMLText(AText);
+    AText := UTF8TextToXMLText(AText, ProcessLineEndings);
 end;
 
 
