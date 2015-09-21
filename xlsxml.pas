@@ -722,6 +722,8 @@ var
   footerStr, headerStr: String;
   hcenterStr, vcenterStr: String;
   startpageStr: String;
+  hideGridStr: String;
+  hideHeadersStr: String;
 begin
   if (AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL] <> '') then
     headerStr := ' x:Data="' + UTF8TextToXMLText(AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL]) + '"' else
@@ -743,6 +745,13 @@ begin
     startpageStr := ' x:StartPageNumber="' + IntToStr(AWorksheet.PageLayout.StartPageNumber) + '"' else
     startpageStr := '';
 
+  if not (soShowGridLines in AWorksheet.Options) then
+    hideGridStr := INDENT3 + '<DoNotDisplayGridlines/>' + LF else
+    hideGridStr := '';
+
+  if not (soShowHeaders in AWorksheet.Options) then
+    hideHeadersStr := INDENT3 + '<DoNotDisplayHeadings/>' + LF else
+    hideHeadersStr := '';
 
   AppendToStream(AStream, INDENT2 + Format(
     '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">' + LF + INDENT3 +
@@ -752,7 +761,9 @@ begin
         '<Footer x:Margin="%g"%s/>' + LF + INDENT4 +
         '<PageMargins x:Bottom="%g" x:Left="%g" ' +
           'x:Right="%g" x:Top="%g"/>' + LF + INDENT3 +
-      '</PageSetup>' + LF + INDENT2 +
+      '</PageSetup>' + LF +
+      hideGridStr +
+      hideHeadersStr + INDENT2 +
     '</WorksheetOptions>', [
     ORIENTATION_NAME[AWorksheet.PageLayout.Orientation], hcenterStr, vcenterStr, startpageStr,      // >Layout ..
     mmToIn(AWorksheet.PageLayout.HeaderMargin), headerStr,                                          // <Header ..
