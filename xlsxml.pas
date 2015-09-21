@@ -4,7 +4,7 @@ Unit     : xlsxml
 Implements a reader and writer for the SpreadsheetXML format.
 This document was introduced by Microsoft for Excel XP and 2003.
 
-REFERENCE: https://msdn.microsoft.com/en-us/library/aa140066%28v=office.15%29.aspx
+REFERENCE: http://msdn.microsoft.com/en-us/library/aa140066%28v=office.15%29.aspx
 
 AUTHOR   : Werner Pamler
 
@@ -39,11 +39,12 @@ type
     function GetIndexStr(AIndex: Integer): String;
     function GetMergeStr(ACell: PCell): String;
     function GetStyleStr(ACell: PCell): String;
-    procedure WriteCells(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
     procedure WriteStyles(AStream: TStream);
+    procedure WriteTable(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteWorksheet(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteWorksheetOptions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteWorksheets(AStream: TStream);
 
   protected
@@ -254,86 +255,6 @@ begin
     StrUtils.IfThen(AValue, '1', '0'),
     GetCommentStr(ACell)
   ]));
-end;
-
-procedure TsSpreadExcelXMLWriter.WriteCells(AStream: TStream; AWorksheet: TsWorksheet);
-var
-  c, c1, c2: Cardinal;
-  r, r1, r2: Cardinal;
-  cell: PCell;
-  rowheightStr: String;
-  colwidthStr: String;
-  defFnt: TsFont;
-  col: PCol;
-  row: PRow;
-  cw_fact, rh_fact: Double;
-begin
-  defFnt := FWorkbook.GetDefaultFont;
-  cw_fact := defFnt.Size * 0.5;  // ColWidthFactor = Approx width of "0" character in pts
-  rh_fact := defFnt.Size;        // RowHeightFactor = Height of a single line
-
-  r1 := 0;
-  c1 := 0;
-  r2 := AWorksheet.GetLastRowIndex;
-  c2 := AWorksheet.GetLastColIndex;
-  AppendToStream(AStream, TABLE_INDENT + Format(
-    '<Table ss:ExpandedColumnCount="%d" ss:ExpandedRowCount="%d" ' +
-      'x:FullColumns="1" x:FullRows="1" ' +
-      'ss:DefaultColumnWidth="%.2f" ' +
-      'ss:DefaultRowHeight="%.2f">' + LF,
-      [
-      AWorksheet.GetLastColIndex + 1, AWorksheet.GetLastRowIndex + 1,
-      FWorksheet.DefaultColWidth * cw_fact,
-      (FWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * rh_fact
-      ],
-      FPointSeparatorSettings
-    ));
-
-  for c := c1 to c2 do
-  begin
-    col := FWorksheet.FindCol(c);
-    // column width in the worksheet is in multiples of the "0" character width.
-    // In the xml file, it is needed in pts.
-    if Assigned(col) then
-      colwidthStr := Format(' ss:Width="%0.2f"',
-        [col^.Width * cw_fact],
-        FPointSeparatorSettings)
-    else
-      colwidthStr := '';
-    AppendToStream(AStream, COL_INDENT + Format(
-      '<Column ss:Index="%d" ss:AutoFitWidth="0"%s />' + LF, [c+1, colWidthStr]));
-  end;
-
-  for r := r1 to r2 do
-  begin
-    row := FWorksheet.FindRow(r);
-    // Row height in the worksheet is in multiples of the default font height
-    // In the xml file, it is needed in pts.
-    if Assigned(row) then
-      rowheightStr := Format(' ss:Height="%.2f"',
-        [(row^.Height + ROW_HEIGHT_CORRECTION) * rh_fact],
-        FPointSeparatorSettings
-      )
-    else
-      rowheightStr := '';
-    AppendToStream(AStream, ROW_INDENT + Format(
-      '<Row ss:AutoFitHeight="1"%s>' + LF, [rowheightStr]));
-    for c := c1 to c2 do
-    begin
-      cell := AWorksheet.FindCell(r, c);
-      if cell <> nil then
-      begin
-        if FWorksheet.IsMerged(cell) and not FWorksheet.IsMergeBase(cell) then
-          Continue;
-        WriteCellToStream(AStream, cell);
-      end;
-    end;
-    AppendToStream(AStream, ROW_INDENT +
-      '</Row>' + LF);
-  end;
-
-  AppendToStream(AStream, TABLE_INDENT +
-    '</Table>' + LF);
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteCellToStream(AStream: TStream; ACell: PCell);
@@ -651,6 +572,86 @@ begin
     '</Styles>' + LF);
 end;
 
+procedure TsSpreadExcelXMLWriter.WriteTable(AStream: TStream; AWorksheet: TsWorksheet);
+var
+  c, c1, c2: Cardinal;
+  r, r1, r2: Cardinal;
+  cell: PCell;
+  rowheightStr: String;
+  colwidthStr: String;
+  defFnt: TsFont;
+  col: PCol;
+  row: PRow;
+  cw_fact, rh_fact: Double;
+begin
+  defFnt := FWorkbook.GetDefaultFont;
+  cw_fact := defFnt.Size * 0.5;  // ColWidthFactor = Approx width of "0" character in pts
+  rh_fact := defFnt.Size;        // RowHeightFactor = Height of a single line
+
+  r1 := 0;
+  c1 := 0;
+  r2 := AWorksheet.GetLastRowIndex;
+  c2 := AWorksheet.GetLastColIndex;
+  AppendToStream(AStream, TABLE_INDENT + Format(
+    '<Table ss:ExpandedColumnCount="%d" ss:ExpandedRowCount="%d" ' +
+      'x:FullColumns="1" x:FullRows="1" ' +
+      'ss:DefaultColumnWidth="%.2f" ' +
+      'ss:DefaultRowHeight="%.2f">' + LF,
+      [
+      AWorksheet.GetLastColIndex + 1, AWorksheet.GetLastRowIndex + 1,
+      FWorksheet.DefaultColWidth * cw_fact,
+      (FWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * rh_fact
+      ],
+      FPointSeparatorSettings
+    ));
+
+  for c := c1 to c2 do
+  begin
+    col := FWorksheet.FindCol(c);
+    // column width in the worksheet is in multiples of the "0" character width.
+    // In the xml file, it is needed in pts.
+    if Assigned(col) then
+      colwidthStr := Format(' ss:Width="%0.2f"',
+        [col^.Width * cw_fact],
+        FPointSeparatorSettings)
+    else
+      colwidthStr := '';
+    AppendToStream(AStream, COL_INDENT + Format(
+      '<Column ss:Index="%d" ss:AutoFitWidth="0"%s />' + LF, [c+1, colWidthStr]));
+  end;
+
+  for r := r1 to r2 do
+  begin
+    row := FWorksheet.FindRow(r);
+    // Row height in the worksheet is in multiples of the default font height
+    // In the xml file, it is needed in pts.
+    if Assigned(row) then
+      rowheightStr := Format(' ss:Height="%.2f"',
+        [(row^.Height + ROW_HEIGHT_CORRECTION) * rh_fact],
+        FPointSeparatorSettings
+      )
+    else
+      rowheightStr := '';
+    AppendToStream(AStream, ROW_INDENT + Format(
+      '<Row ss:AutoFitHeight="1"%s>' + LF, [rowheightStr]));
+    for c := c1 to c2 do
+    begin
+      cell := AWorksheet.FindCell(r, c);
+      if cell <> nil then
+      begin
+        if FWorksheet.IsMerged(cell) and not FWorksheet.IsMergeBase(cell) then
+          Continue;
+        WriteCellToStream(AStream, cell);
+      end;
+    end;
+    AppendToStream(AStream, ROW_INDENT +
+      '</Row>' + LF);
+  end;
+
+  AppendToStream(AStream, TABLE_INDENT +
+    '</Table>' + LF);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Writes an ExcelXML document to the file
 -------------------------------------------------------------------------------}
@@ -706,10 +707,60 @@ begin
   FWorksheet := AWorksheet;
   AppendToStream(AStream, Format(
     '  <Worksheet ss:Name="%s">' + LF, [AWorksheet.Name]) );
-  WriteCells(AStream, AWorksheet);
+  WriteTable(AStream, AWorksheet);
+  WriteWorksheetOptions(AStream, AWorksheet);
   AppendToStream(AStream,
     '  </Worksheet>' + LF
   );
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteWorksheetOptions(AStream: TStream;
+  AWorksheet: TsWorksheet);
+const
+  ORIENTATION_NAME: Array[TsPageOrientation] of string = ('Portrait', 'Landscape');
+var
+  footerStr, headerStr: String;
+  hcenterStr, vcenterStr: String;
+  startpageStr: String;
+begin
+  if (AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL] <> '') then
+    headerStr := ' x:Data="' + UTF8TextToXMLText(AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL]) + '"' else
+    headerStr := '';
+
+  if (AWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL] <> '') then
+    footerStr := ' x:Data="' + UTF8TextToXMLText(AWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL]) + '"' else
+    footerStr := '';
+
+  if (poHorCentered in AWorksheet.PageLayout.Options) then
+    hcenterStr := ' x:CenterHorizontal="1"' else
+    hcenterStr := '';
+
+  if (poVertCentered in AWorksheet.PageLayout.Options) then
+    vcenterStr := ' x:CenterVertical="1"' else
+    vcenterStr := '';
+
+  if (poUseStartPageNumber in AWorksheet.PageLayout.Options) then
+    startpageStr := ' x:StartPageNumber="' + IntToStr(AWorksheet.PageLayout.StartPageNumber) + '"' else
+    startpageStr := '';
+
+
+  AppendToStream(AStream, INDENT2 + Format(
+    '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">' + LF + INDENT3 +
+      '<PageSetup>' + LF + INDENT4 +
+        '<Layout x:Orientation="%s"%s%s%s/>' + LF + INDENT4 +
+        '<Header x:Margin="%g"%s/>' + LF + INDENT4 +
+        '<Footer x:Margin="%g"%s/>' + LF + INDENT4 +
+        '<PageMargins x:Bottom="%g" x:Left="%g" ' +
+          'x:Right="%g" x:Top="%g"/>' + LF + INDENT3 +
+      '</PageSetup>' + LF + INDENT2 +
+    '</WorksheetOptions>', [
+    ORIENTATION_NAME[AWorksheet.PageLayout.Orientation], hcenterStr, vcenterStr, startpageStr,      // >Layout ..
+    mmToIn(AWorksheet.PageLayout.HeaderMargin), headerStr,                                          // <Header ..
+    mmToIn(AWorksheet.PageLayout.FooterMargin), footerStr,                                          // <Footer ...
+    mmToIn(AWorksheet.PageLayout.BottomMargin), mmToIn(AWorksheet.PageLayout.LeftMargin),           // <PageMargins ..
+    mmToIn(AWorksheet.PageLayout.RightMargin), mmToIn(AWorksheet.PageLayout.TopMargin)
+    ], FPointSeparatorSettings
+  ));
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteWorksheets(AStream: TStream);
