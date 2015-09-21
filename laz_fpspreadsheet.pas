@@ -14,7 +14,7 @@ uses
   fpolebasic, wikitable, fpsNumFormatParser, fpsfunc, fpsRPN, fpsStrings, 
   fpscsv, fpsCsvDocument, fpspatches, fpsTypes, xlsEscher, fpsReaderWriter, 
   fpsNumFormat, fpsclasses, fpsHeaderFooterParser, fpsPalette, fpsHTML, 
-  fpsHTMLUtils, fpsCell, fpsSearch;
+  fpsHTMLUtils, fpsCell, fpsSearch, xlsxml, xlsconst, fpsCurrency;
 
 implementation
 
