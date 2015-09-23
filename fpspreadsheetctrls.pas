@@ -467,8 +467,12 @@ procedure Register;
 implementation
 
 uses
-  Types, Math, StrUtils, TypInfo, LCLType, LCLProc, Dialogs, Forms,
+  Types, Math, StrUtils, TypInfo, LCLType, LCLProc, Dialogs, Forms, Clipbrd,
   fpsStrings, fpsUtils, fpsNumFormat, fpsHTMLUtils;
+
+var
+  cfBiff8Format: Integer = 0;
+  cfBiff5Format: Integer = 0;
 
 {@@ ----------------------------------------------------------------------------
   Registers the spreadsheet components in the Lazarus component palette,
@@ -1145,7 +1149,43 @@ var
   r,c,i: Integer;
   sel: TsCellRangeArray;
   cell: PCell;
+  stream: TStream;
 begin
+  Clipboard.Open;
+  try
+    Clipboard.Clear;
+
+    // Ensure the 'Biff8' clipboard format is registered
+    cfBiff8Format := Clipboard.FindFormatID('Biff8');
+    If cfBiff8Format = 0 Then
+      cfBiff8Format := RegisterClipboardFormat('Biff8');
+
+    // Ensure that the 'Biff5' clipboard format is registered
+    cfBiff5Format := Clipboard.FindFormatID('Biff5');
+    If cfBiff5Format = 0 Then
+      cfBiff5Format := RegisterClipboardFormat('Biff5');
+
+    stream := TMemoryStream.Create;
+    try
+      // At first write BIFF8 format
+      FWorkbook.CopyToClipboardStream(stream, sfExcel8);
+      Clipboard.AddFormat(cfBiff8Format, stream);
+      (stream as TMemoryStream).Clear;
+
+      // Then write BIFF5 format
+      FWorkbook.CopyToClipboardStream(stream, sfExcel5);
+      Clipboard.AddFormat(cfBiff5Format, stream);
+
+      // To do: HTML format, CSV format, XML format
+      // I don't know which format is written by xlsx and ods natively.
+    finally
+      stream.Free;
+    end;
+  finally
+    Clipboard.Close;
+  end;
+
+
   FCutPending := false;
 
   ClearCellClipboard;

@@ -463,6 +463,8 @@ type
     FCodePage: String;  // in a format prepared for lconvencoding.ConvertEncoding
     FFirstNumFormatIndexInFile: Integer;
     FPalette: TsPalette;
+    FClipboardMode: Boolean;
+
     procedure AddBuiltinNumFormats; override;
     function FindXFIndex(ACell: PCell): Integer; virtual;
     function FixLineEnding(const AText: String): String;
@@ -571,6 +573,7 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     procedure CheckLimitations; override;
+    procedure WriteToClipboardStream(AStream: TStream); override;
   end;
 
 procedure AddBuiltinBiffFormats(AList: TStringList;
@@ -3945,6 +3948,10 @@ begin
   AStream.WriteWord(WordToLE(w));
 end;
 
+procedure TsSpreadBIFFWriter.WriteToClipboardStream(AStream: TStream);
+begin
+  WriteToStream(AStream);
+end;
 
 procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream);
 var

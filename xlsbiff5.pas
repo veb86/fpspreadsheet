@@ -1807,7 +1807,7 @@ initialization
   Excel5Settings.CodePage := GetDefaultTextEncoding;
  {$ENDIF}
 
-  RegisterSpreadFormat(TsSpreadBIFF5Reader, TsSpreadBIFF5Writer, sfExcel5);
+  RegisterSpreadFormat(TsSpreadBIFF5Reader, TsSpreadBIFF5Writer, sfExcel5, false, true);
   MakeLEPalette(PALETTE_BIFF5);
 
 end.

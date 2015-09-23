@@ -591,6 +591,9 @@ type
   {@@ The workbook contains the worksheets and provides methods for reading from
     and writing to file.
   }
+
+  { TsWorkbook }
+
   TsWorkbook = class
   private
     { Internal data }
@@ -653,7 +656,8 @@ type
     class function GetFormatFromFileHeader(AStream: TStream;
       out SheetType: TsSpreadsheetFormat): Boolean; overload;
     function CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsBasicSpreadReader;
-    function CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsBasicSpreadWriter;
+    function CreateSpreadWriter(AFormat: TsSpreadsheetFormat;
+      AClipboardMode: Boolean = false): TsBasicSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
     procedure ReadFromFile(AFileName: string); overload;
     procedure ReadFromFileIgnoringExtension(AFileName: string);
@@ -662,7 +666,7 @@ type
       const AFormat: TsSpreadsheetFormat;
       const AOverwriteExisting: Boolean = False); overload;
     procedure WriteToFile(const AFileName: String; const AOverwriteExisting: Boolean = False); overload;
-    procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
+    procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat; AClipboardMode: Boolean = false);
 
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string;
@@ -720,6 +724,9 @@ type
     function AddNumberFormat(AFormatStr: String): Integer;
     function GetNumberFormat(AIndex: Integer): TsNumFormatParams;
     function GetNumberFormatCount: Integer;
+
+    { Clipboard }
+    procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
                       (*
     { Color handling }
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
@@ -810,6 +817,7 @@ type
   TsBasicSpreadReader = class(TsBasicSpreadReaderWriter)
   public
     { General writing methods }
+    procedure ReadFromClipboardStream(AStream: TStream); virtual; abstract;
     procedure ReadFromFile(AFileName: string); virtual; abstract;
     procedure ReadFromStream(AStream: TStream); virtual; abstract;
     procedure ReadFromStrings(AStrings: TStrings); virtual; abstract;
@@ -821,6 +829,7 @@ type
     { Helpers }
     procedure CheckLimitations; virtual;
     { General writing methods }
+    procedure WriteToClipboardStream(AStream: TStream); virtual; abstract;
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); virtual; abstract;
     procedure WriteToStream(AStream: TStream); virtual; abstract;
@@ -6618,19 +6627,23 @@ end;
   Convenience method which creates the correct writer object for a given
   spreadsheet format.
 
-  @param  AFormat  File format to be used for writing the workbook
+  @param  AFormat        File format to be used for writing the workbook
+  @param  AClipboardMode If TRUE then special data are written for usage in the
+                         clipboard
 
   @return An instance of a TsCustomSpreadWriter descendent which is able to
           write the given file format.
 -------------------------------------------------------------------------------}
-function TsWorkbook.CreateSpreadWriter(AFormat: TsSpreadsheetFormat): TsBasicSpreadWriter;
+function TsWorkbook.CreateSpreadWriter(AFormat: TsSpreadsheetFormat;
+  AClipboardMode: Boolean = false): TsBasicSpreadWriter;
 var
   i: Integer;
 begin
   Result := nil;
 
   for i := 0 to Length(GsSpreadFormats) - 1 do
-    if GsSpreadFormats[i].Format = AFormat then
+    if (GsSpreadFormats[i].Format = AFormat) and
+       (AClipboardMode or GsSpreadFormats[i].CanWriteToClipboard) then
     begin
       Result := GsSpreadFormats[i].WriterClass.Create(self);
       Break;
@@ -6890,19 +6903,23 @@ end;
 {@@ ----------------------------------------------------------------------------
   Writes the document to a stream
 
-  @param  AStream   Instance of the stream being written to
-  @param  AFormat   File format to be written.
+  @param  AStream         Instance of the stream being written to
+  @param  AFormat         File format to be written.
+  @param  AClipboardMode  Stream will be used by calling method for clipboard access
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
+procedure TsWorkbook.WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
+  AClipboardMode: Boolean = false);
 var
   AWriter: TsBasicSpreadWriter;
 begin
-  AWriter := CreateSpreadWriter(AFormat);
+  AWriter := CreateSpreadWriter(AFormat, AClipboardMode);
   try
     PrepareBeforeSaving;
     AWriter.CheckLimitations;
     FReadWriteFlag := rwfWrite;
-    AWriter.WriteToStream(AStream);
+    if AClipboardMode then
+      AWriter.WriteToClipboardStream(AStream) else
+      AWriter.WriteToStream(AStream);
   finally
     FReadWriteFlag := rwfNormal;
     AWriter.Free;
@@ -7715,6 +7732,60 @@ function TsWorkbook.GetNumberFormatCount: Integer;
 begin
   Result := FNumFormatList.Count;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the selected cells to a stream for usage in the clipboard.
+  Transfer to the clipboard has do be done by the calling routine since
+  fpspreadsheet does not "know" the system's clipboard.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.CopyToClipboardStream(AStream: TStream;
+  AFormat: TsSpreadsheetFormat);
+var
+  clipbook: TsWorkbook;
+  clipsheet: TsWorksheet;
+  sel: TsCellRange;
+  r, c: Cardinal;
+  srccell, destcell: PCell;
+begin
+  if AStream = nil then
+    exit;
+
+  if ActiveWorksheet = nil then
+    exit;
+
+  // Create workbook which will be written to clipboard stream
+  // Contains only the selected worksheet and the selected cells.
+  clipbook := TsWorkbook.Create;
+  try
+    clipsheet := clipbook.AddWorksheet(ActiveWorksheet.Name);
+    for sel in ActiveWorksheet.GetSelection do
+    begin
+      for r := sel.Row1 to sel.Row2 do
+        for c := sel.Col1 to sel.Col2 do
+        begin
+          srccell := ActiveWorksheet.FindCell(r, c);
+          if srccell <> nil then begin
+            destcell := clipsheet.AddCell(r, c);
+            clipsheet.CopyCell(srccell, destcell);
+          end;
+        end;
+    end;
+    // Select the same cells as in the source workbook.
+    clipsheet.SetSelection(ActiveWorksheet.GetSelection);
+    clipsheet.SelectCell(ActiveWorksheet.ActiveCellRow, ActiveWorksheet.ActiveCellCol);
+
+    // Write this workbook to a stream. Set the last parameter (ClipboardMode)
+    // to TRUE to use the dedicated clipboard routine.
+    clipbook.WriteToStream(AStream, AFormat, true);
+
+    // The calling routine which copies the stream to the clipboard requires
+    // the stream to be at its beginning.
+    AStream.Position := 0;
+  finally
+    clipbook.Free;
+  end;
+end;
+
                             (*
 {@@ ----------------------------------------------------------------------------
   Adds a color to the palette and returns its palette index, but only if the

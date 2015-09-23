@@ -3443,7 +3443,7 @@ end;
 initialization
 
   // Registers this reader / writer in fpSpreadsheet
-  RegisterSpreadFormat(TsSpreadBIFF8Reader, TsSpreadBIFF8Writer, sfExcel8);
+  RegisterSpreadFormat(TsSpreadBIFF8Reader, TsSpreadBIFF8Writer, sfExcel8, false, true);
 
   // Converts the palette to litte-endian
   MakeLEPalette(PALETTE_BIFF8);

@@ -141,13 +141,16 @@ type
     ReaderClass: TsSpreadReaderClass;
     WriterClass: TsSpreadWriterClass;
     Format: TsSpreadsheetFormat;
+    CanReadFromClipboard: Boolean;
+    CanWriteToClipboard: Boolean;
   end;
 
 var
   GsSpreadFormats: array of TsSpreadFormatData;
 
 procedure RegisterSpreadFormat(AReaderClass: TsSpreadReaderClass;
-  AWriterClass: TsSpreadWriterClass; AFormat: TsSpreadsheetFormat);
+  AWriterClass: TsSpreadWriterClass; AFormat: TsSpreadsheetFormat;
+  ACanReadFromClipboard: Boolean = false; ACanWriteToClipboard: Boolean = false);
 
 
 implementation
@@ -162,7 +165,9 @@ uses
 procedure RegisterSpreadFormat(
   AReaderClass: TsSpreadReaderClass;
   AWriterClass: TsSpreadWriterClass;
-  AFormat: TsSpreadsheetFormat);
+  AFormat: TsSpreadsheetFormat;
+  ACanReadFromClipboard: Boolean = false;
+  ACanWriteToClipboard: Boolean = false);
 var
   len: Integer;
 begin
@@ -172,6 +177,8 @@ begin
   GsSpreadFormats[len].ReaderClass := AReaderClass;
   GsSpreadFormats[len].WriterClass := AWriterClass;
   GsSpreadFormats[len].Format := AFormat;
+  GsSpreadFormats[len].CanReadFromClipboard := ACanReadFromClipboard;
+  GsSpreadFormats[len].CanWriteToClipboard := ACanWriteToClipboard;
 end;
 
 
