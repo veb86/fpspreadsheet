@@ -3730,6 +3730,8 @@ procedure TsSpreadBIFFWriter.WriteSELECTION(AStream: TStream;
   ASheet: TsWorksheet; APane: Byte);
 var
   activeCellRow, activeCellCol: Word;
+  i: Integer;
+  sel: TsCellRange;
 begin
   if FWorkbook.ActiveWorksheet <> nil then
   begin
@@ -3768,21 +3770,26 @@ begin
   AStream.WriteWord(WordToLE(activeCellCol));
 
   { Index into the following cell range list to the entry that contains the active cell }
-  AStream.WriteWord(WordToLE(0));   // there's only 1 item
+  i := ASheet.GetSelectionRangeIndexOfActiveCell;
+  AStream.WriteWord(WordToLE(i));
 
   { Cell range array }
 
-  { Count of items }
-  AStream.WriteWord(WordToLE(1));  // only 1 item
+  { Count of cell ranges }
+  AStream.WriteWord(WordToLE(ASheet.GetSelectionCount));
 
-  { Index to first and last row - are the same here }
-  AStream.WriteWord(WordTOLE(activeCellRow));
-  AStream.WriteWord(WordTOLE(activeCellRow));
-
-  { Index to first and last column - they are the same here again. }
-  { Note: BIFF8 writes bytes here! }
-  AStream.WriteByte(activeCellCol);
-  AStream.WriteByte(activeCellCol);
+  { Write each selected cell range }
+  for i := 0 to ASheet.GetSelectionCount-1 do
+  begin
+    sel := ASheet.GetSelection[i];
+    { Index to first and last row of this selected range }
+    AStream.WriteWord(WordToLE(sel.Row1));
+    AStream.WriteWord(WordToLE(sel.Row2));
+    { Index to first and last column - they are the same here again. }
+    { Note: Even BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns }
+    AStream.WriteByte(sel.Col1);
+    AStream.WriteByte(sel.Col2);
+  end;
 end;
 
 procedure TsSpreadBIFFWriter.WriteSelections(AStream: TStream;

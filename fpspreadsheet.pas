@@ -449,6 +449,7 @@ type
     function GetSelection: TsCellRangeArray;
     function GetSelectionAsString: String;
     function GetSelectionCount: Integer;
+    function GetSelectionRangeIndexOfActiveCell: Integer;
     procedure SetSelection(const ASelection: TsCellRangeArray);
 
     // Comments
@@ -3607,6 +3608,22 @@ end;
 function TsWorksheet.GetSelectionCount: Integer;
 begin
   Result := Length(FSelection);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the index of the selected block which contains the active cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetSelectionRangeIndexOfActiveCell: Integer;
+var
+  sel: TsCellRange;
+begin
+  for Result := 0 to High(FSelection) do
+  begin
+    sel := FSelection[Result];
+    if (FActiveCellRow >= sel.Row1) and (FActiveCellRow <= sel.Row2) and
+       (FActiveCellCol >= sel.Col1) and (FActiveCellCol <= sel.Col2) then exit;
+  end;
+  Result := -1;
 end;
 
 {@@ ----------------------------------------------------------------------------
