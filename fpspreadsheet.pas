@@ -731,7 +731,8 @@ type
 
     { Clipboard }
     procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
-    procedure PasteFromClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
+    procedure PasteFromClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
+      AOperation: TsCopyOperation);
                       (*
     { Color handling }
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
@@ -7807,7 +7808,7 @@ end;
   calling routine since fpspreadsheet does not "know" the system's clipboard.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.PasteFromClipboardStream(AStream: TStream;
-  AFormat: TsSpreadsheetFormat);
+  AFormat: TsSpreadsheetFormat; AOperation: TsCopyOperation);
 var
   clipbook: TsWorkbook;
   clipsheet: TsWorksheet;
@@ -7815,13 +7816,16 @@ var
   selArray: TsCellRangeArray;
   r, c: LongInt;
   dr, dc: LongInt;
-  srccell, destcell: PCell;
+  srcCell, destCell: PCell;
   i, n: Integer;
 begin
   if AStream = nil then
     exit;
 
   if ActiveWorksheet = nil then
+    exit;
+
+  if AOperation = coNone then
     exit;
 
   // Create workbook into which the clipboard stream will write
@@ -7838,12 +7842,17 @@ begin
     dc := LongInt(ActiveWorksheet.ActiveCellCol) - clipsheet.GetFirstColIndex(true);
     // Copy cells from temporary workbook to active worksheet.
     // Shift them such that the top/left cell of temp sheet is at the active cell.
-    for srccell in clipsheet.Cells do
+    for srcCell in clipsheet.Cells do
     begin
       r := LongInt(srcCell.Row) + dr;
       c := LongInt(srcCell.Col) + dc;
-      destcell := ActiveWorksheet.GetCell(r, c);
-      ActiveWorksheet.CopyCell(srccell, destcell);
+      destCell := ActiveWorksheet.GetCell(r, c);
+      case AOperation of
+        coCopyCell    : ActiveWorksheet.CopyCell(srcCell, destCell);
+        coCopyValue   : ActiveWorksheet.CopyValue(srcCell, destCell);
+        coCopyFormat  : ActiveWorksheet.CopyFormat(srcCell, destCell);
+        coCopyFormula : ActiveWorksheet.CopyFormula(srcCell, destCell);
+      end;
     end;
     // Select the same cells as in the clipboard
     n := clipsheet.GetSelectionCount;

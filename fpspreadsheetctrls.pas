@@ -48,9 +48,6 @@ type
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
 
-  {@@ Identifier for an copy operation }
-  TsCopyOperation = (coNone, coCopyFormat, coCopyValue, coCopyFormula, coCopyCell);
-
   { TsWorkbookSource }
 
   {@@ TsWorkbookSource links a workbook to the visual spreadsheet controls and
@@ -1225,6 +1222,9 @@ end;
   Pastes the cells stored in the internal list "Clipboard" into the worksheet.
   Using their stored row/col indexes the stored cells are translated such that
   the first stored cell appears at the currently active cell in the worksheet.
+
+  AOperation determines which "item" of the cell (all, values, formats, formula)
+  is pasted.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.PasteCellsFromClipboard(AItem: TsCopyOperation);
 var
@@ -1262,7 +1262,7 @@ begin
     stream := TMemoryStream.Create;
     try
       Clipboard.GetFormat(cf, stream);
-      FWorkbook.PasteFromClipboardStream(stream, fmt);
+      FWorkbook.PasteFromClipboardStream(stream, fmt, AItem);
 
       // To do: HTML format, CSV format, XML format, TEXT format
       // I don't know which format is written by xlsx and ods natively.

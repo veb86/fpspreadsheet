@@ -730,6 +730,8 @@ type
     Options: TsReplaceOptions;
   end;
 
+  {@@ Identifier for a copy operation }
+  TsCopyOperation = (coNone, coCopyFormat, coCopyValue, coCopyFormula, coCopyCell);
 
 
 implementation
