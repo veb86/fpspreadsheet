@@ -1151,11 +1151,15 @@ var
   cell: PCell;
   stream: TStream;
 begin
+  sel := FWorksheet.GetSelection;
+  if Length(sel) = 0 then
+    exit;
+
   Clipboard.Open;
   try
     Clipboard.Clear;
 
-    // Ensure the 'Biff8' clipboard format is registered
+    // Ensure that the 'Biff8' clipboard format is registered
     cfBiff8Format := Clipboard.FindFormatID('Biff8');
     If cfBiff8Format = 0 Then
       cfBiff8Format := RegisterClipboardFormat('Biff8');
@@ -1189,9 +1193,6 @@ begin
   FCutPending := false;
 
   ClearCellClipboard;
-  sel := FWorksheet.GetSelection;
-  if Length(sel) = 0 then
-    exit;
 
   for i:=0 to High(sel) do
     for r := sel[i].Row1 to sel[i].Row2 do
@@ -1232,7 +1233,51 @@ var
   cell: PCell;
   baserng, rng: TsCellRange;
   baseRow, baseCol: Cardinal;
+  cf: Integer;
+  fmt: TsSpreadsheetFormat;
+  stream: TStream;
 begin
+  Clipboard.Open;
+  try
+    // Ensure that the 'Biff8' clipboard format is registered
+    // In fpspreadsheet, this is currently the clipboard format which supports most features.
+    fmt := sfExcel8;
+    cf := Clipboard.FindFormatID('Biff8');
+    If cf = 0 Then
+      cf := RegisterClipboardFormat('Biff8');
+
+    // If Biff8 cannot be found use Biff5 instead
+    if cf = 0 then
+    begin
+      fmt := sfExcel5;
+      cf := Clipboard.FindFormatID('Biff5');
+      If cf = 0 Then
+        cf := RegisterClipboardFormat('Biff5');
+    end;
+
+    // Exit if there are no spreadsheet data in clipboard
+    if cf = 0 then
+      MessageDlg('No appropriate spreadsheet data in clipboard', mtError, [mbOk], 0);
+
+    stream := TMemoryStream.Create;
+    try
+      Clipboard.GetFormat(cf, stream);
+      FWorkbook.PasteFromClipboardStream(stream, fmt);
+
+      // To do: HTML format, CSV format, XML format, TEXT format
+      // I don't know which format is written by xlsx and ods natively.
+    finally
+      stream.Free;
+    end;
+  finally
+    Clipboard.Close;
+  end;
+
+  exit;
+
+
+
+
   if CellClipboard.Count = 0 then
     exit;
 

@@ -655,18 +655,22 @@ type
       out SheetType: TsSpreadsheetFormat): Boolean; overload;
     class function GetFormatFromFileHeader(AStream: TStream;
       out SheetType: TsSpreadsheetFormat): Boolean; overload;
-    function CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsBasicSpreadReader;
+    function CreateSpreadReader(AFormat: TsSpreadsheetFormat;
+      AClipboardMode: Boolean = false): TsBasicSpreadReader;
     function CreateSpreadWriter(AFormat: TsSpreadsheetFormat;
       AClipboardMode: Boolean = false): TsBasicSpreadWriter;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
     procedure ReadFromFile(AFileName: string); overload;
     procedure ReadFromFileIgnoringExtension(AFileName: string);
-    procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
+    procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
+      AClipboardMode: Boolean = false);
     procedure WriteToFile(const AFileName: string;
       const AFormat: TsSpreadsheetFormat;
       const AOverwriteExisting: Boolean = False); overload;
-    procedure WriteToFile(const AFileName: String; const AOverwriteExisting: Boolean = False); overload;
-    procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat; AClipboardMode: Boolean = false);
+    procedure WriteToFile(const AFileName: String;
+      const AOverwriteExisting: Boolean = False); overload;
+    procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
+      AClipboardMode: Boolean = false);
 
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string;
@@ -727,6 +731,7 @@ type
 
     { Clipboard }
     procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
+    procedure PasteFromClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
                       (*
     { Color handling }
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
@@ -1594,10 +1599,10 @@ begin
   toRow := AToCell^.Row;
   toCol := AToCell^.Col;
 
-  // Copy cell values and formats
+  // Copy cell values
   AToCell^ := AFromCell^;
 
-  // Fix row and column indexes overwritten
+  // Restore row and column indexes overwritten by the previous instruction
   AToCell^.Row := toRow;
   AToCell^.Col := toCol;
   AToCell^.Worksheet := self;
@@ -3558,12 +3563,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.SelectCell(ARow, ACol: Cardinal);
 begin
-  if not FWorkbook.NotificationsEnabled then
-    exit;
-
   FActiveCellRow := ARow;
   FActiveCellCol := ACol;
-  if Assigned(FOnSelectCell) then
+  if FWorkbook.NotificationsEnabled and Assigned(FOnSelectCell) then
     FOnSelectCell(Self, ARow, ACol);
 end;
 
@@ -6603,17 +6605,22 @@ end;
                    to workbook. An exception is raised when the document has
                    a different format.
 
+  @param  AClipboardMode If TRUE it is checked that the reader class supports
+                         clipboard access.
+
   @return An instance of a TsCustomSpreadReader descendent which is able to
           read the given file format.
 -------------------------------------------------------------------------------}
-function TsWorkbook.CreateSpreadReader(AFormat: TsSpreadsheetFormat): TsBasicSpreadReader;
+function TsWorkbook.CreateSpreadReader(AFormat: TsSpreadsheetFormat;
+  AClipboardMode: Boolean = false): TsBasicSpreadReader;
 var
   i: Integer;
 begin
   Result := nil;
 
-  for i := 0 to Length(GsSpreadFormats) - 1 do
-    if GsSpreadFormats[i].Format = AFormat then
+  for i := 0 to High(GsSpreadFormats) do
+    if (GsSpreadFormats[i].Format = AFormat) and
+       ((not AClipboardMode) or GsSpreadformats[i].CanReadFromClipboard) then
     begin
       Result := GsSpreadFormats[i].ReaderClass.Create(self);
       Break;
@@ -6641,9 +6648,9 @@ var
 begin
   Result := nil;
 
-  for i := 0 to Length(GsSpreadFormats) - 1 do
+  for i := 0 to High(GsSpreadFormats) do
     if (GsSpreadFormats[i].Format = AFormat) and
-       (AClipboardMode or GsSpreadFormats[i].CanWriteToClipboard) then
+       ((not AClipboardMode) or GsSpreadFormats[i].CanWriteToClipboard) then
     begin
       Result := GsSpreadFormats[i].WriterClass.Create(self);
       Break;
@@ -6807,9 +6814,10 @@ end;
 
   @param  AStream  Stream being read
   @param  AFormat  File format assumed.
+  @param  AClipboardMode  The calling method has read the stream from the clipboard.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromStream(AStream: TStream;
-  AFormat: TsSpreadsheetFormat);
+  AFormat: TsSpreadsheetFormat; AClipboardMode: Boolean = false);
 var
   AReader: TsBasicSpreadReader;
   ok: Boolean;
@@ -6821,7 +6829,9 @@ begin
     try
       ok := false;
       AStream.Position := 0;
-      AReader.ReadFromStream(AStream);
+      if AClipboardMode then
+        AReader.ReadFromClipboardStream(AStream) else
+        AReader.ReadFromStream(AStream);
       ok := true;
     finally
       dec(FLockCount);
@@ -6970,6 +6980,10 @@ begin
   // name here as well.
   if (FLockCount = 0) and Assigned(FOnAddWorksheet) then
     FOnAddWorksheet(self, Result);
+
+  // Make sure that there is an "active" worksheet
+  if FActiveWorksheet = nil then
+    SelectWorksheet(result);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7775,7 +7789,7 @@ begin
     clipsheet.SelectCell(ActiveWorksheet.ActiveCellRow, ActiveWorksheet.ActiveCellCol);
 
     // Write this workbook to a stream. Set the last parameter (ClipboardMode)
-    // to TRUE to use the dedicated clipboard routine.
+    // to TRUE to use the dedicated clipboard routine if needed.
     clipbook.WriteToStream(AStream, AFormat, true);
 
     // The calling routine which copies the stream to the clipboard requires
@@ -7786,7 +7800,80 @@ begin
   end;
 end;
 
-                            (*
+{@@ ----------------------------------------------------------------------------
+  Copies the cells stored in the specified stream to the active worksheet.
+  The provided stream contains data from the system's clipboard.
+  Note that transfer from the clipboard to the stream has to be done by the
+  calling routine since fpspreadsheet does not "know" the system's clipboard.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.PasteFromClipboardStream(AStream: TStream;
+  AFormat: TsSpreadsheetFormat);
+var
+  clipbook: TsWorkbook;
+  clipsheet: TsWorksheet;
+  sel: TsCellRange;
+  selArray: TsCellRangeArray;
+  r, c: LongInt;
+  dr, dc: LongInt;
+  srccell, destcell: PCell;
+  i, n: Integer;
+begin
+  if AStream = nil then
+    exit;
+
+  if ActiveWorksheet = nil then
+    exit;
+
+  // Create workbook into which the clipboard stream will write
+  clipbook := TsWorkbook.Create;
+  try
+    clipbook.Options := clipbook.Options + [boReadFormulas];
+    // Read stream into this temporary workbook
+    // Set last parameter (ClipboardMode) to TRUE to activate special format
+    // treatment for clipboard, if needed.
+    clipbook.ReadFromStream(AStream, AFormat, true);
+    clipsheet := clipbook.GetWorksheetByIndex(0);
+    // Find offset of active cell to left/top cell in temporary sheet
+    dr := LongInt(ActiveWorksheet.ActiveCellRow) - clipsheet.GetFirstRowIndex(true);
+    dc := LongInt(ActiveWorksheet.ActiveCellCol) - clipsheet.GetFirstColIndex(true);
+    // Copy cells from temporary workbook to active worksheet.
+    // Shift them such that the top/left cell of temp sheet is at the active cell.
+    for srccell in clipsheet.Cells do
+    begin
+      r := LongInt(srcCell.Row) + dr;
+      c := LongInt(srcCell.Col) + dc;
+      destcell := ActiveWorksheet.GetCell(r, c);
+      ActiveWorksheet.CopyCell(srccell, destcell);
+    end;
+    // Select the same cells as in the clipboard
+    n := clipsheet.GetSelectionCount;
+    SetLength(selArray, n);
+    for i := 0 to n-1 do
+    begin
+      sel := clipsheet.GetSelection[i];
+      selArray[i].Row1 := sel.Row1 + dr;
+      selArray[i].Col1 := sel.Col1 + dc;
+      selArray[i].Row2 := sel.Row2 + dr;
+      selArray[i].Col2 := sel.Col2 + dc;
+    end;
+    ActiveWorksheet.SetSelection(selArray);
+    // Select active cell. If not found in the file, let's use the last cell of the selections
+    if (clipsheet.ActiveCellRow <> 0) and (clipsheet.ActiveCellCol <> 0) then
+    begin
+      r := clipsheet.ActiveCellRow;
+      c := clipsheet.ActiveCellCol;
+    end else
+    begin
+      r := sel.Row2;
+      c := sel.Col2;
+    end;
+    ActiveWorksheet.SelectCell(r + dr, c + dc);
+  finally
+    clipbook.Free;
+  end;
+end;
+
+(*
 {@@ ----------------------------------------------------------------------------
   Adds a color to the palette and returns its palette index, but only if the
   color does not already exist - in this case, it returns the index of the

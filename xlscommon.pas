@@ -357,6 +357,7 @@ type
     FPalette: TsPalette;
     FWorksheetNames: TStrings;
     FCurrentWorksheet: Integer;
+    FActivePane: Integer;
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
@@ -452,6 +453,7 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
+    procedure ReadFromClipboardStream(AStream: TStream); override;
   end;
 
 
@@ -463,7 +465,6 @@ type
     FCodePage: String;  // in a format prepared for lconvencoding.ConvertEncoding
     FFirstNumFormatIndexInFile: Integer;
     FPalette: TsPalette;
-    FClipboardMode: Boolean;
 
     procedure AddBuiltinNumFormats; override;
     function FindXFIndex(ACell: PCell): Integer; virtual;
@@ -822,6 +823,9 @@ begin
 
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
+
+  // Index of active pane (no panes --> index is 3 ... OMG!...)
+  FActivePane := 3;
 
   // Limitations of BIFF5 and BIFF8 file format
   FLimitations.MaxColCount := 256;
@@ -1333,6 +1337,16 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Public specialized stream reading method for clipboard access.
+  For BIFF file format, data are stored in the clipboard in the same way as in
+  a regular stream/file.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadFromClipboardStream(AStream: TStream);
+begin
+  ReadFromStream(AStream);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the (number) FORMAT record for formatting numerical data
   To be overridden by descendants.
 -------------------------------------------------------------------------------}
@@ -1723,12 +1737,16 @@ begin
   if (FWorksheet.LeftPaneWidth = 0) and (FWorksheet.TopPaneHeight = 0) then
     FWorksheet.Options := FWorksheet.Options - [soHasFrozenPanes];
 
-  { There's more information which is not supported here:
-    Offset Size Description
-      4     2   Index to first visible row in bottom pane(s)
-      6     2   Index to first visible column in right pane(s)
-      8     1   Identifier of pane with active cell cursor (see below)
-     [9]    1   Not used (BIFF5-BIFF8 only, not written in BIFF2-BIFF4) }
+  // Index to first visible row in bottom pane(s) -- not used
+  AStream.ReadWord;
+
+  // Index to first visible column in right pane(s) -- not used
+  AStream.ReadWord;
+
+  // Identifier of pane with active cell cursor
+  FActivePane := AStream.ReadByte;
+
+  // If BIFF5-BIFF8 there is 1 more byte which is not used here.
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2175,12 +2193,14 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadSELECTION(AStream: TStream);
 var
-  {%H-}actPane: byte;
+  {%H-}paneIdx: byte;
   {%H-}rngIndex: Word;
   actRow, actCol: Word;
+  n, i: Integer;
+  sel: TsCellRangeArray;
 begin
-  // Active pane
-  actPane := AStream.ReadByte;
+  // Pane index
+  paneIdx := AStream.ReadByte;
 
   // Row index of the active cell
   actRow := WordLEToN(AStream.ReadWord);
@@ -2192,9 +2212,24 @@ begin
   rngIndex := WordLEToN(AStream.ReadWord);
 
   // Count of selected ranges
-  // Selected ranges --> ignore
+  n := WordLEToN(AStream.ReadWord);
+  SetLength(sel, n);
 
-  FWorksheet.SelectCell(actRow, actCol);
+  // Selected ranges
+  for i := 0 to n - 1 do
+  begin
+    sel[i].Row1 := WordLEToN(AStream.ReadWord);
+    sel[i].Row2 := WordLEToN(AStream.ReadWord);
+    sel[i].Col1 := AStream.ReadByte;    // 8-bit column indexes even for biff8!
+    sel[i].Col2 := AStream.ReadByte;
+  end;
+
+  // Apply selections to worksheet, but only in the pane with the cursor
+  if paneIdx = FActivePane then
+  begin
+    if Length(sel) > 0 then FWorksheet.SetSelection(sel);
+    FWorksheet.SelectCell(actRow, actCol);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3126,6 +3161,13 @@ end;
   Writes a PANE record to the stream.
   Valid for all BIFF versions. The difference for BIFF5-BIFF8 is a non-used
   byte at the end. Activate IsBiff58 in these cases.
+
+  Pane numbering scheme:  <pre>
+   ---------     -----------    -----------     -----------
+  |         |   |     3     |  |     |     |   |  3  |  1  |
+  |    3    |   |-----------   |  3  |  1  |   |-----+-----
+  |         |   |     2     |  |     |     |   |  2  |  0  |
+   ---------     ----------     -----------     -----------  </pre>
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WritePane(AStream: TStream; ASheet: TsWorksheet;
   IsBiff58: Boolean; out ActivePane: Byte);
@@ -3170,11 +3212,7 @@ begin
   else
     AStream.WriteWord(WordToLE(0));
 
-  { Identifier of pane with active cell cursor
-      0 = right-bottom
-      1 = right-top
-      2 = left-bottom
-      3 = left-top }
+  { Identifier of pane with active cell cursor, see header for numbering scheme }
   if (soHasFrozenPanes in ASheet.Options) then begin
     if (ASheet.LeftPaneWidth = 0) and (ASheet.TopPaneHeight = 0) then
       ActivePane := 3
