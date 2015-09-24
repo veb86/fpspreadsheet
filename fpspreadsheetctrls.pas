@@ -471,6 +471,7 @@ var
   cfBiff8Format: Integer = 0;
   cfBiff5Format: Integer = 0;
   cfHTMLFormat: Integer = 0;
+  cfTextHTMLFormat: Integer = 0;
   cfCSVFormat: Integer = 0;
 
 {@@ ----------------------------------------------------------------------------
@@ -1174,6 +1175,10 @@ begin
     if cfHTMLFormat = 0 then
       cfHTMLFormat := RegisterClipboardFormat('HTML Format');
 
+    cfTextHTMLFormat := Clipboard.FindFormatID('text/html');
+    if cfTextHTMLFormat = 0 then
+      cfTextHTMLFormat := RegisterClipboardFormat('text/html');
+
     // dto with CSV clipboard format
     cfCSVFormat := Clipboard.FindFormatID('CSV');
     if cfCSVFormat = 0 then
@@ -1189,10 +1194,13 @@ begin
       // Then write BIFF5 format
       FWorkbook.CopyToClipboardStream(stream, sfExcel5);
       Clipboard.AddFormat(cfBiff5Format, stream);
+      (stream as TMemoryStream).Clear;
 
       // Then write HTML format
       FWorkbook.CopyToClipboardStream(stream, sfHTML);
       Clipboard.AddFormat(cfHTMLFormat, stream);
+      Clipboard.AddFormat(cfTextHTMLFormat, stream);
+      (stream as TMemoryStream).Clear;
 
       // Then write CSV format
       csv := CSVParams;
@@ -1201,12 +1209,14 @@ begin
       CsvParams.SheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet);
       FWorkbook.CopyToClipboardStream(stream, sfCSV);
       Clipboard.AddFormat(cfCSVFormat, stream);
+      (stream as TMemoryStream).Clear;
 
       // Finally write TEXT format
       CsvParams.Delimiter := #9;
       FWorkbook.CopyToClipboardStream(stream, sfCSV);
       Clipboard.AddFormat(CF_TEXT, stream);
       CSVParams := csv;
+      (stream as TMemoryStream).Clear;
 
       // To do: XML format
       // I don't know which format is written by xlsx and ods natively.

@@ -1677,15 +1677,17 @@ end;
 
 procedure TsHTMLWriter.WriteToClipboardStream(AStream: TStream);
 begin
+ {$IFDEF MSWINDOWS}
   FClipboardMode := true;
   AppendToStream(AStream, Format(
     NATIVE_HEADER, [0, 0, 0, 0]));  // value will be replaced at end
-
   WriteToStream(AStream);
-
   AStream.Position := 0;
   AppendToStream(AStream, Format(
     NATIVE_HEADER, [FStartHTMLPos, FEndHTMLPos, FStartFragmentPos, FEndFragmentPos]));
+ {$ELSE}
+  WriteToStream(AStream);
+ {$ENDIF}
 end;
 
 procedure TsHTMLWriter.WriteToStream(AStream: TStream);
