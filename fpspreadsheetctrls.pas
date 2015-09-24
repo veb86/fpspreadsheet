@@ -470,6 +470,7 @@ uses
 var
   cfBiff8Format: Integer = 0;
   cfBiff5Format: Integer = 0;
+  cfHTMLFormat: Integer = 0;
   cfCSVFormat: Integer = 0;
 
 {@@ ----------------------------------------------------------------------------
@@ -1168,6 +1169,11 @@ begin
     if cfBiff5Format = 0 then
       cfBiff5Format := RegisterClipboardFormat('Biff5');
 
+    // dto with HTML clipboard format
+    cfHTMLFormat := Clipboard.FindFormatID('HTML Format');
+    if cfHTMLFormat = 0 then
+      cfHTMLFormat := RegisterClipboardFormat('HTML Format');
+
     // dto with CSV clipboard format
     cfCSVFormat := Clipboard.FindFormatID('CSV');
     if cfCSVFormat = 0 then
@@ -1184,6 +1190,10 @@ begin
       FWorkbook.CopyToClipboardStream(stream, sfExcel5);
       Clipboard.AddFormat(cfBiff5Format, stream);
 
+      // Then write HTML format
+      FWorkbook.CopyToClipboardStream(stream, sfHTML);
+      Clipboard.AddFormat(cfHTMLFormat, stream);
+
       // Then write CSV format
       csv := CSVParams;
       CsvParams.Delimiter := ';';
@@ -1198,7 +1208,7 @@ begin
       Clipboard.AddFormat(CF_TEXT, stream);
       CSVParams := csv;
 
-      // To do: HTML format, XML format
+      // To do: XML format
       // I don't know which format is written by xlsx and ods natively.
     finally
       stream.Free;

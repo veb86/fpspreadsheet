@@ -63,6 +63,11 @@ type
   TsHTMLWriter = class(TsCustomSpreadWriter)
   private
     FPointSeparatorSettings: TFormatSettings;
+    FClipboardMode: Boolean;
+    FStartHtmlPos: Int64;
+    FEndHtmlPos: Int64;
+    FStartFragmentPos: Int64;
+    FEndFragmentPos: Int64;
     function CellFormatAsString(AFormat: PsCellFormat; ATagName: String): String;
     function GetBackgroundAsStyle(AFill: TsFillPattern): String;
     function GetBorderAsStyle(ABorder: TsCellBorders; const ABorderStyles: TsCellBorderStyles): String;
@@ -100,6 +105,7 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
+    procedure WriteToClipboardStream(AStream: TStream); override;
     procedure WriteToStream(AStream: TStream); override;
     procedure WriteToStrings(AStrings: TStrings); override;
   end;
@@ -136,6 +142,16 @@ uses
 
 const
   MIN_FONTSIZE = 6;
+
+  NATIVE_HEADER  = 'Version:0.9' + #13#10 +
+                   'StartHTML:%.10d' + #13#10 +       // Index of first char of <HTML> tag
+                   'EndHTML:%.10d' + #13#10 +         // End of end of file
+                   'StartFragment:%.10d' + #13#10 +   // Index of first char after <TABLE> tag
+                   'EndFragment:%.10d' + #13#10;      // Index of last char before </TABLE> tag
+
+  START_FRAGMENT = '<!--StartFragment-->';
+
+  END_FRAGMENT   = '<!--EndFragment-->';
 
 {==============================================================================}
 {                             TsHTMLReader                                     }
@@ -1458,7 +1474,7 @@ var
 begin
   AppendToStream(AStream,
     '<body>');
-  if HTMLParams.SheetIndex < 0 then      // active sheet
+  if FClipboardMode or (HTMLParams.SheetIndex < 0) then      // active sheet
   begin
     if FWorkbook.ActiveWorksheet = nil then
       FWorkbook.SelectWorksheet(FWorkbook.GetWorksheetByIndex(0));
@@ -1640,22 +1656,6 @@ begin
     '<div>' + s + '</div>');
 end;
 
-procedure TsHTMLWriter.WriteToStream(AStream: TStream);
-begin
-  FWorkbook.UpdateCaches;
-  AppendToStream(AStream,
-    '<!DOCTYPE html>' +
-    '<html>' +
-      '<head>'+
-        '<meta charset="utf-8">');
-  WriteStyles(AStream);
-  AppendToStream(AStream,
-      '</head>');
-      WriteBody(AStream);
-  AppendToStream(AStream,
-    '</html>');
-end;
-
 procedure TsHTMLWriter.WriteStyles(AStream: TStream);
 var
   i: Integer;
@@ -1673,6 +1673,41 @@ begin
   end;
   AppendToStream(AStream,
     '</style>' + LineEnding);
+end;
+
+procedure TsHTMLWriter.WriteToClipboardStream(AStream: TStream);
+begin
+  FClipboardMode := true;
+  AppendToStream(AStream, Format(
+    NATIVE_HEADER, [0, 0, 0, 0]));  // value will be replaced at end
+
+  WriteToStream(AStream);
+
+  AStream.Position := 0;
+  AppendToStream(AStream, Format(
+    NATIVE_HEADER, [FStartHTMLPos, FEndHTMLPos, FStartFragmentPos, FEndFragmentPos]));
+end;
+
+procedure TsHTMLWriter.WriteToStream(AStream: TStream);
+begin
+  FWorkbook.UpdateCaches;
+  AppendToStream(AStream,
+    '<!DOCTYPE html>');
+
+  FStartHTMLPos := AStream.Position;
+
+  AppendToStream(AStream,
+    '<html>' +
+      '<head>'+
+        '<meta charset="utf-8">');
+  WriteStyles(AStream);
+  AppendToStream(AStream,
+      '</head>');
+      WriteBody(AStream);
+  AppendToStream(AStream,
+    '</html>');
+
+  FEndHTMLPos := AStream.Position;
 end;
 
 procedure TsHTMLWriter.WriteToStrings(AStrings: TStrings);
@@ -1731,6 +1766,12 @@ begin
   AppendToStream(AStream,
     '<div>' + LineEnding +
       '<table style="' + style + '">' + LineEnding);
+
+  if FClipboardMode then
+  begin
+    AppendToStream(AStream, START_FRAGMENT);
+    FStartFragmentPos := AStream.Position;
+  end;
 
   if HTMLParams.ShowRowColHeaders then
   begin
@@ -1838,6 +1879,13 @@ begin
     AppendToStream(AStream,
         '</tr>' + LineEnding);
   end;
+
+  if FClipboardMode then
+  begin
+    AppendToStream(AStream, END_FRAGMENT);
+    FEndFragmentPos := AStream.Position;
+  end;
+
   AppendToStream(AStream,
       '</table>' + LineEnding +
     '</div>');
@@ -1845,7 +1893,7 @@ end;
 
 initialization
   InitFormatSettings(HTMLParams.FormatSettings);
-  RegisterSpreadFormat(TsHTMLReader, TsHTMLWriter, sfHTML);
+  RegisterSpreadFormat(TsHTMLReader, TsHTMLWriter, sfHTML, false, true);
 
 end.
 
