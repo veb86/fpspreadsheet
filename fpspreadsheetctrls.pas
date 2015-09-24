@@ -465,11 +465,12 @@ implementation
 
 uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLProc, Dialogs, Forms, Clipbrd,
-  fpsStrings, fpsUtils, fpsNumFormat, fpsHTMLUtils;
+  fpsStrings, fpsUtils, fpsNumFormat, fpsHTMLUtils, fpsCSV;
 
 var
   cfBiff8Format: Integer = 0;
   cfBiff5Format: Integer = 0;
+  cfCSVFormat: Integer = 0;
 
 {@@ ----------------------------------------------------------------------------
   Registers the spreadsheet components in the Lazarus component palette,
@@ -1147,6 +1148,7 @@ var
   sel: TsCellRangeArray;
   cell: PCell;
   stream: TStream;
+  csv: TsCSVParams;
 begin
   sel := FWorksheet.GetSelection;
   if Length(sel) = 0 then
@@ -1156,15 +1158,20 @@ begin
   try
     Clipboard.Clear;
 
-    // Ensure that the 'Biff8' clipboard format is registered
+    // Ensure that the Biff8 clipboard format is registered
     cfBiff8Format := Clipboard.FindFormatID('Biff8');
-    If cfBiff8Format = 0 Then
+    if cfBiff8Format = 0 then
       cfBiff8Format := RegisterClipboardFormat('Biff8');
 
-    // Ensure that the 'Biff5' clipboard format is registered
+    // dto with Biff5 clipboard format
     cfBiff5Format := Clipboard.FindFormatID('Biff5');
-    If cfBiff5Format = 0 Then
+    if cfBiff5Format = 0 then
       cfBiff5Format := RegisterClipboardFormat('Biff5');
+
+    // dto with CSV clipboard format
+    cfCSVFormat := Clipboard.FindFormatID('CSV');
+    if cfCSVFormat = 0 then
+      cfCSVFormat := RegisterClipboardFormat('CSV');
 
     stream := TMemoryStream.Create;
     try
@@ -1177,7 +1184,21 @@ begin
       FWorkbook.CopyToClipboardStream(stream, sfExcel5);
       Clipboard.AddFormat(cfBiff5Format, stream);
 
-      // To do: HTML format, CSV format, XML format
+      // Then write CSV format
+      csv := CSVParams;
+      CsvParams.Delimiter := ';';
+      CsvParams.AutoDetectNumberFormat := false;
+      CsvParams.SheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet);
+      FWorkbook.CopyToClipboardStream(stream, sfCSV);
+      Clipboard.AddFormat(cfCSVFormat, stream);
+
+      // Finally write TEXT format
+      CsvParams.Delimiter := #9;
+      FWorkbook.CopyToClipboardStream(stream, sfCSV);
+      Clipboard.AddFormat(CF_TEXT, stream);
+      CSVParams := csv;
+
+      // To do: HTML format, XML format
       // I don't know which format is written by xlsx and ods natively.
     finally
       stream.Free;

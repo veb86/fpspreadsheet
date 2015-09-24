@@ -49,6 +49,7 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
+    procedure WriteToClipboardStream(AStream: TStream); override;
     procedure WriteToStream(AStream: TStream); override;
     procedure WriteToStrings(AStrings: TStrings); override;
   end;
@@ -394,6 +395,11 @@ begin
   end;
 end;
 
+procedure TsCSVWriter.WriteToClipboardStream(AStream: TStream);
+begin
+  WriteToStream(AStream);
+end;
+
 procedure TsCSVWriter.WriteToStream(AStream: TStream);
 var
   n: Integer;
@@ -421,7 +427,7 @@ end;
 
 initialization
   InitFormatSettings(CSVParams.FormatSettings);
-  RegisterSpreadFormat(TsCSVReader, TsCSVWriter, sfCSV);
+  RegisterSpreadFormat(TsCSVReader, TsCSVWriter, sfCSV, false, true);
 
 end.
 
