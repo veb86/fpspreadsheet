@@ -62,7 +62,6 @@ type
     FFileFormat: TsSpreadsheetFormat;
     FPendingSelection: TsCellRangeArray;
     FPendingOperation: TsCopyOperation;
-    FCutPending: Boolean;
     FControlLockCount: Integer;
     FOptions: TsWorkbookOptions;
     FOnError: TsWorkbookSourceErrorEvent;
@@ -122,8 +121,8 @@ type
       const ASelection: TsCellRangeArray);
 
     { Clipboard }
-    function CellClipboardEmpty: Boolean;
-    procedure ClearCellClipboard;
+//    function CellClipboardEmpty: Boolean;
+//    procedure ClearCellClipboard;
     procedure CopyCellsToClipboard;
     procedure CutCellsToClipboard;
     procedure PasteCellsFromClipboard(AItem: TsCopyOperation);
@@ -524,9 +523,6 @@ type
     property CellByIndex[AIndex: Integer]: PCell read GetCell write SetCell;
     property MultipleRanges: Boolean read FMultipleRanges write FMultipleRanges;
   end;
-
-var
-  CellClipboard: TsCellList = nil;
 
 destructor TsCellList.Destroy;
 begin
@@ -1139,23 +1135,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Checks whether the internal "Clipboard" is empty or not.
--------------------------------------------------------------------------------}
-function TsWorkbookSource.CellClipboardEmpty: Boolean;
-begin
-  Result := CellClipboard.Count = 0;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Clears the interal "Clipboard". Note that this is not the system clipboard.
--------------------------------------------------------------------------------}
-procedure TsWorkbookSource.ClearCellClipboard;
-begin
-  CellClipboard.Clear;
-  CellClipboard.MultipleRanges := false;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Copies the selected cells of the worksheet to an internal list ("Clipboard").
   Note that this is not the system clipboard in the current implementation.
 -------------------------------------------------------------------------------}
@@ -1222,11 +1201,9 @@ begin
   finally
     Clipboard.Close;
   end;
-
+                    (*
   exit;
 
-
-  FCutPending := false;
 
   ClearCellClipboard;
 
@@ -1242,19 +1219,19 @@ begin
       end;
 
   CellClipboard.MultipleRanges := (Length(sel) > 1);
+  *)
 end;
 
 {@@ ----------------------------------------------------------------------------
   Copies the selected cells of the worksheet to an internal list ("Clipboard")
-  and sets the marker "CutPending". This means that the source cells will be
-  cleared when PasteCellsFromClipboard is called.
-  Note that the clipboard is not the system clipboard in the current
-  implementation.
+  and deletes them afterwards.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.CutCellsToClipboard;
+var
+  i: Integer;
 begin
   CopyCellsToClipboard;
-  FCutPending := true;
+  FWorksheet.DeleteSelection;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1307,8 +1284,8 @@ begin
     Clipboard.Close;
   end;
 
+  (*
   exit;
-
 
 
 
@@ -1401,6 +1378,7 @@ begin
   finally
     EnableControls;
   end;
+  *)
 end;
                                               (*
 {@@ ----------------------------------------------------------------------------
@@ -3198,7 +3176,7 @@ end;
 initialization
   {$I fpspreadsheetctrls.lrs}
 
-  CellClipboard := TsCellList.Create;
+//  CellClipboard := TsCellList.Create;
 
   ComboColors := TsPalette.Create;
   ComboColors.AddExcelColors;
@@ -3214,7 +3192,7 @@ initialization
 
 
 finalization
-  CellClipboard.Free;
+//  CellClipboard.Free;
   if ComboColors <> nil then ComboColors.Free;
 
 

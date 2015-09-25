@@ -446,6 +446,7 @@ type
     // Selected cell and ranges
     procedure SelectCell(ARow, ACol: Cardinal);
     procedure ClearSelection;
+    procedure DeleteSelection;
     function GetSelection: TsCellRangeArray;
     function GetSelectionAsString: String;
     function GetSelectionCount: Integer;
@@ -3577,6 +3578,25 @@ end;
 procedure TsWorksheet.ClearSelection;
 begin
   SetLength(FSelection, 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Deletes all selected cells (delete = make them empty)
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.DeleteSelection;
+var
+  i: Integer;
+  r, c: Cardinal;
+  cell: PCell;
+begin
+  for i:=0 to High(FSelection) do
+    for r := FSelection[i].Row1 to FSelection[i].Row2 do
+      for c := FSelection[i].Col1 to FSelection[i].Col2 do
+      begin
+        cell := FindCell(r, c);
+        DeleteCell(cell);
+      end;
+  ClearSelection;
 end;
 
 {@@ ----------------------------------------------------------------------------
