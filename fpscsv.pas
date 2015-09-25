@@ -32,6 +32,7 @@ type
     FCSVBuilder: TCSVBuilder;
     FEncoding: String;
     FFormatSettings: TFormatSettings;
+    FClipboardMode: Boolean;
   protected
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
@@ -371,6 +372,7 @@ end;
 procedure TsCSVWriter.WriteSheet(AStream: TStream; AWorksheet: TsWorksheet);
 var
   r: Cardinal;
+  FirstRow: Cardinal;
   LastRow: Cardinal;
   cell: PCell;
 begin
@@ -383,8 +385,11 @@ begin
     FCSVBuilder.QuoteChar := CSVParams.QuoteChar;
     FCSVBuilder.SetOutput(AStream);
 
+    if FClipboardMode then
+      FirstRow := FWorksheet.GetFirstRowIndex else
+      FirstRow := 0;
     LastRow := FWorksheet.GetLastOccupiedRowIndex;
-    for r := 0 to LastRow do
+    for r := FirstRow to LastRow do
     begin
       for cell in FWorksheet.Cells.GetRowEnumerator(r) do
         WriteCellToStream(AStream, cell);
@@ -397,6 +402,7 @@ end;
 
 procedure TsCSVWriter.WriteToClipboardStream(AStream: TStream);
 begin
+  FClipboardMode := true;
   WriteToStream(AStream);
 end;
 

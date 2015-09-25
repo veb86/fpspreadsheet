@@ -801,7 +801,7 @@ begin
     cmCopy, cmCut:
       Enabled := Worksheet.GetSelectionCount > 0;
     cmPaste:
-      Enabled := not WorkbookSource.CellClipboardEmpty;
+      Enabled := SpreadsheetFormatInClipboard;
   end;
 end;
 

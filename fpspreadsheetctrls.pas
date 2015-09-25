@@ -455,6 +455,8 @@ type
     property ExtendedColSizing;
   end;
 
+function SpreadsheetFormatInClipboard: Boolean;
+
 var
   ComboColors: TsPalette = nil;
 
@@ -487,6 +489,19 @@ begin
   ]);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE if the clipboard contains a format good for pasting into a
+  worksheet grid.
+-------------------------------------------------------------------------------}
+function SpreadsheetFormatInClipboard: Boolean;
+begin
+  Result := Clipboard.HasFormat(cfBiff8Format) or
+            Clipboard.HasFormat(cfBiff5Format) or
+            Clipboard.HasFormat(cfHTMLFormat) or
+            Clipboard.HasFormat(cfTextHTMLFormat) or
+            Clipboard.HasFormat(cfCSVFormat) or
+            Clipboard.HasFormat(CF_TEXT);
+end;
 
 {------------------------------------------------------------------------------}
 {                               TsCellList                                     }
@@ -1160,46 +1175,26 @@ begin
   try
     Clipboard.Clear;
 
-    // Ensure that the Biff8 clipboard format is registered
-    cfBiff8Format := Clipboard.FindFormatID('Biff8');
-    if cfBiff8Format = 0 then
-      cfBiff8Format := RegisterClipboardFormat('Biff8');
-
-    // dto with Biff5 clipboard format
-    cfBiff5Format := Clipboard.FindFormatID('Biff5');
-    if cfBiff5Format = 0 then
-      cfBiff5Format := RegisterClipboardFormat('Biff5');
-
-    // dto with HTML clipboard format
-    cfHTMLFormat := Clipboard.FindFormatID('HTML Format');
-    if cfHTMLFormat = 0 then
-      cfHTMLFormat := RegisterClipboardFormat('HTML Format');
-
-    cfTextHTMLFormat := Clipboard.FindFormatID('text/html');
-    if cfTextHTMLFormat = 0 then
-      cfTextHTMLFormat := RegisterClipboardFormat('text/html');
-
-    // dto with CSV clipboard format
-    cfCSVFormat := Clipboard.FindFormatID('CSV');
-    if cfCSVFormat = 0 then
-      cfCSVFormat := RegisterClipboardFormat('CSV');
-
     stream := TMemoryStream.Create;
     try
       // At first write BIFF8 format
       FWorkbook.CopyToClipboardStream(stream, sfExcel8);
-      Clipboard.AddFormat(cfBiff8Format, stream);
+      if cfBiff8Format <> 0 then
+        Clipboard.AddFormat(cfBiff8Format, stream);
       (stream as TMemoryStream).Clear;
 
       // Then write BIFF5 format
       FWorkbook.CopyToClipboardStream(stream, sfExcel5);
-      Clipboard.AddFormat(cfBiff5Format, stream);
+      if cfBiff5Format <> 0 then
+        Clipboard.AddFormat(cfBiff5Format, stream);
       (stream as TMemoryStream).Clear;
 
       // Then write HTML format
       FWorkbook.CopyToClipboardStream(stream, sfHTML);
-      Clipboard.AddFormat(cfHTMLFormat, stream);
-      Clipboard.AddFormat(cfTextHTMLFormat, stream);
+      if cfHtmlFormat <> 0 then
+        Clipboard.AddFormat(cfHTMLFormat, stream);
+      if cfTextHtmlFormat <> 0 then
+        Clipboard.AddFormat(cfTextHTMLFormat, stream);
       (stream as TMemoryStream).Clear;
 
       // Then write CSV format
@@ -1208,7 +1203,8 @@ begin
       CsvParams.AutoDetectNumberFormat := false;
       CsvParams.SheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet);
       FWorkbook.CopyToClipboardStream(stream, sfCSV);
-      Clipboard.AddFormat(cfCSVFormat, stream);
+      if cfCSVFormat <> 0 then
+        Clipboard.AddFormat(cfCSVFormat, stream);
       (stream as TMemoryStream).Clear;
 
       // Finally write TEXT format
@@ -1226,6 +1222,8 @@ begin
   finally
     Clipboard.Close;
   end;
+
+  exit;
 
 
   FCutPending := false;
@@ -1280,32 +1278,27 @@ var
 begin
   Clipboard.Open;
   try
-    // Ensure that the 'Biff8' clipboard format is registered
-    // In fpspreadsheet, this is currently the clipboard format which supports most features.
-    fmt := sfExcel8;
-    cf := Clipboard.FindFormatID('Biff8');
-    If cf = 0 Then
-      cf := RegisterClipboardFormat('Biff8');
-
-    // If Biff8 cannot be found use Biff5 instead
-    if cf = 0 then
-    begin
-      fmt := sfExcel5;
-      cf := Clipboard.FindFormatID('Biff5');
-      If cf = 0 Then
-        cf := RegisterClipboardFormat('Biff5');
-    end;
-
-    // Exit if there are no spreadsheet data in clipboard
-    if cf = 0 then
-      MessageDlg('No appropriate spreadsheet data in clipboard', mtError, [mbOk], 0);
-
     stream := TMemoryStream.Create;
     try
-      Clipboard.GetFormat(cf, stream);
+      // Check whether the clipboard content is suitable for fpspreadsheet
+      if Clipboard.GetFormat(cfBiff8Format, stream) then
+        fmt := sfExcel8
+      else if Clipboard.GetFormat(cfBiff5Format, stream) then
+        fmt := sfExcel5
+      else if Clipboard.GetFormat(cfHTMLFormat, stream) or Clipboard.GetFormat(cfTextHTMLFormat, stream) then
+        fmt := sfHTML
+      else if Clipboard.GetFormat(cfCSVFormat, stream) or Clipboard.GetFormat(CF_TEXT, stream) then
+        fmt := sfCSV
+      else begin
+        // Exit if there are no spreadsheet data in clipboard
+        MessageDlg('No appropriate spreadsheet data in clipboard', mtError, [mbOk], 0);
+        exit;
+      end;
+
+      // Paste stream into workbook
       FWorkbook.PasteFromClipboardStream(stream, fmt, AItem);
 
-      // To do: HTML format, CSV format, XML format, TEXT format
+      // To do: XML format
       // I don't know which format is written by xlsx and ods natively.
     finally
       stream.Free;
@@ -3212,6 +3205,12 @@ initialization
 
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'RowHeights', 'For compatibility with older Laz versions.', '');
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'ColWidths', 'For compatibility with older Laz versions.', '');
+
+  cfBiff8Format := RegisterClipboardFormat('Biff8');
+  cfBiff5Format := RegisterClipboardFormat('Biff5');
+  cfHTMLFormat := RegisterClipboardFormat('HTML Format');
+  cfTextHTMLFormat := RegisterClipboardFormat('text/html');
+  cfCSVFormat := RegisterClipboardFormat('CSV');
 
 
 finalization
