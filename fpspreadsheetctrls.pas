@@ -465,7 +465,8 @@ procedure Register;
 implementation
 
 uses
-  Types, Math, StrUtils, TypInfo, LCLType, LCLProc, Dialogs, Forms, Clipbrd,
+  Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
+  Dialogs, Forms, Clipbrd,
   fpsStrings, fpsUtils, fpsNumFormat, fpsHTMLUtils, fpsCSV;
 
 var
@@ -474,6 +475,7 @@ var
   cfHTMLFormat: Integer = 0;
   cfTextHTMLFormat: Integer = 0;
   cfCSVFormat: Integer = 0;
+  cfOpenDocumentFormat: Integer = 0;
 
 {@@ ----------------------------------------------------------------------------
   Registers the spreadsheet components in the Lazarus component palette,
@@ -1140,11 +1142,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.CopyCellsToClipboard;
 var
-  r,c,i: Integer;
   sel: TsCellRangeArray;
-  cell: PCell;
   stream: TStream;
-  csv: TsCSVParams;
+  savedCSVParams: TsCSVParams;
 begin
   sel := FWorksheet.GetSelection;
   if Length(sel) = 0 then
@@ -1156,7 +1156,13 @@ begin
 
     stream := TMemoryStream.Create;
     try
-      // At first write BIFF8 format
+      // Write OpenDocument format
+      FWorkbook.CopyToClipboardStream(stream, sfOpenDocument);
+      if cfOpenDocumentFormat <> 0 then
+        Clipboard.AddFormat(cfOpenDocumentFormat, stream);
+      (stream as TMemoryStream).Clear;
+
+      // Write BIFF8 format
       FWorkbook.CopyToClipboardStream(stream, sfExcel8);
       if cfBiff8Format <> 0 then
         Clipboard.AddFormat(cfBiff8Format, stream);
@@ -1177,7 +1183,7 @@ begin
       (stream as TMemoryStream).Clear;
 
       // Then write CSV format
-      csv := CSVParams;
+      savedCSVParams := CSVParams;
       CsvParams.Delimiter := ';';
       CsvParams.AutoDetectNumberFormat := false;
       CsvParams.SheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet);
@@ -1190,7 +1196,7 @@ begin
       CsvParams.Delimiter := #9;
       FWorkbook.CopyToClipboardStream(stream, sfCSV);
       Clipboard.AddFormat(CF_TEXT, stream);
-      CSVParams := csv;
+      CSVParams := savedCSVParams;
       (stream as TMemoryStream).Clear;
 
       // To do: XML format
@@ -1258,13 +1264,17 @@ begin
     stream := TMemoryStream.Create;
     try
       // Check whether the clipboard content is suitable for fpspreadsheet
-      if Clipboard.GetFormat(cfBiff8Format, stream) then
+      if Clipboard.GetFormat(cfOpenDocumentFormat, stream) then
+        fmt := sfOpenDocument
+      else if Clipboard.GetFormat(cfBiff8Format, stream) then
         fmt := sfExcel8
       else if Clipboard.GetFormat(cfBiff5Format, stream) then
         fmt := sfExcel5
       else if Clipboard.GetFormat(cfHTMLFormat, stream) or Clipboard.GetFormat(cfTextHTMLFormat, stream) then
         fmt := sfHTML
-      else if Clipboard.GetFormat(cfCSVFormat, stream) or Clipboard.GetFormat(CF_TEXT, stream) then
+      else if Clipboard.GetFormat(cfCSVFormat, stream) then //or Clipboard.GetFormat(CF_TEXT, stream) then
+        fmt := sfCSV
+      else if Clipboard.GetFormat(PredefinedClipboardFormat(pcfText), stream) then
         fmt := sfCSV
       else begin
         // Exit if there are no spreadsheet data in clipboard
@@ -3183,13 +3193,28 @@ initialization
 
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'RowHeights', 'For compatibility with older Laz versions.', '');
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'ColWidths', 'For compatibility with older Laz versions.', '');
-
-  cfBiff8Format := RegisterClipboardFormat('Biff8');
+   (*
+ {$IFDEF MSWINDOWS}
+  cfOpenDocumentFormat := RegisterClipboardFormat('Star Embed Source (XML)');
+ {$ELSE}
+  cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice-embed-source-xml;windows_formatname="Star Embed Source (XML)');
+ {$ENDIF}
+ *)
+  cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice-embed-source-xml;windows_formatname="Star Embed Source (XML)"');
+//  cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice;windows_formatname="Star Embed Source (XML)"');
+  //cfOpenDocumentFormat := RegisterClipboardFormat('Star Embed Source (XML)');
+//  cfBiff8Format := RegisterClipboardFormat('application/vnd.ms-excel'); //Biff8');
+  cfBiff8Format := RegisterclipboardFormat('Biff8');
   cfBiff5Format := RegisterClipboardFormat('Biff5');
   cfHTMLFormat := RegisterClipboardFormat('HTML Format');
   cfTextHTMLFormat := RegisterClipboardFormat('text/html');
   cfCSVFormat := RegisterClipboardFormat('CSV');
 
+  // xls: application/vnd.ms-excel
+  // xlsx: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
+
+  // ods: application/x-openoffice-embed-source-xml;windows_formatname="Star Embed Source (XML)"  -- Linux -- tested
+  // ods: Star Embed Source (XML) -- Windows
 
 finalization
 //  CellClipboard.Free;

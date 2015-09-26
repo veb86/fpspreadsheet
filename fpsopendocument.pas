@@ -142,7 +142,7 @@ type
     destructor Destroy; override;
 
     { General reading methods }
-(*    procedure ReadFromFile(AFileName: string); override;*)
+    procedure ReadFromClipboardStream(AStream: TStream); override;
     procedure ReadFromStream(AStream: TStream); override;
   end;
 
@@ -229,8 +229,11 @@ type
 
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
+    procedure WriteToClipboardStream(AStream: TStream); override;
+    {
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False); override;
+    }
     procedure WriteToStream(AStream: TStream); override;
   end;
 
@@ -2035,131 +2038,12 @@ begin
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
-    (*
-{ In principle, this method could be simplified by calling ReadFromStream which
-  is essentially a duplication of ReadFromFile. But ReadFromStream leads to
-  worse memory usage. --> KEEP READFROMFILE INTACT
-  See fpspeedtest, ods 20k x 100 cells --> out of mem in Win7-32 bit, 4 GB}
-procedure TsSpreadOpenDocReader.ReadFromFile(AFileName: string);
-var
-  Doc : TXMLDocument;
-  FilePath : string;
-  UnZip : TUnZipper;
-  FileList : TStringList;
-  BodyNode, SpreadSheetNode, TableNode: TDOMNode;
-  StylesNode: TDOMNode;
-  OfficeSettingsNode: TDOMNode;
-  nodename: String;
-  pageLayout: PsPageLayout;
-  sheet: TsWorksheet;
+
+procedure TsSpreadOpenDocReader.ReadFromClipboardStream(AStream: TStream);
 begin
-  //unzip files into AFileName path
-  FilePath := GetUniqueTempDir(false);
-  UnZip := TUnZipper.Create;
-  FileList := TStringList.Create;
-  try
-    FileList.Add('styles.xml');
-    FileList.Add('content.xml');
-    FileList.Add('settings.xml');
-    UnZip.OutputPath := FilePath;
-    Unzip.UnZipFiles(AFileName,FileList);
-  finally
-    FreeAndNil(FileList);
-    FreeAndNil(UnZip);
-  end; //try
-
-  Doc := nil;
-  try
-    // process the styles.xml file
-    ReadXMLFile(Doc, FilePath+'styles.xml');
-    DeleteFile(FilePath+'styles.xml');
-
-    ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
-
-    StylesNode := Doc.DocumentElement.FindNode('office:styles');
-    ReadNumFormats(StylesNode);
-    ReadStyles(StylesNode);
-
-    StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
-    ReadAutomaticStyles(StylesNode);
-
-    StylesNode := Doc.DocumentElement.FindNode('office:master-styles');
-    ReadMasterStyles(StylesNode);
-
-    Doc.Free;
-
-    //process the content.xml file
-    ReadXMLFile(Doc, FilePath+'content.xml');
-    DeleteFile(FilePath+'content.xml');
-
-    ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
-    StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
-    ReadNumFormats(StylesNode);
-    ReadStyles(StylesNode);
-
-    BodyNode := Doc.DocumentElement.FindNode('office:body');
-    if not Assigned(BodyNode) then Exit;
-
-    SpreadSheetNode := BodyNode.FindNode('office:spreadsheet');
-    if not Assigned(SpreadSheetNode) then Exit;
-
-    ReadDateMode(SpreadSheetNode);
-
-    //process each table (sheet)
-    TableNode := SpreadSheetNode.FindNode('table:table');
-    while Assigned(TableNode) do
-    begin
-      nodename := TableNode.Nodename;
-      // These nodes occur due to leading spaces which are not skipped
-      // automatically any more due to PreserveWhiteSpace option applied
-      // to ReadXMLFile
-      if nodeName <> 'table:table' then
-      begin
-        TableNode := TableNode.NextSibling;
-        continue;
-      end;
-      FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode, 'table:name'), true);
-      // Collect column styles used
-      ReadColumns(TableNode);
-      // Process each row inside the sheet and process each cell of the row
-      ReadRowsAndCells(TableNode);
-      // Read page layout
-      pageLayout := ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'));
-      if pageLayout <> nil then
-        FWorksheet.PageLayout := pagelayout^;
-      // Handle columns and rows
-      ApplyColWidths;
-      // Page layout
-      FixCols(FWorksheet);
-      FixRows(FWorksheet);
-      // Continue with next table
-      TableNode := TableNode.NextSibling;
-    end; //while Assigned(TableNode)
-
-    Doc.Free;
-
-    // process the settings.xml file (Note: it does not always exist!)
-    if FileExists(FilePath + 'settings.xml') then
-    begin
-      ReadXMLFile(Doc, FilePath+'settings.xml');
-      DeleteFile(FilePath+'settings.xml');
-
-      OfficeSettingsNode := Doc.DocumentElement.FindNode('office:settings');
-      ReadSettings(OfficeSettingsNode);
-    end;
-
-    // Active sheet
-    if FActiveSheet <> '' then
-      sheet := FWorkbook.GetWorksheetByName(FActiveSheet) else
-      sheet := FWorkbook.GetWorksheetByIndex(0);
-    FWorkbook.SelectWorksheet(sheet);
-
-  finally
-    RemoveDir(FilePath);
-    if Assigned(Doc) then Doc.Free;
-  end;
+  ReadFromStream(AStream);
 end;
-  *)
+
 procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream);
 var
   Doc : TXMLDocument;
@@ -4850,7 +4734,7 @@ begin
   TheStream.WriteBuffer(Pointer(S)^,Length(S));
   TheStream.Free;
 end;
-
+                         (*
 {@@ ----------------------------------------------------------------------------
   Writes an OOXML document to a file.
 -------------------------------------------------------------------------------}
@@ -4874,6 +4758,11 @@ begin
   finally
     FreeAndNil(lStream);
   end;
+end;                       *)
+
+procedure TsSpreadOpenDocWriter.WriteToClipboardStream(AStream: TStream);
+begin
+  WriteToStream(AStream);
 end;
 
 procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream);
@@ -6233,7 +6122,7 @@ initialization
 {@@ ----------------------------------------------------------------------------
   Registers this reader / writer on fpSpreadsheet
 -------------------------------------------------------------------------------}
-  RegisterSpreadFormat(TsSpreadOpenDocReader, TsSpreadOpenDocWriter, sfOpenDocument);
+  RegisterSpreadFormat(TsSpreadOpenDocReader, TsSpreadOpenDocWriter, sfOpenDocument, true, true);
 
 end.
 
