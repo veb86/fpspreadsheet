@@ -22,6 +22,7 @@ type
     procedure ReadNumber(AStream: TStream); override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
+    procedure ReadFromClipboardStream(AStream: TStream); override;
     procedure ReadFromFile(AFileName: String); override;
     procedure ReadFromStream(AStream: TStream); override;
     procedure ReadFromStrings(AStrings: TStrings); override;
@@ -200,6 +201,11 @@ begin
   Unused(AStream);
 end;
 
+procedure TsCSVReader.ReadFromClipboardStream(AStream: TStream);
+begin
+  ReadFromStream(AStream);
+end;
+
 procedure TsCSVReader.ReadFromFile(AFileName: String);
 begin
   FWorksheetName := ChangeFileExt(ExtractFileName(AFileName), '');
@@ -372,9 +378,10 @@ end;
 procedure TsCSVWriter.WriteSheet(AStream: TStream; AWorksheet: TsWorksheet);
 var
   r: Cardinal;
-  FirstRow: Cardinal;
-  LastRow: Cardinal;
+  firstRow: Cardinal;
+  lastRow: Cardinal;
   cell: PCell;
+  n: Integer;
 begin
   FWorksheet := AWorksheet;
 
@@ -385,15 +392,23 @@ begin
     FCSVBuilder.QuoteChar := CSVParams.QuoteChar;
     FCSVBuilder.SetOutput(AStream);
 
-    if FClipboardMode then
-      FirstRow := FWorksheet.GetFirstRowIndex else
-      FirstRow := 0;
-    LastRow := FWorksheet.GetLastOccupiedRowIndex;
-    for r := FirstRow to LastRow do
+    n := FWorksheet.GetCellCount;
+    if FClipboardMode and (n = 1) then
     begin
-      for cell in FWorksheet.Cells.GetRowEnumerator(r) do
-        WriteCellToStream(AStream, cell);
-      FCSVBuilder.AppendRow;
+      cell := FWorksheet.Cells.GetFirstCell;
+      WriteCellToStream(AStream, cell);
+    end else
+    begin
+      if FClipboardMode then
+        firstRow := FWorksheet.GetFirstRowIndex else
+        firstRow := 0;
+      lastRow := FWorksheet.GetLastOccupiedRowIndex;
+      for r := firstRow to lastRow do
+      begin
+        for cell in FWorksheet.Cells.GetRowEnumerator(r) do
+          WriteCellToStream(AStream, cell);
+        FCSVBuilder.AppendRow;
+      end;
     end;
   finally
     FreeAndNil(FCSVBuilder);
@@ -433,7 +448,7 @@ end;
 
 initialization
   InitFormatSettings(CSVParams.FormatSettings);
-  RegisterSpreadFormat(TsCSVReader, TsCSVWriter, sfCSV, false, true);
+  RegisterSpreadFormat(TsCSVReader, TsCSVWriter, sfCSV, true, true);
 
 end.
 

@@ -270,6 +270,7 @@ type
 
 
   { TsCellFormatItem }
+
   TsCellFormatItem = (cfiFontName, cfiFontSize, cfiFontColor, cfiBackgroundColor,
     cfiBorderColor);
 
@@ -498,6 +499,7 @@ function SpreadsheetFormatInClipboard: Boolean;
 begin
   Result := Clipboard.HasFormat(cfBiff8Format) or
             Clipboard.HasFormat(cfBiff5Format) or
+            Clipboard.HasFormat(cfOpenDocumentFormat) or
             Clipboard.HasFormat(cfHTMLFormat) or
             Clipboard.HasFormat(cfTextHTMLFormat) or
             Clipboard.HasFormat(cfCSVFormat) or
@@ -955,23 +957,12 @@ var
   I: IsSpreadsheetControl;
   C: TComponent;
 begin
-  {
-  // Select worksheet in tab control first
-  if lniWorksheet in AChangedItems then
-    for j:=0 to FListeners.Count-1 do begin
-      C := TComponent(FListeners[j]);
-      if C is TsWorkbookTabControl then begin
-        C.GetInterface(GUID_SpreadsheetControl, I);
-        I.ListenerNotification(AChangedItems, AData);
-      end;
-    end;
-   }
   for j:=0 to FListeners.Count-1 do begin
     C := TComponent(FListeners[j]);
     if C.GetInterface(GUID_SpreadsheetControl, I) then
       I.ListenerNotification(AChangedItems, AData)
     else
-      raise Exception.CreateFmt('Class %s is not prepared to be a spreadsheet listener.',
+      raise Exception.CreateFmt('[TsWorkbookSource.NotifyListeners] Class %s is not prepared to be a spreadsheet listener.',
         [C.ClassName]);
   end;
 end;
@@ -1258,40 +1249,37 @@ var
   cf: Integer;
   fmt: TsSpreadsheetFormat;
   stream: TStream;
+  s: String;
 begin
-  Clipboard.Open;
+  stream := TMemoryStream.Create;
   try
-    stream := TMemoryStream.Create;
-    try
-      // Check whether the clipboard content is suitable for fpspreadsheet
-      if Clipboard.GetFormat(cfOpenDocumentFormat, stream) then
-        fmt := sfOpenDocument
-      else if Clipboard.GetFormat(cfBiff8Format, stream) then
-        fmt := sfExcel8
-      else if Clipboard.GetFormat(cfBiff5Format, stream) then
-        fmt := sfExcel5
-      else if Clipboard.GetFormat(cfHTMLFormat, stream) or Clipboard.GetFormat(cfTextHTMLFormat, stream) then
-        fmt := sfHTML
-      else if Clipboard.GetFormat(cfCSVFormat, stream) then //or Clipboard.GetFormat(CF_TEXT, stream) then
-        fmt := sfCSV
-      else if Clipboard.GetFormat(PredefinedClipboardFormat(pcfText), stream) then
-        fmt := sfCSV
-      else begin
-        // Exit if there are no spreadsheet data in clipboard
-        MessageDlg('No appropriate spreadsheet data in clipboard', mtError, [mbOk], 0);
-        exit;
-      end;
-
-      // Paste stream into workbook
-      FWorkbook.PasteFromClipboardStream(stream, fmt, AItem);
-
-      // To do: XML format
-      // I don't know which format is written by xlsx and ods natively.
-    finally
-      stream.Free;
+    // Check whether the clipboard content is suitable for fpspreadsheet
+    if Clipboard.GetFormat(cfOpenDocumentFormat, stream) then
+      fmt := sfOpenDocument
+    else if Clipboard.GetFormat(cfBiff8Format, stream) then
+      fmt := sfExcel8
+    else if Clipboard.GetFormat(cfBiff5Format, stream) then
+      fmt := sfExcel5
+    else if Clipboard.GetFormat(cfHTMLFormat, stream) or Clipboard.GetFormat(cfTextHTMLFormat, stream) then
+      fmt := sfHTML
+    else if Clipboard.GetFormat(cfCSVFormat, stream) then
+      fmt := sfCSV
+    else if Clipboard.GetFormat(CF_TEXT, stream) then
+      fmt := sfCSV
+    else begin
+      // Exit if there are no spreadsheet data in clipboard
+      MessageDlg('No appropriate spreadsheet data in clipboard', mtError, [mbOk], 0);
+      exit;
     end;
+
+    // Paste stream into workbook
+    stream.Position := 0;
+    FWorkbook.PasteFromClipboardStream(stream, fmt, AItem);
+
+    // To do: XML format
+    // I don't know which format is written by xlsx and ods natively.
   finally
-    Clipboard.Close;
+    stream.Free;
   end;
 
   (*

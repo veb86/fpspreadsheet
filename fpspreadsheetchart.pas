@@ -237,7 +237,7 @@ begin
   end else
   if cell^.ContentType = cctUTF8String then begin
     FCurItem.X := AIndex;
-    FCurItem.Text := FDataWorksheet.ReadAsUTF8Text(cell);
+    FCurItem.Text := FDataWorksheet.ReadAsText(cell);
   end else
   begin
     FCurItem.X := FDataWorksheet.ReadAsNumber(cell);
@@ -473,7 +473,7 @@ begin
   end else
   if cell^.ContentType = cctUTF8String then begin
     ANumber := APointIndex;
-    AText := FWorksheets[rngX].ReadAsUTF8Text(cell);
+    AText := FWorksheets[rngX].ReadAsText(cell);
   end else
   begin
     ANumber := FWorksheets[rngX].ReadAsNumber(cell);

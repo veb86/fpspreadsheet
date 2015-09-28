@@ -151,6 +151,9 @@ type
     procedure CreateNewWorkbook;
     procedure DblClick; override;
     procedure DefineProperties(Filer: TFiler); override;
+    procedure DoCopyToClipboard; override;
+    procedure DoCutToClipboard; override;
+    procedure DoPasteFromClipboard; override;
     procedure DoOnResize; override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
@@ -1327,6 +1330,21 @@ begin
   // Don't call inherited, this is where to ColWidths/RwoHeights are stored in
   // the lfm file - we don't need them, we get them from the workbook!
   Unused(Filer);
+end;
+
+procedure TsCustomWorksheetGrid.DoCopyToClipboard;
+begin
+  WorkbookSource.CopyCellsToClipboard;
+end;
+
+procedure TsCustomWorksheetGrid.DoCutToClipboard;
+begin
+  WorkbookSource.CutCellsToClipboard;
+end;
+
+procedure TsCustomWorksheetGrid.DoPasteFromClipboard;
+begin
+  WorkbookSource.PasteCellsFromClipboard(coCopyCell);
 end;
 
 procedure TsCustomWorksheetGrid.DoOnResize;
@@ -3989,7 +4007,7 @@ var
   nfs: String;
   isGeneralFmt: Boolean;
 begin
-  Result := Worksheet.ReadAsUTF8Text(ACell);
+  Result := Worksheet.ReadAsText(ACell);
   if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String))
   then
     exit;

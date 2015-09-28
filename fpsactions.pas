@@ -118,6 +118,7 @@ type
     FCopyMode: TsCopyMode;
   public
     procedure ExecuteTarget(Target: TObject); override;
+    function HandlesTarget(Target: TObject): Boolean; override;
     procedure UpdateTarget(Target: TObject); override;
   published
     property Caption;
@@ -525,7 +526,7 @@ implementation
 
 uses
   StdCtrls, ExtCtrls, Buttons, Forms,
-  fpsUtils, fpsNumFormat, fpsVisualUtils;
+  fpsUtils, fpsNumFormat, fpsVisualUtils, fpSpreadsheetGrid;
 
 procedure Register;
 begin
@@ -767,28 +768,47 @@ const
     coCopyFormat, coCopyValue, coCopyFormula, coCopyCell
   );
 begin
-  Unused(Target);
+  if Target is TsCustomWorksheetGrid then
+    case FCopyMode of
+      cmBrush:
+        begin
+          Checked := true;
+          WorkbookSource.SetPendingOperation(OPERATIONS[FCopyItem], Worksheet.GetSelection);
+        end;
+      cmCopy:
+        begin
+          Checked := false;
+          WorkbookSource.CopyCellsToClipboard;
+        end;
+      cmCut:
+        begin
+          Checked := false;
+          WorkbookSource.CutCellsToClipboard;
+        end;
+      cmPaste:
+        begin
+          Checked := false;
+          WorkbookSource.PasteCellsFromClipboard(OPERATIONS[FCopyItem]);
+        end;
+    end
+  else
+  if Target is TCustomEdit then
+    case FCopyMode of
+      cmBrush : ;
+      cmCopy  : (Target as TCustomEdit).CopyToClipboard;
+      cmCut   : (Target as TCustomEdit).CutToClipboard;
+      cmPaste : (Target as TCustomEdit).PasteFromClipboard;
+    end;
+end;
+
+function TsCopyAction.HandlesTarget(Target: TObject): Boolean;
+begin
   case FCopyMode of
-    cmBrush:
-      begin
-        Checked := true;
-        WorkbookSource.SetPendingOperation(OPERATIONS[FCopyItem], Worksheet.GetSelection);
-      end;
-    cmCopy:
-      begin
-        Checked := false;
-        WorkbookSource.CopyCellsToClipboard;
-      end;
-    cmCut:
-      begin
-        Checked := false;
-        WorkbookSource.CutCellsToClipboard;
-      end;
-    cmPaste:
-      begin
-        Checked := false;
-        WorkbookSource.PasteCellsFromClipboard(OPERATIONS[FCopyItem]);
-      end;
+    cmBrush: Result := inherited HandlesTarget(Target);
+    cmCopy,
+    cmCut,
+    cmPaste: Result := (Target <> nil) and
+               ( (Target is TsCustomWorksheetGrid) or (Target is TCustomEdit) );
   end;
 end;
 

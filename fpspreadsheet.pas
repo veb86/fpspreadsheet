@@ -1601,6 +1601,10 @@ begin
   toRow := AToCell^.Row;
   toCol := AToCell^.Col;
 
+  // Avoid misplaced notifications during the copy operations when things could
+  // not yet be in place.
+  FWorkbook.DisableNotifications;
+
   // Copy cell values
   AToCell^ := AFromCell^;
 
@@ -1647,6 +1651,11 @@ begin
       AToCell^.RichTextParams[i].FontIndex := fntIndex;
     end;
   end;
+
+  FWorkbook.EnableNotifications;
+
+  // Notify visual controls of changes
+  ChangedCell(AToCell^.Row, AToCell^.Col);
 
   // Notify visual controls of possibly changed row heights.
   ChangedFont(AToCell^.Row, AToCell^.Col);
@@ -7876,27 +7885,30 @@ begin
     end;
     // Select the same cells as in the clipboard
     n := clipsheet.GetSelectionCount;
-    SetLength(selArray, n);
-    for i := 0 to n-1 do
-    begin
-      sel := clipsheet.GetSelection[i];
-      selArray[i].Row1 := sel.Row1 + dr;
-      selArray[i].Col1 := sel.Col1 + dc;
-      selArray[i].Row2 := sel.Row2 + dr;
-      selArray[i].Col2 := sel.Col2 + dc;
+    if n > 0 then
+      begin
+      SetLength(selArray, n);
+      for i := 0 to n-1 do
+      begin
+        sel := clipsheet.GetSelection[i];
+        selArray[i].Row1 := sel.Row1 + dr;
+        selArray[i].Col1 := sel.Col1 + dc;
+        selArray[i].Row2 := sel.Row2 + dr;
+        selArray[i].Col2 := sel.Col2 + dc;
+      end;
+      ActiveWorksheet.SetSelection(selArray);
+      // Select active cell. If not found in the file, let's use the last cell of the selections
+      if (clipsheet.ActiveCellRow <> 0) and (clipsheet.ActiveCellCol <> 0) then
+      begin
+        r := clipsheet.ActiveCellRow;
+        c := clipsheet.ActiveCellCol;
+      end else
+      begin
+        r := sel.Row2;
+        c := sel.Col2;
+      end;
+      ActiveWorksheet.SelectCell(r + dr, c + dc);
     end;
-    ActiveWorksheet.SetSelection(selArray);
-    // Select active cell. If not found in the file, let's use the last cell of the selections
-    if (clipsheet.ActiveCellRow <> 0) and (clipsheet.ActiveCellCol <> 0) then
-    begin
-      r := clipsheet.ActiveCellRow;
-      c := clipsheet.ActiveCellCol;
-    end else
-    begin
-      r := sel.Row2;
-      c := sel.Col2;
-    end;
-    ActiveWorksheet.SelectCell(r + dr, c + dc);
   finally
     clipbook.Free;
   end;

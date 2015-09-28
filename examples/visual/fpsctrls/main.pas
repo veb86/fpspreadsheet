@@ -348,6 +348,7 @@ type
     procedure AcShowGridLinesExecute(Sender: TObject);
     procedure AcShowGridLinesUpdate(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
+    procedure EditCut1Execute(Sender: TObject);
     procedure HyperlinkHandler(Sender: TObject; ACaption: String;
       var AHyperlink: TsHyperlink);
     procedure InspectorTabControlChange(Sender: TObject);
@@ -579,6 +580,11 @@ begin
   InspectorTabControl.Visible := AcViewInspector.Checked;
   InspectorSplitter.Visible := AcViewInspector.Checked;
   InspectorSplitter.Left := 0;  // Make sure that the splitter is always at the left of the inspector
+end;
+
+procedure TMainForm.EditCut1Execute(Sender: TObject);
+begin
+  //
 end;
 
 { Event handler for hyperlinks: it only has to provide the hyperlink data
