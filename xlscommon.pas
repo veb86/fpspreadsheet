@@ -3771,7 +3771,7 @@ procedure TsSpreadBIFFWriter.WriteSELECTION(AStream: TStream;
   ASheet: TsWorksheet; APane: Byte);
 var
   activeCellRow, activeCellCol: Word;
-  i: Integer;
+  i, n: Integer;
   sel: TsCellRange;
 begin
   if FWorkbook.ActiveWorksheet <> nil then
@@ -3811,25 +3811,41 @@ begin
   AStream.WriteWord(WordToLE(activeCellCol));
 
   { Index into the following cell range list to the entry that contains the active cell }
-  i := ASheet.GetSelectionRangeIndexOfActiveCell;
+  i := Max(0, ASheet.GetSelectionRangeIndexOfActiveCell);
   AStream.WriteWord(WordToLE(i));
 
   { Cell range array }
 
   { Count of cell ranges }
-  AStream.WriteWord(WordToLE(ASheet.GetSelectionCount));
-
-  { Write each selected cell range }
-  for i := 0 to ASheet.GetSelectionCount-1 do
+  n := ASheet.GetSelectionCount;
+  // Case 1: no selection
+  if n = 0 then
   begin
-    sel := ASheet.GetSelection[i];
-    { Index to first and last row of this selected range }
-    AStream.WriteWord(WordToLE(sel.Row1));
-    AStream.WriteWord(WordToLE(sel.Row2));
+    { Count of cell ranges }
+    AStream.WriteWord(WordToLE(1));
+    { Index to first and last row - are the same here }
+    AStream.WriteWord(WordTOLE(activeCellRow));
+    AStream.WriteWord(WordTOLE(activeCellRow));
     { Index to first and last column - they are the same here again. }
-    { Note: Even BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns }
-    AStream.WriteByte(sel.Col1);
-    AStream.WriteByte(sel.Col2);
+    { Note: BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns}
+    AStream.WriteByte(activeCellCol);
+    AStream.WriteByte(activeCellCol);
+  end else
+  // Case 2: Selections available
+  begin
+    AStream.WriteWord(WordToLE(n));
+    { Write each selected cell range }
+    for i := 0 to n-1 do
+    begin
+      sel := ASheet.GetSelection[i];
+      { Index to first and last row of this selected range }
+      AStream.WriteWord(WordToLE(sel.Row1));
+      AStream.WriteWord(WordToLE(sel.Row2));
+      { Index to first and last column }
+      { Note: Even BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns }
+      AStream.WriteByte(sel.Col1);
+      AStream.WriteByte(sel.Col2);
+    end;
   end;
 end;
 
