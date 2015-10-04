@@ -17,8 +17,8 @@
     spreadsheet file.
 
   As a result, the <i>WorksheetTabControl</i> displays tabs for each worksheet
-  in the file, and the <i>WorksheetGrid</i> displays the worksheet according to
-  the selected tab.
+  in the file, and the <i>WorksheetGrid</i> displays the worksheet according
+  to the selected tab.
 -------------------------------------------------------------------------------}
 unit fpspreadsheetctrls;
 
@@ -476,8 +476,9 @@ var
   cfHTMLFormat: Integer = 0;
   cfTextHTMLFormat: Integer = 0;
   cfCSVFormat: Integer = 0;
+  { not working...
   cfOpenDocumentFormat: Integer = 0;
-  cfStarObjectDescriptor: Integer = 0;
+  cfStarObjectDescriptor: Integer = 0; }
 
 {@@ ----------------------------------------------------------------------------
   Registers the spreadsheet components in the Lazarus component palette,
@@ -500,7 +501,7 @@ function SpreadsheetFormatInClipboard: Boolean;
 begin
   Result := Clipboard.HasFormat(cfBiff8Format) or
             Clipboard.HasFormat(cfBiff5Format) or
-            Clipboard.HasFormat(cfOpenDocumentFormat) or
+//            Clipboard.HasFormat(cfOpenDocumentFormat) or
             Clipboard.HasFormat(cfHTMLFormat) or
             Clipboard.HasFormat(cfTextHTMLFormat) or
             Clipboard.HasFormat(cfCSVFormat) or
@@ -1159,6 +1160,8 @@ begin
 
     stream := TMemoryStream.Create;
     try
+      { -- not working...
+
       // Write OpenDocument format
       CopyToClipboard(stream, sfOpenDocument, cfOpenDocumentFormat);
 
@@ -1167,6 +1170,7 @@ begin
       if cfStarObjectDescriptor <> 0 then
         Clipboard.AddFormat(cfStarObjectDescriptor, stream);
       (stream as TMemoryStream).Clear;
+      }
 
       // Write BIFF8 format
       CopyToClipboard(stream, sfExcel8, cfBiff8Format);
@@ -1194,7 +1198,7 @@ begin
       CopyToClipboard(stream, sfCSV, CF_TEXT);
       CSVParams := savedCSVParams;
 
-      // To do: XML format
+      // To do: XML format, ods format
     finally
       stream.Free;
     end;
@@ -1228,22 +1232,16 @@ end;
 procedure TsWorkbookSource.PasteCellsFromClipboard(AItem: TsCopyOperation;
   ATransposed: Boolean = false);
 var
-  r, c, dr, dc, destRow, destCol: LongInt;
-  i, j: Integer;
-  cell: PCell;
-  baserng, rng: TsCellRange;
-  baseRow, baseCol: Cardinal;
-  cf: Integer;
   fmt: TsSpreadsheetFormat;
   stream: TStream;
-  s: String;
 begin
   stream := TMemoryStream.Create;
   try
     // Check whether the clipboard content is suitable for fpspreadsheet
-    if Clipboard.GetFormat(cfOpenDocumentFormat, stream) then
+    {if Clipboard.GetFormat(cfOpenDocumentFormat, stream) then
       fmt := sfOpenDocument
-    else if Clipboard.GetFormat(cfBiff8Format, stream) then
+    else}
+    if Clipboard.GetFormat(cfBiff8Format, stream) then
       fmt := sfExcel8
     else if Clipboard.GetFormat(cfBiff5Format, stream) then
       fmt := sfExcel5
@@ -1263,117 +1261,11 @@ begin
     stream.Position := 0;
     FWorkbook.PasteFromClipboardStream(stream, fmt, AItem, ATransposed);
 
-    // To do: XML format
-    // I don't know which format is written by xlsx and ods natively.
+    // To do: XML format, ods format
   finally
     stream.Free;
   end;
-
-  (*
-  exit;
-
-
-
-  if CellClipboard.Count = 0 then
-    exit;
-
-  DisableControls;
-  try
-    if FCutPending then
-    begin
-      for i:=0 to CellClipboard.Count-1 do
-      begin
-        cell := CellClipboard.CellByIndex[i];
-        r := cell^.Row;
-        c := cell^.Col;
-        cell := FWorksheet.FindCell(r, c);
-        FWorksheet.DeleteCell(cell);
-      end;
-      FCutPending := false;
-    end;
-
-    cell := CellClipboard.CellByIndex[0];
-    baseRow := cell^.Row;
-    baseCol := cell^.Col;
-
-    if CellClipboard.MultipleRanges then
-    begin
-      dr := FWorksheet.ActiveCellRow - baseRow;
-      dc := FWorksheet.ActiveCellCol - baseCol;
-      for i:=0 to CellClipboard.Count-1 do
-      begin
-        cell := CellClipboard.CellByIndex[i];
-        case AItem of
-          coCopyCell:
-            FWorksheet.CopyCell(cell^.Row, cell^.Col, LongInt(cell^.Row) + dr, LongInt(cell^.Col) + dc);
-          coCopyValue:
-            FWorksheet.CopyValue(cell, LongInt(cell^.Row) + dr, LongInt(cell^.Col) + dc);
-          coCopyFormat:
-            FWorksheet.CopyFormat(cell, LongInt(cell^.Row) + dr, LongInt(cell^.Col) + dc);
-          coCopyFormula:
-            FWorksheet.CopyFormula(cell, LongInt(cell^.Row) + dr, LongInt(cell^.Col) + dc);
-        end;
-      end;
-    end else
-    begin
-      // Determine cell range enclosed by cells in clipboard
-      baserng.Row1 := MaxInt;
-      baserng.Col1 := MaxInt;
-      baserng.Row2 := 0;
-      baserng.Col2 := 0;
-      for i :=0 to CellClipboard.Count-1 do
-      begin
-        cell := CellClipboard.CellByIndex[i];
-        baserng.Row1 := Min(baserng.Row1, cell^.Row);
-        baserng.Row2 := Max(baserng.Row2, cell^.Row);
-        baserng.Col1 := Min(baserng.Col1, cell^.Col);
-        baserng.Col2 := Max(baserng.Col2, cell^.Col);
-      end;
-
-      // Each selected range of the worksheet gets tiled copies of the range of
-      // the cells in clipboard
-      for j:=0 to FWorksheet.GetSelectionCount-1 do
-      begin
-        rng := FWorksheet.GetSelection[j];
-        r := rng.Row1;
-        while (r <= longInt(rng.Row2)) do begin
-          c := rng.Col1;
-          while (c <= LongInt(rng.Col2)) do begin
-            for i:=0 to CellClipboard.Count-1 do begin
-              cell := CellClipboard.CellByIndex[i];
-              destRow := r + LongInt(cell^.Row) - LongInt(baserng.Row1);
-              destCol := c + LongInt(cell^.Col) - LongInt(baserng.Col1);
-              case AItem of
-                coCopyCell:
-                  FWorksheet.CopyCell(cell^.Row, cell^.Col, destRow, destCol);
-                coCopyValue:
-                  FWorksheet.CopyValue(cell, destRow, destCol);
-                coCopyFormat:
-                  FWorksheet.CopyFormat(cell, destRow, destCol);
-                coCopyFormula:
-                  FWorksheet.CopyFormula(cell, destRow, destCol);
-              end;
-            end;
-            inc(c, baserng.Col2 - baserng.Col1 + 1);
-          end;
-          inc(r, baserng.Row2 - baserng.Row1 + 1);
-        end;
-      end;
-    end;
-  finally
-    EnableControls;
-  end;
-  *)
 end;
-                                              (*
-{@@ ----------------------------------------------------------------------------
-  Event handler called whenever the palette of the workbook is changed.
--------------------------------------------------------------------------------}
-procedure TsWorkbookSource.WorkbookChangedPaletteHandler(Sender: TObject);
-begin
-  Unused(Sender);
-  NotifyListeners([lniPalette]);
-end;                                            *)
 
 {@@ ----------------------------------------------------------------------------
   Event handler called whenever a new workbook is opened.
@@ -3168,29 +3060,17 @@ initialization
 
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'RowHeights', 'For compatibility with older Laz versions.', '');
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'ColWidths', 'For compatibility with older Laz versions.', '');
-   (*
- {$IFDEF MSWINDOWS}
-  cfOpenDocumentFormat := RegisterClipboardFormat('Star Embed Source (XML)');
- {$ELSE}
-  cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice-embed-source-xml;windows_formatname="Star Embed Source (XML)');
- {$ENDIF}
- *)
-  cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice-embed-source-xml;windows_formatname="Star Embed Source (XML)"');
-  cfStarObjectDescriptor := RegisterClipboardFormat('application/x-openoffice-objectdescriptor-xml;windows_formatname="Star Object Descriptor (XML)"');
-//  cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice;windows_formatname="Star Embed Source (XML)"');
-  //cfOpenDocumentFormat := RegisterClipboardFormat('Star Embed Source (XML)');
-//  cfBiff8Format := RegisterClipboardFormat('application/vnd.ms-excel'); //Biff8');
+
+  { Clipboard formats }
   cfBiff8Format := RegisterclipboardFormat('Biff8');
   cfBiff5Format := RegisterClipboardFormat('Biff5');
   cfHTMLFormat := RegisterClipboardFormat('HTML Format');
   cfTextHTMLFormat := RegisterClipboardFormat('text/html');
   cfCSVFormat := RegisterClipboardFormat('CSV');
-
-  // xls: application/vnd.ms-excel
-  // xlsx: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet
-
-  // ods: application/x-openoffice-embed-source-xml;windows_formatname="Star Embed Source (XML)"  -- Linux -- tested
-  // ods: Star Embed Source (XML) -- Windows
+  { not working...
+  cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice-embed-source-xml;windows_formatname="Star Embed Source (XML)"');
+  cfStarObjectDescriptor := RegisterClipboardFormat('application/x-openoffice-objectdescriptor-xml;windows_formatname="Star Object Descriptor (XML)"');
+  }
 
 finalization
 //  CellClipboard.Free;

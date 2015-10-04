@@ -142,7 +142,6 @@ type
     destructor Destroy; override;
 
     { General reading methods }
-    procedure ReadFromClipboardStream(AStream: TStream); override;
     procedure ReadFromStream(AStream: TStream); override;
   end;
 
@@ -230,11 +229,10 @@ type
 
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
-    procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); override;
     procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
   end;
 
-procedure WriteStarObjectDescriptorToStream(AStream: TStream);
+{ procedure WriteStarObjectDescriptorToStream(AStream: TStream); }
 
 
 implementation
@@ -362,7 +360,7 @@ type
 {******************************************************************************}
 {                         Clipboard utility                                    }
 {******************************************************************************}
-
+                              (*
 {@@ ----------------------------------------------------------------------------
   Writes the "Star Object Descriptor". This is written to the clipboard by
   Open/LibreOffice. No idea about the meaning of this...
@@ -376,7 +374,7 @@ const
     $00,$67,$45,$23,$01,$EF,$CD,$AB,$89);
 begin
   AStream.Write(BYTES, SizeOf(BYTES));
-end;
+end;                            *)
 
 
 {******************************************************************************}
@@ -2058,11 +2056,6 @@ begin
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
-end;
-
-procedure TsSpreadOpenDocReader.ReadFromClipboardStream(AStream: TStream);
-begin
-  ReadFromStream(AStream);
 end;
 
 procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream);
@@ -4824,12 +4817,6 @@ begin
   end;
 end;                       *)
 
-procedure TsSpreadOpenDocWriter.WriteToClipboardStream(AStream: TStream;
-  AParam: Integer = 0);
-begin
-  WriteToStream(AStream, AParam);
-end;
-
 procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream;
   AParam: Integer = 0);
 begin
@@ -6152,7 +6139,7 @@ initialization
 {@@ ----------------------------------------------------------------------------
   Registers this reader / writer on fpSpreadsheet
 -------------------------------------------------------------------------------}
-  RegisterSpreadFormat(TsSpreadOpenDocReader, TsSpreadOpenDocWriter, sfOpenDocument, true, true);
+  RegisterSpreadFormat(TsSpreadOpenDocReader, TsSpreadOpenDocWriter, sfOpenDocument);
 
 end.
 
