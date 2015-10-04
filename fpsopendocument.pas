@@ -192,6 +192,7 @@ type
     procedure AddBuiltinNumFormats; override;
     procedure CreateStreams;
     procedure DestroyStreams;
+    procedure InternalWriteToStream(AStream: TStream);
     procedure ListAllColumnStyles;
     procedure ListAllHeaderFooterFonts;
     procedure ListAllNumFormats; override;
@@ -232,6 +233,9 @@ type
     procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); override;
     procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
   end;
+
+procedure WriteStarObjectDescriptorToStream(AStream: TStream);
+
 
 implementation
 
@@ -353,6 +357,27 @@ type
     DefaultCellStyleIndex: Integer;  // Index of default row style in FCellStyleList of reader
   end;
   *)
+
+
+{******************************************************************************}
+{                         Clipboard utility                                    }
+{******************************************************************************}
+
+{@@ ----------------------------------------------------------------------------
+  Writes the "Star Object Descriptor". This is written to the clipboard by
+  Open/LibreOffice. No idea about the meaning of this...
+-------------------------------------------------------------------------------}
+procedure WriteStarObjectDescriptorToStream(AStream: TStream);
+const
+  BYTES: packed array[0..$38] of byte = (
+    $39,$00,$00,$00,$CB,$B4,$BB,$47,$4C,$CE,$80,$4E,$A5,$91,$42,$D9,
+    $AE,$74,$95,$0F,$01,$00,$00,$00,$D2,$08,$00,$00,$C4,$01,$00,$00,
+    $00,$00,$00,$00,$00,$00,$00,$00,$05,$00,$63,$61,$6C,$63,$38,$00,
+    $00,$67,$45,$23,$01,$EF,$CD,$AB,$89);
+begin
+  AStream.Write(BYTES, SizeOf(BYTES));
+end;
+
 
 {******************************************************************************}
 {                          TXMLHeaderFooterFont                                }
@@ -3657,6 +3682,49 @@ begin
   DestroyStream(FSMetaInfManifest);
 end;
 
+procedure TsSpreadOpenDocWriter.InternalWriteToStream(AStream: TStream);
+var
+  FZip: TZipper;
+begin
+  { Analyze the workbook and collect all information needed }
+  ListAllNumFormats;
+  ListAllColumnStyles;
+  ListAllRowStyles;
+  ListAllHeaderFooterFonts;
+
+  { Create the streams that will hold the file contents }
+  CreateStreams;
+
+  { Fill the strings with the contents of the files }
+  WriteMimetype();
+  WriteMetaInfManifest();
+  WriteMeta();
+  WriteSettings();
+  WriteStyles();
+  WriteContent;
+
+  { Now compress the files }
+  FZip := TZipper.Create;
+  try
+    FZip.FileName := '__temp__.tmp';
+
+    FZip.Entries.AddFileEntry(FSMeta, OPENDOC_PATH_META);
+    FZip.Entries.AddFileEntry(FSSettings, OPENDOC_PATH_SETTINGS);
+    FZip.Entries.AddFileEntry(FSStyles, OPENDOC_PATH_STYLES);
+    FZip.Entries.AddFileEntry(FSContent, OPENDOC_PATH_CONTENT);
+    FZip.Entries.AddFileEntry(FSMimetype, OPENDOC_PATH_MIMETYPE);
+    FZip.Entries.AddFileEntry(FSMetaInfManifest, OPENDOC_PATH_METAINF_MANIFEST);
+
+    ResetStreams;
+
+    FZip.SaveToStream(AStream);
+
+  finally
+    DestroyStreams;
+    FZip.Free;
+  end;
+end;
+
 procedure TsSpreadOpenDocWriter.ListAllColumnStyles;
 var
   i, j, c: Integer;
@@ -4764,48 +4832,9 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream;
   AParam: Integer = 0);
-var
-  FZip: TZipper;
 begin
   Unused(AParam);
-
-  { Analyze the workbook and collect all information needed }
-  ListAllNumFormats;
-  ListAllColumnStyles;
-  ListAllRowStyles;
-  ListAllHeaderFooterFonts;
-
-  { Create the streams that will hold the file contents }
-  CreateStreams;
-
-  { Fill the strings with the contents of the files }
-  WriteMimetype();
-  WriteMetaInfManifest();
-  WriteMeta();
-  WriteSettings();
-  WriteStyles();
-  WriteContent;
-
-  { Now compress the files }
-  FZip := TZipper.Create;
-  try
-    FZip.FileName := '__temp__.tmp';
-
-    FZip.Entries.AddFileEntry(FSMeta, OPENDOC_PATH_META);
-    FZip.Entries.AddFileEntry(FSSettings, OPENDOC_PATH_SETTINGS);
-    FZip.Entries.AddFileEntry(FSStyles, OPENDOC_PATH_STYLES);
-    FZip.Entries.AddFileEntry(FSContent, OPENDOC_PATH_CONTENT);
-    FZip.Entries.AddFileEntry(FSMimetype, OPENDOC_PATH_MIMETYPE);
-    FZip.Entries.AddFileEntry(FSMetaInfManifest, OPENDOC_PATH_METAINF_MANIFEST);
-
-    ResetStreams;
-
-    FZip.SaveToStream(AStream);
-
-  finally
-    DestroyStreams;
-    FZip.Free;
-  end;
+  InternalWriteToStream(AStream);
 end;
 
 { Writes an empty cell to the stream }
@@ -6116,6 +6145,7 @@ begin
     ]));
   end;
 end;
+
 
 initialization
 

@@ -468,7 +468,7 @@ implementation
 uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
   Dialogs, Forms, Clipbrd,
-  fpsStrings, fpsUtils, fpsNumFormat, fpsHTMLUtils, fpsCSV;
+  fpsStrings, fpsUtils, fpsNumFormat, fpsHTMLUtils, fpsCSV, fpsOpenDocument;
 
 var
   cfBiff8Format: Integer = 0;
@@ -477,6 +477,7 @@ var
   cfTextHTMLFormat: Integer = 0;
   cfCSVFormat: Integer = 0;
   cfOpenDocumentFormat: Integer = 0;
+  cfStarObjectDescriptor: Integer = 0;
 
 {@@ ----------------------------------------------------------------------------
   Registers the spreadsheet components in the Lazarus component palette,
@@ -1136,7 +1137,17 @@ var
   sel: TsCellRangeArray;
   stream: TStream;
   savedCSVParams: TsCSVParams;
-  param: Integer;
+
+  procedure CopyToClipboard(AStream: TStream; AFileFormat: TsSpreadsheetFormat;
+    AClipboardFormat: Integer; AParam: Integer = 0);
+  begin
+    if AClipboardFormat = 0 then
+      exit;
+    FWorkbook.CopyToClipboardStream(AStream, AFileFormat, AParam);
+    Clipboard.AddFormat(AClipboardFormat, AStream);
+    (AStream as TMemoryStream).Clear;
+  end;
+
 begin
   sel := FWorksheet.GetSelection;
   if Length(sel) = 0 then
@@ -1149,82 +1160,47 @@ begin
     stream := TMemoryStream.Create;
     try
       // Write OpenDocument format
-      FWorkbook.CopyToClipboardStream(stream, sfOpenDocument);
-      if cfOpenDocumentFormat <> 0 then
-        Clipboard.AddFormat(cfOpenDocumentFormat, stream);
+      CopyToClipboard(stream, sfOpenDocument, cfOpenDocumentFormat);
+
+      // Write OpenDocument's "Star Object Descriptor"
+      WriteStarObjectDescriptorToStream(stream);
+      if cfStarObjectDescriptor <> 0 then
+        Clipboard.AddFormat(cfStarObjectDescriptor, stream);
       (stream as TMemoryStream).Clear;
 
       // Write BIFF8 format
-      FWorkbook.CopyToClipboardStream(stream, sfExcel8);
-      if cfBiff8Format <> 0 then
-        Clipboard.AddFormat(cfBiff8Format, stream);
-      (stream as TMemoryStream).Clear;
+      CopyToClipboard(stream, sfExcel8, cfBiff8Format);
 
       // Then write BIFF5 format
-      FWorkbook.CopyToClipboardStream(stream, sfExcel5);
-      if cfBiff5Format <> 0 then
-        Clipboard.AddFormat(cfBiff5Format, stream);
-      (stream as TMemoryStream).Clear;
+      CopyToClipboard(stream, sfExcel5, cfBiff5Format);
 
       // Then write Windows HTML format
       {$IFDEF MSWINDOWS}
-       param := PARAM_WINDOWS_CLIPBOARD_HTML;
-       FWorkbook.CopyToClipboardStream(stream, sfHTML, param);
-       if cfHtmlFormat <> 0 then
-         Clipboard.AddFormat(cfHTMLFormat, stream);
-       (stream as TMemoryStream).Clear;
+      CopyToClipboard(stream, sfHTML, cfHtmlFormat, PARAM_WINDOWS_CLIPBOARD_HTML);
       {$ENDIF}
 
       // Write standard html format (MIME-type "text/html")
-      FWorkbook.CopyToClipboardStream(stream, sfHTML);
-      if cfTextHtmlFormat <> 0 then
-        Clipboard.AddFormat(cfTextHTMLFormat, stream);
-      (stream as TMemoryStream).Clear;
+      CopyToClipboard(stream, sfHTML, cfTextHTMLFormat);
 
       // Then write CSV format
       savedCSVParams := CSVParams;
       CsvParams.Delimiter := ';';
       CsvParams.AutoDetectNumberFormat := false;
       CsvParams.SheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet);
-      FWorkbook.CopyToClipboardStream(stream, sfCSV);
-      if cfCSVFormat <> 0 then
-        Clipboard.AddFormat(cfCSVFormat, stream);
-      (stream as TMemoryStream).Clear;
+      CopyToClipboard(stream, sfCSV, cfCSVFormat);
 
       // Finally write TEXT format
       CsvParams.Delimiter := #9;
-      FWorkbook.CopyToClipboardStream(stream, sfCSV);
-      Clipboard.AddFormat(CF_TEXT, stream);
+      CopyToClipboard(stream, sfCSV, CF_TEXT);
       CSVParams := savedCSVParams;
-      (stream as TMemoryStream).Clear;
 
       // To do: XML format
-      // I don't know which format is written by xlsx and ods natively.
     finally
       stream.Free;
     end;
   finally
     Clipboard.Close;
   end;
-                    (*
-  exit;
-
-
-  ClearCellClipboard;
-
-  for i:=0 to High(sel) do
-    for r := sel[i].Row1 to sel[i].Row2 do
-      for c := sel[i].Col1 to sel[i].Col2 do
-      begin
-        cell := FWorksheet.FindCell(r, c);
-        if cell = nil then
-          CellClipboard.AddEmptyCell(r, c)
-        else
-          CellClipboard.AddCell(cell);
-      end;
-
-  CellClipboard.MultipleRanges := (Length(sel) > 1);
-  *)
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3200,6 +3176,7 @@ initialization
  {$ENDIF}
  *)
   cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice-embed-source-xml;windows_formatname="Star Embed Source (XML)"');
+  cfStarObjectDescriptor := RegisterClipboardFormat('application/x-openoffice-objectdescriptor-xml;windows_formatname="Star Object Descriptor (XML)"');
 //  cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice;windows_formatname="Star Embed Source (XML)"');
   //cfOpenDocumentFormat := RegisterClipboardFormat('Star Embed Source (XML)');
 //  cfBiff8Format := RegisterClipboardFormat('application/vnd.ms-excel'); //Biff8');

@@ -1310,7 +1310,7 @@ begin
   begin
     w := FWorksheet.DefaultColWidth;
     col := FWorksheet.FindCol(AColIndex);
-    if col <> nil then
+    if (col <> nil) and (col^.Width > 0) then
       w := col^.Width;
   end;
   w := w * FWorkbook.GetDefaultFont.Size;
