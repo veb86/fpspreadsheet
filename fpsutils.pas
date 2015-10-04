@@ -1624,8 +1624,12 @@ begin
       '"': Result := Result + '&quot;';
       '''':Result := Result + '&apos;';
       '%': Result := Result + '&#37;';
-      #10: if ProcessLineEndings then Result := Result + '&#10;';
-      #13: if ProcessLineEndings then Result := Result + '&#13;';
+      #10: if ProcessLineEndings then
+             Result := Result + '&#10;' else
+             Result := Result + #10;
+      #13: if ProcessLineEndings then
+             Result := Result + '&#13;' else
+             Result := Result + #13;
       {     this breaks multi-line labels in xlsx
       #10: begin
              Result := Result + '<br />';
@@ -1636,10 +1640,6 @@ begin
              if (idx < Length(AText)) and (AText[idx+1] = #10) then inc(idx);
            end;
            }
-      {
-      #10: WrkStr := WrkStr + '&#10;';
-      #13: WrkStr := WrkStr + '&#13;';
-      }
     else
       Result := Result + AText[Idx];
     end;

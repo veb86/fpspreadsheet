@@ -50,11 +50,11 @@ end;
 
 procedure TSpreadErrorTests.TestWriteErrorMessages(AFormat: TsSpreadsheetFormat);
 type
-  TTestFormat = (sfExcel2, sfExcel5, sfExcel8, sfOOXML, sfOpenDocument);
-const
-  MAX_ROW_COUNT: array[TTestFormat] of Cardinal = (65536, 65536, 65536, 1048576, 1048576);
-  MAX_COL_COUNT: array[TTestFormat] of Cardinal = (256, 256, 256, 16384, 1024);
-  MAX_CELL_LEN: array[TTestFormat] of Cardinal = (255, 255, 32767, cardinal(-1), Cardinal(-1));
+  TTestFormat = (sfExcel2, sfExcel5, sfExcel8, sfExcelXML, sfOOXML, sfOpenDocument);
+const                                           // XLS2   XLS5   XLS8   XLSXML   OOXML    ODS
+  MAX_ROW_COUNT: array[TTestFormat] of Cardinal = (65536, 65536, 65536, 65536,  1048576, 1048576);
+  MAX_COL_COUNT: array[TTestFormat] of Cardinal = (  256,   256,   256,   256,    16384,    1024);
+  MAX_CELL_LEN : array[TTestFormat] of Cardinal = (  255,   255, 32767, 32767,$FFFFFFFF,$FFFFFFFF);
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
