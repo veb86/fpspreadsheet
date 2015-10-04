@@ -128,9 +128,9 @@ type
 
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream); override;
-    procedure WriteToStrings(AStrings: TStrings); override;
+      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); override;
+    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
+    procedure WriteToStrings(AStrings: TStrings; AParam: Integer = 0); override;
 
     {@@ List of number formats found in the workbook. }
     property NumFormatList: TStringList read FNumFormatList;
@@ -610,11 +610,13 @@ end;
 
   @param  AFileName           The output file name.
   @param  AOverwriteExisting  If the file already exists it will be replaced.
+  @param  AParam              Optional parameter to control writer-specific details
+                              (see PARAM_XXXX declarations)
 
   @see    TsWorkbook
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean = False);
+  const AOverwriteExisting: Boolean = False; AParam: Integer = 0);
 var
   OutputFile: TStream;
   lMode: Word;
@@ -633,7 +635,7 @@ begin
     OutputFile := TMemoryStream.Create;
 
   try
-    WriteToStream(OutputFile);
+    WriteToStream(OutputFile, AParam);
     if OutputFile is TMemoryStream then
       (OutputFile as TMemoryStream).SaveToFile(AFileName);
   finally
@@ -648,11 +650,14 @@ end;
   Must be overriden in descendent classes for all other cases.
 
   @param  AStream   Stream to which the workbook is written
+  @param  AParam    Optional parameter to control writer-specific details
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream);
+procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream;
+  AParam: Integer = 0);
 var
   list: TStringList;
 begin
+  Unused(AParam);
   list := TStringList.Create;
   try
     WriteToStrings(list);
@@ -666,9 +671,10 @@ end;
   Writes the worksheet to a list of strings. Not implemented here, needs to
   be overridden by descendants. See wikitables.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings);
+procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings;
+  AParam: Integer = 0);
 begin
-  Unused(AStrings);
+  Unused(AStrings, AParam);
   raise Exception.Create(rsUnsupportedWriteFormat);
 end;
 

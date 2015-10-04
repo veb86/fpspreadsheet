@@ -229,12 +229,8 @@ type
 
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
-    procedure WriteToClipboardStream(AStream: TStream); override;
-    {
-    procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False); override;
-    }
-    procedure WriteToStream(AStream: TStream); override;
+    procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); override;
+    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
   end;
 
 implementation
@@ -4760,15 +4756,19 @@ begin
   end;
 end;                       *)
 
-procedure TsSpreadOpenDocWriter.WriteToClipboardStream(AStream: TStream);
+procedure TsSpreadOpenDocWriter.WriteToClipboardStream(AStream: TStream;
+  AParam: Integer = 0);
 begin
-  WriteToStream(AStream);
+  WriteToStream(AStream, AParam);
 end;
 
-procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream);
+procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream;
+  AParam: Integer = 0);
 var
   FZip: TZipper;
 begin
+  Unused(AParam);
+
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
   ListAllColumnStyles;

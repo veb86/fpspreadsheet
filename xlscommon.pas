@@ -574,7 +574,7 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     procedure CheckLimitations; override;
-    procedure WriteToClipboardStream(AStream: TStream); override;
+    procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); override;
   end;
 
 procedure AddBuiltinBiffFormats(AList: TStringList;
@@ -3816,33 +3816,33 @@ begin
 
   { Cell range array }
 
-  { Count of cell ranges }
   n := ASheet.GetSelectionCount;
   // Case 1: no selection
   if n = 0 then
   begin
-    { Count of cell ranges }
+    // Count of cell ranges
     AStream.WriteWord(WordToLE(1));
-    { Index to first and last row - are the same here }
+    // Index to first and last row - are the same here
     AStream.WriteWord(WordTOLE(activeCellRow));
     AStream.WriteWord(WordTOLE(activeCellRow));
-    { Index to first and last column - they are the same here again. }
-    { Note: BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns}
+    // Index to first and last column - they are the same here again.
+    // Note: BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns
     AStream.WriteByte(activeCellCol);
     AStream.WriteByte(activeCellCol);
   end else
   // Case 2: Selections available
   begin
+    // Count of cell ranges
     AStream.WriteWord(WordToLE(n));
-    { Write each selected cell range }
+    // Write each selected cell range
     for i := 0 to n-1 do
     begin
       sel := ASheet.GetSelection[i];
-      { Index to first and last row of this selected range }
+      // Index to first and last row of this selected range
       AStream.WriteWord(WordToLE(sel.Row1));
       AStream.WriteWord(WordToLE(sel.Row2));
-      { Index to first and last column }
-      { Note: Even BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns }
+      // Index to first and last column
+      // Note: Even BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns
       AStream.WriteByte(sel.Col1);
       AStream.WriteByte(sel.Col2);
     end;
@@ -4002,9 +4002,10 @@ begin
   AStream.WriteWord(WordToLE(w));
 end;
 
-procedure TsSpreadBIFFWriter.WriteToClipboardStream(AStream: TStream);
+procedure TsSpreadBIFFWriter.WriteToClipboardStream(AStream: TStream;
+  AParam: Integer = 0);
 begin
-  WriteToStream(AStream);
+  WriteToStream(AStream, AParam);
 end;
 
 procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream);

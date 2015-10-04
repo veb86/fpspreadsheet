@@ -125,7 +125,7 @@ type
 //    procedure ClearCellClipboard;
     procedure CopyCellsToClipboard;
     procedure CutCellsToClipboard;
-    procedure PasteCellsFromClipboard(AItem: TsCopyOperation);
+    procedure PasteCellsFromClipboard(AItem: TsCopyOperation; ATransposed: Boolean = false);
 
   public
     {@@ Workbook linked to the WorkbookSource }
@@ -1136,6 +1136,7 @@ var
   sel: TsCellRangeArray;
   stream: TStream;
   savedCSVParams: TsCSVParams;
+  param: Integer;
 begin
   sel := FWorksheet.GetSelection;
   if Length(sel) = 0 then
@@ -1165,10 +1166,17 @@ begin
         Clipboard.AddFormat(cfBiff5Format, stream);
       (stream as TMemoryStream).Clear;
 
-      // Then write HTML format
+      // Then write Windows HTML format
+      {$IFDEF MSWINDOWS}
+       param := PARAM_WINDOWS_CLIPBOARD_HTML;
+       FWorkbook.CopyToClipboardStream(stream, sfHTML, param);
+       if cfHtmlFormat <> 0 then
+         Clipboard.AddFormat(cfHTMLFormat, stream);
+       (stream as TMemoryStream).Clear;
+      {$ENDIF}
+
+      // Write standard html format (MIME-type "text/html")
       FWorkbook.CopyToClipboardStream(stream, sfHTML);
-      if cfHtmlFormat <> 0 then
-        Clipboard.AddFormat(cfHTMLFormat, stream);
       if cfTextHtmlFormat <> 0 then
         Clipboard.AddFormat(cfTextHTMLFormat, stream);
       (stream as TMemoryStream).Clear;
@@ -1238,8 +1246,11 @@ end;
 
   AOperation determines which "item" of the cell (all, values, formats, formula)
   is pasted.
+
+  If ATranspose is TRUE then rows and columns are interchanged.
 -------------------------------------------------------------------------------}
-procedure TsWorkbookSource.PasteCellsFromClipboard(AItem: TsCopyOperation);
+procedure TsWorkbookSource.PasteCellsFromClipboard(AItem: TsCopyOperation;
+  ATransposed: Boolean = false);
 var
   r, c, dr, dc, destRow, destCol: LongInt;
   i, j: Integer;
@@ -1274,7 +1285,7 @@ begin
 
     // Paste stream into workbook
     stream.Position := 0;
-    FWorkbook.PasteFromClipboardStream(stream, fmt, AItem);
+    FWorkbook.PasteFromClipboardStream(stream, fmt, AItem, ATransposed);
 
     // To do: XML format
     // I don't know which format is written by xlsx and ods natively.

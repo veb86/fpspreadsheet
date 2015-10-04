@@ -51,9 +51,9 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    procedure WriteToClipboardStream(AStream: TStream); override;
-    procedure WriteToStream(AStream: TStream); override;
-    procedure WriteToStrings(AStrings: TStrings); override;
+    procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); override;
+    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
+    procedure WriteToStrings(AStrings: TStrings; AParam: Integer = 0); override;
   end;
 
   TsCSVLineEnding = (leSystem, leCRLF, leCR, leLF);
@@ -415,29 +415,31 @@ begin
   end;
 end;
 
-procedure TsCSVWriter.WriteToClipboardStream(AStream: TStream);
+procedure TsCSVWriter.WriteToClipboardStream(AStream: TStream;
+  AParam: Integer = 0);
 begin
   FClipboardMode := true;
-  WriteToStream(AStream);
+  WriteToStream(AStream, AParam);
 end;
 
-procedure TsCSVWriter.WriteToStream(AStream: TStream);
+procedure TsCSVWriter.WriteToStream(AStream: TStream; AParam: Integer = 0);
 var
   n: Integer;
 begin
+  Unused(AParam);
   if (CSVParams.SheetIndex >= 0) and (CSVParams.SheetIndex < FWorkbook.GetWorksheetCount)
     then n := CSVParams.SheetIndex
     else n := 0;
   WriteSheet(AStream, FWorkbook.GetWorksheetByIndex(n));
 end;
 
-procedure TsCSVWriter.WriteToStrings(AStrings: TStrings);
+procedure TsCSVWriter.WriteToStrings(AStrings: TStrings; AParam: Integer = 0);
 var
   Stream: TStream;
 begin
   Stream := TStringStream.Create('');
   try
-    WriteToStream(Stream);
+    WriteToStream(Stream, AParam);
     Stream.Position := 0;
     AStrings.LoadFromStream(Stream);
   finally

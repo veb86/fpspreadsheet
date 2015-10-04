@@ -126,8 +126,7 @@ type
       XFType_Prot: Byte = 0); override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    { General writing methods }
-    procedure WriteToStream(AStream: TStream); override;
+    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
   end;
 
   TExcel2Settings = record
@@ -1284,10 +1283,13 @@ end;
   Excel 2.x files support only one Worksheet per Workbook,
   so only the first one will be written.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream);
+procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream;
+  AParam: Integer = 0);
 var
   pane: Byte;
 begin
+  Unused(AParam);
+
   FWorksheet := Workbook.GetWorksheetByIndex(FSheetIndex);
   if FWorksheet = nil then
     raise Exception.Create(rsWorksheetNotFound1);

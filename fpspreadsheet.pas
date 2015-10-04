@@ -667,11 +667,11 @@ type
       AClipboardMode: Boolean = false);
     procedure WriteToFile(const AFileName: string;
       const AFormat: TsSpreadsheetFormat;
-      const AOverwriteExisting: Boolean = False); overload;
+      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); overload;
     procedure WriteToFile(const AFileName: String;
-      const AOverwriteExisting: Boolean = False); overload;
+      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); overload;
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AClipboardMode: Boolean = false);
+      AClipboardMode: Boolean = false; AParam: Integer = 0);
 
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string;
@@ -731,9 +731,10 @@ type
     function GetNumberFormatCount: Integer;
 
     { Clipboard }
-    procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat);
+    procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
+      AParam: Integer = 0);
     procedure PasteFromClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AOperation: TsCopyOperation);
+      AOperation: TsCopyOperation; ATransposed: Boolean = false);
                       (*
     { Color handling }
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
@@ -836,11 +837,11 @@ type
     { Helpers }
     procedure CheckLimitations; virtual;
     { General writing methods }
-    procedure WriteToClipboardStream(AStream: TStream); virtual; abstract;
+    procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); virtual; abstract;
     procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False); virtual; abstract;
-    procedure WriteToStream(AStream: TStream); virtual; abstract;
-    procedure WriteToStrings(AStrings: TStrings); virtual; abstract;
+      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); virtual; abstract;
+    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); virtual; abstract;
+    procedure WriteToStrings(AStrings: TStrings; AParam: Integer = 0); virtual; abstract;
   end;
 
   {@@ TsSpreadReader class reference type }
@@ -6896,9 +6897,11 @@ end;
   @param  AOverwriteExisting  If the file is already existing it will be
                      overwritten in case of AOverwriteExisting = true.
                      If false an exception will be raised.
+  @param  AParam     Optional parameter to control writer-specific details.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToFile(const AFileName: string;
- const AFormat: TsSpreadsheetFormat; const AOverwriteExisting: Boolean = False);
+ const AFormat: TsSpreadsheetFormat; const AOverwriteExisting: Boolean = False;
+ AParam: Integer = 0);
 var
   AWriter: TsBasicSpreadWriter;
 begin
@@ -6909,7 +6912,7 @@ begin
     PrepareBeforeSaving;
     AWriter.CheckLimitations;
     FReadWriteFlag := rwfWrite;
-    AWriter.WriteToFile(AFileName, AOverwriteExisting);
+    AWriter.WriteToFile(AFileName, AOverwriteExisting, AParam);
   finally
     FReadWriteFlag := rwfNormal;
     AWriter.Free;
@@ -6924,16 +6927,17 @@ end;
   @param  AOverwriteExisting  If the file already exists it will be overwritten
                      of AOverwriteExisting is true. In case of false, an
                      exception will be raised.
+  @param  AParam     Optional parameter to control writer-specific details
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToFile(const AFileName: String;
-  const AOverwriteExisting: Boolean);
+  const AOverwriteExisting: Boolean; AParam: Integer = 0);
 var
   SheetType: TsSpreadsheetFormat;
   valid: Boolean;
 begin
   valid := GetFormatFromFileName(AFileName, SheetType);
   if valid then
-    WriteToFile(AFileName, SheetType, AOverwriteExisting)
+    WriteToFile(AFileName, SheetType, AOverwriteExisting, AParam)
   else
     raise Exception.Create(Format(rsInvalidExtension, [
       ExtractFileExt(AFileName)
@@ -6946,9 +6950,12 @@ end;
   @param  AStream         Instance of the stream being written to
   @param  AFormat         File format to be written.
   @param  AClipboardMode  Stream will be used by calling method for clipboard access
+  @param  AParam          An optional parameter which controls writing of
+                          details. The HTML writer, for example, can be forced
+                          to write a valid html document in Windows.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-  AClipboardMode: Boolean = false);
+  AClipboardMode: Boolean = false; AParam: Integer = 0);
 var
   AWriter: TsBasicSpreadWriter;
 begin
@@ -6958,8 +6965,8 @@ begin
     AWriter.CheckLimitations;
     FReadWriteFlag := rwfWrite;
     if AClipboardMode then
-      AWriter.WriteToClipboardStream(AStream) else
-      AWriter.WriteToStream(AStream);
+      AWriter.WriteToClipboardStream(AStream, AParam) else
+      AWriter.WriteToStream(AStream, AParam);
   finally
     FReadWriteFlag := rwfNormal;
     AWriter.Free;
@@ -7783,7 +7790,7 @@ end;
   fpspreadsheet does not "know" the system's clipboard.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.CopyToClipboardStream(AStream: TStream;
-  AFormat: TsSpreadsheetFormat);
+  AFormat: TsSpreadsheetFormat; AParam: Integer = 0);
 var
   clipbook: TsWorkbook;
   clipsheet: TsWorksheet;
@@ -7818,9 +7825,9 @@ begin
     clipsheet.SetSelection(ActiveWorksheet.GetSelection);
     clipsheet.SelectCell(ActiveWorksheet.ActiveCellRow, ActiveWorksheet.ActiveCellCol);
 
-    // Write this workbook to a stream. Set the last parameter (ClipboardMode)
+    // Write this workbook to a stream. Set the parameter ClipboardMode
     // to TRUE to use the dedicated clipboard routine if needed.
-    clipbook.WriteToStream(AStream, AFormat, true);
+    clipbook.WriteToStream(AStream, AFormat, true, AParam);
 
     // The calling routine which copies the stream to the clipboard requires
     // the stream to be at its beginning.
@@ -7837,7 +7844,8 @@ end;
   calling routine since fpspreadsheet does not "know" the system's clipboard.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.PasteFromClipboardStream(AStream: TStream;
-  AFormat: TsSpreadsheetFormat; AOperation: TsCopyOperation);
+  AFormat: TsSpreadsheetFormat; AOperation: TsCopyOperation;
+  ATransposed: Boolean = false);
 var
   clipbook: TsWorkbook;
   clipsheet: TsWorksheet;

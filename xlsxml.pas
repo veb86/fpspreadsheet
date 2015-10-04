@@ -69,8 +69,8 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream); override;
+//    procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); override;
+    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
 
   end;
 
@@ -736,7 +736,7 @@ begin
   AppendToStream(AStream, TABLE_INDENT +
     '</Table>' + LF);
 end;
-
+  (*
 {@@ ----------------------------------------------------------------------------
   Writes an ExcelXML document to the file
 -------------------------------------------------------------------------------}
@@ -761,12 +761,16 @@ begin
     FreeAndNil(stream);
   end;
 end;
+    *)
 
 {@@ ----------------------------------------------------------------------------
   Writes an ExcelXML document to a stream
 -------------------------------------------------------------------------------}
-procedure TsSpreadExcelXMLWriter.WriteToStream(AStream: TStream);
+procedure TsSpreadExcelXMLWriter.WriteToStream(AStream: TStream;
+  AParam: Integer = 0);
 begin
+  Unused(AParam);
+
   AppendToStream(AStream,
     '<?xml version="1.0"?>' + LF +
     '<?mso-application progid="Excel.Sheet"?>' + LF

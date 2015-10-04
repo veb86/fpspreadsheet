@@ -189,8 +189,11 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
-    procedure WriteToFile(const AFileName: string; const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream); override;
+    {
+    procedure WriteToFile(const AFileName: string;
+      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); override;
+      }
+    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
   end;
 
 
@@ -3716,11 +3719,12 @@ begin
   end;
 end;
 
+(*
 {@@ ----------------------------------------------------------------------------
   Writes an OOXML document to the file
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean);
+  const AOverwriteExisting: Boolean; AParam: Integer = 0);
 var
   lStream: TStream;
   lMode: word;
@@ -3734,17 +3738,23 @@ begin
   else
     lStream := TFileStream.Create(AFileName, lMode);
   try
-    WriteToStream(lStream);
+    WriteToStream(lStream, AParam);
   finally
     FreeAndNil(lStream);
   end;
 end;
-
-procedure TsSpreadOOXMLWriter.WriteToStream(AStream: TStream);
+*)
+{@@ ----------------------------------------------------------------------------
+  Writes an OOXML document to a stream
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLWriter.WriteToStream(AStream: TStream;
+  AParam: Integer = 0);
 var
   FZip: TZipper;
   i: Integer;
 begin
+  Unused(AParam);
+
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
   ListAllFills;

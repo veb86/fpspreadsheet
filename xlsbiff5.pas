@@ -118,8 +118,8 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False); override;
-    procedure WriteToStream(AStream: TStream); override;
+      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); override;
+    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
   end;
 
   TExcel5Settings = record
@@ -1172,12 +1172,14 @@ end;
      2 - Write the memory stream data to disk using COM functions
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF5Writer.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean);
+  const AOverwriteExisting: Boolean; AParam: Integer = 0);
 var
   stream: TStream;
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
 begin
+  Unused(AParam);
+
   if (boBufStream in Workbook.Options) then
     stream := TBufStream.Create else
     stream := TMemoryStream.Create;
@@ -1200,12 +1202,14 @@ end;
   Writes an Excel BIFF5 record structure to a stream containing the OLE
   envelope of the document.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF5Writer.WriteToStream(AStream: TStream);
+procedure TsSpreadBIFF5Writer.WriteToStream(AStream: TStream;
+  AParam: Integer = 0);
 var
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
   stream: TStream;
 begin
+  Unused(AParam);
   if (boBufStream in Workbook.Options) then
     stream := TBufStream.Create else
     stream := TMemoryStream.Create;

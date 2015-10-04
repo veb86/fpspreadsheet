@@ -85,7 +85,7 @@ type
   public
     SubFormat: TsSpreadsheetFormat;
     { General writing methods }
-    procedure WriteToStrings(AStrings: TStrings); override;
+    procedure WriteToStrings(AStrings: TStrings; AParams: Integer = 0); override;
     procedure WriteToStrings_WikiMedia(AStrings: TStrings);
   end;
 
@@ -343,8 +343,10 @@ end;
 
 { TsWikiTableWriter }
 
-procedure TsWikiTableWriter.WriteToStrings(AStrings: TStrings);
+procedure TsWikiTableWriter.WriteToStrings(AStrings: TStrings;
+  AParams: Integer = 0);
 begin
+  Unused(AParams);
   case SubFormat of
     sfWikiTable_WikiMedia: WriteToStrings_WikiMedia(AStrings);
   end;
