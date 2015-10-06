@@ -116,7 +116,7 @@ type
     procedure ReadXF(const AStream: TStream);
   public
     destructor Destroy; override;
-    procedure ReadFromStream(AStream: TStream); override;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
   { TsSpreadBIFF8Writer }
@@ -170,8 +170,8 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); override;
-    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
+      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); override;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
   TExcel8Settings = record
@@ -906,54 +906,15 @@ function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
 begin
   Result := UTF16ToUTF8(ReadWideString(AStream, ALength, ARichTextParams));
 end;
-                                  (*
-procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: String);
-var
-  FileStream: TFileStream;
-begin
-  FileStream := TFileStream.Create(AFilename, fmOpenRead or fmShareDenyNone);
-  try
-    ReadFromStream(FileStream);
-  finally
-    FileStream.Free;
-  end;
-end;
 
-procedure TsSpreadBIFF8Reader.ReadFromFile(AFileName: string);
-var
-  MemStream: TMemoryStream;
-  OLEStorage: TOLEStorage;
-  OLEDocument: TOLEDocument;
-begin
-  MemStream := TMemoryStream.Create;
-  OLEStorage := TOLEStorage.Create;
-  try
-    // Only one stream is necessary for any number of worksheets
-    OLEDocument.Stream := MemStream;
-    OLEStorage.ReadOLEFile(AFileName, OLEDocument, 'Workbook');
-      // Can't be shared with BIFF5 because of the parameter "Workbook" !!!)
-
-    // Check if the operation succeded
-    if MemStream.Size = 0 then raise Exception.Create('[TsSpreadBIFF8Reader.ReadFromFile] Reading of OLE document failed');
-
-    // Rewind the stream and read from it
-    MemStream.Position := 0;
-    ReadFromStream(MemStream);
-
-//    Uncomment to verify if the data was correctly optained from the OLE file
-//    MemStream.SaveToFile(SysUtils.ChangeFileExt(AFileName, 'bin.xls'));
-  finally
-    MemStream.Free;
-    OLEStorage.Free;
-  end;
-end;
-                                *)
-procedure TsSpreadBIFF8Reader.ReadFromStream(AStream: TStream);
+procedure TsSpreadBIFF8Reader.ReadFromStream(AStream: TStream;
+  AParams: TsStreamParams = []);
 var
   OLEStream: TMemoryStream;
   OLEStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
 begin
+  Unused(AParams);
   OLEStream := TMemoryStream.Create;
   try
     // Only one stream is necessary for any number of worksheets
@@ -2078,13 +2039,13 @@ end;
          2 - Write the memory stream data to disk using COM functions
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean; AParam: Integer = 0);
+  const AOverwriteExisting: Boolean; AParams: TsStreamParams = []);
 var
   Stream: TStream;
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
 begin
-  Unused(AParam);
+  Unused(AParams);
   if (boBufStream in Workbook.Options) then begin
     Stream := TBufStream.Create
   end else
@@ -2109,13 +2070,13 @@ end;
   envelope of the document.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteToStream(AStream: TStream;
-  AParam: Integer = 0);
+  AParams: TsStreamParams = []);
 var
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
   stream: TStream;
 begin
-  Unused(AParam);
+  Unused(AParams);
 
   if (boBufStream in Workbook.Options) then
     stream := TBufStream.Create else

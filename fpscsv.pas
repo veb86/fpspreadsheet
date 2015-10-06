@@ -22,10 +22,9 @@ type
     procedure ReadNumber(AStream: TStream); override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    procedure ReadFromClipboardStream(AStream: TStream); override;
-    procedure ReadFromFile(AFileName: String); override;
-    procedure ReadFromStream(AStream: TStream); override;
-    procedure ReadFromStrings(AStrings: TStrings); override;
+    procedure ReadFromFile(AFileName: String; AParams: TsStreamParams = []); override;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
   TsCSVWriter = class(TsCustomSpreadWriter)
@@ -51,9 +50,8 @@ type
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); override;
-    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
-    procedure WriteToStrings(AStrings: TStrings; AParam: Integer = 0); override;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure WriteToStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
   TsCSVLineEnding = (leSystem, leCRLF, leCR, leLF);
@@ -201,23 +199,22 @@ begin
   Unused(AStream);
 end;
 
-procedure TsCSVReader.ReadFromClipboardStream(AStream: TStream);
-begin
-  ReadFromStream(AStream);
-end;
-
-procedure TsCSVReader.ReadFromFile(AFileName: String);
+procedure TsCSVReader.ReadFromFile(AFileName: String;
+  AParams: TsStreamParams = []);
 begin
   FWorksheetName := ChangeFileExt(ExtractFileName(AFileName), '');
-  inherited;
+  inherited ReadFromFile(AFilename, AParams);
 end;
 
-procedure TsCSVReader.ReadFromStream(AStream: TStream);
+procedure TsCSVReader.ReadFromStream(AStream: TStream;
+  AParams: TsStreamParams = []);
 var
   Parser: TCSVParser;
   s: String;
   encoding: String;
 begin
+  Unused(AParams);
+
   // Try to determine encoding of the input file
   SetLength(s, Min(1000, AStream.Size));
   AStream.ReadBuffer(s[1], Length(s));
@@ -249,13 +246,14 @@ begin
   end;
 end;
 
-procedure TsCSVReader.ReadFromStrings(AStrings: TStrings);
+procedure TsCSVReader.ReadFromStrings(AStrings: TStrings;
+  AParams: TsStreamParams = []);
 var
   Stream: TStringStream;
 begin
   Stream := TStringStream.Create(AStrings.Text);
   try
-    ReadFromStream(Stream);
+    ReadFromStream(Stream, AParams);
   finally
     Stream.Free;
   end;
@@ -415,31 +413,26 @@ begin
   end;
 end;
 
-procedure TsCSVWriter.WriteToClipboardStream(AStream: TStream;
-  AParam: Integer = 0);
-begin
-  FClipboardMode := true;
-  WriteToStream(AStream, AParam);
-end;
-
-procedure TsCSVWriter.WriteToStream(AStream: TStream; AParam: Integer = 0);
+procedure TsCSVWriter.WriteToStream(AStream: TStream;
+  AParams: TsStreamParams = []);
 var
   n: Integer;
 begin
-  Unused(AParam);
+  FClipboardMode := (spClipboard in AParams);
   if (CSVParams.SheetIndex >= 0) and (CSVParams.SheetIndex < FWorkbook.GetWorksheetCount)
     then n := CSVParams.SheetIndex
     else n := 0;
   WriteSheet(AStream, FWorkbook.GetWorksheetByIndex(n));
 end;
 
-procedure TsCSVWriter.WriteToStrings(AStrings: TStrings; AParam: Integer = 0);
+procedure TsCSVWriter.WriteToStrings(AStrings: TStrings;
+  AParams: TsStreamParams = []);
 var
   Stream: TStream;
 begin
   Stream := TStringStream.Create('');
   try
-    WriteToStream(Stream, AParam);
+    WriteToStream(Stream, AParams);
     Stream.Position := 0;
     AStrings.LoadFromStream(Stream);
   finally

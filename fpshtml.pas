@@ -28,6 +28,7 @@ type
     FColSpan, FRowSpan: Integer;
     FHRef: String;
     FFontStack: TsIntegerStack;
+    FWindowsClipboardMode: Boolean;
     procedure ReadBackgroundColor;
     procedure ReadBorder;
     procedure ReadEncoding;
@@ -56,14 +57,14 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
-    procedure ReadFromStream(AStream: TStream); override;
-    procedure ReadFromStrings(AStrings: TStrings); override;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
   TsHTMLWriter = class(TsCustomSpreadWriter)
   private
     FPointSeparatorSettings: TFormatSettings;
-    FParam: Integer;
+    FWindowsClipboardMode: Boolean;
     FStartHtmlPos: Int64;
     FEndHtmlPos: Int64;
     FStartFragmentPos: Int64;
@@ -87,6 +88,7 @@ type
     procedure WriteWorksheet(AStream: TStream; ASheet: TsWorksheet);
 
   protected
+    procedure InternalWriteToStream(AStream: TStream);
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
@@ -105,9 +107,8 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
-    procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); override;
-    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
-    procedure WriteToStrings(AStrings: TStrings; AParam: Integer = 0); override;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure WriteToStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
   TsHTMLParams = record
@@ -1041,14 +1042,15 @@ begin
   SetLength(FCurrRichTextParams, 0);
 end;
 
-procedure TsHTMLReader.ReadFromStream(AStream: TStream);
+procedure TsHTMLReader.ReadFromStream(AStream: TStream;
+  AParams: TsStreamParams = []);
 var
   list: TStringList;
 begin
   list := TStringList.Create;
   try
     list.LoadFromStream(AStream);
-    ReadFromStrings(list);
+    ReadFromStrings(list, AParams);
     if FWorkbook.GetWorksheetCount = 0 then
     begin
       FWorkbook.AddErrorMsg('Requested table not found, or no tables in html file');
@@ -1059,8 +1061,11 @@ begin
   end;
 end;
 
-procedure TsHTMLReader.ReadFromStrings(AStrings: TStrings);
+procedure TsHTMLReader.ReadFromStrings(AStrings: TStrings;
+  AParams: TsStreamParams = []);
 begin
+  FWindowsClipboardMode := (spWindowsClipboardHTML in AParams);
+
   // Create html parser
   FreeAndNil(parser);
   parser := THTMLParser.Create(AStrings.Text);
@@ -1429,6 +1434,28 @@ begin
     Result := 'white-space:nowrap;';
 end;
 
+procedure TsHTMLWriter.InternalWriteToStream(AStream: TStream);
+begin
+  FWorkbook.UpdateCaches;
+  AppendToStream(AStream,
+    '<!DOCTYPE html>');
+
+  FStartHTMLPos := AStream.Position;
+
+  AppendToStream(AStream,
+    '<html>' +
+      '<head>'+
+        '<meta charset="utf-8">');
+  WriteStyles(AStream);
+  AppendToStream(AStream,
+      '</head>');
+      WriteBody(AStream);
+  AppendToStream(AStream,
+    '</html>');
+
+  FEndHTMLPos := AStream.Position;
+end;
+
 function TsHTMLWriter.IsHyperlinkTarget(ACell: PCell; out ABookmark: String): Boolean;
 var
   sheet: TsWorksheet;
@@ -1474,7 +1501,7 @@ var
 begin
   AppendToStream(AStream,
     '<body>');
-  if (FParam = PARAM_WINDOWS_CLIPBOARD_HTML) or (HTMLParams.SheetIndex < 0) then      // active sheet
+  if FWindowsClipboardMode or (HTMLParams.SheetIndex < 0) then      // active sheet
   begin
     if FWorkbook.ActiveWorksheet = nil then
       FWorkbook.SelectWorksheet(FWorkbook.GetWorksheetByIndex(0));
@@ -1675,64 +1702,30 @@ begin
     '</style>' + LineEnding);
 end;
 
-procedure TsHTMLWriter.WriteToClipboardStream(AStream: TStream;
-  AParam: Integer = 0);
+procedure TsHTMLWriter.WriteToStream(AStream: TStream; AParams: TsStreamParams = []);
 begin
-  if AParam = PARAM_WINDOWS_CLIPBOARD_HTML then
+  FWindowsClipboardMode := (spWindowsClipboardHTML in AParams);
+
+  if FWindowsClipboardMode then
   begin
     AppendToStream(AStream, Format(
       NATIVE_HEADER, [0, 0, 0, 0]));  // value will be replaced at end
-    WriteToStream(AStream, AParam);
+    InternalWriteToStream(AStream);
     AStream.Position := 0;
     AppendToStream(AStream, Format(
       NATIVE_HEADER, [FStartHTMLPos, FEndHTMLPos, FStartFragmentPos, FEndFragmentPos]));
   end else
-    WriteToStream(AStream, AParam);
-  {
- {$IFDEF MSWINDOWS}
-  AppendToStream(AStream, Format(
-    NATIVE_HEADER, [0, 0, 0, 0]));  // value will be replaced at end
-  WriteToStream(AStream, AParams);
-  AStream.Position := 0;
-  AppendToStream(AStream, Format(
-    NATIVE_HEADER, [FStartHTMLPos, FEndHTMLPos, FStartFragmentPos, FEndFragmentPos]));
- {$ELSE}
-  WriteToStream(AStream, AParams);
- {$ENDIF}
- }
+    InternalWriteToStream(AStream);
 end;
 
-procedure TsHTMLWriter.WriteToStream(AStream: TStream; AParam: Integer = 0);
-begin
-  FParam := AParam;
-
-  FWorkbook.UpdateCaches;
-  AppendToStream(AStream,
-    '<!DOCTYPE html>');
-
-  FStartHTMLPos := AStream.Position;
-
-  AppendToStream(AStream,
-    '<html>' +
-      '<head>'+
-        '<meta charset="utf-8">');
-  WriteStyles(AStream);
-  AppendToStream(AStream,
-      '</head>');
-      WriteBody(AStream);
-  AppendToStream(AStream,
-    '</html>');
-
-  FEndHTMLPos := AStream.Position;
-end;
-
-procedure TsHTMLWriter.WriteToStrings(AStrings: TStrings; AParam: Integer = 0);
+procedure TsHTMLWriter.WriteToStrings(AStrings: TStrings;
+  AParams: TsStreamParams = []);
 var
   Stream: TStream;
 begin
   Stream := TStringStream.Create('');
   try
-    WriteToStream(Stream, AParam);
+    WriteToStream(Stream, AParams);
     Stream.Position := 0;
     AStrings.LoadFromStream(Stream);
   finally
@@ -1783,7 +1776,7 @@ begin
     '<div>' + LineEnding +
       '<table style="' + style + '">' + LineEnding);
 
-  if (FParam = PARAM_WINDOWS_CLIPBOARD_HTML) then
+  if FWindowsClipboardMode then
   begin
     AppendToStream(AStream, START_FRAGMENT);
     FStartFragmentPos := AStream.Position;
@@ -1896,7 +1889,7 @@ begin
         '</tr>' + LineEnding);
   end;
 
-  if (FParam = PARAM_WINDOWS_CLIPBOARD_HTML) then
+  if FWindowsClipboardMode then
   begin
     AppendToStream(AStream, END_FRAGMENT);
     FEndFragmentPos := AStream.Position;

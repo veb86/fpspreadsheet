@@ -453,7 +453,6 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
-    procedure ReadFromClipboardStream(AStream: TStream); override;
   end;
 
 
@@ -574,7 +573,6 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     procedure CheckLimitations; override;
-    procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); override;
   end;
 
 procedure AddBuiltinBiffFormats(AList: TStringList;
@@ -1334,16 +1332,6 @@ begin
   h := TwipsToPts(hw) / FWorkbook.GetDefaultFontSize;
   if h > ROW_HEIGHT_CORRECTION then
     FWorksheet.DefaultRowHeight := h - ROW_HEIGHT_CORRECTION;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Public specialized stream reading method for clipboard access.
-  For BIFF file format, data are stored in the clipboard in the same way as in
-  a regular stream/file.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFReader.ReadFromClipboardStream(AStream: TStream);
-begin
-  ReadFromStream(AStream);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4000,12 +3988,6 @@ begin
   { Data }
   if poVertCentered in FWorksheet.PageLayout.Options then w := 1 else w := 0;
   AStream.WriteWord(WordToLE(w));
-end;
-
-procedure TsSpreadBIFFWriter.WriteToClipboardStream(AStream: TStream;
-  AParam: Integer = 0);
-begin
-  WriteToStream(AStream, AParam);
 end;
 
 procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream);

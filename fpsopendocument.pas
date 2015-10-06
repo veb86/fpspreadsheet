@@ -142,7 +142,7 @@ type
     destructor Destroy; override;
 
     { General reading methods }
-    procedure ReadFromStream(AStream: TStream); override;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
   { TsSpreadOpenDocWriter }
@@ -229,7 +229,7 @@ type
 
     { General writing methods }
     procedure WriteStringToFile(AString, AFileName: string);
-    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
 { procedure WriteStarObjectDescriptorToStream(AStream: TStream); }
@@ -2058,7 +2058,8 @@ begin
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream);
+procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream;
+  AParams: TsStreamParams = []);
 var
   Doc : TXMLDocument;
   BodyNode, SpreadSheetNode, TableNode: TDOMNode;
@@ -2081,6 +2082,8 @@ var
   end;
 
 begin
+  Unused(AParams);
+
   Doc := nil;
   try
     // process the styles.xml file
@@ -4787,8 +4790,8 @@ var
   S : String;
 begin
   TheStream := TFileStream.Create(AFileName, fmCreate);
-  S:=AString;
-  TheStream.WriteBuffer(Pointer(S)^,Length(S));
+  S := AString;
+  TheStream.WriteBuffer(Pointer(S)^, Length(S));
   TheStream.Free;
 end;
                          (*
@@ -4818,9 +4821,9 @@ begin
 end;                       *)
 
 procedure TsSpreadOpenDocWriter.WriteToStream(AStream: TStream;
-  AParam: Integer = 0);
+  AParams: TsStreamParams = []);
 begin
-  Unused(AParam);
+  Unused(AParams);
   InternalWriteToStream(AStream);
 end;
 

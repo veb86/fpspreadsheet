@@ -89,7 +89,7 @@ type
   public
     { General reading methods }
 //    procedure ReadFromFile(AFileName: string); override;
-    procedure ReadFromStream(AStream: TStream); override;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
   { TsSpreadBIFF5Writer }
@@ -118,8 +118,8 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); override;
-    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
+      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); override;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
   TExcel5Settings = record
@@ -791,12 +791,15 @@ begin
   FCellFormatList.Add(fmt);
 end;
 
-procedure TsSpreadBIFF5Reader.ReadFromStream(AStream: TStream);
+procedure TsSpreadBIFF5Reader.ReadFromStream(AStream: TStream;
+  AParams: TsStreamParams = []);
 var
   OLEStream: TMemoryStream;
   OLEStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
 begin
+  Unused(AParams);
+
   OLEStream := TMemoryStream.Create;
   try
     OLEStorage := TOLEStorage.Create;
@@ -812,106 +815,6 @@ begin
     OLEStream.Free;
   end;
 end;
-
-(*
-procedure TsSpreadBIFF5Reader.ReadFromStream(AStream: TStream);
-var
-  BIFF5EOF: Boolean;
-  OLEStream: TMemoryStream;
-  OLEStorage: TOLEStorage;
-  OLEDocument: TOLEDocument;
-begin
-  OLEStream := TMemoryStream.Create;
-  try
-    OLEStorage := TOLEStorage.Create;
-    try
-      // Only one stream is necessary for any number of worksheets
-      OLEDocument.Stream := OLEStream;
-      OLEStorage.ReadOLEStream(AStream, OLEDocument);
-    finally
-      OLEStorage.Free;
-    end;
-
-    // Check if the operation succeeded
-    if OLEStream.Size = 0 then
-      raise Exception.Create('[TsSpreadBIFF5Reader.ReadFromFile] Reading of OLE document failed');
-
-    // Rewind the stream and read from it
-    OLEStream.Position := 0;
-
-    {Initializations }
-    FWorksheetNames := TStringList.Create;
-    try
-      FCurrentWirksheet := 0;
-      BIFF5EOF := false;
-
-      { Read workbook globals }
-      ReadWorkbookGlobals(OLEStream);
-
-      { Check for the end of the file }
-      if OLEStream.Position >= AStream.Size then
-        BIFF5EOF := true;
-
-      { Now read all worksheets }
-      while not BIFF5EOF do
-      begin
-        ReadWorksheet(OLEStream);
-
-        // Check for the end of the fild
-        if OLEStream.Position >= OLEStream.Size then
-          BIFF5EOF := true;
-
-        // Final preparations
-        inc(FCurrentWorksheet);
-        // It can happen in files written by Office97 that the OLE directory is
-        // at the end of the file.
-        if FCurrentWorksheet = FWorksheetNames.Count then
-          BIFF5EOF := true;
-      end;
-
-    finally
-      { Finalization }
-      FreeAndNil(FWorksheetNames);
-    end;
-  finally
-    OLEStream.Free;
-  end;
-end;
-    *)
-(*
-begin
-  { Initializations }
-
-  FWorksheetNames := TStringList.Create;
-  FWorksheetNames.Clear;
-  FCurrentWorksheet := 0;
-  BIFF5EOF := False;
-
-  { Read workbook globals }
-  ReadWorkbookGlobals(AStream);
-
-  { Check for the end of the file }
-  if AStream.Position >= AStream.Size then BIFF5EOF := True;
-
-  { Now read all worksheets }
-  while (not BIFF5EOF) do
-  begin
-    ReadWorksheet(AStream);
-
-    // Check for the end of the file
-    if AStream.Position >= AStream.Size then BIFF5EOF := True;
-
-    // Final preparations
-    Inc(FCurrentWorksheet);
-    if FCurrentWorksheet = FWorksheetNames.Count then BIFF5EOF := True;
-    // It can happen in files written by Office97 that the OLE directory is
-    // at the end of the file.
-  end;
-
-  { Finalization }
-  FWorksheetNames.Free;
-end;
-*)
 
 procedure TsSpreadBIFF5Reader.ReadFont(const AStream: TStream);
 var
@@ -1172,13 +1075,13 @@ end;
      2 - Write the memory stream data to disk using COM functions
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF5Writer.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean; AParam: Integer = 0);
+  const AOverwriteExisting: Boolean; AParams: TsStreamParams = []);
 var
   stream: TStream;
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
 begin
-  Unused(AParam);
+  Unused(AParams);
 
   if (boBufStream in Workbook.Options) then
     stream := TBufStream.Create else
@@ -1203,13 +1106,13 @@ end;
   envelope of the document.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF5Writer.WriteToStream(AStream: TStream;
-  AParam: Integer = 0);
+  AParams: TsStreamParams = []);
 var
   OutputStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
   stream: TStream;
 begin
-  Unused(AParam);
+  Unused(AParams);
   if (boBufStream in Workbook.Options) then
     stream := TBufStream.Create else
     stream := TMemoryStream.Create;

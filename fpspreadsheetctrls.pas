@@ -1140,11 +1140,11 @@ var
   savedCSVParams: TsCSVParams;
 
   procedure CopyToClipboard(AStream: TStream; AFileFormat: TsSpreadsheetFormat;
-    AClipboardFormat: Integer; AParam: Integer = 0);
+    AClipboardFormat: Integer; AParams: TsStreamParams = []);
   begin
     if AClipboardFormat = 0 then
       exit;
-    FWorkbook.CopyToClipboardStream(AStream, AFileFormat, AParam);
+    FWorkbook.CopyToClipboardStream(AStream, AFileFormat, AParams);
     Clipboard.AddFormat(AClipboardFormat, AStream);
     (AStream as TMemoryStream).Clear;
   end;
@@ -1180,7 +1180,7 @@ begin
 
       // Then write Windows HTML format
       {$IFDEF MSWINDOWS}
-      CopyToClipboard(stream, sfHTML, cfHtmlFormat, PARAM_WINDOWS_CLIPBOARD_HTML);
+      CopyToClipboard(stream, sfHTML, cfHtmlFormat, [spWindowsClipboardHTML]);
       {$ENDIF}
 
       // Write standard html format (MIME-type "text/html")
@@ -1234,9 +1234,11 @@ procedure TsWorkbookSource.PasteCellsFromClipboard(AItem: TsCopyOperation;
 var
   fmt: TsSpreadsheetFormat;
   stream: TStream;
+  params: TsStreamParams;
 begin
   stream := TMemoryStream.Create;
   try
+    params := [spClipboard];
     // Check whether the clipboard content is suitable for fpspreadsheet
     {if Clipboard.GetFormat(cfOpenDocumentFormat, stream) then
       fmt := sfOpenDocument
@@ -1245,7 +1247,10 @@ begin
       fmt := sfExcel8
     else if Clipboard.GetFormat(cfBiff5Format, stream) then
       fmt := sfExcel5
-    else if Clipboard.GetFormat(cfHTMLFormat, stream) or Clipboard.GetFormat(cfTextHTMLFormat, stream) then
+    else if Clipboard.GetFormat(cfHTMLFormat, stream) then begin
+      fmt := sfHTML;
+      params := params + [spWindowsClipboardHTML];
+    end else if Clipboard.GetFormat(cfTextHTMLFormat, stream) then
       fmt := sfHTML
     else if Clipboard.GetFormat(cfCSVFormat, stream) then
       fmt := sfCSV
@@ -1259,7 +1264,7 @@ begin
 
     // Paste stream into workbook
     stream.Position := 0;
-    FWorkbook.PasteFromClipboardStream(stream, fmt, AItem, ATransposed);
+    FWorkbook.PasteFromClipboardStream(stream, fmt, AItem, params, ATransposed);
 
     // To do: XML format, ods format
   finally

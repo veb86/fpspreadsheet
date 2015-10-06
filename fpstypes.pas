@@ -733,11 +733,9 @@ type
   {@@ Identifier for a copy operation }
   TsCopyOperation = (coNone, coCopyFormat, coCopyValue, coCopyFormula, coCopyCell);
 
-// Parameter declarations for TWriter.WriteStream/WriteClipboardStream
-const
-  {@@ Parameter for HTML writer to create a HTML document for the clipboard
-    according to Windows specification }
-  PARAM_WINDOWS_CLIPBOARD_HTML = 1;
+  {@@ Parameters for stream access }
+  TsStreamParam = (spClipboard, spWindowsClipboardHTML);
+  TsStreamParams = set of TsStreamParam;
 
 implementation
 

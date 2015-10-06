@@ -99,8 +99,7 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
-//    procedure ReadFromFile(AFileName: string); override;
-    procedure ReadFromStream(AStream: TStream); override;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
   { TsSpreadOOXMLWriter }
@@ -189,11 +188,7 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
-    {
-    procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); override;
-      }
-    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
 
@@ -1882,157 +1877,9 @@ begin
   FixCols(AWorksheet);
   FixRows(AWorksheet);
 end;
-    (*
-{ In principle, this method could be simplified by calling ReadFromStream which
-  is essentially a duplication of ReadFromFile. But ReadFromStream leads to
-  worse memory usage. --> KEEP READFROMFILE INTACT }
-procedure TsSpreadOOXMLReader.ReadFromFile(AFilename: String);
-var
-  Doc : TXMLDocument;
-  FilePath : string;
-  UnZip : TUnZipper;
-  FileList : TStringList;
-  SheetList: TStringList;
-  i: Integer;
-  fn: String;
-  fn_comments: String;
-  actSheetIndex: Integer;
-begin
-  //unzip "content.xml" of "AFileName" to folder "FilePath"
-  FilePath := GetUniqueTempDir(false);
-  UnZip := TUnZipper.Create;
-  FileList := TStringList.Create;
-  try
-    FileList.Add(OOXML_PATH_XL_STYLES);   // styles
-    FileList.Add(OOXML_PATH_XL_STRINGS);  // sharedstrings
-    FileList.Add(OOXML_PATH_XL_WORKBOOK); // workbook
-    FileList.Add(OOXML_PATH_XL_THEME);    // theme
-    UnZip.OutputPath := FilePath;
-    Unzip.UnZipFiles(AFileName,FileList);
-  finally
-    FreeAndNil(FileList);
-    FreeAndNil(UnZip);
-  end; //try
 
-  Doc := nil;
-  SheetList := TStringList.Create;
-  try
-    // Retrieve theme colors
-    if FileExists(FilePath + OOXML_PATH_XL_THEME) then begin
-      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_THEME);
-      DeleteFile(FilePath + OOXML_PATH_XL_THEME);
-      ReadThemeElements(Doc.DocumentElement.FindNode('a:themeElements'));
-      FreeAndNil(Doc);
-    end;
-
-    // process the workbook.xml file
-    if not FileExists(FilePath + OOXML_PATH_XL_WORKBOOK) then
-      raise Exception.CreateFmt(rsDefectiveInternalStructure, ['xlsx']);
-    ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_WORKBOOK);
-    DeleteFile(FilePath + OOXML_PATH_XL_WORKBOOK);
-    ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
-    ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
-    ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
-    ReadActiveSheet(Doc.DocumentElement.FindNode('bookViews'), actSheetIndex);
-    FreeAndNil(Doc);
-
-    // process the styles.xml file
-    if FileExists(FilePath + OOXML_PATH_XL_STYLES) then begin // should always exist, just to make sure...
-      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STYLES);
-      DeleteFile(FilePath + OOXML_PATH_XL_STYLES);
-      ReadPalette(Doc.DocumentElement.FindNode('colors'));
-      ReadFonts(Doc.DocumentElement.FindNode('fonts'));
-      ReadFills(Doc.DocumentElement.FindNode('fills'));
-      ReadBorders(Doc.DocumentElement.FindNode('borders'));
-      ReadNumFormats(Doc.DocumentElement.FindNode('numFmts'));
-      ReadCellXfs(Doc.DocumentElement.FindNode('cellXfs'));
-      FreeAndNil(Doc);
-    end;
-
-    // process the sharedstrings.xml file
-    if FileExists(FilePath + OOXML_PATH_XL_STRINGS) then begin
-      ReadXMLFile(Doc, FilePath + OOXML_PATH_XL_STRINGS);
-      DeleteFile(FilePath + OOXML_PATH_XL_STRINGS);
-      ReadSharedStrings(Doc.DocumentElement.FindNode('si'));
-      FreeAndNil(Doc);
-    end;
-
-    // read worksheets
-    for i:=0 to SheetList.Count-1 do begin
-      // Create worksheet
-      FWorksheet := FWorkbook.AddWorksheet(SheetList[i], true);
-
-      // unzip sheet file
-      fn := OOXML_PATH_XL_WORKSHEETS + Format('sheet%d.xml', [i+1]);
-      UnzipFile(AFileName, fn, FilePath);
-      ReadXMLFile(Doc, FilePath + fn);
-      DeleteFile(FilePath + fn);
-
-      // Sheet data, formats, etc.
-      ReadSheetViews(Doc.DocumentElement.FindNode('sheetViews'), FWorksheet);
-      ReadSheetFormatPr(Doc.DocumentElement.FindNode('sheetFormatPr'), FWorksheet);
-      ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
-      ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
-      ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
-      ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'));
-      ReadPrintOptions(Doc.DocumentElement.FindNode('printOptions'), FWorksheet);
-      ReadPageMargins(Doc.DocumentElement.FindNode('pageMargins'), FWorksheet);
-      ReadPageSetup(Doc.DocumentElement.FindNode('pageSetup'), FWorksheet);
-      ReadHeaderFooter(Doc.DocumentElement.FindNode('headerFooter'), FWorksheet);
-
-      FreeAndNil(Doc);
-
-      // Comments:
-      // The comments are stored in separate "comments<n>.xml" files (n = 1, 2, ...)
-      // The relationship which comment belongs to which sheet file must be
-      // retrieved from the "sheet<n>.xml.rels" file (n = 1, 2, ...).
-      // The rels file contains also the second part of the hyperlink data.
-      fn := OOXML_PATH_XL_WORKSHEETS_RELS + Format('sheet%d.xml.rels', [i+1]);
-      UnzipFile(AFilename, fn, FilePath);
-      if FileExists(FilePath + fn) then begin
-        // find exact name of comments<n>.xml file
-        ReadXMLFile(Doc, FilePath + fn);
-        DeleteFile(FilePath + fn);
-        fn_comments := FindCommentsFileName(Doc.DocumentElement.FindNode('Relationship'));
-        ReadHyperlinks(Doc.DocumentElement.FindNode('Relationship'));
-        FreeAndNil(Doc);
-      end else
-      if (SheetList.Count = 1) then
-        // if the wookbook has only 1 sheet then the sheet.xml.rels file is missing
-        fn_comments := 'comments1.xml'
-      else
-        // this sheet does not have any cell comments
-        fn_comments := '';
-        //continue;
-
-      // Extract texts from the comments file found and apply to worksheet.
-      if fn_comments <> '' then
-      begin
-        fn := OOXML_PATH_XL + fn_comments;
-        UnzipFile(AFileName, fn, FilePath);
-        if FileExists(FilePath + fn) then begin
-          ReadXMLFile(Doc, FilePath + fn);
-          DeleteFile(FilePath + fn);
-          ReadComments(Doc.DocumentElement.FindNode('commentList'), FWorksheet);
-          FreeAndNil(Doc);
-        end;
-      end;
-      // Add hyperlinks to cells
-      ApplyHyperlinks(FWorksheet);
-
-      // Active worksheet
-      if i = actSheetIndex then
-        FWorkbook.SelectWorksheet(FWorksheet);
-    end;  // for
-
-  finally
-    RemoveDir(FilePath);
-    SheetList.Free;
-    FreeAndNil(Doc);
-  end;
-end;
-  *)
-procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream);
+procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream;
+  AParams: TsStreamParams = []);
 var
   Doc : TXMLDocument;
   RelsNode: TDOMNode;
@@ -2055,6 +1902,7 @@ var
   end;
 
 begin
+  Unused(AParams);
   Doc := nil;
   SheetList := TStringList.Create;
   try
@@ -3719,41 +3567,16 @@ begin
   end;
 end;
 
-(*
-{@@ ----------------------------------------------------------------------------
-  Writes an OOXML document to the file
--------------------------------------------------------------------------------}
-procedure TsSpreadOOXMLWriter.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean; AParam: Integer = 0);
-var
-  lStream: TStream;
-  lMode: word;
-begin
-  if AOverwriteExisting
-    then lMode := fmCreate or fmOpenWrite
-    else lMode := fmCreate;
-
-  if (boBufStream in Workbook.Options) then
-    lStream := TBufStream.Create(AFileName, lMode)
-  else
-    lStream := TFileStream.Create(AFileName, lMode);
-  try
-    WriteToStream(lStream, AParam);
-  finally
-    FreeAndNil(lStream);
-  end;
-end;
-*)
 {@@ ----------------------------------------------------------------------------
   Writes an OOXML document to a stream
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.WriteToStream(AStream: TStream;
-  AParam: Integer = 0);
+  AParams: TsStreamParams = []);
 var
   FZip: TZipper;
   i: Integer;
 begin
-  Unused(AParam);
+  Unused(AParams);
 
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;

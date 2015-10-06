@@ -659,19 +659,22 @@ type
     function CreateSpreadReader(AFormat: TsSpreadsheetFormat;
       AClipboardMode: Boolean = false): TsBasicSpreadReader;
     function CreateSpreadWriter(AFormat: TsSpreadsheetFormat;
-      AClipboardMode: Boolean = false): TsBasicSpreadWriter;
-    procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat); overload;
-    procedure ReadFromFile(AFileName: string); overload;
-    procedure ReadFromFileIgnoringExtension(AFileName: string);
+      AParams: TsStreamParams = []): TsBasicSpreadWriter;
+    procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat;
+      AParams: TsStreamParams = []); overload;
+    procedure ReadFromFile(AFileName: string;
+      AParams: TsStreamParams = []); overload;
+    procedure ReadFromFileIgnoringExtension(AFileName: string;
+      AParams: TsStreamParams = []);
     procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AClipboardMode: Boolean = false);
+      AParams: TsStreamParams = []);
     procedure WriteToFile(const AFileName: string;
       const AFormat: TsSpreadsheetFormat;
-      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); overload;
+      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); overload;
     procedure WriteToFile(const AFileName: String;
-      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); overload;
+      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); overload;
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AClipboardMode: Boolean = false; AParam: Integer = 0);
+      AParams: TsStreamParams = []);
 
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string;
@@ -732,9 +735,10 @@ type
 
     { Clipboard }
     procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AParam: Integer = 0);
+      AParams: TsStreamParams = []);
     procedure PasteFromClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AOperation: TsCopyOperation; ATransposed: Boolean = false);
+      AOperation: TsCopyOperation; AParams: TsStreamParams = [];
+      ATransposed: Boolean = false);
                       (*
     { Color handling }
     function FPSColorToHexString(AColor: TsColor; ARGBColor: TFPColor): String;
@@ -825,10 +829,9 @@ type
   TsBasicSpreadReader = class(TsBasicSpreadReaderWriter)
   public
     { General writing methods }
-    procedure ReadFromClipboardStream(AStream: TStream); virtual; abstract;
-    procedure ReadFromFile(AFileName: string); virtual; abstract;
-    procedure ReadFromStream(AStream: TStream); virtual; abstract;
-    procedure ReadFromStrings(AStrings: TStrings); virtual; abstract;
+    procedure ReadFromFile(AFileName: string; AParams: TsStreamParams = []); virtual; abstract;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); virtual; abstract;
+    procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); virtual; abstract;
   end;
 
   { TsBasicSpreadWriter }
@@ -837,11 +840,10 @@ type
     { Helpers }
     procedure CheckLimitations; virtual;
     { General writing methods }
-    procedure WriteToClipboardStream(AStream: TStream; AParam: Integer = 0); virtual; abstract;
     procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); virtual; abstract;
-    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); virtual; abstract;
-    procedure WriteToStrings(AStrings: TStrings; AParam: Integer = 0); virtual; abstract;
+      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); virtual; abstract;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); virtual; abstract;
+    procedure WriteToStrings(AStrings: TStrings; AParams: TsStreamParams = []); virtual; abstract;
   end;
 
   {@@ TsSpreadReader class reference type }
@@ -6673,7 +6675,7 @@ end;
           write the given file format.
 -------------------------------------------------------------------------------}
 function TsWorkbook.CreateSpreadWriter(AFormat: TsSpreadsheetFormat;
-  AClipboardMode: Boolean = false): TsBasicSpreadWriter;
+  AParams: TsStreamParams): TsBasicSpreadWriter;
 var
   i: Integer;
 begin
@@ -6681,7 +6683,7 @@ begin
 
   for i := 0 to High(GsSpreadFormats) do
     if (GsSpreadFormats[i].Format = AFormat) and
-       ((not AClipboardMode) or GsSpreadFormats[i].CanWriteToClipboard) then
+       (not (spClipboard in AParams) or GsSpreadFormats[i].CanWriteToClipboard) then
     begin
       Result := GsSpreadFormats[i].WriterClass.Create(self);
       Break;
@@ -6726,7 +6728,7 @@ end;
   @param  AFormat    File format assumed
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromFile(AFileName: string;
-  AFormat: TsSpreadsheetFormat);
+  AFormat: TsSpreadsheetFormat; AParams: TsStreamParams = []);
 var
   AReader: TsBasicSpreadReader;
   ok: Boolean;
@@ -6742,7 +6744,7 @@ begin
     FReadWriteFlag := rwfRead;
     inc(FLockCount);          // This locks various notifications from being sent
     try
-      AReader.ReadFromFile(AFileName);
+      AReader.ReadFromFile(AFileName, AParams);
       ok := true;
       UpdateCaches;
       if (boAutoCalc in Options) then
@@ -6764,7 +6766,7 @@ end;
   the extension. In the case of the ambiguous xls extension, it will simply
   assume that it is BIFF8. Note that it could be BIFF2 or 5 as well.
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.ReadFromFile(AFileName: string); overload;
+procedure TsWorkbook.ReadFromFile(AFileName: string; AParams: TsStreamParams = []);
 var
   SheetType: TsSpreadsheetFormat;
   valid: Boolean;
@@ -6793,7 +6795,7 @@ begin
       while True do
       begin
         try
-          ReadFromFile(AFileName, SheetType);
+          ReadFromFile(AFileName, SheetType, AParams);
           valid := True;
         except
           on E: Exception do
@@ -6812,7 +6814,7 @@ begin
       if (not valid) and (lException <> nil) then raise lException;
     end
     else
-      ReadFromFile(AFileName, SheetType);
+      ReadFromFile(AFileName, SheetType, AParams);
   end else
     raise Exception.CreateFmt(rsNoValidSpreadsheetFile, [AFileName]);
 end;
@@ -6820,7 +6822,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Reads the document from a file, but ignores the extension.
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.ReadFromFileIgnoringExtension(AFileName: string);
+procedure TsWorkbook.ReadFromFileIgnoringExtension(AFileName: string;
+  AParams: TsStreamParams = []);
 var
   SheetType: TsSpreadsheetFormat;
   lException: Exception;
@@ -6831,7 +6834,7 @@ begin
   begin
     try
       Dec(SheetType);
-      ReadFromFile(AFileName, SheetType);
+      ReadFromFile(AFileName, SheetType, AParams);
       lException := nil;
     except
       on E: Exception do { do nothing } ;
@@ -6845,10 +6848,10 @@ end;
 
   @param  AStream  Stream being read
   @param  AFormat  File format assumed.
-  @param  AClipboardMode  The calling method has read the stream from the clipboard.
+  @param  AParams  Optional parameters to control stream access.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromStream(AStream: TStream;
-  AFormat: TsSpreadsheetFormat; AClipboardMode: Boolean = false);
+  AFormat: TsSpreadsheetFormat; AParams: TsStreamParams = []);
 var
   AReader: TsBasicSpreadReader;
   ok: Boolean;
@@ -6860,9 +6863,7 @@ begin
     try
       ok := false;
       AStream.Position := 0;
-      if AClipboardMode then
-        AReader.ReadFromClipboardStream(AStream) else
-        AReader.ReadFromStream(AStream);
+      AReader.ReadFromStream(AStream, AParams);
       ok := true;
     finally
       dec(FLockCount);
@@ -6897,11 +6898,11 @@ end;
   @param  AOverwriteExisting  If the file is already existing it will be
                      overwritten in case of AOverwriteExisting = true.
                      If false an exception will be raised.
-  @param  AParam     Optional parameter to control writer-specific details.
+  @param  AParams    Optional parameters to control stream access.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToFile(const AFileName: string;
  const AFormat: TsSpreadsheetFormat; const AOverwriteExisting: Boolean = False;
- AParam: Integer = 0);
+ AParams: TsStreamParams = []);
 var
   AWriter: TsBasicSpreadWriter;
 begin
@@ -6912,7 +6913,7 @@ begin
     PrepareBeforeSaving;
     AWriter.CheckLimitations;
     FReadWriteFlag := rwfWrite;
-    AWriter.WriteToFile(AFileName, AOverwriteExisting, AParam);
+    AWriter.WriteToFile(AFileName, AOverwriteExisting, AParams);
   finally
     FReadWriteFlag := rwfNormal;
     AWriter.Free;
@@ -6927,17 +6928,17 @@ end;
   @param  AOverwriteExisting  If the file already exists it will be overwritten
                      of AOverwriteExisting is true. In case of false, an
                      exception will be raised.
-  @param  AParam     Optional parameter to control writer-specific details
+  @param  AParams    Optional parameters to control stream access
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToFile(const AFileName: String;
-  const AOverwriteExisting: Boolean; AParam: Integer = 0);
+  const AOverwriteExisting: Boolean; AParams: TsStreamParams = []);
 var
   SheetType: TsSpreadsheetFormat;
   valid: Boolean;
 begin
   valid := GetFormatFromFileName(AFileName, SheetType);
   if valid then
-    WriteToFile(AFileName, SheetType, AOverwriteExisting, AParam)
+    WriteToFile(AFileName, SheetType, AOverwriteExisting, AParams)
   else
     raise Exception.Create(Format(rsInvalidExtension, [
       ExtractFileExt(AFileName)
@@ -6950,23 +6951,21 @@ end;
   @param  AStream         Instance of the stream being written to
   @param  AFormat         File format to be written.
   @param  AClipboardMode  Stream will be used by calling method for clipboard access
-  @param  AParam          An optional parameter which controls writing of
-                          details. The HTML writer, for example, can be forced
-                          to write a valid html document in Windows.
+  @param  AParams         Optional parameters to control stream access
+                          The HTML writer, for example, can be forced to write
+                          a valid html document in Windows.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-  AClipboardMode: Boolean = false; AParam: Integer = 0);
+  AParams: TsStreamParams = []);
 var
   AWriter: TsBasicSpreadWriter;
 begin
-  AWriter := CreateSpreadWriter(AFormat, AClipboardMode);
+  AWriter := CreateSpreadWriter(AFormat, AParams);
   try
     PrepareBeforeSaving;
     AWriter.CheckLimitations;
     FReadWriteFlag := rwfWrite;
-    if AClipboardMode then
-      AWriter.WriteToClipboardStream(AStream, AParam) else
-      AWriter.WriteToStream(AStream, AParam);
+    AWriter.WriteToStream(AStream, AParams);
   finally
     FReadWriteFlag := rwfNormal;
     AWriter.Free;
@@ -7790,7 +7789,7 @@ end;
   fpspreadsheet does not "know" the system's clipboard.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.CopyToClipboardStream(AStream: TStream;
-  AFormat: TsSpreadsheetFormat; AParam: Integer = 0);
+  AFormat: TsSpreadsheetFormat; AParams: TsStreamParams = []);
 var
   clipbook: TsWorkbook;
   clipsheet: TsWorksheet;
@@ -7825,9 +7824,9 @@ begin
     clipsheet.SetSelection(ActiveWorksheet.GetSelection);
     clipsheet.SelectCell(ActiveWorksheet.ActiveCellRow, ActiveWorksheet.ActiveCellCol);
 
-    // Write this workbook to a stream. Set the parameter ClipboardMode
-    // to TRUE to use the dedicated clipboard routine if needed.
-    clipbook.WriteToStream(AStream, AFormat, true, AParam);
+    // Write this workbook to a stream. Set the parameter spClipboard to
+    // indicate that this should be the special clipboard version of the stream.
+    clipbook.WriteToStream(AStream, AFormat, AParams + [spClipboard]);
 
     // The calling routine which copies the stream to the clipboard requires
     // the stream to be at its beginning.
@@ -7845,7 +7844,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.PasteFromClipboardStream(AStream: TStream;
   AFormat: TsSpreadsheetFormat; AOperation: TsCopyOperation;
-  ATransposed: Boolean = false);
+  AParams: TsStreamParams = []; ATransposed: Boolean = false);
 var
   clipbook: TsWorkbook;
   clipsheet: TsWorksheet;
@@ -7872,7 +7871,7 @@ begin
     // Read stream into this temporary workbook
     // Set last parameter (ClipboardMode) to TRUE to activate special format
     // treatment for clipboard, if needed.
-    clipbook.ReadFromStream(AStream, AFormat, true);
+    clipbook.ReadFromStream(AStream, AFormat, AParams + [spClipboard]);
     clipsheet := clipbook.GetWorksheetByIndex(0);
     // Find offset of active cell to left/top cell in temporary sheet
     dr := LongInt(ActiveWorksheet.ActiveCellRow) - clipsheet.GetFirstRowIndex(true);

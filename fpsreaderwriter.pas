@@ -65,9 +65,9 @@ type
     destructor Destroy; override;
 
     { General writing methods }
-    procedure ReadFromFile(AFileName: string); override;
-    procedure ReadFromStream(AStream: TStream); override;
-    procedure ReadFromStrings(AStrings: TStrings); override;
+    procedure ReadFromFile(AFileName: string; AParams: TsStreamParams = []); override;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
 
     {@@ List of number formats found in the workbook. }
     property NumFormatList: TStringList read FNumFormatList;
@@ -128,9 +128,9 @@ type
 
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
-      const AOverwriteExisting: Boolean = False; AParam: Integer = 0); override;
-    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
-    procedure WriteToStrings(AStrings: TStrings; AParam: Integer = 0); override;
+      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); override;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure WriteToStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
 
     {@@ List of number formats found in the workbook. }
     property NumFormatList: TStringList read FNumFormatList;
@@ -301,7 +301,8 @@ end;
   @param  AFileName The input file name.
   @see    TsWorkbook
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.ReadFromFile(AFileName: string);
+procedure TsCustomSpreadReader.ReadFromFile(AFileName: string;
+  AParams: TsStreamParams = []);
 var
   stream, fs: TStream;
 begin
@@ -323,7 +324,7 @@ begin
   end;
 
   try
-    ReadFromStream(stream);
+    ReadFromStream(stream, AParams);
   finally
     stream.Free;
   end;
@@ -341,7 +342,8 @@ end;
 
   @param  AData     Workbook which is filled by the data from the stream.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream);
+procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream;
+  AParams: TsStreamParams = []);
 var
   AStringStream: TStringStream;
   AStrings: TStringList;
@@ -352,7 +354,7 @@ begin
     AStringStream.CopyFrom(AStream, AStream.Size);
     AStringStream.Seek(0, soFromBeginning);
     AStrings.Text := AStringStream.DataString;
-    ReadFromStrings(AStrings);
+    ReadFromStrings(AStrings, AParams);
   finally
     AStringStream.Free;
     AStrings.Free;
@@ -363,9 +365,10 @@ end;
   Reads workbook data from a string list. This abstract implementation does
   nothing and raises an exception. Must be overridden, like for wikitables.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings);
+procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings;
+  AParams: TsStreamParams = []);
 begin
-  Unused(AStrings);
+  Unused(AStrings, AParams);
   raise Exception.Create(rsUnsupportedReadFormat);
 end;
 
@@ -610,13 +613,12 @@ end;
 
   @param  AFileName           The output file name.
   @param  AOverwriteExisting  If the file already exists it will be replaced.
-  @param  AParam              Optional parameter to control writer-specific details
-                              (see PARAM_XXXX declarations)
+  @param  AParams             Optional parameters to control stream access
 
   @see    TsWorkbook
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteToFile(const AFileName: string;
-  const AOverwriteExisting: Boolean = False; AParam: Integer = 0);
+  const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []);
 var
   OutputFile: TStream;
   lMode: Word;
@@ -635,7 +637,7 @@ begin
     OutputFile := TMemoryStream.Create;
 
   try
-    WriteToStream(OutputFile, AParam);
+    WriteToStream(OutputFile, AParams);
     if OutputFile is TMemoryStream then
       (OutputFile as TMemoryStream).SaveToFile(AFileName);
   finally
@@ -650,17 +652,16 @@ end;
   Must be overriden in descendent classes for all other cases.
 
   @param  AStream   Stream to which the workbook is written
-  @param  AParam    Optional parameter to control writer-specific details
+  @param  AParams   Optional parameters to control stream access
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteToStream(AStream: TStream;
-  AParam: Integer = 0);
+  AParams: TsStreamParams = []);
 var
   list: TStringList;
 begin
-  Unused(AParam);
   list := TStringList.Create;
   try
-    WriteToStrings(list);
+    WriteToStrings(list, AParams);
     list.SaveToStream(AStream);
   finally
     list.Free;
@@ -672,13 +673,11 @@ end;
   be overridden by descendants. See wikitables.
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings;
-  AParam: Integer = 0);
+  AParams: TsStreamParams = []);
 begin
-  Unused(AStrings, AParam);
+  Unused(AStrings, AParams);
   raise Exception.Create(rsUnsupportedWriteFormat);
 end;
-
-
 
 
 end.

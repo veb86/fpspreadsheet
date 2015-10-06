@@ -73,7 +73,7 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     { General reading methods }
-    procedure ReadFromStream(AStream: TStream); override;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
 
@@ -126,7 +126,7 @@ type
       XFType_Prot: Byte = 0); override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    procedure WriteToStream(AStream: TStream; AParam: Integer = 0); override;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
   TExcel2Settings = record
@@ -457,12 +457,14 @@ begin
 end;
 
 
-procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream);
+procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream;
+  AParams: TsStreamParams = []);
 var
   BIFF2EOF: Boolean;
   RecordType: Word;
   CurStreamPos: Int64;
 begin
+  Unused(AParams);
   BIFF2EOF := False;
 
   { In BIFF2 files there is only one worksheet, let's create it }
@@ -1284,11 +1286,11 @@ end;
   so only the first one will be written.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Writer.WriteToStream(AStream: TStream;
-  AParam: Integer = 0);
+  AParams: TsStreamParams = []);
 var
   pane: Byte;
 begin
-  Unused(AParam);
+  Unused(AParams);
 
   FWorksheet := Workbook.GetWorksheetByIndex(FSheetIndex);
   if FWorksheet = nil then

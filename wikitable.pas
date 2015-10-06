@@ -69,7 +69,7 @@ type
   public
     SubFormat: TsSpreadsheetFormat;
     { General reading methods }
-    procedure ReadFromStrings(AStrings: TStrings); override;
+    procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
   { TsWikiTable_PipesReader }
@@ -82,11 +82,11 @@ type
   { TsWikiTableWriter }
 
   TsWikiTableWriter = class(TsCustomSpreadWriter)
+  protected
+    procedure WriteToStrings_WikiMedia(AStrings: TStrings);
   public
     SubFormat: TsSpreadsheetFormat;
-    { General writing methods }
-    procedure WriteToStrings(AStrings: TStrings; AParams: Integer = 0); override;
-    procedure WriteToStrings_WikiMedia(AStrings: TStrings);
+    procedure WriteToStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
   { TsWikiTable_WikiMediaWriter }
@@ -295,8 +295,10 @@ end;
 
 { TsWikiTableReader }
 
-procedure TsWikiTableReader.ReadFromStrings(AStrings: TStrings);
+procedure TsWikiTableReader.ReadFromStrings(AStrings: TStrings;
+  AParams: TsStreamParams = []);
 begin
+  Unused(AParams);
   case SubFormat of
     sfWikiTable_Pipes: ReadFromStrings_Pipes(AStrings);
   end;
@@ -344,7 +346,7 @@ end;
 { TsWikiTableWriter }
 
 procedure TsWikiTableWriter.WriteToStrings(AStrings: TStrings;
-  AParams: Integer = 0);
+  AParams: TsStreamParams = []);
 begin
   Unused(AParams);
   case SubFormat of
