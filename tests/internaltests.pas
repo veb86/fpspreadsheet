@@ -39,6 +39,9 @@ type
     // Tests getting Excel style A1 cell locations from row/column based locations.
     // Bug 26447
     procedure TestCellString;
+    // Tests cell references given in the "R1C1" syntax.
+    procedure TestCellString_R1C1;
+
     //todo: add more calls, rename sheets, try to get sheets with invalid indexes etc
     //(see strings tests for how to deal with expected exceptions)
     procedure GetSheetByIndex;
@@ -474,6 +477,129 @@ begin
   s := 'CRAA1';
   ParseCellString(s, r, c, flags);
   CheckEquals(s, GetCellString(r, c, flags));
+end;
+
+{ Tests cell references given in the "R1C1" syntax. }
+procedure TSpreadInternalTests.TestCellString_R1C1;
+var
+  r,c: Cardinal;
+  s: String;
+  flags: TsRelFlags;
+  res: Boolean;
+begin
+  // (1) Absolute reference of the cell at row=0 col=0
+  res := ParseCellString_R1C1('R1C1', 10, 10, r, c, flags);
+  CheckEquals(res, true, 'Result mismatch in test 1');
+  CheckEquals(r, 0, 'Row mismatch in test 1');    // base cell coordinates are ignored with absolute refs!
+  CheckEquals(c, 0, 'Col mismatch in test 1');
+  CheckEquals(true, flags = [], 'Flags mismatch in test 1');
+
+  // (2) Relative reference of the cell left of col 10 and above row 10
+  res := ParseCellString_R1C1('R[-1]C[-1]', 10, 10, r, c, flags);
+  CheckEquals(res, true, 'Result mismatch in test 2');
+  CheckEquals(r, 9, 'Row mismatch in test 2');
+  CheckEquals(c, 9, 'Col mismatch in test 2');
+  CheckEquals(true, flags = [rfRelRow, rfRelCol], 'Flags mismatch in test 2');
+
+  // (3) Relative reference of the cell in row 10 and 2 cols at the right of col 10
+  res := ParseCellString_R1C1('RC[2]', 10, 10, r, c, flags);
+  CheckEquals(res, true, 'Result mismatch in test 3');
+  CheckEquals(r, 10, 'Row mismatch in test 3');
+  CheckEquals(c, 12, 'Col mismatch in test 3');
+  CheckEquals(true, flags = [rfRelRow, rfRelCol], 'Flags mismatch in test 3');
+
+  // (4) Relative reference of the cell in col 10 and 2 rows below row 10
+  res := ParseCellString_R1C1('R[2]C', 10, 10, r, c, flags);
+  CheckEquals(res, true, 'Result mismatch in test 4');
+  CheckEquals(r, 12, 'Row mismatch in test 4');
+  CheckEquals(c, 10, 'Col mismatch in test 4');
+  CheckEquals(true, flags = [rfRelRow, rfRelCol], 'Flags mismatch in test 4');
+
+  // (5) Relative reference of the cell 3 rows above row 10 and 2 cols left of col 10
+  res := ParseCellString_R1C1('R[-3]C[-2]', 10, 10, r, c, flags);
+  CheckEquals(res, true, 'Result mismatch in test 5');
+  CheckEquals(r, 7, 'Row mismatch in test 5');
+  CheckEquals(c, 8, 'Col mismatch in test 5');
+  CheckEquals(true, flags = [rfRelRow, rfRelCol], 'Flags mismatch in test 5');
+
+  // (6) Mixed reference: base cell in row10/col10 (note: zero-based!).
+  // Absolute reference to row, relative reference to 10 columns to the right
+  res := ParseCellString_R1C1('R11C[10]', 10, 10, r, c, flags);
+  CheckEquals(res, true, 'Result mismatch in test 6');
+  CheckEquals(r, 10, 'Row mismatch in test 6');
+  CheckEquals(c, 20, 'Col mismatch in test 6');
+  CheckEquals(true, flags = [rfRelCol], 'Flags mismatch in test 6');
+
+  // (7) Mixed reference: base cell in row10/col10 (note: zero-based!).
+  // Relative reference to 10 rows below, absolute reference to this col
+  res := ParseCellString_R1C1('R[10]C11', 10, 10, r, c, flags);
+  CheckEquals(res, true, 'Result mismatch in test 7');
+  CheckEquals(r, 20, 'Row mismatch in test 7');
+  CheckEquals(c, 10, 'Col mismatch in test 7');
+  CheckEquals(true, flags = [rfRelRow], 'Flags mismatch in test 7');
+
+  // Error tests
+
+  // (E1) Relative reference of the cell 30 rows above row 10 and 2 cols left of col 10
+  res := ParseCellString_R1C1('R[-30]C[-2]', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E1');
+
+  // (E2) Relative reference of the cell 30 rows to the left of row 10
+  res := ParseCellString_R1C1('R[-30]C', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E2');
+
+  // (E3) Illegal "R" character
+  res := ParseCellString_R1C1('x1C2', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E3');
+
+  // (E4) Illegal "C" character
+  res := ParseCellString_R1C1('R1x2', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E4');
+
+  // (E5) Illegal row number character
+  res := ParseCellString_R1C1('R10.1C2', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E5');
+
+  // (E6) Illegal row number character
+  res := ParseCellString_R1C1('R1C10.1', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E6');
+
+  // (E7) Illegal opening row bracket
+  res := ParseCellString_R1C1('R(1]C1', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E7');
+
+  // (E8 Illegal closing row bracket
+  res := ParseCellString_R1C1('R[1)C1', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E8');
+
+  // (E9) Illegal opening col bracket
+  res := ParseCellString_R1C1('R1C(1]', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E9');
+
+  // (E10) Illegal closing col bracket
+  res := ParseCellString_R1C1('RC[1)', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E10');
+
+  // (E11) Missing opening row bracket
+  res := ParseCellString_R1C1('R1]C1', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E11');
+
+  // (E12) Missing closing row bracket
+  res := ParseCellString_R1C1('R[1C1', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E12');
+
+  // (E13) Missing opening col bracket
+  res := ParseCellString_R1C1('R1C1]', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E13');
+
+  // (E14) Missing closing col bracket
+  res := ParseCellString_R1C1('R1C[1', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E14');
+
+  // (E15) RC interchanged
+  res := ParseCellString_R1C1('C1R1', 10, 10, r, c, flags);
+  CheckEquals(res, false, 'Result mismatch in test E15');
+
 end;
 
 procedure TSpreadInternalTests.FractionTest(AMaxDigits: Integer);

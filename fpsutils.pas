@@ -76,6 +76,9 @@ function ParseCellRowString(const AStr: string;
 function ParseCellColString(const AStr: string;
   out AResult: Cardinal): Boolean;
 
+function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
+  out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean;
+
 function GetColString(AColIndex: Integer): String;
 
 function GetCellString(ARow,ACol: Cardinal;
@@ -582,6 +585,101 @@ begin
     Result := Scan(2)
   else
     Result := Scan(1);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Parses a cell string in "R1C1" notation into zero-based column and row numbers
+  'AFlags' indicates relative addresses.
+
+  @param  AStr      Cell reference in R1C1 syntax, such as R[2]C[3] or R1C5
+  @param  ABaseRow  Row index from which the cell reference is seen.
+  @param  ABaseCol  Column index from which the cell reference is seen.
+  @param  ACellRow  Row index of the top/left cell of the range (output)
+  @param  ACellCol  Column index of the top/left cell of the range (output)
+  @param  AFlags    A set containing an element for ACellRow and/or ACellCol,
+                    if they represent a relative cell address.
+  @return           FALSE if the string is not a valid cell range
+-------------------------------------------------------------------------------}
+function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
+  out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean;
+var
+  P: PChar;
+  s: String;
+  n: LongInt;
+  inRowCol: Integer;  // 1 = in row, 2 = in col
+  r, c: LongInt;
+  inBracket: Boolean;
+begin
+  AFlags := [];
+  inRowCol := 0;
+  inBracket := false;
+  P := @AStr[1];
+  while P^ <> #0 do begin
+    case P^ of
+      'R', 'r': if inRowCol = 0 then
+                begin
+                  inRowCol := 1;
+                  s := '';
+                end else
+                  exit(false);
+      'C', 'c': if inBracket then
+                  exit(false)
+                else
+                if inRowCol = 1 then
+                begin
+                  if s = '' then
+                  begin
+                    Include(AFlags, rfRelRow);
+                    ACellRow := ABaseRow;
+                  end else
+                  if rfRelRow in AFlags then
+                  begin
+                    r := LongInt(ABaseRow) + StrToInt(s);
+                    if r < 0 then
+                      exit(false);
+                    ACellRow := r;
+                  end else
+                    ACellRow := StrToInt(s) - 1;
+                  s := '';
+                  inRowCol := 2;
+                  inBracket := false;
+                end else
+                  exit(false);
+      '0'..'9': s := s + P^;
+      '-'     : s := s + '-';
+      '['     : begin
+                  case inRowCol of
+                    1: Include(AFlags, rfRelRow);
+                    2: Include(AFlags, rfRelCol);
+                  end;
+                  inBracket := true;
+                end;
+      ']'     : if inBracket then inBracket := false else exit(false);
+      else      exit(false);
+    end;
+    inc(P);
+  end;
+
+  if inBracket then
+    exit(false)
+  else
+  if inRowCol = 2 then
+  begin
+    if s = '' then
+    begin
+      Include(AFlags, rfRelCol);
+      ACellCol := ABaseCol;
+    end else
+    if rfRelCol in AFlags then
+    begin
+      c := LongInt(ABaseCol) + StrToInt(s);
+      if c < 0 then
+        exit(false);
+      ACellCol := c;
+    end else
+      ACellCol := StrToInt(s) - 1;
+  end;
+  Result := true;
 end;
 
 {@@ ----------------------------------------------------------------------------
