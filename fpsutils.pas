@@ -53,6 +53,7 @@ function DWordLEtoN(AValue: Cardinal): Cardinal;
 function WideStringLEToN(const AValue: WideString): WideString;
 
 // Cell, column and row strings
+// -- "A1" syntax
 function ParseIntervalString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ACount: Cardinal;
   out ADirection: TsSelectionDirection): Boolean;
@@ -76,20 +77,28 @@ function ParseCellRowString(const AStr: string;
 function ParseCellColString(const AStr: string;
   out AResult: Cardinal): Boolean;
 
-function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
-  out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean;
-
-function GetColString(AColIndex: Integer): String;
-
-function GetCellString(ARow,ACol: Cardinal;
-  AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
-function GetCellString_R1C1(ARow, ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
-  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String;
-
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 function GetCellRangeString(ARange: TsCellRange;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
+function GetCellString(ARow,ACol: Cardinal;
+  AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
+function GetColString(AColIndex: Integer): String;
+
+  // -- "R1C1" syntax
+function ParseCellRangeString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
+  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal;
+  out AFlags: TsRelFlags): Boolean;
+function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
+  out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean; overload;
+function ParseCellString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
+  out ACellRow, ACellCol: Cardinal): Boolean; overload;
+
+function GetCellString_R1C1(ARow, ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
+  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String;
+
+
+// Error strings
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
@@ -588,6 +597,54 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Extracts information on cell range from a cellrange string in "R1C1" notation.
+  Returns in AFlags also information on relative/absolute cells.
+
+  @param  AStr          Cell range string, in R1C1 syntax,
+                        such as R[2]C[3]:R[4]C[8]
+  @param  ABaseRow      Row index from which the cell reference is seen.
+  @param  ABaseCol      Column index from which the cell reference is seen.
+  @param  AFirstCellRow Row index of the top/left cell of the range (output)
+  @param  AFirstCellCol Column index of the top/left cell of the range (output)
+  @param  ALastCellRow  Row index of the bottom/right cell of the range (output)
+  @param  ALastCellCol  Column index of the bottom/right cell of the rng (output)
+  @param  AFlags        A set containing an element for AFirstCellRow,
+                        AFirstCellCol, ALastCellRow, ALastCellCol if they
+                        represent a relative cell address.
+
+  @return               FALSE if the string is not a valid cell range
+-------------------------------------------------------------------------------}
+function ParseCellRangeString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
+  out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal;
+  out AFlags: TsRelFlags): Boolean;
+var
+  p: Integer;
+  s: String;
+  f: TsRelFlags;
+begin
+  Result := True;
+
+  // First find the colon
+  p := pos(':', AStr);
+  if p = 0 then exit(false);
+
+  // Analyze part after the colon
+  s := copy(AStr, p+1, Length(AStr));
+  Result := ParseCellString_R1C1(s, ABaseRow, ABaseCol,
+    ALastCellRow, ALastCellCol, f);
+  if not Result then exit;
+
+  // Analyze part before the colon
+  s := copy(AStr, 1, p-1);
+  Result := ParseCellString_R1C1(s, ABaseRow, ABaseCol,
+    AFirstCellRow, AFirstCellCol, AFlags);
+
+  // Add flags of 2nd part
+  if rfRelRow in f then Include(AFlags, rfRelRow2);
+  if rfRelCol in f then Include(AFlags, rfRelCol2);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Parses a cell string in "R1C1" notation into zero-based column and row numbers
   'AFlags' indicates relative addresses.
 
@@ -681,6 +738,28 @@ begin
   end;
   Result := true;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Parses a cell string in "R1C1" notation into zero-based column and row numbers
+
+  For compatibility with old version which does not return flags for relative
+  cell addresses.
+
+  @param  AStr      Cell reference in R1C1 syntax, such as R[2]C[3] or R1C5
+  @param  ABaseRow  Row index from which the cell reference is seen.
+  @param  ABaseCol  Column index from which the cell reference is seen.
+  @param  ACellRow  Row index of the top/left cell of the range (output)
+  @param  ACellCol  Column index of the top/left cell of the range (output)
+-------------------------------------------------------------------------------}
+function ParseCellString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
+  out ACellRow, ACellCol: Cardinal): Boolean;
+var
+  flags: TsRelFlags;
+begin
+  Result := ParseCellString_R1C1(AStr, ABaseRow, ABaseCol,
+    ACellRow, ACellCol, flags);
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Parses a cell string, like 'A1' into zero-based column and row numbers

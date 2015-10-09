@@ -41,6 +41,7 @@ type
     procedure TestCellString;
     // Tests cell references given in the "R1C1" syntax.
     procedure TestCellString_R1C1;
+    procedure TestCellRangeString_R1C1;
 
     //todo: add more calls, rename sheets, try to get sheets with invalid indexes etc
     //(see strings tests for how to deal with expected exceptions)
@@ -599,7 +600,51 @@ begin
   // (E15) RC interchanged
   res := ParseCellString_R1C1('C1R1', 10, 10, r, c, flags);
   CheckEquals(res, false, 'Result mismatch in test E15');
+end;
 
+{ Tests cell range references given in the "R1C1" syntax. }
+procedure TSpreadInternalTests.TestCellRangeString_R1C1;
+var
+  r1,c1,r2,c2: Cardinal;
+  s: String;
+  flags: TsRelFlags;
+  res: Boolean;
+begin
+  // (1) Absolute reference of the range between cells row0/cell0 and row2/col1
+  res := ParseCellRangeString_R1C1('R1C1:R3C2', 10, 10, r1, c1, r2, c2, flags);
+  CheckEquals(res, true, 'Result mismatch in test 1');
+  CheckEquals(r1, 0, 'Row1 mismatch in test 1');    // base cell coordinates are ignored with absolute refs!
+  CheckEquals(c1, 0, 'Col1 mismatch in test 1');
+  CheckEquals(r2, 2, 'Row2 mismatch in test 1');    // base cell coordinates are ignored with absolute refs!
+  CheckEquals(c2, 1, 'Col2 mismatch in test 1');
+  CheckEquals(true, flags = [], 'Flags mismatch in test 1');
+
+  // (2) Relative reference of the cell left of col 10 and above row 10
+  res := ParseCellRangeString_R1C1('R[-1]C[-1]:R[1]C[1]', 10, 10, r1, c1, r2, c2, flags);
+  CheckEquals(res, true, 'Result mismatch in test 2');
+  CheckEquals(r1, 9, 'Row mismatch in test 2');
+  CheckEquals(c1, 9, 'Col mismatch in test 2');
+  CheckEquals(r2, 11, 'Row mismatch in test 2');
+  CheckEquals(c2, 11, 'Col mismatch in test 2');
+  CheckEquals(true, flags = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2], 'Flags mismatch in test 2');
+
+  // (3) Absolute reference of first cell (row0/col0), Relative reference of second cell
+  res := ParseCellRangeString_R1C1('R1C1:R[1]C[1]', 10, 10, r1, c1, r2, c2, flags);
+  CheckEquals(res, true, 'Result mismatch in test 2');
+  CheckEquals(r1, 0, 'Row mismatch in test 3');
+  CheckEquals(c1, 0, 'Col mismatch in test 3');
+  CheckEquals(r2, 11, 'Row mismatch in test 3');
+  CheckEquals(c2, 11, 'Col mismatch in test 3');
+  CheckEquals(true, flags = [rfRelRow2, rfRelCol2], 'Flags mismatch in test 3');
+
+  // (4) Relative reference of first cell, absolute reference of second cell
+  res := ParseCellRangeString_R1C1('R[-1]C[-1]:R20C20', 10, 10, r1, c1, r2, c2, flags);
+  CheckEquals(res, true, 'Result mismatch in test 4');
+  CheckEquals(r1, 9, 'Row mismatch in test 4');
+  CheckEquals(c1, 9, 'Col mismatch in test 4');
+  CheckEquals(r2, 19, 'Row mismatch in test 4');
+  CheckEquals(c2, 19, 'Col mismatch in test 4');
+  CheckEquals(true, flags = [rfRelRow, rfRelCol], 'Flags mismatch in test 4');
 end;
 
 procedure TSpreadInternalTests.FractionTest(AMaxDigits: Integer);
