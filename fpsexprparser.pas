@@ -700,6 +700,7 @@ type
     procedure SetExpression(const AValue: String);
     procedure SetLocalizedExpression(const AFormatSettings: TFormatSettings;
       const AValue: String); virtual;
+
     procedure CheckResultType(const Res: TsExpressionResult;
       AType: TsResultType); inline;
     function CurrentToken: String;
@@ -1070,33 +1071,37 @@ end;
 function TsExpressionScanner.DoSquareBracket: TsTokenType;
 var
   C: Char;
-  p: Integer;
   r1,c1,r2,c2: Cardinal;
   flags: TsRelFlags;
+  isRange: Boolean;
 begin
+  isRange := false;
   FToken := '';
   C := NextPos;
   while (C <> ']') do
   begin
-    if C = cNull then
-      ScanError(SErrUnexpectedEndOfExpression);
-    FToken := FToken + C;
+    case C of
+      cNull: ScanError(SErrUnexpectedEndOfExpression);
+      '.'  : ; // ignore
+      ':'  : begin isRange := true; FToken := FToken + C; end;
+      else   FToken := FToken + C;
+    end;
     C := NextPos;
   end;
   C := NextPos;
-  p := system.pos('.', FToken);  // Delete up tp "."  (--> to be considered later!)
-  if p <> 0 then Delete(FToken, 1, p);
-  if system.pos(':', FToken) > 0 then
+  if isRange then
   begin
     if ParseCellRangeString(FToken, r1, c1, r2, c2, flags) then
       Result := ttCellRange
     else
       ScanError(Format(SErrInvalidCellRange, [FToken]));
   end else
-  if ParseCellString(FToken, r1, c1, flags) then
-    Result := ttCell
-  else
-    ScanError(Format(SErrInvalidCell, [FToken]));
+  begin
+    if ParseCellString(FToken, r1, c1, flags) then
+      Result := ttCell
+    else
+      ScanError(Format(SErrInvalidCell, [FToken]));
+  end;
 end;
 
 function TsExpressionScanner.DoString: TsTokenType;
