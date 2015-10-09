@@ -509,6 +509,7 @@ object MainFrm: TMainFrm
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False
+      WorkbookSource = WorksheetGrid.internal
       Align = alClient
       AutoAdvance = aaDown
       BorderStyle = bsNone

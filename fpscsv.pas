@@ -84,15 +84,16 @@ var
     FalseText: 'FALSE';
   {%H-});
 
+  sfidCSV: TsSpreadFormatID;
+
 function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 
 
 implementation
 
 uses
-  //StrUtils,
   DateUtils, LConvEncoding, Math,
-  fpsUtils, fpsNumFormat;
+  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat;
 
 function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 begin
@@ -443,7 +444,12 @@ end;
 
 initialization
   InitFormatSettings(CSVParams.FormatSettings);
-  RegisterSpreadFormat(TsCSVReader, TsCSVWriter, sfCSV, true, true);
+
+  // Registers this reader / writer in fpSpreadsheet
+  sfidCSV := RegisterSpreadFormat(sfCSV,
+    TsCSVReader, TsCSVWriter,
+    rsFileFormatCSV, 'CSV', [STR_COMMA_SEPARATED_EXTENSION, '.txt']
+  );
 
 end.
 

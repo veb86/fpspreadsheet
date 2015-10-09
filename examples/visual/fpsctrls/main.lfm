@@ -1,12 +1,13 @@
 object MainForm: TMainForm
-  Left = 338
+  Left = 350
   Height = 621
-  Top = 118
+  Top = 121
   Width = 997
   Caption = 'demo_ctrls'
   ClientHeight = 601
   ClientWidth = 997
   Menu = MainMenu
+  OnCreate = FormCreate
   ShowHint = True
   LCLVersion = '1.5'
   object WorkbookTabControl: TsWorkbookTabControl
@@ -80,7 +81,7 @@ object MainForm: TMainForm
       Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goColSizing, goAlwaysShowEditor, goThumbTracking, goCellHints, goTruncCellHints]
       Strings.Strings = (
         'FileName='
-        'FileFormat=sfExcel8'
+        'FileFormat=-1 []'
         'ActiveWorksheet=Sheet1'
         'Options=boAutoCalc, boCalcBeforeSaving, boReadFormulas'
         '(-) FormatSettings='
@@ -635,6 +636,7 @@ object MainForm: TMainForm
   end
   object WorkbookSource: TsWorkbookSource
     AutoDetectFormat = False
+    FileFormat = sfExcel8
     Options = [boAutoCalc, boCalcBeforeSaving, boReadFormulas]
     left = 176
     top = 160
@@ -774,15 +776,15 @@ object MainForm: TMainForm
     object AcTextRot90CW: TsTextRotationAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = '90° clockwise'
-      Hint = '90° clockwise rotated text'
+      Caption = '90ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° clockwise'
+      Hint = '90ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° clockwise rotated text'
       TextRotation = rt90DegreeClockwiseRotation
     end
     object AcTextRot90CCW: TsTextRotationAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = '90° counter-clockwise'
-      Hint = '90° counter-clockwise rotated text'
+      Caption = '90ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° counter-clockwise'
+      Hint = '90ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° counter-clockwise rotated text'
       TextRotation = rt90DegreeCounterClockwiseRotation
     end
     object AcTextRotStacked: TsTextRotationAction
@@ -943,7 +945,7 @@ object MainForm: TMainForm
     object AcFileOpen: TFileOpen
       Category = 'File'
       Caption = '&Open ...'
-      Dialog.Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel XP/2003 XML spreadsheet (*.xml)|*.xml|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|HTML files (*.html; *.htm)|*.html;*.htm|Comma-separated text files (*.csv; *.txt)|*.csv;*.txt'
+      Dialog.Filter = 'All spreadsheet files|*.xls;*.xlsx;*.ods;*.csv|All Excel files (*.xls, *.xlsx)|*.xls;*.xlsx|Excel XML spreadsheets (*.xlsx)|*.xlsx|Excel XP/2003 XML spreadsheets (*.xml)|*.xml|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheets (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheets (*.ods)|*.ods|HTML files (*.html; *.htm)|*.html;*.htm|Comma-separated text files (*.csv; *.txt)|*.csv;*.txt'
       Dialog.Options = [ofExtensionDifferent, ofFileMustExist, ofEnableSizing, ofViewDetail]
       Hint = 'Open spreadsheet file'
       ImageIndex = 44

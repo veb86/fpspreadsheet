@@ -45,10 +45,10 @@ uses
   fpsNumFormat, fpsNumFormatParser, fpsxmlcommon;
   
 type
-  TDateMode=(
-    dm1899 {default for ODF; almost same as Excel 1900},
-    dm1900 {StarCalc legacy only},
-    dm1904 {e.g. Quattro Pro, Mac Excel compatibility}
+  TDateModeODS=(
+    dmODS1899 {default for ODF; almost same as Excel 1900},
+    dmODS1900 {StarCalc legacy only},
+    dmODS1904 {e.g. Quattro Pro, Mac Excel compatibility}
   );
 
   { TsSpreadOpenDocHeaderFooterParser }
@@ -90,7 +90,7 @@ type
     FMasterPageList: TFPList;
     FHeaderFooterFontList: TObjectList;
     FActiveSheet: String;
-    FDateMode: TDateMode;
+    FDateMode: TDateModeODS;
     FFontFaces: TStringList;
     FRichTextFontList: TFPList;
     procedure ApplyColWidths;
@@ -234,6 +234,8 @@ type
 
 { procedure WriteStarObjectDescriptorToStream(AStream: TStream); }
 
+var
+  sfidOpenDocument: TsSpreadFormatID;
 
 implementation
 
@@ -242,7 +244,7 @@ uses
  {$IFDEF FPS_VARISBOOL}
   fpsPatches,
  {$ENDIF}
-  fpsStrings, fpsStreams, fpsClasses, fpsExprParser;
+  fpsStrings, fpsStreams, fpsClasses, fpsExprParser, fpsRegFileFormats;
 
 const
   { OpenDocument general XML constants }
@@ -919,7 +921,7 @@ begin
   FRichTextFontList := TFPList.Create;
 
   // Initial base date in case it won't be read from file
-  FDateMode := dm1899;
+  FDateMode := dmODS1899;
 end;
 
 destructor TsSpreadOpenDocReader.Destroy;
@@ -1059,8 +1061,7 @@ var
 begin
   Unused(AFormatStr);
 
-  // Format expects ISO 8601 type date string or
-  // time string
+  // Format expects ISO 8601 type date string or time string
   fmt := DefaultFormatSettings;
   fmt.ShortDateFormat := 'yyyy-mm-dd';
   fmt.DateSeparator := '-';
@@ -1084,9 +1085,9 @@ begin
     // We need to subtract the datemode offset, otherwise the date/time value
     // would not be < 1 for fpc.
     case FDateMode of
-      dm1899: if Result - DATEMODE_1899_BASE < 1 then Result := Result - DATEMODE_1899_BASE;
-      dm1900: if Result - DATEMODE_1900_BASE < 1 then Result := Result - DATEMODE_1900_BASE;
-      dm1904: if Result - DATEMODE_1904_BASE < 1 then Result := Result - DATEMODE_1904_BASE;
+      dmODS1899: if Result - DATEMODE_1899_BASE < 1 then Result := Result - DATEMODE_1899_BASE;
+      dmODS1900: if Result - DATEMODE_1900_BASE < 1 then Result := Result - DATEMODE_1900_BASE;
+      dmODS1904: if Result - DATEMODE_1904_BASE < 1 then Result := Result - DATEMODE_1904_BASE;
     end;
 
   end else begin
@@ -1127,9 +1128,9 @@ begin
       if (ANumFormat <> nfTimeInterval) and (abs(Days) > 0) then
       begin
         case FDateMode of
-          dm1899: Result := Result + DATEMODE_1899_BASE;
-          dm1900: Result := Result + DATEMODE_1900_BASE;
-          dm1904: Result := Result + DATEMODE_1904_BASE;
+          dmODS1899: Result := Result + DATEMODE_1899_BASE;
+          dmODS1900: Result := Result + DATEMODE_1900_BASE;
+          dmODS1904: Result := Result + DATEMODE_1904_BASE;
         end;
       end;
     end;
@@ -1748,11 +1749,11 @@ begin
       NullDateSetting := GetAttrValue(NullDateNode,'table:date-value');
   end;
   if NullDateSetting = '1899-12-30' then
-    FDateMode := dm1899
+    FDateMode := dmODS1899
   else if NullDateSetting = '1900-01-01' then
-    FDateMode := dm1900
+    FDateMode := dmODS1900
   else if NullDateSetting = '1904-01-01' then
-    FDateMode := dm1904
+    FDateMode := dmODS1904
   else
     raise Exception.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
 end;
@@ -2016,9 +2017,9 @@ begin
         cell^.DateTimeValue := cell^.NumberValue
       else
         case FDateMode of
-          dm1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
-          dm1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
-          dm1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
+          dmODS1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
+          dmODS1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
+          dmODS1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
         end;
     end;
   end else
@@ -2409,9 +2410,9 @@ begin
       cell^.DateTimeValue := cell^.NumberValue
     else
       case FDateMode of
-        dm1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
-        dm1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
-        dm1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
+        dmODS1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
+        dmODS1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
+        dmODS1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
       end;
   end;
 
@@ -6104,7 +6105,7 @@ begin
   if IsTimeIntervalformat(numFmtParams) then
   begin
     DecodeTime(AValue, h,m,s,ms);
-    strValue := Format('PT%02dH%02dM%02d.%03dS', [trunc(AValue)*24+h, m, s, ms]);
+    strValue := Format('PT%.2dH%.2dM%.2d.%.3dS', [trunc(AValue)*24+h, m, s, ms], FPointSeparatorSettings);
 //    strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
     displayStr := FWorksheet.ReadAsUTF8Text(ACell);
 //    displayStr := FormatDateTime(fmt.NumberFormatStr, AValue, [fdoInterval]);
@@ -6139,10 +6140,11 @@ end;
 
 initialization
 
-{@@ ----------------------------------------------------------------------------
-  Registers this reader / writer on fpSpreadsheet
--------------------------------------------------------------------------------}
-  RegisterSpreadFormat(TsSpreadOpenDocReader, TsSpreadOpenDocWriter, sfOpenDocument);
+  // Registers this reader / writer in fpSpreadsheet
+  sfidOpenDocument := RegisterSpreadFormat(sfOpenDocument,
+    TsSpreadOpenDocReader, TsSpreadOpenDocWriter,
+    rsFileFormatOpenDocument, 'ODS', [STR_OPENDOCUMENT_CALC_EXTENSION]
+  );
 
 end.
 

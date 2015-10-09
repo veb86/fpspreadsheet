@@ -91,10 +91,10 @@ function GetCellRangeString(ARange: TsCellRange;
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
 
-function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
-function GetFileFormatExt(AFormat: TsSpreadsheetFormat): String;
-function GetFormatFromFileName(const AFileName: TFileName;
-  out SheetType: TsSpreadsheetFormat): Boolean;
+//function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
+//function GetFileFormatExt(AFormat: TsSpreadsheetFormat): String;
+//function GetFormatFromFileName(const AFileName: TFileName;
+//  out SheetType: TsSpreadsheetFormat): Boolean;
 
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
@@ -865,6 +865,7 @@ begin
   end;
 end;
 
+(*
 {@@ ----------------------------------------------------------------------------
   Returns the name of the given spreadsheet file format.
 
@@ -935,7 +936,7 @@ begin
     else                                Result := False;
   end;
 end;
-
+             *)
 {@@ ----------------------------------------------------------------------------
   Helper function to reduce typing: "if a conditions is true return the first
   number format, otherwise return the second format"

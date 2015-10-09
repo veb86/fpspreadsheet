@@ -7,7 +7,8 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   ComCtrls, ActnList, Menus, StdActns, Buttons,
-  fpstypes, fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions;
+  fpstypes, fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions,
+  fpsRegFileFormats, fpsSYLK, xlsxml;
 
 type
 
@@ -349,6 +350,7 @@ type
     procedure AcShowGridLinesUpdate(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure EditCut1Execute(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
     procedure HyperlinkHandler(Sender: TObject; ACaption: String;
       var AHyperlink: TsHyperlink);
     procedure InspectorTabControlChange(Sender: TObject);
@@ -356,6 +358,8 @@ type
       const AHyperlink: TsHyperlink);
   private
     { private declarations }
+    FOpenFormats: TsSpreadFormatIDArray;
+    FSaveFormats: TsSpreadFormatIDArray;
     procedure SearchClose(Sender: TObject; var CloseAction: TCloseAction);
     procedure SearchFound(Sender: TObject; AFound: Boolean;
       AWorksheet: TsWorksheet; ARow, ACol: Cardinal);
@@ -378,6 +382,7 @@ implementation
 uses
   LCLIntf, inifiles, uriparser,
   fpsUtils, fpsCSV,
+//  fpsCSV, fpsHTML, fpsOpenDocument, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml, wikitable,
   sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm,
   sHyperlinkForm, sNumFormatForm, sSearchForm;
 
@@ -416,14 +421,8 @@ begin
   case AcFileOpen.Dialog.FilterIndex of
     1: WorkbookSource.AutoDetectFormat := true;      // All spreadsheet files
     2: WorkbookSource.AutoDetectFormat := true;      // All Excel files
-    3: WorkbookSource.FileFormat := sfOOXML;         // Excel 2007+ (OOXML)
-    4: WorkbookSource.FileFormat := sfExcelXML;      // Excel XP, 2003 (ExcelXML)
-    5: WorkbookSource.FileFormat := sfExcel8;        // Excel 97-2003
-    6: WorkbookSource.FileFormat := sfExcel5;        // Excel 5.0
-    7: WorkbookSource.FileFormat := sfExcel2;        // Excel 2.1
-    8: WorkbookSource.FileFormat := sfOpenDocument;  // Open/LibreOffice
-    9: WorkbookSource.FileFormat := sfCSV;           // Text files
-   10: WorkbookSource.FileFormat := sfHTML;          // HTML files
+    else WorkbookSource.FileFormatID := FOpenFormats[AcFileOpen.Dialog.FilterIndex - 3];
+         // -3 because FilterIndex is 1-based and there are 2 add'l items at the top.
   end;
   WorkbookSource.FileName := UTF8ToAnsi(AcFileOpen.Dialog.FileName);  // this loads the file
   UpdateCaption;
@@ -432,21 +431,11 @@ end;
 { Saves the spreadsheet to the file selected by the AcFileSaveAs action }
 procedure TMainForm.AcFileSaveAsAccept(Sender: TObject);
 var
-  fmt: TsSpreadsheetFormat;
+  fmt: TsSpreadFormatID;
 begin
   Screen.Cursor := crHourglass;
   try
-    case AcFileSaveAs.Dialog.FilterIndex of
-      1: fmt := sfOOXML;
-      2: fmt := sfExcelXML;
-      3: fmt := sfExcel8;
-      4: fmt := sfExcel5;
-      5: fmt := sfExcel2;
-      6: fmt := sfOpenDocument;
-      7: fmt := sfCSV;
-      8: fmt := sfHTML;
-      9: fmt := sfWikiTable_WikiMedia;
-    end;
+    fmt := FSaveFormats[AcFileSaveAs.Dialog.FilterIndex-1];
     WorkbookSource.SaveToSpreadsheetFile(UTF8ToAnsi(AcFileSaveAs.Dialog.FileName), fmt);
     UpdateCaption;
   finally
@@ -587,6 +576,27 @@ begin
   //
 end;
 
+procedure TMainForm.FormCreate(Sender: TObject);
+var
+  priorityFormats: Array[0..8] of TsSpreadFormatID;
+begin
+  priorityFormats[0] := ord(sfOOXML);
+  priorityFormats[1] := ord(sfExcel8);
+  priorityFormats[2] := ord(sfExcel5);
+  priorityFormats[3] := ord(sfExcel2);
+  priorityFormats[4] := ord(sfExcelXML);
+  priorityFormats[5] := ord(sfOpenDocument);
+  priorityFormats[6] := ord(sfCSV);
+  priorityFormats[7] := sfidSYLK;
+  priorityFormats[8] := ord(sfHTML);
+
+  AcFileOpen.Dialog.Filter := GetFileFormatFilter('|', ';', faRead, priorityFormats, true, true);
+  FOpenFormats := GetSpreadFormats(faRead, priorityFormats);
+
+  AcFileSaveAs.Dialog.Filter := GetFileFormatFilter('|', ';', faWrite, priorityFormats);
+  FSaveFormats := GetSpreadFormats(faWrite, priorityFormats);
+end;
+
 { Event handler for hyperlinks: it only has to provide the hyperlink data
   which are applied to the active cell by the TsCellHyperlinkAction.
   Is called by the "new hyperlink" and "edit hyperlink" actions.
@@ -661,7 +671,7 @@ begin
   else
     Caption := Format('demo_ctrls - "%s" [%s]', [
       AnsiToUTF8(WorkbookSource.Filename),
-      GetFileFormatName(WorkbookSource.Workbook.FileFormat)
+      GetSpreadTechnicalName(WorkbookSource.Workbook.FileFormatID)
     ]);
 end;
 

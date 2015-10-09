@@ -134,8 +134,7 @@ var
     CodePage: 'cp1252';    // on Windows, will be replaced --> see initalization
   );
 
-var
-  // the palette of the default BIFF5 colors as "big-endian color" values
+  {@@ palette of the default BIFF5 colors as "big-endian color" values }
   PALETTE_BIFF5: array[$00..$3F] of TsColor = (
     $000000,  // $00: black
     $FFFFFF,  // $01: white
@@ -208,11 +207,14 @@ var
     $424242   // $3F:
   );
 
+  sfidExcel5: TsSpreadFormatID;
+
 
 implementation
 
 uses
-  Math, fpsStrings, fpsStreams, fpsReaderWriter, fpsPalette, fpsNumFormat;
+  Math,
+  fpsStrings, fpsRegFileFormats, fpsStreams, fpsReaderWriter, fpsPalette, fpsNumFormat;
 
 const
    { Excel record IDs }
@@ -1714,8 +1716,12 @@ initialization
   Excel5Settings.CodePage := GetDefaultTextEncoding;
  {$ENDIF}
 
-  RegisterSpreadFormat(TsSpreadBIFF5Reader, TsSpreadBIFF5Writer, sfExcel5, false, true);
-  MakeLEPalette(PALETTE_BIFF5);
+ sfidExcel5 := RegisterSpreadFormat(sfExcel5,
+   TsSpreadBIFF5Reader, TsSpreadBIFF5Writer,
+   rsFileFormatExcel5, 'BIFF5', [STR_EXCEL_EXTENSION]
+ );
+
+ MakeLEPalette(PALETTE_BIFF5);
 
 end.
 

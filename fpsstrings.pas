@@ -10,14 +10,36 @@ unit fpsStrings;
 interface
 
 resourcestring
-  rsExportFileIsRequired = 'Export file name is required';
-  rsFPSExportDescription = 'Spreadsheet file';
-  rsMultipleSheetsOnlyWithRestorePosition = 'Export to multiple sheets is possible '+
-    'only if position is restored.';
+  rsDefaultSheetName = 'Sheet%d';
+
+  // File formats
+  rsFileFormatExcel2 = 'Excel 2.1';
+  rsFileFormatExcel5 = 'Excel 5';
+  rsFileFormatExcel8 = 'Excel 97-2003';
+  rsFileFormatExcelXML = 'Excel XP/2003 XML';
+  rsFileFormatExcelXLSX = 'Excel 2007+ XML';
+  rsFileFormatOpenDocument = 'OpenDocument';
+  rsFileFormatSYLK = 'SYLK';
+  rsFileFormatCSV = 'CSV';
+  rsFileFormatHTML = 'HTML';
+  rsFileFormatWikiTablePipes = 'WikiTable (Pipes)';
+  rsFileFormatWikiTableWikiMedia = 'WikiTable (WikiMedia)';
+  rsFiles = 'files';
+  rsAllSpreadsheetFiles = 'All spreadsheet files';
+  rsAllExcelFiles = 'All Excel files';
+
+  // Reading / writing
+  rsCannotReadFile = 'Cannot read file "%s".' + LineEnding + 'Wrong, unknown or defective file format?';
   rsUnsupportedReadFormat = 'Tried to read a spreadsheet using an unsupported format';
   rsUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
   rsNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
   rsUnknownSpreadsheetFormat = 'unknown format';
+  rsReaderNotFound = 'Reader not found for file "%s"';
+
+  rsExportFileIsRequired = 'Export file name is required';
+  rsFPSExportDescription = 'Spreadsheet file';
+  rsMultipleSheetsOnlyWithRestorePosition = 'Export to multiple sheets is possible '+
+    'only if position is restored.';
   rsMaxRowsExceeded = 'This workbook contains %d rows, but the selected ' +
     'file format does not support more than %d rows.';
   rsMaxColsExceeded = 'This workbook contains %d columns, but the selected ' +

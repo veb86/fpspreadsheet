@@ -78,16 +78,19 @@ type
   end;
 
 var
+  { Default parameters for reading/writing }
   ExcelXmlSettings: TExcelXmlSettings = (
     DateMode: dm1900;
   );
+
+  sfidExcelXML: TsSpreadFormatID;
 
 
 implementation
 
 uses
   StrUtils, Math,
-  fpsStrings, fpsUtils, fpsStreams, fpsNumFormat, fpsHTMLUtils;
+  fpsStrings, fpsRegFileFormats, fpsUtils, fpsStreams, fpsNumFormat, fpsHTMLUtils;
 
 const
   FMT_OFFSET   = 61;
@@ -849,6 +852,9 @@ end;
 initialization
 
   // Registers this reader / writer in fpSpreadsheet
-  RegisterSpreadFormat(nil, TsSpreadExcelXMLWriter, sfExcelXML);
+  sfidExcelXML := RegisterSpreadFormat(sfExcelXML,
+    nil, TsSpreadExcelXMLWriter,
+    rsFileFormatExcelXML, 'ExcelXML', [STR_XML_EXCEL_EXTENSION]
+  );
 
 end.

@@ -50,11 +50,29 @@ end;
 
 procedure TSpreadErrorTests.TestWriteErrorMessages(AFormat: TsSpreadsheetFormat);
 type
+  TTestParam = record
+    Format: TsSpreadsheetFormat;
+    MaxRowCount: Cardinal;
+    MaxColCount: Cardinal;
+    MaxCellLen: Cardinal;
+  end;
+const
+  TestParams: array[0..5] of TTestParam = (
+    (Format: sfExcel2;       MaxRowCount:   65536; MaxColCount:   256; MaxCellLen: 255),
+    (Format: sfExcel5;       MaxRowCount:   65536; MaxColCount:   256; MaxCellLen: 255),
+    (Format: sfExcel8;       MaxRowCount:   65536; MaxColCount:   256; MaxCellLen: 32767),
+    (Format: sfExcelXML;     MaxRowCount:   65536; MaxColCount:   256; MaxCellLen: 32767),
+    (Format: sfOOXML;        MaxRowCount: 1048576; MaxColCount: 16384; MaxCellLen: $FFFFFFFF),
+    (Format: sfOpenDocument; MaxRowCount: 1048576; MaxColCount:  1024; MaxCellLen: $FFFFFFFF)
+  );
+  (*
+type
   TTestFormat = (sfExcel2, sfExcel5, sfExcel8, sfExcelXML, sfOOXML, sfOpenDocument);
 const                                           // XLS2   XLS5   XLS8   XLSXML   OOXML    ODS
   MAX_ROW_COUNT: array[TTestFormat] of Cardinal = (65536, 65536, 65536, 65536,  1048576, 1048576);
   MAX_COL_COUNT: array[TTestFormat] of Cardinal = (  256,   256,   256,   256,    16384,    1024);
   MAX_CELL_LEN : array[TTestFormat] of Cardinal = (  255,   255, 32767, 32767,$FFFFFFFF,$FFFFFFFF);
+  *)
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
@@ -69,8 +87,19 @@ var
   expected: integer;
   palette: TsPalette;
   i: Integer;
+  testIndex: Integer;
 begin
   formula := '=A1';
+
+  testIndex := -1;
+  for i:=0 to High(TestParams) do
+    if TestParams[i].Format = AFormat then begin
+      testIndex := i;
+      break;
+    end;
+
+  if testIndex = -1 then
+    raise Exception.CreateFmt('[TSpreadErrorTests.TestWriteErrorMessages] File format %d not found.', [AFormat]);
 
   ErrList := TStringList.Create;
   try
@@ -78,8 +107,8 @@ begin
     MyWorkbook := TsWorkbook.Create;
     try
       MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
-      row1 := MAX_ROW_COUNT[TTestFormat(AFormat)] - 5;
-      row2 := MAX_ROW_COUNT[TTestFormat(AFormat)] + 5;
+      row1 := Testparams[testIndex].MaxRowCount - 5;
+      row2 := Testparams[testIndex].MaxRowCount + 5;
       for row := row1 to row2 do begin
         MyWorksheet.WriteBlank(row, 0);
         MyWorksheet.WriteNumber(row, 1, 1.0);
@@ -101,8 +130,8 @@ begin
     MyWorkbook := TsWorkbook.Create;
     try
       MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
-      col1 := MAX_COL_COUNT[TTestFormat(AFormat)] - 5;
-      col2 := MAX_COL_COUNT[TTestFormat(AFormat)] + 5;
+      col1 := TestParams[testIndex].MaxColCount - 5;
+      col2 := TestParams[testIndex].MaxColCount + 5;
       for col := col1 to col2 do begin
         MyWorksheet.WriteBlank(0, col);
         MyWorksheet.WriteNumber(1, col, 1.0);
@@ -151,7 +180,7 @@ begin
         MyWorkBook.WriteToFile(TempFile, AFormat, true);
         ErrList.Text := MyWorkbook.ErrorMsg;
         // Palette usage in biff --> expecting error due to too large palette
-        if (TTestFormat(AFormat) in [sfExcel2, sfExcel5, sfExcel8]) then
+        if (AFormat in [sfExcel2, sfExcel5, sfExcel8]) then
           expected := 1
         else
           // no palette in xml --> no error expected
@@ -168,8 +197,8 @@ begin
     end;
 
     // Test 4: Too long cell label
-    if MAX_CELL_LEN[TTestFormat(AFormat)] <> Cardinal(-1) then begin
-      s := DupeString('A', MAX_CELL_LEN[TTestFormat(AFormat)] + 10);
+    if TestParams[testIndex].MaxCellLen <> Cardinal(-1) then begin
+      s := DupeString('A', TestParams[testIndex].MaxCellLen + 10);
       MyWorkbook := TsWorkbook.Create;
       try
         MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
@@ -185,7 +214,7 @@ begin
     end;
 
     // Test 5: cell text contains forbidden XML character
-    if (TTestFormat(AFormat) in [sfOOXML, sfOpenDocument]) then begin
+    if (AFormat in [sfOOXML, sfOpenDocument]) then begin
       s := #19'Standard';
       MyWorkbook := TsWorkbook.Create;
       try

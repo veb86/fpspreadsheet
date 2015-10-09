@@ -143,7 +143,6 @@ var
     SheetIndex: 0;
   );
 
-var
   { the palette of the default BIFF2 colors as "big-endian color" values }
   PALETTE_BIFF2: array[$0..$07] of TsColor = (
     $000000,  // $00: black
@@ -156,11 +155,13 @@ var
     $00FFFF   // $07: cyan
   );
 
+  sfidExcel2: TsSpreadFormatID;
 
 implementation
 
 uses
-  Math, fpsStrings, fpsReaderWriter, fpsPalette, fpsNumFormat;
+  Math,
+  fpsStrings, fpsRegFileFormats, fpsReaderWriter, fpsPalette, fpsNumFormat;
 
 const
   { Excel record IDs }
@@ -1981,7 +1982,7 @@ end;
 {*******************************************************************
 *  Initialization section
 *
-*  Registers this reader / writer on fpSpreadsheet
+*  Registers this reader / writer to fpspreadsheet
 *  Converts the palette to litte-endian
 *
 *******************************************************************}
@@ -1992,7 +1993,11 @@ initialization
   Excel2Settings.CodePage := GetDefaultTextEncoding;
  {$ENDIF}
 
-  RegisterSpreadFormat(TsSpreadBIFF2Reader, TsSpreadBIFF2Writer, sfExcel2);
+  sfidExcel2 := RegisterSpreadFormat(sfExcel2,
+    TsSpreadBIFF2Reader, TsSpreadBIFF2Writer,
+    rsFileFormatExcel2, 'BIFF2', [STR_EXCEL_EXTENSION]
+  );
+
   MakeLEPalette(PALETTE_BIFF2);
 
 end.

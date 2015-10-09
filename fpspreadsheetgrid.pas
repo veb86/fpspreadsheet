@@ -244,11 +244,15 @@ type
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
+      AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer = -1); overload;
+    procedure LoadFromSpreadsheetFile(AFileName: string;
       AWorksheetIndex: Integer = -1); overload;
     procedure NewWorkbook(AColCount, ARowCount: Integer);
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
+      AOverwriteExisting: Boolean = true); overload;
+    procedure SaveToSpreadsheetFile(AFileName: string; AFormatID: TsSpreadFormatID;
       AOverwriteExisting: Boolean = true); overload;
     procedure SelectSheetByIndex(AIndex: Integer);
 
@@ -1339,12 +1343,14 @@ end;
 
 procedure TsCustomWorksheetGrid.DoCutToClipboard;
 begin
-  WorkbookSource.CutCellsToClipboard;
+  // Remove for the moment: If TsCopyActions is available this code would be executed twice (and destroy the clipboard)
+  //WorkbookSource.CutCellsToClipboard;
 end;
 
 procedure TsCustomWorksheetGrid.DoPasteFromClipboard;
 begin
-  WorkbookSource.PasteCellsFromClipboard(coCopyCell);
+  // Remove for the moment: If TsCopyActions is available this code would be executed twice
+  //WorkbookSource.PasteCellsFromClipboard(coCopyCell);
 end;
 
 procedure TsCustomWorksheetGrid.DoOnResize;
@@ -1412,7 +1418,7 @@ begin
       // Background color
       if (uffBackground in fmt^.UsedFormattingFields) then
       begin
-        if Workbook.FileFormat = sfExcel2 then
+        if Workbook.FileFormatID = ord(sfExcel2) then
         begin
           CreateFillPattern(FillPatternBitmap, fsGray12, clBlack, Color);
           Canvas.Brush.Style := bsImage;
@@ -1808,6 +1814,7 @@ procedure TsCustomWorksheetGrid.DrawFrozenPaneBorders(ARect: TRect);
 begin
   if WorkSheet = nil then
     exit;
+
   if (soHasFrozenPanes in Worksheet.Options) then begin
     Canvas.Pen.Style := psSolid;
     Canvas.Pen.Color := clBlack;
@@ -2078,6 +2085,9 @@ var
   cell: PCell;
   r1,c1,r2,c2: Cardinal;
 begin
+  if Worksheet = nil then
+    exit;
+
   // Selected cell
   cell := Worksheet.FindCell(GetWorksheetRow(Selection.Top), GetWorksheetCol(Selection.Left));
   if Worksheet.IsMerged(cell) then
@@ -2776,33 +2786,37 @@ var
   hyperlink: PsHyperlink;
   comment: String;
 begin
+  Result := '';
+
+  if Worksheet = nil then
+    exit;
+
   cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
   if cell = nil then
-    Result := ''
-  else
-  begin
-    // Read comment
-    comment := Worksheet.ReadComment(cell);
-    // Read hyperlink info
-    if Worksheet.HasHyperlink(cell) then begin
-      hyperlink := Worksheet.FindHyperlink(cell);
-      if hyperlink <> nil then
-      begin
-        if hyperlink^.ToolTip <> '' then
-          Result := hyperlink^.ToolTip
-        else
-          Result := Format('Hyperlink: %s' + LineEnding + rsStdHyperlinkTooltip,
-            [hyperlink^.Target]
-          );
-      end;
+    exit;
+
+  // Read comment
+  comment := Worksheet.ReadComment(cell);
+  // Read hyperlink info
+  if Worksheet.HasHyperlink(cell) then begin
+    hyperlink := Worksheet.FindHyperlink(cell);
+    if hyperlink <> nil then
+    begin
+      if hyperlink^.ToolTip <> '' then
+        Result := hyperlink^.ToolTip
+      else
+        Result := Format('Hyperlink: %s' + LineEnding + rsStdHyperlinkTooltip,
+          [hyperlink^.Target]
+        );
     end;
-    // Combine comment and hyperlink
-    if (Result <> '') and (comment <> '') then
-      Result := comment + LineEnding + LineEnding + Result
-    else
-    if (Result = '') and (comment <> '') then
-      Result := comment;
   end;
+
+  // Combine comment and hyperlink
+  if (Result <> '') and (comment <> '') then
+    Result := comment + LineEnding + LineEnding + Result
+  else
+  if (Result = '') and (comment <> '') then
+    Result := comment;
 
   if Assigned(OnGetCellHint) then
     OnGetCellHint(self, ACol, ARow, Result);
@@ -3461,6 +3475,8 @@ end;
   Creates a new workbook and loads the given file into it. The file is assumed
   to have the given file format. Shows the sheet with the given sheet index.
 
+  Call this method only for built-in file formats.
+
   @param   AFileName        Name of the file to be loaded
   @param   AFormat          Spreadsheet file format assumed for the file
   @param   AWorksheetIndex  Index of the worksheet to be displayed in the grid
@@ -3469,25 +3485,24 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
 begin
-  GetWorkbookSource.LoadfromSpreadsheetFile(AFileName, AFormat, AWorksheetIndex);
-  {
-  if FOwnsWorkbook then
-    FreeAndNil(FOwnedWorkbook);
+  GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormat, AWorksheetIndex);
+end;
 
-  if FWorkbookSource <> nil then
-    FWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormat, AWorksheetIndex)
-  else
-  begin
-    BeginUpdate;
-    try
-      CreateNewWorkbook;
-      Workbook.ReadFromFile(AFileName, AFormat);
-      LoadFromWorksheet(Workbook.GetWorksheetByIndex(AWorksheetIndex));
-    finally
-      EndUpdate;
-    end;
-  end;
-  }
+{@@ ----------------------------------------------------------------------------
+  Creates a new workbook and loads the given file into it. The file is assumed
+  to have the given file format. Shows the sheet with the given sheet index.
+
+  Call this method for both built-in and user-provided file formats.
+
+  @param   AFileName        Name of the file to be loaded
+  @param   AFormatID        Spreadsheet file format identifier assumed for the file
+  @param   AWorksheetIndex  Index of the worksheet to be displayed in the grid
+                            (If empty then the active worksheet is loaded)
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
+  AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer);
+begin
+  GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormatID, AWorksheetIndex);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3795,6 +3810,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Writes the workbook represented by the grid to a spreadsheet file.
 
+  Call this method only for built-in file formats.
+
   @param   AFileName          Name of the file to which the workbook is to be
                               saved.
   @param   AFormat            Spreadsheet file format in which the file is to be
@@ -3808,6 +3825,26 @@ procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
 begin
   if Workbook <> nil then
     Workbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the workbook represented by the grid to a spreadsheet file.
+
+  Call this method for both built-in and user-provided file formats.
+
+  @param   AFileName          Name of the file to which the workbook is to be
+                              saved.
+  @param   AFormatID          Identifier for the spreadsheet file format in
+                              which the file is to be saved.
+  @param   AOverwriteExisting If the file already exists, it is overwritten in
+                              the case of AOverwriteExisting = true, or an
+                              exception is raised if AOverwriteExisting = false
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
+  AFormatID: TsSpreadFormatID; AOverwriteExisting: Boolean = true);
+begin
+  if Workbook <> nil then
+    Workbook.WriteToFile(AFileName, AFormatID, AOverwriteExisting);
 end;
 
 {@@ ----------------------------------------------------------------------------

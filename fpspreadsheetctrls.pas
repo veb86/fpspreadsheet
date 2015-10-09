@@ -48,6 +48,7 @@ type
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
 
+
   { TsWorkbookSource }
 
   {@@ TsWorkbookSource links a workbook to the visual spreadsheet controls and
@@ -59,22 +60,25 @@ type
     FListeners: TFPList;
     FAutoDetectFormat: Boolean;
     FFileName: TFileName;
-    FFileFormat: TsSpreadsheetFormat;
+    FFileFormatID: TsSpreadFormatID;
+    FUserFileFormatID: TsSpreadFormatID;
     FPendingSelection: TsCellRangeArray;
     FPendingOperation: TsCopyOperation;
     FControlLockCount: Integer;
     FOptions: TsWorkbookOptions;
     FOnError: TsWorkbookSourceErrorEvent;
 
-    procedure AbortSelection;
+    // Getters / setters
+    function GetFileFormat: TsSpreadsheetFormat;
+    procedure SetFileFormat(AValue: TsSpreadsheetFormat);
+    procedure SetFileFormatID(AValue: TsSpreadFormatID);
+    procedure SetFileName(const AFileName: TFileName);
+    procedure SetOptions(AValue: TsWorkbookOptions);
+
+    // Local event handlers
     procedure CellChangedHandler(Sender: TObject; ARow, ACol: Cardinal);
     procedure CellFontChangedHandler(Sender: TObject; ARow, ACol: Cardinal);
     procedure CellSelectedHandler(Sender: TObject; ARow, ACol: Cardinal);
-    procedure InternalCreateNewWorkbook;
-    procedure InternalLoadFromFile(AFileName: string; AAutoDetect: Boolean;
-      AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1);
-    procedure SetFileName(const AFileName: TFileName);
-    procedure SetOptions(AValue: TsWorkbookOptions);
 //    procedure WorkbookChangedPaletteHandler(Sender: TObject);
     procedure WorkbookOpenedHandler(Sender: TObject);
     procedure WorksheetAddedHandler(Sender: TObject; ASheet: TsWorksheet);
@@ -85,7 +89,11 @@ type
     procedure WorksheetSelectedHandler(Sender: TObject; AWorksheet: TsWorksheet);
 
   protected
+    procedure AbortSelection;
     procedure DoShowError(const AErrorMsg: String);
+    procedure InternalCreateNewWorkbook(AWorkbook: TsWorkbook = nil);
+    procedure InternalLoadFromFile(AFileName: string; AAutoDetect: Boolean;
+      AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer = -1);
     procedure Loaded; override;
 
   public
@@ -103,11 +111,17 @@ type
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
+      AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1); overload;
+    {
+    procedure LoadFromSpreadsheetFile(AFileName: string;
       AWorksheetIndex: Integer = -1); overload;
+      }
 
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
+      AOverwriteExisting: Boolean = true); overload;
+    procedure SaveToSpreadsheetFile(AFileName: string; AFormatID: TsSpreadFormatID;
       AOverwriteExisting: Boolean = true); overload;
 
     procedure DisableControls;
@@ -134,14 +148,21 @@ type
     property Worksheet: TsWorksheet read FWorksheet;
     {@@ Indicates that which operation is waiting to be executed at next cell select }
     property PendingOperation: TsCopyOperation read FPendingOperation;
+    {@@ File format identifier of the next spreadsheet file to be loaded by
+      means of the Filename property. Not used when AutoDetectFormat is TRUE.
+      Unlike the published property "FileFormat" the FileFormatID also takes
+      care of user-defined formats. }
+    property FileFormatID: TsSpreadFormatID read FFileFormatID write SetFileFormatID;
 
   published
     {@@ Automatically detects the fileformat when loading the spreadsheet file
       specified by FileName }
     property AutoDetectFormat: Boolean read FAutoDetectFormat write FAutoDetectFormat;
     {@@ File format of the next spreadsheet file to be loaded by means of the
-      Filename property. Not used when AutoDetecteFormat is TRUE. }
-    property FileFormat: TsSpreadsheetFormat read FFileFormat write FFileFormat default sfExcel8;
+      Filename property. Not used when AutoDetectFormat is TRUE.
+      Note that if FileFormat is sfUser then the format ID must be specified at
+      runtime. }
+    property FileFormat: TsSpreadsheetFormat read GetFileFormat write SetFileFormat;
     {@@ Name of the loaded spreadsheet file which is loaded by assigning a file name
       to this property. Format detection is determined by the properties
       AutoDetectFormat and FileFormat. Using this property loads the file at
@@ -468,7 +489,8 @@ implementation
 uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
   Dialogs, Forms, Clipbrd,
-  fpsStrings, fpsUtils, fpsNumFormat, fpsHTMLUtils, fpsCSV, fpsOpenDocument;
+  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat, fpsHTMLUtils,
+  fpsCSV;
 
 var
   cfBiff8Format: Integer = 0;
@@ -630,7 +652,7 @@ constructor TsWorkbookSource.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FListeners := TFPList.Create;
-  FFileFormat := sfExcel8;
+  FFileFormatID := ord(sfExcel8);
   CreateNewWorkbook;
 end;
 
@@ -733,7 +755,7 @@ end;
 procedure TsWorkbookSource.CreateNewWorkbook;
 begin
   InternalCreateNewWorkbook;
-  FWorksheet := FWorkbook.AddWorksheet('Sheet1');
+  FWorksheet := FWorkbook.AddWorksheet(Format(rsDefaultSheetName,[1]));
   SelectWorksheet(FWorksheet);
 end;
 
@@ -828,13 +850,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Getter for property "FileFormat
+-------------------------------------------------------------------------------}
+function TsWorkbookSource.GetFileFormat: TsSpreadsheetFormat;
+begin
+  if FFileFormatID < 0 then
+    Result := sfUser
+  else
+    Result := TsSpreadsheetFormat(FFileFormatID);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Internal helper method which creates a new workbook without sheets
 -------------------------------------------------------------------------------}
-procedure TsWorkbookSource.InternalCreateNewWorkbook;
+procedure TsWorkbookSource.InternalCreateNewWorkbook(AWorkbook: TsWorkbook = nil);
 begin
   FreeAndNil(FWorkbook);
   FWorksheet := nil;
-  FWorkbook := TsWorkbook.Create;
+  if AWorkbook = nil then
+    FWorkbook := TsWorkbook.Create else
+    FWorkbook := AWorkbook;
   FWorkbook.OnOpenWorkbook := @WorkbookOpenedHandler;
   FWorkbook.OnAddWorksheet := @WorksheetAddedHandler;
   FWorkbook.OnChangeWorksheet := @WorksheetChangedHandler;
@@ -857,12 +892,52 @@ end;
                            opening the file in all available formats. Note that
                            an exception is raised in the IDE when an incorrect
                            format is tested.
-  @param  AFormat          Spreadsheet file format assumed for the loadeder.
+  @param  AFormatID        Identifier of the spreadsheet file format assumed
+                           for the loader.
                            Is ignored when AAutoDetect is false.
   @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.InternalLoadFromFile(AFileName: string;
-  AAutoDetect: Boolean; AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1);
+  AAutoDetect: Boolean; AFormatID: TsSpreadFormatID;
+  AWorksheetIndex: Integer = -1);
+{
+// this version avoids loading a defective workbook into the grid,
+// but tabcontrol navigation is not working here...
+
+var
+  book: TsWorkbook;
+begin
+  book := TsWorkbook.Create;
+  try
+    if AAutoDetect then
+      book.ReadFromFile(AFileName)
+    else
+      book.ReadFromFile(AFileName, AFormatID);
+
+    InternalCreateNewWorkbook(book);  // book --> FWorkbook
+  except
+    book.Free;
+    InternalCreateNewWorkbook;
+    // --> empty workbook, but avoid having no worksheet
+    FWorksheet := FWorkbook.AddWorksheet(Format(rsDefaultSheetName, [1]));
+    DoShowError(Format(rsCannotReadFile, [AFileName]));
+  end;
+
+  if AWorksheetIndex = -1 then
+  begin
+    if FWorkbook.ActiveWorksheet <> nil then
+      AWorksheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet) else
+      AWorksheetIndex := 0;
+  end;
+
+  SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
+
+  // If required, display loading error message
+  if FWorkbook.ErrorMsg <> '' then
+    DoShowError(FWorkbook.ErrorMsg);
+end;
+}
+
 begin
   // Create a new empty workbook
   InternalCreateNewWorkbook;
@@ -870,10 +945,17 @@ begin
   DisableControls;
   try
     // Read workbook from file and get worksheet
-    if AAutoDetect then
-      FWorkbook.ReadFromFile(AFileName)
-    else
-      FWorkbook.ReadFromFile(AFileName, AFormat);
+    try
+      if AAutoDetect then
+        FWorkbook.ReadFromFile(AFileName)
+      else
+        FWorkbook.ReadFromFile(AFileName, AFormatID);
+    except
+      FWorkbook.AddErrorMsg(rsCannotReadFile, [AFileName]);
+      // Code executed subsequently will be a pain if there is no worksheet!
+      if FWorkbook.GetWorksheetCount = 0 then
+        FWorkbook.AddWorksheet(Format(rsDefaultSheetName, [1]));
+    end;
   finally
     EnableControls;
   end;
@@ -909,6 +991,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Public spreadsheet loader to be used if file format is known.
 
+  Call this method only for built-in file formats.
+
   @param  AFilename        Name of the spreadsheet file to be loaded
   @param  AFormat          Spreadsheet file format assumed for the file
   @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
@@ -917,9 +1001,31 @@ end;
 procedure TsWorkbookSource.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1);
 begin
-  InternalLoadFromFile(AFileName, false, AFormat, AWorksheetIndex);
+  if AFormat = sfUser then
+    raise Exception.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
+  LoadFromSpreadsheetFile(AFileName, ord(AFormat), AWorksheetIndex);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Public spreadsheet loader to be used if file format is known.
+
+  Call this methdd for both built-in and user-provided file formats.
+
+  @param  AFilename        Name of the spreadsheet file to be loaded
+  @param  AFormatID        Identifier of the spreadsheet file format assumed
+                           for the file
+  @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
+                           (If empty then the active worksheet is loaded)
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.LoadFromSpreadsheetFile(AFileName: string;
+  AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1);
+var
+  autodetect: Boolean;
+begin
+  autodetect := (AFormatID = sfidUnknown);
+  InternalLoadFromFile(AFileName, autodetect, AFormatID, AWorksheetIndex);
+end;
+                                          (*
 {@@ ------------------------------------------------------------------------------
   Public spreadsheet loader to be used if file format is not known. The file
   format is determined from the file extension, or - if this is holds for
@@ -934,12 +1040,12 @@ end;
 procedure TsWorkbookSource.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer = -1);
 const
-  sfNotNeeded = sfExcel8;
+  sfNotNeeded = sfUnknown;
   // The parameter AFormat if InternalLoadFromFile is not needed here,
   // but the compiler wants a value...
 begin
   InternalLoadFromFile(AFileName, true, sfNotNeeded, AWorksheetIndex);
-end;
+end;                                        *)
 
 {@@ ----------------------------------------------------------------------------
   Notifies listeners of workbook, worksheet, cell, or selection changes.
@@ -997,6 +1103,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Writes the workbook of the WorkbookSource component to a spreadsheet file.
 
+  Call this method only for built-in file formats.
+
   @param   AFileName          Name of the file to which the workbook is to be
                               saved.
   @param   AFormat            Spreadsheet file format in which the file is to be
@@ -1008,10 +1116,31 @@ end;
 procedure TsWorkbookSource.SaveToSpreadsheetFile(AFileName: String;
   AFormat: TsSpreadsheetFormat; AOverwriteExisting: Boolean = true);
 begin
+  if AFormat = sfUser then
+    raise Exception.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
+  SaveToSpreadsheetFile(AFileName, ord(AFormat), AOverwriteExisting);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the workbook of the WorkbookSource component to a spreadsheet file.
+
+  Call this method for both built-in and user-provided file formats.
+
+  @param   AFileName          Name of the file to which the workbook is to be
+                              saved.
+  @param   AFormatID          Identifier of the spreadsheet file format in which
+                              the file is to be saved.
+  @param   AOverwriteExisting If the file already exists, it is overwritten in
+                              the case of AOverwriteExisting = true, or an
+                              exception is raised otherwise.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.SaveToSpreadsheetFile(AFileName: String;
+  AFormatID: TsSpreadFormatID; AOverwriteExisting: Boolean = true);
+begin
   if FWorkbook <> nil then begin
-    FWorkbook.WriteToFile(AFileName, AFormat, AOverwriteExisting);
+    FWorkbook.WriteToFile(AFileName, AFormatID, AOverwriteExisting);
     FFileName := AFilename;
-    FFileFormat := AFormat;
+    FFileFormatID := AFormatID;
 
     // If required, display loading error message
     if FWorkbook.ErrorMsg <> '' then
@@ -1069,8 +1198,30 @@ end;
 procedure TsWorkbookSource.SelectWorksheet(AWorkSheet: TsWorksheet);
 begin
   FWorksheet := AWorksheet;
-  if (FWorkbook <> nil) then
+  if (FWorkbook <> nil) and (FWorksheet <> nil) then
     FWorkbook.SelectWorksheet(AWorksheet);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the property "FileFormat"
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.SetFileFormat(AValue: TsSpreadsheetFormat);
+begin
+  if AValue = sfUser then
+    FFileFormatID := FUserFileFormatID else
+    FFileFormatID := ord(AValue);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the (public) property "FileFormatID"
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.SetFileFormatID(AValue: TsSpreadFormatID);
+begin
+  if AValue >= ord(High(TsSpreadsheetFormat)) then   // ">= High()" because we don't want sfUser here.
+    raise Exception.Create('Illegal ID for built-in format ID');
+  FFileFormatID := AValue;
+  if FFileFormatID < 0 then
+    FUserFileFormatID := FFileFormatID;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1097,7 +1248,10 @@ begin
     if FAutoDetectFormat then
       LoadFromSpreadsheetFile(FFileName)
     else
-      LoadFromSpreadsheetFile(FFileName, FFileFormat);
+    if (csDesigning in ComponentState) and (FFileFormatID < 0) then
+      raise Exception.Create('[TsWorkbookSource.SetFileName] User-defined file format not allowed in design mode.')
+    else
+      LoadFromSpreadsheetFile(FFileName, FFileFormatID);
   end else
     raise Exception.CreateFmt(rsFileNotFound, [ExpandFileName(AFileName)]);
 end;
@@ -1341,7 +1495,7 @@ begin
       sheet := Workbook.GetWorksheetbyIndex(ASheetIndex);
   end else
     sheet := FWorksheet;
-  FWorksheet := sheet;  // is needed by listeners!
+//  FWorksheet := sheet;  // is needed by listeners!
   NotifyListeners([lniWorksheetRemove]);
   SelectWorksheet(sheet);
 end;
@@ -1388,6 +1542,7 @@ begin
     FWorksheet.OnChangeFont := @CellFontChangedHandler;
     FWorksheet.OnSelectCell := @CellSelectedHandler;
     NotifyListeners([lniWorksheet]);
+    FWorksheet := AWorksheet;  // !!!!!
     if FWorksheet.ActiveCellRow = Cardinal(-1) then
       r := FWorksheet.TopPaneHeight else
       r := FWorksheet.ActiveCellRow;
@@ -2193,11 +2348,11 @@ begin
         noText := (FColorRectWidth = -1);
         Items.Clear;
         if FFormatItem = cfiBackgroundColor then
-          Items.AddObject(IfThen(noText, '', '(none)'), TObject(scTransparent));
+          Items.AddObject(StrUtils.IfThen(noText, '', '(none)'), TObject(scTransparent));
         for i:=0 to ComboColors.Count-1 do
         begin
           clr := ComboColors[i];
-          Items.AddObject(IfThen(noText, '', GetColorName(clr)), TObject(PtrInt(clr)));
+          Items.AddObject(StrUtils.IfThen(noText, '', GetColorName(clr)), TObject(PtrInt(clr)));
         end;
       end;
     else
@@ -2918,10 +3073,14 @@ begin
   end else
   begin
     AStrings.Add(Format('FileName=%s', [AWorkbook.FileName]));
+    AStrings.Add(Format('FileFormat=%d [%s]', [
+      AWorkbook.FileFormatID, GetSpreadTechnicalName(AWorkbook.FileFormatID)
+    ]));
+    {
     AStrings.Add(Format('FileFormat=%s', [
       GetEnumName(TypeInfo(TsSpreadsheetFormat), ord(AWorkbook.FileFormat))
     ]));
-
+     }
     if AWorkbook.ActiveWorksheet <> nil then
       AStrings.Add('ActiveWorksheet=' + AWorkbook.ActiveWorksheet.Name)
     else

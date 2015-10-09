@@ -599,7 +599,7 @@ type
   private
     { Internal data }
     FWorksheets: TFPList;
-    FFormat: TsSpreadsheetFormat;
+    FFormatID: TsSpreadFormatID;
     FBuiltinFontCount: Integer;
     //FPalette: array of TsColorValue;
     FVirtualColCount: Cardinal;
@@ -637,6 +637,16 @@ type
     FCellFormatList: TsCellFormatList;
 
     { Internal methods }
+    function CreateSpreadReader(AFormatID: TsSpreadFormatID;
+      AParams: TsStreamParams = []): TsBasicSpreadReader;
+    function CreateSpreadWriter(AFormatID: TsSpreadFormatID;
+      AParams: TsStreamParams = []): TsBasicSpreadWriter;
+
+    class function GetFormatFromFileHeader(const AFileName: TFileName;
+      out AFormatID: TsSpreadFormatID): Boolean; overload;
+    class function GetFormatFromFileHeader(AStream: TStream;
+      out AFormatID: TsSpreadFormatID): Boolean; overload;
+
     procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
@@ -652,29 +662,29 @@ type
     constructor Create;
     destructor Destroy; override;
 
-    class function GetFormatFromFileHeader(const AFileName: TFileName;
-      out SheetType: TsSpreadsheetFormat): Boolean; overload;
-    class function GetFormatFromFileHeader(AStream: TStream;
-      out SheetType: TsSpreadsheetFormat): Boolean; overload;
-    function CreateSpreadReader(AFormat: TsSpreadsheetFormat;
-      AClipboardMode: Boolean = false): TsBasicSpreadReader;
-    function CreateSpreadWriter(AFormat: TsSpreadsheetFormat;
-      AParams: TsStreamParams = []): TsBasicSpreadWriter;
-    procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat;
+    procedure ReadFromFile(AFileName: string; AFormatID: TsSpreadFormatID;
       AParams: TsStreamParams = []); overload;
+    procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat;
+      AParams: TsStreamParams = []); overload; deprecated 'Use TsSpreadFormatID instead of TsSpreadsheetFormat';
     procedure ReadFromFile(AFileName: string;
       AParams: TsStreamParams = []); overload;
     procedure ReadFromFileIgnoringExtension(AFileName: string;
       AParams: TsStreamParams = []);
+    procedure ReadFromStream(AStream: TStream; AFormatID: TsSpreadFormatID;
+      AParams: TsStreamParams = []); overload;
     procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AParams: TsStreamParams = []);
-    procedure WriteToFile(const AFileName: string;
-      const AFormat: TsSpreadsheetFormat;
+      AParams: TsStreamParams = []); overload; deprecated 'Use TsSpreadFormatID instead of TsSpreadsheetFormat';
+
+    procedure WriteToFile(const AFileName: string; const AFormatID: TsSpreadFormatID;
       const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); overload;
+    procedure WriteToFile(const AFileName: string; const AFormat: TsSpreadsheetFormat;
+      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); overload; deprecated 'Use TsSpreadFormatID instead of TsSpreadsheetFormat';
     procedure WriteToFile(const AFileName: String;
       const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); overload;
+    procedure WriteToStream(AStream: TStream; AFormatID: TsSpreadFormatID;
+      AParams: TsStreamParams = []); overload;
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AParams: TsStreamParams = []);
+      AParams: TsStreamParams = []); overload; deprecated 'Use TsSpreadFormatID instead of TsSpreadsheetFormat';
 
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string;
@@ -778,7 +788,7 @@ type
     {@@ Filename of the saved workbook }
     property FileName: String read FFileName;
     {@@ Identifies the file format which was detected when reading the file }
-    property FileFormat: TsSpreadsheetFormat read FFormat;
+    property FileFormatID: TsSpreadFormatID read FFormatID;
     property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
     property VirtualRowCount: cardinal read FVirtualRowCount write SetVirtualRowCount;
     property Options: TsWorkbookOptions read FOptions write FOptions;
@@ -860,8 +870,8 @@ implementation
 uses
   Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
   fpsStrings, uvirtuallayer_ole,
-  fpsUtils, fpsHTMLUtils, fpsreaderwriter, fpsCurrency, fpsExprParser,
-  fpsNumFormatParser;
+  fpsUtils, fpsHTMLUtils, fpsRegFileFormats, fpsreaderwriter,
+  fpsCurrency, fpsExprParser, fpsNumFormatParser;
 
 (*
 const
@@ -6500,7 +6510,7 @@ begin
   inherited Create;
   FWorksheets := TFPList.Create;
   FLog := TStringList.Create;
-  FFormat := sfExcel8;
+  FFormatID := sfidUnknown;
 
   FormatSettings := UTF8FormatSettings;
   FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
@@ -6544,26 +6554,26 @@ end;
   same extension
 -------------------------------------------------------------------------------}
 class function TsWorkbook.GetFormatFromFileHeader(const AFileName: TFileName;
-  out SheetType: TsSpreadsheetFormat): Boolean;
+  out AFormatID: TsSpreadFormatID): Boolean;
 var
   stream: TStream;
 begin
   stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
   try
-    Result := GetFormatFromFileHeader(stream, SheetType)
+    Result := GetFormatFromFileHeader(stream, AFormatID)
   finally
     stream.Free;
   end;
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Helper method for determining the spreadsheet type. Read the first few bytes
+  Helper method for determining the spreadsheet format. Read the first few bytes
   of a stream and determines the spreadsheet type from the characteristic
   signature. Only implemented for xls where several file types have the same
   extension.
 -------------------------------------------------------------------------------}
 class function TsWorkbook.GetFormatFromFileHeader(AStream: TStream;
-  out SheetType: TsSpreadsheetFormat): Boolean; overload;
+  out AFormatID: TsSpreadFormatID): Boolean; overload;
 const
   BIFF2_HEADER: array[0..3] of byte = (
     $09,$00, $04,$00);  // they are common to all BIFF2 files that I've seen
@@ -6606,27 +6616,27 @@ begin
     end;
   if ok then
   begin
-    SheetType := sfExcel2;
-    Exit(True);
+    AFormatID := ord(sfExcel2);
+    exit(true);
   end;
 
   // Check for Excel 5 or 8
   for i:=0 to High(BIFF58_HEADER) do
     if buf[i] <> BIFF58_HEADER[i] then
-      exit;
+      exit(false);
 
   // Now we know that the file is a Microsoft compound document.
 
   // We check for Excel 5 in which the stream is named "Book"
   if ValidOLEStream(AStream, 'Book') then begin
-    SheetType := sfExcel5;
-    exit(True);
+    AFormatID := ord(sfExcel5);
+    exit(true);
   end;
 
   // Now we check for Excel 8 which names the stream "Workbook"
   if ValidOLEStream(AStream, 'Workbook') then begin
-    SheetType := sfExcel8;
-    exit(True);
+    AFormatID := ord(sfExcel8);
+    exit(true);
   end;
 end;
 
@@ -6634,30 +6644,28 @@ end;
   Convenience method which creates the correct reader object for a given
   spreadsheet format.
 
-  @param  AFormat  File format which is assumed when reading a document into
-                   to workbook. An exception is raised when the document has
-                   a different format.
+  @param  AFormatID  Identifier of the file format which is assumed when reading
+                     a document into the workbook. An exception is raised when
+                     the document has a different format.
 
-  @param  AClipboardMode If TRUE it is checked that the reader class supports
-                         clipboard access.
+  @param  AParams    Optional parameters to control stream access. If contains
+                     the element spClipboard the reader knows that access is to
+                     the clipboard, and it can read a special clipboard version
+                     of the data.
 
   @return An instance of a TsCustomSpreadReader descendent which is able to
           read the given file format.
 -------------------------------------------------------------------------------}
-function TsWorkbook.CreateSpreadReader(AFormat: TsSpreadsheetFormat;
-  AClipboardMode: Boolean = false): TsBasicSpreadReader;
+function TsWorkbook.CreateSpreadReader(AFormatID: TsSpreadFormatID;
+  AParams: TsStreamParams = []): TsBasicSpreadReader;
 var
-  i: Integer;
+  readerClass: TsSpreadReaderClass;
 begin
   Result := nil;
+  readerClass := GetSpreadReaderClass(AFormatID);
 
-  for i := 0 to High(GsSpreadFormats) do
-    if (GsSpreadFormats[i].Format = AFormat) and
-       ((not AClipboardMode) or GsSpreadformats[i].CanReadFromClipboard) then
-    begin
-      Result := GsSpreadFormats[i].ReaderClass.Create(self);
-      Break;
-    end;
+  if readerClass <> nil
+    then Result := readerClass.Create(self);
 
   if Result = nil then
     raise Exception.Create(rsUnsupportedReadFormat);
@@ -6667,28 +6675,26 @@ end;
   Convenience method which creates the correct writer object for a given
   spreadsheet format.
 
-  @param  AFormat        File format to be used for writing the workbook
-  @param  AClipboardMode If TRUE then special data are written for usage in the
-                         clipboard
+  @param  AFormatID  Identifier of the file format which is used for writing the
+                     workbook
+  @param  AParams    Optional parameters to control stream access. If contains
+                     the element spClipboard then the writer can write a
+                     dedicated clipboard version of the stream if required.
 
   @return An instance of a TsCustomSpreadWriter descendent which is able to
           write the given file format.
 -------------------------------------------------------------------------------}
-function TsWorkbook.CreateSpreadWriter(AFormat: TsSpreadsheetFormat;
+function TsWorkbook.CreateSpreadWriter(AFormatID: TsSpreadFormatID;
   AParams: TsStreamParams): TsBasicSpreadWriter;
 var
-  i: Integer;
+  writerClass: TsSpreadWriterClass;
 begin
   Result := nil;
+  writerClass := GetSpreadWriterClass(AFormatID);
 
-  for i := 0 to High(GsSpreadFormats) do
-    if (GsSpreadFormats[i].Format = AFormat) and
-       (not (spClipboard in AParams) or GsSpreadFormats[i].CanWriteToClipboard) then
-    begin
-      Result := GsSpreadFormats[i].WriterClass.Create(self);
-      Break;
-    end;
-    
+  if writerClass <> nil then
+    Result := writerClass.Create(self);
+
   if Result = nil then
     raise Exception.Create(rsUnsupportedWriteFormat);
 end;
@@ -6724,11 +6730,30 @@ end;
 {@@ ----------------------------------------------------------------------------
   Reads the document from a file. It is assumed to have the given file format.
 
+  This method is intended for built-in file formats only. For user-provided
+  formats, call the overloaded method with the FormadID parameter.
+
   @param  AFileName  Name of the file to be read
   @param  AFormat    File format assumed
+
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AParams: TsStreamParams = []);
+begin
+  if AFormat = sfUser then
+    raise Exception.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
+  ReadFromFile(AFilename, ord(AFormat), AParams);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the document from a file. It is assumed to have the given file format.
+  Works also for user-provided file formats.
+
+  @param  AFileName  Name of the file to be read
+  @param  AFormatID  Identifier of the file format assumed
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.ReadFromFile(AFileName: string;
+  AFormatID: TsSpreadFormatID; AParams: TsStreamParams = []);
 var
   AReader: TsBasicSpreadReader;
   ok: Boolean;
@@ -6736,7 +6761,7 @@ begin
   if not FileExists(AFileName) then
     raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
 
-  AReader := CreateSpreadReader(AFormat);
+  AReader := CreateSpreadReader(AFormatID);
   try
     FFileName := AFileName;
     PrepareBeforeReading;
@@ -6749,7 +6774,7 @@ begin
       UpdateCaches;
       if (boAutoCalc in Options) then
         Recalc;
-      FFormat := AFormat;
+      FFormatID := AFormatID;
     finally
       FReadWriteFlag := rwfNormal;
       dec(FLockCount);
@@ -6768,56 +6793,168 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromFile(AFileName: string; AParams: TsStreamParams = []);
 var
-  SheetType: TsSpreadsheetFormat;
-  valid: Boolean;
-  lException: Exception = nil;
+  formatID: TsSpreadFormatID;
+  canLoad, success: Boolean;
+  fileFormats: TsSpreadFormatIDArray;
+  ext: String;
+  i: Integer;
 begin
   if not FileExists(AFileName) then
     raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
 
-  // .xls files can contain several formats. We look into the header first.
-  if Lowercase(ExtractFileExt(AFileName))=STR_EXCEL_EXTENSION then
-  begin
-    valid := GetFormatFromFileHeader(AFileName, SheetType);
-    // It is possible that valid xls files are not detected correctly. Therefore,
-    // we open them explicitly by trial and error - see below.
-    if not valid then
-      SheetType := sfExcel8;
-    valid := true;
-  end else
-    valid := GetFormatFromFileName(AFileName, SheetType);
+  ext := LowerCase(ExtractFileExt(AFileName));
 
-  if valid then
+  // Collect all formats which have the same extension
+  fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName);
+  if (Length(fileFormats) > 1) and (ext = STR_EXCEL_EXTENSION) then
   begin
-    if SheetType = sfExcel8 then
+    // In case of xls files we try to determine the format from the header
+    canLoad := GetFormatFromFileHeader(AFilename, formatID);
+    if canLoad then begin
+      // Analysis of the file header was successful --> we know the file
+      // format and shorten the list of fileformats to just one item.
+      SetLength(fileFormats, 1);
+      fileformats[0] := formatID;
+    end else
+      // If analysis of the header fails we open the file explicitly by
+      // trial and error for each format -- see below.
+      // We begin with BIFF8 which is the most common xls format now.
+      // The next command re-reads the format list with BIFF8 at the first place.
+      fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName, ord(sfExcel8));
+  end;
+
+  // No file format found for this file --> error
+  if Length(fileformats) = 0 then
+    raise Exception.CreateFmt(rsReaderNotFound, [AFileName]);
+
+  // Here is the trial-and-error loop checking for the various formats.
+  for i:=0 to High(fileformats) do begin
+    try
+      ReadFromFile(AFileName, fileformats[i], AParams);
+      success := true;
+      break;  // Exit the loop if we reach this point successfully.
+    except
+      success := false;
+    end;
+  end;
+
+  // The file could not be opened successfully --> Error.
+  if not success then
+    raise Exception.CreateFmt(rsNoValidSpreadsheetFile, [AFileName]);
+end;
+(*
+
+
+
+      on E: Exception do
+      begin
+
+  while True do
+  begin
+    try
+      ReadFromFile(AFileName, SheetType, AParams);
+      canLoad := True;
+    except
+      on E: Exception do
+      begin
+        if SheetType = _sfExcel8 then lException := E;
+        canLoad := False
+      end;
+    end;
+    if canLoad or (SheetType = _sfExcel2) then Break;
+    SheetType := Pred(SheetType);
+  end;
+
+  // A failed attempt to read a file should bring an exception, so re-raise
+  // the exception if necessary. We re-raise the exception brought by Excel 8,
+  // since this is the most common format
+  if (not canLoad) and (lException <> nil) then raise lException;
+end
+else
+  ReadFromFile(AFileName, SheetType, AParams);
+end else
+raise Exception.CreateFmt(rsNoValidSpreadsheetFile, [AFileName]);
+
+
+
+
+  for i:=0 to High(fileformats) do
+  // .xls files can contain several formats. We look into the header first.
+  if ext = STR_EXCEL_EXTENSION then
+  begin
+    canLoad := GetFormatFromFileHeader(AFileName, SheetType);
+    if canLoad then begin
+      // Rearrange the file format list such that the format detected from the
+      // header is first. Must probably the other file formats are not needed,
+      // just to make sure...
+      xlsformats := GetSpreadFormatsFromFileName(AFileName, 'BIFF8');
+      SetLength(fileFormats, Length(xlsformats)+1);
+      fileFormats[0] := sheetType;
+      n := 1;
+      for i := 0 to High(xlsformats) do
+        if xlsformats[i] <> sheetType then
+        begin
+          fileFormats[n] := xlsformats[i];
+          inc(n);
+        end;
+      SetLength(fileformats, n);
+    end else
+    begin
+      // In this case the file format could not be identified from the header.
+      // But it is possible that this method fails for valid xls files.
+      // Therefore we open the file explicitly by trial and error using each
+      // xls reader - see below. We begin with BIFF8 which is most often used.
+      // Therefore, we read the file format list with BIFF8 at the first item.
+      fileformats := GetSpreadFormatsFromFileName(AFileName, 'BIFF8');
+      SheetType := fileFormats[0];
+      canLoad := true;
+    end;
+  end else
+  begin
+    SheetType := fileFormats[0];
+    canLoad := (Length(fileFormats) > 0);
+  end;
+
+  if not canLoad then
+    raise Exception.CreateFmt(rsReaderNotFound, [AFileName]);
+
+  // Here is the trial and error loop checking the file formats with the same extension
+  for sf := 0 to High(fileFormats) do begin
+    try
+      ReadFromFile
+
+  if canLoad then
+  begin
+    if SheetType = _sfExcel8 then
     begin
       // Here is the trial-and-error loop checking for the various biff formats.
       while True do
       begin
         try
           ReadFromFile(AFileName, SheetType, AParams);
-          valid := True;
+          canLoad := True;
         except
           on E: Exception do
           begin
-            if SheetType = sfExcel8 then lException := E;
-            valid := False
+            if SheetType = _sfExcel8 then lException := E;
+            canLoad := False
           end;
         end;
-        if valid or (SheetType = sfExcel2) then Break;
+        if canLoad or (SheetType = _sfExcel2) then Break;
         SheetType := Pred(SheetType);
       end;
 
       // A failed attempt to read a file should bring an exception, so re-raise
       // the exception if necessary. We re-raise the exception brought by Excel 8,
       // since this is the most common format
-      if (not valid) and (lException <> nil) then raise lException;
+      if (not canLoad) and (lException <> nil) then raise lException;
     end
     else
       ReadFromFile(AFileName, SheetType, AParams);
   end else
     raise Exception.CreateFmt(rsNoValidSpreadsheetFile, [AFileName]);
 end;
+  *)
 
 {@@ ----------------------------------------------------------------------------
   Reads the document from a file, but ignores the extension.
@@ -6825,22 +6962,22 @@ end;
 procedure TsWorkbook.ReadFromFileIgnoringExtension(AFileName: string;
   AParams: TsStreamParams = []);
 var
-  SheetType: TsSpreadsheetFormat;
-  lException: Exception;
+  formatID: TsSpreadFormatID;
+  fileformats: TsSpreadFormatIDArray;
+  success: Boolean;
 begin
-  lException := pointer(1);  // Must not be nil initially
-  SheetType := sfExcel8;
-  while (SheetType in [sfExcel2..sfExcel8, sfOpenDocument, sfOOXML]) and (lException <> nil) do
-  begin
+  fileformats := GetSpreadFormats(faRead, [ord(sfOOXML), ord(sfOpenDocument), ord(sfExcel8)]);
+  for formatID in fileformats do begin
     try
-      Dec(SheetType);
-      ReadFromFile(AFileName, SheetType, AParams);
-      lException := nil;
+      ReadFromFile(AFileName, formatID, AParams);
+      success := true;
+      break;
     except
-      on E: Exception do { do nothing } ;
+      success := false;
     end;
-    if lException = nil then Break;
   end;
+  if not success then
+    raise Exception.CreateFmt(rsNoValidSpreadsheetFile, [AFileName]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6852,27 +6989,44 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromStream(AStream: TStream;
   AFormat: TsSpreadsheetFormat; AParams: TsStreamParams = []);
+begin
+  if AFormat = sfUser then
+    raise Exception.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
+  ReadFromStream(AStream, ord(AFormat), AParams);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the document from a seekable stream.
+
+  @param  AStream    Stream being read
+  @param  AFormatID  Identifier of the file format assumed.
+  @param  AParams    Optional parameters to control stream access.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.ReadFromStream(AStream: TStream;
+  AFormatID: TsSpreadFormatID; AParams: TsStreamParams = []);
 var
   AReader: TsBasicSpreadReader;
   ok: Boolean;
 begin
-  AReader := CreateSpreadReader(AFormat);
+  AReader := CreateSpreadReader(AFormatID);
   try
     PrepareBeforeReading;
+    FReadWriteFlag := rwfRead;
+    ok := false;
     inc(FLockCount);
     try
-      ok := false;
       AStream.Position := 0;
       AReader.ReadFromStream(AStream, AParams);
       ok := true;
+      UpdateCaches;
+      if (boAutoCalc in Options) then
+        Recalc;
+      FFormatID := AFormatID;
     finally
       dec(FLockCount);
-      if ok and Assigned(FOnOpenWorkbook) then
-        FOnOpenWorkbook(self);
+      if ok and Assigned(FOnOpenWorkbook) then   // ok is true if stream has been read successfully
+        FOnOpenWorkbook(self);   // send common notification
     end;
-    UpdateCaches;
-    if (boAutoCalc in Options) then
-      Recalc;
   finally
     AReader.Free;
   end;
@@ -6892,24 +7046,46 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes the document to a file. If the file doesn't exist, it will be created.
+  Can be used only for built-in file formats.
 
   @param  AFileName  Name of the file to be written
-  @param  AFormat    The file will be written in this file format
+  @param  AFormat    The file will be written in this file format.
   @param  AOverwriteExisting  If the file is already existing it will be
                      overwritten in case of AOverwriteExisting = true.
                      If false an exception will be raised.
   @param  AParams    Optional parameters to control stream access.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToFile(const AFileName: string;
- const AFormat: TsSpreadsheetFormat; const AOverwriteExisting: Boolean = False;
- AParams: TsStreamParams = []);
+  const AFormat: TsSpreadsheetFormat; const AOverwriteExisting: Boolean = False;
+  AParams: TsStreamParams = []);
+begin
+  if AFormat = sfUser then
+    raise Exception.Create('[TsWorkbook.WriteToFile] Don''t call this method for user-provided file formats.');
+  WriteToFile(AFilename, ord(AFormat), AOverwriteExisting, AParams);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the document to a file. If the file doesn't exist, it will be created.
+  Can be used for both built-in and user-provided file formats.
+
+  @param  AFileName  Name of the file to be written
+  @param  AFormatID  The file will be written in the file format identified by
+                     this number.
+  @param  AOverwriteExisting  If the file is already existing it will be
+                     overwritten in case of AOverwriteExisting = true.
+                     If the parameter is FALSE then an exception will be raised.
+  @param  AParams    Optional parameters to control stream access.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.WriteToFile(const AFileName: string;
+  const AFormatID: TsSpreadFormatID; const AOverwriteExisting: Boolean = False;
+  AParams: TsStreamParams = []);
 var
   AWriter: TsBasicSpreadWriter;
 begin
-  AWriter := CreateSpreadWriter(AFormat);
+  AWriter := CreateSpreadWriter(AFormatID);
   try
     FFileName := AFileName;
-    FFormat := AFormat;
+    FFormatID := AFormatID;
     PrepareBeforeSaving;
     AWriter.CheckLimitations;
     FReadWriteFlag := rwfWrite;
@@ -6933,20 +7109,28 @@ end;
 procedure TsWorkbook.WriteToFile(const AFileName: String;
   const AOverwriteExisting: Boolean; AParams: TsStreamParams = []);
 var
-  SheetType: TsSpreadsheetFormat;
+  fileformats: TsSpreadFormatIDArray;
+//  formatID: TsSpreadFormatID;
   valid: Boolean;
+  ext: String;
 begin
-  valid := GetFormatFromFileName(AFileName, SheetType);
-  if valid then
-    WriteToFile(AFileName, SheetType, AOverwriteExisting, AParams)
+  ext := ExtractFileExt(AFileName);
+
+  if Lowercase(ext) = STR_EXCEL_EXTENSION then
+    fileformats := GetSpreadFormatsFromFileName(faWrite, AFileName, ord(sfExcel8)) // give preference to BIFF8
   else
-    raise Exception.Create(Format(rsInvalidExtension, [
-      ExtractFileExt(AFileName)
-    ]));
+    fileformats := GetSpreadFormatsFromFileName(faWrite, AFileName);
+
+  if Length(fileformats) > 0 then
+    WriteToFile(AFileName, fileformats[0], AOverwriteExisting, AParams)
+  else
+    raise Exception.Create(Format(rsInvalidExtension, [ext]));
 end;
 
 {@@ ----------------------------------------------------------------------------
   Writes the document to a stream
+
+  Can be used only for built-in file formats.
 
   @param  AStream         Instance of the stream being written to
   @param  AFormat         File format to be written.
@@ -6957,11 +7141,32 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
   AParams: TsStreamParams = []);
+begin
+  if AFormat = sfUser then
+    raise Exception.Create('[TsWorkbook.WriteToFile] Don''t call this method for user-provided file formats.');
+  WriteToStream(AStream, ord(AFormat), AParams);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the document to a stream
+
+  Can be used for both built-in and userprovided file formats.
+
+  @param  AStream         Instance of the stream being written to
+  @param  AFormatID       Identifier of the file format to be written.
+  @param  AClipboardMode  Stream will be used by calling method for clipboard access
+  @param  AParams         Optional parameters to control stream access
+                          The HTML writer, for example, can be forced to write
+                          a valid html document in Windows.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.WriteToStream(AStream: TStream;
+  AFormatID: TsSpreadFormatID; AParams: TsStreamParams = []);
 var
   AWriter: TsBasicSpreadWriter;
 begin
-  AWriter := CreateSpreadWriter(AFormat, AParams);
+  AWriter := CreateSpreadWriter(AFormatID, AParams);
   try
+    FFormatID := AFormatID;
     PrepareBeforeSaving;
     AWriter.CheckLimitations;
     FReadWriteFlag := rwfWrite;
@@ -8285,11 +8490,5 @@ begin
   if lastCol >= FLimitations.MaxColCount then
     Workbook.AddErrorMsg(rsMaxColsExceeded, [lastCol+1, FLimitations.MaxColCount]);
 end;
-
-
-initialization
-
-finalization
-  SetLength(GsSpreadFormats, 0);
 
 end.   {** End Unit: fpspreadsheet }

@@ -136,50 +136,12 @@ type
     property NumFormatList: TStringList read FNumFormatList;
   end;
 
-  {@@ List of registered formats }
-  TsSpreadFormatData = record
-    ReaderClass: TsSpreadReaderClass;
-    WriterClass: TsSpreadWriterClass;
-    Format: TsSpreadsheetFormat;
-    CanReadFromClipboard: Boolean;
-    CanWriteToClipboard: Boolean;
-  end;
-
-var
-  GsSpreadFormats: array of TsSpreadFormatData;
-
-procedure RegisterSpreadFormat(AReaderClass: TsSpreadReaderClass;
-  AWriterClass: TsSpreadWriterClass; AFormat: TsSpreadsheetFormat;
-  ACanReadFromClipboard: Boolean = false; ACanWriteToClipboard: Boolean = false);
-
 
 implementation
 
 uses
   Math,
   fpsStrings, fpsUtils, fpsNumFormat, fpsStreams;
-
-{@@ ----------------------------------------------------------------------------
-  Registers a new reader/writer pair for a given spreadsheet file format
--------------------------------------------------------------------------------}
-procedure RegisterSpreadFormat(
-  AReaderClass: TsSpreadReaderClass;
-  AWriterClass: TsSpreadWriterClass;
-  AFormat: TsSpreadsheetFormat;
-  ACanReadFromClipboard: Boolean = false;
-  ACanWriteToClipboard: Boolean = false);
-var
-  len: Integer;
-begin
-  len := Length(GsSpreadFormats);
-  SetLength(GsSpreadFormats, len + 1);
-
-  GsSpreadFormats[len].ReaderClass := AReaderClass;
-  GsSpreadFormats[len].WriterClass := AWriterClass;
-  GsSpreadFormats[len].Format := AFormat;
-  GsSpreadFormats[len].CanReadFromClipboard := ACanReadFromClipboard;
-  GsSpreadFormats[len].CanWriteToClipboard := ACanWriteToClipboard;
-end;
 
 
 {*******************************************************************************

@@ -124,6 +124,7 @@ type
   end;
 
 var
+  {@@ Default settings for reading/writing of HTML files }
   HTMLParams: TsHTMLParams = (
     TableIndex: -1;                  // -1 = all tables
     SheetIndex: -1;                  // -1 = active sheet, MaxInt = all sheets
@@ -135,11 +136,13 @@ var
     FalseText: 'FALSE';
   {%H-});
 
+  sfidHTML: TsSpreadFormatID;
+
 implementation
 
 uses
   LConvEncoding, LazUTF8, URIParser, StrUtils, Math,
-  fpsUtils, fpsNumFormat;
+  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat;
 
 const
   MIN_FONTSIZE = 6;
@@ -1900,9 +1903,16 @@ begin
     '</div>');
 end;
 
+
 initialization
   InitFormatSettings(HTMLParams.FormatSettings);
-  RegisterSpreadFormat(TsHTMLReader, TsHTMLWriter, sfHTML, false, true);
+
+  // Registers this reader / writer in fpSpreadsheet
+  sfidHTML := RegisterSpreadFormat(sfHTML,
+    TsHTMLReader, TsHTMLWriter,
+    rsFileFormatHTML, 'HTML', [STR_HTML_EXTENSION, '.htm']
+  );
+
 
 end.
 

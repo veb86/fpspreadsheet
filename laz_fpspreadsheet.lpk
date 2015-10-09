@@ -30,7 +30,7 @@
 This package is all you need if you don't want graphical components (like grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
     <Version Major="1" Minor="7"/>
-    <Files Count="43">
+    <Files Count="44">
       <Item1>
         <Filename Value="fpolestorage.pas"/>
         <UnitName Value="fpolestorage"/>
@@ -203,6 +203,10 @@ This package is all you need if you don't want graphical components (like grids 
         <Filename Value="fpscurrency.pas"/>
         <UnitName Value="fpsCurrency"/>
       </Item43>
+      <Item44>
+        <Filename Value="fpsregfileformats.pas"/>
+        <UnitName Value="fpsregfileformats"/>
+      </Item44>
     </Files>
     <RequiredPkgs Count="2">
       <Item1>

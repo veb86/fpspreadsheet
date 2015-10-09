@@ -46,7 +46,7 @@ implementation
 {$R *.lfm}
 
 uses
-  fpsUtils;
+  fpsUtils, fpsRegFileFormats;
 
 
 { TForm1 }
@@ -148,7 +148,7 @@ begin
       // Update user interface
       Caption := Format('fpsGrid - %s (%s)', [
         AFilename,
-        GetFileFormatName(Grid.Workbook.FileFormat)
+        GetSpreadTechnicalName(Grid.Workbook.FileFormatID)
       ]);
 
       // Collect the sheet names in the Tabs of the TabControl for switching sheets.

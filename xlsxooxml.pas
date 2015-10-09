@@ -191,22 +191,25 @@ type
     procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
-
   TXlsxSettings = record
     DateMode: TDateMode;
   end;
 
 var
+  {@@ Default settings for reading/writing of XLSX files }
   XlsxSettings: TXlsxSettings = (
     DateMode: dm1900;
   );
+
+  sfidOOXML: TsSpreadFormatID;
 
 
 implementation
 
 uses
   variants, strutils, math, lazutf8, LazFileUtils, uriparser,
-  {%H-}fpsPatches, fpsStrings, fpsStreams, fpsNumFormatParser, fpsClasses;
+  {%H-}fpsPatches,
+  fpsStrings, fpsStreams, fpsNumFormatParser, fpsClasses, fpsRegFileFormats;
 
 const
   { OOXML general XML constants }
@@ -3879,7 +3882,10 @@ end;
 initialization
 
   // Registers this reader / writer on fpSpreadsheet
-  RegisterSpreadFormat(TsSpreadOOXMLReader, TsSpreadOOXMLWriter, sfOOXML);
+  sfidOOXML := RegisterSpreadFormat(sfOOXML,
+    TsSpreadOOXMLReader, TsSpreadOOXMLWriter,
+    rsFileFormatExcelXLSX, 'OOXML', [STR_OOXML_EXCEL_EXTENSION]
+  );
 
 end.
 

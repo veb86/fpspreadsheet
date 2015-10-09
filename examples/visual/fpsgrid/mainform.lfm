@@ -126,6 +126,7 @@ object Form1: TForm1
   end
   object sWorkbookSource1: TsWorkbookSource
     AutoDetectFormat = False
+    FileFormat = sfExcel8
     Options = []
   end
   object OpenDialog: TOpenDialog

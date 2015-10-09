@@ -819,7 +819,7 @@ begin
     cmBrush:
       if WorkbookSource.PendingOperation = coNone then Checked := false;
     cmCopy, cmCut:
-      Enabled := Worksheet.GetSelectionCount > 0;
+      Enabled := (Worksheet <> nil) and (Worksheet.GetSelectionCount > 0);
     cmPaste:
       Enabled := SpreadsheetFormatInClipboard;
   end;

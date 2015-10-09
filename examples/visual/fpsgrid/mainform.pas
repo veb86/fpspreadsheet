@@ -46,7 +46,7 @@ var
 implementation
 
 uses
-  fpcanvas, fpsutils;
+  fpcanvas, fpsutils, fpsRegFileFormats;
 
 
 { TForm1 }
@@ -171,7 +171,7 @@ begin
       // Update user interface
       Caption := Format('fpsGrid - %s (%s)', [
         AFilename,
-        GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
+        GetSpreadTechnicalName(WorksheetGrid.Workbook.FileFormatID)
       ]);
 
       // Collect the sheet names in the combobox for switching sheets.

@@ -17,11 +17,25 @@ uses
   Classes, SysUtils, fpimage;
 
 type
-  {@@ File formats supported by fpspreadsheet }
-  TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8, sfExcelXML,
-   sfOOXML, sfOpenDocument, sfCSV, sfHTML,
-   sfWikiTable_Pipes, sfWikiTable_WikiMedia);
+  {@@ Built-in file formats of fpspreadsheet }
+  TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8, sfExcelXML, sfOOXML,
+    sfOpenDocument, sfCSV, sfHTML, sfWikiTable_Pipes, sfWikiTable_WikiMedia,
+    sfUser);   // Use this for user-defined readers/writers
 
+  {@@ Numerical identifier for file formats, built-in and user-provided }
+  TsSpreadFormatID = integer;
+
+  {@@ Array of file format identifiers }
+  TsSpreadFormatIDArray = array of TsSpreadFormatID;
+
+const
+  {@@ Format identifier of an undefined, unknown, etc. file format. }
+  sfidUnknown = -1;
+  { Each unit implementing a reader/writer will define an sfidXXXX value as a
+    numerical identifer of the file format. In case of the built-in formats,
+    the identifier is equal to the ord of the TsSpreadsheetFormat value. }
+
+type
   {@@ Flag set during reading or writing of a workbook }
   TsReadWriteFlag = (rwfNormal, rwfRead, rwfWrite);
 
@@ -736,6 +750,7 @@ type
   {@@ Parameters for stream access }
   TsStreamParam = (spClipboard, spWindowsClipboardHTML);
   TsStreamParams = set of TsStreamParam;
+
 
 implementation
 

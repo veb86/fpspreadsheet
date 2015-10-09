@@ -47,6 +47,7 @@ type
 
   TWikiTableTokenList = specialize TFPGList<TWikiTableToken>;
 
+
   { TWikiTableTokenizer }
 
   TWikiTableTokenizer = class
@@ -61,6 +62,7 @@ type
     procedure TokenizeString_Pipes(AStr: string);
   end;
 
+
   { TsWikiTableReader }
 
   TsWikiTableReader = class(TsCustomSpreadReader)
@@ -72,12 +74,14 @@ type
     procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
+
   { TsWikiTable_PipesReader }
 
   TsWikiTable_PipesReader = class(TsWikiTableReader)
   public
     constructor Create(AWorkbook: TsWorkbook); override;
   end;
+
 
   { TsWikiTableWriter }
 
@@ -89,6 +93,7 @@ type
     procedure WriteToStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
+
   { TsWikiTable_WikiMediaWriter }
 
   TsWikiTable_WikiMediaWriter = class(TsWikiTableWriter)
@@ -96,10 +101,16 @@ type
     constructor Create(AWorkbook: TsWorkbook); override;
   end;
 
+
+var
+  sfidWikiTable_Pipes: TsSpreadFormatID;
+  sfidWikiTable_WikiMedia: TsSpreadFormatID;
+
+
 implementation
 
 uses
-  fpsStrings;
+  fpsStrings, fpsRegFileFormats;
 
 
 { TWikiTableTokenizer }
@@ -299,9 +310,8 @@ procedure TsWikiTableReader.ReadFromStrings(AStrings: TStrings;
   AParams: TsStreamParams = []);
 begin
   Unused(AParams);
-  case SubFormat of
-    sfWikiTable_Pipes: ReadFromStrings_Pipes(AStrings);
-  end;
+  if SubFormat = sfWikiTable_Pipes then
+    ReadFromStrings_Pipes(AStrings);
 end;
 
 procedure TsWikiTableReader.ReadFromStrings_Pipes(AStrings: TStrings);
@@ -349,9 +359,8 @@ procedure TsWikiTableWriter.WriteToStrings(AStrings: TStrings;
   AParams: TsStreamParams = []);
 begin
   Unused(AParams);
-  case SubFormat of
-    sfWikiTable_WikiMedia: WriteToStrings_WikiMedia(AStrings);
-  end;
+  if SubFormat = sfWikiTable_WikiMedia then
+    WriteToStrings_WikiMedia(AStrings);
 end;
 
 (*
@@ -615,7 +624,15 @@ end;
 
 initialization
 
-  RegisterSpreadFormat(TsWikiTable_PipesReader, nil, sfWikiTable_Pipes);
-  RegisterSpreadFormat(nil, TsWikiTable_WikiMediaWriter, sfWikiTable_WikiMedia);
+  // Registers this reader / writer in fpSpreadsheet
+  sfidWikiTable_Pipes := RegisterSpreadFormat( sfWikiTable_Pipes,
+    TsWikiTable_PipesReader, nil,
+    rsFileFormatWikiTablePipes, 'WIKITABLE_PIPES', [STR_WIKITABLE_PIPES_EXTENSION]
+  );
+
+  sfidWikiTable_WikiMedia := RegisterSpreadFormat(sfWikiTable_WikiMedia,
+    nil, TsWikiTable_WikiMediaWriter,
+    rsFileFormatWikiTableWikiMedia, 'WIKITABLE_WIKIMEDIA', [STR_WIKITABLE_WIKIMEDIA_EXTENSION]
+  );
 
 end.

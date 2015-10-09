@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Spin, Grids,
   ColorBox, ValEdit,
-  fpstypes, fpspalette, fpspreadsheetgrid, fpspreadsheet,
+  fpstypes, fpspalette, fpspreadsheetgrid,
   {%H-}fpsallformats;
 
 type
@@ -366,7 +366,7 @@ implementation
 
 uses
   TypInfo, LCLIntf, LCLType, LCLVersion, fpcanvas, Buttons,
-  fpsutils, fpscsv, fpsNumFormat,
+  fpsutils, fpscsv, fpsNumFormat, fpsRegFileFormats,
   sFormatSettingsForm, sCSVParamsForm, sSortParamsForm, sCurrencyForm;
 
 const
@@ -1131,7 +1131,7 @@ begin
     // Update user interface
     Caption := Format('spready - %s (%s)', [
       AFilename,
-      GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
+      GetSpreadTechnicalName(WorksheetGrid.Workbook.FileFormatID)
     ]);
     AcShowGridLines.Checked := WorksheetGrid.ShowGridLines;
     AcShowHeaders.Checked := WorksheetGrid.ShowHeaders;

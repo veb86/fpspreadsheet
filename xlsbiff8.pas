@@ -179,12 +179,12 @@ type
   end;
 
 var
+  {@@ Default settings for reading/writing Excel8 files }
   Excel8Settings: TExcel8Settings = (
     DateMode: dm1900;
   );
 
-var
-  // the palette of the 64 default BIFF8 colors as "big-endian color" values
+  {@@ palette of the 64 default BIFF8 colors as "big-endian color" values }
   PALETTE_BIFF8: array[$00..$3F] of TsColor = (
     $000000,  // $00: black            // 8 built-in default colors
     $FFFFFF,  // $01: white
@@ -257,12 +257,15 @@ var
   );
   // color names according to http://dmcritchie.mvps.org/EXCEL/COLORS.HTM
 
+  sfidExcel8: TsSpreadFormatID;
+
+
 implementation
 
 uses
   Math, lconvencoding, LazFileUtils, URIParser,
-  fpsStrings, fpsStreams, fpsReaderWriter, fpsPalette, fpsNumFormat,
-  fpsExprParser, xlsEscher;
+  fpsStrings, fpsStreams, fpsRegFileFormats, fpsReaderWriter, fpsPalette,
+  fpsNumFormat, fpsExprParser, xlsEscher;
 
 const
    { Excel record IDs }
@@ -3408,7 +3411,10 @@ end;
 initialization
 
   // Registers this reader / writer in fpSpreadsheet
-  RegisterSpreadFormat(TsSpreadBIFF8Reader, TsSpreadBIFF8Writer, sfExcel8, true, true);
+  sfidExcel8 := RegisterSpreadFormat(sfExcel8,
+    TsSpreadBIFF8Reader, TsSpreadBIFF8Writer,
+    rsFileFormatExcel8, 'BIFF8', [STR_EXCEL_EXTENSION]
+  );
 
   // Converts the palette to litte-endian
   MakeLEPalette(PALETTE_BIFF8);
