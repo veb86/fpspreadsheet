@@ -1,6 +1,7 @@
 unit fonttests;
 
-{$mode objfpc}{$H+}
+//{$mode objfpc}{$H+}
+{$mode Delphi}{$H+}
 
 interface
 { Font tests
@@ -71,7 +72,7 @@ type
 implementation
 
 uses
-  TypInfo;
+  fpsutils, TypInfo;
 
 const
   FontSheet = 'Font';
@@ -243,8 +244,17 @@ begin
         font := MyWorksheet.ReadCellFont(MyCell);
         CheckEquals(SollSizes[row], font.Size,
           'Test unsaved font size, cell ' + CellNotation(MyWorksheet,0,0));
-        currValue := GetEnumName(TypeInfo(TsFontStyles), integer(font.Style));
-        expectedValue := GetEnumName(TypeInfo(TsFontStyles), integer(SollStyles[col]));
+       {$IF FPC_FULLVERSION >= 030101}
+        currValue := GetEnumName(TypeInfo(TsFontStyles), byte(font.Style));   // wp: 2.6.4--> integer, 3.1.1 --> byte!
+        expectedValue := GetEnumName(TypeInfo(TsFontStyles), byte(SollStyles[col]));
+        currValue := GetSetValues(TypeInfo(TsFontStyles), byte(font.Style));
+        expectedValue := GetSetValues(TypeInfo(TsFontStyles), byte(SollStyles[col]));
+       {$ELSE}
+//        currValue := GetEnumName(TypeInfo(TsFontStyles), integer(font.Style));   // wp: 2.6.4--> integer, 3.1.1 --> byte!
+//        expectedValue := GetEnumName(TypeInfo(TsFontStyles), integer(SollStyles[col]));
+        currValue := GetSetValues(TypeInfo(TsFontStyles), integer(font.Style));
+        expectedValue := GetSetValues(TypeInfo(TsFontStyles), integer(SollStyles[col]));
+       {$ENDIF}
         CheckEquals(currValue, expectedValue,
           'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
       end;
@@ -278,8 +288,10 @@ begin
         if abs(SollSizes[row] - font.Size) > 1e-6 then  // safe-guard against rounding errors
           CheckEquals(SollSizes[row], font.Size,
             'Test saved font size, cell '+CellNotation(MyWorksheet,Row,Col));
-        currValue := GetEnumName(TypeInfo(TsFontStyles), integer(font.Style));
-        expectedValue := GetEnumName(TypeInfo(TsFontStyles), integer(SollStyles[col]));
+//        currValue := GetEnumName(TypeInfo(TsFontStyles), integer(font.Style));
+//        expectedValue := GetEnumName(TypeInfo(TsFontStyles), integer(SollStyles[col]));
+        currValue := GetSetValues(TypeInfo(TsFontStyles), byte(font.Style));
+        expectedValue := GetSetValues(TypeInfo(TsFontStyles), byte(SollStyles[col]));
         CheckEquals(currValue, expectedValue,
           'Test unsaved font style, cell ' + CellNotation(MyWorksheet,0,0));
         inc(counter);
