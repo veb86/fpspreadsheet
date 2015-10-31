@@ -155,9 +155,6 @@
       <OtherUnitFiles Value=".."/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
-    <Other>
-      <CustomOptions Value="-d-MDelphi"/>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="6">

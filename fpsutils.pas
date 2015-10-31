@@ -168,8 +168,6 @@ function SameFont(AFont1, AFont2: TsFont): Boolean; overload;
 function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
   AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Boolean; overload;
 
-function GetSetValues(const aSet: PTypeInfo; Value: Integer):string;
-
 //function GetUniqueTempDir(Global: Boolean): String;
 
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
@@ -2493,29 +2491,6 @@ begin
   for i:=1 to 7 do begin
     UTF8FormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
     UTF8FormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
-  end;
-end;
-
-
-{@@ Returns a readable string containing the names of the elements contained in
-  a set. For example, call like
-    s := GetSetValue(TypeInfo(TsFontStyles, Integer(font.style));
--------------------------------------------------------------------------------}
-function GetSetValues(const aSet:PTypeInfo; Value: Integer):string;
-var
-  vData1 : PTypeData;
-  vData2 : PTypeData;
-  vCntr  : Integer;
-  v: Integer;
-begin
-  Result := '';
-  if aSet^.Kind = tkSet then begin
-    vData1 := GetTypeData(aSet);
-    vData2 := GetTypeData(vData1^.CompType);
-    for vCntr := vData2^.MinValue to vData2^.MaxValue do
-      if (Value shr vCntr) and 1 <> 0 then
-        Result := Result+ GetEnumName(vData1^.CompType,vCntr)+',';
-    if Result <> '' then Delete(Result, Length(Result), 1);
   end;
 end;
 
