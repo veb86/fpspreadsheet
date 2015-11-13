@@ -3779,7 +3779,7 @@ begin
     begin
       r := ACell^.Row;
       c := ACell^.Col;
-      RemoveCell(r, c);
+      RemoveAndFreeCell(r, c);
       ChangedCell(r, c);
     end else
       WriteBlank(ACell);
