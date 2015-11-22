@@ -105,8 +105,10 @@ function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
 
 //function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
 //function GetFileFormatExt(AFormat: TsSpreadsheetFormat): String;
-//function GetFormatFromFileName(const AFileName: TFileName;
-//  out SheetType: TsSpreadsheetFormat): Boolean;
+function GetFormatFromFileName(const AFileName: TFileName;
+  out AFormatID: TsSpreadFormatID): Boolean; overload;
+function GetFormatFromFileName(const AFileName: TFileName;
+  out SheetType: TsSpreadsheetFormat): Boolean; overload; deprecated 'Use overloaded function with TsSpreadsheetID';
 
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
@@ -191,7 +193,7 @@ var
 implementation
 
 uses
-  Math, lazutf8, lazfileutils, fpsStrings;
+  Math, lazutf8, lazfileutils, fpsStrings, fpsRegFileFormats;
 
 {******************************************************************************}
 {                       Endianess helper functions                             }
@@ -1087,19 +1089,43 @@ begin
     else                    raise Exception.Create(rsUnknownSpreadsheetFormat);
   end;
 end;
+  *)
+{@@ ----------------------------------------------------------------------------
+  Determines the spreadsheet type from the file type extension
+
+  @param   AFileName   Name of the file to be considered
+  @param   AFormatID   File format ID found from analysis of the extension (output)
+  @return  True if the file matches any of the registered formats, false otherwise
+-------------------------------------------------------------------------------}
+function GetFormatFromFileName(const AFileName: TFileName;
+  out AFormatID: TsSpreadFormatID): Boolean;
+var
+  suffix: String;
+  fileformats: TsSpreadFormatIDArray;
+begin
+  fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName, ord(sfExcel8));
+  Result := (Length(fileFormats) > 0) and (fileFormats[0] <= sfidUnknown);
+  if Result then AFormatID := fileFormats[0];
+end;
 
 {@@ ----------------------------------------------------------------------------
   Determines the spreadsheet type from the file type extension
 
   @param   AFileName   Name of the file to be considered
-  @param   SheetType   File format found from analysis of the extension (output)
-  @return  True if the file matches any of the known formats, false otherwise
+  @param   SheetType   Built-in file format found from analysis of the extension
+                       (output)
+  @return  True if the file matches any of the built-in formats, false otherwise
 -------------------------------------------------------------------------------}
 function GetFormatFromFileName(const AFileName: TFileName;
   out SheetType: TsSpreadsheetFormat): Boolean;
 var
-  suffix: String;
+  fmtID: TsSpreadFormatID;
 begin
+  Result := GetFormatFromFileName(AFileName, fmtID);
+  if Result and (fmtID < 0) then Result := false;
+end;
+
+{
   Result := true;
   suffix := Lowercase(ExtractFileExt(AFileName));
   case suffix of
@@ -1113,7 +1139,8 @@ begin
     else                                Result := False;
   end;
 end;
-             *)
+  }
+
 {@@ ----------------------------------------------------------------------------
   Helper function to reduce typing: "if a conditions is true return the first
   number format, otherwise return the second format"

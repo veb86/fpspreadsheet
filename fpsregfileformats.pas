@@ -458,7 +458,7 @@ end;
   AFormat identifies the file format, see sfXXXX declarations in built-in
   fpstypes.
 
-  The system is open for user-defined formats. In this case, AFormat must have
+  The system is open to user-defined formats. In this case, AFormat must have
   the value "sfUser". The format identifier is calculated as a negative number,
   stored in the TsSpreadFormatData class and returned as function result.
   This value is needed when calling fpspreadsheet's ReadFromXXXX and WriteToXXXX
@@ -484,10 +484,13 @@ begin
     raise Exception.Create('[RegisterSpreadFormat] File format name is not specified.');
 
   fmt := TsSpreadFormatData.Create(ord(AFormat), AReaderClass, AWriterClass,
-    AFormatName, ATechnicalName, AFileExtensions); //, ACanReadFromClipboard, ACanWriteToClipboard);
+    AFormatName, ATechnicalName, AFileExtensions);
   n := SpreadFormatRegistry.Add(fmt);
-  if AFormat = sfUser then
+  if (AFormat = sfUser) then
+  begin
+    if (n <= ord(sfUser)) then n := n + ord(sfUser) + 1;
     fmt.FFormatID := -n;
+  end;
   Result := fmt.FormatID;
 end;
 
