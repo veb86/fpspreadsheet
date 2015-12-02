@@ -103,7 +103,7 @@ function GetCellString_R1C1(ARow, ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
 
-//function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
+function GetFileFormatName(AFormat: TsSpreadsheetFormat): string; deprecated;
 //function GetFileFormatExt(AFormat: TsSpreadsheetFormat): String;
 function GetFormatFromFileName(const AFileName: TFileName;
   out AFormatID: TsSpreadFormatID): Boolean; overload;
@@ -1044,30 +1044,22 @@ begin
   end;
 end;
 
-(*
 {@@ ----------------------------------------------------------------------------
   Returns the name of the given spreadsheet file format.
 
   @param   AFormat  Identifier of the file format
   @return  'BIFF2', 'BIFF3', 'BIFF4', 'BIFF5', 'BIFF8', 'OOXML', 'Open Document',
            'CSV, 'WikiTable Pipes', or 'WikiTable WikiMedia"
+
+  @Note    This function is deprecated. Use GetSpreadFormatName or
+           GetSpreadTechnicalName of fpsRegFileformats instead in order to
+           be able to process user-defined formats as well.
 -------------------------------------------------------------------------------}
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
 begin
-  case AFormat of
-    sfExcel2              : Result := 'BIFF2';
-    sfExcel5              : Result := 'BIFF5';
-    sfExcel8              : Result := 'BIFF8';
-    sfooxml               : Result := 'OOXML';
-    sfOpenDocument        : Result := 'Open Document';
-    sfCSV                 : Result := 'CSV';
-    sfHTML                : Result := 'HTML';
-    sfWikiTable_Pipes     : Result := 'WikiTable Pipes';
-    sfWikiTable_WikiMedia : Result := 'WikiTable WikiMedia';
-    else                    Result := rsUnknownSpreadsheetFormat;
-  end;
+  Result := GetSpreadTechnicalName(ord(AFormat));
 end;
-
+                                                           (*
 {@@ ----------------------------------------------------------------------------
   Returns the default extension of each spreadsheet file format
 

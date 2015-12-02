@@ -70,7 +70,7 @@ var
 implementation
 
 uses
-  LclIntf, StrUtils, fpsUtils;
+  LclIntf, StrUtils, fpsUtils, fpsRegFileFormats;
 
 {$R *.lfm}
 
