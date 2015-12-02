@@ -23,6 +23,50 @@ uses
   fpsTypes, fpsClasses, fpSpreadsheet;
 
 type
+
+  { TsBasicSpreadReaderWriter }
+  TsBasicSpreadReaderWriter = class
+  protected
+    {@@ Instance of the workbook which is currently being read or written. }
+    FWorkbook: TsWorkbook;
+    {@@ Instance of the worksheet which is currently being read or written. }
+    FWorksheet: TsWorksheet;
+    {@@ Limitations for the specific data file format }
+    FLimitations: TsSpreadsheetFormatLimitations;
+  public
+    constructor Create(AWorkbook: TsWorkbook); virtual;  // to allow descendents to override it
+    function Limitations: TsSpreadsheetFormatLimitations;
+    {@@ Instance of the workbook which is currently being read/written. }
+    property Workbook: TsWorkbook read FWorkbook;
+  end;
+
+  { TsBasicSpreadReader }
+  TsBasicSpreadReader = class(TsBasicSpreadReaderWriter)
+  public
+    { General writing methods }
+    procedure ReadFromFile(AFileName: string; AParams: TsStreamParams = []); virtual; abstract;
+    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); virtual; abstract;
+    procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); virtual; abstract;
+  end;
+
+  { TsBasicSpreadWriter }
+  TsBasicSpreadWriter = class(TsBasicSpreadReaderWriter)
+  public
+    { Helpers }
+    procedure CheckLimitations; virtual;
+    { General writing methods }
+    procedure WriteToFile(const AFileName: string;
+      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); virtual; abstract;
+    procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); virtual; abstract;
+    procedure WriteToStrings(AStrings: TStrings; AParams: TsStreamParams = []); virtual; abstract;
+  end;
+
+  {@@ TsSpreadReader class reference type }
+  TsSpreadReaderClass = class of TsBasicSpreadReader;
+
+  {@@ TsSpreadWriter class reference type }
+  TsSpreadWriterClass = class of TsBasicSpreadWriter;
+
   {@@
     Custom reader of spreadsheet files. "Custom" means that it provides only
     the basic functionality. The main implementation is done in derived classes
@@ -141,12 +185,67 @@ implementation
 
 uses
   Math,
-  fpsStrings, fpsUtils, fpsNumFormat, fpsStreams;
+  fpsStrings, fpsUtils, fpsNumFormat, fpsStreams, fpsRegFileFormats;
 
 
-{*******************************************************************************
-*                              TsCustomSpreadReader                            *
-*******************************************************************************}
+{------------------------------------------------------------------------------}
+{                          TsBasicSpreadReaderWriter                           }
+{------------------------------------------------------------------------------}
+
+{@@ ----------------------------------------------------------------------------
+  Constructor of the reader/writer. Has the workbook to be read/written as a
+  parameter to apply the localization information found in its FormatSettings.
+
+  @param AWorkbook  Workbook into which the file is being read or from with the
+                    file is written. This parameter is passed from the workbook
+                    which creates the reader/writer.
+-------------------------------------------------------------------------------}
+constructor TsBasicSpreadReaderWriter.Create(AWorkbook: TsWorkbook);
+begin
+  inherited Create;
+  FWorkbook := AWorkbook;
+  { A good starting point valid for many formats ... }
+  FLimitations.MaxColCount := 256;
+  FLimitations.MaxRowCount := 65536;
+  FLimitations.MaxPaletteSize := MaxInt;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns a record containing limitations of the specific file format of the
+  writer.
+-------------------------------------------------------------------------------}
+function TsBasicSpreadReaderWriter.Limitations: TsSpreadsheetFormatLimitations;
+begin
+  Result := FLimitations;
+end;
+
+
+{------------------------------------------------------------------------------}
+{                             TsBasicSpreadWriter                              }
+{------------------------------------------------------------------------------}
+
+{@@ ----------------------------------------------------------------------------
+  Checks limitations of the writer, e.g max row/column count
+-------------------------------------------------------------------------------}
+procedure TsBasicSpreadWriter.CheckLimitations;
+var
+  lastCol, lastRow: Cardinal;
+begin
+  Workbook.GetLastRowColIndex(lastRow, lastCol);
+
+  // Check row count
+  if lastRow >= FLimitations.MaxRowCount then
+    Workbook.AddErrorMsg(rsMaxRowsExceeded, [lastRow+1, FLimitations.MaxRowCount]);
+
+  // Check column count
+  if lastCol >= FLimitations.MaxColCount then
+    Workbook.AddErrorMsg(rsMaxColsExceeded, [lastCol+1, FLimitations.MaxColCount]);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                              TsCustomSpreadReader                            }
+{------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the reader. Has the workbook to be read as a
@@ -335,9 +434,9 @@ begin
 end;
 
 
-{*******************************************************************************
-*                             TsCustomSpreadWriter                             *
-*******************************************************************************}
+{------------------------------------------------------------------------------}
+{                             TsCustomSpreadWriter                             }
+{------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the writer. Has the workbook to be written as a parameter to
@@ -388,23 +487,7 @@ begin
       exit;
   Result := -1;
 end;
-    (*
-{@@ ----------------------------------------------------------------------------
-  If a color index is greater then the maximum palette color count this
-  color is replaced by the closest palette color.
 
-  The present implementation does not change the color. Must be overridden by
-  writers of formats with limited palette sizes.
-
-  @param  AColor   Color palette index to be checked
-  @return Closest color to AColor. If AColor belongs to the palette it must
-          be returned unchanged.
--------------------------------------------------------------------------------}
-function TsCustomSpreadWriter.FixColor(AColor: TsColor): TsColor;
-begin
-  Result := AColor;
-end;
-  *)
 {@@ ----------------------------------------------------------------------------
   If formatting features of a cell are not supported by the destination file
   format of the writer, here is the place to apply replacements.

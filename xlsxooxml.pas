@@ -3600,7 +3600,7 @@ begin
   { Now compress the files }
   FZip := TZipper.Create;
   try
-    FZip.FileName := '__temp__.tmp';
+//    FZip.FileName := '__temp__.tmp';
     FZip.Entries.AddFileEntry(FSContentTypes, OOXML_PATH_TYPES);
     FZip.Entries.AddFileEntry(FSRelsRels, OOXML_PATH_RELS_RELS);
     FZip.Entries.AddFileEntry(FSWorkbookRels, OOXML_PATH_XL_RELS_RELS);

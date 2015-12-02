@@ -3703,7 +3703,7 @@ begin
   { Now compress the files }
   FZip := TZipper.Create;
   try
-    FZip.FileName := '__temp__.tmp';
+//    FZip.FileName := '__temp__.tmp';
 
     FZip.Entries.AddFileEntry(FSMeta, OPENDOC_PATH_META);
     FZip.Entries.AddFileEntry(FSSettings, OPENDOC_PATH_SETTINGS);

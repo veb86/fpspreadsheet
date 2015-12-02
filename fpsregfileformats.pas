@@ -8,7 +8,7 @@
            distribution, for details about the license.
 
   USAGE:   Each unit implementing a new spreadsheet format must register the
-           reader/writer ad some specific data by calling "RegisterSpreadFormat".
+           reader/writer and some specific data by calling "RegisterSpreadFormat".
 -------------------------------------------------------------------------------}
 unit fpsRegFileFormats;
 
@@ -17,7 +17,7 @@ unit fpsRegFileFormats;
 interface
 
 uses
-  Classes, SysUtils, fpstypes, fpspreadsheet;
+  Classes, SysUtils, fpstypes, fpsReaderWriter; //fpspreadsheet;
 
 type
   TsSpreadFileAccess = (faRead, faWrite);
