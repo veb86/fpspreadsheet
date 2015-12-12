@@ -161,7 +161,7 @@ implementation
 
 uses
   Math,
-  fpsStrings, fpsRegFileFormats, fpsReaderWriter, fpsPalette, fpsNumFormat;
+  fpsStrings, fpsRegFileFormats, fpsPalette, fpsNumFormat;
 
 const
   { Excel record IDs }

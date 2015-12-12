@@ -1738,8 +1738,8 @@ end;
 
 procedure TsHTMLWriter.WriteWorksheet(AStream: TStream; ASheet: TsWorksheet);
 var
-  r, rFirst, rLast: Cardinal;
-  c, cFirst, cLast: Cardinal;
+  r, rFirst, rLast: LongInt;
+  c, cFirst, cLast: LongInt;
   cell: PCell;
   style, s: String;
   fixedLayout: Boolean;

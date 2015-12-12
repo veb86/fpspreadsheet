@@ -1366,8 +1366,6 @@ end;
   and deletes them afterwards.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.CutCellsToClipboard;
-var
-  i: Integer;
 begin
   CopyCellsToClipboard;
   FWorksheet.DeleteSelection;

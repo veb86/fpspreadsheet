@@ -879,6 +879,7 @@ var
   readerClass: TsSpreadReaderClass;
 begin
   Result := nil;
+  Unused(AParams);
   readerClass := GetSpreadReaderClass(AFormatID);
 
   if readerClass <> nil
@@ -908,6 +909,7 @@ var
   writerClass: TsSpreadWriterClass;
 begin
   Result := nil;
+  Unused(AParams);
   writerClass := GetSpreadWriterClass(AFormatID);
 
   if writerClass <> nil then
@@ -6949,8 +6951,6 @@ procedure TsWorkbook.WriteToFile(const AFileName: String;
   const AOverwriteExisting: Boolean; AParams: TsStreamParams = []);
 var
   fileformats: TsSpreadFormatIDArray;
-//  formatID: TsSpreadFormatID;
-  valid: Boolean;
   ext: String;
 begin
   ext := ExtractFileExt(AFileName);
@@ -7942,10 +7942,10 @@ begin
       for i := 0 to n-1 do
       begin
         sel := clipsheet.GetSelection[i];
-        selArray[i].Row1 := sel.Row1 + dr;
-        selArray[i].Col1 := sel.Col1 + dc;
-        selArray[i].Row2 := sel.Row2 + dr;
-        selArray[i].Col2 := sel.Col2 + dc;
+        selArray[i].Row1 := LongInt(sel.Row1) + dr;
+        selArray[i].Col1 := LongInt(sel.Col1) + dc;
+        selArray[i].Row2 := LongInt(sel.Row2) + dr;
+        selArray[i].Col2 := LongInt(sel.Col2) + dc;
       end;
       ActiveWorksheet.SetSelection(selArray);
       // Select active cell. If not found in the file, let's use the last cell of the selections

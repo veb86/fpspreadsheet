@@ -664,7 +664,6 @@ function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
 var
   P: PChar;
   s: String;
-  n: LongInt;
   inRowCol: Integer;  // 1 = in row, 2 = in col
   r, c: LongInt;
   inBracket: Boolean;
@@ -927,7 +926,7 @@ begin
       Result := 'R' else
       Result := 'R[' + IntToStr(delta) + ']';
   end else
-    Result := 'R' + IntToStr(ARow+1);
+    Result := 'R' + IntToStr(LongInt(ARow)+1);
 
   if rfRelCol in AFlags then
   begin
@@ -936,7 +935,7 @@ begin
       Result := Result + 'C' else
       Result := Result + 'C[' + IntToStr(delta) + ']';
   end else
-    Result := Result + 'C' + IntToStr(ACol+1);
+    Result := Result + 'C' + IntToStr(LongInt(ACol)+1);
 end;
 
 
@@ -1092,7 +1091,6 @@ end;
 function GetFormatFromFileName(const AFileName: TFileName;
   out AFormatID: TsSpreadFormatID): Boolean;
 var
-  suffix: String;
   fileformats: TsSpreadFormatIDArray;
 begin
   fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName, ord(sfExcel8));
@@ -1114,7 +1112,10 @@ var
   fmtID: TsSpreadFormatID;
 begin
   Result := GetFormatFromFileName(AFileName, fmtID);
-  if Result and (fmtID < 0) then Result := false;
+  if fmtID > 0 then
+    SheetType := TsSpreadsheetFormat(fmtID)
+  else if Result then
+    Result := false;
 end;
 
 {

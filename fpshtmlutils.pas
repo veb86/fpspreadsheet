@@ -50,7 +50,7 @@ procedure RichTextToHTML(AWorkbook: TsWorkbook; AFont: TsFont;
 implementation
 
 uses
-  math, lazUtf8, fasthtmlparser, StrUtils, //Strings,
+  math, lazUtf8, fasthtmlparser, //StrUtils, //Strings,
   fpsUtils, fpsClasses;
 
 const

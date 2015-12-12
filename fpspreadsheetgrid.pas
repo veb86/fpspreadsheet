@@ -2702,8 +2702,8 @@ begin
         // determination since only the height of the first row of the block
         // (containing the merge base cell) would change which is very confusing.
         exit;
-      cellR := CellRect(c1+FHeaderCount, ARow);
-      cellR.Right := CellRect(c2+FHeaderCount, ARow).Right;
+      cellR := CellRect(LongInt(c1)+FHeaderCount, ARow);
+      cellR.Right := CellRect(LongInt(c2)+FHeaderCount, ARow).Right;
     end;
     InflateRect(cellR, -constCellPadding, -constCellPadding);
 

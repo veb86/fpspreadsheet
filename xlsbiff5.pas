@@ -214,7 +214,7 @@ implementation
 
 uses
   Math,
-  fpsStrings, fpsRegFileFormats, fpsStreams, fpsReaderWriter, fpsPalette, fpsNumFormat;
+  fpsStrings, fpsRegFileFormats, fpsStreams, fpsPalette, fpsNumFormat;
 
 const
    { Excel record IDs }

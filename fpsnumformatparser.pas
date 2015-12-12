@@ -124,7 +124,7 @@ type
 implementation
 
 uses
-  TypInfo, Math, LazUTF8, fpsutils, fpsCurrency;
+  TypInfo, Math, LazUTF8, fpsCurrency;
 
 
 function CreateNumFormatParams(ANumFormatStr: String;

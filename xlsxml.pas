@@ -90,7 +90,7 @@ implementation
 
 uses
   StrUtils, Math,
-  fpsStrings, fpsRegFileFormats, fpsUtils, fpsStreams, fpsNumFormat, fpsHTMLUtils;
+  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat, fpsHTMLUtils;
 
 const
   FMT_OFFSET   = 61;
@@ -318,6 +318,7 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteBlank(AStream: TStream;
   const ARow, ACol: Cardinal; ACell: PCell);
 begin
+  Unused(ARow, ACol);
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s>' +              // colIndex, style, hyperlink, merge
       '%s' +                        // Comment <Comment>...</Comment>
@@ -330,6 +331,7 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteBool(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: boolean; ACell: PCell);
 begin
+  Unused(ARow, ACol);
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' +         // colIndex, style, formula, hyperlink, merge
       '<Data ss:Type="%s">' +    // data type
@@ -373,6 +375,7 @@ var
   nfp: TsNumFormatParams;
   fmt: PsCellFormat;
 begin
+  Unused(ARow, ACol);
   ExcelDate := AValue;
   fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
   // Times have an offset of 1 day!
@@ -404,6 +407,7 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 begin
+  Unused(ARow, ACol);
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge
       '<Data ss:Type="%s">' +                // data type
@@ -489,6 +493,7 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
   const AValue: double; ACell: PCell);
 begin
+  Unused(ARow, ACol);
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT +  // colIndex, style, formula, hyperlink, merge
       '<Data ss:Type="%s">' +                 // data type

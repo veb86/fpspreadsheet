@@ -264,7 +264,7 @@ implementation
 
 uses
   Math, lconvencoding, LazFileUtils, URIParser,
-  fpsStrings, fpsStreams, fpsRegFileFormats, fpsReaderWriter, fpsPalette,
+  fpsStrings, fpsStreams, fpsRegFileFormats, fpsPalette,
   fpsNumFormat, fpsExprParser, xlsEscher;
 
 const
