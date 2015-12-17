@@ -48,7 +48,7 @@ var
   Found: Boolean;
 begin
   Result := '';
-  if ANode = nil then
+  if (ANode = nil) or (ANode.Attributes = nil) then
     exit;
 
   Found := false;
