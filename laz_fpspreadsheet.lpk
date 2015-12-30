@@ -9,6 +9,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
+        <OtherUnitFiles Value="."/>
         <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
@@ -204,7 +205,7 @@ This package is all you need if you don't want graphical components (like grids 
       </Item43>
       <Item44>
         <Filename Value="fpsregfileformats.pas"/>
-        <UnitName Value="fpsregfileformats"/>
+        <UnitName Value="fpsRegFileFormats"/>
       </Item44>
     </Files>
     <RequiredPkgs Count="2">

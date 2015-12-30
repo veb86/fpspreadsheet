@@ -1271,7 +1271,7 @@ begin
 
     // Border styles can be set even if borders are not used --> don't check uffBorder!
     equ := true;
-    for b in AItem.Border do begin
+    for b in TsCellBorder {AItem.Border} do begin
       if (P^.BorderStyles[b].LineStyle <> AItem.BorderStyles[b].LineStyle) or
          (P^.BorderStyles[b].Color <> Aitem.BorderStyles[b].Color)
       then begin
