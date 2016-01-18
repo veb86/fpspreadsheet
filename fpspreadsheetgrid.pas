@@ -4440,8 +4440,8 @@ end;
 
 procedure TsCustomWorksheetGrid.SetCells(ACol, ARow: Integer; AValue: Variant);
 var
-  cell: PCell;
-  fmt: PsCellFormat;
+  cell: PCell = nil;
+  fmt: PsCellFormat = nil;
   nfp: TsNumFormatParams;
   r, c: Cardinal;
   s: String;
@@ -4451,52 +4451,44 @@ begin
 
   r := GetWorksheetRow(ARow);
   c := GetWorksheetCol(ACol);
-  cell := Worksheet.FindCell(r, c);
-  if cell <> nil then begin
-    fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-    if fmt <> nil then nfp := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
-  end else
-    fmt := nil;
 
-  if VarIsNull(AValue) then begin
-    cell := Worksheet.WriteBlank(r, c);
-    if cell <> nil then cell^.FormulaValue := '';
-  end else
+  // If the cell already exists and contains a formula then the formula must be
+  // removed. The formula would dominate over the data value.
+  cell := Worksheet.FindCell(r, c);
+  if HasFormula(cell) then cell^.FormulaValue := '';
+
+  if VarIsNull(AValue) then
+    Worksheet.WriteBlank(r, c)
+  else
   if VarIsStr(AValue) then
   begin
     s := VarToStr(AValue);
-    if s[1] = '=' then
-    begin
-      Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true);
-      exit;
-    end;
-    Worksheet.WriteCellValueAsString(r, c, s);
-    cell^.FormulaValue := '';
-  end else
-  begin
-    if cell <> nil then
-      cell^.FormulaValue := '';
-    if VarIsType(AValue, varDate) then
-      Worksheet.WriteDateTime(r, c, VarToDateTime(AValue))
+    if (s <> '') and (s[1] = '=') then
+      Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
     else
-    if VarIsNumeric(AValue) then begin
-      if (cell <> nil) then begin
-        if IsDateTimeFormat(nfp) then
-          Worksheet.WriteDateTime(cell, VarToDateTime(AValue))
-          {
-        else if IsBoolFormat(nfp) then
-          Worksheet.WriteBoolValue(cell, not (AValue=0) )
-        else if IsErrorFormat(nfp) then
-          Worksheet.WriteErrorValue(r, c, round(AValue));
-          }
-        else
-          Worksheet.WriteNumber(cell, AValue);
-      end else
+      Worksheet.WriteText(r, c, s);  // This will erase a non-formatted cell if s = ''
+  end else
+  if VarIsType(AValue, varDate) then
+    Worksheet.WriteDateTime(r, c, VarToDateTime(AValue))
+  else
+  if VarIsNumeric(AValue) then
+  begin
+    // Check if the cell already exists and contains a format.
+    // If it is a date/time format write a date/time cell...
+    if cell <> nil then
+    begin
+      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+      if fmt <> nil then nfp := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
+      if (fmt <> nil) and IsDateTimeFormat(nfp) then
+        Worksheet.WriteDateTime(r, c, VarToDateTime(AValue)) else
         Worksheet.WriteNumber(r, c, AValue);
-    end else
-    if VarIsBool(AValue) then
-      Worksheet.WriteBoolValue(r, c, AValue)
-  end;
+    end
+    else
+      // ... otherwise write a number cell
+      Worksheet.WriteNumber(r, c, AValue);
+  end else
+  if VarIsBool(AValue) then
+    Worksheet.WriteBoolValue(r, c, AValue);
 end;
 
 function TsCustomWorksheetGrid.GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
