@@ -101,6 +101,7 @@ type
     function GetHorAlignments(ARect: TGridRect): TsHorAlignment;
     function GetHyperlink(ACol, ARow: Integer): String;
     function GetNumberFormat(ACol, ARow: Integer): String;
+    function GetNumberFormats(ARect: TGridRect): String;
     function GetShowGridLines: Boolean;
     function GetShowHeaders: Boolean;
     function GetTextRotation(ACol, ARow: Integer): TsTextRotation;
@@ -137,6 +138,7 @@ type
     procedure SetHorAlignments(ARect: TGridRect; AValue: TsHorAlignment);
     procedure SetHyperlink(ACol, ARow: Integer; AValue: String);
     procedure SetNumberFormat(ACol, ARow: Integer; AValue: String);
+    procedure SetNumberFormats(ARect: TGridRect; AValue: String);
     procedure SetReadFormulas(AValue: Boolean);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
@@ -371,6 +373,10 @@ type
     {@@ Number format (as Excel string) to be applied to cell at column ACol and row ARow. }
     property NumberFormat[ACol, ARow: Integer]: String
         read GetNumberFormat write SetNumberFormat;
+    {@@ Number format (as Excel string) to be applied to all cells within the
+        range of column/row indexes defined by the rectangle. }
+    property NumberFormats[ARect: TGridRect]: String
+        read GetNumberFormats write SetNumberFormats;
     {@@ Rotation of the text in the cell at column ACol and row ARow. }
     property TextRotation[ACol, ARow: Integer]: TsTextRotation
         read GetTextRotation write SetTextRotation;
@@ -4550,6 +4556,22 @@ begin
   end;
 end;
 
+function TsCustomWorksheetGrid.GetNumberFormats(ARect: TGridRect): String;
+var
+  c, r: Integer;
+  nfs: String;
+begin
+  nfs := GetNumberformat(ARect.Left, ARect.Top);
+  for r := ARect.Left to ARect.Right do
+    for c := ARect.Top to ARect.Bottom do
+      if nfs <> GetNumberFormat(c, r) then
+      begin
+        Result := '';
+        exit;
+      end;
+  Result := nfs;
+end;
+
 function TsCustomWorksheetGrid.GetShowGridLines: Boolean;
 begin
   Result := (Options * [goHorzLine, goVertLine] <> []);
@@ -5000,6 +5022,20 @@ procedure TsCustomWorksheetGrid.SetNumberFormat(ACol, ARow: Integer; AValue: Str
 begin
   if Assigned(Worksheet) then
     Worksheet.WriteNumberFormat(GetWorksheetRow(ARow), GetWorksheetCol(ACol), nfCustom, AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetNumberFormats(ARect: TGridRect; AValue: String);
+var
+  c,r: Integer;
+begin
+  BeginUpdate;
+  try
+    for c := ARect.Left to ARect.Right do
+      for r := ARect.Top to ARect.Bottom do
+        SetNumberFormat(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetReadFormulas(AValue: Boolean);
