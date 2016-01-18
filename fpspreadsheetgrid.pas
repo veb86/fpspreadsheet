@@ -3822,6 +3822,10 @@ end;
 procedure TsCustomWorksheetGrid.NewWorkbook(AColCount, ARowCount: Integer);
 begin
   GetWorkbookSource.CreateNewWorkbook;
+  FInitColCount := AColCount;
+  FInitRowCount := ARowCount;
+  Setup;
+
   {
   if FOwnsWorkbook then
     FreeAndNil(FOwnedWorkbook);
