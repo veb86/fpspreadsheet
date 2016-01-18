@@ -28,7 +28,7 @@ unit fpspreadsheetgrid;
 interface
 
 uses
-  Classes, SysUtils, LResources,
+  Classes, SysUtils, LResources, Variants,
   Forms, Controls, Graphics, Dialogs, Grids, ExtCtrls,
   fpstypes, fpspreadsheet, fpspreadsheetctrls;
 
@@ -95,6 +95,7 @@ type
     function GetCellFontSizes(ARect: TGridRect): Single;
     function GetCellFontStyle(ACol, ARow: Integer): TsFontStyles;
     function GetCellFontStyles(ARect: TGridRect): TsFontStyles;
+    function GetCells(ACol, ARow: Integer): variant;
     function GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
     function GetHorAlignments(ARect: TGridRect): TsHorAlignment;
     function GetShowGridLines: Boolean;
@@ -125,6 +126,7 @@ type
     procedure SetCellFontStyles(ARect: TGridRect; AValue: TsFontStyles);
     procedure SetCellFontSize(ACol, ARow: Integer; AValue: Single);
     procedure SetCellFontSizes(ARect: TGridRect; AValue: Single);
+    procedure SetCells(ACol, ARow: Integer; AValue: variant);
     procedure SetFrozenCols(AValue: Integer);
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
@@ -256,8 +258,10 @@ type
       AOverwriteExisting: Boolean = true); overload;
     procedure SelectSheetByIndex(AIndex: Integer);
 
-    procedure MergeCells;
-    procedure UnmergeCells;
+    procedure MergeCells; overload;
+    procedure MergeCells(ARect: TGridRect); overload;
+    procedure UnmergeCells; overload;
+    procedure UnmergeCells(ACol, ARow: Integer); overload;
 
     { Utilities related to Workbooks }
     procedure Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
@@ -278,8 +282,6 @@ type
     {@@ Count of header lines - for conversion between grid- and workbook-based
      row and column indexes. Either 1 if row and column headers are shown or 0 if not}
     property HeaderCount: Integer read FHeaderCount;
-
-    { maybe these should become published ... }
 
     {@@ Background color of the cell at the given column and row. Expressed as
         index into the workbook's color palette. }
@@ -313,7 +315,14 @@ type
         given by the rectangle }
     property CellFonts[ARect: TGridRect]: TFont
         read GetCellFonts write SetCellFonts;
-    {@@ Name of the font used for the cell on column ACol and row ARow }
+    {@@ Color of the font used for the cell in column ACol and row ARow }
+    property CellFontColor[ACol, ARow: Integer]: TsColor
+        read GetCellFontColor write SetCellFontColor;
+    {@@ Color of the font used for the cells within the range
+        of column/row indexes defined by the rectangle, scUndefined if not constant. }
+    property CellFontColors[ARect: TGridRect]: TsColor
+        read GetCellFontColors write SetCellFontColors;
+    {@@ Name of the font used for the cell in column ACol and row ARow }
     property CellFontName[ACol, ARow: Integer]: String
         read GetCellFontName write SetCellFontName;
     {@@ Name of the font used for the cells within the range
@@ -336,6 +345,9 @@ type
         range of column/row indexes defined by the rectangle. }
     property CellFontSizes[ARect: TGridRect]: Single
         read GetCellFontSizes write SetCellFontSizes;
+    {@@ Cell values }
+    property Cells[ACol, ARow: Integer]: Variant
+        read GetCells write SetCells;
     {@@ Parameter for horizontal text alignment within the cell at column ACol
         and row ARow }
     property HorAlignment[ACol, ARow: Integer]: TsHorAlignment
@@ -2350,9 +2362,11 @@ begin
     with ACell^ do
     begin
       fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-      SetNeighborBorder(Row, Col-1, cbEast, fmt^.BorderStyles[cbWest], cbWest in fmt^.Border);
+      if Col > 0 then
+        SetNeighborBorder(Row, Col-1, cbEast, fmt^.BorderStyles[cbWest], cbWest in fmt^.Border);
       SetNeighborBorder(Row, Col+1, cbWest, fmt^.BorderStyles[cbEast], cbEast in fmt^.Border);
-      SetNeighborBorder(Row-1, Col, cbSouth, fmt^.BorderStyles[cbNorth], cbNorth in fmt^.Border);
+      if Row > 0 then
+        SetNeighborBorder(Row-1, Col, cbSouth, fmt^.BorderStyles[cbNorth], cbNorth in fmt^.Border);
       SetNeighborBorder(Row+1, Col, cbNorth, fmt^.BorderStyles[cbSouth], cbSouth in fmt^.Border);
     end;
 end;
@@ -3624,11 +3638,21 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MergeCells;
 begin
+  MergeCells(Selection);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Merges the cells of the specified cell block to a single large cell
+  Only the upper left cell can have content and formatting (which is extended
+  into the other cells).
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.MergeCells(ARect: TGridRect);
+begin
   Worksheet.MergeCells(
-    GetWorksheetRow(Selection.Top),
-    GetWorksheetCol(Selection.Left),
-    GetWorksheetRow(Selection.Bottom),
-    GetWorksheetCol(Selection.Right)
+    GetWorksheetRow(ARect.Top),
+    GetWorksheetCol(ARect.Left),
+    GetWorksheetRow(ARect.Bottom),
+    GetWorksheetCol(ARect.Right)
   );
 end;
 
@@ -4043,23 +4067,35 @@ var
   numFmt: TsNumFormatParams;
   nfs: String;
   isGeneralFmt: Boolean;
+  r1,c1,r2,c2: Cardinal;
 begin
   Result := Worksheet.ReadAsText(ACell);
-  if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String))
-  then
+  if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String)) then
     exit;
 
   fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
   isRotated := (fmt^.TextRotation <> trHorizontal);
   isStacked := (fmt^.TextRotation = rtStacked);
   numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
-  isGeneralFmt := (numFmt = nil);
+  isGeneralFmt := (numFmt = nil) or (numFmt.NumFormat = nfGeneral);
 
   // Determine space available in cell
-  if isRotated then
-    cellSize := RowHeights[GetGridRow(ACell^.Row)]
-  else
-    cellSize := ColWidths[GetGridCol(ACell^.Col)] - 2*ConstCellPadding;
+  if Worksheet.IsMerged(ACell) then
+  begin
+    Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    cellSize := 0;
+    if isRotated then
+      for p:=GetGridRow(r1) to GetGridRow(r2) do cellSize := cellSize + RowHeights[p]
+    else
+      for p:=GetGridCol(c1) to GetGridCol(c2) do cellSize := cellSize + ColWidths[p];
+  end else
+  begin
+    if isRotated then
+      cellSize := RowHeights[GetGridRow(ACell^.Row)]
+    else
+      cellSize := ColWidths[GetGridCol(ACell^.Col)];
+  end;
+  cellSize := cellSize - 2*ConstCellPadding;
 
   // Determine space needed for text
   if isStacked then
@@ -4135,6 +4171,18 @@ begin
   Worksheet.UnmergeCells(
     GetWorksheetRow(Selection.Top),
     GetWorksheetCol(Selection.Left)
+  );
+end;
+
+{@@ ----------------------------------------------------------------------------
+  If the specified cell belongs to a merged block, the merged block is
+  split into single cells
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.UnmergeCells(ACol, ARow: Integer);
+begin
+  Worksheet.UnmergeCells(
+    GetWorksheetRow(ARow),
+    GetworksheetCol(ACol)
   );
 end;
 
@@ -4332,6 +4380,70 @@ begin
         exit;
       end;
     end;
+end;
+
+function TsCustomWorksheetGrid.GetCells(ACol, ARow: Integer): variant;
+var
+  cell: PCell;
+begin
+  Result := Null;
+  if Assigned(Worksheet) then
+  begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if cell <> nil then
+      case cell^.ContentType of
+        cctEmpty     : ;
+        cctNumber,
+        cctDateTime  : Result := cell^.NumberValue;
+        cctUTF8String: Result := cell^.UTF8Stringvalue;
+        cctBool      : Result := cell^.BoolValue;
+        cctError     : Result := cell^.ErrorValue;
+      end;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetCells(ACol, ARow: Integer; AValue: Variant);
+var
+  cell: PCell;
+  fmt: PsCellFormat;
+  nfp: TsNumFormatParams;
+  r, c: Cardinal;
+begin
+  if not Assigned(Worksheet) then
+    exit;
+  r := GetWorksheetRow(ARow);
+  c := GetWorksheetCol(ACol);
+  cell := Worksheet.FindCell(r, c);
+  if cell <> nil then begin
+    fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+    if fmt <> nil then nfp := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
+  end else
+    fmt := nil;
+
+  if VarIsNull(AValue) then begin
+    if cell <> nil then
+      Worksheet.WriteBlank(r, c);
+  end else
+  if VarIsNumeric(AValue) then begin
+    if (cell <> nil) then begin
+      if IsDateTimeFormat(nfp) then
+        Worksheet.WriteDateTime(cell, VarToDateTime(AValue))
+        {
+      else if IsBoolFormat(nfp) then
+        Worksheet.WriteBoolValue(cell, not (AValue=0) )
+      else if IsErrorFormat(nfp) then
+        Worksheet.WriteErrorValue(r, c, round(AValue));
+        }
+      else
+        Worksheet.WriteNumber(cell, AValue);
+    end else
+      Worksheet.WriteNumber(r, c, AValue);
+  end else
+  if VarIsBool(AValue) then
+    Worksheet.WriteBoolValue(r, c, AValue)
+  else
+  if VarIsStr(AValue) then
+    Worksheet.WriteCellValueAsString(r, c, VarToStr(AValue));
 end;
 
 function TsCustomWorksheetGrid.GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
