@@ -9,7 +9,7 @@ object MainForm: TMainForm
   Menu = MainMenu
   OnCreate = FormCreate
   ShowHint = True
-  LCLVersion = '1.5'
+  LCLVersion = '1.7'
   object WorkbookTabControl: TsWorkbookTabControl
     Left = 0
     Height = 518
@@ -343,7 +343,7 @@ object MainForm: TMainForm
       CellFormatItem = cfiFontName
       WorkbookSource = WorkbookSource
       DropDownCount = 24
-      ItemIndex = 95
+      ItemIndex = 91
       TabOrder = 0
       Text = 'Arial'
     end
@@ -776,14 +776,14 @@ object MainForm: TMainForm
     object AcTextRot90CW: TsTextRotationAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = '90ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° clockwise'
+      Caption = '90° clockwise'
       Hint = '90ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° clockwise rotated text'
       TextRotation = rt90DegreeClockwiseRotation
     end
     object AcTextRot90CCW: TsTextRotationAction
       Category = 'FPSpreadsheet'
       WorkbookSource = WorkbookSource
-      Caption = '90ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° counter-clockwise'
+      Caption = '90° counter-clockwise'
       Hint = '90ÃƒÆ’Ã¢â‚¬Å¡Ãƒâ€šÃ‚Â° counter-clockwise rotated text'
       TextRotation = rt90DegreeCounterClockwiseRotation
     end

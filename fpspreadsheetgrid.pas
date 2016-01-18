@@ -85,6 +85,7 @@ type
     function GetCellBorders(ARect: TGridRect): TsCellBorders;
     function GetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder): TsCellBorderStyle;
     function GetCellBorderStyles(ARect: TGridRect; ABorder: TsCellBorder): TsCellBorderStyle;
+    function GetCellComment(ACol, ARow: Integer): string;
     function GetCellFont(ACol, ARow: Integer): TFont;
     function GetCellFonts(ARect: TGridRect): TFont;
     function GetCellFontColor(ACol, ARow: Integer): TsColor;
@@ -98,6 +99,8 @@ type
     function GetCells(ACol, ARow: Integer): variant;
     function GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
     function GetHorAlignments(ARect: TGridRect): TsHorAlignment;
+    function GetHyperlink(ACol, ARow: Integer): String;
+    function GetNumberFormat(ACol, ARow: Integer): String;
     function GetShowGridLines: Boolean;
     function GetShowHeaders: Boolean;
     function GetTextRotation(ACol, ARow: Integer): TsTextRotation;
@@ -116,6 +119,7 @@ type
     procedure SetCellBorders(ARect: TGridRect; AValue: TsCellBorders);
     procedure SetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder; AValue: TsCellBorderStyle);
     procedure SetCellBorderStyles(ARect: TGridRect; ABorder: TsCellBorder; AValue: TsCellBorderStyle);
+    procedure SetCellComment(ACol, ARow: Integer; AValue: String);
     procedure SetCellFont(ACol, ARow: Integer; AValue: TFont);
     procedure SetCellFonts(ARect: TGridRect; AValue: TFont);
     procedure SetCellFontColor(ACol, ARow: Integer; AValue: TsColor);
@@ -131,6 +135,8 @@ type
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
     procedure SetHorAlignments(ARect: TGridRect; AValue: TsHorAlignment);
+    procedure SetHyperlink(ACol, ARow: Integer; AValue: String);
+    procedure SetNumberFormat(ACol, ARow: Integer; AValue: String);
     procedure SetReadFormulas(AValue: Boolean);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
@@ -308,6 +314,9 @@ type
         flag of the border to be set for the border line to be shown }
     property CellBorderStyles[ARect: TGridRect; ABorder: TsCellBorder]: TsCellBorderStyle
         read GetCellBorderStyles write SetCellBorderStyles;
+    {@@ Comment assigned to the cell at column ACol and row ARow }
+    property CellComment[ACol, ARow: Integer]: String
+        read GetCellComment write SetCellComment;
     {@@ Font to be used for text in the cell at column ACol and row ARow. }
     property CellFont[ACol, ARow: Integer]: TFont
         read GetCellFont write SetCellFont;
@@ -356,6 +365,12 @@ type
         range cf column/row indexes defined by the rectangle. }
     property HorAlignments[ARect: TGridRect]: TsHorAlignment
         read GetHorAlignments write SetHorAlignments;
+    {@@ Hyperlink assigned to the cell in row ARow and column ACol }
+    property Hyperlink[ACol, ARow: Integer]: String
+        read GetHyperlink write SetHyperlink;
+    {@@ Number format (as Excel string) to be applied to cell at column ACol and row ARow. }
+    property NumberFormat[ACol, ARow: Integer]: String
+        read GetNumberFormat write SetNumberFormat;
     {@@ Rotation of the text in the cell at column ACol and row ARow. }
     property TextRotation[ACol, ARow: Integer]: TsTextRotation
         read GetTextRotation write SetTextRotation;
@@ -2290,7 +2305,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.ExecuteHyperlink;
 var
-  hyperlink: TsHyperlink;
+  hlink: TsHyperlink;
   target, bookmark: String;
   sheetname: String;
   sheet: TsWorksheet;
@@ -2299,8 +2314,8 @@ begin
   if FHyperlinkCell = nil then
     exit;
 
-  hyperlink := Worksheet.ReadHyperlink(FHyperlinkCell);
-  SplitHyperlink(hyperlink.Target, target, bookmark);
+  hlink := Worksheet.ReadHyperlink(FHyperlinkCell);
+  SplitHyperlink(hlink.Target, target, bookmark);
   if target = '' then begin
     // Goes to a cell within the current workbook
     if ParseSheetCellString(bookmark, sheetname, r, c) then
@@ -2314,10 +2329,10 @@ begin
       end;
       Worksheet.SelectCell(r, c);
     end else
-      raise Exception.CreateFmt(rsNoValidHyperlinkInternal, [hyperlink.Target]);
+      raise Exception.CreateFmt(rsNoValidHyperlinkInternal, [hlink.Target]);
   end else
     // Fires the OnClickHyperlink event which should open a file or a URL
-    if Assigned(FOnClickHyperlink) then FOnClickHyperlink(self, hyperlink);
+    if Assigned(FOnClickHyperlink) then FOnClickHyperlink(self, hlink);
 end;
 
 
@@ -2601,6 +2616,21 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the comment assigned to a cell.
+
+  @param   ACol     Grid column index of the cell
+  @param   ARow     Grid row index of the cell
+  @return  String used as a cell comment.
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.GetCellComment(ACol, ARow: Integer): String;
+begin
+  if Worksheet <> nil then
+    Result := Worksheet.ReadComment(GetWorksheetRow(ARow), GetWorksheetCol(ACol))
+  else
+    Result :='';
+end;
+
+{@@ ----------------------------------------------------------------------------
   Returns the font to be used when painting text in a cell.
 
   @param   ACol     Grid column index of the cell
@@ -2797,7 +2827,7 @@ end;
 function TsCustomWorksheetGrid.GetCellHintText(ACol, ARow: Integer): String;
 var
   cell: PCell;
-  hyperlink: PsHyperlink;
+  hlink: PsHyperlink;
   comment: String;
 begin
   Result := '';
@@ -2813,14 +2843,14 @@ begin
   comment := Worksheet.ReadComment(cell);
   // Read hyperlink info
   if Worksheet.HasHyperlink(cell) then begin
-    hyperlink := Worksheet.FindHyperlink(cell);
-    if hyperlink <> nil then
+    hlink := Worksheet.FindHyperlink(cell);
+    if hlink <> nil then
     begin
-      if hyperlink^.ToolTip <> '' then
-        Result := hyperlink^.ToolTip
+      if hlink^.ToolTip <> '' then
+        Result := hlink^.ToolTip
       else
         Result := Format('Hyperlink: %s' + LineEnding + rsStdHyperlinkTooltip,
-          [hyperlink^.Target]
+          [hlink^.Target]
         );
     end;
   end;
@@ -4408,9 +4438,11 @@ var
   fmt: PsCellFormat;
   nfp: TsNumFormatParams;
   r, c: Cardinal;
+  s: String;
 begin
   if not Assigned(Worksheet) then
     exit;
+
   r := GetWorksheetRow(ARow);
   c := GetWorksheetCol(ACol);
   cell := Worksheet.FindCell(r, c);
@@ -4420,10 +4452,12 @@ begin
   end else
     fmt := nil;
 
-  if VarIsNull(AValue) then begin
-    if cell <> nil then
-      Worksheet.WriteBlank(r, c);
-  end else
+  if VarIsNull(AValue) then
+    Worksheet.WriteBlank(r, c)
+  else
+  if VarIsType(AValue, varDate) then
+    Worksheet.WriteDateTime(r, c, VarToDateTime(AValue))
+  else
   if VarIsNumeric(AValue) then begin
     if (cell <> nil) then begin
       if IsDateTimeFormat(nfp) then
@@ -4442,8 +4476,12 @@ begin
   if VarIsBool(AValue) then
     Worksheet.WriteBoolValue(r, c, AValue)
   else
-  if VarIsStr(AValue) then
-    Worksheet.WriteCellValueAsString(r, c, VarToStr(AValue));
+  if VarIsStr(AValue) then begin
+    s := VarToStr(AValue);
+    if (s[1] = '=') then
+      Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true) else
+      Worksheet.WriteCellValueAsString(r, c, s);
+  end;
 end;
 
 function TsCustomWorksheetGrid.GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
@@ -4472,6 +4510,35 @@ begin
         exit;
       end;
     end;
+end;
+
+function TsCustomWorksheetGrid.GetHyperlink(ACol, ARow: Integer): String;
+var
+  hlink: TsHyperlink;
+begin
+  Result := '';
+  if Assigned(Worksheet) then
+  begin
+    hlink := Worksheet.ReadHyperLink(Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol)));
+    if hlink.Target <> '' then begin
+      Result := hlink.Target;
+      if hlink.Tooltip <> '' then Result := Result + '|' + hlink.ToolTip;
+    end;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetNumberFormat(ACol, ARow: Integer): String;
+var
+  nf: TsNumberFormat;
+  cell: PCell;
+begin
+  Result := '';
+  if Assigned(Worksheet) and Assigned(Workbook) then
+  begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if cell <> nil then
+      Worksheet.ReadNumFormat(cell, nf, Result);
+  end;
 end;
 
 function TsCustomWorksheetGrid.GetShowGridLines: Boolean;
@@ -4701,6 +4768,13 @@ begin
   end;
 end;
 
+procedure TsCustomWorksheetGrid.SetCellComment(ACol, ARow: Integer;
+  AValue: String);
+begin
+  if Assigned(Worksheet) then
+    Worksheet.WriteComment(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
 procedure TsCustomWorksheetGrid.SetCellFont(ACol, ARow: Integer; AValue: TFont);
 var
   fnt: TsFont;
@@ -4889,6 +4963,34 @@ begin
   finally
     EndUpdate;
   end;
+end;
+
+procedure TsCustomWorksheetGrid.SetHyperlink(ACol, ARow: Integer;
+  AValue: String);
+var
+  p: Integer;
+  target, tooltip: String;
+  cell: PCell;
+begin
+  if Assigned(Worksheet) then
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if AValue <> '' then
+    begin
+      p := pos('|', AValue);
+      if p > 0 then
+        Worksheet.WriteHyperlink(cell, copy(AValue, 1, p-1), copy(AValue, p+1, MaxInt))
+      else
+        Worksheet.WriteHyperlink(cell, AValue);
+    end else
+      Worksheet.RemoveHyperlink(cell);
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetNumberFormat(ACol, ARow: Integer; AValue: String);
+begin
+  if Assigned(Worksheet) then
+    Worksheet.WriteNumberFormat(GetWorksheetRow(ARow), GetWorksheetCol(ACol), nfCustom, AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetReadFormulas(AValue: Boolean);

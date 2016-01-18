@@ -3071,14 +3071,12 @@ begin
   end else
   begin
     AStrings.Add(Format('FileName=%s', [AWorkbook.FileName]));
-    AStrings.Add(Format('FileFormat=%d [%s]', [
-      AWorkbook.FileFormatID, GetSpreadTechnicalName(AWorkbook.FileFormatID)
-    ]));
-    {
-    AStrings.Add(Format('FileFormat=%s', [
-      GetEnumName(TypeInfo(TsSpreadsheetFormat), ord(AWorkbook.FileFormat))
-    ]));
-     }
+    if AWorkbook.FileFormatID = -1 then
+      AStrings.Add('FileFormat=(unknown)')
+    else
+      AStrings.Add(Format('FileFormat=%d [%s]', [
+        AWorkbook.FileFormatID, GetSpreadTechnicalName(AWorkbook.FileFormatID)
+      ]));
     if AWorkbook.ActiveWorksheet <> nil then
       AStrings.Add('ActiveWorksheet=' + AWorkbook.ActiveWorksheet.Name)
     else
