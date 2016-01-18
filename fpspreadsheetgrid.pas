@@ -4452,35 +4452,44 @@ begin
   end else
     fmt := nil;
 
-  if VarIsNull(AValue) then
-    Worksheet.WriteBlank(r, c)
-  else
-  if VarIsType(AValue, varDate) then
-    Worksheet.WriteDateTime(r, c, VarToDateTime(AValue))
-  else
-  if VarIsNumeric(AValue) then begin
-    if (cell <> nil) then begin
-      if IsDateTimeFormat(nfp) then
-        Worksheet.WriteDateTime(cell, VarToDateTime(AValue))
-        {
-      else if IsBoolFormat(nfp) then
-        Worksheet.WriteBoolValue(cell, not (AValue=0) )
-      else if IsErrorFormat(nfp) then
-        Worksheet.WriteErrorValue(r, c, round(AValue));
-        }
-      else
-        Worksheet.WriteNumber(cell, AValue);
-    end else
-      Worksheet.WriteNumber(r, c, AValue);
+  if VarIsNull(AValue) then begin
+    cell := Worksheet.WriteBlank(r, c);
+    if cell <> nil then cell^.FormulaValue := '';
   end else
-  if VarIsBool(AValue) then
-    Worksheet.WriteBoolValue(r, c, AValue)
-  else
-  if VarIsStr(AValue) then begin
+  if VarIsStr(AValue) then
+  begin
     s := VarToStr(AValue);
-    if (s[1] = '=') then
-      Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true) else
-      Worksheet.WriteCellValueAsString(r, c, s);
+    if s[1] = '=' then
+    begin
+      Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true);
+      exit;
+    end;
+    Worksheet.WriteCellValueAsString(r, c, s);
+    cell^.FormulaValue := '';
+  end else
+  begin
+    if cell <> nil then
+      cell^.FormulaValue := '';
+    if VarIsType(AValue, varDate) then
+      Worksheet.WriteDateTime(r, c, VarToDateTime(AValue))
+    else
+    if VarIsNumeric(AValue) then begin
+      if (cell <> nil) then begin
+        if IsDateTimeFormat(nfp) then
+          Worksheet.WriteDateTime(cell, VarToDateTime(AValue))
+          {
+        else if IsBoolFormat(nfp) then
+          Worksheet.WriteBoolValue(cell, not (AValue=0) )
+        else if IsErrorFormat(nfp) then
+          Worksheet.WriteErrorValue(r, c, round(AValue));
+          }
+        else
+          Worksheet.WriteNumber(cell, AValue);
+      end else
+        Worksheet.WriteNumber(r, c, AValue);
+    end else
+    if VarIsBool(AValue) then
+      Worksheet.WriteBoolValue(r, c, AValue)
   end;
 end;
 
