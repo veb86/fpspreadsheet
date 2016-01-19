@@ -1896,7 +1896,7 @@ begin
           end else
             Lines.Text := ACell^.UTF8StringValue;
         else
-          Lines.Text := Worksheet.ReadAsUTF8Text(ACell);
+          Lines.Text := Worksheet.ReadAsText(ACell);
       end;
   end else
     Clear;

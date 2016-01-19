@@ -96,9 +96,10 @@ type
     function GetCellFontSizes(ARect: TGridRect): Single;
     function GetCellFontStyle(ACol, ARow: Integer): TsFontStyles;
     function GetCellFontStyles(ARect: TGridRect): TsFontStyles;
-    function GetCells(ACol, ARow: Integer): variant;
+    function GetCells(ACol, ARow: Integer): variant; reintroduce;
     function GetColWidths(ACol: Integer): Integer;
-    function GetDefaultColWidth: Integer;
+    function GetDefColWidth: Integer;
+    function GetDefRowHeight: Integer;
     function GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
     function GetHorAlignments(ARect: TGridRect): TsHorAlignment;
     function GetHyperlink(ACol, ARow: Integer): String;
@@ -136,7 +137,8 @@ type
     procedure SetCellFontSizes(ARect: TGridRect; AValue: Single);
     procedure SetCells(ACol, ARow: Integer; AValue: variant);
     procedure SetColWidths(ACol: Integer; AValue: Integer);
-    procedure SetDefaultColWidth(AValue: Integer);
+    procedure SetDefColWidth(AValue: Integer);
+    procedure SetDefRowHeight(AValue: Integer);
     procedure SetFrozenCols(AValue: Integer);
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
@@ -189,6 +191,7 @@ type
     function GetCellHintText(ACol, ARow: Integer): String; override;
     function GetCellText(ACol, ARow: Integer): String;
     function GetEditText(ACol, ARow: Integer): String; override;
+    function GetDefaultHeaderColWidth: Integer;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
     procedure HeaderSized(IsColumn: Boolean; AIndex: Integer); override;
     procedure InternalDrawTextInCell(AText: String; ARect: TRect;
@@ -252,9 +255,9 @@ type
     procedure DeleteRow(AGridRow: Integer); reintroduce;
     procedure EditingDone; override;
     procedure EndUpdate;
-    procedure GetSheets(const ASheets: TStrings);
     function GetGridCol(ASheetCol: Cardinal): Integer; inline;
     function GetGridRow(ASheetRow: Cardinal): Integer; inline;
+    procedure GetSheets(const ASheets: TStrings);
     function GetWorksheetCol(AGridCol: Integer): Cardinal; inline;
     function GetWorksheetRow(AGridRow: Integer): Cardinal; inline;
     procedure InsertCol(AGridCol: Integer);
@@ -269,7 +272,7 @@ type
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
-      AOverwriteExisting: Boolean = true); overload;
+      AOverwriteExisting: Boolean = true); overload; deprecated;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormatID: TsSpreadFormatID;
       AOverwriteExisting: Boolean = true); overload;
     procedure SelectSheetByIndex(AIndex: Integer);
@@ -416,7 +419,10 @@ type
         read GetColWidths write SetColWidths;
     {@@ Default column width, in pixels }
     property DefaultColWidth: Integer
-        read GetDefaultColWidth write SetDefaultColWidth;
+        read GetDefColWidth write SetDefColWidth;
+    {@@ Default row height, in pixels }
+    property DefaultRowHeight: Integer
+        read GetDefRowHeight write SetDefRowHeight;
     {@@ Row height in pixels }
     property RowHeights[ARow: Integer]: Integer
         read GetRowHeights write SetRowHeights;
@@ -1474,7 +1480,7 @@ var
   style: TFontStyles;
   isSelected: Boolean;
   fgcolor, bgcolor: TColor;
-  numFmt: TsNumFormatParams;
+//  numFmt: TsNumFormatParams;
 begin
   GetSelectedState(AState, isSelected);
   Canvas.Font.Assign(Font);
@@ -1508,7 +1514,7 @@ begin
     if lCell <> nil then
     begin
       fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
-      numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
+//      numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
 
       // Background color
       if (uffBackground in fmt^.UsedFormattingFields) then
@@ -3002,6 +3008,14 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the width of the fixed header column 0, in pixels
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.GetDefaultHeaderColWidth: Integer;
+begin
+  Result := Canvas.TextWidth(' 999999 ');
+end;
+
+{@@ ----------------------------------------------------------------------------
   Determines the text to be passed to the cell editor. The text is determined
   from the underlying worksheet cell, but it is possible to intercept this by
   adding a handler for the OnGetEditText event.
@@ -3034,7 +3048,7 @@ begin
           else
             Result := FormatDateTime('c', cell^.DateTimeValue);
         else
-          Result := Worksheet.ReadAsUTF8Text(cell);
+          Result := Worksheet.ReadAsText(cell);
       end
     else
       Result := '';
@@ -3550,8 +3564,8 @@ procedure TsCustomWorksheetGrid.Loaded;
 begin
   inherited;
   if FWorkbookSource = nil then
-  //  CreateNewWorkbook;
-    NewWorkbook(FInitColCount, FInitRowCount);
+    Setup;
+//    NewWorkbook(FInitColCount, FInitRowCount);
 end;
                                (*
 {@@ ----------------------------------------------------------------------------
@@ -4056,7 +4070,8 @@ begin
       RowCount := FInitRowCount + 1; //2;
       FixedCols := 1;
       FixedRows := 1;
-      ColWidths[0] := Canvas.TextWidth(' 999999 ');
+      ColWidths[0] := GetDefaultHeaderColWidth;
+      RowHeights[0] := GetDefaultRowHeight;
     end else begin
       FixedCols := 0;
       FixedRows := 0;
@@ -4072,8 +4087,8 @@ begin
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
-      ColWidths[0] := Canvas.TextWidth(' 999999 ');
-      RowHeights[0] := DefaultRowHeight;
+      ColWidths[0] := GetDefaultHeaderColWidth;
+      RowHeights[0] := GetDefaultRowHeight;
     end;
   end;
   UpdateColWidths;
@@ -4512,9 +4527,14 @@ begin
   Result := inherited ColWidths[ACol];
 end;
 
-function TsCustomWorksheetGrid.GetDefaultColWidth: Integer;
+function TsCustomWorksheetGrid.GetDefColWidth: Integer;
 begin
   Result := inherited DefaultColWidth;
+end;
+
+function TsCustomWorksheetGrid.GetDefRowHeight: Integer;
+begin
+  Result := inherited DefaultRowHeight;
 end;
 
 function TsCustomWorksheetGrid.GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
@@ -5027,11 +5047,26 @@ begin
   HeaderSized(true, ACol);
 end;
 
-procedure TsCustomWorksheetGrid.SetDefaultColWidth(AValue: Integer);
+procedure TsCustomWorksheetGrid.SetDefColWidth(AValue: Integer);
 begin
-  if AValue = GetDefaultColWidth then
+  if AValue = GetDefColWidth then
     exit;
   inherited DefaultColWidth := AValue;
+  if FHeaderCount > 0 then
+    ColWidths[0] := GetDefaultHeaderColWidth;
+  if Worksheet <> nil then
+    Worksheet.DefaultColWidth := CalcWorksheetColWidth(AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetDefRowHeight(AValue: Integer);
+begin
+  if AValue = GetDefRowHeight then
+    exit;
+  inherited DefaultRowHeight := AValue;
+  if FHeaderCount > 0 then
+    RowHeights[0] := GetDefaultRowHeight;
+  if Worksheet <> nil then
+    Worksheet.DefaultRowHeight := CalcWorksheetRowHeight(AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetFrozenCols(AValue: Integer);
@@ -5091,7 +5126,6 @@ procedure TsCustomWorksheetGrid.SetHyperlink(ACol, ARow: Integer;
   AValue: String);
 var
   p: Integer;
-  target, tooltip: String;
   cell: PCell;
 begin
   if Assigned(Worksheet) then
