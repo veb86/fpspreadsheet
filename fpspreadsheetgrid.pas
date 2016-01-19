@@ -193,6 +193,7 @@ type
     function GetEditText(ACol, ARow: Integer): String; override;
     function GetDefaultHeaderColWidth: Integer;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
+    procedure HeaderSizing(const IsColumn:boolean; const AIndex,ASize:Integer); override;
     procedure HeaderSized(IsColumn: Boolean; AIndex: Integer); override;
     procedure InternalDrawTextInCell(AText: String; ARect: TRect;
       ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
@@ -610,6 +611,8 @@ type
     property OnHeaderClick;
     {@@ inherited from ancestors}
     property OnHeaderSized;
+    {@@ inherited from ancestors}
+    property OnHeaderSizing;
     {@@ inherited from ancestors}
     property OnKeyDown;
     {@@ inherited from ancestors}
@@ -3222,6 +3225,46 @@ begin
     result := false
   else
     Result := ABorder in Worksheet.ReadCellBorders(ACell);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  HeaderSizing is called while a column width or row height is resized by the
+  mouse. Is overridden here to enforce a grid repaint if merged cells are
+  affected by the resizing column/row. Otherwise parts of the merged cells would
+  not be updated if the cell text moves during the resizing action.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.HeaderSizing(const IsColumn:boolean;
+  const AIndex,ASize:Integer);
+var
+  gc, gr: Integer;
+  sc, sr, sr1, sr2, sc1, sc2, si: Cardinal;
+  cell: PCell;
+begin
+  inherited;
+
+  if Worksheet = nil then
+    exit;
+
+  // replaint the grid if merged cells are affected by the resizing col/row.
+  si := IfThen(IsColumn, GetWorksheetCol(AIndex), GetWorksheetRow(AIndex));
+  for gc := GetFirstVisibleColumn to GetLastVisibleColumn do
+  begin
+    sc := GetWorksheetCol(gc);
+    for gr := GetFirstVisibleRow to GetLastVisibleRow do
+    begin
+      sr := GetWorksheetRow(gr);
+      cell := Worksheet.FindCell(gr, gc);
+      if Worksheet.IsMerged(cell) then begin
+        Worksheet.FindMergedRange(cell, sr1, sc1, sr2, sc2);
+        if IsColumn and InRange(si, sc1, sc2) or
+           (not IsColumn) and InRange(si, sr1, sr2) then
+        begin
+          InvalidateGrid;
+          exit;
+        end;
+      end;
+    end;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
