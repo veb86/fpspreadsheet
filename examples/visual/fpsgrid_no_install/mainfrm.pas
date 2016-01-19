@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   ComCtrls, StdCtrls, Grids,
-  fpspreadsheet, fpspreadsheetgrid, {%H-}fpsallformats;
+  fpstypes, fpspreadsheet, fpspreadsheetgrid, {%H-}fpsallformats;
 
 type
 
@@ -52,6 +52,8 @@ uses
 { TForm1 }
 
 procedure TForm1.FormCreate(Sender: TObject);
+const
+  THICK_BORDER: TsCellBorderStyle = (LineStyle: lsThick; Color: clNavy);
 begin
   Grid := TsWorksheetGrid.Create(self);
 
@@ -66,14 +68,64 @@ begin
     goThumbTracking,     // see the grid scroll while you drag the scrollbar
     goHeaderHotTracking, // hot-tracking of header cells
     goHeaderPushedLook,  // click at header cells --> pushed look
-    goDblClickAutoSize   // optimum col width/row height after dbl click at header border
+    goDblClickAutoSize,  // optimum col width/row height after dbl click at header border
+    goCellHints          // show cell hints (needed for cell comments)
   ];
-  Grid.AutoAdvance := aaDown;       // move active cell down on ENTER
+  Grid.AutoAdvance := aaDown;       // on ENTER, move active cell down
   Grid.MouseWheelOption := mwGrid;  // mouse wheel scrolls the grid, not the active cell
   Grid.TextOverflow := true;        // too long text extends into neighbor cells
+  Grid.AutoCalc := true;            // automatically calculate formulas
+  Grid.ShowHint := true;            // needed to show cell comments
 
   // Create an empty worksheet
-  Grid.NewWorkbook(26, 100);
+  //Grid.NewWorkbook(26, 100);  // Not absolutely necessary - grid will expand automatically
+
+  // Add some cells and formats
+  Grid.ColWidths[1] := 180;
+  Grid.ColWidths[2] := 80;
+
+  Grid.Cells[1,1] := 'This is a demo';
+  Grid.MergeCells(Rect(1,1, 2,1));
+  Grid.HorAlignment[1,1] := haCenter;
+  Grid.CellBorders[Rect(1,1, 2,1)] := [cbSouth];
+  Grid.CellBorderStyles[Rect(1,1, 2,1), cbSouth] := THICK_BORDER;
+  Grid.BackgroundColors[Rect(1,1, 2,1)] := RGBToColor(220, 220, 220);
+  Grid.CellFontColor[1,1] := clNavy;
+  Grid.CellFontStyle[1,1] := [fssBold];
+
+  Grid.Cells[1,2] := 'Number:';
+  Grid.HorAlignment[1,2] := haRight;
+  Grid.CellFontStyle[1,2] := [fssItalic];
+  Grid.CellFontColor[1,2] := clNavy;
+  Grid.Cells[2,2] := 1.234;
+
+  Grid.Cells[1,3] := 'Date:';
+  Grid.HorAlignment[1,3] := haRight;
+  Grid.CellFontStyle[1,3] := [fssItalic];
+  Grid.CellFontColor[1,3] := clNavy;
+  Grid.NumberFormat[2,3] := 'mm"/"dd, yyyy';
+  Grid.Cells[2,3] := date;
+
+  Grid.Cells[1,4] := 'Time:';
+  Grid.HorAlignment[1,4] := haRight;
+  Grid.CellFontStyle[1,4] := [fssItalic];
+  Grid.CellFontColor[1,4] := clNavy;
+  Grid.NumberFormat[2,4] := 'hh:nn';
+  Grid.Cells[2,4] := now();
+
+  Grid.Cells[1,5] := 'Rich text:';
+  Grid.HorAlignment[1,5] := haRight;
+  Grid.CellFontStyle[1,5] := [fssItalic];
+  Grid.CellFontColor[1,5] := clNavy;
+  Grid.Cells[2,5] := '100 cm<sup>2</sup>';
+
+  Grid.Cells[1,6] := 'Formula:';
+  Grid.HorAlignment[1,6] := haRight;
+  Grid.CellFontStyle[1,6] := [fssItalic];
+  Grid.CellFontColor[1,6] := clNavy;
+  Grid.Cells[2,6] := '=B2^2*PI()';
+  Grid.CellComment[2,6] := 'Area of the circle with radius given in cell B2';
+  Grid.NumberFormat[2,6] := '0.000';
 end;
 
 procedure TForm1.BtnLoadClick(Sender: TObject);
@@ -143,7 +195,7 @@ begin
   try
     try
       // Load file into workbook and grid
-      Grid.LoadFromSpreadsheetFile(UTF8ToSys(AFileName));
+      Grid.LoadFromSpreadsheetFile(UTF8ToAnsi(AFileName));
 
       // Update user interface
       Caption := Format('fpsGrid - %s (%s)', [
@@ -160,7 +212,7 @@ begin
         Grid.NewWorkbook(26, 100);
         Caption := 'fpsGrid - no name';
         TabControl.Tabs.Clear;
-        // Grab the error message
+        // Grab the error message, it will be displayed below
         Grid.Workbook.AddErrorMsg(E.Message);
       end;
     end;

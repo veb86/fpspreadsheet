@@ -664,7 +664,7 @@ implementation
 
 uses
   Types, LCLType, LCLIntf, LCLProc, Math, StrUtils,
-  fpCanvas, fpsStrings, fpsUtils, fpsVisualUtils, fpsNumFormat;
+  fpCanvas, fpsStrings, fpsUtils, fpsVisualUtils, fpsNumFormat, fpsHTMLUtils;
 
 const
   {@@ Default number of columns prepared for a new empty worksheet }
@@ -4992,7 +4992,8 @@ var
   fmt: PsCellFormat = nil;
   nfp: TsNumFormatParams;
   r, c: Cardinal;
-  s: String;
+  s, plain: String;
+  rtParams: TsRichTextParams;
 begin
   if not Assigned(Worksheet) then
     exit;
@@ -5014,7 +5015,11 @@ begin
     if (s <> '') and (s[1] = '=') then
       Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
     else
-      Worksheet.WriteText(r, c, s);  // This will erase a non-formatted cell if s = ''
+    begin
+      cell := Worksheet.GetCell(r, c);
+      HTMLToRichText(Workbook, Worksheet.ReadCellFont(cell), s, plain, rtParams);
+      Worksheet.WriteText(cell, plain, rtParams);  // This will erase a non-formatted cell if s = ''
+    end;
   end else
   if VarIsType(AValue, varDate) then
     Worksheet.WriteDateTime(r, c, VarToDateTime(AValue))
