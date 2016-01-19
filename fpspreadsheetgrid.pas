@@ -1426,8 +1426,8 @@ end;
 
 procedure TsCustomWorksheetGrid.DefineProperties(Filer: TFiler);
 begin
-  // Don't call inherited, this is where to ColWidths/RwoHeights are stored in
-  // the lfm file - we don't need them, we get them from the workbook!
+  // Don't call inherited, this is where the ColWidths/RowHeights are written
+  // to the lfm file - we don't need them, we get them from the workbook!
   Unused(Filer);
 end;
 
@@ -1923,10 +1923,10 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Draws a complete row of cells. Is mostly duplicated from Grids.pas, but adds
-  code for merged cells and overflow text, the section on drawing the default
+  code for merged cells and overflow text, the section for drawing the default
   focus rectangle is removed.
 
-  @param  ARow  Index of the row to be drawn (index in grid coordinates)
+  @param  ARow  Index of the row to be drawn (in grid coordinates)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
 var
@@ -1934,7 +1934,7 @@ var
   sr, sr1,sc1,sr2,sc2, scLastUsed: Cardinal;                // sheet row/column
   gr, gc, gcNext, gcLast, gc1, gc2, gcLastUsed: Integer;    // grid row/column
   i: Integer;
-  rct, saved_rct, temp_rct, commentcell_rct: TRect;
+  rct, saved_rct, temp_rct, fixed_rct, commentcell_rct: TRect;
   clipArea: Trect;
   cell: PCell;
   fmt: PsCellFormat;
@@ -1987,6 +1987,10 @@ begin
   ColRowToOffSet(False, True, ARow, rct.Top, rct.Bottom);
   saved_rct := rct;
 
+  fixed_rct := Rect(0, 0, 0, 0);
+  if HeaderCount > 0 then
+    ColRowToOffset(true, false, 0, fixed_rct.Left, fixed_rct.Right);
+
   // is this row within the ClipRect?
   clipArea := Canvas.ClipRect;
   if (rct.Top >= rct.Bottom) or not VerticalIntersect(rct, clipArea) then begin
@@ -2032,7 +2036,7 @@ begin
       end;
 
     // Now find the last column. Again text can overflow into the visible area
-    // from cells to the right.
+    // from invisible cells at the right.
     gcLast := Right;
     if FTextOverflow and (sr <> UNASSIGNED_ROW_COL_INDEX) and Assigned(Worksheet) then
     begin
@@ -2059,7 +2063,7 @@ begin
       end;
     end;
 
-    // Here begins the drawing loop of all cells in the row
+    // Here begins the drawing loop of all cells in the row between gc and gclast
     while (gc <= gcLast) do begin
       gr := ARow;
       rct := saved_rct;
@@ -2142,7 +2146,11 @@ begin
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
         gds := GetGridDrawState(gc, gr);
-        DoDrawCell(gc, gr, rct, rct);
+        temp_rct := rct;
+        // Avoid painting into the fixed cells
+        if temp_rct.Left < fixed_rct.Right then temp_rct.Left := fixed_rct.Right;
+        // Draw cell
+        DoDrawCell(gc, gr, temp_rct, rct);
         // Draw comment marker
         if (commentcell_rct.Left <> 0) and (commentcell_rct.Right <> 0) and
            (commentcell_rct.Top <> 0) and (commentcell_rct.Bottom <> 0)
