@@ -97,11 +97,14 @@ type
     function GetCellFontStyle(ACol, ARow: Integer): TsFontStyles;
     function GetCellFontStyles(ARect: TGridRect): TsFontStyles;
     function GetCells(ACol, ARow: Integer): variant;
+    function GetColWidths(ACol: Integer): Integer;
+    function GetDefaultColWidth: Integer;
     function GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
     function GetHorAlignments(ARect: TGridRect): TsHorAlignment;
     function GetHyperlink(ACol, ARow: Integer): String;
     function GetNumberFormat(ACol, ARow: Integer): String;
     function GetNumberFormats(ARect: TGridRect): String;
+    function GetRowHeights(ARow: Integer): Integer;
     function GetShowGridLines: Boolean;
     function GetShowHeaders: Boolean;
     function GetTextRotation(ACol, ARow: Integer): TsTextRotation;
@@ -132,6 +135,8 @@ type
     procedure SetCellFontSize(ACol, ARow: Integer; AValue: Single);
     procedure SetCellFontSizes(ARect: TGridRect; AValue: Single);
     procedure SetCells(ACol, ARow: Integer; AValue: variant);
+    procedure SetColWidths(ACol: Integer; AValue: Integer);
+    procedure SetDefaultColWidth(AValue: Integer);
     procedure SetFrozenCols(AValue: Integer);
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
@@ -140,6 +145,7 @@ type
     procedure SetNumberFormat(ACol, ARow: Integer; AValue: String);
     procedure SetNumberFormats(ARect: TGridRect; AValue: String);
     procedure SetReadFormulas(AValue: Boolean);
+    procedure SetRowHeights(ARow: Integer; AValue: Integer);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
     procedure SetTextRotation(ACol, ARow: Integer; AValue: TsTextRotation);
@@ -156,6 +162,8 @@ type
     { Protected declarations }
     procedure AutoAdjustColumn(ACol: Integer); override;
     procedure AutoAdjustRow(ARow: Integer); virtual;
+    function CalcWorksheetColWidth(AValue: Integer): Single;
+    function CalcWorksheetRowHeight(AValue: Integer): Single;
     function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
       out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
     procedure CreateNewWorkbook;
@@ -401,7 +409,20 @@ type
     property Wordwraps[ARect: TGridRect]: Boolean
         read GetWordwraps write SetWordwraps;
 
+    // inherited, but modified
+
+    {@@ Column width, in pixels }
+    property ColWidths[ACol: Integer]: Integer
+        read GetColWidths write SetColWidths;
+    {@@ Default column width, in pixels }
+    property DefaultColWidth: Integer
+        read GetDefaultColWidth write SetDefaultColWidth;
+    {@@ Row height in pixels }
+    property RowHeights[ARow: Integer]: Integer
+        read GetRowHeights write SetRowHeights;
+
     // inherited
+
    {$IFNDEF FPS_NO_GRID_MULTISELECT}
     {@@ Allow multiple selections}
     property RangeSelectMode default rsmMulti;
@@ -1040,6 +1061,47 @@ begin
   h_pts := AHeight * (Workbook.GetFont(0).Size + ROW_HEIGHT_CORRECTION);
   Result := PtsToPX(h_pts, Screen.PixelsPerInch) + 4;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts the column height given in screen pixels to the units used by the
+  worksheet.
+
+  @param   AValue   Column width in pixels
+  @result  Count of characters '0' in the worksheet's default font.
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.CalcWorksheetColWidth(AValue: Integer): Single;
+begin
+  Result := 0;
+  if Worksheet <> nil then
+  begin
+    // The grid's column width is in "pixels", the worksheet's column width is
+    // in "characters".
+    Convert_sFont_to_Font(Workbook.GetDefaultFont, Canvas.Font);
+    Result := AValue / Canvas.TextWidth('0');
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts the row height given in screen pixels to the units used by the
+  worksheet.
+
+  @param   AValue   Row height in pixels
+  @result  Row height expressed as default font line count.
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.CalcWorksheetRowHeight(AValue: Integer): Single;
+var
+  h_pts: Double;
+begin
+  Result := 0;
+  if Worksheet <> nil then
+  begin
+    // The grid's row heights are in "pixels", the worksheet's row heights are
+    // in "lines"
+    h_pts := PxToPts(AValue - 4, Screen.PixelsPerInch);  // height in points
+    Result := h_pts / (Workbook.GetDefaultFontSize + ROW_HEIGHT_CORRECTION);
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Looks for overflowing cells: if the text of the given cell is longer than
@@ -3150,23 +3212,18 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.HeaderSized(IsColumn: Boolean; AIndex: Integer);
 var
-  w0: Integer;
-  h, h_pts: Single;
+  w, h: Single;
 begin
   if Worksheet = nil then
     exit;
 
-  Convert_sFont_to_Font(Workbook.GetDefaultFont, Canvas.Font);
-  if IsColumn then begin
-    // The grid's column width is in "pixels", the worksheet's column width is
-    // in "characters".
-    w0 := Canvas.TextWidth('0');
-    Worksheet.WriteColWidth(GetWorksheetCol(AIndex), ColWidths[AIndex] / w0);
-  end else begin
-    // The grid's row heights are in "pixels", the worksheet's row heights are
-    // in "lines"
-    h_pts := PxToPts(RowHeights[AIndex] - 4, Screen.PixelsPerInch);  // in points
-    h := h_pts / (Workbook.GetFont(0).Size + ROW_HEIGHT_CORRECTION);
+  if IsColumn then
+  begin
+    w := CalcWorksheetColWidth(ColWidths[AIndex]);
+    Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w);
+  end else
+  begin
+    h := CalcWorksheetRowHeight(RowHeights[AIndex]);
     Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h);
   end;
 end;
@@ -4442,57 +4499,14 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetCells(ACol, ARow: Integer; AValue: Variant);
-var
-  cell: PCell = nil;
-  fmt: PsCellFormat = nil;
-  nfp: TsNumFormatParams;
-  r, c: Cardinal;
-  s: String;
+function TsCustomWorksheetGrid.GetColWidths(ACol: Integer): Integer;
 begin
-  if not Assigned(Worksheet) then
-    exit;
+  Result := inherited ColWidths[ACol];
+end;
 
-  r := GetWorksheetRow(ARow);
-  c := GetWorksheetCol(ACol);
-
-  // If the cell already exists and contains a formula then the formula must be
-  // removed. The formula would dominate over the data value.
-  cell := Worksheet.FindCell(r, c);
-  if HasFormula(cell) then cell^.FormulaValue := '';
-
-  if VarIsNull(AValue) then
-    Worksheet.WriteBlank(r, c)
-  else
-  if VarIsStr(AValue) then
-  begin
-    s := VarToStr(AValue);
-    if (s <> '') and (s[1] = '=') then
-      Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
-    else
-      Worksheet.WriteText(r, c, s);  // This will erase a non-formatted cell if s = ''
-  end else
-  if VarIsType(AValue, varDate) then
-    Worksheet.WriteDateTime(r, c, VarToDateTime(AValue))
-  else
-  if VarIsNumeric(AValue) then
-  begin
-    // Check if the cell already exists and contains a format.
-    // If it is a date/time format write a date/time cell...
-    if cell <> nil then
-    begin
-      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-      if fmt <> nil then nfp := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
-      if (fmt <> nil) and IsDateTimeFormat(nfp) then
-        Worksheet.WriteDateTime(r, c, VarToDateTime(AValue)) else
-        Worksheet.WriteNumber(r, c, AValue);
-    end
-    else
-      // ... otherwise write a number cell
-      Worksheet.WriteNumber(r, c, AValue);
-  end else
-  if VarIsBool(AValue) then
-    Worksheet.WriteBoolValue(r, c, AValue);
+function TsCustomWorksheetGrid.GetDefaultColWidth: Integer;
+begin
+  Result := inherited DefaultColWidth;
 end;
 
 function TsCustomWorksheetGrid.GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
@@ -4566,6 +4580,11 @@ begin
         exit;
       end;
   Result := nfs;
+end;
+
+function TsCustomWorksheetGrid.GetRowHeights(ARow: Integer): Integer;
+begin
+  Result := inherited RowHeights[ARow];
 end;
 
 function TsCustomWorksheetGrid.GetShowGridLines: Boolean;
@@ -4939,6 +4958,74 @@ begin
   end;
 end;
 
+procedure TsCustomWorksheetGrid.SetCells(ACol, ARow: Integer; AValue: Variant);
+var
+  cell: PCell = nil;
+  fmt: PsCellFormat = nil;
+  nfp: TsNumFormatParams;
+  r, c: Cardinal;
+  s: String;
+begin
+  if not Assigned(Worksheet) then
+    exit;
+
+  r := GetWorksheetRow(ARow);
+  c := GetWorksheetCol(ACol);
+
+  // If the cell already exists and contains a formula then the formula must be
+  // removed. The formula would dominate over the data value.
+  cell := Worksheet.FindCell(r, c);
+  if HasFormula(cell) then cell^.FormulaValue := '';
+
+  if VarIsNull(AValue) then
+    Worksheet.WriteBlank(r, c)
+  else
+  if VarIsStr(AValue) then
+  begin
+    s := VarToStr(AValue);
+    if (s <> '') and (s[1] = '=') then
+      Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
+    else
+      Worksheet.WriteText(r, c, s);  // This will erase a non-formatted cell if s = ''
+  end else
+  if VarIsType(AValue, varDate) then
+    Worksheet.WriteDateTime(r, c, VarToDateTime(AValue))
+  else
+  if VarIsNumeric(AValue) then
+  begin
+    // Check if the cell already exists and contains a format.
+    // If it is a date/time format write a date/time cell...
+    if cell <> nil then
+    begin
+      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+      if fmt <> nil then nfp := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
+      if (fmt <> nil) and IsDateTimeFormat(nfp) then
+        Worksheet.WriteDateTime(r, c, VarToDateTime(AValue)) else
+        Worksheet.WriteNumber(r, c, AValue);
+    end
+    else
+      // ... otherwise write a number cell
+      Worksheet.WriteNumber(r, c, AValue);
+  end else
+  if VarIsBool(AValue) then
+    Worksheet.WriteBoolValue(r, c, AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetColWidths(ACol: Integer; AValue: Integer);
+begin
+  if GetColWidths(ACol) = AValue then
+    exit;
+  inherited ColWidths[ACol] := AValue;
+  HeaderSized(true, ACol);
+end;
+
+procedure TsCustomWorksheetGrid.SetDefaultColWidth(AValue: Integer);
+begin
+  if AValue = GetDefaultColWidth then
+    exit;
+  inherited DefaultColWidth := AValue;
+end;
+
 procedure TsCustomWorksheetGrid.SetFrozenCols(AValue: Integer);
 begin
   FFrozenCols := AValue;
@@ -5054,6 +5141,15 @@ begin
       Workbook.Options := Workbook.Options - [boReadFormulas];
   end;
 end;
+
+procedure TsCustomWorksheetGrid.SetRowHeights(ARow: Integer; AValue: Integer);
+begin
+  if GetRowHeights(ARow) = AValue then
+    exit;
+  inherited RowHeights[ARow] := AValue;
+  HeaderSized(false, ARow);
+end;
+
 
 { Shows / hides the worksheet's grid lines }
 procedure TsCustomWorksheetGrid.SetShowGridLines(AValue: Boolean);

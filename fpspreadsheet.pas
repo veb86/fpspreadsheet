@@ -5913,11 +5913,16 @@ function TsWorksheet.GetColWidth(ACol: Cardinal): Single;
 var
   col: PCol;
 begin
-  col := FindCol(ACol);
-  if col <> nil then
-    Result := col^.Width
+  if ACol = UNASSIGNED_ROW_COL_INDEX then
+    Result := 0
   else
-    Result := FDefaultColWidth;
+  begin
+    col := FindCol(ACol);
+    if col <> nil then
+      Result := col^.Width
+    else
+      Result := FDefaultColWidth;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5931,12 +5936,17 @@ function TsWorksheet.GetRowHeight(ARow: Cardinal): Single;
 var
   row: PRow;
 begin
-  row := FindRow(ARow);
-  if row <> nil then
-    Result := row^.Height
+  if ARow = UNASSIGNED_ROW_COL_INDEX then
+    Result := 0
   else
-    //Result := CalcAutoRowHeight(ARow);
-    Result := FDefaultRowHeight;
+  begin
+    row := FindRow(ARow);
+    if row <> nil then
+      Result := row^.Height
+    else
+      //Result := CalcAutoRowHeight(ARow);
+      Result := FDefaultRowHeight;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6341,6 +6351,8 @@ procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single);
 var
   AElement: PRow;
 begin
+  if ARow = UNASSIGNED_ROW_COL_INDEX then
+    exit;
   AElement := GetRow(ARow);
   AElement^.Height := AHeight;
 end;
@@ -6375,6 +6387,8 @@ procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single);
 var
   AElement: PCol;
 begin
+  if ACol = UNASSIGNED_ROW_COL_INDEX then
+    exit;
   AElement := GetCol(ACol);
   AElement^.Width := AWidth;
 end;
