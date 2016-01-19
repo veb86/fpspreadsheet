@@ -185,6 +185,8 @@ begin
   end;
   if FirstFileHash=MD5Print(MD5File(TempFile)) then
     fail('File contents are still those of the first file.');
+
+  DeleteFile(TempFile);
 end;
 
 procedure TSpreadInternalTests.ReadDateAsUTF8;
