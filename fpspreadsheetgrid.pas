@@ -80,61 +80,65 @@ type
 
     // Setter/Getter
     function GetBackgroundColor(ACol, ARow: Integer): TsColor;
-    function GetBackgroundColors(ARect: TGridRect): TsColor;
+    function GetBackgroundColors(ALeft, ATop, ARight, ABottom: Integer): TsColor;
     function GetCellBorder(ACol, ARow: Integer): TsCellBorders;
-    function GetCellBorders(ARect: TGridRect): TsCellBorders;
+    function GetCellBorders(ALeft, ATop, ARight, ABottom: Integer): TsCellBorders;
     function GetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder): TsCellBorderStyle;
-    function GetCellBorderStyles(ARect: TGridRect; ABorder: TsCellBorder): TsCellBorderStyle;
+    function GetCellBorderStyles(ALeft, ATop, ARight, ABottom: Integer;
+      ABorder: TsCellBorder): TsCellBorderStyle;
     function GetCellComment(ACol, ARow: Integer): string;
     function GetCellFont(ACol, ARow: Integer): TFont;
-    function GetCellFonts(ARect: TGridRect): TFont;
+    function GetCellFonts(ALeft, ATop, ARight, ABottom: Integer): TFont;
     function GetCellFontColor(ACol, ARow: Integer): TsColor;
-    function GetCellFontColors(ARect: TGridRect): TsColor;
+    function GetCellFontColors(ALeft, ATop, ARight, ABottom: Integer): TsColor;
     function GetCellFontName(ACol, ARow: Integer): String;
-    function GetCellFontNames(ARect: TGridRect): String;
+    function GetCellFontNames(ALeft, ATop, ARight, ABottom: Integer): String;
     function GetCellFontSize(ACol, ARow: Integer): Single;
-    function GetCellFontSizes(ARect: TGridRect): Single;
+    function GetCellFontSizes(ALeft, ATop, ARight, ABottom: Integer): Single;
     function GetCellFontStyle(ACol, ARow: Integer): TsFontStyles;
-    function GetCellFontStyles(ARect: TGridRect): TsFontStyles;
+    function GetCellFontStyles(ALeft, ATop, ARight, ABottom: Integer): TsFontStyles;
     function GetCells(ACol, ARow: Integer): variant; reintroduce;
     function GetColWidths(ACol: Integer): Integer;
     function GetDefColWidth: Integer;
     function GetDefRowHeight: Integer;
     function GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
-    function GetHorAlignments(ARect: TGridRect): TsHorAlignment;
+    function GetHorAlignments(ALeft, ATop, ARight, ABottom: Integer): TsHorAlignment;
     function GetHyperlink(ACol, ARow: Integer): String;
     function GetNumberFormat(ACol, ARow: Integer): String;
-    function GetNumberFormats(ARect: TGridRect): String;
+    function GetNumberFormats(ALeft, ATop, ARight, ABottom: Integer): String;
     function GetRowHeights(ARow: Integer): Integer;
     function GetShowGridLines: Boolean;
     function GetShowHeaders: Boolean;
     function GetTextRotation(ACol, ARow: Integer): TsTextRotation;
-    function GetTextRotations(ARect: TGridRect): TsTextRotation;
+    function GetTextRotations(ALeft, ATop, ARight, ABottom: Integer): TsTextRotation;
     function GetVertAlignment(ACol, ARow: Integer): TsVertAlignment;
-    function GetVertAlignments(ARect: TGridRect): TsVertAlignment;
+    function GetVertAlignments(ALeft, ATop, ARight, ABottom: Integer): TsVertAlignment;
     function GetWorkbook: TsWorkbook;
     function GetWorkbookSource: TsWorkbookSource;
     function GetWorksheet: TsWorksheet;
     function GetWordwrap(ACol, ARow: Integer): Boolean;
-    function GetWordwraps(ARect: TGridRect): Boolean;
+    function GetWordwraps(ALeft, ATop, ARight, ABottom: Integer): Boolean;
     procedure SetAutoCalc(AValue: Boolean);
     procedure SetBackgroundColor(ACol, ARow: Integer; AValue: TsColor);
-    procedure SetBackgroundColors(ARect: TGridRect; AValue: TsColor);
+    procedure SetBackgroundColors(ALeft, ATop, ARight, ABottom: Integer; AValue: TsColor);
     procedure SetCellBorder(ACol, ARow: Integer; AValue: TsCellBorders);
-    procedure SetCellBorders(ARect: TGridRect; AValue: TsCellBorders);
-    procedure SetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder; AValue: TsCellBorderStyle);
-    procedure SetCellBorderStyles(ARect: TGridRect; ABorder: TsCellBorder; AValue: TsCellBorderStyle);
+    procedure SetCellBorders(ALeft, ATop, ARight, ABottom: Integer; AValue: TsCellBorders);
+    procedure SetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder;
+      AValue: TsCellBorderStyle);
+    procedure SetCellBorderStyles(ALeft, ATop, ARight, ABottom: Integer;
+      ABorder: TsCellBorder; AValue: TsCellBorderStyle);
     procedure SetCellComment(ACol, ARow: Integer; AValue: String);
     procedure SetCellFont(ACol, ARow: Integer; AValue: TFont);
-    procedure SetCellFonts(ARect: TGridRect; AValue: TFont);
+    procedure SetCellFonts(ALeft, ATop, ARight, ABottom: Integer; AValue: TFont);
     procedure SetCellFontColor(ACol, ARow: Integer; AValue: TsColor);
-    procedure SetCellFontColors(ARect: TGridRect; AValue: TsColor);
+    procedure SetCellFontColors(ALeft, ATop, ARight, ABottom: Integer; AValue: TsColor);
     procedure SetCellFontName(ACol, ARow: Integer; AValue: String);
-    procedure SetCellFontNames(ARect: TGridRect; AValue: String);
-    procedure SetCellFontStyle(ACol, ARow: Integer; AValue: TsFontStyles);
-    procedure SetCellFontStyles(ARect: TGridRect; AValue: TsFontStyles);
+    procedure SetCellFontNames(ALeft, ATop, ARight, ABottom: Integer; AValue: String);
     procedure SetCellFontSize(ACol, ARow: Integer; AValue: Single);
-    procedure SetCellFontSizes(ARect: TGridRect; AValue: Single);
+    procedure SetCellFontSizes(ALeft, ATop, ARight, ABottom: Integer; AValue: Single);
+    procedure SetCellFontStyle(ACol, ARow: Integer; AValue: TsFontStyles);
+    procedure SetCellFontStyles(ALeft, ATop, ARight, ABottom: Integer;
+      AValue: TsFontStyles);
     procedure SetCells(ACol, ARow: Integer; AValue: variant);
     procedure SetColWidths(ACol: Integer; AValue: Integer);
     procedure SetDefColWidth(AValue: Integer);
@@ -142,21 +146,24 @@ type
     procedure SetFrozenCols(AValue: Integer);
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
-    procedure SetHorAlignments(ARect: TGridRect; AValue: TsHorAlignment);
+    procedure SetHorAlignments(ALeft, ATop, ARight, ABottom: Integer;
+      AValue: TsHorAlignment);
     procedure SetHyperlink(ACol, ARow: Integer; AValue: String);
     procedure SetNumberFormat(ACol, ARow: Integer; AValue: String);
-    procedure SetNumberFormats(ARect: TGridRect; AValue: String);
+    procedure SetNumberFormats(ALeft, ATop, ARight, ABottom: Integer; AValue: String);
     procedure SetReadFormulas(AValue: Boolean);
     procedure SetRowHeights(ARow: Integer; AValue: Integer);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
     procedure SetTextRotation(ACol, ARow: Integer; AValue: TsTextRotation);
-    procedure SetTextRotations(ARect: TGridRect; AValue: TsTextRotation);
+    procedure SetTextRotations(ALeft, ATop, ARight, ABottom: Integer;
+      AValue: TsTextRotation);
     procedure SetVertAlignment(ACol, ARow: Integer; AValue: TsVertAlignment);
-    procedure SetVertAlignments(ARect: TGridRect; AValue: TsVertAlignment);
+    procedure SetVertAlignments(ALeft, ATop, ARight, ABottom: Integer;
+      AValue: TsVertAlignment);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
     procedure SetWordwrap(ACol, ARow: Integer; AValue: boolean);
-    procedure SetWordwraps(ARect: TGridRect; AValue: boolean);
+    procedure SetWordwraps(ALeft, ATop, ARight, ABottom: Integer; AValue: boolean);
 
     procedure HyperlinkTimerElapsed(Sender: TObject);
 
@@ -280,8 +287,13 @@ type
 
     procedure MergeCells; overload;
     procedure MergeCells(ARect: TGridRect); overload;
+    procedure MergeCells(ALeft, ATop, ARight, ABottom: Integer); overload;
     procedure UnmergeCells; overload;
     procedure UnmergeCells(ACol, ARow: Integer); overload;
+
+    procedure ShowCellBorders(ALeft, ATop, ARight, ABottom: Integer;
+      const ALeftOuterStyle, ATopOuterStyle, ARightOuterStyle, ABottomOuterStyle,
+      AHorInnerStyle, AVertInnerStyle: TsCellBorderStyle);
 
     { Utilities related to Workbooks }
     procedure Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
@@ -309,14 +321,14 @@ type
         read GetBackgroundColor write SetBackgroundColor;
     {@@ Common background color of the cells covered by the given rectangle.
         Expressed as index into the workbook's color palette. }
-    property BackgroundColors[ARect: TGridRect]: TsColor
+    property BackgroundColors[ALeft, ATop, ARight, ABottom: Integer]: TsColor
         read GetBackgroundColors write SetBackgroundColors;
     {@@ Set of flags indicating at which cell border a border line is drawn. }
     property CellBorder[ACol, ARow: Integer]: TsCellBorders
         read GetCellBorder write SetCellBorder;
     {@@ Set of flags indicating at which border of a range of cells a border
         line is drawn }
-    property CellBorders[ARect: TGridRect]: TsCellBorders
+    property CellBorders[ALeft, ATop, ARight, ABottom: Integer]: TsCellBorders
         read GetCellBorders write SetCellBorders;
     {@@ Style of the border line at the given border of the cell at column ACol
         and row ARow. Requires the cellborder flag of the border to be set
@@ -326,7 +338,8 @@ type
     {@@ Style of the border line at the given border of the cells within the
         range of colum/row indexes defined by the rectangle. Requires the cellborder
         flag of the border to be set for the border line to be shown }
-    property CellBorderStyles[ARect: TGridRect; ABorder: TsCellBorder]: TsCellBorderStyle
+    property CellBorderStyles[ALeft, ATop, ARight, ABottom: Integer;
+        ABorder: TsCellBorder]: TsCellBorderStyle
         read GetCellBorderStyles write SetCellBorderStyles;
     {@@ Comment assigned to the cell at column ACol and row ARow }
     property CellComment[ACol, ARow: Integer]: String
@@ -336,21 +349,21 @@ type
         read GetCellFont write SetCellFont;
     {@@ Font to be used for the cells in the column/row index range
         given by the rectangle }
-    property CellFonts[ARect: TGridRect]: TFont
+    property CellFonts[ALeft, ATop, ARight, ABottom: Integer]: TFont
         read GetCellFonts write SetCellFonts;
     {@@ Color of the font used for the cell in column ACol and row ARow }
     property CellFontColor[ACol, ARow: Integer]: TsColor
         read GetCellFontColor write SetCellFontColor;
     {@@ Color of the font used for the cells within the range
         of column/row indexes defined by the rectangle, scUndefined if not constant. }
-    property CellFontColors[ARect: TGridRect]: TsColor
+    property CellFontColors[ALeft, ATop, ARight, ABottom: Integer]: TsColor
         read GetCellFontColors write SetCellFontColors;
     {@@ Name of the font used for the cell in column ACol and row ARow }
     property CellFontName[ACol, ARow: Integer]: String
         read GetCellFontName write SetCellFontName;
     {@@ Name of the font used for the cells within the range
         of column/row indexes defined by the rectangle. }
-    property CellFontNames[ARect: TGridRect]: String
+    property CellFontNames[ALeft, ATop, ARight, ABottom: Integer]: String
         read GetCellFontNames write SetCellFontNames;
     {@@ Style of the font (bold, italic, ...) used for text in the
         cell at column ACol and row ARow. }
@@ -358,7 +371,7 @@ type
         read GetCellFontStyle write SetCellFontStyle;
     {@@ Style of the font (bold, italic, ...) used for the cells within
         the range of column/row indexes defined by the rectangle. }
-    property CellFontStyles[ARect: TGridRect]: TsFontStyles
+    property CellFontStyles[ALeft, ATop, ARight, ABottom: Integer]: TsFontStyles
         read GetCellFontStyles write SetCellFontStyles;
     {@@ Size of the font (in points) used for the cell at column ACol
         and row ARow }
@@ -366,7 +379,7 @@ type
         read GetCellFontSize write SetCellFontSize;
     {@@ Size of the font (in points) used for the cells within the
         range of column/row indexes defined by the rectangle. }
-    property CellFontSizes[ARect: TGridRect]: Single
+    property CellFontSizes[ALeft, ATop, ARight, ABottom: Integer]: Single
         read GetCellFontSizes write SetCellFontSizes;
     {@@ Cell values }
     property Cells[ACol, ARow: Integer]: Variant
@@ -377,7 +390,7 @@ type
         read GetHorAlignment write SetHorAlignment;
     {@@ Parameter for the horizontal text alignments in all cells within the
         range cf column/row indexes defined by the rectangle. }
-    property HorAlignments[ARect: TGridRect]: TsHorAlignment
+    property HorAlignments[ALeft, ATop, ARight, ABottom: Integer]: TsHorAlignment
         read GetHorAlignments write SetHorAlignments;
     {@@ Hyperlink assigned to the cell in row ARow and column ACol }
     property Hyperlink[ACol, ARow: Integer]: String
@@ -387,14 +400,14 @@ type
         read GetNumberFormat write SetNumberFormat;
     {@@ Number format (as Excel string) to be applied to all cells within the
         range of column/row indexes defined by the rectangle. }
-    property NumberFormats[ARect: TGridRect]: String
+    property NumberFormats[ALeft, ATop, ARight, ABottom: Integer]: String
         read GetNumberFormats write SetNumberFormats;
     {@@ Rotation of the text in the cell at column ACol and row ARow. }
     property TextRotation[ACol, ARow: Integer]: TsTextRotation
         read GetTextRotation write SetTextRotation;
     {@@ Rotation of the text in the cells within the range of column/row indexes
         defined by the rectangle. }
-    property TextRotations[ARect: TGridRect]: TsTextRotation
+    property TextRotations[ALeft, ATop, ARight, ABottom: Integer]: TsTextRotation
         read GetTextRotations write SetTextRotations;
     {@@ Parameter for vertical text alignment in the cell at column ACol and
         row ARow. }
@@ -402,7 +415,7 @@ type
         read GetVertAlignment write SetVertAlignment;
     {@@ Parameter for vertical text alignment in the cells having column/row
         indexes defined by the rectangle. }
-    property VertAlignments[ARect: TGridRect]: TsVertAlignment
+    property VertAlignments[ALeft, ATop, ARight, ABottom: Integer]: TsVertAlignment
         read GetVertAlignments write SetVertAlignments;
     {@@ If true, word-wrapping of text within the cell at column ACol and row ARow
         is activated. }
@@ -410,7 +423,7 @@ type
         read GetWordwrap write SetWordwrap;
     {@@ If true, word-wrapping of text within all cells within the range defined
         by the rectangle is activated. }
-    property Wordwraps[ARect: TGridRect]: Boolean
+    property Wordwraps[ALeft, ATop, ARight, ABottom: Integer]: Boolean
         read GetWordwraps write SetWordwraps;
 
     // inherited, but modified
@@ -660,6 +673,9 @@ type
     {@@ inherited from ancestors}
     property OnContextPopup;
   end;
+
+const
+  NO_CELL_BORDER: TsCellBorderStyle = (LineStyle: lsThin; Color: scNotDefined);
 
 procedure Register;
 
@@ -2572,21 +2588,24 @@ end;
   is given as an index into the workbook's color palette. If the colors are
   different from cell to cell the value scUndefined is returned.
 
-  @param  ARect  Cell range defined as a rectangle: Left/Top refers to the cell
-                 in the left/top corner of the selection, Right/Bottom to the
-                 right/bottom corner.
+  @param  ALeft   Index of the left column of the cell range
+  @param  ATop    Index of the top row of the cell range
+  @param  ARight  Index of the right column of the cell range
+  @param  ABottom Index of the bottom row of the cell range
   @return Color index common to all cells within the selection. If the cells'
           background colors are different the value scUndefined is returned.
 -------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.GetBackgroundColors(ARect: TGridRect): TsColor;
+function TsCustomWorksheetGrid.GetBackgroundColors(ALeft, ATop, ARight, ABottom: Integer): TsColor;
 var
   c, r: Integer;
   clr: TsColor;
 begin
-  Result := GetBackgroundColor(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetBackgroundColor(ALeft, ATop);
   clr := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do
     begin
       Result := GetBackgroundColor(c, r);
       if Result <> clr then
@@ -2619,20 +2638,25 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the cell borders which are drawn around a given rectangular cell range.
 
-  @param  ARect  Rectangle defining the range of cell.
+  @param  ALeft   Index of the left column of the cell range
+  @param  ATop    Index of the top row of the cell range
+  @param  ARight  Index of the right column of the cell range
+  @param  ABottom Index of the bottom row of the cell range
   @return Set with flags indicating where borders are drawn (top/left/right/bottom)
           If the individual cells within the range have different borders an
           empty set is returned.
 -------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.GetCellBorders(ARect: TGridRect): TsCellBorders;
+function TsCustomWorksheetGrid.GetCellBorders(ALeft, ATop, ARight, ABottom: Integer): TsCellBorders;
 var
   c, r: Integer;
   b: TsCellBorders;
 begin
-  Result := GetCellBorder(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetCellBorder(ALeft, ATop);
   b := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do
     begin
       Result := GetCellBorder(c, r);
       if Result <> b then
@@ -2673,23 +2697,27 @@ end;
   by the parameter ABorder of a range of cells defined by the rectangle of
   column and row indexes. The style is defined by linestyle and line color.
 
-  @param   ARect    Rectangle whose edges define the limits of the grid row and
-                    column indexes of the cells.
+  @param   ALeft   Index of the left column of the cell range
+  @param   ATop    Index of the top row of the cell range
+  @param   ARight  Index of the right column of the cell range
+  @param   ABottom Index of the bottom row of the cell range
   @param   ABorder  Identifier of the border where the line will be drawn
                     (see TsCellBorder)
   @return  CellBorderStyle record containing information on line style and
            line color.
 -------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.GetCellBorderStyles(ARect: TGridRect;
+function TsCustomWorksheetGrid.GetCellBorderStyles(ALeft, ATop, ARight, ABottom: Integer;
   ABorder: TsCellBorder): TsCellBorderStyle;
 var
   c, r: Integer;
   bs: TsCellBorderStyle;
 begin
-  Result := GetCellBorderStyle(ARect.Left, ARect.Top, ABorder);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetCellBorderStyle(ALeft, ATop, ABorder);
   bs := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do
     begin
       Result := GetCellBorderStyle(c, r, ABorder);
       if (Result.LineStyle <> bs.LineStyle) or (Result.Color <> bs.Color) then
@@ -2745,23 +2773,26 @@ end;
   Returns the font to be used when painting text in the cells defined by the
   rectangle of row/column indexes.
 
-  @param   ARect    Rectangle whose edges define the limits of the grid row and
-                    column indexes of the cells.
+  @param   ALeft   Index of the left column of the cell range
+  @param   ATop    Index of the top row of the cell range
+  @param   ARight  Index of the right column of the cell range
+  @param   ABottom Index of the bottom row of the cell range
   @return  Font usable when painting on a canvas.
 -------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.GetCellFonts(ARect: TGridRect): TFont;
+function TsCustomWorksheetGrid.GetCellFonts(ALeft, ATop, ARight, ABottom: Integer): TFont;
 var
-//  c, r: Integer;
   r1,c1,r2,c2: Cardinal;
   sFont, sDefFont: TsFont;
   cell: PCell;
 begin
-  Result := GetCellFont(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetCellFont(ALeft, ATop);
   sDefFont := Workbook.GetDefaultFont;  // Default font
-  r1 := GetWorksheetRow(ARect.Top);
-  c1 := GetWorksheetCol(ARect.Left);
-  r2 := GetWorksheetRow(ARect.Bottom);
-  c2 := GetWorksheetRow(ARect.Right);
+  r1 := GetWorksheetRow(ATop);
+  c1 := GetWorksheetCol(ALeft);
+  r2 := GetWorksheetRow(ABottom);
+  c2 := GetWorksheetRow(ARight);
   for cell in Worksheet.Cells.GetRangeEnumerator(r1, c1, r2, c2) do
   begin
     sFont := Worksheet.ReadCellFont(cell);
@@ -2774,25 +2805,6 @@ begin
       exit;
     end;
   end;
-      {
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do
-    begin
-      cell := Worksheet.FindCell(GetWorksheetRow(r), GetWorksheetCol(c));
-      if cell <> nil then
-      begin
-        sFont := Worksheet.ReadCellFont(cell);
-        if (sFont.FontName <> sDefFont.FontName) and (sFont.Size <> sDefFont.Size)
-          and (sFont.Style <> sDefFont.Style) and (sFont.Color <> sDefFont.Color)
-        then
-        begin
-          Convert_sFont_to_Font(sDefFont, FCellFont);
-          Result := FCellFont;
-          exit;
-        end;
-      end;
-    end;
-    }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3806,11 +3818,23 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MergeCells(ARect: TGridRect);
 begin
+  MergeCells(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Merges the cells of the specified cell block to a single large cell
+  Only the upper left cell can have content and formatting (which is extended
+  into the other cells).
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.MergeCells(ALeft, ATop, ARight, ABottom: Integer);
+begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   Worksheet.MergeCells(
-    GetWorksheetRow(ARect.Top),
-    GetWorksheetCol(ARect.Left),
-    GetWorksheetRow(ARect.Bottom),
-    GetWorksheetCol(ARect.Right)
+    GetWorksheetRow(ATop),
+    GetWorksheetCol(ALeft),
+    GetWorksheetRow(ABottom),
+    GetWorksheetCol(ARight)
   );
 end;
 
@@ -4072,10 +4096,6 @@ end;
 procedure TsCustomWorksheetGrid.SelectSheetByIndex(AIndex: Integer);
 begin
   GetWorkbookSource.SelectWorksheet(Workbook.GetWorksheetByIndex(AIndex));
-  {
-  if Workbook <> nil then
-    LoadFromWorksheet(Workbook.GetWorksheetByIndex(AIndex));
-    }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4163,6 +4183,84 @@ begin
 
   if not (csDestroying in ComponentState) and Assigned(Parent) then
     ListenerNotification([lniWorksheet, lniSelection]);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Shows cell borders for the cells in the range between columns ALeft and ARight
+  and rows ATop and ABottom.
+  The border of the block's left outer edge is defined by ALeftOuterStyle,
+  that of the block's top outer edge by ATopOuterStyle, etc.
+  Set the color of a border style to scNotDefined or scTransparent in order to
+  hide the corresponding border line, or use the constant NO_CELL_BORDER.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.ShowCellBorders(ALeft, ATop, ARight, ABottom: Integer;
+  const ALeftOuterStyle, ATopOuterStyle, ARightOuterStyle, ABottomOuterStyle,
+  AHorInnerStyle, AVertInnerStyle: TsCellBorderStyle);
+
+  function BorderVisible(const AStyle: TsCellBorderStyle): Boolean;
+  begin
+    Result := (AStyle.Color <> scNotDefined) and (AStyle.Color <> scTransparent);
+  end;
+
+  procedure ProcessBorder(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+    const AStyle: TsCellBorderStyle);
+  var
+    cb: TsCellBorders = [];
+    cell: PCell;
+  begin
+    cell := Worksheet.FindCell(ARow, ACol);
+    if cell <> nil then
+      cb := Worksheet.ReadCellBorders(cell);
+    if BorderVisible(AStyle) then
+    begin
+      Include(cb, ABorder);
+      cell := Worksheet.WriteBorders(ARow, ACol, cb);
+      Worksheet.WriteBorderStyle(cell, ABorder, AStyle);
+    end else
+    if cb <> [] then
+    begin
+      Exclude(cb, ABorder);
+      cell := Worksheet.WriteBorders(ARow, ACol, cb);
+    end;
+    FixNeighborCellBorders(cell);
+  end;
+
+var
+  r, c, r1, c1, r2, c2: Cardinal;
+begin
+  if Worksheet = nil then
+    exit;
+
+  // Preparations
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  r1 := GetWorksheetRow(ATop);
+  r2 := GetWorksheetRow(ABottom);
+  c1 := GetWorksheetCol(ALeft);
+  c2 := GetWorksheetCol(ARight);
+
+  // Top outer border
+  for c := c1 to c2 do
+    ProcessBorder(r1, c, cbNorth, ATopOuterStyle);
+  // Bottom outer border
+  for c := c1 to c2 do
+    ProcessBorder(r2, c, cbSouth, ABottomOuterStyle);
+  // Left outer border
+  for r := r1 to r2 do
+    ProcessBorder(r, c1, cbWest, ALeftOuterStyle);
+  // Right outer border
+  for r := r1 to r2 do
+    ProcessBorder(r, c2, cbEast, ARightOuterStyle);
+  // Horizontal inner border
+  if r1 <> r2 then
+    for r := r1 to r2-1 do
+      for c := c1 to c2 do
+        ProcessBorder(r, c, cbSouth, AHorInnerStyle);
+  // Vertical inner border
+  if c1 <> c2 then
+    for r := r1 to r2 do
+      for c := c1 to c2-1 do
+        ProcessBorder(r, c, cbEast, AVertInnerStyle);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4437,15 +4535,17 @@ begin
   end;
 end;
 
-function TsCustomWorksheetGrid.GetCellFontColors(ARect: TGridRect): TsColor;
+function TsCustomWorksheetGrid.GetCellFontColors(ALeft, ATop, ARight, ABottom: Integer): TsColor;
 var
   c, r: Integer;
   clr: TsColor;
 begin
-  Result := GetCellFontColor(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetCellFontColor(ALeft, ATop);
   clr := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do begin
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do begin
       Result := GetCellFontColor(c, r);
       if (Result <> clr) then begin
         Result := scNotDefined;
@@ -4468,15 +4568,17 @@ begin
   end;
 end;
 
-function TsCustomWorksheetGrid.GetCellFontNames(ARect: TGridRect): String;
+function TsCustomWorksheetGrid.GetCellFontNames(ALeft, ATop, ARight, ABottom: Integer): String;
 var
   c, r: Integer;
   s: String;
 begin
-  Result := GetCellFontName(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetCellFontName(ALeft, ATop);
   s := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do begin
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do begin
       Result := GetCellFontName(c, r);
       if (Result <> '') and (Result <> s) then begin
         Result := '';
@@ -4498,15 +4600,17 @@ begin
   end;
 end;
 
-function TsCustomWorksheetGrid.GetCellFontSizes(ARect: TGridRect): Single;
+function TsCustomWorksheetGrid.GetCellFontSizes(ALeft, ATop, ARight, ABottom: Integer): Single;
 var
   c, r: Integer;
   sz: Single;
 begin
-  Result := GetCellFontSize(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetCellFontSize(ALeft, ATop);
   sz := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do begin
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do begin
       Result := GetCellFontSize(c, r);
       if (Result <> -1) and not SameValue(Result, sz, 1E-3) then begin
         Result := -1.0;
@@ -4528,15 +4632,18 @@ begin
   end;
 end;
 
-function TsCustomWorksheetGrid.GetCellFontStyles(ARect: TGridRect): TsFontStyles;
+function TsCustomWorksheetGrid.GetCellFontStyles(ALeft, ATop,
+  ARight, ABottom: Integer): TsFontStyles;
 var
   c, r: Integer;
   style: TsFontStyles;
 begin
-  Result := GetCellFontStyle(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetCellFontStyle(ALeft, ATop);
   style := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do begin
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do begin
       Result := GetCellFontStyle(c, r);
       if Result <> style then begin
         Result := [];
@@ -4591,15 +4698,17 @@ begin
   end;
 end;
 
-function TsCustomWorksheetGrid.GetHorAlignments(ARect: TGridRect): TsHorAlignment;
+function TsCustomWorksheetGrid.GetHorAlignments(ALeft, ATop, ARight, ABottom: Integer): TsHorAlignment;
 var
   c, r: Integer;
   horalign: TsHorAlignment;
 begin
-  Result := GetHorAlignment(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetHorAlignment(ALeft, ATop);
   horalign := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do begin
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do begin
       Result := GetHorAlignment(c, r);
       if Result <> horalign then begin
         Result := haDefault;
@@ -4637,14 +4746,17 @@ begin
   end;
 end;
 
-function TsCustomWorksheetGrid.GetNumberFormats(ARect: TGridRect): String;
+function TsCustomWorksheetGrid.GetNumberFormats(ALeft, ATop,
+  ARight, ABottom: Integer): String;
 var
   c, r: Integer;
   nfs: String;
 begin
-  nfs := GetNumberformat(ARect.Left, ARect.Top);
-  for r := ARect.Left to ARect.Right do
-    for c := ARect.Top to ARect.Bottom do
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  nfs := GetNumberformat(ALeft, ATop);
+  for r := ALeft to ARight do
+    for c := ATop to ABottom do
       if nfs <> GetNumberFormat(c, r) then
       begin
         Result := '';
@@ -4679,15 +4791,18 @@ begin
   end;
 end;
 
-function TsCustomWorksheetGrid.GetTextRotations(ARect: TGridRect): TsTextRotation;
+function TsCustomWorksheetGrid.GetTextRotations(ALeft, ATop,
+  ARight, ABottom: Integer): TsTextRotation;
 var
   c, r: Integer;
   textrot: TsTextRotation;
 begin
-  Result := GetTextRotation(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetTextRotation(ALeft, ATop);
   textrot := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do begin
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do begin
       Result := GetTextRotation(c, r);
       if Result <> textrot then begin
         Result := trHorizontal;
@@ -4714,15 +4829,18 @@ begin
   end;
 end;
 
-function TsCustomWorksheetGrid.GetVertAlignments(ARect: TGridRect): TsVertAlignment;
+function TsCustomWorksheetGrid.GetVertAlignments(
+  ALeft, ATop, ARight, ABottom: Integer): TsVertAlignment;
 var
   c, r: Integer;
   vertalign: TsVertAlignment;
 begin
-  Result := GetVertalignment(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetVertalignment(ALeft, ATop);
   vertalign := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do begin
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do begin
       Result := GetVertAlignment(c, r);
       if Result <> vertalign then begin
         Result := vaDefault;
@@ -4752,15 +4870,18 @@ begin
   end;
 end;
 
-function TsCustomWorksheetGrid.GetWordwraps(ARect: TGridRect): Boolean;
+function TsCustomWorksheetGrid.GetWordwraps(ALeft, ATop,
+  ARight, ABottom: Integer): Boolean;
 var
   c, r: Integer;
   wrapped: Boolean;
 begin
-  Result := GetWordwrap(ARect.Left, ARect.Top);
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetWordwrap(ALeft, ATop);
   wrapped := Result;
-  for c := ARect.Left to ARect.Right do
-    for r := ARect.Top to ARect.Bottom do begin
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do begin
       Result := GetWordwrap(c, r);
       if Result <> wrapped then begin
         Result := false;
@@ -4806,15 +4927,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetBackgroundColors(ARect: TGridRect;
-  AValue: TsColor);
+procedure TsCustomWorksheetGrid.SetBackgroundColors(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: TsColor);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetBackgroundColor(c, r, AValue);
   finally
     EndUpdate;
@@ -4838,15 +4961,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetCellBorders(ARect: TGridRect;
-  AValue: TsCellBorders);
+procedure TsCustomWorksheetGrid.SetCellBorders(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: TsCellBorders);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetCellBorder(c, r, AValue);
   finally
     EndUpdate;
@@ -4870,15 +4995,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetCellBorderStyles(ARect: TGridRect;
-  ABorder: TsCellBorder; AValue: TsCellBorderStyle);
+procedure TsCustomWorksheetGrid.SetCellBorderStyles(ALeft, ATop,
+  ARight, ABottom: Integer; ABorder: TsCellBorder; AValue: TsCellBorderStyle);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetCellBorderStyle(c, r, ABorder, AValue);
   finally
     EndUpdate;
@@ -4910,15 +5037,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetCellFonts(ARect: TGridRect;
+procedure TsCustomWorksheetGrid.SetCellFonts(ALeft, ATop, ARight, ABottom: Integer;
   AValue: TFont);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetCellFont(c, r, AValue);
   finally
     EndUpdate;
@@ -4936,14 +5065,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetCellFontColors(ARect: TGridRect; AValue: TsColor);
+procedure TsCustomWorksheetGrid.SetCellFontColors(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: TsColor);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetCellFontColor(c, r, AValue);
   finally
     EndUpdate;
@@ -4961,14 +5093,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetCellFontNames(ARect: TGridRect; AValue: String);
+procedure TsCustomWorksheetGrid.SetCellFontNames(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: String);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetCellFontName(c, r, AValue);
   finally
     EndUpdate;
@@ -4987,15 +5122,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetCellFontSizes(ARect: TGridRect;
-  AValue: Single);
+procedure TsCustomWorksheetGrid.SetCellFontSizes(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: Single);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetCellFontSize(c, r, AValue);
   finally
     EndUpdate;
@@ -5014,15 +5151,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetCellFontStyles(ARect: TGridRect;
-  AValue: TsFontStyles);
+procedure TsCustomWorksheetGrid.SetCellFontStyles(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: TsFontStyles);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetCellFontStyle(c, r, AValue);
   finally
     EndUpdate;
@@ -5155,15 +5294,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetHorAlignments(ARect: TGridRect;
-  AValue: TsHorAlignment);
+procedure TsCustomWorksheetGrid.SetHorAlignments(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: TsHorAlignment);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetHorAlignment(c, r, AValue);
   finally
     EndUpdate;
@@ -5197,14 +5338,17 @@ begin
     Worksheet.WriteNumberFormat(GetWorksheetRow(ARow), GetWorksheetCol(ACol), nfCustom, AValue);
 end;
 
-procedure TsCustomWorksheetGrid.SetNumberFormats(ARect: TGridRect; AValue: String);
+procedure TsCustomWorksheetGrid.SetNumberFormats(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: String);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetNumberFormat(c, r, AValue);
   finally
     EndUpdate;
@@ -5286,15 +5430,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetTextRotations(ARect: TGridRect;
-  AValue: TsTextRotation);
+procedure TsCustomWorksheetGrid.SetTextRotations(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: TsTextRotation);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetTextRotation(c, r, AValue);
   finally
     EndUpdate;
@@ -5313,15 +5459,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetVertAlignments(ARect: TGridRect;
-  AValue: TsVertAlignment);
+procedure TsCustomWorksheetGrid.SetVertAlignments(
+  ALeft, ATop, ARight, ABottom: Integer; AValue: TsVertAlignment);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetVertAlignment(c, r, AValue);
   finally
     EndUpdate;
@@ -5340,15 +5488,17 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetWordwraps(ARect: TGridRect;
+procedure TsCustomWorksheetGrid.SetWordwraps(ALeft, ATop, ARight, ABottom: Integer;
   AValue: Boolean);
 var
   c,r: Integer;
 begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
   BeginUpdate;
   try
-    for c := ARect.Left to ARect.Right do
-      for r := ARect.Top to ARect.Bottom do
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
         SetWordwrap(c, r, AValue);
   finally
     EndUpdate;

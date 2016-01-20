@@ -110,6 +110,8 @@ function GetFormatFromFileName(const AFileName: TFileName;
 function GetFormatFromFileName(const AFileName: TFileName;
   out SheetType: TsSpreadsheetFormat): Boolean; overload; deprecated 'Use overloaded function with TsSpreadsheetID';
 
+procedure EnsureOrder(var a,b: Integer); overload;
+procedure EnsureOrder(var a,b: Cardinal); overload;
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
 
 procedure FloatToFraction(AValue: Double; AMaxDenominator: Int64;
@@ -1133,6 +1135,36 @@ end;
   end;
 end;
   }
+
+{@@ ----------------------------------------------------------------------------
+  Helper procedure which guarantees that a is not larger than b
+-------------------------------------------------------------------------------}
+procedure EnsureOrder(var a,b: Integer);
+var
+  tmp: Integer;
+begin
+  if a > b then
+  begin
+    tmp := a;
+    a := b;
+    b := tmp;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Helper procedure which guarantees that a is not larger than b
+-------------------------------------------------------------------------------}
+procedure EnsureOrder(var a,b: cardinal);
+var
+  tmp: cardinal;
+begin
+  if a > b then
+  begin
+    tmp := a;
+    a := b;
+    b := tmp;
+  end;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Helper function to reduce typing: "if a conditions is true return the first

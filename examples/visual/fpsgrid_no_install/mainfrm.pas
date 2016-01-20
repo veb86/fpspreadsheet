@@ -54,6 +54,8 @@ uses
 procedure TForm1.FormCreate(Sender: TObject);
 const
   THICK_BORDER: TsCellBorderStyle = (LineStyle: lsThick; Color: clNavy);
+  MEDIUM_BORDER: TsCellBorderSTyle = (LineStyle: lsMedium; Color: clRed);
+  DOTTED_BORDER: TsCellBorderSTyle = (LineStyle: lsDotted; Color: clRed);
 begin
   Grid := TsWorksheetGrid.Create(self);
 
@@ -61,7 +63,7 @@ begin
   Grid.Parent := TabControl;
   Grid.Align := alClient;
 
-  // Useful options
+  // Useful options and properties
   Grid.Options := Grid.Options + [goColSizing, goRowSizing,
     goFixedColSizing,    // useful if the spreadsheet contains frozen columns
     goEditing,           // needed for modifying cell content
@@ -76,20 +78,19 @@ begin
   Grid.TextOverflow := true;        // too long text extends into neighbor cells
   Grid.AutoCalc := true;            // automatically calculate formulas
   Grid.ShowHint := true;            // needed to show cell comments
-
-  // Create an empty worksheet
-  //Grid.NewWorkbook(26, 100);  // Not absolutely necessary - grid will expand automatically
+  Grid.RowCount := 10;              // Prepare 10 columns (incl fixed header)
+  Grid.ColCount := 8;               // and 8 rows (incl fixed header) - but grid expands automatically
 
   // Add some cells and formats
   Grid.ColWidths[1] := 180;
-  Grid.ColWidths[2] := 80;
+  Grid.ColWidths[2] := 100;
 
   Grid.Cells[1,1] := 'This is a demo';
-  Grid.MergeCells(Rect(1,1, 2,1));
+  Grid.MergeCells(1,1, 2,1);
   Grid.HorAlignment[1,1] := haCenter;
-  Grid.CellBorders[Rect(1,1, 2,1)] := [cbSouth];
-  Grid.CellBorderStyles[Rect(1,1, 2,1), cbSouth] := THICK_BORDER;
-  Grid.BackgroundColors[Rect(1,1, 2,1)] := RGBToColor(220, 220, 220);
+  Grid.CellBorders[1,1, 2,1] := [cbSouth];
+  Grid.CellBorderStyles[1,1, 2,1, cbSouth] := THICK_BORDER;
+  Grid.BackgroundColors[1,1, 2,1] := RGBToColor(220, 220, 220);
   Grid.CellFontColor[1,1] := clNavy;
   Grid.CellFontStyle[1,1] := [fssBold];
 
@@ -103,7 +104,7 @@ begin
   Grid.HorAlignment[1,3] := haRight;
   Grid.CellFontStyle[1,3] := [fssItalic];
   Grid.CellFontColor[1,3] := clNavy;
-  Grid.NumberFormat[2,3] := 'mm"/"dd, yyyy';
+  Grid.NumberFormat[2,3] := 'mmm dd, yyyy';
   Grid.Cells[2,3] := date;
 
   Grid.Cells[1,4] := 'Time:';
