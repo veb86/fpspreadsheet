@@ -50,8 +50,8 @@ type
 //    FOwnsWorkbook: Boolean;
 //    FOwnedWorksheet: TsWorksheet;
     FHeaderCount: Integer;
-    FInitColCount: Integer;
-    FInitRowCount: Integer;
+//    FInitColCount: Integer;
+//    FInitRowCount: Integer;
     FFrozenCols: Integer;
     FFrozenRows: Integer;
     FEditText: String;
@@ -934,14 +934,16 @@ end;
 -------------------------------------------------------------------------------}
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
-  FInternalWorkbookSource := TsWorkbookSource.Create(self); //AOwner);
+  FInternalWorkbookSource := TsWorkbookSource.Create(self);
   FInternalWorkbookSource.Name := 'internal';
   inherited Create(AOwner);
   AutoAdvance := aaDown;
   ExtendedSelect := true;
   FHeaderCount := 1;
-  FInitColCount := DEFAULT_COL_COUNT;
-  FInitRowCount := DEFAULT_ROW_COUNT;
+  ColCount := DEFAULT_COL_COUNT + FHeaderCount;
+  RowCount := DEFAULT_ROW_COUNT + FHeaderCount;
+//  FInitColCount := DEFAULT_COL_COUNT;
+//  FInitRowCount := DEFAULT_ROW_COUNT;
   FCellFont := TFont.Create;
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
@@ -1476,7 +1478,8 @@ end;
 procedure TsCustomWorksheetGrid.DoOnResize;
 begin
   if (csDesigning in ComponentState) and (Worksheet = nil) then
-    NewWorkbook(FInitColCount, FInitRowCount);
+    NewWorkbook(ColCount, RowCount);
+//    NewWorkbook(FInitColCount, FInitRowCount);
   inherited;
 end;
 
@@ -3335,9 +3338,11 @@ begin
   if AGridCol < FHeaderCount then
     exit;
 
-  if LongInt(Worksheet.GetLastColIndex) + 1 + FHeaderCount >= FInitColCount then
+//  if LongInt(Worksheet.GetLastColIndex) + 1 + FHeaderCount >= ColCount then //FInitColCount then
+  if GetGridCol(Worksheet.GetLastColIndex + 1) >= ColCount then
     ColCount := ColCount + 1;
-  c := AGridCol - FHeaderCount;
+  c := GetWorksheetCol(AGridCol);
+//  c := AGridCol - FHeaderCount;
   Worksheet.InsertCol(c);
 
   UpdateColWidths(AGridCol);
@@ -3353,9 +3358,11 @@ begin
   if AGridRow < FHeaderCount then
     exit;
 
-  if LongInt(Worksheet.GetlastRowIndex) + 1 + FHeaderCount >= FInitRowCount then
+//  if LongInt(Worksheet.GetlastRowIndex) + 1 + FHeaderCount >= FInitRowCount then
+  if GetGridRow(Worksheet.GetLastRowIndex + 1) >= RowCount then
     RowCount := RowCount + 1;
-  r := AGridRow - FHeaderCount;
+  r := GetWorksheetRow(AGridRow);
+//  r := AGridRow - FHeaderCount;
   Worksheet.InsertRow(r);
 
   UpdateRowHeights(AGridRow);
@@ -3620,7 +3627,6 @@ begin
   inherited;
   if FWorkbookSource = nil then
     Setup;
-//    NewWorkbook(FInitColCount, FInitRowCount);
 end;
                                (*
 {@@ ----------------------------------------------------------------------------
@@ -3701,24 +3707,6 @@ procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
 begin
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AWorksheetIndex);
-  {
-  if FOwnsWorkbook then
-    FreeAndNil(FOwnedWorkbook);
-
-  if FWorkbookSource <> nil then
-    FWorkbookSource.LoadFromSpreadsheetFile(AFileName, AWorksheetIndex)
-  else
-  begin
-    BeginUpdate;
-    try
-      CreateNewWorkbook;
-      Workbook.ReadFromFile(AFilename);
-      LoadFromWorksheet(Workbook.GetWorksheetByIndex(AWorksheetIndex));
-    finally
-      EndUpdate;
-    end;
-  end;
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3968,8 +3956,10 @@ end;
 procedure TsCustomWorksheetGrid.NewWorkbook(AColCount, ARowCount: Integer);
 begin
   GetWorkbookSource.CreateNewWorkbook;
-  FInitColCount := AColCount;
-  FInitRowCount := ARowCount;
+  ColCount := AColCount + FHeaderCount;
+  RowCount := ARowCount + FHeaderCount;
+//  FInitColCount := AColCount;
+//  FInitRowCount := ARowCount;
   Setup;
 
   {
@@ -4129,8 +4119,8 @@ begin
 
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     if ShowHeaders then begin
-      ColCount := FInitColCount + 1; //2;
-      RowCount := FInitRowCount + 1; //2;
+//      ColCount := FInitColCount + 1; //2;
+//      RowCount := FInitRowCount + 1; //2;
       FixedCols := 1;
       FixedRows := 1;
       ColWidths[0] := GetDefaultHeaderColWidth;
@@ -4138,15 +4128,17 @@ begin
     end else begin
       FixedCols := 0;
       FixedRows := 0;
-      ColCount := FInitColCount; //0;
-      RowCount := FInitRowCount; //0;
+//      ColCount := FInitColCount; //0;
+//      RowCount := FInitRowCount; //0;
     end;
   end else
   if Worksheet <> nil then begin
     Convert_sFont_to_Font(Workbook.GetDefaultFont, Font);
     Canvas.Font.Assign(Font);
-    ColCount := Max(integer(Worksheet.GetLastColIndex) + 1 + FHeaderCount, FInitColCount);
-    RowCount := Max(integer(Worksheet.GetLastRowIndex) + 1 + FHeaderCount, FInitRowCount);
+    ColCount := Max(GetGridCol(Worksheet.GetLastColIndex) + 1, ColCount);
+    RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex) + 1, RowCount);
+    //ColCount := Max(integer(Worksheet.GetLastColIndex) + 1 + FHeaderCount, FInitColCount);
+    //RowCount := Max(integer(Worksheet.GetLastRowIndex) + 1 + FHeaderCount, FInitRowCount);
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin

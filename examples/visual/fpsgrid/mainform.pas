@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ActnList, Spin, Buttons, ButtonPanel,
-  fpspreadsheetgrid, fpspreadsheet, fpsallformats, fpspreadsheetctrls;
+  fpspreadsheetgrid, fpsallformats;
 
 type
 
@@ -26,12 +26,12 @@ type
     Panel1: TPanel;
     Panel2: TPanel;
     SaveDialog: TSaveDialog;
-    sWorkbookSource1: TsWorkbookSource;
     WorksheetGrid: TsWorksheetGrid;
     procedure BtnNewClick(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
     procedure BtnEnterTextClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
     procedure SheetsComboSelect(Sender: TObject);
   private
     { private declarations }
@@ -46,7 +46,7 @@ var
 implementation
 
 uses
-  fpcanvas, fpsutils, fpsRegFileFormats;
+  fpcanvas, fpstypes, fpsutils, fpsRegFileFormats, fpspreadsheet;
 
 
 { TForm1 }
@@ -145,6 +145,60 @@ begin
         MessageDlg(err, mtError, [mbOK], 0);
     end;
   end;
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+const
+  THICK_BORDER: TsCellBorderStyle = (LineStyle: lsThick; Color: clNavy);
+  MEDIUM_BORDER: TsCellBorderSTyle = (LineStyle: lsMedium; Color: clRed);
+  DOTTED_BORDER: TsCellBorderSTyle = (LineStyle: lsDotted; Color: clRed);
+begin
+  // Add some cells and formats
+  WorksheetGrid.ColWidths[1] := 180;
+  WorksheetGrid.ColWidths[2] := 100;
+
+  WorksheetGrid.Cells[1,1] := 'This is a demo';
+  WorksheetGrid.MergeCells(1,1, 2,1);
+  WorksheetGrid.HorAlignment[1,1] := haCenter;
+  WorksheetGrid.CellBorders[1,1, 2,1] := [cbSouth];
+  WorksheetGrid.CellBorderStyles[1,1, 2,1, cbSouth] := THICK_BORDER;
+  WorksheetGrid.BackgroundColors[1,1, 2,1] := RGBToColor(220, 220, 220);
+  WorksheetGrid.CellFontColor[1,1] := clNavy;
+  WorksheetGrid.CellFontStyle[1,1] := [fssBold];
+
+  WorksheetGrid.Cells[1,2] := 'Number:';
+  WorksheetGrid.HorAlignment[1,2] := haRight;
+  WorksheetGrid.CellFontStyle[1,2] := [fssItalic];
+  WorksheetGrid.CellFontColor[1,2] := clNavy;
+  WorksheetGrid.Cells[2,2] := 1.234;
+
+  WorksheetGrid.Cells[1,3] := 'Date:';
+  WorksheetGrid.HorAlignment[1,3] := haRight;
+  WorksheetGrid.CellFontStyle[1,3] := [fssItalic];
+  WorksheetGrid.CellFontColor[1,3] := clNavy;
+  WorksheetGrid.NumberFormat[2,3] := 'mmm dd, yyyy';
+  WorksheetGrid.Cells[2,3] := date;
+
+  WorksheetGrid.Cells[1,4] := 'Time:';
+  WorksheetGrid.HorAlignment[1,4] := haRight;
+  WorksheetGrid.CellFontStyle[1,4] := [fssItalic];
+  WorksheetGrid.CellFontColor[1,4] := clNavy;
+  WorksheetGrid.NumberFormat[2,4] := 'hh:nn';
+  WorksheetGrid.Cells[2,4] := now();
+
+  WorksheetGrid.Cells[1,5] := 'Rich text:';
+  WorksheetGrid.HorAlignment[1,5] := haRight;
+  WorksheetGrid.CellFontStyle[1,5] := [fssItalic];
+  WorksheetGrid.CellFontColor[1,5] := clNavy;
+  WorksheetGrid.Cells[2,5] := '100 cm<sup>2</sup>';
+
+  WorksheetGrid.Cells[1,6] := 'Formula:';
+  WorksheetGrid.HorAlignment[1,6] := haRight;
+  WorksheetGrid.CellFontStyle[1,6] := [fssItalic];
+  WorksheetGrid.CellFontColor[1,6] := clNavy;
+  WorksheetGrid.Cells[2,6] := '=B2^2*PI()';
+  WorksheetGrid.CellComment[2,6] := 'Area of the circle with radius given in cell B2';
+  WorksheetGrid.NumberFormat[2,6] := '0.000';
 end;
 
 procedure TForm1.BtnEnterTextClick(Sender: TObject);

@@ -6,8 +6,9 @@ object Form1: TForm1
   Caption = 'fpsGrid'
   ClientHeight = 649
   ClientWidth = 894
+  OnCreate = FormCreate
   ShowHint = True
-  LCLVersion = '1.5'
+  LCLVersion = '1.7'
   object Panel1: TPanel
     Left = 0
     Height = 41
@@ -76,16 +77,19 @@ object Form1: TForm1
     Height = 572
     Top = 36
     Width = 894
+    AutoCalc = True
     FrozenCols = 0
     FrozenRows = 0
     ReadFormulas = False
     WorkbookSource = WorksheetGrid.internal
     Align = alClient
     AutoAdvance = aaDown
-    ColCount = 27
+    ColCount = 10
+    DefaultColWidth = 64
+    DefaultRowHeight = 22
     MouseWheelOption = mwGrid
-    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goDblClickAutoSize, goSmoothScroll, goHeaderHotTracking, goHeaderPushedLook, goFixedColSizing]
-    RowCount = 101
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goDblClickAutoSize, goSmoothScroll, goHeaderHotTracking, goHeaderPushedLook, goFixedColSizing, goCellHints]
+    RowCount = 10
     TabOrder = 1
     TitleStyle = tsNative
   end
@@ -123,11 +127,6 @@ object Form1: TForm1
       TabOrder = 0
       Text = 'Sheet 1'
     end
-  end
-  object sWorkbookSource1: TsWorkbookSource
-    AutoDetectFormat = False
-    FileFormat = sfExcel8
-    Options = []
   end
   object OpenDialog: TOpenDialog
     DefaultExt = '.xls'
