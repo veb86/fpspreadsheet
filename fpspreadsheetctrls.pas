@@ -94,6 +94,8 @@ type
     procedure InternalCreateNewWorkbook(AWorkbook: TsWorkbook = nil);
     procedure InternalLoadFromFile(AFileName: string; AAutoDetect: Boolean;
       AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer = -1);
+    procedure InternalLoadFromWorkbook(AWorkbook: TsWorkbook;
+      AWorksheetIndex: Integer = -1);
     procedure Loaded; override;
 
   public
@@ -112,6 +114,7 @@ type
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1); overload;
+    procedure LoadFromWorkbook(AWorkbook: TsWorkbook; AWorksheetIndex: Integer = -1);
     {
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AWorksheetIndex: Integer = -1); overload;
@@ -937,8 +940,26 @@ begin
     DoShowError(FWorkbook.ErrorMsg);
 end;
 }
-
+var
+  book: TsWorkbook;
 begin
+  book := TsWorkbook.Create;
+  try
+    if AAutoDetect then
+      book.ReadfromFile(AFileName)
+    else
+      book.ReadFromFile(AFileName, AFormatID);
+  except
+    book.AddErrorMsg(rsCannotReadFile, [AFileName]);
+    // Code executed subsequently will be a pain if there is no worksheet!
+    if book.GetWorksheetCount = 0 then
+      book.AddWorksheet(Format(rsDefaultSheetName, [1]));
+  end;
+
+  InternalLoadFromWorkbook(book, AWorksheetIndex);
+  (*
+
+
   // Create a new empty workbook
   InternalCreateNewWorkbook;
 
@@ -967,6 +988,26 @@ begin
       AWorksheetIndex := 0;
   end;
   SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
+
+  // If required, display loading error message
+  if FWorkbook.ErrorMsg <> '' then
+    DoShowError(FWorkbook.ErrorMsg);
+    *)
+end;
+
+procedure TsWorkbookSource.InternalLoadFromWorkbook(AWorkbook: TsWorkbook;
+  AWorksheetIndex: Integer = -1);
+begin
+  InternalCreateNewWorkbook(AWorkbook);
+  WorkbookOpenedHandler(self);
+
+  if AWorksheetIndex = -1 then
+  begin
+    if FWorkbook.ActiveWorksheet <> nil then
+      AWorksheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet) else
+      AWorksheetIndex := 0;
+  end;
+  SelectWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
 
   // If required, display loading error message
   if FWorkbook.ErrorMsg <> '' then
@@ -1046,6 +1087,18 @@ const
 begin
   InternalLoadFromFile(AFileName, true, sfNotNeeded, AWorksheetIndex);
 end;                                        *)
+
+{@@ ----------------------------------------------------------------------------
+  Uses an already existing workbook in the visual controls.
+
+  IMPORTANT: THE CALLING ROUTINE MUST NOT DESTROY THE WORKBOOK, it is destroyed
+  here by the TsWorkbookSource.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.LoadFromWorkbook(AWorkbook: TsWorkbook;
+  AWorksheetIndex: Integer = -1);
+begin
+  InternalLoadFromWorkbook(AWorkbook, AWorksheetIndex);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Notifies listeners of workbook, worksheet, cell, or selection changes.

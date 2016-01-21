@@ -657,7 +657,7 @@ type
     procedure ReadFromFile(AFileName: string; AFormatID: TsSpreadFormatID;
       AParams: TsStreamParams = []); overload;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat;
-      AParams: TsStreamParams = []); overload; deprecated 'Use TsSpreadFormatID instead of TsSpreadsheetFormat';
+      AParams: TsStreamParams = []); overload;
     procedure ReadFromFile(AFileName: string;
       AParams: TsStreamParams = []); overload;
     procedure ReadFromFileIgnoringExtension(AFileName: string;
@@ -665,18 +665,18 @@ type
     procedure ReadFromStream(AStream: TStream; AFormatID: TsSpreadFormatID;
       AParams: TsStreamParams = []); overload;
     procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AParams: TsStreamParams = []); overload; deprecated 'Use TsSpreadFormatID instead of TsSpreadsheetFormat';
+      AParams: TsStreamParams = []); overload;
 
     procedure WriteToFile(const AFileName: string; const AFormatID: TsSpreadFormatID;
       const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); overload;
     procedure WriteToFile(const AFileName: string; const AFormat: TsSpreadsheetFormat;
-      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); overload; deprecated 'Use TsSpreadFormatID instead of TsSpreadsheetFormat';
+      const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); overload;
     procedure WriteToFile(const AFileName: String;
       const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); overload;
     procedure WriteToStream(AStream: TStream; AFormatID: TsSpreadFormatID;
       AParams: TsStreamParams = []); overload;
     procedure WriteToStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
-      AParams: TsStreamParams = []); overload; deprecated 'Use TsSpreadFormatID instead of TsSpreadsheetFormat';
+      AParams: TsStreamParams = []); overload;
 
     { Worksheet list handling methods }
     function  AddWorksheet(AName: string;

@@ -416,16 +416,24 @@ end;
 
 { Loads the spreadsheet file selected by the AcFileOpen action }
 procedure TMainForm.AcFileOpenAccept(Sender: TObject);
+var
+  crs: TCursor;
 begin
-  WorkbookSource.AutodetectFormat := false;
-  case AcFileOpen.Dialog.FilterIndex of
-    1: WorkbookSource.AutoDetectFormat := true;      // All spreadsheet files
-    2: WorkbookSource.AutoDetectFormat := true;      // All Excel files
-    else WorkbookSource.FileFormatID := FOpenFormats[AcFileOpen.Dialog.FilterIndex - 3];
+  crs := Screen.Cursor;
+  Screen.Cursor := crHourglass;
+  try
+    WorkbookSource.AutodetectFormat := false;
+    case AcFileOpen.Dialog.FilterIndex of
+      1: WorkbookSource.AutoDetectFormat := true;      // All spreadsheet files
+      2: WorkbookSource.AutoDetectFormat := true;      // All Excel files
+      else WorkbookSource.FileFormatID := FOpenFormats[AcFileOpen.Dialog.FilterIndex - 3];
          // -3 because FilterIndex is 1-based and there are 2 add'l items at the top.
+    end;
+    WorkbookSource.FileName := UTF8ToAnsi(AcFileOpen.Dialog.FileName);  // this loads the file
+    UpdateCaption;
+  finally
+    Screen.Cursor := crs;
   end;
-  WorkbookSource.FileName := UTF8ToAnsi(AcFileOpen.Dialog.FileName);  // this loads the file
-  UpdateCaption;
 end;
 
 { Saves the spreadsheet to the file selected by the AcFileSaveAs action }

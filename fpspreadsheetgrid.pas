@@ -276,6 +276,7 @@ type
       AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AWorksheetIndex: Integer = -1); overload;
+    procedure LoadFromWorkbook(AWorkbook: TsWorkbook; AWorksheetIndex: Integer = -1);
     procedure NewWorkbook(AColCount, ARowCount: Integer);
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
@@ -3707,6 +3708,23 @@ procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
 begin
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AWorksheetIndex);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Loads an existing workbook into the grid.
+
+  @param   AWorkbook        Workbook that had been created/loaded before.
+  @param   AWorksheetIndex  Index of the worksheet to be shown in the grid
+                            (If empty then the active worksheet is loaded)
+
+  @Note THE CALLING PROCEDURE MUST NOT DESTROY THE WORKBOOK! The workbook will
+   be destroyed by the workbook source.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.LoadFromWorkbook(AWorkbook: TsWorkbook;
+  AWorksheetIndex: Integer = -1);
+begin
+  GetWorkbookSource.LoadFromWorkbook(AWorkbook, AWorksheetIndex);
+  Invalidate;
 end;
 
 {@@ ----------------------------------------------------------------------------

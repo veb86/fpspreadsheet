@@ -35,6 +35,8 @@ object MainForm: TMainForm
       Align = alClient
       AutoAdvance = aaDown
       ColCount = 27
+      DefaultColWidth = 64
+      DefaultRowHeight = 22
       Font.Color = clBlack
       Font.Height = -13
       Font.Name = 'Arial'
@@ -81,7 +83,7 @@ object MainForm: TMainForm
       Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goColSizing, goAlwaysShowEditor, goThumbTracking, goCellHints, goTruncCellHints]
       Strings.Strings = (
         'FileName='
-        'FileFormat=-1 []'
+        'FileFormat=(unknown)'
         'ActiveWorksheet=Sheet1'
         'Options=boAutoCalc, boCalcBeforeSaving, boReadFormulas'
         '(-) FormatSettings='
