@@ -1688,7 +1688,10 @@ begin
     // Avoid painting into the header cells
     cliprect := ClientRect;
     if FixedCols > 0 then
-      ColRowToOffset(True, True, FixedCols-1, tmp, cliprect.Left);
+      if IsRightToLeft then
+        ColRowToOffset(True, true, FixedCols-1, cliprect.Right, tmp)
+      else
+        ColRowToOffset(True, True, FixedCols-1, tmp, cliprect.Left);
     if FixedRows > 0 then
       ColRowToOffset(False, True, FixedRows-1, tmp, cliprect.Top);
     DrawFrozenPaneBorders(clipRect);
@@ -1884,12 +1887,23 @@ var
   fmt: PsCellFormat;
 begin
   if Assigned(Worksheet) then begin
-    // Left border
-    if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) then
-      DrawBorderLine(ARect.Left-1, ARect, drawVert, bs);
-    // Right border
-    if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) then
-      DrawBorderLine(ARect.Right-1, ARect, drawVert, bs);
+    if IsRightToLeft then
+    begin
+      // Left border
+      if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) then
+        DrawBorderLine(ARect.Left-1, ARect, drawVert, bs);
+      // Right border
+      if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) then
+        DrawBorderLine(ARect.Right-1, ARect, drawVert, bs);
+    end else
+    begin
+      // Left border
+      if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) then
+        DrawBorderLine(ARect.Left-1, ARect, drawVert, bs);
+      // Right border
+      if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) then
+        DrawBorderLine(ARect.Right-1, ARect, drawVert, bs);
+    end;
     // Top border
     if GetBorderstyle(ACol, ARow, 0, -1, ACell, bs) then
       DrawBorderLine(ARect.Top-1, ARect, drawHor, bs);
@@ -2211,8 +2225,15 @@ begin
         end;
       end;
 
-      ColRowToOffset(true, true, gc, rct.Left, tmp);
-      ColRowToOffset(true, true, gcNext-1, tmp, rct.Right);
+      if IsRightToLeft then
+      begin
+        ColRowToOffset(true, true, gc, tmp, rct.Right);
+        ColRowToOffset(true, true, gcNext-1, rct.Left, tmp);
+      end else
+      begin
+        ColRowToOffset(true, true, gc, rct.Left, tmp);
+        ColRowToOffset(true, true, gcNext-1, tmp, rct.Right);
+      end;
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
@@ -2268,19 +2289,30 @@ begin
   if Worksheet.IsMerged(cell) then
   begin
     Worksheet.FindMergedRange(cell, r1,c1,r2,c2);
-    P1 := CellRect(GetGridCol(c1), GetGridRow(r1)).TopLeft;
-    P2 := CellRect(GetGridCol(c2), GetGridRow(r2)).BottomRight;
+    if IsRightToLeft then
+    begin
+      P1.y := CellRect(GetGridCol(c1), GetGridRow(r1)).Top;
+      P1.x := CellRect(GetGridCol(c1), GetGridRow(r1)).Right;
+      P2.y := CellRect(GetGridCol(c2), GetGridRow(r2)).Bottom;
+      P2.x := CellRect(GetGridCol(c2), GetGridRow(r2)).Left;
+    end else
+    begin
+      P1 := CellRect(GetGridCol(c1), GetGridRow(r1)).TopLeft;
+      P2 := CellRect(GetGridCol(c2), GetGridRow(r2)).BottomRight;
+    end;
   end else
   begin
     P1 := CellRect(Selection.Left, Selection.Top).TopLeft;
     P2 := CellRect(Selection.Right, Selection.Bottom).BottomRight;
   end;
+
   // Cosmetics at the edges of the grid to avoid spurious rests
   delta := FSelPen.Width div 2;
   if Selection.Top > TopRow then dec(P1.Y, delta) else inc(P1.Y, delta);
   if Selection.Left > LeftCol then dec(P1.X, delta) else inc(P1.X, delta);
   if Selection.Right = ColCount-1 then dec(P2.X, delta);
   if Selection.Bottom = RowCount-1 then dec(P2.Y, delta);
+
   // Set up the canvas
   Canvas.Pen.Assign(FSelPen);
   if UseXORFeatures then begin
@@ -2288,6 +2320,7 @@ begin
     Canvas.Pen.Mode := pmXOR;
   end;
   Canvas.Brush.Style := bsClear;
+
   // Paint
   Canvas.Rectangle(P1.X, P1.Y, P2.X, P2.Y);
 end;
