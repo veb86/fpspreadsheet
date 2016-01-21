@@ -17,9 +17,6 @@ type
     BtnOpen: TButton;
     BtnSave: TButton;
     BtnNew: TButton;
-    BtnEnterText: TButton;
-    EdNewCellText: TEdit;
-    Label2: TLabel;
     SheetsCombo: TComboBox;
     Label1: TLabel;
     OpenDialog: TOpenDialog;
@@ -30,7 +27,6 @@ type
     procedure BtnNewClick(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
-    procedure BtnEnterTextClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SheetsComboSelect(Sender: TObject);
   private
@@ -199,11 +195,6 @@ begin
   WorksheetGrid.Cells[2,6] := '=B2^2*PI()';
   WorksheetGrid.CellComment[2,6] := 'Area of the circle with radius given in cell B2';
   WorksheetGrid.NumberFormat[2,6] := '0.000';
-end;
-
-procedure TForm1.BtnEnterTextClick(Sender: TObject);
-begin
-  WorksheetGrid.Worksheet.WriteText(109, 27, EdNewCellText.Text);
 end;
 
 procedure TForm1.SheetsComboSelect(Sender: TObject);

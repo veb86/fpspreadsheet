@@ -36,6 +36,9 @@ type
 
   { TsCustomWorksheetGrid }
 
+  TsAutoExpandMode = (aeData, aeNavigation);
+  TsAutoExpandModes = set of TsAutoExpandMode;
+
   TsHyperlinkClickEvent = procedure(Sender: TObject;
     const AHyperlink: TsHyperlink) of object;
 
@@ -61,6 +64,7 @@ type
     FReadFormulas: Boolean;
     FDrawingCell: PCell;
     FTextOverflowing: Boolean;
+    FAutoExpand: TsAutoExpandModes;
     FEnhEditMode: Boolean;
     FSelPen: TPen;
     FHyperlinkTimer: TTimer;
@@ -169,6 +173,8 @@ type
     { Protected declarations }
     procedure AutoAdjustColumn(ACol: Integer); override;
     procedure AutoAdjustRow(ARow: Integer); virtual;
+    procedure AutoExpandToCol(ACol: Integer; AMode: TsAutoExpandMode);
+    procedure AutoExpandToRow(ARow: Integer; AMode: TsAutoExpandMode);
     function CalcWorksheetColWidth(AValue: Integer): Single;
     function CalcWorksheetRowHeight(AValue: Integer): Single;
     function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
@@ -204,21 +210,13 @@ type
       ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
       ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
       AOverrideTextColor: TColor; ARichTextParams: TsRichTextParams);
-    {
-    procedure InternalDrawTextInCell(AText, AMeasureText: String; ARect: TRect;
-      AJustification: Byte; ACellHorAlign: TsHorAlignment;
-      ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
-      ATextWrap, ReplaceTooLong: Boolean; ARichTextParams: TsRichTextParams);
-      }
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
-//    procedure LoadFromWorksheet(AWorksheet: TsWorksheet);
     procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MoveSelection; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-//    function SelectCell(AGridCol, AGridRow: Integer): Boolean; override;
     procedure SelectEditor; override;
     procedure SelPenChangeHandler(Sender: TObject);
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
@@ -228,8 +226,11 @@ type
     function TrimToCell(ACell: PCell): String;
     procedure UpdateColWidths(AStartIndex: Integer = 0);
     procedure UpdateRowHeights(AStartIndex: Integer = 0);
+
     {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
+    {@@ Automatically expand grid dimensions }
+    property AutoExpand: TsAutoExpandModes read FAutoExpand write FAutoExpand;
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
@@ -465,6 +466,8 @@ type
     // inherited from TsCustomWorksheetGrid
     {@@ Automatically recalculates the worksheet if a cell value changes. }
     property AutoCalc;
+    {@@ Automatically expand grid dimensions }
+    property AutoExpand default [aeData];
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow; deprecated 'Use ShowHeaders';
@@ -953,6 +956,7 @@ begin
   FSelPen.Color := clBlack;
   FSelPen.JoinStyle := pjsMiter;
   FSelPen.OnChange := @SelPenChangeHandler;
+  FAutoExpand := [aeData];
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
   FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
@@ -1030,6 +1034,36 @@ begin
   else
     RowHeights[ARow] := DefaultRowHeight;
   HeaderSized(false, ARow);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Automatically expands the ColCount such that the specified column fits in
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.AutoExpandToCol(ACol: Integer;
+  AMode: TsAutoExpandMode);
+begin
+  if ACol >= ColCount then
+  begin
+    if (AMode in FAutoExpand) then
+      ColCount := ACol + 1
+    else
+      raise Exception.Create(rsOperationExceedsColCount);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Automatically expands the RowCount such that the specified column fits in
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.AutoExpandToRow(ARow: Integer;
+  AMode: TsAutoExpandMode);
+begin
+  if ARow >= RowCount then
+  begin
+    if (AMode in FAutoExpand) then
+      RowCount := ARow + 1
+    else
+      raise Exception.Create(rsOperationExceedsRowCount);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2447,15 +2481,14 @@ begin
     if Assigned(FOnClickHyperlink) then FOnClickHyperlink(self, hlink);
 end;
 
-
 {@@ ----------------------------------------------------------------------------
-  Copies the borders of a cell to its neighbors. This avoids the nightmare of
-  changing borders due to border conflicts of adjacent cells.
+  Copies the borders of a cell to the correspondig edges of its neighbors.
+  This avoids the nightmare of changing borders due to border conflicts
+  of adjacent cells.
 
   @param  ACell  Pointer to the cell
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACell: PCell);
-//Col, ARow: Integer);
 
   procedure SetNeighborBorder(NewRow, NewCol: Cardinal;
     ANewBorder: TsCellBorder; const ANewBorderStyle: TsCellBorderStyle;
@@ -2481,21 +2514,19 @@ procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACell: PCell);
 var
   fmt: PsCellFormat;
 begin
-  if Worksheet = nil then
+  if (Worksheet = nil) or (ACell = nil) then
     exit;
 
-//  cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-  if (Worksheet <> nil) and (ACell <> nil) then
-    with ACell^ do
-    begin
-      fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-      if Col > 0 then
-        SetNeighborBorder(Row, Col-1, cbEast, fmt^.BorderStyles[cbWest], cbWest in fmt^.Border);
-      SetNeighborBorder(Row, Col+1, cbWest, fmt^.BorderStyles[cbEast], cbEast in fmt^.Border);
-      if Row > 0 then
-        SetNeighborBorder(Row-1, Col, cbSouth, fmt^.BorderStyles[cbNorth], cbNorth in fmt^.Border);
-      SetNeighborBorder(Row+1, Col, cbNorth, fmt^.BorderStyles[cbSouth], cbSouth in fmt^.Border);
-    end;
+  with ACell^ do
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if Col > 0 then
+      SetNeighborBorder(Row, Col-1, cbEast, fmt^.BorderStyles[cbWest], cbWest in fmt^.Border);
+    SetNeighborBorder(Row, Col+1, cbWest, fmt^.BorderStyles[cbEast], cbEast in fmt^.Border);
+    if Row > 0 then
+      SetNeighborBorder(Row-1, Col, cbSouth, fmt^.BorderStyles[cbNorth], cbNorth in fmt^.Border);
+    SetNeighborBorder(Row+1, Col, cbNorth, fmt^.BorderStyles[cbSouth], cbSouth in fmt^.Border);
+  end;
 end;
 
 (*
@@ -2755,7 +2786,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the font to be used when painting text in a cell.
+  Returns the (LCL) font to be used when painting text in a cell.
 
   @param   ACol     Grid column index of the cell
   @param   ARow     Grid row index of the cell
@@ -2781,8 +2812,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the font to be used when painting text in the cells defined by the
-  rectangle of row/column indexes.
+  Returns the (LCL) font to be used when painting text in the cells defined
+  by the rectangle of row/column indexes.
 
   @param   ALeft   Index of the left column of the cell range
   @param   ATop    Index of the top row of the cell range
@@ -2949,6 +2980,7 @@ begin
 
   // Read comment
   comment := Worksheet.ReadComment(cell);
+
   // Read hyperlink info
   if Worksheet.HasHyperlink(cell) then begin
     hlink := Worksheet.FindHyperlink(cell);
@@ -2970,6 +3002,7 @@ begin
   if (Result = '') and (comment <> '') then
     Result := comment;
 
+  // Call hint event handler
   if Assigned(OnGetCellHint) then
     OnGetCellHint(self, ACol, ARow, Result);
 end;
@@ -3608,21 +3641,45 @@ end;
   *)
 {@@ ----------------------------------------------------------------------------
   Standard key handling method inherited from TCustomGrid. Is overridden to
-  catch the ESC key during editing in order to restore the old cell text
+  catch some keys for special processing.
 
   @param  Key    Key which has been pressed
   @param  Shift  Additional shift keys which are pressed
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.KeyDown(var Key : Word; Shift : TShiftState);
+var
+  R: TRect;
 begin
-  if (Key = VK_F2) then
-    FEnhEditMode := true
-  else
-  if (Key = VK_ESCAPE) and FEditing then begin
-    SetEditText(Col, Row, FOldEditText);
-    EditorHide;
-    exit;
+  case Key of
+    VK_RIGHT:
+      if (aeNavigation in FAutoExpand) and (Col = ColCount-1) then
+        ColCount := ColCount + 1;
+    VK_DOWN:
+      if (aeNavigation in FAutoExpand) and (Row = RowCount-1) then
+        RowCount := RowCount + 1;
+    VK_END:
+      if (aeNavigation in FAutoExpand) and (Col = ColCount-1) then
+      begin
+        R := GCache.FullVisibleGrid;
+        ColCount := ColCount + R.Right - R.Left;
+      end;
+    VK_NEXT:  // Page down
+      if (aeNavigation in FAutoExpand) and (Row = RowCount-1) then
+      begin
+        R := GCache.FullVisibleGrid;
+        RowCount := Row + R.Bottom - R.Top;
+      end;
+    VK_F2:
+      FEnhEditMode := true;
+    VK_ESCAPE:
+      if FEditing then
+      begin
+        SetEditText(Col, Row, FOldEditText);
+        EditorHide;
+        exit;
+      end;
   end;
+
   inherited;
 end;
 
@@ -3776,10 +3833,8 @@ begin
     if (cell <> nil) then begin
       grow := GetGridRow(cell^.Row);
       gcol := GetGridCol(cell^.Col);
-      if grow >= RowCount then
-        RowCount := grow + 1;
-      if gcol >= ColCount then
-        ColCount := gcol + 1;
+      AutoExpandToRow(grow, aeData);
+      AutoExpandToCol(gcol, aeData);
     end;
     Invalidate;
   end;
@@ -3789,10 +3844,8 @@ begin
   begin
     grow := GetGridRow(Worksheet.ActiveCellRow);
     gcol := GetGridCol(Worksheet.ActiveCellCol);
-    if grow >= RowCount then
-      RowCount := grow + 1;
-    if gcol >= ColCount then
-      ColCount := gcol + 1;
+    AutoExpandToRow(grow, aeNavigation);
+    AutoExpandToCol(gcol, aeNavigation);
     if (grow <> Row) or (gcol <> Col) then
       MoveExtend(false, gcol, grow);
   end;
@@ -3808,8 +3861,7 @@ begin
   if (lniRow in AChangedItems) and (Worksheet <> nil) then
   begin
     grow := GetGridRow({%H-}PtrInt(AData));
-    if grow >= RowCount then
-      RowCount := grow + 1;
+    AutoExpandToRow(grow, aeData);
     RowHeights[grow] := CalcAutoRowHeight(grow);
   end;
 end;
@@ -4150,8 +4202,6 @@ begin
 
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     if ShowHeaders then begin
-//      ColCount := FInitColCount + 1; //2;
-//      RowCount := FInitRowCount + 1; //2;
       FixedCols := 1;
       FixedRows := 1;
       ColWidths[0] := GetDefaultHeaderColWidth;
@@ -4159,8 +4209,6 @@ begin
     end else begin
       FixedCols := 0;
       FixedRows := 0;
-//      ColCount := FInitColCount; //0;
-//      RowCount := FInitRowCount; //0;
     end;
   end else
   if Worksheet <> nil then begin
@@ -4168,8 +4216,6 @@ begin
     Canvas.Font.Assign(Font);
     ColCount := Max(GetGridCol(Worksheet.GetLastColIndex) + 1, ColCount);
     RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex) + 1, RowCount);
-    //ColCount := Max(integer(Worksheet.GetLastColIndex) + 1 + FHeaderCount, FInitColCount);
-    //RowCount := Max(integer(Worksheet.GetLastRowIndex) + 1 + FHeaderCount, FInitRowCount);
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin

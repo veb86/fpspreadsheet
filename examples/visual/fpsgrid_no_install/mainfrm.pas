@@ -14,20 +14,27 @@ type
   { TForm1 }
 
   TForm1 = class(TForm)
+    Bevel1: TBevel;
     BtnNew: TButton;
     BtnLoad: TButton;
     BtnSave: TButton;
     BtnEnterText: TButton;
     ButtonPanel: TPanel;
+    CbAutoExpandOnData: TCheckBox;
+    CbAutoExpandOnNavigation: TCheckBox;
     EdCellValue: TEdit;
     Label1: TLabel;
+    Label2: TLabel;
     OpenDialog: TOpenDialog;
+    Panel1: TPanel;
     SaveDialog: TSaveDialog;
     TabControl: TTabControl;
     procedure BtnEnterTextClick(Sender: TObject);
     procedure BtnLoadClick(Sender: TObject);
     procedure BtnNewClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
+    procedure CbAutoExpandOnDataChange(Sender: TObject);
+    procedure CbAutoExpandOnNavigationChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure TabControlChange(Sender: TObject);
   private
@@ -65,6 +72,8 @@ begin
 
   // Useful options and properties
   Grid.Options := Grid.Options + [goColSizing, goRowSizing,
+//    goAutoAddRows,
+//    goAutoAddRowsSkipContentCheck,
     goFixedColSizing,    // useful if the spreadsheet contains frozen columns
     goEditing,           // needed for modifying cell content
     goThumbTracking,     // see the grid scroll while you drag the scrollbar
@@ -81,6 +90,9 @@ begin
   Grid.RowCount := 10;              // Prepare 10 columns (incl fixed header)
   Grid.ColCount := 8;               // and 8 rows (incl fixed header) - but grid expands automatically
 
+  CbAutoExpandOnData.Checked := aeData in Grid.AutoExpand;
+  CbAutoExpandOnNavigation.Checked := aeNavigation in Grid.AutoExpand;
+
   // Add some cells and formats
   Grid.ColWidths[1] := 180;
   Grid.ColWidths[2] := 100;
@@ -90,7 +102,7 @@ begin
   Grid.HorAlignment[1,1] := haCenter;
   Grid.CellBorders[1,1, 2,1] := [cbSouth];
   Grid.CellBorderStyles[1,1, 2,1, cbSouth] := THICK_BORDER;
-  Grid.BackgroundColors[1,1, 2,1] := RGBToColor(220, 220, 220);
+  Grid.BackgroundColors[1,1, 2,1] := RGBToColor(232, 242, 255);
   Grid.CellFontColor[1,1] := clNavy;
   Grid.CellFontStyle[1,1] := [fssBold];
 
@@ -127,6 +139,8 @@ begin
   Grid.Cells[2,6] := '=B2^2*PI()';
   Grid.CellComment[2,6] := 'Area of the circle with radius given in cell B2';
   Grid.NumberFormat[2,6] := '0.000';
+
+  ActiveControl := Grid;
 end;
 
 procedure TForm1.BtnLoadClick(Sender: TObject);
@@ -184,6 +198,20 @@ begin
         MessageDlg(err, mtError, [mbOK], 0);
     end;
   end;
+end;
+
+procedure TForm1.CbAutoExpandOnDataChange(Sender: TObject);
+begin
+  if CbAutoExpandOnData.Checked then
+    Grid.AutoExpand := Grid.AutoExpand + [aeData] else
+    Grid.AutoExpand := Grid.AutoExpand - [aeData];
+end;
+
+procedure TForm1.CbAutoExpandOnNavigationChange(Sender: TObject);
+begin
+  if CbAutoExpandOnNavigation.Checked then
+    Grid.AutoExpand := Grid.AutoExpand + [aeNavigation] else
+    Grid.AutoExpand := Grid.AutoExpand - [aeNavigation];
 end;
 
 // Loads first worksheet from file into grid

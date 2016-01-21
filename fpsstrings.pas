@@ -163,6 +163,9 @@ resourcestring
   rsErrArgError = '#N/A';
   rsErrFormulaNotSupported = '<FORMULA?>';
 
+  rsOperationExceedsColCount = 'This operation exceeds the range of defined grid columns.';
+  rsOperationExceedsRowCount = 'This operation exceeds the range of defined grid rows.';
+
 implementation
 
 end.
