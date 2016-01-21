@@ -39,6 +39,7 @@ type
   TsHyperlinkClickEvent = procedure(Sender: TObject;
     const AHyperlink: TsHyperlink) of object;
 
+//  TsSelectionRectMode = (srmDThickXOR, srmThick, srmDottedXOR,
   {@@ TsCustomWorksheetGrid is the ancestor of TsWorksheetGrid and is able to
     display spreadsheet data along with their formatting. }
   TsCustomWorksheetGrid = class(TCustomDrawGrid, IsSpreadsheetControl)
@@ -46,12 +47,7 @@ type
     { Private declarations }
     FWorkbookSource: TsWorkbookSource;
     FInternalWorkbookSource: TsWorkbookSource;
-//    FOwnedWorkbook: TsWorkbook;
-//    FOwnsWorkbook: Boolean;
-//    FOwnedWorksheet: TsWorksheet;
     FHeaderCount: Integer;
-//    FInitColCount: Integer;
-//    FInitRowCount: Integer;
     FFrozenCols: Integer;
     FFrozenRows: Integer;
     FEditText: String;
@@ -66,6 +62,7 @@ type
     FDrawingCell: PCell;
     FTextOverflowing: Boolean;
     FEnhEditMode: Boolean;
+    FSelPen: TPen;
     FHyperlinkTimer: TTimer;
     FHyperlinkCell: PCell;    // Selected cell if it stores a hyperlink
     FOnClickHyperlink: TsHyperlinkClickEvent;
@@ -153,6 +150,7 @@ type
     procedure SetNumberFormats(ALeft, ATop, ARight, ABottom: Integer; AValue: String);
     procedure SetReadFormulas(AValue: Boolean);
     procedure SetRowHeights(ARow: Integer; AValue: Integer);
+    procedure SetSelPen(AValue: TPen);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
     procedure SetTextRotation(ACol, ARow: Integer; AValue: TsTextRotation);
@@ -222,6 +220,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 //    function SelectCell(AGridCol, AGridRow: Integer): Boolean; override;
     procedure SelectEditor; override;
+    procedure SelPenChangeHandler(Sender: TObject);
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
@@ -243,6 +242,8 @@ type
     {@@ Activates reading of RPN formulas. Should be turned off when
         non-implemented formulas crashe reading of the spreadsheet file. }
     property ReadFormulas: Boolean read FReadFormulas write SetReadFormulas;
+    {@@ Pen used for drawing the selection rectangle }
+    property SelectionPen: TPen read FSelPen write SetSelPen;
     {@@ Shows/hides vertical and horizontal grid lines }
     property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
@@ -476,6 +477,8 @@ type
     {@@ Activates reading of RPN formulas. Should be turned off when
         non-implemented formulas crashe reading of the spreadsheet file. }
     property ReadFormulas;
+    {@@ Pen used for drawing the selection rectangle }
+    property SelectionPen;
     {@@ Shows/hides vertical and horizontal grid lines. }
     property ShowGridLines;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
@@ -943,9 +946,13 @@ begin
   FHeaderCount := 1;
   ColCount := DEFAULT_COL_COUNT + FHeaderCount;
   RowCount := DEFAULT_ROW_COUNT + FHeaderCount;
-//  FInitColCount := DEFAULT_COL_COUNT;
-//  FInitRowCount := DEFAULT_ROW_COUNT;
   FCellFont := TFont.Create;
+  FSelPen := TPen.Create;
+  FSelPen.Style := psSolid;
+  FSelPen.Width := 3;
+  FSelPen.Color := clBlack;
+  FSelPen.JoinStyle := pjsMiter;
+  FSelPen.OnChange := @SelPenChangeHandler;
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
   FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
@@ -964,6 +971,7 @@ begin
   if FInternalWorkbookSource <> nil then
     FInternalWorkbookSource.RemoveListener(self);  // will be destroyed automatically
   FreeAndNil(FCellFont);
+  FreeAndNil(FSelPen);
   inherited Destroy;
 end;
 
@@ -2216,6 +2224,7 @@ var
   P1, P2: TPoint;
   cell: PCell;
   r1,c1,r2,c2: Cardinal;
+  delta: Integer;
 begin
   if Worksheet = nil then
     exit;
@@ -2233,19 +2242,17 @@ begin
     P2 := CellRect(Selection.Right, Selection.Bottom).BottomRight;
   end;
   // Cosmetics at the edges of the grid to avoid spurious rests
-  if Selection.Top > TopRow then dec(P1.Y) else inc(P1.Y);
-  if Selection.Left > LeftCol then dec(P1.X) else inc(P1.X);
-  if Selection.Right = ColCount-1 then dec(P2.X);
-  if Selection.Bottom = RowCount-1 then dec(P2.Y);
+  delta := FSelPen.Width div 2;
+  if Selection.Top > TopRow then dec(P1.Y, delta) else inc(P1.Y, delta);
+  if Selection.Left > LeftCol then dec(P1.X, delta) else inc(P1.X, delta);
+  if Selection.Right = ColCount-1 then dec(P2.X, delta);
+  if Selection.Bottom = RowCount-1 then dec(P2.Y, delta);
   // Set up the canvas
-  Canvas.Pen.Style := psSolid;
-  Canvas.Pen.Width := 3;
-  Canvas.Pen.JoinStyle := pjsMiter;
+  Canvas.Pen.Assign(FSelPen);
   if UseXORFeatures then begin
     Canvas.Pen.Color := clWhite;
     Canvas.Pen.Mode := pmXOR;
-  end else
-    Canvas.Pen.Color := clBlack;
+  end;
   Canvas.Brush.Style := bsClear;
   // Paint
   Canvas.Rectangle(P1.X, P1.Y, P2.X, P2.Y);
@@ -4106,6 +4113,12 @@ begin
   GetWorkbookSource.SelectWorksheet(Workbook.GetWorksheetByIndex(AIndex));
 end;
 
+{@@ Event handler which fires when an element of the SelectionPen changes. }
+procedure TsCustomWOrksheetGrid.SelPenChangeHandler(Sender: TObject);
+begin
+  InvalidateGrid;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Standard method inherited from TCustomGrid. Fetches the text that is
   currently in the editor. It is not yet transferred to the worksheet because
@@ -5394,6 +5407,11 @@ begin
   HeaderSized(false, ARow);
 end;
 
+procedure TsCustomWorksheetGrid.SetSelPen(AValue: TPen);
+begin
+  FSelPen.Assign(AValue);
+  InvalidateGrid;
+end;
 
 { Shows / hides the worksheet's grid lines }
 procedure TsCustomWorksheetGrid.SetShowGridLines(AValue: Boolean);

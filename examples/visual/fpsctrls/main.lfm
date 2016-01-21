@@ -30,6 +30,8 @@ object MainForm: TMainForm
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = False
+      SelectionPen.JoinStyle = pjsMiter
+      SelectionPen.Width = 3
       TextOverflow = True
       WorkbookSource = WorkbookSource
       Align = alClient
@@ -49,6 +51,7 @@ object MainForm: TMainForm
       TitleFont.Height = -13
       TitleFont.Name = 'Arial'
       TitleStyle = tsNative
+      UseXORFeatures = True
       OnClickHyperlink = WorksheetGridClickHyperlink
     end
   end
