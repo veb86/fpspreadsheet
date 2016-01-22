@@ -1001,21 +1001,11 @@ begin
     txt := GetCellText(ACol, gRow);
     if txt = '' then
       Continue;
-    w := RichTextWidth(Canvas, Workbook, Rect(0, 0, MaxInt, MaxInt), txt,
-      Worksheet.ReadCellFontIndex(cell), cell^.RichTextParams,
-      Worksheet.ReadTextRotation(cell), false);
+    w := RichTextWidth(Canvas, Workbook, Rect(0, 0, MaxInt, MaxInt),
+      txt, cell^.RichTextParams, Worksheet.ReadCellFontIndex(cell),
+      Worksheet.ReadTextRotation(cell), false, IsRightToLeft);
     if w > maxw then maxw := w;
   end;
-  {
-  for r := 0 to lastRow do
-  begin
-    gRow := GetGridRow(r);
-    txt := GetCellText(ACol, gRow);
-    PrepareCanvas(ACol, gRow, []);
-    w := Canvas.TextWidth(txt);
-    if (txt <> '') and (w > maxw) then maxw := w;
-  end;
-  }
   if maxw > -1 then
     maxw := maxw + 2*constCellPadding
   else
@@ -2966,8 +2956,8 @@ begin
         cellR := Rect(0, 0, MaxInt, MaxInt);
     end;
 
-    Result := RichTextHeight(Canvas, Workbook, cellR, s, fntIndex,
-                lCell^.RichTextParams, txtRot, wrapped)
+    Result := RichTextHeight(Canvas, Workbook, cellR, s, lCell^.RichTextParams,
+                fntIndex, txtRot, wrapped, IsRightToLeft)
             + 2 * constCellPadding;
 
             (*
@@ -3499,8 +3489,10 @@ begin
   Canvas.Brush.Style := bsClear;
 
   // Work horse for text drawing, both standard text and rich-text
-  DrawRichText(Canvas, Workbook, ARect, AText, AFontIndex, ARichTextParams,
-    ATextWrap, ACellHorAlign, ACellVertAlign, ATextRot, AOverrideTextColor);
+  DrawRichText(Canvas, Workbook, ARect, AText, ARichTextParams, AFontIndex,
+    ATextWrap, ACellHorAlign, ACellVertAlign, ATextRot, AOverrideTextColor,
+    IsRightToLeft
+  );
 end;
 (*
 procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText, AMeasureText: String;
