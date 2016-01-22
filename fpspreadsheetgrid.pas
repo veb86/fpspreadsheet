@@ -2282,7 +2282,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Draws the selection rectangle around selected cells, 3 pixels wide as in Excel.
+  Draws the selection rectangle around selected cells.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawSelection;
 var
@@ -2299,7 +2299,7 @@ begin
   if Worksheet.IsMerged(cell) then
   begin
     Worksheet.FindMergedRange(cell, r1,c1,r2,c2);
-    R := CellRect(r1, c1, r2, c2);
+    R := CellRect(GetGridCol(c1), GetGridRow(r1), GetGridCol(c2), GetGridRow(r2));
   end else
     R := CellRect(Selection.Left, Selection.Top, Selection.Right, Selection.Bottom);
 
