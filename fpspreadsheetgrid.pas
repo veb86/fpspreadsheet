@@ -260,6 +260,7 @@ type
     destructor Destroy; override;
 
     procedure BeginUpdate;
+    function CellRect(ACol1, ARow1, ACol2, ARow2: Integer): TRect; overload;
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure DeleteCol(AGridCol: Integer); reintroduce;
     procedure DeleteRow(AGridRow: Integer); reintroduce;
@@ -1294,6 +1295,18 @@ begin
   end;
 end;
 
+function TsCustomWorksheetGrid.CellRect(ACol1, ARow1, ACol2, ARow2: Integer): TRect;
+begin
+  if IsRightToLeft then begin
+    Result.TopLeft := CellRect(ACol2, ARow1).TopLeft;
+    Result.BottomRight := CellRect(ACol1, ARow2).BottomRight;
+  end else
+  begin
+    Result.TopLeft := CelLRect(ACol1, ARow1).TopLeft;
+    Result.BottomRight := CellRect(ACol2, ARow2).BottomRight;
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Handler for the event OnChangeCell fired by the worksheet when the contents
   or formatting of a cell have changed.
@@ -2225,6 +2238,12 @@ begin
         end;
       end;
 
+      temp_rct := rct;
+      rct := CellRect(gc, gr, gcNext-1, gr);
+      rct.Top := temp_rct.Top;
+      rct.Bottom := temp_rct.Bottom;
+
+      {
       if IsRightToLeft then
       begin
         ColRowToOffset(true, true, gc, tmp, rct.Right);
@@ -2234,6 +2253,7 @@ begin
         ColRowToOffset(true, true, gc, rct.Left, tmp);
         ColRowToOffset(true, true, gcNext-1, tmp, rct.Right);
       end;
+      }
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
@@ -2276,7 +2296,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawSelection;
 var
-  P1, P2: TPoint;
+  R: TRect;
   cell: PCell;
   r1,c1,r2,c2: Cardinal;
   delta: Integer;
@@ -2289,29 +2309,30 @@ begin
   if Worksheet.IsMerged(cell) then
   begin
     Worksheet.FindMergedRange(cell, r1,c1,r2,c2);
-    if IsRightToLeft then
-    begin
-      P1.y := CellRect(GetGridCol(c1), GetGridRow(r1)).Top;
-      P1.x := CellRect(GetGridCol(c1), GetGridRow(r1)).Right;
-      P2.y := CellRect(GetGridCol(c2), GetGridRow(r2)).Bottom;
-      P2.x := CellRect(GetGridCol(c2), GetGridRow(r2)).Left;
-    end else
-    begin
-      P1 := CellRect(GetGridCol(c1), GetGridRow(r1)).TopLeft;
-      P2 := CellRect(GetGridCol(c2), GetGridRow(r2)).BottomRight;
-    end;
+    R := CellRect(r1, c1, r2, c2);
   end else
-  begin
-    P1 := CellRect(Selection.Left, Selection.Top).TopLeft;
-    P2 := CellRect(Selection.Right, Selection.Bottom).BottomRight;
-  end;
+    R := CellRect(Selection.Left, Selection.Top, Selection.Right, Selection.Bottom);
 
+  { -- wp: Is this really needed?
   // Cosmetics at the edges of the grid to avoid spurious rests
   delta := FSelPen.Width div 2;
-  if Selection.Top > TopRow then dec(P1.Y, delta) else inc(P1.Y, delta);
-  if Selection.Left > LeftCol then dec(P1.X, delta) else inc(P1.X, delta);
-  if Selection.Right = ColCount-1 then dec(P2.X, delta);
-  if Selection.Bottom = RowCount-1 then dec(P2.Y, delta);
+  if Selection.Top > TopRow then
+    dec(R.Top, delta) else
+    inc(R.Top, delta);
+  if Selection.Bottom = RowCount-1 then
+    dec(R.Bottom, delta);
+  if IsRightToLeft then begin
+    if Selection.Right > LeftCol then
+      inc(R.Right, delta) else dec(R.Right, delta);
+    if Selection.Right = ColCount-1 then
+      inc(R.Left, delta);
+  end else
+  begin
+    if Selection.Left > LeftCol then
+      dec(R.Left, delta) else inc(R.Left, delta);
+    if Selection.Right = ColCount-1 then
+      dec(R.Right, delta);
+  end;                            }
 
   // Set up the canvas
   Canvas.Pen.Assign(FSelPen);
@@ -2322,7 +2343,7 @@ begin
   Canvas.Brush.Style := bsClear;
 
   // Paint
-  Canvas.Rectangle(P1.X, P1.Y, P2.X, P2.Y);
+  Canvas.Rectangle(R);
 end;
 
 {@@ ----------------------------------------------------------------------------
