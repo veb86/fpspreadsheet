@@ -2411,12 +2411,20 @@ begin
   if (horAlign = haDefault) then
   begin
     if (lCell^.ContentType in [cctNumber, cctDateTime]) then
-      horAlign := haRight
-    else
+    begin
+      if IsRightToLeft then
+        horAlign := haLeft
+      else
+        horAlign := haRight;
+    end else
     if (lCell^.ContentType in [cctBool]) then
       horAlign := haCenter
-    else
-      horAlign := haLeft;
+    else begin
+      if IsRightToLeft then
+        horAlign := haRight
+      else
+        horAlign := haLeft;
+    end;
   end;
 
   // Font index
