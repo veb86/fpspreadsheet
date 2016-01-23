@@ -2077,7 +2077,7 @@ begin
 
   fixed_rct := Rect(0, 0, 0, 0);
   if HeaderCount > 0 then
-    ColRowToOffset(true, false, 0, fixed_rct.Left, fixed_rct.Right);
+    ColRowToOffset(true, true, 0, fixed_rct.Left, fixed_rct.Right);
 
   // is this row within the ClipRect?
   clipArea := Canvas.ClipRect;
@@ -2238,24 +2238,18 @@ begin
       rct.Top := temp_rct.Top;
       rct.Bottom := temp_rct.Bottom;
 
-      {
-      if IsRightToLeft then
-      begin
-        ColRowToOffset(true, true, gc, tmp, rct.Right);
-        ColRowToOffset(true, true, gcNext-1, rct.Left, tmp);
-      end else
-      begin
-        ColRowToOffset(true, true, gc, rct.Left, tmp);
-        ColRowToOffset(true, true, gcNext-1, tmp, rct.Right);
-      end;
-      }
-
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
         gds := GetGridDrawState(gc, gr);
         temp_rct := rct;
         // Avoid painting into the fixed cells
-        if temp_rct.Left < fixed_rct.Right then temp_rct.Left := fixed_rct.Right;
+        if IsRightToLeft then
+        begin
+          if temp_rct.Right > fixed_rct.Left then temp_rct.Right := fixed_rct.Left
+        end else
+        begin
+          if temp_rct.Left < fixed_rct.Right then temp_rct.Left := fixed_rct.Right;
+        end;
         // Draw cell
         DoDrawCell(gc, gr, temp_rct, rct);
         // Draw comment marker
