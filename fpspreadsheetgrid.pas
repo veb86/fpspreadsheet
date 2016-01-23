@@ -1726,6 +1726,8 @@ begin
   sc1 := GetWorksheetCol(GCache.VisibleGrid.Left);
   sr2 := GetWorksheetRow(GCache.VisibleGrid.Bottom);
   sc2 := GetWorksheetCol(GCache.VisibleGrid.Right);
+  if sr1 = UNASSIGNED_ROW_COL_INDEX then sr1 := 0;
+  if sc1 = UNASSIGNED_ROW_COL_INDEX then sc1 := 0;
 
   for cell in Worksheet.Cells.GetRangeEnumerator(sr1, sc1, sr2, sc2) do
     if (uffBorder in Worksheet.ReadUsedFormatting(cell)) then
@@ -2187,7 +2189,11 @@ begin
               end;
               FDrawingCell := nil;
               temp_rct := rct;
-              for i := gc1 to gc2 do begin
+//              for i := gc1 to gc2 do begin
+              for i:= gc2 downto gc1 do begin
+              //starting from last col will insure drawing grid lines below text
+              //when text is overflow in RTL and have no problem in LTR
+              // modification by "shobits1"
                 ColRowToOffset(true, true, i, temp_rct.Left, temp_rct.Right);
                 if HorizontalIntersect(temp_rct, clipArea) and (i <> gc) then
                 begin
@@ -2243,7 +2249,7 @@ begin
         gds := GetGridDrawState(gc, gr);
         temp_rct := rct;
         // Avoid painting into the fixed cells
-        if IsRightToLeft then
+        if IsRightToLeft and (HeaderCount > 0) then
         begin
           if temp_rct.Right > fixed_rct.Left then temp_rct.Right := fixed_rct.Left
         end else
