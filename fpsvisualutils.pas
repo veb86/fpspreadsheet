@@ -1309,6 +1309,7 @@ end;
 procedure TsTextPainter.ScanLine(var ANumSpaces, ALineWidth, ALineHeight: Integer;
   AWordList: TStringList);
 var
+  tmpWidth: Integer;
   savedWidth: Integer;
   savedSpaces: Integer;
   savedCharIndex: Integer;
@@ -1321,13 +1322,19 @@ var
   dw: Integer;
   EOL: Boolean;
   pWordStart: PChar;
+  part: String;
+  savedpart: String;
+  PStart: PChar;
 begin
   ANumSpaces := 0;
   ALineHeight := FFontHeight;
   ALineWidth := 0;
   savedWidth := 0;
   savedSpaces := 0;
-  s := '';
+  s := '';      // current word
+  part := '';   // current part of the string where all characters have the same font
+  savedpart := '';
+  tmpWidth := 0;
 
   maxWidth := MaxInt;
   if FWordWrap then
@@ -1338,16 +1345,23 @@ begin
       maxWidth := FRect.Bottom - FRect.Top;
   end;
 
+  PStart := FPtr;
   while (FPtr^ <> #0) do
   begin
     case FPtr^ of
       #13: begin
+             if (part <> '') and (FTextRotation <> rtStacked) then
+               ALineWidth := ALineWidth + FCanvas.TextWidth(part);
+             part := '';
              NextChar(1);
              if FPtr^ = #10 then
                NextChar(1);
              break;
            end;
       #10: begin
+             if (part <> '') and (FTextRotation <> rtStacked) then
+               ALineWidth := ALineWidth + FCanvas.TextWidth(part);
+             part := '';
              NextChar(1);
              break;
            end;
@@ -1358,10 +1372,17 @@ begin
              // Find next word
              while FPtr^ = ' ' do
              begin
+               if (FCharIndex = FCharIndexOfNextFont) then
+               begin
+                 if (FTextRotation <> rtStacked) then
+                   ALineWidth := ALineWidth + FCanvas.TextWidth(part);
+                 part := '';
+               end;
                UpdateFont(FCharIndex, FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
+               if FTextRotation = rtStacked then
+                 ALineWidth := ALineWidth + FFontHeight else
+                 part := part + ' ';
                ALineHeight := Max(FFontHeight, ALineHeight);
-               dw := Math.IfThen(FTextRotation = rtStacked, FFontHeight, FCanvas.TextWidth(' '));
-               ALineWidth := ALineWidth + dw;
                inc(ANumSpaces);
                NextChar(1);
              end;
@@ -1369,6 +1390,7 @@ begin
              begin
                ALineWidth := savedWidth;
                ANumSpaces := savedSpaces;
+               part := '';
                break;
               end;
            end;
@@ -1381,17 +1403,26 @@ begin
            savedCharIndex := FCharIndex;
            savedCurrRtpIndex := FRtpIndex;
            savedCharIndexOfNextFont := FCharIndexOfNextFont;
+           savedpart := part;
+           tmpWidth := 0;
            EOL := false;
            while (FPtr^ <> #0) and (FPtr^ <> #13) and (FPtr^ <> #10) and (FPtr^ <> ' ') do
            begin
+             if FCharIndex = FCharIndexOfNextFont then
+             begin
+               if (FTextRotation <> rtStacked) then
+                 ALineWidth := ALineWidth + FCanvas.TextWidth(part);
+               part := '';
+             end;
              UpdateFont(FCharIndex, FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
-             ALineHeight := Max(FFontHeight, ALineHeight);
              ch := UnicodeToUTF8(UTF8CharacterToUnicode(FPtr, charLen));
-             dw := Math.IfThen(FTextRotation = rtStacked, FFontHeight, FCanvas.TextWidth(ch));
-             ALineWidth := ALineWidth + dw;
-             if ALineWidth <= maxWidth then
-               s := s + ch
-             else
+             part := part + ch;
+             tmpWidth := IfThen(FTextRotation = rtStacked, tmpWidth + FFontHeight, FCanvas.TextWidth(part));
+             if ALineWidth + tmpWidth <= maxWidth then
+             begin
+               s := s + ch;
+               ALineHeight := Max(FFontHeight, ALineHeight);
+             end else
              begin
                // The line exeeds the max line width.
                // There are two cases:
@@ -1402,13 +1433,13 @@ begin
                  FPtr := pWordStart;
                  FCharIndex := savedCharIndex;
                  FCharIndexOfNextFont := savedCharIndexOfNextFont;
-                 ALineWidth := savedWidth;
                  FRtpIndex := savedCurrRtpIndex;
-               end else begin
+                 part := '';
+               end else
+               begin
                  // (b) This is the only word in the line --> we break at the
                  // current cursor position.
-                 AWordList.Add(s);
-                 s := '';
+                 UTF8Delete(part, UTF8Length(part), 1);
                end;
                EOL := true;
                break;
@@ -1418,9 +1449,15 @@ begin
            if EOL then break;
          end;
   end;
+
+  if s <> '' then
+    AWordList.Add(s);
+
+  if (part <> '') and (FTextRotation <> rtStacked) then
+    ALineWidth := ALineWidth + FCanvas.TextWidth(part);
+
   UpdateFont(FCharIndex, FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
   ALineHeight := Max(FFontHeight, ALineHeight);
-  if s <> '' then AWordList.Add(s);
 end;
 
 { The scanner has reached the text character at the specified position.
