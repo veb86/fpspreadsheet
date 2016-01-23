@@ -592,6 +592,7 @@ type
     FFontStack: TsIntegerStack;
     FCurrFont: TsFont;
     FPointSeparatorSettings: TFormatSettings;
+    FPreserveSpaces: Boolean;
     function AddFont(AFont: TsFont): Integer;
     procedure AddRichTextParam(AFont: TsFont; AHyperlinkIndex: Integer = -1);
     procedure ProcessFontRestore;
@@ -603,6 +604,7 @@ type
     destructor Destroy; override;
     property PlainText: String read FPlainText;
     property RichTextParams: TsRichTextParams read FRichTextParams;
+    property PreserveSpaces: Boolean read FPreserveSpaces write FPreserveSpaces;
   end;
 
 constructor TsHTMLAnalyzer.Create(AWorkbook: TsWorkbook; AFont: TsFont;
@@ -885,7 +887,8 @@ end;
 
 procedure TsHTMLAnalyzer.TextFoundHandler(AText: String);
 begin
-  AText := CleanHTMLString(AText);
+  if not FPreserveSpaces then
+    AText := CleanHTMLString(AText);
   if AText <> '' then
   begin
     if FPlainText = '' then
@@ -909,6 +912,7 @@ var
 begin
   analyzer := TsHTMLAnalyzer.Create(AWorkbook, AFont, AHTMLText + '<end>');
   try
+    analyzer.PreserveSpaces := true;
     analyzer.Exec;
     APlainText := analyzer.PlainText;
     SetLength(ARichTextParams, Length(analyzer.RichTextParams));
