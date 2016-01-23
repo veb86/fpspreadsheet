@@ -2178,8 +2178,13 @@ begin
             if CellOverflow(gc, gr, gds, gc1, gc2, rct) then
             begin
               // Draw individual cells of the overflown range
-              ColRowToOffset(true, true, gc1, rct.Left, tmp);    // rct is the clip rect
-              ColRowToOffset(true, true, gc2, tmp, rct.Right);
+              if IsRightToLeft then begin
+                ColRowToOffset(true, true, gc1, tmp, rct.Right);
+                ColRowToOffset(true, true, gc2, rct.Left, tmp);
+              end else begin
+                ColRowToOffset(true, true, gc1, rct.Left, tmp);    // rct is the clip rect
+                ColRowToOffset(true, true, gc2, tmp, rct.Right);
+              end;
               FDrawingCell := nil;
               temp_rct := rct;
               for i := gc1 to gc2 do begin
