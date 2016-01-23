@@ -1439,7 +1439,10 @@ begin
                begin
                  // (b) This is the only word in the line --> we break at the
                  // current cursor position.
-                 UTF8Delete(part, UTF8Length(part), 1);
+                 if Length(part) = 1 then
+                   NextChar(1)
+                 else
+                   UTF8Delete(part, UTF8Length(part), 1);
                end;
                EOL := true;
                break;

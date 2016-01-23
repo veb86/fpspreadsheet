@@ -2191,9 +2191,9 @@ begin
               temp_rct := rct;
 //              for i := gc1 to gc2 do begin
               for i:= gc2 downto gc1 do begin
-              //starting from last col will insure drawing grid lines below text
-              //when text is overflow in RTL and have no problem in LTR
-              // modification by "shobits1"
+              // Starting from last col will insure drawing grid lines below text
+              // when text is overflow in RTL and have no problem in LTR
+              // (Modification by "shobits1" - ok)
                 ColRowToOffset(true, true, i, temp_rct.Left, temp_rct.Right);
                 if HorizontalIntersect(temp_rct, clipArea) and (i <> gc) then
                 begin
