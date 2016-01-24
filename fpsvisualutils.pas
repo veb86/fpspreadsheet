@@ -96,7 +96,7 @@ type
 implementation
 
 uses
-  Types, Math, LCLType, LCLIntf, LazUTF8, fpsUtils;
+  Types, Math, LCLType, LCLIntf, LazUTF8, StrUtils, fpsUtils;
 
 const
 {@@ Font size factor for sub-/superscript characters }
@@ -1127,9 +1127,36 @@ const
   );
   TEXT_ANGLE: array[TsTextRotation] of Integer = ( 0, -900, 900, 0);
 var
-  w: Integer;
+  w, wlead, wtrail: Integer;
   P: TPoint;
+  i, nlead, ntrail: Integer;
 begin
+  wlead := 0;
+  wtrail := 0;
+  if FRightToLeft then
+  begin
+    { Right-to-left character handling of RTL strings containing spaces is very
+      confusing -- probably this is not right... }
+    // Count leading spaces
+    nlead := 0;
+    i := 1;
+    while (i <= Length(s)) and (s[i] = ' ') do begin
+      inc(i);
+      inc(nlead);
+    end;
+    wlead := nlead * FCanvas.TextWidth(' ');
+    // count trailing spaces
+    ntrail := 0;
+    i := Length(s);
+    while (i >= 1) and (s[i] = ' ') do begin
+      dec(i);
+      inc(ntrail);
+    end;
+    wtrail := ntrail * FCanvas.TextWidth(' ');
+    // Remove leading and trailing spaces from string; their size will be
+    // compensated by coordinate offset wlead/wtrail.
+    s := trim(s);
+  end;
   w := FCanvas.TextWidth(s);
   P := GetTextPt(x, y, ALineHeight);
   FCanvas.Font.Orientation := TEXT_ANGLE[FTextRotation];
@@ -1137,30 +1164,30 @@ begin
     trHorizontal:
       begin
         if FRightToLeft
-          then FCanvas.TextOut(P.x-w, P.y, s)
+          then FCanvas.TextOut(P.x-w-wlead, P.y, s)
           else FCanvas.TextOut(P.x, P.y, s);
-        inc(x, w*MULTIPLIER[FTextRotation, FRightToLeft]);
+        inc(x, (wlead+w+wtrail)*MULTIPLIER[FTextRotation, FRightToLeft]);
       end;
     rt90DegreeClockwiseRotation:
       begin
         if FRightToLeft
-          then FCanvas.TextOut(P.x, P.y-w, s)
+          then FCanvas.TextOut(P.x, P.y-w-wlead, s)
           else FCanvas.TextOut(P.x, p.y, s);
-        inc(y, w*MULTIPLIER[FTextRotation, FRightToLeft]);
+        inc(y, (wlead+w+wtrail)*MULTIPLIER[FTextRotation, FRightToLeft]);
       end;
     rt90DegreeCounterClockwiseRotation:
       begin
         if FRightToLeft
-          then FCanvas.TextOut(P.x, P.y+w, s)
+          then FCanvas.TextOut(P.x, P.y+w+wlead, s)
           else FCanvas.TextOut(P.x, P.y, s);
-        inc(y, w*MULTIPLIER[FTextRotation, FRightToLeft]);
+        inc(y, (wlead+w+wtrail)*MULTIPLIER[FTextRotation, FRightToLeft]);
       end;
     rtStacked:
       begin                       // IS THIS OK?
         w := FCanvas.TextWidth(s);
         // chars centered around x
         if FRightToLeft
-          then FCanvas.TextOut(P.x - w div 2, P.y - FFontHeight, s)
+          then FCanvas.TextOut(P.x - (w+wlead) div 2, P.y - FFontHeight, s)
           else FCanvas.TextOut(P.x - w div 2, P.y, s);
         inc(y, FFontHeight * MULTIPLIER[FTextRotation, FRightToLeft]);
       end;
@@ -1350,23 +1377,32 @@ begin
   begin
     case FPtr^ of
       #13: begin
+        {
              if (part <> '') and (FTextRotation <> rtStacked) then
                ALineWidth := ALineWidth + FCanvas.TextWidth(part);
              part := '';
+             }
              NextChar(1);
              if FPtr^ = #10 then
                NextChar(1);
              break;
            end;
       #10: begin
+        {
              if (part <> '') and (FTextRotation <> rtStacked) then
                ALineWidth := ALineWidth + FCanvas.TextWidth(part);
              part := '';
+             }
              NextChar(1);
              break;
            end;
       ' ': begin
-             AWordList.Add(s);
+             if (FCharIndex = FCharIndexOfNextFont) and (part <> '') and
+                (FTextRotation <> rtStacked) then
+             begin
+               ALineWidth := ALineWidth + FCanvas.TextWidth(part);
+               part := '';
+             end;
              savedWidth := ALineWidth;
              savedSpaces := ANumSpaces;
              // Find next word
@@ -1380,7 +1416,8 @@ begin
                end;
                UpdateFont(FCharIndex, FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
                if FTextRotation = rtStacked then
-                 ALineWidth := ALineWidth + FFontHeight else
+                 ALineWidth := ALineWidth + FFontHeight
+               else
                  part := part + ' ';
                ALineHeight := Max(FFontHeight, ALineHeight);
                inc(ANumSpaces);
