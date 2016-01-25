@@ -12,6 +12,7 @@ type
   TCellHelper = record helper for TCell
   private
     function GetBackgroundColor: TsColor;
+    function GetBiDiMode: TsBiDiMode;
     function GetBorder: TsCellBorders;
     function GetBorderStyle(const ABorder: TsCellBorder): TsCellBorderStyle;
     function GetBorderStyles: TsCellBorderStyles;
@@ -28,6 +29,7 @@ type
     function GetVertAlignment: TsVertAlignment;
     function GetWordwrap: Boolean;
     procedure SetBackgroundColor(const AValue: TsColor);
+    procedure SetBiDiMode(const AValue: TsBiDiMode);
     procedure SetBorder(const AValue: TsCellBorders);
     procedure SetBorderStyle(const ABorder: TsCellBorder; const AValue: TsCellBorderStyle);
     procedure SetBorderStyles(const AValue: TsCellBorderStyles);
@@ -50,6 +52,8 @@ type
   public
     property BackgroundColor: TsColor
       read GetBackgroundColor write SetBackgroundColor;
+    property BiDiMode: TsBiDiMode
+      read GetBiDiMode write SetBiDiMode;
     property Border: TsCellBorders
       read GetBorder write SetBorder;
     property BorderStyle[ABorder: TsCellBorder]: TsCellBorderStyle
@@ -87,6 +91,11 @@ implementation
 function TCellHelper.GetBackgroundColor: TsColor;
 begin
   Result := GetWorksheet.ReadBackgroundColor(@self);
+end;
+
+function TCellHelper.GetBiDiMode: TsBiDiMode;
+begin
+  Result := GetWorksheet.ReadBiDiMode(@self);
 end;
 
 function TCellHelper.GetBorder: TsCellBorders;
@@ -186,6 +195,11 @@ end;
 procedure TCellHelper.SetBackgroundColor(const AValue: TsColor);
 begin
   GetWorksheet.WriteBackgroundColor(@self, AValue);
+end;
+
+procedure TCellHelper.SetBiDiMode(const AValue: TsBiDiMode);
+begin
+  GetWorksheet.WriteBiDiMode(@self, AValue);
 end;
 
 procedure TCellHelper.SetBorder(const AValue: TsCellBorders);
