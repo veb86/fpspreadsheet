@@ -865,7 +865,7 @@ begin
   FillPatternFgColor := AFgColor;
 end;
 
-
+                                    (*
 {@@ ----------------------------------------------------------------------------
   Helper procedure which draws a densely dotted horizontal line. In Excel
   this is called a "hair line".
@@ -906,7 +906,7 @@ begin
     ACanvas.Pixels[x, y] := clr;
     inc(y, 2);
   end;
-end;
+end;                                  *)
 
 {@@ ----------------------------------------------------------------------------
   Calculates a background color for selected cells. The procedures takes the
@@ -1781,30 +1781,41 @@ const
   procedure DrawBorderLine(ACoord: Integer; ARect: TRect; ADrawDirection: Byte;
     ABorderStyle: TsCellBorderStyle);
   const
-    // TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair);
+    //TsLineStyle = (
+    //  lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair,
+    //  lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot,
+    //  lsSlantDashDot);
     PEN_STYLES: array[TsLineStyle] of TPenStyle =
-      (psSolid, psSolid, psDash, psDot, psSolid, psSolid, psSolid,
-       psDash, psDashDot, psDashDot, psDashDotDot, psDashDotDot, psDashDot);
+      (psSolid, psSolid, psDash, psDot, psSolid, psSolid, psDot,
+       psDash, psDashDot, psDashDot, psDashDotDot, psDashDotDot,
+       psDashDot);
     PEN_WIDTHS: array[TsLineStyle] of Integer =
       (1, 2, 1, 1, 3, 1, 1,
-       2, 1, 2, 1, 2, 2);
+       2, 1, 2, 1, 2,
+       2);
   var
     width3: Boolean;     // line is 3 pixels wide
     deltax, deltay: Integer;
     angle: Double;
+    savedCosmetic: Boolean;
   begin
+    savedCosmetic := Canvas.Pen.Cosmetic;
+    width3 := (ABorderStyle.LineStyle in [lsThick, lsDouble]);
+
     Canvas.Pen.Style := PEN_STYLES[ABorderStyle.LineStyle];
     Canvas.Pen.Width := PEN_WIDTHS[ABorderStyle.LineStyle];
     Canvas.Pen.Color := ABorderStyle.Color and $00FFFFFF;
     Canvas.Pen.EndCap := pecSquare;
-    width3 := (ABorderStyle.LineStyle in [lsThick, lsDouble]);
+    if ABorderStyle.LineStyle = lsHair then Canvas.Pen.Cosmetic := false;
 
     // Workaround until efficient drawing procedures for diagonal "hair" lines
     // is available
+    {
     if (ADrawDirection in [drawDiagUp, drawDiagDown]) and
        (ABorderStyle.LineStyle = lsHair)
     then
       ABorderStyle.LineStyle := lsDotted;
+     }
 
     // Tuning the rectangle to avoid issues at the grid borders and to get nice corners
     if (ABorderStyle.LineStyle in [lsMedium, lsMediumDash, lsMediumDashDot,
@@ -1824,25 +1835,30 @@ const
       end;
     end;
     if ABorderStyle.LineStyle in [lsMedium, lsMediumDash, lsMediumDashDot,
-      lsMediumDashDotDot, lsSlantDashDot, lsThick] then
+      lsMediumDashDotDot, lsSlantDashDot, lsThick, lsHair] then
     begin
       if (ADrawDirection = drawHor) then
         dec(ARect.Right, 1)
       else if (ADrawDirection = drawVert) then
+        dec(ARect.Bottom, 1)
+      else if (ADrawDirection in [drawDiagUp, drawDiagDown]) then
+      begin
+        dec(ARect.Right, 1);
         dec(ARect.Bottom, 1);
+      end;
     end;
 
     // Painting
     case ABorderStyle.LineStyle of
       lsThin, lsMedium, lsThick, lsDotted, lsDashed, lsDashDot, lsDashDotDot,
-      lsMediumDash, lsMediumDashDot, lsMediumDashDotDot, lsSlantDashDot:
+      lsMediumDash, lsMediumDashDot, lsMediumDashDotDot, lsSlantDashDot, lsHair:
         case ADrawDirection of
           drawHor     : Canvas.Line(ARect.Left, ACoord, ARect.Right, ACoord);
           drawVert    : Canvas.Line(ACoord, ARect.Top, ACoord, ARect.Bottom);
           drawDiagUp  : Canvas.Line(ARect.Left, ARect.Bottom, ARect.Right, ARect.Top);
           drawDiagDown: Canvas.Line(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom);
         end;
-
+      {
       lsHair:
         case ADrawDirection of
           drawHor     : DrawHairLineHor(Canvas, ARect.Left, ARect.Right, ACoord);
@@ -1850,7 +1866,7 @@ const
           drawDiagUp  : ;
           drawDiagDown: ;
         end;
-
+      }
       lsDouble:
         case ADrawDirection of
           drawHor:
@@ -1891,6 +1907,7 @@ const
             end;
         end;
     end;
+    Canvas.Pen.Cosmetic := savedCosmetic;
   end;
 
 var
