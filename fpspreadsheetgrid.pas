@@ -1710,14 +1710,15 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Draws the borders of all cells. Calls DrawCellBorder for each individual cell.
+  Draws the borders of all cells. Calls DrawCellBorders for each individual cell.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawCellBorders;
 var
-  cell: PCell;
+  cell, base: PCell;
   gc, gr: Integer;
   sr1, sc1, sr2, sc2: Cardinal;
   rect: TRect;
+  cellHasBorder: Boolean;
 begin
   if Worksheet = nil then
     exit;
@@ -1730,20 +1731,14 @@ begin
   if sc1 = UNASSIGNED_ROW_COL_INDEX then sc1 := 0;
 
   for cell in Worksheet.Cells.GetRangeEnumerator(sr1, sc1, sr2, sc2) do
-    if (uffBorder in Worksheet.ReadUsedFormatting(cell)) then
-    begin
-      gc := GetGridCol(cell^.Col);
-      gr := GetGridRow(cell^.Row);
-      rect := CellRect(gc, gr);
-      DrawCellBorders(gc, gr, rect, cell);
-    end;
-
-  {
-  gr := TopLeft.Y;
-  gc := TopLeft.X;
-  for cell in Worksheet.Cells do
   begin
-    if (uffBorder in Worksheet.ReadUsedFormatting(cell)) then
+    if Worksheet.IsMerged(cell) then
+    begin
+      base := Worksheet.FindMergeBase(cell);
+      cellHasBorder := uffBorder in Worksheet.ReadUsedFormatting(base);
+    end else
+      cellHasBorder := uffBorder in Worksheet.ReadUsedFormatting(cell);
+    if cellHasBorder then
     begin
       gc := GetGridCol(cell^.Col);
       gr := GetGridRow(cell^.Row);
@@ -1751,7 +1746,6 @@ begin
       DrawCellBorders(gc, gr, rect, cell);
     end;
   end;
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1892,23 +1886,12 @@ var
   fmt: PsCellFormat;
 begin
   if Assigned(Worksheet) then begin
-    if IsRightToLeft then
-    begin
-      // Left border
-      if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) then
-        DrawBorderLine(ARect.Left-1, ARect, drawVert, bs);
-      // Right border
-      if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) then
-        DrawBorderLine(ARect.Right-1, ARect, drawVert, bs);
-    end else
-    begin
-      // Left border
-      if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) then
-        DrawBorderLine(ARect.Left-1, ARect, drawVert, bs);
-      // Right border
-      if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) then
-        DrawBorderLine(ARect.Right-1, ARect, drawVert, bs);
-    end;
+    // Left border
+    if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) then
+      DrawBorderLine(ARect.Left-ord(not IsRightToLeft), ARect, drawVert, bs);
+    // Right border
+    if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) then
+      DrawBorderLine(ARect.Right-ord(not IsRightToLeft), ARect, drawVert, bs);
     // Top border
     if GetBorderstyle(ACol, ARow, 0, -1, ACell, bs) then
       DrawBorderLine(ARect.Top-1, ARect, drawHor, bs);
@@ -2717,6 +2700,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Returns the cell borders which are drawn around a given cell.
+  If the cell is part of a merged block then the borders of the merge base
+  are applied to the location of the cell (no inner borders for merged cells).
 
   @param  ACol  Grid column index of the cell
   @param  ARow  Grid row index of the cell
@@ -2725,12 +2710,33 @@ end;
 function TsCustomWorksheetGrid.GetCellBorder(ACol, ARow: Integer): TsCellBorders;
 var
   cell: PCell;
+  base: PCell;
+  r, c, r1, c1, r2, c2: Cardinal;
 begin
   Result := [];
   if Assigned(Worksheet) then
   begin
-    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-    Result := Worksheet.ReadCellBorders(cell);
+    r := GetWorksheetRow(ARow);
+    c := GetWorksheetCol(ACol);
+    cell := Worksheet.FindCell(r, c);
+    if Worksheet.IsMerged(cell) then
+    begin
+      Worksheet.FindMergedRange(cell, r1, c1, r2, c2);
+      base := Worksheet.FindCell(r1, c1);
+      Result := Worksheet.ReadCellBorders(base);
+      if (cbNorth in Result) and (r > r1) then Exclude(Result, cbNorth);
+      if (cbSouth in Result) and (r < r2) then Exclude(Result, cbSouth);
+      if IsRightToLeft then
+      begin
+        if (cbEast in Result) and (c > c1) then Exclude(Result, cbEast);
+        if (cbWest in Result) and (c < c2) then Exclude(Result, cbWest);
+      end else
+      begin
+        if (cbWest in Result) and (c > c1) then Exclude(Result, cbWest);
+        if (cbEast in Result) and (c < c2) then Exclude(Result, cbEast);
+      end;
+    end else
+      Result := Worksheet.ReadCellBorders(cell);
   end;
 end;
 
@@ -2771,6 +2777,9 @@ end;
   by the parameter ABorder of a cell. The style is defined by line style and
   line color.
 
+  If the cell belongs to a merged block then the border styles of the merge
+  base are returned.
+
   @param   ACol     Grid column index of the cell
   @param   ARow     Grid row index of the cell
   @param   ABorder  Identifier of the border at which the line will be drawn
@@ -2782,11 +2791,14 @@ function TsCustomWorksheetGrid.GetCellBorderStyle(ACol, ARow: Integer;
   ABorder: TsCellBorder): TsCellBorderStyle;
 var
   cell: PCell;
+  base: PCell;
 begin
   Result := DEFAULT_BORDERSTYLES[ABorder];
   if Assigned(Worksheet) then
   begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    if Worksheet.IsMerged(cell) then
+      cell := Worksheet.FindMergeBase(cell);
     Result := Worksheet.ReadCellBorderStyle(cell, ABorder);
   end;
 end;
@@ -3183,12 +3195,12 @@ end;
 function TsCustomWorksheetGrid.GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
   ACell: PCell; out ABorderStyle: TsCellBorderStyle): Boolean;
 var
-  //cell,
   neighborcell: PCell;
   border, neighborborder: TsCellBorder;
-//  r, c: Cardinal;
+  r, c: Cardinal;
 begin
   Result := true;
+
   if (ADeltaCol = -1) and (ADeltaRow = 0) then
   begin
     border := cbWest;
@@ -3211,13 +3223,15 @@ begin
   end else
     raise Exception.Create('[TsCustomWorksheetGrid] Incorrect col/row for GetBorderStyle.');
 
-//  r := GetWorksheetRow(ARow);
- // c := GetWorksheetCol(ACol);
-  //cell := Worksheet.FindCell(r, c);
-  if (ARow - FHeaderCount + ADeltaRow < 0) or (ACol - FHeaderCount + ADeltaCol < 0) then
+  if IsRightToLeft then
+    ADeltaCol := -ADeltaCol;
+
+  r := GetWorksheetRow(ARow);
+  c := GetWorksheetCol(ACol);
+  if (r + ADeltaRow < 0) or (c + ADeltaCol < 0) then
     neighborcell := nil
   else
-    neighborcell := Worksheet.FindCell(ARow - FHeaderCount + ADeltaRow, ACol - FHeaderCount + ADeltaCol);
+    neighborcell := Worksheet.FindCell(r + ADeltaRow, c + ADeltaCol);
 
   // Only cell has border, but neighbor has not
   if HasBorder(ACell, border) and not HasBorder(neighborCell, neighborBorder) then
@@ -3225,7 +3239,7 @@ begin
     if Worksheet.InSameMergedRange(ACell, neighborcell) then
       result := false
     else
-      ABorderStyle := Worksheet.ReadCellBorderStyle(ACell, border)
+      ABorderStyle := GetCellBorderStyle(ACol, ARow, border);
   end
   else
   // Only neighbor has border, cell has not
@@ -3234,7 +3248,7 @@ begin
     if Worksheet.InSameMergedRange(ACell, neighborcell) then
       result := false
     else
-      ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder);
+      ABorderStyle := GetCellBorderStyle(ACol+ADeltaCol, ARow+ADeltaRow, neighborborder);
   end
   else
   // Both cells have shared border -> use top or left border
@@ -3244,9 +3258,9 @@ begin
       result := false
     else
     if (border in [cbNorth, cbWest]) then
-      ABorderStyle := Worksheet.ReadCellBorderStyle(neighborcell, neighborborder)
+      ABorderStyle := GetCellBorderStyle(ACol+ADeltaCol, ARow+ADeltaRow, neighborborder)
     else
-      ABorderStyle := Worksheet.ReadCellBorderStyle(ACell, border);
+      ABorderStyle := GetCellBorderStyle(ACol, ARow, border);
   end else
     Result := false;
 end;
@@ -3327,16 +3341,34 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns true if the cell has the given border.
+  Returns true if the cell has the given border. In case of merged cell the
+  borders of the merge base are checked. Inner merged cells don't have a border.
 
   @param  ACell    Pointer to cell considered
   @param  ABorder  Indicator for border to be checked for visibility
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
+var
+  base: PCell;
+  r1, c1, r2, c2: Cardinal;
 begin
   if Worksheet = nil then
     result := false
   else
+  if Worksheet.IsMerged(ACell) then
+  begin
+    Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    base := Worksheet.FindCell(r1, c1);
+    Result := ABorder in Worksheet.ReadCellBorders(base);
+    case ABorder of
+      cbNorth : if ACell^.Row > r1 then Result := false;
+      cbSouth : if ACell^.Row < r2 then Result := false;
+      cbEast  : if (IsRightToLeft and (ACell^.Col > c1)) or
+                   (not IsRightToLeft and (ACell^.Col < c2)) then Result := false;
+      cbWest  : if (IsRightToLeft and (ACell^.Col < c2)) or
+                   (not IsRightToLeft and (ACell^.Col > c1)) then Result := false;
+    end;
+  end else
     Result := ABorder in Worksheet.ReadCellBorders(ACell);
 end;
 
