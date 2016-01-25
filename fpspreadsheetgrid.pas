@@ -5116,13 +5116,42 @@ procedure TsCustomWorksheetGrid.SetCellBorder(ACol, ARow: Integer;
   AValue: TsCellBorders);
 var
   cell: PCell;
+  sr1, sc1, sr2, sc2: Cardinal;
+  gr1, gc1, gr2, gc2: Integer;
+  styles, saved_styles: TsCellBorderStyles;
 begin
   if Assigned(Worksheet) then begin
     BeginUpdate;
     try
       cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-      Worksheet.WriteBorders(cell, AValue);
-      FixNeighborCellBorders(cell);
+
+      if Worksheet.IsMergeBase(cell) then
+      begin
+        styles := Worksheet.ReadCellBorderStyles(cell);
+        saved_styles := styles;
+        if not (cbEast in AValue) then
+          styles[cbEast] := NO_CELL_BORDER;
+        if not (cbWest in AValue) then styles[cbWest] := NO_CELL_BORDER;
+        if not (cbNorth in AValue) then styles[cbNorth] := NO_CELL_BORDER;
+        if not (cbSouth in AValue) then styles[cbSouth] := NO_CELL_BORDER;
+        Worksheet.FindMergedRange(cell, sr1, sc1, sr2, sc2);
+        gr1 := GetGridRow(sr1);
+        gr2 := GetGridRow(sr2);
+        gc1 := GetGridCol(sc1);
+        gc2 := GetGridCol(sc2);
+        // Set border flags and styles for all outer cells of the merged block
+        // Note: This overwrites the styles of the base ...
+        ShowCellBorders(gc1,gr1, gc2,gr2, styles[cbWest], styles[cbNorth],
+          styles[cbEast], styles[cbSouth], NO_CELL_BORDER, NO_CELL_BORDER);
+        // ... Restores base border style overwritten in prev instruction
+        Worksheet.WriteBorderStyles(cell, saved_styles);
+        Worksheet.WriteBorders(cell, AValue);
+      end else
+      begin
+        Worksheet.WriteBorders(cell, AValue);
+        FixNeighborCellBorders(cell);
+      end;
+
     finally
       EndUpdate;
     end;
@@ -5150,13 +5179,23 @@ procedure TsCustomWorksheetGrid.SetCellBorderStyle(ACol, ARow: Integer;
   ABorder: TsCellBorder; AValue: TsCellBorderStyle);
 var
   cell: PCell;
+  borders: TsCellBorders;
 begin
   if Assigned(Worksheet) then begin
     BeginUpdate;
     try
       cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
-      Worksheet.WriteBorderStyle(cell, ABorder, AValue);
-      FixNeighborCellBorders(cell);
+      if Worksheet.IsMergeBase(cell) then
+      begin
+        borders := Worksheet.ReadCellBorders(cell);
+        Worksheet.WriteBorderStyle(cell, ABorder, AValue);
+        // This will apply the new border style to the outer cells of the range.
+        SetCellBorder(ACol, ARow, borders);
+      end else
+      begin
+        Worksheet.WriteBorderStyle(cell, ABorder, AValue);
+        FixNeighborCellBorders(cell);
+      end;
     finally
       EndUpdate;
     end;

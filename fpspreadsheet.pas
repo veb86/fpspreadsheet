@@ -2938,8 +2938,11 @@ begin
   if ACell <> nil then
   begin
     fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    Result := Fmt^.BorderStyles;
+    {
     for b in fmt^.Border do
       Result[b] := fmt^.BorderStyles[b];
+      }
   end;
 end;
 
