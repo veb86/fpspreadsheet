@@ -209,8 +209,8 @@ type
   );
 
   {@@ List of possible formatting fields }
-  TsUsedFormattingField = (uffTextRotation, uffFont, {uffBold, }uffBorder,
-    uffBackground, uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign
+  TsUsedFormattingField = (uffTextRotation, uffFont, uffBorder, uffBackground,
+    uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign, uffBiDi
   );
   { NOTE: "uffBackgroundColor" of older versions replaced by "uffBackground" }
 
@@ -596,6 +596,9 @@ type
     Keys: TsSortKeys;
   end;
 
+  {@@ Switch a cell from left-to-right to right-to-left orientation }
+  TsBiDiMode = (bdDefault, bdLTR, bdRTL);
+
   {@@ Record containing all details for cell formatting }
   TsCellFormat = record
     Name: String;
@@ -609,6 +612,7 @@ type
     BorderStyles: TsCelLBorderStyles;
     Background: TsFillPattern;
     NumberFormatIndex: Integer;
+    BiDiMode: TsBiDiMode;
     // next two are deprecated...
     NumberFormat: TsNumberFormat;
     NumberFormatStr: String;

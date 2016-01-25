@@ -170,6 +170,7 @@ type
     procedure WriteVirtualCells(AStream: TStream; ASheet: TsWorksheet);
 
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TsCellFormat): String;
+    function WriteBiDiModeStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteBorderStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteCommentXMLAsString(AComment: String): String;
     function WriteDefaultFontXMLAsString: String;
@@ -3555,6 +3556,14 @@ begin
               fmt.HorAlignment := haCenter;
             if fmt.HorAlignment <> haDefault then
               Include(fmt.UsedFormattingFields, uffHorAlign);
+            // BiDi mode
+            s := GetAttrValue(styleChildNode, 'style:writing-mode');
+            if s = 'lr-tb' then
+              fmt.BiDiMode := bdRTL
+            else if s = 'rl-tb' then
+              fmt.BiDiMode := bdRTL;
+            if fmt.BiDiMode <> bdDefault then
+              Include(fmt.UsedFormattingFields, uffBiDi);
           end;
           styleChildNode := styleChildNode.NextSibling;
         end;
@@ -4282,7 +4291,7 @@ begin
         '<style:table-cell-properties ' + s + '/>');
 
     // style:paragraph-properties
-    s := WriteHorAlignmentStyleXMLAsString(fmt);
+    s := WriteHorAlignmentStyleXMLAsString(fmt) + WriteBiDiModeStyleXMLAsString(fmt);
     if s <> '' then
       AppendToStream(AStream,
         '<style:paragraph-properties ' + s + '/>');
@@ -4979,6 +4988,18 @@ begin
   mix.b := Min(round(fraction_fc*TRgba(fc).b + fraction_bc*TRgba(bc).b), 255);
 
   Result := Format('fo:background-color="%s" ', [ColorToHTMLColorStr(TsColor(mix))]);
+end;
+
+function TsSpreadOpenDocWriter.WriteBiDiModeStyleXMLAsString(
+  const AFormat: TsCellFormat): String;
+begin
+  Result := '';
+  if not (uffBiDi in AFormat.UsedFormattingFields) then
+    exit;
+  case AFormat.BiDiMode of
+    bdLTR : Result := 'style:writing-mode="lr-tb" ';
+    bdRTL : Result := 'style:writing-mode="rl-tb" ';
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

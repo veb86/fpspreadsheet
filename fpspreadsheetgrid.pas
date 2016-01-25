@@ -82,6 +82,7 @@ type
     // Setter/Getter
     function GetBackgroundColor(ACol, ARow: Integer): TsColor;
     function GetBackgroundColors(ALeft, ATop, ARight, ABottom: Integer): TsColor;
+    function GetCellBiDiMode(ACol, ARow: Integer): TsBiDiMode;
     function GetCellBorder(ACol, ARow: Integer): TsCellBorders;
     function GetCellBorders(ALeft, ATop, ARight, ABottom: Integer): TsCellBorders;
     function GetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder): TsCellBorderStyle;
@@ -122,6 +123,7 @@ type
     procedure SetAutoCalc(AValue: Boolean);
     procedure SetBackgroundColor(ACol, ARow: Integer; AValue: TsColor);
     procedure SetBackgroundColors(ALeft, ATop, ARight, ABottom: Integer; AValue: TsColor);
+    procedure SetCellBiDiMode(ACol, ARow: Integer; AValue: TsBiDiMode);
     procedure SetCellBorder(ACol, ARow: Integer; AValue: TsCellBorders);
     procedure SetCellBorders(ALeft, ATop, ARight, ABottom: Integer; AValue: TsCellBorders);
     procedure SetCellBorderStyle(ACol, ARow: Integer; ABorder: TsCellBorder;
@@ -209,7 +211,8 @@ type
     procedure InternalDrawTextInCell(AText: String; ARect: TRect;
       ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
       ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
-      AOverrideTextColor: TColor; ARichTextParams: TsRichTextParams);
+      AOverrideTextColor: TColor; ARichTextParams: TsRichTextParams;
+      AIsRightToLeft: Boolean);
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Loaded; override;
     procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
@@ -327,6 +330,9 @@ type
         Expressed as index into the workbook's color palette. }
     property BackgroundColors[ALeft, ATop, ARight, ABottom: Integer]: TsColor
         read GetBackgroundColors write SetBackgroundColors;
+    {@@ Override system or sheet right-to-left mode for cell }
+    property CellBiDiMode[ACol,ARow: Integer]: TsBiDiMode
+        read GetCellBiDiMode write SetCellBiDiMode;
     {@@ Set of flags indicating at which cell border a border line is drawn. }
     property CellBorder[ACol, ARow: Integer]: TsCellBorders
         read GetCellBorder write SetCellBorder;
@@ -990,10 +996,12 @@ var
   w, maxw: Integer;
   txt: String;
   cell: PCell;
+  RTL: Boolean;
 begin
   if Worksheet = nil then
     exit;
 
+  RTL := IsRightToLeft;
   maxw := -1;
   for cell in Worksheet.Cells.GetColEnumerator(GetWorkSheetCol(ACol)) do
   begin
@@ -1001,9 +1009,13 @@ begin
     txt := GetCellText(ACol, gRow);
     if txt = '' then
       Continue;
+    case Worksheet.ReadBiDiMode(cell) of
+      bdRTL: RTL := true;
+      bdLTR: RTL := false;
+    end;
     w := RichTextWidth(Canvas, Workbook, Rect(0, 0, MaxInt, MaxInt),
       txt, cell^.RichTextParams, Worksheet.ReadCellFontIndex(cell),
-      Worksheet.ReadTextRotation(cell), false, IsRightToLeft);
+      Worksheet.ReadTextRotation(cell), false, RTL);
     if w > maxw then maxw := w;
   end;
   if maxw > -1 then
@@ -2174,8 +2186,8 @@ begin
               temp_rct := rct;
 //              for i := gc1 to gc2 do begin
               for i:= gc2 downto gc1 do begin
-              // Starting from last col will insure drawing grid lines below text
-              // when text is overflow in RTL and have no problem in LTR
+              // Starting from last col will ensure drawing grid lines below text
+              // when text is overflowing in RTL, no problem in LTR
               // (Modification by "shobits1" - ok)
                 ColRowToOffset(true, true, i, temp_rct.Left, temp_rct.Right);
                 if HorizontalIntersect(temp_rct, clipArea) and (i <> gc) then
@@ -2349,6 +2361,7 @@ var
   numfmt: TsNumFormatParams;
   numFmtColor: TColor;
   sidx: Integer;   // number format section index
+  RTL: Boolean;
 begin
   if (Worksheet = nil) then
     exit;
@@ -2379,6 +2392,12 @@ begin
 
   fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
   wrapped := (uffWordWrap in fmt^.UsedFormattingFields) or (fmt^.TextRotation = rtStacked);
+  RTL := IsRightToLeft;
+  if (uffBiDi in fmt^.UsedFormattingFields) then
+    case Worksheet.ReadBiDiMode(lCell) of
+      bdRTL : RTL := true;
+      bdLTR : RTL := false;
+    end;
 
   // Text rotation
   if (uffTextRotation in fmt^.UsedFormattingFields)
@@ -2400,7 +2419,7 @@ begin
   begin
     if (lCell^.ContentType in [cctNumber, cctDateTime]) then
     begin
-      if IsRightToLeft then
+      if RTL then
         horAlign := haLeft
       else
         horAlign := haRight;
@@ -2408,7 +2427,7 @@ begin
     if (lCell^.ContentType in [cctBool]) then
       horAlign := haCenter
     else begin
-      if IsRightToLeft then
+      if RTL then
         horAlign := haRight
       else
         horAlign := haLeft;
@@ -2441,7 +2460,7 @@ begin
   InflateRect(ARect, -constCellPadding, -constCellPadding);
 
   InternalDrawTextInCell(txt, ARect, horAlign, vertAlign, txtRot, wrapped,
-    fntIndex, numfmtColor, lCell^.RichTextParams);
+    fntIndex, numfmtColor, lCell^.RichTextParams, RTL);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2698,6 +2717,16 @@ begin
     end;
 end;
 
+function TsCustomWorksheetGrid.GetCellBiDiMode(ACol,ARow: Integer): TsBiDiMode;
+var
+  cell: PCell;
+begin
+  cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+  if cell <> nil then
+    Result := Worksheet.ReadBiDiMode(cell) else
+    Result := bdDefault;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Returns the cell borders which are drawn around a given cell.
   If the cell is part of a merged block then the borders of the merge base
@@ -2935,6 +2964,7 @@ var
   fmt: PsCellFormat;
   fntIndex: Integer;
   txtRot: TsTextRotation;
+  RTL: Boolean;
 begin
   Result := 0;
   if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
@@ -2972,6 +3002,13 @@ begin
       txtRot := fmt^.TextRotation else txtRot := trHorizontal;
     wrapped := (uffWordWrap in fmt^.UsedFormattingFields);
 
+    RTL := IsRightToLeft;
+    if (uffBiDi in fmt^.UsedFormattingFields) then
+      case fmt^.BiDiMode of
+        bdRTL: RTL := true;
+        bdLTR: RTL := false;
+      end;
+
     case txtRot of
       trHorizontal: ;
       rt90DegreeClockwiseRotation,
@@ -2982,47 +3019,8 @@ begin
     end;
 
     Result := RichTextHeight(Canvas, Workbook, cellR, s, lCell^.RichTextParams,
-                fntIndex, txtRot, wrapped, IsRightToLeft)
+                fntIndex, txtRot, wrapped, RTL)
             + 2 * constCellPadding;
-
-            (*
-    wrapped := (uffWordWrap in fmt^.UsedFormattingFields)
-      or (fmt^.TextRotation = rtStacked);
-    // *** multi-line text ***
-    if wrapped then
-    begin
-      // horizontal
-      if ( (uffTextRotation in fmt^.UsedFormattingFields) and
-           (fmt^.TextRotation in [trHorizontal, rtStacked]))
-         or not (uffTextRotation in fmt^.UsedFormattingFields)
-      then
-      begin
-        cellR := CellRect(ACol, ARow);
-        InflateRect(cellR, -constCellPadding, -constCellPadding);
-        txtR := Bounds(cellR.Left, cellR.Top, cellR.Right-cellR.Left, cellR.Bottom-cellR.Top);
-        flags := DT_WORDBREAK and not DT_SINGLELINE;
-        LCLIntf.DrawText(Canvas.Handle, PChar(s), Length(s), txtR,
-          DT_CALCRECT or flags);
-        Result := txtR.Bottom - txtR.Top + 2*constCellPadding;
-      end;
-      // rotated wrapped text:
-      // do not consider this because wrapping affects cell height.
-    end else
-    // *** single-line text ***
-    begin
-      // not rotated
-      if ( not (uffTextRotation in fmt^.UsedFormattingFields) or
-           (fmt^.TextRotation = trHorizontal) )
-      then
-        Result := Canvas.TextHeight(s) + 2*constCellPadding
-      else
-      // rotated by +/- 90°
-      if (uffTextRotation in fmt^.UsedFormattingFields) and
-         (fmt^.TextRotation in [rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation])
-      then
-        Result := Canvas.TextWidth(s) + 2*constCellPadding;
-    end;
-    *)
   end;
 end;
 
@@ -3517,6 +3515,7 @@ end;
   @param AFontIndex       Font index to be used for drawing non-rich-text.
   @param ARichTextParams  an array of character and font index combinations for
                           rich-text formatting of text in cell
+  @param AIsRightToLeft   if true cell must be drawn in right-to-left mode.
 
   @Note The reason to separate AJustification from ACellHorAlign and ACelVertAlign is
   the output of nfAccounting formatted numbers where the numbers are always
@@ -3526,7 +3525,8 @@ end;
 procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText: String;
   ARect: TRect; ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
   ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
-  AOverrideTextColor: TColor; ARichTextParams: TsRichTextParams);
+  AOverrideTextColor: TColor; ARichTextParams: TsRichTextParams;
+  AIsRightToLeft: Boolean);
 begin
   // Since - due to the rich-text mode - characters are drawn individually their
   // background occasionally overpaints the prev characters (italic). To avoid
@@ -3536,7 +3536,7 @@ begin
   // Work horse for text drawing, both standard text and rich-text
   DrawRichText(Canvas, Workbook, ARect, AText, ARichTextParams, AFontIndex,
     ATextWrap, ACellHorAlign, ACellVertAlign, ATextRot, AOverrideTextColor,
-    IsRightToLeft
+    AIsRightToLeft
   );
 end;
 (*
@@ -3730,6 +3730,7 @@ begin
   end;
 end;
   *)
+
 {@@ ----------------------------------------------------------------------------
   Standard key handling method inherited from TCustomGrid. Is overridden to
   catch some keys for special processing.
@@ -5102,6 +5103,13 @@ begin
   finally
     EndUpdate;
   end;
+end;
+
+procedure TsCustomWorksheetGrid.SetCellBiDiMode(ACol, ARow: Integer;
+  AValue: TsBiDiMode);
+begin
+  if Assigned(Worksheet) then
+    Worksheet.WriteBiDiMode(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
 end;
 
 procedure TsCustomWorksheetGrid.SetCellBorder(ACol, ARow: Integer;

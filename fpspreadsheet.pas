@@ -205,6 +205,7 @@ type
     function  ReadTextRotation(ACell: PCell): TsTextRotation;
     function  ReadVertAlignment(ACell: PCell): TsVertAlignment;
     function  ReadWordwrap(ACell: PCell): boolean;
+    function  ReadBiDiMode(ACell: PCell): TsBiDiMode;
 
     { Writing of values }
     function WriteBlank(ARow, ACol: Cardinal): PCell; overload;
@@ -368,6 +369,9 @@ type
 
     function WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean): PCell; overload;
     procedure WriteWordwrap(ACell: PCell; AValue: boolean); overload;
+
+    function WriteBiDiMode(ARow, ACol: Cardinal; AValue: TsBiDiMode): PCell; overload;
+    procedure WriteBiDiMode(ACell: PCell; AValue: TsBiDiMode); overload;
 
     { Formulas }
     function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;
@@ -3075,6 +3079,22 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the BiDi mode of the cell (right-to-left or left-to-right)
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadBiDiMode(ACell: PCell): TsBiDiMode;
+var
+  fmt: PsCellFormat;
+begin
+  Result := bdDefault;
+  if (ACell <> nil) then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if (uffBiDi in fmt^.UsedFormattingFields) then
+      Result := fmt^.BiDiMode;
+  end;
+end;
+
 
 { Merged cells }
 
@@ -5741,6 +5761,28 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
+function TsWorksheet.WriteBiDiMode(ARow, ACol: Cardinal; AValue: TsBiDiMode): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteBiDiMode(Result, AVAlue);
+end;
+
+procedure TsWorksheet.WriteBiDiMode(ACell: PCell; AValue: TsBiDiMode);
+var
+  fmt: TsCellFormat;
+begin
+  if ACell = nil then
+    exit;
+  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+  fmt.BiDiMode := AValue;
+  if AValue <> bdDefault then
+    Include(fmt.UsedFormattingFields, uffBiDi)
+  else
+    Exclude(fmt.UsedFormattingFields, uffBiDi);
+  ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+  ChangedCell(ACell^.Row, ACell^.Col);
+end;
+
 function TsWorksheet.GetFormatSettings: TFormatSettings;
 begin
   Result := FWorkbook.FormatSettings;
@@ -7525,6 +7567,8 @@ begin
         else s := s + '+' + GetEnumName(TypeInfo(TsCellBorder), ord(cb));
     Result := Format('%s; %s', [Result, s]);
   end;
+  if (uffBiDi in fmt^.UsedFormattingFields) then
+    Result := Format('%s; %s', [Result, GetEnumName(TypeInfo(TsBiDiMode), ord(fmt^.BiDiMode))]);
   if Result <> '' then Delete(Result, 1, 2);
 end;
 

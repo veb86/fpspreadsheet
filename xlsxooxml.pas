@@ -838,6 +838,10 @@ begin
             if s1 = 'bottom' then
               fmt.VertAlignment := vaBottom;
 
+            s1 := GetAttrValue(childNode, 'readingOrder');
+            if (s1 = '1') or (s1 = '2') then
+              fmt.BiDiMode := TsBiDiMode(StrToInt(s1));
+
             s1 := GetAttrValue(childNode, 'wrapText');
             if (s1 <> '0') then
               Include(fmt.UsedFormattingFields, uffWordWrap);
@@ -867,6 +871,8 @@ begin
         Include(fmt.UsedFormattingFields, uffVertAlign);
       if fmt.TextRotation <> trHorizontal then
         Include(fmt.UsedFormattingFields, uffTextRotation);
+      if fmt.BiDiMode <> bdDefault then
+        Include(fmt.UsedFormattingFields, uffBiDi);
       FCellFormatList.Add(fmt);
     end;
     node := node.NextSibling;
@@ -3040,8 +3046,13 @@ begin
         vaBottom: sAlign := sAlign + 'vertical="bottom" ';
       end;
 
+    { Word wrap }
     if (uffWordWrap in fmt^.UsedFormattingFields) then
       sAlign := sAlign + 'wrapText="1" ';
+
+    { BiDi mode }
+    if (uffBiDi in fmt^.UsedFormattingFields) and (fmt^.BiDiMode <> bdDefault) then
+      sAlign := sAlign + Format('readingOrder="%d" ', [Ord(fmt^.BiDiMode)]);
 
     { Fill }
     if (uffBackground in fmt^.UsedFormattingFields) then

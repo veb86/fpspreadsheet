@@ -3015,6 +3015,12 @@ begin
     AStrings.Add('NumberFormatStr=' + numFmt.NumFormatStr);
   end;
 
+  if (ACell = nil) or not (uffBiDi in fmt.UsedFormattingFields) then
+    AStrings.Add('BiDi=(bdDefault)')
+  else
+    AStrings.Add(Format('BiDiMode=%s', [
+      GetEnumName(TypeInfo(TsBiDiMode), ord(fmt.BiDiMode))]));
+
   if (Worksheet = nil) or not Worksheet.IsMerged(ACell) then
     AStrings.Add('Merged range=(none)')
   else
