@@ -58,21 +58,25 @@ type
     FRtParams: TsRichTextParams;
     FMaxLineLen: Integer;
     FTotalHeight: Integer;
-    FStackPeriod: Integer;
     FLines: TFPList;
-    // Scanner
+    FPtr: PChar;
     FRtpIndex: Integer;
     FCharIndex: integer;
     FCharIndexOfNextFont: Integer;
     FFontHeight: Integer;
     FFontPos: TsFontPosition;
-    FPtr: PChar;
+
   private
     function GetHeight: Integer;
     function GetWidth: Integer;
+
   protected
+    procedure DrawHor(AOverrideTextColor: TColor);
     procedure DrawLine(pEnd: PChar; x, y, ALineHeight: Integer; AOverrideTextColor: TColor);
+    procedure DrawStacked(AOverrideTextColor: TColor);
     procedure DrawText(var x, y: Integer; s: String; ALineHeight: Integer);
+    procedure DrawVert(AOverrideTextColor: TColor; AClockwise: Boolean);
+
     function GetTextPt(x,y,ALineHeight: Integer): TPoint;
     procedure InitFont(out ACurrRtpIndex, ACharIndexOfNextFont, ACurrFontHeight: Integer;
       out ACurrFontPos: TsFontPosition);
@@ -82,6 +86,7 @@ type
       AWordList: TStringList);
     procedure UpdateFont(ACharIndex: Integer; var ACurrRtpIndex,
       ACharIndexOfNextFont, ACurrFontHeight: Integer; var ACurrFontPos: TsFontPosition);
+
   public
     constructor Create(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
       AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
@@ -96,7 +101,7 @@ type
 implementation
 
 uses
-  Types, Math, LCLType, LCLIntf, LazUTF8, StrUtils, fpsUtils;
+  Types, Math, LCLType, LCLIntf, LazUTF8, fpsUtils;
 
 const
 {@@ Font size factor for sub-/superscript characters }
@@ -230,598 +235,17 @@ begin
       Result := Result + LineEnding + line;
   end;
 end;
-                                                             (*
+
+
 {------------------------------------------------------------------------------}
-{                       Processing of rich-text                                }
+{                       Public rich-text functios                              }
 {------------------------------------------------------------------------------}
-type
-  TLineInfo = record
-    pStart, pEnd: PChar;
-    Words: Array of String;
-    NumSpaces: Integer;
-    BeginsWithFontOfRtpIndex: Integer;
-    Width: Integer;
-    Height: Integer;
-  end;
 
-
-procedure InternalDrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook;
-  const ARect: TRect; const AText: String; AFontIndex: Integer;
-  ARichTextParams: TsRichTextParams; AWordwrap: Boolean;
-  AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
-  ARotation: TsTextRotation; AOverrideTextColor: TColor;
-  ARightToLeft, AMeasureOnly: Boolean;
-  var AWidth, AHeight: Integer);
-var
-  xpos, ypos: Integer;
-  p: PChar;
-  lRtpIndex: Integer;
-  lLineInfo: TLineInfo;
-  lLineInfos: array of TLineInfo = nil;
-  lTotalHeight, lLinelen: Integer;
-  lStackPeriod: Integer = 0;
-  lCharPos: Integer;
-  lFontPos: TsFontPosition;
-  lFontHeight: Integer;
-  lCharIndexFontChange: Integer;
-  ts: TTextStyle;
-
-  { Scans the line for a possible line break. The max width is determined by
-    the size of the rectangle ARect passed to the outer procedure:
-    rectangle width in case of horizontal painting, rectangle height in case
-    of vertical painting. Line breaks can occure at spaces or cr/lf characters,
-    or, if not found, at any character reaching the max width.
-
-    Parameters:
-
-    P              defines where the scan starts. At the end of the routine it
-                   points to the first character of the next line.
-    ANumSpaces     is how many spaces were found between the start and end value
-                   of P.
-    ARtpFontIndex  At input, this is the index of the rich-text formatting
-                   parameter value used for the font at line start. At output,
-                   it is the index which will be valid at next line start.
-    ALineWidth     the pixel width of the line seen along drawing direction, i.e.
-                   in case of stacked text it is the character height times
-                   character count in the line (!)
-    ALineHeight    The height of the line as seen vertically to the drawing
-                   direction. Normally this is the height of the largest font
-                   found in the line; in case of stacked text it is the
-                   standardized width of a character. }
-  procedure ScanLine(var P: PChar; var ALineInfo: TLineInfo;
-    var ANextLineRtParamIndex: Integer);
-  var
-    pWordStart: PChar;
-    EOL: Boolean;
-    savedSpaces: Integer;
-    savedWidth: Integer;
-    savedCharPos: Integer;
-//    savedRtpFontIndex: Integer;
-    savedNextLineRtParamIndex: Integer;
-    maxWidth: Integer;
-    dw: Integer;
-    lineChar: utf8String;
-    charLen: Integer;    // Number of bytes of current utf8 character
-    s: String;
-
-              {
-    TLineInfo = record
-      pStart, pEnd: PChar;
-      Words: Array of String;
-      NumSpaces: Integer;
-      BeginsWithFontOfRtpIndex: Integer;
-      Width: Integer;
-      Height: Integer;
-    end;
-               }
-  begin
-    ALineInfo.pStart := P;
-    ALineInfo.pEnd := P;
-    ALineInfo.NumSpaces := 0;
-    ALineInfo.BeginsWithFontOfRtpIndex := ANextLineRtParamIndex;
-    ALineInfo.Width := 0;
-    ALineInfo.Height := lFontHeight;
-    SetLength(ALineInfo.Words, 0);
-
-    s := '';
-    savedWidth := 0;
-    savedSpaces := 0;
-    maxWidth := MaxInt;
-    if AWordwrap then
-    begin
-      if ARotation = trHorizontal then
-        maxWidth := ARect.Right - ARect.Left
-      else
-        maxWidth := ARect.Bottom - ARect.Top;
-    end;
-
-    UpdateFont(ACanvas, AWorkbook, AFontIndex, ARichTextParams, lCharPos,
-      ANextLineRtParamIndex, lFontHeight, lFontPos);
-    ALineInfo.Height := Max(fontHeight, ALineInfo.Height);
-
-    while P^ <> #0 do begin
-      case P^ of
-        #13: begin
-               inc(P);
-               inc(lCharPos);
-               if P^ = #10 then
-               begin
-                 inc(P);
-                 inc(lCharPos);
-               end;
-               break;
-             end;
-        #10: begin
-               inc(P);
-               inc(lCharPos);
-               break;
-             end;
-        ' ': begin
-               SetLength(ALineInfo.Words, Length(ALineInfo.Words)+1);
-               ALineInfo.Words[High(ALineInfo.Words)] := s;
-               savedWidth := ALineInfo.Width;
-               savedSpaces := ALineInfo.NumSpaces;
-               // Find next word
-               while P^ = ' ' do
-               begin
-                 UpdateFont(ACanvas. AWorkbook, AFontIndex, ARichTextParams,
-                   lCharPos, ANextLineRtParamIndex, lFontHeight, lFontPos);
-                 ALineInfo.Height := Max(lFontHeight, ALineInfo.Height);
-                 dw := Math.IfThen(ARotation = rtStacked, lFontHeight, ACanvas.TextWidth(' '));
-                 AALineInfo.Width := ALineInfo.Width + dw;
-                 inc(ALineInfo.NumSpaces);
-                 inc(P);
-                 inc(lCharPos);
-               end;
-               if ALineInfo.Width >= maxWidth then
-               begin
-                 ALineInfo.Width := savedWidth;
-                 ALineInfo.NumSpaces := savedSpaces;
-                 break;
-               end;
-             end;
-        else begin
-               // Bere begins a new word. Find end of this word and check if
-               // it fits into the line.
-               // Store the data valid for the word start.
-               pWordStart := P;
-               s := '';
-               savedCharPos := lCharPos;
-               savedNextLineTrParamIndex := ANextLineParamIndex;
-               EOL := false;
-               while (P^ <> #0) and (P^ <> #13) and (P^ <> #10) and (P^ <> ' ') do
-               begin
-                 UpdateFont(ACanvas, AWorkbook, AFontIndex, ARichTextParams,
-                   lCharPos, ANextLineRtParamIndex, lFontHeight, lFontPos);
-                 ALineInfo.Height := Max(lFontHeight, ALineInfo.Height);
-                 lineChar := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
-                 s := s + lineChar;
-                 dw := Math.IfThen(ARotation = rtStacked, lFontHeight, ACanvas.TextWidth(lineChar));
-                 ALineInfo.Width := ALineInfo.Width + dw;
-                 if ALineInfo.Width > maxWidth then
-                 begin
-                   // The line exeeds the max line width.
-                   // There are two cases:
-                   if ALineInfo.NumSpaces > 0 then
-                   begin
-                     // (a) This is not the only word: Go back to where this
-                     // word began. We had stored everything needed!
-                     P := pWordStart;
-                     lCharPos := savedCharPos;
-                     ALineInfo.Width := savedWidth;
-                     ANextLineParamIndex := savedNextLineParamIndex;
-                   end;
-                   // (b) This is the only word in the line --> we break at the
-                   // current cursor position.
-                   EOL := true;
-                   break;
-                 end;
-                 inc(P);
-                 inc(lCharPos);
-               end;
-               if EOL then break;
-             end;
-      end;
-    end;
-    UpdateFont(ACanvas, AWorkbook, AFontIndex
-    UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
-    ALineHeight := Max(fontHeight, ALineHeight);
-  end;
-
-  procedure DrawText(var x, y: Integer; ALineHeight: Integer; s: String);
-  var
-    w: Integer;
-  begin
-    w := ACanvas.TextWidth(s);
-
-    case ARotation of
-      trHorizontal:
-        begin
-          ACanvas.Font.Orientation := 0;
-          if ARightToLeft then
-          begin
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x-w, y, s);
-              fpSubscript  : ACanvas.TextOut(x-w, y+ALineHeight div 2, s);
-              fpSuperScript: ACanvas.TextOut(x-w, y-ALineHeight div 6, s);
-            end;
-            dec(x, w);
-          end else
-          begin
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x, y, s);
-              fpSubscript  : ACanvas.TextOut(x, y+ALineHeight div 2, s);
-              fpSuperscript: ACanvas.TextOut(x, y-ALineHeight div 6, s);
-            end;
-            inc(x, w);
-          end;
-        end;
-
-      rt90DegreeClockwiseRotation:
-        begin
-          ACanvas.Font.Orientation := -900;
-          if ARightToLeft then
-          begin
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x, y-w, s);
-              fpSubscript  : ACanvas.TextOut(x-ALineHeight div 2, y-w, s);
-              fpSuperscript: ACanvas.TextOut(x+ALineHeight div 6, y-w, s);
-            end;
-            dec(y, w);
-          end else
-          begin
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x, y, s);
-              fpSubscript  : ACanvas.TextOut(x-ALineHeight div 2, y, s);
-              fpSuperscript: ACanvas.TextOut(x+ALineHeight div 6, y, s);
-            end;
-            inc(y, w);
-          end;
-        end;
-
-      rt90DegreeCounterClockwiseRotation:
-        begin
-          ACanvas.Font.Orientation := +900;
-          if ARightToLeft then
-          begin
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x, y+w, s);
-              fpSubscript  : ACanvas.TextOut(x+ALineHeight div 2, y+w, s);
-              fpSuperscript: ACanvas.TextOut(x-ALineHeight div 6, y+w, s);
-            end;
-            inc(y, w);
-          end else
-          begin
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x, y, s);
-              fpSubscript  : ACanvas.TextOut(x+ALineHeight div 2, y, s);
-              fpSuperscript: ACanvas.TextOut(x-ALineHeight div 6, y, s);
-            end;
-            dec(y, w);
-          end;
-        end;
-
-      rtStacked:
-        begin
-          ACanvas.Font.Orientation := 0;
-          w := ACanvas.TextWidth(s);
-          // chars centered around x
-          if ARightToLeft then       // is this ok??
-          begin
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x - w div 2, y-fontheight, s);
-              fpSubscript  : ACanvas.TextOut(x - w div 2, y-fontheight+ALineHeight div 2, s);
-              fpSuperscript: ACanvas.TextOut(x - w div 2, y-fontheight-ALineHeight div 6, s);
-            end;
-            dec(y, fontHeight);
-          end else
-          begin
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x - w div 2, y, s);
-              fpSubscript  : ACanvas.TextOut(x - w div 2, y+ALineHeight div 2, s);
-              fpSuperscript: ACanvas.TextOut(x - w div 2, y-ALineHeight div 6, s);
-            end;
-            inc(y, fontHeight);
-          end;
-        end;
-    end;
-  end;
-
-  procedure DrawLine(pStart, pEnd: PChar; x, y, ALineHeight, ARtpFontIndex: Integer);
-  var
-    p: PChar;
-    charPosForNextFont, charLen: Integer;
-    s: String;
-    fntIdx: Integer;
-  begin
-    p := pStart;
-    s := '';
-    charPosForNextFont := ARichTextParams[ARtpFontIndex].FirstIndex;
-    while (p^ <> #0) and (p < pEnd) do begin
-      case p^ of
-        #10: begin
-               DrawText(x, y, ALineHeight, s);
-               s := '';
-               inc(p);
-               inc(charpos);
-               break;
-             end;
-        #13: begin
-               DrawText(x, y, ALineHeight, s);
-               s := '';
-               inc(p);
-               inc(charpos);
-               if p^ = #10 then
-               begin
-                 inc(p);
-                 inc(charpos);
-               end;
-               break;
-             end;
-        else
-             s := s + UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
-             if CharPos = charPosForNextFont then begin
-               DrawText(x, y, ALineHeight, s);
-               s := '';
-             end;
-             inc(charPos);
-             inc(p, charLen);
-             UpdateFont(charPos, ARtpFontIndex, fontheight, fontpos);
-      end;
-    end;
-    if s <> '' then
-      DrawText(x, y, ALineHeight, s);
-  end;
-                               (*
-  { Paints the text between the pointers pStart and pEnd.
-    Starting point for the text location is given by the coordinates x/y, i.e.
-    text alignment is already corrected. In case of sub/superscripts, the
-    characters reduced in size are shifted vertical to drawing direction by a
-    fraction of the line height (ALineHeight).
-    ARtpFontIndex is the index of the rich-text formatting param used to at line
-    start for font selection; it will advance automatically along the line }
-  procedure DrawLine(pStart, pEnd: PChar; x,y, ALineHeight: Integer;
-    ARtpFontIndex: Integer);
-  var
-    p: PChar;
-    w: Integer;
-    s: utf8String;
-    charLen: Integer;
-  begin
-    p := pStart;
-    while p^ <> #0 do begin
-      s := UnicodeToUTF8(UTF8CharacterToUnicode(p, charLen));
-      UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
-      if AOverrideTextColor <> clNone then
-        ACanvas.Font.Color := AOverrideTextColor;
-      case p^ of
-        #10: begin
-               inc(p);
-               inc(charPos);
-               break;
-             end;
-        #13: begin
-               inc(p);
-               inc(charPos);
-               if p^ = #10 then begin
-                 inc(p);
-                 inc(charpos);
-               end;
-               break;
-             end;
-      end;
-      case ARotation of
-        trHorizontal:
-          begin
-            ACanvas.Font.Orientation := 0;
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x, y, s);
-              fpSubscript  : ACanvas.TextOut(x, y + ALineHeight div 2, s);
-              fpSuperscript: ACanvas.TextOut(x, y - ALineHeight div 6, s);
-            end;
-            inc(x, ACanvas.TextWidth(s));
-          end;
-        rt90DegreeClockwiseRotation:
-          begin
-            ACanvas.Font.Orientation := -900;
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x, y, s);
-              fpSubscript  : ACanvas.TextOut(x - ALineHeight div 2, y, s);
-              fpSuperscript: ACanvas.TextOut(x + ALineHeight div 6, y, s);
-            end;
-            inc(y, ACanvas.TextWidth(s));
-          end;
-        rt90DegreeCounterClockwiseRotation:
-          begin
-            ACanvas.Font.Orientation := +900;
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x, y, s);
-              fpSubscript  : ACanvas.TextOut(x + ALineHeight div 2, y, s);
-              fpSuperscript: ACanvas.TextOut(x - ALineHeight div 6, y, s);
-            end;
-            dec(y, ACanvas.TextWidth(s));
-          end;
-        rtStacked:
-          begin
-            ACanvas.Font.Orientation := 0;
-            w := ACanvas.TextWidth(s);
-            // chars centered around x
-            case fontpos of
-              fpNormal     : ACanvas.TextOut(x - w div 2, y, s);
-              fpSubscript  : ACanvas.TextOut(x - w div 2, y + ALineHeight div 2, s);
-              fpSuperscript: ACanvas.TextOut(x - w div 2, y - ALineHeight div 6, s);
-            end;
-            inc(y, fontHeight);
-          end;
-      end;
-
-      inc(P, charLen);
-      inc(charPos);
-      if P >= PEnd then break;
-    end;
-    UpdateFont(charPos, ARtpFontIndex, fontHeight, fontPos);
-  end;                           *)
-
-begin
-  if AText = '' then
-    exit;
-
-  p := PChar(AText);
-  lCharPos := 1;      // Counter for utf8 character position
-  lTotalHeight := 0;
-  lLinelen := 0;
-
-  ts := ACanvas.TextStyle;
-  ts.RightToLeft := ARightToLeft;
-  ACanvas.TextStyle := ts;
-
-  // (1) Get layout of lines
-  //  ======================
-  // "lineinfos" collect data for where lines start and end, their width and
-  // height, the rich-text parameter index range, and the number of spaces
-  // (for text justification)
-  InitFont(ACanvas, AWorkbook, AFontIndex, ARichTextParams, lRtpIndex,
-    lCharIndexFontChange, lFontHeight, lFontPos);
-  if ARotation = rtStacked then
-    lStackPeriod := ACanvas.TextWidth('M') * 2;
-  SetLength(lLineInfos, 0);
-  repeat
-    SetLength(lLineInfos, Length(lLineInfos)+1);
-    with lLineInfos[High(lLineInfos)] do begin
-      pStart := p;
-      pEnd := p;
-      BeginsWithFontOfRtpIndex := lRtpIndex;
-      ScanLine(pStart, lLineInfos[High(lLineInfos)], pEnd, NumSpaces, rtpIndex, Width, Height);
-      totalHeight := totalHeight + Height;
-      linelen := Max(linelen, Width);
-      p := pEnd;
-    end;
-  until p^ = #0;
-
-  AWidth := linelen;
-  if ARotation = rtStacked then
-    AHeight := Length(lineinfos) * stackperiod  // to be understood horizontally
-  else
-    AHeight := totalHeight;
-  if AMeasureOnly then
-    exit;
-
-  // (2) Draw lines
-  // ==============
-  // 2a) get starting point of line
-  // ------------------------------
-  case ARotation of
-    trHorizontal:
-      case AVertAlignment of
-        vaTop   : ypos := ARect.Top;
-        vaBottom: ypos := ARect.Bottom - totalHeight;
-        vaCenter: ypos := (ARect.Top + ARect.Bottom - totalHeight) div 2;
-      end;
-    rt90DegreeClockwiseRotation:
-      case AHorAlignment of
-        haLeft  : xpos := ARect.Left + totalHeight;
-        haRight : xpos := ARect.Right;
-        haCenter: xpos := (ARect.Left + ARect.Right + totalHeight) div 2;
-      end;
-    rt90DegreeCounterClockwiseRotation:
-      case AHorAlignment of
-        haLeft  : xpos := ARect.Left;
-        haRight : xpos := ARect.Right - totalHeight;
-        haCenter: xpos := (ARect.Left + ARect.Right - totalHeight) div 2;
-      end;
-    rtStacked:
-      begin
-        totalHeight := (Length(lineinfos) - 1) * stackperiod;
-        case AHorAlignment of
-          haLeft  : xpos := ARect.Left + stackPeriod div 2;
-          haRight : xpos := ARect.Right - totalHeight + stackPeriod div 2;
-          haCenter: xpos := (ARect.Left + ARect.Right - totalHeight) div 2;
-        end;
-      end;
-  end;
-
-  // (2b) Draw line by line and respect text rotation
-  // ------------------------------------------------
-  charPos := 1;      // Counter for utf8 character position
-  InitFont(rtpIndex, fontheight, fontpos);
-  for lineInfo in lineInfos do begin
-    with lineInfo do
-    begin
-      p := pStart;
-      case ARotation of
-        trHorizontal:
-          begin
-            if ARightToLeft then
-              case AHorAlignment of
-                haLeft   : xpos := ARect.Left + Width;
-                haRight  : xpos := ARect.Right;
-                haCenter : xpos := (ARect.Left + ARect.Right + Width) div 2;
-              end
-            else
-              case AHorAlignment of
-                haLeft   : xpos := ARect.Left;
-                haRight  : xpos := ARect.Right - Width;
-                haCenter : xpos := (ARect.Left + ARect.Right - Width) div 2;
-              end;
-            DrawLine(pStart, pEnd, xpos, ypos, Height, BeginsWithFontOfRtpIndex);
-            inc(ypos, Height);
-          end;
-        rt90DegreeClockwiseRotation:
-          begin
-            if ARightToLeft then
-              case AVertAlignment of
-                vaTop    : ypos := ARect.Top + Width;
-                vaBottom : ypos := ARect.Bottom;
-                vaCenter : ypos := (ARect.Top + ARect.Bottom + Width) div 2;
-              end
-            else
-              case AVertAlignment of
-                vaTop    : ypos := ARect.Top;
-                vaBottom : ypos := ARect.Bottom - Width;
-                vaCenter : ypos := (ARect.Top + ARect.Bottom - Width) div 2;
-              end;
-            DrawLine(pStart, pEnd, xpos, ypos, Height, BeginsWithFontOfRtpIndex);
-            dec(xpos, Height);
-          end;
-        rt90DegreeCounterClockwiseRotation:
-          begin
-            if ARightToLeft then
-              case AVertAlignment of
-                vaTop    : ypos := ARect.Top;
-                vaBottom : ypos := ARect.Bottom - Width;
-                vaCenter : ypos := (ARect.Top + ARect.Bottom - Width) div 2;
-              end
-            else
-              case AVertAlignment of
-                vaTop    : ypos := ARect.Top + Width;
-                vaBottom : ypos := ARect.Bottom;
-                vaCenter : ypos := (ARect.Top + ARect.Bottom + Width) div 2;
-              end;
-            DrawLine(pStart, pEnd, xpos, ypos, Height, BeginsWithFontOfRtpIndex);
-            inc(xpos, Height);
-          end;
-        rtStacked:
-          begin
-            case AVertAlignment of
-              vaTop    : ypos := ARect.Top;
-              vaBottom : ypos := ARect.Bottom - Width;
-              vaCenter : ypos := (ARect.Top + ARect.Bottom - Width) div 2;
-            end;
-            DrawLine(pStart, pEnd, xpos, ypos, Height, BeginsWithFontOfRtpIndex);
-            inc(xpos, stackPeriod);
-          end;
-      end;
-    end;
-  end;
-end;
-                                                                 *)
 procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRect;
   const AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
   AWordwrap: Boolean; AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
   ARotation: TsTextRotation; AOverrideTextColor: TColor; ARightToLeft: Boolean);
 var
-//  w: Integer = 0;
-//  h: Integer = 0;
   painter: TsTextPainter;
 begin
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
@@ -831,19 +255,12 @@ begin
   finally
     painter.Free;
   end;
-      {
-  InternalDrawRichText(ACanvas, AWorkbook, ARect, AText, AFontIndex,
-    ARichTextParams, AWordWrap, AHorAlignment, AVertAlignment, ARotation,
-    AOverrideTextColor, ARightToLeft, false, w, h);
-    }
 end;
 
 function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
   const AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
   ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean): Integer;
 var
-//  h: Integer = 0;
-//  w: Integer = 0;
   painter: TsTextPainter;
 begin
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
@@ -853,17 +270,6 @@ begin
   finally
     painter.Free;
   end;
-                            {
-  InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
-    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone,
-    ARightToLeft, true, w, h
-  );
-  case ATextRotation of
-    trHorizontal, rtStacked:
-      Result := w;
-    rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation:
-      Result := h;
-  end;                       }
 end;
 
 function RichTextHeight(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
@@ -871,8 +277,6 @@ function RichTextHeight(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
   ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean): Integer;
 var
   painter: TsTextPainter;
-//  h: Integer = 0;
-//  w: Integer = 0;
 begin
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
     AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft);
@@ -881,19 +285,6 @@ begin
   finally
     painter.Free;
   end;
-
-  {
-  InternalDrawRichText(ACanvas, AWorkbook, AMaxRect, AText, AFontIndex,
-    ARichTextParams, AWordWrap, haLeft, vaTop, ATextRotation, clNone,
-    ARightToLeft, true, w, h
-  );
-  case ATextRotation of
-    trHorizontal:
-      Result := h;
-    rt90DegreeClockwiseRotation, rt90DegreeCounterClockwiseRotation, rtStacked:
-      Result := w;
-  end;
-  }
 end;
 
 
@@ -915,8 +306,6 @@ end;
 
 
 { TsTextPainter }
-
-
 
 { ARect ........ Defines the rectangle in which the text is to be drawn,
   AFontIndex ... Base font of the text, to be used if not rich-text is defined.
@@ -948,54 +337,39 @@ destructor TsTextPainter.Destroy;
 var
   j: Integer;
 begin
-  for j:=FLines.Count-1 downto 0 do TObject(FLines[j]).Free;
+  for j := FLines.Count-1 downto 0 do TObject(FLines[j]).Free;
   FLines.Free;
   inherited Destroy;
 end;
 
 { Draw the lines }
 procedure TsTextPainter.Draw(AOverrideTextColor: TColor);
+begin
+  case FTextRotation of
+    trHorizontal                       : DrawHor(AOverrideTextColor);
+    rt90DegreeClockwiseRotation        : DrawVert(AOverrideTextColor, true);
+    rt90DegreeCounterClockwiseRotation : DrawVert(AOverrideTextColor, false);
+    rtStacked                          : DrawStacked(AOverrideTextColor);
+  end;
+end;
+
+{ Draw lines in horizontal orienation }
+procedure TsTextPainter.DrawHor(AOverrideTextColor: TColor);
 var
-  xpos, ypos: Integer;
-  totalHeight: Integer;
+  xpos, ypos, dx, j: Integer;
   lineinfo: TsLineInfo;
   pEnd: PChar;
-  j: Integer;
 begin
   // (1) Get starting point of line
-  case FTextRotation of
-    trHorizontal:
-      case FVertAlignment of
-        vaTop   : ypos := FRect.Top;
-        vaBottom: ypos := FRect.Bottom - FTotalHeight;
-        vaCenter: ypos := (FRect.Top + FRect.Bottom - FTotalHeight) div 2;
-      end;
-    rt90DegreeClockwiseRotation:
-      case FHorAlignment of
-        haLeft  : xpos := FRect.Left + FTotalHeight;
-        haRight : xpos := FRect.Right;
-        haCenter: xpos := (FRect.Left + FRect.Right + FTotalHeight) div 2;
-      end;
-    rt90DegreeCounterClockwiseRotation:
-      case FHorAlignment of
-        haLeft  : xpos := FRect.Left;
-        haRight : xpos := FRect.Right - FTotalHeight;
-        haCenter: xpos := (FRect.Left + FRect.Right - FTotalHeight) div 2;
-      end;
-    rtStacked:
-      begin
-        totalHeight := (FLines.Count - 1) * FStackperiod;
-        case FHorAlignment of
-          haLeft  : xpos := FRect.Left + FStackPeriod div 2;
-          haRight : xpos := FRect.Right - totalHeight + FStackPeriod div 2;
-          haCenter: xpos := (FRect.Left + FRect.Right - totalHeight) div 2;
-        end;
-      end;
+  case FVertAlignment of
+    vaTop    : ypos := FRect.Top;
+    vaCenter : ypos := (FRect.Top + FRect.Bottom - FTotalHeight) div 2;
+    vaBottom : ypos := FRect.Bottom - FTotalHeight;
   end;
 
-  // (2) Draw text line by line and respect text rotation
+  // (2) Draw text line-by-line
   FPtr := PChar(FText);
-  FCharIndex := 1;      // Counter for utf8 character position
+  FCharIndex := 1;
   InitFont(FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
   for j := 0 to FLines.Count-1 do
   begin
@@ -1003,76 +377,25 @@ begin
       pEnd := TsLineInfo(FLines[j+1]).pStart else
       pEnd := PChar(FText) + Length(FText);
     lineinfo := TsLineInfo(FLines[j]);
-    with lineInfo do
-    begin
-      case FTextRotation of
-        trHorizontal:
-          begin
-            if FRightToLeft then
-              case FHorAlignment of
-                haLeft   : xpos := FRect.Left + Width;
-                haRight  : xpos := FRect.Right;
-                haCenter : xpos := (FRect.Left + FRect.Right + Width) div 2;
-              end
-            else
-              case FHorAlignment of
-                haLeft   : xpos := FRect.Left;
-                haRight  : xpos := FRect.Right - Width;
-                haCenter : xpos := (FRect.Left + FRect.Right - Width) div 2;
-              end;
-            DrawLine(pEnd, xpos, ypos, Height, AOverrideTextColor);
-            inc(ypos, Height);
-          end;
-        rt90DegreeClockwiseRotation:
-          begin
-            if FRightToLeft then
-              case FVertAlignment of
-                vaTop    : ypos := FRect.Top + Width;
-                vaBottom : ypos := FRect.Bottom;
-                vaCenter : ypos := (FRect.Top + FRect.Bottom + Width) div 2;
-              end
-            else
-              case FVertAlignment of
-                vaTop    : ypos := FRect.Top;
-                vaBottom : ypos := FRect.Bottom - Width;
-                vaCenter : ypos := (FRect.Top + FRect.Bottom - Width) div 2;
-              end;
-            DrawLine(pEnd, xpos, ypos, Height, AOverrideTextColor);
-            dec(xpos, Height);
-          end;
-        rt90DegreeCounterClockwiseRotation:
-          begin
-            if FRightToLeft then
-              case FVertAlignment of
-                vaTop    : ypos := FRect.Top;
-                vaBottom : ypos := FRect.Bottom - Width;
-                vaCenter : ypos := (FRect.Top + FRect.Bottom - Width) div 2;
-              end
-            else
-              case FVertAlignment of
-                vaTop    : ypos := FRect.Top + Width;
-                vaBottom : ypos := FRect.Bottom;
-                vaCenter : ypos := (FRect.Top + FRect.Bottom + Width) div 2;
-              end;
-            DrawLine(pEnd, xpos, ypos, Height, AOverrideTextColor);
-            inc(xpos, Height);
-          end;
-        rtStacked:
-          begin
-            case FVertAlignment of
-              vaTop    : ypos := FRect.Top;
-              vaBottom : ypos := FRect.Bottom - Width;
-              vaCenter : ypos := (FRect.Top + FRect.Bottom - Width) div 2;
-            end;
-            DrawLine(pEnd, xpos, ypos, Height, AOverrideTextColor);
-            inc(xpos, FStackPeriod);
-          end;
+    // xpos is x coordinate of left edge of first character
+    if FRightToLeft then
+      case FHorAlignment of
+        haLeft   : xpos := FRect.Left + lineinfo.Width;
+        haCenter : xpos := (FRect.Left + FRect.Right + lineinfo.Width) div 2;
+        haRight  : xpos := FRect.Right;
+      end
+    else
+      case FHorAlignment of
+        haLeft   : xpos := FRect.Left;
+        haCenter : xpos := (FRect.Left + FRect.Right - lineinfo.Width) div 2;
+        haRight  : xpos := FRect.Right - lineinfo.Width;
       end;
-    end;
+    DrawLine(pEnd, xpos, ypos, lineinfo.Height, AOverrideTextColor);
+    inc(ypos, lineinfo.Height);
   end;
-
 end;
 
+{ Draw a single line. The font can change within the line. }
 procedure TsTextPainter.DrawLine(pEnd: PChar; x, y, ALineHeight: Integer;
   AOverrideTextColor: TColor);
 var
@@ -1116,6 +439,56 @@ begin
     DrawText(x, y, s, ALineHeight);
 end;
 
+// Draws text in vertical columns using upright characters
+procedure TsTextPainter.DrawStacked(AOverrideTextColor: TColor);
+const
+  IGNORE = 0;
+var
+  xpos, ypos, dx: Integer;
+  j: Integer;
+  lineinfo: TsLineInfo;
+  pEnd, p: PChar;
+begin
+  // (1) Get starting point of line
+  lineinfo := TsLineInfo(FLines[0]);
+  dx := lineInfo.Height;
+  if FRightToLeft then
+    case FHorAlignment of
+      haLeft   : xpos := FRect.Left + FTotalHeight + dx;
+      haCenter : xpos := (FRect.Left + FRect.Right + FTotalHeight) div 2 - dx;
+      haRight  : xpos := FRect.Right - dx;
+    end
+  else
+    case FHorAlignment of
+      haLeft   : xpos := FRect.Left + dx;
+      haCenter : xpos := (FRect.Left + FRect.Right - FTotalHeight) div 2;
+      haRight  : xpos := FRect.Right - FTotalHeight + dx;
+    end;
+
+  // (2) Draw text line-by-line
+  FPtr := PChar(FText);
+  FCharIndex := 1;
+  InitFont(FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
+  for j := 0 to FLines.Count-1 do
+  begin
+    if j < FLines.Count-1 then
+      pEnd := TsLineInfo(FLines[j+1]).pStart
+    else
+      pEnd := PChar(FText) + Length(FText);
+    lineinfo := TsLineInfo(FLines[j]);
+    case FVertAlignment of
+      vaTop    : ypos := FRect.Top;
+      vaCenter : ypos := (FRect.Top + FRect.Bottom - lineinfo.Width) div 2;
+      vaBottom : ypos := FRect.Bottom - lineinfo.Width;
+    end;
+    DrawLine(pEnd, xpos, ypos, IGNORE, AOverrideTextColor);
+    if FRightToLeft then
+      dec(xpos, 2*lineinfo.Height) else        // "height" is horizontal here!
+      inc(xpos, 2*lineinfo.Height);
+  end;
+end;
+
+{ Draw a text chunk. Font does not change here }
 procedure TsTextPainter.DrawText(var x, y: Integer; s: String;
   ALineHeight: Integer);
 const
@@ -1128,15 +501,18 @@ const
   TEXT_ANGLE: array[TsTextRotation] of Integer = ( 0, -900, 900, 0);
 var
   w, wlead, wtrail: Integer;
-  P: TPoint;
-  i, nlead, ntrail: Integer;
+  Pt: TPoint;
+  i, nlead, ntrail, nchar: Integer;
+  p: PChar;
+  charLen: Integer;
+  ch: String;
 begin
   wlead := 0;
   wtrail := 0;
   if FRightToLeft then
   begin
     { Right-to-left character handling of RTL strings containing spaces is very
-      confusing -- probably this is not right... }
+      confusing -- probably this is not correct... }
     // Count leading spaces
     nlead := 0;
     i := 1;
@@ -1158,48 +534,100 @@ begin
     s := trim(s);
   end;
   w := FCanvas.TextWidth(s);
-  P := GetTextPt(x, y, ALineHeight);
+  Pt := GetTextPt(x, y, ALineHeight);
   FCanvas.Font.Orientation := TEXT_ANGLE[FTextRotation];
   case FTextRotation of
     trHorizontal:
       begin
         if FRightToLeft
-          then FCanvas.TextOut(P.x-w-wlead, P.y, s)
-          else FCanvas.TextOut(P.x, P.y, s);
+          then FCanvas.TextOut(Pt.x-w-wlead, Pt.y, s)
+          else FCanvas.TextOut(Pt.x, Pt.y, s);
         inc(x, (wlead+w+wtrail)*MULTIPLIER[FTextRotation, FRightToLeft]);
       end;
     rt90DegreeClockwiseRotation:
       begin
         if FRightToLeft
-          then FCanvas.TextOut(P.x, P.y-w-wlead, s)
-          else FCanvas.TextOut(P.x, p.y, s);
+          then FCanvas.TextOut(Pt.x, Pt.y-w-wlead, s)
+          else FCanvas.TextOut(Pt.x, Pt.y, s);
         inc(y, (wlead+w+wtrail)*MULTIPLIER[FTextRotation, FRightToLeft]);
       end;
     rt90DegreeCounterClockwiseRotation:
       begin
         if FRightToLeft
-          then FCanvas.TextOut(P.x, P.y+w+wlead, s)
-          else FCanvas.TextOut(P.x, P.y, s);
+          then FCanvas.TextOut(Pt.x, Pt.y+w+wlead, s)
+          else FCanvas.TextOut(Pt.x, Pt.y, s);
         inc(y, (wlead+w+wtrail)*MULTIPLIER[FTextRotation, FRightToLeft]);
       end;
     rtStacked:
-      begin                       // IS THIS OK?
-        w := FCanvas.TextWidth(s);
-        // chars centered around x
-        if FRightToLeft
-          then FCanvas.TextOut(P.x - (w+wlead) div 2, P.y - FFontHeight, s)
-          else FCanvas.TextOut(P.x - w div 2, P.y, s);
-        inc(y, FFontHeight * MULTIPLIER[FTextRotation, FRightToLeft]);
+      begin
+        nChar := 0;
+        P := PChar(s);
+        while (P^ <> #0) do
+        begin
+          ch := UnicodeToUTF8(UTF8CharacterToUnicode(P, charLen));
+          ALineHeight := FCanvas.TextHeight(ch);
+          Pt := GetTextPt(x, y, ALineHeight);
+          w := FCanvas.TextWidth(ch);
+          // x is at the center of the character here
+          case FHorAlignment of
+            haLeft   : FCanvas.TextOut(Pt.x - w div 2, Pt.y, ch);
+            haCenter : FCanvas.TextOut(Pt.x - w div 2, Pt.y, ch);
+            haRight  : FCanvas.TextOut(Pt.x - w div 2, Pt.y, ch);
+          end;
+          inc(y, ALineHeight);
+          inc(nChar);
+          inc(P, charLen);
+        end;
       end;
+  end;
+end;
+
+// Draw text in 90° clockwise or counter-clockwise rotation
+procedure TsTextPainter.DrawVert(AOverrideTextColor: TColor; AClockwise: Boolean);
+const                           // CCW  CW
+  SGN: array[boolean] of Integer = (-1, +1);
+var
+  j, xpos, ypos: Integer;
+  lineinfo: TsLineInfo;
+  pEnd: PChar;
+begin
+  // (1) Get starting point
+  case FHorAlignment of
+    haLeft   : xpos := IfThen(AClockwise, FRect.Left + FTotalHeight, FRect.Left);
+    haCenter : xpos := (FRect.Left + FRect.Right + FTotalHeight*SGN[AClockwise]) div 2;
+    haRight  : xpos := IfThen(AClockwise, FRect.Right, FRect.Right - FTotalHeight);
+  end;
+
+  // (2) Draw text line by line and respect text rotation
+  FPtr := PChar(FText);
+  FCharIndex := 1;      // Counter for utf8 character position
+  InitFont(FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
+  for j := 0 to FLines.Count-1 do
+  begin
+    if j < FLines.Count-1 then
+      pEnd := TsLineInfo(FLines[j+1]).pStart else
+      pEnd := PChar(FText) + Length(FText);
+    lineinfo := TsLineInfo(FLines[j]);
+    if FRightToLeft then
+      case FVertAlignment of
+        vaTop    : ypos := IfThen(AClockwise, FRect.Top + lineinfo.Width, FRect.Top);
+        vaCenter : ypos := (FRect.Top + FRect.Bottom + lineinfo.Width*SGN[AClockwise]) div 2;
+        vaBottom : ypos := IfThen(AClockwise, FRect.Bottom, FRect.Bottom - lineinfo.Width);
+      end
+    else
+      case FVertAlignment of
+        vaTop    : ypos := IfThen(AClockwise, FRect.Top, FRect.Top + lineinfo.Width);
+        vaCenter : ypos := (FRect.Top + FRect.Bottom - lineinfo.Width*SGN[AClockwise]) div 2;
+        vaBottom : ypos := IfThen(AClockwise, FRect.Bottom - lineinfo.Width, FRect.Bottom);
+      end;
+    DrawLine(pEnd, xpos, ypos, lineinfo.Height, AOverrideTextColor);
+    inc(xpos, -lineinfo.Height*SGN[AClockwise]);
   end;
 end;
 
 function TsTextPainter.GetHeight: Integer;
 begin
-  if FTextRotation = rtStacked then
-    Result := FLines.Count * FStackperiod  // to be understood horizontally
-  else
-    Result := FTotalHeight;
+  Result := FTotalHeight;
 end;
 
 function TsTextPainter.GetTextPt(x,y,ALineHeight: Integer): TPoint;
@@ -1295,8 +723,6 @@ begin
   FCanvas.TextStyle := ts;
 
   InitFont(FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
-  if FTextRotation = rtStacked then
-    FStackPeriod := FCanvas.TextWidth('M') * 2;
 
   FPtr := PChar(FText);
   FCharIndex := 1;
@@ -1306,38 +732,28 @@ begin
     lineInfo.BeginsWithFontOfRtpIndex := FRtpIndex;
     ScanLine(lineInfo.NumSpaces, lineInfo.Width, lineInfo.Height, lineInfo.WordList);
     FLines.Add(lineinfo);
-    FTotalHeight := FTotalHeight + lineInfo.Height;
+    FTotalHeight := FTotalHeight + IfThen(FTextRotation = rtStacked, 2, 1)*lineInfo.Height;
     FMaxLineLen := Max(FMaxLineLen, lineInfo.Width);
   end;
 end;
 
-{ Scans the line for a possible line break. The max width is determined by
-  the size of the rectangle ARect passed to the outer procedure:
-  rectangle width in case of horizontal painting, rectangle height in case
-  of vertical painting. Line breaks can occure at spaces or cr/lf characters,
-  or, if not found, at any character reaching the max width.
+{ Scans the line for a possible line break and a font change.
+  The scan starts at the current position of FPtr.
 
-  Parameters:
-
-  P              defines where the scan starts. At the end of the routine it
-                 points to the first character of the next line.
   ANumSpaces     is how many spaces were found between the start and end value
-                 of P.
-  ARtpFontIndex  At input, this is the index of the rich-text formatting
-                 parameter value used for the font at line start. At output,
-                 it is the index which will be valid at next line start.
+                 of FPtr.
   ALineWidth     the pixel width of the line seen along drawing direction, i.e.
-                 in case of stacked text it is the character height times
-                 character count in the line (!)
-  ALineHeight    The height of the line as seen vertical to the drawing
+                 in case of stacked text it is the sum of the character heights!
+  ALineHeight    The height of the line as seen vertically to the drawing
                  direction. Normally this is the height of the largest font
                  found in the line; in case of stacked text it is the
-                 standardized width of a character. }
+                 width of character 'M'. }
 procedure TsTextPainter.ScanLine(var ANumSpaces, ALineWidth, ALineHeight: Integer;
   AWordList: TStringList);
 var
   tmpWidth: Integer;
   savedWidth: Integer;
+  savedHeight: Integer;
   savedSpaces: Integer;
   savedCharIndex: Integer;
   savedCurrRtpIndex: Integer;
@@ -1346,17 +762,15 @@ var
   s: String;
   charLen: Integer;
   ch: String;
-  dw: Integer;
   EOL: Boolean;
   pWordStart: PChar;
-  part: String;
-  savedpart: String;
-  PStart: PChar;
+  part, savedPart: String;
 begin
   ANumSpaces := 0;
   ALineHeight := FFontHeight;
   ALineWidth := 0;
   savedWidth := 0;
+  savedHeight := 0;
   savedSpaces := 0;
   s := '';      // current word
   part := '';   // current part of the string where all characters have the same font
@@ -1372,76 +786,90 @@ begin
       maxWidth := FRect.Bottom - FRect.Top;
   end;
 
-  PStart := FPtr;
   while (FPtr^ <> #0) do
   begin
     case FPtr^ of
       #13: begin
-        {
-             if (part <> '') and (FTextRotation <> rtStacked) then
-               ALineWidth := ALineWidth + FCanvas.TextWidth(part);
-             part := '';
-             }
              NextChar(1);
              if FPtr^ = #10 then
                NextChar(1);
              break;
            end;
       #10: begin
-        {
-             if (part <> '') and (FTextRotation <> rtStacked) then
-               ALineWidth := ALineWidth + FCanvas.TextWidth(part);
-             part := '';
-             }
              NextChar(1);
              break;
            end;
       ' ': begin
-             if (FCharIndex = FCharIndexOfNextFont) and (part <> '') and
-                (FTextRotation <> rtStacked) then
-             begin
-               ALineWidth := ALineWidth + FCanvas.TextWidth(part);
-               part := '';
-             end;
+             ALineWidth := ALineWidth + tmpWidth;
+             part := '';
+             tmpWidth := 0;  // width of the spaces, growing during scan
+             // Save data for the case that max width is exceeded here
              savedWidth := ALineWidth;
+             savedHeight := ALineHeight;
              savedSpaces := ANumSpaces;
+             savedPart := part;
              // Find next word
              while FPtr^ = ' ' do
              begin
+               // We reached a character at which the font changes
+               // --> update current line width
+               // This has to be done before "UpdateFont" because the collected
+               // part string uses the old font.
                if (FCharIndex = FCharIndexOfNextFont) then
                begin
                  if (FTextRotation <> rtStacked) then
-                   ALineWidth := ALineWidth + FCanvas.TextWidth(part);
+                   tmpwidth := tmpwidth + FCanvas.TextWidth(part);
                  part := '';
+                 savedPart := '';
+                 tmpwidth := 0;
                end;
+               // Update font if required
                UpdateFont(FCharIndex, FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
+               part := part + ' ';
                if FTextRotation = rtStacked then
-                 ALineWidth := ALineWidth + FFontHeight
-               else
-                 part := part + ' ';
-               ALineHeight := Max(FFontHeight, ALineHeight);
+               begin
+                 tmpwidth := tmpwidth + FFontHeight;
+                 ALineHeight := Max(ALineHeight, FCanvas.TextWidth('M'));
+               end else begin
+                 tmpwidth := tmpwidth + FCanvas.TextWidth(' ');
+                 ALineHeight := Max(ALineHeight, FFontHeight);
+               end;
                inc(ANumSpaces);
                NextChar(1);
              end;
-             if ALineWidth >= maxWidth then
+             if ALineWidth + tmpWidth <= maxWidth then
              begin
+               if FTextRotation = rtStacked then
+                 ALineWidth := ALineWidth + tmpWidth;
+             end else
+             begin
+               // max width has been exceeded while scanning spaces
+               // --> restore values stored at the end of previous word
                ALineWidth := savedWidth;
+               ALineHeight := savedHeight;
                ANumSpaces := savedSpaces;
-               part := '';
+               part := savedPart;
+               while (part <> '') and (part[Length(part)] = ' ') do
+               begin
+                 Delete(part, Length(part), 1);
+                 if FTextRotation = rtStacked then dec(ALineWidth, FFontHeight);
+               end;
                break;
-              end;
+             end;
            end;
       else
            // Here, a new word begins. Find the end of this word and check if
            // it fits into the line.
-           // Store the data valid for the word start.
+           // Store the data valid for the word start. They are needed if the
+           // scan would go beyond the max line width in this word.
            s := '';
            pWordStart := FPtr;
            savedCharIndex := FCharIndex;
            savedCurrRtpIndex := FRtpIndex;
            savedCharIndexOfNextFont := FCharIndexOfNextFont;
            savedpart := part;
-           tmpWidth := 0;
+           savedHeight := ALineHeight;
+           tmpWidth := 0;  // width of the current word, growing during the scan
            EOL := false;
            while (FPtr^ <> #0) and (FPtr^ <> #13) and (FPtr^ <> #10) and (FPtr^ <> ' ') do
            begin
@@ -1450,28 +878,41 @@ begin
                if (FTextRotation <> rtStacked) then
                  ALineWidth := ALineWidth + FCanvas.TextWidth(part);
                part := '';
+               tmpWidth := 0;
              end;
              UpdateFont(FCharIndex, FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
              ch := UnicodeToUTF8(UTF8CharacterToUnicode(FPtr, charLen));
              part := part + ch;
-             tmpWidth := IfThen(FTextRotation = rtStacked, tmpWidth + FFontHeight, FCanvas.TextWidth(part));
-             if ALineWidth + tmpWidth <= maxWidth then
+             if FTextRotation = rtStacked then
              begin
-               s := s + ch;
-               ALineHeight := Max(FFontHeight, ALineHeight);
+               tmpWidth := tmpWidth + FFontHeight;
+               ALineHeight := Max(ALineHeight, FCanvas.TextWidth('M'));
              end else
+             begin
+               tmpWidth := FCanvas.TextWidth(part);
+               ALineHeight := Max(FFontHeight, ALineHeight);
+             end;
+             if ALineWidth + tmpWidth <= maxWidth then
+               s := s + ch
+             else
              begin
                // The line exeeds the max line width.
                // There are two cases:
                if ANumSpaces > 0 then
                begin
                  // (a) This is not the only word: Go back to where this
-                 // word began. We had stored everything needed!
+                 // word began. We already had stored everything needed!
                  FPtr := pWordStart;
                  FCharIndex := savedCharIndex;
                  FCharIndexOfNextFont := savedCharIndexOfNextFont;
                  FRtpIndex := savedCurrRtpIndex;
-                 part := '';
+                 ALineHeight := savedHeight;
+                 part := savedPart;
+                 while (part <> '') and (part[Length(part)] = ' ') do
+                 begin
+                   Delete(part, Length(part), 1);
+                   if FTextRotation = rtStacked then dec(ALineWidth, FFontHeight);
+                 end;
                end else
                begin
                  // (b) This is the only word in the line --> we break at the
@@ -1493,11 +934,13 @@ begin
   if s <> '' then
     AWordList.Add(s);
 
-  if (part <> '') and (FTextRotation <> rtStacked) then
-    ALineWidth := ALineWidth + FCanvas.TextWidth(part);
-
-  UpdateFont(FCharIndex, FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
-  ALineHeight := Max(FFontHeight, ALineHeight);
+  if (part <> '') then
+  begin
+    if (FTextRotation <> rtStacked) then
+      ALineWidth := ALineWidth + FCanvas.TextWidth(part)
+    else
+      ALineWidth := ALineWidth + tmpWidth;
+  end;
 end;
 
 { The scanner has reached the text character at the specified position.
