@@ -1896,6 +1896,7 @@ const
 var
   bs: TsCellBorderStyle;
   fmt: PsCellFormat;
+  r1, c1, r2, c2: Cardinal;
 begin
   if Assigned(Worksheet) then begin
     // Left border
@@ -1913,6 +1914,11 @@ begin
 
     if ACell <> nil then begin
       fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+      if Worksheet.IsMergeBase(ACell) then
+      begin
+        Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+        ARect := CellRect(GetGridCol(c1), GetGridRow(r1), GetGridCol(c2), GetGridRow(r2));
+      end;
       // Diagonal up
       if cbDiagUp in fmt^.Border then begin
         bs := fmt^.Borderstyles[cbDiagUp];
