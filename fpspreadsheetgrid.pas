@@ -1846,7 +1846,7 @@ const
       else if (ADrawDirection in [drawDiagUp, drawDiagDown]) then
       begin
         dec(ARect.Right, 1);
-        dec(ARect.Bottom, 1);
+        dec(ARect.Bottom, 2);
       end;
     end;
 
@@ -1984,9 +1984,17 @@ begin
   Canvas.Brush.Color := clRed;
   Canvas.Brush.Style := bsSolid;
   Canvas.Pen.Style := psClear;
-  P[0] := Point(ARect.Right, ARect.Top);
-  P[1] := Point(ARect.Right - COMMENT_SIZE, ARect.Top);
-  P[2] := Point(ARect.Right, ARect.Top + COMMENT_SIZE);
+  if IsRightToLeft then
+  begin
+    P[0] := Point(ARect.Left, ARect.Top);
+    P[1] := Point(ARect.Left + COMMENT_SIZE, ARect.Top);
+    P[2] := Point(ARect.Left, ARect.Top + COMMENT_SIZE);
+  end else
+  begin
+    P[0] := Point(ARect.Right, ARect.Top);
+    P[1] := Point(ARect.Right - COMMENT_SIZE, ARect.Top);
+    P[2] := Point(ARect.Right, ARect.Top + COMMENT_SIZE);
+  end;
   P[3] := P[0];
   Canvas.Polygon(P);
 end;
