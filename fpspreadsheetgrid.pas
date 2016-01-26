@@ -557,6 +557,8 @@ type
     {@@ inherited from TCustomGrid. Select the option goEditing to make the grid editable! }
     property Options;
     //property ParentBiDiMode;
+    {@@ inherited from ancestors }
+    property ParentBiDiMode;
     {@@ inherited from ancestors}
     property ParentColor default false;
     {@@ inherited from ancestors}
@@ -3935,6 +3937,17 @@ begin
       end else begin
         FrozenCols := 0;
         FrozenRows := 0;
+      end;
+      case Worksheet.BiDiMode of
+        bdDefault: ParentBiDiMode := true;
+        bdLTR    : begin
+                     ParentBiDiMode := false;
+                     BiDiMode := bdLeftToRight;
+                   end;
+        bdRTL    : begin
+                     ParentBiDiMode := false;
+                     BiDiMode := bdRightToLeft;
+                   end;
       end;
       dec(FLockSetup);
     end;

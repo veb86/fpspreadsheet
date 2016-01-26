@@ -1558,6 +1558,8 @@ begin
     Options := Options or MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS;
   if (soHasFrozenPanes in ASheet.Options) and ((ASheet.LeftPaneWidth > 0) or (ASheet.TopPaneHeight > 0)) then
     Options := Options or MASK_WINDOW2_OPTION_PANES_ARE_FROZEN;
+  if (ASheet.BiDiMode = bdRTL) then
+    Options := Options or MASK_WINDOW2_OPTION_COLUMNS_RIGHT_TO_LEFT;
   if FWorkbook.ActiveWorksheet <> nil then
     actSheet := FWorkbook.ActiveWorksheet else
     actSheet := Fworkbook.GetWorksheetByIndex(0);

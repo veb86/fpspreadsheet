@@ -82,6 +82,7 @@ type
 
   TsSpreadOpenDocReader = class(TsSpreadXMLReader)
   private
+    FTableStyleList: TFPList;
     FColumnStyleList: TFPList;
     FColumnList: TFPList;
     FRowStyleList: TFPList;
@@ -95,6 +96,7 @@ type
     FRichTextFontList: TFPList;
     procedure ApplyColWidths;
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
+    function ApplyTableStyle(ASheet: TsWorksheet; AStyleName: String): Boolean;
     function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
     function ExtractDateTimeFromNode(ANode: TDOMNode;
       ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
@@ -103,6 +105,7 @@ type
     function FindColStyleByName(AStyleName: String): integer;
     function FindNumFormatByName(ANumFmtName: String): Integer;
     function FindRowStyleByName(AStyleName: String): Integer;
+    function FindTableStyleByName(AStyleName: String): Integer;
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
@@ -117,6 +120,7 @@ type
     function ReadHeaderFooterText(ANode: TDOMNode): String;
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
+    procedure ReadTableStyle(AStyleNode: TDOMNode);
 
   protected
     FPointSeparatorSettings: TFormatSettings;
@@ -311,6 +315,13 @@ const
   ROWHEIGHT_EPS = 1e-2;    // for lines
 
 type
+
+  { Table style items stored in TableStyleList of the reader }
+  TTableStyleData = class
+  public
+    Name: String;
+    BiDiMode: TsBiDiMode;
+  end;
 
   { Column style items stored in ColStyleList of the reader }
   TColumnStyleData = class
@@ -911,6 +922,8 @@ begin
 
   FCellFormatList := TsCellFormatList.Create(true);
     // true = allow duplicates because style names used in cell records will not be found any more.
+
+  FTableStyleList := TFPList.Create;
   FColumnStyleList := TFPList.Create;
   FColumnList := TFPList.Create;
   FRowStyleList := TFPList.Create;
@@ -936,6 +949,9 @@ begin
 
   for j := FColumnList.Count-1 downto 0 do TObject(FColumnList[j]).Free;
   FColumnList.Free;
+
+  for j := FTableStyleList.Count-1 downto 0 do TObject(FTableStyleList[j]).Free;
+  FTableStyleList.Free;
 
   for j := FColumnStyleList.Count-1 downto 0 do TObject(FColumnStyleList[j]).Free;
   FColumnStyleList.Free;
@@ -1032,6 +1048,25 @@ begin
 
   Result := true;
 end;
+
+function TsSpreadOpenDocReader.ApplyTableStyle(ASheet: TsWorksheet;
+  AStyleName: String): Boolean;
+var
+  styleIndex: Integer;
+  tableStyle: TTableStyleData;
+begin
+  Result := false;
+  if (AStyleName = '') or (ASheet = nil) then
+    exit;
+  styleIndex := FindTableStyleByName(AStyleName);
+  if styleIndex = -1 then
+    exit;
+  tableStyle := TTableStyleData(FTableStyleList[styleIndex]);
+  if (tableStyle.BiDiMode = bdRTL) or (tableStyle.BiDiMode = bdLTR) then
+    ASheet.BiDiMode := tableStyle.BiDiMode;
+  Result := true;
+end;
+
 
 { Extracts a boolean value from a "boolean" cell node.
   Is called from ReadBoolean }
@@ -1206,6 +1241,14 @@ function TsSpreadOpenDocReader.FindRowStyleByName(AStyleName: String): Integer;
 begin
   for Result := 0 to FRowStyleList.Count-1 do
     if TRowStyleData(FRowStyleList[Result]).Name = AStyleName then
+      exit;
+  Result := -1;
+end;
+
+function TsSpreadOpenDocReader.FindTableStyleByName(AStyleName: String): Integer;
+begin
+  for Result := 0 to FTableStyleList.Count-1 do
+    if TTableStyleData(FTableStyleList[Result]).Name = AStyleName then
       exit;
   Result := -1;
 end;
@@ -2071,6 +2114,7 @@ var
   pageLayout: PsPageLayout;
   XMLStream: TStream;
   sheet: TsWorksheet;
+  tablestyleName: String;
 
   function CreateXMLStream: TStream;
   begin
@@ -2144,6 +2188,7 @@ begin
         continue;
       end;
       FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode, 'table:name'), true);
+      tablestyleName := GetAttrValue(TableNode, 'table:style-name');
       // Collect column styles used
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row
@@ -2152,6 +2197,8 @@ begin
       pageLayout := ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'));
       if pageLayout <> nil then
         FWorksheet.PageLayout := pagelayout^;
+      // Apply table style
+      ApplyTableStyle(FWorksheet, tablestylename);
       // Handle columns and rows
       ApplyColWidths;
       // Page layout
@@ -3373,6 +3420,10 @@ begin
       family := GetAttrValue(styleNode, 'style:family');
       parentstyle := GetAttrValue(stylenode, 'style:parent-style-name');
 
+      // Table styles
+      if family = 'table' then
+        ReadTableStyle(styleNode);
+
       // Column styles
       if family = 'table-column' then
         ReadColumnStyle(styleNode);
@@ -3604,21 +3655,43 @@ begin
             fmt.FontIndex := fntIndex;
             Include(fmt.UsedFormattingFields, uffFont);
             FCellFormatList.Add(fmt);
-            {
-            fmt.FontIndex := FWorkbook.FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
-            if fmt.FontIndex = -1 then
-              fmt.FontIndex := FWorkbook.AddFont(fntName, fntSize, fntStyle, fntColor, fntPos);
-//            fmt.FontIndex := ReadFont(styleChildNode);
-            if fmt.FontIndex > 0 then
-              Include(fmt.UsedFormattingFields, uffFont);
-            FCellFormatList.Add(fmt);
-            }
           end;
           styleChildNode := stylechildNode.NextSibling;
         end;
       end;
     end;
     styleNode := styleNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadTableStyle(AStyleNode: TDOMNode);
+var
+  stylename, nodename: String;
+  styleChildNode: TDOMNode;
+  bidi: String;
+  tablestyle: TTableStyleData;
+begin
+ // nodeName := GetAttrValue(AStyleNode, 'style:name');
+  stylename := GetAttrValue(AStyleNode, 'style:name');
+  styleChildNode := AStyleNode.FirstChild;
+
+  while Assigned(styleChildNode) do
+  begin
+    nodename := styleChildNode.NodeName;
+    if nodeName = 'style:table-properties' then
+    begin
+//      stylename := GetAttrValue(styleChildNode, 'style:name');
+      bidi := GetAttrValue(styleChildNode, 'style:writing-mode');
+    end;
+    styleChildNode := styleChildNode.NextSibling;
+  end;
+
+  if bidi = 'rl-tb' then
+  begin
+    tablestyle := TTableStyleData.Create;
+    tablestyle.Name := styleName;
+    tablestyle.BiDiMode := bdRTL;
+    FTableStyleList.Add(tablestyle);
   end;
 end;
 
@@ -5457,15 +5530,22 @@ procedure TsSpreadOpenDocWriter.WriteTableStyles(AStream: TStream);
 var
   i: Integer;
   sheet: TsWorksheet;
+  bidi: String;
 begin
   for i:=0 to FWorkbook.GetWorksheetCount-1 do
   begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
+    case sheet.BiDiMode of
+      bdDefault: bidi := '';
+      bdLTR    : bidi := 'style:writing-mode="lr-tb" ';
+      bdRTL    : bidi := 'style:writing-mode="rl-tb" ';
+    end;
     AppendToStream(AStream, Format(
       '<style:style style:name="ta%d" style:family="table" style:master-page-name="PageStyle_5f_%s">' +
-        '<style:table-properties table:display="true" style:writing-mode="lr-tb"/>' +
+        '<style:table-properties table:display="true" %s/>' +
       '</style:style>', [
-      i+1, sheet.Name
+      i+1, sheet.Name,
+      bidi
     ]));
   end;
 end;

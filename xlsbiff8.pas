@@ -3236,6 +3236,8 @@ begin
     actSheet := Fworkbook.GetWorksheetByIndex(0);
   if (ASheet = actSheet) then
     Options := Options or MASK_WINDOW2_OPTION_SHEET_ACTIVE or MASK_WINDOW2_OPTION_SHEET_SELECTED;
+  if (ASheet.BiDiMode = bdRTL) then
+    Options := Options or MASK_WINDOW2_OPTION_COLUMNS_RIGHT_TO_LEFT;
   AStream.WriteWord(WordToLE(Options));
 
   { Index to first visible row }

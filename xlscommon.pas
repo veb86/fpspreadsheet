@@ -2340,6 +2340,9 @@ begin
 
   if (flags and MASK_WINDOW2_OPTION_SHEET_ACTIVE <> 0) then
     FWorkbook.SelectWorksheet(FWorksheet);
+
+  if (flags AND MASK_WINDOW2_OPTION_COLUMNS_RIGHT_TO_LEFT <> 0) then
+    FWorksheet.BiDiMode := bdRTL;
 end;
 
 { Reads the workbook globals. }

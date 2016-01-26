@@ -126,6 +126,7 @@ type
     FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
     FSortParams: TsSortParams;  // Parameters of the current sorting operation
+    FBiDiMode: TsBiDiMode;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnCompareCells: TsCellCompareEvent;
@@ -133,6 +134,7 @@ type
 
     { Setter/Getter }
     function GetFormatSettings: TFormatSettings;
+    procedure SetBiDiMode(AValue: TsBiDiMode);
     procedure SetName(const AName: String);
 
     { Callback procedures called when iterating through all cells }
@@ -520,6 +522,7 @@ type
     property DefaultRowHeight: Single read FDefaultRowHeight write FDefaultRowHeight;
 
     // These are properties to interface to TsWorksheetGrid
+    property BiDiMode: TsBiDiMode read FBiDiMode write SetBiDiMode;
     {@@ Parameters controlling visibility of grid lines and row/column headers,
         usage of frozen panes etc. }
     property  Options: TsSheetOptions read FOptions write FOptions;
@@ -3338,6 +3341,15 @@ begin
   FCells.DeleteCell(ARow, ACol);
 end;
 
+procedure TsWorksheet.SetBiDiMode(AValue: TsBiDiMode);
+begin
+  if AValue = FBiDiMode then
+    exit;
+  FBiDiMode := AValue;
+  if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnChangeWorksheet) then
+    FWorkbook.FOnChangeWorksheet(FWorkbook, self);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Setter for the worksheet name property. Checks if the name is valid, and
   exits without any change if not. Creates an event OnChangeWorksheet.
@@ -3349,7 +3361,7 @@ begin
   if (FWorkbook <> nil) then //and FWorkbook.ValidWorksheetName(AName) then
   begin
     FName := AName;
-    if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnChangeWorksheet) then
+    if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnRenameWorksheet) then
       FWorkbook.FOnRenameWorksheet(FWorkbook, self);
   end;
 end;

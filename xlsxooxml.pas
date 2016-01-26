@@ -1757,9 +1757,16 @@ begin
       s := GetAttrValue(sheetViewNode, 'showGridLines');
       if s = '0' then
         AWorksheet.Options := AWorksheet.Options - [soShowGridLines];
+
       s := GetAttrValue(sheetViewNode, 'showRowColHeaders');
       if s = '0' then
          AWorksheet.Options := AWorksheet.Options - [soShowHeaders];
+
+      s := GetAttrValue(sheetViewNode, 'rightToLeft');
+      if s = '0' then
+        AWorksheet.BiDiMode := bdLTR
+      else if s = '1' then
+        AWorksheet.BiDiMode := bdRTL;
 
       childNode := sheetViewNode.FirstChild;
       while Assigned(childNode) do begin
@@ -2885,12 +2892,20 @@ var
   bottomRightCell: String;
   actCell: String;
   tabSel: String;
+  bidi: String;
 begin
   // Show gridlines ?
   showGridLines := StrUtils.IfThen(soShowGridLines in AWorksheet.Options, ' ', 'showGridLines="0" ');
 
   // Show headers?
   showHeaders := StrUtils.IfThen(soShowHeaders in AWorksheet.Options, ' ', 'showRowColHeaders="0" ');
+
+  // BiDiMode
+  case AWorksheet.BiDiMode of
+    bdDefault: bidi := '';
+    bdLTR    : bidi := 'rightToLeft="0" ';
+    bdRTL    : bidi := 'rightToLeft="1" ';
+  end;
 
   // Active cell
   if (AWorksheet.ActiveCellRow <> cardinal(-1)) and (AWorksheet.ActiveCellCol <> cardinal(-1)) then
@@ -2908,11 +2923,11 @@ begin
     if actCell = '' then actCell := 'A1';
     AppendToStream(AStream, Format(
       '<sheetViews>' +
-        '<sheetView workbookViewId="0" %s%s%s>' +
+        '<sheetView workbookViewId="0" %s%s%s%s>' +
           '<selection activeCell="%s" sqref="%s" />' +
         '</sheetView>' +
       '</sheetViews>', [
-      showGridLines, showHeaders, tabSel,
+      showGridLines, showHeaders, tabSel, bidi,
       actCell, actCell
     ]))
   end else
@@ -2926,14 +2941,14 @@ begin
         actCell := bottomRightcell;
       AppendToStream(AStream, Format(
         '<sheetViews>' +
-          '<sheetView workbookViewId="0" %s%s%s>'+
+          '<sheetView workbookViewId="0" %s%s%s%s>'+
             '<pane xSplit="%d" ySplit="%d" topLeftCell="%s" activePane="bottomRight" state="frozen" />' +
             '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
             '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
             '<selection pane="bottomRight" activeCell="%s" sqref="%s" />' +
           '</sheetView>' +
         '</sheetViews>', [
-        showGridLines, showHeaders, tabSel,
+        showGridLines, showHeaders, tabSel, bidi,
         AWorksheet.LeftPaneWidth, AWorksheet.TopPaneHeight, bottomRightCell,
         topRightCell, topRightCell,
         bottomLeftCell, bottomLeftCell,
@@ -2946,12 +2961,12 @@ begin
         actCell := topRightCell;
       AppendToStream(AStream, Format(
         '<sheetViews>' +
-          '<sheetView workbookViewId="0" %s%s%s>'+
+          '<sheetView workbookViewId="0" %s%s%s%s>'+
             '<pane xSplit="%d" topLeftCell="%s" activePane="topRight" state="frozen" />' +
             '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
           '</sheetView>' +
         '</sheetViews>', [
-        showGridLines, showHeaders, tabSel,
+        showGridLines, showHeaders, tabSel, bidi,
         AWorksheet.LeftPaneWidth, topRightCell,
         actCell, actCell
       ]))
@@ -2962,12 +2977,12 @@ begin
         actCell := bottomLeftCell;
       AppendToStream(AStream, Format(
         '<sheetViews>'+
-          '<sheetView workbookViewId="0" %s%s%s>'+
+          '<sheetView workbookViewId="0" %s%s%s%s>'+
              '<pane ySplit="%d" topLeftCell="%s" activePane="bottomLeft" state="frozen" />'+
              '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
           '</sheetView>'+
         '</sheetViews>', [
-        showGridLines, showHeaders, tabSel,
+        showGridLines, showHeaders, tabSel, bidi,
         AWorksheet.TopPaneHeight, bottomLeftCell,
         actCell, actCell
       ]));
