@@ -186,6 +186,7 @@ type
     procedure DefineProperties(Filer: TFiler); override;
     procedure DoCopyToClipboard; override;
     procedure DoCutToClipboard; override;
+    procedure DoEditorShow; override;
     procedure DoPasteFromClipboard; override;
     procedure DoOnResize; override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
@@ -1531,8 +1532,31 @@ end;
 
 procedure TsCustomWorksheetGrid.DoPasteFromClipboard;
 begin
-  // Remove for the moment: If TsCopyActions is available this code would be executed twice
+  // Remove for the moment: If TsPasteActions is available this code would be executed twice
   //WorkbookSource.PasteCellsFromClipboard(coCopyCell);
+end;
+
+{ Make the cell editor the same size as the edited cell, in particular for
+  even for merged cells; otherwise the merge base content would be seen during
+  editing at several places. }
+procedure TsCustomWorksheetGrid.DoEditorShow;
+var
+  r1, c1, r2, c2: Cardinal;
+  cell: PCell;
+  Rct: TRect;
+  s: String;
+begin
+  inherited;
+  if (Worksheet <> nil) and (Editor is TStringCellEditor) then
+  begin
+    cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
+    if Worksheet.IsMerged(cell) then begin
+      s := Editor.ClassName;
+      Worksheet.FindMergedRange(cell, r1,c1,r2,c2);
+      Rct := CellRect(GetGridCol(c1), GetGridRow(r1), GetGridCol(c2), GetGridRow(r2));
+      Editor.SetBounds(Rct.Left, Rct.Top, Rct.Right-Rct.Left, Rct.Bottom-Rct.Top);
+    end;
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.DoOnResize;
