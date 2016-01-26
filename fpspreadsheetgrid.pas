@@ -1526,14 +1526,16 @@ end;
 
 procedure TsCustomWorksheetGrid.DoCutToClipboard;
 begin
+  // This next comment does not seem to be valid any more: Issue handled by eating key in KeyDown
   // Remove for the moment: If TsCopyActions is available this code would be executed twice (and destroy the clipboard)
-  //WorkbookSource.CutCellsToClipboard;
+  WorkbookSource.CutCellsToClipboard;
 end;
 
 procedure TsCustomWorksheetGrid.DoPasteFromClipboard;
 begin
+  // This next comment does not seem to be valid any more: Issue handled by eating key in KeyDown
   // Remove for the moment: If TsPasteActions is available this code would be executed twice
-  //WorkbookSource.PasteCellsFromClipboard(coCopyCell);
+  WorkbookSource.PasteCellsFromClipboard(coCopyCell);
 end;
 
 { Make the cell editor the same size as the edited cell, in particular for
@@ -2347,6 +2349,7 @@ var
   cell: PCell;
   r1,c1,r2,c2: Cardinal;
   delta: Integer;
+  savedPenMode: TPenMode;
 begin
   if Worksheet = nil then
     exit;
@@ -2382,6 +2385,7 @@ begin
   end;                            }
 
   // Set up the canvas
+  savedPenMode := Canvas.Pen.Mode;
   Canvas.Pen.Assign(FSelPen);
   if UseXORFeatures then begin
     Canvas.Pen.Color := clWhite;
@@ -2391,6 +2395,8 @@ begin
 
   // Paint
   Canvas.Rectangle(R);
+
+  Canvas.Pen.Mode := savedPenMode;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3830,6 +3836,10 @@ begin
   end;
 
   inherited;
+
+  case Key of
+    VK_C, VK_X, VK_V: Key := 0;  // Clipboard has already been handled, avoid passing key to CellAction
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

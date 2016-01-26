@@ -2238,7 +2238,7 @@ begin
             (AFont.Color = AColor) and
             (AFont.Position = APos);
 end;
-
+                                                 (*
 {@@ ----------------------------------------------------------------------------
   Constructs a string of length "Len" containing random uppercase characters
 -------------------------------------------------------------------------------}
@@ -2248,7 +2248,7 @@ begin
   While Length(Result) < Len do
     Result := Result + char(ord('A') + random(26));
 end;
-  (*
+
 {@@ ----------------------------------------------------------------------------
   Constructs a unique folder name in the temp directory of the OS
 -------------------------------------------------------------------------------}
