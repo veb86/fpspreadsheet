@@ -1090,6 +1090,182 @@ begin
   Result.ResInteger := n;
 end;
 
+procedure fpsCOUNTIF(var result: TsExpressionResult; const Args: TsExprParameterArray);
+{ Counts the number of cells in a range that meets a given condition.
+    COUNTIF( range, condition )
+  - "range" is to the cell range to be analyzed
+  - "condition" can be a cell, a value or a string starting with a symbol like ">" etc.
+    (in the former two cases a value is counted if equal to the criteria value) }
+type
+  TCompareType = (ctEmpty, ctString, ctNumber);
+var
+  n: Integer;
+  r, c: Cardinal;
+  cell: PCell;
+  s: String;
+  f: Double;
+  dt: TDateTime;
+  compareNumber: Double = 0.0;
+  compareStr: String = '';
+  compareOp: TsCompareOperation = coEqual;
+  compareType: TCompareType;
+  fs: TFormatSettings;
+
+  procedure DoCompareNumber(ANumber: Float);
+  begin
+    case compareOp of
+      coEqual        : if ANumber = compareNumber then inc(n);
+      coLess         : if ANumber < compareNumber then inc(n);
+      coGreater      : if ANumber > compareNumber then inc(n);
+      coLessEqual    : if ANumber <= compareNumber then inc(n);
+      coGreaterEqual : if ANumber >= compareNumber then inc(n);
+      coNotEqual     : if ANumber >= compareNumber then inc(n);
+    end;
+  end;
+
+  procedure DoCompareString(AStr: String);
+  begin
+    case compareOp of
+      coEqual        : if AStr = compareStr then inc(n);
+      coLess         : if AStr < compareStr then inc(n);
+      coGreater      : if AStr > compareStr then inc(n);
+      coLessEqual    : if AStr <= compareStr then inc(n);
+      coGreaterEqual : if AStr >= compareStr then inc(n);
+      coNotEqual     : if AStr >= compareStr then inc(n);
+    end;
+  end;
+
+  procedure DoCompareEmpty(IsEmpty: Boolean);
+  begin
+    case compareOp of
+      coEqual        : if isEmpty then inc(n);
+      coNotEqual     : if not isEmpty then inc(n);
+    end;
+  end;
+
+begin
+  // Simple cases
+  if (Length(Args) < 1) then begin
+    Result := IntegerResult(0);
+    exit;
+  end;
+
+  // Get format settings for string-to-float or -to-datetime conversion
+  if (Args[0].ResultType in [rtCell, rtCellRange]) then
+    fs := Args[0].Worksheet.FormatSettings
+  else
+  begin
+    Result := ErrorResult(errArgError);
+    exit;
+  end;
+
+  // Get compare operation and compare value
+  if (Args[1].ResultType = rtCell) then
+  begin
+    cell := ArgToCell(Args[1]);
+    if cell = nil then
+      comparetype := ctEmpty
+    else
+      case cell^.ContentType of
+        cctNumber:
+          begin
+            compareNumber := cell^.NumberValue;
+            compareType := ctNumber;
+          end;
+        cctDateTime:
+          begin
+            compareNumber := cell^.DateTimevalue;
+            compareType := ctNumber;
+          end;
+        cctBool:
+          begin
+            if cell^.BoolValue then compareNumber := 1.0 else compareNumber := 0.0;
+            compareType := ctNumber;
+          end;
+        cctUTF8String:
+          begin
+            compareStr := cell^.UTF8StringValue;
+            compareType := ctString;
+          end;
+        cctEmpty:
+          begin
+            compareType := ctEmpty;
+          end;
+        cctError:
+          ; // what to do here?
+      end;
+  end else
+  begin
+    s := ArgToString(Args[1]);
+    if (Length(s) > 1) and (s[1] in ['=', '<', '>']) then
+      s := AnalyzeCompareStr(s, compareOp);
+    if s = '' then
+      compareType := ctEmpty
+    else
+    if TryStrToInt(s, n) then
+    begin
+      compareNumber := n;
+      compareType := ctNumber;
+    end else
+    if TryStrToFloat(s, f, fs) then
+    begin
+      compareNumber := f;
+      compareType := ctNumber;
+    end else
+    if TryStrToDate(s, dt, fs) or TryStrToTime(s, dt, fs) or TryStrToDateTime(s, dt, fs) then
+    begin
+      compareNumber := dt;
+      compareType := ctNumber;
+    end
+    else
+    begin
+      compareStr := s;
+      compareType := ctString;
+    end;
+  end;
+
+  if (compareType = ctEmpty) and not (compareOp in [coEqual, coNotEqual]) then
+  begin
+    Result := ErrorResult(errArgError);
+    exit;
+  end;
+
+  // Iterate through range
+  n := 0;
+  if (Args[0].ResultType = rtCell) then
+    case compareType of
+      ctNumber : DoCompareNumber(ArgToFloat(Args[0]));
+      ctString : DoCompareString(ArgToString(Args[0]));
+      ctEmpty  : DoCompareEmpty(ArgToString(Args[0]) = '');
+    end
+  else
+  if (Args[0].ResultType = rtCellRange) then
+    for r := Args[0].ResCellRange.Row1 to Args[0].ResCellRange.Row2 do
+      for c := Args[0].ResCellRange.Col1 to Args[0].ResCellRange.Col2 do
+      begin
+        cell := Args[0].Worksheet.FindCell(r, c);
+        case compareType of
+          ctNumber:
+            if cell <> nil then
+              case cell^.ContentType of
+                cctNumber:
+                  DoCompareNumber(cell^.NumberValue);
+                cctDateTime:
+                  DoCompareNumber(cell^.DateTimeValue);
+                cctBool:
+                  DoCompareNumber(IfThen(cell^.Boolvalue, 1, 0));
+              end;
+          ctString:
+            if (cell <> nil) and (cell^.ContentType = cctUTF8String) then
+              DoCompareString(cell^.Utf8StringValue);
+          ctEmpty:
+            DoCompareEmpty((cell = nil) or ((cell <> nil) and (cell^.ContentType = cctEmpty)));
+        end;
+      end;
+
+  Result := IntegerResult(n);
+end;
+
 procedure fpsMAX(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // MAX( value1, [value2, ... value_n] )
 var
@@ -1689,6 +1865,7 @@ begin
     AddFunction(cat, 'COUNT',     'I', '?+',   INT_EXCEL_SHEET_FUNC_COUNT,      @fpsCOUNT);
     AddFunction(cat, 'COUNTA',    'I', '?+',   INT_EXCEL_SHEET_FUNC_COUNTA,     @fpsCOUNTA);
     AddFunction(cat, 'COUNTBLANK','I', 'R',    INT_EXCEL_SHEET_FUNC_COUNTBLANK, @fpsCOUNTBLANK);
+    AddFunction(cat, 'COUNTIF',   'I', 'R?',   INT_EXCEL_SHEET_FUNC_COUNTIF,    @fpsCOUNTIF);
     AddFunction(cat, 'MAX',       'F', 'F+',   INT_EXCEL_SHEET_FUNC_MAX,        @fpsMAX);
     AddFunction(cat, 'MIN',       'F', 'F+',   INT_EXCEL_SHEET_FUNC_MIN,        @fpsMIN);
     AddFunction(cat, 'PRODUCT',   'F', 'F+',   INT_EXCEL_SHEET_FUNC_PRODUCT,    @fpsPRODUCT);

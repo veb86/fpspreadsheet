@@ -3838,7 +3838,9 @@ begin
   inherited;
 
   case Key of
-    VK_C, VK_X, VK_V: Key := 0;  // Clipboard has already been handled, avoid passing key to CellAction
+    VK_C, VK_X, VK_V:
+      if Shift = [ssCtrl] then Key := 0;
+      // Clipboard has already been handled, avoid passing key to CellAction
   end;
 end;
 
