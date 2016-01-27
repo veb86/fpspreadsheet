@@ -423,7 +423,7 @@ begin
     BeginUpdate;
     try
       if TAction(Sender).Tag = 0 then begin
-        CellBorders[Selection] := [];
+        CellBorders[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := [];
         exit;
       end;
       // Top and bottom edges
@@ -608,9 +608,9 @@ begin
   with WorksheetGrid do begin
     if Workbook = nil then
       exit;
-    FontDialog.Font := CellFonts[Selection];
+    FontDialog.Font := CellFonts[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
     if FontDialog.Execute then
-      CellFonts[Selection] := FontDialog.Font;
+      CellFonts[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := FontDialog.Font;
   end;
 end;
 
@@ -626,7 +626,7 @@ begin
     if AcFontItalic.Checked then Include(style, fssItalic);
     if AcFontStrikeout.Checked then Include(style, fssStrikeout);
     if AcFontUnderline.Checked then Include(style, fssUnderline);
-    CellFontStyles[Selection] := style;
+    CellFontStyles[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := style;
   end;
 end;
 
@@ -658,7 +658,8 @@ begin
     hor_align := TsHorAlignment(TAction(Sender).Tag - HORALIGN_TAG)
   else
     hor_align := haDefault;
-  with WorksheetGrid do HorAlignments[Selection] := hor_align;
+  with WorksheetGrid do
+    HorAlignments[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := hor_align;
   UpdateHorAlignmentActions;
 end;
 
@@ -882,7 +883,8 @@ begin
     text_rot := TsTextRotation(TAction(Sender).Tag - TEXTROT_TAG)
   else
     text_rot := trHorizontal;
-  with WorksheetGrid do TextRotations[Selection] := text_rot;
+  with WorksheetGrid do
+    TextRotations[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := text_rot;
   UpdateTextRotationActions;
 end;
 
@@ -894,7 +896,8 @@ begin
     vert_align := TsVertAlignment(TAction(Sender).Tag - VERTALIGN_TAG)
   else
     vert_align := vaDefault;
-  with WorksheetGrid do VertAlignments[Selection] := vert_align;
+  with WorksheetGrid do
+    VertAlignments[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := vert_align;
   UpdateVertAlignmentActions;
 end;
 
@@ -907,7 +910,8 @@ end;
 
 procedure TMainFrm.AcWordwrapExecute(Sender: TObject);
 begin
-  with WorksheetGrid do Wordwraps[Selection] := TAction(Sender).Checked;
+  with WorksheetGrid do
+    Wordwraps[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := TAction(Sender).Checked;
 end;
 
 procedure TMainFrm.BeforeRun;
@@ -947,9 +951,13 @@ end;
 procedure TMainFrm.CbBackgroundColorSelect(Sender: TObject);
 begin
   if CbBackgroundColor.ItemIndex <= 0 then
-    with WorksheetGrid do BackgroundColors[Selection] := scNotDefined
+    with WorksheetGrid do
+      BackgroundColors[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] :=
+        scNotDefined
   else
-    with WorksheetGrid do BackgroundColors[Selection] := PtrInt(CbBackgroundColor.Items.Objects[CbBackgroundColor.ItemIndex]);
+    with WorksheetGrid do
+      BackgroundColors[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] :=
+        PtrInt(CbBackgroundColor.Items.Objects[CbBackgroundColor.ItemIndex]);
 end;
 
 procedure TMainFrm.CbHeaderStyleChange(Sender: TObject);
@@ -1035,7 +1043,8 @@ var
 begin
   fname := FontCombobox.Items[FontCombobox.ItemIndex];
   if fname <> '' then
-    with WorksheetGrid do CellFontNames[Selection] := fName;
+    with WorksheetGrid do
+      CellFontNames[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := fName;
 end;
 
 procedure TMainFrm.FontSizeComboBoxSelect(Sender: TObject);
@@ -1044,7 +1053,8 @@ var
 begin
   sz := StrToInt(FontSizeCombobox.Items[FontSizeCombobox.ItemIndex]);
   if sz > 0 then
-    with WorksheetGrid do CellFontSizes[Selection] := sz;
+    with WorksheetGrid do
+      CellFontSizes[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := sz;
 end;
 
 procedure TMainFrm.FormActivate(Sender: TObject);
@@ -1197,7 +1207,7 @@ var
   clr: TsColor;
 begin
   with WorksheetGrid do
-    clr := BackgroundColors[Selection];
+    clr := BackgroundColors[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   if (clr = scNotDefined) or (clr = scTransparent) then
     CbBackgroundColor.ItemIndex := 0 // no fill
   else
@@ -1210,7 +1220,8 @@ var
   ac: TAction;
   hor_align: TsHorAlignment;
 begin
-  with WorksheetGrid do hor_align := HorAlignments[Selection];
+  with WorksheetGrid do
+    hor_align := HorAlignments[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   for i:=0 to ActionList.ActionCount-1 do
   begin
     ac := TAction(ActionList.Actions[i]);
@@ -1380,7 +1391,8 @@ procedure TMainFrm.UpdateFontNameIndex;
 var
   fname: String;
 begin
-  with WorksheetGrid do fname := CellFontNames[Selection];
+  with WorksheetGrid do
+    fname := CellFontNames[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   if fname = '' then
     FontCombobox.ItemIndex := -1
   else
@@ -1391,7 +1403,8 @@ procedure TMainFrm.UpdateFontSizeIndex;
 var
   sz: Single;
 begin
-  with WorksheetGrid do sz := CellFontSizes[Selection];
+  with WorksheetGrid do
+    sz := CellFontSizes[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   if sz < 0 then
     FontSizeCombobox.ItemIndex := -1
   else
@@ -1402,7 +1415,8 @@ procedure TMainFrm.UpdateFontStyleActions;
 var
   style: TsFontStyles;
 begin
-  with WorksheetGrid do style := CellFontStyles[Selection];
+  with WorksheetGrid do
+    style := CellFontStyles[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   AcFontBold.Checked := fssBold in style;
   AcFontItalic.Checked := fssItalic in style;
   AcFontUnderline.Checked := fssUnderline in style;
@@ -1460,7 +1474,8 @@ var
   ac: TAction;
   text_rot: TsTextRotation;
 begin
-  with WorksheetGrid do text_rot := TextRotations[Selection];
+  with WorksheetGrid do
+    text_rot := TextRotations[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   for i:=0 to ActionList.ActionCount-1 do begin
     ac := TAction(ActionList.Actions[i]);
     if (ac.Tag >= TEXTROT_TAG) and (ac.Tag < TEXTROT_TAG+10) then
@@ -1474,7 +1489,8 @@ var
   ac: TAction;
   vert_align: TsVertAlignment;
 begin
-  with WorksheetGrid do vert_align := VertAlignments[Selection];
+  with WorksheetGrid do
+    vert_align := VertAlignments[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   for i:=0 to ActionList.ActionCount-1 do begin
     ac := TAction(ActionList.Actions[i]);
     if (ac.Tag >= VERTALIGN_TAG) and (ac.Tag < VERTALIGN_TAG+10) then
@@ -1486,7 +1502,8 @@ procedure TMainFrm.UpdateWordwraps;
 var
   wrapped: Boolean;
 begin
-  with WorksheetGrid do wrapped := Wordwraps[Selection];
+  with WorksheetGrid do
+    wrapped := Wordwraps[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   AcWordwrap.Checked := wrapped;
 end;
 
