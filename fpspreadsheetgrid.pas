@@ -1462,26 +1462,9 @@ procedure TsCustomWorksheetGrid.CreateNewWorkbook;
 begin
   GetWorkbookSource.CreateNewWorkbook;
   if FReadFormulas then
-    Workbook.Options := Workbook.Options + [boReadFormulas] else
-    Workbook.Options := Workbook.Options - [boReadFormulas];
+    WorkbookSource.Options := WorkbookSource.Options + [boReadFormulas] else
+    WorkbookSource.Options := Workbooksource.Options - [boReadFormulas];
   SetAutoCalc(FAutoCalc);
-  {
-  if FOwnsWorkbook then
-    FreeAndNil(FOwnedWorkbook);
-
-  if FWorkbookSource <> nil then
-    FWorkbookSource.CreateNewWorkbook
-  else
-  begin
-    FOwnedWorkbook := TsWorkbook.Create;
-    FOwnsWorkbook := true;
-    if FReadFormulas then
-      FOwnedWorkbook.Options := FOwnedWorkbook.Options + [boReadFormulas]
-    else
-      FOwnedWorkbook.Options := FOwnedWorkbook.Options - [boReadFormulas];
-    SetAutoCalc(FAutoCalc);
-  end;
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5132,23 +5115,20 @@ begin
 end;
 
 procedure TsCustomWorksheetGrid.SetAutoCalc(AValue: Boolean);
+var
+  optns: TsWorkbookOptions;
 begin
   FAutoCalc := AValue;
 
-  if Assigned(FWorkbookSource) then
+  if Assigned(WorkbookSource) then
   begin
+    optns := WorkbookSource.Options;
     if FAutoCalc then
-      FWorkbookSource.Options := FWorkbookSource.Options + [boAutoCalc]
-    else
-      FWorkbookSource.Options := FWorkbookSource.Options - [boAutoCalc];
-  end;
-
-  if Assigned(Workbook) then
-  begin
-    if FAutoCalc then
-      Workbook.Options := Workbook.Options + [boAutoCalc]
-    else
-      Workbook.Options := Workbook.Options - [boAutoCalc];
+      Include(optns, boAutoCalc) else
+      Exclude(optns, boAutoCalc);
+    WorkbookSource.Options := optns;
+    if FInternalWorkbookSource <> nil then
+      FInternalWorkbookSource.Options := optns;
   end;
 end;
 
@@ -5643,23 +5623,20 @@ begin
 end;
 
 procedure TsCustomWorksheetGrid.SetReadFormulas(AValue: Boolean);
+var
+  optns: TsWorkbookOptions;
 begin
   FReadFormulas := AValue;
-
-  if Assigned(FWorkbookSource) then
+  if Assigned(WorkbookSource) then
   begin
+    optns := WorkbookSource.Options;
     if FReadFormulas then
-      FWorkbookSource.Options := FWorkbookSource.Options + [boReadFormulas]
+      Include(optns, boReadFormulas)
     else
-      FWorkbookSource.Options := FWorkbookSource.Options - [boReadFormulas];
-  end;
-
-  if Assigned(Workbook) then
-  begin
-    if FReadFormulas then
-      Workbook.Options := Workbook.Options + [boReadFormulas]
-    else
-      Workbook.Options := Workbook.Options - [boReadFormulas];
+      Exclude(optns, boReadFormulas);
+    WorkbookSource.Options := optns;
+    if FInternalWorkbookSource <> nil then
+      FInternalWorkbookSource.Options := optns;
   end;
 end;
 

@@ -468,6 +468,8 @@ type
     procedure AddBuiltinNumFormats; override;
     function FindXFIndex(ACell: PCell): Integer; virtual;
     function FixLineEnding(const AText: String): String;
+    function FormulaSupported(ARPNFormula: TsRPNFormula; out AUnsupported: String): Boolean;
+    function FunctionSupported(AExcelCode: Integer; const AFuncName: String): Boolean; virtual;
     function GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
     function GetPrintOptions: Word; virtual;
@@ -544,7 +546,7 @@ type
       var RPNLength: Word); virtual;
       }
     procedure WriteRPNTokenArray(AStream: TStream; ACell: PCell;
-      const AFormula: TsRPNFormula; UseRelAddr: Boolean; var RPNLength: Word);
+      const AFormula: TsRPNFormula; UseRelAddr, IsSupported: Boolean; var RPNLength: Word);
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); virtual;
 
     // Writes out a SELECTION record
@@ -2517,6 +2519,37 @@ begin
       Result[i] := #10;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Checks if the specified formula is supported by this file format.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFFWriter.FormulaSupported(ARPNFormula: TsRPNFormula;
+  out AUnsupported: String): Boolean;
+var
+  exprDef: TsExprIdentifierDef;
+  i: Integer;
+begin
+  Result := true;
+  AUnsupported := '';
+  for i:=0 to Length(ARPNFormula)-1 do begin
+    if ARPNFormula[i].ElementKind = fekFunc then begin
+      exprDef := BuiltinIdentifiers.IdentifierByName(ARPNFormula[i].FuncName);
+      if not FunctionSupported(exprDef.ExcelCode, exprDef.Name) then
+      begin
+        Result := false;
+        AUnsupported := AUnsupported + ', ' + exprDef.Name + '()';
+      end;
+    end;
+  end;
+  if AUnsupported <> '' then Delete(AUnsupported, 1, 2);
+end;
+
+function TsSpreadBIFFWriter.FunctionSupported(AExcelCode: Integer;
+  const AFuncName: String): Boolean;
+begin
+  Unused(AFuncName);
+  Result := AExcelCode <> INT_EXCEL_SHEET_FUNC_NOT_BIFF;
+end;
+
 function TsSpreadBIFFWriter.GetLastRowIndex(AWorksheet: TsWorksheet): Integer;
 begin
   Result := AWorksheet.GetLastRowIndex;
@@ -3335,16 +3368,22 @@ procedure TsSpreadBIFFWriter.WriteRPNFormula(AStream: TStream;
 var
   RPNLength: Word = 0;
   RecordSizePos, StartPos, FinalPos: Int64;
+  isSupported: Boolean;
+  unsupportedFormulas: String;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
   if Length(AFormula) = 0 then
     exit;
-  {
-  if not ((Length(AFormula) > 0) or (ACell^.SharedFormulaBase <> nil)) then
-    exit;
-   }
+
+  { Check if formula is supported by this file format. If not, write only
+    the result }
+  isSupported := FormulaSupported(AFormula, unsupportedFormulas);
+  if not IsSupported then
+    Workbook.AddErrorMsg(rsFormulaNotSupported, [
+      GetCellString(ARow, ACol), unsupportedformulas
+    ]);
 
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_FORMULA));
@@ -3363,34 +3402,21 @@ begin
   WriteRPNResult(AStream, ACell);
 
   { Options flags }
-  AStream.WriteWord(WordToLE(MASK_FORMULA_RECALCULATE_ALWAYS));
+  if IsSupported then
+    AStream.WriteWord(WordToLE(MASK_FORMULA_RECALCULATE_ALWAYS)) else
+    AStream.WriteWord(0);
 
   { Not used }
   AStream.WriteDWord(0);
 
   { Formula data (RPN token array) }
-  {
-  if ACell^.SharedFormulaBase <> nil then
-    WriteRPNSharedFormulaLink(AStream, ACell, RPNLength)
-  else
-  }
-  WriteRPNTokenArray(AStream, ACell, AFormula, false, RPNLength);
+  WriteRPNTokenArray(AStream, ACell, AFormula, false, IsSupported, RPNLength);
 
   { Write sizes in the end, after we known them }
   FinalPos := AStream.Position;
   AStream.Position := RecordSizePos;
   AStream.WriteWord(WordToLE(FinalPos - StartPos));
   AStream.Position := FinalPos;
-  (*
-  { If the cell is the first cell of a range with a shared formula write the
-    shared formula RECORD here. The shared formula RECORD must follow the
-    first FORMULA record referring to the shared formula}
-  if (ACell^.SharedFormulaBase <> nil) and
-     (ARow = ACell^.SharedFormulaBase^.Row) and
-     (ACol = ACell^.SharedFormulaBase^.Col)
-  then
-    WriteSharedFormula(AStream, ACell^.SharedFormulaBase);
-  *)
 
   { Write following STRING record if formula result is a non-empty string. }
   if (ACell^.ContentType = cctUTF8String) and (ACell^.UTF8StringValue <> '') then
@@ -3486,14 +3512,14 @@ end;
   Writes the token array of the given RPN formula and returns its size
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRPNTokenArray(AStream: TStream;
-  ACell: PCell; const AFormula: TsRPNFormula; UseRelAddr: boolean;
+  ACell: PCell; const AFormula: TsRPNFormula; UseRelAddr, IsSupported: boolean;
   var RPNLength: Word);
 var
   i: Integer;
   n: Word;
   dr, dc: Integer;
   TokenArraySizePos: Int64;
-  FinalPos: Int64;
+  finalPos: Int64;
   exprDef: TsExprIdentifierDef;
   primaryExcelCode, secondaryExcelCode: Word;
 begin
@@ -3503,6 +3529,9 @@ begin
     calculate it first, and this is done at the same time it is written }
   TokenArraySizePos := AStream.Position;
   WriteRPNTokenArraySize(AStream, 0);
+
+  if not IsSupported then
+    exit;
 
   { Formula data (RPN token array) }
   for i := 0 to Length(AFormula) - 1 do begin

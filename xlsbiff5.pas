@@ -96,6 +96,7 @@ type
 
   TsSpreadBIFF5Writer = class(TsSpreadBIFFWriter)
   protected
+    function FunctionSupported(AExcelCode: Integer; const AFuncName: String): Boolean; override;
     procedure InternalWriteToStream(AStream: TStream);
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
@@ -214,7 +215,7 @@ implementation
 
 uses
   Math,
-  fpsStrings, fpsRegFileFormats, fpsStreams, fpsPalette, fpsNumFormat;
+  fpsStrings, fpsRegFileFormats, fpsStreams, fpsPalette, fpsNumFormat, xlsconst;
 
 const
    { Excel record IDs }
@@ -981,6 +982,12 @@ begin
   inherited Create(AWorkbook);
   FDateMode := Excel5Settings.DateMode;
   FCodePage := Excel5Settings.CodePage;
+end;
+
+function TsSpreadBIFF5Writer.FunctionSupported(AExcelCode: Integer;
+  const AFuncName: String): Boolean;
+begin
+  Result := inherited and (AExcelCode <> INT_EXCEL_SHEET_FUNC_HYPERLINK);
 end;
 
 {@@ ----------------------------------------------------------------------------

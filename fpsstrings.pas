@@ -80,6 +80,7 @@ resourcestring
   rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
   rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
   rsCodePageNotSupported = 'Code page "%s" is not supported. Using "cp1252" (Latin 1) instead.';
+  rsFormulaNotSupported = 'The formula in cell %s is not supported by this file format: %s';
 
   rsNoValidHyperlinkInternal = 'The hyperlink "%s" is not a valid cell address.';
   rsNoValidHyperlinkURI = 'The hyperlink "%s" is not a valid URI.';

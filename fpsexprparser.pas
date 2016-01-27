@@ -3405,7 +3405,6 @@ begin
   else
     n := Length(FArgumentNodes);
   Result := ANext;
-//  for i:=Length(FArgumentNodes)-1 downto 0 do
   for i:=0 to High(FArgumentNodes) do
     Result := FArgumentNodes[i].AsRPNItem(Result);
   Result := RPNFunc(FID.Name, n, Result);

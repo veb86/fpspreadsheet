@@ -880,7 +880,6 @@ begin
   FWorkbook.OnRemovingWorksheet := @WorksheetRemovingHandler;
   FWorkbook.OnRenameWorksheet := @WorksheetRenamedHandler;
   FWorkbook.OnSelectWorksheet := @WorksheetSelectedHandler;
-//  FWorkbook.OnChangePalette := @WorkbookChangedPaletteHandler;
   // Pass options to workbook
   SetOptions(FOptions);
 end;
@@ -945,6 +944,7 @@ var
 begin
   book := TsWorkbook.Create;
   try
+    book.Options := FOptions;
     if AAutoDetect then
       book.ReadfromFile(AFileName)
     else

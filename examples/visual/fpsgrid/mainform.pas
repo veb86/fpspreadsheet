@@ -17,6 +17,9 @@ type
     BtnOpen: TButton;
     BtnSave: TButton;
     BtnNew: TButton;
+    CbReadFormulas: TCheckBox;
+    CbAutoCalc: TCheckBox;
+    Panel3: TPanel;
     SheetsCombo: TComboBox;
     Label1: TLabel;
     OpenDialog: TOpenDialog;
@@ -27,6 +30,8 @@ type
     procedure BtnNewClick(Sender: TObject);
     procedure BtnOpenClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
+    procedure CbAutoCalcChange(Sender: TObject);
+    procedure CbReadFormulasChange(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure SheetsComboSelect(Sender: TObject);
   private
@@ -143,6 +148,16 @@ begin
   end;
 end;
 
+procedure TForm1.CbAutoCalcChange(Sender: TObject);
+begin
+  WorksheetGrid.AutoCalc := CbAutoCalc.Checked;
+end;
+
+procedure TForm1.CbReadFormulasChange(Sender: TObject);
+begin
+  WorksheetGrid.ReadFormulas := CbReadFormulas.Checked;
+end;
+
 procedure TForm1.FormCreate(Sender: TObject);
 const
   THICK_BORDER: TsCellBorderStyle = (LineStyle: lsThick; Color: clNavy);
@@ -195,6 +210,9 @@ begin
   WorksheetGrid.Cells[2,6] := '=B2^2*PI()';
   WorksheetGrid.CellComment[2,6] := 'Area of the circle with radius given in cell B2';
   WorksheetGrid.NumberFormat[2,6] := '0.000';
+
+  CbAutoCalc.Checked := WorksheetGrid.AutoCalc;
+  CbReadFormulas.Checked := WorksheetGrid.ReadFormulas;
 end;
 
 procedure TForm1.SheetsComboSelect(Sender: TObject);

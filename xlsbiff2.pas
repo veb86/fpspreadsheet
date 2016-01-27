@@ -98,6 +98,8 @@ type
     procedure WriteIXFE(AStream: TStream; XFIndex: Word);
   protected
     procedure AddBuiltinNumFormats; override;
+    function FunctionSupported(AExcelCode: Integer;
+      const AFuncName: String): Boolean; override;
 //    procedure ListAllNumFormats; override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
@@ -1013,6 +1015,13 @@ begin
   InternalAddBuiltInNumFormats(FNumFormatList, Workbook.FormatSettings);
 end;
 
+function TsSpreadBIFF2Writer.FunctionSupported(AExcelCode: Integer;
+  const AFuncName: String): Boolean;
+begin
+  Result := inherited and (AExcelCode < 200);
+end;
+
+
 {@@ ----------------------------------------------------------------------------
   Determines the cell attributes needed for writing a cell content record, such
   as WriteLabel, WriteNumber, etc.
@@ -1620,9 +1629,19 @@ var
   RPNLength: Word;
   RecordSizePos, FinalPos: Cardinal;
   xf: Word;
+  isSupported: Boolean;
+  unsupportedFormulas: String;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
+
+  { Check if formula is supported by this file format. If not, write only
+    the result }
+  isSupported := FormulaSupported(AFormula, unsupportedFormulas);
+  if not IsSupported then
+    Workbook.AddErrorMsg(rsFormulaNotSupported, [
+      GetCellString(ARow, ACol), unsupportedformulas
+    ]);
 
   RPNLength := 0;
 
@@ -1650,11 +1669,7 @@ begin
   AStream.WriteByte(1);
 
   { Formula data (RPN token array) }
-  {
-  if ACell^.SharedFormulaBase <> nil then
-    WriteRPNSharedFormulaLink(AStream, ACell, RPNLength)
-  else}
-  WriteRPNTokenArray(AStream, ACell, AFormula, false, RPNLength);
+  WriteRPNTokenArray(AStream, ACell, AFormula, false, IsSupported, RPNLength);
 
   { Finally write sizes after we know them }
   FinalPos := AStream.Position;

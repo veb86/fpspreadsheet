@@ -29,7 +29,7 @@ object MainForm: TMainForm
       Width = 707
       FrozenCols = 0
       FrozenRows = 0
-      ReadFormulas = False
+      ReadFormulas = True
       SelectionPen.JoinStyle = pjsMiter
       SelectionPen.Width = 3
       TextOverflow = True

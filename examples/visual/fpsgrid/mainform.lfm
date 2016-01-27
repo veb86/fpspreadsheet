@@ -10,29 +10,29 @@ object Form1: TForm1
   ShowHint = True
   LCLVersion = '1.7'
   object Panel1: TPanel
-    Left = 0
-    Height = 41
-    Top = 608
-    Width = 894
-    Align = alBottom
+    Left = 776
+    Height = 649
+    Top = 0
+    Width = 118
+    Align = alRight
     BevelOuter = bvNone
-    ClientHeight = 41
-    ClientWidth = 894
+    ClientHeight = 649
+    ClientWidth = 118
     TabOrder = 0
     object BtnOpen: TButton
-      Left = 96
+      Left = 8
       Height = 25
-      Top = 8
-      Width = 75
+      Top = 31
+      Width = 99
       Caption = 'Open...'
       OnClick = BtnOpenClick
       TabOrder = 0
     end
     object BtnSave: TButton
-      Left = 183
+      Left = 8
       Height = 25
-      Top = 8
-      Width = 75
+      Top = 58
+      Width = 99
       Caption = 'Save...'
       OnClick = BtnSaveClick
       TabOrder = 1
@@ -40,69 +40,99 @@ object Form1: TForm1
     object BtnNew: TButton
       Left = 8
       Height = 25
-      Top = 8
-      Width = 75
+      Top = 4
+      Width = 99
       Caption = 'New...'
       OnClick = BtnNewClick
       TabOrder = 2
     end
-  end
-  object WorksheetGrid: TsWorksheetGrid
-    Left = 0
-    Height = 576
-    Top = 32
-    Width = 894
-    AutoCalc = True
-    FrozenCols = 0
-    FrozenRows = 0
-    ReadFormulas = False
-    SelectionPen.JoinStyle = pjsMiter
-    SelectionPen.Width = 3
-    WorkbookSource = WorksheetGrid.internal
-    Align = alClient
-    AutoAdvance = aaDown
-    ColCount = 10
-    DefaultColWidth = 64
-    DefaultRowHeight = 22
-    MouseWheelOption = mwGrid
-    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goDblClickAutoSize, goSmoothScroll, goHeaderHotTracking, goHeaderPushedLook, goFixedColSizing, goCellHints]
-    RowCount = 10
-    TabOrder = 1
-    TitleStyle = tsNative
-  end
-  object Panel2: TPanel
-    Left = 0
-    Height = 32
-    Top = 0
-    Width = 894
-    Align = alTop
-    BevelOuter = bvNone
-    ClientHeight = 32
-    ClientWidth = 894
-    TabOrder = 2
-    object Label1: TLabel
+    object CbReadFormulas: TCheckBox
       Left = 8
-      Height = 15
-      Top = 8
-      Width = 37
-      Caption = 'Sheets:'
-      ParentColor = False
+      Height = 19
+      Top = 96
+      Width = 96
+      Caption = 'Read formulas'
+      OnChange = CbReadFormulasChange
+      TabOrder = 3
     end
-    object SheetsCombo: TComboBox
-      Left = 72
-      Height = 23
-      Top = 4
-      Width = 818
-      Anchors = [akTop, akLeft, akRight]
-      ItemHeight = 15
-      ItemIndex = 0
-      Items.Strings = (
-        'Sheet 1'
-      )
-      OnSelect = SheetsComboSelect
-      Style = csDropDownList
+    object CbAutoCalc: TCheckBox
+      Left = 8
+      Height = 19
+      Top = 120
+      Width = 70
+      Caption = 'Auto calc'
+      OnChange = CbAutoCalcChange
+      TabOrder = 4
+    end
+  end
+  object Panel3: TPanel
+    Left = 0
+    Height = 649
+    Top = 0
+    Width = 776
+    Align = alClient
+    BevelOuter = bvNone
+    Caption = 'Panel3'
+    ClientHeight = 649
+    ClientWidth = 776
+    TabOrder = 1
+    object Panel2: TPanel
+      Left = 0
+      Height = 32
+      Top = 0
+      Width = 776
+      Align = alTop
+      BevelOuter = bvNone
+      ClientHeight = 32
+      ClientWidth = 776
       TabOrder = 0
-      Text = 'Sheet 1'
+      object Label1: TLabel
+        Left = 8
+        Height = 15
+        Top = 8
+        Width = 37
+        Caption = 'Sheets:'
+        ParentColor = False
+      end
+      object SheetsCombo: TComboBox
+        Left = 72
+        Height = 23
+        Top = 4
+        Width = 700
+        Anchors = [akTop, akLeft, akRight]
+        ItemHeight = 15
+        ItemIndex = 0
+        Items.Strings = (
+          'Sheet 1'
+        )
+        OnSelect = SheetsComboSelect
+        Style = csDropDownList
+        TabOrder = 0
+        Text = 'Sheet 1'
+      end
+    end
+    object WorksheetGrid: TsWorksheetGrid
+      Left = 0
+      Height = 617
+      Top = 32
+      Width = 776
+      AutoCalc = True
+      FrozenCols = 0
+      FrozenRows = 0
+      ReadFormulas = True
+      SelectionPen.JoinStyle = pjsMiter
+      SelectionPen.Width = 3
+      WorkbookSource = WorksheetGrid.internal
+      Align = alClient
+      AutoAdvance = aaDown
+      ColCount = 10
+      DefaultColWidth = 64
+      DefaultRowHeight = 22
+      MouseWheelOption = mwGrid
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goDblClickAutoSize, goSmoothScroll, goHeaderHotTracking, goHeaderPushedLook, goFixedColSizing, goCellHints]
+      RowCount = 10
+      TabOrder = 1
+      TitleStyle = tsNative
     end
   end
   object OpenDialog: TOpenDialog
