@@ -72,6 +72,7 @@ const
   INT_EXCEL_TOKEN_TEXP      = $01;  // cell belongs to shared formula
 
   { Built-in/worksheet functions }
+  INT_EXCEL_SHEET_FUNC_NOT_BIFF   = -1;
   INT_EXCEL_SHEET_FUNC_COUNT      = 0;
   INT_EXCEL_SHEET_FUNC_IF         = 1;
   INT_EXCEL_SHEET_FUNC_ISNA       = 2;
