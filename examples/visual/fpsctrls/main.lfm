@@ -30,8 +30,7 @@ object MainForm: TMainForm
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = True
-      SelectionPen.JoinStyle = pjsMiter
-      SelectionPen.Width = 3
+      SelectionPen.Width = 1
       TextOverflow = True
       WorkbookSource = WorkbookSource
       Align = alClient
@@ -974,28 +973,28 @@ object MainForm: TMainForm
       OnExecute = AcViewInspectorExecute
     end
     object AcRowAdd: TAction
-      Category = 'Edit'
+      Category = 'Worksheet'
       Caption = 'Add row'
       Hint = 'Add row'
       ImageIndex = 48
       OnExecute = AcRowAddExecute
     end
     object AcColAdd: TAction
-      Category = 'Edit'
+      Category = 'Worksheet'
       Caption = 'Add column'
       Hint = 'Add column'
       ImageIndex = 47
       OnExecute = AcColAddExecute
     end
     object AcRowDelete: TAction
-      Category = 'Edit'
+      Category = 'Worksheet'
       Caption = 'Delete row'
       Hint = 'Delete row'
       ImageIndex = 50
       OnExecute = AcRowDeleteExecute
     end
     object AcColDelete: TAction
-      Category = 'Edit'
+      Category = 'Worksheet'
       Caption = 'Delete column'
       Hint = 'Delete column'
       ImageIndex = 49
@@ -1093,6 +1092,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1118,6 +1123,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = True
@@ -1143,6 +1154,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1168,6 +1185,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1193,6 +1216,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1218,6 +1247,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1243,6 +1278,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1268,6 +1309,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = True
@@ -1293,6 +1340,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = True
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1318,6 +1371,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1343,6 +1402,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1367,6 +1432,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = True
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1376,6 +1447,113 @@ object MainForm: TMainForm
       Caption = 'All vertical'
       Hint = 'All vertical borders'
       ImageIndex = 43
+    end
+    object AcSearch: TAction
+      Category = 'Edit'
+      Caption = 'Search...'
+      Hint = 'Search for cells'
+      ImageIndex = 70
+      OnExecute = AcSearchExecute
+      ShortCut = 16454
+    end
+    object AcShowGridLines: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'Grid lines'
+      Checked = True
+      OnExecute = AcShowGridLinesExecute
+      OnUpdate = AcShowGridLinesUpdate
+    end
+    object AcShowHeaders: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'Show column/row headers'
+      Checked = True
+      OnExecute = AcShowHeadersExecute
+      OnUpdate = AcShowHeadersUpdate
+    end
+    object AcFrozenRows: TAction
+      Category = 'Worksheet'
+      AutoCheck = True
+      Caption = 'Frozen rows'
+      OnExecute = AcFrozenRowsExecute
+      OnUpdate = AcFrozenRowsUpdate
+    end
+    object AcFrozenCols: TAction
+      Category = 'Worksheet'
+      AutoCheck = True
+      Caption = 'Frozen columns'
+      OnExecute = AcFrozenColsExecute
+      OnUpdate = AcFrozenColsUpdate
+    end
+    object AcWorksheetRTL: TAction
+      Category = 'Worksheet'
+      AutoCheck = True
+      Caption = 'Text direction inverted'
+      OnExecute = AcWorksheetRTLExecute
+      OnUpdate = AcWorksheetRTLUpdate
+    end
+    object AcCellBorderDiagUp: TsCellBorderAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Borders.East.LineStyle = lsThin
+      Borders.East.Color = clBlack
+      Borders.East.Visible = False
+      Borders.North.LineStyle = lsThin
+      Borders.North.Color = clBlack
+      Borders.North.Visible = False
+      Borders.South.LineStyle = lsThin
+      Borders.South.Color = clBlack
+      Borders.South.Visible = False
+      Borders.West.LineStyle = lsThin
+      Borders.West.Color = clBlack
+      Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = True
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
+      Borders.InnerHor.LineStyle = lsThin
+      Borders.InnerHor.Color = clBlack
+      Borders.InnerHor.Visible = False
+      Borders.InnerVert.LineStyle = lsThin
+      Borders.InnerVert.Color = clBlack
+      Borders.InnerVert.Visible = False
+      Caption = 'Diagonal up'
+      Hint = 'Diagonal border, bottom-left to top-right'
+      ImageIndex = 63
+    end
+    object AcCellBorderDiagDown: TsCellBorderAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Borders.East.LineStyle = lsThin
+      Borders.East.Color = clBlack
+      Borders.East.Visible = False
+      Borders.North.LineStyle = lsThin
+      Borders.North.Color = clBlack
+      Borders.North.Visible = False
+      Borders.South.LineStyle = lsThin
+      Borders.South.Color = clBlack
+      Borders.South.Visible = False
+      Borders.West.LineStyle = lsThin
+      Borders.West.Color = clBlack
+      Borders.West.Visible = False
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = True
+      Borders.InnerHor.LineStyle = lsThin
+      Borders.InnerHor.Color = clBlack
+      Borders.InnerHor.Visible = False
+      Borders.InnerVert.LineStyle = lsThin
+      Borders.InnerVert.Color = clBlack
+      Borders.InnerVert.Visible = False
+      Caption = 'Diagonal down'
+      Hint = 'Diagonal border, top-left to bottom-right'
+      ImageIndex = 64
     end
     object AcCellBorderAllOuter: TsCellBorderAction
       Category = 'FPSpreadsheet'
@@ -1392,6 +1570,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = True
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1417,6 +1601,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsMedium
       Borders.West.Color = clBlack
       Borders.West.Visible = True
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = False
@@ -1442,6 +1632,12 @@ object MainForm: TMainForm
       Borders.West.LineStyle = lsThin
       Borders.West.Color = clBlack
       Borders.West.Visible = True
+      Borders.DiagonalUp.LineStyle = lsThin
+      Borders.DiagonalUp.Color = clBlack
+      Borders.DiagonalUp.Visible = False
+      Borders.DiagonalDown.LineStyle = lsThin
+      Borders.DiagonalDown.Color = clBlack
+      Borders.DiagonalDown.Visible = False
       Borders.InnerHor.LineStyle = lsThin
       Borders.InnerHor.Color = clBlack
       Borders.InnerHor.Visible = True
@@ -1560,22 +1756,6 @@ object MainForm: TMainForm
       Caption = 'Delete hyperlink'
       Hint = 'Delete hyperlink from selected cell'
       ImageIndex = 58
-    end
-    object AcSearch: TAction
-      Category = 'Edit'
-      Caption = 'Search...'
-      Hint = 'Search for cells'
-      ImageIndex = 70
-      OnExecute = AcSearchExecute
-      ShortCut = 16454
-    end
-    object AcShowGridLines: TAction
-      Category = 'View'
-      AutoCheck = True
-      Caption = 'Grid lines'
-      Checked = True
-      OnExecute = AcShowGridLinesExecute
-      OnUpdate = AcShowGridLinesUpdate
     end
   end
   object ImageList: TImageList
@@ -4243,6 +4423,24 @@ object MainForm: TMainForm
             80006E85890001A3BB00555555002B2B9D390101DEAF0101C640
           }
         end
+        object MenuItem137: TMenuItem
+          Caption = '-'
+        end
+        object MenuItem136: TMenuItem
+          Action = AcFrozenCols
+          AutoCheck = True
+        end
+        object MenuItem138: TMenuItem
+          Action = AcFrozenRows
+          AutoCheck = True
+        end
+        object MenuItem140: TMenuItem
+          Caption = '-'
+        end
+        object MenuItem139: TMenuItem
+          Action = AcWorksheetRTL
+          AutoCheck = True
+        end
       end
       object MnuColumn: TMenuItem
         Caption = 'Column'
@@ -5112,6 +5310,10 @@ object MainForm: TMainForm
         Action = AcShowGridLines
         AutoCheck = True
       end
+      object MenuItem135: TMenuItem
+        Action = AcShowHeaders
+        AutoCheck = True
+      end
       object MenuItem133: TMenuItem
         Caption = '-'
       end
@@ -5707,6 +5909,15 @@ object MainForm: TMainForm
       }
     end
     object MenuItem38: TMenuItem
+      Caption = '-'
+    end
+    object MenuItem142: TMenuItem
+      Action = AcCellBorderDiagUp
+    end
+    object MenuItem141: TMenuItem
+      Action = AcCellBorderDiagDown
+    end
+    object MenuItem143: TMenuItem
       Caption = '-'
     end
     object MenuItem39: TMenuItem

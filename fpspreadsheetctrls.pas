@@ -2126,6 +2126,9 @@ begin
   if (Worksheet = nil) then
     exit;
 
+  if Worksheet.IsMerged(ACell) then
+    ACell := Worksheet.FindMergeBase(ACell);
+
   case FFormatItem of
     cfiFontName:
       if Text <> '' then
@@ -2258,6 +2261,8 @@ var
   fnt: TsFont;
   clr: TsColor;
 begin
+  if Worksheet.IsMerged(ACell) then
+    ACell := Worksheet.FindMergeBase(ACell);
   case FFormatItem of
     cfiFontName:
       begin

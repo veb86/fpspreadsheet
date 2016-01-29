@@ -775,8 +775,6 @@ type
 
     {@@ This event fires whenever a new worksheet is added }
     property OnAddWorksheet: TsWorksheetEvent read FOnAddWorksheet write FOnAddWorksheet;
-    {@@ This event fires whenever the workbook palette changes. }
-//    property OnChangePalette: TNotifyEvent read FOnChangePalette write FOnChangePalette;
     {@@ This event fires whenever a worksheet is changed }
     property OnChangeWorksheet: TsWorksheetEvent read FOnChangeWorksheet write FOnChangeWorksheet;
     {@@ This event fires whenever a workbook is loaded }

@@ -24,6 +24,10 @@ type
     AcSettingsFormatSettings: TAction;
     AcSearch: TAction;
     AcShowGridLines: TAction;
+    AcShowHeaders: TAction;
+    AcFrozenRows: TAction;
+    AcFrozenCols: TAction;
+    AcWorksheetRTL: TAction;
     AcViewInspector: TAction;
     ActionList: TActionList;
     AcFileExit: TFileExit;
@@ -68,6 +72,15 @@ type
     MenuItem132: TMenuItem;
     MenuItem133: TMenuItem;
     MenuItem134: TMenuItem;
+    MenuItem135: TMenuItem;
+    MenuItem136: TMenuItem;
+    MenuItem137: TMenuItem;
+    MenuItem138: TMenuItem;
+    MenuItem139: TMenuItem;
+    MenuItem140: TMenuItem;
+    MenuItem141: TMenuItem;
+    MenuItem142: TMenuItem;
+    MenuItem143: TMenuItem;
     MnuSettings: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -258,6 +271,8 @@ type
     AcNumFormatDayMonth: TsNumberFormatAction;
     AcNumFormatMonthYear: TsNumberFormatAction;
     AcNumFormatCustom: TsNumberFormatAction;
+    AcCellBorderDiagUp: TsCellBorderAction;
+    AcCellBorderDiagDown: TsCellBorderAction;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
     ToolBar2: TToolBar;
@@ -338,16 +353,24 @@ type
     procedure AcFileOpenAccept(Sender: TObject);
     procedure AcFileSaveAsAccept(Sender: TObject);
     procedure AcFileSaveAsBeforeExecute(Sender: TObject);
+    procedure AcFrozenColsExecute(Sender: TObject);
+    procedure AcFrozenColsUpdate(Sender: TObject);
+    procedure AcFrozenRowsExecute(Sender: TObject);
+    procedure AcFrozenRowsUpdate(Sender: TObject);
     procedure AcNumFormatCustomGetNumberFormatString(Sender: TObject;
       AWorkbook: TsWorkbook; var ANumFormatStr: String);
     procedure AcRowAddExecute(Sender: TObject);
     procedure AcRowDeleteExecute(Sender: TObject);
+    procedure AcWorksheetRTLExecute(Sender: TObject);
+    procedure AcWorksheetRTLUpdate(Sender: TObject);
     procedure AcSearchExecute(Sender: TObject);
     procedure AcSettingsCSVParamsExecute(Sender: TObject);
     procedure AcSettingsCurrencyExecute(Sender: TObject);
     procedure AcSettingsFormatSettingsExecute(Sender: TObject);
     procedure AcShowGridLinesExecute(Sender: TObject);
     procedure AcShowGridLinesUpdate(Sender: TObject);
+    procedure AcShowHeadersExecute(Sender: TObject);
+    procedure AcShowHeadersUpdate(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure EditCut1Execute(Sender: TObject);
     procedure FormCreate(Sender: TObject);
@@ -455,8 +478,28 @@ procedure TMainForm.AcFileSaveAsBeforeExecute(Sender: TObject);
 begin
   if WorkbookSource.FileName = '' then
     exit;
-  AcfileSaveAs.Dialog.InitialDir := ExtractFileDir(WorkbookSource.FileName);
+  AcFileSaveAs.Dialog.InitialDir := ExtractFileDir(WorkbookSource.FileName);
   AcFileSaveAs.Dialog.FileName := ExtractFileName(WorkbookSource.FileName);
+end;
+
+procedure TMainForm.AcFrozenColsExecute(Sender: TObject);
+begin
+  WorksheetGrid.FrozenCols := WorksheetGrid.GetWorksheetCol(WorksheetGrid.Col);
+end;
+
+procedure TMainForm.AcFrozenColsUpdate(Sender: TObject);
+begin
+  AcFrozenCols.Checked := WorksheetGrid.FrozenCols > 0;
+end;
+
+procedure TMainForm.AcFrozenRowsExecute(Sender: TObject);
+begin
+  WorksheetGrid.FrozenRows := WorksheetGrid.GetWorksheetRow(WorksheetGrid.Row);
+end;
+
+procedure TMainForm.AcFrozenRowsUpdate(Sender: TObject);
+begin
+  AcFrozenRows.Checked := WorksheetGrid.FrozenRows > 0;
 end;
 
 procedure TMainForm.AcNumFormatCustomGetNumberFormatString(Sender: TObject;
@@ -494,6 +537,22 @@ begin
   r := WorksheetGrid.Row;
   WorksheetGrid.DeleteRow(r);
   WorksheetGrid.Row := r;
+end;
+
+procedure TMainForm.AcWorksheetRTLExecute(Sender: TObject);
+begin
+  if AcWorksheetRTL.Checked then
+  begin
+    if WorksheetGrid.IsRightToLeft then
+      WorksheetGrid.Worksheet.BiDiMode := bdLTR else
+      WorksheetGrid.Worksheet.BiDiMode := bdRTL;
+  end else
+    WorksheetGrid.Worksheet.BiDiMode := bdDefault;
+end;
+
+procedure TMainForm.AcWorksheetRTLUpdate(Sender: TObject);
+begin
+  AcWorksheetRTL.Checked := WorksheetGrid.Worksheet.BiDiMode <> bdDefault;
 end;
 
 procedure TMainForm.AcSearchExecute(Sender: TObject);
@@ -569,6 +628,16 @@ end;
 procedure TMainForm.AcShowGridLinesUpdate(Sender: TObject);
 begin
   AcShowGridLines.Checked := WorksheetGrid.ShowGridLines;
+end;
+
+procedure TMainForm.AcShowHeadersExecute(Sender: TObject);
+begin
+  WorksheetGrid.ShowHeaders := AcShowHeaders.Checked;
+end;
+
+procedure TMainForm.AcShowHeadersUpdate(Sender: TObject);
+begin
+  AcShowHeaders.Checked := WorksheetGrid.ShowHeaders;
 end;
 
 { Toggles the spreadsheet inspector on and off }

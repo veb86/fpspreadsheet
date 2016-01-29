@@ -282,8 +282,8 @@ type
     FColor: TColor;
     FVisible: Boolean;
   public
-    procedure ApplyStyle(AWorkbook: TsWorkbook; out ABorderStyle: TsCellBorderStyle);
-    procedure ExtractStyle(AWorkbook: TsWorkbook; ABorderStyle: TsCellBorderStyle);
+    function GetStyle: TsCellBorderStyle;
+    procedure SetStyle(const ABorderStyle: TsCellBorderStyle);
   published
     property LineStyle: TsLineStyle read FLineStyle write FLineStyle;
     property Color: TColor read FColor write FColor;
@@ -292,25 +292,29 @@ type
 
   TsActionBorders = class(TPersistent)
   private
-    FBorders: Array[TsCellBorder] of TsActionBorder;
-    function GetBorder(AIndex: TsCellBorder): TsActionBorder;
-    procedure SetBorder(AIndex: TsCellBorder; AValue: TsActionBorder);
+    FBorders: Array[0..ord(High(TsCellBorder))+2] of TsActionBorder;
+    function GetBorder(AIndex: Integer): TsActionBorder;
+    procedure SetBorder(AIndex: integer; AValue: TsActionBorder);
   public
     constructor Create;
     destructor Destroy; override;
     procedure ExtractFromCell(AWorkbook: TsWorkbook; ACell: PCell);
   published
-    property East: TsActionBorder index cbEast
+    property East: TsActionBorder index ord(cbEast)
       read GetBorder write SetBorder;
-    property North: TsActionBorder index cbNorth
+    property North: TsActionBorder index ord(cbNorth)
       read GetBorder write SetBorder;
-    property South: TsActionBorder index cbSouth
+    property South: TsActionBorder index ord(cbSouth)
       read GetBorder write SetBorder;
-    property West: TsActionBorder index cbWest
+    property West: TsActionBorder index ord(cbWest)
       read GetBorder write SetBorder;
-    property InnerHor: TsActionBorder index cbDiagUp  // NOTE: "abusing" cbDiagUp here!
+    property DiagonalUp: TsActionBorder index ord(cbDiagUp)
       read GetBorder write SetBorder;
-    property InnerVert: TsActionBorder index cbDiagDown  // NOTE: "abusing" cbDiagDown here"
+    property DiagonalDown: TsActionBorder index ord(cbDiagDown)
+      read GetBorder write SetBorder;
+    property InnerHor: TsActionBorder index ord(High(TsCellBorder))+1
+      read GetBorder write SetBorder;
+    property InnerVert: TsActionBorder index ord(High(TsCellBorder))+2
       read GetBorder write SetBorder;
   end;
 
@@ -557,15 +561,40 @@ end;
 
 procedure TsSpreadsheetAction.ApplyFormatToRange(ARange: TsCellRange);
 var
-  r, c: Cardinal;
-  cell: PCell;
+  r, c, r1, c1, r2, c2: Cardinal;
+  cell, base: PCell;
 begin
+
+  r := ARange.Row1;
+  while r <= ARange.Row2 do
+  begin
+    c := ARange.Col1;
+    while c <= ARange.Col2 do
+    begin
+      cell := Worksheet.GetCell(r, c);   // use "GetCell" here to format empty cells as well
+      if Worksheet.IsMerged(cell) then begin
+        Worksheet.FindMergedRange(cell, r1, c1, r2, c2);
+        base := Worksheet.FindCell(r1, c1);
+        ApplyFormatToCell(base);
+        c := c2+1;
+      end else
+      begin
+        ApplyFormatToCell(cell);
+        inc(c);
+      end;
+    end;
+    inc(r);
+  end;
+      {
+
   for r := ARange.Row1 to ARange.Row2 do
     for c := ARange.Col1 to ARange.Col2 do
     begin
       cell := Worksheet.GetCell(r, c);  // Use "GetCell" here to format empty cells as well
+      if Worksheet.IsMerged(cell) then
       ApplyFormatToCell(cell);  // no check for nil required because of "GetCell"
     end;
+    }
 end;
 
 procedure TsSpreadsheetAction.ApplyFormatToSelection;
@@ -844,12 +873,19 @@ begin
 end;
 
 procedure TsAutoFormatAction.UpdateTarget(Target: TObject);
+var
+  cell: PCell;
 begin
   Unused(Target);
 
   Enabled := inherited Enabled and (Worksheet <> nil) and (Length(GetSelection) > 0);
   if Enabled then
-    ExtractFromCell(ActiveCell);
+  begin
+    cell := ActiveCell;
+    if Worksheet.IsMerged(cell) then
+      cell := Worksheet.FindMergeBase(cell);
+    ExtractFromCell(cell);
+  end;
 end;
 
 
@@ -1094,70 +1130,74 @@ end;
 
 { TsCellBorderAction }
 
-procedure TsActionBorder.ApplyStyle(AWorkbook: TsWorkbook;
-  out ABorderStyle: TsCellBorderStyle);
+function TsActionBorder.GetStyle: TsCellBorderStyle;
 begin
-  Unused(AWorkbook);
-  ABorderStyle.LineStyle := FLineStyle;
-  ABorderStyle.Color := ABorderStyle.Color and $00FFFFFF;
+  Result.LineStyle := FLineStyle;
+  Result.Color := FColor and $00FFFFFF;
 end;
 
-procedure TsActionBorder.ExtractStyle(AWorkbook: TsWorkbook;
-  ABorderStyle: TsCellBorderStyle);
+procedure TsActionBorder.SetStyle(const ABorderStyle: TsCellBorderStyle);
 begin
-  Unused(AWorkbook);
   FLineStyle := ABorderStyle.LineStyle;
-  Color := ColorToRGB(ABorderStyle.Color);
+  FColor := ColorToRGB(ABorderStyle.Color);
 end;
+
+{ --- }
 
 constructor TsActionBorders.Create;
 var
-  cb: TsCellBorder;
+  cb: Integer;
 begin
   inherited Create;
-  for cb in TsCellBorder do
+  for cb := 0 to High(FBorders) do
     FBorders[cb] := TsActionBorder.Create;
 end;
 
 destructor TsActionBorders.Destroy;
 var
-  cb: TsCellBorder;
+  cb: Integer;
 begin
-  for cb in TsCellBorder do FBorders[cb].Free;
+  for cb := High(FBorders) downto 0 do FBorders[cb].Free;
   inherited Destroy;
 end;
 
 procedure TsActionBorders.ExtractFromCell(AWorkbook: TsWorkbook; ACell: PCell);
 var
-  cb: TsCellBorder;
+  cb: Integer;
   fmt: PsCellFormat;
+  sheet: TsWorksheet;
 begin
-  if (ACell <> nil) then
+  if (ACell <> nil) then begin
+    sheet := TsWorksheet(ACell^.Worksheet);
+    if sheet.IsMerged(ACell) then
+      ACell := sheet.FindMergeBase(ACell);
     fmt := AWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  end;
   if (ACell = nil) or not (uffBorder in fmt^.UsedFormattingFields) then
-    for cb in TsCellBorder do
+    for cb := 0 to High(FBorders)-2 do   // inner styles not needed here
     begin
-      FBorders[cb].ExtractStyle(AWorkbook, DEFAULT_BORDERSTYLES[cb]);
+      FBorders[cb].SetStyle(DEFAULT_BORDERSTYLES[TsCellBorder(cb)]);
       FBorders[cb].Visible := false;
     end
   else
-    for cb in TsCellBorder do
+    for cb := 0 to High(FBorders)-2 do   // inner styles not needed here
     begin
-      FBorders[cb].ExtractStyle(AWorkbook, fmt^.BorderStyles[cb]);
-      FBorders[cb].Visible := cb in fmt^.Border;
+      FBorders[cb].SetStyle(fmt^.BorderStyles[TsCellBorder(cb)]);
+      FBorders[cb].Visible := TsCellBorder(cb) in fmt^.Border;
     end;
 end;
 
-function TsActionBorders.GetBorder(AIndex: TsCellBorder): TsActionBorder;
+function TsActionBorders.GetBorder(AIndex: Integer): TsActionBorder;
 begin
   Result := FBorders[AIndex];
 end;
 
-procedure TsActionBorders.SetBorder(AIndex: TsCellBorder;
-  AValue: TsActionBorder);
+procedure TsActionBorders.SetBorder(AIndex: Integer; AValue: TsActionBorder);
 begin
   FBorders[AIndex] := AValue;
 end;
+
+{ --- }
 
 constructor TsCellBorderAction.Create(AOwner: TComponent);
 begin
@@ -1190,48 +1230,104 @@ procedure TsCellBorderAction.ApplyFormatToRange(ARange: TsCellRange);
     Worksheet.ChangedCell(ACell^.Row, ACell^.Col);
   end;
 
-var
-  r, c: LongInt;
-  bs: TsCellBorderStyle;
-begin
-  // Top edges
-  Borders.North.ApplyStyle(Workbook, bs);
-  for c := ARange.Col1 to ARange.Col2 do
-    ShowBorder(cbNorth, Worksheet.GetCell(ARange.Row1, c), bs, Borders.North.Visible);
-
-  // Bottom edges
-  Borders.South.ApplyStyle(Workbook, bs);
-  for c := ARange.Col1 to ARange.Col2 do
-    ShowBorder(cbSouth, Worksheet.GetCell(ARange.Row2, c), bs, Borders.South.Visible);
-
-  // Inner horizontal edges
-  Borders.InnerHor.ApplyStyle(Workbook, bs);
-  for c := ARange.Col1 to ARange.Col2 do
+  procedure ShowBorders(ABorder: TsCellBorder; AStart, AEnd, AColRow: LongInt;
+    AColRowIsCol: Boolean; ABorderStyle: TsCellBorderStyle; AEnable: Boolean);
+  var
+    i: Integer;
+    r1, c1, r2, c2: Cardinal;
+    cell: PCell;
   begin
-    for r := ARange.Row1 to LongInt(ARange.Row2)-1 do
-      ShowBorder(cbSouth, Worksheet.GetCell(r, c), bs, Borders.InnerHor.Visible);
-    for r := ARange.Row1+1 to ARange.Row2 do
-      ShowBorder(cbNorth, Worksheet.GetCell(r, c), bs, Borders.InnerHor.Visible);
+    i := AStart;
+    while i <= AEnd do
+    begin
+      if AColRowIsCol then
+      // Scan along specified column, i.e. i is row index
+      begin
+        cell := Worksheet.GetCell(i, AColRow);
+        if Worksheet.IsMerged(cell) then
+        begin
+          Worksheet.FindMergedRange(cell, r1, c1, r2, c2);
+          if (r1 >= AStart) and (r2 <= AEnd) then
+          begin
+            cell := Worksheet.GetCell(r1, c1);
+            ShowBorder(ABorder, cell, ABorderStyle, AEnable);
+            while (i <= r2) do begin
+              cell := GetWorksheet.GetCell(i, AColRow);
+              inc(i);
+            end;
+            Continue;
+          end;
+        end;
+      end
+      else
+      // Scan along specified row, i.e. i is column index
+      begin
+        cell := Worksheet.GetCell(AColRow, i);
+        if Worksheet.IsMerged(cell) then
+        begin
+          Worksheet.FindMergedRange(cell, r1, c1, r2, c2);
+          if (c1 >= AStart) and (c2 <= AEnd) then
+          begin
+            cell := Worksheet.GetCell(r1, c1);
+            ShowBorder(ABorder, cell, ABorderStyle, AEnable);
+            while (i <= c2) do begin
+              cell := GetWorksheet.GetCell(AColRow, i);
+              inc(i);
+            end;
+            Continue;
+          end;
+        end;
+      end;
+      ShowBorder(ABorder, cell, ABorderStyle, AEnable);
+      inc(i);
+    end;
   end;
 
-  // Left edges
-  Borders.West.ApplyStyle(Workbook, bs);
-  for r := ARange.Row1 to ARange.Row2 do
-    ShowBorder(cbWest, Worksheet.GetCell(r, ARange.Col1), bs, Borders.West.Visible);
+var
+  r, c: LongInt;
+  r1, c1, r2, c2: Cardinal;
+  bs: TsCellBorderStyle;
+  cell: PCell;
+begin
+  // Top edge of range
+  ShowBorders(cbNorth, ARange.Col1, ARange.Col2, ARange.Row1, false,
+    Borders.North.GetStyle, Borders.North.Visible);
 
-  // Right edges
-  Borders.East.ApplyStyle(Workbook, bs);
-  for r := ARange.Row1 to ARange.Row2 do
-    ShowBorder(cbEast, Worksheet.GetCell(r, ARange.Col2), bs, Borders.East.Visible);
+  // Bottom edge of range
+  ShowBorders(cbSouth, ARange.Col1, ARange.Col2, ARange.Row2, false,
+    Borders.South.GetStyle, Borders.South.Visible);
 
-  // Inner vertical lines
-  Borders.InnerVert.ApplyStyle(Workbook, bs);
-  for r := ARange.Row1 to ARange.Row2 do
+  // Left edge of range
+  ShowBorders(cbWest, ARange.Row1, ARange.Row2, ARange.Col1, true,
+    Borders.West.GetStyle, Borders.West.Visible);
+
+  // Right edge of range
+  ShowBorders(cbEast, ARange.Row1, ARange.Row2, ARange.Col2, true,
+    Borders.East.GetStyle, Borders.East.Visible);
+
+  // Inner horizontal edges
+  for r := ARange.Row1 to ARange.Row2-1 do
+    ShowBorders(cbSouth, ARange.Col1, ARange.Col2, r, false,
+      Borders.InnerHor.GetStyle, Borders.InnerHor.Visible);
+  for r := ARange.Row1+1 to ARange.Row2 do
+    ShowBorders(cbNorth, ARange.Col1, ARange.Col2, r, false,
+      Borders.InnerHor.GetStyle, Borders.InnerHor.Visible);
+
+  // Inner vertical edges
+  for c := ARange.Col1 to ARange.Col2-1 do
+    ShowBorders(cbEast, ARange.Row1, ARange.Row2, c, true,
+      Borders.InnerVert.GetStyle, Borders.InnerVert.Visible);
+  for c := ARange.Col1+1 to ARange.Col2 do
+    ShowBorders(cbWest, ARange.Row1, ARange.Row2, c, true,
+      Borders.InnerVert.GetStyle, Borders.InnerVert.Visible);
+
+  // Diagonal up and down lines
+  for c := ARange.Col1 to ARange.Col2 do
   begin
-    for c := ARange.Col1 to LongInt(ARange.Col2)-1 do
-      ShowBorder(cbEast, Worksheet.GetCell(r, c), bs, Borders.InnerVert.Visible);
-    for c := ARange.Col1+1 to ARange.Col2 do
-      ShowBorder(cbWest, Worksheet.GetCell(r, c), bs, Borders.InnerVert.Visible);
+    ShowBorders(cbDiagUp, ARange.Row1, ARange.Row2, c, true,
+      Borders.DiagonalUp.GetStyle, Borders.DiagonalUp.Visible);
+    ShowBorders(cbDiagDown, ARange.Row1, ARange.Row2, c, true,
+      Borders.DiagonalDown.GetStyle, Borders.DiagonalDown.Visible);
   end;
 end;
 

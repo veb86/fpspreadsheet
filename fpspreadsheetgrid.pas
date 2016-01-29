@@ -42,6 +42,14 @@ type
   TsHyperlinkClickEvent = procedure(Sender: TObject;
     const AHyperlink: TsHyperlink) of object;
 
+  TsSelPen = class(TPen)
+  public
+    constructor Create;
+  published
+    property Width stored true default 3;
+    property JoinStyle default pjsMiter;
+  end;
+
 //  TsSelectionRectMode = (srmDThickXOR, srmThick, srmDottedXOR,
   {@@ TsCustomWorksheetGrid is the ancestor of TsWorksheetGrid and is able to
     display spreadsheet data along with their formatting. }
@@ -66,7 +74,7 @@ type
     FTextOverflowing: Boolean;
     FAutoExpand: TsAutoExpandModes;
     FEnhEditMode: Boolean;
-    FSelPen: TPen;
+    FSelPen: TsSelPen;
     FHyperlinkTimer: TTimer;
     FHyperlinkCell: PCell;    // Selected cell if it stores a hyperlink
     FOnClickHyperlink: TsHyperlinkClickEvent;
@@ -156,7 +164,7 @@ type
     procedure SetNumberFormats(ALeft, ATop, ARight, ABottom: Integer; AValue: String);
     procedure SetReadFormulas(AValue: Boolean);
     procedure SetRowHeights(ARow: Integer; AValue: Integer);
-    procedure SetSelPen(AValue: TPen);
+    procedure SetSelPen(AValue: TsSelPen);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
     procedure SetTextRotation(ACol, ARow: Integer; AValue: TsTextRotation);
@@ -248,7 +256,7 @@ type
         non-implemented formulas crashe reading of the spreadsheet file. }
     property ReadFormulas: Boolean read FReadFormulas write SetReadFormulas;
     {@@ Pen used for drawing the selection rectangle }
-    property SelectionPen: TPen read FSelPen write SetSelPen;
+    property SelectionPen: TsSelPen read FSelPen write SetSelPen;
     {@@ Shows/hides vertical and horizontal grid lines }
     property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
@@ -938,6 +946,13 @@ begin
 end;
 
 
+constructor TsSelPen.Create;
+begin
+  inherited;
+  Width := 3;
+  JoinStyle := pjsMiter;
+end;
+
 {*******************************************************************************
 *                              TsCustomWorksheetGrid                           *
 *******************************************************************************}
@@ -960,9 +975,9 @@ begin
   ColCount := DEFAULT_COL_COUNT + FHeaderCount;
   RowCount := DEFAULT_ROW_COUNT + FHeaderCount;
   FCellFont := TFont.Create;
-  FSelPen := TPen.Create;
+  FSelPen := TsSelPen.Create;
   FSelPen.Style := psSolid;
-  FSelPen.Width := 3;
+//  FSelPen.Width := 3;
   FSelPen.Color := clBlack;
   FSelPen.JoinStyle := pjsMiter;
   FSelPen.OnChange := @SelPenChangeHandler;
@@ -1530,17 +1545,23 @@ var
   cell: PCell;
   Rct: TRect;
   s: String;
+  delta: Integer;
 begin
   inherited;
   if (Worksheet <> nil) and (Editor is TStringCellEditor) then
   begin
+    delta := FSelPen.Width div 2;
     cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
     if Worksheet.IsMerged(cell) then begin
       s := Editor.ClassName;
       Worksheet.FindMergedRange(cell, r1,c1,r2,c2);
       Rct := CellRect(GetGridCol(c1), GetGridRow(r1), GetGridCol(c2), GetGridRow(r2));
-      Editor.SetBounds(Rct.Left, Rct.Top, Rct.Right-Rct.Left, Rct.Bottom-Rct.Top);
-    end;
+    end else
+      Rct := CellRect(Col, Row);
+    InflateRect(Rct, -delta, -delta);
+    inc(Rct.Top);
+    if not odd(FSelPen.Width) then dec(Rct.Left);
+    Editor.SetBounds(Rct.Left, Rct.Top, Rct.Right-Rct.Left-1, Rct.Bottom-Rct.Top-1);
   end;
 end;
 
@@ -1713,13 +1734,20 @@ begin
   try
     // Avoid painting into the header cells
     cliprect := ClientRect;
+
     if FixedCols > 0 then
       if IsRightToLeft then
         ColRowToOffset(True, true, FixedCols-1, cliprect.Right, tmp)
       else
+      begin
         ColRowToOffset(True, True, FixedCols-1, tmp, cliprect.Left);
-    if FixedRows > 0 then
+        dec(clipRect.Left);
+      end;
+    if FixedRows > 0 then begin
       ColRowToOffset(False, True, FixedRows-1, tmp, cliprect.Top);
+      dec(cliprect.Top);
+    end;
+
     DrawFrozenPaneBorders(clipRect);
 
     rgn := CreateRectRgn(cliprect.Left, cliprect.top, cliprect.Right, cliprect.Bottom);
@@ -1817,8 +1845,9 @@ const
     Canvas.Pen.Width := PEN_WIDTHS[ABorderStyle.LineStyle];
     Canvas.Pen.Color := ABorderStyle.Color and $00FFFFFF;
     Canvas.Pen.EndCap := pecSquare;
-    if ABorderStyle.LineStyle = lsHair then Canvas.Pen.Cosmetic := false;
-
+    if ABorderStyle.LineStyle = lsHair then
+      Canvas.Pen.Cosmetic := false;
+      (*
     // Workaround until efficient drawing procedures for diagonal "hair" lines
     // is available
     {
@@ -1832,6 +1861,7 @@ const
     if (ABorderStyle.LineStyle in [lsMedium, lsMediumDash, lsMediumDashDot,
       lsMediumDashDotDot, lsSlantDashDot, lsThick, lsDouble]) then
     begin
+      {
       if ACol = ColCount-1 then
       begin
         if (ADrawDirection = drawVert) and (ACoord = ARect.Right-1) and width3
@@ -1844,6 +1874,7 @@ const
           then dec(ACoord);
         dec(ARect.Bottom);
       end;
+      }
     end;
     if ABorderStyle.LineStyle in [lsMedium, lsMediumDash, lsMediumDashDot,
       lsMediumDashDotDot, lsSlantDashDot, lsThick, lsHair] then
@@ -1858,7 +1889,7 @@ const
         dec(ARect.Bottom, 2);
       end;
     end;
-
+           *)
     // Painting
     case ABorderStyle.LineStyle of
       lsThin, lsMedium, lsThick, lsDotted, lsDashed, lsDashDot, lsDashDotDot,
@@ -1927,6 +1958,11 @@ var
   r1, c1, r2, c2: Cardinal;
 begin
   if Assigned(Worksheet) then begin
+    if Worksheet.IsMergeBase(ACell) then begin
+      Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+      ARect := CellRect(GetGridCol(c1), GetGridRow(r1), GetGridCol(c2), GetGridRow(r2));
+    end;
+
     // Left border
     if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) then
       DrawBorderLine(ARect.Left-ord(not IsRightToLeft), ARect, drawVert, bs);
@@ -1942,11 +1978,13 @@ begin
 
     if ACell <> nil then begin
       fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+      {
       if Worksheet.IsMergeBase(ACell) then
       begin
         Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
         ARect := CellRect(GetGridCol(c1), GetGridRow(r1), GetGridCol(c2), GetGridRow(r2));
       end;
+      }
       // Diagonal up
       if cbDiagUp in fmt^.Border then begin
         bs := fmt^.Borderstyles[cbDiagUp];
@@ -2044,7 +2082,11 @@ begin
     if FFrozenRows > 0 then
       Canvas.Line(ARect.Left, ARect.Top, ARect.Right, ARect.Top);
     if FFrozenCols > 0 then
-      Canvas.Line(ARect.Left, ARect.Top, ARect.Left, ARect.Bottom);
+    begin
+      if IsRightToLeft then
+        Canvas.Line(ARect.Right, ARect.Top, ARect.Right, ARect.Bottom) else
+        Canvas.Line(ARect.Left, ARect.Top, ARect.Left, ARect.Bottom);
+    end;
   end;
 end;
 
@@ -2346,9 +2388,13 @@ begin
   end else
     R := CellRect(Selection.Left, Selection.Top, Selection.Right, Selection.Bottom);
 
-  { -- wp: Is this really needed?
+  dec(R.Top);
+  if IsRightToLeft then inc(R.Right) else dec(R.Left);
+
   // Cosmetics at the edges of the grid to avoid spurious rests
-  delta := FSelPen.Width div 2;
+
+  delta := Max(FSelPen.Width div 2, 0);
+                {
   if Selection.Top > TopRow then
     dec(R.Top, delta) else
     inc(R.Top, delta);
@@ -2356,17 +2402,19 @@ begin
     dec(R.Bottom, delta);
   if IsRightToLeft then begin
     if Selection.Right > LeftCol then
-      inc(R.Right, delta) else dec(R.Right, delta);
+      inc(R.Right, delta) else
+      dec(R.Right, delta);
     if Selection.Right = ColCount-1 then
       inc(R.Left, delta);
   end else
   begin
     if Selection.Left > LeftCol then
-      dec(R.Left, delta) else inc(R.Left, delta);
+      dec(R.Left, delta) else
+      inc(R.Left, delta);
     if Selection.Right = ColCount-1 then
       dec(R.Right, delta);
-  end;                            }
-
+  end;
+                 }
   // Set up the canvas
   savedPenMode := Canvas.Pen.Mode;
   Canvas.Pen.Assign(FSelPen);
@@ -4356,14 +4404,11 @@ begin
     exit;
 
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
+    FixedCols := FFrozenCols + FHeaderCount;
+    FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
-      FixedCols := 1;
-      FixedRows := 1;
       ColWidths[0] := GetDefaultHeaderColWidth;
       RowHeights[0] := GetDefaultRowHeight;
-    end else begin
-      FixedCols := 0;
-      FixedRows := 0;
     end;
   end else
   if Worksheet <> nil then begin
@@ -5648,7 +5693,7 @@ begin
   HeaderSized(false, ARow);
 end;
 
-procedure TsCustomWorksheetGrid.SetSelPen(AValue: TPen);
+procedure TsCustomWorksheetGrid.SetSelPen(AValue: TsSelPen);
 begin
   FSelPen.Assign(AValue);
   InvalidateGrid;
@@ -5674,10 +5719,21 @@ end;
 
 { Shows / hides the worksheet's row and column headers. }
 procedure TsCustomWorksheetGrid.SetShowHeaders(AValue: Boolean);
+var
+  hdrCount: Integer;
 begin
   if AValue = GetShowHeaders then Exit;
 
-  FHeaderCount := ord(AValue);
+  // Avoid crash if selected cell is at 0/0
+  hdrCount := ord(AValue);
+  if hdrCount > 0 then
+  begin
+    if Col < hdrCount then Col := hdrCount;
+    if Row < hdrCount then Row := hdrCount;
+  end;
+
+  FHeaderCount := hdrCount;
+
   if Worksheet <> nil then
     if AValue then
       Worksheet.Options := Worksheet.Options + [soShowHeaders]
