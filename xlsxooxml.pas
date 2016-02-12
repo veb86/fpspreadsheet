@@ -3450,8 +3450,8 @@ begin
   WriteSheetViews(FSSheets[FCurSheetNum], AWorksheet);
   WriteCols(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
-  WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet);
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
+  WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet);  // must be after MergedCells, otherwise Excel2007 cannot read it !!!
   WritePrintOptions(FSSheets[FCurSheetNum], AWorksheet);
   WritePageMargins(FSSheets[FCurSheetNum], AWorksheet);
   WritePageSetup(FSSheets[FCurSheetNum], AWorksheet);
