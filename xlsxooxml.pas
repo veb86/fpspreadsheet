@@ -2597,7 +2597,7 @@ begin
     end;
     if bookmark <> '' then //target = '' then
       s := Format('%s location="%s"', [s, bookmark]);
-    txt := AWorksheet.ReadAsUTF8Text(hyperlink^.Row, hyperlink^.Col);
+    txt := UTF8TextToXMLText(AWorksheet.ReadAsUTF8Text(hyperlink^.Row, hyperlink^.Col));
     if (txt <> '') and (txt <> hyperlink^.Target) then
       s := Format('%s display="%s"', [s, txt]);
     if hyperlink^.ToolTip <> '' then begin
