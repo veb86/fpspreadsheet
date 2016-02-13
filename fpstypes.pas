@@ -560,7 +560,7 @@ type
     Row, Col: Cardinal;
   end;
 
-  {@@ Record combining row and column cornder indexes of a range of cells }
+  {@@ Record combining row and column corner indexes of a range of cells }
   TsCellRange = record
     Row1, Col1, Row2, Col2: Cardinal;
   end;
@@ -568,6 +568,11 @@ type
 
   {@@ Array with cell ranges }
   TsCellRangeArray = array of TsCellRange;
+
+  {@@ Record containing limiting indexes of column or row range }
+  TsRowColRange = record
+    FirstIndex, LastIndex: Cardinal;
+  end;
 
   {@@ Options for sorting }
   TsSortOption = (ssoDescending, ssoCaseInsensitive);
@@ -705,6 +710,8 @@ type
       Array index 1 contains the strings if these options are not used. }
     Headers: array[0..2] of string;
     Footers: array[0..2] of string;
+    RepeatedCols: TsRowColRange;
+    RepeatedRows: TsRowColRange;
   end;
 
   {@@ Pointer to a page layout record }

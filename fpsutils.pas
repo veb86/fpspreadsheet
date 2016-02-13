@@ -172,6 +172,8 @@ function SameFont(AFont1, AFont2: TsFont): Boolean; overload;
 function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
   AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Boolean; overload;
 
+function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange;
+
 //function GetUniqueTempDir(Global: Boolean): String;
 
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
@@ -2127,6 +2129,10 @@ begin
     Options := [];
     for i:=0 to 2 do Headers[i] := '';
     for i:=0 to 2 do Footers[i] := '';
+    RepeatedRows.FirstIndex := UNASSIGNED_ROW_COL_INDEX;
+    RepeatedRows.LastIndex := UNASSIGNED_ROW_COL_INDEX;
+    RepeatedCols.FirstIndex := UNASSIGNED_ROW_COL_INDEX;
+    RepeatedCols.LastIndex := UNASSIGNED_ROW_COL_INDEX;
   end;
 end;
 
@@ -2238,6 +2244,15 @@ begin
             (AFont.Color = AColor) and
             (AFont.Position = APos);
 end;
+
+function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange;
+begin
+  Result.Row1 := ARow1;
+  Result.Col1 := ACol1;
+  Result.Row2 := ARow2;
+  Result.Col2 := ACol2;
+end;
+
                                                  (*
 {@@ ----------------------------------------------------------------------------
   Constructs a string of length "Len" containing random uppercase characters

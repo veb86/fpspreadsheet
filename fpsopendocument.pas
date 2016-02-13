@@ -165,6 +165,7 @@ type
     procedure WriteColumns(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteFontNames(AStream: TStream);
     procedure WriteMasterStyles(AStream: TStream);
+    procedure WriteNamedExpressions(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteNumFormats(AStream: TStream);
     procedure WriteRowStyles(AStream: TStream);
     procedure WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
@@ -183,6 +184,7 @@ type
     function WriteHeaderFooterFontXMLAsString(AFont: TsHeaderFooterFont): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WritePageLayoutAsXMLString(AStyleName: String; const APageLayout: TsPageLayout): String;
+    function WritePrintRangesAsXMLString(ASheet: TsWorksheet): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -4286,8 +4288,8 @@ begin
 
   // Header
   AppendToStream(AStream, Format(
-    '<table:table table:name="%s" table:style-name="ta%d">', [
-    FWorkSheet.Name, ASheetIndex+1
+    '<table:table table:name="%s" table:style-name="ta%d" %s>', [
+    FWorkSheet.Name, ASheetIndex+1, WritePrintRangesAsXMLString(FWorksheet)
   ]));
 
   // columns
@@ -4301,6 +4303,9 @@ begin
       WriteVirtualCells(AStream, FWorksheet)
   end else
     WriteRowsAndCells(AStream, FWorksheet);
+
+  // named expressions, i.e. print range, repeated cols/rows
+  WriteNamedExpressions(AStream, FWorksheet);
 
   // Footer
   AppendToStream(AStream,
@@ -4412,22 +4417,37 @@ procedure TsSpreadOpenDocWriter.WriteColumns(AStream: TStream;
   ASheet: TsWorksheet);
 var
   lastCol: Integer;
-  j, k: Integer;
+  c, k: Integer;
   w, w_mm: Double;
   widthMultiplier: Double;
   styleName: String;
   colsRepeated: Integer;
   colsRepeatedStr: String;
+  firstRepeatedPrintCol, lastRepeatedPrintCol: Cardinal;
+  headerCols: Boolean;
 begin
   widthMultiplier := Workbook.GetFont(0).Size / 2;
   lastCol := ASheet.GetLastColIndex;
+  firstRepeatedPrintCol := ASheet.PageLayout.RepeatedCols.FirstIndex;
+  lastRepeatedPrintCol := ASheet.PageLayout.RepeatedCols.LastIndex;
+  if (firstRepeatedPrintCol <> UNASSIGNED_ROW_COL_INDEX) and
+     (lastRepeatedPrintCol = UNASSIGNED_ROW_COL_INDEX)
+  then
+    lastRepeatedPrintCol := firstRepeatedPrintCol;
 
-  j := 0;
-  while (j <= lastCol) do
+  headerCols := false;
+  c := 0;
+  while (c <= lastCol) do
   begin
-    w := ASheet.GetColWidth(j);
+    w := ASheet.GetColWidth(c);
     // Convert to mm
     w_mm := PtsToMM(w * widthMultiplier);
+
+    if (c = firstRepeatedPrintCol) then
+    begin
+      headerCols := true;
+      AppendToStream(AStream, '<table:table-header-columns>');
+    end;
 
     // Find width in ColumnStyleList to retrieve corresponding style name
     styleName := '';
@@ -4441,22 +4461,38 @@ begin
 
     // Determine value for "number-columns-repeated"
     colsRepeated := 1;
-    k := j+1;
-    while (k <= lastCol) do
-    begin
-      if ASheet.GetColWidth(k) = w then
-        inc(colsRepeated)
-      else
-        break;
-      inc(k);
-    end;
+    k := c+1;
+    if headerCols then
+      while (k <= lastCol) and (k <= lastRepeatedPrintCol) do
+      begin
+        if ASheet.GetColWidth(k) = w then
+          inc(colsRepeated)
+        else
+          break;
+        inc(k);
+      end
+    else
+      while (k <= lastCol) do
+      begin
+        if ASheet.GetColWidth(k) = w then
+          inc(colsRepeated)
+        else
+          break;
+        inc(k);
+      end;
     colsRepeatedStr := IfThen(colsRepeated = 1, '', Format(' table:number-columns-repeated="%d"', [colsRepeated]));
 
     AppendToStream(AStream, Format(
       '<table:table-column table:style-name="%s"%s table:default-cell-style-name="Default" />',
         [styleName, colsRepeatedStr]));
 
-    j := j + colsRepeated;
+    if headerCols and (k-1 = lastRepeatedPrintCol) then
+    begin
+      AppendToStream(AStream, '</table:table-header-columns>');
+      headerCols := false;
+    end;
+
+    c := c + colsRepeated;
   end;
 end;
 
@@ -4617,6 +4653,84 @@ begin
   defFnt.Free;
 end;
 
+{<table:named-expressions>
+   <table:named-expression table:name="_xlnm.Print_Area" table:base-cell-address="$Sheet1.$A$1" table:expression="[$Sheet1.$A$2:.$F$6];[$Sheet1.$A$11:.$K$21]" />
+   <table:named-expression table:name="_xlnm.Print_Titles" table:base-cell-address="$Sheet1.$A$1" table:expression="[$Sheet1.$A$1:.$D$1048576];[$Sheet1.$A$1:.$AMJ$2]" />
+ </table:named-expressions>}
+
+procedure TsSpreadOpenDocWriter.WriteNamedExpressions(AStream: TStream;
+  ASheet: TsWorksheet);
+var
+  stotal, srng: String;
+  j: Integer;
+  prng: TsCellRange;
+begin
+  stotal := '';
+
+  // Cell block of print range
+  srng := '';
+  for j := 0 to ASheet.NumPrintRanges - 1 do
+  begin
+    prng := ASheet.GetPrintRange(j);
+    srng := srng + ';' + Format('[$%s.%s]', [
+      ASheet.Name, GetCellRangeString(prng.Row1, prng.Col1, prng.Row2, prng.Col2, [])
+    ]);
+  end;
+  if srng <> '' then
+  begin
+    Delete(srng, 1, 1);
+    stotal := stotal + Format(
+      '<table:named-expression table:name="_xlnm.Print_Area" table:base-cell-address="$%s.$A$1" table:expression="%s" />',
+      [ASheet.Name, srng]
+    );
+  end;
+
+  // Next commented part appears only in files converted from Excel
+
+  {
+  // repeated columns ...
+  srng := '';
+  if ASheet.PageLayout.RepeatedCols.FirstIndex <> UNASSIGNED_ROW_COL_INDEX then
+  begin
+    if ASheet.PageLayout.RepeatedCols.LastIndex = UNASSIGNED_ROW_COL_INDEX then
+      srng := srng + ';' + Format('[$%s.$%s]',
+        [ASheet.Name, GetColString(ASheet.pageLayout.RepeatedCols.FirstIndex)]
+      )
+    else
+      srng := srng + ';' + Format('[$%s.$%s1:.$%s1048576]', [      // [$Sheet1.$A$1:.$D$1048576]
+        ASheet.Name,
+        GetColString(ASheet.Pagelayout.RepeatedCols.FirstIndex),
+        GetColString(ASheet.PageLayout.RepeatedCols.LastIndex)
+      ]);
+  end;
+  // ... and repeated rows
+  if ASheet.PageLayout.RepeatedRows.FirstIndex <> UNASSIGNED_ROW_COL_INDEX then
+  begin
+    if ASheet.PageLayout.RepeatedRows.LastIndex = UNASSIGNED_ROW_COL_INDEX then
+      srng := srng + ';' + Format('[$%s.$%d]',
+        [ASheet.Name, ASheet.pageLayout.RepeatedRows.FirstIndex]
+      )
+    else
+      srng := srng + ';' + Format('[$%s.$A$%d:.$AMJ$%d]', [              // [$Sheet1.$A$1:.$AMJ$2]"
+        ASheet.Name,
+        ASheet.Pagelayout.RepeatedRows.FirstIndex+1,
+        ASheet.PageLayout.RepeatedRows.LastIndex+1
+      ]);
+  end;
+  if srng <> '' then begin
+    Delete(srng, 1,1);
+    stotal := stotal + Format(
+      '<table:named-expression table:name="_xlnm.Print_Titles" table:bases-cell-address="$%s.$A$1" table:expression="%s" />',
+      [ASheet.Name, srng]
+    );
+  end;
+   }
+  // Write to stream if any defined names exist
+  if stotal <> '' then
+    AppendtoStream(AStream,
+      '<table:named-expressions>' + stotal + '</table:named-expressions>');
+end;
+
 procedure TsSpreadOpenDocWriter.WriteNumFormats(AStream: TStream);
 var
   i, p: Integer;
@@ -4657,20 +4771,38 @@ var
   colsRepeatedStr: String;
   rowsRepeatedStr: String;
   firstCol, firstRow, lastCol, lastRow: Cardinal;
+  firstRepeatedPrintRow, lastRepeatedPrintRow: Cardinal;
   rowStyleData: TRowStyleData;
   defFontSize: Single;
   emptyRowsAbove: Boolean;
+  headerRows: Boolean;
 begin
   // some abbreviations...
   defFontSize := Workbook.GetFont(0).Size;
   GetSheetDimensions(ASheet, firstRow, lastRow, firstCol, lastCol);
   emptyRowsAbove := firstRow > 0;
 
+  headerRows := false;
+  firstRepeatedPrintRow := ASheet.PageLayout.RepeatedRows.FirstIndex;
+  lastRepeatedPrintRow := ASheet.PageLayout.RepeatedRows.LastIndex;
+  if (firstRepeatedPrintRow <> UNASSIGNED_ROW_COL_INDEX) and
+     (lastRepeatedPrintRow = UNASSIGNED_ROW_COL_INDEX)
+  then
+    lastRepeatedPrintRow := firstRepeatedPrintRow;
+
   // Now loop through all rows
   r := firstRow;
   while (r <= lastRow) do
   begin
     rowsRepeated := 1;
+
+    // Header rows need a special tag
+    if (r = firstRepeatedPrintRow) then
+    begin
+      AppendToStream(AStream, '<table:table-header-rows>');
+      headerRows := true;
+    end;
+
     // Look for the row style of the current row (r)
     row := ASheet.FindRow(r);
     if row = nil then
@@ -4738,6 +4870,14 @@ begin
         [styleName, rowsRepeatedStr, colsRepeatedStr]));
 
       r := rr;
+
+      // Header rows need a special tag
+      if headerRows and (r-1 = lastRepeatedPrintRow) then
+      begin
+        AppendToStream(AStream, '</table:table-header-rows>');
+        headerRows := false;
+      end;
+
       continue;
     end;
 
@@ -4787,6 +4927,13 @@ begin
 
     AppendToStream(AStream,
         '</table:table-row>');
+
+    // Header rows need a special tag
+    if headerRows and (r = lastRepeatedPrintRow) then
+    begin
+      AppendToStream(AStream, '</table:table-header-rows>');
+      headerRows := false;
+    end;
 
     // Next row
     inc(r, rowsRepeated);
@@ -5451,6 +5598,32 @@ begin
               headerStyleStr +
               footerStyleStr +
             '</style:page-layout>';
+end;
+
+function TsSpreadOpenDocWriter.WritePrintRangesAsXMLString(ASheet: TsWorksheet): String;
+var
+  i: Integer;
+  rng: TsCellRange;
+  srng: String;
+begin
+  if ASheet.NumPrintRanges > 0 then
+  begin
+    srng := '';
+    for i := 0 to ASheet.NumPrintRanges - 1 do
+    begin
+      rng := ASheet.GetPrintRange(i);
+      Result := Result + ' ' + Format('%s.%s:%s.%s', [
+        ASheet.Name, GetCellString(rng.Row1,rng.Col1),
+        ASheet.Name, GetCellString(rng.Row2,rng.Col2)
+      ]);
+    end;
+    if Result <> '' then
+    begin
+      Delete(Result, 1, 1);
+      Result := 'table:print-ranges="' + Result + '"';
+    end;
+  end else
+    Result := '';
 end;
 
 procedure TsSpreadOpenDocWriter.WriteTableSettings(AStream: TStream);

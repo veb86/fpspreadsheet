@@ -128,6 +128,7 @@ type
     procedure WriteBorderList(AStream: TStream);
     procedure WriteCols(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteComments(AWorksheet: TsWorksheet);
+    procedure WriteDefinedNames(AStream: TStream);
     procedure WriteDimension(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteFillList(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont; UseInStyleNode: Boolean);
@@ -251,6 +252,7 @@ const
 {%H-}MIME_XML             = 'application/xml';
      MIME_RELS            = 'application/vnd.openxmlformats-package.relationships+xml';
      MIME_OFFICEDOCUMENT  = 'application/vnd.openxmlformats-officedocument';
+     MIME_CORE            = 'application/vnd.openxmlformats-package.core-properties+xml';
      MIME_SPREADML        = MIME_OFFICEDOCUMENT + '.spreadsheetml';
      MIME_SHEET           = MIME_SPREADML + '.sheet.main+xml';
      MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
@@ -3349,6 +3351,7 @@ begin
       '<bookViews>' +
         '<workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" ' + actTab + '/>' +
       '</bookViews>');
+
   AppendToStream(FSWorkbook,
       '<sheets>');
   for counter:=1 to Workbook.GetWorksheetCount do
@@ -3357,6 +3360,9 @@ begin
           [Workbook.GetWorksheetByIndex(counter-1).Name, counter, counter]));
   AppendToStream(FSWorkbook,
       '</sheets>');
+
+  WriteDefinedNames(FSWorkbook);
+
   AppendToStream(FSWorkbook,
       '<calcPr calcId="114210" />');
   AppendToStream(FSWorkbook,
@@ -3421,8 +3427,79 @@ begin
       '<Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />');
   AppendToStream(FSContentTypes,
       '<Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />');
+  {
+  AppendToStream(FSContentTypes,
+      '<Override PartName="/docProps/core.xml" ContentType="' + MIME_CORE + '" />');
+  }
   AppendToStream(FSContentTypes,
     '</Types>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteDefinedNames(AStream: TStream);
+var
+  sheet: TsWorksheet;
+  stotal, srng: String;
+  i, j: Integer;
+  prng: TsCellRange;
+  firstIndex, lastIndex: Integer;
+begin
+  stotal := '';
+
+  // Write print ranges and repeatedly printed rows and columns
+  for i := 0 to Workbook.GetWorksheetCount-1 do
+  begin
+    sheet := Workbook.GetWorksheetByIndex(i);
+
+    // Cell block of print range
+    srng := '';
+    for j := 0 to sheet.numPrintRanges - 1 do
+    begin
+      prng := sheet.GetPrintRange(j);
+//      prng.Col2 := Min(prng.Col2, sheet.GetLastColIndex);
+//      prng.Row2 := Min(prng.Row2, sheet.GetLastColIndex);
+      srng := srng + ',' + Format('%s!%s', [
+        sheet.Name, GetCellRangeString(prng.Row1, prng.Col1, prng.Row2, prng.Col2, [])
+      ]);
+    end;
+    if srng <> '' then
+    begin
+      Delete(srng, 1, 1);
+      stotal := stotal + Format(
+        '<definedName name="_xlnm.Print_Area" localSheetId="%d">%s</definedName>',
+        [i, srng]
+      );
+    end;
+
+    // repeated columns ...
+    srng := '';
+    if sheet.PageLayout.RepeatedCols.FirstIndex <> UNASSIGNED_ROW_COL_INDEX then
+    begin
+      firstindex := sheet.PageLayout.RepeatedCols.FirstIndex;
+      lastindex := IfThen(sheet.PageLayout.RepeatedCols.LastIndex = UNASSIGNED_ROW_COL_INDEX,
+        firstindex, sheet.PageLayout.RepeatedCols.LastIndex);
+      srng := srng + ',' + Format('%s!$%s:$%s', [sheet.Name, GetColString(firstindex), GetColString(lastindex)]);
+    end;
+    // ... and repeated rows
+    if sheet.PageLayout.RepeatedRows.FirstIndex <> UNASSIGNED_ROW_COL_INDEX then
+    begin
+      firstindex := sheet.PageLayout.RepeatedRows.FirstIndex;
+      lastindex := IfThen(sheet.PageLayout.RepeatedRows.LastIndex = UNASSIGNED_ROW_COL_INDEX,
+        firstindex, sheet.PageLayout.RepeatedRows.LastIndex);
+      srng := srng + ',' + Format('%s!$%d:$%d', [sheet.Name, firstindex+1, lastindex+1]);
+    end;
+    if srng <> '' then begin
+      Delete(srng, 1,1);
+      stotal := stotal + Format(
+        '<definedName name="_xlnm.Print_Titles" localSheetId="%d">%s</definedName>',
+        [i, srng]
+      );
+    end;
+  end;
+
+  // Write to stream if any defined names exist
+  if stotal <> '' then
+    AppendtoStream(FSWorkbook,
+      '<definedNames>' + stotal + '</definedNames>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheet(AWorksheet: TsWorksheet);

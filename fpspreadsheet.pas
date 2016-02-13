@@ -127,6 +127,7 @@ type
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
     FSortParams: TsSortParams;  // Parameters of the current sorting operation
     FBiDiMode: TsBiDiMode;
+    FPrintRanges: TsCellRangeArray;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnCompareCells: TsCellCompareEvent;
@@ -487,6 +488,16 @@ type
     function IsMerged(ACell: PCell): Boolean;
     procedure UnmergeCells(ARow, ACol: Cardinal); overload;
     procedure UnmergeCells(ARange: String); overload;
+
+    // Print ranges
+    function AddPrintRange(ARow1, ACol1, ARow2, ACol2: Cardinal): Integer; overload;
+    function AddPrintRange(const ARange: TsCellRange): Integer; overload;
+    function GetPrintRange(AIndex: Integer): TsCellRange;
+    function NumPrintRanges: Integer;
+    procedure RemovePrintRange(AIndex: Integer);
+
+    procedure SetRepeatedPrintCols(AFirstCol: Cardinal; ALastCol: Cardinal = UNASSIGNED_ROW_COL_INDEX);
+    procedure SetRepeatedPrintRows(AFirstRow: Cardinal; ALastRow: Cardinal = UNASSIGNED_ROW_COL_INDEX);
 
     // Notification of changed cells
     procedure ChangedCell(ARow, ACol: Cardinal);
@@ -3276,6 +3287,91 @@ end;
 function TsWorksheet.IsMerged(ACell: PCell): Boolean;
 begin
   Result := (ACell <> nil) and (cfMerged in ACell^.Flags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds a print range defined by the row/column indexes of its corner cells.
+-------------------------------------------------------------------------------}
+function TsWorksheet.AddPrintRange(ARow1, ACol1, ARow2, ACol2: Cardinal): Integer;
+begin
+  Result := Length(FPrintRanges);
+  SetLength(FPrintRanges, Result + 1);
+  with FPrintRanges[Result] do
+  begin
+    Row1 := ARow1;
+    Col1 := ACol1;
+    Row2 := ARow2;
+    Col2 := ACol2;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds a print range defined by a TsCellRange record
+-------------------------------------------------------------------------------}
+function TsWorksheet.AddPrintRange(const ARange: TsCellRange): Integer;
+begin
+  Result := AddPrintRange(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the TsCellRange record of the print range with the specified index.
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetPrintRange(AIndex: Integer): TsCellRange;
+begin
+  Result := FPrintRanges[AIndex];
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the count of print ranges defined for this worksheet
+-------------------------------------------------------------------------------}
+function TsWorksheet.NumPrintRanges: Integer;
+begin
+  Result := Length(FPrintRanges);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the print range specified by the index
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemovePrintRange(AIndex: Integer);
+var
+  i: Integer;
+begin
+  if not InRange(AIndex, 0, High(FPrintRanges)) then exit;
+  for i := AIndex + 1 to High(FPrintRanges) do
+    FPrintRanges[i - 1] := FPrintRanges[i];
+  SetLength(FPrintRanges, Length(FPrintRanges)-1);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Defines a range of header columns for printing repeated on every page
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SetRepeatedPrintCols(AFirstCol, ALastCol: Cardinal);
+begin
+  if AFirstCol < ALastCol then
+  begin
+    PageLayout.RepeatedCols.FirstIndex := AFirstCol;
+    PageLayout.RepeatedCols.LastIndex := ALastCol;
+  end else
+  begin
+    PageLayout.RepeatedCols.FirstIndex := ALastCol;
+    PageLayout.RepeatedCols.LastIndex := AFirstCol;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Defines a range of header rows for printing repeated on every page
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SetRepeatedPrintRows(AFirstRow, ALastRow: Cardinal);
+begin
+  if AFirstRow < ALastRow then
+  begin
+    PageLayout.RepeatedRows.FirstIndex := AFirstRow;
+    PageLayout.RepeatedRows.LastIndex := ALastRow;
+  end else
+  begin
+    PageLayout.RepeatedRows.FirstIndex := ALastRow;
+    PageLayout.RepeatedRows.LastIndex := AFirstRow;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
