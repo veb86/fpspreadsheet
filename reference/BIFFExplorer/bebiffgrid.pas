@@ -1722,6 +1722,36 @@ begin
     token := FBuffer[FBufferIndex];
     numBytes := 1;
     case token of
+      $10:
+        begin
+          numBytes := 1;
+          ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [token]),
+            'Token tList (List operator)');
+        end;
+
+      $29, $39, $49:
+        begin
+          case token of
+            $29: s := 'Token tMemFuncR';
+            $39: s := 'Token tMemFuncV';
+            $49: s := 'Token tMemFuncV';
+          end;
+          ShowInRow(FCurrRow, FBufferIndex, numbytes, Format('$%.2x', [token]), s);
+          if FFormat = sfExcel2 then
+          begin
+            numbytes := 1;
+            b := FBuffer[FBufferIndex];
+            w := b;
+          end else
+          begin
+            numbytes := 2;
+            Move(FBuffer[FBufferIndex], w, numbytes);
+            w := WordLEToN(w);
+          end;
+          ShowInRow(FCurrRow, FBufferIndex, numbytes, IntToStr(w),
+             'Size of following subexpression (ends after offset ' + IntToStr(FBufferIndex+w-1+numbytes) + ')');
+        end;
+
       $3A, $3B, $5A, $5B, $7A, $7B:
         begin
           case token of
