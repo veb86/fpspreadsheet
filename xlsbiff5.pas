@@ -49,7 +49,7 @@ AUTHORS: Felipe Monteiro de Carvalho
 unit xlsbiff5;
 
 {$ifdef fpc}
-  {$mode delphi}{$H+}
+  {$mode objfpc}{$H+}
 {$endif}
 
 {$define USE_NEW_OLE}
@@ -101,6 +101,8 @@ type
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+    procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
+       const AName: String; AIndexToREF: Word); override;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TsFont);
@@ -1007,11 +1009,14 @@ begin
 
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
 
-  WriteCodepage(AStream, FCodePage);
-  WriteWindow1(AStream);
+  WriteCODEPAGE(AStream, FCodePage);
+  WriteEXTERNCOUNT(AStream);
+  WriteEXTERNSHEET(AStream);
+  WriteDefinedNames(AStream);
+  WriteWINDOW1(AStream);
   WriteFonts(AStream);
   WriteNumFormats(AStream);
-  WritePalette(AStream);
+  WritePALETTE(AStream);
   WriteXFRecords(AStream);
   WriteStyle(AStream);
 
@@ -1202,6 +1207,145 @@ begin
   AStream.WriteByte(Len);
 //  AStream.WriteBuffer(LatinSheetName[1], Len);
   AStream.WriteBuffer(xlsSheetName[1], Len);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes out a DEFINEDNAMES record
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF5Writer.WriteDefinedName(AStream: TStream;
+  AWorksheet: TsWorksheet; const AName: String; AIndexToREF: Word);
+
+  procedure WriteRangeFormula(MemStream: TMemoryStream; ARange: TsCellRange;
+    AIndexToREF, ACounter: Word);
+  var
+    sheetIdx: Integer;
+  begin
+    sheetIdx := FWorkbook.GetWorksheetIndex(AWorksheet);
+
+    { Token for tArea3dR }
+    MemStream.WriteByte($3B);
+
+    { 1-based sheet index, negative to indicate 3D reference }
+    MemStream.WriteWord(WordToLE(-(sheetIdx+1)));
+
+    { 8 bytes not used }
+    MemStream.WriteDWord(0);
+    MemStream.WriteDWord(0);
+
+    { Index to first reference worksheet }
+    MemStream.WriteWord(WordToLE(sheetIdx));   // THIS IS ONLY VALID FOR PRINTRANGE!
+
+    { Index to last reference worksheet }
+    MemStream.WriteWord(WordToLE(sheetIdx));   // THIS IS ONLY VALID FOR PRINTRANGE!
+
+    { First row index }
+    MemStream.WriteWord(WordToLE(ARange.Row1));
+
+    { Last row index }
+    MemStream.WriteWord(WordToLE(ARange.Row2));
+
+    { First column index }
+    MemStream.WriteByte(ARange.Col1);
+
+    { Last column index }
+    MemStream.WriteByte(ARange.Col2);
+
+    { Token for list if formula refers to more than 1 range }
+    if ACounter > 1 then
+      MemStream.WriteByte($10);
+  end;
+
+var
+  memstream: TMemoryStream;
+  rng: TsCellRange;
+  j: Integer;
+  idx: Integer;
+begin
+  // Since this is a variable length record we begin by writing the formula
+  // to a memory stream
+
+  memstream := TMemoryStream.Create;
+  try
+    case AName of
+      #06: begin  // Print range
+             for j := 0 to AWorksheet.NumPrintRanges-1 do
+             begin
+               rng := AWorksheet.GetPrintRange(j);
+               WriteRangeFormula(memstream, rng, AIndexToRef, j+1);
+             end;
+           end;
+      #07: begin
+             j := 1;
+             if AWorksheet.HasRepeatedPrintCols then
+             begin
+               rng.Col1 := AWorksheet.PageLayout.RepeatedCols.FirstIndex;
+               rng.Col2 := AWorksheet.PageLayout.RepeatedCols.LastIndex;
+               if rng.Col2 = UNASSIGNED_ROW_COL_INDEX then rng.Col2 := rng.Col1;
+               rng.Row1 := 0;
+               rng.Row2 := 65535;
+               WriteRangeFormula(memstream, rng, AIndexToRef, j);
+               inc(j);
+             end;
+             if AWorksheet.HasRepeatedPrintRows then
+             begin
+               rng.Row1 := AWorksheet.PageLayout.RepeatedRows.FirstIndex;
+               rng.Row2 := AWorksheet.PageLayout.RepeatedRows.LastIndex;
+               if rng.Row2 = UNASSIGNED_ROW_COL_INDEX then rng.Row2 := rng.Row1;
+               rng.Col1 := 0;
+               rng.Col2 := 255;
+               WriteRangeFormula(memstream, rng, AIndexToRef, j);
+             end;
+           end;
+      else raise Exception.Create('Name not supported');
+    end;  // case
+
+    idx := FWorkbook.GetWorksheetIndex(AWorksheet);
+
+    { BIFF record header }
+    WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFINEDNAME, 14 + Length(AName) + memstream.Size);
+
+    { Option flags: built-in defined names only }
+    AStream.WriteWord(WordToLE($0020));
+
+    { Keyboard shortcut (only for command macro names) }
+    AStream.WriteByte(0);
+
+    { Length of name (character count). Always 1 for built-in names }
+    AStream.WriteByte(Length(AName));
+
+    { Size of formula data }
+    AStream.WriteWord(WordToLE(memstream.Size));
+
+    { Global name, otherwise index to EXTERNSHEET record (1-based) }
+    AStream.WriteWord(WordToLE(AIndexToREF+1));
+
+    { Global name, otherwise index to sheet (1-based) }
+    AStream.WriteWord(WordToLE(idx+1));
+
+    { Length of menu text }
+    AStream.WriteByte(0);
+
+    { Length of description text }
+    AStream.WriteByte(0);
+
+    { Length of help topic text }
+    AStream.WriteByte(0);
+
+    { Length of status bar text }
+    AStream.WriteByte(0);
+
+    { Name }
+    if (Length(AName) = 1) and (AName[1] < #32) then
+      AStream.WriteByte(ord(AName[1])) else
+      raise Exception.Create('Name not supported.');
+
+    { Formula }
+    memstream.Position := 0;
+    AStream.CopyFrom(memstream, memstream.Size);
+
+  finally
+    memstream.Free;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -35,9 +35,12 @@ const
   INT_EXCEL_ID_CODEPAGE    = $0042;
   INT_EXCEL_ID_DEFCOLWIDTH = $0055;
 
+  { RECORD IDs which did not changed across versions 2-5 }
+  INT_EXCEL_ID_EXTERNCOUNT = $0016;    // does not exist in BIFF8
+
   { RECORD IDs which did not change across versions 2, 5, 8}
   INT_EXCEL_ID_FORMULA     = $0006;    // BIFF3: $0206, BIFF4: $0406
-  INT_EXCEL_ID_DEFINEDNAME = $0018;    // BIFF3: $0218, BIFF4: $0218
+  INT_EXCEL_ID_DEFINEDNAME = $0018;    // BIFF3-4: $0218
   INT_EXCEL_ID_FONT        = $0031;    // BIFF3-4: $0231
 
   { RECORD IDs which did not change across version 3-8}
@@ -499,10 +502,18 @@ type
     procedure WriteDateMode(AStream: TStream);
     // Writes out a TIME/DATE/TIMETIME
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
-      const AValue: TDateTime; ACell: PCell); override;
+       const AValue: TDateTime; ACell: PCell); override;
+    // Writes out DEFINEDNAMES records
+    procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
+       const AName: String; AIndexToREF: Word); virtual;
+    procedure WriteDefinedNames(AStream: TStream);
     // Writes out ERROR cell record
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
+    // Writes out an EXTERNCOUNT record
+    procedure WriteEXTERNCOUNT(AStream: TStream);
+    // Writes out an EXTERNSHEET record
+    procedure WriteEXTERNSHEET(AStream: TStream); virtual;
     // Writes out a FORMAT record
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
       ANumFormatIndex: Integer); virtual;
@@ -2884,6 +2895,34 @@ begin
   WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
 end;
 
+procedure TsSpreadBIFFWriter.WriteDefinedName(AStream: TStream;
+  AWorksheet: TsWorksheet; const AName: String; AIndexToREF: Word);
+begin
+  // Override
+end;
+
+procedure TsSpreadBIFFWriter.WriteDefinedNames(AStream: TStream);
+var
+  sheet: TsWorksheet;
+  i: Integer;
+  n: Word;
+begin
+  n := 0;
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    if (sheet.NumPrintRanges > 0) or
+       sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+    begin
+      if sheet.NumPrintRanges > 0 then
+        WriteDefinedName(AStream, sheet, #6, n);
+      if sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+        WriteDefinedName(AStream, sheet, #7, n);
+      inc(n);
+    end;
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Writes an ERROR cell record.
   Valid for BIFF3-BIFF8. Override for BIFF2.
@@ -2913,6 +2952,64 @@ begin
 
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(rec));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a BIFF EXTERNCOUNT record.
+  Valid for BIFF2-BIFF5.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteEXTERNCOUNT(AStream: TStream);
+var
+  i: Integer;
+  n: Word;
+  sheet: TsWorksheet;
+begin
+  n := 0;
+  for i := 0 to FWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    if (sheet.NumPrintRanges > 0) or
+       sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then inc(n);
+  end;
+
+  if n < 1 then
+    exit;
+
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNCOUNT, 2);
+
+  { Count of EXTERNSHEET records following }
+  AStream.WriteWord(WordToLE(n));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a BIFF EXTERNSHEET record.
+  Valid for BIFF2-BIFF5.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteEXTERNSHEET(AStream: TStream);
+var
+  sheet: TsWorksheet;
+  i: Integer;
+begin
+  for i := 0 to FWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    if (sheet.NumPrintRanges > 0) or
+        sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+    begin
+      { BIFF record header }
+      WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNSHEET, 2 + Length(sheet.Name));
+
+      { Character count in worksheet name }
+      AStream.WriteByte(Length(sheet.Name));
+
+      { Flag for identification as own sheet }
+      AStream.WriteByte($03);
+
+      { Sheet name }
+      AStream.WriteBuffer(sheet.Name[1], Length(sheet.Name));
+    end;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

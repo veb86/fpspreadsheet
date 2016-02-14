@@ -13,7 +13,7 @@ type
   TBIFFDetailsEvent = procedure(Sender: TObject; ADetails: TStrings) of object;
 
   TRichTextFormattingRun = packed record
-    FirstIndex, fontIndex: Word;
+    FirstIndex, FontIndex: Word;
   end;
   TRichTextFormattingRuns = array of TRichTextFormattingRun;
 
@@ -153,7 +153,6 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure SetBIFFNodeData(AData: TBIFFNodeData; ABuffer: TBIFFBuffer; AFormat: TsSpreadsheetFormat);
-//    procedure SetRecordType(ARecType: Word; ABuffer: TBIFFBuffer; AFormat: TsSpreadsheetFormat);
 
   published
     property OnDetails: TBIFFDetailsEvent read FOnDetails write FOnDetails;
@@ -1676,8 +1675,7 @@ begin
       numBytes := lenName * sizeOf(ansiChar);
       SetLength(ansiStr, lenName);
       Move(FBuffer[FBufferIndex], ansiStr[1], numbytes);
-      ShowInRow(FCurrRow, FBufferIndex, numBytes, ansiStr,
-        'Character array of the name');
+      s := AnsiToUTF8(ansistr);
     end else
     begin
       if (FBuffer[FBufferIndex] and $01 = 0) //and (not IgnoreCompressedFlag)
@@ -1692,29 +1690,29 @@ begin
         Move(FBuffer[FBufferIndex + 1], wideStr[1], lenName*SizeOf(WideChar));
         s := UTF8Encode(WideStringLEToN(wideStr));
       end;
-      if builtinName and (Length(s) = 1) then begin
-        s := Format('%s ($%x --> ', [s, ord(s[1])]);
-        case ord(s[1]) of
-          0: s := s + 'Consolidate_Area)';
-          1: s := s + 'Auto_Open)';
-          2: s := s + 'Auto_Close)';
-          3: s := s + 'Extract)';
-          4: s := s + 'Database)';
-          5: s := s + 'Citeria)';
-          6: s := s + 'Print_Area)';
-          7: s := s + 'Print_Titles)';
-          8: s := s + 'Recorder)';
-          9: s := s + 'Data_Form)';
-         10: s := s + 'Auto_Activate)';
-         11: s := s + 'Auto_Deactivate)';
-         12: s := s + 'Sheet_Title)';
-         13: s := s + '_FilterDatabase)';
-         else s := s + 'unknown meaning)';
-        end;
-      end;
-      ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
-        'Name (Unicode string without length field)');
     end;
+    if builtinName and (Length(s) = 1) then begin
+      s := Format('%s ($%x --> ', [s, ord(s[1])]);
+      case ord(s[1]) of
+        0: s := s + 'Consolidate_Area)';
+        1: s := s + 'Auto_Open)';
+        2: s := s + 'Auto_Close)';
+        3: s := s + 'Extract)';
+        4: s := s + 'Database)';
+        5: s := s + 'Citeria)';
+        6: s := s + 'Print_Area)';
+        7: s := s + 'Print_Titles)';
+        8: s := s + 'Recorder)';
+        9: s := s + 'Data_Form)';
+       10: s := s + 'Auto_Activate)';
+       11: s := s + 'Auto_Deactivate)';
+       12: s := s + 'Sheet_Title)';
+       13: s := s + '_FilterDatabase)';
+       else s := s + 'unknown meaning)';
+      end;
+    end;
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+      'Name (Unicode string without length field)');
   end;
 
   firstTokenBufIdx := FBufferIndex;
@@ -1770,16 +1768,16 @@ begin
           if FFormat = sfExcel5 then begin
             if w and $8000 <> 0 then begin  // negative value --> 3D reference
               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(SmallInt(w)),
-                '3D reference, 1-based index to EXTERNSHEET record');
+                'negative --> 3D reference, 1-based index to EXTERNSHEET record = ' + IntToStr(-SmallInt(w)));
               numBytes := 8;
               ShowInRow(FCurrRow, FBufferIndex, numBytes, '', 'Not used');
               numBytes := 2;
               Move(FBuffer[FBufferIndex], w, numBytes);
               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
-                'Index to first referenced sheet ($FFFF = deleted sheet)');
+                'Zero-based index to first referenced sheet ($FFFF = deleted sheet)');
               Move(FBuffer[FBufferIndex], w, numBytes);
               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
-                'Index to last referenced sheet ($FFFF = deleted sheet)');
+                'Zero-based index to last referenced sheet ($FFFF = deleted sheet)');
             end else
             begin
               ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(w),
@@ -2050,13 +2048,15 @@ begin
         FDetails.Add('First character = $03: EXTERNSHEET stores a reference to one of the own sheets');
         FDetails.Add('Document name: ' + Copy(s, 2, Length(s)));
       end else
-      if (s[1] = ':') and (Length(s) = 1) then begin
+      if (Length(s) = 1) and (s[1] = ':') then begin
         FDetails.Add('Special EXTERNSHEET record for an add-in function. EXTERNName record with the name of the function follows.');
       end else
         FDetails.Add('Document name: ' + s);
     end;
-    if s[1] = #03 then
+    if s[1] = #03 then begin
       Delete(s, 1, 1);
+      s := '<#03>' + s;
+    end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, s,
       'Encoded document and sheet name (Byte string, 8-bit string length)');
   end else begin

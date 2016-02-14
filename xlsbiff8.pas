@@ -45,7 +45,7 @@ AUTHORS:  Felipe Monteiro de Carvalho
 unit xlsbiff8;
 
 {$ifdef fpc}
-  {$mode delphi}{$H+}
+  {$mode objfpc}{$H+}
 {$endif}
 
 // The new OLE code is much better, so always use it
@@ -132,12 +132,11 @@ type
     procedure WriteComment(AStream: TStream; ACell: PCell); override;
     procedure WriteComments(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
-       AIndexToREF: Word; AKind: Byte);
-    procedure WriteDefinedNames(AStream: TStream);
+       const AName: String; AIndexToREF: Word); override;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteEXTERNBOOK(AStream: TStream);
-    procedure WriteEXTERNSHEET(AStream: TStream);
+    procedure WriteEXTERNSHEET(AStream: TStream); override;
     procedure WriteFONT(AStream: TStream; AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
@@ -658,8 +657,8 @@ var
   i: Integer;
   j: Integer; //j: SizeUInt;
   lLen: SizeInt;
-  RecordType: WORD;
-  RecordSize: WORD;
+  recType: WORD;
+  recSize: WORD;
   C: WideChar;
 begin
   StringFlags := AStream.ReadByte;
@@ -699,12 +698,12 @@ begin
       Dec(PendingRecordSize);
       if (PendingRecordSize <= 0) and (i < lLen) then begin
         //A CONTINUE may have happened here
-        RecordType := WordLEToN(AStream.ReadWord);
-        RecordSize := WordLEToN(AStream.ReadWord);
-        if RecordType <> INT_EXCEL_ID_CONTINUE then begin
+        recType := WordLEToN(AStream.ReadWord);
+        recSize := WordLEToN(AStream.ReadWord);
+        if recType <> INT_EXCEL_ID_CONTINUE then begin
           Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
         end else begin
-          PendingRecordSize := RecordSize;
+          PendingRecordSize := recSize;
           DecomprStrValue := copy(DecomprStrValue,1,i) + ReadWideString(AStream, ALength-i, ARichTextParams);
           break;
         end;
@@ -718,12 +717,12 @@ begin
     for j := 0 to SmallInt(RunsCounter) - 1 do begin
       if (PendingRecordSize <= 0) then begin
         // A CONTINUE may happened here
-        RecordType := WordLEToN(AStream.ReadWord);
-        RecordSize := WordLEToN(AStream.ReadWord);
-        if RecordType <> INT_EXCEL_ID_CONTINUE then begin
+        recType := WordLEToN(AStream.ReadWord);
+        recSize := WordLEToN(AStream.ReadWord);
+        if recType <> INT_EXCEL_ID_CONTINUE then begin
           Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
         end else begin
-          PendingRecordSize := RecordSize;
+          PendingRecordSize := recSize;
         end;
       end;
       // character start index: 0-based in file, 1-based in fps
@@ -2239,7 +2238,7 @@ end;
   Implements only the builtin defined names for print ranges and titles!
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteDefinedName(AStream: TStream;
-  AWorksheet: TsWorksheet; AIndexToREF: Word; AKind: Byte);
+  AWorksheet: TsWorksheet; const AName: String; AIndexToREF: Word);
 
   procedure WriteRangeFormula(MemStream: TMemoryStream; ARange: TsCellRange;
     AIndexToRef, ACounter: Word);
@@ -2277,15 +2276,15 @@ begin
 
   memstream := TMemoryStream.Create;
   try
-    case AKind of
-      $06: begin  // Print range
+    case AName of
+      #06: begin  // Print range
              for j := 0 to AWorksheet.NumPrintRanges-1 do
              begin
                rng := AWorksheet.GetPrintRange(j);
                WriteRangeFormula(memstream, rng, AIndexToRef, j+1);
              end;
            end;
-      $07: begin
+      #07: begin  // Print titles
              j := 1;
              if AWorksheet.HasRepeatedPrintCols then
              begin
@@ -2307,6 +2306,8 @@ begin
                WriteRangeFormula(memstream, rng, AIndexToRef, j);
              end;
            end;
+      else
+        raise Exception.Create('Name not supported');
     end;  // case
 
     { BIFF record header }
@@ -2344,7 +2345,9 @@ begin
     AStream.WriteByte(0);
 
     { Name }
-    AStream.WriteWord(WordToLE(AKind shl 8));
+    if (Length(AName) = 1) and (AName[1] < #32) then
+      AStream.WriteWord(WordToLE(ord(AName[1]) shl 8)) else
+      raise Exception.Create('Name not supported.');
 
     { Formula }
     memstream.Position := 0;
@@ -2354,29 +2357,6 @@ begin
     memstream.Free;
   end;
 end;
-
-procedure TsSpreadBIFF8Writer.WriteDefinedNames(AStream: TStream);
-var
-  sheet: TsWorksheet;
-  i: Integer;
-  n: Word;
-begin
-  n := 0;
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do
-  begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
-    if (sheet.NumPrintRanges > 0) or
-       sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
-    begin
-      if sheet.NumPrintRanges > 0 then
-        WriteDefinedName(AStream, sheet, n, $06);
-      if sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
-        WriteDefinedName(AStream, sheet, n, $07);
-      inc(n);
-    end;
-  end;
-end;
-
 
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 8 DIMENSIONS record
