@@ -19,6 +19,7 @@ const
   INT_EXCEL_ID_EOF         = $000A;
   INT_EXCEL_ID_HEADER      = $0014;
   INT_EXCEL_ID_FOOTER      = $0015;
+  INT_EXCEL_ID_EXTERNSHEET = $0017;
   INT_EXCEL_ID_NOTE        = $001C;
   INT_EXCEL_ID_SELECTION   = $001D;
   INT_EXCEL_ID_DATEMODE    = $0022;
@@ -36,6 +37,7 @@ const
 
   { RECORD IDs which did not change across versions 2, 5, 8}
   INT_EXCEL_ID_FORMULA     = $0006;    // BIFF3: $0206, BIFF4: $0406
+  INT_EXCEL_ID_DEFINEDNAME = $0018;    // BIFF3: $0218, BIFF4: $0218
   INT_EXCEL_ID_FONT        = $0031;    // BIFF3-4: $0231
 
   { RECORD IDs which did not change across version 3-8}

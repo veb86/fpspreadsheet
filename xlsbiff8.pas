@@ -131,8 +131,13 @@ type
     function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
     procedure WriteComment(AStream: TStream; ACell: PCell); override;
     procedure WriteComments(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
+       AIndexToREF: Word; AKind: Byte);
+    procedure WriteDefinedNames(AStream: TStream);
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
+    procedure WriteEXTERNBOOK(AStream: TStream);
+    procedure WriteEXTERNSHEET(AStream: TStream);
     procedure WriteFONT(AStream: TStream; AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
@@ -273,6 +278,7 @@ const
      INT_EXCEL_ID_MSODRAWING             = $00EC;  // BIFF8 only
      INT_EXCEL_ID_SST                    = $00FC;  // BIFF8 only
      INT_EXCEL_ID_LABELSST               = $00FD;  // BIFF8 only
+     INT_EXCEL_ID_EXTERNBOOK             = $01AE;  // BIFF8 only
      INT_EXCEL_ID_TXO                    = $01B6;  // BIFF8 only
      INT_EXCEL_ID_HYPERLINK              = $01B8;  // BIFF8 only
      INT_EXCEL_ID_HLINKTOOLTIP           = $0800;  // BIFF8 only
@@ -1982,6 +1988,10 @@ begin
   for i := 0 to Workbook.GetWorksheetCount - 1 do
     Boundsheets[i] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
 
+  WriteEXTERNBOOK(AStream);
+  WriteEXTERNSHEET(AStream);
+  WriteDefinedNames(AStream);
+
   WriteEOF(AStream);
 
   { Write each worksheet }
@@ -2225,6 +2235,150 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes a DEFINEDNAME record.
+  Implements only the builtin defined names for print ranges and titles!
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteDefinedName(AStream: TStream;
+  AWorksheet: TsWorksheet; AIndexToREF: Word; AKind: Byte);
+
+  procedure WriteRangeFormula(MemStream: TMemoryStream; ARange: TsCellRange;
+    AIndexToRef, ACounter: Word);
+  begin
+    { Token for tArea3dR }
+    MemStream.WriteByte($3B);
+
+    { Index to REF entry in EXTERNSHEET record }
+    MemStream.WriteWord(WordToLE(AIndexToREF));
+
+    { First row index }
+    MemStream.WriteWord(WordToLE(ARange.Row1));
+
+    { Last row index }
+    MemStream.WriteWord(WordToLE(ARange.Row2));
+
+    { First column index }
+    MemStream.WriteWord(WordToLE(ARange.Col1));
+
+    { Last column index }
+    MemStream.WriteWord(WordToLE(ARange.Col2));
+
+    { Token for list if formula refers to more than 1 range }
+    if ACounter > 1 then
+      MemStream.WriteByte($10);
+  end;
+
+var
+  memstream: TMemoryStream;
+  rng: TsCellRange;
+  j: Integer;
+begin
+  // Since this is a variable length record we begin by writing the formula
+  // to a memory stream
+
+  memstream := TMemoryStream.Create;
+  try
+    case AKind of
+      $06: begin  // Print range
+             for j := 0 to AWorksheet.NumPrintRanges-1 do
+             begin
+               rng := AWorksheet.GetPrintRange(j);
+               WriteRangeFormula(memstream, rng, AIndexToRef, j+1);
+             end;
+           end;
+      $07: begin
+             j := 1;
+             if AWorksheet.HasRepeatedPrintCols then
+             begin
+               rng.Col1 := AWorksheet.PageLayout.RepeatedCols.FirstIndex;
+               rng.Col2 := AWorksheet.PageLayout.RepeatedCols.LastIndex;
+               if rng.Col2 = UNASSIGNED_ROW_COL_INDEX then rng.Col2 := rng.Col1;
+               rng.Row1 := 0;
+               rng.Row2 := 65535;
+               WriteRangeFormula(memstream, rng, AIndexToRef, j);
+               inc(j);
+             end;
+             if AWorksheet.HasRepeatedPrintRows then
+             begin
+               rng.Row1 := AWorksheet.PageLayout.RepeatedRows.FirstIndex;
+               rng.Row2 := AWorksheet.PageLayout.RepeatedRows.LastIndex;
+               if rng.Row2 = UNASSIGNED_ROW_COL_INDEX then rng.Row2 := rng.Row1;
+               rng.Col1 := 0;
+               rng.Col2 := 255;
+               WriteRangeFormula(memstream, rng, AIndexToRef, j);
+             end;
+           end;
+    end;  // case
+
+    { BIFF record header }
+    WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFINEDNAME, 16 + memstream.Size);
+    // NOTE: 16 only valid for internal names !!!!
+
+    { Option flags: built-in defined names only }
+    AStream.WriteWord(WordToLE($0020));
+
+    { Keyboard shortcut (only for command macro names) }
+    AStream.WriteByte(0);
+
+    { Length of name (character count). Always 1 for builtin names }
+    AStream.WriteByte(1);
+
+    { Size of formula data }
+    AStream.WriteWord(WordToLE(memstream.Size));
+
+    { not used }
+    AStream.WriteWord(0);
+
+    { Index to sheet (1-based) }
+    AStream.WriteWord(WordToLE(FWorkbook.GetWorksheetIndex(AWorksheet)+1));
+
+    { Length of menu text }
+    AStream.WriteByte(0);
+
+    { Length of description text }
+    AStream.WriteByte(0);
+
+    { Length of help topic text }
+    AStream.WriteByte(0);
+
+    { Length of status bar text }
+    AStream.WriteByte(0);
+
+    { Name }
+    AStream.WriteWord(WordToLE(AKind shl 8));
+
+    { Formula }
+    memstream.Position := 0;
+    AStream.CopyFrom(memstream, memstream.Size);
+
+  finally
+    memstream.Free;
+  end;
+end;
+
+procedure TsSpreadBIFF8Writer.WriteDefinedNames(AStream: TStream);
+var
+  sheet: TsWorksheet;
+  i: Integer;
+  n: Word;
+begin
+  n := 0;
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    if (sheet.NumPrintRanges > 0) or
+       sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+    begin
+      if sheet.NumPrintRanges > 0 then
+        WriteDefinedName(AStream, sheet, n, $06);
+      if sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+        WriteDefinedName(AStream, sheet, n, $07);
+      inc(n);
+    end;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Writes an Excel 8 DIMENSIONS record
 
   nm = (rl - rf - 1) / 32 + 1 (using integer division)
@@ -2234,7 +2388,8 @@ end;
 
   See bug 18886: excel5 files are truncated when imported
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
+procedure TsSpreadBIFF8Writer.WriteDimensions(AStream: TStream;
+  AWorksheet: TsWorksheet);
 var
   firstRow, lastRow, firstCol, lastCol: Cardinal;
   rec: TBIFF8_DimensionsRecord;
@@ -2263,6 +2418,62 @@ procedure TsSpreadBIFF8Writer.WriteEOF(AStream: TStream);
 begin
   { BIFF Record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_EOF, 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an EXTERNBOOK record needed for defined names and links.
+  NOTE: This writes only the case for "internal references" required for print
+  ranges and titles.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteEXTERNBOOK(AStream: TStream);
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNBOOK, 4);
+
+  { Number of sheets in this workbook }
+  AStream.WriteWord(WordToLE(FWorkbook.GetWorksheetCount));
+
+  { Relict from BIFF5 }
+  AStream.WriteWord(WordToLE($0401));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an EXTERNSHEET record needed for defined names and links.
+  NOTE: This writes only what is required for print ranges and titles.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteEXTERNSHEET(AStream: TStream);
+var
+  sheets: Array of Integer;
+  sheet: TsWorksheet;
+  i: Integer;
+  n: Word;
+begin
+  n := 0;
+  SetLength(sheets, FWorkbook.GetWorksheetCount);
+  for i := 0 to FWorkbook.GetWorksheetCount-1 do begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    if (sheet.NumPrintRanges > 0) or
+        sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+    begin
+      sheets[n] := i;
+      inc(n);
+    end;
+  end;
+  SetLength(sheets, n);
+
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNSHEET, 2 + 6*n);
+
+  { Count of following REF structures }
+  AStream.WriteWord(WordToLE(n));
+
+  { REF record for each sheet }
+  for i := 0 to n-1 do
+  begin
+    AStream.WriteWord(0);                    // Index to EXTERNBOOK record, always 0
+    AStream.WriteWord(WordToLE(sheets[i]));  // Index to first sheet in EXTERNBOOK sheet list
+    AStream.WriteWord(WordToLE(sheets[i]));  // Index to last sheet in EXTERNBOOK sheet list
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
