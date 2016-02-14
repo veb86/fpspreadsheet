@@ -206,7 +206,7 @@ begin
     $0015: Result := 'FOOTER: Print footer on each page';
     $0016: Result := 'EXTERNCOUNT: Number of external references';
     $0017: Result := 'EXTERNSHEET: External reference';
-    $0018: Result := 'DefinedName';
+    $0018: Result := 'DEFINEDNAME: Name and token array of an internal defined name';
     $0019: Result := 'WINDOWPROTECT: Windows are protected';
     $001A: Result := 'VERTICALPAGEBREAKS: Explicit column page breaks';
     $001B: Result := 'HORIZONALPAGEBREAKS: Explicit row page breaks';
@@ -347,7 +347,7 @@ begin
     $0160: Result := 'USESELFS: Natural language formulas flag';
     $0161: Result := 'DSF: Double stream file';
     $0162: Result := 'XL5MODIFY: Flag for DSF';
-    $01AE: Result := 'SUPBOOK: Supporting workbook';
+    $01AE: Result := 'EXTERNBOOK (SUPBOOK): Supporting workbook';
     $01AF: Result := 'PROT4REV: Shared workbook protection flag';
     $01B0: Result := 'CONDFMT: Conditional formatting range information';
     $01B1: Result := 'CF: Conditional formatting conditions';

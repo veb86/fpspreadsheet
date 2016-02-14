@@ -14,7 +14,7 @@ object MainForm: TMainForm
   OnDropFiles = FormDropFiles
   OnShow = FormShow
   ShowHint = True
-  LCLVersion = '1.5'
+  LCLVersion = '1.7'
   object Splitter1: TSplitter
     Left = 419
     Height = 506
@@ -30,6 +30,7 @@ object MainForm: TMainForm
     BorderSpacing.Left = 4
     ButtonHeight = 25
     Caption = 'ToolBar'
+    EdgeBorders = []
     Images = ImageList
     TabOrder = 1
     object ToolButton1: TToolButton

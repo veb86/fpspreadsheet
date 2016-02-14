@@ -58,7 +58,7 @@ type
     procedure ShowDSF;
     procedure ShowEOF;
     procedure ShowExcel9File;
-    procedure ShowExternalBook;
+    procedure ShowExternBook;
     procedure ShowExternCount;
     procedure ShowExternSheet;
     procedure ShowFileSharing;
@@ -544,7 +544,7 @@ begin
     $0161:
       ShowDSF;
     $01AE:
-      ShowExternalBook;
+      ShowExternBook;
     $01AF:
       ShowProt4Rev;
     $01B6:
@@ -1510,12 +1510,14 @@ var
   firstTokenBufIdx: Integer;
   token: Byte;
   r,c, r2,c2: Integer;
+  builtinName: Boolean;
 begin
   BeginUpdate;
   RowCount := FixedRows + 1000;
   // Brute force simplification because of unknown row count at this point
   // Will be reduced at the end.
 
+  builtinName := false;
   if FFormat = sfExcel2 then
   begin
     numBytes := 1;
@@ -1524,13 +1526,13 @@ begin
     if Row = FCurrRow then begin
       FDetails.Add('Option flags:'#13);
       if b and $02 = 0 then
-        FDetails.Add('Bit $02 = 0: NO function macro or command macro')
+        FDetails.Add('  Bit $02 = 0: NO function macro or command macro')
       else
-        FDetails.Add('Bit $02 = 1: Function macro or command macro');
+        FDetails.Add('* Bit $02 = 1: Function macro or command macro');
       if b and $04 = 0 then
-        FDetails.Add('Bit $04 = 0: NO Complex function (array formula or user defined)')
+        FDetails.Add('  Bit $04 = 0: NO Complex function (array formula or user defined)')
       else
-        FDetails.Add('Bit $04 = 1: Complex function (array formula or user defined)');
+        FDetails.Add('* Bit $04 = 1: Complex function (array formula or user defined)');
     end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('$%.2x', [b]),
       'Option flags');
@@ -1569,48 +1571,49 @@ begin
     w := WordLEToN(w);
     if Row = FCurrRow then begin
       macro := (w and $0008 <> 0);
+      builtinName := (w and $0020 <> 0);
       FDetails.Add('Option flags:'#13);
       if w and $0001 = 0
-        then FDetails.Add('Bit $0001 (flag name "hidden") = 0: Visible')
-        else FDetails.Add('Bit $0001 (flag name "hidden")= 1: Hidden');
+        then FDetails.Add('  Bit $0001 (flag name "hidden") = 0: Visible')
+        else FDetails.Add('* Bit $0001 (flag name "hidden")= 1: Hidden');
       if w and $0002 = 0
-        then FDetails.Add('Bit §0002 (flag name "func") = 0: Command macro')
-        else FDetails.Add('Bit $0002 (flag name "func") = 1: Function macro');
+        then FDetails.Add('  Bit §0002 (flag name "func") = 0: Command macro')
+        else FDetails.Add('* Bit $0002 (flag name "func") = 1: Function macro');
       if w and $0004 = 0
-        then FDetails.Add('Bit $0004 (flag name "vbasic") = 0: Sheet macro')
-        else FDetails.Add('Bit $0004 (flag name "vbasic") = 1: Visual basic macro');
+        then FDetails.Add('  Bit $0004 (flag name "vbasic") = 0: Sheet macro')
+        else FDetails.Add('* Bit $0004 (flag name "vbasic") = 1: Visual basic macro');
       if w and $0008 = 0
-        then FDetails.Add('Bit $0008 (flag name "macro") = 0: Standard name')
-        else FDetails.Add('Bit $0008 (flag name "macro") = 1: Macro name');
+        then FDetails.Add('  Bit $0008 (flag name "macro") = 0: Standard name')
+        else FDetails.Add('* Bit $0008 (flag name "macro") = 1: Macro name');
       if w and $0010 = 0
-        then FDetails.Add('Bit $0010 (flag name "complex") = 0: Simple formula')
-        else FDetails.Add('Bit $0010 (flag name "complex") = 1: Complex formula (array formula or user defined)');
+        then FDetails.Add('  Bit $0010 (flag name "complex") = 0: Simple formula')
+        else FDetails.Add('* Bit $0010 (flag name "complex") = 1: Complex formula (array formula or user defined)');
       if w and $0020 = 0
-        then FDetails.Add('Bit $0020 (flag name "builtin") = 0: User-defined name')
-        else FDetails.Add('Bit $0020 (flag name "builtin") = 1: Built-in name');
+        then FDetails.Add('  Bit $0020 (flag name "builtin") = 0: User-defined name')
+        else FDetails.Add('* Bit $0020 (flag name "builtin") = 1: Built-in name');
       case (w and $0FC0) shr 6 of
         0: if macro then
-             FDetails.Add('Bit $0FC0 = 0: --- forbidden value, must be > 0 ---')
+             FDetails.Add('  Bit $0FC0 = 0: --- forbidden value, must be > 0 ---')
            else
-             FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 0: not used (requires "macro" = 1)');
-        1: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 1: financial');
-        2: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 2: date & time');
-        3: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 3: math & trig');
-        4: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 4: statistical');
-        5: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 5: lookup & reference');
-        6: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 6: database');
-        7: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 7: text');
-        8: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 8: logical');
-        9: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 9: information');
-       10: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 10: commands');
-       11: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 11: customizing');
-       12: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 12: macro control');
-       13: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 13: dde/external');
-       14: FDetails.Add('Bit $0FC0 (flag name "funcgroup") = 14: user defined');
+             FDetails.Add('  Bit $0FC0 (flag name "funcgroup") = 0: not used (requires "macro" = 1)');
+        1: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 1: financial');
+        2: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 2: date & time');
+        3: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 3: math & trig');
+        4: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 4: statistical');
+        5: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 5: lookup & reference');
+        6: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 6: database');
+        7: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 7: text');
+        8: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 8: logical');
+        9: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 9: information');
+       10: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 10: commands');
+       11: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 11: customizing');
+       12: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 12: macro control');
+       13: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 13: dde/external');
+       14: FDetails.Add('* Bit $0FC0 (flag name "funcgroup") = 14: user defined');
       end;
       if w and $1000 = 0
-        then FDetails.Add('Bit $1000 (flag name "binary") = 0: formula definition')
-        else FDetails.add('Bit $1000 (flag name "binary") = 1: binary data (BIFF5-BIFF8)');
+        then FDetails.Add('  Bit $1000 (flag name "binary") = 0: formula definition')
+        else FDetails.add('* Bit $1000 (flag name "binary") = 1: binary data (BIFF5-BIFF8)');
     end;
     ShowInRow(FCurrRow, FBufferIndex, numBytes, Format('%d ($%.4x)', [w, w]),
       'Option flags');
@@ -1675,8 +1678,8 @@ begin
       Move(FBuffer[FBufferIndex], ansiStr[1], numbytes);
       ShowInRow(FCurrRow, FBufferIndex, numBytes, ansiStr,
         'Character array of the name');
-    end else begin
-
+    end else
+    begin
       if (FBuffer[FBufferIndex] and $01 = 0) //and (not IgnoreCompressedFlag)
       then begin   // compressed --> 1 byte per character
         SetLength(ansiStr, lenName);
@@ -1688,6 +1691,26 @@ begin
         numBytes := lenName*SizeOf(WideChar) + 1;
         Move(FBuffer[FBufferIndex + 1], wideStr[1], lenName*SizeOf(WideChar));
         s := UTF8Encode(WideStringLEToN(wideStr));
+      end;
+      if builtinName and (Length(s) = 1) then begin
+        s := Format('%s ($%x --> ', [s, ord(s[1])]);
+        case ord(s[1]) of
+          0: s := s + 'Consolidate_Area)';
+          1: s := s + 'Auto_Open)';
+          2: s := s + 'Auto_Close)';
+          3: s := s + 'Extract)';
+          4: s := s + 'Database)';
+          5: s := s + 'Citeria)';
+          6: s := s + 'Print_Area)';
+          7: s := s + 'Print_Titles)';
+          8: s := s + 'Recorder)';
+          9: s := s + 'Data_Form)';
+         10: s := s + 'Auto_Activate)';
+         11: s := s + 'Auto_Deactivate)';
+         12: s := s + 'Sheet_Title)';
+         13: s := s + '_FilterDatabase)';
+         else s := s + 'unknown meaning)';
+        end;
       end;
       ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
         'Name (Unicode string without length field)');
@@ -1893,7 +1916,7 @@ begin
 end;
 
 
-procedure TBIFFGrid.ShowExternalBook;
+procedure TBIFFGrid.ShowExternBook;
 var
   numBytes: Integer;
   w: Word;
@@ -1901,6 +1924,7 @@ var
   ansiStr: AnsiString;
   s: String;
   i, n: Integer;
+  b: Byte;
   rtfRuns: TRichTextFormattingRuns;
 begin
   BeginUpdate;
@@ -1914,8 +1938,11 @@ begin
     'Number of sheet names / number of sheets');
 
   if Length(FBuffer) - FBufferIndex = 2 then begin
+    numBytes := 2;
+    Move(FBuffer[FBufferIndex], w, numbytes);
     SetLength(ansiStr, 1);
-    Move(FBuffer[FBufferIndex], ansiStr[1], 1);
+    ansiStr[1] := char((w and $FF00) shr 8);
+    s := Format('%s (string bytes <#%.2x> <#%.2x>)', [ansistr, w and $00FF, (w and $FF00) shr 8]);
 
     ShowInRow(FCurrRow, FBufferIndex, numBytes, s,
       '(relict of BIFF5)');
@@ -2015,15 +2042,15 @@ begin
     for i:=1 to nREF do begin
       Move(FBuffer[FBufferIndex], w, numBytes);
       ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
-        Format('REF #%d: Index to EXTERNALBOOK record', [i]));
+        Format('REF #%d: Index to EXTERNBOOK record', [i]));
 
       Move(FBuffer[FBufferIndex], w, numBytes);
       ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
-        Format('REF #%d: Index to first sheet in EXTERNALBOOK sheet list', [i]));
+        Format('REF #%d: Index to first sheet in EXTERNBOOK sheet list', [i]));
 
       Move(FBuffer[FBufferIndex], w, numBytes);
       ShowInRow(FCurrRow, FBufferIndex, numBytes, IntToStr(WordLEToN(w)),
-        Format('REF #%d: Index to last sheet in EXTERNALBOOK sheet list', [i]));
+        Format('REF #%d: Index to last sheet in EXTERNBOOK sheet list', [i]));
     end;
   end;
 end;
