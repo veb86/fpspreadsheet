@@ -118,6 +118,7 @@ type
       var AFontSize: Double; var AFontStyle: TsHeaderFooterFontStyles;
       var AFontColor: TsColor);
     function ReadHeaderFooterText(ANode: TDOMNode): String;
+    procedure ReadPrintRanges(ATableNode: TDOMNode; ASheet: TsWorksheet);
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
     procedure ReadTableStyle(AStyleNode: TDOMNode);
@@ -2199,6 +2200,8 @@ begin
       pageLayout := ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'));
       if pageLayout <> nil then
         FWorksheet.PageLayout := pagelayout^;
+      // Read print ranges
+      ReadPrintRanges(TableNode, FWorksheet);
       // Apply table style
       ApplyTableStyle(FWorksheet, tablestylename);
       // Handle columns and rows
@@ -2945,6 +2948,45 @@ begin
     end;
     { Not found: try next node in the styles list }
     node := node.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadPrintRanges(ATableNode: TDOMNode;
+  ASheet: TsWorksheet);
+var
+  L: TStringList;
+  s, sheetname: String;
+  i, p: Integer;
+  r1,c1,r2,c2: Cardinal;
+begin
+  s := GetAttrValue(ATableNode, 'table:print-ranges');
+  if s = '' then
+    exit;
+  L := TStringList.Create;
+  try
+    L.Delimiter := ' ';
+    L.StrictDelimiter := true;
+    L.DelimitedText := s;
+    for i:=0 to L.Count-1 do begin
+      p := pos(':', L[i]);
+      s := Copy(L[i], 1, p-1);
+      ParseSheetCellString(s, sheetname, r1, c1, '.');
+      if (sheetname <> '') and (sheetname <> ASheet.Name) then
+      begin
+        FWorkbook.AddErrorMsg(rsDifferentSheetPrintRange, [L[i]]);
+        Continue;
+      end;
+      s := Copy(L[i], p+1, Length(L[i]));
+      ParseSheetCellString(s, sheetname, r2, c2, '.');
+      if (sheetname <> '') and (sheetname <> ASheet.name) then
+      begin
+        FWorkbook.AddErrorMsg(rsDifferentSheetPrintRange, [L[i]]);
+        Continue;
+      end;
+      ASheet.AddPrintRange(r1, c1, r2, c2);
+    end;
+  finally
+    L.Free;
   end;
 end;
 

@@ -92,6 +92,8 @@ resourcestring
 
   rsCannotSortMerged = 'The cell range cannot be sorted because it contains merged cells.';
 
+  rsDifferentSheetPrintRange = 'Print range "%s" requires a different worksheet.';
+
   // Colors
   rsAqua = 'aqua';
   rsBeige = 'beige';

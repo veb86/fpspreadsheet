@@ -26,6 +26,7 @@ type
     procedure TearDown; override;
     procedure TestWriteRead_PageLayout(AFormat: TsSpreadsheetFormat; ANumSheets, ATestMode: Integer);
     procedure TestWriteRead_PageMargins(AFormat: TsSpreadsheetFormat; ANumSheets, AHeaderFooterMode: Integer);
+    procedure TestWriteRead_PrintRanges(AFormat: TsSpreadsheetFormat; ANumSheets, ANumRanges: Integer);
       
   published
     { BIFF2 page layout tests }
@@ -272,6 +273,12 @@ type
     procedure TestWriteRead_ODS_HeaderFooterFontColor_1sheet;
     procedure TestWriteRead_ODS_HeaderFooterFontColor_2sheets;
     procedure TestWriteRead_ODS_HeaderFooterFontColor_3sheets;
+
+    procedure TestWriteRead_ODS_PrintRanges_1sheet_1Range;
+    procedure TestWriteRead_ODS_PrintRanges_1sheet_2Ranges;
+    procedure TestWriteRead_ODS_PrintRanges_2sheet_1Range;
+    procedure TestWriteRead_ODS_PrintRanges_2sheet_2Ranges;
+
   end;
 
 implementation
@@ -283,6 +290,12 @@ uses
 
 const
   PageLayoutSheet = 'PageLayout';
+
+const
+  SollRanges: Array[1..2] of TsCellRange = (
+    (Row1: 0; Col1: 0; Row2:10; Col2:20),
+    (Row1:20; Col1:30; Row2:25; Col2:40)
+  );
 
 
 { TSpreadWriteReadPageLayoutTests }
@@ -657,6 +670,56 @@ actual:
 '&LH&Y2&YO cm&X2&C&"Times New Roman"&18This is big&RThis is &Bbold&B,'#13#10'&Iitalic&I,'#13#10'&Uunderlined&U,'#13#10'&Edouble underlined&E,&Sstriked-out&S,'#13#10'&Ooutlined&O,'#13#10'&Hshadow'
 '&LH&Y2&YO cm&X2  &C&"Times New Roman"&18This is big&RThis is &Bbold&B,'#13#10'&Iitalic&I,'#13#10'&Uunderlined&U,'#13#10'&Edouble underlined&E,striked-out,'#13#10'&Ooutlined&O,'#13#10'&Hshadow'
 }
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_PrintRanges(
+  AFormat: TsSpreadsheetFormat; ANumSheets, ANumRanges: Integer);
+var
+  tempFile: String;
+  i, j: Integer;
+  MyWorkbook: TsWorkbook;
+  MyWorksheet: TsWorksheet;
+  rng: TsCellRange;
+begin
+  TempFile := GetTempFileName;
+
+  MyWorkbook := TsWorkbook.Create;
+  try
+    for i:= 1 to ANumSheets do
+    begin
+      MyWorksheet := MyWorkbook.AddWorksheet(PageLayoutSheet+IntToStr(i));
+      for j:=1 to ANumRanges do
+        MyWorksheet.AddPrintRange(SollRanges[j]);
+    end;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    CheckEquals(ANumSheets, MyWorkbook.GetWorksheetCount, 'Worksheet count mismatch');
+    for i := 1 to ANumSheets do
+    begin
+      MyWorksheet := MyWorkbook.GetWorksheetByIndex(i-1);
+      CheckEquals(ANumRanges, MyWorksheet.NumPrintRanges, 'Print range count mismatch');
+      for j:=1 to ANumRanges do
+      begin
+        rng := MyWorksheet.GetPrintRange(j-1);
+        CheckEquals(SollRanges[j].Row1, rng.Row1, Format('Row1 mismatch at i=%d, j=%d', [i, j]));
+        CheckEquals(SollRanges[j].Row2, rng.Row2, Format('Row2 mismatch at i=%d, j=%d', [i, j]));
+        CheckEquals(SollRanges[j].Col1, rng.Col1, Format('Col1 mismatch at i=%d, j=%d', [i, j]));
+        CheckEquals(SollRanges[j].Col2, rng.Col2, Format('Col2 mismatch at i=%d, j=%d', [i, j]));
+      end;
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
 
 { Tests for BIFF2 file format }
 
@@ -1670,6 +1733,25 @@ begin
   TestWriteRead_PageLayout(sfOpenDocument, 3, 9);
 end;
 
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_1sheet_1Range;
+begin
+  TestWriteRead_PrintRanges(sfOpenDocument, 1, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_1sheet_2Ranges;
+begin
+  TestWriteRead_PrintRanges(sfOpenDocument, 1, 2);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_2sheet_1Range;
+begin
+  TestWriteRead_PrintRanges(sfOpenDocument, 2, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_2sheet_2Ranges;
+begin
+  TestWriteRead_PrintRanges(sfOpenDocument, 2, 2);
+end;
 
 initialization
   RegisterTest(TSpreadWriteReadPageLayoutTests);
