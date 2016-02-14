@@ -280,6 +280,8 @@ type
     procedure WriteUTF8Text(ACell: PCell; AText: String;
       ARichTextparams: TsRichTextParams = nil); overload; deprecated 'Use WriteText';
 
+    procedure DeleteRichTextParams(ACell: PCell);
+
     { Writing of cell attributes }
     function WriteBackground(ARow, ACol: Cardinal; AStyle: TsFillStyle;
       APatternColor: TsColor = scTransparent;
@@ -498,6 +500,8 @@ type
 
     procedure SetRepeatedPrintCols(AFirstCol: Cardinal; ALastCol: Cardinal = UNASSIGNED_ROW_COL_INDEX);
     procedure SetRepeatedPrintRows(AFirstRow: Cardinal; ALastRow: Cardinal = UNASSIGNED_ROW_COL_INDEX);
+    function HasRepeatedPrintCols: Boolean;
+    function HasRepeatedPrintRows: Boolean;
 
     // Notification of changed cells
     procedure ChangedCell(ARow, ACol: Cardinal);
@@ -3375,6 +3379,22 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Determines whether the worksheet defines repeated print header columns
+-------------------------------------------------------------------------------}
+function TsWorksheet.HasRepeatedPrintCols: Boolean;
+begin
+  Result := PageLayout.RepeatedCols.FirstIndex <> UNASSIGNED_ROW_COL_INDEX;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines whether the worksheet defines repeated print header rows
+-------------------------------------------------------------------------------}
+function TsWorksheet.HasRepeatedPrintRows: Boolean;
+begin
+  Result := PageLayout.RepeatedRows.FirstIndex <> UNASSIGNED_ROW_COL_INDEX;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Removes the comment from a cell and releases the memory occupied by the node.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveComment(ACell: PCell);
@@ -3951,6 +3971,19 @@ function TsWorksheet.WriteTextAsHTML(ARow, ACol: Cardinal; AText: String): PCell
 begin
   Result := GetCell(ARow, ACol);
   WriteTextAsHTML(Result, AText);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes any previously assigned richtext parameters from a specific cell.
+  This action fully restores the font of the cell.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.DeleteRichTextParams(ACell: PCell);
+begin
+  if (ACell <> nil) and (Length(ACell^.RichTextParams) > 0) then
+  begin
+    SetLength(ACell^.RichTextParams, 0);
+    ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
