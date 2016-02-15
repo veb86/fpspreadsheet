@@ -94,6 +94,8 @@ type
     FDateMode: TDateModeODS;
     FFontFaces: TStringList;
     FRichTextFontList: TFPList;
+    FRepeatedCols: TsRowColRange;
+    FRepeatedRows: TsRowColRange;
     procedure ApplyColWidths;
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
     function ApplyTableStyle(ASheet: TsWorksheet; AStyleName: String): Boolean;
@@ -937,6 +939,11 @@ begin
   FFontFaces := TStringList.Create;
   FRichTextFontList := TFPList.Create;
 
+  FRepeatedRows.FirstIndex := UNASSIGNED_ROW_COL_INDEX;
+  FRepeatedRows.LastIndex := UNASSIGNED_ROW_COL_INDEX;
+  FRepeatedCols.FirstIndex := UNASSIGNED_ROW_COL_INDEX;
+  FRepeatedCols.LastIndex := UNASSIGNED_ROW_COL_INDEX;
+
   // Initial base date in case it won't be read from file
   FDateMode := dmODS1899;
 end;
@@ -1587,58 +1594,79 @@ end;
 procedure TsSpreadOpenDocReader.ReadColumns(ATableNode: TDOMNode);
 var
   col: Integer;
-  colNode: TDOMNode;
-  s: String;
-  defCellStyleIndex: Integer;
-  colStyleIndex: Integer;
-  colData: TColumnData;
-  colsRepeated: Integer;
-  j: Integer;
+  colNode, childnode: TDOMNode;
+  nodeName: String;
+  i: Integer;
+
+  procedure ProcessCol(AColNode: TDOMNode);
+  var
+    s: String;
+    colStyleIndex: Integer;
+    colData: TColumnData;
+    defCellStyleIndex: Integer;
+    colsRepeated: Integer;
+    j: Integer;
+  begin
+    s := GetAttrValue(AColNode, 'table:style-name');
+    colStyleIndex := FindColStyleByName(s);
+    if colStyleIndex <> -1 then
+    begin
+      defCellStyleIndex := -1;
+      s := GetAttrValue(AColNode, 'table:default-cell-style-name');
+      if s <> '' then
+      begin
+        defCellStyleIndex := FCellFormatList.FindIndexOfName(s); //FindCellStyleByName(s);
+        colData := TColumnData.Create;
+        colData.Col := col;
+        colData.ColStyleIndex := colStyleIndex;
+        colData.DefaultCellStyleIndex := defCellStyleIndex;
+        FColumnList.Add(colData);
+      end;
+      s := GetAttrValue(AColNode, 'table:number-columns-repeated');
+      if s = '' then
+        inc(col)
+      else
+      begin
+        colsRepeated := StrToInt(s);
+        if defCellStyleIndex > -1 then
+          for j:=1 to colsRepeated-1 do
+          begin
+            colData := TColumnData.Create;
+            colData.Col := col + j;
+            colData.ColStyleIndex := colStyleIndex;
+            colData.DefaultCellStyleIndex := defCellStyleIndex;
+            FColumnList.Add(colData);
+          end;
+        inc(col, colsRepeated);
+      end;
+    end;
+  end;
+
 begin
   // clear previous column list (from other sheets)
-  for j := FColumnList.Count-1 downto 0 do TObject(FColumnList[j]).Free;
+  for i := FColumnList.Count-1 downto 0 do TObject(FColumnList[i]).Free;
   FColumnList.Clear;
 
   col := 0;
-  colNode := ATableNode.FindNode('table:table-column');
+  colNode := ATableNode.FirstChild;
   while Assigned(colNode) do
   begin
-    if colNode.NodeName = 'table:table-column' then
-    begin;
-      s := GetAttrValue(colNode, 'table:style-name');
-      colStyleIndex := FindColStyleByName(s);
-      if colStyleIndex <> -1 then
+    nodename := colNode.NodeName;
+    if nodeName = 'table:table-header-columns' then
+    begin
+      if FRepeatedCols.FirstIndex = cardinal(UNASSIGNED_ROW_COL_INDEX) then
+        FRepeatedCols.FirstIndex := col;
+      childnode := colNode.FirstChild;
+      while Assigned(childnode) do
       begin
-        defCellStyleIndex := -1;
-        s := GetAttrValue(ColNode, 'table:default-cell-style-name');
-        if s <> '' then
-        begin
-          defCellStyleIndex := FCellFormatList.FindIndexOfName(s); //FindCellStyleByName(s);
-          colData := TColumnData.Create;
-          colData.Col := col;
-          colData.ColStyleIndex := colStyleIndex;
-          colData.DefaultCellStyleIndex := defCellStyleIndex;
-          FColumnList.Add(colData);
-        end;
-        s := GetAttrValue(ColNode, 'table:number-columns-repeated');
-        if s = '' then
-          inc(col)
-        else
-        begin
-          colsRepeated := StrToInt(s);
-          if defCellStyleIndex > -1 then
-            for j:=1 to colsRepeated-1 do
-            begin
-              colData := TColumnData.Create;
-              colData.Col := col + j;
-              colData.ColStyleIndex := colStyleIndex;
-              colData.DefaultCellStyleIndex := defCellStyleIndex;
-              FColumnList.Add(colData);
-            end;
-          inc(col, colsRepeated);
-        end;
+        ProcessCol(childnode);
+        childnode := childnode.NextSibling;
       end;
-    end;
+      FRepeatedCols.LastIndex := col-1;
+    end
+    else
+    if nodeName = 'table:table-column' then
+      ProcessCol(colnode);
     colNode := colNode.NextSibling;
   end;
 end;
@@ -2200,10 +2228,10 @@ begin
       pageLayout := ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'));
       if pageLayout <> nil then
       begin
-        // Protect already-known RepeatedCols/Rows
-        pagelayout^.RepeatedCols := FWorksheet.PageLayout.RepeatedCols;
-        pagelayout^.RepeatedRows := FWorksheet.PageLayout.RepeatedRows;
         FWorksheet.PageLayout := pagelayout^;
+        // Repeated cols/rows already have been determined.
+        FWorksheet.PageLayout.RepeatedRows := FRepeatedRows;
+        FWorksheet.PageLayout.RepeatedCols := FRepeatedCols;
       end;
       // Read print ranges
       ReadPrintRanges(TableNode, FWorksheet);
@@ -3041,10 +3069,9 @@ end;
 procedure TsSpreadOpenDocReader.ReadRowsAndCells(ATableNode: TDOMNode);
 var
   row: Integer;
-  cellNode, rowNode, childnode: TDOMNode;
+  rowNode, childnode: TDOMNode;
   nodeName: String;
   rowsRepeated: Integer;
-  r1, r2: Cardinal;
 
   procedure ProcessRow(ARowNode: TDOMNode);
   var
@@ -3180,8 +3207,6 @@ var
 begin
   rowsRepeated := 0;
   row := 0;
-  r1 := UNASSIGNED_ROW_COL_INDEX;
-  r2 := UNASSIGNED_ROW_COL_INDEX;
 
   rownode := ATableNode.FirstChild;
   while Assigned(rowNode) do
@@ -3191,19 +3216,19 @@ begin
     // Repeated print rows
     if nodeName = 'table:table-header-rows' then
     begin
+      if FRepeatedRows.FirstIndex = Cardinal(UNASSIGNED_ROW_COL_INDEX) then
+        FRepeatedRows.FirstIndex := row;
       childnode := rowNode.FirstChild;
       while Assigned(childnode) do
       begin
         nodename := childnode.NodeName;
         if nodename = 'table:table-row' then
         begin
-          if r1 = Cardinal(UNASSIGNED_ROW_COL_INDEX) then
-            r1 := row;
           ProcessRow(childnode);
-          r2 := row-1;
         end;
         childnode := childnode.NextSibling;
       end;
+      FRepeatedRows.LastIndex := row-1;
     end else
     // "normal" rows
     if nodeName = 'table:table-row' then
@@ -3212,9 +3237,6 @@ begin
     end;
     rowNode := rowNode.NextSibling;
   end;
-
-  if r1 <> cardinal(UNASSIGNED_ROW_COL_INDEX) then
-    FWorksheet.SetRepeatedPrintRows(r1, r2);
 end;
 
 procedure TsSpreadOpenDocReader.ReadRowStyle(AStyleNode: TDOMNode);

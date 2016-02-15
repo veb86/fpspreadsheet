@@ -28,6 +28,8 @@ type
     procedure TestWriteRead_PageMargins(AFormat: TsSpreadsheetFormat; ANumSheets, AHeaderFooterMode: Integer);
     procedure TestWriteRead_PrintRanges(AFormat: TsSpreadsheetFormat;
       ANumSheets, ANumRanges: Integer; ASpaceInName: Boolean);
+    procedure TestWriteRead_RepeatedColRows(AFormat: TsSpreadsheetFormat;
+      AFirstCol, ALastCol, AFirstRow, ALastRow: Integer);
       
   published
     { BIFF2 page layout tests }
@@ -231,6 +233,15 @@ type
     procedure TestWriteRead_OOXML_PrintRanges_2sheet_1Range_Space;
     procedure TestWriteRead_OOXML_PrintRanges_2sheet_2Ranges_Space;
 
+    procedure TestWriteRead_OOXML_RepeatedRow_0;
+    procedure TestWriteRead_OOXML_RepeatedRows_0_1;
+    procedure TestWriteRead_OOXML_RepeatedRows_1_3;
+    procedure TestWriteRead_OOXML_RepeatedCol_0;
+    procedure TestWriteRead_OOXML_RepeatedCols_0_1;
+    procedure TestWriteRead_OOXML_RepeatedCols_1_3;
+    procedure TestWriteRead_OOXML_RepeatedCol_0_Row_0;
+    procedure TestWriteRead_OOXML_RepeatedCols_0_1_Rows_0_1;
+
     { OpenDocument page layout tests }
     procedure TestWriteRead_ODS_PageMargins_1sheet_0;
     procedure TestWriteRead_ODS_PageMargins_1sheet_1;
@@ -294,6 +305,15 @@ type
     procedure TestWriteRead_ODS_PrintRanges_1sheet_2Ranges_Space;
     procedure TestWriteRead_ODS_PrintRanges_2sheet_1Range_Space;
     procedure TestWriteRead_ODS_PrintRanges_2sheet_2Ranges_Space;
+
+    procedure TestWriteRead_ODS_RepeatedRow_0;
+    procedure TestWriteRead_ODS_RepeatedRows_0_1;
+    procedure TestWriteRead_ODS_RepeatedRows_1_3;
+    procedure TestWriteRead_ODS_RepeatedCol_0;
+    procedure TestWriteRead_ODS_RepeatedCols_0_1;
+    procedure TestWriteRead_ODS_RepeatedCols_1_3;
+    procedure TestWriteRead_ODS_RepeatedCol_0_Row_0;
+    procedure TestWriteRead_ODS_RepeatedCols_0_1_Rows_0_1;
   end;
 
 implementation
@@ -731,6 +751,44 @@ begin
         CheckEquals(SollRanges[j].Col2, rng.Col2, Format('Col2 mismatch at i=%d, j=%d', [i, j]));
       end;
     end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_RepeatedColRows(
+  AFormat: TsSpreadsheetFormat; AFirstCol, ALastCol, AFirstRow, ALastRow: Integer);
+var
+  tempFile: String;
+  i, j: Integer;
+  MyWorkbook: TsWorkbook;
+  MyWorksheet: TsWorksheet;
+  rng: TsCellRange;
+  sheetname: String;
+begin
+  TempFile := GetTempFileName;
+
+  MyWorkbook := TsWorkbook.Create;
+  try
+    sheetname := PageLayoutSheet;
+    MyWorksheet := MyWorkbook.AddWorksheet(sheetname);
+    MyWorksheet.SetRepeatedPrintRows(AFirstRow, ALastRow);
+    MyWorksheet.SetRepeatedPrintCols(AFirstCol, ALastCol);
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    MyWorksheet := MyWorkbook.GetWorksheetByName(sheetname);
+    CheckEquals(AFirstRow, MyWorksheet.Pagelayout.RepeatedRows.FirstIndex, 'First repeated row index mismatch');
+    CheckEquals(ALastRow, MyWorksheet.PageLayout.RepeatedRows.LastIndex, 'Last repeated row index mismatch');
+    CheckEquals(AFirstCol, MyWorksheet.PageLayout.RepeatedCols.FirstIndex, 'First repeated col index mismatch');
+    CheckEquals(ALastCol, MyWorksheet.PageLayout.RepeatedCols.LastIndex, 'Last repeated col index mismatch');
   finally
     MyWorkbook.Free;
     DeleteFile(TempFile);
@@ -1565,6 +1623,46 @@ begin
   TestWriteRead_PrintRanges(sfOOXML, 2, 2, true);
 end;
 
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_RepeatedRow_0;
+begin
+  TestWriteRead_RepeatedColRows(sfOOXML, -1, -1, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_RepeatedRows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfOOXML, -1, -1, 0, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_RepeatedRows_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfOOXML, -1, -1, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_RepeatedCol_0;
+begin
+  TestWriteRead_RepeatedColRows(sfOOXML, 0, 0, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_RepeatedCols_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfOOXML, 0, 1, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_RepeatedCols_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfOOXML, 1, 3, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_RepeatedCol_0_Row_0;
+begin
+  TestWriteRead_RepeatedColRows(sfOOXML, 0, 0, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_RepeatedCols_0_1_Rows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfOOXML, 0, 1, 0, 1);
+end;
+
 
 { Tests for Open Document file format }
 
@@ -1829,6 +1927,48 @@ procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_2sheet_2
 begin
   TestWriteRead_PrintRanges(sfOpenDocument, 2, 2, true);
 end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_RepeatedRow_0;
+begin
+  TestWriteRead_RepeatedColRows(sfOpenDocument, -1, -1, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_RepeatedRows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfOpenDocument, -1, -1, 0, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_RepeatedRows_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfOpenDocument, -1, -1, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_RepeatedCol_0;
+begin
+  TestWriteRead_RepeatedColRows(sfOpenDocument, 0, 0, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_RepeatedCols_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfOpenDocument, 0, 1, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_RepeatedCols_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfOpenDocument, 1, 3, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_RepeatedCol_0_Row_0;
+begin
+  TestWriteRead_RepeatedColRows(sfOpenDocument, 0, 0, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_RepeatedCols_0_1_Rows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfOpenDocument, 0, 1, 0, 1);
+end;
+
+
 
 initialization
   RegisterTest(TSpreadWriteReadPageLayoutTests);
