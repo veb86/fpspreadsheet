@@ -2199,7 +2199,12 @@ begin
       // Read page layout
       pageLayout := ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'));
       if pageLayout <> nil then
+      begin
+        // Protect already-known RepeatedCols/Rows
+        pagelayout^.RepeatedCols := FWorksheet.PageLayout.RepeatedCols;
+        pagelayout^.RepeatedRows := FWorksheet.PageLayout.RepeatedRows;
         FWorksheet.PageLayout := pagelayout^;
+      end;
       // Read print ranges
       ReadPrintRanges(TableNode, FWorksheet);
       // Apply table style
@@ -2981,8 +2986,12 @@ begin
                 while (i <= Length(s)) and (s[i] = ' ') do
                   inc(i);
                 p := i;
-                ch := s[p];
-                Continue;
+                if p <= Length(s) then
+                begin
+                  ch := s[p];
+                  Continue;
+                end else
+                  break;
               end;
       end;
       inc(i);
@@ -3032,45 +3041,31 @@ end;
 procedure TsSpreadOpenDocReader.ReadRowsAndCells(ATableNode: TDOMNode);
 var
   row: Integer;
-  col: Integer;
-  cellNode, rowNode: TDOMNode;
+  cellNode, rowNode, childnode: TDOMNode;
   nodeName: String;
-  paramValueType, paramFormula, tableStyleName: String;
-  paramColsSpanned, paramRowsSpanned: String;
-  paramColsRepeated, paramRowsRepeated: String;
   rowsRepeated: Integer;
-  rowsSpanned: Integer;
-  colsSpanned: Integer;
-  rowStyleName: String;
-  rowStyleIndex: Integer;
-  rowStyle: TRowStyleData;
-  rowHeight: Single;
-  autoRowHeight: Boolean;
-  i, n: Integer;
-  cell: PCell;
-begin
-  rowsRepeated := 0;
-  row := 0;
+  r1, r2: Cardinal;
 
-  rowNode := ATableNode.FindNode('table:table-row');
-  while Assigned(rowNode) do
+  procedure ProcessRow(ARowNode: TDOMNode);
+  var
+    rowStyleName: String;
+    rowStyleIndex: Integer;
+    rowStyle: TRowStyleData;
+    rowHeight: Single;
+    autoRowHeight: Boolean;
+    col: Integer;
+    cellNode: TDOMNode;
+    nodeName: String;
+    cell: PCell;
+    paramValueType, paramFormula, tableStyleName: String;
+    paramColsSpanned, paramRowsSpanned: String;
+    paramColsRepeated, paramRowsRepeated: String;
+    rowsSpanned: Integer;
+    colsSpanned: Integer;
+    i, n: Integer;
   begin
-    nodename := rowNode.NodeName;
-
-    // Skip all non table-row nodes:
-    // Nodes '#text' occur due to indentation spaces which are not skipped
-    // automatically any more due to PreserveWhiteSpace option applied
-    // to ReadXMLFile
-    // And there are other nodes like 'table:named-expression' which we don't
-    // need (at the moment)
-    if nodeName <> 'table:table-row' then
-    begin
-      rowNode := rowNode.NextSibling;
-      Continue;
-    end;
-
     // Read rowstyle
-    rowStyleName := GetAttrValue(rowNode, 'table:style-name');
+    rowStyleName := GetAttrValue(ARowNode, 'table:style-name');
     rowStyleIndex := FindRowStyleByName(rowStyleName);
     if rowStyleIndex > -1 then        // just for safety
     begin
@@ -3087,7 +3082,8 @@ begin
     col := 0;
 
     //process each cell of the row
-    cellNode := rowNode.FindNode('table:table-cell');
+    cellNode := ARowNode.FirstChild;
+    //  cellNode := rowNode.FindNode('table:table-cell');
     while Assigned(cellNode) do
     begin
       nodeName := cellNode.NodeName;
@@ -3098,7 +3094,7 @@ begin
         paramFormula := GetAttrValue(CellNode, 'table:formula');
         tableStyleName := GetAttrValue(CellNode, 'table:style-name');
 
-        if ParamFormula <> '' then
+        if paramFormula <> '' then
           ReadFormula(row, col, cellNode)
         else
         begin
@@ -3115,16 +3111,16 @@ begin
             ReadBoolean(row, col, cellNode)
           else if (paramValueType = '') and (tableStyleName <> '') then
             ReadBlank(row, col, cellNode);
-          { NOTE: Empty cells having no cell format, but a column format only,
-            are skipped here. --> Currently the reader does not detect the format
-            of empty cells correctly.
-            It would work if the "(tableStyleName <> '')" would be omitted, but
-            then the reader would create a record for all 1E9 cells prepared by
-            the Excel2007 export --> crash!
-            The column format is available in the FColumnList, but since the usage
-            of colsSpanned in the row it is possible to miss the correct column format.
-            Pretty nasty situation! }
-          end;
+            { NOTE: Empty cells having no cell format, but a column format only,
+              are skipped here. --> Currently the reader does not detect the format
+              of empty cells correctly.
+              It would work if the "(tableStyleName <> '')" would be omitted, but
+              then the reader would create a record for all 1E9 cells prepared by
+              the Excel2007 export --> crash!
+              The column format is available in the FColumnList, but since the usage
+              of colsSpanned in the row it is possible to miss the correct column format.
+              Pretty nasty situation! }
+        end;
 
         // Read cell comment
         ReadComment(row, col, cellNode);
@@ -3151,8 +3147,8 @@ begin
         begin
           cell := FWorksheet.FindCell(row, col);
           if cell <> nil then
-            for i:=1 to n-1 do
-              FWorksheet.CopyCell(row, col, row, col+i);
+          for i:=1 to n-1 do
+            FWorksheet.CopyCell(row, col, row, col+i);
         end;
       end
       else
@@ -3179,12 +3175,46 @@ begin
         FWorksheet.WriteRowHeight(row + i - 1, rowHeight);
 
     row := row + rowsRepeated;
+  end;
 
+begin
+  rowsRepeated := 0;
+  row := 0;
+  r1 := UNASSIGNED_ROW_COL_INDEX;
+  r2 := UNASSIGNED_ROW_COL_INDEX;
+
+  rownode := ATableNode.FirstChild;
+  while Assigned(rowNode) do
+  begin
+    nodename := rowNode.NodeName;
+
+    // Repeated print rows
+    if nodeName = 'table:table-header-rows' then
+    begin
+      childnode := rowNode.FirstChild;
+      while Assigned(childnode) do
+      begin
+        nodename := childnode.NodeName;
+        if nodename = 'table:table-row' then
+        begin
+          if r1 = Cardinal(UNASSIGNED_ROW_COL_INDEX) then
+            r1 := row;
+          ProcessRow(childnode);
+          r2 := row-1;
+        end;
+        childnode := childnode.NextSibling;
+      end;
+    end else
+    // "normal" rows
+    if nodeName = 'table:table-row' then
+    begin
+      ProcessRow(rowNode);
+    end;
     rowNode := rowNode.NextSibling;
-  end; // while Assigned(rowNode)
+  end;
 
-  cell := FWorksheet.FindCell(2, 1);
-
+  if r1 <> cardinal(UNASSIGNED_ROW_COL_INDEX) then
+    FWorksheet.SetRepeatedPrintRows(r1, r2);
 end;
 
 procedure TsSpreadOpenDocReader.ReadRowStyle(AStyleNode: TDOMNode);
