@@ -2958,31 +2958,68 @@ var
   s, sheetname: String;
   i, p: Integer;
   r1,c1,r2,c2: Cardinal;
+  inName: Boolean;
+  ch:Char;
 begin
   s := GetAttrValue(ATableNode, 'table:print-ranges');
   if s = '' then
     exit;
   L := TStringList.Create;
   try
-    L.Delimiter := ' ';
-    L.StrictDelimiter := true;
-    L.DelimitedText := s;
+    // Scan the string for spaces. But note: Spaces may be contained also in
+    // the sheet names!
+    s := s + ' ';
+    i := 1;
+    p := 1;
+    inName := false;
+    while (i <= Length(s)) do
+    begin
+      case s[i] of
+        '''': inName := not inName;
+        ' ' : if not inName then begin
+                L.Add(Copy(s, p, i-p));
+                while (i <= Length(s)) and (s[i] = ' ') do
+                  inc(i);
+                p := i;
+                ch := s[p];
+                Continue;
+              end;
+      end;
+      inc(i);
+    end;
+
+    // L lists all the ranges. Split each range into its components.
     for i:=0 to L.Count-1 do begin
+      s := L[i];
       p := pos(':', L[i]);
       s := Copy(L[i], 1, p-1);
       ParseSheetCellString(s, sheetname, r1, c1, '.');
-      if (sheetname <> '') and (sheetname <> ASheet.Name) then
+      if (sheetname <> '') then
       begin
-        FWorkbook.AddErrorMsg(rsDifferentSheetPrintRange, [L[i]]);
-        Continue;
+        if (sheetname[1] = '''') then
+          Delete(sheetname, 1,1);
+        if (sheetname[Length(sheetname)] = '''') then
+          Delete(sheetname, Length(sheetname), 1);
+        if (sheetname <> ASheet.Name) then
+        begin
+          FWorkbook.AddErrorMsg(rsDifferentSheetPrintRange, [L[i]]);
+          Continue;
+        end;
       end;
       s := Copy(L[i], p+1, Length(L[i]));
       ParseSheetCellString(s, sheetname, r2, c2, '.');
-      if (sheetname <> '') and (sheetname <> ASheet.name) then
-      begin
-        FWorkbook.AddErrorMsg(rsDifferentSheetPrintRange, [L[i]]);
-        Continue;
+      if (sheetname <> '') then begin
+        if (sheetname[1] = '''') then
+          Delete(sheetname, 1, 1);
+        if (sheetname[Length(sheetname)] = '''') then
+          Delete(sheetname, Length(sheetname), 1);
+        if (sheetname <> ASheet.name) then
+        begin
+          FWorkbook.AddErrorMsg(rsDifferentSheetPrintRange, [L[i]]);
+          Continue;
+        end;
       end;
+      // Add found range to worksheet
       ASheet.AddPrintRange(r1, c1, r2, c2);
     end;
   finally
@@ -4143,7 +4180,7 @@ begin
   for i:=0 to Workbook.GetWorksheetCount-1 do
   begin
     sheet := Workbook.GetWorksheetByIndex(i);
-    if sheet = Workbook.ActiveWorksheet then actSheet := sheet.Name;
+    if sheet = Workbook.ActiveWorksheet then actSheet := UTF8TextToXMLText(sheet.Name);
     if not (soShowGridLines in sheet.Options) then showGrid := false;
     if not (soShowHeaders in sheet.Options) then showHeaders := false;
   end;
@@ -4331,7 +4368,7 @@ begin
   // Header
   AppendToStream(AStream, Format(
     '<table:table table:name="%s" table:style-name="ta%d" %s>', [
-    FWorkSheet.Name, ASheetIndex+1, WritePrintRangesAsXMLString(FWorksheet)
+    UTF8TextToXMLText(FWorkSheet.Name), ASheetIndex+1, WritePrintRangesAsXMLString(FWorksheet)
   ]));
 
   // columns
@@ -4668,6 +4705,8 @@ var
     Result := Result + '</style:master-page>';
   end;
 
+var
+  sheetname: String;
 begin
   defFnt := TsHeaderFooterFont.Create(Workbook.GetDefaultFont);
 
@@ -4684,8 +4723,9 @@ begin
 
   for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheetname := UTF8TextToXMLText(sheet.name);
     AppendToStream(AStream,
-      MasterPageAsString('PageStyle_5f_' + sheet.Name, 'PageStyle_' + sheet.Name,
+      MasterPageAsString('PageStyle_5f_' + sheetName, 'PageStyle_' + sheetname,
         'Mpm' + IntToStr(3+i), sheet.PageLayout));
   end;
 
@@ -4703,10 +4743,11 @@ end;
 procedure TsSpreadOpenDocWriter.WriteNamedExpressions(AStream: TStream;
   ASheet: TsWorksheet);
 var
-  stotal, srng: String;
+  stotal, srng, sheetname: String;
   j: Integer;
   prng: TsCellRange;
 begin
+  sheetname := UTF8TextToXMLText(ASheet.Name);
   stotal := '';
 
   // Cell block of print range
@@ -4715,7 +4756,7 @@ begin
   begin
     prng := ASheet.GetPrintRange(j);
     srng := srng + ';' + Format('[$%s.%s]', [
-      ASheet.Name, GetCellRangeString(prng.Row1, prng.Col1, prng.Row2, prng.Col2, [])
+      sheetname, GetCellRangeString(prng.Row1, prng.Col1, prng.Row2, prng.Col2, [])
     ]);
   end;
   if srng <> '' then
@@ -4723,7 +4764,7 @@ begin
     Delete(srng, 1, 1);
     stotal := stotal + Format(
       '<table:named-expression table:name="_xlnm.Print_Area" table:base-cell-address="$%s.$A$1" table:expression="%s" />',
-      [ASheet.Name, srng]
+      [sheetname, srng]
     );
   end;
 
@@ -5647,6 +5688,7 @@ var
   i: Integer;
   rng: TsCellRange;
   srng: String;
+  sheetName: String;
 begin
   if ASheet.NumPrintRanges > 0 then
   begin
@@ -5654,9 +5696,12 @@ begin
     for i := 0 to ASheet.NumPrintRanges - 1 do
     begin
       rng := ASheet.GetPrintRange(i);
+      if pos(' ', ASheet.Name) > 0 then
+        sheetName := '&apos;' + UTF8TextToXMLText(ASheet.Name) + '&apos;' else
+        sheetname := UTF8TextToXMLText(ASheet.Name);
       Result := Result + ' ' + Format('%s.%s:%s.%s', [
-        ASheet.Name, GetCellString(rng.Row1,rng.Col1),
-        ASheet.Name, GetCellString(rng.Row2,rng.Col2)
+        sheetName, GetCellString(rng.Row1,rng.Col1),
+        sheetName, GetCellString(rng.Row2,rng.Col2)
       ]);
     end;
     if Result <> '' then
@@ -5672,6 +5717,7 @@ procedure TsSpreadOpenDocWriter.WriteTableSettings(AStream: TStream);
 var
   i: Integer;
   sheet: TsWorkSheet;
+  sheetname: String;
   hsm: Integer;         // HorizontalSplitMode
   vsm: Integer;         // VerticalSplitMode
   asr: Integer;         // ActiveSplitRange
@@ -5680,9 +5726,10 @@ begin
   for i:=0 to Workbook.GetWorksheetCount-1 do
   begin
     sheet := Workbook.GetWorksheetByIndex(i);
+    sheetname := UTF8TextToXMLText(sheet.Name);
 
     AppendToStream(AStream,
-      '<config:config-item-map-entry config:name="' + sheet.Name + '">');
+      '<config:config-item-map-entry config:name="' + sheetname + '">');
 
     hsm := 0; vsm := 0; asr := 2;
     if (soHasFrozenPanes in sheet.Options) then
@@ -5745,11 +5792,12 @@ procedure TsSpreadOpenDocWriter.WriteTableStyles(AStream: TStream);
 var
   i: Integer;
   sheet: TsWorksheet;
-  bidi: String;
+  sheetname, bidi: String;
 begin
   for i:=0 to FWorkbook.GetWorksheetCount-1 do
   begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheetname := UTF8TextToXMLText(sheet.Name);
     case sheet.BiDiMode of
       bdDefault: bidi := '';
       bdLTR    : bidi := 'style:writing-mode="lr-tb" ';
@@ -5759,7 +5807,7 @@ begin
       '<style:style style:name="ta%d" style:family="table" style:master-page-name="PageStyle_5f_%s">' +
         '<style:table-properties table:display="true" %s/>' +
       '</style:style>', [
-      i+1, sheet.Name,
+      i+1, UTF8TextToXMLText(sheetname),
       bidi
     ]));
   end;

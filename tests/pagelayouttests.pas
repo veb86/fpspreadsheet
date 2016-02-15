@@ -26,7 +26,8 @@ type
     procedure TearDown; override;
     procedure TestWriteRead_PageLayout(AFormat: TsSpreadsheetFormat; ANumSheets, ATestMode: Integer);
     procedure TestWriteRead_PageMargins(AFormat: TsSpreadsheetFormat; ANumSheets, AHeaderFooterMode: Integer);
-    procedure TestWriteRead_PrintRanges(AFormat: TsSpreadsheetFormat; ANumSheets, ANumRanges: Integer);
+    procedure TestWriteRead_PrintRanges(AFormat: TsSpreadsheetFormat;
+      ANumSheets, ANumRanges: Integer; ASpaceInName: Boolean);
       
   published
     { BIFF2 page layout tests }
@@ -220,6 +221,16 @@ type
     procedure TestWriteRead_OOXML_HeaderFooterFontColor_2sheets;
     procedure TestWriteRead_OOXML_HeaderFooterFontColor_3sheets;
 
+    procedure TestWriteRead_OOXML_PrintRanges_1sheet_1Range_NoSpace;
+    procedure TestWriteRead_OOXML_PrintRanges_1sheet_2Ranges_NoSpace;
+    procedure TestWriteRead_OOXML_PrintRanges_2sheet_1Range_NoSpace;
+    procedure TestWriteRead_OOXML_PrintRanges_2sheet_2Ranges_NoSpace;
+
+    procedure TestWriteRead_OOXML_PrintRanges_1sheet_1Range_Space;
+    procedure TestWriteRead_OOXML_PrintRanges_1sheet_2Ranges_Space;
+    procedure TestWriteRead_OOXML_PrintRanges_2sheet_1Range_Space;
+    procedure TestWriteRead_OOXML_PrintRanges_2sheet_2Ranges_Space;
+
     { OpenDocument page layout tests }
     procedure TestWriteRead_ODS_PageMargins_1sheet_0;
     procedure TestWriteRead_ODS_PageMargins_1sheet_1;
@@ -274,17 +285,21 @@ type
     procedure TestWriteRead_ODS_HeaderFooterFontColor_2sheets;
     procedure TestWriteRead_ODS_HeaderFooterFontColor_3sheets;
 
-    procedure TestWriteRead_ODS_PrintRanges_1sheet_1Range;
-    procedure TestWriteRead_ODS_PrintRanges_1sheet_2Ranges;
-    procedure TestWriteRead_ODS_PrintRanges_2sheet_1Range;
-    procedure TestWriteRead_ODS_PrintRanges_2sheet_2Ranges;
+    procedure TestWriteRead_ODS_PrintRanges_1sheet_1Range_NoSpace;
+    procedure TestWriteRead_ODS_PrintRanges_1sheet_2Ranges_NoSpace;
+    procedure TestWriteRead_ODS_PrintRanges_2sheet_1Range_NoSpace;
+    procedure TestWriteRead_ODS_PrintRanges_2sheet_2Ranges_NoSpace;
 
+    procedure TestWriteRead_ODS_PrintRanges_1sheet_1Range_Space;
+    procedure TestWriteRead_ODS_PrintRanges_1sheet_2Ranges_Space;
+    procedure TestWriteRead_ODS_PrintRanges_2sheet_1Range_Space;
+    procedure TestWriteRead_ODS_PrintRanges_2sheet_2Ranges_Space;
   end;
 
 implementation
 
 uses
-  typinfo, contnrs,
+  typinfo, contnrs, strutils,
   fpsutils, fpsHeaderFooterParser;
 //  uriparser, lazfileutils, fpsutils;
 
@@ -673,13 +688,14 @@ actual:
 
 
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_PrintRanges(
-  AFormat: TsSpreadsheetFormat; ANumSheets, ANumRanges: Integer);
+  AFormat: TsSpreadsheetFormat; ANumSheets, ANumRanges: Integer; ASpaceInName: Boolean);
 var
   tempFile: String;
   i, j: Integer;
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
   rng: TsCellRange;
+  sheetname: String;
 begin
   TempFile := GetTempFileName;
 
@@ -687,7 +703,8 @@ begin
   try
     for i:= 1 to ANumSheets do
     begin
-      MyWorksheet := MyWorkbook.AddWorksheet(PageLayoutSheet+IntToStr(i));
+      sheetname := PageLayoutSheet + IfThen(ASpaceInName, ' ', '') + IntToStr(i);
+      MyWorksheet := MyWorkbook.AddWorksheet(sheetname);
       for j:=1 to ANumRanges do
         MyWorksheet.AddPrintRange(SollRanges[j]);
     end;
@@ -1508,6 +1525,46 @@ begin
   TestWriteRead_PageLayout(sfOOXML, 3, 9);
 end;
 
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PrintRanges_1sheet_1Range_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfOOXML, 1, 1, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PrintRanges_1sheet_2Ranges_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfOOXML, 1, 2, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PrintRanges_2sheet_1Range_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfOOXML, 2, 1, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PrintRanges_2sheet_2Ranges_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfOOXML, 2, 2, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PrintRanges_1sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfOOXML, 1, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PrintRanges_1sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfOOXML, 1, 2, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PrintRanges_2sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfOOXML, 2, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_PrintRanges_2sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfOOXML, 2, 2, true);
+end;
+
 
 { Tests for Open Document file format }
 
@@ -1733,24 +1790,44 @@ begin
   TestWriteRead_PageLayout(sfOpenDocument, 3, 9);
 end;
 
-procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_1sheet_1Range;
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_1sheet_1Range_NoSpace;
 begin
-  TestWriteRead_PrintRanges(sfOpenDocument, 1, 1);
+  TestWriteRead_PrintRanges(sfOpenDocument, 1, 1, false);
 end;
 
-procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_1sheet_2Ranges;
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_1sheet_2Ranges_NoSpace;
 begin
-  TestWriteRead_PrintRanges(sfOpenDocument, 1, 2);
+  TestWriteRead_PrintRanges(sfOpenDocument, 1, 2, false);
 end;
 
-procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_2sheet_1Range;
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_2sheet_1Range_NoSpace;
 begin
-  TestWriteRead_PrintRanges(sfOpenDocument, 2, 1);
+  TestWriteRead_PrintRanges(sfOpenDocument, 2, 1, false);
 end;
 
-procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_2sheet_2Ranges;
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_2sheet_2Ranges_NoSpace;
 begin
-  TestWriteRead_PrintRanges(sfOpenDocument, 2, 2);
+  TestWriteRead_PrintRanges(sfOpenDocument, 2, 2, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_1sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfOpenDocument, 1, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_1sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfOpenDocument, 1, 2, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_2sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfOpenDocument, 2, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_ODS_PrintRanges_2sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfOpenDocument, 2, 2, true);
 end;
 
 initialization

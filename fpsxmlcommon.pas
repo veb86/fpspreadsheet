@@ -22,6 +22,10 @@ type
 function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
 function GetNodeValue(ANode: TDOMNode): String;
 
+function UTF8TextToXMLText(AText: string; ProcessLineEndings: Boolean = false): string;
+function ValidXMLText(var AText: string; ReplaceSpecialChars: Boolean = true;
+  ProcessLineEndings: Boolean = false): Boolean;
+
 procedure UnzipFile(AZipFileName, AZippedFile, ADestFolder: String);
 function UnzipToStream(AZipStream: TStream; const AZippedFile: String;
   ADestStream: TStream): Boolean;
@@ -75,6 +79,103 @@ begin
     Result := child.NodeValue;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Converts a string encoded in UTF8 to a string usable in XML. For this purpose,
+  some characters must be translated.
+
+  @param   AText               Input string encoded as UTF8
+  @param   ProcessLineEndings  If TRUE line ending characters are replaced by
+                               their HTML entities (e.g., #10 --> '&#10;'
+  @return  String usable in XML with some characters replaced by the HTML codes.
+-------------------------------------------------------------------------------}
+function UTF8TextToXMLText(AText: string;
+  ProcessLineEndings: Boolean = false): string;
+var
+  Idx: Integer;
+  AppoSt: string;
+begin
+  Result := '';
+  idx := 1;
+  while idx <= Length(AText) do
+  begin
+    case AText[Idx] of
+      '&': begin
+        AppoSt := Copy(AText, Idx, 6);
+        if (Pos('&amp;',  AppoSt) = 1) or
+           (Pos('&lt;',   AppoSt) = 1) or
+           (Pos('&gt;',   AppoSt) = 1) or
+           (Pos('&quot;', AppoSt) = 1) or
+           (Pos('&apos;', AppoSt) = 1) or
+           (Pos('&#37;',  AppoSt) = 1)     // %
+        then begin
+          //'&' is the first char of a special chat, it must not be converted
+          Result := Result + AText[Idx];
+        end else begin
+          Result := Result + '&amp;';
+        end;
+      end;
+      '<': Result := Result + '&lt;';
+      '>': Result := Result + '&gt;';
+      '"': Result := Result + '&quot;';
+      '''':Result := Result + '&apos;';
+      '%': Result := Result + '&#37;';
+      #10: if ProcessLineEndings then
+             Result := Result + '&#10;' else
+             Result := Result + #10;
+      #13: if ProcessLineEndings then
+             Result := Result + '&#13;' else
+             Result := Result + #13;
+      {     this breaks multi-line labels in xlsx
+      #10: begin
+             Result := Result + '<br />';
+             if (idx < Length(AText)) and (AText[idx+1] = #13) then inc(idx);
+           end;
+      #13: begin
+             Result := Result + '<br />';
+             if (idx < Length(AText)) and (AText[idx+1] = #10) then inc(idx);
+           end;
+           }
+    else
+      Result := Result + AText[Idx];
+    end;
+    inc(idx);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks a string for characters that are not permitted in XML strings.
+  The function returns FALSE if a character <#32 is contained (except for
+  #9, #10, #13), TRUE otherwise. Invalid characters are replaced by a box symbol.
+
+  If ReplaceSpecialChars is TRUE, some other characters are converted
+  to valid HTML codes by calling UTF8TextToXMLText
+
+  @param  AText                String to be checked. Is replaced by valid string.
+  @param  ReplaceSpecialChars  Special characters are replaced by their HTML
+                               codes (e.g. '>' --> '&gt;')
+  @param  ProcessLineEndings   If TRUE line ending characters are replaced by
+                               their HTML entities.
+  @return FALSE if characters < #32 were replaced, TRUE otherwise.
+-------------------------------------------------------------------------------}
+function ValidXMLText(var AText: string;
+  ReplaceSpecialChars: Boolean = true;
+  ProcessLineEndings: Boolean = false): Boolean;
+const
+  BOX = #$E2#$8E#$95;
+var
+  i: Integer;
+begin
+  Result := true;
+  for i := Length(AText) downto 1 do
+    if (AText[i] < #32) and not (AText[i] in [#9, #10, #13]) then begin
+      // Replace invalid character by box symbol
+      Delete(AText, i, 1);
+      Insert(BOX, AText, i);
+      Result := false;
+    end;
+  if ReplaceSpecialChars then
+    AText := UTF8TextToXMLText(AText, ProcessLineEndings);
+end;
 
 {------------------------------------------------------------------------------}
 {                                 Unzipping                                    }

@@ -35,6 +35,8 @@ type
     procedure FractionTest(AMaxDigits: Integer);
     procedure WriteToStreamTest(AFormat: TsSpreadsheetFormat);
 
+    procedure InvalidSheetName(AFormat: TsSpreadsheetFormat);
+
   published
     // Tests getting Excel style A1 cell locations from row/column based locations.
     // Bug 26447
@@ -42,6 +44,9 @@ type
     // Tests cell references given in the "R1C1" syntax.
     procedure TestCellString_R1C1;
     procedure TestCellRangeString_R1C1;
+    // Tests row and column string names
+    procedure TestRowString;
+    procedure TestColString;
 
     //todo: add more calls, rename sheets, try to get sheets with invalid indexes etc
     //(see strings tests for how to deal with expected exceptions)
@@ -50,7 +55,9 @@ type
     // GetSheetByName was implemented in SVN revision 2857
     procedure GetSheetByName;
     // Test for invalid sheet names
-    procedure InvalidSheetName;
+    procedure InvalidSheetName_BIFF8;
+    procedure InvalidSheetName_XLSX;
+    procedure InvalidSheetName_ODS;
     // Tests whether overwriting existing file works
     procedure OverwriteExistingFile;
     // Write out date cell and try to read as UTF8; verify if contents the same
@@ -112,19 +119,23 @@ begin
   end;
 end;
 
-procedure TSpreadInternalTests.InvalidSheetName;
+procedure TSpreadInternalTests.InvalidSheetName(AFormat: TsSpreadsheetFormat);
 type
   TSheetNameCheck = record
     Valid: Boolean;
     SheetName: String;
   end;
+var
+  TempFile: String;
 const
-  TestCases: array[0..9] of TSheetNameCheck = (
+  TestCases: array[0..11] of TSheetNameCheck = (
     (Valid: true;  SheetName:'Sheet'),
-    (Valid: true;  SheetName:'äöü'),    // UFt8-characters are ok
-    (Valid: false; SheetName:'Test'),   // duplicate
-    (Valid: false; SheetName:'TEST'),   // duplicate since case is ignored
-    (Valid: false; SheetName:''),       // empty string
+    (Valid: true;  SheetName:'äöü'),      // UFt8-characters are ok
+    (Valid: true;  SheetName:'<sheet>'),  // forbidden xml characters
+    (Valid: true;  SheetName:'sheet 1'),  // space in name
+    (Valid: false; SheetName:'Test'),     // duplicate
+    (Valid: false; SheetName:'TEST'),     // duplicate since case is ignored
+    (Valid: false; SheetName:''),         // empty string
     (Valid: false; SheetName:'Very very very very very very very very long'),  // too long
     (Valid: false; SheetName:'[sheet]'), // forbidden characters in following cases
     (Valid: false; SheetName:'/sheet/'),
@@ -134,8 +145,10 @@ const
 var
   i: Integer;
   MyWorkbook: TsWorkbook;
+  MyWorksheet: TsWorksheet;
   ok: Boolean;
 begin
+  TempFile := NewTempFile;
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorkbook.AddWorksheet('Test');
@@ -143,10 +156,44 @@ begin
     begin
       ok := MyWorkbook.ValidWorksheetName(TestCases[i].SheetName);
       CheckEquals(TestCases[i].Valid, ok, 'Sheet name validity check mismatch: ' + TestCases[i].SheetName);
+      if TestCases[i].Valid then
+        MyWorksheet := MyWorkbook.AddWorksheet(TestCases[i].SheetName);
     end;
+    MyWorkbook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;
   end;
+
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    for i:=0 to High(TestCases) do
+      if TestCases[i].Valid then
+      begin
+        MyWorksheet := MyWorkbook.GetWorksheetByName(TestCases[i].SheetName);
+        if MyWorksheet = nil then
+          fail('Test case '+IntToStr(i) + ': Worksheet not found after reading. '+
+            'Expected sheet name: '+TestCases[i].SheetName);
+      end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+procedure TSpreadInternalTests.InvalidSheetName_BIFF8;
+begin
+  InvalidSheetname(sfExcel8);
+end;
+
+procedure TSpreadInternalTests.InvalidSheetName_XLSX;
+begin
+  InvalidSheetname(sfOOXML);
+end;
+
+procedure TSpreadInternalTests.InvalidSheetName_ODS;
+begin
+  InvalidSheetname(sfOpenDocument);
 end;
 
 procedure TSpreadInternalTests.OverwriteExistingFile;
@@ -647,6 +694,53 @@ begin
   CheckEquals(r2, 19, 'Row mismatch in test 4');
   CheckEquals(c2, 19, 'Col mismatch in test 4');
   CheckEquals(true, flags = [rfRelRow, rfRelCol], 'Flags mismatch in test 4');
+end;
+
+procedure TSpreadInternalTests.TestColString;
+var
+  res: Boolean;
+  c: Cardinal;
+begin
+  // (1) Check column 0 ("A")
+  res := ParseCellColString('A', c);
+  CheckEquals(res, true, 'Result mismatch in test 1');
+  CheckEquals(res, true, 'Col mismatch in test 1');
+
+  // (2) Check column 25 ("Z")
+  res := ParseCellColString('Z', c);
+  CheckEquals(res, true, 'Result mismatch in test 2');
+  CheckEquals(c, 25, 'Col mismatch in test 2');
+
+  // (3) Check column 26 ("AA")
+  res := ParseCellColString('AA', c);
+  CheckEquals(res, true, 'Result mismatch in test 3');
+  CheckEquals(c, 26, 'Col mismatch in test 3');
+
+  // (3) Check column 26 ("$AA") with $
+  res := ParseCellColString('$AA', c);
+  CheckEquals(res, true, 'Result mismatch in test 4');
+  CheckEquals(c, 26, 'Col mismatch in test 4');
+end;
+
+procedure TSpreadInternalTests.TestRowString;
+var
+  res: Boolean;
+  r: Cardinal;
+begin
+  // (1) Check row 0 ("1")
+  res := ParseCellRowString('1', r);
+  CheckEquals(res, true, 'Result mismatch in test 1');
+  CheckEquals(r, 0, 'Row mismatch in test 1');
+
+  // (2) Check row 99 ("100")
+  res := ParseCellRowString('100', r);
+  CheckEquals(res, true, 'Result mismatch in test 2');
+  CheckEquals(r, 99, 'Row mismatch in test 2');
+
+  // (2) Check row 99 ("100") with $
+  res := ParseCellRowString('$100', r);
+  CheckEquals(res, true, 'Result mismatch in test 3');
+  CheckEquals(r, 99, 'Row mismatch in test 3');
 end;
 
 procedure TSpreadInternalTests.FractionTest(AMaxDigits: Integer);

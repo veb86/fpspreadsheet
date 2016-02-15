@@ -3302,10 +3302,24 @@ begin
   SetLength(FPrintRanges, Result + 1);
   with FPrintRanges[Result] do
   begin
-    Row1 := ARow1;
-    Col1 := ACol1;
-    Row2 := ARow2;
-    Col2 := ACol2;
+    if ARow1 < ARow2 then
+    begin
+      Row1 := ARow1;
+      Row2 := ARow2;
+    end else
+    begin
+      Row1 := ARow2;
+      Row2 := ARow1;
+    end;
+    if ACol1 < ACol2 then
+    begin
+      Col1 := ACol1;
+      Col2 := ACol2;
+    end else
+    begin
+      Col1 := ACol2;
+      Col2 := ACol1;
+    end;
   end;
 end;
 
@@ -3383,7 +3397,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.HasRepeatedPrintCols: Boolean;
 begin
-  Result := PageLayout.RepeatedCols.FirstIndex <> UNASSIGNED_ROW_COL_INDEX;
+  Result := Cardinal(PageLayout.RepeatedCols.FirstIndex) <> Cardinal(UNASSIGNED_ROW_COL_INDEX);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3391,7 +3405,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.HasRepeatedPrintRows: Boolean;
 begin
-  Result := PageLayout.RepeatedRows.FirstIndex <> UNASSIGNED_ROW_COL_INDEX;
+  Result := Cardinal(PageLayout.RepeatedRows.FirstIndex) <> Cardinal(UNASSIGNED_ROW_COL_INDEX);
 end;
 
 {@@ ----------------------------------------------------------------------------

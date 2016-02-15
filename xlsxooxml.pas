@@ -73,6 +73,7 @@ type
     procedure ReadCols(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadComments(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadDateMode(ANode: TDOMNode);
+    procedure ReadDefinedNames(ANode: TDOMNode);
     procedure ReadFileVersion(ANode: TDOMNode);
     procedure ReadFills(ANode: TDOMNode);
     function ReadFont(ANode: TDOMNode): Integer;
@@ -1051,6 +1052,93 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadDefinedNames(ANode: TDOMNode);
+var
+  node, childnode: TDOMNode;
+  nodeName: String;
+  r1,c1,r2,c2: Cardinal;
+  id, j, p: Integer;
+  sheet: TsWorksheet;
+  localSheetID: String;
+  namestr: String;
+  s, sheetname: String;
+  L: TStringList;
+begin
+  if ANode = nil then
+    exit;
+  node := ANode.FirstChild;
+  while node <> nil do begin
+    nodename := node.NodeName;
+    if nodename = 'definedName' then
+    begin
+      localSheetID := GetAttrValue(node, 'localSheetId');
+      if (localSheetID = '') or not TryStrToInt(localSheetID, id) then
+      begin
+        FWorkbook.AddErrorMsg('no/invalid localID in "definedName" node');
+        node := node.NextSibling;
+        Continue;
+      end;
+      namestr := GetAttrValue(node, 'name');
+      sheet := FWorkbook.GetWorksheetByIndex(id);
+      if namestr = '_xlnm.Print_Area' then
+      begin
+        L := TStringList.Create;
+        try
+          L.Delimiter := ',';
+          L.StrictDelimiter := true;
+          L.DelimitedText := GetNodeValue(node);
+          for j:=0 to L.Count-1 do
+          begin
+            s := ReplaceStr(L[j], '''', '');
+            p := pos(':', s);
+            if p = 0 then
+            begin
+              FWorkbook.AddErrorMsg('invalid cell range reference in "definedName" node');
+              break;
+            end;
+            ParseSheetCellString(Copy(s, 1, p-1), sheetname, r1, c1);
+            ParseSheetCellString(Copy(s, p+1, MaxInt), sheetname, r2, c2);
+            sheet.AddPrintRange(r1, c1, r2, c2);
+          end;
+        finally
+          L.Free;
+        end;
+      end else
+      if nameStr = '_xlnm.Print_Titles' then
+      begin
+        L := TStringList.Create;
+        try
+          L.Delimiter := ',';
+          L.StrictDelimiter := true;
+          L.DelimitedText := GetNodeValue(node);
+          for j:=0 to L.Count-1 do
+          begin
+            s := ReplaceStr(L[j], '''', '');
+            p := pos('!', s);
+            if p > 0 then s := Copy(s, p+1, MaxInt);
+            p := pos(':', s);
+            if not ParseCellColString(copy(s, 1, p-1), c1) then
+              c1 := UNASSIGNED_ROW_COL_INDEX;
+            if not ParseCellColString(copy(s, p+1, MaxInt), c2) then
+              c2 := UNASSIGNED_ROW_COL_INDEX;
+            if not ParseCellRowString(copy(s, 1, p-1), r1) then
+              r1 := UNASSIGNED_ROW_COL_INDEX;
+            if not ParseCellRowString(copy(s, p+1, MaxInt), r2) then
+              r2 := UNASSIGNED_ROW_COL_INDEX;
+            if (r1 <> cardinal(UNASSIGNED_ROW_COL_INDEX)) then
+              sheet.SetRepeatedPrintRows(r1, r2);
+            if (c1 <> cardinal(UNASSIGNED_ROW_COL_INDEX)) then
+              sheet.SetRepeatedPrintCols(c1, c2);
+          end;
+        finally
+          L.Free;
+        end;
+      end;
+    end;
+    node := node.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadFileVersion(ANode: TDOMNode);
 begin
   FWrittenByFPS := GetAttrValue(ANode, 'appName') = 'fpspreadsheet';
@@ -1937,7 +2025,7 @@ begin
       XMLStream.Free;
     end;
 
-    // process the workbook.xml file
+    // process the workbook.xml file (1st run)
     XMLStream := CreateXMLStream;
     try
       if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
@@ -1946,6 +2034,7 @@ begin
       ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
       ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
       ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
+      //ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));  -- don't read here because sheets do not yet exist
       ReadActiveSheet(Doc.DocumentElement.FindNode('bookViews'), actSheetIndex);
       FreeAndNil(Doc);
     finally
@@ -2069,6 +2158,19 @@ begin
       if i = actSheetIndex then
         FWorkbook.SelectWorksheet(FWorksheet);
     end;  // for
+
+    // 2nd run for the workbook.xml file
+    // Read defined names
+    XMLStream := CreateXMLStream;
+    try
+      if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
+        raise Exception.CreateFmt(rsDefectiveInternalStructure, ['xlsx']);
+      ReadXMLStream(Doc, XMLStream);
+      ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));
+      FreeAndNil(Doc);
+    finally
+      XMLStream.Free;
+    end;
 
   finally
     SheetList.Free;
@@ -3310,7 +3412,7 @@ end;
 procedure TsSpreadOOXMLWriter.WriteContent;
 var
   i, counter: Integer;
-  actTab: String;
+  actTab, sheetname: String;
 begin
   { --- WorkbookRels --- }
   { Workbook relations - Mark relation to all sheets }
@@ -3355,9 +3457,12 @@ begin
   AppendToStream(FSWorkbook,
       '<sheets>');
   for counter:=1 to Workbook.GetWorksheetCount do
+  begin
+    sheetname := UTF8TextToXMLText(Workbook.GetWorksheetByIndex(counter-1).Name);
     AppendToStream(FSWorkbook, Format(
         '<sheet name="%s" sheetId="%d" r:id="rId%d" />',
-          [Workbook.GetWorksheetByIndex(counter-1).Name, counter, counter]));
+        [sheetname, counter, counter]));
+  end;
   AppendToStream(FSWorkbook,
       '</sheets>');
 
@@ -3438,7 +3543,7 @@ end;
 procedure TsSpreadOOXMLWriter.WriteDefinedNames(AStream: TStream);
 var
   sheet: TsWorksheet;
-  stotal, srng: String;
+  stotal, srng, sheetname: String;
   i, j: Integer;
   prng: TsCellRange;
   firstIndex, lastIndex: Integer;
@@ -3449,16 +3554,15 @@ begin
   for i := 0 to Workbook.GetWorksheetCount-1 do
   begin
     sheet := Workbook.GetWorksheetByIndex(i);
+    sheetname := '''' + UTF8TextToXMLText(sheet.Name) + '''';
 
     // Cell block of print range
     srng := '';
     for j := 0 to sheet.numPrintRanges - 1 do
     begin
       prng := sheet.GetPrintRange(j);
-//      prng.Col2 := Min(prng.Col2, sheet.GetLastColIndex);
-//      prng.Row2 := Min(prng.Row2, sheet.GetLastColIndex);
       srng := srng + ',' + Format('%s!%s', [
-        sheet.Name, GetCellRangeString(prng.Row1, prng.Col1, prng.Row2, prng.Col2, [])
+        sheetname, GetCellRangeString(prng.Row1, prng.Col1, prng.Row2, prng.Col2, [])
       ]);
     end;
     if srng <> '' then
@@ -3477,7 +3581,7 @@ begin
       firstindex := sheet.PageLayout.RepeatedCols.FirstIndex;
       lastindex := IfThen(sheet.PageLayout.RepeatedCols.LastIndex = UNASSIGNED_ROW_COL_INDEX,
         firstindex, sheet.PageLayout.RepeatedCols.LastIndex);
-      srng := srng + ',' + Format('%s!$%s:$%s', [sheet.Name, GetColString(firstindex), GetColString(lastindex)]);
+      srng := srng + ',' + Format('%s!$%s:$%s', [sheetname, GetColString(firstindex), GetColString(lastindex)]);
     end;
     // ... and repeated rows
     if sheet.PageLayout.RepeatedRows.FirstIndex <> UNASSIGNED_ROW_COL_INDEX then
@@ -3485,7 +3589,7 @@ begin
       firstindex := sheet.PageLayout.RepeatedRows.FirstIndex;
       lastindex := IfThen(sheet.PageLayout.RepeatedRows.LastIndex = UNASSIGNED_ROW_COL_INDEX,
         firstindex, sheet.PageLayout.RepeatedRows.LastIndex);
-      srng := srng + ',' + Format('%s!$%d:$%d', [sheet.Name, firstindex+1, lastindex+1]);
+      srng := srng + ',' + Format('%s!$%d:$%d', [sheetname, firstindex+1, lastindex+1]);
     end;
     if srng <> '' then begin
       Delete(srng, 1,1);

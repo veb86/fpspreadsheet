@@ -72,10 +72,8 @@ function ParseCellString(const AStr: string;
   out ACellRow, ACellCol: Cardinal): Boolean; overload;
 function ParseSheetCellString(const AStr: String; out ASheetName: String;
   out ACellRow, ACellCol: Cardinal; ASheetSeparator: Char = '!'): Boolean;
-function ParseCellRowString(const AStr: string;
-  out AResult: Cardinal): Boolean;
-function ParseCellColString(const AStr: string;
-  out AResult: Cardinal): Boolean;
+function ParseCellRowString(const AStr: string; out ARow: Cardinal): Boolean;
+function ParseCellColString(const AStr: string; out ACol: Cardinal): Boolean;
 
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
@@ -134,10 +132,6 @@ function PtsToMM(AValue: Double): Double; inline;
 function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double; inline;
 function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer; inline;
 function HTMLLengthStrToPts(AValue: String; DefaultUnits: String = 'pt'): Double;
-
-function UTF8TextToXMLText(AText: ansistring; ProcessLineEndings: Boolean = false): ansistring;
-function ValidXMLText(var AText: ansistring; ReplaceSpecialChars: Boolean = true;
-  ProcessLineEndings: Boolean = false): Boolean;
 
 function ColorToHTMLColorStr(AValue: TsColor; AExcelDialect: Boolean = false): String;
 function HTMLColorStrToColor(AValue: String): TsColor;
@@ -198,6 +192,9 @@ implementation
 
 uses
   Math, lazutf8, lazfileutils, fpsStrings, fpsRegFileFormats;
+
+const
+  INT_NUM_LETTERS = 26;
 
 {******************************************************************************}
 {                       Endianess helper functions                             }
@@ -797,42 +794,65 @@ begin
     ASheetName := '';
   end else begin
     ASheetName := UTF8Copy(AStr, 1, p-1);
-    Result := ParseCellString(UTF8Copy(AStr, p+1, UTF8Length(AStr)), ACellRow, ACellCol);
+    Result := ParseCellString(Copy(AStr, p+1, Length(AStr)), ACellRow, ACellCol);
+//    Result := ParseCellString(UTF8Copy(AStr, p+1, UTF8Length(AStr)), ACellRow, ACellCol);
   end;
 end;
 
 {@@ ----------------------------------------------------------------------------
   Parses a cell row string to a zero-based row number.
 
-  @param  AStr      Cell row string, such as '1', 1-based!
-  @param  AResult   Index of the row (zero-based!) (putput)
-  @return           False if the string is not a valid cell row string
+  @param  AStr  Cell row string, such as '1', 1-based!
+  @param  ARow  Index of the row (zero-based!) (putput)
+  @return       False if the string is not a valid cell row string
 -------------------------------------------------------------------------------}
-function ParseCellRowString(const AStr: string; out AResult: Cardinal): Boolean;
+function ParseCellRowString(const AStr: string; out ARow: Cardinal): Boolean;
 begin
-  try
-    AResult := StrToInt(AStr) - 1;
-  except
-    Result := False;
-  end;
-  Result := True;
+  if AStr = '' then
+    exit(false);
+  if AStr[1] = '$' then
+    Result := TryStrToInt(Copy(AStr, 2, Length(AStr)-1), LongInt(ARow)) else
+    Result := TryStrToInt(AStr, LongInt(ARow));
+  if Result then dec(ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
   Parses a cell column string, like 'A' or 'CZ', into a zero-based column number.
   Note that there can be several letters to address more than 26 columns.
 
-  @param  AStr      Cell range string, such as A1
-  @param  AResult   Zero-based index of the column (output)
-  @return           False if the string is not a valid cell column string
+  @param  AStr   Cell range string, such as A1
+  @param  ACol   Zero-based index of the column (output)
+  @return        False if the string is not a valid cell column string
 -------------------------------------------------------------------------------}
-function ParseCellColString(const AStr: string; out AResult: Cardinal): Boolean;
-const
-  INT_NUM_LETTERS = 26;
+function ParseCellColString(const AStr: string; out ACol: Cardinal): Boolean;
+var
+  j, j1: Integer;
 begin
   Result := False;
-  AResult := 0;
+  ACol := 0;
 
+  if AStr = '' then
+    exit;
+
+  if AStr[1] = '$' then
+    j1 := 2 else
+    j1 := 1;
+
+  for j := j1 to Length(AStr) do
+  begin
+    if AStr[j] in ['A'..'Z'] then
+      ACol := ACol * INT_NUM_LETTERS + ord(AStr[j]) - ord('A') + 1
+    else
+    if AStr[j] in ['a'..'z'] then
+      ACol := ACol * INT_NUM_LETTERS + ord(AStr[j]) - ord('a') + 1
+    else
+      exit;
+  end;
+
+  dec(ACol);
+  Result := true;
+
+                 {
   if Length(AStr) = 1 then AResult := Ord(AStr[1]) - Ord('A')
   else if Length(AStr) = 2 then
   begin
@@ -847,7 +867,7 @@ begin
   end
   else Exit(False);
 
-  Result := True;
+  Result := True; }
 end;
 
 function Letter(AValue: Integer): char;
@@ -872,9 +892,9 @@ begin
   Result := '';
   n := AColIndex + 1;
   while (n > 0) do begin
-    c := (n - 1) mod 26;
+    c := (n - 1) mod INT_NUM_LETTERS;
     Result := char(c + ord('A')) + Result;
-    n := (n - c) div 26;
+    n := (n - c) div INT_NUM_LETTERS;
   end;
 end;
 
@@ -1817,106 +1837,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Converts a string encoded in UTF8 to a string usable in XML. For this purpose,
-  some characters must be translated.
-
-  @param   AText               Input string encoded as UTF8
-  @param   ProcessLineEndings  If TRUE line ending characters are replaced by
-                               their HTML entities (e.g., #10 --> '&#10;'
-  @return  String usable in XML with some characters replaced by the HTML codes.
--------------------------------------------------------------------------------}
-function UTF8TextToXMLText(AText: ansistring;
-  ProcessLineEndings: Boolean = false): ansistring;
-var
-  Idx: Integer;
-  AppoSt:ansistring;
-begin
-  Result := '';
-  idx := 1;
-  while idx <= Length(AText) do
-  begin
-    case AText[Idx] of
-      '&': begin
-        AppoSt := Copy(AText, Idx, 6);
-        if (Pos('&amp;',  AppoSt) = 1) or
-           (Pos('&lt;',   AppoSt) = 1) or
-           (Pos('&gt;',   AppoSt) = 1) or
-           (Pos('&quot;', AppoSt) = 1) or
-           (Pos('&apos;', AppoSt) = 1) or
-           (Pos('&#37;',  AppoSt) = 1)     // %
-        then begin
-          //'&' is the first char of a special chat, it must not be converted
-          Result := Result + AText[Idx];
-        end else begin
-          Result := Result + '&amp;';
-        end;
-      end;
-      '<': Result := Result + '&lt;';
-      '>': Result := Result + '&gt;';
-      '"': Result := Result + '&quot;';
-      '''':Result := Result + '&apos;';
-      '%': Result := Result + '&#37;';
-      #10: if ProcessLineEndings then
-             Result := Result + '&#10;' else
-             Result := Result + #10;
-      #13: if ProcessLineEndings then
-             Result := Result + '&#13;' else
-             Result := Result + #13;
-      {     this breaks multi-line labels in xlsx
-      #10: begin
-             Result := Result + '<br />';
-             if (idx < Length(AText)) and (AText[idx+1] = #13) then inc(idx);
-           end;
-      #13: begin
-             Result := Result + '<br />';
-             if (idx < Length(AText)) and (AText[idx+1] = #10) then inc(idx);
-           end;
-           }
-    else
-      Result := Result + AText[Idx];
-    end;
-    inc(idx);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks a string for characters that are not permitted in XML strings.
-  The function returns FALSE if a character <#32 is contained (except for
-  #9, #10, #13), TRUE otherwise. Invalid characters are replaced by a box symbol.
-
-  If ReplaceSpecialChars is TRUE, some other characters are converted
-  to valid HTML codes by calling UTF8TextToXMLText
-
-  @param  AText                String to be checked. Is replaced by valid string.
-  @param  ReplaceSpecialChars  Special characters are replaced by their HTML
-                               codes (e.g. '>' --> '&gt;')
-  @param  ProcessLineEndings   If TRUE line ending characters are replaced by
-                               their HTML entities.
-  @return FALSE if characters < #32 were replaced, TRUE otherwise.
--------------------------------------------------------------------------------}
-function ValidXMLText(var AText: ansistring;
-  ReplaceSpecialChars: Boolean = true;
-  ProcessLineEndings: Boolean = false): Boolean;
-const
-  BOX = #$E2#$8E#$95;
-var
-  i: Integer;
-begin
-  Result := true;
-  for i := Length(AText) downto 1 do
-    if (AText[i] < #32) and not (AText[i] in [#9, #10, #13]) then begin
-      // Replace invalid character by box symbol
-      Delete(AText, i, 1);
-      Insert(BOX, AText, i);
-//      AText[i] := '?';
-      Result := false;
-    end;
-  if ReplaceSpecialChars then
-    AText := UTF8TextToXMLText(AText, ProcessLineEndings);
-end;
-
-
-{@@ ----------------------------------------------------------------------------
   Extracts compare information from an input string such as "<2.4".
   Is needed for some Excel-strings.
 
@@ -2245,12 +2165,31 @@ begin
             (AFont.Position = APos);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a TsCellRange record from the provided cell corner coordinates.
+  Put the coordinates into right order if needed.
+-------------------------------------------------------------------------------}
 function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange;
 begin
-  Result.Row1 := ARow1;
-  Result.Col1 := ACol1;
-  Result.Row2 := ARow2;
-  Result.Col2 := ACol2;
+  if ARow1 <= ARow2 then
+  begin
+    Result.Row1 := ARow1;
+    Result.Row2 := ARow2;
+  end else
+  begin
+    Result.Row1 := ARow2;
+    Result.Row2 := ARow1;
+  end;
+
+  if ACol1 <= ACol2 then
+  begin
+    Result.Col1 := ACol1;
+    Result.Col2 := ACol2;
+  end else
+  begin
+    Result.Col1 := ACol2;
+    Result.Col2 := ACol1;
+  end;
 end;
 
                                                  (*

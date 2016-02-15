@@ -90,7 +90,7 @@ implementation
 
 uses
   StrUtils, Math,
-  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat, fpsHTMLUtils;
+  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat, fpsXmlCommon, fpsHTMLUtils;
 
 const
   FMT_OFFSET   = 61;
@@ -776,7 +776,7 @@ procedure TsSpreadExcelXMLWriter.WriteWorksheet(AStream: TStream;
 begin
   FWorksheet := AWorksheet;
   AppendToStream(AStream, Format(
-    '  <Worksheet ss:Name="%s">' + LF, [AWorksheet.Name]) );
+    '  <Worksheet ss:Name="%s">' + LF, [UTF8TextToXMLText(AWorksheet.Name)]) );
   WriteTable(AStream, AWorksheet);
   WriteWorksheetOptions(AStream, AWorksheet);
   AppendToStream(AStream,
