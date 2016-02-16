@@ -2684,7 +2684,7 @@ begin
       flags := MASK_HLINK_TEXTMARK or MASK_HLINK_DESCRIPTION
     else
       flags := MASK_HLINK_LINK;
-    if SameText(u.Protocol, 'file') then
+    if SameText(u.Protocol, 'file') or SameText(u.Protocol, 'http') or SameText(u.Protocol, 'ftp') then
       flags := flags or MASK_HLINK_ABSOLUTE;
     if descr <> AHyperlink^.Target then
       flags := flags or MASK_HLINK_DESCRIPTION;  // has description
