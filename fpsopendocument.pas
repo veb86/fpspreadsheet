@@ -4603,7 +4603,7 @@ begin
         inc(k);
       end
     else
-      while (k <= lastCol) do
+      while (k <= lastCol) and (k < firstRepeatedPrintCol) do
       begin
         if ASheet.GetColWidth(k) = w then
           inc(colsRepeated)
@@ -4617,7 +4617,7 @@ begin
       '<table:table-column table:style-name="%s"%s table:default-cell-style-name="Default" />',
         [styleName, colsRepeatedStr]));
 
-    if headerCols and (k-1 = lastRepeatedPrintCol) then
+    if headerCols and (k >= lastRepeatedPrintCol) then
     begin
       AppendToStream(AStream, '</table:table-header-columns>');
       headerCols := false;
@@ -5007,7 +5007,7 @@ begin
       r := rr;
 
       // Header rows need a special tag
-      if headerRows and (r-1 = lastRepeatedPrintRow) then
+      if headerRows and (r >= lastRepeatedPrintRow) then
       begin
         AppendToStream(AStream, '</table:table-header-rows>');
         headerRows := false;
