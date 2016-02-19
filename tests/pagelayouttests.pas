@@ -115,6 +115,25 @@ type
     procedure TestWriteRead_BIFF5_HeaderFooterFontColor_2sheets;
     procedure TestWriteRead_BIFF5_HeaderFooterFontColor_3sheets;
 
+    procedure TestWriteRead_BIFF5_PrintRanges_1sheet_1Range_NoSpace;
+    procedure TestWriteRead_BIFF5_PrintRanges_1sheet_2Ranges_NoSpace;
+    procedure TestWriteRead_BIFF5_PrintRanges_2sheet_1Range_NoSpace;
+    procedure TestWriteRead_BIFF5_PrintRanges_2sheet_2Ranges_NoSpace;
+
+    procedure TestWriteRead_BIFF5_PrintRanges_1sheet_1Range_Space;
+    procedure TestWriteRead_BIFF5_PrintRanges_1sheet_2Ranges_Space;
+    procedure TestWriteRead_BIFF5_PrintRanges_2sheet_1Range_Space;
+    procedure TestWriteRead_BIFF5_PrintRanges_2sheet_2Ranges_Space;
+
+    procedure TestWriteRead_BIFF5_RepeatedRow_0;
+    procedure TestWriteRead_BIFF5_RepeatedRows_0_1;
+    procedure TestWriteRead_BIFF5_RepeatedRows_1_3;
+    procedure TestWriteRead_BIFF5_RepeatedCol_0;
+    procedure TestWriteRead_BIFF5_RepeatedCols_0_1;
+    procedure TestWriteRead_BIFF5_RepeatedCols_1_3;
+    procedure TestWriteRead_BIFF5_RepeatedCol_0_Row_0;
+    procedure TestWriteRead_BIFF5_RepeatedCols_0_1_Rows_0_1;
+
     { BIFF8 page layout tests }
     procedure TestWriteRead_BIFF8_PageMargins_1sheet_0;
     procedure TestWriteRead_BIFF8_PageMargins_1sheet_1;
@@ -168,6 +187,25 @@ type
     procedure TestWriteRead_BIFF8_HeaderFooterFontColor_1sheet;
     procedure TestWriteRead_BIFF8_HeaderFooterFontColor_2sheets;
     procedure TestWriteRead_BIFF8_HeaderFooterFontColor_3sheets;
+
+    procedure TestWriteRead_BIFF8_PrintRanges_1sheet_1Range_NoSpace;
+    procedure TestWriteRead_BIFF8_PrintRanges_1sheet_2Ranges_NoSpace;
+    procedure TestWriteRead_BIFF8_PrintRanges_2sheet_1Range_NoSpace;
+    procedure TestWriteRead_BIFF8_PrintRanges_2sheet_2Ranges_NoSpace;
+
+    procedure TestWriteRead_BIFF8_PrintRanges_1sheet_1Range_Space;
+    procedure TestWriteRead_BIFF8_PrintRanges_1sheet_2Ranges_Space;
+    procedure TestWriteRead_BIFF8_PrintRanges_2sheet_1Range_Space;
+    procedure TestWriteRead_BIFF8_PrintRanges_2sheet_2Ranges_Space;
+
+    procedure TestWriteRead_BIFF8_RepeatedRow_0;
+    procedure TestWriteRead_BIFF8_RepeatedRows_0_1;
+    procedure TestWriteRead_BIFF8_RepeatedRows_1_3;
+    procedure TestWriteRead_BIFF8_RepeatedCol_0;
+    procedure TestWriteRead_BIFF8_RepeatedCols_0_1;
+    procedure TestWriteRead_BIFF8_RepeatedCols_1_3;
+    procedure TestWriteRead_BIFF8_RepeatedCol_0_Row_0;
+    procedure TestWriteRead_BIFF8_RepeatedCols_0_1_Rows_0_1;
 
     { OOXML page layout tests }
     procedure TestWriteRead_OOXML_PageMargins_1sheet_0;
@@ -1138,6 +1176,87 @@ begin
 end;
 
 
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PrintRanges_1sheet_1Range_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcel5, 1, 1, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PrintRanges_1sheet_2Ranges_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcel5, 1, 2, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PrintRanges_2sheet_1Range_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcel5, 2, 1, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PrintRanges_2sheet_2Ranges_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcel5, 2, 2, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PrintRanges_1sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcel5, 1, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PrintRanges_1sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcel5, 1, 2, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PrintRanges_2sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcel5, 2, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_PrintRanges_2sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcel5, 2, 2, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_RepeatedRow_0;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel5, -1, -1, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_RepeatedRows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel5, -1, -1, 0, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_RepeatedRows_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel5, -1, -1, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_RepeatedCol_0;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel5, 0, 0, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_RepeatedCols_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel5, 0, 1, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_RepeatedCols_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel5, 1, 3, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_RepeatedCol_0_Row_0;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel5, 0, 0, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF5_RepeatedCols_0_1_Rows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel5, 0, 1, 0, 1);
+end;
+
+
 { Tests for BIFF8 file format }
 
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PageMargins_1sheet_0;
@@ -1360,6 +1479,87 @@ end;
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_HeaderFooterFontColor_3sheets;
 begin
   TestWriteRead_PageLayout(sfExcel8, 3, 9);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PrintRanges_1sheet_1Range_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcel8, 1, 1, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PrintRanges_1sheet_2Ranges_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcel8, 1, 2, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PrintRanges_2sheet_1Range_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcel8, 2, 1, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PrintRanges_2sheet_2Ranges_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcel8, 2, 2, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PrintRanges_1sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcel8, 1, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PrintRanges_1sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcel8, 1, 2, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PrintRanges_2sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcel8, 2, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_PrintRanges_2sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcel8, 2, 2, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_RepeatedRow_0;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel8, -1, -1, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_RepeatedRows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel8, -1, -1, 0, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_RepeatedRows_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel8, -1, -1, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_RepeatedCol_0;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel8, 0, 0, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_RepeatedCols_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel8, 0, 1, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_RepeatedCols_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel8, 1, 3, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_RepeatedCol_0_Row_0;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel8, 0, 0, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_BIFF8_RepeatedCols_0_1_Rows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfExcel8, 0, 1, 0, 1);
 end;
 
 

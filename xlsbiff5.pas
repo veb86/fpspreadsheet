@@ -59,7 +59,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas, lconvencoding,
-  fpsTypes, fpspreadsheet,
+  fpsTypes, fpspreadsheet, fpsrpn,
   xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
@@ -69,7 +69,6 @@ uses
   fpsUtils;
 
 type
-
   { TsSpreadBIFF5Reader }
 
   TsSpreadBIFF5Reader = class(TsSpreadBIFFReader)
@@ -77,9 +76,11 @@ type
     procedure PopulatePalette; override;
     { Record writing methods }
     procedure ReadBoundsheet(AStream: TStream);
+    procedure ReadDEFINEDNAME(AStream: TStream);
     procedure ReadFONT(const AStream: TStream);
     procedure ReadFORMAT(AStream: TStream); override;
     procedure ReadLABEL(AStream: TStream); override;
+    function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; override;
     procedure ReadRSTRING(AStream: TStream);
     procedure ReadStandardWidth(AStream: TStream; ASheet: TsWorksheet);
     procedure ReadStringRecord(AStream: TStream); override;
@@ -88,7 +89,6 @@ type
     procedure ReadXF(AStream: TStream);
   public
     { General reading methods }
-//    procedure ReadFromFile(AFileName: string); override;
     procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
@@ -346,7 +346,9 @@ type
   end;
 
 
-{ TsSpreadBIFF5Reader }
+{------------------------------------------------------------------------------}
+{                           TsSpreadBIFF5Reader                                }
+{------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
   Populates the reader's default palette using the BIFF5 default colors.
@@ -356,6 +358,96 @@ begin
   FPalette.Clear;
   FPalette.UseColors(PALETTE_BIFF5);
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads a BOUNDSHEET record containing a worksheet name
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF5Reader.ReadBoundsheet(AStream: TStream);
+var
+  Len: Byte;
+  s: AnsiString;
+  sheetName: String;
+begin
+  { Absolute stream position of the BOF record of the sheet represented
+    by this record }
+  // Just assume that they are in order
+  AStream.ReadDWord();
+
+  { Visibility }
+  AStream.ReadByte();
+
+  { Sheet type }
+  AStream.ReadByte();
+
+  { Sheet name: Byte string, 8-bit length }
+  Len := AStream.ReadByte();
+
+  SetLength(s, Len);
+  AStream.ReadBuffer(s[1], Len*SizeOf(AnsiChar));
+  sheetName := ConvertEncoding(s, FCodePage, EncodingUTF8);
+  FWorksheetNames.Add(sheetName);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads a DEFINEDNAME record. Currently only extracts print ranges and titles.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF5Reader.ReadDEFINEDNAME(AStream: TStream);
+var
+  options: Word;
+  len: byte;
+  formulaSize: Word;
+  ansistr: ansiString;
+  defName: String;
+  rpnformula: TsRPNFormula;
+  extsheetIndex: Integer;
+  sheetIndex: Integer;
+begin
+  // Options
+  options := WordLEToN(AStream.ReadWord);
+  if options and $0020 = 0 then   // only support built-in names at the moment!
+    exit;
+
+  // Keyboard shortcut  --> ignore
+  AStream.ReadByte;
+
+  // Length of name (character count)
+  len := AStream.ReadByte;
+
+  // Size of formula data
+  formulasize := WordLEToN(AStream.ReadWord);
+
+  // EXTERNSHEET index (1-base), or 0 if global name
+  extsheetIndex := SmallInt(WordLEToN(AStream.ReadWord)) - 1;  // now 0-based!
+
+  // Sheet index (1-based) on which the name is valid (0 = global)
+  sheetIndex := SmallInt(WordLEToN(AStream.ReadWord)) - 1;  // now 0-based!
+
+  // Length of Menu text (ignore)
+  AStream.ReadByte;
+
+  // Length of description text(ignore)
+  AStream.ReadByte;
+
+  // Length of help topic text (ignore)
+  AStream.ReadByte;
+
+  // Length of status bar text (ignore)
+  AStream.ReadByte;
+
+  // Name
+  SetLength(ansistr, len);
+  AStream.ReadBuffer(ansistr[1], len);
+  defName := ConvertEncoding(ansistr, FCodepage, encodingUTF8);
+
+  // Formula
+  if not ReadRPNTokenArray(AStream, formulaSize, rpnFormula) then
+    exit;
+  // Store defined name in internal list
+  FDefinedNames.Add(TsBIFFDefinedName.Create(defName, rpnFormula, sheetIndex));
+
+  // Skip rest...
+end;
+
 
 procedure TsSpreadBIFF5Reader.ReadWorkbookGlobals(AStream: TStream);
 var
@@ -372,14 +464,16 @@ begin
     CurStreamPos := AStream.Position;
 
     case RecordType of
-      INT_EXCEL_ID_BOF        : ;
-      INT_EXCEL_ID_BOUNDSHEET : ReadBoundSheet(AStream);
-      INT_EXCEL_ID_CODEPAGE   : ReadCodePage(AStream);
-      INT_EXCEL_ID_FONT       : ReadFont(AStream);
-      INT_EXCEL_ID_FORMAT     : ReadFormat(AStream);
-      INT_EXCEL_ID_XF         : ReadXF(AStream);
-      INT_EXCEL_ID_PALETTE    : ReadPalette(AStream);
-      INT_EXCEL_ID_EOF        : SectionEOF := True;
+      INT_EXCEL_ID_BOF         : ;
+      INT_EXCEL_ID_BOUNDSHEET  : ReadBoundSheet(AStream);
+      INT_EXCEL_ID_CODEPAGE    : ReadCodePage(AStream);
+      INT_EXCEL_ID_DEFINEDNAME : ReadDefinedName(AStream);
+      INT_EXCEL_ID_EXTERNSHEET : ReadExternSheet(AStream);
+      INT_EXCEL_ID_FONT        : ReadFont(AStream);
+      INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
+      INT_EXCEL_ID_XF          : ReadXF(AStream);
+      INT_EXCEL_ID_PALETTE     : ReadPalette(AStream);
+      INT_EXCEL_ID_EOF         : SectionEOF := True;
     else
       // nothing
     end;
@@ -401,7 +495,7 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
-  FWorksheet := FWorkbook.AddWorksheet(FWorksheetNames[FCurrentWorksheet], true);
+  FWorksheet := FWorkbook.AddWorksheet(FWorksheetNames[FCurSheetIndex], true);
 
   while (not SectionEOF) do
   begin
@@ -497,30 +591,36 @@ begin
   FixRows(FWorksheet);
 end;
 
-procedure TsSpreadBIFF5Reader.ReadBoundsheet(AStream: TStream);
+function TsSpreadBIFF5Reader.ReadRPNCellRange3D(AStream: TStream;
+  var ARPNItem: PRPNItem): Boolean;
 var
-  Len: Byte;
-  s: AnsiString;
-  sheetName: String;
+  sheetIndex: SmallInt;
+  sheetIndex1, sheetIndex2: Word;
+  r1, c1, r2, c2: Cardinal;
+  flags: TsRelFlags;
 begin
-  { Absolute stream position of the BOF record of the sheet represented
-    by this record }
-  // Just assume that they are in order
-  AStream.ReadDWord();
+  Result := true;
 
-  { Visibility }
-  AStream.ReadByte();
+  // 1-based index to EXTERNSHEET record containing name of first referenced worksheet
+  // negative for 3D reference, positive for external reference
+  sheetIndex := WordLEToN(AStream.ReadWord);
+  if sheetIndex > 0 then
+    exit(false);  // we support only internal references here!
+  sheetIndex := abs(sheetindex) - 1;  // make it a usable 0-based index although we don't need it any more...
 
-  { Sheet type }
-  AStream.ReadByte();
+  // Next 8 bytes not used.
+  AStream.ReadDWord;
+  AStream.ReadDWord;
 
-  { Sheet name: Byte string, 8-bit length }
-  Len := AStream.ReadByte();
+  // Zero-based index to first and last referenced sheet (in case of internal ref)
+  sheetIndex1 := WordLEToN(AStream.ReadWord);
+  sheetIndex2 := WordLEToN(AStream.ReadWord);
 
-  SetLength(s, Len);
-  AStream.ReadBuffer(s[1], Len*SizeOf(AnsiChar));
-  sheetName := ConvertEncoding(s, FCodePage, EncodingUTF8);
-  FWorksheetNames.Add(sheetName);
+  // Cell range coordinates
+  ReadRPNCellRangeAddress(AStream, r1, c1, r2, c2, flags);
+  if r2 = $FFFF then r2 := Cardinal(-1);
+  if c2 = $FF then c2 := Cardinal(-1);
+  ARPNItem := RPNCellRange3D(sheetIndex1, r1, c1, sheetIndex2, r2, c2, flags, ARPNItem);
 end;
 
 procedure TsSpreadBIFF5Reader.ReadRSTRING(AStream: TStream);

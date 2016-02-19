@@ -55,6 +55,12 @@ const
   INT_EXCEL_TOKEN_TAREAN_R  = $2D;
   INT_EXCEL_TOKEN_TAREAN_V  = $4D;
   INT_EXCEL_TOKEN_TAREAN_A  = $6D;
+  INT_EXCEL_TOKEN_TREF3d_R  = $3A;
+  INT_EXCEL_TOKEN_TREF3d_V  = $5A;
+  INT_EXCEL_TOKEN_TREF3d_A  = $7A;
+  INT_EXCEL_TOKEN_TAREA3d_R = $3B;
+  INT_EXCEL_TOKEN_TAREA3d_V = $5B;
+  INT_EXCEL_TOKEN_TAREA3d_A = $7B;
 
   { Function Tokens }
   // _R: reference; _V: value; _A: array

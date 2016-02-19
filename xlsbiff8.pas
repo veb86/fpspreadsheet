@@ -56,7 +56,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas, DateUtils, contnrs, lazutf8,
-  fpstypes, fpspreadsheet, xlscommon,
+  fpstypes, fpspreadsheet, fpsrpn, xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
@@ -65,6 +65,12 @@ uses
   fpsutils;
 
 type
+
+  TBIFF8ExternSheet = packed record
+    ExternBookIndex: Word;
+    FirstSheetIndex: Word;
+    LastSheetIndex: Word;
+  end;
 
   { TsSpreadBIFF8Reader }
   TsSpreadBIFF8Reader = class(TsSpreadBIFFReader)
@@ -75,22 +81,26 @@ type
     FCommentPending: Boolean;
     FCommentID: Integer;
     FCommentLen: Integer;
-    procedure ReadBoundsheet(AStream: TStream);
+    FBiff8ExternSheets: array of TBiff8ExternSheet;
     function ReadString(const AStream: TStream; const ALength: Word;
       out ARichTextParams: TsRichTextParams): String;
     function ReadUnformattedWideString(const AStream: TStream;
       const ALength: Word): WideString;
     function ReadWideString(const AStream: TStream; const ALength: Word;
       out ARichTextParams: TsRichTextParams): WideString; overload;
-    function ReadWideString(const AStream: TStream; const AUse8BitLength: Boolean): WideString; overload;
+    function ReadWideString(const AStream: TStream;
+      const AUse8BitLength: Boolean): WideString; overload;
   protected
     procedure PopulatePalette; override;
+    procedure ReadBOUNDSHEET(AStream: TStream);
     procedure ReadCONTINUE(const AStream: TStream);
+    procedure ReadDEFINEDNAME(const AStream: TStream);
+    procedure ReadEXTERNSHEET(const AStream: TStream);
     procedure ReadFONT(const AStream: TStream);
     procedure ReadFORMAT(AStream: TStream); override;
     procedure ReadHeaderFooter(AStream: TStream; AIsHeader: Boolean); override;
-    procedure ReadHyperLink(AStream: TStream);
-    procedure ReadHyperlinkToolTip(AStream: TStream);
+    procedure ReadHyperLink(const AStream: TStream);
+    procedure ReadHyperlinkToolTip(const AStream: TStream);
     procedure ReadLABEL(AStream: TStream); override;
     procedure ReadLabelSST(const AStream: TStream);
     procedure ReadMergedCells(const AStream: TStream);
@@ -103,6 +113,7 @@ type
       out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags); override;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); override;
+    function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; override;
     procedure ReadRPNCellRangeOffset(AStream: TStream;
       out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
       out AFlags: TsRelFlags); override;
@@ -443,13 +454,14 @@ type
     Text: String;
   end;
 
-
 { TsSpreadBIFF8Reader }
 
 destructor TsSpreadBIFF8Reader.Destroy;
 var
   j: Integer;
 begin
+  SetLength(FBiff8ExternSheets, 0);
+
   if Assigned(FSharedStringTable) then
   begin
     for j := FSharedStringTable.Count-1 downto 0 do
@@ -777,16 +789,18 @@ begin
 
     if RecordType <> INT_EXCEL_ID_CONTINUE then begin
       case RecordType of
-       INT_EXCEL_ID_BOF       : ;
-       INT_EXCEL_ID_BOUNDSHEET: ReadBoundSheet(AStream);
-       INT_EXCEL_ID_EOF       : SectionEOF := True;
-       INT_EXCEL_ID_SST       : ReadSST(AStream);
-       INT_EXCEL_ID_CODEPAGE  : ReadCodepage(AStream);
-       INT_EXCEL_ID_FONT      : ReadFont(AStream);
-       INT_EXCEL_ID_FORMAT    : ReadFormat(AStream);
-       INT_EXCEL_ID_XF        : ReadXF(AStream);
-       INT_EXCEL_ID_DATEMODE  : ReadDateMode(AStream);
-       INT_EXCEL_ID_PALETTE   : ReadPalette(AStream);
+       INT_EXCEL_ID_BOF         : ;
+       INT_EXCEL_ID_BOUNDSHEET  : ReadBoundSheet(AStream);
+       INT_EXCEL_ID_DEFINEDNAME : ReadDEFINEDNAME(AStream);
+       INT_EXCEL_ID_EOF         : SectionEOF := True;
+       INT_EXCEL_ID_EXTERNSHEET : ReadEXTERNSHEET(AStream);
+       INT_EXCEL_ID_SST         : ReadSST(AStream);
+       INT_EXCEL_ID_CODEPAGE    : ReadCodepage(AStream);
+       INT_EXCEL_ID_FONT        : ReadFont(AStream);
+       INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
+       INT_EXCEL_ID_XF          : ReadXF(AStream);
+       INT_EXCEL_ID_DATEMODE    : ReadDateMode(AStream);
+       INT_EXCEL_ID_PALETTE     : ReadPalette(AStream);
       else
         // nothing
       end;
@@ -809,7 +823,7 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
-  FWorksheet := FWorkbook.AddWorksheet(FWorksheetNames[FCurrentWorksheet], true);
+  FWorksheet := FWorkbook.AddWorksheet(FWorksheetNames[FCurSheetIndex], true);
 
   while (not SectionEOF) do
   begin
@@ -829,6 +843,7 @@ begin
     INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
     INT_EXCEL_ID_CONTINUE      : ReadCONTINUE(AStream);
     INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
+    INT_EXCEL_ID_DEFINEDNAME   : ReadDefinedName(AStream);
     INT_EXCEL_ID_EOF           : SectionEOF := True;
     INT_EXCEL_ID_FOOTER        : ReadHeaderFooter(AStream, false);
     INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
@@ -944,7 +959,6 @@ begin
   end;
 end;
 (*
-  const AStrea
 procedure TsSpreadBIFF8Reader.ReadFromStream(AStream: TStream);
 var
   BIFF8EOF: Boolean;
@@ -1177,6 +1191,26 @@ begin
   if (c1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
   if (c2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
   if (c2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
+end;
+
+function TsSpreadBIFF8Reader.ReadRPNCellRange3D(AStream: TStream;
+  var ARPNItem: PRPNItem): Boolean;
+var
+  sheetIndex: Integer;
+  r1, c1, r2, c2: Cardinal;
+  flags: TsRelFlags;
+begin
+  Result := true;
+  sheetIndex := WordLEToN(AStream.ReadWord);
+  if FBiff8ExternSheets[sheetIndex].ExternBookIndex <> 0 then
+    exit(false);
+  ReadRPNCellRangeAddress(AStream, r1, c1, r2, c2, flags);
+  if r2 = $FFFF then r2 := Cardinal(-1);
+  if c2 = $FF then c2 := Cardinal(-1);
+  ARPNItem := RPNCellRange3D(
+    FBiff8ExternSheets[sheetIndex].FirstSheetIndex, r1, c1,
+    FBiff8ExternSheets[sheetIndex].LastSheetIndex, r2, c2,
+    flags, ARPNItem);
 end;
 
 { Reads the difference between row and column corner indexes of a cell range
@@ -1628,6 +1662,84 @@ begin
   FCellFormatList.Add(fmt);
 end;
 
+{ Reads a DEFINEDNAME record. Currently only extract print ranges and titles. }
+procedure TsSpreadBIFF8Reader.ReadDEFINEDNAME(const AStream: TStream);
+var
+  options: Word;
+  len: byte;
+  formulaSize: Word;
+  widestr: WideString;
+  defName: String;
+  rpnformula: TsRPNFormula;
+  rtf: TsRichTextParams;
+  validOnSheet: Integer;
+begin
+  // Options
+  options := WordLEToN(AStream.ReadWord);
+  if options and $0020 = 0 then   // only support built-in names at the moment!
+    exit;
+
+  // Keyboard shortcut  --> ignore
+  AStream.ReadByte;
+
+  // Length of name (character count)
+  len := AStream.ReadByte;
+
+  // Size of formula data
+  formulasize := WordLEToN(AStream.ReadWord);
+
+  // not used
+  AStream.ReadWord;
+
+  // Sheet index (1-based) on which the name is valid (0 = global)
+  validOnSheet := SmallInt(WordLEToN(AStream.ReadWord)) - 1;  // now 0-based!
+
+  // Length of Menu text (ignore)
+  AStream.ReadByte;
+
+  // Length of description text(ignore)
+  AStream.ReadByte;
+
+  // Length of help topic text (ignore)
+  AStream.ReadByte;
+
+  // Length of status bar text (ignore)
+  AStream.ReadByte;
+
+  // Name
+  wideStr := ReadWideString(AStream, len, rtf);
+  defName := UTF8Encode(widestr);
+
+  // Formula
+  if not ReadRPNTokenArray(AStream, formulaSize, rpnFormula) then
+    exit;
+  // Store defined name in internal list
+  FDefinedNames.Add(TsBIFFDefinedName.Create(defName, rpnFormula, validOnSheet));
+
+  // Skip rest...
+end;
+
+{ Reads an EXTERNSHEET record. Needed for named cells and print ranges. }
+procedure TsSpreadBIFF8Reader.ReadEXTERNSHEET(const AStream: TStream);
+var
+  numItems: Word;
+  i: Integer;
+begin
+  numItems := WordLEToN(AStream.ReadWord);
+  SetLength(FBiff8ExternSheets, numItems);
+
+  for  i := 0 to numItems-1 do begin
+    AStream.ReadBuffer(FBiff8ExternSheets[i], Sizeof(FBiff8ExternSheets[i]));
+    with FBiff8ExternSheets[i] do
+    begin
+      ExternBookIndex := WordLEToN(ExternBookIndex);
+      FirstSheetIndex := WordLEToN(FirstSheetIndex);
+      LastSheetIndex := WordLEToN(LastSheetIndex);
+    end;
+  end;
+end;
+
+
 { Reads a FONT record. The retrieved font is stored in the workbook's FontList. }
 procedure TsSpreadBIFF8Reader.ReadFONT(const AStream: TStream);
 var
@@ -1761,7 +1873,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Reads a HYPERLINK record
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Reader.ReadHyperlink(AStream: TStream);
+procedure TsSpreadBIFF8Reader.ReadHyperlink(const AStream: TStream);
 var
   row, col, row1, col1, row2, col2: word;
   guid: TGUID;
@@ -1902,7 +2014,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Reads a HYPERLINK TOOLTIP record
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Reader.ReadHyperlinkToolTip(AStream: TStream);
+procedure TsSpreadBIFF8Reader.ReadHyperlinkToolTip(const AStream: TStream);
 var
   txt: String;
   widestr: widestring;

@@ -104,13 +104,15 @@ type
   }
   TFEKind = (
     { Basic operands }
-    fekCell, fekCellRef, fekCellRange, fekCellOffset, fekNum, fekInteger,
-    fekString, fekBool, fekErr, fekMissingArg,
+    fekCell, fekCellRef, fekCellRange, fekCellOffset,
+    fekCellRef3d, fekCellRange3d,
+    fekNum, fekInteger, fekString, fekBool, fekErr, fekMissingArg,
     { Basic operations }
     fekAdd, fekSub, fekMul, fekDiv, fekPercent, fekPower, fekUMinus, fekUPlus,
     fekConcat,  // string concatenation
     fekEqual, fekGreater, fekGreaterEqual, fekLess, fekLessEqual, fekNotEqual,
-    fekParen,   // show parenthesis around expression node
+    fekList,    // List operator
+    fekParen,   // show parenthesis around expression node  -- don't add anything after fekParen!
     { Functions - they are identified by their name }
     fekFunc
   );
@@ -139,16 +141,17 @@ const
 
 type
   {@@ Elements of an expanded formula.
-    Note: If ElementKind is fekCellOffset, "Row" and "Col" have to be cast
-          to signed integers! }
+    Note: If ElementKind is fekCellOffset, "Row" and "Col" have to be cast to signed integers! }
   TsFormulaElement = record
     ElementKind: TFEKind;
-    Row, Row2: Cardinal;   // zero-based
-    Col, Col2: Cardinal;   // zero-based
+    Row, Row2: Cardinal;    // zero-based
+    Col, Col2: Cardinal;    // zero-based
+    Sheet, Sheet2: Integer; // zero-based
+    SheetNames: String;     // both sheet names separated by a TAB character (intermediate use only)
     DoubleValue: double;
     IntValue: Word;
     StringValue: String;
-    RelFlags: TsRelFlags;  // store info on relative/absolute addresses
+    RelFlags: TsRelFlags;   // info on relative/absolute addresses
     FuncName: String;
     ParamsNum: Byte;
   end;
@@ -568,6 +571,15 @@ type
 
   {@@ Array with cell ranges }
   TsCellRangeArray = array of TsCellRange;
+
+  {@@ Record combining sheet index and row/column corner indexes of a cell range }
+  TsCellRange3d = record
+    Row1, Col1, Row2, Col2: Cardinal;
+    Sheet1, Sheet2: Integer;
+  end;
+
+  {@@ Array of 3d cell ranges }
+  TsCellRange3dArray = array of TsCellRange3d;
 
   {@@ Record containing limiting indexes of column or row range }
   TsRowColRange = record

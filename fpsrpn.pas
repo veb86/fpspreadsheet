@@ -51,6 +51,10 @@ function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem; overload;
 function RPNCellOffset(ARowOffset, AColOffset: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
+function RPNCellRef3D(ASheet, ARow, ACol: Integer; AFlags: TsRelFlags;
+  ANext: PRPNItem): PRPNItem;
+function RPNCellRange3D(ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2: Integer;
+  AFlags: TsRelFlags; ANext: PRPNItem): PRPNItem;
 function RPNErr(AErrCode: TsErrorValue; ANext: PRPNItem): PRPNItem;
 function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
 function RPNMissingArg(ANext: PRPNItem): PRPNItem;
@@ -82,6 +86,7 @@ begin
   New(Result);
   FillChar(Result^.FE, SizeOf(Result^.FE), 0);
   Result^.FE.StringValue := '';
+  Result^.FE.SheetNames := '';
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -253,6 +258,30 @@ begin
   Result^.FE.RelFlags := AFlags;
   Result^.Next := ANext;
 end;
+
+function RPNCellRef3D(ASheet, ARow, ACol: Integer; AFlags: TsRelFlags;
+  ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekCellRef3d;
+  Result^.FE.Sheet := ASheet;
+  Result^.FE.Row := ARow;
+  Result^.FE.Col := ACol;
+  Result^.FE.RelFlags := AFlags;
+  Result^.Next := ANext;
+end;
+
+function RPNCellRange3D(ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2: Integer;
+  AFlags: TsRelFlags; ANext: PRPNItem): PRPNItem;
+begin
+  Result := RPNCellRef3d(ASheet1, ARow1, ACol1, AFlags, ANext);
+  Result^.FE.ElementKind := fekCellRange3D;
+  Result^.FE.Sheet2 := ASheet2;
+  Result^.FE.Row2 := ARow2;
+  Result^.FE.Col2 := ACol2;
+  Result^.FE.RelFlags := AFlags;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Creates an entry in the RPN array with an error value.
@@ -437,6 +466,7 @@ begin
     nextitem := item^.Next;
     Result[n] := item^.FE;
     Result[n].StringValue := item^.FE.StringValue;
+    Result[n].Sheetnames := item^.FE.SheetNames;
     if AReverse then dec(n) else inc(n);
     DisposeRPNItem(item);
     item := nextitem;

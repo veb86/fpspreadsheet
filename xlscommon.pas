@@ -12,7 +12,7 @@ interface
 uses
   Classes, SysUtils, DateUtils, lconvencoding,
   fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormatParser, fpsPalette,
-  fpsReaderWriter;
+  fpsReaderWriter, fpsrpn;
 
 const
   { RECORD IDs which didn't change across versions 2-8 }
@@ -349,6 +349,21 @@ type
     RecordSize: Word;
   end;
 
+  {TsBIFFDefinedName }
+  TsBIFFDefinedName = class
+  private
+    FName: String;
+    FFormula: TsRPNFormula;
+    FValidOnSheet: Integer;
+    function GetRanges: TsCellRange3dArray;
+  public
+    constructor Create(AName: String; AFormula: TsRPNFormula; AValidOnSheet: Integer);
+    procedure UpdateSheetIndex(ASheetName: String; ASheetIndex: Integer);
+    property Name: String read FName;
+    property Ranges: TsCellRange3dArray read GetRanges;
+    property ValidOnSheet: Integer read FValidOnSheet;
+  end;
+
   { TsSpreadBIFFReader }
   TsSpreadBIFFReader = class(TsCustomSpreadReader)
   protected
@@ -360,9 +375,11 @@ type
     FIncompleteNoteLength: Word;
     FFirstNumFormatIndexInFile: Integer;
     FPalette: TsPalette;
+    FDefinedNames: TFPList;
     FWorksheetNames: TStrings;
-    FCurrentWorksheet: Integer;
+    FCurSheetIndex: Integer;
     FActivePane: Integer;
+    FExternSheets: TStrings;
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
@@ -375,7 +392,11 @@ type
     // Returns the numberformat for a given XF record
     procedure ExtractNumberFormat(AXFIndex: WORD;
       out ANumberFormat: TsNumberFormat; out ANumberFormatStr: String); virtual;
+    procedure ExtractPrintRanges(AWorksheet: TsWorksheet);
+    procedure ExtractPrintTitles(AWorksheet: TsWorksheet);
+    function FindDefinedName(AWorksheet: TsWorksheet; const AName: String): TsBiffDefinedName;
     procedure FixColors;
+    procedure FixDefinedNames(AWorksheet: TsWorksheet);
     function FixFontIndex(AFontIndex: Integer): Integer;
     // Tries to find if a number cell is actually a date/datetime/time cell and retrieves the value
     function IsDateTime(Number: Double; ANumberFormat: TsNumberFormat;
@@ -397,6 +418,8 @@ type
     procedure ReadDefColWidth(AStream: TStream);
     // Read the default row height
     procedure ReadDefRowHeight(AStream: TStream);
+    // Read an EXTERNSHEET record (defined names)
+    procedure ReadExternSheet(AStream: TStream);
     // Read FORMAT record (cell formatting)
     procedure ReadFormat(AStream: TStream); virtual;
     // Read FORMULA record
@@ -431,13 +454,17 @@ type
       out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags); virtual;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); virtual;
+    function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; virtual;
     procedure ReadRPNCellRangeOffset(AStream: TStream;
       out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
       out AFlags: TsRelFlags); virtual;
     function ReadRPNFunc(AStream: TStream): Word; virtual;
     procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal); virtual;
     function ReadRPNTokenArray(AStream: TStream; ACell: PCell;
-      ASharedFormulaBase: PCell = nil): Boolean;
+      ASharedFormulaBase: PCell = nil): Boolean; overload;
+    function ReadRPNTokenArray(AStream: TStream; ARpnTokenArraySize: Word;
+      out ARpnFormula: TsRPNFormula; ACell: PCell = nil;
+      ASharedFormulaBase: PCell = nil): Boolean; overload;
     function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
     procedure ReadSELECTION(AStream: TStream);
     procedure ReadSharedFormula(AStream: TStream);
@@ -599,7 +626,8 @@ implementation
 uses
   AVL_Tree, Math, Variants,
   {%H-}fpspatches, fpsStrings, fpsClasses, fpsNumFormat, xlsConst,
-  fpsrpn, fpsExprParser;
+  //fpsrpn,
+  fpsExprParser;
 
 const
   { Helper table for rpn formulas:
@@ -610,6 +638,8 @@ const
     INT_EXCEL_TOKEN_TREFR,          {fekCellRef}
     INT_EXCEL_TOKEN_TAREA_R,        {fekCellRange}
     INT_EXCEL_TOKEN_TREFN_V,        {fekCellOffset}
+    INT_EXCEL_TOKEN_TREF3D_R,       {fekCellRef3d }
+    INT_EXCEL_TOKEN_TAREA3D_R,      {fekCellRange3d }
     INT_EXCEL_TOKEN_TNUM,           {fekNum}
     INT_EXCEL_TOKEN_TINT,           {fekInteger}
     INT_EXCEL_TOKEN_TSTR,           {fekString}
@@ -633,6 +663,7 @@ const
     INT_EXCEL_TOKEN_TLT,            {fekLess <}
     INT_EXCEL_TOKEN_TLE,            {fekLessEqual, <=}
     INT_EXCEL_TOKEN_TNE,            {fekNotEqual, <>}
+    INT_EXCEL_TOKEN_TLIST,          {List operator (",")}
     INT_EXCEL_TOKEN_TPAREN,         {Operator in parenthesis}
     Word(-1)                        {fekFunc}
   );
@@ -821,6 +852,76 @@ end;
 
 
 {------------------------------------------------------------------------------}
+{                           TsBIFFDefinedName                                  }
+{------------------------------------------------------------------------------}
+constructor TsBIFFDefinedName.Create(AName: String; AFormula: TsRPNFormula;
+  AValidOnSheet: Integer);
+begin
+  FName := AName;
+  FFormula := AFormula;
+  FValidOnSheet := AValidOnSheet;
+end;
+
+function TsBIFFDefinedName.GetRanges: TsCellRange3dArray;
+var
+  i, n: Integer;
+  elem: TsFormulaElement;
+begin
+  SetLength(Result, 0);
+  for i:=0 to Length(FFormula)-1 do begin
+    n := Length(Result);
+    elem := FFormula[i];
+    case elem.ElementKind of
+      fekCellRef3D:
+        begin
+          SetLength(Result, n+1);
+          Result[n].Sheet1 := elem.Sheet;
+          Result[n].Row1 := elem.Row;
+          Result[n].Col1 := elem.Col;
+          Result[n].Sheet2 := -1;
+          Result[n].Row2 := Cardinal(-1);
+          Result[n].Col2 := Cardinal(-1);
+        end;
+      fekCellRange3d:
+        begin
+          SetLength(Result, n+1);
+          Result[n].Sheet1 := elem.Sheet;
+          Result[n].Row1 := elem.Row;
+          Result[n].Col1 := elem.Col;
+          Result[n].Sheet2 := elem.Sheet2;
+          Result[n].Row2 := elem.Row2;
+          Result[n].Col2 := elem.Col2;
+        end;
+    end;
+  end;
+end;
+
+procedure TsBIFFDefinedName.UpdateSheetIndex(ASheetName: String; ASheetIndex: Integer);
+var
+  elem: TsFormulaElement;
+  i, p: Integer;
+  s: String;
+begin
+  for i:=0 to Length(FFormula)-1 do begin
+    elem := FFormula[i];
+    if (elem.ElementKind in [fekCellRef3d, fekCellRange3d]) then begin
+      if elem.SheetNames = '' then
+        Continue;
+      p := pos(#9, elem.SheetNames);
+      if p > 0 then begin
+        if ASheetName = Copy(elem.SheetNames, 1, p-1) then
+          elem.Sheet := ASheetIndex;
+        if ASheetName = Copy(elem.SheetNames, p+1, MaxInt) then
+          elem.Sheet2 := ASheetIndex;
+      end else
+      if ASheetName = elem.SheetNames then
+        elem.Sheet := ASheetIndex;
+    end;
+  end;
+end;
+
+
+{------------------------------------------------------------------------------}
 {                           TsSpreadBIFFReader                                 }
 {------------------------------------------------------------------------------}
 
@@ -833,6 +934,9 @@ begin
 
   FCellFormatList := TsCellFormatList.Create(true);
   // true = allow duplicates! XF indexes get out of sync if not all format records are in list
+
+  FExternSheets := TStringList.Create;
+  FDefinedNames := TFPList.Create;
 
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
@@ -850,8 +954,15 @@ end;
   Destructor of the reader class
 -------------------------------------------------------------------------------}
 destructor TsSpreadBIFFReader.Destroy;
+var
+  j: Integer;
 begin
+  for j:=0 to FDefinedNames.Count-1 do TObject(FDefinedNames[j]).Free;
+  FDefinedNames.Free;
+
+  FExternSheets.Free;
   FPalette.Free;
+
   inherited Destroy;
 end;
 
@@ -982,6 +1093,64 @@ begin
   end;
 end;
 
+procedure TsSpreadBiffReader.ExtractPrintRanges(AWorksheet: TsWorksheet);
+var
+  defName: TsBiffDefinedName;
+  rng: TsCellRange3DArray;
+  i: Integer;
+begin
+  // #6 is the symbol for "Print_Area"
+  defName := FindDefinedName(AWorksheet, #6);
+  if defName <> nil then
+  begin
+    rng := defName.Ranges;
+    for i := 0 to High(rng) do
+      AWorksheet.AddPrintRange(rng[i].Row1, rng[i].Col1, rng[i].Row2, rng[i].Col2);
+  end;
+end;
+
+procedure TsSpreadBiffReader.ExtractPrintTitles(AWorksheet: TsWorksheet);
+var
+  defName: TsBiffDefinedName;
+  rng: TsCellRange3dArray;
+  i: Integer;
+begin
+  // #7 is the symbol for "Print_Titles"
+  defName := FindDefinedName(AWorksheet, #7);
+  if defName <> nil then
+  begin
+    rng := defName.Ranges;
+    for i := 0 to High(rng) do
+    begin
+      if (rng[i].Col2 <> Cardinal(-1)) then
+        AWorksheet.SetRepeatedPrintCols(rng[i].Col1, rng[i].Col2)
+      else
+      if (rng[i].Row2 <> Cardinal(-1)) then
+        AWorksheet.SetRepeatedPrintRows(rng[i].Row1, rng[i].Row2);
+    end;
+  end;
+end;
+
+function TsSpreadBIffReader.FindDefinedName(AWorksheet: TsWorksheet;
+  const AName: String): TsBiffDefinedName;
+var
+  i: integer;
+  wi: Integer;
+  defName: TsBiffDefinedName;
+begin
+  wi := FWorkbook.GetWorksheetIndex(AWorksheet);
+  for i := 0 to FDefinedNames.Count-1 do
+  begin
+    defName := TsBiffDefinedName(FDefinedNames[i]);
+    if (defName.ValidOnSheet = wi) and (defName.Name = AName) then
+    begin
+      Result := TsBiffDefinedName(FDefinedNames[i]);
+      exit;
+    end;
+  end;
+  Result := nil;
+end;
+
 {@@ ----------------------------------------------------------------------------
   It is a problem of the biff file structure that the font is loaded before the
   palette. Therefore, when reading the font, we cannot determine its rgb color.
@@ -1028,6 +1197,21 @@ begin
     FixColor(fmt^.BorderStyles[cbDiagDown].Color);
   end;
 end;
+
+procedure TsSpreadBIFFReader.FixDefinedNames(AWorksheet: TsWorksheet);
+var
+  sheetName1, sheetName2: String;
+  i: Integer;
+  defname: TsBiffDefinedName;
+  sheetIndex: Integer;
+begin
+  sheetIndex := FWorkbook.GetWorksheetIndex(AWorksheet);
+  for i:=0 to FDefinedNames.Count-1 do begin
+    defname := TsBiffDefinedName(FDefinedNames.Items[i]);
+    defname.UpdateSheetIndex(AWorksheet.Name, sheetIndex);
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Converts the index of a font in the reader fontlist to the index of this font
@@ -1347,6 +1531,30 @@ begin
   h := TwipsToPts(hw) / FWorkbook.GetDefaultFontSize;
   if h > ROW_HEIGHT_CORRECTION then
     FWorksheet.DefaultRowHeight := h - ROW_HEIGHT_CORRECTION;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  In the file format versions up to BIFF5 (incl) this record stores the name of
+  an external document and a sheet name inside of this document.
+
+  NOTE: A character #03 is prepended to the sheet name if the EXTERNSHEET stores
+  a reference to one of the own sheets.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadExternSheet(AStream: TStream);
+var
+  len, b: Byte;
+  ansistr: AnsiString;
+  s: String;
+begin
+  len := AStream.ReadByte;
+  b := AStream.ReadByte;
+  if b = 3 then
+    inc(len);
+  SetLength(ansistr, len);
+  AStream.ReadBuffer(ansistr[2], len-1);
+  ansistr[1] := char(b);
+  s := ConvertEncoding(ansistr, FCodePage, encodingUTF8);
+  FExternSheets.Add(s);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1957,6 +2165,13 @@ begin
   if (r2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
 end;
 
+function TsSpreadBIFFReader.ReadRPNCellRange3D(AStream: TStream;
+  var ARPNItem: PRPNItem): Boolean;
+begin
+  Result := false;  // "false" means: "not supported"
+  // must be overridden
+end;
+
 {@@ ----------------------------------------------------------------------------
   Reads the difference between row and column corner indexes of a cell range
   and a reference cell.
@@ -2024,6 +2239,7 @@ end;
   Reads the array of rpn tokens from the current stream position, creates an
   rpn formula, converts it to a string formula and stores it in the cell.
 -------------------------------------------------------------------------------}
+(*
 function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
   ACell: PCell; ASharedFormulaBase: PCell = nil): Boolean;
 var
@@ -2176,6 +2392,174 @@ begin
     else
       ACell^.FormulaValue := '';
       }
+    Result := true;
+  end;
+end;
+*)
+
+function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
+  ACell: PCell; ASharedFormulaBase: PCell = nil): Boolean;
+var
+  n: Word;
+  rpnFormula: TsRPNformula;
+  strFormula: String;
+begin
+  n := ReadRPNTokenArraySize(AStream);
+  Result := ReadRPNTokenArray(AStream, n, rpnFormula, ACell, ASharedFormulaBase);
+  if Result then begin
+    strFormula := FWorksheet.ConvertRPNFormulaToStringFormula(rpnFormula);
+    if strFormula <> '' then
+      ACell^.FormulaValue := strFormula;
+  end;
+end;
+
+function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
+  ARpnTokenArraySize: Word; out ARpnFormula: TsRPNFormula; ACell: PCell = nil;
+  ASharedFormulaBase: PCell = nil): Boolean;
+var
+  n: Word;
+  p0: Int64;
+  token: Byte;
+  rpnItem: PRPNItem;
+  supported: boolean;
+  dblVal: Double = 0.0;   // IEEE 8 byte floating point number
+  flags: TsRelFlags;
+  r, c, r2, c2: Cardinal;
+  dr, dc, dr2, dc2: Integer;
+  sheetIndex: Integer;
+  fek: TFEKind;
+  exprDef: TsBuiltInExprIdentifierDef;
+  funcCode: Word;
+  b: Byte;
+  found: Boolean;
+begin
+  rpnItem := nil;
+  p0 := AStream.Position;
+  supported := true;
+  while (AStream.Position < p0 + ARPNTokenArraySize) and supported do begin
+    token := AStream.ReadByte;
+    case token of
+      INT_EXCEL_TOKEN_TREFV:
+        begin
+          ReadRPNCellAddress(AStream, r, c, flags);
+          rpnItem := RPNCellValue(r, c, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TREFR:
+        begin
+          ReadRPNCellAddress(AStream, r, c, flags);
+          rpnItem := RPNCellRef(r, c, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TAREA_R, INT_EXCEL_TOKEN_TAREA_V:
+        begin
+          ReadRPNCellRangeAddress(AStream, r, c, r2, c2, flags);
+          rpnItem := RPNCellRange(r, c, r2, c2, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TREFN_R, INT_EXCEL_TOKEN_TREFN_V:
+        begin
+          ReadRPNCellAddressOffset(AStream, dr, dc, flags);
+          // For compatibility with other formats, convert offsets back to regular indexes.
+          if (rfRelRow in flags)
+            then r := LongInt(ACell^.Row) + dr
+            else r := dr;
+          if (rfRelCol in flags)
+            then c := LongInt(ACell^.Col) + dc
+            else c := dc;
+          case token of
+            INT_EXCEL_TOKEN_TREFN_V: rpnItem := RPNCellValue(r, c, flags, rpnItem);
+            INT_EXCEL_TOKEN_TREFN_R: rpnItem := RPNCellRef(r, c, flags, rpnItem);
+          end;
+        end;
+      INT_EXCEL_TOKEN_TAREA3D_R:
+        begin
+          if not ReadRPNCellRange3D(AStream, rpnItem) then supported := false;
+        end;
+      INT_EXCEL_TOKEN_TREFN_A:
+        begin
+          ReadRPNCellRangeOffset(AStream, dr, dc, dr2, dc2, flags);
+          // For compatibility with other formats, convert offsets back to regular indexes.
+          if (rfRelRow in flags)
+            then r := LongInt(ACell^.Row) + dr
+            else r := LongInt(ASharedFormulaBase^.Row) + dr;
+          if (rfRelRow2 in flags)
+            then r2 := LongInt(ACell^.Row) + dr2
+            else r2 := LongInt(ASharedFormulaBase^.Row) + dr2;
+          if (rfRelCol in flags)
+            then c := LongInt(ACell^.Col) + dc
+            else c := LongInt(ASharedFormulaBase^.Col) + dc;
+          if (rfRelCol2 in flags)
+            then c2 := LongInt(ACell^.Col) + dc2
+            else c2 := LongInt(ASharedFormulaBase^.Col) + dc2;
+          rpnItem := RPNCellRange(r, c, r2, c2, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TMISSARG:
+        rpnItem := RPNMissingArg(rpnItem);
+      INT_EXCEL_TOKEN_TSTR:
+        rpnItem := RPNString(ReadString_8BitLen(AStream), rpnItem);
+      INT_EXCEL_TOKEN_TERR:
+        rpnItem := RPNErr(ConvertFromExcelError(AStream.ReadByte), rpnItem);
+      INT_EXCEL_TOKEN_TBOOL:
+        rpnItem := RPNBool(AStream.ReadByte=1, rpnItem);
+      INT_EXCEL_TOKEN_TINT:
+        rpnItem := RPNInteger(WordLEToN(AStream.ReadWord), rpnItem);
+      INT_EXCEL_TOKEN_TNUM:
+        begin
+          AStream.ReadBuffer(dblVal, 8);
+          rpnItem := RPNNumber(dblVal, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TPAREN:
+        rpnItem := RPNParenthesis(rpnItem);
+
+      INT_EXCEL_TOKEN_FUNC_R,
+      INT_EXCEL_TOKEN_FUNC_V,
+      INT_EXCEL_TOKEN_FUNC_A:
+        // functions with fixed argument count
+        begin
+          funcCode := ReadRPNFunc(AStream);
+          exprDef := BuiltInIdentifiers.IdentifierByExcelCode(funcCode);
+          if exprDef <> nil then
+            rpnItem := RPNFunc(exprDef.Name, rpnItem)
+          else
+            supported := false;
+        end;
+
+      INT_EXCEL_TOKEN_FUNCVAR_R,
+      INT_EXCEL_TOKEN_FUNCVAR_V,
+      INT_EXCEL_TOKEN_FUNCVAR_A:
+        // functions with variable argument count
+        begin
+          b := AStream.ReadByte;
+          funcCode := ReadRPNFunc(AStream);
+          exprDef := BuiltinIdentifiers.IdentifierByExcelCode(funcCode);
+          if exprDef <> nil then
+            rpnItem := RPNFunc(exprDef.Name, b, rpnItem)
+          else
+            supported := false;
+        end;
+
+      INT_EXCEL_TOKEN_TEXP:
+        // Indicates that cell belongs to a shared or array formula.
+        // This information is not needed any more.
+        ReadRPNSharedFormulaBase(AStream, r, c);
+
+      else
+        found := false;
+        for fek in TBasicOperationTokens do
+          if (TokenIDs[fek] = token) then begin
+            rpnItem := RPNFunc(fek, rpnItem);
+            found := true;
+            break;
+          end;
+        if not found then
+          supported := false;
+    end;
+  end;
+  if not supported then begin
+    DestroyRPNFormula(rpnItem);
+    ARPNFormula := nil;
+    Result := false;
+  end
+  else begin
+    ARPNFormula := CreateRPNFormula(rpnItem, true); // true --> we have to flip the order of items!
     Result := true;
   end;
 end;
@@ -2385,19 +2769,9 @@ end;
 procedure TsSpreadBIFFReader.InternalReadFromStream(AStream: TStream);
 var
   BIFFEOF: Boolean;
+  i: Integer;
+  sheet: TsWorksheet;
 begin
-{  OLEStream := TMemoryStream.Create;
-  try
-    OLEStorage := TOLEStorage.Create;
-    try
-      // Only one stream is necessary for any number of worksheets
-      OLEDocument.Stream := AStream; //OLEStream;
-      OLEStorage.ReadOLEStream(AStream, OLEDocument, AStreamName);
-    finally
-      OLEStorage.Free;
-    end;
- }
-
     // Check if the operation succeeded
     if AStream.Size = 0 then
       raise Exception.Create('[TsSpreadBIFFReader.InternalReadFromStream] Reading of OLE document failed');
@@ -2408,7 +2782,7 @@ begin
     {Initializations }
     FWorksheetNames := TStringList.Create;
     try
-      FCurrentWorksheet := 0;
+      FCurSheetIndex := 0;
       BIFFEOF := false;
 
       { Read workbook globals }
@@ -2428,12 +2802,21 @@ begin
           BIFFEOF := true;
 
         // Final preparations
-        inc(FCurrentWorksheet);
+        inc(FCurSheetIndex);
         // It can happen in files written by Office97 that the OLE directory is
         // at the end of the file.
-        if FCurrentWorksheet = FWorksheetNames.Count then
+        if FCurSheetIndex = FWorksheetNames.Count then
           BIFFEOF := true;
       end;
+
+      { Extract print ranges, repeated rows/cols }
+      for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
+        sheet := FWorkbook.GetWorksheetByIndex(i);
+        FixDefinedNames(sheet);
+        ExtractPrintRanges(sheet);
+        ExtractPrintTitles(sheet);
+      end;
+
     finally
       { Finalization }
       FreeAndNil(FWorksheetNames);
