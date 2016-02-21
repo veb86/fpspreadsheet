@@ -13,6 +13,8 @@ records select a byte in the hex viewer, and the program will display the
 contents of that byte and the following ones as integer, double, string 
 (page "Values").
 
-For compiling, note that the program requires the package "VirtualTreeview-new"
-from ccr (which in turn requires the package "lclextensions" from
-http://code.google.com/p/luipack/downloads/list).
+For compiling, note that the program requires the following packages
+from ccr
+- "KControls"
+- "lclextensions"
+- "VirtualTreeview-new" 
