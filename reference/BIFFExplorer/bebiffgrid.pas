@@ -152,10 +152,13 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    procedure SetBIFFNodeData(AData: TBIFFNodeData; ABuffer: TBIFFBuffer; AFormat: TsSpreadsheetFormat);
+    procedure SetBIFFNodeData(AData: PBIFFNodeData; ABuffer: TBIFFBuffer;
+      AFormat: TsSpreadsheetFormat);
 
   published
+    property TabOrder;
     property OnDetails: TBIFFDetailsEvent read FOnDetails write FOnDetails;
+    property OnSelection;
   end;
 
 implementation
@@ -579,14 +582,14 @@ begin
 end;
 
 
-procedure TBIFFGrid.SetBIFFNodeData(AData: TBIFFNodeData;
+procedure TBIFFGrid.SetBIFFNodeData(AData: PBIFFNodeData;
   ABuffer: TBIFFBuffer; AFormat: TsSpreadsheetFormat);
 begin
   if AData = nil then
     exit;
   FFormat := AFormat;
-  FRecType := AData.RecordID;
-  FInfo := AData.Tag;
+  FRecType := AData^.RecordID;
+  FInfo := AData^.Tag;
   SetLength(FBuffer, Length(ABuffer));
   if Length(FBuffer) > 0 then
     Move(ABuffer[0], FBuffer[0], Length(FBuffer));
@@ -2358,13 +2361,18 @@ var
   s: String;
 begin
   RowCount := FixedRows + 1;
-  ExtractString(FBufferIndex, IfThen(FFormat=sfExcel8, 2, 1), FFormat=sfExcel8,
-    s, numbytes);
-  ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
-    'Page footer string' + IfThen(FFormat = sfExcel8,
-    ' (Unicode string, 16-bit string length)',
-    ' (byte string, 8-bit string length)'
-  ));
+  if Length(FBuffer) = 0 then
+    ShowInRow(FCurrRow, FBufferIndex, 0, '', '(empty record)')
+  else
+  begin
+    ExtractString(FBufferIndex, IfThen(FFormat=sfExcel8, 2, 1), FFormat=sfExcel8,
+      s, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+      'Page footer string' + IfThen(FFormat = sfExcel8,
+      ' (Unicode string, 16-bit string length)',
+      ' (byte string, 8-bit string length)'
+    ));
+  end;
 end;
 
 
@@ -2999,13 +3007,18 @@ var
   s: String;
 begin
   RowCount := FixedRows + 1;
-  ExtractString(FBufferIndex, IfThen(FFormat=sfExcel8, 2, 1), FFormat=sfExcel8,
-    s, numbytes);
-  ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
-    'Page header string' + IfThen(FFormat = sfExcel8,
-    ' (Unicode string, 16-bit string length)',
-    ' (byte string, 8-bit string length)'
-  ));
+  if Length(FBuffer) = 0 then
+    ShowInRow(FCurrRow, FBufferIndex, 0, '', '(empty record)')
+  else
+  begin
+    ExtractString(FBufferIndex, IfThen(FFormat=sfExcel8, 2, 1), FFormat=sfExcel8,
+      s, numbytes);
+    ShowInRow(FCurrRow, FBufferIndex, numbytes, s,
+      'Page header string' + IfThen(FFormat = sfExcel8,
+      ' (Unicode string, 16-bit string length)',
+      ' (byte string, 8-bit string length)'
+    ));
+  end;
 end;
 
 

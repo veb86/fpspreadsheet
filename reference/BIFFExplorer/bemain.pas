@@ -12,7 +12,7 @@ uses
   {$else}
   fpolestorage,
   {$endif}
-  fpstypes, fpSpreadsheet,
+  fpstypes, KHexEditor,
   mrumanager, beTypes, beBIFFGrid;
 
 type
@@ -32,8 +32,11 @@ type
     ActionList: TActionList;
     BIFFTree: TVirtualStringTree;
     CbFind: TComboBox;
-    HexGrid: TStringGrid;
+    CbHexAddress: TCheckBox;
+    CbHexEditorLineSize: TComboBox;
+    CbHexSingleBytes: TCheckBox;
     ImageList: TImageList;
+    HexEditor: TKHexEditor;
     MainMenu: TMainMenu;
     AnalysisDetails: TMemo;
     MenuItem1: TMenuItem;
@@ -55,8 +58,8 @@ type
     OpenDialog: TOpenDialog;
     PageControl: TPageControl;
     DetailPanel: TPanel;
-    HexPanel: TPanel;
     FindPanel: TPanel;
+    HexEditorParamsPanel: TPanel;
     SaveDialog: TSaveDialog;
     SpeedButton3: TSpeedButton;
     TreePopupMenu: TPopupMenu;
@@ -67,8 +70,6 @@ type
     BtnCloseFind: TSpeedButton;
     Splitter1: TSplitter;
     HexSplitter: TSplitter;
-    AlphaGrid: TStringGrid;
-    HexDumpSplitter: TSplitter;
     PgAnalysis: TTabSheet;
     PgValues: TTabSheet;
     DetailsSplitter: TSplitter;
@@ -91,7 +92,6 @@ type
     procedure AcNodeCollapseUpdate(Sender: TObject);
     procedure AcNodeExpandExecute(Sender: TObject);
     procedure AcNodeExpandUpdate(Sender: TObject);
-    procedure AlphaGridSelection(Sender: TObject; aCol, aRow: Integer);
     procedure BIFFTreeBeforeCellPaint(Sender: TBaseVirtualTree;
       TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
       CellPaintMode: TVTCellPaintMode; CellRect: TRect; var ContentRect: TRect);
@@ -102,25 +102,30 @@ type
       var NodeDataSize: Integer);
     procedure BIFFTreeGetText(Sender: TBaseVirtualTree; Node: PVirtualNode;
       Column: TColumnIndex; TextType: TVSTTextType; var CellText: String);
+//    procedure BIFFTreeInitNode(Sender: TBaseVirtualTree; ParentNode,
+//      Node: PVirtualNode; var InitialStates: TVirtualNodeInitStates);
     procedure BIFFTreePaintText(Sender: TBaseVirtualTree;
       const TargetCanvas: TCanvas; Node: PVirtualNode; Column: TColumnIndex;
       TextType: TVSTTextType);
     procedure CbFindChange(Sender: TObject);
     procedure CbFindKeyPress(Sender: TObject; var Key: char);
+    procedure CbHexAddressChange(Sender: TObject);
+    procedure CbHexEditorLineSizeChange(Sender: TObject);
+    procedure CbHexSingleBytesChange(Sender: TObject);
     procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure FormDropFiles(Sender: TObject; const FileNames: array of String);
     procedure FormShow(Sender: TObject);
-    procedure GridClick(Sender: TObject);
-    procedure HexGridPrepareCanvas(sender: TObject; aCol, aRow: Integer;
-      aState: TGridDrawState);
-    procedure HexGridSelection(Sender: TObject; aCol, aRow: Integer);
+    procedure HexEditorClick(Sender: TObject);
+    procedure HexEditorKeyDown(Sender: TObject; var Key: Word;
+      Shift: TShiftState);
     procedure ListViewSelectItem(Sender: TObject; Item: TListItem;
       Selected: Boolean);
     procedure PageControlChange(Sender: TObject);
-    procedure ValueGridPrepareCanvas(sender: TObject; aCol, aRow: Integer;
-      aState: TGridDrawState);
+    procedure ValueGridClick(Sender: TObject);
+    procedure ValueGridPrepareCanvas(Sender: TObject; ACol, ARow: Integer;
+      AState: TGridDrawState);
 
   private
     MemStream: TMemoryStream;
@@ -134,18 +139,18 @@ type
     FFormatIndex: Integer;
     FRowIndex: Integer;
     FExternSheetIndex: Integer;
-    FLockHexDumpGrids: Integer;
     FAnalysisGrid: TBIFFGrid;
     FMRUMenuManager : TMRUMenuManager;
     procedure AddToHistory(const AText: String);
     procedure AnalysisGridDetails(Sender: TObject; ADetails: TStrings);
-    procedure AnalysisGridPrepareCanvas(sender: TObject; aCol, aRow: Integer;
-      aState: TGridDrawState);
+    procedure AnalysisGridPrepareCanvas(Sender: TObject; ACol, ARow: Integer;
+      AState: TGridDrawState);
+    procedure AnalysisGridSelection(Sender: TObject; ACol, ARow: Integer);
     procedure DumpToFile(const AFileName: String);
     procedure ExecFind(ANext, AKeep: Boolean);
-    function  GetBIFFNodeData: TBiffNodeData;
-    function  GetNodeData(ANode: PVirtualNode): TBiffNodeData;
+    function  GetBIFFNodeData: PBiffNodeData;
     function  GetRecType: Word;
+    function  GetValueGridDataSize: Integer;
     procedure LoadFile(const AFileName: String); overload;
     procedure LoadFile(const AFileName: String; AFormat: TsSpreadsheetFormat); overload;
     procedure MRUMenuManagerRecentFile(Sender:TObject; const AFileName:string);
@@ -157,6 +162,7 @@ type
     procedure ReadFromStream(AStream: TStream);
     procedure UpdateCaption;
     procedure UpdateCmds;
+    procedure UpdateStatusbar;
     procedure WriteToIni;
 
   public
@@ -171,30 +177,46 @@ implementation
 {$R *.lfm}
 
 uses
-  IniFiles, lazutf8,
+  IniFiles, LazUTF8, LazFileUtils, Math, StrUtils, LCLType,
+  KFunctions,
   fpsUtils,
   beUtils, beBIFFUtils, beAbout;
 
 const
-  VALUE_ROW_INDEX = 1;
-  VALUE_ROW_BYTE = 2;
-  VALUE_ROW_WORD = 3;
-  VALUE_ROW_DWORD = 4;
-  VALUE_ROW_QWORD = 5;
-  VALUE_ROW_DOUBLE = 6;
-  VALUE_ROW_ANSISTRING = 7;
-  VALUE_ROW_WIDESTRING = 8;
+  VALUE_ROW_INDEX      = 1;
+  VALUE_ROW_BITS       = 2;
+  VALUE_ROW_BYTE       = 3;
+  VALUE_ROW_SHORTINT   = 4;
+  VALUE_ROW_WORD       = 5;
+  VALUE_ROW_SMALLINT   = 6;
+  VALUE_ROW_DWORD      = 7;
+  VALUE_ROW_LONGINT    = 8;
+  VALUE_ROW_QWORD      = 9;
+  VALUE_ROW_INT64      = 10;
+  VALUE_ROW_SINGLE     = 11;
+  VALUE_ROW_DOUBLE     = 12;
+  VALUE_ROW_ANSISTRING = 13;
+  VALUE_ROW_PANSICHAR  = 14;
+  VALUE_ROW_WIDESTRING = 15;
+  VALUE_ROW_PWIDECHAR  = 16;
 
   MAX_HISTORY = 16;
 
 
+{ TMyHexEditor }
+
+type
+  TMyHexEditor = class(TKHexEditor);
+
+       (*
 { Virtual tree nodes }
+
 type
   TObjectNodeData = record
     Data: TObject;
   end;
   PObjectNodeData = ^TObjectNodeData;
-
+         *)
 
 { TMainForm }
 
@@ -328,33 +350,33 @@ begin
 end;
 
 
-procedure TMainForm.AlphaGridSelection(Sender: TObject; aCol, aRow: Integer);
-begin
-  if FLockHexDumpGrids > 0 then
-    exit;
-  FCurrOffset := (ARow - AlphaGrid.FixedRows)*16 + (ACol - AlphaGrid.FixedCols);
-  if FCurrOffset < 0 then FCurrOffset := 0;
-  inc(FLockHexDumpGrids);
-  HexGrid.Col := aCol - AlphaGrid.FixedCols + HexGrid.FixedCols;
-  HexGrid.Row := aRow - AlphaGrid.FixedRows + HexGrid.FixedRows;
-  dec(FLockHexDumpGrids);
-  if FCurrOffset > -1 then
-    Statusbar.Panels[3].Text := Format('HexViewer offset: %d', [FCurrOffset])
-  else
-    Statusbar.Panels[3].Text := '';
-end;
-
-
 procedure TMainForm.AnalysisGridDetails(Sender: TObject; ADetails: TStrings);
 begin
   AnalysisDetails.Lines.Assign(ADetails);
 end;
 
 
-procedure TMainForm.AnalysisGridPrepareCanvas(sender: TObject; aCol,
-  aRow: Integer; aState: TGridDrawState);
+procedure TMainForm.AnalysisGridPrepareCanvas(Sender: TObject; ACol,
+  ARow: Integer; AState: TGridDrawState);
 begin
   if ARow = 0 then FAnalysisGrid.Canvas.Font.Style := [fsBold];
+end;
+
+
+procedure TMainForm.AnalysisGridSelection(Sender: TObject; ACol, ARow: Integer);
+var
+  s: String;
+begin
+  if ARow < FAnalysisGrid.RowCount then
+  begin
+    s := FAnalysisGrid.Cells[0, ARow];
+    if s <> '' then
+    begin
+      FCurrOffset := StrToInt(s);
+      PopulateValueGrid;
+      UpdateStatusbar;
+    end;
+  end;
 end;
 
 
@@ -383,15 +405,27 @@ end;
 procedure TMainForm.BIFFTreeFocusChanged(Sender: TBaseVirtualTree;
   Node: PVirtualNode; Column: TColumnIndex);
 var
-  ptr: PObjectNodeData;
-  data: TBiffNodeData;
+  data: PBiffNodeData;
   n: Word;
 begin
-  ptr := Sender.GetNodeData(Node);
-  data := TBiffNodeData(ptr^.Data);
+  if Node^.Parent = Sender.RootNode then
+  begin
+    HexEditor.Clear;
+    for n:=1 to ValueGrid.RowCount-1 do
+    begin
+      ValueGrid.Cells[1, n] := '';
+      ValueGrid.Cells[2, n] := '';
+    end;
+    FAnalysisGrid.RowCount := 2;
+    FAnalysisGrid.Rows[1].Clear;
+    AnalysisDetails.Lines.Clear;
+    exit;
+  end;
+
+  data := Sender.GetNodeData(Node);
 
   // Move to start of record + 2 bytes to skip record type ID.
-  MemStream.Position := PtrInt(data.Offset) + 2;
+  MemStream.Position := PtrInt(data^.Offset) + 2;
 
   // Read size of record
   n := WordLEToN(MemStream.ReadWord);
@@ -404,13 +438,13 @@ begin
   // Update user interface
   if (BiffTree.FocusedNode <> nil) and (BiffTree.GetNodeLevel(BiffTree.FocusedNode) > 0)
   then begin
-    Statusbar.Panels[0].Text := Format('Record ID: $%.4x', [data.RecordID]);
-    Statusbar.Panels[1].Text := data.RecordName;
+    Statusbar.Panels[0].Text := Format('Record ID: $%.4x', [data^.RecordID]);
+    Statusbar.Panels[1].Text := data^.RecordName;
     Statusbar.Panels[2].Text := Format('Record size: %d bytes', [n]);
     Statusbar.Panels[3].Text := '';
   end else begin
     Statusbar.Panels[0].Text := '';
-    Statusbar.Panels[1].Text := data.RecordName;
+    Statusbar.Panels[1].Text := data^.RecordName;
     Statusbar.Panels[2].Text := '';
     Statusbar.Panels[3].Text := '';
   end;
@@ -422,18 +456,21 @@ end;
 procedure TMainForm.BIFFTreeFreeNode(Sender: TBaseVirtualTree;
   Node: PVirtualNode);
 var
-  ptr: PObjectNodeData;
+  data: PBiffNodeData;
 begin
-  ptr := BiffTree.GetNodeData(Node);
-  if ptr <> nil then
-    FreeAndNil(ptr^.Data);
+  data := Sender.GetNodeData(Node);
+  if data <> nil then
+  begin
+    data^.RecordName := '';
+    data^.RecordDescription := '';
+  end;
 end;
 
 
 procedure TMainForm.BIFFTreeGetNodeDataSize(Sender: TBaseVirtualTree;
   var NodeDataSize: Integer);
 begin
-  NodeDataSize := SizeOf(TObjectNodeData);
+  NodeDataSize := SizeOf(TBiffNodeData);
 end;
 
 
@@ -441,25 +478,21 @@ procedure TMainForm.BIFFTreeGetText(Sender: TBaseVirtualTree;
   Node: PVirtualNode; Column: TColumnIndex; TextType: TVSTTextType;
   var CellText: String);
 var
-  ptr: PObjectNodeData;
-  data: TBiffNodeData;
+  data: PBiffNodeData;
 begin
   CellText := '';
-  ptr := Sender.GetNodeData(Node);
-  if ptr <> nil then begin
-    data := TBiffNodeData(ptr^.Data);
+  data := Sender.GetNodeData(Node);
+  if data <> nil then
     case Sender.GetNodeLevel(Node) of
-      0: if Column = 0 then
-           CellText := data.RecordName;
+      0: if Column = 0 then CellText := data^.RecordName;
       1: case Column of
-           0: CellText := IntToStr(data.Offset);
-           1: CellText := Format('$%.4x', [data.RecordID]);
-           2: CellText := data.RecordName;
-           3: if data.Index > -1 then CellText := IntToStr(data.Index);
-           4: CellText := data.RecordDescription;
+           0: CellText := IntToStr(data^.Offset);
+           1: CellText := Format('$%.4x', [data^.RecordID]);
+           2: CellText := data^.RecordName;
+           3: if data^.Index > -1 then CellText := IntToStr(data^.Index);
+           4: cellText := data^.RecordDescription;
          end;
     end;
-  end;
 end;
 
 
@@ -485,26 +518,49 @@ begin
     ExecFind(true, false);
 end;
 
+procedure TMainForm.CbHexAddressChange(Sender: TObject);
+begin
+  if CbHexAddress.Checked then
+  begin
+    HexEditor.AddressMode := eamHex;
+    HexEditor.AddressPrefix := '$';
+  end else
+  begin
+    HexEditor.AddressMode := eamDec;
+    HexEditor.AddressPrefix := '';
+  end;
+  CbHexEditorLineSizeChange(nil);
+end;
+
+procedure TMainForm.CbHexEditorLineSizeChange(Sender: TObject);
+begin
+  case CbHexEditorLineSize.ItemIndex of
+    0: HexEditor.LineSize := IfThen(HexEditor.AddressMode = eamHex, 16, 10);
+    1: HexEditor.LineSize := IfThen(HexEditor.AddressMode = eamHex, 32, 20);
+  end;
+end;
+
+procedure TMainForm.CbHexSingleBytesChange(Sender: TObject);
+begin
+  HexEditor.DigitGrouping := IfThen(CbHexSingleBytes.Checked, 1, 2);
+end;
 
 procedure TMainForm.DumpToFile(const AFileName: String);
 var
   list: TStringList;
   parentnode, node: PVirtualNode;
-  parentdata, data: TBiffNodeData;
-  ptr: PObjectNodeData;
+  parentdata, data: PBiffNodeData;
 begin
   list := TStringList.Create;
   try
     parentnode := BiffTree.GetFirst;
     while parentnode <> nil do begin
-      ptr := BiffTree.GetNodeData(parentnode);
-      parentdata := TBiffNodeData(ptr^.Data);
-      list.Add(parentdata.RecordName);
+      parentdata := BiffTree.GetNodeData(parentnode);
+      list.Add(parentdata^.RecordName);
       node := BIffTree.GetFirstChild(parentnode);
       while node <> nil do begin
-        ptr := BiffTree.GetNodeData(node);
-        data := TBiffNodeData(ptr^.Data);
-        List.Add(Format('  %.04x %s (%s)', [data.RecordID, data.RecordName, data.RecordDescription]));
+        data := BiffTree.GetNodeData(node);
+        List.Add(Format('  %.04x %s (%s)', [data^.RecordID, data^.RecordName, data^.RecordDescription]));
         node := BiffTree.GetNextSibling(node);
       end;
       List.Add('');
@@ -525,14 +581,14 @@ var
 
   function GetRecordname(ANode: PVirtualNode; UseLowercase: Boolean = true): String;
   var
-    data: TBIffNodeData;
+    data: PBIffNodeData;
   begin
-    data := GetNodeData(ANode);
+    data := BiffTree.GetNodeData(ANode);
     if Assigned(data) then begin
       if UseLowercase then
-        Result := lowercase(data.RecordName)
+        Result := lowercase(data^.RecordName)
       else
-        Result := data.RecordName;
+        Result := data^.RecordName;
     end else
       Result := '';
   end;
@@ -631,39 +687,47 @@ begin
     OnRecentFile := @MRUMenuManagerRecentFile;
   end;
 
-  HexGrid.ColWidths[HexGrid.ColCount-1] := 5;
-  HexGrid.DefaultRowHeight := HexGrid.Canvas.TextHeight('Tg') + 4;
-  AlphaGrid.DefaultRowHeight := HexGrid.DefaultRowHeight;
-  ValueGrid.DefaultRowHeight := HexGrid.DefaultRowHeight;
-  BiffTree.DefaultNodeHeight := HexGrid.DefaultRowHeight;
-  BiffTree.Header.DefaultHeight := HexGrid.DefaultRowHeight + 4;
+  HexEditor.Font.Style := [];
 
   FAnalysisGrid := TBIFFGrid.Create(self);
   with FAnalysisGrid do begin
     Parent := PgAnalysis;
     Align := alClient;
-    DefaultRowHeight := HexGrid.DefaultRowHeight;
+    DefaultRowHeight := ValueGrid.DefaultRowHeight;
     Options := Options + [goDrawFocusSelected];
     TitleStyle := tsNative;
     OnDetails := @AnalysisGridDetails;
     OnPrepareCanvas := @AnalysisGridPrepareCanvas;
+    OnSelection := @AnalysisGridSelection;
+    TabOrder := 0;
   end;
 
   with ValueGrid do begin
     ColCount := 3;
-    RowCount := VALUE_ROW_WIDESTRING+1;
+    RowCount := VALUE_ROW_PWIDECHAR + 1;
     Cells[0, 0] := 'Data type';
     Cells[1, 0] := 'Value';
     Cells[2, 0] := 'Offset range';
     Cells[0, VALUE_ROW_INDEX] := 'Offset';
+    Cells[0, VALUE_ROW_BITS] := 'Bits';
     Cells[0, VALUE_ROW_BYTE] := 'Byte';
+    Cells[0, VALUE_ROW_SHORTINT] := 'ShortInt';
     Cells[0, VALUE_ROW_WORD] := 'Word';
+    Cells[0, VALUE_ROW_SMALLINT] := 'SmallInt';
     Cells[0, VALUE_ROW_DWORD] := 'DWord';
+    Cells[0, VALUE_ROW_LONGINT] := 'LongInt';
     Cells[0, VALUE_ROW_QWORD] := 'QWord';
+    Cells[0, VALUE_ROW_INT64] := 'Int64';
+    Cells[0, VALUE_ROW_SINGLE] := 'Single';
     Cells[0, VALUE_ROW_DOUBLE] := 'Double';
     Cells[0, VALUE_ROW_ANSISTRING] := 'AnsiString';
+    Cells[0, VALUE_ROW_PANSICHAR] := 'PAnsiChar';
     Cells[0, VALUE_ROW_WIDESTRING] := 'WideString';
+    Cells[0, VALUE_ROW_PWIDECHAR] := 'PWideChar';
   end;
+
+  BiffTree.DefaultNodeHeight := BiffTree.Canvas.TextHeight('Tg') + 4;
+  BiffTree.Header.DefaultHeight := ValueGrid.DefaultRowHeight;
 
   UpdateCmds;
 end;
@@ -692,86 +756,107 @@ begin
 end;
 
 
-function TMainForm.GetBIFFNodeData: TBiffNodeData;
+function TMainForm.GetBIFFNodeData: PBiffNodeData;
 begin
   Result := nil;
-  if BiffTree.FocusedNode <> nil then begin
-    Result := GetNodeData(BiffTree.FocusedNode);
+  if BiffTree.FocusedNode <> nil then
+  begin
+    Result := BiffTree.GetNodeData(BiffTree.FocusedNode);
     if Result <> nil then
-      MemStream.Position := Result.Offset;
-  end;
-end;
-
-function TMainForm.GetNodeData(ANode: PVirtualNode): TBiffNodeData;
-var
-  ptr: PObjectNodeData;
-begin
-  result := nil;
-  if ANode <> nil then begin
-    ptr := BiffTree.GetNodeData(ANode);
-    if ptr <> nil then Result := TBiffNodeData(ptr^.Data);
+      MemStream.Position := Result^.Offset;
   end;
 end;
 
 
 function TMainForm.GetRecType: Word;
 var
-  data: TBiffNodeData;
+  data: PBiffNodeData;
 begin
   Result := Word(-1);
-  if BiffTree.FocusedNode <> nil then begin
-    data := GetNodeData(BiffTree.FocusedNode);
-    if data <> nil then begin
-      MemStream.Position := data.Offset;
+  if BiffTree.FocusedNode <> nil then
+  begin
+    data := BiffTree.GetNodedata(BiffTree.FocusedNode);
+    if data <> nil then
+    begin
+      MemStream.Position := data^.Offset;
       Result := WordLEToN(MemStream.ReadWord);
     end;
   end;
 end;
 
 
-procedure TMainForm.GridClick(Sender: TObject);
+function TMainForm.GetValueGridDataSize: Integer;
 begin
-  if PageControl.ActivePage = PgValues then
-    PopulateValueGrid;
+  Result := -1;
+  case ValueGrid.Row of
+    VALUE_ROW_BITS     : Result := SizeOf(Byte);
+    VALUE_ROW_BYTE     : Result := SizeOf(Byte);
+    VALUE_ROW_SHORTINT : Result := SizeOf(ShortInt);
+    VALUE_ROW_WORD     : Result := SizeOf(Word);
+    VALUE_ROW_SMALLINT : Result := SizeOf(SmallInt);
+    VALUE_ROW_DWORD    : Result := SizeOf(DWord);
+    VALUE_ROW_LONGINT  : Result := SizeOf(LongInt);
+    VALUE_ROW_QWORD    : Result := SizeOf(QWord);
+    VALUE_ROW_INT64    : Result := SizeOf(Int64);
+    VALUE_ROW_SINGLE   : Result := SizeOf(Single);
+    VALUE_ROW_DOUBLE   : Result := SizeOf(Double);
+  end;
 end;
 
+procedure TMainForm.HexEditorClick(Sender: TObject);
+begin
+  FCurrOffset := HexEditor.SelStart.Index;
+  PopulateValueGrid;
+  ValueGridClick(nil);
+  UpdateStatusbar;
+end;
 
-procedure TMainForm.HexGridPrepareCanvas(sender: TObject; aCol, aRow: Integer;
-  aState: TGridDrawState);
+procedure TMainForm.HexEditorKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
 var
-  ts: TTextStyle;
+  sel: TKHexEditorSelection;
 begin
-  ts := HexGrid.Canvas.TextStyle;
-  if ACol = 0 then
-    ts.Alignment := taRightJustify
-  else
-    ts.Alignment := taCenter;
-  ts.Opaque := false;
-  ts.Layout := tlCenter;
-  HexGrid.Canvas.TextStyle := ts;
+  case Key of
+    VK_LEFT  : dec(FCurrOffset);
+    VK_RIGHT : inc(FCurrOffset);
+    VK_UP    : dec(FCurrOffset, HexEditor.LineSize);
+    VK_DOWN  : inc(FCurrOffset, HexEditor.LineSize);
+    VK_HOME  : if (Shift = [ssCtrl]) then
+                 FCurrOffset := 0 else
+                 FCurrOffset := (FCurrOffset div HexEditor.LineSize) * HexEditor.LineSize;
+    VK_END   : if (Shift = [ssCtrl]) then
+                 FCurrOffset := High(FBuffer) else
+                 FCurrOffset := succ(FCurrOffset div HexEditor.LineSize) * HexEditor.lineSize - 1;
+    VK_NEXT  : begin
+                 if (Shift = [ssCtrl]) then
+                   inc(FCurrOffset, HexEditor.LineSize * HexEditor.LineCount)
+                 else
+                   inc(FCurrOffset, HexEditor.LineSize * HexEditor.GetClientHeightChars);
+                 while (FCurrOffset > High(FBuffer)) do
+                   dec(FCurrOffset, HexEditor.LineSize);
+               end;
+    VK_PRIOR : if (Shift = [ssCtrl]) then
+                 FCurrOffset := FCurrOffset mod HexEditor.LineSize
+               else
+               begin
+                 dec(FCurrOffset, HexEditor.LineSize * HexEditor.GetClientHeightChars);
+                 while (FCurrOffset < 0) do
+                   inc(FCurrOffset, HexEditor.LineSize);
+               end;
+    else       exit;
+  end;
+  if FCurrOffset < 0 then FCurrOffset := 0;
+  if FCurrOffset > High(FBuffer) then FCurrOffset := High(FBuffer);
+  sel.Index := FCurrOffset;
+  sel.Digit := 0;
+  HexEditor.SelStart := sel;
+  HexEditorClick(nil);
+  if not HexEditor.CaretInView then
+    TMyHexEditor(HexEditor).ScrollTo(HexEditor.SelToPoint(HexEditor.SelStart, HexEditor.EditArea), false, true);
 
-  ts.Alignment := taCenter;
-  AlphaGrid.Canvas.TextStyle := ts;
+  // Don't process these keys any more!
+  Key := 0;
 end;
-
-
-procedure TMainForm.HexGridSelection(Sender: TObject; aCol, aRow: Integer);
-begin
-  if (FLockHexDumpGrids > 0) then
-    exit;
-  FCurrOffset := (ARow - HexGrid.FixedRows)*16 + (ACol - HexGrid.FixedCols);
-  if FCurrOffset < 0 then
-    FCurrOffset := 0;
-  inc(FLockHexDumpGrids);
-  AlphaGrid.Row := aRow - HexGrid.FixedRows + AlphaGrid.FixedRows;
-  AlphaGrid.Col := aCol - HexGrid.FixedCols + AlphaGrid.FixedCols;
-  dec(FLockHexDumpGrids);
-  if FCurrOffset > -1 then
-    Statusbar.Panels[3].Text := Format('HexViewer offset: %d', [FCurrOffset])
-  else
-    Statusbar.Panels[3].Text := '';
-end;
-
 
 procedure TMainForm.LoadFile(const AFileName: String);
 var
@@ -868,6 +953,7 @@ begin
 
   FFormat := AFormat;
   UpdateCaption;
+  UpdateStatusbar;
 
   FMRUMenuManager.AddToRecent(AFileName);
 end;
@@ -908,55 +994,18 @@ end;
 
 procedure TMainForm.PopulateAnalysisGrid;
 begin
-//  FAnalysisGrid.SetRecordType(GetRecType, FBuffer, FFormat);
   FAnalysisGrid.SetBIFFNodeData(GetBiffNodeData, FBuffer, FFormat);
 end;
 
 
 procedure TMainForm.PopulateHexDump;
 var
-  n: Word;
-  i,r,c, w: Integer;
+  data: TDataSize;
 begin
-  n := Length(FBuffer);
-
-  // Prepare hex viewer rows...
-  r := HexGrid.FixedRows + n div 16;
-  if n mod 16 <> 0 then inc(r);
-  HexGrid.RowCount := r;
-  AlphaGrid.RowCount := r;
-  for i:=HexGrid.FixedRows to r-1 do begin
-    HexGrid.Rows[i].Clear;
-    HexGrid.Cells[0, i] := IntToStr((i - HexGrid.FixedRows)*16);
-    AlphaGrid.Rows[i].Clear;
-  end;
-
-  // ... width of first column, ...
-  w := HexGrid.Canvas.TextWidth(IntToStr(n)) + 4;
-  if w > HexGrid.DefaultColWidth then
-    HexGrid.ColWidths[0] := w;
-
-  // ... and cells
-  for i:=0 to Length(FBuffer)-1 do begin
-    c := i mod 16;
-    r := i div 16;
-    with HexGrid do
-      Cells[c+FixedCols, r+FixedRows] := Format('%.2x', [FBuffer[i]]);
-    with AlphaGrid do
-      if FBuffer[i] < 32 then
-        Cells[c+FixedCols, r+FixedRows] := '.'
-      else
-        Cells[c+FixedCols, r+FixedRows] := AnsiToUTF8(AnsiChar(FBuffer[i]));
-  end;
-
-  // Clear value grid
-  if PageControl.ActivePage = PgValues then
-    with ValueGrid do begin
-      Clean(1, 1, RowCount-1, ColCount-1, [gzNormal]);
-    end;
-
-  // Update status bar
-  HexGridSelection(nil, HexGrid.Col, HexGrid.Row);
+  data.Size := Length(FBuffer);
+  data.Data := @FBuffer[0];
+  HexEditor.Clear;
+  HexEditor.Append(0, data);
 end;
 
 
@@ -967,6 +1016,7 @@ var
   dw: DWord absolute buf;
   qw: QWord absolute buf;
   dbl: double absolute buf;
+  sng: single absolute buf;
   idx: Integer;
   i, j: Integer;
   s: String;
@@ -974,6 +1024,7 @@ var
   ls: Integer;
 begin
   idx := FCurrOffset;
+//  idx := HexEditor.SelStart.Index;
 
   i := ValueGrid.RowCount;
   j := ValueGrid.ColCount;
@@ -981,12 +1032,18 @@ begin
   ValueGrid.Cells[1, VALUE_ROW_INDEX] := IntToStr(idx);
 
   if idx <= Length(FBuffer)-SizeOf(byte) then begin
+    ValueGrid.Cells[1, VALUE_ROW_BITS] := IntToBin(FBuffer[idx], 8);
+    ValueGrid.Cells[2, VALUE_ROW_BITS] := Format('%d ... %d', [idx, idx]);
     ValueGrid.Cells[1, VALUE_ROW_BYTE] := IntToStr(FBuffer[idx]);
-    ValueGrid.Cells[2, VALUE_ROW_BYTE] := Format('%d ... %d', [idx, idx]);
+    ValueGrid.Cells[2, VALUE_ROW_BYTE] := ValueGrid.Cells[2, VALUE_ROW_BITS];
+    ValueGrid.Cells[1, VALUE_ROW_SHORTINT] := IntToStr(ShortInt(FBuffer[idx]));
+    ValueGrid.Cells[2, VALUE_ROW_SHORTINT] := ValueGrid.Cells[2, VALUE_ROW_BITS];
   end
   else begin
     ValueGrid.Cells[1, VALUE_ROW_BYTE] := '';
     ValueGrid.Cells[2, VALUE_ROW_BYTE] := '';
+    ValueGrid.Cells[1, VALUE_ROW_SHORTINT] := '';
+    ValueGrid.Cells[2, VALUE_ROW_SHORTINT] := '';
   end;
 
   if idx <= Length(FBuffer)-SizeOf(word) then begin
@@ -994,27 +1051,48 @@ begin
     buf[1] := FBuffer[idx+1];
     ValueGrid.Cells[1, VALUE_ROW_WORD] := IntToStr(WordLEToN(w));
     ValueGrid.Cells[2, VALUE_ROW_WORD] := Format('%d ... %d', [idx, idx+SizeOf(Word)-1]);
+    ValueGrid.Cells[1, VALUE_ROW_SMALLINT] := IntToStr(SmallInt(WordLEToN(w)));
+    ValueGrid.Cells[2, VALUE_ROW_SMALLINT] := ValueGrid.Cells[2, VALUE_ROW_WORD];
   end else begin
-    ValueGrid.Cells[1, VALUE_Row_WORD] := '';
+    ValueGrid.Cells[1, VALUE_ROW_WORD] := '';
     ValueGrid.Cells[2, VALUE_ROW_WORD] := '';
+    ValueGrid.Cells[1, VALUE_ROW_SMALLINT] := '';
+    ValueGrid.Cells[2, VALUE_ROW_SMALLINT] := '';
   end;
 
   if idx <= Length(FBuffer) - SizeOf(DWord) then begin
     for i:=0 to SizeOf(DWord)-1 do buf[i] := FBuffer[idx+i];
     ValueGrid.Cells[1, VALUE_ROW_DWORD] := IntToStr(DWordLEToN(dw));
     ValueGrid.Cells[2, VALUE_ROW_DWORD] := Format('%d ... %d', [idx, idx+SizeOf(DWord)-1]);
+    ValueGrid.Cells[1, VALUE_ROW_LONGINT] := IntToStr(LongInt(DWordLEToN(dw)));
+    ValueGrid.Cells[2, VALUE_ROW_LONGINT] := ValueGrid.Cells[2, VALUE_ROW_DWORD];
   end else begin
     ValueGrid.Cells[1, VALUE_ROW_DWORD] := '';
     ValueGrid.Cells[2, VALUE_ROW_DWORD] := '';
+    ValueGrid.Cells[1, VALUE_ROW_LONGINT] := '';
+    ValueGrid.Cells[2, VALUE_ROW_LONGINT] := '';
   end;
 
   if idx <= Length(FBuffer) - SizeOf(QWord) then begin
     for i:=0 to SizeOf(QWord)-1 do buf[i] := FBuffer[idx+i];
     ValueGrid.Cells[1, VALUE_ROW_QWORD] := Format('%d', [qw]);
     ValueGrid.Cells[2, VALUE_ROW_QWORD] := Format('%d ... %d', [idx, idx+SizeOf(QWord)-1]);
+    ValueGrid.Cells[1, VALUE_ROW_INT64] := Format('%d', [Int64(qw)]);
+    ValueGrid.Cells[2, VALUE_ROW_INT64] := ValueGrid.Cells[2, VALUE_ROW_QWORD];
   end else begin
     ValueGrid.Cells[1, VALUE_ROW_QWORD] := '';
     ValueGrid.Cells[2, VALUE_ROW_QWORD] := '';
+    ValueGrid.Cells[1, VALUE_ROW_INT64] := '';
+    ValueGrid.Cells[2, VALUE_ROW_INT64] := '';
+  end;
+
+  if idx <= Length(FBuffer) - SizeOf(single) then begin
+    for i:=0 to SizeOf(single)-1 do buf[i] := FBuffer[idx+i];
+    ValueGrid.Cells[1, VALUE_ROW_SINGLE] := Format('%f', [sng]);
+    ValueGrid.Cells[2, VALUE_ROW_SINGLE] := Format('%d ... %d', [idx, idx+SizeOf(Single)-1]);
+  end else begin
+    ValueGrid.Cells[1, VALUE_ROW_SINGLE] := '';
+    ValueGrid.Cells[2, VALUE_ROW_SINGLE] := '';
   end;
 
   if idx <= Length(FBuffer) - SizeOf(double) then begin
@@ -1044,6 +1122,10 @@ begin
     ValueGrid.Cells[2, VALUE_ROW_ANSISTRING] := '';
   end;
 
+  s := StrPas(PChar(@FBuffer[idx]));
+  ValueGrid.Cells[1, VALUE_ROW_PANSICHAR] := s;
+  ValueGrid.Cells[2, VALUE_ROW_PANSICHAR] := Format('%d ... %d', [idx, idx + Length(s)]);
+
   if idx < Length(FBuffer) then begin
     ls := FBuffer[idx];
     SetLength(sw, ls);
@@ -1063,6 +1145,10 @@ begin
     ValueGrid.Cells[1, VALUE_ROW_WIDESTRING] := '';
     ValueGrid.Cells[2, VALUE_ROW_WIDESTRING] := '';
   end;
+
+  s := UTF8Encode(StrPas(PWideChar(@FBuffer[idx])));
+  ValueGrid.Cells[1, VALUE_ROW_PWIDECHAR] := s;
+  ValueGrid.Cells[2, VALUE_ROW_PWIDECHAR] := Format('%d ... %d', [idx, idx + Length(s)]);
 end;
 
 
@@ -1092,16 +1178,27 @@ begin
       ValueGrid.ColWidths[i] := ini.ReadInteger('MainForm',
         Format('ValueGrid_ColWidth_%d', [i+1]), ValueGrid.ColWidths[i]);
 
-    AlphaGrid.Height := ini.ReadInteger('MainForm', 'AlphaGrid_Height', AlphaGrid.Height);
-    for i:=0 to AlphaGrid.ColCount-1 do
-      AlphaGrid.ColWidths[i] := ini.ReadInteger('MainForm',
-        Format('AlphaGrid_ColWidth_%d', [i+1]), AlphaGrid.ColWidths[i]);
-
     for i:=0 to FAnalysisGrid.ColCount-1 do
       FAnalysisGrid.ColWidths[i] := ini.ReadInteger('MainForm',
         Format('AnalysisGrid_ColWidth_%d', [i+1]), FAnalysisGrid.ColWidths[i]);
 
     AnalysisDetails.Height := ini.ReadInteger('MainForm', 'AnalysisDetails_Height', AnalysisDetails.Height);
+
+    HexEditor.AddressMode := TKHexEditorAddressMode(ini.ReadInteger('HexEditor',
+      'AddressMode', ord(HexEditor.AddressMode)));
+    CbHexAddress.Checked := HexEditor.AddressMode = eamHex;
+    CbHexAddressChange(nil);
+
+    HexEditor.DigitGrouping := ini.ReadInteger('HexEditor',
+      'DigitGrouping', HexEditor.DigitGrouping);
+    CbHexSingleBytes.Checked := HexEditor.DigitGrouping = 1;
+    CbHexSingleBytesChange(nil);
+
+    HexEditor.LineSize := ini.ReadInteger('HexEditor',
+      'LineSize', HexEditor.LineSize);
+    if HexEditor.LineSize in [10, 16] then
+      CbHexEditorLineSize.ItemIndex := 0 else CbHexEditorLineSize.ItemIndex := 1;
+    CbHexEditorLineSizeChange(nil);
 
     PageControl.ActivePageIndex := ini.ReadInteger('MainForm', 'PageIndex', PageControl.ActivePageIndex);
   finally
@@ -1120,8 +1217,7 @@ var
   i: Integer;
   node, prevnode: PVirtualNode;
   parentnode: PVirtualNode;
-  ptr: PObjectNodeData;
-  parentdata, data, prevdata: TBiffNodeData;
+  parentdata, data, prevdata: PBiffNodeData;
   w: word;
   crs: TCursor;
 begin
@@ -1152,80 +1248,78 @@ begin
         AStream.Position := AStream.Position + 2;
         w := WordLEToN(AStream.ReadWord);
         AStream.Position := p0;
-        parentdata := TBiffNodeData.Create;
-        parentdata.Offset := p;
-        parentdata.Recordname := BOFName(w);
         // add parent node for this substream
-        parentnode := BIFFTree.AddChild(nil);
-        ptr := BIFFTree.GetNodeData(parentnode);
-        ptr^.Data := parentdata;
+        parentnode := BiffTree.AddChild(nil);
+        // add data to parent node
+        parentdata := BiffTree.GetNodeData(parentnode);
+        BiffTree.ValidateNode(parentnode, False);
+        parentdata^.Offset := p;
+        parentdata^.RecordName := BOFName(w);
         FRowIndex := -1;
       end;
       // add node to parent node
-      data := TBiffNodeData.Create;
-      data.Offset := p;
-      data.RecordID := recType;
+      node := BIFFTree.AddChild(parentnode);
+      data := BiffTree.GetNodeData(node);
+      BiffTree.ValidateNode(node, False);
+      data^.Offset := p;
+      data^.RecordID := recType;
       if i > 0 then begin
-        data.RecordName := copy(s, 1, i-1);
-        data.RecordDescription := copy(s, i+2, Length(s));
+        data^.RecordName := copy(s, 1, i-1);
+        data^.RecordDescription := copy(s, i+2, Length(s));
       end else begin
-        data.RecordName := s;
-        data.RecordDescription := '';
+        data^.RecordName := s;
+        data^.RecordDescription := '';
       end;
       case recType of
         $0008, $0208:  // Row
           begin
             inc(FRowIndex);
-            data.Index := FRowIndex;
+            data^.Index := FRowIndex;
           end;
         $0031, $0231:  // Font record
           begin
             inc(FFontIndex);
-            if FFontIndex > 3 then data.Index := FFontIndex + 1
-              else data.Index := FFontIndex;
+            if FFontIndex > 3 then data^.Index := FFontIndex + 1
+              else data^.Index := FFontIndex;
           end;
         $0043, $00E0:  // XF record
           begin
             inc(FXFIndex);
-            data.Index := FXFIndex;
+            data^.Index := FXFIndex;
           end;
         $0017:   // EXTERNSHEET record
           if FFormat < sfExcel8 then begin
             inc(FExternSheetIndex);
-            data.Index := FExternSheetIndex;
+            data^.Index := FExternSheetIndex;
           end;
         $001E, $041E:  // Format record
           begin
             inc(FFormatIndex);
-            data.Index := FFormatIndex;
+            data^.Index := FFormatIndex;
+          end;
+        $003C:  // CONTINUE reocrd
+          begin
+            prevnode := BIFFTree.GetPrevious(node);
+            prevdata := BiffTree.GetNodeData(prevnode);
+            case prevdata^.RecordID of
+              $00FC: data^.Tag := BIFFNODE_SST_CONTINUE;    // SST record
+              $01B6: data^.Tag := BIFFNODE_TXO_CONTINUE1;   // TX0 record
+              $003C: begin                                  // CONTINUE record
+                       prevnode := BiffTree.GetPrevious(prevnode);
+                       prevdata := BiffTree.GetNodeData(prevnode);
+                       if prevdata^.RecordID = $01B6 then   // TX0 record
+                         data^.Tag := BIFFNODE_TXO_CONTINUE2;
+                     end;
+            end;
           end;
         else
-          data.Index := -1;
+          data^.Index := -1;
       end;
-      node := BIFFTree.AddChild(parentnode);
-      ptr := BIFFTree.GetNodeData(node);
-      ptr^.Data := data;
-      // Store info on CONTINUE records
-      if recType = $003C then begin // CONTINUE record
-        prevnode := BIFFTree.GetPrevious(node);
-        prevdata := GetNodeData(prevnode);
-        if prevdata.RecordID = $00FC then  // SST record
-          data.Tag := BIFFNODE_SST_CONTINUE
-        else
-        if prevdata.RecordID = $01B6 then  // TXO record
-          data.Tag := BIFFNODE_TXO_CONTINUE1
-        else
-        if prevdata.RecordID = $003C then  // CONTINUE record
-        begin
-          prevnode := BIFFTree.GetPrevious(prevnode);
-          prevdata := GetNodeData(prevnode);
-          if prevdata.RecordID = $01B6 then // TXO record
-            data.Tag := BIFFNODE_TXO_CONTINUE2;
-        end;
-      end;
+
       // advance stream pointer
       AStream.Position := AStream.Position + recSize;
     end;
+
     // expand all parent nodes
     node := BiffTree.GetFirst;
     while node <> nil do begin
@@ -1245,12 +1339,45 @@ end;
 
 
 procedure TMainForm.PageControlChange(Sender: TObject);
+var
+  sel: TKHexEditorSelection;
+  i, n: Integer;
+  s: String;
 begin
+  if (BiffTree.FocusedNode = nil) or
+     (BiffTree.FocusedNode^.Parent = BiffTree.RootNode)
+  then
+    exit;
+
+  PopulateAnalysisGrid;
+  for i:=1 to FAnalysisGrid.RowCount-1 do begin
+    s := FAnalysisGrid.Cells[0, i];
+    if s = '' then break;
+    n := StrToInt(s);
+    if (n >= FCurrOffset) then
+    begin
+      FAnalysisGrid.Row := IfThen(n = FCurrOffset, i, i-1);
+      break;
+    end;
+  end;
+
+  sel.Index := FCurrOffset;
+  sel.Digit := 0;
+  HexEditor.SelStart := sel;
+  PopulateValueGrid;
+  ValueGridClick(nil);
+{
   if PageControl.ActivePage = PgAnalysis then
     PopulateAnalysisGrid
   else
   if PageControl.ActivePage = PgValues then
+  begin
+    sel.Index := FCurrOffset;
+    sel.Digit := 0;
+    HexEditor.SelStart := sel;
     PopulateValueGrid;
+    ValueGridClick(nil);
+  end;}
 end;
 
 
@@ -1270,6 +1397,34 @@ procedure TMainForm.UpdateCmds;
 begin
   AcDumpToFile.Enabled := FFileName <> '';
   AcFind.Enabled := FFileName <> '';
+end;
+
+
+procedure TMainForm.UpdateStatusbar;
+begin
+  if FCurrOffset > -1 then
+    Statusbar.Panels[3].Text := Format('HexViewer offset: %d', [FCurrOffset])
+  else
+    Statusbar.Panels[3].Text := '';
+end;
+
+
+procedure TMainForm.ValueGridClick(Sender: TObject);
+var
+  sel: TKHexEditorSelection;
+  n: Integer;
+begin
+  sel := HexEditor.SelStart;
+
+  n := GetValueGridDataSize;
+  if n > 0 then begin
+    sel.Digit := 0;
+    HexEditor.SelStart := sel;
+    inc(sel.Index, n-1);
+    sel.Digit := 1;
+    HexEditor.SelEnd := sel;
+  end else
+    HexEditor.SelEnd := sel;
 end;
 
 
@@ -1297,16 +1452,17 @@ begin
     for i:=0 to ValueGrid.ColCount-1 do
       ini.WriteInteger('MainForm', Format('ValueGrid_ColWidth_%d', [i+1]), ValueGrid.ColWidths[i]);
 
-    ini.WriteInteger('MainForm', 'AlphaGrid_Width', AlphaGrid.Width);
-    for i:=0 to AlphaGrid.ColCount-1 do
-      ini.WriteInteger('MainForm', Format('AlphaGrid_ColWidth_%d', [i+1]), AlphaGrid.ColWidths[i]);
-
     for i:=0 to FAnalysisGrid.ColCount-1 do
       ini.WriteInteger('MainForm', Format('AnalysisGrid_ColWidth_%d', [i+1]), FAnalysisGrid.ColWidths[i]);
 
     ini.WriteInteger('MainForm', 'AnalysisDetails_Height', AnalysisDetails.Height);
 
     ini.WriteInteger('MainForm', 'PageIndex', PageControl.ActivePageIndex);
+
+    ini.WriteInteger('HexEditor', 'AddressMode', ord(HexEditor.AddressMode));
+    ini.WriteInteger('HexEditor', 'DigitGrouping', HexEditor.DigitGrouping);
+    ini.WriteInteger('HexEditor', 'LineSize', HexEditor.LineSize);
+
   finally
     ini.Free;
   end;

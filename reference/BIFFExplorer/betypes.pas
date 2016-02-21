@@ -14,26 +14,17 @@ const
 
 type
   { Virtual tree node data }
-  TBiffNodeData = class
+  TBiffNodeData = record //class
     Offset: Integer;
     RecordID: Integer;
     RecordName: String;
     RecordDescription: String;
     Index: Integer;
     Tag: Integer;
-    destructor Destroy; override;
   end;
+  PBiffNodeData = ^TBiffNodeData;
 
 implementation
-
-{ TBiffNodeData }
-
-destructor TBiffNodeData.Destroy;
-begin
-  Finalize(RecordName);
-  Finalize(RecordDescription);
-  inherited;
-end;
 
 end.
 

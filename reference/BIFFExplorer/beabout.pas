@@ -66,6 +66,10 @@ begin
             'fpspreadsheet',
             'http://sourceforge.net/p/lazarus-ccr/svn/HEAD/tree/components/fpspreadsheet/')
           );
+          AddListItem(Hyperlink(
+            'KControls',
+            'http://www.tkweb.eu/en/delphicomp/kcontrols.html')
+          );
         EndBulletList;
 
         AddEmptyLine;
