@@ -15,7 +15,7 @@ uses
   fpscsv, fpsCsvDocument, fpspatches, fpsTypes, xlsEscher, fpsReaderWriter, 
   fpsNumFormat, fpsclasses, fpsHeaderFooterParser, fpsPalette, fpsHTML, 
   fpsHTMLUtils, fpsCell, fpsSearch, xlsxml, xlsconst, fpsCurrency, 
-  fpsRegFileFormats;
+  fpsRegFileFormats, fpsImages;
 
 implementation
 

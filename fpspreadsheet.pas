@@ -112,6 +112,7 @@ type
     FComments: TsComments;
     FMergedCells: TsMergedCells;
     FHyperlinks: TsHyperlinks;
+    FImages: TFPList;
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
     FActiveCellCol: Cardinal;
@@ -491,7 +492,20 @@ type
     procedure UnmergeCells(ARow, ACol: Cardinal); overload;
     procedure UnmergeCells(ARange: String); overload;
 
-    // Print ranges
+    { Embedded images }
+    function CalcImageExtent(AIndex: Integer;
+      out ARow1, ACol1, ARow2, ACol2: Cardinal;
+      out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
+      out x, y, AWidth, AHeight: Double): Boolean;
+    function GetImage(AIndex: Integer): TsImage;
+    function GetImageCount: Integer;
+    procedure RemoveAllImages;
+    procedure RemoveImage(AIndex: Integer);
+    function WriteImage(ARow, ACol: Cardinal; AFileName: String;
+      AOffsetX: Integer = 0; AOffsetY: Integer = 0;
+      AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
+
+    { Print ranges }
     function AddPrintRange(ARow1, ACol1, ARow2, ACol2: Cardinal): Integer; overload;
     function AddPrintRange(const ARange: TsCellRange): Integer; overload;
     function GetPrintRange(AIndex: Integer): TsCellRange;
@@ -621,7 +635,6 @@ type
     FWorksheets: TFPList;
     FFormatID: TsSpreadFormatID;
     FBuiltinFontCount: Integer;
-    //FPalette: array of TsColorValue;
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
     FReadWriteFlag: TsReadWriteFlag;
@@ -637,7 +650,6 @@ type
     FOnRemoveWorksheet: TsRemoveWorksheetEvent;
     FOnRemovingWorksheet: TsWorksheetEvent;
     FOnSelectWorksheet: TsWorksheetEvent;
-//    FOnChangePalette: TNotifyEvent;
     FFileName: String;
     FLockCount: Integer;
     FLog: TStringList;
@@ -655,6 +667,7 @@ type
     FFontList: TFPList;
     FNumFormatList: TFPList;
     FCellFormatList: TsCellFormatList;
+    FEmbeddedStreamList: TFPList;
 
     { Internal methods }
     class function GetFormatFromFileHeader(const AFileName: TFileName;
@@ -764,6 +777,13 @@ type
       AOperation: TsCopyOperation; AParams: TsStreamParams = [];
       ATransposed: Boolean = false);
 
+    { Embedded images }
+    function AddEmbeddedStream(const AName: String): Integer;
+    function FindEmbeddedStream(const AName: String): Integer;
+    function GetEmbeddedStream(AIndex: Integer): TsEmbeddedStream;
+    function GetEmbeddedStreamCount: Integer;
+    procedure RemoveAllEmbeddedStreams;
+
     { Utilities }
     procedure DisableNotifications;
     procedure EnableNotifications;
@@ -821,7 +841,7 @@ uses
   Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
   fpsStrings, uvirtuallayer_ole,
   fpsUtils, fpsHTMLUtils, fpsRegFileFormats, fpsReaderWriter,
-  fpsCurrency, fpsExprParser, fpsNumFormatParser;
+  fpsCurrency, fpsExprParser, fpsNumFormatParser, fpsImages;
 
 (*
 const
@@ -1006,6 +1026,7 @@ begin
   FComments := TsComments.Create;
   FMergedCells := TsMergedCells.Create;
   FHyperlinks := TsHyperlinks.Create;
+  FImages := TFPList.Create;
 
   InitPageLayout(PageLayout);
 
@@ -1031,6 +1052,7 @@ end;
 -------------------------------------------------------------------------------}
 destructor TsWorksheet.Destroy;
 begin
+  RemoveAllImages;
   RemoveAllRows;
   RemoveAllCols;
 
@@ -1040,6 +1062,7 @@ begin
   FComments.Free;
   FMergedCells.Free;
   FHyperlinks.Free;
+  FImages.Free;
 
   inherited Destroy;
 end;
@@ -3291,6 +3314,172 @@ end;
 function TsWorksheet.IsMerged(ACell: PCell): Boolean;
 begin
   Result := (ACell <> nil) and (cfMerged in ACell^.Flags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the parameters of the image stored in the internal image list at
+  the specified index.
+
+  @param   AIndex    Index of the image to be retrieved
+  @return  TsImage record with all image parameters.
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetImage(AIndex: Integer): TsImage;
+var
+  img: PsImage;
+begin
+  img := PsImage(FImages[AIndex]);
+  Result := img^;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the count of images that are embedded into this sheet.
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetImageCount: Integer;
+begin
+  Result := FImages.Count;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Calculates image extent
+
+  @param  ARow1     Index of the row containing the top edge of the image
+  @param  ACol1     Index of the column containing the left edege of the image
+  @param  ARow2     Index of the row containing the right edge of the image
+  @param  ACol2     Index of the column containing the bottom edge of the image
+  @param  ARowOffs1 Distance between the top edge of image and row 1, in mm
+  @param  AColOffs1 Distance between the left edge of image and column 1, in mm
+  @param  ARowOffs2 Distance between the bottom edge of image and top of row 2, in mm
+  @param  AColOffs2 Distance between the right edge of image and left of col 2, in mm
+  @param  x         Absolute coordinate of left edge of image, in mm
+  @param  y         Absolute coordinate of top edge of image, in mm
+  @param  AWidth    Width of the image, in mm
+  @param  AHeight   Height of the image, in mm
+  @return FALSE if the image stream cannot be read or the format is unsupported.
+-------------------------------------------------------------------------------}
+function TsWorksheet.CalcImageExtent(AIndex: Integer;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal;
+  out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
+  out x,y, AWidth, AHeight: Double): Boolean;  // mm
+var
+  img: TsImage;
+  stream: TsEmbeddedStream;
+  colW, rowH: Double;
+  totH, totW: Double;
+  r, c: Integer;
+  factor: Double;
+begin
+  img := GetImage(AIndex);
+
+  ARow1 := img.Row;
+  ACol1 := img.Col;
+  ARowOffs1 := img.OffsetX;    // millimeters
+  AColOffs1 := img.OffsetY;
+
+  stream := FWorkbook.GetEmbeddedStream(img.Index);
+  Result := GetImageSize(stream, ExtractFileExt(stream.Name), AWidth, AHeight); // in inches!
+  AWidth := inToMM(AWidth);    // in millimeters now
+  AHeight := inToMM(AHeight);
+
+  // Find x coordinate of left image edge, in inches.
+  factor := FWorkbook.GetDefaultFont.Size/2;  // Width of "0" character in pts
+  x := AColOffs1;
+  for c := 0 to ACol1-1 do
+  begin
+    colW := ptsToMM(GetColWidth(c) * factor);  // in mm
+    x := x + colW;
+  end;
+
+  // Find cell with right image edge. Find horizontal within-cell-offsets
+  totW := -AColOffs1;
+  ACol2 := ACol1;
+  while (totW < AWidth) do
+  begin
+    colW := ptsToMM(GetColWidth(ACol2) * factor);
+    totW := totW + colW;
+    if totW >= AWidth then
+    begin
+      AColOffs2 := colW - (totW - AWidth);
+      break;
+    end;
+    inc(ACol2);
+  end;
+
+  // Find y coordinate of top image edge, in inches.
+  factor := FWorkbook.GetDefaultFont.Size;    // Height of line in pts
+  y := ARowOffs1;
+  for r := 0 to ARow1 - 1 do
+  begin
+    rowH := ptsToMM(CalcAutoRowHeight(r) * factor);  // row height in mm
+    y := y + rowH;
+  end;
+
+  // Find cell with bottom image edge. Find vertical within-cell-offsets
+  totH := -ARowOffs1;
+  ARow2 := ARow1;
+  while (totH < AHeight) do
+  begin
+    rowH := ptsToMM(CalcAutoRowHeight(ARow2) * factor);
+    totH := totH + rowH;
+    if totH >= AHeight then
+    begin
+      ARowOffs2 := rowH - (totH - AHeight);
+      break;
+    end;
+    inc(ARow2);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds an embedded image to the worksheet
+
+  @param  ARow       Index of the row at which the image begins (top edge)
+  @param  ACol       Index of the column at which the image begins (left edge)
+  @param  AFileName  Name of the image file
+  @param  AOffsetX   The image is offset horizontally by this pixel count from
+                     the left edge of the anchor cell. May reach into another
+                     cell.
+  @param  AOffsetY   The image is offset vertically by this pixel count from the
+                     top edge of the anchor cell. May reach into another cell.
+  @param  AScaleX    Horizontal scaling factor of the image
+  @param  AScaleY    Vertical scaling factor of the image
+  @return Index into the internal image list.
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AFileName: String;
+  AOffsetX: Integer = 0; AOffsetY: Integer = 0;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
+var
+  img: PsImage;
+begin
+  New(img);
+  InitImageRecord(img^, ARow, ACol, AOffsetX, AOffsetY, AScaleX, AScaleY);
+  img^.Index := Workbook.FindEmbeddedStream(AFileName);
+  if img^.Index = -1 then begin
+    img^.Index := Workbook.AddEmbeddedStream(AFileName);
+    Workbook.GetEmbeddedStream(img^.Index).LoadFromFile(AFileName);
+  end;
+  FImages.Add(img);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes an image from the internal image list.
+  The image is identified by its index.
+  The image stream (stored by the workbook) is retained.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveImage(AIndex: Integer);
+var
+  img: PsImage;
+begin
+  img := PsImage(FImages[AIndex]);
+  Dispose(img);
+  FImages.Delete(AIndex);
+end;
+
+procedure TsWorksheet.RemoveAllImages;
+var
+  i: Integer;
+begin
+  for i := FImages.Count-1 downto 0 do
+    RemoveImage(i);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5928,7 +6117,7 @@ end;
   Calculates the optimum height of a given row. Depends on the font size
   of the individual cells in the row.
 
-  @param  ARow   Index of the row to be considered
+  @param    ARow   Index of the row to be considered
   @return Row height in line count of the default font.
 -------------------------------------------------------------------------------}
 function TsWorksheet.CalcAutoRowHeight(ARow: Cardinal): Single;
@@ -5940,15 +6129,16 @@ begin
   h0 := Workbook.GetDefaultFontSize;
   for cell in Cells.GetRowEnumerator(ARow) do
     Result := Max(Result, ReadCellFont(cell).Size / h0);
+  if Result = 0 then
+    Result := DefaultRowHeight;
 end;
 
 {@@ ----------------------------------------------------------------------------
  Checks if a row record exists for the given row index and returns a pointer
  to the row record, or nil if not found
 
- @param  ARow   Index of the row looked for
- @return        Pointer to the row record with this row index, or nil if not
-                found
+ @param    ARow   Index of the row looked for
+ @return   Pointer to the row record with this row index, or nil if not found
 -------------------------------------------------------------------------------}
 function TsWorksheet.FindRow(ARow: Cardinal): PRow;
 var
@@ -6696,6 +6886,7 @@ begin
 
   FNumFormatList := TsNumFormatList.Create(FormatSettings, true);
   FCellFormatList := TsCellFormatList.Create(false);
+  FEmbeddedStreamList := TFPList.Create;
 
   // Add default cell format
   InitFormatRecord(fmt);
@@ -6708,12 +6899,16 @@ end;
 destructor TsWorkbook.Destroy;
 begin
   RemoveAllWorksheets;
-  RemoveAllFonts;
-
   FWorksheets.Free;
+
   FCellFormatList.Free;
   FNumFormatList.Free;
+
+  RemoveAllFonts;
   FFontList.Free;
+
+  RemoveAllEmbeddedStreams;
+  FEmbeddedStreamList.Free;
 
   FLog.Free;
   FreeAndNil(FSearchEngine);
@@ -8204,89 +8399,64 @@ begin
   end;
 end;
 
-(*
 {@@ ----------------------------------------------------------------------------
-  Adds a color to the palette and returns its palette index, but only if the
-  color does not already exist - in this case, it returns the index of the
-  existing color entry.
-  The color must in little-endian notation (like TColor of the graphics units)
-
-  @param   AColorValue   Number containing the rgb code of the color to be added
-  @return  Index of the new (or already existing) color item
+  Creates a new stream with the specified name, adds it to the internal list
+  and returns its index.
+  Embedded streams are used to store embedded images. AName is normally the
+  filename of the image. The image will be loaded to the stream later.
 -------------------------------------------------------------------------------}
-function TsWorkbook.AddColorToPalette(AColorValue: TsColorValue): TsColor;
-var
-  n: Integer;
+function TsWorkbook.AddEmbeddedStream(const AName: String): Integer;
 begin
-  n := Length(FPalette);
-
-  // Look look for the color. Is it already in the existing palette?
-  if n > 0 then
-    for Result := 0 to n-1 do
-      if FPalette[Result] = AColorValue then
-        exit;
-
-  // No --> Add it to the palette.
-
-  // Do not overwrite Excel's built-in system colors
-  case n of
-    DEF_FOREGROUND_COLOR:
-      begin
-        SetLength(FPalette, n+3);
-        FPalette[n] := DEF_FOREGROUND_COLORVALUE;
-        FPalette[n+1] := DEF_BACKGROUND_COLORVALUE;
-        FPalette[n+2] := AColorValue;
-      end;
-    DEF_BACKGROUND_COLOR:
-      begin
-        SetLength(FPalette, n+2);
-        FPalette[n] := DEF_BACKGROUND_COLORVALUE;
-        FPalette[n+1] := AColorValue;
-      end;
-    DEF_CHART_FOREGROUND_COLOR:
-      begin
-        SetLength(FPalette, n+4);
-        FPalette[n] := DEF_CHART_FOREGROUND_COLORVALUE;
-        FPalette[n+1] := DEF_CHART_BACKGROUND_COLORVALUE;
-        FPalette[n+2] := DEF_CHART_NEUTRAL_COLORVALUE;
-        FPalette[n+3] := AColorValue;
-      end;
-    DEF_CHART_BACKGROUND_COLOR:
-      begin
-        SetLength(FPalette, n+3);
-        FPalette[n] := DEF_CHART_BACKGROUND_COLORVALUE;
-        FPalette[n+1] := DEF_CHART_NEUTRAL_COLORVALUE;
-        FPalette[n+2] := AColorValue;
-      end;
-    DEF_CHART_NEUTRAL_COLOR:
-      begin
-        SetLength(FPalette, n+2);
-        FPalette[n] := DEF_CHART_NEUTRAL_COLORVALUE;
-        FPalette[n+1] := AColorValue;
-      end;
-    DEF_TOOLTIP_TEXT_COLOR:
-      begin
-        SetLength(FPalette, n+2);
-        FPalette[n] := DEF_TOOLTIP_TEXT_COLORVALUE;
-        FPalette[n+1] := AColorValue;
-      end;
-    DEF_FONT_AUTOMATIC_COLOR:
-      begin
-        SetLength(FPalette, n+2);
-        FPalette[n] := DEF_FONT_AUTOMATIC_COLORVALUE;
-        FPalette[n+1] := AColorValue;
-      end;
-    else
-      begin
-        SetLength(FPalette, n+1);
-        FPalette[n] := AColorValue;
-      end;
-  end;
-  Result := Length(FPalette) - 1;
-
-  if Assigned(FOnChangePalette) then FOnChangePalette(self);
+  Result := FEmbeddedStreamList.Add(TsEmbeddedStream.Create(AName));
 end;
-                          *)
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether an embedded stream with the specified name already exists.
+  If yes, returns its index in the stream list, or -1 if no.
+-------------------------------------------------------------------------------}
+function TsWorkbook.FindEmbeddedStream(const AName: String): Integer;
+var
+  stream: TsEmbeddedStream;
+begin
+  for Result:=0 to FEmbeddedStreamList.Count-1 do
+  begin
+    stream := TsEmbeddedStream(FEmbeddedStreamList[Result]);
+    if stream.Name = AName then
+      exit;
+  end;
+  Result := -1;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the embedded stream stored in the embedded stream list at the
+  specified index.
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetEmbeddedStream(AIndex: Integer): TsEmbeddedStream;
+begin
+  Result := TsEmbeddedStream(FEmbeddedStreamList[AIndex]);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the count of embedded streams
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetEmbeddedStreamCount: Integer;
+begin
+  Result := FEmbeddedStreamList.Count;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes all embedded streams
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.RemoveAllEmbeddedStreams;
+var
+  i: Integer;
+begin
+  for i:= 0 to FEmbeddedStreamList.Count-1 do
+    TsEmbeddedStream(FEmbeddedStreamList[i]).Free;
+  FEmbeddedStreamList.Clear;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Adds a (simple) error message to an internal list
 
@@ -8516,3 +8686,4 @@ end;
    *)
 
 end.   {** End Unit: fpspreadsheet }
+

@@ -201,8 +201,18 @@ type
     function Pop: Integer;
   end;
 
-  function FindFontInList(AFontList: TFPList; AFontName: String; ASize: Single;
-    AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Integer;
+  { TsEmbeddedStream }
+  TsEmbeddedStream = class(TMemoryStream)
+  private
+    FName: String;
+  public
+    constructor Create(AName: String);
+    property Name: String read FName;
+  end;
+
+function FindFontInList(AFontList: TFPList; AFontName: String; ASize: Single;
+  AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Integer;
+
 
 implementation
 
@@ -221,10 +231,11 @@ begin
 end;
 
 
-{******************************************************************************}
-{ TsRowColEnumerator:  A specialized enumerator for TsRowColAVLTree using the  }
-{ pointers to the data records.                                                }
-{******************************************************************************}
+{==============================================================================}
+{                         TsRowColEnumerator                                   }
+{ A specialized enumerator for TsRowColAVLTree using the  pointers to the data }
+{ records.                                                                     }
+{==============================================================================}
 
 constructor TsRowColEnumerator.Create(ATree: TsRowColAVLTree;
   AStartRow, AStartCol, AEndRow, AEndCol: LongInt; AReverse: Boolean);
@@ -373,10 +384,10 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 { TsRowColAVLTree:  A specialized AVLTree working with records containing      }
 { row and column indexes.                                                      }
-{******************************************************************************}
+{==============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the AVLTree. Installs a compare procedure for row and column
@@ -621,9 +632,9 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 { TsCellEnumerator: enumerator for the TsCells AVLTree                        }
-{******************************************************************************}
+{==============================================================================}
 
 function TsCellEnumerator.GetEnumerator: TsCellEnumerator;
 begin
@@ -636,9 +647,9 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 { TsCells: an AVLTree to store spreadsheet cells                               }
-{******************************************************************************}
+{==============================================================================}
 
 constructor TsCells.Create(AWorksheet: Pointer; AOwnsData: Boolean = true);
 begin
@@ -792,9 +803,9 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 { TsCommentEnumerator: enumerator for the TsComments AVLTree                   }
-{******************************************************************************}
+{==============================================================================}
 
 function TsCommentEnumerator.GetEnumerator: TsCommentEnumerator;
 begin
@@ -807,9 +818,9 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 { TsComments: an AVLTree to store comment records for cells                     }
-{******************************************************************************}
+{==============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Adds a node with a new comment record to the tree. If a node already
@@ -872,9 +883,9 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 { TsHyperlinkEnumerator: enumerator for the TsHyperlinks AVLTree               }
-{******************************************************************************}
+{==============================================================================}
 
 function TsHyperlinkEnumerator.GetEnumerator: TsHyperlinkEnumerator;
 begin
@@ -887,9 +898,9 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 { TsHyperlinks: an AVLTree to store hyperlink records for cells                 }
-{******************************************************************************}
+{==============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Adds a node with a new hyperlink record to the tree. If a node already
@@ -953,9 +964,9 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 { TsCellRangeEnumerator: enumerator for the cell range records                 }
-{******************************************************************************}
+{==============================================================================}
 
 function TsCellRangeEnumerator.GetEnumerator: TsCellRangeEnumerator;
 begin
@@ -968,9 +979,9 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 { TsMergedCells: a AVLTree to store merged cell range records for cells         }
-{******************************************************************************}
+{==============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Adds a node with a new merge cell range record to the tree. If a node already
@@ -1136,9 +1147,9 @@ begin
 end;
 
 
-{******************************************************************************}
+{==============================================================================}
 {                          TsCellFormatList                                    }
-{******************************************************************************}
+{==============================================================================}
 
 constructor TsCellFormatList.Create(AAllowDuplicates: Boolean);
 begin
@@ -1310,9 +1321,10 @@ begin
   inherited Items[AIndex] := AValue;
 end;
 
-{******************************************************************************}
+
+{==============================================================================}
 {                              TsIntegerStack                                  }
-{******************************************************************************}
+{==============================================================================}
 
 procedure TsIntegerStack.Push(AValue: Integer);
 begin
@@ -1331,9 +1343,22 @@ begin
   end;
 end;
 
-{******************************************************************************}
+
+{==============================================================================}
+{                             TsEmbeddedStream                                 }
+{==============================================================================}
+
+constructor TsEmbeddedStream.Create(AName: String);
+begin
+  inherited Create;
+  FName := AName;
+end;
+
+
+{==============================================================================}
 {                             Utilities                                        }
-{******************************************************************************}
+{==============================================================================}
+
 function FindFontInList(AFontList: TFPList; AFontName: String; ASize: Single;
   AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Integer;
 begin
@@ -1346,6 +1371,7 @@ begin
       exit;
   Result := -1;
 end;
+
 
 end.
 

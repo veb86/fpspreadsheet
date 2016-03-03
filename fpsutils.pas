@@ -119,18 +119,22 @@ function TryStrToFloatAuto(AText: String; out ANumber: Double;
 function TryFractionStrToFloat(AText: String; out ANumber: Double;
   out AIsMixed: Boolean; out AMaxDigits: Integer): Boolean;
 
-function TwipsToPts(AValue: Integer): Single; inline;
-function PtsToTwips(AValue: Single): Integer; inline;
 function cmToPts(AValue: Double): Double; inline;
-function PtsToCm(AValue: Double): Double; inline;
+function EMUToIn(AValue: Int64): Double; inline;
+function EMUToMM(AValue: Int64): Double; inline;
+function InToEMU(AValue: Double): Int64; inline;
 function InToMM(AValue: Double): Double; inline;
 function InToPts(AValue: Double): Double; inline;
-function PtsToIn(AValue: Double): Double; inline;
+function mmToEMU(AValue: Double): Int64; inline;
 function mmToPts(AValue: Double): Double; inline;
 function mmToIn(AValue: Double): Double; inline;
+function PtsToCm(AValue: Double): Double; inline;
+function PtsToIn(AValue: Double): Double; inline;
+function PtsToTwips(AValue: Single): Integer; inline;
 function PtsToMM(AValue: Double): Double; inline;
-function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double; inline;
 function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer; inline;
+function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double; inline;
+function TwipsToPts(AValue: Integer): Single; inline;
 function HTMLLengthStrToPts(AValue: String; DefaultUnits: String = 'pt'): Double;
 
 function ColorToHTMLColorStr(AValue: TsColor; AExcelDialect: Boolean = false): String;
@@ -157,6 +161,8 @@ procedure FixHyperlinkPathDelims(var ATarget: String);
 procedure InitCell(out ACell: TCell); overload;
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
 procedure InitFormatRecord(out AValue: TsCellFormat);
+procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
+  AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
 procedure InitPageLayout(out APageLayout: TsPageLayout);
 
 procedure CopyCellValue(AFromCell, AToCell: PCell);
@@ -1556,6 +1562,29 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Converts inches to EMU (English metric units)
+
+  @param   AValue   Length value in inches
+  @return  Value converted to EMU
+-------------------------------------------------------------------------------}
+function InToEMU(AValue: Double): Int64;
+begin
+  Result := Round(AValue * 914400);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts EMU (English metric units) to inches
+
+  @param   AValue   Length value in EMU
+  @return  Value converted to inches
+-------------------------------------------------------------------------------}
+function EMUToIn(AValue: Int64): Double;
+begin
+  Result := Round(AValue / 914400);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Converts inches to millimeters
 
   @param   AValue   Length value in inches
@@ -1597,6 +1626,28 @@ end;
 function PtsToIn(AValue: Double): Double;
 begin
   Result := AValue / 72;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts EMU to millimeters
+
+  @param   AValue    Length value in EMU (1 cm = 360000 EMU)
+  @return  Value converted to millimeters
+-------------------------------------------------------------------------------}
+function EMUToMM(AValue: Int64): Double;
+begin
+  Result := AValue / 36000;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts millimeters to EMU (english metric units, 1 cm = 360000 EMU)
+
+  @param   AValue    Length value in millimeters
+  @return  Value converted to EMU
+-------------------------------------------------------------------------------}
+function mmToEMU(AValue: Double): Int64; inline;
+begin
+  Result := round(AValue * 36000);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2022,6 +2073,21 @@ begin
   AValue.BorderStyles := DEFAULT_BORDERSTYLES;
   AValue.Background := EMPTY_FILL;
   AValue.NumberFormatIndex := -1;  // GENERAL format not contained in NumFormatList
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initializes the fields of a TsImage record
+-------------------------------------------------------------------------------}
+procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
+  AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
+begin
+  AValue.Row := ARow;
+  AValue.Col := ACol;
+  AValue.OffsetX := AOffsetX;
+  AValue.OffsetY := AOffsetY;
+  AValue.ScaleX := AScaleX;
+  AValue.ScaleY := AScaleY;
+  AValue.Index := -1;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2456,7 +2522,6 @@ begin
   // messed up result
   {$ENDIF}
 end;
-
 
 {$PUSH}{$HINTS OFF}
 {@@ Silence warnings due to an unused parameter }

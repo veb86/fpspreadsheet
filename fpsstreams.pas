@@ -46,6 +46,7 @@ type
 
 procedure ResetStream(var AStream: TStream);
 
+
 implementation
 
 uses
@@ -58,7 +59,12 @@ begin
     AStream.Position := 0;
 end;
 
-{@@
+
+{==============================================================================}
+{                               TBufStream                                     }
+{==============================================================================}
+
+{@@ ----------------------------------------------------------------------------
   Constructor of the TBufStream. Creates a memory stream and prepares everything
   to create also a file stream if the stream size exceeds ABufSize bytes.
 
@@ -70,7 +76,7 @@ end;
                       is destroyed.
   @param  ABufSize    Maximum size of the memory stream before swapping to file
                       starts. Value is given in bytes.
-}
+-------------------------------------------------------------------------------}
 constructor TBufStream.Create(ATempFile: String; AKeepFile: Boolean = false;
   ABufSize: Cardinal = Cardinal(-1));
 begin

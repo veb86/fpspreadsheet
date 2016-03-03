@@ -774,6 +774,15 @@ type
   TsStreamParam = (spClipboard, spWindowsClipboardHTML);
   TsStreamParams = set of TsStreamParam;
 
+  {@@ Embedded image }
+  TsImage = record
+    Row, Col: Cardinal;
+    Index: Integer;
+    OffsetX, OffsetY: Double;  // mm
+    ScaleX, ScaleY: Double;
+  end;
+  PsImage = ^TsImage;
+
 
 implementation
 

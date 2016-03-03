@@ -1000,7 +1000,7 @@ var
   col: PCol;
   i: Integer;
 begin
-  factor := FWorkbook.GetFont(0).Size/2;
+  factor := FWorkbook.GetDefaultFont.Size/2;
   for i:=0 to FColumnList.Count-1 do
   begin
     colIndex := TColumnData(FColumnList[i]).Col;
