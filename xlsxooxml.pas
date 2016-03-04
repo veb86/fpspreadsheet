@@ -1110,7 +1110,7 @@ begin
             end;
             ParseSheetCellString(Copy(s, 1, p-1), sheetname, r1, c1);
             ParseSheetCellString(Copy(s, p+1, MaxInt), sheetname, r2, c2);
-            sheet.AddPrintRange(r1, c1, r2, c2);
+            sheet.PageLayout.AddPrintRange(r1, c1, r2, c2);
           end;
         finally
           L.Free;
@@ -1138,9 +1138,9 @@ begin
             if not ParseCellRowString(copy(s, p+1, MaxInt), r2) then
               r2 := UNASSIGNED_ROW_COL_INDEX;
             if (r1 <> cardinal(UNASSIGNED_ROW_COL_INDEX)) then
-              sheet.SetRepeatedPrintRows(r1, r2);
+              sheet.PageLayout.SetRepeatedRows(r1, r2);
             if (c1 <> cardinal(UNASSIGNED_ROW_COL_INDEX)) then
-              sheet.SetRepeatedPrintCols(c1, c2);
+              sheet.PageLayout.SetRepeatedCols(c1, c2);
           end;
         finally
           L.Free;
@@ -1385,11 +1385,11 @@ begin
 
   s := GetAttrValue(ANode, 'differentOddEven');
   if s = '1' then
-    Include(AWorksheet.PageLayout.Options, poDifferentOddEven);
+    with AWorksheet.PageLayout do Options := Options + [poDifferentOddEven];
 
   s := GetAttrValue(ANode, 'differentFirst');
   if s = '1' then
-    Include(AWorksheet.PageLayout.Options, poDifferentFirst);
+    with AWorksheet.PageLayout do Options := Options + [poDifferentFirst];
 
   node := ANode.FirstChild;
   while node <> nil do
@@ -1596,49 +1596,46 @@ begin
   // Scaling factor
   s := GetAttrValue(ANode, 'scale');
   if s <> '' then
-  begin
     AWorksheet.PageLayout.ScalingFactor := StrToInt(s);
-    Exclude(AWorksheet.PageLayout.Options, poFitPages);
-  end;
+    // poFitPages is automatically excluded
 
   // Fit print job to pages
   s := GetAttrValue(ANode, 'fitToHeight');
   if s <> '' then
-  begin
     AWorksheet.PageLayout.FitHeightToPages := StrToInt(s);
-    Include(AWorksheet.PageLayout.Options, poFitPages);
-  end;
+    // poFitPages is automatically included.
 
   s := GetAttrValue(ANode, 'fitToWidth');
   if s <> '' then
-  begin
     AWorksheet.PageLayout.FitWidthToPages := StrToInt(s);
-    Include(AWorksheet.PageLayout.Options, poFitPages);
-  end;
+    // poFitPages is automatially included.
 
   // First page number
-  s := GetAttrValue(ANode, 'useFirstPageNumber');
-  if s = '1' then
-    Include(AWorksheet.PageLayout.Options, poUseStartPageNumber);
-
   s := GetAttrValue(ANode, 'firstPageNumber');
   if s <> '' then
     AWorksheet.PageLayout.StartPageNumber := StrToInt(s);
 
+  s := GetAttrValue(ANode, 'useFirstPageNumber');
+  with AWorksheet.PageLayout do
+    if s = '1' then
+      Options := Options + [poUseStartPageNumber]
+    else
+      Options := Options - [poUseStartPageNumber];
+
   // Print order
   s := GetAttrValue(ANode, 'pageOrder');
   if s = 'overThenDown' then
-    Include(AWorksheet.PageLayout.Options, poPrintPagesByRows);
+    with AWorksheet.PageLayout do Options := Options + [poPrintPagesByRows];
 
   // Monochrome
   s := GetAttrValue(ANode, 'blackAndWhite');
   if s = '1' then
-    Include(AWorksheet.PageLayout.Options, poMonochrome);
+    with AWorksheet.PageLayout do Options := Options + [poMonochrome];
 
   // Quality
   s := GetAttrValue(ANode, 'draft');
   if s = '1' then
-    Include(AWorksheet.PageLayout.Options, poDraftQuality);
+    with AWorksheet.PageLayout do Options := Options + [poDraftQuality];
 end;
 
 procedure TsSpreadOOXMLReader.ReadPalette(ANode: TDOMNode);
@@ -1700,11 +1697,11 @@ begin
     exit;
   s := GetAttrValue(ANode, 'headings');
   if (s = '1') then
-    Include(AWorksheet.PageLayout.Options, poPrintHeaders);
+    with AWorksheet.PageLayout do Options := Options + [poPrintHeaders];
 
   s := GetAttrValue(ANode, 'gridLines');
   if (s = '1') then
-    Include(AWorksheet.PageLayout.Options, poPrintGridLines);
+    with AWorksheet.PageLayout do Options := Options + [poPrintGridLines];
 end;
 
 procedure TsSpreadOOXMLReader.ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
@@ -3759,9 +3756,9 @@ begin
 
     // Cell block of print range
     srng := '';
-    for j := 0 to sheet.numPrintRanges - 1 do
+    for j := 0 to sheet.PageLayout.NumPrintRanges - 1 do
     begin
-      prng := sheet.GetPrintRange(j);
+      prng := sheet.PageLayout.GetPrintRange(j);
       srng := srng + ',' + Format('%s!%s', [
         sheetname, GetCellRangeString(prng.Row1, prng.Col1, prng.Row2, prng.Col2, [])
       ]);

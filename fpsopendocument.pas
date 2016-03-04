@@ -42,7 +42,7 @@ uses
   fpszipper,
  {$ENDIF}
   fpstypes, fpspreadsheet, fpsReaderWriter, fpsutils, fpsHeaderFooterParser,
-  fpsNumFormat, fpsNumFormatParser, fpsxmlcommon;
+  fpsNumFormat, fpsNumFormatParser, fpsxmlcommon, fpsPagelayout;
   
 type
   TDateModeODS=(
@@ -131,7 +131,8 @@ type
     procedure ReadAutomaticStyles(AStylesNode: TDOMNode);
     procedure ReadMasterStyles(AStylesNode: TDOMNode);
     procedure ReadNumFormats(AStylesNode: TDOMNode);
-    function ReadPageLayout(AStylesNode: TDOMNode; ATableStyleName: String): PsPageLayout;
+    procedure ReadPageLayout(AStylesNode: TDOMNode; ATableStyleName: String;
+      APageLayout: TsPageLayout);
     procedure ReadSettings(AOfficeSettingsNode: TDOMNode);
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
@@ -356,8 +357,23 @@ type
   public
     Name: String;
     PageLayout: TsPageLayout;
+    constructor Create;
+    destructor Destroy; override;
   end;
 
+  constructor TPageLayoutData.Create;
+  begin
+    inherited;
+    PageLayout := TsPageLayout.Create(nil);
+  end;
+
+  destructor TPageLayoutData.destroy;
+  begin
+    PageLayout.Free;
+    inherited;
+  end;
+
+type
   { MasterPage items stored in MasterPageList }
   TMasterPageData = class
   public
@@ -403,6 +419,7 @@ type
   TXMLHeaderFooterFont = class(TsHeaderFooterFont)
     StyleName: String;
   end;
+
 
 {******************************************************************************}
 {                    TsSpreadOpenDocHeaderFooterParser                         }
@@ -1278,6 +1295,7 @@ var
   fntSize: Double;
   fntStyle: TsHeaderFooterFontStyles;
   fntColor: TsColor;
+  n: Integer;
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -1309,7 +1327,6 @@ begin
     begin
       // Read page layout parameters
       data := TPageLayoutData.Create;
-      InitPageLayout(data.PageLayout);
       data.Name := GetAttrValue(layoutNode, 'style:name');
 
       node := layoutNode.FirstChild;
@@ -1355,51 +1372,52 @@ begin
           begin
             if s[Length(s)] = '%' then Delete(s, Length(s), 1);
             data.PageLayout.ScalingFactor := round(StrToFloat(s, FPointSeparatorSettings));
-            Exclude(data.PageLayout.Options, poFitPages);
+            with data.PageLayout do Options := Options - [poFitPages];
           end;
 
           s := GetAttrValue(node, 'style:scale-to-X');
           if s <> '' then
           begin
             data.PageLayout.FitWidthToPages := StrToInt(s);
-            Include(data.PageLayout.Options, poFitPages);
+            with data.PageLayout do Options := Options + [poFitPages];
           end;
 
           s := GetAttrValue(node, 'style:scale-to-Y');
           if s <> '' then
           begin
             data.PageLayout.FitHeightToPages := StrToInt(s);
-            Include(data.PageLayout.Options, poFitPages);
+            with data.PageLayout do Options := Options + [poFitPages];
           end;
 
           s := GetAttrValue(node, 'style:table-centering');
           case s of
             'both':
-              data.PageLayout.Options := data.PageLayout.Options + [poHorCentered, poVertCentered];
+              with data.PageLayout do Options := Options + [poHorCentered, poVertCentered];
             'horizontal':
-              data.PageLayout.Options := data.PageLayout.Options + [poHorCentered] - [poVertCentered];
+              with data.PageLayout do Options := Options + [poHorCentered] - [poVertCentered];
             'vertical':
-              data.PageLayout.Options := data.PageLayout.Options - [poHorCentered] + [poVertCentered];
+              with data.PageLayout do Options := Options - [poHorCentered] + [poVertCentered];
           end;
 
           s := GetAttrValue(node, 'style:print');
           if pos('grid', s) > 0 then
-            Include(data.PageLayout.Options, poPrintGridLines);
+            with data.PageLayout do Options := Options + [poPrintGridLines];
           if pos('headers', s) > 0 then
-            Include(data.PageLayout.Options, poPrintHeaders);
+            with data.PageLayout do Options := Options + [poPrintHeaders];
           if pos('annotations', s) > 0 then
-            Include(data.PageLayout.Options, poPrintCellComments);
+            with data.PageLayout do Options := Options + [poPrintCellComments];
 
           s := GetAttrValue(node, 'style:print-page-order');
           if s = 'ltr' then    // "left-to-right", the other option is "ttb = top-to-bottom"
-            Include(data.PageLayout.Options, poPrintPagesByRows);
+            with data.PageLayout do Options := Options + [poPrintPagesByRows];
 
           s := GetAttrValue(node, 'style:first-page-number');
           if s = 'continue' then
-            Exclude(data.PageLayout.Options, poUseStartPageNumber)
+            with Data.PageLayout do Options := Options - [poUseStartPageNumber]
           else
-          if TryStrToInt(s, data.PageLayout.StartPageNumber) then
-            Include(data.PageLayout.Options, poUseStartPageNumber);
+          if TryStrToInt(s, n) then
+            data.PageLayout.StartPageNumber := n;
+            // Sets poUseStartPageNumber automatically
 
           FPageLayoutList.Add(data);
         end else
@@ -1459,7 +1477,7 @@ var
   nodeName: String;
   s: String;
   data: TMasterPageData;
-  pagelayout: PsPageLayout;
+  pagelayout: TsPageLayout;
   j: Integer;
 
 begin
@@ -1478,13 +1496,13 @@ begin
       for j:=0 to FPageLayoutList.Count-1 do
         if TPageLayoutData(FPageLayoutList[j]).Name = s then
         begin
-          pageLayout := @TPageLayoutData(FPageLayoutList[j]).PageLayout;
+          pageLayout := TPageLayoutData(FPageLayoutList[j]).PageLayout;
           break;
         end;
       if pagelayout = nil then
         exit;
 
-      data := TMasterPageData.create;
+      data := TMasterPageData.Create;
       data.Name := GetAttrValue(masternode, 'style:name');
       data.PageLayoutName := s;
       FMasterPageList.Add(data);
@@ -1496,37 +1514,37 @@ begin
         begin
           s := ReadHeaderFooterText(styleNode);
           if s <> '' then
-            pageLayout^.Headers[HEADER_FOOTER_INDEX_ODD] := s;
+            pageLayout.Headers[HEADER_FOOTER_INDEX_ODD] := s;
         end else
         if nodeName = 'style:header-left' then
         begin
           s := ReadHeaderFooterText(styleNode);
           if s <> '' then
           begin
-            pageLayout^.Headers[HEADER_FOOTER_INDEX_EVEN] := s;
-            Include(pageLayout^.Options, poDifferentOddEven);
+            pageLayout.Headers[HEADER_FOOTER_INDEX_EVEN] := s;
+            with pageLayout do Options := Options + [poDifferentOddEven];
           end;
           s := GetAttrValue(styleNode, 'style:display');
           if s = 'false' then
-            Exclude(pagelayout^.Options, poDifferentOddEven);
+            with pageLayout do Options := Options - [poDifferentOddEven];
         end else
         if nodeName = 'style:footer' then
         begin
           s := ReadHeaderFooterText(styleNode);
           if s <> '' then
-            pageLayout^.Footers[HEADER_FOOTER_INDEX_ODD] := s;
+            pageLayout.Footers[HEADER_FOOTER_INDEX_ODD] := s;
         end else
         if nodeName = 'style:footer-left' then
         begin
           s := ReadHeaderFooterText(styleNode);
           if s <> '' then
           begin
-            pageLayout^.Footers[HEADER_FOOTER_INDEX_EVEN] := s;
-            Include(pageLayout^.Options, poDifferentOddEven);
+            pageLayout.Footers[HEADER_FOOTER_INDEX_EVEN] := s;
+            with pageLayout do Options := Options + [poDifferentOddEven];
           end;
           s := GetAttrValue(styleNode, 'style:display');
           if s = 'false' then
-            Exclude(pagelayout^.Options, poDifferentOddEven);
+            with pagelayout do Options := Options - [poDifferentOddEven];
         end;
         styleNode := styleNode.NextSibling;
       end;
@@ -2142,7 +2160,6 @@ var
   StylesNode: TDOMNode;
   OfficeSettingsNode: TDOMNode;
   nodename: String;
-  pageLayout: PsPageLayout;
   XMLStream: TStream;
   sheet: TsWorksheet;
   tablestyleName: String;
@@ -2225,14 +2242,10 @@ begin
       // Process each row inside the sheet and process each cell of the row
       ReadRowsAndCells(TableNode);
       // Read page layout
-      pageLayout := ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'));
-      if pageLayout <> nil then
-      begin
-        FWorksheet.PageLayout := pagelayout^;
-        // Repeated cols/rows already have been determined.
-        FWorksheet.PageLayout.RepeatedRows := FRepeatedRows;
-        FWorksheet.PageLayout.RepeatedCols := FRepeatedCols;
-      end;
+      ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'), FWorksheet.PageLayout);
+      // Repeated cols/rows already have been determined.
+      FWorksheet.PageLayout.SetRepeatedRows(FRepeatedRows.FirstIndex, FRepeatedRows.LastIndex);
+      FWorksheet.PageLayout.SetRepeatedCols(FRepeatedCols.FirstIndex, FRepeatedCols.LastIndex);
       // Read print ranges
       ReadPrintRanges(TableNode, FWorksheet);
       // Apply table style
@@ -2925,8 +2938,8 @@ end;
   Then seeks the FMasterPageList for the entry with the determined master page
   name. This entry contains the name of the associated PageLayoutData stored in
   the PageLayoutList which, finally, contains the requested PageLayout record. }
-function TsSpreadOpenDocReader.ReadPageLayout(AStylesNode: TDOMNode;
-  ATableStyleName: String): PsPageLayout;
+procedure TsSpreadOpenDocReader.ReadPageLayout(AStylesNode: TDOMNode;
+  ATableStyleName: String; APageLayout: TsPageLayout);
 var
   nodeName, s: String;
   node: TDOMNode;
@@ -2935,8 +2948,6 @@ var
   pageLayoutData: TPageLayoutData;
   i, j: Integer;
 begin
-  Result := nil;
-
   if AStylesNode = nil then
     exit;
 
@@ -2971,7 +2982,7 @@ begin
               if pageLayoutData.Name = masterPageData.PageLayoutName then
               begin
                 { Found: Return a pointer to the PageLayout record stored in the list }
-                Result := @pageLayoutData.PageLayout;
+                APageLayout.Assign(pageLayoutData.PageLayout);
                 exit;
               end;
             end;
@@ -3057,7 +3068,7 @@ begin
         end;
       end;
       // Add found range to worksheet
-      ASheet.AddPrintRange(r1, c1, r2, c2);
+      ASheet.PageLayout.AddPrintRange(r1, c1, r2, c2);
     end;
   finally
     L.Free;
@@ -4804,9 +4815,9 @@ begin
 
   // Cell block of print range
   srng := '';
-  for j := 0 to ASheet.NumPrintRanges - 1 do
+  for j := 0 to ASheet.PageLayout.NumPrintRanges - 1 do
   begin
-    prng := ASheet.GetPrintRange(j);
+    prng := ASheet.PageLayout.PrintRange[j];
     srng := srng + ';' + Format('[$%s.%s]', [
       sheetname, GetCellRangeString(prng.Row1, prng.Col1, prng.Row2, prng.Col2, [])
     ]);
@@ -5638,7 +5649,7 @@ var
 begin
   hasHeader := false;
   hasFooter := false;
-  for i:=0 to High(APageLayout.Headers) do
+  for i:=0 to 2 do
   begin
     if APageLayout.Headers[i] <> '' then hasHeader := true;
     if APageLayout.Footers[i] <> '' then hasFooter := true;
@@ -5742,12 +5753,12 @@ var
   srng: String;
   sheetName: String;
 begin
-  if ASheet.NumPrintRanges > 0 then
+  if ASheet.PageLayout.NumPrintRanges > 0 then
   begin
     srng := '';
-    for i := 0 to ASheet.NumPrintRanges - 1 do
+    for i := 0 to ASheet.PageLayout.NumPrintRanges - 1 do
     begin
-      rng := ASheet.GetPrintRange(i);
+      rng := ASheet.PageLayout.PrintRange[i];
       if pos(' ', ASheet.Name) > 0 then
         sheetName := '&apos;' + UTF8TextToXMLText(ASheet.Name) + '&apos;' else
         sheetname := UTF8TextToXMLText(ASheet.Name);

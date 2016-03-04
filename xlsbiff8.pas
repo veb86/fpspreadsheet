@@ -2390,15 +2390,15 @@ begin
   try
     case AName of
       #06: begin  // Print range
-             for j := 0 to AWorksheet.NumPrintRanges-1 do
+             for j := 0 to AWorksheet.PageLayout.NumPrintRanges-1 do
              begin
-               rng := AWorksheet.GetPrintRange(j);
+               rng := AWorksheet.PageLayout.PrintRange[j];
                WriteRangeFormula(memstream, rng, AIndexToRef, j+1);
              end;
            end;
       #07: begin  // Print titles
              j := 1;
-             if AWorksheet.HasRepeatedPrintCols then
+             if AWorksheet.PageLayout.HasRepeatedCols then
              begin
                rng.Col1 := AWorksheet.PageLayout.RepeatedCols.FirstIndex;
                rng.Col2 := AWorksheet.PageLayout.RepeatedCols.LastIndex;
@@ -2408,7 +2408,7 @@ begin
                WriteRangeFormula(memstream, rng, AIndexToRef, j);
                inc(j);
              end;
-             if AWorksheet.HasRepeatedPrintRows then
+             if AWorksheet.PageLayout.HasRepeatedRows then
              begin
                rng.Row1 := AWorksheet.PageLayout.RepeatedRows.FirstIndex;
                rng.Row2 := AWorksheet.PageLayout.RepeatedRows.LastIndex;
@@ -2539,13 +2539,15 @@ var
   sheet: TsWorksheet;
   i: Integer;
   n: Word;
+  writeIt: Boolean;
 begin
   n := 0;
   SetLength(sheets, FWorkbook.GetWorksheetCount);
   for i := 0 to FWorkbook.GetWorksheetCount-1 do begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
-    if (sheet.NumPrintRanges > 0) or
-        sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+    with sheet.PageLayout do
+      writeIt := (NumPrintRanges > 0) or HasRepeatedCols or HasRepeatedRows;
+    if writeIt then
     begin
       sheets[n] := i;
       inc(n);

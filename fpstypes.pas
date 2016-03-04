@@ -674,6 +674,20 @@ type
   {@@ Pointer to a TCell record }
   PCell = ^TCell;
 
+  {@@ Embedded image }
+  TsImage = record
+    Row, Col: Cardinal;
+    Index: Integer;
+    OffsetX, OffsetY: Double;  // mm
+    ScaleX, ScaleY: Double;
+  end;
+  PsImage = ^TsImage;
+
+  {@@ Image embedded in header or footer}
+  TsHeaderFooterImage = record
+    Index: Integer;
+  end;
+
   {@@ Page orientation for printing }
   TsPageOrientation = (spoPortrait, spoLandscape);
 
@@ -686,48 +700,8 @@ type
   {@@ Set of options used by the page layout }
   TsPrintOptions = set of TsPrintOption;
 
-  {@@ Record defining parameters for printing by the Office applications }
-  TsPageLayout = record      // all lengths in mm
-    Orientation: TsPageOrientation;
-    PageWidth: Double;       // for "normal" orientation (mostly portrait)
-    PageHeight: Double;
-    LeftMargin: Double;
-    RightMargin: Double;
-    TopMargin: Double;
-    BottomMargin: Double;
-    HeaderMargin: Double;
-    FooterMargin: Double;
-    StartPageNumber: Integer;
-    ScalingFactor: Integer;  // in percent
-    FitWidthToPages: Integer;
-    FitHeightToPages: Integer;
-    Copies: Integer;
-    Options: TsPrintOptions;
-    { Headers and footers are in Excel syntax:
-      - left/center/right sections begin with &L / &C / &R
-      - page number: &P
-      - page count: &N
-      - current date: &D
-      - current time:  &T
-      - sheet name: &A
-      - file name without path: &F
-      - file path without file name: &Z
-      - bold/italic/underlining/double underlining/strike out/shadowed/
-        outlined/superscript/subscript on/off:
-          &B / &I / &U / &E / &S / &H
-          &O / &X / &Y
-      There can be three headers/footers, for first ([0]) page and
-      odd ([1])/even ([2]) page numbers.
-      This is activated by Options poDifferentOddEven and poDifferentFirst.
-      Array index 1 contains the strings if these options are not used. }
-    Headers: array[0..2] of string;
-    Footers: array[0..2] of string;
-    RepeatedCols: TsRowColRange;
-    RepeatedRows: TsRowColRange;
-  end;
-
-  {@@ Pointer to a page layout record }
-  PsPageLayout = ^TsPageLayout;
+  {@@ Headers and footers are divided into three parts: left, center and right }
+  TsHeaderFooterSection = (hfsLeft, hfsCenter, hfsRight);
 
 const
   {@@ Indexes to be used for the various headers and footers }
@@ -773,15 +747,6 @@ type
   {@@ Parameters for stream access }
   TsStreamParam = (spClipboard, spWindowsClipboardHTML);
   TsStreamParams = set of TsStreamParam;
-
-  {@@ Embedded image }
-  TsImage = record
-    Row, Col: Cardinal;
-    Index: Integer;
-    OffsetX, OffsetY: Double;  // mm
-    ScaleX, ScaleY: Double;
-  end;
-  PsImage = ^TsImage;
 
 
 implementation

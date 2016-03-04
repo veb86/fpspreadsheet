@@ -627,7 +627,7 @@ uses
   AVL_Tree, Math, Variants,
   {%H-}fpspatches, fpsStrings, fpsClasses, fpsNumFormat, xlsConst,
   //fpsrpn,
-  fpsExprParser;
+  fpsExprParser, fpsPageLayout;
 
 const
   { Helper table for rpn formulas:
@@ -1105,7 +1105,7 @@ begin
   begin
     rng := defName.Ranges;
     for i := 0 to High(rng) do
-      AWorksheet.AddPrintRange(rng[i].Row1, rng[i].Col1, rng[i].Row2, rng[i].Col2);
+      AWorksheet.PageLayout.AddPrintRange(rng[i].Row1, rng[i].Col1, rng[i].Row2, rng[i].Col2);
   end;
 end;
 
@@ -1123,10 +1123,10 @@ begin
     for i := 0 to High(rng) do
     begin
       if (rng[i].Col2 <> Cardinal(-1)) then
-        AWorksheet.SetRepeatedPrintCols(rng[i].Col1, rng[i].Col2)
+        AWorksheet.PageLayout.SetRepeatedCols(rng[i].Col1, rng[i].Col2)
       else
       if (rng[i].Row2 <> Cardinal(-1)) then
-        AWorksheet.SetRepeatedPrintRows(rng[i].Row1, rng[i].Row2);
+        AWorksheet.PageLayout.SetRepeatedRows(rng[i].Row1, rng[i].Row2);
     end;
   end;
 end;
@@ -1660,7 +1660,9 @@ var
   w: word;
 begin
   w := WordLEToN(AStream.ReadWord);
-  if w = 1 then Include(FWorksheet.PageLayout.Options, poHorCentered);
+  if w = 1 then
+    with FWorksheet.PageLayout do
+      Options := Options + [poHorCentered];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1679,16 +1681,19 @@ begin
   Len := AStream.ReadByte;
   SetLength(s, len*SizeOf(ansichar));
   AStream.ReadBuffer(s[1], len*SizeOf(ansichar));
-  if AIsHeader then
+  with FWorksheet.PageLayout do
   begin
-    FWorksheet.PageLayout.Headers[1] := ConvertEncoding(s, FCodePage, 'utf8');
-    FWorksheet.PageLayout.Headers[2] := '';
-  end else
-  begin
-    FWorksheet.PageLayout.Footers[1] := ConvertEncoding(s, FCodePage, 'utf8');
-    FWorksheet.PageLayout.Footers[2] := '';
+    if AIsHeader then
+    begin
+      Headers[1] := ConvertEncoding(s, FCodePage, 'utf8');
+      Headers[2] := '';
+    end else
+    begin
+      Footers[1] := ConvertEncoding(s, FCodePage, 'utf8');
+      Footers[2] := '';
+    end;
+    Options := Options - [poDifferentOddEven];
   end;
-  Exclude(FWorksheet.PageLayout.Options, poDifferentOddEven);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1867,7 +1872,12 @@ procedure TsSpreadBIFFReader.ReadPageSetup(AStream: TStream);
 var
   w: Word;
   dbl: Double = 0.0;
+  optns: TsPrintOptions;
 begin
+  // Store current pagelayout options, they already can contain the poFitPages
+  // which gets altered when reading FitWidthToPages and FitHeightToPages
+  optns := FWorksheet.PageLayout.Options;
+
   // Paper size
   w := WordLEToN(AStream.ReadWord);
   if (w <= High(PAPER_SIZES)) then
@@ -1893,23 +1903,27 @@ begin
 
   // Option flags
   w := WordLEToN(AStream.ReadWord);
-  if w and $0001 <> 0 then
-    Include(FWorksheet.pageLayout.Options, poPrintPagesByRows);
-  if w and $0002 <> 0 then
-    FWorksheet.PageLayout.Orientation := spoPortrait else
-    FWorksheet.PageLayout.Orientation := spoLandscape;
-  if w and $0008 <> 0 then
-    Include(FWorksheet.PageLayout.Options, poMonochrome);
-  if w and $0010 <> 0 then
-    Include(FWorksheet.PageLayout.Options, poDraftQuality);
-  if w and $0020 <> 0 then
-    Include(FWorksheet.PageLayout.Options, poPrintCellComments);
-  if w and $0040 <> 0 then
-    Include(FWorksheet.PageLayout.Options, poDefaultOrientation);
-  if w and $0080 <> 0 then
-    Include(FWorksheet.PageLayout.Options, poUseStartPageNumber);
-  if w and $0200 <> 0 then
-    Include(FWorksheet.Pagelayout.Options, poCommentsAtEnd);
+  with FWorksheet.PageLayout do
+  begin
+    Options := optns;
+    if w and $0001 <> 0 then
+      Options := Options + [poPrintPagesByRows];
+    if w and $0002 <> 0 then
+      Orientation := spoPortrait else
+      Orientation := spoLandscape;
+    if w and $0008 <> 0 then
+      Options := Options + [poMonochrome];
+    if w and $0010 <> 0 then
+      Options := Options + [poDraftQuality];
+    if w and $0020 <> 0 then
+      Options := Options + [poPrintCellComments];
+    if w and $0040 <> 0 then
+      Options := Options + [poDefaultOrientation];
+    if w and $0080 <> 0 then
+      Options := Options + [poUseStartPageNumber];
+    if w and $0200 <> 0 then
+      Options := Options + [poCommentsAtEnd];
+  end;
 
   // Print resolution in dpi  -- ignoried
   w := WordLEToN(AStream.ReadWord);
@@ -1969,7 +1983,8 @@ var
 begin
   w := WordLEToN(AStream.ReadWord);
   if w = 1 then
-    Include(FWorksheet.PageLayout.Options, poPrintGridLines);
+    with FWorksheet.PageLayout do
+      Options := Options + [poPrintGridLines];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1981,7 +1996,8 @@ var
 begin
   w := WordLEToN(AStream.ReadWord);
   if w = 1 then
-    Include(FWorksheet.PageLayout.Options , poPrintHeaders);
+    with FWorksheet.PageLayout do
+      Options := Options + [poPrintHeaders];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2667,8 +2683,11 @@ var
   flags: Word;
 begin
   flags := WordLEToN(AStream.ReadWord);
-  if flags and $0100 <> 0 then
-    Include(FWorksheet.PageLayout.Options, poFitPages);
+  with FWorksheet.PageLayout do
+    if flags and $0100 <> 0 then
+      Options := Options + [poFitPages]
+    else
+      Options := Options - [poFitPages];
   // The other flags are ignored, so far.
 end;
 
@@ -2706,7 +2725,9 @@ var
   w: word;
 begin
   w := WordLEToN(AStream.ReadWord);
-  if w = 1 then Include(FWorksheet.PageLayout.Options, poVertCentered);
+  if w = 1 then
+    with FWorksheet.PageLayout do
+      Options := Options + [poVertCentered];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3294,12 +3315,12 @@ begin
   for i:=0 to FWorkbook.GetWorksheetCount-1 do
   begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
-    if (sheet.NumPrintRanges > 0) or
-       sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+    if (sheet.PageLayout.NumPrintRanges > 0) or
+       sheet.PageLayout.HasRepeatedCols or sheet.PageLayout.HasRepeatedRows then
     begin
-      if sheet.NumPrintRanges > 0 then
+      if sheet.PageLayout.NumPrintRanges > 0 then
         WriteDefinedName(AStream, sheet, #6, n);
-      if sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+      if sheet.PageLayout.HasRepeatedCols or sheet.PageLayout.HasRepeatedRows then
         WriteDefinedName(AStream, sheet, #7, n);
       inc(n);
     end;
@@ -3351,8 +3372,8 @@ begin
   for i := 0 to FWorkbook.GetWorksheetCount-1 do
   begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
-    if (sheet.NumPrintRanges > 0) or
-       sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then inc(n);
+    with sheet.PageLayout do
+      if (NumPrintRanges > 0) or HasRepeatedCols or HasRepeatedRows then inc(n);
   end;
 
   if n < 1 then
@@ -3373,12 +3394,14 @@ procedure TsSpreadBIFFWriter.WriteEXTERNSHEET(AStream: TStream);
 var
   sheet: TsWorksheet;
   i: Integer;
+  writeIt: Boolean;
 begin
   for i := 0 to FWorkbook.GetWorksheetCount-1 do
   begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
-    if (sheet.NumPrintRanges > 0) or
-        sheet.HasRepeatedPrintCols or sheet.HasRepeatedPrintRows then
+    with sheet.PageLayout do
+      writeIt := (NumPrintRanges > 0) or HasRepeatedCols or HasRepeatedRows;
+    if writeIt then
     begin
       { BIFF record header }
       WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNSHEET, 2 + Length(sheet.Name));

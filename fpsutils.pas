@@ -163,7 +163,7 @@ procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
 procedure InitFormatRecord(out AValue: TsCellFormat);
 procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
   AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
-procedure InitPageLayout(out APageLayout: TsPageLayout);
+procedure InitHeaderFooterImageRecord(out AImage: TsHeaderFooterImage);
 
 procedure CopyCellValue(AFromCell, AToCell: PCell);
 function HasFormula(ACell: PCell): Boolean;
@@ -2091,34 +2091,15 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Initializes the fields of a TsPageLayout record
+  Initializes the fields of a TsHeaderFooterImage record
 -------------------------------------------------------------------------------}
-procedure InitPageLayout(out APageLayout: TsPageLayout);
-var
-  i: Integer;
+procedure InitHeaderFooterImageRecord(out AImage: TsHeaderFooterImage);
 begin
-  with APageLayout do begin
-    Orientation := spoPortrait;
-    PageWidth := 210;
-    PageHeight := 297;
-    LeftMargin := InToMM(0.7);
-    RightMargin := InToMM(0.7);
-    TopMargin := InToMM(0.78740157499999996);
-    BottomMargin := InToMM(0.78740157499999996);
-    HeaderMargin := InToMM(0.3);
-    FooterMargin := InToMM(0.3);
-    StartPageNumber := 1;
-    ScalingFactor := 100;   // Percent
-    FitWidthToPages := 0;   // use as many pages as needed
-    FitHeightToPages := 0;
-    Copies := 1;
-    Options := [];
-    for i:=0 to 2 do Headers[i] := '';
-    for i:=0 to 2 do Footers[i] := '';
-    RepeatedRows.FirstIndex := UNASSIGNED_ROW_COL_INDEX;
-    RepeatedRows.LastIndex := UNASSIGNED_ROW_COL_INDEX;
-    RepeatedCols.FirstIndex := UNASSIGNED_ROW_COL_INDEX;
-    RepeatedCols.LastIndex := UNASSIGNED_ROW_COL_INDEX;
+  with AImage do
+  begin
+    Index := -1;
+    //ScaleX := 1.0;
+    //ScaleY := 1.0;
   end;
 end;
 

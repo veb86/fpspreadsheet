@@ -1368,15 +1368,15 @@ begin
   try
     case AName of
       #06: begin  // Print range
-             for j := 0 to AWorksheet.NumPrintRanges-1 do
+             for j := 0 to AWorksheet.PageLayout.NumPrintRanges-1 do
              begin
-               rng := AWorksheet.GetPrintRange(j);
+               rng := AWorksheet.PageLayout.PrintRange[j];
                WriteRangeFormula(memstream, rng, AIndexToRef, j+1);
              end;
            end;
       #07: begin
              j := 1;
-             if AWorksheet.HasRepeatedPrintCols then
+             if AWorksheet.PageLayout.HasRepeatedCols then
              begin
                rng.Col1 := AWorksheet.PageLayout.RepeatedCols.FirstIndex;
                rng.Col2 := AWorksheet.PageLayout.RepeatedCols.LastIndex;
@@ -1386,7 +1386,7 @@ begin
                WriteRangeFormula(memstream, rng, AIndexToRef, j);
                inc(j);
              end;
-             if AWorksheet.HasRepeatedPrintRows then
+             if AWorksheet.PageLayout.HasRepeatedRows then
              begin
                rng.Row1 := AWorksheet.PageLayout.RepeatedRows.FirstIndex;
                rng.Row2 := AWorksheet.PageLayout.RepeatedRows.LastIndex;

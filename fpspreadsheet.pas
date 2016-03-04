@@ -34,7 +34,7 @@ uses
   clocale,
  {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding,
-  fpsTypes, fpsClasses, fpsNumFormat;
+  fpsTypes, fpsClasses, fpsNumFormat, fpsPageLayout;
 
 type
   { Forward declarations }
@@ -128,7 +128,7 @@ type
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
     FSortParams: TsSortParams;  // Parameters of the current sorting operation
     FBiDiMode: TsBiDiMode;
-    FPrintRanges: TsCellRangeArray;
+    FPageLayout: TsPageLayout;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnCompareCells: TsCellCompareEvent;
@@ -162,9 +162,6 @@ type
     procedure ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
 
   public
-    {@@ Page layout parameters for printing }
-    PageLayout: TsPageLayout;
-
     { Base methods }
     constructor Create;
     destructor Destroy; override;
@@ -505,18 +502,6 @@ type
       AOffsetX: Integer = 0; AOffsetY: Integer = 0;
       AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 
-    { Print ranges }
-    function AddPrintRange(ARow1, ACol1, ARow2, ACol2: Cardinal): Integer; overload;
-    function AddPrintRange(const ARange: TsCellRange): Integer; overload;
-    function GetPrintRange(AIndex: Integer): TsCellRange;
-    function NumPrintRanges: Integer;
-    procedure RemovePrintRange(AIndex: Integer);
-
-    procedure SetRepeatedPrintCols(AFirstCol: Cardinal; ALastCol: Cardinal = UNASSIGNED_ROW_COL_INDEX);
-    procedure SetRepeatedPrintRows(AFirstRow: Cardinal; ALastRow: Cardinal = UNASSIGNED_ROW_COL_INDEX);
-    function HasRepeatedPrintCols: Boolean;
-    function HasRepeatedPrintRows: Boolean;
-
     // Notification of changed cells
     procedure ChangedCell(ARow, ACol: Cardinal);
     procedure ChangedFont(ARow, ACol: Cardinal);
@@ -539,6 +524,8 @@ type
     {@@ Name of the sheet. In the popular spreadsheet applications this is
       displayed at the tab of the sheet. }
     property Name: string read FName write SetName;
+    {@@ Parameters to be used for printing by the Office applications }
+    property PageLayout: TsPageLayout read FPageLayout write FPageLayout;
     {@@ List of all row records of the worksheet having a non-standard row height }
     property  Rows: TIndexedAVLTree read FRows;
     {@@ Workbook to which the worksheet belongs }
@@ -1028,7 +1015,7 @@ begin
   FHyperlinks := TsHyperlinks.Create;
   FImages := TFPList.Create;
 
-  InitPageLayout(PageLayout);
+  FPageLayout := TsPageLayout.Create(self);
 
   FDefaultColWidth := 12;
   FDefaultRowHeight := 1;
@@ -1038,8 +1025,8 @@ begin
   FLastRowIndex := UNASSIGNED_ROW_COL_INDEX;
   FLastColIndex := UNASSIGNED_ROW_COL_INDEX;
 
-  FActiveCellRow := UNASSIGNED_ROW_COL_INDEX;  // Cardinal(-1);
-  FActiveCellCol := UNASSIGNED_ROW_COL_INDEX;  // Cardinal(-1);
+  FActiveCellRow := UNASSIGNED_ROW_COL_INDEX;
+  FActiveCellCol := UNASSIGNED_ROW_COL_INDEX;
 
   FOptions := [soShowGridLines, soShowHeaders];
 end;
@@ -1056,6 +1043,7 @@ begin
   RemoveAllRows;
   RemoveAllCols;
 
+  FPageLayout.Free;
   FCells.Free;
   FRows.Free;
   FCols.Free;
@@ -3480,121 +3468,6 @@ var
 begin
   for i := FImages.Count-1 downto 0 do
     RemoveImage(i);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds a print range defined by the row/column indexes of its corner cells.
--------------------------------------------------------------------------------}
-function TsWorksheet.AddPrintRange(ARow1, ACol1, ARow2, ACol2: Cardinal): Integer;
-begin
-  Result := Length(FPrintRanges);
-  SetLength(FPrintRanges, Result + 1);
-  with FPrintRanges[Result] do
-  begin
-    if ARow1 < ARow2 then
-    begin
-      Row1 := ARow1;
-      Row2 := ARow2;
-    end else
-    begin
-      Row1 := ARow2;
-      Row2 := ARow1;
-    end;
-    if ACol1 < ACol2 then
-    begin
-      Col1 := ACol1;
-      Col2 := ACol2;
-    end else
-    begin
-      Col1 := ACol2;
-      Col2 := ACol1;
-    end;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds a print range defined by a TsCellRange record
--------------------------------------------------------------------------------}
-function TsWorksheet.AddPrintRange(const ARange: TsCellRange): Integer;
-begin
-  Result := AddPrintRange(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns the TsCellRange record of the print range with the specified index.
--------------------------------------------------------------------------------}
-function TsWorksheet.GetPrintRange(AIndex: Integer): TsCellRange;
-begin
-  Result := FPrintRanges[AIndex];
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns the count of print ranges defined for this worksheet
--------------------------------------------------------------------------------}
-function TsWorksheet.NumPrintRanges: Integer;
-begin
-  Result := Length(FPrintRanges);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Removes the print range specified by the index
--------------------------------------------------------------------------------}
-procedure TsWorksheet.RemovePrintRange(AIndex: Integer);
-var
-  i: Integer;
-begin
-  if not InRange(AIndex, 0, High(FPrintRanges)) then exit;
-  for i := AIndex + 1 to High(FPrintRanges) do
-    FPrintRanges[i - 1] := FPrintRanges[i];
-  SetLength(FPrintRanges, Length(FPrintRanges)-1);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Defines a range of header columns for printing repeated on every page
--------------------------------------------------------------------------------}
-procedure TsWorksheet.SetRepeatedPrintCols(AFirstCol, ALastCol: Cardinal);
-begin
-  if AFirstCol < ALastCol then
-  begin
-    PageLayout.RepeatedCols.FirstIndex := AFirstCol;
-    PageLayout.RepeatedCols.LastIndex := ALastCol;
-  end else
-  begin
-    PageLayout.RepeatedCols.FirstIndex := ALastCol;
-    PageLayout.RepeatedCols.LastIndex := AFirstCol;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Defines a range of header rows for printing repeated on every page
--------------------------------------------------------------------------------}
-procedure TsWorksheet.SetRepeatedPrintRows(AFirstRow, ALastRow: Cardinal);
-begin
-  if AFirstRow < ALastRow then
-  begin
-    PageLayout.RepeatedRows.FirstIndex := AFirstRow;
-    PageLayout.RepeatedRows.LastIndex := ALastRow;
-  end else
-  begin
-    PageLayout.RepeatedRows.FirstIndex := ALastRow;
-    PageLayout.RepeatedRows.LastIndex := AFirstRow;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Determines whether the worksheet defines repeated print header columns
--------------------------------------------------------------------------------}
-function TsWorksheet.HasRepeatedPrintCols: Boolean;
-begin
-  Result := Cardinal(PageLayout.RepeatedCols.FirstIndex) <> Cardinal(UNASSIGNED_ROW_COL_INDEX);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Determines whether the worksheet defines repeated print header rows
--------------------------------------------------------------------------------}
-function TsWorksheet.HasRepeatedPrintRows: Boolean;
-begin
-  Result := Cardinal(PageLayout.RepeatedRows.FirstIndex) <> Cardinal(UNASSIGNED_ROW_COL_INDEX);
 end;
 
 {@@ ----------------------------------------------------------------------------

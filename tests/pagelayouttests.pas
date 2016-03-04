@@ -358,7 +358,7 @@ implementation
 
 uses
   typinfo, contnrs, strutils,
-  fpsutils, fpsHeaderFooterParser;
+  fpsutils, fpsHeaderFooterParser, fpsPageLayout;
 //  uriparser, lazfileutils, fpsutils;
 
 const
@@ -402,74 +402,79 @@ var
 begin
   TempFile := GetTempFileName;
 
-  InitPageLayout(sollPageLayout);
-  with SollPageLayout do
-  begin
-    TopMargin := 20;
-    BottomMargin := 30;
-    LeftMargin := 21;
-    RightMargin := 22;
-    HeaderMargin := 10;
-    FooterMargin := 11;
-    case AHeaderFooterMode of
-      0: ;  // header and footer already are empty strings
-      1: Headers[HEADER_FOOTER_INDEX_ALL] := 'Test header';
-      2: Footers[HEADER_FOOTER_INDEX_ALL] := 'Test footer';
-      3: begin 
-           Headers[HEADER_FOOTER_INDEX_ALL] := 'Test header';
-	       Footers[HEADER_FOOTER_INDEX_ALL] := 'Test footer';
-         end;
-    end;
-  end;
-  
-  MyWorkbook := TsWorkbook.Create;
+  sollPageLayout := TsPageLayout.Create(nil);
   try
-    col := 0;
-    for p := 1 to ANumSheets do
+    with SollPageLayout do
     begin
-      MyWorkSheet:= MyWorkBook.AddWorksheet(PageLayoutSheet+IntToStr(p));
-      for row := 0 to 9 do
-        Myworksheet.WriteNumber(row, 0, row+col*100+p*10000 );      
-      MyWorksheet.PageLayout := SollPageLayout;
-    end;
-    MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  finally
-    MyWorkbook.Free;
-  end;
-
-  // Open the spreadsheet
-  MyWorkbook := TsWorkbook.Create;
-  try
-    MyWorkbook.ReadFromFile(TempFile, AFormat);
-    for p := 0 to MyWorkbook.GetWorksheetCount-1 do
-    begin
-      MyWorksheet := MyWorkBook.GetWorksheetByIndex(p);
-      if MyWorksheet=nil then
-        fail('Error in test code. Failed to get worksheet by index');
-	
-      actualPageLayout := MyWorksheet.PageLayout;
-      CheckEquals(sollPageLayout.TopMargin, actualPageLayout.TopMargin, EPS, 'Top margin mismatch, sheet "'+MyWorksheet.Name+'"');
-      CheckEquals(sollPageLayout.BottomMargin, actualPageLayout.Bottommargin, EPS, 'Bottom margin mismatch, sheet "'+MyWorksheet.Name+'"');
-      CheckEquals(sollPageLayout.LeftMargin, actualPageLayout.LeftMargin, EPS, 'Left margin mismatch, sheet "'+MyWorksheet.Name+'"');
-      CheckEquals(sollPageLayout.RightMargin, actualPageLayout.RightMargin, EPS, 'Right margin mismatch, sheet "'+MyWorksheet.Name+'"');
-      if (AFormat <> sfExcel2) then  // No header/footer margin in BIFF2
-      begin
-        if AHeaderFooterMode in [1, 3] then
-          CheckEquals(sollPageLayout.HeaderMargin, actualPageLayout.HeaderMargin, EPS, 'Header margin mismatch, sheet "'+MyWorksheet.Name+'"');
-        if AHeaderFooterMode in [2, 3] then
-          CheckEquals(sollPageLayout.FooterMargin, actualPageLayout.FooterMargin, EPS, 'Footer margin mismatch, sheet "'+MyWorksheet.Name+'"');
+      TopMargin := 20;
+      BottomMargin := 30;
+      LeftMargin := 21;
+      RightMargin := 22;
+      HeaderMargin := 10;
+      FooterMargin := 11;
+      case AHeaderFooterMode of
+        0: ;  // header and footer already are empty strings
+        1: Headers[HEADER_FOOTER_INDEX_ALL] := 'Test header';
+        2: Footers[HEADER_FOOTER_INDEX_ALL] := 'Test footer';
+        3: begin
+             Headers[HEADER_FOOTER_INDEX_ALL] := 'Test header';
+  	       Footers[HEADER_FOOTER_INDEX_ALL] := 'Test footer';
+           end;
       end;
     end;
+  
+    MyWorkbook := TsWorkbook.Create;
+    try
+      col := 0;
+      for p := 1 to ANumSheets do
+      begin
+        MyWorkSheet:= MyWorkBook.AddWorksheet(PageLayoutSheet+IntToStr(p));
+        for row := 0 to 9 do
+          Myworksheet.WriteNumber(row, 0, row+col*100+p*10000 );
+        MyWorksheet.PageLayout.Assign(SollPageLayout);
+      end;
+      MyWorkBook.WriteToFile(TempFile, AFormat, true);
+    finally
+      MyWorkbook.Free;
+    end;
+
+    // Open the spreadsheet
+    MyWorkbook := TsWorkbook.Create;
+    try
+      MyWorkbook.ReadFromFile(TempFile, AFormat);
+      for p := 0 to MyWorkbook.GetWorksheetCount-1 do
+      begin
+        MyWorksheet := MyWorkBook.GetWorksheetByIndex(p);
+        if MyWorksheet=nil then
+          fail('Error in test code. Failed to get worksheet by index');
+	
+        actualPageLayout := MyWorksheet.PageLayout;
+        CheckEquals(sollPageLayout.TopMargin, actualPageLayout.TopMargin, EPS, 'Top margin mismatch, sheet "'+MyWorksheet.Name+'"');
+        CheckEquals(sollPageLayout.BottomMargin, actualPageLayout.Bottommargin, EPS, 'Bottom margin mismatch, sheet "'+MyWorksheet.Name+'"');
+        CheckEquals(sollPageLayout.LeftMargin, actualPageLayout.LeftMargin, EPS, 'Left margin mismatch, sheet "'+MyWorksheet.Name+'"');
+        CheckEquals(sollPageLayout.RightMargin, actualPageLayout.RightMargin, EPS, 'Right margin mismatch, sheet "'+MyWorksheet.Name+'"');
+        if (AFormat <> sfExcel2) then  // No header/footer margin in BIFF2
+        begin
+          if AHeaderFooterMode in [1, 3] then
+            CheckEquals(sollPageLayout.HeaderMargin, actualPageLayout.HeaderMargin, EPS, 'Header margin mismatch, sheet "'+MyWorksheet.Name+'"');
+          if AHeaderFooterMode in [2, 3] then
+            CheckEquals(sollPageLayout.FooterMargin, actualPageLayout.FooterMargin, EPS, 'Footer margin mismatch, sheet "'+MyWorksheet.Name+'"');
+        end;
+      end;
+
+    finally
+      MyWorkbook.Free;
+      DeleteFile(TempFile);
+    end;
 
   finally
-    MyWorkbook.Free;
-    DeleteFile(TempFile);
+    SollPageLayout.Free;
   end;
 end;
 
 { ------------------------------------------------------------------------------
  Main page layout test: it writes a file with a specific page layout and reads it
- back. The written pagelayout ("Solllayout") must match the read pagelayout.
+ back. The written pagelayout ("SollLayout") must match the read pagelayout.
 
  ATestMode:
    0 - Landscape page orientation for sheets 0 und 2, sheet 1 is portrait
@@ -539,7 +544,7 @@ begin
   SetLength(SollPageLayout, ANumSheets);
   for p:=0 to High(SollPageLayout) do
   begin
-    InitPageLayout(sollPageLayout[p]);
+    sollPageLayout[p] := TsPageLayout.Create(nil);
     with SollPageLayout[p] do
     begin
       case ATestMode of
@@ -557,7 +562,6 @@ begin
            begin
              if p = 0 then ScalingFactor := 50 else
              if p = 1 then ScalingFactor := 200;
-             Exclude(Options, poFitPages);
            end;
         3: // Scale width to n pages
            begin
@@ -566,7 +570,6 @@ begin
                1: FitWidthToPages := 3;
                2: FitWidthToPages := 1;
              end;
-             Include(Options, poFitPages);
            end;
         4: // Scale height to n pages
            begin
@@ -575,14 +578,12 @@ begin
                1: FitHeightToPages := 3;
                2: FitHeightToPages := 1;
              end;
-             Include(Options, poFitPages);
            end;
         5: // Page number of first pge
            begin
-             Options := Options + [poUseStartPageNumber];
              case p of
                0: StartPageNumber := 3;
-               1: Exclude(Options, poUseStartPageNumber);
+               1: Options := Options - [poUseStartPageNumber];
                2: StartPageNumber := 1;
              end;
              Headers[HEADER_FOOTER_INDEX_ALL] := '&LPage &P of &N';
@@ -652,7 +653,7 @@ begin
       for row := 0 to 99 do
         for col := 0 to 29 do
           Myworksheet.WriteNumber(row, col, (row+1)+(col+1)*100+(p+1)*10000 );
-      MyWorksheet.PageLayout := SollPageLayout[p];
+      MyWorksheet.PageLayout.Assign(SollPageLayout[p]);
     end;
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
@@ -731,6 +732,9 @@ begin
     MyWorkbook.Free;
     DeleteFile(TempFile);
   end;
+
+  for p:=0 to High(SollPageLayout) do
+    sollPageLayout[p].Free;
 end;
 
 {
@@ -764,7 +768,7 @@ begin
       sheetname := PageLayoutSheet + IfThen(ASpaceInName, ' ', '') + IntToStr(i);
       MyWorksheet := MyWorkbook.AddWorksheet(sheetname);
       for j:=1 to ANumRanges do
-        MyWorksheet.AddPrintRange(SollRanges[j]);
+        MyWorksheet.PageLayout.AddPrintRange(SollRanges[j]);
     end;
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
@@ -779,10 +783,10 @@ begin
     for i := 1 to ANumSheets do
     begin
       MyWorksheet := MyWorkbook.GetWorksheetByIndex(i-1);
-      CheckEquals(ANumRanges, MyWorksheet.NumPrintRanges, 'Print range count mismatch');
+      CheckEquals(ANumRanges, MyWorksheet.PageLayout.NumPrintRanges, 'Print range count mismatch');
       for j:=1 to ANumRanges do
       begin
-        rng := MyWorksheet.GetPrintRange(j-1);
+        rng := MyWorksheet.PageLayout.GetPrintRange(j-1);
         CheckEquals(SollRanges[j].Row1, rng.Row1, Format('Row1 mismatch at i=%d, j=%d', [i, j]));
         CheckEquals(SollRanges[j].Row2, rng.Row2, Format('Row2 mismatch at i=%d, j=%d', [i, j]));
         CheckEquals(SollRanges[j].Col1, rng.Col1, Format('Col1 mismatch at i=%d, j=%d', [i, j]));
@@ -815,8 +819,8 @@ begin
     for r := 0 to 10 do
       for c := 0 to 10 do
         MyWorksheet.WriteNumber(r, c, r*100+c);
-    MyWorksheet.SetRepeatedPrintRows(AFirstRow, ALastRow);
-    MyWorksheet.SetRepeatedPrintCols(AFirstCol, ALastCol);
+    MyWorksheet.PageLayout.SetRepeatedRows(AFirstRow, ALastRow);
+    MyWorksheet.PageLayout.SetRepeatedCols(AFirstCol, ALastCol);
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;
