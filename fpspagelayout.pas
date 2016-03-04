@@ -49,10 +49,10 @@ type
     procedure Assign(ASource: TsPageLayout);
 
     { Images embedded in header and/or footer }
-    procedure AddHeaderImage(ASection: TsHeaderFooterSection;
-      const AFilename: String);
-    procedure AddFooterImage(ASection: TsHeaderFooterSection;
-      const AFilename: String);
+    procedure AddHeaderImage(AHeaderIndex: Integer;
+      ASection: TsHeaderFooterSection; const AFilename: String);
+    procedure AddFooterImage(AFooterIndex: Integer;
+      ASection: TsHeaderFooterSection; const AFilename: String);
 
     { Repeated rows and columns }
     function HasRepeatedCols: Boolean;
@@ -248,30 +248,42 @@ begin
     FPrintranges[i] := ASource.FPrintRanges[i];
 end;
 
-procedure TsPageLayout.AddHeaderImage(ASection: TsHeaderFooterSection;
-  const AFilename: String);
+procedure TsPageLayout.AddHeaderImage(AHeaderIndex: Integer;
+  ASection: TsHeaderFooterSection; const AFilename: String);
 var
   book: TsWorkbook;
   idx: Integer;
 begin
+  if FWorksheet = nil then
+    raise Exception.Create('[TsPageLayout.AddHeaderImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
   idx := book.FindEmbeddedStream(AFilename);
   if idx = -1 then
+  begin
     idx := book.AddEmbeddedStream(AFilename);
+    book.GetEmbeddedStream(idx).LoadFromFile(AFileName);
+  end;
   FHeaderImages[ASection].Index := idx;
+  FHeaders[AHeaderIndex] := FHeaders[AHeaderIndex] + '&G';
 end;
 
-procedure TsPageLayout.AddFooterImage(ASection: TsHeaderFooterSection;
-  const AFileName: String);
+procedure TsPageLayout.AddFooterImage(AFooterIndex: Integer;
+  ASection: TsHeaderFooterSection; const AFileName: String);
 var
   book: TsWorkbook;
   idx: Integer;
 begin
+  if FWorksheet = nil then
+    raise Exception.Create('[TsPageLayout.AddFooterImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
   idx := book.FindEmbeddedStream(AFilename);
   if idx = -1 then
+  begin
     idx := book.AddEmbeddedStream(AFilename);
+    book.GetEmbeddedStream(idx).LoadFromFile(AFileName);
+  end;
   FFooterImages[ASection].Index := idx;
+  FFooters[AFooterIndex] := FFooters[AFooterIndex] + '&G';
 end;
 
 {@@ ----------------------------------------------------------------------------

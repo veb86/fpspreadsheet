@@ -3423,11 +3423,12 @@ end;
   @param  ARow       Index of the row at which the image begins (top edge)
   @param  ACol       Index of the column at which the image begins (left edge)
   @param  AFileName  Name of the image file
-  @param  AOffsetX   The image is offset horizontally by this pixel count from
-                     the left edge of the anchor cell. May reach into another
-                     cell.
-  @param  AOffsetY   The image is offset vertically by this pixel count from the
-                     top edge of the anchor cell. May reach into another cell.
+  @param  AOffsetX   The image is offset horizontally from the left edge of
+                     the anchor cell. May reach into another cell.
+                     Value is in millimeters.
+  @param  AOffsetY   The image is offset vertically from the top edge of the
+                     anchor cell. May reach into another cell.
+                     Value is in millimeters.
   @param  AScaleX    Horizontal scaling factor of the image
   @param  AScaleY    Vertical scaling factor of the image
   @return Index into the internal image list.

@@ -658,15 +658,15 @@ type
     { Index of format record in the workbook's FCellFormatList }
     FormatIndex: Integer;
     { Cell content }
-    UTF8StringValue: String;     // Strings cannot be part of a variant record
-    RichTextParams: TsRichTextParams;  // Formatting of individual text ranges
-    FormulaValue: String;
+    UTF8StringValue: String;   // Strings cannot be part of a variant record
+    RichTextParams: TsRichTextParams; // Formatting of individual text ranges
+    FormulaValue: String;      // Formula for calculation of cell content
     case ContentType: TCellContentType of  // variant part must be at the end
       cctEmpty      : ();      // has no data at all
       cctFormula    : ();      // FormulaValue is outside the variant record
       cctNumber     : (Numbervalue: Double);
       cctUTF8String : ();      // UTF8StringValue is outside the variant record
-      cctDateTime   : (DateTimevalue: TDateTime);
+      cctDateTime   : (DateTimeValue: TDateTime);
       cctBool       : (BoolValue: boolean);
       cctError      : (ErrorValue: TsErrorValue);
   end;
@@ -676,16 +676,16 @@ type
 
   {@@ Embedded image }
   TsImage = record
-    Row, Col: Cardinal;
-    Index: Integer;
-    OffsetX, OffsetY: Double;  // mm
-    ScaleX, ScaleY: Double;
+    Row, Col: Cardinal;       // cell for top/left edge of the image (anchor)
+    Index: Integer;           // index into the workbook's embedded streams list
+    OffsetX, OffsetY: Double; // mm, relative to anchor
+    ScaleX, ScaleY: Double;   // scaling factor of image
   end;
   PsImage = ^TsImage;
 
   {@@ Image embedded in header or footer}
   TsHeaderFooterImage = record
-    Index: Integer;
+    Index: Integer;           // index into the workbook's embedded streams list
   end;
 
   {@@ Page orientation for printing }
