@@ -652,7 +652,7 @@ begin
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
-  FWorksheet.WriteUTF8Text(cell, valueStr);
+  FWorksheet.WriteText(cell, valueStr);
 
   { Apply formatting to cell }
   ApplyCellFormatting(cell, XF);

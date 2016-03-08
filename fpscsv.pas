@@ -159,7 +159,7 @@ begin
   // Do not try to interpret the strings. --> everything is a LABEL cell.
   if not CSVParams.DetectContentType then
   begin
-    FWorksheet.WriteUTF8Text(cell, AText);
+    FWorksheet.WriteText(cell, AText);
     exit;
   end;
 
@@ -192,7 +192,7 @@ begin
   end;
 
   // What is left is handled as a TEXT cell
-  FWorksheet.WriteUTF8Text(cell, AText);
+  FWorksheet.WriteText(cell, AText);
 end;
 
 procedure TsCSVReader.ReadFormula(AStream: TStream);

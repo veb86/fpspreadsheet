@@ -251,7 +251,7 @@ begin
   // Case: Do not try to interpret the strings. --> everything is a LABEL cell.
   if not HTMLParams.DetectContentType then
   begin
-    FWorksheet.WriteUTF8Text(cell, AText, FCurrRichTextParams);
+    FWorksheet.WriteText(cell, AText, FCurrRichTextParams);
     exit;
   end;
 
@@ -284,7 +284,7 @@ begin
   end;
 
   // What is left is handled as a TEXT cell
-  FWorksheet.WriteUTF8Text(cell, AText, FCurrRichTextParams);
+  FWorksheet.WriteText(cell, AText, FCurrRichTextParams);
 end;
 
 { Stores a font in the internal font list. Does not allow duplicates. }

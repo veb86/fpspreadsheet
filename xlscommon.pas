@@ -900,7 +900,6 @@ procedure TsBIFFDefinedName.UpdateSheetIndex(ASheetName: String; ASheetIndex: In
 var
   elem: TsFormulaElement;
   i, p: Integer;
-  s: String;
 begin
   for i:=0 to Length(FFormula)-1 do begin
     elem := FFormula[i];
@@ -1200,7 +1199,6 @@ end;
 
 procedure TsSpreadBIFFReader.FixDefinedNames(AWorksheet: TsWorksheet);
 var
-  sheetName1, sheetName2: String;
   i: Integer;
   defname: TsBiffDefinedName;
   sheetIndex: Integer;
@@ -2184,6 +2182,7 @@ end;
 function TsSpreadBIFFReader.ReadRPNCellRange3D(AStream: TStream;
   var ARPNItem: PRPNItem): Boolean;
 begin
+  Unused(AStream, ARPNItem);
   Result := false;  // "false" means: "not supported"
   // must be overridden
 end;
@@ -2433,7 +2432,6 @@ function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
   ARpnTokenArraySize: Word; out ARpnFormula: TsRPNFormula; ACell: PCell = nil;
   ASharedFormulaBase: PCell = nil): Boolean;
 var
-  n: Word;
   p0: Int64;
   token: Byte;
   rpnItem: PRPNItem;
@@ -2442,7 +2440,6 @@ var
   flags: TsRelFlags;
   r, c, r2, c2: Cardinal;
   dr, dc, dr2, dc2: Integer;
-  sheetIndex: Integer;
   fek: TFEKind;
   exprDef: TsBuiltInExprIdentifierDef;
   funcCode: Word;
@@ -3302,6 +3299,8 @@ end;
 procedure TsSpreadBIFFWriter.WriteDefinedName(AStream: TStream;
   AWorksheet: TsWorksheet; const AName: String; AIndexToREF: Word);
 begin
+  Unused(AStream, AWorksheet);
+  Unused(Aname, AIndexToREF);
   // Override
 end;
 

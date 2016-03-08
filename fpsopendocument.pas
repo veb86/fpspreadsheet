@@ -1818,7 +1818,7 @@ begin
 
   if ExtractErrorFromNode(ACellNode, errValue) then
     FWorkSheet.WriteErrorValue(cell, errValue) else
-    FWorksheet.WriteUTF8Text(cell, 'ERROR');
+    FWorksheet.WriteText(cell, 'ERROR');
 
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
@@ -2129,7 +2129,7 @@ begin
     if (node <> nil) and (node.FirstChild <> nil) then
     begin
       valueStr := node.FirstChild.Nodevalue;
-      FWorksheet.WriteUTF8Text(cell, valueStr);
+      FWorksheet.WriteText(cell, valueStr);
     end;
   end else
   // (d) boolean
@@ -2142,11 +2142,11 @@ begin
   begin
     if ExtractErrorFromNode(ACellNode, errorValue) then
       FWorksheet.WriteErrorValue(cell, errorValue) else
-      FWorksheet.WriteUTF8Text(cell, 'ERROR');
+      FWorksheet.WriteText(cell, 'ERROR');
   end else
   // (e) Text
   if (valueStr <> '') then
-    FWorksheet.WriteUTF8Text(cell, valueStr);
+    FWorksheet.WriteText(cell, valueStr);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -2449,7 +2449,7 @@ begin
     childnode := childnode.NextSibling;
   end;
 
-  FWorkSheet.WriteUTF8Text(cell, cellText, rtParams);
+  FWorkSheet.WriteText(cell, cellText, rtParams);
   if hyperlink <> '' then
   begin
     // ODS sees relative paths relative to the internal own file structure
@@ -3003,7 +3003,6 @@ var
   i, p: Integer;
   r1,c1,r2,c2: Cardinal;
   inName: Boolean;
-  ch:Char;
 begin
   s := GetAttrValue(ATableNode, 'table:print-ranges');
   if s = '' then
@@ -3026,10 +3025,8 @@ begin
                   inc(i);
                 p := i;
                 if p <= Length(s) then
-                begin
-                  ch := s[p];
-                  Continue;
-                end else
+                  Continue
+                else
                   break;
               end;
       end;

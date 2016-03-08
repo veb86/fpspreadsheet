@@ -701,7 +701,10 @@ type
   TsPrintOptions = set of TsPrintOption;
 
   {@@ Headers and footers are divided into three parts: left, center and right }
-  TsHeaderFooterSection = (hfsLeft, hfsCenter, hfsRight);
+  TsHeaderFooterSectionIndex = (hfsLeft, hfsCenter, hfsRight);
+
+  {@@ Array with all possible images in a header or a footer }
+  TsHeaderFooterImages = array[TsHeaderFooterSectionIndex] of TsHeaderFooterImage;
 
 const
   {@@ Indexes to be used for the various headers and footers }

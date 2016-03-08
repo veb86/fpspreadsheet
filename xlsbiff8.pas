@@ -1029,7 +1029,7 @@ begin
   end else
     cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
 
-  FWorksheet.WriteUTF8Text(cell, UTF16ToUTF8(wideStrValue));
+  FWorksheet.WriteText(cell, UTF16ToUTF8(wideStrValue));
 
   { Add attributes }
   ApplyCellFormatting(cell, XF);
@@ -1272,7 +1272,7 @@ begin
     cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
 
   { Save the data string}
-  FWorksheet.WriteUTF8Text(cell, UTF16ToUTF8(wideStrValue));
+  FWorksheet.WriteText(cell, UTF16ToUTF8(wideStrValue));
 
   { Read rich-text formatting runs }
   L := WordLEToN(AStream.ReadWord);
@@ -1421,7 +1421,7 @@ begin
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
 
-  FWorksheet.WriteUTF8Text(cell, FSharedStringTable[SSTIndex]);
+  FWorksheet.WriteText(cell, FSharedStringTable[SSTIndex]);
 
   { Add attributes }
   ApplyCellFormatting(cell, XF);

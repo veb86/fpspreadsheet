@@ -1,5 +1,7 @@
 unit fpsPageLayout;
 
+{$mode objfpc}{$H+}
+
 interface
 
 uses
@@ -27,15 +29,15 @@ type
     FOptions: TsPrintOptions;
     FHeaders: array[0..2] of String;
     FFooters: array[0..2] of String;
-    FHeaderImages: array[TsHeaderFooterSection] of TsHeaderFooterImage;
-    FFooterImages: array[TsHeaderFooterSection] of TsHeaderFooterImage;
+    FHeaderImages: TsHeaderFooterImages;
+    FFooterImages: TsHeaderFooterImages;
     FRepeatedCols: TsRowColRange;
     FRepeatedRows: TsRowColRange;
     FPrintRanges: TsCellRangeArray;
 
-    function GetFooterImages(ASection: TsHeaderFooterSection): TsHeaderFooterImage;
+    function GetFooterImages(ASection: TsHeaderFooterSectionIndex): TsHeaderFooterImage;
     function GetFooters(AIndex: Integer): String;
-    function GetHeaderImages(ASection: TsHeaderFooterSection): TsHeaderFooterImage;
+    function GetHeaderImages(ASection: TsHeaderFooterSectionIndex): TsHeaderFooterImage;
     function GetHeaders(AIndex: Integer): String;
     procedure SetFitHeightToPages(AValue: Integer);
     procedure SetFitWidthToPages(AValue: Integer);
@@ -44,15 +46,21 @@ type
     procedure SetScalingFactor(AValue: Integer);
     procedure SetStartPageNumber(AValue: Integer);
 
+  protected
+    function JoinHeaderFooterText(const ALeft, ACenter, ARight: String): String;
+    procedure SplitHeaderFooterText(const AText: String; out ALeft, ACenter, ARight: String);
+
   public
     constructor Create(AWorksheet: pointer);
     procedure Assign(ASource: TsPageLayout);
 
     { Images embedded in header and/or footer }
     procedure AddHeaderImage(AHeaderIndex: Integer;
-      ASection: TsHeaderFooterSection; const AFilename: String);
+      ASection: TsHeaderFooterSectionIndex; const AFilename: String);
     procedure AddFooterImage(AFooterIndex: Integer;
-      ASection: TsHeaderFooterSection; const AFilename: String);
+      ASection: TsHeaderFooterSectionIndex; const AFilename: String);
+    procedure GetImageSections(out AHeaderTags, AFooterTags: String);
+    function HasHeaderFooterImages: Boolean;
 
     { Repeated rows and columns }
     function HasRepeatedCols: Boolean;
@@ -130,7 +138,7 @@ type
       - sheet name: &A
       - file name without path: &F
       - file path without file name: &Z
-      - image: &G (must be provided by "AddHeaderImage" or "AddFooterImage")
+      - image: &G (filename must be provided by "AddHeaderImage" or "AddFooterImage")
       - bold/italic/underlining/double underlining/strike out/shadowed/
         outlined/superscript/subscript on/off:
           &B / &I / &U / &E / &S / &H
@@ -156,10 +164,10 @@ type
       read GetPrintRange;
 
     {@@ Images inserted into footer }
-    property FooterImages[ASection: TsHeaderFooterSection]: TsHeaderFooterImage
+    property FooterImages[ASection: TsHeaderFooterSectionIndex]: TsHeaderFooterImage
       read GetFooterImages;
     {@@ Images inserted into header }
-    property HeaderImages[ASection: TsHeaderFooterSection]: TsHeaderFooterImage
+    property HeaderImages[ASection: TsHeaderFooterSectionIndex]: TsHeaderFooterImage
       read GetHeaderImages;
   end;
 
@@ -168,11 +176,11 @@ implementation
 
 uses
   Math,
-  fpsUtils, fpSpreadsheet;
+  fpsUtils, fpsHeaderFooterParser, fpSpreadsheet;
 
 constructor TsPageLayout.Create(AWorksheet: Pointer);
 var
-  hfs: TsHeaderFooterSection;
+  sec: TsHeaderFooterSectionIndex;
   i: Integer;
 begin
   inherited Create;
@@ -198,10 +206,10 @@ begin
   for i:=0 to 2 do FHeaders[i] := '';
   for i:=0 to 2 do FFooters[i] := '';
 
-  for hfs in TsHeaderFooterSection do
+  for sec in TsHeaderFooterSectionIndex do
   begin
-    InitHeaderFooterImageRecord(FHeaderImages[hfs]);
-    InitHeaderFooterImageRecord(FFooterImages[hfs]);
+    InitHeaderFooterImageRecord(FHeaderImages[sec]);
+    InitHeaderFooterImageRecord(FFooterImages[sec]);
   end;
 
   FRepeatedRows.FirstIndex := UNASSIGNED_ROW_COL_INDEX;
@@ -214,7 +222,7 @@ end;
 procedure TsPageLayout.Assign(ASource: TsPageLayout);
 var
   i: Integer;
-  hfs: TsHeaderFooterSection;
+  sec: TsHeaderFooterSectionIndex;
 begin
   FOrientation := ASource.Orientation;
   FPageWidth := ASource.PageWidth;
@@ -236,10 +244,10 @@ begin
     FHeaders[i] := ASource.Headers[i];
     FFooters[i] := ASource.Footers[i];
   end;
-  for hfs in TsHeaderFooterSection do
+  for sec in TsHeaderFooterSectionIndex do
   begin
-    FHeaderImages[hfs] := ASource.HeaderImages[hfs];
-    FFooterImages[hfs] := ASource.FooterImages[hfs];
+    FHeaderImages[sec] := ASource.HeaderImages[sec];
+    FFooterImages[sec] := ASource.FooterImages[sec];
   end;
   FRepeatedCols := ASource.RepeatedCols;
   FRepeatedRows := ASource.RepeatedRows;
@@ -249,10 +257,11 @@ begin
 end;
 
 procedure TsPageLayout.AddHeaderImage(AHeaderIndex: Integer;
-  ASection: TsHeaderFooterSection; const AFilename: String);
+  ASection: TsHeaderFooterSectionIndex; const AFilename: String);
 var
   book: TsWorkbook;
   idx: Integer;
+  s: Array[TsHeaderFooterSectionIndex] of String;
 begin
   if FWorksheet = nil then
     raise Exception.Create('[TsPageLayout.AddHeaderImage] Worksheet is nil.');
@@ -264,14 +273,17 @@ begin
     book.GetEmbeddedStream(idx).LoadFromFile(AFileName);
   end;
   FHeaderImages[ASection].Index := idx;
-  FHeaders[AHeaderIndex] := FHeaders[AHeaderIndex] + '&G';
+  SplitHeaderFooterText(FHeaders[AHeaderIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
+  s[ASection] := s[ASection] + '&G';
+  FHeaders[AHeaderIndex] := JoinHeaderFooterText(s[hfsLeft], s[hfsCenter], s[hfsRight]);
 end;
 
 procedure TsPageLayout.AddFooterImage(AFooterIndex: Integer;
-  ASection: TsHeaderFooterSection; const AFileName: String);
+  ASection: TsHeaderFooterSectionIndex; const AFileName: String);
 var
   book: TsWorkbook;
   idx: Integer;
+  s: Array[TsHeaderFooterSectionIndex] of String;
 begin
   if FWorksheet = nil then
     raise Exception.Create('[TsPageLayout.AddFooterImage] Worksheet is nil.');
@@ -283,7 +295,9 @@ begin
     book.GetEmbeddedStream(idx).LoadFromFile(AFileName);
   end;
   FFooterImages[ASection].Index := idx;
-  FFooters[AFooterIndex] := FFooters[AFooterIndex] + '&G';
+  SplitHeaderFooterText(FHeaders[AFooterIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
+  s[ASection] := s[ASection] + '&G';
+  FHeaders[AFooterIndex] := JoinHeaderFooterText(s[hfsLeft], s[hfsCenter], s[hfsRight]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -325,7 +339,7 @@ begin
 end;
 
 function TsPageLayout.GetFooterImages(
-  ASection: TsHeaderFooterSection): TsHeaderFooterImage;
+  ASection: TsHeaderFooterSectionIndex): TsHeaderFooterImage;
 begin
   Result := FFooterImages[ASection];
 end;
@@ -338,8 +352,47 @@ begin
     raise Exception.Create('[TsPageLayout.GetFooters] Illegal index.');
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Checks all sections of the headers and footers for images.
+  Creates a 3-character-string for the header and the footer containing an "L"
+  at the first position if any of the three header texts contains a "%G" in
+  the left section.
+  Dto. for the other sections.
+  Only one image per section is allowed! Sections violating this are marked by "x"
+-------------------------------------------------------------------------------}
+procedure TsPageLayout.GetImageSections(out AHeaderTags, AFooterTags: String);
+
+  procedure Process(AText: String; var ATags: String);
+  var
+    hfp: TsHeaderFooterParser;
+  begin
+    hfp := TsHeaderFooterParser.Create(AText); //, booknil, nil);
+    try
+      if hfp.IsImageInSection(hfsLeft) then
+        ATags[1] := IfThen(ATags[1] = ' ', 'L', 'x');
+      if hfp.IsImageInSection(hfsCenter) then
+        ATags[2] := IfThen(ATags[2] = ' ', 'C', 'x');
+      if hfp.IsImageInSection(hfsRight) then
+        ATags[3] := IfThen(ATags[3] = ' ', 'R', 'x');
+    finally
+      hfp.Free;
+    end;
+  end;
+
+var
+  i: Integer;
+begin
+  AHeaderTags := '   ';
+  for i:=0 to 2 do
+    Process(FHeaders[i], AHeaderTags);
+
+  AFooterTags := '   ';
+  for i:=0 to 2 do
+    Process(FFooters[i], AFooterTags);
+end;
+
 function TsPageLayout.GetHeaderImages(
-  ASection: TsHeaderFooterSection): TsHeaderFooterImage;
+  ASection: TsHeaderFooterSectionIndex): TsHeaderFooterImage;
 begin
   Result := FHeaderImages[ASection];
 end;
@@ -364,6 +417,22 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Checks whether the header or footer of the worksheet contains embedded images
+-------------------------------------------------------------------------------}
+function TsPageLayout.HasHeaderFooterImages: Boolean;
+var
+  sec: TsHeaderFooterSectionIndex;
+begin
+  Result := true;
+  for sec in TsHeaderFooterSectionIndex do
+  begin
+    if FHeaderImages[sec].Index >= 0 then Exit;
+    if FFooterImages[sec].Index >= 0 then Exit;
+  end;
+  Result := false;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Checks whether the worksheet defines columns to be printed repeatedly at the
   left of each printed page
 -------------------------------------------------------------------------------}
@@ -379,6 +448,24 @@ end;
 function TsPageLayout.HasRepeatedRows: Boolean;
 begin
   Result := Cardinal(FRepeatedRows.FirstIndex) <> Cardinal(UNASSIGNED_ROW_COL_INDEX);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Combines the three strings for the left, center and right header/footer
+  sections to a valid header/footer string. Inserts "&L", "&C" and "&R" codes.
+-------------------------------------------------------------------------------}
+function TsPageLayout.JoinHeaderFooterText(
+  const ALeft, ACenter, ARight: String): String;
+begin
+  Result := '';
+  if (ALeft = '') and (ARight = '') then
+  begin
+    Result := ACenter;
+    exit;
+  end;
+  if (ALeft <> '') then Result := '&L' + ALeft;
+  if (ACenter <> '') then Result := Result + '&C' + ACenter;
+  if (ARight <> '') then Result := Result + '&R' + ARight;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -460,6 +547,61 @@ procedure TsPageLayout.SetStartPageNumber(AValue: Integer);
 begin
   FStartPageNumber := AValue;
   Include(FOptions, poUseStartPageNumber);
+end;
+
+procedure TsPageLayout.SplitHeaderFooterText(const AText: String;
+  out ALeft, ACenter, ARight: String);
+var
+  pL, pC, pR: Integer;
+  P, PStart: PChar;
+begin
+  ALeft := '';
+  ACenter := '';
+  ARight := '';
+  if AText = '' then
+    exit;
+
+  P := PChar(AText);
+  PStart := P;
+  pL := 0;
+  pC := 0;
+  pR := 0;
+  while (P^ <> #0) do begin
+    if P^ = '&' then
+    begin
+      inc(P);
+      if (P^ = 'L') or (P^ = 'l') then
+        pL := PtrUInt(P) - PtrUInt(PStart)
+      else
+      if (P^ = 'C') or (P^ = 'c') then
+        pC := PtrUInt(P) - PtrUInt(PStart)
+      else
+      if (P^ = 'R') or (P^ = 'r') then
+        pR := PtrUInt(P) - PtrUInt(PStart);
+    end;
+    inc(P);
+  end;
+  if (pL > 0) then
+  begin
+    if pC > 0 then
+      ALeft := Copy(AText, pL+2, pC - pL - 1)
+    else
+    if pR > 0 then
+      ARight := Copy(AText, pL, pR - pL - 1)
+    else
+      ALeft := Copy(AText, pL+2, MaxInt);
+    exit;
+  end;
+  if (pC > 0) then
+  begin
+    if pR > 0 then
+      ACenter := Copy(AText, pC+2, pR - pC - 1)
+    else
+      ACenter := Copy(AText, pC+2, MaxInt);
+    exit;
+  end;
+  if (pR > 0) then
+    ARight := Copy(AText, pR+2, MaxInt);
 end;
 
 end.

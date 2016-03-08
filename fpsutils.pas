@@ -111,6 +111,7 @@ function GetFormatFromFileName(const AFileName: TFileName;
 procedure EnsureOrder(var a,b: Integer); overload;
 procedure EnsureOrder(var a,b: Cardinal); overload;
 function IfThen(ACondition: Boolean; AValue1,AValue2: TsNumberFormat): TsNumberFormat; overload;
+function IfThen(ACondition: Boolean; AValue1,AValue2: Char): Char; overload;
 
 procedure FloatToFraction(AValue: Double; AMaxDenominator: Int64;
   out ANumerator, ADenominator: Int64);
@@ -1205,6 +1206,11 @@ end;
 -------------------------------------------------------------------------------}
 function IfThen(ACondition: Boolean;
   AValue1, AValue2: TsNumberFormat): TsNumberFormat;
+begin
+  if ACondition then Result := AValue1 else Result := AValue2;
+end;
+
+function IfThen(ACondition: Boolean; AValue1, AValue2: char): char;
 begin
   if ACondition then Result := AValue1 else Result := AValue2;
 end;

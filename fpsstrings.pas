@@ -92,7 +92,12 @@ resourcestring
 
   rsCannotSortMerged = 'The cell range cannot be sorted because it contains merged cells.';
 
+  // PageLayout
   rsDifferentSheetPrintRange = 'Print range "%s" requires a different worksheet.';
+  rsFooter = 'Footer';
+  rsHeader = 'Header';
+  rsIncorrectPositionOfImageInHeaderFooter = 'Incorrect position of %%G code in %s';
+  rsOnlyOneHeaderFooterImageAllowed = 'Only one image per %s section allowed.';
 
   // Colors
   rsAqua = 'aqua';

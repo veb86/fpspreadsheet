@@ -107,16 +107,19 @@ type
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   private
-    FNext_rId: Integer;
     FFirstNumFormatIndexInFile: Integer;
+    vmlDrawingCounter: Integer;
   protected
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
     FSharedStringsCount: Integer;
     FFillList: array of PsCellFormat;
     FBorderList: array of PsCellFormat;
+    procedure Get_rId(AWorksheet: TsWorksheet;
+      out AComment_rId, AFirstHyperlink_rId, ADrawing_rId, ADrawingHF_rId: Integer);
   protected
     procedure AddBuiltinNumFormats; override;
+    function CreateStream(AFilenameBase: String): TStream;
     procedure CreateStreams;
     procedure DestroyStreams;
     function  FindBorderInList(AFormat: PsCellFormat): Integer;
@@ -132,13 +135,13 @@ type
     procedure WriteDefinedNames(AStream: TStream);
     procedure WriteDimension(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteDrawings(AWorksheet: TsWorksheet);
-    procedure WriteDrawingsRels(AWorksheet: TsWorksheet);
-    procedure WriteDrawingsOfSheet(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteDrawingRels(AWorksheet: TsWorksheet);
+//    procedure WriteDrawingsOfSheet(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteFillList(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFont: TsFont; UseInStyleNode: Boolean);
     procedure WriteFontList(AStream: TStream);
     procedure WriteHeaderFooter(AStream: TStream; AWorksheet: TsWorksheet);
-    procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet; rId: Integer);
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteNumFormatList(AStream: TStream);
     procedure WritePalette(AStream: TStream);
@@ -150,6 +153,9 @@ type
     procedure WriteSheetViews(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
     procedure WriteVmlDrawings(AWorksheet: TsWorksheet);
+    procedure WriteVMLDrawings_Comments(AWorksheet: TsWorksheet);
+    procedure WriteVMLDrawings_HeaderFooterImages(AWorksheet: TsWorksheet);
+    procedure WriteVMLDrawingRels(AWorksheet: TsWorksheet);
     procedure WriteWorkbook(AStream: TStream);
     procedure WriteWorkbookRels(AStream: TStream);
     procedure WriteWorksheet(AWorksheet: TsWorksheet);
@@ -170,6 +176,7 @@ type
     FSDrawings: array of TStream;
     FSDrawingsRels: array of TStream;
     FSVmlDrawings: array of TStream;
+    FSVmlDrawingsRels: array of TStream;
     FCurSheetNum: Integer;
   protected
     { Routines to write the files }
@@ -256,8 +263,10 @@ const
      SCHEMAS_STYLES       = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles';
      SCHEMAS_STRINGS      = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings';
      SCHEMAS_COMMENTS     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/comments';
-     SCHEMAS_DRAWINGS     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing';
-     SCHEMAS_HYPERLINKS   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink';
+     SCHEMAS_DRAWING      = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing';
+     SCHEMAS_VMLDRAWING   = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/vmlDrawing';
+     SCHEMAS_HYPERLINK    = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink';
+     SCHEMAS_IMAGE        = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
      SCHEMAS_SPREADML     = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
 
      { OOXML mime types constants }
@@ -686,7 +695,7 @@ begin
   if s = 's' then begin
     // String from shared strings table
     sstIndex := StrToInt(dataStr);
-    AWorksheet.WriteUTF8Text(cell, FSharedStrings[sstIndex]);
+    AWorksheet.WriteText(cell, FSharedStrings[sstIndex]);
     // Read rich-text parameters from the stream stored in the Objects of the stringlist
     if FSharedStrings.Objects[sstIndex] <> nil then
     begin
@@ -699,7 +708,7 @@ begin
   end else
   if (s = 'str') or (s = 'inlineStr') then
     // literal string
-    AWorksheet.WriteUTF8Text(cell, datastr)
+    AWorksheet.WriteText(cell, datastr)
   else
   if s = 'b' then
     // boolean
@@ -1066,7 +1075,7 @@ end;
 
 procedure TsSpreadOOXMLReader.ReadDefinedNames(ANode: TDOMNode);
 var
-  node, childnode: TDOMNode;
+  node: TDOMNode;
   nodeName: String;
   r1,c1,r2,c2: Cardinal;
   id, j, p: Integer;
@@ -1457,7 +1466,7 @@ begin
         if nodename = 'Relationship' then
         begin
           s := GetAttrValue(node, 'Type');
-          if s = SCHEMAS_HYPERLINKS then
+          if s = SCHEMAS_HYPERLINK then
           begin
             s := GetAttrValue(node, 'Id');
             if s <> '' then
@@ -2285,6 +2294,46 @@ begin
   Result := -1;
 end;
 
+{ Calculates the rIds for comments, hyperlinks, image, and
+  header/footer images of the specified worksheet }
+procedure TsSpreadOOXMLWriter.Get_rId(AWorksheet: TsWorksheet;
+  out AComment_rId, AFirstHyperlink_rId, ADrawing_rId, ADrawingHF_rId: Integer);
+var
+  next_rId: Integer;
+begin
+  AComment_rId := -1;
+  AFirstHyperlink_rId := -1;
+  ADrawing_rId := -1;
+  ADrawingHF_rId := -1;
+  next_rId := 1;
+
+  // Comments first
+  if AWorksheet.Comments.Count > 0 then
+  begin
+    AComment_rId := next_rId;
+    inc(next_rId, 2);  // there are two .rels entries in case of comments
+  end;
+
+  // Embedded images next
+  if AWorksheet.GetImageCount > 0 then
+  begin
+    ADrawing_rId := next_rId;
+    inc(next_rId);
+  end;
+
+  // HeaderFooter images next
+  if AWorksheet.PageLayout.HasHeaderFooterImages then
+  begin
+    ADrawingHF_rId := next_rId;
+    inc(next_rId);
+  end;
+
+  // Hyperlinks at the end because it is not clear how many rIds will be
+  // used without analyzing the hyperlink.
+  if AWorksheet.Hyperlinks.Count > 0 then
+    AFirstHyperlink_rId := next_rId;
+end;
+
 { Determines the formatting index which a given cell has in list of
   "FormattingStyles" which correspond to the section cellXfs of the styles.xml
   file. }
@@ -2458,6 +2507,8 @@ begin
 
   // Create the comments stream
   SetLength(FSComments, FCurSheetNum + 1);
+  FSComments[FCurSheetNum] := CreateStream(Format('fpsCMNT%d', [FCurSheetNum]));
+  {
   if boFileStream in FWorkbook.Options then
     FSComments[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsCMNT%d', [FCurSheetNum])), fmCreate)
   else
@@ -2465,6 +2516,7 @@ begin
     FSComments[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsCMNT%d', [FCurSheetNum])))
   else
     FSComments[FCurSheetNum] := TMemoryStream.Create;
+  }
 
   // Header
   AppendToStream(FSComments[FCurSheetNum],
@@ -2681,7 +2733,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteHyperlinks(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsWorksheet; rId: Integer);
 var
   hyperlink: PsHyperlink;
   target, bookmark: String;
@@ -2695,9 +2747,6 @@ begin
   AppendToStream(AStream,
     '<hyperlinks>');
 
-  // Keep in sync with WriteWorksheetRels !
-  FNext_rID := IfThen(AWorksheet.Comments.Count = 0, 1, 3);
-
   AVLNode := AWorksheet.Hyperlinks.FindLowest;
   while AVLNode <> nil do begin
     hyperlink := PsHyperlink(AVLNode.Data);
@@ -2705,8 +2754,8 @@ begin
     s := Format('ref="%s"', [GetCellString(hyperlink^.Row, hyperlink^.Col)]);
     if target <> '' then
     begin
-      s := Format('%s r:id="rId%d"', [s, FNext_rId]);
-      inc(FNext_rId);
+      s := Format('%s r:id="rId%d"', [s, rId]);
+      inc(rId);
     end;
     if bookmark <> '' then //target = '' then
       s := Format('%s location="%s"', [s, bookmark]);
@@ -3226,6 +3275,8 @@ begin
     exit;
 
   SetLength(FSDrawings, FCurSheetNum + 1);
+  FSDrawings[FCurSheetNum] := CreateStream(Format('fpsD%d', [FCurSheetNum]));
+  {
   if boFileStream in FWorkbook.Options then
     FSDrawings[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsD%d', [FCurSheetNum])), fmCreate)
   else
@@ -3233,6 +3284,7 @@ begin
     FSDrawings[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsD%d', [FCurSheetNum])))
   else
     FSDrawings[FCurSheetNum] := TMemoryStream.Create;
+  }
 
   // Header
   AppendToStream(FSDrawings[FCurSheetNum],
@@ -3311,48 +3363,42 @@ begin
     '</xdr:wsDr>');
 end;
 
-procedure TsSpreadOOXMLWriter.WriteDrawingsRels(AWorksheet: TsWorksheet);
+// For each sheet, writes a "drawingX.xml.rels" file to
+// folder "../drawings/_rels". X matches the (1-base) sheet index.
+// See also: WriteVmlDrawingRels
+procedure TsSpreadOOXMLWriter.WriteDrawingRels(AWorksheet: TsWorksheet);
 var
   i: Integer;
-  img: TsImage;
   ext: String;
 begin
-  if AWorksheet.GetImageCount= 0 then
+  if (AWorksheet.GetImageCount = 0) then
     exit;
 
   SetLength(FSDrawingsRels, FCurSheetNum + 1);
-  if boFileStream in FWorkbook.Options then
-    FSDrawingsRels[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsDR%d', [FCurSheetNum])), fmCreate)
-  else
-  if boBufStream in FWorkbook.Options then
-    FSDrawingsRels[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsDR%d', [FCurSheetNum])))
-  else
-    FSDrawingsRels[FCurSheetNum] := TMemoryStream.Create;
+  FSDrawingsRels[FCurSheetNum] := CreateStream(Format('fpsDR%d', [FCurSheetNum]));
 
   // Header
   AppendToStream(FSDrawingsRels[FCurSheetNum],
-    XML_HEADER,
-    '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">');
+    XML_HEADER + LineEnding,
+    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding);
 
   // Repeat for each image
   for i:=0 to AWorksheet.GetImageCount - 1 do
   begin
-    img := AWorksheet.GetImage(i);
     ext := ExtractFileExt(FWorkbook.GetEmbeddedStream(i).Name);
     AppendToStream(FSDrawingsRels[FCurSheetNum], Format(
-      '<Relationship Id="rId%d" '+
-        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" '+
-        'Target="../media/image%d%s"/>', [
-        i+1, i+1, ext
-      ]));
+    '  <Relationship Id="rId%d" Type="%s" Target="../media/image%d%s"/>' + LineEnding, [
+       i+1, SCHEMAS_IMAGE, i+1, ext
+    ]));
   end;
 
   AppendToStream(FSDrawingsRels[FCurSheetNum],
     '</Relationships>');
 end;
-
+                             (*
 procedure TsSpreadOOXMLWriter.WriteDrawingsOfSheet(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsWorksheet; rId: Integer);
+// Use stream FSDrawingS[sheetindex]
 var
   i: Integer;
   AVLNode: TAVLTreeNode;
@@ -3374,39 +3420,62 @@ begin
       '<drawing r:id="rId%d" />', [FNext_rId]));
     inc(FNext_rId);
   end;
+end;                           *)
+
+{@ -----------------------------------------------------------------------------
+  Writes a VmlDrawings file for the specified worksheet.
+
+  This file contains information on drawing of shapes etc.
+  Currently fpspreadsheet supports only comments and embedded header/footer
+  images.
+
+  Each worksheet writes a vmlDrawing file if it contains comments or
+  header/footer images. All comments are packed into the same file, all
+  images as well. The comments file is written first, the Images file next.
+  All files are numbered consecutively for ALL sheets.
+
+  Example
+    vmlDrawing1.vml  --> Sheet 1 comments
+    vmlDrawing2.vml  --> Sheet 1 header/footer images
+    vmlDrawing3.vml  --> Sheet 2 header/footer images
+    vmlDrawing4.vml  --> Sheet 3 comments
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLWriter.WriteVmlDrawings(AWorksheet: TsWorksheet);
+begin
+  // At first write the VmlDrawings related to comments
+  WriteVmlDrawings_Comments(AWorksheet);
+
+  // Now write the vmlDrawings related to headers/footers
+  WriteVmlDrawings_HeaderFooterImages(AWorksheet);
 end;
 
-procedure TsSpreadOOXMLWriter.WriteVmlDrawings(AWorksheet: TsWorksheet);
-// My xml viewer does not format vml files property --> format in code.
+procedure TsSpreadOOXMLWriter.WriteVMLDrawings_Comments(AWorksheet: TsWorksheet);
 var
   comment: PsComment;
+  fileindex: Integer;
   index: Integer;
   id: Integer;
 begin
   if AWorksheet.Comments.Count = 0 then
     exit;
 
-  SetLength(FSVmlDrawings, FCurSheetNum + 1);
-  if boFileStream in FWorkbook.Options then
-    FSVmlDrawings[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsVMLD%d', [FCurSheetNum])), fmCreate)
-  else
-  if (boBufStream in Workbook.Options) then
-    FSVmlDrawings[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsVMLD%d', [FCurSheetNum])))
-  else
-    FSVmlDrawings[FCurSheetNum] := TMemoryStream.Create;
+  fileIndex := Length(FSVmlDrawings);
 
-  // Header
-  AppendToStream(FSVmlDrawings[FCurSheetNum],
+  SetLength(FSVmlDrawings, fileIndex+1);
+  FSVmlDrawings[fileIndex] := CreateStream(Format('fpsVMLD%', [fileIndex+1]));
+
+  // Header of file
+  AppendToStream(FSVmlDrawings[fileIndex],
     '<xml xmlns:v="urn:schemas-microsoft-com:vml" '+
          'xmlns:o="urn:schemas-microsoft-com:office:office" '+
          'xmlns:x="urn:schemas-microsoft-com:office:excel">' + LineEnding);
   // My xml viewer does not format vml files property --> format in code.
-  AppendToStream(FSVmlDrawings[FCurSheetNum],
+  AppendToStream(FSVmlDrawings[fileIndex],
     '  <o:shapelayout v:ext="edit">' + LineEnding +
     '    <o:idmap v:ext="edit" data="1" />' + LineEnding +
          // "data" is a comma-separated list with the ids of groups of 1024 comments -- really?
     '  </o:shapelayout>' + LineEnding);
-  AppendToStream(FSVmlDrawings[FCurSheetNum],
+  AppendToStream(FSVmlDrawings[fileIndex],
     '  <v:shapetype id="_x0000_t202" coordsize="21600,21600" o:spt="202" path="m,l,21600r21600,l21600,xe">'+LineEnding+
     '    <v:stroke joinstyle="miter"/>' + LineEnding +
     '    <v:path gradientshapeok="t" o:connecttype="rect"/>' + LineEnding +
@@ -3416,8 +3485,8 @@ begin
   index := 1;
   for comment in AWorksheet.Comments do
   begin
-    id := 1024 + index;     // if more than 1024 comments then use data="1,2,etc" above! -- not implemented yet
-    AppendToStream(FSVmlDrawings[FCurSheetNum], LineEnding + Format(
+    id := 1024*(FCurSheetNum+1) + index;     // if more than 1024 comments then use data="1,2,etc" above! -- not implemented yet
+    AppendToStream(FSVmlDrawings[fileIndex], LineEnding + Format(
     '  <v:shape id="_x0000_s%d" type="#_x0000_t202" ', [id]) + LineEnding + Format(
     '       style="position:absolute; width:108pt; height:52.5pt; z-index:%d; visibility:hidden" ', [index]) + LineEnding +
             // it is not necessary to specify margin-left and margin-top here!
@@ -3444,9 +3513,244 @@ begin
     '  </v:shape>' + LineEnding);
   end;
 
-  // Footer
-  AppendToStream(FSVmlDrawings[FCurSheetNum],
+  // Footer of file
+  AppendToStream(FSVmlDrawings[fileIndex],
     '</xml>');
+end;
+
+(*
+<xml xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+  <o:shapelayout v:ext="edit">
+    <o:idmap v:ext="edit" data="1"/>
+  </o:shapelayout>
+  <v:shapetype id="_x0000_t75" coordsize="21600,21600" o:spt="75" o:preferrelative="t" path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f">
+    <v:stroke joinstyle="miter"/>
+    <v:formulas>
+      <v:f eqn="if lineDrawn pixelLineWidth 0"/>
+      <v:f eqn="sum @0 1 0"/>
+      <v:f eqn="sum 0 0 @1"/>
+      <v:f eqn="prod @2 1 2"/>
+      <v:f eqn="prod @3 21600 pixelWidth"/>
+      <v:f eqn="prod @3 21600 pixelHeight"/>
+      <v:f eqn="sum @0 0 1"/>
+      <v:f eqn="prod @6 1 2"/>
+      <v:f eqn="prod @7 21600 pixelWidth"/>
+      <v:f eqn="sum @8 21600 0"/>
+      <v:f eqn="prod @7 21600 pixelHeight"/>
+      <v:f eqn="sum @10 21600 0"/>
+    </v:formulas>
+    <v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/>
+    <o:lock v:ext="edit" aspectratio="t"/>
+ </v:shapetype>
+ <v:shape id="CF" o:spid="_x0000_s1025" type="#_x0000_t75" style='position:absolute;margin-left:0;margin-top:0;width:12pt;height:12pt; z-index:1'>
+   <v:imagedata o:relid="rId1" o:title="arrow_down"/>
+   <o:lock v:ext="edit" rotation="t"/>
+ </v:shape>
+ <v:shape id="RH" o:spid="_x0000_s1026" type="#_x0000_t75" style='position:absolute; margin-left:0;margin-top:0;width:12pt;height:12pt;z-index:2'>
+   <v:imagedata o:relid="rId2" o:title="arrow_right"/>
+   <o:lock v:ext="edit" rotation="t"/>
+ </v:shape>
+ <v:shape id="LH" o:spid="_x0000_s1027" type="#_x0000_t75" style='position:absolute; margin-left:0;margin-top:0;width:12pt;height:12pt;z-index:3'>
+   <v:imagedata o:relid="rId3" o:title="arrow_left"/>
+   <o:lock v:ext="edit" rotation="t"/>
+ </v:shape>
+</xml>
+ *)
+
+procedure TsSpreadOOXMLWriter.WriteVMLDrawings_HeaderFooterImages(
+  AWorksheet: TsWorksheet);
+
+  { AName = 'header' or 'footer'
+    ATag  = 'L', 'C', 'R', 'x', or ' '
+    AChar = 'H' or 'F' }
+  procedure Process(AStream: TStream; AName: String; ATag, AChar: Char;
+    AImage: TsHeaderFooterImage; var id, index: Integer);
+  var
+    fn: String;
+  begin
+    if AImage.Index = -1 then
+      exit;
+    if ATag = 'x' then
+    begin
+      FWorkbook.AddErrorMsg(rsOnlyOneHeaderFooterImageAllowed, [AName]);
+      exit;
+    end;
+    if ATag = ' ' then
+    begin
+      FWorkbook.AddErrorMsg(rsIncorrectPositionOfImageInHeaderFooter, [AName]);
+      exit;
+    end;
+    fn := Workbook.GetEmbeddedStream(AImage.Index).Name;
+    fn := ChangeFileExt(ExtractFileName(fn), '');
+    AppendToStream(AStream, Format(
+      ' <v:shape id="%s" o:spid="_x0000_s%d" type="#_x0000_t75"' + LineEnding +
+      //    e.g.    "CH"         _x0000_s1025
+      '   style=''position:absolute;margin-left:0;margin-top:0;width:12pt;height:12pt;z-index:%d''>' + LineEnding +
+      //    e.g.                                                                      z-index:1
+      '   <v:imagedata o:relid="rId%d" o:title="%s"/>' + LineEnding +
+      //    e.g.               "rId1"          "arrow_down"
+      '   <o:lock v:ext="edit" rotation="t" />' + LineEnding +
+      ' </v:shape>' + LineEnding, [
+      ATag + AChar, id, index, index, fn
+    ]));
+    inc(id);
+    inc(index);
+  end;
+
+var
+  fileindex: Integer;
+  id, index: Integer;
+  tagIndex: Integer;
+  img: TsHeaderFooterImage;
+  sec: TsHeaderFooterSectionIndex;
+  headerTags, footerTags: String;
+begin
+  if not AWorksheet.PageLayout.HasHeaderFooterImages then
+    exit;
+
+  fileIndex := Length(FSVmlDrawings);
+  SetLength(FSVmlDrawings, fileIndex+1);
+  FSVmlDrawings[fileIndex] := CreateStream(Format('fpsVMLD%d', [fileIndex+1]));
+
+  // Header of file
+  AppendToStream(FSVmlDrawings[fileIndex],
+    '<xml xmlns:v="urn:schemas-microsoft-com:vml" ' + LineEnding +
+    '     xmlns:o="urn:schemas-microsoft-com:office:office" ' + LineEnding +
+    '     xmlns:x="urn:schemas-microsoft-com:office:excel"> ' + LineEnding +
+    '  <o:shapelayout v:ext="edit">' + LineEnding +
+    '    <o:idmap v:ext="edit" data="1"/>' + LineEnding +
+    '  </o:shapelayout>' + LineEnding +
+    '  <v:shapetype id="_x0000_t75" coordsize="21600,21600" ' + LineEnding +
+    '               o:spt="75" o:preferrelative="t" ' + LineEnding +
+    '               path="m@4@5l@4@11@9@11@9@5xe" filled="f" stroked="f">' + LineEnding +
+    '    <v:stroke joinstyle="miter"/>' + LineEnding +
+    '    <v:formulas>' + LineEnding +
+    '      <v:f eqn="if lineDrawn pixelLineWidth 0"/>' + LineEnding +
+    '      <v:f eqn="sum @0 1 0"/>' + LineEnding +
+    '      <v:f eqn="sum 0 0 @1"/>' + LineEnding +
+    '      <v:f eqn="prod @2 1 2"/>' + LineEnding +
+    '      <v:f eqn="prod @3 21600 pixelWidth"/>' + LineEnding +
+    '      <v:f eqn="prod @3 21600 pixelHeight"/>' + LineEnding +
+    '      <v:f eqn="sum @0 0 1"/>' + LineEnding +
+    '      <v:f eqn="prod @6 1 2"/>' + LineEnding +
+    '      <v:f eqn="prod @7 21600 pixelWidth"/>' + LineEnding +
+    '      <v:f eqn="sum @8 21600 0"/>' + LineEnding +
+    '      <v:f eqn="prod @7 21600 pixelHeight"/>' + LineEnding +
+    '      <v:f eqn="sum @10 21600 0"/>' + LineEnding +
+    '    </v:formulas>' + LineEnding +
+    '    <v:path o:extrusionok="f" gradientshapeok="t" o:connecttype="rect"/>' + LineEnding +
+    '    <o:lock v:ext="edit" aspectratio="t"/>' + LineEnding +
+    ' </v:shapetype>' + LineEnding);
+
+  index := 1;
+  id := 1024 * (FCurSheetNum+1) + index;
+
+  AWorksheet.PageLayout.GetImageSections(headerTags, footerTags);
+
+  // Write the data for the image in each section of the header
+  for sec in TsHeaderFooterSectionIndex do
+  begin
+    tagIndex := ord(sec) + 1;
+    img := AWorksheet.PageLayout.HeaderImages[sec];
+    Process(FSVmlDrawings[fileIndex], rsHeader, headerTags[tagIndex], 'H', img, id, index);
+  end;
+  // Repeat with footer
+  for sec in TsHeaderFooterSectionIndex do
+  begin
+    img := AWorksheet.PageLayout.FooterImages[sec];
+    tagIndex := ord(sec) + 1;
+    Process(FSVmlDrawings[fileIndex], rsFooter, footerTags[tagIndex], 'F', img, id, index);
+  end;
+
+  // Footer of file
+  AppendToStream(FSVmlDrawings[fileIndex],
+    '</xml>');
+end;
+
+{<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+  <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+    <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+      Target="../media/image3.png"/>
+    <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+      Target="../media/image2.png"/>
+    <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image"
+      Target="../media/image1.png"/>
+  </Relationships> }
+
+{@@ ----------------------------------------------------------------------------
+  Writes a relationship file (*.rels) for a vmlDrawing.xml file to a media file.
+  Destination folder will be "../drawings/_rels".
+  Needed for header/footer images.
+  Note: vmlDrawing files of comments do not have a correspondig rels file.
+  The index of the rels file must match that of the vmlDrawingX.vml file.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLWriter.WriteVmlDrawingRels(AWorksheet: TsWorksheet);
+var
+  fileindex: Integer;
+//  fn: String;
+  sec: TsHeaderFooterSectionIndex;
+  rId: Integer;
+  img: TsHeaderFooterImage;
+  imgIdx: Integer;
+  imgName: String;
+begin
+  if not AWorksheet.PageLayout.HasHeaderFooterImages then
+    exit;
+
+  fileIndex := Length(FSVmlDrawingsRels);
+  if AWorksheet.Comments.Count > 0 then
+    inc(fileIndex);  // skip comments for numbering
+
+  SetLength(FSVmlDrawingsRels, fileIndex+1);
+  FsVmlDrawingsRels[fileIndex] := CreateStream(Format('fpsVMSDR%d', [fileIndex]));
+
+  // Write file header
+  AppendToStream(FSVmlDrawingsRels[fileIndex],
+    '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' + LineEnding +
+    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding
+  );
+
+  // Write entry for each header/footer image
+  // Note: use same order as for writing of VmlDrawing files.
+
+  rId := 1;
+
+  // Write the data for the image in each section of the header
+  for sec in TsHeaderFooterSectionIndex do begin
+    img := AWorksheet.PageLayout.HeaderImages[sec];
+    if img.Index = -1 then
+      continue;
+    imgName := FWorkbook.GetEmbeddedStream(img.Index).Name;
+    imgIdx := FWorkbook.FindEmbeddedStream(imgName);
+    AppendToStream(FSVmlDrawingsRels[fileIndex], Format(
+      '  <Relationship Id="rId%d" Target="../media/image%d%s" '+
+         'Type="' + SCHEMAS_IMAGE + '" />' + LineEnding, [
+      rId,                                 // Id="rID1"
+      imgIdx + 1, ExtractFileExt(imgName) // Target="../media/image1.png"
+    ]));
+   inc(rId);
+  end;
+
+  // Repeat with footer
+  for sec in TsHeaderFooterSectionIndex do begin
+    img := AWorksheet.PageLayout.FooterImages[sec];
+    if img.Index = -1 then
+      continue;
+    imgName := FWorkbook.GetEmbeddedStream(img.Index).Name;
+    imgIdx := FWorkbook.FindEmbeddedStream(imgName);
+    AppendToStream(FSVmlDrawingsRels[fileIndex], Format(
+      '  <Relationship Id="rId%d" Target="../media/image%d%s" '+  //
+         //  e.g.         "rId1"         "..(media/image1.png"
+         'Type="' + SCHEMAS_IMAGE + '" />', [
+      rId,
+      imgIdx, ExtractFileExt(imgName)
+    ]));
+   inc(rId);
+  end;
+
+  // Write file footer
+  AppendToStream(FSVmlDrawingsRels[fileIndex],
+    '</Relationships>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheetRels(AWorksheet: TsWorksheet);
@@ -3455,44 +3759,40 @@ var
   hyperlink: PsHyperlink;
   s: String;
   target, bookmark: String;
-  i: Integer;
+  rId_Comments, rId_Hyperlink, rId_Drawing, rId_DrawingHF: Integer;
 begin
   // Extend stream array
+  // NOTE: If no .rels file is written for this sheet at least an empty stream
+  // must be provided to keep the numbering intact.
   SetLength(FSSheetRels, FCurSheetNum + 1);
 
   // Anything to write?
   if (AWorksheet.Comments.Count = 0) and (AWorksheet.Hyperlinks.Count = 0) and
-     (AWorksheet.GetImageCount = 0)
+     (AWorksheet.GetImageCount = 0) and not (AWorksheet.PageLayout.HasHeaderFooterImages)
   then
     exit;
 
+  Get_rId(AWorksheet, rID_Comments, rId_Hyperlink, rId_Drawing, rId_DrawingHF);
+
   // Create stream
-  if boFileStream in FWorkbook.Options then
-    FSSheetRels[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsWSR%d', [FCurSheetNum])), fmCreate)
-  else
-  if (boBufStream in Workbook.Options) then
-    FSSheetRels[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsWSR%d', [FCurSheetNum])))
-  else
-    FSSheetRels[FCurSheetNum] := TMemoryStream.Create;
+  FSSheetRels[FCurSheetNum] := CreateStream(Format('fpsWSR%d', [FCurSheetNum]));
 
   // Header
   AppendToStream(FSSheetRels[FCurSheetNum],
-    XML_HEADER);
+    XML_HEADER + LineEnding);
   AppendToStream(FSSheetRels[FCurSheetNum], Format(
-    '<Relationships xmlns="%s">', [SCHEMAS_RELS]));
-
-  FNext_rId := 1;
+    '<Relationships xmlns="%s">' + LineEnding, [SCHEMAS_RELS]));
 
   // Relationships for comments
   if AWorksheet.Comments.Count > 0 then
   begin
     AppendToStream(FSSheetRels[FCurSheetNum], Format(
-      '<Relationship Id="rId1" Type="%s" Target="../drawings/vmlDrawing%d.vml" />',
-        [SCHEMAS_DRAWINGS, FCurSheetNum+1]));
+      '  <Relationship Id="rId%d" Target="../comments%d.xml" Type="%s" />' + LineEnding,
+          [rId_Comments+1, FCurSheetNum+1, SCHEMAS_COMMENTS]));
     AppendToStream(FSSheetRels[FCurSheetNum], Format(
-      '<Relationship Id="rId2" Type="%s" Target="../comments%d.xml" />',
-        [SCHEMAS_COMMENTS, FCurSheetNum+1]));
-    FNext_rId := 3;
+      '  <Relationship Id="rId%d" Target="../drawings/vmlDrawing%d.vml" Type="%s" />' + LineEnding,
+          [rId_Comments, vmlDrawingCounter, SCHEMAS_VMLDRAWING]));
+    inc(vmlDrawingCounter);
   end;
 
   // Relationships for hyperlinks
@@ -3507,26 +3807,32 @@ begin
       begin
         if (pos('file:', target) = 0) and FileNameIsAbsolute(target) then
           FileNameToURI(target);
-        s := Format('Id="rId%d" Type="%s" Target="%s" TargetMode="External"',
-          [FNext_rId, SCHEMAS_HYPERLINKS, target]);
+        s := Format('Id="rId%d" Target="%s" TargetMode="External" Type="%s"',
+          [rId_Hyperlink, target, SCHEMAS_HYPERLINK]);
         AppendToStream(FSSheetRels[FCurSheetNum],
-          '<Relationship ' + s + ' />');
-        inc(FNext_rId);
+          '  <Relationship ' + s + ' />' + LineEnding);
+        inc(rId_Hyperlink);
       end;
       AVLNode := AWorksheet.Hyperlinks.FindSuccessor(AVLNode);
     end;
   end;
 
   // Relationships for embedded images
-  for i:= 0 to AWorksheet.GetImageCount-1 do
+  // relationship with to the ../drawings/drawingX.xml file containing all
+  // image infos. X is the 1-base sheet index
+  if AWorksheet.GetImageCount > 0 then
+    AppendToStream(FSSheetRels[FCurSheetNum], Format(
+      '  <Relationship Id="rId%d" Target="../drawings/drawing%d.xml" Type="%s" />' + LineEnding,
+      [rId_Drawing, FCurSheetNum + 1, SCHEMAS_DRAWING]
+    ));
+
+  // Relationships for embedded header/footer images
+  if AWorksheet.PageLayout.HasHeaderFooterImages then
   begin
-    AppendToStream(FSSheetrels[FCurSheetNum], Format(
-      '<Relationship Id="rId%d" '+
-        'Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/drawing" '+
-        'Target="../drawings/drawing%d.xml"/>', [
-        FNext_rID, i+1
-      ]));
-    inc(FNext_rId);
+    AppendToStream(FSSheetRels[FCurSheetnum], Format(
+      '  <Relationship Id="rId%d" Target="../drawings/vmlDrawing%d.vml" Type="%s" />' + LineEnding,
+        [rId_DrawingHF, vmlDrawingCounter, SCHEMAS_VMLDRAWING]));
+    inc(vmlDrawingCounter);
   end;
 
   // Footer
@@ -3540,17 +3846,18 @@ begin
   // Will be written at the end of WriteToStream when all Sheet.rels files are
   // known
 
-  { --- RelsRels --- }
+  { --- _rels/.rels --- }
   AppendToStream(FSRelsRels,
-    XML_HEADER);
+    XML_HEADER + LineEnding);
   AppendToStream(FSRelsRels, Format(
-    '<Relationships xmlns="%s">', [SCHEMAS_RELS]));
+    '<Relationships xmlns="%s">' + LineEnding, [SCHEMAS_RELS]));
   AppendToStream(FSRelsRels, Format(
-      '<Relationship Type="%s" Target="xl/workbook.xml" Id="rId1" />', [SCHEMAS_DOCUMENT]));
+    '  <Relationship Id="rId1" Target="xl/workbook.xml" Type="%s" />' + LineEnding,
+      [SCHEMAS_DOCUMENT]));
   AppendToStream(FSRelsRels,
     '</Relationships>');
 
-  { --- Styles --- }
+  { --- xl/styles --- }
   AppendToStream(FSStyles,
     XML_Header);
   AppendToStream(FSStyles, Format(
@@ -3637,16 +3944,16 @@ begin
   FSharedStringsCount := 0;
 
   { Write all worksheets which fills also the shared strings.
-    Also: write comments and related files }
-  FNext_rId := 1;
+    Also: write comments, Drawings, vmlDrawings and relationship files }
   for i := 0 to Workbook.GetWorksheetCount - 1 do
   begin
     FWorksheet := Workbook.GetWorksheetByIndex(i);
     WriteWorksheet(FWorksheet);
     WriteComments(FWorksheet);
     WriteVmlDrawings(FWorksheet);
+    WriteVmlDrawingRels(FWorksheet);
     WriteDrawings(FWorksheet);
-    WriteDrawingsRels(FWorksheet);
+    WriteDrawingRels(FWorksheet);
     WriteWorksheetRels(FWorksheet);
   end;
 
@@ -3676,16 +3983,16 @@ var
   sheet: TsWorksheet;
 begin
   AppendToStream(FSContentTypes,
-    XML_HEADER);
+    XML_HEADER + LineEnding);
   AppendToStream(FSContentTypes,
-    '<Types xmlns="' + SCHEMAS_TYPES + '">');
+    '<Types xmlns="' + SCHEMAS_TYPES + '">' + LineEnding);
 
   AppendToStream(FSContentTypes, Format(
-      '<Default Extension="rels" ContentType="%s" />', [MIME_RELS]));
+      '<Default Extension="rels" ContentType="%s" />' + LineEnding, [MIME_RELS]));
   AppendToStream(FSContentTypes, Format(
-      '<Default Extension="xml" ContentType="%s" />', [MIME_XML]));
+      '<Default Extension="xml" ContentType="%s" />' + LineEnding, [MIME_XML]));
   AppendToStream(FSContentTypes, Format(
-      '<Default Extension="vml" ContentType="%s" />', [MIME_VMLDRAWING]));
+      '<Default Extension="vml" ContentType="%s" />' + LineEnding, [MIME_VMLDRAWING]));
 
   if Workbook.GetEmbeddedStreamCount > 0 then
   begin
@@ -3700,36 +4007,36 @@ begin
       end;
       for i := 0 to imgExt.Count-1 do
         AppendToStream(FSContentTypes, Format(
-          '<Default Extension="%s" ContentType="image/%s" />', [ext, ext]));
+          '<Default Extension="%s" ContentType="image/%s" />' + LineEnding, [ext, ext]));
     finally
       imgExt.Free;
     end;
   end;
 
   AppendToStream(FSContentTypes,
-      '<Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />');
+      '<Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />' + LineEnding);
 
   for i:=1 to Workbook.GetWorksheetCount do
   begin
     AppendToStream(FSContentTypes, Format(
-      '<Override PartName="/xl/worksheets/sheet%d.xml" ContentType="%s" />',
+      '<Override PartName="/xl/worksheets/sheet%d.xml" ContentType="%s" />' + LineEnding,
         [i, MIME_WORKSHEET]));
     sheet := Workbook.GetWorksheetByIndex(i-1);
     if sheet.GetImageCount > 0 then
       AppendToStream(FSContentTypes, Format(
-        '<Override PartName="/xl/drawings/drawing%d.xml" ContentType="%s"/>',
+        '<Override PartName="/xl/drawings/drawing%d.xml" ContentType="%s"/>' + LineEnding,
         [i, MIME_DRAWING]));
   end;
 
   for i:=1 to Length(FSComments) do
     AppendToStream(FSContentTypes, Format(
-      '<Override PartName="/xl/comments%d.xml" ContentType="%s" />',
+      '<Override PartName="/xl/comments%d.xml" ContentType="%s" />' + LineEnding,
         [i, MIME_COMMENTS]));
 
   AppendToStream(FSContentTypes,
-      '<Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />');
+      '<Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />' + LineEnding);
   AppendToStream(FSContentTypes,
-      '<Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />');
+      '<Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />' + LineEnding);
   {
   AppendToStream(FSContentTypes,
       '<Override PartName="/docProps/core.xml" ContentType="' + MIME_CORE + '" />');
@@ -3800,7 +4107,7 @@ begin
 
   // Write to stream if any defined names exist
   if stotal <> '' then
-    AppendtoStream(FSWorkbook,
+    AppendtoStream(AStream,
       '<definedNames>' + stotal + '</definedNames>');
 end;
 
@@ -3813,36 +4120,36 @@ begin
   actTab := IfThen(FWorkbook.ActiveWorksheet = nil, '',
     'activeTab="' + IntToStr(FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet)) + '"');
 
-  AppendToStream(FSWorkbook,
+  AppendToStream(AStream,
     XML_HEADER);
-  AppendToStream(FSWorkbook, Format(
+  AppendToStream(AStream, Format(
     '<workbook xmlns="%s" xmlns:r="%s">', [SCHEMAS_SPREADML, SCHEMAS_DOC_RELS]));
-  AppendToStream(FSWorkbook,
+  AppendToStream(AStream,
       '<fileVersion appName="fpspreadsheet" />');
-  AppendToStream(FSWorkbook,
+  AppendToStream(AStream,
       '<workbookPr defaultThemeVersion="124226" />');
-  AppendToStream(FSWorkbook,
+  AppendToStream(AStream,
       '<bookViews>' +
         '<workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" ' + actTab + '/>' +
       '</bookViews>');
 
-  AppendToStream(FSWorkbook,
+  AppendToStream(AStream,
       '<sheets>');
   for counter:=1 to Workbook.GetWorksheetCount do
   begin
     sheetname := UTF8TextToXMLText(Workbook.GetWorksheetByIndex(counter-1).Name);
-    AppendToStream(FSWorkbook, Format(
+    AppendToStream(AStream, Format(
         '<sheet name="%s" sheetId="%d" r:id="rId%d" />',
         [sheetname, counter, counter]));
   end;
-  AppendToStream(FSWorkbook,
+  AppendToStream(AStream,
       '</sheets>');
 
-  WriteDefinedNames(FSWorkbook);
+  WriteDefinedNames(AStream);
 
-  AppendToStream(FSWorkbook,
+  AppendToStream(AStream,
       '<calcPr calcId="114210" />');
-  AppendToStream(FSWorkbook,
+  AppendToStream(AStream,
     '</workbook>');
 end;
 
@@ -3850,40 +4157,49 @@ procedure TsSpreadOOXMLWriter.WriteWorkbookRels(AStream: TStream);
 var
   counter: Integer;
 begin
-  AppendToStream(FSWorkbookRels,
-    XML_HEADER,
-    '<Relationships xmlns="' + SCHEMAS_RELS + '">');
+  AppendToStream(AStream,
+    XML_HEADER + LineEnding,
+    '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding);
 
   counter := 1;
   while counter <= Workbook.GetWorksheetCount do begin
-    AppendToStream(FSWorkbookRels, Format(
-      '<Relationship Id="rId%d" Type="%s" Target="worksheets/sheet%d.xml" />',
-        [counter, SCHEMAS_WORKSHEET, counter]));
+    AppendToStream(AStream, Format(
+      '  <Relationship Id="rId%d" Target="worksheets/sheet%d.xml" Type="%s" />' + LineEnding,
+        [counter, counter, SCHEMAS_WORKSHEET]));
     inc(counter);
   end;
 
-  AppendToStream(FSWorkbookRels, Format(
-      '<Relationship Id="rId%d" Type="%s" Target="styles.xml" />',
+  AppendToStream(AStream, Format(
+      '  <Relationship Id="rId%d" Target="styles.xml" Type="%s" />' + LineEnding,
         [counter, SCHEMAS_STYLES]));
   inc(counter);
 
   if FSharedStringsCount > 0 then begin
-    AppendToStream(FSWorkbookRels, Format(
-      '<Relationship Id="rId%d" Type="%s" Target="sharedStrings.xml" />',
+    AppendToStream(AStream, Format(
+      '  <Relationship Id="rId%d" Target="sharedStrings.xml" Type="%s" />' + LineEnding,
         [counter, SCHEMAS_STRINGS]));
     inc(counter);
   end;
 
-  AppendToStream(FSWorkbookRels,
+  AppendToStream(AStream,
     '</Relationships>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheet(AWorksheet: TsWorksheet);
+var
+  rId_Comments: Integer;
+  rId_FirstHyperlink: Integer;
+  rId_Drawing, rId_DrawingHF: Integer;
 begin
   FCurSheetNum := Length(FSSheets);
   SetLength(FSSheets, FCurSheetNum + 1);
 
+  Get_rId(AWorksheet, rID_Comments, rId_FirstHyperlink, rId_Drawing,
+    rId_DrawingHF);
+
   // Create the stream
+  FSSheets[FCurSheetNum] := CreateStream(Format('fpsSH%d', [FCurSheetNum]));
+  {
   if boFileStream in FWorkbook.Options then
     FSSheets[FCurSheetNum] := TFileStream.Create(GetTempFileName('',
       Format('fpsSH%d', [FCurSheetNum])), fmCreate)
@@ -3893,6 +4209,7 @@ begin
       Format('fpsSH%d', [FCurSheetNum])))
   else
     FSSheets[FCurSheetNum] := TMemoryStream.Create;
+  }
 
   // Header
   AppendToStream(FSSheets[FCurSheetNum],
@@ -3906,16 +4223,36 @@ begin
   WriteCols(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
-  WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet);  // must be after MergedCells, otherwise Excel2007 cannot read it !!!
+  WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet, rId_FirstHyperlink);
+
   WritePrintOptions(FSSheets[FCurSheetNum], AWorksheet);
   WritePageMargins(FSSheets[FCurSheetNum], AWorksheet);
   WritePageSetup(FSSheets[FCurSheetNum], AWorksheet);
   WriteHeaderFooter(FSSheets[FCurSheetNum], AWorksheet);
-  WriteDrawingsOfSheet(FSSheets[FCurSheetNum], AWorksheet);
 
+  { This item is required for all embedded images.
+    There must be a matching file in "drawingX.xml" file in "../drawings"
+    which contains the image-related data of all images in this sheet.
+    The file in turn requires an entry "drawingX.xml.rels" in the drawings rels
+    folder }
+  if AWorksheet.GetImageCount > 0 then
+    AppendToStream(FSSheets[FCurSheetNum], Format(
+      '<drawing r:id="rId%d" />', [rId_Drawing]));
+
+  { This item is required for all comments of a worksheet.
+    Comments have two entries in the sheet's .rels file, one for the
+    "../comments.xml" file, and one for the "../drawings/vmlDrawingX.vml" file.
+    The vmlDrawing file must have an entry "vmlDrawingX.vml.rels" in the drawings
+    rels folder. }
   if AWorksheet.Comments.Count > 0 then
-    AppendToStream(FSSheets[FCurSheetNum],
-      '<legacyDrawing r:id="rId1" />');
+    AppendToStream(FSSheets[FCurSheetNum], Format(
+      '<legacyDrawing r:id="rId%d" />', [rId_Comments]));
+
+  { This item is required for all images embedded to a header/footer.
+    There must be a corresponding "vmlDrawingX.vml" file in "../drawings". }
+  if AWorksheet.PageLayout.HasHeaderFooterImages then
+    AppendToStream(FSSheets[FCurSheetNum], Format(
+      '<legacyDrawingHF r:id="rId%d" />', [rId_DrawingHF]));
 
   // Footer
   AppendToStream(FSSheets[FCurSheetNum],
@@ -3934,11 +4271,39 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates the streams for the individual data files. Will be zipped into a
-  single xlsx file.
+  Creates a basic stream for storing of the individual files. Depending on
+  the set workbook options the stream is created as a memory stream (default),
+  buffered stream or file stream.
+
+  In the latter two cases a filename mask is provided to create a temporary
+  filename around this mask.
+-------------------------------------------------------------------------------}
+function TsSpreadOOXMLWriter.CreateStream(AFilenameBase: String): TStream;
+begin
+  if boFileStream in FWorkbook.Options then
+    Result := TFileStream.Create(GetTempFileName('', AFilenameBase), fmCreate)
+  else
+  if boBufStream in Workbook.Options then
+    Result := TBufStream.Create(GetTempFileName('', AFilenameBase))
+  else
+    Result := TMemoryStream.Create;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Creates the basic streams for the individual data files.
+  Will be zipped into a single xlsx file.
+  Other stream depending on the count of sheets will be created when needed.
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.CreateStreams;
 begin
+  FSContentTypes := CreateStream('fpsCT');
+  FSRelsRels := CreateStream('fpsRR');
+  FSWorkbookRels := CreateStream('fpsWBR');
+  FSWorkbook := CreateStream('fpsWB');
+  FSStyles := CreateStream('fpsSTY');
+  FSSharedStrings := CreateStream('fpsSS');
+  FSSharedStrings_complete := CreateStream('fpsSSC');
+  {
   if boFileStream in FWorkbook.Options then
   begin
     FSContentTypes := TFileStream.Create(GetTempFileName('', 'fpsCT'), fmCreate);
@@ -3967,6 +4332,7 @@ begin
     FSSharedStrings := TMemoryStream.Create;
     FSSharedStrings_complete := TMemoryStream.Create;
   end;
+  }
   // FSSheets will be created when needed.
 end;
 
@@ -3979,7 +4345,8 @@ procedure TsSpreadOOXMLWriter.DestroyStreams;
   var
     fn: String;
   begin
-    if AStream is TFileStream then begin
+    if AStream is TFileStream then
+    begin
       fn := TFileStream(AStream).Filename;
       DeleteFile(fn);
     end;
@@ -4004,6 +4371,8 @@ begin
   SetLength(FSSheetRels, 0);
   for stream in FSVmlDrawings do DestroyStream(stream);
   SetLength(FSVmlDrawings, 0);
+  for stream in FSVmlDrawingsRels do DestroyStream(stream);
+  SetLength(FSVmlDrawingsRels, 0);
   for stream in FSDrawings do DestroyStream(stream);
   SetLength(FSDrawings, 0);
   for stream in FSDrawingsRels do DestroyStream(stream);
@@ -4038,6 +4407,7 @@ begin
   for i:=0 to High(FSSheetRels) do ResetStream(FSSheetRels[i]);
   for i:=0 to High(FSComments) do ResetStream(FSComments[i]);
   for i:=0 to High(FSVmlDrawings) do ResetStream(FSVmlDrawings[i]);
+  for i:=0 to High(FSVmlDrawingsRels) do ResetStream(FSVmlDrawingsRels[i]);
   for i:=0 to High(FSDrawings) do ResetStream(FSDrawings[i]);
   for i:=0 to High(FSDrawingsRels) do ResetStream(FSDrawingsRels[i]);
 end;
@@ -4069,6 +4439,7 @@ var
   i: Integer;
 begin
   Unused(AParams);
+  vmlDrawingCounter := 1;
 
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
@@ -4136,6 +4507,11 @@ begin
       if (FSDrawingsRels[i] = nil) or (FSDrawingsRels[i].Size = 0) then continue;
       FSDrawingsRels[i].Position := 0;
       FZip.Entries.AddFileEntry(FSDrawingsRels[i], OOXML_PATH_XL_DRAWINGS_RELS + Format('drawing%d.xml.rels', [i+1]));
+    end;
+    for i:=0 to High(FSVmlDrawingsRels) do begin
+      if (FSVmlDrawingsRels[i] = nil) or (FSVmlDrawingsRels[i].Size = 0) then continue;
+      FSVmlDrawingsRels[i].Position := 0;
+      FZip.Entries.AddFileEntry(FSVmlDrawingsRels[i], OOXML_PATH_XL_DRAWINGS_RELS + Format('vmlDrawing%d.vml.rels', [i+1]));
     end;
 
     FZip.SaveToStream(AStream);

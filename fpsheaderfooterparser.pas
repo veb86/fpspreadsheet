@@ -9,7 +9,8 @@ uses
 
 type
   TsHeaderFooterToken = (hftText, hftNewLine,
-    hftSheetName, hftPath, hftFileName, hftDate, hftTime, hftPage, hftPageCount);
+    hftSheetName, hftPath, hftFileName, hftDate, hftTime, hftPage, hftPageCount,
+    hftImage);
 
   TsHeaderFooterFontStyle = (hfsBold, hfsItalic, hfsUnderline, hfsDblUnderline,
     hfsStrikeout, hfsShadow, hfsOutline, hfsSubscript, hfsSuperScript);
@@ -36,8 +37,6 @@ type
     FontIndex: Integer;
   end;
 
-  TsHeaderFooterSectionIndex = (hfsLeft, hfsCenter, hfsRight);
-
   TsHeaderFooterSection = array of TsHeaderFooterElement;
 
   TsHeaderFooterSections = array[TsHeaderFooterSectionIndex] of TsHeaderFooterSection;
@@ -50,6 +49,7 @@ type
     FStart: PChar;
     FEnd: PChar;
     FCurrFont: TsHeaderFooterFont;
+    FIgnoreFonts: Boolean;
     function NextToken: Char;
     function PrevToken: Char;
     procedure ScanFont;
@@ -77,10 +77,12 @@ type
     procedure UseSection(AIndex: TsHeaderFooterSectionIndex); virtual;
   public
     constructor Create; overload;
+    constructor Create(AText: String); overload;
     constructor Create(AText: String; AFontList: TList;
       ADefaultFont: TsHeaderFooterFont); overload;
     destructor Destroy; override;
     function BuildHeaderFooter: String;
+    function IsImageInSection(ASection: TsHeaderFooterSectionIndex): Boolean;
     property Sections:TsHeaderFooterSections read FSections;
   end;
 
@@ -150,6 +152,14 @@ begin
   FCurrText := '';
 end;
 
+constructor TsHeaderFooterParser.Create(AText: String);
+begin
+  Create;
+  FParseText := AText;
+  FIgnoreFonts := true;
+  Parse;
+end;
+
 constructor TsHeaderFooterParser.Create(AText: String; AFontList: TList;
   ADefaultFont: TsHeaderFooterFont);
 begin
@@ -160,6 +170,7 @@ begin
 
   Create;
 
+  FIgnoreFonts := false;
   FFontList := AFontList;
   FDefaultFont := ADefaultFont;
   FCurrFont := TsHeaderFooterFont.Create;
@@ -195,7 +206,7 @@ begin
       FCurrText := '';
     end else
       TextValue := '';
-    FontIndex := GetCurrFontIndex;
+    if FIgnoreFonts then FontIndex := -1 else FontIndex := GetCurrFontIndex;
   end;
 end;
 
@@ -274,6 +285,7 @@ begin
         hftTime      : Result := Result + '&T';
         hftPage      : Result := Result + '&P';
         hftPageCount : Result := Result + '&N';
+        hftImage     : Result := Result + '&G';
         hftNewLine   : Result := Result + LineEnding;
       end;
     end; // for element
@@ -308,6 +320,17 @@ begin
     fnt.Assign(FCurrFont);
     Result := FFontList.Add(fnt);
   end;
+end;
+
+function TsHeaderFooterParser.IsImageInSection(
+  ASection: TsHeaderFooterSectionIndex): Boolean;
+var
+  element: TsHeaderFooterElement;
+begin
+  Result := true;
+  for element in FSections[ASection] do
+    if element.Token = hftImage then exit;
+  Result := false;
 end;
 
 function TsHeaderFooterParser.NextToken: Char;
@@ -438,6 +461,7 @@ begin
       'T': AddElement(hftTime);
       'P': AddElement(hftPage);
       'N': AddElement(hftPageCount);
+      'G': AddElement(hftImage);
       '"': ScanFont;
       '0'..'9', '.': ScanFontSize;
       'K': ScanFontColor;
@@ -458,10 +482,13 @@ procedure TsHeaderFooterParser.UseSection(AIndex: TsHeaderFooterSectionIndex);
 begin
   if FCurrText <> '' then
     AddCurrTextElement;
-  FCurrFont.FontName := FDefaultFont.FontName;
-  FCurrFont.Size := FDefaultFont.Size;
-  FCurrFont.Style := FDefaultFont.Style;
-  FCurrFont.Color := FDefaultFont.Color;
+  if not FIgnoreFonts then
+  begin
+    FCurrFont.FontName := FDefaultFont.FontName;
+    FCurrFont.Size := FDefaultFont.Size;
+    FCurrFont.Style := FDefaultFont.Style;
+    FCurrFont.Color := FDefaultFont.Color;
+  end;
   FCurrSection := AIndex;
 end;
 

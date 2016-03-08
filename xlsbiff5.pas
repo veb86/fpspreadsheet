@@ -399,7 +399,7 @@ var
   ansistr: ansiString;
   defName: String;
   rpnformula: TsRPNFormula;
-  extsheetIndex: Integer;
+  {%H-}extsheetIndex: Integer;
   sheetIndex: Integer;
 begin
   // Options
@@ -652,7 +652,7 @@ begin
 
   { Save the data string to cell }
   valueStr := ConvertEncoding(ansistr, FCodePage, encodingUTF8);
-  FWorksheet.WriteUTF8Text(cell, valuestr);
+  FWorksheet.WriteText(cell, valuestr);
 
   { Read rich-text formatting runs }
   B := AStream.ReadByte;
@@ -1065,7 +1065,7 @@ begin
 
   { Save the data }
   valueStr := ConvertEncoding(ansistr, FCodePage, encodingUTF8);
-  FWorksheet.WriteUTF8Text(cell, valueStr); //ISO_8859_1ToUTF8(ansistr));
+  FWorksheet.WriteText(cell, valueStr); //ISO_8859_1ToUTF8(ansistr));
 
   { Add attributes }
   ApplyCellFormatting(cell, XF);
