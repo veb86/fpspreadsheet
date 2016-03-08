@@ -10,7 +10,7 @@ uses
  {$ENDIF}
   Interfaces, Forms, GuiTestRunner, datetests, stringtests, numberstests,
   manualtests, testsutility, internaltests, formattests, colortests, fonttests,
-  optiontests, numformatparsertests, formulatests, rpnFormulaUnit,
+  optiontests, numformatparsertests, formulatests, rpnFormulaUnit, exceltests,
   emptycelltests, errortests, virtualmodetests, insertdeletetests,
   celltypetests, sortingtests, copytests, enumeratortests, commenttests,
   hyperlinktests, pagelayouttests;

@@ -40,7 +40,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="25">
+    <Units Count="26">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -142,6 +142,10 @@
         <Filename Value="pagelayouttests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit24>
+      <Unit25>
+        <Filename Value="exceltests.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit25>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
