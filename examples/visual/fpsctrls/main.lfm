@@ -946,6 +946,13 @@ object MainForm: TMainForm
       Hint = 'Time interval format'
       NumberFormat = nfTimeInterval
     end
+    object AcNumFormatText: TsNumberFormatAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = 'Text'
+      Hint = 'Text format'
+      NumberFormat = nfText
+    end
     object AcFileOpen: TFileOpen
       Category = 'File'
       Caption = '&Open ...'
@@ -1017,6 +1024,51 @@ object MainForm: TMainForm
       Caption = 'Currency symbols...'
       Hint = 'Define currency symbols'
       OnExecute = AcSettingsCurrencyExecute
+    end
+    object AcSearch: TAction
+      Category = 'Edit'
+      Caption = 'Search...'
+      Hint = 'Search for cells'
+      ImageIndex = 70
+      OnExecute = AcSearchExecute
+      ShortCut = 16454
+    end
+    object AcShowGridLines: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'Grid lines'
+      Checked = True
+      OnExecute = AcShowGridLinesExecute
+      OnUpdate = AcShowGridLinesUpdate
+    end
+    object AcShowHeaders: TAction
+      Category = 'View'
+      AutoCheck = True
+      Caption = 'Show column/row headers'
+      Checked = True
+      OnExecute = AcShowHeadersExecute
+      OnUpdate = AcShowHeadersUpdate
+    end
+    object AcFrozenRows: TAction
+      Category = 'Worksheet'
+      AutoCheck = True
+      Caption = 'Frozen rows'
+      OnExecute = AcFrozenRowsExecute
+      OnUpdate = AcFrozenRowsUpdate
+    end
+    object AcFrozenCols: TAction
+      Category = 'Worksheet'
+      AutoCheck = True
+      Caption = 'Frozen columns'
+      OnExecute = AcFrozenColsExecute
+      OnUpdate = AcFrozenColsUpdate
+    end
+    object AcWorksheetRTL: TAction
+      Category = 'Worksheet'
+      AutoCheck = True
+      Caption = 'Text direction inverted'
+      OnExecute = AcWorksheetRTLExecute
+      OnUpdate = AcWorksheetRTLUpdate
     end
     object AcIncDecimals: TsDecimalsAction
       Category = 'FPSpreadsheet'
@@ -1447,51 +1499,6 @@ object MainForm: TMainForm
       Caption = 'All vertical'
       Hint = 'All vertical borders'
       ImageIndex = 43
-    end
-    object AcSearch: TAction
-      Category = 'Edit'
-      Caption = 'Search...'
-      Hint = 'Search for cells'
-      ImageIndex = 70
-      OnExecute = AcSearchExecute
-      ShortCut = 16454
-    end
-    object AcShowGridLines: TAction
-      Category = 'View'
-      AutoCheck = True
-      Caption = 'Grid lines'
-      Checked = True
-      OnExecute = AcShowGridLinesExecute
-      OnUpdate = AcShowGridLinesUpdate
-    end
-    object AcShowHeaders: TAction
-      Category = 'View'
-      AutoCheck = True
-      Caption = 'Show column/row headers'
-      Checked = True
-      OnExecute = AcShowHeadersExecute
-      OnUpdate = AcShowHeadersUpdate
-    end
-    object AcFrozenRows: TAction
-      Category = 'Worksheet'
-      AutoCheck = True
-      Caption = 'Frozen rows'
-      OnExecute = AcFrozenRowsExecute
-      OnUpdate = AcFrozenRowsUpdate
-    end
-    object AcFrozenCols: TAction
-      Category = 'Worksheet'
-      AutoCheck = True
-      Caption = 'Frozen columns'
-      OnExecute = AcFrozenColsExecute
-      OnUpdate = AcFrozenColsUpdate
-    end
-    object AcWorksheetRTL: TAction
-      Category = 'Worksheet'
-      AutoCheck = True
-      Caption = 'Text direction inverted'
-      OnExecute = AcWorksheetRTLExecute
-      OnUpdate = AcWorksheetRTLUpdate
     end
     object AcCellBorderDiagUp: TsCellBorderAction
       Category = 'FPSpreadsheet'
@@ -5300,6 +5307,13 @@ object MainForm: TMainForm
         end
         object MenuItem67: TMenuItem
           Action = AcNumFormatTimeInterval
+          AutoCheck = True
+        end
+        object MenuItem144: TMenuItem
+          Caption = '-'
+        end
+        object MenuItem145: TMenuItem
+          Action = AcNumFormatText
           AutoCheck = True
         end
       end

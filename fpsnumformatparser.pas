@@ -25,6 +25,7 @@ const
   psErrMultipleExpChars = 11;
   psErrGeneralExpected = 12;
   psAmbiguousSymbol = 13;
+  psErrNoValidTextFormat = 14;
 
 type
 
@@ -313,11 +314,11 @@ begin
     exit;
   end;
 
-
   i := 0;
   isMonthMinute := false;
 
   for el := 0 to High(section^.Elements) do
+  begin
     case section^.Elements[el].Token of
       nftZeroDecs:
         section^.Decimals := section^.Elements[el].IntValue;
@@ -377,7 +378,10 @@ begin
         end;
       nftIntTh:
         section^.Kind := section^.Kind + [nfkHasThSep];
+      nftTextFormat:
+        section^.Kind := section^.Kind + [nfkText];
     end;
+  end; // for
 
   if FStatus <> psOK then
     exit;
@@ -386,6 +390,11 @@ begin
      (section^.Kind * [nfkPercent, nfkExp, nfkCurrency, nfkFraction] <> []) then
   begin
     FStatus := psErrNoValidDateTimeFormat;
+    exit;
+  end;
+
+  if (Length(FSections) = 1) and (section^.Kind = [nfkText]) then begin
+    section^.NumFormat := nfText;
     exit;
   end;
 
@@ -450,78 +459,6 @@ begin
       if section^.Color = scRed then
         section^.NumFormat := nfCurrencyRed;
     end;
-
-    {
-    el := 0;
-    while el < Length(section^.Elements) do
-    begin
-      if IsNumberAt(ASection, el, nf, decs, next) then begin
-        section^.Decimals := decs;
-        if nf = nfFixedTh then begin
-          if (nfkCurrency in section^.Kind) then
-            section^.NumFormat := nfCurrency
-          else
-            section^.NumFormat := nfFixedTh
-        end else
-        begin
-          section^.NumFormat := nf;
-          if (nfkPercent in section^.Kind) then
-            section^.NumFormat := nfPercentage
-          else
-          if (nfkExp in section^.Kind) then
-            section^.NumFormat := nfExp
-          else
-          if (nfkCurrency in section^.Kind) then
-            section^.NumFormat := nfCurrency
-          else
-          if (nfkFraction in section^.Kind) and (decs = 0) then begin
-            f1 := section^.Elements[el].IntValue;  // int part or numerator
-            el := next;
-            while IsTokenAt(nftSpace, ASection, el) or IsTextAt(' ', ASection, el) do
-              inc(el);
-            if IsTokenAt(nftFracSymbol, ASection, el) then begin
-              inc(el);
-              while IsTokenAt(nftSpace, ASection, el) or IsTextAt(' ', aSection, el) do
-                inc(el);
-              if IsNumberAt(ASection, el, nf, decs, next) and (nf in [nfFixed, nfFraction]) and (decs = 0) then
-              begin
-                section^.FracInt := 0;
-                section^.FracNumerator := f1;
-                section^.FracDenominator := section^.Elements[el].IntValue;
-                section^.NumFormat := nfFraction;
-              end;
-            end else
-            if IsNumberAt(ASection, el, nf, decs, next) and (nf in [nfFixed, nfFraction]) and (decs = 0) then
-            begin
-              f2 := section^.Elements[el].IntValue;
-              el := next;
-              while IsTokenAt(nftSpace, ASection, el) or IsTextAt(' ', ASection, el) do
-                inc(el);
-              if IsTokenAt(nftFracSymbol, ASection, el) then
-              begin
-                inc(el);
-                while IsTokenAt(nftSpace, ASection, el) or IsTextAt(' ', ASection, el) do
-                  inc(el);
-                if IsNumberAt(ASection, el, nf, decs, next) and (nf in [nfFixed, nfFraction]) and (decs=0) then
-                begin
-                  section^.FracInt := f1;
-                  section^.FracNumerator := f2;
-                  section^.FracDenominator := section^.Elements[el].IntValue;
-                  section^.NumFormat := nfFraction;
-                end;
-              end;
-            end;
-          end;
-        end;
-        break;
-      end else
-      if IsTokenAt(nftColor, ASection, el) then
-        section^.Color := section^.Elements[el].IntValue;
-      inc(el);
-    end;
-    if (section^.NumFormat = nfCurrency) and (section^.Color = scRed) then
-      section^.NumFormat := nfCurrencyRed;
-    }
   end;
 end;
 

@@ -1122,7 +1122,7 @@ begin
       rtInteger   : WriteNumber(ACell, res.ResInteger);
       rtFloat     : WriteNumber(ACell, res.ResFloat);
       rtDateTime  : WriteDateTime(ACell, res.ResDateTime);
-      rtString    : WriteUTF8Text(ACell, res.ResString);
+      rtString    : WriteText(ACell, res.ResString);
       rtHyperlink : begin
                       link := ArgToString(res);
                       p := pos(HYPERLINK_SEPARATOR, link);
@@ -1133,7 +1133,7 @@ begin
                       end else
                         txt := link;
                       WriteHyperlink(ACell, link);
-                      WriteUTF8Text(ACell, txt);
+                      WriteText(ACell, txt);
                     end;
       rtBoolean   : WriteBoolValue(ACell, res.ResBoolean);
       rtCell      : begin
@@ -1141,7 +1141,7 @@ begin
                       case cell^.ContentType of
                         cctNumber    : WriteNumber(ACell, cell^.NumberValue);
                         cctDateTime  : WriteDateTime(ACell, cell^.DateTimeValue);
-                        cctUTF8String: WriteUTF8Text(ACell, cell^.UTF8StringValue);
+                        cctUTF8String: WriteText(ACell, cell^.UTF8StringValue);
                         cctBool      : WriteBoolValue(ACell, cell^.Boolvalue);
                         cctError     : WriteErrorValue(ACell, cell^.ErrorValue);
                         cctEmpty     : WriteBlank(ACell);
@@ -2939,17 +2939,12 @@ end;
 function TsWorksheet.ReadCellBorderStyles(ACell: PCell): TsCellBorderStyles;
 var
   fmt: PsCellFormat;
-  b: TsCellBorder;
 begin
   Result := DEFAULT_BORDERSTYLES;
   if ACell <> nil then
   begin
     fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
     Result := Fmt^.BorderStyles;
-    {
-    for b in fmt^.Border do
-      Result[b] := fmt^.BorderStyles[b];
-      }
   end;
 end;
 
@@ -3446,7 +3441,7 @@ begin
     img^.Index := Workbook.AddEmbeddedStream(AFileName);
     Workbook.GetEmbeddedStream(img^.Index).LoadFromFile(AFileName);
   end;
-  FImages.Add(img);
+  Result := FImages.Add(img);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4283,7 +4278,7 @@ begin
   if ACell <> nil then begin
     ACell^.FormulaValue := '';
     if HasHyperlink(ACell) then
-      WriteUTF8Text(ACell, '')  // '' will be replaced by the hyperlink target.
+      WriteText(ACell, '')  // '' will be replaced by the hyperlink target.
     else
     begin
       ACell^.ContentType := cctEmpty;
@@ -4365,23 +4360,42 @@ begin
   if ACell = nil then
     exit;
 
-  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
-  numFmtParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+  ACell^.FormulaValue := '';
 
   if AValue = '' then
   begin
-    WriteUTF8Text(ACell, '');
+    WriteText(ACell, '');
     exit;
   end;
+
+  // Force text format by putting an apostrophe at the text beginning
+  if AValue[1] = '''' then
+  begin
+    Delete(AValue, 1, 1);
+    WriteNumberFormat(ACell, nfText);
+  end;
+
+  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+  numFmtParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
 
   isPercent := Pos('%', AValue) = Length(AValue);
   if isPercent then Delete(AValue, Length(AValue), 1);
 
-  ACell^.FormulaValue := '';
+  {
+  if IsTextFormat(numFmtParams) then
+  begin
+    WriteText(ACell, AValue);
+    exit;
+  end;
+  }
 
   if TryStrToCurrency(AValue, number, currSym, FWorkbook.FormatSettings) then
   begin
     WriteCurrency(ACell, number, nfCurrencyRed, -1, currSym);
+    if IsTextFormat(numFmtParams) then begin
+      WriteNumberFormat(ACell, nfText);
+      WriteText(ACell, AValue);
+    end;
     exit;
   end;
 
@@ -4389,6 +4403,11 @@ begin
   begin
     WriteNumber(ACell, number);
     WriteFractionFormat(ACell, ismixed, maxdig, maxdig);
+    if IsTextFormat(numFmtParams) then
+    begin
+      WriteNumberFormat(ACell, nfText);
+      WriteText(ACell, AValue);
+    end;
     exit;
   end;
 
@@ -4402,6 +4421,11 @@ begin
         WriteNumber(ACell, number, nfGeneral)
       else
         WriteNumber(ACell, number);
+    end;
+    if IsTextFormat(numFmtParams) then
+    begin
+      WriteNumberFormat(ACell, nfText);
+      WriteText(ACell, AValue);
     end;
     exit;
   end;
@@ -4420,18 +4444,23 @@ begin
     end else
     if frac(number) = 0.0 then  // this is a date alone
     begin
-      if not IsDateFormat(numFmtParams) then
+  //    if not IsDateFormat(numFmtParams) then
         WriteDateTime(ACell, number, nfShortDate);
     end else
     if not IsDateTimeFormat(fmt.NumberFormat) then
       WriteDateTime(ACell, number, nfShortDateTime)
     else
       WriteDateTime(ACell, number);
+    if IsTextFormat(numFmtParams) then
+    begin
+      WriteNumberFormat(ACell, nfText);
+      WriteText(ACell, AValue);
+    end;
     exit;
   end;
 
   HTMLToRichText(FWorkbook, ReadcellFont(ACell), AValue, plain, rtParams);
-  WriteUTF8Text(ACell, plain, rtParams);
+  WriteText(ACell, plain, rtParams);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4754,6 +4783,9 @@ procedure TsWorksheet.WriteDateTimeFormat(ACell: PCell;
 var
   fmt: TsCellFormat;
   nfs: String;
+  nfp: TsNumFormatParams;
+  isTextFmt, wasTextFmt: Boolean;
+  oldVal: String;
 begin
   if ACell = nil then
     exit;
@@ -4761,15 +4793,22 @@ begin
   if not ((ANumFormat in [nfGeneral, nfCustom]) or IsDateTimeFormat(ANumFormat)) then
     raise Exception.Create('WriteDateTimeFormat can only be called with date/time formats.');
 
+  isTextFmt := false;
+  wasTextFmt := false;
+
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   fmt.NumberFormat := ANumFormat;
   if (ANumFormat <> nfGeneral) then
   begin
+    nfp := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+    wasTextFmt := IsTextFormat(nfp);
+    oldval := ReadAsText(ACell);
     Include(fmt.UsedFormattingFields, uffNumberFormat);
     if (ANumFormatString = '') then
       nfs := BuildDateTimeFormatString(ANumFormat, Workbook.FormatSettings)
     else
       nfs := ANumFormatString;
+    isTextFmt := (nfs = '@');
   end else
   begin
     Exclude(fmt.UsedFormattingFields, uffNumberFormat);
@@ -4779,6 +4818,12 @@ begin
   fmt.NumberFormatStr := nfs;
   fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
   ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt);
+
+  if isTextFmt  then
+    WriteText(ACell, oldval)
+  else
+  if wasTextFmt then
+    WriteCellValueAsString(ACell, ACell^.UTF8StringValue);
 
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
@@ -4968,13 +5013,19 @@ procedure TsWorksheet.WriteNumberFormat(ACell: PCell;
 var
   fmt: TsCellFormat;
   fmtStr: String;
+  nfp: TsNumFormatParams;
+  wasTextFmt: Boolean;
 begin
   if ACell = nil then
     exit;
 
+  wasTextFmt := false;
+
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   fmt.NumberFormat := ANumFormat;
   if ANumFormat <> nfGeneral then begin
+    nfp := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+    wasTextFmt := IsTextFormat(nfp);
     Include(fmt.UsedFormattingFields, uffNumberFormat);
     if IsCurrencyFormat(ANumFormat) then
     begin
@@ -4990,6 +5041,9 @@ begin
     fmt.NumberFormatIndex := -1;
   end;
   ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+
+  if wasTextFmt then
+    WriteCellValueAsString(ACell, ACell^.UTF8StringValue);
 
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
@@ -5077,23 +5131,40 @@ procedure TsWorksheet.WriteNumberFormat(ACell: PCell;
 var
   fmt: TsCellFormat;
   fmtStr: String;
+  nfp: TsNumFormatParams;
+  oldval: String;
+  isTextFmt, wasTextFmt: Boolean;
 begin
   if ACell = nil then
     exit;
 
+  isTextFmt := false;
+  wasTextFmt := false;
+
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+
   if ANumFormat <> nfGeneral then begin
+    nfp := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+    wasTextFmt := IsTextFormat(nfp);
+    oldval := ReadAsText(ACell);
     Include(fmt.UsedFormattingFields, uffNumberFormat);
     if (ANumFormatString = '') then
       fmtStr := BuildNumberFormatString(ANumFormat, Workbook.FormatSettings)
     else
       fmtStr := ANumFormatString;
+    isTextFmt := (fmtstr = '@');
     fmt.NumberFormatIndex := Workbook.AddNumberFormat(fmtStr);
   end else begin
     Exclude(fmt.UsedFormattingFields, uffNumberFormat);
     fmt.NumberFormatIndex := -1;
   end;
   ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+
+  if isTextFmt  then
+    WriteText(ACell, oldval)
+  else
+  if wasTextFmt then
+    WriteCellValueAsString(ACell, ACell^.UTF8StringValue);
 
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
@@ -8131,10 +8202,11 @@ var
   r, c: LongInt;
   dr, dc: LongInt;
   srcCell, destCell: PCell;
-  i: Integer;       // counter
-  ncs, nrs, ncd, nrd: Integer;  // Num cols source, num rows source, ...
-  rdest, cdest: Integer;  // row and column index at destination
-  nselS, nselD: Integer;  // count of selected blocks
+  i: Integer;              // counter
+  ncs, nrs: Integer;       // Num cols source, num rows source, ...
+  ncd, nrd: Integer;
+  rdest, cdest: Integer;   // row and column index at destination
+  nselS, nselD: Integer;   // count of selected blocks
 begin
   if AStream = nil then
     exit;
@@ -8224,25 +8296,25 @@ begin
       // Iterate over all destination blocks
       for i := 0 to nselD-1 do
       begin
-        // size of current selected block at destination
+        // size of currently selected block at destination
         with ActiveWorksheet.GetSelection[i] do
         begin
-          ncd := LongInt(Col2) - LongInt(Col1) + 1;
-          nrd := LongInt(Row2) - LongInt(Row1) + 1;
+          ncd := Integer(Col2) - Integer(Col1) + 1;
+          nrd := Integer(Row2) - Integer(Row1) + 1;
         end;
         r := ActiveWorksheet.GetSelection[i].Row1;
-        while r <= ActiveWorksheet.GetSelection[i].Row2 do begin
+        while r <= longint(ActiveWorksheet.GetSelection[i].Row2) do begin
           c := ActiveWorksheet.GetSelection[i].Col1;
-          while c <= ActiveWorksheet.GetSelection[i].Col2 do begin
+          while c <= longint(ActiveWorksheet.GetSelection[i].Col2) do begin
             dr := r - clipsheet.GetFirstRowIndex;
             dc := c - clipsheet.GetFirstColIndex;
             for srccell in clipsheet.Cells do
             begin
-              rdest := srccell^.Row + dr;
-              if rdest > ActiveWorksheet.GetSelection[i].Row2 then
+              rdest := longint(srccell^.Row) + dr;
+              if rdest > integer(ActiveWorksheet.GetSelection[i].Row2) then
                 Continue;
-              cdest := srcCell^.Col + dc;
-              if cdest > ActiveWorksheet.GetSelection[i].Col2 then
+              cdest := longint(srcCell^.Col) + dc;
+              if cdest > integer(ActiveWorksheet.GetSelection[i].Col2) then
                 Continue;
               destcell := ActiveWorksheet.GetCell(
                 LongInt(srcCell^.Row) + dr,

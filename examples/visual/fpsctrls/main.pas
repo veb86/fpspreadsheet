@@ -81,6 +81,8 @@ type
     MenuItem141: TMenuItem;
     MenuItem142: TMenuItem;
     MenuItem143: TMenuItem;
+    MenuItem144: TMenuItem;
+    MenuItem145: TMenuItem;
     MnuSettings: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -273,6 +275,7 @@ type
     AcNumFormatCustom: TsNumberFormatAction;
     AcCellBorderDiagUp: TsCellBorderAction;
     AcCellBorderDiagDown: TsCellBorderAction;
+    AcNumFormatText: TsNumberFormatAction;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
     ToolBar2: TToolBar;

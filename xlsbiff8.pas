@@ -499,7 +499,7 @@ var
   rtParams: TsRichTextParams;
 begin
   if FCommentPending then begin
-    commentStr := ReadWideString(AStream, FCommentLen, rtParams);
+    commentStr := Utf8Encode(ReadWideString(AStream, FCommentLen, rtParams));
     if commentStr <> '' then
     begin
       comment := TBIFF8Comment.Create;
@@ -2761,7 +2761,7 @@ begin
   if (cell = nil) or (AHyperlink^.Target='') then
     exit;
 
-  descr := AWorksheet.ReadAsUTF8Text(cell);      // Hyperlink description
+  descr := AWorksheet.ReadAsText(cell);      // Hyperlink description
   SplitHyperlink(AHyperlink^.Target, target, bookmark);
   u := ParseURI(AHyperlink^.Target);
   isInternal := (target = '') and (bookmark <> '');

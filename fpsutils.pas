@@ -2187,8 +2187,6 @@ end;
   @param  AFont2  Pointer to the second font to be compared
 -------------------------------------------------------------------------------}
 function SameFont(AFont1, AFont2: TsFont): Boolean;
-const
-  EPS = 1E-3;
 begin
   if (AFont1 = nil) and (AFont2 = nil) then
     Result := true

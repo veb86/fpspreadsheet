@@ -11,7 +11,7 @@ uses
 
 type
   TsNumFormatCategory = (nfcNumber, nfcPercent, nfcScientific, nfcFraction,
-    nfcCurrency, nfcDate, nfcTime);
+    nfcCurrency, nfcDate, nfcTime, nfcText);
 
   { TNumFormatForm }
 
@@ -56,6 +56,7 @@ type
     { private declarations }
     FWorkbook: TsWorkbook;
     FSampleValue: Double;
+    FSampleText: String;
     FGenerator: array[TsNumFormatCategory] of Double;
     FNumFormatStrOfList: String;
     FLockCount: Integer;
@@ -74,7 +75,8 @@ type
   public
     { public declarations }
     constructor Create(AOwner: TComponent); override;
-    procedure SetData(ANumFormatStr: String; AWorkbook: TsWorkbook; ASample: Double);
+    procedure SetData(ANumFormatStr: String; AWorkbook: TsWorkbook;
+      ASample: variant);
     property NumFormatStr: String read GetNumFormatStr;
   end;
 
@@ -89,7 +91,7 @@ implementation
 {$R *.lfm}
 
 uses
-  LCLType, Math, DateUtils, TypInfo,
+  LCLType, Math, DateUtils, TypInfo, variants,
   fpsUtils, fpsNumFormatParser, fpsCurrency,
   sCurrencyForm;
 
@@ -244,6 +246,8 @@ begin
   AddToList(nfcTime, '[h]:nn');
   AddToList(nfcTime, '[h]:nn:ss');
 
+  AddToList(nfcText, '@');
+
   // Add user-defined formats
   if copiedFormats <> nil then
   begin
@@ -351,6 +355,7 @@ begin
   FGenerator[nfcCurrency] := -1234.56789;
   FGenerator[nfcDate] := EncodeDate(YearOf(date), 1, 1);
   FGenerator[nfcTime] := EncodeTime(9, 0, 2, 235);
+  FGenerator[nfcText] := NaN;
   GetRegisteredCurrencies(CbCurrSymbol.Items);
 end;
 
@@ -419,44 +424,6 @@ begin
     end;
   end;
 end;
-                                                      (*
-{ The global stringlist "NumFormats" contains to format string templates along
-  with information on the category and of being built-in or user-defined. }
-procedure TNumFormatForm.BuildNumFormatLists(AWorkbook: TsWorkbook);
-var
-  cat: TsNumFormatCategory;
-  nfs: String;
-  n, i: Integer;
-  isUserDef: Boolean;
-  copiedNumFormats: TStringList;
-begin
-  copiedNumFormats := TStringList.Create;
-
-  for cat in TsNumFormatCategory do
-  begin
-    FreeAndNil(FNumFormatLists[cat]);
-    FNumFormatLists[cat] := TsNumFormatList.Create(AWorkbook, true);
-  end;
-
-  for i:=0 to NumFormats.Count-1 do
-  begin
-    nfs := NumFormats.Strings[i];
-    n := PtrInt(NumFormats.Objects[i]);
-    if n >= USER_OFFSET then
-    begin
-      isUserDef := true;
-      // The category numbers of user-defined template items are offset by USER_OFFSET
-      cat := TsNumFormatCategory(n - USER_OFFSET);
-    end else
-    begin
-      isUserDef := false;
-      // The category numbers of built-in template items are offset by BUILTIN_OFFSET
-      cat := TsNumFormatCategory(n - BUILTIN_OFFSET);
-    end;
-    FNumFormatLists[cat].AddFormat(nfs);
-  end;
-end;
-                *)
 
 procedure TNumFormatForm.CbCurrSymbolSelect(Sender: TObject);
 begin
@@ -681,42 +648,29 @@ begin
       begin
         nfp := CreateNumFormatParams(NumFormats.Strings[i], FWorkbook.FormatSettings);
         try
-          genValue := FGenerator[ACategory];
-          if nfkTimeInterval in nfp.Sections[0].Kind then
-            genvalue := genValue + 1.0;
-          if ACategory = nfcFraction then
+          if IsTextFormat(nfp) then
+            s := 'abc'
+          else
           begin
-            digits := nfp.Sections[0].FracInt;
-            numdigits := nfp.Sections[0].FracDenominator;
-            genvalue := 1.0 / (IntPower(10, numdigits) - 3);
-            if digits <> 0 then genvalue := -(1234 + genValue);
+            genValue := FGenerator[ACategory];
+            if nfkTimeInterval in nfp.Sections[0].Kind then
+              genvalue := genValue + 1.0;
+            if ACategory = nfcFraction then
+            begin
+              digits := nfp.Sections[0].FracInt;
+              numdigits := nfp.Sections[0].FracDenominator;
+              genvalue := 1.0 / (IntPower(10, numdigits) - 3);
+              if digits <> 0 then genvalue := -(1234 + genValue);
+            end;
+            s := ConvertFloatToStr(genValue, nfp, FWorkbook.FormatSettings);
+            if s = '' then s := 'General';
           end;
-          s := ConvertFloatToStr(genValue, nfp, FWorkbook.FormatSettings);
-          if s = '' then s := 'General';
           LbFormat.Items.AddObject(s, TObject(PtrInt(i)));
         finally
           nfp.Free;
         end;
       end;
     end;
-    {
-    for i:=0 to FNumFormatLists[ACategory].Count-1 do
-    begin
-      nfp := FNumFormatLists[ACategory].Items[i];
-      genvalue := FGenerator[ACategory];
-      if nfkTimeInterval in nfp.Sections[0].Kind then
-        genvalue := genValue + 1.0;
-      if (ACategory = nfcFraction) then begin
-        digits := nfp.Sections[0].FracInt;
-        numdigits := nfp.Sections[0].FracDenominator;
-        genvalue := 1 / (IntPower(10, numdigits) - 3);
-        if digits <> 0 then genvalue := -(1234 + genValue);
-      end;
-      s := ConvertFloatToStr(genvalue, nfp, FWorkbook.FormatSettings);
-      if s = '' then s := 'General';
-      Add(s);
-    end;
-    }
   end;
   CurrSymbolPanel.Visible := (ACategory = nfcCurrency);
   GbOptions.Visible := not (ACategory in [nfcDate, nfcTime]);
@@ -742,7 +696,7 @@ begin
 end;
 
 procedure TNumFormatForm.SetData(ANumFormatStr: String; AWorkbook: TsWorkbook;
-  ASample: Double);
+  ASample: variant);
 var
   cs: String;
 begin
@@ -752,7 +706,10 @@ begin
     cs := DefaultFormatSettings.CurrencyString;
   CbCurrSymbol.ItemIndex := CbCurrSymbol.Items.IndexOf(cs);
 
-  FSampleValue := ASample;
+  if varIsStr(ASample) then
+    FSampleText := VarToStr(ASample)
+  else
+    FSampleValue := ASample;
   InitNumFormats(FWorkbook.FormatSettings);
   SetNumFormatStr(ANumFormatStr);
 end;
@@ -852,8 +809,11 @@ begin
   else
     Sample.Font.Color := clWindowText;
 
-  Sample.Caption := ConvertFloatToStr(FSampleValue, ANumFormatParams,
-    FWorkbook.FormatSettings);
+  if IsTextFormat(ANumFormatParams) then
+    Sample.Caption := ApplyTextFormat(FSampleText, ANumFormatParams)
+  else
+    Sample.Caption := ConvertFloatToStr(FSampleValue, ANumFormatParams,
+      FWorkbook.FormatSettings);
 
   BtnAddFormat.Enabled := (EdNumFormatStr.Text <> FNumFormatStrOfList);
 end;

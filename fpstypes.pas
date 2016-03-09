@@ -546,6 +546,8 @@ type
     // dates and times
     nfShortDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
     nfShortTimeAM, nfLongTimeAM, nfDayMonth, nfMonthYear, nfTimeInterval,
+    // text
+    nfText,
     // other (format string goes directly into the file)
     nfCustom);
 

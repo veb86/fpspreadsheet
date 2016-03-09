@@ -1247,11 +1247,11 @@ procedure TsCellBorderAction.ApplyFormatToRange(ARange: TsCellRange);
         if Worksheet.IsMerged(cell) then
         begin
           Worksheet.FindMergedRange(cell, r1, c1, r2, c2);
-          if (r1 >= AStart) and (r2 <= AEnd) then
+          if (LongInt(r1) >= AStart) and (LongInt(r2) <= AEnd) then
           begin
             cell := Worksheet.GetCell(r1, c1);
             ShowBorder(ABorder, cell, ABorderStyle, AEnable);
-            while (i <= r2) do begin
+            while (i <= longint(r2)) do begin
               cell := GetWorksheet.GetCell(i, AColRow);
               inc(i);
             end;
@@ -1266,11 +1266,11 @@ procedure TsCellBorderAction.ApplyFormatToRange(ARange: TsCellRange);
         if Worksheet.IsMerged(cell) then
         begin
           Worksheet.FindMergedRange(cell, r1, c1, r2, c2);
-          if (c1 >= AStart) and (c2 <= AEnd) then
+          if (longInt(c1) >= AStart) and (LongInt(c2) <= AEnd) then
           begin
             cell := Worksheet.GetCell(r1, c1);
             ShowBorder(ABorder, cell, ABorderStyle, AEnable);
-            while (i <= c2) do begin
+            while (i <= longInt(c2)) do begin
               cell := GetWorksheet.GetCell(AColRow, i);
               inc(i);
             end;
@@ -1285,9 +1285,6 @@ procedure TsCellBorderAction.ApplyFormatToRange(ARange: TsCellRange);
 
 var
   r, c: LongInt;
-  r1, c1, r2, c2: Cardinal;
-  bs: TsCellBorderStyle;
-  cell: PCell;
 begin
   // Top edge of range
   ShowBorders(cbNorth, ARange.Col1, ARange.Col2, ARange.Row1, false,

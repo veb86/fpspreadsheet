@@ -44,7 +44,7 @@ type
 
   TsSelPen = class(TPen)
   public
-    constructor Create;
+    constructor Create; override;
   published
     property Width stored true default 3;
     property JoinStyle default pjsMiter;
@@ -1544,7 +1544,6 @@ var
   r1, c1, r2, c2: Cardinal;
   cell: PCell;
   Rct: TRect;
-  s: String;
   delta: Integer;
 begin
   inherited;
@@ -1553,7 +1552,6 @@ begin
     delta := FSelPen.Width div 2;
     cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
     if Worksheet.IsMerged(cell) then begin
-      s := Editor.ClassName;
       Worksheet.FindMergedRange(cell, r1,c1,r2,c2);
       Rct := CellRect(GetGridCol(c1), GetGridRow(r1), GetGridCol(c2), GetGridRow(r2));
     end else
@@ -1833,63 +1831,17 @@ const
        2, 1, 2, 1, 2,
        2);
   var
-    width3: Boolean;     // line is 3 pixels wide
     deltax, deltay: Integer;
     angle: Double;
     savedCosmetic: Boolean;
   begin
     savedCosmetic := Canvas.Pen.Cosmetic;
-    width3 := (ABorderStyle.LineStyle in [lsThick, lsDouble]);
-
     Canvas.Pen.Style := PEN_STYLES[ABorderStyle.LineStyle];
     Canvas.Pen.Width := PEN_WIDTHS[ABorderStyle.LineStyle];
     Canvas.Pen.Color := ABorderStyle.Color and $00FFFFFF;
     Canvas.Pen.EndCap := pecSquare;
     if ABorderStyle.LineStyle = lsHair then
       Canvas.Pen.Cosmetic := false;
-      (*
-    // Workaround until efficient drawing procedures for diagonal "hair" lines
-    // is available
-    {
-    if (ADrawDirection in [drawDiagUp, drawDiagDown]) and
-       (ABorderStyle.LineStyle = lsHair)
-    then
-      ABorderStyle.LineStyle := lsDotted;
-     }
-
-    // Tuning the rectangle to avoid issues at the grid borders and to get nice corners
-    if (ABorderStyle.LineStyle in [lsMedium, lsMediumDash, lsMediumDashDot,
-      lsMediumDashDotDot, lsSlantDashDot, lsThick, lsDouble]) then
-    begin
-      {
-      if ACol = ColCount-1 then
-      begin
-        if (ADrawDirection = drawVert) and (ACoord = ARect.Right-1) and width3
-          then dec(ACoord);
-        dec(ARect.Right);
-      end;
-      if ARow = RowCount-1 then
-      begin
-        if (ADrawDirection = drawHor) and (ACoord = ARect.Bottom-1) and width3
-          then dec(ACoord);
-        dec(ARect.Bottom);
-      end;
-      }
-    end;
-    if ABorderStyle.LineStyle in [lsMedium, lsMediumDash, lsMediumDashDot,
-      lsMediumDashDotDot, lsSlantDashDot, lsThick, lsHair] then
-    begin
-      if (ADrawDirection = drawHor) then
-        dec(ARect.Right, 1)
-      else if (ADrawDirection = drawVert) then
-        dec(ARect.Bottom, 1)
-      else if (ADrawDirection in [drawDiagUp, drawDiagDown]) then
-      begin
-        dec(ARect.Right, 1);
-        dec(ARect.Bottom, 2);
-      end;
-    end;
-           *)
     // Painting
     case ABorderStyle.LineStyle of
       lsThin, lsMedium, lsThick, lsDotted, lsDashed, lsDashDot, lsDashDotDot,
@@ -2914,7 +2866,6 @@ function TsCustomWorksheetGrid.GetCellBorderStyle(ACol, ARow: Integer;
   ABorder: TsCellBorder): TsCellBorderStyle;
 var
   cell: PCell;
-  base: PCell;
 begin
   Result := DEFAULT_BORDERSTYLES[ABorder];
   if Assigned(Worksheet) then
@@ -3320,10 +3271,10 @@ begin
 
   r := GetWorksheetRow(ARow);
   c := GetWorksheetCol(ACol);
-  if (r + ADeltaRow < 0) or (c + ADeltaCol < 0) then
+  if (longint(r) + ADeltaRow < 0) or (longint(c) + ADeltaCol < 0) then
     neighborcell := nil
   else
-    neighborcell := Worksheet.FindCell(r + ADeltaRow, c + ADeltaCol);
+    neighborcell := Worksheet.FindCell(longint(r) + ADeltaRow, longint(c) + ADeltaCol);
 
   // Only cell has border, but neighbor has not
   if HasBorder(ACell, border) and not HasBorder(neighborCell, neighborBorder) then
@@ -3474,7 +3425,7 @@ procedure TsCustomWorksheetGrid.HeaderSizing(const IsColumn:boolean;
   const AIndex,ASize:Integer);
 var
   gc, gr: Integer;
-  sc, sr, sr1, sr2, sc1, sc2, si: Cardinal;
+  sr1, sr2, sc1, sc2, si: Cardinal;
   cell: PCell;
 begin
   inherited;
@@ -3486,10 +3437,8 @@ begin
   si := IfThen(IsColumn, GetWorksheetCol(AIndex), GetWorksheetRow(AIndex));
   for gc := GetFirstVisibleColumn to GetLastVisibleColumn do
   begin
-    sc := GetWorksheetCol(gc);
     for gr := GetFirstVisibleRow to GetLastVisibleRow do
     begin
-      sr := GetWorksheetRow(gr);
       cell := Worksheet.FindCell(gr, gc);
       if Worksheet.IsMerged(cell) then begin
         Worksheet.FindMergedRange(cell, sr1, sc1, sr2, sc2);

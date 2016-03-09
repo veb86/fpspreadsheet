@@ -112,7 +112,7 @@ var
 begin
   Result := false;
 
-  n := AStream.Read(hdr, SizeOf(hdr));
+  n := AStream.Read(hdr{%H-}, SizeOf(hdr));
   if n < SizeOf(hdr) then exit;
   if hdr.dSignature <> $464D4520 then exit;
 
@@ -297,7 +297,7 @@ var
 begin
   Result := false;
 
-  n := AStream.Read(hdr, SizeOf(hdr));
+  n := AStream.Read(hdr{%H-}, SizeOf(hdr));
   if n < SizeOf(hdr) then exit;
   if not (hdr.FileID in [$0A, $CD]) then exit;
 
@@ -408,9 +408,6 @@ var
   function AnalyzeViewbox(AText: String; out w, h: Double): Boolean;
   var
     L: TStringList;
-    val1, val2: Double;
-    s: String;
-    code: Integer;
   begin
     L := TStringList.Create;
     try
@@ -601,15 +598,13 @@ type
     Reserved: DWord;  // Reserved (always 0)
     Checksum: Word;   // Checksum value for previous 10 words
   end;
-const
-  TWIPS = 20 * 72;
 var
   hdr: TWMFSpecialHeader;
   n: Int64;
 begin
   Result := false;
 
-  n := AStream.Read(hdr, SizeOf(hdr));
+  n := AStream.Read(hdr{%H-}, SizeOf(hdr));
   if n < SizeOf(hdr) then exit;
   if hdr.Key <> $9AC6CDD7 then exit;
 

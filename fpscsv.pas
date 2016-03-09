@@ -318,7 +318,7 @@ var
 begin
   Unused(AStream);
   Unused(ARow, ACol, AValue);
-  s := FWorksheet.ReadAsUTF8Text(ACell);
+  s := FWorksheet.ReadAsText(ACell);
   s := ConvertEncoding(s, EncodingUTF8, FEncoding);
   FCSVBuilder.AppendCell(s);
 end;
@@ -369,7 +369,7 @@ begin
   if CSVParams.NumberFormat <> '' then
     s := Format(CSVParams.NumberFormat, [AValue], FFormatSettings)
   else
-    s := FWorksheet.ReadAsUTF8Text(ACell, FFormatSettings);
+    s := FWorksheet.ReadAsText(ACell, FFormatSettings);
   s := ConvertEncoding(s, EncodingUTF8, FEncoding);
   FCSVBuilder.AppendCell(s);
 end;

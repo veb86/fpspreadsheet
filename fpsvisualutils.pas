@@ -356,7 +356,7 @@ end;
 { Draw lines in horizontal orienation }
 procedure TsTextPainter.DrawHor(AOverrideTextColor: TColor);
 var
-  xpos, ypos, dx, j: Integer;
+  xpos, ypos, j: Integer;
   lineinfo: TsLineInfo;
   pEnd: PChar;
 begin
@@ -447,7 +447,7 @@ var
   xpos, ypos, dx: Integer;
   j: Integer;
   lineinfo: TsLineInfo;
-  pEnd, p: PChar;
+  pEnd: PChar;
 begin
   // (1) Get starting point of line
   lineinfo := TsLineInfo(FLines[0]);

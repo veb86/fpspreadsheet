@@ -1536,7 +1536,7 @@ var
   s: String;
 begin
   Unused(AValue, ACol, ARow);
-  s := FWorksheet.ReadAsUTF8Text(ACell);
+  s := FWorksheet.ReadAsText(ACell);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
 end;
@@ -1547,7 +1547,7 @@ var
   s: String;
 begin
   Unused(AValue, ACol, ARow);
-  s := FWOrksheet.ReadAsUTF8Text(ACell);
+  s := FWOrksheet.ReadAsText(ACell);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
 end;
@@ -1681,7 +1681,7 @@ var
   s: String;
 begin
   Unused(ARow, ACol, AValue);
-  s := FWorksheet.ReadAsUTF8Text(ACell, FWorkbook.FormatSettings);
+  s := FWorksheet.ReadAsText(ACell, FWorkbook.FormatSettings);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
 end;

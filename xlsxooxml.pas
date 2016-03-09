@@ -273,7 +273,7 @@ const
 {%H-}MIME_XML             = 'application/xml';
      MIME_RELS            = 'application/vnd.openxmlformats-package.relationships+xml';
      MIME_OFFICEDOCUMENT  = 'application/vnd.openxmlformats-officedocument';
-     MIME_CORE            = 'application/vnd.openxmlformats-package.core-properties+xml';
+{%H-}MIME_CORE            = 'application/vnd.openxmlformats-package.core-properties+xml';
      MIME_SPREADML        = MIME_OFFICEDOCUMENT + '.spreadsheetml';
      MIME_SHEET           = MIME_SPREADML + '.sheet.main+xml';
      MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
@@ -2759,7 +2759,7 @@ begin
     end;
     if bookmark <> '' then //target = '' then
       s := Format('%s location="%s"', [s, bookmark]);
-    txt := UTF8TextToXMLText(AWorksheet.ReadAsUTF8Text(hyperlink^.Row, hyperlink^.Col));
+    txt := UTF8TextToXMLText(AWorksheet.ReadAsText(hyperlink^.Row, hyperlink^.Col));
     if (txt <> '') and (txt <> hyperlink^.Target) then
       s := Format('%s display="%s"', [s, txt]);
     if hyperlink^.ToolTip <> '' then begin

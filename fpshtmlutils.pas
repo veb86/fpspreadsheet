@@ -644,8 +644,6 @@ end;
 
 { Stores a font in the workbook's font list. Does not allow duplicates. }
 function TsHTMLAnalyzer.AddFont(AFont: TsFont): Integer;
-const
-  EPS = 1e-3;
 var
   fnt: TsFont;
 begin

@@ -284,18 +284,18 @@ const
   SCHEMAS_XMLNS_TABLE    = 'urn:oasis:names:tc:opendocument:xmlns:table:1.0';
   SCHEMAS_XMLNS_TEXT     = 'urn:oasis:names:tc:opendocument:xmlns:text:1.0';
   SCHEMAS_XMLNS_V        = 'urn:schemas-microsoft-com:vml';
-  SCHEMAS_XMLNS_NUMBER   = 'urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0';
-  SCHEMAS_XMLNS_CHART    = 'urn:oasis:names:tc:opendocument:xmlns:chart:1.0';
-  SCHEMAS_XMLNS_DR3D     = 'urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0';
-  SCHEMAS_XMLNS_MATH     = 'http://www.w3.org/1998/Math/MathML';
-  SCHEMAS_XMLNS_FORM     = 'urn:oasis:names:tc:opendocument:xmlns:form:1.0';
-  SCHEMAS_XMLNS_SCRIPT   = 'urn:oasis:names:tc:opendocument:xmlns:script:1.0';
-  SCHEMAS_XMLNS_OOOW     = 'http://openoffice.org/2004/writer';
-  SCHEMAS_XMLNS_OOOC     = 'http://openoffice.org/2004/calc';
-  SCHEMAS_XMLNS_DOM      = 'http://www.w3.org/2001/xml-events';
-  SCHEMAS_XMLNS_XFORMS   = 'http://www.w3.org/2002/xforms';
-  SCHEMAS_XMLNS_XSD      = 'http://www.w3.org/2001/XMLSchema';
-  SCHEMAS_XMLNS_XSI      = 'http://www.w3.org/2001/XMLSchema-instance';
+  {%H-}SCHEMAS_XMLNS_NUMBER   = 'urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0';
+  {%H-}SCHEMAS_XMLNS_CHART    = 'urn:oasis:names:tc:opendocument:xmlns:chart:1.0';
+  {%H-}SCHEMAS_XMLNS_DR3D     = 'urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0';
+  {%H-}SCHEMAS_XMLNS_MATH     = 'http://www.w3.org/1998/Math/MathML';
+  {%H-}SCHEMAS_XMLNS_FORM     = 'urn:oasis:names:tc:opendocument:xmlns:form:1.0';
+  {%H-}SCHEMAS_XMLNS_SCRIPT   = 'urn:oasis:names:tc:opendocument:xmlns:script:1.0';
+  {%H-}SCHEMAS_XMLNS_OOOW     = 'http://openoffice.org/2004/writer';
+  {%H-}SCHEMAS_XMLNS_OOOC     = 'http://openoffice.org/2004/calc';
+  {%H-}SCHEMAS_XMLNS_DOM      = 'http://www.w3.org/2001/xml-events';
+  {%H-}SCHEMAS_XMLNS_XFORMS   = 'http://www.w3.org/2002/xforms';
+  {%H-}SCHEMAS_XMLNS_XSD      = 'http://www.w3.org/2001/XMLSchema';
+  {%H-}SCHEMAS_XMLNS_XSI      = 'http://www.w3.org/2001/XMLSchema-instance';
 
   { DATEMODE similar to but not the same as XLS format; used in time only values. }
   DATEMODE_1899_BASE=0; //apparently 1899-12-30 for ODF in FPC DateTime;
@@ -4562,15 +4562,15 @@ var
   styleName: String;
   colsRepeated: Integer;
   colsRepeatedStr: String;
-  firstRepeatedPrintCol, lastRepeatedPrintCol: Cardinal;
+  firstRepeatedPrintCol, lastRepeatedPrintCol: Longint;
   headerCols: Boolean;
 begin
   widthMultiplier := Workbook.GetFont(0).Size / 2;
   lastCol := ASheet.GetLastColIndex;
   firstRepeatedPrintCol := ASheet.PageLayout.RepeatedCols.FirstIndex;
   lastRepeatedPrintCol := ASheet.PageLayout.RepeatedCols.LastIndex;
-  if (firstRepeatedPrintCol <> UNASSIGNED_ROW_COL_INDEX) and
-     (lastRepeatedPrintCol = UNASSIGNED_ROW_COL_INDEX)
+  if (firstRepeatedPrintCol <> Longint(UNASSIGNED_ROW_COL_INDEX)) and
+     (lastRepeatedPrintCol = LongInt(UNASSIGNED_ROW_COL_INDEX))
   then
     lastRepeatedPrintCol := firstRepeatedPrintCol;
 
@@ -5747,12 +5747,10 @@ function TsSpreadOpenDocWriter.WritePrintRangesAsXMLString(ASheet: TsWorksheet):
 var
   i: Integer;
   rng: TsCellRange;
-  srng: String;
   sheetName: String;
 begin
   if ASheet.PageLayout.NumPrintRanges > 0 then
   begin
-    srng := '';
     for i := 0 to ASheet.PageLayout.NumPrintRanges - 1 do
     begin
       rng := ASheet.PageLayout.PrintRange[i];
@@ -6457,7 +6455,7 @@ begin
     DisplayStr := '1.#INF';
   end else begin
     StrValue := FloatToStr(AValue, FPointSeparatorSettings); // Uses '.' as decimal separator
-    DisplayStr := FWorksheet.ReadAsUTF8Text(ACell); //FloatToStr(AValue); // Uses locale decimal separator
+    DisplayStr := FWorksheet.ReadAsText(ACell); //FloatToStr(AValue); // Uses locale decimal separator
   end;
 
   // Hyperlink
@@ -6530,7 +6528,7 @@ begin
     DecodeTime(AValue, h,m,s,ms);
     strValue := Format('PT%.2dH%.2dM%.2d.%.3dS', [trunc(AValue)*24+h, m, s, ms], FPointSeparatorSettings);
 //    strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
-    displayStr := FWorksheet.ReadAsUTF8Text(ACell);
+    displayStr := FWorksheet.ReadAsText(ACell);
 //    displayStr := FormatDateTime(fmt.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="time" office:time-value="%s" %s %s>' +
@@ -6548,7 +6546,7 @@ begin
     else
       isTimeOnly := false;
     strValue := FormatDateTime(DATE_FMT[isTimeOnly], AValue);
-    displayStr := FWorksheet.ReadAsUTF8Text(ACell);
+    displayStr := FWorksheet.ReadAsText(ACell);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="%s" office:%s-value="%s" %s %s>' +
         comment +

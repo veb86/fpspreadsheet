@@ -8,7 +8,7 @@ object NumFormatForm: TNumFormatForm
   ClientHeight = 394
   ClientWidth = 559
   ShowHint = True
-  LCLVersion = '1.5'
+  LCLVersion = '1.7'
   object ButtonPanel1: TButtonPanel
     Left = 6
     Height = 34
@@ -67,6 +67,7 @@ object NumFormatForm: TNumFormatForm
         'Currency'
         'Date'
         'Time'
+        'Text'
       )
       ItemHeight = 15
       OnClick = LbCategoryClick

@@ -76,7 +76,8 @@ type
     nftEscaped,            // '\'
     nftRepeat,
     nftEmptyCharWidth,
-    nftTextFormat);
+    nftTextFormat          // '@'
+  );
 
   {@@ Element of the parsed number format sequence. Each element is identified
     by a token and has optional parameters stored as integer, float, and/or text. }
@@ -96,7 +97,8 @@ type
 
   {@@ Summary information classifying a number format section }
   TsNumFormatKind = (nfkPercent, nfkExp, nfkCurrency, nfkFraction,
-    nfkDate, nfkTime, nfkTimeInterval, nfkHasColor, nfkHasThSep, nfkHasFactor);
+    nfkDate, nfkTime, nfkTimeInterval, nfkText,
+    nfkHasColor, nfkHasThSep, nfkHasFactor);
 
   {@@ Set of summary elements classifying and describing a number format section }
   TsNumFormatKinds = set of TsNumFormatKind;
@@ -208,6 +210,7 @@ function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
 
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
 
+function ApplyTextFormat(AText: String; AParams: TsNumFormatParams): String;
 function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
   AFormatSettings: TFormatSettings): String;
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
@@ -238,6 +241,8 @@ function IsNumberValue(AText: String; AutoDetectNumberFormat: Boolean;
   out ACurrencySymbol, AWarning: String): Boolean;
 
 function IsTimeIntervalFormat(ANumFormat: TsNumFormatParams): Boolean;
+
+function IsTextFormat(ANumFormat: TsNumFormatParams): Boolean;
 
 function MakeLongDateFormat(ADateFormat: String): String;
 function MakeShortDateFormat(ADateFormat: String): String;
@@ -1259,6 +1264,8 @@ begin
   decs := DupeString('0', ADecimals);
   if ADecimals > 0 then decs := '.' + decs;
   case ANumberFormat of
+    nfText:
+      Result := '@';
     nfFixed:
       Result := '0' + decs;
     nfFixedTh:
@@ -1373,9 +1380,6 @@ begin
       nftEscaped:
         if element.TextValue <> '' then
           Result := Result + '\' + element.TextValue;
-      nftTextFormat:
-        if element.TextValue <> '' then
-          Result := Result + element.TextValue;
       nftRepeat:
         if element.TextValue <> '' then Result := Result + '*' + element.TextValue;
       nftColor:
@@ -1390,6 +1394,8 @@ begin
           scCyan   : Result := '[cyan]';
           else       Result := Format('[Color%d]', [element.IntValue]);
         end;
+      nftTextFormat:
+        Result := '@';
     end;
   end;
 end;
@@ -1420,6 +1426,29 @@ begin
     end else
       inc(i);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Applies a text format to a text. The text placeholder is @. Supports
+  appending and prepending text.
+-------------------------------------------------------------------------------}
+function ApplyTextFormat(AText: String; AParams: TsNumFormatParams): String;
+var
+  sct: TsNumFormatSection;
+  element: TsNumFormatElement;
+  i, n: Integer;
+begin
+  Result := '';
+  for sct in AParams.Sections do
+    for i := 0 to High(sct.Elements)  do begin
+      element := sct.Elements[i];
+      case element.Token of
+        nftTextFormat:
+          Result := Result + AText;
+        nftText:
+          Result := Result + element.TextValue;
+      end;
+    end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1740,6 +1769,12 @@ function IsTimeIntervalFormat(ANumFormat: TsNumFormatParams): Boolean;
 begin
   Result := (ANumFormat <> nil) and
             (ANumFormat.Sections[0].Kind * [nfkTimeInterval] <> []);
+end;
+
+function IsTextFormat(ANumFormat: TsNumFormatParams): Boolean;
+begin
+  Result := (ANumFormat <> nil) and
+            (ANumFormat.Sections[0].Kind = [nfkText]);
 end;
 
 {@@ ----------------------------------------------------------------------------

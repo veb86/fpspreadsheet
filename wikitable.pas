@@ -331,7 +331,7 @@ begin
       for j := 0 to lLineSplitter.Tokens.Count-1 do
       begin
         lCurToken := lLineSplitter.Tokens[j];
-        FWorksheet.WriteUTF8Text(i, j, lCurToken.Value);
+        FWorksheet.WriteText(i, j, lCurToken.Value);
         if lCurToken.Bold then
           FWorksheet.WriteFontStyle(i, j, [fssBold]);
         if lCurToken.UseBackgroundColor then
@@ -463,7 +463,7 @@ begin
     for j := 0 to FWorksheet.GetLastColIndex do
     begin
       lCell := FWorksheet.FindCell(i, j);
-      lCurStr := FWorksheet.ReadAsUTF8Text(lCell, fs);
+      lCurStr := FWorksheet.ReadAsText(lCell, fs);
 //      if lCurStr = '' then lCurStr := '&nbsp;';
 
       // Check for invalid characters
