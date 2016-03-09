@@ -8,6 +8,7 @@ interface
   Will be skipped if Excel is not available.
 }
 
+{$ifdef windows}
 uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
@@ -61,8 +62,11 @@ type
 
   end;
 
+{$endif}
+
 implementation
 
+{$ifdef windows}
 uses
   TypInfo, comobj;
 
@@ -386,6 +390,8 @@ end;
 
 initialization
   RegisterTest(TSpreadExcelTests);
+
+{$endif}
 
 end.
 
