@@ -906,6 +906,9 @@ begin
             ' ': Result := Result + '<number:text><![CDATA[ ]]></number:text>';
             else Result := Result + '<number:text>' + Elements[el].TextValue + '</number:text>';
           end;
+
+        nftTextFormat:
+          Result := Result + '<number:text-content />';
       end;
 
       inc(el);

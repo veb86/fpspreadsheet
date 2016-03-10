@@ -846,7 +846,7 @@ begin
   AList.Add('[h]:nn:ss');   // 46
   AList.Add('nn:ss.z');     // 47
   AList.Add('##0.0E+00');   // 48
-  AList.Add('');            // 49: @ ("Text") not supported
+  AList.Add('@');           // 49 "Text" format
   for i:=50 to ALastIndex do AList.Add('');  // not supported/used
 end;
 
