@@ -926,6 +926,9 @@ begin
     if (Kind * [nfkDate, nfkTime] = [nfkTime]) then
       mask := '<number:time-style style:name="%s"%s>%s%s</number:time-style>'
     else
+    if (Kind = [nfkText]) then
+      mask := '<number:text-style style:name="%s"%s>%s%s</number:text-style>'
+    else
       mask := '<number:number-style style:name="%s"%s>%s%s</number:number-style>';
 
     Result := Format(mask, [AFormatName, TimeIntervalStr, Result, StyleMapStr]);
@@ -2877,7 +2880,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       end else
       if nodeName = 'number:text-content' then
       begin
-        // ???
+        nfs := nfs + '@';
       end else
       if nodeName = 'number:text' then
       begin
