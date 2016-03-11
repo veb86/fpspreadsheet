@@ -173,6 +173,7 @@ type
     procedure WriteNumFormats(AStream: TStream);
     procedure WriteRowStyles(AStream: TStream);
     procedure WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteShapes(AStream: TStream; ASheet: TsWorksheet);
     procedure WriteTableSettings(AStream: TStream);
     procedure WriteTableStyles(AStream: TStream);
     procedure WriteTextStyles(AStream: TStream);
@@ -196,7 +197,8 @@ type
   protected
     FPointSeparatorSettings: TFormatSettings;
     // Streams with the contents of files
-    FSMeta, FSSettings, FSStyles, FSContent, FSMimeType, FSMetaInfManifest: TStream;
+    FSMeta, FSSettings, FSStyles, FSContent: TStream;
+    FSMimeType, FSMetaInfManifest: TStream;
 
     { Helpers }
     procedure AddBuiltinNumFormats; override;
@@ -217,6 +219,7 @@ type
     procedure WriteSettings;
     procedure WriteStyles;
     procedure WriteWorksheet(AStream: TStream; ASheetIndex: Integer);
+    procedure ZipPictures(AZip: TZipper);
 
     { Record writing methods }
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
@@ -3855,6 +3858,13 @@ end;
   single xlsx file. }
 procedure TsSpreadOpenDocWriter.CreateStreams;
 begin
+  FSMeta := CreateTempStream(FWorkbook, 'fpsM');
+  FSSettings := CreateTempStream(FWorkbook, 'fpsS');
+  FSStyles := CreateTempStream(FWorkbook, 'fpsSTY');
+  FSContent := CreateTempStream(FWorkbook, 'fpsC');
+  FSMimeType := CreateTempStream(FWorkbook, 'fpsMT');
+  FSMetaInfManifest := CreateTempStream(FWorkbook, 'fpsMIM');
+  {
   if boFileStream in FWorkbook.Options then
   begin
     FSMeta := TFileStream.Create(GetTempFileName('', 'fpsM'), fmCreate);
@@ -3881,31 +3891,19 @@ begin
     FSMimeType := TMemoryStream.Create;
     FSMetaInfManifest := TMemoryStream.Create;
   end;
+  }
   // FSSheets will be created when needed.
 end;
 
-{ Destroys the streams that were created by the writer }
+{ Destroys the temporary streams that were created by the writer }
 procedure TsSpreadOpenDocWriter.DestroyStreams;
-
-  procedure DestroyStream(AStream: TStream);
-  var
-    fn: String;
-  begin
-    if AStream is TFileStream then
-    begin
-      fn := TFileStream(AStream).Filename;
-      DeleteFile(fn);
-    end;
-    AStream.Free;
-  end;
-
 begin
-  DestroyStream(FSMeta);
-  DestroyStream(FSSettings);
-  DestroyStream(FSStyles);
-  DestroyStream(FSContent);
-  DestroyStream(FSMimeType);
-  DestroyStream(FSMetaInfManifest);
+  DestroyTempStream(FSMeta);
+  DestroyTempStream(FSSettings);
+  DestroyTempStream(FSStyles);
+  DestroyTempStream(FSContent);
+  DestroyTempStream(FSMimeType);
+  DestroyTempStream(FSMetaInfManifest);
 end;
 
 procedure TsSpreadOpenDocWriter.InternalWriteToStream(AStream: TStream);
@@ -3939,6 +3937,7 @@ begin
     FZip.Entries.AddFileEntry(FSContent, OPENDOC_PATH_CONTENT);
     FZip.Entries.AddFileEntry(FSMimetype, OPENDOC_PATH_MIMETYPE);
     FZip.Entries.AddFileEntry(FSMetaInfManifest, OPENDOC_PATH_METAINF_MANIFEST);
+    ZipPictures(FZip);
 
     ResetStreams;
 
@@ -4194,6 +4193,9 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteMetaInfManifest;
+var
+  i: Integer;
+  ext: String;
 begin
   AppendToStream(FSMetaInfManifest,
     '<manifest:manifest xmlns:manifest="' + SCHEMAS_XMLNS_MANIFEST + '">');
@@ -4207,6 +4209,15 @@ begin
       '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml" />');
   AppendToStream(FSMetaInfManifest,
       '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />');
+  for i:=0 to FWorkbook.GetEmbeddedStreamCount-1 do
+  begin
+    ext := ExtractFileExt(FWorkbook.GetEmbeddedStream(i).Name);
+    Delete(ext, 1, 1);
+    AppendToStream(FSMetaInfManifest, Format(
+      '<manifest:file-entry manifest:media-type="image/%s" manifest:full-path="Pictures/%d.%s" />',
+      [ext, i+1, ext]
+    ));
+  end;
   AppendToStream(FSMetaInfManifest,
     '</manifest:manifest>');
 end;
@@ -4228,6 +4239,23 @@ begin
       '</office:meta>');
   AppendToStream(FSMeta,
     '</office:document-meta>');
+end;
+
+procedure TsSpreadOpenDocWriter.ZipPictures(AZip: TZipper);
+var
+  i: Integer;
+  embStream: TsEmbeddedStream;
+  embName: String;
+begin
+  for i:=0 to FWorkbook.GetEmbeddedStreamCount-1 do
+  begin
+    embStream := FWorkbook.GetEmbeddedStream(i);
+    // The original ods files have a very long, ranomd, unique (?) filename.
+    // Test show that a simple, unique, increasing number works as well.
+    embName := IntToStr(i+1) + ExtractFileExt(embStream.Name);
+    embStream.Position := 0;
+    AZip.Entries.AddFileEntry(embStream, 'Pictures/' + embname);
+  end;
 end;
 
 procedure TsSpreadOpenDocWriter.WriteSettings;
@@ -4436,6 +4464,9 @@ begin
     '<table:table table:name="%s" table:style-name="ta%d" %s>', [
     UTF8TextToXMLText(FWorkSheet.Name), ASheetIndex+1, WritePrintRangesAsXMLString(FWorksheet)
   ]));
+
+  // shapes
+  WriteShapes(AStream, FWorksheet);
 
   // columns
   WriteColumns(AStream, FWorkSheet);
@@ -5777,6 +5808,61 @@ begin
     Result := '';
 end;
 
+procedure TsSpreadOpenDocWriter.WriteShapes(AStream: TStream;
+  ASheet: TsWorksheet);
+{
+<table:shapes>
+  <draw:frame draw:z-index="0" draw:name="Bild 1" draw:style-name="gr1" draw:text-style-name="P1"
+       svg:width="4.45mm" svg:height="4.24mm" svg:x="0mm" svg:y="0mm">
+    <draw:image xlink:href="Pictures/100002010000001000000010DC3B2E96AAE6D486.png" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">
+      <text:p />
+    </draw:image>
+  </draw:frame>
+</table:shapes>
+}
+var
+  i: Integer;
+  img: TsImage;
+  r1,c1,r2,c2: Cardinal;
+  roffs1,coffs1, roffs2, coffs2: Double;
+  x,y,w,h: Double;
+begin
+  if ASheet.GetImageCount = 0 then
+    exit;
+
+  AppendToStream(AStream,
+    '<table:shapes>');
+
+  for i:=0 to ASheet.GetImageCount-1 do
+  begin
+    img := ASheet.GetImage(i);
+    if not ASheet.CalcImageExtent(i,
+                                  r1, c1, r2, c2,
+                                  roffs1, coffs1, roffs2, coffs2,  // mm
+                                  x, y, w, h)                      // mm
+    then begin
+      FWorkbook.AddErrorMsg('Failure reading image "%s"', [FWorkbook.GetEmbeddedStream(img.Index).Name]);
+      continue;
+    end;
+    AppendToStream(AStream, Format(
+      '<draw:frame draw:z-index="%d" draw:name="Image %d" draw:style-name="gr1" '+
+        'draw:text-style-name="P1" svg:width="%gmm" svg:height="%gmm" '+
+        'svg:x="%gmm" svg:y="%gmm">' +
+        '<draw:image xlink:href="Pictures/%d%s" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">' +
+          '<text:p />' +
+        '</draw:image>' +
+      '</draw:frame>', [
+      i+1, i+1,
+      w, h,
+      x, y,
+      img.Index+1, ExtractFileExt(Workbook.GetEmbeddedStream(img.Index).Name)
+    ], FPointSeparatorSettings));
+  end;
+
+  AppendToStream(AStream,
+    '</table:shapes>');
+end;
+
 procedure TsSpreadOpenDocWriter.WriteTableSettings(AStream: TStream);
 var
   i: Integer;
@@ -5874,6 +5960,27 @@ begin
       i+1, UTF8TextToXMLText(sheetname),
       bidi
     ]));
+    if sheet.GetImageCount > 0 then
+    begin
+      // Embedded images written by fps refer to a graphic style "gr1"...
+      AppendToStream(AStream,
+        '<style:style style:name="gr1" style:family="graphic">'+
+          '<style:graphic-properties draw:stroke="none" draw:fill="none" '+
+            'draw:textarea-horizontal-align="center" '+
+            'draw:textarea-vertical-align="middle" '+
+            'draw:color-mode="standard" '+
+            'draw:luminance="0%" draw:contrast="0%" draw:image-opacity="100%" '+
+            'draw:gamma="100%" draw:red="0%" draw:green="0%" draw:blue="0%" '+
+            'fo:clip="rect(0mm, 0mm, 0mm, 0mm)" '+
+            'style:mirror="none"/>'+
+          '</style:style>');
+      // ... and a paragraph style named "P1"
+      AppendToStream(AStream,
+        '<style:style style:name="P1" style:family="paragraph">' +
+          '<loext:graphic-properties draw:fill="none" />' +
+          '<style:paragraph-properties fo:text-align="center" />' +
+        '</style:style>');
+    end;
   end;
 end;
 

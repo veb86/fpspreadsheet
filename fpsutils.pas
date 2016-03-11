@@ -29,6 +29,9 @@ type
   {@@ Color value, composed of r(ed), g(reen) and b(lue) components }
   TRGBA = record r, g, b, a: byte end;
 
+  {@@ Set of ansi characters }
+  TAnsiCharSet = set of ansichar;
+
 const
   {@@ Date formatting string for unambiguous date/time display as strings
       Can be used for text output when date/time cell support is not available }

@@ -119,7 +119,6 @@ type
       out AComment_rId, AFirstHyperlink_rId, ADrawing_rId, ADrawingHF_rId: Integer);
   protected
     procedure AddBuiltinNumFormats; override;
-    function CreateStream(AFilenameBase: String): TStream;
     procedure CreateStreams;
     procedure DestroyStreams;
     function  FindBorderInList(AFormat: PsCellFormat): Integer;
@@ -227,7 +226,8 @@ implementation
 uses
   variants, strutils, math, lazutf8, LazFileUtils, uriparser,
   {%H-}fpsPatches,
-  fpsStrings, fpsStreams, fpsNumFormatParser, fpsClasses, fpsRegFileFormats;
+  fpsStrings, fpsStreams, fpsNumFormatParser, fpsClasses,
+  fpsRegFileFormats;
 
 const
   { OOXML general XML constants }
@@ -2507,16 +2507,7 @@ begin
 
   // Create the comments stream
   SetLength(FSComments, FCurSheetNum + 1);
-  FSComments[FCurSheetNum] := CreateStream(Format('fpsCMNT%d', [FCurSheetNum]));
-  {
-  if boFileStream in FWorkbook.Options then
-    FSComments[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsCMNT%d', [FCurSheetNum])), fmCreate)
-  else
-  if (boBufStream in Workbook.Options) then
-    FSComments[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsCMNT%d', [FCurSheetNum])))
-  else
-    FSComments[FCurSheetNum] := TMemoryStream.Create;
-  }
+  FSComments[FCurSheetNum] := CreateTempStream(FWorkbook, Format('fpsCMNT%d', [FCurSheetNum]));
 
   // Header
   AppendToStream(FSComments[FCurSheetNum],
@@ -3275,16 +3266,7 @@ begin
     exit;
 
   SetLength(FSDrawings, FCurSheetNum + 1);
-  FSDrawings[FCurSheetNum] := CreateStream(Format('fpsD%d', [FCurSheetNum]));
-  {
-  if boFileStream in FWorkbook.Options then
-    FSDrawings[FCurSheetNum] := TFileStream.Create(GetTempFileName('', Format('fpsD%d', [FCurSheetNum])), fmCreate)
-  else
-  if boBufStream in FWorkbook.Options then
-    FSDrawings[FCurSheetNum] := TBufStream.Create(GetTempFileName('', Format('fpsD%d', [FCurSheetNum])))
-  else
-    FSDrawings[FCurSheetNum] := TMemoryStream.Create;
-  }
+  FSDrawings[FCurSheetNum] := CreateTempStream(FWorkbook, Format('fpsD%d', [FCurSheetNum]));
 
   // Header
   AppendToStream(FSDrawings[FCurSheetNum],
@@ -3370,12 +3352,13 @@ procedure TsSpreadOOXMLWriter.WriteDrawingRels(AWorksheet: TsWorksheet);
 var
   i: Integer;
   ext: String;
+  img: TsImage;
 begin
   if (AWorksheet.GetImageCount = 0) then
     exit;
 
   SetLength(FSDrawingsRels, FCurSheetNum + 1);
-  FSDrawingsRels[FCurSheetNum] := CreateStream(Format('fpsDR%d', [FCurSheetNum]));
+  FSDrawingsRels[FCurSheetNum] := CreateTempStream(FWorkbook, Format('fpsDR%d', [FCurSheetNum]));
 
   // Header
   AppendToStream(FSDrawingsRels[FCurSheetNum],
@@ -3385,10 +3368,11 @@ begin
   // Repeat for each image
   for i:=0 to AWorksheet.GetImageCount - 1 do
   begin
-    ext := ExtractFileExt(FWorkbook.GetEmbeddedStream(i).Name);
+    img := AWorksheet.GetImage(i);
+    ext := ExtractFileExt(FWorkbook.GetEmbeddedStream(img.Index).Name);
     AppendToStream(FSDrawingsRels[FCurSheetNum], Format(
     '  <Relationship Id="rId%d" Type="%s" Target="../media/image%d%s"/>' + LineEnding, [
-       i+1, SCHEMAS_IMAGE, i+1, ext
+       img.Index+1, SCHEMAS_IMAGE, img.Index+1, ext
     ]));
   end;
 
@@ -3462,7 +3446,7 @@ begin
   fileIndex := Length(FSVmlDrawings);
 
   SetLength(FSVmlDrawings, fileIndex+1);
-  FSVmlDrawings[fileIndex] := CreateStream(Format('fpsVMLD%', [fileIndex+1]));
+  FSVmlDrawings[fileIndex] := CreateTempStream(FWorkbook, Format('fpsVMLD%', [fileIndex+1]));
 
   // Header of file
   AppendToStream(FSVmlDrawings[fileIndex],
@@ -3610,7 +3594,7 @@ begin
 
   fileIndex := Length(FSVmlDrawings);
   SetLength(FSVmlDrawings, fileIndex+1);
-  FSVmlDrawings[fileIndex] := CreateStream(Format('fpsVMLD%d', [fileIndex+1]));
+  FSVmlDrawings[fileIndex] := CreateTempStream(FWorkbook, Format('fpsVMLD%d', [fileIndex+1]));
 
   // Header of file
   AppendToStream(FSVmlDrawings[fileIndex],
@@ -3702,7 +3686,7 @@ begin
     inc(fileIndex);  // skip comments for numbering
 
   SetLength(FSVmlDrawingsRels, fileIndex+1);
-  FsVmlDrawingsRels[fileIndex] := CreateStream(Format('fpsVMSDR%d', [fileIndex]));
+  FsVmlDrawingsRels[fileIndex] := CreateTempStream(FWorkbook, Format('fpsVMSDR%d', [fileIndex]));
 
   // Write file header
   AppendToStream(FSVmlDrawingsRels[fileIndex],
@@ -3775,7 +3759,7 @@ begin
   Get_rId(AWorksheet, rID_Comments, rId_Hyperlink, rId_Drawing, rId_DrawingHF);
 
   // Create stream
-  FSSheetRels[FCurSheetNum] := CreateStream(Format('fpsWSR%d', [FCurSheetNum]));
+  FSSheetRels[FCurSheetNum] := CreateTempStream(FWorkbook, Format('fpsWSR%d', [FCurSheetNum]));
 
   // Header
   AppendToStream(FSSheetRels[FCurSheetNum],
@@ -4198,18 +4182,7 @@ begin
     rId_DrawingHF);
 
   // Create the stream
-  FSSheets[FCurSheetNum] := CreateStream(Format('fpsSH%d', [FCurSheetNum]));
-  {
-  if boFileStream in FWorkbook.Options then
-    FSSheets[FCurSheetNum] := TFileStream.Create(GetTempFileName('',
-      Format('fpsSH%d', [FCurSheetNum])), fmCreate)
-  else
-  if (boBufStream in Workbook.Options) then
-    FSSheets[FCurSheetNum] := TBufStream.Create(GetTempFileName('',
-      Format('fpsSH%d', [FCurSheetNum])))
-  else
-    FSSheets[FCurSheetNum] := TMemoryStream.Create;
-  }
+  FSSheets[FCurSheetNum] := CreateTempStream(FWorkbook, Format('fpsSH%d', [FCurSheetNum]));
 
   // Header
   AppendToStream(FSSheets[FCurSheetNum],
@@ -4271,38 +4244,19 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates a basic stream for storing of the individual files. Depending on
-  the set workbook options the stream is created as a memory stream (default),
-  buffered stream or file stream.
-
-  In the latter two cases a filename mask is provided to create a temporary
-  filename around this mask.
--------------------------------------------------------------------------------}
-function TsSpreadOOXMLWriter.CreateStream(AFilenameBase: String): TStream;
-begin
-  if boFileStream in FWorkbook.Options then
-    Result := TFileStream.Create(GetTempFileName('', AFilenameBase), fmCreate)
-  else
-  if boBufStream in Workbook.Options then
-    Result := TBufStream.Create(GetTempFileName('', AFilenameBase))
-  else
-    Result := TMemoryStream.Create;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Creates the basic streams for the individual data files.
   Will be zipped into a single xlsx file.
   Other stream depending on the count of sheets will be created when needed.
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.CreateStreams;
 begin
-  FSContentTypes := CreateStream('fpsCT');
-  FSRelsRels := CreateStream('fpsRR');
-  FSWorkbookRels := CreateStream('fpsWBR');
-  FSWorkbook := CreateStream('fpsWB');
-  FSStyles := CreateStream('fpsSTY');
-  FSSharedStrings := CreateStream('fpsSS');
-  FSSharedStrings_complete := CreateStream('fpsSSC');
+  FSContentTypes := CreateTempStream(FWorkbook, 'fpsCT');
+  FSRelsRels := CreateTempStream(FWorkbook, 'fpsRR');
+  FSWorkbookRels := CreateTempStream(FWorkbook, 'fpsWBR');
+  FSWorkbook := CreateTempStream(FWorkbook, 'fpsWB');
+  FSStyles := CreateTempStream(FWorkbook, 'fpsSTY');
+  FSSharedStrings := CreateTempStream(FWorkbook, 'fpsSS');
+  FSSharedStrings_complete := CreateTempStream(FWorkbook, 'fpsSSC');
   {
   if boFileStream in FWorkbook.Options then
   begin
@@ -4340,42 +4294,29 @@ end;
   Destroys the streams that were created by the writer
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLWriter.DestroyStreams;
-
-  procedure DestroyStream(AStream: TStream);
-  var
-    fn: String;
-  begin
-    if AStream is TFileStream then
-    begin
-      fn := TFileStream(AStream).Filename;
-      DeleteFile(fn);
-    end;
-    AStream.Free;
-  end;
-
 var
   stream: TStream;
 begin
-  DestroyStream(FSContentTypes);
-  DestroyStream(FSRelsRels);
-  DestroyStream(FSWorkbookRels);
-  DestroyStream(FSWorkbook);
-  DestroyStream(FSStyles);
-  DestroyStream(FSSharedStrings);
-  DestroyStream(FSSharedStrings_complete);
-  for stream in FSSheets do DestroyStream(stream);
+  DestroyTempStream(FSContentTypes);
+  DestroyTempStream(FSRelsRels);
+  DestroyTempStream(FSWorkbookRels);
+  DestroyTempStream(FSWorkbook);
+  DestroyTempStream(FSStyles);
+  DestroyTempStream(FSSharedStrings);
+  DestroyTempStream(FSSharedStrings_complete);
+  for stream in FSSheets do DestroyTempStream(stream);
   SetLength(FSSheets, 0);
-  for stream in FSComments do DestroyStream(stream);
+  for stream in FSComments do DestroyTempStream(stream);
   SetLength(FSComments, 0);
-  for stream in FSSheetRels do DestroyStream(stream);
+  for stream in FSSheetRels do DestroyTempStream(stream);
   SetLength(FSSheetRels, 0);
-  for stream in FSVmlDrawings do DestroyStream(stream);
+  for stream in FSVmlDrawings do DestroyTempStream(stream);
   SetLength(FSVmlDrawings, 0);
-  for stream in FSVmlDrawingsRels do DestroyStream(stream);
+  for stream in FSVmlDrawingsRels do DestroyTempStream(stream);
   SetLength(FSVmlDrawingsRels, 0);
-  for stream in FSDrawings do DestroyStream(stream);
+  for stream in FSDrawings do DestroyTempStream(stream);
   SetLength(FSDrawings, 0);
-  for stream in FSDrawingsRels do DestroyStream(stream);
+  for stream in FSDrawingsRels do DestroyTempStream(stream);
   Setlength(FSDrawings, 0);
 end;
 

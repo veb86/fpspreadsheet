@@ -30,6 +30,10 @@ procedure UnzipFile(AZipFileName, AZippedFile, ADestFolder: String);
 function UnzipToStream(AZipStream: TStream; const AZippedFile: String;
   ADestStream: TStream): Boolean;
 
+function CreateTempStream(AWorkbook: TsWorkbook; AFileNameBase: String): TStream;
+procedure DestroyTempStream(AStream: TStream);
+
+
 implementation
 
 uses
@@ -317,6 +321,42 @@ begin
     unzip.Free;
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Creates a basic stream for storing of the individual files. Depending on
+  the set workbook options the stream is created as a memory stream (default),
+  buffered stream or file stream.
+
+  In the latter two cases a filename mask is provided to create a temporary
+  filename around this mask.
+-------------------------------------------------------------------------------}
+function CreateTempStream(AWorkbook: TsWorkbook; AFilenameBase: String): TStream;
+begin
+  if boFileStream in AWorkbook.Options then
+    Result := TFileStream.Create(GetTempFileName('', AFilenameBase), fmCreate)
+  else
+  if boBufStream in AWorkbook.Options then
+    Result := TBufStream.Create(GetTempFileName('', AFilenameBase))
+  else
+    Result := TMemoryStream.Create;
+end;
+
+
+procedure DestroyTempStream(AStream: TStream);
+var
+  fn: String;
+begin
+  // TMemoryStream and TBufStream need not be considered separately,
+  // they destroy everything themselves. Only the TFileStream must delete its
+  // temporary file.
+  if AStream is TFileStream then
+  begin
+    fn := TFileStream(AStream).Filename;
+    DeleteFile(fn);
+  end;
+  AStream.Free;
+end;
+
 
 end.
 
