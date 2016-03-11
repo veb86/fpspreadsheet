@@ -3372,7 +3372,7 @@ begin
     ext := ExtractFileExt(FWorkbook.GetEmbeddedStream(img.Index).Name);
     AppendToStream(FSDrawingsRels[FCurSheetNum], Format(
     '  <Relationship Id="rId%d" Type="%s" Target="../media/image%d%s"/>' + LineEnding, [
-       img.Index+1, SCHEMAS_IMAGE, img.Index+1, ext
+       i+1, SCHEMAS_IMAGE, img.Index+1, ext
     ]));
   end;
 
@@ -3961,7 +3961,7 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteContentTypes;
 var
-  i: Integer;
+  i,j: Integer;
   imgext: TStringList;
   ext: String;
   sheet: TsWorksheet;
@@ -3982,16 +3982,17 @@ begin
   begin
     imgExt := TStringList.Create;
     try
-      imgExt.Duplicates := dupIgnore;
       for i:=0 to Workbook.GetEmbeddedStreamCount-1 do
       begin
         ext := ExtractFileExt(Workbook.GetEmbeddedStream(i).Name);
         if ext[1] = '.' then Delete(ext, 1, 1);
-        imgExt.Add(ext);
+        j := imgExt.IndexOf(ext);
+        if j = -1 then
+          imgExt.Add(ext);
       end;
       for i := 0 to imgExt.Count-1 do
         AppendToStream(FSContentTypes, Format(
-          '<Default Extension="%s" ContentType="image/%s" />' + LineEnding, [ext, ext]));
+          '<Default Extension="%s" ContentType="image/%s" />' + LineEnding, [imgExt[i], imgExt[i]]));
     finally
       imgExt.Free;
     end;
