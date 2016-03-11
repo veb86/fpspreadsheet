@@ -530,6 +530,10 @@ type
     // Writes out a TIME/DATE/TIMETIME
     procedure WriteDateTime(AStream: TStream; const ARow, ACol: Cardinal;
        const AValue: TDateTime; ACell: PCell); override;
+    // Writes out a DEFCOLWIDTH record
+    procedure WriteDefaultColWidth(AStream: TStream; AWorksheet: TsWorksheet);
+    // Writes out a DEFAULTROWHEIGHT record
+    procedure WriteDefaultRowHeight(AStream: TStream; AWorksheet: TsWorksheet);
     // Writes out DEFINEDNAMES records
     procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
        const AName: String; AIndexToREF: Word); virtual;
@@ -3294,6 +3298,50 @@ begin
   // this will get written out as a pointer to the relevant XF record.
   // In the end, dates in xls are just numbers with a format. Pass it on to WriteNumber:
   WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a DEFCOLWIDTH record.
+  Specifies the default column width for columns that do not have a
+  specific width set using the records COLWIDTH (BIFF2), COLINFO (BIFF3-BIFF8),
+  or STANDARDWIDTH.
+  Valud for BIFF2-BIFF8.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteDefaultColWidth(AStream: TStream;
+  AWorksheet: TsWorksheet);
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFCOLWIDTH, 2);
+
+  { Column width in characters, using the width of the zero character
+  from default font (first FONT record in the file). }
+  AStream.WriteWord(round(FWorksheet.DefaultColWidth));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a DEFAULTROWHEIGHT record
+  Specifies the default height and default flags for rows that do not have a
+  corresponding ROW record
+  Valid for BIFF3-BIFF8.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteDefaultRowHeight(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  h: Single;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFROWHEIGHT, 4);
+
+  { Options:
+      Bit 1 = Row height and default font height do not match
+      Bit 2 = Row is hidden
+      Bit 4 = Additional space above the row
+      Bit 8 = Additional space below the row }
+  AStream.WriteWord(WordToLE($0001));
+
+  { Default height for unused rows, in twips = 1/20 of a point }
+  h := (AWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * FWorkbook.GetDefaultFontSize;
+  AStream.WriteWord(WordToLE(PtsToTwips(h)));
 end;
 
 procedure TsSpreadBIFFWriter.WriteDefinedName(AStream: TStream;

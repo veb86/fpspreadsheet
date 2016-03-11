@@ -106,6 +106,7 @@ type
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
     procedure WriteCodePage(AStream: TStream; ACodePage: String); override;
+    procedure WriteDefaultRowHeight(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
@@ -179,7 +180,7 @@ const
   INT_EXCEL_ID_FORMAT        = $001E;
   INT_EXCEL_ID_FORMATCOUNT   = $001F;
   INT_EXCEL_ID_COLWIDTH      = $0024;
-  INT_EXCEL_ID_DEFROWHEIGHT  = 00025;
+  INT_EXCEL_ID_DEFROWHEIGHT  = $0025;
   INT_EXCEL_ID_WINDOW2       = $003E;
   INT_EXCEL_ID_XF            = $0043;
   INT_EXCEL_ID_IXFE          = $0044;
@@ -1310,6 +1311,7 @@ begin
     WriteCodePage(AStream, FCodePage);
     WritePrintHeaders(AStream);
     WritePrintGridLines(AStream);
+    WriteDefaultRowHeight(AStream, FWorksheet);
     WriteFonts(AStream);
 
     // Page settings block
@@ -1323,6 +1325,8 @@ begin
     WriteFormatCount(AStream);
     WriteNumFormats(AStream);
     WriteXFRecords(AStream);
+
+    WriteDefaultColWidth(AStream, FWorksheet);
     WriteColWidths(AStream);
     WriteDimensions(AStream, FWorksheet);
     WriteRows(AStream, FWorksheet);
@@ -1759,6 +1763,27 @@ begin
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(rec));
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 2 DEFAULTROWHEIGHT record
+  Specifies the default height and default flags for rows that do not have a
+  corresponding ROW record
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF2Writer.WriteDefaultRowHeight(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  h: Single;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFROWHEIGHT, 2);
+
+  { Default height for unused rows, in twips = 1/20 of a point
+    Bits 0-14: Default height for unused rows, in twips
+    Bit 15 = 1: Row height not changed manually }
+  h := (AWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * FWorkbook.GetDefaultFontSize;
+  AStream.WriteWord(WordToLE(PtsToTwips(h)));
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 2 ERROR cell record.

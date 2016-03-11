@@ -148,6 +148,7 @@ type
     procedure WritePageSetup(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WritePrintOptions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteSheetData(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteSheetFormatPr(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteSheetPr(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteSheetViews(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
@@ -3020,6 +3021,19 @@ begin
       '</sheetData>');
 end;
 
+procedure TsSpreadOOXMLWriter.WriteSheetFormatPr(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  w, h: Single;
+begin
+  w := AWorksheet.DefaultColWidth;
+  h := (AWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * Workbook.GetDefaultFontSize;
+  AppendToStream(AStream, Format(
+    '<sheetFormatPr baseColWidth="%g" defaultRowHeight="%g" customHeight="true" />',
+    [w, h],
+    FPointSeparatorSettings));
+end;
+
 procedure TsSpreadOOXMLWriter.WriteSheetPr(AStream: TStream; AWorksheet: TsWorksheet);
 var
   s: String;
@@ -4194,6 +4208,7 @@ begin
   WriteSheetPr(FSSheets[FCurSheetNum], AWorksheet);
   WriteDimension(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetViews(FSSheets[FCurSheetNum], AWorksheet);
+  WriteSheetFormatPr(FSSheets[FCurSheetNum], AWorksheet);
   WriteCols(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);

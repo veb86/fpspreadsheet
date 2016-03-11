@@ -184,6 +184,7 @@ type
     function WriteBorderStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteCommentXMLAsString(AComment: String): String;
     function WriteDefaultFontXMLAsString: String;
+    function WriteDefaultGraphicStyleXMLAsString: String; overload;
     function WriteFontStyleXMLAsString(const AFormat: TsCellFormat): String; overload;
     function WriteFontStyleXMLAsString(AFont: TsFont): String; overload;
     function WriteHeaderFooterFontXMLAsString(AFont: TsHeaderFooterFont): String;
@@ -4335,6 +4336,11 @@ begin
         '<style:style style:name="Default" style:family="table-cell">',
            WriteDefaultFontXMLAsString,
         '</style:style>');
+  if FWorkbook.GetEmbeddedStreamCount > 0 then
+    AppendToStream(FSStyles,
+        '<style:default-style style:family="graphic">',
+          WriteDefaultGraphicStyleXMLAsString,
+        '</style:default-style>');
   AppendToStream(FSStyles,
       '</office:styles>');
 
@@ -5494,6 +5500,28 @@ begin
     '<style:text-properties style:font-name="%s" fo:font-size="%.1fpt" />',
     [fnt.FontName, fnt.Size], FPointSeparatorSettings
   );
+end;
+
+function TsSpreadOpenDocWriter.WriteDefaultGraphicStyleXMLAsString: String;
+begin
+  Result :=
+    '<style:graphic-properties svg:stroke-color="#3465a4" '+
+      'draw:fill-color="#729fcf" fo:wrap-option="no-wrap" '+
+      'draw:shadow-offset-x="3mm" draw:shadow-offset-y="3mm" />' +
+    '<style:paragraph-properties style:text-autospace="ideograph-alpha" '+
+      'style:punctuation-wrap="simple" style:line-break="strict" '+
+      'style:writing-mode="page" style:font-independent-line-spacing="false">'+
+      '<style:tab-stops />'+
+    '</style:paragraph-properties>'+
+    '<style:text-properties style:use-window-font-color="true" '+
+      'fo:font-family="''Liberation Serif''" style:font-family-generic="roman" '+
+      'style:font-pitch="variable" fo:font-size="12pt" ' +
+      //'fo:language="de" fo:country="DE" '+
+      'style:letter-kerning="true" '+
+      'style:font-name-asian="Segoe UI" style:font-size-asian="12pt" '+
+      'style:language-asian="zh" style:country-asian="CN" '+
+      'style:font-name-complex="Tahoma" style:font-size-complex="12pt" '+
+      'style:language-complex="hi" style:country-complex="IN" />';
 end;
 
 procedure TsSpreadOpenDocWriter.WriteError(AStream: TStream;

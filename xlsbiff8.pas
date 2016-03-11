@@ -2121,6 +2121,7 @@ begin
       WriteIndex(AStream);
       WritePrintHeaders(AStream);
       WritePrintGridLines(AStream);
+      WriteDefaultRowHeight(AStream, FWorksheet);
       WriteSheetPR(AStream);
 
       // Page setting block
@@ -2134,6 +2135,7 @@ begin
       WriteMargin(AStream, 3);  // 3 = bottom margin
       WritePageSetup(AStream);
 
+      WriteDefaultColWidth(AStream, FWorksheet);
       WriteColInfos(AStream, FWorksheet);
       WriteDimensions(AStream, FWorksheet);
       //WriteRowAndCellBlock(AStream, sheet);
