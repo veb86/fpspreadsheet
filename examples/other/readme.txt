@@ -21,3 +21,7 @@ This folder contains various demo applications:
 - demo_write_formatting: shows some simple cell formatting
 
 - demo_write_formula: shows some rpn formulas
+
+- demo_write_images: adds images to worksheets
+
+- demo_write_headerfooter_images: adds images to worksheet headers and footers

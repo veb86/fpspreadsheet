@@ -19,37 +19,42 @@ const
   image3 = '../../images/components/TSCELLEDIT.png';
 
 begin
+  Writeln('Starting program "demo_write_images"...');
+
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
-  MyWorkbook.Options := [boFileStream];
+  try
+    MyWorksheet := MyWorkbook.AddWorksheet('Sheet 1');
+    MyWorksheet.DefaultRowHeight := 1.2;
+    MyWorksheet.WriteText(0, 0, 'There are images in cells A3 and B3'); //
+    // These images are offset by 1mm in both directions from the top/left cell edge
+    MyWorksheet.WriteImage(2, 0, image1, 1.0, 1.0, 2.0, 2.0);   // This image is magnified by factor 2
+    MyWorksheet.WriteImage(2, 1, image2, 1.0, 1.0);
 
-  MyWorksheet := MyWorkbook.AddWorksheet('Sheet 1');
-  MyWorksheet.DefaultRowHeight := 1.2;
-  MyWorksheet.WriteText(0, 0, 'There are images in cells A3 and B3'); //
-  MyWorksheet.WriteImage(2, 0, image1, 1.0, 1.0, 2.0, 2.0);
-  MyWorksheet.WriteImage(2, 1, image2, 1.0, 1.0);
-                                         {
-  MyWorksheet := MyWorkbook.AddWorksheet('Sheet 2');
-  MyWorksheet.WriteText(0, 0, 'There is an image in cell B3');
-  MyWorksheet.WriteImage(2, 1, image3);
-//  MyWorksheet.WriteImage(0, 2, 'D:\Prog_Lazarus\svn\lazarus-ccr\components\fpspreadsheet\examples\read_write\ooxmldemo\laz_open.png');
-//  MyWorksheet.WriteHyperlink(0, 0, 'http://www.chip.de');
-//  MyWorksheet.PageLayout.AddHeaderImage(1, hfsLeft, 'D:\Prog_Lazarus\svn\lazarus-ccr\components\fpspreadsheet\examples\read_write\ooxmldemo\laz_open.png');
-//  MyWorksheet.PageLayout.Headers[1] := '&LThis is a header&R&G';
-                                          }
-  // Save the spreadsheet to a file
-  MyDir := ExtractFilePath(ParamStr(0));
-  MyWorkbook.WriteToFile(MyDir + 'img.xlsx', sfOOXML, true);
-  MyWorkbook.WriteToFile(MyDir + 'img.ods', sfOpenDocument, true);
+    MyWorksheet := MyWorkbook.AddWorksheet('Sheet 2');
+    MyWorksheet.WriteText(0, 0, 'There is an image in cell B3');
+    MyWorksheet.WriteImage(2, 1, image3);
+
+    // Save the spreadsheet to files
+    MyDir := ExtractFilePath(ParamStr(0));
+    MyWorkbook.WriteToFile(MyDir + 'img.xlsx', sfOOXML, true);
+    MyWorkbook.WriteToFile(MyDir + 'img.ods', sfOpenDocument, true);
 //  MyWorkbook.WriteToFile(MyDir + 'img.xls', sfExcel8, true);
 //  MyWorkbook.WriteToFile(MyDir + 'img5.xls', sfExcel5, true);
 //  MyWorkbook.WriteToFile(MyDir + 'img2.xls', sfExcel2, true);
 
-  if MyWorkbook.ErrorMsg <> '' then
-  begin
-    WriteLn(MyWorkbook.ErrorMsg);
-  end;
+    if MyWorkbook.ErrorMsg <> '' then
+      WriteLn(MyWorkbook.ErrorMsg);
 
-  MyWorkbook.Free;
+    WriteLn('Finished.');
+    WriteLn('Please open the files "img.*" in your spreadsheet program.');
+   {$ifdef WINDOWS}
+    WriteLn('Press ENTER to close this program...');
+    ReadLn;
+   {$ENDIF}
+
+  finally
+    MyWorkbook.Free;
+  end;
 end.
 

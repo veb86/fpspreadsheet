@@ -5919,7 +5919,7 @@ function TsSpreadOpenDocWriter.WritePageLayoutAsXMLString(AStyleName: String;
     AHeaderImageStr := IfThen((hdrImg = '') or (hdrImgPos = ''), '', Format(
       '<style:background-image xlink:href="Pictures/%s" '+
         'xlink:type="simple" xlink:actuate="onLoad" '+
-        'style:position="top %s" style:repeat="no-repeat" />',
+        'style:position="center %s" style:repeat="no-repeat" />',
       [hdrImg, hdrImgPos] ));
 
     AFooterImageStr := IfThen((ftrImg = '') or (ftrImgPos = ''), '', Format(
