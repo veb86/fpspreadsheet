@@ -257,8 +257,8 @@ begin
     AStream.Position := p + rec.RecSize;
   end;
 
-  if dpiX = -1 then dpiX := 96;
-  if dpiY = -1 then dpiY := 96;
+  if (dpiX = -1) or (u = 0) then dpiX := 96;
+  if (dpiY = -1) or (u = 0) then dpiY := 96;
   if u = 2 then begin
     dpiX := dpiX * 2.54;
     dpiY := dpiY * 2.54;
