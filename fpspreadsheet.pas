@@ -499,7 +499,7 @@ type
     procedure RemoveAllImages;
     procedure RemoveImage(AIndex: Integer);
     function WriteImage(ARow, ACol: Cardinal; AFileName: String;
-      AOffsetX: Integer = 0; AOffsetY: Integer = 0;
+      AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
       AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 
     // Notification of changed cells
@@ -3361,8 +3361,8 @@ begin
 
   stream := FWorkbook.GetEmbeddedStream(img.Index);
   Result := GetImageSize(stream, ExtractFileExt(stream.Name), AWidth, AHeight); // in inches!
-  AWidth := inToMM(AWidth);    // in millimeters now
-  AHeight := inToMM(AHeight);
+  AWidth := inToMM(AWidth*img.ScaleX);    // in millimeters now
+  AHeight := inToMM(AHeight*img.ScaleY);
 
   // Find x coordinate of left image edge, in inches.
   factor := FWorkbook.GetDefaultFont.Size/2;  // Width of "0" character in pts
@@ -3430,7 +3430,7 @@ end;
   @return Index into the internal image list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AFileName: String;
-  AOffsetX: Integer = 0; AOffsetY: Integer = 0;
+  AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
   AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 var
   img: PsImage;

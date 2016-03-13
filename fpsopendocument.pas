@@ -6007,9 +6007,10 @@ begin
       continue;
     end;
     AppendToStream(AStream, Format(
-      '<draw:frame draw:z-index="%d" draw:name="Image %d" draw:style-name="gr1" '+
-        'draw:text-style-name="P1" svg:width="%gmm" svg:height="%gmm" '+
-        'svg:x="%gmm" svg:y="%gmm">' +
+      '<draw:frame draw:z-index="%d" draw:name="Image %d" '+
+        'draw:style-name="gr1" draw:text-style-name="P1" '+
+        'svg:width="%.2gmm" svg:height="%.2gmm" '+
+        'svg:x="%.2gmm" svg:y="%.2gmm">' +
         '<draw:image xlink:href="Pictures/%d%s" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">' +
           '<text:p />' +
         '</draw:image>' +
