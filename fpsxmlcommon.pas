@@ -352,9 +352,10 @@ begin
   if AStream is TFileStream then
   begin
     fn := TFileStream(AStream).Filename;
-    DeleteFile(fn);
-  end;
-  AStream.Free;
+    AStream.Free;          // Destroy stream before deleting temp file!
+    DeleteFile(fn);        // Otherwise the temp file will not be deleted.
+  end else
+    AStream.Free;
 end;
 
 
