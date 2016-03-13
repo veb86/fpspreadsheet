@@ -54,6 +54,9 @@ type
     constructor Create(AWorksheet: pointer);
     procedure Assign(ASource: TsPageLayout);
 
+    function HasFooter: Boolean;
+    function HasHeader: Boolean;
+
     { Images embedded in header and/or footer }
     procedure AddHeaderImage(AHeaderIndex: Integer;
       ASection: TsHeaderFooterSectionIndex; const AFilename: String);
@@ -295,9 +298,9 @@ begin
     book.GetEmbeddedStream(idx).LoadFromFile(AFileName);
   end;
   FFooterImages[ASection].Index := idx;
-  SplitHeaderFooterText(FHeaders[AFooterIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
+  SplitHeaderFooterText(FFooters[AFooterIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
   s[ASection] := s[ASection] + '&G';
-  FHeaders[AFooterIndex] := JoinHeaderFooterText(s[hfsLeft], s[hfsCenter], s[hfsRight]);
+  FFooters[AFooterIndex] := JoinHeaderFooterText(s[hfsLeft], s[hfsCenter], s[hfsRight]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -414,6 +417,22 @@ begin
     Result := FPrintRanges[AIndex]
   else
     raise Exception.Create('[TsPageLayout.GetPrintRange] Illegal index.');
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the footer of the worksheet is enabled
+-------------------------------------------------------------------------------}
+function TsPageLayout.HasFooter: Boolean;
+begin
+  Result := (FFooters[0] <> '') or (FFooters[1] <> '') or (FFooters[2] <> '');
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the header of the worksheet is enabled
+-------------------------------------------------------------------------------}
+function TsPageLayout.HasHeader: Boolean;
+begin
+  Result := (FHeaders[0] <> '') or (FHeaders[1] <> '') or (FHeaders[2] <> '');
 end;
 
 {@@ ----------------------------------------------------------------------------

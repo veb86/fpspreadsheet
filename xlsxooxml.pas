@@ -2665,24 +2665,11 @@ end;
 procedure TsSpreadOOXMLWriter.WriteHeaderFooter(AStream: TStream;
   AWorksheet: TsWorksheet);
 var
-  hasHeader: Boolean;
-  hasFooter: Boolean;
-  i: Integer;
   s: String;
 begin
-  hasHeader := false;
-  hasFooter := false;
-
   with AWorksheet.PageLayout do
   begin
-    for i:=HEADER_FOOTER_INDEX_FIRST to HEADER_FOOTER_INDEX_EVEN do
-    begin
-      if Headers[i] <> '' then
-        hasHeader := true;
-      if Footers[i] <> '' then
-        hasFooter := true;
-    end;
-    if not (hasHeader or hasFooter) then
+    if not (HasHeader or HasFooter) then
       exit;
 
     s := '';
@@ -3723,8 +3710,8 @@ begin
     AppendToStream(FSVmlDrawingsRels[fileIndex], Format(
       '  <Relationship Id="rId%d" Target="../media/image%d%s" '+
          'Type="' + SCHEMAS_IMAGE + '" />' + LineEnding, [
-      rId,                                 // Id="rID1"
-      imgIdx + 1, ExtractFileExt(imgName) // Target="../media/image1.png"
+      rId,                                  // Id="rID1"
+      imgIdx + 1, ExtractFileExt(imgName)   // Target="../media/image1.png"
     ]));
    inc(rId);
   end;
@@ -3741,7 +3728,7 @@ begin
          //  e.g.         "rId1"         "..(media/image1.png"
          'Type="' + SCHEMAS_IMAGE + '" />', [
       rId,
-      imgIdx, ExtractFileExt(imgName)
+      imgIdx + 1, ExtractFileExt(imgName)
     ]));
    inc(rId);
   end;

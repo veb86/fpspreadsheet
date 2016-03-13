@@ -769,6 +769,7 @@ type
     function FindEmbeddedStream(const AName: String): Integer;
     function GetEmbeddedStream(AIndex: Integer): TsEmbeddedStream;
     function GetEmbeddedStreamCount: Integer;
+    function HasEmbeddedSheetImages: Boolean;
     procedure RemoveAllEmbeddedStreams;
 
     { Utilities }
@@ -8389,6 +8390,24 @@ end;
 function TsWorkbook.GetEmbeddedStreamCount: Integer;
 begin
   Result := FEmbeddedStreamList.Count;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns true if there is at least one worksheet with an embedded images.
+-------------------------------------------------------------------------------}
+function TsWorkbook.HasEmbeddedSheetImages: Boolean;
+var
+  i: Integer;
+  sheet: TsWorksheet;
+begin
+  Result := true;
+  for i:=0 to FWorksheets.Count-1 do
+  begin
+    sheet := TsWorksheet(FWorksheets.Items[i]);
+    if sheet.GetImageCount > 0 then
+      exit;
+  end;
+  Result := false;
 end;
 
 {@@ ----------------------------------------------------------------------------

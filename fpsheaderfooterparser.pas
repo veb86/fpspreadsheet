@@ -182,7 +182,7 @@ end;
 
 destructor TsHeaderFooterParser.Destroy;
 begin
-  FCurrFont.Free;
+  if FCurrFont <> nil then FCurrFont.Free;
   inherited Destroy;
 end;
 
@@ -215,10 +215,13 @@ begin
   if FCurrText <> '' then
     AddCurrTextElement;
 
-  if AStyle in FCurrFont.Style then
-    Exclude(FCurrFont.Style, AStyle)
-  else
-    Include(FCurrFont.Style, AStyle);
+  if not FIgnoreFonts then
+  begin
+    if AStyle in FCurrFont.Style then
+      Exclude(FCurrFont.Style, AStyle)
+    else
+      Include(FCurrFont.Style, AStyle);
+  end;
 end;
 
 procedure TsHeaderFooterParser.AddNewLine;
@@ -313,8 +316,11 @@ function TsHeaderFooterParser.GetCurrFontIndex: Integer;
 var
   fnt: TsHeaderFooterFont;
 begin
+  Result := -1;
+  if FIgnoreFonts then
+    exit;
   Result := FindCurrFont;
-  if Result = -1 then
+  if (Result = -1) then
   begin
     fnt := FFontClass.Create;
     fnt.Assign(FCurrFont);
@@ -396,7 +402,8 @@ begin
       FToken := NextToken;
     end;
   end;
-  FCurrFont.FontName := s;
+  if not FIgnoreFonts then
+    FCurrFont.FontName := s;
 end;
 
 procedure TsHeaderFooterParser.ScanFontColor;
@@ -411,7 +418,8 @@ begin
     FToken := NextToken;
   end;
   FToken := PrevToken;
-  FCurrFont.Color := HTMLColorStrToColor(s);
+  if not FIgnoreFonts then
+    FCurrFont.Color := HTMLColorStrToColor(s);
 end;
 
 procedure TsHeaderFooterParser.ScanFontSize;
@@ -425,7 +433,8 @@ begin
     FToken := NextToken;
   end;
   FToken := PrevToken;
-  FCurrFont.Size := StrToFloat(s, FPointSeparatorSettings);
+  if not FIgnoreFonts then
+    FCurrFont.Size := StrToFloat(s, FPointSeparatorSettings);
 end;
 
 procedure TsHeaderFooterParser.ScanNewLine;
