@@ -7,21 +7,55 @@ interface
 uses
   Classes;
 
-function GetImageSize(AStream: TStream; AFileType: String;
-  out AWidthInches, AHeightInches: double): Boolean; overload;
+type
+  TGetImageSizeFunc = function (AStream: TStream;
+    out AWidth, AHeight: DWord; out dpiX, dpiY: Double): Boolean;
 
-function GetImageSize(AStream: TStream; AFileType: String;
-  out AWidth, AHeight: DWord; out dpiX, dpiY: double): Boolean; overload;
+  TsImageType = integer;
+
+const
+  itUnknown = -1;
+
+var
+  itPNG: TsImageType;
+  itJPEG: TsImageType;
+  itTIFF: TsImageType;
+  itBMP: TsImageType;
+  itGIF: TsImageType;
+  itSVG: TsImageType;
+  itWMF: TsImageType;
+  itEMF: TsImageType;
+  itPCX: TsImageType;
+
+function GetImageInfo(AStream: TStream; out AWidthInches, AHeightInches: Double;
+  AImagetype: TsImageType = itUnknown): TsImageType; overload;
+
+function GetImageInfo(AStream: TStream; out AWidth, AHeight: DWord;
+  out dpiX, dpiY: Double; AImageType: TsImageType = itUnknown): TsImageType; overload;
+
+function GetImageMimeType(AImageType: TsImageType): String;
+function GetImageTypeFromFileName(const AFilename: String): TsImageType;
+
+function RegisterImageType(AMimeType, AExt: String; AGetImageSize: TGetImageSizeFunc): TsImageType;
 
 
 implementation
 
 uses
-  SysUtils, Strings, math,
+  SysUtils, Strings, Math,
   fpsUtils;
 
 type
   TByteOrder = (boLE, boBE);  // little edian, or big endian
+
+  TImageTypeRecord = record
+    Ext: String;
+    MimeType: String;
+    GetImageSize: TGetImageSizeFunc;
+  end;
+
+var
+  ImageTypeRegistry: array of TImageTypeRecord;
 
 { Makes sure that the byte order of w is as specified by the parameter }
 function FixByteOrder(w: Word; AByteOrder: TByteOrder): Word; overload;
@@ -621,38 +655,151 @@ end;
 {                           Public functions                                   }
 {==============================================================================}
 
-function GetImageSize(AStream: TStream; AFileType: String;
-  out AWidth, AHeight: DWord; out dpiX, dpiY: Double): Boolean;
-begin
-  AFileType := Lowercase(AFileType);
-  if AFileType[1] = '.' then Delete(AFileType, 1, 1);
-  AStream.Position := 0;
-  case AFileType of
-    'bmp'         : Result := GetBMPSize(AStream, AWidth, AHeight, dpiX, dpiY);
-    'emf'         : Result := GetEMFSize(AStream, AWidth, AHeight, dpiX, dpiY);
-    'gif'         : Result := GetGIFSize(AStream, AWidth, AHeight, dpiX, dpiY);
-    'jpg', 'jpeg' : Result := GetJPGSize(AStream, AWidth, AHeight, dpiX, dpiY);
-    'pcx'         : Result := GetPCXSize(AStream, AWidth, AHeight, dpiX, dpiY);
-    'png'         : Result := GetPNGSize(AStream, AWidth, AHeight, dpiX, dpiY);
-    'svg'         : Result := GetSVGSize(AStream, AWidth, AHeight, dpiX, dpiY);
-    'tif', 'tiff' : Result := GetTIFSize(AStream, AWidth, AHeight, dpiX, dpiY);
-    'wmf'         : Result := GetWMFSize(AStream, AWidth, AHeight, dpiX, dpiY);
-    else            Result := false;
-  end;
-end;
+{@@ ----------------------------------------------------------------------------
+  Returns the width and height of the image loaded into the specified stream.
 
-function GetImageSize(AStream: TStream; AFileType: String;
-  out AWidthInches, AHeightInches: double): Boolean;
+  @param  AStream       Stream containing the image to be analyzed. It is
+                        assumed that the image begins at stream start.
+  @param  AWidthInches  Image width, in inches
+  @param  AHeightInches Image height, in inches
+  @param  AImageType    Type of the image to be assumed. If this parameter is
+                        missing or itUnknown then the image type is determined
+                        from the file header.
+
+  @return Image type code found from the file header.
+  @see RegisterImageType
+-------------------------------------------------------------------------------}
+function GetImageInfo(AStream: TStream; out AWidthInches, AHeightInches: Double;
+  AImagetype: TsImageType = itUnknown): TsImageType;
 var
   w, h: DWord;
   xdpi, ydpi: Double;
 begin
-  Result := GetImageSize(AStream, AFileType, w, h, xdpi, ydpi);
-  if Result then
-  begin
+  Result := GetImageInfo(AStream, w, h, xdpi, ydpi, AImageType);
+  if Result <> itUnknown then begin
     AWidthInches := w / xdpi;
     AHeightInches := h / ydpi;
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the width and height of the image loaded into the specified stream.
+
+  @param  AStream       Stream containing the image to be analyzed. It is
+                        assumed that the image begins at stream start.
+  @param  AWidth        Image width, in pixels
+  @param  AHeight       Image height, in pixels
+  @param  dpiX          Pixel density in x direction, per inch
+  @param  dpiY          Pixel density in y direction, per inch
+  @param  AImageType    Type of the image to be assumed. If this parameter is
+                        missing or itUnknown then the image type is determined
+                        from the file header.
+
+  @return Image type code found from the file header.
+  @see RegisterImageType
+-------------------------------------------------------------------------------}
+function GetImageInfo(AStream: TStream; out AWidth, AHeight: DWord;
+  out dpiX, dpiY: Double; AImageType: TsImageType = itUnknown): TsImageType;
+var
+  itr: TImageTypeRecord;  // [i]mage [t]ype [r]ecord
+begin
+  AStream.Position := 0;
+  if InRange(AImageType, 0, High(ImageTypeRegistry)) then
+  begin
+    if ImageTypeRegistry[AImageType].GetImageSize(AStream, AWidth, AHeight, dpiX, dpiY)
+      then Result := AImageType;
+  end else
+  begin
+    for Result := 0 to High(ImageTypeRegistry) do
+    begin
+      itr := ImageTypeRegistry[Result];
+      if itr.GetImageSize(AStream, AWidth, AHeight, dpiX, dpiY) then
+        exit;
+    end;
+    Result := itUnknown;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the MimeType of the specified image type
+
+  @param   AImageType    Format code of the image type as returned from the
+                         image registration procedure
+  @return  MimeType of the file format
+-------------------------------------------------------------------------------}
+function GetImageMimeType(AImageType: TsImageType): String;
+begin
+  if InRange(AImageType, 0, High(ImageTypeRegistry)) then
+    Result := ImageTypeRegistry[AImageType].MimeType
+  else
+    Result := '';
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Extracts the image file type identifier from the extension of the specified
+  file name.
+
+  @param  AFileName    Name of the file to be analyzed
+  @return Format code value as returned from the image registration procedure
+  @see    RegisterImageType, itXXXX values.
+-------------------------------------------------------------------------------}
+function GetImageTypeFromFileName(const AFilename: String): TsImageType;
+var
+  ext: String;
+  i,j: Integer;
+  itr: TImageTypeRecord;
+  regext: TStringArray;
+begin
+  ext := Lowercase(ExtractFileExt(AFilename));
+  Delete(ext, 1, 1);
+  for j := 0 to High(ImageTypeRegistry) do
+  begin
+    itr := ImageTypeRegistry[j];
+    regext := SplitStr(itr.Ext, '|');
+    for i := 0 to High(regext) do
+      if regext[i] = ext then
+      begin
+        Result := TsImageType(j);
+        exit;
+      end;
+  end;
+  Result := itUnknown;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Registers an image type for usage in fpspreadsheet
+
+  @param  AExt            Extension(s) of the file format. Separate by "|" if a
+                          file format can use several extensions.
+  @param  AMimeType       MimeType of the file format, for usage by ods
+  @param  AGetImageSize   Function which can extract the image size and
+                          pixel density. It should only read the file header.
+  @return  Identifier of the image type (consecutive number)
+-------------------------------------------------------------------------------}
+function RegisterImageType(AMimeType, AExt: String;
+  AGetImageSize: TGetImageSizeFunc): TsImageType;
+begin
+  Result := Length(ImageTypeRegistry);
+  SetLength(ImageTypeRegistry, Result + 1);
+  with ImageTypeRegistry[Result] do
+  begin
+    MimeType := AMimeType;
+    Ext := AExt;
+    GetImageSize := AGetImageSize;
+  end;
+end;
+
+
+initialization
+
+  itPNG  := RegisterImageType('image/png',  'png', @GetPNGSize);
+  itJPEG := RegisterImageType('image/jpeg', 'jpg|jpeg|jfif|jfe', @GetJPGSize);
+  itTIFF := RegisterImageType('image/tiff', 'tif|tiff', @GetTIFSize);
+  itBMP  := RegisterImageType('image/bmp', 'bmp', @GetBMPSize);
+  itGIF  := RegisterImageType('image/gif', 'gif', @GetGIFSize);
+  itSVG  := RegisterImageType('image/svg+xml', 'svg', @GetSVGSize);
+  itWMF  := RegisterImageType('application/x-msmetafile', 'wmf', @GetWMFSize);
+  itEMF  := RegisterImageType('image/x-emf', 'emf', @GetEMFSize);
+  itPCX  := RegisterImageType('image/pcx', 'pcx', @GetPCXSize);
 
 end.

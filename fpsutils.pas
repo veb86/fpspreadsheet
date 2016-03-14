@@ -32,6 +32,9 @@ type
   {@@ Set of ansi characters }
   TAnsiCharSet = set of ansichar;
 
+  {@@ Array of strings }
+  TStringArray = array of string;
+
 const
   {@@ Date formatting string for unambiguous date/time display as strings
       Can be used for text output when date/time cell support is not available }
@@ -154,6 +157,7 @@ function TintedColor(AColor: TsColor; tint: Double): TsColor;
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
 procedure FixLineEndings(var AText: String; var ARichTextParams: TsRichTextParams);
+function SplitStr(const AText: String; ADelimiter: Char): TStringArray;
 function UnquoteStr(AString: String): String;
 
 function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
@@ -1961,6 +1965,28 @@ begin
         if ARichTextParams[j].FirstIndex > i then dec(ARichTextParams[j].FirstIndex);
     end;
     inc(i);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Splits a string at the specified delimiters into individual strings and passes
+  them in an array.
+-------------------------------------------------------------------------------}
+function SplitStr(const AText: String; ADelimiter: Char): TStringArray;
+var
+  L: TStringList;
+  i: Integer;
+begin
+  L := TStringList.Create;
+  try
+    L.Delimiter := ADelimiter;
+    L.StrictDelimiter := true;
+    L.DelimitedText := AText;
+    SetLength(Result, L.Count);
+    for i:=0 to High(Result) do
+      Result[i] := L[i];
+  finally
+    L.Free;
   end;
 end;
 

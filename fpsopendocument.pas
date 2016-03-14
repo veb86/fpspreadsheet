@@ -261,7 +261,8 @@ uses
  {$IFDEF FPS_VARISBOOL}
   fpsPatches,
  {$ENDIF}
-  fpsStrings, fpsStreams, fpsClasses, fpsExprParser, fpsRegFileFormats;
+  fpsStrings, fpsStreams, fpsClasses, fpsExprParser,
+  fpsRegFileFormats, fpsImages;
 
 const
   { OpenDocument general XML constants }
@@ -283,6 +284,7 @@ const
   SCHEMAS_XMLNS          = 'http://schemas.openxmlformats.org/officeDocument/2006/extended-properties';
   SCHEMAS_XMLNS_CONFIG   = 'urn:oasis:names:tc:opendocument:xmlns:config:1.0';
   SCHEMAS_XMLNS_OOO      = 'http://openoffice.org/2004/office';
+  SCHEMAS_XMLNS_DRAW     = 'urn:oasis:names:tc:opendocument:xmlns:drawing:1.0';
   SCHEMAS_XMLNS_MANIFEST = 'urn:oasis:names:tc:opendocument:xmlns:manifest:1.0';
   SCHEMAS_XMLNS_FO       = 'urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0';
   SCHEMAS_XMLNS_STYLE    = 'urn:oasis:names:tc:opendocument:xmlns:style:1.0';
@@ -4293,6 +4295,9 @@ procedure TsSpreadOpenDocWriter.WriteMetaInfManifest;
 var
   i: Integer;
   ext: String;
+  mime: String;
+  imgtype: Integer;
+  embStream: TsEmbeddedStream;
 begin
   AppendToStream(FSMetaInfManifest,
     '<manifest:manifest xmlns:manifest="' + SCHEMAS_XMLNS_MANIFEST + '">');
@@ -4308,11 +4313,15 @@ begin
       '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />');
   for i:=0 to FWorkbook.GetEmbeddedStreamCount-1 do
   begin
-    ext := ExtractFileExt(FWorkbook.GetEmbeddedStream(i).Name);
-    Delete(ext, 1, 1);
+    embstream := FWorkbook.GetEmbeddedStream(i);
+    imgtype := GetImageTypeFromFileName(embStream.Name);
+    if imgtype = itUnknown then
+      continue;
+    mime := GetImageMimeType(imgtype);
+    ext := ExtractFileExt(embStream.Name);
     AppendToStream(FSMetaInfManifest, Format(
-      '<manifest:file-entry manifest:media-type="image/%s" manifest:full-path="Pictures/%d.%s" />',
-      [ext, i+1, ext]
+      '<manifest:file-entry manifest:media-type="%s" manifest:full-path="Pictures/%d%s" />',
+      [mime, i+1, ext]
     ));
   end;
   AppendToStream(FSMetaInfManifest,
@@ -4426,6 +4435,7 @@ begin
       '" xmlns:table="' + SCHEMAS_XMLNS_TABLE +
       '" xmlns:text="' + SCHEMAS_XMLNS_TEXT +
       '" xmlns:xlink="' + SCHEMAS_XMLNS_XLINK +
+      '" xmlns:draw="' + SCHEMAS_XMLNS_DRAW +
       '" xmlns:v="' + SCHEMAS_XMLNS_V + '">');
 
   AppendToStream(FSStyles,
@@ -6009,8 +6019,8 @@ begin
     AppendToStream(AStream, Format(
       '<draw:frame draw:z-index="%d" draw:name="Image %d" '+
         'draw:style-name="gr1" draw:text-style-name="P1" '+
-        'svg:width="%.2gmm" svg:height="%.2gmm" '+
-        'svg:x="%.2gmm" svg:y="%.2gmm">' +
+        'svg:width="%.2fmm" svg:height="%.2fmm" '+
+        'svg:x="%.2fmm" svg:y="%.2fmm">' +
         '<draw:image xlink:href="Pictures/%d%s" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">' +
           '<text:p />' +
         '</draw:image>' +

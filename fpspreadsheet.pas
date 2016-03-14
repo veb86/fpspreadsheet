@@ -3351,6 +3351,7 @@ var
   totH, totW: Double;
   r, c: Integer;
   factor: Double;
+  imgtype: Integer;
 begin
   img := GetImage(AIndex);
 
@@ -3360,7 +3361,10 @@ begin
   AColOffs1 := img.OffsetY;
 
   stream := FWorkbook.GetEmbeddedStream(img.Index);
-  Result := GetImageSize(stream, ExtractFileExt(stream.Name), AWidth, AHeight); // in inches!
+  imgtype := GetImageTypeFromFileName(stream.Name);
+  if GetImageInfo(stream, AWidth, AHeight, imgtype) = itUnknown then  // in inches
+    exit(false);
+
   AWidth := inToMM(AWidth*img.ScaleX);    // in millimeters now
   AHeight := inToMM(AHeight*img.ScaleY);
 
