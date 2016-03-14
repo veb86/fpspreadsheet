@@ -881,12 +881,13 @@ ID9=9
 SavedValues=1
 
 [Source Files]
-Count=5
+Count=6
 File0=..\..\fpsnumformat.pas
 File1=..\..\fpspreadsheet.pas
 File2=..\..\fpspreadsheetctrls.pas
 File3=..\..\fpspreadsheetgrid.pas
 File4=..\..\fpsutils.pas
+File5=..\..\fpsimages.pas
 
 [Source Include Directories]
 Count=0
