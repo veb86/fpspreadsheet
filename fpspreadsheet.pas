@@ -490,17 +490,20 @@ type
     procedure UnmergeCells(ARange: String); overload;
 
     { Embedded images }
-    function CalcImageExtent(AIndex: Integer;
+    procedure CalcImageExtent(AIndex: Integer;
       out ARow1, ACol1, ARow2, ACol2: Cardinal;
       out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
-      out x, y, AWidth, AHeight: Double): Boolean;
+      out x, y, AWidth, AHeight: Double);
     function GetImage(AIndex: Integer): TsImage;
     function GetImageCount: Integer;
     procedure RemoveAllImages;
     procedure RemoveImage(AIndex: Integer);
     function WriteImage(ARow, ACol: Cardinal; AFileName: String;
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
-      AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
+      AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
+    function WriteImage(ARow, ACol: Cardinal; AStream: TStream;
+      AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
+      AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
 
     // Notification of changed cells
     procedure ChangedCell(ARow, ACol: Cardinal);
@@ -765,8 +768,9 @@ type
       ATransposed: Boolean = false);
 
     { Embedded objects }
-    function AddEmbeddedObj(const AName: String): Integer;
-    function FindEmbeddedObj(const AName: String): Integer;
+    function AddEmbeddedObj(const AFileName: String): Integer; overload;
+    function AddEmbeddedObj(AStream: TStream): Integer; overload;
+    function FindEmbeddedObj(const AFileName: String): Integer;
     function GetEmbeddedObj(AIndex: Integer): TsEmbeddedObj;
     function GetEmbeddedObjCount: Integer;
     function HasEmbeddedSheetImages: Boolean;
@@ -3338,12 +3342,11 @@ end;
   @param  y         Absolute coordinate of top edge of image, in mm
   @param  AWidth    Width of the image, in mm
   @param  AHeight   Height of the image, in mm
-  @return FALSE if the image stream cannot be read or the format is unsupported.
 -------------------------------------------------------------------------------}
-function TsWorksheet.CalcImageExtent(AIndex: Integer;
+procedure TsWorksheet.CalcImageExtent(AIndex: Integer;
   out ARow1, ACol1, ARow2, ACol2: Cardinal;
   out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
-  out x,y, AWidth, AHeight: Double): Boolean;  // mm
+  out x,y, AWidth, AHeight: Double);  // mm
 var
   img: TsImage;
   obj: TsEmbeddedObj;
@@ -3440,6 +3443,42 @@ begin
   // No? Open and store in embedded object list.
   if idx = -1 then
     idx := Workbook.AddEmbeddedObj(AFileName);
+  // An error has occured? Error is already logged. Just exit.
+  if idx = -1 then
+    exit;
+
+  // Everything ok here...
+  New(img);
+  InitImageRecord(img^, ARow, ACol, AOffsetX, AOffsetY, AScaleX, AScaleY);
+  img^.Index := idx;
+  Result := FImages.Add(img);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds an embedded image to the worksheet. The image passed in a stream.
+
+  @param  ARow       Index of the row at which the image begins (top edge)
+  @param  ACol       Index of the column at which the image begins (left edge)
+  @param  AStream    Stream which contains the image data
+  @param  AOffsetX   The image is offset horizontally from the left edge of
+                     the anchor cell. May reach into another cell.
+                     Value is in millimeters.
+  @param  AOffsetY   The image is offset vertically from the top edge of the
+                     anchor cell. May reach into another cell.
+                     Value is in millimeters.
+  @param  AScaleX    Horizontal scaling factor of the image
+  @param  AScaleY    Vertical scaling factor of the image
+  @return Index into the internal image list.
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AStream: TStream;
+  AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
+var
+  img: PsImage;
+  idx: Integer;
+begin
+  // Copy the stream to a new item in embedded object list.
+  idx := Workbook.AddEmbeddedObj(AStream);
   // An error has occured? Error is already logged. Just exit.
   if idx = -1 then
     exit;
@@ -8360,43 +8399,59 @@ end;
 {@@ ----------------------------------------------------------------------------
   Creates a new stream with the specified name, adds it to the internal list
   and returns its index.
-  Embedded streams are used to store embedded images. AName is normally the
+  Embedded streams are used to store embedded images. AFileName is the
   filename of the image. The image will be loaded to the stream later.
 -------------------------------------------------------------------------------}
-function TsWorkbook.AddEmbeddedObj(const AName: String): Integer;
+function TsWorkbook.AddEmbeddedObj(const AFileName: String): Integer;
 var
   obj: TsEmbeddedObj = nil;
   w, h: Double;
-  it: TsImageType;
 begin
-  if not FileExists(AName) then
+  if not FileExists(AFileName) then
   begin
-    AddErrorMsg(rsFileNotFound, [AName]);
+    AddErrorMsg(rsFileNotFound, [AFileName]);
     Result := -1;
     exit;
   end;
 
-  try
-    obj := TsEmbeddedObj.Create(AName);
-    Result := FEmbeddedObjList.Add(obj);
-  except
-    AddErrorMsg(rsFileFormatNotSupported, [AName]);
+  obj := TsEmbeddedObj.Create;
+  if obj.LoadFromFile(AFileName) then
+    Result := FEmbeddedObjList.Add(obj)
+  else
+  begin
+    AddErrorMsg(rsFileFormatNotSupported, [AFileName]);
+    obj.Free;
+    Result := -1;
+  end;
+end;
+
+function TsWorkbook.AddEmbeddedObj(AStream: TStream): Integer;
+var
+  obj: TsEmbeddedObj = nil;
+  w, h: Double;
+begin
+  obj := TsEmbeddedObj.Create;
+  if obj.LoadFromStream(AStream) then
+    Result := FEmbeddedObjList.Add(obj)
+  else begin
+    AddErrorMsg(rsImageFormatNotSupported);
+    obj.Free;
     Result := -1;
   end;
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Checks whether an embedded object with the specified name already exists.
+  Checks whether an embedded object with the specified file name already exists.
   If yes, returns its index in the object list, or -1 if no.
 -------------------------------------------------------------------------------}
-function TsWorkbook.FindEmbeddedObj(const AName: String): Integer;
+function TsWorkbook.FindEmbeddedObj(const AFileName: String): Integer;
 var
   obj: TsEmbeddedObj;
 begin
   for Result:=0 to FEmbeddedObjList.Count-1 do
   begin
     obj := TsEmbeddedObj(FEmbeddedObjList[Result]);
-    if obj.Name = AName then
+    if obj.FileName = AFileName then
       exit;
   end;
   Result := -1;

@@ -3262,6 +3262,7 @@ var
   r1, c1, r2, c2: Cardinal;
   roffs1, coffs1, roffs2, coffs2: Double;
   x, y, w, h: Double;
+  descr: String;
 begin
   if AWorksheet.GetImageCount= 0 then
     exit;
@@ -3279,14 +3280,16 @@ begin
   for i:=0 to AWorksheet.GetImageCount - 1 do
   begin
     img := AWorksheet.GetImage(i);
-    if not AWorksheet.CalcImageExtent(i,
-                                      r1, c1, r2, c2,
-                                      roffs1, coffs1, roffs2, coffs2,  // mm
-                                      x, y, w, h)                      // mm
-    then begin
-      FWorkbook.AddErrorMsg('Failure reading image "%s"', [FWorkbook.GetEmbeddedObj(img.Index).Name]);
-      continue;
-    end;
+    if FWorkbook.GetEmbeddedObj(img.Index).ImageType = itUnknown then
+      Continue;
+    AWorksheet.CalcImageExtent(i,
+      r1, c1, r2, c2,
+      roffs1, coffs1, roffs2, coffs2,  // mm
+      x, y, w, h);                     // mm;
+
+    descr := ExtractFileName(FWorkbook.GetEmbeddedObj(img.index).Filename);
+    if descr = '' then descr := 'image';
+
     AppendToStream(FSDrawings[FCurSheetNum],
       '<xdr:twoCellAnchor editAs="oneCell">');
     AppendToStream(FSDrawings[FCurSheetNum], Format(
@@ -3334,7 +3337,7 @@ begin
           '</xdr:spPr>'+
         '</xdr:pic>' +
         '<xdr:clientData/>', [
-        i+2, i+1, ExtractFilename(Workbook.GetEmbeddedObj(img.Index).Name),
+        i+2, i+1, descr,
         i+1,
         mmToEMU(x), mmToEMU(y),
         mmToEMU(w), mmToEMU(h)
@@ -3565,7 +3568,8 @@ procedure TsSpreadOOXMLWriter.WriteVMLDrawings_HeaderFooterImages(
       FWorkbook.AddErrorMsg(rsIncorrectPositionOfImageInHeaderFooter, [AName]);
       exit;
     end;
-    fn := ChangeFileExt(Workbook.GetEmbeddedObj(AImage.Index).Name, '');
+    fn := ChangeFileExt(Workbook.GetEmbeddedObj(AImage.Index).FileName, '');
+    if fn = '' then fn := 'image';
     AppendToStream(AStream, Format(
       ' <v:shape id="%s" o:spid="_x0000_s%d" type="#_x0000_t75"' + LineEnding +
       //    e.g.    "CH"         _x0000_s1025
@@ -3671,12 +3675,12 @@ end;
 procedure TsSpreadOOXMLWriter.WriteVmlDrawingRels(AWorksheet: TsWorksheet);
 var
   fileindex: Integer;
-//  fn: String;
   sec: TsHeaderFooterSectionIndex;
   rId: Integer;
   img: TsHeaderFooterImage;
-  imgIdx: Integer;
-  imgName: String;
+//  imgIdx: Integer;
+//  imgName: String;
+  ext: String;
 begin
   if not AWorksheet.PageLayout.HasHeaderFooterImages then
     exit;
@@ -3704,14 +3708,15 @@ begin
     img := AWorksheet.PageLayout.HeaderImages[sec];
     if img.Index = -1 then
       continue;
-    imgName := FWorkbook.GetEmbeddedObj(img.Index).Name;
-    imgIdx := img.Index;
+//    imgName := FWorkbook.GetEmbeddedObj(img.Index).Name;
+//    imgIdx := img.Index;
+    ext := GetImageTypeExt(FWorkbook.GetEmbeddedObj(img.Index).ImageType);
 //    imgIdx := FWorkbook.FindEmbeddedObj(imgName);
     AppendToStream(FSVmlDrawingsRels[fileIndex], Format(
-      '  <Relationship Id="rId%d" Target="../media/image%d%s" '+
+      '  <Relationship Id="rId%d" Target="../media/image%d.%s" '+
          'Type="' + SCHEMAS_IMAGE + '" />' + LineEnding, [
-      rId,                                  // Id="rID1"
-      imgIdx + 1, ExtractFileExt(imgName)   // Target="../media/image1.png"
+      rId,                   // Id="rID1"
+      img.Index + 1, ext     // Target="../media/image1.png"
     ]));
    inc(rId);
   end;
@@ -3721,15 +3726,16 @@ begin
     img := AWorksheet.PageLayout.FooterImages[sec];
     if img.Index = -1 then
       continue;
-    imgName := FWorkbook.GetEmbeddedObj(img.Index).Name;
-    imgIdx := img.Index;
+//    imgName := FWorkbook.GetEmbeddedObj(img.Index).Name;
+//    imgIdx := img.Index;
 //    imgIdx := FWorkbook.FindEmbeddedObj(imgName);
+    ext := GetImageTypeExt(FWorkbook.GetEmbeddedObj(img.Index).Imagetype);
     AppendToStream(FSVmlDrawingsRels[fileIndex], Format(
-      '  <Relationship Id="rId%d" Target="../media/image%d%s" '+  //
+      '  <Relationship Id="rId%d" Target="../media/image%d.%s" '+  //
          //  e.g.         "rId1"         "..(media/image1.png"
          'Type="' + SCHEMAS_IMAGE + '" />', [
       rId,
-      imgIdx + 1, ExtractFileExt(imgName)
+      img.Index + 1, ext
     ]));
    inc(rId);
   end;

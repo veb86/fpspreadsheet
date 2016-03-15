@@ -62,6 +62,7 @@ resourcestring
   rsCircularReference = 'Circular reference found when calculating worksheet formulas';
   rsFileNotFound = 'File "%s" not found.';
   rsFileFormatNotSupported = 'File format of "%s" not supported.';
+  rsImageFormatNotSupported = 'Image format not supported.';
   rsFileAlreadyExists = 'File "%s" already exists.';
   rsWorksheetNotFound = 'Worksheet "%s" not found.';
   rsWorksheetNotFound1 = 'Worksheet not found.';

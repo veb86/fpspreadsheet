@@ -157,6 +157,7 @@ function TintedColor(AColor: TsColor; tint: Double): TsColor;
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
 procedure FixLineEndings(var AText: String; var ARichTextParams: TsRichTextParams);
+function RandomString(ALen: Integer): String;
 function SplitStr(const AText: String; ADelimiter: Char): TStringArray;
 function UnquoteStr(AString: String): String;
 
@@ -1966,6 +1967,15 @@ begin
     end;
     inc(i);
   end;
+end;
+
+function RandomString(ALen: Integer): String;
+var
+  i: Integer;
+begin
+  SetLength(Result, ALen);
+  for i:=1 to ALen do
+    Result[i] := char(Random(26) + ord('a'));
 end;
 
 {@@ ----------------------------------------------------------------------------

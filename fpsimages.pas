@@ -14,32 +14,45 @@ type
   TsImageType = integer;
 
 const
+  {@@ Identifier for unknown image type }
   itUnknown = -1;
 
 var
+  {@@ Identifier for the PNG image type (value 0) }
   itPNG: TsImageType;
+  {@@ Identifier for the JPEG image type (value 1) }
   itJPEG: TsImageType;
+  {@@ Identifier for the TIFF image type (value 2) }
   itTIFF: TsImageType;
+  {@@ Identifier for the BMP image type (value 3) }
   itBMP: TsImageType;
+  {@@ Identifier for the GIF image type (value 4) }
   itGIF: TsImageType;
+  {@@ Identifier for the SVG image type (value 5) }
   itSVG: TsImageType;
+  {@@ Identifier for the WMF image type (value 6) }
   itWMF: TsImageType;
+  {@@ Identifier for the EMF image type (value 7) }
   itEMF: TsImageType;
+  {@@ Identifier for the PCX image type (value 8) }
   itPCX: TsImageType;
 
 type
   { TsEmbeddedObj }
   TsEmbeddedObj = class
   private
+    FFileName: String;
     FStream: TMemoryStream;
-    FName: String;
     FImageType: TsImageType;  // image type, see itXXXX
     FWidth: Double;           // image width, in mm
     FHeight: Double;          // image height, in mm
+  protected
+    function CheckStream(AImageType: TsImageType): Boolean;
   public
-    constructor Create(AName: String);
     destructor Destroy; override;
-    property Name: String read FName;
+    function LoadFromFile(const AFileName: String): Boolean;
+    function LoadFromStream(AStream: TStream): Boolean;
+    property FileName: String read FFileName;
     property ImageType: TsImagetype read FImageType;
     property ImageWidth: Double read FWidth;
     property ImageHeight: Double read FHeight;
@@ -522,6 +535,9 @@ begin
       end;
     end;
   end;
+  if not done then
+    exit;
+
   sW := Extract('width', s);
   sH := Extract('height', s);
   sVB := Extract('viewBox', s);
@@ -724,15 +740,16 @@ function GetImageInfo(AStream: TStream; out AWidth, AHeight: DWord;
 var
   itr: TImageTypeRecord;  // [i]mage [t]ype [r]ecord
 begin
-  AStream.Position := 0;
   if InRange(AImageType, 0, High(ImageTypeRegistry)) then
   begin
+    AStream.Position := 0;
     if ImageTypeRegistry[AImageType].GetImageSize(AStream, AWidth, AHeight, dpiX, dpiY)
       then Result := AImageType;
   end else
   begin
     for Result := 0 to High(ImageTypeRegistry) do
     begin
+      AStream.Position := 0;
       itr := ImageTypeRegistry[Result];
       if itr.GetImageSize(AStream, AWidth, AHeight, dpiX, dpiY) then
         exit;
@@ -835,45 +852,62 @@ end;
 {                               TsEmbeddedObj                                  }
 {==============================================================================}
 
-constructor TsEmbeddedObj.Create(AName: String);
-var
-  w, h: Double;
-begin
-  inherited Create;
-  FName := AName;
-
-  FStream := TMemoryStream.Create;
-  FStream.LoadFromFile(AName);
-  FImageType := GetImageInfo(FStream, w, h, GetImageTypefromFileName(AName));
-  if FImageType <> itUnknown then
-  begin
-    FWidth := inToMM(w);
-    FHeight := inToMM(h);
-  end else
-  begin
-    FreeAndNil(FStream);
-    abort;
-  end;
-end;
-
 destructor TsEmbeddedObj.Destroy;
 begin
   FreeAndNil(FStream);
   inherited Destroy;
 end;
 
+function TsEmbeddedObj.CheckStream(AImageType: TsImageType): Boolean;
+var
+  w, h: Double;
+begin
+  FImageType := GetImageInfo(FStream, w, h, AImageType);
+  if FImageType <> itUnknown then
+  begin
+    FWidth := inToMM(w);
+    FHeight := inToMM(h);
+    Result := true;
+  end else
+    Result := false;
+end;
+
+function TsEmbeddedObj.LoadFromFile(const AFileName: String): Boolean;
+var
+  s: TStream;
+begin
+  FreeAndNil(FStream);
+  FStream := TMemoryStream.Create;
+  s := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
+  try
+    FStream.LoadFromStream(s);
+    Result := CheckStream(GetImageTypeFromFileName(AFileName));
+    if Result then FFileName := AFileName;
+  finally
+    s.Free;
+  end;
+end;
+
+function TsEmbeddedObj.LoadFromStream(AStream: TStream): Boolean;
+begin
+  FreeAndNil(FStream);
+  FStream := TMemoryStream.Create;
+  FStream.CopyFrom(AStream, AStream.Size);
+  Result := CheckStream(itUnknown);
+end;
+
 
 
 initialization
 
-  itPNG  := RegisterImageType('image/png',  'png', @GetPNGSize);
-  itJPEG := RegisterImageType('image/jpeg', 'jpg|jpeg|jfif|jfe', @GetJPGSize);
-  itTIFF := RegisterImageType('image/tiff', 'tif|tiff', @GetTIFSize);
-  itBMP  := RegisterImageType('image/bmp', 'bmp', @GetBMPSize);
-  itGIF  := RegisterImageType('image/gif', 'gif', @GetGIFSize);
-  itSVG  := RegisterImageType('image/svg+xml', 'svg', @GetSVGSize);
-  itWMF  := RegisterImageType('application/x-msmetafile', 'wmf', @GetWMFSize);
-  itEMF  := RegisterImageType('image/x-emf', 'emf', @GetEMFSize);
-  itPCX  := RegisterImageType('image/pcx', 'pcx', @GetPCXSize);
+{0}  itPNG  := RegisterImageType('image/png',  'png', @GetPNGSize);
+{1}  itJPEG := RegisterImageType('image/jpeg', 'jpg|jpeg|jfif|jfe', @GetJPGSize);
+{2}  itTIFF := RegisterImageType('image/tiff', 'tif|tiff', @GetTIFSize);
+{3}  itBMP  := RegisterImageType('image/bmp', 'bmp', @GetBMPSize);
+{4}  itGIF  := RegisterImageType('image/gif', 'gif', @GetGIFSize);
+{5}  itSVG  := RegisterImageType('image/svg+xml', 'svg', @GetSVGSize);
+{6}  itWMF  := RegisterImageType('application/x-msmetafile', 'wmf', @GetWMFSize);
+{7}  itEMF  := RegisterImageType('image/x-emf', 'emf', @GetEMFSize);
+{8}  itPCX  := RegisterImageType('image/pcx', 'pcx', @GetPCXSize);
 
 end.

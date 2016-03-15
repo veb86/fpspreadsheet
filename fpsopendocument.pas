@@ -6000,6 +6000,7 @@ procedure TsSpreadOpenDocWriter.WriteShapes(AStream: TStream;
 var
   i: Integer;
   img: TsImage;
+  imgType: TsImageType;
   r1,c1,r2,c2: Cardinal;
   roffs1,coffs1, roffs2, coffs2: Double;
   x, y, w, h: Double;
@@ -6013,14 +6014,15 @@ begin
   for i:=0 to ASheet.GetImageCount-1 do
   begin
     img := ASheet.GetImage(i);
-    if not ASheet.CalcImageExtent(i,
-                                  r1, c1, r2, c2,
-                                  roffs1, coffs1, roffs2, coffs2,  // mm
-                                  x, y, w, h)                      // mm
-    then begin
-      FWorkbook.AddErrorMsg('Failure reading image "%s"', [FWorkbook.GetEmbeddedObj(img.Index).Name]);
-      continue;
-    end;
+    imgType := FWorkbook.GetEmbeddedObj(img.Index).ImageType;
+    if imgType = itUnknown then
+      Continue;
+
+    ASheet.CalcImageExtent(i,
+      r1, c1, r2, c2,
+      roffs1, coffs1, roffs2, coffs2,  // mm
+      x, y, w, h);                     // mm
+
     AppendToStream(AStream, Format(
       '<draw:frame draw:z-index="%d" draw:name="Image %d" '+
         'draw:style-name="gr1" draw:text-style-name="P1" '+
@@ -6033,7 +6035,7 @@ begin
       i+1, i+1,
       w, h,
       x, y,
-      img.Index+1, GetImageTypeExt(Workbook.GetEmbeddedObj(img.Index).ImageType)
+      img.Index+1, GetImageTypeExt(imgType)
     ], FPointSeparatorSettings));
   end;
 
