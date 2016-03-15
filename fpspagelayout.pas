@@ -5,7 +5,7 @@ unit fpsPageLayout;
 interface
 
 uses
-  SysUtils, fpsTypes;
+  Classes, SysUtils, fpsTypes;
 
 type
   {@@ Class defining parameters for printing by the Office applications }
@@ -58,10 +58,20 @@ type
     function HasHeader: Boolean;
 
     { Images embedded in header and/or footer }
-    procedure AddHeaderImage(AHeaderIndex: Integer;
-      ASection: TsHeaderFooterSectionIndex; const AFilename: String);
+    function AddHeaderImage(AHeaderIndex: Integer; ASection: TsHeaderFooterSectionIndex;
+      const AFilename: String): Integer; overload;
+    function AddHeaderImage(AHeaderIndex: Integer; ASection: TsHeaderFooterSectionIndex;
+      AStream: TStream): Integer; overload;
+    procedure AddHeaderImage(AHeaderIndex: Integer; ASection: TsHeaderFooterSectionIndex;
+      AImageIndex: Integer); overload;
+
+    function AddFooterImage(AFooterIndex: Integer; ASection: TsHeaderFooterSectionIndex;
+      const AFilename: String): Integer; overload;
+    function AddFooterImage(AFooterIndex: integer; ASection: TsHeaderFooterSectionIndex;
+      AStream: TStream): Integer; overload;
     procedure AddFooterImage(AFooterIndex: Integer;
-      ASection: TsHeaderFooterSectionIndex; const AFilename: String);
+      ASection: TsHeaderFooterSectionIndex; AImageIndex: Integer); overload;
+
     procedure GetImageSections(out AHeaderTags, AFooterTags: String);
     function HasHeaderFooterImages: Boolean;
 
@@ -259,46 +269,159 @@ begin
     FPrintranges[i] := ASource.FPrintRanges[i];
 end;
 
-procedure TsPageLayout.AddHeaderImage(AHeaderIndex: Integer;
-  ASection: TsHeaderFooterSectionIndex; const AFilename: String);
+{@@ ----------------------------------------------------------------------------
+  Adds an image to the header.
+
+  @param   AHeaderIndex  0 = header of first page, 1 = header of odd pages,
+                         2 = 2 header of even pages
+  @param   ASection      Specifies whether the image is inserted in the left
+                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
+                         of the header.
+  @param   AFileName     Name of the file containing the image
+
+  @return  Index of the image data in the workbook's EmbeddedObjList. Useful
+           if the same image will be used in another header or footer.
+-------------------------------------------------------------------------------}
+function TsPageLayout.AddHeaderImage(AHeaderIndex: Integer;
+  ASection: TsHeaderFooterSectionIndex; const AFilename: String): Integer;
 var
   book: TsWorkbook;
-  idx: Integer;
-  s: Array[TsHeaderFooterSectionIndex] of String;
 begin
   if FWorksheet = nil then
     raise Exception.Create('[TsPageLayout.AddHeaderImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
-  idx := book.FindEmbeddedObj(AFilename);
-  if idx = -1 then
-    idx := book.AddEmbeddedObj(AFilename);
-  if idx = -1 then  // Image not found? Unsupported file format?
-    exit;
-  FHeaderImages[ASection].Index := idx;
-  SplitHeaderFooterText(FHeaders[AHeaderIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
-  s[ASection] := s[ASection] + '&G';
-  FHeaders[AHeaderIndex] := JoinHeaderFooterText(s[hfsLeft], s[hfsCenter], s[hfsRight]);
+  Result := book.FindEmbeddedObj(AFilename);
+  if Result = -1 then
+    Result := book.AddEmbeddedObj(AFilename);
+  if Result > -1 then
+    AddHeaderImage(AHeaderIndex, ASection, Result);
 end;
 
-procedure TsPageLayout.AddFooterImage(AFooterIndex: Integer;
-  ASection: TsHeaderFooterSectionIndex; const AFileName: String);
+{@@ ----------------------------------------------------------------------------
+  Adds an image to the header.
+
+  @param   AHeaderIndex  0 = header of first page, 1 = header of odd pages,
+                         2 = 2 header of even pages
+  @param   ASection      Specifies whether the image is inserted in the left
+                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
+                         of the header.
+  @param   AStream       Stream from which the image is read and copied
+
+  @return  Index of the image data in the workbook's EmbeddedObjList. Useful
+           if the same image will be used in another header or footer.
+-------------------------------------------------------------------------------}
+function TsPageLayout.AddHeaderImage(AHeaderIndex: Integer;
+  ASection: TsHeaderFooterSectionIndex; AStream: TStream): Integer;
 var
   book: TsWorkbook;
-  idx: Integer;
-  s: Array[TsHeaderFooterSectionIndex] of String;
+begin
+  if FWorksheet = nil then
+    raise Exception.Create('[TsPageLayout.AddHeaderImage] Worksheet is nil.');
+  book := TsWorksheet(FWorksheet).Workbook;
+  Result := book.AddEmbeddedObj(AStream);
+  if Result > -1 then
+    AddHeaderImage(AHeaderIndex, ASection, Result);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds an image to the header.
+
+  @param  AHeaderIndex  0 = header of first page, 1 = header of odd pages,
+                        2 = 2 header of even pages
+  @param  ASection      Specifies whether the image is inserted in the left
+                        (hfsLeft), center (hfsCenter) or right (hfsRight) part
+                        of the header.
+  @param  AImageIndex   Index of the image data into the workbooks EmbeddedObjList
+-------------------------------------------------------------------------------}
+procedure TsPageLayout.AddHeaderImage(AHeaderIndex: Integer;
+  ASection: TsHeaderFooterSectionIndex; AImageIndex: Integer);
+var
+  s: Array[TsHeaderFooterSectionIndex] of string;
+begin
+  FHeaderImages[ASection].Index := AImageIndex;
+  SplitHeaderFooterText(FHeaders[AHeaderIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
+  // Add the symbol &G only once!
+  if (pos('&G', s[ASection]) < 1) or (pos('&g', s[ASection]) < 1) then begin
+    s[ASection] := s[ASection] + '&G';
+    FHeaders[AHeaderIndex] := JoinHeaderFooterText(s[hfsLeft], s[hfsCenter], s[hfsRight]);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds an image to the footer,
+
+  @param  AFooterIndex  0 = footer of first page, 1 = footer of odd pages,
+                        2 = 2 footer of even pages
+  @param  ASection      Specifies whether the image is inserted in the left
+                        (hfsLeft), center (hfsCenter) or right (hfsRight) part
+                        of the footer.
+  @param  AFilename     Name of the file containing the image
+  @return  Index of the image data in the workbook's EmbeddedObjList. Useful
+           if the same image will be used in another header or footer.
+-------------------------------------------------------------------------------}
+function TsPageLayout.AddFooterImage(AFooterIndex: Integer;
+  ASection: TsHeaderFooterSectionIndex; const AFileName: String): Integer;
+var
+  book: TsWorkbook;
 begin
   if FWorksheet = nil then
     raise Exception.Create('[TsPageLayout.AddFooterImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
-  idx := book.FindEmbeddedObj(AFilename);
-  if idx = -1 then
-    idx := book.AddEmbeddedObj(AFilename);
-  if idx = -1 then  // Image not found? Unsupported file format?
+  Result := book.FindEmbeddedObj(AFilename);
+  if Result = -1 then
+    Result := book.AddEmbeddedObj(AFilename);
+  if Result = -1 then  // Image not found? Unsupported file format?
     exit;
-  FFooterImages[ASection].Index := idx;
+  AddFooterImage(AFooterIndex, ASection, Result);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds an image to the footer,
+
+  @param  AFooterIndex  0 = footer of first page, 1 = footer of odd pages,
+                        2 = 2 footer of even pages
+  @param  ASection      Specifies whether the image is inserted in the left
+                        (hfsLeft), center (hfsCenter) or right (hfsRight) part
+                        of the footer.
+  @param  AStream       Stream from which the image is copied
+  @return  Index of the image data in the workbook's EmbeddedObjList. Useful
+           if the same image will be used in another header or footer.
+-------------------------------------------------------------------------------}
+function TsPageLayout.AddFooterImage(AFooterIndex: Integer;
+  ASection: TsHeaderFooterSectionIndex; AStream: TStream): Integer;
+var
+  book: TsWorkbook;
+begin
+  if FWorksheet = nil then
+    raise Exception.Create('[TsPageLayout.AddFooterImage] Worksheet is nil.');
+  book := TsWorksheet(FWorksheet).Workbook;
+  Result := book.AddEmbeddedObj(AStream);
+  if Result > -1 then
+    AddFooterImage(AFooterIndex, ASection, Result);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds an image to the footer,
+
+  @param  AFooterIndex  0 = footer of first page, 1 = footer of odd pages,
+                        2 = 2 footer of even pages
+  @param  ASection      Specifies whether the image is inserted in the left
+                        (hfsLeft), center (hfsCenter) or right (hfsRight) part
+                        of the footer.
+  @param  AImageIndex   Index of the image data into the workbooks EmbeddedObjList
+-------------------------------------------------------------------------------}
+procedure TsPageLayout.AddFooterImage(AFooterIndex: Integer;
+  ASection: TsHeaderFooterSectionIndex; AImageIndex: Integer);
+var
+  s: Array[TsHeaderFooterSectionIndex] of string;
+begin
+  FFooterImages[ASection].Index := AImageIndex;
   SplitHeaderFooterText(FFooters[AFooterIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
-  s[ASection] := s[ASection] + '&G';
-  FFooters[AFooterIndex] := JoinHeaderFooterText(s[hfsLeft], s[hfsCenter], s[hfsRight]);
+  // Add the symbol &G only once!
+  if (pos('&G', s[ASection]) < 1) or (pos('&g', s[ASection]) < 1) then begin
+    s[ASection] := s[ASection] + '&G';
+    FFooters[AFooterIndex] := JoinHeaderFooterText(s[hfsLeft], s[hfsCenter], s[hfsRight]);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
