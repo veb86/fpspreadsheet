@@ -201,15 +201,6 @@ type
     function Pop: Integer;
   end;
 
-  { TsEmbeddedStream }
-  TsEmbeddedStream = class(TMemoryStream)
-  private
-    FName: String;
-  public
-    constructor Create(AName: String);
-    property Name: String read FName;
-  end;
-
 function FindFontInList(AFontList: TFPList; AFontName: String; ASize: Single;
   AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Integer;
 
@@ -1341,17 +1332,6 @@ begin
     Result := FValues[High(FValues)];
     SetLength(FValues, Length(FValues)-1);
   end;
-end;
-
-
-{==============================================================================}
-{                             TsEmbeddedStream                                 }
-{==============================================================================}
-
-constructor TsEmbeddedStream.Create(AName: String);
-begin
-  inherited Create;
-  FName := AName;
 end;
 
 

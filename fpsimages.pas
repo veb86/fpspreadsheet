@@ -27,6 +27,26 @@ var
   itEMF: TsImageType;
   itPCX: TsImageType;
 
+type
+  { TsEmbeddedObj }
+  TsEmbeddedObj = class
+  private
+    FStream: TMemoryStream;
+    FName: String;
+    FImageType: TsImageType;  // image type, see itXXXX
+    FWidth: Double;           // image width, in mm
+    FHeight: Double;          // image height, in mm
+  public
+    constructor Create(AName: String);
+    destructor Destroy; override;
+    property Name: String read FName;
+    property ImageType: TsImagetype read FImageType;
+    property ImageWidth: Double read FWidth;
+    property ImageHeight: Double read FHeight;
+    property Stream: TMemoryStream read FStream;
+  end;
+
+
 function GetImageInfo(AStream: TStream; out AWidthInches, AHeightInches: Double;
   AImagetype: TsImageType = itUnknown): TsImageType; overload;
 
@@ -34,6 +54,7 @@ function GetImageInfo(AStream: TStream; out AWidth, AHeight: DWord;
   out dpiX, dpiY: Double; AImageType: TsImageType = itUnknown): TsImageType; overload;
 
 function GetImageMimeType(AImageType: TsImageType): String;
+function GetImageTypeExt(AImageType: TsImageType): String;
 function GetImageTypeFromFileName(const AFilename: String): TsImageType;
 
 function RegisterImageType(AMimeType, AExt: String; AGetImageSize: TGetImageSizeFunc): TsImageType;
@@ -736,6 +757,26 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the file extension belonging the specified image type. If there
+  are several extensions the first one is selected. The extension is returned
+  without a leading period.
+-------------------------------------------------------------------------------}
+function GetImageTypeExt(AImageType: TsImageType): String;
+var
+  p: Integer;
+begin
+  if InRange(AImageType, 0, High(ImageTypeRegistry)) then
+  begin
+    Result := ImageTypeRegistry[AImageType].Ext;
+    p := pos('|', Result);
+    if p > 0 then
+      Result := copy(Result, 1, p-1);
+    if Result[1] = '.' then Delete(Result, 1, 1);
+  end else
+    Result := '';
+end;
+
+{@@ ----------------------------------------------------------------------------
   Extracts the image file type identifier from the extension of the specified
   file name.
 
@@ -788,6 +829,39 @@ begin
     GetImageSize := AGetImageSize;
   end;
 end;
+
+
+{==============================================================================}
+{                               TsEmbeddedObj                                  }
+{==============================================================================}
+
+constructor TsEmbeddedObj.Create(AName: String);
+var
+  w, h: Double;
+begin
+  inherited Create;
+  FName := AName;
+
+  FStream := TMemoryStream.Create;
+  FStream.LoadFromFile(AName);
+  FImageType := GetImageInfo(FStream, w, h, GetImageTypefromFileName(AName));
+  if FImageType <> itUnknown then
+  begin
+    FWidth := inToMM(w);
+    FHeight := inToMM(h);
+  end else
+  begin
+    FreeAndNil(FStream);
+    abort;
+  end;
+end;
+
+destructor TsEmbeddedObj.Destroy;
+begin
+  FreeAndNil(FStream);
+  inherited Destroy;
+end;
+
 
 
 initialization

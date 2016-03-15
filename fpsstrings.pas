@@ -61,6 +61,7 @@ resourcestring
   rsIncorrectParamCount = 'Funtion %s requires at least %d and at most %d parameters.';
   rsCircularReference = 'Circular reference found when calculating worksheet formulas';
   rsFileNotFound = 'File "%s" not found.';
+  rsFileFormatNotSupported = 'File format of "%s" not supported.';
   rsFileAlreadyExists = 'File "%s" already exists.';
   rsWorksheetNotFound = 'Worksheet "%s" not found.';
   rsWorksheetNotFound1 = 'Worksheet not found.';
@@ -82,6 +83,9 @@ resourcestring
   rsCodePageNotSupported = 'Code page "%s" is not supported. Using "cp1252" (Latin 1) instead.';
   rsFormulaNotSupported = 'The formula in cell %s is not supported by this file format: %s';
 
+  rsCannotSortMerged = 'The cell range cannot be sorted because it contains merged cells.';
+
+  // Hyperlinks
   rsNoValidHyperlinkInternal = 'The hyperlink "%s" is not a valid cell address.';
   rsNoValidHyperlinkURI = 'The hyperlink "%s" is not a valid URI.';
   rsLocalFileHyperlinkAbs = 'The hyperlink "%s" points to a local file. ' +
@@ -89,8 +93,6 @@ resourcestring
   rsEmptyHyperlink = 'The hyperlink is not specified.';
   rsODSHyperlinksOfTextCellsOnly = 'Cell %s: OpenDocument supports hyperlinks for text cells only.';
   rsStdHyperlinkTooltip = 'Hold the left mouse button down for a short time to activate the hyperlink.';
-
-  rsCannotSortMerged = 'The cell range cannot be sorted because it contains merged cells.';
 
   // PageLayout
   rsDifferentSheetPrintRange = 'Print range "%s" requires a different worksheet.';

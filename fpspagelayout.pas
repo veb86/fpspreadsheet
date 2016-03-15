@@ -269,12 +269,11 @@ begin
   if FWorksheet = nil then
     raise Exception.Create('[TsPageLayout.AddHeaderImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
-  idx := book.FindEmbeddedStream(AFilename);
+  idx := book.FindEmbeddedObj(AFilename);
   if idx = -1 then
-  begin
-    idx := book.AddEmbeddedStream(AFilename);
-    book.GetEmbeddedStream(idx).LoadFromFile(AFileName);
-  end;
+    idx := book.AddEmbeddedObj(AFilename);
+  if idx = -1 then  // Image not found? Unsupported file format?
+    exit;
   FHeaderImages[ASection].Index := idx;
   SplitHeaderFooterText(FHeaders[AHeaderIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
   s[ASection] := s[ASection] + '&G';
@@ -291,12 +290,11 @@ begin
   if FWorksheet = nil then
     raise Exception.Create('[TsPageLayout.AddFooterImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
-  idx := book.FindEmbeddedStream(AFilename);
+  idx := book.FindEmbeddedObj(AFilename);
   if idx = -1 then
-  begin
-    idx := book.AddEmbeddedStream(AFilename);
-    book.GetEmbeddedStream(idx).LoadFromFile(AFileName);
-  end;
+    idx := book.AddEmbeddedObj(AFilename);
+  if idx = -1 then  // Image not found? Unsupported file format?
+    exit;
   FFooterImages[ASection].Index := idx;
   SplitHeaderFooterText(FFooters[AFooterIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
   s[ASection] := s[ASection] + '&G';

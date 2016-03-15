@@ -34,7 +34,7 @@ uses
   clocale,
  {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding,
-  fpsTypes, fpsClasses, fpsNumFormat, fpsPageLayout;
+  fpsTypes, fpsClasses, fpsNumFormat, fpsPageLayout, fpsImages;
 
 type
   { Forward declarations }
@@ -654,7 +654,7 @@ type
     FFontList: TFPList;
     FNumFormatList: TFPList;
     FCellFormatList: TsCellFormatList;
-    FEmbeddedStreamList: TFPList;
+    FEmbeddedObjList: TFPList;
 
     { Internal methods }
     class function GetFormatFromFileHeader(const AFileName: TFileName;
@@ -764,13 +764,13 @@ type
       AOperation: TsCopyOperation; AParams: TsStreamParams = [];
       ATransposed: Boolean = false);
 
-    { Embedded images }
-    function AddEmbeddedStream(const AName: String): Integer;
-    function FindEmbeddedStream(const AName: String): Integer;
-    function GetEmbeddedStream(AIndex: Integer): TsEmbeddedStream;
-    function GetEmbeddedStreamCount: Integer;
+    { Embedded objects }
+    function AddEmbeddedObj(const AName: String): Integer;
+    function FindEmbeddedObj(const AName: String): Integer;
+    function GetEmbeddedObj(AIndex: Integer): TsEmbeddedObj;
+    function GetEmbeddedObjCount: Integer;
     function HasEmbeddedSheetImages: Boolean;
-    procedure RemoveAllEmbeddedStreams;
+    procedure RemoveAllEmbeddedObj;
 
     { Utilities }
     procedure DisableNotifications;
@@ -829,7 +829,7 @@ uses
   Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
   fpsStrings, uvirtuallayer_ole,
   fpsUtils, fpsHTMLUtils, fpsRegFileFormats, fpsReaderWriter,
-  fpsCurrency, fpsExprParser, fpsNumFormatParser, fpsImages;
+  fpsCurrency, fpsExprParser, fpsNumFormatParser;
 
 (*
 const
@@ -3346,12 +3346,11 @@ function TsWorksheet.CalcImageExtent(AIndex: Integer;
   out x,y, AWidth, AHeight: Double): Boolean;  // mm
 var
   img: TsImage;
-  stream: TsEmbeddedStream;
+  obj: TsEmbeddedObj;
   colW, rowH: Double;
   totH, totW: Double;
   r, c: Integer;
   factor: Double;
-  imgtype: Integer;
 begin
   img := GetImage(AIndex);
 
@@ -3360,13 +3359,9 @@ begin
   ARowOffs1 := img.OffsetX;    // millimeters
   AColOffs1 := img.OffsetY;
 
-  stream := FWorkbook.GetEmbeddedStream(img.Index);
-  imgtype := GetImageTypeFromFileName(stream.Name);
-  if GetImageInfo(stream, AWidth, AHeight, imgtype) = itUnknown then  // in inches
-    exit(false);
-
-  AWidth := inToMM(AWidth*img.ScaleX);    // in millimeters now
-  AHeight := inToMM(AHeight*img.ScaleY);
+  obj := FWorkbook.GetEmbeddedObj(img.Index);
+  AWidth := obj.ImageWidth * img.ScaleX;
+  AHeight := obj.ImageHeight * img.ScaleY;
 
   // Find x coordinate of left image edge, in inches.
   factor := FWorkbook.GetDefaultFont.Size/2;  // Width of "0" character in pts
@@ -3438,14 +3433,21 @@ function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AFileName: String;
   AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 var
   img: PsImage;
+  idx: Integer;
 begin
+  // Does the image already exist?
+  idx := Workbook.FindEmbeddedObj(AFileName);
+  // No? Open and store in embedded object list.
+  if idx = -1 then
+    idx := Workbook.AddEmbeddedObj(AFileName);
+  // An error has occured? Error is already logged. Just exit.
+  if idx = -1 then
+    exit;
+
+  // Everything ok here...
   New(img);
   InitImageRecord(img^, ARow, ACol, AOffsetX, AOffsetY, AScaleX, AScaleY);
-  img^.Index := Workbook.FindEmbeddedStream(AFileName);
-  if img^.Index = -1 then begin
-    img^.Index := Workbook.AddEmbeddedStream(AFileName);
-    Workbook.GetEmbeddedStream(img^.Index).LoadFromFile(AFileName);
-  end;
+  img^.Index := idx;
   Result := FImages.Add(img);
 end;
 
@@ -3463,6 +3465,11 @@ begin
   FImages.Delete(AIndex);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Removes all image from the internal image list.
+  The image streams (stored by the workbook), however, are retained because
+  images may also be used as header/footer images.
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.RemoveAllImages;
 var
   i: Integer;
@@ -6836,7 +6843,7 @@ begin
 
   FNumFormatList := TsNumFormatList.Create(FormatSettings, true);
   FCellFormatList := TsCellFormatList.Create(false);
-  FEmbeddedStreamList := TFPList.Create;
+  FEmbeddedObjList := TFPList.Create;
 
   // Add default cell format
   InitFormatRecord(fmt);
@@ -6857,8 +6864,8 @@ begin
   RemoveAllFonts;
   FFontList.Free;
 
-  RemoveAllEmbeddedStreams;
-  FEmbeddedStreamList.Free;
+  RemoveAllEmbeddedObj;
+  FEmbeddedObjList.Free;
 
   FLog.Free;
   FreeAndNil(FSearchEngine);
@@ -8356,44 +8363,61 @@ end;
   Embedded streams are used to store embedded images. AName is normally the
   filename of the image. The image will be loaded to the stream later.
 -------------------------------------------------------------------------------}
-function TsWorkbook.AddEmbeddedStream(const AName: String): Integer;
+function TsWorkbook.AddEmbeddedObj(const AName: String): Integer;
+var
+  obj: TsEmbeddedObj = nil;
+  w, h: Double;
+  it: TsImageType;
 begin
-  Result := FEmbeddedStreamList.Add(TsEmbeddedStream.Create(AName));
+  if not FileExists(AName) then
+  begin
+    AddErrorMsg(rsFileNotFound, [AName]);
+    Result := -1;
+    exit;
+  end;
+
+  try
+    obj := TsEmbeddedObj.Create(AName);
+    Result := FEmbeddedObjList.Add(obj);
+  except
+    AddErrorMsg(rsFileFormatNotSupported, [AName]);
+    Result := -1;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Checks whether an embedded stream with the specified name already exists.
-  If yes, returns its index in the stream list, or -1 if no.
+  Checks whether an embedded object with the specified name already exists.
+  If yes, returns its index in the object list, or -1 if no.
 -------------------------------------------------------------------------------}
-function TsWorkbook.FindEmbeddedStream(const AName: String): Integer;
+function TsWorkbook.FindEmbeddedObj(const AName: String): Integer;
 var
-  stream: TsEmbeddedStream;
+  obj: TsEmbeddedObj;
 begin
-  for Result:=0 to FEmbeddedStreamList.Count-1 do
+  for Result:=0 to FEmbeddedObjList.Count-1 do
   begin
-    stream := TsEmbeddedStream(FEmbeddedStreamList[Result]);
-    if stream.Name = AName then
+    obj := TsEmbeddedObj(FEmbeddedObjList[Result]);
+    if obj.Name = AName then
       exit;
   end;
   Result := -1;
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns the embedded stream stored in the embedded stream list at the
+  Returns the embedded object stored in the embedded object list at the
   specified index.
 -------------------------------------------------------------------------------}
-function TsWorkbook.GetEmbeddedStream(AIndex: Integer): TsEmbeddedStream;
+function TsWorkbook.GetEmbeddedObj(AIndex: Integer): TsEmbeddedObj;
 begin
-  Result := TsEmbeddedStream(FEmbeddedStreamList[AIndex]);
+  Result := TsEmbeddedObj(FEmbeddedObjList[AIndex]);
 end;
 
 
 {@@ ----------------------------------------------------------------------------
-  Returns the count of embedded streams
+  Returns the count of embedded objects
 -------------------------------------------------------------------------------}
-function TsWorkbook.GetEmbeddedStreamCount: Integer;
+function TsWorkbook.GetEmbeddedObjCount: Integer;
 begin
-  Result := FEmbeddedStreamList.Count;
+  Result := FEmbeddedObjList.Count;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8415,15 +8439,15 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Removes all embedded streams
+  Removes all embedded objects
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.RemoveAllEmbeddedStreams;
+procedure TsWorkbook.RemoveAllEmbeddedObj;
 var
   i: Integer;
 begin
-  for i:= 0 to FEmbeddedStreamList.Count-1 do
-    TsEmbeddedStream(FEmbeddedStreamList[i]).Free;
-  FEmbeddedStreamList.Clear;
+  for i:= 0 to FEmbeddedObjList.Count-1 do
+    TsEmbeddedObj(FEmbeddedObjList[i]).Free;
+  FEmbeddedObjList.Clear;
 end;
 
 {@@ ----------------------------------------------------------------------------

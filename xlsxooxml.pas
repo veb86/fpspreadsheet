@@ -227,7 +227,7 @@ implementation
 uses
   variants, strutils, math, lazutf8, LazFileUtils, uriparser,
   {%H-}fpsPatches,
-  fpsStrings, fpsStreams, fpsNumFormatParser, fpsClasses,
+  fpsStrings, fpsStreams, fpsNumFormatParser, fpsClasses, fpsImages,
   fpsRegFileFormats;
 
 const
@@ -3284,7 +3284,7 @@ begin
                                       roffs1, coffs1, roffs2, coffs2,  // mm
                                       x, y, w, h)                      // mm
     then begin
-      FWorkbook.AddErrorMsg('Failure reading image "%s"', [FWorkbook.GetEmbeddedStream(img.Index).Name]);
+      FWorkbook.AddErrorMsg('Failure reading image "%s"', [FWorkbook.GetEmbeddedObj(img.Index).Name]);
       continue;
     end;
     AppendToStream(FSDrawings[FCurSheetNum],
@@ -3334,7 +3334,7 @@ begin
           '</xdr:spPr>'+
         '</xdr:pic>' +
         '<xdr:clientData/>', [
-        i+2, i+1, ExtractFilename(Workbook.GetEmbeddedStream(img.Index).Name),
+        i+2, i+1, ExtractFilename(Workbook.GetEmbeddedObj(img.Index).Name),
         i+1,
         mmToEMU(x), mmToEMU(y),
         mmToEMU(w), mmToEMU(h)
@@ -3370,9 +3370,9 @@ begin
   for i:=0 to AWorksheet.GetImageCount - 1 do
   begin
     img := AWorksheet.GetImage(i);
-    ext := ExtractFileExt(FWorkbook.GetEmbeddedStream(img.Index).Name);
+    ext := GetImageTypeExt(FWorkbook.GetEmbeddedObj(img.Index).Imagetype);
     AppendToStream(FSDrawingsRels[FCurSheetNum], Format(
-    '  <Relationship Id="rId%d" Type="%s" Target="../media/image%d%s"/>' + LineEnding, [
+    '  <Relationship Id="rId%d" Type="%s" Target="../media/image%d.%s"/>' + LineEnding, [
        i+1, SCHEMAS_IMAGE, img.Index+1, ext
     ]));
   end;
@@ -3565,8 +3565,7 @@ procedure TsSpreadOOXMLWriter.WriteVMLDrawings_HeaderFooterImages(
       FWorkbook.AddErrorMsg(rsIncorrectPositionOfImageInHeaderFooter, [AName]);
       exit;
     end;
-    fn := Workbook.GetEmbeddedStream(AImage.Index).Name;
-    fn := ChangeFileExt(ExtractFileName(fn), '');
+    fn := ChangeFileExt(Workbook.GetEmbeddedObj(AImage.Index).Name, '');
     AppendToStream(AStream, Format(
       ' <v:shape id="%s" o:spid="_x0000_s%d" type="#_x0000_t75"' + LineEnding +
       //    e.g.    "CH"         _x0000_s1025
@@ -3705,8 +3704,9 @@ begin
     img := AWorksheet.PageLayout.HeaderImages[sec];
     if img.Index = -1 then
       continue;
-    imgName := FWorkbook.GetEmbeddedStream(img.Index).Name;
-    imgIdx := FWorkbook.FindEmbeddedStream(imgName);
+    imgName := FWorkbook.GetEmbeddedObj(img.Index).Name;
+    imgIdx := img.Index;
+//    imgIdx := FWorkbook.FindEmbeddedObj(imgName);
     AppendToStream(FSVmlDrawingsRels[fileIndex], Format(
       '  <Relationship Id="rId%d" Target="../media/image%d%s" '+
          'Type="' + SCHEMAS_IMAGE + '" />' + LineEnding, [
@@ -3721,8 +3721,9 @@ begin
     img := AWorksheet.PageLayout.FooterImages[sec];
     if img.Index = -1 then
       continue;
-    imgName := FWorkbook.GetEmbeddedStream(img.Index).Name;
-    imgIdx := FWorkbook.FindEmbeddedStream(imgName);
+    imgName := FWorkbook.GetEmbeddedObj(img.Index).Name;
+    imgIdx := img.Index;
+//    imgIdx := FWorkbook.FindEmbeddedObj(imgName);
     AppendToStream(FSVmlDrawingsRels[fileIndex], Format(
       '  <Relationship Id="rId%d" Target="../media/image%d%s" '+  //
          //  e.g.         "rId1"         "..(media/image1.png"
@@ -3891,15 +3892,19 @@ end;
 procedure TsSpreadOOXMLWriter.WriteMedia(AZip: TZipper);
 var
   i: Integer;
-  embStream: TsEmbeddedStream;
+  stream: TMemoryStream;
+  embObj: TsEmbeddedObj;
   embName: String;
+  ext: String;
 begin
-  for i:=0 to FWorkbook.GetEmbeddedStreamCount-1 do
+  for i:=0 to FWorkbook.GetEmbeddedObjCount-1 do
   begin
-    embStream := FWorkbook.GetEmbeddedStream(i);
-    embStream.Position := 0;
-    embName := Format('image%d', [i+1]) + ExtractFileExt(embStream.Name);
-    AZip.Entries.AddFileEntry(embStream, OOXML_PATH_XL_MEDIA + embname);
+    embObj := FWorkbook.GetEmbeddedObj(i);
+    stream := embObj.Stream;
+    stream.Position := 0;
+    ext := GetImageTypeExt(embObj.ImageType);
+    embName := Format('image%d.%s', [i+1, ext]);
+    AZip.Entries.AddFileEntry(stream, OOXML_PATH_XL_MEDIA + embname);
   end;
 end;
 
@@ -3979,14 +3984,13 @@ begin
   AppendToStream(FSContentTypes, Format(
       '<Default Extension="vml" ContentType="%s" />' + LineEnding, [MIME_VMLDRAWING]));
 
-  if Workbook.GetEmbeddedStreamCount > 0 then
+  if Workbook.GetEmbeddedObjCount > 0 then
   begin
     imgExt := TStringList.Create;
     try
-      for i:=0 to Workbook.GetEmbeddedStreamCount-1 do
+      for i:=0 to Workbook.GetEmbeddedObjCount-1 do
       begin
-        ext := ExtractFileExt(Workbook.GetEmbeddedStream(i).Name);
-        if ext[1] = '.' then Delete(ext, 1, 1);
+        ext := GetImageTypeExt(Workbook.GetEmbeddedObj(i).ImageType);
         j := imgExt.IndexOf(ext);
         if j = -1 then
           imgExt.Add(ext);

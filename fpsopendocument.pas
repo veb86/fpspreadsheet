@@ -3966,6 +3966,7 @@ procedure TsSpreadOpenDocWriter.GetHeaderFooterImageName(
 var
   sct: TsHeaderFooterSectionIndex;
   img: TsHeaderFooterImage;
+  ext: String;
 begin
   AHeader := '';
   AFooter := '';
@@ -3976,14 +3977,16 @@ begin
       if APageLayout.HeaderImages[sct].Index > -1 then
       begin
         img := APageLayout.HeaderImages[sct];
-        AHeader := IntToStr(img.Index+1) + ExtractFileExt(FWorkbook.GetEmbeddedStream(img.Index).Name);
+        ext := GetImageTypeExt(FWorkbook.GetEmbeddedObj(img.Index).ImageType);
+        AHeader := Format('%d.%s', [img.Index+1, ext]);
         break;
       end;
     for sct in TsHeaderFooterSectionIndex do
       if APageLayout.FooterImages[sct].Index > -1 then
       begin
         img := APageLayout.FooterImages[sct];
-        AFooter := IntToStr(img.Index+1) + ExtractFileExt(FWorkbook.GetEmbeddedStream(img.Index).Name);
+        ext := GetImageTypeExt(FWorkbook.GetEmbeddedObj(img.Index).Imagetype);
+        AFooter := Format('%d.%s', [img.Index+1, ext]);
         break;
       end;
   end;
@@ -4297,7 +4300,7 @@ var
   ext: String;
   mime: String;
   imgtype: Integer;
-  embStream: TsEmbeddedStream;
+  embObj: TsEmbeddedObj;
 begin
   AppendToStream(FSMetaInfManifest,
     '<manifest:manifest xmlns:manifest="' + SCHEMAS_XMLNS_MANIFEST + '">');
@@ -4311,16 +4314,16 @@ begin
       '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml" />');
   AppendToStream(FSMetaInfManifest,
       '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />');
-  for i:=0 to FWorkbook.GetEmbeddedStreamCount-1 do
+  for i:=0 to FWorkbook.GetEmbeddedObjCount-1 do
   begin
-    embstream := FWorkbook.GetEmbeddedStream(i);
-    imgtype := GetImageTypeFromFileName(embStream.Name);
+    embObj := FWorkbook.GetEmbeddedObj(i);
+    imgtype := embObj.ImageType;
     if imgtype = itUnknown then
       continue;
     mime := GetImageMimeType(imgtype);
-    ext := ExtractFileExt(embStream.Name);
+    ext := GetImageTypeExt(imgType);
     AppendToStream(FSMetaInfManifest, Format(
-      '<manifest:file-entry manifest:media-type="%s" manifest:full-path="Pictures/%d%s" />',
+      '<manifest:file-entry manifest:media-type="%s" manifest:full-path="Pictures/%d.%s" />',
       [mime, i+1, ext]
     ));
   end;
@@ -4357,17 +4360,19 @@ end;
 procedure TsSpreadOpenDocWriter.ZipPictures(AZip: TZipper);
 var
   i: Integer;
-  embStream: TsEmbeddedStream;
+  embObj: TsEmbeddedObj;
   embName: String;
+  ext: String;
 begin
-  for i:=0 to FWorkbook.GetEmbeddedStreamCount-1 do
+  for i:=0 to FWorkbook.GetEmbeddedObjCount-1 do
   begin
-    embStream := FWorkbook.GetEmbeddedStream(i);
+    embObj := FWorkbook.GetEmbeddedObj(i);
     // The original ods files have a very long, ranomd, unique (?) filename.
-    // Test show that a simple, unique, increasing number works as well.
-    embName := IntToStr(i+1) + ExtractFileExt(embStream.Name);
-    embStream.Position := 0;
-    AZip.Entries.AddFileEntry(embStream, 'Pictures/' + embname);
+    // Tests show that a simple, unique, increasing number works as well.
+    ext := GetImageTypeExt(embObj.ImageType);
+    embName := Format('%d.%s', [i+1, ext]);
+    embObj.Stream.Position := 0;
+    AZip.Entries.AddFileEntry(embObj.Stream, 'Pictures/' + embname);
   end;
 end;
 
@@ -5997,7 +6002,7 @@ var
   img: TsImage;
   r1,c1,r2,c2: Cardinal;
   roffs1,coffs1, roffs2, coffs2: Double;
-  x,y,w,h: Double;
+  x, y, w, h: Double;
 begin
   if ASheet.GetImageCount = 0 then
     exit;
@@ -6013,7 +6018,7 @@ begin
                                   roffs1, coffs1, roffs2, coffs2,  // mm
                                   x, y, w, h)                      // mm
     then begin
-      FWorkbook.AddErrorMsg('Failure reading image "%s"', [FWorkbook.GetEmbeddedStream(img.Index).Name]);
+      FWorkbook.AddErrorMsg('Failure reading image "%s"', [FWorkbook.GetEmbeddedObj(img.Index).Name]);
       continue;
     end;
     AppendToStream(AStream, Format(
@@ -6021,14 +6026,14 @@ begin
         'draw:style-name="gr1" draw:text-style-name="P1" '+
         'svg:width="%.2fmm" svg:height="%.2fmm" '+
         'svg:x="%.2fmm" svg:y="%.2fmm">' +
-        '<draw:image xlink:href="Pictures/%d%s" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">' +
+        '<draw:image xlink:href="Pictures/%d.%s" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">' +
           '<text:p />' +
         '</draw:image>' +
       '</draw:frame>', [
       i+1, i+1,
       w, h,
       x, y,
-      img.Index+1, ExtractFileExt(Workbook.GetEmbeddedStream(img.Index).Name)
+      img.Index+1, GetImageTypeExt(Workbook.GetEmbeddedObj(img.Index).ImageType)
     ], FPointSeparatorSettings));
   end;
 

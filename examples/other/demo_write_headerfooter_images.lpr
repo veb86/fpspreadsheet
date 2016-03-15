@@ -39,6 +39,7 @@ begin
     MyDir := ExtractFilePath(ParamStr(0));
     MyWorkbook.WriteToFile(MyDir + 'hfimg.xlsx', sfOOXML, true);
     MyWorkbook.WriteToFile(MyDir + 'hfimg.ods', sfOpenDocument, true);
+
 //  MyWorkbook.WriteToFile(MyDir + 'hfimg.xls', sfExcel8, true);
 //  MyWorkbook.WriteToFile(MyDir + 'hfimg5.xls', sfExcel5, true);
 //  MyWorkbook.WriteToFile(MyDir + 'hfimg2.xls', sfExcel2, true);
