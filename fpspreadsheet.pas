@@ -422,6 +422,7 @@ type
 
     { Data manipulation methods - For Rows and Cols }
     function  CalcAutoRowHeight(ARow: Cardinal): Single;
+    function  CalcRowHeight(ARow: Cardinal): Single;
     function  FindRow(ARow: Cardinal): PRow;
     function  FindCol(ACol: Cardinal): PCol;
     function  GetCellCountInRow(ARow: Cardinal): Cardinal;
@@ -3356,7 +3357,7 @@ begin
   ARow := 0;
   sum := 0;
   repeat
-    rowH := ptsToMM(CalcAutoRowHeight(ARow) * factor);  // row height in mm
+    rowH := ptsToMM(CalcRowHeight(ARow) * factor);  // row height in mm
     sum := sum + rowH;
     inc(ARow);
   until sum > y;
@@ -3437,7 +3438,7 @@ begin
   y := ARowOffs1;
   for r := 0 to ARow1 - 1 do
   begin
-    rowH := ptsToMM(CalcAutoRowHeight(r) * factor);  // row height in mm
+    rowH := ptsToMM(CalcRowHeight(r) * factor);  // row height in mm
     y := y + rowH;
   end;
 
@@ -3446,7 +3447,7 @@ begin
   ARow2 := ARow1;
   while (totH < AHeight) do
   begin
-    rowH := ptsToMM(CalcAutoRowHeight(ARow2) * factor);
+    rowH := ptsToMM(CalcRowHeight(ARow2) * factor);
     totH := totH + rowH;
     if totH >= AHeight then
     begin
@@ -6170,8 +6171,18 @@ begin
   h0 := Workbook.GetDefaultFontSize;
   for cell in Cells.GetRowEnumerator(ARow) do
     Result := Max(Result, ReadCellFont(cell).Size / h0);
+    // FixMe: This is not correct if text is rotated or wrapped
+            {
   if Result = 0 then
     Result := DefaultRowHeight;
+    }
+end;
+
+function TsWorksheet.CalcRowHeight(ARow: Cardinal): Single;
+begin
+  Result := CalcAutoRowHeight(ARow);
+  if Result = 0 then
+    Result := GetRowHeight(ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6353,7 +6364,6 @@ begin
     if row <> nil then
       Result := row^.Height
     else
-      //Result := CalcAutoRowHeight(ARow);
       Result := FDefaultRowHeight;
   end;
 end;
