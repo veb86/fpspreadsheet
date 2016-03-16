@@ -427,7 +427,8 @@ type
   TsInspectorMode = (imWorkbook, imWorksheet, imCellValue, imCellProperties);
 
   {@@ Inspector expanded nodes }
-  TsInspectorExpandedNode = (ienFormatSettings, ienPageLayout);
+  TsInspectorExpandedNode = (ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
+    ienEmbeddedObj, ienImages);
   TsInspectorExpandedNodes = set of TsInspectorExpandedNode;
 
   {@@ TsSpreadsheetInspector displays all properties of a workbook, worksheet,
@@ -472,7 +473,8 @@ type
     property DisplayOptions default [doColumnTitles, doAutoColResize];
     {@@ Displays subproperties }
     property ExpandedNodes: TsInspectorExpandedNodes
-      read FExpanded write SetExpanded default [ienFormatSettings, ienPageLayout];
+      read FExpanded write SetExpanded
+      default [ienFormatSettings, ienPageLayout, ienFonts, ienFormats, ienEmbeddedObj, ienImages];
     {@@ inherited from TValueListEditor. Turns of the fixed column by default}
     property FixedCols default 0;
     {@@ inherited from TStringGrid, but not published in TValueListEditor. }
@@ -492,8 +494,8 @@ implementation
 uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
   Dialogs, Forms, Clipbrd,
-  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat, fpsHTMLUtils,
-  fpsCSV;
+  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat, fpsImages,
+  fpsHTMLUtils, fpsCSV;
 
 var
   cfBiff8Format: Integer = 0;
@@ -2717,7 +2719,8 @@ begin
   inherited Create(AOwner);
   DisplayOptions := DisplayOptions - [doKeyColFixed];
   FixedCols := 0;
-  FExpanded := [ienFormatSettings, ienPageLayout];
+  FExpanded := [ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
+    ienEmbeddedObj, ienImages];
   with (TitleCaptions as TStringList) do begin
     OnChange := nil;        // This fixes an issue with Laz 1.0
     Clear;
@@ -2758,6 +2761,27 @@ begin
     if (ienPageLayout in expNodes)
       then Exclude(expNodes, ienPageLayout)
       else Include(expNodes, ienPageLayout);
+  end else
+  if (pos('Images', s) > 0) then
+  begin
+    if (ienEmbeddedObj in expNodes)
+      then Exclude(expNodes, ienEmbeddedObj)
+      else Include(expNodes, ienEmbeddedObj);
+    if (ienImages in expNodes)
+      then Exclude(expNodes, ienImages)
+      else Include(expNodes, ienImages);
+  end else
+  if (pos('Fonts', s) > 0) then
+  begin
+    if (ienFonts in expNodes)
+      then Exclude(expNodes, ienFonts)
+      else Include(expNodes, ienFonts);
+  end else
+  if (pos('Cell formats', s) > 0) then
+  begin
+    if (ienFormats in expNodes)
+      then Exclude(expNodes, ienFormats)
+      else Include(expNodes, ienFormats);
   end else
     exit;
   SetExpanded(expNodes);
@@ -3124,6 +3148,7 @@ var
   bo: TsWorkbookOption;
   s: String;
   i: Integer;
+  embobj: TsEmbeddedObj;
 begin
   if AWorkbook = nil then
   begin
@@ -3132,6 +3157,7 @@ begin
     AStrings.Add('Options=');
     AStrings.Add('ActiveWorksheet=');
     AStrings.Add('FormatSettings=');
+    AStrings.Add('Images=');
   end else
   begin
     AStrings.Add(Format('FileName=%s', [AWorkbook.FileName]));
@@ -3189,11 +3215,31 @@ begin
     end else
       AStrings.Add('(+) FormatSettings=(dblclick for more...)');
 
-    for i:=0 to AWorkbook.GetFontCount-1 do
-      AStrings.Add(Format('Font%d=%s', [i, AWorkbook.GetFontAsString(i)]));
+    if (ienEmbeddedObj in FExpanded) then begin
+      AStrings.Add('(-) Images=');
+      for i:=0 to AWorkbook.GetEmbeddedObjCount-1 do
+      begin
+        embObj := AWorkbook.GetEmbeddedObj(i);
+        AStrings.Add('  Filename='+embobj.FileName);
+        AStrings.Add('  ImageWidth=%.2f mm', [embObj.ImageWidth]);
+        AStrings.Add('  ImageHeight=%.2f mm', [embObj.ImageHeight]);
+      end;
+    end else
+      AStrings.Add('(+) Images=(dblclick for more...)');
 
-    for i:=0 to AWorkbook.GetNumCellFormats-1 do
-      AStrings.Add(Format('CellFormat%d=%s', [i, AWorkbook.GetCellFormatAsString(i)]));
+    if (ienFonts in FExpanded) then begin
+      AStrings.Add('(-) Fonts=');
+      for i:=0 to AWorkbook.GetFontCount-1 do
+        AStrings.Add(Format('  Font%d=%s', [i, AWorkbook.GetFontAsString(i)]));
+    end else
+      AStrings.Add('(+) Fonts=(dblclick for more...)');
+
+    if (ienFormats in FExpanded) then begin
+      AStrings.Add('(-) Cell formats=');
+      for i:=0 to AWorkbook.GetNumCellFormats-1 do
+        AStrings.Add(Format('  CellFormat%d=%s', [i, AWorkbook.GetCellFormatAsString(i)]));
+    end else
+      AStrings.Add('(+) Cell formats=(dblclick for more...)');
   end;
 end;
 
@@ -3208,8 +3254,11 @@ end;
 procedure TsSpreadsheetInspector.UpdateWorksheet(ASheet: TsWorksheet;
   AStrings: TStrings);
 var
+  i: Integer;
   s: String;
   po: TsPrintOption;
+  img: TsImage;
+  embObj: TsEmbeddedObj;
 begin
   if ASheet = nil then
   begin
@@ -3233,9 +3282,10 @@ begin
     AStrings.Add(Format('Comments=%d items', [ASheet.Comments.Count]));
     AStrings.Add(Format('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]));
     AStrings.Add(Format('MergedCells=%d items', [ASheet.MergedCells.Count]));
+
     if ienPageLayout in FExpanded then
     begin
-      AStrings.Add('(+) Page layout=');
+      AStrings.Add('(-) Page layout=');
       AStrings.Add(Format('  Orientation=%s', [GetEnumName(TypeInfo(TsPageOrientation), ord(ASheet.PageLayout.Orientation))]));
       AStrings.Add(Format('  Page width=%.1f mm', [ASheet.PageLayout.PageWidth]));
       AStrings.Add(Format('  Page height=%.1f mm', [ASheet.PageLayout.PageHeight]));
@@ -3271,6 +3321,24 @@ begin
       AStrings.Add(Format('  Options=%s', [s]));
     end else
       AStrings.Add('(+) Page layout=(dblclick for more...)');
+
+    if (ienImages in FExpanded) then begin
+      AStrings.Add('(-) Images=');
+      for i:=0 to ASheet.GetImageCount-1 do
+      begin
+        img := ASheet.GetImage(i);
+        AStrings.Add('  Row=%d', [img.Row]);
+        AStrings.Add('  Col=%d', [img.Col]);
+        embObj := ASheet.Workbook.GetEmbeddedObj(img.Index);
+        AStrings.Add('  Index=%d [%s; %.2fmm x %.2fmm]', [img.Index, embobj.FileName, embObj.ImageWidth, embObj.ImageHeight]);
+        AStrings.Add('  OffsetX=%.2f mm', [img.OffsetX]);
+        AStrings.Add('  OffsetY=%.2f mm', [img.OffsetY]);
+        AStrings.Add('  ScaleX=%.2f', [img.ScaleX]);
+        AStrings.Add('  ScaleY=%.2f', [img.ScaleY]);
+      end;
+    end else
+      AStrings.Add('(+) Images=(dblclick for more...)');
+
   end;
 end;
 

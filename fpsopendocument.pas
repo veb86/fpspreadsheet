@@ -16,7 +16,7 @@ Specifications obtained from:
 
 http://docs.oasis-open.org/office/v1.1/OS/OpenDocument-v1.1.pdf
 
-AUTHORS: Felipe Monteiro de Carvalho / Jose Luis Jurado Rincon
+AUTHORS: Felipe Monteiro de Carvalho / Jose Luis Jurado Rincon / Werner Pamler
 }
 
 
@@ -120,9 +120,11 @@ type
       var AFontSize: Double; var AFontStyle: TsHeaderFooterFontStyles;
       var AFontColor: TsColor);
     function ReadHeaderFooterText(ANode: TDOMNode): String;
+    procedure ReadPictures(AStream: TStream);
     procedure ReadPrintRanges(ATableNode: TDOMNode; ASheet: TsWorksheet);
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
+    procedure ReadShapes(ATableNode: TDOMNode);
     procedure ReadTableStyle(AStyleNode: TDOMNode);
 
   protected
@@ -2244,6 +2246,9 @@ begin
 
   Doc := nil;
   try
+    // Extract the embedded pictures
+    ReadPictures(AStream);
+
     // process the styles.xml file
     XMLStream := CreateXMLStream;
     try
@@ -2301,6 +2306,8 @@ begin
       end;
       FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode, 'table:name'), true);
       tablestyleName := GetAttrValue(TableNode, 'table:style-name');
+      // Collect embedded images
+      ReadShapes(TableNode);
       // Collect column styles used
       ReadColumns(TableNode);
       // Process each row inside the sheet and process each cell of the row
@@ -3059,6 +3066,31 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocReader.ReadPictures(AStream: TStream);
+var
+  memstream: TMemoryStream;
+  unzip: TStreamUnzipper;
+  fn: String;
+  i: Integer;
+begin
+  unzip := TStreamUnzipper.Create(AStream);
+  try
+    unzip.Examine;
+    for i := 0 to unzip.Entries.Count-1 do begin
+      fn := unzip.Entries.Entries[i].ArchiveFileName;
+      if ExtractFileDir(fn) = 'Pictures' then begin
+        memStream := TMemoryStream.Create;
+        unzip.UnzipFile(fn, memStream);
+        memstream.Position := 0;
+        FWorkbook.AddEmbeddedObj(memstream, ExtractFileName(fn));
+        memStream.Free;
+      end;
+    end;
+  finally
+    unzip.Free;
+  end;
+end;
+
 procedure TsSpreadOpenDocReader.ReadPrintRanges(ATableNode: TDOMNode;
   ASheet: TsWorksheet);
 var
@@ -3464,6 +3496,62 @@ begin
     sheet := Workbook.GetWorksheetByIndex(i);
     if not showGrid then sheet.Options := sheet.Options - [soShowGridLines];
     if not showHeaders then sheet.Options := sheet.Options - [soShowHeaders];
+  end;
+end;
+
+{      '<draw:frame draw:z-index="%d" draw:name="Image %d" '+
+        'draw:style-name="gr1" draw:text-style-name="P1" '+
+        'svg:width="%.2fmm" svg:height="%.2fmm" '+
+        'svg:x="%.2fmm" svg:y="%.2fmm">' +
+        '<draw:image xlink:href="Pictures/%d.%s" xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad">' +
+          '<text:p />' +
+        '</draw:image>' +
+      '</draw:frame>', [
+}
+
+procedure TsSpreadOpenDocReader.ReadShapes(ATableNode: TDOMNode);
+var
+  shapesNode, shapeNode, childShapeNode: TDOMNode;
+  nodeName: String;
+  r, c: Cardinal;
+  w, h, x, y: Double;
+  dr, dc, sx, sy: Double;
+  idx: Integer;
+  href: String;
+begin
+  shapesNode := ATableNode.FirstChild;
+  while Assigned(shapesNode) do
+  begin
+    nodeName := shapesNode.NodeName;
+    if nodeName = 'table:shapes' then
+    begin
+      shapeNode := shapesNode.FirstChild;
+      while Assigned(shapeNode) do
+      begin
+        nodeName := shapeNode.NodeName;
+        if nodeName = 'draw:frame' then
+        begin
+          x := PtsToMM(HTMLLengthStrToPts(GetAttrValue(shapeNode, 'svg:x')));
+          y := PtsToMM(HTMLLengthStrToPts(GetAttrValue(shapeNode, 'svg:y')));
+          w := PtsToMM(HTMLLengthStrToPts(GetAttrValue(shapeNode, 'svg:width')));
+          h := PtsToMM(HTMLLengthStrToPts(GetAttrValue(shapeNode, 'svg:height')));
+          childShapeNode := shapeNode.FirstChild;
+          while Assigned(childShapeNode) do
+          begin
+            href := GetAttrValue(childShapeNode, 'xlink:href');
+            if href <> '' then
+            begin
+              idx := FWorkbook.FindEmbeddedObj(ExtractFileName(href));
+              FWorksheet.CalcImageCell(idx, x, y, w, h, r, c, dr, dc, sx, sy);
+              FWorksheet.WriteImage(r, c, idx, dr, dc, sx, sy);
+            end;
+            childShapeNode := childShapeNode.NextSibling;
+          end;
+        end;
+        shapeNode := shapeNode.NextSibling;
+      end;
+    end;
+    shapesNode := shapesNode.NextSibling;
   end;
 end;
 

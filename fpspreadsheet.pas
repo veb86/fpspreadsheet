@@ -494,6 +494,8 @@ type
       out ARow1, ACol1, ARow2, ACol2: Cardinal;
       out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
       out x, y, AWidth, AHeight: Double);
+    procedure CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
+      out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
     function GetImage(AIndex: Integer): TsImage;
     function GetImageCount: Integer;
     procedure RemoveAllImages;
@@ -502,6 +504,9 @@ type
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
       AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
     function WriteImage(ARow, ACol: Cardinal; AStream: TStream;
+      AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
+      AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
+    function WriteImage(ARow, ACol: Cardinal; AImageIndex: Integer;
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
       AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
 
@@ -769,7 +774,8 @@ type
 
     { Embedded objects }
     function AddEmbeddedObj(const AFileName: String): Integer; overload;
-    function AddEmbeddedObj(AStream: TStream): Integer; overload;
+    function AddEmbeddedObj(AStream: TStream;
+      const AName: String = ''): Integer; overload;
     function FindEmbeddedObj(const AFileName: String): Integer;
     function GetEmbeddedObj(AIndex: Integer): TsEmbeddedObj;
     function GetEmbeddedObjCount: Integer;
@@ -3327,6 +3333,42 @@ begin
   Result := FImages.Count;
 end;
 
+procedure TsWorksheet.CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
+  out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
+var
+  colW, rowH, sum: Double;
+  factor: Double;
+  embobj: TsEmbeddedObj;
+begin
+  factor := FWorkbook.GetDefaultFont.Size/2;  // Width of "0" character in pts
+  ACol := 0;
+  sum := 0;
+  repeat
+    colW := ptsToMM(GetColWidth(ACol) * factor);
+    sum := sum + colW;
+    inc(ACol);
+  until sum > x;
+  sum := sum - colW;
+  AColOffs := x - sum;
+  dec(ACol);
+
+  factor := FWorkbook.GetDefaultFont.Size;    // Height of line in pts
+  ARow := 0;
+  sum := 0;
+  repeat
+    rowH := ptsToMM(CalcAutoRowHeight(ARow) * factor);  // row height in mm
+    sum := sum + rowH;
+    inc(ARow);
+  until sum > y;
+  sum := sum - rowH;
+  ARowOffs := y - sum;
+  dec(ARow);
+
+  embObj := FWorkbook.GetEmbeddedObj(AIndex);
+  AScaleX := AWidth / embObj.ImageWidth;
+  AScaleY := AHeight / embObj.ImageHeight;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Calculates image extent
 
@@ -3435,7 +3477,6 @@ function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AFileName: String;
   AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
   AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 var
-  img: PsImage;
   idx: Integer;
 begin
   // Does the image already exist?
@@ -3448,10 +3489,7 @@ begin
     exit;
 
   // Everything ok here...
-  New(img);
-  InitImageRecord(img^, ARow, ACol, AOffsetX, AOffsetY, AScaleX, AScaleY);
-  img^.Index := idx;
-  Result := FImages.Add(img);
+  Result := WriteImage(ARow, ACol, idx, AOffsetX, AOffsetY, AScaleX, AScaleY);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3474,7 +3512,6 @@ function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AStream: TStream;
   AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
   AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 var
-  img: PsImage;
   idx: Integer;
 begin
   // Copy the stream to a new item in embedded object list.
@@ -3484,12 +3521,20 @@ begin
     exit;
 
   // Everything ok here...
-  New(img);
-  InitImageRecord(img^, ARow, ACol, AOffsetX, AOffsetY, AScaleX, AScaleY);
-  img^.Index := idx;
-  Result := FImages.Add(img);
+  Result := WriteImage(ARow, ACol, idx, AOffsetX, AOffsetY, AScaleX, AScaleY);
 end;
 
+function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AImageIndex: integer;
+  AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
+var
+  img: PsImage;
+begin
+  New(img);
+  InitImageRecord(img^, ARow, ACol, AOffsetX, AOffsetY, AScaleX, AScaleY);
+  img^.Index := AImageIndex;
+  Result := FImages.Add(img);
+end;
 {@@ ----------------------------------------------------------------------------
   Removes an image from the internal image list.
   The image is identified by its index.
@@ -8397,10 +8442,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates a new stream with the specified name, adds it to the internal list
-  and returns its index.
-  Embedded streams are used to store embedded images. AFileName is the
-  filename of the image. The image will be loaded to the stream later.
+  Creates a new "embedded" stream and load the specified file.
+  Returns the index of the embedded file item.
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddEmbeddedObj(const AFileName: String): Integer;
 var
@@ -8425,13 +8468,18 @@ begin
   end;
 end;
 
-function TsWorkbook.AddEmbeddedObj(AStream: TStream): Integer;
+{@@ ----------------------------------------------------------------------------
+  Creates a new "embedded" stream and copies the specified stream to it.
+  Returns the index of the embedded object.
+-------------------------------------------------------------------------------}
+function TsWorkbook.AddEmbeddedObj(AStream: TStream;
+  const AName: String = ''): Integer;
 var
   obj: TsEmbeddedObj = nil;
   w, h: Double;
 begin
   obj := TsEmbeddedObj.Create;
-  if obj.LoadFromStream(AStream) then
+  if obj.LoadFromStream(AStream, AName) then
     Result := FEmbeddedObjList.Add(obj)
   else begin
     AddErrorMsg(rsImageFormatNotSupported);

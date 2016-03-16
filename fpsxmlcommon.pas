@@ -10,6 +10,11 @@ interface
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
+ {$IF FPC_FULLVERSION >= 20701}
+  zipper,
+ {$ELSE}
+  fpszipper,
+ {$ENDIF}
   fpSpreadsheet, fpsreaderwriter;
 
 type
@@ -18,6 +23,23 @@ type
     procedure ReadXMLFile(out ADoc: TXMLDocument; AFileName: String);
     procedure ReadXMLStream(out ADoc: TXMLDocument; AStream: TStream);
   end;
+
+  TStreamUnzipper = class(TUnzipper)
+  private
+    FInputStream: TStream;
+    FOutputStream: TStream;
+    FSuccess: Boolean;
+    procedure CloseInputStream(Sender: TObject; var AStream: TStream);
+    procedure CreateStream(Sender: TObject; var AStream: TStream;
+      AItem: TFullZipFileEntry);
+    procedure DoneStream(Sender: TObject; var AStream: TStream;
+      AItem: TFullZipFileEntry);
+    procedure OpenInputStream(Sender: TObject; var AStream: TStream);
+  public
+    constructor Create(AInputStream: TStream);
+    function UnzipFile(const AZippedFile: string; ADestStream: TStream): Boolean;
+  end;
+
 
 function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
 function GetNodeValue(ANode: TDOMNode): String;
@@ -37,11 +59,13 @@ procedure DestroyTempStream(AStream: TStream);
 implementation
 
 uses
+  (*
  {$IF FPC_FULLVERSION >= 20701}
   zipper,
  {$ELSE}
   fpszipper,
  {$ENDIF}
+ *)
   fpsStreams, fpsUtils;
 
 {------------------------------------------------------------------------------}
@@ -184,6 +208,7 @@ end;
 {------------------------------------------------------------------------------}
 {                                 Unzipping                                    }
 {------------------------------------------------------------------------------}
+(*
 type
   TStreamUnzipper = class(TUnzipper)
   private
@@ -200,7 +225,7 @@ type
     constructor Create(AInputStream: TStream);
     function UnzipFile(const AZippedFile: string; ADestStream: TStream): Boolean;
   end;
-
+*)
 constructor TStreamUnzipper.Create(AInputStream: TStream);
 begin
   inherited Create;

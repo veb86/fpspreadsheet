@@ -5,7 +5,7 @@ unit sHyperlinkForm;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ButtonPanel,
+  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ButtonPanel,
   ExtCtrls, Buttons, StdCtrls, ComCtrls,
   fpsTypes, fpspreadsheet;
 
@@ -104,7 +104,7 @@ implementation
 {$R *.lfm}
 
 uses
-  URIParser,
+  URIParser, LazFileUtils,
   fpsUtils;
 
 const
