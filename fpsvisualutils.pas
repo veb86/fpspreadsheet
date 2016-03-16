@@ -266,7 +266,7 @@ begin
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
     AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft);
   try
-    Result := painter.Height;
+    Result := painter.Width;
   finally
     painter.Free;
   end;
