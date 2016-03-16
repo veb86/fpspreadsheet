@@ -1304,8 +1304,10 @@ procedure TsSpreadOpenDocReader.ReadAutomaticStyles(AStylesNode: TDOMNode);
 var
   nodeName: String;
   layoutNode, fontNode: TDOMNode;
-  node, child: TDOMNode;
+  node, child, childchild: TDOMNode;
   s: String;
+  href: String;
+  imgpos: String;
   data: TPageLayoutData;
   isHeader: Boolean;
   h, dist: Double;
@@ -1316,6 +1318,7 @@ var
   fntStyle: TsHeaderFooterFontStyles;
   fntColor: TsColor;
   n: Integer;
+  hfs: TsHeaderFooterSectionIndex;
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -1472,18 +1475,34 @@ begin
                 // Note: TopMargin and HeaderMargin are not yet the same as in Excel
                 // Will be fixed in ReadMasterStyles where it will be known
                 // whether the header is displayed.
-                {
-                data.PageLayout.HeaderMargin := data.PageLayout.TopMargin;
-                data.PageLayout.TopMargin := data.PageLayout.HeaderMargin + h + dist;
-                }
               end else
               begin
                 data.Pagelayout.FooterMargin := h + dist;
-                {
-                data.PageLayout.FooterMargin := data.PageLayout.BottomMargin;
-                data.PageLayout.BottomMargin := data.PageLayout.FooterMargin + h + dist;
-                }
               end;
+            end;
+            childchild := child.FirstChild;
+            while Assigned(childchild) do
+            begin
+              nodeName := childchild.NodeName;
+              if nodeName = 'style:background-image' then
+              begin
+                href := GetAttrValue(childchild, 'xlink:href');
+                imgpos := GetAttrValue(childchild, 'style:position');
+                if (href <> '') and (imgpos <> '') then
+                begin
+                  n := FWorkbook.FindEmbeddedObj(ExtractFileName(href));
+                  if n > -1 then
+                  begin
+                    if pos('left', imgpos) > 0 then hfs := hfsLeft else
+                      if pos('right', imgpos) > 0 then hfs := hfsRight else
+                      hfs := hfsCenter;
+                    if isHeader then
+                      data.PageLayout.AddHeaderImage(HEADER_FOOTER_INDEX_ALL, hfs, n) else
+                      data.PageLayout.AddFooterImage(HEADER_FOOTER_INDEX_ALL, hfs, n);
+                  end;
+                end;
+              end;
+              childchild := childchild.NextSibling;
             end;
             child := child.NextSibling;
           end;
@@ -1521,6 +1540,8 @@ var
   pagelayout: TsPageLayout;
   j: Integer;
   h: Double;
+  hfs: TsHeaderFooterSectionIndex;
+  hfnew: Array[TsHeaderFooterSectionIndex] of string;
 
 begin
   if AStylesNode = nil then
@@ -1556,7 +1577,17 @@ begin
         begin
           s := ReadHeaderFooterText(styleNode);
           if s <> '' then
-            pageLayout.Headers[HEADER_FOOTER_INDEX_ODD] := s;
+          begin
+            // If the header contains an image add the code &G.
+            with pagelayout do begin
+              SplitHeaderFooterText(s,
+                hfnew[hfsLeft], hfnew[hfsCenter], hfnew[hfsRight]);
+              for hfs in TsHeaderFooterSectionIndex do
+                if HeaderImages[hfs].Index > -1 then hfnew[hfs] := '&G' + hfnew[hfs];
+              Headers[HEADER_FOOTER_INDEX_ODD] := JoinHeaderFooterText(
+                hfnew[hfsLeft], hfnew[hfsCenter], hfnew[hfsRight]);
+            end;
+          end;
           s := GetAttrValue(styleNode, 'style:display');
           if s <> 'false' then
           begin
@@ -1570,8 +1601,16 @@ begin
           s := ReadHeaderFooterText(styleNode);
           if s <> '' then
           begin
-            pageLayout.Headers[HEADER_FOOTER_INDEX_EVEN] := s;
-            with pageLayout do Options := Options + [poDifferentOddEven];
+            // If the header contains an image add the code &G.
+            with pagelayout do begin
+              SplitHeaderFooterText(s,
+                hfnew[hfsLeft], hfnew[hfsCenter], hfnew[hfsRight]);
+              for hfs in TsHeaderFooterSectionIndex do
+                if HeaderImages[hfs].Index > -1 then hfnew[hfs] := '&G' + hfnew[hfs];
+              Headers[HEADER_FOOTER_INDEX_ODD] := JoinHeaderFooterText(
+                hfnew[hfsLeft], hfnew[hfsCenter], hfnew[hfsRight]);
+              Options := Options + [poDifferentOddEven];
+            end;
           end;
           s := GetAttrValue(styleNode, 'style:display');
           if s = 'false' then
@@ -1586,7 +1625,14 @@ begin
         begin
           s := ReadHeaderFooterText(styleNode);
           if s <> '' then
-            pageLayout.Footers[HEADER_FOOTER_INDEX_ODD] := s;
+            with pagelayout do begin
+              SplitHeaderFooterText(s,
+                hfnew[hfsLeft], hfnew[hfsCenter], hfnew[hfsRight]);
+              for hfs in TsHeaderFooterSectionIndex do
+                if FooterImages[hfs].Index > -1 then hfnew[hfs] := '&G' + hfnew[hfs];
+              Footers[HEADER_FOOTER_INDEX_ODD] := JoinHeaderFooterText(
+                hfnew[hfsLeft], hfnew[hfsCenter], hfnew[hfsRight]);
+            end;
           s := GetAttrValue(styleNode, 'style:display');
           if s <> 'false' then
           begin
@@ -1600,8 +1646,15 @@ begin
           s := ReadHeaderFooterText(styleNode);
           if s <> '' then
           begin
-            pageLayout.Footers[HEADER_FOOTER_INDEX_EVEN] := s;
-            with pageLayout do Options := Options + [poDifferentOddEven];
+            with pagelayout do begin
+              SplitHeaderFooterText(s,
+                hfnew[hfsLeft], hfnew[hfsCenter], hfnew[hfsRight]);
+              for hfs in TsHeaderFooterSectionIndex do
+                if FooterImages[hfs].Index > -1 then hfnew[hfs] := '&G' + hfnew[hfs];
+              Footers[HEADER_FOOTER_INDEX_EVEN] := JoinHeaderFooterText(
+                hfnew[hfsLeft], hfnew[hfsCenter], hfnew[hfsRight]);
+              Options := Options + [poDifferentOddEven];
+            end;
           end;
           s := GetAttrValue(styleNode, 'style:display');
           if s = 'false' then

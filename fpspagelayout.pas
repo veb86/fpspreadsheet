@@ -46,10 +46,6 @@ type
     procedure SetScalingFactor(AValue: Integer);
     procedure SetStartPageNumber(AValue: Integer);
 
-  protected
-    function JoinHeaderFooterText(const ALeft, ACenter, ARight: String): String;
-    procedure SplitHeaderFooterText(const AText: String; out ALeft, ACenter, ARight: String);
-
   public
     constructor Create(AWorksheet: pointer);
     procedure Assign(ASource: TsPageLayout);
@@ -71,6 +67,9 @@ type
       AStream: TStream): Integer; overload;
     procedure AddFooterImage(AFooterIndex: Integer;
       ASection: TsHeaderFooterSectionIndex; AImageIndex: Integer); overload;
+
+    function JoinHeaderFooterText(const ALeft, ACenter, ARight: String): String;
+    procedure SplitHeaderFooterText(const AText: String; out ALeft, ACenter, ARight: String);
 
     procedure GetImageSections(out AHeaderTags, AFooterTags: String);
     function HasHeaderFooterImages: Boolean;
@@ -273,7 +272,7 @@ end;
   Adds an image to the header.
 
   @param   AHeaderIndex  0 = header of first page, 1 = header of odd pages,
-                         2 = 2 header of even pages
+                         2 = header of even pages
   @param   ASection      Specifies whether the image is inserted in the left
                          (hfsLeft), center (hfsCenter) or right (hfsRight) part
                          of the header.
@@ -301,7 +300,7 @@ end;
   Adds an image to the header.
 
   @param   AHeaderIndex  0 = header of first page, 1 = header of odd pages,
-                         2 = 2 header of even pages
+                         2 = header of even pages
   @param   ASection      Specifies whether the image is inserted in the left
                          (hfsLeft), center (hfsCenter) or right (hfsRight) part
                          of the header.
@@ -327,7 +326,7 @@ end;
   Adds an image to the header.
 
   @param  AHeaderIndex  0 = header of first page, 1 = header of odd pages,
-                        2 = 2 header of even pages
+                        2 = header of even pages
   @param  ASection      Specifies whether the image is inserted in the left
                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
                         of the header.
@@ -351,7 +350,7 @@ end;
   Adds an image to the footer,
 
   @param  AFooterIndex  0 = footer of first page, 1 = footer of odd pages,
-                        2 = 2 footer of even pages
+                        2 = footer of even pages
   @param  ASection      Specifies whether the image is inserted in the left
                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
                         of the footer.
@@ -379,7 +378,7 @@ end;
   Adds an image to the footer,
 
   @param  AFooterIndex  0 = footer of first page, 1 = footer of odd pages,
-                        2 = 2 footer of even pages
+                        2 = footer of even pages
   @param  ASection      Specifies whether the image is inserted in the left
                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
                         of the footer.
@@ -404,7 +403,7 @@ end;
   Adds an image to the footer,
 
   @param  AFooterIndex  0 = footer of first page, 1 = footer of odd pages,
-                        2 = 2 footer of even pages
+                        2 = footer of even pages
   @param  ASection      Specifies whether the image is inserted in the left
                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
                         of the footer.
@@ -692,7 +691,7 @@ end;
 procedure TsPageLayout.SplitHeaderFooterText(const AText: String;
   out ALeft, ACenter, ARight: String);
 var
-  pL, pC, pR: Integer;
+  pL, pC, pR, n: Integer;
   P, PStart: PChar;
 begin
   ALeft := '';
@@ -723,22 +722,14 @@ begin
   end;
   if (pL > 0) then
   begin
-    if pC > 0 then
-      ALeft := Copy(AText, pL+2, pC - pL - 1)
-    else
-    if pR > 0 then
-      ARight := Copy(AText, pL, pR - pL - 1)
-    else
-      ALeft := Copy(AText, pL+2, MaxInt);
-    exit;
+    if pC > 0 then n := pC - pL - 2 else
+    if pR > 0 then n := pR - pL - 2 else n := MaxInt;
+    ALeft := Copy(AText, pL+2, n);
   end;
   if (pC > 0) then
   begin
-    if pR > 0 then
-      ACenter := Copy(AText, pC+2, pR - pC - 1)
-    else
-      ACenter := Copy(AText, pC+2, MaxInt);
-    exit;
+    if pR > 0 then n := pR - pC - 2 else n := MaxInt;
+    ACenter := Copy(AText, pC+2, n);
   end;
   if (pR > 0) then
     ARight := Copy(AText, pR+2, MaxInt);

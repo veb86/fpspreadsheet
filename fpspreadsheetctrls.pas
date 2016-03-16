@@ -3314,6 +3314,27 @@ begin
         AStrings.Add(Format('  Header=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
         AStrings.Add(Format('  Footer=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceAll])]));
       end;
+
+      if ASheet.PageLayout.HeaderImages[hfsLeft].Index > -1 then
+        AStrings.Add('  HeaderImage, left=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.HeaderImages[hfsLeft].Index).FileName]) else
+        AStrings.Add('  HeaderImage, left =');
+      if ASheet.PageLayout.HeaderImages[hfsCenter].Index > -1 then
+        AStrings.Add('  HeaderImage, center=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.HeaderImages[hfsCenter].Index).FileName]) else
+        AStrings.Add('  HeaderImage, center=');
+      if ASheet.PageLayout.HeaderImages[hfsRight].Index > -1 then
+        AStrings.Add('  HeaderImage, right=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.HeaderImages[hfsRight].Index).FileName]) else
+        AStrings.Add('  HeaderImage, right=');
+
+      if ASheet.PageLayout.FooterImages[hfsLeft].Index > -1 then
+        AStrings.Add('  FooterImage, left=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.FooterImages[hfsLeft].Index).FileName]) else
+        AStrings.Add('  FooterImage, left =');
+      if ASheet.PageLayout.FooterImages[hfsCenter].Index > -1 then
+        AStrings.Add('  FooterImage, center=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.FooterImages[hfsCenter].Index).FileName]) else
+        AStrings.Add('  FooterImage, center=');
+      if ASheet.PageLayout.FooterImages[hfsRight].Index > -1 then
+        AStrings.Add('  FooterImage, right=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.FooterImages[hfsRight].Index).FileName]) else
+        AStrings.Add('  FooterImage, right=');
+
       s := '';
       for po in TsPrintOption do
         if po in ASheet.PageLayout.Options then s := s + '; ' + GetEnumName(typeInfo(TsPrintOption), ord(po));
