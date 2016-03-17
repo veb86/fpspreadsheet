@@ -139,13 +139,20 @@ var
   info: TBitmapInfoHeader;
 begin
   result := False;
+  dpiX := 0;
+  dpiY := 0;
   if AStream.Read(header{%H-}, SizeOf(header)) <> SizeOf(header) then Exit;
   if LEToN(header.bfType) <> BMP_MAGIC_WORD then Exit;
   if AStream.Read(info{%H-}, SizeOf(info)) <> SizeOf(info) then Exit;
   AWidth := LEToN(info.Width);
-  AHeight := abs(LEToN(info.Height));
-  dpiX := LEToN(info.XPelsPerMeter) * 0.0254;
-  dpiY := LEToN(info.YPelsPerMeter) * 0.0254;
+  AHeight := abs(LEToN(info.Height));  // can be negative in case of "top-down" image
+  if info.Size >= 40 then
+  begin
+    dpiX := LEToN(info.XPelsPerMeter) * 0.0254;
+    dpiY := LEToN(info.YPelsPerMeter) * 0.0254;
+  end;
+  if dpiX = 0 then dpiX := 72;
+  if dpiY = 0 then dpiY := 72;
   Result := true;
 end;
 
@@ -904,7 +911,7 @@ initialization
 {0}  itPNG  := RegisterImageType('image/png',  'png', @GetPNGSize);
 {1}  itJPEG := RegisterImageType('image/jpeg', 'jpg|jpeg|jfif|jfe', @GetJPGSize);
 {2}  itTIFF := RegisterImageType('image/tiff', 'tif|tiff', @GetTIFSize);
-{3}  itBMP  := RegisterImageType('image/bmp', 'bmp', @GetBMPSize);
+{3}  itBMP  := RegisterImageType('image/bmp', 'bmp|dib', @GetBMPSize);
 {4}  itGIF  := RegisterImageType('image/gif', 'gif', @GetGIFSize);
 {5}  itSVG  := RegisterImageType('image/svg+xml', 'svg', @GetSVGSize);
 {6}  itWMF  := RegisterImageType('application/x-msmetafile', 'wmf', @GetWMFSize);
