@@ -55,7 +55,7 @@ type
     property FileName: String read FFileName;
     property ImageType: TsImagetype read FImageType;
     property ImageWidth: Double read FWidth write FWidth;
-    property ImageHeight: Double read FHeight write FWidth;
+    property ImageHeight: Double read FHeight write FHeight;
     property Stream: TMemoryStream read FStream;
   end;
 

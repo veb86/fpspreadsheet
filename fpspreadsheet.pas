@@ -3408,14 +3408,14 @@ begin
 
   ARow1 := img.Row;
   ACol1 := img.Col;
-  ARowOffs1 := img.OffsetX;
-  AColOffs1 := img.OffsetY;
+  ARowOffs1 := img.OffsetX;                 // in workbook units
+  AColOffs1 := img.OffsetY;                 // in workbook units
 
   obj := FWorkbook.GetEmbeddedObj(img.Index);
-  AWidth := obj.ImageWidth * img.ScaleX;
-  AHeight := obj.ImageHeight * img.ScaleY;
+  AWidth := obj.ImageWidth * img.ScaleX;    // in workbook units
+  AHeight := obj.ImageHeight * img.ScaleY;  // in workbook units
 
-  // Find x coordinate of left image edge, in inches.
+  // Find x coordinate of left image edge, in workbook units
   x := AColOffs1;
   for c := 0 to ACol1-1 do
   begin
@@ -3438,7 +3438,7 @@ begin
     inc(ACol2);
   end;
 
-  // Find y coordinate of top image edge, in inches.
+  // Find y coordinate of top image edge, in workbook units.
   y := ARowOffs1;
   for r := 0 to ARow1 - 1 do
   begin
@@ -6183,7 +6183,7 @@ function TsWorksheet.CalcRowHeight(ARow: Cardinal): Single;
 begin
   Result := CalcAutoRowHeight(ARow);
   if Result = 0 then
-    Result := GetRowHeight(ARow);
+    Result := GetRowHeight(ARow, FWorkbook.Units);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8570,8 +8570,12 @@ var
 begin
   obj := TsEmbeddedObj.Create;
   if obj.LoadFromStream(AStream, AName) then
+  begin
+    obj.ImageWidth := ConvertUnits(obj.ImageWidth, suInches, FUnits);
+    obj.ImageHeight := ConvertUnits(obj.ImageHeight, suInches, FUnits);
     Result := FEmbeddedObjList.Add(obj)
-  else begin
+  end else
+  begin
     AddErrorMsg(rsImageFormatNotSupported);
     obj.Free;
     Result := -1;
