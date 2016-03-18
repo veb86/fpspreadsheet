@@ -37,28 +37,28 @@ begin
   try
     sheet := srcWorkbook.AddWorksheet('Sheet');
 
-    sheet.WriteUTF8Text(0, 0, 'Link to biff8 test file');
+    sheet.WriteText(0, 0, 'Link to biff8 test file');
     sheet.WriteHyperlink(0, 0, '../excel8demo/test.xls#''My Worksheet 2''!A1');
     //sheet.WriteHyperlink(0, 0, '../excel8demo/test.xls#''Meu Relatório''!A1');
 
-    sheet.WriteUTF8Text(1, 0, 'Link to ods test file');
+    sheet.WriteText(1, 0, 'Link to ods test file');
     sheet.WriteHyperlink(1, 0, '..\opendocdemo\test.ods');
 
-    sheet.WriteUTF8Text(2, 0, 'E-Mail Link');
+    sheet.WriteText(2, 0, 'E-Mail Link');
     sheet.WriteHyperlink(2, 0, 'mailto:someone@mail.com;someoneelse@mail.com?Subject=This is a test');
 
-    sheet.WriteUTF8Text(3, 0, 'Web-Hyperlink');
+    sheet.WriteText(3, 0, 'Web-Hyperlink');
     sheet.WriteHyperlink(3, 0, 'http://www.lazarus-ide.org/');
 
-    sheet.WriteUTF8Text(4, 0, 'File-Link (absolute path)');
+    sheet.WriteText(4, 0, 'File-Link (absolute path)');
     sheet.WriteHyperlink(4, 0, 'file:///'+ExpandFilename('..\..\..\tests\testooxml_1899.xlsx'));
     // This creates the URI such as "file:///D:\Prog_Lazarus\svn\lazarus-ccr\components\fpspreadsheet\tests\testooxml_1899.xlsx"
     // but makes sure that the file exists on your system.
 
-    sheet.WriteUTF8Text(5, 0, 'Jump to A10');
+    sheet.WriteText(5, 0, 'Jump to A10');
     sheet.WriteHyperlink(5, 0, '#A10');
 
-    sheet.WriteColWidth(0, 40);
+    sheet.WriteColWidth(0, 40, suChars);
 
     srcWorkbook.WriteToFile(srcFile, true);
   finally
@@ -124,7 +124,6 @@ begin
                   WriteLn('Failure finding linked worksheet.');
                   continue;
                 end;
-//                linkedSheet := linkedWorkbook.GetWorksheetByName(bookmark);
               // Copy linked worksheet to new sheet in destination workbook
               destSheet := destWorkbook.CopyWorksheetFrom(linkedSheet);
               // Create sheet name
@@ -152,8 +151,11 @@ begin
     end else
       WriteLn('No hyperlinks found.');
 
+    {$IFDEF Windows}
+    WriteLn;
     WriteLn('Press ENTER to close...');
     ReadLn;
+    {$ENDIF}
 
   finally
     // Clean up

@@ -289,16 +289,16 @@ var
     try
       worksheet := workbook.AddWorksheet('Test');
 
-      worksheet.WriteUTF8Text(0, 0, 'E');
-      worksheet.WriteUTF8Text(1, 0, 'E');
-      worksheet.WriteUTF8Text(2, 0, 'C');
-      worksheet.WriteUTF8Text(3, 0, 'B');
-      worksheet.WriteUTF8Text(4, 0, 'D');
-      worksheet.WriteUTF8Text(5, 0, 'D');
-      worksheet.WriteUTF8Text(6, 0, 'A');
-      worksheet.WriteUTF8Text(7, 0, 'B');
-      worksheet.WriteUTF8Text(8, 0, 'C');
-      worksheet.WriteUTF8Text(9, 0, 'A');
+      worksheet.WriteText(0, 0, 'E');
+      worksheet.WriteText(1, 0, 'E');
+      worksheet.WriteText(2, 0, 'C');
+      worksheet.WriteText(3, 0, 'B');
+      worksheet.WriteText(4, 0, 'D');
+      worksheet.WriteText(5, 0, 'D');
+      worksheet.WriteText(6, 0, 'A');
+      worksheet.WriteText(7, 0, 'B');
+      worksheet.WriteText(8, 0, 'C');
+      worksheet.WriteText(9, 0, 'A');
 
       worksheet.WriteNumber(0, 1, 9);         // A2        --> E
       worksheet.WriteNumber(1, 1, 8);         // B2        --> E
@@ -322,7 +322,7 @@ var
       WriteLn(#9, 'A', #9, 'B');
       for i:=0 to 9 do
       begin
-        s := worksheet.ReadAsUTF8Text(i, 0);
+        s := worksheet.ReadAsText(i, 0);
         n := worksheet.ReadAsNumber(i, 1);
         WriteLn(i, #9, s, #9, FloatToStr(n));
       end;
@@ -345,16 +345,16 @@ var
     try
       worksheet := workbook.AddWorksheet('Test');
 
-      worksheet.WriteUTF8Text(0, 0, 'E');
-      worksheet.WriteUTF8Text(0, 1, 'E');
-      worksheet.WriteUTF8Text(0, 2, 'C');
-      worksheet.WriteUTF8Text(0, 3, 'B');
-      worksheet.WriteUTF8Text(0, 4, 'D');
-      worksheet.WriteUTF8Text(0, 5, 'D');
-      worksheet.WriteUTF8Text(0, 6, 'A');
-      worksheet.WriteUTF8Text(0, 7, 'B');
-      worksheet.WriteUTF8Text(0, 8, 'C');
-      worksheet.WriteUTF8Text(0, 9, 'A');
+      worksheet.WriteText(0, 0, 'E');
+      worksheet.WriteText(0, 1, 'E');
+      worksheet.WriteText(0, 2, 'C');
+      worksheet.WriteText(0, 3, 'B');
+      worksheet.WriteText(0, 4, 'D');
+      worksheet.WriteText(0, 5, 'D');
+      worksheet.WriteText(0, 6, 'A');
+      worksheet.WriteText(0, 7, 'B');
+      worksheet.WriteText(0, 8, 'C');
+      worksheet.WriteText(0, 9, 'A');
 
       worksheet.WriteNumber(1, 0, 9);         // A2        --> E
       worksheet.WriteNumber(1, 1, 8);         // B2        --> E
@@ -382,7 +382,7 @@ var
 
       Write('1', #9);
       for i:=0 to 9 do
-        Write(worksheet.ReadAsUTF8Text(0, i), #9);
+        Write(worksheet.ReadAsText(0, i), #9);
       WriteLn;
 
       Write('2', #9);
@@ -411,5 +411,7 @@ begin
 
   SortTwoColumns_TwoKeys_1;
   SortTwoRows_TwoKeys_1;
+
+  ReadLn;
 end.
 

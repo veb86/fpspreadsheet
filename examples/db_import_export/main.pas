@@ -127,6 +127,7 @@ var
   i: Integer;
   startDate: TDate;
   maxAge: Integer = 80 * 365;
+  f: TField;
 begin
   if FExportDataset <> nil then
     FExportDataset.Free;
@@ -137,7 +138,7 @@ begin
   FExportDataset := TDbf.Create(self);
   FExportDataset.FilePathFull := DATADIR + DirectorySeparator;
   FExportDataset.TableName := TABLENAME;
-//  FExportDataset.TableLevel := 4;  // DBase IV: most widely used.
+  FExportDataset.TableLevel := 4;  // DBase IV: most widely used.
   FExportDataset.TableLevel := 25;   // FoxPro supports FieldType nfCurrency
   FExportDataset.FieldDefs.Add('Last name', ftString);
   FExportDataset.FieldDefs.Add('First name', ftString);
@@ -153,6 +154,7 @@ begin
   // We generate random records by combining first names, last names and cities
   // defined in the FIRST_NAMES, LAST_NAMES and CITIES arrays. We also add a
   // random birthday.
+
   for i:=1 to StrToInt(EdRecordCount.Text) do begin
     if (i mod 1000 = 0) then
     begin
@@ -165,8 +167,8 @@ begin
     FExportDataset.FieldByName('City').AsString := CITIES[Random(NUM_CITIES)];
     FExportDataset.FieldByName('Birthday').AsDateTime := startDate - random(maxAge);
     FExportDataset.FieldByName('Salary').AsFloat := 1000+Random(9000);
-    FExportDataSet.FieldByName('Work begin').AsDateTime := EncodeTime(6+Random(4), Random(60), Random(60), 0);
-    FExportDataSet.FieldByName('Work end').AsDateTime := EncodeTime(15+Random(4), Random(60), Random(60), 0);
+//    FExportDataSet.FieldByName('Work begin').AsDateTime := 40000+EncodeTime(6+Random(4), Random(60), Random(60), 0);
+//    FExportDataSet.FieldByName('Work end').AsDateTime := EncodeTime(15+Random(4), Random(60), Random(60), 0);
     FExportDataset.Post;
   end;
   FExportDataset.Close;

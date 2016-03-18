@@ -111,7 +111,7 @@ begin
       end;
       for row := Length(SollNumbers) to worksheet.GetLastRowIndex do
       begin
-        s := worksheet.ReadAsUTF8Text(row, col);
+        s := worksheet.ReadAsText(row, col);
         CheckEquals(SollStrings[row - Length(SollNumbers)], s,
           'Test string value mismatch, cell '+CellNotation(workSheet, row, col));
       end;

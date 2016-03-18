@@ -40,7 +40,6 @@
       <Unit0>
         <Filename Value="demo_recursive_calc.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="demo_recursive_calc"/>
       </Unit0>
     </Units>
   </ProjectOptions>

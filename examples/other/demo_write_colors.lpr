@@ -41,7 +41,7 @@ begin
       // Write colors to worksheet
       for row := 0 to palette.Count-1 do begin
         Myworksheet.WriteBackgroundColor(row, 0, palette[row]);
-        Myworksheet.WriteUTF8Text(row, 0, GetColorName(palette[row]));
+        Myworksheet.WriteText(row, 0, GetColorName(palette[row]));
         MyWorksheet.WriteFontColor(row, 0, HighContrastColor(palette[row]));
         MyWorksheet.WriteHorAlignment(row, 0, haCenter);
       end;
@@ -49,7 +49,7 @@ begin
       palette.Free;
     end;
 
-    MyWorksheet.WriteColWidth(0, 25);
+    MyWorksheet.WriteColWidth(0, 5.0, suCentimeters);
 
     // Save the spreadsheet to a file
     MyWorkbook.WriteToFile(MyDir + TestFile, sfExcel8, True);

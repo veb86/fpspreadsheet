@@ -691,8 +691,8 @@ var
 begin
   // read width in 1/256 of the width of "0" character
   w := WordLEToN(AStream.ReadWord);
-  // calculate width in units of "characters" and use it as DefaultColWidth
-  ASheet.DefaultColWidth := w / 256;
+  // calculate width in workbook units and use it as DefaultColWidth
+  ASheet.DefaultColWidth := FWorkbook.ConvertUnits(w / 256, suChars, FWorkbook.Units);
 end;
 
 { Reads a STRING record which contains the result of string formula. }
@@ -1322,6 +1322,8 @@ procedure TsSpreadBIFF5Writer.WriteDefinedName(AStream: TStream;
   var
     sheetIdx: Integer;
   begin
+    Unused(AIndexToREF);
+
     sheetIdx := FWorkbook.GetWorksheetIndex(AWorksheet);
 
     { Token for tArea3dR }

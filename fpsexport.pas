@@ -192,7 +192,7 @@ begin
   begin
     for i:=0 to ExportFields.Count-1 do
     begin
-      FSheet.WriteUTF8Text(FRow,i,ExportFields[i].ExportedName);
+      FSheet.WriteText(FRow,i,ExportFields[i].ExportedName);
     end;
     inc(FRow);
   end;
@@ -304,13 +304,13 @@ begin
     else if Field.Datatype in [ftBCD,ftCurrency,ftFloat,ftFMTBcd] then
       FSheet.WriteCurrency(FRow, EF.Index, Field.AsFloat)
     else if Field.DataType in [ftString,ftFixedChar] then
-      FSheet.WriteUTF8Text(FRow, EF.Index, Field.AsString)
+      FSheet.WriteText(FRow, EF.Index, Field.AsString)
     else if (Field.DataType in ([ftWideMemo,ftWideString,ftFixedWideChar]+BlobFieldTypes)) then
-      FSheet.WriteUTF8Text(FRow, EF.Index, UTF8Encode(Field.AsWideString))
+      FSheet.WriteText(FRow, EF.Index, UTF8Encode(Field.AsWideString))
       { Note: we test for the wide text fields before the MemoFieldTypes, in order to
       let ftWideMemo end up at the right place }
     else if Field.DataType in MemoFieldTypes then
-      FSheet.WriteUTF8Text(FRow, EF.Index, Field.AsString)
+      FSheet.WriteText(FRow, EF.Index, Field.AsString)
     else if Field.DataType=ftBoolean then
       FSheet.WriteBoolValue(FRow, EF.Index, Field.AsBoolean)
     else if Field.DataType in DateFieldTypes then
@@ -327,7 +327,7 @@ begin
                   FSheet.WriteDateTime(FRow, EF.Index, Field.AsDateTime, nfShortDateTime);
       end
     else //fallback to string
-      FSheet.WriteUTF8Text(FRow, EF.Index, Field.AsString);
+      FSheet.WriteText(FRow, EF.Index, Field.AsString);
   end;
 end;
 

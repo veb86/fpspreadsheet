@@ -265,7 +265,7 @@ begin
               if s[col+1] = 'x' then s[col+1] := ' ';
             end;
             if s[col+1] = 'x' then
-              MyWorksheet.WriteUTF8Text(row, col, CELLTEXT)
+              MyWorksheet.WriteText(row, col, CELLTEXT)
             else
             if s[col+1] = 'o' then
               MyWorksheet.WriteBlank(row, col);

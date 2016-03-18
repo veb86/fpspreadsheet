@@ -25,7 +25,7 @@ begin
 
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
-  InputFileName := MyDir + 'a.xlsx';
+  InputFileName := MyDir + 'test.xlsx';
   if not FileExists(InputFileName) then begin
     WriteLn('Input file ', InputFileName, ' does not exist. Please run opendocwrite first.');
     Halt;
@@ -49,10 +49,16 @@ begin
     WriteLn(
       'Row: ', cell^.Row,
       ' Col: ', cell^.Col,
-      ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(cell^.Row, cell^.Col))
+      ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsText(cell^.Row, cell^.Col))
     );
 
   // Finalization
   MyWorkbook.Free;
+
+  {$ifdef WINDOWS}
+  WriteLn;
+  WriteLn('Press ENTER to quit...');
+  ReadLn;
+  {$ENDIF}
 end.
 

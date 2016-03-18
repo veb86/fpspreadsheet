@@ -1436,7 +1436,7 @@ function ApplyTextFormat(AText: String; AParams: TsNumFormatParams): String;
 var
   sct: TsNumFormatSection;
   element: TsNumFormatElement;
-  i, n: Integer;
+  i: Integer;
 begin
   Result := '';
   for sct in AParams.Sections do

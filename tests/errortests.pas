@@ -112,7 +112,7 @@ begin
       for row := row1 to row2 do begin
         MyWorksheet.WriteBlank(row, 0);
         MyWorksheet.WriteNumber(row, 1, 1.0);
-        MyWorksheet.WriteUTF8Text(row, 2, 'A');
+        MyWorksheet.WriteText(row, 2, 'A');
         MyWorksheet.WriteFormula(Row, 3, formula);
         MyWorksheet.WriteRPNFormula(row, 4, CreateRPNFormula(
           RPNCellValue('A1', nil)));
@@ -135,7 +135,7 @@ begin
       for col := col1 to col2 do begin
         MyWorksheet.WriteBlank(0, col);
         MyWorksheet.WriteNumber(1, col, 1.0);
-        MyWorksheet.WriteUTF8Text(2, col, 'A');
+        MyWorksheet.WriteText(2, col, 'A');
         MyWorksheet.WriteFormula(3, col, formula);
         MyWorksheet.WriteRPNFormula(4, col, CreateRPNFormula(
           RPNCellValue('A1', nil)));
@@ -172,7 +172,7 @@ begin
         // to file.
         for row := 0 to palette.Count-1 do
         begin
-          MyWorksheet.WriteUTF8Text(row, 0, s);
+          MyWorksheet.WriteText(row, 0, s);
           MyWorksheet.WriteFontColor(row, 0, palette[row]);
         end;
 
@@ -202,7 +202,7 @@ begin
       MyWorkbook := TsWorkbook.Create;
       try
         MyWorkSheet:= MyWorkBook.AddWorksheet(ERROR_SHEET);
-        MyWorksheet.WriteUTF8Text(0, 0, s);
+        MyWorksheet.WriteText(0, 0, s);
         TempFile:=NewTempFile;
         MyWorkBook.WriteToFile(TempFile, AFormat, true);
         ErrList.Text := MyWorkbook.ErrorMsg;
@@ -219,7 +219,7 @@ begin
       MyWorkbook := TsWorkbook.Create;
       try
         MyWorksheet := MyWorkbook.AddWorksheet(ERROR_SHEET);
-        Myworksheet.WriteUTF8Text(0, 0, s);
+        Myworksheet.WriteText(0, 0, s);
         TempFile := NewTempFile;
         Myworkbook.WriteToFile(TempFile, AFormat, true);
         ErrList.Text := MyWorkbook.ErrorMsg;

@@ -1399,7 +1399,7 @@ const
 var
   c, c1, c2: Cardinal;
   w: Word;
-  col: TCol;
+  colwidth: Double;
 begin
   // read column start and end index of column range
   c1 := WordLEToN(AStream.ReadWord);
@@ -1407,11 +1407,11 @@ begin
   // read col width in 1/256 of the width of "0" character
   w := WordLEToN(AStream.ReadWord);
   // calculate width in units of "characters"
-  col.Width := w / 256;
+  colwidth := FWorkbook.ConvertUnits(w / 256, suChars, FWorkbook.Units);
   // assign width to columns, but only if different from default column width
-  if not SameValue(col.Width, FWorksheet.DefaultColWidth, EPS) then
+  if not SameValue(colwidth, FWorksheet.DefaultColWidth, EPS) then
     for c := c1 to c2 do
-      FWorksheet.WriteColInfo(c, col);
+      FWorksheet.WriteColWidth(c, colwidth, FWorkbook.Units);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1511,9 +1511,12 @@ end;
   Reads the default column width
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadDefColWidth(AStream: TStream);
+var
+  w: Word;
 begin
   // The file contains the column width in characters
-  FWorksheet.DefaultColWidth := WordLEToN(AStream.ReadWord);
+  w := WordLEToN(AStream.ReadWord);
+  FWorksheet.DefaultColWidth := FWorkbook.ConvertUnits(w, suChars, FWorkbook.Units);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1523,16 +1526,14 @@ end;
 procedure TsSpreadBIFFReader.ReadDefRowHeight(AStream: TStream);
 var
   hw: Word;
-  h: Single;
 begin
   // Options
   AStream.ReadWord;
 
   // Height, in Twips (1/20 pt).
   hw := WordLEToN(AStream.ReadWord);
-  h := TwipsToPts(hw) / FWorkbook.GetDefaultFontSize;
-  if h > ROW_HEIGHT_CORRECTION then
-    FWorksheet.DefaultRowHeight := h - ROW_HEIGHT_CORRECTION;
+  FWorksheet.DefaultRowHeight := FWorkbook.ConvertUnits(
+    TwipsToPts(hw), suPoints, FWorkbook.Units);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2089,13 +2090,8 @@ begin
   if rowrec.Flags and $00000040 <> 0 then begin
     lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
     // row height is encoded into the 15 lower bits in units "twips" (1/20 pt)
-    // we need it in "lines", i.e. we divide the points by the point size of the default font
     h := WordLEToN(rowrec.Height) and $7FFF;
-    lRow^.Height := TwipsToPts(h) / FWorkbook.GetDefaultFontSize;
-    if lRow^.Height > ROW_HEIGHT_CORRECTION then
-      lRow^.Height := lRow^.Height - ROW_HEIGHT_CORRECTION
-    else
-      lRow^.Height := 0;
+    lRow^.Height := FWorkbook.ConvertUnits(TwipsToPts(h), suPoints, FWorkbook.Units);
   end;
 end;
 
@@ -3183,7 +3179,7 @@ begin
     rec.EndCol := WordToLE(ACol^.Col);
 
     { calculate width to be in units of 1/256 of pixel width of character "0" }
-    w := round(ACol^.Width * 256);
+    w := round(FWorkbook.ConvertUnits(ACol^.Width, FWorkbook.Units, suChars)*256);
 
     rec.ColWidth := WordToLE(w);
     rec.XFIndex := WordToLE(15);    // Index of XF record, not used
@@ -3309,13 +3305,16 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteDefaultColWidth(AStream: TStream;
   AWorksheet: TsWorksheet);
+var
+  colwidth: Single;
 begin
   { BIFF record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFCOLWIDTH, 2);
 
   { Column width in characters, using the width of the zero character
   from default font (first FONT record in the file). }
-  AStream.WriteWord(round(FWorksheet.DefaultColWidth));
+  colwidth := FWorkbook.ConvertUnits(AWorksheet.DefaultColWidth, FWorkbook.Units, suChars);
+  AStream.WriteWord(round(colwidth));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3327,7 +3326,7 @@ end;
 procedure TsSpreadBIFFWriter.WriteDefaultRowHeight(AStream: TStream;
   AWorksheet: TsWorksheet);
 var
-  h: Single;
+  h: Double;
 begin
   { BIFF record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFROWHEIGHT, 4);
@@ -3340,7 +3339,7 @@ begin
   AStream.WriteWord(WordToLE($0001));
 
   { Default height for unused rows, in twips = 1/20 of a point }
-  h := (AWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * FWorkbook.GetDefaultFontSize;
+  h := FWorkbook.ConvertUnits(AWorksheet.DefaultRowHeight, FWorkbook.Units, suPoints);
   AStream.WriteWord(WordToLE(PtsToTwips(h)));
 end;
 
@@ -4243,7 +4242,6 @@ var
   spaceabove, spacebelow: Boolean;
   colindex: Cardinal;
   rowheight: Word;
-  h: Single;
   fmt: PsCellFormat;
 begin
   if (ARowIndex >= FLimitations.MaxRowCount) or
@@ -4287,14 +4285,13 @@ begin
   AStream.WriteWord(WordToLE(Word(ALastColIndex) + 1));
 
   { Row height (in twips, 1/20 point) and info on custom row height }
-  h := Workbook.GetFont(0).Size;  // Point size of default font
   if (ARow = nil) or (ARow^.Height = ASheet.DefaultRowHeight) then
-    rowheight := PtsToTwips((ASheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * h)
+    rowheight := PtsToTwips(FWorkbook.ConvertUnits(ASheet.DefaultRowHeight, FWorkbook.Units, suPoints))
   else
   if (ARow^.Height = 0) then
     rowheight := 0
   else
-    rowheight := PtsToTwips((ARow^.Height + ROW_HEIGHT_CORRECTION)*h);
+    rowheight := PtsToTwips(FWorkbook.ConvertUnits(ARow^.Height, FWorkbook.Units, suPoints));
   w := rowheight and $7FFF;
   AStream.WriteWord(WordToLE(w));
 

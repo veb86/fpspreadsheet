@@ -328,8 +328,8 @@ const
 
   FALSE_TRUE: Array[boolean] of String = ('false', 'true');
 
-  COLWIDTH_EPS  = 1e-2;    // for mm
-  ROWHEIGHT_EPS = 1e-2;    // for lines
+  COLWIDTH_EPS  = 1e-3;
+  ROWHEIGHT_EPS = 1e-3;
 
 type
 
@@ -344,22 +344,22 @@ type
   TColumnStyleData = class
   public
     Name: String;
-    ColWidth: Double;             // in mm
+    ColWidth: Double;             // in workbook units
   end;
 
   { Column data items stored in the ColumnList }
   TColumnData = class
   public
     Col: Integer;
-    ColStyleIndex: integer;   // index into FColumnStyleList of reader
-    DefaultCellStyleIndex: Integer;   // Index of default cell style in FCellStyleList of reader
+    ColStyleIndex: integer;          // index into FColumnStyleList of reader
+    DefaultCellStyleIndex: Integer;  // Index of default cell style in FCellStyleList of reader
   end;
 
   { Row style items stored in RowStyleList of the reader }
   TRowStyleData = class
   public
     Name: String;
-    RowHeight: Double;          // in mm
+    RowHeight: Double;          // in workbook units
     AutoRowHeight: Boolean;
   end;
 
@@ -1030,31 +1030,20 @@ end;
 procedure TsSpreadOpenDocReader.ApplyColWidths;
 var
   colIndex: Integer;
-  colWidth: Single;
   colStyleIndex: Integer;
   colStyle: TColumnStyleData;
-  factor: Double;
-  col: PCol;
   i: Integer;
 begin
-  factor := FWorkbook.GetDefaultFont.Size/2;
   for i:=0 to FColumnList.Count-1 do
   begin
     colIndex := TColumnData(FColumnList[i]).Col;
     colStyleIndex := TColumnData(FColumnList[i]).ColStyleIndex;
     colStyle := TColumnStyleData(FColumnStyleList[colStyleIndex]);
-    { The column width stored in colStyle is in mm (see ReadColumnStyles).
-      We convert it to character count by converting it to points and then by
-      dividing the points by the approximate width of the '0' character which
-      is assumed to be 50% of the default font point size. }
-    colWidth := mmToPts(colStyle.ColWidth)/factor;
-    { Add only column records to the worksheet if their width is different from
-      the default column width. }
-    if not SameValue(colWidth, FWorksheet.DefaultColWidth, COLWIDTH_EPS) then
-    begin
-      col := FWorksheet.GetCol(colIndex);
-      col^.Width := colWidth;
-    end;
+    // Add only column records to the worksheet if their width is different from
+    // the default column width. The column width stored in colStyle is already
+    // in workbook units (see ReadColumnStyles).
+    if not SameValue(colStyle.ColWidth, FWorksheet.DefaultColWidth, COLWIDTH_EPS) then
+      FWorksheet.WriteColWidth(colIndex, colStyle.ColWidth, FWorkbook.Units);
   end;
 end;
 
@@ -1828,7 +1817,8 @@ begin
       s := GetAttrValue(styleChildNode, 'style:column-width');
       if s <> '' then
       begin
-        colWidth := PtsToMM(HTMLLengthStrToPts(s));   // convert to mm
+        colWidth := FWorkbook.ConvertUnits(HTMLLengthStrToPts(s), suPoints, FWorkbook.Units);
+        // convert to workbook units
         break;
       end;
     end;
@@ -3235,7 +3225,7 @@ var
     rowStyleName: String;
     rowStyleIndex: Integer;
     rowStyle: TRowStyleData;
-    rowHeight: Single;
+    rowHeight: Double;
     autoRowHeight: Boolean;
     col: Integer;
     cellNode: TDOMNode;
@@ -3254,11 +3244,7 @@ var
     if rowStyleIndex > -1 then        // just for safety
     begin
       rowStyle := TRowStyleData(FRowStyleList[rowStyleIndex]);
-      rowHeight := rowStyle.RowHeight;           // in mm (see ReadRowStyles)
-      rowHeight := mmToPts(rowHeight) / Workbook.GetDefaultFontSize;
-      if rowHeight > ROW_HEIGHT_CORRECTION
-        then rowHeight := rowHeight - ROW_HEIGHT_CORRECTION  // in "lines"
-        else rowHeight := 0;
+      rowHeight := rowStyle.RowHeight;    // in Workbook units (see ReadRowStyles)
       autoRowHeight := rowStyle.AutoRowHeight;
     end else
       autoRowHeight := true;
@@ -3356,7 +3342,7 @@ var
     // Transfer non-default row heights to sheet's rows
     if not autoRowHeight then
       for i:=1 to rowsRepeated do
-        FWorksheet.WriteRowHeight(row + i - 1, rowHeight);
+        FWorksheet.WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units);
 
     row := row + rowsRepeated;
   end;
@@ -3416,7 +3402,8 @@ begin
     begin
       s := GetAttrValue(styleChildNode, 'style:row-height');
       if s <> '' then
-        rowHeight := PtsToMm(HTMLLengthStrToPts(s));  // convert to mm
+        rowHeight := FWorkbook.ConvertUnits(HTMLLengthStrToPts(s), suPoints, FWorkbook.Units);
+        // convert to workbook units
       s := GetAttrValue(styleChildNode, 'style:use-optimal-row-height');
       if s = 'true' then
         auto := true;
@@ -4206,21 +4193,19 @@ var
   found: Boolean;
   colstyle: TColumnStyleData;
   w: Double;
-  multiplier: Double;
 begin
   { At first, add the default column width }
   colStyle := TColumnStyleData.Create;
   colStyle.Name := 'co1';
-  colStyle.ColWidth := 12; //Workbook.DefaultColWidth;
+  colStyle.ColWidth := FWorkbook.ConvertUnits(12, suChars, FWorkbook.Units);
   FColumnStyleList.Add(colStyle);
 
   for i:=0 to Workbook.GetWorksheetCount-1 do
   begin
     sheet := Workbook.GetWorksheetByIndex(i);
-//    colStyle.ColWidth := sheet.DefaultColWidth;
     for c:=0 to sheet.GetLastColIndex do
     begin
-      w := sheet.GetColWidth(c);
+      w := sheet.GetColWidth(c, FWorkbook.Units);
       // Look for this width in the current ColumnStyleList
       found := false;
       for j := 0 to FColumnStyleList.Count-1 do
@@ -4239,7 +4224,7 @@ begin
       end;
     end;
   end;
-
+                                            (*
   { fpspreadsheet's column width is the count of '0' characters of the
     default font. On average, the width of the '0' is about half of the
     point size of the font. --> we can convert the fps col width to pts and
@@ -4250,6 +4235,7 @@ begin
     w := TColumnStyleData(FColumnStyleList[i]).ColWidth * multiplier;
     TColumnStyleData(FColumnStyleList[i]).ColWidth := PtsToMM(w);
   end;
+  *)
 end;
 
 { Collects the fonts used by headers and footers in the FHeaderFooterFontList }
@@ -4308,13 +4294,13 @@ var
   row: PRow;
   found: Boolean;
   rowstyle: TRowStyleData;
-  h, multiplier: Double;
+  h: Double;
 begin
   { At first, add the default row height }
-  { Initially, row height units will be the same as in the sheet, i.e. in "lines" }
+  { Initially, row height units will be the same as in the workbook }
   rowStyle := TRowStyleData.Create;
   rowStyle.Name := 'ro1';
-  rowStyle.RowHeight := 1; //Workbook.DefaultRowHeight;
+  rowStyle.RowHeight := FWorkbook.ConvertUnits(15, suPoints, FWorkbook.Units);
   rowStyle.AutoRowHeight := true;
   FRowStyleList.Add(rowStyle);
 
@@ -4326,7 +4312,7 @@ begin
       row := sheet.FindRow(r);
       if row <> nil then
       begin
-        h := sheet.GetRowHeight(r);
+        h := sheet.GetRowHeight(r, FWorkbook.Units);
         // Look for this height in the current RowStyleList
         found := false;
         for j:=0 to FRowStyleList.Count-1 do
@@ -4348,7 +4334,7 @@ begin
       end;
     end;
   end;
-
+                                                   (*
   { fpspreadsheet's row heights are measured as line count of the default font.
     Using the default font size (which is in points) we convert the line count
     to points and then to millimeters as needed by ods. }
@@ -4357,7 +4343,7 @@ begin
   begin
     h := (TRowStyleData(FRowStyleList[i]).RowHeight + ROW_HEIGHT_CORRECTION) * multiplier;
     TRowStyleData(FRowStyleList[i]).RowHeight := PtsToMM(h);
-  end;
+  end;                                               *)
 end;
 
 { Is called before zipping the individual file parts. Rewinds the streams. }
@@ -4847,7 +4833,8 @@ begin
     // Column width
     AppendToStream(AStream, Format(
         '<style:table-column-properties style:column-width="%.3fmm" fo:break-before="auto"/>',
-          [colStyle.ColWidth], FPointSeparatorSettings));
+          [FWorkbook.ConvertUnits(colStyle.ColWidth, FWorkbook.Units, suMillimeters)],
+          FPointSeparatorSettings));
 
     // End
     AppendToStream(AStream,
@@ -4860,15 +4847,16 @@ procedure TsSpreadOpenDocWriter.WriteColumns(AStream: TStream;
 var
   lastCol: Integer;
   c, k: Integer;
-  w, w_mm: Double;
-  widthMultiplier: Double;
+  w: Double;
+//  w, w_mm: Double;
+//  widthMultiplier: Double;
   styleName: String;
   colsRepeated: Integer;
   colsRepeatedStr: String;
   firstRepeatedPrintCol, lastRepeatedPrintCol: Longint;
   headerCols: Boolean;
 begin
-  widthMultiplier := Workbook.GetFont(0).Size / 2;
+//  widthMultiplier := Workbook.GetFont(0).Size / 2;
   lastCol := ASheet.GetLastColIndex;
   firstRepeatedPrintCol := ASheet.PageLayout.RepeatedCols.FirstIndex;
   lastRepeatedPrintCol := ASheet.PageLayout.RepeatedCols.LastIndex;
@@ -4881,9 +4869,7 @@ begin
   c := 0;
   while (c <= lastCol) do
   begin
-    w := ASheet.GetColWidth(c);
-    // Convert to mm
-    w_mm := PtsToMM(w * widthMultiplier);
+    w := ASheet.GetColWidth(c, FWorkbook.Units);
 
     if (c = firstRepeatedPrintCol) then
     begin
@@ -4894,7 +4880,7 @@ begin
     // Find width in ColumnStyleList to retrieve corresponding style name
     styleName := '';
     for k := 0 to FColumnStyleList.Count-1 do
-      if SameValue(TColumnStyleData(FColumnStyleList[k]).ColWidth, w_mm, COLWIDTH_EPS) then begin
+      if SameValue(TColumnStyleData(FColumnStyleList[k]).ColWidth, w, COLWIDTH_EPS) then begin
         styleName := TColumnStyleData(FColumnStyleList[k]).Name;
         break;
       end;
@@ -4907,7 +4893,7 @@ begin
     if headerCols then
       while (k <= lastCol) and (k <= lastRepeatedPrintCol) do
       begin
-        if ASheet.GetColWidth(k) = w then
+        if ASheet.GetColWidth(k, FWorkbook.Units) = w then
           inc(colsRepeated)
         else
           break;
@@ -4916,7 +4902,7 @@ begin
     else
       while (k <= lastCol) and (k < firstRepeatedPrintCol) do
       begin
-        if ASheet.GetColWidth(k) = w then
+        if ASheet.GetColWidth(k, FWorkbook.Units) = w then
           inc(colsRepeated)
         else
           break;
@@ -5231,8 +5217,7 @@ var
   cell: PCell;      // current cell
   styleName: String;
   k: Integer;
-  h, h_mm: Single;  // row height in "lines" and millimeters, respectively
-  h1: Single;
+  h, h1: Double;
   colsRepeated: Cardinal;
   rowsRepeated: Cardinal;
   colsRepeatedStr: String;
@@ -5240,12 +5225,10 @@ var
   firstCol, firstRow, lastCol, lastRow: Cardinal;
   firstRepeatedPrintRow, lastRepeatedPrintRow: Cardinal;
   rowStyleData: TRowStyleData;
-  defFontSize: Single;
   emptyRowsAbove: Boolean;
   headerRows: Boolean;
 begin
   // some abbreviations...
-  defFontSize := Workbook.GetFont(0).Size;
   GetSheetDimensions(ASheet, firstRow, lastRow, firstCol, lastCol);
   emptyRowsAbove := firstRow > 0;
 
@@ -5278,12 +5261,11 @@ begin
     begin
       styleName := '';
 
-      h := row^.Height;   // row height in "lines"
-      h_mm := PtsToMM((h + ROW_HEIGHT_CORRECTION) * defFontSize);  // in mm
+      h := row^.Height;    // row height in workbook units
       for k := 0 to FRowStyleList.Count-1 do begin
         rowStyleData := TRowStyleData(FRowStyleList[k]);
         // Compare row heights, but be aware of rounding errors
-        if SameValue(rowStyleData.RowHeight, h_mm, 1E-3) then
+        if SameValue(rowStyleData.RowHeight, h, ROWHEIGHT_EPS) then
         begin
           styleName := rowStyleData.Name;
           break;
@@ -5318,7 +5300,7 @@ begin
       begin
         if ASheet.Cells.GetFirstCellOfRow(rr) <> nil then
           break;
-        h1 := ASheet.GetRowHeight(rr);
+        h1 := ASheet.GetRowHeight(rr, FWorkbook.Units);
         if not SameValue(h, h1, ROWHEIGHT_EPS) then
           break;
         inc(rr);
@@ -5431,7 +5413,9 @@ begin
 
     // Column width
     AppendToStream(AStream, Format(
-      '<style:table-row-properties style:row-height="%.3fmm" ', [rowStyle.RowHeight], FPointSeparatorSettings));
+      '<style:table-row-properties style:row-height="%.3fmm" ',
+        [FWorkbook.ConvertUnits(rowStyle.RowHeight, FWorkbook.Units, suMillimeters)],
+        FPointSeparatorSettings));
     if rowStyle.AutoRowHeight then
       AppendToStream(AStream, 'style:use-optimal-row-height="true" ');
     AppendToStream(AStream, 'fo:break-before="auto"/>');
@@ -6041,25 +6025,20 @@ function TsSpreadOpenDocWriter.WritePageLayoutAsXMLString(AStyleName: String;
   function CalcStyleStr(AName, AHeaderFooterImageStr: String;
     APageMargin, AHeaderFooterMargin: Double): String;
   var
-    h: Double;
     marginKind: String;
   begin
-    h := PtsToMM(FWorkbook.GetDefaultFontSize);
     if AName = 'header' then marginKind := 'bottom' else marginKind := 'top';
     Result := Format(
       '<style:%s-style>' +                // e.g. <style:header-style>
         '<style:header-footer-properties ' +
           'fo:margin-left="0mm" fo:margin-right="0mm" '+
-      //    'fo:min-height="%.2fmm" fo:margin-%s="%.2fmm" ' +    // margin-bottom or -top
-          'svg:height="%.2fmm" fo:margin-%s="%.2fmm" ' +
+          'svg:height="%.2fmm" fo:margin-%s="%.2fmm" ' + // fo:margin-bottom or -top
           'fo:background-color="transparent">' +
           '%s' +
         '</style:header-footer-properties>' +
       '</style:%s-style>', [
       AName,
-      APageMargin - AHeaderFooterMargin, marginKind, 0.0, // - h, marginKind, h,
-//      AHeaderFooterMargin, marginKind, APageMargin-AHeaderFooterMargin-h,
-//      AHeaderFooterMargin-APageMargin-h, marginKind, AHeaderFooterMargin-APageMargin,
+      APageMargin - AHeaderFooterMargin, marginKind, 0.0,
       AHeaderFooterImageStr,
       AName
     ], FPointSeparatorSettings);
@@ -6387,19 +6366,17 @@ var
   value: variant;
   styleCell: PCell;
   styleName: String;
-  h, h_mm: Single;      // row height in "lines" and millimeters, respectively
+  h: Single;      // row height workbook units
   k: Integer;
   rowStyleData: TRowStyleData;
   rowsRepeated: Cardinal;
   colsRepeated: Cardinal;
   colsRepeatedStr: String;
-  defFontSize: Single;
   lastCol, lastRow: Cardinal;
 begin
   // some abbreviations...
   lastCol := Workbook.VirtualColCount - 1;
   lastRow := Workbook.VirtualRowCount - 1;
-  defFontSize := Workbook.GetFont(0).Size;
 
   rowsRepeated := 1;
   r := 0;
@@ -6413,13 +6390,12 @@ begin
     begin
       styleName := '';
 
-      h := row^.Height;   // row height in "lines"
-      h_mm := PtsToMM((h + ROW_HEIGHT_CORRECTION) * defFontSize);  // in mm
+      h := row^.Height;   // row height in workbook units
       for k := 0 to FRowStyleList.Count-1 do
       begin
         rowStyleData := TRowStyleData(FRowStyleList[k]);
         // Compare row heights, but be aware of rounding errors
-        if SameValue(rowStyleData.RowHeight, h_mm, 1E-3) then
+        if SameValue(rowStyleData.RowHeight, h, ROWHEIGHT_EPS) then
         begin
           styleName := rowStyleData.Name;
           break;
@@ -6430,7 +6406,6 @@ begin
     end;
 
     // No empty rows allowed here for the moment!
-
 
     // Write the row XML
     AppendToStream(AStream, Format(

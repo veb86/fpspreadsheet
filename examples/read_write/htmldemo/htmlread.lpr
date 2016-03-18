@@ -61,9 +61,9 @@ begin
     MyWorkbook.Free;
   end;
 
- {$IFDEF MSWINDOWS}
+ {$IFDEF WINDOWS}
   WriteLn;
-  WriteLn('Press ENTER to exit.');
+  WriteLn('Press ENTER to quit...');
   ReadLn;
  {$ENDIF}
 end.

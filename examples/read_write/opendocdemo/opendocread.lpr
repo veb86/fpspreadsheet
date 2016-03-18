@@ -49,10 +49,16 @@ begin
     WriteLn(
       'Row: ', cell^.Row,
       ' Col: ', cell^.Col,
-      ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(cell^.Row, cell^.Col))
+      ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsText(cell^.Row, cell^.Col))
     );
 
   // Finalization
   MyWorkbook.Free;
+
+  {$IFDEF WINDOWS}
+  WriteLn;
+  Writeln('Press ENTER to quit...');
+  ReadLn;
+  {$ENDIF}
 end.
 

@@ -5,7 +5,7 @@ unit wtMain;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ComCtrls, ActnList, Grids, ColorBox, SynEdit,
   SynEditHighlighter, SynHighlighterHTML, SynHighlighterMulti,
   SynHighlighterCss, SynGutterCodeFolding, fpspreadsheetgrid,
@@ -216,9 +216,9 @@ var
 implementation
 
 uses
-  TypInfo, LCLIntf, LCLType, LCLVersion, clipbrd, fpcanvas,
+  TypInfo, LazUtf8, LCLIntf, LCLType, LCLVersion, clipbrd, fpcanvas,
   SynHighlighterWikiTable,
-  fpsutils;
+  fpsutils, fpsRegFileFormats;
 
 const
   DROPDOWN_COUNT = 24;
@@ -264,7 +264,7 @@ begin
     BeginUpdate;
     try
       if TAction(Sender).Tag = 0 then begin
-        CellBorders[Selection] := [];
+        CellBorders[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := [];
         exit;
       end;
       // Top and bottom edges
@@ -421,7 +421,7 @@ begin
     if AcFontItalic.Checked then Include(style, fssItalic);
     if AcFontStrikeout.Checked then Include(style, fssStrikeout);
     if AcFontUnderline.Checked then Include(style, fssUnderline);
-    CellFontStyles[Selection] := style;
+    CellFontStyles[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := style;
   end;
 end;
 
@@ -433,7 +433,8 @@ begin
     hor_align := TsHorAlignment(TAction(Sender).Tag - HORALIGN_TAG)
   else
     hor_align := haDefault;
-  with WorksheetGrid do HorAlignments[Selection] := hor_align;
+  with WorksheetGrid do
+    HorAlignments[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := hor_align;
   UpdateHorAlignmentActions;
 end;
 
@@ -521,13 +522,15 @@ begin
     vert_align := TsVertAlignment(TAction(Sender).Tag - VERTALIGN_TAG)
   else
     vert_align := vaDefault;
-  with WorksheetGrid do VertAlignments[Selection] := vert_align;
+  with WorksheetGrid do
+    VertAlignments[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := vert_align;
   UpdateVertAlignmentActions;
 end;
 
 procedure TMainFrm.AcWordwrapExecute(Sender: TObject);
 begin
-  with WorksheetGrid do Wordwraps[Selection] := TAction(Sender).Checked;
+  with WorksheetGrid do
+    Wordwraps[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom] := TAction(Sender).Checked;
 end;
 
 procedure TMainFrm.BeforeRun;
@@ -558,9 +561,13 @@ var
   clr: TsColor;
 begin
   if CbBackgroundColor.ItemIndex <= 0 then
-    with WorksheetGrid do BackgroundColors[Selection] := scNotDefined
+    with WorksheetGrid do
+      BackgroundColors[Selection.Left, selection.Top, Selection.Right, Selection.Bottom] :=
+        scNotDefined
   else
-    with WorksheetGrid do BackgroundColors[Selection] := PtrInt(CbBackgroundColor.Items.Objects[CbBackgroundColor.ItemIndex]);
+    with WorksheetGrid do
+      BackgroundColors[Selection.Left, selection.Top, Selection.Right, Selection.Bottom] :=
+        PtrInt(CbBackgroundColor.Items.Objects[CbBackgroundColor.ItemIndex]);
 end;
 
 procedure TMainFrm.FontComboBoxSelect(Sender: TObject);
@@ -569,7 +576,8 @@ var
 begin
   fname := FontCombobox.Items[FontCombobox.ItemIndex];
   if fname <> '' then
-    with WorksheetGrid do CellFontNames[Selection] := fName;
+    with WorksheetGrid do
+      CellFontNames[Selection.Left, selection.Top, Selection.Right, Selection.Bottom] := fName;
 end;
 
 procedure TMainFrm.FontSizeComboBoxSelect(Sender: TObject);
@@ -578,7 +586,8 @@ var
 begin
   sz := StrToInt(FontSizeCombobox.Items[FontSizeCombobox.ItemIndex]);
   if sz > 0 then
-    with WorksheetGrid do CellFontSizes[Selection] := sz;
+    with WorksheetGrid do
+      CellFontSizes[Selection.Left, selection.Top, Selection.Right, Selection.Bottom] := sz;
 end;
 
 procedure TMainFrm.FormActivate(Sender: TObject);
@@ -698,8 +707,9 @@ begin
     // Update user interface
     Caption := Format('wikitable maker - %s (%s)', [
       AFilename,
-      GetFileFormatName(WorksheetGrid.Workbook.FileFormat)
+      GetSpreadTechnicalName(WorksheetGrid.Workbook.FileFormatID)
     ]);
+
     AcShowGridLines.Checked := WorksheetGrid.ShowGridLines;
     AcShowHeaders.Checked := WorksheetGrid.ShowHeaders;
     AcRowTitles.Checked := WorksheetGrid.FrozenCols <> 0;
@@ -740,7 +750,8 @@ procedure TMainFrm.UpdateBackgroundColorIndex;
 var
   clr: TsColor;
 begin
-  with WorksheetGrid do clr := BackgroundColors[Selection];
+  with WorksheetGrid do
+    clr := BackgroundColors[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   if (clr = scNotDefined) or (clr = scTransparent) then
     CbBackgroundColor.ItemIndex := 0 // no fill
   else
@@ -753,7 +764,8 @@ var
   ac: TAction;
   hor_align: TsHorAlignment;
 begin
-  with WorksheetGrid do hor_align := HorAlignments[Selection];
+  with WorksheetGrid do
+    hor_align := HorAlignments[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   for i:=0 to ActionList.ActionCount-1 do begin
     ac := TAction(ActionList.Actions[i]);
     if (ac.Tag >= HORALIGN_TAG) and (ac.Tag < HORALIGN_TAG+10) then
@@ -765,7 +777,8 @@ procedure TMainFrm.UpdateFontNameIndex;
 var
   fname: String;
 begin
-  with WorksheetGrid do fname := CellFontNames[Selection];
+  with WorksheetGrid do
+    fname := CellFontNames[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   if fname = '' then
     FontCombobox.ItemIndex := -1
   else
@@ -776,7 +789,8 @@ procedure TMainFrm.UpdateFontSizeIndex;
 var
   sz: Single;
 begin
-  with WorksheetGrid do sz := CellFontSizes[Selection];
+  with WorksheetGrid do
+    sz := CellFontSizes[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   if sz < 0 then
     FontSizeCombobox.ItemIndex := -1
   else
@@ -787,7 +801,8 @@ procedure TMainFrm.UpdateFontStyleActions;
 var
   style: TsFontStyles;
 begin
-  with WorksheetGrid do style := CellFontStyles[Selection];
+  with WorksheetGrid do
+    style := CellFontStyles[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   AcFontBold.Checked := fssBold in style;
   AcFontItalic.Checked := fssItalic in style;
   AcFontUnderline.Checked := fssUnderline in style;
@@ -800,7 +815,8 @@ var
   ac: TAction;
   vert_align: TsVertAlignment;
 begin
-  with WorksheetGrid do vert_align := VertAlignments[Selection];
+  with WorksheetGrid do
+    vert_align := VertAlignments[Selection.Left, Selection.Top, Selection.Right, Selection.Bottom];
   for i:=0 to ActionList.ActionCount-1 do begin
     ac := TAction(ActionList.Actions[i]);
     if (ac.Tag >= VERTALIGN_TAG) and (ac.Tag < VERTALIGN_TAG+10) then

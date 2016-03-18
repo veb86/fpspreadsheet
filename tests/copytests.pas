@@ -194,7 +194,7 @@ begin
           cctNumber:
             cell := MyWorksheet.WriteNumber(row+col, col, SourceCells[row].NumberValue);
           cctUTF8String:
-            cell := Myworksheet.WriteUTF8Text(row+col, col, SourceCells[row].UTF8StringValue);
+            cell := Myworksheet.WriteText(row+col, col, SourceCells[row].UTF8StringValue);
           cctEmpty:
             cell := MyWorksheet.WriteBlank(row+col, col);
         end;

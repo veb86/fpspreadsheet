@@ -982,7 +982,7 @@ end;
 
 procedure TsSpreadOOXMLReader.ReadCols(ANode: TDOMNode; AWorksheet: TsWorksheet);
 const
-  EPS = 1e-2;
+  EPS = 1e-3;
 var
   colNode: TDOMNode;
   col, col1, col2: Cardinal;
@@ -1008,7 +1008,7 @@ begin
         if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
           if not SameValue(w, AWorksheet.DefaultColWidth, EPS) then
             for col := col1 to col2 do
-              AWorksheet.WriteColWidth(col, w);
+              AWorksheet.WriteColWidth(col, w, suChars);
       end;
     end;
     colNode := colNode.NextSibling;
@@ -1719,7 +1719,6 @@ var
   s: String;
   ht: Single;
   r: Cardinal;
-  row: PRow;
 begin
   if ANode = nil then
     exit;
@@ -1729,12 +1728,7 @@ begin
     r := StrToInt(s) - 1;
     s := GetAttrValue(ANode, 'ht');
     ht := StrToFloat(s, FPointSeparatorSettings);    // seems to be in "Points"
-    row := AWorksheet.GetRow(r);
-    row^.Height := ht / FWorkbook.GetDefaultFontSize;
-    if row^.Height > ROW_HEIGHT_CORRECTION then
-      row^.Height := row^.Height - ROW_HEIGHT_CORRECTION
-    else
-      row^.Height := 0;
+    AWorksheet.WriteRowHeight(r, ht, suPoints);
   end;
 end;
 
@@ -1808,7 +1802,7 @@ end;
 procedure TsSpreadOOXMLReader.ReadSheetFormatPr(ANode: TDOMNode;
   AWorksheet: TsWorksheet);
 var
-  w, h: Single;
+  w, h: Double;
   s: String;
 begin
   if ANode = nil then
@@ -1816,16 +1810,11 @@ begin
 
   s := GetAttrValue(ANode, 'defaultColWidth');   // is in characters
   if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
-    AWorksheet.DefaultColWidth := w;
+    AWorksheet.DefaultColWidth := FWorkbook.ConvertUnits(w, suChars, FWorkbook.Units);
 
-  s := GetAttrValue(ANode, 'defaultRowHeight');  // in in points
-  if (s <> '') and TryStrToFloat(s, h, FPointSeparatorSettings) then begin
-    h := h / Workbook.GetDefaultFontSize;
-    if h > ROW_HEIGHT_CORRECTION then begin
-      h := h - ROW_HEIGHT_CORRECTION;
-      AWorksheet.DefaultRowHeight := h;
-    end;
-  end;
+  s := GetAttrValue(ANode, 'defaultRowHeight');  // is in points
+  if (s <> '') and TryStrToFloat(s, h, FPointSeparatorSettings) then //begin
+    AWorksheet.DefaultRowHeight := FWorkbook.ConvertUnits(h, suPoints, FWorkbook.Units);
 end;
 
 procedure TsSpreadOOXMLReader.ReadSheetList(ANode: TDOMNode; AList: TStrings);
@@ -2474,22 +2463,17 @@ var
   c: Integer;
   w: Single;
 begin
-  {
-  if AWorksheet.Cols.Count = 0 then
-    exit;
-  }
-
   AppendToStream(AStream,
     '<cols>');
 
   for c:=0 to AWorksheet.GetLastColIndex do begin
     col := AWorksheet.FindCol(c);
     if col <> nil then
-      w := col^.Width
+      w := FWorkbook.ConvertUnits(col^.Width, FWorkbook.Units, suChars)
     else
-      w := AWorksheet.DefaultColWidth;
+      w := FWorkbook.ConvertUnits(AWorksheet.DefaultColWidth, FWorkbook.Units, suChars);
     AppendToStream(AStream, Format(
-      '<col min="%d" max="%d" width="%g" customWidth="1" />',
+      '<col min="%d" max="%d" width="%.2f" customWidth="1" />',
       [c+1, c+1, w], FPointSeparatorSettings)
     );
   end;
@@ -2910,10 +2894,7 @@ var
   styleCell: PCell;
   cell: PCell;
   rh: String;
-  h0: Single;
 begin
-  h0 := Workbook.GetDefaultFontSize;  // Point size of default font
-
   AppendToStream(AStream,
       '<sheetData>');
 
@@ -2924,8 +2905,8 @@ begin
     for r := 0 to r2 do begin
       row := AWorksheet.FindRow(r);
       if row <> nil then
-        rh := Format(' ht="%g" customHeight="1"', [
-          (row^.Height + ROW_HEIGHT_CORRECTION)*h0],
+        rh := Format(' ht="%.2f" customHeight="1"',
+          [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
           FPointSeparatorSettings)
       else
         rh := '';
@@ -2981,14 +2962,15 @@ begin
       // If the row has a custom height add this value to the <row> specification
       row := AWorksheet.FindRow(r);
       if row <> nil then
-        rh := Format(' ht="%g" customHeight="1"', [
-          (row^.Height + ROW_HEIGHT_CORRECTION)*h0], FPointSeparatorSettings)
+        rh := Format(' ht="%.2f" customHeight="1"',
+          [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
+          FPointSeparatorSettings)
       else
         rh := '';
       AppendToStream(AStream, Format(
         '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, rh]));
-      // Write cells belonging to this row.
 
+      // Write cells belonging to this row.
       {         // Strange: the RowEnumerator is very slow here... ?!
       for cell in AWorksheet.Cells.GetRowEnumerator(r) do
         WriteCellToStream(AStream, cell);
@@ -3013,10 +2995,11 @@ procedure TsSpreadOOXMLWriter.WriteSheetFormatPr(AStream: TStream;
 var
   w, h: Single;
 begin
-  w := AWorksheet.DefaultColWidth;
-  h := (AWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * Workbook.GetDefaultFontSize;
+  // Excel has column width in characters, and row heights in pts.
+  w := FWorkbook.ConvertUnits(AWorksheet.DefaultColWidth, FWorkbook.Units, suChars);
+  h := FWorkbook.ConvertUnits(AWorksheet.DefaultRowHeight, FWorkbook.Units, suPoints);
   AppendToStream(AStream, Format(
-    '<sheetFormatPr baseColWidth="%g" defaultRowHeight="%g" customHeight="true" />',
+    '<sheetFormatPr baseColWidth="%.2f" defaultRowHeight="%.2f" customHeight="true" />',
     [w, h],
     FPointSeparatorSettings));
 end;

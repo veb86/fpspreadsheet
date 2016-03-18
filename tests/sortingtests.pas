@@ -130,10 +130,8 @@ const
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
-  i, ilast, n, row, col: Integer;
+  i, ilast, row, col: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
-  L: TStringList;
-  s: String;
   sortParams: TsSortParams;
   actualNumber: Double;
   actualString: String;
@@ -157,12 +155,12 @@ begin
         0: for i :=0 to High(SollSortNumbers) do   // Numbers only
              MyWorksheet.WriteNumber(i, col, SollSortNumbers[i]);
         1: for i := 0 to High(SollSortStrings) do  // Strings only
-             Myworksheet.WriteUTF8Text(i, col, SollSortStrings[i]);
+             Myworksheet.WriteText(i, col, SollSortStrings[i]);
         2: begin                                   // Numbers and strings
              for i := 0 to High(SollSortNumbers) do
                MyWorkSheet.WriteNumber(i*2, col, SollSortNumbers[i]);
              for i := 0 to High(SollSortStrings) do
-               MyWorksheet.WriteUTF8Text(i*2+1, col, SollSortStrings[i]);
+               MyWorksheet.WriteText(i*2+1, col, SollSortStrings[i]);
            end;
       end
     end
@@ -171,12 +169,12 @@ begin
         0: for i := 0 to High(SollSortNumbers) do
              MyWorksheet.WriteNumber(row, i, SollSortNumbers[i]);
         1: for i := 0 to High(SollSortStrings) do
-             MyWorksheet.WriteUTF8Text(row, i, SollSortStrings[i]);
+             MyWorksheet.WriteText(row, i, SollSortStrings[i]);
         2: begin
              for i := 0 to High(SollSortNumbers) do
                myWorkSheet.WriteNumber(row, i*2, SollSortNumbers[i]);
              for i:=0 to High(SollSortStrings) do
-               MyWorksheet.WriteUTF8Text(row, i*2+1, SollSortStrings[i]);
+               MyWorksheet.WriteText(row, i*2+1, SollSortStrings[i]);
            end;
       end;
     end;
@@ -257,7 +255,7 @@ begin
            end;
         1: begin
              cell := MyWorksheet.FindCell(row, col);
-             actualString := MyWorksheet.ReadAsUTF8Text(cell);
+             actualString := MyWorksheet.ReadAsText(cell);
              expectedString := char(ord('A') + i);
              CheckEquals(expectedstring, actualstring,
                'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
@@ -279,7 +277,7 @@ begin
                CheckEquals(expectednumber, actualnumber,
                  'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
              end else begin
-               actualstring := MyWorksheet.ReadAsUTF8Text(row, col);
+               actualstring := MyWorksheet.ReadAsText(row, col);
                expectedstring := char(ord('A') + i - Length(SollSortNumbers));
                CheckEquals(expectedstring, actualstring,
                  'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
@@ -302,14 +300,9 @@ const
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
-  i, ilast, n, row, col: Integer;
-  MyCell: PCell;
+  i, ilast, row, col: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
-  L: TStringList;
-  s: String;
   sortParams: TsSortParams;
-  sortOptions: TsSortOptions;
-  r1,r2,c1,c2: Cardinal;
   actualNumber: Double;
   actualString: String;
   expectedNumber: Double;
@@ -340,14 +333,14 @@ begin
       // We will sort primarily according to column A, and seconarily according
       // to B. The construction allows us to determine if the sorting is correct.
       for i:=0 to iLast do
-        MyWorksheet.WriteUTF8Text(i, col, char(ord('A')+round(SollSortNumbers[i]) div 2));
+        MyWorksheet.WriteText(i, col, char(ord('A')+round(SollSortNumbers[i]) div 2));
     end else
     begin
       // The same with the rows...
       for i:=0 to iLast do
         MyWorksheet.WriteNumber(row+1, i, SollSortNumbers[i]);
       for i:=0 to iLast do
-        MyWorksheet.WriteUTF8Text(row, i, char(ord('A')+round(SollSortNumbers[i]) div 2));
+        MyWorksheet.WriteText(row, i, char(ord('A')+round(SollSortNumbers[i]) div 2));
     end;
 
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
@@ -404,7 +397,7 @@ begin
         // Now read the string. It must be the character corresponding to the
         // half of the number
         col := 0;
-        actualString := MyWorksheet.ReadAsUTF8Text(row, col);
+        actualString := MyWorksheet.ReadAsText(row, col);
         expectedString := char(ord('A') + round(expectedNumber) div 2);
         CheckEquals(expectedstring, actualstring,
           'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
@@ -421,7 +414,7 @@ begin
           'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
 
         row := 0;
-        actualstring := MyWorksheet.ReadAsUTF8Text(row, col);
+        actualstring := MyWorksheet.ReadAsText(row, col);
         expectedString := char(ord('A') + round(expectedNumber) div 2);
         CheckEquals(expectedstring, actualstring,
           'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));

@@ -84,7 +84,7 @@ type
   TsWorkbookChartSource = class(TCustomChartSource, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
-    FWorkbook: TsWorkbook;
+//    FWorkbook: TsWorkbook;
     FWorksheets: array[TsXYRange] of TsWorksheet;
     FRangeStr: array[TsXYRange] of String;
     FRanges: array[TsXYRange] of TsCellRangeArray;
@@ -323,13 +323,13 @@ var
   L: TStrings;
   range: TsCellRange;
 begin
-  if (FWorkbook = nil) or (FWorksheets[AIndex] = nil) or (Length(FRanges) = 0) then
+  if (Workbook = nil) or (FWorksheets[AIndex] = nil) or (Length(FRanges) = 0) then
     exit('');
 
   L := TStringList.Create;
   try
     if AListSeparator = #0 then
-      L.Delimiter := FWorkbook.FormatSettings.ListSeparator
+      L.Delimiter := Workbook.FormatSettings.ListSeparator
     else
       L.Delimiter := AListSeparator;
     L.StrictDelimiter := true;
@@ -412,7 +412,7 @@ begin
     Result := WorkbookSource.Workbook
   else
     Result := nil;
-  FWorkbook := Result;
+//  FWorkbook := Result;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -547,7 +547,6 @@ begin
   end;
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Standard component notification: The ChartSource is notified that the
   WorkbookSource is being removed.
@@ -582,7 +581,7 @@ const
 var
   range: TsCellRange;
 begin
-  if (FWorkbook = nil) or (FRangeStr[AIndex] = '') //or (FWorksheets[AIndex] = nil)
+  if (Workbook = nil) or (FRangeStr[AIndex] = '') //or (FWorksheets[AIndex] = nil)
   then begin
     FWorksheets[AIndex] := nil;
     SetLength(FRanges[AIndex], 0);
@@ -591,7 +590,7 @@ begin
     exit;
   end;
 
-  if FWorkbook.TryStrToCellRanges(FRangeStr[AIndex], FWorksheets[AIndex], FRanges[AIndex])
+  if Workbook.TryStrToCellRanges(FRangeStr[AIndex], FWorksheets[AIndex], FRanges[AIndex])
   then begin
     for range in FRanges[AIndex] do
       if (range.Col1 <> range.Col2) and (range.Row1 <> range.Row2) then
@@ -602,7 +601,7 @@ begin
     // Make sure to include worksheet name in RangeString.
     FRangeStr[AIndex] := BuildRangeStr(AIndex);
   end else
-  if (FWorkbook.GetWorksheetCount > 0) then begin
+  if (Workbook.GetWorksheetCount > 0) then begin
     if FWorksheets[AIndex] = nil then
       raise Exception.CreateFmt('Worksheet of %s cell range "%s" does not exist.',
         [XY[AIndex], FRangeStr[AIndex]])
@@ -660,7 +659,7 @@ begin
   FWorkbookSource := AValue;
   if FWorkbookSource <> nil then
     FWorkbookSource.AddListener(self);
-  FWorkbook := GetWorkbook;
+//  FWorkbook := GetWorkbook;
   ListenerNotification([lniWorkbook, lniWorksheet]);
 end;
 

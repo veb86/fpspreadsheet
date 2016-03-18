@@ -54,7 +54,7 @@ begin
       WriteLn(
         'Row: ', CurCell^.Row,
         ' Col: ', CurCell^.Col,
-        ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col))
+        ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsText(CurCell^.Row, CurCell^.Col))
        );
     end;
 
@@ -62,5 +62,11 @@ begin
     // Finalization
     MyWorkbook.Free;
   end;
+
+  {$ifdef WINDOWS}
+  WriteLn;
+  WriteLn('Press ENTER to quit...');
+  ReadLn;
+  {$ENDIF}
 end.
 

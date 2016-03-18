@@ -34,10 +34,10 @@ begin
   MyWorksheet.WriteNumber(0, 3, 4.0);
   MyWorksheet.WriteUTF8Text(0, 4, '& " '' < >');
 
-  MyWorksheet.WriteUTF8Text(0, 26, 'AA'); // Test for column name
+  MyWorksheet.WriteText(0, 26, 'AA'); // Test for column name
 
-  MyWorksheet.WriteColWidth(0, 20);
-  MyWorksheet.WriteRowHeight(0, 4);
+  MyWorksheet.WriteColWidth(0, 20, suChars);
+  MyWorksheet.WriteRowHeight(0, 4, suLines);
 
   // Write some formulas
   Myworksheet.WriteFormula(0, 5, '=A1-B1');
@@ -47,10 +47,10 @@ begin
 // Uncomment this to test large XLS files
   for i := 2 to 2{20} do
   begin
-    MyWorksheet.WriteUTF8Text(i, 0, ParamStr(0));
-    MyWorksheet.WriteUTF8Text(i, 1, ParamStr(0));
-    MyWorksheet.WriteUTF8Text(i, 2, ParamStr(0));
-    MyWorksheet.WriteUTF8Text(i, 3, ParamStr(0));
+    MyWorksheet.WriteText(i, 0, ParamStr(0));
+    MyWorksheet.WriteText(i, 1, ParamStr(0));
+    MyWorksheet.WriteText(i, 2, ParamStr(0));
+    MyWorksheet.WriteText(i, 3, ParamStr(0));
   end;
 
   // Test for Bold
@@ -64,32 +64,32 @@ begin
   MyCell^.FontIndex := BOLD_FONTINDEX;
 
   // Background and text color
-  MyWorksheet.WriteUTF8Text(4, 0, 'white on red');
+  MyWorksheet.WriteText(4, 0, 'white on red');
   Myworksheet.WriteBackgroundColor(4, 0, scRed);
   MyWorksheet.WriteFontColor(4, 0, scWhite);
 
   // Border
-  MyWorksheet.WriteUTF8Text(4, 2, 'left/right');
+  MyWorksheet.WriteText(4, 2, 'left/right');
   Myworksheet.WriteBorders(4, 2, [cbWest, cbEast]);
   MyWorksheet.WriteHorAlignment(4, 2, haCenter);
 
-  Myworksheet.WriteUTF8Text(4, 4, 'top/bottom');
+  Myworksheet.WriteText(4, 4, 'top/bottom');
   Myworksheet.WriteBorders(4, 4, [cbNorth, cbSouth]);
   MyWorksheet.WriteBorderStyle(4, 4, cbSouth, lsThick, scBlue);
   Myworksheet.WriteHorAlignment(4, 4, haRight);
 
   // Wordwrap
-  MyWorksheet.WriteUTF8Text(4, 6, 'This is a long, long, long, wrapped text.');
+  MyWorksheet.WriteText(4, 6, 'This is a long, long, long, wrapped text.');
   MyWorksheet.WriteWordwrap(4, 6, true);
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
 
   // Write some string cells
-  MyWorksheet.WriteUTF8Text(0, 0, 'First');
-  MyWorksheet.WriteUTF8Text(0, 1, 'Second');
-  MyWorksheet.WriteUTF8Text(0, 2, 'Third');
-  MyWorksheet.WriteUTF8Text(0, 3, 'Fourth');
+  MyWorksheet.WriteText(0, 0, 'First');
+  MyWorksheet.WriteText(0, 1, 'Second');
+  MyWorksheet.WriteText(0, 2, 'Third');
+  MyWorksheet.WriteText(0, 3, 'Fourth');
 
   // Write current date/time
   MyWorksheet.WriteDateTime(0, 5, now, nfShortDate);

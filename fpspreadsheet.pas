@@ -54,13 +54,13 @@ type
     }
 
   {@@ The record TRow contains information about a spreadsheet row:
-    @param Row   The index of the row (beginning with 0)
-    @param Height  The height of the row (expressed as lines count of the default font)
+    @param  Row     The index of the row (beginning with 0)
+    @param  Height  The height of the row (expressed in the units defined in the workbook)
    Only rows with heights that cannot be derived from the font height have a
    row record. }
   TRow = record
     Row: Cardinal;
-    Height: Single;  // in "lines"
+    Height: Single;
   end;
 
   {@@ Pointer to a TRow record }
@@ -68,11 +68,11 @@ type
 
   {@@ The record TCol contains information about a spreadsheet column:
    @param Col    The index of the column (beginning with 0)
-   @param Width  The width of the column (expressed in character count of the "0" character of the default font.
+   @param Width  The width of the column (expressed in the units defined in the workbook)
    Only columns with non-default widths have a column record. }
   TCol = record
     Col: Cardinal;
-    Width: Single; // in "characters". Excel uses the width of char "0" in 1st font
+    Width: Single;
   end;
 
   {@@ Pointer to a TCol record }
@@ -428,9 +428,11 @@ type
     function  GetCellCountInRow(ARow: Cardinal): Cardinal;
     function  GetCellCountInCol(ACol: Cardinal): Cardinal;
     function  GetRow(ARow: Cardinal): PRow;
-    function  GetRowHeight(ARow: Cardinal): Single;
+    function  GetRowHeight(ARow: Cardinal; AUnits: TsSizeUnits): Single; overload;
+    function  GetRowHeight(ARow: Cardinal): Single; overload; deprecated 'Use version with parameter AUnits.';
     function  GetCol(ACol: Cardinal): PCol;
-    function  GetColWidth(ACol: Cardinal): Single;
+    function  GetColWidth(ACol: Cardinal; AUnits: TsSizeUnits): Single; overload;
+    function  GetColWidth(ACol: Cardinal): Single; overload; deprecated 'Use version with parameter AUnits.';
     procedure DeleteCol(ACol: Cardinal);
     procedure DeleteRow(ARow: Cardinal);
     procedure InsertCol(ACol: Cardinal);
@@ -440,9 +442,11 @@ type
     procedure RemoveCol(ACol: Cardinal);
     procedure RemoveRow(ARow: Cardinal);
     procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
-    procedure WriteRowHeight(ARow: Cardinal; AHeight: Single);
+    procedure WriteRowHeight(ARow: Cardinal; AHeight: Single; AUnits: TsSizeUnits); overload;
+    procedure WriteRowHeight(ARow: Cardinal; AHeight: Single); overload; deprecated 'Use version with parameter AUnits';
     procedure WriteColInfo(ACol: Cardinal; AData: TCol);
-    procedure WriteColWidth(ACol: Cardinal; AWidth: Single);
+    procedure WriteColWidth(ACol: Cardinal; AWidth: Single; AUnits: TsSizeUnits); overload;
+    procedure WriteColWidth(ACol: Cardinal; AWidth: Single); overload; deprecated 'Use version with parameter AUnits';
 
     // Sorting
     procedure Sort(const ASortParams: TsSortParams;
@@ -491,12 +495,12 @@ type
     procedure UnmergeCells(ARange: String); overload;
 
     { Embedded images }
+    procedure CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
+      out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
     procedure CalcImageExtent(AIndex: Integer;
       out ARow1, ACol1, ARow2, ACol2: Cardinal;
       out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
       out x, y, AWidth, AHeight: Double);
-    procedure CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
-      out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
     function GetImage(AIndex: Integer): TsImage;
     function GetImageCount: Integer;
     procedure RemoveAllImages;
@@ -650,6 +654,7 @@ type
     FLockCount: Integer;
     FLog: TStringList;
     FSearchEngine: TObject;
+    FUnits: TsSizeUnits;
 
     { Setter/Getter }
     function GetErrorMsg: String;
@@ -784,6 +789,7 @@ type
     procedure RemoveAllEmbeddedObj;
 
     { Utilities }
+    function ConvertUnits(AValue: Double; AFromUnits, AToUnits: TsSizeUnits): Double;
     procedure DisableNotifications;
     procedure EnableNotifications;
     function NotificationsEnabled: Boolean;
@@ -806,6 +812,7 @@ type
     property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
     property VirtualRowCount: cardinal read FVirtualRowCount write SetVirtualRowCount;
     property Options: TsWorkbookOptions read FOptions write FOptions;
+    property Units: TsSizeUnits read FUnits;
 
     {@@ This event fires whenever a new worksheet is added }
     property OnAddWorksheet: TsWorksheetEvent read FOnAddWorksheet write FOnAddWorksheet;
@@ -1029,8 +1036,8 @@ begin
 
   FPageLayout := TsPageLayout.Create(self);
 
-  FDefaultColWidth := 12;
-  FDefaultRowHeight := 1;
+  FDefaultColWidth := ptsToMM(72);   // Excel: about 72 pts
+  FDefaultRowHeight := ptsToMM(15);  // Excel: 15pts
 
   FFirstRowIndex := UNASSIGNED_ROW_COL_INDEX;
   FFirstColIndex := UNASSIGNED_ROW_COL_INDEX;
@@ -3336,16 +3343,15 @@ end;
 
 procedure TsWorksheet.CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
   out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
+// All lengths are in workbook units!
 var
   colW, rowH, sum: Double;
-  factor: Double;
   embobj: TsEmbeddedObj;
 begin
-  factor := FWorkbook.GetDefaultFont.Size/2;  // Width of "0" character in pts
   ACol := 0;
   sum := 0;
   repeat
-    colW := ptsToMM(GetColWidth(ACol) * factor);
+    colW := GetColWidth(ACol, FWorkbook.Units);;
     sum := sum + colW;
     inc(ACol);
   until sum > x;
@@ -3353,11 +3359,10 @@ begin
   AColOffs := x - sum;
   dec(ACol);
 
-  factor := FWorkbook.GetDefaultFont.Size;    // Height of line in pts
   ARow := 0;
   sum := 0;
   repeat
-    rowH := ptsToMM(CalcRowHeight(ARow) * factor);  // row height in mm
+    rowH := CalcRowHeight(ARow);
     sum := sum + rowH;
     inc(ARow);
   until sum > y;
@@ -3377,32 +3382,33 @@ end;
   @param  ACol1     Index of the column containing the left edege of the image
   @param  ARow2     Index of the row containing the right edge of the image
   @param  ACol2     Index of the column containing the bottom edge of the image
-  @param  ARowOffs1 Distance between the top edge of image and row 1, in mm
-  @param  AColOffs1 Distance between the left edge of image and column 1, in mm
-  @param  ARowOffs2 Distance between the bottom edge of image and top of row 2, in mm
-  @param  AColOffs2 Distance between the right edge of image and left of col 2, in mm
-  @param  x         Absolute coordinate of left edge of image, in mm
-  @param  y         Absolute coordinate of top edge of image, in mm
-  @param  AWidth    Width of the image, in mm
-  @param  AHeight   Height of the image, in mm
+  @param  ARowOffs1 Distance between the top edge of image and row 1
+  @param  AColOffs1 Distance between the left edge of image and column 1
+  @param  ARowOffs2 Distance between the bottom edge of image and top of row 2
+  @param  AColOffs2 Distance between the right edge of image and left of col 2
+  @param  x         Absolute coordinate of left edge of image
+  @param  y         Absolute coordinate of top edge of image
+  @param  AWidth    Width of the image
+  @param  AHeight   Height of the image
+
+  All dimensions are in workbook units
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcImageExtent(AIndex: Integer;
   out ARow1, ACol1, ARow2, ACol2: Cardinal;
   out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
-  out x,y, AWidth, AHeight: Double);  // mm
+  out x,y, AWidth, AHeight: Double);
 var
   img: TsImage;
   obj: TsEmbeddedObj;
   colW, rowH: Double;
   totH, totW: Double;
   r, c: Integer;
-  factor: Double;
 begin
   img := GetImage(AIndex);
 
   ARow1 := img.Row;
   ACol1 := img.Col;
-  ARowOffs1 := img.OffsetX;    // millimeters
+  ARowOffs1 := img.OffsetX;
   AColOffs1 := img.OffsetY;
 
   obj := FWorkbook.GetEmbeddedObj(img.Index);
@@ -3410,11 +3416,10 @@ begin
   AHeight := obj.ImageHeight * img.ScaleY;
 
   // Find x coordinate of left image edge, in inches.
-  factor := FWorkbook.GetDefaultFont.Size/2;  // Width of "0" character in pts
   x := AColOffs1;
   for c := 0 to ACol1-1 do
   begin
-    colW := ptsToMM(GetColWidth(c) * factor);  // in mm
+    colW := GetColWidth(c, FWorkbook.Units);
     x := x + colW;
   end;
 
@@ -3423,7 +3428,7 @@ begin
   ACol2 := ACol1;
   while (totW < AWidth) do
   begin
-    colW := ptsToMM(GetColWidth(ACol2) * factor);
+    colW := GetColWidth(ACol2, FWorkbook.Units);
     totW := totW + colW;
     if totW >= AWidth then
     begin
@@ -3434,11 +3439,10 @@ begin
   end;
 
   // Find y coordinate of top image edge, in inches.
-  factor := FWorkbook.GetDefaultFont.Size;    // Height of line in pts
   y := ARowOffs1;
   for r := 0 to ARow1 - 1 do
   begin
-    rowH := ptsToMM(CalcRowHeight(r) * factor);  // row height in mm
+    rowH := CalcRowHeight(r);
     y := y + rowH;
   end;
 
@@ -3447,7 +3451,7 @@ begin
   ARow2 := ARow1;
   while (totH < AHeight) do
   begin
-    rowH := ptsToMM(CalcRowHeight(ARow2) * factor);
+    rowH := CalcRowHeight(ARow2);
     totH := totH + rowH;
     if totH >= AHeight then
     begin
@@ -3466,10 +3470,10 @@ end;
   @param  AFileName  Name of the image file
   @param  AOffsetX   The image is offset horizontally from the left edge of
                      the anchor cell. May reach into another cell.
-                     Value is in millimeters.
+                     Value is in workbook units.
   @param  AOffsetY   The image is offset vertically from the top edge of the
                      anchor cell. May reach into another cell.
-                     Value is in millimeters.
+                     Value is in workbook units.
   @param  AScaleX    Horizontal scaling factor of the image
   @param  AScaleY    Vertical scaling factor of the image
   @return Index into the internal image list.
@@ -3501,10 +3505,10 @@ end;
   @param  AStream    Stream which contains the image data
   @param  AOffsetX   The image is offset horizontally from the left edge of
                      the anchor cell. May reach into another cell.
-                     Value is in millimeters.
+                     Value is in workbook units.
   @param  AOffsetY   The image is offset vertically from the top edge of the
                      anchor cell. May reach into another cell.
-                     Value is in millimeters.
+                     Value is in workbook units.
   @param  AScaleX    Horizontal scaling factor of the image
   @param  AScaleY    Vertical scaling factor of the image
   @return Index into the internal image list.
@@ -3536,6 +3540,7 @@ begin
   img^.Index := AImageIndex;
   Result := FImages.Add(img);
 end;
+
 {@@ ----------------------------------------------------------------------------
   Removes an image from the internal image list.
   The image is identified by its index.
@@ -6157,28 +6162,24 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Calculates the optimum height of a given row. Depends on the font size
-  of the individual cells in the row.
+  of the individual cells in the row. Is converted to workbook units.
 
   @param    ARow   Index of the row to be considered
-  @return Row height in line count of the default font.
+  @return Row height in workbook units
 -------------------------------------------------------------------------------}
 function TsWorksheet.CalcAutoRowHeight(ARow: Cardinal): Single;
 var
   cell: PCell;
-  h0: Single;
 begin
   Result := 0;
-  h0 := Workbook.GetDefaultFontSize;
   for cell in Cells.GetRowEnumerator(ARow) do
-    Result := Max(Result, ReadCellFont(cell).Size / h0);
+    Result := Max(Result, ReadCellFont(cell).Size);
+  Result := FWorkbook.ConvertUnits(Result, suPoints, FWorkbook.Units);
     // FixMe: This is not correct if text is rotated or wrapped
-            {
-  if Result = 0 then
-    Result := DefaultRowHeight;
-    }
 end;
 
 function TsWorksheet.CalcRowHeight(ARow: Cardinal): Single;
+// In workbook units
 begin
   Result := CalcAutoRowHeight(ARow);
   if Result = 0 then
@@ -6326,10 +6327,11 @@ end;
   Returns the width of the given column. If there is no column record then
   the default column width is returned.
 
-  @param  ACol  Index of the column considered
-  @return Width of the column (in count of "0" characters of the default font)
+  @param  ACol   Index of the column considered
+  @param  AUnits Units for the column width.
+  @return Width of the column
 -------------------------------------------------------------------------------}
-function TsWorksheet.GetColWidth(ACol: Cardinal): Single;
+function TsWorksheet.GetColWidth(ACol: Cardinal; AUnits: TsSizeUnits): Single;
 var
   col: PCol;
 begin
@@ -6342,17 +6344,24 @@ begin
       Result := col^.Width
     else
       Result := FDefaultColWidth;
+    Result := FWorkbook.ConvertUnits(Result, FWorkbook.Units, AUnits);
   end;
+end;
+
+function TsWorksheet.GetColWidth(ACol: Cardinal): Single;
+begin
+  Result := GetColWidth(ACol, suChars);
 end;
 
 {@@ ----------------------------------------------------------------------------
   Returns the height of the given row. If there is no row record then the
   default row height is returned
 
-  @param  ARow  Index of the row considered
-  @return Height of the row (in line count of the default font).
+  @param  ARow    Index of the row considered
+  @param  AUnits  Units for the row height.
+  @return Height of the row
 -------------------------------------------------------------------------------}
-function TsWorksheet.GetRowHeight(ARow: Cardinal): Single;
+function TsWorksheet.GetRowHeight(ARow: Cardinal; AUnits: TsSizeUnits): Single;
 var
   row: PRow;
 begin
@@ -6365,7 +6374,13 @@ begin
       Result := row^.Height
     else
       Result := FDefaultRowHeight;
+    Result := FWorkbook.ConvertUnits(Result, FWorkbook.Units, AUnits);
   end;
+end;
+
+function TsWorksheet.GetRowHeight(ARow: Cardinal): Single;
+begin
+  Result := GetRowHeight(ARow, suLines);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6748,7 +6763,8 @@ end;
   Creates a new row record if it does not yet exist.
 
   @param  ARow   Index of the row record which will be created or modified
-  @param  AData  Data to be written.
+  @param  AData  Data to be written. Expected to be already in the units
+                 defined for the workbook
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteRowInfo(ARow: Cardinal; AData: TRow);
 var
@@ -6763,17 +6779,23 @@ end;
   does not yet exist.
 
   @param  ARow     Index of the row to be considered
-  @param  AHeight  Row height to be assigned to the row. The row height is
-                   expressed as the line count of the default font size.
+  @param  AHeight  Row height to be assigned to the row.
+  @param  AUnits   Units measuring the row height.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single);
+procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single;
+  AUnits: TsSizeUnits);
 var
   AElement: PRow;
 begin
   if ARow = UNASSIGNED_ROW_COL_INDEX then
     exit;
   AElement := GetRow(ARow);
-  AElement^.Height := AHeight;
+  AElement^.Height := FWorkbook.ConvertUnits(AHeight, AUnits, FWorkbook.FUnits);
+end;
+
+procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single);
+begin
+  WriteRowHeight(ARow, AHeight, suLines);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6784,7 +6806,8 @@ end;
   Creates a new column record if it does not yet exist.
 
   @param  ACol   Index of the column record which will be created or modified
-  @param  AData  Data to be written (essentially column width).
+  @param  AData  Data to be written (essentially column width). The column
+                 width is already in the units defined for the workbook.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteColInfo(ACol: Cardinal; AData: TCol);
 var
@@ -6799,19 +6822,24 @@ end;
   does not yet exist.
 
   @param  ACol     Index of the column to be considered
-  @param  AWidth   Width to be assigned to the column. The column width is
-                   expressed as the count of "0" characters of the default font.
+  @param  AWidth   Width to be assigned to the column.
+  @param  AUnits   Units used for parameter AWidth.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single);
+procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single;
+  AUnits: TsSizeUnits);
 var
   AElement: PCol;
 begin
   if ACol = UNASSIGNED_ROW_COL_INDEX then
     exit;
   AElement := GetCol(ACol);
-  AElement^.Width := AWidth;
+  AElement^.Width := FWorkbook.ConvertUnits(AWidth, AUnits, FWorkbook.FUnits);
 end;
 
+procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single);
+begin
+  WriteColWidth(ACol, AWidth, suChars);
+end;
 
 {------------------------------------------------------------------------------}
 {                              TsWorkbook                                      }
@@ -6870,6 +6898,53 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Conversion of length values between units
+-------------------------------------------------------------------------------}
+function TsWorkbook.ConvertUnits(AValue: Double;
+  AFromUnits, AToUnits: TsSizeUnits): Double;
+begin
+  if AFromUnits = AToUnits then
+  begin
+    Result := AValue;
+    exit;
+  end;
+  // Convert to mm
+  case AFromUnits of
+    suMillimeters:
+      Result := AValue;
+    suCentimeters:
+      Result := AValue * 10.0;
+    suInches:
+      Result := inToMM(AValue);
+    suPoints:
+      Result := ptsToMM(AValue);
+    suChars:
+      Result := ptsToMM(GetDefaultFont.Size * ZERO_WIDTH_FACTOR * AValue);
+    suLines:
+      Result := ptsToMM(GetDefaultFont.Size * (AValue + ROW_HEIGHT_CORRECTION));
+    else
+      raise Exception.Create('Unit not supported.');
+  end;
+  // Convert from mm
+  case AToUnits of
+    suMillimeters: ; // nothing to do
+    suCentimeters:
+      Result := Result * 0.1;
+    suInches:
+      Result := mmToIn(Result);
+    suPoints:
+      Result := mmToPts(Result);
+    suChars:
+      Result := mmToPts(Result) / (GetDefaultFont.Size * ZERO_WIDTH_FACTOR);
+    suLines:
+      Result := mmToPts(Result) / GetDefaultFont.Size - ROW_HEIGHT_CORRECTION;
+    else
+      raise Exception.Create('Unit not supported.');
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Helper method for clearing the spreadsheet list.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.RemoveWorksheetsCallback(data, arg: pointer);
@@ -6926,6 +7001,7 @@ begin
   FWorksheets := TFPList.Create;
   FLog := TStringList.Create;
   FFormatID := sfidUnknown;
+  FUnits := suMillimeters;              // Units for column width and row height
 
   FormatSettings := UTF8FormatSettings;
   FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
@@ -8314,6 +8390,8 @@ var
   rdest, cdest: Integer;   // row and column index at destination
   nselS, nselD: Integer;   // count of selected blocks
 begin
+  Unused(ATransposed);
+
   if AStream = nil then
     exit;
 
@@ -8452,13 +8530,13 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates a new "embedded" stream and load the specified file.
+  Creates a new "embedded" stream and loads the specified file.
   Returns the index of the embedded file item.
+  Image dimensions are converted to workbook units.
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddEmbeddedObj(const AFileName: String): Integer;
 var
   obj: TsEmbeddedObj = nil;
-  w, h: Double;
 begin
   if not FileExists(AFileName) then
   begin
@@ -8469,8 +8547,11 @@ begin
 
   obj := TsEmbeddedObj.Create;
   if obj.LoadFromFile(AFileName) then
+  begin
+    obj.ImageWidth := ConvertUnits(obj.ImageWidth, suInches, FUnits);
+    obj.ImageHeight := ConvertUnits(obj.ImageHeight, suInches, FUnits);
     Result := FEmbeddedObjList.Add(obj)
-  else
+  end else
   begin
     AddErrorMsg(rsFileFormatNotSupported, [AFileName]);
     obj.Free;
@@ -8486,7 +8567,6 @@ function TsWorkbook.AddEmbeddedObj(AStream: TStream;
   const AName: String = ''): Integer;
 var
   obj: TsEmbeddedObj = nil;
-  w, h: Double;
 begin
   obj := TsEmbeddedObj.Create;
   if obj.LoadFromStream(AStream, AName) then

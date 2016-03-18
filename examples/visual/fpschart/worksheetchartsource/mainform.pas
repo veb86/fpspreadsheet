@@ -15,6 +15,7 @@ type
   { TFPSChartForm }
 
   TFPSChartForm = class(TForm)
+    Bevel1: TBevel;
     btnCreateGraphic: TButton;
     btnLoadSpreadsheet: TButton;
     editSourceFile: TFileNameEdit;

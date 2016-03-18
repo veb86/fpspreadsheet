@@ -7,7 +7,7 @@ object Form1: TForm1
   ClientHeight = 634
   ClientWidth = 877
   OnCreate = FormCreate
-  LCLVersion = '1.5'
+  LCLVersion = '1.7'
   object Panel1: TPanel
     Left = 0
     Height = 40
@@ -78,6 +78,8 @@ object Form1: TForm1
       Align = alClient
       AutoAdvance = aaDown
       ColCount = 27
+      DefaultColWidth = 64
+      DefaultRowHeight = 22
       Font.Color = clBlack
       Font.Height = -15
       Font.Name = 'Calibri'
@@ -125,7 +127,6 @@ object Form1: TForm1
       )
       Title.Visible = True
       Align = alTop
-      ParentColor = False
       object Chart1AreaSeries1: TAreaSeries
         AreaBrush.Color = clSkyBlue
         AreaLinesPen.Style = psClear
@@ -158,7 +159,6 @@ object Form1: TForm1
       )
       Title.Visible = True
       Align = alClient
-      ParentColor = False
       object Chart2BarSeries1: TBarSeries
         Marks.Distance = 15
         Marks.Format = '%0:.2f'
@@ -199,7 +199,6 @@ object Form1: TForm1
       )
       Title.Visible = True
       Align = alBottom
-      ParentColor = False
       object Chart3PieSeries1: TPieSeries
         Legend.Multiplicity = lmPoint
         Marks.Distance = 8

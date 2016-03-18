@@ -40,7 +40,6 @@
       <Unit0>
         <Filename Value="demo_sorting.pas"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="demo_sorting"/>
       </Unit0>
       <Unit1>
         <Filename Value="..\..\fpsexprparser.pas"/>

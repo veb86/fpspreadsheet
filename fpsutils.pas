@@ -1530,6 +1530,7 @@ begin
   Result := true;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Excel's unit of row heights is "twips", i.e. 1/20 point.
   Converts Twips to points.
@@ -1682,8 +1683,10 @@ end;
   @return   Value converted to millimeters
 -------------------------------------------------------------------------------}
 function PtsToMM(AValue: Double): Double;
+const
+  PTS = 25.4 / 72.0;
 begin
-  Result := AValue / 72 * 25.4;
+  Result := AValue * PTS;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2122,6 +2125,14 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Initializes the fields of a TsImage record
+
+  @param  ARow      Index of the anchor row
+  @param  ACol      Index of the anchor column
+  @param  AOffsetX  Distance of the left image edge from the left edge of the
+                    anchor column. Measured in the units defined by the workbook.
+  @param  AOffsetY  Distance of the top image edge from the top edge of the
+                    anchor row. Measured in the units defined by the workbook.
+  @return TsImage record containing these values.
 -------------------------------------------------------------------------------}
 procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
   AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
@@ -2143,8 +2154,6 @@ begin
   with AImage do
   begin
     Index := -1;
-    //ScaleX := 1.0;
-    //ScaleY := 1.0;
   end;
 end;
 

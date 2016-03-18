@@ -3269,50 +3269,54 @@ begin
     AStrings.Add('Last column=');
     AStrings.Add('Active cell=');
     AStrings.Add('Selection=');
+    AStrings.Add('Default column width=');
+    AStrings.Add('Default row height=');
     AStrings.Add('Page layout=');
   end else
   begin
-    AStrings.Add(Format('Name=%s', [ASheet.Name]));
-    AStrings.Add(Format('First row=%d', [Integer(ASheet.GetFirstRowIndex)]));
-    AStrings.Add(Format('Last row=%d', [ASheet.GetLastRowIndex]));
-    AStrings.Add(Format('First column=%d', [Integer(ASheet.GetFirstColIndex)]));
-    AStrings.Add(Format('Last column=%d', [ASheet.GetLastColIndex]));
-    AStrings.Add(Format('Active cell=%s', [GetCellString(ASheet.ActiveCellRow, ASheet.ActiveCellCol)]));
-    AStrings.Add(Format('Selection=%s', [ASheet.GetSelectionAsString]));
-    AStrings.Add(Format('Comments=%d items', [ASheet.Comments.Count]));
-    AStrings.Add(Format('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]));
-    AStrings.Add(Format('MergedCells=%d items', [ASheet.MergedCells.Count]));
+    AStrings.Add('Name=%s', [ASheet.Name]);
+    AStrings.Add('First row=%d', [Integer(ASheet.GetFirstRowIndex)]);
+    AStrings.Add('Last row=%d', [ASheet.GetLastRowIndex]);
+    AStrings.Add('First column=%d', [Integer(ASheet.GetFirstColIndex)]);
+    AStrings.Add('Last column=%d', [ASheet.GetLastColIndex]);
+    AStrings.Add('Active cell=%s', [GetCellString(ASheet.ActiveCellRow, ASheet.ActiveCellCol)]);
+    AStrings.Add('Selection=%s', [ASheet.GetSelectionAsString]);
+    AStrings.Add('Default column width=%.1f %s', [ASheet.DefaultColWidth, SizeUnitNames[ASheet.Workbook.Units]]);
+    AStrings.Add('Default row height=%.1f %s', [ASheet.DefaultRowHeight, SizeUnitNames[ASheet.Workbook.Units]]);
+    AStrings.Add('Comments=%d items', [ASheet.Comments.Count]);
+    AStrings.Add('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]);
+    AStrings.Add('MergedCells=%d items', [ASheet.MergedCells.Count]);
 
     if ienPageLayout in FExpanded then
     begin
       AStrings.Add('(-) Page layout=');
-      AStrings.Add(Format('  Orientation=%s', [GetEnumName(TypeInfo(TsPageOrientation), ord(ASheet.PageLayout.Orientation))]));
-      AStrings.Add(Format('  Page width=%.1f mm', [ASheet.PageLayout.PageWidth]));
-      AStrings.Add(Format('  Page height=%.1f mm', [ASheet.PageLayout.PageHeight]));
-      AStrings.Add(Format('  Left margin=%.1f mm', [ASheet.PageLayout.LeftMargin]));
-      AStrings.Add(Format('  Right margin=%.1f mm', [ASheet.PageLayout.RightMargin]));
-      AStrings.Add(Format('  Top margin=%.1f mm', [ASheet.PageLayout.TopMargin]));
-      AStrings.Add(Format('  Bottom margin=%.1f mm', [ASheet.PageLayout.BottomMargin]));
-      AStrings.Add(Format('  Header distance=%.1f mm', [ASheet.PageLayout.HeaderMargin]));
-      AStrings.Add(Format('  Footer distance=%.1f mm', [ASheet.PageLayout.FooterMargin]));
+      AStrings.Add('  Orientation=%s', [GetEnumName(TypeInfo(TsPageOrientation), ord(ASheet.PageLayout.Orientation))]);
+      AStrings.Add('  Page width=%.1f mm', [ASheet.PageLayout.PageWidth]);
+      AStrings.Add('  Page height=%.1f mm', [ASheet.PageLayout.PageHeight]);
+      AStrings.Add('  Left margin=%.1f mm', [ASheet.PageLayout.LeftMargin]);
+      AStrings.Add('  Right margin=%.1f mm', [ASheet.PageLayout.RightMargin]);
+      AStrings.Add('  Top margin=%.1f mm', [ASheet.PageLayout.TopMargin]);
+      AStrings.Add('  Bottom margin=%.1f mm', [ASheet.PageLayout.BottomMargin]);
+      AStrings.Add('  Header distance=%.1f mm', [ASheet.PageLayout.HeaderMargin]);
+      AStrings.Add('  Footer distance=%.1f mm', [ASheet.PageLayout.FooterMargin]);
       if poUseStartPageNumber in ASheet.PageLayout.Options then
-        AStrings.Add(Format('  Start page number=%d', [ASheet.pageLayout.StartPageNumber]))
+        AStrings.Add('  Start page number=%d', [ASheet.pageLayout.StartPageNumber])
       else
-        AStrings.Add     ('  Start page number=automatic');
-      AStrings.Add(Format('  Scaling factor=%d%%', [ASheet.PageLayout.ScalingFactor]));
-      AStrings.Add(Format('  Copies=%d', [ASheet.PageLayout.Copies]));
+        AStrings.Add('  Start page number=automatic');
+      AStrings.Add('  Scaling factor=%d%%', [ASheet.PageLayout.ScalingFactor]);
+      AStrings.Add('  Copies=%d', [ASheet.PageLayout.Copies]);
       if (ASheet.PageLayout.Options * [poDifferentOddEven, poDifferentFirst] <> []) then
       begin
-        AStrings.Add(Format('  Header (first)=%s', [StringReplace(ASheet.PageLayout.Headers[0], LineEnding, '\n', [rfReplaceAll])]));
-        AStrings.Add(Format('  Header (odd)=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
-        AStrings.Add(Format('  Header (even)=%s', [StringReplace(ASheet.PageLayout.Headers[2], LineEnding, '\n', [rfReplaceAll])]));
-        AStrings.Add(Format('  Footer (first)=%s', [StringReplace(ASheet.PageLayout.Footers[0], LineEnding, '\n', [rfReplaceAll])]));
-        AStrings.Add(Format('  Footer (odd)=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceall])]));
-        AStrings.Add(Format('  Footer (even)=%s', [StringReplace(ASheet.PageLayout.Footers[2], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add('  Header (first)=%s', [StringReplace(ASheet.PageLayout.Headers[0], LineEnding, '\n', [rfReplaceAll])]);
+        AStrings.Add('  Header (odd)=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]);
+        AStrings.Add('  Header (even)=%s', [StringReplace(ASheet.PageLayout.Headers[2], LineEnding, '\n', [rfReplaceAll])]);
+        AStrings.Add('  Footer (first)=%s', [StringReplace(ASheet.PageLayout.Footers[0], LineEnding, '\n', [rfReplaceAll])]);
+        AStrings.Add('  Footer (odd)=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceall])]);
+        AStrings.Add('  Footer (even)=%s', [StringReplace(ASheet.PageLayout.Footers[2], LineEnding, '\n', [rfReplaceAll])]);
       end else
       begin
-        AStrings.Add(Format('  Header=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
-        AStrings.Add(Format('  Footer=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add('  Header=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]);
+        AStrings.Add('  Footer=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceAll])]);
       end;
 
       if ASheet.PageLayout.HeaderImages[hfsLeft].Index > -1 then

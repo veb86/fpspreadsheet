@@ -54,8 +54,8 @@ type
     function LoadFromStream(AStream: TStream; AName: String): Boolean;
     property FileName: String read FFileName;
     property ImageType: TsImagetype read FImageType;
-    property ImageWidth: Double read FWidth;
-    property ImageHeight: Double read FHeight;
+    property ImageWidth: Double read FWidth write FWidth;
+    property ImageHeight: Double read FHeight write FWidth;
     property Stream: TMemoryStream read FStream;
   end;
 
@@ -866,17 +866,10 @@ begin
 end;
 
 function TsEmbeddedObj.CheckStream(AImageType: TsImageType): Boolean;
-var
-  w, h: Double;
 begin
-  FImageType := GetImageInfo(FStream, w, h, AImageType);
-  if FImageType <> itUnknown then
-  begin
-    FWidth := inToMM(w);
-    FHeight := inToMM(h);
-    Result := true;
-  end else
-    Result := false;
+  FImageType := GetImageInfo(FStream, FWidth, FHeight, AImageType);
+  // FWidth and FHeight are in inches here.
+  Result := FImageType <> itUnknown;
 end;
 
 function TsEmbeddedObj.LoadFromFile(const AFileName: String): Boolean;

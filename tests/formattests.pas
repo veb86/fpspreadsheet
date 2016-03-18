@@ -1186,7 +1186,7 @@ begin
   try
     MyWorkSheet:= MyWorkBook.AddWorksheet(RowHeightSheet);
     for Row := Low(SollRowHeights) to High(SollRowHeights) do
-      MyWorksheet.WriteRowHeight(Row, SollRowHeights[Row]);
+      MyWorksheet.WriteRowHeight(Row, SollRowHeights[Row], suLines);
     TempFile:=NewTempFile;
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
@@ -1205,7 +1205,7 @@ begin
       fail('Error in test code. Failed to get named worksheet');
     for Row := Low(SollRowHeights) to High(SollRowHeights) do
     begin
-      ActualRowHeight := MyWorksheet.GetRowHeight(Row);
+      ActualRowHeight := MyWorksheet.GetRowHeight(Row, suLines);
       // Take care of rounding errors - due to missing details of calculation
       // they can be quite large...
       if abs(ActualRowHeight - SollRowHeights[Row]) > 1e-2 then

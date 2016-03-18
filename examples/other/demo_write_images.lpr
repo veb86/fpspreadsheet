@@ -10,8 +10,7 @@ var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
   MyDir: string;
-  cell: PCell;
-  i, r, c: Integer;
+  i: Integer;
 
 const
   image1 = '../../images/components/TSWORKBOOKSOURCE.png';
@@ -25,7 +24,11 @@ begin
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorksheet := MyWorkbook.AddWorksheet('Sheet 1');
-    MyWorksheet.DefaultRowHeight := 1.2;
+
+    for i:=0 to 20 do
+      MyWorksheet.WriteRowHeight(i, 4.5, suMillimeters);
+//    MyWorksheet.DefaultRowHeight := 4.5;  // millimeters
+
     MyWorksheet.WriteText(0, 0, 'There are images in cells A3 and B3'); //
     // These images are offset by 1mm in both directions from the top/left cell edge
     MyWorksheet.WriteImage(2, 0, image1, 1.0, 1.0, 2.0, 2.0);   // This image is magnified by factor 2

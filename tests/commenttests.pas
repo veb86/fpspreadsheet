@@ -124,7 +124,7 @@ begin
 
     // Comment in label cell
     col := 1;
-    MyWorksheet.WriteUTF8Text(row, col, 'Cell with comment');
+    MyWorksheet.WriteText(row, col, 'Cell with comment');
     Myworksheet.WriteComment(row, col, ACommentText);
 
     // Comment in number cell

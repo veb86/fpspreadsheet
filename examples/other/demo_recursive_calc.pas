@@ -32,24 +32,20 @@ begin
     worksheet := workbook.AddWorksheet('Calc_test');
     worksheet.WriteColWidth(0, 20);
 
-    // A1
-    worksheet.WriteUTF8Text(0, 0, '=B2+1');
-    // B1
-    worksheet.WriteFormula(0, 1, 'B2+1');
-    // A2
-    worksheet.WriteUTF8Text(1, 0, '=B3+1');
-    // B2
-    worksheet.WriteFormula(1, 1, 'B3+1');
-    // A3
-    worksheet.WriteUTF8Text(2, 0, '(not dependent)');
-    // B3
-    worksheet.WriteNumber(2, 1, 1);
+    worksheet.WriteUTF8Text(0, 0, '=B2+1');            // A1
+    worksheet.WriteFormula(0, 1, 'B2+1');              // B1
+    worksheet.WriteUTF8Text(1, 0, '=B3+1');            // A2
+    worksheet.WriteFormula(1, 1, 'B3+1');              // B2
+    worksheet.WriteUTF8Text(2, 0, '(not dependent)');  // A3
+    worksheet.WriteNumber(2, 1, 1);                    // B3
 
     workbook.WriteToFile(OutputFile, sfExcel8, true);
     writeln('Finished.');
     writeln;
     writeln('Please open "'+OutputFile+'" in "fpsgrid".');
     writeLn('It must show correct calculation results in cells B1 and B2.');
+
+    ReadLn;
   finally
     workbook.Free;
   end;

@@ -671,15 +671,9 @@ var
   cell: PCell;
   rowheightStr: String;
   colwidthStr: String;
-  defFnt: TsFont;
   col: PCol;
   row: PRow;
-  cw_fact, rh_fact: Double;
 begin
-  defFnt := FWorkbook.GetDefaultFont;
-  cw_fact := defFnt.Size * 0.5;  // ColWidthFactor = Approx width of "0" character in pts
-  rh_fact := defFnt.Size;        // RowHeightFactor = Height of a single line
-
   r1 := 0;
   c1 := 0;
   r2 := AWorksheet.GetLastRowIndex;
@@ -691,8 +685,8 @@ begin
       'ss:DefaultRowHeight="%.2f">' + LF,
       [
       AWorksheet.GetLastColIndex + 1, AWorksheet.GetLastRowIndex + 1,
-      FWorksheet.DefaultColWidth * cw_fact,
-      (FWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * rh_fact
+      FWorkbook.ConvertUnits(AWorksheet.DefaultColWidth, FWorkbook.Units, suPoints),
+      FWorkbook.ConvertUnits(AWorksheet.DefaultRowHeight, FWorkbook.Units, suPoints)
       ],
       FPointSeparatorSettings
     ));
@@ -700,11 +694,10 @@ begin
   for c := c1 to c2 do
   begin
     col := FWorksheet.FindCol(c);
-    // column width in the worksheet is in multiples of the "0" character width.
-    // In the xml file, it is needed in pts.
+    // column width is needed in pts.
     if Assigned(col) then
       colwidthStr := Format(' ss:Width="%0.2f"',
-        [col^.Width * cw_fact],
+        [FWorkbook.ConvertUnits(col^.Width, FWorkbook.Units, suPoints)],
         FPointSeparatorSettings)
     else
       colwidthStr := '';
@@ -715,11 +708,10 @@ begin
   for r := r1 to r2 do
   begin
     row := FWorksheet.FindRow(r);
-    // Row height in the worksheet is in multiples of the default font height
-    // In the xml file, it is needed in pts.
+    // Row height is needed in pts.
     if Assigned(row) then
       rowheightStr := Format(' ss:Height="%.2f"',
-        [(row^.Height + ROW_HEIGHT_CORRECTION) * rh_fact],
+        [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
         FPointSeparatorSettings
       )
     else

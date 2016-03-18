@@ -1321,7 +1321,7 @@ begin
     if (col <> nil) and (col^.Width > 0) then
       w := col^.Width;
   end;
-  w := w * FWorkbook.GetDefaultFont.Size;
+  w := FWorkbook.ConvertUnits(w, FWorkbook.Units, suPoints);
   Result:= Format(' width="%.1fpt"', [w], FPointSeparatorSettings);
 end;
 
@@ -1396,7 +1396,7 @@ begin
   row := FWorksheet.FindRow(ARowIndex);
   if row <> nil then
     h := row^.Height;
-  h := (h + ROW_HEIGHT_CORRECTION) * FWorkbook.GetDefaultFont.Size;
+  h := FWorkbook.ConvertUnits(h, FWorkbook.Units, suPoints);
   Result := Format(' height="%.1fpt"', [h], FPointSeparatorSettings);
 end;
 

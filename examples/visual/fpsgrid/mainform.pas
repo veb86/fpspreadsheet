@@ -5,7 +5,7 @@ unit mainform;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
   StdCtrls, Menus, ExtCtrls, ActnList, Spin, Buttons, ButtonPanel,
   fpspreadsheetgrid, fpsallformats;
 
@@ -47,7 +47,8 @@ var
 implementation
 
 uses
-  fpcanvas, fpstypes, fpsutils, fpsRegFileFormats, fpspreadsheet;
+  fpcanvas, lazutf8,
+  fpstypes, fpsutils, fpsRegFileFormats, fpspreadsheet;
 
 
 { TForm1 }

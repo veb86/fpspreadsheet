@@ -488,7 +488,8 @@ begin
       begin
         lCol := FWorksheet.FindCol(j);
         if lCol <> nil then
-          lColWidthStr := Format(' width="%.0fpt"', [lCol^.Width*FWorkbook.GetDefaultFontSize*0.5]);
+          lColWidthStr := Format(' width="%.0fpt"',
+            [FWorkbook.ConvertUnits(lCol^.Width, FWorkbook.Units, suPoints)]);
       end;
 
       // Row height (to be considered in first column)
@@ -496,7 +497,8 @@ begin
       begin
         lRow := FWorksheet.FindRow(i);
         if lRow <> nil then
-          lRowHeightStr := Format(' height="%.0fpt"', [lRow^.Height*FWorkbook.GetDefaultFontSize]);
+          lRowHeightStr := Format(' height="%.0fpt"',
+            [FWorkbook.ConvertUnits(lRow^.Height, FWorkbook.Units, suPoints)]);
       end;
 
       // Font

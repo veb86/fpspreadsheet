@@ -365,17 +365,17 @@ begin
   Myworksheet.WriteNumber(r, 1, number, nfFraction, '# ??/??');
 
   // Set width of columns 0, 1 and 5
-  MyWorksheet.WriteColWidth(0, 30);
-  lCol.Width := 25;
-  MyWorksheet.WriteColInfo(1, lCol);
-  MyWorksheet.WriteColWidth(2, 15);
-  MyWorksheet.WriteColWidth(3, 15);
-  MyWorksheet.WriteColWidth(4, 15);
-  lCol.Width := 5;
+  MyWorksheet.WriteColWidth(0, 30, suChars);
+  lCol.Width := 60;
+  MyWorksheet.WriteColInfo(1, lCol);  // ColInfo uses by default workbook units --> mm
+  MyWorksheet.WriteColWidth(2, 15, suChars);
+  MyWorksheet.WriteColWidth(3, 15, suChars);
+  MyWorksheet.WriteColWidth(4, 15, suChars);
+  lCol.Width := 12;                   // mm
   MyWorksheet.WriteColInfo(5, lCol);
 
   // Set height of rows 0
-  MyWorksheet.WriteRowHeight(0, 5);  // 5 lines
+  MyWorksheet.WriteRowHeight(0, 5, suLines);  // 5 lines
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet2);

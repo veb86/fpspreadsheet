@@ -987,7 +987,7 @@ begin
             '0'..'9': MyWorksheet.WriteNumber(row, col, StrToInt(s[col+1]));
             'F'     : MyWorksheet.WriteFormula(row, col, InsDelTestData[ATestIndex].Formula);
             'M'     : begin
-                        MyWorksheet.WriteUTF8Text(row, col, 'M');
+                        MyWorksheet.WriteText(row, col, 'M');
                         MyWorksheet.MergeCells(
                           row,
                           col,

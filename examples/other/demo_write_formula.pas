@@ -29,17 +29,17 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('Worksheet1');
 
   // Write some cells
-  MyWorksheet.WriteUTF8Text(0, 1, 'Text Formula');// B1
-  MyWorksheet.WriteUTF8Text(0, 2, 'RPN');// C1
+  MyWorksheet.WriteText(0, 1, 'Text Formula');// B1
+  MyWorksheet.WriteText(0, 2, 'RPN');         // C1
 
-  MyWorksheet.WriteNumber(0, 4, -3.14);  // E1
-  MyWorksheet.WriteNumber(1, 4, 100);    // E2
-  MyWorksheet.WriteNumber(2, 4, 200);    // E3
-  Myworksheet.WriteNumber(3, 4, 300);    // E4
-  MyWorksheet.WriteNumber(4, 4, 250);    // E5
+  MyWorksheet.WriteNumber(0, 4, -3.14);       // E1
+  MyWorksheet.WriteNumber(1, 4, 100);         // E2
+  MyWorksheet.WriteNumber(2, 4, 200);         // E3
+  Myworksheet.WriteNumber(3, 4, 300);         // E4
+  MyWorksheet.WriteNumber(4, 4, 250);         // E5
 
   // =Sum(E2:E5)
-  MyWorksheet.WriteUTF8Text(1, 0, '=Sum(E2:E5)'); // A2
+  MyWorksheet.WriteText(1, 0, '=Sum(E2:E5)'); // A2
   MyFormula := '=Sum(E2:E5)';
   MyWorksheet.WriteFormula(1, 1, MyFormula);    // B2
   MyWorksheet.WriteRPNFormula(1, 2, CreateRPNFormula(  // C2
@@ -48,7 +48,7 @@ begin
     nil))));
 
   // Write the formula =ABS(E1)
-  MyWorksheet.WriteUTF8Text(2, 0, '=ABS(E1)'); // A3
+  MyWorksheet.WriteText(2, 0, '=ABS(E1)');     // A3
   MyWorksheet.WriteFormula(2, 1, 'ABS(E1)');   // B3
   MyWorksheet.WriteRPNFormula(2, 2, CreateRPNFormula(  // C3
     RPNCellValue('E1',
@@ -56,7 +56,7 @@ begin
     nil))));
 
   // Write the formula =4+5
-  MyWorksheet.WriteUTF8Text(3, 0, '=4+5'); // A4
+  MyWorksheet.WriteText(3, 0, '=4+5');     // A4
   MyWorksheet.WriteFormula(3, 1, '=4+5');  // B4
   MyWorksheet.WriteRPNFormula(3, 2, CreateRPNFormula(  //C4
     RPNNumber(4.0,
@@ -73,7 +73,7 @@ begin
 
   // Line 1
 
-  MyWorksheet.WriteUTF8Text(1, 1, 'Relatório');
+  MyWorksheet.WriteText(1, 1, 'Relatório');
   MyCell := MyWorksheet.GetCell(1, 1);
   MyWorksheet.WriteBorders(MyCell, [cbNorth, cbWest, cbSouth]);
   Myworksheet.WriteBackgroundColor(MyCell, scGray20pct);

@@ -120,8 +120,6 @@ object Form1: TForm1
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = True
-      SelectionPen.JoinStyle = pjsMiter
-      SelectionPen.Width = 3
       WorkbookSource = WorksheetGrid.internal
       Align = alClient
       AutoAdvance = aaDown

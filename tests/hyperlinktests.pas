@@ -210,7 +210,7 @@ begin
       CheckEquals(expected, actual,
         'Test saved hyperlink target, cell '+CellNotation(MyWorksheet, row, col));
 
-      actual := MyWorksheet.ReadAsUTF8Text(cell);
+      actual := MyWorksheet.ReadAsText(cell);
       if row = 0 then begin
         // An originally blank cell shows the hyperlink.Target.
         // But Worksheet.WriteHyperlink removes the "file:///" protocol

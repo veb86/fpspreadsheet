@@ -79,8 +79,8 @@ type
     FHyperlinkCell: PCell;    // Selected cell if it stores a hyperlink
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
-    function CalcColWidth(AWidth: Single): Integer;
-    function CalcRowHeight(AHeight: Single): Integer;
+    function CalcColWidthFromSheet(AWidth: Single): Integer;
+    function CalcRowHeightFromSheet(AHeight: Single): Integer;
     procedure ChangedCellHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure FixNeighborCellBorders(ACell: PCell);
@@ -1098,20 +1098,17 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Converts the column width, given in "characters" of the default font, to pixels.
-  All chars are assumed to have the same width defined by the width of the
-  "0" character. Therefore, this calculation is only approximate.
+  Converts the column width, given in units used by the worksheet, to pixels.
 
-  @param   AWidth   Width of a column given as "character count".
+  @param   AWidth   Width of a column in units used by the worksheet
   @return  Column width in pixels.
 -------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.CalcColWidth(AWidth: Single): Integer;
+function TsCustomWorksheetGrid.CalcColWidthFromSheet(AWidth: Single): Integer;
 var
-  w0: Integer;
+  w_pts: Double;
 begin
-  Convert_sFont_to_Font(Workbook.GetFont(0), Canvas.Font);
-  w0 := Canvas.TextWidth('0');
-  Result := Round(AWidth * w0);
+  w_pts := Workbook.ConvertUnits(AWidth, Workbook.Units, suPoints);
+  Result := PtsToPx(w_pts, Screen.PixelsPerInch);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1138,19 +1135,18 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Converts the row height (from a worksheet row record), given in lines, to
-  pixels as needed by the grid
+  Converts the row height (from a worksheet row record), given in units used by
+  the sheet, to pixels as needed by the grid
 
-  @param  AHeight  Row height expressed as default font line count from the
-                   worksheet
+  @param  AHeight  Row height expressed in units used by the worksheet.
   @result Row height in pixels.
 -------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.CalcRowHeight(AHeight: Single): Integer;
+function TsCustomWorksheetGrid.CalcRowHeightFromSheet(AHeight: Single): Integer;
 var
   h_pts: Single;
 begin
-  h_pts := AHeight * (Workbook.GetFont(0).Size + ROW_HEIGHT_CORRECTION);
-  Result := PtsToPX(h_pts, Screen.PixelsPerInch) + 4;
+  h_pts := Workbook.ConvertUnits(AHeight, Workbook.Units, suPoints);;
+  Result := PtsToPx(h_pts, Screen.PixelsPerInch); // + 4;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1158,17 +1154,19 @@ end;
   worksheet.
 
   @param   AValue   Column width in pixels
-  @result  Count of characters '0' in the worksheet's default font.
+  @result  Column width expressed in units defined by the workbook.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.CalcWorksheetColWidth(AValue: Integer): Single;
+var
+  w_pts: Double;
 begin
   Result := 0;
   if Worksheet <> nil then
   begin
-    // The grid's column width is in "pixels", the worksheet's column width is
-    // in "characters".
-    Convert_sFont_to_Font(Workbook.GetDefaultFont, Canvas.Font);
-    Result := AValue / Canvas.TextWidth('0');
+    // The grid's column width is in "pixels", the worksheet's column width
+    // has the units defined by the workbook.
+    w_pts := PxToPts(AValue, Screen.PixelsPerInch);
+    Result := Workbook.ConvertUnits(w_pts, suPoints, Workbook.Units);
   end;
 end;
 
@@ -1177,7 +1175,7 @@ end;
   worksheet.
 
   @param   AValue   Row height in pixels
-  @result  Row height expressed as default font line count.
+  @result  Row height expressed in units defined by the workbook.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.CalcWorksheetRowHeight(AValue: Integer): Single;
 var
@@ -1186,10 +1184,10 @@ begin
   Result := 0;
   if Worksheet <> nil then
   begin
-    // The grid's row heights are in "pixels", the worksheet's row heights are
-    // in "lines"
-    h_pts := PxToPts(AValue - 4, Screen.PixelsPerInch);  // height in points
-    Result := h_pts / (Workbook.GetDefaultFontSize + ROW_HEIGHT_CORRECTION);
+    // The grid's row heights are in "pixels", the worksheet's row height
+    // has the units defined by the workbook.
+    h_pts := PxToPts(AValue, Screen.PixelsPerInch);
+    Result := Workbook.ConvertUnits(h_pts, suPoints, Workbook.Units);
   end;
 end;
 
@@ -3471,11 +3469,11 @@ begin
   if IsColumn then
   begin
     w := CalcWorksheetColWidth(ColWidths[AIndex]);
-    Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w);
+    Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w, Workbook.Units);
   end else
   begin
     h := CalcWorksheetRowHeight(RowHeights[AIndex]);
-    Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h);
+    Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h, Workbook.Units);
   end;
 end;
 
@@ -4681,9 +4679,9 @@ begin
     begin
       lCol := Worksheet.FindCol(i - FHeaderCount);
       if lCol <> nil then
-        w := CalcColWidth(lCol^.Width)
+        w := CalcColWidthFromSheet(lCol^.Width)
       else
-        w := CalcColWidth(Worksheet.DefaultColWidth);
+        w := CalcColWidthFromSheet(Worksheet.DefaultColWidth);
     end;
     ColWidths[i] := w;
   end;
@@ -4726,7 +4724,7 @@ begin
     begin
       lRow := Worksheet.FindRow(r - FHeaderCount);
       if (lRow <> nil) then
-        h := CalcRowHeight(lRow^.Height)
+        h := CalcRowHeightFromSheet(lRow^.Height)
       else
         h := CalcAutoRowHeight(r);
     end else

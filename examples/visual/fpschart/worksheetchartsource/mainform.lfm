@@ -7,12 +7,20 @@ object FPSChartForm: TFPSChartForm
   ClientHeight = 382
   ClientWidth = 697
   OnCreate = FormCreate
-  LCLVersion = '1.5'
+  LCLVersion = '1.7'
   object MyChart: TChart
+    AnchorSideLeft.Control = Bevel1
+    AnchorSideLeft.Side = asrBottom
+    AnchorSideTop.Control = editXAxis
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Owner
+    AnchorSideRight.Side = asrBottom
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
     Left = 352
-    Height = 264
-    Top = 112
-    Width = 336
+    Height = 263
+    Top = 111
+    Width = 337
     AxisList = <    
       item
         Minors = <>
@@ -34,23 +42,39 @@ object FPSChartForm: TFPSChartForm
     Title.Text.Strings = (
       'TAChart'
     )
-    ParentColor = False
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    BorderSpacing.Top = 8
+    BorderSpacing.Right = 8
+    BorderSpacing.Bottom = 8
     object MyChartBarSeries1: TBarSeries
       BarBrush.Color = clRed
       Source = FPSChartSource
     end
   end
   object WorksheetGrid: TsWorksheetGrid
+    AnchorSideLeft.Control = Owner
+    AnchorSideTop.Control = editXAxis
+    AnchorSideTop.Side = asrBottom
+    AnchorSideRight.Control = Bevel1
+    AnchorSideBottom.Control = Owner
+    AnchorSideBottom.Side = asrBottom
     Left = 8
-    Height = 264
-    Top = 112
+    Height = 263
+    Top = 111
     Width = 336
     FrozenCols = 0
     FrozenRows = 0
     ReadFormulas = False
     TextOverflow = True
+    WorkbookSource = WorksheetGrid.internal
+    Anchors = [akTop, akLeft, akRight, akBottom]
     AutoAdvance = aaDown
+    BorderSpacing.Left = 8
+    BorderSpacing.Top = 8
+    BorderSpacing.Bottom = 8
     ColCount = 27
+    DefaultColWidth = 64
+    DefaultRowHeight = 22
     ExtendedSelect = False
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goThumbTracking]
     RowCount = 101
@@ -70,6 +94,7 @@ object FPSChartForm: TFPSChartForm
     Height = 42
     Top = 4
     Width = 678
+    Anchors = [akTop, akLeft, akRight]
     AutoSize = False
     Caption = 'Please add data to the grid or load it from a file, then choose the location of the data for the X and Y axises and click on the button "Create Graphic" to generate a chart.'
     ParentColor = False
@@ -146,6 +171,15 @@ object FPSChartForm: TFPSChartForm
     LabelPosition = lpLeft
     TabOrder = 6
     Text = 'B3:B14'
+  end
+  object Bevel1: TBevel
+    AnchorSideLeft.Control = Owner
+    AnchorSideLeft.Side = asrCenter
+    Left = 344
+    Height = 50
+    Top = 83
+    Width = 8
+    Shape = bsSpacer
   end
   object FPSChartSource: TsWorksheetChartSource
     PointsNumber = 5

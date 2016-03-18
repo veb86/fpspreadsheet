@@ -46,7 +46,7 @@ begin
     begin
       Write('Row: ', CurCell^.Row,
        ' Col: ', CurCell^.Col, ' Value: ',
-      UTF8ToConsole(MyWorkSheet.ReadAsUTF8Text(CurCell^.Row, CurCell^.Col)));
+      UTF8ToConsole(MyWorkSheet.ReadAsText(CurCell^.Row, CurCell^.Col)));
       if HasFormula(CurCell) then
         Write(' - Formula: ', CurCell^.FormulaValue);
       WriteLn;
@@ -56,5 +56,11 @@ begin
     // Finalization
     MyWorkbook.Free;
   end;
+
+  {$ifdef Windows}
+  WriteLn;
+  WriteLn('Press ENTER to quit...');
+  Readln;
+  {$endif}
 end.
 

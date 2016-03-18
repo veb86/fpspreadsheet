@@ -83,18 +83,33 @@ const
   {@@ Index of italic default font in workbook's font list - not used directly }
   ITALIC_FONTINDEX = 3;
 
-  {@@ Takes account of effect of cell margins on row height by adding this
-      value to the nominal row height. Note that this is an empirical value
-      and may be wrong. }
-  ROW_HEIGHT_CORRECTION = 0.2;
-
   {@@ Line ending character in cell texts with fixed line break. Using a
       unique value simplifies many things... }
   FPS_LINE_ENDING = #10;
 
 
 type
+  {@@ Units for size dimensions }
+  TsSizeUnits = (suChars, suLines, suMillimeters, suCentimeters, suPoints, suInches);
 
+const
+  {@@ Unit names }
+  SizeUnitNames: array[TsSizeUnits] of string = (
+    'chars', 'lines', 'mm', 'cm', 'pt', 'in');
+
+  {@@ Takes account of effect of cell margins on row height by adding this
+      value to the nominal row height. Note that this is an empirical value
+      and may be wrong. }
+  ROW_HEIGHT_CORRECTION = 0.3;
+
+  {@@ Ratio of the width of the "0" character to the font size.
+    Empirical value to match Excel and LibreOffice column withs.
+    Needed because Excel defines colum width in terms of count of the "0"
+    character. }
+  ZERO_WIDTH_FACTOR = 351/640;
+
+
+type
   {@@ Tokens to identify the <b>elements in an expanded formula</b>.
 
    NOTE: When adding or rearranging items
