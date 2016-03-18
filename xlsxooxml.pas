@@ -3265,7 +3265,7 @@ begin
     img := AWorksheet.GetImage(i);
     if FWorkbook.GetEmbeddedObj(img.Index).ImageType = itUnknown then
       Continue;
-    AWorksheet.CalcImageExtent(i,
+    AWorksheet.CalcImageExtent(i, true,
       r1, c1, r2, c2,
       roffs1, coffs1, roffs2, coffs2,  // mm
       x, y, w, h);                     // mm;

@@ -497,7 +497,7 @@ type
     { Embedded images }
     procedure CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
       out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
-    procedure CalcImageExtent(AIndex: Integer;
+    procedure CalcImageExtent(AIndex: Integer; UsePixels: Boolean;
       out ARow1, ACol1, ARow2, ACol2: Cardinal;
       out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
       out x, y, AWidth, AHeight: Double);
@@ -3378,6 +3378,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Calculates image extent
 
+  @param  AIndex    Index of the image into the worksheet's image list
+  @param  UsePixels if TRUE then pixels are used for calculation - this improves
+                    the display of the images in Excel
   @param  ARow1     Index of the row containing the top edge of the image
   @param  ACol1     Index of the column containing the left edege of the image
   @param  ARow2     Index of the row containing the right edge of the image
@@ -3393,7 +3396,7 @@ end;
 
   All dimensions are in workbook units
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.CalcImageExtent(AIndex: Integer;
+procedure TsWorksheet.CalcImageExtent(AIndex: Integer; UsePixels: Boolean;
   out ARow1, ACol1, ARow2, ACol2: Cardinal;
   out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
   out x,y, AWidth, AHeight: Double);
@@ -3403,9 +3406,17 @@ var
   colW, rowH: Double;
   totH, totW: Double;
   r, c: Integer;
+  w_px, h_px: Integer;
+  totH_px, rowH_px: Integer;
+  totW_px, colW_px: Integer;
+  ppi: Integer;
+  u: TsSizeUnits;
 begin
-  img := GetImage(AIndex);
+  // Abbreviations
+  ppi := ScreenPixelsPerInch;
+  u := FWorkbook.Units;
 
+  img := GetImage(AIndex);
   ARow1 := img.Row;
   ACol1 := img.Col;
   ARowOffs1 := img.OffsetX;                 // in workbook units
@@ -3415,29 +3426,20 @@ begin
   AWidth := obj.ImageWidth * img.ScaleX;    // in workbook units
   AHeight := obj.ImageHeight * img.ScaleY;  // in workbook units
 
+  if UsePixels then
+  begin
+    // If we don't know the ppi of the screen the calculation is not exact!
+    w_px := ptsToPx(FWorkbook.ConvertUnits(AWidth, u, suPoints), ppi);
+    h_px := ptsToPx(FWorkbook.ConvertUnits(AHeight, u, suPoints), ppi);
+  end;
+
   // Find x coordinate of left image edge, in workbook units
   x := AColOffs1;
   for c := 0 to ACol1-1 do
   begin
-    colW := GetColWidth(c, FWorkbook.Units);
+    colW := GetColWidth(c, u);
     x := x + colW;
   end;
-
-  // Find cell with right image edge. Find horizontal within-cell-offsets
-  totW := -AColOffs1;
-  ACol2 := ACol1;
-  while (totW < AWidth) do
-  begin
-    colW := GetColWidth(ACol2, FWorkbook.Units);
-    totW := totW + colW;
-    if totW >= AWidth then
-    begin
-      AColOffs2 := colW - (totW - AWidth);
-      break;
-    end;
-    inc(ACol2);
-  end;
-
   // Find y coordinate of top image edge, in workbook units.
   y := ARowOffs1;
   for r := 0 to ARow1 - 1 do
@@ -3446,19 +3448,57 @@ begin
     y := y + rowH;
   end;
 
-  // Find cell with bottom image edge. Find vertical within-cell-offsets
-  totH := -ARowOffs1;
-  ARow2 := ARow1;
-  while (totH < AHeight) do
+
+  if UsePixels then
+  // Use pixels for calculation. Better for Excel, maybe due to rounding error?
   begin
-    rowH := CalcRowHeight(ARow2);
-    totH := totH + rowH;
-    if totH >= AHeight then
+    // Find cell with right image edge. Find horizontal within-cell-offsets
+    totW_px := -ptsToPx(FWorkbook.ConvertUnits(AColOffs1, u, suPoints), ppi);
+    ACol2 := ACol1;
+    while (totW_px < w_px) do
     begin
-      ARowOffs2 := rowH - (totH - AHeight);
-      break;
+      colW := GetColWidth(ACol2, u);
+      colW_px := ptsToPx(FWorkbook.ConvertUnits(colW, u, suPoints), ppi);
+      totW_px := totW_px + colW_px;
+      if totW_px > w_px then
+      begin
+        AColOffs2 := FWorkbook.ConvertUnits(pxToPts(colW_px - (totW_px - w_px), ppi), suPoints, u);
+        break;
+      end;
+      inc(ACol2);
     end;
-    inc(ARow2);
+    // Find cell with bottom image edge. Find vertical within-cell-offset.
+    totH_px := -ptsToPx(FWorkbook.ConvertUnits(ARowOffs1, u, suPoints), ppi);
+    ARow2 := ARow1;
+    while (totH_px < h_px) do
+    begin
+      rowH := CalcRowHeight(ARow2);
+      rowH_px := ptsToPx(FWorkbook.ConvertUnits(rowH, u, suPoints), ppi);
+      totH_px := totH_px + rowH_px;
+      if totH_px > h_px then
+      begin
+        ARowOffs2 := FWorkbook.ConvertUnits(pxToPts(rowH_px - (totH_px - h_px), ppi), suPoints, u);
+        break;
+      end;
+      inc(ARow2);
+    end;
+  end
+  else    // Use workbook units for calculation
+  begin
+    // Find cell with right image edge. Find horizontal within-cell-offsets
+    totH := -ARowOffs1;
+    ARow2 := ARow1;
+    while (totH < AHeight) do
+    begin
+      rowH := CalcRowHeight(ARow2);
+      totH := totH + rowH;
+      if totH >= AHeight then
+      begin
+        ARowOffs2 := rowH - (totH - AHeight);
+        break;
+      end;
+      inc(ARow2);
+    end;
   end;
 end;
 

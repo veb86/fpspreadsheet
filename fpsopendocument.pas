@@ -6138,7 +6138,7 @@ begin
     if imgType = itUnknown then
       Continue;
 
-    ASheet.CalcImageExtent(i,
+    ASheet.CalcImageExtent(i, false,   // not clear if UsePixels=false is correct. Not harmful at least
       r1, c1, r2, c2,
       roffs1, coffs1, roffs2, coffs2,  // mm
       x, y, w, h);                     // mm
