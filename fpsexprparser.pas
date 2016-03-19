@@ -1094,13 +1094,15 @@ begin
     if ParseCellRangeString(FToken, r1, c1, r2, c2, flags) then
       Result := ttCellRange
     else
-      ScanError(Format(SErrInvalidCellRange, [FToken]));
+      Result := ttError;
+//      ScanError(Format(SErrInvalidCellRange, [FToken]));
   end else
   begin
     if ParseCellString(FToken, r1, c1, flags) then
       Result := ttCell
     else
-      ScanError(Format(SErrInvalidCell, [FToken]));
+      Result := ttError;
+//      ScanError(Format(SErrInvalidCell, [FToken]));
   end;
 end;
 
@@ -2625,21 +2627,32 @@ constructor TsConstExprNode.CreateError(AParser: TsExpressionParser;
 var
   err: TsErrorValue;
 begin
-  if AValue = '#NULL!' then
+  // Don't check for equal strings. If, for example, the column A of a cell
+  // reference A1 is deleted Excel replaces the A by '#REF!', i.e the
+  // reference becomes '#REF!1' (with the 1 at the end)!
+  if pos('#NULL!', AValue) > 0 then
+//  if AValue = '#NULL!' then
     err := errEmptyIntersection
-  else if AValue = '#DIV/0!' then
+  else if Pos('#DIV/0!', AValue) > 0 then
+//  else if AValue = '#DIV/0!' then
     err := errDivideByZero
-  else if AValue = '#VALUE!' then
+//  else if AValue = '#VALUE!' then
+  else if Pos('#VALUE!', AValue) > 0 then
     err := errWrongType
-  else if AVAlue = '#REF!' then
+//  else if AValue = '#REF!' then
+  else if Pos('#REF!', AValue) > 0 then
     err := errIllegalRef
-  else if AVAlue = '#NAME?' then
+//  else if AValue = '#NAME?' then
+  else if Pos('#NAME?', AValue) > 0 then
     err := errWrongName
-  else if AValue = '#NUM!' then
+//  else if AValue = '#NUM!' then
+  else if Pos('#NUM!', AValue) > 0 then
     err := errOverflow
-  else if AValue = '#N/A' then
+//  else if AValue = '#N/A' then
+  else if Pos('#N/A', AValue) > 0 then
     err := errArgError
-  else if AValue = '#FORMULA?' then
+//  else if AValue = '#FORMULA?' then
+  else if Pos('#FORMULA?', AValue) > 0 then
     err := errFormulaNotSupported
   else
     AParser.ParserError('Unknown error type.');
