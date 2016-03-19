@@ -627,7 +627,10 @@ end;
 
 function TsTextPainter.GetHeight: Integer;
 begin
-  Result := FTotalHeight;
+  if FTextRotation = trHorizontal then
+    Result := FTotalHeight
+  else
+    Result := FMaxLineLen;
 end;
 
 function TsTextPainter.GetTextPt(x,y,ALineHeight: Integer): TPoint;
@@ -656,7 +659,9 @@ end;
 
 function TsTextPainter.GetWidth: Integer;
 begin
-  Result := FMaxLineLen;
+  if FTextRotation = trHorizontal then
+    Result := FMaxLineLen else
+    Result := FTotalHeight;
 end;
 
 { Called before analyzing and rendering of the text.
