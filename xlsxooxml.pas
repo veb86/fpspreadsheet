@@ -3000,7 +3000,7 @@ begin
   w := AWorksheet.ReadDefaultColWidth(suChars);
   h := AWorksheet.ReadDefaultRowHeight(suPoints);
   AppendToStream(AStream, Format(
-    '<sheetFormatPr baseColWidth="%.2f" defaultRowHeight="%.2f" customHeight="true" />',
+    '<sheetFormatPr baseColWidth="10" defaultColWidth="%.2f" defaultRowHeight="%.2f" customHeight="true" />',
     [w, h],
     FPointSeparatorSettings));
 end;
