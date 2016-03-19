@@ -5257,9 +5257,10 @@ begin
 
     // Look for the row style of the current row (r)
     row := ASheet.FindRow(r);
-    if row = nil then
-      styleName := 'ro1'
-    else
+    if row = nil then begin
+      styleName := 'ro1';
+      h := ASheet.ReadDefaultRowHeight(FWorkbook.Units);
+    end else
     begin
       styleName := '';
 

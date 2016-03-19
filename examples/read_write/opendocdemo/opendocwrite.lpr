@@ -43,6 +43,7 @@ begin
   MyWorksheet.WriteNumber(0, 1, 2.0);       // B1
   MyWorksheet.WriteNumber(0, 2, 3.0);       // C1
   MyWorksheet.WriteNumber(0, 3, 4.0);       // D1
+
   MyWorksheet.WriteText(4, 2, 'Total:');    // C5
   MyWorksheet.WriteNumber(4, 3, 10);        // D5
   MyWorksheet.WriteDateTime(5, 0, now);
@@ -281,7 +282,7 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test.ods', sfOpenDocument);
+  MyWorkbook.WriteToFile(MyDir + 'test1.ods', sfOpenDocument, true);
   MyWorkbook.Free;
 end.
 
