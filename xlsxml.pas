@@ -685,8 +685,8 @@ begin
       'ss:DefaultRowHeight="%.2f">' + LF,
       [
       AWorksheet.GetLastColIndex + 1, AWorksheet.GetLastRowIndex + 1,
-      FWorkbook.ConvertUnits(AWorksheet.DefaultColWidth, FWorkbook.Units, suPoints),
-      FWorkbook.ConvertUnits(AWorksheet.DefaultRowHeight, FWorkbook.Units, suPoints)
+      AWorksheet.ReadDefaultColWidth(suPoints),
+      AWorksheet.ReadDefaultRowHeight(suPoints)
       ],
       FPointSeparatorSettings
     ));

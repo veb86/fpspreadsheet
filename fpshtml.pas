@@ -1313,15 +1313,14 @@ begin
   if AColIndex < 0 then  // Row header column
   begin
     rLast := FWorksheet.GetLastRowIndex;
-    w := Length(IntToStr(rLast)) + 2;
+    w := FWorkbook.ConvertUnits(Length(IntToStr(rLast)) + 2, suChars, suPoints);
   end else
   begin
-    w := FWorksheet.DefaultColWidth;
+    w := FWorksheet.ReadDefaultColWidth(suPoints);
     col := FWorksheet.FindCol(AColIndex);
     if (col <> nil) and (col^.Width > 0) then
-      w := col^.Width;
+      w := FWorkbook.ConvertUnits(col^.Width, FWorkbook.Units, suPoints);
   end;
-  w := FWorkbook.ConvertUnits(w, FWorkbook.Units, suPoints);
   Result:= Format(' width="%.1fpt"', [w], FPointSeparatorSettings);
 end;
 
@@ -1392,11 +1391,10 @@ var
   h: Single;
   row: PRow;
 begin
-  h := FWorksheet.DefaultRowHeight;
+  h := FWorksheet.ReadDefaultRowHeight(suPoints);
   row := FWorksheet.FindRow(ARowIndex);
   if row <> nil then
-    h := row^.Height;
-  h := FWorkbook.ConvertUnits(h, FWorkbook.Units, suPoints);
+    h := FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints);
   Result := Format(' height="%.1fpt"', [h], FPointSeparatorSettings);
 end;
 

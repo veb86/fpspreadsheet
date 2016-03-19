@@ -3281,8 +3281,12 @@ begin
     AStrings.Add('Last column=%d', [ASheet.GetLastColIndex]);
     AStrings.Add('Active cell=%s', [GetCellString(ASheet.ActiveCellRow, ASheet.ActiveCellCol)]);
     AStrings.Add('Selection=%s', [ASheet.GetSelectionAsString]);
-    AStrings.Add('Default column width=%.1f %s', [ASheet.DefaultColWidth, SizeUnitNames[ASheet.Workbook.Units]]);
-    AStrings.Add('Default row height=%.1f %s', [ASheet.DefaultRowHeight, SizeUnitNames[ASheet.Workbook.Units]]);
+    AStrings.Add('Default column width=%.1f %s', [
+      ASheet.ReadDefaultColWidth(ASheet.Workbook.Units),
+      SizeUnitNames[ASheet.Workbook.Units]]);
+    AStrings.Add('Default row height=%.1f %s', [
+      ASheet.ReadDefaultRowHeight(ASheet.Workbook.Units),
+      SizeUnitNames[ASheet.Workbook.Units]]);
     AStrings.Add('Comments=%d items', [ASheet.Comments.Count]);
     AStrings.Add('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]);
     AStrings.Add('MergedCells=%d items', [ASheet.MergedCells.Count]);
@@ -3290,7 +3294,9 @@ begin
     if ienPageLayout in FExpanded then
     begin
       AStrings.Add('(-) Page layout=');
-      AStrings.Add('  Orientation=%s', [GetEnumName(TypeInfo(TsPageOrientation), ord(ASheet.PageLayout.Orientation))]);
+      AStrings.Add('  Orientation=%s', [
+        GetEnumName(TypeInfo(TsPageOrientation),
+        ord(ASheet.PageLayout.Orientation))]);
       AStrings.Add('  Page width=%.1f mm', [ASheet.PageLayout.PageWidth]);
       AStrings.Add('  Page height=%.1f mm', [ASheet.PageLayout.PageHeight]);
       AStrings.Add('  Left margin=%.1f mm', [ASheet.PageLayout.LeftMargin]);

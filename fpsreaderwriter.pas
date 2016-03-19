@@ -311,7 +311,7 @@ var
   c: Cardinal;
   w: Single;
 begin
-  if AWorksheet.Cols.Count <= 1 then
+  if AWorksheet.Cols.Count < 2 then
     exit;
 
   // Check whether all columns have the same column width
@@ -322,7 +322,7 @@ begin
 
   // At this point we know that all columns have the same width. We pass this
   // to the DefaultColWidth and delete all column records.
-  AWorksheet.DefaultColWidth := w;
+  AWorksheet.WriteDefaultColWidth(w, FWorkbook.Units);
   AWorksheet.RemoveAllCols;
 end;
 
@@ -349,7 +349,7 @@ begin
 
   // At this point we know that all rows have the same height. We pass this
   // to the DefaultRowHeight and delete all row records.
-  AWorksheet.DefaultRowHeight := h;
+  AWorksheet.WriteDefaultRowHeight(h, FWorkbook.Units);
   AWorksheet.RemoveAllRows;
 end;
 

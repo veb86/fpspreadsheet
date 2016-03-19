@@ -377,7 +377,7 @@ begin
   // calculate width in units of "characters"
   colwidth := FWorkbook.ConvertUnits(w / 256, suChars, FWorkbook.Units);
   // assign width to columns, but only if different from default column width.
-  if not SameValue(colwidth, FWorksheet.DefaultColWidth, EPS) then
+  if not SameValue(colwidth, FWorksheet.ReadDefaultColWidth(FWorkbook.Units), EPS) then
     for c := c1 to c2 do
       FWorksheet.WriteColWidth(c, colwidth, FWorkbook.Units);
 end;
@@ -387,8 +387,7 @@ var
   hw: word;
 begin
   hw := WordLEToN(AStream.ReadWord);
-  FWorksheet.DefaultRowHeight := FWorkbook.ConvertUnits(
-    TwipsToPts(hw and $8000), suPoints, FWorkbook.Units);
+  FWorksheet.WriteDefaultRowHeight(TwipsToPts(hw and $8000), suPoints);
   {
   h := TwipsToPts(hw and $8000) / FWorkbook.GetDefaultFontSize;
   if h > ROW_HEIGHT_CORRECTION then
@@ -1788,9 +1787,8 @@ begin
   { Default height for unused rows, in twips = 1/20 of a point
     Bits 0-14: Default height for unused rows, in twips
     Bit 15 = 1: Row height not changed manually }
-  h := FWorkbook.ConvertUnits(AWorksheet.DefaultRowHeight, FWorkbook.Units, suPoints);
-//  h := (AWorksheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * FWorkbook.GetDefaultFontSize;
-  AStream.WriteWord(WordToLE(PtsToTwips(h)));
+  h := AWorksheet.ReadDefaultRowHeight(suPoints);  // h is in points
+  AStream.WriteWord(WordToLE(PtsToTwips(h)));      // write as twips
 end;
 
 
@@ -1969,6 +1967,8 @@ end;
 
 procedure TsSpreadBIFF2Writer.WriteRow(AStream: TStream; ASheet: TsWorksheet;
   ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow);
+const
+  EPS = 1E-2;
 var
   containsXF: Boolean;
   rowheight: Word;
@@ -1996,10 +1996,8 @@ begin
   AStream.WriteWord(WordToLE(Word(ALastColIndex) + 1));
 
   { Row height (in twips, 1/20 point) and info on custom row height }
-  if (ARow = nil) or (ARow^.Height = ASheet.DefaultRowHeight) then
-    rowheight := PtsToTwips(FWorkbook.ConvertUnits(
-      ASheet.DefaultRowHeight, FWorkbook.Units, suPoints))
-//    rowheight := PtsToTwips((ASheet.DefaultRowHeight + ROW_HEIGHT_CORRECTION) * h)
+  if (ARow = nil) or SameValue(ARow^.Height, ASheet.ReadDefaultRowHeight(FWorkbook.Units), EPS) then
+    rowheight := PtsToTwips(ASheet.ReadDefaultRowHeight(suPoints))
   else
   if (ARow^.Height = 0) then
     rowheight := 0

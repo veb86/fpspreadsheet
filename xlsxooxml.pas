@@ -1006,7 +1006,7 @@ begin
         if s <> '' then col2 := StrToInt(s)-1 else col2 := col1;
         s := GetAttrValue(colNode, 'width');
         if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
-          if not SameValue(w, AWorksheet.DefaultColWidth, EPS) then
+          if not SameValue(w, AWorksheet.ReadDefaultColWidth(suChars), EPS) then
             for col := col1 to col2 do
               AWorksheet.WriteColWidth(col, w, suChars);
       end;
@@ -1810,11 +1810,11 @@ begin
 
   s := GetAttrValue(ANode, 'defaultColWidth');   // is in characters
   if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
-    AWorksheet.DefaultColWidth := FWorkbook.ConvertUnits(w, suChars, FWorkbook.Units);
+    AWorksheet.WriteDefaultColWidth(w, suChars);
 
   s := GetAttrValue(ANode, 'defaultRowHeight');  // is in points
-  if (s <> '') and TryStrToFloat(s, h, FPointSeparatorSettings) then //begin
-    AWorksheet.DefaultRowHeight := FWorkbook.ConvertUnits(h, suPoints, FWorkbook.Units);
+  if (s <> '') and TryStrToFloat(s, h, FPointSeparatorSettings) then
+    AWorksheet.WriteDefaultRowHeight(h, suPoints);
 end;
 
 procedure TsSpreadOOXMLReader.ReadSheetList(ANode: TDOMNode; AList: TStrings);
@@ -2468,10 +2468,11 @@ begin
 
   for c:=0 to AWorksheet.GetLastColIndex do begin
     col := AWorksheet.FindCol(c);
+    // The column width is needed in suChars here.
     if col <> nil then
       w := FWorkbook.ConvertUnits(col^.Width, FWorkbook.Units, suChars)
     else
-      w := FWorkbook.ConvertUnits(AWorksheet.DefaultColWidth, FWorkbook.Units, suChars);
+      w := AWorksheet.ReadDefaultColWidth(suChars);
     AppendToStream(AStream, Format(
       '<col min="%d" max="%d" width="%.2f" customWidth="1" />',
       [c+1, c+1, w], FPointSeparatorSettings)
@@ -2996,8 +2997,8 @@ var
   w, h: Single;
 begin
   // Excel has column width in characters, and row heights in pts.
-  w := FWorkbook.ConvertUnits(AWorksheet.DefaultColWidth, FWorkbook.Units, suChars);
-  h := FWorkbook.ConvertUnits(AWorksheet.DefaultRowHeight, FWorkbook.Units, suPoints);
+  w := AWorksheet.ReadDefaultColWidth(suChars);
+  h := AWorksheet.ReadDefaultRowHeight(suPoints);
   AppendToStream(AStream, Format(
     '<sheetFormatPr baseColWidth="%.2f" defaultRowHeight="%.2f" customHeight="true" />',
     [w, h],

@@ -1033,7 +1033,9 @@ var
   colStyleIndex: Integer;
   colStyle: TColumnStyleData;
   i: Integer;
+  u: TsSizeUnits;
 begin
+  u := FWorkbook.Units;
   for i:=0 to FColumnList.Count-1 do
   begin
     colIndex := TColumnData(FColumnList[i]).Col;
@@ -1042,8 +1044,8 @@ begin
     // Add only column records to the worksheet if their width is different from
     // the default column width. The column width stored in colStyle is already
     // in workbook units (see ReadColumnStyles).
-    if not SameValue(colStyle.ColWidth, FWorksheet.DefaultColWidth, COLWIDTH_EPS) then
-      FWorksheet.WriteColWidth(colIndex, colStyle.ColWidth, FWorkbook.Units);
+    if not SameValue(colStyle.ColWidth, FWorksheet.ReadDefaultColWidth(u), COLWIDTH_EPS) then
+      FWorksheet.WriteColWidth(colIndex, colStyle.ColWidth, u);
   end;
 end;
 

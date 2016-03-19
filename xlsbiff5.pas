@@ -691,8 +691,7 @@ var
 begin
   // read width in 1/256 of the width of "0" character
   w := WordLEToN(AStream.ReadWord);
-  // calculate width in workbook units and use it as DefaultColWidth
-  ASheet.DefaultColWidth := FWorkbook.ConvertUnits(w / 256, suChars, FWorkbook.Units);
+  ASheet.WriteDefaultRowHeight(w / 256, suChars);
 end;
 
 { Reads a STRING record which contains the result of string formula. }

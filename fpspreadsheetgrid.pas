@@ -4681,7 +4681,7 @@ begin
       if lCol <> nil then
         w := CalcColWidthFromSheet(lCol^.Width)
       else
-        w := CalcColWidthFromSheet(Worksheet.DefaultColWidth);
+        w := CalcColWidthFromSheet(Worksheet.ReadDefaultColWidth(Workbook.Units));
     end;
     ColWidths[i] := w;
   end;
@@ -5501,7 +5501,7 @@ begin
   if FHeaderCount > 0 then
     ColWidths[0] := GetDefaultHeaderColWidth;
   if Worksheet <> nil then
-    Worksheet.DefaultColWidth := CalcWorksheetColWidth(AValue);
+    Worksheet.WriteDefaultColWidth(CalcWorksheetColWidth(AValue), Workbook.Units);
 end;
 
 procedure TsCustomWorksheetGrid.SetDefRowHeight(AValue: Integer);
@@ -5512,7 +5512,7 @@ begin
   if FHeaderCount > 0 then
     RowHeights[0] := GetDefaultRowHeight;
   if Worksheet <> nil then
-    Worksheet.DefaultRowHeight := CalcWorksheetRowHeight(AValue);
+    Worksheet.WriteDefaultRowHeight(CalcWorksheetRowHeight(AValue), Workbook.Units);
 end;
 
 procedure TsCustomWorksheetGrid.SetFrozenCols(AValue: Integer);

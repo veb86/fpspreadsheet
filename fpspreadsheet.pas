@@ -135,8 +135,12 @@ type
     FOnSelectCell: TsCellEvent;
 
     { Setter/Getter }
-    function GetFormatSettings: TFormatSettings;
+    function  GetDefaultColWidth: Single;
+    function  GetDefaultRowHeight: Single;
+    function  GetFormatSettings: TFormatSettings;
     procedure SetBiDiMode(AValue: TsBiDiMode);
+    procedure SetDefaultColWidth(AValue: Single);
+    procedure SetDefaultRowHeight(AValue: Single);
     procedure SetName(const AName: String);
 
     { Callback procedures called when iterating through all cells }
@@ -437,10 +441,14 @@ type
     procedure DeleteRow(ARow: Cardinal);
     procedure InsertCol(ACol: Cardinal);
     procedure InsertRow(ARow: Cardinal);
+    function  ReadDefaultColWidth(AUnits: TsSizeUnits): Single;
+    function  ReadDefaultRowHeight(AUnits: TsSizeUnits): Single;
     procedure RemoveAllRows;
     procedure RemoveAllCols;
     procedure RemoveCol(ACol: Cardinal);
     procedure RemoveRow(ARow: Cardinal);
+    procedure WriteDefaultColWidth(AValue: Single; AUnits: TsSizeUnits);
+    procedure WriteDefaultRowHeight(AValue: Single; AUnits: TsSizeUnits);
     procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
     procedure WriteRowHeight(ARow: Cardinal; AHeight: Single; AUnits: TsSizeUnits); overload;
     procedure WriteRowHeight(ARow: Cardinal; AHeight: Single); overload; deprecated 'Use version with parameter AUnits';
@@ -545,10 +553,11 @@ type
     property  Workbook: TsWorkbook read FWorkbook;
     {@@ The default column width given in "character units" (width of the
       character "0" in the default font) }
-    property DefaultColWidth: Single read FDefaultColWidth write FDefaultColWidth;
-    {@@ The default row height is given in "line count" (height of the
-      default font }
-    property DefaultRowHeight: Single read FDefaultRowHeight write FDefaultRowHeight;
+    property DefaultColWidth: Single read GetDefaultColWidth write SetDefaultColWidth;
+      deprecated 'Use Read/WriteDefaultColWidth';
+    {@@ The default row height is given in "line count" (height of the default font }
+    property DefaultRowHeight: Single read GetDefaultRowHeight write SetDefaultRowHeight;
+      deprecated 'Use Read/WriteDefaultColWidth';
 
     // These are properties to interface to TsWorksheetGrid
     property BiDiMode: TsBiDiMode read FBiDiMode write SetBiDiMode;
@@ -6195,6 +6204,26 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
+function TsWorksheet.GetDefaultColWidth: Single;
+begin
+  Result := ReadDefaultColWidth(suChars);
+end;
+
+procedure TsWorksheet.SetDefaultColWidth(AValue: Single);
+begin
+  WriteDefaultColWidth(AValue, suChars);
+end;
+
+function TsWorksheet.GetDefaultRowHeight: Single;
+begin
+  Result := ReadDefaultRowHeight(suLines);
+end;
+
+procedure TsWorksheet.SetDefaultRowHeight(AValue: Single);
+begin
+  WriteDefaultRowHeight(AValue, suLines);
+end;
+
 function TsWorksheet.GetFormatSettings: TFormatSettings;
 begin
   Result := FWorkbook.FormatSettings;
@@ -6725,6 +6754,24 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the value of the default column width and converts it to the specified
+  units
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadDefaultColWidth(AUnits: TsSizeUnits): Single;
+begin
+  Result := FWorkbook.ConvertUnits(FDefaultColWidth, FWorkbook.Units, AUnits);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the value of the default row height and converts it to the specified
+  units
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadDefaultRowHeight(AUnits: TsSizeUnits): Single;
+begin
+  Result := FWorkbook.ConvertUnits(FDefaultRowHeight, FWorkbook.Units, AUnits);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Removes all row records from the worksheet and frees the occupied memory.
   Note: Cells are retained.
 -------------------------------------------------------------------------------}
@@ -6833,6 +6880,13 @@ begin
   AElement^.Height := FWorkbook.ConvertUnits(AHeight, AUnits, FWorkbook.FUnits);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Sets the row height for a given row. The height is given in terms of
+  line count of the worksheet's default font.
+
+  Note that this method is deprecated and will be removed.
+  Use the variant in which the units of the new height can be specified.
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single);
 begin
   WriteRowHeight(ARow, AHeight, suLines);
@@ -6876,10 +6930,42 @@ begin
   AElement^.Width := FWorkbook.ConvertUnits(AWidth, AUnits, FWorkbook.FUnits);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Sets the column width for a given column. The width is given in terms of
+  count of the "0" character using the worksheet's default font.
+
+  Note that this method is deprecated and will be removed.
+  Use the variant in which the units of the new width can be specified.
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single);
 begin
   WriteColWidth(ACol, AWidth, suChars);
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Sets the default column widtht of the worksheet. The value will be stored
+  in workbook units.
+
+  @param  AValue   New value of the default column width
+  @param  AUnits   Units used by AValue
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteDefaultColWidth(AValue: Single; AUnits: TsSizeUnits);
+begin
+  FDefaultColWidth := FWorkbook.ConvertUnits(AValue, AUnits, FWorkbook.Units);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Sets the default row height of the worksheet. The value will be stored
+  in workbook units.
+
+  @param  AValue   New value of the default row height
+  @param  AUnits   Units used by AValue
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteDefaultRowHeight(AValue: Single; AUnits: TsSizeUnits);
+begin
+  FDefaultRowHeight := FWorkbook.ConvertUnits(AValue, AUnits, FWorkbook.Units);
+end;
+
 
 {------------------------------------------------------------------------------}
 {                              TsWorkbook                                      }
