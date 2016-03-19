@@ -150,27 +150,27 @@ begin
   inc(r);
   MyWorksheet.WriteText(r, 0, 'nfCustom, nn:ss');
   MyWorksheet.WriteDateTime(r, 1, now, nfCustom, 'nn:ss');
-  MyWorksheet.WriteFontColor(r, 1, NA_COLOR);
   inc(r);
-  (* FIXME: These millisecond formats cause an Excel format warning
+  (* These millisecond formats cause a biff2 format warning
   MyWorksheet.WriteText(r, 0, 'nfCustom, nn:ss.z');
   MyWorksheet.WriteDateTime(r, 1, now, nfCustom, 'nn:ss.z');
-  MyWorksheet.WriteFontColor(r, 1, NA_COLOR);
   inc(r);
   MyWorksheet.WriteText(r, 0, 'nfCustom, mm:ss.zzz');
   MyWorksheet.WriteDateTime(r, 1, now, nfCustom, 'mm:ss.zzz');
-  MyWorksheet.WriteFontColor(r, 1, NA_COLOR);
   *)
+
   // Write formatted numbers
   number := 12345.67890123456789;
   inc(r, 2);
   MyWorksheet.WriteText(r, 1, '12345.67890123456789');
   MyWorksheet.WriteText(r, 2, '-12345.67890123456789');
   inc(r);
+  { General format }
   MyWorksheet.WriteText(r, 0, 'nfGeneral');
   MyWorksheet.WriteNumber(r, 1, number, nfGeneral);
   MyWorksheet.WriteNumber(r, 2, -number, nfGeneral);
   inc(r);
+  { Fixed format }
   MyWorksheet.WriteText(r, 0, 'nfFixed, 0 decs');
   MyWorksheet.WriteNumber(r, 1, number, nfFixed, 0);
   MyWorksheet.WriteNumber(r, 2, -number, nfFixed, 0);
@@ -191,6 +191,7 @@ begin
   MyWorksheet.WriteNumber(r, 2, -number, nfFixed, 3);
   MyWorksheet.WriteFontColor(r, 2, NA_COLOR);
   inc(r);
+  { Fixed with thousand separator }
   MyWorksheet.WriteText(r, 0, 'nfFixedTh, 0 decs');
   MyWorksheet.WriteNumber(r, 1, number, nfFixedTh, 0);
   MyWorksheet.WriteNumber(r, 2, -number, nfFixedTh, 0);
@@ -211,6 +212,7 @@ begin
   MyWorksheet.WriteNumber(r, 2, -number, nfFixedTh, 3);
   MyWorksheet.WriteFontColor(r, 2, NA_COLOR);
   inc(r);
+  { Exponential format }
   MyWorksheet.WriteText(r, 0, 'nfExp, 1 dec');
   MyWorksheet.WriteNumber(r, 1, number, nfExp, 1);
   MyWorksheet.WriteFontColor(r, 1, NA_COLOR);
@@ -237,24 +239,49 @@ begin
   MyWorksheet.WriteNumber(r, 4, -1.0/number, nfExp, 3);
   MyWorksheet.WriteFontColor(r, 4, NA_COLOR);
   inc(r,2);
+
+  { Currency formats work only with the system's currency symbol (use '?')
+    Any other currency symbol will force fps to create a custom format which
+    is supported by biff2 only with restrictions (localized dec sep, colors etc). }
   MyWorksheet.WriteText(r, 0, 'nfCurrency, 0 decs');
-  MyWorksheet.WriteCurrency(r, 1, number, nfCurrency, 0, '$');
-  MyWorksheet.WriteCurrency(r, 2, -number, nfCurrency, 0, '$');
-  MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrency, 0, '$');
+  MyWorksheet.WriteCurrency(r, 1, number, nfCurrency, 0, '?');
+  MyWorksheet.WriteCurrency(r, 2, -number, nfCurrency, 0, '?');
+  MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrency, 0, '?');
   inc(r);
-  (* FIXME: This format causes an Excel format warning
   MyWorksheet.WriteText(r, 0, 'nfCurrencyRed, 0 decs');
-  MyWorksheet.WriteCurrency(r, 1, number, nfCurrencyRed, 0, 'USD');
-  MyWorksheet.WriteCurrency(r, 2, -number, nfCurrencyRed, 0, 'USD');
-  MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrencyRed, 0, 'USD');
-  inc(r);                                 *)
-  MyWorksheet.WriteText(r, 0, 'nfCustom, "$"#,##0_);("$"#,##0)');
-  MyWorksheet.WriteNumber(r, 1, number);
-  MyWorksheet.WriteNumberFormat(r, 1, nfCustom, '"$"#,##0_);("$"#,##0)');
-  MyWorksheet.WriteNumber(r, 2, -number);
-  MyWorksheet.WriteNumberFormat(r, 2, nfCustom, '"$"#,##0_);("$"#,##0)');
+  MyWorksheet.WriteCurrency(r, 1, number, nfCurrencyRed, 0, '?');
+  MyWorksheet.WriteCurrency(r, 2, -number, nfCurrencyRed, 0, '?');
+  MyWorksheet.WriteCurrency(r, 3, 0.0, nfCurrencyRed, 0, '?');
   inc(r);
-  (* FIXME: These formats cause an Excel format warning
+  { Testing format '"$"#,##0_);("$"#,##0)':
+    This string causes problems in biff2 because the thousand separator must
+    be localized. --> build the format string using the FormatSettings! }
+  fmt := '"$"#'+MyWorkbook.FormatSettings.ThousandSeparator+'##0_);'+
+        '("$"#'+MyWorkbook.FormatSettings.ThousandSeparator+'##0)';
+  MyWorksheet.WriteText(r, 0, 'nfCustom, '+fmt);
+  MyWorksheet.WriteNumber(r, 1, number);
+  MyWorksheet.WriteNumberFormat(r, 1, nfCustom, fmt);
+  MyWorksheet.WriteNumber(r, 2, -number);
+  MyWorksheet.WriteNumberFormat(r, 2, nfCustom, fmt);
+  MyWorksheet.WriteNumber(r, 3, 0.0);
+  MyWorksheet.WriteNumberFormat(r, 3, nfcustom, fmt);
+  inc(r);
+  { Testing format 'nfCustom, _("$"* #,##0_);_("$"* (#,##0);_("$"* "-"_);_(@_)':
+    Again, the thousand separator must be localized -- see above... }
+  fmt := '_("$"* #'+MyWorkbook.FormatSettings.ThousandSeparator+'##0_);'+
+         '_("$"* (#'+MyWorkbook.FormatSettings.ThousandSeparator+'##0);'+
+         '_("$"* "-"_);_(@_)';
+  MyWorksheet.WriteText(r, 0, 'nfCustom, '+fmt);
+  MyWorksheet.WriteNumber(r, 1, number);
+  MyWorksheet.WriteNumberFormat(r, 1, nfCustom, fmt);
+  MyWorksheet.WriteNumber(r, 2, -number);
+  MyWorksheet.WriteNumberFormat(r, 2, nfCustom, fmt);
+  MyWorksheet.WriteNumber(r, 3, 0.0);
+  MyWorksheet.WriteNumberFormat(r, 3, nfCustom, fmt);
+
+  (* The next formats cause a biff2 format warning probably because the color
+    is not localized. }
+
   MyWorksheet.WriteText(r, 0, 'nfCustom, "$"#,##0.0_);[Red]("$"#,##0.0)');
   MyWorksheet.WriteNumber(r, 1, number);
   MyWorksheet.WriteFontColor(r, 1, NA_COLOR);
@@ -281,15 +308,9 @@ begin
   MyWorksheet.WriteNumberFormat(r, 2, nfCustom, UTF8ToAnsi(fmt));
   MyWorksheet.WriteFontColor(r, 2, NA_COLOR);
   *)
-  inc(r);
-  MyWorksheet.WriteText(r, 0, 'nfCustom, _("$"* #,##0_);_("$"* (#,##0);_("$"* "-"_);_(@_)');
-  MyWorksheet.WriteNumber(r, 1, number);
-  MyWorksheet.WriteFontColor(r, 1, NA_COLOR);
-  MyWorksheet.WriteNumberFormat(r, 1, nfCustom, '_("$"* #,##0_);_("$"* (#,##0);_("$"* "-"_);_(@_)');
-  MyWorksheet.WriteNumber(r, 2, -number);
-  MyWorksheet.WriteNumberFormat(r, 2, nfCustom, '_("$"* #,##0_);_("$"* (#,##0);_("$"* "-"_);_(@_)');
-  MyWorksheet.WriteFontColor(r, 2, NA_COLOR);
   inc(r, 2);
+
+  { Percentage }
   number := 1.333333333;
   MyWorksheet.WriteText(r, 0, 'nfPercentage, 0 decs');
   MyWorksheet.WriteNumber(r, 1, number, nfPercentage, 0);
@@ -304,7 +325,9 @@ begin
   MyWorksheet.WriteText(r, 0, 'nfPercentage, 3 decs');
   MyWorksheet.WriteNumber(r, 1, number, nfPercentage, 3);
   MyWorksheet.WriteFontColor(r, 1, NA_COLOR);
-  inc(r);
+  inc(r, 2);
+
+  { Time intervals }
   MyWorksheet.WriteText(r, 0, 'nfTimeInterval, hh:mm:ss');
   MyWorksheet.WriteDateTime(r, 1, number, nfTimeInterval);
   MyWorksheet.WriteFontColor(r, 1, NA_COLOR);

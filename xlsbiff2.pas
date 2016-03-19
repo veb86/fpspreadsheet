@@ -255,7 +255,6 @@ type
     HorAlign_Border_BkGr: Byte;
   end;
 
-
 procedure InternalAddBuiltinNumFormats(AList: TStringList; AFormatSettings: TFormatSettings);
 var
   fs: TFormatSettings absolute AFormatSettings;
@@ -1589,7 +1588,7 @@ type
   end;
 var
   len: Integer;
-  s: ansistring;
+  s: string; //ansistring;
   rec: TNumFormatRecord;
   buf: array of byte;
 begin

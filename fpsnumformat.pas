@@ -1097,7 +1097,8 @@ begin
   if ACurrencySymbol = '?' then
     ACurrencySymbol := AFormatSettings.CurrencyString;
   if ACurrencySymbol <> '' then
-    ACurrencySymbol := '"' + ACurrencySymbol + '"';
+    ACurrencySymbol := '[$' + ACurrencySymbol + ']';
+  //    ACurrencySymbol := '"' + ACurrencySymbol + '"';  // <-- not good for biff2
   decs := DupeString('0', ADecimals);
   if ADecimals > 0 then decs := '.' + decs;
 
@@ -1110,7 +1111,7 @@ begin
     case ncf of
       0, 14: p := p + '_)';
       3, 11: p := p + '_-';
-       4, 15: p := '_(' + p;
+      4, 15: p := '_(' + p;
       5, 8 : p := '_-' + p;
     end;
 
