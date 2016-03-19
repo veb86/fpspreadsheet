@@ -3313,8 +3313,7 @@ begin
   { Column width in characters, using the width of the zero character
   from default font (first FONT record in the file). }
   w := AWorksheet.ReadDefaultColWidth(suChars);
-  { It is written in units of 1/256 of the character width }
-  AStream.WriteWord(round(w * 256));
+  AStream.WriteWord(round(w));
 end;
 
 {@@ ----------------------------------------------------------------------------
