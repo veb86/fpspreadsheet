@@ -16,6 +16,7 @@ type
 
 function CleanHTMLString(AText: String): String;
 function IsHTMLEntity(AText: PChar; out AEntity: TsHTMLEntity): Boolean;
+function RemoveHTMLEntities(const AText: String): String;
 
 type
   TsHTMLAttr = class
@@ -440,7 +441,8 @@ begin
                Continue;
              end;
            end;
-      else Result := Result + ch;
+      else
+           Result := Result + ch;
     end;
     inc(P);
   end;
@@ -450,6 +452,34 @@ begin
   if hasEndSpace then Result := Result + ' ';
 end;
 
+function RemoveHTMLEntities(const AText: String): String;
+var
+  ent: TsHTMLEntity;
+  P: PChar;
+  ch: AnsiChar;
+begin
+  Result := '';
+  P := @AText[1];
+  while (P^ <> #0) do begin
+    ch := P^;
+    case ch of
+      '&': begin
+             inc(P);
+             if (P <> nil) and IsHTMLEntity(P, ent) then
+             begin
+               Result := Result + ent.Ch;
+               inc(P, Length(ent.E));
+             end else
+             begin
+               Result := Result + '&';
+               Continue;
+             end;
+           end;
+      else Result := Result + ch;
+    end;
+    inc(P);
+  end;
+end;
 
 {==============================================================================}
 {                                TsHTMLAttr                                    }
@@ -886,7 +916,8 @@ end;
 procedure TsHTMLAnalyzer.TextFoundHandler(AText: String);
 begin
   if not FPreserveSpaces then
-    AText := CleanHTMLString(AText);
+    AText := CleanHTMLString(AText) else
+    AText := RemoveHTMLEntities(AText);
   if AText <> '' then
   begin
     if FPlainText = '' then
