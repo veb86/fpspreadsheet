@@ -1625,6 +1625,7 @@ begin
   begin
     // Standard text formatting
     ValidXMLText(txt);
+    txt := LineEndingToBR(txt);
     if target <> '' then
       txt := Format('<a href="%s">%s</a>', [target, txt]);
     if cellFnt.Position <> fpNormal then

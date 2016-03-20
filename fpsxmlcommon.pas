@@ -44,6 +44,7 @@ type
 function GetAttrValue(ANode : TDOMNode; AAttrName : string) : string;
 function GetNodeValue(ANode: TDOMNode): String;
 
+function LineEndingToBR(const AText: String): String;
 function UTF8TextToXMLText(AText: string; ProcessLineEndings: Boolean = false): string;
 function ValidXMLText(var AText: string; ReplaceSpecialChars: Boolean = true;
   ProcessLineEndings: Boolean = false): Boolean;
@@ -105,6 +106,29 @@ begin
   child := ANode.FirstChild;
   if Assigned(child) and (child.NodeName = '#text') then
     Result := child.NodeValue;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Replaces LineEnding character(s) by '<br />';
+-------------------------------------------------------------------------------}
+function LineEndingToBR(const AText: String): String;
+var
+  i: Integer;
+begin
+  Result := '';
+  i := 1;
+  while (i <= Length(AText)) do
+  begin
+    case AText[i] of
+      #13: begin
+             Result := Result + '<br />';
+             if (i < Length(AText)) and (AText[i+1] = #10) then inc(i);
+           end;
+      #10: Result := Result + '<br />';
+      else Result := Result + AText[i];
+    end;
+    inc(i);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

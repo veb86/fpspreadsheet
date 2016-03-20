@@ -77,7 +77,7 @@ begin
     MyWorksheet.WriteNumber(row, 0, row);
     MyWorksheet.WriteText(row, 1, 'This is a long text with line break:');
     Myworksheet.WriteVertAlignment(row, 1, vaTop);
-    MyWorksheet.WriteText(row, 2, 'A very, very, very, very long text,<br /> indeed');
+    MyWorksheet.WriteText(row, 2, 'A very, very, very, very long text,'#13#10'indeed');
     inc(row);
 
     MyWorksheet.WriteNumber(row, 0, row);

@@ -464,13 +464,14 @@ begin
     begin
       lCell := FWorksheet.FindCell(i, j);
       lCurStr := FWorksheet.ReadAsText(lCell, fs);
-//      if lCurStr = '' then lCurStr := '&nbsp;';
 
       // Check for invalid characters
       if not ValidXMLText(lCurStr, false) then
         Workbook.AddErrorMsg(rsInvalidCharacterInCell, [
           GetCellString(i, j)
         ]);
+
+      lCurStr := LineEndingToBR(lCurStr);
 
       lStyleStr := '';
       lColSpanStr := '';
@@ -519,8 +520,6 @@ begin
         lStyleStr := Format('background-color:%s;color:%s;', [
           ColorToHTMLColorStr(lCurColor),
           ColorToHTMLColorStr(lFont.Color)
-//          FWorkbook.GetPaletteColorAsHTMLStr(lCurColor),
-//          FWorkbook.GetPaletteColorAsHTMLStr(lFont.Color)
         ]);
       end;
 
