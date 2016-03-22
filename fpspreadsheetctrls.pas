@@ -3221,8 +3221,8 @@ begin
       begin
         embObj := AWorkbook.GetEmbeddedObj(i);
         AStrings.Add('  Filename='+embobj.FileName);
-        AStrings.Add('  ImageWidth=%.2f mm', [embObj.ImageWidth]);
-        AStrings.Add('  ImageHeight=%.2f mm', [embObj.ImageHeight]);
+        AStrings.Add(Format('  ImageWidth=%.2f mm', [embObj.ImageWidth]));
+        AStrings.Add(Format('  ImageHeight=%.2f mm', [embObj.ImageHeight]));
       end;
     end else
       AStrings.Add('(+) Images=(dblclick for more...)');
@@ -3274,75 +3274,95 @@ begin
     AStrings.Add('Page layout=');
   end else
   begin
-    AStrings.Add('Name=%s', [ASheet.Name]);
-    AStrings.Add('First row=%d', [Integer(ASheet.GetFirstRowIndex)]);
-    AStrings.Add('Last row=%d', [ASheet.GetLastRowIndex]);
-    AStrings.Add('First column=%d', [Integer(ASheet.GetFirstColIndex)]);
-    AStrings.Add('Last column=%d', [ASheet.GetLastColIndex]);
-    AStrings.Add('Active cell=%s', [GetCellString(ASheet.ActiveCellRow, ASheet.ActiveCellCol)]);
-    AStrings.Add('Selection=%s', [ASheet.GetSelectionAsString]);
-    AStrings.Add('Default column width=%.1f %s', [
+    AStrings.Add(Format('Name=%s', [ASheet.Name]));
+    AStrings.Add(Format('First row=%d', [Integer(ASheet.GetFirstRowIndex)]));
+    AStrings.Add(Format('Last row=%d', [ASheet.GetLastRowIndex]));
+    AStrings.Add(Format('First column=%d', [Integer(ASheet.GetFirstColIndex)]));
+    AStrings.Add(Format('Last column=%d', [ASheet.GetLastColIndex]));
+    AStrings.Add(Format('Active cell=%s',
+      [GetCellString(ASheet.ActiveCellRow, ASheet.ActiveCellCol)]));
+    AStrings.Add(Format('Selection=%s', [ASheet.GetSelectionAsString]));
+    AStrings.Add(Format('Default column width=%.1f %s', [
       ASheet.ReadDefaultColWidth(ASheet.Workbook.Units),
-      SizeUnitNames[ASheet.Workbook.Units]]);
-    AStrings.Add('Default row height=%.1f %s', [
+      SizeUnitNames[ASheet.Workbook.Units]]));
+    AStrings.Add(Format('Default row height=%.1f %s', [
       ASheet.ReadDefaultRowHeight(ASheet.Workbook.Units),
-      SizeUnitNames[ASheet.Workbook.Units]]);
-    AStrings.Add('Comments=%d items', [ASheet.Comments.Count]);
-    AStrings.Add('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]);
-    AStrings.Add('MergedCells=%d items', [ASheet.MergedCells.Count]);
+      SizeUnitNames[ASheet.Workbook.Units]]));
+    AStrings.Add(Format('Comments=%d items', [ASheet.Comments.Count]));
+    AStrings.Add(Format('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]));
+    AStrings.Add(Format('MergedCells=%d items', [ASheet.MergedCells.Count]));
 
     if ienPageLayout in FExpanded then
     begin
       AStrings.Add('(-) Page layout=');
-      AStrings.Add('  Orientation=%s', [
+      AStrings.Add(Format('  Orientation=%s', [
         GetEnumName(TypeInfo(TsPageOrientation),
-        ord(ASheet.PageLayout.Orientation))]);
-      AStrings.Add('  Page width=%.1f mm', [ASheet.PageLayout.PageWidth]);
-      AStrings.Add('  Page height=%.1f mm', [ASheet.PageLayout.PageHeight]);
-      AStrings.Add('  Left margin=%.1f mm', [ASheet.PageLayout.LeftMargin]);
-      AStrings.Add('  Right margin=%.1f mm', [ASheet.PageLayout.RightMargin]);
-      AStrings.Add('  Top margin=%.1f mm', [ASheet.PageLayout.TopMargin]);
-      AStrings.Add('  Bottom margin=%.1f mm', [ASheet.PageLayout.BottomMargin]);
-      AStrings.Add('  Header distance=%.1f mm', [ASheet.PageLayout.HeaderMargin]);
-      AStrings.Add('  Footer distance=%.1f mm', [ASheet.PageLayout.FooterMargin]);
+        ord(ASheet.PageLayout.Orientation))]));
+      AStrings.Add(Format('  Page width=%.1f mm', [ASheet.PageLayout.PageWidth]));
+      AStrings.Add(Format('  Page height=%.1f mm', [ASheet.PageLayout.PageHeight]));
+      AStrings.Add(Format('  Left margin=%.1f mm', [ASheet.PageLayout.LeftMargin]));
+      AStrings.Add(Format('  Right margin=%.1f mm', [ASheet.PageLayout.RightMargin]));
+      AStrings.Add(Format('  Top margin=%.1f mm', [ASheet.PageLayout.TopMargin]));
+      AStrings.Add(Format('  Bottom margin=%.1f mm', [ASheet.PageLayout.BottomMargin]));
+      AStrings.Add(Format('  Header distance=%.1f mm', [ASheet.PageLayout.HeaderMargin]));
+      AStrings.Add(Format('  Footer distance=%.1f mm', [ASheet.PageLayout.FooterMargin]));
       if poUseStartPageNumber in ASheet.PageLayout.Options then
-        AStrings.Add('  Start page number=%d', [ASheet.pageLayout.StartPageNumber])
+        AStrings.Add(Format('  Start page number=%d', [ASheet.pageLayout.StartPageNumber]))
       else
         AStrings.Add('  Start page number=automatic');
-      AStrings.Add('  Scaling factor=%d%%', [ASheet.PageLayout.ScalingFactor]);
-      AStrings.Add('  Copies=%d', [ASheet.PageLayout.Copies]);
+      AStrings.Add(Format('  Scaling factor=%d%%',
+        [ASheet.PageLayout.ScalingFactor]));
+      AStrings.Add(Format('  Copies=%d', [ASheet.PageLayout.Copies]));
       if (ASheet.PageLayout.Options * [poDifferentOddEven, poDifferentFirst] <> []) then
       begin
-        AStrings.Add('  Header (first)=%s', [StringReplace(ASheet.PageLayout.Headers[0], LineEnding, '\n', [rfReplaceAll])]);
-        AStrings.Add('  Header (odd)=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]);
-        AStrings.Add('  Header (even)=%s', [StringReplace(ASheet.PageLayout.Headers[2], LineEnding, '\n', [rfReplaceAll])]);
-        AStrings.Add('  Footer (first)=%s', [StringReplace(ASheet.PageLayout.Footers[0], LineEnding, '\n', [rfReplaceAll])]);
-        AStrings.Add('  Footer (odd)=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceall])]);
-        AStrings.Add('  Footer (even)=%s', [StringReplace(ASheet.PageLayout.Footers[2], LineEnding, '\n', [rfReplaceAll])]);
+        AStrings.Add(Format('  Header (first)=%s',
+          [StringReplace(ASheet.PageLayout.Headers[0], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Header (odd)=%s',
+          [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Header (even)=%s',
+          [StringReplace(ASheet.PageLayout.Headers[2], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Footer (first)=%s',
+          [StringReplace(ASheet.PageLayout.Footers[0], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Footer (odd)=%s',
+          [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceall])]));
+        AStrings.Add(Format('  Footer (even)=%s',
+          [StringReplace(ASheet.PageLayout.Footers[2], LineEnding, '\n', [rfReplaceAll])]));
       end else
       begin
-        AStrings.Add('  Header=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]);
-        AStrings.Add('  Footer=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceAll])]);
+        AStrings.Add(Format('  Header=%s', [StringReplace(ASheet.PageLayout.Headers[1], LineEnding, '\n', [rfReplaceAll])]));
+        AStrings.Add(Format('  Footer=%s', [StringReplace(ASheet.PageLayout.Footers[1], LineEnding, '\n', [rfReplaceAll])]));
       end;
 
       if ASheet.PageLayout.HeaderImages[hfsLeft].Index > -1 then
-        AStrings.Add('  HeaderImage, left=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.HeaderImages[hfsLeft].Index).FileName]) else
+        AStrings.Add(Format('  HeaderImage, left=%s',
+          [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.HeaderImages[hfsLeft].Index).FileName]))
+      else
         AStrings.Add('  HeaderImage, left =');
       if ASheet.PageLayout.HeaderImages[hfsCenter].Index > -1 then
-        AStrings.Add('  HeaderImage, center=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.HeaderImages[hfsCenter].Index).FileName]) else
+        AStrings.Add(Format('  HeaderImage, center=%s',
+          [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.HeaderImages[hfsCenter].Index).FileName]))
+      else
         AStrings.Add('  HeaderImage, center=');
       if ASheet.PageLayout.HeaderImages[hfsRight].Index > -1 then
-        AStrings.Add('  HeaderImage, right=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.HeaderImages[hfsRight].Index).FileName]) else
+        AStrings.Add(Format('  HeaderImage, right=%s',
+          [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.HeaderImages[hfsRight].Index).FileName]))
+      else
         AStrings.Add('  HeaderImage, right=');
 
       if ASheet.PageLayout.FooterImages[hfsLeft].Index > -1 then
-        AStrings.Add('  FooterImage, left=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.FooterImages[hfsLeft].Index).FileName]) else
+        AStrings.Add(Format('  FooterImage, left=%s',
+          [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.FooterImages[hfsLeft].Index).FileName]))
+      else
         AStrings.Add('  FooterImage, left =');
       if ASheet.PageLayout.FooterImages[hfsCenter].Index > -1 then
-        AStrings.Add('  FooterImage, center=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.FooterImages[hfsCenter].Index).FileName]) else
+        AStrings.Add(Format('  FooterImage, center=%s',
+          [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.FooterImages[hfsCenter].Index).FileName]))
+      else
         AStrings.Add('  FooterImage, center=');
       if ASheet.PageLayout.FooterImages[hfsRight].Index > -1 then
-        AStrings.Add('  FooterImage, right=%s', [ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.FooterImages[hfsRight].Index).FileName]) else
+        AStrings.Add(Format('  FooterImage, right=%s', [
+          ASheet.Workbook.GetEmbeddedObj(ASheet.PageLayout.FooterImages[hfsRight].Index).FileName]))
+      else
         AStrings.Add('  FooterImage, right=');
 
       s := '';
@@ -3358,14 +3378,15 @@ begin
       for i:=0 to ASheet.GetImageCount-1 do
       begin
         img := ASheet.GetImage(i);
-        AStrings.Add('  Row=%d', [img.Row]);
-        AStrings.Add('  Col=%d', [img.Col]);
+        AStrings.Add(Format('  Row=%d', [img.Row]));
+        AStrings.Add(Format('  Col=%d', [img.Col]));
         embObj := ASheet.Workbook.GetEmbeddedObj(img.Index);
-        AStrings.Add('  Index=%d [%s; %.2fmm x %.2fmm]', [img.Index, embobj.FileName, embObj.ImageWidth, embObj.ImageHeight]);
-        AStrings.Add('  OffsetX=%.2f mm', [img.OffsetX]);
-        AStrings.Add('  OffsetY=%.2f mm', [img.OffsetY]);
-        AStrings.Add('  ScaleX=%.2f', [img.ScaleX]);
-        AStrings.Add('  ScaleY=%.2f', [img.ScaleY]);
+        AStrings.Add(Format('  Index=%d [%s; %.2fmm x %.2fmm]',
+          [img.Index, embobj.FileName, embObj.ImageWidth, embObj.ImageHeight]));
+        AStrings.Add(Format('  OffsetX=%.2f mm', [img.OffsetX]));
+        AStrings.Add(Format('  OffsetY=%.2f mm', [img.OffsetY]));
+        AStrings.Add(Format('  ScaleX=%.2f', [img.ScaleX]));
+        AStrings.Add(Format('  ScaleY=%.2f', [img.ScaleY]));
       end;
     end else
       AStrings.Add('(+) Images=(dblclick for more...)');
