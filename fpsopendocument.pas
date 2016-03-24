@@ -5596,11 +5596,11 @@ begin
   if AValue then
   begin
     StrValue := 'true';
-    DisplayStr := rsTRUE;
+    DisplayStr := STR_TRUE;
   end else
   begin
     strValue := 'false';
-    DisplayStr := rsFALSE;
+    DisplayStr := STR_FALSE;
   end;
 
   // Hyperlink
@@ -6976,7 +6976,7 @@ initialization
   // Registers this reader / writer in fpSpreadsheet
   sfidOpenDocument := RegisterSpreadFormat(sfOpenDocument,
     TsSpreadOpenDocReader, TsSpreadOpenDocWriter,
-    rsFileFormatOpenDocument, 'ODS', [STR_OPENDOCUMENT_CALC_EXTENSION]
+    STR_FILEFORMAT_OPENDOCUMENT, 'ODS', [STR_OPENDOCUMENT_CALC_EXTENSION]
   );
 
 end.

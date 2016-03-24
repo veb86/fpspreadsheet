@@ -2044,7 +2044,7 @@ initialization
 
   sfidExcel2 := RegisterSpreadFormat(sfExcel2,
     TsSpreadBIFF2Reader, TsSpreadBIFF2Writer,
-    rsFileFormatExcel2, 'BIFF2', [STR_EXCEL_EXTENSION]
+    STR_FILEFORMAT_EXCEL_2, 'BIFF2', [STR_EXCEL_EXTENSION]
   );
 
   MakeLEPalette(PALETTE_BIFF2);

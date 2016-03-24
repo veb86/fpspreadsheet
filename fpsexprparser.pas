@@ -278,7 +278,7 @@ type
     destructor Destroy; override;
     property Operand: TsExprNode read FOperand;
   end;
-
+             (*
   { TsNotExprNode }
   TsNotExprNode = class(TsUnaryOperationExprNode)
   protected
@@ -289,7 +289,7 @@ type
     procedure Check; override;
     function NodeType: TsResultType; override;
   end;
-
+              *)
   (*
   { TsConvertExprNode }
   TsConvertExprNode = class(TsUnaryOperationExprNode)
@@ -836,7 +836,7 @@ const
 implementation
 
 uses
-  typinfo, math, lazutf8, dateutils, fpsutils, fpsfunc;
+  typinfo, math, lazutf8, dateutils, fpsutils, fpsfunc, fpsStrings;
 
 const
   cNull = #0;
@@ -850,43 +850,6 @@ const
   Symbols        = Delimiters;
   WordDelimiters = WhiteSpace + Symbols;
 
-resourcestring
-  SBadQuotes = 'Unterminated string';
-  SUnknownDelimiter = 'Unknown delimiter character: "%s"';
-  SErrUnknownCharacter = 'Unknown character at pos %d: "%s"';
-  SErrUnexpectedEndOfExpression = 'Unexpected end of expression';
-  SErrUnknownComparison = 'Internal error: Unknown comparison';
-  SErrBracketExpected = 'Expected ) bracket at position %d, but got %s';
-  SerrUnknownTokenAtPos = 'Unknown token at pos %d : %s';
-  SErrLeftBracketExpected = 'Expected ( bracket at position %d, but got %s';
-  SErrInvalidFloat = '%s is not a valid floating-point value';
-  SErrUnknownIdentifier = 'Unknown identifier: %s';
-  SErrInExpression = 'Cannot evaluate: error in expression';
-  SErrInExpressionEmpty = 'Cannot evaluate: empty expression';
-  SErrCommaExpected =  'Expected comma (,) at position %d, but got %s';
-  SErrInvalidNumberChar = 'Unexpected character in number : %s';
-  SErrInvalidNumber = 'Invalid numerical value : %s';
-  SErrInvalidCell = 'No valid cell address specification : %s';
-  SErrInvalidCellRange = 'No valid cell range specification : %s';
-  SErrNoOperand = 'No operand for unary operation %s';
-  { -- currently not used:
-  SErrNoLeftOperand = 'No left operand for binary operation %s';
-  SErrNoRightOperand = 'No left operand for binary operation %s';
-  SErrNoNegation = 'Cannot negate expression of type %s: %s';
-  SErrNoUPlus = 'Cannot perform unary plus operation on type %s: %s';
-  SErrTypesDoNotMatch = 'Type mismatch: %s<>%s for expressions "%s" and "%s".';
-  SErrNoNodeToCheck = 'Internal error: No node to check !';
-  SInvalidNodeType = 'Node type (%s) not in allowed types (%s) for expression: %s';
-  }
-  SErrNoNOTOperation = 'Cannot perform NOT operation on expression of type %s: %s';
-  SErrNoPercentOperation = 'Cannot perform percent operation on expression of type %s: %s';
-  SErrUnterminatedExpression = 'Badly terminated expression. Found token at position %d : %s';
-  SErrDuplicateIdentifier = 'An identifier with name "%s" already exists.';
-  SErrInvalidResultCharacter = '"%s" is not a valid return type indicator';
-  ErrInvalidArgumentCount = 'Invalid argument count for function %s';
-  SErrInvalidResultType = 'Invalid result type: %s';
-  SErrNotVariable = 'Identifier %s is not a variable';
-  SErrCircularReference = 'Circular reference found when calculating worksheet formula in cell %s';
 
 { ---------------------------------------------------------------------
   Auxiliary functions
@@ -924,7 +887,7 @@ begin
     'C' : Result := rtCell;
     '?' : Result := rtAny;
   else
-    RaiseParserError(SErrInvalidResultCharacter, [C]);
+    RaiseParserError(rsInvalidResultCharacter, [C]);
   end;
 end;
 
@@ -995,7 +958,7 @@ begin
       ')' : Result := ttRight;
   //    ',' : Result := ttComma;
     else
-      ScanError(Format(SUnknownDelimiter, [D]));
+      ScanError(Format(rsUnknownDelimiter, [D]));
     end;
 end;
 
@@ -1056,13 +1019,13 @@ begin
              or ((FToken <> '') and (C in ['+', '-']) and (prevC = 'E'))
            )
     then
-      ScanError(Format(SErrInvalidNumberChar, [C]));
+      ScanError(Format(rsInvalidNumberChar, [C]));
     FToken := FToken+C;
     prevC := Upcase(C);
     C := NextPos;
   end;
   if not TryStrToFloat(FToken, X, FParser.FFormatSettings) then
-    ScanError(Format(SErrInvalidNumber, [FToken]));
+    ScanError(Format(rsInvalidNumber, [FToken]));
   Result := ttNumber;
 end;
 
@@ -1081,7 +1044,7 @@ begin
   while (C <> ']') do
   begin
     case C of
-      cNull: ScanError(SErrUnexpectedEndOfExpression);
+      cNull: ScanError(rsUnexpectedEndOfExpression);
       '.'  : ; // ignore
       ':'  : begin isRange := true; FToken := FToken + C; end;
       else   FToken := FToken + C;
@@ -1128,7 +1091,7 @@ begin
     C := NextPos;
   end;
   if (C = cNull) then
-    ScanError(SBadQuotes);
+    ScanError(rsBadQuotes);
   Result := ttString;
   FTokenType := Result;
   NextPos;
@@ -1164,7 +1127,7 @@ begin
   else if IsAlpha(C) or (C = '$') then
     Result := DoIdentifier
   else
-    ScanError(Format(SErrUnknownCharacter, [FPos, C]));
+    ScanError(Format(rsUnknownCharacter, [FPos, C]));
   FTokenType := Result;
 end;
 
@@ -1266,14 +1229,14 @@ end;
 procedure TsExpressionParser.CheckEOF;
 begin
   if (TokenType = ttEOF) then
-    ParserError(SErrUnexpectedEndOfExpression);
+    ParserError(rsUnexpectedEndOfExpression);
 end;
 
 procedure TsExpressionParser.CheckResultType(const Res: TsExpressionResult;
   AType: TsResultType); inline;
 begin
   if (Res.ResultType <> AType) then
-    RaiseParserError(SErrInvalidResultType, [ResultTypeName(Res.ResultType)]);
+    RaiseParserError(rsInvalidResultType, [ResultTypeName(Res.ResultType)]);
 end;
 
 procedure TsExpressionParser.Clear;
@@ -1346,9 +1309,9 @@ end;
 procedure TsExpressionParser.EvaluateExpression(out Result: TsExpressionResult);
 begin
   if (FExpression = '') then
-    ParserError(SErrInExpressionEmpty);
+    ParserError(rsExpressionEmpty);
   if not Assigned(FExprNode) then
-    ParserError(SErrInExpression);
+    ParserError(rsErrorInExpression);
   FExprNode.GetNodeValue(Result);
 end;
 
@@ -1480,7 +1443,7 @@ begin
         ttEqual            : C := TsEqualExprNode;
         ttNotEqual         : C := TsNotEqualExprNode;
       else
-        ParserError(SErrUnknownComparison)
+        ParserError(rsUnknownComparison)
       end;
       Result := C.Create(self, Result, right);
     end;
@@ -1602,7 +1565,7 @@ begin
       if (TokenType <> ttRight) then begin
         currToken := CurrentToken;
         if TokenType = ttEOF then currToken := 'end of formula';
-        ParserError(Format(SErrBracketExpected, [SCanner.Pos, currToken]));
+        ParserError(Format(rsRightBracketExpected, [SCanner.Pos, currToken]));
       end;
       GetToken;
     except
@@ -1642,7 +1605,7 @@ begin
       if TryStrToFloat(CurrentToken, X, FFormatSettings) then
         Result := TsConstExprNode.CreateFloat(self, X)
       else
-        ParserError(Format(SErrInvalidFloat, [CurrentToken]));
+        ParserError(Format(rsInvalidFloat, [CurrentToken]));
     end;
   end
   else if (TokenType = ttTrue) then
@@ -1658,13 +1621,13 @@ begin
   else if (TokenType = ttError) then
     Result := TsConstExprNode.CreateError(self, CurrentToken)
   else if not (TokenType in [ttIdentifier]) then
-    ParserError(Format(SerrUnknownTokenAtPos, [Scanner.Pos, CurrentToken]))
+    ParserError(Format(rsUnknownTokenAtPos, [Scanner.Pos, CurrentToken]))
   else
   begin
     token := Uppercase(CurrentToken);
     ID := self.IdentifierByName(token);
     if (ID = nil) then
-      ParserError(Format(SErrUnknownIdentifier, [token]));
+      ParserError(Format(rsUnknownIdentifier, [token]));
     if (ID.IdentifierType in [itFunctionCallBack, itFunctionHandler]) then
     begin
       lCount := ID.ArgumentCount;
@@ -1672,10 +1635,10 @@ begin
       begin
         GetToken;
         if (TokenType <> ttLeft) then
-          ParserError(Format(SErrLeftBracketExpected, [Scanner.Pos, CurrentOrEOFToken]));
+          ParserError(Format(rsLeftBracketExpected, [Scanner.Pos, CurrentOrEOFToken]));
         GetToken;
         if (TokenType <> ttRight) then
-          ParserError(Format(SErrBracketExpected, [Scanner.Pos, CurrentOrEOFToken]));
+          ParserError(Format(rsRightBracketExpected, [Scanner.Pos, CurrentOrEOFToken]));
         SetLength(Args, 0);
       end;
     end
@@ -1688,7 +1651,7 @@ begin
     begin
       GetToken;
       if (TokenType <> ttLeft) then
-        ParserError(Format(SErrLeftBracketExpected, [Scanner.Pos, CurrentOrEofToken]));
+        ParserError(Format(rsLeftBracketExpected, [Scanner.Pos, CurrentOrEofToken]));
       SetLength(Args, abs(lCount));
       AI := 0;
       try
@@ -1714,11 +1677,11 @@ begin
           begin
             if (TokenType <> ttListSep) then
               if (AI < abs(lCount)) then
-                ParserError(Format(SErrCommaExpected, [Scanner.Pos, CurrentOrEofToken]))
+                ParserError(Format(rsCommaExpected, [Scanner.Pos, CurrentOrEofToken]))
           end;
         until (AI = lCount) or (((lCount < 0) or optional) and (TokenType = ttRight));
         if TokenType <> ttRight then
-          ParserError(Format(SErrBracketExpected, [Scanner.Pos, CurrentOrEofToken]));
+          ParserError(Format(rsRightBracketExpected, [Scanner.Pos, CurrentOrEofToken]));
         if AI < abs(lCount) then
           SetLength(Args, AI);
       except
@@ -1749,7 +1712,7 @@ end;
 function TsExpressionParser.ResultType: TsResultType;
 begin
   if not Assigned(FExprNode) then
-    ParserError(SErrInExpression);
+    ParserError(rsErrorInExpression);
   Result := FExprNode.NodeType;;
 end;
 
@@ -1805,7 +1768,7 @@ begin
     GetToken;
     FExprNode := Level1;
     if (TokenType <> ttEOF) then
-      ParserError(Format(SErrUnterminatedExpression, [Scanner.Pos, CurrentToken]));
+      ParserError(Format(rsUnterminatedExpression, [Scanner.Pos, CurrentToken]));
     FExprNode.Check;
   end;
 end;
@@ -1935,7 +1898,7 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
           ID := self.IdentifierByName(AFormula[AIndex].FuncName);
           if ID = nil then
           begin
-            ParserError(Format(SErrUnknownIdentifier,[AFormula[AIndex].FuncName]));
+            ParserError(Format(rsUnknownIdentifier, [AFormula[AIndex].FuncName]));
             dec(AIndex);
           end else
           begin
@@ -2122,7 +2085,7 @@ function TsExprIdentifierDefs.IdentifierByName(const AName: ShortString
 begin
   Result := FindIdentifier(AName);
   if (Result = nil) then
-    RaiseParserError(SErrUnknownIdentifier, [AName]);
+    RaiseParserError(rsUnknownIdentifier, [AName]);
 end;
 
 function TsExprIdentifierDefs.IndexOfIdentifier(const AName: ShortString): Integer;
@@ -2194,13 +2157,13 @@ end;
 procedure TsExprIdentifierDef.CheckResultType(const AType: TsResultType);
 begin
   if (FValue.ResultType <> AType) then
-    RaiseParserError(SErrInvalidResultType, [ResultTypeName(AType)])
+    RaiseParserError(rsInvalidResultType, [ResultTypeName(AType)])
 end;
 
 procedure TsExprIdentifierDef.CheckVariable;
 begin
   if Identifiertype <> itVariable then
-    RaiseParserError(SErrNotVariable, [Name]);
+    RaiseParserError(rsNoVariable, [Name]);
 end;
 
 function TsExprIdentifierDef.GetAsBoolean: Boolean;
@@ -2341,7 +2304,7 @@ begin
     exit;
   if (AValue <> '') then
     if Assigned(Collection) and (TsExprIdentifierDefs(Collection).IndexOfIdentifier(AValue) <> -1) then
-      RaiseParserError(SErrDuplicateIdentifier,[AValue]);
+      RaiseParserError(rsDuplicateIdentifier,[AValue]);
   FName := AValue;
 end;
 
@@ -2537,7 +2500,7 @@ end;
 procedure TsUnaryOperationExprNode.Check;
 begin
   if not Assigned(Operand) then
-    RaiseParserError(SErrNoOperand, [Self.ClassName]);
+    RaiseParserError(rsNoOperand, [Self.ClassName]);
 end;
 
 
@@ -2840,7 +2803,7 @@ const
 begin
   inherited;
   if not (Operand.NodeType in AllowedTokens) then
-    RaiseParserError(SErrNoPercentOperation, [ResultTypeName(Operand.NodeType), Operand.AsString])
+    RaiseParserError(rsNoPercentOperation, [ResultTypeName(Operand.NodeType), Operand.AsString])
 end;
 
 procedure TsPercentExprNode.GetNodeValue(out Result: TsExpressionResult);
@@ -2887,7 +2850,7 @@ begin
   Result := Operand.NodeValue;
 end;
 
-
+         (*
 { TsNotExprNode }
 
 function TsNotExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
@@ -2924,7 +2887,7 @@ function TsNotExprNode.NodeType: TsResultType;
 begin
   Result := Operand.NodeType;
 end;
-
+           *)
 
 { TsBooleanResultExprNode }
 
@@ -3459,7 +3422,7 @@ begin
   begin
     for i:=Length(FArgumentNodes)+1 to FID.ArgumentCount do
       if not FID.IsOptionalArgument(i) then
-        RaiseParserError(ErrInvalidArgumentCount, [FID.Name]);
+        RaiseParserError(rsInvalidArgumentCount, [FID.Name]);
   end;
 
   for i := 0 to Length(FArgumentNodes)-1 do
@@ -3618,7 +3581,7 @@ begin
       csNotCalculated:
         Worksheet.CalcFormula(cell);
       csCalculating:
-        raise ECalcEngine.CreateFmt(SErrCircularReference, [GetCellString(cell^.Row, cell^.Col)]);
+        raise ECalcEngine.CreateFmt(rsCircularReference, [GetCellString(cell^.Row, cell^.Col)]);
     end;
 
   Result.ResultType := rtCell;
@@ -3706,7 +3669,7 @@ begin
           csNotCalculated:
             FWorksheet.CalcFormula(cell);
           csCalculating:
-            raise ECalcEngine.Create(SErrCircularReference);
+            raise ECalcEngine.Create(rsCircularReference);
         end;
     end;
 

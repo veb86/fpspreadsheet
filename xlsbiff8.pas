@@ -3736,7 +3736,7 @@ initialization
   // Registers this reader / writer in fpSpreadsheet
   sfidExcel8 := RegisterSpreadFormat(sfExcel8,
     TsSpreadBIFF8Reader, TsSpreadBIFF8Writer,
-    rsFileFormatExcel8, 'BIFF8', [STR_EXCEL_EXTENSION]
+    STR_FILEFORMAT_EXCEL_8, 'BIFF8', [STR_EXCEL_EXTENSION]
   );
 
   // Converts the palette to litte-endian

@@ -6,40 +6,28 @@ unit fpsStrings;
   {$mode delphi}{$H+}
 {$endif}
 
-
 interface
 
 resourcestring
-  rsDefaultSheetName = 'Sheet%d';
-
-  // File formats
-  rsFileFormatExcel2 = 'Excel 2.1';
-  rsFileFormatExcel5 = 'Excel 5';
-  rsFileFormatExcel8 = 'Excel 97-2003';
-  rsFileFormatExcelXML = 'Excel XP/2003 XML';
-  rsFileFormatExcelXLSX = 'Excel 2007+ XML';
-  rsFileFormatOpenDocument = 'OpenDocument';
-  rsFileFormatSYLK = 'SYLK';
-  rsFileFormatCSV = 'CSV';
-  rsFileFormatHTML = 'HTML';
-  rsFileFormatWikiTablePipes = 'WikiTable (Pipes)';
-  rsFileFormatWikiTableWikiMedia = 'WikiTable (WikiMedia)';
-  rsFiles = 'files';
+  // Files & file formats
   rsAllSpreadsheetFiles = 'All spreadsheet files';
   rsAllExcelFiles = 'All Excel files';
-
-  // Reading / writing
-  rsCannotReadFile = 'Cannot read file "%s".' + LineEnding + 'Wrong, unknown or defective file format?';
+  rsCannotReadFile = 'Cannot read file "%s". Wrong, unknown or defective file format?';
+  rsDefectiveInternalFileStructure = 'Defective internal structure of %s file.';
+  rsFileAlreadyExists = 'File "%s" already exists.';
+  rsFileFormatNotSupported = 'File format of "%s" not supported.';
+  rsFileNotFound = 'File "%s" not found.';
+  rsFiles = 'files';
+  rsFileStructureError = 'File structure error in %s record, position %d.';
+  rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
+  rsInvalidExtension = 'Attempting to save a spreadsheet by extension, ' +
+    'but the extension %s is not valid.';
+  rsInvalidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
+  rsReaderNotFound = 'Reader not found for file "%s"';
   rsUnsupportedReadFormat = 'Tried to read a spreadsheet using an unsupported format';
   rsUnsupportedWriteFormat = 'Tried to write a spreadsheet using an unsupported format';
-  rsNoValidSpreadsheetFile = '"%s" is not a valid spreadsheet file';
-  rsUnknownSpreadsheetFormat = 'unknown format';
-  rsReaderNotFound = 'Reader not found for file "%s"';
 
-  rsExportFileIsRequired = 'Export file name is required';
-  rsFPSExportDescription = 'Spreadsheet file';
-  rsMultipleSheetsOnlyWithRestorePosition = 'Export to multiple sheets is possible '+
-    'only if position is restored.';
+  // File format limitations
   rsMaxRowsExceeded = 'This workbook contains %d rows, but the selected ' +
     'file format does not support more than %d rows.';
   rsMaxColsExceeded = 'This workbook contains %d columns, but the selected ' +
@@ -47,60 +35,19 @@ resourcestring
   rsTooManyPaletteColors = 'This workbook contains more colors (%d) than ' +
     'supported by the file format (%d). The additional colors are replaced by '+
     'the best-matching palette colors.';
-  rsInvalidExtension = 'Attempting to save a spreadsheet by extension, ' +
-    'but the extension %s is not valid.';
-  rsInvalidFontIndex = 'Invalid font index';
-  rsInvalidNumberFormat = 'Trying to use an incompatible number format.';
-  rsInvalidDateTimeFormat = 'Trying to use an incompatible date/time format.';
-  rsNoValidNumberFormatString = 'No valid number format string.';
-  rsIsNoValidNumberFormatString = '%s is not a valid number format string.';
+  rsTruncateTooLongCellText = 'Text value exceeds the %d character limit in ' +
+    'cell %s and has been truncated.';
+
+  // Cells
+  rsInvalidCharacterInCell = 'Invalid character(s) in cell %s.';
   rsNoValidCellAddress = '"%s" is not a valid cell address.';
   rsNoValidCellRangeAddress = '"%s" is not a valid cell range address.';
   rsNoValidCellRangeOrCellAddress = '"%s" is not a valid cell or cell range address.';
-  rsSpecifyNumberOfParams = 'Specify number of parameters for function %s';
-  rsIncorrectParamCount = 'Funtion %s requires at least %d and at most %d parameters.';
-  rsCircularReference = 'Circular reference found when calculating worksheet formulas';
-  rsFileNotFound = 'File "%s" not found.';
-  rsFileFormatNotSupported = 'File format of "%s" not supported.';
-  rsImageFormatNotSupported = 'Image format not supported.';
-  rsFileAlreadyExists = 'File "%s" already exists.';
-  rsWorksheetNotFound = 'Worksheet "%s" not found.';
-  rsWorksheetNotFound1 = 'Worksheet not found.';
-  rsInvalidWorksheetName = '"%s" is not a valid worksheet name.';
-  rsDefectiveInternalStructure = 'Defective internal structure of %s file.';
-  rsFileStructureError = 'File structure error in %s record, position %d.';
-  rsUnknownDataType = 'Unknown data type.';
-  rsUnknownErrorType = 'Unknown error type.';
-  rsTruncateTooLongCellText = 'Text value exceeds %d character limit in cell %s '+
-    'and has been truncated.';
-  rsColumnStyleNotFound = 'Column style not found.';
-  rsRowStyleNotFound = 'Row style not found.';
-  rsInvalidCharacterInCell = 'Invalid character(s) in cell %s.';
-  rsInvalidCharacterInCellComment = 'Invalid character(s) in cell comment "%s".';
-  rsUTF8TextExpectedButANSIFoundInCell = 'Expected UTF8 text but probably ANSI '+
-    'text found in cell %s.';
-  rsIndexInSSTOutOfRange = 'Index %d in SST out of range (0-%d).';
-  rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
+  rsUTF8TextExpectedButANSIFoundInCell = 'Expected UTF8 text, '+
+    'but probably ANSI text found in cell %s.';
+
+  // Code page
   rsCodePageNotSupported = 'Code page "%s" is not supported. Using "cp1252" (Latin 1) instead.';
-  rsFormulaNotSupported = 'The formula in cell %s is not supported by this file format: %s';
-
-  rsCannotSortMerged = 'The cell range cannot be sorted because it contains merged cells.';
-
-  // Hyperlinks
-  rsNoValidHyperlinkInternal = 'The hyperlink "%s" is not a valid cell address.';
-  rsNoValidHyperlinkURI = 'The hyperlink "%s" is not a valid URI.';
-  rsLocalFileHyperlinkAbs = 'The hyperlink "%s" points to a local file. ' +
-    'In case of an absolute path the protocol "file:" must be specified.';
-  rsEmptyHyperlink = 'The hyperlink is not specified.';
-  rsODSHyperlinksOfTextCellsOnly = 'Cell %s: OpenDocument supports hyperlinks for text cells only.';
-  rsStdHyperlinkTooltip = 'Hold the left mouse button down for a short time to activate the hyperlink.';
-
-  // PageLayout
-  rsDifferentSheetPrintRange = 'Print range "%s" requires a different worksheet.';
-  rsFooter = 'Footer';
-  rsHeader = 'Header';
-  rsIncorrectPositionOfImageInHeaderFooter = 'Incorrect position of %%G code in %s';
-  rsOnlyOneHeaderFooterImageAllowed = 'Only one image per %s section allowed.';
 
   // Colors
   rsAqua = 'aqua';
@@ -163,19 +110,108 @@ resourcestring
   rsTransparent = 'transparent';
   rsPaletteIndex = 'Palette index %d';
 
-  rsTRUE = 'TRUE';               // wp: Do we really want to translate these strings?
-  rsFALSE = 'FALSE';
-  rsErrEmptyIntersection = '#NULL!';
-  rsErrDivideByZero = '#DIV/0!';
-  rsErrWrongType = '#VALUE!';
-  rsErrIllegalRef = '#REF!';
-  rsErrWrongName = '#NAME?';
-  rsErrOverflow = '#NUM!';
-  rsErrArgError = '#N/A';
-  rsErrFormulaNotSupported = '<FORMULA?>';
+  // Columns
+  rsColumnStyleNotFound = 'Column style not found.';
 
+  // Comments
+  rsInvalidCharacterInCellComment = 'Invalid character(s) in cell comment "%s".';
+
+  // Expression parser
+  // These strings are mostly taken or adapted from fpexprpars
+  rsBadQuotes = 'Unterminated string';
+  rsCircularReference = 'Circular reference found when calculating worksheet '+
+    'formula in cell %s';
+  rsCommaExpected =  'Expected comma (,) at position %d, but got %s';
+  rsDuplicateIdentifier = 'An identifier with name "%s" already exists.';
+  rsErrorInExpression = 'Cannot evaluate: error in expression';
+  rsExpressionEmpty = 'Cannot evaluate: empty expression';
+  rsInvalidArgumentCount = 'Invalid argument count for function %s';
+  rsInvalidFloat = '%s is not a valid floating-point value';
+  rsInvalidNumber = 'Invalid numerical value : %s';
+  rsInvalidNumberChar = 'Unexpected character in number : %s';
+  rsInvalidResultCharacter = '"%s" is not a valid return type indicator';
+  rsInvalidResultType = 'Invalid result type: %s';
+  rsLeftBracketExpected = 'Expected left bracket at position %d, but got %s';
+  rsNoOperand = 'No operand for unary operation %s';
+  rsNoPercentOperation = 'Cannot perform percent operation on expression ' +
+    'of type %s: %s';
+  rsNoVariable = 'Identifier %s is not a variable';
+  rsRightBracketExpected = 'Expected right bracket at position %d, but got %s';
+  rsUnexpectedEndOfExpression = 'Unexpected end of expression';
+  rsUnknownCharacter = 'Unknown character at pos %d: "%s"';
+  rsUnknownComparison = 'Internal error: Unknown comparison';
+  rsUnknownDelimiter = 'Unknown delimiter character: "%s"';
+  rsUnknownIdentifier = 'Unknown identifier: %s';
+  rsUnknownTokenAtPos = 'Unknown token at pos %d : %s';
+  rsUnterminatedExpression = 'Badly terminated expression. Found token at '+
+    'position %d : %s';
+
+  { -- currently not used:
+  SErrNoLeftOperand = 'No left operand for binary operation %s';
+  SErrNoRightOperand = 'No left operand for binary operation %s';
+  SErrNoNegation = 'Cannot negate expression of type %s: %s';
+  SErrNoUPlus = 'Cannot perform unary plus operation on type %s: %s';
+  SErrTypesDoNotMatch = 'Type mismatch: %s<>%s for expressions "%s" and "%s".';
+  SErrNoNodeToCheck = 'Internal error: No node to check !';
+  SInvalidNodeType = 'Node type (%s) not in allowed types (%s) for expression: %s';
+  SErrNoNOTOperation = 'Cannot perform NOT operation on expression of type %s: %s';
+  }
+
+  // Format
+  rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
+  rsInvalidDateTimeFormat = 'Trying to use an incompatible date/time format.';
+  rsInvalidFontIndex = 'Invalid font index';
+  rsInvalidNumberFormat = 'Trying to use an incompatible number format.';
+  rsNoValidNumberFormatString = 'No valid number format string.';
+
+  // Formulas
+  rsFormulaNotSupported = 'The formula in cell %s is not supported by this file format: %s';
+  rsUnknownDataType = 'Unknown data type.';
+  rsUnknownErrorType = 'Unknown error type.';
+
+  // Hyperlinks
+  rsEmptyHyperlink = 'The hyperlink is not specified.';
+  rsLocalFileHyperlinkAbs = 'The hyperlink "%s" points to a local file. ' +
+    'In case of an absolute path the protocol "file:" must be specified.';
+  rsNoValidHyperlinkInternal = 'The hyperlink "%s" is not a valid cell address.';
+  rsNoValidHyperlinkURI = 'The hyperlink "%s" is not a valid URI.';
+  rsODSHyperlinksOfTextCellsOnly = 'Cell %s: OpenDocument supports hyperlinks '+
+    'for text cells only.';
+  rsStdHyperlinkTooltip = 'Hold the left mouse button down for a short time '+
+    'to activate the hyperlink.';
+
+  // Images
+  rsImageFormatNotSupported = 'Image format not supported.';
+
+  // PageLayout
+  rsDifferentSheetPrintRange = 'Print range "%s" requires a different worksheet.';
+  rsFooter = 'Footer';
+  rsHeader = 'Header';
+  rsIncorrectPositionOfImageInHeaderFooter = 'Incorrect position of %%G code in %s';
+  rsOnlyOneHeaderFooterImageAllowed = 'Only one image per %s section allowed.';
+
+  // Rows
+  rsRowStyleNotFound = 'Row style not found.';
+
+  // Sorting
+  rsCannotSortMerged = 'The cell range cannot be sorted because it contains merged cells.';
+
+  // Worksheets
+  rsDefaultSheetName = 'Sheet%d';
+  rsInvalidWorksheetName = '"%s" is not a valid worksheet name.';
+  rsWorksheetNotFound = 'Worksheet "%s" not found.';
+  rsWorksheetNotFound1 = 'Worksheet not found.';
+
+  // WorksheetGrid
   rsOperationExceedsColCount = 'This operation exceeds the range of defined grid columns.';
   rsOperationExceedsRowCount = 'This operation exceeds the range of defined grid rows.';
+
+  // Export
+  rsExportFileIsRequired = 'Export file name is required.';
+  rsFPSExportDescription = 'Spreadsheet file';
+  rsMultipleSheetsOnlyWithRestorePosition = 'Export to multiple sheets is possible '+
+    'only if position is restored.';
+
 
 implementation
 

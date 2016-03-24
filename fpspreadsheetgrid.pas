@@ -708,7 +708,9 @@ implementation
 
 uses
   Types, LCLType, LCLIntf, LCLProc, Math, StrUtils,
-  fpCanvas, fpsStrings, fpsUtils, fpsVisualUtils, fpsNumFormat, fpsHTMLUtils;
+  fpCanvas,
+  fpsStrings, fpsUtils, fpsVisualUtils, fpsHTMLUtils,
+  fpsNumFormat;
 
 const
   {@@ Default number of columns prepared for a new empty worksheet }

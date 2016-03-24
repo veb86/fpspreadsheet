@@ -2578,19 +2578,10 @@ begin
         end;
 
       cctBool:
-        Result := StrUtils.IfThen(BoolValue, rsTRUE, rsFALSE);
+        Result := StrUtils.IfThen(BoolValue, STR_TRUE, STR_FALSE);
 
       cctError:
-        case TsErrorValue(ErrorValue) of
-          errEmptyIntersection  : Result := rsErrEmptyIntersection;
-          errDivideByZero       : Result := rsErrDivideByZero;
-          errWrongType          : Result := rsErrWrongType;
-          errIllegalRef         : Result := rsErrIllegalRef;
-          errWrongName          : Result := rsErrWrongName;
-          errOverflow           : Result := rsErrOverflow;
-          errArgError           : Result := rsErrArgError;
-          errFormulaNotSupported: Result := rsErrFormulaNotSupported;
-        end;
+        Result := GetErrorValueStr(TsErrorValue(ErrorValue));
 
       else   // blank --> display hyperlink target if available
         Result := '';
@@ -3413,7 +3404,7 @@ var
   img: TsImage;
   obj: TsEmbeddedObj;
   colW, rowH: Double;
-  totH, totW: Double;
+  totH: Double;
   r, c: Integer;
   w_px, h_px: Integer;
   totH_px, rowH_px: Integer;
@@ -7403,7 +7394,7 @@ begin
 
   // The file could not be opened successfully --> Error.
   if not success then
-    raise Exception.CreateFmt(rsNoValidSpreadsheetFile, [AFileName]);
+    raise Exception.CreateFmt(rsInvalidSpreadsheetFile, [AFileName]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7427,7 +7418,7 @@ begin
     end;
   end;
   if not success then
-    raise Exception.CreateFmt(rsNoValidSpreadsheetFile, [AFileName]);
+    raise Exception.CreateFmt(rsInvalidSpreadsheetFile, [AFileName]);
 end;
 
 {@@ ----------------------------------------------------------------------------

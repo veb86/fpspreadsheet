@@ -1,0 +1,573 @@
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Project-Id-Version: laz_fpspreadsheet\n"
+"POT-Creation-Date: \n"
+"PO-Revision-Date: \n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"MIME-Version: 1.0\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: Poedit 1.8.7\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Language: de\n"
+
+#: fpsstrings.rsallexcelfiles
+msgid "All Excel files"
+msgstr "Alle Excel-Dateien"
+
+#: fpsstrings.rsallspreadsheetfiles
+msgid "All spreadsheet files"
+msgstr "Alle Spreadsheet-Dateien"
+
+#: fpsstrings.rsambiguousdecthouseparator
+msgid "Assuming usage of decimal separator in \"%s\"."
+msgstr "Verwendung eines Dezimaltrennzeichens in \"%s\" wird angenommen."
+
+#: fpsstrings.rsaqua
+msgid "aqua"
+msgstr "wasserblau"
+
+#: fpsstrings.rsbadquotes
+msgid "Unterminated string"
+msgstr "Begrenzungszeichen des Strings fehlt."
+
+#: fpsstrings.rsbeige
+msgid "beige"
+msgstr "beige"
+
+#: fpsstrings.rsblack
+msgid "black"
+msgstr "schwarz"
+
+#: fpsstrings.rsblue
+msgid "blue"
+msgstr "balu"
+
+#: fpsstrings.rsbluegray
+msgid "blue gray"
+msgstr "blaugrau"
+
+#: fpsstrings.rsbrown
+msgid "brown"
+msgstr "braun"
+
+#: fpsstrings.rscannotreadfile
+msgid "Cannot read file \"%s\". Wrong, unknown or defective file format?"
+msgstr "Kann Datei \"%s\" nicht lesen. Falsches, unbekanntes oder defektes Dateiformat?"
+
+#: fpsstrings.rscannotsortmerged
+msgid "The cell range cannot be sorted because it contains merged cells."
+msgstr "Der Zellbereich kann nicht sortiert werden, weil er verbundene Zellen enthält."
+
+#: fpsstrings.rscircularreference
+msgid "Circular reference found when calculating worksheet formula in cell %s"
+msgstr "Zirkulär-Referenz gefunden beim Berechnen der Formel in Zelle %s"
+
+#: fpsstrings.rscodepagenotsupported
+msgid "Code page \"%s\" is not supported. Using \"cp1252\" (Latin 1) instead."
+msgstr "Code-Seite \"%s\" wird nicht unterstützt. Verwende stattdessen \"cp1252\" (Latin 1)."
+
+#: fpsstrings.rscolumnstylenotfound
+msgid "Column style not found."
+msgstr "Spalten-Stil nicht gefunden."
+
+#: fpsstrings.rscommaexpected
+msgid "Expected comma (,) at position %d, but got %s"
+msgstr "Komma erwartet an Position %d, aber %s gefunden."
+
+#: fpsstrings.rscoral
+msgid "coral"
+msgstr "korall"
+
+#: fpsstrings.rscyan
+msgid "cyan"
+msgstr "cyan"
+
+#: fpsstrings.rsdarkblue
+msgid "dark blue"
+msgstr "dunkelblau"
+
+#: fpsstrings.rsdarkgreen
+msgid "dark green"
+msgstr "dunkelgrün"
+
+#: fpsstrings.rsdarkpurple
+msgid "dark purple"
+msgstr "dunkelpurpur"
+
+#: fpsstrings.rsdarkred
+msgid "dark red"
+msgstr "dunkelrot"
+
+#: fpsstrings.rsdarkteal
+msgid "dark teal"
+msgstr "dunkel-türkis"
+
+#: fpsstrings.rsdefaultsheetname
+msgid "Sheet%d"
+msgstr "Tabelle%d"
+
+#: fpsstrings.rsdefectiveinternalfilestructure
+msgid "Defective internal structure of %s file."
+msgstr "Defekte innere Struktur der %s Datei."
+
+#: fpsstrings.rsdifferentsheetprintrange
+msgid "Print range \"%s\" requires a different worksheet."
+msgstr "Der Druckbereich \"%s\" benötigt ein anderes Arbeitsblatt."
+
+#: fpsstrings.rsduplicateidentifier
+msgid "An identifier with name \"%s\" already exists."
+msgstr "Ein Bezeichner mit dem Namen \"%s\" existiert bereits."
+
+#: fpsstrings.rsemptyhyperlink
+msgid "The hyperlink is not specified."
+msgstr "Der Hyperlink ist nicht angegeben."
+
+#: fpsstrings.rserrorinexpression
+msgid "Cannot evaluate: error in expression"
+msgstr "Fehler im Ausdruck"
+
+#: fpsstrings.rsexportfileisrequired
+msgid "Export file name is required."
+msgstr "Export-Dateiname erforderlich."
+
+#: fpsstrings.rsexpressionempty
+msgid "Cannot evaluate: empty expression"
+msgstr "Leerer Ausdruck"
+
+#: fpsstrings.rsfilealreadyexists
+msgid "File \"%s\" already exists."
+msgstr "Datei \"%s\" existiert bereits."
+
+#: fpsstrings.rsfileformatnotsupported
+msgid "File format of \"%s\" not supported."
+msgstr "Dateiformat von \"%s\" nicht unterstützt."
+
+#: fpsstrings.rsfilenotfound
+msgid "File \"%s\" not found."
+msgstr "Datei \"%s\" nicht gefunden."
+
+#: fpsstrings.rsfiles
+msgid "files"
+msgstr "Dateien"
+
+#: fpsstrings.rsfilestructureerror
+msgid "File structure error in %s record, position %d."
+msgstr "Dateistruktur-Fehler im Datensatz %s an Position %d."
+
+#: fpsstrings.rsfooter
+msgid "Footer"
+msgstr "Fußzeile"
+
+#: fpsstrings.rsformulanotsupported
+msgid "The formula in cell %s is not supported by this file format: %s"
+msgstr "Die Formel in Zelle %s wird in diesem Dateiformat nicht unterstützt: %s"
+
+#: fpsstrings.rsfpsexportdescription
+msgid "Spreadsheet file"
+msgstr "Spreadsheet-Datei"
+
+#: fpsstrings.rsgold
+msgid "gold"
+msgstr "golden"
+
+#: fpsstrings.rsgray
+msgid "gray"
+msgstr "grau"
+
+#: fpsstrings.rsgray10pct
+msgid "10% gray"
+msgstr "10% grau"
+
+#: fpsstrings.rsgray20pct
+msgid "20% gray"
+msgstr "20% grau"
+
+#: fpsstrings.rsgray25pct
+msgid "25% gray"
+msgstr "25% grau"
+
+#: fpsstrings.rsgray40pct
+msgid "40% gray"
+msgstr "40% grau"
+
+#: fpsstrings.rsgray50pct
+msgid "50% gray"
+msgstr "50% grau"
+
+#: fpsstrings.rsgray80pct
+msgid "80% gray"
+msgstr "80% grau"
+
+#: fpsstrings.rsgreen
+msgid "green"
+msgstr "grün"
+
+#: fpsstrings.rsheader
+msgid "Header"
+msgstr "Kopfzeile"
+
+#: fpsstrings.rsiceblue
+msgid "ice blue"
+msgstr "eisblau"
+
+#: fpsstrings.rsimageformatnotsupported
+msgid "Image format not supported."
+msgstr "Bild-Format nicht unterstützt."
+
+#: fpsstrings.rsincorrectpositionofimageinheaderfooter
+msgid "Incorrect position of %%G code in %s"
+msgstr "Falsche Position des %%G-Codes in %s"
+
+#: fpsstrings.rsindexinsstoutofrange
+msgid "Index %d in SST out of range (0-%d)."
+msgstr "Index %d in der SST liegt außerhalb des gültigen Bereichs (0-%d)."
+
+#: fpsstrings.rsindigo
+msgid "indigo"
+msgstr "indigo"
+
+#: fpsstrings.rsinvalidargumentcount
+msgid "Invalid argument count for function %s"
+msgstr "Ungültige Anzahl von Argumenten für die Funktion %s"
+
+#: fpsstrings.rsinvalidcharacterincell
+msgid "Invalid character(s) in cell %s."
+msgstr "Ungültige(s) Zeichen in Zelle %s."
+
+#: fpsstrings.rsinvalidcharacterincellcomment
+msgid "Invalid character(s) in cell comment \"%s\"."
+msgstr "Ungültige(s) Zeichen im Zellkommentar \"%s\"."
+
+#: fpsstrings.rsinvaliddatetimeformat
+msgid "Trying to use an incompatible date/time format."
+msgstr "Versuch ein inkompabibles Datum/Zeit-Format zu verwenden"
+
+#: fpsstrings.rsinvalidextension
+msgid "Attempting to save a spreadsheet by extension, but the extension %s is not valid."
+msgstr "Versuch, das Format ein Arbeitsbuches anhand der Dateiendung zu erkennen, aber die Endung %s ist nicht gültig. "
+
+#: fpsstrings.rsinvalidfloat
+msgid "%s is not a valid floating-point value"
+msgstr "%s ist kein gültiger Gleitkomma-Wert."
+
+#: fpsstrings.rsinvalidfontindex
+msgid "Invalid font index"
+msgstr "Ungültiger Font-Index"
+
+#: fpsstrings.rsinvalidnumber
+msgid "Invalid numerical value : %s"
+msgstr "Ungültiger Zahlenwert: %s"
+
+#: fpsstrings.rsinvalidnumberchar
+msgid "Unexpected character in number : %s"
+msgstr "Unerwartetes Zeichen in Zahl: %s"
+
+#: fpsstrings.rsinvalidnumberformat
+msgid "Trying to use an incompatible number format."
+msgstr "Versuch ein inkompatibles Zahlenformat zu verwenden"
+
+#: fpsstrings.rsinvalidresultcharacter
+msgid "\"%s\" is not a valid return type indicator"
+msgstr "\"%s\" ist kein gültiger Indikator für einen Ergebnistyp."
+
+#: fpsstrings.rsinvalidresulttype
+msgid "Invalid result type: %s"
+msgstr "Ungültiger Ergebnistyp: %s"
+
+#: fpsstrings.rsinvalidspreadsheetfile
+msgid "\"%s\" is not a valid spreadsheet file"
+msgstr "\"%s\" ist keine gültige Spreadsheet-Datei."
+
+#: fpsstrings.rsinvalidworksheetname
+msgid "\"%s\" is not a valid worksheet name."
+msgstr "\"%s\" ist kein gültiger Name für ein Arbeitsblatt."
+
+#: fpsstrings.rsivory
+msgid "ivory"
+msgstr "elfenbein"
+
+#: fpsstrings.rslavander
+msgid "lavander"
+msgstr "lavendel"
+
+#: fpsstrings.rsleftbracketexpected
+msgid "Expected left bracket at position %d, but got %s"
+msgstr "Linke Klammer erwartet an Position %d, aber %s gefunden."
+
+#: fpsstrings.rslightblue
+msgid "light blue"
+msgstr "hellblau"
+
+#: fpsstrings.rslightgreen
+msgid "light green"
+msgstr "hellgrün"
+
+#: fpsstrings.rslightorange
+msgid "light orange"
+msgstr "hell-orange"
+
+#: fpsstrings.rslightturquoise
+msgid "light turquoise"
+msgstr "hell-türkis"
+
+#: fpsstrings.rslightyellow
+msgid "light yellow"
+msgstr "hellgelb"
+
+#: fpsstrings.rslime
+msgid "lime"
+msgstr "hellgrün-limone"
+
+#: fpsstrings.rslocalfilehyperlinkabs
+msgid "The hyperlink \"%s\" points to a local file. In case of an absolute path the protocol \"file:\" must be specified."
+msgstr "Der Hyperlink \"%s\" bezieht sich auf eine lokale Datei. Bei einem absoluten Pfad muss das Protokoll \"file:\" angegeben werden."
+
+#: fpsstrings.rsmagenta
+msgid "magenta"
+msgstr "magenta"
+
+#: fpsstrings.rsmaxcolsexceeded
+msgid "This workbook contains %d columns, but the selected file format does not support more than %d columns."
+msgstr "Das Arbeitsbuch enthält %d Spalten, aber das ausgewählte Dateiformat unterstützt höchstens %d Spalten."
+
+#: fpsstrings.rsmaxrowsexceeded
+msgid "This workbook contains %d rows, but the selected file format does not support more than %d rows."
+msgstr "Das Arbeitsbuch enthält %d Zeilen, aber das ausgewählte Dateiformat untersützt höchstens %d Zeilen."
+
+#: fpsstrings.rsmultiplesheetsonlywithrestoreposition
+msgid "Export to multiple sheets is possible only if position is restored."
+msgstr "Ein Export in mehrere Arbeitsblätter is nur dann möglich, wenn die Position wiederhergestellt wird."
+
+#: fpsstrings.rsnavy
+msgid "navy"
+msgstr "marine-blau"
+
+#: fpsstrings.rsnooperand
+msgid "No operand for unary operation %s"
+msgstr "Kein Operand für die unäre Operation %s"
+
+#: fpsstrings.rsnopercentoperation
+msgid "Cannot perform percent operation on expression of type %s: %s"
+msgstr "Prozent-Operation kann an dem Ausdruck vom Typ %s nicht ausgeführt werden: %s"
+
+#: fpsstrings.rsnotdefined
+msgid "not defined"
+msgstr "Nicht definiert"
+
+#: fpsstrings.rsnovalidcelladdress
+msgid "\"%s\" is not a valid cell address."
+msgstr "\"%s\" ist keine gültige Zell-Adresse."
+
+#: fpsstrings.rsnovalidcellrangeaddress
+msgid "\"%s\" is not a valid cell range address."
+msgstr "\"%s\" ist keine gültige Adresse für einen Zellbereich."
+
+#: fpsstrings.rsnovalidcellrangeorcelladdress
+msgid "\"%s\" is not a valid cell or cell range address."
+msgstr "\"%s\" ist keine gültige Adresse für eine Zelle oder einen Zellbereich."
+
+#: fpsstrings.rsnovalidhyperlinkinternal
+msgid "The hyperlink \"%s\" is not a valid cell address."
+msgstr "Der Hyperlink \"%s\" bezieht sich auf keine gültige Zelladresse."
+
+#: fpsstrings.rsnovalidhyperlinkuri
+msgid "The hyperlink \"%s\" is not a valid URI."
+msgstr "Der Hyperlink \"%s\" ist keine gültiger URI."
+
+#: fpsstrings.rsnovalidnumberformatstring
+msgid "No valid number format string."
+msgstr "Kein gültiges Zahlenformat"
+
+#: fpsstrings.rsnovariable
+msgid "Identifier %s is not a variable"
+msgstr "Der Bezeichnis %s ist keine Variable."
+
+#: fpsstrings.rsoceanblue
+msgid "ocean blue"
+msgstr "Meerblau"
+
+#: fpsstrings.rsodshyperlinksoftextcellsonly
+msgid "Cell %s: OpenDocument supports hyperlinks for text cells only."
+msgstr "Zelle %s: Das OpenDocument-Format unterstützt Hyperlinks nur für Text-Zellen."
+
+#: fpsstrings.rsolive
+msgid "olive"
+msgstr "oliv"
+
+#: fpsstrings.rsolivegreen
+msgid "olive green"
+msgstr "olivgrün"
+
+#: fpsstrings.rsonlyoneheaderfooterimageallowed
+msgid "Only one image per %s section allowed."
+msgstr "Nur ein Bild ist erlaubt pro %s Abschnitt."
+
+#: fpsstrings.rsoperationexceedscolcount
+msgid "This operation exceeds the range of defined grid columns."
+msgstr "Diese Operation überschreitet den Bereich der definierten Spalten."
+
+#: fpsstrings.rsoperationexceedsrowcount
+msgid "This operation exceeds the range of defined grid rows."
+msgstr "Diese Operation überschreitet den Bereich der definierten Zeilen."
+
+#: fpsstrings.rsorange
+msgid "orange"
+msgstr "orange"
+
+#: fpsstrings.rspaleblue
+msgid "pale blue"
+msgstr "blassblau"
+
+#: fpsstrings.rspaletteindex
+msgid "Palette index %d"
+msgstr "Palettenindex %d"
+
+#: fpsstrings.rsperiwinkle
+msgid "periwinkle"
+msgstr "lavendelblau"
+
+#: fpsstrings.rspink
+msgid "pink"
+msgstr "pink"
+
+#: fpsstrings.rsplum
+msgid "plum"
+msgstr "pflaume"
+
+#: fpsstrings.rspurple
+msgid "purple"
+msgstr "purpur"
+
+#: fpsstrings.rsreadernotfound
+msgid "Reader not found for file \"%s\""
+msgstr "Lese-Prozedur nicht gefunden für Datei \"%s\"."
+
+#: fpsstrings.rsred
+msgid "red"
+msgstr "rot"
+
+#: fpsstrings.rsrightbracketexpected
+msgid "Expected right bracket at position %d, but got %s"
+msgstr "Rechte Klammer erwartet an Position, aber %s gefunden."
+
+#: fpsstrings.rsrose
+msgid "rose"
+msgstr "rosa"
+
+#: fpsstrings.rsrowstylenotfound
+msgid "Row style not found."
+msgstr "Zeilenstil nicht gefunden."
+
+#: fpsstrings.rsseagreen
+msgid "sea green"
+msgstr "seegrün"
+
+#: fpsstrings.rssilver
+msgid "silver"
+msgstr "silber"
+
+#: fpsstrings.rsskyblue
+msgid "sky blue"
+msgstr "himmelblau"
+
+#: fpsstrings.rsstdhyperlinktooltip
+msgid "Hold the left mouse button down for a short time to activate the hyperlink."
+msgstr "Halten Sie die linke Maustaste für kurze Zeit gedrückt, um den Hyperlink zu aktivieren."
+
+#: fpsstrings.rstan
+msgid "tan"
+msgstr "hautfarben"
+
+#: fpsstrings.rsteal
+msgid "teal"
+msgstr "türkis"
+
+#: fpsstrings.rstoomanypalettecolors
+msgid "This workbook contains more colors (%d) than supported by the file format (%d). The additional colors are replaced by the best-matching palette colors."
+msgstr "Das Arbeitsbuch enthält mehr Farben (%d) als vom Dateiformat unterstützt (%d). Die zusätzlichen Farben werden durch ersetzt durch die nächsten Palettenfarben."
+
+#: fpsstrings.rstransparent
+msgid "transparent"
+msgstr "transparent"
+
+#: fpsstrings.rstruncatetoolongcelltext
+msgid "Text value exceeds the %d character limit in cell %s and has been truncated."
+msgstr "Der Text überschreitet die Grenze von %d Zeichen in Zelle %s und wurde abgeschnitten."
+
+#: fpsstrings.rsunexpectedendofexpression
+msgid "Unexpected end of expression"
+msgstr "Unerwartetes Ende des Ausdrucks"
+
+#: fpsstrings.rsunknowncharacter
+msgid "Unknown character at pos %d: \"%s\""
+msgstr "Unerwartetes Zeichen an Positon %d: \"%s\""
+
+#: fpsstrings.rsunknowncomparison
+msgid "Internal error: Unknown comparison"
+msgstr "Interner Fehler: Unbekannter Vergleich"
+
+#: fpsstrings.rsunknowndatatype
+msgid "Unknown data type."
+msgstr "Unbekannter Datentyp"
+
+#: fpsstrings.rsunknowndelimiter
+msgid "Unknown delimiter character: \"%s\""
+msgstr "Unbekanntes Trennzeichen: \"%s\""
+
+#: fpsstrings.rsunknownerrortype
+msgid "Unknown error type."
+msgstr "Unbekannter Fehler-Typ"
+
+#: fpsstrings.rsunknownidentifier
+msgid "Unknown identifier: %s"
+msgstr "Unbekannter Bezeichner: %s"
+
+#: fpsstrings.rsunknowntokenatpos
+msgid "Unknown token at pos %d : %s"
+msgstr "Unbekanntes Symbol an Position %d: %s"
+
+#: fpsstrings.rsunsupportedreadformat
+msgid "Tried to read a spreadsheet using an unsupported format"
+msgstr "Versuch ein Spreadsheet mit einem nicht unterstützten Format zu lesen"
+
+#: fpsstrings.rsunsupportedwriteformat
+msgid "Tried to write a spreadsheet using an unsupported format"
+msgstr "Versuch eine Spreadsheet mit einem nicht unterstützten Format zu schreiben"
+
+#: fpsstrings.rsunterminatedexpression
+msgid "Badly terminated expression. Found token at position %d : %s"
+msgstr "Schlecht terminierter Ausdruck. Symbol gefunden an Position %d : %s"
+
+#: fpsstrings.rsutf8textexpectedbutansifoundincell
+msgid "Expected UTF8 text, but probably ANSI text found in cell %s."
+msgstr "In Zelle %s UTF8-Text erwartet, aber wahrscheinlich ANSI-Text gefunden"
+
+#: fpsstrings.rsverydarkgreen
+msgid "very dark green"
+msgstr "sehr dunkles Grün"
+
+#: fpsstrings.rsviolet
+msgid "violet"
+msgstr "violett"
+
+#: fpsstrings.rswheat
+msgid "wheat"
+msgstr "weizen"
+
+#: fpsstrings.rswhite
+msgid "white"
+msgstr "weiß"
+
+#: fpsstrings.rsworksheetnotfound
+msgid "Worksheet \"%s\" not found."
+msgstr "Arbeitsblatt \"%s\" nicht gefunden"
+
+#: fpsstrings.rsworksheetnotfound1
+msgid "Worksheet not found."
+msgstr "Arbeitsblatt nicht gefunden."
+
+#: fpsstrings.rsyellow
+msgid "yellow"
+msgstr "gelb"

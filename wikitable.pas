@@ -628,12 +628,12 @@ initialization
   // Registers this reader / writer in fpSpreadsheet
   sfidWikiTable_Pipes := RegisterSpreadFormat( sfWikiTable_Pipes,
     TsWikiTable_PipesReader, nil,
-    rsFileFormatWikiTablePipes, 'WIKITABLE_PIPES', [STR_WIKITABLE_PIPES_EXTENSION]
+    STR_FILEFORMAT_WIKITABLE_PIPES, 'WIKITABLE_PIPES', [STR_WIKITABLE_PIPES_EXTENSION]
   );
 
   sfidWikiTable_WikiMedia := RegisterSpreadFormat(sfWikiTable_WikiMedia,
     nil, TsWikiTable_WikiMediaWriter,
-    rsFileFormatWikiTableWikiMedia, 'WIKITABLE_WIKIMEDIA', [STR_WIKITABLE_WIKIMEDIA_EXTENSION]
+    STR_FILEFORMAT_WIKITABLE_WIKIMEDIA, 'WIKITABLE_WIKIMEDIA', [STR_WIKITABLE_WIKIMEDIA_EXTENSION]
   );
 
 end.

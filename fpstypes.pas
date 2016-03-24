@@ -47,6 +47,27 @@ type
   end;
 
 const
+  {@@ Explanatory name of sfBiff2 file format }
+  STR_FILEFORMAT_EXCEL_2 = 'Excel 2.1';
+  {@@ Explanatory name of sfBiff5 file format }
+  STR_FILEFORMAT_EXCEL_5 = 'Excel 5';
+  {@@ Explanatory name of sfBiff8 file format }
+  STR_FILEFORMAT_EXCEL_8 = 'Excel 97-2003';
+  {@@ Explanatory name of sfExcelXML file format }
+  STR_FILEFORMAT_EXCEL_XML = 'Excel XP/2003 XML';
+  {@@ Explanatory name of sfOOXLM file format }
+  STR_FILEFORMAT_EXCEL_XLSX = 'Excel 2007+ XML';
+  {@@ Explanatory name of sfOpenDocument file format }
+  STR_FILEFORMAT_OPENDOCUMENT = 'OpenDocument';
+  {@@ Explanatory name of sfCSV file format }
+  STR_FILEFORMAT_CSV = 'CSV';
+  {@@ Explanatory name of sfHTML file format }
+  STR_FILEFORMAT_HTML = 'HTML';
+  {@@ Explanatory name of sfWikiTablePipes file format }
+  STR_FILEFORMAT_WIKITABLE_PIPES = 'WikiTable (Pipes)';
+  {@@ Explanatory name of sfWikiTableWikiMedia file format }
+  STR_FILEFORMAT_WIKITABLE_WIKIMEDIA = 'WikiTable (WikiMedia)';
+
   {@@ Default binary <b>Excel</b> file extension (<= Excel 97) }
   STR_EXCEL_EXTENSION = '.xls';
   {@@ Default xml <b>Excel</v> file extension (Excel XP, 2003) }
@@ -63,6 +84,23 @@ const
   STR_WIKITABLE_PIPES_EXTENSION = '.wikitable_pipes';
   {@@ Default extension of <b>wikitable files</b> in <b>wikimedia</b> format }
   STR_WIKITABLE_WIKIMEDIA_EXTENSION = '.wikitable_wikimedia';
+
+  {@@ String for boolean value TRUE }
+  STR_TRUE = 'TRUE';
+  {@@ String for boolean value FALSE }
+  STR_FALSE = 'FALSE';
+
+  {@@ Error values }
+  STR_ERR_EMPTY_INTERSECTION = '#NULL!';
+  STR_ERR_DIVIDE_BY_ZERO = '#DIV/0!';
+  STR_ERR_WRONG_TYPE = '#VALUE!';
+  STR_ERR_ILLEGAL_REF = '#REF!';
+  STR_ERR_WRONG_NAME = '#NAME?';
+  STR_ERR_OVERFLOW = '#NUM!';
+  STR_ERR_ARG_ERROR = '#N/A';
+  // No Excel errors
+  STR_ERR_FORMULA_NOT_SUPPORTED= '<FMLA?>';
+  STR_ERR_UNKNOWN = '#UNKNWON!';
 
   {@@ Maximum count of worksheet columns}
   MAX_COL_COUNT = 65535;

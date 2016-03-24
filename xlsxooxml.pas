@@ -2037,7 +2037,7 @@ begin
     XMLStream := CreateXMLStream;
     try
       if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
-        raise Exception.CreateFmt(rsDefectiveInternalStructure, ['xlsx']);
+        raise Exception.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
       ReadXMLStream(Doc, XMLStream);
       ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
       ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
@@ -2172,7 +2172,7 @@ begin
     XMLStream := CreateXMLStream;
     try
       if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
-        raise Exception.CreateFmt(rsDefectiveInternalStructure, ['xlsx']);
+        raise Exception.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
       ReadXMLStream(Doc, XMLStream);
       ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));
       FreeAndNil(Doc);
@@ -4705,7 +4705,7 @@ initialization
   // Registers this reader / writer on fpSpreadsheet
   sfidOOXML := RegisterSpreadFormat(sfOOXML,
     TsSpreadOOXMLReader, TsSpreadOOXMLWriter,
-    rsFileFormatExcelXLSX, 'OOXML', [STR_OOXML_EXCEL_EXTENSION]
+    STR_FILEFORMAT_EXCEL_XLSX, 'OOXML', [STR_OOXML_EXCEL_EXTENSION]
   );
 
 end.

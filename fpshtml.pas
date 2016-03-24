@@ -142,7 +142,7 @@ implementation
 
 uses
   LConvEncoding, LazUTF8, URIParser, StrUtils, Math,
-  fpsStrings, fpsRegFileFormats, fpsUtils, fpsXMLCommon, fpsNumFormat;
+  fpsRegFileFormats, fpsUtils, fpsXMLCommon, fpsNumFormat;
 
 const
   MIN_FONTSIZE = 6;
@@ -1909,7 +1909,7 @@ initialization
   // Registers this reader / writer in fpSpreadsheet
   sfidHTML := RegisterSpreadFormat(sfHTML,
     TsHTMLReader, TsHTMLWriter,
-    rsFileFormatHTML, 'HTML', [STR_HTML_EXTENSION, '.htm']
+    STR_FILEFORMAT_HTML, 'HTML', [STR_HTML_EXTENSION, '.htm']
   );
 
 

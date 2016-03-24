@@ -527,7 +527,7 @@ procedure WriteMSOHeader(AStream: TStream; AType, AVersion, AInstance: Word;
 var
   rec: TsMSOHeader;
 begin
-  rec.Version_Instance := WordToLE((AVersion and $000F) + AInstance shl 4); //and $FFF0) shr 4);
+  rec.Version_Instance := WordToLE((AVersion and $000F) {%H-}+ AInstance shl 4);
   // To do: How to handle Version_Instance on big-endian machines?
   // Version_Instance combines bits 0..3 for "version" and 4..15 for "instance"
   rec.RecordType := WordToLE(AType);

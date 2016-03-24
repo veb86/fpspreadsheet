@@ -856,10 +856,10 @@ begin
   for j := j1 to Length(AStr) do
   begin
     if AStr[j] in ['A'..'Z'] then
-      ACol := ACol * INT_NUM_LETTERS + ord(AStr[j]) - ord('A') + 1
+      ACol := LongInt(ACol) * INT_NUM_LETTERS + ord(AStr[j]) - ord('A') + 1
     else
     if AStr[j] in ['a'..'z'] then
-      ACol := ACol * INT_NUM_LETTERS + ord(AStr[j]) - ord('a') + 1
+      ACol := LongInt(ACol) * INT_NUM_LETTERS + ord(AStr[j]) - ord('a') + 1
     else
       exit;
   end;
@@ -1046,16 +1046,16 @@ function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
 begin
   Result := true;
   case AErrorStr of
-    '#NULL!'   : AErr := errEmptyIntersection;
-    '#DIV/0!'  : AErr := errDivideByZero;
-    '#VALUE!'  : AErr := errWrongType;
-    '#REF!'    : AErr := errIllegalRef;
-    '#NAME?'   : AErr := errWrongName;
-    '#NUM!'    : AErr := errOverflow;
-    '#N/A'     : AErr := errArgError;
-    '#FORMULA?': AErr := errFormulaNotSupported;
-    ''         : AErr := errOK;
-    else         Result := false;
+    STR_ERR_EMPTY_INTERSECTION    : AErr := errEmptyIntersection;     // #NULL!
+    STR_ERR_DIVIDE_BY_ZERO        : AErr := errDivideByZero;          // #DIV/0!
+    STR_ERR_WRONG_TYPE            : AErr := errWrongType;             // #VALUE!
+    STR_ERR_ILLEGAL_REF           : AErr := errIllegalRef;            // #REF!
+    STR_ERR_WRONG_NAME            : AErr := errWrongName;             // #NAME?
+    STR_ERR_OVERFLOW              : AErr := errOverflow;              // #NUM!
+    STR_ERR_ARG_ERROR             : AErr := errArgError;              // #N/A
+    STR_ERR_FORMULA_NOT_SUPPORTED : AErr := errFormulaNotSupported;   // #FMLA?
+    ''                            : AErr := errOK;
+    else                            Result := false;
   end;
 end;
 
@@ -1068,17 +1068,17 @@ end;
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 begin
   case AErrorValue of
-    errOK                   : Result := '';
-    errEmptyIntersection    : Result := '#NULL!';
-    errDivideByZero         : Result := '#DIV/0!';
-    errWrongType            : Result := '#VALUE!';
-    errIllegalRef           : Result := '#REF!';
-    errWrongName            : Result := '#NAME?';
-    errOverflow             : Result := '#NUM!';
-    errArgError             : Result := '#N/A';
+    errOK                  : Result := '';
+    errEmptyIntersection   : Result := STR_ERR_EMPTY_INTERSECTION;    // #NULL!
+    errDivideByZero        : Result := STR_ERR_DIVIDE_BY_ZERO;        // #DIV/0!
+    errWrongType           : Result := STR_ERR_WRONG_TYPE;            // #VALUE!
+    errIllegalRef          : Result := STR_ERR_ILLEGAL_REF;           // #REF!
+    errWrongName           : Result := STR_ERR_WRONG_NAME;            // #NAME?
+    errOverflow            : Result := STR_ERR_OVERFLOW;              // #NUM!
+    errArgError            : Result := STR_ERR_ARG_ERROR;             // #N/A
     // --- no Excel errors --
-    errFormulaNotSupported  : Result := '#FORMULA?';
-    else                      Result := '#UNKNOWN ERROR';
+    errFormulaNotSupported : Result := STR_ERR_FORMULA_NOT_SUPPORTED; // #FMLA?
+    else                     Result := STR_ERR_UNKNOWN;               // #UNKNOWN!
   end;
 end;
 

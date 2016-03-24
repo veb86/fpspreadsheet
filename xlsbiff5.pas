@@ -1405,7 +1405,7 @@ begin
     idx := FWorkbook.GetWorksheetIndex(AWorksheet);
 
     { BIFF record header }
-    WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFINEDNAME, 14 + Length(AName) + memstream.Size);
+    WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFINEDNAME, 14 + Length(AName) + Word(memstream.Size));
 
     { Option flags: built-in defined names only }
     AStream.WriteWord(WordToLE($0020));
@@ -1935,7 +1935,7 @@ begin
     begin
       if (AFormatRecord^.Background.FgColor = scTransparent)
         then dw1 := dw1 or (SYS_DEFAULT_FOREGROUND_COLOR and $0000007F)
-        else dw1 := dw1 or (PaletteIndex(AFormatRecord^.Background.FgColor) and $0000007F);
+        else dw1 := LongInt(dw1) or (PaletteIndex(AFormatRecord^.Background.FgColor) and $0000007F);
       if AFormatRecord^.Background.BgColor = scTransparent
         then dw1 := dw1 or (SYS_DEFAULT_BACKGROUND_COLOR shl 7)
         else dw1 := dw1 or (PaletteIndex(AFormatRecord^.Background.BgColor) shl 7);
@@ -1974,7 +1974,7 @@ initialization
 
  sfidExcel5 := RegisterSpreadFormat(sfExcel5,
    TsSpreadBIFF5Reader, TsSpreadBIFF5Writer,
-   rsFileFormatExcel5, 'BIFF5', [STR_EXCEL_EXTENSION]
+   STR_FILEFORMAT_EXCEL_5, 'BIFF5', [STR_EXCEL_EXTENSION]
  );
 
  MakeLEPalette(PALETTE_BIFF5);

@@ -851,7 +851,7 @@ initialization
   // Registers this reader / writer in fpSpreadsheet
   sfidExcelXML := RegisterSpreadFormat(sfExcelXML,
     nil, TsSpreadExcelXMLWriter,
-    rsFileFormatExcelXML, 'ExcelXML', [STR_XML_EXCEL_EXTENSION]
+    STR_FILEFORMAT_EXCEL_XML, 'ExcelXML', [STR_XML_EXCEL_EXTENSION]
   );
 
 end.

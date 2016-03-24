@@ -44,7 +44,7 @@ unit fpszipper;
 Interface
 
 Uses
-  zipper;
+  {%H-}zipper;
 
 Implementation
 End.

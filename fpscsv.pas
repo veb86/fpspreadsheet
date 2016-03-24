@@ -93,7 +93,7 @@ implementation
 
 uses
   DateUtils, LConvEncoding, Math,
-  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat;
+  fpsRegFileFormats, fpsUtils, fpsNumFormat;
 
 function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 begin
@@ -448,7 +448,7 @@ initialization
   // Registers this reader / writer in fpSpreadsheet
   sfidCSV := RegisterSpreadFormat(sfCSV,
     TsCSVReader, TsCSVWriter,
-    rsFileFormatCSV, 'CSV', [STR_COMMA_SEPARATED_EXTENSION, '.txt']
+    STR_FILEFORMAT_CSV, 'CSV', [STR_COMMA_SEPARATED_EXTENSION, '.txt']
   );
 
 end.

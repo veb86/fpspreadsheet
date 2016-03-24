@@ -70,6 +70,9 @@ type
     DateMode: TDateMode;      // R/W
   end;
 
+const
+  STR_FILEFORMAT_SYLK = 'SYLK';
+
 var
   {@@ Default settings for reading/writing of SYLK files }
   SYLKSettings: TSYLKSettings = (
@@ -83,7 +86,7 @@ var
 implementation
 
 uses
-  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat;
+  fpsRegFileFormats, fpsUtils, fpsNumFormat;
 
 {==============================================================================}
 {                               TsSYLKReader                                   }
@@ -253,7 +256,7 @@ begin
        TryStrToFloat(sval, val, FPointSeparatorSettings) then
     begin
       for col := col1-1 to col2-1 do
-        FWorksheet.WriteColWidth(col, val);
+        FWorksheet.WriteColWidth(col, val, suChars);
     end;
   end;
 end;
@@ -663,7 +666,7 @@ initialization
 
   sfidSYLK := RegisterSpreadFormat(sfUser,
     TsSYLKReader, TsSYLKWriter,
-    rsFileFormatSYLK, 'SYLK', ['.slk', '.sylk']
+    STR_FILEFORMAT_SYLK, 'SYLK', ['.slk', '.sylk']
   );
 
 end.

@@ -1710,7 +1710,7 @@ begin
       Result := StringResult('v');
   end else
   if stype = 'width' then
-    Result := FloatResult(Args[1].Worksheet.GetColWidth(c1))
+    Result := FloatResult(Args[1].Worksheet.GetColWidth(c1, suChars))
   else
     Result := ErrorResult(errWrongType);
 end;
