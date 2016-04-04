@@ -2844,9 +2844,14 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
           hasColor := true;
           color := HTMLColorStrToColor(s);
           case color of
-            scBlack, scWhite, scRed, scGreen,
-            scBlue, scYellow, scMagenta, scCyan:
-              nfs := Format('[%s]%s', [GetColorName(color), nfs]);
+            scBlack   : nfs := '[black]' + nfs;
+            scWhite   : nfs := '[white]' + nfs;
+            scRed     : nfs := '[red]' + nfs;
+            scGreen   : nfs := '[green]' + nfs;
+            scBlue    : nfs := '[blue]' + nfs;
+            scYellow  : nfs := '[yellow]' + nfs;
+            scMagenta : nfs := '[magenta]' + nfs;
+            scCyan    : nfs := '[cyan]' + nfs;
           end;
         end;
       end;
