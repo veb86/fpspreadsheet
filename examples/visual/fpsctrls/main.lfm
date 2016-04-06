@@ -78,7 +78,7 @@ object MainForm: TMainForm
       Align = alClient
       DefaultColWidth = 125
       MouseWheelOption = mwGrid
-      RowCount = 30
+      RowCount = 33
       TabOrder = 1
       TitleStyle = tsNative
       DisplayOptions = [doColumnTitles]
@@ -108,11 +108,14 @@ object MainForm: TMainForm
         '  PosCurrencyFormat=3'
         '  NegCurrencyFormat=8'
         '  TwoDigitYearCenturyWindow=50'
-        'Font0=Arial; size 10; black'
-        'Font1=Arial; size 10; blue; underline'
-        'Font2=Arial; size 10; black; bold'
-        'Font3=Arial; size 10; black; italic'
-        'CellFormat0=nfGeneral'
+        '(-) Images='
+        '(-) Fonts='
+        '  Font0=Arial; size 10; black'
+        '  Font1=Arial; size 10; blue; underline'
+        '  Font2=Arial; size 10; black; bold'
+        '  Font3=Arial; size 10; black; italic'
+        '(-) Cell formats='
+        '  CellFormat0=nfGeneral'
       )
       TitleCaptions.Strings = (
         'Properties'
@@ -374,6 +377,7 @@ object MainForm: TMainForm
       ColorRectOffset = 3
       ColorRectWidth = -1
       WorkbookSource = WorkbookSource
+      OnAddColors = ColorComboboxAddColors
       DropDownCount = 24
       ItemIndex = 0
       TabOrder = 2
@@ -388,6 +392,7 @@ object MainForm: TMainForm
       ColorRectOffset = 3
       ColorRectWidth = -1
       WorkbookSource = WorkbookSource
+      OnAddColors = ColorComboboxAddColors
       DropDownCount = 24
       ItemIndex = 0
       TabOrder = 3

@@ -21,6 +21,7 @@ uses
 type
 
   { TsPalette }
+
   TsPalette = class
   private
     FColors: array of TsColor;

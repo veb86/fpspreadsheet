@@ -376,6 +376,7 @@ type
     procedure AcShowHeadersUpdate(Sender: TObject);
     procedure AcViewInspectorExecute(Sender: TObject);
     procedure EditCut1Execute(Sender: TObject);
+    procedure ColorComboboxAddColors(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure HyperlinkHandler(Sender: TObject; ACaption: String;
       var AHyperlink: TsHyperlink);
@@ -408,7 +409,6 @@ implementation
 uses
   LCLIntf, inifiles, uriparser,
   fpsUtils, fpsCSV,
-//  fpsCSV, fpsHTML, fpsOpenDocument, xlsbiff2, xlsbiff5, xlsbiff8, xlsxooxml, wikitable,
   sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm,
   sHyperlinkForm, sNumFormatForm, sSearchForm;
 
@@ -649,6 +649,63 @@ begin
   InspectorTabControl.Visible := AcViewInspector.Checked;
   InspectorSplitter.Visible := AcViewInspector.Checked;
   InspectorSplitter.Left := 0;  // Make sure that the splitter is always at the left of the inspector
+end;
+
+procedure TMainForm.ColorComboboxAddColors(Sender: TObject);
+begin
+  with TsCellCombobox(Sender) do begin
+    // These are the Excel-8 palette colors, a bit rearranged and without the
+    // duplicates.
+    AddColor($000000, 'black');
+    AddColor($333333, 'gray 80%');
+    AddColor($808080, 'gray 50%');
+    AddColor($969696, 'gray 40%');
+    AddColor($C0C0C0, 'silver');
+    AddColor($FFFFFF, 'white');
+    AddColor($FF0000, 'red');
+    AddColor($00FF00, 'green');
+    AddColor($0000FF, 'blue');
+    AddColor($FFFF00, 'yellow');
+    AddColor($FF00FF, 'magenta');
+    AddColor($00FFFF, 'cyan');
+
+    AddColor($800000, 'dark red');
+    AddColor($008000, 'dark green');
+    AddColor($000080, 'dark blue');
+    AddColor($808000, 'olive');
+    AddColor($800080, 'purple');
+    AddColor($008080, 'teal');
+    AddColor($9999FF, 'periwinkle');
+    AddColor($993366, 'plum');
+    AddColor($FFFFCC, 'ivory');
+    AddColor($CCFFFF, 'light turquoise');
+    AddColor($660066, 'dark purple');
+    AddColor($FF8080, 'coral');
+    AddColor($0066CC, 'ocean blue');
+    AddColor($CCCCFF, 'ice blue');
+
+    AddColor($00CCFF, 'sky blue');
+    AddColor($CCFFCC, 'light green');
+    AddColor($FFFF99, 'light yellow');
+    AddColor($99CCFF, 'pale blue');
+    AddColor($FF99CC, 'rose');
+    AddColor($CC99FF, 'lavander');
+    AddColor($FFCC99, 'tan');
+
+    AddColor($3366FF, 'light blue');
+    AddColor($33CCCC, 'aqua');
+    AddColor($99CC00, 'lime');
+    AddColor($FFCC00, 'gold');
+    AddColor($FF9900, 'light orange');
+    AddColor($FF6600, 'orange');
+    AddColor($666699, 'blue gray');
+    AddColor($003366, 'dark teal');
+    AddColor($339966, 'sea green');
+    AddColor($003300, 'very dark green');
+    AddColor($333300, 'olive green');
+    AddColor($993300, 'brown');
+    AddColor($333399, 'indigo');
+  end;
 end;
 
 procedure TMainForm.EditCut1Execute(Sender: TObject);

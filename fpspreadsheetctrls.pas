@@ -301,6 +301,9 @@ type
 
   { TsCellCombobox }
 
+  TsColorNameEvent = procedure (Sender: TObject; AColor: TColor;
+    out AColorName: String) of object;
+
  {@@ TsCellCombobox is a multi-purpose combobox for selection of formatting
      items of a cell }
   TsCellCombobox = class(TCustomCombobox, IsSpreadsheetControl)
@@ -309,6 +312,8 @@ type
     FFormatItem: TsCellFormatItem;
     FColorRectOffset: Integer;
     FColorRectWidth: Integer;
+    FOnAddColors: TNotifyEvent;
+    FOnGetColorName: TsColorNameEvent;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
     procedure SetColorRectOffset(AValue: Integer);
@@ -331,6 +336,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    procedure AddColor(AColor: TsColor; AColorName: String);
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
     procedure RemoveWorkbookSource;
@@ -347,6 +353,10 @@ type
     property ColorRectWidth: Integer read FColorRectWidth write SetColorRectWidth default 10;
     {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+    {@@ Event which adds the colors to the combobox }
+    property OnAddColors: TNotifyEvent read FOnAddColors write FOnAddColors;
+    {@@ Event to get a decent name of the colors of the combo }
+    property OnGetColorName: TsColorNameEvent read FOnGetColorName write FOnGetColorName;
 
     { inherited properties }
     property Align;
@@ -482,9 +492,6 @@ type
   end;
 
 function SpreadsheetFormatInClipboard: Boolean;
-
-var
-  ComboColors: TsPalette = nil;
 
 procedure Register;
 
@@ -2117,6 +2124,20 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Adds a named color to the combobox items
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.AddColor(AColor: TsColor; AColorName: String);
+var
+  noText: Boolean;
+begin
+  if (FFormatItem in [cfiFontColor, cfiBackgroundColor, cfiBorderColor]) then
+  begin
+    noText := (FColorRectWidth = -1);
+    Items.AddObject(StrUtils.IfThen(noText, '', AColorName), TObject(PtrInt(AColor)));
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Applies the format to a cell. Override according to the format item for
   which the combobox is responsible.
 -------------------------------------------------------------------------------}
@@ -2389,6 +2410,7 @@ procedure TsCellCombobox.Populate;
 var
   i: Integer;
   clr: TsColor;
+  clrname: String;
   noText: Boolean;
 begin
   if Workbook = nil then
@@ -2407,10 +2429,18 @@ begin
         Items.Clear;
         if FFormatItem = cfiBackgroundColor then
           Items.AddObject(StrUtils.IfThen(noText, '', '(none)'), TObject(scTransparent));
-        for i:=0 to ComboColors.Count-1 do
-        begin
-          clr := ComboColors[i];
-          Items.AddObject(StrUtils.IfThen(noText, '', GetColorName(clr)), TObject(PtrInt(clr)));
+        if Assigned(FOnAddColors) then
+          FOnAddColors(self)
+        else begin
+          // By default, add the Excel2 colors.
+          AddColor(scBlack, GetColorName(scBlack));
+          AddColor(scWhite, GetColorName(scWhite));
+          AddColor(scRed, GetColorName(scRed));
+          AddColor(scGreen, GetColorName(scGreen));
+          AddColor(scBlue, GetColorName(scBlue));
+          AddColor(scYellow, GetColorName(scYellow));
+          AddColor(scMagenta, GetColorName(scMagenta));
+          AddColor(scCyan, GetColorName(scCyan));
         end;
       end;
     else
@@ -3397,13 +3427,11 @@ end;
 initialization
   {$I fpspreadsheetctrls.lrs}
 
-//  CellClipboard := TsCellList.Create;
+  RegisterPropertyToSkip(TsSpreadsheetInspector, 'RowHeights',
+    'For compatibility with older Laz versions.', '');
 
-  ComboColors := TsPalette.Create;
-  ComboColors.AddExcelColors;
-
-  RegisterPropertyToSkip(TsSpreadsheetInspector, 'RowHeights', 'For compatibility with older Laz versions.', '');
-  RegisterPropertyToSkip(TsSpreadsheetInspector, 'ColWidths', 'For compatibility with older Laz versions.', '');
+  RegisterPropertyToSkip(TsSpreadsheetInspector, 'ColWidths',
+    'For compatibility with older Laz versions.', '');
 
   { Clipboard formats }
   cfBiff8Format := RegisterclipboardFormat('Biff8');
@@ -3411,14 +3439,10 @@ initialization
   cfHTMLFormat := RegisterClipboardFormat('HTML Format');
   cfTextHTMLFormat := RegisterClipboardFormat('text/html');
   cfCSVFormat := RegisterClipboardFormat('CSV');
+
   { not working...
   cfOpenDocumentFormat := RegisterClipboardFormat('application/x-openoffice-embed-source-xml;windows_formatname="Star Embed Source (XML)"');
   cfStarObjectDescriptor := RegisterClipboardFormat('application/x-openoffice-objectdescriptor-xml;windows_formatname="Star Object Descriptor (XML)"');
   }
-
-finalization
-//  CellClipboard.Free;
-  if ComboColors <> nil then ComboColors.Free;
-
 
 end.
