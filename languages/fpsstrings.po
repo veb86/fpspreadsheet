@@ -13,16 +13,8 @@ msgstr ""
 msgid "Assuming usage of decimal separator in \"%s\"."
 msgstr ""
 
-#: fpsstrings.rsaqua
-msgid "aqua"
-msgstr ""
-
 #: fpsstrings.rsbadquotes
 msgid "Unterminated string"
-msgstr ""
-
-#: fpsstrings.rsbeige
-msgid "beige"
 msgstr ""
 
 #: fpsstrings.rsblack
@@ -31,14 +23,6 @@ msgstr ""
 
 #: fpsstrings.rsblue
 msgid "blue"
-msgstr ""
-
-#: fpsstrings.rsbluegray
-msgid "blue gray"
-msgstr ""
-
-#: fpsstrings.rsbrown
-msgid "brown"
 msgstr ""
 
 #: fpsstrings.rscannotreadfile
@@ -65,10 +49,6 @@ msgstr ""
 msgid "Expected comma (,) at position %d, but got %s"
 msgstr ""
 
-#: fpsstrings.rscoral
-msgid "coral"
-msgstr ""
-
 #: fpsstrings.rscyan
 msgid "cyan"
 msgstr ""
@@ -81,16 +61,8 @@ msgstr ""
 msgid "dark green"
 msgstr ""
 
-#: fpsstrings.rsdarkpurple
-msgid "dark purple"
-msgstr ""
-
 #: fpsstrings.rsdarkred
 msgid "dark red"
-msgstr ""
-
-#: fpsstrings.rsdarkteal
-msgid "dark teal"
 msgstr ""
 
 #: fpsstrings.rsdefaultsheetname
@@ -157,36 +129,8 @@ msgstr ""
 msgid "Spreadsheet file"
 msgstr ""
 
-#: fpsstrings.rsgold
-msgid "gold"
-msgstr ""
-
 #: fpsstrings.rsgray
 msgid "gray"
-msgstr ""
-
-#: fpsstrings.rsgray10pct
-msgid "10% gray"
-msgstr ""
-
-#: fpsstrings.rsgray20pct
-msgid "20% gray"
-msgstr ""
-
-#: fpsstrings.rsgray25pct
-msgid "25% gray"
-msgstr ""
-
-#: fpsstrings.rsgray40pct
-msgid "40% gray"
-msgstr ""
-
-#: fpsstrings.rsgray50pct
-msgid "50% gray"
-msgstr ""
-
-#: fpsstrings.rsgray80pct
-msgid "80% gray"
 msgstr ""
 
 #: fpsstrings.rsgreen
@@ -195,10 +139,6 @@ msgstr ""
 
 #: fpsstrings.rsheader
 msgid "Header"
-msgstr ""
-
-#: fpsstrings.rsiceblue
-msgid "ice blue"
 msgstr ""
 
 #: fpsstrings.rsimageformatnotsupported
@@ -211,10 +151,6 @@ msgstr ""
 
 #: fpsstrings.rsindexinsstoutofrange
 msgid "Index %d in SST out of range (0-%d)."
-msgstr ""
-
-#: fpsstrings.rsindigo
-msgid "indigo"
 msgstr ""
 
 #: fpsstrings.rsinvalidargumentcount
@@ -273,40 +209,8 @@ msgstr ""
 msgid "\"%s\" is not a valid worksheet name."
 msgstr ""
 
-#: fpsstrings.rsivory
-msgid "ivory"
-msgstr ""
-
-#: fpsstrings.rslavander
-msgid "lavander"
-msgstr ""
-
 #: fpsstrings.rsleftbracketexpected
 msgid "Expected left bracket at position %d, but got %s"
-msgstr ""
-
-#: fpsstrings.rslightblue
-msgid "light blue"
-msgstr ""
-
-#: fpsstrings.rslightgreen
-msgid "light green"
-msgstr ""
-
-#: fpsstrings.rslightorange
-msgid "light orange"
-msgstr ""
-
-#: fpsstrings.rslightturquoise
-msgid "light turquoise"
-msgstr ""
-
-#: fpsstrings.rslightyellow
-msgid "light yellow"
-msgstr ""
-
-#: fpsstrings.rslime
-msgid "lime"
 msgstr ""
 
 #: fpsstrings.rslocalfilehyperlinkabs
@@ -327,10 +231,6 @@ msgstr ""
 
 #: fpsstrings.rsmultiplesheetsonlywithrestoreposition
 msgid "Export to multiple sheets is possible only if position is restored."
-msgstr ""
-
-#: fpsstrings.rsnavy
-msgid "navy"
 msgstr ""
 
 #: fpsstrings.rsnooperand
@@ -373,20 +273,12 @@ msgstr ""
 msgid "Identifier %s is not a variable"
 msgstr ""
 
-#: fpsstrings.rsoceanblue
-msgid "ocean blue"
-msgstr ""
-
 #: fpsstrings.rsodshyperlinksoftextcellsonly
 msgid "Cell %s: OpenDocument supports hyperlinks for text cells only."
 msgstr ""
 
 #: fpsstrings.rsolive
 msgid "olive"
-msgstr ""
-
-#: fpsstrings.rsolivegreen
-msgid "olive green"
 msgstr ""
 
 #: fpsstrings.rsonlyoneheaderfooterimageallowed
@@ -401,28 +293,8 @@ msgstr ""
 msgid "This operation exceeds the range of defined grid rows."
 msgstr ""
 
-#: fpsstrings.rsorange
-msgid "orange"
-msgstr ""
-
-#: fpsstrings.rspaleblue
-msgid "pale blue"
-msgstr ""
-
 #: fpsstrings.rspaletteindex
 msgid "Palette index %d"
-msgstr ""
-
-#: fpsstrings.rsperiwinkle
-msgid "periwinkle"
-msgstr ""
-
-#: fpsstrings.rspink
-msgid "pink"
-msgstr ""
-
-#: fpsstrings.rsplum
-msgid "plum"
 msgstr ""
 
 #: fpsstrings.rspurple
@@ -441,32 +313,16 @@ msgstr ""
 msgid "Expected right bracket at position %d, but got %s"
 msgstr ""
 
-#: fpsstrings.rsrose
-msgid "rose"
-msgstr ""
-
 #: fpsstrings.rsrowstylenotfound
 msgid "Row style not found."
-msgstr ""
-
-#: fpsstrings.rsseagreen
-msgid "sea green"
 msgstr ""
 
 #: fpsstrings.rssilver
 msgid "silver"
 msgstr ""
 
-#: fpsstrings.rsskyblue
-msgid "sky blue"
-msgstr ""
-
 #: fpsstrings.rsstdhyperlinktooltip
 msgid "Hold the left mouse button down for a short time to activate the hyperlink."
-msgstr ""
-
-#: fpsstrings.rstan
-msgid "tan"
 msgstr ""
 
 #: fpsstrings.rsteal
@@ -531,18 +387,6 @@ msgstr ""
 
 #: fpsstrings.rsutf8textexpectedbutansifoundincell
 msgid "Expected UTF8 text, but probably ANSI text found in cell %s."
-msgstr ""
-
-#: fpsstrings.rsverydarkgreen
-msgid "very dark green"
-msgstr ""
-
-#: fpsstrings.rsviolet
-msgid "violet"
-msgstr ""
-
-#: fpsstrings.rswheat
-msgid "wheat"
 msgstr ""
 
 #: fpsstrings.rswhite

@@ -13,17 +13,9 @@ msgstr "Все файлы электронных таблиц"
 msgid "Assuming usage of decimal separator in \"%s\"."
 msgstr "Предпологается использование десятичного разеделителя в \"%s\"."
 
-#: fpsstrings.rsaqua
-msgid "aqua"
-msgstr "вода"
-
 #: fpsstrings.rsbadquotes
 msgid "Unterminated string"
 msgstr "Не законченная строка"
-
-#: fpsstrings.rsbeige
-msgid "beige"
-msgstr "бежевый"
 
 #: fpsstrings.rsblack
 msgid "black"
@@ -32,14 +24,6 @@ msgstr "чёрный"
 #: fpsstrings.rsblue
 msgid "blue"
 msgstr "голубой"
-
-#: fpsstrings.rsbluegray
-msgid "blue gray"
-msgstr "серо-голубой"
-
-#: fpsstrings.rsbrown
-msgid "brown"
-msgstr "коричневый"
 
 #: fpsstrings.rscannotreadfile
 msgid "Cannot read file \"%s\". Wrong, unknown or defective file format?"
@@ -65,10 +49,6 @@ msgstr "Стиль столбца не найден."
 msgid "Expected comma (,) at position %d, but got %s"
 msgstr "Ожидайется запятая (,) в позиции %d, но найдено %s"
 
-#: fpsstrings.rscoral
-msgid "coral"
-msgstr "коралловый"
-
 #: fpsstrings.rscyan
 msgid "cyan"
 msgstr "бирюзовый"
@@ -81,17 +61,9 @@ msgstr "тёмно-голубой"
 msgid "dark green"
 msgstr "тёмно-зелёный"
 
-#: fpsstrings.rsdarkpurple
-msgid "dark purple"
-msgstr "темно фиолетовый"
-
 #: fpsstrings.rsdarkred
 msgid "dark red"
 msgstr "тёмно-красный"
-
-#: fpsstrings.rsdarkteal
-msgid "dark teal"
-msgstr "темно-бирюзовый"
 
 #: fpsstrings.rsdefaultsheetname
 msgid "Sheet%d"
@@ -157,37 +129,9 @@ msgstr "Формула в ячейке %s не поддерживается фо
 msgid "Spreadsheet file"
 msgstr "Файл электронной таблицы"
 
-#: fpsstrings.rsgold
-msgid "gold"
-msgstr "золото"
-
 #: fpsstrings.rsgray
 msgid "gray"
 msgstr "серый"
-
-#: fpsstrings.rsgray10pct
-msgid "10% gray"
-msgstr "10% серого"
-
-#: fpsstrings.rsgray20pct
-msgid "20% gray"
-msgstr "20% серого"
-
-#: fpsstrings.rsgray25pct
-msgid "25% gray"
-msgstr "25% серого"
-
-#: fpsstrings.rsgray40pct
-msgid "40% gray"
-msgstr "40% серого"
-
-#: fpsstrings.rsgray50pct
-msgid "50% gray"
-msgstr "50% серого"
-
-#: fpsstrings.rsgray80pct
-msgid "80% gray"
-msgstr "80% серого"
 
 #: fpsstrings.rsgreen
 msgid "green"
@@ -196,10 +140,6 @@ msgstr "зелёный"
 #: fpsstrings.rsheader
 msgid "Header"
 msgstr "Заголовок"
-
-#: fpsstrings.rsiceblue
-msgid "ice blue"
-msgstr "голубой лед"
 
 #: fpsstrings.rsimageformatnotsupported
 msgid "Image format not supported."
@@ -212,10 +152,6 @@ msgstr "Неверная позиция %%G кода в %s"
 #: fpsstrings.rsindexinsstoutofrange
 msgid "Index %d in SST out of range (0-%d)."
 msgstr "Индекс %d в SST выходит за пределы диапазона (0-%d)."
-
-#: fpsstrings.rsindigo
-msgid "indigo"
-msgstr "индиго"
 
 #: fpsstrings.rsinvalidargumentcount
 msgid "Invalid argument count for function %s"
@@ -273,41 +209,9 @@ msgstr "\"%s\" не верный файл электронной таблицы"
 msgid "\"%s\" is not a valid worksheet name."
 msgstr "\"%s\" не верное имя таблицы."
 
-#: fpsstrings.rsivory
-msgid "ivory"
-msgstr "слоновая кость"
-
-#: fpsstrings.rslavander
-msgid "lavander"
-msgstr "лаванда"
-
 #: fpsstrings.rsleftbracketexpected
 msgid "Expected left bracket at position %d, but got %s"
 msgstr "Ожидается левая скобка в позиции %d, но найдено %s"
-
-#: fpsstrings.rslightblue
-msgid "light blue"
-msgstr "светло-голубой"
-
-#: fpsstrings.rslightgreen
-msgid "light green"
-msgstr "светло-зелёный"
-
-#: fpsstrings.rslightorange
-msgid "light orange"
-msgstr "светло-оранжевый"
-
-#: fpsstrings.rslightturquoise
-msgid "light turquoise"
-msgstr "светло-бирюзовый"
-
-#: fpsstrings.rslightyellow
-msgid "light yellow"
-msgstr "светло-жёлтый"
-
-#: fpsstrings.rslime
-msgid "lime"
-msgstr ""
 
 #: fpsstrings.rslocalfilehyperlinkabs
 msgid "The hyperlink \"%s\" points to a local file. In case of an absolute path the protocol \"file:\" must be specified."
@@ -328,10 +232,6 @@ msgstr "Таблица содержит %d строк, но указанный �
 #: fpsstrings.rsmultiplesheetsonlywithrestoreposition
 msgid "Export to multiple sheets is possible only if position is restored."
 msgstr "Экспорт в несколько листов возможен только в случае если позиция восстанавливается."
-
-#: fpsstrings.rsnavy
-msgid "navy"
-msgstr ""
 
 #: fpsstrings.rsnooperand
 msgid "No operand for unary operation %s"
@@ -373,10 +273,6 @@ msgstr "Не верная строка формата для чисел"
 msgid "Identifier %s is not a variable"
 msgstr "Идентификатор %s не переменная"
 
-#: fpsstrings.rsoceanblue
-msgid "ocean blue"
-msgstr ""
-
 #: fpsstrings.rsodshyperlinksoftextcellsonly
 msgid "Cell %s: OpenDocument supports hyperlinks for text cells only."
 msgstr "Ячейка %s: OpenDocument поддерживает гиперссылки только для текстовых ячеек."
@@ -384,10 +280,6 @@ msgstr "Ячейка %s: OpenDocument поддерживает гиперссы�
 #: fpsstrings.rsolive
 msgid "olive"
 msgstr "оливковый"
-
-#: fpsstrings.rsolivegreen
-msgid "olive green"
-msgstr "оливково-зелёный"
 
 #: fpsstrings.rsonlyoneheaderfooterimageallowed
 msgid "Only one image per %s section allowed."
@@ -401,29 +293,9 @@ msgstr "Эта операция превышает диапазон опреде
 msgid "This operation exceeds the range of defined grid rows."
 msgstr "Эта операция превышает диапазон определенных столбцов таблицы"
 
-#: fpsstrings.rsorange
-msgid "orange"
-msgstr "оранжевый"
-
-#: fpsstrings.rspaleblue
-msgid "pale blue"
-msgstr "бледно-голубой"
-
 #: fpsstrings.rspaletteindex
 msgid "Palette index %d"
 msgstr "Индекс палитры %d"
-
-#: fpsstrings.rsperiwinkle
-msgid "periwinkle"
-msgstr ""
-
-#: fpsstrings.rspink
-msgid "pink"
-msgstr ""
-
-#: fpsstrings.rsplum
-msgid "plum"
-msgstr ""
 
 #: fpsstrings.rspurple
 msgid "purple"
@@ -441,33 +313,17 @@ msgstr "красный"
 msgid "Expected right bracket at position %d, but got %s"
 msgstr "Ожидается правая скобка в позиции %d, но найдено %s"
 
-#: fpsstrings.rsrose
-msgid "rose"
-msgstr "роза"
-
 #: fpsstrings.rsrowstylenotfound
 msgid "Row style not found."
 msgstr "Стиль строки не найден"
-
-#: fpsstrings.rsseagreen
-msgid "sea green"
-msgstr "морская волна"
 
 #: fpsstrings.rssilver
 msgid "silver"
 msgstr "серебрянный"
 
-#: fpsstrings.rsskyblue
-msgid "sky blue"
-msgstr "небесно-голубой"
-
 #: fpsstrings.rsstdhyperlinktooltip
 msgid "Hold the left mouse button down for a short time to activate the hyperlink."
 msgstr "Нажмите и удерживайте некоторое время левую кнопку мышки для активации гиперссылки"
-
-#: fpsstrings.rstan
-msgid "tan"
-msgstr ""
 
 #: fpsstrings.rsteal
 msgid "teal"
@@ -532,18 +388,6 @@ msgstr "Не верное окончание выражения. Найден с
 #: fpsstrings.rsutf8textexpectedbutansifoundincell
 msgid "Expected UTF8 text, but probably ANSI text found in cell %s."
 msgstr "Ожидается текст в UTF8 кодировке, но в ячейке %s возможно найден текст ANSI кодировке"
-
-#: fpsstrings.rsverydarkgreen
-msgid "very dark green"
-msgstr "очень тёмно-зелёный"
-
-#: fpsstrings.rsviolet
-msgid "violet"
-msgstr "фиолетовый"
-
-#: fpsstrings.rswheat
-msgid "wheat"
-msgstr "пшеница"
 
 #: fpsstrings.rswhite
 msgid "white"

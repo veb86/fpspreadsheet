@@ -29,7 +29,7 @@ interface
 uses
   Classes, Graphics, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
   LResources,
-  fpstypes, fpspalette, fpspreadsheet, {%H-}fpsAllFormats;
+  fpstypes, fpspreadsheet, {%H-}fpsAllFormats;
 
 type
   {@@ Event handler procedure for displaying a message if an error or
@@ -2408,9 +2408,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCellCombobox.Populate;
 var
-  i: Integer;
-  clr: TsColor;
-  clrname: String;
   noText: Boolean;
 begin
   if Workbook = nil then

@@ -13,16 +13,8 @@ msgstr "Kaikki taulukkolaskenta tiedostot"
 msgid "Assuming usage of decimal separator in \"%s\"."
 msgstr ""
 
-#: fpsstrings.rsaqua
-msgid "aqua"
-msgstr ""
-
 #: fpsstrings.rsbadquotes
 msgid "Unterminated string"
-msgstr ""
-
-#: fpsstrings.rsbeige
-msgid "beige"
 msgstr ""
 
 #: fpsstrings.rsblack
@@ -32,14 +24,6 @@ msgstr "musta"
 #: fpsstrings.rsblue
 msgid "blue"
 msgstr "sininen"
-
-#: fpsstrings.rsbluegray
-msgid "blue gray"
-msgstr "sinisen harmaa"
-
-#: fpsstrings.rsbrown
-msgid "brown"
-msgstr "ruskea"
 
 #: fpsstrings.rscannotreadfile
 msgid "Cannot read file \"%s\". Wrong, unknown or defective file format?"
@@ -65,10 +49,6 @@ msgstr ""
 msgid "Expected comma (,) at position %d, but got %s"
 msgstr "Odotettiin pilkkua (,) kohdassa %d mutta saatiin %s"
 
-#: fpsstrings.rscoral
-msgid "coral"
-msgstr ""
-
 #: fpsstrings.rscyan
 msgid "cyan"
 msgstr "syaani"
@@ -81,17 +61,9 @@ msgstr "tumman sininen"
 msgid "dark green"
 msgstr "tumman vihreä"
 
-#: fpsstrings.rsdarkpurple
-msgid "dark purple"
-msgstr ""
-
 #: fpsstrings.rsdarkred
 msgid "dark red"
 msgstr "tumman punainen"
-
-#: fpsstrings.rsdarkteal
-msgid "dark teal"
-msgstr ""
 
 #: fpsstrings.rsdefaultsheetname
 msgid "Sheet%d"
@@ -157,37 +129,9 @@ msgstr "Laskentakaava solussa %s ei ole tuettu tässä tiedostoformaatissa: %s"
 msgid "Spreadsheet file"
 msgstr "Taulukkolaskentatiedosto"
 
-#: fpsstrings.rsgold
-msgid "gold"
-msgstr "kulta"
-
 #: fpsstrings.rsgray
 msgid "gray"
 msgstr "harmaa"
-
-#: fpsstrings.rsgray10pct
-msgid "10% gray"
-msgstr "10% harmaa"
-
-#: fpsstrings.rsgray20pct
-msgid "20% gray"
-msgstr "20% harmaa"
-
-#: fpsstrings.rsgray25pct
-msgid "25% gray"
-msgstr "25% harmaa"
-
-#: fpsstrings.rsgray40pct
-msgid "40% gray"
-msgstr "40% harmaa"
-
-#: fpsstrings.rsgray50pct
-msgid "50% gray"
-msgstr "50% harmaa"
-
-#: fpsstrings.rsgray80pct
-msgid "80% gray"
-msgstr "80% harmaa"
 
 #: fpsstrings.rsgreen
 msgid "green"
@@ -196,10 +140,6 @@ msgstr "vihreä"
 #: fpsstrings.rsheader
 msgid "Header"
 msgstr "Otsikko"
-
-#: fpsstrings.rsiceblue
-msgid "ice blue"
-msgstr "jään sininen"
 
 #: fpsstrings.rsimageformatnotsupported
 msgid "Image format not supported."
@@ -211,10 +151,6 @@ msgstr ""
 
 #: fpsstrings.rsindexinsstoutofrange
 msgid "Index %d in SST out of range (0-%d)."
-msgstr ""
-
-#: fpsstrings.rsindigo
-msgid "indigo"
 msgstr ""
 
 #: fpsstrings.rsinvalidargumentcount
@@ -273,41 +209,9 @@ msgstr "\"%s\" ei ole sallittu taulukkolaskentatiedosto"
 msgid "\"%s\" is not a valid worksheet name."
 msgstr ""
 
-#: fpsstrings.rsivory
-msgid "ivory"
-msgstr ""
-
-#: fpsstrings.rslavander
-msgid "lavander"
-msgstr ""
-
 #: fpsstrings.rsleftbracketexpected
 msgid "Expected left bracket at position %d, but got %s"
 msgstr "Odotettiin vasenta suljetta kohdassa %d mutta saatiin %s"
-
-#: fpsstrings.rslightblue
-msgid "light blue"
-msgstr "vaalean sininen"
-
-#: fpsstrings.rslightgreen
-msgid "light green"
-msgstr "vaalean vihreä"
-
-#: fpsstrings.rslightorange
-msgid "light orange"
-msgstr "vaalea oranssi"
-
-#: fpsstrings.rslightturquoise
-msgid "light turquoise"
-msgstr "vaalea turkoosi"
-
-#: fpsstrings.rslightyellow
-msgid "light yellow"
-msgstr "vaalean keltainen"
-
-#: fpsstrings.rslime
-msgid "lime"
-msgstr ""
 
 #: fpsstrings.rslocalfilehyperlinkabs
 msgid "The hyperlink \"%s\" points to a local file. In case of an absolute path the protocol \"file:\" must be specified."
@@ -327,10 +231,6 @@ msgstr "Tämä asiakirja sisältää %d riviä, mutta valittu tiedostoformaatti 
 
 #: fpsstrings.rsmultiplesheetsonlywithrestoreposition
 msgid "Export to multiple sheets is possible only if position is restored."
-msgstr ""
-
-#: fpsstrings.rsnavy
-msgid "navy"
 msgstr ""
 
 #: fpsstrings.rsnooperand
@@ -373,10 +273,6 @@ msgstr ""
 msgid "Identifier %s is not a variable"
 msgstr "Tunniste %s ei ole muuttuja"
 
-#: fpsstrings.rsoceanblue
-msgid "ocean blue"
-msgstr "meren sininen"
-
 #: fpsstrings.rsodshyperlinksoftextcellsonly
 msgid "Cell %s: OpenDocument supports hyperlinks for text cells only."
 msgstr "Solu %s: OpenDocument tukee hyperlinkkejä ainoastaan tekstisoluissa"
@@ -384,10 +280,6 @@ msgstr "Solu %s: OpenDocument tukee hyperlinkkejä ainoastaan tekstisoluissa"
 #: fpsstrings.rsolive
 msgid "olive"
 msgstr "oliivi"
-
-#: fpsstrings.rsolivegreen
-msgid "olive green"
-msgstr "oliivin vihreä"
 
 #: fpsstrings.rsonlyoneheaderfooterimageallowed
 msgid "Only one image per %s section allowed."
@@ -401,28 +293,8 @@ msgstr ""
 msgid "This operation exceeds the range of defined grid rows."
 msgstr ""
 
-#: fpsstrings.rsorange
-msgid "orange"
-msgstr "oranssi"
-
-#: fpsstrings.rspaleblue
-msgid "pale blue"
-msgstr ""
-
 #: fpsstrings.rspaletteindex
 msgid "Palette index %d"
-msgstr ""
-
-#: fpsstrings.rsperiwinkle
-msgid "periwinkle"
-msgstr ""
-
-#: fpsstrings.rspink
-msgid "pink"
-msgstr "pinkki"
-
-#: fpsstrings.rsplum
-msgid "plum"
 msgstr ""
 
 #: fpsstrings.rspurple
@@ -441,33 +313,17 @@ msgstr "punainen"
 msgid "Expected right bracket at position %d, but got %s"
 msgstr "Odotettiin oikeata suljetta kohdassa %d mutta saatiin %s"
 
-#: fpsstrings.rsrose
-msgid "rose"
-msgstr "ruusun punainen"
-
 #: fpsstrings.rsrowstylenotfound
 msgid "Row style not found."
 msgstr "Rivin tyyliä ei löydetty."
-
-#: fpsstrings.rsseagreen
-msgid "sea green"
-msgstr "meren vihreä"
 
 #: fpsstrings.rssilver
 msgid "silver"
 msgstr "hopea"
 
-#: fpsstrings.rsskyblue
-msgid "sky blue"
-msgstr "taivaan sininen"
-
 #: fpsstrings.rsstdhyperlinktooltip
 msgid "Hold the left mouse button down for a short time to activate the hyperlink."
 msgstr "Pidä vasen hiiren painike alhaalla lyhyen ajan aktivoidaksesi hyperlinkin."
-
-#: fpsstrings.rstan
-msgid "tan"
-msgstr ""
 
 #: fpsstrings.rsteal
 msgid "teal"
@@ -532,18 +388,6 @@ msgstr ""
 #: fpsstrings.rsutf8textexpectedbutansifoundincell
 msgid "Expected UTF8 text, but probably ANSI text found in cell %s."
 msgstr "Oletettiin UTF8 tekstikoodausta mutta luultavasti löydettiin ANSI koodattua tekstiä solussa %s."
-
-#: fpsstrings.rsverydarkgreen
-msgid "very dark green"
-msgstr "Erittäin tumma vihreä"
-
-#: fpsstrings.rsviolet
-msgid "violet"
-msgstr "violetti"
-
-#: fpsstrings.rswheat
-msgid "wheat"
-msgstr ""
 
 #: fpsstrings.rswhite
 msgid "white"

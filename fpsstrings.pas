@@ -50,62 +50,25 @@ resourcestring
   rsCodePageNotSupported = 'Code page "%s" is not supported. Using "cp1252" (Latin 1) instead.';
 
   // Colors
-  rsAqua = 'aqua';
-  rsBeige = 'beige';
+  // EGA palette
   rsBlack = 'black';
-  rsBlue = 'blue';
-  rsBlueGray = 'blue gray';
-  rsBrown = 'brown';
-  rsCoral = 'coral';
-  rsCyan = 'cyan';
-  rsDarkBlue = 'dark blue';
-  rsDarkGreen = 'dark green';
-  rsDarkPurple = 'dark purple';
-  rsDarkRed = 'dark red';
-  rsDarkTeal = 'dark teal';
-  rsGold = 'gold';
-  rsGray = 'gray';
-  rsGray10pct = '10% gray';
-  rsGray20pct = '20% gray';
-  rsGray25pct = '25% gray';
-  rsGray40pct = '40% gray';
-  rsGray50pct = '50% gray';
-  rsGray80pct = '80% gray';
-  rsGreen = 'green';
-  rsIceBlue = 'ice blue';
-  rsIndigo = 'indigo';
-  rsIvory = 'ivory';
-  rsLavander = 'lavander';
-  rsLightBlue = 'light blue';
-  rsLightGreen = 'light green';
-  rsLightOrange = 'light orange';
-  rsLightTurquoise = 'light turquoise';
-  rsLightYellow = 'light yellow';
-  rsLime = 'lime';
-  rsMagenta = 'magenta';
-  rsNavy = 'navy';
-  rsOceanBlue = 'ocean blue';
-  rsOlive = 'olive';
-  rsOliveGreen = 'olive green';
-  rsOrange = 'orange';
-  rsPaleBlue = 'pale blue';
-  rsPeriwinkle = 'periwinkle';
-  rsPink = 'pink';
-  rsPlum = 'plum';
-  rsPurple = 'purple';
-  rsRed = 'red';
-  rsRose = 'rose';
-  rsSeaGreen = 'sea green';
-  rsSilver = 'silver';
-  rsSkyBlue = 'sky blue';
-  rsTan = 'tan';
-  rsTeal = 'teal';
-  rsVeryDarkGreen = 'very dark green';
-  rsViolet = 'violet';
-  rsWheat = 'wheat';
   rsWhite = 'white';
+  rsRed = 'red';
+  rsGreen = 'green';
+  rsBlue = 'blue';
   rsYellow = 'yellow';
+  rsMagenta = 'magenta';
+  rsCyan = 'cyan';
+  rsDarkRed = 'dark red';
+  rsDarkGreen = 'dark green';
+  rsDarkBlue = 'dark blue';
+  rsOlive = 'olive';
+  rsPurple = 'purple';
+  rsTeal = 'teal';
+  rsSilver = 'silver';
+  rsGray = 'gray';
 
+  // Special colors
   rsNotDefined = 'not defined';
   rsTransparent = 'transparent';
   rsPaletteIndex = 'Palette index %d';
@@ -212,6 +175,50 @@ resourcestring
   rsMultipleSheetsOnlyWithRestorePosition = 'Export to multiple sheets is possible '+
     'only if position is restored.';
 
+
+const
+  // Color names which do not have to be translated. They will be removed.
+  rsAqua = 'aqua' deprecated;
+  rsBeige = 'beige' deprecated;
+  rsBlueGray = 'blue gray' deprecated;
+  rsBrown = 'brown' deprecated;
+  rsCoral = 'coral' deprecated;
+  rsDarkPurple = 'dark purple' deprecated;
+  rsDarkTeal = 'dark teal' deprecated;
+  rsFuchsia = 'fuchsia' deprecated;
+  rsGold = 'gold' deprecated;
+  rsGray10pct = '10% gray' deprecated;
+  rsGray20pct = '20% gray' deprecated;
+  rsGray25pct = '25% gray' deprecated;
+  rsGray40pct = '40% gray' deprecated;
+  rsGray50pct = '50% gray' deprecated;
+  rsGray80pct = '80% gray' deprecated;
+  rsIceBlue = 'ice blue' deprecated;
+  rsIndigo = 'indigo' deprecated;
+  rsIvory = 'ivory' deprecated;
+  rsLavander = 'lavander' deprecated;
+  rsLightBlue = 'light blue' deprecated;
+  rsLightGreen = 'light green' deprecated;
+  rsLightOrange = 'light orange' deprecated;
+  rsLightTurquoise = 'light turquoise' deprecated;
+  rsLightYellow = 'light yellow' deprecated;
+  rsLime = 'lime' deprecated;
+  rsMaroon = 'maroon' deprecated;
+  rsNavy = 'navy' deprecated;
+  rsOceanBlue = 'ocean blue' deprecated;
+  rsOliveGreen = 'olive green' deprecated;
+  rsOrange = 'orange' deprecated;
+  rsPaleBlue = 'pale blue' deprecated;
+  rsPeriwinkle = 'periwinkle' deprecated;
+  rsPink = 'pink' deprecated;
+  rsPlum = 'plum' deprecated;
+  rsRose = 'rose' deprecated;
+  rsSeaGreen = 'sea green' deprecated;
+  rsSkyBlue = 'sky blue' deprecated;
+  rsTan = 'tan' deprecated;
+  rsVeryDarkGreen = 'very dark green' deprecated;
+  rsViolet = 'violet' deprecated;
+  rsWheat = 'wheat' deprecated;
 
 implementation
 

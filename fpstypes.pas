@@ -347,7 +347,8 @@ type
   TsColor = DWord;
 
 const
-  {@@ These are some important rgb color volues.
+  {@@ These are some basic rgb color volues. FPSpreadsheet will support
+    built-in color constants only for the EGA palette.
   }
   {@@ rgb value of <b>black</b> color, BIFF2 palette index 0, BIFF8 index 8}
   scBlack = $00000000;
@@ -363,18 +364,14 @@ const
   scYellow = $0000FFFF;
   {@@ rgb value of <b>magenta</b> color, BIFF2 palette index 6, BIFF8 index 14 and 33}
   scMagenta = $00FF00FF;
-  scPink = $00FE00FE;
   {@@ rgb value of <b>cyan</b> color, BIFF2 palette index 7, BIFF8 indexes 15}
   scCyan = $00FFFF00;
-  scTurquoise = scCyan;
   {@@ rgb value of <b>dark red</b> color, BIFF8 indexes 16 and 35}
   scDarkRed = $00000080;
   {@@ rgb value of <b>dark green</b> color, BIFF8 index 17 }
   scDarkGreen = $00008000;
   {@@ rgb value of <b>dark blue</b> color }
-  scDarkBlue = $008B0000;
-  {@@ rgb value of <b>"navy"</b> color, BIFF8 palette indexes 18 and 32 }
-  scNavy = $00800000;
+  scDarkBlue = $00800000;
   {@@ rgb value of <b>olive</b> color }
   scOlive = $00008080;
   {@@ rgb value of <b>purple</b> color, BIFF8 palette indexes 20 and 36 }
@@ -383,94 +380,10 @@ const
   scTeal = $00808000;
   {@@ rgb value of <b>silver</b> color }
   scSilver = $00C0C0C0;
-  scGray25pct = scSilver;
   {@@ rgb value of <b>grey</b> color }
   scGray = $00808080;
   {@@ rgb value of <b>gray</b> color }
   scGrey = scGray;       // redefine to allow different spelling
-  scGray50pct = scGray;
-  {@@ rgb value of a <b>10% grey</b> color }
-  scGray10pct = $00E6E6E6;
-  {@@ rgb value of a <b>10% gray</b> color }
-  scGrey10pct = scGray10pct;
-  {@@ rgb value of a <b>20% grey</b> color }
-  scGray20pct = $00CCCCCC;
-  {@@ rgb value of a <b>20% gray</b> color }
-  scGrey20pct = scGray20pct;
-  {@@ rgb value of <b>periwinkle</b> color, BIFF8 palette index 24 }
-  scPeriwinkle = $00FF9999;
-  {@@ rgb value of <b>plum</b> color, BIFF8 palette indexes 25 and 61 }
-  scPlum = $00663399;
-  {@@ rgb value of <b>ivory</b> color, BIFF8 palette index 26 }
-  scIvory = $00CCFFFF;
-  {@@ rgb value of <b>light turquoise</b> color, BIFF8 palette indexes 27 and 41 }
-  scLightTurquoise = $00FFFFCC;
-  {@@ rgb value of <b>dark purple</b> color, BIFF8 palette index 28 }
-  scDarkPurple = $00660066;
-  {@@ rgb value of <b>coral</b> color, BIFF8 palette index 29 }
-  scCoral = $008080FF;
-  {@@ rgb value of <b>ocean blue</b> color, BIFF8 palette index 30 }
-  scOceanBlue = $00CC6600;
-  {@@ rgb value of <b>ice blue</b> color, BIFF8 palette index 31 }
-  scIceBlue = $00FFCCCC;
-  {@@ rgb value of <b>sky blue </b>color, BIFF8 palette index 40 }
-  scSkyBlue = $00FFCC00;
-  {@@ rgb value of <b>light green</b> color, BIFF8 palette index 42 }
-  scLightGreen = $00CCFFCC;
-  {@@ rgb value of <b>light yellow</b> color, BIFF8 palette index 43 }
-  scLightYellow = $0099FFFF;
-  {@@ rgb value of <b>pale blue</b> color, BIFF8 palette index 44 }
-  scPaleBlue = $00FFCC99;
-  {@@ rgb value of <b>rose</b> color, BIFF8 palette index 45 }
-  scRose = $00CC99FF;
-  {@@ rgb value of <b>lavander</b> color, BIFF8 palette index 46 }
-  scLavander = $00FF99CC;
-  {@@ rgb value of <b>tan</b> color, BIFF8 palette index 47 }
-  scTan = $0099CCFF;
-  {@@ rgb value of <b>light blue</b> color, BIFF8 palette index 48 }
-  scLightBlue = $00FF6633;
-  {@@ rgb value of <b>aqua</b> color, BIFF8 palette index 49 }
-  scAqua = $00CCCC33;
-  {@@ rgb value of <b>lime</b> color, BIFF8 palette index 50 }
-  scLime = $0000CC99;
-  {@@ rgb value of <b>golden</b> color, BIFF8 palette index 51 }
-  scGold = $0000CCFF;
-  {@@ rgb value of <b>light orange</b> color, BIFF8 palette index 52 }
-  scLightOrange = $000099FF;
-  {@@ rgb value of <b>orange</b> color, BIFF8 palette index 53 }
-  scOrange = $000066FF;
-  {@@ rgb value of <b>blue gray</b>, BIFF8 palette index 54 }
-  scBlueGray = $00996666;
-  scBlueGrey = scBlueGray;
-  {@@ rgb value of <b>gray 40%</b>, BIFF8 palette index 55 }
-  scGray40pct = $00969696;
-  {@@ rgb value of <b>dark teal</b>, BIFF8 palette index 56 }
-  scDarkTeal = $00663300;
-  {@@ rgb value of <b>sea green</b>, BIFF8 palette index 57 }
-  scSeaGreen = $00669933;
-  {@@ rgb value of <b>very dark green</b>, BIFF8 palette index 58 }
-  scVeryDarkGreen = $00003300;
-  {@@ rgb value of <b>olive green</b> color, BIFF8 palette index 59 }
-  scOliveGreen = $00003333;
-  {@@ rgb value of <b>brown</b> color, BIFF8 palette index 60 }
-  scBrown = $00003399;
-  {@@ rgb value of <b>indigo</b> color, BIFF8 palette index 62 }
-  scIndigo = $00993333;
-  {@@ rgb value of <b>80% gray</b>, BIFF8 palette index 63 }
-  scGray80pct = $00333333;
-  scGrey80pct = scGray80pct;
-
-//  {@@ rgb value of <b>orange</b> color }
-//  scOrange = $0000A5FF;
-  {@@ rgb value of <b>dark brown</b> color }
-  scDarkBrown = $002D52A0;
-
-//  {@@ rgb value of <b>brown</b> color }
-//  scBrown = $003F85CD;
-  {@@ rgb value of <b>beige</b> color }
-  scBeige = $00DCF5F5;
-  {@@ rgb value of <b>"wheat"</b> color (yellow-orange) }
-  scWheat = $00B3DEF5;
 
   {@@ Identifier for not-defined color }
   scNotDefined = $40000000;
@@ -480,6 +393,56 @@ const
   scPaletteIndexMask = $80000000;
   {@@ Mask for the rgb components contained in the TsColor }
   scRGBMask = $00FFFFFF;
+
+  // aliases for LCL colors, deprecated
+  scAqua = scCyan deprecated;
+  scFuchsia = scMagenta deprecated;
+  scLime = scGreen deprecated;
+  scMaroon = scDarkRed deprecated;
+  scNavy = scDarkBlue deprecated;
+
+  { These color constants are deprecated, they will be removed in the long term }
+  scPink = $00FE00FE deprecated;
+  scTurquoise = scCyan deprecated;
+  scGray25pct = scSilver deprecated;
+  scGray50pct = scGray deprecated;
+  scGray10pct = $00E6E6E6 deprecated;
+  scGrey10pct = scGray10pct deprecated;
+  scGray20pct = $00CCCCCC deprecated;
+  scGrey20pct = scGray20pct deprecated;
+  scPeriwinkle = $00FF9999 deprecated;
+  scPlum = $00663399 deprecated;
+  scIvory = $00CCFFFF deprecated;
+  scLightTurquoise = $00FFFFCC deprecated;
+  scDarkPurple = $00660066 deprecated;
+  scCoral = $008080FF deprecated;
+  scOceanBlue = $00CC6600 deprecated;
+  scIceBlue = $00FFCCCC deprecated;
+  scSkyBlue = $00FFCC00 deprecated;
+  scLightGreen = $00CCFFCC deprecated;
+  scLightYellow = $0099FFFF deprecated;
+  scPaleBlue = $00FFCC99 deprecated;
+  scRose = $00CC99FF deprecated;
+  scLavander = $00FF99CC deprecated;
+  scTan = $0099CCFF deprecated;
+  scLightBlue = $00FF6633 deprecated;
+  scGold = $0000CCFF deprecated;
+  scLightOrange = $000099FF deprecated;
+  scOrange = $000066FF deprecated;
+  scBlueGray = $00996666 deprecated;
+  scBlueGrey = scBlueGray deprecated;
+  scGray40pct = $00969696 deprecated;
+  scDarkTeal = $00663300 deprecated;
+  scSeaGreen = $00669933 deprecated;
+  scVeryDarkGreen = $00003300 deprecated;
+  scOliveGreen = $00003333 deprecated;
+  scBrown = $00003399 deprecated;
+  scIndigo = $00993333 deprecated;
+  scGray80pct = $00333333 deprecated;
+//  scGrey80pct = scGray80pct deprecated;
+  scDarkBrown = $002D52A0 deprecated;
+  scBeige = $00DCF5F5  deprecated;
+  scWheat = $00B3DEF5 deprecated;
 
 type
   {@@ Font style (redefined to avoid usage of "Graphics" }

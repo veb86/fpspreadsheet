@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ButtonPanel,
-  ExtCtrls, StdCtrls, Spin, Buttons, types, contnrs, inifiles,
+  ExtCtrls, StdCtrls, Spin, Buttons, types, inifiles,
   fpsTypes, fpsNumFormat, fpSpreadsheet;
 
 type
@@ -552,6 +552,7 @@ var
   nfp: TsNumFormatParams;
   idx: PtrInt;
 begin
+  Unused(Control);
   LbFormat.Canvas.Brush.Color := clWindow;
   LbFormat.Canvas.Font.Assign(LbFormat.Font);
   if State * [odSelected, odFocused] <> [] then
