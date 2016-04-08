@@ -14,7 +14,7 @@ object MainForm: TMainForm
     Left = 0
     Height = 518
     Top = 83
-    Width = 711
+    Width = 694
     TabIndex = 0
     Tabs.Strings = (
       'Sheet1'
@@ -26,11 +26,10 @@ object MainForm: TMainForm
       Left = 2
       Height = 493
       Top = 23
-      Width = 707
+      Width = 690
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = True
-      SelectionPen.Width = 2
       TextOverflow = True
       WorkbookSource = WorkbookSource
       Align = alClient
@@ -55,10 +54,10 @@ object MainForm: TMainForm
     end
   end
   object InspectorTabControl: TTabControl
-    Left = 716
+    Left = 699
     Height = 518
     Top = 83
-    Width = 281
+    Width = 298
     OnChange = InspectorTabControlChange
     TabIndex = 0
     Tabs.Strings = (
@@ -74,7 +73,7 @@ object MainForm: TMainForm
       Left = 2
       Height = 493
       Top = 23
-      Width = 277
+      Width = 294
       Align = alClient
       DefaultColWidth = 125
       MouseWheelOption = mwGrid
@@ -131,7 +130,7 @@ object MainForm: TMainForm
     end
   end
   object InspectorSplitter: TSplitter
-    Left = 711
+    Left = 694
     Height = 518
     Top = 83
     Width = 5

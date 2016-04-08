@@ -1034,17 +1034,25 @@ var
   colStyle: TColumnStyleData;
   i: Integer;
   u: TsSizeUnits;
+  defColWidth: Single;
+  lastOccCol: Integer;
 begin
   u := FWorkbook.Units;
+  defColWidth := FWorksheet.ReadDefaultColWidth(u);
+  lastOccCol := FWorksheet.GetLastOccupiedColIndex;
   for i:=0 to FColumnList.Count-1 do
   begin
     colIndex := TColumnData(FColumnList[i]).Col;
+    // Skip column records beyond the last data column - there's a bug in OO/LO
+    // which adds column records up to the max column limit.
+    if colIndex > lastOccCol then
+      Continue;
     colStyleIndex := TColumnData(FColumnList[i]).ColStyleIndex;
     colStyle := TColumnStyleData(FColumnStyleList[colStyleIndex]);
     // Add only column records to the worksheet if their width is different from
     // the default column width. The column width stored in colStyle is already
     // in workbook units (see ReadColumnStyles).
-    if not SameValue(colStyle.ColWidth, FWorksheet.ReadDefaultColWidth(u), COLWIDTH_EPS) then
+    if not SameValue(colStyle.ColWidth, defColWidth, COLWIDTH_EPS) then
       FWorksheet.WriteColWidth(colIndex, colStyle.ColWidth, u);
   end;
 end;
@@ -3320,8 +3328,13 @@ var
         paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
         if paramColsRepeated = '' then paramColsRepeated := '1';
         n := StrToInt(paramColsRepeated);
-        if n > 1 then
+        if (n > 1) and (col + n < FLimitations.MaxColCount - 10) then
         begin
+          // The 2nd condition belongs to a workaround for a bug of LO/OO whichs
+          // extends imported xlsx files with blank cols up to their
+          // specification limit.
+          // React some columns earlier because the added column range is
+          // sometimes split into two parts.
           cell := FWorksheet.FindCell(row, col);
           if cell <> nil then
           for i:=1 to n-1 do
@@ -3347,9 +3360,14 @@ var
       rowsRepeated := StrToInt(paramRowsRepeated);
 
     // Transfer non-default row heights to sheet's rows
-    if not autoRowHeight then
-      for i:=1 to rowsRepeated do
-        FWorksheet.WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units);
+    // This first "if" is a workaround for a bug of LO/OO whichs extends imported
+    // xlsx files with blank rows up to their specification limit.
+    // React some rows earlier because the added row range is sometimes split
+    // into two parts.
+    if row + rowsRepeated < FLimitations.MaxRowCount - 10 then
+      if not autoRowHeight then
+        for i:=1 to rowsRepeated do
+          FWorksheet.WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units);
 
     row := row + rowsRepeated;
   end;
@@ -3391,7 +3409,7 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadRowStyle(AStyleNode: TDOMNode);
 var
-  styleName: String;
+  styleName, nodename: String;
   styleChildNode: TDOMNode;
   rowHeight: Double;
   auto: Boolean;
@@ -3405,7 +3423,8 @@ begin
 
   while Assigned(styleChildNode) do
   begin
-    if styleChildNode.NodeName = 'style:table-row-properties' then
+    nodename := styleChildNode.NodeName;
+    if nodeName = 'style:table-row-properties' then
     begin
       s := GetAttrValue(styleChildNode, 'style:row-height');
       if s <> '' then

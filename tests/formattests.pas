@@ -1109,6 +1109,11 @@ begin
       //MyWorksheet.WriteNumber(0, Col, 1);
       MyWorksheet.WriteColInfo(Col, lCol);
     end;
+    if AFormat = sfOpenDocument then
+      // In ODS empty columns are ignored due to a workaround for a
+      // LO/OO import error for xlsx files. --> add dummy cells
+      for Col := low(SollColWidths) to High(SollColWidths) do
+        MyWorksheet.WriteText(0, Col, 'test');
     TempFile:=NewTempFile;
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally

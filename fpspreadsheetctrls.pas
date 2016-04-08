@@ -3303,9 +3303,9 @@ begin
   begin
     AStrings.Add(Format('Name=%s', [ASheet.Name]));
     AStrings.Add(Format('First row=%d', [Integer(ASheet.GetFirstRowIndex)]));
-    AStrings.Add(Format('Last row=%d', [ASheet.GetLastRowIndex]));
+    AStrings.Add(Format('Last row=%d', [ASheet.GetLastRowIndex(true)]));
     AStrings.Add(Format('First column=%d', [Integer(ASheet.GetFirstColIndex)]));
-    AStrings.Add(Format('Last column=%d', [ASheet.GetLastColIndex]));
+    AStrings.Add(Format('Last column=%d', [ASheet.GetLastColIndex(true)]));
     AStrings.Add(Format('Active cell=%s',
       [GetCellString(ASheet.ActiveCellRow, ASheet.ActiveCellCol)]));
     AStrings.Add(Format('Selection=%s', [ASheet.GetSelectionAsString]));

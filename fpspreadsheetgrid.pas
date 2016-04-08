@@ -4187,32 +4187,7 @@ begin
   GetWorkbookSource.CreateNewWorkbook;
   ColCount := AColCount + FHeaderCount;
   RowCount := ARowCount + FHeaderCount;
-//  FInitColCount := AColCount;
-//  FInitRowCount := ARowCount;
   Setup;
-
-  {
-  if FOwnsWorkbook then
-    FreeAndNil(FOwnedWorkbook);
-
-  if FWorkbookSource <> nil then
-    FWorkbookSource.CreateNewWorkbook
-  else
-  begin
-    BeginUpdate;
-    try
-      CreateNewWorkbook;
-      FOwnedWorksheet := FOwnedWorkbook.AddWorksheet('Sheet1');
-      FOwnedWorksheet.OnChangeCell := @ChangedCellHandler;
-      FOwnedWorksheet.OnChangeFont := @ChangedFontHandler;
-      FInitColCount := AColCount;
-      FInitRowCount := ARowCount;
-      Setup;
-    finally
-      EndUpdate;
-    end;
-  end;
-  }
 end;
 
 {@@ ----------------------------------------------------------------------------
