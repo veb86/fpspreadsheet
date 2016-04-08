@@ -248,6 +248,9 @@ procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRe
 var
   painter: TsTextPainter;
 begin
+  if (ARect.Left = ARect.Right) or (ARect.Top = ARect.Bottom) then
+    exit;
+
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
     AFontIndex, ARotation, AHorAlignment, AVertAlignment, AWordWrap, ARightToLeft);
   try
