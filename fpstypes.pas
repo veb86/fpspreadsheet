@@ -407,9 +407,9 @@ const
   scGray25pct = scSilver deprecated;
   scGray50pct = scGray deprecated;
   scGray10pct = $00E6E6E6 deprecated;
-  scGrey10pct = scGray10pct deprecated;
+  scGrey10pct = scGray10pct{%H-} deprecated;
   scGray20pct = $00CCCCCC deprecated;
-  scGrey20pct = scGray20pct deprecated;
+  scGrey20pct = scGray20pct{%H-} deprecated;
   scPeriwinkle = $00FF9999 deprecated;
   scPlum = $00663399 deprecated;
   scIvory = $00CCFFFF deprecated;
@@ -430,7 +430,7 @@ const
   scLightOrange = $000099FF deprecated;
   scOrange = $000066FF deprecated;
   scBlueGray = $00996666 deprecated;
-  scBlueGrey = scBlueGray deprecated;
+  scBlueGrey = scBlueGray{%H-} deprecated;
   scGray40pct = $00969696 deprecated;
   scDarkTeal = $00663300 deprecated;
   scSeaGreen = $00669933 deprecated;

@@ -3328,7 +3328,7 @@ var
         paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
         if paramColsRepeated = '' then paramColsRepeated := '1';
         n := StrToInt(paramColsRepeated);
-        if (n > 1) and (col + n < FLimitations.MaxColCount - 10) then
+        if (n > 1) and (col + n < LongInt(FLimitations.MaxColCount) - 10) then
         begin
           // The 2nd condition belongs to a workaround for a bug of LO/OO whichs
           // extends imported xlsx files with blank cols up to their
@@ -3364,7 +3364,7 @@ var
     // xlsx files with blank rows up to their specification limit.
     // React some rows earlier because the added row range is sometimes split
     // into two parts.
-    if row + rowsRepeated < FLimitations.MaxRowCount - 10 then
+    if row + rowsRepeated < LongInt(FLimitations.MaxRowCount) - 10 then
       if not autoRowHeight then
         for i:=1 to rowsRepeated do
           FWorksheet.WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units);

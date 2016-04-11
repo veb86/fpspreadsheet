@@ -710,13 +710,13 @@ begin
     begin
       inc(P);
       if (P^ = 'L') or (P^ = 'l') then
-        pL := PtrUInt(P) - PtrUInt(PStart)
+        pL := {%H-}PtrUInt(P) - {%H-}PtrUInt(PStart)
       else
       if (P^ = 'C') or (P^ = 'c') then
-        pC := PtrUInt(P) - PtrUInt(PStart)
+        pC := {%H-}PtrUInt(P) - {%H-}PtrUInt(PStart)
       else
       if (P^ = 'R') or (P^ = 'r') then
-        pR := PtrUInt(P) - PtrUInt(PStart);
+        pR := {%H-}PtrUInt(P) - {%H-}PtrUInt(PStart);
     end;
     inc(P);
   end;

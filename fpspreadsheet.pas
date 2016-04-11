@@ -8503,7 +8503,7 @@ var
   srcCell, destCell: PCell;
   i: Integer;              // counter
   ncs, nrs: Integer;       // Num cols source, num rows source, ...
-  ncd, nrd: Integer;
+  //ncd, nrd: Integer;
   rdest, cdest: Integer;   // row and column index at destination
   nselS, nselD: Integer;   // count of selected blocks
 begin
@@ -8597,12 +8597,14 @@ begin
       // Iterate over all destination blocks
       for i := 0 to nselD-1 do
       begin
+        (*
         // size of currently selected block at destination
         with ActiveWorksheet.GetSelection[i] do
         begin
           ncd := Integer(Col2) - Integer(Col1) + 1;
           nrd := Integer(Row2) - Integer(Row1) + 1;
         end;
+        *)
         r := ActiveWorksheet.GetSelection[i].Row1;
         while r <= longint(ActiveWorksheet.GetSelection[i].Row2) do begin
           c := ActiveWorksheet.GetSelection[i].Col1;

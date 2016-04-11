@@ -407,7 +407,7 @@ begin
      INT_OLE_DIR_ENTRY_TYPE_ROOT_STORAGE, INT_OLE_DIR_COLOR_RED,
      True, $00000003, FContainerSize);
 
-    WriteDirectoryEntry(AStream, ABookStreamName+#0,
+    WriteDirectoryEntry(AStream, Utf8Decode(ABookStreamName+#0),
      INT_OLE_DIR_ENTRY_TYPE_USER_STREAM, INT_OLE_DIR_COLOR_BLACK,
      False, 0, FOLEDocument.Stream.Size);
 
@@ -425,7 +425,7 @@ begin
      INT_OLE_DIR_ENTRY_TYPE_ROOT_STORAGE, INT_OLE_DIR_COLOR_RED,
      True,  $FFFFFFFE, 0);
 
-    WriteDirectoryEntry(AStream, ABookStreamName+#0,
+    WriteDirectoryEntry(AStream, Utf8Decode(ABookStreamName+#0),
      INT_OLE_DIR_ENTRY_TYPE_USER_STREAM, INT_OLE_DIR_COLOR_BLACK,
      False, $00000002, FOLEDocument.Stream.Size);
 

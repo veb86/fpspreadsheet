@@ -318,7 +318,8 @@ var
   SSID: SID;
   function AddNamesWithSID(const AStartSibling: SID): SID;
   var
-    Name: WideString;
+//    Name: WideString;  // wp: was
+    Name: String;
     VI: TVirtualLayer_Item;
   begin
     Name:=UTF8Encode(wideString(FDirectory[AStartSibling]._ab));
