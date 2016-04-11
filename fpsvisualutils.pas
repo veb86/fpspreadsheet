@@ -266,6 +266,9 @@ function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
 var
   painter: TsTextPainter;
 begin
+  if (ARect.Left = ARect.Right) or (ARect.Top = ARect.Bottom) then
+    exit(0);
+
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
     AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft);
   try
@@ -281,6 +284,9 @@ function RichTextHeight(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
 var
   painter: TsTextPainter;
 begin
+  if (ARect.Left = ARect.Right) or (ARect.Top = ARect.Bottom) then
+    exit(0);
+
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
     AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft);
   try
