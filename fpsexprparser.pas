@@ -1601,12 +1601,10 @@ begin
     if TryStrToInt64(CurrentToken, I) then
       Result := TsConstExprNode.CreateInteger(self, I)
     else
-    begin
-      if TryStrToFloat(CurrentToken, X, FFormatSettings) then
-        Result := TsConstExprNode.CreateFloat(self, X)
-      else
-        ParserError(Format(rsInvalidFloat, [CurrentToken]));
-    end;
+    if TryStrToFloat(CurrentToken, X, FFormatSettings) then
+      Result := TsConstExprNode.CreateFloat(self, X)
+    else
+      ParserError(Format(rsInvalidFloat, [CurrentToken]));
   end
   else if (TokenType = ttTrue) then
     Result := TsConstExprNode.CreateBoolean(self, true)

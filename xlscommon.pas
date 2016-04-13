@@ -585,10 +585,6 @@ type
       const AFormula: TsRPNFormula; ACell: PCell); virtual;
     function WriteRPNFunc(AStream: TStream; AIdentifier: Word): Word; virtual;
     procedure WriteRPNResult(AStream: TStream; ACell: PCell);
-    {
-    procedure WriteRPNSharedFormulaLink(AStream: TStream; ACell: PCell;
-      var RPNLength: Word); virtual;
-      }
     procedure WriteRPNTokenArray(AStream: TStream; ACell: PCell;
       const AFormula: TsRPNFormula; UseRelAddr, IsSupported: Boolean; var RPNLength: Word);
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); virtual;
@@ -4109,6 +4105,17 @@ begin
         INT_EXCEL_TOKEN_TAREA_V : primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_V;
         INT_EXCEL_TOKEN_TAREA_A : primaryExcelCode := INT_EXCEL_TOKEN_TAREAN_A;
       end;
+
+    // Excel BIFF uses only 2-byte integers.
+    // --> Convert larger values to float.
+    // Note: only positive values have to be considered because negative values
+    // have an additional unary minus token.
+    if (primaryExcelCode = INT_EXCEL_TOKEN_TINT) and
+       (AFormula[i].IntValue > word($FFFF)) then
+    begin
+      primaryExcelCode := INT_EXCEL_TOKEN_TNUM;
+      AFormula[i].DoubleValue := 1.0*AFormula[i].IntValue;
+    end;
 
     AStream.WriteByte(primaryExcelCode);
     inc(RPNLength);

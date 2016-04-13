@@ -202,7 +202,7 @@ type
     Sheet, Sheet2: Integer; // zero-based
     SheetNames: String;     // both sheet names separated by a TAB character (intermediate use only)
     DoubleValue: double;
-    IntValue: Word;
+    IntValue: Int64;
     StringValue: String;
     RelFlags: TsRelFlags;   // info on relative/absolute addresses
     FuncName: String;

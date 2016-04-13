@@ -56,7 +56,7 @@ function RPNCellRef3D(ASheet, ARow, ACol: Integer; AFlags: TsRelFlags;
 function RPNCellRange3D(ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2: Integer;
   AFlags: TsRelFlags; ANext: PRPNItem): PRPNItem;
 function RPNErr(AErrCode: TsErrorValue; ANext: PRPNItem): PRPNItem;
-function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
+function RPNInteger(AValue: Int64; ANext: PRPNItem): PRPNItem;
 function RPNMissingArg(ANext: PRPNItem): PRPNItem;
 function RPNNumber(AValue: Double; ANext: PRPNItem): PRPNItem;
 function RPNParenthesis(ANext: PRPNItem): PRPNItem;
@@ -299,12 +299,12 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates an entry in the RPN array for a 2-byte unsigned integer
+  Creates an entry in the RPN array for an integer value
 
   @param  AValue  Integer value to be inserted into the formula
   @param  ANext   Pointer to the next RPN item in the list
 -------------------------------------------------------------------------------}
-function RPNInteger(AValue: Word; ANext: PRPNItem): PRPNItem;
+function RPNInteger(AValue: Int64; ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
   Result^.FE.ElementKind := fekInteger;
