@@ -4098,6 +4098,8 @@ end;
   @param  ARichTextParams  Array of formatting instructions for characters or
                            groups of characters (see TsRichTextParam).
 
+  @note   The cell content will be set to cctEmpty if the string is empty.
+
   @see    TsRichTextParams
   @see    TsRichTextParam
 -------------------------------------------------------------------------------}
@@ -4119,7 +4121,6 @@ begin
     if pos('file:', hyperlink.Target)=1 then
     begin
       URIToFileName(AText, AText);
-//      Delete(AText, 1, Length('file:///'));
       ForcePathDelims(AText);
     end;
   end;
@@ -4128,17 +4129,12 @@ begin
 
   if (AText = '') then
   begin
-    if (fmt.UsedFormattingFields = []) and
-       (ACell^.Flags * [cfHyperlink, cfHasComment, cfMerged] = []) and
-       (ACell^.FormulaValue = '')
-    then
-    begin
-      r := ACell^.Row;
-      c := ACell^.Col;
-      RemoveAndFreeCell(r, c);
-      ChangedCell(r, c);
-    end else
-      WriteBlank(ACell);
+    { Initially, the cell was destroyed here if AText = '' and the cell is not
+      formatted, has no comment, no hyperlink, no formula, and is not merged.
+      This is not good... The calling procedure cannot be notified that
+      ACell is destroyed here.
+      See issue #0030049 }
+    WriteBlank(ACell);
     exit;
   end;
 
