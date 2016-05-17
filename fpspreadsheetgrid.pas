@@ -3999,7 +3999,7 @@ begin
     AutoExpandToRow(grow, aeNavigation);
     AutoExpandToCol(gcol, aeNavigation);
     if (grow <> Row) or (gcol <> Col) then
-      MoveExtend(false, gcol, grow);
+      MoveExtend(false, gcol, grow, true);
   end;
 
   // Abort selection because of an error
