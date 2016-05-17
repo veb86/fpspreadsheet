@@ -349,7 +349,7 @@ object MainForm: TMainForm
       CellFormatItem = cfiFontName
       WorkbookSource = WorkbookSource
       DropDownCount = 24
-      ItemIndex = 91
+      ItemIndex = 44
       TabOrder = 0
       Text = 'Arial'
     end
@@ -619,8 +619,9 @@ object MainForm: TMainForm
       Left = 144
       Height = 24
       Top = 0
-      Width = 853
+      Width = 851
       Align = alClient
+      BorderSpacing.Right = 2
       BorderSpacing.Bottom = 2
       TabOrder = 1
       WantReturns = False

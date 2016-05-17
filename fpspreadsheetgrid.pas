@@ -707,7 +707,7 @@ procedure Register;
 implementation
 
 uses
-  Types, LCLType, LCLIntf, LCLProc, LCLVersion, Math, StrUtils,
+  Types, LCLType, LCLIntf, LCLProc, Math, StrUtils,
   fpCanvas,
   fpsStrings, fpsUtils, fpsVisualUtils, fpsHTMLUtils,
   fpsNumFormat;
@@ -3999,11 +3999,7 @@ begin
     AutoExpandToRow(grow, aeNavigation);
     AutoExpandToCol(gcol, aeNavigation);
     if (grow <> Row) or (gcol <> Col) then
-     {$IF LCL_FULLVERSION < 1070000}
       MoveExtend(false, gcol, grow);
-     {$ELSE}
-      MoveExtend(false, gcol, grow, true);
-     {$ENDIF}
   end;
 
   // Abort selection because of an error

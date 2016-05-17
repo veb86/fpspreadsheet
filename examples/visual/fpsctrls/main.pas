@@ -407,7 +407,7 @@ implementation
 {$R *.lfm}
 
 uses
-  LCLIntf, inifiles, uriparser,
+  LCLIntf, inifiles, uriparser, Grids,
   fpsUtils, fpsCSV,
   sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm,
   sHyperlinkForm, sNumFormatForm, sSearchForm;
@@ -732,6 +732,11 @@ begin
 
   AcFileSaveAs.Dialog.Filter := GetFileFormatFilter('|', ';', faWrite, priorityFormats);
   FSaveFormats := GetSpreadFormats(faWrite, priorityFormats);
+
+ {$IFDEF WINDOWS}
+  if Win32MajorVersion >= 10 then
+    WorksheetGrid.TitleStyle := tsLazarus;
+ {$ENDIF}
 end;
 
 { Event handler for hyperlinks: it only has to provide the hyperlink data
