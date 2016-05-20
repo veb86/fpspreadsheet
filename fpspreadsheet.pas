@@ -7861,10 +7861,12 @@ begin
   if (AName = '') then
     exit;
 
+  { wp: the length restriction has been moved to the writer...
+
   // Length must be less than 31 characters
   if UTF8Length(AName) > 31 then
     exit;
-
+  }
   // Name must not contain any of the INVALID_CHARS
   for i:=0 to High(INVALID_CHARS) do
     if UTF8Pos(INVALID_CHARS[i], AName) > 0 then

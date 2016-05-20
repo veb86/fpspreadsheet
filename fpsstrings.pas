@@ -37,6 +37,8 @@ resourcestring
     'the best-matching palette colors.';
   rsTruncateTooLongCellText = 'Text value exceeds the %d character limit in ' +
     'cell %s and has been truncated.';
+  rsWriteError_WorksheetNameTooLong = 'File cannot be written because ' +
+    'the name of worksheet "%0:s" is too long (max %1:d characters).';
 
   // Cells
   rsInvalidCharacterInCell = 'Invalid character(s) in cell %s.';

@@ -184,7 +184,7 @@ type
 implementation
 
 uses
-  Math,
+  Math, LazUTF8,
   fpsStrings, fpsUtils, fpsNumFormat, fpsStreams, fpsRegFileFormats;
 
 
@@ -208,6 +208,7 @@ begin
   FLimitations.MaxColCount := 256;
   FLimitations.MaxRowCount := 65536;
   FLimitations.MaxPaletteSize := MaxInt;
+  FLimitations.MaxSheetnameLength := MaxInt;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -230,6 +231,8 @@ end;
 procedure TsBasicSpreadWriter.CheckLimitations;
 var
   lastCol, lastRow: Cardinal;
+  i: Integer;
+  sheet: TsWorksheet;
 begin
   Workbook.GetLastRowColIndex(lastRow, lastCol);
 
@@ -240,6 +243,18 @@ begin
   // Check column count
   if lastCol >= FLimitations.MaxColCount then
     Workbook.AddErrorMsg(rsMaxColsExceeded, [lastCol+1, FLimitations.MaxColCount]);
+
+  // Check worksheet names
+  for i:=0 to Workbook.GetWorksheetCount-1 do
+  begin
+    sheet := Workbook.GetWorksheetByIndex(i);
+    if UTF8Length(sheet.Name) > FLimitations.MaxSheetNameLength then
+      // Worksheet name is too long.
+      // We abort saving here because it is not safe to chop the sheet name
+      // to its allowed length - it may be used as a reference in formulas.
+      raise Exception.CreateFmt(rsWriteError_WorksheetNameTooLong,
+        [sheet.Name, FLimitations.MaxSheetNameLength]);
+  end;
 end;
 
 

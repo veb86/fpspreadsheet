@@ -44,6 +44,7 @@ type
     MaxRowCount: Cardinal;
     MaxColCount: Cardinal;
     MaxPaletteSize: Integer;
+    MaxSheetNameLength: Integer;
   end;
 
 const

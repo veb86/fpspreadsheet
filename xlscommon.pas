@@ -2853,6 +2853,7 @@ begin
   FLimitations.MaxColCount := 256;
   FLimitations.MaxRowCount := 65536;
   FLimitations.MaxPaletteSize := 64;
+  FLimitations.MaxSheetNameLength := 31;
 
   // Initial base date in case it won't be set otherwise.
   // Use 1900 to get a bit more range between 1900..1904.

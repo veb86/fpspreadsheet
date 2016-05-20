@@ -2220,6 +2220,7 @@ begin
   // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
   FLimitations.MaxColCount := 16384;
   FLimitations.MaxRowCount := 1048576;
+  FLimitations.MaxSheetNameLength := 31;
 end;
 
 
