@@ -119,7 +119,7 @@ type
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
-      const AFormula: TsRPNFormula; ACell: PCell); override;
+      AFormula: TsRPNFormula; ACell: PCell); override;
     function WriteRPNFunc(AStream: TStream; AIdentifier: Word): Word; override;
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
@@ -1635,7 +1635,7 @@ end;
   string to an RPN array by the calling method.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Writer.WriteRPNFormula(AStream: TStream;
-  const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
+  const ARow, ACol: Cardinal; AFormula: TsRPNFormula; ACell: PCell);
 var
   RPNLength: Word;
   RecordSizePos, FinalPos: Cardinal;

@@ -582,11 +582,11 @@ type
     function WriteRPNCellRangeAddress(AStream: TStream; ARow1, ACol1, ARow2, ACol2: Cardinal;
       AFlags: TsRelFlags): Word; virtual;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
-      const AFormula: TsRPNFormula; ACell: PCell); virtual;
+      AFormula: TsRPNFormula; ACell: PCell); virtual;
     function WriteRPNFunc(AStream: TStream; AIdentifier: Word): Word; virtual;
     procedure WriteRPNResult(AStream: TStream; ACell: PCell);
     procedure WriteRPNTokenArray(AStream: TStream; ACell: PCell;
-      const AFormula: TsRPNFormula; UseRelAddr, IsSupported: Boolean; var RPNLength: Word);
+      AFormula: TsRPNFormula; UseRelAddr, IsSupported: Boolean; var RPNLength: Word);
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); virtual;
 
     // Writes out a SELECTION record
@@ -3911,7 +3911,7 @@ end;
   Valid for BIFF5-BIFF8.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRPNFormula(AStream: TStream;
-  const ARow, ACol: Cardinal; const AFormula: TsRPNFormula; ACell: PCell);
+  const ARow, ACol: Cardinal; AFormula: TsRPNFormula; ACell: PCell);
 var
   RPNLength: Word = 0;
   RecordSizePos, StartPos, FinalPos: Int64;
@@ -4059,7 +4059,7 @@ end;
   Writes the token array of the given RPN formula and returns its size
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRPNTokenArray(AStream: TStream;
-  ACell: PCell; const AFormula: TsRPNFormula; UseRelAddr, IsSupported: boolean;
+  ACell: PCell; AFormula: TsRPNFormula; UseRelAddr, IsSupported: boolean;
   var RPNLength: Word);
 var
   i: Integer;
