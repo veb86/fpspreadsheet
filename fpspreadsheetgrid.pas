@@ -77,6 +77,7 @@ type
     FSelPen: TsSelPen;
     FHyperlinkTimer: TTimer;
     FHyperlinkCell: PCell;    // Selected cell if it stores a hyperlink
+//    FSetupDelayed: Boolean;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
@@ -189,6 +190,7 @@ type
     function CalcWorksheetRowHeight(AValue: Integer): Single;
     function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
       out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
+    procedure CreateHandle; override;
     procedure CreateNewWorkbook;
     procedure DblClick; override;
     procedure DefineProperties(Filer: TFiler); override;
@@ -223,7 +225,6 @@ type
       AOverrideTextColor: TColor; ARichTextParams: TsRichTextParams;
       AIsRightToLeft: Boolean);
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
-    procedure Loaded; override;
     procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
@@ -1468,6 +1469,11 @@ begin
   UpdateRowHeights(AGridRow);
 end;
 
+procedure TsCustomWorksheetGrid.CreateHandle;
+begin
+  inherited;
+  Setup;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Creates a new empty workbook into which a file will be loaded. Destroys the
@@ -3824,16 +3830,6 @@ begin
   end;
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Standard method inherited from TCustomGrid. Is overridden to create an
-  empty workbook
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.Loaded;
-begin
-  inherited;
-  if FWorkbookSource = nil then
-    Setup;
-end;
                                (*
 {@@ ----------------------------------------------------------------------------
   Loads the worksheet into the grid and displays its contents.
@@ -4325,6 +4321,10 @@ begin
     exit;
 
   if FLockSetup > 0 then
+    exit;
+
+  if not HandleAllocated then
+    //Avoid crash when accessing the canvas, e.g. in GetDefaultHeaderColWidth
     exit;
 
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
