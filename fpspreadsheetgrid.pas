@@ -274,6 +274,7 @@ type
 
     procedure BeginUpdate;
     function CellRect(ACol1, ARow1, ACol2, ARow2: Integer): TRect; overload;
+    procedure Clear;
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
     procedure DeleteCol(AGridCol: Integer); reintroduce;
     procedure DeleteRow(AGridRow: Integer); reintroduce;
@@ -1371,6 +1372,14 @@ begin
     end;
     Invalidate;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Clears the grid contents
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.Clear;
+begin
+  if (Worksheet <> nil) then Worksheet.Clear;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4322,11 +4331,11 @@ begin
 
   if FLockSetup > 0 then
     exit;
-
+  {
   if not HandleAllocated then
     //Avoid crash when accessing the canvas, e.g. in GetDefaultHeaderColWidth
     exit;
-
+   }
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;

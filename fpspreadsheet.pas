@@ -400,6 +400,7 @@ type
     procedure CopyValue(AFromCell, AToCell: PCell); overload;
     procedure CopyValue(AValueCell: PCell; AToRow, AToCol: Cardinal); overload;
 
+    procedure Clear;
     procedure DeleteCell(ACell: PCell);
     procedure EraseCell(ACell: PCell);
 
@@ -1853,6 +1854,20 @@ end;
 procedure TsWorksheet.CopyValue(AValueCell: PCell; AToRow, AToCol: Cardinal);
 begin
   CopyValue(AValueCell, GetCell(AToRow, AToCol));
+end;
+
+procedure TsWorksheet.Clear;
+begin
+  FCells.Clear;
+  FComments.Clear;
+  FHyperlinks.Clear;
+  FMergedCells.Clear;
+
+  RemoveAllImages;
+  RemoveAllRows;
+  RemoveAllCols;
+
+  ChangedCell(0, 0);
 end;
 
 {@@ ----------------------------------------------------------------------------
