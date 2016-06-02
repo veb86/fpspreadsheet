@@ -719,38 +719,53 @@ end;
 function ProcessFloatFormat(AValue: Double; AFormatSettings: TFormatSettings;
   const AElements: TsNumFormatElements; var AIndex: Integer): String;
 var
-  fs: TFormatSettings absolute AFormatSettings;
+  fs: TFormatSettings absolute AFormatSettings; // just to ease typing...
   numEl: Integer;
   numStr, s: String;
   p, i: Integer;
   decs: Integer;
   useThSep: Boolean;
+  decsIndex: Integer;
 begin
   Result := '';
   numEl := Length(AElements);
-
-  // Extract integer part
-  Result := IntToStr(trunc(AValue));
   useThSep := AElements[AIndex].Token = nftIntTh;
-  Result := ProcessIntegerFormat(Result, fs, AElements, AIndex,
+
+  // Find the element index of the decimal separator
+  i := AIndex;
+  while (i < numEl) and (AElements[i].Token <> nftDecSep) do
+    inc(i);
+
+  // No decimal separator --> format as integer
+  if i >= numEl then begin
+    Result := ProcessIntegerFormat(IntToStr(round(AValue)), fs, AElements, AIndex,
+      (INT_TOKENS + [nftIntTh]), false, useThSep);
+    exit;
+  end;
+
+  // There is a decimal separator. Get the count of decimal places.
+  decs := 0;
+  inc(i);
+  decsIndex := i;
+  while (i < numEl) and (AElements[i].Token in DECS_TOKENS) do begin
+    inc(decs, AElements[i].IntValue);
+    inc(i);
+  end;
+
+  // Convert value to string; this will do some rounding if required.
+  numstr := FloatToStrF(AValue, ffFixed, MaxInt, decs, fs);
+
+  // Process the integer part of the rounded number string
+  p := pos(fs.DecimalSeparator, numstr);
+  if p > 0 then s := copy(numstr, 1, p-1) else s := numstr;
+  Result := ProcessIntegerFormat(s, fs, AElements, AIndex,
     (INT_TOKENS + [nftIntTh]), false, UseThSep);
 
-  // Decimals
-  if (AIndex < numEl) and (AElements[AIndex].Token = nftDecSep) then
-  begin
-    inc(AIndex);
-    i := AIndex;
-    // Count decimal digits in format elements
-    decs := 0;
-    while (AIndex < numEl) and (AElements[AIndex].Token in DECS_TOKENS) do begin
-      inc(decs, AElements[AIndex].IntValue);
-      inc(AIndex);
-    end;
-    // Convert value to string
-    numstr := FloatToStrF(AValue, ffFixed, MaxInt, decs, fs);
-    p := Pos(fs.DecimalSeparator, numstr);
+  // Process the fractional part of the rounded number string
+  if p > 0 then begin
     s := Copy(numstr, p+1, Length(numstr));
-    s := ProcessIntegerFormat(s, fs, AElements, i, DECS_TOKENS, true, false);
+    AIndex := decsIndex;
+    s := ProcessIntegerFormat(s, fs, AElements, AIndex, DECS_TOKENS, true, false);
     if s <> '' then
       Result := Result + fs.DecimalSeparator + s;
   end;

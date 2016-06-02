@@ -26,8 +26,92 @@ type
     SollSection2Color: TsColor;
   end;
 
+  TRoundingTestData = record
+    FormatString: String;
+    Number: Double;
+    SollString: String;
+  end;
+
 var
   ParserTestData: Array[0..13] of TParserTestData;
+
+  RoundingTestData: Array[0..62] of TRoundingTestData = (
+    // 0
+    (FormatString: '0'; Number:     1.2; SollString: '1'),
+    (FormatString: '0'; Number:     1.9; SollString: '2'),
+    (FormatString: '0'; Number:    -1.2; SollString: '-1'),
+    (FormatString: '0'; Number:    -1.9; SollString: '-2'),
+    (FormatString: '0'; Number:  1234.2; SollString: '1234'),
+    (FormatString: '0'; Number:  1234.9; SollString: '1235'),
+    (FormatString: '0'; Number: -1234.2; SollString: '-1234'),
+    (FormatString: '0'; Number: -1234.9; SollString: '-1235'),
+
+    // 8
+    (FormatString: '0.00'; Number:     1.2; SollString: '1.20'),
+    (FormatString: '0.00'; Number:     1.9; SollString: '1.90'),
+    (FormatString: '0.00'; Number:    -1.2; SollString: '-1.20'),
+    (FormatString: '0.00'; Number:    -1.9; SollString: '-1.90'),
+    (FormatString: '0.00'; Number:  1234.2; SollString: '1234.20'),
+    (FormatString: '0.00'; Number:  1234.9; SollString: '1234.90'),
+    (FormatString: '0.00'; Number: -1234.2; SollString: '-1234.20'),
+    (FormatString: '0.00'; Number: -1234.9; SollString: '-1234.90'),
+    (FormatString: '0.00'; Number:  1234.21; SollString: '1234.21'),
+    (FormatString: '0.00'; Number:  1234.99; SollString: '1234.99'),
+    (FormatString: '0.00'; Number: -1234.21; SollString: '-1234.21'),
+    (FormatString: '0.00'; Number: -1234.99; SollString: '-1234.99'),
+    (FormatString: '0.00'; Number:  1234.2123; SollString: '1234.21'),
+    (FormatString: '0.00'; Number:  1234.2999; SollString: '1234.30'),
+    (FormatString: '0.00'; Number:  1234.9123; SollString: '1234.91'),
+    (FormatString: '0.00'; Number:  1234.9993; SollString: '1235.00'),
+    (FormatString: '0.00'; Number: -1234.2123; SollString: '-1234.21'),
+    (FormatString: '0.00'; Number: -1234.2999; SollString: '-1234.30'),
+    (FormatString: '0.00'; Number: -1234.9123; SollString: '-1234.91'),
+    (FormatString: '0.00'; Number: -1234.9993; SollString: '-1235.00'),
+
+    // 28
+    (FormatString: '#,##0.00'; Number:     1.2; SollString: '1.20'),
+    (FormatString: '#,##0.00'; Number:     1.9; SollString: '1.90'),
+    (FormatString: '#,##0.00'; Number:    -1.2; SollString: '-1.20'),
+    (FormatString: '#,##0.00'; Number:    -1.9; SollString: '-1.90'),
+    (FormatString: '#,##0.00'; Number:  1234.2; SollString: '1,234.20'),
+    (FormatString: '#,##0.00'; Number:  1234.9; SollString: '1,234.90'),
+    (FormatString: '#,##0.00'; Number: -1234.2; SollString: '-1,234.20'),
+    (FormatString: '#,##0.00'; Number: -1234.9; SollString: '-1,234.90'),
+    (FormatString: '#,##0.00'; Number:  1234.2123; SollString: '1,234.21'),
+    (FormatString: '#,##0.00'; Number:  1234.2999; SollString: '1,234.30'),
+    (FormatString: '#,##0.00'; Number:  1234.9123; SollString: '1,234.91'),
+    (FormatString: '#,##0.00'; Number:  1234.9993; SollString: '1,235.00'),
+    (FormatString: '#,##0.00'; Number: -1234.2123; SollString: '-1,234.21'),
+    (FormatString: '#,##0.00'; Number: -1234.2999; SollString: '-1,234.30'),
+    (FormatString: '#,##0.00'; Number: -1234.9123; SollString: '-1,234.91'),
+    (FormatString: '#,##0.00'; Number: -1234.9993; SollString: '-1,235.00'),
+
+    // 44
+    (FormatString: '00.00'; Number:     1.2; SollString: '01.20'),
+    (FormatString: '00.00'; Number:     1.9; SollString: '01.90'),
+    (FormatString: '00.00'; Number:    -1.2; SollString: '-01.20'),
+    (FormatString: '00.00'; Number:    -1.9; SollString: '-01.90'),
+    (FormatString: '00.00'; Number:  1234.2; SollString: '1234.20'),
+    (FormatString: '00.00'; Number:  1234.9; SollString: '1234.90'),
+    (FormatString: '00.00'; Number: -1234.2; SollString: '-1234.20'),
+    (FormatString: '00.00'; Number: -1234.9; SollString: '-1234.90'),
+
+    // 52
+    (FormatString: '#.00'; Number:     0.2; SollString: '.20'),
+    (FormatString: '#.00'; Number:     0.9; SollString: '.90'),
+    (FormatString: '#.00'; Number:    -0.2; SollString: '-.20'),
+    (FormatString: '#.00'; Number:    -0.9; SollString: '-.90'),
+    (FormatString: '#.00'; Number:     1.2; SollString: '1.20'),
+    (FormatString: '#.00'; Number:    -1.9; SollString: '-1.90'),
+
+    // 58
+    (FormatString: '0.0##'; Number:     1.2; SollString: '1.2'),
+    (FormatString: '0.0##'; Number:     1.21; SollString: '1.21'),
+    (FormatString: '0.0##'; Number:     1.212; SollString: '1.212'),
+    (FormatString: '0.0##'; Number:     1.2134; SollString: '1.213'),
+    (FormatString: '0.0##'; Number:     1.2135; SollString: '1.214')
+
+  );
 
 procedure InitParserTestData;
 
@@ -42,6 +126,7 @@ type
     // One cell per test so some tests can fail and those further below may still work
   published
     procedure TestNumFormatParser;
+    procedure TestRounding;
   end;
 
 
@@ -290,6 +375,35 @@ begin
     MyWorkbook.Free;
   end;
 end;
+
+procedure TSpreadNumFormatParserTests.TestRounding;
+var
+  i: Integer;
+  parser: TsNumFormatParser;
+  MyWorkbook: TsWorkbook;
+  MyWorksheet: TsWorksheet;
+  actual: String;
+  fs: TFormatSettings;
+begin
+  MyWorkbook := TsWorkbook.Create;
+  try
+    fs := DefaultFormatSettings;
+    fs.DecimalSeparator := '.';
+    fs.ThousandSeparator := ',';
+    MyWorkbook.FormatSettings := fs;
+    MyWorksheet := MyWorkbook.AddWorksheet('Test');
+    for i:=0 to High(RoundingTestData) do begin
+      MyWorksheet.WriteNumber(0, 0,
+        RoundingTestData[i].Number, nfCustom, RoundingTestData[i].FormatString);
+      actual := MyWorksheet.ReadAsText(0, 0);
+      CheckEquals(RoundingTestData[i].SollString, actual,
+        'Rounding mismatch in test #' + IntToStr(i));
+    end;
+  finally
+    MyWorkbook.Free;
+  end;
+end;
+
 
 initialization
   // Register so these tests are included in a full run
