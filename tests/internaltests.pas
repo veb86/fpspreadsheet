@@ -128,7 +128,7 @@ type
 var
   TempFile: String;
 const
-  TestCases: array[0..11] of TSheetNameCheck = (
+  TestCases: array[0..10] of TSheetNameCheck = (
     (Valid: true;  SheetName:'Sheet'),
     (Valid: true;  SheetName:'äöü'),      // UFt8-characters are ok
     (Valid: true;  SheetName:'<sheet>'),  // forbidden xml characters
@@ -136,8 +136,7 @@ const
     (Valid: false; SheetName:'Test'),     // duplicate
     (Valid: false; SheetName:'TEST'),     // duplicate since case is ignored
     (Valid: false; SheetName:''),         // empty string
-    (Valid: false; SheetName:'Very very very very very very very very long'),  // too long
-    (Valid: false; SheetName:'[sheet]'), // forbidden characters in following cases
+    (Valid: false; SheetName:'[sheet]'),  // forbidden characters in following cases
     (Valid: false; SheetName:'/sheet/'),
     (Valid: false; SheetName:'\sheet\'),
     (Valid: false; SheetName:'***sheet***')
