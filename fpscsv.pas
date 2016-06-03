@@ -376,9 +376,9 @@ end;
 
 procedure TsCSVWriter.WriteSheet(AStream: TStream; AWorksheet: TsWorksheet);
 var
-  r: Cardinal;
-  firstRow: Cardinal;
-  lastRow: Cardinal;
+  r, c: Cardinal;
+  firstRow, lastRow: Cardinal;
+  firstCol, lastCol: Cardinal;
   cell: PCell;
   n: Integer;
 begin
@@ -399,13 +399,26 @@ begin
     end else
     begin
       if FClipboardMode then
-        firstRow := FWorksheet.GetFirstRowIndex else
+      begin
+        firstRow := FWorksheet.GetFirstRowIndex;
+        firstCol := FWorksheet.GetFirstColIndex;
+      end else
+      begin
         firstRow := 0;
+        firstCol := 0;
+      end;
       lastRow := FWorksheet.GetLastOccupiedRowIndex;
+      lastCol := FWorksheet.GetLastOccupiedColIndex;
       for r := firstRow to lastRow do
       begin
-        for cell in FWorksheet.Cells.GetRowEnumerator(r) do
-          WriteCellToStream(AStream, cell);
+        for c := firstCol to lastCol do
+        begin
+          cell := FWorksheet.FindCell(r, c);
+          if cell = nil then
+            FCSVBuilder.AppendCell('')
+          else
+            WriteCellToStream(AStream, cell);
+        end;
         FCSVBuilder.AppendRow;
       end;
     end;
