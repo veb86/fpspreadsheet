@@ -291,7 +291,7 @@ procedure TsCSVWriter.WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
 begin
   Unused(AStream);
   Unused(ARow, ACol, ACell);
-  // nothing to do
+  FCSVBuilder.AppendCell('');
 end;
 
 { Write boolean cell to stream formatted as string }
