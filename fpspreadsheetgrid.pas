@@ -531,7 +531,7 @@ type
     {@@ inherited from ancestors}
     property Color;
     {@@ inherited from ancestors}
-    property ColCount;
+    property ColCount stored;
     //property Columns;
     {@@ inherited from ancestors}
     property Constraints;
