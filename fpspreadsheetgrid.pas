@@ -4347,8 +4347,15 @@ begin
   if Worksheet <> nil then begin
     Convert_sFont_to_Font(Workbook.GetDefaultFont, Font);
     Canvas.Font.Assign(Font);
-    ColCount := Max(GetGridCol(Worksheet.GetLastColIndex) + 1, ColCount);
-    RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex) + 1, RowCount);
+    if FHeaderCount = 0 then
+    begin
+      ColCount := Max(GetGridCol(Worksheet.GetLastColIndex), ColCount-1);
+      RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex), RowCount-1);
+    end else
+    begin
+      ColCount := Max(GetGridCol(Worksheet.GetLastColIndex) + 1, ColCount);
+      RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex) + 1, RowCount);
+    end;
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
