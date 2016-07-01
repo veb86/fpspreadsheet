@@ -7819,7 +7819,7 @@ procedure TsWorkbook.RemoveWorksheet(AWorksheet: TsWorksheet);
 var
   i: Integer;
 begin
-  if GetWorksheetCount > 1 then     // There must be at least 1 worksheet!
+  if GetWorksheetCount > 1 then     // There must be at least 1 worksheet left!
   begin
     i := GetWorksheetIndex(AWorksheet);
     if (i <> -1) and (AWorksheet <> nil) then

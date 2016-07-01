@@ -119,7 +119,7 @@ type
     function GetNumberFormats(ALeft, ATop, ARight, ABottom: Integer): String;
     function GetRowHeights(ARow: Integer): Integer;
     function GetShowGridLines: Boolean;
-    function GetShowHeaders: Boolean;
+    function GetShowHeaders: Boolean; inline;
     function GetTextRotation(ACol, ARow: Integer): TsTextRotation;
     function GetTextRotations(ALeft, ATop, ARight, ABottom: Integer): TsTextRotation;
     function GetVertAlignment(ACol, ARow: Integer): TsVertAlignment;
@@ -273,6 +273,8 @@ type
     destructor Destroy; override;
 
     procedure BeginUpdate;
+    procedure AutoColWidth(ACol: Integer);
+    procedure AutoRowHeight(ARow: Integer);
     function CellRect(ACol1, ARow1, ACol2, ARow2: Integer): TRect; overload;
     procedure Clear;
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
@@ -1006,6 +1008,16 @@ begin
   FreeAndNil(FCellFont);
   FreeAndNil(FSelPen);
   inherited Destroy;
+end;
+
+procedure TsCustomWorksheetGrid.AutoColWidth(ACol: Integer);
+begin
+  AutoAdjustColumn(ACol);
+end;
+
+procedure TscustomWorksheetGrid.AutoRowHeight(ARow: Integer);
+begin
+  AutoAdjustRow(ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3027,7 +3039,7 @@ var
   RTL: Boolean;
 begin
   Result := 0;
-  if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
+  if (ACol < FHeaderCount) or (ARow < FHeaderCount) then
     exit;
   if Worksheet = nil then
     exit;
@@ -5746,10 +5758,15 @@ procedure TsCustomWorksheetGrid.SetWordwrap(ACol, ARow: Integer;
 var
   cell: PCell;
 begin
-  if Assigned(Worksheet) then
-  begin
+  if not Assigned(Worksheet) then
+    exit;
+
+  BeginUpdate;
+  try
     cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     Worksheet.WriteWordwrap(cell, AValue);
+  finally
+    EndUpdate;
   end;
 end;
 

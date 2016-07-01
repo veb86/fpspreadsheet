@@ -3020,6 +3020,12 @@ begin
            GetEnumName(TypeInfo(TsVertAlignment), ord(fmt.VertAlignment))
          ]));
 
+  if (ACell=nil) or not (uffWordwrap in fmt.UsedFormattingFields)
+    then AStrings.Add('Wordwrap=(default)')
+    else AStrings.Add(Format('Wordwrap=%s', [
+           BoolToStr(uffWordwrap in fmt.UsedFormattingFields, true)
+        ]));
+
   if (ACell=nil) or not (uffBorder in fmt.UsedFormattingFields) then
     AStrings.Add('Borders=(none)')
   else
