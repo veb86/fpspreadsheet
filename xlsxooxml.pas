@@ -2919,7 +2919,7 @@ begin
         InitCell(lCell);
         value := varNull;
         styleCell := nil;
-        Workbook.OnWriteCellData(Workbook, r, c, value, styleCell);
+        Workbook.OnWriteCellData(FWorkbook, r, c, value, styleCell);
         if styleCell <> nil then
           lCell := styleCell^;
         lCell.Row := r;
@@ -4706,7 +4706,7 @@ initialization
   // Registers this reader / writer on fpSpreadsheet
   sfidOOXML := RegisterSpreadFormat(sfOOXML,
     TsSpreadOOXMLReader, TsSpreadOOXMLWriter,
-    STR_FILEFORMAT_EXCEL_XLSX, 'OOXML', [STR_OOXML_EXCEL_EXTENSION]
+    STR_FILEFORMAT_EXCEL_XLSX, 'OOXML', [STR_OOXML_EXCEL_EXTENSION, '.xlsm']
   );
 
 end.

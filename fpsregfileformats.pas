@@ -253,14 +253,31 @@ end;
 
 function TsSpreadFormatRegistry.GetAllExcelFilesMask(AExtSeparator: Char): String;
 var
+  j: Integer;
   L: TStrings;
+  data: TsSpreadFormatData;
+  ext: String;
 begin
   L := TStringList.Create;
   try
+    // good old BIFF...
     if (IndexOf(ord(sfExcel8)) <> -1) or
        (IndexOf(ord(sfExcel5)) <> -1) or
        (IndexOf(ord(sfExcel2)) <> -1) then L.Add('*.xls');
-    if (IndexOf(ord(sfOOXML)) <> -1)  then L.Add('*.xlsx');
+
+    // Excel 2007+
+    j := IndexOf(ord(sfOOXML));
+    if j <> -1 then
+    begin
+      data := TsSpreadFormatData(FList[j]);
+      for j:=0 to data.FileExtensionCount-1 do
+      begin
+        ext := data.FileExtension[j];
+        if L.IndexOf(ext) = -1 then
+          L.Add('*' + ext);
+      end;
+    end;
+
     L.Delimiter := AExtSeparator;
     L.StrictDelimiter := true;
     Result := L.DelimitedText;
@@ -363,7 +380,7 @@ function TsSpreadFormatRegistry.GetFormatArrayFromFileName(
   APriorityFormat: TsSpreadFormatID = sfidUnknown): TsSpreadFormatIDArray;
 var
   idx: Integer;
-  i, n: Integer;
+  i, j, n: Integer;
   ext: String;
   data: TsSpreadFormatData;
 begin
@@ -385,12 +402,14 @@ begin
       faRead  : if data.ReaderClass = nil then Continue;
       faWrite : if data.WriterClass = nil then Continue;
     end;
-    if Lowercase(data.FileExtension[0]) = ext then
-    begin
-      Result[n] := data.FormatID;
-      inc(n);
-    end;
+    for j:=0 to data.FileExtensionCount-1 do
+      if Lowercase(data.FileExtension[j]) = ext then
+      begin
+        Result[n] := data.FormatID;
+        inc(n);
+      end;
   end;
+
 
   SetLength(Result, n);
 
