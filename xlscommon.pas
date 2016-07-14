@@ -602,7 +602,7 @@ type
     procedure WriteStringRecord(AStream: TStream; AString: String); virtual;
     procedure WriteVCenter(AStream: TStream);
     // Writes cell content received by workbook in OnNeedCellData event
-    procedure WriteVirtualCells(AStream: TStream);
+    procedure WriteVirtualCells(AStream: TStream; ASheet: TsWorksheet);
     // Writes out a WINDOW1 record
     procedure WriteWindow1(AStream: TStream); virtual;
     // Writes an XF record
@@ -4580,21 +4580,29 @@ begin
   AStream.WriteWord(WordToLE(w));
 end;
 
-procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream);
+procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream;
+  ASheet: TsWorksheet);
 var
   r,c: Cardinal;
   lCell: TCell;
   value: variant;
   styleCell: PCell;
 begin
-  for r := 0 to Workbook.VirtualRowCount-1 do
-    for c := 0 to Workbook.VirtualColCount-1 do
+  if ASheet.VirtualRowCount = 0 then
+    exit;
+  if ASheet.VirtualColCount = 0 then
+    exit;
+  if not Assigned(ASheet.OnWriteCellData) then
+    exit;
+
+  for r := 0 to LongInt(ASheet.VirtualRowCount) - 1 do
+    for c := 0 to LongInt(ASheet.VirtualColCount) - 1 do
     begin
       lCell.Row := r; // to silence a compiler hint...
       InitCell(lCell);
       value := varNull;
       styleCell := nil;
-      Workbook.OnWriteCellData(Workbook, r, c, value, styleCell);
+      ASheet.OnWriteCellData(ASheet, r, c, value, styleCell);
       if styleCell <> nil then lCell := styleCell^;
       lCell.Row := r;
       lCell.Col := c;

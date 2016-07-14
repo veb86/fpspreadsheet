@@ -102,6 +102,12 @@ type
   TsCellCompareEvent = procedure (Sender: TObject; ACell1, ACell2: PCell;
     var AResult: Integer) of object;
 
+  {@@ Event fired when writing a file in virtual mode. The event handler has to
+    pass data ("AValue") and formatting style to be copied from a template
+    cell ("AStyleCell") to the writer }
+  TsWorksheetWriteCellDataEvent = procedure(Sender: TsWorksheet; ARow, ACol: Cardinal;
+    var AValue: variant; var AStyleCell: PCell) of object;
+
   {@@ The worksheet contains a list of cells and provides a variety of methods
     to read or write data to the cells, or to change their formatting. }
   TsWorksheet = class
@@ -129,10 +135,13 @@ type
     FSortParams: TsSortParams;  // Parameters of the current sorting operation
     FBiDiMode: TsBiDiMode;
     FPageLayout: TsPageLayout;
+    FVirtualColCount: Cardinal;
+    FVirtualRowCount: Cardinal;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnCompareCells: TsCellCompareEvent;
     FOnSelectCell: TsCellEvent;
+    FOnWriteCellData: TsWorksheetWriteCellDataEvent;
 
     { Setter/Getter }
     function  GetDefaultColWidth: Single;
@@ -142,6 +151,8 @@ type
     procedure SetDefaultColWidth(AValue: Single);
     procedure SetDefaultRowHeight(AValue: Single);
     procedure SetName(const AName: String);
+    procedure SetVirtualColCount(AValue: Cardinal);
+    procedure SetVirtualRowCount(AValue: Cardinal);
 
     { Callback procedures called when iterating through all cells }
     procedure DeleteColCallback(data, arg: Pointer);
@@ -559,6 +570,12 @@ type
     {@@ The default row height is given in "line count" (height of the default font }
     property DefaultRowHeight: Single read GetDefaultRowHeight write SetDefaultRowHeight;
       deprecated 'Use Read/WriteDefaultColWidth';
+    {@@ In VirtualMode, the value of VirtualColCount signals how many colums
+      will be transferred to the worksheet. }
+    property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
+    {@@ The value VirtualRowCount indicates how many rows will be transferred
+      to the worksheet in VirtualMode. }
+    property VirtualRowCount: cardinal read FVirtualRowCount write SetVirtualRowCount;
 
     // These are properties to interface to TsWorksheetGrid
     property BiDiMode: TsBiDiMode read FBiDiMode write SetBiDiMode;
@@ -581,6 +598,10 @@ type
     property  OnCompareCells: TsCellCompareEvent read FOnCompareCells write FOnCompareCells;
     {@@ Event fired when a cell is "selected". }
     property  OnSelectCell: TsCellEvent read FOnSelectCell write FOnSelectCell;
+    {@@ This event allows to provide external cell data for writing to file,
+      standard cells are ignored. Intended for converting large database files
+      to a spreadsheet format. Requires Option boVirtualMode to be set. }
+    property OnWriteCellData: TsWorksheetWriteCellDataEvent read FOnWriteCellData write FOnWriteCellData;
 
   end;
 
@@ -615,13 +636,6 @@ type
   TsWorkbookOptions = set of TsWorkbookOption;
 
   {@@
-    Event fired when writing a file in virtual mode. The event handler has to
-    pass data ("AValue") and formatting style to be copied from a template
-    cell ("AStyleCell") to the writer }
-  TsWorkbookWriteCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
-    var AValue: variant; var AStyleCell: PCell) of object;
-
-  {@@
     Event fired when reading a file in virtual mode. Read data are provided in
     the "ADataCell" (which is not added to the worksheet in virtual mode). }
   TsWorkbookReadCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
@@ -645,14 +659,11 @@ type
     FWorksheets: TFPList;
     FFormatID: TsSpreadFormatID;
     FBuiltinFontCount: Integer;
-    FVirtualColCount: Cardinal;
-    FVirtualRowCount: Cardinal;
     FReadWriteFlag: TsReadWriteFlag;
     FCalculationLock: Integer;
     FOptions: TsWorkbookOptions;
     FActiveWorksheet: TsWorksheet;
     FOnOpenWorkbook: TNotifyEvent;
-    FOnWriteCellData: TsWorkbookWriteCellDataEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
     FOnChangeWorksheet: TsWorksheetEvent;
     FOnRenameWorksheet: TsWorksheetEvent;
@@ -668,8 +679,6 @@ type
 
     { Setter/Getter }
     function GetErrorMsg: String;
-    procedure SetVirtualColCount(AValue: Cardinal);
-    procedure SetVirtualRowCount(AValue: Cardinal);
 
     { Callback procedures }
     procedure RemoveWorksheetsCallback(data, arg: pointer);
@@ -819,8 +828,6 @@ type
     property FileName: String read FFileName;
     {@@ Identifies the file format which was detected when reading the file }
     property FileFormatID: TsSpreadFormatID read FFormatID;
-    property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
-    property VirtualRowCount: cardinal read FVirtualRowCount write SetVirtualRowCount;
     property Options: TsWorkbookOptions read FOptions write FOptions;
     property Units: TsSizeUnits read FUnits;
 
@@ -838,10 +845,6 @@ type
     property OnRemovingWorksheet: TsWorksheetEvent read FOnRemovingWorksheet write FOnRemovingWorksheet;
     {@@ This event fires when a worksheet is made "active"}
     property OnSelectWorksheet: TsWorksheetEvent read FOnSelectWorksheet write FOnSelectWorksheet;
-    {@@ This event allows to provide external cell data for writing to file,
-      standard cells are ignored. Intended for converting large database files
-      to a spreadsheet format. Requires Option boVirtualMode to be set. }
-    property OnWriteCellData: TsWorkbookWriteCellDataEvent read FOnWriteCellData write FOnWriteCellData;
     {@@ This event accepts cell data while reading a spreadsheet file. Data are
       not encorporated in a spreadsheet, they are just passed through to the
       event handler for processing. Requires option boVirtualMode to be set. }
@@ -4075,6 +4078,24 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Setter method for the count of columns to be written in VirtualMode
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SetVirtualColCount(AValue: Cardinal);
+begin
+  if FWorkbook.FReadWriteFlag = rwfWrite then exit;
+  FVirtualColCount := AValue;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the count of rows to be written in VirtualMode
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SetVirtualRowCount(AValue: Cardinal);
+begin
+  if FWorkbook.FReadWriteFlag = rwfWrite then exit;
+  FVirtualRowCount := AValue;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes UTF-8 encoded text to a cell.
 
   On formats that don't support unicode, the text will be converted
@@ -6996,7 +7017,8 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.PrepareBeforeSaving;
 var
-  sheet: pointer;
+  sheet: TsWorksheet;
+  virtModeOK: Boolean;
 begin
   // Clear error log
   FLog.Clear;
@@ -7007,11 +7029,19 @@ begin
   // Calculated formulas (if requested)
   if (boCalcBeforeSaving in FOptions) then
     for sheet in FWorksheets do
-      TsWorksheet(sheet).CalcFormulas;
+      sheet.CalcFormulas;
 
   // Abort if virtual mode is active without an event handler
-  if (boVirtualMode in FOptions) and not Assigned(FOnWriteCellData) then
-    raise Exception.Create('[TsWorkbook.PrepareBeforeWriting] Event handler "OnWriteCellData" required for virtual mode.');
+  if (boVirtualMode in FOptions) then
+  begin
+    virtModeOK := false;
+    for sheet in FWorksheets do
+      if Assigned(sheet.OnWriteCellData) then
+        virtModeOK := true;
+    if not virtModeOK then
+      raise Exception.Create('[TsWorkbook.PrepareBeforeWriting] At least one '+
+        'sheet must have an event handler "OnWriteCellData" for virtual mode.');
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7274,17 +7304,22 @@ var
   i: Integer;
   sheet: TsWorksheet;
 begin
+  ALastRow := 0;
+  ALastCol := 0;
   if (boVirtualMode in Options) then
   begin
-    ALastRow := FVirtualRowCount - 1;
-    ALastCol := FVirtualColCount - 1;
+    for sheet in FWorksheets do
+      if Assigned(sheet.OnWriteCellData) then
+      begin
+        if sheet.VirtualRowCount > 0 then
+          ALastRow := Max(ALastRow, sheet.VirtualRowCount - 1);
+        if sheet.VirtualColCount > 0 then
+          ALastCol := Max(ALastCol, sheet.VirtualColCount - 1);
+      end;
   end else
   begin
-    ALastRow := 0;
-    ALastCol := 0;
-    for i:=0 to GetWorksheetCount-1 do
+    for sheet in FWorksheets do
     begin
-      sheet := GetWorksheetByIndex(i);
       ALastRow := Max(ALastRow, sheet.GetLastRowIndex);
       ALastCol := Max(ALastCol, sheet.GetLastColIndex);
     end;
@@ -7482,18 +7517,6 @@ begin
   finally
     AReader.Free;
   end;
-end;
-
-procedure TsWorkbook.SetVirtualColCount(AValue: Cardinal);
-begin
-  if FReadWriteFlag = rwfWrite then exit;
-  FVirtualColCount := AValue;
-end;
-
-procedure TsWorkbook.SetVirtualRowCount(AValue: Cardinal);
-begin
-  if FReadWriteFlag = rwfWrite then exit;
-  FVirtualRowCount := AValue;
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -13,7 +13,7 @@ uses
 
 type
   TDataProvider = class
-    procedure WriteCellDataHandler(Sender: TObject; ARow,ACol: Cardinal;
+    procedure WriteCellDataHandler(Sender: TsWorksheet; ARow,ACol: Cardinal;
       var AData: variant; var AStyleCell: PCell);
   end;
 
@@ -24,7 +24,7 @@ var
   headerTemplate: PCell;
   t: TTime;
 
-  procedure TDataProvider.WriteCellDataHandler(Sender: TObject;
+  procedure TDataProvider.WriteCellDataHandler(Sender: TsWorksheet;
     ARow, ACol: Cardinal; var AData: variant; var AStyleCell: PCell);
   { This is just a sample using random data. Normally, in case of a database,
     you would read a record and return its field values, such as:
@@ -58,7 +58,6 @@ var
   end;
 
 begin
-
   dataprovider := TDataProvider.Create;
   try
     workbook := TsWorkbook.Create;
@@ -78,12 +77,12 @@ begin
       { Next two numbers define the size of virtual spreadsheet.
         In case of a database, VirtualRowCount is the RecordCount, VirtualColCount
         the number of fields to be written to the spreadsheet file }
-      workbook.VirtualRowCount := 20000;
-      workbook.VirtualColCount := 100;
+      worksheet.VirtualRowCount := 20000;
+      worksheet.VirtualColCount := 100;
 
       { The event handler for OnWriteCellData links the workbook to the method
         from which it gets the data to be written. }
-      workbook.OnWriteCellData := @dataprovider.WriteCellDataHandler;
+      worksheet.OnWriteCellData := @dataprovider.WriteCellDataHandler;
 
       { If we want to change the format of some cells we have to provide this
         format in template cells of the worksheet. In the example, the first

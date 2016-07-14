@@ -2141,7 +2141,7 @@ begin
       //WriteRowAndCellBlock(AStream, sheet);
 
       if (boVirtualMode in Workbook.Options) then
-        WriteVirtualCells(AStream)
+        WriteVirtualCells(AStream, FWorksheet)
       else begin
         WriteRows(AStream, FWorksheet);
         WriteCellsToStream(AStream, FWorksheet.Cells);

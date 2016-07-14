@@ -4752,10 +4752,8 @@ begin
   // rows and cells
   // The cells need to be written in order, row by row, cell by cell
   if (boVirtualMode in Workbook.Options) then
-  begin
-    if Assigned(Workbook.OnWriteCellData) then
-      WriteVirtualCells(AStream, FWorksheet)
-  end else
+    WriteVirtualCells(AStream, FWorksheet)
+  else
     WriteRowsAndCells(AStream, FWorksheet);
 
   // named expressions, i.e. print range, repeated cols/rows
@@ -6401,9 +6399,16 @@ var
   colsRepeatedStr: String;
   lastCol, lastRow: Cardinal;
 begin
+  if ASheet.VirtualColCount = 0 then
+    exit;
+  if ASheet.VirtualRowCount = 0 then
+    exit;
+  if not Assigned(ASheet.OnWriteCellData) then
+    exit;
+
   // some abbreviations...
-  lastCol := Workbook.VirtualColCount - 1;
-  lastRow := Workbook.VirtualRowCount - 1;
+  lastCol := LongInt(ASheet.VirtualColCount) - 1;
+  lastRow := LongInt(ASheet.VirtualRowCount) - 1;
 
   rowsRepeated := 1;
   r := 0;
@@ -6450,7 +6455,7 @@ begin
       value := varNull;
       styleCell := nil;
 
-      Workbook.OnWriteCellData(Workbook, r, c, value, styleCell);
+      ASheet.OnWriteCellData(ASheet, r, c, value, styleCell);
 
       if VarIsNull(value) then
       begin
@@ -6461,7 +6466,7 @@ begin
           InitCell(r, cc, lCell);
           value := varNull;
           styleCell := nil;
-          Workbook.OnWriteCellData(Workbook, r, cc, value, styleCell);
+          ASheet.OnWriteCellData(ASheet, r, cc, value, styleCell);
           if not VarIsNull(value) then
             break;
           inc(cc);

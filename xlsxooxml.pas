@@ -2902,62 +2902,66 @@ begin
 
   GetSheetDimensions(AWorksheet, r1, r2, c1, c2);
 
-  if (boVirtualMode in Workbook.Options) and Assigned(Workbook.OnWriteCellData)
-  then begin
-    for r := 0 to r2 do begin
-      row := AWorksheet.FindRow(r);
-      if row <> nil then
-        rh := Format(' ht="%.2f" customHeight="1"',
-          [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
-          FPointSeparatorSettings)
-      else
-        rh := '';
-      AppendToStream(AStream, Format(
-        '<row r="%d" spans="1:%d"%s>', [r+1, Workbook.VirtualColCount, rh]));
-      for c := 0 to c2 do begin
-        lCell.Row := r; // to silence a compiler hint
-        InitCell(lCell);
-        value := varNull;
-        styleCell := nil;
-        Workbook.OnWriteCellData(FWorkbook, r, c, value, styleCell);
-        if styleCell <> nil then
-          lCell := styleCell^;
-        lCell.Row := r;
-        lCell.Col := c;
-        if VarIsNull(value) then
-        begin
+  if (boVirtualMode in Workbook.Options) then begin
+    if Assigned(AWorksheet.OnWriteCellData) and
+      (AWorksheet.VirtualColCount > 0) and (AWorksheet.VirtualRowCount > 0)
+    then begin
+      for r := 0 to r2 do begin
+        row := AWorksheet.FindRow(r);
+        if row <> nil then
+          rh := Format(' ht="%.2f" customHeight="1"',
+            [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
+            FPointSeparatorSettings)
+        else
+          rh := '';
+        AppendToStream(AStream, Format(
+          '<row r="%d" spans="1:%d"%s>', [r+1, AWorksheet.VirtualColCount, rh]));
+        for c := 0 to c2 do begin
+          lCell.Row := r; // to silence a compiler hint
+          InitCell(lCell);
+          value := varNull;
+          styleCell := nil;
+          AWorksheet.OnWriteCellData(AWorksheet, r, c, value, styleCell);
           if styleCell <> nil then
-            lCell.ContentType := cctEmpty
-          else
-            Continue;
-        end else
-        if VarIsNumeric(value) then
-        begin
-          lCell.ContentType := cctNumber;
-          lCell.NumberValue := value;
-        end else
-        if VarType(value) = varDate then
-        begin
-          lCell.ContentType := cctDateTime;
-          lCell.DateTimeValue := StrToDateTime(VarToStr(value), Workbook.FormatSettings);  // was: StrToDate
-        end else
-        if VarIsStr(value) then
-        begin
-          lCell.ContentType := cctUTF8String;
-          lCell.UTF8StringValue := VarToStrDef(value, '');
-        end else
-        if VarIsBool(value) then
-        begin
-          lCell.ContentType := cctBool;
-          lCell.BoolValue := value <> 0;
+            lCell := styleCell^;
+          lCell.Row := r;
+          lCell.Col := c;
+          if VarIsNull(value) then
+          begin
+            if styleCell <> nil then
+              lCell.ContentType := cctEmpty
+            else
+              Continue;
+          end else
+          if VarIsNumeric(value) then
+          begin
+            lCell.ContentType := cctNumber;
+            lCell.NumberValue := value;
+          end else
+          if VarType(value) = varDate then
+          begin
+            lCell.ContentType := cctDateTime;
+            lCell.DateTimeValue := StrToDateTime(VarToStr(value), Workbook.FormatSettings);  // was: StrToDate
+          end else
+          if VarIsStr(value) then
+          begin
+            lCell.ContentType := cctUTF8String;
+            lCell.UTF8StringValue := VarToStrDef(value, '');
+          end else
+          if VarIsBool(value) then
+          begin
+            lCell.ContentType := cctBool;
+            lCell.BoolValue := value <> 0;
+          end;
+          WriteCellToStream(AStream, @lCell);
+          varClear(value);
         end;
-        WriteCellToStream(AStream, @lCell);
-        varClear(value);
+        AppendToStream(AStream,
+          '</row>');
       end;
-      AppendToStream(AStream,
-        '</row>');
     end;
-  end else
+  end    // end of virtual mode writing
+  else
   begin
     // The cells need to be written in order, row by row, cell by cell
     for r := r1 to r2 do begin

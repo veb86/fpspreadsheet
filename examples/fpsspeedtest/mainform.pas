@@ -49,12 +49,12 @@ type
     function  GetRowCount(AIndex: Integer): Integer;
     procedure ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
       const ADataCell: PCell);
-    procedure WriteCellStringHandler(Sender: TObject; ARow, ACol: Cardinal;
-      var AValue: Variant; var AStyleCell: PCell);
-    procedure WriteCellNumberHandler(Sender: TObject; ARow, ACol: Cardinal;
-      var AValue: Variant; var AStyleCell: PCell);
-    procedure WriteCellStringAndNumberHandler(Sender: TObject; ARow, ACol: Cardinal;
-      var AValue: Variant; var AStyleCell: PCell);
+    procedure WriteCellStringHandler(Sender: TsWorksheet;
+      ARow, ACol: Cardinal; var AValue: Variant; var AStyleCell: PCell);
+    procedure WriteCellNumberHandler(Sender: TsWorksheet;
+      ARow, ACol: Cardinal; var AValue: Variant; var AStyleCell: PCell);
+    procedure WriteCellStringAndNumberHandler(Sender: TsWorksheet;
+      ARow, ACol: Cardinal; var AValue: Variant; var AStyleCell: PCell);
     procedure ReadFromIni;
     procedure WriteToIni;
     procedure RunReadTest(Idx: Integer; Log: String; Options: TsWorkbookOptions);
@@ -116,7 +116,7 @@ begin
     StatusMsg(Format('Virtual mode reading %s: Row %d...', [GetFileFormatName(FCurFormat), ARow]));
 end;
 
-procedure TForm1.WriteCellStringHandler(Sender: TObject; ARow, ACol: cardinal;
+procedure TForm1.WriteCellStringHandler(Sender: TsWorksheet; ARow, ACol: cardinal;
   var AValue: variant; var AStyleCell: PCell);
 var
   S: string;
@@ -128,7 +128,7 @@ begin
     StatusMsg(Format('Virtual mode writing %s: Row %d...', [GetFileFormatName(FCurFormat), ARow]));
 end;
 
-procedure TForm1.WriteCellNumberHandler(Sender: TObject; ARow, ACol: cardinal;
+procedure TForm1.WriteCellNumberHandler(Sender: TsWorksheet; ARow, ACol: cardinal;
   var AValue: variant; var AStyleCell: PCell);
 begin
   UnUsed(AStyleCell);
@@ -137,8 +137,8 @@ begin
     StatusMsg(Format('Virtual mode writing %s: Row %d...', [GetFileFormatName(FCurFormat), ARow]));
 end;
 
-procedure TForm1.WriteCellStringAndNumberHandler(Sender: TObject; ARow, ACol: cardinal;
-  var AValue: variant; var AStyleCell: PCell);
+procedure TForm1.WriteCellStringAndNumberHandler(Sender: TsWorksheet;
+  ARow, ACol: cardinal; var AValue: variant; var AStyleCell: PCell);
 begin
   if odd(ARow + ACol) then
     WriteCellStringHandler(Sender, ARow, ACol, AValue, AStyleCell)
@@ -257,12 +257,12 @@ begin
     try
       if boVirtualMode in Options then
       begin
-        MyWorkbook.VirtualRowCount := Rows;
-        MyWorkbook.VirtualColCount := numCols;
+        MyWorksheet.VirtualRowCount := Rows;
+        MyWorksheet.VirtualColCount := numCols;
         case RgContent.ItemIndex of
-          0: MyWorkbook.OnWriteCellData := @WriteCellStringHandler;
-          1: MyWorkbook.OnWriteCellData := @WriteCellNumberHandler;
-          2: MyWorkbook.OnWriteCellData := @WriteCellStringAndNumberHandler;
+          0: MyWorksheet.OnWriteCellData := @WriteCellStringHandler;
+          1: MyWorksheet.OnWriteCellData := @WriteCellNumberHandler;
+          2: MyWorksheet.OnWriteCellData := @WriteCellStringAndNumberHandler;
         end;
       end
       else

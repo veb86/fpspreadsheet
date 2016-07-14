@@ -536,8 +536,8 @@ begin
   begin
     AFirstRow := 0;
     AFirstCol := 0;
-    ALastRow := AWorksheet.Workbook.VirtualRowCount-1;
-    ALastCol := AWorksheet.Workbook.VirtualColCount-1;
+    ALastRow := LongInt(AWorksheet.VirtualRowCount)-1;
+    ALastCol := LongInt(AWorksheet.VirtualColCount)-1;
   end else
   begin
     Workbook.UpdateCaches;
