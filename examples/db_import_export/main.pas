@@ -69,7 +69,7 @@ type
     procedure ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
       const ADataCell: PCell);
     // Virtual mode: for writing: all data for the cells is generated here (out of the .dbf file)
-    procedure WriteCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
+    procedure WriteCellDataHandler(Sender: TsWorksheet; ARow, ACol: Cardinal;
       var AValue: variant; var AStyleCell: PCell);
   public
     { public declarations }
@@ -491,9 +491,9 @@ begin
     // Setup virtual mode to save memory
 //    FWorkbook.Options := FWorkbook.Options + [boVirtualMode, boBufStream];
     FWorkbook.Options := FWorkbook.Options + [boVirtualMode];
-    FWorkbook.OnWriteCellData := @WriteCellDataHandler;
-    FWorkbook.VirtualRowCount := FExportDataset.RecordCount + 1;  // +1 for the header line
-    FWorkbook.VirtualColCount := FExportDataset.FieldCount;
+    worksheet.OnWriteCellData := @WriteCellDataHandler;
+    worksheet.VirtualRowCount := FExportDataset.RecordCount + 1;  // +1 for the header line
+    worksheet.VirtualColCount := FExportDataset.FieldCount;
 
     // Write
     DataFileName := ChangeFileExt(DataFileName, FILE_EXT[
@@ -599,7 +599,7 @@ end;
 { This is the event handler for exporting a database file to spreadsheet format
   in virtual mode. Data are not written into the worksheet, they exist only
   temporarily. }
-procedure TForm1.WriteCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
+procedure TForm1.WriteCellDataHandler(Sender: TsWorksheet; ARow, ACol: Cardinal;
   var AValue: variant; var AStyleCell: PCell);
 begin
   // Header line: we want to show the field names here.
@@ -616,7 +616,7 @@ begin
     AValue := FExportDataset.Fields[ACol].Value;
     if FExportDataset.Fields[ACol].DataType = ftDate then
       AStyleCell := FDateTemplateCell;
-    if ACol = FWorkbook.VirtualColCount-1 then
+    if ACol = Sender.VirtualColCount-1 then
     begin
       // Move to next record after last field has been written
       FExportDataset.Next;
