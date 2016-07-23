@@ -2441,24 +2441,28 @@ begin
 
   if (ACol < FHeaderCount) or (ARow < FHeaderCount) then
     lCell := nil
-  else
-    lCell := FDrawingCell;
+  else begin
+    if FDrawingCell = nil then
+      lCell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol))
+    else
+      lCell := FDrawingCell
+  end;
 
   // Header
-  if lCell = nil then
+  if (lCell = nil) and ShowHeaders and ((ACol = 0) or (ARow = 0)) then
   begin
-    if ShowHeaders and ((ACol = 0) or (ARow = 0)) then
-    begin
-      ts.Alignment := taCenter;
-      ts.Layout := tlCenter;
-      ts.Opaque := false;
-      Canvas.TextStyle := ts;
-    end;
+    ts.Alignment := taCenter;
+    ts.Layout := tlCenter;
+    ts.Opaque := false;
+    Canvas.TextStyle := ts;
     inherited DrawCellText(aCol, aRow, aRect, aState, GetCellText(ACol,ARow));
     exit;
   end;
 
   // Cells
+  if lCell = nil then
+    exit;
+
   txt := GetCellText(GetGridRow(lCell^.Col), GetGridCol(lCell^.Row));
   if txt = '' then
     exit;
