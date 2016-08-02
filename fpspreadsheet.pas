@@ -8595,6 +8595,7 @@ begin
         end;
       end;
       // Select all copied cells
+      sel := Range(Cardinal(-1), Cardinal(-1), Cardinal(-1), Cardinal(-1));
       SetLength(selArray, nselS);
       for i := 0 to nselS-1 do
       begin
@@ -8615,14 +8616,15 @@ begin
         r := sel.Row2;
         c := sel.Col2;
       end;
-      ActiveWorksheet.SelectCell(r + dr, c + dc);
+      if (r <> -1) and (c <> -1) then
+        ActiveWorksheet.SelectCell(r + dr, c + dc);
     end
     else
     // -------------------------------------------------------------------------
     // Case (2): Source is a single block (not necessarily a cell), Dest can be
     //           any shape --> source is tiled into destination
     // -------------------------------------------------------------------------
-    if nselS = 1 then
+//    if nselS = 1 then
     begin
       // size of source block
       with clipsheet do
@@ -8672,13 +8674,15 @@ begin
         end;  // while r...
       end;  // for i
       // No need to select copied cells - they already are.
-    end
+    end ;
+    {
     else
     // -------------------------------------------------------------------------
     // Other arrangements of source and destination are not supported
     // -------------------------------------------------------------------------
       raise Exception.Create('This arrangement of source and destination '+
                              'cells in not supported for copy & paste');
+                             }
   finally
     clipbook.Free;
   end;
