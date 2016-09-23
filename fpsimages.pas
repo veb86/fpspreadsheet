@@ -894,10 +894,11 @@ function TsEmbeddedObj.LoadFromStream(AStream: TStream; AName: String;
 begin
   FreeAndNil(FStream);
   FStream := TMemoryStream.Create;
-  if ASize = -1 then
-    FStream.LoadFromStream(AStream)
-  else
-    FStream.CopyFrom(AStream, ASize);
+  if ASize = -1 then begin
+    ASize := AStream.Size;
+    AStream.Position := 0;
+  end;
+  FStream.CopyFrom(AStream, ASize);
   Result := CheckStream(itUnknown);
   if Result then FFileName := AName;
 end;
