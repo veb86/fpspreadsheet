@@ -529,11 +529,11 @@ type
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
       AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
     function WriteImage(ARow, ACol: Cardinal; AStream: TStream;
-      AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
-      AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
+      AOffsetX: Double = 0.0; AOffsetY: Double = 0.0; AScaleX: Double = 1.0;
+      AScaleY: Double = 1.0; ASize: Int64 = -1): Integer; overload;
     function WriteImage(ARow, ACol: Cardinal; AImageIndex: Integer;
-      AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
-      AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
+      AOffsetX: Double = 0.0; AOffsetY: Double = 0.0; AScaleX: Double = 1.0;
+      AScaleY: Double = 1.0): Integer; overload;
 
     // Notification of changed cells
     procedure ChangedCell(ARow, ACol: Cardinal);
@@ -800,7 +800,7 @@ type
     { Embedded objects }
     function AddEmbeddedObj(const AFileName: String): Integer; overload;
     function AddEmbeddedObj(AStream: TStream;
-      const AName: String = ''): Integer; overload;
+      const AName: String = ''; ASize: Int64 = -1): Integer; overload;
     function FindEmbeddedObj(const AFileName: String): Integer;
     function GetEmbeddedObj(AIndex: Integer): TsEmbeddedObj;
     function GetEmbeddedObjCount: Integer;
@@ -3569,16 +3569,19 @@ end;
                      Value is in workbook units.
   @param  AScaleX    Horizontal scaling factor of the image
   @param  AScaleY    Vertical scaling factor of the image
+  @param  ASize      Number ob bytes to be read from the input stream.
   @return Index into the internal image list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AStream: TStream;
   AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
-  AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0;
+  ASize: Int64 = -1): Integer;
 var
   idx: Integer;
 begin
   // Copy the stream to a new item in embedded object list.
-  idx := Workbook.AddEmbeddedObj(AStream);
+  idx := Workbook.AddEmbeddedObj(AStream, '', ASize);
+
   // An error has occured? Error is already logged. Just exit.
   if idx = -1 then
     exit;
@@ -8723,12 +8726,12 @@ end;
   Returns the index of the embedded object.
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddEmbeddedObj(AStream: TStream;
-  const AName: String = ''): Integer;
+  const AName: String = ''; ASize: Int64 = -1): Integer;
 var
   obj: TsEmbeddedObj = nil;
 begin
   obj := TsEmbeddedObj.Create;
-  if obj.LoadFromStream(AStream, AName) then
+  if obj.LoadFromStream(AStream, AName, ASize) then
   begin
     obj.ImageWidth := ConvertUnits(obj.ImageWidth, suInches, FUnits);
     obj.ImageHeight := ConvertUnits(obj.ImageHeight, suInches, FUnits);

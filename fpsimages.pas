@@ -51,7 +51,8 @@ type
   public
     destructor Destroy; override;
     function LoadFromFile(const AFileName: String): Boolean;
-    function LoadFromStream(AStream: TStream; AName: String): Boolean;
+    function LoadFromStream(AStream: TStream; AName: String;
+      ASize: Int64 = -1): Boolean;
     property FileName: String read FFileName;
     property ImageType: TsImagetype read FImageType;
     property ImageWidth: Double read FWidth write FWidth;
@@ -888,11 +889,15 @@ begin
   end;
 end;
 
-function TsEmbeddedObj.LoadFromStream(AStream: TStream; AName: String): Boolean;
+function TsEmbeddedObj.LoadFromStream(AStream: TStream; AName: String;
+  ASize: Int64 = -1): Boolean;
 begin
   FreeAndNil(FStream);
   FStream := TMemoryStream.Create;
-  FStream.CopyFrom(AStream, AStream.Size);
+  if ASize = -1 then
+    FStream.LoadFromStream(AStream)
+  else
+    FStream.CopyFrom(AStream, ASize);
   Result := CheckStream(itUnknown);
   if Result then FFileName := AName;
 end;
