@@ -1421,7 +1421,7 @@ begin
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
 
-  FWorksheet.WriteText(cell, FSharedStringTable[SSTIndex]);
+  FWorksheet.WriteText(cell, FSharedStringTable.Strings[SSTIndex]);
 
   { Add attributes }
   ApplyCellFormatting(cell, XF);
@@ -1429,6 +1429,7 @@ begin
   { Add rich text formatting }
   ms := TMemoryStream(FSharedStringTable.Objects[SSTIndex]);
   if ms <> nil then begin
+    ms.Position := 0;
     n := WordLEToN(ms.ReadWord);
     SetLength(rtParams, n);
     ms.ReadBuffer(rtParams[0], n*SizeOf(TsRichTextParam));
