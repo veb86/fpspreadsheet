@@ -17,7 +17,7 @@ type
 
   TSpreadVirtualModeTests= class(TTestCase)
   private
-    procedure WriteVirtualCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
+    procedure WriteVirtualCellDataHandler(Sender: TsWorksheet; ARow, ACol: Cardinal;
       var AValue:Variant; var AStyleCell: PCell);
   protected
     // Set up expected values:
@@ -56,7 +56,7 @@ procedure TSpreadVirtualModeTests.TearDown;
 begin
 end;
 
-procedure TSpreadVirtualModeTests.WriteVirtualCellDataHandler(Sender: TObject;
+procedure TSpreadVirtualModeTests.WriteVirtualCellDataHandler(Sender: TsWorksheet;
   ARow, ACol: Cardinal; var AValue:Variant; var AStyleCell: PCell);
 begin
   Unused(ACol);
@@ -86,10 +86,10 @@ begin
       workbook.Options := workbook.Options + [boVirtualMode];
       if ABufStreamMode then
         workbook.Options := workbook.Options + [boBufStream];
-      workbook.VirtualColCount := 1;
-      workbook.VirtualRowCount := Length(SollNumbers) + 4;
+      worksheet.VirtualColCount := 1;
+      worksheet.VirtualRowCount := Length(SollNumbers) + 4;
       // We'll use only the first 4 SollStrings, the others cause trouble due to utf8 and formatting.
-      workbook.OnWriteCellData := @WriteVirtualCellDataHandler;
+      worksheet.OnWriteCellData := @WriteVirtualCellDataHandler;
       tempFile:=NewTempFile;
       workbook.WriteToFile(tempfile, AFormat, true);
     finally
