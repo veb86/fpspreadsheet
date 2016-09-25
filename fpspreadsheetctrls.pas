@@ -233,11 +233,13 @@ type
   private
     FWorkbookSource: TsWorkbookSource;
     FShowHTMLText: Boolean;
+    FOldText: String;
     function GetSelectedCell: PCell;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
   protected
+    procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure ShowCell(ACell: PCell); virtual;
   public
@@ -1855,6 +1857,23 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Inherited KeyDown method. Overridden here in order to be able to restore the
+  old cell content if ESC is pressed.
+-------------------------------------------------------------------------------}
+procedure TsCellEdit.KeyDown(var Key: Word; Shift : TShiftState);
+var
+  selpos: Integer;
+begin
+  if Key = VK_ESCAPE then begin
+    selpos := SelStart;
+    Lines.Text := FOldText;
+    SelStart := selpos;
+    exit;
+  end;
+  inherited;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Notification message received from the WorkbookSource telling which item
   of the spreadsheet has changed.
   Responds to selection and cell changes by updating the cell content.
@@ -1962,6 +1981,7 @@ begin
       end;
   end else
     Clear;
+  FOldText := Lines.Text;
 end;
 
 
