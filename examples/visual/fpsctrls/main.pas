@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   ComCtrls, ActnList, Menus, StdActns, Buttons,
   fpstypes, fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions,
-  fpsRegFileFormats, fpsSYLK, xlsxml;
+  fpsRegFileFormats, fpsSYLK, xlsxml, Grids;
 
 type
 
@@ -407,7 +407,7 @@ implementation
 {$R *.lfm}
 
 uses
-  LCLIntf, inifiles, uriparser, Grids,
+  LCLIntf, inifiles, uriparser,
   fpsUtils, fpsCSV,
   sCSVParamsForm, sCurrencyForm, sFormatSettingsForm, sSortParamsForm,
   sHyperlinkForm, sNumFormatForm, sSearchForm;

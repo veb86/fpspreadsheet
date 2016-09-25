@@ -3152,8 +3152,20 @@ begin
 end;
 
 function TsCustomWorksheetGrid.GetCells(ACol, ARow: Integer): String;
+var
+  msg: TGridMessage;
 begin
-  Result := GetCellText(ACol, ARow);
+  if (Editor <> nil) and Editor.Visible then
+  begin
+    msg.LclMsg.msg := GM_GETVALUE;
+    msg.Grid := Self;
+    msg.Col := ACol;
+    msg.Row := ARow;
+    msg.Value := ''; //GetCells(FCol, FRow);
+    Editor.Dispatch(msg);
+    Result := msg.value;
+  end else
+    Result := GetCellText(ACol, ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
