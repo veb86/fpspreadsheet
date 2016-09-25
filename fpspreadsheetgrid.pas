@@ -487,7 +487,7 @@ type
     {@@ Automatically recalculates the worksheet if a cell value changes. }
     property AutoCalc;
     {@@ Automatically expand grid dimensions }
-    property AutoExpand default [aeData];
+    property AutoExpand default [aeData, aeNavigation];
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow; deprecated 'Use ShowHeaders';
@@ -987,7 +987,7 @@ begin
   FSelPen.Color := clBlack;
   FSelPen.JoinStyle := pjsMiter;
   FSelPen.OnChange := @SelPenChangeHandler;
-  FAutoExpand := [aeData];
+  FAutoExpand := [aeData, aeNavigation];
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
   FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
@@ -1084,7 +1084,7 @@ begin
     if (AMode in FAutoExpand) then
       ColCount := ACol + 1
     else
-      raise Exception.Create(rsOperationExceedsColCount);
+      raise Exception.CreateFmt(rsOperationExceedsColCount, [ACol, ColCount]);
   end;
 end;
 
@@ -1099,7 +1099,7 @@ begin
     if (AMode in FAutoExpand) then
       RowCount := ARow + 1
     else
-      raise Exception.Create(rsOperationExceedsRowCount);
+      raise Exception.CreateFmt(rsOperationExceedsRowCount, [ARow, RowCount]);
   end;
 end;
 

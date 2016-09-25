@@ -8,7 +8,7 @@ msgstr ""
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 1.8.7\n"
+"X-Generator: Poedit 1.8.9\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Language: de\n"
 
@@ -297,12 +297,12 @@ msgid "Only one image per %s section allowed."
 msgstr "Nur ein Bild ist erlaubt pro %s Abschnitt."
 
 #: fpsstrings.rsoperationexceedscolcount
-msgid "This operation exceeds the range of defined grid columns."
-msgstr "Diese Operation überschreitet den Bereich der definierten Spalten."
+msgid "This operation at index %d exceeds the range of defined grid columns (%d)."
+msgstr "Diese Operation bei Index %d überschreitet den Bereich der definierten Spalten (%d)."
 
 #: fpsstrings.rsoperationexceedsrowcount
-msgid "This operation exceeds the range of defined grid rows."
-msgstr "Diese Operation überschreitet den Bereich der definierten Zeilen."
+msgid "This operation at index %d exceeds the range of defined grid rows (%d)."
+msgstr "Diese Operation bei Index %d überschreitet den Bereich der definierten Zeilen (%d)."
 
 #: fpsstrings.rspaletteindex
 msgid "Palette index %d"

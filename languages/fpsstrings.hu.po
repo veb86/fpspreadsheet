@@ -296,11 +296,15 @@ msgid "Only one image per %s section allowed."
 msgstr "Csak egy kép lehet %s szakaszonként."
 
 #: fpsstrings.rsoperationexceedscolcount
-msgid "This operation exceeds the range of defined grid columns."
+#, fuzzy
+#| msgid "This operation exceeds the range of defined grid columns."
+msgid "This operation at index %d exceeds the range of defined grid columns (%d)."
 msgstr "A művelet túllépi a rács oszlopainak tartományát."
 
 #: fpsstrings.rsoperationexceedsrowcount
-msgid "This operation exceeds the range of defined grid rows."
+#, fuzzy
+#| msgid "This operation exceeds the range of defined grid rows."
+msgid "This operation at index %d exceeds the range of defined grid rows (%d)."
 msgstr "A művelet túllépi a rács sorainak tartományát."
 
 #: fpsstrings.rspaletteindex

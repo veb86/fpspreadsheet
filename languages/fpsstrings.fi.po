@@ -286,11 +286,11 @@ msgid "Only one image per %s section allowed."
 msgstr ""
 
 #: fpsstrings.rsoperationexceedscolcount
-msgid "This operation exceeds the range of defined grid columns."
+msgid "This operation at index %d exceeds the range of defined grid columns (%d)."
 msgstr ""
 
 #: fpsstrings.rsoperationexceedsrowcount
-msgid "This operation exceeds the range of defined grid rows."
+msgid "This operation at index %d exceeds the range of defined grid rows (%d)."
 msgstr ""
 
 #: fpsstrings.rspaletteindex

@@ -168,8 +168,8 @@ resourcestring
   rsWorksheetNotFound1 = 'Worksheet not found.';
 
   // WorksheetGrid
-  rsOperationExceedsColCount = 'This operation exceeds the range of defined grid columns.';
-  rsOperationExceedsRowCount = 'This operation exceeds the range of defined grid rows.';
+  rsOperationExceedsColCount = 'This operation at index %d exceeds the range of defined grid columns (%d).';
+  rsOperationExceedsRowCount = 'This operation at index %d exceeds the range of defined grid rows (%d).';
 
   // Export
   rsExportFileIsRequired = 'Export file name is required.';

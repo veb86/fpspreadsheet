@@ -27,6 +27,7 @@ object MainForm: TMainForm
       Height = 493
       Top = 23
       Width = 690
+      AutoExpand = [aeData, aeNavigation]
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = True
