@@ -292,9 +292,12 @@ type
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
-      AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer = -1); overload;
+      AFormatID: TsSpreadFormatID = sfidUnknown;
+      AWorksheetIndex: Integer = -1); overload;
+    {
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AWorksheetIndex: Integer = -1); overload;
+      }
     procedure LoadFromWorkbook(AWorkbook: TsWorkbook; AWorksheetIndex: Integer = -1);
     procedure NewWorkbook(AColCount, ARowCount: Integer);
     procedure SaveToSpreadsheetFile(AFileName: string;
@@ -3913,15 +3916,16 @@ end;
 
   @param   AFileName        Name of the file to be loaded
   @param   AFormatID        Spreadsheet file format identifier assumed for the file
+                            (automatic detection if empty)
   @param   AWorksheetIndex  Index of the worksheet to be displayed in the grid
                             (If empty then the active worksheet is loaded)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
-  AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer);
+  AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1);
 begin
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormatID, AWorksheetIndex);
 end;
-
+                                                          (*
 {@@ ----------------------------------------------------------------------------
   Creates a new workbook and loads the given file into it. The file format
   is determined automatically. Shows the sheet with the given sheet index.
@@ -3934,7 +3938,7 @@ procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AWorksheetIndex: Integer);
 begin
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AWorksheetIndex);
-end;
+end;                                                        *)
 
 {@@ ----------------------------------------------------------------------------
   Loads an existing workbook into the grid.
