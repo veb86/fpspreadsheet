@@ -277,7 +277,8 @@ type
     procedure AutoRowHeight(ARow: Integer);
     function CellRect(ACol1, ARow1, ACol2, ARow2: Integer): TRect; overload;
     procedure Clear;
-    procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect; AState: TGridDrawState); override;
+    procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect;
+      AState: TGridDrawState); override;
     procedure DeleteCol(AGridCol: Integer); reintroduce;
     procedure DeleteRow(AGridRow: Integer); reintroduce;
     procedure EditingDone; override;
@@ -292,12 +293,9 @@ type
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
-      AFormatID: TsSpreadFormatID = sfidUnknown;
-      AWorksheetIndex: Integer = -1); overload;
-    {
-    procedure LoadFromSpreadsheetFile(AFileName: string;
-      AWorksheetIndex: Integer = -1); overload;
-      }
+      AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1); overload;
+    procedure LoadSheetFromSpreadsheetFile(AFileName: String;
+      AWorksheetIndex: Integer = -1; AFormatID: TsSpreadFormatID = sfidUnknown);
     procedure LoadFromWorkbook(AWorkbook: TsWorkbook; AWorksheetIndex: Integer = -1);
     procedure NewWorkbook(AColCount, ARowCount: Integer);
     procedure SaveToSpreadsheetFile(AFileName: string;
@@ -3913,8 +3911,8 @@ end;
   Call this method for both built-in and user-provided file formats.
 
   @param   AFileName        Name of the file to be loaded
-  @param   AFormatID        Spreadsheet file format identifier assumed for the file
-                            (automatic detection if empty)
+  @param   AFormatID        Spreadsheet file format identifier assumed for the
+                            file (automatic detection if empty)
   @param   AWorksheetIndex  Index of the worksheet to be displayed in the grid
                             (If empty then the active worksheet is loaded)
 -------------------------------------------------------------------------------}
@@ -3923,20 +3921,22 @@ procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
 begin
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormatID, AWorksheetIndex);
 end;
-                                                          (*
+
 {@@ ----------------------------------------------------------------------------
-  Creates a new workbook and loads the given file into it. The file format
-  is determined automatically. Shows the sheet with the given sheet index.
+  Creates a new workbook and loads the given file into it. Shows the sheet
+  with the specified sheet index. The file format is determined automatically.
 
   @param   AFileName        Name of the file to be loaded
   @param   AWorksheetIndex  Index of the worksheet to be shown in the grid
                             (If empty then the active worksheet is loaded)
+  @param   AFormatID        Spreadsheet file format identifier assumed for the
+                            file (automatic detection if empty)
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
-  AWorksheetIndex: Integer);
+procedure TsCustomWorksheetGrid.LoadSheetFromSpreadsheetFile(AFileName: String;
+  AWorksheetIndex: Integer = -1; AFormatID: TsSpreadFormatID = sfidUnknown);
 begin
-  GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AWorksheetIndex);
-end;                                                        *)
+  GetWorkbookSource.LoadFromSpreadsheetFile(AFilename, AFormatID, AWorksheetIndex);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Loads an existing workbook into the grid.
