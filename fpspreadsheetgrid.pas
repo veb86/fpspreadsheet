@@ -62,7 +62,6 @@ type
     FFrozenCols: Integer;
     FFrozenRows: Integer;
     FEditText: String;
-    FOldEditText: String;
     FLockCount: Integer;
     FLockSetup: Integer;
     FEditing: Boolean;
@@ -108,7 +107,7 @@ type
     function GetCellFontSizes(ALeft, ATop, ARight, ABottom: Integer): Single;
     function GetCellFontStyle(ACol, ARow: Integer): TsFontStyles;
     function GetCellFontStyles(ALeft, ATop, ARight, ABottom: Integer): TsFontStyles;
-    function GetCells(ACol, ARow: Integer): variant; reintroduce;
+    function GetCellValue(ACol, ARow: Integer): variant;
     function GetColWidths(ACol: Integer): Integer;
     function GetDefColWidth: Integer;
     function GetDefRowHeight: Integer;
@@ -151,7 +150,7 @@ type
     procedure SetCellFontStyle(ACol, ARow: Integer; AValue: TsFontStyles);
     procedure SetCellFontStyles(ALeft, ATop, ARight, ABottom: Integer;
       AValue: TsFontStyles);
-    procedure SetCells(ACol, ARow: Integer; AValue: variant);
+    procedure SetCellValue(ACol, ARow: Integer; AValue: variant);
     procedure SetColWidths(ACol: Integer; AValue: Integer);
     procedure SetDefColWidth(AValue: Integer);
     procedure SetDefRowHeight(AValue: Integer);
@@ -213,6 +212,7 @@ type
     procedure ExecuteHyperlink;
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellHintText(ACol, ARow: Integer): String; override;
+    function GetCells(ACol, ARow: Integer): String; override;
     function GetCellText(ACol, ARow: Integer): String;
     function GetEditText(ACol, ARow: Integer): String; override;
     function GetDefaultHeaderColWidth: Integer;
@@ -230,7 +230,7 @@ type
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MoveSelection; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-    procedure SelectEditor; override;
+//    procedure SelectEditor; override;
     procedure SelPenChangeHandler(Sender: TObject);
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
@@ -409,7 +409,7 @@ type
         read GetCellFontSizes write SetCellFontSizes;
     {@@ Cell values }
     property Cells[ACol, ARow: Integer]: Variant
-        read GetCells write SetCells;
+        read GetCellValue write SetCellValue;
     {@@ Parameter for horizontal text alignment within the cell at column ACol
         and row ARow }
     property HorAlignment[ACol, ARow: Integer]: TsHorAlignment
@@ -3153,6 +3153,11 @@ begin
     OnGetCellHint(self, ACol, ARow, Result);
 end;
 
+function TsCustomWorksheetGrid.GetCells(ACol, ARow: Integer): String;
+begin
+  Result := GetCellText(ACol, ARow);
+end;
+
 {@@ ----------------------------------------------------------------------------
   This function returns the text to be shown in a grid cell. The text is looked
   up in the corresponding cell of the worksheet by calling its ReadAsUTF8Text
@@ -3840,13 +3845,6 @@ begin
       end;
     VK_F2:
       FEnhEditMode := true;
-    VK_ESCAPE:
-      if FEditing then
-      begin
-        SetEditText(Col, Row, FOldEditText);
-        EditorHide;
-        exit;
-      end;
   end;
 
   inherited;
@@ -4293,17 +4291,6 @@ procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
 begin
   if Workbook <> nil then
     Workbook.WriteToFile(AFileName, AOverwriteExisting);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Standard method inherited from TCustomGrid: Is called when editing starts.
-  Is overridden here to store the old text just in case that the user presses
-  ESC to cancel editing.
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.SelectEditor;
-begin
-  FOldEditText := GetCellText(Col, Row);
-  inherited;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4881,7 +4868,7 @@ begin
     end;
 end;
 
-function TsCustomWorksheetGrid.GetCells(ACol, ARow: Integer): variant;
+function TsCustomWorksheetGrid.GetCellValue(ACol, ARow: Integer): variant;
 var
   cell: PCell;
 begin
@@ -5440,7 +5427,7 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.SetCells(ACol, ARow: Integer; AValue: Variant);
+procedure TsCustomWorksheetGrid.SetCellValue(ACol, ARow: Integer; AValue: Variant);
 var
   cell: PCell = nil;
   fmt: PsCellFormat = nil;
