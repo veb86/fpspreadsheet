@@ -666,6 +666,7 @@ var
   AnsiStrValue: ansistring;
   RunsCounter: WORD;
   AsianPhoneticBytes: DWORD;
+  rtf_dummy: TsRichTextParams;
   i: Integer;
   j: Integer; //j: SizeUInt;
   lLen: SizeInt;
@@ -692,6 +693,13 @@ begin
       SetLength(Result, PendingRecordSize div 2);
       AStream.ReadBuffer(Result[1], PendingRecordSize);
       Dec(PendingRecordSize, PendingRecordSize);
+      // We reached the end of the record and switch to the CONTINUE record
+      recType := WordLEToN(AStream.ReadWord);
+      recSize := WordLEToN(AStream.ReadWord);
+      if recType <> INT_EXCEL_ID_CONTINUE then
+        raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
+      PendingRecordSize := recSize;
+      Result := Result + ReadWideString(AStream, ALength - Length(Result), rtf_dummy);
     end else begin
       SetLength(Result, ALength);
       AStream.ReadBuffer(Result[1], ALength * SizeOf(WideChar));
