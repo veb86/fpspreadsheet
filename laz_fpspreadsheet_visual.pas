@@ -4,7 +4,6 @@
 
 unit laz_fpspreadsheet_visual;
 
-{$warn 5023 off : no warning about unused units}
 interface
 
 uses

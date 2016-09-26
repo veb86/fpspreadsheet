@@ -19,15 +19,18 @@ function WrapText(ACanvas: TCanvas; const AText: string; AMaxWidth: integer): st
 procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRect;
   const AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
   AWordwrap: Boolean; AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
-  ARotation: TsTextRotation; AOverrideTextColor: TColor; ARightToLeft: Boolean);
+  ARotation: TsTextRotation; AOverrideTextColor: TColor; ARightToLeft: Boolean;
+  AZoomFactor: Double);
 
 function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
   const AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
-  ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean): Integer;
+  ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean;
+  AZoomFactor: Double): Integer;
 
 function RichTextHeight(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
   const AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
-  ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean): Integer;
+  ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean;
+  AZoomFactor: Double): Integer;
 
 type
   TsLineInfo = class
@@ -65,6 +68,7 @@ type
     FCharIndexOfNextFont: Integer;
     FFontHeight: Integer;
     FFontPos: TsFontPosition;
+    FZoomFactor: Double;
 
   private
     function GetHeight: Integer;
@@ -91,7 +95,8 @@ type
     constructor Create(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
       AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
       ATextRotation: TsTextRotation; AHorAlignment: TsHorAlignment;
-      AVertAlignment: TsVertAlignment; AWordWrap, ARightToLeft: Boolean);
+      AVertAlignment: TsVertAlignment; AWordWrap, ARightToLeft: Boolean;
+      AZoomFactor: Double);
     destructor Destroy; override;
     procedure Draw(AOverrideTextColor: TColor);
     property Height: Integer read GetHeight;
@@ -244,7 +249,8 @@ end;
 procedure DrawRichText(ACanvas: TCanvas; AWorkbook: TsWorkbook; const ARect: TRect;
   const AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
   AWordwrap: Boolean; AHorAlignment: TsHorAlignment; AVertAlignment: TsVertAlignment;
-  ARotation: TsTextRotation; AOverrideTextColor: TColor; ARightToLeft: Boolean);
+  ARotation: TsTextRotation; AOverrideTextColor: TColor; ARightToLeft: Boolean;
+  AZoomFactor: Double);
 var
   painter: TsTextPainter;
 begin
@@ -252,7 +258,8 @@ begin
     exit;
 
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
-    AFontIndex, ARotation, AHorAlignment, AVertAlignment, AWordWrap, ARightToLeft);
+    AFontIndex, ARotation, AHorAlignment, AVertAlignment, AWordWrap, ARightToLeft,
+    AZoomFactor);
   try
     painter.Draw(AOverrideTextColor);
   finally
@@ -262,7 +269,8 @@ end;
 
 function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
   const AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
-  ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean): Integer;
+  ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean;
+  AZoomFactor: Double): Integer;
 var
   painter: TsTextPainter;
 begin
@@ -270,7 +278,7 @@ begin
     exit(0);
 
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
-    AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft);
+    AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft, AZoomFactor);
   try
     Result := painter.Width;
   finally
@@ -280,7 +288,8 @@ end;
 
 function RichTextHeight(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
   const AText: String; ARichTextParams: TsRichTextParams; AFontIndex: Integer;
-  ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean): Integer;
+  ATextRotation: TsTextRotation; AWordWrap, ARightToLeft: Boolean;
+  AZoomFactor: Double): Integer;
 var
   painter: TsTextPainter;
 begin
@@ -288,7 +297,7 @@ begin
     exit(0);
 
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
-    AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft);
+    AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft, AZoomFactor);
   try
     Result := painter.Height;
   finally
@@ -325,7 +334,8 @@ end;
 constructor TsTextPainter.Create(ACanvas: TCanvas; AWorkbook: TsWorkbook;
   ARect: TRect; AText: String; ARichTextParams: TsRichTextParams;
   AFontIndex: Integer; ATextRotation: TsTextRotation; AHorAlignment: TsHorAlignment;
-  AVertAlignment: TsVertAlignment; AWordWrap, ARightToLeft: Boolean);
+  AVertAlignment: TsVertAlignment; AWordWrap, ARightToLeft: Boolean;
+  AZoomFactor: Double);
 begin
   FLines := TFPList.Create;
   FCanvas := ACanvas;
@@ -339,6 +349,7 @@ begin
   FVertAlignment := AVertAlignment;
   FWordwrap := AWordwrap;
   FRightToLeft := ARightToLeft;
+  FZoomfactor := AZoomFactor;
   Prepare;
 end;
 
@@ -705,9 +716,10 @@ begin
     ACharIndexOfNextFont := FRtParams[0].FirstIndex;
   end;
   Convert_sFont_to_Font(fnt, FCanvas.Font);
+  FCanvas.Font.Height := round(FZoomFactor * FCanvas.Font.Height);
   ACurrFontHeight := FCanvas.TextHeight('Tg');
   if (fnt <> nil) and (fnt.Position <> fpNormal) then
-    FCanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
+    FCanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR * FZoomFactor);
   ACurrFontPos := fnt.Position;
 end;
 

@@ -137,6 +137,7 @@ type
     FPageLayout: TsPageLayout;
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
+    FZoomFactor: Double;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnCompareCells: TsCellCompareEvent;
@@ -590,6 +591,8 @@ type
     property  LeftPaneWidth: Integer read FLeftPaneWidth write FLeftPaneWidth;
     {@@ Number of frozen rows which do not scroll }
     property  TopPaneHeight: Integer read FTopPaneHeight write FTopPaneHeight;
+    {@@ Zoom factor }
+    property  ZoomFactor: Double read FZoomFactor write FZoomFactor;
     {@@ Event fired when cell contents or formatting changes }
     property  OnChangeCell: TsCellEvent read FOnChangeCell write FOnChangeCell;
     {@@ Event fired when the font size in a cell changes }
@@ -1051,6 +1054,7 @@ begin
 
   FDefaultColWidth := ptsToMM(72);   // Excel: about 72 pts
   FDefaultRowHeight := ptsToMM(15);  // Excel: 15pts
+  FZoomFactor := 1.0;
 
   FFirstRowIndex := UNASSIGNED_ROW_COL_INDEX;
   FFirstColIndex := UNASSIGNED_ROW_COL_INDEX;

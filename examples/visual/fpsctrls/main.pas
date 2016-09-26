@@ -8,7 +8,7 @@ uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, ExtCtrls,
   ComCtrls, ActnList, Menus, StdActns, Buttons,
   fpstypes, fpspreadsheet, fpspreadsheetctrls, fpspreadsheetgrid, fpsActions,
-  fpsRegFileFormats, fpsSYLK, xlsxml, Grids;
+  fpsRegFileFormats, fpsSYLK, xlsxml, Grids, Types;
 
 type
 
@@ -383,6 +383,8 @@ type
     procedure InspectorTabControlChange(Sender: TObject);
     procedure WorksheetGridClickHyperlink(Sender: TObject;
       const AHyperlink: TsHyperlink);
+    procedure WorksheetGridMouseWheel(Sender: TObject; Shift: TShiftState;
+      WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
   private
     { private declarations }
     FOpenFormats: TsSpreadFormatIDArray;
@@ -842,6 +844,21 @@ begin
       OpenUrl(AHyperlink.Target);
     else
       ShowMessage('Hyperlink ' + AHyperlink.Target + ' clicked');
+  end;
+end;
+
+procedure TMainForm.WorksheetGridMouseWheel(Sender: TObject;
+  Shift: TShiftState; WheelDelta: Integer; MousePos: TPoint;
+  var Handled: Boolean);
+const
+  GROWTH_FACTOR = 1.05;
+begin
+  if ([ssCtrl, ssShift] * Shift = [ssCtrl, ssShift]) then begin
+    if WheelDelta > 0 then
+      WorksheetGrid.ZoomFactor := GROWTH_FACTOR* WorksheetGrid.ZoomFactor
+    else
+      WorksheetGrid.ZoomFactor := WorksheetGrid.ZoomFactor / GROWTH_FACTOR;
+    Handled := true;
   end;
 end;
 

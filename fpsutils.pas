@@ -140,7 +140,8 @@ function PtsToIn(AValue: Double): Double; inline;
 function PtsToTwips(AValue: Single): Integer; inline;
 function PtsToMM(AValue: Double): Double; inline;
 function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer; inline;
-function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double; inline;
+function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double; inline; overload;
+function pxToPts(AValue: Double; AScreenPixelsPerInch: Integer): Double; inline; overload;
 function TwipsToPts(AValue: Integer): Single; inline;
 function HTMLLengthStrToPts(AValue: String; DefaultUnits: String = 'pt'): Double;
 
@@ -1699,6 +1700,11 @@ end;
 function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double;
 begin
   Result := (AValue / AScreenPixelsPerInch) * 72;
+end;
+
+function pxToPts(AValue: Double; AScreenPixelsPerInch: Integer): Double;
+begin
+  Result := AValue / AScreenPixelsPerInch * 72.0;
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -76,6 +76,9 @@ type
     FSelPen: TsSelPen;
     FHyperlinkTimer: TTimer;
     FHyperlinkCell: PCell;    // Selected cell if it stores a hyperlink
+    FDefRowHeight100: Integer;  // Default row height for 100% zoom factor, in pixels
+    FDefColWidth100: Integer;   // Default col width for 100% zoom factor, in pixels
+    FZoomLock: Integer;
 //    FSetupDelayed: Boolean;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
@@ -128,6 +131,7 @@ type
     function GetWorksheet: TsWorksheet;
     function GetWordwrap(ACol, ARow: Integer): Boolean;
     function GetWordwraps(ALeft, ATop, ARight, ABottom: Integer): Boolean;
+    function GetZoomFactor: Double;
     procedure SetAutoCalc(AValue: Boolean);
     procedure SetBackgroundColor(ACol, ARow: Integer; AValue: TsColor);
     procedure SetBackgroundColors(ALeft, ATop, ARight, ABottom: Integer; AValue: TsColor);
@@ -176,6 +180,7 @@ type
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
     procedure SetWordwrap(ACol, ARow: Integer; AValue: boolean);
     procedure SetWordwraps(ALeft, ATop, ARight, ABottom: Integer; AValue: boolean);
+    procedure SetZoomFactor(AValue: Double);
 
     procedure HyperlinkTimerElapsed(Sender: TObject);
 
@@ -230,7 +235,7 @@ type
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MoveSelection; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
-//    procedure SelectEditor; override;
+    procedure PrepareCanvasFont;
     procedure SelPenChangeHandler(Sender: TObject);
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
@@ -449,6 +454,9 @@ type
         by the rectangle is activated. }
     property Wordwraps[ALeft, ATop, ARight, ABottom: Integer]: Boolean
         read GetWordwraps write SetWordwraps;
+    {@@ Zoomfactor of the grid }
+    property ZoomFactor: Double
+        read GetZoomFactor write SetZoomFactor;
 
     // inherited, but modified
 
@@ -1050,7 +1058,7 @@ begin
     end;
     w := RichTextWidth(Canvas, Workbook, Rect(0, 0, MaxInt, MaxInt),
       txt, cell^.RichTextParams, Worksheet.ReadCellFontIndex(cell),
-      Worksheet.ReadTextRotation(cell), false, RTL);
+      Worksheet.ReadTextRotation(cell), false, RTL, ZoomFactor);
     if w > maxw then maxw := w;
   end;
   if maxw > -1 then
@@ -1067,11 +1075,13 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.AutoAdjustRow(ARow: Integer);
 begin
+  inc(FZoomLock);
   if Worksheet <> nil then
     RowHeights[ARow] := CalcAutoRowHeight(ARow)
   else
     RowHeights[ARow] := DefaultRowHeight;
   HeaderSized(false, ARow);
+  dec(FZoomLock);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1144,9 +1154,9 @@ var
 begin
   h := 0;
   for c := FHeaderCount to ColCount-1 do
-    h := Max(h, GetCellHeight(c, ARow));
+    h := Max(h, GetCellHeight(c, ARow));  // Zoom factor is applied to font size
   if h = 0 then
-    Result := DefaultRowHeight
+    Result := DefaultRowHeight            // Zoom factor applied by getter function
   else
     Result := h;
 end;
@@ -1182,7 +1192,7 @@ begin
   begin
     // The grid's column width is in "pixels", the worksheet's column width
     // has the units defined by the workbook.
-    w_pts := PxToPts(AValue, Screen.PixelsPerInch);
+    w_pts := PxToPts(AValue/ZoomFactor, Screen.PixelsPerInch);
     Result := Workbook.ConvertUnits(w_pts, suPoints, Workbook.Units);
   end;
 end;
@@ -1203,7 +1213,7 @@ begin
   begin
     // The grid's row heights are in "pixels", the worksheet's row height
     // has the units defined by the workbook.
-    h_pts := PxToPts(AValue, Screen.PixelsPerInch);
+    h_pts := PxToPts(AValue/ZoomFactor, Screen.PixelsPerInch);
     Result := Workbook.ConvertUnits(h_pts, suPoints, Workbook.Units);
   end;
 end;
@@ -1587,6 +1597,7 @@ begin
     InflateRect(Rct, -delta, -delta);
     inc(Rct.Top);
     if not odd(FSelPen.Width) then dec(Rct.Left);
+    Editor.Font.Height := Round(Font.Height * ZoomFactor);
     Editor.SetBounds(Rct.Left, Rct.Top, Rct.Right-Rct.Left-1, Rct.Bottom-Rct.Top-1);
   end;
 end;
@@ -1622,6 +1633,7 @@ var
 begin
   GetSelectedState(AState, isSelected);
   Canvas.Font.Assign(Font);
+  Canvas.Font.Height := Round(ZoomFactor * Canvas.Font.Height);
   Canvas.Brush.Bitmap := nil;
   Canvas.Brush.Color := Color;
   ts := Canvas.TextStyle;
@@ -1698,37 +1710,8 @@ begin
       if (uffFont in fmt^.UsedFormattingFields) then
         fnt := Workbook.GetFont(fmt^.FontIndex);
 
-      if fnt <> nil then
-      begin
-        Canvas.Font.Name := fnt.FontName;
-        Canvas.Font.Size := round(fnt.Size);
-        Canvas.Font.Color := fnt.Color and $00FFFFFF;
-        style := [];
-        if fssBold in fnt.Style then Include(style, fsBold);
-        if fssItalic in fnt.Style then Include(style, fsItalic);
-        if fssUnderline in fnt.Style then Include(style, fsUnderline);
-        if fssStrikeout in fnt.Style then Include(style, fsStrikeout);
-        Canvas.Font.Style := style;
-      end;
-
-      // Text color is handled by "InternalDrawRichText"
-      {
-      // Read text color from number format if available
-      if not IsNaN(lCell^.NumberValue) and (numFmt <> nil) then
-      begin
-        sidx := 0;
-        if (Length(numFmt.Sections) > 1) and (lCell^.NumberValue < 0) then
-          sidx := 1
-        else
-        if (Length(numFmt.Sections) > 2) and (lCell^.NumberValue = 0) then
-          sidx := 2;
-        if (nfkHasColor in numFmt.Sections[sidx].Kind) then
-        begin
-          clr := numFmt.Sections[sidx].Color;
-          Canvas.Font.Color := clr and $00FFFFFF;
-        end;
-      end;
-      }
+      Convert_sFont_to_Font(fnt, Canvas.Font);
+      Canvas.Font.Height := Round(ZoomFactor * Canvas.Font.Height);
 
       // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
     end;
@@ -2456,7 +2439,15 @@ begin
     ts.Layout := tlCenter;
     ts.Opaque := false;
     Canvas.TextStyle := ts;
+                  {
+    writeLn('HEADER');
+    writeln(Format('1 - col=%d, row=%d, font size=%d', [acol, arow, canvas.font.size]));
+                   }
     inherited DrawCellText(aCol, aRow, aRect, aState, GetCellText(ACol,ARow));
+    {
+    writeln(GetCellText(ACol, ARow));
+    writeln(Format('2 - col=%d, row=%d, font size=%d', [acol, arow, canvas.font.size]));
+    }
     exit;
   end;
 
@@ -3030,6 +3021,7 @@ end;
   @param   ACol  Grid column index of the cell
   @param   ARow  Grid row index of the cell
   @result  Height of the cell in pixels. Wrapped text is handled correctly.
+           Value contains the zoom factor.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellHeight(ACol, ARow: Integer): Integer;
 var
@@ -3096,7 +3088,7 @@ begin
     end;
 
     Result := RichTextHeight(Canvas, Workbook, cellR, s, lCell^.RichTextParams,
-                fntIndex, txtRot, wrapped, RTL)
+                fntIndex, txtRot, wrapped, RTL, ZoomFactor)
             + 2 * constCellPadding;
   end;
 end;
@@ -3511,20 +3503,26 @@ end;
   @param   Index      Index of the changed column or row
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.HeaderSized(IsColumn: Boolean; AIndex: Integer);
+const
+  EPS = 0.1;
 var
-  w, h: Single;
+  w, h, wdef, hdef: Single;
 begin
-  if Worksheet = nil then
+  if (Worksheet = nil) or (FZoomLock <> 0) then
     exit;
 
   if IsColumn then
   begin
-    w := CalcWorksheetColWidth(ColWidths[AIndex]);
-    Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w, Workbook.Units);
+    w := CalcWorksheetColWidth(ColWidths[AIndex]);   // w and wdef are at 100% zoom
+    wdef := Worksheet.ReadDefaultColWidth(Workbook.Units);
+    if not SameValue(w, wdef, EPS) then
+      Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w, Workbook.Units);
   end else
   begin
     h := CalcWorksheetRowHeight(RowHeights[AIndex]);
-    Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h, Workbook.Units);
+    hdef := Worksheet.ReadDefaultRowHeight(Workbook.Units);
+    if not SameValue(h, hdef, EPS) then
+      Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h, Workbook.Units);
   end;
 end;
 
@@ -3628,7 +3626,7 @@ begin
   // Work horse for text drawing, both standard text and rich-text
   DrawRichText(Canvas, Workbook, ARect, AText, ARichTextParams, AFontIndex,
     ATextWrap, ACellHorAlign, ACellVertAlign, ATextRot, AOverrideTextColor,
-    AIsRightToLeft
+    AIsRightToLeft, ZoomFactor
   );
 end;
 (*
@@ -4237,6 +4235,21 @@ begin
     SetWorkbookSource(nil);
 end;
 
+{@@ Prepares the Canvas default font for methods determining text size }
+procedure TsCustomWorksheetGrid.PrepareCanvasFont;
+var
+  fnt: TsFont;
+begin
+  if Worksheet = nil then
+    Canvas.Font.Assign(Font)
+  else
+  begin
+    fnt := Workbook.GetDefaultFont;
+    Convert_sFont_to_Font(fnt, Canvas.Font);
+  end;
+  Canvas.Font.Height := Round(ZoomFactor * Canvas.Font.Height);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Removes the link of the WorksheetGrid to the WorkbookSource.
   Required before destruction.
@@ -4359,13 +4372,12 @@ begin
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
+      PrepareCanvasFont;  // Applies the zoom factor
       ColWidths[0] := GetDefaultHeaderColWidth;
       RowHeights[0] := GetDefaultRowHeight;
     end;
   end else
   if Worksheet <> nil then begin
-    Convert_sFont_to_Font(Workbook.GetDefaultFont, Font);
-    Canvas.Font.Assign(Font);
     if FHeaderCount = 0 then
     begin
       ColCount := Max(GetGridCol(Worksheet.GetLastColIndex), ColCount-1);
@@ -4378,6 +4390,7 @@ begin
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
+      PrepareCanvasFont;
       ColWidths[0] := GetDefaultHeaderColWidth;
       RowHeights[0] := GetDefaultRowHeight;
     end;
@@ -4682,19 +4695,22 @@ procedure TsCustomWorksheetGrid.UpdateColWidths(AStartIndex: Integer = 0);
 var
   i: Integer;
   lCol: PCol;
-  w: Integer;
+  w: Integer;       // Col width at current zoom level
+  w100: Integer;    // Col width at 100% zoom level
 begin
-  if AStartIndex = 0 then AStartIndex := FHeaderCount;
+  if AStartIndex = 0 then
+    AStartIndex := FHeaderCount;
   for i := AStartIndex to ColCount-1 do begin
-    w := DefaultColWidth;
     if Worksheet <> nil then
     begin
       lCol := Worksheet.FindCol(i - FHeaderCount);
       if lCol <> nil then
-        w := CalcColWidthFromSheet(lCol^.Width)
+        w100 := CalcColWidthFromSheet(lCol^.Width)
       else
-        w := CalcColWidthFromSheet(Worksheet.ReadDefaultColWidth(Workbook.Units));
-    end;
+        w100 := CalcColWidthFromSheet(Worksheet.ReadDefaultColWidth(Workbook.Units));
+      w := round(w100 * ZoomFactor);
+    end else
+      w := DefaultColWidth;  // Zoom factor is already applied by getter
     ColWidths[i] := w;
   end;
 end;
@@ -4736,11 +4752,11 @@ begin
     begin
       lRow := Worksheet.FindRow(r - FHeaderCount);
       if (lRow <> nil) then
-        h := CalcRowHeightFromSheet(lRow^.Height)
+        h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor)
       else
-        h := CalcAutoRowHeight(r);
+        h := CalcAutoRowHeight(r); // ZoomFactor has already been applied to font heights
     end else
-      h := DefaultRowHeight;
+      h := DefaultRowHeight;       // Zoom factor is applied by getter function
     RowHeights[r] := h;
   end;
 end;
@@ -4907,12 +4923,12 @@ end;
 
 function TsCustomWorksheetGrid.GetDefColWidth: Integer;
 begin
-  Result := inherited DefaultColWidth;
+  Result := round(FDefColWidth100 * ZoomFactor);
 end;
 
 function TsCustomWorksheetGrid.GetDefRowHeight: Integer;
 begin
-  Result := inherited DefaultRowHeight;
+  Result := round(FDefRowHeight100 * Zoomfactor);
 end;
 
 function TsCustomWorksheetGrid.GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
@@ -5116,6 +5132,14 @@ begin
         exit;
       end;
     end;
+end;
+
+function TsCustomWorksheetGrid.GetZoomFactor: Double;
+begin
+  if Worksheet <> nil then
+    Result := Worksheet.Zoomfactor
+  else
+    Result := 1.0;
 end;
 
 procedure TsCustomWorksheetGrid.SetAutoCalc(AValue: Boolean);
@@ -5509,22 +5533,30 @@ procedure TsCustomWorksheetGrid.SetDefColWidth(AValue: Integer);
 begin
   if AValue = GetDefColWidth then
     exit;
+  // AValue contains the zoom factor
+  // FDefColWidth1000 is the col width at zoom factor 1.0
+  FDefColWidth100 := round(AValue / ZoomFactor);
   inherited DefaultColWidth := AValue;
-  if FHeaderCount > 0 then
+  if FHeaderCount > 0 then begin
+    PrepareCanvasFont;
     ColWidths[0] := GetDefaultHeaderColWidth;
-  if Worksheet <> nil then
-    Worksheet.WriteDefaultColWidth(CalcWorksheetColWidth(AValue), Workbook.Units);
+  end;
+  if (FZoomLock = 0) and (Worksheet <> nil) then
+    Worksheet.WriteDefaultColWidth(CalcWorksheetColWidth(GetDefColWidth), Workbook.Units);
 end;
 
 procedure TsCustomWorksheetGrid.SetDefRowHeight(AValue: Integer);
 begin
   if AValue = GetDefRowHeight then
     exit;
+  // AValue contains the zoom factor
+  // FDefRowHeight100 is the row height with zoom factor 1.0
+  FDefRowHeight100 := round(AValue / ZoomFactor);
   inherited DefaultRowHeight := AValue;
   if FHeaderCount > 0 then
     RowHeights[0] := GetDefaultRowHeight;
-  if Worksheet <> nil then
-    Worksheet.WriteDefaultRowHeight(CalcWorksheetRowHeight(AValue), Workbook.Units);
+  if (FZoomLock = 0) and (Worksheet <> nil) then
+    Worksheet.WriteDefaultRowHeight(CalcWorksheetRowHeight(GetDefaultRowHeight), Workbook.Units);
 end;
 
 procedure TsCustomWorksheetGrid.SetFrozenCols(AValue: Integer);
@@ -5794,6 +5826,19 @@ begin
   end;
 end;
 
+procedure TsCustomWorksheetGrid.SetZoomFactor(AValue: Double);
+begin
+  if (AValue <> GetZoomFactor) and Assigned(Worksheet) then begin
+    inc(FZoomLock);
+    Worksheet.ZoomFactor := abs(AValue);
+    DefaultRowHeight := round(GetZoomfactor * FDefRowHeight100);
+    DefaultColWidth := round(GetZoomFactor * FDefColWidth100);
+    UpdateColWidths;
+    UpdateRowHeights;
+    dec(FZoomLock);
+    Invalidate;
+  end;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Registers the worksheet grid in the Lazarus component palette,
