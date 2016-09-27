@@ -737,6 +737,7 @@ procedure TsTextPainter.Prepare;
 var
   lineInfo: TsLineInfo;
   ts: TTextStyle;
+  oldPtr: PChar;
 begin
   FTotalHeight := 0;
   FMaxLinelen := 0;
@@ -756,7 +757,10 @@ begin
     lineInfo := TsLineInfo.Create;
     lineInfo.pStart := FPtr;
     lineInfo.BeginsWithFontOfRtpIndex := FRtpIndex;
+    oldPtr := FPtr;
     ScanLine(lineInfo.NumSpaces, lineInfo.Width, lineInfo.Height, lineInfo.WordList);
+    if oldPtr = FPtr then  // Detect scan is stuck
+      break;
     FLines.Add(lineinfo);
     FTotalHeight := FTotalHeight + IfThen(FTextRotation = rtStacked, 2, 1)*lineInfo.Height;
     FMaxLineLen := Max(FMaxLineLen, lineInfo.Width);
@@ -947,6 +951,8 @@ begin
                    NextChar(1)
                  else
                    UTF8Delete(part, UTF8Length(part), 1);
+                 if part = '' then
+                   EOL := true;
                end;
                EOL := true;
                break;
