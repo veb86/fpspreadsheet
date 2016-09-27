@@ -993,6 +993,7 @@ begin
       ACharIndexOfNextFont := MaxInt;
     fnt := FWorkbook.GetFont(FRtParams[ACurrRtpIndex].FontIndex);
     Convert_sFont_to_Font(fnt, FCanvas.Font);
+    FCanvas.Font.Height := round(FZoomFactor * FCanvas.Font.Height);
     ACurrFontHeight := FCanvas.TextHeight('Tg');
     if fnt.Position <> fpNormal then
       FCanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
