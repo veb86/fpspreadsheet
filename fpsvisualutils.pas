@@ -951,8 +951,6 @@ begin
                    NextChar(1)
                  else
                    UTF8Delete(part, UTF8Length(part), 1);
-                 if part = '' then
-                   EOL := true;
                end;
                EOL := true;
                break;
