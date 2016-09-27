@@ -3933,7 +3933,7 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
 begin
-  ZoomFactor := 1.0;
+//  ZoomFactor := 1.0;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormat, AWorksheetIndex);
 end;
 
@@ -3952,7 +3952,7 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1);
 begin
-  ZoomFactor := 1.0;
+//  ZoomFactor := 1.0;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormatID, AWorksheetIndex);
 end;
 
@@ -3969,7 +3969,7 @@ end;
 procedure TsCustomWorksheetGrid.LoadSheetFromSpreadsheetFile(AFileName: String;
   AWorksheetIndex: Integer = -1; AFormatID: TsSpreadFormatID = sfidUnknown);
 begin
-  ZoomFactor := 1.0;
+//  ZoomFactor := 1.0;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFilename, AFormatID, AWorksheetIndex);
 end;
 
@@ -3986,7 +3986,7 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromWorkbook(AWorkbook: TsWorkbook;
   AWorksheetIndex: Integer = -1);
 begin
-  ZoomFactor := 1.0;
+//  ZoomFactor := 1.0;
   GetWorkbookSource.LoadFromWorkbook(AWorkbook, AWorksheetIndex);
   Invalidate;
 end;

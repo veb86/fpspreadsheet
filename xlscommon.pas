@@ -64,6 +64,7 @@ const
   INT_EXCEL_ID_STYLE       = $0293;    // does not exist in BIFF2
 
   { RECORD IDs which did not change across version 4-8 }
+  INT_EXCEL_ID_SCL         = $00A0;    // does not exist before BIFF4
   INT_EXCEL_ID_PAGESETUP   = $00A1;    // does not exist before BIFF4
   INT_EXCEL_ID_FORMAT      = $041E;    // BIFF2-3: $001E
 
@@ -466,6 +467,7 @@ type
       out ARpnFormula: TsRPNFormula; ACell: PCell = nil;
       ASharedFormulaBase: PCell = nil): Boolean; overload;
     function ReadRPNTokenArraySize(AStream: TStream): word; virtual;
+    procedure ReadSCLRecord(AStream: TStream);
     procedure ReadSELECTION(AStream: TStream);
     procedure ReadSharedFormula(AStream: TStream);
     procedure ReadSHEETPR(AStream: TStream);
@@ -588,6 +590,8 @@ type
     procedure WriteRPNTokenArray(AStream: TStream; ACell: PCell;
       AFormula: TsRPNFormula; UseRelAddr, IsSupported: Boolean; var RPNLength: Word);
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); virtual;
+
+    procedure WriteSCLRecord(AStream: TStream; ASheet: TsWorksheet);
 
     // Writes out a SELECTION record
     procedure WriteSELECTION(AStream: TStream; ASheet: TsWorksheet; APane: Byte);
@@ -2583,6 +2587,18 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the SCL record, This is the magnification factor of the current view
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadSCLRecord(AStream: TStream);
+var
+  num, denom: Word;
+begin
+  num := WordLEToN(AStream.ReadWord);
+  denom := WOrdLEToN(AStream.ReadWord);
+  FWorksheet.ZoomFactor := num/denom;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads a SELECTION record containing the currently selected cell
   Valid for BIFF2-BIFF8.
 -------------------------------------------------------------------------------}
@@ -4337,6 +4353,26 @@ begin
     end else
       WriteRow(AStream, ASheet, row^.Row, 0, 0, row);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the SCL record - this is the current magnification factor of the sheet
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteSCLRecord(AStream: TStream;
+  ASheet: TsWorksheet);
+var
+  num, denom: Word;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_SCL, 4);
+
+  denom := 100;
+  num := round(ASheet.ZoomFactor * denom);
+
+  { Numerator }
+  AStream.WriteWord(WordToLE(num));
+  { Denominator }
+  AStream.WriteWord(WordToLE(denom));
 end;
 
 {@@ ----------------------------------------------------------------------------

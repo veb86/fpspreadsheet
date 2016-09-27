@@ -536,6 +536,7 @@ begin
       INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
       INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
       INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
+      INT_EXCEL_ID_SCL           : ReadSCLRecord(AStream);
       INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
       INT_EXCEL_ID_VCENTER       : ReadVCENTER(AStream);
       INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
@@ -1161,6 +1162,7 @@ begin
       WriteColInfos(AStream, FWorksheet);
       WriteDimensions(AStream, FWorksheet);
       WriteWindow2(AStream, FWorksheet);
+      WriteSCLRecord(AStream, FWorksheet);
       WritePane(AStream, FWorksheet, true, pane);  // true for "is BIFF5 or BIFF8"
       WriteSelection(AStream, FWorksheet, pane);
       //WriteRows(AStream, sheet);

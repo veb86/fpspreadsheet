@@ -886,6 +886,7 @@ begin
     // This record replaces the record INTEGER written in BIFF2.
     INT_EXCEL_ID_RK            : ReadRKValue(AStream);
 
+    INT_EXCEL_ID_SCL           : ReadSCLRecord(AStream);
     INT_EXCEL_ID_SELECTION     : ReadSELECTION(AStream);
     INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
     INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
@@ -2159,6 +2160,7 @@ begin
 
       // View settings block
       WriteWindow2(AStream, FWorksheet);
+      WriteSCLRecord(AStream, FWorksheet);
       WritePane(AStream, FWorksheet, isBIFF8, pane);
       WriteSelection(AStream, FWorksheet, pane);
       WriteHyperlinks(AStream, FWorksheet);
