@@ -79,6 +79,8 @@ type
     FDefRowHeight100: Integer;  // Default row height for 100% zoom factor, in pixels
     FDefColWidth100: Integer;   // Default col width for 100% zoom factor, in pixels
     FZoomLock: Integer;
+    FRowHeightLock: Integer;
+    FOldTopRow: Integer;
 //    FSetupDelayed: Boolean;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
@@ -980,19 +982,27 @@ end;
   @param  AOwner   Owner of the grid
 -------------------------------------------------------------------------------}
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
+var
+  i: Integer;
 begin
+  inc(FRowHeightLock);
+
   FInternalWorkbookSource := TsWorkbookSource.Create(self);
   FInternalWorkbookSource.Name := 'internal';
+
   inherited Create(AOwner);
+
   AutoAdvance := aaDown;
   ExtendedSelect := true;
   FHeaderCount := 1;
   ColCount := DEFAULT_COL_COUNT + FHeaderCount;
   RowCount := DEFAULT_ROW_COUNT + FHeaderCount;
+  FDefRowHeight100 := inherited DefaultRowHeight;
+  FDefColWidth100 := inherited DefaultColWidth;
+  //FOldTopRow := -1;
   FCellFont := TFont.Create;
   FSelPen := TsSelPen.Create;
   FSelPen.Style := psSolid;
-//  FSelPen.Width := 3;
   FSelPen.Color := clBlack;
   FSelPen.JoinStyle := pjsMiter;
   FSelPen.OnChange := @SelPenChangeHandler;
@@ -1004,6 +1014,9 @@ begin
  {$IFNDEF FPS_NO_GRID_MULTISELECT}
   RangeSelectMode := rsmMulti;
  {$ENDIF}
+
+  dec(FRowHeightLock);
+  UpdateRowHeights;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1550,6 +1563,8 @@ end;
 
 procedure TsCustomWorksheetGrid.DefineProperties(Filer: TFiler);
 begin
+  //inherited;
+
   // Don't call inherited, this is where the ColWidths/RowHeights are written
   // to the lfm file - we don't need them, we get them from the workbook!
   Unused(Filer);
@@ -3506,6 +3521,7 @@ procedure TsCustomWorksheetGrid.HeaderSized(IsColumn: Boolean; AIndex: Integer);
 const
   EPS = 0.1;
 var
+  idx: Integer;
   w, h, wdef, hdef: Single;
 begin
   if (Worksheet = nil) or (FZoomLock <> 0) then
@@ -3515,14 +3531,20 @@ begin
   begin
     w := CalcWorksheetColWidth(ColWidths[AIndex]);   // w and wdef are at 100% zoom
     wdef := Worksheet.ReadDefaultColWidth(Workbook.Units);
-    if not SameValue(w, wdef, EPS) then
-      Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w, Workbook.Units);
+    if not SameValue(w, wdef, EPS) then begin
+      idx := GetWorksheetCol(AIndex);
+      if idx >= 0 then
+        Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w, Workbook.Units);
+    end;
   end else
   begin
     h := CalcWorksheetRowHeight(RowHeights[AIndex]);
     hdef := Worksheet.ReadDefaultRowHeight(Workbook.Units);
-    if not SameValue(h, hdef, EPS) then
-      Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h, Workbook.Units);
+    if not SameValue(h, hdef, EPS) then begin
+      idx := GetWorksheetRow(AIndex);
+      if idx >= 0 then
+        Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h, Workbook.Units);
+    end;
   end;
 end;
 
@@ -3911,6 +3933,7 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
 begin
+  ZoomFactor := 1.0;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormat, AWorksheetIndex);
 end;
 
@@ -3929,6 +3952,7 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1);
 begin
+  ZoomFactor := 1.0;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormatID, AWorksheetIndex);
 end;
 
@@ -3945,6 +3969,7 @@ end;
 procedure TsCustomWorksheetGrid.LoadSheetFromSpreadsheetFile(AFileName: String;
   AWorksheetIndex: Integer = -1; AFormatID: TsSpreadFormatID = sfidUnknown);
 begin
+  ZoomFactor := 1.0;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFilename, AFormatID, AWorksheetIndex);
 end;
 
@@ -3961,6 +3986,7 @@ end;
 procedure TsCustomWorksheetGrid.LoadFromWorkbook(AWorkbook: TsWorkbook;
   AWorksheetIndex: Integer = -1);
 begin
+  ZoomFactor := 1.0;
   GetWorkbookSource.LoadFromWorkbook(AWorkbook, AWorksheetIndex);
   Invalidate;
 end;
@@ -4546,7 +4572,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.TopLeftChanged;
 begin
-  UpdateRowHeights;
+  if FOldTopRow <> TopRow then
+    UpdateRowHeights;
+  FOldTopRow := TopRow;
   inherited;
 end;
 
@@ -4718,6 +4746,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Updates row heights by using the data from the TRow records or by auto-
   calculating the row height from the max of the cell heights
+  Because there may be many rows only the visible rows are updated. Therefore,
+  this method is called whenever the grid is scrolled and the coordinates of
+  the top-left cell changes.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.UpdateRowHeights(AStartIndex: Integer = 0);
 const
@@ -4729,23 +4760,11 @@ var
 begin
   Unused(AStartIndex);
 
-  {
-  BeginUpdate;
-  if AStartIndex <= 0 then AStartIndex := FHeaderCount;
-  for i := AStartIndex to RowCount-1 do begin
-    h := CalcAutoRowHeight(i);
-    if Worksheet <> nil then
-    begin
-      lRow := Worksheet.FindRow(i - FHeaderCount);
-      if (lRow <> nil) then
-        h := CalcRowHeight(lRow^.Height);
-    end;
-    RowHeights[i] := h;
-  end;
-  EndUpdate;
-      }
-  r1 := Max(FHeaderCount, GCache.VisibleGrid.Top - DELTA);
-  r2 := Min(RowCount-1, GCache.VisibleGrid.Bottom + DELTA);
+  if FRowHeightLock > 0 then
+    exit;
+
+  r1 := Max(FHeaderCount, TopRow - DELTA);
+  r2 := Min(RowCount-1, TopRow + VisibleRowCount + DELTA);
   for r:=r1 to r2 do
   begin
     if Worksheet <> nil then
@@ -5550,7 +5569,7 @@ begin
   if AValue = GetDefRowHeight then
     exit;
   // AValue contains the zoom factor
-  // FDefRowHeight100 is the row height with zoom factor 1.0
+  // FDefRowHeight100 is the row height at zoom factor 1.0
   FDefRowHeight100 := round(AValue / ZoomFactor);
   inherited DefaultRowHeight := AValue;
   if FHeaderCount > 0 then
