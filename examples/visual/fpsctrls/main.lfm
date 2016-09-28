@@ -48,7 +48,6 @@ object MainForm: TMainForm
       TitleFont.Color = clBlack
       TitleFont.Height = -13
       TitleFont.Name = 'Arial'
-      UseXORFeatures = True
       OnClickHyperlink = WorksheetGridClickHyperlink
       OnMouseWheel = WorksheetGridMouseWheel
     end
@@ -617,12 +616,12 @@ object MainForm: TMainForm
     end
     object CellEdit: TsCellEdit
       Left = 144
-      Height = 24
+      Height = 23
       Top = 0
       Width = 851
       Align = alClient
       BorderSpacing.Right = 2
-      BorderSpacing.Bottom = 2
+      BorderSpacing.Bottom = 3
       TabOrder = 1
       WantReturns = False
       WorkbookSource = WorkbookSource
