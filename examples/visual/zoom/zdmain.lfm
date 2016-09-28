@@ -1,0 +1,67 @@
+object MainForm: TMainForm
+  Left = 280
+  Height = 482
+  Top = 130
+  Width = 680
+  Caption = 'Zoom demo'
+  ClientHeight = 482
+  ClientWidth = 680
+  OnCreate = FormCreate
+  LCLVersion = '1.7'
+  object Grid: TsWorksheetGrid
+    Left = 5
+    Height = 429
+    Top = 8
+    Width = 667
+    FrozenCols = 0
+    FrozenRows = 0
+    ReadFormulas = False
+    TextOverflow = True
+    WorkbookSource = Grid.internal
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    AutoAdvance = aaDown
+    ColCount = 27
+    DefaultColWidth = 64
+    DefaultRowHeight = 22
+    MouseWheelOption = mwGrid
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goSmoothScroll]
+    RowCount = 101
+    TabOrder = 0
+    OnMouseWheel = GridMouseWheel
+  end
+  object BtnOpen: TButton
+    Left = 5
+    Height = 25
+    Top = 447
+    Width = 75
+    Anchors = [akLeft, akBottom]
+    Caption = 'Open...'
+    OnClick = BtnOpenClick
+    TabOrder = 1
+  end
+  object edZoom: TSpinEdit
+    Left = 97
+    Height = 23
+    Top = 448
+    Width = 66
+    Alignment = taRightJustify
+    Anchors = [akLeft, akBottom]
+    MaxValue = 900
+    MinValue = 10
+    OnEditingDone = edZoomEditingDone
+    TabOrder = 2
+    Value = 100
+  end
+  object CbOverrideZoomFactor: TCheckBox
+    Left = 184
+    Height = 19
+    Top = 450
+    Width = 151
+    Caption = 'Override file zoom factor'
+    TabOrder = 3
+  end
+  object OpenDialog: TOpenDialog
+    left = 280
+    top = 128
+  end
+end
