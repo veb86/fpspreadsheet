@@ -3450,12 +3450,14 @@ var
   nodeName, cfgName, cfgValue, tblName: String;
   sheet: TsWorksheet;
   vsm, hsm, hsp, vsp: Integer;
+  zoom: Double;
   showGrid, showHeaders: Boolean;
   actCol, actRow: Cardinal;
   i: Integer;
 begin
   showGrid := true;
   showHeaders := true;
+  zoom := 100.0;
   cfgItemSetNode := AOfficeSettingsNode.FirstChild;
   while Assigned(cfgItemSetNode) do
   begin
@@ -3525,6 +3527,7 @@ begin
                               'HorizontalSplitMode': hsm := StrToInt(cfgValue);
                               'VerticalSplitPosition': vsp := StrToInt(cfgValue);
                               'HorizontalSplitPosition': hsp := StrToInt(cfgValue);
+                              'ZoomValue': zoom := StrToFloat(cfgValue, FPointSeparatorSettings);
                             end;
                           end;
                           node := node.NextSibling;
@@ -3539,6 +3542,8 @@ begin
                       end;
                       // Active cell
                       sheet.SelectCell(actRow, actCol);
+                      // Zoom factor
+                      sheet.ZoomFactor := zoom / 100.0;
                     end;
                   end;
                   cfgTableItemNode := cfgTableItemNode.NextSibling;
@@ -3574,7 +3579,6 @@ end;
         '</draw:image>' +
       '</draw:frame>', [
 }
-
 procedure TsSpreadOpenDocReader.ReadShapes(ATableNode: TDOMNode);
 var
   shapesNode, shapeNode, childShapeNode: TDOMNode;
@@ -4535,6 +4539,7 @@ var
   showGrid, showHeaders: Boolean;
   sheet: TsWorksheet;
   actSheet: String;
+  zoomvalue: String;
 begin
   // Open/LibreOffice allow to change showGrid and showHeaders only globally.
   // As a compromise, we check whether there is at least one page with these
@@ -4542,10 +4547,14 @@ begin
   showGrid := true;
   showHeaders := true;
   actSheet := 'Table1';
+  zoomValue := '100';
   for i:=0 to Workbook.GetWorksheetCount-1 do
   begin
     sheet := Workbook.GetWorksheetByIndex(i);
-    if sheet = Workbook.ActiveWorksheet then actSheet := UTF8TextToXMLText(sheet.Name);
+    if sheet = Workbook.ActiveWorksheet then begin
+      actSheet := UTF8TextToXMLText(sheet.Name);
+//      zoomValue := IntToStr(round(sheet.ZoomFactor));
+    end;
     if not (soShowGridLines in sheet.Options) then showGrid := false;
     if not (soShowHeaders in sheet.Options) then showHeaders := false;
   end;
@@ -4562,7 +4571,7 @@ begin
          '<config:config-item-map-indexed config:name="Views">' +
             '<config:config-item-map-entry>' +
               '<config:config-item config:name="ActiveTable" config:type="string">'+actSheet+'</config:config-item>' +
-              '<config:config-item config:name="ZoomValue" config:type="int">100</config:config-item>' +
+              '<config:config-item config:name="ZoomValue" config:type="int">'+zoomValue+'</config:config-item>' +
               '<config:config-item config:name="PageViewZoomValue" config:type="int">100</config:config-item>' +
               '<config:config-item config:name="ShowPageBreakPreview" config:type="boolean">false</config:config-item>' +
               '<config:config-item config:name="ShowGrid" config:type="boolean">'+FALSE_TRUE[showGrid]+'</config:config-item>' +
@@ -6197,7 +6206,9 @@ var
   vsm: Integer;         // VerticalSplitMode
   asr: Integer;         // ActiveSplitRange
   actX, actY: Integer;  // Active cell col/row index
+  zoom: String;
 begin
+  zoom := '100';
   for i:=0 to Workbook.GetWorksheetCount-1 do
   begin
     sheet := Workbook.GetWorksheetByIndex(i);
@@ -6233,6 +6244,8 @@ begin
       actY := sheet.TopPaneHeight;
     end;
 
+    zoom := IntToStr(round(sheet.ZoomFactor*100.0));
+
     AppendToStream(AStream,
         '<config:config-item config:name="CursorPositionX" config:type="int">'+IntToStr(actX)+'</config:config-item>');
     AppendToStream(AStream,
@@ -6255,6 +6268,10 @@ begin
         '<config:config-item config:name="PositionTop" config:type="int">0</config:config-item>');
     AppendToStream(AStream,
         '<config:config-item config:name="PositionBottom" config:type="int">'+IntToStr(sheet.TopPaneHeight)+'</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="ZoomType" config:type="short">0</config:config-item>');
+    AppendToStream(AStream,
+        '<config:config-item config:name="ZoomValue" config:type="int">'+zoom+'</config:config-item>');
     AppendToStream(AStream,
         '<config:config-item config:name="ShowGrid" config:type="boolean">true</config:config-item>');
        // this "ShowGrid" overrides the global setting. But Open/LibreOffice do not allow to change ShowGrid per sheet.
