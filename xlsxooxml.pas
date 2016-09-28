@@ -1860,6 +1860,10 @@ begin
       if s = '0' then
          AWorksheet.Options := AWorksheet.Options - [soShowHeaders];
 
+      s := GetAttrValue(sheetViewNode, 'zoomScale');
+      if s <> '' then
+        AWorksheet.ZoomFactor := StrToFloat(s, FPointSeparatorSettings) * 0.01;
+
       s := GetAttrValue(sheetViewNode, 'rightToLeft');
       if s = '0' then
         AWorksheet.BiDiMode := bdLTR
@@ -3027,6 +3031,8 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteSheetViews(AStream: TStream;
   AWorksheet: TsWorksheet);
+const
+  ZOOM_EPS = 1E-3;
 var
   showGridLines: String;
   showHeaders: String;
@@ -3036,18 +3042,24 @@ var
   actCell: String;
   tabSel: String;
   bidi: String;
+  zoomscale: String;
+  attr: String;
 begin
   // Show gridlines ?
-  showGridLines := StrUtils.IfThen(soShowGridLines in AWorksheet.Options, ' ', 'showGridLines="0" ');
+  showGridLines := StrUtils.IfThen(soShowGridLines in AWorksheet.Options, '', ' showGridLines="0"');
 
   // Show headers?
-  showHeaders := StrUtils.IfThen(soShowHeaders in AWorksheet.Options, ' ', 'showRowColHeaders="0" ');
+  showHeaders := StrUtils.IfThen(soShowHeaders in AWorksheet.Options, '', ' showRowColHeaders="0"');
+
+  // Zoom factor
+  zoomscale := StrUtils.IfThen(SameValue(AWorksheet.ZoomFactor, 1.0, ZOOM_EPS), '',
+    Format(' zoomScale="%.0f"', [AWorksheet.ZoomFactor*100]));
 
   // BiDiMode
   case AWorksheet.BiDiMode of
     bdDefault: bidi := '';
-    bdLTR    : bidi := 'rightToLeft="0" ';
-    bdRTL    : bidi := 'rightToLeft="1" ';
+    bdLTR    : bidi := ' rightToLeft="0"';
+    bdRTL    : bidi := ' rightToLeft="1"';
   end;
 
   // Active cell
@@ -3058,6 +3070,9 @@ begin
   // Selected tab?
   tabSel := StrUtils.IfThen(AWorksheet = FWorkbook.ActiveWorksheet, 'tabSelected="1" ', '');
 
+  // SheetView attributes
+  attr := showGridLines + showHeaders + tabSel + zoomScale + bidi;
+
   // No frozen panes
   if not (soHasFrozenPanes in AWorksheet.Options) or
      ((AWorksheet.LeftPaneWidth = 0) and (AWorksheet.TopPaneHeight = 0))
@@ -3066,11 +3081,11 @@ begin
     if actCell = '' then actCell := 'A1';
     AppendToStream(AStream, Format(
       '<sheetViews>' +
-        '<sheetView workbookViewId="0" %s%s%s%s>' +
+        '<sheetView workbookViewId="0"%s>' +
           '<selection activeCell="%s" sqref="%s" />' +
         '</sheetView>' +
       '</sheetViews>', [
-      showGridLines, showHeaders, tabSel, bidi,
+      attr,
       actCell, actCell
     ]))
   end else
@@ -3084,14 +3099,14 @@ begin
         actCell := bottomRightcell;
       AppendToStream(AStream, Format(
         '<sheetViews>' +
-          '<sheetView workbookViewId="0" %s%s%s%s>'+
+          '<sheetView workbookViewId="0"%s>'+
             '<pane xSplit="%d" ySplit="%d" topLeftCell="%s" activePane="bottomRight" state="frozen" />' +
             '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
             '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
             '<selection pane="bottomRight" activeCell="%s" sqref="%s" />' +
           '</sheetView>' +
         '</sheetViews>', [
-        showGridLines, showHeaders, tabSel, bidi,
+        attr,
         AWorksheet.LeftPaneWidth, AWorksheet.TopPaneHeight, bottomRightCell,
         topRightCell, topRightCell,
         bottomLeftCell, bottomLeftCell,
@@ -3104,12 +3119,12 @@ begin
         actCell := topRightCell;
       AppendToStream(AStream, Format(
         '<sheetViews>' +
-          '<sheetView workbookViewId="0" %s%s%s%s>'+
+          '<sheetView workbookViewId="0"%s>'+
             '<pane xSplit="%d" topLeftCell="%s" activePane="topRight" state="frozen" />' +
             '<selection pane="topRight" activeCell="%s" sqref="%s" />' +
           '</sheetView>' +
         '</sheetViews>', [
-        showGridLines, showHeaders, tabSel, bidi,
+        attr,
         AWorksheet.LeftPaneWidth, topRightCell,
         actCell, actCell
       ]))
@@ -3120,12 +3135,12 @@ begin
         actCell := bottomLeftCell;
       AppendToStream(AStream, Format(
         '<sheetViews>'+
-          '<sheetView workbookViewId="0" %s%s%s%s>'+
+          '<sheetView workbookViewId="0"%s>'+
              '<pane ySplit="%d" topLeftCell="%s" activePane="bottomLeft" state="frozen" />'+
              '<selection pane="bottomLeft" activeCell="%s" sqref="%s" />' +
           '</sheetView>'+
         '</sheetViews>', [
-        showGridLines, showHeaders, tabSel, bidi,
+        attr,
         AWorksheet.TopPaneHeight, bottomLeftCell,
         actCell, actCell
       ]));
