@@ -12,6 +12,11 @@
 -------------------------------------------------------------------------------}
 unit fpspreadsheetgrid;
 
+{ Activate this define if the worksheet contains varying row heights and jumps
+  to specific rows do not meet the requested row. There is a speed penalty in
+  case of large worksheets. }
+{.$DEFINE CALC_ALL_ROWHEIGHTS}
+
 {$mode objfpc}{$H+}
 {$I fps.inc}
 
@@ -75,13 +80,12 @@ type
     FEnhEditMode: Boolean;
     FSelPen: TsSelPen;
     FHyperlinkTimer: TTimer;
-    FHyperlinkCell: PCell;    // Selected cell if it stores a hyperlink
+    FHyperlinkCell: PCell;      // Selected cell if it stores a hyperlink
     FDefRowHeight100: Integer;  // Default row height for 100% zoom factor, in pixels
     FDefColWidth100: Integer;   // Default col width for 100% zoom factor, in pixels
     FZoomLock: Integer;
     FRowHeightLock: Integer;
     FOldTopRow: Integer;
-//    FSetupDelayed: Boolean;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
@@ -245,7 +249,8 @@ type
     procedure TopLeftChanged; override;
     function TrimToCell(ACell: PCell): String;
     procedure UpdateColWidths(AStartIndex: Integer = 0);
-    procedure UpdateRowHeights(AStartIndex: Integer = 0);
+    procedure UpdateRowHeight(ARow: Integer);
+    procedure UpdateRowHeights;
 
     {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
@@ -1511,7 +1516,9 @@ begin
     exit;
 
   Worksheet.DeleteRow(GetWorksheetRow(AGridRow));
-  UpdateRowHeights(AGridRow);
+
+  // wp: next line probably not required
+  //UpdateRowHeights(AGridRow);
 end;
 
 procedure TsCustomWorksheetGrid.CreateHandle;
@@ -1648,7 +1655,7 @@ var
 begin
   GetSelectedState(AState, isSelected);
   Canvas.Font.Assign(Font);
-  Canvas.Font.Height := Round(ZoomFactor * Canvas.Font.Height);
+  //Canvas.Font.Height := Round(ZoomFactor * Canvas.Font.Height);
   Canvas.Brush.Bitmap := nil;
   Canvas.Brush.Color := Color;
   ts := Canvas.TextStyle;
@@ -3605,7 +3612,8 @@ begin
 //  r := AGridRow - FHeaderCount;
   Worksheet.InsertRow(r);
 
-  UpdateRowHeights(AGridRow);
+  UpdateRowHeight(AGridRow);
+  // UpdateRowHeights(AGridRow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4572,9 +4580,11 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.TopLeftChanged;
 begin
+ {$IFNDEF CALC_ALL_ROWHEIGHTS}
   if FOldTopRow <> TopRow then
     UpdateRowHeights;
   FOldTopRow := TopRow;
+ {$ENDIF}
   inherited;
 end;
 
@@ -4743,6 +4753,23 @@ begin
   end;
 end;
 
+procedure TsCustomWorksheetGrid.UpdateRowHeight(ARow: Integer);
+var
+  lRow: PRow;
+  h: Integer;
+begin
+  if Worksheet <> nil then
+  begin
+    lRow := Worksheet.FindRow(ARow - FHeaderCount);
+    if (lRow <> nil) then
+      h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor)
+    else
+      h := CalcAutoRowHeight(ARow); // ZoomFactor has already been applied to font heights
+  end else
+    h := DefaultRowHeight;          // Zoom factor is applied by getter function
+  RowHeights[ARow] := h;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Updates row heights by using the data from the TRow records or by auto-
   calculating the row height from the max of the cell heights
@@ -4750,34 +4777,25 @@ end;
   this method is called whenever the grid is scrolled and the coordinates of
   the top-left cell changes.
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.UpdateRowHeights(AStartIndex: Integer = 0);
+procedure TsCustomWorksheetGrid.UpdateRowHeights;
 const
   DELTA = 10;
 var
   r, r1, r2: Integer;
-  lRow: PRow;
-  h: Integer;
 begin
-  Unused(AStartIndex);
-
   if FRowHeightLock > 0 then
     exit;
 
+ {$IFDEF CALC_ALL_ROWHEIGHTS}
+  r1 := FHeaderCount;
+  r2 := RowCount-1;
+ {$ELSE}
   r1 := Max(FHeaderCount, TopRow - DELTA);
   r2 := Min(RowCount-1, TopRow + VisibleRowCount + DELTA);
+ {$ENDIF}
+
   for r:=r1 to r2 do
-  begin
-    if Worksheet <> nil then
-    begin
-      lRow := Worksheet.FindRow(r - FHeaderCount);
-      if (lRow <> nil) then
-        h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor)
-      else
-        h := CalcAutoRowHeight(r); // ZoomFactor has already been applied to font heights
-    end else
-      h := DefaultRowHeight;       // Zoom factor is applied by getter function
-    RowHeights[r] := h;
-  end;
+    UpdateRowHeight(r);
 end;
 
 

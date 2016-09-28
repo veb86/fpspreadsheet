@@ -3052,8 +3052,11 @@ begin
   showHeaders := StrUtils.IfThen(soShowHeaders in AWorksheet.Options, '', ' showRowColHeaders="0"');
 
   // Zoom factor
-  zoomscale := StrUtils.IfThen(SameValue(AWorksheet.ZoomFactor, 1.0, ZOOM_EPS), '',
-    Format(' zoomScale="%.0f"', [AWorksheet.ZoomFactor*100]));
+  if boWriteZoomFactor in FWorkbook.Options then
+    zoomscale := StrUtils.IfThen(SameValue(AWorksheet.ZoomFactor, 1.0, ZOOM_EPS), '',
+      Format(' zoomScale="%.0f"', [AWorksheet.ZoomFactor*100]))
+  else
+    zoomscale := '';
 
   // BiDiMode
   case AWorksheet.BiDiMode of

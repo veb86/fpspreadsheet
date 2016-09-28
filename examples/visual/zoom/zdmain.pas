@@ -6,7 +6,8 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  Spin, fpstypes, fpspreadsheet, fpspreadsheetgrid, Types;
+  Spin, Types,
+  fpstypes, fpspreadsheet, fpspreadsheetgrid;
 
 type
 
@@ -14,18 +15,25 @@ type
 
   TMainForm = class(TForm)
     BtnOpen: TButton;
+    BtnSave: TButton;
     CbOverrideZoomFactor: TCheckBox;
+    CbWriteZoomFactor: TCheckBox;
     edZoom: TSpinEdit;
     Grid: TsWorksheetGrid;
     OpenDialog: TOpenDialog;
+    SaveDialog: TSaveDialog;
     procedure BtnOpenClick(Sender: TObject);
+    procedure BtnSaveClick(Sender: TObject);
     procedure edZoomEditingDone(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure GridMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
   private
     FWorkbook: TsWorkbook;
-    procedure LoadFile(const AFileName: String);
+    FOpenFormats: TsSpreadFormatIDArray;
+    FSaveFormats: TsSpreadFormatIDArray;
+    procedure LoadFile(const AFileName: String; AFormatID: TsSpreadFormatID);
+    procedure SaveFile(const AFileName: String; AFormatID: TsSpreadFormatID);
     procedure UpdateCaption;
 
   public
@@ -46,11 +54,36 @@ uses
 { TMainForm }
 
 procedure TMainForm.BtnOpenClick(Sender: TObject);
+var
+  fmt: TsSpreadFormatID;
 begin
- if FWorkbook <> nil then
-   OpenDialog.InitialDir := ExtractFileDir(FWorkbook.FileName);
- if OpenDialog.Execute then
-   LoadFile(OpenDialog.FileName);
+  if FWorkbook <> nil then
+    OpenDialog.InitialDir := ExtractFileDir(FWorkbook.FileName);
+  if OpenDialog.Execute then begin
+    fmt := FOpenFormats[OpenDialog.FilterIndex-1];
+    LoadFile(OpenDialog.FileName, fmt);
+  end;
+end;
+
+procedure TMainForm.BtnSaveClick(Sender: TObject);
+var
+  fmt: TsSpreadFormatID;
+  fmts: TsSpreadFormatIDArray;
+  i: Integer;
+begin
+  { Set up the save dialog such that it shows the loaded file name and type }
+  SaveDialog.InitialDir := ExtractFileDir(OpenDialog.FileName);
+  SaveDialog.FileName := ExtractFileName(OpenDialog.FileName);
+  fmts := GetSpreadFormatsFromFileName(faWrite, SaveDialog.FileName);
+  for i:=0 to High(FSaveFormats) do
+    if FSaveFormats[i] = fmts[0] then begin
+      SaveDialog.FilterIndex := i + 1;
+      break;
+    end;
+  if SaveDialog.Execute then begin
+    fmt := FSaveFormats[SaveDialog.FilterIndex - 1];
+    SaveFile(SaveDialog.FileName, fmt);
+  end;
 end;
 
 { Set the zoom factor to the value in the edit control. Is called after
@@ -74,6 +107,10 @@ begin
   priorityFormats[7] := ord(sfHTML);
 
   OpenDialog.Filter := GetFileFormatFilter('|', ';', faRead, priorityFormats, true, true);
+  SaveDialog.Filter := GetFileFormatFilter('|', ';', faWrite, priorityFormats);
+
+  FOpenFormats := GetSpreadFormats(faRead, priorityFormats);
+  FSaveFormats := GetSpreadFormats(faWrite, priorityFormats);
 end;
 
 { Mouse wheel event handler for setting the zoom factor using the mouse wheel
@@ -91,7 +128,7 @@ begin
   end;
 end;
 
-procedure TMainForm.LoadFile(const AFileName: String);
+procedure TMainForm.LoadFile(const AFileName: String; AFormatID: TsSpreadFormatID);
 var
   crs: TCursor;
   book: TsWorkbook;
@@ -103,7 +140,7 @@ begin
       try
         Screen.Cursor := crHourglass;
         // Read the file
-        book.ReadFromFile(AFilename);
+        book.ReadFromFile(AFilename, AFormatID);
         // If you want to override the zoom factor of the file set it before
         // assigning the worksheet to the grid.
         book.GetFirstWorksheet.ZoomFactor := edZoom.Value / 100;
@@ -123,6 +160,18 @@ begin
     UpdateCaption;
   finally
     Screen.Cursor := crs;
+  end;
+end;
+
+{ Saves the spreadsheet to the file selected by the SaveDialog action }
+procedure TMainForm.SaveFile(const AFileName: String; AFormatID: TsSpreadFormatID);
+begin
+  Screen.Cursor := crHourglass;
+  try
+    Grid.SaveToSpreadsheetFile(AFileName, AFormatID);
+    UpdateCaption;
+  finally
+    Screen.Cursor := crDefault;
   end;
 end;
 

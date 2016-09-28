@@ -631,9 +631,11 @@ type
     @param  boReadFormulas     Allows to turn off reading of rpn formulas; this is
                                a precaution since formulas not correctly
                                implemented by fpspreadsheet could crash the
-                               reading operation. }
+                               reading operation.
+    @param boWriteZoomfactor   Instructs the writer to write the current zoom
+                               factors of the worksheets to file. }
   TsWorkbookOption = (boVirtualMode, boBufStream, boFileStream,
-    boAutoCalc, boCalcBeforeSaving, boReadFormulas);
+    boAutoCalc, boCalcBeforeSaving, boReadFormulas, boWriteZoomFactor);
 
   {@@ Set of option flags for the workbook }
   TsWorkbookOptions = set of TsWorkbookOption;

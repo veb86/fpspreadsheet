@@ -4363,6 +4363,9 @@ procedure TsSpreadBIFFWriter.WriteSCLRecord(AStream: TStream;
 var
   num, denom: Word;
 begin
+  if not (boWriteZoomFactor in FWorkbook.Options) then
+    exit;
+
   { BIFF record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_SCL, 4);
 

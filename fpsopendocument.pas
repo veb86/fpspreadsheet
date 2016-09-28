@@ -4551,10 +4551,8 @@ begin
   for i:=0 to Workbook.GetWorksheetCount-1 do
   begin
     sheet := Workbook.GetWorksheetByIndex(i);
-    if sheet = Workbook.ActiveWorksheet then begin
+    if sheet = Workbook.ActiveWorksheet then
       actSheet := UTF8TextToXMLText(sheet.Name);
-//      zoomValue := IntToStr(round(sheet.ZoomFactor));
-    end;
     if not (soShowGridLines in sheet.Options) then showGrid := false;
     if not (soShowHeaders in sheet.Options) then showHeaders := false;
   end;
@@ -6244,7 +6242,8 @@ begin
       actY := sheet.TopPaneHeight;
     end;
 
-    zoom := IntToStr(round(sheet.ZoomFactor*100.0));
+    if boWriteZoomFactor in FWorkbook.Options then
+      zoom := IntToStr(round(sheet.ZoomFactor*100.0));
 
     AppendToStream(AStream,
         '<config:config-item config:name="CursorPositionX" config:type="int">'+IntToStr(actX)+'</config:config-item>');
