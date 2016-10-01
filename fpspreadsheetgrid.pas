@@ -253,7 +253,7 @@ type
     {@@ Automatically recalculate row heights after loading a file. Gets rid of
         possibly incorrect row heights stored by the writing application. But:
         slow in case of large files. }
-    property AutoCalcRowHeights: Boolean read FAutoCalcRowHeights write FAutoCalcRowHeights default true;
+    property AutoCalcRowHeights: Boolean read FAutoCalcRowHeights write FAutoCalcRowHeights default false;
     {@@ Automatically expand grid dimensions }
     property AutoExpand: TsAutoExpandModes read FAutoExpand write FAutoExpand;
     {@@ Displays column and row headers in the fixed col/row style of the grid.
@@ -1016,7 +1016,7 @@ begin
   FSelPen.JoinStyle := pjsMiter;
   FSelPen.OnChange := @SelPenChangeHandler;
   FAutoExpand := [aeData, aeNavigation];
-  FAutoCalcRowHeights := true;
+  FAutoCalcRowHeights := false;
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
   FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
