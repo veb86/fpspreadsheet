@@ -38,6 +38,7 @@ function GetSpreadFormats(AFileAccess: TsSpreadFileAccess;
 function GetSpreadFormatsFromFileName(AFileAccess: TsSpreadFileAccess; AFileName: TFileName;
   APriorityFormat: TsSpreadFormatID = sfidUnknown): TsSpreadFormatIDArray;
 
+function GetSpreadFormatExt(AFormatID: TsSpreadFormatID): String;
 function GetSpreadFormatName(AFormatID: TsSpreadFormatID): String;
 function GetSpreadTechnicalName(AFormatID: TsSpreadFormatID): String;
 
@@ -533,6 +534,11 @@ function GetSpreadFormatsFromFileName(
 begin
   Result := SpreadFormatRegistry.GetFormatArrayFromFileName(
     AFileAccess, AFileName, APriorityFormat);
+end;
+
+function GetSpreadFormatExt(AFormatID: TsSpreadFormatID): String;
+begin
+  Result := SpreadFormatRegistry.DefaultExt[AFormatID];
 end;
 
 function GetSpreadFormatName(AFormatID: TsSpreadFormatID): String;

@@ -381,6 +381,7 @@ type
     procedure HyperlinkHandler(Sender: TObject; ACaption: String;
       var AHyperlink: TsHyperlink);
     procedure InspectorTabControlChange(Sender: TObject);
+    procedure TSaveDialogTypeChange(Sender: TObject);
     procedure WorksheetGridClickHyperlink(Sender: TObject;
       const AHyperlink: TsHyperlink);
     procedure WorksheetGridMouseWheel(Sender: TObject; Shift: TShiftState;
@@ -468,10 +469,13 @@ end;
 procedure TMainForm.AcFileSaveAsAccept(Sender: TObject);
 var
   fmt: TsSpreadFormatID;
+  fmts: TsSpreadFormatIDArray;
+  ext: String;
 begin
   Screen.Cursor := crHourglass;
   try
-    fmt := FSaveFormats[AcFileSaveAs.Dialog.FilterIndex-1];
+    fmt := FSaveFormats[AcFileSaveAs.Dialog.FilterIndex - 1];
+    ext := ExtractFileExt(ACFileSaveAs.Dialog.Filename);
     WorkbookSource.SaveToSpreadsheetFile(UTF8ToAnsi(AcFileSaveAs.Dialog.FileName), fmt);
     UpdateCaption;
   finally
@@ -480,11 +484,23 @@ begin
 end;
 
 procedure TMainForm.AcFileSaveAsBeforeExecute(Sender: TObject);
+var
+  i: Integer;
 begin
   if WorkbookSource.FileName = '' then
     exit;
+
   AcFileSaveAs.Dialog.InitialDir := ExtractFileDir(WorkbookSource.FileName);
   AcFileSaveAs.Dialog.FileName := ExtractFileName(WorkbookSource.FileName);
+
+  // Pre-select the file format according to the input file
+  if WorkbookSource.Workbook.FileFormatID = sfidUnknown then
+    exit;
+  for i:=0 to High(FSaveformats) do
+    if FSaveFormats[i] = WorkbookSource.Workbook.FileFormatID then begin
+      AcFileSaveAs.Dialog.FilterIndex := i + 1;
+      break;
+    end;
 end;
 
 procedure TMainForm.AcFrozenColsExecute(Sender: TObject);
@@ -806,6 +822,14 @@ begin
       [mbOK], 0
     );
   end;
+end;
+
+procedure TMainForm.TSaveDialogTypeChange(Sender: TObject);
+var
+  ext: String;
+begin
+  ext := GetSpreadFormatExt(FSaveFormats[AcFileSaveAs.Dialog.FilterIndex - 1]);
+  AcFileSaveAs.Dialog.FileName := ChangeFileExt(AcFileSaveAs.Dialog.FileName, ext);
 end;
 
 procedure TMainForm.UpdateCaption;

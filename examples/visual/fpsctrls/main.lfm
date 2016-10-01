@@ -975,6 +975,7 @@ object MainForm: TMainForm
       Caption = 'Save &as ...'
       Dialog.Title = 'AcSaveFileAs'
       Dialog.Filter = 'Excel XML spreadsheet (*.xlsx)|*.xlsx|Excel XP/2003 XML spreadsheets (*.xml)|*.xml|Excel 97-2003 spreadsheets (*.xls)|*.xls|Excel 5 spreadsheet (*.xls)|*.xls|Excel 2.1 spreadsheets (*.xls)|*.xls|LibreOffice/OpenOffice spreadsheet (*.ods)|*.ods|Comma-delimited files (*.csv)|*.csv|HTML files (*.html; *.htm)|*.html;*.htm|WikiTable (WikiMedia-Format, *.wikitable_wikimedia)|*.wikitable_wikimedia'
+      Dialog.OnTypeChange = TSaveDialogTypeChange
       Hint = 'Save spreadsheet'
       ImageIndex = 45
       BeforeExecute = AcFileSaveAsBeforeExecute
