@@ -4068,6 +4068,9 @@ begin
       gcol := GetGridCol(cell^.Col);
       AutoExpandToRow(grow, aeData);
       AutoExpandToCol(gcol, aeData);
+      lRow := Worksheet.FindRow(srow);
+      if (lRow = nil) or (lRow^.RowHeightType <> rhtCustom) then
+        UpdateRowHeight(grow, true);
     end;
     Invalidate;
   end;
