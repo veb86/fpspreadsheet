@@ -359,8 +359,8 @@ type
   TRowStyleData = class
   public
     Name: String;
-    RowHeight: Double;          // in workbook units
-    AutoRowHeight: Boolean;
+    RowHeight: Double;    // in workbook units
+    RowHeightType: TsRowHeightType;
   end;
 
   { PageLayout items stored in PageLayoutList }
@@ -3241,7 +3241,7 @@ var
     rowStyleIndex: Integer;
     rowStyle: TRowStyleData;
     rowHeight: Double;
-    autoRowHeight: Boolean;
+    rowHeightType: TsRowHeightType;
     col: Integer;
     cellNode: TDOMNode;
     nodeName: String;
@@ -3260,9 +3260,11 @@ var
     begin
       rowStyle := TRowStyleData(FRowStyleList[rowStyleIndex]);
       rowHeight := rowStyle.RowHeight;    // in Workbook units (see ReadRowStyles)
-      autoRowHeight := rowStyle.AutoRowHeight;
-    end else
-      autoRowHeight := true;
+      rowHeightType := rowStyle.RowHeightType;
+    end else begin
+      rowHeight := FWorksheet.DefaultRowHeight;
+      rowHeightTYpe := rhtDefault;
+    end;
 
     col := 0;
 
@@ -3362,12 +3364,11 @@ var
     // Transfer non-default row heights to sheet's rows
     // This first "if" is a workaround for a bug of LO/OO whichs extends imported
     // xlsx files with blank rows up to their specification limit.
-    // React some rows earlier because the added row range is sometimes split
+    // Process some rows earlier because the added row range is sometimes split
     // into two parts.
     if row + rowsRepeated < LongInt(FLimitations.MaxRowCount) - 10 then
-      if not autoRowHeight then
-        for i:=1 to rowsRepeated do
-          FWorksheet.WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units);
+      for i:=1 to rowsRepeated do
+        FWorksheet.WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units, rowHeightType);
 
     row := row + rowsRepeated;
   end;
@@ -3412,14 +3413,14 @@ var
   styleName, nodename: String;
   styleChildNode: TDOMNode;
   rowHeight: Double;
-  auto: Boolean;
   s: String;
   rowStyle: TRowStyleData;
+  rowHeightType: TsRowHeightType;
 begin
   styleName := GetAttrValue(AStyleNode, 'style:name');
   styleChildNode := AStyleNode.FirstChild;
-  rowHeight := -1;
-  auto := false;
+  rowHeight := 0;
+  rowHeightType := rhtCustom;
 
   while Assigned(styleChildNode) do
   begin
@@ -3432,7 +3433,7 @@ begin
         // convert to workbook units
       s := GetAttrValue(styleChildNode, 'style:use-optimal-row-height');
       if s = 'true' then
-        auto := true;
+        rowHeightType := rhtAuto;
     end;
     styleChildNode := styleChildNode.NextSibling;
   end;
@@ -3440,7 +3441,7 @@ begin
   rowStyle := TRowStyleData.Create;
   rowStyle.Name := styleName;
   rowStyle.RowHeight := rowHeight;
-  rowStyle.AutoRowHeight := auto;
+  rowStyle.RowHeightType := rowHeightType;
   FRowStyleList.Add(rowStyle);
 end;
 
@@ -4331,7 +4332,7 @@ begin
   rowStyle := TRowStyleData.Create;
   rowStyle.Name := 'ro1';
   rowStyle.RowHeight := FWorkbook.ConvertUnits(15, suPoints, FWorkbook.Units);
-  rowStyle.AutoRowHeight := true;
+  rowStyle.RowHeightType := rhtAuto;
   FRowStyleList.Add(rowStyle);
 
   for i:=0 to Workbook.GetWorksheetCount-1 do
@@ -4346,9 +4347,9 @@ begin
         // Look for this height in the current RowStyleList
         found := false;
         for j:=0 to FRowStyleList.Count-1 do
-          if SameValue(TRowStyleData(FRowStyleList[j]).RowHeight, h, ROWHEIGHT_EPS) and
-             (not TRowStyleData(FRowStyleList[j]).AutoRowHeight) then
-          begin
+          if SameValue(TRowStyleData(FRowStyleList[j]).RowHeight, h, ROWHEIGHT_EPS)
+            and (TRowStyleData(FRowStyleList[j]).RowHeightType = row^.RowHeightType)
+          then begin
             found := true;
             break;
           end;
@@ -4358,22 +4359,12 @@ begin
           rowStyle := TRowStyleData.Create;
           rowStyle.Name := Format('ro%d', [FRowStyleList.Count+1]);
           rowStyle.RowHeight := h;
-          rowStyle.AutoRowHeight := false;
+          rowStyle.RowHeightType := row^.RowHeightType;
           FRowStyleList.Add(rowStyle);
         end;
       end;
     end;
   end;
-                                                   (*
-  { fpspreadsheet's row heights are measured as line count of the default font.
-    Using the default font size (which is in points) we convert the line count
-    to points and then to millimeters as needed by ods. }
-  multiplier := Workbook.GetDefaultFontSize;;
-  for i:=0 to FRowStyleList.Count-1 do
-  begin
-    h := (TRowStyleData(FRowStyleList[i]).RowHeight + ROW_HEIGHT_CORRECTION) * multiplier;
-    TRowStyleData(FRowStyleList[i]).RowHeight := PtsToMM(h);
-  end;                                               *)
 end;
 
 { Is called before zipping the individual file parts. Rewinds the streams. }
@@ -5297,8 +5288,9 @@ begin
       for k := 0 to FRowStyleList.Count-1 do begin
         rowStyleData := TRowStyleData(FRowStyleList[k]);
         // Compare row heights, but be aware of rounding errors
-        if SameValue(rowStyleData.RowHeight, h, ROWHEIGHT_EPS) then
-        begin
+        if SameValue(rowStyleData.RowHeight, h, ROWHEIGHT_EPS) and
+           (rowstyleData.RowHeightType = row^.RowHeightType)
+        then begin
           styleName := rowStyleData.Name;
           break;
         end;
@@ -5443,14 +5435,16 @@ begin
     AppendToStream(AStream, Format(
       '<style:style style:name="%s" style:family="table-row">', [rowStyle.Name]));
 
-    // Column width
+    // Row height
     AppendToStream(AStream, Format(
       '<style:table-row-properties style:row-height="%.3fmm" ',
         [FWorkbook.ConvertUnits(rowStyle.RowHeight, FWorkbook.Units, suMillimeters)],
         FPointSeparatorSettings));
-    if rowStyle.AutoRowHeight then
-      AppendToStream(AStream, 'style:use-optimal-row-height="true" ');
-    AppendToStream(AStream, 'fo:break-before="auto"/>');
+    AppendToStream(AStream, Format(
+        'style:use-optimal-row-height="%s" ', [FALSE_TRUE[rowstyle.RowHeightType <> rhtCustom]]));
+        // row height < 0 means: automatic row height
+    AppendToStream(AStream,
+        'fo:break-before="auto"/>');
 
     // End
     AppendToStream(AStream,

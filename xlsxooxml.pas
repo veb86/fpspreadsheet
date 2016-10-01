@@ -286,6 +286,8 @@ const
 
      LAST_PALETTE_INDEX   = 63;
 
+     ROWHEIGHT_EPS        = 1E-2;
+
 type
   TFillListData = class
     PatternType: String;
@@ -1717,19 +1719,35 @@ end;
 procedure TsSpreadOOXMLReader.ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
 var
   s: String;
-  ht: Single;
+  h: Single;
   r: Cardinal;
+  rht: TsRowHeightType;
 begin
   if ANode = nil then
     exit;
+
+  { Row height value, in points - if there is no "ht" attribute we assume that
+    it is the custom row height which does not require a row record. }
+  s := GetAttrValue(ANode, 'ht');
+  if s = '' then
+    exit;
+  h := StrToFloat(s, FPointSeparatorSettings);    // seems to be in "Points"
+
+  { Row height type }
   s := GetAttrValue(ANode, 'customHeight');
-  if s = '1' then begin
-    s := GetAttrValue(ANode, 'r');
-    r := StrToInt(s) - 1;
-    s := GetAttrValue(ANode, 'ht');
-    ht := StrToFloat(s, FPointSeparatorSettings);    // seems to be in "Points"
-    AWorksheet.WriteRowHeight(r, ht, suPoints);
-  end;
+  if s = '1' then
+    rht := rhtCustom
+  else if SameValue(h, AWorksheet.ReadDefaultRowHeight(suPoints), ROWHEIGHT_EPS) then
+    rht := rhtDefault
+  else
+    rht := rhtAuto;
+
+  { Row index }
+  s := GetAttrValue(ANode, 'r');
+  r := StrToInt(s) - 1;
+
+  { Write out }
+  AWorksheet.WriteRowHeight(r, h, suPoints, rht);
 end;
 
 procedure TsSpreadOOXMLReader.ReadSharedStrings(ANode: TDOMNode);
@@ -2912,11 +2930,12 @@ begin
     then begin
       for r := 0 to r2 do begin
         row := AWorksheet.FindRow(r);
-        if row <> nil then
-          rh := Format(' ht="%.2f" customHeight="1"',
+        if row <> nil then begin
+          rh := Format(' ht="%.2f"',
             [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
-            FPointSeparatorSettings)
-        else
+            FPointSeparatorSettings);
+          if row^.RowHeightType = rhtCustom then rh := rh + ' customHeight="1"';
+        end else
           rh := '';
         AppendToStream(AStream, Format(
           '<row r="%d" spans="1:%d"%s>', [r+1, AWorksheet.VirtualColCount, rh]));
@@ -2971,11 +2990,12 @@ begin
     for r := r1 to r2 do begin
       // If the row has a custom height add this value to the <row> specification
       row := AWorksheet.FindRow(r);
-      if row <> nil then
-        rh := Format(' ht="%.2f" customHeight="1"',
+      if row <> nil then begin
+        rh := Format(' ht="%.2f"',
           [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
-          FPointSeparatorSettings)
-      else
+          FPointSeparatorSettings);
+        if row^.RowHeightType = rhtCustom then rh := rh + ' customHeight="1"';
+      end else
         rh := '';
       AppendToStream(AStream, Format(
         '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, rh]));
@@ -3071,7 +3091,7 @@ begin
     actCell := '';
 
   // Selected tab?
-  tabSel := StrUtils.IfThen(AWorksheet = FWorkbook.ActiveWorksheet, 'tabSelected="1" ', '');
+  tabSel := StrUtils.IfThen(AWorksheet = FWorkbook.ActiveWorksheet, ' tabSelected="1"', '');
 
   // SheetView attributes
   attr := showGridLines + showHeaders + tabSel + zoomScale + bidi;

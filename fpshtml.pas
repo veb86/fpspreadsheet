@@ -1393,8 +1393,13 @@ var
 begin
   h := FWorksheet.ReadDefaultRowHeight(suPoints);
   row := FWorksheet.FindRow(ARowIndex);
-  if row <> nil then
-    h := FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints);
+  if row <> nil then begin
+    h := abs(FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints));
+    if row^.RowHeightType = rhtDefault then begin
+      Result := '';
+      exit;
+    end;
+  end;
   Result := Format(' height="%.1fpt"', [h], FPointSeparatorSettings);
 end;
 

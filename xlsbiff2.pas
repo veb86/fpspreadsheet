@@ -255,6 +255,7 @@ type
     HorAlign_Border_BkGr: Byte;
   end;
 
+
 procedure InternalAddBuiltinNumFormats(AList: TStringList; AFormatSettings: TFormatSettings);
 var
   fs: TFormatSettings absolute AFormatSettings;
@@ -784,25 +785,27 @@ var
   rowrec: TRowRecord;
   lRow: PRow;
   h: word;
+  auto: Boolean;
+  rowheight: Single;
+  defRowHeight: Single;
 begin
   rowRec.RowIndex := 0;  // to silence the compiler...
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
   h := WordLEToN(rowrec.Height);
-  if h and $8000 = 0 then    // if this bit were set, rowheight would be default
-  begin
-    lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
-    // Row height is encoded into the 15 remaining bits in units "twips" (1/20 pt)
-    lRow^.Height := FWorkbook.ConvertUnits(
-      TwipsToPts(h and $7FFF), suPoints, FWorkbook.Units);
-    {
-    // We need it in "lines" units.
-    lRow^.Height := TwipsToPts(h and $7FFF) / Workbook.GetFont(0).Size;
-    if lRow^.Height > ROW_HEIGHT_CORRECTION then
-      lRow^.Height := lRow^.Height - ROW_HEIGHT_CORRECTION
-    else
-      lRow^.Height := 0;
-      }
-  end;
+  auto := h and $8000 <> 0;
+  rowheight := FWorkbook.ConvertUnits(TwipsToPts(h and $7FFF), suPoints, FWorkbook.Units);
+  defRowHeight := FWorksheet.ReadDefaultRowHeight(FWorkbook.Units);
+
+  // No row record if rowheight in file is the same as the default rowheight
+  if SameValue(rowheight, defRowHeight, ROWHEIGHT_EPS) then
+    exit;
+
+  // Otherwise: create a row record
+  lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
+  lRow^.Height := rowHeight;
+  if auto then
+    lRow^.RowHeightType := rhtAuto else
+    lRow^.RowHeightType := rhtCustom;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1341,7 +1344,7 @@ begin
     if (boVirtualMode in Workbook.Options) then
       WriteVirtualCells(AStream, FWorksheet)
     else begin
-      WriteRows(AStream, FWorksheet);
+ //     WriteRows(AStream, FWorksheet);
       WriteCellsToStream(AStream, FWorksheet.Cells);
     end;
 
@@ -1967,11 +1970,10 @@ end;
 
 procedure TsSpreadBIFF2Writer.WriteRow(AStream: TStream; ASheet: TsWorksheet;
   ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow);
-const
-  EPS = 1E-2;
 var
   containsXF: Boolean;
   rowheight: Word;
+  auto: Boolean;
   w: Word;
 begin
   if (ARowIndex >= FLimitations.MaxRowCount) or (AFirstColIndex >= FLimitations.MaxColCount)
@@ -1995,17 +1997,20 @@ begin
   { Index to column of the last cell which is described by a cell record, increased by 1 }
   AStream.WriteWord(WordToLE(Word(ALastColIndex) + 1));
 
+  auto := true;
   { Row height (in twips, 1/20 point) and info on custom row height }
-  if (ARow = nil) or SameValue(ARow^.Height, ASheet.ReadDefaultRowHeight(FWorkbook.Units), EPS) then
+  if (ARow = nil) or (ARow^.RowHeightType = rhtDefault) then
     rowheight := PtsToTwips(ASheet.ReadDefaultRowHeight(suPoints))
   else
   if (ARow^.Height = 0) then
     rowheight := 0
-  else
-    rowheight := PtsToTwips(FWorkbook.ConvertUnits(
-      ARow^.Height, FWorkbook.Units, suPoints));
-//    rowheight := PtsToTwips((ARow^.Height + ROW_HEIGHT_CORRECTION) * h);
+  else begin
+    rowheight := PtsToTwips(FWorkbook.ConvertUnits(ARow^.Height, FWorkbook.Units, suPoints));
+    auto := ARow^.RowHeightType <> rhtCustom;
+  end;
   w := rowheight and $7FFF;
+  if auto then
+    w := w or $8000;
   AStream.WriteWord(WordToLE(w));
 
   { not used }

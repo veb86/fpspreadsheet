@@ -710,14 +710,18 @@ begin
     row := FWorksheet.FindRow(r);
     // Row height is needed in pts.
     if Assigned(row) then
+    begin
       rowheightStr := Format(' ss:Height="%.2f"',
         [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
         FPointSeparatorSettings
-      )
-    else
-      rowheightStr := '';
+      );
+      if row^.RowHeightType = rhtCustom then
+        rowHeightStr := 'ss:AutoFitHeight="0"' + rowHeightStr else
+        rowHeightStr := 'ss:AutoFitHeight="1"' + rowHeightStr;
+    end else
+      rowheightStr := 'ss:AutoFitHeight="1"';
     AppendToStream(AStream, ROW_INDENT + Format(
-      '<Row ss:AutoFitHeight="1"%s>' + LF, [rowheightStr]));
+      '<Row %s>' + LF, [rowheightStr]));
     for c := c1 to c2 do
     begin
       cell := AWorksheet.FindCell(r, c);

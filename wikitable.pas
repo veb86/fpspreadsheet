@@ -397,7 +397,6 @@ procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
     Result := Format('border-%s:%s', [BORDERNAMES[ABorder], LINESTYLES[ls]]);
     if clr <> scBlack then
       Result := Result + ' ' + ColorToHTMLColorStr(clr) + '; ';
-//      Result := Result + ' ' + FWorkbook.GetPaletteColorAsHTMLStr(clr) + '; ';
   end;
 
 const
@@ -497,7 +496,7 @@ begin
       if j = 0 then
       begin
         lRow := FWorksheet.FindRow(i);
-        if lRow <> nil then
+        if (lRow <> nil) and (lRow^.RowHeightType <> rhtDefault) then
           lRowHeightStr := Format(' height="%.0fpt"',
             [FWorkbook.ConvertUnits(lRow^.Height, FWorkbook.Units, suPoints)]);
       end;

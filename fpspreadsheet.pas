@@ -41,26 +41,15 @@ type
   TsWorksheet = class;
   TsWorkbook = class;
 
-  {**
-    Type: TRow -- record containing information about a spreadsheet row
-
-    Members:
-      - Row -- The index of the row (beginning with 0)
-      - Height -- The height of the row (expressed as line count of the default font)
-
-    Notes:
-      - Only rows with heights that cannot be derived from the font height have
-        a row record.
-    }
-
   {@@ The record TRow contains information about a spreadsheet row:
     @param  Row     The index of the row (beginning with 0)
-    @param  Height  The height of the row (expressed in the units defined in the workbook)
-   Only rows with heights that cannot be derived from the font height have a
-   row record. }
+    @param  Height  The height of the row (expressed in the units defined by
+                    the workbook)
+    @param  RowHeightType  Specifies default, automatic or custom row height }
   TRow = record
     Row: Cardinal;
     Height: Single;
+    RowHeightType: TsRowHeightType;
   end;
 
   {@@ Pointer to a TRow record }
@@ -447,6 +436,7 @@ type
     function  GetRow(ARow: Cardinal): PRow;
     function  GetRowHeight(ARow: Cardinal; AUnits: TsSizeUnits): Single; overload;
     function  GetRowHeight(ARow: Cardinal): Single; overload; deprecated 'Use version with parameter AUnits.';
+    function  GetRowHeightType(ARow: Cardinal): TsRowHeightType;
     function  GetCol(ACol: Cardinal): PCol;
     function  GetColWidth(ACol: Cardinal; AUnits: TsSizeUnits): Single; overload;
     function  GetColWidth(ACol: Cardinal): Single; overload; deprecated 'Use version with parameter AUnits.';
@@ -463,8 +453,10 @@ type
     procedure WriteDefaultColWidth(AValue: Single; AUnits: TsSizeUnits);
     procedure WriteDefaultRowHeight(AValue: Single; AUnits: TsSizeUnits);
     procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
-    procedure WriteRowHeight(ARow: Cardinal; AHeight: Single; AUnits: TsSizeUnits); overload;
-    procedure WriteRowHeight(ARow: Cardinal; AHeight: Single); overload; deprecated 'Use version with parameter AUnits';
+    procedure WriteRowHeight(ARow: Cardinal; AHeight: Single; AUnits: TsSizeUnits;
+      ARowHeightType: TsRowHeightType = rhtCustom); overload;
+    procedure WriteRowHeight(ARow: Cardinal; AHeight: Single;
+      ARowHeightType: TsRowHeightType = rhtCustom); overload; deprecated 'Use version with parameter AUnits';
     procedure WriteColInfo(ACol: Cardinal; AData: TCol);
     procedure WriteColWidth(ACol: Cardinal; AWidth: Single; AUnits: TsSizeUnits); overload;
     procedure WriteColWidth(ACol: Cardinal; AWidth: Single); overload; deprecated 'Use version with parameter AUnits';
@@ -6275,8 +6267,8 @@ begin
   Result := 0;
   for cell in Cells.GetRowEnumerator(ARow) do
     Result := Max(Result, ReadCellFont(cell).Size);
-  Result := FWorkbook.ConvertUnits(Result, suPoints, FWorkbook.Units);
     // FixMe: This is not correct if text is rotated or wrapped
+  Result := FWorkbook.ConvertUnits(Result, suPoints, FWorkbook.Units);
 end;
 
 function TsWorksheet.CalcRowHeight(ARow: Cardinal): Single;
@@ -6461,6 +6453,9 @@ end;
   @param  ARow    Index of the row considered
   @param  AUnits  Units for the row height.
   @return Height of the row
+          Note that the row height value can be negative to indicate that this
+          is an auto-calculated value (i.e. the value can change for example
+          when the font size changes).
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetRowHeight(ARow: Cardinal; AUnits: TsSizeUnits): Single;
 var
@@ -6482,6 +6477,28 @@ end;
 function TsWorksheet.GetRowHeight(ARow: Cardinal): Single;
 begin
   Result := GetRowHeight(ARow, suLines);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the type of rowheight of a specific row.
+  If there is no row record then rhtDefault is returned.
+
+  @param  ARow    Index of the row considered
+  @param  AUnits  Units for the row height.
+  @return Height of the row
+          Note that the row height value can be negative to indicate that this
+          is an auto-calculated value (i.e. the value can change for example
+          when the font size changes).
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetRowHeightType(ARow: Cardinal): TsRowHeightType;
+var
+  lRow: PRow;
+begin
+  lRow := FindRow(ARow);
+  if lRow = nil then
+    Result := rhtDefault
+  else
+    Result := lRow^.RowHeightType;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6884,6 +6901,9 @@ end;
   @param  ARow   Index of the row record which will be created or modified
   @param  AData  Data to be written. Expected to be already in the units
                  defined for the workbook
+                 Note that the row height value can be negative to indicate
+                 that this is an auto-calculated value (i.e. the value can
+                 change for example when the font size changes).
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteRowInfo(ARow: Cardinal; AData: TRow);
 var
@@ -6900,9 +6920,11 @@ end;
   @param  ARow     Index of the row to be considered
   @param  AHeight  Row height to be assigned to the row.
   @param  AUnits   Units measuring the row height.
+  @param  ARowHeightType  Specifies whether the row height is a default,
+                   automatic or custom row height.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single;
-  AUnits: TsSizeUnits);
+  AUnits: TsSizeUnits; ARowHeightType: TsRowHeightType = rhtCustom);
 var
   AElement: PRow;
 begin
@@ -6910,6 +6932,7 @@ begin
     exit;
   AElement := GetRow(ARow);
   AElement^.Height := FWorkbook.ConvertUnits(AHeight, AUnits, FWorkbook.FUnits);
+  AElement^.RowHeightType := ARowHeightType;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6919,9 +6942,10 @@ end;
   Note that this method is deprecated and will be removed.
   Use the variant in which the units of the new height can be specified.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single);
+procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single;
+  ARowHeightType: TsRowHeightType = rhtCustom);
 begin
-  WriteRowHeight(ARow, AHeight, suLines);
+  WriteRowHeight(ARow, AHeight, suLines, ARowHeightType);
 end;
 
 {@@ ----------------------------------------------------------------------------

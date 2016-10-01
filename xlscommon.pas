@@ -325,6 +325,8 @@ const
     (2.54*  12.0  ,   11.0  *2.54)   // 90 - 12x11
   );
 
+  ROWHEIGHT_EPS = 1E-2;
+
 type
   TDateMode=(dm1900,dm1904); //DATEMODE values, 5.28
 
@@ -2080,17 +2082,30 @@ var
   rowrec: TRowRecord;
   lRow: PRow;
   h: word;
+  hpts: Single;
+  hdef: Single;
+  isNonDefaultHeight: Boolean;
+  isAutoSizeHeight: Boolean;
 begin
   rowrec.RowIndex := 0;   // to silence the compiler...
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
 
-  // If bit 6 is set in the flags row height does not match the font size.
-  // Only for this case we create a row record for fpspreadsheet
-  if rowrec.Flags and $00000040 <> 0 then begin
+  h := WordLEToN(rowrec.Height) and $7FFF;  // mask off "custom" bit
+  hpts := FWorkbook.ConvertUnits(TwipsToPts(h), suPoints, FWorkbook.Units);
+  hdef := FWorksheet.ReadDefaultRowHeight(FWorkbook.Units);
+
+  isNonDefaultHeight := not SameValue(hpts, hdef, ROWHEIGHT_EPS);
+  isAutoSizeHeight := WordLEToN(rowrec.Flags) and $00000040 = 0;
+  // If this bis is set then font size and row height do NOT match, i.e. NO autosize
+
+  // We only create a row record for fpspreadsheet if the row has a
+  // non-standard height (i.e. different from default row height).
+  if isNonDefaultHeight then begin
     lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
-    // row height is encoded into the 15 lower bits in units "twips" (1/20 pt)
-    h := WordLEToN(rowrec.Height) and $7FFF;
-    lRow^.Height := FWorkbook.ConvertUnits(TwipsToPts(h), suPoints, FWorkbook.Units);
+    if isAutoSizeHeight then
+      lRow^.RowHeightType := rhtAuto else
+      lRow^.RowHeightType := rhtCustom;
+    lRow^.Height := hpts;
   end;
 end;
 
@@ -4258,8 +4273,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRow(AStream: TStream; ASheet: TsWorksheet;
   ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow);
-const
-  EPS = 1E-2;
 var
   w: Word;
   dw: DWord;
@@ -4310,11 +4323,8 @@ begin
   AStream.WriteWord(WordToLE(Word(ALastColIndex) + 1));
 
   { Row height (in twips, 1/20 point) and info on custom row height }
-  if (ARow = nil) or SameValue(ARow^.Height, ASheet.ReadDefaultRowHeight(FWorkbook.Units), EPS) then
+  if (ARow = nil) or (ARow^.RowHeightType = rhtDefault) then
     rowheight := PtsToTwips(ASheet.ReadDefaultRowHeight(suPoints))
-  else
-  if (ARow^.Height = 0) then
-    rowheight := 0
   else
     rowheight := PtsToTwips(FWorkbook.ConvertUnits(ARow^.Height, FWorkbook.Units, suPoints));
   w := rowheight and $7FFF;
@@ -4327,8 +4337,10 @@ begin
   dw := $00000100;  // bit 8 is always 1
   if spaceabove then dw := dw or $10000000;
   if spacebelow then dw := dw or $20000000;
-  if (ARow <> nil) then
-    dw := dw or $00000040;  // Row height and font height do not match
+  if (ARow <> nil) and (ARow^.RowHeightType = rhtCustom) then  // Custom row height
+    dw := dw or $00000040;    // Row height and font height do not match
+
+  { Write out }
   AStream.WriteDWord(DWordToLE(dw));
 end;
 

@@ -770,6 +770,14 @@ type
   TsStreamParam = (spClipboard, spWindowsClipboardHTML);
   TsStreamParams = set of TsStreamParam;
 
+  {@@ Types of row heights
+    rhtDefault - default row height
+    rhtAuto - automatically determined row height, depends on font size,
+      text rotation, rich-text parameters, word-wrap
+    rhtCustom - user-determined row height (dragging the row header borders in
+      the grid }
+  TsRowHeightType = (rhtDefault, rhtAuto, rhtCustom);
+
 
 implementation
 

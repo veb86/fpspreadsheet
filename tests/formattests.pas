@@ -33,7 +33,7 @@ var
   SollDateTimeFormatStrings: array[0..8] of String;
 
   SollColWidths: array[0..1] of Single;
-  SollRowHeights: Array[0..2] of Single;
+  SollRowHeights: Array[0..3] of Single;
   SollBorders: array[0..19] of TsCellBorders;
   SollBorderLineStyles: array[0..6] of TsLineStyle;
   SollBorderColors: array[0..5] of TsColor;
@@ -156,7 +156,7 @@ type
 implementation
 
 uses
-  TypInfo, fpsPatches, fpsutils, fpsnumformat, fpspalette, fpscsv;
+  Math, TypInfo, fpsPatches, fpsutils, fpsnumformat, fpspalette, fpscsv;
 
 const
   FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet
@@ -276,6 +276,7 @@ begin
   SollRowHeights[0] := 1;  // Lines of default font
   SollRowHeights[1] := 2;
   SollRowHeights[2] := 4;
+  SollRowHeights[3] := -2;  // an autocalculated row height
 
   // Cell borders
   SollBorders[0] := [];
@@ -1181,6 +1182,7 @@ var
   ActualRowHeight: Single;
   Row: Integer;
   TempFile: string; //write xls/xml to this file and read back from it
+  rht: TsRowHeightType;
 begin
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
@@ -1190,8 +1192,12 @@ begin
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorkSheet:= MyWorkBook.AddWorksheet(RowHeightSheet);
-    for Row := Low(SollRowHeights) to High(SollRowHeights) do
-      MyWorksheet.WriteRowHeight(Row, SollRowHeights[Row], suLines);
+    for Row := Low(SollRowHeights) to High(SollRowHeights) do begin
+      if SollRowHeights[Row] < 0 then
+        rht := rhtAuto else
+        rht := rhtCustom;
+      MyWorksheet.WriteRowHeight(Row, abs(SollRowHeights[Row]), suLines, rht);
+    end;
     TempFile:=NewTempFile;
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
@@ -1211,11 +1217,18 @@ begin
     for Row := Low(SollRowHeights) to High(SollRowHeights) do
     begin
       ActualRowHeight := MyWorksheet.GetRowHeight(Row, suLines);
+      rht := MyWorksheet.GetRowHeightType(Row);
       // Take care of rounding errors - due to missing details of calculation
       // they can be quite large...
-      if abs(ActualRowHeight - SollRowHeights[Row]) > 1e-2 then
+      if not SameValue(ActualRowHeight, abs(SollRowHeights[Row]), 1e-2) then
         CheckEquals(SollRowHeights[Row], ActualRowHeight,
           'Test saved row height mismatch, row '+RowNotation(MyWorkSheet,Row));
+      if (SollRowHeights[Row] < 0) and (rht <> rhtAuto) then
+        CheckEquals(ord(rht), ord(rhtAuto),
+          'Test saved row height type (rhtAuto) mismatch, row'+RowNotation(MyWorksheet,Row));
+      if (sollRowHeights[Row] > 0) and (rht <> rhtCustom) then
+        CheckEquals(ord(rht), ord(rhtCustom),
+          'Test saved row height type (rhtCustom) mismatch, row'+RowNotation(MyWorksheet,Row));
     end;
   finally
     MyWorkbook.Free;

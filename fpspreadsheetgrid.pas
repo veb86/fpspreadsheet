@@ -12,11 +12,6 @@
 -------------------------------------------------------------------------------}
 unit fpspreadsheetgrid;
 
-{ Activate this define if the worksheet contains varying row heights and jumps
-  to specific rows do not meet the requested row. There is a speed penalty in
-  case of large worksheets. }
-{.$DEFINE CALC_ALL_ROWHEIGHTS}
-
 {$mode objfpc}{$H+}
 {$I fps.inc}
 
@@ -77,6 +72,7 @@ type
     FDrawingCell: PCell;
     FTextOverflowing: Boolean;
     FAutoExpand: TsAutoExpandModes;
+    FAutoCalcRowHeights: Boolean;
     FEnhEditMode: Boolean;
     FSelPen: TsSelPen;
     FHyperlinkTimer: TTimer;
@@ -90,6 +86,7 @@ type
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
+    function CalcRowHeightToSheet(AHeight: Integer): Single;
     procedure ChangedCellHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure ChangedFontHandler(ASender: TObject; ARow, ACol: Cardinal);
     procedure FixNeighborCellBorders(ACell: PCell);
@@ -246,14 +243,17 @@ type
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
-    procedure TopLeftChanged; override;
     function TrimToCell(ACell: PCell): String;
     procedure UpdateColWidths(AStartIndex: Integer = 0);
-    procedure UpdateRowHeight(ARow: Integer);
+    procedure UpdateRowHeight(ARow: Integer; EnforceCalcRowHeight: Boolean = false);
     procedure UpdateRowHeights;
 
     {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
+    {@@ Automatically recalculate row heights after loading a file. Gets rid of
+        possibly incorrect row heights stored by the writing application. But:
+        slow in case of large files. }
+    property AutoCalcRowHeights: Boolean read FAutoCalcRowHeights write FAutoCalcRowHeights default true;
     {@@ Automatically expand grid dimensions }
     property AutoExpand: TsAutoExpandModes read FAutoExpand write FAutoExpand;
     {@@ Displays column and row headers in the fixed col/row style of the grid.
@@ -502,6 +502,10 @@ type
     // inherited from TsCustomWorksheetGrid
     {@@ Automatically recalculates the worksheet if a cell value changes. }
     property AutoCalc;
+    {@@ Automatically recalculate row heights after loading a file. Gets rid of
+        possibly incorrect row heights stored by the writing application. But:
+        slow in case of large files. }
+    property AutoCalcRowHeights;
     {@@ Automatically expand grid dimensions }
     property AutoExpand default [aeData, aeNavigation];
     {@@ Displays column and row headers in the fixed col/row style of the grid.
@@ -1012,6 +1016,7 @@ begin
   FSelPen.JoinStyle := pjsMiter;
   FSelPen.OnChange := @SelPenChangeHandler;
   FAutoExpand := [aeData, aeNavigation];
+  FAutoCalcRowHeights := true;
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
   FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
@@ -1190,8 +1195,16 @@ function TsCustomWorksheetGrid.CalcRowHeightFromSheet(AHeight: Single): Integer;
 var
   h_pts: Single;
 begin
-  h_pts := Workbook.ConvertUnits(AHeight, Workbook.Units, suPoints);;
+  h_pts := Workbook.ConvertUnits(abs(AHeight), Workbook.Units, suPoints);;
   Result := PtsToPx(h_pts, Screen.PixelsPerInch); // + 4;
+end;
+
+function TsCustomWorksheetGrid.CalcRowHeightToSheet(AHeight: Integer): Single;
+var
+  h_pts: Single;
+begin
+  h_pts := PxToPts(AHeight, Screen.PixelsPerInch);
+  Result := Workbook.ConvertUnits(h_pts, suPoints, Workbook.Units);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3609,10 +3622,9 @@ begin
   if GetGridRow(Worksheet.GetLastRowIndex + 1) >= RowCount then
     RowCount := RowCount + 1;
   r := GetWorksheetRow(AGridRow);
-//  r := AGridRow - FHeaderCount;
   Worksheet.InsertRow(r);
 
-  UpdateRowHeight(AGridRow);
+  UpdateRowHeight(AGridRow, true);
   // UpdateRowHeights(AGridRow);
 end;
 
@@ -4007,7 +4019,9 @@ procedure TsCustomWorksheetGrid.ListenerNotification(AChangedItems: TsNotificati
   AData: Pointer = nil);
 var
   grow, gcol: Integer;
+  srow: Cardinal;
   cell: PCell;
+  lRow: PRow;
 begin
   Unused(AData);
 
@@ -4079,9 +4093,12 @@ begin
   // Row height (after font change).
   if (lniRow in AChangedItems) and (Worksheet <> nil) then
   begin
-    grow := GetGridRow({%H-}PtrInt(AData));
+    srow := {%H-}PtrInt(AData);  // sheet row
+    grow := GetGridRow(srow);    // grid row
     AutoExpandToRow(grow, aeData);
-    RowHeights[grow] := CalcAutoRowHeight(grow);
+    lRow := Worksheet.FindRow(srow);
+    if (lRow = nil) or (lRow^.RowHeightType <> rhtCustom) then
+      UpdateRowHeight(grow, true);
   end;
 end;
 
@@ -4574,21 +4591,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Inherited method called whenever to grid is scrolled, i.e. the top/left cell
-  changes.
-  Is overridden to calculate the row heights of the currently visible grid
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.TopLeftChanged;
-begin
- {$IFNDEF CALC_ALL_ROWHEIGHTS}
-  if FOldTopRow <> TopRow then
-    UpdateRowHeights;
-  FOldTopRow := TopRow;
- {$ENDIF}
-  inherited;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Modifies the text that is show for cells which are too narrow to hold the
   entire text. The method follows the behavior of Excel and Open/LibreOffice:
   If the specified cell contains a non-formatted number, then it is formatted
@@ -4753,48 +4755,74 @@ begin
   end;
 end;
 
-procedure TsCustomWorksheetGrid.UpdateRowHeight(ARow: Integer);
+{@@ ----------------------------------------------------------------------------
+  Updates the height if the specified row in the grid by the value stored in the
+  Worksheet and multiplied by the current zoom factor. If the stored rowheight
+  type is rhtAuto (meaning: "row height is auto-calculated") and row height
+  calculation is enabled (if internal flag FAutoCalcRowHeight is true, or the
+  parameter EnforceCalcRowHeight is true9, then the current row height is
+  calculated by iterating over all cells in the row.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.UpdateRowHeight(ARow: Integer;
+  EnforceCalcRowHeight: Boolean = false);
 var
   lRow: PRow;
-  h: Integer;
+  h: Integer;     // Row height, in pixels. Contains zoom factor.
 begin
+  h := 0;
   if Worksheet <> nil then
   begin
     lRow := Worksheet.FindRow(ARow - FHeaderCount);
-    if (lRow <> nil) then
-      h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor)
-    else
-      h := CalcAutoRowHeight(ARow); // ZoomFactor has already been applied to font heights
-  end else
-    h := DefaultRowHeight;          // Zoom factor is applied by getter function
+    if (lRow <> nil) then begin
+      case lRow^.RowHeightType of
+        rhtCustom:
+          h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
+        rhtAuto, rhtDefault:
+          if FAutoCalcRowHeights or EnforceCalcRowHeight then begin
+            // Calculate current grid row height in pixels by iterating over all cells in row
+            h := CalcAutoRowHeight(ARow);  // ZoomFactor already applied to font heights
+            if h = 0 then begin
+              h := DefaultRowHeight;       // Zoom factor applied by getter function
+              lRow^.RowHeightType := rhtDefault;
+            end else
+              lRow^.RowHeightType := rhtAuto;
+            // Calculate the unzoomed row height in workbook units and store
+            // in row record
+            lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
+          end else
+            // If autocalc mode is off we just take the row height from the row record
+            h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
+      end;  // case
+    end else
+    // No row record so far.
+    if FAutoCalcRowHeights or EnforceCalcRowHeight then begin
+      h := CalcAutoRowHeight(ARow);
+      if h <> DefaultRowHeight then begin
+        lRow := Worksheet.GetRow(ARow - FHeaderCount);
+        lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
+        lRow^.RowHeightType := rhtAuto;
+      end;
+    end;
+  end;
+  if h = 0 then
+    h := DefaultRowHeight;     // Zoom factor is applied by getter function
+
+  inc(FZoomLock);  // We don't want to modify the sheet row heights here.
   RowHeights[ARow] := h;
+  dec(FZoomLock);
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Updates row heights by using the data from the TRow records or by auto-
-  calculating the row height from the max of the cell heights
-  Because there may be many rows only the visible rows are updated. Therefore,
-  this method is called whenever the grid is scrolled and the coordinates of
-  the top-left cell changes.
+  Updates grid row heights by using the data from the TRow records.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.UpdateRowHeights;
-const
-  DELTA = 10;
 var
-  r, r1, r2: Integer;
+  r: Integer;
 begin
   if FRowHeightLock > 0 then
     exit;
 
- {$IFDEF CALC_ALL_ROWHEIGHTS}
-  r1 := FHeaderCount;
-  r2 := RowCount-1;
- {$ELSE}
-  r1 := Max(FHeaderCount, TopRow - DELTA);
-  r2 := Min(RowCount-1, TopRow + VisibleRowCount + DELTA);
- {$ENDIF}
-
-  for r:=r1 to r2 do
+  for r:=FHeaderCount to RowCount-1 do
     UpdateRowHeight(r);
 end;
 
