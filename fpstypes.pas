@@ -778,6 +778,10 @@ type
       the grid }
   TsRowHeightType = (rhtDefault, rhtAuto, rhtCustom);
 
+const
+  RowHeightTypeNames: array[TsRowHeightType] of string = (
+    'Default', 'Auto', 'Custom');
+
 
 implementation
 

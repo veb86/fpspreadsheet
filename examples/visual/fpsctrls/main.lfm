@@ -27,7 +27,7 @@ object MainForm: TMainForm
       Height = 493
       Top = 23
       Width = 690
-      AutoCalcRowHeights = False
+      AutoCalc = True
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = True
@@ -58,6 +58,7 @@ object MainForm: TMainForm
     Height = 518
     Top = 83
     Width = 298
+    MultiLine = True
     OnChange = InspectorTabControlChange
     TabIndex = 0
     Tabs.Strings = (
@@ -65,14 +66,15 @@ object MainForm: TMainForm
       'Worksheet'
       'Cell values'
       'Cell properties'
+      'Row'
     )
     Align = alRight
     TabOrder = 1
     Visible = False
     object Inspector: TsSpreadsheetInspector
       Left = 2
-      Height = 493
-      Top = 23
+      Height = 473
+      Top = 43
       Width = 294
       Align = alClient
       DefaultColWidth = 125

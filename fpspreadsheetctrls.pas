@@ -436,7 +436,7 @@ type
 
   {@@ Classification of data displayed by the SpreadsheetInspector. Each item
     can be assigned to a tab of a TabControl. }
-  TsInspectorMode = (imWorkbook, imWorksheet, imCellValue, imCellProperties);
+  TsInspectorMode = (imWorkbook, imWorksheet, imCellValue, imCellProperties, imRow);
 
   {@@ Inspector expanded nodes }
   TsInspectorExpandedNode = (ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
@@ -451,6 +451,7 @@ type
     FWorkbookSource: TsWorkbookSource;
     FMode: TsInspectorMode;
     FExpanded: TsInspectorExpandedNodes;
+    FCurrRow, FCurrCol: Integer;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
     procedure SetExpanded(AValue: TsInspectorExpandedNodes);
@@ -462,6 +463,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure UpdateCellValue(ACell: PCell; AStrings: TStrings); virtual;
     procedure UpdateCellProperties(ACell: PCell; AStrings: TStrings); virtual;
+    procedure UpdateRow(ARow: Integer; AStrings: TStrings); virtual;
     procedure UpdateWorkbook(AWorkbook: TsWorkbook; AStrings: TStrings); virtual;
     procedure UpdateWorksheet(ASheet: TsWorksheet; AStrings: TStrings); virtual;
   public
@@ -752,9 +754,13 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.CellSelectedHandler(Sender: TObject;
   ARow, ACol: Cardinal);
+var
+  dummycell: TCell;
 begin
-  Unused(ARow, ACol);
-  NotifyListeners([lniSelection]);
+  dummycell.Row := ARow;
+  dummycell.Col := ACol;
+//  Unused(ARow, ACol);
+  NotifyListeners([lniSelection], @dummycell);
 
   if FPendingOperation <> coNone then
   begin
@@ -2852,8 +2858,11 @@ begin
   begin
     book := FWorkbookSource.Workbook;
     sheet := FWorkbookSource.Worksheet;
-    if sheet <> nil then
+    if sheet <> nil then begin
       cell := sheet.FindCell(sheet.ActiveCellRow, sheet.ActiveCellCol);
+      if cell <> nil then
+        FCurrRow := cell^.Row;
+    end;
   end;
 
   list := TStringList.Create;
@@ -2863,6 +2872,7 @@ begin
       imCellProperties : UpdateCellProperties(cell, list);
       imWorksheet      : UpdateWorksheet(sheet, list);
       imWorkbook       : UpdateWorkbook(book, list);
+      imRow            : UpdateRow(FCurrRow, list);
     end;
     Strings.Assign(list);
   finally
@@ -2906,14 +2916,22 @@ end;
 procedure TsSpreadsheetInspector.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
 begin
-  Unused(AData);
+//  Unused(AData);
   case FMode of
     imWorkbook:
-      if ([lniWorkbook, lniWorksheet]*AChangedItems <> []) then DoUpdate;
+      if ([lniWorkbook, lniWorksheet]*AChangedItems <> []) then
+        DoUpdate;
     imWorksheet:
-      if ([lniWorksheet, lniSelection]*AChangedItems <> []) then DoUpdate;
+      if ([lniWorksheet, lniSelection]*AChangedItems <> []) then
+        DoUpdate;
     imCellValue, imCellProperties:
-      if ([lniCell, lniSelection]*AChangedItems <> []) then DoUpdate;
+      if ([lniCell, lniSelection]*AChangedItems <> []) then
+        DoUpdate;
+    imRow:
+      if AData <> nil then begin
+        FCurrRow := PCell(AData)^.Row;
+        if ([lniSelection] * AChangedItems <> []) then DoUpdate;
+      end;
   end;
 end;
 
@@ -3188,6 +3206,42 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Creates a string list containing the properties of a row.
+  The string list items are name-value pairs in the format "name=value".
+  The string list is displayed in the inspector's grid.
+
+  @param  ARow       index of the investigated row
+  @param  AStrings   Stringlist receiving the name-value pairs.
+-------------------------------------------------------------------------------}
+procedure TsSpreadsheetInspector.UpdateRow(ARow: Integer; AStrings: TStrings);
+var
+  lRow: PRow;
+  unitStr: String;
+begin
+  if ARow < 0 then
+    exit;
+
+  unitStr := SizeUnitNames[Workbook.Units];
+  lRow := Worksheet.FindRow(ARow);
+  AStrings.Add(Format('Row=%d', [ARow]));
+  if lRow <> nil then
+  begin
+    AStrings.Add(Format('Height=%.1f %s', [
+      lRow^.Height, unitStr
+    ]));
+    AStrings.Add(Format('RowHeightType=%s', [
+      RowHeightTypeNames[lRow^.RowHeightType]
+    ]));
+  end else
+  begin
+    AStrings.Add('No row record=');
+    AStrings.Add(Format('DefaultRowHeight=%.1f %s', [
+      Worksheet.ReadDefaultRowHeight(Workbook.Units), unitStr
+    ]));
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Creates a string list containing the properties of the workbook.
   The string list items are name-value pairs in the format "name=value".
   The string list is displayed in the inspector's grid.
@@ -3363,7 +3417,7 @@ begin
         AStrings.Add(Format('  Start page number=%d', [ASheet.pageLayout.StartPageNumber]))
       else
         AStrings.Add('  Start page number=automatic');
-      AStrings.Add(Format('  Scaling factor=%d%%',
+      AStrings.Add(Format('  Scaling factor (Zoom)=%d%%',
         [ASheet.PageLayout.ScalingFactor]));
       AStrings.Add(Format('  Copies=%d', [ASheet.PageLayout.Copies]));
       if (ASheet.PageLayout.Options * [poDifferentOddEven, poDifferentFirst] <> []) then
