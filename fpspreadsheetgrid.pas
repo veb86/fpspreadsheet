@@ -5907,6 +5907,8 @@ begin
 end;
 
 procedure TsCustomWorksheetGrid.SetZoomFactor(AValue: Double);
+var
+  c,r: Integer;
 begin
   if (AValue <> GetZoomFactor) and Assigned(Worksheet) then begin
     inc(FZoomLock);
@@ -5916,7 +5918,23 @@ begin
     UpdateColWidths;
     UpdateRowHeights;
     dec(FZoomLock);
-    Invalidate;
+
+    // Bring active cell back into the viewport: There is a ScrollToCell but
+    // this method is private. It is called by SetCol/SetRow, though.
+    if ((Col < GCache.Visiblegrid.Left) or (Col >= GCache.VisibleGrid.Right)) and
+       (GCache.VisibleGrid.Left <> GCache.VisibleGrid.Right) then
+    begin
+      c := Col;
+      Col := c-1;    // "Col" must change in order to call ScrtollToCell
+      Col := c;
+    end;
+    if ((Row < GCache.VisibleGrid.Top) or (Row >= GCache.VisibleGrid.Bottom)) and
+       (GCache.VisibleGrid.Top <> GCache.VisibleGrid.Bottom) then
+    begin
+      r := Row;
+      Row := r-1;
+      Row := r;
+    end;
   end;
 end;
 
