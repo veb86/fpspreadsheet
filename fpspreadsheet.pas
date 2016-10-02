@@ -6452,23 +6452,23 @@ end;
 
   @param  ARow    Index of the row considered
   @param  AUnits  Units for the row height.
-  @return Height of the row
-          Note that the row height value can be negative to indicate that this
-          is an auto-calculated value (i.e. the value can change for example
-          when the font size changes).
+  @return Height of the row. This is the "raw" value, without application of
+          the zoom factor.
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetRowHeight(ARow: Cardinal; AUnits: TsSizeUnits): Single;
 var
-  row: PRow;
+  lRow: PRow;
 begin
   if ARow = UNASSIGNED_ROW_COL_INDEX then
     Result := 0
   else
   begin
-    row := FindRow(ARow);
-    if row <> nil then
-      Result := row^.Height
-    else
+    lRow := FindRow(ARow);
+    if lRow <> nil then begin
+      Result := lRow^.Height;
+      if lRow.RowHeightType = rhtDefault then
+        Result := FDefaultRowHeight;
+    end else
       Result := FDefaultRowHeight;
     Result := FWorkbook.ConvertUnits(Result, FWorkbook.Units, AUnits);
   end;
@@ -6485,10 +6485,8 @@ end;
 
   @param  ARow    Index of the row considered
   @param  AUnits  Units for the row height.
-  @return Height of the row
-          Note that the row height value can be negative to indicate that this
-          is an auto-calculated value (i.e. the value can change for example
-          when the font size changes).
+  @return Height of the row. This is the "raw" value, without application of
+          the zoom factor.
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetRowHeightType(ARow: Cardinal): TsRowHeightType;
 var
