@@ -106,6 +106,17 @@ type
       read FOnGetWorksheetName write FOnGetWorksheetName;
   end;
 
+  { Action foz zooming the selected worksheet }
+  TsWorksheetZoomAction= class(TsWorksheetAction)
+  private
+    FZoom: Integer;
+    procedure SetZoom(AValue: Integer);
+  public
+    constructor Create(AOwner: TComponent); override;
+    procedure ExecuteTarget(Target: TObject); override;
+  published
+    property Zoom: Integer read FZoom write SetZoom default 100;
+  end;
 
   { --- Actions related to cell and cell selection formatting--- }
 
@@ -537,6 +548,7 @@ begin
   RegisterActions('FPSpreadsheet', [
     // Worksheet-releated actions
     TsWorksheetAddAction, TsWorksheetDeleteAction, TsWorksheetRenameAction,
+    TsWorksheetZoomAction,
     // Cell or cell range formatting actions
     TsCopyAction,
     TsFontStyleAction, TsFontDialogAction, TsBackgroundColorDialogAction,
@@ -786,6 +798,32 @@ begin
     else
       MessageDlg(Format('"%s" is not a valid worksheet name.', [s]), mtError, [mbOK], 0);
   end;
+end;
+
+
+{ TsWorksheetZoomAction }
+
+constructor TsWorksheetZoomAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  FZoom := 100;
+end;
+
+procedure TsWorksheetZoomAction.ExecuteTarget(Target: TObject);
+begin
+  if HandlesTarget(Target) then
+    Worksheet.Zoomfactor := FZoom / 100;
+end;
+
+procedure TsWorksheetZoomAction.SetZoom(AValue: Integer);
+begin
+  if AValue = FZoom then
+    exit;
+
+  if FZoom = 0 then
+    raise Exception.Create('Zoomfactor cannot be 0.');
+
+  FZoom := AValue;
 end;
 
 

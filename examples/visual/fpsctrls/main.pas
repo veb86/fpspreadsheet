@@ -83,6 +83,19 @@ type
     MenuItem143: TMenuItem;
     MenuItem144: TMenuItem;
     MenuItem145: TMenuItem;
+    MenuItem146: TMenuItem;
+    MenuItem148: TMenuItem;
+    MenuItem149: TMenuItem;
+    MenuItem150: TMenuItem;
+    MenuItem151: TMenuItem;
+    MenuItem152: TMenuItem;
+    MenuItem153: TMenuItem;
+    MenuItem154: TMenuItem;
+    MenuItem155: TMenuItem;
+    MenuItem156: TMenuItem;
+    MenuItem157: TMenuItem;
+    MnuZoom: TMenuItem;
+    MenuItem147: TMenuItem;
     MnuSettings: TMenuItem;
     MenuItem11: TMenuItem;
     MenuItem12: TMenuItem;
@@ -278,6 +291,15 @@ type
     AcNumFormatText: TsNumberFormatAction;
     Splitter2: TSplitter;
     Splitter3: TSplitter;
+    AcZoom100: TsWorksheetZoomAction;
+    AcZoom90: TsWorksheetZoomAction;
+    AcZoom30: TsWorksheetZoomAction;
+    AcZoom50: TsWorksheetZoomAction;
+    AcZoom75: TsWorksheetZoomAction;
+    AcZoom150: TsWorksheetZoomAction;
+    AcZoom200: TsWorksheetZoomAction;
+    AcZoom300: TsWorksheetZoomAction;
+    AcZoom500: TsWorksheetZoomAction;
     ToolBar2: TToolBar;
     ToolBar3: TToolBar;
     ToolButton1: TToolButton;
@@ -666,7 +688,8 @@ procedure TMainForm.AcViewInspectorExecute(Sender: TObject);
 begin
   InspectorTabControl.Visible := AcViewInspector.Checked;
   InspectorSplitter.Visible := AcViewInspector.Checked;
-  InspectorSplitter.Left := 0;  // Make sure that the splitter is always at the left of the inspector
+  InspectorSplitter.Left := 0;
+  // Make sure that the splitter is always at the left of the inspector tabcontrol
 end;
 
 procedure TMainForm.ColorComboboxAddColors(Sender: TObject);

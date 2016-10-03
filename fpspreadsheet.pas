@@ -82,6 +82,8 @@ type
 
   { TsWorksheet }
 
+  TsNotifyEvent = procedure (Sender: TObject) of object;
+
   {@@ This event fires whenever a cell value or cell formatting changes. It is
     handled by TsWorkbookLink to update the listening controls. }
   TsCellEvent = procedure (Sender: TObject; ARow, ACol: Cardinal) of object;
@@ -129,6 +131,7 @@ type
     FZoomFactor: Double;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
+    FOnZoom: TsNotifyEvent;
     FOnCompareCells: TsCellCompareEvent;
     FOnSelectCell: TsCellEvent;
     FOnWriteCellData: TsWorksheetWriteCellDataEvent;
@@ -143,6 +146,7 @@ type
     procedure SetName(const AName: String);
     procedure SetVirtualColCount(AValue: Cardinal);
     procedure SetVirtualRowCount(AValue: Cardinal);
+    procedure SetZoomFactor(AValue: Double);
 
     { Callback procedures called when iterating through all cells }
     procedure DeleteColCallback(data, arg: Pointer);
@@ -584,7 +588,7 @@ type
     {@@ Number of frozen rows which do not scroll }
     property  TopPaneHeight: Integer read FTopPaneHeight write FTopPaneHeight;
     {@@ Zoom factor }
-    property  ZoomFactor: Double read FZoomFactor write FZoomFactor;
+    property  ZoomFactor: Double read FZoomFactor write SetZoomFactor;
     {@@ Event fired when cell contents or formatting changes }
     property  OnChangeCell: TsCellEvent read FOnChangeCell write FOnChangeCell;
     {@@ Event fired when the font size in a cell changes }
@@ -597,7 +601,8 @@ type
       standard cells are ignored. Intended for converting large database files
       to a spreadsheet format. Requires Option boVirtualMode to be set. }
     property OnWriteCellData: TsWorksheetWriteCellDataEvent read FOnWriteCellData write FOnWriteCellData;
-
+    {@@ Event triggered when the worksheet is zoomed }
+    property OnZoom: TsNotifyEvent read FOnZoom write FOnZoom;
   end;
 
   {@@
@@ -632,8 +637,7 @@ type
   {@@ Set of option flags for the workbook }
   TsWorkbookOptions = set of TsWorkbookOption;
 
-  {@@
-    Event fired when reading a file in virtual mode. Read data are provided in
+  {@@ Event fired when reading a file in virtual mode. Read data are provided in
     the "ADataCell" (which is not added to the worksheet in virtual mode). }
   TsWorkbookReadCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
     const ADataCell: PCell) of object;
@@ -644,12 +648,11 @@ type
   {@@ Event procedure called when a worksheet is removed }
   TsRemoveWorksheetEvent = procedure (Sender: TObject; ASheetIndex: Integer) of object;
 
-  {@@ The workbook contains the worksheets and provides methods for reading from
-    and writing to file.
-  }
 
   { TsWorkbook }
 
+  {@@ The workbook contains the worksheets and provides methods for reading from
+    and writing to file. }
   TsWorkbook = class
   private
     { Internal data }
@@ -4095,6 +4098,17 @@ begin
   if FWorkbook.FReadWriteFlag = rwfWrite then exit;
   FVirtualRowCount := AValue;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the zoom factor
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SetZoomfactor(AValue: Double);
+begin
+  if AValue = FZoomFactor then exit;
+  FZoomFactor := AValue;
+  if Assigned(FOnZoom) then FOnZoom(Self);
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes UTF-8 encoded text to a cell.

@@ -42,7 +42,7 @@ type
     or a cell formatting, etc. }
   TsNotificationItem = (lniWorkbook,
     lniWorksheet, lniWorksheetAdd, lniWorksheetRemoving, lniWorksheetRemove,
-    lniWorksheetRename,
+    lniWorksheetRename, lniWorksheetZoom,
     lniCell, lniSelection, lniAbortSelection, lniRow); //, lniPalette);
   {@@ This set accompanies the notification between WorkbookSource and visual
     controls and describes which items have changed in the spreadsheet. }
@@ -87,6 +87,7 @@ type
     procedure WorksheetRemovingHandler(Sender: TObject; AWorksheet: TsWorksheet);
     procedure WorksheetRenamedHandler(Sender: TObject; AWorksheet: TsWorksheet);
     procedure WorksheetSelectedHandler(Sender: TObject; AWorksheet: TsWorksheet);
+    procedure WorksheetZoomHandler(Sender: TObject);
 
   protected
     procedure AbortSelection;
@@ -1609,6 +1610,7 @@ begin
     FWorksheet.OnChangeCell := @CellChangedHandler;
     FWorksheet.OnChangeFont := @CellFontChangedHandler;
     FWorksheet.OnSelectCell := @CellSelectedHandler;
+    FWorksheet.OnZoom := @WorksheetZoomHandler;
     NotifyListeners([lniWorksheet]);
     FWorksheet := AWorksheet;  // !!!!!
     if FWorksheet.ActiveCellRow = Cardinal(-1) then
@@ -1620,6 +1622,14 @@ begin
     SelectCell(r, c);
   end else
     NotifyListeners([lniWorksheet]);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Event handler called whenever the workbook is zoomed
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.WorksheetZoomHandler(Sender: TObject);
+begin
+  NotifyListeners([lniWorksheetZoom], FWorksheet);
 end;
 
 
@@ -2922,7 +2932,7 @@ begin
       if ([lniWorkbook, lniWorksheet]*AChangedItems <> []) then
         DoUpdate;
     imWorksheet:
-      if ([lniWorksheet, lniSelection]*AChangedItems <> []) then
+      if ([lniWorksheet, lniSelection, lniWorksheetZoom]*AChangedItems <> []) then
         DoUpdate;
     imCellValue, imCellProperties:
       if ([lniCell, lniSelection]*AChangedItems <> []) then
@@ -3378,6 +3388,7 @@ begin
     AStrings.Add('Selection=');
     AStrings.Add('Default column width=');
     AStrings.Add('Default row height=');
+    AStrings.Add('Zoom factor=');
     AStrings.Add('Page layout=');
   end else
   begin
@@ -3395,6 +3406,7 @@ begin
     AStrings.Add(Format('Default row height=%.1f %s', [
       ASheet.ReadDefaultRowHeight(ASheet.Workbook.Units),
       SizeUnitNames[ASheet.Workbook.Units]]));
+    AStrings.Add(Format('Zoom factor=%d%%', [round(ASheet.ZoomFactor*100)]));
     AStrings.Add(Format('Comments=%d items', [ASheet.Comments.Count]));
     AStrings.Add(Format('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]));
     AStrings.Add(Format('MergedCells=%d items', [ASheet.MergedCells.Count]));

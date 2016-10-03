@@ -188,6 +188,7 @@ type
 
   protected
     { Protected declarations }
+    procedure AdaptToZoomFactor;
     procedure AutoAdjustColumn(ACol: Integer); override;
     procedure AutoAdjustRow(ARow: Integer); virtual;
     procedure AutoExpandToCol(ACol: Integer; AMode: TsAutoExpandMode);
@@ -1032,6 +1033,35 @@ begin
   FreeAndNil(FCellFont);
   FreeAndNil(FSelPen);
   inherited Destroy;
+end;
+
+procedure TsCustomWorksheetGrid.AdaptToZoomFactor;
+var
+  c, r: Integer;
+begin
+  inc(FZoomLock);
+  DefaultRowHeight := round(GetZoomfactor * FDefRowHeight100);
+  DefaultColWidth := round(GetZoomFactor * FDefColWidth100);
+  UpdateColWidths;
+  UpdateRowHeights;
+  dec(FZoomLock);
+
+  // Bring active cell back into the viewport: There is a ScrollToCell but
+  // this method is private. It is called by SetCol/SetRow, though.
+  if ((Col < GCache.Visiblegrid.Left) or (Col >= GCache.VisibleGrid.Right)) and
+     (GCache.VisibleGrid.Left <> GCache.VisibleGrid.Right) then
+  begin
+    c := Col;
+    Col := c-1;    // "Col" must change in order to call ScrtollToCell
+    Col := c;
+  end;
+  if ((Row < GCache.VisibleGrid.Top) or (Row >= GCache.VisibleGrid.Bottom)) and
+     (GCache.VisibleGrid.Top <> GCache.VisibleGrid.Bottom) then
+  begin
+    r := Row;
+    Row := r-1;
+    Row := r;
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.AutoColWidth(ACol: Integer);
@@ -4110,6 +4140,10 @@ begin
     if (lRow = nil) or (lRow^.RowHeightType <> rhtCustom) then
       UpdateRowHeight(grow, true);
   end;
+
+  // Worksheet zoom
+  if (lniWorksheetZoom in AChangedItems) and (Worksheet <> nil) then
+    AdaptToZoomFactor; // Reads value directly from Worksheet
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5932,36 +5966,13 @@ begin
 end;
 
 procedure TsCustomWorksheetGrid.SetZoomFactor(AValue: Double);
-var
-  c,r: Integer;
 begin
   if (AValue <> GetZoomFactor) and Assigned(Worksheet) then begin
-    inc(FZoomLock);
     Worksheet.ZoomFactor := abs(AValue);
-    DefaultRowHeight := round(GetZoomfactor * FDefRowHeight100);
-    DefaultColWidth := round(GetZoomFactor * FDefColWidth100);
-    UpdateColWidths;
-    UpdateRowHeights;
-    dec(FZoomLock);
-
-    // Bring active cell back into the viewport: There is a ScrollToCell but
-    // this method is private. It is called by SetCol/SetRow, though.
-    if ((Col < GCache.Visiblegrid.Left) or (Col >= GCache.VisibleGrid.Right)) and
-       (GCache.VisibleGrid.Left <> GCache.VisibleGrid.Right) then
-    begin
-      c := Col;
-      Col := c-1;    // "Col" must change in order to call ScrtollToCell
-      Col := c;
-    end;
-    if ((Row < GCache.VisibleGrid.Top) or (Row >= GCache.VisibleGrid.Bottom)) and
-       (GCache.VisibleGrid.Top <> GCache.VisibleGrid.Bottom) then
-    begin
-      r := Row;
-      Row := r-1;
-      Row := r;
-    end;
+    AdaptToZoomFactor;
   end;
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Registers the worksheet grid in the Lazarus component palette,

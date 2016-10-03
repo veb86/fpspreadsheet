@@ -50,6 +50,9 @@ implementation
 uses
   fpsRegFileFormats;
 
+const
+  MOUSEWHEEL_FACTOR = 1.05;
+
 
 { TMainForm }
 
@@ -60,6 +63,7 @@ begin
   if FWorkbook <> nil then
     OpenDialog.InitialDir := ExtractFileDir(FWorkbook.FileName);
   if OpenDialog.Execute then begin
+    // 3 because FilterIndex is 1-based and there are 2 add'l items at the top.
     if OpenDialog.FilterIndex < 3 then
       fmt := sfidUnknown
     else
@@ -110,6 +114,7 @@ begin
   priorityFormats[7] := ord(sfHTML);
 
   OpenDialog.Filter := GetFileFormatFilter('|', ';', faRead, priorityFormats, true, true);
+    // true, true --> add "All spreadsheet formats" and "All Excel formats" at top
   SaveDialog.Filter := GetFileFormatFilter('|', ';', faWrite, priorityFormats);
 
   FOpenFormats := GetSpreadFormats(faRead, priorityFormats);
@@ -123,9 +128,9 @@ procedure TMainForm.GridMouseWheel(Sender: TObject; Shift: TShiftState;
 begin
   if ([ssCtrl, ssShift] * Shift = [ssCtrl, ssShift]) then begin
     if WheelDelta > 0 then
-      Grid.ZoomFactor := Grid.ZoomFactor * 1.05
+      Grid.ZoomFactor := Grid.ZoomFactor * MOUSEWHEEL_FACTOR
     else
-      Grid.ZoomFactor := Grid.ZoomFactor / 1.05;
+      Grid.ZoomFactor := Grid.ZoomFactor / MOUSEWHEEL_FACTOR;
     edZoom.Value := round(Grid.ZoomFactor * 100);
     Handled := true;
   end;

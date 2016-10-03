@@ -1772,6 +1772,68 @@ object MainForm: TMainForm
       Hint = 'Delete hyperlink from selected cell'
       ImageIndex = 58
     end
+    object AcZoom30: TsWorksheetZoomAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = '30%'
+      Hint = 'Zoom factor 30%'
+      Zoom = 30
+    end
+    object AcZoom50: TsWorksheetZoomAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = '50%'
+      Hint = 'Zoom factor 50%'
+      Zoom = 50
+    end
+    object AcZoom75: TsWorksheetZoomAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = '75%'
+      Hint = 'Zoom factor 75%'
+      Zoom = 75
+    end
+    object AcZoom90: TsWorksheetZoomAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = '90%'
+      Hint = 'Zoom factor 90%'
+      Zoom = 90
+    end
+    object AcZoom100: TsWorksheetZoomAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = '100%'
+      Hint = 'Zoom factor 100%'
+    end
+    object AcZoom150: TsWorksheetZoomAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = '150%'
+      Hint = 'Zoom factor 150%'
+      Zoom = 150
+    end
+    object AcZoom200: TsWorksheetZoomAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = '200%'
+      Hint = 'Zoom factor 200%'
+      Zoom = 200
+    end
+    object AcZoom300: TsWorksheetZoomAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = '300%'
+      Hint = 'Zoom factor 300%'
+      Zoom = 300
+    end
+    object AcZoom500: TsWorksheetZoomAction
+      Category = 'FPSpreadsheet'
+      WorkbookSource = WorkbookSource
+      Caption = '500%'
+      Hint = 'Zoom factor 500%'
+      Zoom = 500
+    end
   end
   object ImageList: TImageList
     left = 176
@@ -4365,6 +4427,45 @@ object MainForm: TMainForm
         AutoCheck = True
       end
       object MenuItem133: TMenuItem
+        Caption = '-'
+      end
+      object MnuZoom: TMenuItem
+        Caption = 'Zoom'
+        object MenuItem148: TMenuItem
+          Action = AcZoom30
+        end
+        object MenuItem149: TMenuItem
+          Action = AcZoom50
+        end
+        object MenuItem150: TMenuItem
+          Action = AcZoom75
+        end
+        object MenuItem146: TMenuItem
+          Action = AcZoom90
+        end
+        object MenuItem153: TMenuItem
+          Caption = '-'
+        end
+        object MenuItem151: TMenuItem
+          Action = AcZoom100
+        end
+        object MenuItem154: TMenuItem
+          Caption = '-'
+        end
+        object MenuItem152: TMenuItem
+          Action = AcZoom150
+        end
+        object MenuItem155: TMenuItem
+          Action = AcZoom200
+        end
+        object MenuItem156: TMenuItem
+          Action = AcZoom300
+        end
+        object MenuItem157: TMenuItem
+          Action = AcZoom500
+        end
+      end
+      object MenuItem147: TMenuItem
         Caption = '-'
       end
       object MenuItem52: TMenuItem
