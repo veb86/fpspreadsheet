@@ -238,6 +238,8 @@ type
     procedure MoveSelection; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure PrepareCanvasFont;
+    function RelaxAutoExpand: TsAutoExpandModes;
+    procedure RestoreAutoExpand(AValue: TsAutoExpandModes);
     procedure SelPenChangeHandler(Sender: TObject);
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
@@ -3945,9 +3947,12 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
+var
+  ae: TsAutoExpandModes;
 begin
-//  ZoomFactor := 1.0;
+  ae := RelaxAutoExpand;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormat, AWorksheetIndex);
+  RestoreAutoExpand(ae);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3964,9 +3969,12 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1);
+var
+  ae: TsAutoExpandModes;
 begin
-//  ZoomFactor := 1.0;
+  ae := RelaxAutoExpand;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormatID, AWorksheetIndex);
+  RestoreAutoExpand(ae);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3981,9 +3989,12 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadSheetFromSpreadsheetFile(AFileName: String;
   AWorksheetIndex: Integer = -1; AFormatID: TsSpreadFormatID = sfidUnknown);
+var
+  ae: TsAutoExpandModes;
 begin
-//  ZoomFactor := 1.0;
+  ae := RelaxAutoExpand;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFilename, AFormatID, AWorksheetIndex);
+  RestoreAutoExpand(ae);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3998,9 +4009,12 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromWorkbook(AWorkbook: TsWorkbook;
   AWorksheetIndex: Integer = -1);
+var
+  ae: TsAutoExpandModes;
 begin
-//  ZoomFactor := 1.0;
+  ae := RelaxAutoExpand;
   GetWorkbookSource.LoadFromWorkbook(AWorkbook, AWorksheetIndex);
+  RestoreAutoExpand(ae);
   Invalidate;
 end;
 
@@ -4295,6 +4309,17 @@ begin
     Convert_sFont_to_Font(fnt, Canvas.Font);
   end;
   Canvas.Font.Height := Round(ZoomFactor * Canvas.Font.Height);
+end;
+
+function TsCustomWorksheetGrid.RelaxAutoExpand: TsAutoExpandModes;
+begin
+  Result := FAutoExpand;
+  FAutoExpand := [aeData, aeNavigation];
+end;
+
+procedure TsCustomWorksheetGrid.RestoreAutoExpand(AValue: TsAutoExpandModes);
+begin
+  FAutoExpand := AValue;
 end;
 
 {@@ ----------------------------------------------------------------------------

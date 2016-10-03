@@ -100,12 +100,6 @@ procedure TMainForm.FormCreate(Sender: TObject);
 var
   priorityFormats: Array[0..7] of TsSpreadFormatID;
 begin
-  {
-  Grid.RowCount:=2;
-  Grid.ColCount:=2;
-  Grid.AutoExpand:= [];
-  }
-
   priorityFormats[0] := ord(sfOOXML);
   priorityFormats[1] := ord(sfExcel8);
   priorityFormats[2] := ord(sfExcel5);
