@@ -60,7 +60,10 @@ begin
   if FWorkbook <> nil then
     OpenDialog.InitialDir := ExtractFileDir(FWorkbook.FileName);
   if OpenDialog.Execute then begin
-    fmt := FOpenFormats[OpenDialog.FilterIndex-1];
+    if OpenDialog.FilterIndex < 3 then
+      fmt := sfidUnknown
+    else
+      fmt := FOpenFormats[OpenDialog.FilterIndex - 3];
     LoadFile(OpenDialog.FileName, fmt);
   end;
 end;
@@ -97,6 +100,12 @@ procedure TMainForm.FormCreate(Sender: TObject);
 var
   priorityFormats: Array[0..7] of TsSpreadFormatID;
 begin
+  {
+  Grid.RowCount:=2;
+  Grid.ColCount:=2;
+  Grid.AutoExpand:= [];
+  }
+
   priorityFormats[0] := ord(sfOOXML);
   priorityFormats[1] := ord(sfExcel8);
   priorityFormats[2] := ord(sfExcel5);

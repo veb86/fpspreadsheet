@@ -7392,6 +7392,11 @@ begin
   if not FileExists(AFileName) then
     raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
 
+  if AFormatID = sfIDUnknown then begin
+    ReadFromFile(AFileName, AParams);
+    exit;
+  end;
+
   AReader := CreateSpreadReader(self, AFormatID);
   try
     FFileName := AFileName;
