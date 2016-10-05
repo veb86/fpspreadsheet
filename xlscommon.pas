@@ -1791,6 +1791,8 @@ begin
     ExtractNumberFormat(XF, nf, nfs);
     if IsDateTime(lNumber, nf, nfs, lDateTime) then
       FWorksheet.WriteDateTime(cell, lDateTime, nf, nfs)
+    else if nf=nfText then
+      FWorksheet.WriteText(cell, FloatToStrF(lNumber, ffGeneral, 20,20, FWorkbook.FormatSettings))
     else
       FWorksheet.WriteNumber(cell, lNumber, nf, nfs);
     ApplyCellFormatting(cell, XF);
@@ -1843,6 +1845,8 @@ begin
 
   if IsDateTime(value, nf, nfs, dt) then
     FWorksheet.WriteDateTime(cell, dt, nf, nfs)
+  else if nf = nfText then
+    FWorksheet.WriteText(cell, FloatToStrF(value, ffGeneral, 20, 20, FWorkbook.FormatSettings))
   else
     FWorksheet.WriteNumber(cell, value, nf, nfs);
 
@@ -2054,6 +2058,8 @@ begin
   ExtractNumberFormat(XF, nf, nfs);
   if IsDateTime(Number, nf, nfs, lDateTime) then
     FWorksheet.WriteDateTime(cell, lDateTime, nf, nfs)
+  else if nf=nfText then
+    FWorksheet.WriteText(cell, FloatToStrF(Number, ffGeneral, 20,20, FWorkbook.FormatSettings))
   else
     FWorksheet.WriteNumber(cell, Number, nf, nfs);
 

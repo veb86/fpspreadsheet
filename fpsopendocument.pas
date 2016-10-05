@@ -2598,6 +2598,7 @@ var
   cell: PCell;
   fmt: PsCellFormat;
   numFmt: TsNumFormatParams;
+  txtNode: TDOMNode;
 begin
   if FIsVirtualMode then
   begin
@@ -2637,6 +2638,12 @@ begin
         dmODS1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
         dmODS1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
       end;
+  end else
+  if IsTextFormat(numFmt) then begin
+    // Cell has TEXT format @ --> store number as text
+    txtNode := ACellNode.FirstChild;
+    if txtNode.NodeName = 'text:p' then
+      FWorksheet.WriteText(cell, GetNodeValue(txtNode));
   end;
 
   if FIsVirtualMode then

@@ -691,6 +691,8 @@ begin
         number := ConvertExcelDateTimeToDateTime(number, FDateMode);
       AWorksheet.WriteDateTime(cell, number);
     end
+    else if IsTextFormat(numFmt) then
+      AWorksheet.WriteText(cell, dataStr)
     else
       AWorksheet.WriteNumber(cell, number);
   end

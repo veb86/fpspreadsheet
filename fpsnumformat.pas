@@ -827,6 +827,15 @@ begin
 
   el := 0;
   while (el < numEl) do begin
+    {
+    if section.Elements[el].Token = nftTextFormat then
+    begin
+      s := FloatToStrF(AValue, ffGeneral, 20, 20, fs);
+      if (sidx=0) and isNeg then s := '-' + s;
+      Result := Result + s;
+    end
+    else
+    }
     if section.Elements[el].Token = nftGeneral then
     begin
       s := FloatToStrF(AValue, ffGeneral, 20, 20, fs);
