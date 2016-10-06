@@ -215,6 +215,9 @@ function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
   AFormatSettings: TFormatSettings): String;
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 
+function GeneralFormatFloat(AValue: Double;
+  AFormatSettings: TFormatSettings): String; inline;
+
 function IsBoolValue(const AText, ATrueText, AFalseText: String;
   out AValue: Boolean): Boolean;
 
@@ -802,7 +805,7 @@ begin
 
   if AParams = nil then
   begin
-    Result := FloatToStrF(AValue, ffGeneral, 20, 20, fs);
+    Result := GeneralFormatFloat(AValue, fs);
     exit;
   end;
 
@@ -827,18 +830,9 @@ begin
 
   el := 0;
   while (el < numEl) do begin
-    {
-    if section.Elements[el].Token = nftTextFormat then
-    begin
-      s := FloatToStrF(AValue, ffGeneral, 20, 20, fs);
-      if (sidx=0) and isNeg then s := '-' + s;
-      Result := Result + s;
-    end
-    else
-    }
     if section.Elements[el].Token = nftGeneral then
     begin
-      s := FloatToStrF(AValue, ffGeneral, 20, 20, fs);
+      s := GeneralFormatFloat(AValue, fs);
       if (sidx=0) and isNeg then s := '-' + s;
       Result := Result + s;
     end
@@ -979,6 +973,13 @@ begin
       end;  // case
     inc(el);
   end;  // while
+end;
+
+function GeneralFormatFloat(AValue: Double;
+  AFormatSettings: TFormatSettings): String;
+begin
+  Result := FloatToStrF(AValue, ffGeneral, 16, 16, AFormatSettings);
+  // 16 is for best rounding results
 end;
 
 
