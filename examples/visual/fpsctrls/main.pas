@@ -775,8 +775,10 @@ begin
   FSaveFormats := GetSpreadFormats(faWrite, priorityFormats);
 
  {$IFDEF WINDOWS}
-  if Win32MajorVersion >= 10 then
+  if Win32MajorVersion >= 10 then begin
     WorksheetGrid.TitleStyle := tsLazarus;
+    Inspector.TitleStyle := tsLazarus;
+  end;
  {$ENDIF}
 end;
 

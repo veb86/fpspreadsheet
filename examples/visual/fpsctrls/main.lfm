@@ -42,13 +42,14 @@ object MainForm: TMainForm
       Font.Height = -13
       Font.Name = 'Arial'
       MouseWheelOption = mwGrid
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goDblClickAutoSize, goHeaderHotTracking, goCellHints]
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goDblClickAutoSize, goCellHints]
       ParentFont = False
       RowCount = 101
       TabOrder = 1
       TitleFont.Color = clBlack
       TitleFont.Height = -13
       TitleFont.Name = 'Arial'
+      TitleStyle = tsNative
       OnClickHyperlink = WorksheetGridClickHyperlink
       OnMouseWheel = WorksheetGridMouseWheel
     end
