@@ -498,7 +498,7 @@ type
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
     // inherited from TsCustomWorksheetGrid
-    {@@ Automatically recalculates the worksheet if a cell value changes. }
+    {@@ Automatically recalculates the worksheet formulas if a cell value changes. }
     property AutoCalc;
     {@@ Automatically expand grid dimensions }
     property AutoExpand default [aeData, aeNavigation];
@@ -1307,8 +1307,8 @@ begin
   if (cell = nil) or not (cell^.ContentType in [cctUTF8String]) then  // ... non-label cells
     exit;
 
-  fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-
+//  fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+  fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
   if (uffWordWrap in fmt^.UsedFormattingFields) then           // ... word-wrap
     exit;
   if (uffTextRotation in fmt^.UsedFormattingFields) and        // ... vertical text
@@ -1717,10 +1717,13 @@ begin
     r := ARow - FHeaderCount;
     c := ACol - FHeaderCount;
 
+    fmt := Worksheet.GetPointerToEffectiveCellFormat(r, c);
     lCell := Worksheet.FindCell(r, c);
-    if lCell <> nil then
-    begin
-      fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+
+    //if lCell <> nil then
+    //begin
+
+//      fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
 //      numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
 
       // Background color
@@ -1760,7 +1763,7 @@ begin
       end;
 
       // Font
-      if Worksheet.HasHyperlink(lCell) then
+      if (lcell <> nil) and Worksheet.HasHyperlink(lCell) then
         fnt := Workbook.GetHyperlinkFont
       else
         fnt := Workbook.GetDefaultFont;
@@ -1771,7 +1774,7 @@ begin
       Canvas.Font.Height := Round(ZoomFactor * Canvas.Font.Height);
 
       // Wordwrap, text alignment and text rotation are handled by "DrawTextInCell".
-    end;
+    //end;
   end;
 
   if IsSelected then
@@ -1997,7 +2000,8 @@ begin
       DrawBorderLine(ARect.Bottom-1, ARect, drawHor, bs);
 
     if ACell <> nil then begin
-      fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+      fmt := Worksheet.GetPointerToEffectiveCellFormat(ACell);
+//      fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
       {
       if Worksheet.IsMergeBase(ACell) then
       begin
@@ -2212,7 +2216,8 @@ begin
         then
           Continue;
         // Overflow possible from non-merged, non-right-aligned, horizontal label cells
-        fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+//        fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
         if (not Worksheet.IsMerged(cell)) and
            (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
@@ -2239,7 +2244,8 @@ begin
         then
           continue;
         // Overflow possible from non-merged, horizontal, non-left-aligned label cells
-        fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+//        fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
         if (not Worksheet.IsMerged(cell)) and
            (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
@@ -2496,15 +2502,7 @@ begin
     ts.Layout := tlCenter;
     ts.Opaque := false;
     Canvas.TextStyle := ts;
-                  {
-    writeLn('HEADER');
-    writeln(Format('1 - col=%d, row=%d, font size=%d', [acol, arow, canvas.font.size]));
-                   }
     inherited DrawCellText(aCol, aRow, aRect, aState, GetCellText(ACol,ARow));
-    {
-    writeln(GetCellText(ACol, ARow));
-    writeln(Format('2 - col=%d, row=%d, font size=%d', [acol, arow, canvas.font.size]));
-    }
     exit;
   end;
 
@@ -2516,7 +2514,8 @@ begin
   if txt = '' then
     exit;
 
-  fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+//  fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+  fmt := Worksheet.GetPointerToEffectiveCellFormat(lCell);
   wrapped := (uffWordWrap in fmt^.UsedFormattingFields) or (fmt^.TextRotation = rtStacked);
   RTL := IsRightToLeft;
   if (uffBiDi in fmt^.UsedFormattingFields) then
@@ -2702,9 +2701,10 @@ begin
   if (Worksheet = nil) or (ACell = nil) then
     exit;
 
+  fmt := Worksheet.GetPointerToEffectiveCellFormat(ACell);
   with ACell^ do
   begin
-    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+//    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
     if Col > 0 then
       SetNeighborBorder(Row, Col-1, cbEast, fmt^.BorderStyles[cbWest], cbWest in fmt^.Border);
     SetNeighborBorder(Row, Col+1, cbWest, fmt^.BorderStyles[cbEast], cbEast in fmt^.Border);
@@ -3121,7 +3121,8 @@ begin
 
     DoPrepareCanvas(ACol, ARow, []);
 
-    fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+//    fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
+    fmt := Worksheet.GetPointerToEffectiveCellFormat(lCell);
     if (uffFont in fmt^.UsedFormattingFields) then
       fntIndex := fmt^.FontIndex else fntIndex := DEFAULT_FONTINDEX;
     if (uffTextRotation in fmt^.UsedFormattingFields) then
@@ -4670,7 +4671,8 @@ begin
   if (Result = '') or ((ACell <> nil) and (ACell^.ContentType = cctUTF8String)) then
     exit;
 
-  fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+//  fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  fmt := Worksheet.GetPointerToEffectiveCellFormat(ACell^.Row, ACell^.Col);
   isRotated := (fmt^.TextRotation <> trHorizontal);
   isStacked := (fmt^.TextRotation = rtStacked);
   numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
@@ -5646,8 +5648,10 @@ begin
     // If it is a date/time format write a date/time cell...
     if cell <> nil then
     begin
-      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-      if fmt <> nil then nfp := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
+//      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+      fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
+      if fmt <> nil then
+        nfp := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
       if (fmt <> nil) and IsDateTimeFormat(nfp) then
         Worksheet.WriteDateTime(r, c, VarToDateTime(AValue)) else
         Worksheet.WriteNumber(r, c, AValue);

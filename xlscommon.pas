@@ -386,6 +386,7 @@ type
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
+
     (*
     procedure ApplyRichTextFormattingRuns(ACell: PCell;
       ARuns: TsRichTextFormattingRuns);
@@ -1001,6 +1002,7 @@ begin
       ACell^.FormatIndex := 0;
   end;
 end;
+
                                         (*
 {@@ ----------------------------------------------------------------------------
   Converts the rich-text formatting run data as read from the file to the
@@ -1401,19 +1403,37 @@ const
 var
   c, c1, c2: Cardinal;
   w: Word;
-  colwidth: Double;
+  xf: Word;
+  lCol: TCol;
+  idx: Integer;
+  fmt: PsCellFormat;
 begin
-  // read column start and end index of column range
+  { Read column start and end index of column range }
   c1 := WordLEToN(AStream.ReadWord);
   c2 := WordLEToN(AStream.ReadWord);
-  // read col width in 1/256 of the width of "0" character
+
+  { Read col width in 1/256 of the width of "0" character }
   w := WordLEToN(AStream.ReadWord);
-  // calculate width in workbook units
-  colwidth := FWorkbook.ConvertUnits(w / 256, suChars, FWorkbook.Units);
-  // assign width to columns, but only if different from default column width
-  if not SameValue(colwidth, FWorksheet.ReadDefaultColWidth(FWorkbook.Units), EPS) then
+
+  { Calculate width in workbook units }
+  lCol.Width := FWorkbook.ConvertUnits(w / 256, suChars, FWorkbook.Units);
+  if SameValue(lCol.Width, FWorksheet.ReadDefaultColWidth(FWorkbook.Units), EPS) then
+    lCol.ColWidthType := cwtDefault else
+    lCol.ColWidthType := cwtCustom;
+
+  { Read xf record index }
+  xf := WordLEToN(AStream.ReadWord);
+  idx := FCellFormatList.FindIndexOfID(xf);
+  if idx > -1 then begin
+    fmt := FCellFormatList.Items[idx];
+    lCol.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+  end else
+    lCol.FormatIndex := 0;
+
+  { Assign width and format to columns, but only if different from defaults }
+  if (lCol.FormatIndex > 0) or (lCol.ColWidthType = cwtCustom) then
     for c := c1 to c2 do
-      FWorksheet.WriteColWidth(c, colwidth, FWorkbook.Units);
+      FWorksheet.WriteColInfo(c, lCol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2086,33 +2106,56 @@ type
   end;
 var
   rowrec: TRowRecord;
-  lRow: PRow;
+  lRow: TRow;
   h: word;
   hpts: Single;
   hdef: Single;
   isNonDefaultHeight: Boolean;
   isAutoSizeHeight: Boolean;
+  hasFormat: Boolean;
+  flags: DWord;
+  xf: Word;
+  idx: Integer;
+  fmt: PsCellFormat;
 begin
   rowrec.RowIndex := 0;   // to silence the compiler...
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
+  rowrec.RowIndex := WordLEToN(rowrec.RowIndex);
+  flags := DWordLEToN(rowrec.Flags);
 
+  { Row height }
   h := WordLEToN(rowrec.Height) and $7FFF;  // mask off "custom" bit
   hpts := FWorkbook.ConvertUnits(TwipsToPts(h), suPoints, FWorkbook.Units);
   hdef := FWorksheet.ReadDefaultRowHeight(FWorkbook.Units);
-
   isNonDefaultHeight := not SameValue(hpts, hdef, ROWHEIGHT_EPS);
-  isAutoSizeHeight := WordLEToN(rowrec.Flags) and $00000040 = 0;
-  // If this bis is set then font size and row height do NOT match, i.e. NO autosize
+  isAutoSizeHeight := flags and $00000040 = 0;
+  // If this bit is set then font size and row height do NOT match, i.e. NO autosize
+  if isAutoSizeHeight then
+    lRow.RowHeightType := rhtAuto else
+    lRow.RowHeightType := rhtCustom;
+  lRow.Height := hpts;
+
+  { Row format }
+  lRow.FormatIndex := 0;
+  hasFormat := flags and $00000080 <> 0;
+  // If this bit is set then the record contains an xf index.
+  if hasFormat then begin
+    xf := (flags and $0FFF0000) shr 16;
+    if xf = 15 then hasFormat := false;
+  end;
+  if hasFormat then begin
+    // Find the format with ID xf
+    idx := FCellFormatList.FindIndexOfID(xf);
+    if idx > -1 then begin
+      fmt := FCellFormatList.Items[idx];
+      lRow.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+    end;
+  end;
 
   // We only create a row record for fpspreadsheet if the row has a
-  // non-standard height (i.e. different from default row height).
-  if isNonDefaultHeight then begin
-    lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
-    if isAutoSizeHeight then
-      lRow^.RowHeightType := rhtAuto else
-      lRow^.RowHeightType := rhtCustom;
-    lRow^.Height := hpts;
-  end;
+  // non-standard height (i.e. different from default row height) or format.
+  if isNonDefaultHeight or hasFormat then
+    FWorksheet.WriteRowInfo(rowrec.RowIndex, lRow);
 end;
 
 {@@ ----------------------------------------------------------------------------

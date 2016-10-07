@@ -41,32 +41,6 @@ type
   TsWorksheet = class;
   TsWorkbook = class;
 
-  {@@ The record TRow contains information about a spreadsheet row:
-    @param  Row     The index of the row (beginning with 0)
-    @param  Height  The height of the row (expressed in the units defined by
-                    the workbook)
-    @param  RowHeightType  Specifies default, automatic or custom row height }
-  TRow = record
-    Row: Cardinal;
-    Height: Single;
-    RowHeightType: TsRowHeightType;
-  end;
-
-  {@@ Pointer to a TRow record }
-  PRow = ^TRow;
-
-  {@@ The record TCol contains information about a spreadsheet column:
-   @param Col    The index of the column (beginning with 0)
-   @param Width  The width of the column (expressed in the units defined in the workbook)
-   Only columns with non-default widths have a column record. }
-  TCol = record
-    Col: Cardinal;
-    Width: Single;
-  end;
-
-  {@@ Pointer to a TCol record }
-  PCol = ^TCol;
-
   {@@ Worksheet user interface options:
     @param soShowGridLines  Show or hide the grid lines in the spreadsheet
     @param soShowHeaders    Show or hide the column or row headers of the spreadsheet
@@ -199,6 +173,10 @@ type
     function GetDisplayedDecimals(ACell: PCell): Byte;
     function GetNumberFormatAttributes(ACell: PCell; out ADecimals: Byte;
       out ACurrencySymbol: String): Boolean;
+
+    function  GetEffectiveCellFormatIndex(ACell: PCell): Integer;
+    function  GetPointerToEffectiveCellFormat(ARow, ACol: Cardinal): PsCellFormat; overload;
+    function  GetPointerToEffectiveCellFormat(ACell: PCell): PsCellFormat; overload;
 
     function  ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields;
     function  ReadBackground(ACell: PCell): TsFillPattern;
@@ -438,10 +416,12 @@ type
     function  GetCellCountInRow(ARow: Cardinal): Cardinal;
     function  GetCellCountInCol(ACol: Cardinal): Cardinal;
     function  GetRow(ARow: Cardinal): PRow;
+    function  GetRowFormatIndex(ARow: Cardinal): Integer;
     function  GetRowHeight(ARow: Cardinal; AUnits: TsSizeUnits): Single; overload;
     function  GetRowHeight(ARow: Cardinal): Single; overload; deprecated 'Use version with parameter AUnits.';
     function  GetRowHeightType(ARow: Cardinal): TsRowHeightType;
     function  GetCol(ACol: Cardinal): PCol;
+    function  GetColFormatIndex(ACol: Cardinal): Integer;
     function  GetColWidth(ACol: Cardinal; AUnits: TsSizeUnits): Single; overload;
     function  GetColWidth(ACol: Cardinal): Single; overload; deprecated 'Use version with parameter AUnits.';
     procedure DeleteCol(ACol: Cardinal);
@@ -457,11 +437,13 @@ type
     procedure WriteDefaultColWidth(AValue: Single; AUnits: TsSizeUnits);
     procedure WriteDefaultRowHeight(AValue: Single; AUnits: TsSizeUnits);
     procedure WriteRowInfo(ARow: Cardinal; AData: TRow);
+    procedure WriteRowFormatIndex(ARow: Cardinal; AFormatIndex: Integer);
     procedure WriteRowHeight(ARow: Cardinal; AHeight: Single; AUnits: TsSizeUnits;
       ARowHeightType: TsRowHeightType = rhtCustom); overload;
     procedure WriteRowHeight(ARow: Cardinal; AHeight: Single;
       ARowHeightType: TsRowHeightType = rhtCustom); overload; deprecated 'Use version with parameter AUnits';
     procedure WriteColInfo(ACol: Cardinal; AData: TCol);
+    procedure WriteColFormatIndex(ACol: Cardinal; AFormatIndex: Integer);
     procedure WriteColWidth(ACol: Cardinal; AWidth: Single; AUnits: TsSizeUnits); overload;
     procedure WriteColWidth(ACol: Cardinal; AWidth: Single); overload; deprecated 'Use version with parameter AUnits';
 
@@ -2874,6 +2856,70 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the index of the effective cell format to be used at the specified
+  cell.
+
+  "Effective" cell format means: At first, look for the cell format.
+  If it is default, look for the row format. If it is default, look for
+  the column format. (see "excelfileformat", p. 89)
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetEffectiveCellFormatIndex(ACell: PCell): Integer;
+begin
+  Result := 0;
+  if ACell <> nil then
+    Result := ACell^.FormatIndex;
+  if Result = 0 then
+    Result := GetRowFormatIndex(ACell^.Row);
+  if Result = 0 then
+    Result := GetColFormatIndex(ACell^.Col);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns a pointer to the effective cell format to be used at the cell in
+  ARow and ACol.
+
+  "Effective" cell format means: At first, look for the cell format.
+  If it is default, look for the row format. If it is default, look for
+  the column format. (see "excelfileformat", p. 89)
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetPointerToEffectiveCellFormat(ARow, ACol: Cardinal): PsCellFormat;
+var
+  cell: PCell;
+  fmtIndex: Integer;
+begin
+  cell := FindCell(ARow, ACol);
+  if (cell <> nil) and (cell^.FormatIndex > 0) then
+    fmtIndex := cell^.FormatIndex
+  else begin
+    fmtIndex := GetRowFormatIndex(ARow);
+    if fmtIndex = 0 then
+      fmtIndex := GetColFormatIndex(ACol);
+  end;
+  Result := FWorkbook.GetPointerToCellFormat(fmtIndex);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Mainly like GetPointerToEffectiveCellFormat(ARow, ACol), but avoids looking
+  for the cell if ACell <> nil
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetPointerToEffectiveCellFormat(ACell: PCell): PsCellFormat;
+var
+  fmtIndex: Integer;
+begin
+  fmtIndex := 0;
+  if (ACell <> nil) then begin
+    if (ACell^.FormatIndex > 0) then
+      fmtIndex := ACell^.FormatIndex
+    else begin
+      fmtIndex := GetRowFormatIndex(ACell^.Row);
+      if fmtIndex = 0 then
+        fmtIndex := GetColFormatIndex(ACell^.Col);
+    end;
+  end;
+  Result := FWorkbook.GetPointerToCellFormat(fmtIndex);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the set of used formatting fields of a cell.
 
   Each cell contains a set of "used formatting fields". Formatting is applied
@@ -4545,6 +4591,7 @@ var
   isMixed: Boolean;
   rtParams: TsRichTextParams;
   plain: String;
+  fmtIndex: Integer;
 begin
   if ACell = nil then
     exit;
@@ -4564,8 +4611,10 @@ begin
     WriteNumberFormat(ACell, nfText);
   end;
 
-  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+  fmtIndex := GetEffectiveCellFormatIndex(ACell);
+  fmt := Workbook.GetCellFormat(fmtIndex);
   numFmtParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+  ACell^.FormatIndex := fmtIndex;
 
   isPercent := Pos('%', AValue) = Length(AValue);
   if isPercent then Delete(AValue, Length(AValue), 1);
@@ -6431,6 +6480,28 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the index to the cell format to be used for a given column.
+  If there is no column record then the default format (index 0) is used.
+
+  @param   ACol   Index of the column considered
+  @return  Index of the format into the workbook's FCellFormatList. This format
+           will be used for formatting a cell if itself does not have a
+           non-zero format index, and if there is no row format either.
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetColFormatIndex(ACol: Cardinal): Integer;
+var
+  col: PCol;
+begin
+  Result := 0;   // Default format has index 0
+  if ACol <> UNASSIGNED_ROW_COL_INDEX then
+  begin
+    col := FindCol(ACol);
+    if col <> nil then
+      Result := col^.FormatIndex
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Returns the width of the given column. If there is no column record then
   the default column width is returned.
 
@@ -6458,6 +6529,28 @@ end;
 function TsWorksheet.GetColWidth(ACol: Cardinal): Single;
 begin
   Result := GetColWidth(ACol, suChars);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the index to the cell format to be used for a given row.
+  If there is no row record then the default format (index 0) is returned.
+
+  @param   ARow  Index of the row considered
+  @return  Index of the format into the workbook's FCellFormatList. This format
+           will be used for formatting a cell if itself does not have a
+           non-zero format index.
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetRowFormatIndex(ARow: Cardinal): Integer;
+var
+  row: PRow;
+begin
+  Result := 0;   // Default format has index 0
+  if ARow <> UNASSIGNED_ROW_COL_INDEX then
+  begin
+    row := FindRow(ARow);
+    if row <> nil then
+      Result := row^.FormatIndex
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6905,24 +6998,40 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes a row record for the row at a given index to the spreadsheet.
-  Currently the row record contains only the row height (and the row index,
-  of course).
+  The row record contains info on the row height and the row format index.
 
   Creates a new row record if it does not yet exist.
 
   @param  ARow   Index of the row record which will be created or modified
-  @param  AData  Data to be written. Expected to be already in the units
-                 defined for the workbook
-                 Note that the row height value can be negative to indicate
-                 that this is an auto-calculated value (i.e. the value can
-                 change for example when the font size changes).
+  @param  AData  Data to be written. Row height expected to be already in the
+                 units defined for the workbook.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteRowInfo(ARow: Cardinal; AData: TRow);
 var
-  AElement: PRow;
+  lRow: PRow;
 begin
-  AElement := GetRow(ARow);
-  AElement^.Height := AData.Height;
+  lRow := GetRow(ARow);
+  lRow^.Height := AData.Height;
+  lRow^.RowHeightType := AData.RowHeightType;
+  lRow^.FormatIndex := AData.FormatIndex;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Sets the cell format index for a specific row.
+  Creates a new row record if it does not yet exist.
+
+  @param  ARow          Index of the row to be considered
+  @param  AFormatIndex  Index into the workbook's FCellFormatList. This format
+                        will be used if a cell has default format index (0).
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteRowFormatIndex(ARow: Cardinal; AFormatIndex:Integer);
+var
+  lRow: PRow;
+begin
+  if ARow = UNASSIGNED_ROW_COL_INDEX then
+    exit;
+  lRow := GetRow(ARow);
+  lRow^.FormatIndex := AFormatIndex;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6938,13 +7047,13 @@ end;
 procedure TsWorksheet.WriteRowHeight(ARow: Cardinal; AHeight: Single;
   AUnits: TsSizeUnits; ARowHeightType: TsRowHeightType = rhtCustom);
 var
-  AElement: PRow;
+  lRow: PRow;
 begin
   if ARow = UNASSIGNED_ROW_COL_INDEX then
     exit;
-  AElement := GetRow(ARow);
-  AElement^.Height := FWorkbook.ConvertUnits(AHeight, AUnits, FWorkbook.FUnits);
-  AElement^.RowHeightType := ARowHeightType;
+  lRow := GetRow(ARow);
+  lRow^.Height := FWorkbook.ConvertUnits(AHeight, AUnits, FWorkbook.FUnits);
+  lRow^.RowHeightType := ARowHeightType;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6961,22 +7070,42 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Writes a column record for the column at a given index to the spreadsheet.
-  Currently the column record contains only the column width (and the column
-  index, of course).
+  Writes a column record for the column at a specific index to the spreadsheet.
+  The column record contains info on the column width and the format index.
 
   Creates a new column record if it does not yet exist.
 
   @param  ACol   Index of the column record which will be created or modified
-  @param  AData  Data to be written (essentially column width). The column
-                 width is already in the units defined for the workbook.
+  @param  AData  Data to be written. The column width must already be in
+                 the units defined for the workbook.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteColInfo(ACol: Cardinal; AData: TCol);
 var
-  AElement: PCol;
+  lCol: PCol;
 begin
-  AElement := GetCol(ACol);
-  AElement^.Width := AData.Width;
+  lCol := GetCol(ACol);
+  lCol^.Width := AData.Width;
+  lCol^.ColWidthType := AData.ColWidthType;
+  lCol^.FormatIndex := AData.FormatIndex;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Sets the cell format index for a specific column.
+  Creates a new column record if it does not yet exist.
+
+  @param  ACol          Index of the column to be considered
+  @param  AFormatIndex  Index into the workbook's FCellFormatList. This format
+                        will be used if a cell has default format index (0) and
+                        if there is no specific default row format.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteColFormatIndex(ACol: Cardinal; AFormatIndex:Integer);
+var
+  lCol: PCol;
+begin
+  if ACol = UNASSIGNED_ROW_COL_INDEX then
+    exit;
+  lCol := GetCol(ACol);
+  lCol^.FormatIndex := AFormatIndex;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6990,12 +7119,12 @@ end;
 procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single;
   AUnits: TsSizeUnits);
 var
-  AElement: PCol;
+  lCol: PCol;
 begin
   if ACol = UNASSIGNED_ROW_COL_INDEX then
     exit;
-  AElement := GetCol(ACol);
-  AElement^.Width := FWorkbook.ConvertUnits(AWidth, AUnits, FWorkbook.FUnits);
+  lCol := GetCol(ACol);
+  lCol^.Width := FWorkbook.ConvertUnits(AWidth, AUnits, FWorkbook.FUnits);
 end;
 
 {@@ ----------------------------------------------------------------------------

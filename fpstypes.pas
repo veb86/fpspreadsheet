@@ -674,7 +674,7 @@ type
     Worksheet: Pointer;   // Must be cast to TsWorksheet when used  (avoids circular unit reference)
     { Status flags }
     Flags: TsCellFlags;
-    { Index of format record in the workbook's FCellFormatList }
+    { Index of format record in the workbook's CellFormatList }
     FormatIndex: Integer;
     { Cell content }
     UTF8StringValue: String;   // Strings cannot be part of a variant record
@@ -692,6 +692,57 @@ type
 
   {@@ Pointer to a TCell record }
   PCell = ^TCell;
+
+  {@@ Types of row heights
+    rhtDefault - default row height
+    rhtAuto - automatically determined row height, depends on font size,
+      text rotation, rich-text parameters, word-wrap
+    rhtCustom - user-determined row height (dragging the row header borders in
+      the grid, or changed by code) }
+  TsRowHeightType = (rhtDefault, rhtCustom, rhtAuto);
+
+  {@@ Types of column widths
+    cwtDefault - default column width
+    cwtCustom  - userdefined column width (dragging the column header border
+      in the grid, or by changed by code) }
+  TsColWidthtype = (cwtDefault, cwtCustom);
+
+  {@@ The record TRow contains information about a spreadsheet row:
+    @param  Row            The index of the row (beginning with 0)
+    @param  Height         The height of the row (expressed in the units defined
+                           by the workbook)
+    @param  RowHeightType  Specifies whether the row has default, custom, or
+                           automatic height
+    @param  FormatIndex    Row default format, index into the workbook's
+                           FCellFormatList
+    Only rows with non-default height or non-default format have a row record. }
+  TRow = record
+    Row: Cardinal;
+    Height: Single;
+    RowHeightType: TsRowHeightType;
+    FormatIndex: Integer;
+  end;
+
+  {@@ Pointer to a TRow record }
+  PRow = ^TRow;
+
+  {@@ The record TCol contains information about a spreadsheet column:
+   @param Col          The index of the column (beginning with 0)
+   @param Width        The width of the column (expressed in the units defined
+                       in the workbook)
+   @param ColWidthType Specifies whether the column has default or custom width
+   @param FormatIndex  Column default format, index into the workbook's
+                       FCellFormatlist
+   Only columns with non-default width or non-default format have a column record. }
+  TCol = record
+    Col: Cardinal;
+    Width: Single;
+    ColWidthType: TsColWidthType;
+    FormatIndex: Integer;
+  end;
+
+  {@@ Pointer to a TCol record }
+  PCol = ^TCol;
 
   {@@ Embedded image }
   TsImage = record
@@ -725,15 +776,6 @@ type
   {@@ Array with all possible images in a header or a footer }
   TsHeaderFooterImages = array[TsHeaderFooterSectionIndex] of TsHeaderFooterImage;
 
-const
-  {@@ Indexes to be used for the various headers and footers }
-  HEADER_FOOTER_INDEX_FIRST   = 0;
-  HEADER_FOOTER_INDEX_ODD     = 1;
-  HEADER_FOOTER_INDEX_EVEN    = 2;
-  HEADER_FOOTER_INDEX_ALL     = 1;
-
-
-type
   {@@ Search option }
   TsSearchOption = (soCompareEntireCell, soMatchCase, soRegularExpr, soAlongRows,
     soBackward, soWrapDocument, soEntireDocument);
@@ -770,18 +812,18 @@ type
   TsStreamParam = (spClipboard, spWindowsClipboardHTML);
   TsStreamParams = set of TsStreamParam;
 
-  {@@ Types of row heights
-    rhtDefault - default row height
-    rhtAuto - automatically determined row height, depends on font size,
-      text rotation, rich-text parameters, word-wrap
-    rhtCustom - user-determined row height (dragging the row header borders in
-      the grid }
-  TsRowHeightType = (rhtDefault, rhtAuto, rhtCustom);
-
 const
   RowHeightTypeNames: array[TsRowHeightType] of string = (
     'Default', 'Auto', 'Custom');
 
+  ColWidthTypeNames: array[TsColWidthType] of string = (
+    'Default', 'Custom');
+
+  {@@ Indexes to be used for the various headers and footers }
+  HEADER_FOOTER_INDEX_FIRST   = 0;
+  HEADER_FOOTER_INDEX_ODD     = 1;
+  HEADER_FOOTER_INDEX_EVEN    = 2;
+  HEADER_FOOTER_INDEX_ALL     = 1;
 
 implementation
 
