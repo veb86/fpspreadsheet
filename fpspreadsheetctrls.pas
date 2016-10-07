@@ -3236,8 +3236,8 @@ begin
   AStrings.Add(Format('Row=%d', [ARow]));
   if lRow <> nil then
   begin
-    AStrings.Add(Format('Height=%.1f %s', [
-      lRow^.Height, unitStr
+    AStrings.Add(Format('Height=%.1f %s (%.1f pt)', [
+      lRow^.Height, unitStr, Workbook.ConvertUnits(lRow^.Height, Workbook.Units, suPoints)
     ]));
     AStrings.Add(Format('RowHeightType=%s', [
       RowHeightTypeNames[lRow^.RowHeightType]
@@ -3245,8 +3245,9 @@ begin
   end else
   begin
     AStrings.Add('No row record=');
-    AStrings.Add(Format('DefaultRowHeight=%.1f %s', [
-      Worksheet.ReadDefaultRowHeight(Workbook.Units), unitStr
+    AStrings.Add(Format('DefaultRowHeight=%.1f %s (%.1f pt)', [
+      Worksheet.ReadDefaultRowHeight(Workbook.Units), unitStr,
+      Worksheet.ReadDefaultRowHeight(suPoints)
     ]));
   end;
 end;
