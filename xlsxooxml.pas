@@ -86,7 +86,7 @@ type
     procedure ReadPageSetup(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadPalette(ANode: TDOMNode);
     procedure ReadPrintOptions(ANode: TDOMNode; AWorksheet: TsWorksheet);
-    procedure ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
+    procedure ReadRow(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
@@ -989,10 +989,13 @@ const
   EPS = 1e-3;
 var
   colNode: TDOMNode;
-  col, col1, col2: Cardinal;
+  col, col1, col2: Cardinal;  // column indexes
+  lCol: TCol;                 // column record
   w: Double;
   s: String;
   nodeName: String;
+  idx: Integer;
+  fmt: PsCellFormat;
 begin
   if ANode = nil then
     exit;
@@ -1002,18 +1005,39 @@ begin
     nodeName := colNode.NodeName;
     if nodename = 'col' then
     begin
+      s := GetAttrValue(colNode, 'min');
+      if s <> '' then col1 := StrToInt(s)-1 else col1 := 0;
+
+      s := GetAttrValue(colNode, 'max');
+      if s <> '' then col2 := StrToInt(s)-1 else col2 := col1;
+
       s := GetAttrValue(colNode, 'customWidth');
       if s = '1' then begin
-        s := GetAttrValue(colNode, 'min');
-        if s <> '' then col1 := StrToInt(s)-1 else col1 := 0;
-        s := GetAttrValue(colNode, 'max');
-        if s <> '' then col2 := StrToInt(s)-1 else col2 := col1;
         s := GetAttrValue(colNode, 'width');
         if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
-          if not SameValue(w, AWorksheet.ReadDefaultColWidth(suChars), EPS) then
-            for col := col1 to col2 do
-              AWorksheet.WriteColWidth(col, w, suChars);
+        begin
+          if SameValue(w, AWorksheet.ReadDefaultColWidth(suChars), EPS) then  // is this needed?
+            lCol.ColWidthType := cwtDefault
+          else
+            lCol.ColWidthType := cwtCustom;
+          lCol.Width := FWorkbook.ConvertUnits(w, suChars, FWorkbook.Units);
+        end;
+      end else begin
+        lCol.ColWidthType := cwtDefault;
+        lCol.Width := AWorksheet.ReadDefaultColWidth(FWorkbook.Units);
       end;
+
+      s := GetAttrValue(colNode, 'style');
+      if s <> '' then begin
+        idx := FCellFormatList.FindIndexOfID(StrToInt(s));
+        fmt := FCellFormatList.Items[idx];
+        lCol.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+      end else
+        lCol.FormatIndex := 0;
+
+      if (lCol.ColWidthType = cwtCustom) or(lCol.FormatIndex > 0) then
+        for col := col1 to col2 do
+          AWorksheet.WriteColInfo(col, lCol);
     end;
     colNode := colNode.NextSibling;
   end;
@@ -1718,38 +1742,56 @@ begin
     with AWorksheet.PageLayout do Options := Options + [poPrintGridLines];
 end;
 
-procedure TsSpreadOOXMLReader.ReadRowHeight(ANode: TDOMNode; AWorksheet: TsWorksheet);
+procedure TsSpreadOOXMLReader.ReadRow(ANode: TDOMNode; AWorksheet: TsWorksheet);
 var
   s: String;
-  h: Single;
   r: Cardinal;
-  rht: TsRowHeightType;
+  lRow: TRow;
+  fmt: PsCellFormat;
+  idx: Integer;
 begin
   if ANode = nil then
     exit;
 
-  { Row height value, in points - if there is no "ht" attribute we assume that
-    it is the custom row height which does not require a row record. }
-  s := GetAttrValue(ANode, 'ht');
-  if s = '' then
-    exit;
-  h := StrToFloat(s, FPointSeparatorSettings);    // seems to be in "Points"
-
   { Row height type }
   s := GetAttrValue(ANode, 'customHeight');
   if s = '1' then
-    rht := rhtCustom
-  else if SameValue(h, AWorksheet.ReadDefaultRowHeight(suPoints), ROWHEIGHT_EPS) then
-    rht := rhtDefault
+    lRow.RowHeightType := rhtCustom
   else
-    rht := rhtAuto;
+    lRow.RowHeightType := rhtAuto;
+
+  { Row height value, in points - if there is no "ht" attribute we assume that
+    it is the default row height }
+  s := GetAttrValue(ANode, 'ht');
+  if s = '' then begin
+    lRow.Height := AWorksheet.ReadDefaultRowHeight(FWorkbook.Units);
+    lRow.RowHeightType := rhtDefault;
+  end else
+    lRow.Height := FWorkbook.ConvertUnits(
+      StrToFloat(s, FPointSeparatorSettings),
+      suPoints,
+      FWorkbook.Units
+    );
 
   { Row index }
   s := GetAttrValue(ANode, 'r');
   r := StrToInt(s) - 1;
 
+  { Row format }
+  lRow.FormatIndex := 0;  // Default format
+  s := GetAttrValue(ANode, 'customFormat');
+  if s = '1' then begin
+    s := GetAttrValue(ANode, 's');
+    if s <> '' then begin
+      idx := FCellFormatList.FindIndexOfID(StrToInt(s));
+      fmt := FCellFormatList.Items[idx];
+      lRow.FormatIndex := FWorkbook.AddCellFormat(fmt^);
+    end;
+  end;
+
   { Write out }
-  AWorksheet.WriteRowHeight(r, h, suPoints, rht);
+  if (lRow.RowHeightType <> rhtDefault) or (lRow.FormatIndex <> 0) then
+    AWorksheet.WriteRowInfo(r, lRow);
 end;
 
 procedure TsSpreadOOXMLReader.ReadSharedStrings(ANode: TDOMNode);
@@ -2002,7 +2044,7 @@ begin
   rownode := ANode.FirstChild;
   while Assigned(rownode) do begin
     if rownode.NodeName = 'row' then begin
-      ReadRowHeight(rownode, AWorksheet);
+      ReadRow(rownode, AWorksheet);
       cellnode := rownode.FirstChild;
       while Assigned(cellnode) do begin
         if cellnode.NodeName = 'c' then
