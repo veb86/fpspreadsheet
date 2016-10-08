@@ -2526,23 +2526,32 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteCols(AStream: TStream; AWorksheet: TsWorksheet);
 var
-  col: PCol;
+  lCol: PCol;
   c: Integer;
   w: Single;
+  customWidth: String;
+  customStyle: String;
 begin
   AppendToStream(AStream,
     '<cols>');
 
   for c:=0 to AWorksheet.GetLastColIndex do begin
-    col := AWorksheet.FindCol(c);
+    customWidth := '';
+    customStyle := '';
+    lCol := AWorksheet.FindCol(c);
+
     // The column width is needed in suChars here.
-    if col <> nil then
-      w := FWorkbook.ConvertUnits(col^.Width, FWorkbook.Units, suChars)
-    else
-      w := AWorksheet.ReadDefaultColWidth(suChars);
+    w := AWorksheet.ReadDefaultColWidth(suChars);
+    if lCol <> nil then begin
+      if lCol^.ColWidthType = cwtCustom then begin
+        w := FWorkbook.ConvertUnits(lCol^.Width, FWorkbook.Units, suChars);
+        customWidth := 'customWidth="1" ';
+      end;
+      if lCol^.FormatIndex > 0 then customStyle := Format('style="%d" ', [lCol^.FormatIndex]);
+    end;
     AppendToStream(AStream, Format(
-      '<col min="%d" max="%d" width="%.2f" customWidth="1" />',
-      [c+1, c+1, w], FPointSeparatorSettings)
+      '<col min="%d" max="%d" width="%.2f" %s%s />',
+      [c+1, c+1, w, customWidth, customStyle], FPointSeparatorSettings)
     );
   end;
 

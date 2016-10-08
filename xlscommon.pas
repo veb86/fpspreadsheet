@@ -3241,6 +3241,7 @@ type
 var
   rec: TColRecord;
   w: Integer;
+  width: Single;
 begin
   if Assigned(ACol) then
   begin
@@ -3256,7 +3257,13 @@ begin
     rec.EndCol := WordToLE(ACol^.Col);
 
     { calculate width to be in units of 1/256 of pixel width of character "0" }
-    w := round(FWorkbook.ConvertUnits(ACol^.Width, FWorkbook.Units, suChars)*256);
+    case ACol^.ColWidthType of
+      cwtDefault:
+        width := FWorksheet.ReadDefaultColWidth(suChars);
+      cwtCustom:
+        width := FWorkbook.ConvertUnits(ACol^.Width, FWorkbook.Units, suChars);
+    end;
+    w := round(width * 256);
 
     rec.ColWidth := WordToLE(w);
     rec.XFIndex := WordToLE(FindXFIndex(ACol^.FormatIndex));// Index of XF record
