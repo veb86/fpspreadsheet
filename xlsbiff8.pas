@@ -3037,7 +3037,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { Index to XF record, according to formatting }
-  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+  rec.XFIndex := WordToLE(FindXFIndex(ACell^.FormatIndex));
 
   { Byte String with 16-bit length }
   rec.TextLen := WordToLE(L);

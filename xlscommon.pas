@@ -503,7 +503,7 @@ type
     FPalette: TsPalette;
 
     procedure AddBuiltinNumFormats; override;
-    function FindXFIndex(ACell: PCell): Integer; virtual;
+    function FindXFIndex(AFormatIndex: Integer): Integer; virtual;
     function FixLineEnding(const AText: String): String;
     function FormulaSupported(ARPNFormula: TsRPNFormula; out AUnsupported: String): Boolean;
     function FunctionSupported(AExcelCode: Integer; const AFuncName: String): Boolean; virtual;
@@ -2980,11 +2980,12 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Determines the index of the XF record, according to formatting of the
-  given cell
+  given format index; this format index is taken from a cell, row, or column
+  record.
 -------------------------------------------------------------------------------}
-function TsSpreadBIFFWriter.FindXFIndex(ACell: PCell): Integer;
+function TsSpreadBIFFWriter.FindXFIndex(AFormatIndex: Integer): Integer;
 begin
-  Result := LAST_BUILTIN_XF + ACell^.FormatIndex;
+  Result := LAST_BUILTIN_XF + AFormatIndex;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3144,7 +3145,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { Index to XF record, according to formatting }
-  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+  rec.XFIndex := WordToLE(FindXFIndex(ACell^.FormatIndex));
 
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(rec));
@@ -3171,7 +3172,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { Index to XF record, according to formatting }
-  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+  rec.XFIndex := WordToLE(FindXFIndex(ACell^.FormatIndex));
 
   { Cell value }
   rec.BoolErrValue := ord(AValue);
@@ -3258,8 +3259,8 @@ begin
     w := round(FWorkbook.ConvertUnits(ACol^.Width, FWorkbook.Units, suChars)*256);
 
     rec.ColWidth := WordToLE(w);
-    rec.XFIndex := WordToLE(15);    // Index of XF record, not used
-    rec.OptionFlags := 0;           // not used
+    rec.XFIndex := WordToLE(FindXFIndex(ACol^.FormatIndex));// Index of XF record
+    rec.OptionFlags := 0;   // hidden, outline, collapsed flags are not used
     rec.NotUsed := 0;
 
     { Write out }
@@ -3470,7 +3471,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { Index to XF record, according to formatting }
-  rec.XFIndex := WordToLE(FindXFIndex(ACell));
+  rec.XFIndex := WordToLE(FindXFIndex(ACell^.FormatIndex));
 
   { Cell value }
   rec.BoolErrValue := ConvertToExcelError(AValue);
@@ -3692,7 +3693,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { Index to XF record }
-  rec.XFIndex := FindXFIndex(ACell);
+  rec.XFIndex := FindXFIndex(ACell^.FormatIndex);
 
   { IEE 754 floating-point value }
   rec.Value := AValue;
@@ -4023,7 +4024,7 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { Index to XF record, according to formatting }
-  AStream.WriteWord(FindXFIndex(ACell));
+  AStream.WriteWord(FindXFIndex(ACell^.FormatIndex));
 
   { Encoded result of RPN formula }
   WriteRPNResult(AStream, ACell);
@@ -4388,6 +4389,10 @@ begin
   if spacebelow then dw := dw or $20000000;
   if (ARow <> nil) and (ARow^.RowHeightType = rhtCustom) then  // Custom row height
     dw := dw or $00000040;    // Row height and font height do not match
+  if ARow^.FormatIndex > 0 then begin
+    dw := dw or $00000080;    // Row has custom format
+    dw := dw or (FindXFIndex(ARow^.FormatIndex) shl 16);   // xf index
+  end;
 
   { Write out }
   AStream.WriteDWord(DWordToLE(dw));

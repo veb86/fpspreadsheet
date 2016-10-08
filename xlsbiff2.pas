@@ -1659,7 +1659,7 @@ begin
 
   RPNLength := 0;
 
-  xf := FindXFIndex(ACell);
+  xf := FindXFIndex(ACell^.FormatIndex);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
 
@@ -1751,7 +1751,7 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
-  xf := FindXFIndex(ACell);
+  xf := FindXFIndex(ACell^.FormatIndex);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
 
@@ -1807,7 +1807,7 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
-  xf := FindXFIndex(ACell);
+  xf := FindXFIndex(ACell^.FormatIndex);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
 
@@ -1851,7 +1851,7 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
-  xf := FindXFIndex(ACell);
+  xf := FindXFIndex(ACell^.FormatIndex);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
 
@@ -1906,7 +1906,7 @@ begin
   end;
   L := Length(AnsiText);
 
-  xf := FindXFIndex(ACell);
+  xf := FindXFIndex(ACell^.FormatIndex);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
 
@@ -1946,7 +1946,7 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
-  xf := FindXFIndex(ACell);
+  xf := FindXFIndex(ACell^.FormatIndex);
   if xf >= 63 then
     WriteIXFE(AStream, xf);
 

@@ -2044,8 +2044,15 @@ end;
   (e.g., during reading into empty worksheets).
 -------------------------------------------------------------------------------}
 function TsWorksheet.AddCell(ARow, ACol: Cardinal): PCell;
+var
+  fmtIndex: Integer;
 begin
   Result := Cells.AddCell(ARow, ACol);
+
+  fmtIndex := GetRowFormatIndex(ARow);
+  if fmtIndex = 0 then
+    fmtIndex := GetColFormatIndex(ACol);
+  Result^.FormatIndex := fmtIndex;
 
   if FFirstColIndex = UNASSIGNED_ROW_COL_INDEX then
     FFirstColIndex := GetFirstColIndex(true) else
@@ -6366,8 +6373,8 @@ end;
  pointer to the TCol record, or nil if not found
 
  @param  ACol   Index of the column looked for
- @return        Pointer to the column record with this column index, or
-                nil if not found
+ @return        Pointer to the column record with this column index, or nil
+                if not found
 -------------------------------------------------------------------------------}
 function TsWorksheet.FindCol(ACol: Cardinal): PCol;
 var
@@ -6490,14 +6497,14 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetColFormatIndex(ACol: Cardinal): Integer;
 var
-  col: PCol;
+  lCol: PCol;
 begin
   Result := 0;   // Default format has index 0
   if ACol <> UNASSIGNED_ROW_COL_INDEX then
   begin
-    col := FindCol(ACol);
-    if col <> nil then
-      Result := col^.FormatIndex
+    lCol := FindCol(ACol);
+    if lCol <> nil then
+      Result := lCol^.FormatIndex
   end;
 end;
 
@@ -6959,7 +6966,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Removes a specified column record from the worksheet and frees the occupied
-  memory. This resets its column width to default.
+  memory. This resets its column width and format to default.
 
   Note: Cells in that column are retained.
 -------------------------------------------------------------------------------}
@@ -7125,6 +7132,7 @@ begin
     exit;
   lCol := GetCol(ACol);
   lCol^.Width := FWorkbook.ConvertUnits(AWidth, AUnits, FWorkbook.FUnits);
+  lCol^.ColWidthType := cwtCustom;
 end;
 
 {@@ ----------------------------------------------------------------------------

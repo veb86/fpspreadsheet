@@ -325,20 +325,28 @@ const
 var
   c: Cardinal;
   w: Single;
+  lCol: PCol;
 begin
   if AWorksheet.Cols.Count < 2 then
     exit;
 
   // Check whether all columns have the same column width
   w := PCol(AWorksheet.Cols[0])^.Width;
-  for c := 1 to AWorksheet.Cols.Count-1 do
-    if not SameValue(PCol(AWorksheet.Cols[c])^.Width, w, EPS) then
+  for c := 1 to AWorksheet.Cols.Count-1 do begin
+    lCol := PCol(AWorksheet.Cols[c]);
+    if not SameValue(lCol^.Width, w, EPS) then
       exit;
+  end;
 
   // At this point we know that all columns have the same width. We pass this
-  // to the DefaultColWidth and delete all column records.
+  // to the DefaultColWidth ...
   AWorksheet.WriteDefaultColWidth(w, FWorkbook.Units);
-  AWorksheet.RemoveAllCols;
+
+  // ...and delete all column records with non-default format
+  for c := AWorksheet.Cols.Count-1 downto 0 do begin
+    lCol := PCol(AWorksheet.Cols[c]);
+    if lCol^.FormatIndex = 0 then AWorksheet.RemoveCol(c);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -352,20 +360,28 @@ const
 var
   r: Cardinal;
   h: Single;
+  lRow: PRow;
 begin
   if AWorksheet.Rows.Count <= 1 then
     exit;
 
   // Check whether all rows have the same height
   h := PRow(AWorksheet.Rows[0])^.Height;
-  for r := 1 to AWorksheet.Rows.Count-1 do
-    if not SameValue(PRow(AWorksheet.Rows[r])^.Height, h, EPS) then
+  for r := 1 to AWorksheet.Rows.Count-1 do begin
+    lRow := PRow(AWorksheet.Rows[r]);
+    if not SameValue(lRow^.Height, h, EPS) then
       exit;
+  end;
 
   // At this point we know that all rows have the same height. We pass this
-  // to the DefaultRowHeight and delete all row records.
+  // to the DefaultRowHeight ...
   AWorksheet.WriteDefaultRowHeight(h, FWorkbook.Units);
-  AWorksheet.RemoveAllRows;
+
+  // ... and delete all row records with non-default format.
+  for r := AWorksheet.Rows.Count-1 downto 0 do begin
+    lRow := PRow(AWorksheet.Rows[r]);
+    if lRow^.FormatIndex = 0 then AWorksheet.RemoveRow(r);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
