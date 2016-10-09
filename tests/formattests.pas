@@ -1105,11 +1105,7 @@ begin
   try
     MyWorkSheet:= MyWorkBook.AddWorksheet(ColWidthSheet);
     for Col := Low(SollColWidths) to High(SollColWidths) do
-    begin
-      lCol.Width := SollColWidths[Col];
-      //MyWorksheet.WriteNumber(0, Col, 1);
-      MyWorksheet.WriteColInfo(Col, lCol);
-    end;
+      MyWorksheet.WriteColWidth(Col, SollColWidths[Col], suChars);
     if AFormat = sfOpenDocument then
       // In ODS empty columns are ignored due to a workaround for a
       // LO/OO import error for xlsx files. --> add dummy cells
@@ -1136,7 +1132,7 @@ begin
       lpCol := MyWorksheet.GetCol(Col);
       if lpCol = nil then
         fail('Error in test code. Failed to return saved column width');
-      ActualColWidth := lpCol^.Width;
+      ActualColWidth := MyWorkbook.ConvertUnits(lpCol^.Width, MyWorkbook.Units, suChars);
       if abs(SollColWidths[Col] - ActualColWidth) > 1E-2 then   // take rounding errors into account
         CheckEquals(SollColWidths[Col], ActualColWidth,
           'Test saved colwidth mismatch, column '+ColNotation(MyWorkSheet,Col));

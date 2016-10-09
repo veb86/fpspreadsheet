@@ -2970,7 +2970,7 @@ var
   lCell: TCell;
   styleCell: PCell;
   cell: PCell;
-  rh: String;
+  s: String;
 begin
   AppendToStream(AStream,
       '<sheetData>');
@@ -2983,15 +2983,18 @@ begin
     then begin
       for r := 0 to r2 do begin
         row := AWorksheet.FindRow(r);
+        s := '';
         if row <> nil then begin
-          rh := Format(' ht="%.2f"',
+          s := s + Format(' ht="%.2f"',
             [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
             FPointSeparatorSettings);
-          if row^.RowHeightType = rhtCustom then rh := rh + ' customHeight="1"';
-        end else
-          rh := '';
+          if row^.RowHeightType = rhtCustom then
+            s := s + ' customHeight="1"';
+          if row^.FormatIndex > 0 then
+            s := s + Format(' s="%d" customFormat="1"', [row^.FormatIndex]);
+        end;
         AppendToStream(AStream, Format(
-          '<row r="%d" spans="1:%d"%s>', [r+1, AWorksheet.VirtualColCount, rh]));
+          '<row r="%d" spans="1:%d"%s>', [r+1, AWorksheet.VirtualColCount, s]));
         for c := 0 to c2 do begin
           lCell.Row := r; // to silence a compiler hint
           InitCell(lCell);
@@ -3041,24 +3044,28 @@ begin
   begin
     // The cells need to be written in order, row by row, cell by cell
     for r := r1 to r2 do begin
-      // If the row has a custom height add this value to the <row> specification
+      // If the row has a custom or auto height and/or custom format
+      // then add them to the <row> specification
       row := AWorksheet.FindRow(r);
+      s := '';
       if row <> nil then begin
-        rh := Format(' ht="%.2f"',
+        s := s + Format(' ht="%.2f"',
           [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
           FPointSeparatorSettings);
-        if row^.RowHeightType = rhtCustom then rh := rh + ' customHeight="1"';
-      end else
-        rh := '';
+        if row^.RowHeightType = rhtCustom then
+          s := s + ' customHeight="1"';
+        if row^.FormatIndex > 0 then
+          s := s + Format(' s="%d" customFormat="1"', [row^.FormatIndex]);
+      end;
       AppendToStream(AStream, Format(
-        '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, rh]));
+        '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, s]));
 
       // Write cells belonging to this row.
-      {         // Strange: the RowEnumerator is very slow here... ?!
+      {
+      // Strange: the RowEnumerator is very slow here... ?!
       for cell in AWorksheet.Cells.GetRowEnumerator(r) do
         WriteCellToStream(AStream, cell);
       }
-
       for c := c1 to c2 do begin
         cell := AWorksheet.FindCell(r, c);
         if Assigned(cell) then
