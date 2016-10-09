@@ -52,6 +52,7 @@ type
     procedure AddBuiltinNumFormats; override;
     procedure ReadBlank(AStream: TStream); override;
     procedure ReadBool(AStream: TStream); override;
+    procedure ReadColumnDefault(AStream: TStream);
     procedure ReadColWidth(AStream: TStream);
     procedure ReadDefRowHeight(AStream: TStream);
     procedure ReadFONT(AStream: TStream);
@@ -82,36 +83,39 @@ type
   TsSpreadBIFF2Writer = class(TsSpreadBIFFWriter)
   private
     FSheetIndex: Integer;  // Index of worksheet to be written
-    procedure GetCellAttributes(ACell: PCell; XFIndex: Word;
+    procedure GetAttributes(AFormatIndex: Integer; XFIndex: Word;
       out Attrib1, Attrib2, Attrib3: Byte);
     procedure GetFormatAndFontIndex(AFormatRecord: PsCellFormat;
       out AFormatIndex, AFontIndex: Integer);
     { Record writing methods }
     procedure WriteBOF(AStream: TStream);
-    procedure WriteCellFormatting(AStream: TStream; ACell: PCell; XFIndex: Word);
+    procedure WriteCellAttributes(AStream: TStream; AFormatIndex: Integer; XFIndex: Word);
     procedure WriteColWidth(AStream: TStream; ACol: PCol);
     procedure WriteColWidths(AStream: TStream);
+//    procedure WriteColumnDefault(AStream: TStream; ACol: PCol);
+    procedure WriteColumnDefault(AStream: TStream;
+        AFirstColIndex, ALastColIndex: Word; AFormatIndex: Integer);
+    procedure WriteColumnDefaults(AStream: TStream);
+    procedure WriteDefaultRowHeight(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFontIndex: Integer);
     procedure WriteFonts(AStream: TStream);
+    procedure WriteFORMATCOUNT(AStream: TStream);
     procedure WriteIXFE(AStream: TStream; XFIndex: Word);
   protected
     procedure AddBuiltinNumFormats; override;
     function FunctionSupported(AExcelCode: Integer;
       const AFuncName: String): Boolean; override;
-//    procedure ListAllNumFormats; override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Boolean; ACell: PCell); override;
     procedure WriteCodePage(AStream: TStream; ACodePage: String); override;
-    procedure WriteDefaultRowHeight(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
       AFormatIndex: Integer); override;
-    procedure WriteFORMATCOUNT(AStream: TStream);
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
@@ -179,6 +183,7 @@ const
   {%H-}INT_EXCEL_ID_INDEX    = $000B;
   INT_EXCEL_ID_FORMAT        = $001E;
   INT_EXCEL_ID_FORMATCOUNT   = $001F;
+  INT_EXCEL_ID_COLUMNDEFAULT = $0020;
   INT_EXCEL_ID_COLWIDTH      = $0024;
   INT_EXCEL_ID_DEFROWHEIGHT  = $0025;
   INT_EXCEL_ID_WINDOW2       = $003E;
@@ -362,6 +367,102 @@ begin
     Workbook.OnReadCellData(Workbook, r, c, cell);
 end;
 
+procedure TsSpreadBIFF2Reader.ReadColumnDefault(AStream: TStream);
+var
+  c, col1, col2: Word;
+  attr1, attr2, attr3: Byte;
+  fmt: TsCellFormat;
+  fmtIndex: Integer;
+  fontIndex: Integer;
+  fnt: TsFont;
+  nf: TsNumFormatParams;
+  nfs: String;
+  b: Byte;
+begin
+  { Index of first column }
+  col1 := WordLEToN(AStream.ReadWord);
+
+  { Index of last column - note: the file value is incremented by 1 }
+  col2 := WordLEToN(AStream.ReadWord) - 1;
+
+  { Attributes }
+  attr1 := AStream.ReadByte;
+  attr2 := AStream.ReadByte;
+  attr3 := AStream.ReadByte;
+
+  InitFormatRecord(fmt);
+  fmt.ID := FCellFormatList.Count;
+
+  // Font index
+  fontIndex := (attr2 and $C0) shr 6;
+  if fontIndex > 4 then dec(fontIndex);  // Watch out for the nasty missing font #4...
+  fnt := TsFont(FFontList[fontIndex]);
+  fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  if fmt.FontIndex = -1 then
+    fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  if fmt.FontIndex > 0 then
+    Include(fmt.UsedFormattingFields, uffFont);
+
+  // Number format index
+  b := attr2 and $3F;
+  nfs := NumFormatList[b];
+  if nfs <> '' then begin
+    fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
+    nf := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+    fmt.NumberFormat := nf.NumFormat;
+    fmt.NumberFormatStr := nf.NumFormatStr;
+    if fmt.NumberFormat <> nfGeneral then
+      Include(fmt.UsedFormattingfields, uffNumberFormat);
+  end;
+
+  // Horizontal alignment
+  b := attr3 and MASK_XF_HOR_ALIGN;
+  if (b <= ord(High(TsHorAlignment))) then
+  begin
+    fmt.HorAlignment := TsHorAlignment(b);
+    if fmt.HorAlignment <> haDefault then
+      Include(fmt.UsedFormattingFields, uffHorAlign);
+  end;
+
+  // Vertical alignment - not used in BIFF2
+  fmt.VertAlignment := vaDefault;
+
+  // Word wrap - not used in BIFF2
+  // -- nothing to do here
+
+  // Text rotation - not used in BIFF2
+  // -- nothing to do here
+
+  // Borders
+  fmt.Border := [];
+  if attr3 and $08 <> 0 then
+    Include(fmt.Border, cbWest);
+  if attr3 and $10 <> 0 then
+    Include(fmt.Border, cbEast);
+  if attr3 and $20 <> 0 then
+    Include(fmt.Border, cbNorth);
+  if attr3 and $40 <> 0 then
+    Include(fmt.Border, cbSouth);
+  if fmt.Border <> [] then
+    Include(fmt.UsedFormattingFields, uffBorder);
+
+  // Background color not supported, only shaded background
+  if attr3 and $80 <> 0 then
+  begin
+    fmt.Background.Style := fsGray50;
+    fmt.Background.FgColor := scBlack;
+    fmt.Background.BgColor := scTransparent;
+    Include(fmt.UsedFormattingFields, uffBackground);
+  end;
+
+  // Add the decoded data to the format list
+  FCellFormatList.Add(fmt);
+  fmtIndex := FWorkbook.AddCellFormat(fmt);
+
+  for c := col1 to col2 do
+    FWorksheet.WriteColFormatIndex(c, fmtIndex);
+end;
+
 procedure TsSpreadBIFF2Reader.ReadColWidth(AStream: TStream);
 const
   EPS = 1E-3;
@@ -386,9 +487,11 @@ end;
 procedure TsSpreadBIFF2Reader.ReadDefRowHeight(AStream: TStream);
 var
   hw: word;
+  h: Single;
 begin
   hw := WordLEToN(AStream.ReadWord);
-  FWorksheet.WriteDefaultRowHeight(TwipsToPts(hw and $8000), suPoints);
+  h := TwipsToPts(hw and $7FFF);
+  FWorksheet.WriteDefaultRowHeight(h, suPoints);
   {
   h := TwipsToPts(hw and $8000) / FWorkbook.GetDefaultFontSize;
   if h > ROW_HEIGHT_CORRECTION then
@@ -488,37 +591,38 @@ begin
     CurStreamPos := AStream.Position;
 
     case RecordType of
-      INT_EXCEL_ID_BLANK       : ReadBlank(AStream);
-      INT_EXCEL_ID_BOF         : ;
-      INT_EXCEL_ID_BOOLERROR   : ReadBool(AStream);
-      INT_EXCEL_ID_BOTTOMMARGIN: ReadMargin(AStream, 3);
-      INT_EXCEL_ID_CODEPAGE    : ReadCodePage(AStream);
-      INT_EXCEL_ID_COLWIDTH    : ReadColWidth(AStream);
-      INT_EXCEL_ID_DEFCOLWIDTH : ReadDefColWidth(AStream);
-      INT_EXCEL_ID_EOF         : BIFF2EOF := True;
-      INT_EXCEL_ID_FONT        : ReadFont(AStream);
-      INT_EXCEL_ID_FONTCOLOR   : ReadFontColor(AStream);
-      INT_EXCEL_ID_FOOTER      : ReadHeaderFooter(AStream, false);
-      INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
-      INT_EXCEL_ID_FORMULA     : ReadFormula(AStream);
-      INT_EXCEL_ID_HEADER      : ReadHeaderFooter(AStream, true);
-      INT_EXCEL_ID_INTEGER     : ReadInteger(AStream);
-      INT_EXCEL_ID_IXFE        : ReadIXFE(AStream);
-      INT_EXCEL_ID_LABEL       : ReadLabel(AStream);
-      INT_EXCEL_ID_LEFTMARGIN  : ReadMargin(AStream, 0);
-      INT_EXCEL_ID_NOTE        : ReadComment(AStream);
-      INT_EXCEL_ID_NUMBER      : ReadNumber(AStream);
-      INT_EXCEL_ID_PANE        : ReadPane(AStream);
-      INT_EXCEL_ID_PRINTGRID   : ReadPrintGridLines(AStream);
-      INT_EXCEL_ID_PRINTHEADERS: ReadPrintHeaders(AStream);
-      INT_EXCEL_ID_RIGHTMARGIN : ReadMargin(AStream, 1);
-      INT_EXCEL_ID_ROW         : ReadRowInfo(AStream);
-      INT_EXCEL_ID_SELECTION   : ReadSELECTION(AStream);
-      INT_EXCEL_ID_STRING      : ReadStringRecord(AStream);
-      INT_EXCEL_ID_TOPMARGIN   : ReadMargin(AStream, 2);
-      INT_EXCEL_ID_DEFROWHEIGHT: ReadDefRowHeight(AStream);
-      INT_EXCEL_ID_WINDOW2     : ReadWindow2(AStream);
-      INT_EXCEL_ID_XF          : ReadXF(AStream);
+      INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
+      INT_EXCEL_ID_BOF           : ;
+      INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
+      INT_EXCEL_ID_BOTTOMMARGIN  : ReadMargin(AStream, 3);
+      INT_EXCEL_ID_CODEPAGE      : ReadCodePage(AStream);
+      INT_EXCEL_ID_COLUMNDEFAULT : ReadColumnDefault(AStream);
+      INT_EXCEL_ID_COLWIDTH      : ReadColWidth(AStream);
+      INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
+      INT_EXCEL_ID_EOF           : BIFF2EOF := True;
+      INT_EXCEL_ID_FONT          : ReadFont(AStream);
+      INT_EXCEL_ID_FONTCOLOR     : ReadFontColor(AStream);
+      INT_EXCEL_ID_FOOTER        : ReadHeaderFooter(AStream, false);
+      INT_EXCEL_ID_FORMAT        : ReadFormat(AStream);
+      INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
+      INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
+      INT_EXCEL_ID_INTEGER       : ReadInteger(AStream);
+      INT_EXCEL_ID_IXFE          : ReadIXFE(AStream);
+      INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
+      INT_EXCEL_ID_LEFTMARGIN    : ReadMargin(AStream, 0);
+      INT_EXCEL_ID_NOTE          : ReadComment(AStream);
+      INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
+      INT_EXCEL_ID_PANE          : ReadPane(AStream);
+      INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
+      INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
+      INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
+      INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
+      INT_EXCEL_ID_SELECTION     : ReadSELECTION(AStream);
+      INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
+      INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
+      INT_EXCEL_ID_DEFROWHEIGHT  : ReadDefRowHeight(AStream);
+      INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
+      INT_EXCEL_ID_XF            : ReadXF(AStream);
     else
       // nothing
     end;
@@ -780,6 +884,13 @@ type
     Col1: Word;
     Col2: Word;
     Height: Word;
+    NotUsed: Word;
+    ContainsXF: Byte;
+    OffsetToCell: Word;
+    Attributes1: Byte;
+    Attributes2: Byte;
+    Attributes3: Byte;
+    XFIndex: Word;
   end;
 var
   rowrec: TRowRecord;
@@ -788,6 +899,8 @@ var
   auto: Boolean;
   rowheight: Single;
   defRowHeight: Single;
+  containsXF: Boolean;
+  xf: Word;
 begin
   rowRec.RowIndex := 0;  // to silence the compiler...
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
@@ -795,9 +908,12 @@ begin
   auto := h and $8000 <> 0;
   rowheight := FWorkbook.ConvertUnits(TwipsToPts(h and $7FFF), suPoints, FWorkbook.Units);
   defRowHeight := FWorksheet.ReadDefaultRowHeight(FWorkbook.Units);
+  containsXF := rowRec.ContainsXF = 1;
+  xf := WordLEToN(rowRec.XFIndex);
 
-  // No row record if rowheight in file is the same as the default rowheight
-  if SameValue(rowheight, defRowHeight, ROWHEIGHT_EPS) then
+  // No row record if rowheight in file is the same as the default rowheight and
+  // if there is no formatting record.
+  if SameValue(rowheight, defRowHeight, ROWHEIGHT_EPS) and (not containsXF) then
     exit;
 
   // Otherwise: create a row record
@@ -806,6 +922,7 @@ begin
   if auto then
     lRow^.RowHeightType := rhtAuto else
     lRow^.RowHeightType := rhtCustom;
+  lRow^.FormatIndex := XFToFormatIndex(xf);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1032,7 +1149,62 @@ begin
   Result := inherited and (AExcelCode < 200);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Determines the formatting attributes of a cell, row or column. This is needed,
+  for example, for writing a cell content record, such as WriteLabel,
+  WriteNumber, etc.
 
+  The attributes contain, in bit masks, xf record index, font index,
+  borders, etc.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF2Writer.GetAttributes(AFormatIndex: Integer;
+  XFIndex: Word; out Attrib1, Attrib2, Attrib3: Byte);
+var
+  fmt: PsCellFormat;
+  fontIdx, formatIdx: Integer;
+begin
+  fmt := Workbook.GetPointerToCellFormat(AFormatIndex);
+
+  if fmt^.UsedFormattingFields = [] then begin
+    Attrib1 := 15;
+    Attrib2 := 0;
+    Attrib3 := 0;
+    exit;
+  end;
+
+  // 1st byte:
+  //   Mask $3F: Index to XF record
+  //   Mask $40: 1 = Cell is locked
+  //   Mask $80: 1 = Formula is hidden
+  Attrib1 := Min(XFIndex, $3F) and $3F;
+
+  // 2nd byte:
+  //   Mask $3F: Index to FORMAT record ("FORMAT" = number format!)
+  //   Mask $C0: Index to FONT record
+  GetFormatAndFontIndex(fmt, formatIdx, fontIdx);
+  Attrib2 := formatIdx + fontIdx shr 6;
+//  Attrib2 := fmt^.FontIndex shr 6;
+
+  // 3rd byte
+  //   Mask $07: horizontal alignment
+  //   Mask $08: Cell has left border
+  //   Mask $10: Cell has right border
+  //   Mask $20: Cell has top border
+  //   Mask $40: Cell has bottom border
+  //   Mask $80: Cell has shaded background
+  Attrib3 := 0;
+  if uffHorAlign in fmt^.UsedFormattingFields then
+    Attrib3 := ord (fmt^.HorAlignment);
+  if uffBorder in fmt^.UsedFormattingFields then begin
+    if cbNorth in fmt^.Border then Attrib3 := Attrib3 or $20;
+    if cbWest in fmt^.Border then Attrib3 := Attrib3 or $08;
+    if cbEast in fmt^.Border then Attrib3 := Attrib3 or $10;
+    if cbSouth in fmt^.Border then Attrib3 := Attrib3 or $40;
+  end;
+  if (uffBackground in fmt^.UsedFormattingFields) then
+    Attrib3 := Attrib3 or $80;
+end;
+(*
 {@@ ----------------------------------------------------------------------------
   Determines the cell attributes needed for writing a cell content record, such
   as WriteLabel, WriteNumber, etc.
@@ -1041,9 +1213,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Writer.GetCellAttributes(ACell: PCell; XFIndex: Word;
   out Attrib1, Attrib2, Attrib3: Byte);
-var
-  fmt: PsCellFormat;
-  fontIdx, formatIdx: Integer;
 begin
   fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
 
@@ -1086,7 +1255,7 @@ begin
   if (uffBackground in fmt^.UsedFormattingFields) then
     Attrib3 := Attrib3 or $80;
 end;
-
+  *)
 procedure TsSpreadBIFF2Writer.GetFormatAndFontIndex(AFormatRecord: PsCellFormat;
   out AFormatIndex, AFontIndex: Integer);
 var
@@ -1126,10 +1295,13 @@ end;
                  *)
 {@@ ----------------------------------------------------------------------------
   Attaches cell formatting data for the given cell to the current record.
-  Is called from all writing methods of cell contents.
+  Is called from all writing methods of cell contents and rows
+
+  @param  AFormatIndex  Index into the workbook's FCellFormatList
+  @param  XFIndex       Index of the XF record used here
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF2Writer.WriteCellFormatting(AStream: TStream; ACell: PCell;
-  XFIndex: Word);
+procedure TsSpreadBIFF2Writer.WriteCellAttributes(AStream: TStream;
+  AFormatIndex: Integer; XFIndex: Word);
 type
   TCellFmtRecord = packed record
     XFIndex_Locked_Hidden: Byte;
@@ -1141,7 +1313,7 @@ var
   fmt: PsCellFormat;
   w: Word;
 begin
-  fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  fmt := Workbook.GetPointerToCellFormat(AFormatIndex);
   rec.XFIndex_Locked_Hidden := 0;  // to silence the compiler...
   FillChar(rec, SizeOf(rec), 0);
 
@@ -1211,6 +1383,71 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes an Excel 2 COLUMNDEFAULT record containing default column formatting of
+  specified columns
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF2Writer.WriteColumnDefault(AStream: TStream;
+  AFirstColIndex, ALastColIndex: Word; AFormatIndex: Integer);
+//ACol: PCol);
+var
+  attr1, attr2, attr3: Byte;
+  xf: Word;
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_COLUMNDEFAULT, 2+2+3+2);
+
+  { Index to first column }
+  AStream.WriteWord(WordToLE(AFirstColIndex));
+
+  { Index to last column }
+  AStream.WriteWord(WordToLE(ALastColIndex + 1));
+  // Unlike specified in the excelfileformat.pdf, Excel 2 wants to have the
+  // last column index incremented by 1!
+
+  { Attributes }
+  xf := FindXFIndex(AFormatIndex);
+  GetAttributes(AFormatIndex, xf, attr1, attr2, attr3);
+  AStream.WriteByte(attr1);
+  AStream.WriteByte(attr2);
+  AStream.WriteByte(attr3);
+
+  { Not used }
+  AStream.WriteWord(0);
+end;
+
+procedure TsSpreadBIFF2Writer.WriteColumnDefaults(AStream: TStream);
+var
+  j, j1: Integer;
+  sheet: TsWorksheet;
+  lCol, lCol1: PCol;
+  lastcol: Integer;
+begin
+  sheet := Workbook.GetFirstWorksheet;
+  j := 0;
+  while (j < sheet.Cols.Count) do begin
+    lCol := PCol(sheet.Cols[j]);
+    j1 := j;
+    lastcol := lCol^.Col;
+    while (j1 < sheet.Cols.Count) do begin
+      lCol1 := PCol(sheet.Cols[j1]);
+      if lCol1^.FormatIndex <> lCol^.FormatIndex then
+        break;
+      lastCol := lCol1^.Col;
+      inc(j1);
+    end;
+    WriteColumnDefault(AStream, lCol^.Col, lastCol, lCol^.FormatIndex);
+    j := j1;
+  end;
+{
+  for j := 0 to sheet.Cols.Count-1 do begin
+    lCol := PCol(sheet.Cols[j]);
+    if lCol^.FormatIndex > 0 then
+      WriteColumnDefault(AStream, lCol);
+  end;
+  }
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes an Excel 2 COLWIDTH record
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Writer.WriteColWidth(AStream: TStream; ACol: PCol);
@@ -1224,25 +1461,26 @@ type
   end;
 var
   rec: TColRecord;
-  w: Integer;
+  w: Single;
 begin
-  if Assigned(ACol) then begin
-    { BIFF record header }
-    rec.RecordID := WordToLE(INT_EXCEL_ID_COLWIDTH);
-    rec.RecordSize := WordToLE(4);
+  { BIFF record header }
+  rec.RecordID := WordToLE(INT_EXCEL_ID_COLWIDTH);
+  rec.RecordSize := WordToLE(SizeOf(TColRecord) - 4);
 
-    { Start and end column }
-    rec.StartCol := ACol^.Col;
-    rec.EndCol := ACol^.Col;
+  { Start and end column }
+  rec.StartCol := ACol^.Col;
+  rec.EndCol := ACol^.Col;
 
-    { Column width }
-    { calculate width to be in units of 1/256 of pixel width of character "0" }
-    w := round(FWorkbook.ConvertUnits(ACol^.Width, FWorkbook.Units, suChars)*256);
-    rec.ColWidth := WordToLE(w);
+  { Column width }
+  { calculate width to be in units of 1/256 of pixel width of character "0" }
+  if ACol^.ColWidthType = cwtDefault then
+    w := FWorksheet.ReadDefaultColWidth(suChars)
+  else
+    w := FWorkbook.ConvertUnits(ACol^.Width, FWorkbook.Units, suChars);
+  rec.ColWidth := WordToLE(round(w*256));
 
-    { Write out }
-    AStream.WriteBuffer(rec, SizeOf(rec));
-  end;
+  { Write out }
+  AStream.WriteBuffer(rec, SizeOf(rec));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1335,18 +1573,16 @@ begin
     WriteFormatCount(AStream);
     WriteNumFormats(AStream);
     WriteXFRecords(AStream);
-
     WriteDefaultColWidth(AStream, FWorksheet);
     WriteColWidths(AStream);
     WriteDimensions(AStream, FWorksheet);
+    WriteColumnDefaults(AStream);
     WriteRows(AStream, FWorksheet);
 
     if (boVirtualMode in Workbook.Options) then
       WriteVirtualCells(AStream, FWorksheet)
-    else begin
- //     WriteRows(AStream, FWorksheet);
+    else
       WriteCellsToStream(AStream, FWorksheet.Cells);
-    end;
 
     WriteWindow1(AStream);
     //  { -- currently not working
@@ -1673,7 +1909,7 @@ begin
   AStream.WriteWord(WordToLE(ACol));
 
   { BIFF2 Attributes }
-  WriteCellFormatting(AStream, ACell, xf);
+  WriteCellAttributes(AStream, ACell^.FormatIndex, xf);
 
   { Encoded result of RPN formula }
   WriteRPNResult(AStream, ACell);
@@ -1764,7 +2000,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { BIFF2 attributes }
-  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+  GetAttributes(ACell^.FormatIndex, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
 
   { Cell value }
   rec.BoolErrValue := ord(AValue);
@@ -1820,7 +2056,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { BIFF2 attributes }
-  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+  GetAttributes(ACell^.FormatIndex, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
 
   { Cell value }
   rec.BoolErrValue := ConvertToExcelError(AValue);
@@ -1864,7 +2100,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { BIFF2 attributes }
-  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+  GetAttributes(ACell^.FormatIndex, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
 
   { Write out }
   AStream.WriteBuffer(rec, Sizeof(rec));
@@ -1919,7 +2155,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { BIFF2 attributes }
-  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+  GetAttributes(ACell^.FormatIndex, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
 
   { Text length: 8 bit }
   rec.TextLen := L;
@@ -1959,7 +2195,7 @@ begin
   rec.Col := WordToLE(ACol);
 
   { BIFF2 attributes }
-  GetCellAttributes(ACell, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
+  GetAttributes(ACell^.FormatIndex, xf, rec.Attrib1, rec.Attrib2, rec.Attrib3);
 
   { Number value }
   rec.Value := AValue;
@@ -1975,15 +2211,15 @@ var
   rowheight: Word;
   auto: Boolean;
   w: Word;
+  xf: Word;
 begin
-  if (ARowIndex >= FLimitations.MaxRowCount) or (AFirstColIndex >= FLimitations.MaxColCount)
-    or (ALastColIndex >= FLimitations.MaxColCount)
+  if (ARowIndex >= FLimitations.MaxRowCount) or
+     (AFirstColIndex >= FLimitations.MaxColCount) or
+     (ALastColIndex >= FLimitations.MaxColCount)
   then
     exit;
 
-  Unused(ASheet);
-
-  containsXF := false;
+  containsXF := (ARow <> nil) and (ARow^.FormatIndex > 0);
 
   { BIFF record header }
   WriteBiffHeader(AStream, INT_EXCEL_ID_ROW, IfThen(containsXF, 18, 13));
@@ -2016,20 +2252,20 @@ begin
   { not used }
   AStream.WriteWord(0);
 
-  { Contains row attribute field and XF index }
+  { Does the record contain row attribute field and XF index? }
   AStream.WriteByte(ord(containsXF));
 
   { Relative offset to calculate stream position of the first cell record for this row }
   AStream.WriteWord(0);
 
   if containsXF then begin
-    { Default row attributes }
-    AStream.WriteByte(0);
-    AStream.WriteByte(0);
-    AStream.WriteByte(0);
+    xf := FindXFIndex(ARow^.FormatIndex);
+
+  { Default row attributes }
+    WriteCellAttributes(AStream, ARow^.FormatIndex, xf);
 
     { Index to XF record }
-    AStream.WriteWord(WordToLE(15));
+    AStream.WriteWord(WordToLE(xf));
   end;
 end;
 

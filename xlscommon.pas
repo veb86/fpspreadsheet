@@ -386,6 +386,7 @@ type
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
+    function XFToFormatIndex(XFIndex: Word): Integer;
 
     (*
     procedure ApplyRichTextFormattingRuns(ACell: PCell;
@@ -988,19 +989,22 @@ end;
   Applies the XF formatting referred to by XFIndex to the specified cell
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ApplyCellFormatting(ACell: PCell; XFIndex: Word);
+begin
+  if Assigned(ACell) then
+    ACell^.FormatIndex := XFToFormatIndex(XFIndex);
+end;
+
+function TsSpreadBIFFReader.XFToFormatIndex(XFIndex: Word): Integer;
 var
   fmt: PsCellFormat;
-  i: Integer;
+  idx: Integer;
 begin
-  if Assigned(ACell) then begin
-    i := FCellFormatList.FindIndexOfID(XFIndex);
-    if i > -1 then
-    begin
-      fmt := FCellFormatList.Items[i];
-      ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt^);  // Adds a copy of fmt to workbook
-    end else
-      ACell^.FormatIndex := 0;
-  end;
+  idx := FCellFormatList.FindIndexOfID(XFIndex);
+  if idx > -1 then begin
+    fmt := FCellFormatList.Items[idx];
+    result := FWorkbook.AddCellFormat(fmt^);   // Adds a copy of fmt to workbook
+  end else
+    Result := 0;
 end;
 
                                         (*
@@ -2143,14 +2147,9 @@ begin
     xf := (flags and $0FFF0000) shr 16;
     if xf = 15 then hasFormat := false;
   end;
-  if hasFormat then begin
+  if hasFormat then
     // Find the format with ID xf
-    idx := FCellFormatList.FindIndexOfID(xf);
-    if idx > -1 then begin
-      fmt := FCellFormatList.Items[idx];
-      lRow.FormatIndex := FWorkbook.AddCellFormat(fmt^);
-    end;
-  end;
+    lRow.FormatIndex := XFToFormatIndex(xf);
 
   // We only create a row record for fpspreadsheet if the row has a
   // non-standard height (i.e. different from default row height) or format.
