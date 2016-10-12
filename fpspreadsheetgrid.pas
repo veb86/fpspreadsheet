@@ -966,12 +966,16 @@ begin
 end;
 
 
+{*******************************************************************************
+*                                   TsSelPen                                   *
+*******************************************************************************}
 constructor TsSelPen.Create;
 begin
   inherited;
   Width := 3;
   JoinStyle := pjsMiter;
 end;
+
 
 {*******************************************************************************
 *                              TsCustomWorksheetGrid                           *
@@ -4475,6 +4479,7 @@ begin
     //Avoid crash when accessing the canvas, e.g. in GetDefaultHeaderColWidth
     exit;
    }
+
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
@@ -4824,13 +4829,15 @@ procedure TsCustomWorksheetGrid.UpdateRowHeight(ARow: Integer;
   AEnforceCalcRowHeight: Boolean = false);
 var
   lRow: PRow;
+  sr: Cardinal;
   h: Integer;     // Row height, in pixels. Contains zoom factor.
   doCalcRowHeight: Boolean;
 begin
   h := 0;
   if Worksheet <> nil then
   begin
-    lRow := Worksheet.FindRow(ARow - FHeaderCount);
+    sr := ARow - FHeaderCount;    // worksheet row index
+    lRow := Worksheet.FindRow(sr);
     if (lRow <> nil) then begin
       case lRow^.RowHeightType of
         rhtCustom:
@@ -4856,11 +4863,13 @@ begin
       end;  // case
     end else
     // No row record so far.
-    if Worksheet.GetCellCountInRow(ARow - FHeaderCount) > 0 then
+    if Worksheet.GetCellCountInRow(sr) > 0 then
     begin
       // Case 1: This row does contain cells
-      lRow := Worksheet.GetRow(ARow - FHeaderCount);
-      h := CalcAutoRowHeight(ARow);
+      lRow := Worksheet.AddRow(sr);
+      if AEnforceCalcRowHeight then
+        h := CalcAutoRowHeight(ARow) else
+        h := DefaultRowHeight;
       lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
       if h <> DefaultRowHeight then
         lRow^.RowHeightType := rhtAuto
@@ -5972,8 +5981,12 @@ end;
 procedure TsCustomWorksheetGrid.SetZoomFactor(AValue: Double);
 begin
   if (AValue <> GetZoomFactor) and Assigned(Worksheet) then begin
-    Worksheet.ZoomFactor := abs(AValue);
-    AdaptToZoomFactor;
+    try
+      Worksheet.ZoomFactor := abs(AValue);
+      AdaptToZoomFactor;
+    finally
+      EndUpdate;
+    end;
   end;
 end;
 

@@ -409,6 +409,7 @@ type
     function  GetLastRowNumber: Cardinal; deprecated 'Use GetLastRowIndex';
 
     { Data manipulation methods - For Rows and Cols }
+    function  AddRow(ARow: Cardinal): PRow;
     function  CalcAutoRowHeight(ARow: Cardinal): Single;
     function  CalcRowHeight(ARow: Cardinal): Single;
     function  FindRow(ARow: Cardinal): PRow;
@@ -6399,16 +6400,27 @@ end;
 function TsWorksheet.GetRow(ARow: Cardinal): PRow;
 begin
   Result := FindRow(ARow);
-  if (Result = nil) then begin
-    Result := GetMem(SizeOf(TRow));
-    FillChar(Result^, SizeOf(TRow), #0);
-    Result^.Row := ARow;
-    FRows.Add(Result);
-    if FLastRowIndex = 0 then
-      FLastRowIndex := GetLastRowIndex(true)
-    else
-      FLastRowIndex := Max(FLastRowIndex, ARow);
-  end;
+  if (Result = nil) then
+    Result := AddRow(ARow);
+end;
+
+{@@ ----------------------------------------------------------------------------
+ Creates a new row record for the specific row index. It is not checked whether
+ a row record already exists for this index. Dupliate records must be avoided!
+
+ @param  ARow   Index of the row considered
+ @return        Pointer to the row record with this row index.
+-------------------------------------------------------------------------------}
+function TsWorksheet.AddRow(ARow: Cardinal): PRow;
+begin
+  Result := GetMem(SizeOf(TRow));
+  FillChar(Result^, SizeOf(TRow), #0);
+  Result^.Row := ARow;
+  FRows.Add(Result);
+  if FLastRowIndex = 0 then
+    FLastRowIndex := GetLastRowIndex(true)
+  else
+    FLastRowIndex := Max(FLastRowIndex, ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------

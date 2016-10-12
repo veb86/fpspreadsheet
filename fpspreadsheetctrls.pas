@@ -64,7 +64,7 @@ type
     FUserFileFormatID: TsSpreadFormatID;
     FPendingSelection: TsCellRangeArray;
     FPendingOperation: TsCopyOperation;
-    FControlLockCount: Integer;
+//    FControlLockCount: Integer;
     FOptions: TsWorkbookOptions;
     FOnError: TsWorkbookSourceErrorEvent;
 
@@ -128,8 +128,8 @@ type
     procedure SaveToSpreadsheetFile(AFileName: string; AFormatID: TsSpreadFormatID;
       AOverwriteExisting: Boolean = true); overload;
 
-    procedure DisableControls;
-    procedure EnableControls;
+//    procedure DisableControls;
+//    procedure EnableControls;
 
     procedure SelectCell(ASheetRow, ASheetCol: Cardinal);
     procedure SelectWorksheet(AWorkSheet: TsWorksheet);
@@ -779,14 +779,14 @@ begin
   FWorksheet := FWorkbook.AddWorksheet(Format(rsDefaultSheetName,[1]));
   SelectWorksheet(FWorksheet);
 end;
-
+                         (*
 {@@ ----------------------------------------------------------------------------
   Disables notification of listening controls
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.DisableControls;
 begin
   inc(FControlLockCount);
-end;
+end;                   *)
 
 {@@ ----------------------------------------------------------------------------
   An error has occured during loading of the workbook. Shows a message box by
@@ -804,14 +804,14 @@ begin
   else
     MessageDlg(AErrorMsg, mtError, [mbOK], 0);
 end;
-
+                   (*
 {@@ ----------------------------------------------------------------------------
   Enables notification of listening controls
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.EnableControls;
 begin
   dec(FControlLockCount);
-end;
+end;                 *)
 
 {@@ ----------------------------------------------------------------------------
   Executes a "pending operation"
@@ -969,12 +969,13 @@ begin
       book.ReadFromFile(AFileName, AFormatID);
   except
     book.AddErrorMsg(rsCannotReadFile, [AFileName]);
-    // Code executed subsequently will be a pain if there is no worksheet!
+    // Code executed subsequently will be a pain if there is no worksheet! --> Add one.
     if book.GetWorksheetCount = 0 then
       book.AddWorksheet(Format(rsDefaultSheetName, [1]));
   end;
 
   InternalLoadFromWorkbook(book, AWorksheetIndex);
+
   (*
 
 
@@ -1016,6 +1017,8 @@ end;
 procedure TsWorkbookSource.InternalLoadFromWorkbook(AWorkbook: TsWorkbook;
   AWorksheetIndex: Integer = -1);
 begin
+  AWorkbook.DisableNotifications;
+
   InternalCreateNewWorkbook(AWorkbook);
   WorkbookOpenedHandler(self);
 
@@ -1026,6 +1029,8 @@ begin
       AWorksheetIndex := 0;
   end;
   SelectWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
+
+  AWorkbook.EnableNotifications;
 
   // If required, display loading error message
   if FWorkbook.ErrorMsg <> '' then
