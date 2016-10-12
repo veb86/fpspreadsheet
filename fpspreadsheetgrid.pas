@@ -281,9 +281,9 @@ type
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
 
-    procedure BeginUpdate;
     procedure AutoColWidth(ACol: Integer);
     procedure AutoRowHeight(ARow: Integer);
+    procedure BeginUpdate;
     function CellRect(ACol1, ARow1, ACol2, ARow2: Integer): TRect; overload;
     procedure Clear;
     procedure DefaultDrawCell(ACol, ARow: Integer; var ARect: TRect;
@@ -291,7 +291,7 @@ type
     procedure DeleteCol(AGridCol: Integer); reintroduce;
     procedure DeleteRow(AGridRow: Integer); reintroduce;
     procedure EditingDone; override;
-    procedure EndUpdate;
+    procedure EndUpdate(ARefresh: Boolean = true);
     function GetGridCol(ASheetCol: Cardinal): Integer; inline;
     function GetGridRow(ASheetRow: Cardinal): Integer; inline;
     procedure GetSheets(const ASheets: TStrings);
@@ -1173,6 +1173,7 @@ end;
 procedure TsCustomWorksheetGrid.BeginUpdate;
 begin
   inc(FLockCount);
+  inherited BeginUpdate;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2630,10 +2631,12 @@ end;
   Call BeginUpdate to stop refreshing the grid, and call EndUpdate to release
   the lock and to repaint the grid again.
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.EndUpdate;
+procedure TsCustomWorksheetGrid.EndUpdate(ARefresh: Boolean = true);
 begin
+  inherited EndUpdate(false);
   dec(FLockCount);
-  if FLockCount = 0 then Invalidate;
+  if (FLockCount = 0) and ARefresh then
+    VisualChange;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5987,9 +5990,10 @@ end;
 procedure TsCustomWorksheetGrid.SetZoomFactor(AValue: Double);
 begin
   if (AValue <> GetZoomFactor) and Assigned(Worksheet) then begin
+    BeginUpdate;
     try
       Worksheet.ZoomFactor := abs(AValue);
-      AdaptToZoomFactor;
+  //    AdaptToZoomFactor;
     finally
       EndUpdate;
     end;

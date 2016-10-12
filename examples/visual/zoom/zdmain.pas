@@ -127,10 +127,12 @@ procedure TMainForm.GridMouseWheel(Sender: TObject; Shift: TShiftState;
   WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
 begin
   if ([ssCtrl, ssShift] * Shift = [ssCtrl, ssShift]) then begin
+    //Grid.BeginUpdate;
     if WheelDelta > 0 then
       Grid.ZoomFactor := Grid.ZoomFactor * MOUSEWHEEL_FACTOR
     else
       Grid.ZoomFactor := Grid.ZoomFactor / MOUSEWHEEL_FACTOR;
+    //Grid.EndUpdate;
     edZoom.Value := round(Grid.ZoomFactor * 100);
     Handled := true;
   end;
