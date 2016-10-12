@@ -27,6 +27,7 @@ type
     AcShowHeaders: TAction;
     AcFrozenRows: TAction;
     AcFrozenCols: TAction;
+    AcAutoRowHeights: TAction;
     AcWorksheetRTL: TAction;
     AcViewInspector: TAction;
     ActionList: TActionList;
@@ -94,6 +95,8 @@ type
     MenuItem155: TMenuItem;
     MenuItem156: TMenuItem;
     MenuItem157: TMenuItem;
+    MenuItem158: TMenuItem;
+    MenuItem159: TMenuItem;
     MnuZoom: TMenuItem;
     MenuItem147: TMenuItem;
     MnuSettings: TMenuItem;
@@ -373,6 +376,7 @@ type
     WorkbookSource: TsWorkbookSource;
     WorkbookTabControl: TsWorkbookTabControl;
     WorksheetGrid: TsWorksheetGrid;
+    procedure AcAutoRowHeightsExecute(Sender: TObject);
     procedure AcColAddExecute(Sender: TObject);
     procedure AcColDeleteExecute(Sender: TObject);
     procedure AcFileOpenAccept(Sender: TObject);
@@ -386,6 +390,7 @@ type
       AWorkbook: TsWorkbook; var ANumFormatStr: String);
     procedure AcRowAddExecute(Sender: TObject);
     procedure AcRowDeleteExecute(Sender: TObject);
+    procedure ActionListUpdate(AAction: TBasicAction; var Handled: Boolean);
     procedure AcWorksheetRTLExecute(Sender: TObject);
     procedure AcWorksheetRTLUpdate(Sender: TObject);
     procedure AcSearchExecute(Sender: TObject);
@@ -447,6 +452,16 @@ end;
 
 
 { TMainForm }
+
+procedure TMainForm.AcAutoRowHeightsExecute(Sender: TObject);
+begin
+  Screen.Cursor := crHourglass;
+  try
+    WorksheetGrid.UpdateRowHeights(0, true);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+end;
 
 { Adds a column before the active cell }
 procedure TMainForm.AcColAddExecute(Sender: TObject);
@@ -681,6 +696,13 @@ end;
 procedure TMainForm.AcShowHeadersUpdate(Sender: TObject);
 begin
   AcShowHeaders.Checked := WorksheetGrid.ShowHeaders;
+end;
+
+procedure TMainForm.ActionListUpdate(AAction: TBasicAction; var Handled: Boolean
+  );
+begin
+  if AAction = AcAutoRowHeights then
+    AcAutoRowHeights.Enabled := WorkbookSource.Worksheet <> nil;
 end;
 
 { Toggles the spreadsheet inspector on and off }

@@ -4849,7 +4849,18 @@ begin
     if (lRow <> nil) then begin
       case lRow^.RowHeightType of
         rhtCustom:
-          h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
+          begin
+            h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
+            if AEnforceCalcRowHeight then begin
+              h := CalcAutoRowHeight(ARow);
+              if h = 0 then begin
+                h := DefaultRowHeight;
+                lRow^.RowHeightType := rhtDefault;
+              end else
+                lRow^.RowHeightType := rhtAuto;
+              lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
+            end;
+          end;
         rhtAuto, rhtDefault:
           begin
             doCalcRowHeight := AEnforceCalcRowHeight or (lRow^.Height = 0);

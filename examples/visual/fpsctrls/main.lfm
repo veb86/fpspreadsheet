@@ -1,7 +1,7 @@
 object MainForm: TMainForm
-  Left = 350
+  Left = 256
   Height = 621
-  Top = 121
+  Top = 119
   Width = 997
   Caption = 'demo_ctrls'
   ClientHeight = 601
@@ -662,6 +662,7 @@ object MainForm: TMainForm
   end
   object ActionList: TActionList
     Images = ImageList
+    OnUpdate = ActionListUpdate
     left = 176
     top = 248
     object AcAddWorksheet: TsWorksheetAddAction
@@ -1834,6 +1835,12 @@ object MainForm: TMainForm
       Caption = '500%'
       Hint = 'Zoom factor 500%'
       Zoom = 500
+    end
+    object AcAutoRowHeights: TAction
+      Category = 'Edit'
+      Caption = 'Auto row heights'
+      Hint = 'Automatic row height adjustment'
+      OnExecute = AcAutoRowHeightsExecute
     end
   end
   object ImageList: TImageList
@@ -4415,6 +4422,12 @@ object MainForm: TMainForm
           Action = AcNumFormatText
           AutoCheck = True
         end
+      end
+      object MenuItem159: TMenuItem
+        Caption = '-'
+      end
+      object MenuItem158: TMenuItem
+        Action = AcAutoRowHeights
       end
     end
     object MnuView: TMenuItem
