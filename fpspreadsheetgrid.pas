@@ -248,7 +248,6 @@ type
     function TrimToCell(ACell: PCell): String;
     procedure UpdateColWidths(AStartIndex: Integer = 0);
     procedure UpdateRowHeight(ARow: Integer; AEnforceCalcRowHeight: Boolean = false);
-    procedure UpdateRowHeights(AStartRow: Integer = -1);
 
     {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
@@ -325,6 +324,9 @@ type
     procedure ShowCellBorders(ALeft, ATop, ARight, ABottom: Integer;
       const ALeftOuterStyle, ATopOuterStyle, ARightOuterStyle, ABottomOuterStyle,
       AHorInnerStyle, AVertInnerStyle: TsCellBorderStyle);
+
+    { Row height calculation }
+    procedure UpdateRowHeights(AStartRow: Integer = -1; AEnforceCalcRowHeight: Boolean = false);
 
     { Utilities related to Workbooks }
     procedure Convert_sFont_to_Font(sFont: TsFont; AFont: TFont);
@@ -4833,6 +4835,9 @@ var
   h: Integer;     // Row height, in pixels. Contains zoom factor.
   doCalcRowHeight: Boolean;
 begin
+  if ARow < FHeaderCount then
+    exit;
+
   h := 0;
   if Worksheet <> nil then
   begin
@@ -4891,7 +4896,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Updates grid row heights by using the data from the TRow records.
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.UpdateRowHeights(AStartRow: Integer = -1);
+procedure TsCustomWorksheetGrid.UpdateRowHeights(AStartRow: Integer = -1;
+  AEnforceCalcRowHeight: Boolean = false);
 var
   r, r1: Integer;
 begin
@@ -4905,7 +4911,7 @@ begin
   BeginUpdate;
   try
     for r:=r1 to RowCount-1 do
-      UpdateRowHeight(r);
+      UpdateRowHeight(r, AEnforceCalcRowHeight);
   finally
     EndUpdate;
   end;
