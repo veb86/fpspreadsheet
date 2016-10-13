@@ -97,17 +97,21 @@ type
     FRepeatedCols: TsRowColRange;
     FRepeatedRows: TsRowColRange;
     procedure ApplyColWidths;
+    procedure ApplyStyleToCell(ACell: PCell; AStyleIndex: Integer);
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
     function ApplyTableStyle(ASheet: TsWorksheet; AStyleName: String): Boolean;
     function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
     function ExtractDateTimeFromNode(ANode: TDOMNode;
       ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
     function ExtractErrorFromNode(ANode: TDOMNode; out AErrorValue: TsErrorValue): Boolean;
+    function ExtractFormatIndexFromStyle(ACellStyleName: String; ACol: Integer): Integer;
     function FindColumnByCol(AColIndex: Integer): Integer;
     function FindColStyleByName(AStyleName: String): integer;
     function FindNumFormatByName(ANumFmtName: String): Integer;
     function FindRowStyleByName(AStyleName: String): Integer;
     function FindTableStyleByName(AStyleName: String): Integer;
+    procedure ReadCell(ANode: TDOMNode; ARow, ACol: Integer;
+      AFormatIndex: Integer; out AColsRepeated: Integer);
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
@@ -138,14 +142,21 @@ type
     procedure ReadSettings(AOfficeSettingsNode: TDOMNode);
     procedure ReadStyles(AStylesNode: TDOMNode);
     { Record writing methods }
-    procedure ReadBlank(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
-    procedure ReadBoolean(ARow, ACol: Cardinal; ACellNode: TDOMNode);
+    procedure ReadBlank(ARow, ACol: Cardinal;
+      AStyleIndex: Integer; ACellNode: TDOMNode); reintroduce;
+    procedure ReadBoolean(ARow, ACol: Cardinal;
+      AStyleIndex: Integer; ACellNode: TDOMNode);
     procedure ReadComment(ARow, ACol: Cardinal; ACellNode: TDOMNode);
-    procedure ReadDateTime(ARow, ACol: Cardinal; ACellNode: TDOMNode);
-    procedure ReadError(ARow, ACol: Cardinal; ACellNode: TDOMNode);
-    procedure ReadFormula(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
-    procedure ReadLabel(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
-    procedure ReadNumber(ARow, ACol: Cardinal; ACellNode: TDOMNode); reintroduce;
+    procedure ReadDateTime(ARow, ACol: Cardinal;
+      AStyleIndex: Integer; ACellNode: TDOMNode);
+    procedure ReadError(ARow, ACol: Cardinal; AStyleIndex: Integer;
+      ACellNode: TDOMNode);
+    procedure ReadFormula(ARow, ACol: Cardinal; AstyleIndex: Integer;
+      ACellNode: TDOMNode); reintroduce;
+    procedure ReadLabel(ARow, ACol: Cardinal; AStyleIndex: Integer;
+      ACellNode: TDOMNode); reintroduce;
+    procedure ReadNumber(ARow, ACol: Cardinal; AStyleIndex: Integer;
+      ACellNode: TDOMNode); reintroduce;
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -958,6 +969,10 @@ constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
 
+  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
+  FLimitations.MaxColCount := 1024;
+  FLimitations.MaxRowCount := 1048576;
+
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
   FPointSeparatorSettings.ListSeparator := ';';  // for formulas
@@ -1030,31 +1045,86 @@ end;
 procedure TsSpreadOpenDocReader.ApplyColWidths;
 var
   colIndex: Integer;
+  colData: TColumnData;
   colStyleIndex: Integer;
   colStyle: TColumnStyleData;
   i: Integer;
-  u: TsSizeUnits;
   defColWidth: Single;
+  colWidth: Single;
+  colWidthType: TsColWidthType;
   lastOccCol: Integer;
 begin
-  u := FWorkbook.Units;
-  defColWidth := FWorksheet.ReadDefaultColWidth(u);
+  defColWidth := FWorksheet.ReadDefaultColWidth(FWorkbook.Units);
   lastOccCol := FWorksheet.GetLastOccupiedColIndex;
   for i:=0 to FColumnList.Count-1 do
   begin
-    colIndex := TColumnData(FColumnList[i]).Col;
+    colData := TColumnData(FColumnList[i]);
+    colIndex := colData.Col;
+
     // Skip column records beyond the last data column - there's a bug in OO/LO
     // which adds column records up to the max column limit.
     if colIndex > lastOccCol then
       Continue;
-    colStyleIndex := TColumnData(FColumnList[i]).ColStyleIndex;
+
+    colStyleIndex := colData.ColStyleIndex;
     colStyle := TColumnStyleData(FColumnStyleList[colStyleIndex]);
-    // Add only column records to the worksheet if their width is different from
-    // the default column width. The column width stored in colStyle is already
-    // in workbook units (see ReadColumnStyles).
-    if not SameValue(colStyle.ColWidth, defColWidth, COLWIDTH_EPS) then
-      FWorksheet.WriteColWidth(colIndex, colStyle.ColWidth, u);
+    //defCellStyleIndex := colData.DefaultCellStyleIndex;
+    {
+    // Get column format
+    fmt := FCellFormatList.Items[defCellStyleIndex];
+    if fmt <> nil then
+      fmtIndex := FWorkbook.AddCellFormat(fmt^)
+    else
+      fmtIndex := 0;
+    }
+    // Prepare column record for the worksheet
+    colWidth := colStyle.ColWidth;        // is already in workbook units
+    if SameValue(colWidth, defColWidth, COLWIDTH_EPS) then
+      colWidthType := cwtDefault
+    else
+      colWidthType := cwtCustom;
+
+    // Write non-default column width to the worksheet
+    if (colWidthType = cwtCustom)  then
+      FWorksheet.WriteColWidth(colIndex, colWidth, FWorkbook.Units);
+
+    // Note: we don't store the column format index here; this is done in the
+    // row/cell reading method (ReadRowsAndCells).
   end;
+end;
+
+function TsSpreadOpenDocReader.ExtractFormatIndexFromStyle(ACellStyleName: String;
+  ACol: Integer): Integer;
+var
+  idx: Integer;
+begin
+  Result := -1;
+  if ACellStyleName <> '' then
+    Result := FCellFormatList.FindIndexOfName(ACellStyleName);
+  if Result = -1 then begin
+    idx := FindColumnByCol(ACol);
+    if idx > -1 then
+      Result := TColumnData(FColumnList[idx]).DefaultCellStyleIndex;
+  end;
+  if Result = -1 then
+    Result := 0;
+end;
+
+
+procedure TsSpreadOpenDocReader.ApplyStyleToCell(ACell: PCell; AStyleIndex: Integer);
+var
+  fmt: TsCellFormat;
+begin
+  if FWorksheet.HasHyperlink(ACell) then
+    FWorksheet.WriteFont(ACell, HYPERLINK_FONTINDEX);
+
+  fmt := FCellFormatList.Items[AStyleIndex]^;
+  if (AStyleIndex = 0) and FWorksheet.HasHyperlink(ACell) then begin
+    // Make sure to use hyperlink font for hyperlink cells in case of default cell style
+    fmt.FontIndex := HYPERLINK_FONTINDEX;
+    Include(fmt.UsedFormattingFields, uffFont);
+  end;
+  ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt);
 end;
 
 { Applies the style data referred to by the style name to the specified cell
@@ -1063,13 +1133,15 @@ function TsSpreadOpenDocReader.ApplyStyleToCell(ACell: PCell; AStyleName: String
 var
   fmt: TsCellFormat;
   styleIndex: Integer;
-  i: Integer;
+  //i: Integer;
 begin
   Result := false;
 
   if FWorksheet.HasHyperlink(ACell) then
     FWorksheet.WriteFont(ACell, HYPERLINK_FONTINDEX);
 
+  styleIndex := ExtractFormatIndexFromStyle(AStyleName, ACell^.Col);
+  (*
   // Is there a style attached to the cell?
   styleIndex := -1;
   if AStyleName <> '' then
@@ -1083,6 +1155,8 @@ begin
       exit;
     styleIndex := TColumnData(FColumnList[i]).DefaultCellStyleIndex;
   end;
+  *)
+
   fmt := FCellFormatList.Items[styleIndex]^;
   if (styleIndex = 0) and FWorksheet.HasHyperlink(ACell) then
   begin
@@ -1672,22 +1746,27 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Cardinal;
-  ACellNode: TDOMNode);
+  AStyleIndex: Integer; ACellNode: TDOMNode);
 var
-  styleName: String;
+//  styleName: String;
   cell: PCell;
-  lCell: TCell;
+//  lCell: TCell;
 begin
+  // No need to store a record for an empty, unformatted cell
+  if AStyleIndex = 0 then
+    exit;
+
+(*
   // a temporary cell record to store the formatting if there is any
   lCell.Row := ARow;  // to silence a compiler warning...
   InitCell(ARow, ACol, lCell);
   lCell.ContentType := cctEmpty;
-
+  lCell
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   if not ApplyStyleToCell(@lCell, stylename) then
     exit;
     // No need to store a record for an empty, unformatted cell
-
+  *)
   if FIsVirtualMode then
   begin
     InitCell(ARow, ACol, FVirtualCell);
@@ -1695,16 +1774,17 @@ begin
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
   FWorkSheet.WriteBlank(cell);
-  FWorksheet.CopyFormat(@lCell, cell);
+  ApplyStyleToCell(cell, AStyleIndex);
+//  FWorksheet.CopyFormat(@lCell, cell);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadBoolean(ARow, ACol: Cardinal;
-  ACellNode: TDOMNode);
+  AStyleIndex: Integer; ACellNode: TDOMNode);
 var
-  styleName: String;
+//  styleName: String;
   cell: PCell;
   boolValue: Boolean;
 begin
@@ -1718,9 +1798,11 @@ begin
   boolValue := ExtractBoolFromNode(ACellNode);
   FWorkSheet.WriteBoolValue(cell, boolValue);
 
+  ApplyStyleToCell(cell, AStyleIndex);
+  {
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
-
+   }
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
@@ -1758,13 +1840,14 @@ var
         colData.DefaultCellStyleIndex := defCellStyleIndex;
         FColumnList.Add(colData);
       end;
+
       s := GetAttrValue(AColNode, 'table:number-columns-repeated');
       if s = '' then
         inc(col)
       else
       begin
         colsRepeated := StrToInt(s);
-        if defCellStyleIndex > -1 then
+        if defCellStyleIndex > -1 then begin
           for j:=1 to colsRepeated-1 do
           begin
             colData := TColumnData.Create;
@@ -1773,6 +1856,7 @@ var
             colData.DefaultCellStyleIndex := defCellStyleIndex;
             FColumnList.Add(colData);
           end;
+        end;
         inc(col, colsRepeated);
       end;
     end;
@@ -1896,10 +1980,10 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadDateTime(ARow, ACol: Cardinal;
-  ACellNode : TDOMNode);
+  AStyleIndex: Integer; ACellNode: TDOMNode);
 var
   dt: TDateTime;
-  styleName: String;
+//  styleName: String;
   cell: PCell;
   fmt: PsCellFormat;
 begin
@@ -1910,8 +1994,9 @@ begin
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
 
-  styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(cell, stylename);
+  ApplyStyleToCell(cell, AStyleIndex);
+  //styleName := GetAttrValue(ACellNode, 'table:style-name');
+  //ApplyStyleToCell(cell, stylename);
   fmt := FWorkbook.GetPointerToCellFormat(cell^.FormatIndex);;
 
   dt := ExtractDateTimeFromNode(ACellNode, fmt^.NumberFormat, fmt^.NumberFormatStr);
@@ -1922,9 +2007,9 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadError(ARow, ACol: Cardinal;
-  ACellNode: TDOMNode);
+  AStyleIndex: Integer; ACellNode: TDOMNode);
 var
-  styleName: String;
+  //styleName: String;
   cell: PCell;
   errValue: TsErrorValue;
 begin
@@ -1939,8 +2024,11 @@ begin
     FWorkSheet.WriteErrorValue(cell, errValue) else
     FWorksheet.WriteText(cell, 'ERROR');
 
+  ApplyStyleToCell(cell, AStyleIndex);
+  {
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
+  }
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -2152,11 +2240,11 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadFormula(ARow, ACol: Cardinal;
-  ACellNode : TDOMNode);
+  AStyleIndex: Integer; ACellNode: TDOMNode);
 var
   cell: PCell;
   formula: String;
-  stylename: String;
+//  stylename: String;
   floatValue: Double;
   boolValue: Boolean;
   errorValue: TsErrorValue;
@@ -2175,8 +2263,11 @@ begin
   end else
     cell := FWorksheet.GetCell(ARow, ACol);   // Don't use AddCell here
 
+  ApplyStyleToCell(cell, AStyleIndex);
+  {
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
+  }
   fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
 
   formula := '';
@@ -2464,7 +2555,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadLabel(ARow, ACol: Cardinal;
-  ACellNode: TDOMNode);
+  AStyleIndex: Integer; ACellNode: TDOMNode);
 var
   cellText, spanText: String;
   styleName: String;
@@ -2497,8 +2588,11 @@ begin
 
   // Apply style to cell
   // We do this already here because we need the cell font for rich-text
+  ApplyStyleToCell(cell, AStyleIndex);
+  {
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
+  }
   fmt := FWorkbook.GetPointerToCellFormat(cell^.FormatIndex);
   fntIndex := fmt^.FontIndex;
   fnt := FWorkbook.GetFont(fntIndex);
@@ -2590,11 +2684,11 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumber(ARow, ACol: Cardinal;
-  ACellNode : TDOMNode);
+  AStyleIndex: Integer; ACellNode: TDOMNode);
 var
   Value, Str: String;
   lNumber: Double;
-  styleName: String;
+//  styleName: String;
   cell: PCell;
   fmt: PsCellFormat;
   numFmt: TsNumFormatParams;
@@ -2613,13 +2707,16 @@ begin
   else
   begin
     // Don't merge, or else we can't debug
-    Str := GetAttrValue(ACellNode,'office:value');
+    Str := GetAttrValue(ACellNode, 'office:value');
     lNumber := StrToFloat(Str, FPointSeparatorSettings);
     FWorkSheet.WriteNumber(cell, lNumber);
   end;
 
+  ApplyStyleToCell(cell, AStyleIndex);
+  {
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
+  }
   fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
   numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
 
@@ -3233,6 +3330,82 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocReader.ReadCell(ANode: TDOMNode; ARow, ACol: Integer;
+  AFormatIndex: Integer; out AColsRepeated: Integer);
+var
+  paramValueType, paramFormula: String;
+  s: String;
+  colsSpanned, rowsSpanned: Integer;
+begin
+  // select this cell value's type
+  paramValueType := GetAttrValue(ANode, 'office:value-type');
+  paramFormula := GetAttrValue(ANode, 'table:formula');
+
+  if paramFormula <> '' then
+    ReadFormula(ARow, ACol, AFormatIndex, ANode)
+  else
+  begin
+    if paramValueType = 'string' then
+      ReadLabel(ARow, ACol, AFormatIndex, ANode)
+    else
+    if (paramValueType = 'float') or
+       (paramValueType = 'percentage') or
+       (paramValueType = 'currency')
+    then
+      ReadNumber(ARow, ACol, AFormatIndex, ANode)
+    else if (paramValueType = 'date') or (paramValueType = 'time') then
+      ReadDateTime(ARow, ACol, AFormatIndex, ANode)
+    else if (paramValueType = 'boolean') then
+      ReadBoolean(ARow, ACol, AFormatIndex, ANode)
+    else
+    if (paramValueType = '') and (AFormatIndex > 0) and
+      (ARow < FLimitations.MaxRowCount-10) and
+      (ACol < FLimitations.MaxColCount-10)
+    then
+      ReadBlank(ARow, ACol, AFormatIndex, ANode);
+      { NOTE 1: Empty cells having no cell format, but a column format only,
+        are skipped here. --> Currently the reader does not detect the format
+        of empty cells correctly.
+        It would work if the "(cellStyleName <> '')" would be omitted, but    // <--- wp: still up-to-date?
+        then the reader would create a record for all 1E9 cells prepared by
+        the Excel2007 export --> crash!
+        The column format is available in the FColumnList, but since the usage
+        of colsSpanned in the row it is possible to miss the correct column format.
+        Pretty nasty situation!
+
+        NOTE 2: Sometimes, ods files have an additional empty cell at the end
+        of the spreadsheet range. Adding a cell to the worksheet here would
+        extend the sheet range unrealistically, and, if using the WorksheetGrid,
+        would add unnecessary rows/columns to the grid. --> Check against
+        FLimitations.MaxRowCount/MaxColCount; use some spare values because I
+        don't understand this mechanism of ods at all }
+  end;
+
+  // Read cell comment
+  ReadComment(ARow, ACol, ANode);
+
+  s := GetAttrValue(ANode, 'table:number-columns-spanned');
+  if s <> '' then
+    colsSpanned := StrToInt(s) - 1
+  else
+    colsSpanned := 0;
+
+  s := GetAttrValue(ANode, 'table:number-rows-spanned');
+  if s <> '' then
+    rowsSpanned := StrToInt(s) - 1
+  else
+    rowsSpanned := 0;
+
+  if (colsSpanned <> 0) or (rowsSpanned <> 0) then
+    FWorksheet.MergeCells(ARow, ACol, ARow + rowsSpanned, ACol + colsSpanned);
+
+  s := GetAttrValue(ANode, 'table:number-columns-repeated');
+  if s <> '' then
+    AColsRepeated := StrToInt(s)
+  else
+    AColsRepeated := 1;
+end;
+
 { Reads the cells in the given table. Loops through all rows, and then finds all
   cells of each row. }
 procedure TsSpreadOpenDocReader.ReadRowsAndCells(ATableNode: TDOMNode);
@@ -3241,8 +3414,10 @@ var
   rowNode, childnode: TDOMNode;
   nodeName: String;
   rowsRepeated: Integer;
+  colFmt: array of Integer;
+  isFirstRow: Boolean;
 
-  procedure ProcessRow(ARowNode: TDOMNode);
+  procedure ProcessRow(ARowNode: TDOMNode; GetRowFormat: Boolean);
   var
     rowStyleName: String;
     rowStyleIndex: Integer;
@@ -3252,13 +3427,16 @@ var
     col: Integer;
     cellNode: TDOMNode;
     nodeName: String;
+    lRow: PRow;
+    cellRecord: TCell;
     cell: PCell;
-    paramValueType, paramFormula, tableStyleName: String;
-    paramColsSpanned, paramRowsSpanned: String;
-    paramColsRepeated, paramRowsRepeated: String;
-    rowsSpanned: Integer;
-    colsSpanned: Integer;
-    i, n: Integer;
+    cellStyleName: String;
+    s: String;
+    colsRepeated: Integer;
+    i: Integer;
+    hasRowFormat: Boolean;
+    styleIndex: Integer;
+    firstStyleIndex: Integer;
   begin
     // Read rowstyle
     rowStyleName := GetAttrValue(ARowNode, 'table:style-name');
@@ -3269,11 +3447,13 @@ var
       rowHeight := rowStyle.RowHeight;    // in Workbook units (see ReadRowStyles)
       rowHeightType := rowStyle.RowHeightType;
     end else begin
-      rowHeight := FWorksheet.DefaultRowHeight;
+      rowHeight := FWorksheet.ReadDefaultRowHeight(FWorkbook.Units);
       rowHeightTYpe := rhtDefault;
     end;
 
     col := 0;
+    firstStyleIndex := -1;
+    hasRowFormat := true;
 
     //process each cell of the row
     cellNode := ARowNode.FirstChild;
@@ -3283,61 +3463,38 @@ var
       nodeName := cellNode.NodeName;
       if nodeName = 'table:table-cell' then
       begin
-        // select this cell value's type
-        paramValueType := GetAttrValue(CellNode, 'office:value-type');
-        paramFormula := GetAttrValue(CellNode, 'table:formula');
-        tableStyleName := GetAttrValue(CellNode, 'table:style-name');
+        cellStyleName := GetAttrValue(CellNode, 'table:style-name');
+        styleIndex := ExtractFormatIndexFromStyle(cellStyleName, col);
+        ReadCell(cellNode, row, col, styleIndex, colsRepeated);
 
-        if paramFormula <> '' then
-          ReadFormula(row, col, cellNode)
-        else
+        // Check whether the current cell format is still the same as for the
+        // first cell. If it is then we might have a row format here.
+        if (firstStyleIndex = -1) and hasRowFormat then
+          firstStyleIndex := styleIndex
+        else if (styleIndex <> firstStyleIndex) and (cellStyleName <> 'Default') then
+          hasRowFormat := false;
+
+        // If all cell styles in the row are the same then hasRowFormat is true
+        // and we can store the format of the first cell in the row record.
+        if GetRowFormat and hasRowFormat and
+           (col + colsRepeated >= LongInt(FLimitations.MaxColCount) - 10) then
         begin
-          if paramValueType = 'string' then
-            ReadLabel(row, col, cellNode)
+          lRow := FWorksheet.GetRow(row);
+          // Find first cell in row, all cells have the same format here.
+          cell := FWorksheet.FindNextCellInRow(row, 0);
+          if cell <> nil then
+            // Cell found --> copy its format index to cell record
+            lRow^.FormatIndex := cell^.FormatIndex
           else
-          if (paramValueType = 'float') or (paramValueType = 'percentage') or
-             (paramValueType = 'currency')
-          then
-            ReadNumber(row, col, cellNode)
-          else if (paramValueType = 'date') or (paramValueType = 'time') then
-            ReadDateTime(row, col, cellNode)
-          else if (paramValueType = 'boolean') then
-            ReadBoolean(row, col, cellNode)
-          else if (paramValueType = '') and (tableStyleName <> '') then
-            ReadBlank(row, col, cellNode);
-            { NOTE: Empty cells having no cell format, but a column format only,
-              are skipped here. --> Currently the reader does not detect the format
-              of empty cells correctly.
-              It would work if the "(tableStyleName <> '')" would be omitted, but
-              then the reader would create a record for all 1E9 cells prepared by
-              the Excel2007 export --> crash!
-              The column format is available in the FColumnList, but since the usage
-              of colsSpanned in the row it is possible to miss the correct column format.
-              Pretty nasty situation! }
+          begin
+            // No cell in row --> appy format to dummy cell to get its format index
+            InitCell(row, 0, cellRecord);
+            ApplyStyleToCell(@cellRecord, styleIndex);
+            lRow^.FormatIndex := cellRecord.FormatIndex;
+          end;
         end;
 
-        // Read cell comment
-        ReadComment(row, col, cellNode);
-
-        paramColsSpanned := GetAttrValue(cellNode, 'table:number-columns-spanned');
-        if paramColsSpanned <> '' then
-          colsSpanned := StrToInt(paramColsSpanned) - 1
-        else
-          colsSpanned := 0;
-
-        paramRowsSpanned := GetAttrValue(cellNode, 'table:number-rows-spanned');
-        if paramRowsSpanned <> '' then
-          rowsSpanned := StrToInt(paramRowsSpanned) - 1
-        else
-          rowsSpanned := 0;
-
-        if (colsSpanned <> 0) or (rowsSpanned <> 0) then
-          FWorksheet.MergeCells(row, col, row+rowsSpanned, col+colsSpanned);
-
-        paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
-        if paramColsRepeated = '' then paramColsRepeated := '1';
-        n := StrToInt(paramColsRepeated);
-        if (n > 1) and (col + n < LongInt(FLimitations.MaxColCount) - 10) then
+        if (colsRepeated > 1) and (col + colsRepeated < LongInt(FLimitations.MaxColCount) - 10) then
         begin
           // The 2nd condition belongs to a workaround for a bug of LO/OO whichs
           // extends imported xlsx files with blank cols up to their
@@ -3346,27 +3503,27 @@ var
           // sometimes split into two parts.
           cell := FWorksheet.FindCell(row, col);
           if cell <> nil then
-          for i:=1 to n-1 do
-            FWorksheet.CopyCell(row, col, row, col+i);
+            for i:=1 to colsRepeated-1 do
+              FWorksheet.CopyCell(row, col, row, col+i);
         end;
       end
       else
       if nodeName = 'table:covered-table-cell' then
       begin
-        paramColsRepeated := GetAttrValue(cellNode, 'table:number-columns-repeated');
-        if paramColsRepeated = '' then paramColsRepeated := '1';
+        s := GetAttrValue(cellNode, 'table:number-columns-repeated');
+        if s = '' then colsRepeated := 1;
       end else
-        paramColsRepeated := '0';
+        colsRepeated := 0;
 
-      col := col + StrToInt(paramColsRepeated);
+      col := col + colsRepeated;
       cellNode := cellNode.NextSibling;
     end; //while Assigned(cellNode)
 
-    paramRowsRepeated := GetAttrValue(RowNode, 'table:number-rows-repeated');
-    if paramRowsRepeated = '' then
+    s := GetAttrValue(RowNode, 'table:number-rows-repeated');
+    if s = '' then
       rowsRepeated := 1
     else
-      rowsRepeated := StrToInt(paramRowsRepeated);
+      rowsRepeated := StrToInt(s);
 
     // Transfer non-default row heights to sheet's rows
     // This first "if" is a workaround for a bug of LO/OO whichs extends imported
@@ -3377,12 +3534,47 @@ var
       for i:=1 to rowsRepeated do
         FWorksheet.WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units, rowHeightType);
 
+    // Prepare checking of column format
+    if GetRowFormat then begin
+      // Store the format indexes of all cells in the first row
+      if isFirstRow then begin
+        SetLength(colFmt, col);
+        for col:=0 to High(colFmt) do begin
+          cell := FWorksheet.FindCell(row, col);
+          if cell <> nil then
+            colFmt[col] := cell^.FormatIndex
+          else begin
+            InitCell(row, col, cellRecord);
+            ApplyStyleToCell(@cellRecord, styleIndex);
+            colFmt[col] := cellRecord.FormatIndex;
+          end;
+        end;
+      end else
+        // In the other rows compare the cell format indexes with those stored
+        // from the first row. If an index does not match then this col cannot
+        // have a column format.
+        for col:=0 to High(colFmt) do begin
+          if colFmt[col] > -1 then begin
+            cell := FWorksheet.FindCell(row, col);
+            if ((cell <> nil) and (cell^.FormatIndex <> colFmt[col])) then
+              colFmt[col] := -1;
+          end;
+        end;
+    end;
+
     row := row + rowsRepeated;
+    isFirstRow := false;
   end;
+
+var
+  PrintRowMode: Boolean;
+  c: Cardinal;
 
 begin
   rowsRepeated := 0;
   row := 0;
+  isFirstRow := true;
+  PrintRowMode := false;
 
   rownode := ATableNode.FirstChild;
   while Assigned(rowNode) do
@@ -3392,6 +3584,7 @@ begin
     // Repeated print rows
     if nodeName = 'table:table-header-rows' then
     begin
+      PrintRowMode := true;
       if FRepeatedRows.FirstIndex = Cardinal(UNASSIGNED_ROW_COL_INDEX) then
         FRepeatedRows.FirstIndex := row;
       childnode := rowNode.FirstChild;
@@ -3400,18 +3593,25 @@ begin
         nodename := childnode.NodeName;
         if nodename = 'table:table-row' then
         begin
-          ProcessRow(childnode);
+          ProcessRow(childnode, false);
         end;
         childnode := childnode.NextSibling;
       end;
       FRepeatedRows.LastIndex := row-1;
-    end else
+    end
+    else
     // "normal" rows
     if nodeName = 'table:table-row' then
-    begin
-      ProcessRow(rowNode);
-    end;
+      ProcessRow(rowNode, true);
+
     rowNode := rowNode.NextSibling;
+  end;
+
+  // Construct column records with column format
+  if not PrintRowMode and (row > FLimitations.MaxRowCount-10) then begin
+    for c := 0 to High(colFmt) do
+      if colFmt[c] > 0 then
+        FWorksheet.WriteColFormatIndex(c, colFmt[c]);
   end;
 end;
 
@@ -3466,6 +3666,8 @@ begin
   showGrid := true;
   showHeaders := true;
   zoom := 100.0;
+  actRow := 0;
+  actCol := 0;
   cfgItemSetNode := AOfficeSettingsNode.FirstChild;
   while Assigned(cfgItemSetNode) do
   begin
@@ -3547,11 +3749,11 @@ begin
                           sheet.TopPaneHeight := vsp;
                         end else
                           sheet.Options := sheet.Options - [soHasFrozenPanes];
+                        // Active cell
+                        sheet.SelectCell(actRow, actCol);
+                        // Zoom factor
+                        sheet.ZoomFactor := zoom / 100.0;
                       end;
-                      // Active cell
-                      sheet.SelectCell(actRow, actCol);
-                      // Zoom factor
-                      sheet.ZoomFactor := zoom / 100.0;
                     end;
                   end;
                   cfgTableItemNode := cfgTableItemNode.NextSibling;

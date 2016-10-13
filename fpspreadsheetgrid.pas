@@ -3291,7 +3291,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetDefaultHeaderColWidth: Integer;
 begin
-  Result := Canvas.TextWidth(' 999999 ');
+  Result := Canvas.TextWidth(' 9999999 ');
 end;
 
 {@@ ----------------------------------------------------------------------------
