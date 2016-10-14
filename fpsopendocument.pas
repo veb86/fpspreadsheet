@@ -3503,8 +3503,11 @@ var
           // sometimes split into two parts.
           cell := FWorksheet.FindCell(row, col);
           if cell <> nil then
-            for i:=1 to colsRepeated-1 do
-              FWorksheet.CopyCell(row, col, row, col+i);
+            for i:=1 to colsRepeated-1 do begin
+              cell := FWorksheet.CopyCell(row, col, row, col+i);
+              styleIndex := ExtractFormatIndexFromStyle(cellStyleName, col+i);
+              ApplyStyleToCell(cell, styleIndex);
+            end;
         end;
       end
       else

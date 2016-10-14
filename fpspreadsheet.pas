@@ -374,8 +374,8 @@ type
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromCell, AToCell: PCell); overload;
-    procedure CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
-      AFromWorksheet: TsWorksheet = nil); overload;
+    function CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
+      AFromWorksheet: TsWorksheet = nil): PCell; overload;
     procedure CopyFormat(AFromCell, AToCell: PCell); overload;
     procedure CopyFormat(AFormatCell: PCell; AToRow, AToCol: Cardinal); overload;
     procedure CopyFormula(AFromCell, AToCell: PCell); overload;
@@ -1723,9 +1723,11 @@ end;
   @param AToRow    Row index of the destination cell
   @param AToCol    Column index of the destination cell
   @param AFromWorksheet  Worksheet containing the source cell. Self, if omitted.
+
+  @return Created new destination cell
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
-  AFromWorksheet: TsWorksheet = nil);
+function TsWorksheet.CopyCell(AFromRow, AFromCol, AToRow, AToCol: Cardinal;
+  AFromWorksheet: TsWorksheet = nil): PCell;
 var
   srcCell, destCell: PCell;
 begin
@@ -1739,6 +1741,8 @@ begin
 
   ChangedCell(AToRow, AToCol);
   ChangedFont(AToRow, AToCol);
+
+  Result := destCell;
 end;
 
 {@@ ----------------------------------------------------------------------------
