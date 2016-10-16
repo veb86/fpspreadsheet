@@ -174,6 +174,8 @@ type
     FRowStyleList: TFPList;
     FRichTextFontList: TStringList;
     FHeaderFooterFontList: TObjectList;
+    FHasColFormats: Boolean;
+    FHasRowFormats: Boolean;
 
     // Routines to write parts of files
     procedure WriteAutomaticStyles(AStream: TStream);
@@ -4947,6 +4949,11 @@ procedure TsSpreadOpenDocWriter.WriteWorksheet(AStream: TStream;
 begin
   FWorksheet := FWorkbook.GetWorksheetByIndex(ASheetIndex);
 
+  // Buffer the information whether the worksheet contains column or row formats
+  // Needed for writing rows and cells
+  FHasColFormats := FWorksheet.HasColFormats;
+  FHasRowFormats := FWorksheet.HasRowFormats;
+
   // Header
   AppendToStream(AStream, Format(
     '<table:table table:name="%s" table:style-name="ta%d" %s>', [
@@ -4974,6 +4981,8 @@ begin
     '</table:table>');
 end;
 
+{ Writes the cell styles ("ce0", "ce1", ...). Directly maps to the CellFormats
+  list of the workbook. "ce0" is the default format }
 procedure TsSpreadOpenDocWriter.WriteCellStyles(AStream: TStream);
 var
   i, j, p: Integer;
@@ -5016,11 +5025,13 @@ begin
                    'style:parent-style-name="Default" '+ nfs + '>');
 
     // style:text-properties
+    // - font
     s := WriteFontStyleXMLAsString(fmt);
     if s <> '' then
       AppendToStream(AStream,
         '<style:text-properties '+ s + '/>');
 
+    // - border, background, wordwrap, text rotation, vertical alignment
     s := WriteBorderStyleXMLAsString(fmt) +
          WriteBackgroundColorStyleXMLAsString(fmt) +
          WriteWordwrapStyleXMLAsString(fmt) +
@@ -5031,7 +5042,9 @@ begin
         '<style:table-cell-properties ' + s + '/>');
 
     // style:paragraph-properties
-    s := WriteHorAlignmentStyleXMLAsString(fmt) + WriteBiDiModeStyleXMLAsString(fmt);
+    // - hor alignment, bidi
+    s := WriteHorAlignmentStyleXMLAsString(fmt) +
+         WriteBiDiModeStyleXMLAsString(fmt);
     if s <> '' then
       AppendToStream(AStream,
         '<style:paragraph-properties ' + s + '/>');
@@ -5082,6 +5095,7 @@ var
   lastCol: Integer;
   c, k: Integer;
   w: Double;
+  fmt: Integer;
 //  w, w_mm: Double;
 //  widthMultiplier: Double;
   styleName: String;
@@ -5119,7 +5133,11 @@ begin
         break;
       end;
     if stylename = '' then
+      stylename := 'co1';
+    {
+    if stylename = '' then
       raise Exception.Create(rsColumnStyleNotFound);
+      }
 
     // Determine value for "number-columns-repeated"
     colsRepeated := 1;
@@ -5142,6 +5160,9 @@ begin
           break;
         inc(k);
       end;
+    if FHasRowFormats and (k = lastcol) then
+      colsRepeated := FLimitations.MaxColCount - c;
+
     colsRepeatedStr := IfThen(colsRepeated = 1, '', Format(' table:number-columns-repeated="%d"', [colsRepeated]));
 
     AppendToStream(AStream, Format(
@@ -5487,28 +5508,28 @@ begin
       headerRows := true;
     end;
 
-    // Look for the row style of the current row (r)
+    // Look for the row style of the current row (r): row style contains only
+    // row height, no row format!
     row := ASheet.FindRow(r);
-    if row = nil then begin
-      styleName := 'ro1';
-      h := ASheet.ReadDefaultRowHeight(FWorkbook.Units);
-    end else
+    styleName := '';
+    if row <> nil then
     begin
-      styleName := '';
-
       h := row^.Height;    // row height in workbook units
       for k := 0 to FRowStyleList.Count-1 do begin
         rowStyleData := TRowStyleData(FRowStyleList[k]);
         // Compare row heights, but be aware of rounding errors
         if SameValue(rowStyleData.RowHeight, h, ROWHEIGHT_EPS) and
-           (rowstyleData.RowHeightType = row^.RowHeightType)
+           (rowstyleData.RowHeightType = row^.RowHeightType) and
+           (rowstyleData.RowHeightType <> rhtDefault)
         then begin
           styleName := rowStyleData.Name;
           break;
         end;
       end;
-      if styleName = '' then
-        raise Exception.Create(rsRowStyleNotFound);
+    end;
+    if styleName = '' then begin
+      styleName := 'ro1';   // "ro1" is default row record - see ListAllRowStyles
+      h := ASheet.ReadDefaultRowHeight(FWorkbook.Units);
     end;
 
     // Take care of empty rows above the first row
@@ -5517,7 +5538,9 @@ begin
       rowsRepeated := r;
       rowsRepeatedStr := IfThen(rowsRepeated = 1, '',
         Format('table:number-rows-repeated="%d"', [rowsRepeated]));
-      colsRepeated := lastCol + 1;
+      if FHasRowFormats then
+        colsRepeated := FLimitations.MaxColCount else
+        colsRepeated := lastCol + 1;
       colsRepeatedStr := IfThen(colsRepeated = 1, '',
         Format('table:number-columns-repeated="%d"', [colsRepeated]));
       AppendToStream(AStream, Format(
@@ -5544,7 +5567,9 @@ begin
       rowsRepeated := rr - r;
       rowsRepeatedStr := IfThen(rowsRepeated = 1, '',
         Format('table:number-rows-repeated="%d"', [rowsRepeated]));
-      colsRepeated := lastCol - firstCol + 1;
+      if FHasRowFormats then
+        colsRepeated := FLimitations.MaxColCount else
+        colsRepeated := lastCol - firstCol + 1;
       colsRepeatedStr := IfThen(colsRepeated = 1, '',
         Format('table:number-columns-repeated="%d"', [colsRepeated]));
 
@@ -5600,11 +5625,17 @@ begin
             break;
           inc(cc)
         end;
-        colsRepeated := cc - c;
+        if FHasRowFormats and (cc > lastcol) then
+          colsRepeated := FLimitations.MaxColCount - c else
+          colsRepeated := cc - c;
         colsRepeatedStr := IfThen(colsRepeated = 1, '',
-          Format('table:number-columns-repeated="%d"', [colsRepeated]));
+          Format(' table:number-columns-repeated="%d"', [colsRepeated]));
+        row := ASheet.FindRow(r);
+        if (row <> nil) and (row^.FormatIndex > 0) then
+          stylename := Format(' table:style-name="ce%d"', [row^.FormatIndex]) else
+          stylename := '';
         AppendToStream(AStream, Format(
-          '<table:table-cell %s/>', [colsRepeatedStr]));
+          '<table:table-cell%s%s/>', [colsRepeatedStr, stylename]));
       end else
         WriteCellToStream(AStream, cell);
       inc(c, colsRepeated);
@@ -5625,6 +5656,8 @@ begin
   end;
 end;
 
+{ Write the style nodes for rows ("ro1", "ro2", ...); they contain only
+  row height information. "ro1" is the default row height }
 procedure TsSpreadOpenDocWriter.WriteRowStyles(AStream: TStream);
 var
   i: Integer;
@@ -5632,10 +5665,13 @@ var
 begin
   if FRowStyleList.Count = 0 then
   begin
-    AppendToStream(AStream,
+    AppendToStream(AStream, Format(
       '<style:style style:name="ro1" style:family="table-row">' +
-        '<style:table-row-properties style:row-height="0.416cm" fo:break-before="auto" style:use-optimal-row-height="true"/>' +
-      '</style:style>');
+        '<style:table-row-properties style:row-height="%.3fmm" ' +
+          'fo:break-before="auto" style:use-optimal-row-height="true"/>' +
+      '</style:style>',
+      [FWorksheet.ReadDefaultRowHeight(suMillimeters)]
+    ));
     exit;
   end;
 
@@ -5654,7 +5690,6 @@ begin
         FPointSeparatorSettings));
     AppendToStream(AStream, Format(
         'style:use-optimal-row-height="%s" ', [FALSE_TRUE[rowstyle.RowHeightType <> rhtCustom]]));
-        // row height < 0 means: automatic row height
     AppendToStream(AStream,
         'fo:break-before="auto"/>');
 
@@ -7164,16 +7199,16 @@ begin
   if FWorksheet.IsMergeBase(ACell) then
   begin
     FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-    rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
-    colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
-    spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
+    colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
+    rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
+    spannedStr := colsSpannedStr + rowsSpannedStr;
   end else
     spannedStr := '';
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   numFmtParams := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
   if fmt.UsedFormattingFields <> [] then
-    lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
+    lStyle := Format(' table:style-name="ce%d"', [ACell^.FormatIndex])
   else
     lStyle := '';
 
@@ -7194,7 +7229,7 @@ begin
     displayStr := FWorksheet.ReadAsText(ACell);
 //    displayStr := FormatDateTime(fmt.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(
-      '<table:table-cell office:value-type="time" office:time-value="%s" %s %s>' +
+      '<table:table-cell office:value-type="time" office:time-value="%s"%s%s>' +
         comment +
         '<text:p>%s</text:p>' +
       '</table:table-cell>', [

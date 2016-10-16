@@ -425,6 +425,8 @@ type
     function  GetColFormatIndex(ACol: Cardinal): Integer;
     function  GetColWidth(ACol: Cardinal; AUnits: TsSizeUnits): Single; overload;
     function  GetColWidth(ACol: Cardinal): Single; overload; deprecated 'Use version with parameter AUnits.';
+    function  HasColFormats: Boolean;
+    function  HasRowFormats: Boolean;
     procedure DeleteCol(ACol: Cardinal);
     procedure DeleteRow(ARow: Cardinal);
     procedure InsertCol(ACol: Cardinal);
@@ -4622,7 +4624,6 @@ begin
     Delete(AValue, 1, 1);
     WriteNumberFormat(ACell, nfText);
   end;
-
   fmtIndex := GetEffectiveCellFormatIndex(ACell);
   fmt := Workbook.GetCellFormat(fmtIndex);
   numFmtParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
@@ -4661,25 +4662,6 @@ begin
     exit;
   end;
 
-  if TryStrToFloat(AValue, number, FWorkbook.FormatSettings) then
-  begin
-    if isPercent then
-      WriteNumber(ACell, number/100, nfPercentage)
-    else
-    begin
-      if IsDateTimeFormat(numFmtParams) then
-        WriteNumber(ACell, number, nfGeneral)
-      else
-        WriteNumber(ACell, number);
-    end;
-    if IsTextFormat(numFmtParams) then
-    begin
-      WriteNumberFormat(ACell, nfText);
-      WriteText(ACell, AValue);
-    end;
-    exit;
-  end;
-
   if TryStrToDateTime(AValue, number, FWorkbook.FormatSettings) then
   begin
     if number < 1.0 then          // this is a time alone
@@ -4701,6 +4683,25 @@ begin
       WriteDateTime(ACell, number, nfShortDateTime)
     else
       WriteDateTime(ACell, number);
+    if IsTextFormat(numFmtParams) then
+    begin
+      WriteNumberFormat(ACell, nfText);
+      WriteText(ACell, AValue);
+    end;
+    exit;
+  end;
+
+  if TryStrToFloat(AValue, number, FWorkbook.FormatSettings) then
+  begin
+    if isPercent then
+      WriteNumber(ACell, number/100, nfPercentage)
+    else
+    begin
+      if IsDateTimeFormat(numFmtParams) then
+        WriteNumber(ACell, number, nfGeneral)
+      else
+        WriteNumber(ACell, number);
+    end;
     if IsTextFormat(numFmtParams) then
     begin
       WriteNumberFormat(ACell, nfText);
@@ -6627,6 +6628,32 @@ begin
     Result := rhtDefault
   else
     Result := lRow^.RowHeightType;
+end;
+
+function TsWorksheet.HasColFormats: Boolean;
+var
+  c: Integer;
+begin
+  for c := 0 to FCols.Count-1 do
+    if PCol(FCols[c]).FormatIndex > 0 then
+    begin
+      Result := true;
+      exit;
+    end;
+  Result := false;
+end;
+
+function TsWorksheet.HasRowFormats: Boolean;
+var
+  r: Integer;
+begin
+  for r := 0 to FRows.Count-1 do
+    if PRow(FRows[r]).FormatIndex > 0 then
+    begin
+      Result := true;
+      exit;
+    end;
+  Result := false;
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -3247,6 +3247,9 @@ begin
     AStrings.Add(Format('RowHeightType=%s', [
       RowHeightTypeNames[lRow^.RowHeightType]
     ]));
+    AStrings.Add(Format('FormatIndex=%d', [
+      lRow^.FormatIndex
+    ]));
   end else
   begin
     AStrings.Add('No row record=');
