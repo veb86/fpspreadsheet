@@ -43,7 +43,7 @@ type
     function GetPageFooterStr(AWorksheet: TsWorksheet): String;
     function GetPageHeaderStr(AWorksheet: TsWorksheet): String;
     function GetPageMarginStr(AWorksheet: TsWorksheet): String;
-    function GetStyleStr(ACell: PCell): String;
+    function GetStyleStr(AFormatIndex: Integer): String;
     procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
     procedure WriteStyles(AStream: TStream);
@@ -308,11 +308,11 @@ begin
   Result := '<PageMargins ' + Result + '/>';
 end;
 
-function TsSpreadExcelXMLWriter.GetStyleStr(ACell: PCell): String;
+function TsSpreadExcelXMLWriter.GetStyleStr(AFormatIndex: Integer): String;
 begin
   Result := '';
-  if ACell^.FormatIndex > 0 then
-    Result := Format(' ss:StyleID="s%d"', [ACell^.FormatIndex + FMT_OFFSET]);
+  if AFormatIndex > 0 then
+    Result := Format(' ss:StyleID="s%d"', [AFormatIndex + FMT_OFFSET]);
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteBlank(AStream: TStream;
@@ -323,7 +323,7 @@ begin
     '<Cell%s%s%s%s>' +              // colIndex, style, hyperlink, merge
       '%s' +                        // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetHyperlinkStr(ACell), GetMergeStr(ACell),
     GetCommentStr(ACell)
   ]));
 end;
@@ -339,7 +339,8 @@ begin
       '</Data>' +
       '%s' +                     // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+      GetHyperlinkStr(ACell), GetMergeStr(ACell),
     StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Boolean'),
     StrUtils.IfThen(AValue, '1', '0'),
     GetCommentStr(ACell)
@@ -397,7 +398,8 @@ begin
       '</Data>' + LF + CELL_INDENT +
       '%s' +                                 // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+      GetHyperlinkStr(ACell), GetMergeStr(ACell),
     StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'DateTime'),
     valueStr,
     GetCommentStr(ACell)
@@ -415,7 +417,8 @@ begin
       '</Data>' + LF + CELL_INDENT +
       '%s' +                                 // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+      GetHyperlinkStr(ACell), GetMergeStr(ACell),
     StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Error'),
     GetErrorValueStr(AValue),
     GetCommentStr(ACell)
@@ -482,7 +485,8 @@ begin
       '</%sData>' + LF + CELL_INDENT +       // "ss:"
       '%s' +                                 // Comment
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+      GetHyperlinkStr(ACell), GetMergeStr(ACell),
     dataTagStr, cctStr, xmlnsStr,
     valueStr,
     dataTagStr,
@@ -501,7 +505,8 @@ begin
       '</Data>' + LF + CELL_INDENT +
       '%s' +                                  // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell), GetFormulaStr(ACell), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+      GetHyperlinkStr(ACell), GetMergeStr(ACell),
     StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Number'),
     AValue,
     GetCommentStr(ACell)], FPointSeparatorSettings)
@@ -671,6 +676,7 @@ var
   cell: PCell;
   rowheightStr: String;
   colwidthStr: String;
+  styleStr: String;
   col: PCol;
   row: PRow;
 begin
@@ -694,20 +700,27 @@ begin
   for c := c1 to c2 do
   begin
     col := FWorksheet.FindCol(c);
-    // column width is needed in pts.
+    styleStr := '';
+    colWidthStr := '';
     if Assigned(col) then
-      colwidthStr := Format(' ss:Width="%0.2f"',
-        [FWorkbook.ConvertUnits(col^.Width, FWorkbook.Units, suPoints)],
-        FPointSeparatorSettings)
-    else
-      colwidthStr := '';
+    begin
+      // column width is needed in pts.
+      if col^.ColWidthType = cwtCustom then
+        colwidthStr := Format(' ss:Width="%0.2f" ss:AutoFitWidth="0"',
+          [FWorkbook.ConvertUnits(col^.Width, FWorkbook.Units, suPoints)],
+          FPointSeparatorSettings);
+      // column style
+      if col^.FormatIndex > 0 then
+        styleStr := GetStyleStr(col^.FormatIndex);
+    end;
     AppendToStream(AStream, COL_INDENT + Format(
-      '<Column ss:Index="%d" ss:AutoFitWidth="0"%s />' + LF, [c+1, colWidthStr]));
+      '<Column ss:Index="%d" %s%s />' + LF, [c+1, colWidthStr, styleStr]));
   end;
 
   for r := r1 to r2 do
   begin
     row := FWorksheet.FindRow(r);
+    styleStr := '';
     // Row height is needed in pts.
     if Assigned(row) then
     begin
@@ -718,10 +731,12 @@ begin
       if row^.RowHeightType = rhtCustom then
         rowHeightStr := 'ss:AutoFitHeight="0"' + rowHeightStr else
         rowHeightStr := 'ss:AutoFitHeight="1"' + rowHeightStr;
+      if row^.FormatIndex > 0 then
+        styleStr := GetStyleStr(row^.FormatIndex);
     end else
       rowheightStr := 'ss:AutoFitHeight="1"';
     AppendToStream(AStream, ROW_INDENT + Format(
-      '<Row %s>' + LF, [rowheightStr]));
+      '<Row %s%s>' + LF, [rowheightStr, styleStr]));
     for c := c1 to c2 do
     begin
       cell := AWorksheet.FindCell(r, c);
