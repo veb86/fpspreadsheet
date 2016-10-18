@@ -179,9 +179,14 @@ type
 
     // Routines to write parts of files
     procedure WriteAutomaticStyles(AStream: TStream);
+    procedure WriteCellRow(AStream: TStream; ASheet: TsWorksheet;
+      ARowIndex, ALastColIndex: Integer);
     procedure WriteCellStyles(AStream: TStream);
     procedure WriteColStyles(AStream: TStream);
     procedure WriteColumns(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteEmptyRow(AStream: TStream; ASheet: TsWorksheet;
+      ARowIndex, AFirstColIndex, ALastColIndex, ALastRowIndex: Integer;
+      out ARowsRepeated: Integer);
     procedure WriteFontNames(AStream: TStream);
     procedure WriteMasterStyles(AStream: TStream);
     procedure WriteNamedExpressions(AStream: TStream; ASheet: TsWorksheet);
@@ -220,8 +225,12 @@ type
     procedure AddBuiltinNumFormats; override;
     procedure CreateStreams;
     procedure DestroyStreams;
-    procedure GetHeaderFooterImageName(APageLayout: TsPageLayout; out AHeader, AFooter: String);
-    procedure GetHeaderFooterImagePosStr(APagelayout: TsPageLayout; out AHeader, AFooter: String);
+    procedure GetHeaderFooterImageName(APageLayout: TsPageLayout;
+      out AHeader, AFooter: String);
+    procedure GetHeaderFooterImagePosStr(APagelayout: TsPageLayout;
+      out AHeader, AFooter: String);
+    procedure GetRowStyleAndHeight(ASheet: TsWorksheet; ARowIndex: Integer;
+      out AStyleName: String; out AHeight: Single);
     procedure InternalWriteToStream(AStream: TStream);
     procedure ListAllColumnStyles;
     procedure ListAllHeaderFooterFonts;
@@ -1750,25 +1759,14 @@ end;
 procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Cardinal;
   AStyleIndex: Integer; ACellNode: TDOMNode);
 var
-//  styleName: String;
   cell: PCell;
-//  lCell: TCell;
 begin
+  Unused(ACellNode);
+
   // No need to store a record for an empty, unformatted cell
   if AStyleIndex = 0 then
     exit;
 
-(*
-  // a temporary cell record to store the formatting if there is any
-  lCell.Row := ARow;  // to silence a compiler warning...
-  InitCell(ARow, ACol, lCell);
-  lCell.ContentType := cctEmpty;
-  lCell
-  styleName := GetAttrValue(ACellNode, 'table:style-name');
-  if not ApplyStyleToCell(@lCell, stylename) then
-    exit;
-    // No need to store a record for an empty, unformatted cell
-  *)
   if FIsVirtualMode then
   begin
     InitCell(ARow, ACol, FVirtualCell);
@@ -1777,7 +1775,6 @@ begin
     cell := FWorksheet.AddCell(ARow, ACol);
   FWorkSheet.WriteBlank(cell);
   ApplyStyleToCell(cell, AStyleIndex);
-//  FWorksheet.CopyFormat(@lCell, cell);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
@@ -2662,6 +2659,8 @@ begin
               end;
               AddToCellText(spanText);
             end;
+          'text:line-break':
+            AddToCellText(FPS_LINE_ENDING);
         end;
         subnode := subnode.NextSibling;
       end;
@@ -4438,6 +4437,7 @@ var
   found: Boolean;
   colstyle: TColumnStyleData;
   w: Double;
+  col: PCol;
 begin
   { At first, add the default column width }
   colStyle := TColumnStyleData.Create;
@@ -4445,9 +4445,36 @@ begin
   colStyle.ColWidth := FWorkbook.ConvertUnits(12, suChars, FWorkbook.Units);
   FColumnStyleList.Add(colStyle);
 
+  { Then iterate through all sheets and all columns and store the unique
+    column widths in the FColumnStyleList. }
   for i:=0 to Workbook.GetWorksheetCount-1 do
   begin
     sheet := Workbook.GetWorksheetByIndex(i);
+    for c := 0 to sheet.Cols.Count-1 do
+    begin
+      col := PCol(sheet.Cols[c]);
+      if (col <> nil) and (col^.ColWidthType = cwtCustom) then
+      begin
+        w := col^.Width;   // is in workbook units
+        // Look for this width in the current ColumnStyleList
+        found := false;
+        for j := 0 to FColumnStyleList.Count - 1 do
+          if SameValue(TColumnStyleData(FColumnstyleList[j]).ColWidth, w, COLWIDTH_EPS) then
+          begin
+            found := true;
+            break;
+          end;
+        // Not found? Then add the column as a new column style
+        if not found then
+        begin
+          colStyle := TColumnStyleData.Create;
+          colStyle.Name := Format('co%d', [FColumnStyleList.Count + 1]);
+          colStyle.ColWidth := w;
+          FColumnStyleList.Add(colStyle);
+        end;
+      end;
+    end;
+    {
     for c:=0 to sheet.GetLastColIndex do
     begin
       w := sheet.GetColWidth(c, FWorkbook.Units);
@@ -4468,6 +4495,7 @@ begin
         FColumnStyleList.Add(colStyle);
       end;
     end;
+    }
   end;
                                             (*
   { fpspreadsheet's column width is the count of '0' characters of the
@@ -5095,9 +5123,6 @@ var
   lastCol: Integer;
   c, k: Integer;
   w: Double;
-  fmt: Integer;
-//  w, w_mm: Double;
-//  widthMultiplier: Double;
   styleName: String;
   colsRepeated: Integer;
   colsRepeatedStr: String;
@@ -5466,26 +5491,14 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
 var
-  r, rr: Cardinal;  // row index in sheet
-  c, cc: Cardinal;  // column index in sheet
-  row: PRow;        // sheet row record
-  cell: PCell;      // current cell
-  styleName: String;
-  k: Integer;
-  h, h1: Double;
-  colsRepeated: Cardinal;
-  rowsRepeated: Cardinal;
-  colsRepeatedStr: String;
-  rowsRepeatedStr: String;
+  r: Integer;
+  rowsRepeated: Integer;
   firstCol, firstRow, lastCol, lastRow: Cardinal;
-  firstRepeatedPrintRow, lastRepeatedPrintRow: Cardinal;
-  rowStyleData: TRowStyleData;
-  emptyRowsAbove: Boolean;
+  firstRepeatedPrintRow, lastRepeatedPrintRow: Integer;
   headerRows: Boolean;
 begin
   // some abbreviations...
   GetSheetDimensions(ASheet, firstRow, lastRow, firstCol, lastCol);
-  emptyRowsAbove := firstRow > 0;
 
   headerRows := false;
   firstRepeatedPrintRow := ASheet.PageLayout.RepeatedRows.FirstIndex;
@@ -5495,6 +5508,38 @@ begin
   then
     lastRepeatedPrintRow := firstRepeatedPrintRow;
 
+  r := 0;
+  while r <= Integer(lastRow) do
+  begin
+    if (r = firstRepeatedPrintRow) then begin
+      AppendToStream(AStream, '<table:table-header-rows>');
+      headerRows := true;
+    end;
+
+    // Write rows
+    if ASheet.IsEmptyRow(r) then
+      WriteEmptyRow(AStream, ASheet, r, firstCol, lastCol, lastRow, rowsRepeated)
+    else begin
+      WriteCellRow(AStream, ASheet, r, lastCol);
+      rowsRepeated := 1;
+    end;
+    r := r + rowsRepeated;
+
+    // Header rows need a special tag
+    if headerRows and (r > lastRepeatedPrintRow) then
+    begin
+      AppendToStream(AStream, '</table:table-header-rows>');
+      headerRows := false;
+    end;
+  end;
+
+  // Finally, if the sheet contains column formats an empty row has to be
+  // added which is repeated up to the max worksheet size.
+  if FHasColFormats then
+    WriteEmptyRow(AStream, ASheet, r, firstCol, lastCol, -1, rowsRepeated);
+end;
+
+                       (*
   // Now loop through all rows
   r := firstRow;
   while (r <= lastRow) do
@@ -5532,7 +5577,7 @@ begin
       h := ASheet.ReadDefaultRowHeight(FWorkbook.Units);
     end;
 
-    // Take care of empty rows above the first row
+    // Take care of empty rows above the first row with cells
     if (r = firstRow) and emptyRowsAbove then
     begin
       rowsRepeated := r;
@@ -5613,31 +5658,59 @@ begin
         continue;
       end;
 
-      // Empty cell? Need to count how many to add "table:number-columns-repeated"
       colsRepeated := 1;
-      if cell = nil then
+      if cell <> nil then
+        WriteCellToStream(AStream, cell)
+      else
       begin
-        cc := c + 1;
-        while (cc <= lastCol) do
-        begin
-          cell := ASheet.FindCell(r, cc);
-          if cell <> nil then
-            break;
-          inc(cc)
-        end;
-        if FHasRowFormats and (cc > lastcol) then
-          colsRepeated := FLimitations.MaxColCount - c else
-          colsRepeated := cc - c;
-        colsRepeatedStr := IfThen(colsRepeated = 1, '',
-          Format(' table:number-columns-repeated="%d"', [colsRepeated]));
         row := ASheet.FindRow(r);
-        if (row <> nil) and (row^.FormatIndex > 0) then
-          stylename := Format(' table:style-name="ce%d"', [row^.FormatIndex]) else
-          stylename := '';
-        AppendToStream(AStream, Format(
-          '<table:table-cell%s%s/>', [colsRepeatedStr, stylename]));
-      end else
-        WriteCellToStream(AStream, cell);
+        col := ASheet.FindCol(c);
+        // Empty cell with column format
+        if (col <> nil) and (col^.FormatIndex > 0) and
+           ((row = nil) or (row^.FormatIndex = 0))
+        then
+          AppendToStream(AStream, Format(
+            '<table:table-cell table:style-name="ce%d" />',
+            [col^.FormatIndex]))
+        else
+        begin
+          // Empty cell? Need to count how often to add "table:number-columns-repeated"
+          cc := c + 1;
+          while (cc <= lastCol) do
+          begin
+            col := nil;
+            cell := ASheet.FindCell(r, cc);
+            if cell <> nil then
+              break;
+            if (row = nil) or (row^.FormatIndex = 0) then
+            begin
+              col := ASheet.FindCol(cc);
+              if (col <> nil) and (col^.FormatIndex > 0) then
+                break;
+            end;
+            inc(cc)
+          end;
+          if FHasRowFormats and (cc > lastcol) then
+            colsRepeated := FLimitations.MaxColCount - c
+          else
+            colsRepeated := cc - c;
+          colsRepeatedStr := IfThen(colsRepeated = 1, '',
+            Format(' table:number-columns-repeated="%d"', [colsRepeated]));
+          row := ASheet.FindRow(r);
+          if (row <> nil) and (row^.FormatIndex > 0) then
+            stylename := Format(' table:style-name="ce%d"', [row^.FormatIndex]) else
+            stylename := '';
+          AppendToStream(AStream, Format(
+            '<table:table-cell%s%s />', [colsRepeatedStr, stylename]));
+          if (col <> nil) then //and ((row = nil) or (row^.FormatIndex = 0)) then
+          begin
+            AppendToStream(AStream, Format(
+              '<table:table-cell table:style-name="ce%d" />', [col^.FormatIndex]));
+          end;
+          if (col <> nil) and (cc = lastcol) then
+            break;
+        end;
+      end;
       inc(c, colsRepeated);
     end;
 
@@ -5653,6 +5726,330 @@ begin
 
     // Next row
     inc(r, rowsRepeated);
+  end;
+
+  // Finally, if the sheet contains column formats an empty row has to be
+  // added which is repeated up to the max worksheet size.
+  if FHasColFormats then begin
+    k := 0;
+    c := 0;
+    cellStr := '';
+    while k < ASheet.Cols.Count do begin
+      col := PCol(ASheet.Cols[k]);
+      if col^.FormatIndex > 0 then
+      begin
+        colsRepeated := col^.Col - c;
+        if colsRepeated > 0 then begin
+          cellStr := cellStr + Format(
+            '<table:table-cell table:number-columns-repeated="%d" />',
+            [colsRepeated]);
+        end;
+        cellStr := cellStr + Format(
+          '<table:table-cell table:style-name="ce%d" />',
+            [col^.FormatIndex]);
+        c := col^.Col + 1;
+      end;
+      inc(k);
+    end;
+
+    colsRepeated := IfThen(FHasRowFormats, FLimitations.MaxColCount, lastcol) - c;
+    if colsRepeated > 0 then
+      cellStr := cellStr + Format(
+        '<table:table-cell table:number-columns-repeated="%d" />',
+        [colsRepeated]);
+
+    rowsRepeated := FLimitations.MaxRowCount - r;
+    AppendToStream(AStream, Format(
+      '<table:table-row table:style-name="ro1" table:number-rows-repeated="%d">' +
+        '%s' +
+      '</table:table-row>', [
+      rowsRepeated,
+      cellStr
+    ]));
+  end;
+end;
+*)
+
+procedure TsSpreadOpenDocWriter.WriteCellRow(AStream: TStream;
+  ASheet: TsWorksheet; ARowIndex, ALastColIndex: Integer);
+var
+  row: PRow;
+  col: PCol;
+  cell: PCell;
+  stylename: string;
+  h: Single;
+  firstcol: Integer;
+  lastcol: Integer;
+  c, cc: integer;
+  colsRepeated: Integer;
+  fmtIndex: integer;
+begin
+  // Get row
+  row := ASheet.FindRow(ARowIndex);
+
+  // Get style and height of row
+  GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
+
+  // Write opening row tag. We don't support repeatedRows here.
+  AppendToStream(AStream, Format(
+    '<table:table-row table:style-name="%s">', [stylename]));
+
+  // Find first cell or column in this row
+  cell := ASheet.Cells.GetFirstCellOfRow(ARowIndex);  // first cell
+  col := ASheet.FindFirstCol;   // left-most column
+  if col <> nil then
+    firstcol := Min(col^.Col, cell^.Col) else
+    firstcol := cell^.Col;
+
+  // Find last cell or column in this row
+  cell := ASheet.Cells.GetlastCellOfRow(ARowIndex);
+  if ASheet.Cols.Count = 0 then
+    lastCol := cell^.Col
+  else begin
+    col := ASheet.Cols[ASheet.Cols.Count-1];
+    if col <> nil then
+      lastcol := Max(col^.Col, cell^.Col) else
+      lastCol := cell^.Col;
+  end;
+
+  // Cells left to the first col are "empty" with default format
+  if firstcol > 0 then
+    AppendToStream(AStream, Format(
+      '<table:table-cell table:number-columns-repeated="%d" />', [firstcol]));
+
+  // Iterate between first and last column
+  c := firstcol;
+  while (c <= lastcol) do
+  begin
+    cell := ASheet.FindCell(ARowIndex, c);
+    if cell <> nil then
+    begin
+      // Belongs to merged block?
+      if not FWorksheet.IsMergeBase(cell) and FWorksheet.IsMerged(cell) then
+      // this means: all cells of a merged block except for the merge base
+      begin
+        AppendToStream(AStream,
+          '<table:covered-table-cell />');
+        inc(c);
+        continue;
+      end;
+      // Ordinary cell
+      WriteCellToStream(AStream, cell);
+      inc(c);
+      Continue;
+    end;
+
+    // Column format
+    col := ASheet.FindCol(c);
+    if (col <> nil) and (col^.FormatIndex > 0) then
+    begin
+      // row format has priority...
+      if (row <> nil) and (row^.FormatIndex > 0) then
+        fmtIndex := row^.FormatIndex else
+        fmtIndex := col^.FormatIndex;
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:style-name="ce%d" />', [fmtIndex]));
+      inc(c);
+      Continue;
+    end;
+
+    // Empty cell
+    cc := c + 1;
+    while (cc <= lastcol) do begin
+      cell := ASheet.FindCell(ARowIndex, cc);
+      if cell <> nil then
+        break;
+      col := ASheet.FindCol(cc);
+      if (col <> nil) and (col^.FormatIndex > 0) then
+        break;
+      inc(cc);
+    end;
+    colsRepeated := cc - c;
+    // Empty cell with row format?
+    if (row <> nil) and (row^.FormatIndex > 0) then
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:style-name="ce%d" table:number-columns-repeated="%d" />',
+        [row^.FormatIndex, colsRepeated]))
+    else
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:number-columns-repeated="%d" />',
+        [colsRepeated]));
+    inc(c, colsRepeated);
+  end;
+
+  // Fill empty cells at right, in case of RowFormats up to limit of format.
+  if FHasRowFormats then
+    colsRepeated := FLimitations.MaxColCount - c
+  else if c <= ALastColIndex then
+    colsRepeated := ALastColIndex - c
+  else
+    colsRepeated := 0;
+  if colsRepeated > 0 then
+  begin
+    if (row <> nil) and (row^.FormatIndex > 0) then
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:style-name="ce%d" table:number-columns-repeated="%d" />',
+        [row^.FormatIndex, colsRepeated]))
+    else
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:number-columns-repeated="%d" />',
+        [colsRepeated]));
+  end;
+
+  // Write closing row tag.
+  AppendToStream(AStream,
+    '</table:table-row>');
+end;
+
+{ Writes a complete row node for the specified row of the worksheet. Correctly
+  handles row and column formats.
+  If ALastRowIndex = -1 then the filler rows below the used sheet are written }
+procedure TsSpreadOpenDocWriter.WriteEmptyRow(AStream: TStream;
+  ASheet: TsWorksheet; ARowIndex, AFirstColIndex, ALastColIndex, ALastRowIndex: Integer;
+  out ARowsRepeated: Integer);
+var
+  row: PRow;
+  col: PCol;
+  c, cc, r: Integer;
+  colsRepeated: Integer;
+  stylename: String;
+  h, h1: Single;
+  fmtIndex: Integer;
+begin
+  // Get style and height of row
+  GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
+
+  // Determine how often this row is repeated
+  row := ASheet.FindRow(ARowIndex);
+  // Rows with format are not repeated - too complicated...
+  if (row <> nil) and (row^.FormatIndex > 0) then
+    ARowsRepeated := 1
+  else
+  // Count how many rows are empty and have the same height
+  if ALastRowIndex > -1 then begin
+    r := ARowIndex + 1;
+    while r <= ALastRowIndex do
+    begin
+      if not ASheet.IsEmptyRow(r) then
+        break;
+      row := ASheet.FindRow(r);
+      if (row <> nil) and (row^.FormatIndex > 0) then
+        break;
+      h1 := ASheet.GetRowHeight(r, FWorkbook.Units);
+      if not SameValue(h, h1, ROWHEIGHT_EPS) then
+        break;
+      inc(r);
+    end;
+    ARowsRepeated := r - ARowIndex;
+  end else
+    ARowsRepeated := FLimitations.MaxRowCount - ARowIndex;
+
+  // Write opening row tag
+  if ARowsRepeated > 1 then
+    AppendToStream(AStream, Format(
+      '<table:table-row table:style-name="%s" table:number-rows-repeated="%d">',
+      [stylename, ARowsRepeated]))
+  else
+    AppendToStream(AStream, Format(
+      '<table:table-row table:style-name="%s">',
+      [styleName]));
+
+  // Empty cells left of the first column
+  colsRepeated := AFirstColIndex;
+  if colsRepeated > 0 then
+    AppendToStream(AStream, Format(
+      '<table:table-cell table:number-columns-repeated="%d" />', [colsRepeated]));
+
+  // Cells between first and last columns
+  r := ARowIndex;
+  c := AFirstColIndex;
+
+  row := ASheet.FindRow(r);
+  while (c <= ALastColIndex) do
+  begin
+    // Empty cell in a column with a column format
+    col := ASheet.FindCol(c);
+    if (col <> nil) and (col^.FormatIndex > 0) then
+    begin
+      if (row <> nil) and (row^.FormatIndex > 0) then
+        fmtIndex := row^.FormatIndex
+      else
+        fmtIndex := col^.FormatIndex;
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:style-name="ce%d" />', [fmtIndex]));
+      inc(c);
+      Continue;
+    end;
+
+    // Empty cell? Need to count how often to add "table:number-columns-repeated"
+    cc := c + 1;
+    while (cc <= ALastColIndex) do
+    begin
+      col := ASheet.FindCol(cc);
+      if (col <> nil) and (col^.FormatIndex > 0) then
+        break;
+      inc(cc);
+    end;
+
+    if (c = ALastColIndex) and FHasRowFormats then
+      colsRepeated := FLimitations.MaxColCount - c else
+      colsRepeated := cc - c;
+    if (row <> nil) and (row^.FormatIndex > 0) then
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:style-name="ce%d" table:number-columns-repeated="%d" />',
+        [row^.FormatIndex, colsRepeated]))
+    else
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:number-columns-repeated="%d" />',
+        [colsRepeated]));
+    c := cc
+  end;
+
+  // in case of row formats: extend up to the max column limit of the format
+  if FHasRowFormats then begin
+    colsRepeated := FLimitations.MaxColCount - ALastColIndex;
+    if (row <> nil) and (row^.FormatIndex > 0) then
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:style-name="ce%d" table:number-columns-repeated="%d" />',
+        [row^.FormatIndex, colsRepeated]))
+    else
+      AppendToStream(AStream, Format(
+        '<table:table-cell table:number-columns-repeated="%d" />',
+        [colsRepeated]));
+  end;
+
+  // Write out closing tag for this row
+  AppendToStream(AStream,
+    '</table:table-row>');
+end;
+
+procedure TsSpreadOpenDocWriter.GetRowStyleAndHeight(ASheet: TsWorksheet;
+  ARowIndex: Integer; out AStyleName: String; out AHeight: Single);
+var
+  row: PRow;
+  rowStyleData: TRowStyleData;
+  k: Integer;
+begin
+  AStyleName := '';
+  row := ASheet.FindRow(ARowIndex);
+  if row <> nil then
+  begin
+    AHeight := row^.Height;    // row height in workbook units
+    for k := 0 to FRowStyleList.Count-1 do begin
+      rowStyleData := TRowStyleData(FRowStyleList[k]);
+      // Compare row heights, but be aware of rounding errors
+      if SameValue(rowStyleData.RowHeight, AHeight, ROWHEIGHT_EPS) and
+         (rowstyleData.RowHeightType = row^.RowHeightType) and
+         (rowstyleData.RowHeightType <> rhtDefault)
+      then begin
+        AStyleName := rowStyleData.Name;
+        break;
+      end;
+    end;
+  end;
+  if AStyleName = '' then begin
+    AStyleName := 'ro1';   // "ro1" is default row record - see ListAllRowStyles
+    AHeight := ASheet.ReadDefaultRowHeight(FWorkbook.Units);
   end;
 end;
 
@@ -6933,7 +7330,7 @@ var
   wideStr, txt: WideString;
   ch: WideChar;
 
-  function NewLine(var idx: Integer): Boolean;
+  function IsNewLine(var idx: Integer): Boolean;
   begin
     if (wideStr[idx] = #13) or (wideStr[idx] = #10) then
     begin
@@ -7029,9 +7426,28 @@ begin
   begin
     // No hyperlink, normal text only
     if Length(ACell^.RichTextParams) = 0 then
+    begin
       // Standard text formatting
-      totaltxt := '<text:p>' + totaltxt + '</text:p>'
-    else
+      (*
+      { ods writes "<text:line-break/>" nodes for line-breaks. BUT:
+        LibreOffice Calc fails to detect these during reading.
+        OpenOffice Calc and Excel are ok.
+        Therefore, we skip this part until LO gets fixed. }
+
+      wideStr := UTF8Decode(AValue);
+      len := Length(wideStr);
+      idx := 1;
+      totaltxt := '<text:p>';
+      while idx <= len do
+      begin
+        ch := widestr[idx];
+        totaltxt := totaltxt + IfThen(IsNewLine(idx), '<text:line-break />', ch);
+        inc(idx);
+      end;
+      totaltxt := totaltxt + '</text:p>';
+      *)
+      totaltxt := '<text:p>' + totaltxt + '</text:p>' ;  // has &#13; and &#10; for line breaks
+    end else
     begin
       // "Rich-text" formatting
       wideStr := UTF8Decode(AValue);  // Convert to unicode
@@ -7046,7 +7462,7 @@ begin
         while (idx <= len) and (idx < rtParam.FirstIndex) do
         begin
           ch := wideStr[idx];
-          if NewLine(idx) then
+          if IsNewLine(idx) then
             AppendTxt(true, '')
           else
             txt := txt + ch;
@@ -7069,7 +7485,7 @@ begin
         while (idx <= len) and (idx <= endidx) do
         begin
           ch := wideStr[idx];
-          if NewLine(idx) then
+          if IsNewLine(idx) then
             AppendTxt(true, fntName)
           else
             txt := txt + ch;

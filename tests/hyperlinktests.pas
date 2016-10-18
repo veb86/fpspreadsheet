@@ -95,7 +95,7 @@ type
 implementation
 
 uses
-  uriparser, lazfileutils, fpsutils;
+  uriparser, lazfileutils, fpsutils, fpsregfileformats;
 
 const
   HyperlinkSheet = 'Hyperlinks';
@@ -176,8 +176,8 @@ begin
     end;
 
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
-    // To see the file also in the test folder uncomment the next line
-    // MyWorkBook.WriteToFile(Format('hyperlink_Test_%d_%d%s', [ATestMode, AToolTipMode, GetFileFormatExt(AFormat)]), AFormat, true);
+    // To see the file in the test folder uncomment the next line
+    // MyWorkBook.WriteToFile(Format('hyperlink_Test_%d_%d%s', [ATestMode, AToolTipMode, GetSpreadFormatExt(ord(AFormat))]), AFormat, true);
 
   finally
     MyWorkbook.Free;

@@ -409,9 +409,12 @@ type
     function  GetLastRowNumber: Cardinal; deprecated 'Use GetLastRowIndex';
 
     { Data manipulation methods - For Rows and Cols }
+    function  AddCol(ACol: Cardinal): PCol;
     function  AddRow(ARow: Cardinal): PRow;
     function  CalcAutoRowHeight(ARow: Cardinal): Single;
     function  CalcRowHeight(ARow: Cardinal): Single;
+    function  FindFirstCol: PCol;
+    function  FindFirstRow: PRow;
     function  FindRow(ARow: Cardinal): PRow;
     function  FindCol(ACol: Cardinal): PCol;
     function  GetCellCountInRow(ARow: Cardinal): Cardinal;
@@ -427,6 +430,7 @@ type
     function  GetColWidth(ACol: Cardinal): Single; overload; deprecated 'Use version with parameter AUnits.';
     function  HasColFormats: Boolean;
     function  HasRowFormats: Boolean;
+    function  IsEmptyRow(ARow: Cardinal): Boolean;
     procedure DeleteCol(ACol: Cardinal);
     procedure DeleteRow(ARow: Cardinal);
     procedure InsertCol(ACol: Cardinal);
@@ -4650,6 +4654,7 @@ begin
     exit;
   end;
 
+  // Check for a fraction string
   if TryFractionStrToFloat(AValue, number, ismixed, maxdig) then
   begin
     WriteNumber(ACell, number);
@@ -4662,6 +4667,29 @@ begin
     exit;
   end;
 
+  // Check for a "number" value (floating point, or integer)
+  if TryStrToFloat(AValue, number, FWorkbook.FormatSettings) then
+  begin
+    if isPercent then
+      WriteNumber(ACell, number/100, nfPercentage)
+    else
+    begin
+      if IsDateTimeFormat(numFmtParams) then
+        WriteNumber(ACell, number, nfGeneral)
+      else
+        WriteNumber(ACell, number);
+    end;
+    if IsTextFormat(numFmtParams) then
+    begin
+      WriteNumberFormat(ACell, nfText);
+      WriteText(ACell, AValue);
+    end;
+    exit;
+  end;
+
+  // Check for a date/time value:
+  // Must be after float detection because StrToDateTime will accept a string
+  // "1" as a valid date/time.
   if TryStrToDateTime(AValue, number, FWorkbook.FormatSettings) then
   begin
     if number < 1.0 then          // this is a time alone
@@ -4683,25 +4711,6 @@ begin
       WriteDateTime(ACell, number, nfShortDateTime)
     else
       WriteDateTime(ACell, number);
-    if IsTextFormat(numFmtParams) then
-    begin
-      WriteNumberFormat(ACell, nfText);
-      WriteText(ACell, AValue);
-    end;
-    exit;
-  end;
-
-  if TryStrToFloat(AValue, number, FWorkbook.FormatSettings) then
-  begin
-    if isPercent then
-      WriteNumber(ACell, number/100, nfPercentage)
-    else
-    begin
-      if IsDateTimeFormat(numFmtParams) then
-        WriteNumber(ACell, number, nfGeneral)
-      else
-        WriteNumber(ACell, number);
-    end;
     if IsTextFormat(numFmtParams) then
     begin
       WriteNumberFormat(ACell, nfText);
@@ -6356,6 +6365,30 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the first column record, i.e. that of the left-most column
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindFirstCol: PCol;
+var
+  AVLNode: TAVGLVLTreeNode;
+begin
+  Result := nil;
+  AVLNode := FCols.FindLowest;
+  if AVLNode <> nil then Result := PCol(AVLNode.Data);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the first row record, i.e. that of the top-most row
+-------------------------------------------------------------------------------}
+function TsWorksheet.FindFirstRow: PRow;
+var
+  AVLNode: TAVGLVLTreeNode;
+begin
+  Result := nil;
+  AVLNode := FRows.FindLowest;
+  if AVLNode <> nil then Result := PRow(AVLNode.Data);
+end;
+
+{@@ ----------------------------------------------------------------------------
  Checks if a row record exists for the given row index and returns a pointer
  to the row record, or nil if not found
 
@@ -6413,7 +6446,7 @@ end;
  Creates a new row record for the specific row index. It is not checked whether
  a row record already exists for this index. Dupliate records must be avoided!
 
- @param  ARow   Index of the row considered
+ @param  ARow   Index of the row to be added
  @return        Pointer to the row record with this row index.
 -------------------------------------------------------------------------------}
 function TsWorksheet.AddRow(ARow: Cardinal): PRow;
@@ -6422,10 +6455,12 @@ begin
   FillChar(Result^, SizeOf(TRow), #0);
   Result^.Row := ARow;
   FRows.Add(Result);
-  if FLastRowIndex = 0 then
-    FLastRowIndex := GetLastRowIndex(true)
-  else
-    FLastRowIndex := Max(FLastRowIndex, ARow);
+  if FFirstRowIndex = UNASSIGNED_ROW_COL_INDEX
+    then FFirstRowIndex := GetFirstRowIndex(true)
+    else FFirstRowIndex := Min(FFirstRowIndex, ARow);
+  if FLastRowIndex = 0
+    then FLastRowIndex := GetLastRowIndex(true)
+    else FLastRowIndex := Max(FLastRowIndex, ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6439,18 +6474,30 @@ end;
 function TsWorksheet.GetCol(ACol: Cardinal): PCol;
 begin
   Result := FindCol(ACol);
-  if (Result = nil) then begin
-    Result := GetMem(SizeOf(TCol));
-    FillChar(Result^, SizeOf(TCol), #0);
-    Result^.Col := ACol;
-    FCols.Add(Result);
-    if FFirstColIndex = UNASSIGNED_ROW_COL_INDEX
-      then FFirstColIndex := GetFirstColIndex(true)
-      else FFirstColIndex := Min(FFirstColIndex, ACol);
-    if FLastColIndex = UNASSIGNED_ROW_COL_INDEX
-      then FLastColIndex := GetLastColIndex(true)
-      else FLastColIndex := Max(FLastColIndex, ACol);
-  end;
+  if (Result = nil) then
+    Result := AddCol(ACol);
+end;
+
+{@@ ----------------------------------------------------------------------------
+ Creates a new column record for the specific column index.
+ It is not checked whether a column record already exists for this index.
+ Dupliate records must be avoided!
+
+ @param  ACol   Index of the column to be added
+ @return        Pointer to the column record with this column index.
+-------------------------------------------------------------------------------}
+function TsWorksheet.AddCol(ACol: Cardinal): PCol;
+begin
+  Result := GetMem(SizeOf(TCol));
+  FillChar(Result^, SizeOf(TCol), #0);
+  Result^.Col := ACol;
+  FCols.Add(Result);
+  if FFirstColIndex = UNASSIGNED_ROW_COL_INDEX
+    then FFirstColIndex := GetFirstColIndex(true)
+    else FFirstColIndex := Min(FFirstColIndex, ACol);
+  if FLastColIndex = UNASSIGNED_ROW_COL_INDEX
+    then FLastColIndex := GetLastColIndex(true)
+    else FLastColIndex := Max(FLastColIndex, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6542,10 +6589,10 @@ begin
   else
   begin
     col := FindCol(ACol);
-    if col <> nil then
-      Result := col^.Width
+    if (col = nil) or (col^.ColWidthType = cwtDefault) then
+      Result := FDefaultColWidth
     else
-      Result := FDefaultColWidth;
+      Result := col^.Width;
     Result := FWorkbook.ConvertUnits(Result, FWorkbook.Units, AUnits);
   end;
 end;
@@ -6654,6 +6701,14 @@ begin
       exit;
     end;
   Result := false;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines whether the specified row contains any occupied cell.
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsEmptyRow(ARow: Cardinal): Boolean;
+begin
+  Result := Cells.GetFirstCellOfRow(ARow) = nil;
 end;
 
 {@@ ----------------------------------------------------------------------------
