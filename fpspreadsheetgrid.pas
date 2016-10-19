@@ -4473,6 +4473,8 @@ end;
   initial column widths and row heights.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Setup;
+var
+  nc, nr: Integer;
 begin
   if csLoading in ComponentState then
     exit;
@@ -4495,6 +4497,8 @@ begin
     end;
   end else
   if Worksheet <> nil then begin
+    nc := ColCount;
+    nr := RowCount;
     if FHeaderCount = 0 then
     begin
       ColCount := Max(GetGridCol(Worksheet.GetLastColIndex), ColCount-1);
@@ -4811,7 +4815,7 @@ begin
     if Worksheet <> nil then
     begin
       lCol := Worksheet.FindCol(i - FHeaderCount);
-      if lCol <> nil then
+      if (lCol <> nil) and (lCol^.ColWidthType = cwtCustom) then
         w100 := CalcColWidthFromSheet(lCol^.Width)
       else
         w100 := CalcColWidthFromSheet(Worksheet.ReadDefaultColWidth(Workbook.Units));

@@ -3338,6 +3338,12 @@ var
   s: String;
   colsSpanned, rowsSpanned: Integer;
 begin
+  // Workaround for Excel files converted to ods by Calc: These files are
+  // expanded to fill the entire max worksheet. They also have single empty
+  // cell in the outermost cells --> don't write anything here to prevent this.
+  if (ARow > FLimitations.MaxRowCount - 10)  or (ACol > FLimitations.MaxColCount - 10) then
+    exit;
+
   // select this cell value's type
   paramValueType := GetAttrValue(ANode, 'office:value-type');
   paramFormula := GetAttrValue(ANode, 'table:formula');
@@ -3412,7 +3418,7 @@ end;
 procedure TsSpreadOpenDocReader.ReadRowsAndCells(ATableNode: TDOMNode);
 var
   row: Integer;
-  rowNode, childnode: TDOMNode;
+  rNode, childnode: TDOMNode;
   nodeName: String;
   rowsRepeated: Integer;
   colFmt: array of Integer;
@@ -3478,7 +3484,8 @@ var
         // If all cell styles in the row are the same then hasRowFormat is true
         // and we can store the format of the first cell in the row record.
         if GetRowFormat and hasRowFormat and
-           (col + colsRepeated >= LongInt(FLimitations.MaxColCount) - 10) then
+           (col + colsRepeated >= LongInt(FLimitations.MaxColCount) - 10) and
+           (row < FLimitations.MaxRowCount - 10) then
         begin
           lRow := FWorksheet.GetRow(row);
           // Find first cell in row, all cells have the same format here.
@@ -3523,7 +3530,7 @@ var
       cellNode := cellNode.NextSibling;
     end; //while Assigned(cellNode)
 
-    s := GetAttrValue(RowNode, 'table:number-rows-repeated');
+    s := GetAttrValue(ARowNode, 'table:number-rows-repeated');
     if s = '' then
       rowsRepeated := 1
     else
@@ -3580,10 +3587,10 @@ begin
   isFirstRow := true;
   PrintRowMode := false;
 
-  rownode := ATableNode.FirstChild;
-  while Assigned(rowNode) do
+  rnode := ATableNode.FirstChild;
+  while Assigned(rNode) do
   begin
-    nodename := rowNode.NodeName;
+    nodename := rNode.NodeName;
 
     // Repeated print rows
     if nodeName = 'table:table-header-rows' then
@@ -3591,7 +3598,7 @@ begin
       PrintRowMode := true;
       if FRepeatedRows.FirstIndex = Cardinal(UNASSIGNED_ROW_COL_INDEX) then
         FRepeatedRows.FirstIndex := row;
-      childnode := rowNode.FirstChild;
+      childnode := rNode.FirstChild;
       while Assigned(childnode) do
       begin
         nodename := childnode.NodeName;
@@ -3606,9 +3613,9 @@ begin
     else
     // "normal" rows
     if nodeName = 'table:table-row' then
-      ProcessRow(rowNode, true);
+      ProcessRow(rNode, true);
 
-    rowNode := rowNode.NextSibling;
+    rNode := rNode.NextSibling;
   end;
 
   // Construct column records with column format
