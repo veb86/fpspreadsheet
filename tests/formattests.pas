@@ -1129,7 +1129,7 @@ begin
       fail('Error in test code. Failed to get named worksheet');
     for Col := Low(SollColWidths) to High(SollColWidths) do
     begin
-      lpCol := MyWorksheet.GetCol(Col);
+      lpCol := MyWorksheet.FindCol(Col);
       if lpCol = nil then
         fail('Error in test code. Failed to return saved column width');
       ActualColWidth := MyWorkbook.ConvertUnits(lpCol^.Width, MyWorkbook.Units, suChars);

@@ -323,29 +323,55 @@ procedure TsCustomSpreadReader.FixCols(AWorkSheet: TsWorksheet);
 const
   EPS = 1E-3;
 var
-  c: Cardinal;
+  c: LongInt;
   w: Single;
   lCol: PCol;
+  sameWidth: Boolean;
 begin
+  // If the count of columns is equal to the max colcount of the file format
+  // then it is likely that dummy columns have been added -> delete all empty
+  // columns (starting at the right) until the first non-empty column is found
+  if AWorksheet.Cols.Count =  FLimitations.MaxColCount then
+  begin
+    c := AWorksheet.Cols.Count - 1;
+    lCol := PCol(AWorksheet.Cols[c]);
+    w := lCol.Width;
+    while c >= 0 do begin
+      lCol := PCol(AWorksheet.Cols[c]);
+      if not SameValue(lCol^.Width, w, EPS) then
+        break;
+      if AWorksheet.FindNextCellInCol(0, c) <> nil then
+        break;
+      AWorksheet.RemoveCol(c);
+      dec(c);
+    end;
+  end;
+
   if AWorksheet.Cols.Count < 2 then
     exit;
 
   // Check whether all columns have the same column width
+  sameWidth := true;
   w := PCol(AWorksheet.Cols[0])^.Width;
   for c := 1 to AWorksheet.Cols.Count-1 do begin
     lCol := PCol(AWorksheet.Cols[c]);
     if not SameValue(lCol^.Width, w, EPS) then
-      exit;
+    begin
+      sameWidth := false;
+      break;
+    end;
   end;
 
-  // At this point we know that all columns have the same width. We pass this
-  // to the DefaultColWidth ...
-  AWorksheet.WriteDefaultColWidth(w, FWorkbook.Units);
+  if sameWidth then begin
+    // At this point we know that all columns have the same width. We pass this
+    // to the DefaultColWidth ...
+    AWorksheet.WriteDefaultColWidth(w, FWorkbook.Units);
 
-  // ...and delete all column records with non-default format
-  for c := AWorksheet.Cols.Count-1 downto 0 do begin
-    lCol := PCol(AWorksheet.Cols[c]);
-    if lCol^.FormatIndex = 0 then AWorksheet.RemoveCol(c);
+    // ...and delete all column records with non-default format
+    for c := AWorksheet.Cols.Count-1 downto 0 do begin
+      lCol := PCol(AWorksheet.Cols[c]);
+      if lCol^.FormatIndex = 0 then AWorksheet.RemoveCol(c);
+    end;
   end;
 end;
 
