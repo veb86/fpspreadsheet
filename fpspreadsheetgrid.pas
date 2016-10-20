@@ -246,8 +246,6 @@ type
     procedure Setup;
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
     function TrimToCell(ACell: PCell): String;
-    procedure UpdateColWidths(AStartIndex: Integer = 0);
-    procedure UpdateRowHeight(ARow: Integer; AEnforceCalcRowHeight: Boolean = false);
 
     {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
@@ -325,7 +323,10 @@ type
       const ALeftOuterStyle, ATopOuterStyle, ARightOuterStyle, ABottomOuterStyle,
       AHorInnerStyle, AVertInnerStyle: TsCellBorderStyle);
 
-    { Row height calculation }
+    { Row height / col width calculation }
+    procedure UpdateColWidth(ACol: Integer);
+    procedure UpdateColWidths(AStartIndex: Integer = 0);
+    procedure UpdateRowHeight(ARow: Integer; AEnforceCalcRowHeight: Boolean = false);
     procedure UpdateRowHeights(AStartRow: Integer = -1; AEnforceCalcRowHeight: Boolean = false);
 
     { Utilities related to Workbooks }
@@ -4066,7 +4067,7 @@ procedure TsCustomWorksheetGrid.ListenerNotification(AChangedItems: TsNotificati
   AData: Pointer = nil);
 var
   grow, gcol: Integer;
-  srow: Cardinal;
+  srow, scol: Cardinal;
   cell: PCell;
   lRow: PRow;
 begin
@@ -4140,7 +4141,7 @@ begin
     // HOW TO DO THIS????    SelectActive not working...
   end;
 
-  // Row height (after font change).
+  // Row height (after font or row record change).
   if (lniRow in AChangedItems) and (Worksheet <> nil) then
   begin
     srow := {%H-}PtrInt(AData);  // sheet row
@@ -4149,6 +4150,15 @@ begin
     lRow := Worksheet.FindRow(srow);
     if (lRow = nil) or (lRow^.RowHeightType <> rhtCustom) then
       UpdateRowHeight(grow, true);
+  end;
+
+  // Column width
+  if (lniCol in AChangedItems) and (Worksheet <> nil) then
+  begin
+    scol := {%Hä}PtrInt(AData);  // sheet column index
+    gcol := GetGridCol(scol);
+    //lCol := Worksheet.FindCol(scol);
+    UpdateColWidth(gcol);
   end;
 
   // Worksheet zoom
@@ -4799,30 +4809,40 @@ begin
   );
 end;
 
+procedure TsCustomWorksheetGrid.UpdateColWidth(ACol: Integer);
+var
+  lCol: PCol;
+  w: Integer;       // Col width at current zoom level
+  w100: Integer;    // Col width at 100% zoom level
+begin
+  if Worksheet <> nil then
+  begin
+    lCol := Worksheet.FindCol(ACol - FHeaderCount);
+    if (lCol <> nil) and (lCol^.ColWidthType = cwtCustom) then
+      w100 := CalcColWidthFromSheet(lCol^.Width)
+    else
+      w100 := CalcColWidthFromSheet(Worksheet.ReadDefaultColWidth(Workbook.Units));
+    w := round(w100 * ZoomFactor);
+  end else
+    w := DefaultColWidth;   // Zoom factor has already been applied by getter
+  ColWidths[ACol] := w;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Updates column widths according to the data in the TCol records
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.UpdateColWidths(AStartIndex: Integer = 0);
 var
   i: Integer;
-  lCol: PCol;
-  w: Integer;       // Col width at current zoom level
-  w100: Integer;    // Col width at 100% zoom level
 begin
   if AStartIndex = 0 then
     AStartIndex := FHeaderCount;
-  for i := AStartIndex to ColCount-1 do begin
-    if Worksheet <> nil then
-    begin
-      lCol := Worksheet.FindCol(i - FHeaderCount);
-      if (lCol <> nil) and (lCol^.ColWidthType = cwtCustom) then
-        w100 := CalcColWidthFromSheet(lCol^.Width)
-      else
-        w100 := CalcColWidthFromSheet(Worksheet.ReadDefaultColWidth(Workbook.Units));
-      w := round(w100 * ZoomFactor);
-    end else
-      w := DefaultColWidth;  // Zoom factor is already applied by getter
-    ColWidths[i] := w;
+  BeginUpdate;
+  try
+    for i := AStartIndex to ColCount-1 do
+      UpdateColWidth(i);
+  finally
+    EndUpdate;
   end;
 end;
 

@@ -625,7 +625,7 @@ type
   {@@ Complete set of sorting parameters
     @param SortByCols  If true sorting is top-down, otherwise left-right
     @param Priority    Determines whether numbers are before or after text.
-    @param SortKeys    Array of sorting indexes and sorting directions }
+    @param SortKeys    Array of sorting col/row indexes and sorting directions }
   TsSortParams = record
     SortByCols: Boolean;
     Priority: TsSortPriority;
@@ -814,7 +814,7 @@ type
 
 const
   RowHeightTypeNames: array[TsRowHeightType] of string = (
-    'Default', 'Auto', 'Custom');
+    'Default', 'Custom', 'Auto');
 
   ColWidthTypeNames: array[TsColWidthType] of string = (
     'Default', 'Custom');

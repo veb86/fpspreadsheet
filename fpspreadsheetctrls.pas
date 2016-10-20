@@ -43,7 +43,7 @@ type
   TsNotificationItem = (lniWorkbook,
     lniWorksheet, lniWorksheetAdd, lniWorksheetRemoving, lniWorksheetRemove,
     lniWorksheetRename, lniWorksheetZoom,
-    lniCell, lniSelection, lniAbortSelection, lniRow); //, lniPalette);
+    lniCell, lniSelection, lniAbortSelection, lniRow, lniCol);
   {@@ This set accompanies the notification between WorkbookSource and visual
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;
@@ -64,7 +64,6 @@ type
     FUserFileFormatID: TsSpreadFormatID;
     FPendingSelection: TsCellRangeArray;
     FPendingOperation: TsCopyOperation;
-//    FControlLockCount: Integer;
     FOptions: TsWorkbookOptions;
     FOnError: TsWorkbookSourceErrorEvent;
 
@@ -79,6 +78,8 @@ type
     procedure CellChangedHandler(Sender: TObject; ARow, ACol: Cardinal);
     procedure CellFontChangedHandler(Sender: TObject; ARow, ACol: Cardinal);
     procedure CellSelectedHandler(Sender: TObject; ARow, ACol: Cardinal);
+    procedure ColChangedHandler(Sender: TObject; ACol: Cardinal);
+    procedure RowChangedHandler(Sender: TObject; ARow: Cardinal);
 //    procedure WorkbookChangedPaletteHandler(Sender: TObject);
     procedure WorkbookOpenedHandler(Sender: TObject);
     procedure WorksheetAddedHandler(Sender: TObject; ASheet: TsWorksheet);
@@ -437,7 +438,8 @@ type
 
   {@@ Classification of data displayed by the SpreadsheetInspector. Each item
     can be assigned to a tab of a TabControl. }
-  TsInspectorMode = (imWorkbook, imWorksheet, imCellValue, imCellProperties, imRow);
+  TsInspectorMode = (imWorkbook, imWorksheet, imCellValue, imCellProperties,
+    imRow, imCol);
 
   {@@ Inspector expanded nodes }
   TsInspectorExpandedNode = (ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
@@ -464,6 +466,8 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure UpdateCellValue(ACell: PCell; AStrings: TStrings); virtual;
     procedure UpdateCellProperties(ACell: PCell; AStrings: TStrings); virtual;
+    procedure UpdateCol(ACol: Integer; AStrings: TStrings); virtual;
+    procedure UpdateFormatProperties(AFormatIndex: integer; AStrings: TStrings); virtual;
     procedure UpdateRow(ARow: Integer; AStrings: TStrings); virtual;
     procedure UpdateWorkbook(AWorkbook: TsWorkbook; AStrings: TStrings); virtual;
     procedure UpdateWorksheet(ASheet: TsWorksheet; AStrings: TStrings); virtual;
@@ -730,6 +734,20 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Event handler for the OnChangeCol event of TsWorksheet which is fired whenver
+  a column width or column format changes.
+
+  @param   Sender   Pointer to the worksheet
+  @param   ACol     Index (in sheet notation) of the column changed
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.ColChangedHandler(Sender: TObject;
+  ACol: Cardinal);
+begin
+  if FWorksheet <> nil then
+    NotifyListeners([lniCol], {%H-}Pointer(PtrInt(ACol)));
+end;
+
+{@@ ----------------------------------------------------------------------------
   Event handler for the OnChangeFont event of TsWorksheet which is fired
   whenever a cell font changes. The listener, in particular the worksheetGrid,
   must adapt the height of non-fixed rows
@@ -771,10 +789,27 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Event handler for the OnChangeRow event of TsWorksheet which is fired whenver
+  a row width or row format changes.
+
+  @param   Sender   Pointer to the worksheet
+  @param   ARow     Index (in sheet notation) of the row changed
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.RowChangedHandler(Sender: TObject;
+  ARow: Cardinal);
+begin
+  if FWorksheet <> nil then
+    NotifyListeners([lniRow], {%H-}Pointer(PtrInt(ARow)));
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Creates a new empty workbook and adds a single worksheet
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.CreateNewWorkbook;
 begin
+  FFileName := '';
+  FFileFormatID := sfidUnknown;
   InternalCreateNewWorkbook;
   FWorksheet := FWorkbook.AddWorksheet(Format(rsDefaultSheetName,[1]));
   SelectWorksheet(FWorksheet);
@@ -1613,7 +1648,9 @@ begin
   if FWorksheet <> nil then
   begin
     FWorksheet.OnChangeCell := @CellChangedHandler;
+    FWorksheet.OnChangeCol := @ColChangedHandler;
     FWorksheet.OnChangeFont := @CellFontChangedHandler;
+    FWorksheet.OnChangeRow := @RowChangedHandler;
     FWorksheet.OnSelectCell := @CellSelectedHandler;
     FWorksheet.OnZoom := @WorksheetZoomHandler;
     NotifyListeners([lniWorksheet]);
@@ -2874,9 +2911,15 @@ begin
     book := FWorkbookSource.Workbook;
     sheet := FWorkbookSource.Worksheet;
     if sheet <> nil then begin
+      FCurrRow := sheet.ActiveCellRow;
+      FCurrCol := sheet.ActiveCellCol;
+      {
       cell := sheet.FindCell(sheet.ActiveCellRow, sheet.ActiveCellCol);
-      if cell <> nil then
+      if cell <> nil then begin
         FCurrRow := cell^.Row;
+        FCurrCol := cell^.Col;
+      end;
+      }
     end;
   end;
 
@@ -2888,6 +2931,7 @@ begin
       imWorksheet      : UpdateWorksheet(sheet, list);
       imWorkbook       : UpdateWorkbook(book, list);
       imRow            : UpdateRow(FCurrRow, list);
+      imCol            : UpdateCol(FCurrCol, list);
     end;
     Strings.Assign(list);
   finally
@@ -2943,9 +2987,26 @@ begin
       if ([lniCell, lniSelection]*AChangedItems <> []) then
         DoUpdate;
     imRow:
-      if AData <> nil then begin
-        FCurrRow := PCell(AData)^.Row;
-        if ([lniSelection] * AChangedItems <> []) then DoUpdate;
+      begin
+        if ([lniSelection] * AChangedItems <> []) then begin
+          if AData <> nil then
+            FCurrRow := PCell(AData)^.Row;
+        end else if ([lniRow] * AChangedItems <> []) then
+          FCurrRow := PtrInt(AData)
+        else
+          exit;
+        DoUpdate;
+      end;
+    imCol:
+      begin
+        if ([lniSelection] * AChangedItems <> []) then begin
+          if AData <> nil then
+            FCurrCol := PCell(AData)^.Col;
+        end else if ([lniCol] * AChangedItems <> []) then
+          FCurrCol := PtrInt(AData)
+        else
+          exit;
+        DoUpdate;
       end;
   end;
 end;
@@ -3022,27 +3083,13 @@ procedure TsSpreadsheetInspector.UpdateCellProperties(ACell: PCell;
   AStrings: TStrings);
 var
   s: String;
-  cb: TsCellBorder;
   r1, r2, c1, c2: Cardinal;
-  fmt: TsCellFormat;
-  numFmt: TsNumFormatParams;
   rtp: TsRichTextParam;
 begin
-  if (ACell <> nil) then
-    fmt := Workbook.GetCellFormat(ACell^.FormatIndex)
+  if ACell <> nil then
+    UpdateFormatProperties(ACell^.FormatIndex, AStrings)
   else
-    InitFormatRecord(fmt);
-
-  if (ACell = nil)
-    then AStrings.Add('FormatIndex=(default)')
-    else AStrings.Add(Format('FormatIndex=%d', [ACell^.FormatIndex]));
-
-  if (ACell = nil) or not (uffFont in fmt.UsedFormattingFields)
-    then AStrings.Add('FontIndex=(default)')
-    else AStrings.Add(Format('FontIndex=%d (%s)', [
-           fmt.FontIndex,
-           Workbook.GetFontAsString(fmt.FontIndex)
-         ]));
+    UpdateFormatProperties(-1, AStrings);
 
   if (ACell <> nil) and (Length(ACell^.RichTextParams) > 0) then
   begin
@@ -3055,31 +3102,64 @@ begin
   end else
     AStrings.Add('Rich-text parameters=(none)');
 
-  if (ACell=nil) or not (uffTextRotation in fmt.UsedFormattingFields)
+  if (Worksheet = nil) or not Worksheet.IsMerged(ACell) then
+    AStrings.Add('Merged range=(none)')
+  else
+  begin
+    Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    AStrings.Add('Merged range=' + GetCellRangeString(r1, c1, r2, c2));
+  end;
+end;
+
+procedure TsSpreadsheetInspector.UpdateFormatProperties(AFormatIndex: integer;
+  AStrings: TStrings);
+var
+  s: String;
+  cb: TsCellBorder;
+  fmt: TsCellFormat;
+  numFmt: TsNumFormatParams;
+begin
+  if AFormatIndex > -1 then
+    fmt := Workbook.GetCellFormat(AFormatIndex)
+  else
+    InitFormatRecord(fmt);
+
+  if (AFormatIndex = -1)
+    then AStrings.Add('FormatIndex=(default)')
+    else AStrings.Add(Format('FormatIndex=%d', [AFormatIndex]));
+
+  if (AFormatIndex = -1) or not (uffFont in fmt.UsedFormattingFields)
+    then AStrings.Add('FontIndex=(default)')
+    else AStrings.Add(Format('FontIndex=%d (%s)', [
+           fmt.FontIndex,
+           Workbook.GetFontAsString(fmt.FontIndex)
+         ]));
+
+  if (AFormatIndex = -1) or not (uffTextRotation in fmt.UsedFormattingFields)
     then AStrings.Add('TextRotation=(default)')
     else AStrings.Add(Format('TextRotation=%s', [
            GetEnumName(TypeInfo(TsTextRotation), ord(fmt.TextRotation))
          ]));
 
-  if (ACell=nil) or not (uffHorAlign in fmt.UsedFormattingFields)
+  if (AFormatIndex = -1) or not (uffHorAlign in fmt.UsedFormattingFields)
     then AStrings.Add('HorAlignment=(default)')
     else AStrings.Add(Format('HorAlignment=%s', [
            GetEnumName(TypeInfo(TsHorAlignment), ord(fmt.HorAlignment))
          ]));
 
-  if (ACell=nil) or not (uffVertAlign in fmt.UsedFormattingFields)
+  if (AFormatIndex = -1) or not (uffVertAlign in fmt.UsedFormattingFields)
     then AStrings.Add('VertAlignment=(default)')
     else AStrings.Add(Format('VertAlignment=%s', [
            GetEnumName(TypeInfo(TsVertAlignment), ord(fmt.VertAlignment))
          ]));
 
-  if (ACell=nil) or not (uffWordwrap in fmt.UsedFormattingFields)
+  if (AFormatIndex = -1) or not (uffWordwrap in fmt.UsedFormattingFields)
     then AStrings.Add('Wordwrap=(default)')
     else AStrings.Add(Format('Wordwrap=%s', [
            BoolToStr(uffWordwrap in fmt.UsedFormattingFields, true)
         ]));
 
-  if (ACell=nil) or not (uffBorder in fmt.UsedFormattingFields) then
+  if (AFormatIndex = -1) or not (uffBorder in fmt.UsedFormattingFields) then
     AStrings.Add('Borders=(none)')
   else
   begin
@@ -3092,7 +3172,7 @@ begin
   end;
 
   for cb in TsCellBorder do
-    if ACell = nil then
+    if AFormatIndex = -1 then
       AStrings.Add(Format('BorderStyles[%s]=(default)', [
         GetEnumName(TypeInfo(TsCellBorder), ord(cb))]))
     else
@@ -3101,7 +3181,7 @@ begin
         GetEnumName(TypeInfo(TsLineStyle), ord(fmt.BorderStyles[cb].LineStyle)),
         GetColorName(fmt.BorderStyles[cb].Color)]));
 
-  if (ACell = nil) or not (uffBackground in fmt.UsedformattingFields) then
+  if (AFormatIndex = -1) or not (uffBackground in fmt.UsedformattingFields) then
   begin
     AStrings.Add('Style=(default)');
     AStrings.Add('PatternColor=(default)');
@@ -3116,7 +3196,7 @@ begin
       fmt.Background.BgColor, GetColorName(fmt.Background.BgColor)]));
   end;
 
-  if (ACell = nil) or not (uffNumberFormat in fmt.UsedFormattingFields) then
+  if (AFormatIndex = -1) or not (uffNumberFormat in fmt.UsedFormattingFields) then
   begin
     AStrings.Add('NumberFormatIndex=-1');
     AStrings.Add('NumberFormat=(default)');
@@ -3130,19 +3210,11 @@ begin
     AStrings.Add('NumberFormatStr=' + numFmt.NumFormatStr);
   end;
 
-  if (ACell = nil) or not (uffBiDi in fmt.UsedFormattingFields) then
+  if (AFormatIndex = -1) or not (uffBiDi in fmt.UsedFormattingFields) then
     AStrings.Add('BiDi=(bdDefault)')
   else
     AStrings.Add(Format('BiDiMode=%s', [
       GetEnumName(TypeInfo(TsBiDiMode), ord(fmt.BiDiMode))]));
-
-  if (Worksheet = nil) or not Worksheet.IsMerged(ACell) then
-    AStrings.Add('Merged range=(none)')
-  else
-  begin
-    Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-    AStrings.Add('Merged range=' + GetCellRangeString(r1, c1, r2, c2));
-  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3221,6 +3293,48 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Creates a string list containing the properties of a column.
+  The string list items are name-value pairs in the format "name=value".
+  The string list is displayed in the inspector's grid.
+
+  @param  ACol       index of the investigated column
+  @param  AStrings   Stringlist receiving the name-value pairs.
+-------------------------------------------------------------------------------}
+procedure TsSpreadsheetInspector.UpdateCol(ACol: Integer; AStrings: TStrings);
+var
+  unitStr: String;
+  lCol: PCol;
+begin
+  if (Workbook = nil) or (Worksheet = nil) then
+    exit;
+  if (ACol < 0) or (ACol <> Worksheet.ActiveCellCol) then
+    exit;
+
+  unitStr := SizeUnitNames[Workbook.Units];
+  lCol := Worksheet.FindCol(ACol);
+  AStrings.Add(Format('Col=%d', [ACol]));
+  if lCol <> nil then
+  begin
+    AStrings.Add(Format('Width=%.1f %s (%.1f pt)', [
+      lCol^.Width, unitstr, Workbook.ConvertUnits(lCol^.Width, Workbook.Units, suPoints)
+    ]));
+    AStrings.Add(Format('ColWidthType=%s', [
+      ColWidthTypeNames[lCol^.ColWidthType]
+    ]));
+    UpdateFormatProperties(lCol^.FormatIndex, AStrings);
+  end else
+  begin
+    AStrings.Add('No column record=');
+    AStrings.Add(Format('DefaultColWidth=%.1f %s (%.1f pt)', [
+      Worksheet.ReadDefaultColWidth(Workbook.Units), unitStr,
+      Worksheet.ReadDefaultColWidth(suPoints)
+    ]));
+  //  UpdateFormatProperties(-1, AStrings);
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Creates a string list containing the properties of a row.
   The string list items are name-value pairs in the format "name=value".
   The string list is displayed in the inspector's grid.
@@ -3233,7 +3347,9 @@ var
   lRow: PRow;
   unitStr: String;
 begin
-  if ARow < 0 then
+  if (Workbook = nil) or (Worksheet = nil) then
+    exit;
+  if (ARow < 0) or (ARow <> Worksheet.ActiveCellRow) then
     exit;
 
   unitStr := SizeUnitNames[Workbook.Units];
@@ -3247,9 +3363,7 @@ begin
     AStrings.Add(Format('RowHeightType=%s', [
       RowHeightTypeNames[lRow^.RowHeightType]
     ]));
-    AStrings.Add(Format('FormatIndex=%d', [
-      lRow^.FormatIndex
-    ]));
+    UpdateFormatProperties(lRow^.FormatIndex, AStrings);
   end else
   begin
     AStrings.Add('No row record=');
@@ -3257,6 +3371,7 @@ begin
       Worksheet.ReadDefaultRowHeight(Workbook.Units), unitStr,
       Worksheet.ReadDefaultRowHeight(suPoints)
     ]));
+  //  UpdateFormatProperties(-1, AStrings);
   end;
 end;
 

@@ -59,8 +59,16 @@ type
   TsNotifyEvent = procedure (Sender: TObject) of object;
 
   {@@ This event fires whenever a cell value or cell formatting changes. It is
-    handled by TsWorkbookLink to update the listening controls. }
+    handled by TsWorkbookSource to update the listening visual controls. }
   TsCellEvent = procedure (Sender: TObject; ARow, ACol: Cardinal) of object;
+
+  {@@ This event fires whenever a column width or column format changes. It is
+    handled by TsWorkbookSource to update the listening visual controls. }
+  TsColEvent = procedure (Sender: TObject; ACol: Cardinal) of object;
+
+  {@@ This event fires whenever a row height or row format changes. It is
+    handled by TsWorkbookSource to update the listening visual controls }
+  TsRowEvent = procedure (Sender: TObject; ARow: Cardinal) of object;
 
   {@@ This event can be used to override the built-in comparing function which
     is called when cells are sorted. }
@@ -105,6 +113,8 @@ type
     FZoomFactor: Double;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
+    FOnChangeCol: TsColEvent;
+    FOnChangeRow: TsRowEvent;
     FOnZoom: TsNotifyEvent;
     FOnCompareCells: TsCellCompareEvent;
     FOnSelectCell: TsCellEvent;
@@ -428,6 +438,7 @@ type
     function  GetColFormatIndex(ACol: Cardinal): Integer;
     function  GetColWidth(ACol: Cardinal; AUnits: TsSizeUnits): Single; overload;
     function  GetColWidth(ACol: Cardinal): Single; overload; deprecated 'Use version with parameter AUnits.';
+    function  GetColWidthType(ACol: Cardinal): TsColWidthType;
     function  HasColFormats: Boolean;
     function  HasRowFormats: Boolean;
     function  IsEmptyRow(ARow: Cardinal): Boolean;
@@ -451,8 +462,10 @@ type
       ARowHeightType: TsRowHeightType = rhtCustom); overload; deprecated 'Use version with parameter AUnits';
     procedure WriteColInfo(ACol: Cardinal; AData: TCol);
     procedure WriteColFormatIndex(ACol: Cardinal; AFormatIndex: Integer);
-    procedure WriteColWidth(ACol: Cardinal; AWidth: Single; AUnits: TsSizeUnits); overload;
-    procedure WriteColWidth(ACol: Cardinal; AWidth: Single); overload; deprecated 'Use version with parameter AUnits';
+    procedure WriteColWidth(ACol: Cardinal; AWidth: Single; AUnits: TsSizeUnits;
+      AColWidthType: TsColWidthType = cwtCustom); overload;
+    procedure WriteColWidth(ACol: Cardinal; AWidth: Single;
+      AColWidthType: TsColWidthType = cwtCustom); overload; deprecated 'Use version with parameter AUnits';
 
     // Sorting
     procedure Sort(const ASortParams: TsSortParams;
@@ -521,9 +534,11 @@ type
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0; AScaleX: Double = 1.0;
       AScaleY: Double = 1.0): Integer; overload;
 
-    // Notification of changed cells
+    // Notification of changed cells, rows or columns
     procedure ChangedCell(ARow, ACol: Cardinal);
+    procedure ChangedCol(ACol: Cardinal);
     procedure ChangedFont(ARow, ACol: Cardinal);
+    procedure ChangedRow(ARow: Cardinal);
 
     { Properties }
 
@@ -580,8 +595,12 @@ type
     property  ZoomFactor: Double read FZoomFactor write SetZoomFactor;
     {@@ Event fired when cell contents or formatting changes }
     property  OnChangeCell: TsCellEvent read FOnChangeCell write FOnChangeCell;
+    {@@ Event fired when column height or formatting changes }
+    property  OnChangeCol: TsColEvent read FOnChangeCol write FOnChangeCol;
     {@@ Event fired when the font size in a cell changes }
     property  OnChangeFont: TsCellEvent read FOnChangeFont write FOnChangeFont;
+    {@@ Event fired when a row height or row formatting has changed }
+    property  OnChangeRow: TsRowEvent read FOnChangeRow write FOnChangeRow;
     {@@ Event to override cell comparison for sorting }
     property  OnCompareCells: TsCellCompareEvent read FOnCompareCells write FOnCompareCells;
     {@@ Event fired when a cell is "selected". }
@@ -1615,6 +1634,34 @@ begin
 
   if FWorkbook.NotificationsEnabled and Assigned(FOnChangeCell) then
     FOnChangeCell(Self, ARow, ACol);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Is called whenever a column width or column format has changed. Fires an event
+  "OnChangedCol" which is handled by TsWorkbookSource
+
+  @param  ACol  Index of the column which as changed
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.ChangedCol(ACol: Cardinal);
+begin
+  if FWorkbook.FReadWriteFlag = rwfRead then
+    exit;
+  if FWorkbook.NotificationsEnabled and Assigned(FOnChangeCol) then
+    FOnChangeCol(Self, ACol);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Is called whenever a row height or row format has changed. Fires an event
+  "OnChangedRow" which is handled by TsWorkbookSource
+
+  @param  ARow  Index of the row which as changed
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.ChangedRow(ARow: Cardinal);
+begin
+  if FWorkbook.FReadWriteFlag = rwfRead then
+    exit;
+  if FWorkbook.NotificationsEnabled and Assigned(FOnChangeRow) then
+    FOnChangeRow(Self, ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6603,6 +6650,27 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the type of column width of a specific column.
+  If there is no column record then cwtDefault is returned.
+
+  @param  ACol    Index of the column considered
+  @param  AUnits  Units for the column width.
+  @return Width of the column. This is the "raw" value, without application of
+          the zoom factor.
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetColWidthType(ACol: Cardinal): TsColWidthType;
+var
+  lCol: PCol;
+begin
+  lCol := FindCol(ACol);
+  if lCol = nil then
+    Result := cwtDefault
+  else
+    Result := lCol^.ColWidthType;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Returns the index to the cell format to be used for a given row.
   If there is no row record then the default format (index 0) is returned.
 
@@ -7119,6 +7187,7 @@ begin
   lRow^.Height := AData.Height;
   lRow^.RowHeightType := AData.RowHeightType;
   lRow^.FormatIndex := AData.FormatIndex;
+  ChangedRow(ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7137,6 +7206,7 @@ begin
     exit;
   lRow := GetRow(ARow);
   lRow^.FormatIndex := AFormatIndex;
+  ChangedRow(ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7159,6 +7229,7 @@ begin
   lRow := GetRow(ARow);
   lRow^.Height := FWorkbook.ConvertUnits(AHeight, AUnits, FWorkbook.FUnits);
   lRow^.RowHeightType := ARowHeightType;
+  ChangedRow(ARow);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7192,6 +7263,7 @@ begin
   lCol^.Width := AData.Width;
   lCol^.ColWidthType := AData.ColWidthType;
   lCol^.FormatIndex := AData.FormatIndex;
+  ChangedCol(ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7211,6 +7283,7 @@ begin
     exit;
   lCol := GetCol(ACol);
   lCol^.FormatIndex := AFormatIndex;
+  ChangedCol(ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7219,10 +7292,12 @@ end;
 
   @param  ACol     Index of the column to be considered
   @param  AWidth   Width to be assigned to the column.
+  @param  AColWidthType Type of the column width (default -> AWidth is ignored)
+                   or custom)
   @param  AUnits   Units used for parameter AWidth.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single;
-  AUnits: TsSizeUnits);
+  AUnits: TsSizeUnits; AColWidthType: TsColWidthType = cwtCustom);
 var
   lCol: PCol;
 begin
@@ -7230,7 +7305,8 @@ begin
     exit;
   lCol := GetCol(ACol);
   lCol^.Width := FWorkbook.ConvertUnits(AWidth, AUnits, FWorkbook.FUnits);
-  lCol^.ColWidthType := cwtCustom;
+  lCol^.ColWidthType := AColWidthType;
+  ChangedCol(ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7240,9 +7316,10 @@ end;
   Note that this method is deprecated and will be removed.
   Use the variant in which the units of the new width can be specified.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single);
+procedure TsWorksheet.WriteColWidth(ACol: Cardinal; AWidth: Single;
+  AColWidthType: TsColWidthType = cwtCustom);
 begin
-  WriteColWidth(ACol, AWidth, suChars);
+  WriteColWidth(ACol, AWidth, suChars, AColWidthType);
 end;
 
 {@@ ----------------------------------------------------------------------------
