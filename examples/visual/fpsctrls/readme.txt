@@ -1,3 +1,10 @@
+This demo is the result of the project explained in the wiki tutorial
+"Writing a mini spreadsheet application" 
+http://wiki.lazarus.freepascal.org/FPSpreadsheet_tutorial:_Writing_a_mini_spreadsheet_application
+
+An extended version of this demo is "spready" which can be found in the
+applications folder of the Lazarus Components and Code Repository.
+
 FPSpreadsheetControls are a set of visual components which facilitate creation
 of a spreadsheet application.
 
@@ -23,3 +30,5 @@ cell values and properties.
 
 Linking these controls to a TsWorkbookSource results in a working spreadsheet
 application without writing any line of code.
+
+
