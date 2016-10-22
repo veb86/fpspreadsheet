@@ -8,7 +8,7 @@
 unit fpspatches;
 
 {$mode objfpc}{$H+}
-{$I fps.inc}
+{$I ..\fps.inc}
 
 interface
 
@@ -29,6 +29,27 @@ uses
     Flags: TReplaceFlags; ALanguage: string=''): String;
   function UTF8LowerCase(const AInStr: string; ALanguage: string=''): string;
   function UTF8UpperCase(const AInStr: string; ALanguage: string=''): string;
+
+  // implemented in LazFileUtils (Laz 1.2)
+  procedure ForcePathDelims(var FileName: String);
+{$ENDIF}
+
+{$IFDEF FPS_PTRINT}
+type
+  {$IFDEF CPU64}
+    PtrInt = Int64;
+  {$ENDIF}
+  {$IFDEF CPU32}
+    PtrInt = Longint;
+  {$ENDIF}
+  {$IFDEF CPU16}
+    {$IF DEFINED(FPC_X86_DATA_FAR) OR DEFINED(FPC_X86_DATA_HUGE)}
+      PtrInt = Longint;
+    {$ELSE}
+      PtrInt = Integer;
+    {$ENDIF}
+  {$ENDIF CPU16}
+  IntPtr  = PtrInt;
 {$ENDIF}
 
 
@@ -1693,6 +1714,21 @@ begin
   // Final correction of the buffer size
   SetLength(Result,OutCounter);
 end;
+
+procedure ForcePathDelims(var FileName: string);
+var
+  i: Integer;
+begin
+  for i:=1 to Length(FileName) do
+    {$IFDEF Windows}
+    if Filename[i]='/' then
+      Filename[i]:='\';
+    {$ELSE}
+    if Filename[i]='\' then
+      Filename[i]:='/';
+    {$ENDIF}
+end;
+
 {$ENDIF}
 
 end.

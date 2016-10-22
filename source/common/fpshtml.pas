@@ -142,7 +142,7 @@ implementation
 
 uses
   LConvEncoding, LazUTF8, URIParser, StrUtils, Math,
-  fpsRegFileFormats, fpsUtils, fpsXMLCommon, fpsNumFormat;
+  fpsUtils, fpsXMLCommon, fpsNumFormat;
 
 const
   MIN_FONTSIZE = 6;

@@ -61,7 +61,7 @@ type
 implementation
 
 uses
-  lazutf8;
+  lazutf8, {%H-}fpsPatches;
 
 constructor TsSearchEngine.Create(AWorkbook: TsWorkbook);
 begin

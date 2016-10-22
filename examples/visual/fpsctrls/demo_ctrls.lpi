@@ -22,7 +22,6 @@
           <PathDelim Value="\"/>
           <SearchPaths>
             <IncludeFiles Value="$(ProjOutDir)"/>
-            <OtherUnitFiles Value="..\shared"/>
           </SearchPaths>
           <CodeGeneration>
             <SmartLinkUnit Value="True"/>
@@ -57,7 +56,7 @@
         <PackageName Value="LCL"/>
       </Item2>
     </RequiredPackages>
-    <Units Count="9">
+    <Units Count="2">
       <Unit0>
         <Filename Value="demo_ctrls.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -69,59 +68,6 @@
         <HasResources Value="True"/>
         <ResourceBaseClass Value="Form"/>
       </Unit1>
-      <Unit2>
-        <Filename Value="..\shared\scsvparamsform.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="CSVParamsForm"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <UnitName Value="sCSVParamsForm"/>
-      </Unit2>
-      <Unit3>
-        <Filename Value="..\shared\sformatsettingsform.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="FormatSettingsForm"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <UnitName Value="sFormatsettingsForm"/>
-      </Unit3>
-      <Unit4>
-        <Filename Value="..\shared\ssortparamsform.pas"/>
-        <IsPartOfProject Value="True"/>
-        <HasResources Value="True"/>
-        <UnitName Value="sSortParamsForm"/>
-      </Unit4>
-      <Unit5>
-        <Filename Value="..\shared\scurrencyform.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="CurrencyForm"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-      </Unit5>
-      <Unit6>
-        <Filename Value="..\shared\shyperlinkform.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="HyperlinkForm"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <UnitName Value="sHyperlinkForm"/>
-      </Unit6>
-      <Unit7>
-        <Filename Value="..\shared\snumformatform.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="NumFormatForm"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <UnitName Value="sNumFormatForm"/>
-      </Unit7>
-      <Unit8>
-        <Filename Value="..\shared\ssearchform.pas"/>
-        <IsPartOfProject Value="True"/>
-        <ComponentName Value="SearchForm"/>
-        <HasResources Value="True"/>
-        <ResourceBaseClass Value="Form"/>
-        <UnitName Value="sSearchForm"/>
-      </Unit8>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -132,7 +78,6 @@
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir)"/>
-      <OtherUnitFiles Value="..\shared"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <CodeGeneration>

@@ -90,7 +90,7 @@ implementation
 
 uses
   StrUtils, Math,
-  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat, fpsXmlCommon, fpsHTMLUtils;
+  fpsStrings, fpsUtils, fpsNumFormat, fpsXmlCommon, fpsHTMLUtils;
 
 const
   FMT_OFFSET   = 61;

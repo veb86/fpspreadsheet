@@ -110,7 +110,7 @@ var
 implementation
 
 uses
-  fpsStrings, fpsXMLCommon, fpsRegFileFormats;
+  fpsStrings, fpsXMLCommon;
 
 
 { TWikiTableTokenizer }

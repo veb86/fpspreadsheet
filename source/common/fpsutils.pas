@@ -207,7 +207,7 @@ var
 implementation
 
 uses
-  Math, lazutf8, lazfileutils, fpsStrings, fpsRegFileFormats;
+  Math, lazutf8, lazfileutils, fpsStrings, fpsReaderWriter;
 
 const
   INT_NUM_LETTERS = 26;

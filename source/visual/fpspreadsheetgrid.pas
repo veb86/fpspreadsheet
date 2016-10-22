@@ -13,7 +13,7 @@
 unit fpspreadsheetgrid;
 
 {$mode objfpc}{$H+}
-{$I fps.inc}
+{$I ..\fps.inc}
 
 { To do:
  - When Lazarus 1.4 comes out remove the workaround for the RGB2HLS bug in
@@ -80,7 +80,6 @@ type
     FDefColWidth100: Integer;   // Default col width for 100% zoom factor, in pixels
     FZoomLock: Integer;
     FRowHeightLock: Integer;
-    FOldTopRow: Integer;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
@@ -729,7 +728,7 @@ implementation
 
 uses
   Types, LCLType, LCLIntf, LCLProc, Math, StrUtils,
-  fpCanvas,
+  fpCanvas, {%H-}fpsPatches,
   fpsStrings, fpsUtils, fpsVisualUtils, fpsHTMLUtils,
   fpsNumFormat;
 
@@ -992,8 +991,6 @@ end;
   @param  AOwner   Owner of the grid
 -------------------------------------------------------------------------------}
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
-var
-  i: Integer;
 begin
   inc(FRowHeightLock);
 
@@ -1691,7 +1688,6 @@ var
   fmt: PsCellFormat;
   r, c: Integer;
   fnt: TsFont;
-  style: TFontStyles;
   isSelected: Boolean;
   fgcolor, bgcolor: TColor;
 //  numFmt: TsNumFormatParams;
@@ -4116,7 +4112,7 @@ begin
       gcol := GetGridCol(cell^.Col);
       AutoExpandToRow(grow, aeData);
       AutoExpandToCol(gcol, aeData);
-      lRow := Worksheet.FindRow(srow);
+      lRow := Worksheet.FindRow(cell^.Row);
       if (lRow = nil) or (lRow^.RowHeightType <> rhtCustom) then
         UpdateRowHeight(grow, true);
     end;
@@ -4155,7 +4151,7 @@ begin
   // Column width
   if (lniCol in AChangedItems) and (Worksheet <> nil) then
   begin
-    scol := {%Hä}PtrInt(AData);  // sheet column index
+    scol := {%H-}PtrInt(AData);  // sheet column index
     gcol := GetGridCol(scol);
     //lCol := Worksheet.FindCol(scol);
     UpdateColWidth(gcol);
@@ -4483,8 +4479,6 @@ end;
   initial column widths and row heights.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Setup;
-var
-  nc, nr: Integer;
 begin
   if csLoading in ComponentState then
     exit;
@@ -4507,8 +4501,6 @@ begin
     end;
   end else
   if Worksheet <> nil then begin
-    nc := ColCount;
-    nr := RowCount;
     if FHeaderCount = 0 then
     begin
       ColCount := Max(GetGridCol(Worksheet.GetLastColIndex), ColCount-1);

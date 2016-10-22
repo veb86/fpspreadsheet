@@ -12,9 +12,6 @@
       <Title Value="csvwrite"/>
       <UseAppBundle Value="False"/>
     </General>
-    <VersionInfo>
-      <StringTable ProductVersion=""/>
-    </VersionInfo>
     <BuildModes Count="1">
       <Item1 Name="default" Default="True"/>
     </BuildModes>
@@ -53,7 +50,7 @@
       <Filename Value="csvwrite"/>
     </Target>
     <SearchPaths>
-      <OtherUnitFiles Value="..\..\.."/>
+      <OtherUnitFiles Value="..\..\..\source\common"/>
       <UnitOutputDirectory Value="..\..\lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

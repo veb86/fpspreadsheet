@@ -279,7 +279,7 @@ implementation
 
 uses
   Math, lconvencoding, LazFileUtils, URIParser,
-  fpsStrings, fpsStreams, fpsRegFileFormats, fpsPalette,
+  fpsStrings, {%H-}fpsPatches, fpsStreams, fpsReaderWriter, fpsPalette,
   fpsNumFormat, fpsExprParser, xlsEscher;
 
 const
@@ -1941,7 +1941,10 @@ begin
       AStream.ReadBuffer(wideStr[1], size);
       // The buffer can be larger than the space occupied by the wideStr.
       // --> Find true string length and convert wide string to utf-8.
-      len := StrLen(PWideChar(widestr));
+
+//      len := StrLen(PWideChar(widestr));  // wp: working fine except for Laz1.0
+      len := Length(widestr);               // Is this ok?
+
       SetLength(widestr, len);
       link := UTF8Encode(widestr);
     end else

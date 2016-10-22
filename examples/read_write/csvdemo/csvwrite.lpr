@@ -50,7 +50,7 @@ begin
 
   // Write some string cells
   MyWorksheet.WriteText(1, 0, 'First');
-  MyWorksheet.WriteFont    (1, 0, 'Arial', 12, [fssBold, fssItalic, fssUnderline], scRed);
+  MyWorksheet.WriteFont(1, 0, 'Arial', 12, [fssBold, fssItalic, fssUnderline], scRed);
   MyWorksheet.WriteText(1, 1, 'Second');
   MyWorksheet.WriteText(1, 2, 'Third');
   MyWorksheet.WriteText(1, 3, 'Fourth');

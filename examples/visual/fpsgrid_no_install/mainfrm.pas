@@ -53,7 +53,7 @@ implementation
 {$R *.lfm}
 
 uses
-  fpsUtils, fpsRegFileFormats;
+  fpsUtils, fpsReaderWriter;
 
 
 { TForm1 }

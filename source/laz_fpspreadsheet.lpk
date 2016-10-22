@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <Package Version="4">
+    <PathDelim Value="\"/>
+    <Name Value="laz_fpspreadsheet"/>
+    <AddToProjectUsesSection Value="True"/>
+    <Author Value="Felipe Monteiro de Carvalho and others"/>
+    <CompilerOptions>
+      <Version Value="11"/>
+      <PathDelim Value="\"/>
+      <SearchPaths>
+        <OtherUnitFiles Value="common"/>
+        <UnitOutputDirectory Value="common\lib\$(TargetCPU)-$(TargetOS)"/>
+      </SearchPaths>
+      <Parsing>
+        <SyntaxOptions>
+          <UseAnsiStrings Value="False"/>
+        </SyntaxOptions>
+      </Parsing>
+      <Other>
+        <CompilerMessages>
+          <IgnoredMessages idx2005="True" idx4055="True" idx5028="True"/>
+        </CompilerMessages>
+        <CustomOptions Value="$(IDEBuildOptions)
+-dDisableWrapperFunctions"/>
+        <CompilerPath Value="$(CompPath)"/>
+      </Other>
+    </CompilerOptions>
+    <Description Value="laz_fpspreadsheet is a non-visual component that allows you to use the fpspreadsheet package to read/write spreadsheet files in .xls (BIFF/Excel), .ods OpenDocument (LibreOffice/OpenOffice) and .xlsx Open XML (Excel) formats.
+
+This package is all you need if you don't want graphical components (like grids and charts)."/>
+    <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
+    <Version Major="1" Minor="7"/>
+    <Files Count="45">
+      <Item1>
+        <Filename Value="fps.inc"/>
+        <Type Value="Include"/>
+      </Item1>
+      <Item2>
+        <Filename Value="common\fpolebasic.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpolebasic"/>
+      </Item2>
+      <Item3>
+        <Filename Value="common\fpolestorage.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpolestorage"/>
+      </Item3>
+      <Item4>
+        <Filename Value="common\fpsallformats.pas"/>
+        <UnitName Value="fpsallformats"/>
+      </Item4>
+      <Item5>
+        <Filename Value="common\fpscell.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsCell"/>
+      </Item5>
+      <Item6>
+        <Filename Value="common\fpsclasses.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsclasses"/>
+      </Item6>
+      <Item7>
+        <Filename Value="common\fpscsv.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpscsv"/>
+      </Item7>
+      <Item8>
+        <Filename Value="common\fpscsvdocument.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsCsvDocument"/>
+      </Item8>
+      <Item9>
+        <Filename Value="common\fpscurrency.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsCurrency"/>
+      </Item9>
+      <Item10>
+        <Filename Value="common\fpsexprparser.pas"/>
+        <UnitName Value="fpsExprParser"/>
+      </Item10>
+      <Item11>
+        <Filename Value="common\fpsfunc.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsfunc"/>
+      </Item11>
+      <Item12>
+        <Filename Value="common\fpsheaderfooterparser.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsHeaderFooterParser"/>
+      </Item12>
+      <Item13>
+        <Filename Value="common\fpshtml.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsHTML"/>
+      </Item13>
+      <Item14>
+        <Filename Value="common\fpshtmlutils.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsHTMLUtils"/>
+      </Item14>
+      <Item15>
+        <Filename Value="common\fpsimages.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsImages"/>
+      </Item15>
+      <Item16>
+        <Filename Value="common\fpsnumformat.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsNumFormat"/>
+      </Item16>
+      <Item17>
+        <Filename Value="common\fpsopendocument.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsopendocument"/>
+      </Item17>
+      <Item18>
+        <Filename Value="common\fpspagelayout.pas"/>
+        <UnitName Value="fpsPageLayout"/>
+      </Item18>
+      <Item19>
+        <Filename Value="common\fpspalette.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsPalette"/>
+      </Item19>
+      <Item20>
+        <Filename Value="common\fpspatches.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpspatches"/>
+      </Item20>
+      <Item21>
+        <Filename Value="common\fpspreadsheet.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpspreadsheet"/>
+      </Item21>
+      <Item22>
+        <Filename Value="common\fpsreaderwriter.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsReaderWriter"/>
+      </Item22>
+      <Item23>
+        <Filename Value="common\fpsrpn.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsRPN"/>
+      </Item23>
+      <Item24>
+        <Filename Value="common\fpsstreams.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsStreams"/>
+      </Item24>
+      <Item25>
+        <Filename Value="common\fpsstrings.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsStrings"/>
+      </Item25>
+      <Item26>
+        <Filename Value="common\fpstypes.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsTypes"/>
+      </Item26>
+      <Item27>
+        <Filename Value="common\fpsutils.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsutils"/>
+      </Item27>
+      <Item28>
+        <Filename Value="common\fpsxmlcommon.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpsxmlcommon"/>
+      </Item28>
+      <Item29>
+        <Filename Value="common\fpszipper.pp"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="fpszipper"/>
+      </Item29>
+      <Item30>
+        <Filename Value="common\uvirtuallayer.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="uvirtuallayer"/>
+      </Item30>
+      <Item31>
+        <Filename Value="common\uvirtuallayer_ole.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="uvirtuallayer_ole"/>
+      </Item31>
+      <Item32>
+        <Filename Value="common\uvirtuallayer_ole_helpers.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="uvirtuallayer_ole_helpers"/>
+      </Item32>
+      <Item33>
+        <Filename Value="common\uvirtuallayer_ole_types.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="uvirtuallayer_ole_types"/>
+      </Item33>
+      <Item34>
+        <Filename Value="common\uvirtuallayer_stream.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="uvirtuallayer_stream"/>
+      </Item34>
+      <Item35>
+        <Filename Value="common\uvirtuallayer_types.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="uvirtuallayer_types"/>
+      </Item35>
+      <Item36>
+        <Filename Value="common\wikitable.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="wikitable"/>
+      </Item36>
+      <Item37>
+        <Filename Value="common\xlsbiff2.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="xlsbiff2"/>
+      </Item37>
+      <Item38>
+        <Filename Value="common\xlsbiff5.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="xlsbiff5"/>
+      </Item38>
+      <Item39>
+        <Filename Value="common\xlsbiff8.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="xlsbiff8"/>
+      </Item39>
+      <Item40>
+        <Filename Value="common\xlscommon.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="xlscommon"/>
+      </Item40>
+      <Item41>
+        <Filename Value="common\xlsconst.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="xlsconst"/>
+      </Item41>
+      <Item42>
+        <Filename Value="common\xlsescher.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="xlsEscher"/>
+      </Item42>
+      <Item43>
+        <Filename Value="common\xlsxml.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="xlsxml"/>
+      </Item43>
+      <Item44>
+        <Filename Value="common\xlsxooxml.pas"/>
+        <AddToUsesPkgSection Value="False"/>
+        <UnitName Value="xlsxooxml"/>
+      </Item44>
+      <Item45>
+        <Filename Value="common\fpssearch.pas"/>
+        <UnitName Value="fpsSearch"/>
+      </Item45>
+    </Files>
+    <i18n>
+      <EnableI18N Value="True"/>
+      <OutDir Value="..\languages"/>
+      <EnableI18NForLFM Value="True"/>
+    </i18n>
+    <RequiredPkgs Count="2">
+      <Item1>
+        <PackageName Value="LazUtils"/>
+      </Item1>
+      <Item2>
+        <PackageName Value="FCL"/>
+        <MinVersion Major="1" Valid="True"/>
+      </Item2>
+    </RequiredPkgs>
+    <UsageOptions>
+      <UnitPath Value="$(PkgOutDir)"/>
+    </UsageOptions>
+    <PublishOptions>
+      <Version Value="2"/>
+      <IgnoreBinaries Value="False"/>
+    </PublishOptions>
+    <CustomOptions Items="ExternHelp" Version="2">
+      <_ExternHelp Items="Count"/>
+    </CustomOptions>
+  </Package>
+</CONFIG>

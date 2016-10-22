@@ -217,7 +217,7 @@ implementation
 
 uses
   Math,
-  fpsStrings, fpsRegFileFormats, fpsStreams, fpsPalette, fpsNumFormat, xlsconst;
+  fpsStrings, fpsReaderWriter, fpsStreams, fpsPalette, fpsNumFormat, xlsconst;
 
 const
    { Excel record IDs }

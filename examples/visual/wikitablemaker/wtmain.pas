@@ -218,7 +218,7 @@ implementation
 uses
   TypInfo, LazUtf8, LCLIntf, LCLType, LCLVersion, clipbrd, fpcanvas,
   SynHighlighterWikiTable,
-  fpsutils, fpsRegFileFormats;
+  fpsutils, fpsReaderWriter;
 
 const
   DROPDOWN_COUNT = 24;

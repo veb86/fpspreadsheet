@@ -26,7 +26,7 @@ unit fpsopendocument;
   {$mode objfpc}{$H+}
 {$endif}
 
-{$I fps.inc}
+{$I ..\fps.inc}
 
 {.$define FPSPREADDEBUG} //used to be XLSDEBUG
 
@@ -42,7 +42,7 @@ uses
   fpszipper,
  {$ENDIF}
   fpstypes, fpspreadsheet, fpsReaderWriter, fpsutils, fpsHeaderFooterParser,
-  fpsNumFormat, fpsNumFormatParser, fpsxmlcommon, fpsPagelayout;
+  fpsNumFormat, fpsxmlcommon, fpsPagelayout;
   
 type
   TDateModeODS=(
@@ -286,7 +286,7 @@ uses
   fpsPatches,
  {$ENDIF}
   fpsStrings, fpsStreams, fpsClasses, fpsExprParser,
-  fpsRegFileFormats, fpsImages;
+  fpsImages;
 
 const
   { OpenDocument general XML constants }
@@ -5510,8 +5510,8 @@ begin
   headerRows := false;
   firstRepeatedPrintRow := ASheet.PageLayout.RepeatedRows.FirstIndex;
   lastRepeatedPrintRow := ASheet.PageLayout.RepeatedRows.LastIndex;
-  if (firstRepeatedPrintRow <> UNASSIGNED_ROW_COL_INDEX) and
-     (lastRepeatedPrintRow = UNASSIGNED_ROW_COL_INDEX)
+  if (firstRepeatedPrintRow <> Integer(UNASSIGNED_ROW_COL_INDEX)) and
+     (lastRepeatedPrintRow = Integer(UNASSIGNED_ROW_COL_INDEX))
   then
     lastRepeatedPrintRow := firstRepeatedPrintRow;
 

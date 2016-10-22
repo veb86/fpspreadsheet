@@ -48,7 +48,7 @@ implementation
 {$R *.lfm}
 
 uses
-  fpsRegFileFormats;
+  fpsReaderWriter;
 
 const
   MOUSEWHEEL_FACTOR = 1.05;

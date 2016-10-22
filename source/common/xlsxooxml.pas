@@ -227,8 +227,7 @@ implementation
 uses
   variants, strutils, math, lazutf8, LazFileUtils, uriparser,
   {%H-}fpsPatches,
-  fpsStrings, fpsStreams, fpsNumFormatParser, fpsClasses, fpsImages,
-  fpsRegFileFormats;
+  fpsStrings, fpsStreams, fpsClasses, fpsImages;
 
 const
   { OOXML general XML constants }
@@ -1139,7 +1138,8 @@ begin
           L.DelimitedText := GetNodeValue(node);
           for j:=0 to L.Count-1 do
           begin
-            s := ReplaceStr(L[j], '''', '');
+            //s := ReplaceStr(L[j], '''', '');   // wp: replaced by next line because of Laz 1.0
+            s := StringReplace(L[j], '''', '', [rfReplaceAll]);
             p := pos(':', s);
             if p = 0 then
             begin
@@ -1163,7 +1163,8 @@ begin
           L.DelimitedText := GetNodeValue(node);
           for j:=0 to L.Count-1 do
           begin
-            s := ReplaceStr(L[j], '''', '');
+            //s := ReplaceStr(L[j], '''', '');   // wp: replaced by next line due to Laz 1.0
+            s := StringReplace(L[j], '''', '', [rfReplaceAll]);
             p := pos('!', s);
             if p > 0 then s := Copy(s, p+1, MaxInt);
             p := pos(':', s);

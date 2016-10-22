@@ -9,8 +9,8 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="."/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
+        <OtherUnitFiles Value="visual"/>
+        <UnitOutputDirectory Value="visual\lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Other>
         <CustomOptions Value="$(IDEBuildOptions)"/>
@@ -23,38 +23,37 @@ It provides graphical components like a grid and chart."/>
     <Version Major="1" Minor="7"/>
     <Files Count="5">
       <Item1>
-        <Filename Value="fpspreadsheetctrls.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="fpspreadsheetctrls"/>
-      </Item1>
-      <Item2>
-        <Filename Value="fpspreadsheetgrid.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="fpspreadsheetgrid"/>
-      </Item2>
-      <Item3>
-        <Filename Value="fpspreadsheetchart.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="fpspreadsheetchart"/>
-      </Item3>
-      <Item4>
-        <Filename Value="fpsactions.pas"/>
+        <Filename Value="visual\fpsactions.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="fpsActions"/>
+      </Item1>
+      <Item2>
+        <Filename Value="visual\fpspreadsheetchart.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="fpspreadsheetchart"/>
+      </Item2>
+      <Item3>
+        <Filename Value="visual\fpspreadsheetctrls.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="fpspreadsheetctrls"/>
+      </Item3>
+      <Item4>
+        <Filename Value="visual\fpspreadsheetgrid.pas"/>
+        <HasRegisterProc Value="True"/>
+        <UnitName Value="fpspreadsheetgrid"/>
       </Item4>
       <Item5>
-        <Filename Value="fpsvisualutils.pas"/>
+        <Filename Value="visual\fpsvisualutils.pas"/>
         <UnitName Value="fpsvisualutils"/>
       </Item5>
     </Files>
     <RequiredPkgs Count="4">
       <Item1>
-        <PackageName Value="tachartlazaruspkg"/>
+        <PackageName Value="laz_fpspreadsheet"/>
+        <MinVersion Major="1" Minor="7" Valid="True"/>
       </Item1>
       <Item2>
-        <PackageName Value="laz_fpspreadsheet"/>
-        <MaxVersion Major="1" Minor="5"/>
-        <MinVersion Major="1" Minor="5"/>
+        <PackageName Value="tachartlazaruspkg"/>
       </Item2>
       <Item3>
         <PackageName Value="LCL"/>

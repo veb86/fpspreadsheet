@@ -11,7 +11,7 @@ interface
 
 uses
   Classes, SysUtils, DateUtils, lconvencoding,
-  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormatParser, fpsPalette,
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormat, fpsPalette,
   fpsReaderWriter, fpsrpn;
 
 const
@@ -633,8 +633,7 @@ implementation
 
 uses
   AVL_Tree, Math, Variants,
-  {%H-}fpspatches, fpsStrings, fpsClasses, fpsNumFormat, xlsConst,
-  //fpsrpn,
+  {%H-}fpspatches, fpsStrings, fpsClasses, xlsConst,
   fpsExprParser, fpsPageLayout;
 
 const
@@ -2119,8 +2118,6 @@ var
   hasFormat: Boolean;
   flags: DWord;
   xf: Word;
-  idx: Integer;
-  fmt: PsCellFormat;
 begin
   rowrec.RowIndex := 0;   // to silence the compiler...
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
@@ -4397,7 +4394,7 @@ begin
     dw := dw or $00000040;    // Row height and font height do not match
   if ARow^.FormatIndex > 0 then begin
     dw := dw or $00000080;    // Row has custom format
-    dw := dw or (FindXFIndex(ARow^.FormatIndex) shl 16);   // xf index
+    dw := dw or DWord(FindXFIndex(ARow^.FormatIndex) shl 16);   // xf index
   end;
 
   { Write out }

@@ -37,3 +37,8 @@
   the package with older versions activate the define FPS_NO_GRID_MULTISELECT }
 {.$DEFINE FPS_NO_GRID_MULTISELECT}
 
+{ In order to provide safe casting of integers to pointers new version of FPC
+  provide the types PtrInt and IntPtr.
+  This is not yet available in fpc 2.6.0 }
+{.$DEFINE FPS_PTRINT}
+

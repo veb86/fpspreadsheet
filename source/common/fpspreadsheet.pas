@@ -1,16 +1,5 @@
-{**
-  Unit: fpspreadsheet
-
-  implements **spreadsheet documents** and their  properties and methods.
-
-  AUTHORS: Felipe Monteiro de Carvalho, Reinier Olislagers, Werner Pamler
-
-  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
-           distribution, for details about the license.
-}
-
 {@@ ----------------------------------------------------------------------------
-  Unit fpspreadsheet implements <b>spreadsheet documents</b> and their
+  Unit fpspreadsheet implements spreadsheet documents and their
   properties and methods.
 
   AUTHORS: Felipe Monteiro de Carvalho, Reinier Olislagers, Werner Pamler
@@ -25,7 +14,7 @@ unit fpspreadsheet;
 //  {$mode objpas}{$H+}
 {$endif}
 
-{$include fps.inc}
+{$include ..\fps.inc}
 
 interface
 
@@ -866,9 +855,8 @@ implementation
 
 uses
   Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
-  fpsStrings, uvirtuallayer_ole,
-  fpsUtils, fpsHTMLUtils, fpsRegFileFormats, fpsReaderWriter,
-  fpsCurrency, fpsExprParser, fpsNumFormatParser;
+  uvirtuallayer_ole, {%H-}fpsPatches, fpsStrings, fpsUtils, fpsHTMLUtils,
+  fpsReaderWriter, fpsCurrency, fpsExprParser;
 
 (*
 const
@@ -4268,10 +4256,8 @@ end;
 procedure TsWorksheet.WriteText(ACell: PCell; AText: String;
   ARichTextParams: TsRichTextParams = nil);
 var
-  r, c: Cardinal;
   i: Integer;
   hyperlink: TsHyperlink;
-  fmt: TsCellFormat;
 begin
   if ACell = nil then
     exit;
@@ -4286,8 +4272,6 @@ begin
       ForcePathDelims(AText);
     end;
   end;
-
-  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
 
   if (AText = '') then
   begin
@@ -7658,7 +7642,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
 var
-  i: Integer;
   sheet: TsWorksheet;
 begin
   ALastRow := 0;

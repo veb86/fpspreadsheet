@@ -510,7 +510,7 @@ implementation
 uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
   Dialogs, Forms, Clipbrd,
-  fpsStrings, fpsRegFileFormats, fpsUtils, fpsNumFormat, fpsImages,
+  fpsStrings, fpsReaderWriter, fpsUtils, fpsNumFormat, fpsImages,
   fpsHTMLUtils, fpsCSV;
 
 var
@@ -2992,7 +2992,7 @@ begin
           if AData <> nil then
             FCurrRow := PCell(AData)^.Row;
         end else if ([lniRow] * AChangedItems <> []) then
-          FCurrRow := PtrInt(AData)
+          FCurrRow := {%H-}PtrInt(AData)
         else
           exit;
         DoUpdate;
@@ -3003,7 +3003,7 @@ begin
           if AData <> nil then
             FCurrCol := PCell(AData)^.Col;
         end else if ([lniCol] * AChangedItems <> []) then
-          FCurrCol := PtrInt(AData)
+          FCurrCol := {%H-}PtrInt(AData)
         else
           exit;
         DoUpdate;
@@ -3307,7 +3307,7 @@ var
 begin
   if (Workbook = nil) or (Worksheet = nil) then
     exit;
-  if (ACol < 0) or (ACol <> Worksheet.ActiveCellCol) then
+  if (ACol < 0) or (ACol <> Integer(Worksheet.ActiveCellCol)) then
     exit;
 
   unitStr := SizeUnitNames[Workbook.Units];
@@ -3349,7 +3349,7 @@ var
 begin
   if (Workbook = nil) or (Worksheet = nil) then
     exit;
-  if (ARow < 0) or (ARow <> Worksheet.ActiveCellRow) then
+  if (ARow < 0) or (ARow <> Integer(Worksheet.ActiveCellRow)) then
     exit;
 
   unitStr := SizeUnitNames[Workbook.Units];

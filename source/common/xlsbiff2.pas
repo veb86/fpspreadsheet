@@ -168,7 +168,7 @@ implementation
 
 uses
   Math,
-  fpsStrings, fpsRegFileFormats, fpsPalette, fpsNumFormat;
+  fpsStrings, fpsReaderWriter, fpsPalette, fpsNumFormat;
 
 const
   { Excel record IDs }
@@ -370,7 +370,7 @@ end;
 procedure TsSpreadBIFF2Reader.ReadColumnDefault(AStream: TStream);
 var
   c, col1, col2: Word;
-  attr1, attr2, attr3: Byte;
+  attr2, attr3: Byte;
   fmt: TsCellFormat;
   fmtIndex: Integer;
   fontIndex: Integer;
@@ -386,7 +386,7 @@ begin
   col2 := WordLEToN(AStream.ReadWord) - 1;
 
   { Attributes }
-  attr1 := AStream.ReadByte;
+  {attr1 := }AStream.ReadByte;     // Avoid compiler warning of unused attr1
   attr2 := AStream.ReadByte;
   attr3 := AStream.ReadByte;
 

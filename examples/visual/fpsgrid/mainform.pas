@@ -48,7 +48,7 @@ implementation
 
 uses
   fpcanvas, lazutf8,
-  fpstypes, fpsutils, fpsRegFileFormats, fpspreadsheet;
+  fpstypes, fpsutils, fpsReaderWriter, fpspreadsheet;
 
 
 { TForm1 }

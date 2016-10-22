@@ -93,7 +93,7 @@ implementation
 
 uses
   DateUtils, LConvEncoding, Math,
-  fpsRegFileFormats, fpsUtils, fpsNumFormat;
+  fpsUtils, fpsNumFormat;
 
 function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 begin
