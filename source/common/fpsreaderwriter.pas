@@ -215,7 +215,7 @@ implementation
 
 uses
   Math, LazUTF8,
-  fpsStrings, fpsUtils, fpsNumFormat, fpsStreams, fpsRegFileFormats;
+  fpsStrings, fpsUtils, fpsNumFormat, fpsStreams;
 
 
 {------------------------------------------------------------------------------}
@@ -234,7 +234,7 @@ constructor TsBasicSpreadReaderWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create;
   FWorkbook := AWorkbook;
-  { A good starting point valid for many formats ... }
+  { A good starting point valid for many formats... }
   FLimitations.MaxColCount := 256;
   FLimitations.MaxRowCount := 65536;
   FLimitations.MaxPaletteSize := MaxInt;
