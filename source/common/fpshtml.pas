@@ -69,7 +69,7 @@ type
     FEndHtmlPos: Int64;
     FStartFragmentPos: Int64;
     FEndFragmentPos: Int64;
-    function CellFormatAsString(AFormat: PsCellFormat; ATagName: String): String;
+    function CellFormatAsString(AFormat: PsCellFormat): String;
     function GetBackgroundAsStyle(AFill: TsFillPattern): String;
     function GetBorderAsStyle(ABorder: TsCellBorders; const ABorderStyles: TsCellBorderStyles): String;
     function GetColWidthAsAttr(AColIndex: Integer): String;
@@ -1194,10 +1194,10 @@ begin
   inherited Destroy;
 end;
 
-function TsHTMLWriter.CellFormatAsString(AFormat: PsCellFormat;
-  ATagName: String): String;
+function TsHTMLWriter.CellFormatAsString(AFormat: PsCellFormat): String;
+//  ATagName: String): String;
 begin
-  Unused(ATagName);
+//  Unused(ATagName);
   Result := '';
 
   if (uffBackground in AFormat^.UsedFormattingFields) then
@@ -1394,11 +1394,8 @@ begin
   h := FWorksheet.ReadDefaultRowHeight(suPoints);
   row := FWorksheet.FindRow(ARowIndex);
   if row <> nil then begin
-    h := abs(FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints));
-    if row^.RowHeightType = rhtDefault then begin
-      Result := '';
-      exit;
-    end;
+    if row^.RowHeightType = rhtCustom then
+      h := abs(FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints));
   end;
   Result := Format(' height="%.1fpt"', [h], FPointSeparatorSettings);
 end;
@@ -1700,11 +1697,13 @@ begin
     '<style>' + LineEnding);
   for i:=0 to FWorkbook.GetNumCellFormats-1 do begin
     fmt := FWorkbook.GetPointerToCellFormat(i);
-    fmtStr := CellFormatAsString(fmt, 'td');
+    fmtStr := CellFormatAsString(fmt);
     if fmtStr <> '' then
       fmtStr := Format('  td.style%d {%s}' + LineEnding, [i+1, fmtStr]);
     AppendToStream(AStream, fmtStr);
   end;
+  AppendToStream(AStream,
+      'th {background-color:#EFEFEF;text-align:center;}');
   AppendToStream(AStream,
     '</style>' + LineEnding);
 end;
@@ -1745,9 +1744,10 @@ var
   r, rFirst, rLast: LongInt;
   c, cFirst, cLast: LongInt;
   cell: PCell;
+  col: PCol;
+  row: PRow;
   style, s: String;
   fixedLayout: Boolean;
-  col: PCol;
   fmt: PsCellFormat;
 begin
   FWorksheet := ASheet;
@@ -1810,12 +1810,17 @@ begin
         style := ' style="' + style + '"';
       if fixedLayout then
         style := style + GetColWidthAsAttr(c);
+      col := FWorksheet.FindCol(c);
+      if (col <> nil) and (col^.FormatIndex > 0) then
+        style := style + Format(' class="style%d"', [col^.FormatIndex+1]);
+
       AppendToStream(AStream,
         '  <th' + style + '>' + GetColString(c) + '</th>' + LineEnding);
     end;
   end;
 
   for r := rFirst to rLast do begin
+    row := FWorksheet.FindRow(r);
     AppendToStream(AStream,
         '<tr>' + LineEnding);
 
@@ -1834,6 +1839,7 @@ begin
     for c := cFirst to cLast do begin
       // Pointer to current cell in loop
       cell := FWorksheet.FindCell(r, c);
+      col := FWorksheet.FindCol(c);
 
       // Cell formatting via predefined styles ("class")
       style := '';
@@ -1842,6 +1848,16 @@ begin
       begin
         style := Format(' class="style%d"', [cell^.FormatIndex+1]);
         fmt := FWorkbook.GetPointerToCellFormat(cell^.FormatIndex);
+      end else
+      if (row <> nil) and (row^.FormatIndex > 0) then
+      begin
+        style := Format(' class="style%d"', [row^.FormatIndex+1]);
+        fmt := FWorkbook.GetPointerToCellFormat(row^.FormatIndex);
+      end else
+      if (col <> nil) and (col^.FormatIndex > 0) then
+      begin
+        style := Format(' class="style%d"', [col^.FormatIndex+1]);
+        fmt := FWorkbook.GetPointerToCellFormat(col^.FormatIndex);
       end;
 
       // Overriding differences between html and fps formatting
