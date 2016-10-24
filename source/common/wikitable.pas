@@ -377,7 +377,7 @@ Format mediawiki:
 *)
 procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
 
-  function DoBorder(ABorder: TsCellBorder; ACell: PCell): String;
+  function DoBorder(AFormat: PsCellFormat; ABorder: TsCellBorder): String;
   const
     // (cbNorth, cbWest, cbEast, cbSouth, cbDiagUp, cbDiagDown)
     BORDERNAMES: array[TsCellBorder] of string =
@@ -389,11 +389,9 @@ procedure TsWikiTableWriter.WriteToStrings_WikiMedia(AStrings: TStrings);
   var
     ls: TsLineStyle;
     clr: TsColor;
-    fmt: PsCellFormat;
   begin
-    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-    ls := fmt^.BorderStyles[ABorder].LineStyle;
-    clr := fmt^.BorderStyles[ABorder].Color;
+    ls := AFormat^.BorderStyles[ABorder].LineStyle;
+    clr := AFormat^.BorderStyles[ABorder].Color;
     Result := Format('border-%s:%s', [BORDERNAMES[ABorder], LINESTYLES[ls]]);
     if clr <> scBlack then
       Result := Result + ' ' + ColorToHTMLColorStr(clr) + '; ';
@@ -421,6 +419,7 @@ var
   isHeader: Boolean;
   borders: TsCellBorders;
   fs: TFormatSettings;
+  fmt: PsCellFormat;
 begin
   FWorksheet := Workbook.GetFirstWorksheet();
   FWorksheet.UpdateCaches;
@@ -458,10 +457,12 @@ begin
   for i := 0 to FWorksheet.GetLastRowIndex() do
   begin
     AStrings.Add('|-');
+    lRow := FWorksheet.FindRow(i);
 
     for j := 0 to FWorksheet.GetLastColIndex do
     begin
       lCell := FWorksheet.FindCell(i, j);
+      lCol := FWorksheet.FindCol(j);
       lCurStr := FWorksheet.ReadAsText(lCell, fs);
 
       // Check for invalid characters
@@ -477,7 +478,12 @@ begin
       lRowSpanStr := '';
       lColWidthStr := '';
       lRowHeightStr := '';
-      lCurUsedFormatting := FWorksheet.ReadUsedFormatting(lCell);
+
+      // Format
+      fmt := FWorksheet.GetPointerToEffectiveCellFormat(i, j);
+      if fmt <> nil then
+        lCurUsedFormatting := fmt^.UsedFormattingFields else
+        lCurUsedFormatting := [];
 
       // Row header
       isHeader := (soHasFrozenPanes in FWorksheet.Options) and
@@ -485,27 +491,21 @@ begin
 
       // Column width (to be considered in first row)
       if i = 0 then
-      begin
-        lCol := FWorksheet.FindCol(j);
-        if lCol <> nil then
-          lColWidthStr := Format(' width="%.0fpt"',
-            [FWorkbook.ConvertUnits(lCol^.Width, FWorkbook.Units, suPoints)]);
-      end;
+        lColWidthStr := Format(' width="%.0fpt"', [
+          FWorkbook.ConvertUnits(FWorksheet.GetColWidth(i), FWorkbook.Units, suPoints)
+        ]);
 
       // Row height (to be considered in first column)
       if j = 0 then
-      begin
-        lRow := FWorksheet.FindRow(i);
-        if (lRow <> nil) and (lRow^.RowHeightType <> rhtDefault) then
-          lRowHeightStr := Format(' height="%.0fpt"',
-            [FWorkbook.ConvertUnits(lRow^.Height, FWorkbook.Units, suPoints)]);
-      end;
+        lRowHeightStr := Format(' height="%.0fpt"', [
+          FWorkbook.ConvertUnits(FWorksheet.GetRowHeight(j), FWorkbook.Units, suPoints)
+        ]);
 
       // Font
       lFont := FWorkbook.GetDefaultFont;
-      if (uffFont in lCurUsedFormatting) then
+      if (uffFont in lCurUsedFormatting) and (fmt <> nil) then
       begin
-        lFont := FWorksheet.ReadCellFont(lCell);
+        lFont := FWorkbook.GetFont(fmt^.FontIndex);
         if fssBold in lFont.Style then lCurStr := '<b>' + lCurStr + '</b>';
         if fssItalic in lFont.Style then lCurStr := '<i>' + lCurStr + '</i>';
         if fssUnderline in lFont.Style then lCurStr := '<u>' + lCurStr + '</u>';
@@ -513,9 +513,12 @@ begin
       end;
 
       // Background color
-      if uffBackground in lCurUsedFormatting then
+      if (fmt <> nil) and (uffBackground in lCurUsedFormatting) then
       begin
-        lCurColor := FWorksheet.ReadBackgroundColor(lCell);
+        if (fmt^.Background.Style = fsSolidFill) then
+          lCurColor := fmt^.Background.FgColor
+        else
+          lCurColor := fmt^.Background.BgColor;
         lStyleStr := Format('background-color:%s;color:%s;', [
           ColorToHTMLColorStr(lCurColor),
           ColorToHTMLColorStr(lFont.Color)
@@ -523,9 +526,9 @@ begin
       end;
 
       // Horizontal alignment
-      if uffHorAlign in lCurUsedFormatting then
+      if (fmt <> nil) and (uffHorAlign in lCurUsedFormatting) then
       begin
-        horAlign := FWorksheet.ReadHorAlignment(lCell);
+        horAlign := fmt^.HorAlignment;
         if horAlign = haDefault then
           case lCell^.ContentType of
             cctNumber,
@@ -541,9 +544,9 @@ begin
       end;
 
       // vertical alignment
-      if uffVertAlign in lCurUsedFormatting then
+      if (fmt <> nil) and (uffVertAlign in lCurUsedFormatting) then
       begin
-        vertAlign := FWorksheet.ReadVertAlignment(lCell);
+        vertAlign := fmt^.VertAlignment;
         case vertAlign of
           vaTop    : lStyleStr := lStyleStr + 'vertical-align:top;';
           vaCenter : lStyleStr := lStyleStr + 'vertical-align:center;';
@@ -552,17 +555,18 @@ begin
       end;
 
       // borders
-      if uffBorder in lCurUsedFormatting then
+      if (fmt <> nil) and (uffBorder in lCurUsedFormatting) then
       begin
-        borders := FWorksheet.ReadCellBorders(lCell);
+        borders := fmt^.Border;
+//        borders := FWorksheet.ReadCellBorders(lCell);
         if (cbWest in borders) then
-          lStyleStr := lStyleStr + DoBorder(cbWest, lCell);
+          lStyleStr := lStyleStr + DoBorder(fmt, cbWest);
         if (cbEast in borders) then
-          lStyleStr := lStyleStr + DoBorder(cbEast, lCell);
+          lStyleStr := lStyleStr + DoBorder(fmt, cbEast);
         if (cbNorth in borders) then
-          lStyleStr := lStyleStr + DoBorder(cbNorth, lCell);
+          lStyleStr := lStyleStr + DoBorder(fmt, cbNorth);
         if (cbSouth in borders) then
-          lStyleStr := lStyleStr + DoBorder(cbSouth, lCell);
+          lStyleStr := lStyleStr + DoBorder(fmt, cbSouth);
       end;
 
       // Merged cells
