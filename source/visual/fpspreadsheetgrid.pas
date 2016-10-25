@@ -226,6 +226,9 @@ type
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
     procedure HeaderSizing(const IsColumn:boolean; const AIndex,ASize:Integer); override;
     procedure HeaderSized(IsColumn: Boolean; AIndex: Integer); override;
+    procedure InternalDrawCell(ACol, ARow: Integer; AClipRect, ACellRect: TRect;
+      AState: TGridDrawState);
+    procedure InternalDrawRow(ARow, AFirstCol, ALastCol: Integer; ARowRect, AFixedRect: TRect);
     procedure InternalDrawTextInCell(AText: String; ARect: TRect;
       ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
       ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
@@ -965,6 +968,16 @@ begin
   if TRGBA(c).B < 128
     then TRGBA(Result).B := TRGBA(c).B + ADelta
     else TRGBA(Result).B := TRGBA(c).B - ADelta;
+end;
+
+function VerticalIntersect(const ARect, BRect: TRect): Boolean;
+begin
+  Result := (ARect.Top < BRect.Bottom) and (ARect.Bottom > BRect.Top);
+end;
+
+function HorizontalIntersect(const ARect, BRect: TRect): Boolean;
+begin
+  Result := (ARect.Left < BRect.Right) and (ARect.Right > BRect.Left);
 end;
 
 
@@ -2127,57 +2140,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
 var
-  gds: TGridDrawState;
-  sr, sr1,sc1,sr2,sc2, scLastUsed: Cardinal;                // sheet row/column
-  gr, gc, gcNext, gcLast, gc1, gc2, gcLastUsed: Integer;    // grid row/column
-  i: Integer;
-  rct, saved_rct, temp_rct, fixed_rct, commentcell_rct: TRect;
+  gr, gc, gcLast: Integer;    // grid row/column
+  rct, saved_rct, fixed_rct: TRect;
   clipArea: Trect;
-  cell: PCell;
-  fmt: PsCellFormat;
-  tmp: Integer = 0;
-
-  function IsPushCellActive: boolean;
-  begin
-    with GCache do
-      result := (PushedCell.X <> -1) and (PushedCell.Y <> -1);
-  end;
-
-  function VerticalIntersect(const aRect,bRect: TRect): boolean;
-  begin
-    result := (aRect.Top < bRect.Bottom) and (aRect.Bottom > bRect.Top);
-  end;
-
-  function HorizontalIntersect(const aRect,bRect: TRect): boolean;
-  begin
-    result := (aRect.Left < bRect.Right) and (aRect.Right > bRect.Left);
-  end;
-
-  procedure DoDrawCell(_col, _row: Integer; _clipRect, _cellRect: TRect);
-  var
-    Rgn: HRGN;
-  begin
-    with GCache do begin
-      if (_col = HotCell.x) and (_row = HotCell.y) and not IsPushCellActive() then begin
-        Include(gds, gdHot);
-        HotCellPainted := True;
-      end;
-      if ClickCellPushed and (_col = PushedCell.x) and (_row = PushedCell.y) then begin
-        Include(gds, gdPushed);
-      end;
-    end;
-
-    Canvas.SaveHandleState;
-    try
-      Rgn := CreateRectRgn(_clipRect.Left, _clipRect.Top, _clipRect.Right, _clipRect.Bottom);
-      SelectClipRgn(Canvas.Handle, Rgn);
-      DrawCell(_col, _row, _cellRect, gds);
-      DeleteObject(Rgn);
-    finally
-      Canvas.RestoreHandleState;
-    end;
-  end;
-
 begin
   // Upper and Lower bounds for this row
   rct := Rect(0, 0, 0, 0);
@@ -2185,10 +2150,12 @@ begin
   saved_rct := rct;
 
   fixed_rct := Rect(0, 0, 0, 0);
+  fixed_rct.Top := rct.Top;
+  fixed_rct.Bottom := rct.Bottom;
   if HeaderCount > 0 then
     ColRowToOffset(true, true, 0, fixed_rct.Left, fixed_rct.Right);
 
-  // is this row within the ClipRect?
+  // IDon't draw rows outside the ClipRect
   clipArea := Canvas.ClipRect;
   if (rct.Top >= rct.Bottom) or not VerticalIntersect(rct, clipArea) then begin
     {$IFDEF DbgVisualChange}
@@ -2197,202 +2164,26 @@ begin
     exit;
   end;
 
-  scLastused := Worksheet.GetLastColIndex;
-  sr := GetWorksheetRow(ARow);
-
-  // Draw columns in this row
+  // (1) Draw data columns in this row
   with GCache.VisibleGrid do
   begin
     gcLast := Right;
     gc := Left;
-
-    // Because of possible cell overflow from cells left of the visible range
-    // we have to seek to the left for the first occupied text cell
-    // and start painting from here.
-    if FTextOverflow and (sr <> UNASSIGNED_ROW_COL_INDEX) and Assigned(Worksheet) then
-      while (gc > FixedCols) do
-      begin
-        dec(gc);
-        cell := Worksheet.FindCell(sr, GetWorksheetCol(gc));
-        // Empty cell --> proceed with next cell to the left
-        if (cell = nil) or (cell^.ContentType = cctEmpty) or
-           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
-        then
-          Continue;
-        // Overflow possible from non-merged, non-right-aligned, horizontal label cells
-//        fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
-        if (not Worksheet.IsMerged(cell)) and
-           (cell^.ContentType = cctUTF8String) and
-           not (uffTextRotation in fmt^.UsedFormattingFields) and
-           (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haRight)
-        then
-          Break;
-        // All other cases --> no overflow --> return to initial left cell
-        gc := Left;
-        break;
-      end;
-
-    // Now find the last column. Again text can overflow into the visible area
-    // from invisible cells at the right.
-    gcLast := Right;
-    if FTextOverflow and (sr <> UNASSIGNED_ROW_COL_INDEX) and Assigned(Worksheet) then
-    begin
-      gcLastUsed := GetGridCol(scLastUsed);
-      while (gcLast < ColCount-1) and (gcLast < gcLastUsed) do begin
-        inc(gcLast);
-        cell := Worksheet.FindCell(sr, GetWorksheetCol(gcLast));
-        // Empty cell --> proceed with next cell to the right
-        if (cell = nil) or (cell^.ContentType = cctEmpty) or
-           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
-        then
-          continue;
-        // Overflow possible from non-merged, horizontal, non-left-aligned label cells
-//        fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
-        if (not Worksheet.IsMerged(cell)) and
-           (cell^.ContentType = cctUTF8String) and
-           not (uffTextRotation in fmt^.UsedFormattingFields) and
-           (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haLeft)
-        then
-          Break;
-        // All other cases --> no overflow --> return to initial right column
-        gcLast := Right;
-        Break;
-      end;
-    end;
-
-    // Here begins the drawing loop of all cells in the row between gc and gclast
-    while (gc <= gcLast) do begin
-      gr := ARow;
-      rct := saved_rct;
-      // FDrawingCell is the cell which is currently being painted. We store
-      // it to avoid excessive calls to "FindCell".
-      FDrawingCell := nil;
-      gcNext := gc + 1;
-      if Assigned(Worksheet) and (gr >= FixedRows) and (gc >= FixedCols) then
-      begin
-        cell := Worksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
-        if (cell = nil) or (not Worksheet.IsMerged(cell)) then
-        begin
-          // single cell
-          FDrawingCell := cell;
-          if Worksheet.HasComment(cell) then
-            commentcell_rct := CellRect(gc, gr)
-          else
-            commentcell_rct := Rect(0,0,0,0);
-          // Special treatment of overflowing cells
-          if FTextOverflow then
-          begin
-            gds := GetGridDrawState(gc, gr);
-            ColRowToOffset(true, true, gc, rct.Left, rct.Right);
-            if CellOverflow(gc, gr, gds, gc1, gc2, rct) then
-            begin
-              // Draw individual cells of the overflown range
-              if IsRightToLeft then begin
-                ColRowToOffset(true, true, gc1, tmp, rct.Right);
-                ColRowToOffset(true, true, gc2, rct.Left, tmp);
-              end else begin
-                ColRowToOffset(true, true, gc1, rct.Left, tmp);    // rct is the clip rect
-                ColRowToOffset(true, true, gc2, tmp, rct.Right);
-              end;
-              FDrawingCell := nil;
-              temp_rct := rct;
-//              for i := gc1 to gc2 do begin
-              for i:= gc2 downto gc1 do begin
-              // Starting from last col will ensure drawing grid lines below text
-              // when text is overflowing in RTL, no problem in LTR
-              // (Modification by "shobits1" - ok)
-                ColRowToOffset(true, true, i, temp_rct.Left, temp_rct.Right);
-                if HorizontalIntersect(temp_rct, clipArea) and (i <> gc) then
-                begin
-                  gds := GetGridDrawState(i, gr);
-                  DoDrawCell(i, gr, rct, temp_rct);
-                end;
-              end;
-              // Repaint the base cell text (it was partly overwritten before)
-              FDrawingCell := cell;
-              FTextOverflowing := true;
-              ColRowToOffset(true, true, gc, temp_rct.Left, temp_rct.Right);
-              if HorizontalIntersect(temp_rct, clipArea) then
-              begin
-                gds := GetGridDrawState(gc, gr);
-                DoDrawCell(gc, gr, rct, temp_rct);
-                if Worksheet.HasComment(FDrawingCell) then
-                  DrawCommentMarker(temp_rct);
-              end;
-              FTextOverflowing := false;
-
-              gcNext := gc2 + 1;
-              gc := gcNext;
-              continue;
-            end;
-          end;
-        end
-        else
-        begin
-          // merged cells
-          FDrawingCell := Worksheet.FindMergeBase(cell);
-          if Worksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2) then
-          begin
-            gr := GetGridRow(sr1);
-            if Worksheet.HasComment(FDrawingCell) then
-              commentcell_rct := CellRect(GetGridCol(sc2), gr)
-            else
-              commentcell_rct := Rect(0,0,0,0);
-            ColRowToOffSet(False, True, gr, rct.Top, tmp);
-            ColRowToOffSet(False, True, gr + integer(sr2) - integer(sr1), tmp, rct.Bottom);
-            gc := GetGridCol(sc1);
-            gcNext := gc + (sc2 - sc1) + 1;
-          end;
-        end;
-      end;
-
-      temp_rct := rct;
-      rct := CellRect(gc, gr, gcNext-1, gr);
-      rct.Top := temp_rct.Top;
-      rct.Bottom := temp_rct.Bottom;
-
-      if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
-      begin
-        gds := GetGridDrawState(gc, gr);
-        temp_rct := rct;
-        // Avoid painting into the fixed cells
-        if IsRightToLeft and (HeaderCount > 0) then
-        begin
-          if temp_rct.Right > fixed_rct.Left then temp_rct.Right := fixed_rct.Left
-        end else
-        begin
-          if temp_rct.Left < fixed_rct.Right then temp_rct.Left := fixed_rct.Right;
-        end;
-        // Draw cell
-        DoDrawCell(gc, gr, temp_rct, rct);
-        // Draw comment marker
-        if (commentcell_rct.Left <> 0) and (commentcell_rct.Right <> 0) and
-           (commentcell_rct.Top <> 0) and (commentcell_rct.Bottom <> 0)
-        then
-          DrawCommentMarker(commentcell_rct);
-      end;
-
-      gc := gcNext;
-    end;
-  end;    // with GCache.VisibleGrid ...
-
-  // Draw fixed columns
-  gr := ARow;
-  for gc := 0 to FixedCols-1 do begin
-    gds := [gdFixed];
-    ColRowToOffset(True, True, gc, rct.Left, rct.Right);
-    // is this column within the ClipRect?
-    if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
-    begin
-      if Assigned(Worksheet) then
-        FDrawingCell := Worksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc))
-      else
-        FDrawingCell := nil;
-      DoDrawCell(gc, gr, rct, rct);
-    end;
+    InternalDrawRow(ARow, gc, gcLast, rct, fixed_rct);
   end;
+
+  // (2) Draw fixed columns consisting of header columns and frozen cells
+  gr := ARow;
+  rct := saved_rct;
+  // (2a) Draw header column
+  if FHeaderCount > 0 then begin
+    FDrawingCell := nil;
+    gc := 0;
+    ColRowToOffset(True, True, gc, rct.Left, rct.Right);
+    InternalDrawCell(gc, gr, rct, rct, [gdFixed]);
+  end;
+  // (2b) Draw frozen cells
+  InternalDrawRow(ARow, FHeaderCount, FixedCols, rct, fixed_rct);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3658,6 +3449,234 @@ begin
 
   // Update following row heights because their index has changed.
   UpdateRowHeights(AGridRow);
+end;
+
+procedure TsCustomWorksheetGrid.InternalDrawCell(ACol, ARow: Integer;
+  AClipRect, ACellRect: TRect; AState: TGridDrawState);
+
+  function IsPushCellActive: boolean;
+  begin
+    with GCache do
+      Result := (PushedCell.X <> -1) and (PushedCell.Y <> -1);
+  end;
+
+var
+  rgn: HRGN;
+begin
+  with GCache do begin
+    if (ACol = HotCell.x) and (ARow = HotCell.y) and not IsPushCellActive() then begin
+      Include(AState, gdHot);
+      HotCellPainted := True;
+    end;
+    if ClickCellPushed and (ACol = PushedCell.x) and (ARow = PushedCell.y) then begin
+      Include(AState, gdPushed);
+    end;
+  end;
+  Canvas.SaveHandleState;
+  try
+    rgn := CreateRectRgn(AClipRect.Left, AClipRect.Top, AClipRect.Right, AClipRect.Bottom);
+    SelectClipRgn(Canvas.Handle, rgn);
+    DrawCell(ACol, ARow, ACellRect, AState);
+    DeleteObject(rgn);
+  finally
+    Canvas.RestoreHandleState;
+  end;
+end;
+
+{ Draws the cells in the specified row. Drawing takes care of text overflow
+  and merged cells }
+procedure TsCustomWorksheetGrid.InternalDrawRow(ARow, AFirstCol, ALastCol: Integer;
+  ARowRect, AFixedRect: TRect);
+var
+  sr: Cardinal;
+  scLastUsed: Cardinal;
+  sr1, sc1, sr2, sc2: Cardinal;
+  gr, gc, gc1, gc2, gcNext, gcLast, gcLastUsed: Integer;
+  i: Integer;
+  tmp: Integer = 0;
+  cell: PCell;
+  fmt: PsCellFormat;
+  rct, commentcell_rct, temp_rct: TRect;
+  gds: TGridDrawState;
+  clipArea: TRect;
+
+begin
+  sr := GetWorksheetRow(ARow);
+  scLastused := Worksheet.GetLastColIndex;
+  gc := AFirstCol;
+  gcLast := ALastCol;
+  clipArea := Canvas.ClipRect;
+
+  with GCache.VisibleGrid do
+  begin
+    // Because of possible cell overflow from cells left of the visible range
+    // we have to seek to the left for the first occupied text cell
+    // and start painting from here.
+    if FTextOverflow and (sr <> UNASSIGNED_ROW_COL_INDEX) and Assigned(Worksheet) then
+      while (gc > FHeaderCount) do
+      begin
+        dec(gc);
+        cell := Worksheet.FindCell(sr, GetWorksheetCol(gc));
+        // Empty cell --> proceed with next cell to the left
+        if (cell = nil) or (cell^.ContentType = cctEmpty) or
+           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
+        then
+          Continue;
+        // Overflow possible from non-merged, non-right-aligned, horizontal label cells
+        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
+        if (not Worksheet.IsMerged(cell)) and
+           (cell^.ContentType = cctUTF8String) and
+           not (uffTextRotation in fmt^.UsedFormattingFields) and
+           (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haRight)
+        then
+          Break;
+        // All other cases --> no overflow --> return to initial left cell
+        gc := AFirstCol;
+        break;
+      end;
+
+    // Now find the last column. Again text can overflow into the visible area
+    // from invisible cells at the right.
+    gcLast := ALastCol;
+    if FTextOverflow and (sr <> UNASSIGNED_ROW_COL_INDEX) and Assigned(Worksheet) then
+    begin
+      gcLastUsed := GetGridCol(scLastUsed);
+      while (gcLast < ColCount-1) and (gcLast < gcLastUsed) do begin
+        inc(gcLast);
+        cell := Worksheet.FindCell(sr, GetWorksheetCol(gcLast));
+        // Empty cell --> proceed with next cell to the right
+        if (cell = nil) or (cell^.ContentType = cctEmpty) or
+           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''))
+        then
+          continue;
+        // Overflow possible from non-merged, horizontal, non-left-aligned label cells
+        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
+        if (not Worksheet.IsMerged(cell)) and
+           (cell^.ContentType = cctUTF8String) and
+           not (uffTextRotation in fmt^.UsedFormattingFields) and
+           (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haLeft)
+        then
+          Break;
+        // All other cases --> no overflow --> return to initial right column
+        gcLast := ALastCol;
+        Break;
+      end;
+    end;
+
+    // Here begins the drawing loop of all cells in the row between gc and gclast
+    while (gc <= gcLast) do begin
+      gr := ARow;
+      rct := ARowRect;
+      // FDrawingCell is the cell which is currently being painted. We store
+      // it to avoid excessive calls to "FindCell".
+      FDrawingCell := nil;
+      gcNext := gc + 1;
+      if Assigned(Worksheet) and (gr >= FHeaderCount) and (gc >= FHeaderCount) then
+      begin
+        cell := Worksheet.FindCell(GetWorksheetRow(gr), GetWorksheetCol(gc));
+        if (cell = nil) or (not Worksheet.IsMerged(cell)) then
+        begin
+          // single cell
+          FDrawingCell := cell;
+          if Worksheet.HasComment(cell) then
+            commentcell_rct := CellRect(gc, gr)
+          else
+            commentcell_rct := Rect(0,0,0,0);
+          // Special treatment of overflowing cells
+          if FTextOverflow then
+          begin
+            gds := GetGridDrawState(gc, gr);
+            ColRowToOffset(true, true, gc, rct.Left, rct.Right);
+            if CellOverflow(gc, gr, gds, gc1, gc2, rct) then
+            begin
+              // Draw individual cells of the overflown range
+              if IsRightToLeft then begin
+                ColRowToOffset(true, true, gc1, tmp, rct.Right);
+                ColRowToOffset(true, true, gc2, rct.Left, tmp);
+              end else begin
+                ColRowToOffset(true, true, gc1, rct.Left, tmp);    // rct is the clip rect
+                ColRowToOffset(true, true, gc2, tmp, rct.Right);
+              end;
+              FDrawingCell := nil;
+              temp_rct := rct;
+              for i:= gc2 downto gc1 do begin
+              // Starting from last col will ensure drawing grid lines below text
+              // when text is overflowing in RTL, no problem in LTR
+              // (Modification by "shobits1" - ok)
+                ColRowToOffset(true, true, i, temp_rct.Left, temp_rct.Right);
+                if HorizontalIntersect(temp_rct, clipArea) and (i <> gc) then
+                begin
+                  gds := GetGridDrawState(i, gr);
+                  InternalDrawCell(i, gr, rct, temp_rct, gds);
+                end;
+              end;
+              // Repaint the base cell text (it was partly overwritten before)
+              FDrawingCell := cell;
+              FTextOverflowing := true;
+              ColRowToOffset(true, true, gc, temp_rct.Left, temp_rct.Right);
+              if HorizontalIntersect(temp_rct, clipArea) then
+              begin
+                gds := GetGridDrawState(gc, gr);
+                InternalDrawCell(gc, gr, rct, temp_rct, gds);
+                if Worksheet.HasComment(FDrawingCell) then
+                  DrawCommentMarker(temp_rct);
+              end;
+              FTextOverflowing := false;
+
+              gcNext := gc2 + 1;
+              gc := gcNext;
+              continue;
+            end;
+          end;
+        end
+        else
+        begin
+          // merged cells
+          FDrawingCell := Worksheet.FindMergeBase(cell);
+          if Worksheet.FindMergedRange(FDrawingCell, sr1, sc1, sr2, sc2) then
+          begin
+            gr := GetGridRow(sr1);
+            if Worksheet.HasComment(FDrawingCell) then
+              commentcell_rct := CellRect(GetGridCol(sc2), gr)
+            else
+              commentcell_rct := Rect(0,0,0,0);
+            ColRowToOffSet(False, True, gr, rct.Top, tmp);
+            ColRowToOffSet(False, True, gr + integer(sr2) - integer(sr1), tmp, rct.Bottom);
+            gc := GetGridCol(sc1);
+            gcNext := gc + (sc2 - sc1) + 1;
+          end;
+        end;
+      end;
+
+      temp_rct := rct;
+      rct := CellRect(gc, gr, gcNext-1, gr);
+      rct.Top := temp_rct.Top;
+      rct.Bottom := temp_rct.Bottom;
+
+      if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
+      begin
+        gds := GetGridDrawState(gc, gr);
+        temp_rct := rct;
+        // Avoid painting into the fixed cells
+        if IsRightToLeft and (HeaderCount > 0) then
+        begin
+          if temp_rct.Right > AFixedRect.Left then temp_rct.Right := AFixedRect.Left
+        end else
+        begin
+          if temp_rct.Left < AFixedRect.Right then temp_rct.Left := AFixedRect.Right;
+        end;
+        // Draw cell
+        InternalDrawCell(gc, gr, temp_rct, rct, gds);
+        // Draw comment marker
+        if (commentcell_rct.Left <> 0) and (commentcell_rct.Right <> 0) and
+           (commentcell_rct.Top <> 0) and (commentcell_rct.Bottom <> 0)
+        then
+          DrawCommentMarker(commentcell_rct);
+      end;
+
+      gc := gcNext;
+    end;
+  end;    // with GCache.VisibleGrid ...
 end;
 
 {@@ ----------------------------------------------------------------------------
