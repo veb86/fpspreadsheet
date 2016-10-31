@@ -179,7 +179,8 @@ type
 
     function  ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields;
     function  ReadBackground(ACell: PCell): TsFillPattern;
-    function  ReadBackgroundColor(ACell: PCell): TsColor;
+    function  ReadBackgroundColor(ACell: PCell): TsColor; overload;
+    function  ReadBackgroundColor(AFormatIndex: Integer): TsColor; overload;
     function  ReadCellBorders(ACell: PCell): TsCellBorders;
     function  ReadCellBorderStyle(ACell: PCell; ABorder: TsCellBorder): TsCellBorderStyle;
     function  ReadCellBorderStyles(ACell: PCell): TsCellBorderStyles;
@@ -267,6 +268,9 @@ type
     procedure DeleteRichTextParams(ACell: PCell);
 
     { Writing of cell attributes }
+    function ChangeBackground(AFormatIndex: Integer; AStyle: TsFillStyle;
+      APatternColor: TsColor = scTransparent;
+      ABackgroundColor: TsColor = scTransparent) : Integer;
     function WriteBackground(ARow, ACol: Cardinal; AStyle: TsFillStyle;
       APatternColor: TsColor = scTransparent;
       ABackgroundColor: TsColor = scTransparent): PCell; overload;
@@ -437,6 +441,8 @@ type
     procedure InsertRow(ARow: Cardinal);
     function  ReadDefaultColWidth(AUnits: TsSizeUnits): Single;
     function  ReadDefaultRowHeight(AUnits: TsSizeUnits): Single;
+    function  ReadColFont(ACol: PCol): TsFont;
+    function  ReadRowFont(ARow: PRow): TsFont;
     procedure RemoveAllRows;
     procedure RemoveAllCols;
     procedure RemoveCol(ACol: Cardinal);
@@ -3021,16 +3027,29 @@ end;
   @return   Value containing the rgb bytes in little-endian order
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadBackgroundColor(ACell: PCell): TsColor;
+begin
+  Result := scTransparent;
+  if ACell <> nil then
+    Result := ReadBackgroundColor(ACell^.FormatIndex);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the background color stored at the specified index in the format
+  list of the workkbok.
+
+  @param    AFormatIndex  Index of the format record
+  @return   Value containing the rgb bytes in little-endian order
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadBackgroundColor(AFormatIndex: Integer): TsColor;
 var
   fmt: PsCellFormat;
 begin
   Result := scTransparent;
-  if ACell <> nil then
-  begin
-    fmt :=  Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  if AFormatIndex > -1 then begin
+    fmt := Workbook.GetPointerToCellFormat(AFormatIndex);
     if (uffBackground in fmt^.UsedFormattingFields) then
     begin
-      if (fmt^.Background.Style = fsSolidFill) then
+      if fmt^.Background.Style = fsSolidFill then
         Result := fmt^.Background.FgColor
       else
         Result := fmt^.Background.BgColor;
@@ -3094,8 +3113,7 @@ var
   fmt: PsCellFormat;
 begin
   Result := nil;
-  if ACell <> nil then
-  begin
+  if ACell <> nil then begin
     fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
     Result := Workbook.GetFont(fmt^.FontIndex);
   end;
@@ -3126,6 +3144,41 @@ end;
 function TsWorksheet.ReadCellFormat(ACell: PCell): TsCellFormat;
 begin
   Result := Workbook.GetCellFormat(ACell^.FormatIndex);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines the font used in a specified column record.
+  Returns the workbook's default font if the column record does not exist.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadColFont(ACol: PCol): TsFont;
+var
+  fmt: PsCellFormat;
+begin
+  Result := nil;
+  if ACol <> nil then begin
+    fmt := Workbook.GetPointerToCellFormat(ACol^.FormatIndex);
+    Result := Workbook.GetFont(fmt^.FontIndex);
+  end;
+  if Result = nil then
+    Result := Workbook.GetDefaultFont;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines the font used in a specified row record.
+  Returns the workbook's default font if the row record does not exist.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadRowFont(ARow: PRow): TsFont;
+var
+  fmt: PsCellFormat;
+begin
+  Result := nil;
+  if ARow <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ARow^.FormatIndex);
+    Result := Workbook.GetFont(fmt^.FontIndex);
+  end;
+  if Result = nil then
+    Result := Workbook.GetDefaultFont;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5843,6 +5896,40 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Modifies the background parameters of the format record stored at the
+  specified index.
+
+  @param  AFormatIndex      Index of the format record to be changed
+  @param  AStyle            Fill style ("pattern") to be used - see TsFillStyle
+  @param  APatternColor     RGB value of the pattern color
+  @param  ABackgroundColor  RGB value of the background color
+  @return Index of the new format record.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ChangeBackground(AFormatIndex: Integer; AStyle: TsFillStyle;
+  APatternColor: TsColor = scTransparent;
+  ABackgroundColor: TsColor = scTransparent): Integer;
+var
+  fmt: TsCellFormat;
+begin
+  fmt := Workbook.GetCellFormat(AFormatIndex);
+  if (AStyle = fsNoFill) or
+     ((APatternColor = scTransparent) and (ABackgroundColor = scTransparent))
+  then
+    Exclude(fmt.UsedFormattingFields, uffBackground)
+  else
+  begin
+    Include(fmt.UsedFormattingFields, uffBackground);
+    fmt.Background.Style := AStyle;
+    fmt.Background.FgColor := APatternColor;
+    if (AStyle = fsSolidFill) and (ABackgroundColor = scTransparent) then
+      fmt.Background.BgColor := APatternColor
+    else
+      fmt.Background.BgColor := ABackgroundColor;
+  end;
+  Result := Workbook.AddCellFormat(fmt);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Defines a background pattern for a cell
 
   @param  ARow              Row index of the cell
@@ -5874,25 +5961,11 @@ end;
 procedure TsWorksheet.WriteBackground(ACell: PCell; AStyle: TsFillStyle;
   APatternColor: TsColor = scTransparent; ABackgroundColor: TsColor = scTransparent);
 var
-  fmt: TsCellFormat;
+  idx: Integer;
 begin
   if ACell <> nil then begin
-    fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
-    if (AStyle = fsNoFill) or
-       ((APatternColor = scTransparent) and (ABackgroundColor = scTransparent))
-    then
-      Exclude(fmt.UsedFormattingFields, uffBackground)
-    else
-    begin
-      Include(fmt.UsedFormattingFields, uffBackground);
-      fmt.Background.Style := AStyle;
-      fmt.Background.FgColor := APatternColor;
-      if (AStyle = fsSolidFill) and (ABackgroundColor = scTransparent) then
-        fmt.Background.BgColor := APatternColor
-      else
-        fmt.Background.BgColor := ABackgroundColor;
-    end;
-    ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+    idx := ACell^.FormatIndex;
+    ACell^.FormatIndex := ChangeBackground(idx, AStyle, APatternColor, ABackgroundColor);
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;

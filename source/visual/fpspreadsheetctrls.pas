@@ -297,10 +297,12 @@ type
   end;
 
 
-  { TsCellFormatItem }
+  { TsCellFormatItem, TsFormatTarget }
 
   TsCellFormatItem = (cfiFontName, cfiFontSize, cfiFontColor, cfiBackgroundColor,
     cfiBorderColor);
+
+  TsFormatTarget = (ftCell, ftRow, ftCol, ftDefault);
 
 
   { TsCellCombobox }
@@ -316,6 +318,7 @@ type
     FFormatItem: TsCellFormatItem;
     FColorRectOffset: Integer;
     FColorRectWidth: Integer;
+    FFormatTarget: TsFormatTarget;
     FOnAddColors: TNotifyEvent;
     FOnGetColorName: TsColorNameEvent;
     function GetWorkbook: TsWorkbook;
@@ -323,13 +326,22 @@ type
     procedure SetColorRectOffset(AValue: Integer);
     procedure SetColorRectWidth(AValue: Integer);
     procedure SetFormatItem(AValue: TsCellFormatItem);
+    procedure SetFormatTarget(AValue: TsFormatTarget);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
   protected
-    procedure ApplyFormatToCell(ACell: PCell); virtual;
+    procedure ApplyFormatToCell(ARow, ACol: Cardinal); virtual;
+    procedure ApplyFormatToCol(ACol: Cardinal); virtual;
+    procedure ApplyFormatToDefault; virtual;
+    procedure ApplyFormatToRow(ARow: Cardinal); virtual;
+    procedure ApplyFormat(ARow, ACol: cardinal);
     procedure Change; override;
     procedure DrawItem(AIndex: Integer; ARect: TRect;
       AState: TOwnerDrawState); override;
-    procedure ExtractFromCell(ACell: PCell); virtual;
+    procedure ExtractFromCell(ARow, ACol: Cardinal); virtual;
+    procedure ExtractFromCol(ACol: Cardinal); virtual;
+    procedure ExtractFromDefault; virtual;
+    procedure ExtractFromRow(ARow: Cardinal); virtual;
+    procedure ExtractFromSheet;
     function GetActiveCell: PCell;
     procedure Loaded; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -355,6 +367,8 @@ type
     property ColorRectOffset: Integer read FColorRectOffset write SetColorRectOffset default 2;
     {@@ Width of the color box shown for the color-related format items }
     property ColorRectWidth: Integer read FColorRectWidth write SetColorRectWidth default 10;
+    {@@ Determine whether the selected color applies to a cell, row, column or default format }
+    property FormatTarget: TsFormatTarget read FFormatTarget write SetFormatTarget default ftCell;
     {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
     {@@ Event which adds the colors to the combobox }
@@ -791,6 +805,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Event handler for the OnChangeRow event of TsWorksheet which is fired whenver
   a row width or row format changes.
+
+  Adds the index of the affected row to the Data field of the notification event.
 
   @param   Sender   Pointer to the worksheet
   @param   ARow     Index (in sheet notation) of the row changed
@@ -2216,47 +2232,65 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Apply the selected format style to the cell, column, row or default format
+  (depending in FFormatTarget)
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.ApplyFormat(ARow, ACol: Cardinal);
+begin
+  case FFormatTarget of
+    ftCell    : ApplyFormatToCell(ARow, ACol);
+    ftCol     : ApplyFormatToCol(ACol);
+    ftRow     : ApplyFormatToRow(ARow);
+    ftDefault : ApplyformatToDefault;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Applies the format to a cell. Override according to the format item for
   which the combobox is responsible.
 -------------------------------------------------------------------------------}
-procedure TsCellCombobox.ApplyFormatToCell(ACell: PCell);
+procedure TsCellCombobox.ApplyFormatToCell(ARow, ACol: Cardinal);
 var
   fnt: TsFont;
   clr: TColor;
+  cell: PCell;
 begin
   if (Worksheet = nil) then
     exit;
 
-  if Worksheet.IsMerged(ACell) then
-    ACell := Worksheet.FindMergeBase(ACell);
+  // Find cell at this location. Create a new cell here, if required.
+  cell := Worksheet.GetCell(ARow, ACol);
+
+  if Worksheet.IsMerged(cell) then
+    cell := Worksheet.FindMergeBase(cell);
 
   case FFormatItem of
     cfiFontName:
       if Text <> '' then
       begin
-        fnt := Worksheet.ReadCellFont(ACell);
-        Worksheet.WriteFont(ACell, Text, fnt.Size, fnt.Style, fnt.Color);
+        fnt := Worksheet.ReadCellFont(cell);
+        Worksheet.WriteFont(cell, Text, fnt.Size, fnt.Style, fnt.Color);
       end;
     cfiFontSize:
       if Text <> '' then
       begin
-        fnt := Worksheet.ReadCellFont(ACell);
-        Worksheet.WriteFont(ACell, fnt.FontName, StrToFloat(Text), fnt.Style, fnt.Color);
+        fnt := Worksheet.ReadCellFont(cell);
+        Worksheet.WriteFont(cell, fnt.FontName, StrToFloat(Text), fnt.Style, fnt.Color);
       end;
     cfiFontColor:
       if ItemIndex > -1 then
       begin
-        fnt := Worksheet.ReadCellFont(ACell);
+        fnt := Worksheet.ReadCellFont(cell);
         clr := PtrInt(Items.Objects[ItemIndex]);
-        Worksheet.WriteFont(ACell, fnt.FontName, fnt.Size, fnt.style, clr);
+        Worksheet.WriteFont(cell, fnt.FontName, fnt.Size, fnt.style, clr);
       end;
     cfiBackgroundColor:
       if ItemIndex <= 0 then
-        Worksheet.WriteBackgroundColor(ACell, scTransparent)
+        Worksheet.WriteBackgroundColor(cell, scTransparent)
       else
       begin
         clr := PtrInt(Items.Objects[ItemIndex]);
-        Worksheet.WriteBackgroundColor(ACell, clr);
+        Worksheet.WriteBackgroundColor(cell, clr);
       end;
     cfiBorderColor:
       ;
@@ -2266,9 +2300,167 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Applies the format to a column format record.
+  Override according to the format item for which the combobox is responsible.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.ApplyFormatToCol(ACol: Cardinal);
+var
+  fnt: TsFont;
+  col: PCol;
+  fmt: PsCellFormat;
+  idx: Integer;
+  clr: TsColor;
+begin
+  if (Worksheet = nil) then
+    exit;
+
+  // Find column record having the specified index. Create new record if required.
+  col := Worksheet.GetCol(ACol);
+  fmt := Workbook.GetPointerToCellFormat(col^.FormatIndex);
+
+  case FFormatItem of
+    cfiFontName:
+      if Text <> '' then
+      begin
+        fnt := Workbook.GetFont(fmt^.FontIndex);
+        fnt.FontName := Text;
+        fmt^.FontIndex := Workbook.AddFont(fnt);
+        Worksheet.WriteColFormatIndex(ACol, Workbook.AddCellFormat(fmt^));
+      end;
+    cfiFontSize:
+      if Text <> '' then
+      begin
+        fnt := Workbook.GetFont(fmt^.FontIndex);
+        fnt.Size := StrToFloat(Text);
+        fmt^.FontIndex := Workbook.AddFont(fnt);
+        Worksheet.WriteColFormatIndex(ACol, Workbook.AddCellFormat(fmt^));
+      end;
+    cfiFontColor:
+      if ItemIndex > -1 then
+      begin
+        fnt := Workbook.GetFont(fmt^.FontIndex);
+        fnt.Color := PtrInt(Items.Objects[ItemIndex]);
+        fmt^.FontIndex := Workbook.AddFont(fnt);
+        Worksheet.WriteColFormatIndex(ACol, Workbook.AddCelLFormat(fmt^));
+      end;
+    cfiBackgroundColor:
+      begin
+        if ItemIndex <= 0 then
+          idx := Worksheet.ChangeBackground(col^.FormatIndex, fsNoFill, scTransparent, scTransparent)
+        else
+        begin
+          clr := PtrInt(Items.Objects[ItemIndex]);
+          idx := Worksheet.ChangeBackground(col^.FormatIndex, fsSolidFill, clr, clr);
+        end;
+        Worksheet.WriteColFormatIndex(ACol, idx);
+      end;
+    cfiBorderColor:
+      ;
+    else
+      raise Exception.Create('[TsCellFormatCombobox.ApplyFormatToCol] Unknown format item');
+  end;
+end;
+
+procedure TsCellCombobox.ApplyFormatToDefault;
+var
+  fnt: TsFont;
+  fmt: PsCellFormat;
+begin
+  fmt := Workbook.GetPointerToCellFormat(0);
+  case FFormatItem of
+    cfiFontName:
+      if Text <> '' then begin
+        fnt := Workbook.GetDefaultFont;
+        Workbook.SetDefaultFont(Text, fnt.Size);
+      end;
+    cfiFontSize:
+      if Text <> '' then begin
+        fnt := Workbook.GetDefaultFont;
+        Workbook.SetDefaultFont(fnt.FontName, StrToFloat(Text));
+      end;
+    cfiFontColor:
+      ;  // No change of default font color
+    cfiBackgroundColor:
+      begin
+        if ItemIndex <= 0 then
+          fmt^.UsedFormattingFields := fmt^.UsedFormattingFields - [uffBackground]
+        else
+          fmt^.UsedFormattingfields := fmt^.UsedFormattingFields + [uffBackground];
+        fmt^.Background.Style := fsSolidFill;
+        fmt^.Background.BgColor := PtrInt(Items.Objects[ItemIndex]);;
+        fmt^.Background.FgColor := fmt^.Background.BgColor;
+      end;
+    cfiBorderColor:
+      ;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Applies the format to a row format record.
+  Override according to the format item for which the combobox is responsible.
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.ApplyFormatToRow(ARow: Cardinal);
+var
+  fnt: TsFont;
+  row: PRow;
+  fmt: PsCellFormat;
+  idx: Integer;
+  clr: TsColor;
+begin
+  if (Worksheet = nil) then
+    exit;
+
+  // Find row record having the specified index. Create new record if required.
+  row := Worksheet.GetRow(ARow);
+  fmt := Workbook.GetPointerToCellFormat(row^.FormatIndex);
+
+  case FFormatItem of
+    cfiFontName:
+      if Text <> '' then
+      begin
+        fnt := Workbook.GetFont(fmt^.FontIndex);
+        fnt.FontName := Text;
+        fmt^.FontIndex := Workbook.AddFont(fnt);
+        Worksheet.WriteRowFormatIndex(ARow, Workbook.AddCellFormat(fmt^));
+      end;
+    cfiFontSize:
+      if Text <> '' then
+      begin
+        fnt := Workbook.GetFont(fmt^.FontIndex);
+        fnt.Size := StrToFloat(Text);
+        fmt^.FontIndex := Workbook.AddFont(fnt);
+        Worksheet.WriteRowFormatIndex(ARow, Workbook.AddCellFormat(fmt^));
+      end;
+    cfiFontColor:
+      if ItemIndex > -1 then
+      begin
+        fnt := Workbook.GetFont(fmt^.FontIndex);
+        fnt.Color := PtrInt(Items.Objects[ItemIndex]);
+        fmt^.FontIndex := Workbook.AddFont(fnt);
+        Worksheet.WriteRowFormatIndex(ARow, Workbook.AddCelLFormat(fmt^));
+      end;
+    cfiBackgroundColor:
+      begin
+        if ItemIndex <= 0 then
+          idx := Worksheet.ChangeBackground(row^.FormatIndex, fsNoFill, scTransparent, scTransparent)
+        else
+        begin
+          clr := PtrInt(Items.Objects[ItemIndex]);
+          idx := Worksheet.ChangeBackground(row^.FormatIndex, fsSolidFill, clr, clr);
+        end;
+        Worksheet.WriteRowFormatIndex(ARow, idx);
+      end;
+    cfiBorderColor:
+      ;
+    else
+      raise Exception.Create('[TsCellFormatCombobox.ApplyFormatToRow] Unknown format item');
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   The text of the currently selected combobox item has been changed.
   Calls "ProcessValue" to changes the selected cells according to the
-  Mode property by calling ApplyFormatToCell.
+  Mode property by calling ApplyFormat.
 -------------------------------------------------------------------------------}
 procedure TsCellCombobox.Change;
 begin
@@ -2357,33 +2549,36 @@ end;
   Extracts the format item the combobox is responsible for from the cell and
   selectes the corresponding combobox item.
 -------------------------------------------------------------------------------}
-procedure TsCellCombobox.ExtractFromCell(ACell: PCell);
+procedure TsCellCombobox.ExtractFromCell(ARow, ACol: Cardinal);
 var
   fnt: TsFont;
   clr: TsColor;
+  cell: PCell;
 begin
-  if Worksheet.IsMerged(ACell) then
-    ACell := Worksheet.FindMergeBase(ACell);
+  cell := Worksheet.FindCell(ARow, ACol);
+  if Worksheet.IsMerged(cell) then
+    cell := Worksheet.FindMergeBase(cell);
+
   case FFormatItem of
     cfiFontName:
       begin
-        fnt := Worksheet.ReadCellFont(ACell);
+        fnt := Worksheet.ReadCellFont(cell);
         // No check for nil required because fnt is at least DefaultFont
         ItemIndex := Items.IndexOf(fnt.FontName);
       end;
     cfiFontSize:
       begin
-        fnt := Worksheet.ReadCellFont(ACell);
+        fnt := Worksheet.ReadCellFont(cell);
         ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
       end;
     cfiFontColor:
       begin
-        fnt := Worksheet.ReadCellFont(ACell);
+        fnt := Worksheet.ReadCellFont(cell);
         ItemIndex := Items.IndexOfObject(TObject(PtrInt(fnt.Color)));
       end;
     cfiBackgroundColor:
       begin
-        clr := Worksheet.ReadBackgroundColor(ACell);
+        clr := Worksheet.ReadBackgroundColor(cell);
         ItemIndex := Max(0, Items.IndexOfObject(TObject(PtrInt(clr))));
       end;
     cfiBorderColor:
@@ -2392,6 +2587,124 @@ begin
       raise Exception.Create('[TsCellFormatItem.ExtractFromCell] Unknown format item');
   end;
 end;
+
+procedure TsCellCombobox.ExtractFromCol(ACol: Cardinal);
+var
+  col: PCol;
+  clr: TsColor;
+  fnt: TsFont;
+begin
+  col := Worksheet.FindCol(ACol);
+  case FFormatItem of
+    cfiFontName:
+      begin
+        fnt := Worksheet.ReadColFont(col);
+        // No check for nil required because fnt is at least DefaultFont
+        ItemIndex := Items.IndexOf(fnt.FontName);
+      end;
+    cfiFontSize:
+      begin
+        fnt := Worksheet.ReadColFont(col);
+        ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
+      end;
+    cfiFontColor:
+      begin
+        fnt := Worksheet.ReadColFont(col);
+        itemIndex := Items.IndexOfObject(TObject(PtrInt(fnt.Color)));
+      end;
+    cfiBackgroundColor:
+      begin
+        if col <> nil then clr := Worksheet.ReadBackgroundColor(col^.FormatIndex)
+          else clr := Worksheet.ReadBackgroundColor(0);
+        ItemIndex := Max(0, Items.IndexOfObject(TObject(PtrInt(clr))));
+      end;
+    cfiBorderColor:
+      ;
+    else
+      raise Exception.Create('[TsCellFormatItem.ExtractFromCol] Unknown format item');
+  end;
+end;
+
+procedure TsCellCombobox.ExtractFromDefault;
+var
+  fnt: TsFont;
+  fmt: PsCellFormat;
+begin
+  fnt := Workbook.GetDefaultFont;
+  case FFormatItem of
+    cfiFontName:
+      ItemIndex := Items.IndexOf(fnt.FontName);
+    cfiFontSize:
+      ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
+    cfiFontColor:
+      ItemIndex := Items.IndexOfObject(TObject(PtrInt(fnt.Color)));
+    cfiBackgroundColor:
+      begin
+        fmt := Workbook.GetPointerToCellFormat(0);
+        if (uffBackground in fmt^.UsedFormattingFields) then
+          ItemIndex := Items.IndexOfObject(TObject(PtrInt(fmt^.Background.BgColor)))
+        else
+          ItemIndex := Items.IndexOfObject(TObject(PtrInt(scTransparent)));
+      end;
+    cfiBorderColor:
+      ;
+  end;
+end;
+
+procedure TsCellCombobox.ExtractFromRow(ARow: Cardinal);
+var
+  row: PRow;
+  clr: TsColor;
+  fnt: TsFont;
+begin
+  row := Worksheet.FindRow(ARow);
+  case FFormatItem of
+    cfiFontName:
+      begin
+        fnt := Worksheet.ReadRowFont(row);
+        // No check for nil required because fnt is at least DefaultFont
+        ItemIndex := Items.IndexOf(fnt.FontName);
+      end;
+    cfiFontSize:
+      begin
+        fnt := Worksheet.ReadRowFont(row);
+        ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
+      end;
+    cfiFontColor:
+      begin
+        fnt := Worksheet.ReadRowFont(row);
+        itemIndex := Items.IndexOfObject(TObject(PtrInt(fnt.Color)));
+      end;
+    cfiBackgroundColor:
+      begin
+        if row <> nil then clr := Worksheet.ReadBackgroundColor(row^.FormatIndex)
+          else clr := Worksheet.ReadBackgroundColor(0);
+        ItemIndex := Max(0, Items.IndexOfObject(TObject(PtrInt(clr))));
+      end;
+    cfiBorderColor:
+      ;
+    else
+      raise Exception.Create('[TsCellFormatItem.ExtractFromCol] Unknown format item');
+  end;
+end;
+
+procedure TsCellCombobox.ExtractFromSheet;
+begin
+  if (WorkbookSource = nil) or (Worksheet = nil) then
+    exit;
+
+  case FFormatTarget of
+    ftCell:
+      ExtractFromCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+    ftRow:
+      ExtractFromRow(Worksheet.ActiveCellRow);
+    ftCol:
+      ExtractFromCol(Worksheet.ActiveCellCol);
+    ftDefault:
+      ExtractFromDefault;
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Returns the currently active cell of the worksheet
@@ -2448,14 +2761,28 @@ begin
   then
     exit;
 
-  activeCell := GetActiveCell;
-  if (([lniCell]*AChangedItems <> []) and (PCell(AData) = activeCell)) or
-     (lniSelection in AChangedItems)
-  then
-    ExtractFromCell(activeCell);
-                                  {
-  if (FFormatItem in [cfiFontColor, cfiBorderColor, cfiBackgroundColor]) then
-    Populate;                      }
+  case FFormatTarget of
+    ftCell:
+      begin
+        activeCell := GetActiveCell;
+        if (([lniCell]*AChangedItems <> []) and (PCell(AData) = activeCell)) or
+           (lniSelection in AChangedItems)
+        then
+          ExtractFromCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+      end;
+    ftRow:
+      if (([lniRow] * AChangedItems <> []) and (PtrInt(AData) = Worksheet.ActiveCellRow)) or
+         (lniSelection in AChangedItems)
+      then
+        ExtractFromRow(Worksheet.ActiveCellRow);
+    ftCol:
+      if (([lniCol] * AChangedItems <> []) and (PtrInt(AData) = Worksheet.ActiveCellCol)) or
+         (lniSelection in AChangedItems)
+      then
+        ExtractFromCol(Worksheet.ActiveCellCol);
+    ftDefault:
+      ExtractFromDefault;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2534,7 +2861,6 @@ var
   r, c: Cardinal;
   range: Integer;
   sel: TsCellRangeArray;
-  cell: PCell;
 begin
   if Worksheet = nil then
     exit;
@@ -2550,10 +2876,7 @@ begin
   for range := 0 to High(sel) do
     for r := sel[range].Row1 to sel[range].Row2 do
       for c := sel[range].Col1 to sel[range].Col2 do
-      begin
-        cell := Worksheet.GetCell(r, c);  // Use "GetCell" here to format empty cells as well
-        ApplyFormatToCell(cell);  // no check for nil required because of "GetCell"
-      end;
+        ApplyFormat(r, c);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2614,8 +2937,18 @@ begin
   end;
 
   Populate;
-  if FWorkbookSource <> nil then
-    ExtractFromCell(GetActiveCell);
+  ExtractFromSheet;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the FormatTarget
+-------------------------------------------------------------------------------}
+procedure TsCellCombobox.SetFormatTarget(AValue: TsFormatTarget);
+begin
+  if AValue = FFormatTarget then
+    exit;
+  FFormatTarget := AValue;
+  ExtractFromSheet;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2633,182 +2966,7 @@ begin
   Text := '';
   ListenerNotification([lniSelection]);
 end;
-  (*
-procedure TsCellCombobox.UpdateCombo;
-var
-  c: integer;
-begin
-  if HandleAllocated then
-    Invalidate;
-  {
-  begin
-    for c := Ord(cbCustomColor in Style) to Items.Count - 1 do
-    begin
-      if Colors[c] = FSelected then
-      begin
-        ItemIndex := c;
-        Exit;
-      end;
-    end;
-    if cbCustomColor in Style then
-    begin
-      Items.Objects[0] := TObject(PtrInt(FSelected));
-      ItemIndex := 0;
-      Invalidate;
-    end
-    else
-      ItemIndex := -1;
-  end;
-  }
-end;
-    *)
-                 (*
-{------------------------------------------------------------------------------}
-{                             TsCellFontCombobox                               }
-{------------------------------------------------------------------------------}
 
-{@@ ----------------------------------------------------------------------------
-  Determines the font used by a specified cell. Returns the workbook's default
-  font if the cell does not exist. Considers the uffBold and uffFont formatting
-  fields of the cell
--------------------------------------------------------------------------------}
-function TsCellFontCombobox.GetCellFont(ACell: PCell): TsFont;
-begin
-  if ACell = nil then
-    Result := Workbook.GetDefaultFont
-  else
-  if (uffBold in ACell^.UsedFormattingFields) then
-    Result := Workbook.GetFont(1)
-  else
-  if (uffFont in ACell^.UsedFormattingFields) then
-    Result := Workbook.GetFont(ACell^.FontIndex)
-  else
-    Result := Workbook.GetDefaultFont;
-end;
-
-
-{------------------------------------------------------------------------------}
-{                             TsFontNameCombobox                               }
-{------------------------------------------------------------------------------}
-
-{@@ ----------------------------------------------------------------------------
-  Constructor of the FontNameCombobox. Predefines the width of the combobox
-  such that it is sufficient for most font names
--------------------------------------------------------------------------------}
-constructor TsFontNameCombobox.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  Width := 150;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Applies the font with the selected name to a specified cell.
--------------------------------------------------------------------------------}
-procedure TsFontNameCombobox.ApplyFormatToCell(ACell: PCell);
-var
-  fnt: TsFont;
-begin
-  if ItemIndex > -1 then
-  begin
-    fnt := GetCellFont(ACell);
-    Worksheet.WriteFont(ACell, Items[ItemIndex], fnt.Size, fnt.Style, fnt.Color);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Extracts the font of the specified cell and selects its font name in the
-  combobox.
--------------------------------------------------------------------------------}
-procedure TsFontNameCombobox.ExtractFromCell(ACell: PCell);
-var
-  fnt: TsFont;
-begin
-  fnt := GetCellFont(ACell);
-  if fnt <> nil then
-    ItemIndex := Items.IndexOf(fnt.FontName);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Populates the combobox with the names of all fonts available on the current
-  system
--------------------------------------------------------------------------------}
-procedure TsFontNameCombobox.Populate;
-begin
-  Items.Assign(Screen.Fonts);
-end;
-
-
-{------------------------------------------------------------------------------}
-{                             TsFontSizeCombobox                               }
-{------------------------------------------------------------------------------}
-
-{@@ ----------------------------------------------------------------------------
-  Constructor of the FontSizeCombobox. Reduces the default width of the combobox
-  due to the narrow width of the font size numbers.
--------------------------------------------------------------------------------}
-constructor TsFontSizeCombobox.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  Width := 60;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Applies the font with the selected size to a specified cell.
--------------------------------------------------------------------------------}
-procedure TsFontSizeCombobox.ApplyFormatToCell(ACell: PCell);
-var
-  fnt: TsFont;
-  fs: Double;
-begin
-  if ItemIndex > -1 then
-  begin
-    fs := StrToFloat(Items[ItemIndex]);
-    fnt := GetCellFont(ACell);
-    Worksheet.WriteFont(ACell, fnt.FontName, fs, fnt.Style, fnt.Color);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Extracts the font of the specified cell and selects its font size in the
-  combobox.
--------------------------------------------------------------------------------}
-procedure TsFontSizeCombobox.ExtractFromCell(ACell: PCell);
-var
-  fnt: TsFont;
-begin
-  fnt := GetCellFont(ACell);
-  if fnt <> nil then
-    ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Populates the combobox with often-used font sizes (in points)
--------------------------------------------------------------------------------}
-procedure TsFontSizeCombobox.Populate;
-begin
-  with Items do
-  begin
-    Clear;
-    Add('8');
-    Add('9');
-    Add('10');
-    Add('11');
-    Add('12');
-    Add('14');
-    Add('16');
-    Add('18');
-    Add('20');
-    Add('22');
-    Add('24');
-    Add('26');
-    Add('28');
-    Add('32');
-    Add('36');
-    Add('48');
-    Add('72');
-  end;
-end;
-            *)
 
 {------------------------------------------------------------------------------}
 {                          TsSpreadsheetInspector                              }
