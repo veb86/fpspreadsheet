@@ -3071,13 +3071,7 @@ begin
     if sheet <> nil then begin
       FCurrRow := sheet.ActiveCellRow;
       FCurrCol := sheet.ActiveCellCol;
-      {
-      cell := sheet.FindCell(sheet.ActiveCellRow, sheet.ActiveCellCol);
-      if cell <> nil then begin
-        FCurrRow := cell^.Row;
-        FCurrCol := cell^.Col;
-      end;
-      }
+      cell := sheet.FindCell(FCurrRow, FCurrCol);
     end;
   end;
 
@@ -3133,7 +3127,6 @@ end;
 procedure TsSpreadsheetInspector.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
 begin
-//  Unused(AData);
   case FMode of
     imWorkbook:
       if ([lniWorkbook, lniWorksheet]*AChangedItems <> []) then
