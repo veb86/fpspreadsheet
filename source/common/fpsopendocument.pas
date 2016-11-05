@@ -2061,8 +2061,10 @@ end;
 procedure TsSpreadOpenDocReader.ReadFont(ANode: TDOMNode; var AFontName: String;
   var AFontSize: Single; var AFontStyle: TsFontStyles; var AFontColor: TsColor;
   var AFontPosition: TsFontPosition);
+const
+  EPS = 1E-6;
 var
-  stylename, s: String;
+  stylename, s, s1, s2: String;
   i, p: Integer;
 begin
   if ANode = nil then
@@ -2093,23 +2095,47 @@ begin
 
   if GetAttrValue(ANode, 'fo:font-style') = 'italic' then
     Include(AFontStyle, fssItalic);
+
   if GetAttrValue(ANode, 'fo:font-weight') = 'bold' then
     Include(AFontStyle, fssBold);
+
   s := GetAttrValue(ANode, 'style:text-underline-style');
   if not ((s = '') or (s = 'none')) then
     Include(AFontStyle, fssUnderline);
+
   s := GetAttrValue(ANode, 'style:text-line-through-style');
   if s = '' then s := GetAttrValue(ANode, 'style:text-line-through-type');
   if not ((s = '') or (s = 'none')) then
     Include(AFontStyle, fssStrikeout);
 
+  { The "style:text-position" attribute specifies whether text is positioned
+    above or below the baseline and defines the relative font height that is
+    used for this text. The attribute can have one or two values.
+    1st value: percentage of vertical text displacement, or "super" or "sub"
+    2nd value: percentage of font height used for text (optional) }
   s := GetAttrValue(ANode, 'style:text-position');
-  if Length(s) >= 3 then
+  if s <> '' then
   begin
-    if (s[3] = 'b') or (s[1] = '-') then
+    p := pos(' ', s);
+    if p > 0 then
+    begin
+      s1 := Copy(s, 1, p-1);
+      s2 := Copy(s, p+1, MaxInt);
+    end else
+    begin
+      s1 := s;
+      s2 := '100';
+    end;
+    if s1[Length(s1)] = '%' then SetLength(s1, Length(s1) - 1);
+    if s2[Length(s2)] = '%' then SetLength(s2, Length(s2) - 1);
+    if s1 = 'super' then
+      AFontPosition := fpSuperscript
+    else if s1 = 'sub' then
       AFontPosition := fpSubscript
-    else
-      AFontPosition := fpSuperscript;
+    else if SameValue(StrToFloat(s1, FPointSeparatorSettings), 0.0, EPS) then
+      AFontPosition := fpNormal
+    else if s1[1] = '-' then
+      AFontPosition := fpSubScript;
   end;
 
   s := GetAttrValue(ANode, 'fo:color');
