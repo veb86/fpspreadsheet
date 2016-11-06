@@ -95,7 +95,7 @@ type
 implementation
 
 uses
-  uriparser, lazfileutils, fpsutils, fpsregfileformats;
+  uriparser, lazfileutils, fpsutils, fpsreaderWriter;
 
 const
   HyperlinkSheet = 'Hyperlinks';
