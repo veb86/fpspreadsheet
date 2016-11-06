@@ -958,10 +958,6 @@ end;
 {==============================================================================}
 
 type
-  TsChangeFlag = (cfFontName, cfFontSize, cfFontColor, cfFontPosition,
-    cfBold, cfItalic, cfUnderline, cfStrikeout);
-  TsChangeFlags = set of TsChangeFlag;
-
   TsHTMLComposer = class
   private
     FPointSeparatorSettings: TFormatSettings;
@@ -969,14 +965,10 @@ type
     FBaseFont: TsFont;
     FPlainText: String;
     FRichTextParams: TsRichTextParams;
-    FChangedParams: array of TsChangeFlags;
-    FFonts: array of TsFont;
     FPrefix: String;
     FTagCase: TsTagCase;
-    function FindChangedParams(AStartIndex: Integer): Integer;
-    procedure GetFontsFromWorkbook;
+    procedure GetFontsFromWorkbook(out AFonts: TsFontArray);
     function GetTextOfRichTextParam(AIndex: Integer): String;
-    procedure StoreChangedParams(AIndex: Integer);
   protected
     function FixTagCase(ATag: String): String;
   public
@@ -998,8 +990,17 @@ end;
 
 function TsHTMLComposer.Exec(const APlainText: String;
   const ARichTextParams: TsRichTextParams): String;
+type
+  TChangeFlag = (cfFontName, cfFontSize, cfFontColor);
+const
+  EPS = 1E-3;
 var
   i: Integer;
+  prevFnt, currFnt: TsFont;
+  chgFlags: set of TChangeFlag;
+  openingTag, closingTag: String;
+  fonts: TsFontArray;
+  tag: String;
 begin
   if Length(ARichTextParams) = 0 then
   begin
@@ -1010,88 +1011,114 @@ begin
   FRichTextParams := ARichTextParams;
   FPlainText := APlainText;
 
-  GetFontsFromWorkbook;
-  SetLength(FChangedParams, Length(FRichTextParams));
+  prevFnt := TsFont.Create;
+  prevFnt.CopyOf(FBaseFont);
 
   if FRichTextParams[0].FirstIndex > 1 then
     Result := GetTextOfRichTextParam(-1) else
     Result := '';
 
+  GetFontsFromWorkbook(fonts);
   for i:=0 to High(FRichTextParams) do
   begin
-    // Remember what is changed in this step
-    StoreChangedParams(i);
-    // Find when these items were changed before
-    //  j := FindChangedParams(i);  --- not needed in the simple version
-    // For the changed items add an open tag
-    // NOTE: This is a simple version: every opened tag is closed afterwards!
-    // In a more advanced version, shared properties should be kept. This is
-    // what FChangedParams was introduced for!
-    if not SameFont(FBaseFont, FFonts[i]) then
+    currFnt := fonts[i];
+    openingTag := '';
+    closingTag := '';
+    if not SameFont(currFnt, prevFnt) then
     begin
-      if [cfFontName, cfFontSize, cfFontColor] * FChangedparams[i] <> [] then
-      begin
-        Result := Result + '<' + FixTagCase('font');
-        if cfFontName in FChangedParams[i] then
-          Result := Result + ' ' + FPrefix + FixTagCase('face') + '="' + UnquoteStr(FFonts[i].FontName) + '"';
-        if cfFontSize in FChangedParams[i] then
-          Result := Result + ' ' + FPrefix + FixTagCase('size') + '="' + Format('%.gpt', [FFonts[i].Size], FPointSeparatorSettings) + '"';
-        if cfFontColor in FChangedParams[i] then
-          Result := Result + ' ' + FPrefix + FixTagCase('color') + '="' + ColorToHTMLColorStr(FFonts[i].Color) + '"';
-        Result := Result + '>';
-      end;
-      if (cfBold in FChangedParams[i]) then
-        Result := Result + '<' + FixTagCase('b') + '>';
-      if (cfItalic in FChangedParams[i]) then
-        Result := Result + '<' + FixTagCase('i') + '>';
-      if (cfUnderline in FChangedParams[i]) then
-        Result := Result + '<' + FixTagCase('u') + '>';
-      if (cfStrikeout in FChangedParams[i]) then
-        Result := Result + '<' + FixTagCase('s') + '>';
-      if (cfFontPosition in FChangedParams[i]) then
-      begin
-        if FFonts[i].Position = fpSuperscript then
-          Result := Result + '<' + FixTagCase('sup') + '>';
-        if FFonts[i].Position = fpSubscript then
-          Result := Result + '<' + FixTagCase('sub') + '>';
-      end;
-    end;
-    // Add the node text
-    Result := Result + GetTextOfRichTextParam(i);
-    // Add closing tags (reverse order as opening!)
-    if not SameFont(FBaseFont, FFonts[i]) then
-    begin
-      if (cfFontPosition in FChangedParams[i]) then
-      begin
-        if FFonts[i].Position = fpSubscript then
-          Result := Result + '</' + FixTagCase('sub') + '>';
-        if FFonts[i].Position = fpSuperscript then
-          Result := Result + '</' + FixTagCase('sup') + '>';
-      end;
-      if (cfStrikeout in FChangedParams[i]) then
-        Result := Result + '</' + FixTagCase('s') + '>';
-      if (cfUnderline in FChangedParams[i]) then
-        Result := Result + '</' + FixTagCase('u') + '>';
-      if (cfItalic in FChangedParams[i]) then
-        Result := Result + '</' + FixTagCase('i') + '>';
-      if (cfBold in FChangedParams[i]) then
-        Result := Result + '</' + FixTagCase('b') + '>';
-      if [cfFontName, cfFontSize, cfFontColor] * FChangedParams[i] <> [] then
-        Result := Result + '</' + FixTagCase('font') + '>';
-    end;
-  end;
-end;
+      chgFlags := [];
+      if not SameText(prevFnt.FontName, currFnt.FontName) then
+        Include(chgFlags, cfFontName);
+      if not SameValue(currFnt.Size, prevFnt.Size, EPS) then
+        Include(chgFlags, cfFontSize);
+      if currFnt.Color <> prevFnt.Color then
+        Include(chgFlags, cfFontColor);
 
-{ Going back from AStartIndex find the changed parameter flags in which all
-  flags are used like in the one at AStartIndex. }
-function TsHTMLComposer.FindChangedParams(AStartIndex: Integer): Integer;
-var
-  cp: TsChangeFlags;
-begin
-  cp := FChangedParams[AStartIndex];
-  Result := AStartIndex - 1;
-  while (Result >= 0) and (cp * FChangedParams[Result] <> cp) do
-    dec(Result);
+      if [cfFontName, cfFontSize, cfFontColor] * chgFlags <> [] then
+      begin
+        tag := FixTagCase('font');
+        openingTag := '<' + tag;
+        if cfFontName in chgFlags then
+        begin
+          openingTag := openingTag + ' ' + FPrefix + FixTagCase('face') +
+            '="' + UnquoteStr(currFnt.FontName) + '"';
+          prevFnt.FontName := currFnt.FontName;
+        end;
+        if cfFontSize in chgFlags then
+        begin
+          openingTag := openingTag + ' ' + FPrefix + FixTagCase('size') +
+            '="' + Format('%.gpt', [currFnt.Size], FPointSeparatorSettings) + '"';
+          prevFnt.Size := currFnt.Size;
+        end;
+        if cfFontColor in chgFlags then
+        begin
+          openingTag := openingTag + ' ' + FPrefix + FixTagCase('color') +
+            '="' + ColorToHTMLColorStr(currFnt.Color) + '"';
+          prevFnt.Size := currFnt.Color;
+        end;
+        openingTag := openingTag + '>';
+        closingTag :='</' + tag + '>' + closingTag;
+      end;
+
+      if (fssBold in currFnt.Style) then
+      begin
+        tag := FixTagCase('b');
+        openingTag := openingTag + '<' + tag + '>';
+        closingTag := '</' + tag + '>' + closingTag;
+        prevFnt.Style := prevFnt.Style + [fssBold];
+      end else
+        prevFnt.Style := prevFnt.Style - [fssBold];;
+
+      if (fssItalic in currFnt.Style) then
+      begin
+        tag := FixTagCase('i');
+        openingTag := openingTag + '<' + tag + '>';
+        closingTag := '</' + tag + '>' + closingTag;
+        prevFnt.Style := prevFnt.Style + [fssItalic];
+      end else
+        prevFnt.Style := prevFnt.Style - [fssItalic];
+
+      if (fssUnderline in currFnt.Style) then
+      begin
+        tag := FixTagCase('u');
+        openingTag := openingTag + '<' + tag + '>';
+        closingTag := '</' + tag + '>' + closingTag;
+        prevFnt.Style := prevFnt.Style + [fssUnderline];
+      end else
+        prevFnt.Style := prevFnt.Style - [fssUnderline];
+
+      if (fssStrikeout in currFnt.Style) then
+      begin
+        tag := FixTagCase('s');
+        openingTag := openingTag + '<' + tag + '>';
+        closingTag := '</' + tag + '>' + closingTag;
+        prevFnt.Style := prevFnt.Style + [fssStrikeout];
+      end else
+        prevFnt.Style := prevFnt.Style - [fssStrikeout];
+
+      if currFnt.Position <> prevFnt.Position then
+      begin
+        if currFnt.Position = fpSuperscript then
+        begin
+          tag := FixTagCase('sup');
+          openingTag := openingTag + '<' + tag + '>';
+          closingTag := '</' + tag + '>' + closingTag;
+          currFnt.Position := fpSuperscript;
+        end else
+        if currFnt.Position = fpSubscript then
+        begin
+          tag := FixTagCase('sub');
+          openingTag := openingTag + '<' + tag + '>';
+          closingTag := '</' + tag + '>' + closingTag;
+          currFnt.Position := fpSubscript;
+        end else
+          currFnt.Position := fpNormal;
+      end;
+    end;
+
+    // Add the node text with opening and closing tags (reverse order as opening!)
+    Result := Result + openingTag + GetTextOfRichTextParam(i) + closingTag;
+  end;  // for
 end;
 
 function TsHTMLComposer.FixTagCase(ATag: String): String;
@@ -1109,13 +1136,13 @@ begin
   end;
 end;
 
-procedure TsHTMLComposer.GetFontsFromWorkbook;
+procedure TsHTMLComposer.GetFontsFromWorkbook(out AFonts: TsFontArray);
 var
   i: Integer;
 begin
-  SetLength(FFonts, Length(FRichTextParams));
-  for i:=0 to High(FFonts) do
-    FFonts[i] := FWorkbook.GetFont(FRichTextParams[i].FontIndex);
+  SetLength(AFonts, Length(FRichTextParams));
+  for i:=0 to High(AFonts) do
+    AFonts[i] := FWorkbook.GetFont(FRichTextParams[i].FontIndex);
 end;
 
 function TsHTMLComposer.GetTextOfRichTextParam(AIndex: Integer): String;
@@ -1136,38 +1163,6 @@ begin
     Result := '';
 end;
 
-{ Entering the rich-text parameter region with the specified index. Detects
-  the font differences to the preceding section. }
-procedure TsHTMLComposer.StoreChangedParams(AIndex: Integer);
-const
-  EPS = 1e-3;
-var
-  fnt1, fnt2: TsFont;
-begin
-  // Font in previous section
-  if AIndex = 0 then
-    fnt1 := FBaseFont else
-    fnt1 := FFonts[AIndex-1];
-  // Font in current (new) section
-  fnt2 := FFonts[AIndex];
-  if not SameText(fnt1.FontName, fnt2.FontName) then
-    Include(FChangedParams[AIndex], cfFontName);
-  if not SameValue(fnt1.Size, fnt2.Size, EPS) then
-    Include(FChangedParams[Aindex], cfFontSize);
-  if fnt1.Color <> fnt2.Color then
-    Include(FChangedParams[AIndex], cfFontColor);
-  if fnt1.Position <> fnt2.Position then
-    Include(FChangedParams[AIndex], cfFontPosition);
-  if (fnt1.Style * [fssBold] <> fnt2.Style * [fssBold]) then
-    Include(FChangedParams[Aindex], cfBold);
-  if (fnt1.Style * [fssItalic] <> fnt2.Style * [fssItalic]) then
-    Include(FChangedParams[AIndex], cfItalic);
-  if (fnt1.Style * [fssUnderline] <> fnt2.style * [fssUnderline]) then
-    Include(FChangedParams[AIndex], cfUnderline);
-  if (fnt1.STyle * [fssStrikeout] <> fnt2.Style * [fssStrikeout]) then
-    Include(FChangedParams[AIndex], cfStrikeout);
-end;
-
 
 {@@ ----------------------------------------------------------------------------
   Constructs a html-coded string from a plain text string and
@@ -1181,7 +1176,8 @@ var
 begin
   if Length(ARichTextParams) = 0 then
     AHTMLText := APlainText
-  else begin
+  else
+  begin
     composer := TsHTMLComposer.Create(AWorkbook, AFont, APrefix, ATagCase);
     try
       AHTMLText := composer.Exec(APlainText, ARichTextParams);

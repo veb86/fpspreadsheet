@@ -473,6 +473,9 @@ type
     procedure CopyOf(AFont: TsFont);
   end;
 
+  {@@ Array of font records }
+  TsFontArray = array of TsFont;
+
   {@@ Parameter describing formatting of an text range in cell text }
   TsRichTextParam = record
     FirstIndex: Integer;  // 1-based utf8 character index
