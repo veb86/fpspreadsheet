@@ -414,7 +414,7 @@ procedure TsCustomSpreadReader.FixRows(AWorkSheet: TsWorksheet);
 const
   EPS = 1E-3;
 var
-  r: Cardinal;
+  r, rLast: Cardinal;
   h: Single;
   lRow: PRow;
 begin
@@ -429,11 +429,21 @@ begin
       exit;
   end;
 
+  // If there are more rows than row records and the common row height is not
+  // the default row height (i.e. the row height of the non-record rows) then
+  // the row heights are different
+  rLast := AWorksheet.GetLastRowIndex;
+  if (AWorksheet.Rows.Count > 0) and
+     (rLast <> PRow(AWorksheet.Rows[AWorksheet.Rows.Count-1]).Row) and
+     not SameValue(h, AWorksheet.ReadDefaultRowHeight(FWorkbook.Units), EPS)
+  then
+    exit;
+
   // At this point we know that all rows have the same height. We pass this
   // to the DefaultRowHeight ...
   AWorksheet.WriteDefaultRowHeight(h, FWorkbook.Units);
 
-  // ... and delete all row records with non-default format.
+  // ... and delete all row records with default format.
   for r := AWorksheet.Rows.Count-1 downto 0 do begin
     lRow := PRow(AWorksheet.Rows[r]);
     if lRow^.FormatIndex = 0 then AWorksheet.RemoveRow(r);
