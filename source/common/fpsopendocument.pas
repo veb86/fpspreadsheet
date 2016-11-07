@@ -3986,6 +3986,7 @@ begin
   if not Assigned(AStylesNode) then
     exit;
 
+  nodeName := AStylesNode.NodeName;
   numFmtIndexDefault := FindNumFormatByName('N0');
 
   styleNode := AStylesNode.FirstChild;
@@ -3996,7 +3997,7 @@ begin
       family := GetAttrValue(stylenode, 'style:family');
       if family = 'table-cell' then begin
         InitFormatRecord(fmt);
-        fmt.Name := 'Default';
+        fmt.Name := 'DefaultStyle';
         fnt := FWorkbook.GetFont(fmt.FontIndex);
         fntName := fnt.FontName;
         fntSize := fnt.Size;
@@ -4052,6 +4053,12 @@ begin
         if parentstyle <> '' then
         begin
           idx := FCellFormatList.FindIndexOfName(parentstyle);
+          if idx > -1 then
+            fmt := FCellFormatList[idx]^;
+        end else
+        if styleName <> '' then
+        begin
+          idx := FCellFormatList.FindIndexOfName(stylename);
           if idx > -1 then
             fmt := FCellFormatList[idx]^;
         end;
