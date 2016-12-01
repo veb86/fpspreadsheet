@@ -7576,8 +7576,8 @@ begin
   FUnits := suMillimeters;              // Units for column width and row height
 
   FormatSettings := UTF8FormatSettings;
-  FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
-  FormatSettings.LongDateFormat := MakeLongDateFormat(FormatSettings.ShortDateFormat);
+// FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
+//  FormatSettings.LongDateFormat := MakeLongDateFormat(FormatSettings.ShortDateFormat);
 
   FFontList := TFPList.Create;
   SetDefaultFont(DEFAULT_FONTNAME, DEFAULT_FONTSIZE);
