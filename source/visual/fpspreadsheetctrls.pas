@@ -1070,7 +1070,8 @@ procedure TsWorkbookSource.InternalLoadFromWorkbook(AWorkbook: TsWorkbook;
 begin
   AWorkbook.DisableNotifications;
 
-  InternalCreateNewWorkbook(AWorkbook);
+  if AWorkbook <> FWorkbook then
+    InternalCreateNewWorkbook(AWorkbook);
   WorkbookOpenedHandler(self);
 
   if AWorksheetIndex = -1 then
