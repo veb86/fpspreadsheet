@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  Spin, Types,
+  Spin, Buttons, Types,
   fpstypes, fpspreadsheet, fpspreadsheetgrid;
 
 type
@@ -22,12 +22,16 @@ type
     Grid: TsWorksheetGrid;
     OpenDialog: TOpenDialog;
     SaveDialog: TSaveDialog;
+    BtnPrevSheet: TSpeedButton;
+    BtnNextSheet: TSpeedButton;
     procedure BtnOpenClick(Sender: TObject);
+    procedure BtnPrevSheetClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
     procedure edZoomEditingDone(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure GridMouseWheel(Sender: TObject; Shift: TShiftState;
       WheelDelta: Integer; MousePos: TPoint; var Handled: Boolean);
+    procedure BtnNextSheetClick(Sender: TObject);
   private
     FWorkbook: TsWorkbook;
     FOpenFormats: TsSpreadFormatIDArray;
@@ -69,6 +73,38 @@ begin
     else
       fmt := FOpenFormats[OpenDialog.FilterIndex - 3];
     LoadFile(OpenDialog.FileName, fmt);
+  end;
+end;
+
+procedure TMainForm.BtnNextSheetClick(Sender: TObject);
+var
+  i, n: Integer;
+begin
+  n := Grid.Workbook.GetWorksheetCount;
+  i := 0;
+  while (i < n-1) do begin
+    if (Grid.Workbook.GetWorksheetByIndex(i) = Grid.Worksheet) then
+    begin
+      Grid.LoadFromWorkbook(Grid.Workbook, i+1);
+      exit;
+    end;
+    inc(i);
+  end;
+end;
+
+procedure TMainForm.BtnPrevSheetClick(Sender: TObject);
+var
+  i, n: Integer;
+begin
+  n := Grid.Workbook.GetWorksheetCount;
+  i := 1;
+  while (i < n) do begin
+    if (Grid.Workbook.GetWorksheetByIndex(i) = Grid.Worksheet) then
+    begin
+      Grid.LoadFromWorkbook(Grid.Workbook, i-1);
+      exit;
+    end;
+    inc(i);
   end;
 end;
 
@@ -142,6 +178,8 @@ procedure TMainForm.LoadFile(const AFileName: String; AFormatID: TsSpreadFormatI
 var
   crs: TCursor;
   book: TsWorkbook;
+  i: Integer;
+  sheet: TsWorksheet;
 begin
   crs := Screen.Cursor;
   try
@@ -153,7 +191,12 @@ begin
         book.ReadFromFile(AFilename, AFormatID);
         // If you want to override the zoom factor of the file set it before
         // assigning the worksheet to the grid.
-        book.GetFirstWorksheet.ZoomFactor := edZoom.Value / 100;
+        for i:=0 to book.GetWorksheetCount-1 do
+        begin
+          sheet := book.GetWorksheetByIndex(i);
+          sheet.ZoomFactor := edZoom.Value / 100;
+        end;
+//        book.GetFirstWorksheet.ZoomFactor := edZoom.Value / 100;
         // Load the worksheet into the grid.
         Grid.LoadFromWorkbook(book, 0);
       except

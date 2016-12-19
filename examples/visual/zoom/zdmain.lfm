@@ -93,6 +93,24 @@ object MainForm: TMainForm
     Caption = 'Write zoom factor'
     TabOrder = 5
   end
+  object BtnPrevSheet: TSpeedButton
+    Left = 504
+    Height = 23
+    Top = 406
+    Width = 79
+    Anchors = [akRight, akBottom]
+    Caption = 'Prev sheet'
+    OnClick = BtnPrevSheetClick
+  end
+  object BtnNextSheet: TSpeedButton
+    Left = 588
+    Height = 23
+    Top = 406
+    Width = 79
+    Anchors = [akRight, akBottom]
+    Caption = 'Next sheet'
+    OnClick = BtnNextSheetClick
+  end
   object OpenDialog: TOpenDialog
     left = 280
     top = 128
