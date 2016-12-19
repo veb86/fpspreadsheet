@@ -742,6 +742,9 @@ type
     function  CopyWorksheetFrom(AWorksheet: TsWorksheet;
       ReplaceDuplicateName: Boolean = false): TsWorksheet;
     function  GetFirstWorksheet: TsWorksheet;
+    function  GetLastWorksheet: TsWorksheet;
+    function  GetNextWorksheet(AWorksheet: TsWorksheet): TsWorksheet;
+    function  GetPreviousWorksheet(AWorksheet: TsWorksheet): TsWorksheet;
     function  GetWorksheetByIndex(AIndex: Integer): TsWorksheet;
     function  GetWorksheetByName(AName: String): TsWorksheet;
     function  GetWorksheetCount: Integer;
@@ -8170,6 +8173,72 @@ end;
 function TsWorkbook.GetFirstWorksheet: TsWorksheet;
 begin
   Result := TsWorksheet(FWorksheets.First);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Quick helper routine which returns the last worksheet
+
+  @return A TsWorksheet instance if at least one is present.
+          nil otherwise.
+
+  @see    TsWorkbook.GetWorksheetByIndex
+  @see    TsWorkbook.GetWorksheetByName
+  @see    TsWorksheet
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetLastWorksheet: TsWorksheet;
+begin
+  Result := TsWorksheet(FWorksheets.Last);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the worksheet following the specified one.
+
+  @return A TsWorksheet instance if the specified worksheet is not the last one
+          nil otherwise.
+
+  @see    TsWorkbook.GetFirstWorksheet
+  @see    TsWorkbook.GetPreviousWorksheet
+  @see    TsWorkbook.GetLastWorksheet
+  @see    TsWorkbook.GetFirstWorksheet
+  @see    TsWorkbook.GetWorksheetByIndex
+  @see    TsWorkbook.GetWorksheetByName
+  @see    TsWorksheet
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetNextWorksheet(AWorksheet: TsWorksheet): TsWorksheet;
+var
+  idx: Integer;
+begin
+  idx := FWorksheets.Indexof(AWorksheet);
+  if idx < FWorksheets.Count-1 then
+    Result := TsWorksheet(FWorksheets.Items[idx + 1])
+  else
+    Result := nil;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the worksheet preceding the specified one.
+
+  @return   A TsWorksheet instance if the specified worksheet is not
+            the first one, nil otherwise.
+
+  @see      TsWorkbook.GetFirstWorksheet
+  @see      TsWorkbook.GetNextWorksheet
+  @see      TsWorkbook.GetLastWorksheet
+  @see      TsWorkbook.GetFirstWorksheet
+  @see      TsWorkbook.GetWorksheetByIndex
+  @see      TsWorkbook.GetWorksheetByName
+  @see      TsWorksheet
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetPreviousWorksheet(AWorksheet: TsWorksheet): TsWorksheet;
+var
+  idx: Integer;
+begin
+  idx := FWorksheets.IndexOf(AWorksheet);
+  if idx > 0 then
+    Result := TsWorksheet(FWorksheets.Items[idx - 1])
+  else
+    Result := nil;
 end;
 
 {@@ ----------------------------------------------------------------------------
