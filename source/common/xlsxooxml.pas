@@ -460,7 +460,7 @@ begin
     Exit;
   S := GetAttrValue(ANode.FindNode('workbookView'), 'activeTab');
   if TryStrToInt(S, i) then
-	  ActiveSheetIndex := i;
+    ActiveSheetIndex := i;
 end;
 
 procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);

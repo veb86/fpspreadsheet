@@ -328,7 +328,7 @@ const
   ROWHEIGHT_EPS = 1E-2;
 
 type
-  TDateMode=(dm1900,dm1904); //DATEMODE values, 5.28
+  TDateMode=(dm1900, dm1904); //DATEMODE values, 5.28
 
   // Adjusts Excel float (date, date/time, time) with the file's base date to get a TDateTime
   function ConvertExcelDateTimeToDateTime
