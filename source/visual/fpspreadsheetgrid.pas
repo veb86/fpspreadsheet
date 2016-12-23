@@ -15,6 +15,8 @@ unit fpspreadsheetgrid;
 {$mode objfpc}{$H+}
 {$I ..\fps.inc}
 
+{.$DEFINE GRID_DEBUG}
+
 { To do:
  - When Lazarus 1.4 comes out remove the workaround for the RGB2HLS bug in
    FindNearestPaletteIndex.
@@ -247,6 +249,7 @@ type
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
+    procedure TopLeftChanged; override;
     function TrimToCell(ACell: PCell): String;
 
     {@@ Automatically recalculate formulas whenever a cell value changes. }
@@ -4081,12 +4084,41 @@ end;
 procedure TsCustomWorksheetGrid.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
 var
+  actgrow, actgcol: Integer;
   grow, gcol: Integer;
   srow, scol: Cardinal;
   cell: PCell;
   lRow: PRow;
+
+  {$IFDEF GRID_DEBUG}
+  procedure DebugNotification(ACaption: String);
+  var
+    s: String;
+  begin
+    WriteLn(ACaption);
+    s := '';
+    if (lniWorksheet in AChangedItems) then s := s + 'lniWorksheet, ';
+    if (lniCell in AChangedItems) then s := s + 'lniCell, ';
+    if (lniSelection in AChangedItems) then s := s + 'lniSelection, ';
+    if (lniAbortSelection in AChangedItems) then s := s + 'lniAbortSelection, ';
+    if (lniRow in AChangedItems) then s := s + 'lniRow, ';
+    if (lniCol in AChangedItems) then s := s + 'lniCol, ';
+    if (lniWorksheetZoom in AChangedItems) then s := s + 'lniWorksheetZoom, ';
+    if s <> '' then SetLength(s, Length(s) - 2);
+    WriteLn('  AChangedItems = [', s, ']');
+    WriteLn('  ActiveCellRow: ', Worksheet.ActiveCellRow, ' ActiveCellCol: ', Worksheet.ActiveCellCol);
+    WriteLn('  TopRow: ', Worksheet.TopRow, ' LeftCol: ', Worksheet.LeftCol);
+    WriteLn;
+  end;
+  {$ENDIF}
+
 begin
   Unused(AData);
+
+  {$IFDEF GRID_DEBUG}
+  if Worksheet <> nil then
+    DebugNotification('BEFORE ListenerNotification WorksheetGrid "' + Worksheet.Name + '":');
+  {$ENDIF}
 
   // Nothing to do for  "workbook changed" because this is always combined with
   // "worksheet changed".
@@ -4094,32 +4126,58 @@ begin
   // Worksheet changed
   if (lniWorksheet in AChangedItems) then
   begin
-    if (Worksheet <> nil) then
-    begin
-      inc(FLockSetup);
-      ShowHeaders := (soShowHeaders in Worksheet.Options);
-      ShowGridLines := (soShowGridLines in Worksheet.Options);
-      if (soHasFrozenPanes in Worksheet.Options) then begin
-        FrozenCols := Worksheet.LeftPaneWidth;
-        FrozenRows := Worksheet.TopPaneHeight;
-      end else begin
-        FrozenCols := 0;
-        FrozenRows := 0;
+    BeginUpdate;   // avoid flicker...
+    try
+      if (Worksheet <> nil) then
+      begin
+        // remember indexes of top/left and active cell
+        grow := GetGridRow(Worksheet.TopRow);
+        gcol := GetGridCol(Worksheet.LeftCol);
+        actgrow := GetGridRow(Worksheet.ActiveCellRow);
+        actgcol := GetGridCol(Worksheet.ActiveCellCol);
+        AutoExpandToRow(grow, aeNavigation);
+        AutoExpandToCol(gcol, aeNavigation);
+        if (grow <> Row) or (gcol <> Col) then
+          MoveExtend(false, gcol, grow);
+        inc(FLockSetup);
+        // Setup grid headers and col/row count
+        ShowHeaders := (soShowHeaders in Worksheet.Options);
+        ShowGridLines := (soShowGridLines in Worksheet.Options);
+        if (soHasFrozenPanes in Worksheet.Options) then begin
+          FrozenCols := Worksheet.LeftPaneWidth;
+          FrozenRows := Worksheet.TopPaneHeight;
+        end else begin
+          FrozenCols := 0;
+          FrozenRows := 0;
+        end;
+        case Worksheet.BiDiMode of
+          bdDefault: ParentBiDiMode := true;
+          bdLTR    : begin
+                       ParentBiDiMode := false;
+                       BiDiMode := bdLeftToRight;
+                     end;
+          bdRTL    : begin
+                       ParentBiDiMode := false;
+                       BiDiMode := bdRightToLeft;
+                     end;
+        end;
+        dec(FLockSetup);
       end;
-      case Worksheet.BiDiMode of
-        bdDefault: ParentBiDiMode := true;
-        bdLTR    : begin
-                     ParentBiDiMode := false;
-                     BiDiMode := bdLeftToRight;
-                   end;
-        bdRTL    : begin
-                     ParentBiDiMode := false;
-                     BiDiMode := bdRightToLeft;
-                   end;
+      Setup;
+      // scroll the grid for top/left to be as stored in the sheet
+      if (grow <> TopRow) or (gcol <> LeftCol) then
+      begin
+        TopRow := gRow;
+        LeftCol := gCol;
       end;
-      dec(FLockSetup);
+      // Select active cell
+      AutoExpandToRow(actgrow, aeNavigation);
+      AutoExpandToCol(actgcol, aeNavigation);
+      if (actgrow <> Row) or (actgcol <> Col) then
+        MoveExtend(false, actgcol, actgrow);
+    finally
+      EndUpdate;
     end;
-    Setup;
   end;
 
   // Cell value or format changed
@@ -4179,6 +4237,12 @@ begin
   // Worksheet zoom
   if (lniWorksheetZoom in AChangedItems) and (Worksheet <> nil) then
     AdaptToZoomFactor; // Reads value directly from Worksheet
+
+  {$IFDEF GRID_DEBUG}
+  if Worksheet <> nil then
+    DebugNotification('AFTER ListenerNotification WorksheetGrid "' + Worksheet.Name + '":');
+  {$ENDIF}
+
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4498,6 +4562,8 @@ end;
   initial column widths and row heights.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Setup;
+var
+  defColCount, defRowCount: Integer;
 begin
   if csLoading in ComponentState then
     exit;
@@ -4520,15 +4586,10 @@ begin
     end;
   end else
   if Worksheet <> nil then begin
-    if FHeaderCount = 0 then
-    begin
-      ColCount := Max(GetGridCol(Worksheet.GetLastColIndex), ColCount-1);
-      RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex), RowCount-1);
-    end else
-    begin
-      ColCount := Max(GetGridCol(Worksheet.GetLastColIndex) + 1, ColCount);
-      RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex) + 1, RowCount);
-    end;
+    defColCount := DEFAULT_COL_COUNT;
+    defRowCount := DEFAULT_ROW_COUNT;
+    ColCount := Max(GetGridCol(Worksheet.GetLastColIndex)+1, defColCount) + FHeaderCount;
+    RowCount := max(GetGridRow(Worksheet.GetLastRowIndex)+1, defRowCount) + FHeaderCount;
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
@@ -4539,7 +4600,7 @@ begin
   end;
   UpdateColWidths;
   UpdateRowHeights;
-  Invalidate;
+  //Invalidate;   // wp: really needed? Might cause flicker
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4679,6 +4740,15 @@ begin
       sortParams,
       0, AIndxFrom-HeaderCount, Worksheet.GetLastRowIndex, AIndxTo-HeaderCount
     );
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Store the value of the TopLeft cell in the worksheet
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.TopLeftChanged;
+begin
+  inherited;
+  Worksheet.ScrollTo(GetWorkSheetRow(TopRow), GetWorksheetCol(LeftCol));
 end;
 
 {@@ ----------------------------------------------------------------------------

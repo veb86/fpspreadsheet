@@ -84,6 +84,8 @@ type
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
     FActiveCellCol: Cardinal;
+    FTopRow: Cardinal;
+    FLeftCol: Cardinal;
     FSelection: TsCellRangeArray;
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
@@ -477,6 +479,8 @@ type
     function GetSelectionRangeIndexOfActiveCell: Integer;
     procedure SetSelection(const ASelection: TsCellRangeArray);
 
+    procedure ScrollTo(ANewTopRow, ANewLeftCol: Cardinal);
+
     // Comments
     function FindComment(ACell: PCell): PsComment;
     function HasComment(ACell: PCell): Boolean;
@@ -582,6 +586,10 @@ type
     property  ActiveCellCol: Cardinal read FActiveCellCol;
     {@@ Row index of the selected cell of this worksheet }
     property  ActiveCellRow: Cardinal read FActiveCellRow;
+    {@@ Index of the left-most visible column in the grid - used by WorksheetGrid}
+    property LeftCol: Cardinal read FLeftCol;
+    {@@ Index of the top-most visible row in the grid - used by WorksheetGrid }
+    property TopRow: Cardinal read FTopRow;
     {@@ Number of frozen columns which do not scroll }
     property  LeftPaneWidth: Integer read FLeftPaneWidth write FLeftPaneWidth;
     {@@ Number of frozen rows which do not scroll }
@@ -4223,6 +4231,17 @@ begin
   SetLength(FSelection, Length(ASelection));
   for i:=0 to High(FSelection) do
     FSelection[i] := ASelection[i];
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Uses the passed parameters a TopRow and LeftCol. These are used by the
+  TsWorksheetGrid to scroll the visible grid such that the corresponding cell
+  is at the top/left.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.ScrollTo(ANewTopRow, ANewLeftCol: Cardinal);
+begin
+  FTopRow := ANewTopRow;
+  FLeftCol := ANewLeftCol;
 end;
 
 {@@ ----------------------------------------------------------------------------

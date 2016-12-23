@@ -1071,7 +1071,8 @@ begin
   AWorkbook.DisableNotifications;
 
   if AWorkbook <> FWorkbook then
-    InternalCreateNewWorkbook(AWorkbook);
+    InternalCreateNewWorkbook(AWorkbook) else
+    SetOptions(FOptions);
   WorkbookOpenedHandler(self);
 
   if AWorksheetIndex = -1 then
@@ -1672,10 +1673,10 @@ begin
     FWorksheet.OnZoom := @WorksheetZoomHandler;
     NotifyListeners([lniWorksheet]);
     FWorksheet := AWorksheet;  // !!!!!
-    if FWorksheet.ActiveCellRow = Cardinal(-1) then
+    if FWorksheet.ActiveCellRow = UNASSIGNED_ROW_COL_INDEX then
       r := FWorksheet.TopPaneHeight else
       r := FWorksheet.ActiveCellRow;
-    if FWorksheet.ActiveCellCol = Cardinal(-1) then
+    if FWorksheet.ActiveCellCol = UNASSIGNED_ROW_COL_INDEX then
       c := FWorksheet.LeftPaneWidth else
       c := FWorksheet.ActiveCellCol;
     SelectCell(r, c);
