@@ -728,7 +728,15 @@ type
 const
   NO_CELL_BORDER: TsCellBorderStyle = (LineStyle: lsThin; Color: scNotDefined);
 
+var
+  {@@ Default number of columns prepared for a new empty worksheet }
+  DEFAULT_COL_COUNT: Integer = 26;
+
+  {@@ Default number of rows prepared for a new empty worksheet }
+  DEFAULT_ROW_COUNT: Integer = 100;
+
 procedure Register;
+
 
 implementation
 
@@ -739,10 +747,6 @@ uses
   fpsNumFormat;
 
 const
-  {@@ Default number of columns prepared for a new empty worksheet }
-  DEFAULT_COL_COUNT = 26;
-  {@@ Default number of rows prepared for a new empty worksheet }
-  DEFAULT_ROW_COUNT = 100;
   {@@ Interval how long the mouse buttons has to be held down on a
     hyperlink cell until the associated hyperlink is executed. }
   HYPERLINK_TIMER_INTERVAL = 500;
