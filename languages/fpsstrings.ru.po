@@ -407,7 +407,7 @@ msgstr "Лист таблицы не найден"
 
 #: fpsstrings.rswriteerror_worksheetnametoolong
 msgid "File cannot be written because the name of worksheet \"%0:s\" is too long (max %1:d characters)."
-msgstr ""
+msgstr "Документ не может быть сохранён. Имя Имя листа \"%0:s\" очень большое (максимум %1:d символов)"
 
 #: fpsstrings.rsyellow
 msgid "yellow"
