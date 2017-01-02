@@ -388,6 +388,9 @@ type
     procedure CopyValue(AFromCell, AToCell: PCell); overload;
     procedure CopyValue(AValueCell: PCell; AToRow, AToCol: Cardinal); overload;
 
+    procedure CopyCol(AFromCol, AToCol: Cardinal; AFromWorksheet: TsWorksheet = nil);
+    procedure CopyRow(AFromRow, AToRow: Cardinal; AFromWorksheet: TsWorksheet = nil);
+
     procedure Clear;
     procedure DeleteCell(ACell: PCell);
     procedure EraseCell(ACell: PCell);
@@ -1903,6 +1906,74 @@ end;
 procedure TsWorksheet.CopyValue(AValueCell: PCell; AToRow, AToCol: Cardinal);
 begin
   CopyValue(AValueCell, GetCell(AToRow, AToCol));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies a column record to another location. The new column has the same
+  colwidth and the same formatting.
+
+  @param   AFromCol    Index of the column to be copied
+  @param   AToCol      Index of the destination column
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CopyCol(AFromCol, AToCol: Cardinal;
+  AFromWorksheet: TsWorksheet = nil);
+var
+  srcCol, destCol: PCol;
+begin
+  if AFromWorksheet = nil then
+    AFromWorksheet := self;
+  srcCol := AFromWorksheet.FindCol(AFromCol);
+  destCol := FindCol(AToCol);
+
+  // Overwrite destination column with empty column record ?
+  if (srcCol = nil) then
+  begin
+    if destCol <> nil then
+      DeleteCol(AToCol);
+    exit;
+  end;
+
+  // Create new or use existing column record
+  destCol := GetCol(AToCol);
+
+  // Copy contents of column record...
+  destCol^ := srcCol^;
+  // ... and restore column index lost in previous step
+  destCol^.Col := AToCol;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies a row record to another location. The new row has the same
+  row heightand the same formatting.
+
+  @param   AFromRow    Index of the row to be copied
+  @param   AToTow      Index of the destination row
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CopyRow(AFromRow, AToRow: Cardinal;
+  AFromWorksheet: TsWorksheet);
+var
+  srcRow, destRow: PRow;
+begin
+  if AFromWorksheet = nil then
+    AFromWorksheet := self;
+  srcRow := AFromWorksheet.FindRow(AFromRow);
+  destRow := FindRow(AToRow);
+
+  // Overwrite destination row with empty row record?
+  if (srcRow = nil) then
+  begin
+    if destRow <> nil then
+      DeleteRow(AToRow);
+    exit;
+  end;
+
+  // Create new or use existing row record
+  destRow := GetRow(AToRow);
+
+  // Copy contents of row record...
+  destRow^ := srcRow^;
+  // ... and restore row index lost in previous step
+  destRow^.Row := AToRow;
 end;
 
 procedure TsWorksheet.Clear;
@@ -8158,6 +8229,9 @@ function TsWorkbook.CopyWorksheetFrom(AWorksheet: TsWorksheet;
 var
   r, c: Cardinal;
   cell: PCell;
+  col: PCol;
+  row: PRow;
+  i: Integer;
 begin
   Result := nil;
   if (AWorksheet = nil) then
@@ -8171,6 +8245,18 @@ begin
       r := cell^.Row;
       c := cell^.Col;
       Result.CopyCell(r, c, r, c, AWorksheet);
+    end;
+    for i := 0 to AWorksheet.Cols.Count-1 do
+    begin
+      col := AWorksheet.Cols[i];
+      c := col^.Col;
+      Result.CopyCol(c, c, AWorksheet);
+    end;
+    for i := 0 to AWorksheet.Rows.Count-1 do
+    begin
+      row := AWorksheet.Rows[i];
+      r := row^.Row;
+      Result.CopyRow(r, r, AWorksheet);
     end;
   finally
     dec(FLockCount);
