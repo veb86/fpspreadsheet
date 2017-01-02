@@ -197,6 +197,8 @@ type
     function  ReadWordwrap(ACell: PCell): boolean;
     function  ReadBiDiMode(ACell: PCell): TsBiDiMode;
 
+    function IsEmpty: Boolean;
+
     { Writing of values }
     function WriteBlank(ARow, ACol: Cardinal): PCell; overload;
     procedure WriteBlank(ACell: PCell); overload;
@@ -761,6 +763,7 @@ type
     function  GetWorksheetCount: Integer;
     function  GetWorksheetIndex(AWorksheet: TsWorksheet): Integer;
     procedure RemoveAllWorksheets;
+    procedure RemoveAllEmptyWorksheets;
     procedure RemoveWorksheet(AWorksheet: TsWorksheet);
     procedure SelectWorksheet(AWorksheet: TsWorksheet);
     function  ValidWorksheetName(var AName: String;
@@ -3370,6 +3373,25 @@ begin
     if (uffBiDi in fmt^.UsedFormattingFields) then
       Result := fmt^.BiDiMode;
   end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns true if the worksheet does not contain any cell, column or row records
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsEmpty: Boolean;
+var
+  cell: PCell;
+begin
+  Result := false;
+  for cell in Cells do
+    if cell^.ContentType <> cctEmpty then
+      exit;
+
+  if (Rows.Count > 0) or (Cols.Count > 0) then
+    exit;
+
+  Result := true;
 end;
 
 
@@ -8422,6 +8444,22 @@ end;
 procedure TsWorkbook.RemoveAllWorksheets;
 begin
   FWorksheets.ForEachCall(RemoveWorksheetsCallback, nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes all empty worksheets
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.RemoveAllEmptyWorksheets;
+var
+  sheet: TsWorksheet;
+  i: Integer;
+begin
+  for i:= FWorksheets.Count-1 downto 0 do
+  begin
+    sheet := TsWorksheet(FWorksheets.Items[i]);
+    if sheet.IsEmpty then
+      RemoveWorksheet(sheet);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
