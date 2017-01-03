@@ -872,6 +872,8 @@ type
   end;
 
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
+procedure CopyColFormat(AFromCol, AToCol: PCol; AFromSheet, AToSheet: TsWorksheet);
+procedure CopyRowFormat(AFromRow, AToRow: PRow; AFromSheet, AToSheet: TsWorksheet);
 
 
 implementation
@@ -1018,6 +1020,78 @@ begin
     end;
 
     destSheet.WriteCellFormat(AToCell, fmt);
+  end;
+end;
+
+procedure CopyColFormat(AFromCol, AToCol: PCol; AFromSheet, AToSheet: TsWorksheet);
+var
+  fmt: TsCellFormat;
+  numFmtParams: TsNumFormatParams;
+  nfs: String;
+  font: TsFont;
+begin
+  if (AFromSheet = nil) or (AToSheet = nil) or (AFromSheet.Workbook = AToSheet.Workbook) then
+    // Both columns in the same sheet --> the format index is valid
+    AToCol^.FormatIndex := AFromCol^.FormatIndex
+  else
+  begin
+    // Both columns in different worksheets. We must create a new format record
+    // in the destination sheet from the format used by the source column
+    // and store the new format index in the column record of the dest col.
+    fmt := AFromSheet.Workbook.GetCellFormat(AFromCol^.FormatIndex);
+    if (uffFont in fmt.UsedFormattingFields) then
+    begin
+      font := AFromSheet.Workbook.GetFont(fmt.FontIndex);
+      fmt.FontIndex := AToSheet.Workbook.FindFont(font.FontName, font.Size, font.Style, font.Color);
+      if fmt.FontIndex = -1 then
+        fmt.FontIndex := AToSheet.Workbook.AddFont(font.FontName, font.Size, font.Style, font.Color);
+    end;
+    if (uffNumberformat in fmt.UsedFormattingFields) then
+    begin
+      numFmtParams := AFromSheet.Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+      if numFmtParams <> nil then
+      begin
+        nfs := numFmtParams.NumFormatStr;
+        fmt.NumberFormatIndex := AToSheet.Workbook.AddNumberFormat(nfs);
+      end;
+    end;
+    AToCol^.FormatIndex := AToSheet.Workbook.AddCellFormat(fmt);
+  end;
+end;
+
+procedure CopyRowFormat(AFromRow, AToRow: PRow; AFromSheet, AToSheet: TsWorksheet);
+var
+  fmt: TsCellFormat;
+  numFmtParams: TsNumFormatParams;
+  nfs: String;
+  font: TsFont;
+begin
+  if (AFromSheet = nil) or (AToSheet = nil) or (AFromSheet.Workbook = AToSheet.Workbook) then
+    // Both rows are in the same sheet --> the format index is valid
+    AToRow^.FormatIndex := AFromRow^.FormatIndex
+  else
+  begin
+    // Both rows are in different worksheets. We must create a new format record
+    // in the destination sheet from the format used by the source row
+    // and store the new format index in the row record of the dest row.
+    fmt := AFromSheet.Workbook.GetCellFormat(AFromRow^.FormatIndex);
+    if (uffFont in fmt.UsedFormattingFields) then
+    begin
+      font := AFromSheet.Workbook.GetFont(fmt.FontIndex);
+      fmt.FontIndex := AToSheet.Workbook.FindFont(font.FontName, font.Size, font.Style, font.Color);
+      if fmt.FontIndex = -1 then
+        fmt.FontIndex := AToSheet.Workbook.AddFont(font.FontName, font.Size, font.Style, font.Color);
+    end;
+    if (uffNumberformat in fmt.UsedFormattingFields) then
+    begin
+      numFmtParams := AFromSheet.Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+      if numFmtParams <> nil then
+      begin
+        nfs := numFmtParams.NumFormatStr;
+        fmt.NumberFormatIndex := AToSheet.Workbook.AddNumberFormat(nfs);
+      end;
+    end;
+    AToRow^.FormatIndex := AToSheet.Workbook.AddCellFormat(fmt);
   end;
 end;
 
@@ -1735,7 +1809,7 @@ begin
   CopyFormula(AFromCell, AToCell);
 
   // Copy cell format
-  CopyFormat(AFromCell, AToCell);
+  CopyCellFormat(AFromCell, AToCell);
 
   // Merged?
   if srcSheet.IsMergeBase(AFromCell) then
@@ -1943,6 +2017,8 @@ begin
   destCol^ := srcCol^;
   // ... and restore column index lost in previous step
   destCol^.Col := AToCol;
+  // ... and copy the format record - it may have be missing at destination
+  CopyColFormat(srcCol, destCol, AFromWorksheet, self);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1977,6 +2053,8 @@ begin
   destRow^ := srcRow^;
   // ... and restore row index lost in previous step
   destRow^.Row := AToRow;
+  // ... and copy the format record - it may have be missing at destination
+  CopyRowFormat(srcRow, destRow, AFromWorksheet, self);
 end;
 
 procedure TsWorksheet.Clear;
@@ -3032,6 +3110,18 @@ var
   fmtIndex: Integer;
 begin
   cell := FindCell(ARow, ACol);
+  if (cell <> nil) then
+    fmtIndex := cell^.FormatIndex
+  else
+  begin
+    // Col and row formats are needed explicitely only in case of empty cells.
+    // Because if a cells exists the col/row format already has been copied
+    // to the cell.
+    fmtIndex := GetRowFormatIndex(ARow);
+    if fmtIndex = 0 then
+      fmtIndex := GetColFormatIndex(ACol);
+  end;
+  {
   if (cell <> nil) and (cell^.FormatIndex > 0) then
     fmtIndex := cell^.FormatIndex
   else begin
@@ -3039,6 +3129,7 @@ begin
     if fmtIndex = 0 then
       fmtIndex := GetColFormatIndex(ACol);
   end;
+  }
   Result := FWorkbook.GetPointerToCellFormat(fmtIndex);
 end;
 
@@ -3050,6 +3141,7 @@ function TsWorksheet.GetPointerToEffectiveCellFormat(ACell: PCell): PsCellFormat
 var
   fmtIndex: Integer;
 begin
+  {
   fmtIndex := 0;
   if (ACell <> nil) then begin
     if (ACell^.FormatIndex > 0) then
@@ -3060,6 +3152,11 @@ begin
         fmtIndex := GetColFormatIndex(ACell^.Col);
     end;
   end;
+  }
+  if (ACell <> nil) then
+    fmtIndex := ACell^.FormatIndex
+  else
+    fmtIndex := 0;
   Result := FWorkbook.GetPointerToCellFormat(fmtIndex);
 end;
 

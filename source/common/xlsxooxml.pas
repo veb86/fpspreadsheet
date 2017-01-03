@@ -615,7 +615,10 @@ begin
     ApplyCellFormatting(cell, StrToInt(s));
     fmt := Workbook.GetCellFormat(cell^.FormatIndex);
   end else
+  begin
     InitFormatRecord(fmt);
+    cell^.FormatIndex := 0;
+  end;
 
   // get number format parameters
   numFmt := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
