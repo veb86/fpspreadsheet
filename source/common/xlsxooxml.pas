@@ -1270,7 +1270,16 @@ begin
         fillData.BgColor := bgclr;
         FFillList.Add(fillData);
       end else
-        raise Exception.Create('[TsSpreadOOXLReader.ReadFills] Unsupported pattern node ' + nodeName);
+      if nodeName <> '#text' then
+      begin
+        // This pattern type is unknown to fpspreadsheet. We must store a dummy
+        // fill data record to keep the numbering intact.
+        fillData := TFillListData.Create;
+        fillData.PatternType := 'non';
+        FFillList.Add(fillData);
+        Workbook.AddErrorMsg('ReadFills: Unsupported pattern node ' + nodeName);
+      end;
+
       patternNode := patternNode.NextSibling;
     end;
     fillNode := fillNode.NextSibling;
@@ -1812,7 +1821,6 @@ begin
   while Assigned(ANode) do begin
     if ANode.NodeName = 'si' then begin
       totaltxt := '';
-//      rtParams := nil;
       SetLength(rtParams, 0);
       valuenode := ANode.FirstChild;
       while valuenode <> nil do begin
