@@ -270,7 +270,7 @@ type
   {@@ TsCellIndicator displays the address of the currently active cell of the
     worksheet and workbook. Editing the address allows to jump to the corresponding
     cell. }
-  TsCellIndicator = class(TEdit, IsSpreadsheetControl)
+  TsCellIndicator = class(TCustomEdit, IsSpreadsheetControl)
   private
     FWorkbookSource: TsWorkbookSource;
     function GetWorkbook: TsWorkbook;
@@ -292,8 +292,67 @@ type
   published
     {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
-    {@@ Inherited from TEdit, overridden to center the text in the control by default }
-    property Alignment default taCenter;
+
+    // Inherited from TCustomEdit, published in TEdit. Omit those which are not needed
+    property Action;
+    property Align;
+    property Alignment default taCenter;   // centered text by default
+    property Anchors;
+    property AutoSize;
+    property AutoSelect;
+    property BidiMode;
+    property BorderSpacing;
+    property BorderStyle;
+//    property CharCase;
+    property Color;
+    property Constraints;
+    property DragCursor;
+    property DragKind;
+    property DragMode;
+//    property EchoMode;
+    property Enabled;
+    property Font;
+    property HideSelection;
+    property MaxLength;
+//    property NumbersOnly;
+    property ParentBidiMode;
+    property OnChange;
+    property OnChangeBounds;
+    property OnClick;
+    property OnContextPopup;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnEditingDone;
+    property OnEndDrag;
+    property OnEnter;
+    property OnExit;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnMouseDown;
+    property OnMouseEnter;
+    property OnMouseLeave;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnMouseWheel;
+    property OnMouseWheelDown;
+    property OnMouseWheelUp;
+    property OnResize;
+    property OnStartDrag;
+    property OnUTF8KeyPress;
+    property ParentColor;
+    property ParentFont;
+    property ParentShowHint;
+//    property PasswordChar;
+    property PopupMenu;
+    property ReadOnly;
+    property ShowHint;
+    property TabStop;
+    property TabOrder;
+    property Text;
+//    property TextHint;
+    property Visible;
   end;
 
 
