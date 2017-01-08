@@ -957,11 +957,12 @@ begin
     try
       OLEDocument.Stream := OLEStream;
       OLEStorage.ReadOLEStream(AStream, OLEDocument, 'Workbook');
+      InternalReadFromStream(OLEStream);
     finally
       OLEStorage.Free;
     end;
 
-    InternalReadFromStream(OLEStream);
+//    InternalReadFromStream(OLEStream);     // wp: moved up
 
   finally
     OLEStream.Free;

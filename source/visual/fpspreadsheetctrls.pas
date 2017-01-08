@@ -971,43 +971,6 @@ end;
 procedure TsWorkbookSource.InternalLoadFromFile(AFileName: string;
   AAutoDetect: Boolean; AFormatID: TsSpreadFormatID;
   AWorksheetIndex: Integer = -1);
-{
-// this version avoids loading a defective workbook into the grid,
-// but tabcontrol navigation is not working here...
-
-var
-  book: TsWorkbook;
-begin
-  book := TsWorkbook.Create;
-  try
-    if AAutoDetect then
-      book.ReadFromFile(AFileName)
-    else
-      book.ReadFromFile(AFileName, AFormatID);
-
-    InternalCreateNewWorkbook(book);  // book --> FWorkbook
-  except
-    book.Free;
-    InternalCreateNewWorkbook;
-    // --> empty workbook, but avoid having no worksheet
-    FWorksheet := FWorkbook.AddWorksheet(Format(rsDefaultSheetName, [1]));
-    DoShowError(Format(rsCannotReadFile, [AFileName]));
-  end;
-
-  if AWorksheetIndex = -1 then
-  begin
-    if FWorkbook.ActiveWorksheet <> nil then
-      AWorksheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet) else
-      AWorksheetIndex := 0;
-  end;
-
-  SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
-
-  // If required, display loading error message
-  if FWorkbook.ErrorMsg <> '' then
-    DoShowError(FWorkbook.ErrorMsg);
-end;
-}
 var
   book: TsWorkbook;
 begin
@@ -1018,51 +981,13 @@ begin
       book.ReadfromFile(AFileName)
     else
       book.ReadFromFile(AFileName, AFormatID);
+    InternalLoadFromWorkbook(book, AWorksheetIndex);
   except
-    book.AddErrorMsg(rsCannotReadFile, [AFileName]);
-    // Code executed subsequently will be a pain if there is no worksheet! --> Add one.
-    if book.GetWorksheetCount = 0 then
-      book.AddWorksheet(Format(rsDefaultSheetName, [1]));
+    // book is normally used as current workbook. But it must be destroyed
+    // if the file cannot be read.
+    book.Free;
+    raise;
   end;
-
-  InternalLoadFromWorkbook(book, AWorksheetIndex);
-
-  (*
-
-
-  // Create a new empty workbook
-  InternalCreateNewWorkbook;
-
-  DisableControls;
-  try
-    // Read workbook from file and get worksheet
-    try
-      if AAutoDetect then
-        FWorkbook.ReadFromFile(AFileName)
-      else
-        FWorkbook.ReadFromFile(AFileName, AFormatID);
-    except
-      FWorkbook.AddErrorMsg(rsCannotReadFile, [AFileName]);
-      // Code executed subsequently will be a pain if there is no worksheet!
-      if FWorkbook.GetWorksheetCount = 0 then
-        FWorkbook.AddWorksheet(Format(rsDefaultSheetName, [1]));
-    end;
-  finally
-    EnableControls;
-  end;
-
-  if AWorksheetIndex = -1 then
-  begin
-    if FWorkbook.ActiveWorksheet <> nil then
-      AWorksheetIndex := FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet) else
-      AWorksheetIndex := 0;
-  end;
-  SelectWorksheet(FWorkbook.GetWorkSheetByIndex(AWorksheetIndex));
-
-  // If required, display loading error message
-  if FWorkbook.ErrorMsg <> '' then
-    DoShowError(FWorkbook.ErrorMsg);
-    *)
 end;
 
 procedure TsWorkbookSource.InternalLoadFromWorkbook(AWorkbook: TsWorkbook;

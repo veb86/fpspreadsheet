@@ -574,6 +574,7 @@ var
   BIFF2EOF: Boolean;
   RecordType: Word;
   CurStreamPos: Int64;
+  BOFFound: Boolean;
 begin
   Unused(AParams);
   BIFF2EOF := False;
@@ -582,6 +583,7 @@ begin
   FWorksheet := FWorkbook.AddWorksheet('Sheet', true);
 
   { Read all records in a loop }
+  BOFFound := false;
   while not BIFF2EOF do
   begin
     { Read the record header }
@@ -592,7 +594,7 @@ begin
 
     case RecordType of
       INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
-      INT_EXCEL_ID_BOF           : ;
+      INT_EXCEL_ID_BOF           : BOFFound := true;
       INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
       INT_EXCEL_ID_BOTTOMMARGIN  : ReadMargin(AStream, 3);
       INT_EXCEL_ID_CODEPAGE      : ReadCodePage(AStream);
@@ -630,7 +632,11 @@ begin
     // Make sure we are in the right position for the next record
     AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
 
-    if AStream.Position >= AStream.Size then BIFF2EOF := True;
+    if AStream.Position >= AStream.Size then
+      BIFF2EOF := True;
+
+    if not BOFFound then
+      raise Exception.Create('BOF record not found.');
   end;
 
   FixCols(FWorksheet);

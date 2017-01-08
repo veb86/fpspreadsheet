@@ -8058,13 +8058,14 @@ begin
     raise Exception.CreateFmt(rsReaderNotFound, [AFileName]);
 
   // Here is the trial-and-error loop checking for the various formats.
+  success := false;
   for i:=0 to High(fileformats) do begin
     try
       ReadFromFile(AFileName, fileformats[i], AParams);
       success := true;
       break;  // Exit the loop if we reach this point successfully.
     except
-      success := false;
+      //success := false;
     end;
   end;
 
