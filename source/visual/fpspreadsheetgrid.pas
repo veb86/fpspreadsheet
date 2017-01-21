@@ -4574,11 +4574,10 @@ begin
 
   if FLockSetup > 0 then
     exit;
-  {
+
   if not HandleAllocated then
     //Avoid crash when accessing the canvas, e.g. in GetDefaultHeaderColWidth
     exit;
-   }
 
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     FixedCols := FFrozenCols + FHeaderCount;
