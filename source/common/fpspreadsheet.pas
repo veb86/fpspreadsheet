@@ -208,6 +208,8 @@ type
 
     function WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String): PCell; overload;
     procedure WriteCellValueAsString(ACell: PCell; AValue: String); overload;
+    procedure WriteCellValueAsString(ACell: PCell; AValue: String;
+      const AFormatSettings: TFormatSettings); overload;
 
     function WriteCurrency(ARow, ACol: Cardinal; AValue: Double;
       ANumFormat: TsNumberFormat = nfCurrency; ADecimals: Integer = 2;
@@ -4888,6 +4890,8 @@ end;
   Writes data defined as a string into a cell. Depending on the structure of the
   string, the worksheet tries to guess whether it is a number, a date/time or
   a text and calls the corresponding writing method.
+  Conversion of strings to values is done by means of the FormatSettings
+  defined in the workbook.
 
   @param  ACell   Pointer to the cell
   @param  AValue  Value to be written into the cell given as a string. Depending
@@ -4895,6 +4899,27 @@ end;
                   as a number, a date/time or a text.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String);
+var
+  fs: TFormatSettings;
+begin
+  WriteCellValueAsString(ACell, AValue, FWorkbook.FormatSettings);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes data defined as a string into a cell. Depending on the structure of the
+  string, the worksheet tries to guess whether it is a number, a date/time or
+  a text and calls the corresponding writing method.
+  Uses the provided FormatSettings for date/time etc.
+
+  @param  ACell   Pointer to the cell
+  @param  AValue  Value to be written into the cell given as a string. Depending
+                  on the structure of the string, however, the value is written
+                  as a number, a date/time or a text.
+  @param  AFormatSettings  FormatSettings record used for conversion of strings
+                  with date/time, numbers etc.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String;
+  const AFormatSettings: TFormatSettings);
 var
   isPercent: Boolean;
   number: Double;
@@ -4940,7 +4965,7 @@ begin
   end;
   }
 
-  if TryStrToCurrency(AValue, number, currSym, FWorkbook.FormatSettings) then
+  if TryStrToCurrency(AValue, number, currSym, AFormatSettings) then
   begin
     WriteCurrency(ACell, number, nfCurrencyRed, -1, currSym);
     if IsTextFormat(numFmtParams) then begin
@@ -4964,7 +4989,7 @@ begin
   end;
 
   // Check for a "number" value (floating point, or integer)
-  if TryStrToFloat(AValue, number, FWorkbook.FormatSettings) then
+  if TryStrToFloat(AValue, number, AFormatSettings) then
   begin
     if isPercent then
       WriteNumber(ACell, number/100, nfPercentage)
@@ -4986,13 +5011,13 @@ begin
   // Check for a date/time value:
   // Must be after float detection because StrToDateTime will accept a string
   // "1" as a valid date/time.
-  if TryStrToDateTime(AValue, number, FWorkbook.FormatSettings) then
+  if TryStrToDateTime(AValue, number, AFormatSettings) then
   begin
     if number < 1.0 then          // this is a time alone
     begin
       if not IsTimeFormat(numFmtParams) then
       begin
-        if IsLongTimeFormat(AValue, FWorkbook.FormatSettings.TimeSeparator) then
+        if IsLongTimeFormat(AValue, AFormatSettings.TimeSeparator) then
           WriteDateTime(ACell, number, nfLongTime)
         else
           WriteDateTime(ACell, number, nfShortTime);
@@ -5015,7 +5040,7 @@ begin
     exit;
   end;
 
-  HTMLToRichText(FWorkbook, ReadcellFont(ACell), AValue, plain, rtParams);
+  HTMLToRichText(FWorkbook, ReadCellFont(ACell), AValue, plain, rtParams);
   WriteText(ACell, plain, rtParams);
 end;
 
