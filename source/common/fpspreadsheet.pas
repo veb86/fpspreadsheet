@@ -207,6 +207,8 @@ type
     procedure WriteBoolValue(ACell: PCell; AValue: Boolean); overload;
 
     function WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String): PCell; overload;
+    function WriteCellValueAsString(ARow, ACol: Cardinal; AValue: String;
+      const AFormatSettings: TFormatSettings): PCell; overload;
     procedure WriteCellValueAsString(ACell: PCell; AValue: String); overload;
     procedure WriteCellValueAsString(ACell: PCell; AValue: String;
       const AFormatSettings: TFormatSettings); overload;
@@ -4884,6 +4886,27 @@ function TsWorksheet.WriteCellValueAsString(ARow, ACol: Cardinal;
 begin
   Result := GetCell(ARow, ACol);
   WriteCellValueAsString(Result, AValue);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes data defined as a string into a cell. Depending on the structure of the
+  string, the worksheet tries to guess whether it is a number, a date/time or
+  a text and calls the corresponding writing method.
+
+  @param  ARow    Row index of the cell
+  @param  ACol    Column index of the cell
+  @param  AValue  Value to be written into the cell given as a string. Depending
+                  on the structure of the string, however, the value is written
+                  as a number, a date/time or a text.
+  @param  AFormatSettings  FormatSettings record used for conversion of strings
+                  with date/time, numbers etc.
+  @return Pointer to the cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteCellValueAsString(ARow, ACol: Cardinal;
+  AValue: String; const AFormatSettings: TFormatSettings): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteCellValueAsString(Result, AValue, AFormatSettings);
 end;
 
 {@@ ----------------------------------------------------------------------------
