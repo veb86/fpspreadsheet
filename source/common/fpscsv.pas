@@ -141,14 +141,8 @@ end;
   the corresponding data to the worksheet. }
 procedure TsCSVReader.ReadCellValue(ARow, ACol: Cardinal; AText: String);
 var
-  dblValue: Double;
-  dtValue: TDateTime;
-  boolValue: Boolean;
-  currSym: string;
-  warning: String;
-  nf: TsNumberFormat;
-  decs: Integer;
   cell: PCell;
+  boolValue: Boolean;
 begin
   // Empty strings are blank cells -- nothing to do
   if AText = '' then
@@ -163,27 +157,6 @@ begin
     exit;
   end;
 
-  // Check for a NUMBER or CURRENCY cell
-  if IsNumberValue(AText, CSVParams.AutoDetectNumberFormat, FFormatSettings,
-    dblValue, nf, decs, currSym, warning) then
-  begin
-    if currSym <> '' then
-      FWorksheet.WriteCurrency(cell, dblValue, nfCurrency, decs, currSym)
-    else
-      FWorksheet.WriteNumber(cell, dblValue, nf, decs);
-    if warning <> '' then
-      FWorkbook.AddErrorMsg('Cell %s: %s', [GetCellString(ARow, ACol), warning]);
-    exit;
-  end;
-
-  // Check for a DATE/TIME cell
-  // No idea how to apply the date/time formatsettings here...
-  if IsDateTimeValue(AText, FFormatSettings, dtValue, nf) then
-  begin
-    FWorksheet.WriteDateTime(cell, dtValue, nf);
-    exit;
-  end;
-
   // Check for a BOOLEAN cell
   if IsBoolValue(AText, CSVParams.TrueText, CSVParams.FalseText, boolValue) then
   begin
@@ -191,8 +164,8 @@ begin
     exit;
   end;
 
-  // What is left is handled as a TEXT cell
-  FWorksheet.WriteText(cell, AText);
+  // All other cases are handled by WriteCellValusAsString
+  FWorksheet.WriteCellValueAsString(cell, AText, FFormatSettings);
 end;
 
 procedure TsCSVReader.ReadFormula(AStream: TStream);
