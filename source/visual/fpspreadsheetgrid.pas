@@ -1117,6 +1117,9 @@ begin
   maxw := -1;
   for cell in Worksheet.Cells.GetColEnumerator(GetWorkSheetCol(ACol)) do
   begin
+    // Merged cells are not considered for calculating AutoColWidth -- see Excel.
+    if Worksheet.IsMerged(cell) then
+      continue;
     gRow := GetGridRow(cell^.Row);
     txt := GetCellText(ACol, gRow, false);
     if txt = '' then
