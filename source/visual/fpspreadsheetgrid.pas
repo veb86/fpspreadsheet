@@ -222,7 +222,7 @@ type
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellHintText(ACol, ARow: Integer): String; override;
     function GetCells(ACol, ARow: Integer): String; override;
-    function GetCellText(ACol, ARow: Integer): String;
+    function GetCellText(ACol, ARow: Integer; ATrim: Boolean = true): String;
     function GetEditText(ACol, ARow: Integer): String; override;
     function GetDefaultHeaderColWidth: Integer;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
@@ -1118,7 +1118,7 @@ begin
   for cell in Worksheet.Cells.GetColEnumerator(GetWorkSheetCol(ACol)) do
   begin
     gRow := GetGridRow(cell^.Row);
-    txt := GetCellText(ACol, gRow);
+    txt := GetCellText(ACol, gRow, false);
     if txt = '' then
       Continue;
     case Worksheet.ReadBiDiMode(cell) of
@@ -3030,9 +3030,12 @@ end;
 
   @param   ACol   Grid column index of the cell
   @param   ARow   Grid row index of the cell
+  @param   ATrim  If true show replacement characters if numerical data
+                  are wider than cell.
   @return  Text to be displayed in the cell.
 -------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer): String;
+function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer;
+  ATrim: Boolean = true): String;
 var
   cell: PCell;
   r, c: Integer;
@@ -3064,7 +3067,10 @@ begin
     cell := Worksheet.FindCell(r, c);
     if cell <> nil then
     begin
-      Result := TrimToCell(cell);
+      if ATrim then
+        Result := TrimToCell(cell)
+      else
+        Result := Worksheet.ReadAsText(cell);
       {
       if Worksheet.ReadTextRotation(cell) = rtStacked then
       begin
