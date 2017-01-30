@@ -2922,7 +2922,7 @@ begin
     end;
     InflateRect(cellR, -constCellPadding, -constCellPadding);
 
-    s := GetCellText(ACol, ARow);
+    s := GetCellText(ACol, ARow, false);
     if s = '' then
       exit;
 
