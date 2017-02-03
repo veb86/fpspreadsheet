@@ -82,6 +82,7 @@ type
     FDefColWidth100: Integer;   // Default col width for 100% zoom factor, in pixels
     FZoomLock: Integer;
     FRowHeightLock: Integer;
+    FActiveCellLock: Integer;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
@@ -1017,7 +1018,9 @@ begin
   FInternalWorkbookSource := TsWorkbookSource.Create(self);
   FInternalWorkbookSource.Name := 'internal';
 
+  inc(FActiveCellLock);
   inherited Create(AOwner);
+  dec(FActiveCellLock);
 
   AutoAdvance := aaDown;
   ExtendedSelect := true;
@@ -4378,6 +4381,9 @@ var
   i: Integer;
   {$ENDIF}
 begin
+  if (FActiveCellLock > 0) then
+    exit;
+
   if Worksheet <> nil then
   begin
     {$IFNDEF FPS_NO_GRID_MULTISELECT}
