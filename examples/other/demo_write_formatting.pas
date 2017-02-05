@@ -12,8 +12,8 @@ program demo_write_formatting;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils,
-  fpsTypes, fpspreadsheet, xlsbiff8, fpsopendocument, fpscell;
+  Classes, SysUtils, fpsTypes, fpspreadsheet, xlsbiff8, fpsopendocument,
+  fpscell, laz_fpspreadsheet;
 
 var
   MyWorkbook: TsWorkbook;
@@ -30,7 +30,7 @@ begin
 
   MyWorksheet.WriteText(1, 1, '[]');     // B2
   MyCell := MyWorksheet.GetCell(1, 1);
-  MyCell^.Border := [];
+  MyCell.Border := [];
 
   MyWorksheet.WriteText(1, 3, '[N]');    // D2
   MyCell := MyWorksheet.GetCell(1, 3);
