@@ -6,7 +6,7 @@ if not exist %DOX_CMD% goto :dox_error
 rem *** Prepare files ***
 if not exist output mkdir output
 pushd .
-cd ..\..
+cd ..\..\source
 
 if not exist fps.inc goto :next1
 ren fps.inc ---fps.inc
@@ -25,7 +25,7 @@ echo Running %DOX_CMD% -config "HTML Help" fpspreadsheet.dox-express
 rem *** Clean up ***
 pushd .
 
-cd ..\..
+cd ..\..\source
 chdir
 if not exist ---fps.inc goto :next3
 ren ---fps.inc fps.inc

@@ -39,8 +39,11 @@
 
 - Install the program
 
+- Change the variable DOX_CMD in the batch file "builddoc.bat" to point to the 
+  correct folder.
+
 - Run the batch file "builddoc.bat" which extracts the documentation code from
-  the sources and creates the chm file.
+  the sources and creates the chm file. It may take some time...
   
   
 --------------------------------------------------------------------------------
