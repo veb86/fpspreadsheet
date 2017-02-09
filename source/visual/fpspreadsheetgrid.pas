@@ -38,7 +38,14 @@ type
 
   { TsCustomWorksheetGrid }
 
-  TsAutoExpandMode = (aeData, aeNavigation);
+  TsAutoExpandMode = (
+    {@@ Expands grid dimensions if a cell is written outside current grid dimensions }
+    aeData,
+    {@@ Expands grid dimensions if navigation goes outside current grid dimensions }
+    aeNavigation,
+    {@@ Expands grid dimensions to DEFAULT_ROW_COUNT and DEFAULT_COL_COUNT }
+    aeDefault
+  );
   TsAutoExpandModes = set of TsAutoExpandMode;
 
   TsHyperlinkClickEvent = procedure(Sender: TObject;
@@ -256,7 +263,8 @@ type
     {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
     {@@ Automatically expand grid dimensions }
-    property AutoExpand: TsAutoExpandModes read FAutoExpand write FAutoExpand;
+    property AutoExpand: TsAutoExpandModes read FAutoExpand write FAutoExpand
+      default [aeData, aeNavigation, aeDefault];
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
@@ -1036,7 +1044,7 @@ begin
   FSelPen.Color := clBlack;
   FSelPen.JoinStyle := pjsMiter;
   FSelPen.OnChange := @SelPenChangeHandler;
-  FAutoExpand := [aeData, aeNavigation];
+  FAutoExpand := [aeData, aeNavigation, aeDefault];
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
   FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
@@ -4581,8 +4589,6 @@ end;
   initial column widths and row heights.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Setup;
-var
-  defColCount, defRowCount: Integer;
 begin
   if csLoading in ComponentState then
     exit;
@@ -4604,10 +4610,13 @@ begin
     end;
   end else
   if Worksheet <> nil then begin
-    defColCount := DEFAULT_COL_COUNT;
-    defRowCount := DEFAULT_ROW_COUNT;
-    ColCount := Max(GetGridCol(Worksheet.GetLastColIndex)+1, defColCount) + FHeaderCount;
-    RowCount := max(GetGridRow(Worksheet.GetLastRowIndex)+1, defRowCount) + FHeaderCount;
+    if aeDefault in FAutoExpand then begin
+      ColCount := Max(GetGridCol(Worksheet.GetLastColIndex)+1, DEFAULT_COL_COUNT) + FHeaderCount;
+      RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex)+1, DEFAULT_ROW_COUNT) + FHeaderCount;
+    end else begin
+      ColCount := Max(GetGridCol(WorkSheet.GetLastColIndex), 1) + FHeaderCount;
+      RowCount := Max(GetGridCol(Worksheet.GetLastRowIndex), 1) + FHeaderCount;
+    end;
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
