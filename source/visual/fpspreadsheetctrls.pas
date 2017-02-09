@@ -2757,12 +2757,12 @@ begin
           ExtractFromCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
       end;
     ftRow:
-      if (([lniRow] * AChangedItems <> []) and (PtrInt(AData) = Worksheet.ActiveCellRow)) or
+      if (([lniRow] * AChangedItems <> []) and ({%H-}PtrUInt(AData) = Worksheet.ActiveCellRow)) or
          (lniSelection in AChangedItems)
       then
         ExtractFromRow(Worksheet.ActiveCellRow);
     ftCol:
-      if (([lniCol] * AChangedItems <> []) and (PtrInt(AData) = Worksheet.ActiveCellCol)) or
+      if (([lniCol] * AChangedItems <> []) and ({%H-}PtrUInt(AData) = Worksheet.ActiveCellCol)) or
          (lniSelection in AChangedItems)
       then
         ExtractFromCol(Worksheet.ActiveCellCol);
