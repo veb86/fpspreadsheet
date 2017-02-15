@@ -450,6 +450,7 @@ type
     procedure DeleteRow(ARow: Cardinal);
     procedure InsertCol(ACol: Cardinal);
     procedure InsertRow(ARow: Cardinal);
+    procedure MoveCol(AFromCol, AToCol: Cardinal);
     function  ReadDefaultColWidth(AUnits: TsSizeUnits): Single;
     function  ReadDefaultRowHeight(AUnits: TsSizeUnits): Single;
     function  ReadColFont(ACol: PCol): TsFont;
@@ -7394,6 +7395,32 @@ begin
     end;
     // (3) convert rpn formula back to string formula
     cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Moves a column from a specified column index to another column index.
+  The operation includes everything associated with the column (cell values,
+  cell properties, formats, formulas, column formats, column widths). Formulas
+  are automatically adjusted for the new position.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.MoveCol(AFromCol, AToCol: Cardinal);
+var
+  r, c: Integer;
+begin
+  if AFromCol = AToCol then
+    // Nothing to do
+    exit;
+
+  Workbook.DisableNotifications;
+  try
+    for r := 0 to GetLastRowIndex do begin
+      FCells.MoveAlongRow(r, AFromCol, AToCol);
+      FComments.MoveAlongRow(r, AFromCol, AToCol);
+      FHyperlinks.MoveAlongRow(r, AFromCol, AToCol);
+    end;
+  finally
+    Workbook.EnableNotifications;
   end;
 end;
 

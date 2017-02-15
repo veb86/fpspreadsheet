@@ -206,6 +206,7 @@ type
     function CalcWorksheetRowHeight(AValue: Integer): Single;
     function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
       out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
+    procedure ColRowMoved(IsColumn: Boolean; FromIndex,ToIndex: Integer); override;
     procedure CreateHandle; override;
     procedure CreateNewWorkbook;
     procedure DblClick; override;
@@ -1593,6 +1594,14 @@ begin
 
   // Update following row heights because their index has changed
   UpdateRowHeights(AGridRow);
+end;
+
+procedure TsCustomWorksheetGrid.ColRowMoved(IsColumn: Boolean;
+  FromIndex,ToIndex: Integer);
+begin
+  inherited;
+  if IsColumn then
+    Worksheet.MoveCol(GetWorksheetCol(FromIndex), GetWorksheetCol(ToIndex));
 end;
 
 procedure TsCustomWorksheetGrid.CreateHandle;

@@ -61,6 +61,7 @@ type
     function GetFirst: PsRowCol;
     function GetLast: PsRowCol;
     procedure InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+    procedure MoveAlongRow(ARow, AFromCol, AToCol: Cardinal);
     procedure Remove(ARow, ACol: Cardinal); overload;
   end;
 
@@ -604,6 +605,52 @@ begin
       if item^.Col >= AIndex then inc(item^.Col);
     end;
     node := FindSuccessor(node);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  This method moves the cell in the specified row (ARow) and at column AFromCol
+  along the row before the column with index AToCol.
+-------------------------------------------------------------------------------}
+procedure TsRowColAVLTree.MoveAlongRow(ARow, AFromCol, AToCol: Cardinal);
+var
+  c: Cardinal;
+  node: TAVLTreeNode;
+  item: PsRowCol;
+begin
+  if AFromCol = AToCol then
+    exit;
+
+  if AFromCol < AToCol then
+  begin
+    node := FindLowest;
+    while Assigned(node) do
+    begin
+      item := PsRowCol(node.Data);
+      if item^.Row > ARow then exit;
+      if item^.Row = ARow then break;
+      node := FindSuccessor(node);
+    end;
+    c := AFromCol;
+    while c < AToCol do begin
+      Exchange(ARow, c, ARow, c+1);
+      inc(c);
+    end;
+  end else
+  begin
+    node:= FindHighest;
+    while Assigned(node) do
+    begin
+      item := PsRowCol(node.Data);
+      if item^.Row < ARow then exit;
+      if item^.Row = ARow then break;
+      node := FindPrecessor(node);
+    end;
+    c := AFromCol;
+    while c > AToCol do begin
+      Exchange(ARow, c, ARow, c-1);
+      dec(c);
+    end;
   end;
 end;
 
