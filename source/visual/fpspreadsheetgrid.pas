@@ -518,7 +518,7 @@ type
     {@@ Automatically recalculates the worksheet formulas if a cell value changes. }
     property AutoCalc;
     {@@ Automatically expand grid dimensions }
-    property AutoExpand default [aeData, aeNavigation];
+    property AutoExpand;
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow; deprecated 'Use ShowHeaders';
