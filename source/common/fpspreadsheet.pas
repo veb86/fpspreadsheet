@@ -4830,7 +4830,7 @@ end;
 procedure TsWorksheet.WriteBlank(ACell: PCell);
 begin
   if ACell <> nil then begin
-    ACell^.FormulaValue := '';
+    //ACell^.FormulaValue := '';
     if HasHyperlink(ACell) then
       WriteText(ACell, '')  // '' will be replaced by the hyperlink target.
     else
