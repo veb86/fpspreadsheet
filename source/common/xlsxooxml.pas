@@ -61,6 +61,7 @@ type
     FSharedFormulaBaseList: TFPList;
     FPalette: TsPalette;
     FThemeColors: array of TsColor;
+    FLastRow, FLastCol: Cardinal;
     FWrittenByFPS: Boolean;
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
     procedure ApplyHyperlinks(AWorksheet: TsWorksheet);
@@ -74,6 +75,7 @@ type
     procedure ReadComments(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadDateMode(ANode: TDOMNode);
     procedure ReadDefinedNames(ANode: TDOMNode);
+    procedure ReadDimension(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadFileVersion(ANode: TDOMNode);
     procedure ReadFills(ANode: TDOMNode);
     function ReadFont(ANode: TDOMNode): Integer;
@@ -1065,8 +1067,8 @@ begin
       end else
         lCol.FormatIndex := 0;
 
-      if (lCol.ColWidthType = cwtCustom) or(lCol.FormatIndex > 0) then
-        for col := col1 to col2 do
+      if (lCol.ColWidthType = cwtCustom) or (lCol.FormatIndex > 0) then
+        for col := col1 to Min(col2, FLastCol) do
           AWorksheet.WriteColInfo(col, lCol);
     end;
     colNode := colNode.NextSibling;
@@ -1219,6 +1221,23 @@ begin
     end;
     node := node.NextSibling;
   end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadDimension(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  ref: String;
+  r1, c1: Cardinal;
+begin
+  FLastRow := MaxInt;
+  FLastCol := MaxInt;
+
+  if ANode = nil then
+    exit;
+
+  ref := GetAttrValue(ANode, 'ref');
+  if ref <> '' then
+    ParseCellRangeString(ref, r1, c1, FLastRow, FLastCol);
 end;
 
 procedure TsSpreadOOXMLReader.ReadFileVersion(ANode: TDOMNode);
@@ -2210,6 +2229,7 @@ begin
       FSharedFormulaBaseList.Clear;
 
       // Sheet data, formats, etc.
+      ReadDimension(Doc.DocumentElement.FindNode('dimension'), FWorksheet);
       ReadSheetViews(Doc.DocumentElement.FindNode('sheetViews'), FWorksheet);
       ReadSheetFormatPr(Doc.DocumentElement.FindNode('sheetFormatPr'), FWorksheet);
       ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
