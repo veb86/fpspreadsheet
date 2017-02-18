@@ -2104,7 +2104,7 @@ var
   Doc : TXMLDocument;
   RelsNode: TDOMNode;
   SheetList: TStringList;
-  i: Integer;
+  i, j: Integer;
   fn: String;
   fn_comments: String;
   XMLStream: TStream;
@@ -2203,6 +2203,11 @@ begin
       finally
         XMLStream.Free;
       end;
+
+      // clear sharedformulabase list
+      for j:=FSharedFormulaBaseList.Count-1 downto 0 do
+        TObject(FSharedFormulaBaseList[j]).Free;
+      FSharedFormulaBaseList.Clear;
 
       // Sheet data, formats, etc.
       ReadSheetViews(Doc.DocumentElement.FindNode('sheetViews'), FWorksheet);
