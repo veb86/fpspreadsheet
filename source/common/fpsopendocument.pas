@@ -2279,6 +2279,7 @@ var
   parser: TsSpreadsheetParser;
   p: Integer;
   fmt: PsCellFormat;
+  ns: String;
 begin
   // Create cell and apply format
   if FIsVirtualMode then
@@ -2302,8 +2303,14 @@ begin
     formula := GetAttrValue(ACellNode, 'table:formula');
     if formula <> '' then
     begin
-      // formulas written by Spread begin with 'of:=', our's with '=' --> remove that
+      // Formulas written by Spread begin with 'of:=', by Excel with 'msof:='.
+      // Remove that. And both use different list separators
       p := pos('=', formula);
+      ns := Copy(formula, 1, p-2);
+      case ns of
+        'of'   : FPointSeparatorSettings.ListSeparator := ';';
+        'msoxl': FPointSeparatorSettings.ListSeparator := ',';
+      end;
       Delete(formula, 1, p);
     end;
     // ... convert to Excel "A1" dialect used by fps by defailt
