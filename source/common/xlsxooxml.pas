@@ -904,7 +904,7 @@ begin
               fmt.BiDiMode := TsBiDiMode(StrToInt(s1));
 
             s1 := GetAttrValue(childNode, 'wrapText');
-            if (s1 <> '0') then
+            if (s1 <> '') and (s1 <> '0') then
               Include(fmt.UsedFormattingFields, uffWordWrap);
 
             s1 := GetAttrValue(childNode, 'textRotation');
