@@ -1231,7 +1231,9 @@ var
   p: Integer;
   link, txt: String;
   cell: PCell;
+  formula: String;
 begin
+  formula := ACell^.FormulaValue;
   ACell^.Flags := ACell^.Flags + [cfCalculating] - [cfCalculated];
 
   parser := TsSpreadsheetParser.Create(self);
@@ -1283,6 +1285,8 @@ begin
     parser.Free;
   end;
 
+  // Restore the formula. Could have been erased by WriteBlank or WriteText('')
+  ACell^.FormulaValue := formula;
   ACell^.Flags := ACell^.Flags + [cfCalculated] - [cfCalculating];
 end;
 
@@ -1315,7 +1319,6 @@ begin
     for cell in FCells do
       if HasFormula(cell) and (cell^.ContentType <> cctError) then
         CalcFormula(cell);
-
   finally
     dec(FWorkbook.FCalculationLock);
   end;
@@ -4823,14 +4826,16 @@ end;
 {@@ ----------------------------------------------------------------------------
   Writes an empty cell
 
-  @param  ACel      Pointer to the cell
+  @param  ACel          Pointer to the cell
   Note:   Empty cells are useful when, for example, a border line extends
           along a range of cells including empty cells.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBlank(ACell: PCell);
 begin
   if ACell <> nil then begin
-    //ACell^.FormulaValue := '';
+      ACell^.FormulaValue := '';
+    // NOTE: Erase the formula because if it would return a non-blank result
+    // this would be very confusing!
     if HasHyperlink(ACell) then
       WriteText(ACell, '')  // '' will be replaced by the hyperlink target.
     else

@@ -65,6 +65,7 @@ type
     procedure ReadNumber(AStream: TStream); override;
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
     procedure ReadRowInfo(AStream: TStream); override;
+    function ReadRPNAttr(AStream: TStream; AIdentifier: Byte): Boolean; override;
     function ReadRPNFunc(AStream: TStream): Word; override;
     procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal); override;
     function ReadRPNTokenArraySize(AStream: TStream): Word; override;
@@ -929,6 +930,16 @@ begin
     lRow^.RowHeightType := rhtAuto else
     lRow^.RowHeightType := rhtCustom;
   lRow^.FormatIndex := XFToFormatIndex(xf);
+end;
+
+function TsSpreadBIFF2Reader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte): Boolean;
+begin
+  Result := false;
+  case AIdentifier of
+    $01: AStream.ReadByte;   // tAttrVolatile
+    else exit;       // others not supported by fpspreadsheet --> Result = false
+  end;
+  Result := true;
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -34,12 +34,21 @@ const
   INT_EXCEL_TOKEN_TPAREN    = $15; // Operator in parenthesis
 
   { Constant Operand Tokens, 3.8}
-  INT_EXCEL_TOKEN_TMISSARG  = $16; //missing operand
-  INT_EXCEL_TOKEN_TSTR      = $17; //string
-  INT_EXCEL_TOKEN_TERR      = $1C; //error value
-  INT_EXCEL_TOKEN_TBOOL     = $1D; //boolean
-  INT_EXCEL_TOKEN_TINT      = $1E; //(unsigned) integer
-  INT_EXCEL_TOKEN_TNUM      = $1F; //floating-point
+  INT_EXCEL_TOKEN_TMISSARG  = $16; // missing operand
+  INT_EXCEL_TOKEN_TSTR      = $17; // string
+  INT_EXCEL_TOKEN_TERR      = $1C; // error value
+  INT_EXCEL_TOKEN_TBOOL     = $1D; // boolean
+  INT_EXCEL_TOKEN_TINT      = $1E; // (unsigned) integer
+  INT_EXCEL_TOKEN_TNUM      = $1F; // floating-point
+
+  { Control Tokens, Special Tokens, 3.10 }
+//  01H tExp Matrix formula or shared formula
+//  02H tTbl Multiple operation table
+//  15H tParen Parentheses
+//  18H tNlr Natural language reference (BIFF8)
+  INT_EXCEL_TOKEN_TATTR = $19; // tAttr Special attribute
+//  1AH tSheet Start of external sheet reference (BIFF2-BIFF4)
+//  1BH tEndSheet End of external sheet reference (BIFF2-BIFF4)
 
   { Operand Tokens }
   // _R: reference; _V: value; _A: array
@@ -259,14 +268,6 @@ const
 
   INT_EXCEL_SHEET_FUNC_HYPERLINK  = 359;  // BIFF8 only
 
-  { Control Tokens, Special Tokens }
-//  01H tExp Matrix formula or shared formula
-//  02H tTbl Multiple operation table
-//  15H tParen Parentheses
-//  18H tNlr Natural language reference (BIFF8)
-  INT_EXCEL_TOKEN_TATTR = $19; // tAttr Special attribute
-//  1AH tSheet Start of external sheet reference (BIFF2-BIFF4)
-//  1BH tEndSheet End of external sheet reference (BIFF2-BIFF4)
 
 
 implementation

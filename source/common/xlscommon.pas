@@ -452,6 +452,7 @@ type
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); virtual;
     // Read row info
     procedure ReadRowInfo(AStream: TStream); virtual;
+    function ReadRPNAttr(AStream: TStream; AIdentifier: Byte): boolean; virtual;
     // Read the array of RPN tokens of a formula
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); virtual;
@@ -2155,6 +2156,24 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the special attribute of an RPN formula element.
+  Attributes are ignored by fpspreadsheet.
+  Structure is value for BIFF3 - BIFF8. Must be overridden for BIFF2.
+  Returns false if the structure is too complex for fps.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFFReader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte): Boolean;
+var
+  w: Word;
+begin
+  Result := false;
+  case AIdentifier of
+    $01: AStream.ReadWord;     // tAttrVolatile token
+    else exit;                 // others not supported by fps --> Result = false
+  end;
+  Result := true;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the cell address used in an RPN formula element.
   Evaluates the corresponding bits to distinguish between absolute and
   relative addresses.
@@ -2511,6 +2530,11 @@ begin
   while (AStream.Position < p0 + ARPNTokenArraySize) and supported do begin
     token := AStream.ReadByte;
     case token of
+      INT_EXCEL_TOKEN_TATTR:
+        begin
+          b := AStream.ReadByte;
+          supported := ReadRPNAttr(AStream, b);
+        end;
       INT_EXCEL_TOKEN_TREFV:
         begin
           ReadRPNCellAddress(AStream, r, c, flags);

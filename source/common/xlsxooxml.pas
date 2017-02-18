@@ -308,6 +308,13 @@ type
     Tooltip: String;
   end;
 
+  TSharedFormulaData = class
+    Worksheet: TsWorksheet;
+    Row: Integer;
+    Col: Integer;
+    Formula: String;
+  end;
+
 const
   PATTERN_TYPES: array [TsFillStyle] of string = (
     'none',            // fsNoFill
@@ -327,7 +334,7 @@ const
     'lightDown',       // fsThinStripeDiagDown
     'darkTrellis',     // fsHatchDiag
     'lightTrellis',    // fsHatchThinDiag
-    'darkTellis',      // fsHatchTickDiag
+    'darkTellis',      // fsHatchThickDiag
     'lightGrid'        // fsHatchThinHor
     );
 
@@ -359,19 +366,25 @@ destructor TsSpreadOOXMLReader.Destroy;
 var
   j: Integer;
 begin
-  for j := FFillList.Count-1 downto 0 do TObject(FFillList[j]).Free;
+  for j := FFillList.Count-1 downto 0 do
+    TObject(FFillList[j]).Free;
   FFillList.Free;
 
-  for j := FBorderList.Count-1 downto 0 do TObject(FBorderList[j]).Free;
+  for j := FBorderList.Count-1 downto 0 do
+    TObject(FBorderList[j]).Free;
   FBorderList.Free;
 
-  for j := FHyperlinkList.Count-1 downto 0 do TObject(FHyperlinkList[j]).Free;
+  for j := FHyperlinkList.Count-1 downto 0 do
+    TObject(FHyperlinkList[j]).Free;
   FHyperlinkList.Free;
 
   for j := FSharedStrings.Count-1 downto 0 do
-    if FSharedstrings.Objects[j] <> nil then FSharedStrings.Objects[j].Free;
+    FSharedStrings.Objects[j].Free;
   FSharedStrings.Free;
-  FSharedFormulaBaseList.Free;   // Don't free items, they are worksheet cells
+
+  for j := FSharedFormulaBaseList.Count-1 downto 0 do
+    TObject(FSharedFormulaBaseList[j]).Free;
+  FSharedFormulaBaseList.Free;
 
   // FCellFormatList, FNumFormatList and FFontList are destroyed by ancestor
 
@@ -582,7 +595,9 @@ procedure TsSpreadOOXMLReader.ReadCell(ANode: TDOMNode; AWorksheet: TsWorksheet)
 var
   addr, s: String;
   rowIndex, colIndex: Cardinal;
-  cell, sharedformulabase: PCell;
+  cell: PCell;
+  lCell: TCell;
+  sharedFormulabase: TSharedFormulaData;
   datanode, tnode: TDOMNode;
   dataStr: String;
   formulaStr: String;
@@ -655,18 +670,28 @@ begin
         s := GetAttrValue(datanode, 'ref');
         if (s <> '') then      // This defines the shared formula range
         begin
-          AWorksheet.WriteFormula(cell, FormulaStr);
+          AWorksheet.WriteFormula(cell, formulaStr);
           // We store the shared formula base in the SharedFormulaBaseList.
           // The list index is identical with the 'si' attribute of the node.
-          FSharedFormulaBaseList.Add(cell);
+          sharedformulabase := TSharedFormulaData.Create;
+          sharedformulabase.Worksheet := FWorksheet;
+          sharedformulabase.Row := rowindex;
+          sharedformulabase.Col := colindex;
+          sharedformulabase.Formula := formulaStr;
+          FSharedFormulaBaseList.Add(sharedformulabase);
         end else
         begin
-          // Get index into the SharedFormulaBaseList
+          // Get index into the SharedFormulaBaseList...
           s := GetAttrValue(datanode, 'si');
           if s <> '' then
           begin
-            sharedformulabase := PCell(FSharedFormulaBaseList[StrToInt(s)]);
-            FWorksheet.CopyFormula(sharedformulabase, rowindex, colindex);
+            sharedformulabase := TSharedFormulaData(FSharedFormulaBaseList[StrToInt(s)]);
+            // ... and copy shared formula to destination cell
+            InitCell(sharedformulabase.Row, sharedformulabase.Col, lCell);
+            lCell.Formulavalue := sharedformulabase.Formula;
+            lCell.Worksheet := sharedformulabase.Worksheet;
+            FWorksheet.CopyFormula(@lCell, cell);
+            cell^.ContentType := cctFormula;
           end;
         end;
       end
@@ -681,8 +706,9 @@ begin
   s := GetAttrValue(ANode, 't');   // "t" = data type
   if (s = '') and (dataStr = '') then
   begin
+    formulaStr := cell^.FormulaValue;
     AWorksheet.WriteBlank(cell);     // this erases the formula!!!
-    if formulaStr <> '' then cell^.FormulaValue := formulaStr;
+    cell^.FormulaValue := formulaStr;
   end else
   if (s = '') or (s = 'n') then begin
     // Number or date/time, depending on format
@@ -713,10 +739,12 @@ begin
       ms.ReadBuffer(cell^.RichTextParams[0], n*SizeOf(TsRichTextParam));
     end;
   end else
-  if (s = 'str') or (s = 'inlineStr') then
+  if (s = 'str') or (s = 'inlineStr') then begin
     // literal string
-    AWorksheet.WriteText(cell, datastr)
-  else
+    formulaStr := cell^.FormulaValue;
+    AWorksheet.WriteText(cell, datastr);
+    cell^.FormulaValue := formulaStr;
+  end else
   if s = 'b' then
     // boolean
     AWorksheet.WriteBoolValue(cell, dataStr='1')
