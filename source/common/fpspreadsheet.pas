@@ -3035,7 +3035,7 @@ end;
   Returns the CalcState flag of the specified cell. This flag tells whether a
   formula in the cell has not yet been calculated (csNotCalculated), is
   currently being calculated (csCalculating), or has already been calculated
-  (csCalculated.
+  (csCalculated).
 
   @param   ACell   Pointer to cell considered
   @return  Enumerated value of the cell's calculation state

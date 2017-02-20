@@ -412,6 +412,7 @@ begin
   SortTwoColumns_TwoKeys_1;
   SortTwoRows_TwoKeys_1;
 
+  WriteLn('Press ENTER to quit...');
   ReadLn;
 end.
 
