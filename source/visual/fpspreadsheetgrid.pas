@@ -2185,7 +2185,7 @@ begin
   if HeaderCount > 0 then
     ColRowToOffset(true, true, 0, fixed_rct.Left, fixed_rct.Right);
 
-  // IDon't draw rows outside the ClipRect
+  // Don't draw rows outside the ClipRect
   clipArea := Canvas.ClipRect;
   if (rct.Top >= rct.Bottom) or not VerticalIntersect(rct, clipArea) then begin
     {$IFDEF DbgVisualChange}
@@ -2323,6 +2323,7 @@ begin
   // Header
   if (lCell = nil) and ShowHeaders and ((ACol = 0) or (ARow = 0)) then
   begin
+    ts := Canvas.TextStyle;
     ts.Alignment := taCenter;
     ts.Layout := tlCenter;
     ts.Opaque := false;
@@ -3542,6 +3543,8 @@ begin
   gc := AFirstCol;
   gcLast := ALastCol;
   clipArea := Canvas.ClipRect;
+  if FHeaderCount > 0 then
+    ColRowToOffset(true, false, 0, tmp, clipArea.Left);
 
   with GCache.VisibleGrid do
   begin
@@ -3653,6 +3656,7 @@ begin
               if HorizontalIntersect(temp_rct, clipArea) then
               begin
                 gds := GetGridDrawState(gc, gr);
+                IntersectRect(rct, rct, clipArea);
                 InternalDrawCell(gc, gr, rct, temp_rct, gds);
                 if Worksheet.HasComment(FDrawingCell) then
                   DrawCommentMarker(temp_rct);
@@ -3758,197 +3762,6 @@ begin
     AIsRightToLeft, ZoomFactor
   );
 end;
-(*
-procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText, AMeasureText: String;
-  ARect: TRect; AJustification: Byte; ACellHorAlign: TsHorAlignment;
-  ACellVertAlign: TsVertAlignment; ATextRot: TsTextRotation;
-  ATextWrap, ReplaceTooLong: Boolean; ARichTextParams: TsRichTextParams);
-var
-  ts: TTextStyle;
-  flags: Cardinal;
-  txt: String;
-  txtRect: TRect;
-  P: TPoint;
-  w, h, h0, hline: Integer;
-  i: Integer;
-  L: TStrings;
-  wrapped: Boolean;
-  pLeft: Integer = 0;
-  pRight: Integer = 0;
-begin
-  wrapped := ATextWrap or (ATextRot = rtStacked);
-  if AMeasureText = '' then txt := AText else txt := AMeasureText;
-  flags := DT_WORDBREAK and not DT_SINGLELINE or DT_CALCRECT;
-  txtRect := ARect;
-
-  if (ATextRot in [trHorizontal, rtStacked]) then begin
-    // HORIZONAL TEXT DRAWING DIRECTION
-    Canvas.Font.Orientation := 0;
-    ts := Canvas.TextStyle;
-    ts.Opaque := false;
-    ts.Clipping := not FTextOverflowing;
-    if wrapped then begin
-      ts.Wordbreak := true;
-      ts.SingleLine := false;
-      LCLIntf.DrawText(Canvas.Handle, PChar(txt), Length(txt), txtRect, flags);
-      w := txtRect.Right - txtRect.Left;
-      h := txtRect.Bottom - txtRect.Top;
-    end else begin
-      ts.WordBreak := false;
-      ts.SingleLine := false;
-      w := Canvas.TextWidth(AMeasureText);
-      h := Canvas.TextHeight('Tg');
-    end;
-
-    if ATextRot = rtStacked then begin
-      // Stacked
-      ts.Alignment := HOR_ALIGNMENTS[ACellHorAlign];
-      if h > ARect.Bottom - ARect.Top then begin
-        if ReplaceTooLong then begin
-          txt := '#';
-          repeat
-            txt := txt + '#';
-            LCLIntf.DrawText(Canvas.Handle, PChar(txt), Length(txt), txtRect, flags);
-          until txtRect.Bottom - txtRect.Top > ARect.Bottom - ARect.Top;
-          AText := copy(txt, 1, Length(txt)-1);
-        end;
-        ts.Layout := tlTop;
-      end else
-        case AJustification of
-          0: ts.Layout := tlTop;
-          1: ts.Layout := tlCenter;
-          2: ts.Layout := tlBottom;
-        end;
-      Canvas.TextStyle := ts;
-      Canvas.TextRect(ARect, ARect.Left, ARect.Top, AText);
-    end else begin
-      // Horizontal
-      if h > ARect.Bottom - ARect.Top then
-        ts.Layout := tlTop
-      else
-        ts.Layout := VERT_ALIGNMENTS[ACellVertAlign];
-
-      // too long text
-      if w > ARect.Right - ARect.Left then
-        if ReplaceTooLong then
-        begin
-          txt := '';
-          repeat
-            txt := txt + '#';
-            LCLIntf.DrawText(Canvas.Handle, PChar(txt), Length(txt), txtRect, flags);
-          until txtRect.Right - txtRect.Left > ARect.Right - ARect.Left;
-          AText := Copy(txt, 1, Length(txt)-1);
-          w := Canvas.TextWidth(AText);
-        end;
-
-      P := ARect.TopLeft;
-      case AJustification of
-        0: ts.Alignment := taLeftJustify;
-        1: if (FDrawingCell <> nil) and not Worksheet.IsMerged(FDrawingCell) then
-           begin
-             // Special treatment for overflowing cells: they must be centered
-             // at their original column, not in the total enclosing rectangle.
-             ColRowToOffset(true, true, integer(FDrawingCell^.Col) + FHeaderCount, pLeft, pRight);
-             P.X := (pLeft + pRight - w) div 2;
-             P.y := ARect.Top;
-             ts.Alignment := taLeftJustify;
-           end
-           else
-             ts.Alignment := taCenter;
-        2: ts.Alignment := taRightJustify;
-      end;
-      Canvas.TextStyle := ts;
-      Canvas.TextRect(ARect, P.X, P.Y, AText);
-    end;
-  end
-  else
-  begin
-    // ROTATED TEXT DRAWING DIRECTION
-    // Since there is no good API for multiline rotated text, we draw the text
-    // line by line.
-    L := TStringList.Create;
-    try
-      txtRect := Bounds(ARect.Left, ARect.Top, ARect.Bottom - ARect.Top, ARect.Right - ARect.Left);
-      hline := Canvas.TextHeight('Tg');
-      if wrapped then begin
-        // Extract wrapped lines
-        L.Text := WrapText(Canvas, txt, txtRect.Right - txtRect.Left);
-        // Calculate size of wrapped text
-        flags := DT_WORDBREAK and not DT_SINGLELINE or DT_CALCRECT;
-        LCLIntf.DrawText(Canvas.Handle, PChar(L.Text), Length(L.Text), txtRect, flags);
-        w := txtRect.Right - txtRect.Left;
-        h := txtRect.Bottom - txtRect.Top;
-        h0 := hline;
-      end
-      else begin
-        L.Text := txt;
-        w := Canvas.TextWidth(txt);
-        h := hline;
-        h0 := 0;
-      end;
-      // w and h are seen along the text direction, not x/y!
-
-      if w > ARect.Bottom - ARect.Top then begin
-        if ReplaceTooLong then begin
-          txt := '#';
-          repeat
-            txt := txt + '#';
-          until Canvas.TextWidth(txt) > ARect.Bottom - ARect.Top;
-          L.Text := Copy(txt, 1, Length(txt)-1);
-        end;
-      end;
-
-      ts := Canvas.TextStyle;
-      ts.SingleLine := true;      // Draw text line by line
-      ts.Clipping := false;
-      ts.Layout := tlTop;
-      ts.Alignment := taLeftJustify;
-      ts.Opaque := false;
-
-      if ATextRot = rt90DegreeClockwiseRotation then begin
-        // Clockwise
-        Canvas.Font.Orientation := -900;
-        case ACellHorAlign of
-          haLeft   : P.X := Min(ARect.Right-1, ARect.Left + h - h0);
-          haCenter : P.X := Min(ARect.Right-1, (ARect.Left + ARect.Right + h) div 2);
-          haRight  : P.X := ARect.Right - 1;
-        end;
-        for i:= 0 to L.Count-1 do begin
-          w := Canvas.TextWidth(L[i]);
-          case AJustification of
-            0: P.Y := ARect.Top;                             // corresponds to "top"
-            1: P.Y := Max(ARect.Top, (Arect.Top + ARect.Bottom - w) div 2);  // "center"
-            2: P.Y := Max(ARect.Top, ARect.Bottom - w);      // "bottom"
-          end;
-          Canvas.TextRect(ARect, P.X, P.Y, L[i], ts);
-          dec(P.X, hline);
-        end
-      end
-      else begin
-        // Counter-clockwise
-        Canvas.Font.Orientation := +900;
-        case ACellHorAlign of
-          haLeft   : P.X := ARect.Left;
-          haCenter : P.X := Max(ARect.Left, (ARect.Left + ARect.Right - h + h0) div 2);
-          haRight  : P.X := MAx(ARect.Left, ARect.Right - h + h0);
-        end;
-        for i:= 0 to L.Count-1 do begin
-          w := Canvas.TextWidth(L[i]);
-          case AJustification of
-            0: P.Y := ARect.Bottom;  // like "Bottom"
-            1: P.Y := Min(ARect.Bottom, (ARect.Top + ARect.Bottom + w) div 2);  // "Center"
-            2: P.Y := Min(ARect.Bottom, ARect.Top + w); // like "top"
-          end;
-          Canvas.TextRect(ARect, P.X, P.Y, L[i], ts);
-          inc(P.X, hline);
-        end;
-      end;
-    finally
-      L.Free;
-    end;
-  end;
-end;
-  *)
 
 {@@ ----------------------------------------------------------------------------
   Standard key handling method inherited from TCustomGrid. Is overridden to
