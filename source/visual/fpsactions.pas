@@ -835,7 +835,8 @@ const
     coCopyFormat, coCopyValue, coCopyFormula, coCopyCell
   );
 begin
-  if Target is TsCustomWorksheetGrid then
+  if (Target is TsCustomWorksheetGrid) or (Target is TsWorkbookSource) then
+//  if Target is TsCustomWorksheetGrid then
     case FCopyMode of
       cmBrush:
         begin
