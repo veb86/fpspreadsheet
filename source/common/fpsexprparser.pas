@@ -603,13 +603,18 @@ type
   end;
 
   { TsCellRangeExprNode }
+
+  TsCellRangeIndex = 1..2;
+
   TsCellRangeExprNode = class(TsExprNode)
   private
     FWorksheet: TsWorksheet;
-    FRow1, FRow2: Cardinal;
-    FCol1, FCol2: Cardinal;
+    FRow: array[TsCellRangeIndex] of Cardinal;
+    FCol: array[TsCellRangeIndex] of Cardinal;
     FFlags: TsRelFlags;
   protected
+    function GetCol(AIndex: TsCellRangeIndex): Cardinal;
+    function GetRow(AIndex: TsCellRangeIndex): Cardinal;
     procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
@@ -3548,7 +3553,7 @@ begin
   // Nothing to check;
 end;
 
-{ Calculates the row address of the node's cell for various cases:
+{ Calculates the column address of the node's cell for various cases:
   (1) Copy mode:
       The "DestCell" of the parser is the cell for which the formula is
       calculated. The "SourceCell" contains the formula. If the formula contains
@@ -3628,24 +3633,32 @@ constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
 begin
   FParser := AParser;
   FWorksheet := AWorksheet;
-  FRow1 := ARow1;
-  FCol1 := ACol1;
-  FRow2 := ARow2;
-  FCol2 := ACol2;
+  FRow[1] := ARow1;
+  FCol[1] := ACol1;
+  FRow[2] := ARow2;
+  FCol[2] := ACol2;
   FFlags := AFlags;
 end;
 
 function TsCellRangeExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
 begin
-  Result := RPNCellRange(FRow1, FCol1, FRow2, FCol2, FFlags, ANext);
+  Result := RPNCellRange(GetRow(1), GetCol(1), GetRow(2), GetCol(2), FFlags, ANext);
 end;
 
 function TsCellRangeExprNode.AsString: string;
+var
+  r, c: Array[TsCellRangeIndex] of Cardinal;
+  i: TsCellRangeIndex;
 begin
-  if (FRow1 = FRow2) and (FCol1 = FCol2) then
-    Result := GetCellString(FRow1, FCol1, FFlags)
+  for i in TsCellRangeIndex do
+  begin
+    r[i] := GetRow(i);
+    c[i] := GetCol(i);
+  end;
+  if (r[1] = r[2]) and (c[1] = c[2]) then
+    Result := GetCellString(r[1], r[1], FFlags)
   else
-    Result := GetCellRangeString(FRow1, FCol1, FRow2, FCol2, FFlags);
+    Result := GetCellRangeString(r[1], c[1], r[2], c[2], FFlags);
 end;
 
 procedure TsCellRangeExprNode.Check;
@@ -3653,15 +3666,39 @@ begin
   // Nothing to check;
 end;
 
+{ Calculates the column address of the node's cell for various cases:
+  (1) Copy mode:
+      The "DestCell" of the parser is the cell for which the formula is
+      calculated. The "SourceCell" contains the formula. If the formula contains
+      a relative address in the cell node the function calculates the row
+      address of the cell represented by the node as seen from the DestCell.
+      If the formula contains an absolute address the function returns the row
+      address of the SourceCell.
+  (2) Normal mode:
+      Returns the "true" row address of the cell assigned to the formula node. }
+function TsCellRangeExprNode.GetCol(AIndex: TsCellRangeIndex): Cardinal;
+begin
+  Result := FCol[AIndex];
+  if FParser.CopyMode and (rfRelCol in FFlags) then
+    Result := FCol[AIndex] - FParser.FSourceCell^.Col + FParser.FDestCell^.Col;
+end;
+
 procedure TsCellRangeExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
-  r,c: Cardinal;
+  r, c: Array[TsCellRangeIndex] of Cardinal;
+  rr, cc: Cardinal;
+  i: TsCellRangeIndex;
   cell: PCell;
 begin
-  for r := FRow1 to FRow2 do
-    for c := FCol1 to FCol2 do
+  for i in TsCellRangeIndex do
+  begin
+    r[i] := GetRow(i);
+    c[i] := GetCol(i);
+  end;
+  for rr := r[1] to r[2] do
+    for cc := c[1] to c[2] do
     begin
-      cell := FWorksheet.FindCell(r, c);
+      cell := FWorksheet.FindCell(rr, cc);
       if HasFormula(cell) then
         case FWorksheet.GetCalcState(cell) of
           csNotCalculated:
@@ -3672,11 +3709,18 @@ begin
     end;
 
   Result.ResultType := rtCellRange;
-  Result.ResCellRange.Row1 := FRow1;
-  Result.ResCellRange.Col1 := FCol1;
-  Result.ResCellRange.Row2 := FRow2;
-  Result.ResCellRange.Col2 := FCol2;
+  Result.ResCellRange.Row1 := r[1];
+  Result.ResCellRange.Col1 := c[1];
+  Result.ResCellRange.Row2 := r[2];
+  Result.ResCellRange.Col2 := c[2];
   Result.Worksheet := FWorksheet;
+end;
+
+function TsCellRangeExprNode.GetRow(AIndex: TsCellRangeIndex): Cardinal;
+begin
+  Result := FRow[AIndex];
+  if FParser.CopyMode and (rfRelRow in FFlags) then
+    Result := FRow[AIndex] - FParser.FSourceCell^.Row + FParser.FDestCell^.Row;
 end;
 
 function TsCellRangeExprNode.NodeType: TsResultType;
