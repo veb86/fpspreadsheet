@@ -65,7 +65,6 @@ uses
   fpsutils;
 
 type
-
   TBIFF8ExternSheet = packed record
     ExternBookIndex: Word;
     FirstSheetIndex: Word;
@@ -139,7 +138,7 @@ type
 
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
-    function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+    function  WriteBoundsheet(AStream: TStream; AWorksheet: TsWorksheet): Int64;
     procedure WriteComment(AStream: TStream; ACell: PCell); override;
     procedure WriteComments(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
@@ -453,6 +452,7 @@ type
     ID: Integer;
     Text: String;
   end;
+
 
 { TsSpreadBIFF8Reader }
 
@@ -830,8 +830,12 @@ var
   SectionEOF: Boolean = False;
   RecordType: Word;
   CurStreamPos: Int64;
+  sheetData: TsSheetData;
 begin
-  FWorksheet := FWorkbook.AddWorksheet(FWorksheetNames[FCurSheetIndex], true);
+  sheetData := TsSheetData(FSheetList[FCurSheetIndex]);
+  FWorksheet := FWorkbook.AddWorksheet(sheetData.Name, true);
+  if sheetData.Hidden then
+    FWorksheet.Options := FWorksheet.Options + [soHidden];
 
   while (not SectionEOF) do
   begin
@@ -912,9 +916,11 @@ end;
 
 procedure TsSpreadBIFF8Reader.ReadBoundsheet(AStream: TStream);
 var
-  Len: Byte;
-  WideName: WideString;
+  len: Byte;
+  wideName: WideString;
   rtParams: TsRichTextParams;
+  sheetstate: Byte;
+  sheetdata: TsSheetData;
 begin
   { Absolute stream position of the BOF record of the sheet represented
     by this record }
@@ -922,18 +928,21 @@ begin
   AStream.ReadDWord();
 
   { Visibility }
-  AStream.ReadByte();
+  sheetstate := AStream.ReadByte();    // 0=visible, 1=hidden, 2="very" hidden
 
   { Sheet type }
   AStream.ReadByte();
 
   { Sheet name: 8-bit length }
-  Len := AStream.ReadByte();
+  len := AStream.ReadByte();
 
   { Read string with flags }
-  WideName:=ReadWideString(AStream, Len, rtParams);
+  wideName := ReadWideString(AStream, len, rtParams);
 
-  FWorksheetNames.Add(UTF8Encode(WideName));
+  sheetData := TsSheetData.Create;
+  sheetData.Name := UTF8Encode(wideName);
+  sheetData.Hidden := sheetState <> 0;
+  FSheetList.Add(sheetdata);
 end;
 
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
@@ -2093,8 +2102,8 @@ procedure TsSpreadBIFF8Writer.InternalWriteToStream(AStream: TStream);
 const
   isBIFF8 = true;
 var
-  CurrentPos: Int64;
-  Boundsheets: array of Int64;
+  currentPos: Int64;
+  sheetPos: array of Int64;
   i: Integer;
   pane: Byte;
 begin
@@ -2109,9 +2118,9 @@ begin
   WriteStyle(AStream);
 
   // A BOUNDSHEET for each worksheet
-  SetLength(Boundsheets, Workbook.GetWorksheetCount);
+  SetLength(sheetPos, Workbook.GetWorksheetCount);
   for i := 0 to Workbook.GetWorksheetCount - 1 do
-    Boundsheets[i] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
+    sheetPos[i] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i));
 
   WriteEXTERNBOOK(AStream);
   WriteEXTERNSHEET(AStream);
@@ -2126,10 +2135,10 @@ begin
 
     { First goes back and writes the position of the BOF of the
       sheet on the respective BOUNDSHEET record }
-    CurrentPos := AStream.Position;
-    AStream.Position := Boundsheets[i];
+    currentPos := AStream.Position;
+    AStream.Position := sheetPos[i];
     AStream.WriteDWord(DWordToLE(DWORD(CurrentPos)));
-    AStream.Position := CurrentPos;
+    AStream.Position := currentPos;
 
     WriteBOF(AStream, INT_BOF_SHEET);
       WriteIndex(AStream);
@@ -2175,7 +2184,7 @@ begin
   end;
 
   { Cleanup }
-  SetLength(Boundsheets, 0);
+  SetLength(sheetPos, 0);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2285,13 +2294,15 @@ end;
   @return   The stream position where the absolute stream position
             of the BOF of this sheet should be written (4 bytes size).
 -------------------------------------------------------------------------------}
-function TsSpreadBIFF8Writer.WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+function TsSpreadBIFF8Writer.WriteBoundsheet(AStream: TStream;
+  AWorksheet: TsWorksheet): Int64;
 var
-  Len: Byte;
-  WideSheetName: WideString;
+  len: Byte;
+  wideSheetName: WideString;
+  sheetState: Byte;
 begin
-  WideSheetName:=UTF8Decode(ASheetName);
-  Len := Length(WideSheetName);
+  wideSheetName := UTF8Decode(AWorksheet.Name);
+  len := Length(wideSheetName);
 
   { BIFF Record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_BOUNDSHEET, 8 + Len * Sizeof(WideChar));
@@ -2302,7 +2313,8 @@ begin
   AStream.WriteDWord(DWordToLE(0));
 
   { Visibility }
-  AStream.WriteByte(0);
+  sheetState := IfThen(soHidden in AWorksheet.Options, 1, 0);
+  AStream.WriteByte(sheetState);
 
   { Sheet type }
   AStream.WriteByte(0);
@@ -2311,7 +2323,7 @@ begin
   AStream.WriteByte(Len);
   {String flags}
   AStream.WriteByte(1);
-  AStream.WriteBuffer(WideStringToLE(WideSheetName)[1], Len * Sizeof(WideChar));
+  AStream.WriteBuffer(WideStringToLE(wideSheetName)[1], len * SizeOf(WideChar));
 end;
 
 {@@ ----------------------------------------------------------------------------

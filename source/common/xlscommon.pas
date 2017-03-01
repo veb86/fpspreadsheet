@@ -346,6 +346,12 @@ type
   function ConvertToExcelError(AValue: TsErrorValue): byte;
 
 type
+  { TsSheetData }
+  TsSheetData = class
+    Name: String;
+    Hidden: Boolean;
+  end;
+
   { TsBIFFHeader }
   TsBIFFHeader = packed record
     RecordID: Word;
@@ -379,10 +385,11 @@ type
     FFirstNumFormatIndexInFile: Integer;
     FPalette: TsPalette;
     FDefinedNames: TFPList;
-    FWorksheetNames: TStrings;
+    FWorksheetData: TFPList;
     FCurSheetIndex: Integer;
     FActivePane: Integer;
     FExternSheets: TStrings;
+    FSheetList: TFPList;
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
@@ -712,7 +719,6 @@ type
     TextLen: Word;
   end;
 
-
 function ConvertExcelDateTimeToDateTime(const AExcelDateNum: Double;
   ADateMode: TDateMode): TDateTime;
 begin
@@ -936,6 +942,8 @@ constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
 
+  FSheetList := TFPList.Create;
+
   FPalette := TsPalette.Create;
   PopulatePalette;
 
@@ -966,6 +974,9 @@ var
 begin
   for j:=0 to FDefinedNames.Count-1 do TObject(FDefinedNames[j]).Free;
   FDefinedNames.Free;
+
+  for j:= 0 to FSheetList.Count-1 do TObject(FSheetList[j]).Free;
+  FSheetList.Free;
 
   FExternSheets.Free;
   FPalette.Free;
@@ -2885,55 +2896,48 @@ var
   i: Integer;
   sheet: TsWorksheet;
 begin
-    // Check if the operation succeeded
-    if AStream.Size = 0 then
-      raise Exception.Create('[TsSpreadBIFFReader.InternalReadFromStream] Reading of OLE document failed');
+  // Check if the operation succeeded
+  if AStream.Size = 0 then
+    raise Exception.Create('[TsSpreadBIFFReader.InternalReadFromStream] Reading of OLE document failed');
 
-    // Rewind the stream and read from it
-    AStream.Position := 0;
+  // Rewind the stream and read from it
+  AStream.Position := 0;
 
-    {Initializations }
-    FWorksheetNames := TStringList.Create;
-    try
-      FCurSheetIndex := 0;
-      BIFFEOF := false;
+  {Initializations }
+  FCurSheetIndex := 0;
+  BIFFEOF := false;
 
-      { Read workbook globals }
-      ReadWorkbookGlobals(AStream);
+  { Read workbook globals }
+  ReadWorkbookGlobals(AStream);
 
-      { Check for the end of the file }
-      if AStream.Position >= AStream.Size then
-        BIFFEOF := true;
+  { Check for the end of the file }
+  if AStream.Position >= AStream.Size then
+    BIFFEOF := true;
 
-      { Now read all worksheets }
-      while not BIFFEOF do
-      begin
-        ReadWorksheet(AStream);
+  { Now read all worksheets }
+  while not BIFFEOF do
+  begin
+    ReadWorksheet(AStream);
 
-        // Check for the end of the file
-        if AStream.Position >= AStream.Size then
-          BIFFEOF := true;
+    // Check for the end of the file
+    if AStream.Position >= AStream.Size then
+      BIFFEOF := true;
 
-        // Final preparations
-        inc(FCurSheetIndex);
-        // It can happen in files written by Office97 that the OLE directory is
-        // at the end of the file.
-        if FCurSheetIndex = FWorksheetNames.Count then
-          BIFFEOF := true;
-      end;
+    // Final preparations
+    inc(FCurSheetIndex);
+    // It can happen in files written by Office97 that the OLE directory is
+    // at the end of the file.
+    if FCurSheetIndex = FSheetList.Count then
+      BIFFEOF := true;
+  end;
 
-      { Extract print ranges, repeated rows/cols }
-      for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
-        sheet := FWorkbook.GetWorksheetByIndex(i);
-        FixDefinedNames(sheet);
-        ExtractPrintRanges(sheet);
-        ExtractPrintTitles(sheet);
-      end;
-
-    finally
-      { Finalization }
-      FreeAndNil(FWorksheetNames);
-    end;
+  { Extract print ranges, repeated rows/cols }
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    FixDefinedNames(sheet);
+    ExtractPrintRanges(sheet);
+    ExtractPrintTitles(sheet);
+  end;
 end;
 
 

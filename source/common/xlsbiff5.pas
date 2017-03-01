@@ -100,7 +100,7 @@ type
     procedure InternalWriteToStream(AStream: TStream);
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
-    function  WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+    function  WriteBoundsheet(AStream: TStream; AWorkSheet: TsWorksheet): Int64;
     procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
        const AName: String; AIndexToREF: Word); override;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
@@ -364,9 +364,10 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF5Reader.ReadBoundsheet(AStream: TStream);
 var
-  Len: Byte;
+  len: Byte;
   s: AnsiString;
-  sheetName: String;
+  sheetState: Byte;
+  sheetData: TsSheetData;
 begin
   { Absolute stream position of the BOF record of the sheet represented
     by this record }
@@ -374,18 +375,21 @@ begin
   AStream.ReadDWord();
 
   { Visibility }
-  AStream.ReadByte();
+  sheetState := AStream.ReadByte();
 
   { Sheet type }
   AStream.ReadByte();
 
   { Sheet name: Byte string, 8-bit length }
-  Len := AStream.ReadByte();
+  len := AStream.ReadByte();
+  SetLength(s, len);
+  AStream.ReadBuffer(s[1], len*SizeOf(AnsiChar));
 
-  SetLength(s, Len);
-  AStream.ReadBuffer(s[1], Len*SizeOf(AnsiChar));
-  sheetName := ConvertEncoding(s, FCodePage, EncodingUTF8);
-  FWorksheetNames.Add(sheetName);
+  { Temporarily store parameters for worksheet in FSheetList }
+  sheetData := TsSheetData.Create;
+  sheetData.Name := ConvertEncoding(s, FCodePage, EncodingUTF8);
+  sheetData.Hidden := sheetState <> 0;
+  FSheetList.Add(sheetData);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -494,8 +498,12 @@ var
   SectionEOF: Boolean = False;
   RecordType: Word;
   CurStreamPos: Int64;
+  sheetData: TsSheetData;
 begin
-  FWorksheet := FWorkbook.AddWorksheet(FWorksheetNames[FCurSheetIndex], true);
+  sheetData := TsSheetData(FSheetList[FCurSheetIndex]);
+  FWorksheet := FWorkbook.AddWorksheet(sheetData.Name, true);
+  if sheetData.Hidden then
+    FWorksheet.Options := FWorksheet.Options + [soHidden];
 
   while (not SectionEOF) do
   begin
@@ -1101,7 +1109,7 @@ end;
 procedure TsSpreadBIFF5Writer.InternalWriteToStream(AStream: TStream);
 var
   CurrentPos: Int64;
-  Boundsheets: array of Int64;
+  sheetPos: array of Int64;
   i: Integer;
   pane: Byte;
 begin
@@ -1121,9 +1129,9 @@ begin
   WriteStyle(AStream);
 
   // A BOUNDSHEET for each worksheet
-  SetLength(Boundsheets, Workbook.GetWorksheetCount);
+  SetLength(sheetPos, Workbook.GetWorksheetCount);
   for i := 0 to Workbook.GetWorksheetCount - 1 do
-    Boundsheets[i] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i).Name);
+    sheetPos[i] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i));
 
   WriteEOF(AStream);
 
@@ -1136,7 +1144,7 @@ begin
     { First goes back and writes the position of the BOF of the
       sheet on the respective BOUNDSHEET record }
     CurrentPos := AStream.Position;
-    AStream.Position := Boundsheets[i];
+    AStream.Position := sheetPos[i];
     AStream.WriteDWord(CurrentPos);
     AStream.Position := CurrentPos;
 
@@ -1179,7 +1187,7 @@ begin
 
   { Cleanup }
 
-  SetLength(Boundsheets, 0);
+  SetLength(sheetPos, 0);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1281,13 +1289,15 @@ end;
   @return   The stream position where the absolute stream position
             of the BOF of this sheet should be written (4 bytes size).
 -------------------------------------------------------------------------------}
-function TsSpreadBIFF5Writer.WriteBoundsheet(AStream: TStream; ASheetName: string): Int64;
+function TsSpreadBIFF5Writer.WriteBoundsheet(AStream: TStream;
+  AWorkSheet: TsWorksheet): Int64;
 var
-  Len: Byte;
+  len: Byte;
   xlsSheetName: ansistring;
+  sheetState: Byte;
 begin
-  xlsSheetName := ConvertEncoding(ASheetName, encodingUTF8, FCodePage);
-  Len := Length(xlsSheetName);
+  xlsSheetName := ConvertEncoding(AWorkSheet.Name, encodingUTF8, FCodePage);
+  len := Length(xlsSheetName);
   {
   LatinSheetName := UTF8ToISO_8859_1(ASheetName);
   Len := Length(LatinSheetName);
@@ -1301,15 +1311,16 @@ begin
   AStream.WriteDWord(WordToLE(0));
 
   { Visibility }
-  AStream.WriteByte(0);
+  sheetState := IfThen(soHidden in AWorksheet.Options, 1, 0);
+  AStream.WriteByte(sheetState);
 
   { Sheet type }
   AStream.WriteByte(0);
 
   { Sheet name: Byte string, 8-bit length }
-  AStream.WriteByte(Len);
+  AStream.WriteByte(len);
 //  AStream.WriteBuffer(LatinSheetName[1], Len);
-  AStream.WriteBuffer(xlsSheetName[1], Len);
+  AStream.WriteBuffer(xlsSheetName[1], len);
 end;
 
 {@@ ----------------------------------------------------------------------------
