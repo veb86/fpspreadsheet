@@ -3637,6 +3637,7 @@ var
   po: TsPrintOption;
   img: TsImage;
   embObj: TsEmbeddedObj;
+  so: TsSheetOption;
 begin
   if ASheet = nil then
   begin
@@ -3651,6 +3652,7 @@ begin
     AStrings.Add('Default row height=');
     AStrings.Add('Zoom factor=');
     AStrings.Add('Page layout=');
+    AStrings.Add('Options=');
   end else
   begin
     AStrings.Add(Format('Name=%s', [ASheet.Name]));
@@ -3770,6 +3772,13 @@ begin
       end;
     end else
       AStrings.Add('(+) Images=(dblclick for more...)');
+
+    s := '';
+    for so in TsSheetOption do
+      if so in ASheet.Options then
+        s := s + ', ' + GetEnumName(TypeInfo(TsSheetOption), ord(so));
+    if s <> '' then Delete(s, 1, 2);
+    AStrings.Add('Options='+s);
 
   end;
 end;
