@@ -27,6 +27,7 @@ type
       ALeftPaneWidth, ATopPaneHeight: Integer);
     procedure TestWriteReadGridHeaders(AFormat: TsSpreadsheetFormat;
       AShowGridLines, AShowHeaders: Boolean);
+    procedure TestWriteReadHiddenSheet(AFormat: TsSpreadsheetFormat);
 
   published
     // Writes out sheet options & reads back.
@@ -53,6 +54,8 @@ type
     procedure TestWriteRead_BIFF5_Panes_Vert;
     procedure TestWriteRead_BIFF5_Panes_None;
 
+    procedure TestWriteRead_BIFF5_HiddenSheet;
+
     { BIFF8 tests }
     procedure TestWriteRead_BIFF8_ShowGridLines_ShowHeaders;
     procedure TestWriteRead_BIFF8_ShowGridLines_HideHeaders;
@@ -63,6 +66,8 @@ type
     procedure TestWriteRead_BIFF8_Panes_Hor;
     procedure TestWriteRead_BIFF8_Panes_Vert;
     procedure TestWriteRead_BIFF8_Panes_None;
+
+    procedure TestWriteRead_BIFF8_HiddenSheet;
 
     { ODS tests }
     procedure TestWriteRead_ODS_ShowGridLines_ShowHeaders;
@@ -75,6 +80,8 @@ type
     procedure TestWriteRead_ODS_Panes_Vert;
     procedure TestWriteRead_ODS_Panes_None;
 
+    procedure TestWriteRead_ODS_HiddenSheet;
+
     { OOXML tests }
     procedure TestWriteRead_OOXML_ShowGridLines_ShowHeaders;
     procedure TestWriteRead_OOXML_ShowGridLines_HideHeaders;
@@ -85,6 +92,8 @@ type
     procedure TestWriteRead_OOXML_Panes_Hor;
     procedure TestWriteRead_OOXML_Panes_Vert;
     procedure TestWriteRead_OOXML_Panes_None;
+
+    procedure TestWriteRead_OOXML_HiddenSheet;
   end;
 
 implementation
@@ -419,6 +428,67 @@ end;
 procedure TSpreadWriteReadOptionsTests.TestWriteRead_OOXML_Panes_None;
 begin
   TestWriteReadPanes(sfOOXML, 0, 0);
+end;
+
+
+procedure TSpreadWriteReadOptionsTests.TestWriteReadHiddenSheet(
+  AFormat: TsSpreadsheetFormat);
+const
+  RESULTS: array[0..1] of Boolean = (false, true);
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  TempFile: string; //write xls/xml to this file and read back from it
+  i: Integer;
+begin
+  TempFile := GetTempFileName;
+
+  // Write out pane sizes
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkBook.AddWorksheet(OptionsSheet);
+    MyWorkSheet := MyWorkBook.AddWorksheet(OptionsSheet + '-hidden');
+    MyWorksheet.Options := myWorksheet.Options + [soHidden];
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Read back pane sizes
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    for i:=0 to MyWorkbook.GetWorksheetCount-1 do begin
+      MyWorksheet := MyWorkbook.GetWorksheetByIndex(i);
+      if MyWorksheet=nil then
+        fail('Error in test code. Failed to get named worksheet #' + IntToStr(i));
+      CheckEquals(RESULTS[i], soHidden in MyWorksheet.Options,
+        'Test saved hidden state mismatch, sheet #' + IntToStr(i));
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_BIFF5_HiddenSheet;
+begin
+  TestWriteReadHiddenSheet(sfExcel5);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_BIFF8_HiddenSheet;
+begin
+  TestWriteReadHiddenSheet(sfExcel8);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_OOXML_HiddenSheet;
+begin
+  TestWriteReadHiddenSheet(sfOOXML);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_HiddenSheet;
+begin
+  TestWriteReadHiddenSheet(sfOpenDocument);
 end;
 
 
