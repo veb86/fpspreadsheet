@@ -360,6 +360,7 @@ type
   public
     Name: String;
     BiDiMode: TsBiDiMode;
+    Hidden: boolean;
   end;
 
   { Column style items stored in ColStyleList of the reader }
@@ -1195,6 +1196,8 @@ begin
   tableStyle := TTableStyleData(FTableStyleList[styleIndex]);
   if (tableStyle.BiDiMode = bdRTL) or (tableStyle.BiDiMode = bdLTR) then
     ASheet.BiDiMode := tableStyle.BiDiMode;
+  if tableStyle.Hidden then
+    ASheet.Options := ASheet.Options + [soHidden];
   Result := true;
 end;
 
@@ -4294,6 +4297,7 @@ var
   styleChildNode: TDOMNode;
   bidi: String;
   tablestyle: TTableStyleData;
+  display: String;
 begin
  // nodeName := GetAttrValue(AStyleNode, 'style:name');
   stylename := GetAttrValue(AStyleNode, 'style:name');
@@ -4306,17 +4310,18 @@ begin
     begin
 //      stylename := GetAttrValue(styleChildNode, 'style:name');
       bidi := GetAttrValue(styleChildNode, 'style:writing-mode');
+      display := GetAttrValue(styleChildNode, 'table:display');
     end;
     styleChildNode := styleChildNode.NextSibling;
   end;
 
+  tablestyle := TTableStyleData.Create;
+  tablestyle.Name := styleName;
   if bidi = 'rl-tb' then
-  begin
-    tablestyle := TTableStyleData.Create;
-    tablestyle.Name := styleName;
-    tablestyle.BiDiMode := bdRTL;
-    FTableStyleList.Add(tablestyle);
-  end;
+    tablestyle.BiDiMode := bdRTL else
+    tablestyle.BiDiMode := bdLTR;
+  tablestyle.Hidden := display = 'false';
+  FTableStyleList.Add(tablestyle);
 end;
 
 
@@ -6981,10 +6986,10 @@ begin
     end;
     AppendToStream(AStream, Format(
       '<style:style style:name="ta%d" style:family="table" style:master-page-name="PageStyle_5f_%s">' +
-        '<style:table-properties table:display="true" %s/>' +
+        '<style:table-properties table:display="%s" %s/>' +
       '</style:style>', [
       i+1, UTF8TextToXMLText(sheetname),
-      bidi
+      FALSE_TRUE[not (soHidden in sheet.Options)], bidi
     ]));
     if sheet.GetImageCount > 0 then
     begin
