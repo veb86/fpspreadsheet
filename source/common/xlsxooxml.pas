@@ -55,6 +55,7 @@ type
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
     FSharedStrings: TStringList;
+    FSheetList: TFPList;
     FFillList: TFPList;
     FBorderList: TFPList;
     FHyperlinkList: TFPList;
@@ -91,7 +92,7 @@ type
     procedure ReadRow(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsWorksheet);
-    procedure ReadSheetList(ANode: TDOMNode; AList: TStrings);
+    procedure ReadSheetList(ANode: TDOMNode);
     procedure ReadSheetViews(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadThemeElements(ANode: TDOMNode);
     procedure ReadThemeColors(ANode: TDOMNode);
@@ -317,6 +318,12 @@ type
     Formula: String;
   end;
 
+  TSheetData = class
+    Name: String;
+    ID: String;
+    Hidden: Boolean;
+  end;
+
 const
   PATTERN_TYPES: array [TsFillStyle] of string = (
     'none',            // fsNoFill
@@ -351,6 +358,7 @@ begin
   FDateMode := XlsxSettings.DateMode;
 
   FSharedStrings := TStringList.Create;
+  FSheetList := TFPList.Create;
   FFillList := TFPList.Create;
   FBorderList := TFPList.Create;
   FHyperlinkList := TFPList.Create;
@@ -379,6 +387,10 @@ begin
   for j := FHyperlinkList.Count-1 downto 0 do
     TObject(FHyperlinkList[j]).Free;
   FHyperlinkList.Free;
+
+  for j := FSheetList.Count-1 downto 0 do
+    TObject(FSheetList[j]).Free;
+  FSheetList.Free;
 
   for j := FSharedStrings.Count-1 downto 0 do
     FSharedStrings.Objects[j].Free;
@@ -1938,21 +1950,22 @@ begin
     AWorksheet.WriteDefaultRowHeight(h, suPoints);
 end;
 
-procedure TsSpreadOOXMLReader.ReadSheetList(ANode: TDOMNode; AList: TStrings);
+procedure TsSpreadOOXMLReader.ReadSheetList(ANode: TDOMNode);
 var
   node: TDOMNode;
   nodename: String;
-  sheetName: String;
-  sheetId: String;
+  sheetData: TSheetData;
 begin
   node := ANode.FirstChild;
   while node <> nil do begin
     nodename := node.NodeName;
     if nodename = 'sheet' then
     begin
-      sheetName := GetAttrValue(node, 'name');
-      sheetId := GetAttrValue(node, 'sheetId');
-      AList.AddObject(sheetName, TObject(ptrInt(StrToInt(sheetID))));
+      sheetData := TSheetData.Create;
+      sheetData.Name := GetAttrValue(node, 'name');
+      sheetData.ID := GetAttrvalue(node, 'sheetID');
+      sheetData.Hidden := GetAttrValue(node, 'state') = 'hidden';
+      FSheetList.Add(sheetData);
     end;
     node := node.NextSibling;
   end;
@@ -2122,7 +2135,6 @@ procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream;
 var
   Doc : TXMLDocument;
   RelsNode: TDOMNode;
-  SheetList: TStringList;
   i, j: Integer;
   fn: String;
   fn_comments: String;
@@ -2143,7 +2155,7 @@ var
 begin
   Unused(AParams);
   Doc := nil;
-  SheetList := TStringList.Create;
+
   try
     // Retrieve theme colors
     XMLStream := CreateXMLStream;
@@ -2166,7 +2178,7 @@ begin
       ReadXMLStream(Doc, XMLStream);
       ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
       ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
-      ReadSheetList(Doc.DocumentElement.FindNode('sheets'), SheetList);
+      ReadSheetList(Doc.DocumentElement.FindNode('sheets'));
       //ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));  -- don't read here because sheets do not yet exist
       ReadActiveSheet(Doc.DocumentElement.FindNode('bookViews'), actSheetIndex);
       FreeAndNil(Doc);
@@ -2208,9 +2220,11 @@ begin
     end;
 
     // read worksheets
-    for i:=0 to SheetList.Count-1 do begin
+    for i:=0 to FSheetList.Count-1 do begin
       // Create worksheet
-      FWorksheet := FWorkbook.AddWorksheet(SheetList[i], true);
+      FWorksheet := FWorkbook.AddWorksheet(TSheetData(FSheetList[i]).Name, true);
+      if TSheetData(FSheetList[i]).Hidden then
+        FWorksheet.Options := FWorksheet.Options + [soHidden];
 
       // unzip sheet file
       XMLStream := CreateXMLStream;
@@ -2261,7 +2275,7 @@ begin
           ReadHyperlinks(RelsNode);
           FreeAndNil(Doc);
         end else
-        if (SheetList.Count = 1) then
+        if (FSheetList.Count = 1) then
           // If the workbook has only one sheet then the sheet.xml.rels file
           // is missing
           fn_comments := 'comments1.xml'
@@ -2312,7 +2326,6 @@ begin
     end;
 
   finally
-    SheetList.Free;
     FreeAndNil(Doc);
   end;
 end;
@@ -4264,6 +4277,8 @@ var
   actTab: String;
   sheetName: String;
   counter: Integer;
+  sheet: TsWorksheet;
+  sheetstate: String;
 begin
   actTab := IfThen(FWorkbook.ActiveWorksheet = nil, '',
     'activeTab="' + IntToStr(FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet)) + '"');
@@ -4285,10 +4300,12 @@ begin
       '<sheets>');
   for counter:=1 to Workbook.GetWorksheetCount do
   begin
-    sheetname := UTF8TextToXMLText(Workbook.GetWorksheetByIndex(counter-1).Name);
+    sheet := Workbook.GetWorksheetByIndex(counter-1);
+    sheetname := UTF8TextToXMLText(sheet.Name);
+    sheetState := IfThen(soHidden in sheet.Options, ' state="hidden"', '');
     AppendToStream(AStream, Format(
-        '<sheet name="%s" sheetId="%d" r:id="rId%d" />',
-        [sheetname, counter, counter]));
+        '<sheet name="%s" sheetId="%d" r:id="rId%d"%s />',
+        [sheetname, counter, counter, sheetstate]));
   end;
   AppendToStream(AStream,
       '</sheets>');
