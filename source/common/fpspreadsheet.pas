@@ -35,8 +35,9 @@ type
     @param soShowHeaders    Show or hide the column or row headers of the spreadsheet
     @param soHasFrozenPanes If set a number of rows and columns of the spreadsheet
                             is fixed and does not scroll. The number is defined by
-                            LeftPaneWidth and TopPaneHeight. }
-  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes);
+                            LeftPaneWidth and TopPaneHeight.
+    @param soHidden         Worksheet is hidden. }
+  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes, soHidden);
 
   {@@ Set of user interface options
     @ see TsSheetOption }
