@@ -507,8 +507,14 @@ begin
       begin
         if (AFormat = sfExcel2) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
           Continue;  // The formats nfFmtDateTime and nfTimeInterval are not supported by BIFF2
-        if (AFormat = sfCSV) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
-          Continue;  // No chance for csv to detect custom formats without further information                                 ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
+        if (AFormat = sfCSV) then begin
+          if (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
+            Continue;  // No chance for csv to detect custom formats without further information                                 ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
+          if (SollDateTimeFormats[Col] in [nfShortDate, nfLongDate, nfShortDateTime])
+             and (SollDateTimes[Row] < 1)
+          then
+            Continue;  // No chance for csv to detect a datetime format < 1 (must be time only)
+        end;
         ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
         CheckEquals(
           Lowercase(SollDateTimeStrings[Row, Col]),

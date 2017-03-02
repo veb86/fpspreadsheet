@@ -4950,6 +4950,11 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String;
   const AFormatSettings: TFormatSettings);
+const          // isAMPM   isLongTime
+  TIME_FMT: array[boolean, boolean] of TsNumberFormat = (
+    (nfShortTime, nfLongTime),
+    (nfShortTimeAM, nfLongTimeAM)
+  );
 var
   isPercent: Boolean;
   number: Double;
@@ -4958,9 +4963,12 @@ var
   numFmtParams: TsNumFormatParams;
   maxDig: Integer;
   isMixed: Boolean;
+  isAMPM: Boolean;
+  isLongTime: Boolean;
   rtParams: TsRichTextParams;
   plain: String;
   fmtIndex: Integer;
+  ucValue: String;
 begin
   if ACell = nil then
     exit;
@@ -5047,15 +5055,17 @@ begin
     begin
       if not IsTimeFormat(numFmtParams) then
       begin
-        if IsLongTimeFormat(AValue, AFormatSettings.TimeSeparator) then
-          WriteDateTime(ACell, number, nfLongTime)
-        else
-          WriteDateTime(ACell, number, nfShortTime);
+        ucValue := Uppercase(AValue);
+        isAMPM := (pos('AM', ucValue) > 0) or (pos('PM', ucValue) > 0);
+        isLongTime := IsLongTimeFormat(AValue, AFormatSettings.TimeSeparator);
+        WriteDateTime(ACell, number, TIME_FMT[isAMPM, isLongTime]);
       end;
     end else
     if frac(number) = 0.0 then  // this is a date alone
     begin
-  //    if not IsDateFormat(numFmtParams) then
+      if pos(' ', AValue) > 0 then
+        WriteDateTime(ACell, number, nfShortDateTime)
+      else
         WriteDateTime(ACell, number, nfShortDate);
     end else
     if not IsDateTimeFormat(fmt.NumberFormat) then
