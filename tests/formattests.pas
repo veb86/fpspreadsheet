@@ -403,13 +403,15 @@ begin
         ExpectedString := SollNumberStrings[Row, Col];
         if (ExpectedString <> ActualString) then
         begin
-          if (AFormat = sfCSV) and (Row=5) and (Col=0) then
-            // CSV has an insignificant difference of tiny numbers in
-            // general format
-            ignore('Ignoring insignificant saved string mismatch, cell ' +
-                   CellNotation(MyWorksheet,Row,Col) +
-                   ', expected: <' + ExpectedString +
-                   '> but was: <' + ActualString + '>')
+          if (AFormat = sfCSV) then begin
+            if ((Row=5) and (Col=0)) or
+               // CSV has an insignificant difference of tiny numbers in general format
+               ((Row=0) and (Col=2))
+               // CSV does not attempt to extract decimals out of number string
+            then
+              Ignore(Format('Ignoring csv saved string mismatch, cell %s, expected: <%s>, but was <%s>',
+                [CellNotation(MyWorksheet,Row,Col), ExpectedString, ActualSTring]));
+          end
           else
             CheckEquals(ExpectedString, ActualString,
               'Test saved string mismatch, cell '+CellNotation(MyWorkSheet,Row,Col));
