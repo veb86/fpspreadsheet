@@ -601,7 +601,6 @@ type
     property MouseWheelOption;
     {@@ inherited from TCustomGrid. Select the option goEditing to make the grid editable! }
     property Options;
-    //property ParentBiDiMode;
     {@@ inherited from ancestors }
     property ParentBiDiMode;
     {@@ inherited from ancestors}
@@ -3543,8 +3542,12 @@ begin
   gc := AFirstCol;
   gcLast := ALastCol;
   clipArea := Canvas.ClipRect;
-  if FHeaderCount > 0 then
-    ColRowToOffset(true, false, 0, tmp, clipArea.Left);
+  if FHeaderCount > 0 then begin
+    if IsRightToLeft then
+      ColRowToOffset(true, true, 0, clipArea.Right,tmp)
+    else
+      ColRowToOffset(true, true, 0, tmp, clipArea.Left);
+  end;
 
   with GCache.VisibleGrid do
   begin
