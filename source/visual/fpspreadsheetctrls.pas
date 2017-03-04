@@ -516,7 +516,7 @@ type
 
   {@@ Inspector expanded nodes }
   TsInspectorExpandedNode = (ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
-    ienEmbeddedObj, ienImages);
+    ienEmbeddedObj, ienImages, ienCryptoInfo);
   TsInspectorExpandedNodes = set of TsInspectorExpandedNode;
 
   {@@ TsSpreadsheetInspector displays all properties of a workbook, worksheet,
@@ -566,7 +566,8 @@ type
     {@@ Displays subproperties }
     property ExpandedNodes: TsInspectorExpandedNodes
       read FExpanded write SetExpanded
-      default [ienFormatSettings, ienPageLayout, ienFonts, ienFormats, ienEmbeddedObj, ienImages];
+      default [ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
+               ienEmbeddedObj, ienImages, ienCryptoInfo];
     {@@ inherited from TValueListEditor. Turns of the fixed column by default}
     property FixedCols default 0;
     {@@ inherited from TStringGrid, but not published in TValueListEditor. }
@@ -2969,7 +2970,7 @@ begin
   DisplayOptions := DisplayOptions - [doKeyColFixed];
   FixedCols := 0;
   FExpanded := [ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
-    ienEmbeddedObj, ienImages];
+    ienEmbeddedObj, ienImages, ienCryptoInfo];
   with (TitleCaptions as TStringList) do begin
     OnChange := nil;        // This fixes an issue with Laz 1.0
     Clear;
@@ -3031,6 +3032,12 @@ begin
     if (ienFormats in expNodes)
       then Exclude(expNodes, ienFormats)
       else Include(expNodes, ienFormats);
+  end else
+  if (pos('CryptoInfo', s) > 0) then
+  begin
+    if (ienCryptoInfo in expNodes)
+      then Exclude(expNodes, ienCryptoInfo)
+      else Include(expNodes, ienCryptoInfo);
   end else
     exit;
   SetExpanded(expNodes);
@@ -3255,6 +3262,7 @@ var
   cb: TsCellBorder;
   fmt: TsCellFormat;
   numFmt: TsNumFormatParams;
+  cp: TsCellProtection;
 begin
   if AFormatIndex > -1 then
     fmt := Workbook.GetCellFormat(AFormatIndex)
@@ -3352,6 +3360,21 @@ begin
   else
     AStrings.Add(Format('BiDiMode=%s', [
       GetEnumName(TypeInfo(TsBiDiMode), ord(fmt.BiDiMode))]));
+
+  if (AFormatIndex = -1) then
+    AStrings.Add('Protection=(not protected)')
+  else begin
+    if Worksheet.IsProtected then begin
+      s := '';
+      for cp in TsCellProtection do
+        if cp in fmt.Protection then
+          s := s + ', ' + GetEnumName(TypeInfo(TsCellProtection), ord(cp));
+      if s <> '' then Delete(s, 1, 2) else s := '(not protected)';
+    end else
+      s := '(not protected)';
+    AStrings.Add('Protection=' + s);
+  end;
+
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3527,6 +3550,7 @@ var
   s: String;
   i: Integer;
   embobj: TsEmbeddedObj;
+  bp: TsWorkbookProtection;
 begin
   if AWorkbook = nil then
   begin
@@ -3536,6 +3560,7 @@ begin
     AStrings.Add('ActiveWorksheet=');
     AStrings.Add('FormatSettings=');
     AStrings.Add('Images=');
+    AStrings.Add('Protection=');
   end else
   begin
     AStrings.Add(Format('FileName=%s', [AWorkbook.FileName]));
@@ -3618,6 +3643,24 @@ begin
         AStrings.Add(Format('  CellFormat%d=%s', [i, AWorkbook.GetCellFormatAsString(i)]));
     end else
       AStrings.Add('(+) Cell formats=(dblclick for more...)');
+
+    s := '';
+    for bp in TsWorkbookProtection do
+      if bp in AWorkbook.Protection then
+        s := s + ', ' + GetEnumName(TypeInfo(TsWorkbookProtection), ord(bp));
+    if s <> '' then Delete(s, 1, 2) else s := '(default)';
+    AStrings.Add('Protection=' + s);
+
+    if (ienCryptoInfo in FExpanded) then begin
+      AStrings.Add('(-) CryptoInfo=');
+      AStrings.Add(Format('  Password=%s', [Workbook.CryptoInfo.Password]));
+      AStrings.Add(Format('  AlgorithmName=%s', [Workbook.CryptoInfo.AlgorithmName]));
+      AStrings.Add(Format('  HashValue=%s', [Workbook.CryptoInfo.HashValue]));
+      AStrings.Add(Format('  SaltValue=%s', [Workbook.CryptoInfo.SaltValue]));
+      AStrings.Add(Format('  SplinCount=%d', [Workbook.CryptoInfo.SpinCount]));
+    end else
+      AStrings.Add('(+) CryptoInfo=(dblclick for more...)');
+
   end;
 end;
 
@@ -3638,6 +3681,7 @@ var
   img: TsImage;
   embObj: TsEmbeddedObj;
   so: TsSheetOption;
+  sp: TsWorksheetProtection;
 begin
   if ASheet = nil then
   begin
@@ -3653,6 +3697,7 @@ begin
     AStrings.Add('Zoom factor=');
     AStrings.Add('Page layout=');
     AStrings.Add('Options=');
+    AStrings.Add('Protection=');
   end else
   begin
     AStrings.Add(Format('Name=%s', [ASheet.Name]));
@@ -3779,6 +3824,26 @@ begin
         s := s + ', ' + GetEnumName(TypeInfo(TsSheetOption), ord(so));
     if s <> '' then Delete(s, 1, 2);
     AStrings.Add('Options='+s);
+
+    if ASheet.IsProtected then begin
+      s := '';
+      for sp in TsWorksheetProtection do
+        if sp in ASheet.Protection then
+          s := s + ', ' + GetEnumName(TypeInfo(TsWorksheetProtection), ord(sp));
+      if s <> '' then Delete(s, 1, 2) else s := '(default)';
+    end else
+      s := '(not protected)';
+    AStrings.Add('Protection=' + s);
+
+    if (ienCryptoInfo in FExpanded) then begin
+      AStrings.Add('(-) CryptoInfo=');
+      AStrings.Add(Format('  Password=%s', [Worksheet.CryptoInfo.Password]));
+      AStrings.Add(Format('  AlgorithmName=%s', [Worksheet.CryptoInfo.AlgorithmName]));
+      AStrings.Add(Format('  HashValue=%s', [Worksheet.CryptoInfo.HashValue]));
+      AStrings.Add(Format('  SaltValue=%s', [Worksheet.CryptoInfo.SaltValue]));
+      AStrings.Add(Format('  SplinCount=%d', [Worksheet.CryptoInfo.SpinCount]));
+    end else
+      AStrings.Add('(+) CryptoInfo=(dblclick for more...)');
 
   end;
 end;
