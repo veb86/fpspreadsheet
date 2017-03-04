@@ -638,6 +638,45 @@ type
   {@@ Switch a cell from left-to-right to right-to-left orientation }
   TsBiDiMode = (bdDefault, bdLTR, bdRTL);
 
+  {@@  }
+  TsCryptoInfo = record
+    AlgorithmName: string;
+    Password: string; // For old version of Excel (2010 and earlier)
+    HashValue: string;
+    SaltValue: string;
+    SpinCount: Integer;
+  end;
+
+  {@@ Workbook protection options }
+  TsWorkbookProtection = (bpLockRevision, bpLockStructure, bpLockWindows);
+  TsWorkbookProtections = set of TsWorkbookProtection;
+
+  {@@ Worksheet protection options. All selected items are locked. }
+  TsWorksheetProtection = (
+    spFormatCells, spFormatColumns, spFormatRows,
+    spDeleteColumns, spDeleteRows,
+    spInsertColumns, spInsertRows, spInsertHyperlinks,
+    spCells, spSort,
+    spSelectLockedCells, spSelectUnlockedCells
+    {spObjects, spPivotTables, spScenarios }
+  );
+  TsWorksheetProtections = set of TsWorksheetProtection;
+
+  {@@ Cell protection options }
+  TsCellProtection = (cpLockCell, cpHideFormulas);
+  TsCellProtections = set of TsCellProtection;
+
+const
+  ALL_SHEET_PROTECTIONS = [spFormatCells, spFormatColumns, spFormatRows,
+    spDeleteColumns, spDeleteRows, spInsertColumns, spInsertRows, spInsertHyperlinks,
+    spCells, spSort, spSelectLockedCells, spSelectUnlockedCells
+    {, spObjects, spPivotTables, spScenarios} ];
+
+  DEFAULT_SHEET_PROTECTIONS = ALL_SHEET_PROTECTIONS - [spSelectLockedCells, spSelectUnlockedcells];
+
+  DEFAULT_CELL_PROTECTION = [cpLockCell];
+
+type
   {@@ Record containing all details for cell formatting }
   TsCellFormat = record
     Name: String;
@@ -652,6 +691,7 @@ type
     Background: TsFillPattern;
     NumberFormatIndex: Integer;
     BiDiMode: TsBiDiMode;
+    Protection: TsCellProtections;
     // next two are deprecated...
     NumberFormat: TsNumberFormat;
     NumberFormatStr: String;

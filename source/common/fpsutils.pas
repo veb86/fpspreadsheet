@@ -170,6 +170,7 @@ procedure FixHyperlinkPathDelims(var ATarget: String);
 
 procedure InitCell(out ACell: TCell); overload;
 procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
+procedure InitCryptoInfo(out AValue: TsCryptoInfo);
 procedure InitFormatRecord(out AValue: TsCellFormat);
 procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
   AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
@@ -2080,6 +2081,18 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Initializes the fields of the encryption information block (TsCryptoInfo)
+-------------------------------------------------------------------------------}
+procedure InitCryptoInfo(out AValue: TsCryptoInfo);
+begin
+  AValue.Password := '';
+  AValue.AlgorithmName := '';
+  AValue.HashValue := '';
+  AValue.SaltValue := '';
+  AValue.SpinCount := 0;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Initializes the fields of a TsCellFormaRecord
 -------------------------------------------------------------------------------}
 procedure InitFormatRecord(out AValue: TsCellFormat);
@@ -2089,7 +2102,10 @@ begin
   FillChar(AValue, SizeOf(AValue), 0);
   AValue.BorderStyles := DEFAULT_BORDERSTYLES;
   AValue.Background := EMPTY_FILL;
-  AValue.NumberFormatIndex := -1;  // GENERAL format not contained in NumFormatList
+  AValue.NumberFormatIndex := -1;
+    // GENERAL format not contained in NumFormatList
+  AValue.Protection := DEFAULT_CELL_PROTECTION;
+    // NOTE: Cell protection is effective only after protecting a worksheet
 end;
 
 {@@ ----------------------------------------------------------------------------

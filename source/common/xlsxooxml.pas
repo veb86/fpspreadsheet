@@ -93,9 +93,11 @@ type
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSheetList(ANode: TDOMNode);
+    procedure ReadSheetProtection(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadSheetViews(ANode: TDOMNode; AWorksheet: TsWorksheet);
     procedure ReadThemeElements(ANode: TDOMNode);
     procedure ReadThemeColors(ANode: TDOMNode);
+    procedure ReadWorkbookProtection(ANode: TDOMNode);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
   protected
     FFirstNumFormatIndexInFile: Integer;
@@ -118,6 +120,7 @@ type
     FSharedStringsCount: Integer;
     FFillList: array of PsCellFormat;
     FBorderList: array of PsCellFormat;
+    function GetActiveTab: String;
     procedure Get_rId(AWorksheet: TsWorksheet;
       out AComment_rId, AFirstHyperlink_rId, ADrawing_rId, ADrawingHF_rId: Integer);
   protected
@@ -153,6 +156,8 @@ type
     procedure WriteSheetData(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteSheetFormatPr(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteSheetPr(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteSheetProtection(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteSheets(AStream: TStream);
     procedure WriteSheetViews(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
     procedure WriteVmlDrawings(AWorksheet: TsWorksheet);
@@ -160,6 +165,7 @@ type
     procedure WriteVMLDrawings_HeaderFooterImages(AWorksheet: TsWorksheet);
     procedure WriteVMLDrawingRels(AWorksheet: TsWorksheet);
     procedure WriteWorkbook(AStream: TStream);
+    procedure WriteWorkbookProtection(AStream: TStream);
     procedure WriteWorkbookRels(AStream: TStream);
     procedure WriteWorksheet(AWorksheet: TsWorksheet);
     procedure WriteWorksheetRels(AWorksheet: TsWorksheet);
@@ -802,6 +808,7 @@ var
   fillData: TFillListData;
   borderData: TBorderListData;
   fnt: TsFont;
+  cp: TsCellProtections;
 begin
   node := ANode.FirstChild;
   while Assigned(node) do
@@ -934,6 +941,29 @@ begin
           childNode := childNode.NextSibling;
         end;
       end;
+
+      // protection
+      s2 := GetAttrValue(node, 'applyProtection');
+      if (s2 <> '0') and (s2 <> '') then
+      begin
+        cp := [cpLockCell];
+        childNode := node.FirstChild;
+        while Assigned(childNode) do begin
+          nodeName := childNode.NodeName;
+          if nodeName = 'protection' then
+          begin
+            s1 := GetAttrValue(childNode, 'locked');
+            if (s1 = '0') then
+              Exclude(cp, cpLockCell);
+            s1 := GetAttrValue(childNode, 'hidden');
+            if (s1= '1') then
+              Include(cp, cpHideFormulas);
+          end;
+          childNode := childNode.NextSibling;
+        end;
+        fmt.Protection := cp;
+      end;
+
       if fmt.FontIndex > 0 then
         Include(fmt.UsedFormattingFields, uffFont);
       if fmt.Border  <> [] then
@@ -1971,6 +2001,135 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadSheetProtection(ANode: TDOMNode;
+  AWorksheet: TsWorksheet);
+var
+  s: String;
+  shc: TsCryptoInfo;
+  shp0, shp1: TsWorksheetProtections;
+begin
+  if ANode = nil then
+    exit;
+
+  InitCryptoInfo(shc);
+  s := GetAttrValue(ANode, 'password');
+  if s <> '' then
+    shc.Password := s
+  else
+  begin
+    s := GetAttrValue(ANode, 'hashValue');
+    if s <> '' then begin
+      shc.HashValue := s;
+
+      s := GetAttrValue(ANode, 'algorithmName');
+      shc.AlgorithmName := s;
+
+      s := GetAttrValue(ANode, 'saltValue');
+      shc.SaltValue := s;
+
+      s := GetAttrValue(ANode, 'spinCount');
+      shc.SpinCount := StrToIntDef(s, 0);
+    end;
+  end;
+  AWorksheet.CryptoInfo := shc;
+
+  shp1 := [];                     // will get "1" to include
+  shp0 := ALL_SHEET_PROTECTIONS;  // will get "0" to exclude
+
+  // Attribute not found -> property = false
+  s := GetAttrValue(ANode, 'sheet');
+  if (s = '1') then
+    Include(shp1, spCells) else
+    Exclude(shp0, spCells);
+
+  s := GetAttrValue(ANode, 'selectLockedCells');
+  if (s = '1') then
+    Include(shp1, spSelectLockedCells) else
+    Exclude(shp0, spSelectLockedCells);
+
+  s := GetAttrValue(ANode, 'selectUnlockedCells');
+  if (s = '1') then
+    Include(shp1, spSelectUnlockedCells) else
+    Exclude(shp0, spSelectUnlockedCells);
+
+  // these options are currently not supported by fpspreadsheet
+  {
+  s := GetAttrValue(ANode, 'objects');
+  if (s = '1') then
+    Include(shp1, spObjects) else
+    Exclude(shp0, spObjects);
+
+  s := GetAttrValue(ANode, 'scenarios');
+  if (s = '1') then
+    Include(shp1, spScenarios) else
+    Exclude(shp0, spScenarios);
+  }
+
+  // Attribute not found -> property = true
+  {
+  s := GetAttrValue(ANode, 'autoFilter');
+  if (s = '0') then
+    Exclude(shp1, spAutoFilter) else
+    Include(shp0, spAutoFilter);
+  }
+
+  s := GetAttrValue(ANode, 'deleteColumns');
+  if (s = '0') then
+    Exclude(shp0, spDeleteColumns) else
+    Include(shp1, spDeleteColumns);
+
+  s := GetAttrValue(ANode, 'deleteRows');
+  if (s = '0') then
+    Exclude(shp0, spDeleteRows) else
+    Include(shp1, spDeleteRows);
+
+  s := GetAttrValue(ANode, 'formatCells');
+  if (s = '0') then
+    Exclude(shp0, spFormatCells) else
+    Include(shp1, spFormatCells);
+
+  s := GetAttrValue(ANode, 'formatColumns');
+  if (s = '0') then
+    Exclude(shp0, spFormatColumns) else
+    Include(shp1, spFormatColumns);
+
+  s := GetAttrValue(ANode, 'formatRows');
+  if (s = '0') then
+    Exclude(shp0, spFormatRows) else
+    Include(shp1, spFormatRows);
+
+  s := GetAttrValue(ANode, 'insertColumns');
+  if (s = '0') then
+    Exclude(shp0, spInsertColumns) else
+    Include(shp1, spInsertColumns);
+
+  s := GetAttrValue(ANode, 'insertHyperlinks');
+  if (s = '0') then
+    Exclude(shp0, spInsertHyperlinks) else
+    Include(shp1, spInsertHyperlinks);
+
+  s := GetAttrValue(ANode, 'insertRows');
+  if (s = '0') then
+    Exclude(shp0, spInsertRows) else
+    Include(shp1, spInsertRows);
+
+  s := GetAttrValue(ANode, 'sort');
+  if (s = '0') then
+    Exclude(shp0, spSort) else
+    Include(shp1, spSort);
+
+  // Currently no pivottable support in fpspreadsheet
+  {
+  s := GetAttrValue(ANode, 'pivotTables');
+  if (s = '0') then
+    Exclude(shp0, spPivotTables) else
+    Include(shp1, spPivotTables);
+  }
+
+  AWorksheet.Protection := shp0 + shp1;
+  AWorksheet.Protect(true);
+end;
+
 procedure TsSpreadOOXMLReader.ReadSheetViews(ANode: TDOMNode; AWorksheet: TsWorksheet);
 var
   sheetViewNode: TDOMNode;
@@ -1993,6 +2152,14 @@ begin
       s := GetAttrValue(sheetViewNode, 'showRowColHeaders');
       if s = '0' then
          AWorksheet.Options := AWorksheet.Options - [soShowHeaders];
+
+      s := GetAttrValue(sheetViewNode, 'tabSelected');
+      if s = '1' then
+        Workbook.ActiveWorksheet := AWorksheet;
+
+      s := GetAttrValue(sheetViewNode, 'windowProtection');
+      if s = '1' then
+        AWorksheet.Options := AWorksheet.Options + [soPanesProtection];
 
       s := GetAttrValue(sheetViewNode, 'zoomScale');
       if s <> '' then
@@ -2108,6 +2275,66 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadWorkbookProtection(ANode: TDOMNode);
+var
+  s : string;
+  wbc: TsCryptoInfo;
+  wbp: TsWorkbookProtections;
+begin
+  s := '';
+  wbp := [];
+
+  if ANode = nil then
+    Exit;
+
+  InitCryptoInfo(wbc);
+  s := GetAttrValue(ANode, 'workbookPassword');
+  if s <> '' then
+    wbc.Password := s
+  else
+  begin
+    s := GetAttrValue(ANode, 'workbookHashVal');
+    if s <> '' then begin
+      wbc.HashValue := s;
+      wbc.AlgorithmName := GetAttrValue(ANode, 'workbookAlgorithmName');
+      wbc.SaltValue := GetAttrValue(ANode, 'workbookSaltValue');
+      wbc.SpinCount := StrToIntDef(GetAttrValue(ANode, 'workbookSpinCount'), 0);
+    end;
+  end;
+  Workbook.CryptoInfo := wbc;
+
+  {
+  InitCryptoInfo(wbc);
+  s := GetAttrValue(ANode, 'revisionsPassword');
+  if s <> '' then
+    wbc.Password := s
+  else
+  begin
+    s := GetAttrValue(ANode, 'revisionsHashValue');
+    if s <> '' then begin
+      wbc.HashValue := s;
+      wbc.AlgorithmName := GetAttrValue(ANode, 'revisionsAlgorithm');
+      wbc.SaltValue := GetAttrValue(ANode, 'revisionsSaltValue');
+      wbc.SpinCount := StrToIntDef(GetAttrValue(ANode, 'revisionsSpinCount'), 0);
+    end;
+  end;
+  Workbook.RevisionsCrypto := wbc;
+  }
+  s := GetAttrValue(ANode, 'lockStructure');
+  if (s = '1') then
+    Include(wbp, bpLockStructure);
+
+  s := GetAttrValue(ANode, 'lockWindows');
+  if (s = '1') then
+    Include(wbp, bpLockWindows);
+
+  s := GetAttrValue(ANode, 'lockRevision');
+  if (s = '1') then
+    Include(wbp, bpLockRevision);
+
+  Workbook.Protection := wbp;
+end;
+
 procedure TsSpreadOOXMLReader.ReadWorksheet(ANode: TDOMNode; AWorksheet: TsWorksheet);
 var
   rownode: TDOMNode;
@@ -2178,6 +2405,7 @@ begin
       ReadXMLStream(Doc, XMLStream);
       ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
       ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
+      ReadWorkbookProtection(Doc.DocumentElement.FindNode('workbookProtection'));
       ReadSheetList(Doc.DocumentElement.FindNode('sheets'));
       //ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));  -- don't read here because sheets do not yet exist
       ReadActiveSheet(Doc.DocumentElement.FindNode('bookViews'), actSheetIndex);
@@ -2248,6 +2476,7 @@ begin
       ReadSheetFormatPr(Doc.DocumentElement.FindNode('sheetFormatPr'), FWorksheet);
       ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
       ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
+      ReadSheetProtection(Doc.DocumentElement.FindNode('sheetProtection'), FWorksheet);
       ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
       ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'));
       ReadPrintOptions(Doc.DocumentElement.FindNode('printOptions'), FWorksheet);
@@ -2467,6 +2696,12 @@ begin
   // used without analyzing the hyperlink.
   if AWorksheet.Hyperlinks.Count > 0 then
     AFirstHyperlink_rId := next_rId;
+end;
+
+function TsSpreadOOXMLWriter.GetActiveTab: String;
+begin
+  Result := IfThen(FWorkbook.ActiveWorksheet = nil, '',
+    ' activeTab="' + IntToStr(FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet)) + '"');
 end;
 
 { Determines the formatting index which a given cell has in list of
@@ -3187,6 +3422,113 @@ begin
       '<sheetPr>' + s + '</sheetPr>');
 end;
 
+procedure TsSpreadOOXMLWriter.WriteSheetProtection(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  s: String;
+begin
+  s := '';
+
+  // No attribute -> attr="0"
+  if AWorksheet.IsProtected then
+    s := ' sheet="1" objects="1" scenarios="1"'
+  else
+    Exit; //exit if sheet not protected
+
+  if AWorksheet.CryptoInfo.Password <> '' then
+    s := s + ' password="' + AWorksheet.CryptoInfo.Password + '"'
+  else
+  if AWorksheet.CryptoInfo.HashValue <> '' then
+  begin
+    s := s + ' hashValue="' + AWorksheet.CryptoInfo.HashValue + '"';
+
+    if AWorksheet.CryptoInfo.AlgorithmName <> '' then
+      s := s + ' algorithmName="' + AWorksheet.CryptoInfo.AlgorithmName + '"';
+
+    if AWorksheet.CryptoInfo.SaltValue <> '' then
+      s := s + ' saltValue="' + AWorksheet.CryptoInfo.SaltValue + '"';
+
+    if AWorksheet.CryptoInfo.SpinCount <> 0 then
+      s := s + ' spinCount="' + IntToStr(AWorksheet.CryptoInfo.SpinCount) + '"';
+  end;
+
+  {
+  if spObjects in AWorksheet.Protection then       // to do: Remove from default above
+    s := s + ' objects="1"';
+
+  if spScenarios in AWorksheet.Protection then
+    s := s + ' scenarios="1"';
+  }
+
+  if spSelectLockedCells in AWorksheet.Protection then
+    s := s + ' selectLockedCells="1"';
+
+  if spSelectUnlockedCells in AWorksheet.Protection then
+    s := s + ' selectUnlockedCells="1"';
+
+  // No attribute -> attr="1"
+  {
+  if not (spAutoFilter in AWorksheet.Protection) then
+    s := s + ' autoFilter="0"';
+  }
+  if not (spDeleteColumns in AWorksheet.Protection) then
+    s := s + ' deleteColumns="0"';
+
+  if not (spDeleteRows in AWorksheet.Protection) then
+    s := s + ' deleteRows="0"';
+
+  if not (spFormatCells in AWorksheet.Protection) then
+    s := s + ' formatCells="0"';
+
+  if not (spFormatColumns in AWorksheet.Protection) then
+    s := s + ' formatColumns="0"';
+
+  if not (spFormatRows in AWorksheet.Protection) then
+    s := s + ' formatRows="0"';
+
+  if not (spInsertColumns in AWorksheet.Protection) then
+    s := s + ' insertColumns="0"';
+
+  if not (spInsertHyperlinks in AWorksheet.Protection) then
+    s := s + ' insertHyperlinks="0"';
+
+  if not (spInsertRows in AWorksheet.Protection) then
+    s := s + ' insertRows="0"';
+
+  {
+  if not (spPivotTables in AWorksheet.Protection) then
+    s := s + ' pivotTables="0"';
+  }
+  if not (spSort in AWorksheet.Protection) then
+    s := s + ' sort="0"';
+
+  if s <> '' then
+    AppendToStream(AStream,
+      '<sheetProtection' + s + ' />');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteSheets(AStream: TStream);
+var
+  counter: Integer;
+  sheet: TsWorksheet;
+  sheetName: String;
+  sheetState: String;
+begin
+  AppendToStream(AStream,
+    '<sheets>');
+  for counter := 1 to Workbook.GetWorksheetCount do
+  begin
+    sheet := Workbook.GetWorksheetByIndex(counter-1);
+    sheetname := UTF8TextToXMLText(sheet.Name);
+    sheetState := IfThen(soHidden in sheet.Options, ' state="hidden"', '');
+    AppendToStream(AStream, Format(
+      '<sheet name="%s" sheetId="%d" r:id="rId%d"%s />',
+      [sheetname, counter, counter, sheetstate]));
+  end;
+  AppendToStream(AStream,
+    '</sheets>');
+end;
+
 procedure TsSpreadOOXMLWriter.WriteSheetViews(AStream: TStream;
   AWorksheet: TsWorksheet);
 const
@@ -3202,6 +3544,7 @@ var
   bidi: String;
   zoomscale: String;
   attr: String;
+  windowProtection: String;
 begin
   // Show gridlines ?
   showGridLines := StrUtils.IfThen(soShowGridLines in AWorksheet.Options, '', ' showGridLines="0"');
@@ -3231,8 +3574,14 @@ begin
   // Selected tab?
   tabSel := StrUtils.IfThen(AWorksheet = FWorkbook.ActiveWorksheet, ' tabSelected="1"', '');
 
-  // SheetView attributes
-  attr := showGridLines + showHeaders + tabSel + zoomScale + bidi;
+  // Window protection
+  if (soPanesProtection in AWorksheet.Options) and FWorkbook.IsProtected then
+    windowProtection := ' windowProtection="1"'
+  else
+    windowProtection := '';
+
+  // All SheetView attributes
+  attr := windowProtection + showGridLines + showHeaders + tabSel + zoomScale + bidi;
 
   // No frozen panes
   if not (soHasFrozenPanes in AWorksheet.Options) or
@@ -3312,8 +3661,7 @@ end;
 { Writes the style list which the workbook has collected in its FormatList }
 procedure TsSpreadOOXMLWriter.WriteStyleList(AStream: TStream; ANodeName: String);
 var
-//  styleCell: TCell;
-  s, sAlign: String;
+  s, sAlign, sProtected: String;
   fontID: Integer;
   numFmtParams: TsNumFormatParams;
   numFmtStr: String;
@@ -3331,6 +3679,7 @@ begin
     fmt := FWorkbook.GetPointerToCellFormat(i);
     s := '';
     sAlign := '';
+    sProtected := '';
 
     { Number format }
     if (uffNumberFormat in fmt^.UsedFormattingFields) then
@@ -3358,10 +3707,14 @@ begin
     { Text rotation }
     if (uffTextRotation in fmt^.UsedFormattingFields) then
       case fmt^.TextRotation of
-        trHorizontal                      : ;
-        rt90DegreeClockwiseRotation       : sAlign := sAlign + Format('textRotation="%d" ', [180]);
-        rt90DegreeCounterClockwiseRotation: sAlign := sAlign + Format('textRotation="%d" ',  [90]);
-        rtStacked                         : sAlign := sAlign + Format('textRotation="%d" ', [255]);
+        trHorizontal:
+          ;
+        rt90DegreeClockwiseRotation:
+          sAlign := sAlign + Format('textRotation="%d" ', [180]);
+        rt90DegreeCounterClockwiseRotation:
+          sAlign := sAlign + Format('textRotation="%d" ',  [90]);
+        rtStacked:
+          sAlign := sAlign + Format('textRotation="%d" ', [255]);
       end;
 
     { Text alignment }
@@ -3389,6 +3742,12 @@ begin
     if (uffBiDi in fmt^.UsedFormattingFields) and (fmt^.BiDiMode <> bdDefault) then
       sAlign := sAlign + Format('readingOrder="%d" ', [Ord(fmt^.BiDiMode)]);
 
+    if sAlign <> '' then
+    begin
+      s := s + 'applyAlignment="1" ';
+      sAlign := '<alignment ' + sAlign + '/>';
+    end;
+
     { Fill }
     if (uffBackground in fmt^.UsedFormattingFields) then
     begin
@@ -3405,14 +3764,27 @@ begin
       s := s + Format('borderId="%d" applyBorder="1" ', [borderID]);
     end;
 
+    { Protection }
+    if not (cpLockCell in fmt^.Protection) then
+      sProtected := 'locked="0" ';
+
+    if (cpHideFormulas in fmt^.Protection) then
+      sProtected := sProtected + 'hidden="1" ';
+
+    if sProtected <> '' then
+    begin
+      s := s + 'applyProtection="1" ';
+      sProtected := '<protection ' + sProtected + '/>';
+    end;
+
     { Write everything to stream }
-    if sAlign = '' then
+    if (sAlign = '') and (sProtected = '') then
       AppendToStream(AStream,
         '<xf ' + s + '/>')
     else
       AppendToStream(AStream,
-       '<xf ' + s + 'applyAlignment="1">',
-         '<alignment ' + sAlign + ' />',
+       '<xf ' + s + '>',
+         sAlign + sProtected,
        '</xf>');
   end;
 
@@ -4273,16 +4645,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteWorkbook(AStream: TStream);
-var
-  actTab: String;
-  sheetName: String;
-  counter: Integer;
-  sheet: TsWorksheet;
-  sheetstate: String;
 begin
-  actTab := IfThen(FWorkbook.ActiveWorksheet = nil, '',
-    'activeTab="' + IntToStr(FWorkbook.GetWorksheetIndex(FWorkbook.ActiveWorksheet)) + '"');
-
   AppendToStream(AStream,
     XML_HEADER);
   AppendToStream(AStream, Format(
@@ -4291,31 +4654,73 @@ begin
       '<fileVersion appName="fpspreadsheet" />');
   AppendToStream(AStream,
       '<workbookPr defaultThemeVersion="124226" />');
+  WriteWorkbookProtection(AStream);
   AppendToStream(AStream,
       '<bookViews>' +
-        '<workbookView xWindow="480" yWindow="90" windowWidth="15195" windowHeight="12525" ' + actTab + '/>' +
+        '<workbookView xWindow="480" yWindow="90" ' +
+          'windowWidth="15195" windowHeight="12525"' + GetActiveTab + '/>' +
       '</bookViews>');
-
-  AppendToStream(AStream,
-      '<sheets>');
-  for counter:=1 to Workbook.GetWorksheetCount do
-  begin
-    sheet := Workbook.GetWorksheetByIndex(counter-1);
-    sheetname := UTF8TextToXMLText(sheet.Name);
-    sheetState := IfThen(soHidden in sheet.Options, ' state="hidden"', '');
-    AppendToStream(AStream, Format(
-        '<sheet name="%s" sheetId="%d" r:id="rId%d"%s />',
-        [sheetname, counter, counter, sheetstate]));
-  end;
-  AppendToStream(AStream,
-      '</sheets>');
-
+  WriteSheets(AStream);
   WriteDefinedNames(AStream);
 
   AppendToStream(AStream,
       '<calcPr calcId="114210" />');
   AppendToStream(AStream,
     '</workbook>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteWorkbookProtection(AStream: TStream);
+var
+  s: String;
+begin
+  s := '';
+
+  if Workbook.CryptoInfo.Password <> '' then
+    s := s + ' workbookPassword="' + Workbook.CryptoInfo.Password + '"'
+  else
+  if Workbook.CryptoInfo.HashValue <> '' then
+  begin
+    s:= s + ' workbookHashVal="' + Workbook.CryptoInfo.HashValue + '"';
+    if Workbook.CryptoInfo.AlgorithmName <> '' then
+      s:= s + ' workbookAlgorithmName="' + Workbook.CryptoInfo.AlgorithmName + '"';
+
+    if Workbook.CryptoInfo.SaltValue <> '' then
+      s:= s + ' workbookSaltValue="' + Workbook.CryptoInfo.SaltValue + '"';
+
+    if Workbook.CryptoInfo.SpinCount <> 0 then
+      s:= s + ' workbookSpinCount="' + IntToStr(Workbook.CryptoInfo.SpinCount) + '"';
+  end;
+
+  {
+  if Workbook.RevisionsCrypto.Password <> '' then
+    s:= s + ' revisionsPassword="' + Workbook.RevisionsCrypto.Password +'"'
+  else
+  if Workbook.RevisionsCrypto.HashValue <> '' then
+  begin
+    s:= s + ' revisionsHashValue="' + Workbook.RevisionsCrypto.HashValue +'"';
+
+    if Workbook.RevisionsCrypto.AlgorithmName <> '' then
+      s:= s + ' revisionsAlgorithm="' + Workbook.RevisionsCrypto.AlgorithmName +'"';
+
+    if Workbook.RevisionsCrypto.SaltValue <> '' then
+      s:= s + ' revisionsSaltValue="' + Workbook.RevisionsCrypto.SaltValue +'"';
+
+    if Workbook.RevisionsCrypto.SpinCount <> 0 then
+      s:= s + ' revisionsSpinCount="' + IntToStr( Workbook.RevisionsCrypto.SpinCount ) +'"';
+  end;
+  }
+
+  if bpLockStructure in Workbook.Protection then
+    s := s + ' lockStructure="1"';
+
+  if bpLockWindows in Workbook.Protection then
+    s := s + ' lockWindows="1"';
+
+  if bpLockRevision in Workbook.Protection then
+    s := s + ' lockRevision="1"';
+
+  if s <> '' then
+    AppendToStream(AStream, '<workbookProtection' + s +' />');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteWorkbookRels(AStream: TStream);
@@ -4377,6 +4782,7 @@ begin
   WriteSheetFormatPr(FSSheets[FCurSheetNum], AWorksheet);
   WriteCols(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
+  WriteSheetProtection(FSSheets[FCurSheetNum], AWorksheet);
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
   WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet, rId_FirstHyperlink);
 

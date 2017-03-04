@@ -31,13 +31,17 @@ type
   TsWorkbook = class;
 
   {@@ Worksheet user interface options:
-    @param soShowGridLines  Show or hide the grid lines in the spreadsheet
-    @param soShowHeaders    Show or hide the column or row headers of the spreadsheet
-    @param soHasFrozenPanes If set a number of rows and columns of the spreadsheet
-                            is fixed and does not scroll. The number is defined by
-                            LeftPaneWidth and TopPaneHeight.
-    @param soHidden         Worksheet is hidden. }
-  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes, soHidden);
+    @param soShowGridLines    Show or hide the grid lines in the spreadsheet
+    @param soShowHeaders      Show or hide the column or row headers of the
+                              spreadsheet
+    @param soHasFrozenPanes   If set a number of rows and columns of the
+                              spreadsheet is fixed and does not scroll. The number
+                              is defined by LeftPaneWidth and TopPaneHeight.
+    @param soHidden           Worksheet is hidden.
+    @param soProtected        Worksheet is protected
+    @param soPanesProtection  Panes are locked due to workbook protection }
+  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes, soHidden,
+    soProtected, soPanesProtection);
 
   {@@ Set of user interface options
     @ see TsSheetOption }
@@ -99,7 +103,9 @@ type
     FDefaultRowHeight: Single;  // in "character heights", i.e. line count
     FSortParams: TsSortParams;  // Parameters of the current sorting operation
     FBiDiMode: TsBiDiMode;
+    FCryptoInfo: TsCryptoInfo;
     FPageLayout: TsPageLayout;
+    FProtection: TsWorksheetProtections;
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
     FZoomFactor: Double;
@@ -197,6 +203,7 @@ type
     function  ReadVertAlignment(ACell: PCell): TsVertAlignment;
     function  ReadWordwrap(ACell: PCell): boolean;
     function  ReadBiDiMode(ACell: PCell): TsBiDiMode;
+    function  ReadProtection(ACell: PCell): TsCellProtections;
 
     function IsEmpty: Boolean;
 
@@ -375,6 +382,11 @@ type
     function WriteBiDiMode(ARow, ACol: Cardinal; AValue: TsBiDiMode): PCell; overload;
     procedure WriteBiDiMode(ACell: PCell; AValue: TsBiDiMode); overload;
 
+    function WriteCellProtection(ARow, ACol: Cardinal;
+      AValue: TsCellProtections): PCell; overload;
+    procedure WriteCellProtection(ACell: PCell;
+      AValue: TsCellProtections); overload;
+
     { Formulas }
     function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;
     procedure CalcFormula(ACell: PCell);
@@ -544,7 +556,11 @@ type
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0; AScaleX: Double = 1.0;
       AScaleY: Double = 1.0): Integer; overload;
 
-    // Notification of changed cells, rows or columns
+    { Protection }
+    procedure Protect(AEnable: Boolean);
+    function IsProtected: Boolean;
+
+    { Notification of changed cells, rows or columns }
     procedure ChangedCell(ARow, ACol: Cardinal);
     procedure ChangedCol(ACol: Cardinal);
     procedure ChangedFont(ARow, ACol: Cardinal);
@@ -557,6 +573,8 @@ type
     property  Cells: TsCells read FCells;
     {@@ List of all column records of the worksheet having a non-standard column width }
     property  Cols: TIndexedAVLTree read FCols;
+    {@@ Information how the worksheet is encrypted }
+    property  CryptoInfo: TsCryptoInfo read FCryptoInfo write FCryptoInfo;
     {@@ List of all comment records }
     property  Comments: TsComments read FComments;
     {@@ List of merged cells (contains TsCellRange records) }
@@ -570,6 +588,8 @@ type
     property Name: string read FName write SetName;
     {@@ Parameters to be used for printing by the Office applications }
     property PageLayout: TsPageLayout read FPageLayout write FPageLayout;
+    {@@ Worksheet protection options }
+    property Protection: TsWorksheetProtections read FProtection write FProtection;
     {@@ List of all row records of the worksheet having a non-standard row height }
     property  Rows: TIndexedAVLTree read FRows;
     {@@ Workbook to which the worksheet belongs }
@@ -698,6 +718,9 @@ type
     FLog: TStringList;
     FSearchEngine: TObject;
     FUnits: TsSizeUnits;
+    FProtection: TsWorkbookProtections;
+    FCryptoInfo: TsCryptoInfo;
+    {FrevisionsCrypto: TsCryptoInfo;} // Commented out because it needs revision handling
 
     { Setter/Getter }
     function GetErrorMsg: String;
@@ -841,6 +864,9 @@ type
     procedure UpdateCaches;
     procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
 
+    { Protection }
+    function IsProtected: Boolean;
+
     { Error messages }
     procedure AddErrorMsg(const AMsg: String); overload;
     procedure AddErrorMsg(const AMsg: String; const Args: array of const); overload;
@@ -848,6 +874,7 @@ type
 
     {@@ Identifies the "active" worksheet (only for visual controls)}
     property ActiveWorksheet: TsWorksheet read FActiveWorksheet write SelectWorksheet;
+    property CryptoInfo: TsCryptoInfo read FCryptoInfo write FCryptoInfo;
     {@@ Retrieves error messages collected during reading/writing }
     property ErrorMsg: String read GetErrorMsg;
     {@@ Filename of the saved workbook }
@@ -855,6 +882,8 @@ type
     {@@ Identifies the file format which was detected when reading the file }
     property FileFormatID: TsSpreadFormatID read FFormatID;
     property Options: TsWorkbookOptions read FOptions write FOptions;
+    {property RevisionsCrypto: TsCryptoInfo read FRevisionsCrypto write FRevisionsCrypto;}
+    property Protection: TsWorkbookProtections read FProtection write FProtection;
     property Units: TsSizeUnits read FUnits;
 
     {@@ This event fires whenever a new worksheet is added }
@@ -1159,6 +1188,8 @@ begin
 
   FActiveCellRow := UNASSIGNED_ROW_COL_INDEX;
   FActiveCellCol := UNASSIGNED_ROW_COL_INDEX;
+
+  FProtection := DEFAULT_SHEET_PROTECTIONS;
 
   FOptions := [soShowGridLines, soShowHeaders];
 end;
@@ -3481,6 +3512,24 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the protection flags of the cell.
+
+  NOTE: These flags are active only if sheet protection is active, i.e.
+  spCells in Worksheet.Protection.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadProtection(ACell: PCell): TsCellProtections;
+var
+  fmt: PsCellFormat;
+begin
+  Result := DEFAULT_CELL_PROTECTION;
+  if (ACell <> nil) then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if fmt <> nil then
+      Result := fmt^.Protection;
+  end;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Returns true if the worksheet does not contain any cell, column or row records
@@ -4040,6 +4089,25 @@ begin
   FBiDiMode := AValue;
   if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnChangeWorksheet) then
     FWorkbook.FOnChangeWorksheet(FWorkbook, self);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Enables (or disables) protection of the worksheet. Details of protection are
+  specified in the set of Sheetprotection options
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.Protect(AEnable: Boolean);
+begin
+  if AEnable then
+    Include(FOptions, soProtected) else
+    Exclude(FOptions, soProtected);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns whether the worksheet is protected
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsProtected: Boolean;
+begin
+  Result := soProtected in FOptions;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6675,7 +6743,7 @@ end;
 function TsWorksheet.WriteBiDiMode(ARow, ACol: Cardinal; AValue: TsBiDiMode): PCell;
 begin
   Result := GetCell(ARow, ACol);
-  WriteBiDiMode(Result, AVAlue);
+  WriteBiDiMode(Result, AValue);
 end;
 
 procedure TsWorksheet.WriteBiDiMode(ACell: PCell; AValue: TsBiDiMode);
@@ -6690,6 +6758,26 @@ begin
     Include(fmt.UsedFormattingFields, uffBiDi)
   else
     Exclude(fmt.UsedFormattingFields, uffBiDi);
+  ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+  ChangedCell(ACell^.Row, ACell^.Col);
+end;
+
+function TsWorksheet.WriteCellProtection(ARow, ACol: Cardinal;
+  AValue: TsCellProtections): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteCellProtection(Result, AValue);
+end;
+
+procedure TsWorksheet.WriteCellProtection(ACell: PCell;
+  AValue: TsCellProtections);
+var
+  fmt: TsCellFormat;
+begin
+  if ACell = nil then
+    exit;
+  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+  fmt.Protection := AValue;
   ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
@@ -8042,6 +8130,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns whether the workbook is protected
+-------------------------------------------------------------------------------}
+function TsWorkbook.IsProtected: Boolean;
+begin
+  Result := (FProtection <> []);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Reads the document from a file. It is assumed to have the given file format.

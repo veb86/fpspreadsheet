@@ -1225,6 +1225,7 @@ begin
     P^.NumberFormat := AItem.NumberFormat;
     P^.NumberFormatStr := AItem.NumberFormatStr;
     P^.BiDiMode := AItem.BiDiMode;
+    P^.Protection := AItem.Protection;
     Result := inherited Add(P);
   end;
 end;
@@ -1345,6 +1346,8 @@ begin
 
     if (uffBiDi in AItem.UsedFormattingFields) then
       if (P^.BiDiMode <> AItem.BiDiMode) then continue;
+
+    if (P^.Protection <> AItem.Protection) then continue;
 
     // If we arrive here then the format records match.
     exit;
