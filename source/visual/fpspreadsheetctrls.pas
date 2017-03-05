@@ -3655,9 +3655,8 @@ begin
       AStrings.Add('(-) CryptoInfo=');
       AStrings.Add(Format('  PasswordHash=%s', [Workbook.CryptoInfo.PasswordHash]));
       AStrings.Add(Format('  Algorithm=%s', [AlgorithmToStr(Workbook.CryptoInfo.Algorithm)]));
-      AStrings.Add(Format('  HashValue=%s', [Workbook.CryptoInfo.HashValue]));
       AStrings.Add(Format('  SaltValue=%s', [Workbook.CryptoInfo.SaltValue]));
-      AStrings.Add(Format('  SplinCount=%d', [Workbook.CryptoInfo.SpinCount]));
+      AStrings.Add(Format('  SpinCount=%d', [Workbook.CryptoInfo.SpinCount]));
     end else
       AStrings.Add('(+) CryptoInfo=(dblclick for more...)');
 
@@ -3839,9 +3838,8 @@ begin
       AStrings.Add('(-) CryptoInfo=');
       AStrings.Add(Format('  PasswordHash=%s', [Worksheet.CryptoInfo.PasswordHash]));
       AStrings.Add(Format('  Algorithm=%s', [AlgorithmToStr(Worksheet.CryptoInfo.Algorithm)]));
-      AStrings.Add(Format('  HashValue=%s', [Worksheet.CryptoInfo.HashValue]));
       AStrings.Add(Format('  SaltValue=%s', [Worksheet.CryptoInfo.SaltValue]));
-      AStrings.Add(Format('  SplinCount=%d', [Worksheet.CryptoInfo.SpinCount]));
+      AStrings.Add(Format('  SpinCount=%d', [Worksheet.CryptoInfo.SpinCount]));
     end else
       AStrings.Add('(+) CryptoInfo=(dblclick for more...)');
 

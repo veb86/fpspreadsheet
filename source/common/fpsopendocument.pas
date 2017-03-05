@@ -115,6 +115,7 @@ type
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
+    procedure ReadDocumentProtection(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode; var AFontName: String;
       var AFontSize: Single; var AFontStyle: TsFontStyles; var AFontColor: TsColor;
       var AFontPosition: TsFontPosition);
@@ -129,6 +130,7 @@ type
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
     procedure ReadShapes(ATableNode: TDOMNode);
+    procedure ReadSheetProtection(ANode: TDOMNode; ASheet: TsWorksheet);
     procedure ReadTableStyle(AStyleNode: TDOMNode);
 
   protected
@@ -285,8 +287,7 @@ uses
  {$IFDEF FPS_VARISBOOL}
   fpsPatches,
  {$ENDIF}
-  fpsStrings, fpsStreams, fpsClasses, fpsExprParser,
-  fpsImages;
+  fpsStrings, fpsStreams, fpsCrypto, fpsClasses, fpsExprParser, fpsImages;
 
 const
   { OpenDocument general XML constants }
@@ -2060,6 +2061,25 @@ begin
     raise Exception.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
 end;
 
+procedure TsSpreadOpenDocReader.ReadDocumentProtection(ANode: TDOMNode);
+var
+  s: String;
+  cinfo: TsCryptoInfo;
+begin
+  if ANode = nil then
+    exit;
+
+  if GetAttrValue(ANode, 'table:structure-protected') = 'true' then
+    Workbook.Protection := Workbook.Protection + [bpLockStructure]
+  else
+    exit;
+
+  InitCryptoInfo(cinfo);
+  cinfo.PasswordHash := GetAttrValue(ANode, 'table:protection-key');
+  cinfo.Algorithm := StrToAlgorithm(GetAttrValue(ANode, 'table:protection-key-digest-algorithm'));
+  Workbook.CryptoInfo := cinfo;
+end;
+
 { Reads font data from an xml node and returns the font elements. }
 procedure TsSpreadOpenDocReader.ReadFont(ANode: TDOMNode; var AFontName: String;
   var AFontSize: Single; var AFontStyle: TsFontStyles; var AFontColor: TsColor;
@@ -2468,6 +2488,7 @@ begin
     if not Assigned(SpreadSheetNode) then
       raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:spreadsheet" not found.');
 
+    ReadDocumentProtection(SpreadsheetNode);
     ReadDateMode(SpreadSheetNode);
 
     //process each table (sheet)
@@ -2485,6 +2506,8 @@ begin
       end;
       FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode, 'table:name'), true);
       tablestyleName := GetAttrValue(TableNode, 'table:style-name');
+      // Read protection
+      ReadSheetProtection(TableNode, FWorksheet);
       // Collect embedded images
       ReadShapes(TableNode);
       // Collect column styles used
@@ -3882,6 +3905,50 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocReader.ReadSheetProtection(ANode: TDOMNode;
+  ASheet: TsWorksheet);
+var
+  s: String;
+  sp: TsWorksheetProtections;
+  cinfo: TsCryptoInfo;
+  childNode: TDOMNode;
+  nodeName: String;
+begin
+  if ANode = nil then
+    exit;
+  s := GetAttrValue(ANode, 'table:protected');
+  if s = 'true' then begin
+    sp := DEFAULT_SHEET_PROTECTION;
+    Include(sp, spCells);
+
+    // These items are ALLOWED (unlike Excel where they are FORBIDDEN).
+    // <loext:table-protection loext:select-unprotected-cells="true" />
+    // <loext:table-protection loext:select-protected-cells="true" />
+    // <loext:table-protection />
+    childNode := ANode.FirstChild;
+    while childNode <> nil do
+    begin
+      nodeName := childnode.NodeName;
+      if nodeName = 'loext:table-protection' then begin
+        s := GetAttrValue(childnode, 'loext:select-unprotected-cells');
+        if s='true' then Exclude(sp, spSelectUnlockedCells)
+          else Include(sp, spSelectUnlockedCells);
+        if s='false' then Exclude(sp, spSelectLockedCells)
+          else Include(sp, spSelectLockedCells);
+      end;
+      childNode := childNode.NextSibling;
+    end;
+    ASheet.Protection := sp;
+    ASheet.Protect(true);
+
+    InitCryptoInfo(cinfo);
+    cinfo.PasswordHash := GetAttrValue(ANode, 'table:protection-key');
+    cinfo.Algorithm := StrToAlgorithm(GetAttrValue(ANode, 'table:protection-key-digest-algorithm'));
+    ASheet.CryptoInfo := cinfo;
+  end else
+    ASheet.Protect(false);
+end;
+
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
 var
   styleNode: TDOMNode;
@@ -4220,6 +4287,17 @@ begin
               fmt.VertAlignment := vaBottom;
             if fmt.VertAlignment <> vaDefault then
               Include(fmt.UsedFormattingFields, uffVertAlign);
+
+            // Protection
+            s := GetAttrValue(styleChildNode, 'style:cell-protect');
+            if s = 'none' then
+              fmt.Protection := []
+            else if s = 'hidden-and-protected' then
+              fmt.Protection := [cpLockCell, cpHideFormulas]
+            else if s = 'protected' then
+              fmt.Protection := [cpLockCell]
+            else if s = 'formula-hidden' then
+              fmt.Protection := [cpHideFormulas];
           end
           else
           if nodeName = 'style:paragraph-properties' then

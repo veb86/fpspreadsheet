@@ -650,7 +650,6 @@ type
   TsCryptoInfo = record
     PasswordHash: String;
     Algorithm: TsCryptoAlgorithm;
-    HashValue: string;
     SaltValue: string;
     SpinCount: Integer;
   end;
@@ -680,7 +679,7 @@ const
     spCells, spSort, spSelectLockedCells, spSelectUnlockedCells
     {, spObjects, spPivotTables, spScenarios} ];
 
-  DEFAULT_SHEET_PROTECTIONS = ALL_SHEET_PROTECTIONS - [spSelectLockedCells, spSelectUnlockedcells];
+  DEFAULT_SHEET_PROTECTION = ALL_SHEET_PROTECTIONS - [spSelectLockedCells, spSelectUnlockedcells];
 
   DEFAULT_CELL_PROTECTION = [cpLockCell];
 

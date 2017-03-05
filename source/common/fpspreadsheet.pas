@@ -1189,7 +1189,8 @@ begin
   FActiveCellRow := UNASSIGNED_ROW_COL_INDEX;
   FActiveCellCol := UNASSIGNED_ROW_COL_INDEX;
 
-  FProtection := DEFAULT_SHEET_PROTECTIONS;
+  FProtection := DEFAULT_SHEET_PROTECTION;
+  InitCryptoInfo(FCryptoInfo);
 
   FOptions := [soShowGridLines, soShowHeaders];
 end;
@@ -7981,6 +7982,10 @@ begin
   // Add default cell format
   InitFormatRecord(fmt);
   AddCellFormat(fmt);
+
+  // Protection
+  InitCryptoInfo(FCryptoInfo);
+  FProtection := [];
 end;
 
 {@@ ----------------------------------------------------------------------------

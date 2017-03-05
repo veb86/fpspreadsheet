@@ -2006,7 +2006,7 @@ procedure TsSpreadOOXMLReader.ReadSheetProtection(ANode: TDOMNode;
 var
   s: String;
   shc: TsCryptoInfo;
-  shp0, shp1: TsWorksheetProtections;
+  shp: TsWorksheetProtections;
 begin
   if ANode = nil then
     exit;
@@ -2036,100 +2036,83 @@ begin
   end;
   AWorksheet.CryptoInfo := shc;
 
-  shp1 := [];                     // will get "1" to include
-  shp0 := ALL_SHEET_PROTECTIONS;  // will get "0" to exclude
+  shp := DEFAULT_SHEET_PROTECTION;
 
   // Attribute not found -> property = false
   s := GetAttrValue(ANode, 'sheet');
-  if (s = '1') then
-    Include(shp1, spCells) else
-    Exclude(shp0, spCells);
+  if (s = '1') then Include(shp, spCells) else
+    if (s = '0') or (s = '') then Exclude(shp, spCells);
 
   s := GetAttrValue(ANode, 'selectLockedCells');
-  if (s = '1') then
-    Include(shp1, spSelectLockedCells) else
-    Exclude(shp0, spSelectLockedCells);
+  if (s = '1') then Include(shp, spSelectLockedCells) else
+    if (s = '0') or (s = '') then Exclude(shp, spSelectLockedCells);
 
   s := GetAttrValue(ANode, 'selectUnlockedCells');
-  if (s = '1') then
-    Include(shp1, spSelectUnlockedCells) else
-    Exclude(shp0, spSelectUnlockedCells);
+  if (s = '1') then Include(shp, spSelectUnlockedCells) else
+    if (s = '') or (s = '0') then Exclude(shp, spSelectUnlockedCells);
 
   // these options are currently not supported by fpspreadsheet
   {
   s := GetAttrValue(ANode, 'objects');
-  if (s = '1') then
-    Include(shp1, spObjects) else
-    Exclude(shp0, spObjects);
+  if (s = '1') then Include(shp, spObjects) else
+    if (s = '') or (s = '0') then Exclude(shp, spObjects);
 
   s := GetAttrValue(ANode, 'scenarios');
-  if (s = '1') then
-    Include(shp1, spScenarios) else
-    Exclude(shp0, spScenarios);
+  if (s = '1') then Include(shp, spScenarios) else
+    if (s = '') or (s = '0') then Exclude(shp, spScenarios);
   }
 
   // Attribute not found -> property = true
   {
   s := GetAttrValue(ANode, 'autoFilter');
-  if (s = '0') then
-    Exclude(shp1, spAutoFilter) else
-    Include(shp0, spAutoFilter);
+  if (s = '0') then Exclude(shp, spAutoFilter) else
+    if (s = '') or (s = '1') then Include(shp, spAutoFilter);
   }
 
   s := GetAttrValue(ANode, 'deleteColumns');
-  if (s = '0') then
-    Exclude(shp0, spDeleteColumns) else
-    Include(shp1, spDeleteColumns);
+  if (s = '0') then Exclude(shp, spDeleteColumns) else
+    if (s = '') or (s = '1') then Include(shp, spDeleteColumns);
 
   s := GetAttrValue(ANode, 'deleteRows');
-  if (s = '0') then
-    Exclude(shp0, spDeleteRows) else
-    Include(shp1, spDeleteRows);
+  if (s = '0') then Exclude(shp, spDeleteRows) else
+    if (s = '') or (s = '1') then Include(shp, spDeleteRows);
 
   s := GetAttrValue(ANode, 'formatCells');
-  if (s = '0') then
-    Exclude(shp0, spFormatCells) else
-    Include(shp1, spFormatCells);
+  if (s = '0') then Exclude(shp, spFormatCells) else
+    if (s = '') or (s = '1') then Include(shp, spFormatCells);
 
   s := GetAttrValue(ANode, 'formatColumns');
-  if (s = '0') then
-    Exclude(shp0, spFormatColumns) else
-    Include(shp1, spFormatColumns);
+  if (s = '0') then Exclude(shp, spFormatColumns) else
+    if (s = '') or (s = '1') then Include(shp, spFormatColumns);
 
   s := GetAttrValue(ANode, 'formatRows');
-  if (s = '0') then
-    Exclude(shp0, spFormatRows) else
-    Include(shp1, spFormatRows);
+  if (s = '0') then Exclude(shp, spFormatRows) else
+    if (s = '') or (s = '1') then Include(shp, spFormatRows);
 
   s := GetAttrValue(ANode, 'insertColumns');
-  if (s = '0') then
-    Exclude(shp0, spInsertColumns) else
-    Include(shp1, spInsertColumns);
+  if (s = '0') then Exclude(shp, spInsertColumns) else
+    if (s = '') or (s = '1') then Include(shp, spInsertColumns);
 
   s := GetAttrValue(ANode, 'insertHyperlinks');
-  if (s = '0') then
-    Exclude(shp0, spInsertHyperlinks) else
-    Include(shp1, spInsertHyperlinks);
+  if (s = '0') then Exclude(shp, spInsertHyperlinks) else
+    if (s = '') or (s = '1') then Include(shp, spInsertHyperlinks);
 
   s := GetAttrValue(ANode, 'insertRows');
-  if (s = '0') then
-    Exclude(shp0, spInsertRows) else
-    Include(shp1, spInsertRows);
+  if (s = '0') then Exclude(shp, spInsertRows) else
+    if (s = '') or (s = '1') then Include(shp, spInsertRows);
 
   s := GetAttrValue(ANode, 'sort');
-  if (s = '0') then
-    Exclude(shp0, spSort) else
-    Include(shp1, spSort);
+  if (s = '0') then Exclude(shp, spSort) else
+    if (s = '') or (s = '1') then Include(shp, spSort);
 
   // Currently no pivottable support in fpspreadsheet
   {
   s := GetAttrValue(ANode, 'pivotTables');
-  if (s = '0') then
-    Exclude(shp0, spPivotTables) else
-    Include(shp1, spPivotTables);
+  if (s = '0') then Exclude(shp, spPivotTables) else
+    if (s = '') or (s = '1') then Include(shp, spPivotTables);
   }
 
-  AWorksheet.Protection := shp0 + shp1;
+  AWorksheet.Protection := shp;
   AWorksheet.Protect(true);
 end;
 
@@ -3449,7 +3432,7 @@ begin
       s := s + ' password="' + AWorksheet.CryptoInfo.PasswordHash + '"'
     else
     begin
-      s := s + ' hashValue="' + AWorksheet.CryptoInfo.HashValue + '"';
+      s := s + ' hashValue="' + AWorksheet.CryptoInfo.PasswordHash + '"';
 
       if AWorksheet.CryptoInfo.Algorithm <> caUnknown then
         s := s + ' algorithmName="' + AlgorithmToStr(AWorksheet.CryptoInfo.Algorithm) + '"';

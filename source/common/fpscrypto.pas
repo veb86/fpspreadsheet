@@ -33,6 +33,7 @@ end;
 function StrToAlgorithm(const AName: String): TsCryptoAlgorithm;
 begin
   case AName of
+    // Excel
     'MD2'        : Result := caMD2;
     'MD4'        : Result := caMD4;
     'MD5'        : Result := caMD5;
@@ -43,7 +44,15 @@ begin
     'SHA-384'    : Result := caSHA384;
     'SHA-512'    : Result := caSHA512;
     'WHIRLPOOL'  : Result := caWHIRLPOOL;
-    else           Result := caUnknown;
+    else
+      // Libre/OpenOffice
+      if pos('sha1', AName) > 0 then    // http://www.w3.org/2000/09/xmldsig#sha1
+        Result := caSHA1
+      else
+      if pos('sha256', AName) > 0 then  // http://www.w3.org/2000/09/xmldsig#sha256
+        Result := caSHA256
+      else
+        Result := caUnknown;
   end;
 end;
 

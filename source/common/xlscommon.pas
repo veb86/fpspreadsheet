@@ -2043,14 +2043,14 @@ begin
 
   if AWorksheet = nil then begin
     // Password for workbook protection
-    cinfo := FWorkbook.CryptoInfo;
+    InitCryptoInfo(cinfo);
     cinfo.PasswordHash := Format('%.4x', [hash]);
     cinfo.Algorithm := caExcel;
     FWorkbook.CryptoInfo := cinfo;
   end else
   begin
     // Password for worksheet protection
-    cinfo := AWorksheet.CryptoInfo;
+    InitCryptoInfo(cinfo);
     cinfo.PasswordHash := Format('%.4x', [hash]);
     cinfo.Algorithm := caExcel;
     AWorksheet.CryptoInfo := cinfo;

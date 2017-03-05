@@ -2087,7 +2087,6 @@ procedure InitCryptoInfo(out AValue: TsCryptoInfo);
 begin
   AValue.PasswordHash := '';
   AValue.Algorithm := caUnknown;
-  AValue.HashValue := '';
   AValue.SaltValue := '';
   AValue.SpinCount := 0;
 end;
