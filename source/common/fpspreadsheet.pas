@@ -203,7 +203,7 @@ type
     function  ReadVertAlignment(ACell: PCell): TsVertAlignment;
     function  ReadWordwrap(ACell: PCell): boolean;
     function  ReadBiDiMode(ACell: PCell): TsBiDiMode;
-    function  ReadProtection(ACell: PCell): TsCellProtections;
+    function  ReadCellProtection(ACell: PCell): TsCellProtections;
 
     function IsEmpty: Boolean;
 
@@ -3516,9 +3516,9 @@ end;
   Returns the protection flags of the cell.
 
   NOTE: These flags are active only if sheet protection is active, i.e.
-  spCells in Worksheet.Protection.
+  soProtected in Worksheet.Options.
 -------------------------------------------------------------------------------}
-function TsWorksheet.ReadProtection(ACell: PCell): TsCellProtections;
+function TsWorksheet.ReadCellProtection(ACell: PCell): TsCellProtections;
 var
   fmt: PsCellFormat;
 begin
