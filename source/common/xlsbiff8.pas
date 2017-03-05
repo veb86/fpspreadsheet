@@ -368,6 +368,9 @@ const
    { XF CELL BACKGROUND PATTERN }
      MASK_XF_BACKGROUND_PATTERN          = $FC000000;
 
+   { XP CELL PROTECTION }
+     MASK_XF_PROTECTION                  = $0007;
+
    { HLINK FLAGS }
      MASK_HLINK_LINK                     = $00000001;
      MASK_HLINK_ABSOLUTE                 = $00000002;
@@ -797,19 +800,22 @@ begin
 
     if RecordType <> INT_EXCEL_ID_CONTINUE then begin
       case RecordType of
-       INT_EXCEL_ID_BOF         : ;
-       INT_EXCEL_ID_BOUNDSHEET  : ReadBoundSheet(AStream);
-       INT_EXCEL_ID_DEFINEDNAME : ReadDEFINEDNAME(AStream);
-       INT_EXCEL_ID_EOF         : SectionEOF := True;
-       INT_EXCEL_ID_EXTERNSHEET : ReadEXTERNSHEET(AStream);
-       INT_EXCEL_ID_SST         : ReadSST(AStream);
-       INT_EXCEL_ID_CODEPAGE    : ReadCodepage(AStream);
-       INT_EXCEL_ID_FONT        : ReadFont(AStream);
-       INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
-       INT_EXCEL_ID_XF          : ReadXF(AStream);
-       INT_EXCEL_ID_DATEMODE    : ReadDateMode(AStream);
-       INT_EXCEL_ID_PALETTE     : ReadPalette(AStream);
-      else
+       INT_EXCEL_ID_BOF           : ;
+       INT_EXCEL_ID_BOUNDSHEET    : ReadBoundSheet(AStream);
+       INT_EXCEL_ID_CODEPAGE      : ReadCodepage(AStream);
+       INT_EXCEL_ID_DATEMODE      : ReadDateMode(AStream);
+       INT_EXCEL_ID_DEFINEDNAME   : ReadDEFINEDNAME(AStream);
+       INT_EXCEL_ID_EOF           : SectionEOF := True;
+       INT_EXCEL_ID_EXTERNSHEET   : ReadEXTERNSHEET(AStream);
+       INT_EXCEL_ID_FONT          : ReadFont(AStream);
+       INT_EXCEL_ID_FORMAT        : ReadFormat(AStream);
+       INT_EXCEL_ID_PALETTE       : ReadPalette(AStream);
+       INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream);
+       INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream);
+       INT_EXCEL_ID_SST           : ReadSST(AStream);
+       INT_EXCEL_ID_WINDOWPROTECT : ReadWindowProtect(AStream);
+       INT_EXCEL_ID_XF            : ReadXF(AStream);
+    else
         // nothing
       end;
     end;
@@ -874,6 +880,8 @@ begin
     INT_EXCEL_ID_OBJ           : ReadOBJ(AStream);
     INT_EXCEL_ID_PAGESETUP     : ReadPageSetup(AStream);
     INT_EXCEL_ID_PANE          : ReadPane(AStream);
+    INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream, FWorksheet);
+    INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream, FWorksheet);
     INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
     INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
     INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
@@ -1678,6 +1686,14 @@ begin
       end;
   end;
 
+  // Protection
+  case WordLEToN(rec.XFType_Prot_ParentXF) and MASK_XF_PROTECTION of
+    0: fmt.Protection := [];
+    1: fmt.Protection := [cpLockCell];
+    2: fmt.Protection := [cpHideFormulas];
+    3: fmt.Protection := [cpLockCell, cpHideFormulas];
+  end;
+
   // Add the XF to the internal cell format list
   FCellFormatList.Add(fmt);
 end;
@@ -1776,7 +1792,7 @@ begin
 
   { Height of the font in twips = 1/20 of a point }
   lHeight := WordLEToN(AStream.ReadWord);
-  font.Size := lHeight/20;
+  font.Size := lHeight / 20;
 
   { Option flags }
   lOptions := WordLEToN(AStream.ReadWord);

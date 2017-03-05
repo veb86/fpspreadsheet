@@ -16,94 +16,97 @@ uses
 
 const
   { RECORD IDs which didn't change across versions 2-8 }
-  INT_EXCEL_ID_EOF         = $000A;
-  INT_EXCEL_ID_HEADER      = $0014;
-  INT_EXCEL_ID_FOOTER      = $0015;
-  INT_EXCEL_ID_EXTERNSHEET = $0017;
-  INT_EXCEL_ID_NOTE        = $001C;
-  INT_EXCEL_ID_SELECTION   = $001D;
-  INT_EXCEL_ID_DATEMODE    = $0022;
-  INT_EXCEL_ID_LEFTMARGIN  = $0026;
-  INT_EXCEL_ID_RIGHTMARGIN = $0027;
-  INT_EXCEL_ID_TOPMARGIN   = $0028;
-  INT_EXCEL_ID_BOTTOMMARGIN= $0029;
-  INT_EXCEL_ID_PRINTHEADERS= $002A;
-  INT_EXCEL_ID_PRINTGRID   = $002B;
-  INT_EXCEL_ID_CONTINUE    = $003C;
-  INT_EXCEL_ID_WINDOW1     = $003D;
-  INT_EXCEL_ID_PANE        = $0041;
-  INT_EXCEL_ID_CODEPAGE    = $0042;
-  INT_EXCEL_ID_DEFCOLWIDTH = $0055;
+  INT_EXCEL_ID_EOF           = $000A;
+  INT_EXCEL_ID_PROTECT       = $0012;
+  INT_EXCEL_ID_PASSWORD      = $0013;
+  INT_EXCEL_ID_HEADER        = $0014;
+  INT_EXCEL_ID_FOOTER        = $0015;
+  INT_EXCEL_ID_EXTERNSHEET   = $0017;
+  INT_EXCEL_ID_WINDOWPROTECT = $0019;
+  INT_EXCEL_ID_NOTE          = $001C;
+  INT_EXCEL_ID_SELECTION     = $001D;
+  INT_EXCEL_ID_DATEMODE      = $0022;
+  INT_EXCEL_ID_LEFTMARGIN    = $0026;
+  INT_EXCEL_ID_RIGHTMARGIN   = $0027;
+  INT_EXCEL_ID_TOPMARGIN     = $0028;
+  INT_EXCEL_ID_BOTTOMMARGIN  = $0029;
+  INT_EXCEL_ID_PRINTHEADERS  = $002A;
+  INT_EXCEL_ID_PRINTGRID     = $002B;
+  INT_EXCEL_ID_CONTINUE      = $003C;
+  INT_EXCEL_ID_WINDOW1       = $003D;
+  INT_EXCEL_ID_PANE          = $0041;
+  INT_EXCEL_ID_CODEPAGE      = $0042;
+  INT_EXCEL_ID_DEFCOLWIDTH   = $0055;
 
   { RECORD IDs which did not changed across versions 2-5 }
-  INT_EXCEL_ID_EXTERNCOUNT = $0016;    // does not exist in BIFF8
+  INT_EXCEL_ID_EXTERNCOUNT   = $0016;    // does not exist in BIFF8
 
   { RECORD IDs which did not change across versions 2, 5, 8}
-  INT_EXCEL_ID_FORMULA     = $0006;    // BIFF3: $0206, BIFF4: $0406
-  INT_EXCEL_ID_DEFINEDNAME = $0018;    // BIFF3-4: $0218
-  INT_EXCEL_ID_FONT        = $0031;    // BIFF3-4: $0231
+  INT_EXCEL_ID_FORMULA       = $0006;    // BIFF3: $0206, BIFF4: $0406
+  INT_EXCEL_ID_DEFINEDNAME   = $0018;    // BIFF3-4: $0218
+  INT_EXCEL_ID_FONT          = $0031;    // BIFF3-4: $0231
 
   { RECORD IDs which did not change across version 3-8}
-  INT_EXCEL_ID_COLINFO     = $007D;    // does not exist in BIFF2
-  INT_EXCEL_ID_SHEETPR     = $0081;    // does not exist in BIFF2
-  INT_EXCEL_ID_HCENTER     = $0083;    // does not exist in BIFF2
-  INT_EXCEL_ID_VCENTER     = $0084;    // does not exist in BIFF2
-  INT_EXCEL_ID_COUNTRY     = $008C;    // does not exist in BIFF2
-  INT_EXCEL_ID_PALETTE     = $0092;    // does not exist in BIFF2
-  INT_EXCEL_ID_DIMENSIONS  = $0200;    // BIFF2: $0000
-  INT_EXCEL_ID_BLANK       = $0201;    // BIFF2: $0001
-  INT_EXCEL_ID_NUMBER      = $0203;    // BIFF2: $0003
-  INT_EXCEL_ID_LABEL       = $0204;    // BIFF2: $0004
-  INT_EXCEL_ID_BOOLERROR   = $0205;    // BIFF2: $0005
-  INT_EXCEL_ID_STRING      = $0207;    // BIFF2: $0007
-  INT_EXCEL_ID_ROW         = $0208;    // BIFF2: $0008
-  INT_EXCEL_ID_INDEX       = $020B;    // BIFF2: $000B
-  INT_EXCEL_ID_DEFROWHEIGHT= $0225;    // BIFF2: $0025
-  INT_EXCEL_ID_WINDOW2     = $023E;    // BIFF2: $003E
-  INT_EXCEL_ID_RK          = $027E;    // does not exist in BIFF2
-  INT_EXCEL_ID_STYLE       = $0293;    // does not exist in BIFF2
+  INT_EXCEL_ID_COLINFO       = $007D;    // does not exist in BIFF2
+  INT_EXCEL_ID_SHEETPR       = $0081;    // does not exist in BIFF2
+  INT_EXCEL_ID_HCENTER       = $0083;    // does not exist in BIFF2
+  INT_EXCEL_ID_VCENTER       = $0084;    // does not exist in BIFF2
+  INT_EXCEL_ID_COUNTRY       = $008C;    // does not exist in BIFF2
+  INT_EXCEL_ID_PALETTE       = $0092;    // does not exist in BIFF2
+  INT_EXCEL_ID_DIMENSIONS    = $0200;    // BIFF2: $0000
+  INT_EXCEL_ID_BLANK         = $0201;    // BIFF2: $0001
+  INT_EXCEL_ID_NUMBER        = $0203;    // BIFF2: $0003
+  INT_EXCEL_ID_LABEL         = $0204;    // BIFF2: $0004
+  INT_EXCEL_ID_BOOLERROR     = $0205;    // BIFF2: $0005
+  INT_EXCEL_ID_STRING        = $0207;    // BIFF2: $0007
+  INT_EXCEL_ID_ROW           = $0208;    // BIFF2: $0008
+  INT_EXCEL_ID_INDEX         = $020B;    // BIFF2: $000B
+  INT_EXCEL_ID_DEFROWHEIGHT  = $0225;    // BIFF2: $0025
+  INT_EXCEL_ID_WINDOW2       = $023E;    // BIFF2: $003E
+  INT_EXCEL_ID_RK            = $027E;    // does not exist in BIFF2
+  INT_EXCEL_ID_STYLE         = $0293;    // does not exist in BIFF2
 
   { RECORD IDs which did not change across version 4-8 }
-  INT_EXCEL_ID_SCL         = $00A0;    // does not exist before BIFF4
-  INT_EXCEL_ID_PAGESETUP   = $00A1;    // does not exist before BIFF4
-  INT_EXCEL_ID_FORMAT      = $041E;    // BIFF2-3: $001E
+  INT_EXCEL_ID_SCL           = $00A0;    // does not exist before BIFF4
+  INT_EXCEL_ID_PAGESETUP     = $00A1;    // does not exist before BIFF4
+  INT_EXCEL_ID_FORMAT        = $041E;    // BIFF2-3: $001E
 
   { RECORD IDs which did not change across versions 5-8 }
-  INT_EXCEL_ID_OBJ         = $005D;    // does not exist before BIFF5
-  INT_EXCEL_ID_BOUNDSHEET  = $0085;    // Renamed to SHEET in the latest OpenOffice docs, does not exist before 5
-  INT_EXCEL_ID_MULRK       = $00BD;    // does not exist before BIFF5
-  INT_EXCEL_ID_MULBLANK    = $00BE;    // does not exist before BIFF5
-  INT_EXCEL_ID_XF          = $00E0;    // BIFF2:$0043, BIFF3:$0243, BIFF4:$0443
-  INT_EXCEL_ID_RSTRING     = $00D6;    // does not exist before BIFF5
-  INT_EXCEL_ID_SHAREDFMLA  = $04BC;    // does not exist before BIFF5
-  INT_EXCEL_ID_BOF         = $0809;    // BIFF2:$0009, BIFF3:$0209; BIFF4:$0409
+  INT_EXCEL_ID_OBJ           = $005D;    // does not exist before BIFF5
+  INT_EXCEL_ID_BOUNDSHEET    = $0085;    // Renamed to SHEET in the latest OpenOffice docs, does not exist before 5
+  INT_EXCEL_ID_MULRK         = $00BD;    // does not exist before BIFF5
+  INT_EXCEL_ID_MULBLANK      = $00BE;    // does not exist before BIFF5
+  INT_EXCEL_ID_XF            = $00E0;    // BIFF2:$0043, BIFF3:$0243, BIFF4:$0443
+  INT_EXCEL_ID_RSTRING       = $00D6;    // does not exist before BIFF5
+  INT_EXCEL_ID_SHAREDFMLA    = $04BC;    // does not exist before BIFF5
+  INT_EXCEL_ID_BOF           = $0809;    // BIFF2:$0009, BIFF3:$0209; BIFF4:$0409
 
   { FONT record constants }
-  INT_FONT_WEIGHT_NORMAL   = $0190;
-  INT_FONT_WEIGHT_BOLD     = $02BC;
+  INT_FONT_WEIGHT_NORMAL     = $0190;
+  INT_FONT_WEIGHT_BOLD       = $02BC;
 
   { CODEPAGE record constants }
-  WORD_ASCII               = 367;
-  WORD_CP_437_DOS_US       = 437;
-  WORD_CP_850_DOS_Latin1   = 850;
-  WORD_CP_852_DOS_Latin2   = 852;
-  WORD_CP_866_DOS_Cyrillic = 866;
-  WORD_CP_874_Thai         = 874;
-  WORD_UTF_16              = 1200; // BIFF 8
-  WORD_CP_1250_Latin2      = 1250;
-  WORD_CP_1251_Cyrillic    = 1251;
-  WORD_CP_1252_Latin1      = 1252; // BIFF4-BIFF5
-  WORD_CP_1253_Greek       = 1253;
-  WORD_CP_1254_Turkish     = 1254;
-  WORD_CP_1255_Hebrew      = 1255;
-  WORD_CP_1256_Arabic      = 1256;
-  WORD_CP_1257_Baltic      = 1257;
-  WORD_CP_1258_Vietnamese  = 1258;
-  WORD_CP_1258_Latin1_BIFF2_3 = 32769; // BIFF2-BIFF3
+  WORD_ASCII                 = 367;
+  WORD_CP_437_DOS_US         = 437;
+  WORD_CP_850_DOS_Latin1     = 850;
+  WORD_CP_852_DOS_Latin2     = 852;
+  WORD_CP_866_DOS_Cyrillic   = 866;
+  WORD_CP_874_Thai           = 874;
+  WORD_UTF_16                = 1200; // BIFF 8
+  WORD_CP_1250_Latin2        = 1250;
+  WORD_CP_1251_Cyrillic      = 1251;
+  WORD_CP_1252_Latin1        = 1252; // BIFF4-BIFF5
+  WORD_CP_1253_Greek         = 1253;
+  WORD_CP_1254_Turkish       = 1254;
+  WORD_CP_1255_Hebrew        = 1255;
+  WORD_CP_1256_Arabic        = 1256;
+  WORD_CP_1257_Baltic        = 1257;
+  WORD_CP_1258_Vietnamese    = 1258;
+  WORD_CP_1258_Latin1_BIFF2_3= 32769; // BIFF2-BIFF3
 
   { DATEMODE record, 5.28 }
-  DATEMODE_1900_BASE       = 1; //1/1/1900 minus 1 day in FPC TDateTime
-  DATEMODE_1904_BASE       = 1462; //1/1/1904 in FPC TDateTime
+  DATEMODE_1900_BASE         = 1; //1/1/1900 minus 1 day in FPC TDateTime
+  DATEMODE_1904_BASE         = 1462; //1/1/1904 in FPC TDateTime
 
   { WINDOW1 record constants - BIFF5-BIFF8 }
   MASK_WINDOW1_OPTION_WINDOW_HIDDEN             = $0001;
@@ -328,7 +331,7 @@ const
   ROWHEIGHT_EPS = 1E-2;
 
 type
-  TDateMode=(dm1900, dm1904); //DATEMODE values, 5.28
+  TDateMode = (dm1900, dm1904); //DATEMODE values, 5.28
 
   // Adjusts Excel float (date, date/time, time) with the file's base date to get a TDateTime
   function ConvertExcelDateTimeToDateTime
@@ -451,8 +454,12 @@ type
     procedure ReadPageSetup(AStream: TStream);
     // Read PANE record
     procedure ReadPane(AStream: TStream);
+    // Read PASSWORD record
+    procedure ReadPASSWORD(AStream: TStream; AWorksheet: TsWorksheet = nil);
     procedure ReadPrintGridLines(AStream: TStream);
     procedure ReadPrintHeaders(AStream: TStream);
+    // Reads whether the workbook or worksheet is protected
+    procedure ReadPROTECT(AStream: TStream; AWorksheet: TsWorksheet = nil);
     // Read an RK value cell
     procedure ReadRKValue(AStream: TStream);
     // Read the row, column, and XF index at the current stream position
@@ -491,6 +498,8 @@ type
     procedure ReadVCENTER(AStream: TStream);
     // Read WINDOW2 record (gridlines, sheet headers)
     procedure ReadWindow2(AStream: TStream); virtual;
+    // Read WINDOWPROTECT record
+    procedure ReadWindowProtect(AStream: TStream);
     procedure ReadWorkbookGlobals(AStream: TStream); virtual;
     procedure ReadWorksheet(AStream: TStream); virtual;
 
@@ -2018,6 +2027,35 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the PASSWORD record containing the encrypted password
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadPASSWORD(AStream: TStream;
+  AWorksheet: TsWorksheet = nil);
+var
+  hash: Word;
+  cinfo: TsCryptoInfo;
+begin
+  hash := WordLEToN(AStream.ReadWord);
+  if hash = 0 then
+    exit;  // no password
+
+  if AWorksheet = nil then begin
+    // Password for workbook protection
+    cinfo := FWorkbook.CryptoInfo;
+    cinfo.PasswordHash := Format('%.4x', [hash]);
+    cinfo.Algorithm := caExcel;
+    FWorkbook.CryptoInfo := cinfo;
+  end else
+  begin
+    // Password for worksheet protection
+    cinfo := AWorksheet.CryptoInfo;
+    cinfo.PasswordHash := Format('%.4x', [hash]);
+    cinfo.Algorithm := caExcel;
+    AWorksheet.CryptoInfo := cinfo;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads whether the gridlines are printed or not
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadPrintGridLines(AStream: TStream);
@@ -2041,6 +2079,28 @@ begin
   if w = 1 then
     with FWorksheet.PageLayout do
       Options := Options + [poPrintHeaders];
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines whether the workbook or worksheet is protected
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadPROTECT(AStream: TStream;
+  AWorksheet: TsWorksheet = nil);
+var
+  p: Word;
+begin
+  p := WordLEToN(AStream.ReadWord);
+  if p = 0 then   // not protected
+    exit;
+
+  if AWorksheet = nil then
+    // Workbook protection
+    FWorkbook.Protection := FWorkbook.Protection + [bpLockStructure]
+  else begin
+    // Worksheet protection
+    AWorksheet.Protection := FWorksheet.Protection + [spCells];
+    AWorksheet.Protect(true);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2873,6 +2933,17 @@ procedure TsSpreadBIFFReader.ReadWorkbookGlobals(AStream: TStream);
 begin
   // To be overridden by BIFF5 and BIFF8
   Unused(AStream);
+end;
+
+procedure TsSpreadBIFFReader.ReadWindowProtect(AStream: TStream);
+var
+  p: Word;
+begin
+  p := WordLEToN(AStream.ReadWord);
+  if p = 0 then   // Workbook not protected
+    FWorkbook.Protection := FWorkbook.Protection - [bpLockWindows]
+  else   // Workbook protection
+    FWorkbook.Protection := FWorkbook.Protection + [bpLockWindows];
 end;
 
 procedure TsSpreadBIFFReader.ReadWorksheet(AStream: TStream);
