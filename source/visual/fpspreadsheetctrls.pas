@@ -584,7 +584,7 @@ implementation
 uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
   Dialogs, Forms, Clipbrd,
-  fpsStrings, fpsReaderWriter, fpsUtils, fpsNumFormat, fpsImages,
+  fpsStrings, fpsCrypto, fpsReaderWriter, fpsUtils, fpsNumFormat, fpsImages,
   fpsHTMLUtils, fpsCSV;
 
 var
@@ -3653,8 +3653,8 @@ begin
 
     if (ienCryptoInfo in FExpanded) then begin
       AStrings.Add('(-) CryptoInfo=');
-      AStrings.Add(Format('  Password=%s', [Workbook.CryptoInfo.Password]));
-      AStrings.Add(Format('  AlgorithmName=%s', [Workbook.CryptoInfo.AlgorithmName]));
+      AStrings.Add(Format('  PasswordHash=%s', [Workbook.CryptoInfo.PasswordHash]));
+      AStrings.Add(Format('  Algorithm=%s', [AlgorithmToStr(Workbook.CryptoInfo.Algorithm)]));
       AStrings.Add(Format('  HashValue=%s', [Workbook.CryptoInfo.HashValue]));
       AStrings.Add(Format('  SaltValue=%s', [Workbook.CryptoInfo.SaltValue]));
       AStrings.Add(Format('  SplinCount=%d', [Workbook.CryptoInfo.SpinCount]));
@@ -3837,8 +3837,8 @@ begin
 
     if (ienCryptoInfo in FExpanded) then begin
       AStrings.Add('(-) CryptoInfo=');
-      AStrings.Add(Format('  Password=%s', [Worksheet.CryptoInfo.Password]));
-      AStrings.Add(Format('  AlgorithmName=%s', [Worksheet.CryptoInfo.AlgorithmName]));
+      AStrings.Add(Format('  PasswordHash=%s', [Worksheet.CryptoInfo.PasswordHash]));
+      AStrings.Add(Format('  Algorithm=%s', [AlgorithmToStr(Worksheet.CryptoInfo.Algorithm)]));
       AStrings.Add(Format('  HashValue=%s', [Worksheet.CryptoInfo.HashValue]));
       AStrings.Add(Format('  SaltValue=%s', [Worksheet.CryptoInfo.SaltValue]));
       AStrings.Add(Format('  SplinCount=%d', [Worksheet.CryptoInfo.SpinCount]));

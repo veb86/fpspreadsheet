@@ -638,10 +638,18 @@ type
   {@@ Switch a cell from left-to-right to right-to-left orientation }
   TsBiDiMode = (bdDefault, bdLTR, bdRTL);
 
-  {@@  }
+  {@@ Algorithm used for encryption/decryption }
+  TsCryptoAlgorithm = (caUnknown,
+    caExcel,    // Excel <= 2010
+    caMD2, caMD4, caMD5, caRIPEMD128, caRIPEMD160,
+    caSHA1, caSHA256, caSHA384, caSHA512,
+    caWHIRLPOOL
+    );
+
+  {@@ Record collection information for encryption/decryption }
   TsCryptoInfo = record
-    AlgorithmName: string;
-    Password: string; // For old version of Excel (2010 and earlier)
+    PasswordHash: String;
+    Algorithm: TsCryptoAlgorithm;
     HashValue: string;
     SaltValue: string;
     SpinCount: Integer;

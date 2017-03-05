@@ -235,7 +235,7 @@ implementation
 
 uses
   variants, strutils, math, lazutf8, LazFileUtils, uriparser,
-  {%H-}fpsPatches,
+  {%H-}fpsPatches, fpsCrypto,
   fpsStrings, fpsStreams, fpsClasses, fpsImages;
 
 const
@@ -2013,16 +2013,19 @@ begin
 
   InitCryptoInfo(shc);
   s := GetAttrValue(ANode, 'password');
-  if s <> '' then
-    shc.Password := s
-  else
+  if s <> '' then begin
+    shc.PasswordHash := s;
+    shc.Algorithm := caExcel;
+  end else
   begin
     s := GetAttrValue(ANode, 'hashValue');
     if s <> '' then begin
-      shc.HashValue := s;
+      shc.PasswordHash := s;
 
       s := GetAttrValue(ANode, 'algorithmName');
-      shc.AlgorithmName := s;
+      shc.Algorithm := StrToAlgorithm(s);
+      if shc.Algorithm = caUnknown then
+        Workbook.AddErrorMsg('Found unknown encryption algorithm "%s" for worksheet protection', [s]);
 
       s := GetAttrValue(ANode, 'saltValue');
       shc.SaltValue := s;
@@ -2290,14 +2293,20 @@ begin
   InitCryptoInfo(wbc);
   s := GetAttrValue(ANode, 'workbookPassword');
   if s <> '' then
-    wbc.Password := s
+    wbc.PasswordHash := s
   else
   begin
     s := GetAttrValue(ANode, 'workbookHashVal');
     if s <> '' then begin
-      wbc.HashValue := s;
-      wbc.AlgorithmName := GetAttrValue(ANode, 'workbookAlgorithmName');
+      wbc.PasswordHash := s;
+
+      s := GetAttrValue(ANode, 'workbookAlgorithmName');
+      wbc.Algorithm := StrToAlgorithm(s);
+      if wbc.Algorithm = caUnknown then
+        Workbook.AddErrorMsg('Found unknown encryption algorithm "%s" for workbook protection', [s]);
+
       wbc.SaltValue := GetAttrValue(ANode, 'workbookSaltValue');
+
       wbc.SpinCount := StrToIntDef(GetAttrValue(ANode, 'workbookSpinCount'), 0);
     end;
   end;
@@ -3435,21 +3444,22 @@ begin
   else
     Exit; //exit if sheet not protected
 
-  if AWorksheet.CryptoInfo.Password <> '' then
-    s := s + ' password="' + AWorksheet.CryptoInfo.Password + '"'
-  else
-  if AWorksheet.CryptoInfo.HashValue <> '' then
-  begin
-    s := s + ' hashValue="' + AWorksheet.CryptoInfo.HashValue + '"';
+  if AWorksheet.CryptoInfo.PasswordHash <> '' then begin
+    if AWorksheet.CryptoInfo.Algorithm = caExcel then
+      s := s + ' password="' + AWorksheet.CryptoInfo.PasswordHash + '"'
+    else
+    begin
+      s := s + ' hashValue="' + AWorksheet.CryptoInfo.HashValue + '"';
 
-    if AWorksheet.CryptoInfo.AlgorithmName <> '' then
-      s := s + ' algorithmName="' + AWorksheet.CryptoInfo.AlgorithmName + '"';
+      if AWorksheet.CryptoInfo.Algorithm <> caUnknown then
+        s := s + ' algorithmName="' + AlgorithmToStr(AWorksheet.CryptoInfo.Algorithm) + '"';
 
-    if AWorksheet.CryptoInfo.SaltValue <> '' then
-      s := s + ' saltValue="' + AWorksheet.CryptoInfo.SaltValue + '"';
+      if AWorksheet.CryptoInfo.SaltValue <> '' then
+        s := s + ' saltValue="' + AWorksheet.CryptoInfo.SaltValue + '"';
 
-    if AWorksheet.CryptoInfo.SpinCount <> 0 then
-      s := s + ' spinCount="' + IntToStr(AWorksheet.CryptoInfo.SpinCount) + '"';
+      if AWorksheet.CryptoInfo.SpinCount <> 0 then
+        s := s + ' spinCount="' + IntToStr(AWorksheet.CryptoInfo.SpinCount) + '"';
+    end;
   end;
 
   {
@@ -4675,20 +4685,22 @@ var
 begin
   s := '';
 
-  if Workbook.CryptoInfo.Password <> '' then
-    s := s + ' workbookPassword="' + Workbook.CryptoInfo.Password + '"'
-  else
-  if Workbook.CryptoInfo.HashValue <> '' then
+  if Workbook.CryptoInfo.PasswordHash <> '' then
   begin
-    s:= s + ' workbookHashVal="' + Workbook.CryptoInfo.HashValue + '"';
-    if Workbook.CryptoInfo.AlgorithmName <> '' then
-      s:= s + ' workbookAlgorithmName="' + Workbook.CryptoInfo.AlgorithmName + '"';
+    if Workbook.CryptoInfo.Algorithm = caExcel then
+      s := s + ' workbookPassword="' + Workbook.CryptoInfo.PasswordHash + '"'
+    else
+    begin
+      s:= s + ' workbookHashVal="' + Workbook.CryptoInfo.PasswordHash + '"';
+      if Workbook.CryptoInfo.Algorithm <> caUnknown then
+        s:= s + ' workbookAlgorithmName="' + AlgorithmToStr(Workbook.CryptoInfo.Algorithm) + '"';
 
-    if Workbook.CryptoInfo.SaltValue <> '' then
-      s:= s + ' workbookSaltValue="' + Workbook.CryptoInfo.SaltValue + '"';
+      if Workbook.CryptoInfo.SaltValue <> '' then
+        s:= s + ' workbookSaltValue="' + Workbook.CryptoInfo.SaltValue + '"';
 
-    if Workbook.CryptoInfo.SpinCount <> 0 then
-      s:= s + ' workbookSpinCount="' + IntToStr(Workbook.CryptoInfo.SpinCount) + '"';
+      if Workbook.CryptoInfo.SpinCount <> 0 then
+        s:= s + ' workbookSpinCount="' + IntToStr(Workbook.CryptoInfo.SpinCount) + '"';
+    end;
   end;
 
   {
