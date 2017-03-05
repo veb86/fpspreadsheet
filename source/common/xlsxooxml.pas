@@ -3435,7 +3435,7 @@ begin
       s := s + ' hashValue="' + AWorksheet.CryptoInfo.PasswordHash + '"';
 
       if AWorksheet.CryptoInfo.Algorithm <> caUnknown then
-        s := s + ' algorithmName="' + AlgorithmToStr(AWorksheet.CryptoInfo.Algorithm) + '"';
+        s := s + ' algorithmName="' + AlgorithmToStr(AWorksheet.CryptoInfo.Algorithm, auExcel) + '"';
 
       if AWorksheet.CryptoInfo.SaltValue <> '' then
         s := s + ' saltValue="' + AWorksheet.CryptoInfo.SaltValue + '"';
@@ -4676,7 +4676,7 @@ begin
     begin
       s:= s + ' workbookHashVal="' + Workbook.CryptoInfo.PasswordHash + '"';
       if Workbook.CryptoInfo.Algorithm <> caUnknown then
-        s:= s + ' workbookAlgorithmName="' + AlgorithmToStr(Workbook.CryptoInfo.Algorithm) + '"';
+        s:= s + ' workbookAlgorithmName="' + AlgorithmToStr(Workbook.CryptoInfo.Algorithm, auExcel) + '"';
 
       if Workbook.CryptoInfo.SaltValue <> '' then
         s:= s + ' workbookSaltValue="' + Workbook.CryptoInfo.SaltValue + '"';

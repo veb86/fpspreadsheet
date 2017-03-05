@@ -3654,7 +3654,7 @@ begin
     if (ienCryptoInfo in FExpanded) then begin
       AStrings.Add('(-) CryptoInfo=');
       AStrings.Add(Format('  PasswordHash=%s', [Workbook.CryptoInfo.PasswordHash]));
-      AStrings.Add(Format('  Algorithm=%s', [AlgorithmToStr(Workbook.CryptoInfo.Algorithm)]));
+      AStrings.Add(Format('  Algorithm=%s', [AlgorithmToStr(Workbook.CryptoInfo.Algorithm, auExcel)]));
       AStrings.Add(Format('  SaltValue=%s', [Workbook.CryptoInfo.SaltValue]));
       AStrings.Add(Format('  SpinCount=%d', [Workbook.CryptoInfo.SpinCount]));
     end else
@@ -3837,7 +3837,7 @@ begin
     if (ienCryptoInfo in FExpanded) then begin
       AStrings.Add('(-) CryptoInfo=');
       AStrings.Add(Format('  PasswordHash=%s', [Worksheet.CryptoInfo.PasswordHash]));
-      AStrings.Add(Format('  Algorithm=%s', [AlgorithmToStr(Worksheet.CryptoInfo.Algorithm)]));
+      AStrings.Add(Format('  Algorithm=%s', [AlgorithmToStr(Worksheet.CryptoInfo.Algorithm, auExcel)]));
       AStrings.Add(Format('  SaltValue=%s', [Worksheet.CryptoInfo.SaltValue]));
       AStrings.Add(Format('  SpinCount=%d', [Worksheet.CryptoInfo.SpinCount]));
     end else
