@@ -468,16 +468,19 @@ begin
     CurStreamPos := AStream.Position;
 
     case RecordType of
-      INT_EXCEL_ID_BOF         : ;
-      INT_EXCEL_ID_BOUNDSHEET  : ReadBoundSheet(AStream);
-      INT_EXCEL_ID_CODEPAGE    : ReadCodePage(AStream);
-      INT_EXCEL_ID_DEFINEDNAME : ReadDefinedName(AStream);
-      INT_EXCEL_ID_EXTERNSHEET : ReadExternSheet(AStream);
-      INT_EXCEL_ID_FONT        : ReadFont(AStream);
-      INT_EXCEL_ID_FORMAT      : ReadFormat(AStream);
-      INT_EXCEL_ID_XF          : ReadXF(AStream);
-      INT_EXCEL_ID_PALETTE     : ReadPalette(AStream);
-      INT_EXCEL_ID_EOF         : SectionEOF := True;
+      INT_EXCEL_ID_BOF           : ;
+      INT_EXCEL_ID_BOUNDSHEET    : ReadBoundSheet(AStream);
+      INT_EXCEL_ID_CODEPAGE      : ReadCodePage(AStream);
+      INT_EXCEL_ID_DEFINEDNAME   : ReadDefinedName(AStream);
+      INT_EXCEL_ID_EOF           : SectionEOF := True;
+      INT_EXCEL_ID_EXTERNSHEET   : ReadExternSheet(AStream);
+      INT_EXCEL_ID_FONT          : ReadFont(AStream);
+      INT_EXCEL_ID_FORMAT        : ReadFormat(AStream);
+      INT_EXCEL_ID_PALETTE       : ReadPalette(AStream);
+      INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream);
+      INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream);
+      INT_EXCEL_ID_XF            : ReadXF(AStream);
+      INT_EXCEL_ID_WINDOWPROTECT : ReadWindowProtect(AStream);
     else
       // nothing
     end;
@@ -533,8 +536,10 @@ begin
       INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
       INT_EXCEL_ID_PANE          : ReadPane(AStream);
       INT_EXCEL_ID_PAGESETUP     : ReadPageSetup(AStream);
+      INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream, FWorksheet);
       INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
       INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
+      INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream, FWorksheet);
       INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
       INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
       INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
@@ -898,6 +903,18 @@ begin
       Include(fmt.UsedFormattingFields, uffBackground);
       break;
     end;
+  end;
+
+  // Protection
+  case WordLEToN(rec.XFType_Prot_ParentXF) and MASK_XF_TYPE_PROTECTION of
+    0:
+      fmt.Protection := [];
+    MASK_XF_TYPE_PROT_LOCKED:
+      fmt.Protection := [cpLockCell];
+    MASK_XF_TYPE_PROT_FORMULA_HIDDEN:
+      fmt.Protection := [cpHideFormulas];
+    MASK_XF_TYPE_PROT_LOCKED + MASK_XF_TYPE_PROT_FORMULA_HIDDEN:
+      fmt.Protection := [cpLockCell, cpHideFormulas];
   end;
 
   // Add the XF to the list

@@ -131,9 +131,11 @@ const
   { XF substructures }
 
   { XF_TYPE_PROT - XF Type and Cell protection (3 Bits) - BIFF3-BIFF8 }
-  MASK_XF_TYPE_PROT_LOCKED               = $1;
-  MASK_XF_TYPE_PROT_FORMULA_HIDDEN       = $2;
-  MASK_XF_TYPE_PROT_STYLE_XF             = $4; // 0 = CELL XF
+  MASK_XF_TYPE_PROT_LOCKED                      = $0001;
+  MASK_XF_TYPE_PROT_FORMULA_HIDDEN              = $0002;
+  MASK_XF_TYPE_PROT_STYLE_XF                    = $0004; // 0 = CELL XF
+  MASK_XF_TYPE_PROTECTION                       = $0007;
+
 
   { XF_USED_ATTRIB - Attributes from parent Style XF (6 Bits) - BIFF3-BIFF8
 

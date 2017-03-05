@@ -257,7 +257,7 @@ type
     RecordSize: Word;
     FontIndex: Byte;
     NotUsed: Byte;
-    NumFormatIndex_Flags: Byte;
+    NumFormat_Prot: Byte;
     HorAlign_Border_BkGr: Byte;
   end;
 
@@ -616,8 +616,10 @@ begin
       INT_EXCEL_ID_NOTE          : ReadComment(AStream);
       INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
       INT_EXCEL_ID_PANE          : ReadPane(AStream);
+      INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream, FWorksheet);
       INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
       INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
+      INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream, FWorksheet);
       INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
       INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
       INT_EXCEL_ID_SELECTION     : ReadSELECTION(AStream);
@@ -625,6 +627,7 @@ begin
       INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
       INT_EXCEL_ID_DEFROWHEIGHT  : ReadDefRowHeight(AStream);
       INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
+      INT_EXCEL_ID_WINDOWPROTECT : ReadWindowProtect(AStream);
       INT_EXCEL_ID_XF            : ReadXF(AStream);
     else
       // nothing
@@ -1080,7 +1083,7 @@ begin
     Include(fmt.UsedFormattingFields, uffFont);
 
   // Number format index
-  b := rec.NumFormatIndex_Flags and $3F;
+  b := rec.NumFormat_Prot and $3F;
   nfs := NumFormatList[b];
   if nfs <> '' then
   begin
@@ -1130,6 +1133,15 @@ begin
     fmt.Background.FgColor := scBlack;
     fmt.Background.BgColor := scTransparent;
     Include(fmt.UsedFormattingFields, uffBackground);
+  end;
+
+  // Protection
+  b := rec.NumFormat_Prot and $C0;
+  case b of
+    $00: fmt.Protection := [];
+    $40: fmt.Protection := [cpLockCell];
+    $80: fmt.Protection := [cpHideFormulas];
+    $C0: fmt.Protection := [cpLockCell, cpHideFormulas];
   end;
 
   // Add the decoded data to the format list
@@ -1708,7 +1720,7 @@ begin
       5-0   $3F   Index to (number) FORMAT record
        6    $40   1 = Cell is locked
        7    $80   1 = Formula is hidden }
-  rec.NumFormatIndex_Flags := WordToLE(formatIdx);
+  rec.NumFormat_Prot := WordToLE(formatIdx);
   // Cell flags not used, so far...
 
   {Horizontal alignment, border style, and background

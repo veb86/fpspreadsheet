@@ -368,9 +368,6 @@ const
    { XF CELL BACKGROUND PATTERN }
      MASK_XF_BACKGROUND_PATTERN          = $FC000000;
 
-   { XP CELL PROTECTION }
-     MASK_XF_PROTECTION                  = $0007;
-
    { HLINK FLAGS }
      MASK_HLINK_LINK                     = $00000001;
      MASK_HLINK_ABSOLUTE                 = $00000002;
@@ -881,9 +878,9 @@ begin
     INT_EXCEL_ID_PAGESETUP     : ReadPageSetup(AStream);
     INT_EXCEL_ID_PANE          : ReadPane(AStream);
     INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream, FWorksheet);
-    INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream, FWorksheet);
     INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
     INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
+    INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream, FWorksheet);
     INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
     INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
 
@@ -1687,11 +1684,15 @@ begin
   end;
 
   // Protection
-  case WordLEToN(rec.XFType_Prot_ParentXF) and MASK_XF_PROTECTION of
-    0: fmt.Protection := [];
-    1: fmt.Protection := [cpLockCell];
-    2: fmt.Protection := [cpHideFormulas];
-    3: fmt.Protection := [cpLockCell, cpHideFormulas];
+  case WordLEToN(rec.XFType_Prot_ParentXF) and MASK_XF_TYPE_PROTECTION of
+    0:
+      fmt.Protection := [];
+    MASK_XF_TYPE_PROT_LOCKED:
+      fmt.Protection := [cpLockCell];
+    MASK_XF_TYPE_PROT_FORMULA_HIDDEN:
+      fmt.Protection := [cpHideFormulas];
+    MASK_XF_TYPE_PROT_LOCKED + MASK_XF_TYPE_PROT_FORMULA_HIDDEN:
+      fmt.Protection := [cpLockCell, cpHideFormulas];
   end;
 
   // Add the XF to the internal cell format list

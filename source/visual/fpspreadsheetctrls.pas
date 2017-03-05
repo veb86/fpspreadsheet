@@ -3362,7 +3362,7 @@ begin
       GetEnumName(TypeInfo(TsBiDiMode), ord(fmt.BiDiMode))]));
 
   if (AFormatIndex = -1) then
-    AStrings.Add('Protection=(not protected)')
+    AStrings.Add('Protection=(default)')
   else begin
     if Worksheet.IsProtected then begin
       s := '';
