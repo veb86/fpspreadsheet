@@ -30,7 +30,7 @@
 This package is all you need if you don't want graphical components (like grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
     <Version Major="1" Minor="9"/>
-    <Files Count="45">
+    <Files Count="46">
       <Item1>
         <Filename Value="fps.inc"/>
         <Type Value="Include"/>
@@ -250,6 +250,10 @@ This package is all you need if you don't want graphical components (like grids 
         <Filename Value="common\fpssearch.pas"/>
         <UnitName Value="fpsSearch"/>
       </Item45>
+      <Item46>
+        <Filename Value="common\fpscrypto.pas"/>
+        <UnitName Value="fpsCrypto"/>
+      </Item46>
     </Files>
     <i18n>
       <EnableI18N Value="True"/>
