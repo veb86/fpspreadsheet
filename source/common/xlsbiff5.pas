@@ -534,6 +534,7 @@ begin
       INT_EXCEL_ID_MULRK         : ReadMulRKValues(AStream);
       INT_EXCEL_ID_NOTE          : ReadComment(AStream);
       INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
+      INT_EXCEL_ID_OBJECTPROTECT : ReadObjectProtect(AStream, FWorksheet);
       INT_EXCEL_ID_PANE          : ReadPane(AStream);
       INT_EXCEL_ID_PAGESETUP     : ReadPageSetup(AStream);
       INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream, FWorksheet);
@@ -1135,6 +1136,8 @@ begin
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
 
   WriteCODEPAGE(AStream, FCodePage);
+  WriteWindowProtect(AStream, bpLockWindows in Workbook.Protection);
+  WritePROTECT(AStream, bpLockStructure in Workbook.Protection);
   WriteEXTERNCOUNT(AStream);
   WriteEXTERNSHEET(AStream);
   WriteDefinedNames(AStream);
@@ -1182,7 +1185,11 @@ begin
       WriteMargin(AStream, 2);  // 2 = top margin
       WriteMargin(AStream, 3);  // 3 = bottom margin
       WritePageSetup(AStream);
-
+      if FWorksheet.IsProtected then begin
+        WritePROTECT(AStream, true);
+//          WriteScenarioProtect(AStream);
+        WriteObjectProtect(AStream, FWorksheet);
+      end;
       WriteDefaultColWidth(AStream, FWorksheet);
       WriteColInfos(AStream, FWorksheet);
       WriteDimensions(AStream, FWorksheet);
@@ -1920,9 +1927,20 @@ begin
   rec.NumFormatIndex := WordToLE(j);
 
   { XF type, cell protection and parent style XF }
-  rec.XFType_Prot_ParentXF := XFType_Prot and MASK_XF_TYPE_PROT;
-  if XFType_Prot and MASK_XF_TYPE_PROT_STYLE_XF <> 0 then
-    rec.XFType_Prot_ParentXF := rec.XFType_Prot_ParentXF or MASK_XF_TYPE_PROT_PARENT;
+  if AFormatRecord = nil then
+  begin
+    rec.XFType_Prot_ParentXF := XFType_Prot and MASK_XF_TYPE_PROT;
+    if XFType_Prot and MASK_XF_TYPE_PROT_STYLE_XF <> 0 then
+      rec.XFType_Prot_ParentXF := rec.XFType_Prot_ParentXF or MASK_XF_TYPE_PROT_PARENT;
+  end else
+  begin
+    rec.XFType_Prot_ParentXF := 0;
+    if cpLockCell in AFormatRecord^.Protection then
+      rec.XFType_Prot_ParentXF := rec.XFType_Prot_ParentXF or MASK_XF_TYPE_PROT_LOCKED;
+    if cpHideFormulas in AFormatRecord^.Protection then
+      rec.XFType_Prot_ParentXF := rec.XFType_Prot_ParentXF or MASK_XF_TYPE_PROT_FORMULA_HIDDEN;
+  end;
+  rec.XFType_Prot_ParentXF := WordToLE(rec.XFType_Prot_ParentXF);
 
   { Text alignment and text break }
   if AFormatRecord = nil then

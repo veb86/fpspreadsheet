@@ -37,6 +37,7 @@ const
   INT_EXCEL_ID_PANE          = $0041;
   INT_EXCEL_ID_CODEPAGE      = $0042;
   INT_EXCEL_ID_DEFCOLWIDTH   = $0055;
+  INT_EXCEL_ID_OBJECTPROTECT = $0063;
 
   { RECORD IDs which did not changed across versions 2-5 }
   INT_EXCEL_ID_EXTERNCOUNT   = $0016;    // does not exist in BIFF8
@@ -133,7 +134,7 @@ const
   { XF_TYPE_PROT - XF Type and Cell protection (3 Bits) - BIFF3-BIFF8 }
   MASK_XF_TYPE_PROT_LOCKED                      = $0001;
   MASK_XF_TYPE_PROT_FORMULA_HIDDEN              = $0002;
-  MASK_XF_TYPE_PROT_STYLE_XF                    = $0004; // 0 = CELL XF
+  MASK_XF_TYPE_PROT_STYLE_XF                    = $0005; // was: 4   (wp)
   MASK_XF_TYPE_PROTECTION                       = $0007;
 
 
@@ -450,6 +451,8 @@ type
     procedure ReadMulRKValues(const AStream: TStream);
     // Read floating point number
     procedure ReadNumber(AStream: TStream); override;
+    // Read OBJECTPROTECT record
+    procedure ReadObjectProtect(AStream: TStream; AWorksheet: TsWorksheet = nil);
     // Read palette
     procedure ReadPalette(AStream: TStream);
     // Read page setup
@@ -585,6 +588,8 @@ type
     // Writes out a floating point NUMBER record
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: Double; ACell: PCell); override;
+    // Writes an OBJECTPROTECT record
+    procedure WriteObjectProtect(AStream: TStream; ASheet: TsWorksheet);
     procedure WritePageSetup(AStream: TStream);
     // Writes out a PALETTE record containing all colors defined in the workbook
     procedure WritePalette(AStream: TStream);
@@ -594,6 +599,7 @@ type
     // Writes out whether grid lines are printed
     procedure WritePrintGridLines(AStream: TStream);
     procedure WritePrintHeaders(AStream: TStream);
+    procedure WritePROTECT(AStream: TStream; AEnable: Boolean);
     // Writes out a ROW record
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); virtual;
@@ -632,6 +638,7 @@ type
     procedure WriteVirtualCells(AStream: TStream; ASheet: TsWorksheet);
     // Writes out a WINDOW1 record
     procedure WriteWindow1(AStream: TStream); virtual;
+    procedure WriteWindowProtect(AStream: TStream; AEnable: Boolean);
     // Writes an XF record
     procedure WriteXF(AStream: TStream; ACellFormat: PsCellFormat;
       XFType_Prot: Byte = 0); virtual;
@@ -1904,6 +1911,24 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the OBJECTPROTECT record. It determines whether the objects (drawings,
+  etc) of the current sheet are protected.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadObjectProtect(AStream: TStream;
+  AWorksheet: TsWorksheet = nil);
+var
+  w: Word;
+  sp: TsWorksheetProtections;
+begin
+  if AWorksheet = nil then
+    AWorksheet := FWorksheet;
+  w := WordLEToN(AStream.ReadWord);
+  sp := AWorksheet.Protection;
+  if w = 0 then Exclude(sp, spObjects) else Include(sp, spObjects);
+  AWorksheet.Protection := sp;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the color palette
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadPalette(AStream: TStream);
@@ -2092,16 +2117,22 @@ var
   p: Word;
 begin
   p := WordLEToN(AStream.ReadWord);
-  if p = 0 then   // not protected
-    exit;
 
   if AWorksheet = nil then
+  begin
     // Workbook protection
-    FWorkbook.Protection := FWorkbook.Protection + [bpLockStructure]
-  else begin
+    if p = 1 then
+      FWorkbook.Protection := FWorkbook.Protection + [bpLockStructure]
+    else
+      FWorkbook.Protection := FWorkbook.Protection - [bpLockStructure];
+  end else
+  begin
     // Worksheet protection
-    AWorksheet.Protection := FWorksheet.Protection + [spCells];
-    AWorksheet.Protect(true);
+    if p = 1 then begin
+      AWorksheet.Protection := AWorksheet.Protection + [spCells];
+      AWorksheet.Protect(true);
+    end else
+      AWorksheet.Protect(false);
   end;
 end;
 
@@ -3834,6 +3865,24 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes an OBJECTPROTECT record. It determines whether the objects (drawings,
+  etc.) of the current worksheet are protected. Omitted if object
+  protection is not active.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteObjectProtect(AStream: TStream;
+  ASheet: TsWorksheet);
+var
+  w: Word;
+begin
+  if not ASheet.IsProtected then
+    exit;
+
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_OBJECTPROTECT, 2);
+  w := IfThen(spObjects in ASheet.Protection, 1, 0);
+  AStream.WriteWord(WordToLE(w));
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes a PAGESETUP record containing information on printing
   Valid for BIFF5-8
 -------------------------------------------------------------------------------}
@@ -4017,6 +4066,125 @@ begin
   { Data }
   if poPrintHeaders in FWorksheet.PageLayout.Options then w := 1 else w := 0;
   AStream.WriteWord(WordToLE(w));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel PROTECT record
+  Valid for BIFF2-BIFF8
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WritePROTECT(AStream: TStream; AEnable: Boolean);
+var
+  w: Word;
+begin
+  { BIFF Header }
+  WriteBiffHeader(AStream, INT_EXCEL_ID_PROTECT, 2);
+
+  w := IfThen(AEnable, 1, 0);
+  AStream.WriteWord(WordToLE(w));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel 3-8 ROW record
+  Valid for BIFF3-BIFF8
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteRow(AStream: TStream; ASheet: TsWorksheet;
+  ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow);
+var
+  w: Word;
+  dw: DWord;
+  cell: PCell;
+  spaceabove, spacebelow: Boolean;
+  colindex: Cardinal;
+  rowheight: Word;
+  fmt: PsCellFormat;
+begin
+  if (ARowIndex >= FLimitations.MaxRowCount) or
+     (AFirstColIndex >= FLimitations.MaxColCount) or
+     (ALastColIndex >= FLimitations.MaxColCount)
+  then
+    exit;
+
+  // Check for additional space above/below row
+  spaceabove := false;
+  spacebelow := false;
+  colindex := AFirstColIndex;
+  while colindex <= ALastColIndex do
+  begin
+    cell := ASheet.FindCell(ARowindex, colindex);
+    if (cell <> nil) then
+    begin
+      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+      if (uffBorder in fmt^.UsedFormattingFields) then
+      begin
+        if (cbNorth in fmt^.Border) and (fmt^.BorderStyles[cbNorth].LineStyle = lsThick)
+          then spaceabove := true;
+        if (cbSouth in fmt^.Border) and (fmt^.BorderStyles[cbSouth].LineStyle = lsThick)
+          then spacebelow := true;
+      end;
+    end;
+    if spaceabove and spacebelow then break;
+    inc(colindex);
+  end;
+
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_ROW, 16);;
+
+  { Index of row }
+  AStream.WriteWord(WordToLE(Word(ARowIndex)));
+
+  { Index to column of the first cell which is described by a cell record }
+  AStream.WriteWord(WordToLE(Word(AFirstColIndex)));
+
+  { Index to column of the last cell which is described by a cell record, increased by 1 }
+  AStream.WriteWord(WordToLE(Word(ALastColIndex) + 1));
+
+  { Row height (in twips, 1/20 point) and info on custom row height }
+  if (ARow = nil) or (ARow^.RowHeightType = rhtDefault) then
+    rowheight := PtsToTwips(ASheet.ReadDefaultRowHeight(suPoints))
+  else
+    rowheight := PtsToTwips(FWorkbook.ConvertUnits(ARow^.Height, FWorkbook.Units, suPoints));
+  w := rowheight and $7FFF;
+  AStream.WriteWord(WordToLE(w));
+
+  { 2 words not used }
+  AStream.WriteDWord(0);
+
+  { Option flags }
+  dw := $00000100;  // bit 8 is always 1
+  if spaceabove then dw := dw or $10000000;
+  if spacebelow then dw := dw or $20000000;
+  if (ARow <> nil) and (ARow^.RowHeightType = rhtCustom) then  // Custom row height
+    dw := dw or $00000040;    // Row height and font height do not match
+  if ARow^.FormatIndex > 0 then begin
+    dw := dw or $00000080;    // Row has custom format
+    dw := dw or DWord(FindXFIndex(ARow^.FormatIndex) shl 16);   // xf index
+  end;
+
+  { Write out }
+  AStream.WriteDWord(DWordToLE(dw));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes all ROW records for the given sheet.
+  Note that the OpenOffice documentation says that rows must be written in
+  groups of 32, followed by the cells on these rows, etc. THIS IS NOT NECESSARY!
+  Valid for BIFF2-BIFF8.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteRows(AStream: TStream; ASheet: TsWorksheet);
+var
+  row: PRow;
+  i: Integer;
+  cell1, cell2: PCell;
+begin
+  for i := 0 to ASheet.Rows.Count-1 do begin
+    row := ASheet.Rows[i];
+    cell1 := ASheet.Cells.GetFirstCellOfRow(row^.Row);
+    if cell1 <> nil then begin
+      cell2 := ASheet.Cells.GetLastCellOfRow(row^.Row);
+      WriteRow(AStream, ASheet, row^.Row, cell1^.Col, cell2^.Col, row);
+    end else
+      WriteRow(AStream, ASheet, row^.Row, 0, 0, row);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4422,110 +4590,6 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Writes an Excel 3-8 ROW record
-  Valid for BIFF3-BIFF8
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteRow(AStream: TStream; ASheet: TsWorksheet;
-  ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow);
-var
-  w: Word;
-  dw: DWord;
-  cell: PCell;
-  spaceabove, spacebelow: Boolean;
-  colindex: Cardinal;
-  rowheight: Word;
-  fmt: PsCellFormat;
-begin
-  if (ARowIndex >= FLimitations.MaxRowCount) or
-     (AFirstColIndex >= FLimitations.MaxColCount) or
-     (ALastColIndex >= FLimitations.MaxColCount)
-  then
-    exit;
-
-  // Check for additional space above/below row
-  spaceabove := false;
-  spacebelow := false;
-  colindex := AFirstColIndex;
-  while colindex <= ALastColIndex do
-  begin
-    cell := ASheet.FindCell(ARowindex, colindex);
-    if (cell <> nil) then
-    begin
-      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-      if (uffBorder in fmt^.UsedFormattingFields) then
-      begin
-        if (cbNorth in fmt^.Border) and (fmt^.BorderStyles[cbNorth].LineStyle = lsThick)
-          then spaceabove := true;
-        if (cbSouth in fmt^.Border) and (fmt^.BorderStyles[cbSouth].LineStyle = lsThick)
-          then spacebelow := true;
-      end;
-    end;
-    if spaceabove and spacebelow then break;
-    inc(colindex);
-  end;
-
-  { BIFF record header }
-  WriteBIFFHeader(AStream, INT_EXCEL_ID_ROW, 16);;
-
-  { Index of row }
-  AStream.WriteWord(WordToLE(Word(ARowIndex)));
-
-  { Index to column of the first cell which is described by a cell record }
-  AStream.WriteWord(WordToLE(Word(AFirstColIndex)));
-
-  { Index to column of the last cell which is described by a cell record, increased by 1 }
-  AStream.WriteWord(WordToLE(Word(ALastColIndex) + 1));
-
-  { Row height (in twips, 1/20 point) and info on custom row height }
-  if (ARow = nil) or (ARow^.RowHeightType = rhtDefault) then
-    rowheight := PtsToTwips(ASheet.ReadDefaultRowHeight(suPoints))
-  else
-    rowheight := PtsToTwips(FWorkbook.ConvertUnits(ARow^.Height, FWorkbook.Units, suPoints));
-  w := rowheight and $7FFF;
-  AStream.WriteWord(WordToLE(w));
-
-  { 2 words not used }
-  AStream.WriteDWord(0);
-
-  { Option flags }
-  dw := $00000100;  // bit 8 is always 1
-  if spaceabove then dw := dw or $10000000;
-  if spacebelow then dw := dw or $20000000;
-  if (ARow <> nil) and (ARow^.RowHeightType = rhtCustom) then  // Custom row height
-    dw := dw or $00000040;    // Row height and font height do not match
-  if ARow^.FormatIndex > 0 then begin
-    dw := dw or $00000080;    // Row has custom format
-    dw := dw or DWord(FindXFIndex(ARow^.FormatIndex) shl 16);   // xf index
-  end;
-
-  { Write out }
-  AStream.WriteDWord(DWordToLE(dw));
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Writes all ROW records for the given sheet.
-  Note that the OpenOffice documentation says that rows must be written in
-  groups of 32, followed by the cells on these rows, etc. THIS IS NOT NECESSARY!
-  Valid for BIFF2-BIFF8.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteRows(AStream: TStream; ASheet: TsWorksheet);
-var
-  row: PRow;
-  i: Integer;
-  cell1, cell2: PCell;
-begin
-  for i := 0 to ASheet.Rows.Count-1 do begin
-    row := ASheet.Rows[i];
-    cell1 := ASheet.Cells.GetFirstCellOfRow(row^.Row);
-    if cell1 <> nil then begin
-      cell2 := ASheet.Cells.GetLastCellOfRow(row^.Row);
-      WriteRow(AStream, ASheet, row^.Row, cell1^.Col, cell2^.Col, row);
-    end else
-      WriteRow(AStream, ASheet, row^.Row, 0, 0, row);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
   Writes the SCL record - this is the current magnification factor of the sheet
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteSCLRecord(AStream: TStream;
@@ -4898,6 +4962,18 @@ begin
   AStream.WriteWord(WordToLE(600));
 end;
 
+procedure TsSpreadBIFFWriter.WriteWindowProtect(AStream: TStream;
+  AEnable: Boolean);
+var
+  w: Word;
+begin
+  { BIFF Header }
+  WriteBiffHeader(AStream, INT_EXCEL_ID_WINDOWPROTECT, 2);
+
+  w := IfThen(AEnable, 1, 0);
+  AStream.WriteWord(WordToLE(w));
+end;
+
 {@@ ----------------------------------------------------------------------------
   Writes an XF record needed for cell formatting.
   Is called from WriteXFRecords.
@@ -4949,7 +5025,7 @@ begin
   // XF14
   WriteXF(AStream, nil, MASK_XF_TYPE_PROT_STYLE_XF);
   // XF15 - Default, no formatting
-  WriteXF(AStream, nil, 0);
+  WriteXF(AStream, nil, MASK_XF_TYPE_PROT_LOCKED);
 
   // Add all further non-standard format records
   // The first style was already added --> begin loop with 1

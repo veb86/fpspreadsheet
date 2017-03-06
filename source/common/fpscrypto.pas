@@ -10,13 +10,13 @@ type
 
 function AlgorithmToStr(Algorithm: TsCryptoAlgorithm; AUsage: TsAlgorithmUsage): String;
 function StrToAlgorithm(const AName: String): TsCryptoAlgorithm;
-
-function ExcelPasswordHash(const APassword: String): String;
-
+                                                       (*
+function PasswordHash(const APassword: String; Algorithm: TsAlgorithm): String;
+                                                         *)
 implementation
 
 uses
-  LazUTF8;
+  sha1, LazUTF8;
 
 function AlgorithmToStr(Algorithm: TsCryptoAlgorithm; AUsage: TsAlgorithmUsage): String;
 begin
@@ -100,5 +100,22 @@ begin
 
   Result := IntToHex(PassHash, 4);
 end;
+            (*
+function SHA1Hash(const AText: String): String;
+var
+  sha1: TSHA1Digest;
+begin
+  sha1 := SHA1String(AText);
+  Result := PChar(sha1);
+end;
+
+function CalcPasswordHash(const APassword: String; Algorithm: TsAlgorithm): String;
+begin
+  case Algorithm of
+    caExcel: Result := ExcelPasswordHash(APassword);
+    caSHA1 : Result := SHA1Hash(APassword);
+    else     raise Exception.Create('Hashing algorithm not implemented.');
+  end;
+end;                            *)
 
 end.

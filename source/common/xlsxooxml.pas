@@ -2051,12 +2051,12 @@ begin
   if (s = '1') then Include(shp, spSelectUnlockedCells) else
     if (s = '') or (s = '0') then Exclude(shp, spSelectUnlockedCells);
 
-  // these options are currently not supported by fpspreadsheet
-  {
   s := GetAttrValue(ANode, 'objects');
   if (s = '1') then Include(shp, spObjects) else
     if (s = '') or (s = '0') then Exclude(shp, spObjects);
 
+  // these options are currently not supported by fpspreadsheet
+  {
   s := GetAttrValue(ANode, 'scenarios');
   if (s = '1') then Include(shp, spScenarios) else
     if (s = '') or (s = '0') then Exclude(shp, spScenarios);
@@ -3423,7 +3423,7 @@ begin
 
   // No attribute -> attr="0"
   if AWorksheet.IsProtected then
-    s := ' sheet="1" objects="1" scenarios="1"'
+    s := ' sheet="1" scenarios="1"'
   else
     Exit; //exit if sheet not protected
 
@@ -3445,11 +3445,11 @@ begin
     end;
   end;
 
-  {
-  if spObjects in AWorksheet.Protection then       // to do: Remove from default above
+  if spObjects in AWorksheet.Protection then
     s := s + ' objects="1"';
 
-  if spScenarios in AWorksheet.Protection then
+  {
+  if spScenarios in AWorksheet.Protection then     // to do: Remove from default above
     s := s + ' scenarios="1"';
   }
 

@@ -6763,6 +6763,15 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines how the cell at the specified row and column is protected: lock
+  cell modification and/or hide formulas. Note that this is activated only after
+  enabling worksheet protection (worksheet.Protect(true)).
+
+  NOTE:
+  FPSpreadsheet does not enforce these actions. They are only written
+  to the file for the Office application.
+-------------------------------------------------------------------------------}
 function TsWorksheet.WriteCellProtection(ARow, ACol: Cardinal;
   AValue: TsCellProtections): PCell;
 begin

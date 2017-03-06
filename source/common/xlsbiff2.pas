@@ -63,6 +63,7 @@ type
     procedure ReadIXFE(AStream: TStream);
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
+    procedure ReadPROTECT(AStream: TStream);
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
     procedure ReadRowInfo(AStream: TStream); override;
     function ReadRPNAttr(AStream: TStream; AIdentifier: Byte): Boolean; override;
@@ -616,10 +617,11 @@ begin
       INT_EXCEL_ID_NOTE          : ReadComment(AStream);
       INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
       INT_EXCEL_ID_PANE          : ReadPane(AStream);
+      INT_EXCEL_ID_OBJECTPROTECT : ReadObjectProtect(AStream);
       INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream, FWorksheet);
       INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
       INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
-      INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream, FWorksheet);
+      INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream);
       INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
       INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
       INT_EXCEL_ID_SELECTION     : ReadSELECTION(AStream);
@@ -864,6 +866,12 @@ end;
 procedure TsSpreadBIFF2Reader.ReadIXFE(AStream: TStream);
 begin
   FPendingXFIndex := WordLEToN(AStream.ReadWord);
+end;
+
+procedure TsSpreadBIFF2Reader.ReadPROTECT(AStream: TStream);
+begin
+  inherited ReadPROTECT(AStream);
+  FWorksheet.Protect(Workbook.IsProtected);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1194,8 +1202,8 @@ var
 begin
   fmt := Workbook.GetPointerToCellFormat(AFormatIndex);
 
-  if fmt^.UsedFormattingFields = [] then begin
-    Attrib1 := 15;
+  if (fmt^.UsedFormattingFields = []) and (fmt^.Protection = [cpLockCell]) then begin
+    Attrib1 := 15 + $40;
     Attrib2 := 0;
     Attrib3 := 0;
     exit;
@@ -1206,6 +1214,8 @@ begin
   //   Mask $40: 1 = Cell is locked
   //   Mask $80: 1 = Formula is hidden
   Attrib1 := Min(XFIndex, $3F) and $3F;
+  if cpLockCell in fmt^.Protection then Attrib1 := Attrib1 or $40;
+  if cpHideFormulas in fmt^.Protection then Attrib1 := Attrib1 or $80;
 
   // 2nd byte:
   //   Mask $3F: Index to FORMAT record ("FORMAT" = number format!)
@@ -1346,13 +1356,17 @@ begin
   rec.XFIndex_Locked_Hidden := 0;  // to silence the compiler...
   FillChar(rec, SizeOf(rec), 0);
 
-  if fmt^.UsedFormattingFields <> [] then
+  if (fmt^.UsedFormattingFields <> []) or (fmt^.Protection <> [cpLockCell]) then
   begin
     // 1st byte:
     //   Mask $3F: Index to XF record
     //   Mask $40: 1 = Cell is locked
     //   Mask $80: 1 = Formula is hidden
     rec.XFIndex_Locked_Hidden := Min(XFIndex, $3F) and $3F;
+    if cpLockCell in fmt^.Protection then
+      rec.XFIndex_Locked_Hidden := rec.XFIndex_Locked_Hidden or $40;
+    if cpHideFormulas in fmt^.Protection then
+      rec.XFIndex_Locked_Hidden := rec.XFIndex_Locked_Hidden or $80;
 
     // 2nd byte:
     //   Mask $3F: Index to FORMAT record
@@ -1601,6 +1615,11 @@ begin
 
     WriteFormatCount(AStream);
     WriteNumFormats(AStream);
+    if (bpLockStructure in Workbook.Protection) or FWorksheet.IsProtected then
+      WritePROTECT(AStream, true);
+    WriteWindowProtect(AStream, bpLockWindows in Workbook.Protection);
+    WriteObjectProtect(AStream, FWorksheet);
+
     WriteXFRecords(AStream);
     WriteDefaultColWidth(AStream, FWorksheet);
     WriteColWidths(AStream);
@@ -1700,6 +1719,7 @@ var
   rec: TBIFF2_XFRecord;
   b: Byte;
   formatIdx, fontIdx: Integer;
+  fmtProt: byte;
 begin
   Unused(XFType_Prot);
   GetFormatAndFontIndex(AFormatRecord, formatIdx, fontIdx);
@@ -1720,8 +1740,15 @@ begin
       5-0   $3F   Index to (number) FORMAT record
        6    $40   1 = Cell is locked
        7    $80   1 = Formula is hidden }
-  rec.NumFormat_Prot := WordToLE(formatIdx);
-  // Cell flags not used, so far...
+  fmtProt := formatIdx + $40;
+  if AFormatRecord <> nil then
+  begin
+    if not (cpLockCell in AFormatRecord^.Protection) then
+      fmtProt := fmtProt and not $40;
+    if (cpHideFormulas in AFormatRecord^.Protection) then
+      fmtProt := fmtProt or $80;
+  end;
+  rec.NumFormat_Prot := WordToLE(fmtProt);
 
   {Horizontal alignment, border style, and background
   Bit  Mask  Contents

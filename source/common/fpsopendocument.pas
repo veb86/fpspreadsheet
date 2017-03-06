@@ -207,6 +207,7 @@ type
     function WriteCommentXMLAsString(AComment: String): String;
     function WriteDefaultFontXMLAsString: String;
     function WriteDefaultGraphicStyleXMLAsString: String; overload;
+    function WriteDocumentProtectionXMLAsString: String;
     function WriteFontStyleXMLAsString(const AFormat: TsCellFormat): String; overload;
     function WriteFontStyleXMLAsString(AFont: TsFont): String; overload;
     function WriteHeaderFooterFontXMLAsString(AFont: TsHeaderFooterFont): String;
@@ -4996,6 +4997,7 @@ end;
 procedure TsSpreadOpenDocWriter.WriteContent;
 var
   i: Integer;
+  s: String;
 begin
   AppendToStream(FSContent,
     XML_HEADER);
@@ -5089,7 +5091,7 @@ begin
   // Body
   AppendToStream(FSContent,
       '<office:body>' +
-        '<office:spreadsheet>');
+        '<office:spreadsheet' + WriteDocumentProtectionXMLAsString + '>');
 
   // Write all worksheets
   for i := 0 to Workbook.GetWorksheetCount - 1 do
@@ -6589,6 +6591,29 @@ begin
       'style:language-complex="hi" style:country-complex="IN" />';
 end;
 
+function TsSpreadOpenDocWriter.WriteDocumentProtectionXMLAsString: String;
+var
+  cinfo: TsCryptoInfo;
+  pwd, algo: String;
+begin
+  if bpLockStructure in Workbook.Protection then
+  begin
+    Result := ' table:structure-protected="true"';
+    cinfo := Workbook.CryptoInfo;
+    if cinfo.PasswordHash <> '' then
+      pwd := Format(' table:protection-key="%s"', [cinfo.PasswordHash])
+    else
+      pwd := '';
+    if cinfo.Algorithm <> caUnknown then
+      algo := Format(' table:protection-key-digest-algorithm="%s"',
+        [AlgorithmToStr(cinfo.Algorithm, auOpenDocument)])
+    else
+      algo := '';
+    Result := Result + pwd + algo;
+  end
+  else
+    Result := '';
+end;
 procedure TsSpreadOpenDocWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 var

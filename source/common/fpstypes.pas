@@ -663,9 +663,9 @@ type
     spFormatCells, spFormatColumns, spFormatRows,
     spDeleteColumns, spDeleteRows,
     spInsertColumns, spInsertRows, spInsertHyperlinks,
-    spCells, spSort,
+    spCells, spSort, spObjects,
     spSelectLockedCells, spSelectUnlockedCells
-    {spObjects, spPivotTables, spScenarios }
+    {spPivotTables, spScenarios }
   );
   TsWorksheetProtections = set of TsWorksheetProtection;
 
@@ -676,8 +676,8 @@ type
 const
   ALL_SHEET_PROTECTIONS = [spFormatCells, spFormatColumns, spFormatRows,
     spDeleteColumns, spDeleteRows, spInsertColumns, spInsertRows, spInsertHyperlinks,
-    spCells, spSort, spSelectLockedCells, spSelectUnlockedCells
-    {, spObjects, spPivotTables, spScenarios} ];
+    spCells, spSort, spObjects, spSelectLockedCells, spSelectUnlockedCells
+    {spPivotTables, spScenarios} ];
 
   DEFAULT_SHEET_PROTECTION = ALL_SHEET_PROTECTIONS - [spSelectLockedCells, spSelectUnlockedcells];
 

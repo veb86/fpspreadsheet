@@ -143,6 +143,8 @@ const
     2
   );
 
+  FALSE_TRUE: array[boolean] of string = ('False', 'True');
+
 function GetCellContentTypeStr(ACell: PCell): String;
 begin
   case ACell^.ContentType of
@@ -428,16 +430,23 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteExcelWorkbook(AStream: TStream);
 var
   datemodeStr: String;
+  protectStr: String;
 begin
   if FDateMode = dm1904 then
     datemodeStr := INDENT2 + '<Date1904/>' + LF else
     datemodeStr := '';
 
+  protectStr := Format(
+    '<ProtectStructure>%s</ProtectStructure>' + LF + INDENT2 +
+    '<ProtectWindows>%s</ProtectWindows>' + LF, [
+    FALSE_TRUE[bpLockStructure in Workbook.Protection],
+    FALSE_TRUE[bpLockWindows in Workbook.Protection]
+  ]);
+
   AppendToStream(AStream, INDENT1 +
     '<ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">' + LF +
       datemodeStr + INDENT2 +
-      '<ProtectStructure>False</ProtectStructure>' + LF + INDENT2 +
-      '<ProtectWindows>False</ProtectWindows>' + LF + INDENT1 +
+      protectStr + INDENT1 +
     '</ExcelWorkbook>' + LF);
 end;
 
@@ -653,6 +662,18 @@ begin
           '</Borders>' + LF);
     end;
 
+    // Protection
+    s := '';
+    if FWorkbook.IsProtected then begin
+      if not (cpLockCell in fmt^.Protection) then
+        s := s + 'ss:Protected="0" ';
+      if cpHideFormulas in fmt^.Protection then
+        s := s + 'x:HideFormula="1" ';
+    end;
+    if s <> '' then
+      AppendToStream(AStream, INDENT3 +
+        '<Protection ' + s + '/>' + LF);
+
     AppendToStream(AStream, INDENT2 +
       '</Style>' + LF);
   end;
@@ -784,10 +805,20 @@ end;
 
 procedure TsSpreadExcelXMLWriter.WriteWorksheet(AStream: TStream;
   AWorksheet: TsWorksheet);
+var
+  protectedStr: String;
 begin
   FWorksheet := AWorksheet;
+
+  if FWorksheet.IsProtected then
+    protectedStr := ' ss:Protected="1"' else
+    protectedStr := '';
+
   AppendToStream(AStream, Format(
-    '  <Worksheet ss:Name="%s">' + LF, [UTF8TextToXMLText(AWorksheet.Name)]) );
+    '  <Worksheet ss:Name="%s"%s>' + LF, [
+    UTF8TextToXMLText(AWorksheet.Name),
+    protectedStr
+  ]) );
   WriteTable(AStream, AWorksheet);
   WriteWorksheetOptions(AStream, AWorksheet);
   AppendToStream(AStream,
@@ -805,6 +836,7 @@ var
   layoutStr: String;
   marginStr: String;
   selectedStr: String;
+  protectStr: String;
 begin
   // Orientation, some PageLayout.Options
   layoutStr := GetLayoutStr(AWorksheet);
@@ -839,6 +871,13 @@ begin
   // Frozen panes
   frozenStr := GetFrozenPanesStr(AWorksheet, INDENT3);
 
+  // Protection
+  protectStr := Format(INDENT3 + '<ProtectObjects>%s</ProtectObjects>' + LF +
+                       INDENT3 + '<ProtectScenarios>%s</ProtectScenarios>' + LF, [
+    AWorksheet.IsProtected and (spObjects in AWorksheet.Protection),
+    AWorksheet.IsProtected {and [spScenarios in AWorksheet.Protection])}
+  ]);
+
   // Put it all together...
   AppendToStream(AStream, INDENT2 +
     '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">' + LF + INDENT3 +
@@ -849,6 +888,7 @@ begin
         marginStr + INDENT3 +
       '</PageSetup>' + LF +
       selectedStr +
+      protectStr +
       frozenStr +
       hideGridStr +
       hideHeadersStr + INDENT2 +

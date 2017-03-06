@@ -32,28 +32,70 @@ type
   published
     // Writes out protection & reads back.
 
+    { BIFF2 protection tests }
+    procedure TestWriteRead_BIFF2_WorkbookProtection_None;
+    procedure TestWriteRead_BIFF2_WorkbookProtection_Struct;
+    procedure TestWriteRead_BIFF2_WorkbookProtection_Win;
+    procedure TestWriteRead_BIFF2_WorkbookProtection_StructWin;
+
+    procedure TestWriteRead_BIFF2_WorksheetProtection_Default;
+    procedure TestWriteRead_BIFF2_WorksheetProtection_Objects;
+
+    procedure TestWriteRead_BIFF2_CellProtection;
+
+    { BIFF5 protection tests }
+    procedure TestWriteRead_BIFF5_WorkbookProtection_None;
+    procedure TestWriteRead_BIFF5_WorkbookProtection_Struct;
+    procedure TestWriteRead_BIFF5_WorkbookProtection_Win;
+    procedure TestWriteRead_BIFF5_WorkbookProtection_StructWin;
+
+    procedure TestWriteRead_BIFF5_WorksheetProtection_Default;
+    procedure TestWriteRead_BIFF5_WorksheetProtection_SelectLockedCells;
+    procedure TestWriteRead_BIFF5_WorksheetProtection_SelectUnlockedCells;
+    procedure TestWriteRead_BIFF5_WorksheetProtection_Objects;
+
+    procedure TestWriteRead_BIFF5_CellProtection;
+
+    { BIFF8 protection tests }
+    procedure TestWriteRead_BIFF8_WorkbookProtection_None;
+    procedure TestWriteRead_BIFF8_WorkbookProtection_Struct;
+    procedure TestWriteRead_BIFF8_WorkbookProtection_Win;
+    procedure TestWriteRead_BIFF8_WorkbookProtection_StructWin;
+
+    procedure TestWriteRead_BIFF8_WorksheetProtection_Default;
+    procedure TestWriteRead_BIFF8_WorksheetProtection_SelectLockedCells;
+    procedure TestWriteRead_BIFF8_WorksheetProtection_SelectUnlockedCells;
+    procedure TestWriteRead_BIFF8_WorksheetProtection_Objects;
+
+    procedure TestWriteRead_BIFF8_CellProtection;
+
     { OOXML protection tests }
     procedure TestWriteRead_OOXML_WorkbookProtection_None;
     procedure TestWriteRead_OOXML_WorkbookProtection_Struct;
     procedure TestWriteRead_OOXML_WorkbookProtection_Win;
     procedure TestWriteRead_OOXML_WorkbookProtection_StructWin;
 
-    procedure TestWriteRead_OOXML_WorksheetProtection_None;
+    procedure TestWriteRead_OOXML_WorksheetProtection_Default;
     procedure TestWriteRead_OOXML_WorksheetProtection_FormatCells;
     procedure TestWriteRead_OOXML_WorksheetProtection_FormatColumns;
     procedure TestWriteRead_OOXML_WorksheetProtection_FormatRows;
     procedure TestWriteRead_OOXML_WorksheetProtection_DeleteColumns;
     procedure TestWriteRead_OOXML_WorksheetProtection_DeleteRows;
     procedure TestWriteRead_OOXML_WorksheetProtection_InsertColumns;
-    procedure TestWriteRead_OOXML_WorksheetProtection_InsertRows;
     procedure TestWriteRead_OOXML_WorksheetProtection_InsertHyperlinks;
-    procedure TestWriteRead_OOXML_WorksheetProtection_Sheet;
+    procedure TestWriteRead_OOXML_WorksheetProtection_InsertRows;
     procedure TestWriteRead_OOXML_WorksheetProtection_Sort;
     procedure TestWriteRead_OOXML_WorksheetProtection_SelectLockedCells;
     procedure TestWriteRead_OOXML_WorksheetProtection_SelectUnlockedCells;
-    procedure TestWriteRead_OOXML_WorksheetProtection_All;
+    procedure TestWriteRead_OOXML_WorksheetProtection_Objects;
 
     procedure TestWriteRead_OOXML_CellProtection;
+
+    { ODS protection tests }
+    procedure TestWriteRead_ODS_WorkbookProtection_None;
+    procedure TestWriteRead_ODS_WorkbookProtection_Struct;
+    //procedure TestWriteRead_ODS_WorkbookProtection_Win;
+    //procedure TestWriteRead_ODS_WorkbookProtection_StructWin;
 
   end;
 
@@ -126,8 +168,8 @@ const
   ALL_SHEET_PROTECTIONS = [
     spFormatCells, spFormatColumns, spFormatRows,
     spDeleteColumns, spDeleteRows, spInsertColumns, spInsertRows,
-    spInsertHyperlinks, spSort, spSelectLockedCells,
-    spSelectUnlockedCells
+    spInsertHyperlinks, spSort, spObjects,
+    spSelectLockedCells, spSelectUnlockedCells
   ];    // NOTE: spCells is handled separately
 var
   MyWorkbook: TsWorkbook;
@@ -141,6 +183,23 @@ begin
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorksheet := MyWorkBook.AddWorksheet(ProtectionSheet);
+    expected := DEFAULT_SHEET_PROTECTION;
+    case ACondition of
+      0: ;
+      1: Exclude(expected, spFormatCells);
+      2: Exclude(expected, spFormatColumns);
+      3: Exclude(expected, spFormatRows);
+      4: Exclude(expected, spDeleteColumns);
+      5: Exclude(expected, spDeleteRows);
+      6: Exclude(expected, spInsertColumns);
+      7: Exclude(expected, spInsertHyperlinks);
+      8: Exclude(expected, spInsertRows);
+      9: Exclude(expected, spSort);
+     10: Exclude(expected, spSelectLockedCells);
+     11: Exclude(expected, spSelectUnlockedCells);
+     12: Exclude(expected, spObjects);
+    end;
+    {
     case ACondition of
       0: expected := [];
       1: expected := [spFormatCells];
@@ -154,8 +213,10 @@ begin
       9: expected := [spSort];
      10: expected := [spSelectLockedCells];
      11: expected := [spSelectUnlockedCells];
-     12: expected := ALL_SHEET_PROTECTIONS;
+     12: expected := [spObjects];
+     13: expected := ALL_SHEET_PROTECTIONS;
     end;
+    }
     MyWorksheet.Protection := expected;
     MyWorksheet.Protect(true);
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
@@ -172,11 +233,11 @@ begin
       fail(msg + 'Sheet protection not active');
 
     actual := MyWorksheet.Protection;
-    if actual <> [] then actual := actual - [spCells];
+ //   if actual <> [] then actual := actual - [spCells];
     msg := 'Test saved worksheet protection mismatch: ';
     if actual <> expected then
       case ACondition of
-        0: fail(msg + 'no protection');
+        0: fail(msg + 'default protection');
         1: fail(msg + 'spFormatCells');
         2: fail(msg + 'spFormatColumns');
         3: fail(msg + 'spFormatRows');
@@ -188,7 +249,7 @@ begin
         9: fail(msg + 'spSort');
        10: fail(msg + 'spSelectLockedCells');
        11: fail(msg + 'spSelectUnlockedCells');
-       12: fail(msg + 'all options');
+       12: fail(msg + 'spObjects');
       end;
 
   finally
@@ -212,17 +273,19 @@ begin
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorksheet := MyWorkBook.AddWorksheet(ProtectionSheet);
+    // A1 --> lock cell
     cell := Myworksheet.WriteText(0, 0, 'Protected');
     MyWorksheet.WriteCellProtection(cell, [cpLockCell]);
+    // B1 --> not protected at all
     cell := MyWorksheet.WriteText(1, 0, 'Not protected');
     MyWorksheet.WriteCellProtection(cell, []);
+    // A2 --> lock cell & hide formulas
     cell := Myworksheet.WriteFormula(0, 1, '=A1');
     MyWorksheet.WriteCellProtection(cell, [cpLockCell, cpHideFormulas]);
+    // B2 --> hide formula only
     cell := MyWorksheet.WriteFormula(1, 1, '=A2');
     Myworksheet.WriteCellProtection(Cell, [cpHideFormulas]);
     MyWorksheet.Protect(true);
-    // NOTE: FPSpreadsheet does not enforce these actions. They are only written
-    // to the file for the Office application.
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;
@@ -271,7 +334,153 @@ begin
 end;
 
 
-{ Tests for OOXML file format }
+{------------------------------------------------------------------------------}
+{                          Tests for BIFF2 file format                         }
+{------------------------------------------------------------------------------}
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF2_WorkbookProtection_None;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel2, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF2_WorkbookProtection_Struct;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel2, 1);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF2_WorkbookProtection_Win;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel2, 2);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF2_WorkbookProtection_StructWin;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel2, 3);
+end;
+
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF2_WorksheetProtection_Default;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel2, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF2_WorksheetProtection_Objects;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel2, 12);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF2_CellProtection;
+begin
+  TestWriteRead_CellProtection(sfExcel2);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                          Tests for BIFF5 file format                         }
+{------------------------------------------------------------------------------}
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_WorkbookProtection_None;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel5, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_WorkbookProtection_Struct;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel5, 1);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_WorkbookProtection_Win;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel5, 2);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_WorkbookProtection_StructWin;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel5, 3);
+end;
+
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_WorksheetProtection_Default;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel5, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_WorksheetProtection_SelectLockedCells;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel5, 10);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_WorksheetProtection_SelectUnlockedCells;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel5, 11);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_WorksheetProtection_Objects;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel5, 12);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_CellProtection;
+begin
+  TestWriteRead_CellProtection(sfExcel5);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                          Tests for BIFF8 file format                         }
+{------------------------------------------------------------------------------}
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_WorkbookProtection_None;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel8, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_WorkbookProtection_Struct;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel8, 1);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_WorkbookProtection_Win;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel8, 2);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_WorkbookProtection_StructWin;
+begin
+  TestWriteRead_WorkbookProtection(sfExcel8, 3);
+end;
+
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_WorksheetProtection_Default;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel8, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_WorksheetProtection_SelectLockedCells;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel8, 10);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_WorksheetProtection_SelectUnlockedCells;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel8, 11);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_WorksheetProtection_Objects;
+begin
+  TestWriteRead_WorksheetProtection(sfExcel8, 12);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_CellProtection;
+begin
+  TestWriteRead_CellProtection(sfExcel8);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                          Tests for OOXML file format                         }
+{------------------------------------------------------------------------------}
+
 procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorkbookProtection_None;
 begin
   TestWriteRead_WorkbookProtection(sfOOXML, 0);
@@ -292,7 +501,7 @@ begin
   TestWriteRead_WorkbookProtection(sfOOXML, 3);
 end;
 
-procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_None;
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_Default;
 begin
   TestWriteRead_WorksheetProtection(sfOOXML, 0);
 end;
@@ -327,45 +536,66 @@ begin
   TestWriteRead_WorksheetProtection(sfOOXML, 6);
 end;
 
-procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_InsertRows;
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_InsertHyperlinks;
 begin
   TestWriteRead_WorksheetProtection(sfOOXML, 7);
 end;
 
-procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_InsertHyperlinks;
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_InsertRows;
 begin
   TestWriteRead_WorksheetProtection(sfOOXML, 8);
 end;
 
-procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_Sheet;
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_Sort;
 begin
   TestWriteRead_WorksheetProtection(sfOOXML, 9);
 end;
 
-procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_Sort;
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_SelectLockedCells;
 begin
   TestWriteRead_WorksheetProtection(sfOOXML, 10);
 end;
 
-procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_SelectLockedCells;
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_SelectUnlockedCells;
 begin
   TestWriteRead_WorksheetProtection(sfOOXML, 11);
 end;
 
-procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_SelectUnlockedCells;
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_Objects;
 begin
   TestWriteRead_WorksheetProtection(sfOOXML, 12);
-end;
-
-procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_WorksheetProtection_All;
-begin
-  TestWriteRead_WorksheetProtection(sfOOXML, 13);
 end;
 
 procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_CellProtection;
 begin
   TestWriteRead_CellProtection(sfOOXML);
 end;
+
+
+{------------------------------------------------------------------------------}
+{                       Tests for OpenDocument file format                     }
+{------------------------------------------------------------------------------}
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_WorkbookProtection_None;
+begin
+  TestWriteRead_WorkbookProtection(sfOpenDocument, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_WorkbookProtection_Struct;
+begin
+  TestWriteRead_WorkbookProtection(sfOpenDocument, 1);
+end;
+{
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_WorkbookProtection_Win;
+begin
+  TestWriteRead_WorkbookProtection(sfOpenDocument, 2);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_WorkbookProtection_StructWin;
+begin
+  TestWriteRead_WorkbookProtection(sfOpenDocument, 3);
+end;}
+
 
 initialization
   RegisterTest(TSpreadWriteReadProtectionTests);
