@@ -177,6 +177,11 @@ resourcestring
   rsMultipleSheetsOnlyWithRestorePosition = 'Export to multiple sheets is possible '+
     'only if position is restored.';
 
+  // Protection
+  rsPasswordRemoved_BIFF2 = 'Password removed (BIFF2 requires matching workbook '+
+    'and worksheet passwords)';
+  rsPasswordRemoved_NotValid = 'Password removed (Not valid).';
+  rsPasswordRemoved_Excel = 'Password removed (Hashing algorithm not compatible with Excel)';
 
 const
   // Color names which do not have to be translated. They will be removed.

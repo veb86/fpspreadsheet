@@ -596,6 +596,7 @@ type
     // Writes out a PANE record
     procedure WritePane(AStream: TStream; ASheet: TsWorksheet; IsBiff58: Boolean;
       out ActivePane: Byte);
+    procedure WritePASSWORD(AStream: TStream; const ACryptoInfo: TsCryptoInfo);
     // Writes out whether grid lines are printed
     procedure WritePrintGridLines(AStream: TStream);
     procedure WritePrintHeaders(AStream: TStream);
@@ -4036,6 +4037,33 @@ begin
   if IsBIFF58 then
     AStream.WriteByte(0);
     { Not used (BIFF5-BIFF8 only, not written in BIFF2-BIFF4 }
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a PASSWORD record containing the hash of a password
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WritePASSWORD(AStream: TStream;
+  const ACryptoInfo: TsCryptoInfo);
+var
+  hash: LongInt;
+begin
+  if ACryptoInfo.PasswordHash = '' then
+    exit;
+
+  // Can write only passwords that were hashed using Excel's algorithm.
+  if ACryptoInfo.Algorithm <> caExcel then begin
+    Workbook.AddErrorMsg(rsPasswordRemoved_Excel);
+    exit;
+  end;
+
+  // Excel's hash produces a hex number which is stored by fps as a string.
+  if not TryStrToInt('$' + ACryptoInfo.PasswordHash, hash) then begin
+    Workbook.AddErrorMsg(rsPasswordRemoved_NotValid);
+    exit;
+  end;
+
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_PASSWORD, 2);
+  AStream.WriteWord(WordToLE(hash));
 end;
 
 {@@ ----------------------------------------------------------------------------

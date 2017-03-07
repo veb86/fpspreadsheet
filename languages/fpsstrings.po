@@ -297,6 +297,18 @@ msgstr ""
 msgid "Palette index %d"
 msgstr ""
 
+#: fpsstrings.rspasswordremoved_biff2
+msgid "Password removed (BIFF2 requires matching workbook and worksheet passwords)"
+msgstr ""
+
+#: fpsstrings.rspasswordremoved_excel
+msgid "Password removed (Hashing algorithm not compatible with Excel)"
+msgstr ""
+
+#: fpsstrings.rspasswordremoved_notvalid
+msgid "Password removed (Not valid)."
+msgstr ""
+
 #: fpsstrings.rspurple
 msgid "purple"
 msgstr ""

@@ -63,6 +63,7 @@ type
     procedure ReadIXFE(AStream: TStream);
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
+    procedure ReadPASSWORD(AStream: TStream);
     procedure ReadPROTECT(AStream: TStream);
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
     procedure ReadRowInfo(AStream: TStream); override;
@@ -122,6 +123,7 @@ type
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
+    procedure WritePASSWORD(AStream: TStream);
     procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
@@ -621,7 +623,7 @@ begin
       INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
       INT_EXCEL_ID_PANE          : ReadPane(AStream);
       INT_EXCEL_ID_OBJECTPROTECT : ReadObjectProtect(AStream);
-      INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream, FWorksheet);
+      INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream);
       INT_EXCEL_ID_PRINTGRID     : ReadPrintGridLines(AStream);
       INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
       INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream);
@@ -869,6 +871,29 @@ end;
 procedure TsSpreadBIFF2Reader.ReadIXFE(AStream: TStream);
 begin
   FPendingXFIndex := WordLEToN(AStream.ReadWord);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads a PASSWORD record. Since BIFF2 does not have multiple worksheets the
+  same password is stored in the workbook and worksheet cryptoinfo records.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF2Reader.ReadPASSWORD(AStream: TStream);
+var
+  hash: Word;
+  cinfo: TsCryptoInfo;
+begin
+  hash := WordLEToN(AStream.ReadWord);
+  if hash = 0 then
+    exit;  // no password
+
+  InitCryptoInfo(cinfo);
+  cinfo.PasswordHash := Format('%.4x', [hash]);
+  cinfo.Algorithm := caExcel;
+
+  // Use the same password for workbook and worksheet protection because
+  // BIFF2 can have only a single sheet.
+  FWorkbook.CryptoInfo := cinfo;
+  FWorksheet.CryptoInfo := cinfo;
 end;
 
 procedure TsSpreadBIFF2Reader.ReadPROTECT(AStream: TStream);
@@ -1571,10 +1596,12 @@ begin
 
     WriteFormatCount(AStream);
     WriteNumFormats(AStream);
+
     if (bpLockStructure in Workbook.Protection) or FWorksheet.IsProtected then
       WritePROTECT(AStream, true);
     WriteWindowProtect(AStream, bpLockWindows in Workbook.Protection);
     WriteObjectProtect(AStream, FWorksheet);
+    WritePASSWORD(AStream);
 
     WriteXFRecords(AStream);
     WriteDefaultColWidth(AStream, FWorksheet);
@@ -2214,6 +2241,64 @@ begin
 
   { Write out }
   AStream.WriteBuffer(rec, SizeOf(Rec));
+end;
+
+procedure TsSpreadBIFF2Writer.WritePassword(AStream: TStream);
+var
+  hash: Word;
+  hb, hs: LongInt;
+begin
+  hb := 0;
+  if (Workbook.CryptoInfo.PasswordHash <> '') and
+     not TryStrToInt('$' + Workbook.CryptoInfo.PasswordHash, hb) then
+  begin
+    Workbook.AddErrorMsg(rsPasswordRemoved_NotValid);
+    exit;
+  end;
+
+  hs := 0;
+  if (FWorksheet.CryptoInfo.PasswordHash <> '') and
+     not TryStrToInt('$' + FWorksheet.CryptoInfo.PasswordHash, hs) then
+  begin
+    Workbook.AddErrorMsg(rsPasswordRemoved_NotValid);
+    exit;
+  end;
+
+  // Neither workbook nor worksheet password set
+  if (hb = 0) and (hs = 0) then
+    exit;
+
+  // Only workbook password set. Check for Excel algorithm.
+  if (hb <> 0) and (hs = 0) then begin
+    if Workbook.CryptoInfo.Algorithm <> caExcel then begin
+      Workbook.AddErrorMsg(rsPasswordRemoved_Excel);
+      exit;
+    end;
+    hash := hb;
+  end else
+  // Only worksheet password set, check for Excel algorithm
+  if (hs <> 0) and (hb = 0) then begin
+    if FWorksheet.CryptoInfo.Algorithm <> caExcel then begin
+      Workbook.AddErrorMsg(rsPasswordRemoved_Excel);
+      exit;
+    end;
+    hash := hs;
+  end else
+  if (hs <> hb) then begin
+    Workbook.AddErrorMsg(rsPasswordRemoved_BIFF2);
+    exit;
+  end else
+  if (Workbook.CryptoInfo.Algorithm <> caExcel) or
+     (FWorksheet.CryptoInfo.Algorithm <> caExcel) then
+  begin
+    Workbook.AddErrorMsg(rsPasswordRemoved_Excel);
+    exit;
+  end else
+    hash := hs;  // or hb -- they are equal here.
+
+  // Write out record
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_PASSWORD, 2);
+  AStream.WriteWord(WordToLE(hash));
 end;
 
 procedure TsSpreadBIFF2Writer.WriteRow(AStream: TStream; ASheet: TsWorksheet;

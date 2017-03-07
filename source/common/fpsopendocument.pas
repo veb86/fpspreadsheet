@@ -4298,12 +4298,18 @@ begin
             s := GetAttrValue(styleChildNode, 'style:cell-protect');
             if s = 'none' then
               fmt.Protection := []
-            else if s = 'hidden-and-protected' then
+            else if (s = 'protected formula-hidden') or (s = 'formula-hidden protected') then
               fmt.Protection := [cpLockCell, cpHideFormulas]
             else if s = 'protected' then
               fmt.Protection := [cpLockCell]
             else if s = 'formula-hidden' then
-              fmt.Protection := [cpHideFormulas];
+              fmt.Protection := [cpHideFormulas]
+            else if s = 'hidden-and-protected' then
+              fmt.Protection := [cpLockCell, cpHideFormulas];
+              // NOTE: This not exact... According to
+              // https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part1.html,
+              // section 20.246, this hides and locks cell content, not just
+              // formulas...
             if fmt.Protection <> DEFAULT_CELL_PROTECTION then
               Include(fmt.UsedFormattingFields, uffProtection);
           end
@@ -5359,7 +5365,7 @@ begin
   else if (AFormat.Protection *[cpLockCell, cpHideFormulas] = [cpHideFormulas]) then
     Result := 'formula-hidden'
   else
-    Result := 'hidden-and-protected';   // or: 'protected formula-hidden'
+    Result := 'protected formula-hidden';   // or:  'hidden-and-protected'
   Result := ' style:cell-protect="' + Result + '"';
 end;
 

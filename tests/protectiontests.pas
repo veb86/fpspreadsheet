@@ -29,6 +29,7 @@ type
     procedure TestWriteRead_WorksheetProtection(AFormat: TsSpreadsheetFormat;
       ACondition: Integer);
     procedure TestWriteRead_CellProtection(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_Passwords(AFormat: TsSpreadsheetFormat);
   published
     // Writes out protection & reads back.
 
@@ -42,6 +43,7 @@ type
     procedure TestWriteRead_BIFF2_WorksheetProtection_Objects;
 
     procedure TestWriteRead_BIFF2_CellProtection;
+    procedure TestWriteRead_BIFF2_Passwords;
 
     { BIFF5 protection tests }
     procedure TestWriteRead_BIFF5_WorkbookProtection_None;
@@ -55,6 +57,7 @@ type
     procedure TestWriteRead_BIFF5_WorksheetProtection_Objects;
 
     procedure TestWriteRead_BIFF5_CellProtection;
+    procedure TestWriteRead_BIFF5_Passwords;
 
     { BIFF8 protection tests }
     procedure TestWriteRead_BIFF8_WorkbookProtection_None;
@@ -68,6 +71,7 @@ type
     procedure TestWriteRead_BIFF8_WorksheetProtection_Objects;
 
     procedure TestWriteRead_BIFF8_CellProtection;
+    procedure TestWriteRead_BIFF8_Passwords;
 
     { OOXML protection tests }
     procedure TestWriteRead_OOXML_WorkbookProtection_None;
@@ -91,6 +95,8 @@ type
 
     procedure TestWriteRead_OOXML_CellProtection;
 
+    procedure TestWriteRead_OOXML_Passwords;
+
     { ODS protection tests }
     procedure TestWriteRead_ODS_WorkbookProtection_None;
     procedure TestWriteRead_ODS_WorkbookProtection_Struct;
@@ -106,6 +112,9 @@ type
   end;
 
 implementation
+
+uses
+  fpsUtils;
 
 const
   ProtectionSheet = 'Protection';
@@ -339,6 +348,67 @@ begin
   end;
 end;
 
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_Passwords(
+  AFormat: TsSpreadsheetFormat);
+var
+  MyWorkbook: TsWorkbook;
+  MyWorksheet: TsWorksheet;
+  cell: PCell;
+  TempFile: string; //write xls/xml to this file and read back from it
+  bi, si, cinfo: TsCryptoInfo;
+  msg: String;
+begin
+  TempFile := GetTempFileName;
+
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorksheet := MyWorkBook.AddWorksheet(ProtectionSheet);
+
+    MyWorkbook.Protection := [bpLockStructure];
+    InitCryptoInfo(bi);
+    bi.PasswordHash := 'ABCD';
+    bi.Algorithm := caExcel;
+    MyWorkbook.CryptoInfo := bi;
+
+    MyWorksheet.Protect(true);
+    if AFormat = sfExcel2 then
+      si := bi   // in BIFF2: use the same crypto info for sheet and book
+    else begin
+      InitCryptoInfo(si);
+      si.PasswordHash := 'DCBA';
+      si.Algorithm := caExcel;
+    end;
+    MyWorksheet.CryptoInfo := si;
+
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    MyWorksheet := MyWorkbook.GetFirstWorksheet;
+
+    cInfo := MyWorkbook.CryptoInfo;
+    CheckEquals(
+      bi.PasswordHash, cinfo.PasswordHash,
+      'Workbook protection password hash mismatch'
+    );
+
+    cInfo := MyWorksheet.CryptoInfo;
+    CheckEquals(
+      si.PasswordHash, cinfo.PasswordHash,
+      'Worksheet protection password hash mismatch'
+    );
+
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
 
 {------------------------------------------------------------------------------}
 {                          Tests for BIFF2 file format                         }
@@ -378,6 +448,11 @@ end;
 procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF2_CellProtection;
 begin
   TestWriteRead_CellProtection(sfExcel2);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF2_Passwords;
+begin
+  TestWriteRead_Passwords(sfExcel2);
 end;
 
 
@@ -431,6 +506,10 @@ begin
   TestWriteRead_CellProtection(sfExcel5);
 end;
 
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF5_Passwords;
+begin
+  TestWriteRead_Passwords(sfExcel5);
+end;
 
 {------------------------------------------------------------------------------}
 {                          Tests for BIFF8 file format                         }
@@ -482,6 +561,10 @@ begin
   TestWriteRead_CellProtection(sfExcel8);
 end;
 
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_BIFF8_Passwords;
+begin
+  TestWriteRead_Passwords(sfExcel8);
+end;
 
 {------------------------------------------------------------------------------}
 {                          Tests for OOXML file format                         }
@@ -575,6 +658,11 @@ end;
 procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_CellProtection;
 begin
   TestWriteRead_CellProtection(sfOOXML);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_Passwords;
+begin
+  TestWriteRead_Passwords(sfOpenDocument);
 end;
 
 

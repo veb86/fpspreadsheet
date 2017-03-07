@@ -2132,6 +2132,7 @@ begin
   WriteCodePage(AStream, 'ucs2le'); // = utf-16
   WriteWindowProtect(AStream, bpLockWindows in Workbook.Protection);
   WritePROTECT(AStream, bpLockStructure in Workbook.Protection);
+  WritePASSWORD(AStream, Workbook.CryptoInfo);
   WriteWINDOW1(AStream);
   WriteFonts(AStream);
   WriteNumFormats(AStream);
@@ -2179,15 +2180,18 @@ begin
       WriteMargin(AStream, 2);  // 2 = top margin
       WriteMargin(AStream, 3);  // 3 = bottom margin
       WritePageSetup(AStream);
+
+      // Protection
       if FWorksheet.IsProtected then begin
         WritePROTECT(AStream, true);
 //        WriteScenarioProtect(AStream);
         WriteObjectProtect(AStream, FWorksheet);
+        WritePASSWORD(AStream, FWorksheet.CryptoInfo);
       end;
+
       WriteDefaultColWidth(AStream, FWorksheet);
       WriteColInfos(AStream, FWorksheet);
       WriteDimensions(AStream, FWorksheet);
-      //WriteRowAndCellBlock(AStream, sheet);
 
       if (boVirtualMode in Workbook.Options) then
         WriteVirtualCells(AStream, FWorksheet)

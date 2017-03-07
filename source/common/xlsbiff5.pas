@@ -1140,6 +1140,7 @@ begin
   WriteCODEPAGE(AStream, FCodePage);
   WriteWindowProtect(AStream, bpLockWindows in Workbook.Protection);
   WritePROTECT(AStream, bpLockStructure in Workbook.Protection);
+  WritePASSWORD(AStream, Workbook.CryptoInfo);
   WriteEXTERNCOUNT(AStream);
   WriteEXTERNSHEET(AStream);
   WriteDefinedNames(AStream);
@@ -1187,11 +1188,15 @@ begin
       WriteMargin(AStream, 2);  // 2 = top margin
       WriteMargin(AStream, 3);  // 3 = bottom margin
       WritePageSetup(AStream);
+
+      // Protection
       if FWorksheet.IsProtected then begin
         WritePROTECT(AStream, true);
 //          WriteScenarioProtect(AStream);
         WriteObjectProtect(AStream, FWorksheet);
+        WritePASSWORD(AStream, FWorksheet.CryptoInfo);
       end;
+
       WriteDefaultColWidth(AStream, FWorksheet);
       WriteColInfos(AStream, FWorksheet);
       WriteDimensions(AStream, FWorksheet);
