@@ -204,6 +204,7 @@ type
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteBiDiModeStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteBorderStyleXMLAsString(const AFormat: TsCellFormat): String;
+    function WriteCellProtectionStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteCommentXMLAsString(AComment: String): String;
     function WriteDefaultFontXMLAsString: String;
     function WriteDefaultGraphicStyleXMLAsString: String; overload;
@@ -212,8 +213,10 @@ type
     function WriteFontStyleXMLAsString(AFont: TsFont): String; overload;
     function WriteHeaderFooterFontXMLAsString(AFont: TsHeaderFooterFont): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
-    function WritePageLayoutAsXMLString(AStyleName: String; const APageLayout: TsPageLayout): String;
-    function WritePrintRangesAsXMLString(ASheet: TsWorksheet): String;
+    function WritePageLayoutXMLAsString(AStyleName: String; const APageLayout: TsPageLayout): String;
+    function WritePrintRangesXMLAsString(ASheet: TsWorksheet): String;
+    function WriteSheetProtectionXMLAsString(ASheet: TsWorksheet): String;
+    function WriteSheetProtectionDetailsXMLAsString(ASheet: TsWorksheet): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -3934,7 +3937,9 @@ begin
         s := GetAttrValue(childnode, 'loext:select-unprotected-cells');
         if s='true' then Exclude(sp, spSelectUnlockedCells)
           else Include(sp, spSelectUnlockedCells);
-        if s='false' then Exclude(sp, spSelectLockedCells)
+
+        s := GetAttrValue(childnode, 'loext:select-protected-cells');
+        if s='true' then Exclude(sp, spSelectLockedCells)
           else Include(sp, spSelectLockedCells);
       end;
       childNode := childNode.NextSibling;
@@ -4796,7 +4801,7 @@ begin
   for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
     AppendToStream(AStream,
-      WritePageLayoutAsXMLString('Mpm' + IntToStr(3+i), sheet.PageLayout));
+      WritePageLayoutXMLAsString('Mpm' + IntToStr(3+i), sheet.PageLayout));
   end;
 
   for i:=0 to FHeaderFooterFontList.Count-1 do
@@ -5116,8 +5121,12 @@ begin
 
   // Header
   AppendToStream(AStream, Format(
-    '<table:table table:name="%s" table:style-name="ta%d" %s>', [
-    UTF8TextToXMLText(FWorkSheet.Name), ASheetIndex+1, WritePrintRangesAsXMLString(FWorksheet)
+    '<table:table table:name="%s" table:style-name="ta%d"%s%s>%s', [
+    UTF8TextToXMLText(FWorkSheet.Name),
+    ASheetIndex+1,
+    WriteSheetProtectionXMLAsString(FWorksheet),
+    WritePrintRangesXMLAsString(FWorksheet),
+    WriteSheetProtectionDetailsXMLAsString(FWorksheet)
   ]));
 
   // shapes
@@ -5196,7 +5205,8 @@ begin
          WriteBackgroundColorStyleXMLAsString(fmt) +
          WriteWordwrapStyleXMLAsString(fmt) +
          WriteTextRotationStyleXMLAsString(fmt) +
-         WriteVertAlignmentStyleXMLAsString(fmt);
+         WriteVertAlignmentStyleXMLAsString(fmt) +
+         WriteCellProtectionStyleXMLAsString(fmt);
     if s <> '' then
       AppendToStream(AStream,
         '<style:table-cell-properties ' + s + '/>');
@@ -5334,6 +5344,21 @@ begin
 
     c := c + colsRepeated;
   end;
+end;
+
+function TsSpreadOpenDocWriter.WriteCellProtectionStyleXMLAsString(
+  const AFormat: TsCellFormat): String;
+// style:cell-protect="protected formula-hidden"
+begin
+  if AFormat.Protection * [cpLockCell, cpHideFormulas] = [] then
+    Result := 'none'
+  else if (AFormat.Protection * [cpLockCell, cpHideFormulas] = [cpLockCell]) then
+    Result := 'protected'
+  else if (AFormat.Protection *[cpLockCell, cpHideFormulas] = [cpHideFormulas]) then
+    Result := 'formula-hidden'
+  else
+    Result := 'hidden-and-protected';   // or: 'protected formula-hidden'
+  Result := ' style:cell-protect="' + Result + '"';
 end;
 
 function TsSpreadOpenDocWriter.WriteCommentXMLAsString(AComment: String): String;
@@ -6340,7 +6365,7 @@ begin
     spannedStr := '';
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if fmt.UsedFormattingFields <> [] then
+  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
     AppendToStream(AStream, Format(
       '<table:table-cell table:style-name="ce%d"%s>', [ACell^.FormatIndex, spannedStr]),
       comment,
@@ -6373,7 +6398,7 @@ begin
   valType := 'boolean';
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if fmt.UsedFormattingFields <> [] then
+  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
@@ -6598,7 +6623,6 @@ var
 begin
   if bpLockStructure in Workbook.Protection then
   begin
-    Result := ' table:structure-protected="true"';
     cinfo := Workbook.CryptoInfo;
     if cinfo.PasswordHash <> '' then
       pwd := Format(' table:protection-key="%s"', [cinfo.PasswordHash])
@@ -6609,11 +6633,12 @@ begin
         [AlgorithmToStr(cinfo.Algorithm, auOpenDocument)])
     else
       algo := '';
-    Result := Result + pwd + algo;
+    Result := ' table:structure-protected="true"' + pwd + algo;
   end
   else
     Result := '';
 end;
+
 procedure TsSpreadOpenDocWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 var
@@ -6628,7 +6653,7 @@ begin
   Unused(ARow, ACol, AValue);
 
   fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
-  if fmt^.UsedFormattingFields <> [] then
+  if (fmt^.UsedFormattingFields <> []) or (fmt^.Protection <> [cpLockCell]) then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
@@ -6787,7 +6812,7 @@ begin
   end;
 end;
 
-function TsSpreadOpenDocWriter.WritePageLayoutAsXMLString(AStyleName: String;
+function TsSpreadOpenDocWriter.WritePageLayoutXMLAsString(AStyleName: String;
   const APageLayout: TsPageLayout): String;
 
   function CalcPageLayoutPropStr: String;
@@ -6902,12 +6927,13 @@ begin
     '</style:page-layout>';
 end;
 
-function TsSpreadOpenDocWriter.WritePrintRangesAsXMLString(ASheet: TsWorksheet): String;
+function TsSpreadOpenDocWriter.WritePrintRangesXMLAsString(ASheet: TsWorksheet): String;
 var
   i: Integer;
   rng: TsCellRange;
   sheetName: String;
 begin
+  Result := '';
   if ASheet.PageLayout.NumPrintRanges > 0 then
   begin
     for i := 0 to ASheet.PageLayout.NumPrintRanges - 1 do
@@ -6924,10 +6950,44 @@ begin
     if Result <> '' then
     begin
       Delete(Result, 1, 1);
-      Result := 'table:print-ranges="' + Result + '"';
+      Result := ' table:print-ranges="' + Result + '"';
     end;
-  end else
-    Result := '';
+  end;
+end;
+
+function TsSpreadOpenDocWriter.WriteSheetProtectionXMLAsString(
+  ASheet: TsWorksheet): String;
+{table:protected="true" table:protection-key="h/jtkVcSX/xNqeBqe4ARrYClP+E=" table:protection-key-digest-algorithm="http://www.w3.org/2000/09/xmldsig#sha1"}
+var
+  pwd: String;
+  algo: String;
+begin
+  Result := '';
+  if ASheet.IsProtected then
+  begin
+    if ASheet.CryptoInfo.PasswordHash <> '' then
+      pwd := ' table:protection-key="' + ASheet.CryptoInfo.PasswordHash + '"' else
+      pwd := '';
+    algo := AlgorithmToStr(ASheet.CryptoInfo.Algorithm, auOpenDocument);
+    if algo <> '' then
+      algo := ' table:protection-key-digest-algorithm="%s"';
+    Result := ' table:protected="true"' + pwd + algo;
+  end;
+end;
+
+function TsSpreadOpenDocWriter.WriteSheetProtectionDetailsXMLAsString(
+  ASheet: TsWorksheet): String;
+// <loext:table-protection loext:select-unprotected-cells="true" />
+begin
+  Result := '';
+  if ASheet.IsProtected then
+  begin
+    if not (spSelectUnlockedCells in ASheet.Protection) then
+      Result := Result + ' loext:select-unprotected-cells="true"';
+    if not (spSelectLockedCells in ASheet.Protection) then
+      Result := Result + ' loext:select-protected-cells="true"';
+    Result := '<loext:table-protection' + Result + '/>';
+  end;
 end;
 
 procedure TsSpreadOpenDocWriter.WriteShapes(AStream: TStream;
@@ -7357,7 +7417,7 @@ begin
 
   // Style
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if fmt.UsedFormattingFields <> [] then
+  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
@@ -7527,7 +7587,7 @@ begin
 
   // Style
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if fmt.UsedFormattingFields <> [] then
+  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '"'
   else
     lStyle := '';
@@ -7683,7 +7743,7 @@ begin
 
   valType := 'float';
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if fmt.UsedFormattingFields <> [] then
+  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
   begin
     numFmt := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
     if (numFmt <> nil) then begin
@@ -7778,7 +7838,7 @@ begin
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   numFmtParams := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
-  if fmt.UsedFormattingFields <> [] then
+  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
     lStyle := Format(' table:style-name="ce%d"', [ACell^.FormatIndex])
   else
     lStyle := '';

@@ -97,6 +97,12 @@ type
     //procedure TestWriteRead_ODS_WorkbookProtection_Win;
     //procedure TestWriteRead_ODS_WorkbookProtection_StructWin;
 
+    procedure TestWriteRead_ODS_WorksheetProtection_Default;
+    procedure TestWriteRead_ODS_WorksheetProtection_SelectLockedCells;
+    procedure TestWriteRead_ODS_WorksheetProtection_SelectUnlockedCells;
+
+    procedure TestWriteRead_ODS_CellProtection;
+
   end;
 
 implementation
@@ -596,6 +602,25 @@ begin
   TestWriteRead_WorkbookProtection(sfOpenDocument, 3);
 end;}
 
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_WorksheetProtection_Default;
+begin
+  TestWriteRead_WorksheetProtection(sfOpenDocument, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_WorksheetProtection_SelectLockedCells;
+begin
+  TestWriteRead_WorksheetProtection(sfOpenDocument, 10);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_WorksheetProtection_SelectUnlockedCells;
+begin
+  TestWriteRead_WorksheetProtection(sfOpenDocument, 11);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_CellProtection;
+begin
+  TestWriteRead_CellProtection(sfOpenDocument);
+end;
 
 initialization
   RegisterTest(TSpreadWriteReadProtectionTests);
