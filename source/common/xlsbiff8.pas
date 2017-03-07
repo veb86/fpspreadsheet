@@ -1695,6 +1695,8 @@ begin
     MASK_XF_TYPE_PROT_LOCKED + MASK_XF_TYPE_PROT_FORMULA_HIDDEN:
       fmt.Protection := [cpLockCell, cpHideFormulas];
   end;
+  if fmt.Protection <> DEFAULT_CELL_PROTECTION then
+    Include(fmt.UsedFormattingFields, uffProtection);
 
   // Add the XF to the internal cell format list
   FCellFormatList.Add(fmt);

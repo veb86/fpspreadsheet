@@ -4304,6 +4304,8 @@ begin
               fmt.Protection := [cpLockCell]
             else if s = 'formula-hidden' then
               fmt.Protection := [cpHideFormulas];
+            if fmt.Protection <> DEFAULT_CELL_PROTECTION then
+              Include(fmt.UsedFormattingFields, uffProtection);
           end
           else
           if nodeName = 'style:paragraph-properties' then
@@ -6365,7 +6367,7 @@ begin
     spannedStr := '';
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
+  if (fmt.UsedFormattingFields <> []) then
     AppendToStream(AStream, Format(
       '<table:table-cell table:style-name="ce%d"%s>', [ACell^.FormatIndex, spannedStr]),
       comment,
@@ -6398,7 +6400,7 @@ begin
   valType := 'boolean';
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
+  if fmt.UsedFormattingFields <> [] then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
@@ -6653,7 +6655,7 @@ begin
   Unused(ARow, ACol, AValue);
 
   fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
-  if (fmt^.UsedFormattingFields <> []) or (fmt^.Protection <> [cpLockCell]) then
+  if fmt^.UsedFormattingFields <> [] then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
@@ -7417,7 +7419,7 @@ begin
 
   // Style
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
+  if fmt.UsedFormattingFields <> [] then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
@@ -7587,7 +7589,7 @@ begin
 
   // Style
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
+  if fmt.UsedFormattingFields <> [] then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '"'
   else
     lStyle := '';
@@ -7743,7 +7745,7 @@ begin
 
   valType := 'float';
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
+  if fmt.UsedFormattingFields <> [] then
   begin
     numFmt := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
     if (numFmt <> nil) then begin
@@ -7838,7 +7840,7 @@ begin
 
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
   numFmtParams := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
-  if (fmt.UsedFormattingFields <> []) or (fmt.Protection <> [cpLockCell]) then
+  if fmt.UsedFormattingFields <> [] then
     lStyle := Format(' table:style-name="ce%d"', [ACell^.FormatIndex])
   else
     lStyle := '';

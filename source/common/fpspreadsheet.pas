@@ -6788,6 +6788,10 @@ begin
     exit;
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   fmt.Protection := AValue;
+  if AValue <> DEFAULT_CELL_PROTECTION then
+    Include(fmt.UsedFormattingFields, uffProtection)
+  else
+    Exclude(fmt.UsedFormattingFields, uffProtection);
   ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
   ChangedCell(ACell^.Row, ACell^.Col);
 end;

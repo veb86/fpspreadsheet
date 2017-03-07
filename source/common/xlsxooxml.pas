@@ -976,6 +976,8 @@ begin
         Include(fmt.UsedFormattingFields, uffTextRotation);
       if fmt.BiDiMode <> bdDefault then
         Include(fmt.UsedFormattingFields, uffBiDi);
+      if fmt.Protection <> DEFAULT_CELL_PROTECTION then
+        Include(fmt.UsedFormattingFields, uffProtection);
       FCellFormatList.Add(fmt);
     end;
     node := node.NextSibling;

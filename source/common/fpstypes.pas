@@ -267,7 +267,8 @@ type
 
   {@@ List of possible formatting fields }
   TsUsedFormattingField = (uffTextRotation, uffFont, uffBorder, uffBackground,
-    uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign, uffBiDi
+    uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign, uffBiDi,
+    uffProtection
   );
   { NOTE: "uffBackgroundColor" of older versions replaced by "uffBackground" }
 

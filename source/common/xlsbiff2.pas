@@ -198,6 +198,9 @@ const
   {%H-}INT_EXCEL_CHART       = $0020;
   {%H-}INT_EXCEL_MACRO_SHEET = $0040;
 
+  MASK_XF_TYPE_PROT_LOCKED_BIFF2          = $40;
+  MASK_XF_TYPE_PROT_FORMULA_HIDDEN_BIFF2  = $80;
+
 type
   TBIFF2_BoolErrRecord = packed record
     RecordID: Word;
@@ -1151,6 +1154,8 @@ begin
     $80: fmt.Protection := [cpHideFormulas];
     $C0: fmt.Protection := [cpLockCell, cpHideFormulas];
   end;
+  if fmt.Protection <> DEFAULT_CELL_PROTECTION then
+    Include(fmt.UsedFormattingFields, uffProtection);
 
   // Add the decoded data to the format list
   FCellFormatList.Add(fmt);
@@ -1202,61 +1207,8 @@ var
 begin
   fmt := Workbook.GetPointerToCellFormat(AFormatIndex);
 
-  if (fmt^.UsedFormattingFields = []) and (fmt^.Protection = [cpLockCell]) then begin
-    Attrib1 := 15 + $40;
-    Attrib2 := 0;
-    Attrib3 := 0;
-    exit;
-  end;
-
-  // 1st byte:
-  //   Mask $3F: Index to XF record
-  //   Mask $40: 1 = Cell is locked
-  //   Mask $80: 1 = Formula is hidden
-  Attrib1 := Min(XFIndex, $3F) and $3F;
-  if cpLockCell in fmt^.Protection then Attrib1 := Attrib1 or $40;
-  if cpHideFormulas in fmt^.Protection then Attrib1 := Attrib1 or $80;
-
-  // 2nd byte:
-  //   Mask $3F: Index to FORMAT record ("FORMAT" = number format!)
-  //   Mask $C0: Index to FONT record
-  GetFormatAndFontIndex(fmt, formatIdx, fontIdx);
-  Attrib2 := formatIdx + fontIdx shr 6;
-//  Attrib2 := fmt^.FontIndex shr 6;
-
-  // 3rd byte
-  //   Mask $07: horizontal alignment
-  //   Mask $08: Cell has left border
-  //   Mask $10: Cell has right border
-  //   Mask $20: Cell has top border
-  //   Mask $40: Cell has bottom border
-  //   Mask $80: Cell has shaded background
-  Attrib3 := 0;
-  if uffHorAlign in fmt^.UsedFormattingFields then
-    Attrib3 := ord (fmt^.HorAlignment);
-  if uffBorder in fmt^.UsedFormattingFields then begin
-    if cbNorth in fmt^.Border then Attrib3 := Attrib3 or $20;
-    if cbWest in fmt^.Border then Attrib3 := Attrib3 or $08;
-    if cbEast in fmt^.Border then Attrib3 := Attrib3 or $10;
-    if cbSouth in fmt^.Border then Attrib3 := Attrib3 or $40;
-  end;
-  if (uffBackground in fmt^.UsedFormattingFields) then
-    Attrib3 := Attrib3 or $80;
-end;
-(*
-{@@ ----------------------------------------------------------------------------
-  Determines the cell attributes needed for writing a cell content record, such
-  as WriteLabel, WriteNumber, etc.
-  The cell attributes contain, in bit masks, xf record index, font index,
-  borders, etc.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF2Writer.GetCellAttributes(ACell: PCell; XFIndex: Word;
-  out Attrib1, Attrib2, Attrib3: Byte);
-begin
-  fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-
   if fmt^.UsedFormattingFields = [] then begin
-    Attrib1 := 15;
+    Attrib1 := 15 + MASK_XF_TYPE_PROT_LOCKED_BIFF2;  // $40
     Attrib2 := 0;
     Attrib3 := 0;
     exit;
@@ -1267,6 +1219,10 @@ begin
   //   Mask $40: 1 = Cell is locked
   //   Mask $80: 1 = Formula is hidden
   Attrib1 := Min(XFIndex, $3F) and $3F;
+  if cpLockCell in fmt^.Protection then
+    Attrib1 := Attrib1 or MASK_XF_TYPE_PROT_LOCKED_BIFF2;
+  if cpHideFormulas in fmt^.Protection then
+    Attrib1 := Attrib1 or MASK_XF_TYPE_PROT_FORMULA_HIDDEN_BIFF2;
 
   // 2nd byte:
   //   Mask $3F: Index to FORMAT record ("FORMAT" = number format!)
@@ -1294,7 +1250,7 @@ begin
   if (uffBackground in fmt^.UsedFormattingFields) then
     Attrib3 := Attrib3 or $80;
 end;
-  *)
+
 procedure TsSpreadBIFF2Writer.GetFormatAndFontIndex(AFormatRecord: PsCellFormat;
   out AFormatIndex, AFontIndex: Integer);
 var
@@ -1356,7 +1312,7 @@ begin
   rec.XFIndex_Locked_Hidden := 0;  // to silence the compiler...
   FillChar(rec, SizeOf(rec), 0);
 
-  if (fmt^.UsedFormattingFields <> []) or (fmt^.Protection <> [cpLockCell]) then
+  if fmt^.UsedFormattingFields <> [] then
   begin
     // 1st byte:
     //   Mask $3F: Index to XF record
@@ -1364,9 +1320,9 @@ begin
     //   Mask $80: 1 = Formula is hidden
     rec.XFIndex_Locked_Hidden := Min(XFIndex, $3F) and $3F;
     if cpLockCell in fmt^.Protection then
-      rec.XFIndex_Locked_Hidden := rec.XFIndex_Locked_Hidden or $40;
+      rec.XFIndex_Locked_Hidden := rec.XFIndex_Locked_Hidden or MASK_XF_TYPE_PROT_LOCKED_BIFF2;
     if cpHideFormulas in fmt^.Protection then
-      rec.XFIndex_Locked_Hidden := rec.XFIndex_Locked_Hidden or $80;
+      rec.XFIndex_Locked_Hidden := rec.XFIndex_Locked_Hidden or MASK_XF_TYPE_PROT_FORMULA_HIDDEN_BIFF2;
 
     // 2nd byte:
     //   Mask $3F: Index to FORMAT record
@@ -1740,13 +1696,13 @@ begin
       5-0   $3F   Index to (number) FORMAT record
        6    $40   1 = Cell is locked
        7    $80   1 = Formula is hidden }
-  fmtProt := formatIdx + $40;
+  fmtProt := formatIdx + MASK_XF_TYPE_PROT_LOCKED_BIFF2;
   if AFormatRecord <> nil then
   begin
     if not (cpLockCell in AFormatRecord^.Protection) then
-      fmtProt := fmtProt and not $40;
+      fmtProt := fmtProt and not MASK_XF_TYPE_PROT_LOCKED_BIFF2;
     if (cpHideFormulas in AFormatRecord^.Protection) then
-      fmtProt := fmtProt or $80;
+      fmtProt := fmtProt or MASK_XF_TYPE_PROT_FORMULA_HIDDEN_BIFF2;
   end;
   rec.NumFormat_Prot := WordToLE(fmtProt);
 
