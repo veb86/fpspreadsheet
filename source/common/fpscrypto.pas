@@ -10,6 +10,9 @@ type
 
 function AlgorithmToStr(Algorithm: TsCryptoAlgorithm; AUsage: TsAlgorithmUsage): String;
 function StrToAlgorithm(const AName: String): TsCryptoAlgorithm;
+
+function CrackExcelPassword(const AHash: Word): String;
+function ExcelPasswordHash(const APassword: string): Word;
                                                        (*
 function PasswordHash(const APassword: String; Algorithm: TsAlgorithm): String;
                                                          *)
@@ -70,9 +73,65 @@ begin
   end;
 end;
 
+{@@ Cracks an Excel password hash by brute force and retrieves one of many
+  possible passwords.
+  Runtime: around 1 ms.
+  Ref.: http://www.theofficeexperts.com/VBASamples/Excel02.htm }
+function CrackExcelPassword(const AHash: Word): String;
+var
+  i, j, k, l, m, n: char;
+  i1, i2, i3, i4, i5, i6: char;
+begin
+  for i := #65 to #66 do
+    for j := #65 to #66 do
+      for k := #65 to #66 do
+        for l := #65 to #66 do
+          for m := #65 to #66 do
+            for i1 := #65 to #66 do
+              for i2 := #65 to #66 do
+                for i3 := #65 to #66 do
+                  for i4 := #65 to #66 do
+                    for i5 := #65 to #66 do
+                      for i6 := #65 to #66 do
+                        for n := #32 to #126 do
+                        begin
+                          Result := i + j + k + l + m + i1 + i2 + i3 + i4 + i5 + i6 + n;
+                          if ExcelPasswordHash(Result) = AHash then
+                            exit;
+                        end;
+  Result := '';
+end;
+
 {@@ This is the code for generating Excel 2010 and earlier password's hash
   See: http://forum.lazarus.freepascal.org/index.php/topic,36075.msg240132.html#msg240132 }
-function ExcelPasswordHash( const APassword: string ): string;
+function ExcelPasswordHash(const APassword: string): word;
+var
+  i: Integer;
+  PassLen: Integer;
+  Password: string;
+  PassHash: Word = 0;
+begin
+  // we are needed to work with single byte character.
+  Password:= UTF8ToWinCP(APassword);
+  PassLen := Length(Password);
+
+  if PassLen = 0 then
+    raise Exception.Create('Password length is zero');
+
+  for i:= PassLen downto 1 do
+  begin
+    PassHash:= ((PassHash shr 14) and  $0001) or ((PassHash shl 1) and  $7fff);
+    PassHash:= PassHash xor ord(Password[i]);
+  end;
+
+  PassHash:= ((PassHash shr 14) and  $0001) or ((PassHash shl 1) and  $7fff);
+  PassHash:= PassHash xor PassLen xor $CE4B;
+
+  Result := PassHash;
+end;
+
+(*
+function ExcelPasswordHash(const APassword: string): string;
 var
   i: Integer;
   PassLen: Integer;
@@ -100,6 +159,7 @@ begin
 
   Result := IntToHex(PassHash, 4);
 end;
+*)
             (*
 function SHA1Hash(const AText: String): String;
 var
