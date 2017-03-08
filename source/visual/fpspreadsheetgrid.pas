@@ -2180,7 +2180,7 @@ procedure TsCustomWorksheetGrid.DrawImages;
 
 var
   i: Integer;
-  img: TsImage;
+  img: PsImage;
   obj: TsEmbeddedObj;
   clipArea, imgRect, R: TRect;
   w, h: Integer;
@@ -2192,34 +2192,34 @@ begin
   ColRowToOffset(false, false, HeaderCount, clipArea.Top, tmp);
 
   for i := 0 to Worksheet.GetImageCount-1 do begin
-    img := Worksheet.GetImage(i);
-    obj := Workbook.GetEmbeddedObj(img.Index);
+    img := Worksheet.GetPointerToImage(i);
+    obj := Workbook.GetEmbeddedObj(img^.Index);
 
-    w := ToPixels(obj.ImageWidth * img.ScaleX);
-    h := ToPixels(obj.ImageHeight * img.ScaleY);
+    w := ToPixels(obj.ImageWidth * img^.ScaleX);
+    h := ToPixels(obj.ImageHeight * img^.ScaleY);
 
-    imgRect := CellRect(img.Col + HeaderCount, img.Row + HeaderCount);
+    imgRect := CellRect(img^.Col + HeaderCount, img^.Row + HeaderCount);
     imgRect.Right := imgRect.Left + w;
     imgRect.Bottom := imgRect.Top + h;
-    OffsetRect(imgRect, ToPixels(img.OffsetX), ToPixels(img.OffsetY));
+    OffsetRect(imgRect, ToPixels(img^.OffsetX), ToPixels(img^.OffsetY));
 
     if not IntersectRect(R, clipArea, imgRect) then
       continue;
 
-    if img.Bitmap = nil then begin
+    if img^.Bitmap = nil then begin
       // Load image into bitmap and scale to required size
-      img.Bitmap := TBitmap.Create;
-      TBitmap(img.Bitmap).SetSize(w, h);
-      TBitmap(img.Bitmap).PixelFormat := pf32Bit;
-      TBitmap(img.Bitmap).Transparent := true;
+      img^.Bitmap := TBitmap.Create;
+      TBitmap(img^.Bitmap).SetSize(w, h);
+      TBitmap(img^.Bitmap).PixelFormat := pf32Bit;
+      TBitmap(img^.Bitmap).Transparent := true;
       pic := TPicture.Create;
       try
         obj.Stream.Position := 0;
         pic.LoadFromStream(obj.Stream);
         if pic.Bitmap <> nil then
-          TBitmap(img.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Bitmap)
+          TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Bitmap)
         else if pic.Graphic <> nil then
-          TBitmap(img.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Graphic);
+          TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Graphic);
       finally
         pic.Free;
       end;
@@ -2229,7 +2229,7 @@ begin
     Canvas.SaveHandleState;
     try
       InterSectClipRect(Canvas.Handle, R.Left, R.Top, R.Right, R.Bottom);
-      Canvas.Draw(imgRect.Left, imgRect.Top, TBitmap(img.Bitmap));
+      Canvas.Draw(imgRect.Left, imgRect.Top, TBitmap(img^.Bitmap));
     finally
       Canvas.RestoreHandleState;
     end;

@@ -544,6 +544,7 @@ type
       out x, y, AWidth, AHeight: Double);
     function GetImage(AIndex: Integer): TsImage;
     function GetImageCount: Integer;
+    function GetPointerToImage(AIndex: Integer): PsImage;
     procedure RemoveAllImages;
     procedure RemoveImage(AIndex: Integer);
     function WriteImage(ARow, ACol: Cardinal; AFileName: String;
@@ -3764,6 +3765,11 @@ begin
   Result := img^;
 end;
 
+function TsWorksheet.GetPointerToImage(AIndex: Integer): PsImage;
+begin
+  Result := PsImage(FImages[AIndex]);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Returns the count of images that are embedded into this sheet.
 -------------------------------------------------------------------------------}
@@ -3781,6 +3787,15 @@ var
 begin
   ACol := 0;
   sum := 0;
+  colW := GetColWidth(0, FWorkbook.Units);
+  while (sum + colW < x) do begin
+    sum := sum + colW;
+    inc(ACol);
+    colW := GetColWidth(ACol, FWorkbook.Units);
+  end;
+  AColOffs := x - sum;
+  {
+  sum := 0;
   repeat
     colW := GetColWidth(ACol, FWorkbook.Units);;
     sum := sum + colW;
@@ -3789,7 +3804,18 @@ begin
   sum := sum - colW;
   AColOffs := x - sum;
   dec(ACol);
+  }
 
+  ARow := 0;
+  sum := 0;
+  rowH := CalcRowHeight(0);
+  while (sum + rowH < y) do begin
+    sum := sum + rowH;
+    inc(ARow);
+    rowH := CalcRowHeight(ARow);
+  end;
+  ARowOffs := y - sum;
+  {
   ARow := 0;
   sum := 0;
   repeat
@@ -3800,6 +3826,7 @@ begin
   sum := sum - rowH;
   ARowOffs := y - sum;
   dec(ARow);
+  }
 
   embObj := FWorkbook.GetEmbeddedObj(AIndex);
   AScaleX := AWidth / embObj.ImageWidth;

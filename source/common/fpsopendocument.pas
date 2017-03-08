@@ -3897,7 +3897,7 @@ begin
             begin
               idx := FWorkbook.FindEmbeddedObj(ExtractFileName(href));
               FWorksheet.CalcImageCell(idx, x, y, w, h, r, c, dr, dc, sx, sy);
-              FWorksheet.WriteImage(r, c, idx, dr, dc, sx, sy);
+              FWorksheet.WriteImage(r, c, idx, dc, dr, sx, sy);    // order of dc and dr is correct!
             end;
             childShapeNode := childShapeNode.NextSibling;
           end;
