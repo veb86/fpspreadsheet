@@ -2191,49 +2191,53 @@ begin
   ColRowToOffset(true, false, HeaderCount, clipArea.Left, tmp);
   ColRowToOffset(false, false, HeaderCount, clipArea.Top, tmp);
 
-  for i := 0 to Worksheet.GetImageCount-1 do begin
-    img := Worksheet.GetPointerToImage(i);
-    obj := Workbook.GetEmbeddedObj(img^.Index);
+  // Draw bitmap over grid. Take care of clipping.
+  Canvas.SaveHandleState;
+  try
+    InterSectClipRect(Canvas.Handle,
+      clipArea.Left, clipArea.Top, clipArea.Right, clipArea.Bottom);
 
-    w := ToPixels(obj.ImageWidth * img^.ScaleX);
-    h := ToPixels(obj.ImageHeight * img^.ScaleY);
+    for i := 0 to Worksheet.GetImageCount-1 do begin
+      img := Worksheet.GetPointerToImage(i);
+      obj := Workbook.GetEmbeddedObj(img^.Index);
 
-    imgRect := CellRect(img^.Col + HeaderCount, img^.Row + HeaderCount);
-    imgRect.Right := imgRect.Left + w;
-    imgRect.Bottom := imgRect.Top + h;
-    OffsetRect(imgRect, ToPixels(img^.OffsetX), ToPixels(img^.OffsetY));
+      w := ToPixels(obj.ImageWidth * img^.ScaleX);
+      h := ToPixels(obj.ImageHeight * img^.ScaleY);
 
-    if not IntersectRect(R, clipArea, imgRect) then
-      continue;
+      imgRect := CellRect(img^.Col + HeaderCount, img^.Row + HeaderCount);
+      imgRect.Right := imgRect.Left + w;
+      imgRect.Bottom := imgRect.Top + h;
+      OffsetRect(imgRect, ToPixels(img^.OffsetX), ToPixels(img^.OffsetY));
 
-    if img^.Bitmap = nil then begin
-      // Load image into bitmap and scale to required size
-      img^.Bitmap := TBitmap.Create;
-      TBitmap(img^.Bitmap).SetSize(w, h);
-      TBitmap(img^.Bitmap).PixelFormat := pf32Bit;
-      TBitmap(img^.Bitmap).Transparent := true;
-      pic := TPicture.Create;
-      try
-        obj.Stream.Position := 0;
-        pic.LoadFromStream(obj.Stream);
-        if pic.Bitmap <> nil then
-          TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Bitmap)
-        else if pic.Graphic <> nil then
-          TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Graphic);
-      finally
-        pic.Free;
+      // Nothing to do if image is outside the visible grid area
+      if not IntersectRect(R, clipArea, imgRect) then
+        continue;
+
+      // If not yet done load image stream into bitmap and scale to required size
+      if img^.Bitmap = nil then begin
+        img^.Bitmap := TBitmap.Create;
+        TBitmap(img^.Bitmap).SetSize(w, h);
+        TBitmap(img^.Bitmap).PixelFormat := pf32Bit;
+        TBitmap(img^.Bitmap).Transparent := true;
+        pic := TPicture.Create;
+        try
+          obj.Stream.Position := 0;
+          pic.LoadFromStream(obj.Stream);
+          if pic.Bitmap <> nil then
+            TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Bitmap)
+          else if pic.Graphic <> nil then
+            TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Graphic);
+        finally
+          pic.Free;
+        end;
       end;
-    end;
 
-    // Draw bitmap over grid. Take care of clipping.
-    Canvas.SaveHandleState;
-    try
-      InterSectClipRect(Canvas.Handle, R.Left, R.Top, R.Right, R.Bottom);
+      // Draw the bitmap
       Canvas.Draw(imgRect.Left, imgRect.Top, TBitmap(img^.Bitmap));
-    finally
-      Canvas.RestoreHandleState;
     end;
 
+  finally
+    Canvas.RestoreHandleState;
   end;
 end;
 
