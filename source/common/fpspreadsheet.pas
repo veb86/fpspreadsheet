@@ -4025,6 +4025,7 @@ var
   img: PsImage;
 begin
   img := PsImage(FImages[AIndex]);
+  if (img <> nil) and (img^.Bitmap <> nil) then img^.Bitmap.Free;
   Dispose(img);
   FImages.Delete(AIndex);
 end;

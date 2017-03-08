@@ -30,7 +30,7 @@ unit fpspreadsheetgrid;
 interface
 
 uses
-  Classes, SysUtils, LResources, Variants,
+  Classes, SysUtils, LMessages, LResources, Variants,
   Forms, Controls, Graphics, Dialogs, Grids, ExtCtrls,
   fpstypes, fpspreadsheet, fpspreadsheetctrls;
 
@@ -224,6 +224,7 @@ type
     procedure DrawCommentMarker(ARect: TRect);
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
     procedure DrawFrozenPaneBorders(ARect: TRect);
+    procedure DrawImages;
     procedure DrawRow(aRow: Integer); override;
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
@@ -260,6 +261,8 @@ type
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
     procedure TopLeftChanged; override;
     function TrimToCell(ACell: PCell): String;
+    procedure WMHScroll(var message : TLMHScroll); message LM_HSCROLL;
+    procedure WMVScroll(var message : TLMVScroll); message LM_VSCROLL;
 
     {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
@@ -752,8 +755,7 @@ implementation
 uses
   Types, LCLType, LCLIntf, LCLProc, Math, StrUtils,
   fpCanvas, {%H-}fpsPatches,
-  fpsStrings, fpsUtils, fpsVisualUtils, fpsHTMLUtils,
-  fpsNumFormat;
+  fpsStrings, fpsUtils, fpsVisualUtils, fpsHTMLUtils, fpsImages, fpsNumFormat;
 
 const
   {@@ Interval how long the mouse buttons has to be held down on a
@@ -1870,6 +1872,8 @@ begin
     DrawCellBorders;
     DrawSelection;
     DeleteObject(rgn);
+
+    DrawImages;
   finally
     Canvas.RestoreHandleState;
   end;
@@ -2157,6 +2161,79 @@ begin
         Canvas.Line(ARect.Right, ARect.Top, ARect.Right, ARect.Bottom) else
         Canvas.Line(ARect.Left, ARect.Top, ARect.Left, ARect.Bottom);
     end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Draws the embedded images of the worksheet. Is called at the end of the
+  painting process.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.DrawImages;
+
+  function ToPixels(AValue: Double): Integer;
+  var
+    inches: Double;
+  begin
+    inches := Workbook.ConvertUnits(AValue, Workbook.Units, suInches);
+    Result := round(inches * Screen.PixelsPerInch);
+  end;
+
+var
+  i: Integer;
+  img: TsImage;
+  obj: TsEmbeddedObj;
+  clipArea, imgRect, R: TRect;
+  w, h: Integer;
+  pic: TPicture;
+  tmp: Integer;
+begin
+  clipArea := Canvas.ClipRect;
+  ColRowToOffset(true, false, HeaderCount, clipArea.Left, tmp);
+  ColRowToOffset(false, false, HeaderCount, clipArea.Top, tmp);
+
+  for i := 0 to Worksheet.GetImageCount-1 do begin
+    img := Worksheet.GetImage(i);
+    obj := Workbook.GetEmbeddedObj(img.Index);
+
+    w := ToPixels(obj.ImageWidth * img.ScaleX);
+    h := ToPixels(obj.ImageHeight * img.ScaleY);
+
+    imgRect := CellRect(img.Col + HeaderCount, img.Row + HeaderCount);
+    imgRect.Right := imgRect.Left + w;
+    imgRect.Bottom := imgRect.Top + h;
+    OffsetRect(imgRect, ToPixels(img.OffsetX), ToPixels(img.OffsetY));
+
+    if not IntersectRect(R, clipArea, imgRect) then
+      continue;
+
+    if img.Bitmap = nil then begin
+      // Load image into bitmap and scale to required size
+      img.Bitmap := TBitmap.Create;
+      TBitmap(img.Bitmap).SetSize(w, h);
+      TBitmap(img.Bitmap).PixelFormat := pf32Bit;
+      TBitmap(img.Bitmap).Transparent := true;
+      pic := TPicture.Create;
+      try
+        obj.Stream.Position := 0;
+        pic.LoadFromStream(obj.Stream);
+        if pic.Bitmap <> nil then
+          TBitmap(img.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Bitmap)
+        else if pic.Graphic <> nil then
+          TBitmap(img.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Graphic);
+      finally
+        pic.Free;
+      end;
+    end;
+
+    // Draw bitmap over grid. Take care of clipping.
+    Canvas.SaveHandleState;
+    try
+      InterSectClipRect(Canvas.Handle, R.Left, R.Top, R.Right, R.Bottom);
+      Canvas.Draw(imgRect.Left, imgRect.Top, TBitmap(img.Bitmap));
+    finally
+      Canvas.RestoreHandleState;
+    end;
+
   end;
 end;
 
@@ -4886,6 +4963,20 @@ begin
   finally
     EndUpdate;
   end;
+end;
+
+procedure TsCustomWorksheetGrid.WMHScroll(var message: TLMHScroll);
+begin
+  inherited;
+  if Worksheet.GetImageCount > 0 then
+    Invalidate;
+end;
+
+procedure TsCustomWorksheetGrid.WMVScroll(var message: TLMVScroll);
+begin
+  inherited;
+  if Worksheet.GetImageCount > 0 then
+    Invalidate;
 end;
 
 

@@ -2127,6 +2127,7 @@ begin
   AValue.OffsetY := AOffsetY;
   AValue.ScaleX := AScaleX;
   AValue.ScaleY := AScaleY;
+  AValue.Bitmap := nil;     // to be initialized by viewing application
   AValue.Index := -1;
 end;
 
