@@ -126,7 +126,8 @@ type
     procedure ReadXF(const AStream: TStream);
   public
     destructor Destroy; override;
-    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromStream(AStream: TStream;
+      APassword: String = ''; AParams: TsStreamParams = []); override;
   end;
 
   { TsSpreadBIFF8Writer }
@@ -958,13 +959,13 @@ begin
 end;
 
 procedure TsSpreadBIFF8Reader.ReadFromStream(AStream: TStream;
-  AParams: TsStreamParams = []);
+  APassword: String = ''; AParams: TsStreamParams = []);
 var
   OLEStream: TMemoryStream;
   OLEStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
 begin
-  Unused(AParams);
+  Unused(APassword, AParams);
   OLEStream := TMemoryStream.Create;
   try
     // Only one stream is necessary for any number of worksheets

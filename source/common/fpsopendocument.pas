@@ -165,7 +165,8 @@ type
     destructor Destroy; override;
 
     { General reading methods }
-    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromStream(AStream: TStream;
+      APassword: String = ''; AParams: TsStreamParams = []); override;
   end;
 
   { TsSpreadOpenDocWriter }
@@ -2422,7 +2423,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream;
-  AParams: TsStreamParams = []);
+  APassword: String = ''; AParams: TsStreamParams = []);
 var
   Doc : TXMLDocument;
   BodyNode, SpreadSheetNode, TableNode: TDOMNode;
@@ -2445,7 +2446,7 @@ var
   end;
 
 begin
-  Unused(AParams);
+  Unused(APassword, AParams);
 
   Doc := nil;
   try

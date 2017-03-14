@@ -756,15 +756,15 @@ type
     destructor Destroy; override;
 
     procedure ReadFromFile(AFileName: string; AFormatID: TsSpreadFormatID;
-      AParams: TsStreamParams = []); overload;
+      APassword: String = ''; AParams: TsStreamParams = []); overload;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat;
       AParams: TsStreamParams = []); overload;
-    procedure ReadFromFile(AFileName: string;
+    procedure ReadFromFile(AFileName: string; APassword: String = '';
       AParams: TsStreamParams = []); overload;
     procedure ReadFromFileIgnoringExtension(AFileName: string;
-      AParams: TsStreamParams = []);
+      APassword: String = ''; AParams: TsStreamParams = []);
     procedure ReadFromStream(AStream: TStream; AFormatID: TsSpreadFormatID;
-      AParams: TsStreamParams = []); overload;
+      APassword: String = ''; AParams: TsStreamParams = []); overload;
     procedure ReadFromStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
       AParams: TsStreamParams = []); overload;
 
@@ -8199,7 +8199,7 @@ procedure TsWorkbook.ReadFromFile(AFileName: string;
 begin
   if AFormat = sfUser then
     raise Exception.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
-  ReadFromFile(AFilename, ord(AFormat), AParams);
+  ReadFromFile(AFilename, ord(AFormat), '', AParams);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8209,8 +8209,8 @@ end;
   @param  AFileName  Name of the file to be read
   @param  AFormatID  Identifier of the file format assumed
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.ReadFromFile(AFileName: string;
-  AFormatID: TsSpreadFormatID; AParams: TsStreamParams = []);
+procedure TsWorkbook.ReadFromFile(AFileName: string; AFormatID: TsSpreadFormatID;
+  APassword: String = ''; AParams: TsStreamParams = []);
 var
   AReader: TsBasicSpreadReader;
   ok: Boolean;
@@ -8219,7 +8219,7 @@ begin
     raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
 
   if AFormatID = sfIDUnknown then begin
-    ReadFromFile(AFileName, AParams);
+    ReadFromFile(AFileName, APassword, AParams);
     exit;
   end;
 
@@ -8231,7 +8231,7 @@ begin
     FReadWriteFlag := rwfRead;
     inc(FLockCount);          // This locks various notifications from being sent
     try
-      AReader.ReadFromFile(AFileName, AParams);
+      AReader.ReadFromFile(AFileName, APassword, AParams);
       ok := true;
       UpdateCaches;
       if (boAutoCalc in Options) then
@@ -8253,7 +8253,8 @@ end;
   the extension. In the case of the ambiguous xls extension, it will simply
   assume that it is BIFF8. Note that it could be BIFF2 or 5 as well.
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.ReadFromFile(AFileName: string; AParams: TsStreamParams = []);
+procedure TsWorkbook.ReadFromFile(AFileName: string; APassword: String = '';
+  AParams: TsStreamParams = []);
 var
   formatID: TsSpreadFormatID;
   canLoad, success: Boolean;
@@ -8293,7 +8294,7 @@ begin
   success := false;
   for i:=0 to High(fileformats) do begin
     try
-      ReadFromFile(AFileName, fileformats[i], AParams);
+      ReadFromFile(AFileName, fileformats[i], APassword, AParams);
       success := true;
       break;  // Exit the loop if we reach this point successfully.
     except
@@ -8310,7 +8311,7 @@ end;
   Reads the document from a file, but ignores the extension.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.ReadFromFileIgnoringExtension(AFileName: string;
-  AParams: TsStreamParams = []);
+  APassword: String = ''; AParams: TsStreamParams = []);
 var
   formatID: TsSpreadFormatID;
   fileformats: TsSpreadFormatIDArray;
@@ -8319,7 +8320,7 @@ begin
   fileformats := GetSpreadFormats(faRead, [ord(sfOOXML), ord(sfOpenDocument), ord(sfExcel8)]);
   for formatID in fileformats do begin
     try
-      ReadFromFile(AFileName, formatID, AParams);
+      ReadFromFile(AFileName, formatID, APassword, AParams);
       success := true;
       break;
     except
@@ -8342,7 +8343,7 @@ procedure TsWorkbook.ReadFromStream(AStream: TStream;
 begin
   if AFormat = sfUser then
     raise Exception.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
-  ReadFromStream(AStream, ord(AFormat), AParams);
+  ReadFromStream(AStream, ord(AFormat), '', AParams);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8352,8 +8353,8 @@ end;
   @param  AFormatID  Identifier of the file format assumed.
   @param  AParams    Optional parameters to control stream access.
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.ReadFromStream(AStream: TStream;
-  AFormatID: TsSpreadFormatID; AParams: TsStreamParams = []);
+procedure TsWorkbook.ReadFromStream(AStream: TStream; AFormatID: TsSpreadFormatID;
+  APassword: String = ''; AParams: TsStreamParams = []);
 var
   AReader: TsBasicSpreadReader;
   ok: Boolean;
@@ -8366,7 +8367,7 @@ begin
     inc(FLockCount);
     try
       AStream.Position := 0;
-      AReader.ReadFromStream(AStream, AParams);
+      AReader.ReadFromStream(AStream, APassword, AParams);
       ok := true;
       UpdateCaches;
       if (boAutoCalc in Options) then

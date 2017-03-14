@@ -44,7 +44,7 @@ uses
   fpszipper,
  {$ENDIF}
   fpsTypes, fpSpreadsheet, fpsUtils, fpsReaderWriter, fpsNumFormat, fpsPalette,
-  fpsxmlcommon, xlsCommon;
+  fpsxmlcommon, xlsCommon; //, xlsxdecrypter;
   
 type
 
@@ -105,7 +105,8 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
-    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromStream(AStream: TStream; APassword: String = '';
+      AParams: TsStreamParams = []); override;
   end;
 
   { TsSpreadOOXMLWriter }
@@ -2352,7 +2353,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream;
-  AParams: TsStreamParams = []);
+  APassword: String = ''; AParams: TsStreamParams = []);
 var
   Doc : TXMLDocument;
   RelsNode: TDOMNode;
@@ -2374,7 +2375,7 @@ var
   end;
 
 begin
-  Unused(AParams);
+  Unused(APassword, AParams);
   Doc := nil;
 
   try

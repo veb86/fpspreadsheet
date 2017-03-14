@@ -57,7 +57,8 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
-    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromStream(AStream: TStream; APassword: String = '';
+      AParams: TsStreamParams = []); override;
     procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
@@ -1045,11 +1046,12 @@ begin
   SetLength(FCurrRichTextParams, 0);
 end;
 
-procedure TsHTMLReader.ReadFromStream(AStream: TStream;
+procedure TsHTMLReader.ReadFromStream(AStream: TStream; APassword: String = '';
   AParams: TsStreamParams = []);
 var
   list: TStringList;
 begin
+  Unused(APassword);
   list := TStringList.Create;
   try
     list.LoadFromStream(AStream);

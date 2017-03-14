@@ -22,8 +22,10 @@ type
     procedure ReadNumber(AStream: TStream); override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
-    procedure ReadFromFile(AFileName: String; AParams: TsStreamParams = []); override;
-    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromFile(AFileName: String; APassword: String = '';
+      AParams: TsStreamParams = []); override;
+    procedure ReadFromStream(AStream: TStream; APassword: String = '';
+      AParams: TsStreamParams = []); override;
     procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
 
@@ -173,14 +175,14 @@ begin
   Unused(AStream);
 end;
 
-procedure TsCSVReader.ReadFromFile(AFileName: String;
+procedure TsCSVReader.ReadFromFile(AFileName: String; APassword: String = '';
   AParams: TsStreamParams = []);
 begin
   FWorksheetName := ChangeFileExt(ExtractFileName(AFileName), '');
-  inherited ReadFromFile(AFilename, AParams);
+  inherited ReadFromFile(AFilename, APassword, AParams);
 end;
 
-procedure TsCSVReader.ReadFromStream(AStream: TStream;
+procedure TsCSVReader.ReadFromStream(AStream: TStream; APassword: String = '';
   AParams: TsStreamParams = []);
 var
   Parser: TCSVParser;
@@ -227,7 +229,7 @@ var
 begin
   Stream := TStringStream.Create(AStrings.Text);
   try
-    ReadFromStream(Stream, AParams);
+    ReadFromStream(Stream, '', AParams);
   finally
     Stream.Free;
   end;

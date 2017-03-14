@@ -47,8 +47,10 @@ type
   TsBasicSpreadReader = class(TsBasicSpreadReaderWriter)
   public
     { General writing methods }
-    procedure ReadFromFile(AFileName: string; AParams: TsStreamParams = []); virtual; abstract;
-    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); virtual; abstract;
+    procedure ReadFromFile(AFileName: string; APassword: String = '';
+      AParams: TsStreamParams = []); virtual; abstract;
+    procedure ReadFromStream(AStream: TStream; APassword: String = '';
+      AParams: TsStreamParams = []); virtual; abstract;
     procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); virtual; abstract;
   end;
 
@@ -112,8 +114,10 @@ type
     destructor Destroy; override;
 
     { General writing methods }
-    procedure ReadFromFile(AFileName: string; AParams: TsStreamParams = []); override;
-    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromFile(AFileName: string; APassword: String = '';
+      AParams: TsStreamParams = []); override;
+    procedure ReadFromStream(AStream: TStream; APassword: String = '';
+      AParams: TsStreamParams = []); override;
     procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
 
     {@@ List of number formats found in the workbook. }
@@ -460,7 +464,7 @@ end;
   @see    TsWorkbook
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.ReadFromFile(AFileName: string;
-  AParams: TsStreamParams = []);
+  APassword: String = '';  AParams: TsStreamParams = []);
 var
   stream, fs: TStream;
 begin
@@ -482,7 +486,7 @@ begin
   end;
 
   try
-    ReadFromStream(stream, AParams);
+    ReadFromStream(stream, APassword, AParams);
   finally
     stream.Free;
   end;
@@ -501,11 +505,12 @@ end;
   @param  AData     Workbook which is filled by the data from the stream.
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream;
-  AParams: TsStreamParams = []);
+  APassword: String; AParams: TsStreamParams = []);
 var
   AStringStream: TStringStream;
   AStrings: TStringList;
 begin
+  Unused(APassword);
   AStringStream := TStringStream.Create('');
   AStrings := TStringList.Create;
   try

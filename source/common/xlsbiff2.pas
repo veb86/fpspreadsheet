@@ -77,7 +77,8 @@ type
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     { General reading methods }
-    procedure ReadFromStream(AStream: TStream; AParams: TsStreamParams = []); override;
+    procedure ReadFromStream(AStream: TStream; APassword: String = '';
+      AParams: TsStreamParams = []); override;
   end;
 
 
@@ -576,14 +577,14 @@ end;
 
 
 procedure TsSpreadBIFF2Reader.ReadFromStream(AStream: TStream;
-  AParams: TsStreamParams = []);
+  APassword: String = ''; AParams: TsStreamParams = []);
 var
   BIFF2EOF: Boolean;
   RecordType: Word;
   CurStreamPos: Int64;
   BOFFound: Boolean;
 begin
-  Unused(AParams);
+  Unused(APassword, AParams);
   BIFF2EOF := False;
 
   { In BIFF2 files there is only one worksheet, let's create it }
