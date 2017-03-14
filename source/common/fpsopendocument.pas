@@ -5281,8 +5281,8 @@ var
 begin
 //  widthMultiplier := Workbook.GetFont(0).Size / 2;
   lastCol := ASheet.GetLastColIndex;
-  firstRepeatedPrintCol := ASheet.PageLayout.RepeatedCols.FirstIndex;
-  lastRepeatedPrintCol := ASheet.PageLayout.RepeatedCols.LastIndex;
+  firstRepeatedPrintCol := longInt(ASheet.PageLayout.RepeatedCols.FirstIndex);
+  lastRepeatedPrintCol := longint(ASheet.PageLayout.RepeatedCols.LastIndex);
   if (firstRepeatedPrintCol <> Longint(UNASSIGNED_ROW_COL_INDEX)) and
      (lastRepeatedPrintCol = LongInt(UNASSIGNED_ROW_COL_INDEX))
   then
@@ -5666,8 +5666,8 @@ begin
   GetSheetDimensions(ASheet, firstRow, lastRow, firstCol, lastCol);
 
   headerRows := false;
-  firstRepeatedPrintRow := ASheet.PageLayout.RepeatedRows.FirstIndex;
-  lastRepeatedPrintRow := ASheet.PageLayout.RepeatedRows.LastIndex;
+  firstRepeatedPrintRow := Integer(ASheet.PageLayout.RepeatedRows.FirstIndex);
+  lastRepeatedPrintRow := Integer(ASheet.PageLayout.RepeatedRows.LastIndex);
   if (firstRepeatedPrintRow <> Integer(UNASSIGNED_ROW_COL_INDEX)) and
      (lastRepeatedPrintRow = Integer(UNASSIGNED_ROW_COL_INDEX))
   then
