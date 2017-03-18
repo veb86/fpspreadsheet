@@ -225,7 +225,7 @@ type
     procedure DrawCellGrid(ACol,ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     procedure DrawCommentMarker(ARect: TRect);
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
-    procedure DrawFrozenPaneBorders(ARect: TRect);
+    procedure DrawFrozenPaneBorder(AStart, AEnd, ACoord: Integer; IsHor: Boolean);
     procedure DrawFrozenPanes;
     procedure DrawImages(AGridPart: Integer = 0);
     procedure DrawRow(aRow: Integer); override;
@@ -1910,33 +1910,29 @@ begin
 
   FTopLeft := CalcTopLeft(false);
 
-  Canvas.SaveHandleState;
+  if (FrozenRows > 0) or (FrozenCols > 0) then
+    DrawFrozenPanes;
+
+  // Set cliprect for scrollable grid area
+  cliprect := ClientRect;
+  TL := CalcTopLeft(false);
+  if IsRightToLeft then
+    cliprect.Right := TL.X
+  else
+    cliprect.Left := TL.X;
+  cliprect.Top := TL.Y;
+
+  // Paint cell borders, selection rectangle, images and frozen-pane-borders
+  // into this clipped area
+  rgn := CreateRectRgn(cliprect.Left, cliprect.top, cliprect.Right, cliprect.Bottom);
   try
-    if (FrozenRows > 0) or (FrozenCols > 0) then
-      DrawFrozenPanes;
-
-    // Set cliprect for scrollable grid area
-    cliprect := ClientRect;
-    TL := CalcTopLeft(false);
-    if IsRightToLeft then
-      cliprect.Right := TL.X
-    else
-      cliprect.Left := TL.X;
-    cliprect.Top := TL.Y;
-
-    DrawFrozenPaneBorders(clipRect);
-
-    rgn := CreateRectRgn(cliprect.Left, cliprect.top, cliprect.Right, cliprect.Bottom);
     SelectClipRgn(Canvas.Handle, Rgn);
     DrawCellBorders;
     DrawSelection;
     DrawImages(DRAW_NON_FROZEN);
-    //DrawFrozenPaneBorders(clipRect);
-    DeleteObject(rgn);
-
-
+  //  DrawFrozenPaneBorders(clipRect);
   finally
-    Canvas.RestoreHandleState;
+    DeleteObject(rgn);
   end;
 end;
 
@@ -1976,6 +1972,7 @@ begin
         SelectClipRgn(Canvas.Handle, rgn);
         DrawCellBorders(DRAW_FROZEN_ROWS);
         DrawImages(DRAW_FROZEN_ROWS);
+        DrawFrozenPaneBorder(cliprect.Left, clipRect.Right, cliprect.Bottom-1, true);
       finally
         DeleteObject(rgn);
       end;
@@ -1992,6 +1989,10 @@ begin
         SelectClipRgn(Canvas.Handle, rgn);
         DrawCellBorders(DRAW_FROZEN_COLS);
         DrawImages(DRAW_FROZEN_COLS);
+        if IsRightToLeft then
+          DrawFrozenPaneBorder(cliprect.Top, cliprect.Bottom, cliprect.Left+1, false)
+        else
+          DrawFrozenPaneBorder(cliprect.Top, cliprect.Bottom, cliprect.Right-1, false);
       finally
         DeleteObject(rgn);
       end;
@@ -2308,29 +2309,26 @@ end;
 {@@ ----------------------------------------------------------------------------
   Draws a solid line along the borders of frozen panes.
 
-  @param  ARect  This rectangle indicates the area containing scrollable cells.
-                 If the grid has frozen panes, a black line is drawn along the
-                 upper and/or left edge of this rectangle (depending on the
-                 value of FrozenRows and FrozenCols).
+  @param  AStart  Start coordinate of the pane border line
+  @param  AEnd    End coordinate of the pane border line
+  @param  ACoord  other coordinate of the border line
+                  (y if horizontal, x if vertical)
+  @param  IsHor   Determines whether a horizontal or vertical line is drawn and,
+                  thus, how AStart, AEnd and ACoord are interpreted.
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.DrawFrozenPaneBorders(ARect: TRect);
+procedure TsCustomWorksheetGrid.DrawFrozenPaneBorder(AStart, AEnd, ACoord: Integer;
+  IsHor: Boolean);
 begin
-  if WorkSheet = nil then
+  if (IsHor and (FFrozenRows = 0)) or (not IsHor and (FFrozenCols = 0)) then
     exit;
 
-  if (soHasFrozenPanes in Worksheet.Options) then begin
-    Canvas.Pen.Style := psSolid;
-    Canvas.Pen.Color := clBlack;
-    Canvas.Pen.Width := 1;
-    if FFrozenRows > 0 then
-      Canvas.Line(ARect.Left, ARect.Top, ARect.Right, ARect.Top);
-    if FFrozenCols > 0 then
-    begin
-      if IsRightToLeft then
-        Canvas.Line(ARect.Right, ARect.Top, ARect.Right, ARect.Bottom) else
-        Canvas.Line(ARect.Left, ARect.Top, ARect.Left, ARect.Bottom);
-    end;
-  end;
+  Canvas.Pen.Style := psSolid;
+  Canvas.Pen.Color := clBlack;
+  Canvas.Pen.Width := 1;
+  if IsHor then
+    Canvas.Line(AStart, ACoord, AEnd, ACoord)
+  else
+    Canvas.Line(ACoord, AStart, ACoord, AEnd);
 end;
 
 {@@ ----------------------------------------------------------------------------
