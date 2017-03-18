@@ -2042,7 +2042,11 @@ begin
       end;
   end else
     Clear;
+
   FOldText := Lines.Text;
+
+  ReadOnly := Worksheet.IsProtected and
+    (cpLockCell in Worksheet.ReadCellProtection(ACell));
 end;
 
 

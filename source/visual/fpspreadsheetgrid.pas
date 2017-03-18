@@ -91,6 +91,7 @@ type
     FRowHeightLock: Integer;
     FActiveCellLock: Integer;
     FTopLeft: TPoint;
+    FReadOnly: Boolean;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
@@ -206,6 +207,7 @@ type
     function CalcTopLeft(AHeaderOnly: Boolean): TPoint;
     function CalcWorksheetColWidth(AValue: Integer): Single;
     function CalcWorksheetRowHeight(AValue: Integer): Single;
+    function CanEditShow: boolean; override;
     function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
       out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
     procedure ColRowMoved(IsColumn: Boolean; FromIndex,ToIndex: Integer); override;
@@ -1356,6 +1358,10 @@ begin
   end;
 end;
 
+function TsCustomWorksheetGrid.CanEditShow: Boolean;
+begin
+  Result := inherited and (not FReadOnly);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Looks for overflowing cells: if the text of the given cell is longer than
@@ -4488,6 +4494,12 @@ begin
     AutoExpandToCol(gcol, aeNavigation);
     if (grow <> Row) or (gcol <> Col) then
       MoveExtend(false, gcol, grow);
+    if Worksheet.IsProtected then
+    begin
+      cell := Worksheet.FindCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+      FReadOnly := (cell = nil) or (cpLockCell in Worksheet.ReadCellProtection(cell));
+    end else
+      FReadOnly := false;
   end;
 
   // Abort selection because of an error
