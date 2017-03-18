@@ -1924,12 +1924,12 @@ begin
       else
       begin
         ColRowToOffset(True, True, fc-1, tmp, cliprect.Left);
-        dec(clipRect.Left);
+//        dec(clipRect.Left);   // wp!!!
       end;
     fr := FHeaderCount + FFrozenRows;
     if fr > 0 then begin
       ColRowToOffset(False, True, fr-1, tmp, cliprect.Top);
-      dec(cliprect.Top);
+//      dec(cliprect.Top);  // wp!!!
     end;
 
     DrawFrozenPaneBorders(clipRect);
@@ -4869,12 +4869,12 @@ begin
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
-    FTopLeft := CalcTopLeft(false);
     if ShowHeaders then begin
       PrepareCanvasFont;  // Applies the zoom factor
       ColWidths[0] := GetDefaultHeaderColWidth;
       RowHeights[0] := GetDefaultRowHeight;
     end;
+    FTopLeft := CalcTopLeft(false);
   end else
   if Worksheet <> nil then begin
     if aeDefault in FAutoExpand then begin
@@ -4884,7 +4884,6 @@ begin
       ColCount := Max(GetGridCol(WorkSheet.GetLastColIndex), 1) + FHeaderCount;
       RowCount := Max(GetGridCol(Worksheet.GetLastRowIndex), 1) + FHeaderCount;
     end;
-    FTopLeft := CalcTopLeft(false);
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
@@ -4892,6 +4891,7 @@ begin
       ColWidths[0] := GetDefaultHeaderColWidth;
       RowHeights[0] := GetDefaultRowHeight;
     end;
+    FTopLeft := CalcTopLeft(false);
   end;
   UpdateColWidths;
   UpdateRowHeights;
