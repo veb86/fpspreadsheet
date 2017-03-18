@@ -90,6 +90,7 @@ type
     FZoomLock: Integer;
     FRowHeightLock: Integer;
     FActiveCellLock: Integer;
+    FTopLeft: TPoint;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
@@ -202,6 +203,7 @@ type
     procedure AutoAdjustRow(ARow: Integer); virtual;
     procedure AutoExpandToCol(ACol: Integer; AMode: TsAutoExpandMode);
     procedure AutoExpandToRow(ARow: Integer; AMode: TsAutoExpandMode);
+    function CalcTopLeft(AHeaderOnly: Boolean): TPoint;
     function CalcWorksheetColWidth(AValue: Integer): Single;
     function CalcWorksheetRowHeight(AValue: Integer): Single;
     function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
@@ -218,13 +220,14 @@ type
     procedure DoOnResize; override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
     procedure DrawAllRows; override;
-    procedure DrawCellBorders; overload;
+    procedure DrawCellBorders(AGridPart: Integer = 0); overload;
     procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect; ACell: PCell); overload;
     procedure DrawCellGrid(ACol,ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     procedure DrawCommentMarker(ARect: TRect);
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
     procedure DrawFrozenPaneBorders(ARect: TRect);
-    procedure DrawImages;
+    procedure DrawFrozenPanes;
+    procedure DrawImages(AGridPart: Integer = 0);
     procedure DrawRow(aRow: Integer); override;
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
@@ -240,7 +243,8 @@ type
     procedure HeaderSized(IsColumn: Boolean; AIndex: Integer); override;
     procedure InternalDrawCell(ACol, ARow: Integer; AClipRect, ACellRect: TRect;
       AState: TGridDrawState);
-    procedure InternalDrawRow(ARow, AFirstCol, ALastCol: Integer; ARowRect, AFixedRect: TRect);
+    procedure InternalDrawRow(ARow, AFirstCol, ALastCol: Integer;
+      AClipRect: TRect);
     procedure InternalDrawTextInCell(AText: String; ARect: TRect;
       ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
       ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
@@ -259,6 +263,7 @@ type
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
+    function ToPixels(AValue: Double): Integer;
     procedure TopLeftChanged; override;
     function TrimToCell(ACell: PCell): String;
     procedure WMHScroll(var message : TLMHScroll); message LM_HSCROLL;
@@ -761,6 +766,13 @@ const
   {@@ Interval how long the mouse buttons has to be held down on a
     hyperlink cell until the associated hyperlink is executed. }
   HYPERLINK_TIMER_INTERVAL = 500;
+
+const
+  // Constants for AGridPart parameter
+  DRAW_NON_FROZEN = 0;
+  DRAW_FROZEN_ROWS = 1;
+  DRAW_FROZEN_COLS = 2;
+  DRAW_FROZEN_CORNER = 3;
 
 var
   {@@ Auxiliary bitmap containing the previously used non-trivial fill pattern }
@@ -1271,6 +1283,38 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Calculates the top-left corner (in pixels) of the area which can be
+  scrolled. Is bordered by the fixed header cells and the frozen columns and
+  rows.
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.CalcTopLeft(AHeaderOnly: Boolean): TPoint;
+var
+  fc, fr: Integer;
+  tmp: Integer;
+begin
+  fc := IfThen(AHeaderOnly, FHeaderCount, FHeaderCount + FFrozenCols);
+  if IsRightToLeft then
+  begin
+    if fc > 0 then
+      ColRowToOffset(true, true, fc-1, Result.X, tmp)
+    else
+      Result.X := ClientRect.Right;
+  end else
+  begin
+    if fc > 0 then
+      ColRowToOffset(true, true, fc-1, tmp, Result.X)
+    else
+      Result.X := ClientRect.Left;
+  end;
+
+  fr := IfThen(AHeaderOnly, FHeaderCount, FHeaderCount + FFrozenRows);
+  if fr > 0 then
+    ColRowToOffset(false, true, fr-1, tmp, Result.Y)
+  else
+    Result.Y := ClientRect.Top;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Converts the column height given in screen pixels to the units used by the
   worksheet.
 
@@ -1340,6 +1384,7 @@ var
   r: Cardinal;
   w, w0: Integer;
   fmt: PsCellFormat;
+  fc: Integer;
 begin
   Result := false;
   cell := FDrawingCell;
@@ -1356,6 +1401,8 @@ begin
      (fmt^.TextRotation <> trHorizontal)
   then
     exit;
+
+  fc := FHeaderCount + FFrozenCols;
 
   txt := cell^.UTF8Stringvalue;
   if (uffHorAlign in fmt^.UsedFormattingFields) then
@@ -1384,7 +1431,7 @@ begin
       end;
     haRight:
       // overflow to the left
-      while (len > ARect.Right - ARect.Left) and (ACol1 > FixedCols) do
+      while (len > ARect.Right - ARect.Left) and (ACol1 > fc) do
       begin
         result := true;
         dec(ACol1);
@@ -1417,7 +1464,7 @@ begin
         end;
         // left part
         w := w0;
-        while (len > w) and (ACol1 > FixedCols) do
+        while (len > w) and (ACol1 > fc) do
         begin
           Result := true;
           dec(ACol1);
@@ -1435,15 +1482,26 @@ begin
 end;
 
 function TsCustomWorksheetGrid.CellRect(ACol1, ARow1, ACol2, ARow2: Integer): TRect;
+var
+  cmin, cmax: Integer;
+  rmin, rmax: Integer;
+  tmp: Integer;
+  R: TRect;
 begin
+  cmin := Min(ACol1, ACol2);
+  cmax := Max(ACol1, ACol2);
+  rmin := Min(ARow1, ARow2);
+  rmax := Max(ARow1, ARow2);
   if IsRightToLeft then begin
-    Result.TopLeft := CellRect(ACol2, ARow1).TopLeft;
-    Result.BottomRight := CellRect(ACol1, ARow2).BottomRight;
+    ColRowToOffset(True, True, cmin, tmp, Result.Right);
+    ColRowToOffset(True, True, cmax, Result.Left, tmp);
   end else
   begin
-    Result.TopLeft := CelLRect(ACol1, ARow1).TopLeft;
-    Result.BottomRight := CellRect(ACol2, ARow2).BottomRight;
+    ColRowToOffset(True, True, cmin, Result.Left, tmp);
+    ColRowToOffset(True, True, cmax, tmp, Result.Right);
   end;
+  ColRowToOffSet(False, True, rmin, Result.Top, tmp);
+  ColRowToOffset(False, True, rmax, tmp, Result.Bottom);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1845,23 +1903,32 @@ var
   cliprect: TRect;
   rgn: HRGN;
   tmp: Integer = 0;
+  fc, fr: Integer;
 begin
   inherited;
+
+  FTopLeft := CalcTopLeft(false);
+
   Canvas.SaveHandleState;
   try
+    if (FrozenRows > 0) or (FrozenCols > 0) then
+      DrawFrozenPanes;
+
     // Avoid painting into the header cells
     cliprect := ClientRect;
 
-    if FixedCols > 0 then
+    fc := FHeaderCount + FFrozenCols;
+    if fc > 0 then
       if IsRightToLeft then
-        ColRowToOffset(True, true, FixedCols-1, cliprect.Right, tmp)
+        ColRowToOffset(True, true, fc-1, cliprect.Right, tmp)
       else
       begin
-        ColRowToOffset(True, True, FixedCols-1, tmp, cliprect.Left);
+        ColRowToOffset(True, True, fc-1, tmp, cliprect.Left);
         dec(clipRect.Left);
       end;
-    if FixedRows > 0 then begin
-      ColRowToOffset(False, True, FixedRows-1, tmp, cliprect.Top);
+    fr := FHeaderCount + FFrozenRows;
+    if fr > 0 then begin
+      ColRowToOffset(False, True, fr-1, tmp, cliprect.Top);
       dec(cliprect.Top);
     end;
 
@@ -1871,9 +1938,86 @@ begin
     SelectClipRgn(Canvas.Handle, Rgn);
     DrawCellBorders;
     DrawSelection;
+    DrawImages(DRAW_NON_FROZEN);
     DeleteObject(rgn);
 
-    DrawImages;
+  finally
+    Canvas.RestoreHandleState;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.DrawFrozenPanes;
+var
+  cliprect, R: TRect;
+  rgn: HRGN;
+  tmp: Integer = 0;
+  fc, fr: Integer;
+begin
+  if Worksheet = nil then
+    exit;
+
+  Canvas.SaveHandleState;
+  try
+    // Avoid painting into header cells.
+    R := ClientRect;
+    if HeaderCount > 0 then begin
+      ColRowToOffset(false, True, 0, tmp, R.Top);
+      if IsRightToLeft then
+        ColRowToOffset(true, True, 0, R.Right, tmp)
+      else
+        ColRowToOffset(true, True, 0, tmp, R.Left);
+    end;
+
+    fr := FHeaderCount + FFrozenRows;
+    fc := FHeaderCount + FFrozenCols;
+
+    // Paint cell border in frozen rows
+    if fr > 0 then begin
+      if IsRightToLeft then
+        clipRect := Rect(ClientRect.Left, ClientRect.Top, FTopLeft.X, FTopLeft.Y)
+      else
+        cliprect := Rect(FTopLeft.X, ClientRect.Top, ClientRect.Right, FTopLeft.Y);
+      rgn := CreateRectRgn(cliprect.Left, cliprect.Top, cliprect.Right, cliprect.Bottom);
+      try
+        SelectClipRgn(Canvas.Handle, rgn);
+        DrawCellBorders(DRAW_FROZEN_ROWS);
+        DrawImages(DRAW_FROZEN_ROWS);
+      finally
+        DeleteObject(rgn);
+      end;
+    end;
+
+    // Paint cell border in frozen columns
+    if fc > 0 then begin
+      if IsRightToLeft then
+        cliprect := Rect(FTopLeft.X, FTopLeft.Y, ClientRect.Right, ClientRect.Bottom)
+      else
+        cliprect := Rect(ClientRect.Left, FTopLeft.Y, FTopLeft.X, ClientRect.Bottom);
+      rgn := CreateRectRgn(cliprect.Left, cliprect.Top, cliprect.Right, cliprect.Bottom);
+      try
+        SelectClipRgn(Canvas.Handle, rgn);
+        DrawCellBorders(DRAW_FROZEN_COLS);
+        DrawImages(DRAW_FROZEN_COLS);
+      finally
+        DeleteObject(rgn);
+      end;
+    end;
+
+    // Paint intersection of frozen cols and frozen rows
+    if (fr > 0) and (fc > 0) then begin
+      if IsRightToLeft then
+        cliprect := Rect(FTopLeft.X, ClientRect.Top, ClientRect.Right, FTopLeft.Y)
+      else
+        cliprect := Rect(ClientRect.Left, ClientRect.Top, FTopLeft.X, FTopLeft.Y);
+      rgn := CreateRectRgn(clipRect.Left, cliprect.Top, cliprect.Right, cliprect.Bottom);
+      try
+        SelectClipRgn(Canvas.Handle, rgn);
+        DrawCellBorders(DRAW_FROZEN_CORNER);
+        DrawImages(DRAW_FROZEN_CORNER);
+      finally
+        DeleteObject(rgn);
+      end;
+    end;
   finally
     Canvas.RestoreHandleState;
   end;
@@ -1881,8 +2025,13 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Draws the borders of all cells. Calls DrawCellBorders for each individual cell.
+  AGridPart denotes where the cells are painted:
+  0 = normal grid area
+  1 = FrozenRows
+  2 = FrozenCols
+  3 = Top-left corner where FrozenCols and FrozenRows intersect
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.DrawCellBorders;
+procedure TsCustomWorksheetGrid.DrawCellBorders(AGridPart: Integer = 0);
 var
   cell, base: PCell;
   gc, gr: Integer;
@@ -1893,10 +2042,32 @@ begin
   if Worksheet = nil then
     exit;
 
-  sr1 := GetWorksheetRow(GCache.VisibleGrid.Top);
-  sc1 := GetWorksheetCol(GCache.VisibleGrid.Left);
-  sr2 := GetWorksheetRow(GCache.VisibleGrid.Bottom);
-  sc2 := GetWorksheetCol(GCache.VisibleGrid.Right);
+  case AGridPart of
+    0: begin
+         sr1 := GetWorksheetRow(GCache.VisibleGrid.Top);
+         sc1 := GetWorksheetCol(GCache.VisibleGrid.Left);
+         sr2 := GetWorksheetRow(GCache.VisibleGrid.Bottom);
+         sc2 := GetWorksheetCol(GCache.VisibleGrid.Right);
+       end;
+    1: begin
+         sr1 := 0;
+         sr2 := FFrozenRows - 1;
+         sc1 := FFrozenCols - 1;
+         sc2 := GetWorksheetCol(GCache.VisibleGrid.Right);
+       end;
+    2: begin
+         sc1 := 0;
+         sc2 := FFrozenCols - 1;
+         sr1 := FFrozenRows - 1;
+         sr2 := GetWorksheetRow(GCache.VisibleGrid.Bottom);
+       end;
+    3: begin
+         sc1 := 0;
+         sc2 := FFrozenCols - 1;
+         sr1 := 0;
+         sr2 := FFrozenRows - 1;
+       end;
+  end;
   if sr1 = UNASSIGNED_ROW_COL_INDEX then sr1 := 0;
   if sc1 = UNASSIGNED_ROW_COL_INDEX then sc1 := 0;
 
@@ -2038,10 +2209,16 @@ begin
 
     // Left border
     if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) then
-      DrawBorderLine(ARect.Left-ord(not IsRightToLeft), ARect, drawVert, bs);
+      if IsRightToLeft then
+        DrawBorderLine(ARect.Right, ARect, drawVert, bs)
+      else
+        DrawBorderLine(ARect.Left-ord(not IsRightToLeft), ARect, drawVert, bs);
     // Right border
     if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) then
-      DrawBorderLine(ARect.Right-ord(not IsRightToLeft), ARect, drawVert, bs);
+      if IsRightToLeft then
+        DrawBorderLine(ARect.Left, ARect, drawVert, bs)
+      else
+        DrawBorderLine(ARect.Right-ord(not IsRightToLeft), ARect, drawVert, bs);
     // Top border
     if GetBorderstyle(ACol, ARow, 0, -1, ACell, bs) then
       DrawBorderLine(ARect.Top-1, ARect, drawHor, bs);
@@ -2051,23 +2228,21 @@ begin
 
     if ACell <> nil then begin
       fmt := Worksheet.GetPointerToEffectiveCellFormat(ACell);
-//      fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
-      {
-      if Worksheet.IsMergeBase(ACell) then
-      begin
-        Worksheet.FindMergedRange(ACell, r1, c1, r2, c2);
-        ARect := CellRect(GetGridCol(c1), GetGridRow(r1), GetGridCol(c2), GetGridRow(r2));
-      end;
-      }
       // Diagonal up
       if cbDiagUp in fmt^.Border then begin
         bs := fmt^.Borderstyles[cbDiagUp];
-        DrawBorderLine(0, ARect, drawDiagUp, bs);
+        if IsRightToLeft then
+          DrawBorderLine(0, ARect, drawDiagDown, bs)
+        else
+          DrawBorderLine(0, ARect, drawDiagUp, bs);
       end;
       // Diagonal down
       if cbDiagDown in fmt^.Border then begin
         bs := fmt^.BorderStyles[cbDiagDown];
-        DrawborderLine(0, ARect, drawDiagDown, bs);
+        if IsRightToLeft then
+          DrawBorderLine(0, ARect, drawDiagUp, bs)
+        else
+          DrawborderLine(0, ARect, drawDiagDown, bs);
       end;
     end;
   end;
@@ -2168,14 +2343,150 @@ end;
   Draws the embedded images of the worksheet. Is called at the end of the
   painting process.
 -------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.DrawImages;
+procedure TsCustomWorksheetGrid.DrawImages(AGridPart: Integer);
 
-  function ToPixels(AValue: Double): Integer;
+  procedure CalcClipRect(var ARect: TRect);
   var
-    inches: Double;
+    tmp: Integer;
+    headerTL: TPoint;
   begin
-    inches := Workbook.ConvertUnits(AValue, Workbook.Units, suInches);
-    Result := round(inches * Screen.PixelsPerInch);
+    ARect := ClientRect;
+    headerTL := CalcTopLeft(true);
+    case AGridPart of
+      DRAW_NON_FROZEN:
+        begin
+          if IsRightToLeft then
+            ARect.Right := FTopLeft.X
+          else
+            ARect.Left := FTopLeft.X;
+          ARect.Top := FTopLeft.Y;
+        end;
+      DRAW_FROZEN_ROWS:
+        begin
+          if IsRightToLeft then
+            ARect.Right := FTopLeft.X
+          else
+            ARect.Left := FTopLeft.X;
+          ARect.Top := headerTL.Y;
+          ARect.Bottom := FTopLeft.Y;
+        end;
+      DRAW_FROZEN_COLS:
+        begin
+          if IsRightToLeft then
+          begin
+            ARect.Left := FTopLeft.X;
+            ARect.Right := headerTL.X;
+          end else
+          begin
+            ARect.Left := headerTL.X;
+            ARect.Right := FTopLeft.X;
+          end;
+          ARect.Top := FTopLeft.Y;
+        end;
+      DRAW_FROZEN_CORNER:
+        begin
+          if IsRightToLeft then
+          begin
+            ARect.Left := FTopLeft.X;
+            ARect.Right := headerTL.X;
+          end else
+          begin
+            ARect.Left := headerTL.X;
+            ARect.Right := FTopLeft.X;
+          end;
+          ARect.Top := headerTL.Y;
+          ARect.Bottom := FTopLeft.Y;
+        end;
+    end;
+  end;
+
+  // Offset to convert relative to absolute row/col coordinates for ColRowToOffset
+  procedure GetScrollOffset(out ARowDelta, AColDelta: Integer);
+  var
+    tmp: Integer;
+    x, y: Integer;
+  begin
+    AColDelta := 0;
+    if FrozenCols > 0 then begin
+      if IsRightToLeft then begin
+        tmp := LeftCol;
+        ColRowToOffset(true, false, LeftCol, AColDelta, tmp); //tmp, AColDelta);
+        ColRowToOffset(true, true, LeftCol, tmp, x);
+        dec(AColDelta, ClientWidth - x);
+      end else
+      begin
+        ColRowToOffset(true, false, LeftCol, AColDelta, tmp);
+        ColRowToOffset(true, true, LeftCol, x, tmp);
+        dec(AColDelta, x);
+      end;
+    end;
+
+    ARowDelta := 0;
+    if FrozenRows > 0 then begin
+      ColRowToOffset(false, false, TopRow, ARowDelta, tmp);
+      ColRowToOffset(false, true, TopRow, y, tmp);
+      dec(ARowDelta, y);
+    end;
+  end;
+
+  function GetImageRect(img: PsImage; AWidth, AHeight: Integer;
+    ARowDelta, AColDelta: Integer): TRect;
+  var
+    tmp: Integer;
+    gcol, grow: Integer;
+    relativeX, relativeY: Boolean;
+  begin
+    grow := GetGridRow(img^.row);
+    gcol := GetGridCol(img^.Col);
+
+    case AGridPart of
+      DRAW_NON_FROZEN:
+        begin
+          relativeX := (FrozenCols = 0);
+          relativeY := (FrozenRows = 0);
+        end;
+      DRAW_FROZEN_COLS:
+        begin
+          relativeX := true;
+          relativeY := not ((img^.Row < FrozenRows) and (img^.Col < FrozenCols));
+        end;
+      DRAW_FROZEN_ROWS:
+        begin
+          relativeX := not ((img^.Row < FrozenRows) and (img^.Col < FrozenCols));
+          relativeY := true;
+        end;
+      DRAW_FROZEN_CORNER:
+        begin
+          relativeX := true;
+          relativeY := true;
+        end;
+    end;
+
+    if IsRightToLeft then begin
+      if not relativeX then
+        ColRowToOffset(true, false, gcol, Result.Right, tmp)
+      else
+        ColRowToOffset(true, true, gcol, tmp, Result.Right);
+      if not relativeX then
+        Result.Right := ClientWidth - Result.Right + AColDelta;
+      Result.Left := Result.Right - AWidth;
+    end else
+    begin
+      ColRowToOffset(true, relativeX, gcol, Result.Left, tmp);
+      if not relativeX then
+        dec(Result.Left, AColDelta);
+      Result.Right := Result.Left + AWidth;
+    end;
+
+    ColRowToOffset(false, relativeY, grow, Result.Top, tmp);
+    if not relativeY then
+      dec(Result.Top, ARowDelta);
+    Result.Bottom := Result.Top + AHeight;
+
+    if IsRightToLeft then
+      OffsetRect(Result, -ToPixels(img^.OffsetX), ToPixels(img^.OffsetY))
+    else
+      OffsetRect(Result, ToPixels(img^.OffsetX), ToPixels(img^.OffsetY));
   end;
 
 var
@@ -2184,30 +2495,41 @@ var
   obj: TsEmbeddedObj;
   clipArea, imgRect, R: TRect;
   w, h: Integer;
+  coloffs, rowoffs: Integer;
   pic: TPicture;
-  tmp: Integer;
+  rgn: HRGN;
+  fc, fr: Integer;
 begin
-  clipArea := Canvas.ClipRect;
-  ColRowToOffset(true, false, HeaderCount, clipArea.Left, tmp);
-  ColRowToOffset(false, false, HeaderCount, clipArea.Top, tmp);
+  if Worksheet.GetImageCount = 0 then
+    exit;
 
-  // Draw bitmap over grid. Take care of clipping.
+  CalcClipRect(clipArea);
+  GetScrollOffset(rowOffs, colOffs);
+  fc := FHeaderCount + FFrozenCols;
+  fr := FHeaderCount + FFrozenRows;
+                           (*
   Canvas.SaveHandleState;
   try
+    // Draw bitmap over grid. Take care of clipping.
     InterSectClipRect(Canvas.Handle,
       clipArea.Left, clipArea.Top, clipArea.Right, clipArea.Bottom);
-
+                             *)
     for i := 0 to Worksheet.GetImageCount-1 do begin
       img := Worksheet.GetPointerToImage(i);
       obj := Workbook.GetEmbeddedObj(img^.Index);
 
+      // Frozen part of the grid draw only images which are anchored there.
+      case AGridPart of
+        DRAW_NON_FROZEN   : ;
+        DRAW_FROZEN_ROWS  : if (img^.Row >= fr) then Continue;
+        DRAW_FROZEN_COLS  : if (img^.Col >= fc) then Continue;
+        DRAW_FROZEN_CORNER: if (img^.Row >= fr) or (img^.Col >= fc) then Continue;
+      end;
+
+      // Size of image and its position
       w := ToPixels(obj.ImageWidth * img^.ScaleX);
       h := ToPixels(obj.ImageHeight * img^.ScaleY);
-
-      imgRect := CellRect(img^.Col + HeaderCount, img^.Row + HeaderCount);
-      imgRect.Right := imgRect.Left + w;
-      imgRect.Bottom := imgRect.Top + h;
-      OffsetRect(imgRect, ToPixels(img^.OffsetX), ToPixels(img^.OffsetY));
+      imgRect := GetImageRect(img, w, h, rowoffs, coloffs);
 
       // Nothing to do if image is outside the visible grid area
       if not IntersectRect(R, clipArea, imgRect) then
@@ -2219,26 +2541,34 @@ begin
         TBitmap(img^.Bitmap).SetSize(w, h);
         TBitmap(img^.Bitmap).PixelFormat := pf32Bit;
         TBitmap(img^.Bitmap).Transparent := true;
-        pic := TPicture.Create;
-        try
-          obj.Stream.Position := 0;
-          pic.LoadFromStream(obj.Stream);
-          if pic.Bitmap <> nil then
-            TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Bitmap)
-          else if pic.Graphic <> nil then
-            TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Graphic);
-        finally
-          pic.Free;
-        end;
+      end;
+
+      pic := TPicture.Create;
+      try
+        obj.Stream.Position := 0;
+        pic.LoadFromStream(obj.Stream);
+        if pic.Bitmap <> nil then
+          TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Bitmap)
+        else if pic.Graphic <> nil then
+          TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Graphic);
+      finally
+        pic.Free;
       end;
 
       // Draw the bitmap
-      Canvas.Draw(imgRect.Left, imgRect.Top, TBitmap(img^.Bitmap));
+      rgn := CreateRectRgn(clipArea.Left, clipArea.Top, clipArea.Right, clipArea.Bottom);
+      try
+        SelectClipRgn(Canvas.Handle, rgn);
+        Canvas.Draw(imgRect.Left, imgRect.Top, TBitmap(img^.Bitmap));
+      finally
+        DeleteObject(rgn);
+      end;
     end;
-
+           {
   finally
     Canvas.RestoreHandleState;
-  end;
+  end;      }
+
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2251,49 +2581,90 @@ end;
 procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
 var
   gr, gc, gcLast: Integer;    // grid row/column
-  rct, saved_rct, fixed_rct: TRect;
-  clipArea: Trect;
+  fc: Integer;  // Fixed columns (= header column + frozen columns)
+  tmp: Integer;
+  rct, row_rct, header_rct: TRect;
+  clipArea: TRect;
 begin
-  // Upper and Lower bounds for this row
-  rct := Rect(0, 0, 0, 0);
-  ColRowToOffSet(False, True, ARow, rct.Top, rct.Bottom);
-  saved_rct := rct;
-
-  fixed_rct := Rect(0, 0, 0, 0);
-  fixed_rct.Top := rct.Top;
-  fixed_rct.Bottom := rct.Bottom;
-  if HeaderCount > 0 then
-    ColRowToOffset(true, true, 0, fixed_rct.Left, fixed_rct.Right);
-
-  // Don't draw rows outside the ClipRect
   clipArea := Canvas.ClipRect;
-  if (rct.Top >= rct.Bottom) or not VerticalIntersect(rct, clipArea) then begin
+
+  if BiDiMode = bdRightToLeft then
+    tmp := 1;
+
+  // Upper and Lower bounds for this row
+  row_rct := Rect(clipArea.Left, 0, clipArea.Right, 0);
+  ColRowToOffSet(False, True, ARow, row_rct.Top, row_rct.Bottom);
+
+  // Rectangle covering the fixed row headers (but not the frozen cells)
+  header_rct := Rect(0, 0, 0, 0);
+  header_rct.Top := row_rct.Top;
+  header_rct.Bottom := row_rct.Bottom;
+  if HeaderCount > 0 then
+    ColRowToOffset(true, true, 0, header_rct.Left, header_rct.Right);
+
+  // Don't draw rows outside the clipping area
+  if (row_rct.Top >= row_rct.Bottom) or not VerticalIntersect(row_rct, clipArea) then
+  begin
     {$IFDEF DbgVisualChange}
     DebugLn('Drawrow: Skipped row: ', IntToStr(aRow));
     {$ENDIF}
     exit;
   end;
 
-  // (1) Draw data columns in this row
+  // Count of non-scrolling columns
+  fc := FHeaderCount + FFrozenCols;
+
+  // (1) Draw data columns in this row (non-fixed part)
   with GCache.VisibleGrid do
   begin
     gcLast := Right;
     gc := Left;
-    InternalDrawRow(ARow, gc, gcLast, rct, fixed_rct);
+    rct := row_rct;
+    if IsRightToLeft then
+      rct.Right := FTopLeft.X
+    else
+      rct.Left := FTopLeft.X;
+    {
+    if fc > 0 then begin
+      if IsRightToLeft then
+        ColRowToOffset(true, true, fc-1, rct.Right, tmp)
+      else begin
+        ColRowToOffset(true, true, fc-1, tmp, rct.Left);
+        dec(rct.Left);
+      end;
+    end;
+    }
+    InternalDrawRow(ARow, gc, gcLast, rct);
   end;
 
   // (2) Draw fixed columns consisting of header columns and frozen cells
   gr := ARow;
-  rct := saved_rct;
   // (2a) Draw header column
   if FHeaderCount > 0 then begin
     FDrawingCell := nil;
     gc := 0;
-    ColRowToOffset(True, True, gc, rct.Left, rct.Right);
-    InternalDrawCell(gc, gr, rct, rct, [gdFixed]);
+    InternalDrawCell(gc, gr, header_rct, header_rct, [gdFixed]);
   end;
+
   // (2b) Draw frozen cells
-  InternalDrawRow(ARow, FHeaderCount, FixedCols, rct, fixed_rct);
+  if FFrozenCols > 0 then begin
+    rct := row_rct;
+    if IsRightToLeft then
+      rct.Left := FTopLeft.X
+    else
+      rct.Right := FTopLeft.X;
+    {
+    if IsRightToLeft then begin
+      rct.Right := header_rct.Left;
+      ColRowToOffset(true, true, fc-1, rct.Left, tmp);
+    end else begin
+      rct.Left := header_rct.Right;
+      if fc > 0 then
+        ColRowToOffset(true, true, fc-1, tmp, rct.Right);
+    end;
+    }
+    InternalDrawRow(ARow, FHeaderCount, fc-1, rct);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3279,9 +3650,6 @@ begin
   end else
     raise Exception.Create('[TsCustomWorksheetGrid] Incorrect col/row for GetBorderStyle.');
 
-  if IsRightToLeft then
-    ADeltaCol := -ADeltaCol;
-
   r := GetWorksheetRow(ARow);
   c := GetWorksheetCol(ACol);
   if (longint(r) + ADeltaRow < 0) or (longint(c) + ADeltaCol < 0) then
@@ -3419,10 +3787,14 @@ begin
     case ABorder of
       cbNorth : if ACell^.Row > r1 then Result := false;
       cbSouth : if ACell^.Row < r2 then Result := false;
+      cbEast  : if ACell^.Col < c2 then Result := false;
+      cbWest  : if ACell^.Col > c1 then Result := false;
+      {
       cbEast  : if (IsRightToLeft and (ACell^.Col > c1)) or
                    (not IsRightToLeft and (ACell^.Col < c2)) then Result := false;
       cbWest  : if (IsRightToLeft and (ACell^.Col < c2)) or
                    (not IsRightToLeft and (ACell^.Col > c1)) then Result := false;
+                   }
     end;
   end else
     Result := ABorder in Worksheet.ReadCellBorders(ACell);
@@ -3601,9 +3973,10 @@ begin
 end;
 
 { Draws the cells in the specified row. Drawing takes care of text overflow
-  and merged cells }
+  and merged cells.
+  AClipRect covers the paintable row, painting outside will be clipped. }
 procedure TsCustomWorksheetGrid.InternalDrawRow(ARow, AFirstCol, ALastCol: Integer;
-  ARowRect, AFixedRect: TRect);
+  AClipRect: TRect);
 var
   sr: Cardinal;
   scLastUsed: Cardinal;
@@ -3622,13 +3995,8 @@ begin
   scLastused := Worksheet.GetLastColIndex;
   gc := AFirstCol;
   gcLast := ALastCol;
+
   clipArea := Canvas.ClipRect;
-  if FHeaderCount > 0 then begin
-    if IsRightToLeft then
-      ColRowToOffset(true, true, 0, clipArea.Right,tmp)
-    else
-      ColRowToOffset(true, true, 0, tmp, clipArea.Left);
-  end;
 
   with GCache.VisibleGrid do
   begin
@@ -3689,7 +4057,7 @@ begin
     // Here begins the drawing loop of all cells in the row between gc and gclast
     while (gc <= gcLast) do begin
       gr := ARow;
-      rct := ARowRect;
+      rct := AClipRect;
       // FDrawingCell is the cell which is currently being painted. We store
       // it to avoid excessive calls to "FindCell".
       FDrawingCell := nil;
@@ -3772,23 +4140,15 @@ begin
         end;
       end;
 
-      temp_rct := rct;
+      temp_rct := AClipRect;
       rct := CellRect(gc, gr, gcNext-1, gr);
       rct.Top := temp_rct.Top;
       rct.Bottom := temp_rct.Bottom;
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
+//        if IsRightToLeft then dec(rct.Right);     // wp: There's still a 1-pixel gap in the dark fixed-cell border
         gds := GetGridDrawState(gc, gr);
-        temp_rct := rct;
-        // Avoid painting into the fixed cells
-        if IsRightToLeft and (HeaderCount > 0) then
-        begin
-          if temp_rct.Right > AFixedRect.Left then temp_rct.Right := AFixedRect.Left
-        end else
-        begin
-          if temp_rct.Left < AFixedRect.Right then temp_rct.Left := AFixedRect.Right;
-        end;
         // Draw cell
         InternalDrawCell(gc, gr, temp_rct, rct, gds);
         // Draw comment marker
@@ -3801,6 +4161,7 @@ begin
       gc := gcNext;
     end;
   end;    // with GCache.VisibleGrid ...
+
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4331,7 +4692,6 @@ begin
 
     Worksheet.SelectCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
   end;
-  //Refresh;
   inherited;
   Refresh;
 end;
@@ -4509,6 +4869,7 @@ begin
   if (Worksheet = nil) or (Worksheet.GetCellCount = 0) then begin
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
+    FTopLeft := CalcTopLeft(false);
     if ShowHeaders then begin
       PrepareCanvasFont;  // Applies the zoom factor
       ColWidths[0] := GetDefaultHeaderColWidth;
@@ -4523,6 +4884,7 @@ begin
       ColCount := Max(GetGridCol(WorkSheet.GetLastColIndex), 1) + FHeaderCount;
       RowCount := Max(GetGridCol(Worksheet.GetLastRowIndex), 1) + FHeaderCount;
     end;
+    FTopLeft := CalcTopLeft(false);
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
@@ -4673,6 +5035,18 @@ begin
       sortParams,
       0, AIndxFrom-HeaderCount, Worksheet.GetLastRowIndex, AIndxTo-HeaderCount
     );
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts a coordinate given in workbook units to pixels using the current
+  screen resolution
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.ToPixels(AValue: Double): Integer;
+var
+  inches: Double;
+begin
+  inches := Workbook.ConvertUnits(AValue, Workbook.Units, suInches);
+  Result := round(inches * Screen.PixelsPerInch);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4972,14 +5346,14 @@ end;
 procedure TsCustomWorksheetGrid.WMHScroll(var message: TLMHScroll);
 begin
   inherited;
-  if Worksheet.GetImageCount > 0 then
+  //if Worksheet.GetImageCount > 0 then
     Invalidate;
 end;
 
 procedure TsCustomWorksheetGrid.WMVScroll(var message: TLMVScroll);
 begin
   inherited;
-  if Worksheet.GetImageCount > 0 then
+  //if Worksheet.GetImageCount > 0 then
     Invalidate;
 end;
 
