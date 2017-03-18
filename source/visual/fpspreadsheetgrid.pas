@@ -1902,8 +1902,9 @@ procedure TsCustomWorksheetGrid.DrawAllRows;
 var
   cliprect: TRect;
   rgn: HRGN;
-  tmp: Integer = 0;
-  fc, fr: Integer;
+  //tmp: Integer = 0;
+  //fc, fr: Integer;
+  TL: TPoint;
 begin
   inherited;
 
@@ -1914,23 +1915,14 @@ begin
     if (FrozenRows > 0) or (FrozenCols > 0) then
       DrawFrozenPanes;
 
-    // Avoid painting into the header cells
+    // Set cliprect for scrollable grid area
     cliprect := ClientRect;
-
-    fc := FHeaderCount + FFrozenCols;
-    if fc > 0 then
-      if IsRightToLeft then
-        ColRowToOffset(True, true, fc-1, cliprect.Right, tmp)
-      else
-      begin
-        ColRowToOffset(True, True, fc-1, tmp, cliprect.Left);
-//        dec(clipRect.Left);   // wp!!!
-      end;
-    fr := FHeaderCount + FFrozenRows;
-    if fr > 0 then begin
-      ColRowToOffset(False, True, fr-1, tmp, cliprect.Top);
-//      dec(cliprect.Top);  // wp!!!
-    end;
+    TL := CalcTopLeft(false);
+    if IsRightToLeft then
+      cliprect.Right := TL.X
+    else
+      cliprect.Left := TL.X;
+    cliprect.Top := TL.Y;
 
     DrawFrozenPaneBorders(clipRect);
 
@@ -1939,7 +1931,9 @@ begin
     DrawCellBorders;
     DrawSelection;
     DrawImages(DRAW_NON_FROZEN);
+    //DrawFrozenPaneBorders(clipRect);
     DeleteObject(rgn);
+
 
   finally
     Canvas.RestoreHandleState;
@@ -4140,13 +4134,13 @@ begin
         end;
       end;
 
-      temp_rct := AClipRect;
       rct := CellRect(gc, gr, gcNext-1, gr);
-      rct.Top := temp_rct.Top;
-      rct.Bottom := temp_rct.Bottom;
+      rct.Top := AClipRect.Top;
+      rct.Bottom := AClipRect.Bottom;
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
+        temp_rct := rct;
 //        if IsRightToLeft then dec(rct.Right);     // wp: There's still a 1-pixel gap in the dark fixed-cell border
         gds := GetGridDrawState(gc, gr);
         // Draw cell
