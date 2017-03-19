@@ -859,14 +859,17 @@ type
 
     { Utilities }
     function ConvertUnits(AValue: Double; AFromUnits, AToUnits: TsSizeUnits): Double;
-    procedure DisableNotifications;
-    procedure EnableNotifications;
-    function NotificationsEnabled: Boolean;
     procedure UpdateCaches;
     procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
 
     { Protection }
     function IsProtected: Boolean;
+
+    { Notification }
+    procedure ChangedWorksheet(AWorksheet: TsWorksheet);
+    procedure DisableNotifications;
+    procedure EnableNotifications;
+    function NotificationsEnabled: Boolean;
 
     { Error messages }
     procedure AddErrorMsg(const AMsg: String); overload;
@@ -4116,8 +4119,7 @@ begin
   if AValue = FBiDiMode then
     exit;
   FBiDiMode := AValue;
-  if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnChangeWorksheet) then
-    FWorkbook.FOnChangeWorksheet(FWorkbook, self);
+  FWorkbook.ChangedWorksheet(Self);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4129,6 +4131,7 @@ begin
   if AEnable then
     Include(FOptions, soProtected) else
     Exclude(FOptions, soProtected);
+  FWorkbook.ChangedWorksheet(self);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7956,6 +7959,19 @@ procedure TsWorkbook.RemoveWorksheetsCallback(data, arg: pointer);
 begin
   Unused(arg);
   TsWorksheet(data).Free;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Notification of visual controls that some global data of a worksheet
+  have changed.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.ChangedWorksheet(AWorksheet: TsWorksheet);
+begin
+  if FReadWriteFlag = rwfRead then
+    exit;
+
+  if NotificationsEnabled and Assigned(FOnChangeWorksheet)
+    then OnChangeWorksheet(self, AWorksheet);
 end;
 
 {@@ ----------------------------------------------------------------------------

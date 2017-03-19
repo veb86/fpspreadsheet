@@ -118,6 +118,7 @@ type
     property Zoom: Integer read FZoom write SetZoom default 100;
   end;
 
+
   { --- Actions related to cell and cell selection formatting--- }
 
   TsCopyItem = (ciFormat, ciValue, ciFormula, ciAll);
@@ -158,6 +159,8 @@ type
   end;
 
   TsAutoFormatAction = class(TsCellAction)
+  protected
+    procedure UpdateTargetFromActiveCell;
   public
     procedure ExecuteTarget(Target: TObject); override;
     procedure UpdateTarget(Target: TObject); override;
@@ -928,19 +931,21 @@ begin
 end;
 
 procedure TsAutoFormatAction.UpdateTarget(Target: TObject);
+begin
+  Unused(Target);
+  Enabled := inherited Enabled and (Worksheet <> nil) and (Length(GetSelection) > 0);
+  if Enabled then
+    UpdateTargetFromActiveCell;
+end;
+
+procedure TsAutoFormatAction.UpdateTargetFromActiveCell;
 var
   cell: PCell;
 begin
-  Unused(Target);
-
-  Enabled := inherited Enabled and (Worksheet <> nil) and (Length(GetSelection) > 0);
-  if Enabled then
-  begin
-    cell := ActiveCell;
-    if Worksheet.IsMerged(cell) then
-      cell := Worksheet.FindMergeBase(cell);
-    ExtractFromCell(cell);
-  end;
+  cell := ActiveCell;
+  if Worksheet.IsMerged(cell) then
+    cell := Worksheet.FindMergeBase(cell);
+  ExtractFromCell(cell);
 end;
 
 
@@ -1195,7 +1200,7 @@ procedure TsCellProtectionAction.ApplyFormatToCell(ACell: PCell);
 var
   p: TsCellProtections;
 begin
-  if not (Worksheet.IsProtected and (spCells in Worksheet.Protection)) then
+  if (Worksheet.IsProtected and (spCells in Worksheet.Protection)) then
     exit;
 
   p := Worksheet.ReadCellProtection(ACell);
@@ -1216,12 +1221,13 @@ begin
   end;
   p := Worksheet.ReadCellProtection(ACell);
   Checked := FProtection in p;
+  Enabled := not (Worksheet.IsProtected and (spCells in Worksheet.Protection));
 end;
 
 procedure TsCellProtectionAction.UpdateTarget(Target: TObject);
 begin
-  inherited;
-  Enabled := inherited Enabled and Worksheet.IsProtected and (spCells in Worksheet.Protection);
+  Unused(Target);
+  UpdateTargetFromActiveCell;
 end;
 
 
