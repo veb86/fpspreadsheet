@@ -107,7 +107,7 @@ type
   end;
 
   { Action foz zooming the selected worksheet }
-  TsWorksheetZoomAction= class(TsWorksheetAction)
+  TsWorksheetZoomAction = class(TsWorksheetAction)
   private
     FZoom: Integer;
     procedure SetZoom(AValue: Integer);
@@ -284,6 +284,21 @@ type
     property Delta: Integer
       read FDelta write FDelta default +1;
     property Hint stored false;
+  end;
+
+  { TsCellProtectionAction }
+  TsCellProtectionAction = class(TsAutoFormatAction)
+  private
+    FProtection: TsCellProtection;
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+    procedure ExtractFromCell(ACell: PCell); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    procedure UpdateTarget(Target: TObject); override;
+  published
+    property AutoCheck default true;
+    property Protection: TsCellProtection read FProtection write FProtection default cpLockCell;
   end;
 
   { TsCellBorderAction }
@@ -555,6 +570,7 @@ begin
     TsHorAlignmentAction, TsVertAlignmentAction,
     TsTextRotationAction, TsWordWrapAction,
     TsNumberFormatAction, TsDecimalsAction,
+    TsCellProtectionAction,
     TsCellBorderAction, TsNoCellBordersAction,
     TsCellCommentAction, TsCellHyperlinkAction,
     TsMergeAction
@@ -1164,6 +1180,48 @@ begin
   else
     Worksheet.GetNumberFormatAttributes(ACell, decs, csym);
   FDecimals := decs;
+end;
+
+
+{ TsCellProtectionAction }
+
+constructor TsCellProtectionAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  AutoCheck := true;
+end;
+
+procedure TsCellProtectionAction.ApplyFormatToCell(ACell: PCell);
+var
+  p: TsCellProtections;
+begin
+  if not (Worksheet.IsProtected and (spCells in Worksheet.Protection)) then
+    exit;
+
+  p := Worksheet.ReadCellProtection(ACell);
+  if Checked then
+    Include(p, FProtection)
+  else
+    Exclude(p, FProtection);
+  Worksheet.WriteCellProtection(ACell, p);
+end;
+
+procedure TsCellProtectionAction.ExtractFromCell(ACell: PCell);
+var
+  p: TsCellProtections;
+begin
+  if ACell = nil then begin
+    Checked := FProtection = cpLockCell;
+    exit;
+  end;
+  p := Worksheet.ReadCellProtection(ACell);
+  Checked := FProtection in p;
+end;
+
+procedure TsCellProtectionAction.UpdateTarget(Target: TObject);
+begin
+  inherited;
+  Enabled := inherited Enabled and Worksheet.IsProtected and (spCells in Worksheet.Protection);
 end;
 
 

@@ -2010,12 +2010,18 @@ end;
 procedure TsCellEdit.ShowCell(ACell: PCell);
 var
   s: String;
+  hideformula: Boolean;
 begin
   if (FWorkbookSource <> nil) and (ACell <> nil) then
   begin
+    hideformula := Worksheet.IsProtected and (spCells in Worksheet.Protection) and
+      (cpHideFormulas in Worksheet.ReadCellProtection(ACell));
     s := Worksheet.ReadFormulaAsString(ACell, true);
-    if s <> '' then begin
-      if s[1] <> '=' then s := '=' + s;
+    if (s <> '') then begin
+      if hideformula then
+        s := '(Formula hidden)'
+      else
+        if s[1] <> '=' then s := '=' + s;
       Lines.Text := s;
     end else
       case ACell^.ContentType of
@@ -2045,7 +2051,7 @@ begin
 
   FOldText := Lines.Text;
 
-  ReadOnly := Worksheet.IsProtected and
+  ReadOnly := Worksheet.IsProtected and (spCells in Worksheet.Protection) and
     (cpLockCell in Worksheet.ReadCellProtection(ACell));
 end;
 
@@ -3368,7 +3374,7 @@ begin
   if (AFormatIndex = -1) then
     AStrings.Add('Protection=(default)')
   else begin
-    if Worksheet.IsProtected then begin
+    if Worksheet.IsProtected and (spCells in Worksheet.Protection) then begin
       s := '';
       for cp in TsCellProtection do
         if cp in fmt.Protection then

@@ -575,7 +575,7 @@ type
     {@@ inherited from ancestors}
     property Color;
     {@@ inherited from ancestors}
-    property ColCount stored;
+    property ColCount default 27; //stored;
     //property Columns;
     {@@ inherited from ancestors}
     property Constraints;
@@ -622,7 +622,7 @@ type
     {@@ inherited from ancestors}
     property PopupMenu;
     {@@ inherited from ancestors}
-    property RowCount;
+    property RowCount default 101;
     {@@ inherited from ancestors}
     property ScrollBars;
     {@@ inherited from ancestors}
