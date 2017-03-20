@@ -674,7 +674,7 @@ type
   TsCellProtection = (cpLockCell, cpHideFormulas);
   TsCellProtections = set of TsCellProtection;
 
-const
+const     // all this actions are FORBIDDEN is included and ALLOWED of excluded!
   ALL_SHEET_PROTECTIONS = [spFormatCells, spFormatColumns, spFormatRows,
     spDeleteColumns, spDeleteRows, spInsertColumns, spInsertRows, spInsertHyperlinks,
     spCells, spSort, spObjects, spSelectLockedCells, spSelectUnlockedCells

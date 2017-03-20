@@ -261,6 +261,7 @@ type
     procedure PrepareCanvasFont;
     function RelaxAutoExpand: TsAutoExpandModes;
     procedure RestoreAutoExpand(AValue: TsAutoExpandModes);
+    function  SelectCell(ACol, ARow: Integer): Boolean; override;
     procedure SelPenChangeHandler(Sender: TObject);
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
@@ -4831,8 +4832,32 @@ begin
   GetWorkbookSource.SelectWorksheet(Workbook.GetWorksheetByIndex(AIndex));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Standard method inherited from TCustomGrid. Is overridden to prevent
+  selection of cells in a protected worksheet. Details depend on whether
+  the elements spSelectLockedCells and/or spSelectUnlockedCells are included in
+  the worksheet's set of protections, and whether the cell to be selected is
+  locked or not.
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.SelectCell(ACol, ARow: Integer): Boolean;
+var
+  cell: PCell;
+  cp: TsCellprotections;
+begin
+  Result := true;
+  if Worksheet.IsProtected then
+  begin
+    cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    cp := Worksheet.ReadCellProtection(cell);
+    if (cpLockCell in cp) and (spSelectLockedCells in Worksheet.Protection) then
+      Result := false;
+    if not (cpLockCell in cp) and (spSelectUnlockedCells in Worksheet.Protection) then
+      Result := false;
+  end;
+end;
+
 {@@ Event handler which fires when an element of the SelectionPen changes. }
-procedure TsCustomWOrksheetGrid.SelPenChangeHandler(Sender: TObject);
+procedure TsCustomWorksheetGrid.SelPenChangeHandler(Sender: TObject);
 begin
   InvalidateGrid;
 end;

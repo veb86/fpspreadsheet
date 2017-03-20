@@ -241,6 +241,9 @@ type
     function GetWorksheet: TsWorksheet;
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
   protected
+    function CanEditCell(ACell: PCell): Boolean; overload;
+    function CanEditCell(ARow, ACol: Cardinal): Boolean; overload;
+    procedure DoEnter; override;
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure ShowCell(ACell: PCell); virtual;
@@ -1856,6 +1859,36 @@ begin
   inherited Destroy;
 end;
 
+function TsCellEdit.CanEditCell(ACell: PCell): Boolean;
+begin
+  if Worksheet.IsMerged(ACell) then
+    ACell := Worksheet.FindMergeBase(ACell);
+  Result := not (
+    Worksheet.IsProtected and
+    (spCells in Worksheet.Protection) and
+    ((ACell = nil) or (cpLockcell in Worksheet.ReadCellProtection(ACell)))
+  );
+end;
+
+function TsCellEdit.CanEditCell(ARow, ACol: Cardinal): Boolean;
+var
+  cell: PCell;
+begin
+  cell := Worksheet.Findcell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  Result := CanEditCell(cell);
+end;
+
+procedure TsCellEdit.DoEnter;
+begin
+  if not CanEditCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol) then
+  begin
+    MessageDlg('This cell is protected from editing. Unlock worksheet protection '+
+      'before continuing.', mtInformation, [mbOK], 0);
+    Abort;
+  end;
+  inherited;
+end;
+
 {@@ ----------------------------------------------------------------------------
   EditingDone is called when the user presses the RETURN key to finish editing,
   or the TAB key which removes focus from the control, or clicks somewhere else
@@ -2051,8 +2084,7 @@ begin
 
   FOldText := Lines.Text;
 
-  ReadOnly := Worksheet.IsProtected and (spCells in Worksheet.Protection) and
-    (cpLockCell in Worksheet.ReadCellProtection(ACell));
+  ReadOnly := not CanEditCell(ACell);
 end;
 
 
