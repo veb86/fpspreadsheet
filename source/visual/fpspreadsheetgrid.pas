@@ -2581,16 +2581,12 @@ procedure TsCustomWorksheetGrid.DrawRow(ARow: Integer);
 var
   gr, gc, gcLast: Integer;    // grid row/column
   fc: Integer;  // Fixed columns (= header column + frozen columns)
-  tmp: Integer;
   rct, row_rct, header_rct: TRect;
   clipArea: TRect;
 begin
   clipArea := Canvas.ClipRect;
 
-  if BiDiMode = bdRightToLeft then
-    tmp := 1;
-
-  // Upper and Lower bounds for this row
+  // Upper and lower bounds for this row
   row_rct := Rect(clipArea.Left, 0, clipArea.Right, 0);
   ColRowToOffSet(False, True, ARow, row_rct.Top, row_rct.Bottom);
 
@@ -2623,16 +2619,6 @@ begin
       rct.Right := FTopLeft.X
     else
       rct.Left := FTopLeft.X;
-    {
-    if fc > 0 then begin
-      if IsRightToLeft then
-        ColRowToOffset(true, true, fc-1, rct.Right, tmp)
-      else begin
-        ColRowToOffset(true, true, fc-1, tmp, rct.Left);
-        dec(rct.Left);
-      end;
-    end;
-    }
     InternalDrawRow(ARow, gc, gcLast, rct);
   end;
 
@@ -2652,16 +2638,6 @@ begin
       rct.Left := FTopLeft.X
     else
       rct.Right := FTopLeft.X;
-    {
-    if IsRightToLeft then begin
-      rct.Right := header_rct.Left;
-      ColRowToOffset(true, true, fc-1, rct.Left, tmp);
-    end else begin
-      rct.Left := header_rct.Right;
-      if fc > 0 then
-        ColRowToOffset(true, true, fc-1, tmp, rct.Right);
-    end;
-    }
     InternalDrawRow(ARow, FHeaderCount, fc-1, rct);
   end;
 end;
@@ -3985,7 +3961,7 @@ var
   tmp: Integer = 0;
   cell: PCell;
   fmt: PsCellFormat;
-  rct, commentcell_rct, temp_rct: TRect;
+  rct, clip_rct, commentcell_rct, temp_rct: TRect;
   gds: TGridDrawState;
   clipArea: TRect;
 
@@ -4139,17 +4115,20 @@ begin
         end;
       end;
 
+      // Take care of upper and lower bounds of merged cells!
+      temp_rct := rct;
       rct := CellRect(gc, gr, gcNext-1, gr);
-      rct.Top := AClipRect.Top;
-      rct.Bottom := AClipRect.Bottom;
+      rct.Top := temp_rct.Top;
+      rct.Bottom := temp_rct.Bottom;
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
-        temp_rct := rct;
-//        if IsRightToLeft then dec(rct.Right);     // wp: There's still a 1-pixel gap in the dark fixed-cell border
+        clip_rct := rct;
+        clip_rct.Top := AClipRect.Top;
+        clip_rct.Bottom := AClipRect.Bottom;
         gds := GetGridDrawState(gc, gr);
         // Draw cell
-        InternalDrawCell(gc, gr, temp_rct, rct, gds);
+        InternalDrawCell(gc, gr, clip_rct, rct, gds);
         // Draw comment marker
         if (commentcell_rct.Left <> 0) and (commentcell_rct.Right <> 0) and
            (commentcell_rct.Top <> 0) and (commentcell_rct.Bottom <> 0)
