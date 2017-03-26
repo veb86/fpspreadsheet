@@ -301,7 +301,9 @@ begin
       FSheet.WriteBlank(FRow, EF.Index)
     else if Field.Datatype in (IntFieldTypes+[ftAutoInc,ftLargeInt]) then
       FSheet.WriteNumber(FRow, EF.Index,Field.AsInteger)
-    else if Field.Datatype in [ftBCD,ftCurrency,ftFloat,ftFMTBcd] then
+    else if Field.Datatype in [ftBCD,ftFloat,ftFMTBcd] then
+      FSheet.WriteNumber(FRow, EF.Index, Field.AsFloat)
+    else if Field.Datatype in [ftCurrency] then
       FSheet.WriteCurrency(FRow, EF.Index, Field.AsFloat)
     else if Field.DataType in [ftString,ftFixedChar] then
       FSheet.WriteText(FRow, EF.Index, Field.AsString)
