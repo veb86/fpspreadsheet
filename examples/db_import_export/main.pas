@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, FileUtil, Forms, Controls, Graphics, Dialogs, StdCtrls,
-  ComCtrls, ExtCtrls, db, dbf,
+  ComCtrls, ExtCtrls, db, dbf, BufDataset,
   fpstypes, fpspreadsheet, fpsallformats, fpsexport;
 
 type
@@ -17,7 +17,7 @@ type
     Bevel1: TBevel;
     Bevel2: TBevel;
     Bevel3: TBevel;
-    BtnCreateDbf: TButton;
+    BtnCreateDatabase: TButton;
     BtnExport: TButton;
     BtnImport: TButton;
     EdRecordCount: TEdit;
@@ -33,25 +33,28 @@ type
     Label3: TLabel;
     PageControl: TPageControl;
     Panel1: TPanel;
+    RgDatabaseType: TRadioGroup;
     RgFileFormat: TRadioGroup;
     RgExportMode: TRadioGroup;
     TabDataGenerator: TTabSheet;
     TabExport: TTabSheet;
     TabImport: TTabSheet;
-    procedure BtnCreateDbfClick(Sender: TObject);
+    procedure BtnCreateDatabaseClick(Sender: TObject);
     procedure BtnExportClick(Sender: TObject);
     procedure BtnImportClick(Sender: TObject);
     procedure FileListClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
     procedure PageControlChange(Sender: TObject);
+    procedure RgFileFormatSelectionChanged(Sender: TObject);
   private
     { private declarations }
-    FExportDataset: TDbf;
+    FExportDataset: TDataset;
     FImportDataset: TDbf;
     FWorkbook: TsWorkbook;
     FHeaderTemplateCell: PCell;
     FDateTemplateCell: PCell;
+    FCurrencyTemplatecell: PCell;
     FImportedFieldNames: TStringList;
     FImportedRowCells: Array of TCell;
     // Actual export code when using FPSpreadsheet's fpsexport:
@@ -82,6 +85,9 @@ implementation
 
 {$R *.lfm}
 
+uses
+  fpsNumFormat;
+
 type
   // Ways to export dbf/dataset. Corresponds to the items
   // of the RgExportMode radiogroup
@@ -106,7 +112,7 @@ const
     'New York', 'Los Angeles', 'San Francisco', 'Chicago', 'Miami',
     'New Orleans', 'Washington', 'Boston', 'Seattle', 'Las Vegas');
 
-  TABLENAME = 'people.dbf'; //name for the dbf table
+  TABLENAME = 'people'; //name for the database table, extension will be added
   DATADIR = 'data'; //subdirectory where .dbf is stored
 
   // File formats corresponding to the items of the RgFileFormat radiogroup
@@ -117,17 +123,21 @@ const
   // Spreadsheet files will get the TABLENAME and have one of these extensions.
   FILE_EXT: array[0..4] of string = (
     '_excel2.xls', '_excel5.xls', '.xls', '.xlsx', '.ods');
+  // Extension of database files supported
+  DB_EXT: array[0..1] of string = (
+    '.dbf', '.db');
 
 
 { TForm1 }
 
 { This procedure creates a test dbf table with random data for us to play with }
-procedure TForm1.BtnCreateDbfClick(Sender: TObject);
+procedure TForm1.BtnCreateDatabaseClick(Sender: TObject);
 var
   i: Integer;
   startDate: TDate;
   maxAge: Integer = 80 * 365;
   f: TField;
+  fn: String;
 begin
   if FExportDataset <> nil then
     FExportDataset.Free;
@@ -135,11 +145,21 @@ begin
   ForceDirectories(DATADIR);
   startDate := EncodeDate(2010, 8, 1);
 
-  FExportDataset := TDbf.Create(self);
-  FExportDataset.FilePathFull := DATADIR + DirectorySeparator;
-  FExportDataset.TableName := TABLENAME;
-  FExportDataset.TableLevel := 4;  // DBase IV: most widely used.
-  FExportDataset.TableLevel := 25;   // FoxPro supports FieldType nfCurrency
+  fn := DATADIR + DirectorySeparator + TABLENAME + DB_EXT[RgDatabaseType.itemIndex];
+  case RgDatabaseType.ItemIndex of
+    0: begin
+         FExportDataset := TDbf.Create(self);
+         TDbf(FExportDataset).FilePathFull := ExtractFilePath(fn);
+         TDbf(FExportDataset).TableName := ExtractFileName(fn);
+//         TDbf(FExportDataset).TableLevel := 4;  // DBase IV: most widely used.
+         TDbf(FExportDataset).TableLevel := 25;   // FoxPro supports FieldType nfCurrency
+       end;
+    1: begin
+         FExportDataset := TBufDataset.Create(self);
+         TBufDataset(FExportDataset).Filename := fn;
+       end;
+    2: raise Exception.Create('Database type not supported');
+  end;
   FExportDataset.FieldDefs.Add('Last name', ftString);
   FExportDataset.FieldDefs.Add('First name', ftString);
   FExportDataset.FieldDefs.Add('City', ftString);
@@ -147,8 +167,12 @@ begin
   FExportDataset.FieldDefs.Add('Salary', ftCurrency);
   FExportDataset.FieldDefs.Add('Work begin', ftDateTime);
   FExportDataset.FieldDefs.Add('Work end', ftDateTime);
-  DeleteFile(FExportDataset.FilePathFull + FExportDataset.TableName);
-  FExportDataset.CreateTable;
+  FExportDataset.FieldDefs.Add('Size', ftFloat);
+  DeleteFile(fn);
+  case RgDatabaseType.ItemIndex of
+    0: TDbf(FExportDataset).CreateTable;
+    1: TBufDataset(FExportDataset).CreateDataset;
+  end;
 
   FExportDataset.Open;
   // We generate random records by combining first names, last names and cities
@@ -158,6 +182,8 @@ begin
   for i:=1 to StrToInt(EdRecordCount.Text) do begin
     if (i mod 1000 = 0) then
     begin
+      if FExportDataset is TBufDataset then
+        TBufDataset(FExportDataset).MergeChangeLog;
       InfoLabel1.Caption := Format('Adding record %d...', [i]);
       Application.ProcessMessages;
     end;
@@ -167,14 +193,16 @@ begin
     FExportDataset.FieldByName('City').AsString := CITIES[Random(NUM_CITIES)];
     FExportDataset.FieldByName('Birthday').AsDateTime := startDate - random(maxAge);
     FExportDataset.FieldByName('Salary').AsFloat := 1000+Random(9000);
-//    FExportDataSet.FieldByName('Work begin').AsDateTime := 40000+EncodeTime(6+Random(4), Random(60), Random(60), 0);
-//    FExportDataSet.FieldByName('Work end').AsDateTime := EncodeTime(15+Random(4), Random(60), Random(60), 0);
+    FExportDataset.FieldByName('Size').AsFloat := (160 + Random(50)) / 100;
+    FExportDataSet.FieldByName('Work begin').AsDateTime := 40000+EncodeTime(6+Random(4), Random(60), Random(60), 0);
+    FExportDataSet.FieldByName('Work end').AsDateTime := EncodeTime(15+Random(4), Random(60), Random(60), 0);
     FExportDataset.Post;
   end;
+
   FExportDataset.Close;
 
   InfoLabel1.Caption := Format('Done. Created file "%s" in folder "data".', [
-    FExportDataset.TableName, FExportDataset.FilePathFull
+    ExtractFileName(fn), ExtractFileDir(fn)
   ]);
   InfoLabel2.Caption := '';
   InfoLabel3.Caption := '';
@@ -191,18 +219,27 @@ begin
   InfoLabel2.Caption := '';
   Application.ProcessMessages;
 
+  DataFileName := DATADIR + DirectorySeparator + TABLENAME + DB_EXT[RgDatabaseType.ItemIndex];;
   if FExportDataset = nil then
   begin
-    FExportDataset := TDbf.Create(self);
-    FExportDataset.FilePathFull := DATADIR + DirectorySeparator;
-    FExportDataset.TableName := TABLENAME;
+    case RgDatabaseType.ItemIndex of
+      0: begin
+           FExportDataset := TDbf.Create(self);
+           TDbf(FExportDataset).FilePathFull := ExtractFilePath(DatafileName);
+           TDbf(FExportDataset).TableName := ExtractFileName(DatafileName);
+         end;
+      1: begin
+           FExportDataset := TBufDataset.Create(self);
+           TBufDataset(FExportDataset).FileName := DatafileName;
+         end;
+      else
+        raise Exception.Create('Database type not supported.');
+    end;
   end;
 
-  DataFileName := FExportDataset.FilePathFull + FExportDataset.TableName;
   if not FileExists(DataFileName) then
   begin
-    MessageDlg(Format('Database file "%s" not found. Please run "Create '
-      +'database" first.',
+    MessageDlg(Format('Database file "%s" not found. Please run "Create database" first.',
       [DataFileName]), mtError, [mbOK], 0);
     exit;
   end;
@@ -229,7 +266,7 @@ begin
   end;
 
   InfoLabel2.Caption := Format('Done. Database exported to file "%s" in folder "%s"', [
-    ChangeFileExt(FExportDataset.TableName, FILE_EXT[RgFileFormat.ItemIndex]),
+    ChangeFileExt(ExtractFileName(DataFileName), FILE_EXT[RgFileFormat.ItemIndex]),
     DATADIR
   ]);
 end;
@@ -283,7 +320,7 @@ begin
       FImportDataset.Free;
     FImportDataset := TDbf.Create(self);
     FImportDataset.FilePathFull := DATADIR + DirectorySeparator;
-    FImportDataset.TableName := 'imported_' + TABLENAME;
+    FImportDataset.TableName := 'imported_' + TABLENAME + '.dbf';
     FImportDataset.TableLevel := 4; //DBase IV; most widely used.
     DeleteFile(FImportDataset.FilePathFull + FImportDataset.TableName);
 
@@ -378,19 +415,26 @@ begin
       Exporter.ExportFields.AddField('Birthday');
       Exporter.Execute;
 
-      // On the second sheet we want "Last name", "First name" and "Income"
+      // On the third sheet we want "Last name", "First name" and "Income"
       Exporter.ExportFields.Clear;
       Exporter.ExportFields.AddField('Last name');
       Exporter.ExportFields.AddField('First name');
       Exporter.ExportFields.AddField('Salary');
       Exporter.Execute;
 
-      // On the second sheet we want "Last name", "First name" and "Work begin/end times"
+      // On the 4th sheet we want "Last name", "First name" and "Work begin/end times"
       Exporter.ExportFields.Clear;
       Exporter.ExportFields.AddField('Last name');
       Exporter.ExportFields.AddField('First name');
       Exporter.ExportFields.AddField('Work begin');
       Exporter.ExportFields.AddField('Work end');
+      Exporter.Execute;
+
+      // On the 5th sheet we want "Last name", "First name" and "Size"
+      Exporter.ExportFields.Clear;
+      Exporter.ExportFields.AddField('Last name');
+      Exporter.ExportFields.AddField('First name');
+      Exporter.ExportFields.AddField('Size');
       Exporter.Execute;
 
       // Export complete --> we can write to file
@@ -433,7 +477,7 @@ var
 begin
   if PageControl.ActivePage = TabImport then begin
     FileList.Clear;
-    if FindFirst(DATADIR + DirectorySeparator + ChangeFileExt(TABLENAME, '') + '*.*', faAnyFile, sr) = 0
+    if FindFirst(DATADIR + DirectorySeparator + TABLENAME + '*.*', faAnyFile, sr) = 0
     then begin
       repeat
         if (sr.Name = '.') or (sr.Name = '..') then
@@ -451,6 +495,7 @@ end;
 procedure TForm1.ExportUsingVirtualMode(var DataFileName: string);
 var
   worksheet: TsWorksheet;
+  tablename: String;
 begin
   {
   if FILE_FORMATS[RgFileFormat.ItemIndex] = sfOpenDocument then
@@ -461,9 +506,15 @@ begin
    }
   FExportDataset.Open;
 
+  case RgDatabaseType.ItemIndex of
+    0: tablename := TDbf(FExportDataset).TableName;
+    1: tablename := ExtractFilename(TBufDataset(FExportDataset).FileName);
+    else raise Exception.Create('Database type not supported.');
+  end;
+
   FWorkbook := TsWorkbook.Create;
   try
-    worksheet := FWorkbook.AddWorksheet(FExportDataset.TableName);
+    worksheet := FWorkbook.AddWorksheet(tableName);
 
     // Make header line frozen - but not in Excel2 where frozen panes do not yet work properly
     if FILE_FORMATS[RgFileFormat.ItemIndex] <> sfExcel2 then begin
@@ -481,6 +532,10 @@ begin
     // Use cell B1 as format template of date column
     FDateTemplateCell := worksheet.GetCell(0, 1);
     worksheet.WriteDateTimeFormat(FDateTemplateCell, nfShortDate);
+
+    // Use cell C1 as format template of currency column
+    FCurrencyTemplateCell := worksheet.GetCell(0, 2);
+    worksheet.WriteNumberFormat(FCurrencyTemplateCell, nfCurrency);
 
     // Make rows a bit wider
     worksheet.WriteColWidth(0, 20);
@@ -514,6 +569,7 @@ begin
     1: ASheetName := 'Birthday';
     2: ASheetName := 'Salary';
     3: ASheetName := 'Work time';
+    4: ASheetName := 'Size';
   end;
 end;
 
@@ -529,6 +585,8 @@ procedure TForm1.ReadCellDataHandler(Sender: TObject; ARow, ACol: Cardinal;
 var
   i: Integer;
   fieldType: TFieldType;
+  fmt: TsCellFormat;
+  nfp: TsNumFormatParams;
 begin
   // The first row (index 0) holds the field names. We temporarily store the
   // field names in a stringlist because we don't know the data types of the
@@ -550,8 +608,11 @@ begin
       // Add fields - the required information is stored in FImportedFieldNames
       // and FImportedFieldTypes
       for i:=0 to High(FImportedRowCells) do begin
+        fmt := TsWorksheet(ADataCell^.Worksheet).ReadCellFormat(ADataCell);
+        nfp := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
         case FImportedRowCells[i].ContentType of
-          cctNumber     : fieldType := ftFloat;
+          cctNumber     : if IsCurrencyFormat(nfp) then fieldType := ftCurrency
+                            else fieldType := ftFloat;
           cctDateTime   : fieldType := ftDateTime;
           cctUTF8String : fieldType := ftString;
         end;
@@ -596,6 +657,11 @@ begin
   end;
 end;
 
+procedure TForm1.RgFileFormatSelectionChanged(Sender: TObject);
+begin
+  RgExportMode.Controls[2].Enabled := RgFileFormat.ItemIndex <> 0;
+end;
+
 { This is the event handler for exporting a database file to spreadsheet format
   in virtual mode. Data are not written into the worksheet, they exist only
   temporarily. }
@@ -615,7 +681,10 @@ begin
   begin
     AValue := FExportDataset.Fields[ACol].Value;
     if FExportDataset.Fields[ACol].DataType = ftDate then
-      AStyleCell := FDateTemplateCell;
+      AStyleCell := FDateTemplateCell
+    else if FExportDataset.Fields[ACol].DataType = ftCurrency then
+      AStyleCell := FCurrencyTemplateCell;
+
     if ACol = Sender.VirtualColCount-1 then
     begin
       // Move to next record after last field has been written
