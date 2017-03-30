@@ -4123,10 +4123,20 @@ begin
 
       if (rct.Left < rct.Right) and HorizontalIntersect(rct, clipArea) then
       begin
+        // Define clipping rectangle in order to avoid painting into the header cells
         clip_rct := rct;
         clip_rct.Top := AClipRect.Top;
         clip_rct.Bottom := AClipRect.Bottom;
+        if (gc >= FHeaderCount + FFrozenCols) then begin
+          if UseRightToLeftReading then begin
+            if (clip_rct.Right > FTopLeft.X) then
+              clip_rct.Right := FTopLeft.X;
+          end else
+            if (clip_rct.Left < FTopLeft.X) then
+              clip_rct.Left := FTopLeft.X;
+        end;
         gds := GetGridDrawState(gc, gr);
+
         // Draw cell
         InternalDrawCell(gc, gr, clip_rct, rct, gds);
         // Draw comment marker
