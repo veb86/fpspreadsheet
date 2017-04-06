@@ -19,7 +19,8 @@ function PasswordHash(const APassword: String; Algorithm: TsAlgorithm): String;
 implementation
 
 uses
-  sha1, LazUTF8;
+  //sha1,
+  LazUTF8;
 
 function AlgorithmToStr(Algorithm: TsCryptoAlgorithm; AUsage: TsAlgorithmUsage): String;
 begin

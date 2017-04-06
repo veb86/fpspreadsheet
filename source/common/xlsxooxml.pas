@@ -29,22 +29,20 @@ unit xlsxooxml;
 
 {$ifdef fpc}
   {$mode objfpc}{$H+}
-//  {$mode delphi}
 {$endif}
 
 interface
 
 uses
   Classes, SysUtils,
-  laz2_xmlread, laz2_DOM,
-  AVL_Tree,
+  laz2_xmlread, laz2_DOM, avglvltree,
  {$IF FPC_FULLVERSION >= 20701}
   zipper,
  {$ELSE}
   fpszipper,
  {$ENDIF}
   fpsTypes, fpSpreadsheet, fpsUtils, fpsReaderWriter, fpsNumFormat, fpsPalette,
-  fpsxmlcommon, xlsCommon; //, xlsxdecrypter;
+  fpsxmlcommon, xlsCommon;
   
 type
 
@@ -1274,6 +1272,8 @@ var
   ref: String;
   r1, c1: Cardinal;
 begin
+  Unused(AWorksheet);
+
   FLastRow := MaxInt;
   FLastCol := MaxInt;
 
@@ -3087,7 +3087,7 @@ var
   target, bookmark: String;
   s: String;
   txt: String;
-  AVLNode: TAVLTreeNode;
+  AVLNode: TAvgLvlTreeNode;
 begin
   if AWorksheet.Hyperlinks.Count = 0 then
     exit;
@@ -4280,7 +4280,7 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteWorksheetRels(AWorksheet: TsWorksheet);
 var
-  AVLNode: TAVLTreeNode;
+  AVLNode: TAvgLvlTreeNode;
   hyperlink: PsHyperlink;
   s: String;
   target, bookmark: String;

@@ -5,7 +5,7 @@ unit fpsclasses;
 interface
 
 uses
-  Classes, SysUtils, AVL_Tree, //avglvltree,
+  Classes, SysUtils, avglvltree,
   fpstypes;
 
 type
@@ -22,7 +22,7 @@ type
   TsRowColEnumerator = class
   private
   protected
-    FCurrentNode: TAVLTreeNode;
+    FCurrentNode: TAvgLvlTreeNode;
     FTree: TsRowColAVLTree;
     FStartRow, FEndRow, FStartCol, FEndCol: LongInt;
     FDone: Boolean;
@@ -41,7 +41,7 @@ type
   end;
 
   { TsRowColAVLTree }
-  TsRowColAVLTree = class(TAVLTree)
+  TsRowColAVLTree = class(TAvgLvlTree)
   private
     FOwnsData: Boolean;
   protected
@@ -52,12 +52,12 @@ type
     destructor Destroy; override;
     function Add(ARow, ACol: Cardinal): PsRowCol; overload;
     procedure Clear;
-    procedure Delete(ANode: TAVLTreeNode); overload;
+    procedure Delete(ANode: TAvgLvlTreeNode); overload;
     procedure Delete(ARow, ACol: Cardinal); overload;
     procedure DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean); virtual;
     procedure Exchange(ARow1, ACol1, ARow2, ACol2: Cardinal); virtual;
     function FindByRowCol(ARow, ACol: Cardinal): PsRowCol; overload;
-    function GetData(ANode: TAVLTreeNode): PsRowCol;
+    function GetData(ANode: TAvgLvlTreeNode): PsRowCol;
     function GetFirst: PsRowCol;
     function GetLast: PsRowCol;
     procedure InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
@@ -232,7 +232,7 @@ end;
 constructor TsRowColEnumerator.Create(ATree: TsRowColAVLTree;
   AStartRow, AStartCol, AEndRow, AEndCol: LongInt; AReverse: Boolean);
 var
-  node: TAVLTreeNode;
+  node: TAvgLvlTreeNode;
 begin
   FTree := ATree;
   FReverse := AReverse;
@@ -420,7 +420,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsRowColAVLTree.Clear;
 var
-  node, nextnode: TAVLTreeNode;
+  node, nextnode: TAvgLvlTreeNode;
 begin
   node := FindLowest;
   while node <> nil do begin
@@ -434,7 +434,7 @@ end;
   Removes the specified node from the tree. If the tree has been created with
   AOwnsData = true then the data record is destroyed as well
 -------------------------------------------------------------------------------}
-procedure TsRowColAVLTree.Delete(ANode: TAVLTreeNode);
+procedure TsRowColAVLTree.Delete(ANode: TAvgLvlTreeNode);
 begin
   if FOwnsData and Assigned(ANode) then
     DisposeData(PsRowCol(ANode.Data));
@@ -443,7 +443,7 @@ end;
 
 procedure TsRowColAVLTree.Delete(ARow, ACol: Cardinal);
 var
-  node: TAVLTreeNode;
+  node: TAvgLvlTreeNode;
   cell: TCell;
 begin
   cell.Row := ARow;
@@ -463,7 +463,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsRowColAVLTree.DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
 var
-  node, nextnode: TAVLTreeNode;
+  node, nextnode: TAvgLvlTreeNode;
   item: PsRowCol;
 begin
   node := FindLowest;
@@ -543,7 +543,7 @@ end;
 function TsRowColAVLTree.FindByRowCol(ARow, ACol: Cardinal): PsRowCol;
 var
   data: TsRowCol;
-  node: TAVLTreeNode;
+  node: TAvgLvlTreeNode;
 begin
   Result := nil;
   if  (Count = 0) then
@@ -559,7 +559,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Extracts the pointer to the data record from a tree node
 -------------------------------------------------------------------------------}
-function TsRowColAVLTree.GetData(ANode: TAVLTreeNode): PsRowCol;
+function TsRowColAVLTree.GetData(ANode: TAvgLvlTreeNode): PsRowCol;
 begin
   if ANode <> nil then
     Result := PsRowCol(ANode.Data)
@@ -591,7 +591,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsRowColAVLTree.InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
 var
-  node: TAVLTreeNode;
+  node: TAvgLvlTreeNode;
   item: PsRowCol;
 begin
   node := FindLowest;
@@ -615,7 +615,7 @@ end;
 procedure TsRowColAVLTree.MoveAlongRow(ARow, AFromCol, AToCol: Cardinal);
 var
   c: Cardinal;
-  node: TAVLTreeNode;
+  node: TAvgLvlTreeNode;
   item: PsRowCol;
 begin
   if AFromCol = AToCol then
@@ -659,7 +659,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsRowColAVLTree.Remove(ARow, ACol: Cardinal);
 var
-  node: TAVLTreeNode;
+  node: TAvgLvlTreeNode;
   item: TsRowCol;
 begin
   item.Row := ARow;
@@ -1056,7 +1056,7 @@ procedure TsMergedCells.DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
 var
   rng: PsCellRange;
   R: TsCellRange;
-  node, nextnode: TAVLTreeNode;
+  node, nextnode: TAvgLvlTreeNode;
 begin
   node := FindLowest;
   while Assigned(node) do begin
@@ -1153,7 +1153,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsMergedCells.FindRangeWithCell(ARow, ACol: Cardinal): PsCellRange;
 var
-  node: TAVLTreeNode;
+  node: TAvgLvlTreeNode;
 begin
   node := FindLowest;
   while Assigned(node) do

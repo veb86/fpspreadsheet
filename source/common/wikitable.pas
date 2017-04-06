@@ -410,8 +410,8 @@ var
   lColWidthStr: String;
   lRowHeightStr: String;
   lCell: PCell;
-  lCol: PCol;
-  lRow: PRow;
+//  lCol: PCol;
+//  lRow: PRow;
   lFont: TsFont;
   horalign: TsHorAlignment;
   vertalign: TsVertAlignment;
@@ -457,12 +457,12 @@ begin
   for i := 0 to FWorksheet.GetLastRowIndex() do
   begin
     AStrings.Add('|-');
-    lRow := FWorksheet.FindRow(i);
+    //lRow := FWorksheet.FindRow(i);
 
     for j := 0 to FWorksheet.GetLastColIndex do
     begin
       lCell := FWorksheet.FindCell(i, j);
-      lCol := FWorksheet.FindCol(j);
+      //lCol := FWorksheet.FindCol(j);
       lCurStr := FWorksheet.ReadAsText(lCell, fs);
 
       // Check for invalid characters

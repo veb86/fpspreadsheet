@@ -22,7 +22,7 @@ unit fpsReaderWriter;
 interface
 
 uses
-  Classes, Sysutils, AVL_Tree,
+  Classes, Sysutils,
   fpsTypes, fpsClasses, fpSpreadsheet;
 
 type

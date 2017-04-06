@@ -659,7 +659,7 @@ procedure AddBuiltinBiffFormats(AList: TStringList;
 implementation
 
 uses
-  AVL_Tree, Math, Variants,
+  Math, Variants,
   {%H-}fpspatches, fpsStrings, fpsClasses, xlsConst,
   fpsExprParser, fpsPageLayout;
 
@@ -2267,8 +2267,6 @@ end;
   Returns false if the structure is too complex for fps.
 -------------------------------------------------------------------------------}
 function TsSpreadBIFFReader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte): Boolean;
-var
-  w: Word;
 begin
   Result := false;
   case AIdentifier of

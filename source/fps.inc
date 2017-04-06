@@ -42,3 +42,4 @@
   This is not yet available in fpc 2.6.0 }
 {.$DEFINE FPS_PTRINT}
 
+

@@ -35,7 +35,7 @@ interface
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
-  AVL_Tree, math, dateutils, contnrs,
+  avglvltree, math, dateutils, contnrs,
  {$IF FPC_FULLVERSION >= 20701}
   zipper,
  {$ELSE}
@@ -2068,7 +2068,6 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadDocumentProtection(ANode: TDOMNode);
 var
-  s: String;
   cinfo: TsCryptoInfo;
 begin
   if ANode = nil then
@@ -5011,7 +5010,6 @@ end;
 procedure TsSpreadOpenDocWriter.WriteContent;
 var
   i: Integer;
-  s: String;
 begin
   AppendToStream(FSContent,
     XML_HEADER);

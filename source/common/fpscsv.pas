@@ -189,7 +189,7 @@ var
   s: String;
   encoding: String;
 begin
-  Unused(AParams);
+  Unused(AParams, APassword);
 
   // Try to determine encoding of the input file
   SetLength(s, Min(1000, AStream.Size));

@@ -22,7 +22,7 @@ uses
  {$ifdef UNIX}{$ifndef DARWIN}{$ifndef FPS_DONT_USE_CLOCALE}
   clocale,
  {$endif}{$endif}{$endif}
-  Classes, SysUtils, fpimage, AVL_Tree, avglvltree, lconvencoding,
+  Classes, SysUtils, fpimage, avglvltree, lconvencoding,
   fpsTypes, fpsClasses, fpsNumFormat, fpsPageLayout, fpsImages;
 
 type
@@ -5029,8 +5029,6 @@ end;
                   as a number, a date/time or a text.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCellValueAsString(ACell: PCell; AValue: String);
-var
-  fs: TFormatSettings;
 begin
   WriteCellValueAsString(ACell, AValue, FWorkbook.FormatSettings);
 end;
@@ -7555,7 +7553,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.MoveCol(AFromCol, AToCol: Cardinal);
 var
-  r, c: Integer;
+  r: Integer;
 begin
   if AFromCol = AToCol then
     // Nothing to do
