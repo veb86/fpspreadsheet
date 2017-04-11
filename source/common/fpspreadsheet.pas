@@ -3887,13 +3887,6 @@ begin
   AWidth := obj.ImageWidth * img.ScaleX;    // in workbook units
   AHeight := obj.ImageHeight * img.ScaleY;  // in workbook units
 
-  if UsePixels then
-  begin
-    // If we don't know the ppi of the screen the calculation is not exact!
-    w_px := ptsToPx(FWorkbook.ConvertUnits(AWidth, u, suPoints), ppi);
-    h_px := ptsToPx(FWorkbook.ConvertUnits(AHeight, u, suPoints), ppi);
-  end;
-
   // Find x coordinate of left image edge, in workbook units
   x := AColOffs1;
   for c := 0 to ACol1-1 do
@@ -3909,10 +3902,12 @@ begin
     y := y + rowH;
   end;
 
-
   if UsePixels then
   // Use pixels for calculation. Better for Excel, maybe due to rounding error?
   begin
+    // If we don't know the ppi of the screen the calculation is not exact!
+    w_px := ptsToPx(FWorkbook.ConvertUnits(AWidth, u, suPoints), ppi);
+    h_px := ptsToPx(FWorkbook.ConvertUnits(AHeight, u, suPoints), ppi);
     // Find cell with right image edge. Find horizontal within-cell-offsets
     totW_px := -ptsToPx(FWorkbook.ConvertUnits(AColOffs1, u, suPoints), ppi);
     ACol2 := ACol1;
@@ -6870,10 +6865,18 @@ end;
 
 function TsWorksheet.CalcRowHeight(ARow: Cardinal): Single;
 // In workbook units
+var
+  r: PRow;
 begin
-  Result := CalcAutoRowHeight(ARow);
-  if Result = 0 then
-    Result := GetRowHeight(ARow, FWorkbook.Units);
+  r := FindRow(ARow);
+  if (r <> nil) and (r^.RowHeightType = rhtCustom) then
+    Result := GetRowHeight(ARow, FWorkbook.Units)
+  else
+  begin
+    Result := CalcAutoRowHeight(ARow);
+    if Result = 0 then
+      Result := GetRowHeight(ARow, FWorkbook.Units);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
