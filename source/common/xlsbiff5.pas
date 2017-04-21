@@ -961,6 +961,7 @@ var
   Len: Byte;
   fontname: ansistring;
   font: TsFont;
+  isDefaultFont: Boolean;
 begin
   font := TsFont.Create;
 
@@ -1025,6 +1026,8 @@ begin
   AStream.ReadBuffer(fontname[1], Len);
   font.FontName := ConvertEncoding(fontname, FCodePage, encodingUTF8);
 
+  isDefaultFont := FFontList.Count = 0;
+
   { Add font to internal font list. Will be copied to workbook's font list later
     as the font index in the internal list may be different from the index in
     the workbook's list. }
@@ -1032,6 +1035,9 @@ begin
 
   { Excel does not have zero-based font #4! }
   if FFontList.Count = 4 then FFontList.Add(nil);
+
+  if isDefaultFont then
+    FWorkbook.SetDefaultFont(font.FontName, font.Size);
 end;
 
 // Read the FORMAT record for formatting numerical data

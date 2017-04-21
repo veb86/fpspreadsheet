@@ -513,6 +513,7 @@ var
   lOptions: Word;
   Len: Byte;
   lFontName: UTF8String;
+  isDefaultFont: Boolean;
 begin
   FFont := TsFont.Create;
 
@@ -534,8 +535,13 @@ begin
   AStream.ReadBuffer(lFontName[1], Len);
   FFont.FontName := lFontName;
 
+  isDefaultFont := FFontList.Count = 0;
+
   { Add font to internal font list }
   FFontList.Add(FFont);
+
+  if isDefaultFont then
+    Workbook.SetDefaultFont(FFont.FontName, FFont.Size);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadFONTCOLOR(AStream: TStream);

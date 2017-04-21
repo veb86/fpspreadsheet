@@ -1392,7 +1392,10 @@ var
   nodename: String;
   s: String;
   acceptDuplicates: Boolean;
+  isDefaultFont: Boolean;
 begin
+  isDefaultFont := FFontList.Count = 0;
+
   fnt := Workbook.GetDefaultFont;
   if fnt <> nil then
   begin
@@ -1497,6 +1500,9 @@ begin
   fnt.Position := fntPos;
 
   Result := FFontList.Add(fnt);
+
+  if isDefaultFont then
+    Workbook.SetDefaultFont(fnt.FontName, fnt.Size);
 end;
 
 procedure TsSpreadOOXMLReader.ReadFonts(ANode: TDOMNode);

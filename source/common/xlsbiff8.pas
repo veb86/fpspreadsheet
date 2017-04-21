@@ -1792,6 +1792,7 @@ var
   Len: Byte;
   font: TsFont;
   rtParams: TsRichTextParams;
+  isDefaultFont: Boolean;
 begin
   font := TsFont.Create;
 
@@ -1849,6 +1850,8 @@ begin
   Len := AStream.ReadByte();
   font.FontName := ReadString(AStream, Len, rtParams);  // rtParams is not used here.
 
+  isDefaultFont := FFontList.Count = 0;
+
   { Add font to internal font list; will be transferred to workbook later because
     the font index in the internal list (= index in file) is not the same as the
     index the font will have in the workbook's fontlist! }
@@ -1856,6 +1859,9 @@ begin
 
   { Excel does not have zero-based font #4! }
   if FFontList.Count = 4 then FFontList.Add(nil);
+
+  if isDefaultFont then
+    Workbook.SetDefaultFont(font.FontName, font.Size);
 end;
 
 {@@ ----------------------------------------------------------------------------
