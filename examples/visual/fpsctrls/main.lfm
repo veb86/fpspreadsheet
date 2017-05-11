@@ -8,7 +8,7 @@ object Form1: TForm1
   ClientWidth = 997
   Menu = MainMenu1
   ShowHint = True
-  LCLVersion = '1.7'
+  LCLVersion = '1.9.0.0'
   object sWorkbookTabControl1: TsWorkbookTabControl
     Left = 0
     Height = 542
@@ -34,7 +34,6 @@ object Form1: TForm1
       WorkbookSource = sWorkbookSource1
       Align = alClient
       AutoAdvance = aaDown
-      ColCount = 27
       DefaultColWidth = 64
       DefaultRowHeight = 22
       Font.Color = clBlack
@@ -43,7 +42,6 @@ object Form1: TForm1
       MouseWheelOption = mwGrid
       Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goDblClickAutoSize, goCellHints]
       ParentFont = False
-      RowCount = 101
       TabOrder = 1
       TitleFont.Color = clBlack
       TitleFont.Height = -13
@@ -116,6 +114,7 @@ object Form1: TForm1
       DropDownCount = 24
       ItemIndex = 0
       TabOrder = 2
+      Text = 'black'
     end
     object ToolButton1: TToolButton
       Left = 1
@@ -131,7 +130,6 @@ object Form1: TForm1
       Left = 49
       Height = 26
       Top = 0
-      Width = 5
       Caption = 'ToolButton3'
       Style = tbsDivider
     end
@@ -161,10 +159,10 @@ object Form1: TForm1
         Height = 23
         Top = 0
         Width = 138
+        WorkbookSource = sWorkbookSource1
         Align = alTop
         TabOrder = 0
         Text = 'A1'
-        WorkbookSource = sWorkbookSource1
       end
     end
     object sCellEdit1: TsCellEdit
