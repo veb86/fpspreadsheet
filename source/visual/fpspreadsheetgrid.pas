@@ -31,12 +31,13 @@ interface
 
 uses
   Classes, SysUtils, LMessages, LResources, Variants,
-  Forms, Controls, Graphics, Dialogs, Grids, ExtCtrls,
+  Forms, Controls, Graphics, Dialogs, Grids, StdCtrls, ExtCtrls,
   fpstypes, fpspreadsheet, fpspreadsheetctrls;
 
 type
 
   { TsCustomWorksheetGrid }
+  TsCustomWorksheetGrid = class;
 
   TsAutoExpandMode = (
     {@@ Expands grid dimensions if a cell is written outside current grid dimensions }
@@ -48,6 +49,8 @@ type
   );
   TsAutoExpandModes = set of TsAutoExpandMode;
 
+  TsEditorLineMode = (elmSingleLine, elmMultiLine);
+
   TsHyperlinkClickEvent = procedure(Sender: TObject;
     const AHyperlink: TsHyperlink) of object;
 
@@ -58,6 +61,28 @@ type
     property Width stored true default 3;
     property JoinStyle default pjsMiter;
   end;
+
+  TMultilineStringCellEditor = class(TMemo)
+  private
+    FGrid: TsCustomWorksheetGrid;
+    FCol,FRow:Integer;
+  protected
+    procedure WndProc(var TheMessage : TLMessage); override;
+    procedure Change; override;
+    procedure KeyDown(var Key : Word; Shift : TShiftState); override;
+    procedure msg_SetValue(var Msg: TGridMessage); message GM_SETVALUE;
+    procedure msg_GetValue(var Msg: TGridMessage); message GM_GETVALUE;
+    procedure msg_SetGrid(var Msg: TGridMessage); message GM_SETGRID;
+    procedure msg_SelectAll(var Msg: TGridMessage); message GM_SELECTALL;
+    procedure msg_SetPos(var Msg: TGridMessage); message GM_SETPOS;
+    procedure msg_GetGrid(var Msg: TGridMessage); message GM_GETGRID;
+  public
+    constructor Create(Aowner : TComponent); override;
+    procedure EditingDone; override;
+//    property EditText;
+    property OnEditingDone;
+  end;
+
 
 //  TsSelectionRectMode = (srmDThickXOR, srmThick, srmDottedXOR,
   {@@ TsCustomWorksheetGrid is the ancestor of TsWorksheetGrid and is able to
@@ -93,6 +118,9 @@ type
     FTopLeft: TPoint;
     FReadOnly: Boolean;
     FOnClickHyperlink: TsHyperlinkClickEvent;
+    FOldEditorText: String;
+    FMultilineStringEditor: TMultilineStringCellEditor;
+    FLineMode: TsEditorLineMode;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
@@ -171,6 +199,7 @@ type
     procedure SetColWidths(ACol: Integer; AValue: Integer);
     procedure SetDefColWidth(AValue: Integer);
     procedure SetDefRowHeight(AValue: Integer);
+    procedure SetEditorLineMode(AValue: TsEditorLineMode);
     procedure SetFrozenCols(AValue: Integer);
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
@@ -279,7 +308,11 @@ type
       default [aeData, aeNavigation, aeDefault];
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
-    property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders default true;
+    property DisplayFixedColRow: Boolean read GetShowHeaders write SetShowHeaders
+      default true;
+    {@@ Determines whether a single- or multi-line cell editor is used }
+    property EditorLineMode: TsEditorLineMode read FLineMode write SetEditorLineMode
+      default elmSingleLine;
     {@@ This number of columns at the left is "frozen", i.e. it is not possible to
         scroll these columns }
     property FrozenCols: Integer read FFrozenCols write SetFrozenCols;
@@ -315,6 +348,7 @@ type
     procedure DeleteCol(AGridCol: Integer); reintroduce;
     procedure DeleteRow(AGridRow: Integer); reintroduce;
     procedure EditingDone; override;
+    function  EditorByStyle(Style: TColumnButtonStyle): TWinControl; override;
     procedure EndUpdate(ARefresh: Boolean = true);
     function GetGridCol(ASheetCol: Cardinal): Integer; inline;
     function GetGridRow(ASheetRow: Cardinal): Integer; inline;
@@ -534,6 +568,8 @@ type
     {@@ Displays column and row headers in the fixed col/row style of the grid.
         Deprecated. Use ShowHeaders instead. }
     property DisplayFixedColRow; deprecated 'Use ShowHeaders';
+    {@@ Determines whether a single- or multiline cell editor is used }
+    property EditorLineMode;
     {@@ This number of columns at the left is "frozen", i.e. it is not possible to
         scroll these columns. }
     property FrozenCols;
@@ -761,7 +797,7 @@ procedure Register;
 implementation
 
 uses
-  Types, LCLType, LCLIntf, LCLProc, Math, StrUtils,
+  Types, LCLType, LCLIntf, LCLProc, LazUTF8, Math, StrUtils,
   fpCanvas, {%H-}fpsPatches,
   fpsStrings, fpsUtils, fpsVisualUtils, fpsHTMLUtils, fpsImages, fpsNumFormat;
 
@@ -1026,6 +1062,160 @@ end;
 
 
 {*******************************************************************************
+*                            TMultilineStringCellEditor                        *
+*******************************************************************************}
+
+constructor TMultilineStringCellEditor.Create(Aowner: TComponent);
+begin
+  inherited Create(AOwner);
+  AutoSize := false;
+end;
+
+procedure TMultilineStringCellEditor.Change;
+begin
+  inherited Change;
+  if (FGrid <> nil) and Visible then
+    FGrid.EditorTextChanged(FCol, FRow, Text);
+end;
+
+procedure TMultilineStringCellEditor.EditingDone;
+begin
+  inherited EditingDone;
+  if FGrid <> nil then
+    FGrid.EditingDone;
+end;
+
+procedure TMultilineStringCellEditor.KeyDown(var Key: Word; Shift: TShiftState);
+
+  function AllSelected: boolean;
+  begin
+    result := (SelLength > 0) and (SelLength = UTF8Length(Text));
+  end;
+
+  function AtStart: Boolean;
+  begin
+    Result:= (SelStart = 0);
+  end;
+
+  function AtEnd: Boolean;
+  begin
+    result := ((SelStart + 1) > UTF8Length(Text)) or AllSelected;
+  end;
+
+  procedure doEditorKeyDown;
+  begin
+    if FGrid <> nil then
+      FGrid.EditorkeyDown(Self, key, shift);
+  end;
+
+  procedure doGridKeyDown;
+  begin
+    if FGrid <> nil then
+      FGrid.KeyDown(Key, shift);
+  end;
+
+  function GetFastEntry: boolean;
+  begin
+    if FGrid <> nil then
+      Result := FGrid.FastEditing
+    else
+      Result := False;
+  end;
+
+  procedure CheckEditingKey;
+  begin
+    if (FGrid = nil) or FGrid.EditorIsReadOnly then
+      Key := 0;
+  end;
+
+var
+  IntSel: boolean;
+begin
+  inherited KeyDown(Key,Shift);
+  case Key of
+    VK_F2:
+      if AllSelected then begin
+        SelLength := 0;
+        SelStart := Length(Text);
+      end;
+    VK_DELETE, VK_BACK:
+      CheckEditingKey;
+    VK_UP, VK_DOWN:
+      doGridKeyDown;
+    VK_LEFT, VK_RIGHT:
+      if GetFastEntry then begin
+        IntSel:=
+          ((Key=VK_LEFT) and not AtStart) or
+          ((Key=VK_RIGHT) and not AtEnd);
+      if not IntSel then begin
+          doGridKeyDown;
+      end;
+    end;
+    VK_END, VK_HOME:
+      ;
+    VK_ESCAPE:
+      begin
+        doGridKeyDown;
+        if key<>0 then begin
+          Text := FGrid.FOldEditorText;
+//          Lines.Text := '';   // FIXME: FGrid.FEditorOldvalue;
+//          SetEditText(FGrid.FEditorOldValue);
+          FGrid.EditorHide;
+        end;
+      end;
+    else
+      doEditorKeyDown;
+  end;
+end;
+
+procedure TMultilineStringCellEditor.msg_GetGrid(var Msg: TGridMessage);
+begin
+  Msg.Grid := FGrid;
+  Msg.Options:= EO_IMPLEMENTED;
+end;
+
+procedure TMultilineStringCellEditor.msg_GetValue(var Msg: TGridMessage);
+begin
+  Msg.Col := FCol;
+  Msg.Row := FRow;
+  Msg.Value := Text;
+end;
+
+procedure TMultilineStringCellEditor.msg_SelectAll(var Msg: TGridMessage);
+begin
+  SelectAll;
+end;
+
+procedure TMultilineStringCellEditor.msg_SetGrid(var Msg: TGridMessage);
+begin
+  FGrid := Msg.Grid as TsCustomWorksheetGrid;
+  Msg.Options := EO_AUTOSIZE or EO_SELECTALL or EO_HOOKKEYPRESS or EO_HOOKKEYUP;
+end;
+
+procedure TMultilineStringCellEditor.msg_SetPos(var Msg: TGridMessage);
+begin
+  FCol := Msg.Col;
+  FRow := Msg.Row;
+end;
+
+procedure TMultilineStringCellEditor.msg_SetValue(var Msg: TGridMessage);
+begin
+  Text := Msg.Value;
+  SelStart := UTF8Length(Text);
+end;
+
+procedure TMultilineStringCellEditor.WndProc(var TheMessage: TLMessage);
+begin
+  if FGrid <> nil then
+    case TheMessage.Msg of
+      LM_CLEAR, LM_CUT, LM_PASTE:
+        if FGrid.EditorIsReadOnly then exit;
+    end;
+  inherited WndProc(TheMessage);
+end;
+
+
+{*******************************************************************************
 *                              TsCustomWorksheetGrid                           *
 *******************************************************************************}
 
@@ -1084,6 +1274,7 @@ begin
     FInternalWorkbookSource.RemoveListener(self);  // will be destroyed automatically
   FreeAndNil(FCellFont);
   FreeAndNil(FSelPen);
+  FreeAndNil(FMultilineStringEditor);
   inherited Destroy;
 end;
 
@@ -1755,6 +1946,7 @@ var
   Rct: TRect;
   delta: Integer;
 begin
+  FOldEditorText := GetCellText(Row, Col);
   inherited;
   if (Worksheet <> nil) and (Editor is TStringCellEditor) then
   begin
@@ -1777,7 +1969,6 @@ procedure TsCustomWorksheetGrid.DoOnResize;
 begin
   if (csDesigning in ComponentState) and (Worksheet = nil) then
     NewWorkbook(ColCount, RowCount);
-//    NewWorkbook(FInitColCount, FInitRowCount);
   inherited;
 end;
 
@@ -2869,6 +3060,14 @@ begin
   end;
   FEditing := false;
   FEnhEditMode := false;
+end;
+
+function TsCustomWorksheetGrid.EditorByStyle(Style: TColumnButtonStyle): TWinControl;
+begin
+  if (Style = cbsAuto) and (FLineMode = elmMultiLine) then
+    Result := FMultilineStringEditor
+  else
+    Result := inherited;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6173,6 +6372,23 @@ begin
     RowHeights[0] := GetDefaultRowHeight;
   if (FZoomLock = 0) and (Worksheet <> nil) then
     Worksheet.WriteDefaultRowHeight(CalcWorksheetRowHeight(GetDefaultRowHeight), Workbook.Units);
+end;
+
+procedure TscustomWorksheetGrid.SetEditorLineMode(AValue: TsEditorLineMode);
+begin
+  if FLineMode = AValue then
+    exit;
+
+  FLineMode := AValue;
+  if (FLineMode = elmMultiline) and (FMultilineStringEditor = nil) then
+  begin
+    FMultilineStringEditor := TMultilineStringCellEditor.Create(nil);
+    FMultilineStringEditor.name :='StringEditor';
+    FMultilineStringEditor.Text:='';
+    FMultilineStringEditor.Visible:=False;
+    FMultilineStringEditor.Align:=alNone;
+    FMultilineStringEditor.BorderStyle := bsNone;
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.SetFrozenCols(AValue: Integer);
