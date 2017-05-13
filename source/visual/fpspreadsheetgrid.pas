@@ -1946,7 +1946,7 @@ var
   Rct: TRect;
   delta: Integer;
 begin
-  FOldEditorText := GetCellText(Row, Col);
+  FOldEditorText := GetCellText(Col, Row);
   inherited;
   if (Worksheet <> nil) and (Editor is TStringCellEditor) then
   begin
@@ -3039,13 +3039,16 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.EditingDone;
 var
-  oldText: String;
+  //oldText: String;
   cell: PCell;
 begin
   if (not EditorShowing) and FEditing then
   begin
+    {
     oldText := GetCellText(Col, Row);
     if oldText <> FEditText then
+    }
+    if FOldEditorText <> FEditText then
     begin
       cell := Worksheet.GetCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
       if Worksheet.IsMerged(cell) then
@@ -3055,6 +3058,7 @@ begin
       else
         Worksheet.WriteCellValueAsString(cell, FEditText);
       FEditText := '';
+      FOldEditorText := '';
     end;
     inherited EditingDone;
   end;
