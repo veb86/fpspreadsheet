@@ -2877,43 +2877,26 @@ begin
   end else
     R := CellRect(Selection.Left, Selection.Top, Selection.Right, Selection.Bottom);
 
-  dec(R.Top);
-  dec(R.Left);
-                         (*
-  // Draw focus rect inside
-  if GetShowHeaders then
-    delta := 0 else
-    delta := Max(FSelPen.Width div 2, 0);
+  // Fine-tune position of selection rect
+  if odd(FSelPen.Width) then delta := -1 else delta := 0;
   inc(R.Top, delta);
-  if IsRightToLeft then dec(R.Right, delta) else inc(R.Left, delta);
-                           *)
-                           (*
-  dec(R.Top);
-  if IsRightToLeft then inc(R.Right) else dec(R.Left);
-                             *)
-  // Cosmetics at the edges of the grid to avoid spurious rests
-                               (*
-  delta := Max(FSelPen.Width div 2, 0);
-
-  if Selection.Top > TopRow then
-    dec(R.Top, delta) else
-    inc(R.Top, delta);
-  if Selection.Bottom = RowCount-1 then
-    dec(R.Bottom, delta);
   if IsRightToLeft then begin
-    if Selection.Right > LeftCol then
-      inc(R.Right, delta) else
-      dec(R.Right, delta);
-    if Selection.Right = ColCount-1 then
-      inc(R.Left, delta);
+    if not odd(FSelPen.Width) then
+      OffsetRect(R, 1, 0) else
+      inc(R.Right, 1);
   end else
-  begin
-    if Selection.Left > LeftCol then
-      dec(R.Left, delta) else
-      inc(R.Left, delta);
-    if Selection.Right = ColCount-1 then
-      dec(R.Right, delta);
-  end;                           *)
+    inc(R.Left, delta);
+
+  if FSelPen.Width > 1 then begin
+    if (Selection.Top = TopRow) then
+      inc(R.Top);
+    if Selection.Left = LeftCol then begin
+      if IsRightToLeft then
+        dec(R.Right)
+      else
+        inc(R.Left);
+    end;
+  end;
 
   // Set up the canvas
   savedPenMode := Canvas.Pen.Mode;
