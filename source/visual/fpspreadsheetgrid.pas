@@ -121,6 +121,7 @@ type
     FOldEditorText: String;
     FMultilineStringEditor: TMultilineStringCellEditor;
     FLineMode: TsEditorLineMode;
+    FFrozenPaneBorderColor: TColor;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
@@ -201,6 +202,7 @@ type
     procedure SetDefRowHeight(AValue: Integer);
     procedure SetEditorLineMode(AValue: TsEditorLineMode);
     procedure SetFrozenCols(AValue: Integer);
+    procedure SetFrozenPaneBorderColor(AValue: TColor);
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
     procedure SetHorAlignments(ALeft, ATop, ARight, ABottom: Integer;
@@ -316,6 +318,9 @@ type
     {@@ This number of columns at the left is "frozen", i.e. it is not possible to
         scroll these columns }
     property FrozenCols: Integer read FFrozenCols write SetFrozenCols;
+    {@@ Color of the line separating the frozen cols/rows from the regular grid }
+    property FrozenPaneBorderColor: TColor read FFrozenPaneBorderColor
+      write SetFrozenPaneBorderColor default clBlack;
     {@@ This number of rows at the top is "frozen", i.e. it is not possible to
         scroll these rows. }
     property FrozenRows: Integer read FFrozenRows write SetFrozenRows;
@@ -573,6 +578,8 @@ type
     {@@ This number of columns at the left is "frozen", i.e. it is not possible to
         scroll these columns. }
     property FrozenCols;
+    {@@ Color of the line separating the frozen cols/rows from the regular grid }
+    property FrozenPaneBorderColor;
     {@@ This number of rows at the top is "frozen", i.e. it is not possible to
         scroll these rows. }
     property FrozenRows;
@@ -1242,6 +1249,7 @@ begin
   FHeaderCount := 1;
   ColCount := DEFAULT_COL_COUNT + FHeaderCount;
   RowCount := DEFAULT_ROW_COUNT + FHeaderCount;
+
   FDefRowHeight100 := inherited GetDefaultRowHeight;
   FDefColWidth100 := inherited DefaultColWidth;
   //FOldTopRow := -1;
@@ -1251,6 +1259,7 @@ begin
   FSelPen.Color := clBlack;
   FSelPen.JoinStyle := pjsMiter;
   FSelPen.OnChange := @SelPenChangeHandler;
+  FFrozenPaneBorderColor := clBlack;
   FAutoExpand := [aeData, aeNavigation, aeDefault];
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
@@ -2521,7 +2530,7 @@ begin
     exit;
 
   Canvas.Pen.Style := psSolid;
-  Canvas.Pen.Color := clBlack;
+  Canvas.Pen.Color := FFrozenPaneBorderColor;
   Canvas.Pen.Width := 1;
   if IsHor then
     Canvas.Line(AStart, ACoord, AEnd, ACoord)
@@ -6407,6 +6416,14 @@ begin
       Worksheet.Options := Worksheet.Options - [soHasFrozenPanes];
   end;
   Setup;
+end;
+
+procedure TscustomWorksheetGrid.SetFrozenPaneBorderColor(AValue: TColor);
+begin
+  if FFrozenPaneBorderColor = AValue then
+    exit;
+  FFrozenPaneBorderColor := AValue;
+  InvalidateGrid;
 end;
 
 procedure TsCustomWorksheetGrid.SetFrozenRows(AValue: Integer);
