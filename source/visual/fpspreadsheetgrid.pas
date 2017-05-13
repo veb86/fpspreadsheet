@@ -108,6 +108,7 @@ type
     FAutoExpand: TsAutoExpandModes;
     FEnhEditMode: Boolean;
     FSelPen: TsSelPen;
+    FFrozenBorderPen: TPen;
     FHyperlinkTimer: TTimer;
     FHyperlinkCell: PCell;      // Selected cell if it stores a hyperlink
     FDefRowHeight100: Integer;  // Default row height for 100% zoom factor, in pixels
@@ -121,7 +122,6 @@ type
     FOldEditorText: String;
     FMultilineStringEditor: TMultilineStringCellEditor;
     FLineMode: TsEditorLineMode;
-    FFrozenPaneBorderColor: TColor;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
@@ -202,7 +202,7 @@ type
     procedure SetDefRowHeight(AValue: Integer);
     procedure SetEditorLineMode(AValue: TsEditorLineMode);
     procedure SetFrozenCols(AValue: Integer);
-    procedure SetFrozenPaneBorderColor(AValue: TColor);
+    procedure SetFrozenBorderPen(AValue: TPen);
     procedure SetFrozenRows(AValue: Integer);
     procedure SetHorAlignment(ACol, ARow: Integer; AValue: TsHorAlignment);
     procedure SetHorAlignments(ALeft, ATop, ARight, ABottom: Integer;
@@ -265,6 +265,7 @@ type
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     procedure ExecuteHyperlink;
+    procedure GenericPenChangeHandler(Sender: TObject);
     function GetCellHeight(ACol, ARow: Integer): Integer;
     function GetCellHintText(ACol, ARow: Integer): String; override;
     function GetCells(ACol, ARow: Integer): String; override;
@@ -293,7 +294,6 @@ type
     function RelaxAutoExpand: TsAutoExpandModes;
     procedure RestoreAutoExpand(AValue: TsAutoExpandModes);
     function  SelectCell(ACol, ARow: Integer): Boolean; override;
-    procedure SelPenChangeHandler(Sender: TObject);
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
@@ -318,9 +318,8 @@ type
     {@@ This number of columns at the left is "frozen", i.e. it is not possible to
         scroll these columns }
     property FrozenCols: Integer read FFrozenCols write SetFrozenCols;
-    {@@ Color of the line separating the frozen cols/rows from the regular grid }
-    property FrozenPaneBorderColor: TColor read FFrozenPaneBorderColor
-      write SetFrozenPaneBorderColor default clBlack;
+    {@@ Pen for the line separating the frozen cols/rows from the regular grid }
+    property FrozenBorderPen: TPen read FFrozenBorderPen write SetFrozenBorderPen;
     {@@ This number of rows at the top is "frozen", i.e. it is not possible to
         scroll these rows. }
     property FrozenRows: Integer read FFrozenRows write SetFrozenRows;
@@ -575,11 +574,11 @@ type
     property DisplayFixedColRow; deprecated 'Use ShowHeaders';
     {@@ Determines whether a single- or multiline cell editor is used }
     property EditorLineMode;
+    {@@ Pen for the line separating the frozen cols/rows from the regular grid }
+    property FrozenBorderPen;
     {@@ This number of columns at the left is "frozen", i.e. it is not possible to
         scroll these columns. }
     property FrozenCols;
-    {@@ Color of the line separating the frozen cols/rows from the regular grid }
-    property FrozenPaneBorderColor;
     {@@ This number of rows at the top is "frozen", i.e. it is not possible to
         scroll these rows. }
     property FrozenRows;
@@ -1252,14 +1251,19 @@ begin
 
   FDefRowHeight100 := inherited GetDefaultRowHeight;
   FDefColWidth100 := inherited DefaultColWidth;
-  //FOldTopRow := -1;
+
   FCellFont := TFont.Create;
   FSelPen := TsSelPen.Create;
   FSelPen.Style := psSolid;
   FSelPen.Color := clBlack;
   FSelPen.JoinStyle := pjsMiter;
-  FSelPen.OnChange := @SelPenChangeHandler;
-  FFrozenPaneBorderColor := clBlack;
+  FSelPen.OnChange := @GenericPenChangeHandler;
+
+  FFrozenBorderPen := TPen.Create;
+  FFrozenBorderPen.Style := psSolid;
+  FFrozenBorderPen.Color := clBlack;
+  FFrozenBorderPen.OnChange := @GenericPenChangeHandler;
+
   FAutoExpand := [aeData, aeNavigation, aeDefault];
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
@@ -2124,9 +2128,9 @@ begin
   cliprect := ClientRect;
   TL := CalcTopLeft(false);
   if IsRightToLeft then
-    cliprect.Right := TL.X
+    cliprect.Right := TL.X + 1
   else
-    cliprect.Left := TL.X;
+    cliprect.Left := TL.X - 1;
   cliprect.Top := TL.Y;
 
   // Paint cell borders, selection rectangle, images and frozen-pane-borders
@@ -2525,17 +2529,25 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawFrozenPaneBorder(AStart, AEnd, ACoord: Integer;
   IsHor: Boolean);
+var
+  delta: Integer;
 begin
   if (IsHor and (FFrozenRows = 0)) or (not IsHor and (FFrozenCols = 0)) then
     exit;
 
-  Canvas.Pen.Style := psSolid;
-  Canvas.Pen.Color := FFrozenPaneBorderColor;
-  Canvas.Pen.Width := 1;
+  if FFrozenBorderPen.Style = psClear then
+    exit;
+
+  delta := (FFrozenBorderPen.Width - 1) div 2;
+
+  Canvas.Pen.Assign(FFrozenBorderPen);
   if IsHor then
-    Canvas.Line(AStart, ACoord, AEnd, ACoord)
+    Canvas.Line(AStart, ACoord-delta, AEnd, ACoord-delta)
   else
-    Canvas.Line(ACoord, AStart, ACoord, AEnd);
+  if IsRightToLeft then
+    Canvas.Line(ACoord+delta, AStart, ACoord+delta, AEnd)
+  else
+    Canvas.Line(ACoord-delta, AStart, ACoord-delta, AEnd);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2865,17 +2877,22 @@ begin
   end else
     R := CellRect(Selection.Left, Selection.Top, Selection.Right, Selection.Bottom);
 
+  dec(R.Top);
+  dec(R.Left);
+                         (*
   // Draw focus rect inside
-  delta := Max(FSelPen.Width div 2, 0);
+  if GetShowHeaders then
+    delta := 0 else
+    delta := Max(FSelPen.Width div 2, 0);
   inc(R.Top, delta);
   if IsRightToLeft then dec(R.Right, delta) else inc(R.Left, delta);
-
-              {
+                           *)
+                           (*
   dec(R.Top);
   if IsRightToLeft then inc(R.Right) else dec(R.Left);
-               }
+                             *)
   // Cosmetics at the edges of the grid to avoid spurious rests
-                        {
+                               (*
   delta := Max(FSelPen.Width div 2, 0);
 
   if Selection.Top > TopRow then
@@ -2896,8 +2913,8 @@ begin
       inc(R.Left, delta);
     if Selection.Right = ColCount-1 then
       dec(R.Right, delta);
-  end;
-                 }
+  end;                           *)
+
   // Set up the canvas
   savedPenMode := Canvas.Pen.Mode;
   Canvas.Pen.Assign(FSelPen);
@@ -5064,7 +5081,7 @@ begin
 end;
 
 {@@ Event handler which fires when an element of the SelectionPen changes. }
-procedure TsCustomWorksheetGrid.SelPenChangeHandler(Sender: TObject);
+procedure TsCustomWorksheetGrid.GenericPenChangeHandler(Sender: TObject);
 begin
   InvalidateGrid;
 end;
@@ -6411,6 +6428,12 @@ begin
   end;
 end;
 
+procedure TsCustomWorksheetGrid.SetFrozenBorderPen(AValue: TPen);
+begin
+  FFrozenBorderPen.Assign(AValue);
+  InvalidateGrid;
+end;
+
 procedure TsCustomWorksheetGrid.SetFrozenCols(AValue: Integer);
 begin
   FFrozenCols := AValue;
@@ -6422,14 +6445,6 @@ begin
       Worksheet.Options := Worksheet.Options - [soHasFrozenPanes];
   end;
   Setup;
-end;
-
-procedure TscustomWorksheetGrid.SetFrozenPaneBorderColor(AValue: TColor);
-begin
-  if FFrozenPaneBorderColor = AValue then
-    exit;
-  FFrozenPaneBorderColor := AValue;
-  InvalidateGrid;
 end;
 
 procedure TsCustomWorksheetGrid.SetFrozenRows(AValue: Integer);
