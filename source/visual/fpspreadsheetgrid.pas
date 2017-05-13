@@ -1242,7 +1242,7 @@ begin
   FHeaderCount := 1;
   ColCount := DEFAULT_COL_COUNT + FHeaderCount;
   RowCount := DEFAULT_ROW_COUNT + FHeaderCount;
-  FDefRowHeight100 := inherited DefaultRowHeight;
+  FDefRowHeight100 := inherited GetDefaultRowHeight;
   FDefColWidth100 := inherited DefaultColWidth;
   //FOldTopRow := -1;
   FCellFont := TFont.Create;
@@ -5073,9 +5073,10 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Setup;
 begin
+  {
   if csLoading in ComponentState then
     exit;
-
+   }
   if FLockSetup > 0 then
     exit;
 
@@ -6346,10 +6347,10 @@ end;
 
 procedure TsCustomWorksheetGrid.SetDefColWidth(AValue: Integer);
 begin
-  if AValue = GetDefColWidth then
+  if (AValue = GetDefColWidth) or (AValue < 0) then
     exit;
-  // AValue contains the zoom factor
-  // FDefColWidth1000 is the col width at zoom factor 1.0
+  { AValue contains the zoom factor.
+    FDefColWidth1000 is the col width at zoom factor 1.0 }
   FDefColWidth100 := round(AValue / ZoomFactor);
   inherited DefaultColWidth := AValue;
   if FHeaderCount > 0 then begin
@@ -6362,10 +6363,10 @@ end;
 
 procedure TsCustomWorksheetGrid.SetDefRowHeight(AValue: Integer);
 begin
-  if AValue = GetDefRowHeight then
+  if (AValue = GetDefRowHeight) or (AValue < 0) then
     exit;
-  // AValue contains the zoom factor
-  // FDefRowHeight100 is the row height at zoom factor 1.0
+  { AValue contains the zoom factor
+    FDefRowHeight100 is the row height at zoom factor 1.0 }
   FDefRowHeight100 := round(AValue / ZoomFactor);
   inherited DefaultRowHeight := AValue;
   if FHeaderCount > 0 then
