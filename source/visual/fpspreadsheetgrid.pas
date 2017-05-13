@@ -2850,7 +2850,7 @@ var
   R: TRect;
   cell: PCell;
   r1,c1,r2,c2: Cardinal;
-  //delta: Integer;
+  delta: Integer;
   savedPenMode: TPenMode;
 begin
   if Worksheet = nil then
@@ -2865,9 +2865,15 @@ begin
   end else
     R := CellRect(Selection.Left, Selection.Top, Selection.Right, Selection.Bottom);
 
+  // Draw focus rect inside
+  delta := Max(FSelPen.Width div 2, 0);
+  inc(R.Top, delta);
+  if IsRightToLeft then dec(R.Right, delta) else inc(R.Left, delta);
+
+              {
   dec(R.Top);
   if IsRightToLeft then inc(R.Right) else dec(R.Left);
-
+               }
   // Cosmetics at the edges of the grid to avoid spurious rests
                         {
   delta := Max(FSelPen.Width div 2, 0);
