@@ -5115,11 +5115,18 @@ begin
   end else
   if Worksheet <> nil then begin
     if aeDefault in FAutoExpand then begin
-      ColCount := Max(GetGridCol(Worksheet.GetLastColIndex)+1, DEFAULT_COL_COUNT) + FHeaderCount;
-      RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex)+1, DEFAULT_ROW_COUNT) + FHeaderCount;
+      ColCount := Max(GetGridCol(Worksheet.GetLastColIndex)+1, DEFAULT_COL_COUNT); // + FHeaderCount;
+      RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex)+1, DEFAULT_ROW_COUNT); // + FHeaderCount;
     end else begin
-      ColCount := Max(GetGridCol(WorkSheet.GetLastColIndex), 1) + FHeaderCount;
-      RowCount := Max(GetGridCol(Worksheet.GetLastRowIndex), 1) + FHeaderCount;
+
+// wp: next lines replaced by the following ones because of
+// http://forum.lazarus.freepascal.org/index.php/topic,36770.msg246192.html#msg246192
+// NOTE: VERY SENSITIVE LOCATION !!!
+
+//      ColCount := Max(GetGridCol(WorkSheet.GetLastColIndex), 1) + FHeaderCount;
+//      RowCount := Max(GetGridCol(Worksheet.GetLastRowIndex), 1) + FHeaderCount;
+      ColCount := Max(GetGridCol(WorkSheet.GetLastColIndex)+1, 1); // + FHeaderCount;
+      RowCount := Max(GetGridCol(Worksheet.GetLastRowIndex)+1, 1); // + FHeaderCount;
     end;
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
