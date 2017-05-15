@@ -265,6 +265,7 @@ type
     property ShowHTMLText: Boolean read FShowHTMLText write FShowHTMLText default true;
     {@@ Link to the WorkbookSource which provides the workbook and worksheet. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+    property WantReturns default false;
   end;
 
 
