@@ -2911,7 +2911,7 @@ begin
               '<rPr>'+  // thie entire node could be omitted, but then Excel uses some ugly default font
                 '<sz val="9"/>'+
                 '<color rgb="000000" />'+  // Excel files have color index 81 here, but it could be that this does not exist in fps files --> use rgb instead
-                '<fFont vel="Arial" />'+   // It is not harmful to Excel if the font does not exist.
+                '<rFont val="Arial" />'+   // It is not harmful to Excel if the font does not exist.
                 '<charset val="1" />'+
               '</rPr>'+
               '<t xml:space="preserve">' + txt + '</t>' +
