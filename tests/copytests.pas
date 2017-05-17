@@ -65,7 +65,7 @@ const
 
 procedure MyInitCellRecord(out ACell: TCellRecord);
 begin
-  ACell.Contenttype := cctEmpty;
+  ACell.ContentType := cctEmpty;
   ACell.NumberValue := 0.0;
   ACell.UTF8StringValue := '';
   ACell.FormulaValue := '';
@@ -146,10 +146,11 @@ begin
 end;
 
 { This test prepares a worksheet and copies Values (ATestKind = 1 or 2), Formats
-  (AWhat = 3 or 4), or Formulas (AWhat = 5 or 6). The odd ATestKind number
-  copy the data to the empty column C, the even value copy them to the
-  occupied column B which contains the source data (in column A) shifted down
-  by 1 cell. "The worksheet is saved, reloaded and compared to expectated data }
+  (ATestKind = 3 or 4), or Formulas (ATestKind = 5 or 6).
+  The odd ATestKind numbers copy the data to the empty column C,
+  the even ATestKind numbers copy them to the occupied column B which contains
+  the source data (those from column A), but shifted down by 1 cell.
+  The worksheet is saved, reloaded and compared to expectated data }
 procedure TSpreadCopyTests.Test_Copy(ATestKind: Integer);
 const
   AFormat = sfExcel8;

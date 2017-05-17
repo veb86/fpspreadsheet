@@ -29,7 +29,7 @@ type
     procedure SetColor(AIndex: Integer; AColor: TsColor);
   public
     constructor Create;
-    procedure AddBuiltinColors; virtual;
+    procedure AddBuiltinColors(EditableSet: Boolean = false); virtual;
     function AddColor(AColor: TsColor; ABigEndian: Boolean = false): Integer;
     procedure AddExcelColors;
     function AddUniqueColor(AColor: TsColor; ABigEndian: Boolean = false): Integer;
@@ -37,7 +37,8 @@ type
     procedure CollectFromWorkbook(AWorkbook: TsWorkbook);
     function ColorUsedInWorkbook(APaletteIndex: Integer; AWorkbook: TsWorkbook): Boolean;
     function FindClosestColorIndex(AColor: TsColor; AMaxPaletteCount: Integer = -1): Integer;
-    function FindColor(AColor: TsColor; AMaxPaletteCount: Integer = -1): Integer;
+    function FindColor(AColor: TsColor; AMaxPaletteCount: Integer = -1;
+      AStartIndex: Integer = 0): Integer;
     function Count: Integer;
     procedure Trim(AMaxSize: Integer);
     procedure UseColors(const AColors: array of TsColor; ABigEndian: Boolean = false);
@@ -101,8 +102,9 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Adds the built-in colors
+  NOTE: These colors cannot be edited by Excel.
 -------------------------------------------------------------------------------}
-procedure TsPalette.AddBuiltinColors;
+procedure TsPalette.AddBuiltinColors(EditableSet: Boolean = false);
 begin
   AddColor(scBlack);   // 0
   AddColor(scWhite);   // 1
@@ -112,6 +114,18 @@ begin
   AddColor(scYellow);  // 5
   AddColor(scMagenta); // 6
   AddColor(scCyan);    // 7
+
+  if EditableSet then
+  begin
+    AddColor($000000, true);   // $08: EGA black
+    AddColor($FFFFFF, true);   // $09: EGA white
+    AddColor($FF0000, true);   // $0A: EGA red
+    AddColor($00FF00, true);   // $0B: EGA green
+    AddColor($0000FF, true);   // $0C: EGA blue
+    AddColor($FFFF00, true);   // $0D: EGA yellow
+    AddColor($FF00FF, true);   // $0E: EGA magenta
+    AddColor($00FFFF, true);   // $0F: EGA cyan
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -340,13 +354,13 @@ end;
   @return  Palette index of AColor
 -------------------------------------------------------------------------------}
 function TsPalette.FindColor(AColor: TsColor;
-  AMaxPaletteCount: Integer = -1): Integer;
+  AMaxPaletteCount: Integer = -1; AStartIndex: Integer = 0): Integer;
 var
   n: Integer;
 begin
   n := Length(FColors);
   if AMaxPaletteCount > n then n := AMaxPaletteCount;
-  for Result := 0 to n - 1 do
+  for Result := AStartIndex to n - 1 do
     if GetColor(Result) = AColor then
       exit;
   Result := -1;

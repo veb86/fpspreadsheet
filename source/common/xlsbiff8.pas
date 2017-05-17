@@ -136,6 +136,7 @@ type
   protected
     function GetPrintOptions: Word; override;
     procedure InternalWriteToStream(AStream: TStream);
+    procedure PopulatePalette; override;
 
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
@@ -2222,6 +2223,12 @@ begin
 
   { Cleanup }
   SetLength(sheetPos, 0);
+end;
+
+procedure TsSpreadBIFF8Writer.PopulatePalette;
+begin
+  FPalette.Clear;
+  FPalette.AddBuiltinColors(true);
 end;
 
 {@@ ----------------------------------------------------------------------------

@@ -534,6 +534,7 @@ type
     function GetLastColIndex(AWorksheet: TsWorksheet): Word;
     function GetPrintOptions: Word; virtual;
     function PaletteIndex(AColor: TsColor): Word;
+    procedure PopulatePalette; virtual;
 
     // Helper function for writing the BIFF header
     procedure WriteBIFFHeader(AStream: TStream; ARecID, ARecSize: Word);
@@ -3068,7 +3069,7 @@ begin
 
   // Color palette
   FPalette := TsPalette.Create;
-  FPalette.AddBuiltinColors;
+  PopulatePalette;
   FPalette.CollectFromWorkbook(AWorkbook);
 end;
 
@@ -3226,10 +3227,22 @@ function TsSpreadBIFFWriter.PaletteIndex(AColor: TsColor): Word;
 var
   idx: Integer;
 begin
-  idx := FPalette.FindColor(AColor, Limitations.MaxPaletteSize);
+  idx := FPalette.FindColor(AColor, Limitations.MaxPaletteSize, 8);
+  // Startindex 8 -- Skip built-in colors - they are not allowed to be edited
   if idx = -1 then
     idx := FPalette.FindClosestColorIndex(AColor, Limitations.MaxPaletteSize);
   Result := word(idx);
+end;
+
+procedure TsSpreadBIFFWriter.PopulatePalette;
+begin
+  with FPalette do
+  begin
+    Clear;
+    AddBuiltinColors(false); // 0..7
+    // Note: These colors cannot be edited by Excel. The format specific
+    // writer must duplicate these items (except for BIFF2).
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

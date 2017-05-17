@@ -130,7 +130,9 @@ begin
       8: palette.UseColors(PALETTE_BIFF8);
     999: begin  // random palette: testing of color replacement
            palette.UseColors(PALETTE_BIFF8);
-           for i:=8 to 63 do   // first 8 colors must not be changed in Excel
+           // Loop begins at 16 because the first 8 colors must not be changed
+           // and the next 8 are duplicates for editingy in Excel
+           for i:=16 to 63 do
              palette[i] := random(256) + random(256) shr 8 + random(256) shr 16;
          end;
     else palette.AddBuiltinColors;
@@ -216,7 +218,9 @@ begin
       8: palette.UseColors(PALETTE_BIFF8);
     999: begin  // random palette: testing of color replacement
            palette.UseColors(PALETTE_BIFF8);
-           for i:=8 to 63 do   // first 8 colors must not be changed in Excel
+           // Loop begins at 16 because the first 8 colors must not be changed
+           // and the next 8 are duplicates for editingy in Excel
+           for i:=16 to 63 do
              palette[i] := random(256) + random(256) shr 8 + random(256) shr 16;
          end;
     else palette.AddBuiltinColors;
