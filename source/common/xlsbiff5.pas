@@ -980,9 +980,10 @@ begin
   { Color index }
   // The problem is that the palette is loaded after the font list; therefore
   // we do not know the rgb color of the font here. We store the palette index
-  // ("SetAsPaletteIndex") and replace it by the rgb color at the end of the
-  // workbook globals records. As an indicator that the font does not yet
-  // contain an rgb color a control bit is set in the high-byte of the TsColor.
+  // ("SetAsPaletteIndex") and replace it by the rgb color after reading of the
+  // palette and after reading the workbook globals records. As an indicator
+  // that the font does not yet contain an rgb color a control bit is set in
+  // the high-byte of the TsColor.
   lColor := WordLEToN(AStream.ReadWord);
   if lColor < 8 then
     // Use built-in colors directly otherwise the Workbook's FindFont would not find the font in ReadXF

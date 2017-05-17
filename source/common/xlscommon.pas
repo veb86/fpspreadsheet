@@ -1944,6 +1944,11 @@ begin
   // Read palette colors and add them to the palette
   while FPalette.Count < n do
     FPalette.AddColor(DWordLEToN(AStream.ReadDWord));
+
+  // The problem is that the palette is loaded after the font list. During
+  // loading of the fonts the font color had stored the palette index. Here
+  // we replace the palette index by the rgb color.
+  FixColors;
 end;
 
 {@@ ----------------------------------------------------------------------------
