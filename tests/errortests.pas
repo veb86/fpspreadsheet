@@ -65,14 +65,6 @@ const
     (Format: sfOOXML;        MaxRowCount: 1048576; MaxColCount: 16384; MaxCellLen: $FFFFFFFF),
     (Format: sfOpenDocument; MaxRowCount: 1048576; MaxColCount:  1024; MaxCellLen: $FFFFFFFF)
   );
-  (*
-type
-  TTestFormat = (sfExcel2, sfExcel5, sfExcel8, sfExcelXML, sfOOXML, sfOpenDocument);
-const                                           // XLS2   XLS5   XLS8   XLSXML   OOXML    ODS
-  MAX_ROW_COUNT: array[TTestFormat] of Cardinal = (65536, 65536, 65536, 65536,  1048576, 1048576);
-  MAX_COL_COUNT: array[TTestFormat] of Cardinal = (  256,   256,   256,   256,    16384,    1024);
-  MAX_CELL_LEN : array[TTestFormat] of Cardinal = (  255,   255, 32767, 32767,$FFFFFFFF,$FFFFFFFF);
-  *)
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
@@ -155,10 +147,10 @@ begin
       // Prepare a full palette
       palette := TsPalette.Create;
       try
-        // Create random palette of 65 unique entries - 1 too many for Excel5/8
+        // Create random palette of 65 unique entries -> 1 too many for Excel5/8
         // and a lot too many for BIFF2
         palette.AddBuiltinColors;
-        for i:=8 to 65 do
+        for i:=palette.Count to 65 do
         begin
           repeat
             newColor := random(256) + random(256) shl 8 + random(256) shl 16;

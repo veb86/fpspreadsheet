@@ -136,7 +136,7 @@ type
   protected
     function GetPrintOptions: Word; override;
     procedure InternalWriteToStream(AStream: TStream);
-    procedure PopulatePalette; override;
+    procedure PopulatePalette(AWorkbook: TsWorkbook); override;
 
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
@@ -2226,10 +2226,17 @@ begin
   SetLength(sheetPos, 0);
 end;
 
-procedure TsSpreadBIFF8Writer.PopulatePalette;
+procedure TsSpreadBIFF8Writer.PopulatePalette(AWorkbook: TsWorkbook);
+var
+  i: Integer;
 begin
   FPalette.Clear;
   FPalette.AddBuiltinColors(true);
+  FPalette.CollectFromWorkbook(AWorkbook);
+  // Fill up Excel colors of the standard palette to avoid empty color
+  // place holders in Excel's colordialog.
+  for i := 16 to High(PALETTE_BIFF8) do
+    FPalette.AddUniqueColor(PALETTE_BIFF8[i]);
 end;
 
 {@@ ----------------------------------------------------------------------------

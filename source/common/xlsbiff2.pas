@@ -111,6 +111,7 @@ type
     procedure AddBuiltinNumFormats; override;
     function FunctionSupported(AExcelCode: Integer;
       const AFuncName: String): Boolean; override;
+    procedure PopulatePalette(AWorkbook: TsWorkbook); override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
@@ -1306,6 +1307,16 @@ begin
     AFontIndex := AFormatRecord^.FontIndex;
     if AFontIndex >= 4 then inc(AFontIndex);  // Font #4 does not exist in BIFF
   end;
+end;
+
+procedure TsSpreadBIFF2Writer.PopulatePalette(AWorkbook: TsWorkbook);
+begin
+  FPalette.Clear;
+  FPalette.AddBuiltinColors(false);
+  // The next instruction creates an error log entry if the workbook contains
+  // more colors than the default 8. This is because BIFF2 can only have a
+  // palette with 8 colors.
+  FPalette.CollectFromWorkbook(AWorkbook);
 end;
 
                    (*

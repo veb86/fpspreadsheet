@@ -99,6 +99,7 @@ type
   protected
     function FunctionSupported(AExcelCode: Integer; const AFuncName: String): Boolean; override;
     procedure InternalWriteToStream(AStream: TStream);
+    procedure PopulatePalette(AWorkbook: TsWorkbook); override;
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; AWorkSheet: TsWorksheet): Int64;
@@ -1227,6 +1228,19 @@ begin
   { Cleanup }
 
   SetLength(sheetPos, 0);
+end;
+
+procedure TsSpreadBIFF5Writer.PopulatePalette(AWorkbook: TsWorkbook);
+var
+  i: Integer;
+begin
+  FPalette.Clear;
+  FPalette.AddBuiltinColors(true);
+  FPalette.CollectFromWorkbook(AWorkbook);
+  // Fill up Excel colors of the standard palette to avoid empty color
+  // place holders in Excel's colordialog.
+  for i := 16 to High(PALETTE_BIFF5) do
+    FPalette.AddUniqueColor(PALETTE_BIFF5[i]);
 end;
 
 {@@ ----------------------------------------------------------------------------
