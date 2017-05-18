@@ -3853,11 +3853,13 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes the PALETTE record for the color palette.
-  Valid for BIFF3-BIFF8. BIFF2 has no palette in the file.
+  Valid for BIFF3-BIFF8. BIFF2 has no palette in the file, i.e. WritePalette is
+  not called.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WritePalette(AStream: TStream);
 const
   NUM_COLORS = 56;
+  MAX_PALETTE = NUM_COLORS + 8 - 1;
 var
   i, n: Integer;
   rgb: TsColor;
@@ -3872,7 +3874,7 @@ begin
   n := FPalette.Count;
 
   { Skip the first 8 entries - they are hard-coded into Excel }
-  for i := 8 to 8 + NUM_COLORS - 1 do
+  for i := 8 to MAX_PALETTE do
   begin
     rgb := Math.IfThen(i < n, FPalette[i], $FFFFFF);
     AStream.WriteDWord(DWordToLE(rgb))

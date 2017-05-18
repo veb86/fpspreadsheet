@@ -1230,6 +1230,11 @@ begin
   SetLength(sheetPos, 0);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Populates the palette of the writer with the colors used by the workbook.
+  BIFF8 begins with the 8 default colors which are duplicated. Then the user
+  colors follow up to a max of total 64 entries.
+-------------------------------------------------------------------------------}
 procedure TsSpreadBIFF5Writer.PopulatePalette(AWorkbook: TsWorkbook);
 var
   i: Integer;
@@ -1240,7 +1245,9 @@ begin
   // Fill up Excel colors of the standard palette to avoid empty color
   // place holders in Excel's colordialog.
   for i := 16 to High(PALETTE_BIFF5) do
-    FPalette.AddUniqueColor(PALETTE_BIFF5[i]);
+    FPalette.AddColor(PALETTE_BIFF5[i]);
+    // The BIFF5 palette contains duplicate colors -> don't use AddUniqueColor
+//  FPalette.AddUniqueColor(PALETTE_BIFF5[i]);
 end;
 
 {@@ ----------------------------------------------------------------------------
