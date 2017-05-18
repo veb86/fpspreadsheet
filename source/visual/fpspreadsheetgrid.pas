@@ -4053,19 +4053,17 @@ begin
   begin
     w := CalcWorksheetColWidth(ColWidths[AIndex]);   // w and wdef are at 100% zoom
     wdef := Worksheet.ReadDefaultColWidth(Workbook.Units);
-    if not SameValue(w, wdef, EPS) then begin
+    if (AIndex >= FHeaderCount) and not SameValue(w, wdef, EPS) then begin
       idx := GetWorksheetCol(AIndex);
-      if idx >= 0 then
-        Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w, Workbook.Units);
+      Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w, Workbook.Units);
     end;
   end else
   begin
     h := CalcWorksheetRowHeight(RowHeights[AIndex]);
     hdef := Worksheet.ReadDefaultRowHeight(Workbook.Units);
-    if not SameValue(h, hdef, EPS) then begin
+    if (AIndex >= FHeaderCount) and not SameValue(h, hdef, EPS) then begin
       idx := GetWorksheetRow(AIndex);
-      if idx >= 0 then
-        Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h, Workbook.Units);
+      Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h, Workbook.Units);
     end;
   end;
 end;
@@ -5091,15 +5089,16 @@ end;
   initial column widths and row heights.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Setup;
+var
+  maxColCount, maxRowCount: Integer;
 begin
-  {
   if csLoading in ComponentState then
     exit;
-   }
+
   if FLockSetup > 0 then
     exit;
 
-  if not HandleAllocated then
+  if not HandleAllocated then //or (not Parent.HandleAllocated) then
     //Avoid crash when accessing the canvas, e.g. in GetDefaultHeaderColWidth
     exit;
 
@@ -5114,6 +5113,11 @@ begin
     FTopLeft := CalcTopLeft(false);
   end else
   if Worksheet <> nil then begin
+    maxColCount := IfThen(aeDefault in FAutoExpand, DEFAULT_COL_COUNT, 1);
+    maxRowCount := IfThen(aeDefault in FAutoExpand, DEFAULT_ROW_COUNT, 1);
+    ColCount := Max(GetGridCol(Worksheet.GetLastColIndex) + 1, maxColCount);
+    RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex) + 1, maxRowCount);
+    (*
     if aeDefault in FAutoExpand then begin
       ColCount := Max(GetGridCol(Worksheet.GetLastColIndex)+1, DEFAULT_COL_COUNT); // + FHeaderCount;
       RowCount := Max(GetGridRow(Worksheet.GetLastRowIndex)+1, DEFAULT_ROW_COUNT); // + FHeaderCount;
@@ -5128,6 +5132,7 @@ begin
       ColCount := Max(GetGridCol(WorkSheet.GetLastColIndex)+1, 1); // + FHeaderCount;
       RowCount := Max(GetGridCol(Worksheet.GetLastRowIndex)+1, 1); // + FHeaderCount;
     end;
+    *)
     FixedCols := FFrozenCols + FHeaderCount;
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
@@ -6375,11 +6380,12 @@ procedure TsCustomWorksheetGrid.SetDefColWidth(AValue: Integer);
 begin
   if (AValue = GetDefColWidth) or (AValue < 0) then
     exit;
+
   { AValue contains the zoom factor.
     FDefColWidth1000 is the col width at zoom factor 1.0 }
   FDefColWidth100 := round(AValue / ZoomFactor);
   inherited DefaultColWidth := AValue;
-  if FHeaderCount > 0 then begin
+  if (FHeaderCount > 0) and HandleAllocated then begin
     PrepareCanvasFont;
     ColWidths[0] := GetDefaultHeaderColWidth;
   end;
