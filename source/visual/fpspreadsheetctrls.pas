@@ -1875,7 +1875,8 @@ function TsCellEdit.CanEditCell(ARow, ACol: Cardinal): Boolean;
 var
   cell: PCell;
 begin
-  cell := Worksheet.Findcell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+//  cell := Worksheet.Findcell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  cell := Worksheet.FindCell(ARow, ACol);
   Result := CanEditCell(cell);
 end;
 

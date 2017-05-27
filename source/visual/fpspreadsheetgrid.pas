@@ -1189,6 +1189,7 @@ end;
 
 procedure TMultilineStringCellEditor.msg_SelectAll(var Msg: TGridMessage);
 begin
+  Unused(Msg);
   SelectAll;
 end;
 
@@ -1497,8 +1498,10 @@ end;
 function TsCustomWorksheetGrid.CalcTopLeft(AHeaderOnly: Boolean): TPoint;
 var
   fc, fr: Integer;
-  tmp: Integer;
+  tmp: Integer = 0;
 begin
+  Result := Point(0, 0);  // to silence the compiler...
+
   fc := IfThen(AHeaderOnly, FHeaderCount, FHeaderCount + FFrozenCols);
   if IsRightToLeft then
   begin
@@ -1696,9 +1699,9 @@ function TsCustomWorksheetGrid.CellRect(ACol1, ARow1, ACol2, ARow2: Integer): TR
 var
   cmin, cmax: Integer;
   rmin, rmax: Integer;
-  tmp: Integer;
-  R: TRect;
+  tmp: Integer = 0;
 begin
+  Result := Rect(0, 0, 0, 0);  // to silence the compiler...
   cmin := Min(ACol1, ACol2);
   cmax := Max(ACol1, ACol2);
   rmin := Min(ARow1, ARow2);
@@ -2558,7 +2561,6 @@ procedure TsCustomWorksheetGrid.DrawImages(AGridPart: Integer);
 
   procedure CalcClipRect(var ARect: TRect);
   var
-    tmp: Integer;
     headerTL: TPoint;
   begin
     ARect := ClientRect;
@@ -2615,7 +2617,8 @@ procedure TsCustomWorksheetGrid.DrawImages(AGridPart: Integer);
   procedure GetScrollOffset(out ARowDelta, AColDelta: Integer);
   var
     tmp: Integer;
-    x, y: Integer;
+    x: Integer = 0;
+    y: Integer = 0;
   begin
     AColDelta := 0;
     if FrozenCols > 0 then begin
@@ -2643,10 +2646,12 @@ procedure TsCustomWorksheetGrid.DrawImages(AGridPart: Integer);
   function GetImageRect(img: PsImage; AWidth, AHeight: Integer;
     ARowDelta, AColDelta: Integer): TRect;
   var
-    tmp: Integer;
+    tmp: Integer = 0;
     gcol, grow: Integer;
     relativeX, relativeY: Boolean;
   begin
+    Result := Rect(0, 0, 0, 0);  // To silence the compiler
+
     grow := GetGridRow(img^.row);
     gcol := GetGridCol(img^.Col);
 
@@ -2659,11 +2664,13 @@ procedure TsCustomWorksheetGrid.DrawImages(AGridPart: Integer);
       DRAW_FROZEN_COLS:
         begin
           relativeX := true;
-          relativeY := not ((img^.Row < FrozenRows) and (img^.Col < FrozenCols));
+          relativeY := not ((integer(img^.Row) < FrozenRows) and
+                            (integer(img^.Col) < FrozenCols));
         end;
       DRAW_FROZEN_ROWS:
         begin
-          relativeX := not ((img^.Row < FrozenRows) and (img^.Col < FrozenCols));
+          relativeX := not ((integer(img^.Row) < FrozenRows) and
+                           (integer(img^.Col) < FrozenCols));
           relativeY := true;
         end;
       DRAW_FROZEN_CORNER:
@@ -2704,12 +2711,14 @@ var
   i: Integer;
   img: PsImage;
   obj: TsEmbeddedObj;
-  clipArea, imgRect, R: TRect;
+  clipArea: TRect = (Left:0; Top:0; Right:0; Bottom:0);
+  imgRect: TRect;
   w, h: Integer;
   coloffs, rowoffs: Integer;
   pic: TPicture;
   rgn: HRGN;
   fc, fr: Integer;
+  R: TRect = (Left:0; Top:0; Right: 0; Bottom: 0);
 begin
   if Worksheet.GetImageCount = 0 then
     exit;
@@ -2731,10 +2740,14 @@ begin
 
       // Frozen part of the grid draw only images which are anchored there.
       case AGridPart of
-        DRAW_NON_FROZEN   : ;
-        DRAW_FROZEN_ROWS  : if (img^.Row >= fr) then Continue;
-        DRAW_FROZEN_COLS  : if (img^.Col >= fc) then Continue;
-        DRAW_FROZEN_CORNER: if (img^.Row >= fr) or (img^.Col >= fc) then Continue;
+        DRAW_NON_FROZEN:
+          ;
+        DRAW_FROZEN_ROWS:
+          if (integer(img^.Row) >= fr) then Continue;
+        DRAW_FROZEN_COLS:
+          if (integer(img^.Col) >= fc) then Continue;
+        DRAW_FROZEN_CORNER:
+          if (integer(img^.Row) >= fr) or (integer(img^.Col) >= fc) then Continue;
       end;
 
       // Size of image and its position
@@ -4055,7 +4068,7 @@ begin
     wdef := Worksheet.ReadDefaultColWidth(Workbook.Units);
     if (AIndex >= FHeaderCount) and not SameValue(w, wdef, EPS) then begin
       idx := GetWorksheetCol(AIndex);
-      Worksheet.WriteColWidth(GetWorksheetCol(AIndex), w, Workbook.Units);
+      Worksheet.WriteColWidth(idx, w, Workbook.Units);
     end;
   end else
   begin
@@ -4063,7 +4076,7 @@ begin
     hdef := Worksheet.ReadDefaultRowHeight(Workbook.Units);
     if (AIndex >= FHeaderCount) and not SameValue(h, hdef, EPS) then begin
       idx := GetWorksheetRow(AIndex);
-      Worksheet.WriteRowHeight(GetWorksheetRow(AIndex), h, Workbook.Units);
+      Worksheet.WriteRowHeight(idx, h, Workbook.Units);
     end;
   end;
 end;
@@ -5049,8 +5062,8 @@ var
   cell: PCell;
   cp: TsCellprotections;
 begin
-  Result := true;
-  if Worksheet.IsProtected then
+  Result := inherited;
+  if Result and Worksheet.IsProtected then
   begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     cp := Worksheet.ReadCellProtection(cell);
