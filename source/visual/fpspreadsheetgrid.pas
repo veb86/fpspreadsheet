@@ -21,11 +21,7 @@ unit fpspreadsheetgrid;
  - When Lazarus 1.4 comes out remove the workaround for the RGB2HLS bug in
    FindNearestPaletteIndex.
  - Arial bold is not shown as such if loaded from ods
- - Background color of first cell is ignored.
-
- - Enter 1234567890 into a cell. reduce col width with mouse. Immediately
-   before display becomes #### there is 11E09 in the cell - it should be 1E09.
-   Cell not correctly erased? }
+ - Background color of first cell is ignored. }
 
 interface
 
@@ -5408,7 +5404,7 @@ begin
     while decs > 0 do
     begin
       dec(decs);
-      nfs := '0.' + DupeString('0', decs) + 'E-00';
+      nfs := IfThen(decs = 0, '0E-00', '0.' + DupeString('0', decs) + 'E-00');
       Result := FormatFloat(nfs, ACell^.NumberValue, Workbook.FormatSettings);
 //      Result := Format('%.*e', [decs, ACell^.NumberValue], Workbook.FormatSettings);
       if isStacked then
