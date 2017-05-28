@@ -812,10 +812,8 @@ var
   {@@ Tolerance for mouse for hitting cell border }
   CELL_BORDER_DELTA: Integer = 4;
 
-  (*
   {@@ Cursor for copy operation during drag and drop }
   crDragCopy: Integer;
-  *)
 
 procedure Register;
 
@@ -2181,6 +2179,7 @@ var
   gc, gr: Integer;
   dc, dr: Integer;
   sel: TsCellRange;
+  dragMove: Boolean;
 begin
   inherited;
   Unused(AState);
@@ -2204,6 +2203,13 @@ begin
       Invalidate;
     FOldDragStartRow := gr;
     FOldDragStartCol := gc;
+
+    // Change mouse cursor: Copy or Move
+    dragMove := not (ssCtrl in GetKeyShiftState);
+    if dragMove then
+      DragCursor := crDrag
+    else
+      DragCursor := crDragCopy;
 
     if Worksheet.IsProtected then
       // Allow drop only if no destination cell is locked
@@ -6934,9 +6940,9 @@ initialization
 
   RegisterPropertyToSkip(TsCustomWorksheetGrid, 'ColWidths',  'taken from worksheet', '');
   RegisterPropertyToSkip(TsCustomWorksheetGrid, 'RowHeights', 'taken from worksheet', '');
-  (*
-  DragCopyCursor := LoadCursorFromLazarusResource('cur_dragcopy');
-  *)
+
+  crDragCopy := 1; //201705;
+  Screen.Cursors[crDragCopy] := LoadCursorFromLazarusResource('cur_dragcopy');
 
 
 finalization

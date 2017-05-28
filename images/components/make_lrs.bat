@@ -1,0 +1,1 @@
+lazres ../../source/visual/fpspreadsheetctrls.lrs @list.txt
