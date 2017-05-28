@@ -118,6 +118,10 @@ type
     FOldEditorText: String;
     FMultilineStringEditor: TMultilineStringCellEditor;
     FLineMode: TsEditorLineMode;
+    FAllowDragAndDrop: Boolean;
+    FDragStartCol, FDragStartRow: Integer;
+    FOldDragStartCol, FOldDragStartRow: Integer;
+    FDragSelection: TGridRect;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
@@ -248,11 +252,14 @@ type
     procedure DoPasteFromClipboard; override;
     procedure DoOnResize; override;
     procedure DoPrepareCanvas(ACol, ARow: Integer; AState: TGridDrawState); override;
+    procedure DragOver(ASource: TObject; X, Y: Integer; AState: TDragState;
+      var Accept: Boolean); override;
     procedure DrawAllRows; override;
     procedure DrawCellBorders(AGridPart: Integer = 0); overload;
     procedure DrawCellBorders(ACol, ARow: Integer; ARect: TRect; ACell: PCell); overload;
     procedure DrawCellGrid(ACol,ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
     procedure DrawCommentMarker(ARect: TRect);
+    procedure DrawDragSelection;
     procedure DrawFocusRect(aCol,aRow:Integer; ARect:TRect); override;
     procedure DrawFrozenPaneBorder(AStart, AEnd, ACoord: Integer; IsHor: Boolean);
     procedure DrawFrozenPanes;
@@ -275,6 +282,7 @@ type
       AState: TGridDrawState);
     procedure InternalDrawRow(ARow, AFirstCol, ALastCol: Integer;
       AClipRect: TRect);
+    procedure InternalDrawSelection(ASel: TGridRect; IsNormalSelection: boolean);
     procedure InternalDrawTextInCell(AText: String; ARect: TRect;
       ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
       ATextRot: TsTextRotation; ATextWrap: Boolean; AFontIndex: Integer;
@@ -283,6 +291,8 @@ type
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    function MouseOnCellBorder(const APoint: TPoint;
+      const ACellRect: TGridRect): Boolean;
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MoveSelection; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -299,6 +309,9 @@ type
     procedure WMHScroll(var message : TLMHScroll); message LM_HSCROLL;
     procedure WMVScroll(var message : TLMVScroll); message LM_VSCROLL;
 
+    {@@ Allow built-in drag and drop }
+    property AllowDragAndDrop: Boolean read FAllowDragAndDrop
+      write FAllowDragAndDrop default true;
     {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
     {@@ Automatically expand grid dimensions }
@@ -347,6 +360,7 @@ type
       AState: TGridDrawState); override;
     procedure DeleteCol(AGridCol: Integer); reintroduce;
     procedure DeleteRow(AGridRow: Integer); reintroduce;
+    procedure DragDrop(Source: TObject; X, Y: Integer); override;
     procedure EditingDone; override;
     function  EditorByStyle(Style: TColumnButtonStyle): TWinControl; override;
     procedure EndUpdate(ARefresh: Boolean = true);
@@ -561,6 +575,8 @@ type
   TsWorksheetGrid = class(TsCustomWorksheetGrid)
   published
     // inherited from TsCustomWorksheetGrid
+    {@@ Allow built-in drag and drop }
+    property AllowDragAndDrop;
     {@@ Automatically recalculates the worksheet formulas if a cell value changes. }
     property AutoCalc;
     {@@ Automatically expand grid dimensions }
@@ -793,6 +809,14 @@ var
   {@@ Default number of rows prepared for a new empty worksheet }
   DEFAULT_ROW_COUNT: Integer = 100;
 
+  {@@ Tolerance for mouse for hitting cell border }
+  CELL_BORDER_DELTA: Integer = 4;
+
+  (*
+  {@@ Cursor for copy operation during drag and drop }
+  crDragCopy: Integer;
+  *)
+
 procedure Register;
 
 
@@ -821,6 +845,8 @@ var
   FillPatternStyle: TsFillStyle;
   FillPatternFgColor: TColor;
   FillPatternBgColor: TColor;
+
+  DragBorderBitmap: TBitmap = nil;
 
 {@@ ----------------------------------------------------------------------------
   Helper procedure which creates bitmaps used for fill patterns in cell
@@ -1269,6 +1295,8 @@ begin
  {$IFNDEF FPS_NO_GRID_MULTISELECT}
   RangeSelectMode := rsmMulti;
  {$ENDIF}
+
+  FAllowDragAndDrop := true;
 
   dec(FRowHeightLock);
   UpdateRowHeights;
@@ -2101,6 +2129,96 @@ begin
   inherited DoPrepareCanvas(ACol, ARow, AState);
 end;
 
+procedure TsCustomWorksheetGrid.DragDrop(Source: TObject; X, Y: Integer);
+var
+  i, j: Integer;
+  sel: TsCellRange;
+  srccell, destcell: PCell;
+  r: LongInt = 0;
+  c: LongInt = 0;
+  dr, dc: LongInt;
+  dragMove: Boolean;
+begin
+  Unused(X, Y);
+
+  inherited;
+
+  if not ((goEditing in Options)) or (not FAllowDragAndDrop) then
+    Exit;
+
+  // Offset of col/row coordinates from source to destination cell
+  MouseToCell(X,Y, c, r);
+  dr := r - FDragStartRow;
+  dc := c - FDragStartCol;
+
+  // Copy cells or only move them?
+  dragMove := not (ssCtrl in GetKeyShiftState);
+
+  // Copy cells to destination and delete the source cells if required.
+  for sel in Worksheet.GetSelection do
+  begin
+    for r := sel.Row1 to sel.Row2 do
+      for c := sel.Col1 to sel.Col2 do
+      begin
+        srccell := Worksheet.FindCell(r, c);
+        if Worksheet.IsMerged(srccell) then
+          srccell := Worksheet.FindMergeBase(srccell);
+        if srccell <> nil then begin
+          destcell := Worksheet.GetCell(r + dr, c + dc);
+          Worksheet.CopyCell(srccell, destcell);
+          if dragMove then
+            Worksheet.DeleteCell(srccell);
+        end;
+      end;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.DragOver(ASource: TObject; X, Y: Integer;
+  AState: TDragState; var Accept: Boolean);
+var
+  destcell: PCell;
+  sc, sr: Integer;
+  gc, gr: Integer;
+  dc, dr: Integer;
+  sel: TsCellRange;
+begin
+  inherited;
+  Unused(AState);
+
+  if FAllowDragAndDrop and (ASource = self) and (goEditing in Options) then
+  begin
+    MouseToCell(X,Y, gc, gr);
+
+    // Don't drop over over the header cells
+    if (gc < FHeaderCount) or (gr < FHeaderCount) then
+      exit;
+
+    // Find dragged selection rectangle
+    dc := gc - FDragStartCol;
+    dr := gr - FDragStartRow;
+    FDragSelection := Selection;
+    OffsetRect(FDragSelection, dc, dr);
+
+    // Draw dragged selection rectangle
+    if (FOldDragStartRow <> gr) or (FOldDragStartCol <> gc) then
+      Invalidate;
+    FOldDragStartRow := gr;
+    FOldDragStartCol := gc;
+
+    if Worksheet.IsProtected then
+      // Allow drop only if no destination cell is locked
+      for sel in Worksheet.GetSelection do
+        for sr := sel.Row1 to sel.Row2 do
+          for sc := sel.Col1 to sel.Col2 do
+          begin
+            destcell := Worksheet.FindCell(sr + dr, sc + dc);
+            if (cpLockCell in Worksheet.ReadCellProtection(destcell)) then
+              exit;
+          end;
+    Accept := true;
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   This method is inherited from TsCustomGrid, but is overridden here in order
   to paint the cell borders and the selection rectangle.
@@ -2139,6 +2257,7 @@ begin
     SelectClipRgn(Canvas.Handle, Rgn);
     DrawCellBorders;
     DrawSelection;
+    DrawDragSelection;
     DrawImages(DRAW_NON_FROZEN);
   //  DrawFrozenPaneBorders(clipRect);
   finally
@@ -2863,63 +2982,97 @@ begin
   end;
 end;
 
+procedure TsCustomWorksheetGrid.DrawDragSelection;
+begin
+  if Assigned(DragManager) and DragManager.IsDragging then
+    InternalDrawSelection(FDragSelection, false);
+end;
+
 {@@ ----------------------------------------------------------------------------
   Draws the selection rectangle around selected cells.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawSelection;
+begin
+  InternalDrawSelection(Selection, true);
+end;
+
+procedure TsCustomWorksheetGrid.InternalDrawSelection(ASel: TGridRect;
+  IsNormalSelection: boolean);
 var
   R: TRect;
   cell: PCell;
   r1,c1,r2,c2: Cardinal;
   delta: Integer;
   savedPenMode: TPenMode;
+  penwidth: Integer;
+  P: array[0..9] of TPoint;
 begin
   if Worksheet = nil then
     exit;
 
   // Selected cell
-  cell := Worksheet.FindCell(GetWorksheetRow(Selection.Top), GetWorksheetCol(Selection.Left));
+  cell := Worksheet.FindCell(GetWorksheetRow(ASel.Top), GetWorksheetCol(ASel.Left));
   if Worksheet.IsMerged(cell) then
   begin
     Worksheet.FindMergedRange(cell, r1,c1,r2,c2);
     R := CellRect(GetGridCol(c1), GetGridRow(r1), GetGridCol(c2), GetGridRow(r2));
   end else
-    R := CellRect(Selection.Left, Selection.Top, Selection.Right, Selection.Bottom);
+    R := CellRect(ASel.Left, ASel.Top, ASel.Right, ASel.Bottom);
 
-  // Fine-tune position of selection rect
-  if odd(FSelPen.Width) then delta := -1 else delta := 0;
-  inc(R.Top, delta);
-  if IsRightToLeft then begin
-    if not odd(FSelPen.Width) then
-      OffsetRect(R, 1, 0) else
-      inc(R.Right, 1);
-  end else
-    inc(R.Left, delta);
-
-  if FSelPen.Width > 1 then begin
-    if (Selection.Top = TopRow) then
+  if IsNormalSelection then begin
+    // Fine-tune position of selection rect
+    if odd(FSelPen.Width) then delta := -1 else delta := 0;
+    inc(R.Top, delta);
+    if IsRightToLeft then begin
+      if not odd(FSelPen.Width) then
+        OffsetRect(R, 1, 0) else
+        inc(R.Right, 1);
+    end else
+      inc(R.Left, delta);
+    if (ASel.Top = TopRow) then
       inc(R.Top);
-    if Selection.Left = LeftCol then begin
+    if ASel.Left = LeftCol then begin
       if IsRightToLeft then
         dec(R.Right)
       else
         inc(R.Left);
     end;
+
+    // Set up the canvas
+    savedPenMode := Canvas.Pen.Mode;
+    Canvas.Pen.Assign(FSelPen);
+    if UseXORFeatures then begin
+      Canvas.Pen.Color := clWhite;
+      Canvas.Pen.Mode := pmXOR;
+    end;
+    Canvas.Brush.Style := bsClear;
+    // Paint
+    Canvas.Rectangle(R);
+    // Restore canvas.
+    Canvas.Pen.Mode := savedPenMode;
+  end
+  else
+  begin
+    // Selection during dragging: draw a dotted filled outline
+    delta := 2;
+    // outer rectangle
+    P[0] := Point(R.Left - delta, R.Top - delta);
+    P[1] := Point(R.Right + delta, R.Top - delta);
+    P[2] := Point(R.Right + delta, R.Bottom + delta);
+    P[3] := Point(R.Left - delta, R.Bottom + delta);
+    P[4] := P[0];
+    // inner rectangle
+    P[5] := Point(R.Left + delta, R.Top + delta);
+    P[6] := Point(R.Left + delta, R.Bottom - delta);
+    P[7] := Point(R.Right - delta, R.Bottom - delta);
+    P[8] := Point(R.Right - delta, R.Top + delta);
+    P[9] := P[5];
+    Canvas.Pen.style := psClear;
+    Canvas.Brush.Style := bsImage;
+    Canvas.Brush.Bitmap := DragBorderBitmap;
+//    Canvas.Brush.Color := clblack;
+    Canvas.Polygon(P);
   end;
-
-  // Set up the canvas
-  savedPenMode := Canvas.Pen.Mode;
-  Canvas.Pen.Assign(FSelPen);
-  if UseXORFeatures then begin
-    Canvas.Pen.Color := clWhite;
-    Canvas.Pen.Mode := pmXOR;
-  end;
-  Canvas.Brush.Style := bsClear;
-
-  // Paint
-  Canvas.Rectangle(R);
-
-  Canvas.Pen.Mode := savedPenMode;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4799,18 +4952,34 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MouseDown(Button: TMouseButton;
   Shift: TShiftState; X, Y: Integer);
-{todo: extend such that the hyperlink is handled only when the text is clicked (tough because of overflow cells!) }
+{todo: extend such that the hyperlink is handled only when the text is clicked
+       (tough because of overflow cells!) }
 var
   mouseCell: TPoint;
   cell: PCell;
   r, c: Cardinal;
 begin
+  if FAllowDragAndDrop and
+     (not Assigned(DragManager) or not DragManager.IsDragging) and
+     (ssLeft in Shift) and
+     MouseOnCellBorder(Point(X, Y), Selection) then
+  begin
+    if DragBorderBitmap = nil then
+      CreateFillPattern(DragBorderBitmap, fsGray50, clBlack, clWhite);
+    FDragStartCol := Col;
+    FDragStartRow := Row;
+    FOldDragStartCol := Col;
+    FOldDragStartRow := Row;
+    BeginDrag(false, DragManager.DragThreshold);
+    exit;
+  end;
+
   inherited;
 
-  { Prepare processing of the hyperlink: triggers a timer, the hyperlink is
-    executed when the timer has expired (see HyperlinkTimerElapsed). }
   if (ssLeft in Shift) then
   begin
+    { Prepare processing of the hyperlink: triggers a timer, the hyperlink is
+      executed when the timer has expired (see HyperlinkTimerElapsed). }
     mouseCell := MouseToCell(Point(X, Y));
     r := GetWorksheetRow(mouseCell.Y);
     c := GetWorksheetCol(mouseCell.X);
@@ -4841,14 +5010,43 @@ var
   prevMouseCell: TPoint;
 begin
   prevMouseCell := GCache.MouseCell;
+
   inherited;
+
   if FTextOverflow and
      ((prevMouseCell.X <> GCache.MouseCell.X) or (prevMouseCell.Y <> GCache.MouseCell.Y))
   then
     InvalidateGrid;
 
-  if FHyperlinkTimer.Enabled and (ssLeft in Shift) then
-    FHyperlinkTimer.Enabled := false;
+  if Assigned(Dragmanager) and DragManager.IsDragging then
+  begin;
+    Cursor := crDefault;
+  end else
+  begin
+    if FHyperlinkTimer.Enabled and (ssLeft in Shift) then
+      FHyperlinkTimer.Enabled := false;
+
+    if MouseOnCellBorder(Point(X, Y), Selection) then
+      Cursor := crSize
+    else
+      Cursor := crDefault;
+  end;
+end;
+
+{@@ Checks whether the specified point is on the border of a given cell.
+  The tolerance is defined by the global variable CELL_BORDER_DELTA }
+function TsCustomWorksheetGrid.MouseOnCellBorder(const APoint: TPoint;
+  const ACellRect: TGridRect): Boolean;
+var
+  R: TRect;
+  R1, R2: TRect;
+begin
+  R := CellRect(ACellRect.Left, ACellRect.Top, ACellRect.Right, ACellRect.Bottom);
+  R1 := R;
+  InflateRect(R1, CELL_BORDER_DELTA, CELL_BORDER_DELTA);
+  R2 := R;
+  InflateRect(R2, -CELL_BORDER_DELTA, -CELL_BORDER_DELTA);
+  Result := PtInRect(R1, APoint) and not PtInRect(R2, APoint);
 end;
 
 procedure TsCustomWorksheetGrid.MouseUp(Button: TMouseButton;
@@ -4875,7 +5073,7 @@ var
   i: Integer;
   {$ENDIF}
 begin
-  if (FActiveCellLock > 0) then
+  if (FActiveCellLock > 0) or (Assigned(DragManager) and DragManager.IsDragging) then
     exit;
 
   if Worksheet <> nil then
@@ -6736,8 +6934,13 @@ initialization
 
   RegisterPropertyToSkip(TsCustomWorksheetGrid, 'ColWidths',  'taken from worksheet', '');
   RegisterPropertyToSkip(TsCustomWorksheetGrid, 'RowHeights', 'taken from worksheet', '');
+  (*
+  DragCopyCursor := LoadCursorFromLazarusResource('cur_dragcopy');
+  *)
+
 
 finalization
   FreeAndNil(FillPatternBitmap);
+  FreeAndNil(DragborderBitmap);
 
 end.
