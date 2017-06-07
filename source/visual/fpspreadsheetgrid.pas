@@ -1310,6 +1310,7 @@ begin
     FInternalWorkbookSource.RemoveListener(self);  // will be destroyed automatically
   FreeAndNil(FCellFont);
   FreeAndNil(FSelPen);
+  FreeAndNil(FFrozenBorderPen);
   FreeAndNil(FMultilineStringEditor);
   inherited Destroy;
 end;
