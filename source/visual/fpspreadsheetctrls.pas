@@ -28,7 +28,7 @@ interface
 
 uses
   Classes, Graphics, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
-  LResources,
+  LResources, LCLVersion,
   fpstypes, fpspreadsheet; //, {%H-}fpsAllFormats;
 
 type
@@ -425,7 +425,7 @@ type
     property Worksheet: TsWorksheet read GetWorksheet;
   published
     {@@ Identifies the cell format property to be used in the combobox }
-    property CellFormatItem: TsCellFormatItem read FFormatItem write SetFormatItem;
+    property CellFormatItem: TsCellFormatItem read FFormatItem write SetFormatItem default cfiFontName;
     {@@ Margin around the color box }
     property ColorRectOffset: Integer read FColorRectOffset write SetColorRectOffset default 2;
     {@@ Width of the color box shown for the color-related format items }
@@ -2525,7 +2525,16 @@ begin
       r.Right := ARect.Right - FColorRectOffset
     else
       r.Right := r.Left + FColorRectWidth;
-    Exclude(AState, odPainted);
+
+     // Note: odPainted was renamed in LCL (v1.9) to odBackgroundPainted
+     {$IF lcl_fullversion = 01090000}
+      Exclude(AState, TOwnerDrawStateType(13));
+       // ord(odPainted) = ord(odBackgroundPainted) = 13
+     {$ELSEIF lcl_fullversion < 01090000}
+      Exclude(AState, odPainted);
+     {$ELSE}
+      Exclude(AState, odBackgroundPainted);
+     {$ENDIF}
 
     noFill := false;
 
