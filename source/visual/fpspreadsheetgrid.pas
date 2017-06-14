@@ -2242,6 +2242,8 @@ var
   TL: TPoint;
 begin
   inherited;
+  if Worksheet = nil then
+    exit;
 
   FTopLeft := CalcTopLeft(false);
 
@@ -4351,6 +4353,9 @@ var
   clipArea: TRect;
 
 begin
+  if Worksheet = nil then
+    exit;
+
   sr := GetWorksheetRow(ARow);
   scLastused := Worksheet.GetLastColIndex;
   gc := AFirstCol;
@@ -4966,6 +4971,9 @@ var
   cell: PCell;
   r, c: Cardinal;
 begin
+  if Worksheet = nil then
+    exit;
+
   if FAllowDragAndDrop and
      (not Assigned(DragManager) or not DragManager.IsDragging) and
      (ssLeft in Shift) and
@@ -5016,6 +5024,9 @@ procedure TsCustomWorksheetGrid.MouseMove(Shift: TShiftState; X, Y: Integer);
 var
   prevMouseCell: TPoint;
 begin
+  if Worksheet = nil then
+    exit;
+
   prevMouseCell := GCache.MouseCell;
 
   inherited;
@@ -5264,7 +5275,7 @@ var
   cp: TsCellprotections;
 begin
   Result := inherited;
-  if Result and Worksheet.IsProtected then
+  if Result and Assigned(Worksheet) and Worksheet.IsProtected then
   begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     cp := Worksheet.ReadCellProtection(cell);

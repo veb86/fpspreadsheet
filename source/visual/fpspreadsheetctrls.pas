@@ -1610,7 +1610,11 @@ begin
     else
       sheet := Workbook.GetWorksheetbyIndex(ASheetIndex);
   end else
-    sheet := FWorksheet;
+  if ASheetIndex > -1 then
+    sheet := FWorksheet
+  else
+    sheet := nil;  // all sheets were removed
+
 //  FWorksheet := sheet;  // is needed by listeners!
   NotifyListeners([lniWorksheetRemove]);
   SelectWorksheet(sheet);
@@ -1882,6 +1886,9 @@ end;
 
 procedure TsCellEdit.DoEnter;
 begin
+  if Worksheet = nil then
+    exit;
+
   if not CanEditCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol) then
   begin
     MessageDlg('This cell is protected from editing. Unlock worksheet protection '+

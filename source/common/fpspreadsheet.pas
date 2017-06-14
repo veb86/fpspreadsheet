@@ -688,7 +688,7 @@ type
   {@@ Event procedure containing a specific worksheet }
   TsWorksheetEvent = procedure (Sender: TObject; ASheet: TsWorksheet) of object;
 
-  {@@ Event procedure called when a worksheet is removed }
+  {@@ Event procedure called when a worksheet is removed. ASheetIndex = -1 --> all sheets }
   TsRemoveWorksheetEvent = procedure (Sender: TObject; ASheetIndex: Integer) of object;
 
 
@@ -8051,7 +8051,9 @@ end;
 -------------------------------------------------------------------------------}
 destructor TsWorkbook.Destroy;
 begin
+  DisableNotifications;
   RemoveAllWorksheets;
+  EnableNotifications;
   FWorksheets.Free;
 
   FCellFormatList.Free;
@@ -8791,7 +8793,11 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.RemoveAllWorksheets;
 begin
+  FActiveWorksheet := nil;
   FWorksheets.ForEachCall(RemoveWorksheetsCallback, nil);
+  FWorksheets.Clear;
+  if (FLockCount = 0) and Assigned(FOnRemoveWorksheet) then
+    FOnRemoveWorksheet(self, -1);
 end;
 
 {@@ ----------------------------------------------------------------------------
