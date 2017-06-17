@@ -162,6 +162,11 @@ function RandomString(ALen: Integer): String;
 function SplitStr(const AText: String; ADelimiter: Char): TStringArray;
 function UnquoteStr(AString: String): String;
 
+function InitSearchParams(ASearchText: String = ''; AOptions: TsSearchOptions = [];
+  ASearchWithin: TsSearchWithin = swWorksheet): TsSearchParams;
+function InitReplaceParams(AReplaceText: String = '';
+  AOptions: TsReplaceOptions = []): TsReplaceParams;
+
 function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
   ASortPriority: TsSortPriority = spNumAlpha): TsSortParams;
 
@@ -1986,6 +1991,37 @@ begin
     Delete(Result, 1, 1);
     Delete(Result, Length(Result), 1);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initializes a SearchParams record. This record defines the parameters needed
+  when searching cells.
+
+  @param   ASearchText   This is the text to be searched
+  @param   AOptions      Defines options for searching (see TsSearchOptions)
+  @param   AWithin       Defines which part of the document is to be searched
+-------------------------------------------------------------------------------}
+function InitSearchParams(ASearchText: String = ''; AOptions: TsSearchOptions = [];
+  ASearchWithin: TsSearchWithin = swWorksheet): TsSearchParams;
+begin
+  Result.SearchText := ASearchText;
+  Result.Options := AOptions;
+  Result.Within := ASearchWithin;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initializes a RecplaceParams record. This record defined how the cell content
+  found after searching will be replaced
+
+  @param   AReplaceText   Is the text which will be inserted in the found cell
+  @param   AOptions       Defines options for the replacement (see
+                          TsReplaceParams)
+-------------------------------------------------------------------------------}
+function InitReplaceParams(AReplaceText: String = '';
+  AOptions: TsReplaceOptions = []): TsReplaceParams;
+begin
+  Result.ReplaceText := AReplaceText;
+  Result.Options := AOptions;
 end;
 
 {@@ ----------------------------------------------------------------------------
