@@ -293,6 +293,7 @@ type
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     function MouseOnCellBorder(const APoint: TPoint;
       const ACellRect: TGridRect): Boolean;
+    function MouseOnHeader(X, Y: Integer): Boolean;
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MoveSelection; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -5031,6 +5032,9 @@ begin
 
   inherited;
 
+  if MouseOnHeader(X,Y) then
+    exit;
+
   if FTextOverflow and
      ((prevMouseCell.X <> GCache.MouseCell.X) or (prevMouseCell.Y <> GCache.MouseCell.Y))
   then
@@ -5065,6 +5069,17 @@ begin
   R2 := R;
   InflateRect(R2, -CELL_BORDER_DELTA, -CELL_BORDER_DELTA);
   Result := PtInRect(R1, APoint) and not PtInRect(R2, APoint);
+end;
+
+function TsCustomWorksheetGrid.MouseOnHeader(X, Y: Integer): Boolean;
+var
+  R: TRect;
+begin
+  if FHeaderCount = 0 then
+    exit(false);
+
+  R := CellRect(0, 0);
+  Result := (Y < R.Bottom) or (X < R.Right);
 end;
 
 procedure TsCustomWorksheetGrid.MouseUp(Button: TMouseButton;
