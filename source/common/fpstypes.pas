@@ -830,7 +830,7 @@ type
 
   {@@ Search option }
   TsSearchOption = (soCompareEntireCell, soMatchCase, soRegularExpr, soAlongRows,
-    soBackward, soWrapDocument, soEntireDocument);
+    soBackward, soWrapDocument, soEntireDocument, soSearchInComment);
 
   {@@ A set of search options }
   TsSearchOptions = set of TsSearchOption;

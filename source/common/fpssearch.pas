@@ -109,7 +109,7 @@ begin
       if not (soMatchCase in FSearchParams.Options) then
         Include(flags, rfIgnoreCase);
       s := UTF8StringReplace(s, FSearchparams.SearchText, FReplaceParams.ReplaceText, flags);
-      AWorksheet.WritecellValueAsString(ARow, ACol, s);
+      AWorksheet.WriteCellValueAsString(ARow, ACol, s);
       // to do: RegEx to be added
     end;
   end;
@@ -451,22 +451,27 @@ end;
 function TsSearchEngine.Matches(AWorksheet: TsWorksheet; ARow, ACol: Cardinal): Boolean;
 var
   cell: PCell;
-  celltxt: String;
+  txt: String;
 begin
   cell := AWorksheet.FindCell(ARow, ACol);
+  txt := '';
   if cell <> nil then
-    celltxt := AWorksheet.ReadAsText(cell) else
-    celltxt := '';
+  begin
+    if (soSearchInComment in FSearchParams.Options) then
+      txt := AWorksheet.ReadComment(cell)
+    else
+      txt := AWorksheet.ReadAsText(cell);
+  end;
 
   if soRegularExpr in FSearchParams.Options then
-    Result := FRegEx.Exec(celltxt)
+    Result := FRegEx.Exec(txt)
   else
   begin
     if not (soMatchCase in FSearchParams.Options) then
-      celltxt := UTF8Lowercase(celltxt);
+      txt := UTF8Lowercase(txt);
     if soCompareEntireCell in FSearchParams.Options then
-      exit(celltxt = FSearchText);
-    if UTF8Pos(FSearchText, celltxt) > 0 then
+      exit(txt = FSearchText);
+    if pos(FSearchText, txt) > 0 then
       exit(true);
     Result := false;
   end;
