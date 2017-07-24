@@ -1313,24 +1313,12 @@ procedure TsSpreadBIFF2Writer.PopulatePalette(AWorkbook: TsWorkbook);
 begin
   FPalette.Clear;
   FPalette.AddBuiltinColors(false);
-  // The next instruction creates an error log entry if the workbook contains
-  // more colors than the default 8. This is because BIFF2 can only have a
-  // palette with 8 colors.
+  { The next instruction creates an error log entry in CheckLimitations
+    if the workbook contains more colors than the default 8.
+    This is because BIFF2 can only have a palette with 8 colors. }
   FPalette.CollectFromWorkbook(AWorkbook);
 end;
 
-                   (*
-{@@ ----------------------------------------------------------------------------
-  Builds up the list of number formats to be written to the biff2 file.
-  Unlike biff5+ no formats are added here because biff2 supports only 21
-  standard formats; these formats have been added by AddBuiltInFormats.
-  Nothing to do here.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF2Writer.ListAllNumFormats;
-begin
-  // Nothing to do here.
-end;
-                 *)
 {@@ ----------------------------------------------------------------------------
   Attaches cell formatting data for the given cell to the current record.
   Is called from all writing methods of cell contents and rows

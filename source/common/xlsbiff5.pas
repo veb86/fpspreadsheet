@@ -1242,12 +1242,15 @@ begin
   FPalette.Clear;
   FPalette.AddBuiltinColors(true);
   FPalette.CollectFromWorkbook(AWorkbook);
-  // Fill up Excel colors of the standard palette to avoid empty color
-  // place holders in Excel's colordialog.
-  for i := 16 to High(PALETTE_BIFF5) do
+
+  { Fill up Excel colors of the standard palette to avoid empty color
+    place holders in Excel's colordialog. }
+  i := 16;
+  while (i <= High(PALETTE_BIFF5)) and (FPalette.Count < 64) do begin
     FPalette.AddColor(PALETTE_BIFF5[i]);
     // The BIFF5 palette contains duplicate colors -> don't use AddUniqueColor
-//  FPalette.AddUniqueColor(PALETTE_BIFF5[i]);
+    inc(i);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

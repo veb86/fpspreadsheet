@@ -1446,6 +1446,7 @@ begin
   { Read column start and end index of column range }
   c1 := WordLEToN(AStream.ReadWord);
   c2 := WordLEToN(AStream.ReadWord);
+  if c2 = 256 then dec(c2);  // If columns are used Excel writes last index 256 - but it should be 255 ?!
 
   { Read col width in 1/256 of the width of "0" character }
   w := WordLEToN(AStream.ReadWord);
