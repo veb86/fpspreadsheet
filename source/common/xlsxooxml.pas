@@ -1271,6 +1271,7 @@ procedure TsSpreadOOXMLReader.ReadDimension(ANode: TDOMNode;
 var
   ref: String;
   r1, c1: Cardinal;
+  ok: Boolean;
 begin
   Unused(AWorksheet);
 
@@ -1281,8 +1282,13 @@ begin
     exit;
 
   ref := GetAttrValue(ANode, 'ref');
-  if ref <> '' then
-    ParseCellRangeString(ref, r1, c1, FLastRow, FLastCol);
+  if ref <> '' then begin
+    // Normally the range of worksheets is specified as, e.g., 'A1:K5'
+    ok := ParseCellRangeString(ref, r1, c1, FLastRow, FLastCol);
+    // But for empty worksheets it is specified as only 'A1'
+    if not ok then
+      ParseCellString(ref, FLastRow, FLastCol);
+  end;
 end;
 
 procedure TsSpreadOOXMLReader.ReadFileVersion(ANode: TDOMNode);
