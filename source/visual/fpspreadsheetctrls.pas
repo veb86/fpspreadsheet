@@ -686,7 +686,7 @@ var
   cell: PCell;
 begin
   New(cell);
-  InitCell(ARow, ACol, cell^);
+  InitCell(nil, ARow, ACol, cell^);
   Result := inherited Add(cell);
 end;
 

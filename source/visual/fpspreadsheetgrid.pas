@@ -2131,7 +2131,6 @@ end;
 
 procedure TsCustomWorksheetGrid.DragDrop(Source: TObject; X, Y: Integer);
 var
-  i, j: Integer;
   sel: TsCellRange;
   srccell, destcell: PCell;
   r: LongInt = 0;
@@ -2178,7 +2177,8 @@ procedure TsCustomWorksheetGrid.DragOver(ASource: TObject; X, Y: Integer;
 var
   destcell: PCell;
   sc, sr: Integer;
-  gc, gr: Integer;
+  gc: Integer = 0;
+  gr: Integer = 0;
   dc, dr: Integer;
   sel: TsCellRange;
   dragMove: Boolean;
@@ -3014,7 +3014,6 @@ var
   r1,c1,r2,c2: Cardinal;
   delta: Integer;
   savedPenMode: TPenMode;
-  penwidth: Integer;
   P: array[0..9] of TPoint;
 begin
   if Worksheet = nil then

@@ -657,7 +657,7 @@ begin
 
   { Create cell }
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -1095,7 +1095,7 @@ begin
 
   { Create cell }
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);

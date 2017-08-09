@@ -638,7 +638,7 @@ begin
   // create cell
   if FIsVirtualMode then
   begin
-    InitCell(rowIndex, colIndex, FVirtualCell);
+    InitCell(FWorksheet, rowIndex, colIndex, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := AWorksheet.AddCell(rowIndex, colIndex);
@@ -706,7 +706,7 @@ begin
           begin
             sharedformulabase := TSharedFormulaData(FSharedFormulaBaseList[StrToInt(s)]);
             // ... and copy shared formula to destination cell
-            InitCell(sharedformulabase.Row, sharedformulabase.Col, lCell);
+            InitCell(FWorksheet, sharedformulabase.Row, sharedformulabase.Col, lCell);
             lCell.Formulavalue := sharedformulabase.Formula;
             lCell.Worksheet := sharedformulabase.Worksheet;
             FWorksheet.CopyFormula(@lCell, cell);

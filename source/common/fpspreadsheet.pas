@@ -2274,7 +2274,7 @@ begin
       WriteComment(r, c, '');
 
     // Erase all cell content
-    InitCell(r, c, ACell^);
+    InitCell(nil, r, c, ACell^);
   end;
 end;
 

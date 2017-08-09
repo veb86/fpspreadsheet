@@ -1778,7 +1778,7 @@ begin
 
   if FIsVirtualMode then
   begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -1798,7 +1798,7 @@ var
 begin
   if FIsVirtualMode then
   begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -1997,7 +1997,7 @@ var
 begin
   if FIsVirtualMode then
   begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -2023,7 +2023,7 @@ var
 begin
   if FIsVirtualMode then
   begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -2311,7 +2311,7 @@ begin
   // Create cell and apply format
   if FIsVirtualMode then
   begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.GetCell(ARow, ACol);   // Don't use AddCell here
@@ -2643,7 +2643,7 @@ begin
   // Initalize cell
   if FIsVirtualMode then
   begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -2760,7 +2760,7 @@ var
 begin
   if FIsVirtualMode then
   begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -3559,7 +3559,7 @@ var
           else
           begin
             // No cell in row --> appy format to dummy cell to get its format index
-            InitCell(row, 0, cellRecord);
+            InitCell(FWorksheet, row, 0, cellRecord);
             ApplyStyleToCell(@cellRecord, styleIndex);
             lRow^.FormatIndex := cellRecord.FormatIndex;
           end;
@@ -3618,7 +3618,7 @@ var
           if cell <> nil then
             colFmt[col] := cell^.FormatIndex
           else begin
-            InitCell(row, col, cellRecord);
+            InitCell(FWorksheet, row, col, cellRecord);
             ApplyStyleToCell(@cellRecord, styleIndex);
             colFmt[col] := cellRecord.FormatIndex;
           end;
@@ -7327,7 +7327,7 @@ begin
       colsRepeated := 1;
 
       lCell.Row := r;  // to silence a compiler hint...
-      InitCell(r, c, lCell);
+      InitCell(ASheet, r, c, lCell);
       value := varNull;
       styleCell := nil;
 
@@ -7339,7 +7339,7 @@ begin
         cc := c + 1;
         while (cc <= lastCol) do
         begin
-          InitCell(r, cc, lCell);
+          InitCell(ASheet, r, cc, lCell);
           value := varNull;
           styleCell := nil;
           ASheet.OnWriteCellData(ASheet, r, cc, value, styleCell);

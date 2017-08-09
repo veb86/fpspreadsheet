@@ -1324,7 +1324,7 @@ begin
   XF := WordLEToN(rec.XFIndex);
 
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -1359,7 +1359,7 @@ begin
   XF := WordLEToN(rec.XFIndex);
 
   if FIsVirtualMode then begin
-    InitCell(r, c, FVirtualCell);
+    InitCell(FWorksheet, r, c, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(r, c);
@@ -1661,7 +1661,7 @@ begin
   { Create cell }
   if FIsVirtualMode then                       // "Virtual" cell
   begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.GetCell(ARow, ACol);    // "Real" cell
@@ -1788,7 +1788,7 @@ begin
   fc := WordLEtoN(AStream.ReadWord);
   pending := RecordSize - SizeOf(fc) - SizeOf(ARow);
   if FIsVirtualMode then begin
-    InitCell(ARow, 0, FVirtualCell);
+    InitCell(FWorksheet, ARow, 0, FVirtualCell);
     cell := @FVirtualCell;
   end;
   while pending > SizeOf(XF) do begin
@@ -1832,7 +1832,7 @@ begin
   fc := WordLEtoN(AStream.ReadWord);
   pending := RecordSize - SizeOf(fc) - SizeOf(ARow);
   if FIsVirtualMode then begin
-    InitCell(ARow, fc, FVirtualCell);
+    InitCell(FWorksheet, ARow, fc, FVirtualCell);
     cell := @FVirtualCell;
   end;
   while pending > SizeOf(XF) + SizeOf(RK) do begin
@@ -1894,7 +1894,7 @@ begin
 
   { Create cell }
   if FIsVirtualMode then begin                // "virtual" cell
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);  // "real" cell
@@ -2185,7 +2185,7 @@ begin
 
   {Create cell}
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -2855,7 +2855,7 @@ begin
 
   { Create cell - this is the "base" of the shared formula }
   if FIsVirtualMode then begin                 // "Virtual" cell
-    InitCell(r1, c1, FVirtualCell);
+    InitCell(FWorksheet, r1, c1, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.GetCell(r1, c1);        // "Real" cell
@@ -4918,6 +4918,7 @@ begin
     begin
       lCell.Row := r; // to silence a compiler hint...
       InitCell(lCell);
+      lCell.Worksheet := ASheet;
       value := varNull;
       styleCell := nil;
       ASheet.OnWriteCellData(ASheet, r, c, value, styleCell);

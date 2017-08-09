@@ -174,7 +174,7 @@ procedure SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
 procedure FixHyperlinkPathDelims(var ATarget: String);
 
 procedure InitCell(out ACell: TCell); overload;
-procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell); overload;
+procedure InitCell(AWorksheet: Pointer; ARow, ACol: Cardinal; out ACell: TCell); overload;
 procedure InitCryptoInfo(out AValue: TsCryptoInfo);
 procedure InitFormatRecord(out AValue: TsCellFormat);
 procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
@@ -2105,13 +2105,15 @@ end;
   Initalizes a new cell and presets the row and column fields of the cell record
   to the parameters passed to the procedure.
 
-  @param  ARow   Row index of the new cell
-  @param  ACol   Column index of the new cell
+  @param  AWorksheet  Pointer to the worksheet containing the cell
+  @param  ARow        Row index of the new cell
+  @param  ACol        Column index of the new cell
   @return New cell record with row and column fields preset to passed values.
 -------------------------------------------------------------------------------}
-procedure InitCell(ARow, ACol: Cardinal; out ACell: TCell);
+procedure InitCell(AWorksheet: Pointer; ARow, ACol: Cardinal; out ACell: TCell);
 begin
   InitCell(ACell);
+  ACell.Worksheet := AWorksheet;
   ACell.Row := ARow;
   ACell.Col := ACol;
 end;

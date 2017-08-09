@@ -1051,7 +1051,7 @@ begin
 
   { Save the data }
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);        // "virtual" cell
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);        // "virtual" cell
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
@@ -1293,7 +1293,7 @@ begin
 
   { Create cell }
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);        // "virtual" cell
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);        // "virtual" cell
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
@@ -1443,7 +1443,7 @@ begin
 
   { Create cell }
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);

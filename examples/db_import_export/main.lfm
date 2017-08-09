@@ -8,7 +8,7 @@ object Form1: TForm1
   ClientWidth = 521
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  LCLVersion = '1.7'
+  LCLVersion = '1.9.0.0'
   object PageControl: TPageControl
     Left = 4
     Height = 302
@@ -274,7 +274,6 @@ object Form1: TForm1
         Anchors = [akTop, akLeft, akBottom]
         ItemHeight = 0
         OnClick = FileListClick
-        Options = [lboDrawFocusRect]
         TabOrder = 1
       end
       object Label3: TLabel

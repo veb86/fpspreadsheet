@@ -492,13 +492,13 @@ begin
       // Column width (to be considered in first row)
       if i = 0 then
         lColWidthStr := Format(' width="%.0fpt"', [
-          FWorkbook.ConvertUnits(FWorksheet.GetColWidth(i), FWorkbook.Units, suPoints)
+          FWorkbook.ConvertUnits(FWorksheet.GetColWidth(i, suChars), FWorkbook.Units, suPoints)
         ]);
 
       // Row height (to be considered in first column)
       if j = 0 then
         lRowHeightStr := Format(' height="%.0fpt"', [
-          FWorkbook.ConvertUnits(FWorksheet.GetRowHeight(j), FWorkbook.Units, suPoints)
+          FWorkbook.ConvertUnits(FWorksheet.GetRowHeight(j, suLines), FWorkbook.Units, suPoints)
         ]);
 
       // Font

@@ -514,6 +514,7 @@ begin
 
   FWorkbook := TsWorkbook.Create;
   try
+    FWorkbook.FormatSettings.ShortDateFormat := 'dd.mm.yyyy "r."';
     worksheet := FWorkbook.AddWorksheet(tableName);
 
     // Make header line frozen - but not in Excel2 where frozen panes do not yet work properly
@@ -614,7 +615,7 @@ begin
           cctNumber     : if IsCurrencyFormat(nfp) then fieldType := ftCurrency
                             else fieldType := ftFloat;
           cctDateTime   : fieldType := ftDateTime;
-          cctUTF8String : fieldType := ftString;
+          else            fieldType := ftString;
         end;
         FImportDataset.FieldDefs.Add(FImportedFieldNames[i], fieldType);
       end;
@@ -629,7 +630,7 @@ begin
         case FImportedRowCells[i].ContentType of
           cctNumber    : FImportDataset.Fields[i].AsFloat := FImportedRowCells[i].NumberValue;
           cctDateTime  : FImportDataset.Fields[i].AsDateTime := FImportedRowCells[i].DateTimeValue;
-          cctUTF8String: FImportDataset.Fields[i].AsString := FImportedRowCells[i].UTF8StringValue;
+          else           FImportDataset.Fields[i].AsString := FImportedRowCells[i].UTF8StringValue;
         end;
       FImportDataset.Post;
       // Finally we dispose the buffered cells, we don't need them any more

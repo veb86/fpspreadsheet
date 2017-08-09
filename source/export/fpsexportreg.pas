@@ -9,7 +9,7 @@ unit fpsexportreg;
 interface
 
 uses
-  Classes, SysUtils, LazarusPackageIntf, lresources, fpdataexporter;
+  Classes, SysUtils, LazarusPackageIntf, lresources;
 
 procedure Register;
 

@@ -328,7 +328,7 @@ var
 begin
   ReadRowColXF(AStream, ARow, ACol, XF);
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -358,7 +358,7 @@ begin
 
   { Create cell }
   if FIsVirtualMode then begin
-    InitCell(r, c, FVirtualCell);
+    InitCell(FWorksheet, r, c, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(r, c);
@@ -687,7 +687,7 @@ begin
 
   { Create cell }
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -782,7 +782,7 @@ begin
 
   { Create cell }
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -817,7 +817,7 @@ begin
 
   {Create cell}
   if FIsVirtualMode then begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
@@ -856,7 +856,7 @@ begin
   { Create cell }
   if FIsVirtualMode then
   begin
-    InitCell(ARow, ACol, FVirtualCell);
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
     cell := FWorksheet.AddCell(ARow, ACol);
