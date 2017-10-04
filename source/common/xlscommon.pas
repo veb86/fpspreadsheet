@@ -2277,7 +2277,8 @@ function TsSpreadBIFFReader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte): Bo
 begin
   Result := false;
   case AIdentifier of
-    $01: AStream.ReadWord;     // tAttrVolatile token
+    $01: AStream.ReadWord;     // tAttrVolatile token, data not used
+    $10: AStream.ReadWord;     // tAttrSum token, data not used
     else exit;                 // others not supported by fps --> Result = false
   end;
   Result := true;
@@ -2644,6 +2645,14 @@ begin
         begin
           b := AStream.ReadByte;
           supported := ReadRPNAttr(AStream, b);
+          if supported then begin
+            case b of
+              $10:
+                begin  // one-parameter sum
+                  rpnItem := RPNFunc('SUM', 1, rpnItem)
+                end;
+            end;
+          end;
         end;
       INT_EXCEL_TOKEN_TREFV:
         begin

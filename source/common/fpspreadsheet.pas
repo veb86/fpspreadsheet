@@ -2064,6 +2064,9 @@ begin
   destCol^.Col := AToCol;
   // ... and copy the format record - it may have be missing at destination
   CopyColFormat(srcCol, destCol, AFromWorksheet, self);
+
+  // Notify visual controls of changes
+  ChangedCol(destCol^.Col);
 end;
 
 {@@ ----------------------------------------------------------------------------

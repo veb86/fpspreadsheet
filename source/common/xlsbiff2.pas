@@ -983,7 +983,8 @@ function TsSpreadBIFF2Reader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte): B
 begin
   Result := false;
   case AIdentifier of
-    $01: AStream.ReadByte;   // tAttrVolatile
+    $01: AStream.ReadByte;   // tAttrVolatile, data not used
+    $10: AStream.ReadByte;   // tAttrSum, data not used
     else exit;       // others not supported by fpspreadsheet --> Result = false
   end;
   Result := true;
