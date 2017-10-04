@@ -4419,7 +4419,7 @@ begin
       end;
     end;
 
-    // Here begins the drawing loop of all cells in the row between gc and gclast
+    // Here begins the drawing loop of all cells in the row between gc and gcLast
     while (gc <= gcLast) do begin
       gr := ARow;
       rct := AClipRect;

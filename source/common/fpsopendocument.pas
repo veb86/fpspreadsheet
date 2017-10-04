@@ -3585,7 +3585,7 @@ var
       if nodeName = 'table:covered-table-cell' then
       begin
         s := GetAttrValue(cellNode, 'table:number-columns-repeated');
-        if s = '' then colsRepeated := 1;
+        if s = '' then colsRepeated := 1 else colsRepeated := StrToInt(s);
       end else
         colsRepeated := 0;
 
