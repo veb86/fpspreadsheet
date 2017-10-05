@@ -3729,6 +3729,8 @@ begin
         ScanDateTime;
       '[':
         ScanBrackets;
+      '%':
+        AddElement(nftPercent, FToken);
       ' ':
         AddElement(nftSpace, FToken);
       'A', 'a':
