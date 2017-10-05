@@ -684,10 +684,21 @@ var
   int,num,denom: Integer;
 begin
   Result := '';
+  if ASection > 2 then    // ods supports only at most 3 sections
+    exit;
+
+
+
+
+  if AFormatName = 'N1006' then
+    ns := 1;
+
 
   ns := Length(FSections);
   if (ns = 0) then
     exit;
+  if ns > 3 then          // ods supports only at most 3 sections
+    ns := 3;
 
   styleMapStr := '';
   timeIntervalStr := '';
@@ -708,8 +719,10 @@ begin
              '<style:map '+
                'style:apply-style-name="' + AFormatName + 'P1" ' +     // < 0
                'style:condition="value()&lt;0" />';
+        {
         else
           raise Exception.Create('At most 3 format sections allowed.');
+          }
       end
     else
       AFormatName := AFormatName + 'P' + IntToStr(ASection);
