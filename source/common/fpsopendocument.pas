@@ -687,13 +687,6 @@ begin
   if ASection > 2 then    // ods supports only at most 3 sections
     exit;
 
-
-
-
-  if AFormatName = 'N1006' then
-    ns := 1;
-
-
   ns := Length(FSections);
   if (ns = 0) then
     exit;
