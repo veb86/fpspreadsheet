@@ -767,28 +767,25 @@ end;
 procedure TsCustomSpreadWriter.WriteToFile(const AFileName: string;
   const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []);
 var
-  OutputFile: TStream;
-  lMode: Word;
+  OutputStream: TStream;
 begin
-  if AOverwriteExisting then
-    lMode := fmCreate or fmOpenWrite
-  else
-    lMode := fmCreate;
+  if not AOverwriteExisting and FileExists(AFileName) then
+    raise EFCreateError.CreateFmt(rsFileAlreadyExists, [AFileName]);
 
   if (boFileStream in FWorkbook.Options) then
-    OutputFile := TFileStream.Create(AFileName, lMode)
+    OutputStream := TFileStream.Create(AFileName, fmCreate)
   else
   if (boBufStream in Workbook.Options) then
-    OutputFile := TBufStream.Create(AFileName, lMode)
+    OutputStream := TBufStream.Create(AFileName, fmCreate)
   else
-    OutputFile := TMemoryStream.Create;
+    OutputStream := TMemoryStream.Create;
 
   try
-    WriteToStream(OutputFile, AParams);
-    if OutputFile is TMemoryStream then
-      (OutputFile as TMemoryStream).SaveToFile(AFileName);
+    WriteToStream(OutputStream, AParams);
+    if OutputStream is TMemoryStream then
+      (OutputStream as TMemoryStream).SaveToFile(AFileName);
   finally
-    OutputFile.Free;
+    OutputStream.Free;
   end;
 end;
 
