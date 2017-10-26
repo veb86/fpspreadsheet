@@ -522,7 +522,7 @@ var
 begin
   Clear;
   if (AHTML[1] <> '<') then           // just for simplification
-    raise Exception.Create('[THTMLAttrList.Parse] HTML tags expected.');
+    raise EFPSpreadsheet.Create('[THTMLAttrList.Parse] HTML tags expected.');
 
   // Find first space
   i := 1;
@@ -641,9 +641,9 @@ constructor TsHTMLAnalyzer.Create(AWorkbook: TsWorkbook; AFont: TsFont;
   AText: String);
 begin
   if AWorkbook = nil then
-    raise Exception.Create('[TsHTMLAnalyzer.Create] Workbook required.');
+    raise EFPSpreadsheet.Create('[TsHTMLAnalyzer.Create] Workbook required.');
   if AFont = nil then
-    raise Exception.Create('[TsHTMLAnalyzer.Create] Font required.');
+    raise EFPSpreadsheet.Create('[TsHTMLAnalyzer.Create] Font required.');
 
   inherited Create(AText);
   FWorkbook := AWorkbook;

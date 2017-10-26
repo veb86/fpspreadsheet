@@ -94,7 +94,7 @@ begin
         crAbort  : begin FStopping := true; exit(false); end;
       end;
     end else
-      raise Exception.Create('[TsSearchEngine.ExecReplace] OnConfirmReplacement handler needed.');
+      raise EFPSpreadsheet.Create('[TsSearchEngine.ExecReplace] OnConfirmReplacement handler needed.');
   end;
 
   if roReplaceEntireCell in FReplaceParams.Options then

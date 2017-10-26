@@ -785,9 +785,9 @@ begin
     else if dataStr = '#N/A' then
       AWorksheet.WriteErrorValue(cell, errArgError)
     else
-      raise Exception.Create(rsUnknownErrorType);
+      raise EFPSpreadsheetReader.Create(rsUnknownErrorType);
   end else
-    raise Exception.Create(rsUnknownDataType);
+    raise EFPSpreadsheetReader.Create(rsUnknownDataType);
 
   if FIsVirtualMode then
     Workbook.OnReadCellData(Workbook, rowIndex, colIndex, cell);
@@ -2408,7 +2408,7 @@ begin
     XMLStream := CreateXMLStream;
     try
       if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
-        raise Exception.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
+        raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
       ReadXMLStream(Doc, XMLStream);
       ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
       ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
@@ -2553,7 +2553,7 @@ begin
     XMLStream := CreateXMLStream;
     try
       if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
-        raise Exception.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
+        raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
       ReadXMLStream(Doc, XMLStream);
       ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));
       FreeAndNil(Doc);
@@ -2566,14 +2566,6 @@ begin
   end;
 end;
 
-                                             (*
-procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream);
-begin
-  Unused(AStream);
-  raise Exception.Create('[TsSpreadOOXMLReader.ReadFromStream] '+
-                         'Method not implemented. Use "ReadFromFile" instead.');
-end;
-                                               *)
 
 {------------------------------------------------------------------------------}
 {                             TsSpreadOOXMLWriter                              }

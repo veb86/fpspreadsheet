@@ -714,7 +714,7 @@ begin
                'style:condition="value()&lt;0" />';
         {
         else
-          raise Exception.Create('At most 3 format sections allowed.');
+          raise EFPSpreadsheet.Create('At most 3 format sections allowed.');
           }
       end
     else
@@ -2069,7 +2069,7 @@ begin
   else if NullDateSetting = '1904-01-01' then
     FDateMode := dmODS1904
   else
-    raise Exception.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
+    raise EFPSpreadsheet.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
 end;
 
 procedure TsSpreadOpenDocReader.ReadDocumentProtection(ANode: TDOMNode);
@@ -2492,11 +2492,11 @@ begin
 
     BodyNode := Doc.DocumentElement.FindNode('office:body');
     if not Assigned(BodyNode) then
-      raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:body" not found.');
+      raise EFPSpreadsheet.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:body" not found.');
 
     SpreadSheetNode := BodyNode.FindNode('office:spreadsheet');
     if not Assigned(SpreadSheetNode) then
-      raise Exception.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:spreadsheet" not found.');
+      raise EFPSpreadsheet.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:spreadsheet" not found.');
 
     ReadDocumentProtection(SpreadsheetNode);
     ReadDateMode(SpreadSheetNode);
@@ -5316,7 +5316,7 @@ begin
       stylename := 'co1';
     {
     if stylename = '' then
-      raise Exception.Create(rsColumnStyleNotFound);
+      raise EFPSpreadsheet.Create(rsColumnStyleNotFound);
       }
 
     // Determine value for "number-columns-repeated"
@@ -7316,7 +7316,7 @@ begin
         end;
       end;
       if styleName = '' then
-        raise Exception.Create(rsRowStyleNotFound);
+        raise EFPSpreadsheet.Create(rsRowStyleNotFound);
     end;
 
     // No empty rows allowed here for the moment!

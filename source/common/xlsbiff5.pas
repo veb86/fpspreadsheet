@@ -1475,7 +1475,7 @@ begin
                WriteRangeFormula(memstream, rng, AIndexToRef, j);
              end;
            end;
-      else raise Exception.Create('Name not supported');
+      else raise EFPSpreadsheetWriter.Create('Name not supported');
     end;  // case
 
     idx := FWorkbook.GetWorksheetIndex(AWorksheet);
@@ -1516,7 +1516,7 @@ begin
     { Name }
     if (Length(AName) = 1) and (AName[1] < #32) then
       AStream.WriteByte(ord(AName[1])) else
-      raise Exception.Create('Name not supported.');
+      raise EFPSpreadsheetWriter.Create('Name not supported.');
 
     { Formula }
     memstream.Position := 0;
@@ -1584,9 +1584,9 @@ begin
     exit;
 
   if AFont.FontName = '' then
-    raise Exception.Create('Font name not specified.');
+    raise EFPSpreadsheetWriter.Create('Font name not specified.');
   if AFont.Size <= 0.0 then
-    raise Exception.Create('Font size not specified.');
+    raise EFPSpreadsheetWriter.Create('Font size not specified.');
 
   Len := Length(AFont.FontName);
 
@@ -1750,7 +1750,7 @@ begin
     // Bad formatted UTF8String (maybe ANSI?)
     if Length(AValue) <> 0 then begin
       //It was an ANSI string written as UTF8 quite sure, so raise exception.
-      Raise Exception.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [
+      raise EFPSpreadsheetWriter.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [
         GetCellString(ARow, ACol)
       ]);
     end;
@@ -1934,7 +1934,8 @@ var
       lsDashDotDot        : Result := lsDotted;
       lsMediumDashDotDot  : Result := lsDashed;
       lsSlantDashDot      : Result := lsDashed;
-      else raise Exception.Create('[TsSpreadBIFF5Writer.WriteXF] Linestyle not supported.');
+    else
+      raise EFPSpreadsheet.Create('[TsSpreadBIFF5Writer.WriteXF] Linestyle not supported.');
     end;
   end;
 

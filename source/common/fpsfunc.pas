@@ -163,7 +163,7 @@ begin
         for i:=1 to n do
           res := res * i;
         Result := FloatResult(res);
-      except on E:Exception do
+      except on E:EFPSpreadsheet do
         Result := ErrorResult(errOverflow);
       end;
   end else

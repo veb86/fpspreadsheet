@@ -300,7 +300,7 @@ procedure WriteMSOSpGrContainer(AStream: TStream; ASize: DWord);
 implementation
 
 uses
-  fpsutils;
+  fpstypes, fpsutils;
 
 type
   TsMSOHeader = packed record
@@ -418,7 +418,7 @@ end;
 procedure WriteMSOFdgRecord(AStream: TStream; ANumShapes, ADrawingID, ALastObjID: Word);
 begin
   if ADrawingID > $0FFE then
-    raise Exception.CreateFmt('[WriteMSOFdgRecord] Invalid drawing identifier $%.4x', [ADrawingID]);
+    raise EFpSpreadsheet.CreateFmt('[WriteMSOFdgRecord] Invalid drawing identifier $%.4x', [ADrawingID]);
   WriteMSOHeader(AStream, MSO_ID_OFFICEART_FDG, 0, ADrawingID, 8);
   AStream.WriteDWord(DWordToLE(ANumShapes));
   AStream.WriteDWord(DWordToLE(ALastObjID));

@@ -864,6 +864,11 @@ type
   TsStreamParam = (spClipboard, spWindowsClipboardHTML);
   TsStreamParams = set of TsStreamParam;
 
+  {@@ Exception types for fpspreadsheet }
+  EFpSpreadsheet = class(Exception);
+  EFpSpreadsheetReader = class(EFpSpreadsheet);
+  EFpSpreadsheetWriter = class(EFpSpreadsheet);
+
 const
   RowHeightTypeNames: array[TsRowHeightType] of string = (
     'Default', 'Custom', 'Auto');
@@ -876,6 +881,7 @@ const
   HEADER_FOOTER_INDEX_ODD     = 1;
   HEADER_FOOTER_INDEX_EVEN    = 2;
   HEADER_FOOTER_INDEX_ALL     = 1;
+
 
 implementation
 

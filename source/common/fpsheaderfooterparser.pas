@@ -135,7 +135,7 @@ begin
     Style := TsHeaderFooterFont(AFont).Style;
     Color := TsHeaderFooterFont(AFont).Color;
   end else
-    raise Exception.Create('[TsHeaderFooterFont.Assign] Argument can only be a TsFont or a TsHeaderFooterFont');
+    raise EFPSpreadsheet.Create('[TsHeaderFooterFont.Assign] Argument can only be a TsFont or a TsHeaderFooterFont');
 end;
 
 
@@ -164,9 +164,9 @@ constructor TsHeaderFooterParser.Create(AText: String; AFontList: TList;
   ADefaultFont: TsHeaderFooterFont);
 begin
   if AFontList = nil then
-    raise Exception.Create('[TsHeaderFooterParser.Create] FontList must not be nil.');
+    raise EFPSpreadsheet.Create('[TsHeaderFooterParser.Create] FontList must not be nil.');
   if ADefaultFont = nil then
-    raise Exception.Create('[TsHeaderFooterParser.Create] DefaultFont must not be nil.');
+    raise EFPSpreadsheet.Create('[TsHeaderFooterParser.Create] DefaultFont must not be nil.');
 
   Create;
 

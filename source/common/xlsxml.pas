@@ -154,7 +154,7 @@ begin
     cctBool       : Result := 'Boolean';
     cctError      : Result := 'Error';
   else
-    raise Exception.Create('Content type error in cell ' + GetCellString(ACell^.Row, ACell^.Col));
+    raise EFPSpreadsheet.Create('Content type error in cell ' + GetCellString(ACell^.Row, ACell^.Col));
   end;
 end;
 
@@ -562,7 +562,7 @@ begin
         haCenter : fmtHor := 'ss:Horizontal="Center" ';
         haRight  : fmtHor := 'ss:Horizontal="Right" ';
         else
-          raise Exception.Create('[TsSpreadXMLWriter.WriteStyle] Horizontal alignment cannot be handled.');
+          raise EFPSpreadsheetWriter.Create('[TsSpreadXMLWriter.WriteStyle] Horizontal alignment cannot be handled.');
       end;
 
     // Vertical alignment
@@ -574,7 +574,7 @@ begin
         vaCenter : fmtVert := 'ss:Vertical="Center" ';
         vaBottom : ;
         else
-          raise Exception.Create('[TsSpreadXMLWriter.WriteStyle] Vertical alignment cannot be handled.');
+          raise EFPSpreadsheetWriter.Create('[TsSpreadXMLWriter.WriteStyle] Vertical alignment cannot be handled.');
       end;
 
     // Wrap text

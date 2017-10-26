@@ -648,7 +648,7 @@ begin
         recType := WordLEToN(AStream.ReadWord);
         recSize := WordLEToN(AStream.ReadWord);
         if recType <> INT_EXCEL_ID_CONTINUE then begin
-          raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
+          raise EFPSpreadsheetReader.Create('[TsSpreadBIFF8Reader.ReadWideString] Expected CONTINUE record not found.');
         end else begin
           PendingRecordSize := RecordSize;
           DecomprStrValue := copy(DecomprStrValue,1,i) + ReadUnformattedWideString(AStream, ALength-i);
@@ -699,7 +699,7 @@ begin
       recType := WordLEToN(AStream.ReadWord);
       recSize := WordLEToN(AStream.ReadWord);
       if recType <> INT_EXCEL_ID_CONTINUE then
-        raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
+        raise EFPSpreadsheetReader.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
       PendingRecordSize := recSize;
       Result := Result + ReadWideString(AStream, ALength - Length(Result), rtf_dummy);
     end else begin
@@ -723,7 +723,7 @@ begin
         recType := WordLEToN(AStream.ReadWord);
         recSize := WordLEToN(AStream.ReadWord);
         if recType <> INT_EXCEL_ID_CONTINUE then begin
-          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
+          Raise EFPSpreadsheetReader.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
         end else begin
           PendingRecordSize := recSize;
           DecomprStrValue := copy(DecomprStrValue,1,i) + ReadWideString(AStream, ALength-i, ARichTextParams);
@@ -742,7 +742,7 @@ begin
         recType := WordLEToN(AStream.ReadWord);
         recSize := WordLEToN(AStream.ReadWord);
         if recType <> INT_EXCEL_ID_CONTINUE then begin
-          Raise Exception.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
+          Raise EFPSpreadsheetReader.Create('[TsSpreadBIFF8Reader.ReadWideString] CONTINUE record expected, but not found.');
         end else begin
           PendingRecordSize := recSize;
         end;
@@ -1381,12 +1381,12 @@ begin
         //tag and continue linking...
         ContinueIndicator := WordLEtoN(AStream.ReadWord);
         if ContinueIndicator <> INT_EXCEL_ID_CONTINUE then begin
-          raise Exception.Create('[TsSpreadBIFF8Reader.ReadSST] Expected CONTINUE record not found.');
+          raise EFPSpreadsheetReader.Create('[TsSpreadBIFF8Reader.ReadSST] Expected CONTINUE record not found.');
         end;
         PendingRecordSize := WordLEtoN(AStream.ReadWord);
         CurStrLen := Length(UTF8ToUTF16(LString));
         if StringLength < CurStrLen then
-          Exception.Create('[TsSpreadBIFF8Reader.ReadSST] StringLength<CurStrLen');
+          raise EFPSpreadsheetReader.Create('[TsSpreadBIFF8Reader.ReadSST] StringLength<CurStrLen');
         Dec(StringLength, CurStrLen); //Dec the used chars
         if StringLength = 0 then break;
       end else begin
@@ -1436,7 +1436,7 @@ begin
   SSTIndex := DWordLEToN(rec.SSTIndex);
 
   if SizeInt(SSTIndex) >= FSharedStringTable.Count then begin
-    raise Exception.CreateFmt(rsIndexInSSTOutOfRange, [
+    raise EFPSpreadsheetReader.CreateFmt(rsIndexInSSTOutOfRange, [
       Integer(SSTIndex), FSharedStringTable.Count-1
     ]);
   end;
@@ -2510,7 +2510,7 @@ begin
              end;
            end;
       else
-        raise Exception.Create('Name not supported');
+        raise EFPSpreadsheetWriter.Create('Name not supported');
     end;  // case
 
     { BIFF record header }
@@ -2549,8 +2549,9 @@ begin
 
     { Name }
     if (Length(AName) = 1) and (AName[1] < #32) then
-      AStream.WriteWord(WordToLE(ord(AName[1]) shl 8)) else
-      raise Exception.Create('Name not supported.');
+      AStream.WriteWord(WordToLE(ord(AName[1]) shl 8))
+    else
+      raise EFPSpreadsheetWriter.Create('Name not supported.');
 
     { Formula }
     memstream.Position := 0;
@@ -2675,9 +2676,9 @@ begin
     exit;
 
   if AFont.FontName = '' then
-    raise Exception.Create('Font name not specified.');
+    raise EFPSpreadsheetWriter.Create('Font name not specified.');
   if AFont.Size <= 0.0 then
-    raise Exception.Create('Font size not specified.');
+    raise EFPSpreadsheetWriter.Create('Font size not specified.');
 
   WideFontName := UTF8Decode(AFont.FontName);
   Len := Length(WideFontName);
@@ -3087,7 +3088,7 @@ begin
     // Badly formatted UTF8String (maybe ANSI?)
     if Length(AValue)<>0 then begin
       //Quite sure it was an ANSI string written as UTF8, so raise exception.
-      raise Exception.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [GetCellString(ARow, ACol)]);
+      raise EFPSpreadsheetWriter.CreateFmt(rsUTF8TextExpectedButANSIFoundInCell, [GetCellString(ARow, ACol)]);
     end;
     Exit;
   end;

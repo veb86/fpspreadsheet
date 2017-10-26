@@ -655,7 +655,7 @@ begin
       BIFF2EOF := True;
 
     if not BOFFound then
-      raise Exception.Create('BOF record not found.');
+      raise EFPSpreadsheet.Create('BOF record not found.');
   end;
 
   FixCols(FWorksheet);
@@ -1584,7 +1584,7 @@ begin
 
   FWorksheet := Workbook.GetWorksheetByIndex(FSheetIndex);
   if FWorksheet = nil then
-    raise Exception.Create(rsWorksheetNotFound1);
+    raise EFPSpreadsheetWriter.Create(rsWorksheetNotFound1);
 
   WriteBOF(AStream);
     WriteCodePage(AStream, FCodePage);
@@ -1812,9 +1812,9 @@ begin
     exit;
 
   if font.FontName = '' then
-    raise Exception.Create('Font name not specified.');
+    raise EFPSpreadsheetWriter.Create('Font name not specified.');
   if font.Size <= 0.0 then
-    raise Exception.Create('Font size not specified.');
+    raise EFPSpreadsheetWriter.Create('Font size not specified.');
 
   lFontName := font.FontName;
   Len := Length(lFontName);

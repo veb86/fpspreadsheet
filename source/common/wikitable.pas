@@ -216,7 +216,7 @@ begin
           else
           begin
             // Error!!!
-            raise Exception.Create('[TWikiTableTokenizer.TokenizeString] Wrong char!');
+            raise EFPSpreadsheet.Create('[TWikiTableTokenizer.TokenizeString] Wrong char!');
           end;
         end;
 

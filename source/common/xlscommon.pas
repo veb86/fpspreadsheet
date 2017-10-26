@@ -773,7 +773,7 @@ begin
       dm1904:
         result := AExcelDateNum + DATEMODE_1904_BASE;
       else
-        raise Exception.CreateFmt('[ConvertExcelDateTimeToDateTime] Unknown datemode %d. Please correct fpspreadsheet source code. ', [ADateMode]);
+        raise EFPSpreadsheet.CreateFmt('[ConvertExcelDateTimeToDateTime] Unknown datemode %d. Please correct fpspreadsheet source code. ', [ADateMode]);
     end;
   end;
 end;
@@ -797,7 +797,7 @@ begin
     dm1904:
       Result := ADateTime - DATEMODE_1904_BASE;
     else
-      raise Exception.CreateFmt('ConvertDateTimeToExcelDateTime: unknown datemode %d. Please correct fpspreadsheet source code. ', [ADateMode]);
+      raise EFPSpreadsheet.CreateFmt('ConvertDateTimeToExcelDateTime: unknown datemode %d. Please correct fpspreadsheet source code. ', [ADateMode]);
     end;
   end;
 end;
@@ -1561,7 +1561,8 @@ begin
   case lBaseMode of
     0: FDateMode := dm1900;
     1: FDateMode := dm1904;
-    else raise Exception.CreateFmt('Error reading file. Got unknown date mode number %d.',[lBaseMode]);
+  else
+    raise EFPSpreadsheetReader.CreateFmt('Error reading file. Got unknown date mode number %d.',[lBaseMode]);
   end;
 end;
 
@@ -3017,7 +3018,7 @@ var
 begin
   // Check if the operation succeeded
   if AStream.Size = 0 then
-    raise Exception.Create('[TsSpreadBIFFReader.InternalReadFromStream] Reading of OLE document failed');
+    raise EFPSpreadsheetReader.Create('[TsSpreadBIFFReader.InternalReadFromStream] Reading of OLE document failed');
 
   // Rewind the stream and read from it
   AStream.Position := 0;
@@ -3512,7 +3513,8 @@ begin
   case FDateMode of
     dm1900: AStream.WriteWord(WordToLE(0));
     dm1904: AStream.WriteWord(WordToLE(1));
-    else raise Exception.CreateFmt('Unknown datemode number %d. Please correct fpspreadsheet code.', [FDateMode]);
+  else
+    raise EFPSpreadsheetReader.CreateFmt('Unknown datemode number %d. Please correct fpspreadsheet code.', [FDateMode]);
   end;
 end;
 

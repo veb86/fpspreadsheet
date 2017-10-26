@@ -1425,7 +1425,7 @@ begin
         AFormatSettings.CurrencyString);
     nfShortDateTime, nfShortDate, nfLongDate, nfShortTime, nfLongTime,
     nfShortTimeAM, nfLongTimeAM, nfDayMonth, nfMonthYear, nfTimeInterval:
-      raise Exception.Create('BuildNumberFormatString: Use BuildDateTimeFormatSstring '+
+      raise EFPSpreadsheet.Create('BuildNumberFormatString: Use BuildDateTimeFormatSstring '+
         'to create a format string for date/time values.');
   end;
 end;

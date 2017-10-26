@@ -1254,7 +1254,7 @@ var
   i: Integer = 0;
 begin
   if (AValue > MaxInt64) or (AValue < MinInt64) then
-    raise Exception.Create('Range error');
+    raise EFPSpreadsheet.Create('Range error');
 
   if abs(AValue) < 0.5 / AMaxDenominator then
   begin
@@ -1752,7 +1752,7 @@ begin
     val(AValue, x, res);
   end;
   if res <> 0 then
-    raise Exception.CreateFmt('No valid number or units (%s)', [AValue]);
+    raise EFPSpreadsheet.CreateFmt('No valid number or units (%s)', [AValue]);
 
   if (units = 'pt') or (units = '') then
     Result := x
@@ -1766,7 +1766,7 @@ begin
   else if units = 'px' then
     Result := pxToPts(Round(x), ScreenPixelsPerInch)
   else
-    raise Exception.Create('Unknown length units');
+    raise EFPSpreadsheet.Create('Unknown length units');
 end;
 
 {@@ ----------------------------------------------------------------------------

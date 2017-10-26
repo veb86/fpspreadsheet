@@ -117,7 +117,7 @@ begin
   PassLen := Length(Password);
 
   if PassLen = 0 then
-    raise Exception.Create('Password length is zero');
+    raise EFPSpreadsheet.Create('Password length is zero');
 
   for i:= PassLen downto 1 do
   begin

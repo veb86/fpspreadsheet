@@ -985,7 +985,7 @@ begin
    then Result := readerClass.Create(AWorkbook);
 
  if Result = nil then
-   raise Exception.Create(rsUnsupportedReadFormat);
+   raise EFPSpreadsheetReader.Create(rsUnsupportedReadFormat);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1015,7 +1015,7 @@ begin
     Result := writerClass.Create(AWorkbook);
 
   if Result = nil then
-    raise Exception.Create(rsUnsupportedWriteFormat);
+    raise EFPSpreadsheetWriter.Create(rsUnsupportedWriteFormat);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2457,7 +2457,7 @@ begin
   if ParseCellString(AddressStr, r, c) then
     Result := GetCell(r, c)
   else
-    raise Exception.CreateFmt(rsNoValidCellAddress, [AddressStr]);
+    raise EFPSpreadsheet.CreateFmt(rsNoValidCellAddress, [AddressStr]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3098,7 +3098,7 @@ begin
   if calcState = [cfCalculated] then
     Result := csCalculated
   else
-    raise Exception.Create('[TsWorksheet.GetCalcState] Illegal cell flags.');
+    raise EFPSpreadsheet.Create('[TsWorksheet.GetCalcState] Illegal cell flags.');
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4321,7 +4321,7 @@ begin
   if ParseCellRangeString(ARange, r1, c1, r2, c2) then
     Sort(ASortParams, r1, c1, r2, c2)
   else
-    raise Exception.CreateFmt(rsNoValidCellRangeAddress, [ARange]);
+    raise EFPSpreadsheet.CreateFmt(rsNoValidCellRangeAddress, [ARange]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4409,7 +4409,7 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
 
 begin
   if ContainsMergedCells then
-    raise Exception.Create(rsCannotSortMerged);
+    raise EFPSpreadsheet.Create(rsCannotSortMerged);
 
   FSortParams := ASortParams;
   if ASortParams.SortByCols then
@@ -4811,7 +4811,7 @@ var
   nfs: String;
 begin
   if IsDateTimeFormat(ANumFormat) or IsCurrencyFormat(ANumFormat) then
-    raise Exception.Create(rsInvalidNumberFormat);
+    raise EFPSpreadsheet.Create(rsInvalidNumberFormat);
 
   if ACell <> nil then begin
     ACell^.ContentType := cctNumber;
@@ -4880,10 +4880,10 @@ begin
     try
       // Format string ok?
       if parser.Status <> psOK then
-        raise Exception.Create(rsNoValidNumberFormatString);
+        raise EFPSpreadsheet.Create(rsNoValidNumberFormatString);
       // Make sure that we do not write a date/time value here
       if parser.IsDateTimeFormat
-        then raise Exception.Create(rsInvalidNumberFormat);
+        then raise EFPSpreadsheet.Create(rsInvalidNumberFormat);
       // If format string matches a built-in format use its format identifier,
       // All this is considered when calling Builtin_NumFormat of the parser.
     finally
@@ -5292,7 +5292,7 @@ var
   fmt: TsCellFormat;
 begin
   if not IsCurrencyFormat(ANumFormat) then
-    raise Exception.Create('[TsWorksheet.WriteCurrency] ANumFormat can only be nfCurrency or nfCurrencyRed');
+    raise EFPSpreadsheet.Create('[TsWorksheet.WriteCurrency] ANumFormat can only be nfCurrency or nfCurrencyRed');
 
   if (ACell <> nil) then begin
     ACell^.ContentType := cctNumber;
@@ -5404,10 +5404,10 @@ begin
       try
         // Format string ok?
         if parser.Status <> psOK then
-          raise Exception.Create(rsNoValidNumberFormatString);
+          raise EFPSpreadsheet.Create(rsNoValidNumberFormatString);
         // Make sure that we do not use a number format for date/times values.
-        if not parser.IsDateTimeFormat
-          then raise Exception.Create(rsInvalidDateTimeFormat);
+        if not parser.IsDateTimeFormat then
+          raise EFPSpreadsheet.Create(rsInvalidDateTimeFormat);
         // Avoid possible duplication of standard formats
         if ANumFormat = nfCustom then
           ANumFormat := parser.NumFormat;
@@ -5508,7 +5508,7 @@ begin
     exit;
 
   if not ((ANumFormat in [nfGeneral, nfCustom]) or IsDateTimeFormat(ANumFormat)) then
-    raise Exception.Create('WriteDateTimeFormat can only be called with date/time formats.');
+    raise EFPSpreadsheet.Create('WriteDateTimeFormat can only be called with date/time formats.');
 
   isTextFmt := false;
   wasTextFmt := false;
@@ -6023,7 +6023,7 @@ begin
 
   if (AFontIndex < 0) or (AFontIndex >= Workbook.GetFontCount) or (AFontIndex = 4) then
     // note: Font index 4 is not defined in BIFF
-    raise Exception.Create(rsInvalidFontIndex);
+    raise EFPSpreadsheet.Create(rsInvalidFontIndex);
 
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
   Include(fmt.UsedFormattingFields, uffFont);
@@ -7861,7 +7861,7 @@ begin
 
   // Abort if virtual mode is active without an event handler
   if (boVirtualMode in FOptions) and not Assigned(FOnReadCellData) then
-    raise Exception.Create('[TsWorkbook.PrepareBeforeReading] Event handler "OnReadCellData" required for virtual mode.');
+    raise EFPSpreadsheet.Create('[TsWorkbook.PrepareBeforeReading] Event handler "OnReadCellData" required for virtual mode.');
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7893,7 +7893,7 @@ begin
       if Assigned(sheet.OnWriteCellData) then
         virtModeOK := true;
     if not virtModeOK then
-      raise Exception.Create('[TsWorkbook.PrepareBeforeWriting] At least one '+
+      raise EFPSpreadsheet.Create('[TsWorkbook.PrepareBeforeWriting] At least one '+
         'sheet must have an event handler "OnWriteCellData" for virtual mode.');
   end;
 end;
@@ -7935,7 +7935,7 @@ begin
     suLines:
       Result := ptsToMM(GetDefaultFont.Size * (AValue + ROW_HEIGHT_CORRECTION));
     else
-      raise Exception.Create('Unit not supported.');
+      raise EFPSpreadsheet.Create('Unit not supported.');
   end;
   // Convert from mm
   case AToUnits of
@@ -7951,7 +7951,7 @@ begin
     suLines:
       Result := mmToPts(Result) / GetDefaultFont.Size - ROW_HEIGHT_CORRECTION;
     else
-      raise Exception.Create('Unit not supported.');
+      raise EFPSpreadsheet.Create('Unit not supported.');
   end;
 end;
 
@@ -8220,7 +8220,7 @@ procedure TsWorkbook.ReadFromFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AParams: TsStreamParams = []);
 begin
   if AFormat = sfUser then
-    raise Exception.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
+    raise EFPSpreadsheetReader.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
   ReadFromFile(AFilename, ord(AFormat), '', AParams);
 end;
 
@@ -8238,7 +8238,7 @@ var
   ok: Boolean;
 begin
   if not FileExists(AFileName) then
-    raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
+    raise EFPSpreadsheetReader.CreateFmt(rsFileNotFound, [AFileName]);
 
   if AFormatID = sfIDUnknown then begin
     ReadFromFile(AFileName, APassword, AParams);
@@ -8285,7 +8285,7 @@ var
   i: Integer;
 begin
   if not FileExists(AFileName) then
-    raise Exception.CreateFmt(rsFileNotFound, [AFileName]);
+    raise EFPSpreadsheetReader.CreateFmt(rsFileNotFound, [AFileName]);
 
   ext := LowerCase(ExtractFileExt(AFileName));
 
@@ -8310,7 +8310,7 @@ begin
 
   // No file format found for this file --> error
   if Length(fileformats) = 0 then
-    raise Exception.CreateFmt(rsReaderNotFound, [AFileName]);
+    raise EFPSpreadsheetReader.CreateFmt(rsReaderNotFound, [AFileName]);
 
   // Here is the trial-and-error loop checking for the various formats.
   success := false;
@@ -8326,7 +8326,7 @@ begin
 
   // The file could not be opened successfully --> Error.
   if not success then
-    raise Exception.CreateFmt(rsInvalidSpreadsheetFile, [AFileName]);
+    raise EFPSpreadsheetReader.CreateFmt(rsInvalidSpreadsheetFile, [AFileName]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8350,7 +8350,7 @@ begin
     end;
   end;
   if not success then
-    raise Exception.CreateFmt(rsInvalidSpreadsheetFile, [AFileName]);
+    raise EFPSpreadsheetReader.CreateFmt(rsInvalidSpreadsheetFile, [AFileName]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8364,7 +8364,7 @@ procedure TsWorkbook.ReadFromStream(AStream: TStream;
   AFormat: TsSpreadsheetFormat; AParams: TsStreamParams = []);
 begin
   if AFormat = sfUser then
-    raise Exception.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
+    raise EFPSpreadsheetReader.Create('[TsWorkbook.ReadFromFile] Don''t call this method for user-provided file formats.');
   ReadFromStream(AStream, ord(AFormat), '', AParams);
 end;
 
@@ -8421,7 +8421,7 @@ procedure TsWorkbook.WriteToFile(const AFileName: string;
   AParams: TsStreamParams = []);
 begin
   if AFormat = sfUser then
-    raise Exception.Create('[TsWorkbook.WriteToFile] Don''t call this method for user-provided file formats.');
+    raise EFPSpreadsheetWriter.Create('[TsWorkbook.WriteToFile] Don''t call this method for user-provided file formats.');
   WriteToFile(AFilename, ord(AFormat), AOverwriteExisting, AParams);
 end;
 
@@ -8483,7 +8483,7 @@ begin
   if Length(fileformats) > 0 then
     WriteToFile(AFileName, fileformats[0], AOverwriteExisting, AParams)
   else
-    raise Exception.Create(Format(rsInvalidExtension, [ext]));
+    raise EFPSpreadsheetWriter.Create(Format(rsInvalidExtension, [ext]));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8502,7 +8502,7 @@ procedure TsWorkbook.WriteToStream(AStream: TStream; AFormat: TsSpreadsheetForma
   AParams: TsStreamParams = []);
 begin
   if AFormat = sfUser then
-    raise Exception.Create('[TsWorkbook.WriteToFile] Don''t call this method for user-provided file formats.');
+    raise EFPSpreadsheet.Create('[TsWorkbook.WriteToFile] Don''t call this method for user-provided file formats.');
   WriteToStream(AStream, ord(AFormat), AParams);
 end;
 
@@ -8552,7 +8552,7 @@ function TsWorkbook.AddWorksheet(AName: string;
 begin
   // Check worksheet name
   if not ValidWorksheetName(AName, ReplaceDuplicateName) then
-    raise Exception.CreateFmt(rsInvalidWorksheetName, [AName]);
+    raise EFPSpreadsheet.CreateFmt(rsInvalidWorksheetName, [AName]);
 
   // Create worksheet...
   Result := TsWorksheet.Create;
@@ -8852,7 +8852,7 @@ end;
 procedure TsWorkbook.SelectWorksheet(AWorksheet: TsWorksheet);
 begin
   if (AWorksheet <> nil) and (FWorksheets.IndexOf(AWorksheet) = -1) then
-    raise Exception.Create('[TsWorkbook.SelectSheet] Worksheet does not belong to the workbook');
+    raise EFPSpreadsheet.Create('[TsWorkbook.SelectSheet] Worksheet does not belong to the workbook');
   FActiveWorksheet := AWorksheet;
   if FReadWriteFlag = rwfRead then
     exit;
@@ -9950,7 +9950,7 @@ var
   i: Integer;
 begin
   if APaletteCount > 64 then
-    raise Exception.Create('Due to Excel-compatibility, palettes cannot have more then 64 colors.');
+    raise EFPSpreadsheet.Create('Due to Excel-compatibility, palettes cannot have more then 64 colors.');
 
  {$IFOPT R+}
   {$DEFINE RNGCHECK}

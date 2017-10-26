@@ -127,7 +127,7 @@ var
   flags: TsRelFlags;
 begin
   if not ParseCellString(ACellAddress, r, c, flags) then
-    raise Exception.CreateFmt(rsNoValidCellAddress, [ACellAddress]);
+    raise EFPSpreadsheet.CreateFmt(rsNoValidCellAddress, [ACellAddress]);
   Result := RPNCellValue(r,c, flags, ANext);
 end;
 
@@ -167,7 +167,7 @@ var
   flags: TsRelFlags;
 begin
   if not ParseCellString(ACellAddress, r, c, flags) then
-    raise Exception.CreateFmt(rsNoValidCellAddress, [ACellAddress]);
+    raise EFPSpreadsheet.CreateFmt(rsNoValidCellAddress, [ACellAddress]);
   Result := RPNCellRef(r,c, flags, ANext);
 end;
 
@@ -209,7 +209,7 @@ var
   flags: TsRelFlags;
 begin
   if not ParseCellRangeString(ACellRangeAddress, r1,c1, r2,c2, flags) then
-    raise Exception.CreateFmt(rsNoValidCellRangeAddress, [ACellRangeAddress]);
+    raise EFPSpreadsheet.CreateFmt(rsNoValidCellRangeAddress, [ACellRangeAddress]);
   Result := RPNCellRange(r1,c1, r2,c2, flags, ANext);
 end;
 

@@ -287,7 +287,7 @@ var
   book: TsWorkbook;
 begin
   if FWorksheet = nil then
-    raise Exception.Create('[TsPageLayout.AddHeaderImage] Worksheet is nil.');
+    raise EFPSpreadsheet.Create('[TsPageLayout.AddHeaderImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
   Result := book.FindEmbeddedObj(AFilename);
   if Result = -1 then
@@ -315,7 +315,7 @@ var
   book: TsWorkbook;
 begin
   if FWorksheet = nil then
-    raise Exception.Create('[TsPageLayout.AddHeaderImage] Worksheet is nil.');
+    raise EFPSpreadsheet.Create('[TsPageLayout.AddHeaderImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
   Result := book.AddEmbeddedObj(AStream);
   if Result > -1 then
@@ -364,7 +364,7 @@ var
   book: TsWorkbook;
 begin
   if FWorksheet = nil then
-    raise Exception.Create('[TsPageLayout.AddFooterImage] Worksheet is nil.');
+    raise EFPSpreadsheet.Create('[TsPageLayout.AddFooterImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
   Result := book.FindEmbeddedObj(AFilename);
   if Result = -1 then
@@ -392,7 +392,7 @@ var
   book: TsWorkbook;
 begin
   if FWorksheet = nil then
-    raise Exception.Create('[TsPageLayout.AddFooterImage] Worksheet is nil.');
+    raise EFPSpreadsheet.Create('[TsPageLayout.AddFooterImage] Worksheet is nil.');
   book := TsWorksheet(FWorksheet).Workbook;
   Result := book.AddEmbeddedObj(AStream);
   if Result > -1 then
@@ -472,7 +472,7 @@ begin
   if InRange(AIndex, 0, High(FFooters)) then
     Result := FFooters[AIndex]
   else
-    raise Exception.Create('[TsPageLayout.GetFooters] Illegal index.');
+    raise EFPSpreadsheet.Create('[TsPageLayout.GetFooters] Illegal index.');
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -525,7 +525,7 @@ begin
   if InRange(AIndex, 0, High(FHeaders)) then
     Result := FHeaders[AIndex]
   else
-    raise Exception.Create('[TsPageLayout.GetHeaders] Illegal index.');
+    raise EFPSpreadsheet.Create('[TsPageLayout.GetHeaders] Illegal index.');
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -536,7 +536,7 @@ begin
   if InRange(AIndex, 0, High(FPrintRanges)) then
     Result := FPrintRanges[AIndex]
   else
-    raise Exception.Create('[TsPageLayout.GetPrintRange] Illegal index.');
+    raise EFPSpreadsheet.Create('[TsPageLayout.GetPrintRange] Illegal index.');
 end;
 
 {@@ ----------------------------------------------------------------------------
