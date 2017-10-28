@@ -784,6 +784,10 @@ begin
       AWorksheet.WriteErrorValue(cell, errOverflow)
     else if dataStr = '#N/A' then
       AWorksheet.WriteErrorValue(cell, errArgError)
+    else if dataStr = '' then
+      // rare case...
+      // see http://forum.lazarus.freepascal.org/index.php/topic,38726.0.html
+      AWorksheet.WriteBlank(cell)
     else
       raise EFPSpreadsheetReader.Create(rsUnknownErrorType);
   end else
