@@ -1263,6 +1263,14 @@ function TsSpreadBIFFReader.FixFontIndex(AFontIndex: Integer): Integer;
 var
   fnt: TsFont;
 begin
+  // There are some files which do not contain any font records.
+  // Here we use the predefined DefaultFont of the workbook.
+  if FFontList.Count = 0 then
+  begin
+    Result := 0;
+    exit;
+  end;
+
   fnt := TsFont(FFontList[AFontIndex]);
   if fnt = nil then       // damned font 4!
     Result := -1
