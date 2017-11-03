@@ -892,7 +892,7 @@ begin
   ALimitations.MaxRowCount := 65536;
   ALimitations.MaxPaletteSize := 64;
   ALimitations.MaxSheetNameLength := 31;
-  ALimitations.MaxCharsInTextCell := 320000;  // 32767 in Excel 2003
+  ALimitations.MaxCharsInTextCell := 32000;  // 32767 in Excel 2003
 end;
 
 

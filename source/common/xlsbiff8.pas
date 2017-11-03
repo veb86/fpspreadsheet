@@ -125,6 +125,7 @@ type
     procedure ReadWorksheet(AStream: TStream); override;
     procedure ReadXF(const AStream: TStream);
   public
+    constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
     procedure ReadFromStream(AStream: TStream;
       APassword: String = ''; AParams: TsStreamParams = []); override;
@@ -293,6 +294,8 @@ var
   // color names according to http://dmcritchie.mvps.org/EXCEL/COLORS.HTM
 
   sfidExcel8: TsSpreadFormatID;
+
+procedure InitBIFF8Limitations(out ALimitations: TsSpreadsheetFormatLimitations);
 
 
 implementation
@@ -478,7 +481,19 @@ type
   end;
 
 
+procedure InitBIFF8Limitations(out ALimitations: TsSpreadsheetFormatLimitations);
+begin
+  InitBiffLimitations(ALimitations);
+end;
+
+
 { TsSpreadBIFF8Reader }
+
+constructor TsSpreadBIFF8Reader.Create(AWorkbook: TsWorkbook);
+begin
+  inherited;
+  InitBIFF8Limitations(FLimitations);
+end;
 
 destructor TsSpreadBIFF8Reader.Destroy;
 var
@@ -2129,6 +2144,7 @@ end;
 constructor TsSpreadBIFF8Writer.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
+  InitBiff8Limitations(FLimitations);
   FDateMode := Excel8Settings.DateMode;
   PopulateSharedStringTable(AWorkbook);
 end;

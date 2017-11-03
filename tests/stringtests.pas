@@ -208,8 +208,6 @@ begin
 end;
 
 procedure TSpreadWriteReadStringTests.TestWriteReadStringsLimits;
-const
-  MaxBytesBIFF8=32758; //limit for strings in this file format
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
@@ -219,11 +217,16 @@ var
   Row: Cardinal;
   TempFile: string; //write xls/xml to this file and read back from it
   TestResult: boolean;
+  MaxBytesBIFF8: Integer;
+  limitations: TsSpreadsheetFormatLimitations;
 begin
+  InitBIFF8Limitations(limitations);
+  MaxBytesBIFF8 := limitations.MaxCharsInTextCell;
+
   LocalNormStrings[0]:=StringOfChar('a',MaxBytesBIFF8-1);
   LocalNormStrings[1]:=StringOfChar('b',MaxBytesBIFF8);
   LocalNormStrings[2]:=StringOfChar('z',MaxBytesBiff8+1); //problems should occur here
-  LocalNormStrings[3]:='this text should be readable'; //whatever happens, this text should be ok
+  LocalNormStrings[3]:='this text should be readable';    //whatever happens, this text should be ok
 
   {// Not needed: use workbook.writetofile with overwrite=true
   if fileexists(TempFile) then
