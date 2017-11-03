@@ -170,6 +170,9 @@ var
 
   sfidExcel2: TsSpreadFormatID;
 
+procedure InitBiff2Limitations(out ALimitations: TsSpreadsheetFormatLimitations);
+
+
 implementation
 
 uses
@@ -270,6 +273,12 @@ type
   end;
 
 
+procedure InitBiff2Limitations(out ALimitations: TsSpreadsheetFormatLimitations);
+begin
+  InitBiffLimitations(ALimitations);
+  ALimitations.MaxPaletteSize := BIFF2_MAX_PALETTE_SIZE;
+end;
+
 procedure InternalAddBuiltinNumFormats(AList: TStringList; AFormatSettings: TFormatSettings);
 var
   fs: TFormatSettings absolute AFormatSettings;
@@ -311,13 +320,12 @@ end;
 constructor TsSpreadBIFF2Reader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FLimitations.MaxPaletteSize := BIFF2_MAX_PALETTE_SIZE;
+  InitBiff2Limitations(FLimitations);
 end;
 
 procedure TsSpreadBIFF2Reader.AddBuiltInNumFormats;
 begin
   FFirstNumFormatIndexInFile := 0;
-  //InternalAddBuiltInNumFormats(FNumFormatList, Workbook.FormatSettings);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
@@ -1203,7 +1211,9 @@ end;
 constructor TsSpreadBIFF2Writer.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
-  FLimitations.MaxPaletteSize := BIFF2_MAX_PALETTE_SIZE;
+
+  InitBiff2Limitations(FLimitations);
+
   FDateMode := Excel2Settings.DateMode;
   FCodePage := Excel2Settings.CodePage;
   FSheetIndex := Excel2Settings.SheetIndex;

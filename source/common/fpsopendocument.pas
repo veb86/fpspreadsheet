@@ -280,7 +280,7 @@ type
     procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
-{ procedure WriteStarObjectDescriptorToStream(AStream: TStream); }
+procedure InitOpenDocLimitations(out ALimitations: TsSpreadsheetFormatLimitations);
 
 var
   sfidOpenDocument: TsSpreadFormatID;
@@ -450,6 +450,16 @@ const
 begin
   AStream.Write(BYTES, SizeOf(BYTES));
 end;                            *)
+
+
+procedure InitOpenDocLimitations(out ALimitations: TsSpreadsheetFormatLimitations);
+begin
+  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
+  ALimitations.MaxColCount := 1024;
+  ALimitations.MaxRowCount := 1048576;
+  //https://forum.openoffice.org/en/forum/viewtopic.php?f=9&t=11247&p=52985
+  ALimitations.MaxCharsInTextCell := 65535;
+end;
 
 
 {******************************************************************************}
@@ -993,9 +1003,7 @@ constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
 
-  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
-  FLimitations.MaxColCount := 1024;
-  FLimitations.MaxRowCount := 1048576;
+  InitOpenDocLimitations(FLimitations);
 
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
@@ -6280,9 +6288,7 @@ begin
   FPointSeparatorSettings.DecimalSeparator:='.';
   FPointSeparatorSettings.ListSeparator := ';';   // for formulas
 
-  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
-  FLimitations.MaxColCount := 1024;
-  FLimitations.MaxRowCount := 1048576;
+  InitOpenDocLimitations(FLimitations);
 end;
 
 destructor TsSpreadOpenDocWriter.Destroy;

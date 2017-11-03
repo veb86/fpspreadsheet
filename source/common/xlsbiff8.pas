@@ -403,6 +403,7 @@ const
      SHAPEID_BASE = 1024;
 
      MAX_BYTES_IN_RECORD = 8224;   // without header
+     MAX_CHARS_IN_WIDESTRING = 32758;
 
 
 type
@@ -3179,13 +3180,10 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteLABEL(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: String; ACell: PCell);
-const
-  //limit for this format: 32767 characters (2 byte each) - header:
-  //37267-8-1=32758
-  MAXCHARS = 32758;
 var
   L: Word;
   WideStr: WideString;
+  recSize: Integer;
   rec: TBIFF8_LabelRecord;
   recSST: TBIFF8_LabelSSTRecord;
   buf: array of byte;
@@ -3195,8 +3193,8 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
+  // If string is in SST write a LABELSST record
   idx := IndexOfSharedString(ACell^.UTF8StringValue, ACell^.RichTextParams);
-
   if idx > -1 then begin
     recSST.RecordID := WordToLE(INT_EXCEL_ID_LABELSST);
     recSST.RecordSize := WordToLE(SizeOf(recSST) - SizeOf(TsBiffHeader));
@@ -3208,6 +3206,7 @@ begin
     exit;
   end;
 
+  // If string is not in SST write a standard LABEL cell
   WideStr := UTF8Decode(FixLineEnding(AValue)); //to UTF16
   if WideStr = '' then begin
     // Badly formatted UTF8String (maybe ANSI?)
@@ -3218,15 +3217,12 @@ begin
     Exit;
   end;
 
-  // wp: THIS IS PROBABLY WRONG, BECAUSE A RECORD CAN ONLY CONTAIN 8224 BYTES AND
-  // A CONTINUE RECORD MUST BE USED!
-
-  if Length(WideStr) > MAXCHARS then begin
+  if Length(WideStr) > FLimitations.MaxCharsInTextCell then begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
-    SetLength(WideStr, MAXCHARS); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
+    SetLength(WideStr, FLimitations.MaxCharsInTextCell); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
     Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
-      MAXCHARS, GetCellString(ARow, ACol)
+      FLimitations.MaxCharsInTextCell, GetCellString(ARow, ACol)
     ]);
   end;
   L := Length(WideStr);
@@ -3234,6 +3230,12 @@ begin
 
   { BIFF record header }
   rec.RecordID := WordToLE(IfThen(nRuns > 0, INT_EXCEL_ID_RSTRING, INT_EXCEL_ID_LABEL));
+  (*
+  recSize := SizeOf(TBiff8_LabelRecord) - SizeOf(TsBiffHeader) + L*SizeOf(WideChar);
+  if nRuns > 0 then
+    inc(recSize, SizeOf(Word) + nRunms * SizeOf(TBiff8_RichTextFormattingRun);
+  if n
+    *)
   rec.RecordSize := SizeOf(TBiff8_LabelRecord) - SizeOf(TsBiffHeader) + L *SizeOf(WideChar);
   if nRuns > 0 then
     inc(rec.RecordSize, SizeOf(Word) + nRuns * SizeOf(TBiff8_RichTextFormattingRun));
@@ -3763,13 +3765,24 @@ begin
     s := FixLineEnding(FSharedStringTable.Strings[i]);
     isASCII := Is8BitString(s);
     if isASCII then
-      rs := s
-    else begin
+    begin
+      rs := s;
+      if Length(s) > FLimitations.MaxCharsInTextCell then
+      begin
+        SetLength(rs, FLimitations.MaxCharsInTextCell);
+        FWorkbook.AddErrorMsg(rsTruncateTooLongText, [FLimitations.MaxCharsInTextCell]);
+      end;
+    end else
+    begin
       ws := WideStringToLE(UTF8ToUTF16(s));
       SetLength(rs, Length(ws) * SizeOf(widechar));
       Move(ws[1], rs[1], Length(rs));
+      if Length(ws) > FLimitations.MaxCharsInTextCell then
+      begin
+        SetLength(ws, FLimitations.MaxCharsInTextCell);
+        FWorkbook.AddErrorMsg(rsTruncateTooLongText, [FLimitations.MaxCharsInTextCell]);
+      end;
     end;
-    // To do: Truncate if string is too long
 
     rtParams := TsRichTextParams(FSharedStringTable.Objects[i]);
 
@@ -4096,6 +4109,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Write the result of a string formula in the preceding record.
+  In BIFF8 files no STRING record occurs, if the result string is empty.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteSTRINGRecord(AStream: TStream;
   AString: String);
@@ -4106,20 +4120,51 @@ procedure TsSpreadBIFF8Writer.WriteSTRINGRecord(AStream: TStream;
 var
   wideStr: widestring;
   len: Integer;
+  strBytes: Integer;
+  idx: Integer;
+  needCONTINUE: Boolean;
 begin
-  wideStr := UTF8Decode(AString);
+  if AString = '' then
+    exit;
+
+  wideStr := WideStringToLE(UTF8Decode(FixLineEnding(AString)));
   len := Length(wideStr);
 
-  { BIFF Record header }
+  strBytes := len * SizeOf(WideChar);
+  needCONTINUE := 3 + strBytes > MAX_BYTES_IN_RECORD;
+
+  if needCONTINUE then
+    strBytes := MAX_BYTES_IN_RECORD - 4;  // -4 = -3 (header) - 1 (even byte count)
+
+  { BIFF STRING record header}
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_STRING));
-  AStream.WriteWord(WordToLE(3 + len*SizeOf(widechar)));
+  AStream.WriteWord(WordToLE(3 + strBytes));
 
   { Write widestring length }
   AStream.WriteWord(WordToLE(len));
   { Widestring flags, 1=regular unicode LE string }
   AStream.WriteByte(1);
   { Write characters }
-  AStream.WriteBuffer(WideStringToLE(wideStr)[1], len * SizeOf(WideChar));
+  AStream.WriteBuffer(wideStr[1], strBytes);
+
+  idx := 1 + strBytes div SizeOf(WideChar);
+
+  while needCONTINUE and (idx < len) do begin
+    strBytes := (len - idx) * SizeOf(WideChar);
+    needCONTINUE := strBytes + 1 > MAX_BYTES_IN_RECORD;
+    if needCONTINUE then
+      strBytes := MAX_BYTES_IN_RECORD - 2;  // -2 = -1 (flag byte) - 1 (for even count)
+
+    { BIFF CONTINUE record header }
+    AStream.WriteWord(WordToLE(INT_EXCEL_ID_CONTINUE));
+    AStream.WriteWord(WordToLE(1 + strBytes)); // for flag byte
+    { Widestring flags, 1 = regular unicode LE string }
+    AStream.WriteByte(1);
+    {Write characters }
+    AStream.WriteBuffer(wideStr[idx], strBytes);
+
+    inc(idx, strBytes div SizeOf(WideChar));
+  end;
 end;
 
 {@@-----------------------------------------------------------------------------

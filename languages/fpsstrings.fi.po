@@ -353,6 +353,10 @@ msgstr "läpinäkyvä"
 msgid "Text value exceeds the %d character limit in cell %s and has been truncated."
 msgstr ""
 
+#: fpsstrings.rstruncatetoolongtext
+msgid "Text value exceeds the %d character limit and has been truncated."
+msgstr ""
+
 #: fpsstrings.rsunexpectedendofexpression
 msgid "Unexpected end of expression"
 msgstr ""

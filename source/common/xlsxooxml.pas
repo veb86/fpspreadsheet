@@ -229,6 +229,8 @@ var
 
   sfidOOXML: TsSpreadFormatID;
 
+procedure InitOOXMLLimitations(out ALimitations: TsSpreadsheetFormatLimitations);
+
 
 implementation
 
@@ -353,6 +355,17 @@ const
     );
 
 
+procedure InitOOXMLLimitations(out ALimitations: TsSpreadsheetFormatLimitations);
+begin
+  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
+  ALimitations.MaxColCount := 16384;
+  aLimitations.MaxRowCount := 1048576;
+  ALimitations.MaxSheetNameLength := 31;
+  // https://support.office.com/en-us/article/Excel-specifications-and-limits-1672b34d-7043-467e-8e27-269d656771c3#ID0EBABAAA=Excel_2007
+  ALimitations.MaxCharsInTextCell := 32767;
+end;
+
+
 {------------------------------------------------------------------------------}
 {                           TsSpreadOOXMLReader                                }
 {------------------------------------------------------------------------------}
@@ -375,6 +388,8 @@ begin
 
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
+
+  InitOOXMLLimitations(FLimitations);
 end;
 
 destructor TsSpreadOOXMLReader.Destroy;
@@ -2593,10 +2608,7 @@ begin
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
 
-  // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
-  FLimitations.MaxColCount := 16384;
-  FLimitations.MaxRowCount := 1048576;
-  FLimitations.MaxSheetNameLength := 31;
+  InitOOXMLLimitations(FLimitations);
 end;
 
 

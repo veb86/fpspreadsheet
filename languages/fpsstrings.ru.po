@@ -357,6 +357,10 @@ msgstr "прозрачно"
 msgid "Text value exceeds the %d character limit in cell %s and has been truncated."
 msgstr "Текстовое выражения ограничено %d символами в ячейке %s и будет уменьшено."
 
+#: fpsstrings.rstruncatetoolongtext
+msgid "Text value exceeds the %d character limit and has been truncated."
+msgstr ""
+
 #: fpsstrings.rsunexpectedendofexpression
 msgid "Unexpected end of expression"
 msgstr "Ожидается конец выражения"

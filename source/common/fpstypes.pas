@@ -45,6 +45,7 @@ type
     MaxColCount: Cardinal;
     MaxPaletteSize: Integer;
     MaxSheetNameLength: Integer;
+    MaxCharsInTextCell: Integer;
   end;
 
 const

@@ -656,6 +656,8 @@ type
 procedure AddBuiltinBiffFormats(AList: TStringList;
   AFormatSettings: TFormatSettings; ALastIndex: Integer);
 
+procedure InitBiffLimitations(out ALimitations: TsSpreadsheetFormatLimitations);
+
 
 implementation
 
@@ -884,6 +886,15 @@ begin
   for i:=50 to ALastIndex do AList.Add('');  // not supported/used
 end;
 
+procedure InitBiffLimitations(out ALimitations: TsSpreadsheetFormatLimitations);
+begin
+  ALimitations.MaxColCount := 256;
+  ALimitations.MaxRowCount := 65536;
+  ALimitations.MaxPaletteSize := 64;
+  ALimitations.MaxSheetNameLength := 31;
+  ALimitations.MaxCharsInTextCell := 320000;  // 32767 in Excel 2003
+end;
+
 
 {------------------------------------------------------------------------------}
 {                           TsBIFFDefinedName                                  }
@@ -980,9 +991,7 @@ begin
   FActivePane := 3;
 
   // Limitations of BIFF5 and BIFF8 file format
-  FLimitations.MaxColCount := 256;
-  FLimitations.MaxRowCount := 65536;
-  FLimitations.MaxPaletteSize := 64;
+  InitBiffLimitations(FLimitations);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3076,16 +3085,15 @@ end;
 {@@ ----------------------------------------------------------------------------
   Constructor of the general BIFF writer.
   Initializes the date mode and the limitations of the format.
+
+  https://support.microsoft.com/de-de/help/507098
 -------------------------------------------------------------------------------}
 constructor TsSpreadBIFFWriter.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
 
   // Limitations of BIFF5 and BIFF8 file formats
-  FLimitations.MaxColCount := 256;
-  FLimitations.MaxRowCount := 65536;
-  FLimitations.MaxPaletteSize := 64;
-  FLimitations.MaxSheetNameLength := 31;
+  InitBIFFLimitations(FLimitations);
 
   // Initial base date in case it won't be set otherwise.
   // Use 1900 to get a bit more range between 1900..1904.

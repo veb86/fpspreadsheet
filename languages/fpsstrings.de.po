@@ -8,7 +8,7 @@ msgstr ""
 "Language-Team: \n"
 "MIME-Version: 1.0\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: Poedit 1.8.9\n"
+"X-Generator: Poedit 2.0.4\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 "Language: de\n"
 
@@ -310,15 +310,15 @@ msgstr "Palettenindex %d"
 
 #: fpsstrings.rspasswordremoved_biff2
 msgid "Password removed (BIFF2 requires matching workbook and worksheet passwords)"
-msgstr ""
+msgstr "Das Passwort wurde entfernt (BIFF2 erfordert übereinstimmende Passwörter von Workbook und Worksheet "
 
 #: fpsstrings.rspasswordremoved_excel
 msgid "Password removed (Hashing algorithm not compatible with Excel)"
-msgstr ""
+msgstr "Das Passwort wurde entfernt (Der Hashing-Algorithmus ist nicht mit Excel kompatibel)."
 
 #: fpsstrings.rspasswordremoved_notvalid
 msgid "Password removed (Not valid)."
-msgstr ""
+msgstr "Das Passwort wurde entfernt (ungültig)."
 
 #: fpsstrings.rspurple
 msgid "purple"
@@ -363,6 +363,10 @@ msgstr "transparent"
 #: fpsstrings.rstruncatetoolongcelltext
 msgid "Text value exceeds the %d character limit in cell %s and has been truncated."
 msgstr "Der Text überschreitet die Grenze von %d Zeichen in Zelle %s und wurde abgeschnitten."
+
+#: fpsstrings.rstruncatetoolongtext
+msgid "Text value exceeds the %d character limit and has been truncated."
+msgstr "Der Text ist länger als die Grenze bei %d Zeichen und wurde gekürzt."
 
 #: fpsstrings.rsunexpectedendofexpression
 msgid "Unexpected end of expression"
@@ -431,4 +435,3 @@ msgstr "Die Datei kann nicht geschrieben werden, weil der Name des Arbeitsblatte
 #: fpsstrings.rsyellow
 msgid "yellow"
 msgstr "gelb"
-

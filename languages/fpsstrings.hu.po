@@ -367,6 +367,10 @@ msgstr "átlátszó"
 msgid "Text value exceeds the %d character limit in cell %s and has been truncated."
 msgstr "A szöveg hosszabb mint a(z) 15 karakteres korlát a(z) %s cellában, ezért csonkolva lett."
 
+#: fpsstrings.rstruncatetoolongtext
+msgid "Text value exceeds the %d character limit and has been truncated."
+msgstr ""
+
 #: fpsstrings.rsunexpectedendofexpression
 msgid "Unexpected end of expression"
 msgstr "A kifejezés váratlanul ért véget"
