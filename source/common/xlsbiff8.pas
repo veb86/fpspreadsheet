@@ -133,10 +133,24 @@ type
   { TsSpreadBIFF8Writer }
 
   TsSpreadBIFF8Writer = class(TsSpreadBIFFWriter)
+  private
+    FSharedStringTable: TStringList;
+    FNumStrings: DWord;
+  private
+    procedure BeginCONTINUERecord(AStream: TStream; out ASizePos: Int64);
+    procedure FixRecordSize(AStream: TStream; ASizePos: Int64; ASize: Word);
+    function WriteStringHelper(AStream: TStream; const AText: RawByteString;
+      const ARichTextParams: TsRichTextParams; Is8BitString: Boolean;
+      ABytesAvail: Integer; var ATextIndex, ARichIndex: Integer;
+      out AComplete: Boolean): Integer;
+
   protected
     function GetPrintOptions: Word; override;
+    function IndexOfSharedString(const AText: String;
+      const ARichTextParams: TsRichTextParams): Integer;
     procedure InternalWriteToStream(AStream: TStream);
     procedure PopulatePalette(AWorkbook: TsWorkbook); override;
+    procedure PopulateSharedStringTable(AWorkbook: TsWorkbook);
 
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
@@ -169,14 +183,18 @@ type
     procedure WriteMSODrawing3(AStream: TStream);
     procedure WriteNOTE(AStream: TStream; AComment: PsComment; AObjID: Word);
     procedure WriteOBJ(AStream: TStream; AObjID: Word);
+    function WriteRichTextStream(AStream: TStream; ABuffer: TMemoryStream;
+      ABytesAvail: Integer; out ABytesWritten: Integer;
+      out AContinueInString: Boolean): Boolean;
     function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
       AFlags: TsRelFlags): word; override;
     function WriteRPNCellOffset(AStream: TStream; ARowOffset, AColOffset: Integer;
       AFlags: TsRelFlags): Word; override;
     function WriteRPNCellRangeAddress(AStream: TStream; ARow1, ACol1, ARow2, ACol2: Cardinal;
       AFlags: TsRelFlags): Word; override;
+    procedure WriteSST(AStream: TStream);
     function WriteString_8bitLen(AStream: TStream; AString: String): Integer; override;
-    procedure WriteStringRecord(AStream: TStream; AString: string); override;
+    procedure WriteSTRINGRecord(AStream: TStream; AString: string); override;
     procedure WriteSTYLE(AStream: TStream);
     procedure WriteTXO(AStream: TStream; AComment: PsComment);
     procedure WriteWINDOW2(AStream: TStream; ASheet: TsWorksheet);
@@ -184,6 +202,7 @@ type
       XFType_Prot: Byte = 0); override;
   public
     constructor Create(AWorkbook: TsWorkbook); override;
+    destructor Destroy; override;
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
       const AOverwriteExisting: Boolean = False; AParams: TsStreamParams = []); override;
@@ -382,6 +401,8 @@ const
      MASK_XF_BIDI                        = $C0;
 
      SHAPEID_BASE = 1024;
+
+     MAX_BYTES_IN_RECORD = 8224;   // without header
 
 
 type
@@ -2108,6 +2129,43 @@ constructor TsSpreadBIFF8Writer.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
   FDateMode := Excel8Settings.DateMode;
+  PopulateSharedStringTable(AWorkbook);
+end;
+
+destructor TsSpreadBIFF8Writer.Destroy;
+begin
+  FSharedStringTable.Free;
+  inherited;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the header of a CONTINUE record. Since the size of the record is not
+  known at this moment the position of the BIFF size field is returned in
+  ASizePos. Later the size field must be corrected by calling FixRecordSize
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.BeginCONTINUERecord(AStream: TStream;
+  out ASizePos: Int64);
+begin
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_CONTINUE));
+  ASizePos := AStream.Position;
+  AStream.WriteWord(0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Sometimes the size of records is not known when writing them (see
+  BeginCONTINUERecord). This method rewinds the stream to the position where
+  the record size is expected (ASizePos) and writes the record size (ASize).
+  Then the stream returns to its original position.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.FixRecordSize(AStream: TStream; ASizePos: Int64;
+  ASize: Word);
+var
+  p: Int64;
+begin
+  p := AStream.Position;
+  AStream.Position := ASizePos;
+  AStream.WriteWord(WordToLE(ASize));
+  AStream.Position := p;
 end;
 
 function TsSpreadBIFF8Writer.GetPrintOptions: Word;
@@ -2119,6 +2177,26 @@ Begin
               2 = Print errors as “--”; 3 = Print errors as “#N/A” }
   if poCommentsAtEnd in FWorksheet.PageLayout.Options then
     Result := Result or $0200;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  If the specified string and richtextparams are stored in the SharedStringTable
+  then the index is returned, otherwise -1
+-------------------------------------------------------------------------------}
+function TsSpreadBIFF8Writer.IndexOfSharedString(const AText: String;
+  const ARichTextParams: TsRichTextParams): Integer;
+var
+  s: String;
+  obj: TObject;
+begin
+  if FSharedStringTable <> nil then
+    for Result := 0 to FSharedStringTable.Count-1 do begin
+      s := FSharedStringTable.Strings[Result];
+      obj := FSharedStringTable.Objects[Result];
+      if (s = AText) and (TsRichTextParams(obj) = ARichTextParams)
+        then exit;
+    end;
+  Result := -1;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2157,6 +2235,7 @@ begin
   WriteEXTERNBOOK(AStream);
   WriteEXTERNSHEET(AStream);
   WriteDefinedNames(AStream);
+  WriteSST(AStream);
 
   WriteEOF(AStream);
 
@@ -2246,6 +2325,35 @@ begin
     FPalette.AddColor(PALETTE_BIFF8[i]);
     // The BIFF8 palette contains duplicate colors -> don't use AddUniqueColor
     inc(i);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Collects all strings of the workbook in the SharedStringTable
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.PopulateSharedStringTable(AWorkbook: TsWorkbook);
+var
+  i, idx: Integer;
+  cell: PCell;
+  sheet: TsWorksheet;
+begin
+  FNumStrings := 0;
+  FSharedStringTable := TStringList.Create;
+
+  for i:=0 to AWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := AWorkbook.GetWorksheetByIndex(i);
+    for cell in sheet.Cells do begin
+      if (cell^.ContentType <> cctUTF8String) then
+        Continue;
+      if (cell^.UTF8StringValue = '') then
+        Continue;
+      idx := IndexOfSharedString(cell^.UTF8StringValue, cell^.RichTextParams);
+      inc(FNumStrings);
+      if idx > -1 then
+        Continue;
+      FSharedStringTable.AddObject(cell^.UTF8StringValue, TObject(cell^.RichTextParams));
+    end;
   end;
 end;
 
@@ -2473,10 +2581,10 @@ var
   memstream: TMemoryStream;
   rng: TsCellRange;
   j: Integer;
+
 begin
   // Since this is a variable length record we begin by writing the formula
   // to a memory stream
-
   memstream := TMemoryStream.Create;
   try
     case AName of
@@ -3061,7 +3169,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Depending on the presence of Rich-text formatting information in the cell
   record, writes an Excel 8 LABEL record (string cell value only), or
-  RSTRING record (string cell value + rich-text formatting runs)
+  RSTRING record (string cell value + rich-text formatting runs).
+
+  If the cell text (incl its rich-text formatting) is found in the
+  SharedStringtable then LABELSST record is written.
 
   If the string length exceeds 32758 bytes, the string will be truncated,
   a note will be left in the workbooks log.
@@ -3069,19 +3180,33 @@ end;
 procedure TsSpreadBIFF8Writer.WriteLABEL(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: String; ACell: PCell);
 const
-  //limit for this format: 32767 bytes - header (see reclen below):
+  //limit for this format: 32767 characters (2 byte each) - header:
   //37267-8-1=32758
-  MAXBYTES = 32758;
+  MAXCHARS = 32758;
 var
   L: Word;
   WideStr: WideString;
   rec: TBIFF8_LabelRecord;
+  recSST: TBIFF8_LabelSSTRecord;
   buf: array of byte;
-  i, nRuns: Integer;
+  i, nRuns, idx: Integer;
   rtfRuns: TBiff8_RichTextFormattingRuns;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
+
+  idx := IndexOfSharedString(ACell^.UTF8StringValue, ACell^.RichTextParams);
+
+  if idx > -1 then begin
+    recSST.RecordID := WordToLE(INT_EXCEL_ID_LABELSST);
+    recSST.RecordSize := WordToLE(SizeOf(recSST) - SizeOf(TsBiffHeader));
+    recSST.Row := WordToLE(ARow);
+    recSST.Col := WordToLE(ACol);
+    recSST.XFIndex := WordToLE(FindXFIndex(ACell^.FormatIndex));
+    recSST.SSTIndex := DWordToLE(idx);
+    AStream.Write(recSST, SizeOf(recSST));
+    exit;
+  end;
 
   WideStr := UTF8Decode(FixLineEnding(AValue)); //to UTF16
   if WideStr = '' then begin
@@ -3093,12 +3218,15 @@ begin
     Exit;
   end;
 
-  if Length(WideStr) > MAXBYTES then begin   // <-------- wp: Factor 2 missing? ---------
+  // wp: THIS IS PROBABLY WRONG, BECAUSE A RECORD CAN ONLY CONTAIN 8224 BYTES AND
+  // A CONTINUE RECORD MUST BE USED!
+
+  if Length(WideStr) > MAXCHARS then begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
-    SetLength(WideStr, MAXBYTES); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
+    SetLength(WideStr, MAXCHARS); //may corrupt the string (e.g. in surrogate pairs), but... too bad.
     Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
-      MAXBYTES, GetCellString(ARow, ACol)
+      MAXCHARS, GetCellString(ARow, ACol)
     ]);
   end;
   L := Length(WideStr);
@@ -3470,6 +3598,366 @@ begin
   Result := 8;
 end;
 
+{ Writes a buffer containing a string (with header) and its associated
+  rich-text parameters to an EXCEL record.
+  Since the size in an EXCEL8 record is limited to 8224 bytes
+  ABytesAvail specifies how many bytes are available. If the buffer is longer
+  then the string is split at an appropriate position.
+  The procedure also handles the case that the remaining bytes of the string/
+  rich-text are written in a following CONTINUE record.
+  The number of written bytes is returned in the corresponding parameter.
+  If a split has occured in the string part of the buffer the following CONTINUE
+  record must begin with an Option byte; this is signaled by AContinueInString.
+  The function returns TRUE if the entire buffer has been written completely,
+  otherweise CONTINUE records are required. }
+function TsSpreadBIFF8Writer.WriteRichTextStream(AStream: TStream;
+  ABuffer: TMemoryStream; ABytesAvail: Integer; out ABytesWritten: Integer;
+  out AContinueInString: Boolean): Boolean;
+var
+  strLen: Word;
+  optn: Byte;
+  i, n: Integer;
+  hasRtp: Boolean;
+  nRtp: Integer;
+  bytesToWrite: Integer;
+  savedStartPos: Integer;
+  strSize, rtpSize, hdrSize: Integer;
+
+  bufSize: Integer;
+begin
+  bufsize := ABuffer.Size;
+
+
+  Result := false;
+
+  ABytesWritten := 0;
+  AContinueInString := false;
+
+  // Read string header and get string length and count of rich-text parameters
+  savedStartPos := ABuffer.Position;
+  ABuffer.Position := 0;
+  strLen := LEToN(ABuffer.ReadWord);      // string length (character count)
+  hasRtp := ABuffer.ReadByte and 4 <> 0;  // Rich-text params available?
+  hdrSize := SizeOf(strlen) + SizeOf(byte);
+  if hasRtp then
+  begin
+    nRtp := LEToN(ABuffer.ReadWord);   // number of rich-text formatting runs
+    inc(hdrSize, SizeOf(word));
+    rtpSize := nRtp * 4;  // 4 bytes per rich-text formatting run
+  end else
+  begin
+    nRtp := 0;
+    rtpSize := 0;
+  end;
+  strSize := strLen * SizeOf(WideChar);  // String length in bytes
+
+  // Begin writing
+  ABuffer.Position := savedStartPos;
+
+  // Case 1: If the function has been called for the 1st time,
+  // we must write the string header
+  if ABuffer.Position = 0 then
+  begin
+    // Keep header plus 1st character together - they must not be separated
+    bytesToWrite := hdrSize + SizeOf(WideChar);
+    if ABytesAvail < bytesToWrite then
+    begin
+      // not enough memory left
+      AContinueInString := true;  // The following CONTINUE record must begin with the Options byte
+      exit;
+    end;
+    AStream.CopyFrom(ABuffer, bytesToWrite);
+    inc(ABytesWritten, bytesToWrite);
+  end;
+
+  // Case 2; Here some part of the string already has been written, and the
+  // buffer stream is somewhere in the string part
+  if ABuffer.Position < hdrSize + strSize - 1 then
+  begin
+    bytesToWrite := hdrSize + strSize - ABuffer.Position;
+    if bytesToWrite > ABytesAvail then
+    begin
+      bytesToWrite := ABytesAvail;
+      // Make sure to split between widechars
+      if odd(bytesToWrite) then dec(bytesToWrite);
+      AStream.CopyFrom(ABuffer, bytesToWrite);
+      inc(ABytesWritten, bytesToWrite);
+      AContinueInString := true;
+      exit;
+    end;
+    AStream.CopyFrom(ABuffer, bytesToWrite);
+    inc(ABytesWritten, bytesToWrite);
+  end;
+
+  // Case 3: The string has been written fully, but the buffer stream is somewhere
+  // in the rich-text formatting runs
+  if hasRtp and (ABuffer.Position >= hdrSize + strSize) then
+  begin
+    bytesToWrite := hdrSize + strSize + rtpSize - ABuffer.Position;
+    if bytesToWrite > ABytesAvail then
+    begin
+      // Make sure to split between rich-text formatting runs. Each run is 4 bytes.
+      bytesToWrite := (ABytesAvail div 4) * 4;
+      AStream.CopyFrom(ABuffer, BytesToWrite);
+      inc(ABytesWritten, bytesToWrite);
+      exit;
+    end;
+    AStream.CopyFrom(ABuffer, BytesToWrite);
+    inc(ABytesWritten, bytesToWrite);
+  end;
+
+  // If the procedure gets to this point the buffer has been written completely.
+  Result := true;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the SharedStringTable (SST) to the stream
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteSST(AStream: TStream);
+
+  function Is8BitString(s: String): boolean;
+  var
+    i: Integer;
+  begin
+    Result := false;
+    for i:=1 to Length(s) do
+      if s[i] > #127 then exit;
+    Result := true;
+  end;
+
+var
+  sizePos: Int64;
+  bytesWritten, totalBytesWritten: Integer;
+  i: Integer;
+  rtParams: TsRichTextParams;
+  bytesAvail: Integer;
+  isASCII: Boolean;
+  textIndex, rtIndex: Integer;
+  complete: Boolean;
+  flag: Byte;
+  ws: Widestring;
+  s: String;
+  rs: RawByteString;
+
+begin
+  if FSharedStringTable.Count = 0 then
+    exit;
+
+  { Write BIFF header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_SST));
+  sizePos := AStream.Position;
+  AStream.WriteWord(0);     // Size of record will be written later when we know it
+
+  { Number of strings in workbook }
+  AStream.WriteDWord(DWordToLE(FNumStrings));
+
+  { Number of strings in SST }
+  AStream.WriteDWord(DWordToLE(FSharedStringTable.Count));
+
+  { Now begins writing of strings. Take care of overflow into following
+    CONTINUE records if the maximum record size (MaX_BYTES_IN_RECORD) is
+    exceeded. }
+  totalBytesWritten := 8;
+  for i:=0 to FSharedStringTable.Count-1 do
+  begin
+    s := FixLineEnding(FSharedStringTable.Strings[i]);
+    isASCII := Is8BitString(s);
+    if isASCII then
+      rs := s
+    else begin
+      ws := WideStringToLE(UTF8ToUTF16(s));
+      SetLength(rs, Length(ws) * SizeOf(widechar));
+      Move(ws[1], rs[1], Length(rs));
+    end;
+    // To do: Truncate if string is too long
+
+    rtParams := TsRichTextParams(FSharedStringTable.Objects[i]);
+
+    textIndex := 1;
+    rtIndex := 0;
+    repeat
+      bytesAvail := MAX_BYTES_IN_RECORD - totalBytesWritten;
+      bytesWritten := WriteStringHelper(AStream, rs, rtParams, isASCII,
+        bytesAvail, textIndex, rtIndex, complete);
+      inc(totalBytesWritten, bytesWritten);
+      dec(bytesAvail, bytesWritten);
+
+      // String is not complete --> we need a CONTINUE record
+      if not complete then begin
+        FixRecordSize(AStream, sizePos, totalBytesWritten);
+        BeginCONTINUERecord(AStream, sizePos);
+        if (textIndex <> -1) and (textIndex <> 1) then begin
+          // Text is split: the string flag must be repeated
+          flag := IfThen(IsASCII, 0, 1);
+          AStream.WriteByte(flag);
+          totalBytesWritten := 1;
+        end else
+          totalBytesWritten := 0;
+      end;
+    until complete;
+  end;
+
+  // Write size word of the current record
+  FixRecordSize(AStream, sizePos, totalBytesWritten);
+end;
+
+
+(*
+procedure TsSpreadBIFF8Writer.WriteSST(AStream: TStream);
+type
+  TBiff8RichTextParam = packed record
+    FirstIndex: Word;
+    FontIndex: Word;
+  end;
+  TBiff8RichTextParams = array of TBiff8RichTextParam;
+var
+  i, j: Integer;
+  pSize: Int64;
+  s: string;
+  ws: WideString;
+  rtParams: TsRichTextParams;
+  biffRtParams: TBiff8RichTextParams;
+  bytesAvail, bytesToWrite, bytesWritten, totalBytesWritten: Integer;
+  hasRtp: Boolean;
+  hdrSize: Integer;
+  flags: Byte;
+  startIndex: Integer;
+  needCONTINUE: Boolean;
+
+  procedure EndRecord;
+  var
+    p: Int64;
+  begin
+    p := AStream.Position;
+    AStream.Position := pSize;
+    AStream.WriteWord(WordToLE(totalBytesWritten));
+    AStream.Position := p;
+  end;
+
+  procedure BeginCONTINUERecord;
+  begin
+    AStream.WriteWord(WordToLE(INT_EXCEL_ID_CONTINUE));
+    pSize := AStream.Position;
+    AStream.WriteWord(0);
+  end;
+
+begin
+  if FSharedStringTable.Count = 0 then
+    exit;
+
+  { Write BIFF header }
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_SST));
+  pSize := AStream.Position;
+  AStream.WriteWord(0);  // Size of record - will be written later
+
+  { Number of strings in workbook }
+  AStream.WriteDWord(DWordToLE(FNumStrings));
+
+  { Number of strings in SST }
+  AStream.WriteDWord(DWordToLE(FSharedStringTable.Count));
+
+  { Here the strings plus rich-text parameters are following. This is a bit
+    complicated because usually there are many strings, but each record can
+    hold only 8224 bytes (MAX_BYTES_IN_RECORD) which requires additional
+    CONTINUE records. }
+
+  totalBytesWritten := 8;
+
+  for i:=0 to FSharedStringTable.Count-1 do
+  begin
+    // Assemble the string to be written in a buffer stream
+    s := FixLineEnding(FSharedStringTable.Strings[i]);
+    ws := WideStringToLE(UTF8Decode(s));
+    rtParams := TsRichTextParams(FSharedStringTable.Objects[i]);
+    SetLength(biffRtParams, Length(rtParams));
+    for j := 0 to High(biffRtParams) do begin
+      biffRtParams[j].FirstIndex := WordToLE(rtParams[j].FirstIndex) - 1;
+        // character index is 0-based in file, but 1-based in fps.
+      biffRtParams[j].FontIndex := WordToLE(rtParams[j].FontIndex);
+    end;
+    hasRtp := Length(rtParams) > 0;
+    hdrsize := IfThen(hasRtp, 3+2, 3);
+
+    bytesAvail := MAX_BYTES_IN_RECORD - totalBytesWritten;
+
+    // (1) String header
+    // String header plus 1st character do not fit into current record
+    // ---> move everything to a CONTINUE record
+    if bytesAvail < hdrsize + SizeOf(WideChar) then begin
+      EndRecord;
+      BeginCONTINUERecord;     // Begins a CONTINUE record
+    end else begin
+      { Write string length }
+      AStream.WriteWord(WordToLE(Length(ws)));
+      { Write string flags byte }
+      flags := 1;  // 1 = uncompressed data (= wide chars)
+      if hasRtp then inc(flags, 8);  // 8 = has rich-text formatting runs
+      inc(totalbytesWritten, 3);
+      AStream.Writebyte(flags);
+      { Write number of rich-text formatting runs }
+      if hasRtp then begin
+        AStream.WriteWord(WordToLE(Length(rtParams)));
+        inc(totalBytesWritten, 2);
+      end;
+    end;
+
+    // (2) String characters
+    bytesAvail := MAX_BYTES_IN_RECORD - totalBytesWritten;
+    if odd(bytesAvail) then dec(bytesAvail);  // Split between widechars
+    bytesToWrite := Length(ws) * SizeOf(WideChar);
+    needCONTINUE := bytesToWrite > bytesAvail;
+    startIndex := 1;
+    while needCONTINUE do begin
+      // Fill remainder of current record
+      bytesWritten := AStream.Write(ws[startIndex], bytesAvail);
+      inc(totalBytesWritten, bytesWritten);
+      EndRecord;
+      BeginCONTINUERecord;
+      // Write flag byte because string is split
+      AStream.WriteByte(1);
+      totalBytesWritten := 1;
+      startIndex := StartIndex + bytesWritten div 2;
+      bytesAvail := MAX_BYTES_IN_RECORD - totalBytesWritten;
+      if odd(bytesAvail) then dec(bytesAvail);
+      bytesToWrite := (Length(ws) - startIndex + 1) * SizeOf(WideChar);
+      needCONTINUE := bytesToWrite > bytesAvail;
+    end;
+    if bytesToWrite > 0 then begin
+      bytesWritten := AStream.Write(ws[startIndex], bytesToWrite);
+      inc(totalBytesWritten, bytesWritten);
+    end;
+
+    // (3) Rich-text formatting runs
+    bytesAvail := MAX_BYTES_IN_RECORD - totalBytesWritten;
+    // Make sure to split between runs
+    bytesAvail := (bytesAvail div 4) * 4;
+    bytesToWrite := Length(biffRtParams) * 4;  // 4 = size of formatting run
+    needCONTINUE := bytesToWrite > bytesAvail;
+    startIndex := 0;
+    while needCONTINUE do begin
+      // Fill remainder of current record
+      bytesWritten := AStream.Write(biffRtParams[startIndex], bytesAvail);
+      inc(totalBytesWritten, bytesWritten);
+      EndRecord;
+      BeginCONTINUERecord;
+      totalBytesWritten := 0;
+      startIndex := startIndex + bytesWritten div 4;
+      bytesAvail := MAX_BYTES_IN_RECORD - totalBytesWritten;
+      bytesAvail := (bytesAvail div 4) * 4;
+      bytesToWrite := (Length(biffRtParams) - startIndex) * 4;
+      needCONTINUE := bytesToWrite > bytesAvail;
+    end;
+    if bytesToWrite > 0 then begin
+      bytesWritten := AStream.Write(biffRtParams[startIndex], bytesToWrite);
+      inc(totalBytesWritten, bytesWritten);
+    end;
+  end;
+
+  // Write size word of the current record
+  EndRecord;
+end;
+*)
+
 {@@ ----------------------------------------------------------------------------
   Helper function for writing a string with 8-bit length. Overridden version
   for BIFF8. Called for writing rpn formula string tokens.
@@ -3490,8 +3978,131 @@ begin
   Result := 1 + 1 + len * SizeOf(WideChar);
 end;
 
-procedure TsSpreadBIFF8Writer.WriteStringRecord(AStream: TStream;
+{@@ ----------------------------------------------------------------------------
+  Helper function for writing a string which considers overflow into
+  CONTINUE records.
+
+  @@param AText            Text to be written
+  @@param ARichTextParams  optional rich-text formatting runs for formatting
+                           individual characters
+  @@param Is8BitString     if true the string is a compressed 8-bit string,
+                           otherwise a widestring
+  @@param ABytesAvail      Specifies the number of bytes available in the
+                           current record. A BIFF record can hold only
+                           MAX_BYTES_IN_RECORD bytes.
+  @@param ATextIndex       Index at which writing of the text begins.
+  @@param ARichIndex       Index at which writing of the rich-text parameters begins
+  @@param AComplete        TRUE if writing is complete, FALSE if text or
+                           rich-text parameters do not fit into the current
+                           record. In the latter case ATextIndex and ARichIndex
+                           are updated for the next call of the method.
+                           ATextIndex returns -1, if the text is complete.
+
+  @@return                 Number of bytes written
+-------------------------------------------------------------------------------}
+function TsSpreadBIFF8Writer.WriteStringHelper(AStream: TStream;
+  const AText: RawByteString; const ARichTextParams: TsRichTextParams;
+  Is8BitString: Boolean; ABytesAvail: Integer; var ATextIndex, ARichIndex: Integer;
+  out AComplete: Boolean): Integer;
+const
+  COMPRESSED_FLAG: array[boolean] of byte = (1, 0);
+var
+  hdrSize: Integer;
+  bytesToWrite: Integer;
+  flags: Byte;
+  len: Word;
+  nRtp: Integer;
+  rtp: TsRichTextParam;
+begin
+  Result := 0;
+  AComplete := false;
+
+  // Text length in characters
+  len := Length(AText);
+  if not Is8BitString then len := len div 2;
+  // Number of rich-text parameters
+  nRtp := Length(ARichTextParams);
+
+  // (1) String header
+  if (ATextIndex = 1) then
+  begin
+    hdrSize := IfThen(nRtp = 0, 3, 3+2);
+
+    // String header plus 1st character do not fit into current record
+    // ---> the caller must move everything to a CONTINUE record
+    if ABytesAvail < hdrSize + SizeOf(WideChar) then
+      exit;
+
+    { Write string length (in characters)}
+    AStream.WriteWord(WordToLE(len));
+    inc(Result, 2);
+
+    { Write string flags byte }
+    flags := COMPRESSED_FLAG[Is8BitString];
+    if Length(ARichTextParams) > 0 then
+      inc(flags, 8);        // 8 = has rich-text formatting runs
+    // Note: Asian phonetic not supported here!
+    AStream.WriteByte(flags);
+    inc(Result, 1);
+
+    { Write number of rich-text formatting runs }
+    if Length(ARichTextParams) > 0 then begin
+      AStream.WriteWord(WordToLE(nRtp));
+      inc(Result, 2);
+    end;
+  end;
+
+  // (2) String characters
+  if ATextIndex <> -1 then begin
+    bytesToWrite := Length(AText) - ATextIndex + 1;
+    if bytesToWrite > ABytesAvail - Result then begin
+      bytesToWrite := ABytesAvail - Result;
+      // Make sure to split widestring between widechars
+      if not Is8bitString and odd(bytesToWrite) then
+        dec(bytesToWrite);
+      inc(Result, AStream.Write(AText[ATextIndex], bytesToWrite));
+      inc(ATextIndex, bytesToWrite);
+      exit;
+    end;
+
+    inc(Result, AStream.Write(AText[ATextIndex], bytesToWrite));
+    ATextIndex := -1;  // String is complete here
+  end;
+
+  // (3) Rich-text formatting runs
+  if nRtp = 0 then begin
+    AComplete := true;
+    exit;
+  end;
+
+  while (ARichIndex < nRtp) and (ABytesAvail - Result >= 4) do
+  begin
+    rtp := ARichTextParams[ARichIndex];
+    if rtp.FirstIndex > len then begin
+      ARichIndex := MaxInt;
+      break;
+    end;
+    // Make sure to split between runs
+    AStream.WriteWord(WordToLE(rtp.FirstIndex - 1));
+      // character index is 0-based in file, but 1-based in fps
+    AStream.WriteWord(WordtoLE(rtp.FontIndex));
+    inc(Result, 4);
+    inc(ARichIndex);
+  end;
+
+  AComplete := (ARichIndex >= nRtp);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Write the result of a string formula in the preceding record.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteSTRINGRecord(AStream: TStream;
   AString: String);
+// wp: This method might be imcomplete:
+// - Missing call to FixLineEnding()
+// - Missing RichText
+// - Missing check for length (max 8224 bytes per record, else use CONTINUE)
 var
   wideStr: widestring;
   len: Integer;

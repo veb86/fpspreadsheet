@@ -130,86 +130,6 @@ procedure TSpreadWriteReadFontTests.TearDown;
 begin
   inherited TearDown;
 end;
-                     (*
-procedure TSpreadWriteReadFontTests.TestWriteReadBold(AFormat: TsSpreadsheetFormat);
-var
-  MyWorksheet: TsWorksheet;
-  MyWorkbook: TsWorkbook;
-  row, col: Integer;
-  MyCell: PCell;
-  TempFile: string; //write xls/xml to this file and read back from it
-  fmt: TsCellFormat;
-begin
-  {// Not needed: use workbook.writetofile with overwrite=true
-  if fileexists(TempFile) then
-    DeleteFile(TempFile);
-  }
-  MyWorkbook := TsWorkbook.Create;
-  try
-    MyWorkSheet:= MyWorkBook.AddWorksheet(FontSheet);
-
-    // Write out a cell without "bold" formatting style
-    row := 0;
-    col := 0;
-    MyWorksheet.WriteUTF8Text(row, col, 'not bold');
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failed to get cell.');
-    fmt := MyWorkbook.GetCellFormat(MyCell^.FormatIndex);
-    CheckEquals(false, uffBold in fmt.UsedFormattingFields,
-      'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row,Col));
-
-    // Write out a cell with "bold" formatting style
-    inc(row);
-    MyWorksheet.WriteUTF8Text(row, col, 'bold');
-    MyWorksheet.WriteUsedFormatting(row, col, [uffBold]);
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failded to get cell.');
-    fmt := MyWorkbook.GetCellFormat(MyCell^.FormatIndex);
-    CheckEquals(true, uffBold in fmt.UsedFormattingFields,
-      'Test unsaved bold attribute, cell '+CellNotation(MyWorksheet,Row, Col));
-
-    TempFile:=NewTempFile;
-    MyWorkBook.WriteToFile(TempFile, AFormat, true);
-  finally
-    MyWorkbook.Free;
-  end;
-
-  // Open the spreadsheet
-  MyWorkbook := TsWorkbook.Create;
-  try
-    MyWorkbook.ReadFromFile(TempFile, AFormat);
-    if AFormat = sfExcel2 then
-      MyWorksheet := MyWorkbook.GetFirstWorksheet  // only 1 sheet for BIFF2
-    else
-      MyWorksheet := GetWorksheetByName(MyWorkBook, FontSheet);
-    if MyWorksheet=nil then
-      fail('Error in test code. Failed to get named worksheet');
-
-    // Try to read cell without "bold"
-    row := 0;
-    col := 0;
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failed to get cell.');
-    fmt := MyWorkbook.GetCellFormat(MyCell^.FormatIndex);
-    CheckEquals(false, uffBold in fmt.UsedFormattingFields,
-      'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
-
-    // Try to read cell with "bold"
-    inc(row);
-    MyCell := MyWorksheet.FindCell(row, col);
-    if MyCell = nil then
-      fail('Error in test code. Failed to get cell.');
-    fmt := MyWorkbook.GetCellFormat(MyCell^.FormatIndex);
-    CheckEquals(true, uffBold in fmt.UsedFormattingFields,
-      'Test saved bold attribute, cell '+CellNotation(MyWorksheet,row,col));
-  finally
-    MyWorkbook.Free;
-    DeleteFile(TempFile);
-  end;
-end;                   *)
 
 procedure TSpreadWriteReadFontTests.TestWriteReadFont(AFormat: TsSpreadsheetFormat;
   AFontName: String);
@@ -291,13 +211,9 @@ begin
   end;
 end;
 
+
 { BIFF2 }
-{
-procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF2_Bold;
-begin
-  TestWriteReadBold(sfExcel2);
-end;
-}
+
 procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF2_Font_Arial;
 begin
   TestWriteReadFont(sfExcel2, 'Arial');
@@ -313,13 +229,9 @@ begin
   TestWriteReadFont(sfExcel2, 'Courier New');
 end;
 
+
 { BIFF5 }
-{
-procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF5_Bold;
-begin
-  TestWriteReadBold(sfExcel5);
-end;
-}
+
 procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF5_Font_Arial;
 begin
   TestWriteReadFont(sfExcel5, 'Arial');
@@ -335,13 +247,9 @@ begin
   TestWriteReadFont(sfExcel5, 'Courier New');
 end;
 
+
 { BIFF8 }
-{
-procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF8_Bold;
-begin
-  TestWriteReadBold(sfExcel8);
-end;
-}
+
 procedure TSpreadWriteReadFontTests.TestWriteRead_BIFF8_Font_Arial;
 begin
   TestWriteReadFont(sfExcel8, 'Arial');
@@ -357,13 +265,9 @@ begin
   TestWriteReadFont(sfExcel8, 'Courier New');
 end;
 
+
 { ODS }
-{
-procedure TSpreadWriteReadFontTests.TestWriteRead_ODS_Bold;
-begin
-  TestWriteReadBold(sfOpenDocument);
-end;
-}
+
 procedure TSpreadWriteReadFontTests.TestWriteRead_ODS_Font_Arial;
 begin
   TestWriteReadFont(sfOpenDocument, 'Arial');
@@ -379,13 +283,9 @@ begin
   TestWriteReadFont(sfOpenDocument, 'Courier New');
 end;
 
+
 { OOXML }
-{
-procedure TSpreadWriteReadFontTests.TestWriteRead_OOXML_Bold;
-begin
-  TestWriteReadBold(sfOOXML);
-end;
-}
+
 procedure TSpreadWriteReadFontTests.TestWriteRead_OOXML_Font_Arial;
 begin
   TestWriteReadFont(sfOOXML, 'Arial');

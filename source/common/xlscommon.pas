@@ -634,7 +634,7 @@ type
       AFirstRow, AFirstCol, ALastRow, ALastCol: Cardinal); virtual;
       *)
     procedure WriteSheetPR(AStream: TStream);
-    procedure WriteStringRecord(AStream: TStream; AString: String); virtual;
+    procedure WriteSTRINGRecord(AStream: TStream; AString: String); virtual;
     procedure WriteVCenter(AStream: TStream);
     // Writes cell content received by workbook in OnNeedCellData event
     procedure WriteVirtualCells(AStream: TStream; ASheet: TsWorksheet);
@@ -4895,7 +4895,7 @@ end;
   the formula result is a non-empty string.
   Must be overridden because implementation depends of BIFF version.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.WriteStringRecord(AStream: TStream;
+procedure TsSpreadBIFFWriter.WriteSTRINGRecord(AStream: TStream;
   AString: String);
 begin
   Unused(AStream, AString);
