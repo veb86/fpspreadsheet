@@ -900,6 +900,22 @@ end;
 -------------------------------------------------------------------------------}
 function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
   AFormatSettings: TFormatSettings): String;
+
+  { Returns true if s represent the value 0; it can be written in various
+    ways: '0', '0.00', '0,000.0', '0.00E+10' etc. }
+  function IsZeroStr(s: String): Boolean;
+  var
+    i: Integer;
+  begin
+    Result := false;
+    for i:=1 to Length(s) do
+      case s[i] of
+        'e', 'E': break;
+        '1'..'9': exit;
+      end;
+    Result := true;
+  end;
+
 var
   fs: TFormatSettings absolute AFormatSettings;
   sidx: Integer;
@@ -961,7 +977,7 @@ begin
       else
       // Floating-point or integer
         s := ProcessFloatFormat(AValue, fs, section.Elements, el);
-      if (sidx = 0) and isNeg then s := '-' + s;
+      if (sidx = 0) and isNeg and not IsZeroStr(s) then s := '-' + s;
       Result := Result + s;
       Continue;
     end

@@ -225,8 +225,11 @@ begin
     SollNumberStrings[i, 0] := FloatToStr(SollNumbers[i], fs);
     SollNumberStrings[i, 1] := FormatFloat('0', SollNumbers[i], fs);
     SollNumberStrings[i, 2] := FormatFloat('0.00', SollNumbers[i], fs);
-    SollNumberStrings[i, 3] := FormatFloat('#,##0', SollNumbers[i], fs);
-    SollNumberStrings[i, 4] := FormatFloat('#,##0.00', SollNumbers[i], fs);
+    // For the next two cases don't use FormatFloat('#,##0') and
+    // FormatFloat('#,##0.00') which produce '-0' and '-0.00', respectively,
+    // for the case of -1.23456E-6 which is not consistent with Excel.
+    SollNumberStrings[i, 3] := Format('%.0n', [SollNumbers[i]], fs);
+    SollNumberStrings[i, 4] := Format('%.2n', [SollNumbers[i]], fs);
     SollNumberStrings[i, 5] := FormatFloat('0.00E+00', SollNumbers[i], fs);
     SollNumberStrings[i, 6] := FormatFloat('0', SollNumbers[i]*100, fs) + '%';
     SollNumberStrings[i, 7] := FormatFloat('0.00', SollNumbers[i]*100, fs) + '%';
