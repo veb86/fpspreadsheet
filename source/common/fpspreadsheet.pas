@@ -9499,6 +9499,9 @@ begin
     // indicate that this should be the special clipboard version of the stream.
     clipbook.WriteToStream(AStream, AFormat, AParams + [spClipboard]);
 
+    if AFormat = sfCSV then
+      AStream.WriteByte(0);
+
     // The calling routine which copies the stream to the clipboard requires
     // the stream to be at its beginning.
     AStream.Position := 0;
