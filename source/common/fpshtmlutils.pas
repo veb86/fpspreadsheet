@@ -938,15 +938,26 @@ procedure HTMLToRichText(AWorkbook: TsWorkbook; AFont: TsFont;
 var
   analyzer: TsHTMLAnalyzer;
   j: Integer;
+  len: Integer;
+  nrtp: Integer;
 begin
   analyzer := TsHTMLAnalyzer.Create(AWorkbook, AFont, AHTMLText + '<end>');
   try
     analyzer.PreserveSpaces := true;
     analyzer.Exec;
     APlainText := analyzer.PlainText;
-    SetLength(ARichTextParams, Length(analyzer.RichTextParams));
-    for j:=0 to High(ARichTextParams) do
-      ARichTextParams[j] := analyzer.RichTextParams[j];
+    nrtp := Length(analyzer.RichTextParams);
+    if nrtp > 0 then begin
+      // Avoid rich-text parameters beyond text end.
+      len := UTF8Length(APlainText);
+      if analyzer.RichTextParams[nrtp-1].FirstIndex > len then
+        dec(nrtp);
+      // Copy rich-text parameters to output
+      SetLength(ARichTextParams, nrtp);
+      for j:=0 to nrtp-1 do
+        ARichTextParams[j] := analyzer.RichTextParams[j];
+    end else
+      SetLength(ARichTextParams, 0);
   finally
     analyzer.Free;
   end;
