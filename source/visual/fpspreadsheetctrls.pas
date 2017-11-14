@@ -1410,6 +1410,7 @@ var
   sel: TsCellRangeArray;
   stream: TStream;
   savedCSVParams: TsCSVParams;
+  s: String;
 
   procedure CopyToClipboard(AStream: TStream; AFileFormat: TsSpreadsheetFormat;
     AClipboardFormat: Integer; AParams: TsStreamParams = []);
@@ -1466,9 +1467,21 @@ begin
       CopyToClipboard(stream, sfCSV, cfCSVFormat);
 
       // Finally write TEXT format
-      CsvParams.Delimiter := #9;
-      CopyToClipboard(stream, sfCSV, CF_TEXT);
-      CSVParams := savedCSVParams;
+      if FWorksheet.GetSelectionCount = 1 then begin
+        s := FWorksheet.ReadAsText(FWorksheet.ActiveCellRow, FWorksheet.ActiveCellCol);
+        if s <> '' then begin
+          stream.Write(s[1], Length(s));
+          stream.WriteByte(0);
+          stream.Position := 0;
+          Clipboard.AddFormat(CF_TEXT, stream);
+          (stream as TMemoryStream).Clear;
+        end;
+      end else
+      begin
+        CsvParams.Delimiter := #9;
+        CopyToClipboard(stream, sfCSV, CF_TEXT);
+        CSVParams := savedCSVParams;
+      end;
 
       // To do: XML format, ods format
     finally
