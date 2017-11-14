@@ -931,6 +931,14 @@ end;
 {@@ ----------------------------------------------------------------------------
   Extracts rich-text parameters out of an html-formatted string and returns the
   plain text
+
+  @@param AWorkbook          Workbook in which the cell with this text will reside
+  @@param AFont              Standard font used in the cell in which this text
+                             will reside
+  @@param AHTMLText          Input Text with html tags to be applied to the cell
+  @@param APlainText         AHtmlText after removal of HTML tags, pure text
+  @@param ARichtTextParams   Rich-text parameters corresponding to the embedded
+                             html tags
 -------------------------------------------------------------------------------}
 procedure HTMLToRichText(AWorkbook: TsWorkbook; AFont: TsFont;
   const AHTMLText: String; out APlainText: String;

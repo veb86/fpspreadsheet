@@ -17,7 +17,7 @@ uses
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testutils, testregistry,
   fpstypes, fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
-  fpsutils, fpsstreams, testsutility, md5;
+  fpsutils, fpsstreams, fpshtmlutils, testsutility, md5;
 
 type
   { TSpreadReadInternalTests }
@@ -33,6 +33,8 @@ type
     procedure TearDown; override;
 
     procedure FractionTest(AMaxDigits: Integer);
+    procedure HtmlToRichTextTest(ATestIndex: Integer);
+    procedure RichTextToHtmlTest(ATestIndex: Integer);
     procedure WriteToStreamTest(AFormat: TsSpreadsheetFormat);
 
     procedure InvalidSheetName(AFormat: TsSpreadsheetFormat);
@@ -73,6 +75,15 @@ type
     procedure FractionTest_1;
     procedure FractionTest_2;
     procedure FractionTest_3;
+    // Test HTML-Richtext conversion
+    procedure HtmlToRichTextTest_0;
+    procedure HtmlToRichTextTest_1;
+    procedure HtmlToRichTextTest_2;
+    procedure HtmlToRichTextTest_3;
+    procedure RichTextToHtmlTest_0;
+    procedure RichTextToHtmlTest_1;
+    procedure RichTextToHtmlTest_2;
+    procedure RichTextToHtmlTest_3;
   end;
 
 implementation
@@ -764,29 +775,6 @@ begin
         fail(Format('Conversion error: %g = %d/%d turns to %d/%d (=%g)', [sollValue, sollNum, sollDenom, actualNum, actualDenom, actualNum/actualdenom]));
     end;
 end;
-                             (*
-procedure TSpreadInternalTests.FractionTest_0;
-const
-  N = 300;
-var
-  j: Integer;
-  sollNum, sollDenom: Integer;
-  sollvalue: Double;
-  actualNum, actualDenom: Int64;
-begin
-  sollNum := 1;
-  for j := 1 to N do
-  begin
-    sollDenom := j;
-//    sollValue := StrToFloat(FormatFloat('0.00000', sollNum/sollDenom));
-    sollValue := 1.0/sollDenom;
-//    FloatToFraction(sollvalue, 0.1/DIGITS, DIGITS, DIGITS, actualNum, actualDenom);
-    FloatToFraction(sollvalue, 1000, actualNum, actualDenom);
-    if actualDenom > sollDenom then
-      fail(Format('Conversion error: approximated %d/%d turns to %d/%d', [sollNum, sollDenom, actualNum, actualDenom]));
-  end;
-end;
-*)
 
 procedure TSpreadInternalTests.FractionTest_1;
 begin
@@ -802,6 +790,137 @@ procedure TSpreadInternalTests.FractionTest_3;
 begin
   FractionTest(3);
 end;
+
+{------------------------------------------------------------------------------}
+{                       HTML-to-RichText conversion                            }
+{------------------------------------------------------------------------------}
+type
+  THtmlRichTextParam = record
+    HTML: String;
+    PlainText: String;
+    NumRichTextParams: 0..1;
+    RichTextParams: array[0..1] of TsRichTextParam;
+  end;
+
+const
+  HtmlRTParams: array[0..3] of THtmlRichTextParam = (
+    (HTML: 'ABC'; PlainText: 'ABC';
+      NumRichTextParams: 0),
+    (HTML: 'ABC<b>abc</b>'; PlainText: 'ABCabc';
+      NumRichTextParams: 1;
+      RichTextParams: (
+        (FirstIndex:4; FontIndex:2; HyperlinkIndex:-1),
+        (FirstIndex:0; FontIndex:0; HyperlinkIndex:-1)
+      )
+    ),
+    (HTML: 'ABC<b>abc</b>ABC'; PlainText: 'ABCabcABC';
+      NumRichTextParams: 2;
+      RichTextParams: (
+        (FirstIndex:4; FontIndex:2; HyperlinkIndex:-1),
+        (FirstIndex:7; FontIndex:0; HyperlinkIndex:-1)
+      )
+    ),
+    (HTML: '<b>abc</b>ABC'; PlainText: 'abcABC';
+      NumRichTextParams: 2;
+      RichTextParams: (
+        (FirstIndex:1; FontIndex:2; HyperlinkIndex:-1),
+        (FirstIndex:4; FontIndex:0; HyperlinkIndex:-1)
+      )
+    )
+  );
+
+procedure TSpreadInternalTests.HtmlToRichTextTest(ATestIndex: Integer);
+var
+  book: TsWorkbook;
+  fnt: TsFont;
+  rtparams: TsRichTextParams;
+  plain: String;
+  i: Integer;
+begin
+  book := TsWorkbook.Create;
+  try
+    fnt := book.GetDefaultFont;
+    HTMLToRichText(book, fnt, HTMLRtParams[ATestIndex].HTML, plain, rtParams);
+
+    CheckEquals(HtmlRTParams[ATestIndex].PlainText, plain, 'Plain text mismatch');
+    CheckEquals(HtmlRTParams[ATestIndex].NumRichTextParams, Length(rtParams),
+      'Count of rich-text params mismatch');
+
+    for i:=0 to HtmlRTParams[ATestIndex].NumRichTextParams-1 do begin
+      CheckEquals(HtmlRTParams[ATestIndex].RichTextParams[i].FirstIndex, rtParams[i].FirstIndex,
+        'RichTextParam['+IntToStr(i)+'].FirstIndex mismatch');
+      CheckEquals(HtmlRTParams[ATestIndex].RichTextParams[i].FontIndex, rtParams[i].FontIndex,
+        'RichTextParam['+IntToStr(i)+'].FontIndex mismatch');
+    end;
+  finally
+    book.Free;
+  end;
+end;
+
+procedure TSpreadInternalTests.RichTextToHtmlTest(ATestIndex: Integer);
+var
+  book: TsWorkbook;
+  fnt: TsFont;
+  rtparams: TsRichTextParams;
+  html: String;
+  i: Integer;
+begin
+  book := TsWorkbook.Create;
+  try
+    fnt := book.GetDefaultFont;
+    SetLength(rtParams, HTMLRtParams[ATestIndex].NumRichTextParams);
+    for i:=0 to HtmlRtParams[ATestindex].NumRichTextParams-1 do begin
+      rtParams[i].FirstIndex := HtmlRTParams[ATestIndex].RichTextParams[i].FirstIndex;
+      rtParams[i].FontIndex := HtmlRTParams[ATestIndex].RichTextParams[i].FontIndex;
+    end;
+    RichTextToHTML(book, fnt, HTMLRtParams[ATestIndex].PlainText, rtParams, html);
+
+    CheckEquals(HtmlRTParams[ATestIndex].HTML, html, 'HTML text mismatch');
+  finally
+    book.Free;
+  end;
+end;
+
+procedure TSpreadInternalTests.HtmlToRichTextTest_0;
+begin
+  HtmlToRichTextTest(0);
+end;
+
+procedure TSpreadInternalTests.HtmlToRichTextTest_1;
+begin
+  HtmlToRichTextTest(1);
+end;
+
+procedure TSpreadInternalTests.HtmlToRichTextTest_2;
+begin
+  HtmlToRichTextTest(2);
+end;
+
+procedure TSpreadInternalTests.HtmlToRichTextTest_3;
+begin
+  HtmlToRichTextTest(3);
+end;
+
+procedure TSpreadInternalTests.RichTextToHtmlTest_0;
+begin
+  RichTextToHtmlTest(0);
+end;
+
+procedure TSpreadInternalTests.RichTextToHtmlTest_1;
+begin
+  RichTextToHtmlTest(1);
+end;
+
+procedure TSpreadInternalTests.RichTextToHtmlTest_2;
+begin
+  RichTextToHtmlTest(2);
+end;
+
+procedure TSpreadInternalTests.RichTextToHtmlTest_3;
+begin
+  RichTextToHtmlTest(3);
+end;
+
 
 procedure TSpreadInternalTests.SetUp;
 begin
