@@ -8396,6 +8396,7 @@ begin
         Recalc;
       FFormatID := AFormatID;
     finally
+      FReadWriteFlag := rwfNormal;
       dec(FLockCount);
       if ok and Assigned(FOnOpenWorkbook) then   // ok is true if stream has been read successfully
         FOnOpenWorkbook(self);   // send common notification
