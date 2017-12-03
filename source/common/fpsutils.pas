@@ -1499,19 +1499,29 @@ var
   p: Integer;
   s, sInt, sNum, sDenom: String;
   i,num,denom: Integer;
+  slashCount: Integer;
 begin
   Result := false;
   s := '';
   sInt := '';
   sNum := '';
   sDenom := '';
+  slashCount := 0;
 
   p := 1;
   while p <= Length(AText) do begin
     case AText[p] of
       '0'..'9': s := s + AText[p];
-      ' ': begin sInt := s; s := ''; end;
-      '/': begin sNum := s; s := ''; end;
+      ' ': begin
+             sInt := s;
+             s := '';
+           end;
+      '/': begin
+             sNum := s;
+             s := '';
+             inc(slashCount);        // avoid confusion with dates (2017/1/1)
+             if slashCount > 1 then exit;
+           end;
       else exit;
     end;
     inc(p);
