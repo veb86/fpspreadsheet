@@ -20,4 +20,10 @@ TSWORKBOOKTABCONTROL_200.PNG
 TSWORKSHEETGRID.PNG
 TSWORKSHEETGRID_150.PNG
 TSWORKSHEETGRID_200.PNG
+tsworkbookchartsource.png
+tsworkbookchartsource_150.png
+tsworkbookchartsource_200.png
+tsworksheetchartsource.png
+tsworksheetchartsource_150.png
+tsworksheetchartsource_200.png
 cur_dragcopy.cur

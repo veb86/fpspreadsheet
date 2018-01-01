@@ -15,9 +15,6 @@ procedure Register;
 
 implementation
 
-//todo: add component graphic
-//{$R fpsexportimg.res}
-
 uses
   fpsexport;
 
@@ -27,8 +24,11 @@ uses
 -------------------------------------------------------------------------------}
 procedure Register;
 begin
-  RegisterComponents('Data Export',[TFPSExport]);
+  RegisterComponents('Data Export', [TFPSExport]);
 end;
+
+initialization
+  {$I fpsexportimg.lrs}
 
 end.
 
