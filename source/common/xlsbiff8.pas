@@ -3199,7 +3199,6 @@ procedure TsSpreadBIFF8Writer.WriteLABEL(AStream: TStream;
 var
   L: Word;
   WideStr: WideString;
-  recSize: Integer;
   rec: TBIFF8_LabelRecord;
   recSST: TBIFF8_LabelSSTRecord;
   buf: array of byte;
@@ -3633,19 +3632,12 @@ function TsSpreadBIFF8Writer.WriteRichTextStream(AStream: TStream;
   out AContinueInString: Boolean): Boolean;
 var
   strLen: Word;
-  optn: Byte;
-  i, n: Integer;
   hasRtp: Boolean;
   nRtp: Integer;
   bytesToWrite: Integer;
   savedStartPos: Integer;
-  strSize, rtpSize, hdrSize: Integer;
-
-  bufSize: Integer;
+  strSize, rtpSize, hdrSize: Int64;
 begin
-  bufsize := ABuffer.Size;
-
-
   Result := false;
 
   ABytesWritten := 0;
@@ -3661,13 +3653,13 @@ begin
   begin
     nRtp := LEToN(ABuffer.ReadWord);   // number of rich-text formatting runs
     inc(hdrSize, SizeOf(word));
-    rtpSize := nRtp * 4;  // 4 bytes per rich-text formatting run
+    rtpSize := Int64(nRtp) * 4;  // 4 bytes per rich-text formatting run
   end else
   begin
     nRtp := 0;
     rtpSize := 0;
   end;
-  strSize := strLen * SizeOf(WideChar);  // String length in bytes
+  strSize := Int64(strLen) * SizeOf(WideChar);  // String length in bytes
 
   // Begin writing
   ABuffer.Position := savedStartPos;
@@ -3690,7 +3682,7 @@ begin
 
   // Case 2; Here some part of the string already has been written, and the
   // buffer stream is somewhere in the string part
-  if ABuffer.Position < hdrSize + strSize - 1 then
+  if ABuffer.Position < Int64(hdrSize) + Int64(strSize) - 1 then
   begin
     bytesToWrite := hdrSize + strSize - ABuffer.Position;
     if bytesToWrite > ABytesAvail then
