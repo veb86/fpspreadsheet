@@ -113,7 +113,11 @@ var
   PassHash: Word = 0;
 begin
   // we are needed to work with single byte character.
+  {$IF fpc_fullversion >= 3000000 }
   Password:= UTF8ToWinCP(APassword);
+  {$ELSE}
+  Password := UTF8ToSys(APassword);
+  {$ENDIF}
   PassLen := Length(Password);
 
   if PassLen = 0 then

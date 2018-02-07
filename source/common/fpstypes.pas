@@ -10,6 +10,7 @@
 unit fpsTypes;
 
 {$mode objfpc}{$H+}
+{$include fps.inc}
 
 interface
 
@@ -275,6 +276,10 @@ type
 
   {@@ Describes which formatting fields are active }
   TsUsedFormattingFields = set of TsUsedFormattingField;
+
+  {$IFDEF NO_RAWBYTESTRING}
+  RawByteString = ansistring;
+  {$ENDIF}
 
 const
   {@@ Codes for curreny format according to FormatSettings.CurrencyFormat:

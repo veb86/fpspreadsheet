@@ -42,4 +42,10 @@
   This is not yet available in fpc 2.6.0 }
 {.$DEFINE FPS_PTRINT}
 
+{ RawByteString only has been available since fpc 3.0
+  Activate this define to replace RawByteStringt by an ansistring }
+{.$DEFINE NO_RAWBYTESTRING}
+
+
+
 
