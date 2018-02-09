@@ -5022,23 +5022,31 @@ end;
   grid instead.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MouseMove(Shift: TShiftState; X, Y: Integer);
+{
+  --- wp: removed this for testing: why does the entire grid be repainted when the
+          mouse moved to another cell?
 var
   prevMouseCell: TPoint;
+}
 begin
   if Worksheet = nil then
     exit;
 
+{  --- wp
   prevMouseCell := GCache.MouseCell;
+}
 
   inherited;
 
   if MouseOnHeader(X,Y) then
     exit;
 
+{ --- wp
   if FTextOverflow and
      ((prevMouseCell.X <> GCache.MouseCell.X) or (prevMouseCell.Y <> GCache.MouseCell.Y))
   then
     InvalidateGrid;
+}
 
   if Assigned(Dragmanager) and DragManager.IsDragging then
   begin;
