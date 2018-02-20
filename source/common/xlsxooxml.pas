@@ -236,7 +236,7 @@ implementation
 
 uses
   variants, strutils, math, lazutf8, LazFileUtils, uriparser,
-  {%H-}fpsPatches, fpsCrypto,
+  {%H-}fpsPatches, fpsCrypto, fpsExprParser,
   fpsStrings, fpsStreams, fpsClasses, fpsImages;
 
 const
@@ -696,42 +696,52 @@ begin
     begin
       // Formula to cell
       formulaStr := GetNodeValue(datanode);
-
-      s := GetAttrValue(datanode, 't');
-      if s = 'shared' then
-      begin
-        // Shared formula
-        s := GetAttrValue(datanode, 'ref');
-        if (s <> '') then      // This defines the shared formula range
+      try
+        s := GetAttrValue(datanode, 't');
+        if s = 'shared' then
         begin
-          AWorksheet.WriteFormula(cell, formulaStr);
-          // We store the shared formula base in the SharedFormulaBaseList.
-          // The list index is identical with the 'si' attribute of the node.
-          sharedformulabase := TSharedFormulaData.Create;
-          sharedformulabase.Worksheet := FWorksheet;
-          sharedformulabase.Row := rowindex;
-          sharedformulabase.Col := colindex;
-          sharedformulabase.Formula := formulaStr;
-          FSharedFormulaBaseList.Add(sharedformulabase);
-        end else
-        begin
-          // Get index into the SharedFormulaBaseList...
-          s := GetAttrValue(datanode, 'si');
-          if s <> '' then
+          // Shared formula
+          s := GetAttrValue(datanode, 'ref');
+          if (s <> '') then      // This defines the shared formula range
           begin
-            sharedformulabase := TSharedFormulaData(FSharedFormulaBaseList[StrToInt(s)]);
-            // ... and copy shared formula to destination cell
-            InitCell(FWorksheet, sharedformulabase.Row, sharedformulabase.Col, lCell);
-            lCell.Formulavalue := sharedformulabase.Formula;
-            lCell.Worksheet := sharedformulabase.Worksheet;
-            FWorksheet.CopyFormula(@lCell, cell);
-            cell^.ContentType := cctFormula;
+            AWorksheet.WriteFormula(cell, formulaStr);
+            // We store the shared formula base in the SharedFormulaBaseList.
+            // The list index is identical with the 'si' attribute of the node.
+            sharedformulabase := TSharedFormulaData.Create;
+            sharedformulabase.Worksheet := FWorksheet;
+            sharedformulabase.Row := rowindex;
+            sharedformulabase.Col := colindex;
+            sharedformulabase.Formula := formulaStr;
+            FSharedFormulaBaseList.Add(sharedformulabase);
+          end else
+          begin
+            // Get index into the SharedFormulaBaseList...
+            s := GetAttrValue(datanode, 'si');
+            if s <> '' then
+            begin
+              sharedformulabase := TSharedFormulaData(FSharedFormulaBaseList[StrToInt(s)]);
+              // ... and copy shared formula to destination cell
+              InitCell(FWorksheet, sharedformulabase.Row, sharedformulabase.Col, lCell);
+              lCell.Formulavalue := sharedformulabase.Formula;
+              lCell.Worksheet := sharedformulabase.Worksheet;
+              FWorksheet.CopyFormula(@lCell, cell);
+              cell^.ContentType := cctFormula;
+            end;
           end;
+        end
+        else
+          // "Normal" formula
+          AWorksheet.WriteFormula(cell, formulaStr);
+      except
+        on E:EExprParser do begin
+          FWorkbook.AddErrorMsg(E.Message);
+          if (boAbortReadOnFormulaError in Workbook.Options) then raise;
         end;
-      end
-      else
-        // "Normal" formula
-        AWorksheet.WriteFormula(cell, formulaStr);
+        on E:ECalcEngine do begin
+          FWorkbook.AddErrorMsg(E.Message);
+          if (boAbortReadOnFormulaError in Workbook.Options) then raise;
+        end;
+      end;
     end;
     datanode := datanode.NextSibling;
   end;

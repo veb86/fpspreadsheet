@@ -1662,6 +1662,7 @@ var
   err: TsErrorValue;
   ok: Boolean;
   cell: PCell;
+  msg: String;
 begin
   { Index to XF Record }
   ReadRowColXF(AStream, ARow, ACol, XF);
@@ -1720,7 +1721,17 @@ begin
   begin
     ok := ReadRPNTokenArray(AStream, cell);
     if not ok then
-      FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
+    begin
+      msg := Format(rsFormulaNotSupported, [
+        GetCellString(ARow, ACol), '.xls'
+      ]);
+      if (boAbortReadOnFormulaError in Workbook.Options) then
+        raise Exception.Create(msg)
+      else begin
+        FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
+        FWorkbook.AddErrorMsg(msg);
+      end;
+    end;
   end;
 
   {Add attributes}

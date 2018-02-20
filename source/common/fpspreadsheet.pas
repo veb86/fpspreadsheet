@@ -654,8 +654,8 @@ type
     @param  boVirtualMode      If in virtual mode date are not taken from cells
                                when a spreadsheet is written to file, but are
                                provided by means of the event OnWriteCellData.
-                               Similarly, when data are read they are not added as
-                               cells but passed the the event OnReadCellData;
+                               Similarly, when data are read they are not added
+                               as cells but passed the the event OnReadCellData;
     @param  boBufStream        When this option is set a buffered stream is used
                                for writing (a memory stream swapping to disk) or
                                reading (a file stream pre-reading chunks of data
@@ -663,19 +663,22 @@ type
     @param  boFileStream       Uses file streams and temporary files during
                                reading and writing. Lowest memory consumptions,
                                but slow.
-    @param  boAutoCalc         Automatically recalculate rpn formulas whenever
-                               a cell value changes.
+    @param  boAutoCalc         Automatically recalculate formulas whenever a
+                               cell value changes.
     @param  boCalcBeforeSaving Calculates formulas before saving the file.
                                Otherwise there are no results when the file is
                                loaded back by fpspreadsheet.
-    @param  boReadFormulas     Allows to turn off reading of rpn formulas; this is
-                               a precaution since formulas not correctly
+    @param  boReadFormulas     Allows to turn off reading of rpn formulas; this
+                               is a precaution since formulas not correctly
                                implemented by fpspreadsheet could crash the
                                reading operation.
     @param boWriteZoomfactor   Instructs the writer to write the current zoom
-                               factors of the worksheets to file. }
+                               factors of the worksheets to file.
+    @param boAbortReadOnFormulaError Aborts reading if a formula error is
+                               encountered }
   TsWorkbookOption = (boVirtualMode, boBufStream, boFileStream,
-    boAutoCalc, boCalcBeforeSaving, boReadFormulas, boWriteZoomFactor);
+    boAutoCalc, boCalcBeforeSaving, boReadFormulas, boWriteZoomFactor,
+    boAbortReadOnFormulaError);
 
   {@@ Set of option flags for the workbook }
   TsWorkbookOptions = set of TsWorkbookOption;

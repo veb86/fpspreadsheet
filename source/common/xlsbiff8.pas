@@ -1015,9 +1015,6 @@ begin
     finally
       OLEStorage.Free;
     end;
-
-//    InternalReadFromStream(OLEStream);     // wp: moved up
-
   finally
     OLEStream.Free;
   end;

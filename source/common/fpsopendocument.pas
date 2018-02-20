@@ -2357,10 +2357,25 @@ begin
     // ... convert to Excel "A1" dialect used by fps by defailt
     parser := TsSpreadsheetParser.Create(FWorksheet);
     try
-      parser.Dialect := fdOpenDocument;
-      parser.LocalizedExpression[FPointSeparatorSettings] := formula;
-      parser.Dialect := fdExcelA1;
-      formula := parser.Expression;
+      try
+        parser.Dialect := fdOpenDocument;
+        parser.LocalizedExpression[FPointSeparatorSettings] := formula;
+        parser.Dialect := fdExcelA1;
+        formula := parser.Expression;
+      except
+        on E:EExprParser do
+        begin
+          Workbook.AddErrorMsg(E.Message);
+          formula := '';
+          if (boAbortReadOnFormulaError in Workbook.Options) then raise;
+        end;
+        on E:ECalcEngine do
+        begin
+          Workbook.AddErrorMsg(E.Message);
+          formula := '';
+          if (boAbortReadOnFormulaError in Workbook.Options) then raise;
+        end;
+      end;
     finally
       parser.Free;
     end;
