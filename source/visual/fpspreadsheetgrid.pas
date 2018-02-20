@@ -1257,7 +1257,7 @@ end;
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inc(FRowHeightLock);
-  DoubleBuffered := true;
+//  DoubleBuffered := true;
 
   FInternalWorkbookSource := TsWorkbookSource.Create(self);
   FInternalWorkbookSource.Name := 'internal';
