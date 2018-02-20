@@ -675,10 +675,12 @@ type
     @param boWriteZoomfactor   Instructs the writer to write the current zoom
                                factors of the worksheets to file.
     @param boAbortReadOnFormulaError Aborts reading if a formula error is
-                               encountered }
+                               encountered
+    @param boIgnoreFormulas    Formulas are not checked and not calculated.
+                               Cannot be used for biff formats. }
   TsWorkbookOption = (boVirtualMode, boBufStream, boFileStream,
     boAutoCalc, boCalcBeforeSaving, boReadFormulas, boWriteZoomFactor,
-    boAbortReadOnFormulaError);
+    boAbortReadOnFormulaError, boIgnoreFormulas);
 
   {@@ Set of option flags for the workbook }
   TsWorkbookOptions = set of TsWorkbookOption;
@@ -1273,6 +1275,9 @@ var
   cell: PCell;
   formula: String;
 begin
+  if (boIgnoreFormulas in Workbook.Options) then
+    exit;
+
   formula := ACell^.FormulaValue;
   ACell^.Flags := ACell^.Flags + [cfCalculating] - [cfCalculated];
 
@@ -1345,6 +1350,9 @@ procedure TsWorksheet.CalcFormulas;
 var
   cell: PCell;
 begin
+  if (boIgnoreFormulas in Workbook.Options) then
+    exit;
+
   // prevent infinite loop due to triggering of formula calculation whenever
   // a cell changes during execution of CalcFormulas.
   inc(FWorkbook.FCalculationLock);
@@ -5669,18 +5677,21 @@ begin
   if ACell = nil then
     exit;
 
-  // Remove '='; is not stored internally
-  if (AFormula <> '') and (AFormula[1] = '=') then
-    AFormula := Copy(AFormula, 2, Length(AFormula));
+  if not (boIgnoreFormulas in Workbook.Options) then
+  begin
+    // Remove '='; is not stored internally
+    if (AFormula <> '') and (AFormula[1] = '=') then
+      AFormula := Copy(AFormula, 2, Length(AFormula));
 
-  // Convert "localized" formula to standard format
-  if ALocalized then begin
-    parser := TsSpreadsheetParser.Create(self);
-    try
-      parser.LocalizedExpression[Workbook.FormatSettings] := AFormula;
-      AFormula := parser.Expression;
-    finally
-      parser.Free;
+    // Convert "localized" formula to standard format
+    if ALocalized then begin
+      parser := TsSpreadsheetParser.Create(self);
+      try
+        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula;
+        AFormula := parser.Expression;
+      finally
+        parser.Free;
+      end;
     end;
   end;
 

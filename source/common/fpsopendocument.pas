@@ -7446,8 +7446,10 @@ var
   comment: String;
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
+  ignoreFormulas: Boolean;
 begin
   Unused(ARow, ACol);
+  ignoreFormulas := (boIgnoreFormulas in FWorkbook.Options);
 
   // Style
   fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
@@ -7473,59 +7475,65 @@ begin
   if FWorksheet.HasHyperlink(ACell) then
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
-  // Convert string formula to the format needed by ods: semicolon list separators!
-  parser := TsSpreadsheetParser.Create(FWorksheet);
-  try
-    parser.Dialect := fdOpenDocument;
-    parser.Expression := ACell^.FormulaValue;
-    formula := Parser.LocalizedExpression[FPointSeparatorSettings];
-  finally
-    parser.Free;
-  end;
+  if ignoreFormulas then begin
+    formula := ACell^.FormulaValue;
+    if (formula <> '') and (formula[1] = '=') then Delete(formula, 1, 1);
+  end else
+  begin
+    valueStr := '';
+    // Convert string formula to the format needed by ods: semicolon list separators!
+    parser := TsSpreadsheetParser.Create(FWorksheet);
+    try
+      parser.Dialect := fdOpenDocument;
+      parser.Expression := ACell^.FormulaValue;
+      formula := Parser.LocalizedExpression[FPointSeparatorSettings];
+    finally
+      parser.Free;
+    end;
 
-  valueStr := '';
-  case ACell^.ContentType of
-    cctNumber:
-      begin
-        valuetype := 'float';
-        value := ' office:value="' + Format('%g', [ACell^.NumberValue], FPointSeparatorSettings) + '"';
-      end;
-    cctDateTime:
-      if trunc(ACell^.DateTimeValue) = 0 then
-      begin
-        valuetype := 'time';
-        value := ' office:time-value="' + FormatDateTime(ISO8601FormatTimeOnly, ACell^.DateTimeValue) + '"';
-      end
-      else
-      begin
-        valuetype := 'date';
-        if frac(ACell^.DateTimeValue) = 0.0 then
-          value := ' office:date-value="' + FormatDateTime(ISO8601FormatDateOnly, ACell^.DateTimeValue) + '"'
+    case ACell^.ContentType of
+      cctNumber:
+        begin
+          valuetype := 'float';
+          value := ' office:value="' + Format('%g', [ACell^.NumberValue], FPointSeparatorSettings) + '"';
+        end;
+      cctDateTime:
+        if trunc(ACell^.DateTimeValue) = 0 then
+        begin
+          valuetype := 'time';
+          value := ' office:time-value="' + FormatDateTime(ISO8601FormatTimeOnly, ACell^.DateTimeValue) + '"';
+        end
         else
-          value := ' office:date-value="' + FormatDateTime(ISO8601FormatExtended, ACell^.DateTimeValue) + '"';
-      end;
-    cctUTF8String:
-      begin
-        valuetype := 'string';
-        value := ' office:string-value="' + ACell^.UTF8StringValue +'"';
-        valueStr := '<text:p>' + ACell^.UTF8StringValue + '</text:p>';
-      end;
-    cctBool:
-      begin
-        valuetype := 'boolean';
-        value := ' office:boolean-value="' + BoolToStr(ACell^.BoolValue, 'true', 'false') + '"';
-      end;
-    cctError:
-      if HasFormula(ACell) then
-      begin
-        // Open/LibreOffice always writes a float value 0 to the cell
-        valuetype := 'float';                // error as result of a formula
-        value := ' office:value="0"';
-      end else
-      begin
-        valuetype := 'string" calcext:value-type="error';   // an error "constant"
-        value := ' office:value=""';
-      end;
+        begin
+          valuetype := 'date';
+          if frac(ACell^.DateTimeValue) = 0.0 then
+            value := ' office:date-value="' + FormatDateTime(ISO8601FormatDateOnly, ACell^.DateTimeValue) + '"'
+          else
+            value := ' office:date-value="' + FormatDateTime(ISO8601FormatExtended, ACell^.DateTimeValue) + '"';
+        end;
+      cctUTF8String:
+        begin
+          valuetype := 'string';
+          value := ' office:string-value="' + ACell^.UTF8StringValue +'"';
+          valueStr := '<text:p>' + ACell^.UTF8StringValue + '</text:p>';
+        end;
+      cctBool:
+        begin
+          valuetype := 'boolean';
+          value := ' office:boolean-value="' + BoolToStr(ACell^.BoolValue, 'true', 'false') + '"';
+        end;
+      cctError:
+        if HasFormula(ACell) then
+        begin
+          // Open/LibreOffice always writes a float value 0 to the cell
+          valuetype := 'float';                // error as result of a formula
+          value := ' office:value="0"';
+        end else
+        begin
+          valuetype := 'string" calcext:value-type="error';   // an error "constant"
+          value := ' office:value=""';
+        end;
+    end;
   end;
 
   { Fix special xml characters }
@@ -7533,7 +7541,7 @@ begin
 
   { We are writing a very rudimentary formula here without result and result
     data type. Seems to work... }
-  if FWorksheet.GetCalcState(ACell) = csCalculated then
+  if not ignoreFormulas or (FWorksheet.GetCalcState(ACell) = csCalculated) then
     AppendToStream(AStream, Format(
       '<table:table-cell table:formula="=%s" office:value-type="%s"%s%s%s>' +
         comment +
