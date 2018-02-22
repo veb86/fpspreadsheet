@@ -2537,6 +2537,15 @@ begin
         TableNode := TableNode.NextSibling;
         continue;
       end;
+
+      // Tables with external references contain a copy of the external table
+      // having the filename as sheet name - which is not valid for fps.
+      // Since external references are not supported ATM we skip this table.
+      if TableNode.FindNode('table:table-source') <> nil then begin
+        TableNode := TableNode.NextSibling;
+        Continue;
+      end;
+
       FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode, 'table:name'), true);
       tablestyleName := GetAttrValue(TableNode, 'table:style-name');
       // Read protection
