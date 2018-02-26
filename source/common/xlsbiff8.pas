@@ -537,7 +537,7 @@ var
   comment: TBIFF8Comment;
   rtParams: TsRichTextParams;
 begin
-  if FCommentPending then begin
+  if FCommentPending and (FCommentLen > 0) then begin
     commentStr := Utf8Encode(ReadWideString(AStream, FCommentLen, rtParams));
     if commentStr <> '' then
     begin
@@ -605,6 +605,7 @@ begin
           if objType = $19 then begin  // $19 = object is a "comment"
             FCommentPending := true;
             FCommentID := objID;
+            FCommentLen := 0;  // will be determined in following TX0 record
             exit;
           end else
             FCommentPending := false;
@@ -885,6 +886,9 @@ begin
     RecordType := WordLEToN(AStream.ReadWord);
     RecordSize := WordLEToN(AStream.ReadWord);
     PendingRecordSize := RecordSize;
+
+// For debugging to find out in which record a crash happens:
+//    WriteLn(Format('Stream.Pos: %d, RecordType: $%.04x, RecordSize: %d', [AStream.Position-4, RecordType, RecordSize]));
 
     CurStreamPos := AStream.Position;
 
