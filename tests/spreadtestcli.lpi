@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="10"/>
+    <Version Value="11"/>
     <PathDelim Value="\"/>
     <General>
       <Flags>
@@ -57,9 +57,10 @@
       <ExcludeFileFilter Value="*.(bak|ppu|o|so);*~;backup"/>
     </PublishOptions>
     <RunParams>
-      <local>
-        <FormatVersion Value="1"/>
-      </local>
+      <FormatVersion Value="2"/>
+      <Modes Count="1">
+        <Mode0 Name="default"/>
+      </Modes>
     </RunParams>
     <RequiredPackages Count="1">
       <Item1>
@@ -176,7 +177,7 @@
       <Filename Value="spreadtestcli"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir)"/>
+      <IncludeFiles Value="..\source;$(ProjOutDir)"/>
       <OtherUnitFiles Value="..\source\common;..\source\visual;..\source\export"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
@@ -187,7 +188,7 @@
     </Linking>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="5">
+    <Exceptions Count="6">
       <Item1>
         <Name Value="ECodetoolError"/>
         <Enabled Value="False"/>
@@ -198,7 +199,6 @@
       </Item2>
       <Item3>
         <Name Value="EAssertionFailedError"/>
-        <Enabled Value="False"/>
       </Item3>
       <Item4>
         <Name Value="Exception"/>
@@ -208,6 +208,9 @@
         <Name Value="EIBDatabaseError"/>
         <Enabled Value="False"/>
       </Item5>
+      <Item6>
+        <Name Value="EIgnoredTest"/>
+      </Item6>
     </Exceptions>
   </Debugging>
 </CONFIG>

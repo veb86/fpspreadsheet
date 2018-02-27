@@ -1586,9 +1586,26 @@
       RPNFunc('ROUND', nil)))))
   else
     myWorksheet.WriteFormula(Row, 1, formula);
-  myWorksheet.WriteNumber(Row, 2, RoundTo(pi, 2));
+  // NOTE: Excel and FPS have different signs in number of digits
+  myWorksheet.WriteNumber(Row, 2, RoundTo(pi, -2));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := FloatResult(RoundTo(pi, 2));
+  sollValues[Row] := FloatResult(RoundTo(pi, -2));
+
+  // ROUND
+  inc(Row);
+  formula := 'ROUND(12345.6789,-2)';
+  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNNumber(12345.6789,
+      RPNNumber(-2,
+      RPNFunc('ROUND', nil)))))
+  else
+    myWorksheet.WriteFormula(Row, 1, formula);
+  // NOTE: Excel and FPS have different signs in number of digits
+  myWorksheet.WriteNumber(Row, 2, RoundTo(12345.6789, 2));
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := FloatResult(RoundTo(12345.6789, 2));
 
   // SIGN
   inc(Row);

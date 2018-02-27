@@ -315,7 +315,7 @@ begin
     n := Args[1].ResInteger
   else
     n := round(Args[1].ResFloat);
-  Result := FloatResult(RoundTo(ArgToFloat(Args[0]), n));
+  Result := FloatResult(RoundTo(ArgToFloat(Args[0]), -n));
 end;
 
 procedure fpsSIGN(var Result: TsExpressionResult; const Args: TsExprParameterArray);

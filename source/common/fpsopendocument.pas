@@ -2963,6 +2963,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     nf: TsNumberFormat;
     nfs: String;
     decs: Byte;
+    sint: String;
     s: String;
     f: Double;
     fracInt, fracNum, fracDenom: Integer;
@@ -2986,6 +2987,9 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       end else
       if nodeName = 'number:number' then
       begin
+        sint := GetAttrValue(node, 'number:min-integer-digits');
+        if sint = '' then sint := '1';
+
         s := GetAttrValue(node, 'number:decimal-places');
         if s = '' then
           s := GetAttrValue(node, 'decimal-places');
@@ -3000,7 +3004,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
           s := GetAttrValue(node, 'number:display-factor');
           if s <> '' then f := StrToFloat(s, FPointSeparatorSettings) else f := 1.0;
           nf := IfThen(grouping, nfFixedTh, nfFixed);
-          nfs := nfs + BuildNumberFormatString(nf, Workbook.FormatSettings, decs);
+          nfs := nfs + BuildNumberFormatString(nf, Workbook.FormatSettings, decs); //, StrToInt(sint));
           if f <> 1.0 then begin
             nf := nfCustom;
             while (f > 1.0) do
