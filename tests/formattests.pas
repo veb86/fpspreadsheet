@@ -75,6 +75,8 @@ type
     procedure TestWriteRead_MergedCells(AFormat: TsSpreadsheetFormat);
     // Many XF records
     procedure TestWriteRead_ManyXF(AFormat: TsSpreadsheetFormat);
+    // Format strings
+    procedure TestWriteRead_FormatStrings(AFormat: TsSpreadsheetFormat);
 
   published
     // Writes out numbers & reads back.
@@ -89,6 +91,7 @@ type
     procedure TestWriteRead_BIFF2_MergedCells;
     procedure TestWriteRead_BIFF2_NumberFormats;
     procedure TestWriteRead_BIFF2_ManyXFRecords;
+    procedure TestWriteRead_BIFF2_FormatStrings;
     // These features are not supported by Excel2 --> no test cases required!
     // - Background
     // - BorderStyle
@@ -107,6 +110,7 @@ type
     procedure TestWriteRead_BIFF5_NumberFormats;
     procedure TestWriteRead_BIFF5_TextRotation;
     procedure TestWriteRead_BIFF5_WordWrap;
+    procedure TestWriteRead_BIFF5_FormatStrings;
 
     { BIFF8 Tests }
     procedure TestWriteRead_BIFF8_Alignment;
@@ -120,6 +124,7 @@ type
     procedure TestWriteRead_BIFF8_NumberFormats;
     procedure TestWriteRead_BIFF8_TextRotation;
     procedure TestWriteRead_BIFF8_WordWrap;
+    procedure TestWriteRead_BIFF8_FormatStrings;
 
     { ODS Tests }
     procedure TestWriteRead_ODS_Alignment;
@@ -133,6 +138,7 @@ type
     procedure TestWriteRead_ODS_NumberFormats;
     procedure TestWriteRead_ODS_TextRotation;
     procedure TestWriteRead_ODS_WordWrap;
+    procedure TestWriteRead_ODS_FormatStrings;
 
     { OOXML Tests }
     procedure TestWriteRead_OOXML_Alignment;
@@ -146,6 +152,7 @@ type
     procedure TestWriteRead_OOXML_NumberFormats;
     procedure TestWriteRead_OOXML_TextRotation;
     procedure TestWriteRead_OOXML_WordWrap;
+    procedure TestWriteRead_OOXML_FormatStrings;
 
     { CSV Tests }
     procedure TestWriteRead_CSV_DateTimeFormats;
@@ -1675,6 +1682,84 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_ManyXFRecords;
 begin
   TestWriteRead_ManyXF(sfExcel2);
+end;
+
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_FormatStrings(
+  AFormat: TsSpreadsheetFormat);
+const
+  FormatStrings: Array[0..5] of string = (
+    '#', '#.000', '#.000E+00', '0', '0.000', '0.000E+00');
+  Numbers: array[0..4] of double = (
+    0, 1.23456789, -1.23456789, 1234.56789, -1234.56789);
+var
+  MyWorkBook: TsWorkbook;
+  MyWorkSheet: TsWorksheet;
+  sollStr: String;
+  currStr: String;
+  currVal: Double;
+  r, c: Cardinal;
+  TempFile: String;
+begin
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkSheet := MyWorkBook.AddWorksheet('Sheet');
+    for r := 0 to High(Numbers) do
+      for c := 0 to High(FormatStrings) do
+        MyWorksheet.WriteNumber(r, c, Numbers[r], nfCustom, FormatStrings[c]);
+    TempFile := NewTempFile;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    MyWorksheet := MyWorkbook.GetWorksheetByName('Sheet');
+    CheckEquals(High(Numbers), MyWorksheet.GetLastRowIndex, 'Row count mismatch');
+    CheckEquals(High(FormatStrings), MyWorksheet.GetLastColIndex, 'Col count mismatch');
+    for r := 0 to MyWorksheet.GetLastRowIndex do
+      for c := 0 to MyWorksheet.GetLastColIndex do begin
+        currStr := MyWorksheet.ReadAsText(r, c);
+        currVal := MyWorksheet.ReadAsNumber(r, c);
+        sollStr := FormatFloat(FormatStrings[c], currVal);
+        // Quick & dirty fix for FPC's issue with #.00E+00 showing a leading zero
+        if (sollStr <> '') and (sollStr[1] = '0') and
+           (pos('#.', FormatStrings[c]) = 1) and (pos('E', FormatStrings[c]) > 0)
+        then
+          Delete(sollStr, 1, 1);
+        CheckEquals(sollStr, currStr, Format('Formatted cell mismatch, FormatStr "%s", Cell %s', [
+          FormatStrings[c], GetCellString(r, c)]));
+      end;
+  finally
+    MyWorkbook.Free;
+  end;
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF2_FormatStrings;
+begin
+  TestWriteRead_FormatStrings(sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF5_FormatStrings;
+begin
+  TestWriteRead_FormatStrings(sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_BIFF8_FormatStrings;
+begin
+  TestWriteRead_FormatStrings(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_FormatStrings;
+begin
+  TestWriteRead_FormatStrings(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_FormatStrings;
+begin
+  TestWriteRead_FormatStrings(sfOpenDocument);
 end;
 
 initialization

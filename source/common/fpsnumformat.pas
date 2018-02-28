@@ -132,6 +132,8 @@ type
     NumFormat: TsNumberFormat;
     {@@ Number of decimal places used by the format string }
     Decimals: Byte;
+    {@@ Minimum number of digits before the decimal separator }
+    MinIntDigits: Byte;
     {@@ Factor by which a number will be multiplied before converting to string }
     Factor: Double;
     {@@ Digits to be used for the integer part of a fraction }
@@ -310,7 +312,8 @@ function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
 function BuildFractionFormatString(AMixedFraction: Boolean;
   ANumeratorDigits, ADenominatorDigits: Integer): String;
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
-  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1): String;
+  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
+  AMinIntDigits: Integer = 1): String;
 
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
 
@@ -1401,39 +1404,53 @@ end;
                           value of the FormatSettings is used. In case of a
                           fraction format "ADecimals" refers to the maximum count
                           digits of the denominator.
+  @param  AMinIntDigits   minimum count of integer digits, i.e. count of '0' in
+                          the format string before the decimal separator
 
   @return String of formatting codes
 
   @example  ANumberFormat = nfFixedTh, ADecimals = 2 --> '#,##0.00'
 -------------------------------------------------------------------------------}
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
-  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1): String;
+  const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
+  AMinIntDigits: Integer = 1): String;
 var
-  decs: String;
+  decdigits: String;
+  intdigits: String;
 begin
   Result := '';
+  if AMinIntDigits > 0 then
+    intdigits := DupeString('0', AMinIntDigits)
+  else
+    intdigits := '#';
   if ADecimals = -1 then
     ADecimals := AFormatSettings.CurrencyDecimals;
-  decs := DupeString('0', ADecimals);
-  if ADecimals > 0 then decs := '.' + decs;
+  if ADecimals > 0 then
+    decdigits := '.' + DupeString('0', ADecimals)
+  else
+    decdigits := '';
   case ANumberFormat of
     nfText:
       Result := '@';
     nfFixed:
-      Result := '0' + decs;
+      Result := intdigits + decdigits;
     nfFixedTh:
-      Result := '#,##0' + decs;
+      begin
+        while Length(IntDigits) < 4 do intDigits := '#' + intdigits;
+        System.Insert(',', intdigits, Length(intdigits)-2);
+        Result := intdigits + decdigits;
+      end;
     nfExp:
-      Result := '0' + decs + 'E+00';
+      Result := intdigits + decdigits + 'E+00';
     nfPercentage:
-      Result := '0' + decs + '%';
+      Result := intdigits + decdigits + '%';
     nfFraction:
       if ADecimals = 0 then    // "ADecimals" has a different meaning here...
         Result := '# ??/??'    // This is the default fraction format
       else
       begin
-        decs := DupeString('?', ADecimals);
-        Result := '# ' + decs + '/' + decs;
+        decdigits := DupeString('?', ADecimals);
+        Result := '# ' + decdigits + '/' + decdigits;
       end;
     nfCurrency, nfCurrencyRed:
       Result := BuildCurrencyFormatString(ANumberFormat, AFormatSettings,
@@ -2834,7 +2851,12 @@ begin
     case section^.Elements[el].Token of
       nftZeroDecs:
         section^.Decimals := section^.Elements[el].IntValue;
-      nftIntZeroDigit, nftIntOptDigit, nftIntSpaceDigit:
+      nftIntZeroDigit:
+        begin
+          section^.MinIntDigits := section^.Elements[el].IntValue;
+          i := section^.Elements[el].IntValue;
+        end;
+      nftIntOptDigit, nftIntSpaceDigit:
         i := section^.Elements[el].IntValue;
       nftFracNumSpaceDigit, nftFracNumZeroDigit:
         section^.FracNumerator := section^.Elements[el].IntValue;

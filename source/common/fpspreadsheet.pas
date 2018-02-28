@@ -256,9 +256,11 @@ type
     function WriteNumber(ARow, ACol: Cardinal; ANumber: double): PCell; overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double); overload;
     function WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-      ANumFormat: TsNumberFormat; ADecimals: Byte = 2): PCell; overload;
+      ANumFormat: TsNumberFormat; ADecimals: Byte = 2;
+      AMinIntDigits: Integer = 1): PCell; overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double;
-      ANumFormat: TsNumberFormat; ADecimals: Byte = 2); overload;
+      ANumFormat: TsNumberFormat; ADecimals: Byte = 2;
+      AMinIntDigits: Integer = 1); overload;
     function WriteNumber(ARow, ACol: Cardinal; ANumber: double;
       ANumFormat: TsNumberFormat; ANumFormatString: String): PCell; overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double;
@@ -4789,34 +4791,39 @@ end;
 {@@ ----------------------------------------------------------------------------
   Writes a floating-point number to a cell
 
-  @param  ARow         Cell row index
-  @param  ACol         Cell column index
-  @param  ANumber      Number to be written
-  @param  ANumFormat   Identifier for a built-in number format, e.g. nfFixed (optional)
-  @param  ADecimals    Number of decimal places used for formatting (optional)
+  @param  ARow          Cell row index
+  @param  ACol          Cell column index
+  @param  ANumber       Number to be written
+  @param  ANumFormat    Identifier for a built-in number format,
+                          e.g. nfFixed (optional)
+  @param  ADecimals     Number of decimal places used for formatting (optional)
+  @param  AMinIntDigits Minimum count of digits before the decimal separator
   @return Pointer to cell created or used
   @see    TsNumberFormat
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
-  ANumFormat: TsNumberFormat; ADecimals: Byte = 2): PCell;
+  ANumFormat: TsNumberFormat; ADecimals: Byte = 2;
+  AMinIntDigits: Integer = 1): PCell;
 begin
   Result := GetCell(ARow, ACol);
-  WriteNumber(Result, ANumber, ANumFormat, ADecimals);
+  WriteNumber(Result, ANumber, ANumFormat, ADecimals, AMinIntDigits);
 end;
 
 {@@ ----------------------------------------------------------------------------
   Writes a floating-point number to a cell
 
-  @param  ACell        Pointer to the cell
-  @param  ANumber      Number to be written
-  @param  ANumFormat   Identifier for a built-in number format, e.g. nfFixed
-  @param  ADecimals    Optional number of decimal places used for formatting
-                       If ANumFormat is nfFraction the ADecimals defines the
-                       digits of Numerator and denominator.
+  @param  ACell          Pointer to the cell
+  @param  ANumber        Number to be written
+  @param  ANumFormat     Identifier for a built-in number format, e.g. nfFixed
+  @param  ADecimals      Optional number of decimal places used for formatting
+                         If ANumFormat is nfFraction the ADecimals defines the
+                         digits of Numerator and denominator.
+  @param  AMinIntDigits  Minimum count of digits before the decimal separator
   @see TsNumberFormat
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double;
-  ANumFormat: TsNumberFormat; ADecimals: Byte = 2);
+  ANumFormat: TsNumberFormat; ADecimals: Byte = 2;
+  AMinIntDigits: Integer = 1);
 var
   fmt: TsCellFormat;
   nfs: String;
@@ -4837,7 +4844,7 @@ begin
         if ADecimals = 0 then ADecimals := 1;
         nfs := '# ' + DupeString('?', ADecimals) + '/' + DupeString('?', ADecimals);
       end else
-        nfs := BuildNumberFormatString(fmt.NumberFormat, Workbook.FormatSettings, ADecimals);
+        nfs := BuildNumberFormatString(fmt.NumberFormat, Workbook.FormatSettings, ADecimals, AMinIntDigits);
       fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
     end else begin
       Exclude(fmt.UsedFormattingFields, uffNumberFormat);

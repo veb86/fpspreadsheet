@@ -35,7 +35,7 @@ type
 var
   ParserTestData: Array[0..13] of TParserTestData;
 
-  RoundingTestData: Array[0..62] of TRoundingTestData = (
+  RoundingTestData: Array[0..65] of TRoundingTestData = (
     // 0
     (FormatString: '0'; Number:     1.2; SollString: '1'),
     (FormatString: '0'; Number:     1.9; SollString: '2'),
@@ -109,7 +109,12 @@ var
     (FormatString: '0.0##'; Number:     1.21; SollString: '1.21'),
     (FormatString: '0.0##'; Number:     1.212; SollString: '1.212'),
     (FormatString: '0.0##'; Number:     1.2134; SollString: '1.213'),
-    (FormatString: '0.0##'; Number:     1.2135; SollString: '1.214')
+    (FormatString: '0.0##'; Number:     1.2135; SollString: '1.214'),
+
+    // 63
+    (FormatString: '#'; Number:     0; SollString: ''),
+    (FormatString: '#'; Number:   1.2; SollString: '1'),
+    (FormatString: '#'; Number:  -1.2; SollString: '-1')
 
   );
 

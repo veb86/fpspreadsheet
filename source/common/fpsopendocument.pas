@@ -853,7 +853,8 @@ begin
             if (el+3 < nel) and (Elements[el+1].Token = nftExpChar) then
             begin
               Result := Result + '<number:scientific-number number:decimal-places="0"';
-              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+//              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+              n := FSections[ASection].MinIntDigits;
               Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
               n := Elements[el+3].IntValue;
               Result := Result + ' number:min-exponent-digits="' + IntToStr(n) + '"';
@@ -865,7 +866,8 @@ begin
             if (el+5 < nel) and (Elements[el+1].Token = nftDecSep) and (Elements[el+3].Token = nftExpChar)
             then begin
               Result := Result + '<number:scientific-number';
-              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+//              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+              n := FSections[ASection].MinIntDigits;
               Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
               n := IfThen(Elements[el+2].Token = nftZeroDecs, Elements[el+2].IntValue, 1);
               Result := Result + ' number:decimal-places="' + IntToStr(n) + '"';
@@ -878,7 +880,8 @@ begin
             if (el+2 < nel) and (Elements[el+1].Token = nftDecSep) then
             begin
               Result := Result + '<number:number';
-              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+//              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+              n := FSections[ASection].MinIntDigits;
               Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
               n := IfThen(Elements[el+2].Token = nftZeroDecs, Elements[el+2].IntValue, 1);
               Result := Result + ' number:decimal-places="' + IntToStr(n) + '"';
@@ -888,11 +891,18 @@ begin
               inc(el, 2);
             end
             else
+            (*
+            // Standard integer, format '#'
+            if (el = 0) and (nel = 1) and (Elements[el].Token = nftIntOptDigit) then
+              Result := Result + '<number:number number:min-integer-digits="0" number:decimal-places="0" />'
+            else
+            *)
             // Standard integer
             if (el = nel-1) or (Elements[el+1].Token <> nftDecSep) then
             begin
               Result := Result + '<number:number number:decimal-places="0"';
-              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+//              n := IfThen(Elements[el].Token = nftIntZeroDigit, Elements[el].IntValue, 1);
+              n := FSections[ASection].MinIntDigits;
               Result := Result + ' number:min-integer-digits="' + IntToStr(n) + '"';
               if (nfkHasFactor in Kind) and (Factor <> 0) then
                 Result := Result + Format(' number:display-factor="%.0f"', [1.0/Factor]);
@@ -2962,13 +2972,13 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     nodeName: String;
     nf: TsNumberFormat;
     nfs: String;
-    decs: Byte;
-    sint: String;
     s: String;
     f: Double;
     fracInt, fracNum, fracDenom: Integer;
     grouping: Boolean;
     nex: Integer;
+    nint: Integer;
+    ndecs: Integer;
     cs: String;
     color: TsColor;
     hasColor: Boolean;
@@ -2987,9 +2997,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       end else
       if nodeName = 'number:number' then
       begin
-        sint := GetAttrValue(node, 'number:min-integer-digits');
-        if sint = '' then sint := '1';
-
+        s := GetAttrValue(node, 'number:min-integer-digits');
+        if s <> '' then nint := StrToInt(s) else nint := 0;
         s := GetAttrValue(node, 'number:decimal-places');
         if s = '' then
           s := GetAttrValue(node, 'decimal-places');
@@ -2999,12 +3008,12 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
           nfs := nfs + 'General';
         end else
         begin
-          decs := StrToInt(s);
+          ndecs := StrToInt(s);
           grouping := GetAttrValue(node, 'number:grouping') = 'true';
           s := GetAttrValue(node, 'number:display-factor');
           if s <> '' then f := StrToFloat(s, FPointSeparatorSettings) else f := 1.0;
           nf := IfThen(grouping, nfFixedTh, nfFixed);
-          nfs := nfs + BuildNumberFormatString(nf, Workbook.FormatSettings, decs); //, StrToInt(sint));
+          nfs := nfs + BuildNumberFormatString(nf, Workbook.FormatSettings, ndecs, nint);
           if f <> 1.0 then begin
             nf := nfCustom;
             while (f > 1.0) do
@@ -3031,11 +3040,13 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       if nodeName = 'number:scientific-number' then
       begin
         nf := nfExp;
+        s := GetAttrValue(node, 'number:min-integer-digits');
+        if s <> '' then nint := StrToInt(s) else nint := 0;
         s := GetAttrValue(node, 'number:decimal-places');
-        if s <> '' then decs := StrToInt(s) else decs := 0;
+        if s <> '' then ndecs := StrToInt(s) else ndecs := 0;
         s := GetAttrValue(node, 'number:min-exponent-digits');
         if s <> '' then nex := StrToInt(s) else nex := 1;
-        nfs := nfs + BuildNumberFormatString(nfFixed, Workbook.FormatSettings, decs);
+        nfs := nfs + BuildNumberFormatString(nfFixed, Workbook.FormatSettings, ndecs, nint);
         nfs := nfs + 'E+' + DupeString('0', nex);
       end else
       if nodeName = 'number:currency-symbol' then
