@@ -7502,9 +7502,13 @@ begin
   if FWorksheet.HasHyperlink(ACell) then
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
+  // Formula string
   if ignoreFormulas then begin
     formula := ACell^.FormulaValue;
-    if (formula <> '') and (formula[1] = '=') then Delete(formula, 1, 1);
+    if (formula <> '') then begin
+      if not ((pos('of:=', formula) = 1) or (pos('=', formula) = 1)) then
+        formula := 'of:=' + formula;
+    end;
   end else
   begin
     valueStr := '';
@@ -7514,6 +7518,8 @@ begin
       parser.Dialect := fdOpenDocument;
       parser.Expression := ACell^.FormulaValue;
       formula := Parser.LocalizedExpression[FPointSeparatorSettings];
+      if (formula <> '') and (formula[1] <> '=') then
+        formula := '=' + formula;
     finally
       parser.Free;
     end;
@@ -7570,7 +7576,7 @@ begin
     data type. Seems to work... }
   if not ignoreFormulas or (FWorksheet.GetCalcState(ACell) = csCalculated) then
     AppendToStream(AStream, Format(
-      '<table:table-cell table:formula="=%s" office:value-type="%s"%s%s%s>' +
+      '<table:table-cell table:formula="%s" office:value-type="%s"%s%s%s>' +
         comment +
         valueStr +
       '</table:table-cell>', [
@@ -7579,7 +7585,7 @@ begin
   else
   begin
     AppendToStream(AStream, Format(
-      '<table:table-cell table:formula="=%s"%s%s', [
+      '<table:table-cell table:formula="%s"%s%s', [
         formula, lStyle, spannedStr]));
     if comment <> '' then
       AppendToStream(AStream, '>' + comment + '</table:table-cell>')
