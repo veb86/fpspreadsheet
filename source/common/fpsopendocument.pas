@@ -689,6 +689,7 @@ var
   ns: Integer;
   clr: TsColor;
   mask: String;
+  s: String;
   timeIntervalStr: String;
   styleMapStr: String;
   int,num,denom: Integer;
@@ -954,9 +955,14 @@ begin
 
         nftSecond:
           begin
+            s := '';
+            if (el < nel - 2) and (Elements[el+1].Token = nftDecSep) and
+              (Elements[el+2].Token = nftMilliseconds)
+            then
+              s := Format('number:decimal-places="%d"', [Elements[el+2].IntValue]);
             case abs(Elements[el].IntValue) of
               1: Result := Result + '<number:seconds />';
-              2: Result := Result + '<number:seconds number:style="long" />';
+              2: Result := Result + '<number:seconds number:style="long" ' + s + '/>';
             end;
             if Elements[el].IntValue < 0 then
               timeIntervalStr := ' number:truncate-on-overflow="false"';
@@ -7898,6 +7904,7 @@ var
   fmt: TsCellFormat;
   numFmtParams: TsNumFormatParams;
   h,m,s,ms: Word;
+  mask: String;
 begin
   Unused(ARow, ACol);
 
@@ -7949,7 +7956,22 @@ begin
       isTimeOnly := Assigned(numFmtParams) and (numFmtParams.Sections[0].Kind * [nfkDate, nfkTime] = [nfkTime])
     else
       isTimeOnly := false;
+    // ODS wants the date/time in the ISO format.
     strValue := FormatDateTime(DATE_FMT[isTimeOnly], AValue);
+    // Add milliseconds; they must be appended as decimals to the seconds.
+    if Assigned(numFmtParams) and (nfkTime in numFmtParams.Sections[0].Kind) and
+       (numFmtParams.Sections[0].Decimals > 0) then
+    begin
+      strValue[Length(strValue)] := '.';  // replace trailing 'S' by '.'
+      // add value of milliseconds, rounded to required decimal places
+      DecodeTime(AValue, h,m,s,ms);
+      case numFmtParams.Sections[0].Decimals of
+        1: strValue := strValue + FormatFloat('0', round(ms/100));
+        2: strValue := strValue + FormatFloat('00', round(ms/10));
+        3: strValue := strValue + FormatFloat('000', ms);
+      end;
+      strValue := strValue + 'S';
+    end;
     displayStr := FWorksheet.ReadAsText(ACell);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="%s" office:%s-value="%s" %s %s>' +

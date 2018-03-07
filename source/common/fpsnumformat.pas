@@ -1080,9 +1080,9 @@ begin
 
         nftMilliseconds:
           case section.Elements[el].IntValue of
-            1: Result := Result + IntToStr(ms div 100);
-            2: Result := Result + Format('%02d', [ms div 10]);
-            3: Result := Result + Format('%03d', [ms]);
+            1: Result := Result + IntToStr(round(ms/100));
+            2: Result := Result + Format('%.2d', [round(ms/10)]);
+            3: Result := Result + Format('%.3d', [ms]);
           end;
 
         nftAMPM:
@@ -2902,6 +2902,10 @@ begin
           section^.Kind := section^.Kind + [nfkTime];
           if section^.Elements[el].IntValue < 0 then
             section^.Kind := section^.Kind + [nfkTimeInterval];
+          if section^.Elements[el].Token = nftMilliseconds then
+            section^.Decimals := section^.Elements[el].IntValue
+          else
+            section^.Decimals := 0;
         end;
       nftMonthMinute:
         isMonthMinute := true;
@@ -3690,12 +3694,25 @@ begin
         end;
       '.':
         begin
-          token := NextToken;
-          if token in ['z', '0'] then begin
-            AddElement(nftDecSep, FToken);
-            FToken := NextToken;
+          {
+          AddElement(nftDecSep, FToken);
+          FToken := NextToken;
+          if FToken in ['z', 'Z', '0'] then
+          begin
             ScanAndCount(FToken, n);
             AddElement(nftMilliseconds, n);
+          end;
+          }
+
+          token := NextToken;
+          if token in ['z', 'Z', '0'] then begin
+            AddElement(nftDecSep, FToken);
+            FToken := NextToken;
+            if FToken in ['z', 'Z', '0'] then
+              ScanAndCount(FToken, n)
+            else
+              n := 0;
+            AddElement(nftMilliseconds, n+1);
           end else begin
             AddElement(nftDateTimeSep, FToken);
             FToken := token;

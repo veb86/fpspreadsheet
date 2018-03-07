@@ -289,12 +289,20 @@ type
     // Reads dates, date/time and time values from spreadsheet and checks against list
     // One cell per test so some tests can fail and those further below may still work
     procedure TestWriteReadDates(AFormat: TsSpreadsheetFormat);
+    procedure TestWriteReadMilliseconds(AFormat: TsSpreadsheetFormat);
+
   published
     procedure TestWriteReadDates_BIFF2;
     procedure TestWriteReadDates_BIFF5;
     procedure TestWriteReadDates_BIFF8;
     procedure TestWriteReadDates_ODS;
     procedure TestWriteReadDates_OOXML;
+
+    procedure TestWriteReadMilliseconds_BIFF2;
+    procedure TestWriteReadMilliseconds_BIFF5;
+    procedure TestWriteReadMilliseconds_BIFF8;
+    procedure TestWriteReadMilliseconds_ODS;
+    procedure TestWriteReadMilliseconds_OOXML;
   end;
 
 
@@ -407,7 +415,7 @@ begin
     MyWorkbook.Free;
   end;
 
-  // Open the spreadsheet, as biff8
+  // Open the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorkbook.ReadFromFile(TempFile, AFormat);
@@ -430,6 +438,106 @@ begin
     MyWorkbook.Free;
     DeleteFile(TempFile);
   end;
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadMilliseconds(
+  AFormat: TsSpreadsheetFormat);
+type
+  TMillisecondTestParam = record
+    h, m, s, ms: word;
+    str1, str2, str3: String;
+  end;
+const
+  SOLL_TIMES: array[0..2] of TMillisecondTestParam = (
+    (h:12; m: 0; s: 0; ms:  0; str1:'12:00:00.0'; str2:'12:00:00.00'; str3:'12:00:00.000'),
+    (h:23; m:59; s:59; ms: 10; str1:'23:59:59.0'; str2:'23:59:59.01'; str3:'23:59:59.010'),
+    (h:23; m:59; s:59; ms:191; str1:'23:59:59.2'; str2:'23:59:59.19'; str3:'23:59:59.191')
+  );
+  FORMAT_STRINGS: array[1..3] of string = (
+    'hh:nn:ss.z', 'hh:nn:ss.zz', 'hh:nn:ss.zzz');
+  EPS = 0.0005*60*60*24;  // 0.5 ms
+var
+  MyWorkbook: TsWorkbook;
+  MyWorksheet: TsWorksheet;
+  actualDateTime: TDateTime;
+  actualStr: String;
+  r, c: Cardinal;
+  h, m, s, ms: Word;
+  t: TTime;
+  tempFile: String;
+begin
+  tempFile := NewTempFile;
+
+  // Write out all test values
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.FormatSettings.DecimalSeparator := '.';
+    MyWorkSheet := MyWorkBook.AddWorksheet(DatesSheet);
+    for r := Low(SOLL_TIMES) to High(SOLL_TIMES) do
+    begin
+      with SOLL_TIMES[r] do t := EncodeTime(h, m, s, ms);
+      for c := Low(FORMAT_STRINGS) to High(FORMAT_STRINGS) do
+      begin
+        MyWorkSheet.WriteDateTime(r, c, t, FORMAT_STRINGS[c]);
+
+        // Some checks inside worksheet itself, before writing
+        if not(MyWorkSheet.ReadAsDateTime(r, c, actualDateTime)) then
+          Fail('Failed writing date time for cell '+CellNotation(MyWorkSheet, r, c));
+        CheckEquals(t, actualDateTime, EPS,
+          'Test date/time value mismatch cell '+CellNotation(MyWorksheet, r, c));
+        actualStr := MyWorksheet.ReadAsText(r, c);
+        case c of
+          1: CheckEquals(SOLL_TIMES[r].str1, actualstr,
+               'Cell string mismatch, cell '+CellNotation(Myworksheet, r, c));
+          2: CheckEquals(SOLL_TIMES[r].str2, actualstr,
+               'Cell string mismatch, cell '+CellNotation(Myworksheet, r, c));
+          3: CheckEquals(SOLL_TIMES[r].str3, actualstr,
+               'Cell string mismatch, cell '+CellNotation(Myworksheet, r, c));
+        end;
+      end;
+    end;
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.FormatSettings.DecimalSeparator := '.';
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      MyWorksheet := MyWorkbook.GetFirstWorksheet
+    else
+      MyWorksheet := GetWorksheetByName(MyWorkBook,DatesSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+
+    // Read test data from A column & compare if written=original
+    for r := Low(SOLL_TIMES) to High(SOLL_TIMES) do
+    begin
+      with SOLL_TIMES[r] do t := EncodeTime(h, m, s, ms);
+      for c := Low(FORMAT_STRINGS) to High(FORMAT_STRINGS) do begin
+        if not(MyWorkSheet.ReadAsDateTime(r, c, actualDateTime)) then
+          Fail('Could not read date time for cell '+CellNotation(MyWorkSheet, r, c));
+        CheckEquals(r, actualDateTime, EPS,
+          'Test date/time value mismatch cell '+CellNotation(MyWorkSheet, r, c));
+        actualStr := MyWorksheet.ReadAsText(r, c);
+        case c of
+          1: CheckEquals(SOLL_TIMES[r].str1, actualstr,
+               'Cell string mismatch, cell '+CellNotation(Myworksheet, r, c));
+          2: CheckEquals(SOLL_TIMES[r].str2, actualstr,
+               'Cell string mismatch, cell '+CellNotation(Myworksheet, r, c));
+          3: CheckEquals(SOLL_TIMES[r].str3, actualstr,
+               'Cell string mismatch, cell '+CellNotation(Myworksheet, r, c));
+        end;
+      end;
+    end;
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+
 end;
 
 procedure TSpreadWriteReadDateTests.TestWriteReadDates_BIFF2;
@@ -1678,6 +1786,33 @@ end;
 procedure TSpreadReadDateTests.TestReadOOXMLDate1899_37;
 begin
   TestReadDate(ExtractFilePath(ParamStr(0)) + TestFileOOXML_1899,37);
+end;
+
+//------------------------------------------------------------------------------
+
+procedure TSpreadWriteReadDateTests.TestWriteReadMilliseconds_BIFF2;
+begin
+  TestWriteReadMilliseconds(sfExcel2);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadMilliseconds_BIFF5;
+begin
+  TestWriteReadMilliseconds(sfExcel5);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadMilliseconds_BIFF8;
+begin
+  TestWriteReadMilliseconds(sfExcel8);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadMilliseconds_ODS;
+begin
+  TestWriteReadMilliseconds(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadMilliseconds_OOXML;
+begin
+  TestWriteReadMilliseconds(sfOOXML);
 end;
 
 
