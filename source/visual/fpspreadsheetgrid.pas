@@ -800,9 +800,6 @@ type
     property OnContextPopup;
   end;
 
-const
-  NO_CELL_BORDER: TsCellBorderStyle = (LineStyle: lsThin; Color: scNotDefined);
-
 var
   {@@ Default number of columns prepared for a new empty worksheet }
   DEFAULT_COL_COUNT: Integer = 26;
@@ -4424,6 +4421,7 @@ begin
     while (gc <= gcLast) do begin
       gr := ARow;
       rct := AClipRect;
+      commentcell_rct := Rect(0, 0, 0, 0);
       // FDrawingCell is the cell which is currently being painted. We store
       // it to avoid excessive calls to "FindCell".
       FDrawingCell := nil;
@@ -4436,9 +4434,7 @@ begin
           // single cell
           FDrawingCell := cell;
           if Worksheet.HasComment(cell) then
-            commentcell_rct := CellRect(gc, gr)
-          else
-            commentcell_rct := Rect(0,0,0,0);
+            commentcell_rct := CellRect(gc, gr);
           // Special treatment of overflowing cells
           if FTextOverflow then
           begin
@@ -4495,9 +4491,7 @@ begin
           begin
             gr := GetGridRow(sr1);
             if Worksheet.HasComment(FDrawingCell) then
-              commentcell_rct := CellRect(GetGridCol(sc2), gr)
-            else
-              commentcell_rct := Rect(0,0,0,0);
+              commentcell_rct := CellRect(GetGridCol(sc2), gr);
             ColRowToOffSet(False, True, gr, rct.Top, tmp);
             ColRowToOffSet(False, True, gr + integer(sr2) - integer(sr1), tmp, rct.Bottom);
             gc := GetGridCol(sc1);

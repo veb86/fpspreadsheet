@@ -531,6 +531,9 @@ const
     (LineStyle: lsThin; Color: scBlack)
   );
 
+  {@@ Border style to be used for "no border"}
+  NO_CELL_BORDER: TsCellBorderStyle = (LineStyle: lsThin; Color: scNotDefined);
+
 type
   {@@ Style of fill pattern for cell backgrounds }
   TsFillStyle = (fsNoFill, fsSolidFill,
