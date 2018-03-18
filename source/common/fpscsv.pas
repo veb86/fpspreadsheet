@@ -98,7 +98,7 @@ uses
   fpsUtils, fpsNumFormat;
 
 const
-  DEFAULT_ENCODING = 'utf8bom';
+  DEFAULT_ENCODING = 'utf8'; //'utf8bom';
 
 function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 begin
