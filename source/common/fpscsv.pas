@@ -97,6 +97,9 @@ uses
   DateUtils, LConvEncoding, Math,
   fpsUtils, fpsNumFormat;
 
+const
+  DEFAULT_ENCODING = 'utf8bom';
+
 function LineEndingAsString(ALineEnding: TsCSVLineEnding): String;
 begin
   case ALineEnding of
@@ -198,6 +201,8 @@ begin
     encoding := GuessEncoding(s)
   else
     encoding := CSVParams.Encoding;
+  if encoding = '' then
+    encoding := DEFAULT_ENCODING;
 
   // Create worksheet
   FWorksheet := FWorkbook.AddWorksheet(FWorksheetName, true);
@@ -256,7 +261,7 @@ begin
   FFormatSettings := CSVParams.FormatSettings;
   ReplaceFormatSettings(FFormatSettings, FWorkbook.FormatSettings);
   if CSVParams.Encoding = '' then
-    FEncoding := 'utf8'
+    FEncoding := DEFAULT_ENCODING
   else
     FEncoding := CSVParams.Encoding;
 end;
