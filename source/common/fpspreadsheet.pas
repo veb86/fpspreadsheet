@@ -309,9 +309,11 @@ type
     function WriteBorders(ARow, ACol: Cardinal;
       ABorders: TsCellBorders): PCell; overload;
     procedure WriteBorders(ACell: PCell; ABorders: TsCellBorders); overload;
+    {
     procedure WriteBorders(ALeft, ATop, ARight, ABottom: Integer;
       ABorders: TsCellBorders; ALeftStyle, ATopStyle, ARightStyle, ABottomStyle,
       AInnerHorStyle, AInnerVertStyle: TsCellBorderStyle);
+      }
     function WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
       AStyle: TsCellBorderStyle): PCell; overload;
     procedure WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
@@ -6539,7 +6541,7 @@ begin
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
-
+                                     {
 procedure TsWorksheet.WriteBorders(ALeft, ATop, ARight, ABottom: Integer;
   ABorders: TsCellBorders; ALeftStyle, ATopStyle, ARightStyle, ABottomStyle,
   AInnerHorStyle, AInnerVertStyle: TsCellBorderStyle);
@@ -6692,7 +6694,7 @@ begin
     ChangedCell(ALeft, ATop);
   end;
 end;
-
+}
 
 {@@ ----------------------------------------------------------------------------
   Sets the style of a cell border, i.e. line style and line color.
