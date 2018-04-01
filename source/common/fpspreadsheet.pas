@@ -309,6 +309,9 @@ type
     function WriteBorders(ARow, ACol: Cardinal;
       ABorders: TsCellBorders): PCell; overload;
     procedure WriteBorders(ACell: PCell; ABorders: TsCellBorders); overload;
+    procedure WriteBorders(ALeft, ATop, ARight, ABottom: Integer;
+      ABorders: TsCellBorders; ALeftStyle, ATopStyle, ARightStyle, ABottomStyle,
+      AInnerHorStyle, AInnerVertStyle: TsCellBorderStyle);
     function WriteBorderStyle(ARow, ACol: Cardinal; ABorder: TsCellBorder;
       AStyle: TsCellBorderStyle): PCell; overload;
     procedure WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
@@ -4432,12 +4435,22 @@ begin
   ChangedCell(ARowFrom, AColFrom);
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Marks a specified cell as "selected". Only needed by the visual controls.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.SelectCell(ARow, ACol: Cardinal);
+var
+  cell: PCell;
 begin
+  // Avoid selecting a non-base cell of a merged block.
+  cell := FindCell(ARow, ACol);
+  if Assigned(cell) then
+  begin
+    if IsMerged(cell) then
+      cell := FindMergeBase(cell);
+    ACol := cell^.Col;
+  end;
+
   FActiveCellRow := ARow;
   FActiveCellCol := ACol;
   if FWorkbook.NotificationsEnabled and Assigned(FOnSelectCell) then
@@ -6526,6 +6539,160 @@ begin
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
+
+procedure TsWorksheet.WriteBorders(ALeft, ATop, ARight, ABottom: Integer;
+  ABorders: TsCellBorders; ALeftStyle, ATopStyle, ARightStyle, ABottomStyle,
+  AInnerHorStyle, AInnerVertStyle: TsCellBorderStyle);
+
+  function BorderVisible(const AStyle: TsCellBorderStyle): Boolean;
+  begin
+    Result := (AStyle.Color <> scNotDefined) and (AStyle.Color <> scTransparent);
+  end;
+
+  procedure SetNeighborBorder(NewRow, NewCol: Cardinal;
+    ANewBorder: TsCellBorder; const ANewBorderStyle: TsCellBorderStyle;
+    AInclude: Boolean);
+  var
+    neighbor: PCell;
+    border: TsCellBorders;
+  begin
+    neighbor := FindCell(NewRow, NewCol);
+    if neighbor <> nil then
+    begin
+      border := ReadCelLBorders(neighbor);
+      if AInclude then
+      begin
+        Include(border, ANewBorder);
+        WriteBorderStyle(NewRow, NewCol, ANewBorder, ANewBorderStyle);
+      end else
+        Exclude(border, ANewBorder);
+      WriteBorders(NewRow, NewCol, border);
+    end;
+  end;
+
+  procedure FixNeighborCellBorders(ACell: PCell);
+  var
+    fmt: PsCellFormat;
+  begin
+    if (ACell = nil) then
+      exit;
+
+    fmt := GetPointerToEffectiveCellFormat(ACell);
+    with ACell^ do
+    begin
+      if Col > 0 then
+        SetNeighborBorder(Row, Col-1, cbEast, fmt^.BorderStyles[cbWest], cbWest in fmt^.Border);
+      SetNeighborBorder(Row, Col+1, cbWest, fmt^.BorderStyles[cbEast], cbEast in fmt^.Border);
+      if Row > 0 then
+        SetNeighborBorder(Row-1, Col, cbSouth, fmt^.BorderStyles[cbNorth], cbNorth in fmt^.Border);
+      SetNeighborBorder(Row+1, Col, cbNorth, fmt^.BorderStyles[cbSouth], cbSouth in fmt^.Border);
+    end;
+  end;
+
+  procedure ProcessBorder(ARow, ACol: Cardinal; ABorder: TsCellBorder;
+    const AStyle: TsCellBorderStyle);
+  var
+    cb: TsCellBorders = [];
+    cell: PCell;
+  begin
+    cell := FindCell(ARow, ACol);
+    if cell <> nil then
+      cb := ReadCellBorders(cell);
+    if BorderVisible(AStyle) then
+    begin
+      Include(cb, ABorder);
+      cell := WriteBorders(ARow, ACol, cb);
+      WriteBorderStyle(cell, ABorder, AStyle);
+    end else
+    if cb <> [] then
+    begin
+      Exclude(cb, ABorder);
+      cell := WriteBorders(ARow, ACol, cb);
+    end;
+    FixNeighborCellBorders(cell);
+  end;
+
+  procedure ShowCellBorders(ALeft, ATop, ARight, ABottom: Integer;
+    ALeftOuterStyle, ATopOuterStyle, ARightOuterStyle, ABottomOuterStyle,
+    AHorInnerStyle, AVertInnerStyle: TsCellBorderStyle);
+  var
+    r, c, r1, c1, r2, c2: Cardinal;
+  begin
+    // Preparations
+    EnsureOrder(ALeft, ARight);
+    EnsureOrder(ATop, ABottom);
+
+    // Top outer border
+    for c := ALeft to ARight do
+      ProcessBorder(r1, c, cbNorth, ATopOuterStyle);
+    // Bottom outer border
+    for c := ALeft to ARight do
+      ProcessBorder(r2, c, cbSouth, ABottomOuterStyle);
+    // Left outer border
+    for r := ATop to ABottom do
+      ProcessBorder(r, c1, cbWest, ALeftOuterStyle);
+    // Right outer border
+    for r := ATop to ABottom do
+      ProcessBorder(r, c2, cbEast, ARightOuterStyle);
+    // Horizontal inner border
+    if ATop <> ABottom then
+      for r := ATop to ABottom-1 do
+        for c := ALeft to ARight do
+          ProcessBorder(r, c, cbSouth, AHorInnerStyle);
+    // Vertical inner border
+    if ALeft <> ARight then
+      for r := ATop to ABottom do
+        for c := ALeft to ARight-1 do
+          ProcessBorder(r, c, cbEast, AVertInnerStyle);
+  end;
+
+  procedure SetCellBorders(ACol, ARow: Integer);
+  var
+    cell: PCell;
+    r1, c1, r2, c2: Cardinal;
+    styles, saved_styles: TsCellBorderStyles;
+  begin
+    cell := GetCell(ARow, ACol);
+
+    if IsMergeBase(cell) then
+    begin
+      styles := ReadCellBorderStyles(cell);
+      saved_styles := styles;
+      if not (cbEast in ABorders) then styles[cbEast] := NO_CELL_BORDER;
+      if not (cbWest in ABorders) then styles[cbWest] := NO_CELL_BORDER;
+      if not (cbNorth in ABorders) then styles[cbNorth] := NO_CELL_BORDER;
+      if not (cbSouth in ABorders) then styles[cbSouth] := NO_CELL_BORDER;
+      FindMergedRange(cell, r1, c1, r2, c2);
+      // Set border flags and styles for all outer cells of the merged block
+      // Note: This overwrites the styles of the base ...
+      ShowCellBorders(r1,c1, r2,c2, styles[cbWest], styles[cbNorth],
+        styles[cbEast], styles[cbSouth], NO_CELL_BORDER, NO_CELL_BORDER);
+        // ... Restores base border style overwritten in prev instruction
+      WriteBorderStyles(cell, saved_styles);
+      WriteBorders(cell, ABorders);
+    end else
+    begin
+      WriteBorders(cell, ABorders);
+      FixNeighborCellBorders(cell);
+    end;
+  end;
+
+var
+  r, c: Cardinal;
+begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Workbook.DisableNotifications;
+  try
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
+        SetCellBorders(c, r);
+  finally
+    Workbook.EnableNotifications;
+    ChangedCell(ALeft, ATop);
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Sets the style of a cell border, i.e. line style and line color.
