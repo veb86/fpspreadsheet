@@ -282,6 +282,7 @@ type
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+    procedure UpdateDisplay;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -2184,26 +2185,10 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCellIndicator.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
-var
-  sel: TsCellRangeArray;
-  s: String;
-  rng: TsCellRange;
-  numrows, numcols: Integer;
 begin
   Unused(AData);
   if (lniSelection in AChangedItems) and (Worksheet <> nil) then
-  begin
-    s := GetCellString(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
-    sel := Worksheet.GetSelection;
-    if Length(sel) > 0 then begin
-      rng := sel[High(sel)];
-      numrows := rng.Row2 - rng.Row1 + 1;
-      numcols := rng.Col2 - rng.Col1 + 1;
-      if (numrows <> 1) or (numcols <> 1) then
-        s := Format('%s (%d R x %d C)', [s, rng.Row2-rng.Row1+1, rng.Col2-rng.Col1+1]);
-    end;
-    Text := s;
-  end;
+    UpdateDisplay;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2240,6 +2225,37 @@ begin
     FWorkbookSource.AddListener(self);
   Text := '';
   ListenerNotification([lniSelection]);
+end;
+
+procedure TsCellIndicator.UpdateDisplay;
+var
+  sel: TsCellRangeArray;
+  s: String;
+  rng: TsCellRange;
+  numrows, numcols: Integer;
+  r, c: Cardinal;
+  cell: PCell;
+begin
+  r := Worksheet.ActiveCellRow;
+  c := Worksheet.ActiveCellCol;
+  cell := Worksheet.FindCell(r, c);
+  if cell <> nil then begin
+    cell := Worksheet.FindMergeBase(cell);
+    if cell <> nil then begin
+      r := cell^.Row;
+      c := cell^.Col;
+    end;
+  end;
+  s := GetCellString(r, c);
+  sel := Worksheet.GetSelection;
+  if Length(sel) > 0 then begin
+    rng := sel[High(sel)];
+    numrows := rng.Row2 - rng.Row1 + 1;
+    numcols := rng.Col2 - rng.Col1 + 1;
+    if (numrows <> 1) or (numcols <> 1) then
+      s := Format('%s (%d R x %d C)', [s, rng.Row2-rng.Row1+1, rng.Col2-rng.Col1+1]);
+  end;
+  Text := s;
 end;
 
 
