@@ -2211,7 +2211,8 @@ begin
     for Result := 0 to FSharedStringTable.Count-1 do begin
       s := FSharedStringTable.Strings[Result];
       obj := FSharedStringTable.Objects[Result];
-      if (s = AText) and (TsRichTextParams(obj) = ARichTextParams)
+//      if (s = AText) and (TsRichTextParams(obj) = ARichTextParams)
+      if (s = AText) and SameRichTextParams(TsRichTextParams(obj), ARichTextParams)
         then exit;
     end;
   Result := -1;
@@ -3739,7 +3740,7 @@ procedure TsSpreadBIFF8Writer.WriteSST(AStream: TStream);
 var
   sizePos: Int64;
   bytesWritten, totalBytesWritten: Integer;
-  i: Integer;
+  i, j: Integer;
   rtParams: TsRichTextParams;
   bytesAvail: Integer;
   isASCII: Boolean;
@@ -3766,7 +3767,7 @@ begin
   AStream.WriteDWord(DWordToLE(FSharedStringTable.Count));
 
   { Now begins writing of strings. Take care of overflow into following
-    CONTINUE records if the maximum record size (MaX_BYTES_IN_RECORD) is
+    CONTINUE records if the maximum record size (MAX_BYTES_IN_RECORD) is
     exceeded. }
   totalBytesWritten := 8;
   for i:=0 to FSharedStringTable.Count-1 do
@@ -3793,7 +3794,12 @@ begin
       end;
     end;
 
-    rtParams := TsRichTextParams(FSharedStringTable.Objects[i]);
+    SetLength(rtParams, Length(TsRichTextParams(FSharedStringTable.Objects[i])));
+    for j := 0 to High(rtParams) do begin
+      rtParams[j] := TsRichTextParams(FSharedStringTable.Objects[i])[j];
+      // Index of new font. Be aware of font #4 missing in BIFF!
+      if rtParams[j].FontIndex >= 4 then inc(rtParams[j].FontIndex);
+    end;
 
     textIndex := 1;
     rtIndex := 0;

@@ -159,6 +159,7 @@ function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation):
 
 procedure FixLineEndings(var AText: String; var ARichTextParams: TsRichTextParams);
 function RandomString(ALen: Integer): String;
+function SameRichTextParams(ARtp1, ARtp2: TsRichTextparams): Boolean;
 function SplitStr(const AText: String; ADelimiter: Char): TStringArray;
 function UnquoteStr(AString: String): String;
 
@@ -1964,6 +1965,24 @@ begin
   SetLength(Result, ALen);
   for i:=1 to ALen do
     Result[i] := char(Random(26) + ord('a'));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks wether ARtp1 and ARtp2 are the same rich-text parameters.
+-------------------------------------------------------------------------------}
+function SameRichTextParams(ARtp1, ARtp2: TsRichTextparams): Boolean;
+var
+  i: Integer;
+begin
+  Result := false;
+  if Length(ARtp1) <> Length(ARtp2) then
+    exit;
+  for i := 0 to High(ARtp1) do begin
+    if ARtp1[i].FirstIndex <> ARtp2[i].FirstIndex then exit;
+    if ARtp1[i].FontIndex <> ARtp2[i].FontIndex then exit;
+    if ARtp1[i].HyperlinkIndex <> ARtp2[i].HyperlinkIndex then exit;
+  end;
+  Result := true;
 end;
 
 {@@ ----------------------------------------------------------------------------

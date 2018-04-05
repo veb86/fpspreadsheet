@@ -485,14 +485,9 @@ type
 
   {@@ Parameter describing formatting of an text range in cell text }
   TsRichTextParam = record
-    FirstIndex: Integer;  // 1-based utf8 character index
+    FirstIndex: Integer;  // 1-based utf8 code-point ("character") index
     FontIndex: Integer;
     HyperlinkIndex: Integer;
-    {
-    FontIndex: Integer;
-    StartIndex: Integer;  // zero-based
-    EndIndex: Integer;    // zero-based, next character!
-    }
   end;
 
   {@@ Parameters describing formatting of text ranges in cell text }
