@@ -50,6 +50,9 @@ type
   TsHyperlinkClickEvent = procedure(Sender: TObject;
     const AHyperlink: TsHyperlink) of object;
 
+  TsGetCellTextEvent = procedure(Sender: TObject; AIndex: Integer;
+    var AText: String) of object;
+
   TsSelPen = class(TPen)
   public
     constructor Create; override;
@@ -122,6 +125,8 @@ type
     FDragStartCol, FDragStartRow: Integer;
     FOldDragStartCol, FOldDragStartRow: Integer;
     FDragSelection: TGridRect;
+    FGetRowHeaderText: TsGetCellTextEvent;
+    FGetColHeaderText: TsGetCellTextEvent;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
@@ -346,6 +351,10 @@ type
     property TextOverflow: Boolean read FTextOverflow write FTextOverflow default false;
     {@@ Event called when an external hyperlink is clicked }
     property OnClickHyperlink: TsHyperlinkClickEvent read FOnClickHyperlink write FOnClickHyperlink;
+    {@@ Event allowing to modifiy the text displayed in a column header}
+    property OnGetColHeaderText: TsGetCellTextEvent read FGetColHeaderText write FGetColHeaderText;
+    {@@ Event allowing to modifiy the text displayed in a row header }
+    property OnGetRowHeaderText: TsGetCellTextEvent read FGetRowHeaderText write FGetRowHeaderText;
 
   public
     { public methods }
@@ -718,6 +727,10 @@ type
     property OnColRowInserted;
     {@@ inherited from ancestors}
     property OnColRowMoved;
+    {@@ inherited from TCustomWorksheetGrid}
+    property OnGetColHeaderText;
+    {@@ inherited from TCustomWorksheetGrid}
+    property OnGetRowHeaderText;
     (*
     {@@ inherited from ancestors}
     property OnCompareCells;     // apply userdefined sorting to worksheet directly!
@@ -3887,12 +3900,16 @@ begin
     if (ARow = 0) then
     begin
       Result := GetColString(ACol - FHeaderCount);
+      if Assigned(FGetColHeaderText) then
+        FGetColHeaderText(Self, ACol, Result);
       exit;
     end
     else
     if (ACol = 0) then
     begin
       Result := IntToStr(ARow);
+      if Assigned(FGetRowHeaderText) then
+        FGetRowHeaderText(Self, ARow, Result);
       exit;
     end;
   end;
