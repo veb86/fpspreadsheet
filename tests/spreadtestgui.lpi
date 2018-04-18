@@ -161,7 +161,7 @@
       <Filename Value="spreadtestgui"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir)"/>
+      <IncludeFiles Value="..\source;$(ProjOutDir)"/>
       <OtherUnitFiles Value="..\source\common"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>

@@ -165,7 +165,7 @@ begin
     inc(row);
 
     // Save the spreadsheet to a file
-    MyWorkbook.WriteToFile(MyDir + 'test.html', sfHTML);
+    MyWorkbook.WriteToFile(MyDir + 'test.html', sfHTML, true);
 
   finally
     MyWorkbook.Free;

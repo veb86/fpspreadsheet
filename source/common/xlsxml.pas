@@ -874,8 +874,8 @@ begin
   // Protection
   protectStr := Format(INDENT3 + '<ProtectObjects>%s</ProtectObjects>' + LF +
                        INDENT3 + '<ProtectScenarios>%s</ProtectScenarios>' + LF, [
-    AWorksheet.IsProtected and (spObjects in AWorksheet.Protection),
-    AWorksheet.IsProtected {and [spScenarios in AWorksheet.Protection])}
+    StrUtils.IfThen(AWorksheet.IsProtected and (spObjects in AWorksheet.Protection), '1', '0'),
+    StrUtils.IfThen(AWorksheet.IsProtected {and [spScenarios in AWorksheet.Protection])}, '1', '0')
   ]);
 
   // Put it all together...

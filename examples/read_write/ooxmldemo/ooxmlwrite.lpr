@@ -108,7 +108,7 @@ begin
   MyWorksheet.WriteNumber(8, 6, 1.66666667, nfFraction, '# ?/?');
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test.xlsx', sfOOXML);
+  MyWorkbook.WriteToFile(MyDir + 'test.xlsx', sfOOXML, true);
   MyWorkbook.Free;
 end.
 

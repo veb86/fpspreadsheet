@@ -16,7 +16,7 @@ program ooxml_decrypt_and_read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, LazUTF8, fpstypes, fpspreadsheet, laz_fpspreadsheet,
+  Classes, SysUtils, LazUTF8, fpstypes, fpspreadsheet, //laz_fpspreadsheet,
   xlsxooxml_crypto;
 
 var
@@ -27,7 +27,7 @@ var
   cell: PCell;
   i: Integer;
   password: String;
-  Prot_enc: Integer = 1;  // 0 - protected, 1 - encrypted workbook
+  Prot_enc: Integer = 0;  // 0 - protected, 1 - encrypted workbook
 
 begin
   MyDir := ExtractFilePath(ParamStr(0));

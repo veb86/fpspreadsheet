@@ -138,7 +138,8 @@ begin
 end;
 
 const
-  TestFile='test3.odt';
+  TestFileODS='test3.ods';
+  TestFileXLS='test.xls';
 
 {$R *.res}
 
@@ -153,9 +154,11 @@ begin
   WriteSecondWorksheet();
 
   // Save the spreadsheet to a file
-//  MyWorkbook.WriteToFile(MyDir + 'test3.xls', sfExcel8, False);
-  MyWorkbook.WriteToFile(MyDir + TestFile, sfOpenDocument, False);
+  MyWorkbook.WriteToFile(MyDir + TestFileXLS, sfExcel8, true);
+  MyWorkbook.WriteToFile(MyDir + TestFileODS, sfOpenDocument, true);
   MyWorkbook.Free;
-  writeln('Finished. Please open "'+TestFile+'" in your spreadsheet program.');
+
+  WriteLn('Finished. Please open "'+TestFileXLS+'" and "' + TestFileODS + '" in your spreadsheet program.');
+  ReadLn;
 end.
 

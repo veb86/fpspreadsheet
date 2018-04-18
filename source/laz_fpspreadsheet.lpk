@@ -8,6 +8,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
+        <IncludeFiles Value="."/>
         <OtherUnitFiles Value="common"/>
         <UnitOutputDirectory Value="common\lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
