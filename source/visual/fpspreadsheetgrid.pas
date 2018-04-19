@@ -4630,6 +4630,8 @@ begin
       end;
     VK_F2:
       FEnhEditMode := true;
+    VK_DELETE:
+      Worksheet.DeleteSelection;
   end;
 
   inherited;

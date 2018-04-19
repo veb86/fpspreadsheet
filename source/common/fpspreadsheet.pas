@@ -2144,6 +2144,8 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteCell(ACell: PCell);
 {$warning TODO: Shift cells to the right/below !!! ??? }
+var
+  r, c: Cardinal;
 begin
   if ACell = nil then
     exit;
@@ -2159,8 +2161,13 @@ begin
     exit;
   end;
 
+  r := ACell^.Row;
+  c := ACell^.Col;
+
   // Destroy the cell, and remove it from the tree
   RemoveAndFreeCell(ACell^.Row, ACell^.Col);
+
+  ChangedCell(r, c);
 end;
 
 {@@ ----------------------------------------------------------------------------
