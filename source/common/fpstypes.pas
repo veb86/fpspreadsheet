@@ -17,6 +17,11 @@ interface
 uses
   Classes, SysUtils, fpimage;
 
+{$IF FPC_FullVersion < 30000}
+type
+  RawByteString = ansistring;
+{$ENDIF}
+
 type
   {@@ Built-in file formats of fpspreadsheet }
   TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8, sfExcelXML, sfOOXML,
