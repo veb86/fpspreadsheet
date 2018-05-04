@@ -2792,13 +2792,18 @@ end;
   @return The text representation of the cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadAsText(ARow, ACol: Cardinal): string;
+var
+  cell: PCell;
 begin
-  Result := ReadAsText(GetCell(ARow, ACol));
+  cell := FindCell(ARow, ACol);
+  if cell <> nil then Result := ReadAsText(cell) else Result := '';
+  { avoid creating a blenk cell if the cell does not exist
+  Result := ReadAsText(GetCell(ARow, ACol));              }
 end;
 
 function TsWorksheet.ReadAsUTF8Text(ARow, ACol: Cardinal): string;
 begin
-  Result := ReadAsText(GetCell(ARow, ACol));
+  Result := ReadAsText(ARow, ACol);
 end;
 
 {@@ ----------------------------------------------------------------------------
