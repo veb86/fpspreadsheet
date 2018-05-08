@@ -189,6 +189,8 @@ type
       out AContinueInString: Boolean): Boolean;
     function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
       AFlags: TsRelFlags): word; override;
+    function WriteRPNCellAddress3D(AStream: TStream; ASheet, ARow, ACol: Cardinal;
+      AFlags: TsRelFlags): Word; override;
     function WriteRPNCellOffset(AStream: TStream; ARowOffset, AColOffset: Integer;
       AFlags: TsRelFlags): Word; override;
     function WriteRPNCellRangeAddress(AStream: TStream; ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -2754,25 +2756,79 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteEXTERNSHEET(AStream: TStream);
 var
-  sheets: Array of Integer;
+  n, i: Integer;
+begin
+  { Since sheet range are not supported we simply note every sheet here. }
+  n := FWorkbook.GetWorksheetCount;
+
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNSHEET, 2 + 6*n);
+
+  { Count of following REF structures }
+  AStream.WriteWord(WordToLE(n));
+
+  { REF record for each sheet }
+  for i := 0 to n-1 do
+  begin
+    AStream.WriteWord(0);            // Index to EXTERNBOOK record, always 0
+    AStream.WriteWord(WordToLE(i));  // Index to first sheet in EXTERNBOOK sheet list
+    AStream.WriteWord(WordToLE(i));  // Index to last sheet in EXTERNBOOK sheet list
+  end;
+end;
+(*
+
+  write a record for
+  // every sheet
+type
+  TExternRefRec = record
+    FirstIndex, LastIndex: Word;
+  end;
+const
+  BUF_COUNT = 10;
+var
+  extern: Array of TExternRefRec;
   sheet: TsWorksheet;
-  i: Integer;
+  cell: PCell;
+  i, j: Integer;
   n: Word;
   writeIt: Boolean;
 begin
+
   n := 0;
-  SetLength(sheets, FWorkbook.GetWorksheetCount);
-  for i := 0 to FWorkbook.GetWorksheetCount-1 do begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+  SetLength(extern, BUF_COUNT);
+
+  // Find sheets used in formula references
+  for i:=0 to FWorkBook.GetWorksheetCount-1 do begin
+    sheet := FWorkBook.GetWorksheetByIndex(i);
+    for cell in sheet.Cells do
+      if HasFormula(cell) then
+        if pos('!', cell^.FormulaValue) > 0 then
+          for j:=0 to FWorkbook.GetWorksheetCount-1 do
+            if pos(FWorksbook.GetWorksheetByIndex(j).Name, cell1.FormulaValue) = 1 then begin
+              extern[n].FirstIndex := j;
+              extern[n].LastIndex := j;
+              // NOTE: This must be extended to allow a range of sheets !!!
+              inc(n);
+              if n mod BUF_COUNT = 0 then
+                Setlength(extern, Length(extern) + BUF_COUNT);
+            end;
+  end;
+
+  // Find sheets used in print ranges, repeated cols or repeated rows
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
+    sheet := FWorkbook.GetWorksheetbyIndex(i);
     with sheet.PageLayout do
       writeIt := (NumPrintRanges > 0) or HasRepeatedCols or HasRepeatedRows;
-    if writeIt then
-    begin
-      sheets[n] := i;
+    if writeIt then begin
+      extern[n].FirstIndex := i;
+      extern[n].LastIndex := i;
       inc(n);
+      if n mod BUF_COUNT = 0 then
+        SetLength(extern, Length(extern) + BUF_COUNT);
     end;
   end;
-  SetLength(sheets, n);
+
+  SetLength(extern, n);
 
   { BIFF record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNSHEET, 2 + 6*n);
@@ -2784,10 +2840,10 @@ begin
   for i := 0 to n-1 do
   begin
     AStream.WriteWord(0);                    // Index to EXTERNBOOK record, always 0
-    AStream.WriteWord(WordToLE(sheets[i]));  // Index to first sheet in EXTERNBOOK sheet list
-    AStream.WriteWord(WordToLE(sheets[i]));  // Index to last sheet in EXTERNBOOK sheet list
+    AStream.WriteWord(WordToLE(extern[i]));  // Index to first sheet in EXTERNBOOK sheet list
+    AStream.WriteWord(WordToLE(extern[i]));  // Index to last sheet in EXTERNBOOK sheet list
   end;
-end;
+end;        *)
 
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 8 FONT record.
@@ -3568,6 +3624,21 @@ begin
   AStream.WriteWord(WordToLE(c));
   Result := 4;
 end;
+
+function TsSpreadBIFF8Writer.WriteRPNCellAddress3D(AStream: TStream;
+  ASheet, ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
+var
+  c: Cardinal;
+begin
+  // Next line is a simplification: We should write the index of the sheet
+  // in the REF record here, but these are arranged in the same order as the
+  // sheets. --> MUST BE RE-DONE ONCE SHEET RANGES ARE ALLOWED.
+  AStream.WriteWord(WordToLE(ASheet));
+
+  // The row/col address is written in relative notation!
+  Result := 2 + WriteRPNCellAddress(AStream, ARow, ACol, [rfRelRow, rfRelCol]);
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes row and column offset needed in RPN formulas (unsigned integers!)

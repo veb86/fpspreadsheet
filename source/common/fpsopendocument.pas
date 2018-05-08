@@ -110,6 +110,7 @@ type
     function FindNumFormatByName(ANumFmtName: String): Integer;
     function FindRowStyleByName(AStyleName: String): Integer;
     function FindTableStyleByName(AStyleName: String): Integer;
+    procedure FixFormulas;
     procedure ReadCell(ANode: TDOMNode; ARow, ACol: Integer;
       AFormatIndex: Integer; out AColsRepeated: Integer);
     procedure ReadColumns(ATableNode: TDOMNode);
@@ -1423,6 +1424,52 @@ begin
   Result := -1;
 end;
 
+procedure TsSpreadOpenDocReader.FixFormulas;
+
+  procedure FixCell(ACell: PCell);
+  var
+    parser: TsSpreadsheetParser;
+  begin
+    parser := TsSpreadsheetParser.Create(TsWorksheet(ACell^.Worksheet));
+    try
+      try
+        parser.Dialect := fdOpenDocument;
+        parser.LocalizedExpression[FPointSeparatorSettings] := ACell^.FormulaValue;
+        parser.Dialect := fdExcelA1;
+        ACell^.FormulaValue := parser.Expression;
+      except
+        on E:EExprParser do
+          begin
+            FWorkbook.AddErrorMsg(E.Message);
+            ACell^.FormulaValue := '';
+            if (boAbortReadOnFormulaError in Workbook.Options) then raise;
+          end;
+        on E:ECalcEngine do
+          begin
+            Workbook.AddErrorMsg(E.Message);
+            ACell^.FormulaValue := '';
+            if (boAbortReadOnFormulaError in Workbook.Options) then raise;
+          end;
+      end;
+    finally
+      parser.Free;
+    end;
+  end;
+
+var
+  i: Integer;
+  sheet: TsWorksheet;
+  cell: PCell;
+begin
+  if (boIgnoreFormulas in FWorkbook.Options) then
+    exit;
+  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    for cell in sheet.Cells do
+      if HasFormula(cell) then FixCell(cell);
+  end;
+end;
+
 procedure TsSpreadOpenDocReader.ReadAutomaticStyles(AStylesNode: TDOMNode);
 var
   nodeName: String;
@@ -2370,6 +2417,7 @@ begin
       end;
       Delete(formula, 1, p);
     end;
+    (*
     if not (boIgnoreFormulas in FWorkbook.Options) then
     begin
       // ... convert to Excel "A1" dialect used by fps by defailt
@@ -2398,8 +2446,13 @@ begin
         parser.Free;
       end;
     end;
+    *)
     // ... and store in cell's FormulaValue field.
     cell^.FormulaValue := formula;
+    // Note: This formula is still in OpenDocument dialect. Conversion to
+    // Because fpsspreadsheet supports references to other sheets which might
+    // not have been loaded at this moment, conversion to ExcelA1 dialect
+    // (used by fps) is postponed until all sheets are read.
   end;
 
   // Read formula results
@@ -2607,6 +2660,9 @@ begin
     finally
       XMLStream.Free;
     end;
+
+    // Convert formulas from OpenDocument to ExcelA1 dialect
+    FixFormulas;
 
     // Active sheet
     if FActiveSheet <> '' then

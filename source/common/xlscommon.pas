@@ -610,6 +610,8 @@ type
 
     function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
       AFlags: TsRelFlags): Word; virtual;
+    function WriteRPNCellAddress3D(AStream: TStream; ASheet, ARow, ACol: Cardinal;
+      AFlags: TsRelFlags): Word; virtual;
     function WriteRPNCellOffset(AStream: TStream; ARowOffset, AColOffset: Integer;
       AFlags: TsRelFlags): Word; virtual;
     function WriteRPNCellRangeAddress(AStream: TStream; ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -675,8 +677,9 @@ const
     INT_EXCEL_TOKEN_TREFR,          {fekCellRef}
     INT_EXCEL_TOKEN_TAREA_R,        {fekCellRange}
     INT_EXCEL_TOKEN_TREFN_V,        {fekCellOffset}
-    INT_EXCEL_TOKEN_TREF3D_R,       {fekCellRef3d }
-    INT_EXCEL_TOKEN_TAREA3D_R,      {fekCellRange3d }
+    INT_EXCEL_TOKEN_TREF3D_V,       {fskCell3d}
+    INT_EXCEL_TOKEN_TREF3D_R,       {fekCellRef3d}
+    INT_EXCEL_TOKEN_TAREA3D_R,      {fekCellRange3d}
     INT_EXCEL_TOKEN_TNUM,           {fekNum}
     INT_EXCEL_TOKEN_TINT,           {fekInteger}
     INT_EXCEL_TOKEN_TSTR,           {fekString}
@@ -4291,6 +4294,17 @@ begin
   Result := 3;
 end;
 
+{@ -----------------------------------------------------------------------------
+  Writes the address of a cell as used in an RPN formula and returns the
+  count of bytes written.
+  Placeholder. To be overridden by BIFF5 and BIFF8.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFFWriter.WriteRPNCellAddress3D(AStream: TStream;
+  ASheet, ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
+begin
+  Result := 0;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Writes row and column offset (unsigned integers!)
   Valid for BIFF2-BIFF5.
@@ -4564,6 +4578,17 @@ begin
         begin
           n := WriteRPNCellAddress(
             AStream,
+            AFormula[i].Row, AFormula[i].Col,
+            AFormula[i].RelFlags
+          );
+          inc(RPNLength, n);
+        end;
+
+      INT_EXCEL_TOKEN_TREF3D_V: { fekCell3D }
+        begin
+          n := WriteRPNCellAddress3D(
+            AStream,
+            AFormula[i].Sheet,
             AFormula[i].Row, AFormula[i].Col,
             AFormula[i].RelFlags
           );

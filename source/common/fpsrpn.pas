@@ -51,6 +51,8 @@ function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem; overload;
 function RPNCellOffset(ARowOffset, AColOffset: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
+function RPNCellValue3D(ASheet, ARow, ACol: Integer; AFlags: TsRelflags;
+  ANext: PRPNItem): PRPNItem;
 function RPNCellRef3D(ASheet, ARow, ACol: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
 function RPNCellRange3D(ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2: Integer;
@@ -255,6 +257,18 @@ begin
   Result^.FE.ElementKind := fekCellOffset;
   Result^.FE.Row := Cardinal(ARowOffset);
   Result^.FE.Col := Cardinal(AColOffset);
+  Result^.FE.RelFlags := AFlags;
+  Result^.Next := ANext;
+end;
+
+function RPNCellValue3D(ASheet, ARow, ACol: Integer; AFlags: TsRelflags;
+  ANext: PRPNItem): PRPNItem;
+begin
+  Result := NewRPNItem;
+  Result^.FE.ElementKind := fekCell3d;
+  Result^.FE.Sheet := ASheet;
+  Result^.FE.Row := ARow;
+  Result^.FE.Col := ACol;
   Result^.FE.RelFlags := AFlags;
   Result^.Next := ANext;
 end;

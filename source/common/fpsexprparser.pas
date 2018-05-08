@@ -57,7 +57,8 @@ type
   { Tokens }
 
   TsTokenType = (
-    ttCell, ttCellRange, ttNumber, ttString, ttIdentifier,
+    ttCell, ttSheetCell, ttCellRange, ttSheetName,
+    ttNumber, ttString, ttIdentifier,
     ttPlus, ttMinus, ttMul, ttDiv, ttConcat, ttPercent, ttPower, ttLeft, ttRight,
     ttLessThan, ttLargerThan, ttEqual, ttNotEqual, ttLessThanEqual, ttLargerThanEqual,
     ttListSep, ttTrue, ttFalse, ttMissingArg, ttError, ttEOF
@@ -578,8 +579,18 @@ type
     property CallBack: TsExprFunctionEvent read FCallBack;
   end;
 
-  { TsCellExprNode }
-  TsCellExprNode = class(TsExprNode)
+  TsSheetNameExprNode = class(TsExprNode)
+  private
+    FSheetName: String;
+  public
+    constructor Create(AParser: TsExpressionParser; ASheetName: String);
+    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
+    function AsString: string; override;
+    property SheetName: String read FSheetName;
+  end;
+
+  { TsBasicCellExprNode }
+  TsBasicCellExprNode = class(TsExprNode)
   private
     FWorksheet: TsWorksheet;
     FRow, FCol: Cardinal;
@@ -587,20 +598,37 @@ type
     FCell: PCell;
     FIsRef: Boolean;
   protected
+    procedure Check; override;
     function GetCol: Cardinal;
     function GetRow: Cardinal;
     procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
-      ACellString: String); overload;
-    constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
       ARow, ACol: Cardinal; AFlags: TsRelFlags); overload;
-    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
-    function AsString: string; override;
-    procedure Check; override;
     function NodeType: TsResultType; override;
     property Worksheet: TsWorksheet read FWorksheet;
   end;
+
+  { TsCellExprNode }
+  TsCellExprNode = class(TsBasicCellExprNode)
+  public
+    constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
+      ACellString: String); overload;
+    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
+    function AsString: string; override;
+  end;
+
+  { TsSheetCellExprNode }
+  TsSheetCellExprNode = class(TsBasicCellExprNode)
+  protected
+    function GetSheetIndex: Integer;
+  public
+    constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
+      ACellString: String); overload;
+    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
+    function AsString: string; override;
+  end;
+
 
   { TsCellRangeExprNode }
 
@@ -636,6 +664,8 @@ type
     FChar: PChar;
     FToken: String;
     FTokenType: TsTokenType;
+    FSheetNameTerminator: Char;
+    FSavedSheetNameTerminator: Char;
   private
     FParser: TsExpressionParser;
     function GetCurrentChar: Char;
@@ -646,7 +676,7 @@ type
     function DoIdentifier: TsTokenType;
     function DoNumber: TsTokenType;
     function DoDelimiter: TsTokenType;
-    function DoSquareBracket: TsTokenType;
+//    function DoSquareBracket: TsTokenType;
     function DoString: TsTokenType;
     function NextPos: Char; // inline;
     procedure SkipWhiteSpace; // inline;
@@ -662,6 +692,7 @@ type
     property Source: String read FSource write SetSource;
     property Pos: Integer read FPos;
     property CurrentChar: Char read GetCurrentChar;
+    property SheetnameTerminator: char read FSheetNameTerminator write FSheetNameTerminator;
   end;
 
   EExprScanner = class(Exception);
@@ -692,6 +723,7 @@ type
     function GetRPNFormula: TsRPNFormula;
 //    function MatchNodes(Todo, Match: TsExprNode): TsExprNode;
     procedure SetBuiltIns(const AValue: TsBuiltInExprCategories);
+    procedure SetDialect(const AValue: TsFormulaDialect);
     procedure SetIdentifiers(const AValue: TsExprIdentifierDefs);
     procedure SetRPNFormula(const AFormula: TsRPNFormula);
 
@@ -750,7 +782,7 @@ type
     property BuiltIns: TsBuiltInExprCategories read FBuiltIns write SetBuiltIns;
 //    property ActiveCell: PCell read FActiveCell write FActiveCell;
     property Worksheet: TsWorksheet read FWorksheet;
-    property Dialect: TsFormulaDialect read FDialect write FDialect;
+    property Dialect: TsFormulaDialect read FDialect write SetDialect;
   end;
 
   TsSpreadsheetParser = class(TsExpressionParser)
@@ -920,6 +952,8 @@ constructor TsExpressionScanner.Create(AParser: TsExpressionParser);
 begin
   Source := '';
   FParser := AParser;
+  FSheetnameTerminator := '!';
+  FSavedSheetNameTerminator := '!';
 end;
 
 function TsExpressionScanner.DoDelimiter: TsTokenType;
@@ -988,15 +1022,30 @@ var
   S: String;
   row, row2: Cardinal;
   col, col2: Cardinal;
+  sheetName: String;
   flags: TsRelFlags;
 begin
   C := CurrentChar;
-  while (not IsWordDelim(C)) and (C <> cNull) do
+  sheetName := '';
+  while (not IsWordDelim(C)) and (C <> cNull) and (C <> FSheetNameTerminator) do
   begin
+    if ((FParser.Dialect = fdOpenDocument) and (C = ']')) then begin
+      C := NextPos;
+      FSheetNameTerminator := FSavedSheetNameTerminator;
+      break;
+    end;
     FToken := FToken + C;
     C := NextPos;
   end;
-  S := LowerCase(Token);
+
+  if C = FSheetNameTerminator then
+  begin
+    C := NextPos;
+    result := ttSheetName;
+    exit;
+  end;
+
+  S := LowerCase(FToken);
   if ParseCellString(S, row, col, flags) and (C <> '(') then
     Result := ttCell
   else if ParseCellRangeString(S, row, col, row2, col2, flags) and (C <> '(') then
@@ -1033,7 +1082,7 @@ begin
     ScanError(Format(rsInvalidNumber, [FToken]));
   Result := ttNumber;
 end;
-
+                                    (*
 { Scans until closing square bracket is reached. In OpenDocument, this is
   a cell or cell range identifier. }
 function TsExpressionScanner.DoSquareBracket: TsTokenType;
@@ -1042,21 +1091,29 @@ var
   r1,c1,r2,c2: Cardinal;
   flags: TsRelFlags;
   isRange: Boolean;
+  sheetName: String;
 begin
   isRange := false;
   FToken := '';
+  sheetName := '';
   C := NextPos;
   while (C <> ']') do
   begin
     case C of
       cNull: ScanError(rsUnexpectedEndOfExpression);
-      '.'  : ; // ignore
+      '.'  : begin
+               sheetName := FToken;
+               FToken := '';
+             end;
       ':'  : begin isRange := true; FToken := FToken + C; end;
       else   FToken := FToken + C;
     end;
     C := NextPos;
   end;
   C := NextPos;
+
+  if sheetName <> '' then begin
+
   if isRange then
   begin
     if ParseCellRangeString(FToken, r1, c1, r2, c2, flags) then
@@ -1072,7 +1129,8 @@ begin
       Result := ttError;
 //      ScanError(Format(SErrInvalidCell, [FToken]));
   end;
-end;
+end;*)
+
 
 function TsExpressionScanner.DoString: TsTokenType;
 
@@ -1117,8 +1175,13 @@ begin
   FToken := '';
   SkipWhiteSpace;
   C := FChar^;
-  if (FParser.Dialect = fdOpenDocument) and (C = '[') then
-    Result := DoSquareBracket
+  if (FParser.Dialect = fdOpenDocument) and (C = '[') then begin
+    FSavedSheetNameTerminator := FSheetNameTerminator;
+    FSheetNameTerminator := '.';
+    C := NextPos;
+    Result := DoIdentifier
+//    Result := DoSquareBracket
+  end
   else if C = cNull then
     Result := ttEOF
   else if IsDelim(C) then
@@ -1598,6 +1661,7 @@ var
   optional: Boolean;
   token: String;
   prevTokenType: TsTokenType;
+  sheetname: String;
 begin
 {$ifdef debugexpr} Writeln('Primitive : ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
   SetLength(Args, 0);
@@ -1619,6 +1683,16 @@ begin
     Result := TsConstExprNode.CreateString(self, CurrentToken)
   else if (TokenType = ttCell) then
     Result := TsCellExprNode.Create(self, FWorksheet, CurrentToken)
+  else if (TokenType = ttSheetName) then begin
+    sheetName := CurrentToken;
+    GetToken;
+    if TokenType = ttCell then
+      Result := TsSheetCellExprNode.Create(self, FWorksheet.Workbook.GetWorksheetByName(sheetName), CurrentToken)
+  end
+  (*
+  else if (TokenType = ttSheetCell) then
+    Result := TsSheetCellExprNode.Create(self, FWorksheet.Workbook, CurrentToken)
+    *)
   else if (TokenType = ttCellRange) then
     Result := TsCellRangeExprNode.Create(self, FWorksheet, CurrentToken)
   else if (TokenType = ttError) then
@@ -1741,6 +1815,20 @@ function TsExpressionParser.GetLocalizedExpression(const AFormatSettings: TForma
 begin
   ExprFormatSettings := AFormatSettings;
   Result := BuildStringFormula(AFormatSettings);
+end;
+
+procedure TsExpressionParser.SetDialect(const AValue: TsFormulaDialect);
+begin
+  if FDialect = AValue then exit;
+  FDialect := AValue;
+  {
+  if FScanner <> nil then
+    case FDialect of
+      fdExcelA1, fdExcelR1C1: FScanner.SheetNameTerminator := '!';
+      fdOpenDocument: FScanner.Sheetnameterminator := '.';
+      else raise Exception.Create('TsExpressionParser.SetDialect: Dialect not supported.');
+    end;
+    }
 end;
 
 procedure TsExpressionParser.SetExpression(const AValue: String);
@@ -3503,19 +3591,28 @@ begin
 end;
 
 
-{ TsCellExprNode }
-
-constructor TsCellExprNode.Create(AParser: TsExpressionParser;
-  AWorksheet: TsWorksheet; ACellString: String);
-var
-  r, c: Cardinal;
-  flags: TsRelFlags;
+{ TsSheetNameExprNode }
+constructor TsSheetNameExprNode.Create(AParser: TsExpressionParser;
+  ASheetName: string);
 begin
-  ParseCellString(ACellString, r, c, flags);
-  Create(AParser, AWorksheet, r, c, flags);
+  FParser := AParser;
+  FSheetName := ASheetName;
 end;
 
-constructor TsCellExprNode.Create(AParser: TsExpressionParser;
+function TsSheetNameExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
+begin
+  Result := ANext;
+end;
+
+function TsSheetnameExprNode.AsString: string;
+begin
+  Result := '';
+end;
+
+
+{ TsBasicCellExprNode }
+
+constructor TsBasicCellExprNode.Create(AParser: TsExpressionParser;
   AWorksheet: TsWorksheet; ARow,ACol: Cardinal; AFlags: TsRelFlags);
 begin
   FParser := AParser;
@@ -3526,29 +3623,7 @@ begin
   FCell := AWorksheet.FindCell(FRow, FCol);
 end;
 
-function TsCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
-begin
-  if FIsRef then
-    Result := RPNCellRef(GetRow, GetCol, FFlags, ANext)
-  else
-    Result := RPNCellValue(GetRow, GetCol, FFlags, ANext);
-end;
-
-function TsCellExprNode.AsString: string;
-begin
-  case FParser.Dialect of
-    fdExcelA1      : Result := GetCellString(GetRow, GetCol, FFlags);
-    fdExcelR1C1    : Result := GetCellString_R1C1(GetRow, GetCol, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
-    fdOpenDocument : Result := '[.' + GetCellString(GetRow, GetCol, FFlags) + ']';
-  end;
-  {
-  Result := GetCellString(GetRow, GetCol, FFlags);
-  if FParser.Dialect = fdOpenDocument then
-    Result := '[.' + Result + ']';
-  }
-end;
-
-procedure TsCellExprNode.Check;
+procedure TsBasicCellExprNode.Check;
 begin
   // Nothing to check;
 end;
@@ -3563,14 +3638,14 @@ end;
       address of the SourceCell.
   (2) Normal mode:
       Returns the "true" row address of the cell assigned to the formula node. }
-function TsCellExprNode.GetCol: Cardinal;
+function TsBasicCellExprNode.GetCol: Cardinal;
 begin
   Result := FCol;
   if FParser.CopyMode and (rfRelCol in FFlags) then
     Result := FCol - FParser.FSourceCell^.Col + FParser.FDestCell^.Col;
 end;
 
-procedure TsCellExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsBasicCellExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;
 begin
@@ -3593,18 +3668,112 @@ begin
   Result.Worksheet := FWorksheet;
 end;
 
-{ See GetCol }
-function TsCellExprNode.GetRow: Cardinal;
+{ See: GetCol }
+function TsBasicCellExprNode.GetRow: Cardinal;
 begin
   Result := FRow;
   if Parser.CopyMode and (rfRelRow in FFlags) then
     Result := FRow - FParser.FSourceCell^.Row + FParser.FDestCell^.Row;
 end;
 
-function TsCellExprNode.NodeType: TsResultType;
+function TsBasicCellExprNode.NodeType: TsResultType;
 begin
   Result := rtCell;
 end;
+
+
+{ TsSheetCellExprNode }
+
+constructor TsSheetCellExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ACellString: String);
+var
+  r, c: Cardinal;
+  flags: TsRelFlags;
+  p: Integer;
+  sheetname: String;
+begin
+  (*
+  case AParser.Dialect of
+    fdExcelA1, fdExcelR1C1: p := pos('!', ACellString);
+    fdOpendocument: p := pos('.', ACellString);
+    else raise Exception.Create('TsSheetCellExprNode: Parser dialect not supported.');
+  end;
+  sheetname := copy(ACellString, 1, p-1);
+  ACellString := copy(ACellString, p+1, MaxInt);
+  *)
+  ParseCellString(ACellString, r, c, flags);
+  Create(AParser, AWorksheet, r, c, flags);
+end;
+
+function TsSheetCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
+begin
+  if FIsRef then
+    Result := RPNCellRef3D(GetSheetIndex, GetRow, GetCol, FFlags, ANext)
+  else
+    Result := RPNCellValue3D(GetSheetIndex, GetRow, GetCol, FFlags, ANext);
+end;
+
+function TsSheetCellExprNode.AsString: String;
+begin
+  case FParser.Dialect of
+    fdExcelA1:
+      Result := Format('%s!%s', [
+        FWorksheet.Name,
+        GetCellString(GetRow, GetCol, FFlags)
+      ]);
+    fdExcelR1C1:
+      Result := Format('%s!%s', [
+        FWorksheet.Name,
+        GetCellString_R1C1(GetRow, GetCol, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col)
+      ]);
+    fdOpenDocument:
+      Result := Format('[%s.%s]', [
+        FWorksheet.Name,
+        GetCellString(GetRow, GetCol, FFlags)
+      ]);
+    else
+      raise Exception.Create('TsSheetCellExprNode: Parser dialect not supported.');
+  end;
+end;
+
+function TsSheetCellExprNode.GetSheetIndex: Integer;
+var
+  book: TsWorkbook;
+begin
+  book := FWorksheet.Workbook;
+  Result := book.GetWorksheetIndex(FWorksheet);
+end;
+
+
+{ TsCellExprNode }
+
+constructor TsCellExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ACellString: String);
+var
+  r, c: Cardinal;
+  flags: TsRelFlags;
+begin
+  ParseCellString(ACellString, r, c, flags);
+  Create(AParser, AWorksheet, r, c, flags);
+end;
+
+function TsCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
+begin
+  if FIsRef then
+    Result := RPNCellRef(GetRow, GetCol, FFlags, ANext)
+  else
+    Result := RPNCellValue(GetRow, GetCol, FFlags, ANext);
+end;
+
+function TsCellExprNode.AsString: string;
+begin
+  case FParser.Dialect of
+    fdExcelA1      : Result := GetCellString(GetRow, GetCol, FFlags);
+    fdExcelR1C1    : Result := GetCellString_R1C1(GetRow, GetCol, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
+    fdOpenDocument : Result := '[.' + GetCellString(GetRow, GetCol, FFlags) + ']';
+  end;
+end;
+
 
 
 { TsCellRangeExprNode }

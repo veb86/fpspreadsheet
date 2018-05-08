@@ -166,7 +166,7 @@ type
   TFEKind = (
     { Basic operands }
     fekCell, fekCellRef, fekCellRange, fekCellOffset,
-    fekCellRef3d, fekCellRange3d,
+    fekCell3d, fekCellRef3d, fekCellRange3d,
     fekNum, fekInteger, fekString, fekBool, fekErr, fekMissingArg,
     { Basic operations }
     fekAdd, fekSub, fekMul, fekDiv, fekPercent, fekPower, fekUMinus, fekUPlus,
