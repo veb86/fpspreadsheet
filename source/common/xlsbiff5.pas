@@ -75,7 +75,7 @@ type
   protected
     procedure PopulatePalette; override;
     { Record writing methods }
-    procedure ReadBoundsheet(AStream: TStream);
+    procedure ReadBOUNDSHEET(AStream: TStream);
     procedure ReadDEFINEDNAME(AStream: TStream);
     procedure ReadFONT(const AStream: TStream);
     procedure ReadFORMAT(AStream: TStream); override;
@@ -364,12 +364,13 @@ end;
 {@@ ----------------------------------------------------------------------------
   Reads a BOUNDSHEET record containing a worksheet name
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF5Reader.ReadBoundsheet(AStream: TStream);
+procedure TsSpreadBIFF5Reader.ReadBOUNDSHEET(AStream: TStream);
 var
   len: Byte;
   s: AnsiString;
   sheetState: Byte;
-  sheetData: TsSheetData;
+  sheet: TsWorksheet;
+  //sheetData: TsSheetData;
 begin
   { Absolute stream position of the BOF record of the sheet represented
     by this record }
@@ -387,11 +388,16 @@ begin
   SetLength(s, len);
   AStream.ReadBuffer(s[1], len*SizeOf(AnsiChar));
 
+  sheet := FWorkbook.AddWorksheet(ConvertEncoding(s, FCodePage, EncodingUTF8), true);
+  if sheetState <> 0 then
+    sheet.Options := sheet.Options + [soHidden];
+  (*
   { Temporarily store parameters for worksheet in FSheetList }
   sheetData := TsSheetData.Create;
   sheetData.Name := ConvertEncoding(s, FCodePage, EncodingUTF8);
   sheetData.Hidden := sheetState <> 0;
   FSheetList.Add(sheetData);
+  *)
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -503,13 +509,14 @@ var
   SectionEOF: Boolean = False;
   RecordType: Word;
   CurStreamPos: Int64;
-  sheetData: TsSheetData;
-begin
+//  sheetData: TsSheetData;
+begin                                                           (*
   sheetData := TsSheetData(FSheetList[FCurSheetIndex]);
   FWorksheet := FWorkbook.AddWorksheet(sheetData.Name, true);
   if sheetData.Hidden then
     FWorksheet.Options := FWorksheet.Options + [soHidden];
-
+                                                              *)
+  FWorksheet := FWorkbook.GetWorksheetByIndex(FCurSheetIndex);
   while (not SectionEOF) do
   begin
     { Read the record header }

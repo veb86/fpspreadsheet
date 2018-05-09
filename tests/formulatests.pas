@@ -35,6 +35,7 @@ type
       UseRPNFormula: Boolean);
     procedure Test_Write_Read_CalcFormulas(AFormat: TsSpreadsheetformat;
       UseRPNFormula: Boolean);
+    procedure Test_Write_Read_Calc3DFormulas(AFormat: TsSpreadsheetFormat);
 
   published
     // Writes out formulas & reads them back.
@@ -73,6 +74,12 @@ type
     procedure Test_Write_Read_CalcStringFormula_OOXML;
     { ODS Tests }
     procedure Test_Write_Read_CalcStringFormula_ODS;
+
+    { Formulas with 3D references to other sheets }
+    procedure Test_Write_Read_Calc3DFormula_BIFF8;
+    procedure Test_Write_Read_Calc3DFormula_OOXML;
+    procedure Test_Write_Read_Calc3DFormula_ODS;
+
 
   end;
 
@@ -680,6 +687,143 @@ begin
   Test_Write_Read_CalcSharedFormulas(sfOpenDocument);
 end;
              *)
+
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormulas(
+  AFormat: TsSpreadsheetFormat);
+{ If UseRPNFormula is TRUE, the test formulas are generated from RPN syntax,
+  otherwise string formulas are used. }
+var
+  sheet1, sheet2, sheet3: TsWorksheet;
+  workbook: TsWorkbook;
+  row: Integer;
+  tempFile: string;    //write xls/xml to this file and read back from it
+  actual: TsExpressionResult;
+  expected: TsExpressionResult;
+  cell: PCell;
+  sollValues: array of TsExpressionResult;
+  formula: String;
+  ErrorMargin: Double;
+begin
+  ErrorMargin:=0; //1.44E-7;
+  //1.44E-7 for SUMSQ formula
+  //6.0E-8 for SUM formula
+  //4.8E-8 for MAX formula
+  //2.4E-8 for now formula
+  //about 1E-15 is needed for some trig functions
+
+  // Create test workbook
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := workbook.Options + [boCalcBeforeSaving];
+
+    sheet1 := workBook.AddWorksheet('Sheet1');
+    sheet2 := workbook.AddWorksheet('Sheet2');
+    sheet3 := workbook.AddWorksheet('Sheet3');
+
+    { Write out test formulas.
+      This include file creates various formulas in column A and stores
+      the expected results in the array SollValues. }
+    Row := 0;
+    TempFile := GetTempFileName;
+    {$I testcases_calc3dformula.inc}
+    workbook.WriteToFile(TempFile, AFormat, true);
+  finally
+    workbook.Free;
+  end;
+
+  // Open the workbook
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := workbook.Options + [boReadFormulas];
+    workbook.ReadFromFile(TempFile, AFormat);
+    if AFormat = sfExcel2 then
+      Fail('This test should not be executed')
+    else
+      sheet1 := workbook.GetWorksheetByName('Sheet1');
+    if sheet1=nil then
+      Fail('Error in test code. Failed to get named worksheet');
+
+    for row := 0 to sheet1.GetLastRowIndex do
+    begin
+      cell := sheet1.FindCell(Row, 1);
+      if (cell = nil) then
+        fail('Error in test code: Failed to get cell ' + CellNotation(sheet1, Row, 1));
+
+      case cell^.ContentType of
+        cctBool       : actual := BooleanResult(cell^.BoolValue);
+        cctNumber     : actual := FloatResult(cell^.NumberValue);
+        cctDateTime   : actual := DateTimeResult(cell^.DateTimeValue);
+        cctUTF8String : actual := StringResult(cell^.UTF8StringValue);
+        cctError      : actual := ErrorResult(cell^.ErrorValue);
+        cctEmpty      : actual := EmptyResult;
+        else            fail('ContentType not supported');
+      end;
+
+      expected := SollValues[row];
+      // Cell does not store integers!
+      if expected.ResultType = rtInteger then expected := FloatResult(expected.ResInteger);
+
+      (*
+      // The now function result is volatile, i.e. changes continuously. The
+      // time for the soll value was created such that we can expect to have
+      // the file value in the same second. Therefore we neglect the milliseconds.
+      if formula = '=NOW()' then begin
+        // Round soll value to seconds
+        DecodeTime(expected.ResDateTime, hr,min,sec,msec);
+        expected.ResDateTime := EncodeTime(hr, min, sec, 0);
+        // Round formula value to seconds
+        DecodeTime(actual.ResDateTime, hr,min,sec,msec);
+        actual.ResDateTime := EncodeTime(hr,min,sec,0);
+      end;                                   *)
+
+      case actual.ResultType of
+        rtBoolean:
+          CheckEquals(BoolToStr(expected.ResBoolean), BoolToStr(actual.ResBoolean),
+            'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
+        rtFloat:
+          {$if (defined(mswindows)) or (FPC_FULLVERSION>=20701)}
+          // FPC 2.6.x and trunk on Windows need this, also FPC trunk on Linux x64
+          CheckEquals(expected.ResFloat, actual.ResFloat, ErrorMargin,
+            'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
+          {$else}
+          // Non-Windows: test without error margin
+          CheckEquals(expected.ResFloat, actual.ResFloat,
+            'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
+          {$endif}
+        rtString:
+          CheckEquals(expected.ResString, actual.ResString,
+            'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
+        rtError:
+          CheckEquals(
+            GetEnumName(TypeInfo(TsErrorValue), ord(expected.ResError)),
+            GetEnumname(TypeInfo(TsErrorValue), ord(actual.ResError)),
+            'Test read calculated formula error value mismatch, cell '+CellNotation(sheet1, Row, 1));
+      end;
+    end;
+
+  finally
+    workbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_BIFF8;
+begin
+  Test_Write_Read_Calc3DFormulas(sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_OOXML;
+begin
+  Test_Write_Read_Calc3DFormulas(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_ODS;
+begin
+  Test_Write_Read_Calc3DFormulas(sfOpenDocument);
+end;
+
 
 initialization
   // Register so these tests are included in a full run

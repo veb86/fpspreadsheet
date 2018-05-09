@@ -57,7 +57,7 @@ type
   { Tokens }
 
   TsTokenType = (
-    ttCell, ttSheetCell, ttCellRange, ttSheetName,
+    ttCell, ttCellRange, ttSheetName,
     ttNumber, ttString, ttIdentifier,
     ttPlus, ttMinus, ttMul, ttDiv, ttConcat, ttPercent, ttPower, ttLeft, ttRight,
     ttLessThan, ttLargerThan, ttEqual, ttNotEqual, ttLessThanEqual, ttLargerThanEqual,
@@ -589,35 +589,33 @@ type
     property SheetName: String read FSheetName;
   end;
 
-  { TsBasicCellExprNode }
-  TsBasicCellExprNode = class(TsExprNode)
+  { TsCellExprNode }
+  TsCellExprNode = class(TsExprNode)
   private
     FWorksheet: TsWorksheet;
     FRow, FCol: Cardinal;
     FFlags: TsRelFlags;
     FCell: PCell;
     FIsRef: Boolean;
+    FOtherSheet: Boolean;
   protected
     procedure Check; override;
     function GetCol: Cardinal;
     function GetRow: Cardinal;
+    function GetSheetIndex: Integer;
     procedure GetNodeValue(out Result: TsExpressionResult); override;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
-      ARow, ACol: Cardinal; AFlags: TsRelFlags); overload;
+      ARow, ACol: Cardinal; AFlags: TsRelFlags; OtherSheet: Boolean); overload;
+    constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
+      ACellString: String; Othersheet: Boolean); overload;
+    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
+    function AsString: string; override;
     function NodeType: TsResultType; override;
     property Worksheet: TsWorksheet read FWorksheet;
   end;
 
-  { TsCellExprNode }
-  TsCellExprNode = class(TsBasicCellExprNode)
-  public
-    constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
-      ACellString: String); overload;
-    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
-    function AsString: string; override;
-  end;
-
+                (*
   { TsSheetCellExprNode }
   TsSheetCellExprNode = class(TsBasicCellExprNode)
   protected
@@ -627,7 +625,7 @@ type
       ACellString: String); overload;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
-  end;
+  end;            *)
 
 
   { TsCellRangeExprNode }
@@ -1026,6 +1024,7 @@ var
   flags: TsRelFlags;
 begin
   C := CurrentChar;
+  if C = FSheetNameTerminator then C := NextPos;
   sheetName := '';
   while (not IsWordDelim(C)) and (C <> cNull) and (C <> FSheetNameTerminator) do
   begin
@@ -1662,6 +1661,7 @@ var
   token: String;
   prevTokenType: TsTokenType;
   sheetname: String;
+  sheet: TsWorksheet;
 begin
 {$ifdef debugexpr} Writeln('Primitive : ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
   SetLength(Args, 0);
@@ -1682,17 +1682,17 @@ begin
   else if (TokenType = ttString) then
     Result := TsConstExprNode.CreateString(self, CurrentToken)
   else if (TokenType = ttCell) then
-    Result := TsCellExprNode.Create(self, FWorksheet, CurrentToken)
+    Result := TsCellExprNode.Create(self, FWorksheet, CurrentToken, false)
   else if (TokenType = ttSheetName) then begin
     sheetName := CurrentToken;
     GetToken;
-    if TokenType = ttCell then
-      Result := TsSheetCellExprNode.Create(self, FWorksheet.Workbook.GetWorksheetByName(sheetName), CurrentToken)
+    if TokenType = ttCell then begin
+      sheet := FWorksheet.Workbook.GetWorksheetByName(sheetName);
+      if sheet = nil then
+        sheet := FWorksheet.Workbook.AddWorksheet(sheetName, true);
+      Result := TsCellExprNode.Create(self, sheet, CurrentToken, true)
+    end;
   end
-  (*
-  else if (TokenType = ttSheetCell) then
-    Result := TsSheetCellExprNode.Create(self, FWorksheet.Workbook, CurrentToken)
-    *)
   else if (TokenType = ttCellRange) then
     Result := TsCellRangeExprNode.Create(self, FWorksheet, CurrentToken)
   else if (TokenType = ttError) then
@@ -1878,10 +1878,12 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
     operand: TsExprNode = nil;
     fek: TFEKind;
     r,c, r2,c2: Cardinal;
+    idx: Integer;
     flags: TsRelFlags;
     ID: TsExprIdentifierDef;
     i, n: Integer;
     args: TsExprArgumentArray;
+    sheet: TsWorksheet;
   begin
     if AIndex < 0 then
       exit;
@@ -1898,7 +1900,22 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
           else
           begin
             flags := AFormula[AIndex].RelFlags;
-            ANode := TsCellExprNode.Create(self, FWorksheet, r, c, flags);
+            ANode := TsCellExprNode.Create(self, FWorksheet, r, c, flags, false);
+          end;
+          dec(AIndex);
+        end;
+      fekCell3D:
+        begin
+          idx := AFormula[AIndex].Sheet;
+          r := AFormula[AIndex].Row;
+          c := AFormula[AIndex].Col;
+          if (LongInt(r) < 0) or (LongInt(c) < 0) then
+            ANode := TsConstExprNode.CreateError(self, errIllegalRef)
+          else
+          begin
+            flags := AFormula[AIndex].RelFlags;
+            sheet := FWorksheet.Workbook.GetWorksheetByIndex(idx);
+            ANode := TsCellExprNode.Create(Self, sheet, r, c, flags, true);
           end;
           dec(AIndex);
         end;
@@ -3610,10 +3627,11 @@ begin
 end;
 
 
-{ TsBasicCellExprNode }
+{ TsCellExprNode }
 
-constructor TsBasicCellExprNode.Create(AParser: TsExpressionParser;
-  AWorksheet: TsWorksheet; ARow,ACol: Cardinal; AFlags: TsRelFlags);
+constructor TsCellExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ARow,ACol: Cardinal; AFlags: TsRelFlags;
+  OtherSheet: Boolean);
 begin
   FParser := AParser;
   FWorksheet := AWorksheet;
@@ -3621,9 +3639,64 @@ begin
   FCol := ACol;
   FFlags := AFlags;
   FCell := AWorksheet.FindCell(FRow, FCol);
+  FOtherSheet := OtherSheet;
 end;
 
-procedure TsBasicCellExprNode.Check;
+constructor TsCellExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ACellString: String; OtherSheet: Boolean);
+var
+  r, c: Cardinal;
+  flags: TsRelFlags;
+begin
+  ParseCellString(ACellString, r, c, flags);
+  Create(AParser, AWorksheet, r, c, flags, OtherSheet);
+end;
+
+function TsCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
+begin
+  if FIsRef then
+  begin
+    if FOtherSheet then
+      Result := RPNCellRef3D(GetSheetIndex, GetRow, GetCol, FFlags, ANext)
+    else
+      Result := RPNCellRef(GetRow, GetCol, FFlags, ANext)
+  end else
+  begin
+    if FOtherSheet then
+      Result := RPNCellValue3D(GetSheetIndex, GetRow, GetCol, FFlags, ANext)
+    else
+      Result := RPNCellValue(GetRow, GetCol, FFlags, ANext);
+  end;
+end;
+
+function TsCellExprNode.AsString: string;
+var
+  r, c: Cardinal;
+begin
+  r := Getrow;
+  c := GetCol;
+  if FOtherSheet then
+    case FParser.Dialect of
+      fdExcelA1:
+        Result := Format('%s!%s', [FWorksheet.Name, GetCellString(r, c, FFlags)]);
+      fdExcelR1C1:
+        Result := Format('%s!%s', [FWorksheet.Name,
+          GetCellString_R1C1(r, c, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col)]);
+      fdOpenDocument:
+        Result := Format('[%s.%s]', [FWorksheet.Name, GetCellString(r, c, FFlags)]);
+    end
+  else
+    case FParser.Dialect of
+      fdExcelA1:
+        Result := GetCellString(GetRow, GetCol, FFlags);
+      fdExcelR1C1:
+        Result := GetCellString_R1C1(GetRow, GetCol, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
+      fdOpenDocument:
+        Result := '[.' + GetCellString(GetRow, GetCol, FFlags) + ']';
+    end;
+end;
+
+procedure TsCellExprNode.Check;
 begin
   // Nothing to check;
 end;
@@ -3638,14 +3711,14 @@ end;
       address of the SourceCell.
   (2) Normal mode:
       Returns the "true" row address of the cell assigned to the formula node. }
-function TsBasicCellExprNode.GetCol: Cardinal;
+function TsCellExprNode.GetCol: Cardinal;
 begin
   Result := FCol;
   if FParser.CopyMode and (rfRelCol in FFlags) then
     Result := FCol - FParser.FSourceCell^.Col + FParser.FDestCell^.Col;
 end;
 
-procedure TsBasicCellExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsCellExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;
 begin
@@ -3657,7 +3730,7 @@ begin
   if (cell <> nil) and HasFormula(cell) then
     case FWorksheet.GetCalcState(cell) of
       csNotCalculated:
-        Worksheet.CalcFormula(cell);
+        FWorksheet.CalcFormula(cell);
       csCalculating:
         raise ECalcEngine.CreateFmt(rsCircularReference, [GetCellString(cell^.Row, cell^.Col)]);
     end;
@@ -3669,19 +3742,27 @@ begin
 end;
 
 { See: GetCol }
-function TsBasicCellExprNode.GetRow: Cardinal;
+function TsCellExprNode.GetRow: Cardinal;
 begin
   Result := FRow;
   if Parser.CopyMode and (rfRelRow in FFlags) then
     Result := FRow - FParser.FSourceCell^.Row + FParser.FDestCell^.Row;
 end;
 
-function TsBasicCellExprNode.NodeType: TsResultType;
+function TsCellExprNode.GetSheetIndex: Integer;
+var
+  book: TsWorkbook;
+begin
+  book := FWorksheet.Workbook;
+  Result := book.GetWorksheetIndex(FWorksheet);
+end;
+
+function TsCellExprNode.NodeType: TsResultType;
 begin
   Result := rtCell;
 end;
 
-
+               (*
 { TsSheetCellExprNode }
 
 constructor TsSheetCellExprNode.Create(AParser: TsExpressionParser;
@@ -3743,37 +3824,9 @@ begin
   book := FWorksheet.Workbook;
   Result := book.GetWorksheetIndex(FWorksheet);
 end;
-
+            *)
 
 { TsCellExprNode }
-
-constructor TsCellExprNode.Create(AParser: TsExpressionParser;
-  AWorksheet: TsWorksheet; ACellString: String);
-var
-  r, c: Cardinal;
-  flags: TsRelFlags;
-begin
-  ParseCellString(ACellString, r, c, flags);
-  Create(AParser, AWorksheet, r, c, flags);
-end;
-
-function TsCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
-begin
-  if FIsRef then
-    Result := RPNCellRef(GetRow, GetCol, FFlags, ANext)
-  else
-    Result := RPNCellValue(GetRow, GetCol, FFlags, ANext);
-end;
-
-function TsCellExprNode.AsString: string;
-begin
-  case FParser.Dialect of
-    fdExcelA1      : Result := GetCellString(GetRow, GetCol, FFlags);
-    fdExcelR1C1    : Result := GetCellString_R1C1(GetRow, GetCol, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
-    fdOpenDocument : Result := '[.' + GetCellString(GetRow, GetCol, FFlags) + ']';
-  end;
-end;
-
 
 
 { TsCellRangeExprNode }

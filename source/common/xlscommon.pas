@@ -395,7 +395,7 @@ type
     FCurSheetIndex: Integer;
     FActivePane: Integer;
     FExternSheets: TStrings;
-    FSheetList: TFPList;
+//    FSheetList: TFPList;
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
@@ -485,6 +485,7 @@ type
       out AFlags: TsRelFlags); virtual;
     function ReadRPNFunc(AStream: TStream): Word; virtual;
     procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal); virtual;
+    procedure ReadRPNSheetIndex(AStream: TStream; out ASheet1, ASheet2: Integer); virtual;
     function ReadRPNTokenArray(AStream: TStream; ACell: PCell;
       ASharedFormulaBase: PCell = nil): Boolean; overload;
     function ReadRPNTokenArray(AStream: TStream; ARpnTokenArraySize: Word;
@@ -505,10 +506,11 @@ type
     procedure ReadWindow2(AStream: TStream); virtual;
     // Read WINDOWPROTECT record
     procedure ReadWindowProtect(AStream: TStream);
+
+  protected
+    procedure InternalReadFromStream(AStream: TStream);
     procedure ReadWorkbookGlobals(AStream: TStream); virtual;
     procedure ReadWorksheet(AStream: TStream); virtual;
-
-    procedure InternalReadFromStream(AStream: TStream);
 
   public
     constructor Create(AWorkbook: TsWorkbook); override;
@@ -976,7 +978,7 @@ constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
 
-  FSheetList := TFPList.Create;
+//  FSheetList := TFPList.Create;
 
   FPalette := TsPalette.Create;
   PopulatePalette;
@@ -1006,9 +1008,9 @@ var
 begin
   for j:=0 to FDefinedNames.Count-1 do TObject(FDefinedNames[j]).Free;
   FDefinedNames.Free;
-
+                         {
   for j:= 0 to FSheetList.Count-1 do TObject(FSheetList[j]).Free;
-  FSheetList.Free;
+  FSheetList.Free;        }
 
   FExternSheets.Free;
   FPalette.Free;
@@ -2472,6 +2474,17 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the indexes of the first and last worksheet of a cell reference used
+  in a formula from the current stream position.
+  Place holder - must be overridden! }
+procedure TsSpreadBIFFReader.ReadRPNSheetIndex(AStream: TStream;
+  out ASheet1, ASheet2: Integer);
+begin
+  ASheet1 := -1;
+  ASheet2 := -1;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the array of rpn tokens from the current stream position, creates an
   rpn formula, converts it to a string formula and stores it in the cell.
 -------------------------------------------------------------------------------}
@@ -2666,6 +2679,7 @@ var
   funcCode: Word;
   b: Byte;
   found: Boolean;
+  sheet1, sheet2: Integer;
 begin
   rpnItem := nil;
   p0 := AStream.Position;
@@ -2714,6 +2728,21 @@ begin
           case token of
             INT_EXCEL_TOKEN_TREFN_V: rpnItem := RPNCellValue(r, c, flags, rpnItem);
             INT_EXCEL_TOKEN_TREFN_R: rpnItem := RPNCellRef(r, c, flags, rpnItem);
+          end;
+        end;
+      INT_EXCEL_TOKEN_TREF3D_R, INT_EXCEL_TOKEN_TREF3d_V:
+        begin
+          ReadRPNSheetIndex(AStream, sheet1, sheet2);
+          ReadRPNCellAddressOffset(AStream, dr, dc, flags);
+          if (rfRelRow in flags)
+            then r := LongInt(ACell^.Row) + dr
+            else r := dr;
+          if (rfRelCol in flags)
+            then c := LongInt(ACell^.Col) + dc
+            else c := dc;
+          case token of
+            INT_EXCEL_TOKEN_TREF3D_V: rpnItem := RpnCellValue3D(sheet1, r, c, flags, rpnItem);
+            INT_EXCEL_TOKEN_TREF3D_R: rpnItem := RpnCellRef3D(sheet1, r, c, flags, rpnItem);
           end;
         end;
       INT_EXCEL_TOKEN_TAREA3D_R:
@@ -3046,6 +3075,7 @@ var
   BIFFEOF: Boolean;
   i: Integer;
   sheet: TsWorksheet;
+  numsheets: Integer;
 begin
   // Check if the operation succeeded
   if AStream.Size = 0 then
@@ -3060,6 +3090,7 @@ begin
 
   { Read workbook globals }
   ReadWorkbookGlobals(AStream);
+  numSheets := FWorkbook.GetWorksheetCount;
 
   { Check for the end of the file }
   if AStream.Position >= AStream.Size then
@@ -3078,12 +3109,12 @@ begin
     inc(FCurSheetIndex);
     // It can happen in files written by Office97 that the OLE directory is
     // at the end of the file.
-    if FCurSheetIndex = FSheetList.Count then
+    if FCurSheetIndex = numSheets then
       BIFFEOF := true;
   end;
 
   { Extract print ranges, repeated rows/cols }
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
+  for i := 0 to numSheets - 1 do begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
     FixDefinedNames(sheet);
     ExtractPrintRanges(sheet);

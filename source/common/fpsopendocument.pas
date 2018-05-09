@@ -17,6 +17,9 @@ Specifications obtained from:
 http://docs.oasis-open.org/office/v1.1/OS/OpenDocument-v1.1.pdf
 
 AUTHORS: Felipe Monteiro de Carvalho / Jose Luis Jurado Rincon / Werner Pamler
+
+NOTICE: Active define FPSpreadDebug in the project options to get a log during
+  reading/writing.
 }
 
 
@@ -28,11 +31,12 @@ unit fpsopendocument;
 
 {$I ..\fps.inc}
 
-{.$define FPSPREADDEBUG} //used to be XLSDEBUG
-
 interface
 
 uses
+ {$IFDEF FPSpreadDebug}
+  LazLogger,
+ {$ENDIF}
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
   avglvltree, math, dateutils, contnrs,
@@ -2385,6 +2389,10 @@ var
   fmt: PsCellFormat;
   ns: String;
 begin
+  {$IFDEF FPSpreadDebug}
+  DebugLn(Format('ReadFormula: ARow=%d, ACol=%d, AStyleIndex=%d', [ARow, ACol, AStyleIndex]));
+  {$ENDIF}
+
   // Create cell and apply format
   if FIsVirtualMode then
   begin
@@ -2453,6 +2461,14 @@ begin
     // Because fpsspreadsheet supports references to other sheets which might
     // not have been loaded at this moment, conversion to ExcelA1 dialect
     // (used by fps) is postponed until all sheets are read.
+
+    {$IFDEF FPSpreadDebug}
+    DebugLn('  Formula found: ' + formula);
+    (*
+    if SameText(formula, 'IsText({.B1])') then
+      formula := formula + '';
+      *)
+    {$ENDIF}
   end;
 
   // Read formula results
@@ -3519,6 +3535,12 @@ var
   s: String;
   colsSpanned, rowsSpanned: Integer;
 begin
+  {$IFDEF FPSpreadDebug}
+  DebugLn(Format('ReadCell: ARow=%d, ACol=%d, AFormatIndex=%d',
+    [ARow, ACol, AFormatIndex])
+  );
+  {$ENDIF}
+
   // Workaround for Excel files converted to ods by Calc: These files are
   // expanded to fill the entire max worksheet. They also have single empty
   // cell in the outermost cells --> don't write anything here to prevent this.

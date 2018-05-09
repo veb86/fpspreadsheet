@@ -65,6 +65,15 @@ uses
   fpsutils;
 
 type
+  TExternBookKind = (ebkExternal, ebkInternal, ebkAddInFunc, ebkDDE_OLE);
+
+  TBIFF8ExternBook = class
+    Kind: TExternBookKind;
+    DocumentURL: String;
+    SheetNames: String;
+    function GetSheetName(AIndex: Integer): String;
+  end;
+
   TBIFF8ExternSheet = packed record
     ExternBookIndex: Word;
     FirstSheetIndex: Word;
@@ -80,6 +89,7 @@ type
     FCommentPending: Boolean;
     FCommentID: Integer;
     FCommentLen: Integer;
+    FBiff8ExternBooks: TFPObjectList;
     FBiff8ExternSheets: array of TBiff8ExternSheet;
     function ReadString(const AStream: TStream; const ALength: Word;
       out ARichTextParams: TsRichTextParams): String;
@@ -94,6 +104,7 @@ type
     procedure ReadBOUNDSHEET(AStream: TStream);
     procedure ReadCONTINUE(const AStream: TStream);
     procedure ReadDEFINEDNAME(const AStream: TStream);
+    procedure ReadEXTERNBOOK(const AStream: TStream);
     procedure ReadEXTERNSHEET(const AStream: TStream);
     procedure ReadFONT(const AStream: TStream);
     procedure ReadFORMAT(AStream: TStream); override;
@@ -116,14 +127,18 @@ type
     procedure ReadRPNCellRangeOffset(AStream: TStream;
       out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
       out AFlags: TsRelFlags); override;
+    procedure ReadRPNSheetIndex(AStream: TStream; out ASheet1, ASheet2: Integer); override;
     procedure ReadRSTRING(AStream: TStream);
     procedure ReadSST(const AStream: TStream);
     function ReadString_8bitLen(AStream: TStream): String; override;
     procedure ReadStringRecord(AStream: TStream); override;
     procedure ReadTXO(const AStream: TStream);
+    procedure ReadXF(const AStream: TStream);
+
+  protected
     procedure ReadWorkbookGlobals(AStream: TStream); override;
     procedure ReadWorksheet(AStream: TStream); override;
-    procedure ReadXF(const AStream: TStream);
+
   public
     constructor Create(AWorkbook: TsWorkbook); override;
     destructor Destroy; override;
@@ -489,6 +504,27 @@ begin
 end;
 
 
+{ TBiff8ExternBook }
+
+function TBiff8ExternBook.GetSheetName(AIndex: Integer): String;
+var
+  L: TStrings;
+begin
+  L := TStringList.Create;
+  try
+    L.Delimiter := #1;
+    L.StrictDelimiter := true;
+    L.DelimitedText := SheetNames;
+    if (AIndex >= 0) and (AIndex < L.Count) then
+      Result := L[AIndex]
+    else
+      Result := '';
+  finally
+    L.Free;
+  end;
+end;
+
+
 { TsSpreadBIFF8Reader }
 
 constructor TsSpreadBIFF8Reader.Create(AWorkbook: TsWorkbook);
@@ -502,6 +538,7 @@ var
   j: Integer;
 begin
   SetLength(FBiff8ExternSheets, 0);
+  FBiff8ExternBooks.Free;
 
   if Assigned(FSharedStringTable) then
   begin
@@ -845,6 +882,7 @@ begin
        INT_EXCEL_ID_DATEMODE      : ReadDateMode(AStream);
        INT_EXCEL_ID_DEFINEDNAME   : ReadDEFINEDNAME(AStream);
        INT_EXCEL_ID_EOF           : SectionEOF := True;
+       INT_EXCEL_ID_EXTERNBOOK    : ReadEXTERNBOOK(AStream);
        INT_EXCEL_ID_EXTERNSHEET   : ReadEXTERNSHEET(AStream);
        INT_EXCEL_ID_FONT          : ReadFont(AStream);
        INT_EXCEL_ID_FORMAT        : ReadFormat(AStream);
@@ -875,13 +913,15 @@ var
   SectionEOF: Boolean = False;
   RecordType: Word;
   CurStreamPos: Int64;
-  sheetData: TsSheetData;
+//  sheetData: TsSheetData;
 begin
+  (*
   sheetData := TsSheetData(FSheetList[FCurSheetIndex]);
   FWorksheet := FWorkbook.AddWorksheet(sheetData.Name, true);
   if sheetData.Hidden then
     FWorksheet.Options := FWorksheet.Options + [soHidden];
-
+*)
+  FWorksheet := FWorkbook.GetWorksheetByIndex(FCurSheetIndex);
   while (not SectionEOF) do
   begin
     { Read the record header }
@@ -970,6 +1010,7 @@ var
   len: Byte;
   wideName: WideString;
   rtParams: TsRichTextParams;
+  sheet: TsWorksheet;
   sheetstate: Byte;
   sheetdata: TsSheetData;
 begin
@@ -990,10 +1031,15 @@ begin
   { Read string with flags }
   wideName := ReadWideString(AStream, len, rtParams);
 
+  sheet := FWorkbook.AddWorksheet(UTF8Encode(widename), true);
+  if sheetState <> 0 then
+    sheet.Options := sheet.Options + [soHidden];
+(*
   sheetData := TsSheetData.Create;
   sheetData.Name := UTF8Encode(wideName);
   sheetData.Hidden := sheetState <> 0;
   FSheetList.Add(sheetdata);
+  *)
 end;
 
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
@@ -1263,21 +1309,24 @@ end;
 function TsSpreadBIFF8Reader.ReadRPNCellRange3D(AStream: TStream;
   var ARPNItem: PRPNItem): Boolean;
 var
-  sheetIndex: Integer;
+  sheetIndex1, sheetIndex2: Integer;
   r1, c1, r2, c2: Cardinal;
   flags: TsRelFlags;
 begin
   Result := true;
-  sheetIndex := WordLEToN(AStream.ReadWord);
-  if FBiff8ExternSheets[sheetIndex].ExternBookIndex <> 0 then
-    exit(false);
+  ReadRPNSheetIndex(AStream, sheetIndex1, sheetIndex2);
+  if (sheetIndex1 = -1) or (sheetIndex2 = -1) then
+    exit(False);  // unsupported case
+
   ReadRPNCellRangeAddress(AStream, r1, c1, r2, c2, flags);
   if r2 = $FFFF then r2 := Cardinal(-1);
   if c2 = $FF then c2 := Cardinal(-1);
+
   ARPNItem := RPNCellRange3D(
-    FBiff8ExternSheets[sheetIndex].FirstSheetIndex, r1, c1,
-    FBiff8ExternSheets[sheetIndex].LastSheetIndex, r2, c2,
-    flags, ARPNItem);
+    sheetIndex1, r1, c1,
+    sheetIndex2, r2, c2,
+    flags, ARPNItem
+  );
 end;
 
 { Reads the difference between row and column corner indexes of a cell range
@@ -1309,6 +1358,31 @@ begin
   if (c1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
   if (c2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
   if (c2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
+end;
+
+procedure TsSpreadBIFF8Reader.ReadRPNSheetIndex(AStream: TStream;
+  out ASheet1, ASheet2: Integer);
+var
+  refIndex: Word;
+  ref: TBiff8ExternSheet;
+  extbook: TBiff8ExternBook;
+begin
+  // Index to REF entry in EXTERNSHEET record
+  refIndex := WordLEToN(AStream.ReadWord);
+
+  ref := FBiff8ExternSheets[refIndex];
+  extBook := FBiff8ExternBooks[ref.ExternBookIndex] as TBiff8ExternBook;
+
+  // Only links to internal sheets supported so far.
+  if extBook.Kind <> ebkInternal then
+  begin
+    ASheet1 := -1;
+    ASheet2 := -1;
+    exit;
+  end;
+
+  ASheet1 := ref.FirstSheetIndex;
+  ASheet2 := ref.LastSheetIndex;
 end;
 
 procedure TsSpreadBIFF8Reader.ReadRSTRING(AStream: TStream);
@@ -1801,7 +1875,61 @@ begin
   // Skip rest...
 end;
 
-{ Reads an EXTERNSHEET record. Needed for named cells and print ranges. }
+procedure TsSpreadBIFF8Reader.ReadEXTERNBOOK(const AStream: TStream);
+var
+  i, n: Integer;
+  url: widestring;
+  sheetnames: widestring;
+  externbook: TBiff8Externbook;
+  p: Int64;
+  t: array[0..1] of byte;
+begin
+  if FBiff8ExternBooks = nil then
+    FBiff8ExternBooks := TFPObjectList.Create(true);
+
+  externBook := TBiff8ExternBook.Create;
+
+  // Count of sheets in book
+  n := WordLEToN(AStream.ReadWord);
+
+  // Determine type of book
+  p := AStream.Position;
+  AStream.ReadBuffer(t[0], 2);
+  if (t[0] = 1) and (t[1] = 4) then
+    externbook.Kind := ebkInternal
+  else
+  if (t[0] = 1) and (t[1] = $3A) then
+    externbook.Kind := ebkAddInFunc
+  else
+  if n = 0 then
+    externbook.Kind := ebkDDE_OLE
+  else
+    externbook.Kind := ebkExternal;
+
+  if (externbook.Kind = ebkExternal) then
+  begin
+    AStream.Position := p;
+
+    // Encoded URL without sheet name (Unicode string, 16bit string length)
+    url := ReadWideString(AStream, false);
+    externbook.DocumentURL := UTF8Encode(url);
+
+    if n = 0 then
+      sheetnames := ''
+    else begin
+      // Sheet names (Unicode strings with 16bit string length)
+      sheetnames := UTF8Encode(ReadWideString(AStream, false));
+      for i := 2 to n do
+        sheetnames := sheetnames + #1 + UTF8Encode(ReadWideString(AStream, false));
+    end;
+    externbook.SheetNames := sheetNames;
+  end;
+
+  FBiff8ExternBooks.Add(externbook);
+end;
+
+{ Reads an EXTERNSHEET record. Needed for 3d-references, named cells and
+  print ranges. }
 procedure TsSpreadBIFF8Reader.ReadEXTERNSHEET(const AStream: TStream);
 var
   numItems: Word;

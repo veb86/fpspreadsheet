@@ -1322,15 +1322,17 @@ begin
                     end;
       rtBoolean   : WriteBoolValue(ACell, res.ResBoolean);
       rtCell      : begin
-                      cell := GetCell(res.ResRow, res.ResCol);
-                      case cell^.ContentType of
-                        cctNumber    : WriteNumber(ACell, cell^.NumberValue);
-                        cctDateTime  : WriteDateTime(ACell, cell^.DateTimeValue);
-                        cctUTF8String: WriteText(ACell, cell^.UTF8StringValue);
-                        cctBool      : WriteBoolValue(ACell, cell^.Boolvalue);
-                        cctError     : WriteErrorValue(ACell, cell^.ErrorValue);
-                        cctEmpty     : WriteBlank(ACell);
-                      end;
+//                      cell := GetCell(res.ResRow, res.ResCol);
+                      cell := res.Worksheet.FindCell(res.ResRow, res.ResCol);
+                      if cell <> nil then
+                        case cell^.ContentType of
+                          cctNumber    : WriteNumber(ACell, cell^.NumberValue);
+                          cctDateTime  : WriteDateTime(ACell, cell^.DateTimeValue);
+                          cctUTF8String: WriteText(ACell, cell^.UTF8StringValue);
+                          cctBool      : WriteBoolValue(ACell, cell^.Boolvalue);
+                          cctError     : WriteErrorValue(ACell, cell^.ErrorValue);
+                          cctEmpty     : WriteBlank(ACell);
+                        end;
                     end;
     end;
   finally
