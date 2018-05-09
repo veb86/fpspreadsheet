@@ -53,7 +53,6 @@ unit xlsbiff5;
 {$endif}
 
 {$define USE_NEW_OLE}
-{.$define FPSPREADDEBUG} //define to print out debug info to console. Used to be XLSDEBUG;
 
 interface
 
@@ -81,6 +80,7 @@ type
     procedure ReadFORMAT(AStream: TStream); override;
     procedure ReadLABEL(AStream: TStream); override;
     function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; override;
+    procedure ReadRPNSheetIndex(AStream: TStream; out ASheet1, ASheet2: Integer); override;
     procedure ReadRSTRING(AStream: TStream);
     procedure ReadStandardWidth(AStream: TStream; ASheet: TsWorksheet);
     procedure ReadStringRecord(AStream: TStream); override;
@@ -218,6 +218,9 @@ var
 implementation
 
 uses
+ {$IFDEF FPSpreadDebug}
+  LazLogger,
+ {$ENDIF}
   Math,
   fpsStrings, fpsReaderWriter, fpsStreams, fpsPalette, fpsNumFormat, xlsconst;
 
@@ -599,7 +602,7 @@ begin                                                           (*
         $0225: ; //(DEFAULTROWHEIGHT) This record specifies the default height and default flags for rows that do not have a corresponding ROW record.
         $023E: ; //(WINDOW2) This record contains the range address of the used area in the current sheet.
       else
-        WriteLn(format('Record type: %.4X Record Size: %.4X',[RecordType,RecordSize]));
+        DebugLn(format('Record type: %.4X Record Size: %.4X',[RecordType,RecordSize]));
       end;
       {$ENDIF}
     end;
@@ -645,6 +648,34 @@ begin
   if r2 = $FFFF then r2 := Cardinal(-1);
   if c2 = $FF then c2 := Cardinal(-1);
   ARPNItem := RPNCellRange3D(sheetIndex1, r1, c1, sheetIndex2, r2, c2, flags, ARPNItem);
+end;
+
+procedure TsSpreadBIFF5Reader.ReadRPNSheetIndex(AStream: TStream;
+  out ASheet1, ASheet2: Integer);
+var
+  idx: Int16;
+begin
+  // One-based index to EXTERNSHEET record. Negative to indicate a 3D reference.
+  // Positive to indicate an external reference
+  idx := WordLEToN(AStream.ReadWord);
+
+  // We don't support external references at the moment.
+  if idx > 0 then begin
+    ASheet1 := -1;
+    ASheet1 := -1;
+    exit;
+  end;
+
+  // Skip 8 unused bytes
+  AStream.Position := AStream.Position + 8;
+
+  // Zero-based index to first referenced sheet (-1 = deleted sheet)
+  idx := WordLEToN(AStream.ReadWord);
+  ASheet1 := idx;
+
+  // Zero-based index to last referenced sheet (-1 = deleted sheet)
+  idx := WordLEToN(AStream.ReadWord);
+  ASheet2 := idx;
 end;
 
 procedure TsSpreadBIFF5Reader.ReadRSTRING(AStream: TStream);
@@ -1022,8 +1053,8 @@ begin
 
   { Character set }
   lCodepage := AStream.ReadByte();
-  {$ifdef FPSPREADDEBUG}
-  WriteLn('Reading Font Codepage='+IntToStr(lCodepage));
+  {$ifdef FPSpreadDebug}
+  DebugLn('Reading Font Codepage = ' + IntToStr(lCodepage));
   {$endif}
 
   { Not used }

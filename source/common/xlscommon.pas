@@ -1622,6 +1622,9 @@ end;
 
   NOTE: A character #03 is prepended to the sheet name if the EXTERNSHEET stores
   a reference to one of the own sheets.
+
+  NOTE: The string length field is decreased by 1, if the EXTERNSHEET stores
+  a reference to one of the own sheets (first character is #03).
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadExternSheet(AStream: TStream);
 var

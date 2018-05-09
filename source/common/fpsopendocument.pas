@@ -34,9 +34,6 @@ unit fpsopendocument;
 interface
 
 uses
- {$IFDEF FPSpreadDebug}
-  LazLogger,
- {$ENDIF}
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
   avglvltree, math, dateutils, contnrs,
@@ -293,6 +290,9 @@ var
 implementation
 
 uses
+ {$IFDEF FPSpreadDebug}
+  LazLogger,
+ {$ENDIF}
   StrUtils, Variants, LazFileUtils, URIParser, LazUTF8,
  {$IFDEF FPS_VARISBOOL}
   fpsPatches,
@@ -2390,7 +2390,7 @@ var
   ns: String;
 begin
   {$IFDEF FPSpreadDebug}
-  DebugLn(Format('ReadFormula: ARow=%d, ACol=%d, AStyleIndex=%d', [ARow, ACol, AStyleIndex]));
+  DebugLn(Format('[ReadFormula] ARow=%d, ACol=%d, AStyleIndex=%d', [ARow, ACol, AStyleIndex]));
   {$ENDIF}
 
   // Create cell and apply format
@@ -2416,7 +2416,7 @@ begin
     if formula <> '' then
     begin
       // Formulas written by Spread begin with 'of:=', by Excel with 'msof:='.
-      // Remove that. And both use different list separators
+      // Remove that. And both use different list separators.
       p := pos('=', formula);
       ns := Copy(formula, 1, p-2);
       case ns of
@@ -2425,36 +2425,7 @@ begin
       end;
       Delete(formula, 1, p);
     end;
-    (*
-    if not (boIgnoreFormulas in FWorkbook.Options) then
-    begin
-      // ... convert to Excel "A1" dialect used by fps by defailt
-      parser := TsSpreadsheetParser.Create(FWorksheet);
-      try
-        try
-          parser.Dialect := fdOpenDocument;
-          parser.LocalizedExpression[FPointSeparatorSettings] := formula;
-          parser.Dialect := fdExcelA1;
-          formula := parser.Expression;
-        except
-          on E:EExprParser do
-          begin
-            Workbook.AddErrorMsg(E.Message);
-            formula := '';
-            if (boAbortReadOnFormulaError in Workbook.Options) then raise;
-          end;
-          on E:ECalcEngine do
-          begin
-            Workbook.AddErrorMsg(E.Message);
-            formula := '';
-            if (boAbortReadOnFormulaError in Workbook.Options) then raise;
-          end;
-        end;
-      finally
-        parser.Free;
-      end;
-    end;
-    *)
+
     // ... and store in cell's FormulaValue field.
     cell^.FormulaValue := formula;
     // Note: This formula is still in OpenDocument dialect. Conversion to
@@ -2464,10 +2435,6 @@ begin
 
     {$IFDEF FPSpreadDebug}
     DebugLn('  Formula found: ' + formula);
-    (*
-    if SameText(formula, 'IsText({.B1])') then
-      formula := formula + '';
-      *)
     {$ENDIF}
   end;
 
@@ -3535,11 +3502,11 @@ var
   s: String;
   colsSpanned, rowsSpanned: Integer;
 begin
-  {$IFDEF FPSpreadDebug}
-  DebugLn(Format('ReadCell: ARow=%d, ACol=%d, AFormatIndex=%d',
+ {$IFDEF FPSpreadDebug}
+  DebugLn(Format('[ReadCell] ARow=%d, ACol=%d, AFormatIndex=%d',
     [ARow, ACol, AFormatIndex])
   );
-  {$ENDIF}
+ {$ENDIF}
 
   // Workaround for Excel files converted to ods by Calc: These files are
   // expanded to fill the entire max worksheet. They also have single empty

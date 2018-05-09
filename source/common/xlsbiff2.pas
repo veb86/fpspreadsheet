@@ -176,6 +176,9 @@ procedure InitBiff2Limitations(out ALimitations: TsSpreadsheetFormatLimitations)
 implementation
 
 uses
+ {$IFDEF FPSpreadDebug}
+  LazLogger,
+ {$ENDIF}
   Math,
   fpsStrings, fpsReaderWriter, fpsPalette, fpsNumFormat;
 

@@ -50,7 +50,6 @@ unit xlsbiff8;
 
 // The new OLE code is much better, so always use it
 {$define USE_NEW_OLE}
-{.$define FPSPREADDEBUG} //define to print out debug info to console. Used to be XLSDEBUG;
 
 interface
 
@@ -318,6 +317,9 @@ procedure InitBIFF8Limitations(out ALimitations: TsSpreadsheetFormatLimitations)
 implementation
 
 uses
+ {$IFDEF FPSpreadDebug}
+  LazLogger,
+ {$ENDIF}
   Math, lconvencoding, LazFileUtils, URIParser,
   fpsStrings, {%H-}fpsPatches, fpsStreams, fpsReaderWriter, fpsPalette,
   fpsNumFormat, fpsExprParser, xlsEscher;
@@ -930,7 +932,9 @@ begin
     PendingRecordSize := RecordSize;
 
 // For debugging to find out in which record a crash happens:
-//    WriteLn(Format('Stream.Pos: %d, RecordType: $%.04x, RecordSize: %d', [AStream.Position-4, RecordType, RecordSize]));
+   {$IFDEF FPSpreadDebug}
+    DebugLn(Format('[ReadWorksheet] Stream.Pos: %d, RecordType: $%.04x, RecordSize: %d', [AStream.Position-4, RecordType, RecordSize]));
+   {$ENDIF}
 
     CurStreamPos := AStream.Position;
 
@@ -2009,8 +2013,8 @@ begin
 
   { Character set }
   lCodepage := AStream.ReadByte();
-  {$ifdef FPSPREADDEBUG}
-  WriteLn('Reading Font Codepage='+IntToStr(lCodepage));
+  {$ifdef FPSpreadDebug}
+  DebugLn('Reading Font Codepage='+IntToStr(lCodepage));
   {$endif}
 
   { Not used }
