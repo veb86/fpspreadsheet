@@ -177,7 +177,7 @@ type
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteEXTERNBOOK(AStream: TStream);
-    procedure WriteEXTERNSHEET(AStream: TStream); override;
+    procedure WriteEXTERNSHEET(AStream: TStream);
     procedure WriteFONT(AStream: TStream; AFont: TsFont);
     procedure WriteFonts(AStream: TStream);
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
@@ -915,14 +915,7 @@ var
   SectionEOF: Boolean = False;
   RecordType: Word;
   CurStreamPos: Int64;
-//  sheetData: TsSheetData;
 begin
-  (*
-  sheetData := TsSheetData(FSheetList[FCurSheetIndex]);
-  FWorksheet := FWorkbook.AddWorksheet(sheetData.Name, true);
-  if sheetData.Hidden then
-    FWorksheet.Options := FWorksheet.Options + [soHidden];
-*)
   FWorksheet := FWorkbook.GetWorksheetByIndex(FCurSheetIndex);
   while (not SectionEOF) do
   begin
@@ -1016,7 +1009,6 @@ var
   rtParams: TsRichTextParams;
   sheet: TsWorksheet;
   sheetstate: Byte;
-  sheetdata: TsSheetData;
 begin
   { Absolute stream position of the BOF record of the sheet represented
     by this record }
@@ -1038,12 +1030,6 @@ begin
   sheet := FWorkbook.AddWorksheet(UTF8Encode(widename), true);
   if sheetState <> 0 then
     sheet.Options := sheet.Options + [soHidden];
-(*
-  sheetData := TsSheetData.Create;
-  sheetData.Name := UTF8Encode(wideName);
-  sheetData.Hidden := sheetState <> 0;
-  FSheetList.Add(sheetdata);
-  *)
 end;
 
 function TsSpreadBIFF8Reader.ReadString(const AStream: TStream;
@@ -1886,7 +1872,7 @@ var
   sheetnames: widestring;
   externbook: TBiff8Externbook;
   p: Int64;
-  t: array[0..1] of byte;
+  t: array[0..1] of byte = (0, 0);
 begin
   if FBiff8ExternBooks = nil then
     FBiff8ExternBooks := TFPObjectList.Create(true);
@@ -1904,8 +1890,7 @@ begin
   else
   if (t[0] = 1) and (t[1] = $3A) then
     externbook.Kind := ebkAddInFunc
-  else
-  if n = 0 then
+  else if n = 0 then
     externbook.Kind := ebkDDE_OLE
   else
     externbook.Kind := ebkExternal;
@@ -1922,11 +1907,11 @@ begin
       sheetnames := ''
     else begin
       // Sheet names (Unicode strings with 16bit string length)
-      sheetnames := UTF8Encode(ReadWideString(AStream, false));
+      sheetnames := ReadWideString(AStream, false);
       for i := 2 to n do
-        sheetnames := sheetnames + #1 + UTF8Encode(ReadWideString(AStream, false));
+        sheetnames := sheetnames + widechar(#1) + ReadWideString(AStream, false);
     end;
-    externbook.SheetNames := sheetNames;
+    externbook.SheetNames := UTF8Encode(sheetNames);
   end;
 
   FBiff8ExternBooks.Add(externbook);
@@ -3759,16 +3744,14 @@ end;
 
 function TsSpreadBIFF8Writer.WriteRPNCellAddress3D(AStream: TStream;
   ASheet, ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
-var
-  c: Cardinal;
 begin
   // Next line is a simplification: We should write the index of the sheet
   // in the REF record here, but these are arranged in the same order as the
   // sheets. --> MUST BE RE-DONE ONCE SHEET RANGES ARE ALLOWED.
   AStream.WriteWord(WordToLE(ASheet));
 
-  // The row/col address is written in relative notation!
-  Result := 2 + WriteRPNCellAddress(AStream, ARow, ACol, [rfRelRow, rfRelCol]);
+  // Write row/column address
+  Result := 2 + WriteRPNCellAddress(AStream, ARow, ACol, AFlags);
 end;
 
 

@@ -3760,7 +3760,7 @@ begin
       '_':  // Excel: Leave width of next character empty
         begin
           FToken := NextToken;
-          uch := UTF8CharacterToUnicode(FCurrent, n);
+          uch := UTF8CharacterToUnicode(FCurrent, n);                           // wp: Why Unicode ???
           if n > 1 then
           begin
             AddElement(nftEmptyCharWidth, UnicodeToUTF8(uch));

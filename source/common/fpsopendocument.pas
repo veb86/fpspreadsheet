@@ -2384,7 +2384,6 @@ var
   valueType, calcExtValueType: String;
   valueStr: String;
   node: TDOMNode;
-  parser: TsSpreadsheetParser;
   p: Integer;
   fmt: PsCellFormat;
   ns: String;
@@ -7949,7 +7948,6 @@ var
   fmt: TsCellFormat;
   numFmtParams: TsNumFormatParams;
   h,m,s,ms: Word;
-  mask: String;
 begin
   Unused(ARow, ACol);
 

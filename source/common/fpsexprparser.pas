@@ -599,7 +599,6 @@ type
     FIsRef: Boolean;
     FOtherSheet: Boolean;
   protected
-    procedure Check; override;
     function GetCol: Cardinal;
     function GetRow: Cardinal;
     function GetSheetIndex: Integer;
@@ -611,6 +610,7 @@ type
       ACellString: String; Othersheet: Boolean); overload;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
+    procedure Check; override;
     function NodeType: TsResultType; override;
     property Worksheet: TsWorksheet read FWorksheet;
   end;
@@ -1020,12 +1020,10 @@ var
   S: String;
   row, row2: Cardinal;
   col, col2: Cardinal;
-  sheetName: String;
   flags: TsRelFlags;
 begin
   C := CurrentChar;
   if C = FSheetNameTerminator then C := NextPos;
-  sheetName := '';
   while (not IsWordDelim(C)) and (C <> cNull) and (C <> FSheetNameTerminator) do
   begin
     if ((FParser.Dialect = fdOpenDocument) and (C = ']')) then begin

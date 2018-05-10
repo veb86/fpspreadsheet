@@ -76,6 +76,7 @@ type
     procedure Test_Write_Read_CalcStringFormula_ODS;
 
     { Formulas with 3D references to other sheets }
+    procedure Test_Write_Read_Calc3DFormula_BIFF5;
     procedure Test_Write_Read_Calc3DFormula_BIFF8;
     procedure Test_Write_Read_Calc3DFormula_OOXML;
     procedure Test_Write_Read_Calc3DFormula_ODS;
@@ -698,20 +699,11 @@ var
   workbook: TsWorkbook;
   row: Integer;
   tempFile: string;    //write xls/xml to this file and read back from it
-  actual: TsExpressionResult;
-  expected: TsExpressionResult;
+  actual, expected: TsExpressionResult;
   cell: PCell;
   sollValues: array of TsExpressionResult;
-  formula: String;
-  ErrorMargin: Double;
+  formula, actualformula: String;
 begin
-  ErrorMargin:=0; //1.44E-7;
-  //1.44E-7 for SUMSQ formula
-  //6.0E-8 for SUM formula
-  //4.8E-8 for MAX formula
-  //2.4E-8 for now formula
-  //about 1E-15 is needed for some trig functions
-
   // Create test workbook
   workbook := TsWorkbook.Create;
   try
@@ -746,10 +738,14 @@ begin
 
     for row := 0 to sheet1.GetLastRowIndex do
     begin
+      cell := sheet1.FindCell(Row, 0);
+      if (Cell = nil) then
+        Fail('Error in test code: failed to get cell ' + CellNotation(sheet1, Row, 0));
+      formula := sheet1.ReadAsText(cell);
+
       cell := sheet1.FindCell(Row, 1);
       if (cell = nil) then
         fail('Error in test code: Failed to get cell ' + CellNotation(sheet1, Row, 1));
-
       case cell^.ContentType of
         cctBool       : actual := BooleanResult(cell^.BoolValue);
         cctNumber     : actual := FloatResult(cell^.NumberValue);
@@ -759,6 +755,7 @@ begin
         cctEmpty      : actual := EmptyResult;
         else            fail('ContentType not supported');
       end;
+      actualformula := cell^.FormulaValue;
 
       expected := SollValues[row];
       // Cell does not store integers!
@@ -784,7 +781,7 @@ begin
         rtFloat:
           {$if (defined(mswindows)) or (FPC_FULLVERSION>=20701)}
           // FPC 2.6.x and trunk on Windows need this, also FPC trunk on Linux x64
-          CheckEquals(expected.ResFloat, actual.ResFloat, ErrorMargin,
+          CheckEquals(expected.ResFloat, actual.ResFloat,
             'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
           {$else}
           // Non-Windows: test without error margin
@@ -800,6 +797,9 @@ begin
             GetEnumname(TypeInfo(TsErrorValue), ord(actual.ResError)),
             'Test read calculated formula error value mismatch, cell '+CellNotation(sheet1, Row, 1));
       end;
+
+      CheckEquals(
+        formula, actualformula, 'Read formula string mismatch, cell ' +CellNotation(sheet1, Row, 1));
     end;
 
   finally
@@ -808,6 +808,11 @@ begin
   end;
 end;
 
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_BIFF5;
+begin
+  Test_Write_Read_Calc3DFormulas(sfExcel5);
+end;
 
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_BIFF8;
 begin

@@ -111,9 +111,13 @@ type
     procedure WriteFonts(AStream: TStream);
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
       ANumFormatIndex: Integer); override;
+    procedure WriteGlobalLinkTable(AStream: TStream);
     procedure WriteIndex(AStream: TStream);
     procedure WriteLABEL(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
+    procedure WriteLocalLinkTable(AStream: TStream);
+    function WriteRPNCellAddress3D(AStream: TStream; ASheet, ARow, ACol: Cardinal;
+      AFlags: TsRelFlags): Word; override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
@@ -394,13 +398,6 @@ begin
   sheet := FWorkbook.AddWorksheet(ConvertEncoding(s, FCodePage, EncodingUTF8), true);
   if sheetState <> 0 then
     sheet.Options := sheet.Options + [soHidden];
-  (*
-  { Temporarily store parameters for worksheet in FSheetList }
-  sheetData := TsSheetData.Create;
-  sheetData.Name := ConvertEncoding(s, FCodePage, EncodingUTF8);
-  sheetData.Hidden := sheetState <> 0;
-  FSheetList.Add(sheetData);
-  *)
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -512,13 +509,7 @@ var
   SectionEOF: Boolean = False;
   RecordType: Word;
   CurStreamPos: Int64;
-//  sheetData: TsSheetData;
-begin                                                           (*
-  sheetData := TsSheetData(FSheetList[FCurSheetIndex]);
-  FWorksheet := FWorkbook.AddWorksheet(sheetData.Name, true);
-  if sheetData.Hidden then
-    FWorksheet.Options := FWorksheet.Options + [soHidden];
-                                                              *)
+begin
   FWorksheet := FWorkbook.GetWorksheetByIndex(FCurSheetIndex);
   while (not SectionEOF) do
   begin
@@ -1188,8 +1179,9 @@ begin
   WriteWindowProtect(AStream, bpLockWindows in Workbook.Protection);
   WritePROTECT(AStream, bpLockStructure in Workbook.Protection);
   WritePASSWORD(AStream, Workbook.CryptoInfo);
-  WriteEXTERNCOUNT(AStream);
-  WriteEXTERNSHEET(AStream);
+  WriteGlobalLinkTable(AStream);
+//  WriteEXTERNCOUNT(AStream);
+//  WriteEXTERNSHEET(AStream);
   WriteDefinedNames(AStream);
   WriteWINDOW1(AStream);
   WriteFonts(AStream);
@@ -1235,6 +1227,9 @@ begin
       WriteMargin(AStream, 2);  // 2 = top margin
       WriteMargin(AStream, 3);  // 3 = bottom margin
       WritePageSetup(AStream);
+
+      // Local link table
+      WriteLocalLinkTable(AStream);
 
       // Protection
       if FWorksheet.IsProtected then begin
@@ -1732,6 +1727,36 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes the global link table: an EXTERNCOUNT record and several EXTERNSHEET
+  records
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF5Writer.WriteGlobalLinkTable(AStream: TStream);
+var
+  L: TStringList;
+  i: Integer;
+  sheet: TsWorksheet;
+begin
+  L := TStringList.Create;
+  try
+    for i := 0 to FWorkbook.GetWorksheetCount-1 do
+    begin
+      sheet := FWorkbook.GetWorksheetByIndex(i);
+      with sheet.PageLayout do
+        if (NumPrintRanges > 0) or HasRepeatedCols or HasRepeatedRows then
+          L.Add(sheet.Name);
+    end;
+    if L.Count = 0 then
+      exit;
+
+    WriteEXTERNCOUNT(AStream, L.Count);
+    for i:=0 to L.Count-1 do
+      WriteEXTERNSHEET(AStream, L[i]);
+  finally
+    L.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes an Excel 5 INDEX record
 
   nm = (rl - rf - 1) / 32 + 1 (using integer division)
@@ -1852,6 +1877,75 @@ begin
 
   { Clean up }
   SetLength(buf, 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a local Link Table with EXTERNCOUNT and EXTERSHEET records for
+  internal 3D references to other sheets
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF5Writer.WriteLocalLinkTable(AStream: TStream);
+var
+  L: TStringList;
+  cell: PCell;
+  found: Boolean;
+  i, n: Integer;
+begin
+  L := TStringList.Create;
+  try
+    // Check whether there is any cell with a formula with 3D reference
+    found := false;
+    for cell in FWorksheet.Cells do
+      if HasFormula(cell) and (pos('!', cell^.FormulaValue) <> 0) then begin
+        found := true;
+        break;
+      end;
+    // Write every sheet to local link table. This is too much - it would be
+    // enough to write only those sheets involved in a 3d reference - but it
+    // simplifies processing of 3d references a lot.
+    if found then begin
+      n := FWorkbook.GetWorksheetCount;
+      if n > 0 then begin
+        WriteEXTERNCOUNT(AStream, word(n));
+        for i := 0 to n-1 do
+          WriteEXTERNSHEET(AStream, FWorkbook.GetWorksheetByIndex(i).Name);
+      end;
+    end;
+  finally
+    L.Free;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a 3D cell address consisting of worksheet, row and column indexes.
+  Needed for references to other worksheets within the same workbook.
+  Returns the number of bytes written.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFF5Writer.WriteRPNCellAddress3D(AStream: TStream;
+  ASheet, ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
+var
+  p: Int64;
+begin
+  p := AStream.Position;
+
+  // One-based index to EXTERNSHEET record in the Local Link Table
+  // containing the name of the first referenced sheet.
+  // This is always a negative value to indicate a 3D reference.
+  AStream.WriteWord(WordToLE(-(ASheet+1)));
+
+  // 8 unused bytes
+  AStream.WriteDWord(0);
+  AStream.WriteDWord(0);
+
+  // Zero-based index to first referenced sheet (FFFFH = deleted sheet)
+  AStream.WriteWord(WordToLE(ASheet));
+
+  // Zero-based index to last referenced sheet (FFFFH = deleted sheet)
+  AStream.WriteWord(WordToLE(ASheet));
+
+  // Write row/column address
+  WriteRPNCellAddress(AStream, ARow, ACol, AFlags);
+
+  Result := AStream.Position - p;
 end;
 
 {@@ ----------------------------------------------------------------------------

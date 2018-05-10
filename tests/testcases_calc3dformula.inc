@@ -69,7 +69,6 @@
   SetLength(SollValues, Row+1);
   SollValues[Row] := StringResult('AB');
 
-
   {
   inc(Row);
   formula := 'D1&Sheet2!B3%"BC"';

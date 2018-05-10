@@ -395,7 +395,6 @@ type
     FCurSheetIndex: Integer;
     FActivePane: Integer;
     FExternSheets: TStrings;
-//    FSheetList: TFPList;
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
@@ -573,9 +572,9 @@ type
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
     // Writes out an EXTERNCOUNT record
-    procedure WriteEXTERNCOUNT(AStream: TStream);
+    procedure WriteEXTERNCOUNT(AStream: TStream; ACount: Word);
     // Writes out an EXTERNSHEET record
-    procedure WriteEXTERNSHEET(AStream: TStream); virtual;
+    procedure WriteEXTERNSHEET(AStream: TStream; ASheetName: String);
     // Writes out a FORMAT record
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
       ANumFormatIndex: Integer); virtual;
@@ -613,7 +612,7 @@ type
     function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
       AFlags: TsRelFlags): Word; virtual;
     function WriteRPNCellAddress3D(AStream: TStream; ASheet, ARow, ACol: Cardinal;
-      AFlags: TsRelFlags): Word; virtual;
+      {%H-}AFlags: TsRelFlags): Word; virtual;
     function WriteRPNCellOffset(AStream: TStream; ARowOffset, AColOffset: Integer;
       AFlags: TsRelFlags): Word; virtual;
     function WriteRPNCellRangeAddress(AStream: TStream; ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -978,8 +977,6 @@ constructor TsSpreadBIFFReader.Create(AWorkbook: TsWorkbook);
 begin
   inherited Create(AWorkbook);
 
-//  FSheetList := TFPList.Create;
-
   FPalette := TsPalette.Create;
   PopulatePalette;
 
@@ -1008,9 +1005,6 @@ var
 begin
   for j:=0 to FDefinedNames.Count-1 do TObject(FDefinedNames[j]).Free;
   FDefinedNames.Free;
-                         {
-  for j:= 0 to FSheetList.Count-1 do TObject(FSheetList[j]).Free;
-  FSheetList.Free;        }
 
   FExternSheets.Free;
   FPalette.Free;
@@ -2483,6 +2477,7 @@ end;
 procedure TsSpreadBIFFReader.ReadRPNSheetIndex(AStream: TStream;
   out ASheet1, ASheet2: Integer);
 begin
+  Unused(AStream);
   ASheet1 := -1;
   ASheet2 := -1;
 end;
@@ -2733,7 +2728,13 @@ begin
             INT_EXCEL_TOKEN_TREFN_R: rpnItem := RPNCellRef(r, c, flags, rpnItem);
           end;
         end;
-      INT_EXCEL_TOKEN_TREF3D_R, INT_EXCEL_TOKEN_TREF3d_V:
+      INT_EXCEL_TOKEN_TREF3D_V:
+        begin
+          ReadRPNSheetIndex(AStream, sheet1, sheet2);
+          ReadRPNCellAddress(AStream, r, c, flags);
+          rpnItem := RpnCellValue3D(sheet1, r, c, flags, rpnItem);
+        end;
+      INT_EXCEL_TOKEN_TREF3D_R: //, INT_EXCEL_TOKEN_TREF3d_V:
         begin
           ReadRPNSheetIndex(AStream, sheet1, sheet2);
           ReadRPNCellAddressOffset(AStream, dr, dc, flags);
@@ -3711,6 +3712,7 @@ end;
   Writes a BIFF EXTERNCOUNT record.
   Valid for BIFF2-BIFF5.
 -------------------------------------------------------------------------------}
+(*
 procedure TsSpreadBIFFWriter.WriteEXTERNCOUNT(AStream: TStream);
 var
   i: Integer;
@@ -3734,11 +3736,42 @@ begin
   { Count of EXTERNSHEET records following }
   AStream.WriteWord(WordToLE(n));
 end;
+          *)
+procedure TsSpreadBIFFWriter.WriteEXTERNCOUNT(AStream: TStream; ACount: Word);
+begin
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNCOUNT, 2);
+
+  { Count of EXTERNSHEET records following }
+  AStream.WriteWord(WordToLE(ACount));
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes a BIFF EXTERNSHEET record.
   Valid for BIFF2-BIFF5.
 -------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteEXTERNSHEET(AStream: TStream;
+  ASheetName: String);
+var
+  s: ansistring;
+begin
+  // Convert to ANSI
+  s := ConvertEncoding(ASheetName, encodingUTF8, FCodePage);
+
+  { BIFF record header }
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNSHEET, 2 + Length(s));
+
+  { Character count in worksheet name - don't count the following flag! }
+  AStream.WriteByte(Length(s));
+
+  { Flag for identification as own sheet }
+  AStream.WriteByte($03);
+
+  { Sheet name }
+  AStream.WriteBuffer(s[1], Length(s));
+end;
+                                             (*
 procedure TsSpreadBIFFWriter.WriteEXTERNSHEET(AStream: TStream);
 var
   sheet: TsWorksheet;
@@ -3766,7 +3799,7 @@ begin
     end;
   end;
 end;
-
+             *)
 {@@ ----------------------------------------------------------------------------
   Writes the a margin record for printing (margin is in inches).
   The margin is identified by the parameter AMargin:
@@ -4330,12 +4363,15 @@ end;
 
 {@ -----------------------------------------------------------------------------
   Writes the address of a cell as used in an RPN formula and returns the
-  count of bytes written.
+  count of bytes written. The return value is $FFFF if 3D addresses are not
+  supported (BIFF 2).
   Placeholder. To be overridden by BIFF5 and BIFF8.
 -------------------------------------------------------------------------------}
 function TsSpreadBIFFWriter.WriteRPNCellAddress3D(AStream: TStream;
   ASheet, ARow, ACol: Cardinal; AFlags: TsRelFlags): Word;
 begin
+  Unused(AStream, ASheet);
+  Unused(ARow, ACol);
   Result := 0;
 end;
 
@@ -4626,7 +4662,10 @@ begin
             AFormula[i].Row, AFormula[i].Col,
             AFormula[i].RelFlags
           );
-          inc(RPNLength, n);
+          if n = $FFFF then
+            FWorkbook.AddErrorMsg('3D cell addresses are not supported.')
+          else
+            inc(RPNLength, n);
         end;
 
       INT_EXCEL_TOKEN_TAREA_R: { fekCellRange }
