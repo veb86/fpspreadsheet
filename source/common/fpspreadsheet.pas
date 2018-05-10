@@ -852,6 +852,9 @@ type
     function GetNumberFormat(AIndex: Integer): TsNumFormatParams;
     function GetNumberFormatCount: Integer;
 
+    { Calculation }
+    procedure CalcFormulas;
+
     { Clipboard }
     procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
       AParams: TsStreamParams = []);
@@ -1354,10 +1357,15 @@ end;
      "not calculated" they are calculated and then tagged as "calculated".
   This results in an iterative calculation procedure. In the end, all cells
   are calculated.
+
+  NOTE: IF THE WORKSHEET CONTAINS CELLS WHICH LINK TO OTHER WORKSHEETS THEN
+  THIS CALCULATION MAY NOT BE CORRECT. USE THE SAME METHOD OF THE WORKBOOK
+  INSTEAD !!!
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcFormulas;
 var
   cell: PCell;
+  i: Integer;
 begin
   if (boIgnoreFormulas in Workbook.Options) then
     exit;
@@ -9655,6 +9663,51 @@ end;
 function TsWorkbook.GetNumberFormatCount: Integer;
 begin
   Result := FNumFormatList.Count;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Calculates all formulas of the workbook.
+
+  Since formulas may reference not-yet-calculated cells, this occurs in
+  two steps:
+  1. All formula cells are marked as "not calculated".
+  2. Cells are calculated. If referenced cells are found as being
+     "not calculated" they are calculated and then tagged as "calculated".
+  This results in an iterative calculation procedure. In the end, all cells
+  are calculated.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.CalcFormulas;
+var
+  cell: PCell;
+  p: Pointer;
+  sheet: TsWorksheet;
+  i: Integer;
+begin
+  if (boIgnoreFormulas in Options) then
+    exit;
+
+  // prevent infinite loop due to triggering of formula calculation whenever
+  // a cell changes during execution of CalcFormulas.
+  inc(FCalculationLock);
+  try
+    // Step 1 - mark all formula cells as "not calculated"
+    for p in FWorksheets do begin
+      sheet := TsWorksheet(p);
+      for cell in sheet.Cells do
+        if HasFormula(cell) then
+          sheet.SetCalcState(cell, csNotCalculated);
+    end;
+
+    // Step 2 - calculate cells. If a not-yet-calculated cell is found it is
+    for p in FWorksheets do begin
+      sheet := TsWorksheet(p);
+      for cell in TsWorksheet(sheet).Cells do
+        if HasFormula(cell) and (cell^.ContentType <> cctError) then
+          sheet.CalcFormula(cell);
+    end;
+  finally
+    dec(FCalculationLock);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

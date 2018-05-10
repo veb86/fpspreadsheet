@@ -1689,6 +1689,12 @@ begin
       if sheet = nil then
         sheet := FWorksheet.Workbook.AddWorksheet(sheetName, true);
       Result := TsCellExprNode.Create(self, sheet, CurrentToken, true)
+    end else
+    if TokenType = ttCellRange then begin
+      sheet := FWorksheet.WorkBook.GetWorksheetByName(sheetName);
+      if sheet = nil then
+        sheet := FWorksheet.Workbook.AddWorksheet(sheetName, true);
+      Result := TsCellRangeExprNode.Create(self, sheet, CurrentToken);
     end;
   end
   else if (TokenType = ttCellRange) then
