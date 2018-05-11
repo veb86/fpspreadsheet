@@ -79,8 +79,9 @@ type
     procedure ReadFONT(const AStream: TStream);
     procedure ReadFORMAT(AStream: TStream); override;
     procedure ReadLABEL(AStream: TStream); override;
-    function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; override;
-    procedure ReadRPNSheetIndex(AStream: TStream; out ASheet1, ASheet2: Integer); override;
+//    function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; override;
+    procedure ReadRPNSheetIndex(AStream: TStream; out ADocumentURL: String;
+      out ASheet1, ASheet2: Integer); override;
     procedure ReadRSTRING(AStream: TStream);
     procedure ReadStandardWidth(AStream: TStream; ASheet: TsWorksheet);
     procedure ReadStringRecord(AStream: TStream); override;
@@ -115,9 +116,13 @@ type
     procedure WriteIndex(AStream: TStream);
     procedure WriteLABEL(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
-    procedure WriteLocalLinkTable(AStream: TStream);
+    procedure WriteLocalLinkTable(AStream: TStream; AWorksheet: TsWorksheet);
+    (*
     function WriteRPNCellAddress3D(AStream: TStream; ASheet, ARow, ACol: Cardinal;
       AFlags: TsRelFlags): Word; override;
+      *)
+    function WriteRPNSheetIndex(AStream: TStream; ADocumentURL: String;
+      ASheet1, ASheet2: Integer): Word; override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteStyle(AStream: TStream);
     procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
@@ -608,7 +613,7 @@ begin
   FixCols(FWorksheet);
   FixRows(FWorksheet);
 end;
-
+                                               {
 function TsSpreadBIFF5Reader.ReadRPNCellRange3D(AStream: TStream;
   var ARPNItem: PRPNItem): Boolean;
 var
@@ -639,34 +644,54 @@ begin
   if r2 = $FFFF then r2 := Cardinal(-1);
   if c2 = $FF then c2 := Cardinal(-1);
   ARPNItem := RPNCellRange3D(sheetIndex1, r1, c1, sheetIndex2, r2, c2, flags, ARPNItem);
-end;
+end;                                            }
 
 procedure TsSpreadBIFF5Reader.ReadRPNSheetIndex(AStream: TStream;
-  out ASheet1, ASheet2: Integer);
+  out ADocumentURL: String; out ASheet1, ASheet2: Integer);
 var
   idx: Int16;
+  s: String;
 begin
-  // One-based index to EXTERNSHEET record. Negative to indicate a 3D reference.
-  // Positive to indicate an external reference
+  ADocumentURL := '';
+  ASheet1 := -1;
+  ASheet2 := -1;
+
+  { One-based index to EXTERNSHEET record. Negative to indicate a 3D reference.
+    Positive to indicate an external reference }
   idx := WordLEToN(AStream.ReadWord);
 
-  // We don't support external references at the moment.
-  if idx > 0 then begin
-    ASheet1 := -1;
-    ASheet1 := -1;
-    exit;
+  if idx < 0 then begin
+    { *** Internal 3d reference *** }
+
+    // Skip 8 unused bytes
+    AStream.Position := AStream.Position + 8;
+
+    // Zero-based index to first referenced sheet (-1 = deleted sheet)
+    idx := Int16(WordLEToN(AStream.ReadWord));
+    if idx <> -1 then begin
+      s := FExternSheets.Strings[idx];
+      ASheet1 := FWorkbook.GetWorksheetIndex(s);
+    end;
+
+    // Zero-based index to last referenced sheet (-1 = deleted sheet)
+    idx := WordLEToN(AStream.ReadWord);
+    if idx <> -1 then begin
+      s := FExternSheets.Strings[idx];
+      ASheet2 := FWorkbook.GetWorksheetIndex(s);
+    end;
+  end
+  else begin
+    { *** External reference *** }
+
+    // Skip 12 unused byes
+    AStream.Position := AStream.Position + 12;
+
+    dec(idx);  // 1-based index to 0-based index
+    s := FExternSheets[idx];
+    ADocumentURL := s;
+
+    // NOTE: THIS IS NOT COMPLETE !!!
   end;
-
-  // Skip 8 unused bytes
-  AStream.Position := AStream.Position + 8;
-
-  // Zero-based index to first referenced sheet (-1 = deleted sheet)
-  idx := WordLEToN(AStream.ReadWord);
-  ASheet1 := idx;
-
-  // Zero-based index to last referenced sheet (-1 = deleted sheet)
-  idx := WordLEToN(AStream.ReadWord);
-  ASheet2 := idx;
 end;
 
 procedure TsSpreadBIFF5Reader.ReadRSTRING(AStream: TStream);
@@ -1172,7 +1197,6 @@ var
   pane: Byte;
 begin
   { Write workbook globals }
-
   WriteBOF(AStream, INT_BOF_WORKBOOK_GLOBALS);
 
   WriteCODEPAGE(AStream, FCodePage);
@@ -1180,8 +1204,6 @@ begin
   WritePROTECT(AStream, bpLockStructure in Workbook.Protection);
   WritePASSWORD(AStream, Workbook.CryptoInfo);
   WriteGlobalLinkTable(AStream);
-//  WriteEXTERNCOUNT(AStream);
-//  WriteEXTERNSHEET(AStream);
   WriteDefinedNames(AStream);
   WriteWINDOW1(AStream);
   WriteFonts(AStream);
@@ -1229,7 +1251,7 @@ begin
       WritePageSetup(AStream);
 
       // Local link table
-      WriteLocalLinkTable(AStream);
+      WriteLocalLinkTable(AStream, FWorksheet);
 
       // Protection
       if FWorksheet.IsProtected then begin
@@ -1750,7 +1772,7 @@ begin
 
     WriteEXTERNCOUNT(AStream, L.Count);
     for i:=0 to L.Count-1 do
-      WriteEXTERNSHEET(AStream, L[i]);
+      WriteEXTERNSHEET(AStream, L[i], true);
   finally
     L.Free;
   end;
@@ -1883,38 +1905,46 @@ end;
   Writes a local Link Table with EXTERNCOUNT and EXTERSHEET records for
   internal 3D references to other sheets
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF5Writer.WriteLocalLinkTable(AStream: TStream);
+procedure TsSpreadBIFF5Writer.WriteLocalLinkTable(AStream: TStream;
+  AWorksheet: TsWorksheet);
 var
   L: TStringList;
   cell: PCell;
   found: Boolean;
-  i, n: Integer;
+  i, j, n: Integer;
+  sheetref: PsBIFFExternSheet;
+  book: TsBIFFExternBook;
+  sheet: TsWorksheet;
 begin
-  L := TStringList.Create;
-  try
-    // Check whether there is any cell with a formula with 3D reference
-    found := false;
-    for cell in FWorksheet.Cells do
-      if HasFormula(cell) and (pos('!', cell^.FormulaValue) <> 0) then begin
-        found := true;
-        break;
+  CollectExternData(FWorksheet);
+  if (FExternBooks = nil) or (FExternSheets = nil) then
+    exit;
+
+  // Write the count of records in the local link table
+  n := FExternSheets.Count;
+  WriteEXTERNCOUNT(AStream, word(n));
+
+  // Write a EXTERNSHEET record for each linked sheet
+  for i := 0 to n-1 do begin
+    sheetref := FExternSheets[i];
+    book := FExternBooks[sheetref^.ExternBookIndex];
+    if book.Kind = ebkInternal then
+    begin
+      for j := sheetref^.FirstSheetIndex to sheetref^.LastSheetIndex do
+      begin
+        sheet := FWorkbook.GetWorksheetByIndex(j);
+        if sheet = AWorksheet then
+          WriteEXTERNSHEET(AStream, '', true)
+        else
+          WriteEXTERNSHEET(AStream, sheet.Name, true);
       end;
-    // Write every sheet to local link table. This is too much - it would be
-    // enough to write only those sheets involved in a 3d reference - but it
-    // simplifies processing of 3d references a lot.
-    if found then begin
-      n := FWorkbook.GetWorksheetCount;
-      if n > 0 then begin
-        WriteEXTERNCOUNT(AStream, word(n));
-        for i := 0 to n-1 do
-          WriteEXTERNSHEET(AStream, FWorkbook.GetWorksheetByIndex(i).Name);
-      end;
+    end else
+    begin
+      // Handle external links here
     end;
-  finally
-    L.Free;
   end;
 end;
-
+                                                  (*
 {@@ ----------------------------------------------------------------------------
   Writes a 3D cell address consisting of worksheet, row and column indexes.
   Needed for references to other worksheets within the same workbook.
@@ -1947,6 +1977,57 @@ begin
 
   Result := AStream.Position - p;
 end;
+*)
+
+{@@ ----------------------------------------------------------------------------
+  Writes the sheet indexes of a 3D cell address consisting.
+  Needed for references to other worksheets within the same workbook.
+  Must be followed by WriteRPNCellAddress or WriteRPNCellAddressRange.
+  Returns the number of bytes written or $FFFF if the feature is not supported.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFF5Writer.WriteRPNSheetIndex(AStream: TStream;
+  ADocumentURL: String; ASheet1, ASheet2: Integer): Word;
+var
+  p: Int64;
+  bookidx: Integer;
+  book: TsBIFFExternBook;
+  refidx: Integer;
+  sheetref: PsBIFFExternSheet;
+begin
+  if ADocumentURL <> '' then  // Supporting only internal links
+    exit;
+
+  p := AStream.Position;
+
+  // Find stored information on this link
+  bookidx := FExternBooks.FindBook(ADocumentURL);
+  refidx := FExternSheets.FindSheets(ADocumentURL, ASheet1, ASheet2);
+  sheetref := FExternSheets[refidx];
+  book := FExternBooks[sheetRef^.ExternBookIndex];
+  if book.Kind = ebkExternal then
+    exit($FFFF);
+
+  // One-based index of the EXTERNBOOK record to which this reference belongs.
+  // For internal references ("3D references") this must be written as a
+  // negative value.
+  AStream.WriteWord(WordToLE(word(-(bookidx+1))));
+
+  // 8 unused bytes
+  AStream.WriteDWord(0);
+  AStream.WriteDWord(0);
+
+  // Zero-based index to first referenced sheet (FFFFH = deleted sheet)
+  AStream.WriteWord(WordToLE(ASheet1));
+
+  // Single sheet reference
+  if ASheet2 < 0 then ASheet2 := ASheet1;
+
+  // Zero-based index to last referenced sheet (FFFFH = deleted sheet)
+  AStream.WriteWord(WordToLE(ASheet2));
+
+  Result := AStream.Position - p;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes an Excel 5 STRING record which immediately follows a FORMULA record

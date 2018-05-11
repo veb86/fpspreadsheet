@@ -87,6 +87,7 @@ function NewRPNItem: PRPNItem;
 begin
   New(Result);
   FillChar(Result^.FE, SizeOf(Result^.FE), 0);
+  Result^.FE.Sheet2 := -1;
   Result^.FE.StringValue := '';
   Result^.FE.SheetNames := '';
 end;

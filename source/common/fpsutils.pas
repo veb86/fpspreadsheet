@@ -81,6 +81,8 @@ function ParseSheetCellString(const AStr: String; out ASheetName: String;
 function ParseCellRowString(const AStr: string; out ARow: Cardinal): Boolean;
 function ParseCellColString(const AStr: string; out ACol: Cardinal): Boolean;
 
+function GetCellRangeString(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 function GetCellRangeString(ARange: TsCellRange;
@@ -99,7 +101,21 @@ function ParseCellString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
   out ACellRow, ACellCol: Cardinal): Boolean; overload;
 
 function GetCellString_R1C1(ARow, ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
-  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String;
+  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String; overload;
+function GetCellRangeString_R1C1(ARow1, ACol1, ARow2, ACol2: Cardinal;
+  AFlags: TsRelFlags = [rfRelRow, rfRelCol];
+  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String; overload;
+function GetCellRangeString_R1C1(ASheet1, ASheet2: String;
+  ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
+  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String; overload;
+
+  //  OpenDocument Syntax
+function GetCellRangeString_ODS(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
+  AFlags: TsRelFlags = rfAllRel): String; overload;
+function GetCellRangeString_ODS(ARow1, ACol1, ARow2, ACol2: Cardinal;
+  AFlags: TsRelFlags = rfAllRel): String; overload;
+function GetCellRangeString_ODS(ARange: TsCellRange;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 
 
 // Error strings
@@ -985,6 +1001,36 @@ begin
     Result := Result + 'C' + IntToStr(LongInt(ACol)+1);
 end;
 
+function GetCellRangeString_R1C1(ARow1, ACol1, ARow2, ACol2: Cardinal;
+  AFlags: TsRelFlags = [rfRelRow, rfRelCol];
+  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String;
+var
+  s1, s2: String;
+begin
+  s1 := GetCellString_R1C1(ARow1, ACol1, AFlags, ARefRow, ARefCol);
+  s2 := GetCellString_R1C1(ARow2, ACol2, AFlags, ARefRow, ARefCol);
+  if s1 = s2 then
+    Result := s1
+  else
+    Result := Format('%s:%s', [s1, s2]);
+end;
+
+function GetCellRangeString_R1C1(ASheet1, ASheet2: String;
+  ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
+  ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String;
+var
+  s: String;
+begin
+  s := GetCellRangeString_R1C1(ARow1, ACol1, ARow2, ACol2, AFlags, ARefRow, ARefCol);
+  if (ASheet1 = '') and (ASheet2 = '') then
+    Result := s
+  else if (ASheet2 = '') or (ASheet1 = ASheet2) then
+    Result := Format('%s!%s', [ASheet1, s])
+  else
+    Result := Format('%s:%s!%s', [ASheet1, ASheet2, s]);
+end;
+
+
 
 {@@ ----------------------------------------------------------------------------
   Calculates a cell range address string from zero-based column and row indexes
@@ -1019,6 +1065,23 @@ begin
     ]);
 end;
 
+function GetCellRangeString(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
+var
+  s: String;
+begin
+  s := GetCellRangeString(ARow1, ACol1, ARow2, ACol2, AFlags, Compact);
+  if (ASheet1 = '') and (ASheet2 = '') then
+    Result := s
+  else if ASheet2 = '' then
+    Result := Format('%s!%s', [ASheet1, s])
+  else if Compact and (ASheet1 = ASheet2) then
+    Result := Format('%s!%s', [ASheet1, s])
+  else
+    Result := Format('%s:%s!%s', [ASheet1, ASheet2, s]);
+end;
+
+
 {@@ ----------------------------------------------------------------------------
   Calculates a cell range address string from a TsCellRange record
   and the relative address state flags.
@@ -1040,6 +1103,53 @@ begin
   Result := GetCellRangeString(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2,
     AFlags, Compact);
 end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Calculates a cell range string with sheet specification in OpenDocument syntax
+-------------------------------------------------------------------------------}
+function GetCellRangeString_ODS(ASheet1, ASheet2: String;
+  ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = rfAllRel): String;
+var
+  s1, s2: String;
+begin
+  s1 := Format('%s%s%s%s', [
+    RELCHAR[rfRelCol in AFlags], GetColString(ACol1),
+    RELCHAR[rfRelRow in AFlags], ARow1 + 1
+  ]);
+  s2 := Format('%s%s%s%s', [
+    RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2),
+    RELCHAR[rfRelRow2 in AFlags], ARow2 + 1
+  ]);
+
+  if (ASheet1 = '') and (ASheet2 = '') then
+  begin
+    if s1 = s2 then
+      Result := s1
+    else
+      Result := Format('%s:%s', [s1, s2])
+  end else
+  if (ASheet2 = '') or (ASheet1 = ASheet2) then begin
+    if s1 = s2 then
+      Result := Format('%s.%s', [ASheet1, s1])
+    else
+      Result := Format('%s.%s:.%s', [ASheet1, s1, s2]);          // Sheet1.A1:.B2
+  end else
+    Result := Format('%s.%s:%s.%s', [ASheet1, s1, ASheet2, s2]); // Sheet.A1:Sheet2.B2
+end;
+
+function GetCellRangeString_ODS(ARow1, ACol1, ARow2, ACol2: Cardinal;
+  AFlags: TsRelFlags = rfAllRel): String;
+begin
+  Result := GetCellRangeString(ARow1, ACol1, ARow2, ACol2, AFlags, true);
+end;
+
+function GetCellRangeString_ODS(ARange: TsCellRange;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
+begin
+  Result := GetCellRangeString(ARange, AFlags, true);
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Returns the error value code from a string. Result is false, if the string does

@@ -10,7 +10,7 @@ OpenOffice Microsoft Excel File Format document }
 interface
 
 uses
-  Classes, SysUtils, DateUtils, lconvencoding,
+  Classes, SysUtils, DateUtils, lconvencoding, contnrs,
   fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormat, fpsPalette,
   fpsReaderWriter, fpsrpn;
 
@@ -379,6 +379,53 @@ type
     property ValidOnSheet: Integer read FValidOnSheet;
   end;
 
+  { TsExternBook - Information on where out-of-sheet references are stored. }
+  TsBIFFExternBookKind = (ebkExternal, ebkInternal, ebkAddInFunc, ebkDDE_OLE);
+  TsBIFFExternBook = class
+    Kind: TsBIFFExternBookKind;
+    // The following fields are used only for external workbooks.
+    DocumentURL: String;
+    SheetNames: String;  // List of worksheetnames separated by #1
+    function GetWorksheetName(AIndex: Integer): String;
+  end;
+
+  { TsBIFFExternBookList }
+  TsBIFFExternBookList = class(TFPObjectlist)
+  private
+    function GetItem(AIndex: Integer): TsBIFFExternBook;
+    procedure SetItem(AIndex: Integer; AValue: TsBIFFExternBook);
+  public
+    function AddBook(ABookName: String): Integer;
+    function AddInternal: Integer;
+    function FindBook(ABookName: String): Integer;
+    function FindInternalBook: Integer;
+    property Item[AIndex: Integer]: TsBIFFExternBook read GetItem write SetItem; default;
+  end;
+
+  { TsExternSheet - Information on a sheets used in out-of-sheet references }
+  TsBIFFExternSheet = packed record
+    ExternBookIndex: Word;
+    FirstSheetIndex: Word;
+    LastSheetIndex: Word;
+  end;
+  PsBIFFExternSheet = ^TsBIFFExternSheet;
+
+  { A list for sheets used in out-of-sheet references }
+  TsBIFFExternSheetList = class(TFPList)
+  private
+    FBookList: TsBIFFExternBookList;
+    function GetItem(AIndex: Integer): PsBIFFExternSheet;
+    procedure SetItem(AIndex: Integer; AValue: PsBIFFExternSheet);
+  public
+    constructor Create(ABookList: TsBIFFExternBookList);
+    destructor Destroy; override;
+    function AddSheets(ABookName: String; ASheetIndex1, ASheetIndex2: Integer): Integer;
+    procedure Clear;
+    function FindSheets(ABookName: String; ASheetIndex1, ASheetIndex2: Integer): Integer;
+    property Item[AIndex: Integer]: PsBIFFExternSheet read GetItem write SetItem; default;
+  end;
+
+
   { TsSpreadBIFFReader }
   TsSpreadBIFFReader = class(TsCustomSpreadReader)
   protected
@@ -435,8 +482,10 @@ type
     procedure ReadDefColWidth(AStream: TStream);
     // Read the default row height
     procedure ReadDefRowHeight(AStream: TStream);
+    // Read an EXTERNCOUNT record
+    procedure ReadEXTERNCOUNT(AStream: TStream);
     // Read an EXTERNSHEET record (defined names)
-    procedure ReadExternSheet(AStream: TStream);
+    procedure ReadEXTERNSHEET(AStream: TStream); virtual;
     // Read FORMAT record (cell formatting)
     procedure ReadFormat(AStream: TStream); virtual;
     // Read FORMULA record
@@ -478,13 +527,14 @@ type
       out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags); virtual;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); virtual;
-    function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; virtual;
+//    function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; virtual;
     procedure ReadRPNCellRangeOffset(AStream: TStream;
       out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
       out AFlags: TsRelFlags); virtual;
     function ReadRPNFunc(AStream: TStream): Word; virtual;
     procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal); virtual;
-    procedure ReadRPNSheetIndex(AStream: TStream; out ASheet1, ASheet2: Integer); virtual;
+    procedure ReadRPNSheetIndex(AStream: TStream; out ADocumentURL: String;
+      out ASheet1, ASheet2: Integer); virtual;
     function ReadRPNTokenArray(AStream: TStream; ACell: PCell;
       ASharedFormulaBase: PCell = nil): Boolean; overload;
     function ReadRPNTokenArray(AStream: TStream; ARpnTokenArraySize: Word;
@@ -525,8 +575,11 @@ type
     FCodePage: String;  // in a format prepared for lconvencoding.ConvertEncoding
     FFirstNumFormatIndexInFile: Integer;
     FPalette: TsPalette;
+    FExternBooks: TsBIFFExternBookList;
+    FExternSheets: TsBIFFExternSheetList;
 
     procedure AddBuiltinNumFormats; override;
+    procedure CollectExternData(AWorksheet: TsWorksheet = nil);
     function FindXFIndex(AFormatIndex: Integer): Integer; virtual;
     function FixLineEnding(const AText: String): String;
     function FormulaSupported(ARPNFormula: TsRPNFormula; out AUnsupported: String): Boolean;
@@ -574,7 +627,8 @@ type
     // Writes out an EXTERNCOUNT record
     procedure WriteEXTERNCOUNT(AStream: TStream; ACount: Word);
     // Writes out an EXTERNSHEET record
-    procedure WriteEXTERNSHEET(AStream: TStream; ASheetName: String);
+    procedure WriteEXTERNSHEET(AStream: TStream; ASheetName: String;
+      IsInternalSheet: Boolean);
     // Writes out a FORMAT record
     procedure WriteFORMAT(AStream: TStream; ANumFormatStr: String;
       ANumFormatIndex: Integer); virtual;
@@ -611,8 +665,10 @@ type
 
     function WriteRPNCellAddress(AStream: TStream; ARow, ACol: Cardinal;
       AFlags: TsRelFlags): Word; virtual;
+    (*
     function WriteRPNCellAddress3D(AStream: TStream; ASheet, ARow, ACol: Cardinal;
       {%H-}AFlags: TsRelFlags): Word; virtual;
+      *)
     function WriteRPNCellOffset(AStream: TStream; ARowOffset, AColOffset: Integer;
       AFlags: TsRelFlags): Word; virtual;
     function WriteRPNCellRangeAddress(AStream: TStream; ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -621,6 +677,8 @@ type
       AFormula: TsRPNFormula; ACell: PCell); virtual;
     function WriteRPNFunc(AStream: TStream; AIdentifier: Word): Word; virtual;
     procedure WriteRPNResult(AStream: TStream; ACell: PCell);
+    function WriteRPNSheetIndex(AStream: TStream; ADocumentURL: String;
+      ASheet1, ASheet2: Integer): word; virtual;
     procedure WriteRPNTokenArray(AStream: TStream; ACell: PCell;
       AFormula: TsRPNFormula; UseRelAddr, IsSupported: Boolean; var RPNLength: Word);
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); virtual;
@@ -900,6 +958,196 @@ begin
 end;
 
 
+{ -----------------------------------------------------------------------------}
+{                             TsBIFFExternBook                                 }
+{ -----------------------------------------------------------------------------}
+function TsBIFFExternBook.GetWorksheetName(AIndex: Integer): String;
+var
+  L: TStrings;
+begin
+  Result := '';
+  if Kind = ebkExternal then begin
+    L := TStringList.Create;
+    try
+      L.Delimiter := #1;
+      L.DelimitedText := SheetNames;
+      Result := L[AIndex];
+    finally
+      L.Free;
+    end;
+  end;
+end;
+
+
+{------------------------------------------------------------------------------}
+{                           TsBIFFExternBookList                               }
+{------------------------------------------------------------------------------}
+function TsBIFFExternBookList.AddBook(ABookName: String): Integer;
+var
+  book: TsBIFFExternBook;
+begin
+  if ABookName = '' then
+    Result := AddInternal
+  else
+  begin
+    Result := FindBook(ABookName);
+    if Result = -1 then begin
+      book := TsBIFFExternBook.Create;
+      book.DocumentURL := ABookName;
+      book.Kind := ebkExternal;
+      Result := Add(book);
+    end;
+  end;
+end;
+
+function TsBIFFExternBookList.AddInternal: Integer;
+var
+  book: TsBIFFExternBook;
+begin
+  Result := FindInternalBook;
+  if Result = -1 then begin
+    book := TsBIFFExternBook.Create;
+    book.Kind := ebkInternal;
+    Result := Add(book);
+  end;
+end;
+
+function TsBIFFExternBookList.FindBook(ABookName: String): Integer;
+var
+  book: TsBIFFExternBook;
+begin
+  if ABookName = '' then
+    Result := FindInternalBook
+  else
+  begin
+    for Result:=0 to Count-1 do
+    begin
+      book := Item[Result];
+      if (book.Kind = ebkExternal) and (book.DocumentURL = ABookName) then
+        exit;
+    end;
+    Result := -1;
+  end;
+end;
+
+function TsBIFFExternBookList.FindInternalBook: Integer;
+begin
+  for Result := 0 to Count-1 do
+    if Item[Result].Kind = ebkInternal then exit;
+  Result := -1;
+end;
+
+function TsBIFFExternBookList.GetItem(AIndex: Integer): TsBIFFExternBook;
+begin
+  Result := TsBIFFExternBook(inherited Items[AIndex]);
+end;
+
+procedure TsBIFFExternBookList.SetItem(AIndex: Integer;
+  AValue: TsBIFFExternBook);
+begin
+  inherited Items[AIndex] := AValue;
+end;
+
+
+{------------------------------------------------------------------------------}
+{                           TsBiffExternSheetList                              }
+{------------------------------------------------------------------------------}
+constructor TsBIFFExternSheetList.Create(ABookList: TsBIFFExternBookList);
+begin
+  inherited Create;
+  FBookList := ABookList;
+end;
+
+destructor TsBIFFExternSheetList.Destroy;
+begin
+  Clear;
+  inherited;
+end;
+
+function TsBIFFExternSheetList.AddSheets(ABookName: String;
+  ASheetIndex1, ASheetIndex2: Integer): Integer;
+var
+  P: PsBIFFExternSheet;
+  idx: Integer;
+begin
+  Result := FindSheets(ABookName, ASheetIndex1, ASheetIndex2);
+  if Result = -1 then
+  begin
+    New(P);
+    idx := FBookList.FindBook(ABookName);
+    if idx = -1 then
+      idx := FBookList.AddBook(ABookName);
+    P^.ExternBookIndex := idx;
+
+    if ASheetIndex2 = -1 then
+      ASheetIndex2 := ASheetIndex1;
+    if ASheetIndex2 < ASheetIndex1 then
+    begin
+      P^.FirstSheetIndex := ASheetIndex2;
+      P^.LastSheetIndex := ASheetIndex1;
+    end else
+    begin
+      P^.FirstSheetIndex := ASheetIndex1;
+      P^.LastSheetIndex := ASheetIndex2;
+    end;
+    Result := Add(P);
+  end;
+end;
+
+procedure TsBIFFExternSheetList.Clear;
+var
+  i: Integer;
+  P: PsBIFFExternSheet;
+begin
+  for i:=0 to Count-1 do begin
+    P := Item[i];
+    Dispose(P);
+  end;
+  inherited;
+end;
+
+function TsBIFFExternSheetList.FindSheets(ABookName: String;
+  ASheetIndex1, ASheetIndex2: Integer): Integer;
+var
+  book: TsBIFFExternBook;
+  P: PsBIFFExternSheet;
+  tmp: Integer;
+  idx: Integer;
+begin
+  if ASheetIndex2 = -1 then ASheetIndex2 := ASheetIndex1;
+  if ASheetIndex2 < ASheetIndex1 then begin
+    tmp := ASheetIndex1;
+    ASheetIndex1 := ASheetIndex2;
+    ASheetIndex2 := tmp;
+  end;
+
+  idx := FBookList.FindBook(ABookName);
+  if idx = -1 then
+    exit(-1);
+
+  for Result:=0 to Count-1 do begin
+    P := Item[Result];
+    if (P^.ExternBookIndex = idx) and
+       (P^.FirstSheetIndex = ASheetIndex1) and
+       (P^.LastSheetIndex = ASheetIndex2)
+    then
+      exit;
+  end;
+  Result := -1;
+end;
+
+function TsBIFFExternSheetList.GetItem(AIndex: Integer): PsBIFFExternSheet;
+begin
+  Result := PsBIFFExternSheet(inherited Items[AIndex]);
+end;
+
+procedure TsBIFFExternSheetList.SetItem(AIndex: Integer; AValue: PsBIFFExternSheet);
+begin
+  inherited Items[AIndex] := AValue;
+end;
+
+
+
 {------------------------------------------------------------------------------}
 {                           TsBIFFDefinedName                                  }
 {------------------------------------------------------------------------------}
@@ -983,7 +1231,6 @@ begin
   FCellFormatList := TsCellFormatList.Create(true);
   // true = allow duplicates! XF indexes get out of sync if not all format records are in list
 
-  FExternSheets := TStringList.Create;
   FDefinedNames := TFPList.Create;
 
   // Initial base date in case it won't be read from file
@@ -1610,6 +1857,14 @@ begin
   FWorksheet.WriteDefaultRowHeight(TwipsToPts(hw), suPoints);
 end;
 
+procedure TsSpreadBIFFReader.ReadEXTERNCOUNT(AStream: TStream);
+begin
+  AStream.ReadWord;
+  { We ignore the value of the record, but use the presence of the record
+    to create the FExternSheets list. }
+  FExternSheets := TStringList.Create;
+end;
+
 {@@ ----------------------------------------------------------------------------
   In the file format versions up to BIFF5 (incl) this record stores the name of
   an external document and a sheet name inside of this document.
@@ -1634,7 +1889,7 @@ begin
   AStream.ReadBuffer(ansistr[2], len-1);
   ansistr[1] := char(b);
   s := ConvertEncoding(ansistr, FCodePage, encodingUTF8);
-  FExternSheets.Add(s);
+  FExternSheets.AddObject(s, TObject(PtrInt(b)));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2399,13 +2654,14 @@ begin
   if (r2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
 end;
 
+{
 function TsSpreadBIFFReader.ReadRPNCellRange3D(AStream: TStream;
   var ARPNItem: PRPNItem): Boolean;
 begin
   Unused(AStream, ARPNItem);
   Result := false;  // "false" means: "not supported"
   // must be overridden
-end;
+end;    }
 
 {@@ ----------------------------------------------------------------------------
   Reads the difference between row and column corner indexes of a cell range
@@ -2475,9 +2731,10 @@ end;
   in a formula from the current stream position.
   Place holder - must be overridden! }
 procedure TsSpreadBIFFReader.ReadRPNSheetIndex(AStream: TStream;
-  out ASheet1, ASheet2: Integer);
+  out ADocumentURL: String; out ASheet1, ASheet2: Integer);
 begin
   Unused(AStream);
+  ADocumentURL := '';
   ASheet1 := -1;
   ASheet2 := -1;
 end;
@@ -2678,6 +2935,7 @@ var
   b: Byte;
   found: Boolean;
   sheet1, sheet2: Integer;
+  url: String;
 begin
   rpnItem := nil;
   p0 := AStream.Position;
@@ -2730,28 +2988,53 @@ begin
         end;
       INT_EXCEL_TOKEN_TREF3D_V:
         begin
-          ReadRPNSheetIndex(AStream, sheet1, sheet2);
-          ReadRPNCellAddress(AStream, r, c, flags);
-          rpnItem := RpnCellValue3D(sheet1, r, c, flags, rpnItem);
+          ReadRPNSheetIndex(AStream, url, sheet1, sheet2);
+          if url <> '' then begin
+            supported := false;
+            FWorkbook.AddErrorMsg('External links are not supported.');
+          end else begin
+            ReadRPNCellAddress(AStream, r, c, flags);
+            rpnItem := RpnCellValue3D(sheet1, r, c, flags, rpnItem);
+          end;
         end;
       INT_EXCEL_TOKEN_TREF3D_R: //, INT_EXCEL_TOKEN_TREF3d_V:
         begin
-          ReadRPNSheetIndex(AStream, sheet1, sheet2);
-          ReadRPNCellAddressOffset(AStream, dr, dc, flags);
-          if (rfRelRow in flags)
-            then r := LongInt(ACell^.Row) + dr
-            else r := dr;
-          if (rfRelCol in flags)
-            then c := LongInt(ACell^.Col) + dc
-            else c := dc;
-          case token of
-            INT_EXCEL_TOKEN_TREF3D_V: rpnItem := RpnCellValue3D(sheet1, r, c, flags, rpnItem);
-            INT_EXCEL_TOKEN_TREF3D_R: rpnItem := RpnCellRef3D(sheet1, r, c, flags, rpnItem);
+          ReadRPNSheetIndex(AStream, url, sheet1, sheet2);
+          if url <> '' then begin
+            supported := false;
+            FWorkbook.AddErrorMsg('External links are not supported.');
+          end else
+          begin
+            ReadRPNCellAddressOffset(AStream, dr, dc, flags);              // Is this usage of rel addresses correct?
+            if (rfRelRow in flags)
+              then r := LongInt(ACell^.Row) + dr
+              else r := dr;
+            if (rfRelCol in flags)
+              then c := LongInt(ACell^.Col) + dc
+              else c := dc;
+            case token of
+              INT_EXCEL_TOKEN_TREF3D_V: rpnItem := RpnCellValue3D(sheet1, r, c, flags, rpnItem);
+              INT_EXCEL_TOKEN_TREF3D_R: rpnItem := RpnCellRef3D(sheet1, r, c, flags, rpnItem);
+            end;
           end;
         end;
       INT_EXCEL_TOKEN_TAREA3D_R:
         begin
-          if not ReadRPNCellRange3D(AStream, rpnItem) then supported := false;
+          ReadRPNSheetIndex(AStream, url, sheet1, sheet2);
+          if url <> '' then begin
+            supported := false;
+            FWorkbook.AddErrorMsg('External links are not supported.');
+          end else
+          if (sheet1 = -1) and (sheet2 = -1) then
+            supported := false
+          else
+          begin
+            ReadRPNCellRangeAddress(AStream, r, c, r2, c2, flags);
+            if r2 = $FFFF then r2 := Cardinal(-1);
+            if c2 = $FF then c2 := Cardinal(-1);
+            rpnItem := RPNCellRange3D(sheet1, r, c, sheet2, r2, c2, flags, rpnItem);
+          end;
+// was:          if not ReadRPNCellRange3D(AStream, rpnItem) then supported := false;
         end;
       INT_EXCEL_TOKEN_TREFN_A:
         begin
@@ -3155,6 +3438,8 @@ end;
 
 destructor TsSpreadBIFFWriter.Destroy;
 begin
+  FExternSheets.Free;
+  FExternBooks.Free;
   FPalette.Free;
   inherited Destroy;
 end;
@@ -3185,6 +3470,70 @@ begin
     FPalette.Trim(FLimitations.MaxPaletteSize);
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Collects the data for out-of-sheet links found in the specified worksheet
+  (or all worksheets if the parameter is omitted).
+  The found data are written to the FExternBooks and FExternSheets lists.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsWorksheet = nil);
+
+  procedure DoCollectForSheet(ASheet: TsWorksheet);
+  var
+    cell: PCell;
+    parser: TsExpressionParser;
+    rpn: TsRPNFormula;
+    fe: TsFormulaElement;
+    j: Integer;
+  begin
+    for cell in ASheet.Cells do
+    begin
+      if not HasFormula(cell) then
+        Continue;
+      if not (cf3dFormula in cell^.Flags) then
+        Continue;
+
+      parser := TsSpreadsheetParser.Create(ASheet);
+      try
+        parser.Expression := cell^.FormulaValue;
+        rpn := parser.RPNFormula;
+        for j:=0 to High(rpn) do
+        begin
+          fe := rpn[j];
+          if fe.ElementKind in [fekCell3d, fekCellRef3d, fekCellRange3d] then
+            FExternSheets.AddSheets('', fe.Sheet, fe.Sheet2);       // '' --> supporting only internal 3d links so far
+        end;
+      finally
+        parser.Free;
+        rpn := nil;
+      end;
+    end;
+  end;
+
+var
+  sheet: TsWorksheet;
+  i: Integer;
+begin
+  FExternBooks.Free;
+  FExternBooks := TsBIFFExternBookList.Create;
+  FExternSheets.Free;
+  FExternSheets := TsBIFFExternSheetList.Create(FExternBooks);
+
+  if AWorksheet <> nil then
+    DoCollectForSheet(AWorksheet)
+  else
+    for i:=0 to FWorkbook.GetWorksheetCount-1 do
+    begin
+      sheet := FWorkbook.GetWorksheetbyIndex(i);
+      DoCollectForSheet(sheet);
+    end;
+
+  if FExternSheets.Count = 0 then begin
+    FreeAndNil(FExternSheets);
+    FreeAndNil(FExternBooks);
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Determines the index of the XF record, according to formatting of the
@@ -3752,24 +4101,38 @@ end;
   Valid for BIFF2-BIFF5.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteEXTERNSHEET(AStream: TStream;
-  ASheetName: String);
+  ASheetName: String; IsInternalSheet: Boolean);
 var
   s: ansistring;
+  n: Byte;
 begin
   // Convert to ANSI
   s := ConvertEncoding(ASheetName, encodingUTF8, FCodePage);
+  n := Length(s);
 
   { BIFF record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNSHEET, 2 + Length(s));
 
-  { Character count in worksheet name - don't count the following flag! }
-  AStream.WriteByte(Length(s));
-
-  { Flag for identification as own sheet }
-  AStream.WriteByte($03);
-
-  { Sheet name }
-  AStream.WriteBuffer(s[1], Length(s));
+  if IsInternalSheet then
+  begin
+    if ASheetName = '' then
+    begin
+      // The current worksheet is linked: no sheet name to be written!
+      AStream.WriteByte(1); // Length info
+      AStream.WriteByte(2); // code for current worksheet
+    end else
+    begin
+      // Another internal worksheet is links - code 3 followed by sheet name
+      // Note: Code is not cosidered in the string length!
+      AStream.WriteByte(n);   // Length byte
+      AStream.WriteByte(3);   // code byte
+      AStream.WriteBuffer(s[1], n);  // Sheet name characters
+    end;
+  end else
+  begin
+    // External sheets
+    // Not suppored at the moment - they have code 2
+  end;
 end;
                                              (*
 procedure TsSpreadBIFFWriter.WriteEXTERNSHEET(AStream: TStream);
@@ -4360,7 +4723,7 @@ begin
   // Number of bytes written
   Result := 3;
 end;
-
+                                                 (*
 {@ -----------------------------------------------------------------------------
   Writes the address of a cell as used in an RPN formula and returns the
   count of bytes written. The return value is $FFFF if 3D addresses are not
@@ -4373,7 +4736,7 @@ begin
   Unused(AStream, ASheet);
   Unused(ARow, ACol);
   Result := 0;
-end;
+end;*)
 
 {@@ ----------------------------------------------------------------------------
   Writes row and column offset (unsigned integers!)
@@ -4576,6 +4939,20 @@ end;
                    *)
 
 {@@ ----------------------------------------------------------------------------
+  Writew the first and last worksheet indexes of a 3D cell range.
+  Must be followed by WriteRPNCellAddress or WriteRPNCellAddressRange.
+  Returns the number of bytes written, or $FFFF if 3D references are not
+  supported.
+  Valid for BIFF2 only (which does not support 3D refences). Must be overridden
+  for BIFF5 and BIFF8.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFFWriter.WriteRPNSheetIndex(AStream: TStream;
+  ADocumentURL: String; ASheet1, ASheet2: Integer): Word;
+begin
+  Result := $FFFF;      // --> not supported by default.
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes the token array of the given RPN formula and returns its size
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteRPNTokenArray(AStream: TStream;
@@ -4656,16 +5033,13 @@ begin
 
       INT_EXCEL_TOKEN_TREF3D_V: { fekCell3D }
         begin
-          n := WriteRPNCellAddress3D(
-            AStream,
-            AFormula[i].Sheet,
-            AFormula[i].Row, AFormula[i].Col,
-            AFormula[i].RelFlags
-          );
+          n := WriteRPNSheetIndex(AStream, '', AFormula[i].Sheet, AFormula[i].Sheet2);
           if n = $FFFF then
             FWorkbook.AddErrorMsg('3D cell addresses are not supported.')
-          else
+          else begin
+            inc(n, WriteRPNCellAddress(AStream, AFormula[i].Row, AFormula[i].Col, AFormula[i].RelFlags));
             inc(RPNLength, n);
+          end;
         end;
 
       INT_EXCEL_TOKEN_TAREA_R: { fekCellRange }
@@ -4677,6 +5051,23 @@ begin
             AFormula[i].RelFlags
           );
           inc(RPNLength, n);
+        end;
+
+      INT_EXCEL_TOKEN_TAREA3D_R: { fekCellRange3D }
+        begin
+          n := WriteRPNSheetIndex(AStream, '', AFormula[i].Sheet, AFormula[i].Sheet2);
+          if n = $FFFF then
+            FWorkbook.AddErrorMsg('3D cell address ranges are not supported.')
+          else if n = $FFF3 then
+            FWorkbook.AddErrorMsg('Sheets not found in LinkTable.')
+          else begin
+            inc(n, WriteRPNCellRangeAddress(AStream,
+              AFormula[i].Row, AFormula[i].Col,
+              AFormula[i].Row2, AFormula[i].Col2,
+              AFormula[i].RelFlags)
+            );
+            inc(RPNLength, n);
+          end;
         end;
 
       INT_EXCEL_TOKEN_TREFN_R,

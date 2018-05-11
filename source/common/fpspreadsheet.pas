@@ -803,7 +803,8 @@ type
     function  GetWorksheetByIndex(AIndex: Integer): TsWorksheet;
     function  GetWorksheetByName(AName: String): TsWorksheet;
     function  GetWorksheetCount: Integer;
-    function  GetWorksheetIndex(AWorksheet: TsWorksheet): Integer;
+    function  GetWorksheetIndex(AWorksheet: TsWorksheet): Integer; overload;
+    function  GetWorksheetIndex(const AWorksheetName: String): Integer; overload;
     procedure RemoveAllWorksheets;
     procedure RemoveAllEmptyWorksheets;
     procedure RemoveWorksheet(AWorksheet: TsWorksheet);
@@ -4180,6 +4181,7 @@ begin
   Result := soProtected in FOptions;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Setter for the worksheet name property. Checks if the name is valid, and
   exits without any change if not. Creates an event OnChangeWorksheet.
@@ -5727,15 +5729,19 @@ begin
     if (AFormula <> '') and (AFormula[1] = '=') then
       AFormula := Copy(AFormula, 2, Length(AFormula));
 
-    // Convert "localized" formula to standard format
-    if ALocalized then begin
-      parser := TsSpreadsheetParser.Create(self);
-      try
+    parser := TsSpreadsheetParser.Create(self);
+    try
+      if ALocalized then begin
+        // Convert "localized" formula to standard format
         parser.LocalizedExpression[Workbook.FormatSettings] := AFormula;
         AFormula := parser.Expression;
-      finally
-        parser.Free;
-      end;
+      end else
+        parser.Expression := AFormula;
+      if parser.Has3DLinks
+        then ACell.Flags := ACell.Flags + [cf3dFormula]
+        else ACell.Flags := ACell.Flags - [cf3dFormula];
+    finally
+      parser.Free;
     end;
   end;
 
@@ -8999,6 +9005,18 @@ end;
 function TsWorkbook.GetWorksheetIndex(AWorksheet: TsWorksheet): Integer;
 begin
   Result := FWorksheets.IndexOf(AWorksheet);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the index of the worksheet having the specified name, or -1 if the
+  worksheet does not exist.
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetWorksheetIndex(const AWorksheetName: String): Integer;
+begin
+  for Result := 0 to FWorksheets.Count-1 do
+    if TsWorksheet(FWorksheets[Result]).Name = AWorksheetName then
+      exit;
+  Result := -1;
 end;
 
 {@@ ----------------------------------------------------------------------------
