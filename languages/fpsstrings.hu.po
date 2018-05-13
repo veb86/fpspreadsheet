@@ -151,6 +151,10 @@ msgstr "zöld"
 msgid "Header"
 msgstr "Fejléc"
 
+#: fpsstrings.rsillegalodscellrange
+msgid "Illegal structure of an OpenDocument cell range."
+msgstr ""
+
 #: fpsstrings.rsimageformatnotsupported
 msgid "Image format not supported."
 msgstr "A kép formátuma nincs támogatva."
@@ -296,13 +300,13 @@ msgid "Only one image per %s section allowed."
 msgstr "Csak egy kép lehet %s szakaszonként."
 
 #: fpsstrings.rsoperationexceedscolcount
-#, fuzzy
+#, fuzzy,badformat
 #| msgid "This operation exceeds the range of defined grid columns."
 msgid "This operation at index %d exceeds the range of defined grid columns (%d)."
 msgstr "A művelet túllépi a rács oszlopainak tartományát."
 
 #: fpsstrings.rsoperationexceedsrowcount
-#, fuzzy
+#, fuzzy,badformat
 #| msgid "This operation exceeds the range of defined grid rows."
 msgid "This operation at index %d exceeds the range of defined grid rows (%d)."
 msgstr "A művelet túllépi a rács sorainak tartományát."
@@ -339,6 +343,10 @@ msgstr "piros"
 msgid "Expected right bracket at position %d, but got %s"
 msgstr "Jobb oldali zárójel szükséges a(z) %d. pozícióban, de %s található"
 
+#: fpsstrings.rsrightsquarebracketexpected
+msgid "Expected right square bracket at positon %d, but got %s"
+msgstr ""
+
 #: fpsstrings.rsrowstylenotfound
 msgid "Row style not found."
 msgstr "Sor stílus nem található."
@@ -364,6 +372,7 @@ msgid "transparent"
 msgstr "átlátszó"
 
 #: fpsstrings.rstruncatetoolongcelltext
+#, fuzzy,badformat
 msgid "Text value exceeds the %d character limit in cell %s and has been truncated."
 msgstr "A szöveg hosszabb mint a(z) 15 karakteres korlát a(z) %s cellában, ezért csonkolva lett."
 

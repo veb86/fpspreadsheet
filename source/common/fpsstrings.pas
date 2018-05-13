@@ -104,6 +104,7 @@ resourcestring
     'of type %s: %s';
   rsNoVariable = 'Identifier %s is not a variable';
   rsRightBracketExpected = 'Expected right bracket at position %d, but got %s';
+  rsRightSquareBracketExpected = 'Expected right square bracket at positon %d, but got %s';
   rsUnexpectedEndOfExpression = 'Unexpected end of expression';
   rsUnknownCharacter = 'Unknown character at pos %d: "%s"';
   rsUnknownComparison = 'Internal error: Unknown comparison';
@@ -112,6 +113,7 @@ resourcestring
   rsUnknownTokenAtPos = 'Unknown token at pos %d : %s';
   rsUnterminatedExpression = 'Badly terminated expression. Found token at '+
     'position %d : %s';
+  rsIllegalODSCellRange = 'Illegal structure of an OpenDocument cell range.';
 
   { -- currently not used:
   SErrNoLeftOperand = 'No left operand for binary operation %s';

@@ -141,6 +141,10 @@ msgstr "vihreä"
 msgid "Header"
 msgstr "Otsikko"
 
+#: fpsstrings.rsillegalodscellrange
+msgid "Illegal structure of an OpenDocument cell range."
+msgstr ""
+
 #: fpsstrings.rsimageformatnotsupported
 msgid "Image format not supported."
 msgstr "Kuvatiedostoformaattia ei ole tuettu"
@@ -324,6 +328,10 @@ msgstr "punainen"
 #: fpsstrings.rsrightbracketexpected
 msgid "Expected right bracket at position %d, but got %s"
 msgstr "Odotettiin oikeata suljetta kohdassa %d mutta saatiin %s"
+
+#: fpsstrings.rsrightsquarebracketexpected
+msgid "Expected right square bracket at positon %d, but got %s"
+msgstr ""
 
 #: fpsstrings.rsrowstylenotfound
 msgid "Row style not found."

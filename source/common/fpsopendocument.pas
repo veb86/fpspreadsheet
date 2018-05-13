@@ -7565,8 +7565,8 @@ begin
     // Convert string formula to the format needed by ods: semicolon list separators!
     parser := TsSpreadsheetParser.Create(FWorksheet);
     try
-      parser.Dialect := fdOpenDocument;
-      parser.Expression := ACell^.FormulaValue;
+      parser.Expression := ACell^.FormulaValue;   // Formula still in Excel dialect
+      parser.Dialect := fdOpenDocument;           // Now convert to ODS dialect
       formula := Parser.LocalizedExpression[FPointSeparatorSettings];
       if (formula <> '') and (formula[1] <> '=') then
         formula := '=' + formula;

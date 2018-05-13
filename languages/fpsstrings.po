@@ -141,6 +141,10 @@ msgstr ""
 msgid "Header"
 msgstr ""
 
+#: fpsstrings.rsillegalodscellrange
+msgid "Illegal structure of an OpenDocument cell range."
+msgstr ""
+
 #: fpsstrings.rsimageformatnotsupported
 msgid "Image format not supported."
 msgstr ""
@@ -323,6 +327,10 @@ msgstr ""
 
 #: fpsstrings.rsrightbracketexpected
 msgid "Expected right bracket at position %d, but got %s"
+msgstr ""
+
+#: fpsstrings.rsrightsquarebracketexpected
+msgid "Expected right square bracket at positon %d, but got %s"
 msgstr ""
 
 #: fpsstrings.rsrowstylenotfound

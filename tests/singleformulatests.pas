@@ -42,10 +42,12 @@ type
     procedure SumRange_BIFF5;
     procedure SumRange_BIFF8;
     procedure SumRange_OOXML;
+    procedure SumRange_ODS;
 
     procedure SumSheetRange_BIFF5;  // no 3d ranges for BIFF2
     procedure SumSheetRange_BIFF8;
     procedure SumSheetRange_OOXML;
+    procedure SumSheetRange_ODS;
 
   end;
 
@@ -230,6 +232,11 @@ begin
   TestFloatFormula('SUM(C3:C5)', 0.5, ftkCellRange, sfOOXML);
 end;
 
+procedure TSpreadSingleFormulaTests.SumRange_ODS;
+begin
+  TestFloatFormula('SUM(C3:C5)', 0.5, ftkCellRange, sfOpenDocument);
+end;
+
 { ---- }
 
 procedure TSpreadSingleFormulaTests.SumSheetRange_BIFF5;
@@ -245,6 +252,11 @@ end;
 procedure TSpreadSingleFormulaTests.SumSheetRange_OOXML;
 begin
   TestFloatFormula('SUM(Sheet2!C3:C5)', 5.0, ftkCellRangeSheet, sfOOXML);
+end;
+
+procedure TSpreadSingleFormulaTests.SumSheetRange_ODS;
+begin
+  TestFloatFormula('SUM(Sheet2!C3:C5)', 5.0, ftkCellRangeSheet, sfOpenDocument);
 end;
 
 { ---- }

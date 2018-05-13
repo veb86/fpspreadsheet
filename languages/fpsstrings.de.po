@@ -152,6 +152,10 @@ msgstr "grün"
 msgid "Header"
 msgstr "Kopfzeile"
 
+#: fpsstrings.rsillegalodscellrange
+msgid "Illegal structure of an OpenDocument cell range."
+msgstr ""
+
 #: fpsstrings.rsimageformatnotsupported
 msgid "Image format not supported."
 msgstr "Bild-Format nicht unterstützt."
@@ -333,8 +337,13 @@ msgid "red"
 msgstr "rot"
 
 #: fpsstrings.rsrightbracketexpected
+#, fuzzy,badformat
 msgid "Expected right bracket at position %d, but got %s"
 msgstr "Rechte Klammer erwartet an Position, aber %s gefunden."
+
+#: fpsstrings.rsrightsquarebracketexpected
+msgid "Expected right square bracket at positon %d, but got %s"
+msgstr ""
 
 #: fpsstrings.rsrowstylenotfound
 msgid "Row style not found."
@@ -435,3 +444,4 @@ msgstr "Die Datei kann nicht geschrieben werden, weil der Name des Arbeitsblatte
 #: fpsstrings.rsyellow
 msgid "yellow"
 msgstr "gelb"
+

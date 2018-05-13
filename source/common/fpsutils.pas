@@ -116,7 +116,7 @@ function GetCellRangeString_R1C1(ASheet1, ASheet2: String;
 function GetCellRangeString_ODS(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel): String; overload;
 function GetCellRangeString_ODS(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  AFlags: TsRelFlags = rfAllRel): String; overload;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 function GetCellRangeString_ODS(ARange: TsCellRange;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 
@@ -1209,29 +1209,37 @@ begin
   if (ASheet1 = '') and (ASheet2 = '') then
   begin
     if s1 = s2 then
-      Result := s1
+      Result := '[.' + s1 + ']'                        // --> [.A1]
     else
-      Result := Format('%s:%s', [s1, s2])
+      Result := Format('[.%s:.%s]', [s1, s2])          // --> [.A1:.B3]
   end else
   if (ASheet2 = '') or (ASheet1 = ASheet2) then begin
     if s1 = s2 then
-      Result := Format('%s.%s', [ASheet1, s1])
+      Result := Format('[%s.%s]', [ASheet1, s1])                   // [Sheet1.A1]
     else
-      Result := Format('%s.%s:.%s', [ASheet1, s1, s2]);          // Sheet1.A1:.B2
+      Result := Format('[%s.%s:.%s]', [ASheet1, s1, s2]);          // [Sheet1.A1:.B2]
   end else
-    Result := Format('%s.%s:%s.%s', [ASheet1, s1, ASheet2, s2]); // Sheet.A1:Sheet2.B2
+    Result := Format('[%s.%s:%s.%s]', [ASheet1, s1, ASheet2, s2]); // [Sheet.A1:Sheet2.B2]
 end;
 
 function GetCellRangeString_ODS(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  AFlags: TsRelFlags = rfAllRel): String;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
 begin
-  Result := GetCellRangeString(ARow1, ACol1, ARow2, ACol2, AFlags, true);
+  if Compact and (ARow1 = ARow2) and (ACol1 = ACol2) then
+    Result := Format('[.%s]', [GetCellString(ARow1, ACol1, AFlags)])
+  else
+    Result := Format('[.%s%s%s%d:.%s%s%s%d]', [
+      RELCHAR[rfRelCol in AFlags], GetColString(ACol1),
+      RELCHAR[rfRelRow in AFlags], ARow1 + 1,
+      RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2),
+      RELCHAR[rfRelRow2 in AFlags], ARow2 + 1
+    ]);
 end;
 
 function GetCellRangeString_ODS(ARange: TsCellRange;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
 begin
-  Result := GetCellRangeString(ARange, AFlags, true);
+  Result := GetCellRangeString_ODS(ARange, AFlags, true);
 end;
 
 

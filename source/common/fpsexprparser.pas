@@ -57,7 +57,7 @@ type
   { Tokens }
 
   TsTokenType = (
-    ttCell, ttCellRange, ttSheetName,
+    ttCell, ttCellRange, ttSheetName, ttCellRangeODS,
     ttNumber, ttString, ttIdentifier,
     ttPlus, ttMinus, ttMul, ttDiv, ttConcat, ttPercent, ttPower, ttLeft, ttRight,
     ttLessThan, ttLargerThan, ttEqual, ttNotEqual, ttLessThanEqual, ttLargerThanEqual,
@@ -672,6 +672,8 @@ type
     function IsAlpha(C: Char): Boolean; // inline;
   public
     constructor Create(AParser: TsExpressionParser);
+    procedure GetCellRangeParamsODS(out ASheet1, ASheet2: String;
+      out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags);
     function GetToken: TsTokenType;
     property Token: String read FToken;
     property TokenType: TsTokenType read FTokenType;
@@ -1015,11 +1017,13 @@ begin
   if C = FSheetNameTerminator then C := NextPos;
   while (not IsWordDelim(C)) and (C <> cNull) and (C <> FSheetNameTerminator) do
   begin
+    {
     if ((FParser.Dialect = fdOpenDocument) and (C = ']')) then begin
       C := NextPos;
       FSheetNameTerminator := FSavedSheetNameTerminator;
       break;
     end;
+    }
     FToken := FToken + C;
     C := NextPos;
   end;
@@ -1068,9 +1072,101 @@ begin
     ScanError(Format(rsInvalidNumber, [FToken]));
   Result := ttNumber;
 end;
-                                    (*
+
 { Scans until closing square bracket is reached. In OpenDocument, this is
-  a cell or cell range identifier. }
+  a cell or cell range identifier.
+  It has the structure [sheet1.C1R1:sheet2.C2R2] }
+procedure TsExpressionScanner.GetCellRangeParamsODS(
+  out ASheet1, ASheet2: String; out ARow1, ACol1, ARow2, ACol2: Cardinal;
+  out AFlags: TsRelFlags);
+type
+  TScannerStateODS = (ssSheet1, ssCol1, ssRow1, ssSheet2, ssCol2, ssRow2);
+var
+  C: Char;
+  prevC: Char;
+  state: TScannerStateODS;
+  val: Integer;
+begin
+  ASheet1 := '';
+  ASheet2 := '';
+  ARow1 := Cardinal(-1);
+  ACol1 := Cardinal(-1);
+  ARow2 := Cardinal(-1);
+  ACol2 := Cardinal(-1);
+  AFlags := rfAllRel;
+
+  state := ssSheet1;
+  FToken := '';
+  C := NextPos;
+  prevC := #0;
+  while (C <> ']') and (C <> cNULL) do begin
+    case C of
+      cNULL: ScanError(rsUnexpectedEndOfExpression);
+      '.': begin
+             if (state = ssSheet1) then
+             begin
+               ASheet1 := FToken;
+               state := ssCol1;
+             end else
+             if (state = ssSheet2) then
+             begin
+               ASheet2 := FToken;
+               state := ssCol2;
+             end else
+               ScanError(rsIllegalODSCellRange);
+             FToken := '';
+             val := 0;
+           end;
+      ':': if (state = ssRow1) then
+           begin
+             ARow1 := val-1;
+             state := ssSheet2;
+             FToken := '';
+           end else
+             ScanError(rsIllegalODSCellRange);
+      '$': case state of
+             ssCol1: if prevC = '.' then Exclude(AFlags, rfRelCol) else Exclude(AFlags, rfRelRow);
+             ssCol2: if prevC = '.' then Exclude(AFlags, rfRelCol2) else Exclude(AFlags, rfRelRow2);
+           end;
+      else
+           if (state in [ssSheet1, ssSheet2]) then
+             FToken := FToken + C
+           else
+             case C of
+               'A'..'Z':
+                 val := val*10 + ord(C) - ord('A');
+               'a'..'z':
+                 val := val*10 + ord(C) - ord('a');
+               '0'..'9':
+                 if state = ssCol1 then begin
+                   ACol1 := val;
+                   val := ord(C) - ord('0');
+                   state := ssRow1;
+                 end else
+                 if state = ssCol2 then begin
+                   ACol2 := val;
+                   val := ord(C) - ord('0');
+                   state := ssRow2;
+                 end;
+             end;
+    end;
+    prevC := C;
+    C := NextPos;
+  end;
+  if C <> ']' then
+    ScanError(Format(rsRightSquareBracketExpected, [FPos, C]));
+  case state of
+    ssRow1:
+      if val > 0 then ARow1 := val - 1 else ScanError(rsIllegalODSCellRange);
+    ssRow2:
+      if val > 0 then ARow2 := val - 1 else ScanError(rsIllegalODSCellRange);
+  end;
+  if ACol2 = Cardinal(-1) then Exclude(AFlags, rfRelCol2);
+  if ARow2 = Cardinal(-1) then Exclude(AFlags, rfRelRow2);
+  C := NextPos;
+end;
+
+(*
 function TsExpressionScanner.DoSquareBracket: TsTokenType;
 var
   C: Char;
@@ -1161,13 +1257,8 @@ begin
   FToken := '';
   SkipWhiteSpace;
   C := FChar^;
-  if (FParser.Dialect = fdOpenDocument) and (C = '[') then begin
-    FSavedSheetNameTerminator := FSheetNameTerminator;
-    FSheetNameTerminator := '.';
-    C := NextPos;
-    Result := DoIdentifier
-//    Result := DoSquareBracket
-  end
+  if {(FParser.Dialect = fdOpenDocument) and }(C = '[') then
+    Result := ttCellRangeODS
   else if C = cNull then
     Result := ttEOF
   else if IsDelim(C) then
@@ -1647,7 +1738,9 @@ var
   optional: Boolean;
   token: String;
   prevTokenType: TsTokenType;
-  sheetname: String;
+  sheetname, sheetname2: String;
+  r1, c1, r2, c2: Cardinal;
+  flags: TsRelFlags;
   sheet: TsWorksheet;
 begin
 {$ifdef debugexpr} Writeln('Primitive : ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
@@ -1672,7 +1765,26 @@ begin
     Result := TsCellExprNode.Create(self, FWorksheet, CurrentToken, false)
   else if (TokenType = ttCellRange) then
     Result := TsCellRangeExprNode.Create(self, FWorksheet, CurrentToken)
-  else if (TokenType = ttSheetName) then begin
+  else if (TokenType = ttCellRangeODS) then
+  begin
+    FScanner.GetCellRangeParamsODS(sheetname, sheetname2, r1, c1, r2, c2, flags);
+    if (sheetname2 = '') and (r2 = cardinal(-1)) and (c2 = cardinal(-1)) then
+    begin
+      if sheetname = '' then
+        Result := TsCellExprNode.Create(self, FWorksheet, r1, c1, flags, false)
+      else begin
+        sheet := FWorksheet.Workbook.GetWorksheetByName(sheetName);
+        if sheet = nil then
+          sheet := FWorksheet.Workbook.AddWorksheet(sheetname, true);
+        Result := TsCellExprNode.Create(self, sheet, r1, c1, flags, true);
+      end;
+    end
+    else
+      Result := TsCellRangeExprNode.Create(self, FWorksheet, sheetname, sheetname2,
+        r1, c1, r2, c2, flags, (sheetname <> ''));
+  end
+  else if (TokenType = ttSheetName) then
+  begin
     sheetName := CurrentToken;
     GetToken;
     if TokenType = ttCell then begin
@@ -3887,93 +3999,21 @@ begin
   FParser := AParser;
   FWorksheet := AWorksheet;
   FSheet[1] := GetWorkbook.GetWorksheetIndex(ASheet1);
-  if ASheet2 = '' then
-    FSheet[2] := FSheet[1]
-  else
-    FSheet[2] := GetWorkbook.GetWorksheetIndex(ASheet2);
+  if ASheet2 = '' then FSheet[2] := FSheet[1] else FSheet[2] := GetWorkbook.GetWorksheetIndex(ASheet2);
   FRow[1] := ARow1;
   FCol[1] := ACol1;
-  FRow[2] := ARow2;
-  FCol[2] := ACol2;
+  if ARow2 = Cardinal(-1) then FRow[2] := FRow[1] else FRow[2] := ARow2;
+  if ACol2 = Cardinal(-1) then FCol[2] := FCol[1] else FCol[2] := ACol2;
   FFlags := AFlags;
   F3dRange := Is3dRange;
 end;
-(*
-
-constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
-  AWorksheet: TsWorksheet; ACellRangeString: String; OnOtherSheet: Boolean);
-var
-  r1, c1, r2, c2: Cardinal;
-  flags: TsRelFlags;
-begin
-  if pos(':', ACellRangeString) = 0 then
-  begin
-    ParseCellString(ACellRangeString, r1, c1, flags);
-    if rfRelRow in flags then Include(flags, rfRelRow2);
-    if rfRelCol in flags then Include(flags, rfRelCol2);
-    Create(AParser, AWorksheet, r1, c1, r1, c1, flags, OnOtherSheet);
-  end else
-  begin
-    ParseCellRangeString(ACellRangeString, r1, c1, r2, c2, flags);
-    Create(AParser, AWorksheet, r1, c1, r2, c2, flags, OnOtherSheet);
-  end;
-end;
-
-constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
-  AWorksheet: TsWorksheet; ARow1,ACol1,ARow2,ACol2: Cardinal;
-  AFlags: TsRelFlags; OnOtherSheet: Boolean);
-begin
-  FParser := AParser;
-  FWorksheet := AWorksheet;
-  FRow[1] := ARow1;
-  FCol[1] := ACol1;
-  FRow[2] := ARow2;
-  FCol[2] := ACol2;
-  FFlags := AFlags;
-  FOnOtherSheet := OnOtherSheet;
-end;
-
-constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
-  AWorksheet1, AWorksheet2: TsWorksheet; ACellRangeString: String);
-var
-  r1, c1, r2, c2: Cardinal;
-  flags: TsRelFlags;
-begin
-  if pos(':', ACellRangeString) = 0 then
-  begin
-    ParseCellString(ACellRangeString, r1, c1, flags);
-    if rfRelRow in flags then Include(flags, rfRelRow2);
-    if rfRelCol in flags then Include(flags, rfRelCol2);
-    Create(AParser, AWorksheet1, AWorksheet2, r1, c1, r1, c1, flags);
-  end else
-  begin
-    ParseCellRangeString(ACellRangeString, r1, c1, r2, c2, flags);
-    Create(AParser, AWorksheet1, AWorksheet2, r1, c1, r2, c2, flags);
-  end;
-end;
-
-constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
-  AWorksheet1, AWorksheet2: TsWorksheet; ARow1,ACol1,ARow2,ACol2: Cardinal;
-  AFlags: TsRelFlags);
-begin
-  FParser := AParser;
-  FWorksheet := AWorksheet1;
-  FWorksheet2 := AWorksheet2;
-  FRow[1] := ARow1;
-  FCol[1] := ACol1;
-  FRow[2] := ARow2;
-  FCol[2] := ACol2;
-  FFlags := AFlags;
-  FOnOtherSheet := true;
-end;
-  *)
 
 function TsCellRangeExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
 begin
   if F3dRange then
     Result := RPNCellRange3D(
-      FSheet[1], GetRow(1), GetCol(1),
-      FSheet[2], GetRow(2), GetCol(2),
+      FSheet[1], GetRow(1), Integer(GetCol(1)),
+      FSheet[2], GetRow(2), Integer(GetCol(2)),
       FFlags, ANext
     )
   else
@@ -3989,8 +4029,14 @@ var
   r1, c1, r2, c2: Cardinal;
   s1, s2: String;
 begin
-  s1 := Workbook.GetWorksheetByIndex(FSheet[1]).Name;
-  s2 := Workbook.GetWorksheetByIndex(FSheet[2]).Name;
+  if FSheet[1] = -1 then
+    s1 := FWorksheet.Name
+  else
+    s1 := Workbook.GetWorksheetByIndex(FSheet[1]).Name;
+  if FSheet[2] = -1 then
+    s2 := FWorksheet.Name
+  else
+    s2 := Workbook.GetWorksheetByIndex(FSheet[2]).Name;
   r1 := GetRow(1);
   c1 := GetCol(1);
   r2 := GetRow(2);
@@ -4014,7 +4060,7 @@ begin
         Result := GetCellRangeString_R1C1(r1, c1, r2, c2, FFlags,
           FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
       fdOpenDocument:
-        Result := GetCellRangeString(r1, c1, r2, c2, FFlags, true);
+        Result := GetCellRangeString_ODS(r1, c1, r2, c2, FFlags, true);
     end;
 end;
 

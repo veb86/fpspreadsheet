@@ -19,9 +19,6 @@
   Row := 0;
 
   formula := '1+1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -42,9 +39,6 @@
   // Subtraction
   inc(Row);
   formula := '1-10';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -65,9 +59,6 @@
   // Add cell values - relative addresses
   inc(Row);
   formula := 'B1+B2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -83,9 +74,6 @@
   // Add cell values - absolute addresses
   inc(Row);
   formula := '$B$1+$B$2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -102,9 +90,6 @@
   // Add cell values - mixed absolute and relative addresses
   inc(Row);
   formula := 'B$1+$B2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -136,9 +121,6 @@
   // Subtract cell values - absolute addresses
   inc(Row);
   formula := '$B$1-$B$2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -154,9 +136,6 @@
   // Subtract cell values - mixed absolute and relative addresses
   inc(Row);
   formula := 'B$1-$B2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -173,9 +152,6 @@
   // Multiplication w/o Parenthesis
   inc(Row);
   formula := '10*-3';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -191,9 +167,6 @@
   // Multiplication  w/Parenthesis
   inc(Row);
   formula := '10*(-3)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -210,9 +183,6 @@
   // Multiplication of cell values
   inc(Row);
   formula := 'B1*B2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -228,9 +198,6 @@
   // Division
   inc(Row);
   formula := '10/200';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -246,9 +213,6 @@
   // Division: Error case - divide by zero
   inc(Row);
   formula := '10/0';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -267,9 +231,6 @@
   // Division of cell values
   inc(Row);
   formula := 'B1/B2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -285,9 +246,6 @@
   // Percentage
   inc(Row);
   formula := '10%';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -302,9 +260,6 @@
   // Percentage of cell value
   inc(Row);
   formula := 'B1%';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -319,9 +274,6 @@
   // Exotic test case from OpenOffice test file
   inc(Row);
   formula := '200%%';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -336,9 +288,6 @@
   // Power symbol
   inc(Row);
   formula := '2^0.5';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -354,9 +303,6 @@
   // Power symbol - precedence of operations
   inc(Row);
   formula := '2^0.5*4';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -374,9 +320,6 @@
   // Power symbol - precedence of operators
   inc(Row);
   formula := '4*2^0.5';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -394,9 +337,6 @@
   // Exotic sample from OpenOffice test files
   inc(Row);
   formula := '50%^200%';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -416,9 +356,6 @@
     // Power of constant
     inc(Row);
     formula := 'POWER(2,0.5)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -434,9 +371,6 @@
     // Power of cell values
     inc(Row);
     formula := 'POWER(B1,B2)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -454,9 +388,6 @@
   // Power: Error case  "power( (negative number), (fractional number) )"
   inc(Row);
   formula := 'POWER(-2.0, 0.5)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -475,9 +406,6 @@
   // Unary minus
   inc(Row);
   formula := '-(-1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNformula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -493,9 +421,6 @@
    // Unary minus of cell value
   inc(Row);
   formula := '-B1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -510,9 +435,6 @@
   // Unary plus
   inc(Row);
   formula := '+(-1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -528,9 +450,6 @@
   // Unary plus of cell value
   inc(Row);
   formula := '+(B2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteUTF8Text(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -546,9 +465,6 @@
   // Exotic case from OpenOffice test files
   inc(Row);
   formula := '+-B2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -564,9 +480,6 @@
   // String result
   inc(Row);
   formula := '"Hallo"';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -580,9 +493,6 @@
   // String concatenation
   inc(Row);
   formula := '"Hallo"&" world"';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -598,9 +508,6 @@
   // Equal (bool)
   inc(Row);
   formula := 'TRUE=FALSE';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -616,9 +523,6 @@
   // Equal (strings)
   inc(Row);
   formula := '"Hallo"="world"';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -634,9 +538,6 @@
   // Equal (numbers)
   inc(Row);
   formula := '1=1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -652,9 +553,6 @@
   // Equal (cell)
   inc(Row);
   formula := 'M1=1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -669,9 +567,6 @@
 
   inc(Row);
   formula := 'M2=1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -686,9 +581,6 @@
 
   inc(Row);
   formula := 'M2=N2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -704,9 +596,6 @@
   // Greater (bool)
   inc(Row);
   formula := 'TRUE>FALSE';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -722,9 +611,6 @@
   // Greater (strings)
   inc(Row);
   formula := '"Hallo">"world"';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -755,9 +641,6 @@
   // Greater (cell)
   inc(Row);
   formula := 'M2>1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -772,9 +655,6 @@
 
   inc(Row);
   formula := 'M2>N2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -790,9 +670,6 @@
   // Greater equal (bool)
   inc(Row);
   formula := 'TRUE>=FALSE';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -808,9 +685,6 @@
   // Greater equal (strings)
   inc(Row);
   formula := '"Hallo">="world"';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -826,9 +700,6 @@
   // Greater equal (numbers)
   inc(Row);
   formula := '1>=1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -844,9 +715,6 @@
   // Greater equal(cell)
   inc(Row);
   formula := 'M2>=1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -861,9 +729,6 @@
 
   inc(Row);
   formula := 'M2>=N2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -879,9 +744,6 @@
   // Less (bool)
   inc(Row);
   formula := 'TRUE<FALSE';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -897,9 +759,6 @@
   // Less (strings)
   inc(Row);
   formula := '"Hallo"<"world"';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -915,9 +774,6 @@
   // Less (numbers)
   inc(Row);
   formula := '1<1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -933,9 +789,6 @@
   // Less (cell)
   inc(Row);
   formula := 'M2<1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -950,9 +803,6 @@
 
   inc(Row);
   formula := 'M2<N2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -968,9 +818,6 @@
   // Less equal (bool)
   inc(Row);
   formula := 'TRUE<=FALSE';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -986,9 +833,6 @@
   // Less equal (strings)
   inc(Row);
   formula := '"Hallo"<="world"';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1004,9 +848,6 @@
   // Less equal (numbers)
   inc(Row);
   formula := '1<=1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1022,9 +863,6 @@
   // Less equal (cell)
   inc(Row);
   formula := 'M2<=1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1039,9 +877,6 @@
 
   inc(Row);
   formula := 'M2<=N2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1057,9 +892,6 @@
   // Not equal (bool)
   inc(Row);
   formula := 'TRUE<>FALSE';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1075,9 +907,6 @@
   // Not equal (strings)
   inc(Row);
   formula := '"Hallo"<>"world"';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1093,9 +922,6 @@
   // Not equal (numbers)
   inc(Row);
   formula := '1<>1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1111,9 +937,6 @@
   // Not equal (cell)
   inc(Row);
   formula := 'M2<>1';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1128,9 +951,6 @@
 
   inc(Row);
   formula := 'M2<>N2';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1149,9 +969,6 @@
 // ABS
   inc(Row);
   formula := 'ABS(-1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1167,9 +984,6 @@
   inc(Row);
   number := 0.1;
   formula := 'ACOS(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1186,9 +1000,6 @@
   // ACOS - error result (arccos is not defined outside the interval [-1..1]
   inc(Row);
   formula := 'ACOS(-2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1207,9 +1018,6 @@
   inc(Row);
   number := 1.1;
   formula := 'ACOSH(1.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1224,9 +1032,6 @@
   // ACOSH - error result (arccos is not defined below 1
   inc(Row);
   formula := 'ACOSH(0.9)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1245,9 +1050,6 @@
   inc(Row);
   number := 0.1;
   formula := 'ASIN(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1262,9 +1064,6 @@
   // ASIN - error result (arcsin is not defined outside the interval [-1..1]
   inc(Row);
   formula := 'ASIN(-2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1283,9 +1082,6 @@
   inc(Row);
   number := 1.1;
   formula := 'ASINH(1.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1301,9 +1097,6 @@
   inc(Row);
   number := 0.1;
   formula := 'ATAN(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1319,9 +1112,6 @@
   inc(Row);
   number := 0.1;
   formula := 'ATANH(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1336,9 +1126,6 @@
   // ATANH - error result (arctan is only defined within ]-1,1[
   inc(Row);
   formula := 'ATANH(1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1358,9 +1145,6 @@
     inc(Row);
     number := 0.1;
     formula := 'CEILING(5.02,0.25)';
-    {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1378,9 +1162,6 @@
   inc(Row);
   number := 0.1;
   formula := 'COS(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1396,9 +1177,6 @@
   inc(Row);
   number := 0.1;
   formula := 'COSH(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1415,9 +1193,6 @@
   begin
     inc(Row);
     formula := 'DEGREES(1)';
-   {$IFDEF FORMULADEBUG}
-   DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-  {$ENDIF}
    MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1434,9 +1209,6 @@
   if AFormat <> sfExcel2 then
   begin
     inc(Row);
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     formula := 'EVEN(11.2)';
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
@@ -1454,9 +1226,6 @@
   inc(Row);
   number := 0.1;
   formula := 'EXP(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1471,9 +1240,6 @@
   // FACT
   inc(Row);
   formula := 'FACT(5)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1490,9 +1256,6 @@
     inc(Row);
     number := 0.1;
     formula := 'FLOOR(5.02,0.25)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1510,9 +1273,6 @@
   inc(Row);
   number := 0.1;
   formula := 'INT(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1527,9 +1287,6 @@
   // INT (negative argument)
   inc(Row);
   formula := 'INT(-0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1545,9 +1302,6 @@
   inc(Row);
   number := 0.1;
   formula := 'LN(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1562,9 +1316,6 @@
   // LN - error due to argument = 0
   inc(Row);
   formula := 'LN(0)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1582,9 +1333,6 @@
   // LN - error due to argument < 0
   inc(Row);
   formula := 'LN(-0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1603,9 +1351,6 @@
   inc(Row);
   number := 0.1;
   formula := 'LOG10(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1620,9 +1365,6 @@
   // LOG10 - error due to argument = 0
   inc(Row);
   formula := 'LOG10(0)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1640,9 +1382,6 @@
   // LOG10 - error due to argument < 0
   inc(Row);
   formula := 'LOG10(-0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1661,9 +1400,6 @@
   inc(Row);
   number := 0.1;
   formula := 'LOG(0.1,2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1679,9 +1415,6 @@
   // LOG - error result (2 arguments, base missing)
   inc(Row);
   formula := 'LOG(0.1,)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1701,9 +1434,6 @@
   inc(Row);
   number := 0.1;
   formula := 'LOG(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1718,9 +1448,6 @@
   // LOG - negative base
   inc(Row);
   formula := 'LOG(0.1,-2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1739,9 +1466,6 @@
   // LOG - negative value
   inc(Row);
   formula := 'LOG(-0.1,2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1760,9 +1484,6 @@
   // LOG of cell
   inc(Row);
   formula := 'LOG(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1777,9 +1498,6 @@
   // MOD
   inc(Row);
   formula := 'MOD(12,5)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1797,9 +1515,6 @@
   begin
     inc(Row);
     formula := 'ODD(11.2)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1815,9 +1530,6 @@
   // PI
   inc(Row);
   formula := 'PI()';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1833,9 +1545,6 @@
     // RADIANS
     inc(Row);
     formula := 'RADIANS(60)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1850,9 +1559,6 @@
     // RADIANS of cell value
     inc(Row);
     formula := 'RADIANS(B1)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1872,9 +1578,6 @@
   // ROUND
   inc(Row);
   formula := 'ROUND(PI(),2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1891,9 +1594,6 @@
   // ROUND
   inc(Row);
   formula := 'ROUND(12345.6789,-2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1911,9 +1611,6 @@
   inc(Row);
   number := -0.1;
   formula := 'SIGN(-0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1928,9 +1625,6 @@
   // SIGN of cell value
   inc(Row);
   formula := 'SIGN(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1946,9 +1640,6 @@
   inc(Row);
   number := 0.1;
   formula := 'SIN(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1963,9 +1654,6 @@
   // SIN of cell value
   inc(Row);
   formula := 'SIN(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1981,9 +1669,6 @@
   inc(Row);
   number := 0.1;
   formula := 'SINH(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -1998,9 +1683,6 @@
   // SINH of cell value
   inc(Row);
   formula := 'SINH(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2016,9 +1698,6 @@
   inc(Row);
   number := 0.1;
   formula := 'SQRT(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2033,9 +1712,6 @@
   // SQRT - error (negative argument)
   inc(Row);
   formula := 'SQRT(-0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2053,9 +1729,6 @@
   // SQRT of cell value
   inc(Row);
   formula := 'SQRT(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2071,9 +1744,6 @@
   inc(Row);
   number := 0.1;
   formula := 'TAN(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2091,9 +1761,6 @@
   // TAN of cell value
   inc(Row);
   formula := 'TAN(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2109,9 +1776,6 @@
   inc(Row);
   number := 0.1;
   formula := 'TANH(0.1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2126,9 +1790,6 @@
   // TANH of cell value
   inc(Row);
   formula := 'TANH(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2147,9 +1808,6 @@
   // DATE
   inc(Row);
   formula := 'DATE(2014,7,1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2167,9 +1825,6 @@
   if AFormat <> sfExcel2 then begin
     inc(Row);
     formula := 'DATEDIF(DATE(2014,7,1),DATE(2014,1,1),"D")';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2195,9 +1850,6 @@
   inc(Row);
   s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
   formula := 'DATEVALUE("'+s+'")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2213,9 +1865,6 @@
   // DAY  / argument number
   inc(Row);
   formula := 'DAY(DATE(2014,7,1))';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2234,9 +1883,6 @@
   inc(Row);
   s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
   formula := 'DAY("'+s+'")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2251,9 +1897,6 @@
   // HOUR  / argument number
   inc(Row);
   formula := 'HOUR(TIME(9,59,20))';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2272,9 +1915,6 @@
   inc(Row);
   s := TimeToStr(EncodeTime(9, 59, 20, 0));   // Localization of the test
   formula := 'HOUR("'+s+'")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2289,9 +1929,6 @@
   // MINUTE  / argument number
   inc(Row);
   formula := 'MINUTE(TIME(9,59,20))';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2310,9 +1947,6 @@
   inc(Row);
   s := TimeToStr(EncodeTime(9, 59, 20, 0));   // Localization of the test
   formula := 'MINUTE("'+s+'")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2327,9 +1961,6 @@
   // MONTH  / argument number
   inc(Row);
   formula := 'MONTH(DATE(2014,7,1))';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2348,9 +1979,6 @@
   inc(Row);
   s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
   formula := 'MONTH("'+s+'")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2365,9 +1993,6 @@
   // NOW
   inc(Row);
   formula := 'NOW()';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   // Make sure that, when the file is read we still have the same second
   // Otherwise there would be a mismatch.
   repeat
@@ -2388,9 +2013,6 @@
   // SECOND  / argument number
   inc(Row);
   formula := 'SECOND(TIME(9,59,20))';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2409,9 +2031,6 @@
   inc(Row);
   s := TimeToStr(EncodeTime(9, 59, 20, 0));   // Localization of the test
   formula := 'SECOND("'+s+'")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2426,9 +2045,6 @@
   // TIME
   inc(Row);
   formula := 'TIME(9,59,20)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2447,9 +2063,6 @@
   inc(Row);
   s := TimeToStr(EncodeTime(9, 59, 20, 0));  // Localization!
   formula := 'TIMEVALUE("'+s+'")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2465,9 +2078,6 @@
   // TODAY
   inc(Row);
   formula := 'TODAY()';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2482,9 +2092,6 @@
   // WEEKDAY  / argument number
   inc(Row);
   formula := 'WEEKDAY(DATE(2014,7,1))';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2503,9 +2110,6 @@
   inc(Row);
   s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
   formula := 'WEEKDAY("'+s+'")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2520,9 +2124,6 @@
   // YEAR  / argument number
   inc(Row);
   formula := 'YEAR(DATE(2014,7,1))';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2541,9 +2142,6 @@
   inc(Row);
   s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
   formula := 'YEAR("'+s+'")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2564,9 +2162,6 @@
   if AFormat <> sfExcel2 then begin
     inc(Row);
     formula := 'AVEDEV(1,1.1,1.2,0.9,0.8)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2589,9 +2184,6 @@
 // AVERAGE
   inc(Row);
   formula := 'AVERAGE(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2610,9 +2202,6 @@
   // AVERAGE of cell block
   inc(Row);
   formula := 'AVERAGE(B1:B2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2626,9 +2215,6 @@
 
   // COUNT
   inc(Row);
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   formula := 'COUNT(1,1.1,1.2,0.9,0.8)';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -2648,9 +2234,6 @@
   // COUNT  of cell range (no empty cells)
   inc(Row);
   formula := 'COUNT(B1:B2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2665,9 +2248,6 @@
   // COUNT of cell range (no empty cells, but with non-numeric cells)
   inc(Row);
   formula := 'COUNT(A1:B2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2682,9 +2262,6 @@
   // COUNT  of cell range (with empty cells)
   inc(Row);
   formula := 'COUNT(M2:N3)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2699,9 +2276,6 @@
 // COUNTA
   inc(Row);
   formula := 'COUNTA(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2719,9 +2293,6 @@
 
   inc(Row);
   formula := 'COUNTA(1,1.1,1.2,0.9,0.8,"A","B")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2741,9 +2312,6 @@
 
   inc(Row);
   formula := 'COUNTA(A1:D2,1,2,"A")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2762,9 +2330,6 @@
   if AFormat <> sfExcel2 then begin
     inc(Row);
     formula := 'COUNTBLANK(A1:D2)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2783,9 +2348,6 @@
   if AFormat <> sfExcel2 then begin
     inc(Row);
     formula := 'COUNTIF(M1:N3,1)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2800,9 +2362,6 @@
 
     inc(Row);
     formula := 'COUNTIF(M1:N3,">=1")';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2817,9 +2376,6 @@
 
     inc(Row);
     formula := 'COUNTIF(M1:N3,"<2")';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2834,9 +2390,6 @@
 
     inc(Row);
     formula := 'COUNTIF(M1:N3,"<>2")';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2851,9 +2404,6 @@
 
     inc(Row);
     formula := 'COUNTIF(M1:N3,M1)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2870,9 +2420,6 @@
   // MAX
   inc(Row);
   formula := 'MAX(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2891,9 +2438,6 @@
   // MAX of cell range (no empty cells)
   inc(Row);
   formula := 'MAX(B1:B2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2908,9 +2452,6 @@
   // MAX of cell range  (incl empty cells)
   inc(Row);
   formula := 'MAX(B1:C2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2925,9 +2466,6 @@
   // MIN
   inc(Row);
   formula := 'MIN(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2946,9 +2484,6 @@
   // MIN of cell range (no empty cells)
   inc(Row);
   formula := 'MIN(B1:B2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2963,9 +2498,6 @@
   // MIN of cell range  (incl empty cells)
   inc(Row);
   formula := 'MIN(B1:C2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2980,9 +2512,6 @@
   // PRODUCT
   inc(Row);
   formula := 'PRODUCT(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3001,9 +2530,6 @@
   // STDEV
   inc(Row);
   formula := 'STDEV(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3022,9 +2548,6 @@
   // STDEVP
   inc(Row);
   formula := 'STDEVP(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3043,9 +2566,6 @@
   // SUM
   inc(Row);
   formula := 'SUM(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3065,9 +2585,6 @@
   if AFormat <> sfExcel2 then begin
     inc(Row);
     formula := 'SUMSQ(1,1.1,1.2,0.9,0.8)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3087,9 +2604,6 @@
     // SUMIF
     inc(Row);
     formula = 'SUMIF(M1:N3,1)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3104,9 +2618,6 @@
 
     inc(Row);
     formula := 'SUMIF(M1:N3,">=1")';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formul);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3121,9 +2632,6 @@
 
     inc(Row);
     formula := 'SUMIF(M1:N3,"<2")';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3138,9 +2646,6 @@
 
     inc(Row);
     formula := 'SUMIF(M1:N3,"<>2")';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3155,9 +2660,6 @@
 
     inc(Row);
     formula := 'SUMIF(M1:N3,M1)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3172,9 +2674,6 @@
 
     inc(Row);
     formula := 'SUMIF(M1:N3,M2)';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3192,9 +2691,6 @@
   // VAR
   inc(Row);
   formula := 'VAR(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3213,9 +2709,6 @@
   // VARP
   inc(Row);
   formula := 'VARP(1,1.1,1.2,0.9,0.8)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3239,9 +2732,6 @@
   // AND of one values (bool)
   inc(Row);
   formula := 'AND(TRUE)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3256,9 +2746,6 @@
   // AND of two values (bool)
   inc(Row);
   formula := 'AND(TRUE,FALSE)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3274,9 +2761,6 @@
   // AND of three values (bool)
   inc(Row);
   formula := 'AND(TRUE,FALSE,TRUE)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3293,9 +2777,6 @@
   // function =FALSE()
   inc(Row);
   formula := 'FALSE()';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3309,9 +2790,6 @@
   // IF (2 parameters)/strings/case true
   inc(Row);
   formula := 'IF(TRUE,"A")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3327,9 +2805,6 @@
   // IF (2 parameters) /floats/case true
   inc(Row);
   formula := 'IF(TRUE,1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3345,9 +2820,6 @@
   // IF (2 parameters)/strings/case false
   inc(Row);
   formula := 'IF(FALSE,"A")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3363,9 +2835,6 @@
   // IF (2 parameters) /floats/case false
   inc(Row);
   formula := 'IF(FALSE,1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3381,9 +2850,6 @@
   // IF (3 parameters)/strings
   inc(Row);
   formula := 'IF(TRUE,"A","B")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3400,9 +2866,6 @@
   // IF (3 parameters) /floats
   inc(Row);
   formula := 'IF(TRUE,1,2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3419,9 +2882,6 @@
   // IF (3 parameters) /floats / mixed types, case true
   inc(Row);
   formula := 'IF(TRUE,1,"A")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3438,9 +2898,6 @@
   // IF (3 parameters) /floats / mixed types, case false
   inc(Row);
   formula := 'IF(FALSE,1,"A")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3457,9 +2914,6 @@
   // NOT
   inc(Row);
   formula := 'NOT(FALSE)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3474,9 +2928,6 @@
   // OR of one values (bool)
   inc(Row);
   formula := 'OR(TRUE)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3491,9 +2942,6 @@
   // OR of two values (bool)
   inc(Row);
   formula := 'OR(TRUE,FALSE)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3509,9 +2957,6 @@
   // OR of three values (bool)
   inc(Row);
   formula := 'OR(TRUE,FALSE,TRUE)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3528,9 +2973,6 @@
   // function =TRUE()
   inc(Row);
   formula := 'TRUE()';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3550,9 +2992,6 @@
   // CHAR
   inc(Row);
   formula := 'CHAR(72)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3567,9 +3006,6 @@
    // CODE
   inc(Row);
   formula := 'CODE("Hallo world")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3586,9 +3022,6 @@
   begin
     inc(Row);
     formula := 'CONCATENATE("A","B","C")';
-   {$IFDEF FORMULADEBUG}
-    DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
-   {$ENDIF}
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3606,9 +3039,6 @@
   // EXACT
   inc(Row);
   formula := 'EXACT("abc","ABC")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3624,9 +3054,6 @@
   // LEFT (2 parameters)
   inc(Row);
   formula := 'LEFT("Hallo world",2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3642,9 +3069,6 @@
   // LEFT (2 parameters, utf8)
   inc(Row);
   formula := 'LEFT("Ändern",3)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3660,9 +3084,6 @@
   // LEFT (2 parameters, 1 of them missing)
   inc(Row);
   formula := 'LEFT("Hallo world",)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3678,9 +3099,6 @@
   // LEFT (1 parameter)
   inc(Row);
   formula := 'LEFT("Hallo world")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3695,9 +3113,6 @@
   // Len
   inc(Row);
   formula := 'LEN("Hallo world")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3712,9 +3127,6 @@
   // Lower case
   inc(Row);
   formula := 'LOWER("Hallo world")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3729,9 +3141,6 @@
   // Lower case / utf8
   inc(Row);
   formula := 'LOWER("Viele Grüße")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3746,9 +3155,6 @@
   // MID
   inc(Row);
   formula := 'MID("Hallo world",3,2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3765,9 +3171,6 @@
   // REPLACE
   inc(Row);
   formula := 'REPLACE("weather",2,2,"he")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3785,9 +3188,6 @@
   // REPLACE / utf8
   inc(Row);
   formula := 'REPLACE("würde",2,1,"u")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3805,9 +3205,6 @@
   // REPT
   inc(Row);
   formula := 'REPT("ABC",3)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3823,9 +3220,6 @@
   // RIGHT (2 parameters)
   inc(Row);
   formula := 'RIGHT("Hallo world",2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3841,9 +3235,6 @@
   // RIGHT (2 parameters, one of them missing)
   inc(Row);
   formula := 'RIGHT("Hallo world",)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3859,9 +3250,6 @@
   // RIGHT (1 parameter)
   inc(Row);
   formula := 'RIGHT("Hallo world")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3876,9 +3264,6 @@
   // SUBSTITUTE
   inc(Row);
   formula := 'SUBSTITUTE("lAzArus","A","a")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3895,9 +3280,6 @@
   // SUBSTITUTE /nth appearance
   inc(Row);
   formula := 'SUBSTITUTE("lazarus","a","A",2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3915,9 +3297,6 @@
   // Trim
   inc(Row);
   formula := 'TRIM("   Hallo world   ")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3932,9 +3311,6 @@
   // Upper case
   inc(Row);
   formula := 'UPPER("Hallo world")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3949,9 +3325,6 @@
   // Upper case / utf8
   inc(Row);
   formula := 'UPPER("Viele Grüße")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -3966,9 +3339,6 @@
   // VALUE
   inc(Row);
   formula := 'VALUE("100")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4052,9 +3422,6 @@
                    { cell function will be removed because it requires localized string parameters
   // CELL
   formula := 'CELL("address",A1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4137,9 +3504,6 @@
 (*               ---- fails for ODS ---> to be checked
   inc(Row);
   formula := 'ERROR.TYPE(A1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4153,9 +3517,6 @@
 
   inc(Row);
   formula := 'ERROR.TYPE(H2)';   // this cells contains "1/0" --> #DIV/0!
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4170,9 +3531,6 @@
 
   // IsBlank
   inc(Row);
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   formula := 'ISBLANK(A1)';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -4187,9 +3545,6 @@
 
   inc(Row);
   formula := 'ISBLANK(G1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4203,9 +3558,6 @@
 
   inc(Row);
   formula := 'ISBLANK(H1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteBlank(0, 7);          // A11 is an empty cell
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -4221,9 +3573,6 @@
   // IsErr
   inc(Row);
   formula := 'ISERR(H2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     myWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4236,9 +3585,6 @@
   Myworksheet.WriteText(Row, 2, 'TRUE');
 
   formula := 'ISERR(H3)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     myWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4253,9 +3599,6 @@
   // IsError
   inc(Row);
   formula := 'ISERROR(1/0)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4271,9 +3614,6 @@
 
   inc(Row);
   formula := 'ISERROR(0/1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4289,9 +3629,6 @@
 
   inc(Row);
   formula := 'ISERROR(H2)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4305,9 +3642,6 @@
 
   inc(Row);
   formula := 'ISERROR(H3)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4322,9 +3656,6 @@
   // IsLogical
   inc(Row);
   formula := 'ISLOGICAL(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4339,9 +3670,6 @@
   // IsNONTEXT
   inc(Row);
   formula := 'ISNONTEXT(1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4355,9 +3683,6 @@
 
   inc(Row);
   formula := 'ISNONTEXT("A")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4371,9 +3696,6 @@
 
   inc(Row);
   formula := 'ISNONTEXT(A1)';             // A1 contains a text
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4387,9 +3709,6 @@
 
   inc(Row);
   formula := 'ISNONTEXT(B1)';              // B1 contains a number
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4404,9 +3723,6 @@
   // IsNumber
   inc(Row);
   formula := 'ISNUMBER(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4421,9 +3737,6 @@
   // IsRef
   inc(Row);
   formula := 'ISREF(1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4437,9 +3750,6 @@
 
   inc(Row);
   formula := 'ISREF(A1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4451,11 +3761,8 @@
   sollValues[Row] := BooleanResult(true);
   Myworksheet.WriteText(Row, 2, 'FALSE');
 
-inc(Row);
+  inc(Row);
   formula := 'ISREF(A1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4473,9 +3780,6 @@ inc(Row);
   // IsText
   inc(Row);
   formula := 'ISTEXT(1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4489,9 +3793,6 @@ inc(Row);
 
   inc(Row);
   formula := 'ISTEXT("A")';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4505,9 +3806,6 @@ inc(Row);
 
   inc(Row);
   formula := 'ISTEXT(A1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -4521,9 +3819,6 @@ inc(Row);
 
   inc(Row);
   formula := 'ISTEXT(B1)';
- {$IFDEF FORMULADEBUG}
-  DebugLn('Row ' + IntToStr(Row) + ': ' + formula);
- {$ENDIF}
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(

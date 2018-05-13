@@ -180,7 +180,6 @@
       </Debugging>
     </Linking>
     <Other>
-      <CustomOptions Value="-dFormulaDebug"/>
       <OtherDefines Count="1">
         <Define0 Value="FormulaDebug"/>
       </OtherDefines>
