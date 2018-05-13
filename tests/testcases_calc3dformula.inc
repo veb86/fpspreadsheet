@@ -6,7 +6,9 @@
   sheet1.WriteNumber(1, 5, 12.0);      // F2 = 12.0
 
   sheet2.WriteText(2, 1, 'A');         // B3 = 'A'
-  sheet2.WriteNumber(1, 4,  1.0);      // E2 = 1.0
+  sheet2.WriteNumber(1, 4, 1.0);       // E2 = 1.0
+  sheet2.WriteNumber(2, 4, -1.0);      // E3 = -1.0
+  sheet2.WriteNumber(3, 4, 10.0);      // E4 = 10.0
 
   sheet3.WriteText(1, 2, 'B');         // C2 = 'B'
   sheet3.WriteNumber(1, 1, 2.0);       // B2 = 2.0
@@ -68,6 +70,13 @@
   sheet1.WriteFormula(Row, 1, formula);
   SetLength(SollValues, Row+1);
   SollValues[Row] := StringResult('AB');
+
+  inc(Row);
+  formula := 'SUM(Sheet2!E2:E4)';                           { A9 }
+  sheet1.WriteText(Row, 0, formula);
+  sheet1.WriteFormula(Row, 1, formula);
+  SetLength(SollValues, Row+1);
+  SollValues[Row] := FloatResult(10.0);
 
   {
   inc(Row);

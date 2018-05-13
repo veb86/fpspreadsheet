@@ -1887,7 +1887,8 @@ begin
     inc(len);
   SetLength(ansistr, len);
   AStream.ReadBuffer(ansistr[2], len-1);
-  ansistr[1] := char(b);
+  Delete(ansistr, 1, 1);
+//  ansistr[1] := char(b);
   s := ConvertEncoding(ansistr, FCodePage, encodingUTF8);
   FExternSheets.AddObject(s, TObject(PtrInt(b)));
 end;
@@ -4088,6 +4089,9 @@ end;
           *)
 procedure TsSpreadBIFFWriter.WriteEXTERNCOUNT(AStream: TStream; ACount: Word);
 begin
+  if ACount = 0 then
+    exit;
+
   { BIFF record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNCOUNT, 2);
 

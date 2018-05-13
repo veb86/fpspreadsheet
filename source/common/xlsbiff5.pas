@@ -532,6 +532,8 @@ begin
       INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
       INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
       INT_EXCEL_ID_EOF           : SectionEOF := True;
+      INT_EXCEL_ID_EXTERNCOUNT   : ReadEXTERNCOUNT(AStream);
+      INT_EXCEL_ID_EXTERNSHEET   : ReadEXTERNSHEET(AStream);
       INT_EXCEL_ID_FOOTER        : ReadHeaderFooter(AStream, false);
       INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
       INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
@@ -666,17 +668,17 @@ begin
     // Skip 8 unused bytes
     AStream.Position := AStream.Position + 8;
 
-    // Zero-based index to first referenced sheet (-1 = deleted sheet)
+    // one-based index to first referenced sheet (-1 = deleted sheet)
     idx := Int16(WordLEToN(AStream.ReadWord));
     if idx <> -1 then begin
-      s := FExternSheets.Strings[idx];
+      s := FExternSheets.Strings[idx-1];
       ASheet1 := FWorkbook.GetWorksheetIndex(s);
     end;
 
-    // Zero-based index to last referenced sheet (-1 = deleted sheet)
+    // one-based index to last referenced sheet (-1 = deleted sheet)
     idx := WordLEToN(AStream.ReadWord);
     if idx <> -1 then begin
-      s := FExternSheets.Strings[idx];
+      s := FExternSheets.Strings[idx-1];
       ASheet2 := FWorkbook.GetWorksheetIndex(s);
     end;
   end

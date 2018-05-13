@@ -2831,6 +2831,9 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteEXTERNBOOK(AStream: TStream);
 begin
+  if (FExternBooks = nil) or (FExternBooks.Count = 0) then
+    exit;
+
   { BIFF record header }
   WriteBIFFHeader(AStream, INT_EXCEL_ID_EXTERNBOOK, 4);
 

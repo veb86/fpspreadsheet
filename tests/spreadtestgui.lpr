@@ -9,12 +9,13 @@ uses
   //HeapTrc,
   SysUtils,
  {$ENDIF}
-  Interfaces, Forms, GuiTestRunner, datetests, stringtests, numberstests,
-  manualtests, testsutility, internaltests, formattests, colortests, fonttests,
-  optiontests, numformatparsertests, formulatests, rpnFormulaUnit, exceltests,
-  emptycelltests, errortests, virtualmodetests, insertdeletetests, ssttests,
-  celltypetests, sortingtests, copytests, enumeratortests, commenttests,
-  hyperlinktests, pagelayouttests, protectiontests;
+  Interfaces, Forms, GuiTestRunner, testsutility,
+  datetests, stringtests, numberstests, manualtests, internaltests,
+  formattests, colortests, fonttests, optiontests, numformatparsertests,
+  formulatests, rpnFormulaUnit, singleformulatests,
+  exceltests, emptycelltests, errortests, virtualmodetests,
+  insertdeletetests, ssttests, celltypetests, sortingtests, copytests,
+  enumeratortests, commenttests, hyperlinktests, pagelayouttests, protectiontests;
 
 begin
  {$IFDEF HEAPTRC}

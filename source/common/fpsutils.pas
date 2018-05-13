@@ -81,6 +81,9 @@ function ParseSheetCellString(const AStr: String; out ASheetName: String;
 function ParseCellRowString(const AStr: string; out ARow: Cardinal): Boolean;
 function ParseCellColString(const AStr: string; out ACol: Cardinal): Boolean;
 
+function ParseCellRangeString(const AStr: String; out ASheet1, ASheet2: String;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean; overload;
+
 function GetCellRangeString(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -915,6 +918,87 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Parses a 3D cell and sheet range string in Excel A1 dialect. Returns the
+  names of the limiting sheets and the indexes of the limiting borders.
+  The function result is false if the provided string is not valid.
+-------------------------------------------------------------------------------}
+function ParseCellRangeString(const AStr: String; out ASheet1, ASheet2: String;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean;
+var
+  s1, s2: string;
+  p: Integer;
+begin
+  p := pos('!', AStr);
+  if p = 0 then begin
+    ASheet1 := '';
+    ASheet2 := '';
+    s2 := AStr;
+  end else begin
+    s1 := Copy(AStr, 1, p-1);
+    s2 := Copy(AStr, p+1, MaxInt);
+    p := pos(':', s1);
+    if p = 0 then
+      ASheet1 := s1
+    else begin
+      ASheet1 := copy(s1, 1, p-1);
+      ASheet2 := copy(s1, p+1, MaxInt);
+    end;
+  end;
+  Result := ParseCellRangeString(s2, ARow1, ACol1, ARow2, ACol2, AFlags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Parses a 3D cell and sheet range string in ODS dialect. Returns the
+  names of the limiting sheets and the indexes of the limiting borders.
+  The function result is false if the provided string is not valid.
+-------------------------------------------------------------------------------}
+function ParseCellRangeString_ODS(const AStr: String; out ASheet1, ASheet2: String;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean;
+var
+  s1, s2: String;
+  p: Integer;
+  res1, res2: Boolean;
+  flags1, flags2: TsRelFlags;
+begin
+  p := Pos(':', AStr);
+  if p = 0 then begin
+    s1 := AStr;
+    s2 := '';
+  end else begin
+    s1 := copy(AStr, 1, p-1);
+    s2 := copy(AStr, p+1, MaxInt);
+  end;
+
+  p := pos('.', s1);
+  if p = 0 then begin
+    ASheet1 := '';
+    ASheet2 := '';
+    Result := ParseCellString(s1, ARow1, ACol1, AFlags);
+    ARow2 := ARow1;
+    ACol2 := ACol1;
+    exit;
+  end else begin
+    ASheet1 := Copy(s1, 1, p-1);
+    s1 := copy(s1, p+1, MaxInt);
+    res1 := ParseCellString(s1, ARow1, ACol1, flags1);
+  end;
+
+  p := pos('.', s2);
+  if p = 0 then begin
+    ASheet2 := '';
+    res2 := ParseCellString(s2, ARow2, ACol2, flags2);
+  end else begin
+    ASheet2 := Copy(s2, 1, p-1);
+    s2 := copy(s2, p+1, MaxInt);
+    res2 := ParseCellString(s2, ARow2, ACol2, flags2);
+  end;
+
+  Result := res1 and res2;
+  AFlags := flags1 + flags2;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Calculates an Excel column name ('A', 'B' etc) from the zero-based column index
 
   @param  AColIndex   Zero-based column index
@@ -1113,11 +1197,11 @@ function GetCellRangeString_ODS(ASheet1, ASheet2: String;
 var
   s1, s2: String;
 begin
-  s1 := Format('%s%s%s%s', [
+  s1 := Format('%s%s%s%d', [
     RELCHAR[rfRelCol in AFlags], GetColString(ACol1),
     RELCHAR[rfRelRow in AFlags], ARow1 + 1
   ]);
-  s2 := Format('%s%s%s%s', [
+  s2 := Format('%s%s%s%d', [
     RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2),
     RELCHAR[rfRelRow2 in AFlags], ARow2 + 1
   ]);

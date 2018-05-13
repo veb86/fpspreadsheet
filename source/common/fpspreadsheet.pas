@@ -755,7 +755,7 @@ type
 
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
-    procedure ReCalc;
+//    procedure ReCalc;
 
   public
     {@@ A copy of SysUtil's DefaultFormatSettings (converted to UTF8) to provide
@@ -8119,6 +8119,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Recalculates rpn formulas in all worksheets
 -------------------------------------------------------------------------------}
+(*
 procedure TsWorkbook.Recalc;
 var
   sheet: pointer;
@@ -8126,6 +8127,7 @@ begin
   for sheet in FWorksheets do
     TsWorksheet(sheet).CalcFormulas;
 end;
+*)
 
 {@@ ----------------------------------------------------------------------------
   Conversion of length values between units
@@ -8475,7 +8477,8 @@ begin
       ok := true;
       UpdateCaches;
       if (boAutoCalc in Options) then
-        Recalc;
+        CalcFormulas;
+//        Recalc;
       FFormatID := AFormatID;
     finally
       FReadWriteFlag := rwfNormal;
@@ -8611,7 +8614,8 @@ begin
       ok := true;
       UpdateCaches;
       if (boAutoCalc in Options) then
-        Recalc;
+        CalcFormulas;
+//        Recalc;
       FFormatID := AFormatID;
     finally
       FReadWriteFlag := rwfNormal;
@@ -8977,11 +8981,13 @@ end;
 function TsWorkbook.GetWorksheetByName(AName: String): TsWorksheet;
 var
   i:integer;
+  s: String;
 begin
   Result := nil;
   for i:=0 to FWorksheets.Count-1 do
   begin
-    if UTF8CompareText(TsWorkSheet(FWorkSheets.Items[i]).Name, AName) = 0 then
+    s := TsWorksheet(FWorksheets.Items[i]).Name;
+    if UTF8CompareText(s, AName) = 0 then
     begin
       Result := TsWorksheet(FWorksheets.Items[i]);
       exit;
@@ -9012,10 +9018,15 @@ end;
   worksheet does not exist.
 -------------------------------------------------------------------------------}
 function TsWorkbook.GetWorksheetIndex(const AWorksheetName: String): Integer;
+var
+  s: String;
 begin
   for Result := 0 to FWorksheets.Count-1 do
-    if TsWorksheet(FWorksheets[Result]).Name = AWorksheetName then
+  begin
+    s := TsWorksheet(FWorksheets[Result]).Name;
+    if SameText(s, AWorksheetName) then
       exit;
+  end;
   Result := -1;
 end;
 

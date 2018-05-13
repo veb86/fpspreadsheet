@@ -86,8 +86,7 @@ type
   TsResultTypes = set of TsResultType;
 
   TsExpressionResult = record
-    Worksheet       : TsWorksheet;
-    Worksheet2      : TsWorksheet;
+    Worksheet       : TsWorksheet;   // Worksheet containing the calculated cell
     ResString       : String;
     case ResultType : TsResultType of
       rtEmpty       : ();
@@ -96,8 +95,9 @@ type
       rtInteger     : (ResInteger     : Int64);
       rtFloat       : (ResFloat       : TsExprFloat);
       rtDateTime    : (ResDateTime    : TDatetime);
-      rtCell        : (ResRow, ResCol : Cardinal);
-      rtCellRange   : (ResCellRange   : TsCellRange);
+      rtCell        : (ResRow, ResCol : Cardinal;
+                       ResSheetIndex  : Integer);
+      rtCellRange   : (ResCellRange   : TsCellRange3D);
       rtHyperlink   : ();
       rtString      : ();
   end;
@@ -564,7 +564,7 @@ type
   private
     FCallBack: TsExprFunctionCallBack;
   protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     constructor CreateFunction(AParser: TsExpressionParser;
       AID: TsExprIdentifierDef; const Args: TsExprArgumentArray); override;
@@ -616,30 +616,29 @@ type
   TsCellRangeExprNode = class(TsExprNode)
   private
     FWorksheet: TsWorksheet;
-    FWorksheet2: TsWorksheet;
+//    FWorksheet2: TsWorksheet;
     FRow: array[TsCellRangeIndex] of Cardinal;
     FCol: array[TsCellRangeIndex] of Cardinal;
+    FSheet: array[TsCellRangeIndex] of Integer;
     FFlags: TsRelFlags;
-    FonOtherSheet: Boolean;
+    F3dRange: Boolean;
   protected
     function GetCol(AIndex: TsCellRangeIndex): Cardinal;
     function GetRow(AIndex: TsCellRangeIndex): Cardinal;
     procedure GetNodeValue(out Result: TsExpressionResult); override;
-    function GetSheetIndex(AIndex: TscellRangeIndex): Integer;
+    function GetWorkbook: TsWorkbook;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
-      ACellRangeString: String; OnOtherSheet: Boolean); overload;
+      ARangeString: String); overload;
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsWorksheet;
-      ARow1,ACol1, ARow2,ACol2: Cardinal; AFlags: TsRelFlags; OnOtherSheet: Boolean); overload;
-    constructor Create(AParser: TsExpressionParser; AWorksheet1, AWorksheet2: TsWorksheet;
-      ACellRangeString: String); overload;
-    constructor Create(AParser: TsExpressionParser; AWorksheet1, AWorksheet2: TsWorksheet;
-      ARow1,ACol1, ARow2,ACol2: Cardinal; AFlags: TsRelFlags); overload;
+      ASheet1, ASheet2: String; ARow1,ACol1, ARow2, ACol2: Cardinal;
+      AFlags: TsRelFlags; Is3DRange: Boolean); overload;
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
     procedure Check; override;
     function Has3DLink: Boolean; override;
     function NodeType: TsResultType; override;
+    property Workbook: TsWorkbook read GetWorkbook;
     property Worksheet: TsWorksheet read FWorksheet;
   end;
 
@@ -751,7 +750,7 @@ type
     procedure Clear;
     function CopyMode: Boolean;
     function Evaluate: TsExpressionResult;
-    procedure EvaluateExpression(out Result: TsExpressionResult);
+    procedure EvaluateExpression(out AResult: TsExpressionResult);
     function Has3DLinks: Boolean;
     procedure PrepareCopyMode(ASourceCell, ADestCell: PCell);
     function ResultType: TsResultType;
@@ -1361,13 +1360,13 @@ begin
   EvaluateExpression(Result);
 end;
 
-procedure TsExpressionParser.EvaluateExpression(out Result: TsExpressionResult);
+procedure TsExpressionParser.EvaluateExpression(out AResult: TsExpressionResult);
 begin
   if (FExpression = '') then
     ParserError(rsExpressionEmpty);
   if not Assigned(FExprNode) then
     ParserError(rsErrorInExpression);
-  FExprNode.GetNodeValue(Result);
+  FExprNode.GetNodeValue(AResult);
 end;
 
 function TsExpressionParser.GetAsBoolean: Boolean;
@@ -1672,7 +1671,7 @@ begin
   else if (TokenType = ttCell) then
     Result := TsCellExprNode.Create(self, FWorksheet, CurrentToken, false)
   else if (TokenType = ttCellRange) then
-    Result := TsCellRangeExprNode.Create(self, FWorksheet, CurrentToken, false)
+    Result := TsCellRangeExprNode.Create(self, FWorksheet, CurrentToken)
   else if (TokenType = ttSheetName) then begin
     sheetName := CurrentToken;
     GetToken;
@@ -1683,10 +1682,10 @@ begin
       Result := TsCellExprNode.Create(self, sheet, CurrentToken, true)
     end else
     if TokenType = ttCellRange then begin
-      sheet := FWorksheet.WorkBook.GetWorksheetByName(sheetName);
-      if sheet = nil then
-        sheet := FWorksheet.Workbook.AddWorksheet(sheetName, true);
-      Result := TsCellRangeExprNode.Create(self, sheet, sheet, CurrentToken);
+      if FDialect = fdOpenDocument then
+        Result := TsCellRangeExprNode.Create(self, FWorksheet, CurrentToken)
+      else
+        Result := TsCellrangeExprNode.Create(self, FWorksheet, sheetName+'!'+CurrentToken);
     end;
   end
   else if (TokenType = ttError) then
@@ -1877,12 +1876,13 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
     operand: TsExprNode = nil;
     fek: TFEKind;
     r,c, r2,c2: Cardinal;
-    idx: Integer;
+    idx, idx2: Integer;
     flags: TsRelFlags;
     ID: TsExprIdentifierDef;
     i, n: Integer;
     args: TsExprArgumentArray;
-    sheet, sheet2: TsWorksheet;
+    sheet: TsWorksheet;
+    sn, sn2: string;
   begin
     if AIndex < 0 then
       exit;
@@ -1918,22 +1918,23 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
           end;
           dec(AIndex);
         end;
-      fekCellRange:
+      fekCellRange, fekCellRange3D:
         begin
           r := AFormula[AIndex].Row;
           c := AFormula[AIndex].Col;
           r2 := AFormula[AIndex].Row2;
           c2 := AFormula[AIndex].Col2;
           flags := AFormula[AIndex].RelFlags;
-          idx := AFormula[AIndex].Sheet;
-          if idx = -1 then
-            ANode := TsCellRangeExprNode.Create(self, FWorksheet, r, c, r2, c2, flags, false)
+          if fek = fekCellRange then
+            ANode := TsCellRangeExprNode.Create(self, FWorksheet,
+              FWorksheet.Name, FWorksheet.Name, r, c, r2, c2, flags, false)
           else begin
-            sheet := FWorksheet.Workbook.GetWorksheetByIndex(idx);
-            idx := AFormula[AIndex].Sheet2;
-            if idx = -1 then sheet2 := sheet
-              else sheet2 := FWorksheet.Workbook.GetWorksheetByIndex(idx);
-            ANode := TsCellRangeExprNode.Create(self, sheet, sheet2, r,c, r2,c2, flags);
+            sn := FWorksheet.Workbook.GetWorksheetByIndex(AFormula[AIndex].Sheet).Name;
+            if AFormula[AIndex].Sheet2 = -1 then
+              sn2 := sn
+            else
+              sn2 := FWorksheet.Workbook.GetWorksheetByIndex(AFormula[AIndex].Sheet2).Name;
+            ANode := TsCellRangeExprNode.Create(self, FWorksheet, sn,sn2, r,c, r2,c2, flags, true);
           end;
           dec(AIndex);
         end;
@@ -3608,12 +3609,12 @@ begin
   FCallBack := AID.OnGetFunctionValueCallBack;
 end;
 
-procedure TsFunctionCallBackExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsFunctionCallBackExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
-  Result.ResultType := NodeType;     // was at end!
+  AResult.ResultType := NodeType;     // was at end!
   if Length(FArgumentParams) > 0 then
     CalcParams;
-  FCallBack(Result, FArgumentParams);
+  FCallBack(AResult, FArgumentParams);
 end;
 
 
@@ -3864,6 +3865,42 @@ end;
 { TsCellRangeExprNode }
 
 constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ARangeString: String);
+var
+  r1, c1, r2, c2: Cardinal;
+  sheet1, sheet2: String;
+  flags: TsRelFlags;
+begin
+  ParseCellRangeString(ARangeString, sheet1, sheet2, r1, c1, r2, c2, flags);
+  if (sheet1 = '') then begin
+    sheet1 := AWorksheet.Name;
+    sheet2 := sheet1;
+  end;
+  Create(AParser, AWorksheet, sheet1, sheet2, r1, c1, r2, c2,
+    flags, (AWorksheet.Name <> sheet1) );
+end;
+
+constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
+  AWorksheet: TsWorksheet; ASheet1, ASheet2: String;
+  ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: tsRelFlags; Is3DRange: Boolean);
+begin
+  FParser := AParser;
+  FWorksheet := AWorksheet;
+  FSheet[1] := GetWorkbook.GetWorksheetIndex(ASheet1);
+  if ASheet2 = '' then
+    FSheet[2] := FSheet[1]
+  else
+    FSheet[2] := GetWorkbook.GetWorksheetIndex(ASheet2);
+  FRow[1] := ARow1;
+  FCol[1] := ACol1;
+  FRow[2] := ARow2;
+  FCol[2] := ACol2;
+  FFlags := AFlags;
+  F3dRange := Is3dRange;
+end;
+(*
+
+constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
   AWorksheet: TsWorksheet; ACellRangeString: String; OnOtherSheet: Boolean);
 var
   r1, c1, r2, c2: Cardinal;
@@ -3929,17 +3966,22 @@ begin
   FFlags := AFlags;
   FOnOtherSheet := true;
 end;
+  *)
 
 function TsCellRangeExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
 begin
-  if FOnOtherSheet then
+  if F3dRange then
     Result := RPNCellRange3D(
-      GetSheetIndex(1), GetRow(1), GetCol(1),
-      GetSheetIndex(2), GetRow(2), GetCol(2),
+      FSheet[1], GetRow(1), GetCol(1),
+      FSheet[2], GetRow(2), GetCol(2),
       FFlags, ANext
     )
   else
-    Result := RPNCellRange(GetRow(1), GetCol(1), GetRow(2), GetCol(2), FFlags, ANext);
+    Result := RPNCellRange(
+      GetRow(1), GetCol(1),
+      GetRow(2), GetCol(2),
+      FFlags, ANext
+    );
 end;
 
 function TsCellRangeExprNode.AsString: string;
@@ -3947,19 +3989,33 @@ var
   r1, c1, r2, c2: Cardinal;
   s1, s2: String;
 begin
-  r1 := GetRow(1);         r2 := GetRow(2);
-  c1 := GetCol(1);         c2 := GetCol(2);
-  s1 := FWorksheet.Name;   s2 := FWorksheet2.Name;
+  s1 := Workbook.GetWorksheetByIndex(FSheet[1]).Name;
+  s2 := Workbook.GetWorksheetByIndex(FSheet[2]).Name;
+  r1 := GetRow(1);
+  c1 := GetCol(1);
+  r2 := GetRow(2);
+  c2 := GetCol(2);
 
-  case FParser.Dialect of
-    fdExcelA1:
-      Result := GetCellRangeString(s1, s2, r1, c1, r2, c2, FFlags, true);
-    fdExcelR1C1:
-      Result := GetCellRangeString_R1C1(s1, s2, r1, c1, r2, c2, FFlags,
-        FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
-    fdOpenDocument:
-      Result := GetCellRangeString_ODS(s1, s2, r1, c1, r2, c2, FFlags);
-  end;
+  if F3dRange then
+    case FParser.Dialect of
+      fdExcelA1:
+        Result := GetCellRangeString(s1, s2, r1, c1, r2, c2, FFlags, true);
+      fdExcelR1C1:
+        Result := GetCellRangeString_R1C1(s1, s2, r1, c1, r2, c2, FFlags,
+          FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
+      fdOpenDocument:
+        Result := GetCellRangeString_ODS(s1, s2, r1, c1, r2, c2, FFlags);
+    end
+  else
+    case FParser.Dialect of
+      fdExcelA1:
+        Result := GetCellRangeString(r1, c1, r2, c2, FFlags, true);
+      fdExcelR1C1:
+        Result := GetCellRangeString_R1C1(r1, c1, r2, c2, FFlags,
+          FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
+      fdOpenDocument:
+        Result := GetCellRangeString(r1, c1, r2, c2, FFlags, true);
+    end;
 end;
 
 procedure TsCellRangeExprNode.Check;
@@ -3997,14 +4053,16 @@ begin
   begin
     r[i] := GetRow(i);
     c[i] := GetCol(i);
-    s[i] := GetSheetIndex(i);
+    s[i] := FSheet[i];
   end;
-  if not FOnOtherSheet then s[2] := s[1];
 
-  book := FWorksheet.Workbook;
+  if not F3dRange then begin
+    s[1] := Workbook.GetWorksheetIndex(FWorksheet);
+    s[2] := s[1];
+  end;
 
   for ss := s[1] to s[2] do begin
-    sheet := book.GetWorksheetByIndex(ss);
+    sheet := Workbook.GetWorksheetByIndex(ss);
     for rr := r[1] to r[2] do
       for cc := c[1] to c[2] do
       begin
@@ -4024,8 +4082,10 @@ begin
   Result.ResCellRange.Col1 := c[1];
   Result.ResCellRange.Row2 := r[2];
   Result.ResCellRange.Col2 := c[2];
+  Result.ResCellRange.Sheet1 := s[1];
+  Result.ResCellRange.Sheet2 := s[2];
   Result.Worksheet := FWorksheet;
-  Result.Worksheet2 := FWorksheet2;
+//  Result.Worksheet2 := FWorksheet2;
 end;
 
 function TsCellRangeExprNode.GetRow(AIndex: TsCellRangeIndex): Cardinal;
@@ -4035,22 +4095,14 @@ begin
     Result := FRow[AIndex] - FParser.FSourceCell^.Row + FParser.FDestCell^.Row;
 end;
 
-function TsCellRangeExprNode.GetSheetIndex(AIndex: TsCellRangeIndex): Integer;
-var
-  book: TsWorkbook;
-  sheet: TsWorksheet;
+function TsCellRangeExprNode.GetWorkbook: TsWorkbook;
 begin
-  case AIndex of
-    1: sheet := FWorksheet;
-    2: sheet := FWorksheet2;
-  end;
-  book := sheet.Workbook;
-  Result := book.GetWorksheetIndex(sheet);
+  Result := FWorksheet.Workbook;
 end;
 
 function TsCellRangeExprNode.Has3DLink: Boolean;
 begin
-  Result := FOnOtherSheet;
+  Result := F3dRange;
 end;
 
 function TsCellRangeExprNode.NodeType: TsResultType;
@@ -4224,29 +4276,37 @@ var
   i, n: Integer;
   r, c: Cardinal;
   cell: PCell;
+  sheet: TsWorksheet;
   arg: TsExpressionResult;
+  idx, idx1, idx2: Integer;
 begin
   SetLength(AData, BLOCKSIZE);
   n := 0;
   for i:=0 to High(Args) do
   begin
     arg := Args[i];
-    if arg.ResultType = rtCellRange then
-      for r := arg.ResCellRange.Row1 to arg.ResCellRange.Row2 do
-        for c := arg.ResCellRange.Col1 to arg.ResCellRange.Col2 do
-        begin
-          cell := arg.Worksheet.FindCell(r, c);
-          if (cell <> nil) and (cell^.ContentType in [cctNumber, cctDateTime]) then
+    if arg.ResultType = rtCellRange then begin
+      idx1 := arg.ResCellRange.Sheet1;
+      idx2 := arg.ResCellRange.Sheet2;
+      for idx := idx1 to idx2 do
+      begin
+        sheet := arg.Worksheet.Workbook.GetWorksheetByIndex(idx);
+        for r := arg.ResCellRange.Row1 to arg.ResCellRange.Row2 do
+          for c := arg.ResCellRange.Col1 to arg.ResCellRange.Col2 do
           begin
-            case cell^.ContentType of
-              cctNumber   : AData[n] := cell^.NumberValue;
-              cctDateTime : AData[n] := cell^.DateTimeValue
+            cell := sheet.FindCell(r, c);
+            if (cell <> nil) and (cell^.ContentType in [cctNumber, cctDateTime]) then
+            begin
+              case cell^.ContentType of
+                cctNumber   : AData[n] := cell^.NumberValue;
+                cctDateTime : AData[n] := cell^.DateTimeValue
+              end;
+              inc(n);
+              if n = Length(AData) then SetLength(AData, Length(AData) + BLOCKSIZE);
             end;
-            inc(n);
-            if n = Length(AData) then SetLength(AData, length(AData) + BLOCKSIZE);
-          end;
-        end
-    else
+          end
+      end;
+    end else
     if (arg.ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtBoolean]) then
     begin
       AData[n] := ArgToFloat(arg);

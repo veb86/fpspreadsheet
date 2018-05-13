@@ -10,6 +10,8 @@ unit formulatests;
   Note that Excel report a corrupted file when trying to read this file }
 {.DEFINE ENABLE_DEFECTIVE_FORMULAS }
 
+{ Activate the project define FORMULADEBUG to log the formulas written }
+
 
 interface
 
@@ -87,6 +89,9 @@ type
 implementation
 
 uses
+ {$IFDEF FORMULADEBUG}
+  LazLogger,
+ {$ENDIF}
   math, typinfo, lazUTF8, fpsUtils, fpsRPN, rpnFormulaUnit;
 
 var
