@@ -49,6 +49,11 @@ type
     procedure SumSheetRange_OOXML;
     procedure SumSheetRange_ODS;
 
+    procedure SumMultiSheetRange_BIFF5;
+    procedure SumMultiSheetRange_BIFF8;
+    procedure SumMultiSheetRange_OOXML;
+    procedure SumMultiSheetRange_ODS;
+
   end;
 
 implementation
@@ -261,6 +266,25 @@ end;
 
 { ---- }
 
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_BIFF5;
+begin
+  TestFloatFormula('SUM(Sheet2:Sheet3!C3:C5)', 55.0, ftkCellRangeSheetRange, sfExcel5);
+end;
+
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_BIFF8;
+begin
+  TestFloatFormula('SUM(Sheet2:Sheet3!C3:C5)', 55.0, ftkCellRangeSheetRange, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_OOXML;
+begin
+  TestFloatFormula('SUM(Sheet2:Sheet3!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOOXML);
+end;
+
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_ODS;
+begin
+  TestFloatFormula('SUM(Sheet2:Sheet3!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOpenDocument);
+end;
 
 initialization
   // Register to include these tests in a full run
