@@ -1774,8 +1774,6 @@ begin
         Result := TsCellExprNode.Create(self, FWorksheet, r1, c1, flags, false)
       else begin
         sheet := FWorksheet.Workbook.GetWorksheetByName(sheetName);
-        if sheet = nil then
-          sheet := FWorksheet.Workbook.AddWorksheet(sheetname, true);
         Result := TsCellExprNode.Create(self, sheet, r1, c1, flags, true);
       end;
     end
@@ -1789,8 +1787,6 @@ begin
     GetToken;
     if TokenType = ttCell then begin
       sheet := FWorksheet.Workbook.GetWorksheetByName(sheetName);
-      if sheet = nil then
-        sheet := FWorksheet.Workbook.AddWorksheet(sheetName, true);
       Result := TsCellExprNode.Create(self, sheet, CurrentToken, true)
     end else
     if TokenType = ttCellRange then begin

@@ -731,7 +731,8 @@ begin
         end
         else
           // "Normal" formula
-          AWorksheet.WriteFormula(cell, formulaStr);
+          cell^.FormulaValue := formulaStr;
+//          AWorksheet.WriteFormula(cell, formulaStr);
       except
         on E:EExprParser do begin
           FWorkbook.AddErrorMsg(E.Message);
