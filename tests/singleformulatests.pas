@@ -7,8 +7,8 @@ interface
 uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpstypes, fpsallformats, fpspreadsheet, fpsexprparser,
+  Classes, SysUtils, fpcunit, testregistry,
+  fpstypes, fpspreadsheet, fpsexprparser,
   xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
@@ -62,7 +62,7 @@ uses
  {$IFDEF FORMULADEBUG}
   LazLogger,
  {$ENDIF}
-  math, typinfo, lazUTF8, fpsUtils;
+  typinfo, lazUTF8, fpsUtils;
 
 
 { TSpreadExtendedFormulaTests }
@@ -96,70 +96,74 @@ var
 begin
   TempFile := GetTempFileName;
 
-  // Create test workbook and write test formula and needed cells
-  workbook := TsWorkbook.Create;
   try
-    workbook.Options := workbook.Options + [boCalcBeforeSaving, boAutoCalc];
-    workSheet:= workBook.AddWorksheet(SHEET1);
+    // Create test workbook and write test formula and needed cells
+    workbook := TsWorkbook.Create;
+    try
+      workbook.Options := workbook.Options + [boCalcBeforeSaving, boAutoCalc];
+      workSheet:= workBook.AddWorksheet(SHEET1);
 
-    if ATestKind <> ftkConstants then begin
-      // Write cells used by the formula
-      worksheet.WriteNumber(2, 2, 1.0);   // C3
-      worksheet.WriteNumber(3, 2, -2.0);  // C4
-      worksheet.WriteNumber(4, 2, 1.5);   // C5
-      worksheet.WriteNumber(2, 3, 15.0);  // D3
+      if ATestKind <> ftkConstants then begin
+        // Write cells used by the formula
+        worksheet.WriteNumber(2, 2, 1.0);   // C3
+        worksheet.WriteNumber(3, 2, -2.0);  // C4
+        worksheet.WriteNumber(4, 2, 1.5);   // C5
+        worksheet.WriteNumber(2, 3, 15.0);  // D3
+      end;
+
+      if ATestKind in [ftkCellRangeSheet, ftkCellRangeSheetRange] then begin
+        otherSheet := Workbook.AddWorksheet(SHEET2);
+        othersheet.WriteNumber(2, 2, 10.0);   // Sheet2!C3
+        othersheet.WriteNumber(3, 2, -20.0);  // Sheet2!C4
+        othersheet.WriteNumber(4, 2, 15.0);   // Sheet2!C5
+        othersheet.WriteNumber(2, 3, 150.0);  // Sheet2!D5
+      end;
+
+      if ATestKind = ftkCellRangeSheetRange then begin
+        otherSheet := Workbook.AddWorksheet(SHEET3);
+        othersheet.WriteNumber(2, 2, 100.0);   // Sheet3C3
+        othersheet.WriteNumber(3, 2, -200.0);  // Sheet3!C4
+        othersheet.WriteNumber(4, 2, 150.0);   // Sheet3!C5
+        othersheet.WriteNumber(2, 3, 1500.0);  // Sheet3!D5
+      end;
+
+      // Write the formula
+      cell := worksheet.WriteFormula(TESTCELL_ROW, TESTCELL_COL, AFormula);
+
+      // Read formula before saving
+      actualFormula := cell^.Formulavalue;
+      CheckEquals(AFormula, actualFormula, 'Unsaved formula text mismatch');
+
+      // Read calculated value before saving
+      actualvalue := worksheet.ReadAsNumber(TESTCELL_ROW, TESTCELL_COL);
+      CheckEquals(AExpected, actualvalue, 'Unsaved calculated value mismatch');
+
+      // Save
+      workbook.WriteToFile(TempFile, AFormat, true);
+    finally
+      workbook.Free;
     end;
 
-    if ATestKind in [ftkCellRangeSheet, ftkCellRangeSheetRange] then begin
-      otherSheet := Workbook.AddWorksheet(SHEET2);
-      othersheet.WriteNumber(2, 2, 10.0);   // Sheet2!C3
-      othersheet.WriteNumber(3, 2, -20.0);  // Sheet2!C4
-      othersheet.WriteNumber(4, 2, 15.0);   // Sheet2!C5
-      othersheet.WriteNumber(2, 3, 150.0);  // Sheet2!D5
+    // Read file
+    workbook := TsWorkbook.Create;
+    try
+      workbook.Options := workbook.Options + [boReadFormulas, boAutoCalc];
+      workbook.ReadFromFile(TempFile, AFormat);
+      worksheet := workbook.GetFirstWorksheet;
+
+      // Read calculated formula value
+      actualvalue := worksheet.ReadAsNumber(TESTCELL_ROW, TESTCELL_COL);
+      CheckEquals(AExpected, actualValue, 'Saved calculated value mismatch');
+
+      cell := worksheet.FindCell(TESTCELL_ROW, TESTCELL_COL);
+      actualformula := cell^.FormulaValue;
+      CheckEquals(AFormula, actualformula, 'Saved formula text mismatch.');
+    finally
+      workbook.Free;
     end;
 
-    if ATestKind = ftkCellRangeSheetRange then begin
-      otherSheet := Workbook.AddWorksheet(SHEET3);
-      othersheet.WriteNumber(2, 2, 100.0);   // Sheet3C3
-      othersheet.WriteNumber(3, 2, -200.0);  // Sheet3!C4
-      othersheet.WriteNumber(4, 2, 150.0);   // Sheet3!C5
-      othersheet.WriteNumber(2, 3, 1500.0);  // Sheet3!D5
-    end;
-
-    // Write the formula
-    cell := worksheet.WriteFormula(TESTCELL_ROW, TESTCELL_COL, AFormula);
-
-    // Read formula before saving
-    actualFormula := cell^.Formulavalue;
-    CheckEquals(AFormula, actualFormula, 'Unsaved formula text mismatch');
-
-    // Read calculated value before saving
-    actualvalue := worksheet.ReadAsNumber(TESTCELL_ROW, TESTCELL_COL);
-    CheckEquals(AExpected, actualvalue, 'Unsaved calculated value mismatch');
-
-    // Save
-    workbook.WriteToFile(TempFile, AFormat, true);
   finally
-    workbook.Free;
-  end;
-
-  // Read file
-  workbook := TsWorkbook.Create;
-  try
-    workbook.Options := workbook.Options + [boReadFormulas, boAutoCalc];
-    workbook.ReadFromFile(TempFile, AFormat);
-    worksheet := workbook.GetFirstWorksheet;
-
-    // Read calculated formula value
-    actualvalue := worksheet.ReadAsNumber(TESTCELL_ROW, TESTCELL_COL);
-    CheckEquals(AExpected, actualValue, 'Saved calculated value mismatch');
-
-    cell := worksheet.FindCell(TESTCELL_ROW, TESTCELL_COL);
-    actualformula := cell^.FormulaValue;
-    CheckEquals(AFormula, actualformula, 'Saved formula text mismatch.');
-  finally
-    workbook.Free;
-    DeleteFile(TempFile);
+    if FileExists(TempFile) then DeleteFile(TempFile);
   end;
 end;
 

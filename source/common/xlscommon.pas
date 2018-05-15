@@ -334,6 +334,8 @@ const
   ROWHEIGHT_EPS = 1E-2;
 
 type
+  TsBIFFExternKind = (ebkExternal, ebkInternal, ebkAddInFunc, ebkDDE_OLE);
+
   TDateMode = (dm1900, dm1904); //DATEMODE values, 5.28
 
   // Adjusts Excel float (date, date/time, time) with the file's base date to get a TDateTime
@@ -379,50 +381,39 @@ type
     property ValidOnSheet: Integer read FValidOnSheet;
   end;
 
-  { TsExternBook - Information on where out-of-sheet references are stored. }
-  TsBIFFExternBookKind = (ebkExternal, ebkInternal, ebkAddInFunc, ebkDDE_OLE);
-  TsBIFFExternBook = class
-    Kind: TsBIFFExternBookKind;
-    // The following fields are used only for external workbooks.
-    DocumentURL: String;
-    SheetNames: String;  // List of worksheetnames separated by #1
-    function GetWorksheetName(AIndex: Integer): String;
-  end;
-
-  { TsBIFFExternBookList }
-  TsBIFFExternBookList = class(TFPObjectlist)
+  { TsBIFFExternBook - Information on where out-of-sheet references are stored. }
+  TsBIFFExternSheet = class
   private
-    function GetItem(AIndex: Integer): TsBIFFExternBook;
-    procedure SetItem(AIndex: Integer; AValue: TsBIFFExternBook);
+    FKind: TsBIFFExternKind;
+    FSheetName: String;
   public
-    function AddBook(ABookName: String): Integer;
-    function AddInternal: Integer;
-    function FindBook(ABookName: String): Integer;
-    function FindInternalBook: Integer;
-    property Item[AIndex: Integer]: TsBIFFExternBook read GetItem write SetItem; default;
+    constructor Create(ASheetName: String; AKind: TsBIFFExternKind);
+    property Kind: TsBIFFExternKind read FKind;
+    property SheetName: String read FSheetName;
   end;
 
-  { TsExternSheet - Information on a sheets used in out-of-sheet references }
-  TsBIFFExternSheet = packed record
-    ExternBookIndex: Word;
-    FirstSheetIndex: Word;
-    LastSheetIndex: Word;
-  end;
-  PsBIFFExternSheet = ^TsBIFFExternSheet;
-
-  { A list for sheets used in out-of-sheet references }
-  TsBIFFExternSheetList = class(TFPList)
+  TsBIFFExternSheetList = class(TFPObjectList)
   private
-    FBookList: TsBIFFExternBookList;
-    function GetItem(AIndex: Integer): PsBIFFExternSheet;
-    procedure SetItem(AIndex: Integer; AValue: PsBIFFExternSheet);
+    function GetItem(AIndex: Integer): TsBIFFExternSheet;
+    procedure SetItem(AIndex: Integer; AValue: TsBIFFExternSheet);
   public
-    constructor Create(ABookList: TsBIFFExternBookList);
+    function AddSheet(ASheetName: String; AKind: TsBIFFExternKind): Integer;
+    function FindSheet(ASheetName: String): TsBIFFExternSheet;
+    function IndexOfSheet(ASheetName: String): Integer;
+    property Items[AIndex: Integer]: TsBIFFExternSheet read GetItem write SetItem; default;
+  end;
+
+  TsBIFFLinkListItem = class
+    Worksheet: TsWorksheet;
+    Sheetlist: TsBIFFExternSheetList;
     destructor Destroy; override;
-    function AddSheets(ABookName: String; ASheetIndex1, ASheetIndex2: Integer): Integer;
-    procedure Clear;
-    function FindSheets(ABookName: String; ASheetIndex1, ASheetIndex2: Integer): Integer;
-    property Item[AIndex: Integer]: PsBIFFExternSheet read GetItem write SetItem; default;
+  end;
+
+  TsBIFFLinkLists = class(TFPObjectList)
+  public
+    function GetSheetList(AWorksheet: TsWorksheet): TsBiffExternSheetList;
+    function GetGlobalLinks: TsBiffExternSheetList;
+    function GetLocalLinks(AWorksheet: TsWorksheet): TsBiffExternSheetList;
   end;
 
 
@@ -437,11 +428,11 @@ type
     FIncompleteNoteLength: Word;
     FFirstNumFormatIndexInFile: Integer;
     FPalette: TsPalette;
-    FDefinedNames: TFPList;
+    FDefinedNames: TFPObjectList;
     FWorksheetData: TFPList;
     FCurSheetIndex: Integer;
     FActivePane: Integer;
-    FExternSheets: TStrings;
+    FLinkLists: TsBIFFLinkLists;
 
     procedure AddBuiltinNumFormats; override;
     procedure ApplyCellFormatting(ACell: PCell; XFIndex: Word); virtual;
@@ -483,9 +474,9 @@ type
     // Read the default row height
     procedure ReadDefRowHeight(AStream: TStream);
     // Read an EXTERNCOUNT record
-    procedure ReadEXTERNCOUNT(AStream: TStream);
+    procedure ReadEXTERNCOUNT(AStream: TStream; AWorksheet: TsWorksheet);
     // Read an EXTERNSHEET record (defined names)
-    procedure ReadEXTERNSHEET(AStream: TStream); virtual;
+    procedure ReadEXTERNSHEET(AStream: TStream; AWorksheet: TsWorksheet);
     // Read FORMAT record (cell formatting)
     procedure ReadFormat(AStream: TStream); virtual;
     // Read FORMULA record
@@ -575,11 +566,10 @@ type
     FCodePage: String;  // in a format prepared for lconvencoding.ConvertEncoding
     FFirstNumFormatIndexInFile: Integer;
     FPalette: TsPalette;
-    FExternBooks: TsBIFFExternBookList;
-    FExternSheets: TsBIFFExternSheetList;
+    FLinkLists: TsBiffLinkLists;
 
     procedure AddBuiltinNumFormats; override;
-    procedure CollectExternData(AWorksheet: TsWorksheet = nil);
+    function CollectExternData(AWorksheet: TsWorksheet = nil): Integer;
     function FindXFIndex(AFormatIndex: Integer): Integer; virtual;
     function FixLineEnding(const AText: String): String;
     function FormulaSupported(ARPNFormula: TsRPNFormula; out AUnsupported: String): Boolean;
@@ -619,7 +609,8 @@ type
     procedure WriteDefaultRowHeight(AStream: TStream; AWorksheet: TsWorksheet);
     // Writes out DEFINEDNAMES records
     procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
-       const AName: String; AIndexToREF: Word); virtual;
+       const AName: String; AIndexToREF, ASheetIndex: Word;
+       AKind: TsBIFFExternKind); virtual;
     procedure WriteDefinedNames(AStream: TStream);
     // Writes out ERROR cell record
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
@@ -959,193 +950,106 @@ end;
 
 
 { -----------------------------------------------------------------------------}
-{                             TsBIFFExternBook                                 }
+{                             TsBIFFExternSheet                                }
 { -----------------------------------------------------------------------------}
-function TsBIFFExternBook.GetWorksheetName(AIndex: Integer): String;
-var
-  L: TStrings;
-begin
-  Result := '';
-  if Kind = ebkExternal then begin
-    L := TStringList.Create;
-    try
-      L.Delimiter := #1;
-      L.DelimitedText := SheetNames;
-      Result := L[AIndex];
-    finally
-      L.Free;
-    end;
-  end;
-end;
-
-
-{------------------------------------------------------------------------------}
-{                           TsBIFFExternBookList                               }
-{------------------------------------------------------------------------------}
-function TsBIFFExternBookList.AddBook(ABookName: String): Integer;
-var
-  book: TsBIFFExternBook;
-begin
-  if ABookName = '' then
-    Result := AddInternal
-  else
-  begin
-    Result := FindBook(ABookName);
-    if Result = -1 then begin
-      book := TsBIFFExternBook.Create;
-      book.DocumentURL := ABookName;
-      book.Kind := ebkExternal;
-      Result := Add(book);
-    end;
-  end;
-end;
-
-function TsBIFFExternBookList.AddInternal: Integer;
-var
-  book: TsBIFFExternBook;
-begin
-  Result := FindInternalBook;
-  if Result = -1 then begin
-    book := TsBIFFExternBook.Create;
-    book.Kind := ebkInternal;
-    Result := Add(book);
-  end;
-end;
-
-function TsBIFFExternBookList.FindBook(ABookName: String): Integer;
-var
-  book: TsBIFFExternBook;
-begin
-  if ABookName = '' then
-    Result := FindInternalBook
-  else
-  begin
-    for Result:=0 to Count-1 do
-    begin
-      book := Item[Result];
-      if (book.Kind = ebkExternal) and (book.DocumentURL = ABookName) then
-        exit;
-    end;
-    Result := -1;
-  end;
-end;
-
-function TsBIFFExternBookList.FindInternalBook: Integer;
-begin
-  for Result := 0 to Count-1 do
-    if Item[Result].Kind = ebkInternal then exit;
-  Result := -1;
-end;
-
-function TsBIFFExternBookList.GetItem(AIndex: Integer): TsBIFFExternBook;
-begin
-  Result := TsBIFFExternBook(inherited Items[AIndex]);
-end;
-
-procedure TsBIFFExternBookList.SetItem(AIndex: Integer;
-  AValue: TsBIFFExternBook);
-begin
-  inherited Items[AIndex] := AValue;
-end;
-
-
-{------------------------------------------------------------------------------}
-{                           TsBiffExternSheetList                              }
-{------------------------------------------------------------------------------}
-constructor TsBIFFExternSheetList.Create(ABookList: TsBIFFExternBookList);
+constructor TsBIFFExternSheet.Create(ASheetName: string;
+  AKind: TsBiffExternKind);
 begin
   inherited Create;
-  FBookList := ABookList;
+  FSheetName := ASheetName;
+  FKind := AKind;
 end;
 
-destructor TsBIFFExternSheetList.Destroy;
-begin
-  Clear;
-  inherited;
-end;
 
-function TsBIFFExternSheetList.AddSheets(ABookName: String;
-  ASheetIndex1, ASheetIndex2: Integer): Integer;
+{ -----------------------------------------------------------------------------}
+{                         TsBIFFExternSheetList                                }
+{ -----------------------------------------------------------------------------}
+function TsBIFFExternSheetList.AddSheet(ASheetName: String;
+  AKind: TsBIFFExternKind): Integer;
 var
-  P: PsBIFFExternSheet;
+  sheet: TsBIFFExternSheet;
+begin
+  Result := IndexOfSheet(ASheetName);
+  if Result = -1 then begin
+    sheet := TsBIFFExternSheet.Create(ASheetName, AKind);
+    Result := inherited Add(sheet);
+  end;
+end;
+
+function TsBIFFExternSheetList.FindSheet(ASheetName: string): TsBIFFExternSheet;
+var
   idx: Integer;
 begin
-  Result := FindSheets(ABookName, ASheetIndex1, ASheetIndex2);
-  if Result = -1 then
-  begin
-    New(P);
-    idx := FBookList.FindBook(ABookName);
-    if idx = -1 then
-      idx := FBookList.AddBook(ABookName);
-    P^.ExternBookIndex := idx;
-
-    if ASheetIndex2 = -1 then
-      ASheetIndex2 := ASheetIndex1;
-    if ASheetIndex2 < ASheetIndex1 then
-    begin
-      P^.FirstSheetIndex := ASheetIndex2;
-      P^.LastSheetIndex := ASheetIndex1;
-    end else
-    begin
-      P^.FirstSheetIndex := ASheetIndex1;
-      P^.LastSheetIndex := ASheetIndex2;
-    end;
-    Result := Add(P);
-  end;
+  idx := IndexOfSheet(ASheetName);
+  if idx <> -1 then
+    Result := Items[idx]
+  else
+    Result := nil;
 end;
 
-procedure TsBIFFExternSheetList.Clear;
-var
-  i: Integer;
-  P: PsBIFFExternSheet;
+function TsBIFFExternSheetList.GetItem(AIndex: Integer): TsBIFFExternSheet;
 begin
-  for i:=0 to Count-1 do begin
-    P := Item[i];
-    Dispose(P);
-  end;
-  inherited;
+  Result := TsBIFFExternSheet(inherited Items[AIndex]);
 end;
 
-function TsBIFFExternSheetList.FindSheets(ABookName: String;
-  ASheetIndex1, ASheetIndex2: Integer): Integer;
+function TsBIFFExternSheetList.IndexOfSheet(ASheetName: string): Integer;
 var
-  book: TsBIFFExternBook;
-  P: PsBIFFExternSheet;
-  tmp: Integer;
-  idx: Integer;
+  sheet: TsBIFFExternSheet;
 begin
-  if ASheetIndex2 = -1 then ASheetIndex2 := ASheetIndex1;
-  if ASheetIndex2 < ASheetIndex1 then begin
-    tmp := ASheetIndex1;
-    ASheetIndex1 := ASheetIndex2;
-    ASheetIndex2 := tmp;
-  end;
-
-  idx := FBookList.FindBook(ABookName);
-  if idx = -1 then
-    exit(-1);
-
-  for Result:=0 to Count-1 do begin
-    P := Item[Result];
-    if (P^.ExternBookIndex = idx) and
-       (P^.FirstSheetIndex = ASheetIndex1) and
-       (P^.LastSheetIndex = ASheetIndex2)
-    then
+  for Result := 0 to Count-1 do begin
+    sheet := GetItem(Result);
+    if sheet.SheetName = ASheetName then
       exit;
   end;
   Result := -1;
 end;
 
-function TsBIFFExternSheetList.GetItem(AIndex: Integer): PsBIFFExternSheet;
-begin
-  Result := PsBIFFExternSheet(inherited Items[AIndex]);
-end;
-
-procedure TsBIFFExternSheetList.SetItem(AIndex: Integer; AValue: PsBIFFExternSheet);
+procedure TsBIFFExternSheetList.SetItem(AIndex: Integer;
+  AValue: TsBIFFExternSheet);
 begin
   inherited Items[AIndex] := AValue;
 end;
 
+
+{------------------------------------------------------------------------------}
+{                            TsBIFFLinkListItem                                }
+{------------------------------------------------------------------------------}
+destructor TsBIFFLinkListItem.Destroy;
+begin
+  SheetList.Free;
+  inherited;
+end;
+
+
+{------------------------------------------------------------------------------}
+{                             TsBIFFLinkLists                                  }
+{------------------------------------------------------------------------------}
+function TsBIFFLinkLists.GetSheetList(
+  AWorksheet: TsWorksheet): TsBiffExternSheetList;
+var
+  i: Integer;
+  item: TsBIFFLinkListItem;
+begin
+  for i := 0 to Count-1 do begin
+    item := TsBIFFLinkListItem(Items[i]);
+    if item.Worksheet = AWorksheet then begin
+      Result := item.SheetList;
+      exit;
+    end;
+  end;
+  Result := nil;
+end;
+
+function TsBIFFLinkLists.GetGlobalLinks: TsBIFFExternSheetList;
+begin
+  Result := GetSheetList(nil);
+end;
+
+function TsBIFFLinkLists.GetLocalLinks(
+  AWorksheet: TsWorksheet): TsBIFFExternSheetList;
+begin
+  Result := GetSheetList(AWorksheet);
+end;
 
 
 {------------------------------------------------------------------------------}
@@ -1231,7 +1135,8 @@ begin
   FCellFormatList := TsCellFormatList.Create(true);
   // true = allow duplicates! XF indexes get out of sync if not all format records are in list
 
-  FDefinedNames := TFPList.Create;
+  FLinkLists := TsBIFFLinkLists.Create;
+  FDefinedNames := TFPObjectList.Create;
 
   // Initial base date in case it won't be read from file
   FDateMode := dm1900;
@@ -1247,13 +1152,9 @@ end;
   Destructor of the reader class
 -------------------------------------------------------------------------------}
 destructor TsSpreadBIFFReader.Destroy;
-var
-  j: Integer;
 begin
-  for j:=0 to FDefinedNames.Count-1 do TObject(FDefinedNames[j]).Free;
   FDefinedNames.Free;
-
-  FExternSheets.Free;
+  FLinkLists.Free;
   FPalette.Free;
 
   inherited Destroy;
@@ -1857,12 +1758,19 @@ begin
   FWorksheet.WriteDefaultRowHeight(TwipsToPts(hw), suPoints);
 end;
 
-procedure TsSpreadBIFFReader.ReadEXTERNCOUNT(AStream: TStream);
+procedure TsSpreadBIFFReader.ReadEXTERNCOUNT(AStream: TStream;
+  AWorksheet: TsWorksheet);
+var
+  item: TsBIFFLinkListItem;
 begin
   AStream.ReadWord;
   { We ignore the value of the record, but use the presence of the record
-    to create the FExternSheets list. }
-  FExternSheets := TStringList.Create;
+    to create the link list item. The data themselves follow in the next
+    record. }
+  item := TsBIFFLinkListItem.Create;
+  item.Worksheet := AWorksheet;
+  item.Sheetlist := TsBIFFExternSheetList.Create;
+  FLinkLists.Add(item);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1875,12 +1783,18 @@ end;
   NOTE: The string length field is decreased by 1, if the EXTERNSHEET stores
   a reference to one of the own sheets (first character is #03).
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFFReader.ReadExternSheet(AStream: TStream);
+procedure TsSpreadBIFFReader.ReadEXTERNSHEET(AStream: TStream;
+  AWorksheet: TsWorksheet);
 var
   len, b: Byte;
   ansistr: AnsiString;
   s: String;
+  sheetlist: TsBIFFExternSheetList;
+  sheet: TsBIFFExternSheet;
+  idx: Integer;
 begin
+  sheetList := FLinkLists.GetSheetList(AWorksheet);
+
   len := AStream.ReadByte;
   b := AStream.ReadByte;
   if b = 3 then
@@ -1888,9 +1802,16 @@ begin
   SetLength(ansistr, len);
   AStream.ReadBuffer(ansistr[2], len-1);
   Delete(ansistr, 1, 1);
-//  ansistr[1] := char(b);
   s := ConvertEncoding(ansistr, FCodePage, encodingUTF8);
-  FExternSheets.AddObject(s, TObject(PtrInt(b)));
+
+  if b = 3 then
+    { Internal (within-workbook) references }
+    sheetList.AddSheet(s, ebkInternal)
+  else
+  begin
+    { External references }
+    // to do: implement external references
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3435,12 +3356,14 @@ begin
   // Color palette
   FPalette := TsPalette.Create;
   PopulatePalette(AWorkbook);
+
+  { List for external links }
+  FLinkLists := TsBIFFLinkLists.Create;
 end;
 
 destructor TsSpreadBIFFWriter.Destroy;
 begin
-  FExternSheets.Free;
-  FExternBooks.Free;
+  FLinkLists.Free;
   FPalette.Free;
   inherited Destroy;
 end;
@@ -3475,18 +3398,22 @@ end;
 {@@ ----------------------------------------------------------------------------
   Collects the data for out-of-sheet links found in the specified worksheet
   (or all worksheets if the parameter is omitted).
-  The found data are written to the FExternBooks and FExternSheets lists.
+  The found data are written to the a TBIFFLinkListItem which is added to
+  FLinkLists. The function returns the index of the new TBIFFLinkListItem.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsWorksheet = nil);
+function TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsWorksheet = nil): Integer;
 
-  procedure DoCollectForSheet(ASheet: TsWorksheet);
+  procedure DoCollectForSheet(ASheet: TsWorksheet; ASheetList: TsBIFFExternSheetList);
   var
     cell: PCell;
+    workbook: TsWorkbook;
     parser: TsExpressionParser;
     rpn: TsRPNFormula;
     fe: TsFormulaElement;
-    j: Integer;
+    i, j: Integer;
+    kind: TsBIFFExternKind;
   begin
+    workbook := ASheet.Workbook;
     for cell in ASheet.Cells do
     begin
       if not HasFormula(cell) then
@@ -3494,15 +3421,28 @@ procedure TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsWorksheet = nil);
       if not (cf3dFormula in cell^.Flags) then
         Continue;
 
+      if (pos('[', ASheet.Name) = 0) then
+        kind := ebkInternal
+      else
+        kind := ebkExternal;
+
       parser := TsSpreadsheetParser.Create(ASheet);
       try
         parser.Expression := cell^.FormulaValue;
         rpn := parser.RPNFormula;
-        for j:=0 to High(rpn) do
+        for i:=0 to High(rpn) do
         begin
-          fe := rpn[j];
-          if fe.ElementKind in [fekCell3d, fekCellRef3d, fekCellRange3d] then
-            FExternSheets.AddSheets('', fe.Sheet, fe.Sheet2);       // '' --> supporting only internal 3d links so far
+          fe := rpn[i];
+          if fe.ElementKind in [fekCell3d, fekCellRef3d, fekCellRange3d] then begin
+            if fe.Sheet = -1 then
+              ASheetList.AddSheet(ASheet.Name, kind)
+            else
+            if fe.Sheet2 = -1 then
+              ASheetList.AddSheet(workbook.GetWorksheetByIndex(fe.Sheet).Name, kind)
+            else
+              for j :=fe.Sheet to fe.Sheet2 do
+                ASheetList.AddSheet(workbook.GetWorksheetbyIndex(j).Name, kind);
+          end;
         end;
       finally
         parser.Free;
@@ -3514,24 +3454,37 @@ procedure TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsWorksheet = nil);
 var
   sheet: TsWorksheet;
   i: Integer;
+  writeIt: boolean;
+  linkList: TsBIFFLinkListItem;
 begin
-  FExternBooks.Free;
-  FExternBooks := TsBIFFExternBookList.Create;
-  FExternSheets.Free;
-  FExternSheets := TsBIFFExternSheetList.Create(FExternBooks);
+  linkList := TsBIFFLinkListItem.Create;
+  linkList.SheetList := TsBIFFExternSheetList.Create;
 
   if AWorksheet <> nil then
-    DoCollectForSheet(AWorksheet)
-  else
+  begin
+    { This part is active when called from WriteLocalLinkList }
+    linklist.Worksheet := AWorksheet;
+    DoCollectForSheet(AWorksheet, linklist.SheetList)
+  end else
+  begin
+    { This part is active when called from WriteGlobalLinkList }
+    { Find sheets used in print ranges, repeated cols or repeated rows }
+    linkList.Worksheet := nil;  // signals global linklist
     for i:=0 to FWorkbook.GetWorksheetCount-1 do
     begin
       sheet := FWorkbook.GetWorksheetbyIndex(i);
-      DoCollectForSheet(sheet);
+      with sheet.PageLayout do
+        writeIt := (NumPrintRanges > 0) or HasRepeatedCols or HasRepeatedRows;
+      if writeIt then
+        linkList.SheetList.AddSheet(sheet.Name, ebkInternal);
     end;
+  end;
 
-  if FExternSheets.Count = 0 then begin
-    FreeAndNil(FExternSheets);
-    FreeAndNil(FExternBooks);
+  if linkList.SheetList.Count <> 0 then
+    Result := FLinkLists.Add(linklist)
+  else begin
+    linkList.Free;  // destroys booklist, too.
+    Result := -1;
   end;
 end;
 
@@ -3998,10 +3951,12 @@ begin
 end;
 
 procedure TsSpreadBIFFWriter.WriteDefinedName(AStream: TStream;
-  AWorksheet: TsWorksheet; const AName: String; AIndexToREF: Word);
+  AWorksheet: TsWorksheet; const AName: String; AIndexToREF, ASheetIndex: Word;
+  AKind: TsBIFFExternKind);
 begin
   Unused(AStream, AWorksheet);
   Unused(Aname, AIndexToREF);
+  Unused(AKind);
   // Override
 end;
 
@@ -4009,20 +3964,28 @@ procedure TsSpreadBIFFWriter.WriteDefinedNames(AStream: TStream);
 var
   sheet: TsWorksheet;
   i: Integer;
-  n: Word;
+  idx: Word;
+  extSheetIdx: Integer;
+  sheetList: TsBIFFExternSheetList;
 begin
-  n := 0;
+  { Find sheetlist of global link table }
+  sheetList := FLinkLists.GetGlobalLinks;
+  if sheetList = nil then
+    exit;
+
   for i:=0 to FWorkbook.GetWorksheetCount-1 do
   begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
+    extSheetIdx := sheetList.IndexOfSheet(sheet.Name);
     if (sheet.PageLayout.NumPrintRanges > 0) or
        sheet.PageLayout.HasRepeatedCols or sheet.PageLayout.HasRepeatedRows then
     begin
+//      idx := sheetList.IndexOfSheet(sheet.Name);
+      // Write 1-based index. And negate it to indicate an internal reference.
       if sheet.PageLayout.NumPrintRanges > 0 then
-        WriteDefinedName(AStream, sheet, #6, n);
+        WriteDefinedName(AStream, sheet, #6, extSheetIdx, i, ebkInternal);
       if sheet.PageLayout.HasRepeatedCols or sheet.PageLayout.HasRepeatedRows then
-        WriteDefinedName(AStream, sheet, #7, n);
-      inc(n);
+        WriteDefinedName(AStream, sheet, #7, extSheetIdx, i, ebkInternal);
     end;
   end;
 end;
@@ -5040,6 +5003,8 @@ begin
           n := WriteRPNSheetIndex(AStream, '', AFormula[i].Sheet, AFormula[i].Sheet2);
           if n = $FFFF then
             FWorkbook.AddErrorMsg('3D cell addresses are not supported.')
+          else if n = $FFFE then
+            raise Exception.Create('[TsSpreadBIFFWriter.WriteRPNTokenArray] Worksheet(s) not found.')
           else begin
             inc(n, WriteRPNCellAddress(AStream, AFormula[i].Row, AFormula[i].Col, AFormula[i].RelFlags));
             inc(RPNLength, n);
@@ -5062,8 +5027,8 @@ begin
           n := WriteRPNSheetIndex(AStream, '', AFormula[i].Sheet, AFormula[i].Sheet2);
           if n = $FFFF then
             FWorkbook.AddErrorMsg('3D cell address ranges are not supported.')
-          else if n = $FFF3 then
-            FWorkbook.AddErrorMsg('Sheets not found in LinkTable.')
+          else if n = $FFFE then
+            raise Exception.Create('[TsSpreadBIFFWriter.WriteRPNTokenArray] Worksheet(s) not found.')
           else begin
             inc(n, WriteRPNCellRangeAddress(AStream,
               AFormula[i].Row, AFormula[i].Col,

@@ -105,7 +105,8 @@ type
     procedure WriteBOF(AStream: TStream; ADataType: Word);
     function  WriteBoundsheet(AStream: TStream; AWorkSheet: TsWorksheet): Int64;
     procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
-       const AName: String; AIndexToREF: Word); override;
+       const AName: String; AIndexToREF, ASheetIndex: Word;
+       AKind: TsBIFFExternKind); override;
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream;  AFont: TsFont);
@@ -117,10 +118,6 @@ type
     procedure WriteLABEL(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteLocalLinkTable(AStream: TStream; AWorksheet: TsWorksheet);
-    (*
-    function WriteRPNCellAddress3D(AStream: TStream; ASheet, ARow, ACol: Cardinal;
-      AFlags: TsRelFlags): Word; override;
-      *)
     function WriteRPNSheetIndex(AStream: TStream; ADocumentURL: String;
       ASheet1, ASheet2: Integer): Word; override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
@@ -482,14 +479,15 @@ begin
 
     case RecordType of
       INT_EXCEL_ID_BOF           : ;
-      INT_EXCEL_ID_BOUNDSHEET    : ReadBoundSheet(AStream);
-      INT_EXCEL_ID_CODEPAGE      : ReadCodePage(AStream);
+      INT_EXCEL_ID_BOUNDSHEET    : ReadBOUNDSHEET(AStream);
+      INT_EXCEL_ID_CODEPAGE      : ReadCODEPAGE(AStream);
       INT_EXCEL_ID_DEFINEDNAME   : ReadDefinedName(AStream);
       INT_EXCEL_ID_EOF           : SectionEOF := True;
-      INT_EXCEL_ID_EXTERNSHEET   : ReadExternSheet(AStream);
-      INT_EXCEL_ID_FONT          : ReadFont(AStream);
-      INT_EXCEL_ID_FORMAT        : ReadFormat(AStream);
-      INT_EXCEL_ID_PALETTE       : ReadPalette(AStream);
+      INT_EXCEL_ID_EXTERNCOUNT   : ReadEXTERNCOUNT(AStream, nil);
+      INT_EXCEL_ID_EXTERNSHEET   : ReadEXTERNSHEET(AStream, nil);
+      INT_EXCEL_ID_FONT          : ReadFONT(AStream);
+      INT_EXCEL_ID_FORMAT        : ReadFORMAT(AStream);
+      INT_EXCEL_ID_PALETTE       : ReadPALETTE(AStream);
       INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream);
       INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream);
       INT_EXCEL_ID_XF            : ReadXF(AStream);
@@ -532,8 +530,8 @@ begin
       INT_EXCEL_ID_COLINFO       : ReadColInfo(AStream);
       INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
       INT_EXCEL_ID_EOF           : SectionEOF := True;
-      INT_EXCEL_ID_EXTERNCOUNT   : ReadEXTERNCOUNT(AStream);
-      INT_EXCEL_ID_EXTERNSHEET   : ReadEXTERNSHEET(AStream);
+      INT_EXCEL_ID_EXTERNCOUNT   : ReadEXTERNCOUNT(AStream, FWorksheet);
+      INT_EXCEL_ID_EXTERNSHEET   : ReadEXTERNSHEET(AStream, FWorksheet);
       INT_EXCEL_ID_FOOTER        : ReadHeaderFooter(AStream, false);
       INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
       INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
@@ -653,12 +651,16 @@ procedure TsSpreadBIFF5Reader.ReadRPNSheetIndex(AStream: TStream;
 var
   idx: Int16;
   s: String;
+  sheetList: TsBIFFExternSheetList;
+  sheet: TsWorksheet;
+  extsheet: TsBIFFExternSheet;
 begin
   ADocumentURL := '';
   ASheet1 := -1;
   ASheet2 := -1;
 
-  { One-based index to EXTERNSHEET record. Negative to indicate a 3D reference.
+  { One-based index to EXTERNSHEET record in the booklist.
+    Negative to indicate a 3D reference.
     Positive to indicate an external reference }
   idx := WordLEToN(AStream.ReadWord);
 
@@ -668,31 +670,24 @@ begin
     // Skip 8 unused bytes
     AStream.Position := AStream.Position + 8;
 
-    // one-based index to first referenced sheet (-1 = deleted sheet)
-    idx := Int16(WordLEToN(AStream.ReadWord));
-    if idx <> -1 then begin
-      s := FExternSheets.Strings[idx-1];
-      ASheet1 := FWorkbook.GetWorksheetIndex(s);
-    end;
+    // zero-based index to first referenced sheet in workbook (-1 = deleted sheet)
+    ASheet1 := Int16(WordLEToN(AStream.ReadWord));
 
-    // one-based index to last referenced sheet (-1 = deleted sheet)
-    idx := WordLEToN(AStream.ReadWord);
-    if idx <> -1 then begin
-      s := FExternSheets.Strings[idx-1];
-      ASheet2 := FWorkbook.GetWorksheetIndex(s);
-    end;
+    // zero-based index to last referenced sheet in workbook (-1 = deleted sheet)
+    ASheet2 := WordLEToN(AStream.ReadWord);
   end
   else begin
     { *** External reference *** }
 
-    // Skip 12 unused byes
-    AStream.Position := AStream.Position + 12;
+    { !!! NOT CLEAR IF THIS IS CORRECT .... !!! }
 
-    dec(idx);  // 1-based index to 0-based index
-    s := FExternSheets[idx];
+    sheetlist := FLinkLists.GetLocalLinks(FWorksheet);
+    extSheet := sheetlist.Items[idx - 1];  // Convert 1-based to 0-based index
+    s := ConvertEncoding(extSheet.SheetName, FCodePage, encodingUTF8);
     ADocumentURL := s;
 
-    // NOTE: THIS IS NOT COMPLETE !!!
+    // Skip 12 unused byes
+    AStream.Position := AStream.Position + 12;
   end;
 end;
 
@@ -1447,32 +1442,45 @@ end;
   Writes out a DEFINEDNAMES record
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF5Writer.WriteDefinedName(AStream: TStream;
-  AWorksheet: TsWorksheet; const AName: String; AIndexToREF: Word);
+  AWorksheet: TsWorksheet; const AName: String; AIndexToREF, ASheetIndex: Word;
+  AKind: TsBIFFExternKind);
 
   procedure WriteRangeFormula(MemStream: TMemoryStream; ARange: TsCellRange;
-    AIndexToREF, ACounter: Word);
+    AIndexToREF, ASheetIndex, ACounter: Word);
   var
-    sheetIdx: Integer;
+    idx: Word;
   begin
-    Unused(AIndexToREF);
-
-    sheetIdx := FWorkbook.GetWorksheetIndex(AWorksheet);
-
     { Token for tArea3dR }
     MemStream.WriteByte($3B);
 
-    { 1-based sheet index, negative to indicate 3D reference }
-    MemStream.WriteWord(WordToLE(-(sheetIdx+1)));
+    if AKind = ebkInternal then begin
+      { INTERNAL REFERENCE:
+        1-based sheet index, negative to indicate 3D reference }
+      idx := word(-int16(AIndexToRef + 1));
+      MemStream.WriteWord(WordToLE(idx));
 
-    { 8 bytes not used }
-    MemStream.WriteDWord(0);
-    MemStream.WriteDWord(0);
+      { 8 bytes not used }
+      MemStream.WriteDWord(0);
+      MemStream.WriteDWord(0);
 
-    { Index to first reference worksheet }
-    MemStream.WriteWord(WordToLE(sheetIdx));   // THIS IS ONLY VALID FOR PRINTRANGE!
+      { Index to first reference worksheet }
+      MemStream.WriteWord(WordToLE(ASheetIndex));
 
-    { Index to last reference worksheet }
-    MemStream.WriteWord(WordToLE(sheetIdx));   // THIS IS ONLY VALID FOR PRINTRANGE!
+      { Index to last reference worksheet }
+      MemStream.WriteWord(WordToLE(ASheetIndex));
+    end
+    else
+    begin
+      { EXTERNAL REFERENCE:
+        always positive, 1-based index to EXTERNSHEET record }
+      idx := AIndexToRef;
+      MemStream.WriteWord(WordToLE(idx));
+
+      { 12 bytes not used }
+      MemStream.WriteDWord(0);
+      MemStream.WriteDWord(0);
+      MemStream.WriteDWord(0);
+    end;
 
     { First row index }
     MemStream.WriteWord(WordToLE(ARange.Row1));
@@ -1494,12 +1502,11 @@ procedure TsSpreadBIFF5Writer.WriteDefinedName(AStream: TStream;
 var
   memstream: TMemoryStream;
   rng: TsCellRange;
-  j: Integer;
   idx: Integer;
+  j: Integer;
 begin
   // Since this is a variable length record we begin by writing the formula
   // to a memory stream
-
   memstream := TMemoryStream.Create;
   try
     case AName of
@@ -1507,7 +1514,7 @@ begin
              for j := 0 to AWorksheet.PageLayout.NumPrintRanges-1 do
              begin
                rng := AWorksheet.PageLayout.PrintRange[j];
-               WriteRangeFormula(memstream, rng, AIndexToRef, j+1);
+               WriteRangeFormula(memstream, rng, AIndexToRef, ASheetIndex, j+1);
              end;
            end;
       #07: begin
@@ -1519,7 +1526,7 @@ begin
                if rng.Col2 = UNASSIGNED_ROW_COL_INDEX then rng.Col2 := rng.Col1;
                rng.Row1 := 0;
                rng.Row2 := 65535;
-               WriteRangeFormula(memstream, rng, AIndexToRef, j);
+               WriteRangeFormula(memstream, rng, AIndexToRef, ASheetIndex, j);
                inc(j);
              end;
              if AWorksheet.PageLayout.HasRepeatedRows then
@@ -1529,13 +1536,11 @@ begin
                if rng.Row2 = UNASSIGNED_ROW_COL_INDEX then rng.Row2 := rng.Row1;
                rng.Col1 := 0;
                rng.Col2 := 255;
-               WriteRangeFormula(memstream, rng, AIndexToRef, j);
+               WriteRangeFormula(memstream, rng, AIndexToRef, ASheetIndex, j);
              end;
            end;
       else raise EFPSpreadsheetWriter.Create('Name not supported');
     end;  // case
-
-    idx := FWorkbook.GetWorksheetIndex(AWorksheet);
 
     { BIFF record header }
     WriteBIFFHeader(AStream, INT_EXCEL_ID_DEFINEDNAME, 14 + Length(AName) + Word(memstream.Size));
@@ -1553,10 +1558,10 @@ begin
     AStream.WriteWord(WordToLE(memstream.Size));
 
     { Global name, otherwise index to EXTERNSHEET record (1-based) }
-    AStream.WriteWord(WordToLE(AIndexToREF+1));
+    AStream.WriteWord(WordToLE(AIndexToREF + 1));
 
     { Global name, otherwise index to sheet (1-based) }
-    AStream.WriteWord(WordToLE(idx+1));
+    AStream.WriteWord(WordToLE(ASheetIndex + 1));
 
     { Length of menu text }
     AStream.WriteByte(0);
@@ -1756,28 +1761,25 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF5Writer.WriteGlobalLinkTable(AStream: TStream);
 var
-  L: TStringList;
-  i: Integer;
   sheet: TsWorksheet;
+  globalLinks: TsBIFFExternSheetList;
+  sheetList: TsBIFFExternSheetList;
+  i: Integer;
 begin
-  L := TStringList.Create;
-  try
-    for i := 0 to FWorkbook.GetWorksheetCount-1 do
-    begin
-      sheet := FWorkbook.GetWorksheetByIndex(i);
-      with sheet.PageLayout do
-        if (NumPrintRanges > 0) or HasRepeatedCols or HasRepeatedRows then
-          L.Add(sheet.Name);
-    end;
-    if L.Count = 0 then
-      exit;
+  { collect the global links data }
+  CollectExternData;
 
-    WriteEXTERNCOUNT(AStream, L.Count);
-    for i:=0 to L.Count-1 do
-      WriteEXTERNSHEET(AStream, L[i], true);
-  finally
-    L.Free;
-  end;
+  { get global link list }
+  globalLinks := FLinkLists.GetGlobalLinks;
+  if (globalLinks = nil) or (globalLinks.Count = 0) then
+    exit;
+
+  { Write number of EXTERNSHEET records }
+  WriteEXTERNCOUNT(AStream, globalLinks.Count);
+
+  { For each sheet write an EXTERNSHEET record. }
+  for i:=0 to globalLinks.Count-1 do
+    WriteEXTERNSHEET(AStream, globalLinks[i].SheetName, true);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1914,36 +1916,32 @@ var
   cell: PCell;
   found: Boolean;
   i, j, n: Integer;
-  sheetref: PsBIFFExternSheet;
-  book: TsBIFFExternBook;
   sheet: TsWorksheet;
+  externSheetList: TsBIFFExternSheetList;
+  externsheet: TsBIFFExternSheet;
 begin
-  CollectExternData(FWorksheet);
-  if (FExternBooks = nil) or (FExternSheets = nil) then
+  i := CollectExternData(AWorksheet);
+  if i = -1 then
+    exit;
+  if FLinkLists[i] = nil then
     exit;
 
-  // Write the count of records in the local link table
-  n := FExternSheets.Count;
+  externSheetlist := TsBIFFLinkListItem(FLinkLists.Items[i]).SheetList;
+  if externSheetList = nil then
+    exit;
+
+  // Write the count of records to the local link table
+  n := externSheetList.Count;
   WriteEXTERNCOUNT(AStream, word(n));
 
   // Write a EXTERNSHEET record for each linked sheet
-  for i := 0 to n-1 do begin
-    sheetref := FExternSheets[i];
-    book := FExternBooks[sheetref^.ExternBookIndex];
-    if book.Kind = ebkInternal then
-    begin
-      for j := sheetref^.FirstSheetIndex to sheetref^.LastSheetIndex do
-      begin
-        sheet := FWorkbook.GetWorksheetByIndex(j);
-        if sheet = AWorksheet then
-          WriteEXTERNSHEET(AStream, '', true)
-        else
-          WriteEXTERNSHEET(AStream, sheet.Name, true);
-      end;
-    end else
-    begin
+  for i := 0 to externSheetList.Count-1 do begin
+    externSheet := externSheetList[i];
+    if externSheet.Kind = ebkInternal then
+      WriteEXTERNSHEET(AStream, externSheet.SheetName, true)
+    else
       // Handle external links here
-    end;
+      ;
   end;
 end;
                                                   (*
@@ -1991,40 +1989,35 @@ function TsSpreadBIFF5Writer.WriteRPNSheetIndex(AStream: TStream;
   ADocumentURL: String; ASheet1, ASheet2: Integer): Word;
 var
   p: Int64;
-  bookidx: Integer;
-  book: TsBIFFExternBook;
-  refidx: Integer;
-  sheetref: PsBIFFExternSheet;
+  externSheetList: TsBIFFExternSheetList;
+  externSheetIdx1, externSheetIdx2: Integer;
+  s: String;
 begin
   if ADocumentURL <> '' then  // Supporting only internal links
     exit;
 
   p := AStream.Position;
 
-  // Find stored information on this link
-  bookidx := FExternBooks.FindBook(ADocumentURL);
-  refidx := FExternSheets.FindSheets(ADocumentURL, ASheet1, ASheet2);
-  sheetref := FExternSheets[refidx];
-  book := FExternBooks[sheetRef^.ExternBookIndex];
-  if book.Kind = ebkExternal then
-    exit($FFFF);
+  externSheetList := FLinkLists.GetLocalLinks(FWorksheet);
+
+  s := FWorkbook.GetWorksheetByIndex(ASheet1).Name;
+  externSheetIdx1 := externSheetList.IndexOfSheet(s);
+
+  if ASheet2 = -1 then
+    ASheet2 := ASheet1;
 
   // One-based index of the EXTERNBOOK record to which this reference belongs.
   // For internal references ("3D references") this must be written as a
   // negative value.
-  AStream.WriteWord(WordToLE(word(-(bookidx+1))));
+  AStream.WriteWord(WordToLE(word(-(externSheetIdx1 + 1))));
 
   // 8 unused bytes
-  AStream.WriteDWord(0);
-  AStream.WriteDWord(0);
+  AStream.WriteQWord(0);
 
-  // Zero-based index to first referenced sheet (FFFFH = deleted sheet)
+  // Zero-based index to first referenced sheet of the workbook (FFFFH = deleted sheet)
   AStream.WriteWord(WordToLE(ASheet1));
 
-  // Single sheet reference
-  if ASheet2 < 0 then ASheet2 := ASheet1;
-
-  // Zero-based index to last referenced sheet (FFFFH = deleted sheet)
+  // Zero-based index to last referenced sheet of the workbook (FFFFH = deleted sheet)
   AStream.WriteWord(WordToLE(ASheet2));
 
   Result := AStream.Position - p;
