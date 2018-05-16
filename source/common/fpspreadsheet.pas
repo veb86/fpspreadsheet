@@ -5731,12 +5731,12 @@ begin
 
     parser := TsSpreadsheetParser.Create(self);
     try
-      if ALocalized then begin
+      if ALocalized then
         // Convert "localized" formula to standard format
-        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula;
-        AFormula := parser.Expression;
-      end else
+        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula
+      else
         parser.Expression := AFormula;
+      AFormula := parser.Expression;
       if parser.Has3DLinks
         then ACell.Flags := ACell.Flags + [cf3dFormula]
         else ACell.Flags := ACell.Flags - [cf3dFormula];

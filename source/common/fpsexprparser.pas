@@ -3991,16 +3991,55 @@ end;
 constructor TsCellRangeExprNode.Create(AParser: TsExpressionParser;
   AWorksheet: TsWorksheet; ASheet1, ASheet2: String;
   ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: tsRelFlags; Is3DRange: Boolean);
+var
+  tmp: Integer;
 begin
   FParser := AParser;
   FWorksheet := AWorksheet;
+  FFlags := [];
+
+  if (ASheet1 = '') and (ASheet2 <> '') then
+    raise Exception.Create('Invalid parameters in cell range');
+
   FSheet[1] := GetWorkbook.GetWorksheetIndex(ASheet1);
-  if ASheet2 = '' then FSheet[2] := FSheet[1] else FSheet[2] := GetWorkbook.GetWorksheetIndex(ASheet2);
-  FRow[1] := ARow1;
-  FCol[1] := ACol1;
-  if ARow2 = Cardinal(-1) then FRow[2] := FRow[1] else FRow[2] := ARow2;
-  if ACol2 = Cardinal(-1) then FCol[2] := FCol[1] else FCol[2] := ACol2;
-  FFlags := AFlags;
+  if ASheet2 <> '' then
+    FSheet[2] := GetWorkbook.GetWorksheetIndex(ASheet2)
+  else
+    FSheet[2] := FSheet[1];
+  EnsureOrder(FSheet[1], FSheet[2]);
+
+  if ARow2 = Cardinal(-1) then
+    ARow2 := ARow1;
+  if ARow1 <= ARow2 then
+  begin
+    FRow[1] := ARow1;
+    FRow[2] := ARow2;
+    FCol[1] := ACol1;
+    if rfRelRow in AFlags then Include(FFlags, rfRelRow);
+    if rfRelRow2 in AFlags then Include(FFlags, rfRelRow2);
+  end else
+  begin
+    FRow[1] := ARow2;
+    FRow[2] := ARow1;
+    if rfRelRow in AFlags then Include(FFlags, rfRelRow2);
+    if rfRelRow2 in AFlags then Include(FFlags, rfRelRow);
+  end;
+
+  if ACol2 = Cardinal(-1) then
+    ACol2 := ACol1;
+  if ACol1 <= ACol2 then
+  begin
+    FCol[1] := ACol1;
+    FCol[2] := ACol2;
+    if (rfRelCol in AFlags) then Include(FFlags, rfRelCol);
+    if (rfRelCol2 in AFlags) then Include(FFlags, rfRelCol2);
+  end else
+  begin
+    FCol[1] := ACol2;
+    FCol[2] := ACol1;
+    if (rfRelCol in AFlags) then Include(FFlags, rfRelCol2);
+    if (rfRelCol2 in AFlags) then Include(FFlags, rfRelCol);
+  end;
   F3dRange := Is3dRange;
 end;
 

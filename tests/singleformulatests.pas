@@ -23,7 +23,8 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
     procedure TestFloatFormula(AFormula: String; AExpected: Double;
-      ATestKind: TFormulaTestKind; AFormat: TsSpreadsheetFormat);
+      ATestKind: TFormulaTestKind; AFormat: TsSpreadsheetFormat;
+      AExpectedFormula: String = '');
 
   published
     procedure AddConst_BIFF2;
@@ -54,6 +55,10 @@ type
     procedure SumMultiSheetRange_OOXML;
     procedure SumMultiSheetRange_ODS;
 
+    procedure SumMultiSheetRange_FlippedCells_OOXML;
+    procedure SumMultiSheetRange_FlippedSheets_OOXML;
+    procedure SumMultiSheetRange_FlippedSheetsAndCells_OOXML;
+
   end;
 
 implementation
@@ -78,7 +83,8 @@ begin
 end;
 
 procedure TSpreadSingleFormulaTests.TestFloatFormula(AFormula: String;
-  AExpected: Double; ATestKind: TFormulaTestKind; AFormat: TsSpreadsheetFormat);
+  AExpected: Double; ATestKind: TFormulaTestKind; AFormat: TsSpreadsheetFormat;
+  AExpectedFormula: String = '');
 const
   SHEET1 = 'Sheet1';
   SHEET2 = 'Sheet2';
@@ -95,6 +101,7 @@ var
   actualValue: Double;
 begin
   TempFile := GetTempFileName;
+  if AExpectedFormula = '' then AExpectedFormula := AFormula;
 
   try
     // Create test workbook and write test formula and needed cells
@@ -132,7 +139,7 @@ begin
 
       // Read formula before saving
       actualFormula := cell^.Formulavalue;
-      CheckEquals(AFormula, actualFormula, 'Unsaved formula text mismatch');
+      CheckEquals(AExpectedFormula, actualFormula, 'Unsaved formula text mismatch');
 
       // Read calculated value before saving
       actualvalue := worksheet.ReadAsNumber(TESTCELL_ROW, TESTCELL_COL);
@@ -157,7 +164,7 @@ begin
 
       cell := worksheet.FindCell(TESTCELL_ROW, TESTCELL_COL);
       actualformula := cell^.FormulaValue;
-      CheckEquals(AFormula, actualformula, 'Saved formula text mismatch.');
+      CheckEquals(AExpectedFormula, actualformula, 'Saved formula text mismatch.');
     finally
       workbook.Free;
     end;
@@ -288,6 +295,23 @@ end;
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_ODS;
 begin
   TestFloatFormula('SUM(Sheet2:Sheet3!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOpenDocument);
+end;
+
+{ --- }
+
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheetsAndCells_OOXML;
+begin
+  TestFloatFormula('SUM(Sheet3:Sheet2!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+end;
+
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedCells_OOXML;
+begin
+  TestFloatFormula('SUM(Sheet2:Sheet3!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+end;
+
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheets_OOXML;
+begin
+  TestFloatFormula('SUM(Sheet3:Sheet2!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
 initialization
