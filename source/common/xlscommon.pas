@@ -3416,13 +3416,13 @@ function TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsWorksheet = nil): In
     begin
       if not HasFormula(cell) then
         Continue;
-      if not (cf3dFormula in cell^.Flags) then
+      if (cell^.Flags * [cf3dFormula, cfCalculated] = [cfCalculated]) then
         Continue;
 
       if (pos('[', ASheet.Name) = 0) then
         kind := ebkInternal
       else
-        kind := ebkExternal;
+        kind := ebkExternal;  // External refs: [filename]Sheet1!A1
 
       parser := TsSpreadsheetParser.Create(ASheet);
       try

@@ -617,7 +617,6 @@ type
   TsCellRangeExprNode = class(TsExprNode)
   private
     FWorksheet: TsWorksheet;
-//    FWorksheet2: TsWorksheet;
     FRow: array[TsCellRangeIndex] of Cardinal;
     FCol: array[TsCellRangeIndex] of Cardinal;
     FSheetIndex: array[TsCellRangeIndex] of Integer;
@@ -719,6 +718,7 @@ type
 
   protected
     FFormatSettings: TFormatSettings;
+    FContains3DRef: Boolean;
     class function BuiltinExpressionManager: TsBuiltInExpressionManager;
     function BuildStringFormula(AFormatSettings: TFormatSettings): String;
     procedure ParserError(Msg: String);
@@ -771,9 +771,10 @@ type
     property RPNFormula: TsRPNFormula read GetRPNFormula write SetRPNFormula;
     property Identifiers: TsExprIdentifierDefs read FIdentifiers write SetIdentifiers;
     property BuiltIns: TsBuiltInExprCategories read FBuiltIns write SetBuiltIns;
-//    property ActiveCell: PCell read FActiveCell write FActiveCell;
     property Worksheet: TsWorksheet read FWorksheet;
     property Dialect: TsFormulaDialect read FDialect write SetDialect;
+    property Contains3DRef: boolean read FContains3DRef;
+
   end;
 
   TsSpreadsheetParser = class(TsExpressionParser)
@@ -3772,6 +3773,7 @@ begin
   FCol := ACol;
   FFlags := AFlags;
   FCell := GetSheet.FindCell(FRow, FCol);
+  if Has3DLink then FParser.FContains3DRef := true;
 end;
 
 function TsCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
@@ -3937,7 +3939,7 @@ begin
 
   if ARange.Row2 = Cardinal(-1) then
     ARange.Row2 := ARange.Row1;
-  if ARange.Row1 <= Arange.Row2 then
+  if ARange.Row1 <= ARange.Row2 then
   begin
     FRow[1] := ARange.Row1;
     FRow[2] := ARange.Row2;
@@ -3967,6 +3969,8 @@ begin
     if (rfRelCol in AFlags) then Include(FFlags, rfRelCol2);
     if (rfRelCol2 in AFlags) then Include(FFlags, rfRelCol);
   end;
+
+  if Has3DLink then FParser.FContains3DRef := true;
 end;
 
 function TsCellRangeExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;

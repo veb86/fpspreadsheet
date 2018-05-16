@@ -735,7 +735,7 @@ begin
     try
       workbook.Options := workbook.Options + [boReadFormulas];
       workbook.ReadFromFile(TempFile, AFormat);
-      workbook.CalcFormulas;
+//      workbook.CalcFormulas;
 
       if AFormat = sfExcel2 then
         Fail('This test should not be executed')
@@ -770,7 +770,7 @@ begin
         if expected.ResultType = rtInteger then expected := FloatResult(expected.ResInteger);
 
         {
-        // The now function result is volatile, i.e. changes continuously. The
+        // The NOW() function result is volatile, i.e. changes continuously. The
         // time for the soll value was created such that we can expect to have
         // the file value in the same second. Therefore we neglect the milliseconds.
         if formula = '=NOW()' then begin

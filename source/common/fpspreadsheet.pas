@@ -1286,6 +1286,7 @@ var
   link, txt: String;
   cell: PCell;
   formula: String;
+  has3DLink: Boolean;
 begin
   if (boIgnoreFormulas in Workbook.Options) then
     exit;
@@ -1297,6 +1298,7 @@ begin
   try
     try
       parser.Expression := ACell^.FormulaValue;
+      has3DLink := parser.Contains3DRef;
       res := parser.Evaluate;
     except
       on E:ECalcEngine do
@@ -1342,6 +1344,8 @@ begin
                         WriteBlank(ACell);
                     end;
     end;
+    if has3DLink then Include(ACell^.Flags, cf3DFormula)
+      else Exclude(ACell^.Flags, cf3DFormula);
   finally
     parser.Free;
   end;
@@ -5746,8 +5750,13 @@ begin
     if (AFormula <> '') and (AFormula[1] = '=') then
       AFormula := Copy(AFormula, 2, Length(AFormula));
 
-    parser := TsSpreadsheetParser.Create(self);
-    try
+    if ALocalized then begin
+      // Convert "localized" formula to standard format
+      parser := TsSpreadsheetParser.Create(self);
+      try
+        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula;
+        parser.Expression := AFormula;
+      {
       if ALocalized then
         // Convert "localized" formula to standard format
         parser.LocalizedExpression[Workbook.FormatSettings] := AFormula
@@ -5757,8 +5766,10 @@ begin
       if parser.Has3DLinks
         then ACell.Flags := ACell.Flags + [cf3dFormula]
         else ACell.Flags := ACell.Flags - [cf3dFormula];
-    finally
-      parser.Free;
+        }
+      finally
+        parser.Free;
+      end;
     end;
   end;
 
