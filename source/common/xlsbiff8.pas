@@ -55,7 +55,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas, DateUtils, contnrs, lazutf8,
-  fpstypes, fpspreadsheet, fpsrpn, xlscommon,
+  fpstypes, fpspreadsheet, xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
@@ -729,7 +729,6 @@ end;
 function TsBIFF8ExternSheetList.IndexOfSheets(ABookName: String;
   ASheetIndex1, ASheetIndex2: Integer): Integer;
 var
-  book: TsBIFF8ExternBook;
   P: PsBIFF8ExternSheet;
   tmp: Integer;
   idx: Integer;
@@ -3134,13 +3133,9 @@ end;
 
 procedure TsSpreadBIFF8Writer.WriteDefinedNames(AStream: TStream);
 var
-  externbook: TsBIFF8ExternBook;
   bookIdx: Integer;
   sheet: TsWorksheet;
   i: Integer;
-  idx: Word;
-  extSheetIdx: Integer;
-  sheetList: TsBIFFExternSheetList;
 begin
   if (FBiff8ExternBooks = nil) or (FBiff8ExternSheets = nil) then
     exit;

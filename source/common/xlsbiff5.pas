@@ -58,7 +58,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas, lconvencoding,
-  fpsTypes, fpspreadsheet, fpsrpn,
+  fpsTypes, fpspreadsheet,
   xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
@@ -1502,7 +1502,6 @@ procedure TsSpreadBIFF5Writer.WriteDefinedName(AStream: TStream;
 var
   memstream: TMemoryStream;
   rng: TsCellRange;
-  idx: Integer;
   j: Integer;
 begin
   // Since this is a variable length record we begin by writing the formula
@@ -1761,9 +1760,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF5Writer.WriteGlobalLinkTable(AStream: TStream);
 var
-  sheet: TsWorksheet;
   globalLinks: TsBIFFExternSheetList;
-  sheetList: TsBIFFExternSheetList;
   i: Integer;
 begin
   { collect the global links data }
@@ -1912,11 +1909,7 @@ end;
 procedure TsSpreadBIFF5Writer.WriteLocalLinkTable(AStream: TStream;
   AWorksheet: TsWorksheet);
 var
-  L: TStringList;
-  cell: PCell;
-  found: Boolean;
-  i, j, n: Integer;
-  sheet: TsWorksheet;
+  i, n: Integer;
   externSheetList: TsBIFFExternSheetList;
   externsheet: TsBIFFExternSheet;
 begin
@@ -1990,7 +1983,7 @@ function TsSpreadBIFF5Writer.WriteRPNSheetIndex(AStream: TStream;
 var
   p: Int64;
   externSheetList: TsBIFFExternSheetList;
-  externSheetIdx1, externSheetIdx2: Integer;
+  externSheetIdx: Integer;
   s: String;
 begin
   if ADocumentURL <> '' then  // Supporting only internal links
@@ -2001,7 +1994,7 @@ begin
   externSheetList := FLinkLists.GetLocalLinks(FWorksheet);
 
   s := FWorkbook.GetWorksheetByIndex(ASheet1).Name;
-  externSheetIdx1 := externSheetList.IndexOfSheet(s);
+  externSheetIdx := externSheetList.IndexOfSheet(s);
 
   if ASheet2 = -1 then
     ASheet2 := ASheet1;
@@ -2009,7 +2002,7 @@ begin
   // One-based index of the EXTERNBOOK record to which this reference belongs.
   // For internal references ("3D references") this must be written as a
   // negative value.
-  AStream.WriteWord(WordToLE(word(-(externSheetIdx1 + 1))));
+  AStream.WriteWord(WordToLE(word(-(externSheetIdx + 1))));
 
   // 8 unused bytes
   AStream.WriteQWord(0);

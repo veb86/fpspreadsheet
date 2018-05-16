@@ -1790,8 +1790,6 @@ var
   ansistr: AnsiString;
   s: String;
   sheetlist: TsBIFFExternSheetList;
-  sheet: TsBIFFExternSheet;
-  idx: Integer;
 begin
   sheetList := FLinkLists.GetSheetList(AWorksheet);
 
@@ -3964,7 +3962,6 @@ procedure TsSpreadBIFFWriter.WriteDefinedNames(AStream: TStream);
 var
   sheet: TsWorksheet;
   i: Integer;
-  idx: Word;
   extSheetIdx: Integer;
   sheetList: TsBIFFExternSheetList;
 begin

@@ -12,6 +12,7 @@
 
   sheet3.WriteText(1, 2, 'B');         // C2 = 'B'
   sheet3.WriteNumber(1, 1, 2.0);       // B2 = 2.0
+  sheet3.WriteNumber(3, 4, 100);       // E4 = 100.0
 
 //------------------------------------------------------------------------------
 
@@ -77,6 +78,13 @@
   sheet1.WriteFormula(Row, 1, formula);
   SetLength(SollValues, Row+1);
   SollValues[Row] := FloatResult(10.0);
+
+  inc(Row);                                                { A10 }
+  formula := 'SUM(Sheet2:Sheet3!E4)';
+  sheet1.WriteText(Row, 0, formula);
+  sheet1.WriteFormula(Row, 1, formula);
+  SetLength(SollValues, Row+1);
+  SollValues[Row] := FloatResult(110.0);
 
   {
   inc(Row);

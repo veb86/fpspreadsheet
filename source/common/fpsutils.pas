@@ -944,7 +944,14 @@ begin
       ASheet2 := copy(s1, p+1, MaxInt);
     end;
   end;
-  Result := ParseCellRangeString(s2, ARow1, ACol1, ARow2, ACol2, AFlags);
+
+  p := pos(':', s2);
+  if p = 0 then begin
+    ARow2 := Cardinal(-1);
+    ACol2 := Cardinal(-1);
+    Result := ParseCellString(s2, ARow1, ACol1, AFlags);
+  end else
+    Result := ParseCellRangeString(s2, ARow1, ACol1, ARow2, ACol2, AFlags);
 end;
 
 {@@ ----------------------------------------------------------------------------

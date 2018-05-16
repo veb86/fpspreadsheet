@@ -709,106 +709,112 @@ var
   sollValues: array of TsExpressionResult;
   formula, actualformula: String;
 begin
-  // Create test workbook
-  workbook := TsWorkbook.Create;
+  TempFile := GetTempFileName;
   try
-    workbook.Options := workbook.Options + [boCalcBeforeSaving];
+    // Create test workbook
+    workbook := TsWorkbook.Create;
+    try
+      workbook.Options := workbook.Options + [boCalcBeforeSaving];
 
-    sheet1 := workBook.AddWorksheet('Sheet1');
-    sheet2 := workbook.AddWorksheet('Sheet2');
-    sheet3 := workbook.AddWorksheet('Sheet3');
+      sheet1 := workBook.AddWorksheet('Sheet1');
+      sheet2 := workbook.AddWorksheet('Sheet2');
+      sheet3 := workbook.AddWorksheet('Sheet3');
 
-    { Write out test formulas.
-      This include file creates various formulas in column A and stores
-      the expected results in the array SollValues. }
-    Row := 0;
-    TempFile := GetTempFileName;
-    {$I testcases_calc3dformula.inc}
-    workbook.WriteToFile(TempFile, AFormat, true);
-  finally
-    workbook.Free;
-  end;
+      { Write out test formulas.
+        This include file creates various formulas in column A and stores
+        the expected results in the array SollValues. }
+      Row := 0;
+      {$I testcases_calc3dformula.inc}
+      workbook.WriteToFile(TempFile, AFormat, true);
+    finally
+      workbook.Free;
+    end;
 
-  // Open the workbook
-  workbook := TsWorkbook.Create;
-  try
-    workbook.Options := workbook.Options + [boReadFormulas];
-    workbook.ReadFromFile(TempFile, AFormat);
-    if AFormat = sfExcel2 then
-      Fail('This test should not be executed')
-    else
-      sheet1 := workbook.GetWorksheetByName('Sheet1');
-    if sheet1=nil then
-      Fail('Error in test code. Failed to get named worksheet');
+    // Open the workbook
+    workbook := TsWorkbook.Create;
+    try
+      workbook.Options := workbook.Options + [boReadFormulas];
+      workbook.ReadFromFile(TempFile, AFormat);
+      workbook.CalcFormulas;
 
-    for row := 0 to sheet1.GetLastRowIndex do
-    begin
-      cell := sheet1.FindCell(Row, 0);
-      if (Cell = nil) then
-        Fail('Error in test code: failed to get cell ' + CellNotation(sheet1, Row, 0));
-      formula := sheet1.ReadAsText(cell);
+      if AFormat = sfExcel2 then
+        Fail('This test should not be executed')
+      else
+        sheet1 := workbook.GetWorksheetByName('Sheet1');
+      if sheet1=nil then
+        Fail('Error in test code. Failed to get named worksheet');
 
-      cell := sheet1.FindCell(Row, 1);
-      if (cell = nil) then
-        fail('Error in test code: Failed to get cell ' + CellNotation(sheet1, Row, 1));
-      case cell^.ContentType of
-        cctBool       : actual := BooleanResult(cell^.BoolValue);
-        cctNumber     : actual := FloatResult(cell^.NumberValue);
-        cctDateTime   : actual := DateTimeResult(cell^.DateTimeValue);
-        cctUTF8String : actual := StringResult(cell^.UTF8StringValue);
-        cctError      : actual := ErrorResult(cell^.ErrorValue);
-        cctEmpty      : actual := EmptyResult;
-        else            fail('ContentType not supported');
+      for row := 0 to sheet1.GetLastRowIndex do
+      begin
+        cell := sheet1.FindCell(Row, 0);
+        if (Cell = nil) then
+          Fail('Error in test code: failed to get cell ' + CellNotation(sheet1, Row, 0));
+        formula := sheet1.ReadAsText(cell);
+
+        cell := sheet1.FindCell(Row, 1);
+        if (cell = nil) then
+          fail('Error in test code: Failed to get cell ' + CellNotation(sheet1, Row, 1));
+        case cell^.ContentType of
+          cctBool       : actual := BooleanResult(cell^.BoolValue);
+          cctNumber     : actual := FloatResult(cell^.NumberValue);
+          cctDateTime   : actual := DateTimeResult(cell^.DateTimeValue);
+          cctUTF8String : actual := StringResult(cell^.UTF8StringValue);
+          cctError      : actual := ErrorResult(cell^.ErrorValue);
+          cctEmpty      : actual := EmptyResult;
+          else            fail('ContentType not supported');
+        end;
+        actualformula := cell^.FormulaValue;
+
+        expected := SollValues[row];
+        // Cell does not store integers!
+        if expected.ResultType = rtInteger then expected := FloatResult(expected.ResInteger);
+
+        {
+        // The now function result is volatile, i.e. changes continuously. The
+        // time for the soll value was created such that we can expect to have
+        // the file value in the same second. Therefore we neglect the milliseconds.
+        if formula = '=NOW()' then begin
+          // Round soll value to seconds
+          DecodeTime(expected.ResDateTime, hr,min,sec,msec);
+          expected.ResDateTime := EncodeTime(hr, min, sec, 0);
+          // Round formula value to seconds
+          DecodeTime(actual.ResDateTime, hr,min,sec,msec);
+          actual.ResDateTime := EncodeTime(hr,min,sec,0);
+        end;                                   }
+
+        case actual.ResultType of
+          rtBoolean:
+            CheckEquals(BoolToStr(expected.ResBoolean), BoolToStr(actual.ResBoolean),
+              'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
+          rtFloat:
+            {$if (defined(mswindows)) or (FPC_FULLVERSION>=20701)}
+            // FPC 2.6.x and trunk on Windows need this, also FPC trunk on Linux x64
+            CheckEquals(expected.ResFloat, actual.ResFloat,
+              'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
+            {$else}
+            // Non-Windows: test without error margin
+            CheckEquals(expected.ResFloat, actual.ResFloat,
+              'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
+            {$endif}
+          rtString:
+            CheckEquals(expected.ResString, actual.ResString,
+              'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
+          rtError:
+            CheckEquals(
+              GetEnumName(TypeInfo(TsErrorValue), ord(expected.ResError)),
+              GetEnumname(TypeInfo(TsErrorValue), ord(actual.ResError)),
+              'Test read calculated formula error value mismatch, cell '+CellNotation(sheet1, Row, 1));
+        end;
+
+        CheckEquals(formula, actualformula,
+          'Read formula string mismatch, cell ' +CellNotation(sheet1, Row, 1));
       end;
-      actualformula := cell^.FormulaValue;
 
-      expected := SollValues[row];
-      // Cell does not store integers!
-      if expected.ResultType = rtInteger then expected := FloatResult(expected.ResInteger);
-
-      (*
-      // The now function result is volatile, i.e. changes continuously. The
-      // time for the soll value was created such that we can expect to have
-      // the file value in the same second. Therefore we neglect the milliseconds.
-      if formula = '=NOW()' then begin
-        // Round soll value to seconds
-        DecodeTime(expected.ResDateTime, hr,min,sec,msec);
-        expected.ResDateTime := EncodeTime(hr, min, sec, 0);
-        // Round formula value to seconds
-        DecodeTime(actual.ResDateTime, hr,min,sec,msec);
-        actual.ResDateTime := EncodeTime(hr,min,sec,0);
-      end;                                   *)
-
-      case actual.ResultType of
-        rtBoolean:
-          CheckEquals(BoolToStr(expected.ResBoolean), BoolToStr(actual.ResBoolean),
-            'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
-        rtFloat:
-          {$if (defined(mswindows)) or (FPC_FULLVERSION>=20701)}
-          // FPC 2.6.x and trunk on Windows need this, also FPC trunk on Linux x64
-          CheckEquals(expected.ResFloat, actual.ResFloat,
-            'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
-          {$else}
-          // Non-Windows: test without error margin
-          CheckEquals(expected.ResFloat, actual.ResFloat,
-            'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
-          {$endif}
-        rtString:
-          CheckEquals(expected.ResString, actual.ResString,
-            'Test read calculated formula result mismatch, cell '+CellNotation(sheet1, Row, 1));
-        rtError:
-          CheckEquals(
-            GetEnumName(TypeInfo(TsErrorValue), ord(expected.ResError)),
-            GetEnumname(TypeInfo(TsErrorValue), ord(actual.ResError)),
-            'Test read calculated formula error value mismatch, cell '+CellNotation(sheet1, Row, 1));
-      end;
-
-      CheckEquals(
-        formula, actualformula, 'Read formula string mismatch, cell ' +CellNotation(sheet1, Row, 1));
+    finally
+      workbook.Free;
     end;
 
   finally
-    workbook.Free;
     DeleteFile(TempFile);
   end;
 end;
