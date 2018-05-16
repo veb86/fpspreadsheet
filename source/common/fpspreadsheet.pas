@@ -398,6 +398,7 @@ type
     function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;
     procedure CalcFormula(ACell: PCell);
     procedure CalcFormulas;
+    procedure CalcSheet;
     function ConvertFormulaDialect(ACell: PCell; ADialect: TsFormulaDialect): String;
     function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
     function GetCalcState(ACell: PCell): TsCalcState;
@@ -1336,7 +1337,9 @@ begin
                           cctBool      : WriteBoolValue(ACell, cell^.Boolvalue);
                           cctError     : WriteErrorValue(ACell, cell^.ErrorValue);
                           cctEmpty     : WriteBlank(ACell);
-                        end;
+                        end
+                      else
+                        WriteBlank(ACell);
                     end;
     end;
   finally
@@ -1346,6 +1349,20 @@ begin
   // Restore the formula. Could have been erased by WriteBlank or WriteText('')
   ACell^.FormulaValue := formula;
   ACell^.Flags := ACell^.Flags + [cfCalculated] - [cfCalculating];
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Calculates all formulas of the workbook
+
+  Must be used when the formulas in the workbook contain references to other
+  sheets.
+  If this is not the case the faster "CalcSheet" can be used.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CalcFormulas;
+begin
+  Workbook.CalcFormulas;
+  // To do: Determine whether the worksheet has in- and out-going links
+  // to others sheets. If not call the faster "CalcShee".
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1363,7 +1380,7 @@ end;
   THIS CALCULATION MAY NOT BE CORRECT. USE THE SAME METHOD OF THE WORKBOOK
   INSTEAD !!!
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.CalcFormulas;
+procedure TsWorksheet.CalcSheet;
 var
   cell: PCell;
   i: Integer;
@@ -1412,7 +1429,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Checks entire workbook, whether this cell is used in any formula.
+  Checks entire worksheet, whether this cell is used in any formula.
 
   @param   ARow  Row index of the cell considered
   @param   ACol  Column index of the cell considered
@@ -1787,7 +1804,7 @@ begin
 
   if (FWorkbook.FCalculationLock = 0) and (boAutoCalc in FWorkbook.Options) then
   begin
-    if CellUsedInFormula(ARow, ACol) then
+  //  if CellUsedInFormula(ARow, ACol) then
       CalcFormulas;
   end;
 
