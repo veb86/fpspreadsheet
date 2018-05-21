@@ -704,6 +704,8 @@ type
   {@@ Event procedure called when a worksheet is removed. ASheetIndex = -1 --> all sheets }
   TsRemoveWorksheetEvent = procedure (Sender: TObject; ASheetIndex: Integer) of object;
 
+  {@@ FSome action has an effect on existing formulas which must be corrected. }
+  TsFormulaCorrection = (fcWorksheetRenamed);
 
   { TsWorkbook }
 
@@ -756,6 +758,9 @@ type
 
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
+
+    procedure FixFormula(ACell: PCell; ACorrection: TsFormulaCorrection;
+      AData: Pointer; AParam: PtrInt);
 //    procedure ReCalc;
 
   public
@@ -854,8 +859,10 @@ type
     function GetNumberFormat(AIndex: Integer): TsNumFormatParams;
     function GetNumberFormatCount: Integer;
 
-    { Calculation }
+    { Formulas }
     procedure CalcFormulas;
+    procedure FixFormulas(ACorrection: TsFormulaCorrection; AData: Pointer;
+      AParam: PtrInt);
 
     { Clipboard }
     procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
@@ -4214,6 +4221,7 @@ begin
   if (FWorkbook <> nil) then //and FWorkbook.ValidWorksheetName(AName) then
   begin
     FName := AName;
+    FWorkbook.FixFormulas(fcWorksheetRenamed, self, 0);
     if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnRenameWorksheet) then
       FWorkbook.FOnRenameWorksheet(FWorkbook, self);
   end;
@@ -9765,6 +9773,87 @@ begin
   finally
     dec(FCalculationLock);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Something was changed anywhere in the workbook which has an effect on existing
+  formulas. This procedure runs through all formulas and performs the
+  correction.
+
+  @param  ACorrection   Describes what has to be corrected.
+                        Example: fcWorksheetRenamed means that a worksheet has
+                        been renamed and the new name must be used in
+                        corresponding formulas
+  @param AData          A pointer with further information on the correction to
+                        be made. Depends on ACorrection.
+                        Example:
+                        In the fcWorksheetRenamed example above this points to
+                        the worksheet that was renamed.
+  @param AParam         Provides additional information. Depends on ACorrection
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.FixFormulas(ACorrection: TsFormulaCorrection;
+  AData: Pointer; AParam: PtrInt);
+var
+  i: Integer;
+  sheet: TsWorksheet;
+  cell: PCell;
+begin
+  if (boIgnoreFormulas in Options) then
+    exit;
+
+  inc(FCalculationLock);
+  try
+    for i := 0 to GetWorksheetCount-1 do begin
+      sheet := GetWorksheetByIndex(i);
+      for cell in sheet.Cells do begin
+        if HasFormula(cell) then
+          FixFormula(cell, ACorrection, AData, AParam);
+      end;
+    end;
+  finally
+    dec(FCalculationLock);
+    if (boAutoCalc in Options) then
+      CalcFormulas;
+  end;
+end;
+
+procedure TsWorkbook.FixFormula(ACell: PCell; ACorrection: TsFormulaCorrection;
+  AData: Pointer; AParam: PtrInt);
+var
+  rpn: TsRPNFormula;
+  i: Integer;
+  elem: TsFormulaElement;
+  sheet: TsWorksheet;
+begin
+  // Skeleton only - to be updated when new formula handling is finished.
+
+  (*
+  sheet := TsWorksheet(ACell^.Worksheet);
+
+  case ACorrection of
+    fcWorksheetrenamed:
+      if (cf3dFormula in ACell^.Flags) then
+      begin
+        // The rpn formula contains the worksheet index which does not
+        // change upon sheet renaming. Simple rebuilding the string formula
+        // from rpn will insert the new sheet name.
+        rpn := sheet.BuildRPNFormula(ACell);
+        ACell^.FormulaValue := sheet.ConvertRPNFormulaToStringFormula(rpn);
+        exit;
+      end;
+  end;
+
+  rpn := sheet.BuildRPNFormula(ACell);
+  for i:=0 to High(rpn) do begin
+    elem := rpn[i];
+    {
+    case ACorrection of
+      ...          // do specifice rpn corrections here
+    end;
+    }
+  end;
+  ACell^.FormulaValue := sheet.ConvertRPNFormulaToStringFormula(rpn);
+  *)
 end;
 
 {@@ ----------------------------------------------------------------------------
