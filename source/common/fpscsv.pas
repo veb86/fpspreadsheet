@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,
-  fpstypes, fpspreadsheet, fpsReaderWriter, fpsCsvDocument;
+  fpstypes, fpsReaderWriter, fpsCsvDocument;
 
 type
   TsCSVReader = class(TsCustomSpreadReader)
@@ -21,7 +21,7 @@ type
     procedure ReadLabel(AStream: TStream); override;
     procedure ReadNumber(AStream: TStream); override;
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     procedure ReadFromFile(AFileName: String; APassword: String = '';
       AParams: TsStreamParams = []); override;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
@@ -48,10 +48,10 @@ type
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
-    procedure WriteSheet(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteSheet(AStream: TStream; AWorksheet: TsBasicWorksheet);
 
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
     procedure WriteToStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
   end;
@@ -95,7 +95,7 @@ implementation
 
 uses
   DateUtils, LConvEncoding, Math,
-  fpsUtils, fpsNumFormat;
+  fpsUtils, fpspreadsheet, fpsNumFormat;
 
 const
   DEFAULT_ENCODING = 'utf8'; //'utf8bom';
@@ -115,7 +115,7 @@ end;
 {                              TsCSVReader                                     }
 {------------------------------------------------------------------------------}
 
-constructor TsCSVReader.Create(AWorkbook: TsWorkbook);
+constructor TsCSVReader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
   FWorksheetName := 'Sheet1';  // will be replaced by filename
@@ -148,29 +148,32 @@ procedure TsCSVReader.ReadCellValue(ARow, ACol: Cardinal; AText: String);
 var
   cell: PCell;
   boolValue: Boolean;
+  sheet: TsWorksheet;
 begin
   // Empty strings are blank cells -- nothing to do
   if AText = '' then
     exit;
 
-  cell := FWorksheet.AddCell(ARow, ACol);
+  sheet := FWorksheet as TsWorksheet;
+
+  cell := sheet.AddCell(ARow, ACol);
 
   // Do not try to interpret the strings. --> everything is a LABEL cell.
   if not CSVParams.DetectContentType then
   begin
-    FWorksheet.WriteText(cell, AText);
+    sheet.WriteText(cell, AText);
     exit;
   end;
 
   // Check for a BOOLEAN cell
   if IsBoolValue(AText, CSVParams.TrueText, CSVParams.FalseText, boolValue) then
   begin
-    FWorksheet.WriteBoolValue(cell, boolValue);
+    sheet.WriteBoolValue(cell, boolValue);
     exit;
   end;
 
   // All other cases are handled by WriteCellValusAsString
-  FWorksheet.WriteCellValueAsString(cell, AText, FFormatSettings);
+  sheet.WriteCellValueAsString(cell, AText, FFormatSettings);
 end;
 
 procedure TsCSVReader.ReadFormula(AStream: TStream);
@@ -205,7 +208,7 @@ begin
     encoding := DEFAULT_ENCODING;
 
   // Create worksheet
-  FWorksheet := FWorkbook.AddWorksheet(FWorksheetName, true);
+  FWorksheet := (FWorkbook as TsWorkbook).AddWorksheet(FWorksheetName, true);
 
   // Create csv parser, read file and store in worksheet
   Parser := TCSVParser.Create;
@@ -255,7 +258,7 @@ end;
 {                              TsCSVWriter                                     }
 {------------------------------------------------------------------------------}
 
-constructor TsCSVWriter.Create(AWorkbook: TsWorkbook);
+constructor TsCSVWriter.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
   FFormatSettings := CSVParams.FormatSettings;
@@ -298,7 +301,7 @@ var
 begin
   Unused(AStream);
   Unused(ARow, ACol, AValue);
-  s := FWorksheet.ReadAsText(ACell);
+  s := (FWorksheet as TsWorksheet).ReadAsText(ACell);
   s := ConvertEncoding(s, EncodingUTF8, FEncoding);
   FCSVBuilder.AppendCell(s);
 end;
@@ -349,20 +352,22 @@ begin
   if CSVParams.NumberFormat <> '' then
     s := Format(CSVParams.NumberFormat, [AValue], FFormatSettings)
   else
-    s := FWorksheet.ReadAsText(ACell, FFormatSettings);
+    s := (FWorksheet as TsWorksheet).ReadAsText(ACell, FFormatSettings);
   s := ConvertEncoding(s, EncodingUTF8, FEncoding);
   FCSVBuilder.AppendCell(s);
 end;
 
-procedure TsCSVWriter.WriteSheet(AStream: TStream; AWorksheet: TsWorksheet);
+procedure TsCSVWriter.WriteSheet(AStream: TStream; AWorksheet: TsBasicWorksheet);
 var
   r, c: Cardinal;
   firstRow, lastRow: Cardinal;
   firstCol, lastCol: Cardinal;
   cell: PCell;
   n: Integer;
+  sheet: TsWorksheet;
 begin
   FWorksheet := AWorksheet;
+  sheet := FWorksheet as TsWorksheet;
 
   FCSVBuilder := TCSVBuilder.Create;
   try
@@ -371,29 +376,29 @@ begin
     FCSVBuilder.QuoteChar := CSVParams.QuoteChar;
     FCSVBuilder.SetOutput(AStream);
 
-    n := FWorksheet.GetCellCount;
+    n := sheet.GetCellCount;
     if FClipboardMode and (n = 1) then
     begin
-      cell := FWorksheet.Cells.GetFirstCell;
+      cell := sheet.Cells.GetFirstCell;
       WriteCellToStream(AStream, cell);
     end else
     begin
       if FClipboardMode then
       begin
-        firstRow := FWorksheet.GetFirstRowIndex;
-        firstCol := FWorksheet.GetFirstColIndex;
+        firstRow := sheet.GetFirstRowIndex;
+        firstCol := sheet.GetFirstColIndex;
       end else
       begin
         firstRow := 0;
         firstCol := 0;
       end;
-      lastRow := FWorksheet.GetLastOccupiedRowIndex;
-      lastCol := FWorksheet.GetLastOccupiedColIndex;
+      lastRow := sheet.GetLastOccupiedRowIndex;
+      lastCol := sheet.GetLastOccupiedColIndex;
       for r := firstRow to lastRow do
       begin
         for c := firstCol to lastCol do
         begin
-          cell := FWorksheet.FindCell(r, c);
+          cell := sheet.FindCell(r, c);
           if cell = nil then
             FCSVBuilder.AppendCell('')
           else
@@ -411,12 +416,15 @@ procedure TsCSVWriter.WriteToStream(AStream: TStream;
   AParams: TsStreamParams = []);
 var
   n: Integer;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
+
   FClipboardMode := (spClipboard in AParams);
-  if (CSVParams.SheetIndex >= 0) and (CSVParams.SheetIndex < FWorkbook.GetWorksheetCount)
+  if (CSVParams.SheetIndex >= 0) and (CSVParams.SheetIndex < book.GetWorksheetCount)
     then n := CSVParams.SheetIndex
     else n := 0;
-  WriteSheet(AStream, FWorkbook.GetWorksheetByIndex(n));
+  WriteSheet(AStream, book.GetWorksheetByIndex(n));
 end;
 
 procedure TsCSVWriter.WriteToStrings(AStrings: TStrings;

@@ -23,6 +23,10 @@ type
 {$ENDIF}
 
 type
+  { Forward declarations }
+  TsBasicWorksheet = class;
+  TsBasicWorkbook = class;
+
   {@@ Built-in file formats of fpspreadsheet }
   TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8, sfExcelXML, sfOOXML,
     sfOpenDocument, sfCSV, sfHTML, sfWikiTable_Pipes, sfWikiTable_WikiMedia,
@@ -732,7 +736,7 @@ type
     { Location of the cell }
     Row: Cardinal; // zero-based
     Col: Cardinal; // zero-based
-    Worksheet: Pointer;   // Must be cast to TsWorksheet when used  (avoids circular unit reference)
+    Worksheet: TsBasicWorksheet;   // Must be cast to TsWorksheet when used  (avoids circular unit reference)
     { Status flags }
     Flags: TsCellFlags;
     { Index of format record in the workbook's CellFormatList }
@@ -874,6 +878,124 @@ type
   TsStreamParam = (spClipboard, spWindowsClipboardHTML);
   TsStreamParams = set of TsStreamParam;
 
+  {@@ Worksheet user interface options:
+    @param soShowGridLines    Show or hide the grid lines in the spreadsheet
+    @param soShowHeaders      Show or hide the column or row headers of the
+                              spreadsheet
+    @param soHasFrozenPanes   If set a number of rows and columns of the
+                              spreadsheet is fixed and does not scroll. The number
+                              is defined by LeftPaneWidth and TopPaneHeight.
+    @param soHidden           Worksheet is hidden.
+    @param soProtected        Worksheet is protected
+    @param soPanesProtection  Panes are locked due to workbook protection }
+  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes, soHidden,
+    soProtected, soPanesProtection);
+
+  {@@ Set of user interface options
+    @ see TsSheetOption }
+  TsSheetOptions = set of TsSheetOption;
+
+  {@@ Option flags for the workbook
+    @param  boVirtualMode      If in virtual mode date are not taken from cells
+                               when a spreadsheet is written to file, but are
+                               provided by means of the event OnWriteCellData.
+                               Similarly, when data are read they are not added
+                               as cells but passed the the event OnReadCellData;
+    @param  boBufStream        When this option is set a buffered stream is used
+                               for writing (a memory stream swapping to disk) or
+                               reading (a file stream pre-reading chunks of data
+                               to memory)
+    @param  boFileStream       Uses file streams and temporary files during
+                               reading and writing. Lowest memory consumptions,
+                               but slow.
+    @param  boAutoCalc         Automatically recalculate formulas whenever a
+                               cell value changes.
+    @param  boCalcBeforeSaving Calculates formulas before saving the file.
+                               Otherwise there are no results when the file is
+                               loaded back by fpspreadsheet.
+    @param  boReadFormulas     Allows to turn off reading of rpn formulas; this
+                               is a precaution since formulas not correctly
+                               implemented by fpspreadsheet could crash the
+                               reading operation.
+    @param boWriteZoomfactor   Instructs the writer to write the current zoom
+                               factors of the worksheets to file.
+    @param boAbortReadOnFormulaError Aborts reading if a formula error is
+                               encountered
+    @param boIgnoreFormulas    Formulas are not checked and not calculated.
+                               Cannot be used for biff formats. }
+  TsWorkbookOption = (boVirtualMode, boBufStream, boFileStream,
+    boAutoCalc, boCalcBeforeSaving, boReadFormulas, boWriteZoomFactor,
+    boAbortReadOnFormulaError, boIgnoreFormulas);
+
+  {@@ Set of option flags for the workbook }
+  TsWorkbookOptions = set of TsWorkbookOption;
+
+  {@@ Basic worksheet class to avoid circular unit references. It has only those
+    properties and methods which do not require any other unit than fpstypes. }
+  TsBasicWorksheet = class
+  protected
+    FName: String;  // Name of the worksheet (displayed at the tab)
+    FOptions: TsSheetOptions;
+    FProtection: TsWorksheetProtections;
+    procedure SetName(const AName: String); virtual; abstract;
+  public
+    constructor Create;
+    function HasHyperlink(ACell: PCell): Boolean;
+    function IsProtected: Boolean;
+    {@@ Name of the sheet. In the popular spreadsheet applications this is
+      displayed in the tab of the sheet. }
+    property Name: string read FName write SetName;
+    {@@ Parameters controlling visibility of grid lines and row/column headers,
+      usage of frozen panes etc. }
+    property  Options: TsSheetOptions read FOptions write FOptions;
+    {@@ Worksheet protection options }
+    property Protection: TsWorksheetProtections read FProtection write FProtection;
+  end;
+
+  {@@ Basic worksheet class to avoid circular unit references. It contains only
+    those properties and methods which do not require any other unit than
+    fpstypes. }
+  TsBasicWorkbook = class
+  private
+    FLog: TStringList;
+    function GetErrorMsg: String;
+  protected
+    FFileName: String;
+    FFormatID: TsSpreadFormatID;
+    FOptions: TsWorkbookOptions;
+    FProtection: TsWorkbookProtections;
+    FUnits: TsSizeUnits;
+  public
+    {@@ A copy of SysUtil's DefaultFormatSettings (converted to UTF8) to provide
+      some kind of localization to some formatting strings.
+      Can be modified before loading/writing files }
+    FormatSettings: TFormatSettings;
+
+    constructor Create;
+    destructor Destroy; override;
+
+    { Error messages }
+    procedure AddErrorMsg(const AMsg: String); overload;
+    procedure AddErrorMsg(const AMsg: String; const Args: array of const); overload;
+    procedure ClearErrorList; inline;
+
+    { Protection }
+    function IsProtected: Boolean;
+
+    {@@ Retrieves error messages collected during reading/writing }
+    property ErrorMsg: String read GetErrorMsg;
+    {@@ Identifies the file format which was detected when reading the file }
+    property FileFormatID: TsSpreadFormatID read FFormatID;
+    {@@ Filename of the saved workbook }
+    property FileName: String read FFileName;
+    {@@ Option flags for the workbook - see boXXXX declarations }
+    property Options: TsWorkbookOptions read FOptions write FOptions;
+    {@@ Workbook protection flags }
+    property Protection: TsWorkbookProtections read FProtection write FProtection;
+    {@@ Units of row heights and column widths }
+    property Units: TsSizeUnits read FUnits;
+  end;
+
   {@@ Exception types for fpspreadsheet }
   EFpSpreadsheet = class(Exception);
   EFpSpreadsheetReader = class(EFpSpreadsheet);
@@ -891,6 +1013,10 @@ const
   HEADER_FOOTER_INDEX_ODD     = 1;
   HEADER_FOOTER_INDEX_EVEN    = 2;
   HEADER_FOOTER_INDEX_ALL     = 1;
+
+var
+  {@@ FPC format settings for which all strings have been converted to UTF8 }
+  UTF8FormatSettings: TFormatSettings;
 
 
 implementation
@@ -913,6 +1039,126 @@ begin
   Color := AFont.Color;
   Position := AFont.Position;
 end;
+
+
+{-------------------------------------------------------------------------------
+                              sBasicWorksheet
+-------------------------------------------------------------------------------}
+
+constructor TsBasicWorksheet.Create;
+begin
+  inherited;
+  FProtection := DEFAULT_SHEET_PROTECTION;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the specified cell contains a hyperlink
+-------------------------------------------------------------------------------}
+function TsBasicWorksheet.HasHyperlink(ACell: PCell): Boolean;
+begin
+  Result := (ACell <> nil) and (cfHyperlink in ACell^.Flags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns whether the worksheet is protected
+-------------------------------------------------------------------------------}
+function TsBasicWorksheet.IsProtected: Boolean;
+begin
+  Result := soProtected in FOptions;
+end;
+
+
+{-------------------------------------------------------------------------------
+                             TsBasicWorkbook
+-------------------------------------------------------------------------------}
+constructor TsBasicWorkbook.Create;
+begin
+  inherited;
+  FormatSettings := UTF8FormatSettings;
+  FUnits := suMillimeters;              // Units for column width and row height
+  FFormatID := sfidUnknown;
+  FLog := TStringList.Create;
+  FProtection := [];
+end;
+
+destructor TsBasicWorkbook.Destroy;
+begin
+  FLog.Free;
+  inherited;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds a (simple) error message to an internal list
+
+  @param   AMsg   Error text to be stored in the list
+-------------------------------------------------------------------------------}
+procedure TsBasicWorkbook.AddErrorMsg(const AMsg: String);
+begin
+  FLog.Add(AMsg);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Adds an error message composed by means of format codes to an internal list
+
+  @param   AMsg   Error text to be stored in the list
+  @param   Args   Array of arguments to be used by the Format() function
+-------------------------------------------------------------------------------}
+procedure TsBasicWorkbook.AddErrorMsg(const AMsg: String;
+  const Args: Array of const);
+begin
+  FLog.Add(Format(AMsg, Args));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Clears the internal error message list
+-------------------------------------------------------------------------------}
+procedure TsBasicWorkbook.ClearErrorList;
+begin
+  FLog.Clear;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Getter to retrieve the error messages collected during reading/writing
+-------------------------------------------------------------------------------}
+function TsBasicWorkbook.GetErrorMsg: String;
+begin
+  Result := FLog.Text;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns whether the workbook is protected
+-------------------------------------------------------------------------------}
+function TsBasicWorkbook.IsProtected: Boolean;
+begin
+  Result := (FProtection <> []);
+end;
+
+
+
+{@@ ----------------------------------------------------------------------------
+  Creates a FPC format settings record in which all strings are encoded as
+  UTF8.
+-------------------------------------------------------------------------------}
+procedure InitUTF8FormatSettings;
+// remove when available in LazUtils
+var
+  i: Integer;
+begin
+  UTF8FormatSettings := DefaultFormatSettings;
+  UTF8FormatSettings.CurrencyString := AnsiToUTF8(DefaultFormatSettings.CurrencyString);
+  for i:=1 to 12 do begin
+    UTF8FormatSettings.LongMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.LongMonthNames[i]);
+    UTF8FormatSettings.ShortMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortMonthNames[i]);
+  end;
+  for i:=1 to 7 do begin
+    UTF8FormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
+    UTF8FormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
+  end;
+end;
+
+
+initialization
+  InitUTF8FormatSettings;
 
 end.
 

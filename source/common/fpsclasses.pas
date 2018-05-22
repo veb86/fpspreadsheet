@@ -76,12 +76,12 @@ type
 
   TsCells = class(TsRowColAVLTree)
   private
-    FWorksheet: Pointer;  // Must be cast to TsWorksheet
+    FWorksheet: TsBasicWorksheet;  // Must be cast to TsWorksheet
   protected
     procedure DisposeData(var AData: Pointer); override;
     function NewData: Pointer; override;
   public
-    constructor Create(AWorksheet: Pointer; AOwnsData: Boolean = true);
+    constructor Create(AWorksheet: TsBasicWorksheet; AOwnsData: Boolean = true);
     function AddCell(ARow, ACol: Cardinal): PCell;
     procedure DeleteCell(ARow, ACol: Cardinal);
     function FindCell(ARow, ACol: Cardinal): PCell;
@@ -689,7 +689,8 @@ end;
 { TsCells: an AVLTree to store spreadsheet cells                               }
 {==============================================================================}
 
-constructor TsCells.Create(AWorksheet: Pointer; AOwnsData: Boolean = true);
+constructor TsCells.Create(AWorksheet: TsBasicWorksheet;
+  AOwnsData: Boolean = true);
 begin
   inherited Create(AOwnsData);
   FWorksheet := AWorksheet;

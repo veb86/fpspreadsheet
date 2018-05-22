@@ -15,7 +15,7 @@ uses
  {$ELSE}
   fpszipper,
  {$ENDIF}
-  fpSpreadsheet, fpsreaderwriter;
+  fpstypes, fpsreaderwriter;
 
 type
   TsSpreadXMLReader = class(TsCustomSpreadReader)
@@ -53,7 +53,8 @@ procedure UnzipFile(AZipFileName, AZippedFile, ADestFolder: String);
 function UnzipToStream(AZipStream: TStream; const AZippedFile: String;
   ADestStream: TStream): Boolean;
 
-function CreateTempStream(AWorkbook: TsWorkbook; AFileNameBase: String): TStream;
+function CreateTempStream(AWorkbook: TsBasicWorkbook;
+  AFileNameBase: String): TStream;
 procedure DestroyTempStream(AStream: TStream);
 
 
@@ -379,7 +380,8 @@ end;
   In the latter two cases a filename mask is provided to create a temporary
   filename around this mask.
 -------------------------------------------------------------------------------}
-function CreateTempStream(AWorkbook: TsWorkbook; AFilenameBase: String): TStream;
+function CreateTempStream(AWorkbook: TsBasicWorkbook;
+  AFilenameBase: String): TStream;
 begin
   if boFileStream in AWorkbook.Options then
     Result := TFileStream.Create(GetTempFileName('', AFilenameBase), fmCreate)

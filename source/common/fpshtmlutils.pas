@@ -5,7 +5,7 @@ unit fpsHTMLUtils;
 interface
 
 uses
-  Classes, SysUtils, contnrs, fpstypes, fpspreadsheet;
+  Classes, SysUtils, contnrs, fpstypes;
 
 type
   TsHTMLEntity = record
@@ -39,11 +39,11 @@ type
 
   TsTagCase = (tcLowercase, tcUppercase, tcProperCase);
 
-procedure HTMLToRichText(AWorkbook: TsWorkbook; AFont: TsFont;
+procedure HTMLToRichText(AWorkbook: TsBasicWorkbook; AFont: TsFont;
   const AHTMLText: String; out APlainText: String;
   out ARichTextParams: TsRichTextParams);
 
-procedure RichTextToHTML(AWorkbook: TsWorkbook; AFont: TsFont;
+procedure RichTextToHTML(AWorkbook: TsBasicWorkbook; AFont: TsFont;
   const APlainText: String; const ARichTextParams: TsRichTextParams;
   out AHTMLText: String; APrefix:String = ''; ATagCase: TsTagCase = tcLowercase);
 
@@ -52,7 +52,7 @@ implementation
 
 uses
   math, lazUtf8, fasthtmlparser,
-  fpsUtils, fpsClasses;
+  fpsUtils, fpsClasses, fpspreadsheet;
 
 const
   // http://unicode.e-workers.de/entities.php
@@ -940,7 +940,7 @@ end;
   @@param ARichtTextParams   Rich-text parameters corresponding to the embedded
                              html tags
 -------------------------------------------------------------------------------}
-procedure HTMLToRichText(AWorkbook: TsWorkbook; AFont: TsFont;
+procedure HTMLToRichText(AWorkbook: TsBasicWorkbook; AFont: TsFont;
   const AHTMLText: String; out APlainText: String;
   out ARichTextParams: TsRichTextParams);
 var
@@ -949,7 +949,7 @@ var
   len: Integer;
   nrtp: Integer;
 begin
-  analyzer := TsHTMLAnalyzer.Create(AWorkbook, AFont, AHTMLText + '<end>');
+  analyzer := TsHTMLAnalyzer.Create(AWorkbook as TsWorkbook, AFont, AHTMLText + '<end>');
   try
     analyzer.PreserveSpaces := true;
     analyzer.Exec;
@@ -1187,7 +1187,7 @@ end;
   Constructs a html-coded string from a plain text string and
   rich-text parameters
 -------------------------------------------------------------------------------}
-procedure RichTextToHTML(AWorkbook: TsWorkbook; AFont: TsFont;
+procedure RichTextToHTML(AWorkbook: TsBasicWorkbook; AFont: TsFont;
   const APlainText: String; const ARichTextParams: TsRichTextParams;
   out AHTMLText: String; APrefix: String = ''; ATagCase: TsTagCase = tcLowercase);
 var
@@ -1197,7 +1197,7 @@ begin
     AHTMLText := APlainText
   else
   begin
-    composer := TsHTMLComposer.Create(AWorkbook, AFont, APrefix, ATagCase);
+    composer := TsHTMLComposer.Create(AWorkbook as TsWorkbook, AFont, APrefix, ATagCase);
     try
       AHTMLText := composer.Exec(APlainText, ARichTextParams);
     finally

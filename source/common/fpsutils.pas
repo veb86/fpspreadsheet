@@ -18,7 +18,7 @@ unit fpsutils;
 interface
 
 uses
-  Classes, SysUtils, TypInfo, //StrUtils,
+  Classes, SysUtils, TypInfo,
   fpstypes;
 
 // Exported types
@@ -194,7 +194,8 @@ procedure SplitHyperlink(AValue: String; out ATarget, ABookmark: String);
 procedure FixHyperlinkPathDelims(var ATarget: String);
 
 procedure InitCell(out ACell: TCell); overload;
-procedure InitCell(AWorksheet: Pointer; ARow, ACol: Cardinal; out ACell: TCell); overload;
+procedure InitCell(AWorksheet: TsBasicWorksheet; ARow, ACol: Cardinal;
+  out ACell: TCell); overload;
 procedure InitCryptoInfo(out AValue: TsCryptoInfo);
 procedure InitFormatRecord(out AValue: TsCellFormat);
 procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
@@ -209,6 +210,8 @@ function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
   AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Boolean; overload;
 
 function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange;
+
+function GetFontAsString(AFont: TsFont): String;
 
 //function GetUniqueTempDir(Global: Boolean): String;
 
@@ -225,9 +228,6 @@ var
   {@@ Default value for the screen pixel density (pixels per inch). Is needed
   for conversion of distances to pixels}
   ScreenPixelsPerInch: Integer = 96;
-
-  {@@ FPC format settings for which all strings have been converted to UTF8 }
-  UTF8FormatSettings: TFormatSettings;
 
 
 implementation
@@ -2348,7 +2348,8 @@ end;
   @param  ACol        Column index of the new cell
   @return New cell record with row and column fields preset to passed values.
 -------------------------------------------------------------------------------}
-procedure InitCell(AWorksheet: Pointer; ARow, ACol: Cardinal; out ACell: TCell);
+procedure InitCell(AWorksheet: TsbasicWorksheet;
+  ARow, ACol: Cardinal; out ACell: TCell);
 begin
   InitCell(ACell);
   ACell.Worksheet := AWorksheet;
@@ -2551,6 +2552,26 @@ begin
     Result.Col2 := ACol1;
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Combines the relevant font properties into a string
+-------------------------------------------------------------------------------}
+function GetFontAsString(AFont: TsFont): String;
+begin
+  if AFont = nil then
+    Result := ''
+  else begin
+    Result := Format('%s; size %.1g; %s', [
+      AFont.FontName, AFont.Size, GetColorName(AFont.Color)]);
+    if (fssBold in AFont.Style) then Result := Result + '; bold';
+    if (fssItalic in AFont.Style) then Result := Result + '; italic';
+    if (fssUnderline in AFont.Style) then Result := Result + '; underline';
+    if (fssStrikeout in AFont.Style) then result := Result + '; strikeout';
+    if AFont.Position = fpSubscript then Result := Result + '; subscript';
+    if AFont.Position = fpSuperscript then Result := Result + '; superscript';
+  end;
+end;
+
 
                                                  (*
 {@@ ----------------------------------------------------------------------------
@@ -2837,31 +2858,6 @@ begin
 end;
 {$POP}
 
-
-{@@ ----------------------------------------------------------------------------
-  Creates a FPC format settings record in which all strings are encoded as
-  UTF8.
--------------------------------------------------------------------------------}
-procedure InitUTF8FormatSettings;
-// remove when available in LazUtils
-var
-  i: Integer;
-begin
-  UTF8FormatSettings := DefaultFormatSettings;
-  UTF8FormatSettings.CurrencyString := AnsiToUTF8(DefaultFormatSettings.CurrencyString);
-  for i:=1 to 12 do begin
-    UTF8FormatSettings.LongMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.LongMonthNames[i]);
-    UTF8FormatSettings.ShortMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortMonthNames[i]);
-  end;
-  for i:=1 to 7 do begin
-    UTF8FormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
-    UTF8FormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
-  end;
-end;
-
-
-initialization
-  InitUTF8FormatSettings;
 
 end.
 

@@ -16,7 +16,7 @@ unit fpsPalette;
 interface
 
 uses
-  Classes, SysUtils, fpstypes, fpspreadsheet;
+  Classes, SysUtils, fpstypes;
 
 type
 
@@ -34,8 +34,8 @@ type
     procedure AddExcelColors;
     function AddUniqueColor(AColor: TsColor; ABigEndian: Boolean = false): Integer;
     procedure Clear;
-    procedure CollectFromWorkbook(AWorkbook: TsWorkbook);
-    function ColorUsedInWorkbook(APaletteIndex: Integer; AWorkbook: TsWorkbook): Boolean;
+    procedure CollectFromWorkbook(AWorkbook: TsBasicWorkbook);
+    function ColorUsedInWorkbook(APaletteIndex: Integer; AWorkbook: TsBasicWorkbook): Boolean;
     function FindClosestColorIndex(AColor: TsColor; AMaxPaletteCount: Integer = -1): Integer;
     function FindColor(AColor: TsColor; AMaxPaletteCount: Integer = -1;
       AStartIndex: Integer = 0): Integer;
@@ -51,7 +51,7 @@ type
 implementation
 
 uses
-  fpsutils;
+  fpsutils, fpspreadsheet;
 
 {@@ ----------------------------------------------------------------------------
   If a palette is coded as big-endian (e.g. by copying the rgb values from
@@ -223,18 +223,19 @@ end;
 {@@ ----------------------------------------------------------------------------
   Collects the colors used in the specified workbook
 -------------------------------------------------------------------------------}
-procedure TsPalette.CollectFromWorkbook(AWorkbook: TsWorkbook);
+procedure TsPalette.CollectFromWorkbook(AWorkbook: TsBasicWorkbook);
 var
   i: Integer;
+  book: TsWorkbook absolute AWorkbook;
   sheet: TsWorksheet;
   cell: PCell;
   fmt: TsCellFormat;
   fnt: TsFont;
   cb: TsCellBorder;
 begin
-  for i:=0 to AWorkbook.GetWorksheetCount-1 do
+  for i:=0 to book.GetWorksheetCount-1 do
   begin
-    sheet := AWorkbook.GetWorksheetByIndex(i);
+    sheet := book.GetWorksheetByIndex(i);
     for cell in sheet.Cells do begin
       fmt := sheet.ReadCellFormat(cell);
       if (uffBackground in fmt.UsedFormattingFields) then
@@ -244,7 +245,7 @@ begin
       end;
       if (uffFont in fmt.UsedFormattingFields) then
       begin
-        fnt := AWorkbook.GetFont(fmt.FontIndex);
+        fnt := book.GetFont(fmt.FontIndex);
         AddUniqueColor(fnt.Color);
       end;
       if (uffBorder in fmt.UsedFormattingFields) then
@@ -264,8 +265,9 @@ end;
   @result True if the color is used by at least one cell, false if not.
 -------------------------------------------------------------------------------}
 function TsPalette.ColorUsedInWorkbook(APaletteIndex: Integer;
-  AWorkbook: TsWorkbook): Boolean;
+  AWorkbook: TsBasicWorkbook): Boolean;
 var
+  book: TsWorkbook absolute AWorkbook;
   sheet: TsWorksheet;
   cell: PCell;
   i: Integer;
@@ -279,12 +281,12 @@ begin
     exit(false);
 
   Result := true;
-  for i:=0 to AWorkbook.GetWorksheetCount-1 do
+  for i:=0 to book.GetWorksheetCount-1 do
   begin
-    sheet := AWorkbook.GetWorksheetByIndex(i);
+    sheet := book.GetWorksheetByIndex(i);
     for cell in sheet.Cells do
     begin
-      fmt := AWorkbook.GetPointerToCellFormat(cell^.FormatIndex);
+      fmt := book.GetPointerToCellFormat(cell^.FormatIndex);
       if (uffBackground in fmt^.UsedFormattingFields) then
       begin
         if fmt^.Background.BgColor = color then exit;
@@ -296,7 +298,7 @@ begin
             exit;
       if (uffFont in fmt^.UsedFormattingFields) then
       begin
-        fnt := AWorkbook.GetFont(fmt^.FontIndex);
+        fnt := book.GetFont(fmt^.FontIndex);
         if fnt.Color = color then
           exit;
       end;

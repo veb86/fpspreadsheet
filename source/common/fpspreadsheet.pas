@@ -30,23 +30,6 @@ type
   TsWorksheet = class;
   TsWorkbook = class;
 
-  {@@ Worksheet user interface options:
-    @param soShowGridLines    Show or hide the grid lines in the spreadsheet
-    @param soShowHeaders      Show or hide the column or row headers of the
-                              spreadsheet
-    @param soHasFrozenPanes   If set a number of rows and columns of the
-                              spreadsheet is fixed and does not scroll. The number
-                              is defined by LeftPaneWidth and TopPaneHeight.
-    @param soHidden           Worksheet is hidden.
-    @param soProtected        Worksheet is protected
-    @param soPanesProtection  Panes are locked due to workbook protection }
-  TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes, soHidden,
-    soProtected, soPanesProtection);
-
-  {@@ Set of user interface options
-    @ see TsSheetOption }
-  TsSheetOptions = set of TsSheetOption;
-
 
   { TsWorksheet }
 
@@ -77,10 +60,9 @@ type
 
   {@@ The worksheet contains a list of cells and provides a variety of methods
     to read or write data to the cells, or to change their formatting. }
-  TsWorksheet = class
+  TsWorksheet = class(TsBasicWorksheet)
   private
     FWorkbook: TsWorkbook;
-    FName: String;  // Name of the worksheet (displayed at the tab)
     FCells: TsCells;
     FComments: TsComments;
     FMergedCells: TsMergedCells;
@@ -94,7 +76,6 @@ type
     FSelection: TsCellRangeArray;
     FLeftPaneWidth: Integer;
     FTopPaneHeight: Integer;
-    FOptions: TsSheetOptions;
     FFirstRowIndex: Cardinal;
     FFirstColIndex: Cardinal;
     FLastRowIndex: Cardinal;
@@ -105,7 +86,6 @@ type
     FBiDiMode: TsBiDiMode;
     FCryptoInfo: TsCryptoInfo;
     FPageLayout: TsPageLayout;
-    FProtection: TsWorksheetProtections;
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
     FZoomFactor: Double;
@@ -125,7 +105,6 @@ type
     procedure SetBiDiMode(AValue: TsBiDiMode);
     procedure SetDefaultColWidth(AValue: Single);
     procedure SetDefaultRowHeight(AValue: Single);
-    procedure SetName(const AName: String);
     procedure SetVirtualColCount(AValue: Cardinal);
     procedure SetVirtualRowCount(AValue: Cardinal);
     procedure SetZoomFactor(AValue: Double);
@@ -151,6 +130,9 @@ type
     procedure DoExchangeColRow(AIsColumn: Boolean; AIndex, WithIndex: Cardinal;
       AFromIndex, AToIndex: Cardinal);
     procedure ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
+
+    // inherited setters/getters
+    procedure SetName(const AName: String); override;
 
   public
     { Base methods }
@@ -523,7 +505,6 @@ type
 
     // Hyperlinks
     function FindHyperlink(ACell: PCell): PsHyperlink;
-    function HasHyperlink(ACell: PCell): Boolean;
     function ReadHyperlink(ACell: PCell): TsHyperlink;
     procedure RemoveHyperlink(ACell: PCell);
     function ValidHyperlink(AValue: String; out AErrMsg: String): Boolean;
@@ -567,7 +548,6 @@ type
 
     { Protection }
     procedure Protect(AEnable: Boolean);
-    function IsProtected: Boolean;
 
     { Notification of changed cells, rows or columns }
     procedure ChangedCell(ARow, ACol: Cardinal);
@@ -592,13 +572,8 @@ type
     property  Hyperlinks: TsHyperlinks read FHyperlinks;
     {@@ FormatSettings for localization of some formatting strings }
     property  FormatSettings: TFormatSettings read GetFormatSettings;
-    {@@ Name of the sheet. In the popular spreadsheet applications this is
-      displayed at the tab of the sheet. }
-    property Name: string read FName write SetName;
     {@@ Parameters to be used for printing by the Office applications }
     property PageLayout: TsPageLayout read FPageLayout write FPageLayout;
-    {@@ Worksheet protection options }
-    property Protection: TsWorksheetProtections read FProtection write FProtection;
     {@@ List of all row records of the worksheet having a non-standard row height }
     property  Rows: TIndexedAVLTree read FRows;
     {@@ Workbook to which the worksheet belongs }
@@ -619,9 +594,6 @@ type
 
     // These are properties to interface to TsWorksheetGrid
     property BiDiMode: TsBiDiMode read FBiDiMode write SetBiDiMode;
-    {@@ Parameters controlling visibility of grid lines and row/column headers,
-        usage of frozen panes etc. }
-    property  Options: TsSheetOptions read FOptions write FOptions;
     {@@ Column index of the selected cell of this worksheet }
     property  ActiveCellCol: Cardinal read FActiveCellCol;
     {@@ Row index of the selected cell of this worksheet }
@@ -656,43 +628,6 @@ type
     property OnZoom: TsNotifyEvent read FOnZoom write FOnZoom;
   end;
 
-  {@@
-    Option flags for the workbook
-
-    @param  boVirtualMode      If in virtual mode date are not taken from cells
-                               when a spreadsheet is written to file, but are
-                               provided by means of the event OnWriteCellData.
-                               Similarly, when data are read they are not added
-                               as cells but passed the the event OnReadCellData;
-    @param  boBufStream        When this option is set a buffered stream is used
-                               for writing (a memory stream swapping to disk) or
-                               reading (a file stream pre-reading chunks of data
-                               to memory)
-    @param  boFileStream       Uses file streams and temporary files during
-                               reading and writing. Lowest memory consumptions,
-                               but slow.
-    @param  boAutoCalc         Automatically recalculate formulas whenever a
-                               cell value changes.
-    @param  boCalcBeforeSaving Calculates formulas before saving the file.
-                               Otherwise there are no results when the file is
-                               loaded back by fpspreadsheet.
-    @param  boReadFormulas     Allows to turn off reading of rpn formulas; this
-                               is a precaution since formulas not correctly
-                               implemented by fpspreadsheet could crash the
-                               reading operation.
-    @param boWriteZoomfactor   Instructs the writer to write the current zoom
-                               factors of the worksheets to file.
-    @param boAbortReadOnFormulaError Aborts reading if a formula error is
-                               encountered
-    @param boIgnoreFormulas    Formulas are not checked and not calculated.
-                               Cannot be used for biff formats. }
-  TsWorkbookOption = (boVirtualMode, boBufStream, boFileStream,
-    boAutoCalc, boCalcBeforeSaving, boReadFormulas, boWriteZoomFactor,
-    boAbortReadOnFormulaError, boIgnoreFormulas);
-
-  {@@ Set of option flags for the workbook }
-  TsWorkbookOptions = set of TsWorkbookOption;
-
   {@@ Event fired when reading a file in virtual mode. Read data are provided in
     the "ADataCell" (which is not added to the worksheet in virtual mode). }
   TsWorkbookReadCellDataEvent = procedure(Sender: TObject; ARow, ACol: Cardinal;
@@ -707,39 +642,31 @@ type
   {@@ FSome action has an effect on existing formulas which must be corrected. }
   TsFormulaCorrection = (fcWorksheetRenamed);
 
-  { TsWorkbook }
+
+    { TsWorkbook }
 
   {@@ The workbook contains the worksheets and provides methods for reading from
     and writing to file. }
-  TsWorkbook = class
+  TsWorkbook = class(TsBasicWorkbook)
   private
     { Internal data }
     FWorksheets: TFPList;
-    FFormatID: TsSpreadFormatID;
     FBuiltinFontCount: Integer;
     FReadWriteFlag: TsReadWriteFlag;
     FCalculationLock: Integer;
-    FOptions: TsWorkbookOptions;
     FActiveWorksheet: TsWorksheet;
     FOnOpenWorkbook: TNotifyEvent;
-    FOnReadCellData: TsWorkbookReadCellDataEvent;
     FOnChangeWorksheet: TsWorksheetEvent;
     FOnRenameWorksheet: TsWorksheetEvent;
     FOnAddWorksheet: TsWorksheetEvent;
     FOnRemoveWorksheet: TsRemoveWorksheetEvent;
     FOnRemovingWorksheet: TsWorksheetEvent;
     FOnSelectWorksheet: TsWorksheetEvent;
-    FFileName: String;
+    FOnReadCellData: TsWorkbookReadCellDataEvent;
     FLockCount: Integer;
-    FLog: TStringList;
     FSearchEngine: TObject;
-    FUnits: TsSizeUnits;
-    FProtection: TsWorkbookProtections;
     FCryptoInfo: TsCryptoInfo;
     {FrevisionsCrypto: TsCryptoInfo;} // Commented out because it needs revision handling
-
-    { Setter/Getter }
-    function GetErrorMsg: String;
 
     { Callback procedures }
     procedure RemoveWorksheetsCallback(data, arg: pointer);
@@ -764,11 +691,6 @@ type
 //    procedure ReCalc;
 
   public
-    {@@ A copy of SysUtil's DefaultFormatSettings (converted to UTF8) to provide
-      some kind of localization to some formatting strings.
-      Can be modified before loading/writing files }
-    FormatSettings: TFormatSettings;
-
     { Base methods }
     constructor Create;
     destructor Destroy; override;
@@ -809,7 +731,7 @@ type
     function  GetWorksheetByIndex(AIndex: Integer): TsWorksheet;
     function  GetWorksheetByName(AName: String): TsWorksheet;
     function  GetWorksheetCount: Integer;
-    function  GetWorksheetIndex(AWorksheet: TsWorksheet): Integer; overload;
+    function  GetWorksheetIndex(AWorksheet: TsBasicWorksheet): Integer; overload;
     function  GetWorksheetIndex(const AWorksheetName: String): Integer; overload;
     procedure RemoveAllWorksheets;
     procedure RemoveAllEmptyWorksheets;
@@ -886,33 +808,16 @@ type
     procedure UpdateCaches;
     procedure GetLastRowColIndex(out ALastRow, ALastCol: Cardinal);
 
-    { Protection }
-    function IsProtected: Boolean;
-
     { Notification }
     procedure ChangedWorksheet(AWorksheet: TsWorksheet);
     procedure DisableNotifications;
     procedure EnableNotifications;
     function NotificationsEnabled: Boolean;
 
-    { Error messages }
-    procedure AddErrorMsg(const AMsg: String); overload;
-    procedure AddErrorMsg(const AMsg: String; const Args: array of const); overload;
-    procedure ClearErrorList;
-
     {@@ Identifies the "active" worksheet (only for visual controls)}
     property ActiveWorksheet: TsWorksheet read FActiveWorksheet write SelectWorksheet;
     property CryptoInfo: TsCryptoInfo read FCryptoInfo write FCryptoInfo;
-    {@@ Retrieves error messages collected during reading/writing }
-    property ErrorMsg: String read GetErrorMsg;
-    {@@ Filename of the saved workbook }
-    property FileName: String read FFileName;
-    {@@ Identifies the file format which was detected when reading the file }
-    property FileFormatID: TsSpreadFormatID read FFormatID;
-    property Options: TsWorkbookOptions read FOptions write FOptions;
     {property RevisionsCrypto: TsCryptoInfo read FRevisionsCrypto write FRevisionsCrypto;}
-    property Protection: TsWorkbookProtections read FProtection write FProtection;
-    property Units: TsSizeUnits read FUnits;
 
     {@@ This event fires whenever a new worksheet is added }
     property OnAddWorksheet: TsWorksheetEvent read FOnAddWorksheet write FOnAddWorksheet;
@@ -1217,7 +1122,6 @@ begin
   FActiveCellRow := UNASSIGNED_ROW_COL_INDEX;
   FActiveCellCol := UNASSIGNED_ROW_COL_INDEX;
 
-  FProtection := DEFAULT_SHEET_PROTECTION;
   InitCryptoInfo(FCryptoInfo);
 
   FOptions := [soShowGridLines, soShowHeaders];
@@ -1336,8 +1240,7 @@ begin
                     end;
       rtBoolean   : WriteBoolValue(ACell, res.ResBoolean);
       rtCell      : begin
-//                      cell := GetCell(res.ResRow, res.ResCol);
-                      cell := res.Worksheet.FindCell(res.ResRow, res.ResCol);
+                      cell := (res.Worksheet as TsWorksheet).FindCell(res.ResRow, res.ResCol);
                       if cell <> nil then
                         case cell^.ContentType of
                           cctNumber    : WriteNumber(ACell, cell^.NumberValue);
@@ -1601,14 +1504,6 @@ begin
     Result := PsHyperlink(FHyperlinks.FindByRowCol(ACell^.Row, ACell^.Col))
   else
     Result := nil;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Checks whether the specified cell contains a hyperlink
--------------------------------------------------------------------------------}
-function TsWorksheet.HasHyperlink(ACell: PCell): Boolean;
-begin
-  Result := (ACell <> nil) and (cfHyperlink in ACell^.Flags);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4201,14 +4096,6 @@ begin
   FWorkbook.ChangedWorksheet(self);
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Returns whether the worksheet is protected
--------------------------------------------------------------------------------}
-function TsWorksheet.IsProtected: Boolean;
-begin
-  Result := soProtected in FOptions;
-end;
-
 
 {@@ ----------------------------------------------------------------------------
   Setter for the worksheet name property. Checks if the name is valid, and
@@ -4221,9 +4108,11 @@ begin
   if (FWorkbook <> nil) then //and FWorkbook.ValidWorksheetName(AName) then
   begin
     FName := AName;
-    FWorkbook.FixFormulas(fcWorksheetRenamed, self, 0);
-    if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnRenameWorksheet) then
-      FWorkbook.FOnRenameWorksheet(FWorkbook, self);
+    if FWorkbook.FReadWriteFlag = rwfNormal then begin
+      FWorkbook.FixFormulas(fcWorksheetRenamed, self, 0);
+      if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnRenameWorksheet) then
+        FWorkbook.FOnRenameWorksheet(FWorkbook, self);
+    end;
   end;
 end;
 
@@ -8111,10 +8000,10 @@ begin
   InitFonts;
 
   // Clear error log
-  FLog.Clear;
+  ClearErrorList;
 
   // Abort if virtual mode is active without an event handler
-  if (boVirtualMode in FOptions) and not Assigned(FOnReadCellData) then
+  if (boVirtualMode in FOptions) and not Assigned(OnReadCellData) then
     raise EFPSpreadsheet.Create('[TsWorkbook.PrepareBeforeReading] Event handler "OnReadCellData" required for virtual mode.');
 end;
 
@@ -8129,7 +8018,7 @@ var
   virtModeOK: Boolean;
 begin
   // Clear error log
-  FLog.Clear;
+  ClearErrorList;
 
   // Updates fist/last column/row index
   UpdateCaches;
@@ -8280,13 +8169,6 @@ var
 begin
   inherited Create;
   FWorksheets := TFPList.Create;
-  FLog := TStringList.Create;
-  FFormatID := sfidUnknown;
-  FUnits := suMillimeters;              // Units for column width and row height
-
-  FormatSettings := UTF8FormatSettings;
-// FormatSettings.ShortDateFormat := MakeShortDateFormat(FormatSettings.ShortDateFormat);
-//  FormatSettings.LongDateFormat := MakeLongDateFormat(FormatSettings.ShortDateFormat);
 
   FFontList := TFPList.Create;
   SetDefaultFont(DEFAULT_FONTNAME, DEFAULT_FONTSIZE);
@@ -8302,7 +8184,6 @@ begin
 
   // Protection
   InitCryptoInfo(FCryptoInfo);
-  FProtection := [];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8324,7 +8205,6 @@ begin
   RemoveAllEmbeddedObj;
   FEmbeddedObjList.Free;
 
-  FLog.Free;
   FreeAndNil(FSearchEngine);
 
   inherited Destroy;
@@ -8452,14 +8332,6 @@ begin
       ALastCol := Max(ALastCol, sheet.GetLastColIndex);
     end;
   end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns whether the workbook is protected
--------------------------------------------------------------------------------}
-function TsWorkbook.IsProtected: Boolean;
-begin
-  Result := (FProtection <> []);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -9044,7 +8916,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the index of a worksheet in the worksheet list
 -------------------------------------------------------------------------------}
-function TsWorkbook.GetWorksheetIndex(AWorksheet: TsWorksheet): Integer;
+function TsWorkbook.GetWorksheetIndex(AWorksheet: TsBasicWorksheet): Integer;
 begin
   Result := FWorksheets.IndexOf(AWorksheet);
 end;
@@ -9609,7 +9481,7 @@ begin
     AddFont(AFontName, ASize, [], scBlack)
   else
   for i:=0 to FBuiltinFontCount-1 do
-    if (i <> 4) and (i < FFontList.Count) then
+    if (i <> 4) and (i < FFontList.Count) then           // wp: why if font #4 relevant here ????
       with TsFont(FFontList[i]) do
       begin
         FontName := AFontName;
@@ -9663,21 +9535,8 @@ end;
   @return String with font name, font size etc.
 -------------------------------------------------------------------------------}
 function TsWorkbook.GetFontAsString(AIndex: Integer): String;
-var
-  fnt: TsFont;
 begin
-  fnt := GetFont(AIndex);
-  if fnt <> nil then begin
-    Result := Format('%s; size %.1g; %s', [
-      fnt.FontName, fnt.Size, GetColorName(fnt.Color)]);
-    if (fssBold in fnt.Style) then Result := Result + '; bold';
-    if (fssItalic in fnt.Style) then Result := Result + '; italic';
-    if (fssUnderline in fnt.Style) then Result := Result + '; underline';
-    if (fssStrikeout in fnt.Style) then result := Result + '; strikeout';
-    if fnt.Position = fpSubscript then Result := Result + '; subscript';
-    if fnt.Position = fpSuperscript then Result := Result + '; superscript';
-  end else
-    Result := '';
+  Result := fpsUtils.GetFontAsString(GetFont(AIndex));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -10200,42 +10059,6 @@ begin
   FEmbeddedObjList.Clear;
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Adds a (simple) error message to an internal list
-
-  @param   AMsg   Error text to be stored in the list
--------------------------------------------------------------------------------}
-procedure TsWorkbook.AddErrorMsg(const AMsg: String);
-begin
-  FLog.Add(AMsg);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds an error message composed by means of format codes to an internal list
-
-  @param   AMsg   Error text to be stored in the list
-  @param   Args   Array of arguments to be used by the Format() function
--------------------------------------------------------------------------------}
-procedure TsWorkbook.AddErrorMsg(const AMsg: String; const Args: Array of const);
-begin
-  FLog.Add(Format(AMsg, Args));
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Clears the internal error message list
--------------------------------------------------------------------------------}
-procedure TsWorkbook.ClearErrorList;
-begin
-  FLog.Clear;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Getter to retrieve the error messages collected during reading/writing
--------------------------------------------------------------------------------}
-function TsWorkbook.GetErrorMsg: String;
-begin
-  Result := FLog.Text;
-end;
                            (*
 {@@ ----------------------------------------------------------------------------
   Converts a fpspreadsheet color into into a string RRGGBB.

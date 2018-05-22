@@ -34,7 +34,7 @@ interface
 
 uses
   Classes, SysUtils, lconvencoding,
-  fpsTypes, fpspreadsheet, fpsUtils, xlscommon;
+  fpsTypes, fpsUtils, xlscommon;
 
 const
   BIFF2_MAX_PALETTE_SIZE = 8;
@@ -75,7 +75,7 @@ type
     procedure ReadWindow2(AStream: TStream); override;
     procedure ReadXF(AStream: TStream);
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     { General reading methods }
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
@@ -100,8 +100,8 @@ type
     procedure WriteColumnDefault(AStream: TStream;
         AFirstColIndex, ALastColIndex: Word; AFormatIndex: Integer);
     procedure WriteColumnDefaults(AStream: TStream);
-    procedure WriteDefaultRowHeight(AStream: TStream; AWorksheet: TsWorksheet);
-    procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteDefaultRowHeight(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteDimensions(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteFont(AStream: TStream; AFontIndex: Integer);
     procedure WriteFonts(AStream: TStream);
@@ -111,7 +111,7 @@ type
     procedure AddBuiltinNumFormats; override;
     function FunctionSupported(AExcelCode: Integer;
       const AFuncName: String): Boolean; override;
-    procedure PopulatePalette(AWorkbook: TsWorkbook); override;
+    procedure PopulatePalette(AWorkbook: TsbasicWorkbook); override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
@@ -126,7 +126,7 @@ type
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: double; ACell: PCell); override;
     procedure WritePASSWORD(AStream: TStream);
-    procedure WriteRow(AStream: TStream; ASheet: TsWorksheet;
+    procedure WriteRow(AStream: TStream; ASheet: TsBasicWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow); override;
     procedure WriteRPNFormula(AStream: TStream; const ARow, ACol: Cardinal;
       AFormula: TsRPNFormula; ACell: PCell); override;
@@ -134,11 +134,11 @@ type
     procedure WriteRPNTokenArraySize(AStream: TStream; ASize: Word); override;
     procedure WriteStringRecord(AStream: TStream; AString: String); override;
     procedure WriteWindow1(AStream: TStream); override;
-    procedure WriteWindow2(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteWindow2(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteXF(AStream: TStream; AFormatRecord: PsCellFormat;
       XFType_Prot: Byte = 0); override;
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsbasicWorkbook); override;
     procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
   end;
 
@@ -180,7 +180,7 @@ uses
   LazLogger,
  {$ENDIF}
   Math,
-  fpsStrings, fpsReaderWriter, fpsPalette, fpsNumFormat;
+  fpsStrings, fpspreadsheet, fpsReaderWriter, fpsPalette, fpsNumFormat;
 
 const
   { Excel record IDs }
@@ -320,7 +320,7 @@ end;
 {                             TsSpreadBIFF2Reader                              }
 {------------------------------------------------------------------------------}
 
-constructor TsSpreadBIFF2Reader.Create(AWorkbook: TsWorkbook);
+constructor TsSpreadBIFF2Reader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
   InitBiff2Limitations(FLimitations);
@@ -342,10 +342,10 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := TsWorksheet(FWorksheet).AddCell(ARow, ACol);
   ApplyCellFormatting(cell, XF);
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    TsWorkbook(FWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -358,7 +358,10 @@ var
   r, c: Cardinal;
   xf: Word;
   cell: PCell;
+  sheet: TsWorksheet;
 begin
+  sheet := FWorksheet as TsWorksheet;
+
   { Read entire record, starting at Row }
   rec.Row := 0;  // to silence the compiler...
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2_BoolErrRecord) - 2*SizeOf(Word));
@@ -372,19 +375,19 @@ begin
     InitCell(FWorksheet, r, c, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(r, c);
+    cell := sheet.AddCell(r, c);
 
   { Retrieve boolean or error value depending on the "ValueType" }
   case rec.ValueType of
-    0: FWorksheet.WriteBoolValue(cell, boolean(rec.BoolErrValue));
-    1: FWorksheet.WriteErrorValue(cell, ConvertFromExcelError(rec.BoolErrValue));
+    0: sheet.WriteBoolValue(cell, boolean(rec.BoolErrValue));
+    1: sheet.WriteErrorValue(cell, ConvertFromExcelError(rec.BoolErrValue));
   end;
 
   { Apply formatting }
   ApplyCellFormatting(cell, xf);
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, r, c, cell);
+    TsWorkbook(FWorkbook).OnReadCellData(Workbook, r, c, cell);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadColumnDefault(AStream: TStream);
@@ -398,7 +401,10 @@ var
   nf: TsNumFormatParams;
   nfs: String;
   b: Byte;
+  book: TsWorkbook;
 begin
+  book := TsWorkbook(FWorkbook);
+
   { Index of first column }
   col1 := WordLEToN(AStream.ReadWord);
 
@@ -417,9 +423,9 @@ begin
   fontIndex := (attr2 and $C0) shr 6;
   if fontIndex > 4 then dec(fontIndex);  // Watch out for the nasty missing font #4...
   fnt := TsFont(FFontList[fontIndex]);
-  fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  fmt.FontIndex := book.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
   if fmt.FontIndex = -1 then
-    fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+    fmt.FontIndex := book.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
   if fmt.FontIndex > 0 then
     Include(fmt.UsedFormattingFields, uffFont);
 
@@ -427,8 +433,8 @@ begin
   b := attr2 and $3F;
   nfs := NumFormatList[b];
   if nfs <> '' then begin
-    fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
-    nf := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+    fmt.NumberFormatIndex := book.AddNumberFormat(nfs);
+    nf := book.GetNumberFormat(fmt.NumberFormatIndex);
     fmt.NumberFormat := nf.NumFormat;
     fmt.NumberFormatStr := nf.NumFormatStr;
     if fmt.NumberFormat <> nfGeneral then
@@ -477,10 +483,10 @@ begin
 
   // Add the decoded data to the format list
   FCellFormatList.Add(fmt);
-  fmtIndex := FWorkbook.AddCellFormat(fmt);
+  fmtIndex := book.AddCellFormat(fmt);
 
   for c := col1 to col2 do
-    FWorksheet.WriteColFormatIndex(c, fmtIndex);
+    TsWorksheet(FWorksheet).WriteColFormatIndex(c, fmtIndex);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadColWidth(AStream: TStream);
@@ -490,18 +496,21 @@ var
   c, c1, c2: Cardinal;
   w: Word;
   colwidth: Single;
+  sheet: TsWorksheet;
 begin
+  sheet := TsWorksheet(FWorksheet);
+
   // read column start and end index of column range
   c1 := AStream.ReadByte;
   c2 := AStream.ReadByte;
   // read col width in 1/256 of the width of "0" character
   w := WordLEToN(AStream.ReadWord);
   // calculate width in units of "characters"
-  colwidth := FWorkbook.ConvertUnits(w / 256, suChars, FWorkbook.Units);
+  colwidth := (FWorkbook as TsWorkbook).ConvertUnits(w / 256, suChars, FWorkbook.Units);
   // assign width to columns, but only if different from default column width.
-  if not SameValue(colwidth, FWorksheet.ReadDefaultColWidth(FWorkbook.Units), EPS) then
+  if not SameValue(colwidth, sheet.ReadDefaultColWidth(FWorkbook.Units), EPS) then
     for c := c1 to c2 do
-      FWorksheet.WriteColWidth(c, colwidth, FWorkbook.Units);
+      sheet.WriteColWidth(c, colwidth, FWorkbook.Units);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadDefRowHeight(AStream: TStream);
@@ -511,12 +520,7 @@ var
 begin
   hw := WordLEToN(AStream.ReadWord);
   h := TwipsToPts(hw and $7FFF);
-  FWorksheet.WriteDefaultRowHeight(h, suPoints);
-  {
-  h := TwipsToPts(hw and $8000) / FWorkbook.GetDefaultFontSize;
-  if h > ROW_HEIGHT_CORRECTION then
-    FWorksheet.DefaultRowHeight := h - ROW_HEIGHT_CORRECTION;
-    }
+  (FWorksheet as TsWorksheet).WriteDefaultRowHeight(h, suPoints);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadFONT(AStream: TStream);
@@ -553,7 +557,7 @@ begin
   FFontList.Add(FFont);
 
   if isDefaultFont then
-    Workbook.SetDefaultFont(FFont.FontName, FFont.Size);
+    TsWorkbook(FWorkbook).SetDefaultFont(FFont.FontName, FFont.Size);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadFONTCOLOR(AStream: TStream);
@@ -606,7 +610,7 @@ begin
   BIFF2EOF := False;
 
   { In BIFF2 files there is only one worksheet, let's create it }
-  FWorksheet := FWorkbook.AddWorksheet('Sheet', true);
+  FWorksheet := TsWorkbook(FWorkbook).AddWorksheet('Sheet', true);
 
   { Read all records in a loop }
   BOFFound := false;
@@ -685,7 +689,10 @@ var
   nfs: String;
   err: TsErrorValue;
   cell: PCell;
+  sheet: TsWorksheet;
 begin
+  sheet := TsWorksheet(FWorksheet);
+
   { BIFF Record row/column/style }
   ReadRowColXF(AStream, ARow, ACol, XF);
 
@@ -701,7 +708,7 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := sheet.AddCell(ARow, ACol);
 
   // Now determine the type of the formula result
   if (Data[6] = $FF) and (Data[7] = $FF) then
@@ -709,7 +716,7 @@ begin
       0: // String -> Value is found in next record (STRING)
          FIncompleteCell := cell;
       1: // Boolean value
-         FWorksheet.WriteBoolValue(cell, Data[2] = 1);
+         sheet.WriteBoolValue(cell, Data[2] = 1);
       2: begin  // Error value
            case Data[2] of
              ERR_INTERSECTION_EMPTY   : err := errEmptyIntersection;
@@ -720,10 +727,10 @@ begin
              ERR_OVERFLOW             : err := errOverflow;
              ERR_ARG_ERROR            : err := errArgError;
            end;
-           FWorksheet.WriteErrorValue(cell, err);
+           sheet.WriteErrorValue(cell, err);
          end;
       3: // Empty cell
-         FWorksheet.WriteBlank(cell);
+         sheet.WriteBlank(cell);
     end
   else
   begin
@@ -733,23 +740,23 @@ begin
     {Find out what cell type, set content type and value}
     ExtractNumberFormat(XF, nf, nfs);
     if IsDateTime(formulaResult, nf, nfs, dt) then
-      FWorksheet.WriteDateTime(cell, dt, nf, nfs)
+      sheet.WriteDateTime(cell, dt, nf, nfs)
     else
-      FWorksheet.WriteNumber(cell, formulaResult, nf, nfs);
+      sheet.WriteNumber(cell, formulaResult, nf, nfs);
   end;
 
   { Formula token array }
   if (boReadFormulas in FWorkbook.Options) then
   begin
     ok := ReadRPNTokenArray(AStream, cell);
-    if not ok then FWorksheet.WriteErrorValue(cell, errFormulaNotSupported);
+    if not ok then sheet.WriteErrorValue(cell, errFormulaNotSupported);
   end;
 
   { Apply formatting to cell }
   ApplyCellFormatting(cell, XF);
 
   if FIsVirtualMode and (cell <> FIncompleteCell) then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    TsWorkbook(FWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadLabel(AStream: TStream);
@@ -761,7 +768,10 @@ var
   ansiStr: ansistring;
   valueStr: UTF8String;
   cell: PCell;
+  sheet: TsWorksheet;
 begin
+  sheet := FWorksheet as TsWorksheet;
+
   { Read entire record, starting at Row, except for string data }
   rec.Row := 0;  // to silence the compiler...
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2_LabelRecord) - 2*SizeOf(Word));
@@ -777,33 +787,20 @@ begin
 
   { Save the data }
   valueStr := ConvertEncoding(ansiStr, FCodePage, encodingUTF8);
-  {
-  case WorkBookEncoding of
-    seLatin2:   AStrValue := CP1250ToUTF8(AValue);
-    seCyrillic: AStrValue := CP1251ToUTF8(AValue);
-    seGreek:    AStrValue := CP1253ToUTF8(AValue);
-    seTurkish:  AStrValue := CP1254ToUTF8(AValue);
-    seHebrew:   AStrValue := CP1255ToUTF8(AValue);
-    seArabic:   AStrValue := CP1256ToUTF8(AValue);
-  else
-    // Latin 1 is the default
-    AStrValue := CP1252ToUTF8(AValue);
-  end;
-  }
 
   { Create cell }
   if FIsVirtualMode then begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
-  FWorksheet.WriteText(cell, valueStr);
+    cell := sheet.AddCell(ARow, ACol);
+  sheet.WriteText(cell, valueStr);
 
   { Apply formatting to cell }
   ApplyCellFormatting(cell, XF);
 
   if FIsVirtualMode and (cell <> FIncompleteCell) then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    TsWorkbook(FWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadNumber(AStream: TStream);
@@ -816,7 +813,10 @@ var
   nf: TsNumberFormat;
   nfs: String;
   cell: PCell;
+  sheet: TsWorksheet;
 begin
+  sheet := FWorksheet as TsWorksheet;
+
   { Read entire record, starting at Row }
   rec.Row := 0;  // to silence the compiler...
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2_NumberRecord) - 2*SizeOf(Word));
@@ -831,30 +831,33 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := sheet.AddCell(ARow, ACol);
 
   {Find out what cell type, set content type and value}
   ExtractNumberFormat(XF, nf, nfs);
   if IsDateTime(value, nf, nfs, dt) then
-    FWorksheet.WriteDateTime(cell, dt, nf, nfs)
+    sheet.WriteDateTime(cell, dt, nf, nfs)
   else
-    FWorksheet.WriteNumber(cell, value, nf, nfs);
+    sheet.WriteNumber(cell, value, nf, nfs);
 
   { Apply formatting to cell }
   ApplyCellFormatting(cell, XF);
 
   if FIsVirtualMode and (cell <> FIncompleteCell) then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    TsWorkbook(FWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF2Reader.ReadInteger(AStream: TStream);
 var
+  sheet: TsWorksheet;
   ARow, ACol: Cardinal;
   XF: Word;
   AWord  : Word = 0;
   cell: PCell;
   rec: TBIFF2_IntegerRecord;
 begin
+  sheet := FWorksheet as TsWorksheet;
+
   { Read record into buffer }
   rec.Row := 0;   // to silence the comiler...
   AStream.ReadBuffer(rec.Row, SizeOf(TBIFF2_NumberRecord) - 2*SizeOf(Word));
@@ -870,16 +873,16 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := sheet.AddCell(ARow, ACol);
 
   { Save the data }
-  FWorksheet.WriteNumber(cell, AWord);
+  sheet.WriteNumber(cell, AWord);
 
   { Apply formatting to cell }
   ApplyCellFormatting(cell, XF);
 
   if FIsVirtualMode and (cell <> FIncompleteCell) then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    TsWorkbook(FWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -911,14 +914,14 @@ begin
 
   // Use the same password for workbook and worksheet protection because
   // BIFF2 can have only a single sheet.
-  FWorkbook.CryptoInfo := cinfo;
-  FWorksheet.CryptoInfo := cinfo;
+  (FWorkbook as TsWorkbook).CryptoInfo := cinfo;
+  (FWorksheet as TsWorksheet).CryptoInfo := cinfo;
 end;
 
 procedure TsSpreadBIFF2Reader.ReadPROTECT(AStream: TStream);
 begin
   inherited ReadPROTECT(AStream);
-  FWorksheet.Protect(Workbook.IsProtected);
+  (FWorksheet as TsWorksheet).Protect(Workbook.IsProtected);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -966,13 +969,18 @@ var
   defRowHeight: Single;
   containsXF: Boolean;
   xf: Word;
+  book: TsWorkbook;
+  sheet: TsWorksheet;
 begin
+  book := FWorkbook as TsWorkbook;
+  sheet := FWorksheet as TsWorksheet;
+
   rowRec.RowIndex := 0;  // to silence the compiler...
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
   h := WordLEToN(rowrec.Height);
   auto := h and $8000 <> 0;
-  rowheight := FWorkbook.ConvertUnits(TwipsToPts(h and $7FFF), suPoints, FWorkbook.Units);
-  defRowHeight := FWorksheet.ReadDefaultRowHeight(FWorkbook.Units);
+  rowheight := book.ConvertUnits(TwipsToPts(h and $7FFF), suPoints, FWorkbook.Units);
+  defRowHeight := sheet.ReadDefaultRowHeight(FWorkbook.Units);
   containsXF := rowRec.ContainsXF = 1;
   xf := WordLEToN(rowRec.XFIndex);
 
@@ -982,7 +990,7 @@ begin
     exit;
 
   // Otherwise: create a row record
-  lRow := FWorksheet.GetRow(WordLEToN(rowrec.RowIndex));
+  lRow := sheet.GetRow(WordLEToN(rowrec.RowIndex));
   lRow^.Height := rowHeight;
   if auto then
     lRow^.RowHeightType := rhtAuto else
@@ -1062,7 +1070,9 @@ begin
       FIncompleteCell^.UTF8StringValue := ConvertEncoding(s, FCodePage, encodingUTF8);
       FIncompleteCell^.ContentType := cctUTF8String;
       if FIsVirtualMode then
-        Workbook.OnReadCellData(Workbook, FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell);
+        TsWorkbook(FWorkbook).OnReadCellData(FWorkbook,
+          FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell
+        );
     end;
   end;
   FIncompleteCell := nil;
@@ -1120,7 +1130,10 @@ var
   nfs: String;
   i: Integer;
   fnt: TsFont;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
+
   // Read entire xf record into buffer
   InitFormatRecord(fmt);
   fmt.ID := FCellFormatList.Count;
@@ -1132,9 +1145,9 @@ begin
   i := rec.FontIndex;
   if i > 4 then dec(i);  // Watch out for the nasty missing font #4...
   fnt := TsFont(FFontList[i]);
-  fmt.FontIndex := Workbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+  fmt.FontIndex := book.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
   if fmt.FontIndex = -1 then
-    fmt.FontIndex := Workbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
+    fmt.FontIndex := book.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color);
   if fmt.FontIndex > 0 then
     Include(fmt.UsedFormattingFields, uffFont);
 
@@ -1143,8 +1156,8 @@ begin
   nfs := NumFormatList[b];
   if nfs <> '' then
   begin
-    fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
-    nf := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+    fmt.NumberFormatIndex := book.AddNumberFormat(nfs);
+    nf := book.GetNumberFormat(fmt.NumberFormatIndex);
     fmt.NumberFormat := nf.NumFormat;
     fmt.NumberFormatStr := nf.NumFormatStr;
     if fmt.NumberFormat <> nfGeneral then
@@ -1211,7 +1224,7 @@ end;
 {                           TsSpreadBIFF2Writer                                }
 {------------------------------------------------------------------------------}
 
-constructor TsSpreadBIFF2Writer.Create(AWorkbook: TsWorkbook);
+constructor TsSpreadBIFF2Writer.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
 
@@ -1252,7 +1265,7 @@ var
   fmt: PsCellFormat;
   fontIdx, formatIdx: Integer;
 begin
-  fmt := Workbook.GetPointerToCellFormat(AFormatIndex);
+  fmt := (Workbook as TsWorkbook).GetPointerToCellFormat(AFormatIndex);
 
   if fmt^.UsedFormattingFields = [] then begin
     Attrib1 := 15 + MASK_XF_TYPE_PROT_LOCKED_BIFF2;  // $40
@@ -1308,7 +1321,7 @@ begin
   AFormatIndex := 0;
   if (AFormatRecord <> nil) and (uffNumberFormat in AFormatRecord^.UsedFormattingFields) then
   begin
-    nfParams := Workbook.GetNumberFormat(AFormatRecord^.NumberFormatIndex);
+    nfParams := TsWorkbook(FWorkbook).GetNumberFormat(AFormatRecord^.NumberFormatIndex);
     nfs := nfParams.NumFormatStr;
     AFormatIndex := NumFormatList.IndexOf(nfs);
     if AFormatIndex = -1 then AFormatIndex := 0;
@@ -1323,7 +1336,7 @@ begin
   end;
 end;
 
-procedure TsSpreadBIFF2Writer.PopulatePalette(AWorkbook: TsWorkbook);
+procedure TsSpreadBIFF2Writer.PopulatePalette(AWorkbook: TsBasicWorkbook);
 begin
   FPalette.Clear;
   FPalette.AddBuiltinColors(false);
@@ -1353,7 +1366,7 @@ var
   fmt: PsCellFormat;
   w: Word;
 begin
-  fmt := Workbook.GetPointerToCellFormat(AFormatIndex);
+  fmt := TsWorkbook(FWorkbook).GetPointerToCellFormat(AFormatIndex);
   rec.XFIndex_Locked_Hidden := 0;  // to silence the compiler...
   FillChar(rec, SizeOf(rec), 0);
 
@@ -1466,7 +1479,7 @@ var
   lCol, lCol1: PCol;
   lastcol: Integer;
 begin
-  sheet := Workbook.GetFirstWorksheet;
+  sheet := TsWorkbook(FWorkbook).GetFirstWorksheet;
   j := 0;
   while (j < sheet.Cols.Count) do begin
     lCol := PCol(sheet.Cols[j]);
@@ -1518,9 +1531,9 @@ begin
   { Column width }
   { calculate width to be in units of 1/256 of pixel width of character "0" }
   if ACol^.ColWidthType = cwtDefault then
-    w := FWorksheet.ReadDefaultColWidth(suChars)
+    w := TsWorksheet(FWorksheet).ReadDefaultColWidth(suChars)
   else
-    w := FWorkbook.ConvertUnits(ACol^.Width, FWorkbook.Units, suChars);
+    w := tsWorkbook(FWorkbook).ConvertUnits(ACol^.Width, FWorkbook.Units, suChars);
   rec.ColWidth := WordToLE(round(w*256));
 
   { Write out }
@@ -1536,7 +1549,7 @@ var
   sheet: TsWorksheet;
   col: PCol;
 begin
-  sheet := Workbook.GetFirstWorksheet;
+  sheet := TsWorkbook(FWorkbook).GetFirstWorksheet;
   for j := 0 to sheet.Cols.Count-1 do begin
     col := PCol(sheet.Cols[j]);
     WriteColWidth(AStream, col);
@@ -1547,7 +1560,7 @@ end;
   Writes an Excel 2 DIMENSIONS record
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Writer.WriteDimensions(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsBasicWorksheet);
 var
   firstRow, lastRow, firstCol, lastCol: Cardinal;
   rec: TBIFF2_DimensionsRecord;
@@ -1595,7 +1608,7 @@ var
 begin
   Unused(AParams);
 
-  FWorksheet := Workbook.GetWorksheetByIndex(FSheetIndex);
+  FWorksheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(FSheetIndex);
   if FWorksheet = nil then
     raise EFPSpreadsheetWriter.Create(rsWorksheetNotFound1);
 
@@ -1633,7 +1646,7 @@ begin
     if (boVirtualMode in Workbook.Options) then
       WriteVirtualCells(AStream, FWorksheet)
     else
-      WriteCellsToStream(AStream, FWorksheet.Cells);
+      WriteCellsToStream(AStream, TsWorksheet(FWorksheet).Cells);
 
     WriteWindow1(AStream);
     //  { -- currently not working
@@ -1673,9 +1686,10 @@ end;
   Writes an Excel 2 WINDOW2 record
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Writer.WriteWindow2(AStream: TStream;
- ASheet: TsWorksheet);
+  ASheet: TsBasicWorksheet);
 var
   b: Byte;
+  sheet: TsWorksheet absolute ASheet;
 begin
   { BIFF Record header }
   AStream.WriteWord(WordToLE(INT_EXCEL_ID_WINDOW2));
@@ -1685,17 +1699,17 @@ begin
   AStream.WriteByte(0);
 
   { Show grid lines }
-  b := IfThen(soShowGridLines in ASheet.Options, 1, 0);
+  b := IfThen(soShowGridLines in sheet.Options, 1, 0);
   AStream.WriteByte(b);
 
   { Show sheet headers }
-  b := IfThen(soShowHeaders in ASheet.Options, 1, 0);
+  b := IfThen(soShowHeaders in sheet.Options, 1, 0);
   AStream.WriteByte(b);
 
   { Panes are frozen? }
   b := 0;
-  if (soHasFrozenPanes in ASheet.Options) and
-     ((ASheet.LeftPaneWidth > 0) or (ASheet.TopPaneHeight > 0))
+  if (soHasFrozenPanes in sheet.Options) and
+     ((sheet.LeftPaneWidth > 0) or (sheet.TopPaneHeight > 0))
   then
     b := 1;
   AStream.WriteByte(b);
@@ -1820,7 +1834,7 @@ var
   optn: Word;
   font: TsFont;
 begin
-  font := Workbook.GetFont(AFontIndex);
+  font := TsWorkbook(FWorkbook).GetFont(AFontIndex);
   if font = nil then  // this happens for FONT4 in case of BIFF
     exit;
 
@@ -1868,7 +1882,7 @@ procedure TsSpreadBiff2Writer.WriteFonts(AStream: TStream);
 var
   i: Integer;
 begin
-  for i:=0 to Workbook.GetFontCount-1 do
+  for i:=0 to TsWorkbook(FWorkbook).GetFontCount-1 do
     WriteFont(AStream, i);
 end;
 
@@ -2075,7 +2089,7 @@ end;
   corresponding ROW record
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF2Writer.WriteDefaultRowHeight(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsBasicWorksheet);
 var
   h: Single;
 begin
@@ -2085,7 +2099,7 @@ begin
   { Default height for unused rows, in twips = 1/20 of a point
     Bits 0-14: Default height for unused rows, in twips
     Bit 15 = 1: Row height not changed manually }
-  h := AWorksheet.ReadDefaultRowHeight(suPoints);  // h is in points
+  h := TsWorksheet(AWorksheet).ReadDefaultRowHeight(suPoints);  // h is in points
   AStream.WriteWord(WordToLE(PtsToTwips(h)));      // write as twips
 end;
 
@@ -2267,20 +2281,25 @@ procedure TsSpreadBIFF2Writer.WritePassword(AStream: TStream);
 var
   hash: Word;
   hb, hs: LongInt;
+  book: TsWorkbook;
+  sheet: TsWorksheet;
 begin
+  book := FWorkbook as TsWorkbook;
+  sheet := FWorksheet as TsWorksheet;
+
   hb := 0;
-  if (Workbook.CryptoInfo.PasswordHash <> '') and
-     not TryStrToInt('$' + Workbook.CryptoInfo.PasswordHash, hb) then
+  if (book.CryptoInfo.PasswordHash <> '') and
+     not TryStrToInt('$' + book.CryptoInfo.PasswordHash, hb) then
   begin
-    Workbook.AddErrorMsg(rsPasswordRemoved_NotValid);
+    book.AddErrorMsg(rsPasswordRemoved_NotValid);
     exit;
   end;
 
   hs := 0;
-  if (FWorksheet.CryptoInfo.PasswordHash <> '') and
-     not TryStrToInt('$' + FWorksheet.CryptoInfo.PasswordHash, hs) then
+  if (sheet.CryptoInfo.PasswordHash <> '') and
+     not TryStrToInt('$' + sheet.CryptoInfo.PasswordHash, hs) then
   begin
-    Workbook.AddErrorMsg(rsPasswordRemoved_NotValid);
+    book.AddErrorMsg(rsPasswordRemoved_NotValid);
     exit;
   end;
 
@@ -2290,28 +2309,28 @@ begin
 
   // Only workbook password set. Check for Excel algorithm.
   if (hb <> 0) and (hs = 0) then begin
-    if Workbook.CryptoInfo.Algorithm <> caExcel then begin
-      Workbook.AddErrorMsg(rsPasswordRemoved_Excel);
+    if book.CryptoInfo.Algorithm <> caExcel then begin
+      book.AddErrorMsg(rsPasswordRemoved_Excel);
       exit;
     end;
     hash := hb;
   end else
   // Only worksheet password set, check for Excel algorithm
   if (hs <> 0) and (hb = 0) then begin
-    if FWorksheet.CryptoInfo.Algorithm <> caExcel then begin
-      Workbook.AddErrorMsg(rsPasswordRemoved_Excel);
+    if sheet.CryptoInfo.Algorithm <> caExcel then begin
+      book.AddErrorMsg(rsPasswordRemoved_Excel);
       exit;
     end;
     hash := hs;
   end else
   if (hs <> hb) then begin
-    Workbook.AddErrorMsg(rsPasswordRemoved_BIFF2);
+    book.AddErrorMsg(rsPasswordRemoved_BIFF2);
     exit;
   end else
-  if (Workbook.CryptoInfo.Algorithm <> caExcel) or
-     (FWorksheet.CryptoInfo.Algorithm <> caExcel) then
+  if (book.CryptoInfo.Algorithm <> caExcel) or
+     (sheet.CryptoInfo.Algorithm <> caExcel) then
   begin
-    Workbook.AddErrorMsg(rsPasswordRemoved_Excel);
+    book.AddErrorMsg(rsPasswordRemoved_Excel);
     exit;
   end else
     hash := hs;  // or hb -- they are equal here.
@@ -2321,7 +2340,7 @@ begin
   AStream.WriteWord(WordToLE(hash));
 end;
 
-procedure TsSpreadBIFF2Writer.WriteRow(AStream: TStream; ASheet: TsWorksheet;
+procedure TsSpreadBIFF2Writer.WriteRow(AStream: TStream; ASheet: TsBasicWorksheet;
   ARowIndex, AFirstColIndex, ALastColIndex: Cardinal; ARow: PRow);
 var
   containsXF: Boolean;
@@ -2329,12 +2348,17 @@ var
   auto: Boolean;
   w: Word;
   xf: Word;
+  book: TsWorkbook;
+  sheet: TsWorksheet;
 begin
   if (ARowIndex >= FLimitations.MaxRowCount) or
      (AFirstColIndex >= FLimitations.MaxColCount) or
      (ALastColIndex >= FLimitations.MaxColCount)
   then
     exit;
+
+  book := FWorkbook as TsWorkbook;
+  sheet := ASheet as TsWorksheet;
 
   containsXF := (ARow <> nil) and (ARow^.FormatIndex > 0);
 
@@ -2353,12 +2377,12 @@ begin
   auto := true;
   { Row height (in twips, 1/20 point) and info on custom row height }
   if (ARow = nil) or (ARow^.RowHeightType = rhtDefault) then
-    rowheight := PtsToTwips(ASheet.ReadDefaultRowHeight(suPoints))
+    rowheight := PtsToTwips(sheet.ReadDefaultRowHeight(suPoints))
   else
   if (ARow^.Height = 0) then
     rowheight := 0
   else begin
-    rowheight := PtsToTwips(FWorkbook.ConvertUnits(ARow^.Height, FWorkbook.Units, suPoints));
+    rowheight := PtsToTwips(book.ConvertUnits(ARow^.Height, book.Units, suPoints));
     auto := ARow^.RowHeightType <> rhtCustom;
   end;
   w := rowheight and $7FFF;

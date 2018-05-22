@@ -23,7 +23,7 @@ interface
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
-  fpsTypes, fpspreadsheet, fpsReaderWriter, xlsCommon;
+  fpsTypes, fpsReaderWriter, xlsCommon;
 
 type
 
@@ -35,21 +35,21 @@ type
     FPointSeparatorSettings: TFormatSettings;
     function GetCommentStr(ACell: PCell): String;
     function GetFormulaStr(ACell: PCell): String;
-    function GetFrozenPanesStr(AWorksheet: TsWorksheet; AIndent: String): String;
+    function GetFrozenPanesStr(AWorksheet: TsBasicWorksheet; AIndent: String): String;
     function GetHyperlinkStr(ACell: PCell): String;
     function GetIndexStr(AIndex: Integer): String;
-    function GetLayoutStr(AWorksheet: TsWorksheet): String;
+    function GetLayoutStr(AWorksheet: TsBasicWorksheet): String;
     function GetMergeStr(ACell: PCell): String;
-    function GetPageFooterStr(AWorksheet: TsWorksheet): String;
-    function GetPageHeaderStr(AWorksheet: TsWorksheet): String;
-    function GetPageMarginStr(AWorksheet: TsWorksheet): String;
+    function GetPageFooterStr(AWorksheet: TsBasicWorksheet): String;
+    function GetPageHeaderStr(AWorksheet: TsBasicWorksheet): String;
+    function GetPageMarginStr(AWorksheet: TsBasicWorksheet): String;
     function GetStyleStr(AFormatIndex: Integer): String;
     procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
     procedure WriteStyles(AStream: TStream);
-    procedure WriteTable(AStream: TStream; AWorksheet: TsWorksheet);
-    procedure WriteWorksheet(AStream: TStream; AWorksheet: TsWorksheet);
-    procedure WriteWorksheetOptions(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteTable(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteWorksheet(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteWorksheetOptions(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteWorksheets(AStream: TStream);
 
   protected
@@ -68,7 +68,7 @@ type
       const AValue: double; ACell: PCell); override;
 
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
 
   end;
@@ -90,7 +90,7 @@ implementation
 
 uses
   StrUtils, Math,
-  fpsStrings, fpsUtils, fpsNumFormat, fpsXmlCommon, fpsHTMLUtils;
+  fpsStrings, fpspreadsheet, fpsUtils, fpsNumFormat, fpsXmlCommon, fpsHTMLUtils;
 
 const
   FMT_OFFSET   = 61;
@@ -164,7 +164,7 @@ end;
   Defines the date mode and the limitations of the file format.
   Initializes the format settings to be used when writing to xml.
 -------------------------------------------------------------------------------}
-constructor TsSpreadExcelXMLWriter.Create(AWorkbook: TsWorkbook);
+constructor TsSpreadExcelXMLWriter.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
 
@@ -186,7 +186,7 @@ var
   comment: PsComment;
 begin
   Result := '';
-  comment := FWorksheet.FindComment(ACell);
+  comment := (FWorksheet as TsWorksheet).FindComment(ACell);
   if Assigned(comment) then
     Result := INDENT1 + '<Comment><Data>' + comment^.Text + '</Data></Comment>' + LF + CELL_INDENT;
   // If there will be some rich-text-like formatting in the future, use
@@ -197,40 +197,41 @@ function TsSpreadExcelXMLWriter.GetFormulaStr(ACell: PCell): String;
 begin
   if HasFormula(ACell) then
   begin
-    Result := UTF8TextToXMLText(FWorksheet.ConvertFormulaDialect(ACell, fdExcelR1C1));
+    Result := UTF8TextToXMLText((FWorksheet as TsWorksheet).ConvertFormulaDialect(ACell, fdExcelR1C1));
     Result := ' ss:Formula="=' + Result + '"';
   end else
     Result := '';
 end;
 
-function TsSpreadExcelXMLWriter.GetFrozenPanesStr(AWorksheet: TsWorksheet;
+function TsSpreadExcelXMLWriter.GetFrozenPanesStr(AWorksheet: TsBasicWorksheet;
   AIndent: String): String;
 var
   activePane: Integer;
+  sheet: TsWorksheet absolute AWorksheet;
 begin
-  if (soHasFrozenPanes in AWorksheet.Options) then
+  if (soHasFrozenPanes in sheet.Options) then
   begin
     Result := AIndent +
         '<FreezePanes/>' + LF + AIndent +
         '<FrozenNoSplit/>' + LF;
 
-    if FWorksheet.LeftPaneWidth > 0 then
+    if sheet.LeftPaneWidth > 0 then
       Result := Result + AIndent +
         '<SplitVertical>1</SplitVertical>' + LF + AIndent +
-        '<LeftColumnRightPane>' + IntToStr(FWorksheet.LeftPaneWidth) + '</LeftColumnRightPane>' + LF;
+        '<LeftColumnRightPane>' + IntToStr(sheet.LeftPaneWidth) + '</LeftColumnRightPane>' + LF;
 
-    if FWorksheet.TopPaneHeight > 0 then
+    if sheet.TopPaneHeight > 0 then
       Result := Result + AIndent +
         '<SplitHorizontal>1</SplitHorizontal>' + LF + AIndent +
-        '<TopRowBottomPane>' + IntToStr(FWorksheet.TopPaneHeight) + '</TopRowBottomPane>' + LF;
+        '<TopRowBottomPane>' + IntToStr(sheet.TopPaneHeight) + '</TopRowBottomPane>' + LF;
 
-    if (FWorksheet.LeftPaneWidth = 0) and (FWorkSheet.TopPaneHeight = 0) then
+    if (sheet.LeftPaneWidth = 0) and (sheet.TopPaneHeight = 0) then
       activePane := 3
     else
-    if (FWorksheet.LeftPaneWidth = 0) then
+    if (sheet.LeftPaneWidth = 0) then
       activePane := 2
     else
-    if (FWorksheet.TopPaneHeight = 0) then
+    if (sheet.TopPaneHeight = 0) then
       activePane := 1
     else
       activePane := 0;
@@ -245,7 +246,7 @@ var
   hyperlink: PsHyperlink;
 begin
   Result := '';
-  hyperlink := FWorksheet.FindHyperlink(ACell);
+  hyperlink := (FWorksheet as TsWorksheet).FindHyperlink(ACell);
   if Assigned(hyperlink) then
     Result := ' ss:HRef="' + hyperlink^.Target + '"';
 end;
@@ -255,17 +256,19 @@ begin
   Result := Format(' ss:Index="%d"', [AIndex]);
 end;
 
-function TsSpreadExcelXMLWriter.GetLayoutStr(AWorksheet: TsWorksheet): String;
+function TsSpreadExcelXMLWriter.GetLayoutStr(AWorksheet: TsBasicWorksheet): String;
+var
+  sheet: TsWorksheet absolute AWorksheet;
 begin
   Result := '';
-  if AWorksheet.PageLayout.Orientation = spoLandscape then
+  if sheet.PageLayout.Orientation = spoLandscape then
     Result := Result + ' x:Orientation="Landscape"';
-  if (poHorCentered in AWorksheet.PageLayout.Options) then
+  if (poHorCentered in sheet.PageLayout.Options) then
     Result := Result + ' x:CenterHorizontal="1"';
-  if (poVertCentered in AWorksheet.PageLayout.Options) then
+  if (poVertCentered in sheet.PageLayout.Options) then
     Result := Result + ' x:CenterVertical="1"';
-  if (poUseStartPageNumber in AWorksheet.PageLayout.Options) then
-    Result := Result + ' x:StartPageNumber="' + IntToStr(AWorksheet.PageLayout.StartPageNumber) + '"';
+  if (poUseStartPageNumber in sheet.PageLayout.Options) then
+    Result := Result + ' x:StartPageNumber="' + IntToStr(sheet.PageLayout.StartPageNumber) + '"';
   Result := '<Layout' + Result + '/>';
 end;
 
@@ -274,8 +277,8 @@ var
   r1, c1, r2, c2: Cardinal;
 begin
   Result := '';
-  if FWorksheet.IsMerged(ACell) then begin
-    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+  if (FWorksheet as TsWorksheet).IsMerged(ACell) then begin
+    (FWorksheet as TsWorksheet).FindMergedRange(ACell, r1, c1, r2, c2);
     if c2 > c1 then
       Result := Result + Format(' ss:MergeAcross="%d"', [c2-c1]);
     if r2 > r1 then
@@ -283,29 +286,38 @@ begin
   end;
 end;
 
-function TsSpreadExcelXMLWriter.GetPageFooterStr(AWorksheet: TsWorksheet): String;
+function TsSpreadExcelXMLWriter.GetPageFooterStr(
+  AWorksheet: TsBasicWorksheet): String;
+var
+  sheet: TsWorksheet absolute AWorksheet;
 begin
-  Result := Format('x:Margin="%g"', [mmToIn(AWorksheet.PageLayout.FooterMargin)], FPointSeparatorSettings);
-  if (AWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL] <> '') then
-    Result := Result + ' x:Data="' + UTF8TextToXMLText(AWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL], true) + '"';
+  Result := Format('x:Margin="%g"', [mmToIn(sheet.PageLayout.FooterMargin)], FPointSeparatorSettings);
+  if (sheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL] <> '') then
+    Result := Result + ' x:Data="' + UTF8TextToXMLText(sheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL], true) + '"';
   Result := '<Footer ' + result + '/>';
 end;
 
-function TsSpreadExcelXMLWriter.GetPageHeaderStr(AWorksheet: TsWorksheet): String;
+function TsSpreadExcelXMLWriter.GetPageHeaderStr(
+  AWorksheet: TsBasicWorksheet): String;
+var
+  sheet: TsWorksheet absolute AWorksheet;
 begin
-  Result := Format('x:Margin="%g"', [mmToIn(AWorksheet.PageLayout.HeaderMargin)], FPointSeparatorSettings);
-  if (AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL] <> '') then
-    Result := Result + ' x:Data="' + UTF8TextToXMLText(AWorksheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL], true) + '"';
+  Result := Format('x:Margin="%g"', [mmToIn(sheet.PageLayout.HeaderMargin)], FPointSeparatorSettings);
+  if (sheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL] <> '') then
+    Result := Result + ' x:Data="' + UTF8TextToXMLText(sheet.PageLayout.Headers[HEADER_FOOTER_INDEX_ALL], true) + '"';
   Result := '<Header ' + Result + '/>';
 end;
 
-function TsSpreadExcelXMLWriter.GetPageMarginStr(AWorksheet: TsWorksheet): String;
+function TsSpreadExcelXMLWriter.GetPageMarginStr(
+  AWorksheet: TsBasicWorksheet): String;
+var
+  sheet: TsWorksheet absolute AWorksheet;
 begin
   Result := Format('x:Bottom="%g" x:Left="%g" x:Right="%g" x:Top="%g"', [
-    mmToIn(AWorksheet.PageLayout.BottomMargin),
-    mmToIn(AWorksheet.PageLayout.LeftMargin),
-    mmToIn(AWorksheet.PageLayout.RightMargin),
-    mmToIn(AWorksheet.PageLayout.TopMargin)
+    mmToIn(sheet.PageLayout.BottomMargin),
+    mmToIn(sheet.PageLayout.LeftMargin),
+    mmToIn(sheet.PageLayout.RightMargin),
+    mmToIn(sheet.PageLayout.TopMargin)
     ], FPointSeparatorSettings);
   Result := '<PageMargins ' + Result + '/>';
 end;
@@ -366,7 +378,7 @@ begin
       WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
   end;
 
-  if FWorksheet.ReadComment(ACell) <> '' then
+  if (FWorksheet as TsWorksheet).ReadComment(ACell) <> '' then
     WriteComment(AStream, ACell);
 end;
 
@@ -380,11 +392,11 @@ var
 begin
   Unused(ARow, ACol);
   ExcelDate := AValue;
-  fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(ACell^.FormatIndex);
   // Times have an offset of 1 day!
   if (fmt <> nil) and (uffNumberFormat in fmt^.UsedFormattingFields) then
   begin
-    nfp := FWorkbook.GetNumberFormat(fmt^.NumberFormatIndex);
+    nfp := (FWorkbook as TsWorkbook).GetNumberFormat(fmt^.NumberFormatIndex);
     if IsTimeIntervalFormat(nfp) or IsTimeFormat(nfp) then
       case FDateMode of
         dm1900: ExcelDate := AValue + DATEMODE_1900_BASE;
@@ -461,8 +473,8 @@ begin
   if Length(ACell^.RichTextParams) > 0 then
   begin
     RichTextToHTML(
-      FWorkbook,
-      FWorksheet.ReadCellFont(ACell),
+      FWorkbook as TsWorkbook,
+      (FWorksheet as TsWorksheet).ReadCellFont(ACell),
       AValue,
       ACell^.RichTextParams,
       valueStr,             // html-formatted rich text
@@ -531,8 +543,10 @@ var
   fill: TsFillPattern;
   cb: TsCellBorder;
   cbs: TsCellBorderStyle;
+  book: TsWorkbook;
 begin
-  deffnt := FWorkbook.GetDefaultFont;
+  book := FWorkbook as TsWorkbook;
+  deffnt := book.GetDefaultFont;
   if AIndex = 0 then
   begin
     AppendToStream(AStream, Format(INDENT2 +
@@ -551,7 +565,7 @@ begin
     AppendToStream(AStream, Format(INDENT2 +
       '<Style ss:ID="s%d">' + LF, [AIndex + FMT_OFFSET]));
 
-    fmt := FWorkbook.GetPointerToCellFormat(AIndex);
+    fmt := book.GetPointerToCellFormat(AIndex);
 
     // Horizontal alignment
     fmtHor := '';
@@ -600,7 +614,7 @@ begin
     // Font
     if (uffFont in fmt^.UsedFormattingFields) then
     begin
-      fnt := FWorkbook.GetFont(fmt^.FontIndex);
+      fnt := book.GetFont(fmt^.FontIndex);
       s := '';
       if fnt.FontName <> deffnt.FontName then
         s := s + Format('ss:FontName="%s" ', [fnt.FontName]);
@@ -624,7 +638,7 @@ begin
     // Number Format
     if (uffNumberFormat in fmt^.UsedFormattingFields) then
     begin
-      nfp := FWorkbook.GetNumberFormat(fmt^.NumberFormatIndex);
+      nfp := book.GetNumberFormat(fmt^.NumberFormatIndex);
       AppendToStream(AStream, Format(INDENT3 +
         '<NumberFormat ss:Format="%s"/>' + LF, [UTF8TextToXMLText(nfp.NumFormatStr)]));
     end;
@@ -685,12 +699,14 @@ var
 begin
   AppendToStream(AStream, INDENT1 +
     '<Styles>' + LF);
-  for i:=0 to FWorkbook.GetNumCellFormats-1 do WriteStyle(AStream, i);
+  for i:=0 to (FWorkbook as TsWorkbook).GetNumCellFormats-1 do
+    WriteStyle(AStream, i);
   AppendToStream(AStream, INDENT1 +
     '</Styles>' + LF);
 end;
 
-procedure TsSpreadExcelXMLWriter.WriteTable(AStream: TStream; AWorksheet: TsWorksheet);
+procedure TsSpreadExcelXMLWriter.WriteTable(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
 var
   c, c1, c2: Cardinal;
   r, r1, r2: Cardinal;
@@ -700,27 +716,28 @@ var
   styleStr: String;
   col: PCol;
   row: PRow;
+  sheet: TsWorksheet absolute AWorksheet;
 begin
   r1 := 0;
   c1 := 0;
-  r2 := AWorksheet.GetLastRowIndex;
-  c2 := AWorksheet.GetLastColIndex;
+  r2 := sheet.GetLastRowIndex;
+  c2 := sheet.GetLastColIndex;
   AppendToStream(AStream, TABLE_INDENT + Format(
     '<Table ss:ExpandedColumnCount="%d" ss:ExpandedRowCount="%d" ' +
       'x:FullColumns="1" x:FullRows="1" ' +
       'ss:DefaultColumnWidth="%.2f" ' +
       'ss:DefaultRowHeight="%.2f">' + LF,
       [
-      AWorksheet.GetLastColIndex + 1, AWorksheet.GetLastRowIndex + 1,
-      AWorksheet.ReadDefaultColWidth(suPoints),
-      AWorksheet.ReadDefaultRowHeight(suPoints)
+      sheet.GetLastColIndex + 1, sheet.GetLastRowIndex + 1,
+      sheet.ReadDefaultColWidth(suPoints),
+      sheet.ReadDefaultRowHeight(suPoints)
       ],
       FPointSeparatorSettings
     ));
 
   for c := c1 to c2 do
   begin
-    col := FWorksheet.FindCol(c);
+    col := sheet.FindCol(c);
     styleStr := '';
     colWidthStr := '';
     if Assigned(col) then
@@ -728,7 +745,7 @@ begin
       // column width is needed in pts.
       if col^.ColWidthType = cwtCustom then
         colwidthStr := Format(' ss:Width="%0.2f" ss:AutoFitWidth="0"',
-          [FWorkbook.ConvertUnits(col^.Width, FWorkbook.Units, suPoints)],
+          [(FWorkbook as TsWorkbook).ConvertUnits(col^.Width, FWorkbook.Units, suPoints)],
           FPointSeparatorSettings);
       // column style
       if col^.FormatIndex > 0 then
@@ -740,13 +757,13 @@ begin
 
   for r := r1 to r2 do
   begin
-    row := FWorksheet.FindRow(r);
+    row := sheet.FindRow(r);
     styleStr := '';
     // Row height is needed in pts.
     if Assigned(row) then
     begin
       rowheightStr := Format(' ss:Height="%.2f"',
-        [FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
+        [(FWorkbook as TsWorkbook).ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
         FPointSeparatorSettings
       );
       if row^.RowHeightType = rhtCustom then
@@ -760,10 +777,10 @@ begin
       '<Row %s%s>' + LF, [rowheightStr, styleStr]));
     for c := c1 to c2 do
     begin
-      cell := AWorksheet.FindCell(r, c);
+      cell := sheet.FindCell(r, c);
       if cell <> nil then
       begin
-        if FWorksheet.IsMerged(cell) and not FWorksheet.IsMergeBase(cell) then
+        if sheet.IsMerged(cell) and not sheet.IsMergeBase(cell) then
           Continue;
         WriteCellToStream(AStream, cell);
       end;
@@ -804,7 +821,7 @@ begin
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteWorksheet(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsBasicWorksheet);
 var
   protectedStr: String;
 begin
@@ -827,7 +844,7 @@ begin
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteWorksheetOptions(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsBasicWorksheet);
 var
   footerStr, headerStr: String;
   hideGridStr: String;
@@ -837,6 +854,7 @@ var
   marginStr: String;
   selectedStr: String;
   protectStr: String;
+  sheet: TsWorksheet absolute AWorksheet;
 begin
   // Orientation, some PageLayout.Options
   layoutStr := GetLayoutStr(AWorksheet);
@@ -864,7 +882,7 @@ begin
     hideHeadersStr := INDENT3 + '<DoNotDisplayHeadings/>' + LF else
     hideHeadersStr := '';
 
-  if FWorkbook.ActiveWorksheet = AWorksheet then
+  if (FWorkbook as TsWorkbook).ActiveWorksheet = AWorksheet then
     selectedStr := INDENT3 + '<Selected/>' + LF else
     selectedStr := '';
 
@@ -899,9 +917,11 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteWorksheets(AStream: TStream);
 var
   i: Integer;
+  book: TsWorkbook;
 begin
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do
-    WriteWorksheet(AStream, FWorkbook.GetWorksheetByIndex(i));
+  book := FWorkbook as TsWorkbook;
+  for i:=0 to book.GetWorksheetCount-1 do
+    WriteWorksheet(AStream, book.GetWorksheetByIndex(i));
 end;
 
 

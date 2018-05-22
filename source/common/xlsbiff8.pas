@@ -55,7 +55,7 @@ interface
 
 uses
   Classes, SysUtils, fpcanvas, DateUtils, contnrs, lazutf8,
-  fpstypes, fpspreadsheet, xlscommon,
+  fpstypes, xlscommon,
   {$ifdef USE_NEW_OLE}
   fpolebasic,
   {$else}
@@ -175,7 +175,7 @@ type
     procedure ReadWorksheet(AStream: TStream); override;
 
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
     procedure ReadFromStream(AStream: TStream;
       APassword: String = ''; AParams: TsStreamParams = []); override;
@@ -203,19 +203,20 @@ type
     function IndexOfSharedString(const AText: String;
       const ARichTextParams: TsRichTextParams): Integer;
     procedure InternalWriteToStream(AStream: TStream);
-    procedure PopulatePalette(AWorkbook: TsWorkbook); override;
-    procedure PopulateSharedStringTable(AWorkbook: TsWorkbook);
+    procedure PopulatePalette(AWorkbook: TsBasicWorkbook); override;
+    procedure PopulateSharedStringTable(AWorkbook: TsBasicWorkbook);
 
     { Record writing methods }
     procedure WriteBOF(AStream: TStream; ADataType: Word);
-    function  WriteBoundsheet(AStream: TStream; AWorksheet: TsWorksheet): Int64;
+    function  WriteBoundsheet(AStream: TStream;
+      AWorksheet: TsBasicWorksheet): Int64;
     procedure WriteComment(AStream: TStream; ACell: PCell); override;
-    procedure WriteComments(AStream: TStream; AWorksheet: TsWorksheet);
-    procedure WriteDefinedName(AStream: TStream; AWorksheet: TsWorksheet;
+    procedure WriteComments(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteDefinedName(AStream: TStream; AWorksheet: TsBasicWorksheet;
        const AName: String; AIndexToREF, ASheetIndex: Word;
        AKind: TsBIFFExternKind);
     procedure WriteDefinedNames(AStream: TStream);
-    procedure WriteDimensions(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteDimensions(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteEOF(AStream: TStream);
     procedure WriteEXTERNBOOK(AStream: TStream; AUrl: String);
     procedure WriteEXTERNSHEET(AStream: TStream);
@@ -225,14 +226,14 @@ type
       ANumFormatIndex: Integer); override;
     procedure WriteHeaderFooter(AStream: TStream; AIsHeader: Boolean); override;
     procedure WriteHyperlink(AStream: TStream; AHyperlink: PsHyperlink;
-      AWorksheet: TsWorksheet);
-    procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsWorksheet);
+      AWorksheet: TsBasicWorksheet);
+    procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteHyperlinkToolTip(AStream: TStream; const ARow, ACol: Cardinal;
       const ATooltip: String);
     procedure WriteINDEX(AStream: TStream);
     procedure WriteLABEL(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
-    procedure WriteMergedCells(AStream: TStream; AWorksheet: TsWorksheet);
+    procedure WriteMergedCells(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteMSODrawing1(AStream: TStream; ANumShapes: Word; AComment: PsComment);
     procedure WriteMSODrawing2(AStream: TStream; AComment: PsComment; AObjID: Word);
     procedure WriteMSODrawing2_Data(AStream: TStream; AComment: PsComment; AShapeID: Word);
@@ -255,11 +256,11 @@ type
     procedure WriteSTRINGRecord(AStream: TStream; AString: string); override;
     procedure WriteSTYLE(AStream: TStream);
     procedure WriteTXO(AStream: TStream; AComment: PsComment);
-    procedure WriteWINDOW2(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteWINDOW2(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteXF(AStream: TStream; AFormatRecord: PsCellFormat;
       XFType_Prot: Byte = 0); override;
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
     { General writing methods }
     procedure WriteToFile(const AFileName: string;
@@ -363,7 +364,7 @@ uses
  {$ENDIF}
   Math, lconvencoding, LazFileUtils, URIParser,
   fpsStrings, {%H-}fpsPatches, fpsStreams, fpsReaderWriter, fpsPalette,
-  fpsNumFormat, fpsExprParser, xlsEscher;
+  fpspreadsheet, fpsNumFormat, fpsExprParser, xlsEscher;
 
 const
    { Excel record IDs }
@@ -769,7 +770,7 @@ end;
 {------------------------------------------------------------------------------}
 {                              TsSpreadBIFF8Reader                             }
 {------------------------------------------------------------------------------}
-constructor TsSpreadBIFF8Reader.Create(AWorkbook: TsWorkbook);
+constructor TsSpreadBIFF8Reader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited;
   InitBIFF8Limitations(FLimitations);
@@ -858,7 +859,7 @@ begin
     if TBIFF8Comment(FCommentList[i]).ID = commentID then
     begin
       commentText := TBIFF8Comment(FCommentList[i]).Text;
-      FWorksheet.WriteComment(r, c, commentText);
+      TsWorksheet(FWorksheet).WriteComment(r, c, commentText);
       exit;
     end;
 end;
@@ -1158,7 +1159,7 @@ var
   RecordType: Word;
   CurStreamPos: Int64;
 begin
-  FWorksheet := FWorkbook.GetWorksheetByIndex(FCurSheetIndex);
+  FWorksheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(FCurSheetIndex);
   while (not SectionEOF) do
   begin
     { Read the record header }
@@ -1269,7 +1270,7 @@ begin
   { Read string with flags }
   wideName := ReadWideString(AStream, len, rtParams);
 
-  sheet := FWorkbook.AddWorksheet(UTF8Encode(widename), true);
+  sheet := (FWorkbook as TsWorkbook).AddWorksheet(UTF8Encode(widename), true);
   if sheetState <> 0 then
     sheet.Options := sheet.Options + [soHidden];
 end;
@@ -1357,7 +1358,10 @@ var
   rtParams: TsRichTextParams;
   fntIndex: Integer;
   fnt: TsFont;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
+
   { BIFF Record data: Row, Column, XF Index }
   ReadRowColXF(AStream, ARow, ACol, XF);
 
@@ -1372,9 +1376,9 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);        // "virtual" cell
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
+    cell := (FWorksheet as TsWorksheet).AddCell(ARow, ACol);    // "real" cell
 
-  FWorksheet.WriteText(cell, UTF16ToUTF8(wideStrValue));
+  (FWorksheet as TsWorksheet).WriteText(cell, UTF16ToUTF8(wideStrValue));
 
   { Add attributes }
   ApplyCellFormatting(cell, XF);
@@ -1389,9 +1393,9 @@ begin
       // Font index of new format - need to adjust index!
       fntIndex := rtParams[i].FontIndex;
       fnt := TsFont(FFontList[fntIndex]);
-      fntIndex := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      fntIndex := book.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
       if fntIndex = -1 then
-        fntIndex := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+        fntIndex := book.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
       cell^.RichTextParams[i].FontIndex := fntIndex;
       // Hyperlink index, not used here
       cell^.RichTextParams[i].HyperlinkIndex := -1;
@@ -1399,7 +1403,7 @@ begin
   end;
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    book.OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadMergedCells(const AStream: TStream);
@@ -1416,7 +1420,7 @@ begin
     // Read range
     AStream.ReadBuffer(rng, SizeOf(rng));
     // Transfer cell range to worksheet
-    FWorksheet.MergeCells(
+    (FWorksheet as TsWorksheet).MergeCells(
       WordLEToN(rng.Row1), WordLEToN(rng.Col1),
       WordLEToN(rng.Row2), WordLEToN(rng.Col2)
     );
@@ -1629,7 +1633,10 @@ var
   rtfRuns: TBiff8_RichTextFormattingRuns;
   fntIndex: Integer;
   fnt: TsFont;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
+
   { BIFF Record data: Row, Column, XF Index }
   ReadRowColXF(AStream, ARow, ACol, XF);
 
@@ -1644,10 +1651,10 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);        // "virtual" cell
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);    // "real" cell
+    cell := (FWorksheet as TsWorksheet).AddCell(ARow, ACol);    // "real" cell
 
   { Save the data string}
-  FWorksheet.WriteText(cell, UTF16ToUTF8(wideStrValue));
+  (FWorksheet as TsWorksheet).WriteText(cell, UTF16ToUTF8(wideStrValue));
 
   { Read rich-text formatting runs }
   L := WordLEToN(AStream.ReadWord);
@@ -1660,9 +1667,9 @@ begin
     // necessarily the same as the index used by the workbook!
     fntIndex := WordLEToN(rtfRuns[j].FontIndex);
     fnt := TsFont(FFontList[fntIndex]);
-    fntIndex := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+    fntIndex := book.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
     if fntIndex = -1 then
-      fntIndex := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      fntIndex := book.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
     cell^.RichTextParams[j].FontIndex := fntIndex;
     // Index of the first character using this font: 0-based in file, 1-based in fps
     cell^.RichTextParams[j].FirstIndex := WordLEToN(rtfRuns[j].FirstIndex) + 1;
@@ -1674,7 +1681,7 @@ begin
   ApplyCellFormatting(cell, XF);
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    book.OnReadCellData(book, ARow, ACol, cell);
 end;
 
 procedure TsSpreadBIFF8Reader.ReadSST(const AStream: TStream);
@@ -1773,7 +1780,10 @@ var
   rtParams: TsRichTextParams;
   fnt: TsFont;
   fntIndex: Integer;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
+
   rec.Row := 0;  // to silence the compiler...
 
   { Read entire record, starting at Row }
@@ -1794,9 +1804,9 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := (FWorksheet as TsWorksheet).AddCell(ARow, ACol);
 
-  FWorksheet.WriteText(cell, FSharedStringTable.Strings[SSTIndex]);
+  (FWorksheet as TsWorksheet).WriteText(cell, FSharedStringTable.Strings[SSTIndex]);
 
   { Add attributes }
   ApplyCellFormatting(cell, XF);
@@ -1814,16 +1824,16 @@ begin
       cell^.RichTextParams[i].FirstIndex := rtParams[i].FirstIndex;
       fntIndex := rtParams[i].FontIndex;
       fnt := TsFont(FFontList[fntIndex]);
-      fntIndex := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      fntIndex := book.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
       if fntIndex = -1 then
-        fntIndex := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+        fntIndex := book.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
       cell^.RichTextParams[i].FontIndex := fntIndex;
       cell^.RichTextParams[i].HyperlinkIndex := -1;
     end;
   end;
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    book.OnReadCellData(book, ARow, ACol, cell);
 end;
 
 { Helper function for reading a string with 8-bit length. }
@@ -1841,13 +1851,16 @@ end;
 procedure TsSpreadBIFF8Reader.ReadStringRecord(AStream: TStream);
 var
   wideStr: WideString;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
+
   wideStr := ReadWideString(AStream, false);
   if (FIncompleteCell <> nil) and (wideStr <> '') then begin
     FIncompleteCell^.UTF8StringValue := UTF8Encode(wideStr);
     FIncompleteCell^.ContentType := cctUTF8String;
     if FIsVirtualMode then
-      Workbook.OnReadCellData(Workbook, FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell);
+      book.OnReadCellData(book, FIncompleteCell^.Row, FIncompleteCell^.Col, FIncompleteCell);
   end;
   FIncompleteCell := nil;
 end;
@@ -1875,7 +1888,10 @@ var
   nfs: String;
   nfParams: TsNumFormatParams;
   iclr: Integer;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
+
   InitFormatRecord(fmt);
   fmt.ID := FCellFormatList.Count;
 
@@ -1894,8 +1910,8 @@ begin
     // "General" (NumFormatIndex = 0) not stored in workbook's NumFormatList
     if (rec.NumFormatIndex > 0) and not SameText(nfs, 'General') then
     begin
-      fmt.NumberFormatIndex := Workbook.AddNumberFormat(nfs);
-      nfParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+      fmt.NumberFormatIndex := book.AddNumberFormat(nfs);
+      nfParams := book.GetNumberFormat(fmt.NumberFormatIndex);
       if nfParams <> nil then
       begin
         fmt.NumberFormat := nfParams.NumFormat;
@@ -2265,7 +2281,7 @@ begin
   if FFontList.Count = 4 then FFontList.Add(nil);
 
   if isDefaultFont then
-    Workbook.SetDefaultFont(font.FontName, font.Size);
+    (Workbook as TsWorkbook).SetDefaultFont(font.FontName, font.Size);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2312,10 +2328,11 @@ begin
 
   len := WordLEToN(AStream.ReadWord);
   s := ReadWideString(AStream, len, rtParams);
-  if AIsHeader then
-    FWorksheet.PageLayout.Headers[1] := UTF8Encode(s)
-  else
-    FWOrksheet.PageLayout.Footers[1] := UTF8Encode(s);
+  with (FWorksheet as TsWorksheet).Pagelayout do
+    if AIsHeader then
+      Headers[1] := UTF8Encode(s)
+    else
+      Footers[1] := UTF8Encode(s);
 
   { Options poDifferentFirst and poDifferentOddEvent are not used, BIFF supports
     only common headers/footers }
@@ -2461,7 +2478,7 @@ begin
   // Add hyperlink(s) to worksheet
   for row := row1 to row2 do
     for col := col1 to col2 do
-      FWorksheet.WriteHyperlink(row, col, link);
+      TsWorksheet(FWorksheet).WriteHyperlink(row, col, link);
 end;
 
 
@@ -2476,6 +2493,7 @@ var
   row1, col1, row2, col2: Word;
   hyperlink: PsHyperlink;
   numbytes: Integer;
+  sheet: TsWorksheet;
 begin
   { Record type; this matches the BIFF record type }
   AStream.ReadWord;
@@ -2494,7 +2512,8 @@ begin
   txt := UTF8Encode(wideStr);
 
   { Add tooltip to hyperlinks }
-  for hyperlink in FWorksheet.Hyperlinks.GetRangeEnumerator(row1, col1, row2, col2) do
+  sheet := FWorksheet as TsWorksheet;
+  for hyperlink in sheet.Hyperlinks.GetRangeEnumerator(row1, col1, row2, col2) do
     hyperlink^.ToolTip := txt;
 end;
 
@@ -2506,7 +2525,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Constructor of the Excel 8 writer
 -------------------------------------------------------------------------------}
-constructor TsSpreadBIFF8Writer.Create(AWorkbook: TsWorkbook);
+constructor TsSpreadBIFF8Writer.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
   InitBiff8Limitations(FLimitations);
@@ -2576,6 +2595,7 @@ procedure TsSpreadBIFF8Writer.CollectExternData;
   end;
 
 var
+  book: TsWorkbook;
   sheet: TsWorksheet;
   i: Integer;
   writeIt: Boolean;
@@ -2586,9 +2606,11 @@ begin
   FBiff8ExternBooks := TsBIFF8ExternBookList.Create;
   FBiff8ExternSheets := TsBIFF8ExternSheetList.Create(FBiff8ExternBooks);
 
+  book := FWorkbook as TsWorkbook;
+
   { Add sheets used in print ranges, repeated cols or repeated rows }
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+  for i:=0 to book.GetWorksheetCount-1 do begin
+    sheet := book.GetWorksheetByIndex(i);
     with sheet.PageLayout do
       writeIt := (NumPrintRanges > 0) or HasRepeatedCols or HasRepeatedRows;
     if writeIt then
@@ -2596,9 +2618,9 @@ begin
   end;
 
   { Add sheets related to 3d references of all sheets }
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do
+  for i:=0 to book.GetWorksheetCount-1 do
   begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet := book.GetWorksheetByIndex(i);
     DoCollectForSheet(sheet);
   end;
 
@@ -2632,7 +2654,7 @@ Begin
   Bit 9: 0 = Print notes as displayed; 1 = Print notes at end of sheet
   Bit 11-10:  00 = Print errors as displayed; 1 = Do not print errors
               2 = Print errors as “--”; 3 = Print errors as “#N/A” }
-  if poCommentsAtEnd in FWorksheet.PageLayout.Options then
+  if poCommentsAtEnd in (FWorksheet as TsWorksheet).PageLayout.Options then
     Result := Result or $0200;
 end;
 
@@ -2671,7 +2693,9 @@ var
   sheetPos: array of Int64;
   i: Integer;
   pane: Byte;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
   CollectExternData;
 
   { Write workbook globals }
@@ -2679,7 +2703,7 @@ begin
   WriteCodePage(AStream, 'ucs2le'); // = utf-16
   WriteWindowProtect(AStream, bpLockWindows in Workbook.Protection);
   WritePROTECT(AStream, bpLockStructure in Workbook.Protection);
-  WritePASSWORD(AStream, Workbook.CryptoInfo);
+  WritePASSWORD(AStream, book.CryptoInfo);
   WriteWINDOW1(AStream);
   WriteFonts(AStream);
   WriteNumFormats(AStream);
@@ -2688,9 +2712,9 @@ begin
   WriteStyle(AStream);
 
   // A BOUNDSHEET for each worksheet
-  SetLength(sheetPos, Workbook.GetWorksheetCount);
-  for i := 0 to Workbook.GetWorksheetCount - 1 do
-    sheetPos[i] := WriteBoundsheet(AStream, Workbook.GetWorksheetByIndex(i));
+  SetLength(sheetPos, book.GetWorksheetCount);
+  for i := 0 to book.GetWorksheetCount - 1 do
+    sheetPos[i] := WriteBoundsheet(AStream, book.GetWorksheetByIndex(i));
 
   WriteEXTERNBOOK(AStream, '');
   WriteEXTERNSHEET(AStream);
@@ -2700,9 +2724,9 @@ begin
   WriteEOF(AStream);
 
   { Write each worksheet }
-  for i := 0 to Workbook.GetWorksheetCount - 1 do
+  for i := 0 to book.GetWorksheetCount - 1 do
   begin
-    FWorksheet := Workbook.GetWorksheetByIndex(i);
+    FWorksheet := book.GetWorksheetByIndex(i);
 
     { First goes back and writes the position of the BOF of the
       sheet on the respective BOUNDSHEET record }
@@ -2734,7 +2758,7 @@ begin
         WritePROTECT(AStream, true);
 //        WriteScenarioProtect(AStream);
         WriteObjectProtect(AStream, FWorksheet);
-        WritePASSWORD(AStream, FWorksheet.CryptoInfo);
+        WritePASSWORD(AStream, (FWorksheet as TsWorksheet).CryptoInfo);
       end;
 
       WriteDefaultColWidth(AStream, FWorksheet);
@@ -2745,7 +2769,7 @@ begin
         WriteVirtualCells(AStream, FWorksheet)
       else begin
         WriteRows(AStream, FWorksheet);
-        WriteCellsToStream(AStream, FWorksheet.Cells);
+        WriteCellsToStream(AStream, (FWorksheet as TsWorksheet).Cells);
         WriteComments(AStream, FWorksheet);
       end;
 
@@ -2770,7 +2794,7 @@ end;
   BIFF8 begins with the 8 default colors which are duplicated. Then the user
   colors follow up to a max of total 64 entries.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.PopulatePalette(AWorkbook: TsWorkbook);
+procedure TsSpreadBIFF8Writer.PopulatePalette(AWorkbook: TsBasicWorkbook);
 var
   i: Integer;
 begin
@@ -2791,18 +2815,19 @@ end;
 {@@ ----------------------------------------------------------------------------
   Collects all strings of the workbook in the SharedStringTable
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF8Writer.PopulateSharedStringTable(AWorkbook: TsWorkbook);
+procedure TsSpreadBIFF8Writer.PopulateSharedStringTable(AWorkbook: TsBasicWorkbook);
 var
   i, idx: Integer;
   cell: PCell;
   sheet: TsWorksheet;
+  book: TsWorkbook absolute AWorkbook;
 begin
   FNumStrings := 0;
   FSharedStringTable := TStringList.Create;
 
-  for i:=0 to AWorkbook.GetWorksheetCount-1 do
+  for i:=0 to book.GetWorksheetCount-1 do
   begin
-    sheet := AWorkbook.GetWorksheetByIndex(i);
+    sheet := book.GetWorksheetByIndex(i);
     for cell in sheet.Cells do begin
       if (cell^.ContentType <> cctUTF8String) then
         Continue;
@@ -2925,7 +2950,7 @@ end;
             of the BOF of this sheet should be written (4 bytes size).
 -------------------------------------------------------------------------------}
 function TsSpreadBIFF8Writer.WriteBoundsheet(AStream: TStream;
-  AWorksheet: TsWorksheet): Int64;
+  AWorksheet: TsBasicWorksheet): Int64;
 var
   len: Byte;
   wideSheetName: WideString;
@@ -2972,21 +2997,24 @@ end;
   Writes all comments to the worksheet stream
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteComments(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsBasicWorksheet);
 var
   index: Integer;
   comment: PsComment;
+  sheet: TsWorksheet;
 begin
   exit;      // Remove after comments can be written correctly
   {$warning TODO: Fix writing of cell comments in BIFF8 (file is readable by OpenOffice, but not by Excel)}
 
+  sheet := AWorksheet as TsWorksheet;
+
   { At first we have to write all Escher-related records for all comments;
       MSODRAWING - OBJ - MSODRAWING - TXO }
   index := 1;
-  for comment in AWorksheet.Comments do
+  for comment in sheet.Comments do
   begin
     if index = 1 then
-      WriteMSODrawing1(AStream, FWorksheet.Comments.Count, comment)
+      WriteMSODrawing1(AStream, sheet.Comments.Count, comment)
     else
       WriteMSODrawing2(AStream, comment, index);
     WriteOBJ(AStream, index);
@@ -2997,7 +3025,7 @@ begin
 
   { The NOTE records for all comments follow subsequently. }
   index := 1;
-  for comment in AWorksheet.Comments do
+  for comment in sheet.Comments do
   begin
     WriteNOTE(AStream, comment, index);
     inc(index);
@@ -3009,8 +3037,8 @@ end;
   Implements only the builtin defined names for print ranges and titles!
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteDefinedName(AStream: TStream;
-  AWorksheet: TsWorksheet; const AName: String; AIndexToREF, ASheetIndex: Word;
-  AKind: TsBIFFExternKind);
+  AWorksheet: TsBasicWorksheet; const AName: String;
+  AIndexToREF, ASheetIndex: Word; AKind: TsBIFFExternKind);
 
   procedure WriteRangeFormula(MemStream: TMemoryStream; ARange: TsCellRange;
     AIndexToRef, ACounter: Word);
@@ -3042,6 +3070,8 @@ var
   memstream: TMemoryStream;
   rng: TsCellRange;
   j: Integer;
+  idx: Integer;
+  sheet: TsWorksheet absolute AWorksheet;
 
 begin
   // Since this is a variable length record we begin by writing the formula
@@ -3050,28 +3080,28 @@ begin
   try
     case AName of
       #06: begin  // Print range
-             for j := 0 to AWorksheet.PageLayout.NumPrintRanges-1 do
+             for j := 0 to sheet.PageLayout.NumPrintRanges-1 do
              begin
-               rng := AWorksheet.PageLayout.PrintRange[j];
+               rng := sheet.PageLayout.PrintRange[j];
                WriteRangeFormula(memstream, rng, AIndexToRef, j+1);
              end;
            end;
       #07: begin  // Print titles
              j := 1;
-             if AWorksheet.PageLayout.HasRepeatedCols then
+             if sheet.PageLayout.HasRepeatedCols then
              begin
-               rng.Col1 := AWorksheet.PageLayout.RepeatedCols.FirstIndex;
-               rng.Col2 := AWorksheet.PageLayout.RepeatedCols.LastIndex;
+               rng.Col1 := sheet.PageLayout.RepeatedCols.FirstIndex;
+               rng.Col2 := sheet.PageLayout.RepeatedCols.LastIndex;
                if rng.Col2 = UNASSIGNED_ROW_COL_INDEX then rng.Col2 := rng.Col1;
                rng.Row1 := 0;
                rng.Row2 := 65535;
                WriteRangeFormula(memstream, rng, AIndexToRef, j);
                inc(j);
              end;
-             if AWorksheet.PageLayout.HasRepeatedRows then
+             if sheet.PageLayout.HasRepeatedRows then
              begin
-               rng.Row1 := AWorksheet.PageLayout.RepeatedRows.FirstIndex;
-               rng.Row2 := AWorksheet.PageLayout.RepeatedRows.LastIndex;
+               rng.Row1 := sheet.PageLayout.RepeatedRows.FirstIndex;
+               rng.Row2 := sheet.PageLayout.RepeatedRows.LastIndex;
                if rng.Row2 = UNASSIGNED_ROW_COL_INDEX then rng.Row2 := rng.Row1;
                rng.Col1 := 0;
                rng.Col2 := 255;
@@ -3102,7 +3132,8 @@ begin
     AStream.WriteWord(0);
 
     { Index to sheet (1-based) }
-    AStream.WriteWord(WordToLE(FWorkbook.GetWorksheetIndex(AWorksheet)+1));
+    idx := (FWorkbook as TsWorkbook).GetWorksheetIndex(AWorksheet);
+    AStream.WriteWord(WordToLE(idx+1));
 
     { Length of menu text }
     AStream.WriteByte(0);
@@ -3134,18 +3165,21 @@ end;
 procedure TsSpreadBIFF8Writer.WriteDefinedNames(AStream: TStream);
 var
   bookIdx: Integer;
+  book: TsWorkbook;
   sheet: TsWorksheet;
   i: Integer;
 begin
   if (FBiff8ExternBooks = nil) or (FBiff8ExternSheets = nil) then
     exit;
 
+  book := FWorkbook as TsWorkbook;
+
   // Defined names in "internal" book only
   bookIdx := FBiff8ExternBooks.IndexOfInternalbook;
 
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do
+  for i:=0 to book.GetWorksheetCount-1 do
   begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet := book.GetWorksheetByIndex(i);
     if (sheet.PageLayout.NumPrintRanges > 0) or
        sheet.PageLayout.HasRepeatedCols or sheet.PageLayout.HasRepeatedRows then
     begin
@@ -3170,7 +3204,7 @@ end;
   See bug 18886: excel5 files are truncated when imported
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteDimensions(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsBasicWorksheet);
 var
   firstRow, lastRow, firstCol, lastCol: Cardinal;
   rec: TBIFF8_DimensionsRecord;
@@ -3219,7 +3253,7 @@ begin
   { Current workbook -- assuming that it has index 0 in list FExternBook8 }
   if AUrl = '' then begin
     { Number of sheets in this workbook }
-    AStream.WriteWord(WordToLE(FWorkbook.GetWorksheetCount));
+    AStream.WriteWord(WordToLE((FWorkbook as TsWorkbook).GetWorksheetCount));
 
     { Relict from BIFF5 }
     AStream.WriteWord(WordToLE($0401));
@@ -3344,9 +3378,11 @@ end;
 procedure TsSpreadBiff8Writer.WriteFonts(AStream: TStream);
 var
   i: Integer;
+  book: TsWorkbook;
 begin
-  for i:=0 to Workbook.GetFontCount-1 do
-    WriteFONT(AStream, Workbook.GetFont(i));
+  book := FWorkbook as TsWorkbook;
+  for i:=0 to book.GetFontCount-1 do
+    WriteFONT(AStream, book.GetFont(i));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3407,7 +3443,7 @@ var
   len: Integer;
   id: Word;
 begin
-  with FWorksheet.PageLayout do
+  with (FWorksheet as TsWorksheet).PageLayout do
     if AIsHeader then
     begin
       if (Headers[HEADER_FOOTER_INDEX_ALL] = '') then
@@ -3440,7 +3476,7 @@ end;
   Writes an Excel 8 HYPERLINK record
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteHyperlink(AStream: TStream;
-  AHyperlink: PsHyperlink; AWorksheet: TsWorksheet);
+  AHyperlink: PsHyperlink; AWorksheet: TsBasicWorksheet);
 var
   temp: TStream;
   guid: TGUID;
@@ -3456,11 +3492,11 @@ var
   isInternal: Boolean;
   dirUpCounter: Integer;
 begin
-  cell := AWorksheet.FindCell(AHyperlink^.Row, AHyperlink^.Col);
+  cell := (AWorksheet as TsWorksheet).FindCell(AHyperlink^.Row, AHyperlink^.Col);
   if (cell = nil) or (AHyperlink^.Target='') then
     exit;
 
-  descr := AWorksheet.ReadAsText(cell);      // Hyperlink description
+  descr := (AWorksheet as TsWorksheet).ReadAsText(cell);   // Hyperlink description
   SplitHyperlink(AHyperlink^.Target, target, bookmark);
   u := ParseURI(AHyperlink^.Target);
   isInternal := (target = '') and (bookmark <> '');
@@ -3597,11 +3633,11 @@ end;
   Writes all hyperlinks
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteHyperlinks(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsBasicWorksheet);
 var
   hyperlink: PsHyperlink;
 begin
-  for hyperlink in AWorksheet.Hyperlinks do begin
+  for hyperlink in (AWorksheet as TsWorksheet).Hyperlinks do begin
     { Write HYPERLINK record }
     WriteHyperlink(AStream, hyperlink, AWorksheet);
     { Write HYPERLINK TOOLTIP record }
@@ -3787,18 +3823,19 @@ begin
 end;
 
 procedure TsSpreadBIFF8Writer.WriteMergedCells(AStream: TStream;
-  AWorksheet: TsWorksheet);
+  AWorksheet: TsBasicWorksheet);
 const
   MAX_PER_RECORD = 1026;
 var
   n0, n: Integer;
   rng: PsCellRange;
   newRecord: Boolean;
+  sheet: TsWorksheet absolute AWorksheet;
 begin
-  n0 := AWorksheet.MergedCells.Count;
+  n0 := sheet.MergedCells.Count;
   n := Min(n0, MAX_PER_RECORD);
   newRecord := true;
-  for rng in AWorksheet.MergedCells do
+  for rng in sheet.MergedCells do
   begin
     if newRecord then
     begin
@@ -4781,11 +4818,15 @@ end;
   sheets.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.WriteWINDOW2(AStream: TStream;
-  ASheet: TsWorksheet);
+  ASheet: TsBasicWorksheet);
 var
   Options: Word;
-  actSheet: TsWorksheet;
+  book: TsWorkbook;
+  sheet, actSheet: TsWorksheet;
 begin
+  book := FWorkbook as TsWorkbook;
+  sheet := ASheet as TsWorksheet;
+
   { BIFF Record header }
   WriteBiffHeader(AStream, INT_EXCEL_ID_WINDOW2, 18);
 
@@ -4800,18 +4841,18 @@ begin
    { Bug 0026386 -> every sheet must be selected/active, otherwise Excel cannot print
      ---> wp: after changes for issue 0028452: this is not necessary any more. }
 
-  if (soShowGridLines in ASheet.Options) then
+  if (soShowGridLines in sheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHOW_GRID_LINES;
-  if (soShowHeaders in ASheet.Options) then
+  if (soShowHeaders in sheet.Options) then
     Options := Options or MASK_WINDOW2_OPTION_SHOW_SHEET_HEADERS;
-  if (soHasFrozenPanes in ASheet.Options) and ((ASheet.LeftPaneWidth > 0) or (ASheet.TopPaneHeight > 0)) then
+  if (soHasFrozenPanes in sheet.Options) and ((sheet.LeftPaneWidth > 0) or (sheet.TopPaneHeight > 0)) then
     Options := Options or MASK_WINDOW2_OPTION_PANES_ARE_FROZEN;
-  if FWorkbook.ActiveWorksheet <> nil then
-    actSheet := FWorkbook.ActiveWorksheet else
-    actSheet := Fworkbook.GetWorksheetByIndex(0);
-  if (ASheet = actSheet) then
+  if book.ActiveWorksheet <> nil then
+    actSheet := book.ActiveWorksheet else
+    actSheet := book.GetWorksheetByIndex(0);
+  if (sheet = actSheet) then
     Options := Options or MASK_WINDOW2_OPTION_SHEET_ACTIVE or MASK_WINDOW2_OPTION_SHEET_SELECTED;
-  if (ASheet.BiDiMode = bdRTL) then
+  if (sheet.BiDiMode = bdRTL) then
     Options := Options or MASK_WINDOW2_OPTION_COLUMNS_RIGHT_TO_LEFT;
   AStream.WriteWord(WordToLE(Options));
 
@@ -4870,7 +4911,7 @@ begin
   j := 0;
   if (AFormatRecord <> nil) and (uffNumberFormat in AFormatRecord^.UsedFormattingFields)
   then begin
-    nfParams := Workbook.GetNumberFormat(AFormatRecord^.NumberFormatIndex);
+    nfParams := (Workbook as TsWorkbook).GetNumberFormat(AFormatRecord^.NumberFormatIndex);
     if nfParams <> nil then
     begin
       nfs := nfParams.NumFormatStr;

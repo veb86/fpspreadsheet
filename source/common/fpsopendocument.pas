@@ -42,7 +42,7 @@ uses
  {$ELSE}
   fpszipper,
  {$ENDIF}
-  fpstypes, fpspreadsheet, fpsReaderWriter, fpsutils, fpsHeaderFooterParser,
+  fpstypes, fpsReaderWriter, fpsutils, fpsHeaderFooterParser,
   fpsNumFormat, fpsxmlcommon, fpsPagelayout;
   
 type
@@ -100,7 +100,8 @@ type
     procedure ApplyColWidths;
     procedure ApplyStyleToCell(ACell: PCell; AStyleIndex: Integer);
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
-    function ApplyTableStyle(ASheet: TsWorksheet; AStyleName: String): Boolean;
+    function ApplyTableStyle(ASheet: TsBasicWorksheet;
+      AStyleName: String): Boolean;
     function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
     function ExtractDateTimeFromNode(ANode: TDOMNode;
       ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
@@ -128,11 +129,11 @@ type
       var AFontColor: TsColor);
     function ReadHeaderFooterText(ANode: TDOMNode): String;
     procedure ReadPictures(AStream: TStream);
-    procedure ReadPrintRanges(ATableNode: TDOMNode; ASheet: TsWorksheet);
+    procedure ReadPrintRanges(ATableNode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
     procedure ReadShapes(ATableNode: TDOMNode);
-    procedure ReadSheetProtection(ANode: TDOMNode; ASheet: TsWorksheet);
+    procedure ReadSheetProtection(ANode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadTableStyle(AStyleNode: TDOMNode);
 
   protected
@@ -163,7 +164,7 @@ type
       ACellNode: TDOMNode); reintroduce;
 
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
 
     { General reading methods }
@@ -184,25 +185,25 @@ type
 
     // Routines to write parts of files
     procedure WriteAutomaticStyles(AStream: TStream);
-    procedure WriteCellRow(AStream: TStream; ASheet: TsWorksheet;
+    procedure WriteCellRow(AStream: TStream; ASheet: TsBasicWorksheet;
       ARowIndex, ALastColIndex: Integer);
     procedure WriteCellStyles(AStream: TStream);
     procedure WriteColStyles(AStream: TStream);
-    procedure WriteColumns(AStream: TStream; ASheet: TsWorksheet);
-    procedure WriteEmptyRow(AStream: TStream; ASheet: TsWorksheet;
+    procedure WriteColumns(AStream: TStream; ASheet: TsBasicWorksheet);
+    procedure WriteEmptyRow(AStream: TStream; ASheet: TsBasicWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex, ALastRowIndex: Integer;
       out ARowsRepeated: Integer);
     procedure WriteFontNames(AStream: TStream);
     procedure WriteMasterStyles(AStream: TStream);
-    procedure WriteNamedExpressions(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteNamedExpressions(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteNumFormats(AStream: TStream);
     procedure WriteRowStyles(AStream: TStream);
-    procedure WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
-    procedure WriteShapes(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteRowsAndCells(AStream: TStream; ASheet: TsBasicWorksheet);
+    procedure WriteShapes(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteTableSettings(AStream: TStream);
     procedure WriteTableStyles(AStream: TStream);
     procedure WriteTextStyles(AStream: TStream);
-    procedure WriteVirtualCells(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteVirtualCells(AStream: TStream; ASheet: TsBasicWorksheet);
 
     function WriteBackgroundColorStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteBiDiModeStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -217,9 +218,9 @@ type
     function WriteHeaderFooterFontXMLAsString(AFont: TsHeaderFooterFont): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WritePageLayoutXMLAsString(AStyleName: String; const APageLayout: TsPageLayout): String;
-    function WritePrintRangesXMLAsString(ASheet: TsWorksheet): String;
-    function WriteSheetProtectionXMLAsString(ASheet: TsWorksheet): String;
-    function WriteSheetProtectionDetailsXMLAsString(ASheet: TsWorksheet): String;
+    function WritePrintRangesXMLAsString(ASheet: TsBasicWorksheet): String;
+    function WriteSheetProtectionXMLAsString(ASheet: TsBasicWorksheet): String;
+    function WriteSheetProtectionDetailsXMLAsString(ASheet: TsBasicWorksheet): String;
     function WriteTextRotationStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -238,7 +239,7 @@ type
       out AHeader, AFooter: String);
     procedure GetHeaderFooterImagePosStr(APagelayout: TsPageLayout;
       out AHeader, AFooter: String);
-    procedure GetRowStyleAndHeight(ASheet: TsWorksheet; ARowIndex: Integer;
+    procedure GetRowStyleAndHeight(ASheet: TsBasicWorksheet; ARowIndex: Integer;
       out AStyleName: String; out AHeight: Single);
     procedure InternalWriteToStream(AStream: TStream);
     procedure ListAllColumnStyles;
@@ -274,7 +275,7 @@ type
       const AValue: double; ACell: PCell); override;
 
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
 
     { General writing methods }
@@ -297,7 +298,8 @@ uses
  {$IFDEF FPS_VARISBOOL}
   fpsPatches,
  {$ENDIF}
-  fpsStrings, fpsStreams, fpsCrypto, fpsClasses, fpsExprParser, fpsImages;
+  fpsStrings, fpsStreams, fpsCrypto, fpsClasses, fpspreadsheet,
+  fpsExprParser, fpsImages;
 
 const
   { OpenDocument general XML constants }
@@ -1020,7 +1022,7 @@ end;
 {                         TsSpreadOpenDocReader                                }
 {******************************************************************************}
 
-constructor TsSpreadOpenDocReader.Create(AWorkbook: TsWorkbook);
+constructor TsSpreadOpenDocReader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
 
@@ -1106,9 +1108,11 @@ var
   colWidth: Single;
   colWidthType: TsColWidthType;
   lastOccCol: Integer;
+  sheet: TsWorksheet;
 begin
-  defColWidth := FWorksheet.ReadDefaultColWidth(FWorkbook.Units);
-  lastOccCol := FWorksheet.GetLastOccupiedColIndex;
+  sheet := FWorksheet as TsWorksheet;
+  defColWidth := sheet.ReadDefaultColWidth(FWorkbook.Units);
+  lastOccCol := sheet.GetLastOccupiedColIndex;
   for i:=0 to FColumnList.Count-1 do
   begin
     colData := TColumnData(FColumnList[i]);
@@ -1139,7 +1143,7 @@ begin
 
     // Write non-default column width to the worksheet
     if (colWidthType = cwtCustom)  then
-      FWorksheet.WriteColWidth(colIndex, colWidth, FWorkbook.Units);
+      sheet.WriteColWidth(colIndex, colWidth, FWorkbook.Units);
 
     // Note: we don't store the column format index here; this is done in the
     // row/cell reading method (ReadRowsAndCells).
@@ -1167,17 +1171,20 @@ end;
 procedure TsSpreadOpenDocReader.ApplyStyleToCell(ACell: PCell; AStyleIndex: Integer);
 var
   fmt: TsCellFormat;
+  sheet: TsWorksheet;
 begin
-  if FWorksheet.HasHyperlink(ACell) then
-    FWorksheet.WriteFont(ACell, HYPERLINK_FONTINDEX);
+  sheet := FWorksheet as TsWorksheet;
+
+  if sheet.HasHyperlink(ACell) then
+    sheet.WriteFont(ACell, HYPERLINK_FONTINDEX);
 
   fmt := FCellFormatList.Items[AStyleIndex]^;
-  if (AStyleIndex = 0) and FWorksheet.HasHyperlink(ACell) then begin
+  if (AStyleIndex = 0) and sheet.HasHyperlink(ACell) then begin
     // Make sure to use hyperlink font for hyperlink cells in case of default cell style
     fmt.FontIndex := HYPERLINK_FONTINDEX;
     Include(fmt.UsedFormattingFields, uffFont);
   end;
-  ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt);
+  ACell^.FormatIndex := (FWorkbook as TsWorkbook).AddCellFormat(fmt);
 end;
 
 { Applies the style data referred to by the style name to the specified cell
@@ -1191,7 +1198,7 @@ begin
   Result := false;
 
   if FWorksheet.HasHyperlink(ACell) then
-    FWorksheet.WriteFont(ACell, HYPERLINK_FONTINDEX);
+    (FWorksheet as TsWorksheet).WriteFont(ACell, HYPERLINK_FONTINDEX);
 
   styleIndex := ExtractFormatIndexFromStyle(AStyleName, ACell^.Col);
   (*
@@ -1217,16 +1224,17 @@ begin
     fmt.FontIndex := HYPERLINK_FONTINDEX;
     Include(fmt.UsedFormattingFields, uffFont);
   end;
-  ACell^.FormatIndex := FWorkbook.AddCellFormat(fmt);
+  ACell^.FormatIndex := (FWorkbook as TsWorkbook).AddCellFormat(fmt);
 
   Result := true;
 end;
 
-function TsSpreadOpenDocReader.ApplyTableStyle(ASheet: TsWorksheet;
+function TsSpreadOpenDocReader.ApplyTableStyle(ASheet: TsBasicWorksheet;
   AStyleName: String): Boolean;
 var
   styleIndex: Integer;
   tableStyle: TTableStyleData;
+  sheet: TsWorksheet absolute ASheet;
 begin
   Result := false;
   if (AStyleName = '') or (ASheet = nil) then
@@ -1236,9 +1244,9 @@ begin
     exit;
   tableStyle := TTableStyleData(FTableStyleList[styleIndex]);
   if (tableStyle.BiDiMode = bdRTL) or (tableStyle.BiDiMode = bdLTR) then
-    ASheet.BiDiMode := tableStyle.BiDiMode;
+    sheet.BiDiMode := tableStyle.BiDiMode;
   if tableStyle.Hidden then
-    ASheet.Options := ASheet.Options + [soHidden];
+    sheet.Options := sheet.Options + [soHidden];
   Result := true;
 end;
 
@@ -1467,8 +1475,8 @@ var
 begin
   if (boIgnoreFormulas in FWorkbook.Options) then
     exit;
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+  for i:=0 to (FWorkbook as TsWorkbook).GetWorksheetCount-1 do begin
+    sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(i);
     for cell in sheet.Cells do
       if HasFormula(cell) then FixCell(cell);
   end;
@@ -1496,7 +1504,7 @@ var
 begin
   if not Assigned(AStylesNode) then
     exit;
-  defFnt := Workbook.GetDefaultFont;
+  defFnt := (Workbook as TsWorkbook).GetDefaultFont;
   layoutNode := AStylesNode.FirstChild;
   while layoutNode <> nil do
   begin
@@ -1664,7 +1672,7 @@ begin
                 imgpos := GetAttrValue(childchild, 'style:position');
                 if (href <> '') and (imgpos <> '') then
                 begin
-                  n := FWorkbook.FindEmbeddedObj(ExtractFileName(href));
+                  n := (FWorkbook as TsWorkbook).FindEmbeddedObj(ExtractFileName(href));
                   if n > -1 then
                   begin
                     if pos('left', imgpos) > 0 then hfs := hfsLeft else
@@ -1693,7 +1701,7 @@ var
   parser: TsSpreadOpenDocHeaderFooterParser;
   defFnt: TsHeaderFooterFont;
 begin
-  defFnt := TsHeaderFooterFont.Create(Workbook.GetDefaultFont);
+  defFnt := TsHeaderFooterFont.Create((Workbook as TsWorkbook).GetDefaultFont);
   parser := TsSpreadOpenDocHeaderFooterParser.Create(ANode.FirstChild,
     FHeaderFooterFontList, defFnt);
   try
@@ -1862,12 +1870,12 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
-  FWorkSheet.WriteBlank(cell);
+    cell := (FWorksheet as TsWorksheet).AddCell(ARow, ACol);
+  (FWorkSheet as TsWorksheet).WriteBlank(cell);
   ApplyStyleToCell(cell, AStyleIndex);
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    (Workbook as TsWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadBoolean(ARow, ACol: Cardinal;
@@ -1882,10 +1890,10 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := (FWorksheet as TsWorksheet).AddCell(ARow, ACol);
 
   boolValue := ExtractBoolFromNode(ACellNode);
-  FWorkSheet.WriteBoolValue(cell, boolValue);
+  (FWorkSheet as TsWorksheet).WriteBoolValue(cell, boolValue);
 
   ApplyStyleToCell(cell, AStyleIndex);
   {
@@ -1893,7 +1901,7 @@ begin
   ApplyStyleToCell(cell, stylename);
    }
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    (Workbook as TsWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 { Collection columns used in the given table. The columns contain links to
@@ -2000,7 +2008,7 @@ begin
       s := GetAttrValue(styleChildNode, 'style:column-width');
       if s <> '' then
       begin
-        colWidth := FWorkbook.ConvertUnits(HTMLLengthStrToPts(s), suPoints, FWorkbook.Units);
+        colWidth := (FWorkbook as TsWorkbook).ConvertUnits(HTMLLengthStrToPts(s), suPoints, FWorkbook.Units);
         // convert to workbook units
         break;
       end;
@@ -2065,7 +2073,7 @@ begin
     cellChildNode := cellChildNode.NextSibling;
   end;
   if found then
-    FWorksheet.WriteComment(ARow, ACol, comment);
+    (FWorksheet as TsWorksheet).WriteComment(ARow, ACol, comment);
 end;
 
 procedure TsSpreadOpenDocReader.ReadDateTime(ARow, ACol: Cardinal;
@@ -2081,18 +2089,20 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := (FWorksheet as TsWorksheet).AddCell(ARow, ACol);
 
   ApplyStyleToCell(cell, AStyleIndex);
   //styleName := GetAttrValue(ACellNode, 'table:style-name');
   //ApplyStyleToCell(cell, stylename);
-  fmt := FWorkbook.GetPointerToCellFormat(cell^.FormatIndex);;
+  fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(cell^.FormatIndex);;
 
   dt := ExtractDateTimeFromNode(ACellNode, fmt^.NumberFormat, fmt^.NumberFormatStr);
-  FWorkSheet.WriteDateTime(cell, dt, fmt^.NumberFormat, fmt^.NumberFormatStr);
+  (FWorkSheet as TsWorksheet).WriteDateTime(cell,
+    dt, fmt^.NumberFormat, fmt^.NumberFormatStr
+  );
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    TsWorkbook(Workbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadError(ARow, ACol: Cardinal;
@@ -2107,11 +2117,12 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := TsWorksheet(FWorksheet).AddCell(ARow, ACol);
 
   if ExtractErrorFromNode(ACellNode, errValue) then
-    FWorkSheet.WriteErrorValue(cell, errValue) else
-    FWorksheet.WriteText(cell, 'ERROR');
+    TsWorksheet(FWorkSheet).WriteErrorValue(cell, errValue)
+  else
+    TsWorksheet(FWorksheet).WriteText(cell, 'ERROR');
 
   ApplyStyleToCell(cell, AStyleIndex);
   {
@@ -2120,7 +2131,7 @@ begin
   }
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    TsWorkbook(Workbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadDateMode(SpreadSheetNode: TDOMNode);
@@ -2162,7 +2173,7 @@ begin
   InitCryptoInfo(cinfo);
   cinfo.PasswordHash := GetAttrValue(ANode, 'table:protection-key');
   cinfo.Algorithm := StrToAlgorithm(GetAttrValue(ANode, 'table:protection-key-digest-algorithm'));
-  Workbook.CryptoInfo := cinfo;
+  (Workbook as TsWorkbook).CryptoInfo := cinfo;
 end;
 
 { Reads font data from an xml node and returns the font elements. }
@@ -2398,14 +2409,14 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.GetCell(ARow, ACol);   // Don't use AddCell here
+    cell := TsWorksheet(FWorksheet).GetCell(ARow, ACol);   // Don't use AddCell here
 
   ApplyStyleToCell(cell, AStyleIndex);
   {
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
   }
-  fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
+  fmt := TsWorkbook(Workbook).GetPointerToCellFormat(cell^.FormatIndex);
 
   formula := '';
   if (boReadFormulas in FWorkbook.Options) then
@@ -2428,9 +2439,9 @@ begin
     // ... and store in cell's FormulaValue field.
     cell^.FormulaValue := formula;
     // Note: This formula is still in OpenDocument dialect. Conversion to
-    // Because fpsspreadsheet supports references to other sheets which might
-    // not have been loaded at this moment, conversion to ExcelA1 dialect
-    // (used by fps) is postponed until all sheets are read.
+    // ExcelA1 dialect (used by fps) is postponed until all sheets have beeon
+    // read (--> FixFormulas) because of possible references to other sheets
+    // which might not have been loaded yet at this moment.
 
     {$IFDEF FPSpreadDebug}
     DebugLn('  Formula found: ' + formula);
@@ -2448,11 +2459,11 @@ begin
   if (valueType = 'float') then
   begin
     if UpperCase(valueStr) = '1.#INF' then
-      FWorksheet.WriteNumber(cell, 1.0/0.0)
+      TsWorksheet(FWorksheet).WriteNumber(cell, 1.0/0.0)
     else
     begin
       floatValue := StrToFloat(valueStr, FPointSeparatorSettings);
-      FWorksheet.WriteNumber(cell, floatValue);
+      TsWorksheet(FWorksheet).WriteNumber(cell, floatValue);
     end;
     if IsDateTimeFormat(fmt^.NumberFormat) then
     begin
@@ -2472,7 +2483,7 @@ begin
   if (valueType = 'date') or (valueType = 'time') then
   begin
     floatValue := ExtractDateTimeFromNode(ACellNode, fmt^.NumberFormat, fmt^.NumberFormatStr);
-    FWorkSheet.WriteDateTime(cell, floatValue);
+    TsWorksheet(FWorkSheet).WriteDateTime(cell, floatValue);
   end else
   // (c) text
   if (valueType = 'string') and (calcextValueType <> 'error') then
@@ -2481,27 +2492,27 @@ begin
     if (node <> nil) and (node.FirstChild <> nil) then
     begin
       valueStr := node.FirstChild.Nodevalue;
-      FWorksheet.WriteText(cell, valueStr);
+      TsWorksheet(FWorksheet).WriteText(cell, valueStr);
     end;
   end else
   // (d) boolean
   if (valuetype = 'boolean') then
   begin
     boolValue := ExtractBoolFromNode(ACellNode);
-    FWorksheet.WriteBoolValue(cell, boolValue);
+    TsWorksheet(FWorksheet).WriteBoolValue(cell, boolValue);
   end else
   if (calcextValuetype = 'error') then
   begin
     if ExtractErrorFromNode(ACellNode, errorValue) then
-      FWorksheet.WriteErrorValue(cell, errorValue) else
-      FWorksheet.WriteText(cell, 'ERROR');
+      TsWorksheet(FWorksheet).WriteErrorValue(cell, errorValue) else
+      TsWorksheet(FWorksheet).WriteText(cell, 'ERROR');
   end else
   // (e) Text
   if (valueStr <> '') then
-    FWorksheet.WriteText(cell, valueStr);
+    TsWorksheet(FWorksheet).WriteText(cell, valueStr);
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    TsWorkbook(Workbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream;
@@ -2514,6 +2525,7 @@ var
   nodename: String;
   XMLStream: TStream;
   sheet: TsWorksheet;
+  sheetName: String;
   tablestyleName: String;
 
   function CreateXMLStream: TStream;
@@ -2600,7 +2612,8 @@ begin
         Continue;
       end;
 
-      FWorkSheet := FWorkbook.AddWorksheet(GetAttrValue(TableNode, 'table:name'), true);
+      sheetName := GetAttrValue(TableNode, 'table:name');
+      FWorkSheet := TsWorkbook(FWorkbook).AddWorksheet(sheetName, true);
       tablestyleName := GetAttrValue(TableNode, 'table:style-name');
       // Read protection
       ReadSheetProtection(TableNode, FWorksheet);
@@ -2611,10 +2624,13 @@ begin
       // Process each row inside the sheet and process each cell of the row
       ReadRowsAndCells(TableNode);
       // Read page layout
-      ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'), FWorksheet.PageLayout);
+      ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'),
+        (FWorksheet as TsWorksheet).PageLayout);
       // Repeated cols/rows already have been determined.
-      FWorksheet.PageLayout.SetRepeatedRows(FRepeatedRows.FirstIndex, FRepeatedRows.LastIndex);
-      FWorksheet.PageLayout.SetRepeatedCols(FRepeatedCols.FirstIndex, FRepeatedCols.LastIndex);
+      (FWorksheet as TsWorksheet).PageLayout.SetRepeatedRows(
+        FRepeatedRows.FirstIndex, FRepeatedRows.LastIndex);
+      (FWorksheet as TsWorksheet).PageLayout.SetRepeatedCols(
+        FRepeatedCols.FirstIndex, FRepeatedCols.LastIndex);
       // Read print ranges
       ReadPrintRanges(TableNode, FWorksheet);
       // Apply table style
@@ -2648,9 +2664,9 @@ begin
 
     // Active sheet
     if FActiveSheet <> '' then
-      sheet := FWorkbook.GetWorksheetByName(FActiveSheet) else
-      sheet := FWorkbook.GetWorksheetByIndex(0);
-    FWorkbook.SelectWorksheet(sheet);
+      sheet := (FWorkbook as TsWorkbook).GetWorksheetByName(FActiveSheet) else
+      sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(0);
+    (FWorkbook as TsWorkbook).SelectWorksheet(sheet);
 
   finally
     FreeAndNil(Doc);
@@ -2741,7 +2757,7 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := (FWorksheet as TsWorksheet).AddCell(ARow, ACol);
 
   // Apply style to cell
   // We do this already here because we need the cell font for rich-text
@@ -2750,9 +2766,9 @@ begin
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
   }
-  fmt := FWorkbook.GetPointerToCellFormat(cell^.FormatIndex);
+  fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(cell^.FormatIndex);
   fntIndex := fmt^.FontIndex;
-  fnt := FWorkbook.GetFont(fntIndex);
+  fnt := (FWorkbook as TsWorkbook).GetFont(fntIndex);
 
   // Prepare reading of node data
   cellText := '';
@@ -2804,10 +2820,14 @@ begin
                   if rtFnt.Color = scNone then rtFnt.Color := fnt.Color;
                   if rtFnt.Position = fpNormal then rtFnt.Position := fnt.Position;
                   // Find this font in the workbook's font list
-                  rtfntIndex := FWorkbook.FindFont(rtFnt.FontName, rtFnt.Size, rtFnt.Style, rtFnt.Color, rtFnt.Position);
+                  rtfntIndex := (FWorkbook as TsWorkbook).FindFont(
+                    rtFnt.FontName, rtFnt.Size, rtFnt.Style, rtFnt.Color, rtFnt.Position
+                  );
                   // If not found add to font list
                   if rtfntIndex = -1 then
-                    rtfntIndex := FWorkbook.AddFont(rtFnt.FontName, rtFnt.Size, rtFnt.Style, rtFnt.Color, rtFnt.Position);
+                    rtfntIndex := (FWorkbook as TsWorkbook).AddFont(
+                      rtFnt.FontName, rtFnt.Size, rtFnt.Style, rtFnt.Color, rtFnt.Position
+                    );
                   // Use this font index in the rich-text parameter
                   SetLength(rtParams, Length(rtParams)+1);
                   rtParams[High(rtParams)].FirstIndex := UTF8Length(cellText) + 1;  // 1-based character index
@@ -2826,7 +2846,7 @@ begin
     childnode := childnode.NextSibling;
   end;
 
-  FWorkSheet.WriteText(cell, cellText, rtParams);
+  (FWorkSheet as TsWorksheet).WriteText(cell, cellText, rtParams);
   if hyperlink <> '' then
   begin
     // ODS sees relative paths relative to the internal own file structure
@@ -2834,12 +2854,12 @@ begin
     // the file.
     if pos('../', hyperlink) = 1 then
       Delete(hyperlink, 1, Length('../'));
-    FWorksheet.WriteHyperlink(cell, hyperlink);
-    FWorksheet.WriteFont(cell, HYPERLINK_FONTINDEX);
+    (FWorksheet as TsWorksheet).WriteHyperlink(cell, hyperlink);
+    (FWorksheet as TsWorksheet).WriteFont(cell, HYPERLINK_FONTINDEX);
   end;
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    (Workbook as TsWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumber(ARow, ACol: Cardinal;
@@ -2858,17 +2878,17 @@ begin
     InitCell(FWorksheet, ARow, ACol, FVirtualCell);
     cell := @FVirtualCell;
   end else
-    cell := FWorksheet.AddCell(ARow, ACol);
+    cell := (FWorksheet as TsWorksheet).AddCell(ARow, ACol);
 
   Value := GetAttrValue(ACellNode,'office:value');
   if UpperCase(Value)='1.#INF' then
-    FWorkSheet.WriteNumber(cell, 1.0/0.0)
+    (FWorkSheet as TsWorksheet).WriteNumber(cell, 1.0/0.0)
   else
   begin
     // Don't merge, or else we can't debug
     Str := GetAttrValue(ACellNode, 'office:value');
     lNumber := StrToFloat(Str, FPointSeparatorSettings);
-    FWorkSheet.WriteNumber(cell, lNumber);
+    (FWorkSheet as TsWorksheet).WriteNumber(cell, lNumber);
   end;
 
   ApplyStyleToCell(cell, AStyleIndex);
@@ -2876,8 +2896,8 @@ begin
   styleName := GetAttrValue(ACellNode, 'table:style-name');
   ApplyStyleToCell(cell, stylename);
   }
-  fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-  numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
+  fmt := (Workbook as TsWorkbook).GetPointerToCellFormat(cell^.FormatIndex);
+  numFmt := (Workbook as TsWorkbook).GetNumberFormat(fmt^.NumberFormatIndex);
 
   // Sometimes date/time cells are stored as "float".
   // We convert them to date/time and also correct the date origin offset if
@@ -2899,11 +2919,11 @@ begin
     // Cell has TEXT format @ --> store number as text
     txtNode := ACellNode.FirstChild;
     if txtNode.NodeName = 'text:p' then
-      FWorksheet.WriteText(cell, GetNodeValue(txtNode));
+      (FWorksheet as TsWorksheet).WriteText(cell, GetNodeValue(txtNode));
   end;
 
   if FIsVirtualMode then
-    Workbook.OnReadCellData(Workbook, ARow, ACol, cell);
+    (Workbook as TsWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
 procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
@@ -3408,7 +3428,7 @@ begin
         memStream := TMemoryStream.Create;
         unzip.UnzipFile(fn, memStream);
         memstream.Position := 0;
-        FWorkbook.AddEmbeddedObj(memstream, ExtractFileName(fn));
+        (FWorkbook as TsWorkbook).AddEmbeddedObj(memstream, ExtractFileName(fn));
         memStream.Free;
       end;
     end;
@@ -3418,7 +3438,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadPrintRanges(ATableNode: TDOMNode;
-  ASheet: TsWorksheet);
+  ASheet: TsBasicWorksheet);
 var
   L: TStringList;
   s, sheetname: String;
@@ -3487,7 +3507,7 @@ begin
         end;
       end;
       // Add found range to worksheet
-      ASheet.PageLayout.AddPrintRange(r1, c1, r2, c2);
+      (ASheet as TsWorksheet).PageLayout.AddPrintRange(r1, c1, r2, c2);
     end;
   finally
     L.Free;
@@ -3573,7 +3593,7 @@ begin
     rowsSpanned := 0;
 
   if (colsSpanned <> 0) or (rowsSpanned <> 0) then
-    FWorksheet.MergeCells(ARow, ACol, ARow + rowsSpanned, ACol + colsSpanned);
+    (FWorksheet as TsWorksheet).MergeCells(ARow, ACol, ARow + rowsSpanned, ACol + colsSpanned);
 
   s := GetAttrValue(ANode, 'table:number-columns-repeated');
   if s <> '' then
@@ -3623,7 +3643,7 @@ var
       rowHeight := rowStyle.RowHeight;    // in Workbook units (see ReadRowStyles)
       rowHeightType := rowStyle.RowHeightType;
     end else begin
-      rowHeight := FWorksheet.ReadDefaultRowHeight(FWorkbook.Units);
+      rowHeight := (FWorksheet as TsWorksheet).ReadDefaultRowHeight(FWorkbook.Units);
       rowHeightTYpe := rhtDefault;
     end;
 
@@ -3656,9 +3676,9 @@ var
            (col + colsRepeated >= LongInt(FLimitations.MaxColCount) - 10) and
            (row < FLimitations.MaxRowCount - 10) then
         begin
-          lRow := FWorksheet.GetRow(row);
+          lRow := (FWorksheet as TsWorksheet).GetRow(row);
           // Find first cell in row, all cells have the same format here.
-          cell := FWorksheet.FindNextCellInRow(row, 0);
+          cell := (FWorksheet as TsWorksheet).FindNextCellInRow(row, 0);
           if cell <> nil then
             // Cell found --> copy its format index to cell record
             lRow^.FormatIndex := cell^.FormatIndex
@@ -3678,10 +3698,10 @@ var
           // specification limit.
           // React some columns earlier because the added column range is
           // sometimes split into two parts.
-          cell := FWorksheet.FindCell(row, col);
+          cell := (FWorksheet as TsWorksheet).FindCell(row, col);
           if cell <> nil then
             for i:=1 to colsRepeated-1 do begin
-              cell := FWorksheet.CopyCell(row, col, row, col+i);
+              cell := TsWorksheet(FWorksheet).CopyCell(row, col, row, col+i);
               styleIndex := ExtractFormatIndexFromStyle(cellStyleName, col+i);
               ApplyStyleToCell(cell, styleIndex);
             end;
@@ -3712,7 +3732,7 @@ var
     // into two parts.
     if row + rowsRepeated < LongInt(FLimitations.MaxRowCount) - 10 then
       for i:=1 to rowsRepeated do
-        FWorksheet.WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units, rowHeightType);
+        TsWorksheet(FWorksheet).WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units, rowHeightType);
 
     // Prepare checking of column format
     if GetRowFormat then begin
@@ -3720,7 +3740,7 @@ var
       if isFirstRow then begin
         SetLength(colFmt, col);
         for col:=0 to High(colFmt) do begin
-          cell := FWorksheet.FindCell(row, col);
+          cell := TsWorksheet(FWorksheet).FindCell(row, col);
           if cell <> nil then
             colFmt[col] := cell^.FormatIndex
           else begin
@@ -3735,7 +3755,7 @@ var
         // have a column format.
         for col:=0 to High(colFmt) do begin
           if colFmt[col] > -1 then begin
-            cell := FWorksheet.FindCell(row, col);
+            cell := TsWorksheet(FWorksheet).FindCell(row, col);
             if ((cell <> nil) and (cell^.FormatIndex <> colFmt[col])) then
               colFmt[col] := -1;
           end;
@@ -3791,7 +3811,7 @@ begin
   if not PrintRowMode and (row > FLimitations.MaxRowCount-10) then begin
     for c := 0 to High(colFmt) do
       if colFmt[c] > 0 then
-        FWorksheet.WriteColFormatIndex(c, colFmt[c]);
+        (FWorksheet as TsWorksheet).WriteColFormatIndex(c, colFmt[c]);
   end;
 end;
 
@@ -3816,7 +3836,7 @@ begin
     begin
       s := GetAttrValue(styleChildNode, 'style:row-height');
       if s <> '' then
-        rowHeight := FWorkbook.ConvertUnits(HTMLLengthStrToPts(s), suPoints, FWorkbook.Units);
+        rowHeight := TsWorkbook(FWorkbook).ConvertUnits(HTMLLengthStrToPts(s), suPoints, FWorkbook.Units);
         // convert to workbook units
       s := GetAttrValue(styleChildNode, 'style:use-optimal-row-height');
       if s = 'true' then
@@ -3899,7 +3919,7 @@ begin
                     if tblName <> '' then
                     begin
                       hsm := 0; vsm := 0;
-                      sheet := Workbook.GetWorksheetByName(tblName);
+                      sheet := TsWorkbook(Workbook).GetWorksheetByName(tblName);
                       if sheet <> nil then
                       begin
                         node := cfgTableItemNode.FirstChild;
@@ -3952,9 +3972,9 @@ begin
 
   { Now let's apply the showGrid and showHeader values to all sheets - they
     are document-wide settings (although there is a ShowGrid in the Tables node) }
-  for i:=0 to Workbook.GetWorksheetCount-1 do
+  for i:=0 to (Workbook as TsWorkbook).GetWorksheetCount-1 do
   begin
-    sheet := Workbook.GetWorksheetByIndex(i);
+    sheet := TsWorkbook(Workbook).GetWorksheetByIndex(i);
     if not showGrid then sheet.Options := sheet.Options - [soShowGridLines];
     if not showHeaders then sheet.Options := sheet.Options - [soShowHeaders];
   end;
@@ -4001,9 +4021,11 @@ begin
             href := GetAttrValue(childShapeNode, 'xlink:href');
             if href <> '' then
             begin
-              idx := FWorkbook.FindEmbeddedObj(ExtractFileName(href));
-              FWorksheet.CalcImageCell(idx, x, y, w, h, r, c, dr, dc, sx, sy);
-              FWorksheet.WriteImage(r, c, idx, dc, dr, sx, sy);    // order of dc and dr is correct!
+              idx := TsWorkbook(FWorkbook).FindEmbeddedObj(ExtractFileName(href));
+              with FWorksheet as TsWorksheet do begin
+                CalcImageCell(idx, x, y, w, h, r, c, dr, dc, sx, sy);
+                WriteImage(r, c, idx, dc, dr, sx, sy);    // order of dc and dr is correct!
+              end;
             end;
             childShapeNode := childShapeNode.NextSibling;
           end;
@@ -4016,7 +4038,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocReader.ReadSheetProtection(ANode: TDOMNode;
-  ASheet: TsWorksheet);
+  ASheet: TsBasicWorksheet);
 var
   s: String;
   sp: TsWorksheetProtections;
@@ -4050,15 +4072,17 @@ begin
       end;
       childNode := childNode.NextSibling;
     end;
-    ASheet.Protection := sp;
-    ASheet.Protect(true);
+    with ASheet as TsWorksheet do begin
+      Protection := sp;
+      Protect(true);
+    end;
 
     InitCryptoInfo(cinfo);
     cinfo.PasswordHash := GetAttrValue(ANode, 'table:protection-key');
     cinfo.Algorithm := StrToAlgorithm(GetAttrValue(ANode, 'table:protection-key-digest-algorithm'));
-    ASheet.CryptoInfo := cinfo;
+    (ASheet as TsWorksheet).CryptoInfo := cinfo;
   end else
-    ASheet.Protect(false);
+    (ASheet as TsWorksheet).Protect(false);
 end;
 
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
@@ -4187,7 +4211,7 @@ begin
       if family = 'table-cell' then begin
         InitFormatRecord(fmt);
         fmt.Name := 'DefaultStyle';
-        fnt := FWorkbook.GetFont(fmt.FontIndex);
+        fnt := (FWorkbook as TsWorkbook).GetFont(fmt.FontIndex);
         fntName := fnt.FontName;
         fntSize := fnt.Size;
         fntStyle := fnt.Style;
@@ -4207,9 +4231,9 @@ begin
             // not used;
           styleChildNode := styleChildNode.nextSibling;
         end;
-        fmt.FontIndex := FWorkbook.FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+        fmt.FontIndex := TsWorkbook(FWorkbook).FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
         if fmt.FontIndex = -1 then
-          fmt.FontIndex := FWorkbook.AddFont(fntname, fntsize, fntstyle, fntColor, fntPos);
+          fmt.FontIndex := TsWorkbook(FWorkbook).AddFont(fntname, fntsize, fntstyle, fntColor, fntPos);
         if fmt.FontIndex > 0 then
           Include(fmt.UsedFormattingFields, uffFont);
         FCellFormatList.Add(fmt);
@@ -4253,7 +4277,7 @@ begin
         end;
         fmt.Name := styleName;
 
-        fnt := FWorkbook.GetFont(fmt.FontIndex);
+        fnt := (Workbook as TsWorkbook).GetFont(fmt.FontIndex);
         fntName := fnt.FontName;
         fntSize := fnt.Size;
         fntStyle := fnt.Style;
@@ -4266,8 +4290,8 @@ begin
         if numFmtIndex = -1 then numFmtIndex := numFmtIndexDefault;
         numFmtStr := NumFormatList[numFmtIndex];
         numFmtStr := Copy(numFmtStr, pos(':', numFmtStr)+1, Length(numFmtStr));
-        fmt.NumberFormatIndex := Workbook.AddNumberFormat(numFmtStr);
-        numFmtParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
+        fmt.NumberFormatIndex := (Workbook as TsWorkbook).AddNumberFormat(numFmtStr);
+        numFmtParams := (Workbook as TsWorkbook).GetNumberFormat(fmt.NumberFormatIndex);
         if numFmtParams <> nil then begin
           fmt.NumberFormat := numFmtParams.NumFormat;
           fmt.NumberFormatStr := numFmtStr;
@@ -4283,20 +4307,20 @@ begin
             ReadFont(styleChildNode, fntName, fntSize, fntStyle, fntColor, fntPos);
             if SameText(stylename, 'Default') then
             begin
-              FWorkbook.ReplaceFont(DEFAULT_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
+              TsWorkbook(FWorkbook).ReplaceFont(DEFAULT_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
               fmt.FontIndex := DEFAULT_FONTINDEX;
               //fntIndex := ReadFont(styleChildNode, DEFAULT_FONTINDEX)
             end else
             if SameText(stylename, 'Excel_20_Built-in_20_Hyperlink') then
             begin
-              FWorkbook.ReplaceFont(HYPERLINK_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
+              TsWorkbook(FWorkbook).ReplaceFont(HYPERLINK_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
               fmt.FontIndex := HYPERLINK_FONTINDEX;
               //fntIndex := ReadFont(styleChildNode, HYPERLINK_FONTINDEX)
             end else
             begin
-              fmt.FontIndex := FWorkbook.FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+              fmt.FontIndex := TsWorkbook(FWorkbook).FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
               if fmt.FontIndex = -1 then
-                fmt.FontIndex := FWorkbook.AddFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+                fmt.FontIndex := TsWorkbook(FWorkbook).AddFont(fntName, fntSize, fntStyle, fntColor, fntPos);
             end;
             if fmt.FontIndex > 0 then
               Include(fmt.UsedFormattingFields, uffFont);
@@ -4599,7 +4623,7 @@ begin
       if APageLayout.HeaderImages[sct].Index > -1 then
       begin
         img := APageLayout.HeaderImages[sct];
-        ext := GetImageTypeExt(FWorkbook.GetEmbeddedObj(img.Index).ImageType);
+        ext := GetImageTypeExt(TsWorkbook(FWorkbook).GetEmbeddedObj(img.Index).ImageType);
         AHeader := Format('%d.%s', [img.Index+1, ext]);
         break;
       end;
@@ -4607,7 +4631,7 @@ begin
       if APageLayout.FooterImages[sct].Index > -1 then
       begin
         img := APageLayout.FooterImages[sct];
-        ext := GetImageTypeExt(FWorkbook.GetEmbeddedObj(img.Index).Imagetype);
+        ext := GetImageTypeExt(TsWorkbook(FWorkbook).GetEmbeddedObj(img.Index).Imagetype);
         AFooter := Format('%d.%s', [img.Index+1, ext]);
         break;
       end;
@@ -4692,14 +4716,14 @@ begin
   { At first, add the default column width }
   colStyle := TColumnStyleData.Create;
   colStyle.Name := 'co1';
-  colStyle.ColWidth := FWorkbook.ConvertUnits(12, suChars, FWorkbook.Units);
+  colStyle.ColWidth := TsWorkbook(Workbook).ConvertUnits(12, suChars, FWorkbook.Units);
   FColumnStyleList.Add(colStyle);
 
   { Then iterate through all sheets and all columns and store the unique
     column widths in the FColumnStyleList. }
-  for i:=0 to Workbook.GetWorksheetCount-1 do
+  for i:=0 to (Workbook as TsWorkbook).GetWorksheetCount-1 do
   begin
-    sheet := Workbook.GetWorksheetByIndex(i);
+    sheet := TsWorkbook(Workbook).GetWorksheetByIndex(i);
     for c := 0 to sheet.Cols.Count-1 do
     begin
       col := PCol(sheet.Cols[c]);
@@ -4775,12 +4799,14 @@ var
   defFnt: TsHeaderFooterFont;
   i: Integer;
   sheet: TsWorksheet;
+  book: TsWorkbook;
 begin
-  defFnt := TsHeaderFooterFont.Create(Workbook.GetDefaultFont);
+  book := FWorkbook as TsWorkbook;
+  defFnt := TsHeaderFooterFont.Create(book.GetDefaultFont);
   try
-    for i:=0 to Workbook.GetWorksheetCount-1 do
+    for i:=0 to book.GetWorksheetCount-1 do
     begin
-      sheet := Workbook.GetWorksheetByIndex(i);
+      sheet := book.GetWorksheetByIndex(i);
       AddFontsOfHeaderFooter(sheet.pageLayout.Headers[1], defFnt);
       AddFontsOfHeaderFooter(sheet.PageLayout.Headers[2], defFnt);
       AddFontsOfHeaderFooter(sheet.PageLayout.Footers[1], defFnt);
@@ -4802,9 +4828,9 @@ var
   nfparams: TsNumFormatParams;
 begin
   // The default format has already been added.
-  for i:=0 to Workbook.GetNumberFormatCount - 1 do
+  for i:=0 to (Workbook as TsWorkbook).GetNumberFormatCount - 1 do
   begin
-    nfParams := Workbook.GetNumberFormat(i);
+    nfParams := TsWorkbook(Workbook).GetNumberFormat(i);
     if nfParams <> nil then
       FNumFormatList.Add(Format('N%d:%s', [FMT_BASE+i, nfParams.NumFormatStr]));
   end;
@@ -4818,18 +4844,20 @@ var
   found: Boolean;
   rowstyle: TRowStyleData;
   h: Double;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
   { At first, add the default row height }
   { Initially, row height units will be the same as in the workbook }
   rowStyle := TRowStyleData.Create;
   rowStyle.Name := 'ro1';
-  rowStyle.RowHeight := FWorkbook.ConvertUnits(15, suPoints, FWorkbook.Units);
+  rowStyle.RowHeight := book.ConvertUnits(15, suPoints, FWorkbook.Units);
   rowStyle.RowHeightType := rhtAuto;
   FRowStyleList.Add(rowStyle);
 
-  for i:=0 to Workbook.GetWorksheetCount-1 do
+  for i:=0 to book.GetWorksheetCount-1 do
   begin
-    sheet := Workbook.GetWorksheetByIndex(i);
+    sheet := book.GetWorksheetByIndex(i);
     for r:=0 to sheet.GetLastRowIndex do
     begin
       row := sheet.FindRow(r);
@@ -4878,6 +4906,7 @@ var
   i: Integer;
   sheet: TsWorksheet;
   fnt: TXMLHeaderFooterFont;
+  book: TsWorkbook;
 
 begin
   AppendToStream(AStream,
@@ -4912,8 +4941,10 @@ begin
 
       '</style:page-layout>');
 
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+  book := TsWorkbook(FWorkbook);
+
+  for i:=0 to book.GetWorksheetCount-1 do begin
+    sheet := book.GetWorksheetByIndex(i);
     AppendToStream(AStream,
       WritePageLayoutXMLAsString('Mpm' + IntToStr(3+i), sheet.PageLayout));
   end;
@@ -4954,9 +4985,9 @@ begin
       '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml" />');
   AppendToStream(FSMetaInfManifest,
       '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />');
-  for i:=0 to FWorkbook.GetEmbeddedObjCount-1 do
+  for i:=0 to (FWorkbook as TsWorkbook).GetEmbeddedObjCount-1 do
   begin
-    embObj := FWorkbook.GetEmbeddedObj(i);
+    embObj := TsWorkbook(FWorkbook).GetEmbeddedObj(i);
     imgtype := embObj.ImageType;
     if imgtype = itUnknown then
       continue;
@@ -5004,9 +5035,9 @@ var
   embName: String;
   ext: String;
 begin
-  for i:=0 to FWorkbook.GetEmbeddedObjCount-1 do
+  for i:=0 to (FWorkbook as TsWorkbook).GetEmbeddedObjCount-1 do
   begin
-    embObj := FWorkbook.GetEmbeddedObj(i);
+    embObj := (FWorkbook as TsWorkbook).GetEmbeddedObj(i);
     // The original ods files have a very long, ranomd, unique (?) filename.
     // Tests show that a simple, unique, increasing number works as well.
     ext := GetImageTypeExt(embObj.ImageType);
@@ -5023,7 +5054,10 @@ var
   sheet: TsWorksheet;
   actSheet: String;
   zoomvalue: String;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
+
   // Open/LibreOffice allow to change showGrid and showHeaders only globally.
   // As a compromise, we check whether there is at least one page with these
   // settings off. Then we assume it to be valid also for the other sheets.
@@ -5031,10 +5065,10 @@ begin
   showHeaders := true;
   actSheet := 'Table1';
   zoomValue := '100';
-  for i:=0 to Workbook.GetWorksheetCount-1 do
+  for i:=0 to book.GetWorksheetCount-1 do
   begin
-    sheet := Workbook.GetWorksheetByIndex(i);
-    if sheet = Workbook.ActiveWorksheet then
+    sheet := book.GetWorksheetByIndex(i);
+    if sheet = book.ActiveWorksheet then
       actSheet := UTF8TextToXMLText(sheet.Name);
     if not (soShowGridLines in sheet.Options) then showGrid := false;
     if not (soShowHeaders in sheet.Options) then showHeaders := false;
@@ -5098,7 +5132,7 @@ begin
         '<style:style style:name="Default" style:family="table-cell">',
            WriteDefaultFontXMLAsString,
         '</style:style>');
-  if FWorkbook.HasEmbeddedSheetImages then
+  if (FWorkbook as TsWorkbook).HasEmbeddedSheetImages then
     AppendToStream(FSStyles,
         '<style:default-style style:family="graphic">',
           WriteDefaultGraphicStyleXMLAsString,
@@ -5212,7 +5246,7 @@ begin
         '<office:spreadsheet' + WriteDocumentProtectionXMLAsString + '>');
 
   // Write all worksheets
-  for i := 0 to Workbook.GetWorksheetCount - 1 do
+  for i := 0 to (Workbook as TsWorkbook).GetWorksheetCount - 1 do
     WriteWorksheet(FSContent, i);
 
   AppendToStream(FSContent,
@@ -5225,12 +5259,12 @@ end;
 procedure TsSpreadOpenDocWriter.WriteWorksheet(AStream: TStream;
   ASheetIndex: Integer);
 begin
-  FWorksheet := FWorkbook.GetWorksheetByIndex(ASheetIndex);
+  FWorksheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(ASheetIndex);
 
   // Buffer the information whether the worksheet contains column or row formats
   // Needed for writing rows and cells
-  FHasColFormats := FWorksheet.HasColFormats;
-  FHasRowFormats := FWorksheet.HasRowFormats;
+  FHasColFormats := (FWorksheet as TsWorksheet).HasColFormats;
+  FHasRowFormats := (FWorksheet as TsWorksheet).HasRowFormats;
 
   // Header
   AppendToStream(AStream, Format(
@@ -5274,14 +5308,14 @@ var
   fmt: TsCellFormat;
   nfParams: TsNumFormatParams;
 begin
-  for i := 0 to FWorkbook.GetNumCellFormats - 1 do
+  for i := 0 to (FWorkbook as TsWorkbook).GetNumCellFormats - 1 do
   begin
-    fmt := FWorkbook.GetCellFormat(i);
+    fmt := TsWorkbook(FWorkbook).GetCellFormat(i);
     nfs := '';
     nfidx := fmt.NumberFormatIndex;
     if nfidx <> -1 then
     begin
-      nfParams := FWorkbook.GetNumberFormat(nfidx);
+      nfParams := TsWorkbook(FWorkbook).GetNumberFormat(nfidx);
       if nfParams <> nil then
       begin
         nfs := nfParams.NumFormatStr;
@@ -5363,7 +5397,7 @@ begin
     // Column width
     AppendToStream(AStream, Format(
         '<style:table-column-properties style:column-width="%.3fmm" fo:break-before="auto"/>',
-          [FWorkbook.ConvertUnits(colStyle.ColWidth, FWorkbook.Units, suMillimeters)],
+          [TsWorkbook(FWorkbook).ConvertUnits(colStyle.ColWidth, FWorkbook.Units, suMillimeters)],
           FPointSeparatorSettings));
 
     // End
@@ -5373,7 +5407,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteColumns(AStream: TStream;
-  ASheet: TsWorksheet);
+  ASheet: TsBasicWorksheet);
 var
   lastCol: Integer;
   c, k: Integer;
@@ -5383,11 +5417,12 @@ var
   colsRepeatedStr: String;
   firstRepeatedPrintCol, lastRepeatedPrintCol: Longint;
   headerCols: Boolean;
+  sheet: TsWorksheet absolute ASheet;
 begin
 //  widthMultiplier := Workbook.GetFont(0).Size / 2;
-  lastCol := ASheet.GetLastColIndex;
-  firstRepeatedPrintCol := longInt(ASheet.PageLayout.RepeatedCols.FirstIndex);
-  lastRepeatedPrintCol := longint(ASheet.PageLayout.RepeatedCols.LastIndex);
+  lastCol := sheet.GetLastColIndex;
+  firstRepeatedPrintCol := longInt(sheet.PageLayout.RepeatedCols.FirstIndex);
+  lastRepeatedPrintCol := longint(sheet.PageLayout.RepeatedCols.LastIndex);
   if (firstRepeatedPrintCol <> Longint(UNASSIGNED_ROW_COL_INDEX)) and
      (lastRepeatedPrintCol = LongInt(UNASSIGNED_ROW_COL_INDEX))
   then
@@ -5397,7 +5432,7 @@ begin
   c := 0;
   while (c <= lastCol) do
   begin
-    w := ASheet.GetColWidth(c, FWorkbook.Units);
+    w := sheet.GetColWidth(c, FWorkbook.Units);
 
     if (c = firstRepeatedPrintCol) then
     begin
@@ -5425,7 +5460,7 @@ begin
     if headerCols then
       while (k <= lastCol) and (k <= lastRepeatedPrintCol) do
       begin
-        if ASheet.GetColWidth(k, FWorkbook.Units) = w then
+        if sheet.GetColWidth(k, FWorkbook.Units) = w then
           inc(colsRepeated)
         else
           break;
@@ -5434,7 +5469,7 @@ begin
     else
       while (k <= lastCol) and (k < firstRepeatedPrintCol) do
       begin
-        if ASheet.GetColWidth(k, FWorkbook.Units) = w then
+        if sheet.GetColWidth(k, FWorkbook.Units) = w then
           inc(colsRepeated)
         else
           break;
@@ -5523,9 +5558,9 @@ begin
   L := TStringList.Create;
   try
     // First collect the font names from the workbook's FontList
-    for i:=0 to Workbook.GetFontCount-1 do
+    for i:=0 to TsWorkbook(Workbook).GetFontCount-1 do
     begin
-      fnt := Workbook.GetFont(i);
+      fnt := TsWorkbook(Workbook).GetFont(i);
       if (fnt <> nil) and (L.IndexOf(fnt.FontName) = -1) then
         L.Add(fnt.FontName);
     end;
@@ -5628,7 +5663,7 @@ var
 var
   sheetname: String;
 begin
-  defFnt := TsHeaderFooterFont.Create(Workbook.GetDefaultFont);
+  defFnt := TsHeaderFooterFont.Create((Workbook as TsWorkbook).GetDefaultFont);
 
   AppendToStream(AStream,
     '<office:master-styles>');
@@ -5641,8 +5676,8 @@ begin
         '<style:footer-left style:display="false" />' +
       '</style:master-page>');
 
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+  for i:=0 to (FWorkbook as TsWorkbook).GetWorksheetCount-1 do begin
+    sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(i);
     sheetname := UTF8TextToXMLText(sheet.name);
     AppendToStream(AStream,
       MasterPageAsString('PageStyle_5f_' + sheetName, 'PageStyle_' + sheetname,
@@ -5661,20 +5696,21 @@ end;
  </table:named-expressions>}
 
 procedure TsSpreadOpenDocWriter.WriteNamedExpressions(AStream: TStream;
-  ASheet: TsWorksheet);
+  ASheet: TsBasicWorksheet);
 var
   stotal, srng, sheetname: String;
   j: Integer;
   prng: TsCellRange;
+  sheet: TsWorksheet absolute ASheet;
 begin
   sheetname := UTF8TextToXMLText(ASheet.Name);
   stotal := '';
 
   // Cell block of print range
   srng := '';
-  for j := 0 to ASheet.PageLayout.NumPrintRanges - 1 do
+  for j := 0 to sheet.PageLayout.NumPrintRanges - 1 do
   begin
-    prng := ASheet.PageLayout.PrintRange[j];
+    prng := sheet.PageLayout.PrintRange[j];
     srng := srng + ';' + Format('[$%s.%s]', [
       sheetname, GetCellRangeString(prng.Row1, prng.Col1, prng.Row2, prng.Col2, [])
     ]);
@@ -5693,38 +5729,38 @@ begin
   {
   // repeated columns ...
   srng := '';
-  if ASheet.PageLayout.RepeatedCols.FirstIndex <> UNASSIGNED_ROW_COL_INDEX then
+  if sheet.PageLayout.RepeatedCols.FirstIndex <> UNASSIGNED_ROW_COL_INDEX then
   begin
-    if ASheet.PageLayout.RepeatedCols.LastIndex = UNASSIGNED_ROW_COL_INDEX then
+    if sheet.PageLayout.RepeatedCols.LastIndex = UNASSIGNED_ROW_COL_INDEX then
       srng := srng + ';' + Format('[$%s.$%s]',
-        [ASheet.Name, GetColString(ASheet.pageLayout.RepeatedCols.FirstIndex)]
+        [sheet.Name, GetColString(sheet.pageLayout.RepeatedCols.FirstIndex)]
       )
     else
       srng := srng + ';' + Format('[$%s.$%s1:.$%s1048576]', [      // [$Sheet1.$A$1:.$D$1048576]
-        ASheet.Name,
-        GetColString(ASheet.Pagelayout.RepeatedCols.FirstIndex),
-        GetColString(ASheet.PageLayout.RepeatedCols.LastIndex)
+        sheet.Name,
+        GetColString(sheet.Pagelayout.RepeatedCols.FirstIndex),
+        GetColString(sheet.PageLayout.RepeatedCols.LastIndex)
       ]);
   end;
   // ... and repeated rows
-  if ASheet.PageLayout.RepeatedRows.FirstIndex <> UNASSIGNED_ROW_COL_INDEX then
+  if sheet.PageLayout.RepeatedRows.FirstIndex <> UNASSIGNED_ROW_COL_INDEX then
   begin
-    if ASheet.PageLayout.RepeatedRows.LastIndex = UNASSIGNED_ROW_COL_INDEX then
+    if sheet.PageLayout.RepeatedRows.LastIndex = UNASSIGNED_ROW_COL_INDEX then
       srng := srng + ';' + Format('[$%s.$%d]',
-        [ASheet.Name, ASheet.pageLayout.RepeatedRows.FirstIndex]
+        [sheet.Name, sheet.pageLayout.RepeatedRows.FirstIndex]
       )
     else
       srng := srng + ';' + Format('[$%s.$A$%d:.$AMJ$%d]', [              // [$Sheet1.$A$1:.$AMJ$2]"
-        ASheet.Name,
-        ASheet.Pagelayout.RepeatedRows.FirstIndex+1,
-        ASheet.PageLayout.RepeatedRows.LastIndex+1
+        sheet.Name,
+        sheet.Pagelayout.RepeatedRows.FirstIndex+1,
+        sheet.PageLayout.RepeatedRows.LastIndex+1
       ]);
   end;
   if srng <> '' then begin
     Delete(srng, 1,1);
     stotal := stotal + Format(
       '<table:named-expression table:name="_xlnm.Print_Titles" table:bases-cell-address="$%s.$A$1" table:expression="%s" />',
-      [ASheet.Name, srng]
+      [sheet.Name, srng]
     );
   end;
    }
@@ -5759,20 +5795,24 @@ begin
   end;
 end;
 
-procedure TsSpreadOpenDocWriter.WriteRowsAndCells(AStream: TStream; ASheet: TsWorksheet);
+procedure TsSpreadOpenDocWriter.WriteRowsAndCells(AStream: TStream;
+  ASheet: TsBasicWorksheet);
 var
   r: Integer;
   rowsRepeated: Integer;
   firstCol, firstRow, lastCol, lastRow: Cardinal;
   firstRepeatedPrintRow, lastRepeatedPrintRow: Integer;
   headerRows: Boolean;
+  sheet: TsWorksheet;
 begin
+  sheet := (ASheet as TsWorksheet);
+
   // some abbreviations...
   GetSheetDimensions(ASheet, firstRow, lastRow, firstCol, lastCol);
 
   headerRows := false;
-  firstRepeatedPrintRow := Integer(ASheet.PageLayout.RepeatedRows.FirstIndex);
-  lastRepeatedPrintRow := Integer(ASheet.PageLayout.RepeatedRows.LastIndex);
+  firstRepeatedPrintRow := Integer(sheet.PageLayout.RepeatedRows.FirstIndex);
+  lastRepeatedPrintRow := Integer(sheet.PageLayout.RepeatedRows.LastIndex);
   if (firstRepeatedPrintRow <> Integer(UNASSIGNED_ROW_COL_INDEX)) and
      (lastRepeatedPrintRow = Integer(UNASSIGNED_ROW_COL_INDEX))
   then
@@ -5787,7 +5827,7 @@ begin
     end;
 
     // Write rows
-    if ASheet.IsEmptyRow(r) then
+    if sheet.IsEmptyRow(r) then
       WriteEmptyRow(AStream, ASheet, r, firstCol, lastCol, lastRow, rowsRepeated)
     else begin
       WriteCellRow(AStream, ASheet, r, lastCol);
@@ -6041,7 +6081,7 @@ end;
 *)
 
 procedure TsSpreadOpenDocWriter.WriteCellRow(AStream: TStream;
-  ASheet: TsWorksheet; ARowIndex, ALastColIndex: Integer);
+  ASheet: TsBasicWorksheet; ARowIndex, ALastColIndex: Integer);
 var
   row: PRow;
   col: PCol;
@@ -6053,9 +6093,10 @@ var
   c, cc: integer;
   colsRepeated: Integer;
   fmtIndex: integer;
+  sheet: TsWorksheet absolute ASheet;
 begin
   // Get row
-  row := ASheet.FindRow(ARowIndex);
+  row := sheet.FindRow(ARowIndex);
 
   // Get style and height of row
   GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
@@ -6065,18 +6106,18 @@ begin
     '<table:table-row table:style-name="%s">', [stylename]));
 
   // Find first cell or column in this row
-  cell := ASheet.Cells.GetFirstCellOfRow(ARowIndex);  // first cell
-  col := ASheet.FindFirstCol;   // left-most column
+  cell := sheet.Cells.GetFirstCellOfRow(ARowIndex);  // first cell
+  col := sheet.FindFirstCol;   // left-most column
   if col <> nil then
     firstcol := Min(col^.Col, cell^.Col) else
     firstcol := cell^.Col;
 
   // Find last cell or column in this row
-  cell := ASheet.Cells.GetlastCellOfRow(ARowIndex);
-  if ASheet.Cols.Count = 0 then
+  cell := sheet.Cells.GetlastCellOfRow(ARowIndex);
+  if sheet.Cols.Count = 0 then
     lastCol := cell^.Col
   else begin
-    col := ASheet.Cols[ASheet.Cols.Count-1];
+    col := sheet.Cols[sheet.Cols.Count-1];
     if col <> nil then
       lastcol := Max(col^.Col, cell^.Col) else
       lastCol := cell^.Col;
@@ -6091,11 +6132,11 @@ begin
   c := firstcol;
   while (c <= lastcol) do
   begin
-    cell := ASheet.FindCell(ARowIndex, c);
+    cell := sheet.FindCell(ARowIndex, c);
     if cell <> nil then
     begin
       // Belongs to merged block?
-      if not FWorksheet.IsMergeBase(cell) and FWorksheet.IsMerged(cell) then
+      if not sheet.IsMergeBase(cell) and sheet.IsMerged(cell) then
       // this means: all cells of a merged block except for the merge base
       begin
         AppendToStream(AStream,
@@ -6110,7 +6151,7 @@ begin
     end;
 
     // Column format
-    col := ASheet.FindCol(c);
+    col := sheet.FindCol(c);
     if (col <> nil) and (col^.FormatIndex > 0) then
     begin
       // row format has priority...
@@ -6126,10 +6167,10 @@ begin
     // Empty cell
     cc := c + 1;
     while (cc <= lastcol) do begin
-      cell := ASheet.FindCell(ARowIndex, cc);
+      cell := sheet.FindCell(ARowIndex, cc);
       if cell <> nil then
         break;
-      col := ASheet.FindCol(cc);
+      col := sheet.FindCol(cc);
       if (col <> nil) and (col^.FormatIndex > 0) then
         break;
       inc(cc);
@@ -6175,7 +6216,8 @@ end;
   handles row and column formats.
   If ALastRowIndex = -1 then the filler rows below the used sheet are written }
 procedure TsSpreadOpenDocWriter.WriteEmptyRow(AStream: TStream;
-  ASheet: TsWorksheet; ARowIndex, AFirstColIndex, ALastColIndex, ALastRowIndex: Integer;
+  ASheet: TsBasicWorksheet;
+  ARowIndex, AFirstColIndex, ALastColIndex, ALastRowIndex: Integer;
   out ARowsRepeated: Integer);
 var
   row: PRow;
@@ -6185,12 +6227,13 @@ var
   stylename: String;
   h, h1: Single;
   fmtIndex: Integer;
+  sheet: TsWorksheet absolute ASheet;
 begin
   // Get style and height of row
   GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
 
   // Determine how often this row is repeated
-  row := ASheet.FindRow(ARowIndex);
+  row := sheet.FindRow(ARowIndex);
   // Rows with format are not repeated - too complicated...
   if (row <> nil) and (row^.FormatIndex > 0) then
     ARowsRepeated := 1
@@ -6200,12 +6243,12 @@ begin
     r := ARowIndex + 1;
     while r <= ALastRowIndex do
     begin
-      if not ASheet.IsEmptyRow(r) then
+      if not sheet.IsEmptyRow(r) then
         break;
-      row := ASheet.FindRow(r);
+      row := sheet.FindRow(r);
       if (row <> nil) and (row^.FormatIndex > 0) then
         break;
-      h1 := ASheet.GetRowHeight(r, FWorkbook.Units);
+      h1 := sheet.GetRowHeight(r, FWorkbook.Units);
       if not SameValue(h, h1, ROWHEIGHT_EPS) then
         break;
       inc(r);
@@ -6234,11 +6277,11 @@ begin
   r := ARowIndex;
   c := AFirstColIndex;
 
-  row := ASheet.FindRow(r);
+  row := sheet.FindRow(r);
   while (c <= ALastColIndex) do
   begin
     // Empty cell in a column with a column format
-    col := ASheet.FindCol(c);
+    col := sheet.FindCol(c);
     if (col <> nil) and (col^.FormatIndex > 0) then
     begin
       if (row <> nil) and (row^.FormatIndex > 0) then
@@ -6255,7 +6298,7 @@ begin
     cc := c + 1;
     while (cc <= ALastColIndex) do
     begin
-      col := ASheet.FindCol(cc);
+      col := sheet.FindCol(cc);
       if (col <> nil) and (col^.FormatIndex > 0) then
         break;
       inc(cc);
@@ -6293,7 +6336,7 @@ begin
     '</table:table-row>');
 end;
 
-procedure TsSpreadOpenDocWriter.GetRowStyleAndHeight(ASheet: TsWorksheet;
+procedure TsSpreadOpenDocWriter.GetRowStyleAndHeight(ASheet: TsBasicWorksheet;
   ARowIndex: Integer; out AStyleName: String; out AHeight: Single);
 var
   row: PRow;
@@ -6301,7 +6344,7 @@ var
   k: Integer;
 begin
   AStyleName := '';
-  row := ASheet.FindRow(ARowIndex);
+  row := (ASheet as TsWorksheet).FindRow(ARowIndex);
   if row <> nil then
   begin
     AHeight := row^.Height;    // row height in workbook units
@@ -6319,7 +6362,7 @@ begin
   end;
   if AStyleName = '' then begin
     AStyleName := 'ro1';   // "ro1" is default row record - see ListAllRowStyles
-    AHeight := ASheet.ReadDefaultRowHeight(FWorkbook.Units);
+    AHeight := (ASheet as TsWorksheet).ReadDefaultRowHeight(FWorkbook.Units);
   end;
 end;
 
@@ -6337,7 +6380,7 @@ begin
         '<style:table-row-properties style:row-height="%.3fmm" ' +
           'fo:break-before="auto" style:use-optimal-row-height="true"/>' +
       '</style:style>',
-      [FWorksheet.ReadDefaultRowHeight(suMillimeters)]
+      [(FWorksheet as TsWorksheet).ReadDefaultRowHeight(suMillimeters)]
     ));
     exit;
   end;
@@ -6353,7 +6396,7 @@ begin
     // Row height
     AppendToStream(AStream, Format(
       '<style:table-row-properties style:row-height="%.3fmm" ',
-        [FWorkbook.ConvertUnits(rowStyle.RowHeight, FWorkbook.Units, suMillimeters)],
+        [TsWorkbook(FWorkbook).ConvertUnits(rowStyle.RowHeight, FWorkbook.Units, suMillimeters)],
         FPointSeparatorSettings));
     AppendToStream(AStream, Format(
         'style:use-optimal-row-height="%s" ', [FALSE_TRUE[rowstyle.RowHeightType <> rhtCustom]]));
@@ -6367,7 +6410,7 @@ begin
 end;
 
 
-constructor TsSpreadOpenDocWriter.Create(AWorkbook: TsWorkbook);
+constructor TsSpreadOpenDocWriter.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
 
@@ -6455,27 +6498,29 @@ var
   comment: String;
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
+  sheet: TsWorksheet;
 begin
   Unused(ARow, ACol);
+  sheet := FWorksheet as TsWorksheet;
 
   // Hyperlink
-  if FWorksheet.HasHyperlink(ACell) then
+  if sheet.HasHyperlink(ACell) then
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   // Comment
-  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
+  comment := WriteCommentXMLAsString(sheet.ReadComment(ACell));
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then
+  if sheet.IsMergeBase(ACell) then
   begin
-    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    sheet.FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
     spannedStr := colsSpannedStr + rowsSpannedStr;
   end else
     spannedStr := '';
 
-  fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
+  fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
   if (fmt.UsedFormattingFields <> []) then
     AppendToStream(AStream, Format(
       '<table:table-cell table:style-name="ce%d"%s>', [ACell^.FormatIndex, spannedStr]),
@@ -6508,19 +6553,19 @@ begin
 
   valType := 'boolean';
 
-  fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
+  fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
   if fmt.UsedFormattingFields <> [] then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
+  comment := WriteCommentXMLAsString((FWorksheet as TsWorksheet).ReadComment(ACell));
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then
+  if (FWorksheet as TsWorksheet).IsMergeBase(ACell) then
   begin
-    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    (FWorksheet as TsWorksheet).FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format('table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format('table:number-columns-spanned="%d"', [c2 - c1 + 1]);
     spannedStr := colsSpannedStr + ' ' + rowsSpannedStr;
@@ -6698,7 +6743,7 @@ function TsSpreadOpenDocWriter.WriteDefaultFontXMLAsString: String;
 var
   fnt: TsFont;
 begin
-  fnt := Workbook.GetDefaultFont;
+  fnt := (Workbook as TsWorkbook).GetDefaultFont;
   Result := Format(
     '<style:text-properties style:font-name="%s" fo:font-size="%.1fpt" />',
     [fnt.FontName, fnt.Size], FPointSeparatorSettings
@@ -6734,7 +6779,7 @@ var
 begin
   if bpLockStructure in Workbook.Protection then
   begin
-    cinfo := Workbook.CryptoInfo;
+    cinfo := (Workbook as TsWorkbook).CryptoInfo;
     if cinfo.PasswordHash <> '' then
       pwd := Format(' table:protection-key="%s"', [cinfo.PasswordHash])
     else
@@ -6760,22 +6805,25 @@ var
   spannedStr: String;
   valueStr: String;
   r1,c1,r2,c2: Cardinal;
+  sheet: TsWorksheet;
 begin
   Unused(ARow, ACol, AValue);
 
-  fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  sheet := FWorksheet as TsWorksheet;
+
+  fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(ACell^.FormatIndex);
   if fmt^.UsedFormattingFields <> [] then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
+  comment := WriteCommentXMLAsString(sheet.ReadComment(ACell));
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then
+  if sheet.IsMergeBase(ACell) then
   begin
-    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    sheet.FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
     spannedStr := colsSpannedStr + rowsSpannedStr;
@@ -6786,8 +6834,8 @@ begin
   valueStr := GetErrorValueStr(ACell^.ErrorValue);
 
   // Hyperlink
-  if FWorksheet.HasHyperlink(ACell) then
-    FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
+  if sheet.HasHyperlink(ACell) then
+    (FWorkbook as TsWorkbook).AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   // Write to stream
   AppendToStream(AStream, Format(
@@ -6822,7 +6870,7 @@ var
 begin
   Result := '';
 
-  defFnt := Workbook.GetDefaultFont;
+  defFnt := (Workbook as TsWorkbook).GetDefaultFont;
   if AFont = nil then AFont := defFnt;
 
   Result := Result + Format('style:font-name="%s" ', [AFont.FontName]);
@@ -6857,7 +6905,7 @@ function TsSpreadOpenDocWriter.WriteFontStyleXMLAsString(
 begin
   Result := '';
   if (uffFont in AFormat.UsedFormattingFields) then
-    Result := WriteFontStyleXMLAsString(Workbook.GetFont(AFormat.FontIndex));
+    Result := WriteFontStyleXMLAsString((Workbook as TsWorkbook).GetFont(AFormat.FontIndex));
 end;
 
 function TsSpreadOpenDocWriter.WriteHeaderFooterFontXMLAsString(
@@ -7038,21 +7086,23 @@ begin
     '</style:page-layout>';
 end;
 
-function TsSpreadOpenDocWriter.WritePrintRangesXMLAsString(ASheet: TsWorksheet): String;
+function TsSpreadOpenDocWriter.WritePrintRangesXMLAsString(
+  ASheet: TsBasicWorksheet): String;
 var
   i: Integer;
   rng: TsCellRange;
   sheetName: String;
+  sheet: TsWorksheet absolute ASheet;
 begin
   Result := '';
-  if ASheet.PageLayout.NumPrintRanges > 0 then
+  if sheet.PageLayout.NumPrintRanges > 0 then
   begin
-    for i := 0 to ASheet.PageLayout.NumPrintRanges - 1 do
+    for i := 0 to sheet.PageLayout.NumPrintRanges - 1 do
     begin
-      rng := ASheet.PageLayout.PrintRange[i];
+      rng := sheet.PageLayout.PrintRange[i];
       if pos(' ', ASheet.Name) > 0 then
-        sheetName := '&apos;' + UTF8TextToXMLText(ASheet.Name) + '&apos;' else
-        sheetname := UTF8TextToXMLText(ASheet.Name);
+        sheetName := '&apos;' + UTF8TextToXMLText(sheet.Name) + '&apos;' else
+        sheetname := UTF8TextToXMLText(sheet.Name);
       Result := Result + ' ' + Format('%s.%s:%s.%s', [
         sheetName, GetCellString(rng.Row1,rng.Col1),
         sheetName, GetCellString(rng.Row2,rng.Col2)
@@ -7067,19 +7117,20 @@ begin
 end;
 
 function TsSpreadOpenDocWriter.WriteSheetProtectionXMLAsString(
-  ASheet: TsWorksheet): String;
+  ASheet: TsBasicWorksheet): String;
 {table:protected="true" table:protection-key="h/jtkVcSX/xNqeBqe4ARrYClP+E=" table:protection-key-digest-algorithm="http://www.w3.org/2000/09/xmldsig#sha1"}
 var
   pwd: String;
   algo: String;
+  sheet: TsWorksheet absolute ASheet;
 begin
   Result := '';
   if ASheet.IsProtected then
   begin
-    if ASheet.CryptoInfo.PasswordHash <> '' then
-      pwd := ' table:protection-key="' + ASheet.CryptoInfo.PasswordHash + '"' else
+    if sheet.CryptoInfo.PasswordHash <> '' then
+      pwd := ' table:protection-key="' + sheet.CryptoInfo.PasswordHash + '"' else
       pwd := '';
-    algo := AlgorithmToStr(ASheet.CryptoInfo.Algorithm, auOpenDocument);
+    algo := AlgorithmToStr(sheet.CryptoInfo.Algorithm, auOpenDocument);
     if algo <> '' then
       algo := ' table:protection-key-digest-algorithm="%s"';
     Result := ' table:protected="true"' + pwd + algo;
@@ -7087,7 +7138,7 @@ begin
 end;
 
 function TsSpreadOpenDocWriter.WriteSheetProtectionDetailsXMLAsString(
-  ASheet: TsWorksheet): String;
+  ASheet: TsBasicWorksheet): String;
 // <loext:table-protection loext:select-unprotected-cells="true" />
 begin
   Result := '';
@@ -7102,7 +7153,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteShapes(AStream: TStream;
-  ASheet: TsWorksheet);
+  ASheet: TsBasicWorksheet);
 {
 <table:shapes>
   <draw:frame draw:z-index="0" draw:name="Bild 1" draw:style-name="gr1" draw:text-style-name="P1"
@@ -7121,20 +7172,20 @@ var
   roffs1,coffs1, roffs2, coffs2: Double;
   x, y, w, h: Double;
 begin
-  if ASheet.GetImageCount = 0 then
+  if (ASheet as TsWorksheet).GetImageCount = 0 then
     exit;
 
   AppendToStream(AStream,
     '<table:shapes>');
 
-  for i:=0 to ASheet.GetImageCount-1 do
+  for i:=0 to (ASheet as TsWorksheet).GetImageCount-1 do
   begin
-    img := ASheet.GetImage(i);
-    imgType := FWorkbook.GetEmbeddedObj(img.Index).ImageType;
+    img := (ASheet as TsWorksheet).GetImage(i);
+    imgType := (FWorkbook as TsWorkbook).GetEmbeddedObj(img.Index).ImageType;
     if imgType = itUnknown then
       Continue;
 
-    ASheet.CalcImageExtent(i, false,   // not clear if UsePixels=false is correct. Not harmful at least
+    (ASheet as TsWorksheet).CalcImageExtent(i, false,  // not clear if UsePixels=false is correct. Not harmful at least
       r1, c1, r2, c2,
       roffs1, coffs1, roffs2, coffs2,  // mm
       x, y, w, h);                     // mm
@@ -7171,9 +7222,9 @@ var
   zoom: String;
 begin
   zoom := '100';
-  for i:=0 to Workbook.GetWorksheetCount-1 do
+  for i:=0 to (Workbook as TsWorkbook).GetWorksheetCount-1 do
   begin
-    sheet := Workbook.GetWorksheetByIndex(i);
+    sheet := (Workbook as TsWorkbook).GetWorksheetByIndex(i);
     sheetname := UTF8TextToXMLText(sheet.Name);
 
     AppendToStream(AStream,
@@ -7249,9 +7300,9 @@ var
   sheet: TsWorksheet;
   sheetname, bidi: String;
 begin
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do
+  for i:=0 to (FWorkbook as TsWorkbook).GetWorksheetCount-1 do
   begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(i);
     sheetname := UTF8TextToXMLText(sheet.Name);
     case sheet.BiDiMode of
       bdDefault: bidi := '';
@@ -7301,9 +7352,9 @@ var
   i: Integer;
 begin
   styleCounter := 0;
-  for i := 0 to FWorkbook.GetWorksheetCount-1 do
+  for i := 0 to (FWorkbook as TsWorkbook).GetWorksheetCount-1 do
   begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(i);
     for cell in sheet.Cells do
     begin
       if Length(cell^.RichTextParams) = 0 then
@@ -7312,7 +7363,7 @@ begin
       begin
         inc(styleCounter);
         stylename := Format('T%d', [stylecounter]);
-        fnt := FWorkbook.GetFont(rtp.FontIndex);
+        fnt := (FWorkbook as TsWorkbook).GetFont(rtp.FontIndex);
         FRichTextFontList.AddObject(stylename, fnt);
         fntStr := WriteFontStyleXMLAsString(fnt);
         AppendToStream(AStream,
@@ -7363,7 +7414,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteVirtualCells(AStream: TStream;
-  ASheet: TsWorksheet);
+  ASheet: TsBasicWorksheet);
 var
   r, c, cc: Cardinal;
   lCell: TCell;
@@ -7378,24 +7429,25 @@ var
   colsRepeated: Cardinal;
   colsRepeatedStr: String;
   lastCol, lastRow: Cardinal;
+  sheet: TsWorksheet absolute ASheet;
 begin
-  if ASheet.VirtualColCount = 0 then
+  if sheet.VirtualColCount = 0 then
     exit;
-  if ASheet.VirtualRowCount = 0 then
+  if sheet.VirtualRowCount = 0 then
     exit;
-  if not Assigned(ASheet.OnWriteCellData) then
+  if not Assigned(sheet.OnWriteCellData) then
     exit;
 
   // some abbreviations...
-  lastCol := LongInt(ASheet.VirtualColCount) - 1;
-  lastRow := LongInt(ASheet.VirtualRowCount) - 1;
+  lastCol := LongInt(sheet.VirtualColCount) - 1;
+  lastRow := LongInt(sheet.VirtualRowCount) - 1;
 
   rowsRepeated := 1;
   r := 0;
   while (r <= lastRow) do
   begin
     // Look for the row style of the current row (r)
-    row := ASheet.FindRow(r);
+    row := sheet.FindRow(r);
     if row = nil then
       styleName := 'ro1'
     else
@@ -7435,7 +7487,7 @@ begin
       value := varNull;
       styleCell := nil;
 
-      ASheet.OnWriteCellData(ASheet, r, c, value, styleCell);
+      sheet.OnWriteCellData(sheet, r, c, value, styleCell);
 
       if VarIsNull(value) then
       begin
@@ -7446,7 +7498,7 @@ begin
           InitCell(ASheet, r, cc, lCell);
           value := varNull;
           styleCell := nil;
-          ASheet.OnWriteCellData(ASheet, r, cc, value, styleCell);
+          sheet.OnWriteCellData(sheet, r, cc, value, styleCell);
           if not VarIsNull(value) then
             break;
           inc(cc);
@@ -7524,24 +7576,27 @@ var
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
   ignoreFormulas: Boolean;
+  sheet: TsWorksheet;
 begin
   Unused(ARow, ACol);
   ignoreFormulas := (boIgnoreFormulas in FWorkbook.Options);
 
+  sheet := FWorksheet as TsWorksheet;
+
   // Style
-  fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
+  fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
   if fmt.UsedFormattingFields <> [] then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
   else
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
+  comment := WriteCommentXMLAsString(sheet.ReadComment(ACell));
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then
+  if sheet.IsMergeBase(ACell) then
   begin
-    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    sheet.FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
     spannedStr := colsSpannedStr + rowsSpannedStr;
@@ -7549,7 +7604,7 @@ begin
     spannedStr := '';
 
   // Hyperlink
-  if FWorksheet.HasHyperlink(ACell) then
+  if sheet.HasHyperlink(ACell) then
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   // Formula string
@@ -7624,7 +7679,7 @@ begin
 
   { We are writing a very rudimentary formula here without result and result
     data type. Seems to work... }
-  if not ignoreFormulas or (FWorksheet.GetCalcState(ACell) = csCalculated) then
+  if not ignoreFormulas or (sheet.GetCalcState(ACell) = csCalculated) then
     AppendToStream(AStream, Format(
       '<table:table-cell table:formula="%s" office:value-type="%s"%s%s%s>' +
         comment +
@@ -7669,6 +7724,7 @@ var
   rtParam: TsRichTextParam;
   wideStr, txt: WideString;
   ch: WideChar;
+  sheet: TsWorksheet;
 
   function IsNewLine(var idx: Integer): Boolean;
   begin
@@ -7710,20 +7766,22 @@ var
 begin
   Unused(ARow, ACol);
 
+  sheet := FWorksheet as TsWorksheet;
+
   // Style
-  fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
+  fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
   if fmt.UsedFormattingFields <> [] then
     lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '"'
   else
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
+  comment := WriteCommentXMLAsString(sheet.ReadComment(ACell));
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then
+  if sheet.IsMergeBase(ACell) then
   begin
-    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    sheet.FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
     spannedStr := colsSpannedStr + rowsSpannedStr;
@@ -7739,9 +7797,9 @@ begin
     ]);
 
   // Hyperlink?
-  if FWorksheet.HasHyperlink(ACell) then
+  if sheet.HasHyperlink(ACell) then
   begin
-    hyperlink := FWorksheet.FindHyperlink(ACell);
+    hyperlink := sheet.FindHyperlink(ACell);
     SplitHyperlink(hyperlink^.Target, target, bookmark);
 
     if (target <> '') and (pos('file:', target) = 0) then
@@ -7816,7 +7874,7 @@ begin
       begin
         // Formatted parts of the string according the RichTextParams
         rtParam := ACell^.RichTextParams[i];
-        fnt := FWorkbook.GetFont(rtParam.FontIndex);
+        fnt := (FWorkbook as TsWorkbook).GetFont(rtParam.FontIndex);
         fntidx := FRichTextFontList.IndexOfObject(fnt);
         fntName := FRichTextFontList[fntIdx];
         if i < High(ACell^.RichTextParams) then
@@ -7867,10 +7925,10 @@ begin
   Unused(ARow, ACol);
 
   valType := 'float';
-  fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
+  fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
   if fmt.UsedFormattingFields <> [] then
   begin
-    numFmt := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
+    numFmt := (FWorkbook as TsWorkbook).GetNumberFormat(fmt.NumberFormatIndex);
     if (numFmt <> nil) then begin
       if (Length(numFmt.Sections) > 1) and (AValue < 0) then
         nfSection := numFmt.Sections[1]
@@ -7890,12 +7948,12 @@ begin
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
+  comment := WriteCommentXMLAsString((FWorksheet as TsWorksheet).ReadComment(ACell));
 
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then
+  if (FWorksheet as TsWorksheet).IsMergeBase(ACell) then
   begin
-    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    (FWorksheet as TsWorksheet).FindMergedRange(ACell, r1, c1, r2, c2);
     rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
     spannedStr := colsSpannedStr + rowsSpannedStr;
@@ -7909,7 +7967,7 @@ begin
     DisplayStr := '1.#INF';
   end else begin
     StrValue := FloatToStr(AValue, FPointSeparatorSettings); // Uses '.' as decimal separator
-    DisplayStr := FWorksheet.ReadAsText(ACell); //FloatToStr(AValue); // Uses locale decimal separator
+    DisplayStr := (FWorksheet as TsWorksheet).ReadAsText(ACell); //FloatToStr(AValue); // Uses locale decimal separator
   end;
 
   // Hyperlink
@@ -7948,28 +8006,31 @@ var
   fmt: TsCellFormat;
   numFmtParams: TsNumFormatParams;
   h,m,s,ms: Word;
+  sheet: TsWorksheet;
 begin
   Unused(ARow, ACol);
 
+  sheet := FWorksheet as TsWorksheet;
+
   // Merged?
-  if FWorksheet.IsMergeBase(ACell) then
+  if sheet.IsMergeBase(ACell) then
   begin
-    FWorksheet.FindMergedRange(ACell, r1, c1, r2, c2);
+    sheet.FindMergedRange(ACell, r1, c1, r2, c2);
     colsSpannedStr := Format(' table:number-columns-spanned="%d"', [c2 - c1 + 1]);
     rowsSpannedStr := Format(' table:number-rows-spanned="%d"', [r2 - r1 + 1]);
     spannedStr := colsSpannedStr + rowsSpannedStr;
   end else
     spannedStr := '';
 
-  fmt := FWorkbook.GetCellFormat(ACell^.FormatIndex);
-  numFmtParams := FWorkbook.GetNumberFormat(fmt.NumberFormatIndex);
+  fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
+  numFmtParams := (FWorkbook as TsWorkbook).GetNumberFormat(fmt.NumberFormatIndex);
   if fmt.UsedFormattingFields <> [] then
     lStyle := Format(' table:style-name="ce%d"', [ACell^.FormatIndex])
   else
     lStyle := '';
 
   // Comment
-  comment := WriteCommentXMLAsString(FWorksheet.ReadComment(ACell));
+  comment := WriteCommentXMLAsString(sheet.ReadComment(ACell));
 
   // Hyperlink
   if FWorksheet.HasHyperlink(ACell) then
@@ -7982,7 +8043,7 @@ begin
     DecodeTime(AValue, h,m,s,ms);
     strValue := Format('PT%.2dH%.2dM%.2d.%.3dS', [trunc(AValue)*24+h, m, s, ms], FPointSeparatorSettings);
 //    strValue := FormatDateTime(ISO8601FormatHoursOverflow, AValue, [fdoInterval]);
-    displayStr := FWorksheet.ReadAsText(ACell);
+    displayStr := sheet.ReadAsText(ACell);
 //    displayStr := FormatDateTime(fmt.NumberFormatStr, AValue, [fdoInterval]);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="time" office:time-value="%s"%s%s>' +
@@ -8015,7 +8076,7 @@ begin
       end;
       strValue := strValue + 'S';
     end;
-    displayStr := FWorksheet.ReadAsText(ACell);
+    displayStr := sheet.ReadAsText(ACell);
     AppendToStream(AStream, Format(
       '<table:table-cell office:value-type="%s" office:%s-value="%s" %s %s>' +
         comment +

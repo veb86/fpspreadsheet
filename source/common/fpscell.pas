@@ -6,7 +6,7 @@ unit fpsCell;
 interface
 
 uses
-  Classes, SysUtils, fpstypes, fpspreadsheet;
+  Classes, SysUtils, fpstypes;
 
 type
   TCellHelper = record helper for TCell
@@ -46,8 +46,7 @@ type
     procedure SetWordwrap(const AValue: Boolean);
 
   protected
-    function GetWorkbook: TsWorkbook; inline;
-    function GetWorksheet: TsWorksheet; inline;
+    function GetWorkbook: TsBasicWorkbook; inline;
 
   public
     property BackgroundColor: TsColor
@@ -83,74 +82,77 @@ type
       read GetVertAlignment write SetVertAlignment;
     property Wordwrap: Boolean
       read GetWordwrap write SetWordwrap;
-    property Workbook: TsWorkbook read GetWorkbook;
+    property Workbook: TsBasicWorkbook read GetWorkbook;
   end;
 
 implementation
 
+uses
+  fpspreadsheet;
+
 function TCellHelper.GetBackgroundColor: TsColor;
 begin
-  Result := GetWorksheet.ReadBackgroundColor(@self);
+  Result := (Worksheet as TsWorksheet).ReadBackgroundColor(@self);
 end;
 
 function TCellHelper.GetBiDiMode: TsBiDiMode;
 begin
-  Result := GetWorksheet.ReadBiDiMode(@self);
+  Result := (Worksheet as TsWorksheet).ReadBiDiMode(@self);
 end;
 
 function TCellHelper.GetBorder: TsCellBorders;
 begin
-  Result := GetWorksheet.ReadCellBorders(@self);
+  Result := (Worksheet as TsWorksheet).ReadCellBorders(@self);
 end;
 
 function TCellHelper.GetBorderStyle(const ABorder: TsCellBorder): TsCellBorderStyle;
 begin
-  Result := GetWorksheet.ReadCellBorderStyle(@self, ABorder);
+  Result := (Worksheet as TsWorksheet).ReadCellBorderStyle(@self, ABorder);
 end;
 
 function TCellHelper.GetBorderStyles: TsCellBorderStyles;
 begin
-  Result := GetWorksheet.ReadCellBorderStyles(@self);
+  Result := (Worksheet as TsWorksheet).ReadCellBorderStyles(@self);
 end;
 
 function TCellHelper.GetCellFormat: TsCellFormat;
 begin
-  Result := GetWorkbook.GetCellFormat(FormatIndex);
+  Result := (GetWorkbook as TsWorkbook).GetCellFormat(FormatIndex);
 end;
 
 function TCellHelper.GetComment: String;
 begin
-  Result := GetWorksheet.ReadComment(@self);
+  Result := (Worksheet as TsWorksheet).ReadComment(@self);
 end;
 
 function TCellHelper.GetFont: TsFont;
 begin
-  Result := GetWorksheet.ReadCellFont(@self);
+  Result := (Worksheet as TsWorksheet).ReadCellFont(@self);
 end;
 
 function TCellHelper.GetFontIndex: Integer;
 var
   fmt: PsCellFormat;
 begin
-  fmt := Workbook.GetPointerToCellFormat(FormatIndex);
+  fmt := (Workbook as TsWorkbook).GetPointerToCellFormat(FormatIndex);
   Result := fmt^.FontIndex;
 end;
 
 function TCellHelper.GetHorAlignment: TsHorAlignment;
 begin
-  Result := GetWorksheet.ReadHorAlignment(@Self);
+  Result := (Worksheet as TsWorksheet).ReadHorAlignment(@Self);
 end;
 
 function TCellHelper.GetHyperlink: TsHyperlink;
 begin
-  Result := GetWorksheet.ReadHyperlink(@self);
+  Result := (Worksheet as TsWorksheet).ReadHyperlink(@self);
 end;
 
 function TCellHelper.GetNumberFormat: TsNumberFormat;
 var
   fmt: PsCellFormat;
 begin
-  fmt := Workbook.GetPointerToCellFormat(FormatIndex);
+  fmt := (Workbook as TsWorkbook).GetPointerToCellFormat(FormatIndex);
   Result := fmt^.NumberFormat;
 end;
 
@@ -158,127 +160,122 @@ function TCellHelper.GetNumberFormatStr: String;
 var
   fmt: PsCellFormat;
 begin
-  fmt := Workbook.GetPointerToCellFormat(FormatIndex);
+  fmt := (Workbook as TsWorkbook).GetPointerToCellFormat(FormatIndex);
   Result := fmt^.NumberFormatStr;
 end;
 
 function TCellHelper.GetTextRotation: TsTextRotation;
 begin
-  Result := GetWorksheet.ReadTextRotation(@Self);
+  Result := (Worksheet as TsWorksheet).ReadTextRotation(@Self);
 end;
 
 function TCellHelper.GetUsedFormattingFields: TsUsedFormattingFields;
 begin
-  Result := GetWorksheet.ReadUsedFormatting(@Self);
+  Result := (Worksheet as TsWorksheet).ReadUsedFormatting(@Self);
 end;
 
 function TCellHelper.GetVertAlignment: TsVertAlignment;
 begin
-  Result := GetWorksheet.ReadVertAlignment(@self);
+  Result := (Worksheet as TsWorksheet).ReadVertAlignment(@self);
 end;
 
 function TCellHelper.GetWordwrap: Boolean;
 begin
-  Result := GetWorksheet.ReadWordwrap(@self);
+  Result := (Worksheet as TsWorksheet).ReadWordwrap(@self);
 end;
 
-function TCellHelper.GetWorkbook: TsWorkbook;
+function TCellHelper.GetWorkbook: TsBasicWorkbook;
 begin
-  Result := GetWorksheet.Workbook;
-end;
-
-function TCellHelper.GetWorksheet: TsWorksheet;
-begin
-  Result := TsWorksheet(Worksheet);
+  Result := (Worksheet as TsWorksheet).Workbook;
 end;
 
 procedure TCellHelper.SetBackgroundColor(const AValue: TsColor);
 begin
-  GetWorksheet.WriteBackgroundColor(@self, AValue);
+  (Worksheet as TsWorksheet).WriteBackgroundColor(@self, AValue);
 end;
 
 procedure TCellHelper.SetBiDiMode(const AValue: TsBiDiMode);
 begin
-  GetWorksheet.WriteBiDiMode(@self, AValue);
+  (Worksheet as TsWorksheet).WriteBiDiMode(@self, AValue);
 end;
 
 procedure TCellHelper.SetBorder(const AValue: TsCellBorders);
 begin
-  GetWorksheet.WriteBorders(@self, AValue);
+  (Worksheet as TsWorksheet).WriteBorders(@self, AValue);
 end;
 
 procedure TCellHelper.SetBorderStyle(const ABorder: TsCellBorder;
   const AValue: TsCellBorderStyle);
 begin
-  GetWorksheet.WriteBorderStyle(@self, ABorder, AValue);
+  (Worksheet as TsWorksheet).WriteBorderStyle(@self, ABorder, AValue);
 end;
 
 procedure TCellHelper.SetBorderStyles(const AValue: TsCellBorderStyles);
 begin
-  GetWorksheet.WriteBorderStyles(@self, AValue);
+  (Worksheet as TsWorksheet).WriteBorderStyles(@self, AValue);
 end;
 
 procedure TCellHelper.SetCellFormat(const AValue: TsCellFormat);
 begin
-  GetWorksheet.WriteCellFormat(@self, AValue);
+  (Worksheet as TsWorksheet).WriteCellFormat(@self, AValue);
 end;
 
 procedure TCellHelper.SetComment(const AValue: String);
 begin
-  GetWorksheet.WriteComment(@self, AValue);
+  (Worksheet as TsWorksheet).WriteComment(@self, AValue);
 end;
 
 procedure TCellHelper.SetFontIndex(const AValue: Integer);
 begin
-  GetWorksheet.WriteFont(@self, AValue);
+  (Worksheet as TsWorksheet).WriteFont(@self, AValue);
 end;
 
 procedure TCellHelper.SetHorAlignment(const AValue: TsHorAlignment);
 begin
-  GetWorksheet.WriteHorAlignment(@self, AValue);
+  (Worksheet as TsWorksheet).WriteHorAlignment(@self, AValue);
 end;
 
 procedure TCellHelper.SetHyperlink(const AValue: TsHyperlink);
 begin
-  GetWorksheet.WriteHyperlink(@self, AValue.Target, AValue.Tooltip);
+  (Worksheet as TsWorksheet).WriteHyperlink(@self, AValue.Target, AValue.Tooltip);
 end;
 
 procedure TCellHelper.SetNumberFormat(const AValue: TsNumberFormat);
 var
   fmt: TsCellFormat;
 begin
-  fmt := Workbook.GetCellFormat(FormatIndex);
+  fmt := (Workbook as TsWorkbook).GetCellFormat(FormatIndex);
   fmt.NumberFormat := AValue;
-  GetWorksheet.WriteCellFormat(@self, fmt);
+  (Worksheet as TsWorksheet).WriteCellFormat(@self, fmt);
 end;
 
 procedure TCellHelper.SetNumberFormatStr(const AValue: String);
 var
   fmt: TsCellFormat;
 begin
-  fmt := Workbook.GetCellFormat(FormatIndex);
+  fmt := (Workbook as TsWorkbook).GetCellFormat(FormatIndex);
   fmt.NumberFormatStr := AValue;
-  GetWorksheet.WriteCellFormat(@self, fmt);
+  (Worksheet as TsWorksheet).WriteCellFormat(@self, fmt);
 end;
 
 procedure TCellHelper.SetTextRotation(const AValue: TsTextRotation);
 begin
-  GetWorksheet.WriteTextRotation(@self, AValue);
+  (Worksheet as TsWorksheet).WriteTextRotation(@self, AValue);
 end;
 
 procedure TCellHelper.SetUsedFormattingFields(const AValue: TsUsedFormattingFields);
 begin
-  GetWorksheet.WriteUsedFormatting(@self, AValue);
+  (Worksheet as TsWorksheet).WriteUsedFormatting(@self, AValue);
 end;
 
 procedure TCellHelper.SetVertAlignment(const AValue: TsVertAlignment);
 begin
-  GetWorksheet.WriteVertAlignment(@self, AValue);
+  (Worksheet as TsWorksheet).WriteVertAlignment(@self, AValue);
 end;
 
 procedure TCellHelper.SetWordwrap(const AValue: Boolean);
 begin
-  GetWorksheet.WriteWordwrap(@self, AValue);
+  (Worksheet as TsWorksheet).WriteWordwrap(@self, AValue);
 end;
 
 

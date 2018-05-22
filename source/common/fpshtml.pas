@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, fasthtmlparser,
-  fpstypes, fpspreadsheet, fpsClasses, fpsReaderWriter, fpsHTMLUtils;
+  fpstypes, fpsClasses, fpsReaderWriter, fpsHTMLUtils;
 
 type
   TsHTMLReader = class(TsCustomSpreadReader)
@@ -55,7 +55,7 @@ type
     procedure AddRichTextParam(AFont: TsFont; AHyperlinkIndex: Integer = -1);
     procedure FixRichTextParams(var AParams: TsRichTextParams);
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
@@ -86,7 +86,7 @@ type
     function IsHyperlinkTarget(ACell: PCell; out ABookmark: String): Boolean;
     procedure WriteBody(AStream: TStream);
     procedure WriteStyles(AStream: TStream);
-    procedure WriteWorksheet(AStream: TStream; ASheet: TsWorksheet);
+    procedure WriteWorksheet(AStream: TStream; ASheet: TsBasicWorksheet);
 
   protected
     procedure InternalWriteToStream(AStream: TStream);
@@ -106,7 +106,7 @@ type
       const AValue: double; ACell: PCell); override;
 
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
     procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
     procedure WriteToStrings(AStrings: TStrings; AParams: TsStreamParams = []); override;
@@ -143,7 +143,7 @@ implementation
 
 uses
   LConvEncoding, LazUTF8, URIParser, StrUtils, Math,
-  fpsUtils, fpsXMLCommon, fpsNumFormat;
+  fpsUtils, fpspreadsheet, fpsXMLCommon, fpsNumFormat;
 
 const
   MIN_FONTSIZE = 6;
@@ -162,7 +162,7 @@ const
 {                             TsHTMLReader                                     }
 {==============================================================================}
 
-constructor TsHTMLReader.Create(AWorkbook: TsWorkbook);
+constructor TsHTMLReader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
   FEncoding := EncodingUTF8;
@@ -203,13 +203,16 @@ var
   currSym: String;
   warning: String;
   fntIndex: Integer;
+  sheet: TsWorksheet;
 begin
   // Empty strings are blank cells -- nothing to do
   if (AText = '') then
     exit;
 
+  sheet := FWorksheet as TsWorksheet;
+
   // Create cell
-  cell := FWorksheet.AddCell(ARow, ACol);
+  cell := sheet.AddCell(ARow, ACol);
 
   // Format, rich-text formatting parameters
   // Reject non-used runs; adapt font index to the workbook.
@@ -223,10 +226,10 @@ begin
   end else
   begin
     // Get cell font and use it in the cell format
-    fntIndex := FWorkbook.FindFont(FCellFont.FontName, FCellFont.Size,
+    fntIndex := (FWorkbook as TsWorkbook).FindFont(FCellFont.FontName, FCellFont.Size,
       FCellFont.Style, FCellFont.Color, FCellFont.Position);
     if fntIndex = -1 then
-      fntIndex := FWorkbook.AddFont(FCellFont.FontName, FCellFont.Size,
+      fntIndex := (FWorkbook as TsWorkbook).AddFont(FCellFont.FontName, FCellFont.Size,
         FCellFont.Style, FCellFont.Color, FCellFont.Position);
     FCurrCellFormat.FontIndex := fntIndex;
   end;
@@ -234,25 +237,25 @@ begin
     Include(FCurrCellFormat.UsedFormattingFields, uffFont) else
     Exclude(FCurrCellFormat.UsedFormattingFields, uffFont);
   // Store the cell format in the workbook
-  cell^.FormatIndex := FWorkbook.AddCellFormat(FCurrCellFormat);
+  cell^.FormatIndex := (FWorkbook as TsWorkbook).AddCellFormat(FCurrCellFormat);
 
   // Merged cells
   if (FColSpan > 0) or (FRowSpan > 0) then begin
-    FWorksheet.MergeCells(ARow, ACol, ARow + FRowSpan, ACol + FColSpan);
+    sheet.MergeCells(ARow, ACol, ARow + FRowSpan, ACol + FColSpan);
     FRowSpan := 0;
     FColSpan := 0;
   end;
 
   // Hyperlink
   if FHRef <> '' then begin
-    FWorksheet.WriteHyperlink(cell, FHRef);
+    sheet.WriteHyperlink(cell, FHRef);
     FHRef := '';
   end;
 
   // Case: Do not try to interpret the strings. --> everything is a LABEL cell.
   if not HTMLParams.DetectContentType then
   begin
-    FWorksheet.WriteText(cell, AText, FCurrRichTextParams);
+    sheet.WriteText(cell, AText, FCurrRichTextParams);
     exit;
   end;
 
@@ -261,9 +264,9 @@ begin
     dblValue, nf, decs, currSym, warning) then
   begin
     if currSym <> '' then
-      FWorksheet.WriteCurrency(cell, dblValue, nfCurrency, decs, currSym)
+      sheet.WriteCurrency(cell, dblValue, nfCurrency, decs, currSym)
     else
-      FWorksheet.WriteNumber(cell, dblValue, nf, decs);
+      sheet.WriteNumber(cell, dblValue, nf, decs);
     if warning <> '' then
       FWorkbook.AddErrorMsg('Cell %s: %s', [GetCellString(ARow, ACol), warning]);
     exit;
@@ -273,19 +276,19 @@ begin
   // No idea how to apply the date/time formatsettings here...
   if IsDateTimevalue(AText, FFormatSettings, dtValue, nf) then
   begin
-    FWorksheet.WriteDateTime(cell, dtValue, nf);
+    sheet.WriteDateTime(cell, dtValue, nf);
     exit;
   end;
 
   // Check for a BOOLEAN cell
   if IsBoolValue(AText, HTMLParams.TrueText, HTMLParams.FalseText, boolValue) then
   begin
-    FWorksheet.WriteBoolValue(cell, boolValue);
+    sheet.WriteBoolValue(cell, boolValue);
     exit;
   end;
 
   // What is left is handled as a TEXT cell
-  FWorksheet.WriteText(cell, AText, FCurrRichTextParams);
+  sheet.WriteText(cell, AText, FCurrRichTextParams);
 end;
 
 { Stores a font in the internal font list. Does not allow duplicates. }
@@ -378,9 +381,9 @@ begin
   for i:=0 to High(FCurrRichTextParams) do
   begin
     fnt := TsFont(FFontList[FCurrRichTextParams[i].FontIndex]);
-    fntIndex := FWorkbook.FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+    fntIndex := (FWorkbook as TsWorkbook).FindFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
     if fntIndex = -1 then
-      fntIndex := FWorkbook.AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
+      fntIndex := (FWorkbook as TsWorkbook).AddFont(fnt.FontName, fnt.Size, fnt.Style, fnt.Color, fnt.Position);
     FCurrRichTextParams[i].FontIndex := fntIndex;
   end;
 end;
@@ -485,6 +488,7 @@ end;
 procedure TsHTMLReader.ProcessEndTags(NoCaseTag, ActualTag: String);
 var
   fntIndex: Integer;
+  sheet: TsWorksheet;
 begin
   Unused(ActualTag);
   if not FInTable then exit;
@@ -501,9 +505,11 @@ begin
 
   if not FInCell then exit;
 
+  sheet := FWorksheet as TsWorksheet;
+
   if (NoCaseTag = '</TD>') or (NoCaseTag = '</TH>') then
   begin
-    while FWorksheet.IsMerged(FWorksheet.FindCell(FCurrRow, FCurrCol)) do
+    while sheet.IsMerged(sheet.FindCell(FCurrRow, FCurrCol)) do
       inc(FCurrCol);
     AddCell(FCurrRow, FCurrCol, FCellText);
     FInCell := false;
@@ -807,7 +813,7 @@ begin
   if idx = -1 then
     idx := FAttrList.IndexOfName('size');
   if idx > -1 then begin
-    defFntSize := FWorkbook.GetDefaultFont.Size;
+    defFntSize := (FWorkbook as TsWorkbook).GetDefaultFont.Size;
     s := FAttrList[idx].Value;
     case s of
       'medium',   '3' : AFont.Size := defFntSize;
@@ -1022,7 +1028,7 @@ procedure TsHTMLReader.InitFont(AFont: TsFont);
 var
   fnt: TsFont;
 begin
-  fnt := FWorkbook.GetDefaultFont;
+  fnt := (FWorkbook as TsWorkbook).GetDefaultFont;
   AFont.FontName := fnt.FontName;
   AFont.Size := fnt.Size;
   AFont.Style := fnt.Style;
@@ -1056,10 +1062,10 @@ begin
   try
     list.LoadFromStream(AStream);
     ReadFromStrings(list, AParams);
-    if FWorkbook.GetWorksheetCount = 0 then
+    if (FWorkbook as TsWorkbook).GetWorksheetCount = 0 then
     begin
       FWorkbook.AddErrorMsg('Requested table not found, or no tables in html file');
-      FWorkbook.AddWorksheet('Dummy');
+      TsWorkbook(FWorkbook).AddWorksheet('Dummy');
     end;
   finally
     list.Free;
@@ -1106,14 +1112,14 @@ begin
     inc(FTableCounter);
     if (HTMLParams.TableIndex >= 0) and (FTableCounter <> HTMLParams.TableIndex) then
       exit;
-    FWorksheet := FWorkbook.AddWorksheet(Format('Table #%d', [FTableCounter+1]));
+    FWorksheet := TsWorkbook(FWorkbook).AddWorksheet(Format('Table #%d', [FTableCounter+1]));
     FInTable := true;
     FCurrRow := -1;
     FCurrCol := -1;
     FFontStack.Push(AddFont(FCurrFont));
     FAttrList.Parse(ActualTag);
     ReadFont(FCurrFont);
-    FWorkbook.ReplaceFont(DEFAULT_FONTINDEX, FCurrFont.FontName, FCurrFont.Size,
+    TsWorkbook(FWorkbook).ReplaceFont(DEFAULT_FONTINDEX, FCurrFont.FontName, FCurrFont.Size,
       FCurrFont.Style, FCurrFont.Color, FCurrFont.Position);
     FCellFont.CopyOf(FCurrFont);
     exit;
@@ -1179,7 +1185,7 @@ end;
 {==============================================================================}
 {                             TsHTMLWriter                                     }
 {==============================================================================}
-constructor TsHTMLWriter.Create(AWorkbook: TsWorkbook);
+constructor TsHTMLWriter.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
   FPointSeparatorSettings := DefaultFormatSettings;
@@ -1311,17 +1317,20 @@ var
   col: PCol;
   w: Single;
   rLast: Cardinal;
+  sheet: TsWorksheet;
 begin
+  sheet := FWorksheet as TsWorksheet;
+
   if AColIndex < 0 then  // Row header column
   begin
-    rLast := FWorksheet.GetLastRowIndex;
-    w := FWorkbook.ConvertUnits(Length(IntToStr(rLast)) + 2, suChars, suPoints);
+    rLast := sheet.GetLastRowIndex;
+    w := (FWorkbook as TsWorkbook).ConvertUnits(Length(IntToStr(rLast)) + 2, suChars, suPoints);
   end else
   begin
-    w := FWorksheet.ReadDefaultColWidth(suPoints);
-    col := FWorksheet.FindCol(AColIndex);
+    w := sheet.ReadDefaultColWidth(suPoints);
+    col := sheet.FindCol(AColIndex);
     if (col <> nil) and (col^.Width > 0) then
-      w := FWorkbook.ConvertUnits(col^.Width, FWorkbook.Units, suPoints);
+      w := (FWorkbook as TsWorkbook).ConvertUnits(col^.Width, FWorkbook.Units, suPoints);
   end;
   Result:= Format(' width="%.1fpt"', [w], FPointSeparatorSettings);
 end;
@@ -1342,7 +1351,7 @@ function TsHTMLWriter.GetFontAsStyle(AFontIndex: Integer): String;
 var
   font: TsFont;
 begin
-  font := FWorkbook.GetFont(AFontIndex);
+  font := (FWorkbook as TsWorkbook).GetFont(AFontIndex);
   Result := Format('font-family:''%s'';font-size:%.1fpt;color:%s;', [
     font.FontName, font.Size, ColorToHTMLColorStr(font.Color)], FPointSeparatorSettings);
   if fssBold in font.Style then
@@ -1381,7 +1390,7 @@ var
   r1, r2, c1, c2: Cardinal;
 begin
   Result := '';
-  FWorksheet.FindMergedRange(AMergeBase, r1, c1, r2, c2);
+  (FWorksheet as TsWorksheet).FindMergedRange(AMergeBase, r1, c1, r2, c2);
   if c1 <> c2 then
     Result := Result + ' colspan="' + IntToStr(c2-c1+1) + '"';
   if r1 <> r2 then
@@ -1393,11 +1402,11 @@ var
   h: Single;
   row: PRow;
 begin
-  h := FWorksheet.ReadDefaultRowHeight(suPoints);
-  row := FWorksheet.FindRow(ARowIndex);
+  h := (FWorksheet as TsWorksheet).ReadDefaultRowHeight(suPoints);
+  row := (FWorksheet as TsWorksheet).FindRow(ARowIndex);
   if row <> nil then begin
     if row^.RowHeightType = rhtCustom then
-      h := abs(FWorkbook.ConvertUnits(row^.Height, FWorkbook.Units, suPoints));
+      h := abs((FWorkbook as TsWorkbook).ConvertUnits(row^.Height, FWorkbook.Units, suPoints));
   end;
   Result := Format(' height="%.1fpt"', [h], FPointSeparatorSettings);
 end;
@@ -1441,7 +1450,7 @@ end;
 
 procedure TsHTMLWriter.InternalWriteToStream(AStream: TStream);
 begin
-  FWorkbook.UpdateCaches;
+  (FWorkbook as TsWorkbook).UpdateCaches;
   AppendToStream(AStream,
     '<!DOCTYPE html>');
 
@@ -1472,9 +1481,9 @@ begin
   if ACell = nil then
     exit;
 
-  for i:=0 to FWorkbook.GetWorksheetCount-1 do
+  for i:=0 to (FWorkbook as TsWorkbook).GetWorksheetCount-1 do
   begin
-    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(i);
     for hyperlink in sheet.Hyperlinks do
     begin
       SplitHyperlink(hyperlink^.Target, target, ABookmark);
@@ -1503,20 +1512,23 @@ end;
 procedure TsHTMLWriter.WriteBody(AStream: TStream);
 var
   i: Integer;
+  book: TsWorkbook;
 begin
+  book := FWorkbook as TsWorkbook;
+
   AppendToStream(AStream,
     '<body>');
   if FWindowsClipboardMode or (HTMLParams.SheetIndex < 0) then      // active sheet
   begin
-    if FWorkbook.ActiveWorksheet = nil then
-      FWorkbook.SelectWorksheet(FWorkbook.GetWorksheetByIndex(0));
-    WriteWorksheet(AStream, FWorkbook.ActiveWorksheet)
+    if book.ActiveWorksheet = nil then
+      book.SelectWorksheet(book.GetWorksheetByIndex(0));
+    WriteWorksheet(AStream, book.ActiveWorksheet)
   end else
   if HTMLParams.SheetIndex = MaxInt then  // all sheets
-    for i:=0 to FWorkbook.GetWorksheetCount-1 do
-      WriteWorksheet(AStream, FWorkbook.GetWorksheetByIndex(i))
+    for i:=0 to book.GetWorksheetCount-1 do
+      WriteWorksheet(AStream, book.GetWorksheetByIndex(i))
   else                                    // specific sheet
-    WriteWorksheet(AStream, FWorkbook.GetWorksheetbyIndex(HTMLParams.SheetIndex));
+    WriteWorksheet(AStream, book.GetWorksheetbyIndex(HTMLParams.SheetIndex));
   AppendToStream(AStream,
     '</body>');
 end;
@@ -1538,7 +1550,7 @@ var
   s: String;
 begin
   Unused(AValue, ACol, ARow);
-  s := FWorksheet.ReadAsText(ACell);
+  s := (FWorksheet as TsWorksheet).ReadAsText(ACell);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
 end;
@@ -1549,7 +1561,7 @@ var
   s: String;
 begin
   Unused(AValue, ACol, ARow);
-  s := FWOrksheet.ReadAsText(ACell);
+  s := (FWorksheet as TsWorksheet).ReadAsText(ACell);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
 end;
@@ -1593,13 +1605,13 @@ begin
     exit;
 
   style := '';
-  cellfnt := FWorksheet.ReadCellFont(ACell);
+  cellfnt := (FWorksheet as TsWorksheet).ReadCellFont(ACell);
 
   // Hyperlink
   target := '';
   if FWorksheet.HasHyperlink(ACell) then
   begin
-    hyperlink := FWorksheet.FindHyperlink(ACell);
+    hyperlink := (FWorksheet as TsWorksheet).FindHyperlink(ACell);
     SplitHyperlink(hyperlink^.Target, target, bookmark);
 
     n := Length(hyperlink^.Target);
@@ -1657,7 +1669,7 @@ begin
     begin
       // formatted section
       rtParam := ACell^.RichTextParams[i];
-      fnt := FWorkbook.GetFont(rtParam.FontIndex);
+      fnt := (FWorkbook as TsWorkbook).GetFont(rtParam.FontIndex);
       style := GetFontAsStyle(rtParam.FontIndex);
       if style <> '' then
         style := ' style="' + style +'"';
@@ -1684,7 +1696,7 @@ var
   s: String;
 begin
   Unused(ARow, ACol, AValue);
-  s := FWorksheet.ReadAsText(ACell, FWorkbook.FormatSettings);
+  s := (FWorksheet as TsWorksheet).ReadAsText(ACell, FWorkbook.FormatSettings);
   AppendToStream(AStream,
     '<div>' + s + '</div>');
 end;
@@ -1697,8 +1709,8 @@ var
 begin
   AppendToStream(AStream,
     '<style>' + LineEnding);
-  for i:=0 to FWorkbook.GetNumCellFormats-1 do begin
-    fmt := FWorkbook.GetPointerToCellFormat(i);
+  for i:=0 to (FWorkbook as TsWorkbook).GetNumCellFormats-1 do begin
+    fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(i);
     fmtStr := CellFormatAsString(fmt);
     if fmtStr <> '' then
       fmtStr := Format('  td.style%d {%s}' + LineEnding, [i+1, fmtStr]);
@@ -1741,7 +1753,7 @@ begin
   end;
 end;
 
-procedure TsHTMLWriter.WriteWorksheet(AStream: TStream; ASheet: TsWorksheet);
+procedure TsHTMLWriter.WriteWorksheet(AStream: TStream; ASheet: TsBasicWorksheet);
 var
   r, rFirst, rLast: LongInt;
   c, cFirst, cLast: LongInt;
@@ -1751,18 +1763,19 @@ var
   style, s: String;
   fixedLayout: Boolean;
   fmt: PsCellFormat;
+  sheet: TsWorksheet absolute ASheet;
 begin
   FWorksheet := ASheet;
 
-  rFirst := FWorksheet.GetFirstRowIndex;
-  cFirst := FWorksheet.GetFirstColIndex;
-  rLast := FWorksheet.GetLastOccupiedRowIndex;
-  cLast := FWorksheet.GetLastOccupiedColIndex;
+  rFirst := sheet.GetFirstRowIndex;
+  cFirst := sheet.GetFirstColIndex;
+  rLast := sheet.GetLastOccupiedRowIndex;
+  cLast := sheet.GetLastOccupiedColIndex;
 
   fixedLayout := false;
   for c:=cFirst to cLast do
   begin
-    col := FWorksheet.GetCol(c);
+    col := sheet.GetCol(c);
     if col <> nil then
     begin
       fixedLayout := true;
@@ -1812,7 +1825,7 @@ begin
         style := ' style="' + style + '"';
       if fixedLayout then
         style := style + GetColWidthAsAttr(c);
-      col := FWorksheet.FindCol(c);
+      col := sheet.FindCol(c);
       if (col <> nil) and (col^.FormatIndex > 0) then
         style := style + Format(' class="style%d"', [col^.FormatIndex+1]);
 
@@ -1822,7 +1835,7 @@ begin
   end;
 
   for r := rFirst to rLast do begin
-    row := FWorksheet.FindRow(r);
+    row := sheet.FindRow(r);
     AppendToStream(AStream,
         '<tr>' + LineEnding);
 
@@ -1840,8 +1853,8 @@ begin
 
     for c := cFirst to cLast do begin
       // Pointer to current cell in loop
-      cell := FWorksheet.FindCell(r, c);
-      col := FWorksheet.FindCol(c);
+      cell := sheet.FindCell(r, c);
+      col := sheet.FindCol(c);
 
       // Cell formatting via predefined styles ("class")
       style := '';
@@ -1849,17 +1862,17 @@ begin
       if cell <> nil then
       begin
         style := Format(' class="style%d"', [cell^.FormatIndex+1]);
-        fmt := FWorkbook.GetPointerToCellFormat(cell^.FormatIndex);
+        fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(cell^.FormatIndex);
       end else
       if (row <> nil) and (row^.FormatIndex > 0) then
       begin
         style := Format(' class="style%d"', [row^.FormatIndex+1]);
-        fmt := FWorkbook.GetPointerToCellFormat(row^.FormatIndex);
+        fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(row^.FormatIndex);
       end else
       if (col <> nil) and (col^.FormatIndex > 0) then
       begin
         style := Format(' class="style%d"', [col^.FormatIndex+1]);
-        fmt := FWorkbook.GetPointerToCellFormat(col^.FormatIndex);
+        fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(col^.FormatIndex);
       end;
 
       // Overriding differences between html and fps formatting
@@ -1888,9 +1901,9 @@ begin
       end;
 
       // Merged cells
-      if FWorksheet.IsMerged(cell) then
+      if sheet.IsMerged(cell) then
       begin
-        if FWorksheet.IsMergeBase(cell) then
+        if sheet.IsMergeBase(cell) then
           style := style + GetMergedRangeAsStyle(cell)
         else
           Continue;

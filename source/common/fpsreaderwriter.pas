@@ -23,7 +23,7 @@ interface
 
 uses
   Classes, Sysutils,
-  fpsTypes, fpsClasses, fpSpreadsheet;
+  fpsTypes, fpsClasses;
 
 type
 
@@ -31,16 +31,16 @@ type
   TsBasicSpreadReaderWriter = class
   protected
     {@@ Instance of the workbook which is currently being read or written. }
-    FWorkbook: TsWorkbook;
+    FWorkbook: TsBasicWorkbook;
     {@@ Instance of the worksheet which is currently being read or written. }
-    FWorksheet: TsWorksheet;
+    FWorksheet: TsBasicWorksheet;
     {@@ Limitations for the specific data file format }
     FLimitations: TsSpreadsheetFormatLimitations;
   public
-    constructor Create(AWorkbook: TsWorkbook); virtual;  // to allow descendents to override it
+    constructor Create(AWorkbook: TsBasicWorkbook); virtual;  // to allow descendents to override it
     function Limitations: TsSpreadsheetFormatLimitations;
     {@@ Instance of the workbook which is currently being read/written. }
-    property Workbook: TsWorkbook read FWorkbook;
+    property Workbook: TsBasicWorkbook read FWorkbook;
   end;
 
   { TsBasicSpreadReader }
@@ -93,9 +93,9 @@ type
     { Helper methods }
     procedure AddBuiltinNumFormats; virtual;
     {@@ Removes column records if all of them have the same column width }
-    procedure FixCols(AWorksheet: TsWorksheet);
+    procedure FixCols(AWorksheet: TsBasicWorksheet);
     {@@ Removes row records if all of them have the same row height }
-    procedure FixRows(AWorksheet: TsWorksheet);
+    procedure FixRows(AWorksheet: TsBasicWorksheet);
 
     { Record reading methods }
     {@@ Abstract method for reading a blank cell. Must be overridden by descendent classes. }
@@ -110,7 +110,7 @@ type
     procedure ReadNumber(AStream: TStream); virtual; abstract;
 
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
 
     { General writing methods }
@@ -148,7 +148,7 @@ type
     function  FindNumFormatInList(ANumFormatStr: String): Integer;
 //    function  FixColor(AColor: TsColor): TsColor; virtual;
     procedure FixFormat(ACell: PCell); virtual;
-    procedure GetSheetDimensions(AWorksheet: TsWorksheet;
+    procedure GetSheetDimensions(AWorksheet: TsBasicWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
     procedure ListAllNumFormats; virtual;
 
@@ -174,7 +174,7 @@ type
       const AValue: double; ACell: PCell); virtual; abstract;
 
   public
-    constructor Create(AWorkbook: TsWorkbook); override;
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
 
     { General writing methods }
@@ -219,7 +219,7 @@ implementation
 
 uses
   Math, LazUTF8,
-  fpsStrings, fpsUtils, fpsNumFormat, fpsStreams;
+  fpsStrings, fpsUtils, fpsNumFormat, fpsStreams, fpspreadsheet;
 
 
 {------------------------------------------------------------------------------}
@@ -234,7 +234,7 @@ uses
                     file is written. This parameter is passed from the workbook
                     which creates the reader/writer.
 -------------------------------------------------------------------------------}
-constructor TsBasicSpreadReaderWriter.Create(AWorkbook: TsWorkbook);
+constructor TsBasicSpreadReaderWriter.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create;
   FWorkbook := AWorkbook;
@@ -264,24 +264,27 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsBasicSpreadWriter.CheckLimitations;
 var
+  workbook: TsWorkbook;
   lastCol, lastRow: Cardinal;
   i: Integer;
   sheet: TsWorksheet;
 begin
-  Workbook.GetLastRowColIndex(lastRow, lastCol);
+  workbook := FWorkbook as TsWorkbook;
+
+  workbook.GetLastRowColIndex(lastRow, lastCol);
 
   // Check row count
   if lastRow >= FLimitations.MaxRowCount then
-    Workbook.AddErrorMsg(rsMaxRowsExceeded, [lastRow+1, FLimitations.MaxRowCount]);
+    workbook.AddErrorMsg(rsMaxRowsExceeded, [lastRow+1, FLimitations.MaxRowCount]);
 
   // Check column count
   if lastCol >= FLimitations.MaxColCount then
-    Workbook.AddErrorMsg(rsMaxColsExceeded, [lastCol+1, FLimitations.MaxColCount]);
+    workbook.AddErrorMsg(rsMaxColsExceeded, [lastCol+1, FLimitations.MaxColCount]);
 
   // Check worksheet names
-  for i:=0 to Workbook.GetWorksheetCount-1 do
+  for i:=0 to workbook.GetWorksheetCount-1 do
   begin
-    sheet := Workbook.GetWorksheetByIndex(i);
+    sheet := workbook.GetWorksheetByIndex(i);
     if UTF8Length(sheet.Name) > FLimitations.MaxSheetNameLength then
       // Worksheet name is too long.
       // We abort saving here because it is not safe to chop the sheet name
@@ -306,7 +309,7 @@ end;
                     This parameter is passed from the workbook which creates
                     the reader.
 -------------------------------------------------------------------------------}
-constructor TsCustomSpreadReader.Create(AWorkbook: TsWorkbook);
+constructor TsCustomSpreadReader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
   // Font list
@@ -316,7 +319,7 @@ begin
   AddBuiltinNumFormats;
   // Virtual mode
   FIsVirtualMode := (boVirtualMode in FWorkbook.Options) and
-    Assigned(FWorkbook.OnReadCellData);
+    Assigned((FWorkbook as TsWorkbook).OnReadCellData);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -353,10 +356,11 @@ end;
 
   @param   AWorksheet   The columns in this worksheet are processed.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.FixCols(AWorkSheet: TsWorksheet);
+procedure TsCustomSpreadReader.FixCols(AWorkSheet: TsBasicWorksheet);
 const
   EPS = 1E-3;
 var
+  sheet: TsWorksheet absolute AWorksheet;
   c: LongInt;
   w: Single;
   lCol: PCol;
@@ -365,30 +369,30 @@ begin
   // If the count of columns is equal to the max colcount of the file format
   // then it is likely that dummy columns have been added -> delete all empty
   // columns (starting at the right) until the first non-empty column is found
-  if AWorksheet.Cols.Count =  SizeInt(FLimitations.MaxColCount) then
+  if sheet.Cols.Count =  SizeInt(FLimitations.MaxColCount) then
   begin
-    c := AWorksheet.Cols.Count - 1;
-    lCol := PCol(AWorksheet.Cols[c]);
+    c := sheet.Cols.Count - 1;
+    lCol := PCol(sheet.Cols[c]);
     w := lCol.Width;
     while c >= 0 do begin
-      lCol := PCol(AWorksheet.Cols[c]);
+      lCol := PCol(sheet.Cols[c]);
       if not SameValue(lCol^.Width, w, EPS) then
         break;
-      if AWorksheet.FindNextCellInCol(0, c) <> nil then
+      if sheet.FindNextCellInCol(0, c) <> nil then
         break;
-      AWorksheet.RemoveCol(c);
+      sheet.RemoveCol(c);
       dec(c);
     end;
   end;
 
-  if AWorksheet.Cols.Count < 2 then
+  if sheet.Cols.Count < 2 then
     exit;
 
   // Check whether all columns have the same column width
   sameWidth := true;
-  w := PCol(AWorksheet.Cols[0])^.Width;
-  for c := 1 to AWorksheet.Cols.Count-1 do begin
-    lCol := PCol(AWorksheet.Cols[c]);
+  w := PCol(sheet.Cols[0])^.Width;
+  for c := 1 to sheet.Cols.Count-1 do begin
+    lCol := PCol(sheet.Cols[c]);
     if not SameValue(lCol^.Width, w, EPS) then
     begin
       sameWidth := false;
@@ -399,12 +403,12 @@ begin
   if sameWidth then begin
     // At this point we know that all columns have the same width. We pass this
     // to the DefaultColWidth ...
-    AWorksheet.WriteDefaultColWidth(w, FWorkbook.Units);
+    sheet.WriteDefaultColWidth(w, FWorkbook.Units);
 
     // ...and delete all column records with non-default format
-    for c := AWorksheet.Cols.Count-1 downto 0 do begin
-      lCol := PCol(AWorksheet.Cols[c]);
-      if lCol^.FormatIndex = 0 then AWorksheet.RemoveCol(c);
+    for c := sheet.Cols.Count-1 downto 0 do begin
+      lCol := PCol(sheet.Cols[c]);
+      if lCol^.FormatIndex = 0 then sheet.RemoveCol(c);
     end;
   end;
 end;
@@ -414,21 +418,22 @@ end;
   row records if they do. Such unnecessary row records are often written
   when an Office application converts a file to another format.
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadReader.FixRows(AWorkSheet: TsWorksheet);
+procedure TsCustomSpreadReader.FixRows(AWorkSheet: TsBasicWorksheet);
 const
   EPS = 1E-3;
 var
+  sheet: TsWorksheet absolute AWorksheet;
   r, rLast: Cardinal;
   h: Single;
   lRow: PRow;
 begin
-  if AWorksheet.Rows.Count <= 1 then
+  if sheet.Rows.Count <= 1 then
     exit;
 
   // Check whether all rows have the same height
-  h := PRow(AWorksheet.Rows[0])^.Height;
-  for r := 1 to AWorksheet.Rows.Count-1 do begin
-    lRow := PRow(AWorksheet.Rows[r]);
+  h := PRow(sheet.Rows[0])^.Height;
+  for r := 1 to sheet.Rows.Count-1 do begin
+    lRow := PRow(sheet.Rows[r]);
     if not SameValue(lRow^.Height, h, EPS) then
       exit;
   end;
@@ -436,21 +441,21 @@ begin
   // If there are more rows than row records and the common row height is not
   // the default row height (i.e. the row height of the non-record rows) then
   // the row heights are different
-  rLast := AWorksheet.GetLastRowIndex;
-  if (AWorksheet.Rows.Count > 0) and
-     (rLast <> PRow(AWorksheet.Rows[AWorksheet.Rows.Count-1]).Row) and
-     not SameValue(h, AWorksheet.ReadDefaultRowHeight(FWorkbook.Units), EPS)
+  rLast := sheet.GetLastRowIndex;
+  if (sheet.Rows.Count > 0) and
+     (rLast <> PRow(sheet.Rows[sheet.Rows.Count-1]).Row) and
+     not SameValue(h, sheet.ReadDefaultRowHeight(FWorkbook.Units), EPS)
   then
     exit;
 
   // At this point we know that all rows have the same height. We pass this
   // to the DefaultRowHeight ...
-  AWorksheet.WriteDefaultRowHeight(h, FWorkbook.Units);
+  sheet.WriteDefaultRowHeight(h, FWorkbook.Units);
 
   // ... and delete all row records with default format.
-  for r := AWorksheet.Rows.Count-1 downto 0 do begin
-    lRow := PRow(AWorksheet.Rows[r]);
-    if lRow^.FormatIndex = 0 then AWorksheet.RemoveRow(r);
+  for r := sheet.Rows.Count-1 downto 0 do begin
+    lRow := PRow(sheet.Rows[r]);
+    if lRow^.FormatIndex = 0 then sheet.RemoveRow(r);
   end;
 end;
 
@@ -549,7 +554,7 @@ end;
   @param AWorkbook  Workbook from with the file is written. This parameter is
                     passed from the workbook which creates the writer.
 -------------------------------------------------------------------------------}
-constructor TsCustomSpreadWriter.Create(AWorkbook: TsWorkbook);
+constructor TsCustomSpreadWriter.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
   // Number formats
@@ -616,26 +621,32 @@ end;
   @param   AFirstCol   Index of first column to be written
   @param   ALastCol    Index of last column to be written
 -------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.GetSheetDimensions(AWorksheet: TsWorksheet;
+procedure TsCustomSpreadWriter.GetSheetDimensions(AWorksheet: TsBasicWorksheet;
   out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal);
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
 begin
-  if (boVirtualMode in AWorksheet.Workbook.Options) then
+  book := FWorkbook as TsWorkbook;
+  sheet := AWorksheet as TsWorksheet;
+
+  if (boVirtualMode in sheet.Workbook.Options) then
   begin
     AFirstRow := 0;
     AFirstCol := 0;
-    ALastRow := LongInt(AWorksheet.VirtualRowCount)-1;
-    ALastCol := LongInt(AWorksheet.VirtualColCount)-1;
+    ALastRow := LongInt(sheet.VirtualRowCount)-1;
+    ALastCol := LongInt(sheet.VirtualColCount)-1;
   end else
   begin
-    Workbook.UpdateCaches;
-    AFirstRow := AWorksheet.GetFirstRowIndex;
+    book.UpdateCaches;
+    AFirstRow := sheet.GetFirstRowIndex;
     if AFirstRow = Cardinal(-1) then
       AFirstRow := 0;  // this happens if the sheet is empty and does not contain row records
-    AFirstCol := AWorksheet.GetFirstColIndex;
+    AFirstCol := sheet.GetFirstColIndex;
     if AFirstCol = Cardinal(-1) then
       AFirstCol := 0;  // this happens if the sheet is empty and does not contain col records
-    ALastRow := AWorksheet.GetLastRowIndex;
-    ALastCol := AWorksheet.GetLastColIndex;
+    ALastRow := sheet.GetLastRowIndex;
+    ALastCol := sheet.GetLastColIndex;
   end;
   if AFirstCol >= Limitations.MaxColCount then
     AFirstCol := Limitations.MaxColCount-1;
@@ -657,9 +668,9 @@ var
   numFmt: TsNumFormatParams;
   numFmtStr: String;
 begin
-  for i:=0 to Workbook.GetNumberFormatCount - 1 do
+  for i:=0 to TsWorkbook(Workbook).GetNumberFormatCount - 1 do
   begin
-    numFmt := Workbook.GetNumberFormat(i);
+    numFmt := TsWorkbook(Workbook).GetNumberFormat(i);
     if numFmt <> nil then
     begin
       numFmtStr := numFmt.NumFormatStr;
@@ -699,7 +710,7 @@ begin
         WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
     end;
 
-  if FWorksheet.ReadComment(ACell) <> '' then
+  if TsWorksheet(FWorksheet).ReadComment(ACell) <> '' then
     WriteComment(AStream, ACell);
 end;
 

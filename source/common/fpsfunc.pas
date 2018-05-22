@@ -9,7 +9,7 @@ unit fpsfunc;
 interface
 
 uses
-  Classes, SysUtils, fpstypes, fpspreadsheet;
+  Classes, SysUtils, fpstypes;
 
 procedure RegisterStdBuiltins(AManager: TComponent);
 
@@ -18,7 +18,7 @@ implementation
 
 uses
   Math, lazutf8, StrUtils, DateUtils,
-  xlsconst, {%H-}fpsPatches, fpsUtils, fpsnumformat, fpsexprparser;
+  xlsconst, {%H-}fpsPatches, fpsUtils, fpsnumformat, fpsexprparser, fpspreadsheet;
 
 
 {------------------------------------------------------------------------------}
@@ -1035,7 +1035,7 @@ begin
         for r := arg.ResCellRange.Row1 to arg.ResCellRange.Row2 do
           for c := arg.ResCellRange.Col1 to arg.ResCellRange.Col2 do
           begin
-            cell := arg.Worksheet.FindCell(r, c);
+            cell := (arg.Worksheet as TsWorksheet).FindCell(r, c);
             if (cell <> nil) then
               case cell^.ContentType of
                 cctNumber, cctDateTime, cctBool : inc(n);
@@ -1076,7 +1076,7 @@ begin
     rtCellRange:
       for r := Args[0].ResCellRange.Row1 to Args[0].ResCellRange.Row2 do
         for c := Args[0].ResCellRange.Col1 to Args[0].ResCellRange.Col2 do begin
-          cell := Args[0].Worksheet.FindCell(r, c);
+          cell := (Args[0].Worksheet as TsWorksheet).FindCell(r, c);
           if cell = nil then
             inc(n)
           else
@@ -1185,7 +1185,7 @@ begin
 
   // Get format settings for string-to-float or -to-datetime conversion
   if (Args[0].ResultType in [rtCell, rtCellRange]) then
-    fs := Args[0].Worksheet.FormatSettings
+    fs := (Args[0].Worksheet as TsWorksheet).FormatSettings
   else
   begin
     Result := ErrorResult(errArgError);
@@ -1325,8 +1325,8 @@ begin
         if AFlag > 0 then
         begin
           if Length(Args) = 2 then
-            addcell := Args[0].Worksheet.FindCell(r + dr, c + dc) else
-            addCell := Args[2].Worksheet.FindCell(r + dr, c + dc);
+            addcell := (Args[0].Worksheet as TsWorksheet).FindCell(r + dr, c + dc) else
+            addCell := (Args[2].Worksheet as TsWorksheet).FindCell(r + dr, c + dc);
           if addcell <> nil then
             case addcell^.Contenttype of
               cctNumber  : addnumber := addcell^.NumberValue;
@@ -1335,7 +1335,7 @@ begin
             end;
         end;
 
-        cell := Args[0].Worksheet.FindCell(r, c);
+        cell := (Args[0].Worksheet as TsWorksheet).FindCell(r, c);
         case compareType of
           ctNumber:
             if cell <> nil then
@@ -1610,7 +1610,7 @@ begin
       begin
         r1 := Args[1].ResCellRange.Row1;
         c1 := Args[1].ResCellRange.Col1;
-        cell := Args[1].Worksheet.FindCell(r1, c1);
+        cell := (Args[1].Worksheet as TsWorksheet).FindCell(r1, c1);
       end;
     else
       Result := ErrorResult(errWrongType);
@@ -1652,8 +1652,8 @@ begin
   end else
   if stype = 'filename' then
     Result := Stringresult(
-      ExtractFilePath(Args[1].Worksheet.Workbook.FileName) + '[' +
-      ExtractFileName(Args[1].Worksheet.Workbook.FileName) + ']' +
+      ExtractFilePath((Args[1].Worksheet as TsWorksheet).Workbook.FileName) + '[' +
+      ExtractFileName((Args[1].Worksheet as TsWorksheet).Workbook.FileName) + ']' +
       Args[1].Worksheet.Name
     )
   else
@@ -1710,7 +1710,7 @@ begin
       Result := StringResult('v');
   end else
   if stype = 'width' then
-    Result := FloatResult(Args[1].Worksheet.GetColWidth(c1, suChars))
+    Result := FloatResult((Args[1].Worksheet as TsWorksheet).GetColWidth(c1, suChars))
   else
     Result := ErrorResult(errWrongType);
 end;
