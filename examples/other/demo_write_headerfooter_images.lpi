@@ -55,7 +55,7 @@
     <SearchPaths>
       <IncludeFiles Value="..\..\source"/>
       <OtherUnitFiles Value="..\..\source\common"/>
-      <UnitOutputDirectory Value="..\..\lib\$(TargetCPU)-$(TargetOS)"/>
+      <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Parsing>
       <SyntaxOptions>

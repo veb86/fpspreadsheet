@@ -6587,7 +6587,8 @@ begin
   // If the cell already exists and contains a formula then the formula must be
   // removed. The formula would dominate over the data value.
   cell := Worksheet.FindCell(r, c);
-  if HasFormula(cell) then cell^.FormulaValue := '';
+  if HasFormula(cell) then
+    Worksheet.UseformulaInCell(cell, nil);   //cell^.FormulaValue := '';
 
   if VarIsNull(AValue) then
     Worksheet.WriteBlank(r, c)

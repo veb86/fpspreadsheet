@@ -641,6 +641,7 @@ var
   datanode, tnode: TDOMNode;
   dataStr: String;
   formulaStr: String;
+  formula: PsFormula;
   nodeName: String;
   sstIndex: Integer;
   number: Double;
@@ -731,8 +732,11 @@ begin
               sharedformulabase := TSharedFormulaData(FSharedFormulaBaseList[StrToInt(s)]);
               // ... and copy shared formula to destination cell
               InitCell(FWorksheet, sharedformulabase.Row, sharedformulabase.Col, lCell);
-              lCell.Formulavalue := sharedformulabase.Formula;
-              lCell.Worksheet := sharedformulabase.Worksheet;
+              formula := sharedFormulaBase.Worksheet.Formulas.AddFormula(
+                sharedFormulabase.Row, sharedFormulaBase.Col, sharedformulabase.Formula
+              );
+//              lCell.Formulavalue := sharedformulabase.Formula;
+//              lCell.Worksheet := sharedformulabase.Worksheet;
               sheet.CopyFormula(@lCell, cell);
               cell^.ContentType := cctFormula;
             end;
@@ -740,8 +744,8 @@ begin
         end
         else
           // "Normal" formula
-          cell^.FormulaValue := formulaStr;
-//          AWorksheet.WriteFormula(cell, formulaStr);
+          sheet.WriteFormula(cell, formulaStr);
+//          cell^.FormulaValue := formulaStr;
       except
         on E:EExprParser do begin
           FWorkbook.AddErrorMsg(E.Message);
@@ -759,11 +763,8 @@ begin
   // get data type
   s := GetAttrValue(ANode, 't');   // "t" = data type
   if (s = '') and (dataStr = '') then
-  begin
-    formulaStr := cell^.FormulaValue;
-    sheet.WriteBlank(cell);     // this erases the formula!!!
-    cell^.FormulaValue := formulaStr;
-  end else
+    sheet.WriteBlank(cell, true)     // true --> do not erase the formula!!!
+  else
   if (s = '') or (s = 'n') then begin
     // Number or date/time, depending on format
     number := StrToFloat(dataStr, FPointSeparatorSettings);
@@ -795,9 +796,9 @@ begin
   end else
   if (s = 'str') or (s = 'inlineStr') then begin
     // literal string
-    formulaStr := cell^.FormulaValue;
+//    formulaStr := cell^.FormulaValue;
     sheet.WriteText(cell, datastr);
-    cell^.FormulaValue := formulaStr;
+//    cell^.FormulaValue := formulaStr;
   end else
   if s = 'b' then
     // boolean
@@ -2068,6 +2069,8 @@ begin
       sheetData.ID := GetAttrvalue(node, 'sheetID');
       sheetData.Hidden := GetAttrValue(node, 'state') = 'hidden';
       FSheetList.Add(sheetData);
+      // Create worksheet - needed because of 3d references
+      (FWorkbook as TsWorkbook).AddWorksheet(sheetData.Name, true);
     end;
     node := node.NextSibling;
   end;
@@ -2520,8 +2523,12 @@ begin
 
     // read worksheets
     for i:=0 to FSheetList.Count-1 do begin
+      {
       // Create worksheet
       FWorksheet := (FWorkbook as TsWorkbook).AddWorksheet(TSheetData(FSheetList[i]).Name, true);
+      }
+      // Worksheets are already created...
+      FWorksheet := (FWorkbook as TsWorkbook).GetWorksheetByName(TSheetData(FSheetList[i]).Name);
       if TSheetData(FSheetList[i]).Hidden then
         FWorksheet.Options := FWorksheet.Options + [soHidden];
 
@@ -5219,9 +5226,14 @@ var
   cellPosText: String;
   lStyleIndex: Integer;
   t, v: String;
+  formula: PsFormula;
+  formulaStr: String;
 begin
   cellPosText := TsWorksheet.CellPosToText(ARow, ACol);
   lStyleIndex := GetStyleIndex(ACell);
+
+  formula := TsWorksheet(FWorksheet).Formulas.FindFormula(ARow, ACol);
+  formulaStr := PrepareFormula(formula^.Text);
 
   case ACell^.ContentType of
     cctFormula:
@@ -5265,7 +5277,7 @@ begin
         '%s' +
       '</c>', [
       CellPosText, lStyleIndex, t,
-      PrepareFormula(ACell^.FormulaValue),
+      formulaStr,
       v
   ]));
 end;

@@ -45,7 +45,7 @@
 // Keep spaces in formula
 
 {$mode objfpc}
-{$h+}
+{$H+}
 unit fpsExprParser;
 
 interface
@@ -78,8 +78,10 @@ const
   ];
 
 type
+  // Forward declarations
   TsExpressionParser = class;
   TsBuiltInExpressionManager = class;
+  TsExprNode = class;
 
   TsResultType = (rtEmpty, rtBoolean, rtInteger, rtFloat, rtDateTime, rtString,
     rtCell, rtCellRange, rtHyperlink, rtError, rtMissingArg, rtAny);
@@ -104,6 +106,10 @@ type
   PsExpressionResult = ^TsExpressionResult;
   TsExprParameterArray = array of TsExpressionResult;
 
+  { Function executed when iterating through all nodes (Parser.IterateNodes).
+    The function returns true if the text formula has to be rebuilt. }
+  TsExprNodeFunc = function(ANode: TsExprNode; AData: Pointer): Boolean;
+
   { TsExprNode }
   TsExprNode = class(TObject)
   private
@@ -116,6 +122,7 @@ type
     function AsString: string; virtual; abstract;
     procedure Check; virtual; //abstract;
     function Has3DLink: Boolean; virtual;
+    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; virtual;
     function NodeType: TsResultType; virtual; abstract;
     function NodeValue: TsExpressionResult;
     property Parser: TsExpressionParser read FParser;
@@ -134,6 +141,7 @@ type
     constructor Create(AParser: TsExpressionParser; ALeft, ARight: TsExprNode);
     destructor Destroy; override;
     function Has3DLink: Boolean; override;
+    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): boolean; override;
     property Left: TsExprNode read FLeft;
     property Right: TsExprNode read FRight;
   end;
@@ -555,6 +563,7 @@ type
     function AsString: String; override;
     procedure Check; override;
     function Has3DLink: Boolean; override;
+    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; override;
     property ArgumentNodes: TsExprArgumentArray read FArgumentNodes;
     property ArgumentParams: TsExprParameterArray read FArgumentParams;
   end;
@@ -592,12 +601,11 @@ type
     FCell: PCell;
     FSheetName: String;
     FIsRef: Boolean;
+    FError: TsErrorValue;
   protected
     function GetCol: Cardinal;
     function GetRow: Cardinal;
     function GetSheet: TsBasicWorksheet;
-    function GetSheetIndex: Integer;
-    function GetSheetName: String;
     function GetWorkbook: TsBasicWorkbook;
     procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
@@ -606,8 +614,14 @@ type
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: string; override;
     procedure Check; override;
+    function GetSheetIndex: Integer;
+    function GetSheetName: String;
     function Has3DLink: Boolean; override;
+    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; override;
     function NodeType: TsResultType; override;
+    property Col: Cardinal read FCol write FCol;  // Be careful when modifying Col and Row
+    property Row: Cardinal read FRow write FRow;
+    property Error: TsErrorValue read FError write FError;
     property Worksheet: TsBasicWorksheet read FWorksheet;
   end;
 
@@ -622,10 +636,13 @@ type
     FSheetIndex: array[TsCellRangeIndex] of Integer;
     FFlags: TsRelFlags;
     F3dRange: Boolean;
+    FError: TsErrorValue;
+    function GetRange: TsCellRange;
+    procedure SetRange(const ARange: TsCellRange);
   protected
     function GetCol(AIndex: TsCellRangeIndex): Cardinal;
     function GetRow(AIndex: TsCellRangeIndex): Cardinal;
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
+    procedure GetNodeValue(out AResult: TsExpressionResult); override;
     function GetWorkbook: TsBasicWorkbook;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsBasicWorksheet;
@@ -633,8 +650,12 @@ type
     function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
     function AsString: String; override;
     procedure Check; override;
+    function GetSheetIndex(AIndex: TsCellRangeIndex): Integer;
     function Has3DLink: Boolean; override;
+    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; override;
     function NodeType: TsResultType; override;
+    property Error: TsErrorValue read FError write FError;
+    property Range: TsCellRange read GetRange write SetRange;  // Be careful!
     property Workbook: TsBasicWorkbook read GetWorkbook;
     property Worksheet: TsBasicWorksheet read FWorksheet;
   end;
@@ -744,8 +765,8 @@ type
     function TokenType: TsTokenType;
     procedure CreateHashList;
     property Scanner: TsExpressionScanner read FScanner;
-    property ExprNode: TsExprNode read FExprNode;
     property Dirty: Boolean read FDirty;
+    property ExprNode: TsExprNode read FExprNode;
 
   public
     constructor Create(AWorksheet: TsBasicWorksheet); virtual;
@@ -756,6 +777,7 @@ type
     function Evaluate: TsExpressionResult;
     procedure EvaluateExpression(out AResult: TsExpressionResult);
     function Has3DLinks: Boolean;
+    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): boolean;
     procedure PrepareCopyMode(ASourceCell, ADestCell: PCell);
     function ResultType: TsResultType;
 
@@ -820,6 +842,16 @@ type
     property Identifiers[AIndex: Integer]: TsBuiltInExprIdentifierDef read GetI;
   end;
 
+  { TsFormula }
+  TsFormula = record
+    Row, Col: Cardinal;
+    Text: String;
+    Parser: TsExpressionParser;
+    CalcState: TsCalcState;
+  end;
+  PsFormula = ^TsFormula;
+
+  { Exception classes }
   EExprParser = class(Exception);
   ECalcEngine = class(Exception);
 
@@ -1494,8 +1526,10 @@ end;
 
 procedure TsExpressionParser.EvaluateExpression(out AResult: TsExpressionResult);
 begin
+  {                         // Not needed. May be missing after copying formulas
   if (FExpression = '') then
     ParserError(rsExpressionEmpty);
+    }
   if not Assigned(FExprNode) then
     ParserError(rsErrorInExpression);
   FExprNode.GetNodeValue(AResult);
@@ -1939,6 +1973,12 @@ end;
 function TsExpressionParser.Has3DLinks: Boolean;
 begin
   Result := FExprNode.Has3DLink;
+end;
+
+function TsExpressionParser.IterateNodes(AFunc: TsExprNodeFunc;
+  AData: Pointer): Boolean;
+begin
+  Result := FExprNode.IterateNodes(AFunc, AData);
 end;
 
 procedure TsExpressionParser.SetDialect(const AValue: TsFormulaDialect);
@@ -2723,6 +2763,12 @@ begin
   Result := false;
 end;
 
+function TsExprNode.IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean;
+begin
+  Unused(AFunc, AData);
+  // to be overridden by descendant classes
+end;
+
 function TsExprNode.NodeValue: TsExpressionResult;
 begin
   GetNodeValue(Result);
@@ -2771,6 +2817,12 @@ end;
 function TsBinaryOperationExprNode.Has3DLink: Boolean;
 begin
   Result := FLeft.Has3DLink or FRight.Has3DLink;
+end;
+
+function TsBinaryOperationExprNode.IterateNodes(AFunc: TsExprNodeFunc;
+  AData: Pointer): Boolean;
+begin
+  Result := FLeft.IterateNodes(AFunc, AData) or FRight.IterateNodes(AFunc, AData);
 end;
 
 function TsBinaryOperationExprNode.HasError(out AResult: TsExpressionResult): Boolean;
@@ -3724,6 +3776,16 @@ begin
   Result := false;
 end;
 
+function TsFunctionExprNode.IterateNodes(AFunc: TsExprNodeFunc;
+  AData: Pointer): Boolean;
+var
+  i: Integer;
+begin
+  Result := false;
+  for i:=0 to High(FArgumentParams) do
+    Result := Result or FArgumentNodes[i].IterateNodes(AFunc, AData);
+end;
+
 
 { TsFunctionCallBackExprNode }
 
@@ -3773,12 +3835,16 @@ begin
   FRow := ARow;
   FCol := ACol;
   FFlags := AFlags;
+  FError := errOK;
   FCell := (GetSheet as TsWorksheet).FindCell(FRow, FCol);
   if Has3DLink then FParser.FContains3DRef := true;
 end;
 
 function TsCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
 begin
+  if FError <> errOK then
+    Result := RPNErr(FError, ANext)
+  else
   if FIsRef then
   begin
     if Has3dLink then
@@ -3798,6 +3864,11 @@ function TsCellExprNode.AsString: string;
 var
   r, c: Cardinal;
 begin
+  if FError <> errOK then begin
+    Result := GetErrorValueStr(FError);
+    exit;
+  end;
+
   r := Getrow;
   c := GetCol;
   if Has3dLink then
@@ -3846,6 +3917,46 @@ end;
 procedure TsCellExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   cell: PCell;
+  formula: PsFormula;
+  sheet: TsWorksheet;
+begin
+  if FError <> errOK then begin
+    AResult.ResultType := rtError;
+    AResult.ResError := FError;
+    {
+    AResult.ResRow := GetRow;
+    AResult.ResCol := GetCol;
+    AResult.Worksheet := GetSheet;
+    }
+    exit;
+  end;
+
+  if Parser.CopyMode then
+    cell := (FWorksheet as TsWorksheet).FindCell(GetRow, GetCol)
+  else
+    cell := FCell;
+
+  if (cell <> nil) and HasFormula(cell) then begin
+    sheet := TsWorksheet(cell^.Worksheet);
+    formula := sheet.Formulas.FindFormula(cell^.Row, cell^.Col);
+    case formula^.CalcState of
+      csNotCalculated:
+        sheet.CalcFormula(formula);
+      csCalculating:
+        raise ECalcEngine.CreateFmt(rsCircularReference, [GetCellString(cell^.Row, cell^.Col)]);
+    end;
+  end;
+
+  AResult.ResultType := rtCell;
+  AResult.ResRow := GetRow;
+  AResult.ResCol := GetCol;
+  AResult.Worksheet := GetSheet;
+end;
+
+(*
+procedure TsCellExprNode.GetNodeValue(out AResult: TsExpressionResult);
+var
+  cell: PCell;
 begin
   if Parser.CopyMode then
     cell := (FWorksheet as TsWorksheet).FindCell(GetRow, GetCol)
@@ -3865,6 +3976,7 @@ begin
   AResult.ResCol := GetCol;
   AResult.Worksheet := GetSheet;
 end;
+*)
 
 { See: GetCol }
 function TsCellExprNode.GetRow: Cardinal;
@@ -3878,8 +3990,10 @@ function TsCellExprNode.GetSheet: TsBasicWorksheet;
 begin
   if FSheetName = '' then
     Result := FWorksheet
-  else
+  else begin
     Result := (GetWorkbook as TsWorkbook).GetWorksheetByName(FSheetName);
+    if Result = nil then FError := errIllegalREF;
+  end;
 end;
 
 function TsCellExprNode.GetSheetIndex: Integer;
@@ -3916,6 +4030,12 @@ begin
   Result := rtCell;
 end;
 
+function TsCellExprNode.IterateNodes(AFunc: TsExprNodeFunc;
+  AData: Pointer): Boolean;
+begin
+  Result := AFunc(self, AData);
+end;
+
 
 
 { TsCellRangeExprNode }
@@ -3932,15 +4052,25 @@ begin
   FParser := AParser;
   FWorksheet := AWorksheet;
   FFlags := [];
+  FError := errOK;
   book := TsWorkbook(GetWorkbook);
 
   F3dRange := ((ASheet1 <> '') and (ASheet2 <> '') { and (ASheet1 <> ASheet2)}) or
     ((ASheet1 <> '') and (ASheet2 = ''));
 
   FSheetIndex[1] := book.GetWorksheetIndex(ASheet1);
-  if ASheet2 <> '' then
-    FSheetIndex[2] := book.GetWorksheetIndex(ASheet2)
+  {
+  if FSheetIndex[1] = -1 then
+    FError := errIllegalREF
   else
+  }
+  if ASheet2 <> '' then begin
+    FSheetIndex[2] := book.GetWorksheetIndex(ASheet2);
+    {
+    if FSheetIndex[2] = -1 then
+      FError := errIllegalREF;
+      }
+  end else
     FSheetIndex[2] := FSheetIndex[1];
   EnsureOrder(FSheetIndex[1], FSheetIndex[2]);
 
@@ -3982,6 +4112,9 @@ end;
 
 function TsCellRangeExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
 begin
+  if FError <> errOK then
+    Result := RPNErr(FError, ANext)
+  else
   if F3dRange then
     Result := RPNCellRange3D(
       FSheetIndex[1], GetRow(1), Integer(GetCol(1)),
@@ -4001,6 +4134,11 @@ var
   r1, c1, r2, c2: Cardinal;
   s1, s2: String;
 begin
+  if FError <> errOK then begin
+    Result := GetErrorValueStr(FError);
+    exit;
+  end;
+
   if FSheetIndex[1] = -1 then
     s1 := FWorksheet.Name
   else
@@ -4058,7 +4196,7 @@ begin
     Result := FCol[AIndex] - FParser.FSourceCell^.Col + FParser.FDestCell^.Col;
 end;
 
-procedure TsCellRangeExprNode.GetNodeValue(out Result: TsExpressionResult);
+procedure TsCellRangeExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   r, c, s: Array[TsCellRangeIndex] of Integer;
   rr, cc, ss: Integer;
@@ -4066,7 +4204,14 @@ var
   cell: PCell;
   book: TsWorkbook;
   sheet: TsWorksheet;
+  formula: PsFormula;
 begin
+  if FError <> errOK then begin
+    AResult.ResultType := rtError;
+    AResult.ResError := FError;
+    exit;
+  end;
+
   for i in TsCellRangeIndex do
   begin
     r[i] := GetRow(i);
@@ -4081,29 +4226,35 @@ begin
 
   for ss := s[1] to s[2] do begin
     sheet := (Workbook as TsWorkbook).GetWorksheetByIndex(ss);
-    for rr := r[1] to r[2] do
-      for cc := c[1] to c[2] do
-      begin
-        cell := sheet.FindCell(rr, cc);
-        if HasFormula(cell) then
-          case sheet.GetCalcState(cell) of
-            csNotCalculated:
-              sheet.CalcFormula(cell);
-            csCalculating:
-              raise ECalcEngine.Create(rsCircularReference);
-          end;
-      end;
+    for formula in sheet.Formulas do
+      if (formula^.Row >= r[1]) and (formula^.Row <= r[2]) and
+         (formula^.Col >= c[1]) and (formula^.Col <= c[2])
+      then
+        case formula^.CalcState of
+          csNotCalculated:
+            sheet.CalcFormula(formula);
+          csCalculating:
+            raise ECalcEngine.Create(rsCircularReference);
+        end;
   end;
 
-  Result.ResultType := rtCellRange;
-  Result.ResCellRange.Row1 := r[1];
-  Result.ResCellRange.Col1 := c[1];
-  Result.ResCellRange.Row2 := r[2];
-  Result.ResCellRange.Col2 := c[2];
-  Result.ResCellRange.Sheet1 := s[1];
-  Result.ResCellRange.Sheet2 := s[2];
-  Result.Worksheet := FWorksheet;
-//  Result.Worksheet2 := FWorksheet2;
+  AResult.ResultType := rtCellRange;
+  AResult.ResCellRange.Row1 := r[1];
+  AResult.ResCellRange.Col1 := c[1];
+  AResult.ResCellRange.Row2 := r[2];
+  AResult.ResCellRange.Col2 := c[2];
+  AResult.ResCellRange.Sheet1 := s[1];
+  AResult.ResCellRange.Sheet2 := s[2];
+  AResult.Worksheet := FWorksheet;
+end;
+
+// Be careful when modifying GetRange - it may break everything
+function TsCellRangeExprNode.GetRange: TsCellRange;
+begin
+  Result.Row1 := FRow[1];
+  Result.Col1 := FCol[1];
+  Result.Row2 := FRow[2];
+  Result.Col2 := FCol[2];
 end;
 
 function TsCellRangeExprNode.GetRow(AIndex: TsCellRangeIndex): Cardinal;
@@ -4115,7 +4266,15 @@ end;
 
 function TsCellRangeExprNode.GetWorkbook: TsBasicWorkbook;
 begin
-  Result := (FWorksheet as TsWorksheet).Workbook;
+  if FWorksheet = nil then
+    Result := nil
+  else
+    Result := (FWorksheet as TsWorksheet).Workbook;
+end;
+
+function TsCellRangeExprNode.GetSheetIndex(AIndex: TsCellRangeIndex): Integer;
+begin
+  Result := FSheetIndex[AIndex];
 end;
 
 function TsCellRangeExprNode.Has3DLink: Boolean;
@@ -4123,9 +4282,23 @@ begin
   Result := F3dRange;
 end;
 
+function TsCellRangeExprNode.IterateNodes(AFunc: TsExprNodeFunc;
+  AData: Pointer): Boolean;
+begin
+  Result := AFunc(self, AData);
+end;
+
 function TsCellRangeExprNode.NodeType: TsResultType;
 begin
   Result := rtCellRange;
+end;
+
+procedure TsCellRangeExprNode.SetRange(const ARange: TsCellRange);
+begin
+  FRow[1] := ARange.Row1;
+  FCol[1] := ARange.Col1;
+  FRow[2] := ARange.Row2;
+  FCol[2] := ARange.Col2;
 end;
 
 

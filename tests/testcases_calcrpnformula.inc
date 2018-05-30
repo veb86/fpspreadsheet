@@ -1026,7 +1026,10 @@
   else
     Myworksheet.WriteFormula(Row, 1, formula);
   SetLength(sollValues, Row+1);
-  sollValues[Row] := FloatResult(arccosh(number));
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
+  else
+    sollValues[Row] := FloatResult(arccosh(number));
   MyWorksheet.WriteNumber(Row, 2, sollValues[Row].ResFloat);
 
   // ACOSH - error result (arccos is not defined below 1
@@ -1043,6 +1046,9 @@
   SetLength(sollValues, Row+1);
   if AFormat = sfOpenDocument then
     sollValues[Row] := FloatResult(0)
+  else
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
   else
     sollValues[Row] := ErrorResult(errOverFlow);
 
@@ -1090,7 +1096,10 @@
   else
     MyWorksheet.WriteFormula(Row, 1, formula);
   SetLength(sollValues, Row+1);
-  sollValues[Row] := FloatResult(arcsinh(number));
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
+  else
+    sollValues[Row] := FloatResult(arcsinh(number));
   MyWorksheet.WriteNumber(Row, 2, sollValues[Row].ResFloat);
 
   // ATAN
@@ -1120,7 +1129,10 @@
   else
     MyWorksheet.WriteFormula(Row, 1, formula);
   SetLength(sollValues, Row+1);
-  sollValues[Row] := FloatResult(arctanh(number));
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
+  else
+    sollValues[Row] := FloatResult(arctanh(number));
   MyWorksheet.WriteNumber(Row, 2, sollValues[Row].ResFloat);
 
   // ATANH - error result (arctan is only defined within ]-1,1[
@@ -1137,6 +1149,9 @@
   SetLength(sollValues, Row+1);
   if AFormat = sfOpenDocument then
     sollValues[Row] := FloatResult(0)
+  else
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
   else
     sollValues[Row] := ErrorResult(errOverFlow);
 
@@ -1185,8 +1200,12 @@
   else
     MyWorksheet.WriteFormula(Row, 1, formula);
   SetLength(sollValues, Row+1);
-  sollValues[Row] := FloatResult(cosh(number));
-  MyWorksheet.WriteNumber(Row, 2, sollValues[Row].ResFloat);
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
+  else begin
+    sollValues[Row] := FloatResult(cosh(number));
+    MyWorksheet.WriteNumber(Row, 2, sollValues[Row].ResFloat);
+  end;
 
   // DEGREES
   if AFormat <> sfExcel2 then
@@ -1678,7 +1697,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteNumber(Row, 2, sinh(number));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := FloatResult(sinh(number));
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
+  else
+    sollValues[Row] := FloatResult(sinh(number));
 
   // SINH of cell value
   inc(Row);
@@ -1692,7 +1714,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteNumber(Row, 2, sinh(cellB1));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := FloatResult(sinh(cellB1));
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
+  else
+    sollValues[Row] := FloatResult(sinh(cellB1));
 
   // SQRT - valid result
   inc(Row);
@@ -1785,7 +1810,10 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteNumber(Row, 2, tanh(number));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := FloatResult(tanh(number));
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
+  else
+    sollValues[Row] := FloatResult(tanh(number));
 
   // TANH of cell value
   inc(Row);
@@ -1799,7 +1827,11 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteNumber(Row, 2, tanh(cellB1));
   SetLength(sollValues, Row+1);
-  sollValues[Row] := FloatResult(tanh(cellB1));
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
+  else
+    sollValues[Row] := FloatResult(tanh(cellB1));
+
 
 {------------------------------------------------------------------------------}
 {                             Date/time functions                              }
@@ -2087,7 +2119,10 @@
   Myworksheet.WriteDateTimeFormat(Row, 1, nfShortDate);
   Myworksheet.WriteDateTime(Row, 2, Date(), nfShortDate);
   SetLength(sollValues, Row+1);
-  sollValues[Row] := DateTimeResult(Date());
+  if AFormat = sfExcel2 then
+    sollValues[Row] := ErrorResult(errFormulaNotSupported)
+  else
+    sollValues[Row] := DateTimeResult(Date());
 
   // WEEKDAY  / argument number
   inc(Row);

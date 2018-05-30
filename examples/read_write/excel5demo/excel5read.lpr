@@ -48,7 +48,7 @@ begin
        ' Col: ', CurCell^.Col, ' Value: ',
       UTF8ToConsole(MyWorkSheet.ReadAsText(CurCell^.Row, CurCell^.Col)));
       if HasFormula(CurCell) then
-        Write(' - Formula: ', CurCell^.FormulaValue);
+        Write(' - Formula: ', MyWorksheet.ReadFormula(CurCell));
       WriteLn;
     end;
 

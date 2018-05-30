@@ -565,10 +565,10 @@ begin
               '67890123';
     DeleteCol := 2;
     Formula := 'C3';
-    SollFormula := '#REF!';         // col index unchanged due to deletion after cell
+    SollFormula := '#REF!';    // cell needec by formula does not exist any more
     SollLayout := '1245678|'+
                   '2356789|'+
-                  '346E890|'+    // "E" = error
+                  '346E890|'+  // "E" = error
                   '4578901|'+
                   '5689012|'+
                   '6790123';
@@ -617,7 +617,7 @@ begin
     Layout := '12345678|'+
               '23456789|'+
               '3456F890|'+                   // "F" = Formula in row 2, col 4
-              '45678901|'+
+              '45678901|'+             // delete this row
               '56789012|'+
               '67890123';
     DeleteRow := 3;
@@ -1010,6 +1010,7 @@ begin
       if InsDelTestData[ATestIndex].DeleteRow >= 0 then
         MyWorksheet.DeleteRow(InsDelTestData[ATestIndex].DeleteRow);
 
+      MyWorkbook.CalcFormulas;
       MyWorkBook.WriteToFile(TempFile, AFormat, true);
     finally
       MyWorkbook.Free;

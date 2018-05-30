@@ -763,7 +763,7 @@ begin
           cctEmpty      : actual := EmptyResult;
           else            fail('ContentType not supported');
         end;
-        actualformula := cell^.FormulaValue;
+        actualformula := sheet1.Formulas.FindFormula(cell)^.Text; //cell^.FormulaValue;
 
         expected := SollValues[row];
         // Cell does not store integers!

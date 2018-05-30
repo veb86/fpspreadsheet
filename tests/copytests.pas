@@ -161,13 +161,14 @@ var
   i, row, col: Integer;
   cell: PCell;
   expectedFormula: String;
+  expectedStr, actualStr: String;
 
 begin
   TempFile := GetTempFileName;
 
   MyWorkbook := TsWorkbook.Create;
   try
-//    MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving]; //boAutoCalc];
+    MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving]; //boAutoCalc];
 
     MyWorkSheet:= MyWorkBook.AddWorksheet(CopyTestSheet);
 
@@ -212,6 +213,7 @@ begin
     begin
       cell := Myworksheet.FindCell(row, 0);
       case ATestKind of
+       // 0: ; // don't copy, just write the original file for debugging
         1: MyWorksheet.CopyValue(cell, row, 2);
         2: MyWorksheet.CopyValue(cell, row, 1);
         3: MyWorksheet.CopyFormat(cell, row, 2);
@@ -233,6 +235,7 @@ begin
     // Read spreadsheet file...
     MyWorkbook.ReadFromFile(TempFile, AFormat);
     MyWorksheet := MyWorkbook.GetFirstWorksheet;
+    MyWorksheet.CalcFormulas;
 
     if odd(ATestKind) then col := 2 else col := 1;
 
@@ -335,9 +338,12 @@ begin
             )
           else
           begin
+            expectedStr := SetToString(PTypeInfo(TypeInfo(TsUsedFormattingFields)),
+              integer(Sourcecells[i+col-2].UsedformattingFields), true);
+            actualStr := SetToString(PTypeInfo(TypeInfo(TsUsedFormattingFields)),
+              integer(MyWorksheet.ReadUsedFormatting(cell)), true);
             CheckEquals(
-              true,
-              SourceCells[i+(col-2)].UsedFormattingFields = MyWorksheet.ReadUsedFormatting(cell),
+              expectedStr, actualStr,
               'Used formatting fields mismatch, cell ' + CellNotation(myWorksheet, row, col)
             );
             if (uffBackground in SourceCells[i+(col-2)].UsedFormattingFields) then
@@ -390,7 +396,8 @@ begin
           else
             CheckEquals(
               SourceCells[i+col-2].FormulaValue,
-              cell^.Formulavalue,
+              MyWorksheet.ReadFormula(cell),
+//              cell^.Formulavalue,
               'Formula mismatch, cell ' + CellNotation(MyWorksheet, row, col)
             );
         5:
@@ -403,7 +410,8 @@ begin
             end;
             CheckEquals(
               expectedFormula,
-              cell^.FormulaValue,
+              MyWorksheet.ReadFormula(cell),
+//              cell^.FormulaValue,
               'Formula mismatch, cell ' + Cellnotation(Myworksheet, row, col)
             );
           end;
@@ -421,7 +429,8 @@ begin
               end;
               CheckEquals(
                 expectedFormula,
-                cell^.FormulaValue,
+                MyWorksheet.ReadFormula(cell),
+//                cell^.FormulaValue,
                 'Formula mismatch, cell ' + Cellnotation(Myworksheet, row, col)
               );
             end;

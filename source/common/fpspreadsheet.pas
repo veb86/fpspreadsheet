@@ -23,7 +23,7 @@ uses
   clocale,
  {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, avglvltree, lconvencoding,
-  fpsTypes, fpsClasses, fpsNumFormat, fpsPageLayout, fpsImages;
+  fpsTypes, fpsExprParser, fpsClasses, fpsNumFormat, fpsPageLayout, fpsImages;
 
 type
   { Forward declarations }
@@ -67,6 +67,7 @@ type
     FComments: TsComments;
     FMergedCells: TsMergedCells;
     FHyperlinks: TsHyperlinks;
+    FFormulas: TsFormulas;
     FImages: TFPList;
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
@@ -109,16 +110,12 @@ type
     procedure SetVirtualRowCount(AValue: Cardinal);
     procedure SetZoomFactor(AValue: Double);
 
-    { Callback procedures called when iterating through all cells }
-    procedure DeleteColCallback(data, arg: Pointer);
-    procedure DeleteRowCallback(data, arg: Pointer);
-    procedure InsertColCallback(data, arg: Pointer);
-    procedure InsertRowCallback(data, arg: Pointer);
-
   protected
     function CellUsedInFormula(ARow, ACol: Cardinal): Boolean;
 
     // Remove and delete cells
+    procedure DeleteRowOrCol(AIndex: Integer; IsRow: Boolean);
+    procedure InsertRowOrCol(AIndex: Integer; IsRow: Boolean);
     function RemoveCell(ARow, ACol: Cardinal): PCell;
     procedure RemoveAndFreeCell(ARow, ACol: Cardinal);
 
@@ -190,8 +187,8 @@ type
     function IsEmpty: Boolean;
 
     { Writing of values }
-    function WriteBlank(ARow, ACol: Cardinal): PCell; overload;
-    procedure WriteBlank(ACell: PCell); overload;
+    function WriteBlank(ARow, ACol: Cardinal; KeepFormula: Boolean = false): PCell; overload;
+    procedure WriteBlank(ACell: PCell; KeepFormula: Boolean = false); overload;
 
     function WriteBoolValue(ARow, ACol: Cardinal; AValue: Boolean): PCell; overload;
     procedure WriteBoolValue(ACell: PCell; AValue: Boolean); overload;
@@ -251,7 +248,7 @@ type
     function WriteRPNFormula(ARow, ACol: Cardinal;
       AFormula: TsRPNFormula): PCell; overload;
     procedure WriteRPNFormula(ACell: PCell;
-      AFormula: TsRPNFormula); overload;
+      ARPNFormula: TsRPNFormula); overload;
 
     function WriteText(ARow, ACol: Cardinal; AText: String;
       ARichTextParams: TsRichTextParams = nil): PCell; overload;
@@ -378,13 +375,11 @@ type
 
     { Formulas }
     function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;
-    procedure CalcFormula(ACell: PCell);
+    procedure CalcFormula(AFormula: PsFormula);
     procedure CalcFormulas;
     procedure CalcSheet;
     function ConvertFormulaDialect(ACell: PCell; ADialect: TsFormulaDialect): String;
     function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
-    function GetCalcState(ACell: PCell): TsCalcState;
-    procedure SetCalcState(ACell: PCell; AValue: TsCalcState);
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromCell, AToCell: PCell); overload;
@@ -454,6 +449,7 @@ type
     procedure InsertCol(ACol: Cardinal);
     procedure InsertRow(ARow: Cardinal);
     procedure MoveCol(AFromCol, AToCol: Cardinal);
+    procedure MoveRow(AFromRow, AToRow: Cardinal);
     function  ReadDefaultColWidth(AUnits: TsSizeUnits): Single;
     function  ReadDefaultRowHeight(AUnits: TsSizeUnits): Single;
     function  ReadColFont(ACol: PCol): TsFont;
@@ -524,6 +520,12 @@ type
     procedure UnmergeCells(ARow, ACol: Cardinal); overload;
     procedure UnmergeCells(ARange: String); overload;
 
+    { Formulas }
+    procedure DeleteFormula(ACell: PCell);
+    function ReadFormula(ARow, ACol: Cardinal): String; overload;
+    function ReadFormula(ACell: PCell): String; overload;
+    procedure UseFormulaInCell(ACell: PCell; AFormula: PsFormula);
+
     { Embedded images }
     procedure CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
       out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
@@ -570,6 +572,8 @@ type
     property  MergedCells: TsMergedCells read FMergedCells;
     {@@ List of hyperlink information records }
     property  Hyperlinks: TsHyperlinks read FHyperlinks;
+    {@@ List of all formulas used in the sheet }
+    property  Formulas: TsFormulas read FFormulas;
     {@@ FormatSettings for localization of some formatting strings }
     property  FormatSettings: TFormatSettings read GetFormatSettings;
     {@@ Parameters to be used for printing by the Office applications }
@@ -849,7 +853,7 @@ implementation
 uses
   Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
   uvirtuallayer_ole, {%H-}fpsPatches, fpsStrings, fpsUtils, fpsHTMLUtils,
-  fpsReaderWriter, fpsCurrency, fpsExprParser;
+  fpsReaderWriter, fpsCurrency;
 
 (*
 const
@@ -1089,9 +1093,9 @@ begin
 end;
 
 
-{------------------------------------------------------------------------------}
+{==============================================================================}
 {                           TsWorksheet                                        }
-{------------------------------------------------------------------------------}
+{==============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the TsWorksheet class.
@@ -1106,6 +1110,7 @@ begin
   FComments := TsComments.Create;
   FMergedCells := TsMergedCells.Create;
   FHyperlinks := TsHyperlinks.Create;
+  FFormulas := TsFormulas.Create;
   FImages := TFPList.Create;
 
   FPageLayout := TsPageLayout.Create(self);
@@ -1146,6 +1151,7 @@ begin
   FComments.Free;
   FMergedCells.Free;
   FHyperlinks.Free;
+  FFormulas.Free;
   FImages.Free;
 
   inherited Destroy;
@@ -1164,105 +1170,120 @@ end;
 function TsWorksheet.BuildRPNFormula(ACell: PCell;
   ADestCell: PCell = nil): TsRPNFormula;
 var
-  parser: TsSpreadsheetParser;
+  formula: PsFormula;
 begin
-  if not HasFormula(ACell) then begin
+  if (ACell = nil) or (not HasFormula(ACell)) then begin
     SetLength(Result, 0);
     exit;
   end;
-  parser := TsSpreadsheetParser.Create(self);
-  try
-    if ADestCell <> nil then
-      parser.PrepareCopyMode(ACell, ADestCell);
-    parser.Expression := ACell^.FormulaValue;
-    Result := parser.RPNFormula;
-  finally
-    parser.Free;
+  formula := FFormulas.FindFormula(ACell^.Row, ACell^.Col);
+  if formula = nil then begin
+    SetLength(Result, 0);
+    exit;
   end;
+
+  if ADestCell <> nil then begin
+    formula^.Parser.PrepareCopyMode(ACell, ADestCell);
+    Result := formula^.Parser.RPNFormula;
+    formula^.Parser.PrepareCopyMode(nil, nil);
+  end else
+    Result := formula^.Parser.RPNFormula;
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Calculates the formula in a cell
-  Should not be called by itself because the result may depend on other cells
+  Calculates the provided formula
+
+  Should not be called by itself because the result may depend on other formulas
   which may have not yet been calculated. It is better to call CalcFormulas
   instead.
 
-  @param  ACell  Cell containing the formula.
+  @param  AFormula  Formula to be calculated. The formula belongs to the
+                    cell specified by the formula's Row and Col parameters.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.CalcFormula(ACell: PCell);
+procedure TsWorksheet.CalcFormula(AFormula: PsFormula);
 var
-  parser: TsSpreadsheetParser;
+  lCell, lCellRef: PCell;
+  parser: TsExpressionParser = nil;
+  has3DLink: Boolean;
   res: TsExpressionResult;
   p: Integer;
   link, txt: String;
-  cell: PCell;
-  formula: String;
-  has3DLink: Boolean;
 begin
-  if (boIgnoreFormulas in Workbook.Options) then
+  if (boIgnoreFormulas in Workbook.Options) or (AFormula = nil) then
     exit;
 
-  formula := ACell^.FormulaValue;
-  ACell^.Flags := ACell^.Flags + [cfCalculating] - [cfCalculated];
+  if (AFormula^.Text = '') and (AFormula^.Parser = nil) then
+    raise ECalcEngine.Create('CalcFormula: no formula specified.');
 
-  parser := TsSpreadsheetParser.Create(self);
-  try
+  AFormula^.CalcState := csCalculating;
+  if AFormula^.Parser = nil then begin
+    parser := TsSpreadsheetParser.Create(self);
     try
-      parser.Expression := ACell^.FormulaValue;
+      parser.Expression := AFormula^.Text;
       has3DLink := parser.Contains3DRef;
-      res := parser.Evaluate;
+      AFormula^.Parser := parser;
     except
-      on E:ECalcEngine do
+      on E:ECalcEngine do begin
+        Workbook.AddErrorMsg(E.Message);
+        res := ErrorResult(errIllegalRef);
+      end;
+    end;
+  end;
+
+  if AFormula^.Parser <> nil then
+    try
+      res := AFormula^.Parser.Evaluate;
+      if AFormula^.Text = '' then
+        AFormula^.Text := AFormula^.Parser.Expression;
+    except
+      on E: ECalcEngine do
       begin
         Workbook.AddErrorMsg(E.Message);
-        Res := ErrorResult(errIllegalRef);
+        res := ErrorResult(errIllegalRef);
       end;
     end;
 
-    case res.ResultType of
-      rtEmpty     : WriteBlank(ACell);
-      rtError     : WriteErrorValue(ACell, res.ResError);
-      rtInteger   : WriteNumber(ACell, res.ResInteger);
-      rtFloat     : WriteNumber(ACell, res.ResFloat);
-      rtDateTime  : WriteDateTime(ACell, res.ResDateTime);
-      rtString    : WriteText(ACell, res.ResString);
-      rtHyperlink : begin
-                      link := ArgToString(res);
-                      p := pos(HYPERLINK_SEPARATOR, link);
-                      if p > 0 then
-                      begin
-                        txt := Copy(link, p+Length(HYPERLINK_SEPARATOR), Length(link));
-                        link := Copy(link, 1, p-1);
-                      end else
-                        txt := link;
-                      WriteHyperlink(ACell, link);
-                      WriteText(ACell, txt);
-                    end;
-      rtBoolean   : WriteBoolValue(ACell, res.ResBoolean);
-      rtCell      : begin
-                      cell := (res.Worksheet as TsWorksheet).FindCell(res.ResRow, res.ResCol);
-                      if cell <> nil then
-                        case cell^.ContentType of
-                          cctNumber    : WriteNumber(ACell, cell^.NumberValue);
-                          cctDateTime  : WriteDateTime(ACell, cell^.DateTimeValue);
-                          cctUTF8String: WriteText(ACell, cell^.UTF8StringValue);
-                          cctBool      : WriteBoolValue(ACell, cell^.Boolvalue);
-                          cctError     : WriteErrorValue(ACell, cell^.ErrorValue);
-                          cctEmpty     : WriteBlank(ACell);
-                        end
-                      else
-                        WriteBlank(ACell);
-                    end;
-    end;
-    if has3DLink then Include(ACell^.Flags, cf3DFormula)
-      else Exclude(ACell^.Flags, cf3DFormula);
-  finally
-    parser.Free;
+  // Find or create the formula cell
+  lCell := GetCell(AFormula^.Row, AFormula^.Col);
+  // Assign formula result
+  case res.ResultType of
+    rtEmpty     : WriteBlank(lCell, true);
+    rtError     : WriteErrorValue(lCell, res.ResError);
+    rtInteger   : WriteNumber(lCell, res.ResInteger);
+    rtFloat     : WriteNumber(lCell, res.ResFloat);
+    rtDateTime  : WriteDateTime(lCell, res.ResDateTime);
+    rtString    : WriteText(lCell, res.ResString);
+    rtHyperlink : begin
+                    link := ArgToString(res);
+                    p := pos(HYPERLINK_SEPARATOR, link);
+                    if p > 0 then
+                    begin
+                      txt := Copy(link, p+Length(HYPERLINK_SEPARATOR), Length(link));
+                      link := Copy(link, 1, p-1);
+                    end else
+                      txt := link;
+                    WriteHyperlink(lCell, link);
+                    WriteText(lCell, txt);
+                  end;
+    rtBoolean   : WriteBoolValue(lCell, res.ResBoolean);
+    rtCell      : begin
+                    lCellRef := (res.Worksheet as TsWorksheet).FindCell(res.ResRow, res.ResCol);
+                    if lCellRef <> nil then
+                      case lCellRef^.ContentType of
+                        cctNumber    : WriteNumber(lCell, lCellRef^.NumberValue);
+                        cctDateTime  : WriteDateTime(lCell, lCellRef^.DateTimeValue);
+                        cctUTF8String: WriteText(lCell, lCellRef^.UTF8StringValue);
+                        cctBool      : WriteBoolValue(lCell, lCellRef^.Boolvalue);
+                        cctError     : WriteErrorValue(lCell, lCellRef^.ErrorValue);
+                        cctEmpty     : WriteBlank(lCell, true);
+                      end
+                    else
+                      WriteBlank(lCell, true);
+                  end;
   end;
 
   // Restore the formula. Could have been erased by WriteBlank or WriteText('')
-  ACell^.FormulaValue := formula;
-  ACell^.Flags := ACell^.Flags + [cfCalculated] - [cfCalculating];
+  AFormula^.CalcState := csCalculated;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1280,42 +1301,39 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Calculates all formulas of the worksheet.
+  Calculates all formulas of the worksheet
 
   Since formulas may reference not-yet-calculated cells, this occurs in
   two steps:
-  1. All formula cells are marked as "not calculated".
-  2. Cells are calculated. If referenced cells are found as being
+  1. All formulas are marked as "not calculated".
+  2. Formulas are calculated. If formulas in referenced are found as being
      "not calculated" they are calculated and then tagged as "calculated".
-  This results in an iterative calculation procedure. In the end, all cells
+  This results in an iterative calculation procedure. In the end, all formulas
   are calculated.
 
   NOTE: IF THE WORKSHEET CONTAINS CELLS WHICH LINK TO OTHER WORKSHEETS THEN
-  THIS CALCULATION MAY NOT BE CORRECT. USE THE SAME METHOD OF THE WORKBOOK
-  INSTEAD !!!
+  THIS CALCULATION MAY NOT BE CORRECT. USE THE METHOD CalcFormulas OF THE
+  WORKBOOK INSTEAD !!!
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcSheet;
 var
-  cell: PCell;
-  i: Integer;
+  formula: PsFormula;
 begin
   if (boIgnoreFormulas in Workbook.Options) then
     exit;
 
-  // prevent infinite loop due to triggering of formula calculation whenever
-  // a cell changes during execution of CalcFormulas.
+  { prevent infinite loop due to triggerung of formula recalculation whenever
+    a cell changes during execution of CalcFormulas }
   inc(FWorkbook.FCalculationLock);
   try
-    // Step 1 - mark all formula cells as "not calculated"
-    for cell in FCells do
-      if HasFormula(cell) then
-        SetCalcState(cell, csNotCalculated);
+    // State 1 - mark all formulas as "not calculated"
+    for formula in FFormulas do
+      formula^.CalcState := csNotCalculated;
 
-    // Step 2 - calculate cells. If a not-yet-calculated cell is found it is
-    // calculated and then marked as such.
-    for cell in FCells do
-      if HasFormula(cell) and (cell^.ContentType <> cctError) then
-        CalcFormula(cell);
+    // State 2 - calculate formulas. If a formula required during calculation
+    // is found as not-yet-calculated, then it is calculated immediately.
+    for formula in FFormulas do
+      CalcFormula(formula);
   finally
     dec(FWorkbook.FCalculationLock);
   end;
@@ -1920,19 +1938,29 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyFormula(AFromCell, AToCell: PCell);
 var
-  rpnFormula: TsRPNFormula;
+  srcFormula, destFormula: PsFormula;
+  rpn: TsRPNFormula;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
 
-  if AFromCell^.FormulaValue = '' then
-    AToCell^.FormulaValue := ''
-  else
-  begin
-    // Here we convert the formula to an rpn formula as seen from source...
-    rpnFormula := BuildRPNFormula(AFromCell, AToCell);
-    // ... and here we reconstruct the string formula as seen from destination cell.
-    AToCell^.FormulaValue := ConvertRPNFormulaToStringFormula(rpnFormula);
+  DeleteFormula(AToCell);
+
+  if not HasFormula(AFromCell) then
+    exit;
+
+  srcFormula := FFormulas.FindFormula(AFromCell^.Row, AFromCell^.Col);
+  destFormula := FFormulas.AddFormula(AToCell^.Row, AToCell^.Col);
+  destFormula.Parser := TsSpreadsheetParser.Create(self);
+
+  srcFormula^.Parser.PrepareCopyMode(AFromCell, AToCell);
+  try
+    rpn := srcFormula^.Parser.RPNFormula;
+    destFormula^.Parser.RPNFormula := rpn;
+    destFormula^.Text := destFormula^.Parser.Expression;
+    UseFormulaInCell(AToCell, destFormula);
+  finally
+    srcFormula^.Parser.PrepareCopyMode(nil, nil);
   end;
 
   ChangedCell(AToCell^.Row, AToCell^.Col);
@@ -1961,10 +1989,22 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyValue(AFromCell, AToCell: PCell);
 begin
-  if (AFromCell = nil) or (AToCell = nil) then
+  if (AToCell = nil) then   // AFromCell is allowed to be empty
     exit;
 
-  CopyCellValue(AFromCell, AToCell);
+  if AFromCell <> nil then begin
+    AToCell^.ContentType := AFromCell^.ContentType;
+    AToCell^.NumberValue := AFromCell^.NumberValue;
+    AToCell^.DateTimeValue := AFromCell^.DateTimeValue;
+    AToCell^.BoolValue := AFromCell^.BoolValue;
+    AToCell^.ErrorValue := AFromCell^.ErrorValue;
+    AToCell^.UTF8StringValue := AFromCell^.UTF8StringValue;
+  end else
+    AToCell^.ContentType := cctEmpty;
+
+  // Note: As confirmed with Excel, the formula is not to be copied here.
+  // But that of the destination cell must be erased.
+  DeleteFormula(AToCell);
 
   ChangedCell(AToCell^.Row, AToCell^.Col);
 end;
@@ -2088,6 +2128,17 @@ begin
   if HasComment(ACell) then
     WriteComment(ACell, '');
 
+  // Does cell have a hyperlink? --> remove it
+  if HasHyperlink(ACell) then
+    WriteHyperlink(ACell, '');
+
+  // Does cell have a formula? --> remove it
+  if HasFormula(ACell) then
+    WriteFormula(ACell, '');
+
+  // To do: Check if the cell is referencec by a formula. In this case we have
+  // a #REF! error.
+
   // Cell is part of a merged block? --> Erase content, formatting etc.
   if IsMerged(ACell)  then
   begin
@@ -2102,116 +2153,6 @@ begin
   RemoveAndFreeCell(ACell^.Row, ACell^.Col);
 
   ChangedCell(r, c);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Internal call-back procedure for looping through all cells when deleting
-  a specified column. Deletion happens in DeleteCol BEFORE this callback!
--------------------------------------------------------------------------------}
-procedure TsWorksheet.DeleteColCallback(data, arg: Pointer);
-var
-  cell: PCell;
-  col: Cardinal;
-  formula: TsRPNFormula;
-  i: Integer;
-begin
-  col := LongInt({%H-}PtrInt(arg));
-  cell := PCell(data);
-  if cell = nil then   // This should not happen. Just to make sure...
-    exit;
-
-  // Update column index of moved cell
-  if (cell^.Col > col) then
-    dec(cell^.Col);
-
-  // Update formulas
-  if HasFormula(cell) then
-  begin
-    // (1) create an rpn formula
-    formula := BuildRPNFormula(cell);
-    // (2) update cell addresses affected by the deletion of the column
-    for i:=0 to High(formula) do
-    begin
-      if (formula[i].ElementKind in [fekCell, fekCellRef, fekCellRange]) then
-      begin
-        if formula[i].Col = col then
-        begin
-          formula[i].ElementKind := fekErr;
-          formula[i].IntValue := ord(errIllegalRef);
-        end else
-        if formula[i].Col > col then
-          dec(formula[i].Col);
-        if (formula[i].ElementKind = fekCellRange) then
-        begin
-          if (formula[i].Col2 = col) then
-          begin
-            formula[i].ElementKind := fekErr;
-            formula[i].IntValue := ord(errIllegalRef);
-          end
-          else
-          if (formula[i].Col2 > col) then
-            dec(formula[i].Col2);
-        end;
-      end;
-    end;
-    // (3) convert rpn formula back to string formula
-    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Internal call-back procedure for looping through all cells when deleting
-  a specified row. Deletion happens in DeleteRow BEFORE this callback!
--------------------------------------------------------------------------------}
-procedure TsWorksheet.DeleteRowCallback(data, arg: Pointer);
-var
-  cell: PCell;
-  row: Cardinal;
-  formula: TsRPNFormula;
-  i: Integer;
-begin
-  row := LongInt({%H-}PtrInt(arg));
-  cell := PCell(data);
-  if cell = nil then   // This should not happen. Just to make sure...
-    exit;
-
-  // Update row index of moved cell
-  if (cell^.Row > row) then
-    dec(cell^.Row);
-
-  // Update formulas
-  if HasFormula(cell) then
-  begin
-    // (1) create an rpn formula
-    formula := BuildRPNFormula(cell);
-    // (2) update cell addresses affected by the deletion of the column
-    for i:=0 to High(formula) do
-    begin
-      if (formula[i].ElementKind in [fekCell, fekCellRef, fekCellRange]) then
-      begin
-        if formula[i].Row = row then
-        begin
-          formula[i].ElementKind := fekErr;
-          formula[i].IntValue := ord(errIllegalRef);
-        end else
-        if formula[i].Row > row then
-          dec(formula[i].Row);
-        if (formula[i].ElementKind = fekCellRange) then
-        begin
-          if (formula[i].Row2 = row) then
-          begin
-            formula[i].ElementKind := fekErr;
-            formula[i].IntValue := ord(errIllegalRef);
-          end
-          else
-          if (formula[i].Row2 > row) then
-            dec(formula[i].Row2);
-        end;
-      end;
-    end;
-    // (3) convert rpn formula back to string formula
-    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
-  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2937,26 +2878,17 @@ end;
 function TsWorksheet.ReadFormulaAsString(ACell: PCell;
   ALocalized: Boolean = false): String;
 var
-  parser: TsSpreadsheetParser;
+  formula: PsFormula;
 begin
   Result := '';
   if ACell = nil then
     exit;
   if HasFormula(ACell) then begin
+    formula := FFormulas.FindFormula(ACell^.Row, ACell^.Col);
     if ALocalized then
-    begin
-      // case (1): Formula is localized and has to be converted to default syntax   // !!!! Is this comment correct?
-      parser := TsSpreadsheetParser.Create(self);
-      try
-        parser.Expression := ACell^.FormulaValue;
-        Result := parser.LocalizedExpression[Workbook.FormatSettings];
-      finally
-        parser.Free;
-      end;
-    end
+      Result := formula^.Parser.LocalizedExpression[Workbook.FormatSettings]
     else
-      // case (2): Formula is already in default syntax
-      Result := ACell^.FormulaValue;
+      Result := formula^.Parser.Expression;
   end;
 end;
 
@@ -2996,21 +2928,21 @@ end;
 function TsWorksheet.ConvertFormulaDialect(ACell: PCell;
   ADialect: TsFormulaDialect): String;
 var
-  parser: TsSpreadsheetParser;
+  oldDialect: TsFormulaDialect;
+  formula: PsFormula;
 begin
-  if ACell^.Formulavalue <> '' then
-  begin
-    parser := TsSpreadsheetParser.Create(self);
-    try
-      parser.Expression := ACell^.FormulaValue;
-      parser.Dialect := ADialect;
-      parser.PrepareCopyMode(ACell, ACell);
-      Result := parser.Expression;
-    finally
-      parser.Free;
-    end;
-  end else
-    Result := '';
+  Result := '';
+  if (ACell = nil) or (not HasFormula(ACell)) then
+    exit;
+
+  formula := FFormulas.findFormula(ACell^.Row, ACell^.Col);
+  oldDialect := formula^.Parser.Dialect;
+  try
+    formula^.Parser.Dialect := ADialect;
+    Result := formula^.Parser.Expression;
+  finally
+    formula^.Parser.Dialect := oldDialect;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3032,60 +2964,6 @@ begin
     Result := parser.Expression;
   finally
     parser.Free;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns the CalcState flag of the specified cell. This flag tells whether a
-  formula in the cell has not yet been calculated (csNotCalculated), is
-  currently being calculated (csCalculating), or has already been calculated
-  (csCalculated).
-
-  @param   ACell   Pointer to cell considered
-  @return  Enumerated value of the cell's calculation state
-           (csNotCalculated, csCalculating, csCalculated)
--------------------------------------------------------------------------------}
-function TsWorksheet.GetCalcState(ACell: PCell): TsCalcState;
-var
-  calcState: TsCellFlags;
-begin
-  Result := csNotCalculated;
-  if (ACell = nil) then
-    exit;
-  calcState := ACell^.Flags * [cfCalculating, cfCalculated];
-  if calcState = [] then
-    Result := csNotCalculated
-  else
-  if calcState = [cfCalculating] then
-    Result := csCalculating
-  else
-  if calcState = [cfCalculated] then
-    Result := csCalculated
-  else
-    raise EFPSpreadsheet.Create('[TsWorksheet.GetCalcState] Illegal cell flags.');
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Set the CalcState flag of the specified cell. This flag tells whether a
-  formula in the cell has not yet been calculated (csNotCalculated), is
-  currently being calculated (csCalculating), or has already been calculated
-  (csCalculated).
-
-  For internal use only!
-
-  @param  ACell   Pointer to cell considered
-  @param  AValue  New value for the calculation state of the cell
-                  (csNotCalculated, csCalculating, csCalculated)
--------------------------------------------------------------------------------}
-procedure TsWorksheet.SetCalcState(ACell: PCell; AValue: TsCalcState);
-begin
-  case AValue of
-    csNotCalculated:
-      ACell^.Flags := ACell^.Flags - [cfCalculated, cfCalculating];
-    csCalculating:
-      ACell^.Flags := ACell^.Flags + [cfCalculating] - [cfCalculated];
-    csCalculated:
-      ACell^.Flags := ACell^.Flags + [cfCalculated] - [cfCalculating];
   end;
 end;
 
@@ -3133,15 +3011,6 @@ begin
     if fmtIndex = 0 then
       fmtIndex := GetColFormatIndex(ACol);
   end;
-  {
-  if (cell <> nil) and (cell^.FormatIndex > 0) then
-    fmtIndex := cell^.FormatIndex
-  else begin
-    fmtIndex := GetRowFormatIndex(ARow);
-    if fmtIndex = 0 then
-      fmtIndex := GetColFormatIndex(ACol);
-  end;
-  }
   Result := FWorkbook.GetPointerToCellFormat(fmtIndex);
 end;
 
@@ -3153,18 +3022,6 @@ function TsWorksheet.GetPointerToEffectiveCellFormat(ACell: PCell): PsCellFormat
 var
   fmtIndex: Integer;
 begin
-  {
-  fmtIndex := 0;
-  if (ACell <> nil) then begin
-    if (ACell^.FormatIndex > 0) then
-      fmtIndex := ACell^.FormatIndex
-    else begin
-      fmtIndex := GetRowFormatIndex(ACell^.Row);
-      if fmtIndex = 0 then
-        fmtIndex := GetColFormatIndex(ACell^.Col);
-    end;
-  end;
-  }
   if (ACell <> nil) then
     fmtIndex := ACell^.FormatIndex
   else
@@ -3718,6 +3575,70 @@ end;
 function TsWorksheet.IsMerged(ACell: PCell): Boolean;
 begin
   Result := (ACell <> nil) and (cfMerged in ACell^.Flags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Deletes the formula assigned to the specified cell
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.DeleteFormula(ACell: PCell);
+begin
+  if HasFormula(ACell) then begin
+    FFormulas.DeleteFormula(ACell);
+    ACell^.Flags := ACell^.Flags - [cfHasFormula, cf3dFormula];
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the formula assigned to a cell in the specified row and column
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadFormula(ARow, ACol: Cardinal): String;
+var
+  cell: PCell;
+begin
+  cell := FindCell(ARow, ACol);
+  Result := ReadFormula(cell)
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the formula assigned to a specified cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadFormula(ACell: PCell): String;
+var
+  formula: PsFormula;
+begin
+  Result := '';
+  if ACell = nil then
+    exit;
+
+  formula := Formulas.FindFormula(ACell);
+  if formula = nil then
+    exit;
+
+  Result := formula^.Text;
+
+  if (Result = '') and (formula^.Parser <> nil) then
+    Result := formula^.Parser.Expression;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Uses a formula in the specified a cell
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.UseFormulaInCell(ACell: PCell; AFormula: PsFormula);
+begin
+  Assert(ACell <> nil);
+
+  if AFormula <> nil then
+  begin
+    AFormula^.Col := ACell^.Col;
+    AFormula^.Row := ACell^.Row;
+
+    ACell^.ContentType := cctFormula;
+
+    ACell^.Flags := ACell^.Flags + [cfHasFormula];
+    if (AFormula^.Parser <> nil) and AFormula^.Parser.Has3DLinks then
+      ACell^.Flags := ACell^.Flags + [cf3dFormula];
+  end else
+    DeleteFormula(ACell);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4615,6 +4536,7 @@ begin
     end;
   end;
 
+  ACell^.UTF8StringValue := AText;
   if (AText = '') then
   begin
     { Initially, the cell was destroyed here if AText = '' and the cell is not
@@ -4622,17 +4544,15 @@ begin
       This is not good... The calling procedure cannot be notified that
       ACell is destroyed here.
       See issue #0030049 }
-    WriteBlank(ACell);
-    exit;
+    ACell^.ContentType := cctEmpty;
+  end else
+  begin
+    ACell^.ContentType := cctUTF8String;
+    SetLength(ACell^.RichTextParams, Length(ARichTextParams));
+    if Length(ARichTextParams) > 0 then
+      for i:=0 to High(ARichTextParams) do
+        ACell^.RichTextParams[i] := ARichTextParams[i];
   end;
-
-  ACell^.ContentType := cctUTF8String;
-  ACell^.UTF8StringValue := AText;
-
-  SetLength(ACell^.RichTextParams, Length(ARichTextParams));
-  if Length(ARichTextParams) > 0 then
-    for i:=0 to High(ARichTextParams) do
-      ACell^.RichTextParams[i] := ARichTextParams[i];
 
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
@@ -4885,29 +4805,37 @@ end;
 {@@ ----------------------------------------------------------------------------
   Writes an empty cell
 
-  @param  ARow       The row of the cell
-  @param  ACol       The column of the cell
+  @param  ARow          The row of the cell
+  @param  ACol          The column of the cell
+  @param  KeepFormula   Does not erase the formula. Off by default because it
+                        would be very confusing if the formula had a
+                        non-blank result.
   @return Pointer to the cell
   Note:   Empty cells are useful when, for example, a border line extends
           along a range of cells including empty cells.
 -------------------------------------------------------------------------------}
-function TsWorksheet.WriteBlank(ARow, ACol: Cardinal): PCell;
+function TsWorksheet.WriteBlank(ARow, ACol: Cardinal;
+  KeepFormula: Boolean = false): PCell;
 begin
   Result := GetCell(ARow, ACol);
-  WriteBlank(Result);
+  WriteBlank(Result, KeepFormula);
 end;
 
 {@@ ----------------------------------------------------------------------------
   Writes an empty cell
 
   @param  ACel          Pointer to the cell
+  @param  KeepFormula   Does not erase the formula. Off by default because it
+                        would be very confusing if the formula had a
+                        non-blank result.
   Note:   Empty cells are useful when, for example, a border line extends
           along a range of cells including empty cells.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteBlank(ACell: PCell);
+procedure TsWorksheet.WriteBlank(ACell: PCell; KeepFormula: Boolean = false);
 begin
   if ACell <> nil then begin
-      ACell^.FormulaValue := '';
+    if not KeepFormula then
+      DeleteFormula(ACell);
     // NOTE: Erase the formula because if it would return a non-blank result
     // this would be very confusing!
     if HasHyperlink(ACell) then
@@ -5044,7 +4972,8 @@ begin
   if ACell = nil then
     exit;
 
-  ACell^.FormulaValue := '';
+  if HasFormula(ACell) then
+    DeleteFormula(ACell);
 
   if AValue = '' then
   begin
@@ -5629,6 +5558,8 @@ end;
 
   @param  ACell      Pointer to the cell
   @param  AFormula   Formula string to be written. A leading '=' will be removed.
+                     If AFormula is '' then an formula already assigned to this
+                     cell is deleted.
   @param  ALocalized If true, the formula is expected to have decimal and list
                      separators of the workbook's FormatSettings. Otherwise
                      uses dot and comma, respectively.
@@ -5637,43 +5568,46 @@ procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: string;
   ALocalized: Boolean = false);
 var
   parser: TsExpressionParser;
+  formula: PsFormula;
 begin
   if ACell = nil then
     exit;
 
+  if AFormula = '' then begin
+    DeleteFormula(ACell);
+    ChangedCell(ACell^.Row, ACell^.Col);
+    exit;
+  end;
+
+  formula := FFormulas.AddFormula(ACell^.Row, ACell^.Col, AFormula);
+
   if not (boIgnoreFormulas in Workbook.Options) then
   begin
     // Remove '='; is not stored internally
-    if (AFormula <> '') and (AFormula[1] = '=') then
+    if (AFormula[1] = '=') then
       AFormula := Copy(AFormula, 2, Length(AFormula));
 
-    if ALocalized then begin
-      // Convert "localized" formula to standard format
-      parser := TsSpreadsheetParser.Create(self);
-      try
-        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula;
-        parser.Expression := AFormula;
-      {
-      if ALocalized then
-        // Convert "localized" formula to standard format
-        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula
-      else
-        parser.Expression := AFormula;
-      AFormula := parser.Expression;
-      if parser.Has3DLinks
-        then ACell.Flags := ACell.Flags + [cf3dFormula]
-        else ACell.Flags := ACell.Flags - [cf3dFormula];
-        }
-      finally
-        parser.Free;
-      end;
-    end;
+    parser := TsSpreadsheetParser.Create(self);
+    if ALocalized then
+      parser.LocalizedExpression[Workbook.FormatSettings] := AFormula
+    else
+      parser.Expression := AFormula;
+    AFormula := parser.Expression;
+
+    if parser.Has3DLinks then
+      ACell.Flags := ACell.Flags + [cf3dFormula]
+    else
+      ACell.Flags := ACell.Flags - [cf3dFormula];
+
+    formula^.Text := AFormula;
+    formula^.Parser := parser;   // parser will be destroyed by formula
   end;
 
-  // Store formula in cell
-  if AFormula <> '' then
-    ACell^.ContentType := cctFormula;
-  ACell^.FormulaValue := AFormula;
+  // Set formula flags in cell
+  ACell^.ContentType := cctFormula;
+  ACell^.Flags := ACell^.Flags + [cfHasFormula];
+
+  // Notify controls of changed cell
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
@@ -5909,14 +5843,28 @@ end;
   @see    TsFormulaElements
   @see    CreateRPNFormula
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteRPNFormula(ACell: PCell; AFormula: TsRPNFormula);
+procedure TsWorksheet.WriteRPNFormula(ACell: PCell; ARPNFormula: TsRPNFormula);
+var
+  formula: PsFormula;
+  parser: TsSpreadsheetParser;
 begin
   if ACell = nil then
     exit;
 
+  formula := FFormulas.FindFormula(ACell);
+  if formula = nil then begin
+    formula := FFormulas.AddFormula(ACell^.Row, ACell^.Col);
+    formula^.Parser := TsSpreadsheetParser.Create(self);
+  end;
+  formula^.Parser.RPNFormula := ARPNFormula;
+  formula^.Text := formula^.Parser.Expression;
+  UseFormulaInCell(ACell, formula);
+  ACell^.ContentType := cctFormula;
+                                   (*
+  formuila.Parsed := TsSpreadsheetParser.
   ACell^.ContentType := cctFormula;
   ACell^.FormulaValue := ConvertRPNFormulaToStringFormula(AFormula);
-
+                                     *)
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
@@ -7401,198 +7349,104 @@ end;
   @param   ACol   Index of the column to be deleted
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteCol(ACol: Cardinal);
-var
-  col: PCol;
-  i: Integer;
-  r: Cardinal;
-  cell: PCell;
-  firstRow, lastRow: Cardinal;
 begin
-  lastRow := GetLastOccupiedRowIndex;
-  firstRow := GetFirstRowIndex;
-
-  // Fix merged cells
-  FMergedCells.DeleteRowOrCol(ACol, false);
-
-  // Fix comments
-  FComments.DeleteRowOrCol(ACol, false);
-
-  // Fix hyperlinks
-  FHyperlinks.DeleteRowOrCol(ACol, false);
-
-  // Delete cells
-  for r := lastRow downto firstRow do
-    RemoveAndFreeCell(r, ACol);
-
-  // Update column index of cell records
-  for cell in FCells do
-    DeleteColCallback(cell, {%H-}pointer(PtrInt(ACol)));
-
-  // Update column index of col records
-  for i:=FCols.Count-1 downto 0 do begin
-    col := PCol(FCols.Items[i]);
-    if col^.Col > ACol then
-      dec(col^.Col)
-    else
-      break;
-  end;
-
-  // Update first and last column index
-  UpDateCaches;
-
-  ChangedCell(0, ACol);
+  DeleteRowOrCol(ACol, false);
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Deletes the row at the index specified. Cells with greader row indexes are
+  Deletes the row at the index specified. Cells with greater row indexes are
   moved one row up. Merged cell blocks and cell references in formulas
   are considered as well.
 
   @param   ARow   Index of the row to be deleted
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteRow(ARow: Cardinal);
-var
-  row: PRow;
-  i: Integer;
-  c: Cardinal;
-  firstCol, lastCol: Cardinal;
-  cell: PCell;
 begin
-  firstCol := GetFirstColIndex;
-  lastCol := GetLastOccupiedColIndex;
-
-  // Fix merged cells
-  FMergedCells.DeleteRowOrCol(ARow, true);
-
-  // Fix comments
-  FComments.DeleteRowOrCol(ARow, true);
-
-  // Fix hyperlinks
-  FHyperlinks.DeleteRowOrCol(ARow, true);
-
-  // Delete cells
-  for c := lastCol downto firstCol do
-    RemoveAndFreeCell(ARow, c);
-
-  // Update row index of cell records
-  for cell in FCells do
-    DeleteRowCallback(cell, {%H-}pointer(PtrInt(ARow)));
-
-  // Update row index of row records
-  for i:=FRows.Count-1 downto 0 do
-  begin
-    row := PRow(FRows.Items[i]);
-    if row^.Row > ARow then
-      dec(row^.Row)
-    else
-      break;
-  end;
-
-  // Update first and last row index
-  UpdateCaches;
-
-  ChangedCell(ARow, 0);
+  DeleteRowOrCol(ARow, true);
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Inserts a column BEFORE the index specified. Cells with greater column indexes
-  are moved one column to the right. Merged cell blocks and cell references in
-  formulas are considered as well.
+  Deletes the row or column at the index specified. AIsRow determines whether
+  the index is a row or column index.
+
+  Cells with greader row/column indexes are moved one row up/left.
+  Merged cell blocks and cell references in formulas are considered as well.
+
+  @param   AIndex   Index of the row to be deleted
+  @param   IsRow    If TRUE then AIndex is a row index, otherwise a column index
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.DeleteRowOrCol(AIndex: Integer; IsRow: Boolean);
+var
+  cell: PCell;
+  row: PRow;
+  col: PCol;
+  i: Integer;
+  r: Cardinal;
+  formula: PsFormula;
+begin
+  // Fix merged cells
+  FMergedCells.DeleteRowOrCol(AIndex, IsRow);
+
+  // Fix comments
+  FComments.DeleteRowOrCol(AIndex, IsRow);
+
+  // Fix hyperlinks
+  FHyperlinks.DeleteRowOrCol(AIndex, IsRow);
+
+  // Fix formulas
+  FFormulas.DeleteRowOrCol(AIndex, IsRow);
+
+  // Delete cells
+  FCells.DeleteRowOrCol(AIndex, IsRow);
+
+  // Fix formula flags
+  for cell in FCells do
+    if HasFormula(cell) and (FFormulas.FindFormula(cell) = nil) then
+      cell^.Flags := cell^.flags - [cfHasFormula, cf3dFormula];
+
+  // Fix formula left-overs (formulas having no cell)
+  for formula in FFormulas do
+    if FindCell(formula^.Row, formula^.Col) = nil then
+      FFormulas.DeleteFormula(formula^.Row, formula^.Col);
+
+  if IsRow then
+  begin
+    for i:= FRows.Count-1 downto 0 do begin
+      row := PRow(FRows.Items[i]);
+      if row^.Row > AIndex then
+        dec(row^.Row)
+      else
+        break;
+    end;
+    // Update first and last row index
+    UpdateCaches;
+    ChangedCell(AIndex, 0);
+  end else
+  begin
+    // Update column index of col records
+    for i:=FCols.Count-1 downto 0 do begin
+      col := PCol(FCols.Items[i]);
+      if col^.Col > AIndex then
+        dec(col^.Col)
+      else
+        break;
+    end;
+    // Update first and last column index
+    UpDateCaches;
+    ChangedCell(0, AIndex);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Inserts a column BEFORE the column index specified.
+  Cells with greater column indexes are moved one row to the right.
+  Merged cell blocks and cell references in formulas are considered as well.
 
   @param   ACol   Index of the column before which a new column is inserted.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.InsertCol(ACol: Cardinal);
-var
-  col: PCol;
-  i: Integer;
-  cell: PCell;
-  rng: PsCellRange;
 begin
-  // Update column index of comments
-  FComments.InsertRowOrCol(ACol, false);
-
-  // Update column index of hyperlinks
-  FHyperlinks.InsertRowOrCol(ACol, false);
-
-  // Update column index of cell records
-  for cell in FCells do
-    InsertColCallback(cell, {%H-}pointer(PtrInt(ACol)));
-
-  // Update column index of column records
-  for i:=0 to FCols.Count-1 do begin
-    col := PCol(FCols.Items[i]);
-    if col^.Col >= ACol then inc(col^.Col);
-  end;
-
-  // Update first and last column index
-  UpdateCaches;
-
-  // Fix merged cells
-  for rng in FMergedCells do
-  begin
-    // The new column is at the LEFT of the merged block
-    // --> Shift entire range to the right by 1 column
-    if (ACol < rng^.Col1) then
-    begin
-      // The former first column is no longer merged --> un-tag its cells
-      for cell in Cells.GetColEnumerator(rng^.Col1, rng^.Row1, rng^.Row2) do
-        Exclude(cell^.Flags, cfMerged);
-
-      // Shift merged block to the right
-      // Don't call "MergeCells" here - this would add a new merged block
-      // because of the new merge base! --> infinite loop!
-      inc(rng^.Col1);
-      inc(rng^.Col2);
-      // The right column needs to be tagged
-      for cell in Cells.GetColEnumerator(rng^.Col2, rng^.Row1, rng^.Row2) do
-        Include(cell^.Flags, cfMerged);
-    end else
-    // The new column goes through this cell block --> Shift only the right
-    // column of the range to the right by 1
-    if (ACol >= rng^.Col1) and (ACol <= rng^.Col2) then
-      MergeCells(rng^.Row1, rng^.Col1, rng^.Row2, rng^.Col2+1);
-  end;
-
-  ChangedCell(0, ACol);
-end;
-
-procedure TsWorksheet.InsertColCallback(data, arg: Pointer);
-var
-  cell: PCell;
-  col: Cardinal;
-  formula: TsRPNFormula;
-  i: Integer;
-begin
-  col := LongInt({%H-}PtrInt(arg));
-  cell := PCell(data);
-  if cell = nil then   // This should not happen. Just to make sure...
-    exit;
-
-  // Update row index of moved cells
-  if cell^.Col >= col then
-    inc(cell^.Col);
-
-  // Update formulas
-  if HasFormula(cell) and (cell^.FormulaValue <> '' ) then
-  begin
-    // (1) create an rpn formula
-    formula := BuildRPNFormula(cell);
-    // (2) update cell addresses affected by the insertion of a column
-    for i:=0 to Length(formula)-1 do
-    begin
-      case formula[i].ElementKind of
-        fekCell, fekCellRef:
-          if formula[i].Col >= col then inc(formula[i].Col);
-        fekCellRange:
-          begin
-            if formula[i].Col >= col then inc(formula[i].Col);
-            if formula[i].Col2 >= col then inc(formula[i].Col2);
-          end;
-      end;
-    end;
-    // (3) convert rpn formula back to string formula
-    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
-  end;
+  InsertRowOrCol(ACol, false);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7603,102 +7457,125 @@ end;
   @param   ARow   Index of the row before which a new row is inserted.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.InsertRow(ARow: Cardinal);
-var
-  row: PRow;
-  i: Integer;
-  cell: PCell;
-  rng: PsCellRange;
 begin
-  // Update row index of cell comments
-  FComments.InsertRowOrCol(ARow, true);
-
-  // Update row index of cell hyperlinks
-  FHyperlinks.InsertRowOrCol(ARow, true);
-
-  // Update row index of cell records
-  for cell in FCells do
-    InsertRowCallback(cell, {%H-}pointer(PtrInt(ARow)));
-
-  // Update row index of row records
-  for i:=0 to FRows.Count-1 do begin
-    row := PRow(FRows.Items[i]);
-    if row^.Row >= ARow then inc(row^.Row);
-  end;
-
-  // Update first and last row index
-  UpdateCaches;
-
-  // Fix merged cells
-  for rng in FMergedCells do
-  begin
-    // The new row is ABOVE the merged block --> Shift entire range down by 1 row
-    if (ARow < rng^.Row1) then
-    begin
-      // The formerly first row is no longer merged --> un-tag its cells
-      for cell in Cells.GetRowEnumerator(rng^.Row1, rng^.Col1, rng^.Col2) do
-        Exclude(cell^.Flags, cfMerged);
-
-      // Shift merged block down
-      // (Don't call "MergeCells" here - this would add a new merged block
-      // because of the new merge base! --> infinite loop!)
-      inc(rng^.Row1);
-      inc(rng^.Row2);
-      // The last row needs to be tagged
-      for cell in Cells.GetRowEnumerator(rng^.Row2, rng^.Col1, rng^.Col2) do
-        Include(cell^.Flags, cfMerged);
-    end else
-    // The new row goes through this cell block --> Shift only the bottom row
-    // of the range down by 1
-    if (ARow >= rng^.Row1) and (ARow <= rng^.Row2) then
-      MergeCells(rng^.Row1, rng^.Col1, rng^.Row2+1, rng^.Col2);
-  end;
-
-  ChangedCell(ARow, 0);
+  InsertRowOrCol(ARow, true);
 end;
 
-procedure TsWorksheet.InsertRowCallback(data, arg: Pointer);
+{@@ ----------------------------------------------------------------------------
+  Inserts a row or column BEFORE the row/column specified by AIndex. Depending
+  on IsRow this is either the row or column index.
+
+  Cells with greater row/column indexes are moved one row down/right.
+  Merged cell blocks and cell references in formulas are considered as well.
+
+  @param   AIndex   Index of the row or column before which a new row or
+                    column is inserted.
+  @param   IsRow    Determines whether AIndex refers to a row index (TRUE) or
+                    column index (FALSE).
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.InsertRowOrCol(AIndex: Integer; IsRow: Boolean);
 var
   cell: PCell;
-  row: Cardinal;
+  row: PRow;
+  col: PCol;
   i: Integer;
-  formula: TsRPNFormula;
+  rng: PsCellRange;
 begin
-  row := LongInt({%H-}PtrInt(arg));
-  cell := PCell(data);
-  if cell = nil then   // This should not happen. Just to make sure...
-    exit;
+  // Update row indexes of cell comments
+  FComments.InsertRowOrCol(AIndex, IsRow);
 
-  // Update row index of moved cells
-  if cell^.Row >= row then
-    inc(cell^.Row);
+  // Update row indexes of cell hyperlinks
+  FHyperlinks.InsertRowOrCol(AIndex, IsRow);
 
-  // Update formulas
-  if HasFormula(cell) then
-  begin
-    // (1) create an rpn formula
-    formula := BuildRPNFormula(cell);
-    // (2) update cell addresses affected by the insertion of a column
-    for i:=0 to Length(formula)-1 do begin
-      case formula[i].ElementKind of
-        fekCell, fekCellRef:
-          if formula[i].Row >= row then inc(formula[i].Row);
-        fekCellRange:
-          begin
-            if formula[i].Row >= row then inc(formula[i].Row);
-            if formula[i].Row2 >= row then inc(formula[i].Row2);
-          end;
-      end;
+  // Update row indexes of cell formulas
+  FFormulas.InsertRowOrCol(AIndex, IsRow);
+
+  // Update cell indexes of cell records
+  FCells.InsertRowOrCol(AIndex, IsRow);
+
+  if IsRow then begin
+    // Update row index of row records
+    for i:=0 to FRows.Count-1 do begin
+      row := PRow(FRows.Items[i]);
+      if row^.Row >= AIndex then inc(row^.Row);
     end;
-    // (3) convert rpn formula back to string formula
-    cell^.FormulaValue := ConvertRPNFormulaToStringFormula(formula);
+  end else
+  begin
+    // Update column index of column records
+    for i:=0 to FCols.Count-1 do begin
+      col := PCol(FCols.Items[i]);
+      if col^.Col >= AIndex then inc(col^.Col);
+    end;
+  end;
+
+  // Update first and last row/column index
+  UpdateCaches;
+
+  if IsRow then
+  begin
+    // Fix merged cells
+    for rng in FMergedCells do
+    begin
+      // The new row is ABOVE the merged block --> Shift entire range down by 1 row
+      if (AIndex < rng^.Row1) then
+      begin
+        // The formerly first row is no longer merged --> un-tag its cells
+        for cell in Cells.GetRowEnumerator(rng^.Row1, rng^.Col1, rng^.Col2) do
+          Exclude(cell^.Flags, cfMerged);
+
+        // Shift merged block down
+        // (Don't call "MergeCells" here - this would add a new merged block
+        // because of the new merge base! --> infinite loop!)
+        inc(rng^.Row1);
+        inc(rng^.Row2);
+        // The last row needs to be tagged
+        for cell in Cells.GetRowEnumerator(rng^.Row2, rng^.Col1, rng^.Col2) do
+          Include(cell^.Flags, cfMerged);
+      end else
+      // The new row goes through this cell block --> Shift only the bottom row
+      // of the range down by 1
+      if (AIndex >= rng^.Row1) and (AIndex <= rng^.Row2) then
+        MergeCells(rng^.Row1, rng^.Col1, rng^.Row2+1, rng^.Col2);
+    end;
+
+    ChangedCell(AIndex, 0);
+  end else
+  begin
+    // Fix merged cells
+    for rng in FMergedCells do
+    begin
+      // The new column is at the LEFT of the merged block
+      // --> Shift entire range to the right by 1 column
+      if (AIndex < rng^.Col1) then
+      begin
+        // The former first column is no longer merged --> un-tag its cells
+        for cell in Cells.GetColEnumerator(rng^.Col1, rng^.Row1, rng^.Row2) do
+          Exclude(cell^.Flags, cfMerged);
+
+        // Shift merged block to the right
+        // Don't call "MergeCells" here - this would add a new merged block
+        // because of the new merge base! --> infinite loop!
+        inc(rng^.Col1);
+        inc(rng^.Col2);
+        // The right column needs to be tagged
+        for cell in Cells.GetColEnumerator(rng^.Col2, rng^.Row1, rng^.Row2) do
+          Include(cell^.Flags, cfMerged);
+      end else
+      // The new column goes through this cell block --> Shift only the right
+      // column of the range to the right by 1
+      if (AIndex >= rng^.Col1) and (AIndex <= rng^.Col2) then
+        MergeCells(rng^.Row1, rng^.Col1, rng^.Row2, rng^.Col2+1);
+    end;
+
+    ChangedCell(0, AIndex);
   end;
 end;
 
 {@@ ----------------------------------------------------------------------------
   Moves a column from a specified column index to another column index.
   The operation includes everything associated with the column (cell values,
-  cell properties, formats, formulas, column formats, column widths). Formulas
-  are automatically adjusted for the new position.
+  cell properties, formats, formulas, column formats, column widths).
+  Formulas are automatically adjusted for the new position.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.MoveCol(AFromCol, AToCol: Cardinal);
 var
@@ -7714,6 +7591,34 @@ begin
       FCells.MoveAlongRow(r, AFromCol, AToCol);
       FComments.MoveAlongRow(r, AFromCol, AToCol);
       FHyperlinks.MoveAlongRow(r, AFromCol, AToCol);
+      FFormulas.MoveAlongRow(r, AFromCol, AToCol);
+    end;
+  finally
+    Workbook.EnableNotifications;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Moves a row from a specified row index to another row index.
+  The operation includes everything associated with the row (cell values,
+  cell properties, formats, formulas, column formats, column widths).
+  Formulas are automatically adjusted for the new position.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.MoveRow(AFromRow, AToRow: Cardinal);
+var
+  c: Integer;
+begin
+  if AFromRow = AToRow then
+    // Nothing to do
+    exit;
+
+  Workbook.DisableNotifications;
+  try
+    for c := 0 to GetLastColIndex do begin
+      FCells.MoveAlongCol(AFromRow, c, AToRow);
+      FComments.MoveAlongCol(AFromRow, c, AToRow);
+      FHyperlinks.MoveAlongCol(AFromRow, c, AToRow);
+      FFormulas.MoveAlongCol(AFromRow, c, AToRow);
     end;
   finally
     Workbook.EnableNotifications;
@@ -8040,19 +7945,6 @@ begin
         'sheet must have an event handler "OnWriteCellData" for virtual mode.');
   end;
 end;
-
-{@@ ----------------------------------------------------------------------------
-  Recalculates rpn formulas in all worksheets
--------------------------------------------------------------------------------}
-(*
-procedure TsWorkbook.Recalc;
-var
-  sheet: pointer;
-begin
-  for sheet in FWorksheets do
-    TsWorksheet(sheet).CalcFormulas;
-end;
-*)
 
 {@@ ----------------------------------------------------------------------------
   Conversion of length values between units
@@ -9594,41 +9486,39 @@ end;
 
   Since formulas may reference not-yet-calculated cells, this occurs in
   two steps:
-  1. All formula cells are marked as "not calculated".
-  2. Cells are calculated. If referenced cells are found as being
+  1. All formulas are marked as "not calculated".
+  2. Formulas are calculated. If referenced formulas are found as being
      "not calculated" they are calculated and then tagged as "calculated".
-  This results in an iterative calculation procedure. In the end, all cells
+  This results in an iterative calculation procedure. In the end, all formulas
   are calculated.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.CalcFormulas;
 var
-  cell: PCell;
-  p: Pointer;
+  formula: PsFormula;
   sheet: TsWorksheet;
-  i: Integer;
+  p: Pointer;
 begin
   if (boIgnoreFormulas in Options) then
     exit;
 
-  // prevent infinite loop due to triggering of formula calculation whenever
-  // a cell changes during execution of CalcFormulas.
   inc(FCalculationLock);
   try
-    // Step 1 - mark all formula cells as "not calculated"
+    // Step1 - mark all formulas as "not calculated"
     for p in FWorksheets do begin
       sheet := TsWorksheet(p);
-      for cell in sheet.Cells do
-        if HasFormula(cell) then
-          sheet.SetCalcState(cell, csNotCalculated);
+      for formula in sheet.Formulas do
+        formula^.CalcState := csNotCalculated;
     end;
 
-    // Step 2 - calculate cells. If a not-yet-calculated cell is found it is
+    // Step 2 - calculate formulas. If the formula calculted requires another
+    // the result of another formula not yet calculated this formula is
+    // calculated immediately.
     for p in FWorksheets do begin
       sheet := TsWorksheet(p);
-      for cell in TsWorksheet(sheet).Cells do
-        if HasFormula(cell) and (cell^.ContentType <> cctError) then
-          sheet.CalcFormula(cell);
+      for formula in sheet.Formulas do
+        sheet.CalcFormula(formula);
     end;
+
   finally
     dec(FCalculationLock);
   end;
@@ -9686,33 +9576,6 @@ var
 begin
   // Skeleton only - to be updated when new formula handling is finished.
 
-  (*
-  sheet := TsWorksheet(ACell^.Worksheet);
-
-  case ACorrection of
-    fcWorksheetrenamed:
-      if (cf3dFormula in ACell^.Flags) then
-      begin
-        // The rpn formula contains the worksheet index which does not
-        // change upon sheet renaming. Simple rebuilding the string formula
-        // from rpn will insert the new sheet name.
-        rpn := sheet.BuildRPNFormula(ACell);
-        ACell^.FormulaValue := sheet.ConvertRPNFormulaToStringFormula(rpn);
-        exit;
-      end;
-  end;
-
-  rpn := sheet.BuildRPNFormula(ACell);
-  for i:=0 to High(rpn) do begin
-    elem := rpn[i];
-    {
-    case ACorrection of
-      ...          // do specifice rpn corrections here
-    end;
-    }
-  end;
-  ACell^.FormulaValue := sheet.ConvertRPNFormulaToStringFormula(rpn);
-  *)
 end;
 
 {@@ ----------------------------------------------------------------------------

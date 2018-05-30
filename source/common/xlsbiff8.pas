@@ -2554,6 +2554,29 @@ begin
   AStream.WriteWord(0);
 end;
 
+function DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData: Pointer): Boolean;
+var
+  sheetlist: TsBIFF8ExternSheetList;
+  sheetIdx, sheetIdx1, sheetIdx2: Integer;
+  workbook: TsWorkbook;
+begin
+  sheetlist := TsBIFF8ExternSheetList(AData);
+  if (ANode is TsCellExprNode) and TsCellExprNode(ANode).Has3DLink then
+  begin
+    sheetIdx := TsCellExprNode(ANode).GetSheetIndex;
+    sheetList.AddSheets('', nil, sheetIdx, sheetIdx);
+  end else
+  if (ANode is TsCellRangeExprNode) and TsCellRangeExprNode(ANode).Has3DLink then
+  begin
+    workbook := TsCellRangeExprNode(ANode).Workbook as TsWorkbook;
+    sheetIdx1 := TsCellRangeExprNode(ANode).GetSheetIndex(1);
+    sheetIdx2 := TsCellRangeExprNode(ANode).GetSheetIndex(2);
+    for sheetIdx := sheetIdx1 to sheetIdx2 do
+      sheetList.AddSheets('', nil, sheetIdx1, sheetIdx2);
+  end;
+  Result := false;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Collects the data for out-of-sheet links found in the specified worksheet
   (or all worksheets if the parameter is omitted).
@@ -2561,6 +2584,14 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Writer.CollectExternData;
 
+  procedure DoCollectForSheet(ASheet: TsWorksheet);
+  var
+    formula: PsFormula;
+  begin
+    for formula in ASheet.Formulas do
+      formula^.Parser.IterateNodes(@DoCollectSheetsWith3dRefs, FBiff8ExternSheets);
+  end;
+{
   procedure DoCollectForSheet(ASheet: TsWorksheet);
   var
     cell: PCell;
@@ -2593,7 +2624,7 @@ procedure TsSpreadBIFF8Writer.CollectExternData;
       end;
     end;
   end;
-
+     }
 var
   book: TsWorkbook;
   sheet: TsWorksheet;

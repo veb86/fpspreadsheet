@@ -7,7 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   SysUtils, Classes, TypInfo,
-  fpsTypes, fpSpreadsheet, fpsSearch, fpsUtils, laz_fpspreadsheet;
+  fpsTypes, fpSpreadsheet, fpsSearch, fpsUtils;
 
 var
   workbook: TsWorkbook;

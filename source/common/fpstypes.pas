@@ -205,6 +205,9 @@ const
   SHEETSEPARATOR = '!';
 
 type
+  TsFormulaFlag = (ffCalculating, ffCalculated);
+  TsFormulaFlags = set of TsFormulaFlag;
+
   {@@ Elements of an expanded formula.
     Note: If ElementKind is fekCellOffset, "Row" and "Col" have to be cast to signed integers! }
   TsFormulaElement = record
@@ -589,8 +592,8 @@ type
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
 
   {@@ Cell flag }
-  TsCellFlag = (cfCalculating, cfCalculated, cfHasComment, cfHyperlink, cfMerged,
-    cf3dFormula);
+  TsCellFlag = ({cfCalculating, cfCalculated, }cfHasComment, cfHyperlink, cfMerged,
+    cfHasFormula, cf3dFormula);
 
   {@@ Set of cell flags }
   TsCellFlags = set of TsCellFlag;
@@ -744,7 +747,7 @@ type
     { Cell content }
     UTF8StringValue: String;   // Strings cannot be part of a variant record
     RichTextParams: TsRichTextParams; // Formatting of individual text ranges
-    FormulaValue: String;      // Formula for calculation of cell content
+//    FormulaValue: String;      // Formula for calculation of cell content
     case ContentType: TCellContentType of  // variant part must be at the end
       cctEmpty      : ();      // has no data at all
       cctFormula    : ();      // FormulaValue is outside the variant record

@@ -162,12 +162,12 @@ type
   published
     {@@ Automatically detects the fileformat when loading the spreadsheet file
       specified by FileName }
-    property AutoDetectFormat: Boolean read FAutoDetectFormat write FAutoDetectFormat;
+    property AutoDetectFormat: Boolean read FAutoDetectFormat write FAutoDetectFormat default true;
     {@@ File format of the next spreadsheet file to be loaded by means of the
       Filename property. Not used when AutoDetectFormat is TRUE.
       Note that if FileFormat is sfUser then the format ID must be specified at
       runtime. }
-    property FileFormat: TsSpreadsheetFormat read GetFileFormat write SetFileFormat;
+    property FileFormat: TsSpreadsheetFormat read GetFileFormat write SetFileFormat default sfOOXML;
     {@@ Name of the loaded spreadsheet file which is loaded by assigning a file name
       to this property. Format detection is determined by the properties
       AutoDetectFormat and FileFormat. Using this property loads the file at
@@ -752,7 +752,8 @@ constructor TsWorkbookSource.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FListeners := TFPList.Create;
-  FFileFormatID := ord(sfExcel8);
+  FFileFormatID := ord(sfOOXML);
+  FAutoDetectFormat := True;
   CreateNewWorkbook;
 end;
 

@@ -53,7 +53,7 @@ begin
       UTF8ToConsole(MyWorkSheet.ReadAsText(CurCell^.Row, CurCell^.Col))
     );
     if HasFormula(CurCell) then
-      WriteLn(' Formula: ', CurCell^.FormulaValue)
+      WriteLn(' Formula: ', MyWorksheet.ReadFormula(Curcell))
     else
       WriteLn;
   end;

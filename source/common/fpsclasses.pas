@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, avglvltree,
-  fpstypes;
+  fpstypes, fpsExprParser;
 
 type
   { forward declarations }
@@ -61,7 +61,8 @@ type
     function GetFirst: PsRowCol;
     function GetLast: PsRowCol;
     procedure InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
-    procedure MoveAlongRow(ARow, AFromCol, AToCol: Cardinal);
+    procedure MoveAlongCol(ARow, ACol, AToRow: Cardinal);
+    procedure MoveAlongRow(ARow, ACol, AToCol: Cardinal);
     procedure Remove(ARow, ACol: Cardinal); overload;
   end;
 
@@ -174,6 +175,32 @@ type
     function GetEnumerator: TsCellRangeEnumerator;
   end;
 
+  { TsFormulas }
+  TsFormulaEnumerator = class(TsRowColEnumerator)
+  protected
+    function GetCurrent: PsFormula;
+  public
+    function GetEnumerator: TsFormulaEnumerator; inline;
+    property Current: PsFormula read GetCurrent;
+  end;
+
+  TsFormulas = class(TsRowColAVLTree)
+  protected
+    procedure DisposeData(var AData: Pointer); override;
+    function NewData: Pointer; override;
+  public
+    function AddFormula(ARow, ACol: Cardinal; AFormula: String = '';
+      AParsedFormula: TsExpressionParser = nil): PsFormula;
+    procedure DeleteFormula(ACell: PCell); overload;
+    procedure DeleteFormula(ARow, ACol: Cardinal); overload;
+    procedure DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+    function FindFormula(ACell: PCell): PsFormula; overload;
+    function FindFormula(ARow, ACol: Cardinal): PsFormula; overload;
+    procedure InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+    // enumerators
+    function GetEnumerator: TsFormulaEnumerator;
+  end;
+
   { TsCellFormatList }
   TsCellFormatList = class(TFPList)
   private
@@ -220,6 +247,146 @@ begin
   Result := Longint(PsRowCol(Item1)^.Row) - PsRowCol(Item2)^.Row;
   if Result = 0 then
     Result := Longint(PsRowCol(Item1)^.Col) - PsRowCol(Item2)^.Col;
+end;
+
+
+{ Call-back function for formulas when rows/cols are inserted/deleted }
+
+function FixDeletedCol(AExprNode: TsExprNode; AData: Pointer): Boolean;
+var
+  colIndex: Cardinal;
+  rng: TsCellRange;
+begin
+  Result := false;
+  colIndex := PtrInt(AData);
+  if AExprNode is TsCellExprNode then
+  begin
+    if not TsCellExprNode(AExprNode).Has3dLink then
+      if TsCellExprNode(AExprNode).Col > colIndex then begin
+        TsCellExprNode(AExprNode).Col := TsCellexprNode(AExprNode).Col - 1;
+        Result := true;
+      end else
+      if TsCellExprNode(AExprNode).Col = colIndex then begin
+        TsCellExprNode(AExprNode).Error := errIllegalRef;
+        Result := true;
+      end;
+  end else
+  if AExprNode is TsCellRangeExprNode then
+  begin
+    if not TsCellRangeExprNode(AExprNode).Has3dLink then begin
+      rng := TsCellRangeExprNode(AExprNode).Range;
+      if (rng.Col1 = colIndex) and (rng.Col2 = colIndex) then begin
+        TsCellRangeExprNode(AExprNode).Error := errIllegalRef;
+        Result := true;
+      end else begin
+        if rng.Col1 > colIndex then begin
+          dec(rng.Col1);
+          Result := true;
+        end;
+        if rng.Col2 >= colIndex then begin
+          dec(rng.Col2);
+          Result := true;
+        end;
+        TsCellRangeExprNode(AExprNode).Range := rng;
+      end;
+    end;
+  end;
+end;
+
+function FixDeletedRow(AExprNode: TsExprNode; AData: Pointer): Boolean;
+var
+  rowIndex: Cardinal;
+  rng: TsCellRange;
+begin
+  Result := false;
+  rowIndex := PtrInt(AData);
+  if AExprNode is TsCellExprNode then
+  begin
+    if not TsCellExprNode(AExprNode).Has3dLink then
+      if TsCellExprNode(AExprNode).Row > rowIndex then begin
+        TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row - 1;
+        Result := true;
+      end else
+      if TsCellExprNode(AExprNode).Row = rowIndex then begin
+        TsCelLExprNode(AExprNode).Error := errIllegalRef;
+        Result := true;
+      end;
+  end else
+  if AExprNode is TsCellRangeExprNode then
+  begin
+    if not TsCellRangeExprNode(AExprNode).Has3dLink then begin
+      rng := TsCellRangeExprNode(AExprNode).Range;
+      if (rng.Row1 = rowIndex) and (rng.Row2 = rowIndex) then begin
+        TsCellRangeExprNode(AExprNode).Error := errIllegalRef;
+        Result := true;
+      end else
+      begin
+        if rng.Row1 > rowIndex then begin
+          dec(rng.Row1);
+          Result := true;
+        end;
+        if rng.Row2 >= rowIndex then begin
+          dec(rng.Row2);
+          Result := true;
+        end;
+        TsCellRangeExprNode(AExprNode).Range := rng;
+      end;
+    end;
+  end;
+end;
+
+function FixInsertedCol(AExprNode: TsExprNode; AData: Pointer): Boolean;
+var
+  colIndex: Cardinal;
+  rng: TsCellRange;
+begin
+  Result := false;
+  colIndex := PtrInt(AData);
+  if AExprNode is TsCellExprNode then
+  begin
+    if not TsCellExprNode(AExprNode).Has3dLink then
+      if TsCellExprNode(AExprNode).Col >= colIndex then begin
+        TsCellExprNode(AExprNode).Col := TsCellexprNode(AExprNode).Col + 1;
+        Result := true;
+      end;
+  end else
+  if AExprNode is TsCellRangeExprNode then
+  begin
+    if not TsCellRangeExprNode(AExprNode).Has3dLink then begin
+      rng := TsCellRangeExprNode(AExprNode).Range;
+      if rng.Col1 >= colIndex then inc(rng.Col1);
+      if rng.Col2 >= colIndex then inc(rng.Col2);
+      TsCellRangeExprNode(AExprNode).Range := rng;
+      Result := true;
+    end;
+  end;
+end;
+
+function FixInsertedRow(AExprNode: TsExprNode; AData: Pointer): Boolean;
+var
+  rowIndex: Cardinal;
+  rng: TsCellRange;
+begin
+  Result := false;
+  rowIndex := PtrInt(AData);
+  if AExprNode is TsCellExprNode then
+  begin
+    if not TsCellexprNode(AExprNode).Has3dLink then
+      if TsCellExprNode(AExprNode).Row >= rowIndex then begin
+        TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row + 1;
+        Result := true;
+      end;
+  end else
+  if AExprNode is TsCellRangeExprNode then
+  begin
+    if not TsCellRangeExprNode(AExprNode).Has3dLink then begin
+      rng := TsCellRangeExprNode(AExprNode).Range;
+      if rng.Row1 >= rowIndex then inc(rng.Row1);
+      if rng.Row2 >= rowIndex then inc(rng.Row2);
+      TsCellRangeExprNode(AExprNode).Range := rng;
+      Result := true;
+    end;
+  end;
 end;
 
 
@@ -609,19 +776,63 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  This method moves the cell in the specified column (ACol) and at row AFromRow
+  along the row before the row with index AToRow.
+-------------------------------------------------------------------------------}
+procedure TsRowColAVLTree.MoveAlongCol(ARow, ACol, AToRow: Cardinal);
+var
+  r: Cardinal;
+  node: TAvgLvlTreeNode;
+  item: PsRowCol;
+begin
+  if ARow = AToRow then
+    exit;
+
+  if ARow < AToRow then
+  begin
+    node := FindLowest;
+    while Assigned(node) do
+    begin
+      item := PsRowCol(node.Data);
+      if item^.Col = ACol then break;
+      node := FindSuccessor(node);
+    end;
+    r := ARow;
+    while r < AToRow do begin
+      Exchange(r, ACol, r+1, ACol);
+      inc(r);
+    end;
+  end else
+  begin
+    node:= FindHighest;
+    while Assigned(node) do
+    begin
+      item := PsRowCol(node.Data);
+      if item^.Col = ACol then break;
+      node := FindPrecessor(node);
+    end;
+    r := ARow;
+    while r > AToRow do begin
+      Exchange(r, ACol, r-1, ACol);
+      dec(r);
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   This method moves the cell in the specified row (ARow) and at column AFromCol
   along the row before the column with index AToCol.
 -------------------------------------------------------------------------------}
-procedure TsRowColAVLTree.MoveAlongRow(ARow, AFromCol, AToCol: Cardinal);
+procedure TsRowColAVLTree.MoveAlongRow(ARow, ACol, AToCol: Cardinal);
 var
   c: Cardinal;
   node: TAvgLvlTreeNode;
   item: PsRowCol;
 begin
-  if AFromCol = AToCol then
+  if ACol = AToCol then
     exit;
 
-  if AFromCol < AToCol then
+  if ACol < AToCol then
   begin
     node := FindLowest;
     while Assigned(node) do
@@ -631,7 +842,7 @@ begin
       if item^.Row = ARow then break;
       node := FindSuccessor(node);
     end;
-    c := AFromCol;
+    c := ACol;
     while c < AToCol do begin
       Exchange(ARow, c, ARow, c+1);
       inc(c);
@@ -646,7 +857,7 @@ begin
       if item^.Row = ARow then break;
       node := FindPrecessor(node);
     end;
-    c := AFromCol;
+    c := ACol;
     while c > AToCol do begin
       Exchange(ARow, c, ARow, c-1);
       dec(c);
@@ -926,14 +1137,14 @@ end;
 { TsHyperlinkEnumerator: enumerator for the TsHyperlinks AVLTree               }
 {==============================================================================}
 
-function TsHyperlinkEnumerator.GetEnumerator: TsHyperlinkEnumerator;
-begin
-  Result := self;
-end;
-
 function TsHyperlinkEnumerator.GetCurrent: PsHyperlink;
 begin
   Result := PsHyperlink(inherited GetCurrent);
+end;
+
+function TsHyperlinkEnumerator.GetEnumerator: TsHyperlinkEnumerator;
+begin
+  Result := self;
 end;
 
 
@@ -1183,6 +1394,151 @@ var
 begin
   New(range);
   Result := range;
+end;
+
+
+{==============================================================================}
+{                             TsFormulaEnumerator                              }
+{==============================================================================}
+function TsFormulaEnumerator.GetCurrent: PsFormula;
+begin
+  Result := PsFormula(inherited GetCurrent);
+end;
+
+function TsFormulaEnumerator.GetEnumerator: TsFormulaEnumerator;
+begin
+  Result := self;
+end;
+
+
+{==============================================================================}
+{                               TsFormulas                                     }
+{==============================================================================}
+function TsFormulas.AddFormula(ARow, ACol: Cardinal; AFormula: String = '';
+  AParsedFormula: TsExpressionParser = nil): PsFormula;
+begin
+  Result := PsFormula(FindByRowCol(ARow, ACol));
+  if Result = nil then
+    Result := PsFormula(Add(ARow, ACol));
+  Result^.Text := AFormula;           // unparsed formula
+  Result^.Parser := AParsedFormula;   // if nil, will be parsed on next calculation
+  Result^.CalcState := csNotCalculated;
+end;
+
+procedure TsFormulas.DeleteFormula(ACell: PCell);
+begin
+  if ACell <> nil then
+    Delete(ACell^.Row, ACell^.Col);
+end;
+
+procedure TsFormulas.DeleteFormula(ARow, ACol: Cardinal);
+begin
+  Delete(ARow, ACol);  // will release memory automatically
+end;
+
+procedure TsFormulas.DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+var
+  node, nextnode: TAvgLvlTreeNode;
+  formula: PsFormula;
+  changed: Boolean;
+begin
+  node := FindLowest;
+  while Assigned(node) do
+  begin
+    changed := false;
+    nextnode := FindSuccessor(node);
+    formula := PsFormula(node.Data);
+    if IsRow then
+    begin
+      // Remove and destroy the formula record if it is in the deleted row
+      if formula^.Row = AIndex then
+        Delete(node)
+      else
+      if formula^.Row > AIndex then
+        dec(formula^.Row);
+      // Update all RowCol records at row indexes above the deleted row
+      changed := formula^.Parser.IterateNodes(@FixDeletedRow, Pointer(PtrInt(AIndex)));
+    end else
+    begin
+      // Remove and destroy the formula record if it is in the deleted column
+      if formula^.Col = AIndex then
+        Delete(node)
+      else begin
+        if formula^.Col > AIndex then
+          dec(formula^.Col);
+        // Update all RowCol records at column indexes above the deleted column
+        changed := formula^.Parser.IterateNodes(@FixDeletedCol, Pointer(PtrInt(AIndex)));
+      end;
+    end;
+    // Recreate the formula if required.
+    if changed then
+      formula^.Text := formula^.Parser.Expression;
+    node := nextnode;
+  end;
+end;
+
+procedure TsFormulas.DisposeData(var AData: Pointer);
+begin
+  if AData <> nil then begin
+    PsFormula(AData)^.Text := '';
+    PsFormula(AData)^.Parser.Free;
+    Dispose(PsFormula(AData));
+  end;
+  AData := nil;
+end;
+
+function TsFormulas.FindFormula(ACell: PCell): PsFormula;
+begin
+  if ACell <> nil then
+    Result := PsFormula(FindbyRowCol(ACell^.Row, ACell^.Col))
+  else
+    Result := nil;
+end;
+
+function TsFormulas.FindFormula(ARow, ACol: Cardinal): PsFormula;
+begin
+  Result := PsFormula(FindByRowCol(ARow, ACol));
+end;
+
+// Formula enumerators (use in "for ... in" syntax)
+function TsFormulas.GetEnumerator: TsFormulaEnumerator;
+begin
+  Result := TsFormulaEnumerator.Create(self, 0, 0, $7FFFFFFF, $7FFFFFFF, false);
+end;
+
+procedure TsFormulas.InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+var
+  node: TAvgLvlTreeNode;
+  formula: PsFormula;
+  changed: Boolean;
+begin
+  node := FindLowest;
+  while Assigned(node) do begin
+    formula := PsFormula(node.Data);
+    if IsRow then
+    begin
+      if formula^.Row >= AIndex then inc(formula^.Row);
+      changed := formula^.Parser.IterateNodes(@FixInsertedRow, Pointer(PtrInt(AIndex)));
+    end else
+    begin
+      if formula^.Col >= AIndex then inc(formula^.Col);
+      changed := formula^.Parser.IterateNodes(@FixInsertedCol, Pointer(PtrInt(AIndex)));
+    end;
+    if changed then
+      formula^.Text := formula^.Parser.Expression;
+    node := FindSuccessor(node);
+  end;
+end;
+
+function TsFormulas.NewData: Pointer;
+var
+  f: PsFormula;
+begin
+  New(f);
+  f^.Text := '';
+  f^.Parser := nil;
+  f^.CalcState := csNotCalculated;
+  Result := f;
 end;
 
 

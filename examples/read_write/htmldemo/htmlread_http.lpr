@@ -20,7 +20,7 @@ var
 
 const
 //  url = 'http://unicode.e-workers.de/entities.php';
-  url = 'http://www.freepascal.org/docs.var';
+  url = 'https://www.freepascal.org/docs.var';
 
 begin
   stream := TMemoryStream.Create;

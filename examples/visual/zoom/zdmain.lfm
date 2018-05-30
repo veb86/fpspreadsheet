@@ -7,7 +7,7 @@ object MainForm: TMainForm
   ClientHeight = 476
   ClientWidth = 678
   OnCreate = FormCreate
-  LCLVersion = '1.7'
+  LCLVersion = '1.9.0.0'
   object Grid: TsWorksheetGrid
     Left = 5
     Height = 386
@@ -20,12 +20,10 @@ object MainForm: TMainForm
     WorkbookSource = Grid.internal
     Anchors = [akTop, akLeft, akRight, akBottom]
     AutoAdvance = aaDown
-    ColCount = 27
     DefaultColWidth = 64
     DefaultRowHeight = 22
     MouseWheelOption = mwGrid
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goThumbTracking, goSmoothScroll]
-    RowCount = 101
     TabOrder = 0
     OnMouseWheel = GridMouseWheel
   end

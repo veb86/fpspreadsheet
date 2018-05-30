@@ -112,7 +112,7 @@ type
     function FindNumFormatByName(ANumFmtName: String): Integer;
     function FindRowStyleByName(AStyleName: String): Integer;
     function FindTableStyleByName(AStyleName: String): Integer;
-    procedure FixFormulas;
+//    procedure FixFormulas;
     procedure ReadCell(ANode: TDOMNode; ARow, ACol: Integer;
       AFormatIndex: Integer; out AColsRepeated: Integer);
     procedure ReadColumns(ATableNode: TDOMNode);
@@ -134,6 +134,7 @@ type
     procedure ReadRowStyle(AStyleNode: TDOMNode);
     procedure ReadShapes(ATableNode: TDOMNode);
     procedure ReadSheetProtection(ANode: TDOMNode; ASheet: TsBasicWorksheet);
+    procedure ReadSheets(ANode: TDOMNode);
     procedure ReadTableStyle(AStyleNode: TDOMNode);
 
   protected
@@ -1435,7 +1436,7 @@ begin
       exit;
   Result := -1;
 end;
-
+                      (*
 procedure TsSpreadOpenDocReader.FixFormulas;
 
   procedure FixCell(ACell: PCell);
@@ -1480,7 +1481,7 @@ begin
     for cell in sheet.Cells do
       if HasFormula(cell) then FixCell(cell);
   end;
-end;
+end;           *)
 
 procedure TsSpreadOpenDocReader.ReadAutomaticStyles(AStylesNode: TDOMNode);
 var
@@ -2387,7 +2388,8 @@ procedure TsSpreadOpenDocReader.ReadFormula(ARow, ACol: Cardinal;
   AStyleIndex: Integer; ACellNode: TDOMNode);
 var
   cell: PCell;
-  formula: String;
+  formula: PsFormula;
+  formulaStr: String;
 //  stylename: String;
   floatValue: Double;
   boolValue: Boolean;
@@ -2418,31 +2420,38 @@ begin
   }
   fmt := TsWorkbook(Workbook).GetPointerToCellFormat(cell^.FormatIndex);
 
-  formula := '';
+  formulaStr := '';
   if (boReadFormulas in FWorkbook.Options) then
   begin
     // Read formula, trim it, ...
-    formula := GetAttrValue(ACellNode, 'table:formula');
-    if formula <> '' then
+    formulaStr := GetAttrValue(ACellNode, 'table:formula');
+    if formulaStr <> '' then
     begin
       // Formulas written by Spread begin with 'of:=', by Excel with 'msof:='.
       // Remove that. And both use different list separators.
-      p := pos('=', formula);
-      ns := Copy(formula, 1, p-2);
+      p := pos('=', formulaStr);
+      ns := Copy(formulaStr, 1, p-2);
       case ns of
         'of'   : FPointSeparatorSettings.ListSeparator := ';';
         'msoxl': FPointSeparatorSettings.ListSeparator := ',';
       end;
-      Delete(formula, 1, p);
+      Delete(formulaStr, 1, p);
     end;
 
     // ... and store in cell's FormulaValue field.
+    formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ARow, ACol);
+    formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
+    formula^.Parser.Dialect := fdOpenDocument;  // Parse in ODS dialect
+    formula^.Parser.Expression := formulaStr;
+    formula^.Parser.Dialect := fdExcelA1;      // Convert formula to Excel A1 dialect
+    formula^.Text := formula^.Parser.Expression;
+                                                                                     {
     cell^.FormulaValue := formula;
     // Note: This formula is still in OpenDocument dialect. Conversion to
     // ExcelA1 dialect (used by fps) is postponed until all sheets have beeon
     // read (--> FixFormulas) because of possible references to other sheets
     // which might not have been loaded yet at this moment.
-
+                                                                                      }
     {$IFDEF FPSpreadDebug}
     DebugLn('  Formula found: ' + formula);
     {$ENDIF}
@@ -2587,6 +2596,7 @@ begin
     if not Assigned(SpreadSheetNode) then
       raise EFPSpreadsheet.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:spreadsheet" not found.');
 
+    ReadSheets(SpreadsheetNode);
     ReadDocumentProtection(SpreadsheetNode);
     ReadDateMode(SpreadSheetNode);
 
@@ -2613,7 +2623,8 @@ begin
       end;
 
       sheetName := GetAttrValue(TableNode, 'table:name');
-      FWorkSheet := TsWorkbook(FWorkbook).AddWorksheet(sheetName, true);
+      FWorksheet := TsWorkbook(FWorkbook).GetWorksheetByName(sheetName);
+//      FWorkSheet := TsWorkbook(FWorkbook).AddWorksheet(sheetName, true);
       tablestyleName := GetAttrValue(TableNode, 'table:style-name');
       // Read protection
       ReadSheetProtection(TableNode, FWorksheet);
@@ -2660,7 +2671,7 @@ begin
     end;
 
     // Convert formulas from OpenDocument to ExcelA1 dialect
-    FixFormulas;
+//    FixFormulas;
 
     // Active sheet
     if FActiveSheet <> '' then
@@ -4083,6 +4094,24 @@ begin
     (ASheet as TsWorksheet).CryptoInfo := cinfo;
   end else
     (ASheet as TsWorksheet).Protect(false);
+end;
+
+procedure TsSpreadOpenDocReader.ReadSheets(ANode: TDOMNode);
+var
+  nodename: String;
+  sheetName: String;
+begin
+  ANode := ANode.FirstChild;
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'table:table' then begin
+      sheetName := GetAttrValue(ANode, 'table:name');
+      if sheetName <> '' then
+        // Create worksheet immediately because it may be needed for 3d formulas
+        (FWorkbook as TsWorkbook).AddWorksheet(sheetname, true);
+    end;
+    ANode := ANode.NextSibling;
+  end;
 end;
 
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
@@ -7564,8 +7593,9 @@ procedure TsSpreadOpenDocWriter.WriteFormula(AStream: TStream; const ARow,
   ACol: Cardinal; ACell: PCell);
 var
   lStyle: String = '';
+  formula: PsFormula;
+  formulaStr: String;
   parser: TsExpressionParser;
-  formula: String;
   valuetype: String;
   value: string;
   valueStr: String;
@@ -7577,6 +7607,7 @@ var
   fmt: TsCellFormat;
   ignoreFormulas: Boolean;
   sheet: TsWorksheet;
+  oldDialect: TsFormulaDialect;
 begin
   Unused(ARow, ACol);
   ignoreFormulas := (boIgnoreFormulas in FWorkbook.Options);
@@ -7608,16 +7639,32 @@ begin
     FWorkbook.AddErrorMsg(rsODSHyperlinksOfTextCellsOnly, [GetCellString(ARow, ACol)]);
 
   // Formula string
+  formula := sheet.Formulas.FindFormula(ACell);
+
   if ignoreFormulas then begin
-    formula := ACell^.FormulaValue;
-    if (formula <> '') then begin
-      if not ((pos('of:=', formula) = 1) or (pos('=', formula) = 1)) then
-        formula := 'of:=' + formula;
+    formulaStr := formula^.Text;
+    if (formulaStr <> '') then begin
+      if not ((pos('of:=', formulaStr) = 1) or (pos('=', formulaStr) = 1)) then
+        formulaStr := 'of:=' + formulaStr;
     end;
   end else
   begin
     valueStr := '';
-    // Convert string formula to the format needed by ods: semicolon list separators!
+    if formula^.Parser = nil then begin
+      formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
+      formula^.Parser.Expression := formula^.Text;
+    end;
+    // Convert string formula to the format needed by ods
+    oldDialect := formula^.Parser.Dialect;
+    try
+      formula^.Parser.Dialect := fdOpenDocument;
+      formulaStr := formula^.Parser.Expression;  // Formula converted to ODS dialect
+      if (formulaStr <> '') and (formulastr[1] <> '=') then
+        formulaStr := '=' + formulaStr;
+    finally
+      formula^.Parser.Dialect := oldDialect;
+    end;
+        {
     parser := TsSpreadsheetParser.Create(FWorksheet);
     try
       parser.Expression := ACell^.FormulaValue;   // Formula still in Excel dialect
@@ -7628,7 +7675,7 @@ begin
     finally
       parser.Free;
     end;
-
+         }
     case ACell^.ContentType of
       cctNumber:
         begin
@@ -7675,23 +7722,24 @@ begin
   end;
 
   { Fix special xml characters }
-  formula := UTF8TextToXMLText(formula);
+  formulaStr := UTF8TextToXMLText(formulaStr);
 
   { We are writing a very rudimentary formula here without result and result
     data type. Seems to work... }
-  if not ignoreFormulas or (sheet.GetCalcState(ACell) = csCalculated) then
+//  if not ignoreFormulas or (sheet.GetCalcState(ACell) = csCalculated) then
+  if not ignoreFormulas or (formula^.CalcState = csCalculated) then              // LOOKS STRANGE - IS THIS CORRECT?
     AppendToStream(AStream, Format(
       '<table:table-cell table:formula="%s" office:value-type="%s"%s%s%s>' +
         comment +
         valueStr +
       '</table:table-cell>', [
-      formula, valuetype, value, lStyle, spannedStr
+      formulaStr, valuetype, value, lStyle, spannedStr
     ]))
   else
   begin
     AppendToStream(AStream, Format(
       '<table:table-cell table:formula="%s"%s%s', [
-        formula, lStyle, spannedStr]));
+        formulaStr, lStyle, spannedStr]));
     if comment <> '' then
       AppendToStream(AStream, '>' + comment + '</table:table-cell>')
     else

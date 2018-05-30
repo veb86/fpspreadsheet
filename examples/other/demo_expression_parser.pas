@@ -51,7 +51,7 @@ begin
     parser := TsSpreadsheetParser.Create(worksheet);
     try
       try
-        parser.Expression := cell^.FormulaValue;
+        parser.Expression := worksheet.ReadFormula(cell);
         res := parser.Evaluate;
 
         WriteLn('A2: ', parser.Expression);

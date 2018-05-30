@@ -202,8 +202,9 @@ procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
   AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
 procedure InitHeaderFooterImageRecord(out AImage: TsHeaderFooterImage);
 
-procedure CopyCellValue(AFromCell, AToCell: PCell);
+//procedure CopyCellValue(AFromCell, AToCell: PCell);
 function HasFormula(ACell: PCell): Boolean;
+function Has3dFormula(ACell: PCell): Boolean;
 function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean;
 function SameFont(AFont1, AFont2: TsFont): Boolean; overload;
 function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
@@ -2334,7 +2335,6 @@ end;
 -------------------------------------------------------------------------------}
 procedure InitCell(out ACell: TCell);
 begin
-  ACell.FormulaValue := '';
   ACell.UTF8StringValue := '';
   FillChar(ACell, SizeOf(ACell), 0);
 end;
@@ -2418,7 +2418,7 @@ begin
     Index := -1;
   end;
 end;
-
+  (*
 {@@ ----------------------------------------------------------------------------
   Copies the value of a cell to another one. Does not copy the formula, erases
   the formula of the destination cell if there is one!
@@ -2428,18 +2428,20 @@ end;
 -------------------------------------------------------------------------------}
 procedure CopyCellValue(AFromCell, AToCell: PCell);
 begin
-  Assert(AFromCell <> nil);
   Assert(AToCell <> nil);
 
-  AToCell^.ContentType := AFromCell^.ContentType;
-  AToCell^.NumberValue := AFromCell^.NumberValue;
-  AToCell^.DateTimeValue := AFromCell^.DateTimeValue;
-  AToCell^.BoolValue := AFromCell^.BoolValue;
-  AToCell^.ErrorValue := AFromCell^.ErrorValue;
-  AToCell^.UTF8StringValue := AFromCell^.UTF8StringValue;
-  AToCell^.FormulaValue := '';    // This is confirmed with Excel
+  if AFromCell <> nil then begin
+    AToCell^.ContentType := AFromCell^.ContentType;
+    AToCell^.NumberValue := AFromCell^.NumberValue;
+    AToCell^.DateTimeValue := AFromCell^.DateTimeValue;
+    AToCell^.BoolValue := AFromCell^.BoolValue;
+    AToCell^.ErrorValue := AFromCell^.ErrorValue;
+    AToCell^.UTF8StringValue := AFromCell^.UTF8StringValue;
+    // Note: As confirmed with Excel, the formula is not to be copied here.
+    // Note: The calling routine must erase the formula if the destination cell has one.
+  end;
 end;
-
+*)
 {@@ ----------------------------------------------------------------------------
   Returns TRUE if the cell contains a formula.
 
@@ -2447,7 +2449,15 @@ end;
 -------------------------------------------------------------------------------}
 function HasFormula(ACell: PCell): Boolean;
 begin
-  Result := Assigned(ACell) and (Length(ACell^.FormulaValue) > 0);
+  Result := Assigned(ACell) and (cfHasFormula in ACell^.Flags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE if the cell has a 3D formula (i.e. reference to another sheet)
+-------------------------------------------------------------------------------}
+function Has3dFormula(ACell: PCell): Boolean;
+begin
+  Result := HasFormula(ACell) and (cf3dFormula in ACell^.Flags);
 end;
 
 {@@ ----------------------------------------------------------------------------

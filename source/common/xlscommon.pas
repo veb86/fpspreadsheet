@@ -2872,13 +2872,35 @@ var
   n: Word;
   rpnFormula: TsRPNformula;
   strFormula: String;
+  formula: PsFormula;
 begin
   n := ReadRPNTokenArraySize(AStream);
+  if n = 0 then
+    exit(false);
+
   Result := ReadRPNTokenArray(AStream, n, rpnFormula, ACell, ASharedFormulaBase);
   if Result then begin
+    formula := TsWorksheet(FWorksheet).Formulas.FindFormula(ACell);
+    if formula = nil then begin
+      formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ACell^.Row, ACell^.Col);
+      formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
+    end;
+    formula^.Parser.RPNFormula := rpnFormula;
+    formula^.Text := formula^.Parser.Expression;
+    if formula^.Parser.Has3dLinks then
+      ACell^.Flags := ACell^.Flags + [cfHasFormula, cf3dFormula]
+    else
+      ACell^.Flags := ACell^.Flags + [cfHasFormula];
+{
     strFormula := tsWorksheet(FWorksheet).ConvertRPNFormulaToStringFormula(rpnFormula);
-    if strFormula <> '' then
-      ACell^.FormulaValue := strFormula;
+    if strFormula <> '' then begin
+      formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ACell^.Row, ACell^.Col, strFormula);
+      if formula^.Parsed.Has3dLinks then
+        ACell^.Flags := ACell^.Flags + [cfHasFormula, cf3dFormula]
+      else
+        ACell^.Flags := ACell^.Flags + [cfHasFormula];
+    end;
+    }
   end;
 end;
 
@@ -3441,6 +3463,27 @@ begin
   end;
 end;
 
+function DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData: Pointer): Boolean;
+var
+  sheetlist: TsBIFFExternSheetList;
+  sheetIdx, sheetIdx1, sheetIdx2: Integer;
+  workbook: TsWorkbook;
+begin
+  sheetlist := TsBIFFExternSheetList(AData);
+  if (ANode is TsCellExprNode) and TsCellExprNode(ANode).Has3DLink then
+    sheetList.AddSheet(TsCellExprNode(ANode).GetSheetName, ebkInternal)
+  else
+  if (ANode is TsCellRangeExprNode) and TsCellRangeExprNode(ANode).Has3DLink then
+  begin
+    workbook := TsCellRangeExprNode(ANode).Workbook as TsWorkbook;
+    sheetIdx1 := TsCellRangeExprNode(ANode).GetSheetIndex(1);
+    sheetIdx2 := TsCellRangeExprNode(ANode).GetSheetIndex(2);
+    for sheetIdx := sheetIdx1 to sheetIdx2 do
+      sheetList.AddSheet(workbook.GetWorksheetByIndex(sheetIdx).Name, ebkInternal);
+  end;
+  Result := false;  // No need to rebuild the text formula
+end;
+
 {@@ ----------------------------------------------------------------------------
   Collects the data for out-of-sheet links found in the specified worksheet
   (or all worksheets if the parameter is omitted).
@@ -3450,6 +3493,13 @@ end;
 function TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsBasicWorksheet = nil): Integer;
 
   procedure DoCollectForSheet(ASheet: TsWorksheet; ASheetList: TsBIFFExternSheetList);
+  var
+    formula: PsFormula;
+  begin
+    for formula in ASheet.Formulas do
+      formula^.Parser.IterateNodes(@DoCollectSheetsWith3dRefs, ASheetList);
+  end;
+{
   var
     cell: PCell;
     workbook: TsWorkbook;
@@ -3496,6 +3546,7 @@ function TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsBasicWorksheet = nil
       end;
     end;
   end;
+  }
 
 var
   sheet: TsWorksheet;

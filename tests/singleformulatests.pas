@@ -140,8 +140,8 @@ begin
       cell := worksheet.WriteFormula(TESTCELL_ROW, TESTCELL_COL, AFormula);
 
       // Read formula before saving
-      actualFormula := cell^.Formulavalue;
-      CheckEquals(AFormula, actualFormula, 'Unsaved formula text mismatch');
+      actualFormula := worksheet.ReadFormula(cell);
+      CheckEquals(AExpectedFormula, actualFormula, 'Unsaved formula text mismatch');
 
       // Read calculated value before saving
       actualvalue := worksheet.ReadAsNumber(TESTCELL_ROW, TESTCELL_COL);
@@ -165,7 +165,8 @@ begin
       CheckEquals(AExpected, actualValue, 'Saved calculated value mismatch');
 
       cell := worksheet.FindCell(TESTCELL_ROW, TESTCELL_COL);
-      actualformula := cell^.FormulaValue;
+      actualformula := worksheet.Formulas.FindFormula(cell)^.Text;
+//      actualformula := cell^.FormulaValue;
       // When writing ranges are reconstructed in correct order.
       CheckEquals(AExpectedFormula, actualformula, 'Saved formula text mismatch.');
     finally
@@ -302,15 +303,16 @@ end;
 
 { --- }
 
+{ Range formulas in which the parts are not ordered. They will be put into the
+  correct order when then formula is written to the worksheet. --> the
+  expected range must be in correct order. }
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheetsAndCells_OOXML;
 begin
-  // In OOXML the range is written literally.
-  TestFloatFormula('SUM(Sheet3:Sheet2!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOOXML);
+  TestFloatFormula('SUM(Sheet3:Sheet2!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheetsAndCells_ODS;
 begin
-  // ODS requires conversion of the formula which results in reordering of ranges.
   TestFloatFormula('SUM(Sheet3:Sheet2!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOpenDocument, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
@@ -322,14 +324,12 @@ end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedCells_OOXML;
 begin
-  // In OOXML the range is written literally.
-  TestFloatFormula('SUM(Sheet2:Sheet3!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOOXML);
+  TestFloatFormula('SUM(Sheet2:Sheet3!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheets_OOXML;
 begin
-  // In OOXML the range is written literally.
-  TestFloatFormula('SUM(Sheet3:Sheet2!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOOXML);
+  TestFloatFormula('SUM(Sheet3:Sheet2!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
 
