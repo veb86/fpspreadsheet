@@ -179,6 +179,10 @@ function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation):
 procedure FixLineEndings(var AText: String; var ARichTextParams: TsRichTextParams);
 function RandomString(ALen: Integer): String;
 function SameRichTextParams(ARtp1, ARtp2: TsRichTextparams): Boolean;
+function CombineTextAndRichTextParams(AText: String;
+  ARichText: TsRichTextParams): String;
+procedure SplitTextAndRichTextParams(AValue: String;
+  out AText: String; out ARichText: TsRichTextParams);
 function SplitStr(const AText: String; ADelimiter: Char): TStringArray;
 function UnquoteStr(AString: String): String;
 
@@ -2193,6 +2197,57 @@ begin
     if ARtp1[i].HyperlinkIndex <> ARtp2[i].HyperlinkIndex then exit;
   end;
   Result := true;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Append the rich-text parameters to the bare text. Needed for StringHashList.
+-------------------------------------------------------------------------------}
+function CombineTextAndRichTextParams(AText: String;
+  ARichText: TsRichTextParams): String;
+var
+  i: Integer;
+begin
+  Result := AText;
+  if Length(ARichText) > 0 then begin
+    Result := Format('%s|@|%d,%d,%d', [
+      Result, ARichText[0].FirstIndex, ARichText[0].FontIndex, ARichText[0].HyperlinkIndex
+    ]);
+    for i:=1 to High(ARichText) do
+      Result := Format('%s;%d,%d,%d', [
+        Result, ARichText[i].FirstIndex, ARichText[i].FontIndex, ARichText[i].HyperlinkIndex
+      ]);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Split text and rich-text parameters from the combined string needed for
+  StringHashList
+-------------------------------------------------------------------------------}
+procedure SplitTextAndRichTextParams(AValue: String; out AText: String;
+  out ARichText: TsRichTextParams);
+const
+  SEPARATOR = '|@|';
+var
+  p: Integer;
+  arr1, arr2: TStringArray;
+  i: Integer;
+begin
+  p := pos(SEPARATOR, AValue);
+  if p = 0 then begin
+    AText := AValue;
+    SetLength(ARichText, 0);
+  end else
+  begin
+    AText := Copy(AValue, 1, p-1);
+    arr1 := SplitStr(Copy(AValue, p+Length(SEPARATOR), MaxInt), ';');
+    SetLength(ARichText, Length(arr1));
+    for i := 0 to Length(arr1)-1 do begin
+      arr2 := SplitStr(arr1[i], ',');
+      ARichText[i].FirstIndex := StrToInt(arr2[0]);
+      ARichText[i].FontIndex := StrToInt(arr2[1]);
+      ARichText[i].HyperlinkIndex := StrToInt(arr2[2]);
+    end;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
