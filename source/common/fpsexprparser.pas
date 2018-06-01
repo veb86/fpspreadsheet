@@ -595,18 +595,18 @@ type
   { TsCellExprNode }
   TsCellExprNode = class(TsExprNode)
   private
-    FWorksheet: TsBasicWorksheet;
+    FWorksheet: TsBasicWorksheet;    // sheet containing the formula
     FRow, FCol: Cardinal;
     FFlags: TsRelFlags;
-    FCell: PCell;
-    FSheetName: String;
+    FCell: PCell;                    // cell which contains the formula
+//    FSheetName: String;            // referenced other sheet
+    FSheetIndex: Integer;            // index of referenced other sheet
     FIsRef: Boolean;
     FError: TsErrorValue;
   protected
     function GetCol: Cardinal;
     function GetRow: Cardinal;
     function GetSheet: TsBasicWorksheet;
-    function GetWorkbook: TsBasicWorkbook;
     procedure GetNodeValue(out AResult: TsExpressionResult); override;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsBasicWorksheet;
@@ -616,9 +616,11 @@ type
     procedure Check; override;
     function GetSheetIndex: Integer;
     function GetSheetName: String;
+    function GetWorkbook: TsBasicWorkbook;
     function Has3DLink: Boolean; override;
     function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; override;
     function NodeType: TsResultType; override;
+    procedure SetSheetIndex(AIndex: Integer);
     property Col: Cardinal read FCol write FCol;  // Be careful when modifying Col and Row
     property Row: Cardinal read FRow write FRow;
     property Error: TsErrorValue read FError write FError;
@@ -643,7 +645,6 @@ type
     function GetCol(AIndex: TsCellRangeIndex): Cardinal;
     function GetRow(AIndex: TsCellRangeIndex): Cardinal;
     procedure GetNodeValue(out AResult: TsExpressionResult); override;
-    function GetWorkbook: TsBasicWorkbook;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsBasicWorksheet;
       ASheet1, ASheet2: String; ARange: TsCellRange; AFlags: TsRelFlags);
@@ -651,9 +652,11 @@ type
     function AsString: String; override;
     procedure Check; override;
     function GetSheetIndex(AIndex: TsCellRangeIndex): Integer;
+    function GetWorkbook: TsBasicWorkbook;
     function Has3DLink: Boolean; override;
     function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; override;
     function NodeType: TsResultType; override;
+    procedure SetSheetIndex(AIndex: TsCellRangeIndex; AValue: Integer);
     property Error: TsErrorValue read FError write FError;
     property Range: TsCellRange read GetRange write SetRange;  // Be careful!
     property Workbook: TsBasicWorkbook read GetWorkbook;
@@ -865,7 +868,8 @@ function ArgToDateTime(Arg: TsExpressionResult): TDateTime;
 function ArgToInt(Arg: TsExpressionResult): Integer;
 function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
 function ArgToString(Arg: TsExpressionResult): String;
-procedure ArgsToFloatArray(const Args: TsExprParameterArray; out AData: TsExprFloatArray);
+procedure ArgsToFloatArray(const Args: TsExprParameterArray;
+  out AData: TsExprFloatArray; out AError: TsErrorValue);
 function BooleanResult(AValue: Boolean): TsExpressionResult;
 function CellResult(AValue: String): TsExpressionResult; overload;
 function CellResult(ACellRow, ACellCol: Cardinal): TsExpressionResult; overload;
@@ -3831,7 +3835,10 @@ constructor TsCellExprNode.Create(AParser: TsExpressionParser;
 begin
   FParser := AParser;
   FWorksheet := AWorksheet;
-  FSheetName := ASheetName;
+  if (ASheetName = '') then
+    FSheetIndex := -1
+  else
+    FSheetIndex := TsWorkbook(GetWorkbook).GetWorksheetIndex(ASheetName);
   FRow := ARow;
   FCol := ACol;
   FFlags := AFlags;
@@ -3988,10 +3995,10 @@ end;
 
 function TsCellExprNode.GetSheet: TsBasicWorksheet;
 begin
-  if FSheetName = '' then
+  if FSheetIndex = -1 then
     Result := FWorksheet
   else begin
-    Result := (GetWorkbook as TsWorkbook).GetWorksheetByName(FSheetName);
+    Result := (GetWorkbook as TsWorkbook).GetWorksheetByIndex(FSheetIndex);
     if Result = nil then FError := errIllegalREF;
   end;
 end;
@@ -4001,18 +4008,18 @@ var
   book: TsWorkbook;
 begin
   book := GetWorkbook as TsWorkbook;
-  if FSheetName = '' then
+  if FSheetIndex = -1 then
     Result := book.GetWorksheetIndex(FWorksheet)
   else
-    Result := book.GetWorksheetIndex(FSheetName);
+    Result := FSheetIndex;
 end;
 
 function TsCellExprNode.GetSheetName: String;
 begin
-  if FSheetName = '' then
+  if FSheetIndex = -1 then
     Result := FWorksheet.Name
   else
-    Result := FSheetName;
+    Result := TsWorkbook(GetWorkbook).GetWorksheetByIndex(FSheetIndex).Name;
 end;
 
 function TsCellExprNode.GetWorkbook: TsBasicWorkbook;
@@ -4022,7 +4029,7 @@ end;
 
 function TsCellExprNode.Has3DLink: Boolean;
 begin
-  Result := FSheetName <> '';
+  Result := FSheetIndex <> -1;
 end;
 
 function TsCellExprNode.NodeType: TsResultType;
@@ -4036,6 +4043,10 @@ begin
   Result := AFunc(self, AData);
 end;
 
+procedure TsCellExprNode.SetSheetIndex(AIndex: Integer);
+begin
+  FSheetIndex := AIndex;
+end;
 
 
 { TsCellRangeExprNode }
@@ -4301,6 +4312,12 @@ begin
   FCol[2] := ARange.Col2;
 end;
 
+procedure TsCellRangeExprNode.SetSheetIndex(AIndex: TsCellRangeIndex;
+  AValue: Integer);
+begin
+  FSheetIndex[AIndex] := AValue;
+end;
+
 
 {------------------------------------------------------------------------------}
 {   Conversion of arguments to simple data types                               }
@@ -4464,7 +4481,8 @@ begin
   end;
 end;
 
-procedure ArgsToFloatArray(const Args: TsExprParameterArray; out AData: TsExprFloatArray);
+procedure ArgsToFloatArray(const Args: TsExprParameterArray;
+  out AData: TsExprFloatArray; out AError: TsErrorValue);
 const
   BLOCKSIZE = 128;
 var
@@ -4475,11 +4493,16 @@ var
   arg: TsExpressionResult;
   idx, idx1, idx2: Integer;
 begin
+  AError := errOK;
   SetLength(AData, BLOCKSIZE);
   n := 0;
   for i:=0 to High(Args) do
   begin
     arg := Args[i];
+    if arg.ResultType = rtError then begin
+      AError := arg.ResError;
+      exit;
+    end;
     if arg.ResultType = rtCellRange then begin
       idx1 := arg.ResCellRange.Sheet1;
       idx2 := arg.ResCellRange.Sheet2;

@@ -972,8 +972,13 @@ var
   data: TsExprFloatArray;
   m: TsExprFloat;
   i: Integer;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then begin
+    Result := ErrorResult(err);
+    exit;
+  end;
   m := Mean(data);
   for i:=0 to High(data) do      // replace data by their average deviation from the mean
     data[i] := abs(data[i] - m);
@@ -984,9 +989,13 @@ procedure fpsAVERAGE(var Result: TsExpressionResult; const Args: TsExprParameter
 // AVERAGE( value1, [value2, ... value_n] )
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
-  Result.ResFloat := Mean(data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then
+    Result := ErrorResult(err)
+  else
+    Result.ResFloat := Mean(data);
 end;
 
 procedure fpsCOUNT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -995,9 +1004,13 @@ procedure fpsCOUNT(var Result: TsExpressionResult; const Args: TsExprParameterAr
     COUNT( value1, [value2, ... value_n] )  }
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
-  Result.ResInteger := Length(data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then
+    Result := ErrorResult(err)
+  else
+    Result.ResInteger := Length(data);
 end;
 
 procedure fpsCOUNTA(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -1402,18 +1415,26 @@ procedure fpsMAX(var Result: TsExpressionResult; const Args: TsExprParameterArra
 // MAX( value1, [value2, ... value_n] )
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
-  Result.ResFloat := MaxValue(data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then
+    Result := ErrorResult(err)
+  else
+    Result.ResFloat := MaxValue(data);
 end;
 
 procedure fpsMIN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // MIN( value1, [value2, ... value_n] )
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
-  Result.ResFloat := MinValue(data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then
+    Result := ErrorResult(err)
+  else
+    Result.ResFloat := MinValue(data);
 end;
 
 procedure fpsPRODUCT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -1422,8 +1443,14 @@ var
   data: TsExprFloatArray;
   i: Integer;
   p: TsExprFloat;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then begin
+    Result := ErrorResult(err);
+    exit;
+  end;
+
   p := 1.0;
   for i := 0 to High(data) do
     p := p * data[i];
@@ -1436,8 +1463,14 @@ procedure fpsSTDEV(var Result: TsExpressionResult; const Args: TsExprParameterAr
 //   STDEV( value1, [value2, ... value_n] )
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then begin
+    Result := ErrorResult(err);
+    exit;
+  end;
+
   if Length(data) > 1 then
     Result.ResFloat := StdDev(data)
   else
@@ -1452,8 +1485,14 @@ procedure fpsSTDEVP(var Result: TsExpressionResult; const Args: TsExprParameterA
 // STDEVP( value1, [value2, ... value_n] )
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then begin
+    Result := ErrorResult(err);
+    exit;
+  end;
+
   if Length(data) > 0 then
     Result.ResFloat := PopnStdDev(data)
   else
@@ -1467,9 +1506,13 @@ procedure fpsSUM(var Result: TsExpressionResult; const Args: TsExprParameterArra
 // SUM( value1, [value2, ... value_n] )
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
-  Result.ResFloat := Sum(data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then
+    Result := ErrorResult(err)
+  else
+    Result.ResFloat := Sum(data);
 end;
 
 procedure fpsSUMSQ(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -1477,9 +1520,13 @@ procedure fpsSUMSQ(var Result: TsExpressionResult; const Args: TsExprParameterAr
 // SUMSQ( value1, [value2, ... value_n] )
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
-  Result.ResFloat := SumOfSquares(data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then
+    Result := ErrorResult(err)
+  else
+    Result.ResFloat := SumOfSquares(data);
 end;
 
 procedure fpsVAR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -1487,8 +1534,15 @@ procedure fpsVAR(var Result: TsExpressionResult; const Args: TsExprParameterArra
 // VAR( value1, [value2, ... value_n] )
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then
+  begin
+    Result := ErrorResult(err);
+    exit;
+  end;
+
   if Length(data) > 1 then
     Result.ResFloat := Variance(data)
   else
@@ -1503,8 +1557,15 @@ procedure fpsVARP(var Result: TsExpressionResult; const Args: TsExprParameterArr
 // VARP( value1, [value2, ... value_n] )
 var
   data: TsExprFloatArray;
+  err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data);
+  ArgsToFloatArray(Args, data, err);
+  if err <> errOK then
+  begin
+    Result := ErrorResult(err);
+    exit;
+  end;
+
   if Length(data) > 0 then
     Result.ResFloat := PopnVariance(data)
   else

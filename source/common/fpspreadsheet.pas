@@ -644,7 +644,7 @@ type
   TsRemoveWorksheetEvent = procedure (Sender: TObject; ASheetIndex: Integer) of object;
 
   {@@ FSome action has an effect on existing formulas which must be corrected. }
-  TsFormulaCorrection = (fcWorksheetRenamed);
+  TsFormulaCorrection = (fcWorksheetRenamed, fcWorksheetDeleted);
 
 
     { TsWorkbook }
@@ -658,6 +658,7 @@ type
     FBuiltinFontCount: Integer;
     FReadWriteFlag: TsReadWriteFlag;
     FCalculationLock: Integer;
+    FRebuildFormulaLock: Integer;
     FActiveWorksheet: TsWorksheet;
     FOnOpenWorkbook: TNotifyEvent;
     FOnChangeWorksheet: TsWorksheetEvent;
@@ -673,7 +674,8 @@ type
     {FrevisionsCrypto: TsCryptoInfo;} // Commented out because it needs revision handling
 
     { Callback procedures }
-    procedure RemoveWorksheetsCallback(data, arg: pointer);
+    procedure RebuildFormulasCallback(Data, Arg: Pointer);
+    procedure RemoveWorksheetsCallback(Data, Arg: pointer);
 
   protected
     FFontList: TFPList;
@@ -690,9 +692,8 @@ type
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
 
-    procedure FixFormula(ACell: PCell; ACorrection: TsFormulaCorrection;
-      AData: Pointer; AParam: PtrInt);
-//    procedure ReCalc;
+    function FixFormula(AFormula: PsFormula; ACorrection: TsFormulaCorrection;
+      AData: Pointer; AParam: PtrInt): Boolean;
 
   public
     { Base methods }
@@ -787,8 +788,9 @@ type
 
     { Formulas }
     procedure CalcFormulas;
-    procedure FixFormulas(ACorrection: TsFormulaCorrection; AData: Pointer;
-      AParam: PtrInt);
+    function FixFormulas(ACorrection: TsFormulaCorrection; AData: Pointer;
+      AParam: PtrInt): boolean;
+    procedure RebuildFormulas;
 
     { Clipboard }
     procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
@@ -4030,7 +4032,7 @@ begin
   begin
     FName := AName;
     if FWorkbook.FReadWriteFlag = rwfNormal then begin
-      FWorkbook.FixFormulas(fcWorksheetRenamed, self, 0);
+      FWorkbook.RebuildFormulas;
       if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnRenameWorksheet) then
         FWorkbook.FOnRenameWorksheet(FWorkbook, self);
     end;
@@ -7992,14 +7994,27 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Helper method for rebuilding all string formulas of the workbook from the
+  pared formulas.
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.RebuildFormulasCallback(Data, Arg: Pointer);
+var
+  formula: PsFormula;
+begin
+  Unused(Arg);
+  for formula in TsWorksheet(Data).Formulas do
+    formula^.Text := formula^.Parser.Expression;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Helper method for clearing the spreadsheet list.
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.RemoveWorksheetsCallback(data, arg: pointer);
+procedure TsWorkbook.RemoveWorksheetsCallback(Data, Arg: pointer);
 begin
-  Unused(arg);
-  TsWorksheet(data).Free;
+  Unused(Arg);
+  TsWorksheet(Data).Free;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8593,10 +8608,12 @@ begin
   // For this we turn off notification of listeners. This is not necessary here
   // because it will be repeated at end when OnAddWorksheet is executed below.
   inc(FLockCount);
+  inc(FRebuildFormulaLock);
   try
     Result.Name := AName;
   finally
     dec(FLockCount);
+    dec(FRebuildFormulaLock);
   end;
 
   // Send notification for new worksheet to listeners. They get the worksheet
@@ -8870,6 +8887,7 @@ end;
 procedure TsWorkbook.RemoveWorksheet(AWorksheet: TsWorksheet);
 var
   i: Integer;
+  rebuildFormulas: Boolean;
 begin
   if GetWorksheetCount > 1 then     // There must be at least 1 worksheet left!
   begin
@@ -8878,8 +8896,12 @@ begin
     begin
       if Assigned(FOnRemovingWorksheet) then
         FOnRemovingWorksheet(self, AWorksheet);
+      rebuildFormulas := FixFormulas(fcWorksheetDeleted, AWorksheet, 0);
       FWorksheets.Delete(i);
       AWorksheet.Free;
+      if rebuildFormulas then Self.RebuildFormulas;
+      if boAutoCalc in Options then
+        CalcFormulas;
       if Assigned(FOnRemoveWorksheet) then
         FOnRemoveWorksheet(self, i);
     end;
@@ -9539,43 +9561,114 @@ end;
                         In the fcWorksheetRenamed example above this points to
                         the worksheet that was renamed.
   @param AParam         Provides additional information. Depends on ACorrection
+  @return               The function returns true if the string formulas of the
+                        workbook have to be recreated.
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.FixFormulas(ACorrection: TsFormulaCorrection;
-  AData: Pointer; AParam: PtrInt);
+function TsWorkbook.FixFormulas(ACorrection: TsFormulaCorrection;
+  AData: Pointer; AParam: PtrInt): Boolean;
 var
   i: Integer;
   sheet: TsWorksheet;
-  cell: PCell;
+  formula: PsFormula;
 begin
   if (boIgnoreFormulas in Options) then
     exit;
 
+  Result := false;
   inc(FCalculationLock);
   try
     for i := 0 to GetWorksheetCount-1 do begin
       sheet := GetWorksheetByIndex(i);
-      for cell in sheet.Cells do begin
-        if HasFormula(cell) then
-          FixFormula(cell, ACorrection, AData, AParam);
-      end;
+      for formula in sheet.Formulas do
+        Result := FixFormula(formula, ACorrection, AData, AParam);
     end;
   finally
     dec(FCalculationLock);
-    if (boAutoCalc in Options) then
+    {
+    if (boAutoCalc in Options) and formulaChanged then
       CalcFormulas;
+    }
   end;
 end;
 
-procedure TsWorkbook.FixFormula(ACell: PCell; ACorrection: TsFormulaCorrection;
-  AData: Pointer; AParam: PtrInt);
+procedure TsWorkbook.RebuildFormulas;
+begin
+  if FRebuildFormulaLock = 0 then
+    FWorksheets.ForEachCall(RebuildFormulasCallback, nil);
+end;
+
+
+{ AData points to the deleted worksheet }
+function FixWorksheetDeletedCallback(ANode: TsExprNode; AData: Pointer): Boolean;
+var
+  deletedindex: Integer;
+  deletedSheet: TsWorksheet;
+  cellNode: TsCellExprNode;
+  rngNode: TsCellRangeExprNode;
+  index, index1, index2: Integer;
+begin
+  Result := false;
+  if ANode is TsCellExprNode then
+  begin
+    cellNode := TsCellExprNode(ANode);
+    deletedSheet := TsWorksheet(AData);
+    deletedindex := TsWorkbook(cellNode.GetWorkbook).GetWorksheetIndex(deletedSheet);
+    index := cellNode.GetSheetIndex;
+    if deletedindex < index then begin
+      cellNode.SetSheetIndex(index-1);
+      Result := true;
+    end else
+    if deletedIndex = index then begin
+      cellNode.Error := errIllegalRef;
+      Result := true;
+    end;
+  end else
+  if ANode is TsCellRangeExprNode then
+  begin
+    rngNode := TsCellRangeExprNode(ANode);
+    deletedSheet := TsWorksheet(AData);
+    deletedIndex := TsWorkbook(rngNode.GetWorkbook).GetWorksheetIndex(deletedSheet);
+    index1 := rngNode.GetSheetIndex(1);
+    index2 := rngNode.GetSheetIndex(2);
+    if deletedIndex < index1 then begin
+      rngNode.SetSheetIndex(1, index1-1);
+      rngNode.SetSheetIndex(2, index2-1);
+      Result := true;
+    end else
+    if (deletedIndex > index1) and (deletedIndex < index2) then begin
+      rngNode.SetSheetIndex(2, index2-1);
+      Result := true;
+    end else
+    if (deletedIndex = index1) and (index1 <> index2) then begin
+      rngNode.SetSheetIndex(2, index2-1);
+      Result := true;
+    end else
+    if (deletedIndex = index2) and (index1 <> index2) then begin
+      rngNode.SetSheetIndex(2, index2-1);
+      Result := true;
+    end else
+    if (deletedIndex = index1) and (deletedIndex = index2) then begin
+      rngNode.Error := errIllegalRef;
+      Result := true;
+    end;
+  end;
+end;
+
+function TsWorkbook.FixFormula(AFormula: PsFormula;
+  ACorrection: TsFormulaCorrection; AData: Pointer; AParam: PtrInt): Boolean;
 var
   rpn: TsRPNFormula;
   i: Integer;
   elem: TsFormulaElement;
   sheet: TsWorksheet;
 begin
-  // Skeleton only - to be updated when new formula handling is finished.
-
+  Result := false;
+  case ACorrection of
+    fcWorksheetRenamed:
+      Result := true; // Nothing to do, no sheet names in formula nodes
+    fcWorksheetDeleted:
+      Result := AFormula^.Parser.IterateNodes(FixWorksheetDeletedCallback, AData);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

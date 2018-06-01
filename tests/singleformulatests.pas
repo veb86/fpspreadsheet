@@ -15,6 +15,7 @@ uses
 type
   TFormulaTestKind = (ftkConstants, ftkCellConstant, ftkCells, ftkCellRange,
     ftkCellRangeSheet, ftkCellRangeSheetRange);
+  TWorksheetTestKind = (wtkRenameWorksheet, wtkDeleteWorksheet);
 
   { TSpreadDetailedFormulaFormula }
   TSpreadSingleFormulaTests = class(TTestCase)
@@ -25,6 +26,7 @@ type
     procedure TestFloatFormula(AFormula: String; AExpected: Double;
       ATestKind: TFormulaTestKind; AFormat: TsSpreadsheetFormat;
       AExpectedFormula: String = '');
+    procedure TestWorksheet(ATestKind: TWorksheetTestKind; ATestCase: Integer);
 
   published
     procedure AddConst_BIFF2;
@@ -60,6 +62,22 @@ type
     procedure SumMultiSheetRange_FlippedSheets_OOXML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_OOXML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_ODS;
+
+    procedure RenameWorksheet_Single;
+    procedure RenameWorksheet_Multi_First;
+    procedure RenameWorksheet_Multi_Inner;
+    procedure RenameWorksheet_Multi_Last;
+
+    procedure DeleteWorksheet_Single_BeforeRef;
+    procedure DeleteWorksheet_Single_Ref;
+    procedure DeleteWorksheet_Single_AfterRef;
+    procedure DeleteWorksheet_Multi_Before;
+    procedure DeleteWorksheet_Multi_First;
+    procedure DeleteWorksheet_Multi_Inner;
+    procedure DeleteWorksheet_Multi_Last;
+    procedure DeleteWorksheet_Multi_After;
+    procedure DeleteWorksheet_Multi_KeepFirst;
+    procedure DeleteWorksheet_Multi_All;
 
   end;
 
@@ -331,6 +349,305 @@ procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheets_OOXML;
 begin
   TestFloatFormula('SUM(Sheet3:Sheet2!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
+
+
+{------------------------------------------------------------------------------}
+
+{ ATestKind defines the action taken:
+  - wtkRenameWorksheet
+  - wtkDeleteWorksheet
+}
+procedure TSpreadSingleFormulaTests.TestWorksheet(ATestKind: TWorksheetTestKind;
+  ATestCase: Integer);
+const
+  SHEET1 = 'Sheet1';
+  SHEET2 = 'Sheet2';
+  SHEET3 = 'Sheet3';
+  SHEET4 = 'Sheet4';
+  SHEET5 = 'Sheet5';
+  SHEET6 = 'Sheet6';
+  TESTCELL_ROW = 1;
+  TESTCELL_COL = 1;
+  ACTION_NAME: array [TWorksheetTestKind] of string = ('RENAME', 'DELETE');
+var
+  workbook: TsWorkbook;
+  worksheet1: TsWorksheet;
+  worksheet2: TsWorksheet;
+  worksheet3: TsWorksheet;
+  worksheet4: TsWorksheet;
+  worksheet5: TsWorksheet;
+  worksheet6: TsWorksheet;
+  tempFile: String;
+  formula: String;
+  actualFormula: String;
+  actualValue: String;
+  expectedFormula: string;
+  expectedValue: String;
+  cell: PCell;
+const
+//  DO_SAVE: boolean = true;
+  DO_SAVE: Boolean = false;
+begin
+  tempFile := GetTempFileName;
+
+  try
+    // Create test workbook and write test formula and needed cells
+    workbook := TsWorkbook.Create;
+    try
+      workbook.Options := workbook.Options + [boCalcBeforeSaving, boAutoCalc];
+      worksheet1 := workBook.AddWorksheet(SHEET1);
+      worksheet2 := workbook.AddWorksheet(SHEET2);
+      worksheet3 := workbook.AddWorksheet(SHEET3);
+      worksheet4 := workbook.AddWorksheet(SHEET4);
+      worksheet5 := workbook.AddWorksheet(SHEET5);
+      worksheet6 := workbook.AddWorksheet(SHEET6);
+
+      // Write cells used by the formula
+      worksheet1.WriteNumber(2, 2, 1.0);   // C3
+      worksheet1.WriteNumber(3, 2, -2.0);  // C4
+      worksheet1.WriteNumber(4, 2, 1.5);   // C5
+      worksheet1.WriteNumber(2, 3, 15.0);  // D3
+
+      // No data in worksheet 2 - it is just a spacer
+
+      worksheet3.WriteNumber(2, 2, 10.0);   // Sheet3!C3
+      worksheet3.WriteNumber(3, 2, -20.0);  // Sheet3!C4
+      worksheet3.WriteNumber(4, 2, 15.0);   // Sheet3!C5
+      worksheet3.WriteNumber(2, 3, 150.0);  // Sheet3!D5
+
+      worksheet4.WriteNumber(2, 2, 100.0);   // Sheet4!C3
+      worksheet4.WriteNumber(3, 2, -200.0);  // Sheet4!C4
+      worksheet4.WriteNumber(4, 2, 150.0);   // Sheet4!C5
+      worksheet4.WriteNumber(2, 3, 1500.0);  // Sheet4!D5
+
+      worksheet5.WriteNumber(2, 2, 1000.0);   // Sheet5!C3
+      worksheet5.WriteNumber(3, 2, -2000.0);  // Sheet5!C4
+      worksheet5.WriteNumber(4, 2, 1500.0);   // Sheet5!C5
+      worksheet5.WriteNumber(2, 3, 15000.0);  // Sheet5!D5
+
+      // No data in worksheet 6 - it is just a spacer
+
+      // Write the formula
+      case ATestKind of
+        wtkRenameworksheet:
+          case ATestCase of
+            1:
+              begin
+                formula := 'Sheet3!C3';                // SINGLE_SHEET FORMULA
+                expectedValue := '10';
+              end;
+            2..4:
+              begin
+                formula := 'SUM(Sheet3:Sheet5!C3)';    // MULTI-SHEET FORMULA
+                expectedValue := '1110';
+              end;
+          end;
+        wtkDeleteWorksheet:
+          case ATestCase of
+            1..3:
+              begin
+                formula := 'Sheet3!C3';
+                expectedValue := '10';
+              end;
+            4..10:
+              begin
+                formula := 'SUM(Sheet3:Sheet5!C3)';    // MULTI-SHEET FORMULA
+                expectedValue := '1110';
+              end;
+          end;
+      end;
+      cell := worksheet1.WriteFormula(TESTCELL_ROW, TESTCELL_COL, formula);
+      workbook.CalcFormulas;
+
+      // Read formula before action
+      actualFormula := worksheet1.ReadFormula(cell);
+      CheckEquals(formula, actualFormula,
+        'Formula text mismatch before action "' + ACTION_NAME[ATestKind] + '"');
+
+      // Read calculated value before action
+      actualvalue := worksheet1.ReadAsText(TESTCELL_ROW, TESTCELL_COL);
+      CheckEquals(expectedValue, actualvalue,
+        'Calculated value mismatch before action "' + ACTION_NAME[ATestKind] + '"');
+
+      // Action
+      case ATestKind of
+        // Renaming tests
+        wtkRenameWorksheet:
+          case ATestCase of
+            1: begin // Rename sheet referred by single-sheet formula
+                 worksheet3.Name := 'Table3';
+                 expectedFormula := 'Table3!C3';
+               end;
+            2: begin  // Rename sheet referred by first of multi-sheet range
+                 worksheet3.Name := 'Table';
+                 expectedFormula := 'SUM(Table:Sheet5!C3)';
+               end;
+            3: begin  // Rename sheet referred by inner sheet of sheet range
+                 worksheet4.Name := 'Table';
+                 expectedFormula := 'SUM(Sheet3:Sheet5!C3)';
+               end;
+            4: begin  // Rename sheet referred by last sheet of sheet range
+                 worksheet5.Name := 'Table';
+                 expectedFormula := 'SUM(Sheet3:Table!C3)';
+               end;
+          end;
+
+        // Deletion tests
+        wtkDeleteWorksheet:
+          case ATestCase of
+            // Single-sheet tests
+            1: begin  // Delete sheet before referenced sheet (Sheet3)
+                 workbook.RemoveWorksheet(worksheet2);
+                 expectedFormula := 'Sheet3!C3';
+                 expectedValue := '10';
+               end;
+            2: begin  // Delete referenced sheet
+                 workbook.RemoveWorksheet(worksheet3);
+                 expectedFormula := '#REF!';
+                 expectedValue := '#REF!';
+               end;
+            3: begin  // Delete sheet after referenced sheet
+                 workbook.RemoveWorksheet(worksheet4);
+                 expectedFormula := 'Sheet3!C3';
+                 expectedValue := '10';
+               end;
+            // Range tests
+            4: begin // Delete sheet before referenced range (Sheet3:Sheet5)
+                 workbook.RemoveWorksheet(worksheet2);
+                 expectedFormula := 'SUM(Sheet3:Sheet5!C3)';
+                 expectedValue := '1110';
+               end;
+            5: begin  // Delete 1st sheet of referenced range
+                 workbook.RemoveWorksheet(worksheet3);
+                 expectedFormula := 'SUM(Sheet4:Sheet5!C3)';
+                 expectedValue := '1100';
+               end;
+            6: begin  // Delete inner sheet of referenced range
+                 workbook.RemoveWorksheet(worksheet4);
+                 expectedformula := 'SUM(Sheet3:Sheet5!C3)';
+                 expectedvalue := '1010';
+               end;
+            7: begin  // Delete last sheet of referenced range
+                 workbook.RemoveWorksheet(worksheet5);
+                 expectedformula := 'SUM(Sheet3:Sheet4!C3)';
+                 expectedValue := '110';
+               end;
+            8: begin  // Delete sheet after referenced range
+                 workbook.RemoveWorksheet(worksheet6);
+                 expectedformula := 'SUM(Sheet3:Sheet5!C3)';
+                 expectedValue := '1110';
+               end;
+            9: begin  // Delete all sheets expect first of range
+                 workbook.RemoveWorksheet(worksheet4);
+                 workbook.RemoveWorksheet(worksheet5);
+                 expectedformula := 'SUM(Sheet3!C3)';
+                 expectedValue := '10';
+               end;
+           10: begin  // Delete all sheets of referenced range
+                 workbook.RemoveWorksheet(worksheet3);
+                 workbook.RemoveWorksheet(worksheet4);
+                 workbook.RemoveWorksheet(worksheet5);
+                 expectedFormula := 'SUM(#REF!)';
+                 expectedValue := '#REF!';
+               end;
+          end;
+      end;
+
+      workbook.CalcFormulas;
+      if DO_SAVE then                          // For debugging...
+        workbook.WriteToFile(tempFile, sfExcel8, true);
+
+      // Read formula after action
+      actualFormula := worksheet1.ReadFormula(cell);
+      CheckEquals(expectedFormula, actualFormula,
+        'Formula text mismatch after action "' + ACTION_NAME[ATestKind] + '"');
+
+      // Read calculated value before action
+      actualvalue := worksheet1.ReadAsText(TESTCELL_ROW, TESTCELL_COL);
+      CheckEquals(expectedValue, actualvalue,
+        'Calculated value mismatch after action "' + ACTION_NAME[ATestKind] + '"');
+
+    finally
+      workbook.Free;
+    end;
+
+  finally
+    if DO_SAVE then
+      DeleteFile(tempFile);
+  end;
+end;
+
+procedure TSpreadSingleFormulaTests.RenameWorksheet_Single;
+begin
+  TestWorksheet(wtkRenameWorksheet, 1);
+end;
+
+procedure TSpreadSingleFormulaTests.RenameWorksheet_Multi_First;
+begin
+  TestWorksheet(wtkRenameWorksheet, 2);
+end;
+
+procedure TSpreadSingleFormulaTests.RenameWorksheet_Multi_Inner;
+begin
+  TestWorksheet(wtkRenameWorksheet, 3);
+end;
+
+procedure TSpreadSingleFormulaTests.RenameWorksheet_Multi_Last;
+begin
+  TestWorksheet(wtkRenameWorksheet, 4);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Single_BeforeRef;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 1);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Single_Ref;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 2);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Single_AfterRef;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 3);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Multi_Before;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 4);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Multi_First;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 5);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Multi_Inner;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 6);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Multi_Last;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 7);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Multi_After;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 8);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Multi_KeepFirst;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 9);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteWorksheet_Multi_All;
+begin
+  TestWorksheet(wtkDeleteWorksheet, 10);
+end;
+
+
 
 
 initialization
