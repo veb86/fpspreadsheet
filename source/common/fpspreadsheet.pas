@@ -9657,11 +9657,6 @@ end;
 
 function TsWorkbook.FixFormula(AFormula: PsFormula;
   ACorrection: TsFormulaCorrection; AData: Pointer; AParam: PtrInt): Boolean;
-var
-  rpn: TsRPNFormula;
-  i: Integer;
-  elem: TsFormulaElement;
-  sheet: TsWorksheet;
 begin
   Result := false;
   case ACorrection of
