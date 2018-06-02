@@ -1453,11 +1453,12 @@ begin
       // Remove and destroy the formula record if it is in the deleted row
       if formula^.Row = AIndex then
         Delete(node)
-      else
-      if formula^.Row > AIndex then
-        dec(formula^.Row);
-      // Update all RowCol records at row indexes above the deleted row
-      changed := formula^.Parser.IterateNodes(@FixDeletedRow, Pointer(PtrInt(AIndex)));
+      else begin
+        if formula^.Row > AIndex then
+          dec(formula^.Row);
+        // Update all RowCol records at row indexes above the deleted row
+        changed := formula^.Parser.IterateNodes(@FixDeletedRow, Pointer(PtrInt(AIndex)));
+      end;
     end else
     begin
       // Remove and destroy the formula record if it is in the deleted column
