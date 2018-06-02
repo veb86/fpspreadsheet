@@ -2559,11 +2559,13 @@ begin
   AStream.WriteWord(0);
 end;
 
-function DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData: Pointer): Boolean;
+procedure DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData: Pointer;
+  var MustRebuildFormulas: Boolean);
 var
   sheetlist: TsBIFF8ExternSheetList;
   sheetIdx, sheetIdx1, sheetIdx2: Integer;
 begin
+  Unused(MustRebuildFormulas);
   sheetlist := TsBIFF8ExternSheetList(AData);
   if (ANode is TsCellExprNode) and TsCellExprNode(ANode).Has3DLink then
   begin
@@ -2577,7 +2579,6 @@ begin
     for sheetIdx := sheetIdx1 to sheetIdx2 do
       sheetList.AddSheets('', nil, sheetIdx1, sheetIdx2);
   end;
-  Result := false;
 end;
 
 {@@ ----------------------------------------------------------------------------

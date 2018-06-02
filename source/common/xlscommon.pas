@@ -3463,12 +3463,14 @@ begin
   end;
 end;
 
-function DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData: Pointer): Boolean;
+procedure DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData: Pointer;
+  var MustRebuildFormulas: Boolean);
 var
   sheetlist: TsBIFFExternSheetList;
   sheetIdx, sheetIdx1, sheetIdx2: Integer;
   workbook: TsWorkbook;
 begin
+  Unused(MustRebuildFormulas);
   sheetlist := TsBIFFExternSheetList(AData);
   if (ANode is TsCellExprNode) and TsCellExprNode(ANode).Has3DLink then
     sheetList.AddSheet(TsCellExprNode(ANode).GetSheetName, ebkInternal)
@@ -3481,7 +3483,6 @@ begin
     for sheetIdx := sheetIdx1 to sheetIdx2 do
       sheetList.AddSheet(workbook.GetWorksheetByIndex(sheetIdx).Name, ebkInternal);
   end;
-  Result := false;  // No need to rebuild the text formula
 end;
 
 {@@ ----------------------------------------------------------------------------

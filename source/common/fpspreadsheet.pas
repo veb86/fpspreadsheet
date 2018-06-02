@@ -1137,6 +1137,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Destructor of the TsWorksheet class.
   Releases all memory, but does not delete from the workbook's worksheetList !!!
+
   NOTE: Don't call directly. Always use Workbook.RemoveWorksheet to remove a
   worksheet from a workbook.
 -------------------------------------------------------------------------------}
@@ -9599,7 +9600,8 @@ end;
 
 
 { AData points to the deleted worksheet }
-function FixWorksheetDeletedCallback(ANode: TsExprNode; AData: Pointer): Boolean;
+procedure FixWorksheetDeletedCallback(ANode: TsExprNode; AData: Pointer;
+  var MustRebuildFormulas: Boolean);
 var
   deletedindex: Integer;
   deletedSheet: TsWorksheet;
@@ -9607,7 +9609,6 @@ var
   rngNode: TsCellRangeExprNode;
   index, index1, index2: Integer;
 begin
-  Result := false;
   if ANode is TsCellExprNode then
   begin
     cellNode := TsCellExprNode(ANode);
@@ -9616,11 +9617,11 @@ begin
     index := cellNode.GetSheetIndex;
     if deletedindex < index then begin
       cellNode.SetSheetIndex(index-1);
-      Result := true;
+      MustRebuildFormulas := true;
     end else
     if deletedIndex = index then begin
       cellNode.Error := errIllegalRef;
-      Result := true;
+      MustRebuildFormulas := true;
     end;
   end else
   if ANode is TsCellRangeExprNode then
@@ -9633,23 +9634,23 @@ begin
     if deletedIndex < index1 then begin
       rngNode.SetSheetIndex(1, index1-1);
       rngNode.SetSheetIndex(2, index2-1);
-      Result := true;
+      MustRebuildFormulas := true;
     end else
     if (deletedIndex > index1) and (deletedIndex < index2) then begin
       rngNode.SetSheetIndex(2, index2-1);
-      Result := true;
+      MustRebuildFormulas := true;
     end else
     if (deletedIndex = index1) and (index1 <> index2) then begin
       rngNode.SetSheetIndex(2, index2-1);
-      Result := true;
+      MustRebuildFormulas := true;
     end else
     if (deletedIndex = index2) and (index1 <> index2) then begin
       rngNode.SetSheetIndex(2, index2-1);
-      Result := true;
+      MustRebuildFormulas := true;
     end else
     if (deletedIndex = index1) and (deletedIndex = index2) then begin
       rngNode.Error := errIllegalRef;
-      Result := true;
+      MustRebuildFormulas := true;
     end;
   end;
 end;

@@ -106,9 +106,11 @@ type
   PsExpressionResult = ^TsExpressionResult;
   TsExprParameterArray = array of TsExpressionResult;
 
-  { Function executed when iterating through all nodes (Parser.IterateNodes).
-    The function returns true if the text formula has to be rebuilt. }
-  TsExprNodeFunc = function(ANode: TsExprNode; AData: Pointer): Boolean;
+  { Proceudre executed when iterating through all nodes (Parser.IterateNodes).
+    The procedure sets the parameter MustRebuildFormula to true if the
+    text formula has to be rebuilt. }
+  TsExprNodeProc = procedure(ANode: TsExprNode; AData: Pointer;
+    var MustRebuildFormulas: Boolean);
 
   { TsExprNode }
   TsExprNode = class(TObject)
@@ -122,7 +124,8 @@ type
     function AsString: string; virtual; abstract;
     procedure Check; virtual; //abstract;
     function Has3DLink: Boolean; virtual;
-    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; virtual;
+    procedure IterateNodes(AProc: TsExprNodeProc; AData: Pointer;
+      var MustRebuildFormulas: Boolean); virtual;
     function NodeType: TsResultType; virtual; abstract;
     function NodeValue: TsExpressionResult;
     property Parser: TsExpressionParser read FParser;
@@ -141,7 +144,8 @@ type
     constructor Create(AParser: TsExpressionParser; ALeft, ARight: TsExprNode);
     destructor Destroy; override;
     function Has3DLink: Boolean; override;
-    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): boolean; override;
+    procedure IterateNodes(AProc: TsExprNodeProc; AData: Pointer;
+      var MustRebuildFormulas: boolean); override;
     property Left: TsExprNode read FLeft;
     property Right: TsExprNode read FRight;
   end;
@@ -563,7 +567,8 @@ type
     function AsString: String; override;
     procedure Check; override;
     function Has3DLink: Boolean; override;
-    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; override;
+    procedure IterateNodes(AProc: TsExprNodeProc; AData: Pointer;
+      var MustRebuildFormulas: Boolean); override;
     property ArgumentNodes: TsExprArgumentArray read FArgumentNodes;
     property ArgumentParams: TsExprParameterArray read FArgumentParams;
   end;
@@ -618,7 +623,8 @@ type
     function GetSheetName: String;
     function GetWorkbook: TsBasicWorkbook;
     function Has3DLink: Boolean; override;
-    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; override;
+    procedure IterateNodes(AProc: TsExprNodeProc; AData: Pointer;
+      var MustRebuildFormulas: Boolean); override;
     function NodeType: TsResultType; override;
     procedure SetSheetIndex(AIndex: Integer);
     property Col: Cardinal read FCol write FCol;  // Be careful when modifying Col and Row
@@ -654,7 +660,8 @@ type
     function GetSheetIndex(AIndex: TsCellRangeIndex): Integer;
     function GetWorkbook: TsBasicWorkbook;
     function Has3DLink: Boolean; override;
-    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean; override;
+    procedure IterateNodes(AProc: TsExprNodeProc; AData: Pointer;
+      var MustRebuildFormulas: Boolean); override;
     function NodeType: TsResultType; override;
     procedure SetSheetIndex(AIndex: TsCellRangeIndex; AValue: Integer);
     property Error: TsErrorValue read FError write FError;
@@ -780,7 +787,7 @@ type
     function Evaluate: TsExpressionResult;
     procedure EvaluateExpression(out AResult: TsExpressionResult);
     function Has3DLinks: Boolean;
-    function IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): boolean;
+    function IterateNodes(AProc: TsExprNodeProc; AData: Pointer): boolean;
     procedure PrepareCopyMode(ASourceCell, ADestCell: PCell);
     function ResultType: TsResultType;
 
@@ -1979,10 +1986,11 @@ begin
   Result := FExprNode.Has3DLink;
 end;
 
-function TsExpressionParser.IterateNodes(AFunc: TsExprNodeFunc;
+function TsExpressionParser.IterateNodes(AProc: TsExprNodeProc;
   AData: Pointer): Boolean;
 begin
-  Result := FExprNode.IterateNodes(AFunc, AData);
+  Result := false;
+  FExprNode.IterateNodes(AProc, AData, Result);
 end;
 
 procedure TsExpressionParser.SetDialect(const AValue: TsFormulaDialect);
@@ -2767,9 +2775,10 @@ begin
   Result := false;
 end;
 
-function TsExprNode.IterateNodes(AFunc: TsExprNodeFunc; AData: Pointer): Boolean;
+procedure TsExprNode.IterateNodes(AProc: TsExprNodeProc; AData: Pointer;
+  var MustRebuildFormulas: Boolean);
 begin
-  Unused(AFunc, AData);
+  Unused(AProc, AData, MustRebuildFormulas);
   // to be overridden by descendant classes
 end;
 
@@ -2823,10 +2832,14 @@ begin
   Result := FLeft.Has3DLink or FRight.Has3DLink;
 end;
 
-function TsBinaryOperationExprNode.IterateNodes(AFunc: TsExprNodeFunc;
-  AData: Pointer): Boolean;
+procedure TsBinaryOperationExprNode.IterateNodes(AProc: TsExprNodeProc;
+  AData: Pointer; var MustRebuildFormulas: Boolean);
+var
+  rebuildLeft, rebuildRight: Boolean;
 begin
-  Result := FLeft.IterateNodes(AFunc, AData) or FRight.IterateNodes(AFunc, AData);
+  FLeft.IterateNodes(AProc, AData, rebuildLeft);
+  FRight.IterateNodes(AProc, AData, rebuildRight);
+  MustRebuildFormulas := MustRebuildFormulas or rebuildLeft or rebuildRight;
 end;
 
 function TsBinaryOperationExprNode.HasError(out AResult: TsExpressionResult): Boolean;
@@ -3780,14 +3793,13 @@ begin
   Result := false;
 end;
 
-function TsFunctionExprNode.IterateNodes(AFunc: TsExprNodeFunc;
-  AData: Pointer): Boolean;
+procedure TsFunctionExprNode.IterateNodes(AProc: TsExprNodeProc;
+  AData: Pointer; var MustRebuildFormulas: Boolean);
 var
   i: Integer;
 begin
-  Result := false;
   for i:=0 to High(FArgumentParams) do
-    Result := Result or FArgumentNodes[i].IterateNodes(AFunc, AData);
+    FArgumentNodes[i].IterateNodes(AProc, AData, MustRebuildFormulas);
 end;
 
 
@@ -4037,10 +4049,10 @@ begin
   Result := rtCell;
 end;
 
-function TsCellExprNode.IterateNodes(AFunc: TsExprNodeFunc;
-  AData: Pointer): Boolean;
+procedure TsCellExprNode.IterateNodes(AProc: TsExprNodeProc;
+  AData: Pointer; var MustRebuildFormulas: Boolean);
 begin
-  Result := AFunc(self, AData);
+  AProc(self, AData, MustRebuildFormulas);
 end;
 
 procedure TsCellExprNode.SetSheetIndex(AIndex: Integer);
@@ -4293,10 +4305,10 @@ begin
   Result := F3dRange;
 end;
 
-function TsCellRangeExprNode.IterateNodes(AFunc: TsExprNodeFunc;
-  AData: Pointer): Boolean;
+procedure TsCellRangeExprNode.IterateNodes(AProc: TsExprNodeProc;
+  AData: Pointer; var MustRebuildFormulas: Boolean);
 begin
-  Result := AFunc(self, AData);
+  AProc(self, AData, MustRebuildFormulas);
 end;
 
 function TsCellRangeExprNode.NodeType: TsResultType;
