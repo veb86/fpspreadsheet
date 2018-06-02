@@ -279,6 +279,7 @@ type
     function GetCells(ACol, ARow: Integer): String; override;
     function GetCellText(ACol, ARow: Integer; ATrim: Boolean = true): String;
     function GetEditText(ACol, ARow: Integer): String; override;
+    function GetDefaultColumnTitle(Column: Integer): string; override;
     function GetDefaultHeaderColWidth: Integer;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
     procedure HeaderSizing(const IsColumn:boolean; const AIndex,ASize:Integer); override;
@@ -3940,6 +3941,15 @@ begin
     end;
   end;
 end;
+
+function TsCustomWorksheetGrid.GetDefaultColumnTitle(Column: Integer): string;
+begin
+  if Assigned(FGetColHeaderText) then
+    FGetColHeaderText(Self, Column, Result)
+  else
+    Result := GetColString(Column - FHeaderCount);
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Returns the width of the fixed header column 0, in pixels
