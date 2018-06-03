@@ -23,7 +23,7 @@ type
   protected
     procedure SetUp; override;
     procedure TearDown; override;
-    procedure TestFloatFormula(AFormula: String; AExpected: Double;
+    procedure TestFormula(AFormula: String; AExpected: String;
       ATestKind: TFormulaTestKind; AFormat: TsSpreadsheetFormat;
       AExpectedFormula: String = '');
     procedure TestWorksheet(ATestKind: TWorksheetTestKind; ATestCase: Integer);
@@ -63,6 +63,16 @@ type
     procedure SumMultiSheetRange_FlippedSheetsAndCells_OOXML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_ODS;
 
+    procedure NonExistantSheet_BIFF5;
+    procedure NonExistantSheet_BIFF8;
+    procedure NonExistantSheet_OOXML;
+    procedure NonExistantSheet_ODS;
+
+    procedure NonExistantSheetRange_BIFF5;
+    procedure NonExistantSheetRange_BIFF8;
+    procedure NonExistantSheetRange_OOXML;
+    procedure NonExistantSheetRange_ODS;
+
     procedure RenameWorksheet_Single;
     procedure RenameWorksheet_Multi_First;
     procedure RenameWorksheet_Multi_Inner;
@@ -87,7 +97,7 @@ uses
  {$IFDEF FORMULADEBUG}
   LazLogger,
  {$ENDIF}
-  typinfo, lazUTF8, fpsUtils;
+  Math, typinfo, lazUTF8, fpsUtils;
 
 
 { TSpreadExtendedFormulaTests }
@@ -102,8 +112,8 @@ begin
   inherited TearDown;
 end;
 
-procedure TSpreadSingleFormulaTests.TestFloatFormula(AFormula: String;
-  AExpected: Double; ATestKind: TFormulaTestKind; AFormat: TsSpreadsheetFormat;
+procedure TSpreadSingleFormulaTests.TestFormula(AFormula: String;
+  AExpected: String; ATestKind: TFormulaTestKind; AFormat: TsSpreadsheetFormat;
   AExpectedFormula: String = '');
 const
   SHEET1 = 'Sheet1';
@@ -118,7 +128,7 @@ var
   TempFile: string; //write xls/xml to this file and read back from it
   cell: PCell;
   actualformula: String;
-  actualValue: Double;
+  actualValue: String;
 begin
   TempFile := GetTempFileName;
   if AExpectedFormula = '' then AExpectedFormula := AFormula;
@@ -127,6 +137,7 @@ begin
     // Create test workbook and write test formula and needed cells
     workbook := TsWorkbook.Create;
     try
+      workbook.FormatSettings.DecimalSeparator := '.';
       workbook.Options := workbook.Options + [boCalcBeforeSaving, boAutoCalc];
       workSheet:= workBook.AddWorksheet(SHEET1);
 
@@ -162,7 +173,7 @@ begin
       CheckEquals(AExpectedFormula, actualFormula, 'Unsaved formula text mismatch');
 
       // Read calculated value before saving
-      actualvalue := worksheet.ReadAsNumber(TESTCELL_ROW, TESTCELL_COL);
+      actualValue := worksheet.ReadAsText(TESTCELL_ROW, TESTCELL_COL);
       CheckEquals(AExpected, actualvalue, 'Unsaved calculated value mismatch');
 
       // Save
@@ -174,18 +185,18 @@ begin
     // Read file
     workbook := TsWorkbook.Create;
     try
+      workbook.FormatSettings.DecimalSeparator := '.';
       workbook.Options := workbook.Options + [boReadFormulas, boAutoCalc];
       workbook.ReadFromFile(TempFile, AFormat);
       worksheet := workbook.GetFirstWorksheet;
 
       // Read calculated formula value
-      actualvalue := worksheet.ReadAsNumber(TESTCELL_ROW, TESTCELL_COL);
+      actualValue := worksheet.ReadAsText(TESTCELL_ROW, TESTCELL_COL);
       CheckEquals(AExpected, actualValue, 'Saved calculated value mismatch');
 
       cell := worksheet.FindCell(TESTCELL_ROW, TESTCELL_COL);
       actualformula := worksheet.Formulas.FindFormula(cell)^.Text;
-//      actualformula := cell^.FormulaValue;
-      // When writing ranges are reconstructed in correct order.
+      // When writing ranges are reconstructed in correct order -> compare against AExpectedFormula
       CheckEquals(AExpectedFormula, actualformula, 'Saved formula text mismatch.');
     finally
       workbook.Free;
@@ -198,125 +209,125 @@ end;
 
 procedure TSpreadSingleFormulaTests.AddConst_BIFF2;
 begin
-  TestFloatFormula('1+1', 2, ftkConstants, sfExcel2);
+  TestFormula('1+1', '2', ftkConstants, sfExcel2);
 end;
 
 procedure TSpreadSingleFormulaTests.AddConst_BIFF5;
 begin
-  TestFloatFormula('1+1', 2, ftkConstants, sfExcel5);
+  TestFormula('1+1', '2', ftkConstants, sfExcel5);
 end;
 
 procedure TSpreadSingleFormulaTests.AddConst_BIFF8;
 begin
-  TestFloatFormula('1+1', 2, ftkConstants, sfExcel8);
+  TestFormula('1+1', '2', ftkConstants, sfExcel8);
 end;
 
 procedure TSpreadSingleFormulaTests.AddConst_OOXML;
 begin
-  TestFloatFormula('1+1', 2, ftkConstants, sfOOXML);
+  TestFormula('1+1', '2', ftkConstants, sfOOXML);
 end;
 
 procedure TSpreadSingleFormulaTests.AddConst_ODS;
 begin
-  TestFloatFormula('1+1', 2, ftkConstants, sfOpenDocument);
+  TestFormula('1+1', '2', ftkConstants, sfOpenDocument);
 end;
 
 {---------------}
 
 procedure TSpreadSingleFormulaTests.AddCells_BIFF2;
 begin
-  TestFloatFormula('C3+C4', -1.0, ftkCells, sfExcel2);
+  TestFormula('C3+C4', '-1', ftkCells, sfExcel2);
 end;
 
 procedure TSpreadSingleFormulaTests.AddCells_BIFF5;
 begin
-  TestFloatFormula('C3+C4', -1.0, ftkCells, sfExcel5);
+  TestFormula('C3+C4', '-1', ftkCells, sfExcel5);
 end;
 
 procedure TSpreadSingleFormulaTests.AddCells_BIFF8;
 begin
-  TestFloatFormula('C3+C4', -1.0, ftkCells, sfExcel8);
+  TestFormula('C3+C4', '-1', ftkCells, sfExcel8);
 end;
 
 procedure TSpreadSingleFormulaTests.AddCells_OOXML;
 begin
-  TestFloatFormula('C3+C4', -1.0, ftkCells, sfOOXML);
+  TestFormula('C3+C4', '-1', ftkCells, sfOOXML);
 end;
 
 procedure TSpreadSingleFormulaTests.AddCells_ODS;
 begin
-  TestFloatFormula('C3+C4', -1.0, ftkCells, sfOpenDocument);
+  TestFormula('C3+C4', '-1', ftkCells, sfOpenDocument);
 end;
 
 { ------ }
 
 procedure TSpreadSingleFormulaTests.SumRange_BIFF2;
 begin
-  TestFloatFormula('SUM(C3:C5)', 0.5, ftkCellRange, sfExcel2);
+  TestFormula('SUM(C3:C5)', '0.5', ftkCellRange, sfExcel2);
 end;
 
 procedure TSpreadSingleFormulaTests.SumRange_BIFF5;
 begin
-  TestFloatFormula('SUM(C3:C5)', 0.5, ftkCellRange, sfExcel5);
+  TestFormula('SUM(C3:C5)', '0.5', ftkCellRange, sfExcel5);
 end;
 
 procedure TSpreadSingleFormulaTests.SumRange_BIFF8;
 begin
-  TestFloatFormula('SUM(C3:C5)', 0.5, ftkCellRange, sfExcel8);
+  TestFormula('SUM(C3:C5)', '0.5', ftkCellRange, sfExcel8);
 end;
 
 procedure TSpreadSingleFormulaTests.SumRange_OOXML;
 begin
-  TestFloatFormula('SUM(C3:C5)', 0.5, ftkCellRange, sfOOXML);
+  TestFormula('SUM(C3:C5)', '0.5', ftkCellRange, sfOOXML);
 end;
 
 procedure TSpreadSingleFormulaTests.SumRange_ODS;
 begin
-  TestFloatFormula('SUM(C3:C5)', 0.5, ftkCellRange, sfOpenDocument);
+  TestFormula('SUM(C3:C5)', '0.5', ftkCellRange, sfOpenDocument);
 end;
 
 { ---- }
 
 procedure TSpreadSingleFormulaTests.SumSheetRange_BIFF5;
 begin
-  TestFloatFormula('SUM(Sheet2!C3:C5)', 5.0, ftkCellRangeSheet, sfExcel5);
+  TestFormula('SUM(Sheet2!C3:C5)', '5', ftkCellRangeSheet, sfExcel5);
 end;
 
 procedure TSpreadSingleFormulaTests.SumSheetRange_BIFF8;
 begin
-  TestFloatFormula('SUM(Sheet2!C3:C5)', 5.0, ftkCellRangeSheet, sfExcel8);
+  TestFormula('SUM(Sheet2!C3:C5)', '5', ftkCellRangeSheet, sfExcel8);
 end;
 
 procedure TSpreadSingleFormulaTests.SumSheetRange_OOXML;
 begin
-  TestFloatFormula('SUM(Sheet2!C3:C5)', 5.0, ftkCellRangeSheet, sfOOXML);
+  TestFormula('SUM(Sheet2!C3:C5)', '5', ftkCellRangeSheet, sfOOXML);
 end;
 
 procedure TSpreadSingleFormulaTests.SumSheetRange_ODS;
 begin
-  TestFloatFormula('SUM(Sheet2!C3:C5)', 5.0, ftkCellRangeSheet, sfOpenDocument);
+  TestFormula('SUM(Sheet2!C3:C5)', '5', ftkCellRangeSheet, sfOpenDocument);
 end;
 
 { ---- }
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_BIFF5;
 begin
-  TestFloatFormula('SUM(Sheet2:Sheet3!C3:C5)', 55.0, ftkCellRangeSheetRange, sfExcel5);
+  TestFormula('SUM(Sheet2:Sheet3!C3:C5)', '55', ftkCellRangeSheetRange, sfExcel5);
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_BIFF8;
 begin
-  TestFloatFormula('SUM(Sheet2:Sheet3!C3:C5)', 55.0, ftkCellRangeSheetRange, sfExcel8);
+  TestFormula('SUM(Sheet2:Sheet3!C3:C5)', '55', ftkCellRangeSheetRange, sfExcel8);
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_OOXML;
 begin
-  TestFloatFormula('SUM(Sheet2:Sheet3!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOOXML);
+  TestFormula('SUM(Sheet2:Sheet3!C3:C5)', '55', ftkCellRangeSheetRange, sfOOXML);
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_ODS;
 begin
-  TestFloatFormula('SUM(Sheet2:Sheet3!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOpenDocument);
+  TestFormula('SUM(Sheet2:Sheet3!C3:C5)', '55', ftkCellRangeSheetRange, sfOpenDocument);
 end;
 
 { --- }
@@ -326,28 +337,72 @@ end;
   expected range must be in correct order. }
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheetsAndCells_OOXML;
 begin
-  TestFloatFormula('SUM(Sheet3:Sheet2!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+  TestFormula('SUM(Sheet3:Sheet2!C5:C3)', '55', ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheetsAndCells_ODS;
 begin
-  TestFloatFormula('SUM(Sheet3:Sheet2!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOpenDocument, 'SUM(Sheet2:Sheet3!C3:C5)');
+  TestFormula('SUM(Sheet3:Sheet2!C5:C3)', '55', ftkCellRangeSheetRange, sfOpenDocument, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedCells_BIFF8;
 begin
   // Upon writing the ranges are reconstructed for BIFF in correct order.
-  TestFloatFormula('SUM(Sheet2:Sheet3!C5:C3)', 55.0, ftkCellRangeSheetRange, sfExcel8, 'SUM(Sheet2:Sheet3!C3:C5)');
+  TestFormula('SUM(Sheet2:Sheet3!C5:C3)', '55', ftkCellRangeSheetRange, sfExcel8, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedCells_OOXML;
 begin
-  TestFloatFormula('SUM(Sheet2:Sheet3!C5:C3)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+  TestFormula('SUM(Sheet2:Sheet3!C5:C3)', '55', ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheets_OOXML;
 begin
-  TestFloatFormula('SUM(Sheet3:Sheet2!C3:C5)', 55.0, ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+  TestFormula('SUM(Sheet3:Sheet2!C3:C5)', '55', ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+end;
+
+{ --- }
+
+procedure TSpreadSingleFormulaTests.NonExistantSheet_BIFF5;
+begin
+  TestFormula('Missing!C3', '#REF!', ftkCellRangeSheet, sfExcel5, '#REF!');
+end;
+
+procedure TSpreadSingleFormulaTests.NonExistantSheet_BIFF8;
+begin
+  TestFormula('Missing!C3', '#REF!', ftkCellRangeSheet, sfExcel8, '#REF!');
+end;
+
+procedure TSpreadSingleFormulaTests.NonExistantSheet_OOXML;
+begin
+  TestFormula('Missing!C3', '#REF!', ftkCellRangeSheet, sfOOXML, '#REF!');
+end;
+
+procedure TSpreadSingleFormulaTests.NonExistantSheet_ODS;
+begin
+  TestFormula('Missing!C3', '#REF!', ftkCellRangeSheet, sfOpenDocument, '#REF!');
+end;
+
+{ --- }
+
+procedure TSpreadSingleFormulaTests.NonExistantSheetRange_BIFF5;
+begin
+  TestFormula('SUM(Missing1:Missing2!C3)', '#REF!', ftkCellRangeSheet, sfExcel5, 'SUM(#REF!)');
+end;
+
+procedure TSpreadSingleFormulaTests.NonExistantSheetRange_BIFF8;
+begin
+  TestFormula('SUM(Missing1:Missing2!C3)', '#REF!', ftkCellRangeSheet, sfExcel8, 'SUM(#REF!)');
+end;
+
+procedure TSpreadSingleFormulaTests.NonExistantSheetRange_OOXML;
+begin
+  TestFormula('SUM(Missing1:Missing2!C3)', '#REF!', ftkCellRangeSheet, sfOOXML, 'SUM(#REF!)');
+end;
+
+procedure TSpreadSingleFormulaTests.NonExistantSheetRange_ODS;
+begin
+  TestFormula('SUM(Missing1:Missing2!C3)', '#REF!', ftkCellRangeSheet, sfOpenDocument, 'SUM(#REF!)');
 end;
 
 

@@ -3469,14 +3469,21 @@ var
   sheetlist: TsBIFFExternSheetList;
   sheetIdx, sheetIdx1, sheetIdx2: Integer;
   workbook: TsWorkbook;
+  sheetName: String;
 begin
   Unused(MustRebuildFormulas);
   sheetlist := TsBIFFExternSheetList(AData);
   if (ANode is TsCellExprNode) and TsCellExprNode(ANode).Has3DLink then
-    sheetList.AddSheet(TsCellExprNode(ANode).GetSheetName, ebkInternal)
-  else
+  begin
+    if (ANode as TsCellExprNode).Error <> errOK then
+      exit;
+    sheetName := TsCellExprNode(ANode).GetSheetName;
+    sheetList.AddSheet(sheetName, ebkInternal)
+  end else
   if (ANode is TsCellRangeExprNode) and TsCellRangeExprNode(ANode).Has3DLink then
   begin
+    if (ANode as TsCellRangeExprNode).Error <> errOK then
+      exit;
     workbook := TsCellRangeExprNode(ANode).Workbook as TsWorkbook;
     sheetIdx1 := TsCellRangeExprNode(ANode).GetSheetIndex(1);
     sheetIdx2 := TsCellRangeExprNode(ANode).GetSheetIndex(2);
@@ -3500,54 +3507,6 @@ function TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsBasicWorksheet = nil
     for formula in ASheet.Formulas do
       formula^.Parser.IterateNodes(@DoCollectSheetsWith3dRefs, ASheetList);
   end;
-{
-  var
-    cell: PCell;
-    workbook: TsWorkbook;
-    parser: TsExpressionParser;
-    rpn: TsRPNFormula;
-    fe: TsFormulaElement;
-    i, j: Integer;
-    kind: TsBIFFExternKind;
-  begin
-    workbook := ASheet.Workbook;
-    for cell in ASheet.Cells do
-    begin
-      if not HasFormula(cell) then
-        Continue;
-      if (cell^.Flags * [cf3dFormula, cfCalculated] = [cfCalculated]) then
-        Continue;
-
-      if (pos('[', ASheet.Name) = 0) then
-        kind := ebkInternal
-      else
-        kind := ebkExternal;  // External refs: [filename]Sheet1!A1
-
-      parser := TsSpreadsheetParser.Create(ASheet);
-      try
-        parser.Expression := cell^.FormulaValue;
-        rpn := parser.RPNFormula;
-        for i:=0 to High(rpn) do
-        begin
-          fe := rpn[i];
-          if fe.ElementKind in [fekCell3d, fekCellRef3d, fekCellRange3d] then begin
-            if fe.Sheet = -1 then
-              ASheetList.AddSheet(ASheet.Name, kind)
-            else
-            if fe.Sheet2 = -1 then
-              ASheetList.AddSheet(workbook.GetWorksheetByIndex(fe.Sheet).Name, kind)
-            else
-              for j :=fe.Sheet to fe.Sheet2 do
-                ASheetList.AddSheet(workbook.GetWorksheetbyIndex(j).Name, kind);
-          end;
-        end;
-      finally
-        parser.Free;
-        rpn := nil;
-      end;
-    end;
-  end;
-  }
 
 var
   sheet: TsWorksheet;

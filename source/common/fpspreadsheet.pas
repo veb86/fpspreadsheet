@@ -2808,15 +2808,15 @@ end;
   If the cell contains a text value it is attempted to convert it to a number.
 
   If the cell is empty or its contents cannot be represented as a number the
-  value 0.0 is returned.
+  value NaN is returned.
 
   @param  ACell     Pointer to the cell
-  @return Floating-point value representing the cell contents, or 0.0 if cell
+  @return Floating-point value representing the cell contents, or NaN if cell
           does not exist or its contents cannot be converted to a number.
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadAsNumber(ACell: PCell): Double;
 begin
-  Result := 0.0;
+  Result := NaN;
   if ACell = nil then
     exit;
 
@@ -2827,7 +2827,7 @@ begin
       Result := ACell^.NumberValue;
     cctUTF8String:
       if not TryStrToFloat(ACell^.UTF8StringValue, Result, FWorkbook.FormatSettings)
-        then Result := 0.0;
+        then Result := NaN;
     cctBool:
       if ACell^.BoolValue then Result := 1.0 else Result := 0.0;
   end;

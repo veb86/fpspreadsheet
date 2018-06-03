@@ -606,6 +606,7 @@ type
     FCell: PCell;                    // cell which contains the formula
 //    FSheetName: String;            // referenced other sheet
     FSheetIndex: Integer;            // index of referenced other sheet
+    FHas3DLink: Boolean;
     FIsRef: Boolean;
     FError: TsErrorValue;
   protected
@@ -3845,18 +3846,23 @@ constructor TsCellExprNode.Create(AParser: TsExpressionParser;
   AWorksheet: TsBasicWorksheet; ASheetName: String; ARow, ACol: Cardinal;
   AFlags: TsRelFlags);
 begin
+  FError := errOK;
   FParser := AParser;
   FWorksheet := AWorksheet;
-  if (ASheetName = '') then
-    FSheetIndex := -1
-  else
+  if (ASheetName = '') then begin
+    FSheetIndex := -1;
+    FHas3DLink := false;
+  end else begin
     FSheetIndex := TsWorkbook(GetWorkbook).GetWorksheetIndex(ASheetName);
+    if FSheetIndex = -1 then
+      FError := errIllegalRef;
+    FHas3DLink := true;
+  end;
   FRow := ARow;
   FCol := ACol;
   FFlags := AFlags;
-  FError := errOK;
-  FCell := (GetSheet as TsWorksheet).FindCell(FRow, FCol);
-  if Has3DLink then FParser.FContains3DRef := true;
+  FCell := TsWorksheet(FWorksheet).FindCell(FRow, FCol);
+//  FCell := (GetSheet as TsWorksheet).FindCell(FRow, FCol);
 end;
 
 function TsCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
@@ -4041,7 +4047,7 @@ end;
 
 function TsCellExprNode.Has3DLink: Boolean;
 begin
-  Result := FSheetIndex <> -1;
+  Result := FHas3dLink;
 end;
 
 function TsCellExprNode.NodeType: TsResultType;
@@ -4082,17 +4088,13 @@ begin
     ((ASheet1 <> '') and (ASheet2 = ''));
 
   FSheetIndex[1] := book.GetWorksheetIndex(ASheet1);
-  {
-  if FSheetIndex[1] = -1 then
+  if (FSheetIndex[1] = -1) and (ASheet1 <> '')  then
     FError := errIllegalREF
   else
-  }
   if ASheet2 <> '' then begin
     FSheetIndex[2] := book.GetWorksheetIndex(ASheet2);
-    {
-    if FSheetIndex[2] = -1 then
+    if (FSheetIndex[2] = -1) and (ASheet2 <> '') then
       FError := errIllegalREF;
-      }
   end else
     FSheetIndex[2] := FSheetIndex[1];
   EnsureOrder(FSheetIndex[1], FSheetIndex[2]);
@@ -4249,6 +4251,10 @@ begin
 
   for ss := s[1] to s[2] do begin
     sheet := (Workbook as TsWorkbook).GetWorksheetByIndex(ss);
+    if sheet = nil then begin
+      AResult := ErrorResult(errIllegalRef);
+      exit;
+    end;
     for formula in sheet.Formulas do
       if (formula^.Row >= r[1]) and (formula^.Row <= r[2]) and
          (formula^.Col >= c[1]) and (formula^.Col <= c[2])
