@@ -723,6 +723,7 @@ begin
             sharedformulabase.Col := colindex;
             sharedformulabase.Formula := formulaStr;
             FSharedFormulaBaseList.Add(sharedformulabase);
+            sheet.WriteFormula(rowindex, colindex, formulaStr);
           end else
           begin
             // Get index into the SharedFormulaBaseList...
@@ -731,14 +732,11 @@ begin
             begin
               sharedformulabase := TSharedFormulaData(FSharedFormulaBaseList[StrToInt(s)]);
               // ... and copy shared formula to destination cell
+              formula := sharedFormulaBase.Worksheet.Formulas.FindFormula(
+                sharedFormulabase.Row, sharedFormulaBase.Col);
               InitCell(FWorksheet, sharedformulabase.Row, sharedformulabase.Col, lCell);
-              formula := sharedFormulaBase.Worksheet.Formulas.AddFormula(
-                sharedFormulabase.Row, sharedFormulaBase.Col, sharedformulabase.Formula
-              );
-//              lCell.Formulavalue := sharedformulabase.Formula;
-//              lCell.Worksheet := sharedformulabase.Worksheet;
+              sheet.UseFormulaInCell(@lCell, formula);
               sheet.CopyFormula(@lCell, cell);
-              cell^.ContentType := cctFormula;
             end;
           end;
         end
