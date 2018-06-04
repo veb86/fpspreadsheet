@@ -552,8 +552,6 @@ type
     property Dialog: TColorDialog read GetDialog;
   end;
 
-procedure Register;
-
 
 implementation
 
@@ -561,26 +559,7 @@ uses
   StdCtrls, ExtCtrls, Buttons, Forms,
   fpsUtils, fpsNumFormat, fpsVisualUtils, fpSpreadsheetGrid;
 
-procedure Register;
-begin
-  RegisterActions('FPSpreadsheet', [
-    // Worksheet-releated actions
-    TsWorksheetAddAction, TsWorksheetDeleteAction, TsWorksheetRenameAction,
-    TsWorksheetZoomAction,
-    // Cell or cell range formatting actions
-    TsCopyAction,
-    TsFontStyleAction, TsFontDialogAction, TsBackgroundColorDialogAction,
-    TsHorAlignmentAction, TsVertAlignmentAction,
-    TsTextRotationAction, TsWordWrapAction,
-    TsNumberFormatAction, TsDecimalsAction,
-    TsCellProtectionAction,
-    TsCellBorderAction, TsNoCellBordersAction,
-    TsCellCommentAction, TsCellHyperlinkAction,
-    TsMergeAction
-  ], nil);
-end;
-
-
+  
 { TsSpreadsheetAction }
 
 { Copies the format item for which the action is responsible to the

@@ -9,7 +9,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="source\export"/>
+        <OtherUnitFiles Value="source\export;source\design"/>
         <UnitOutputDirectory Value="source\export\lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
@@ -32,7 +32,7 @@ It provides a graphical export component on the Data Export tab."/>
         <UnitName Value="fpsexport"/>
       </Item1>
       <Item2>
-        <Filename Value="source\export\fpsexportreg.pas"/>
+        <Filename Value="source\design\fpsexportreg.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="fpsexportreg"/>
       </Item2>

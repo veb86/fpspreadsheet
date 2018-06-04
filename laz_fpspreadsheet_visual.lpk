@@ -3,12 +3,12 @@
   <Package Version="4">
     <PathDelim Value="\"/>
     <Name Value="laz_fpspreadsheet_visual"/>
-    <Type Value="RunAndDesignTime"/>
     <Author Value="Felipe Monteiro de Carvalho and others"/>
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
+        <IncludeFiles Value="source"/>
         <OtherUnitFiles Value="source\visual"/>
         <UnitOutputDirectory Value="source\visual\lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
@@ -23,28 +23,24 @@ It provides graphical components like a grid and chart."/>
     <Version Major="1" Minor="9"/>
     <Files Count="5">
       <Item1>
-        <Filename Value="source\visual\fpsactions.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="fpsActions"/>
+        <Filename Value="source\visual\fpspreadsheetchart.pas"/>
+        <UnitName Value="fpspreadsheetchart"/>
       </Item1>
       <Item2>
-        <Filename Value="source\visual\fpspreadsheetchart.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="fpspreadsheetchart"/>
+        <Filename Value="source\visual\fpspreadsheetctrls.pas"/>
+        <UnitName Value="fpspreadsheetctrls"/>
       </Item2>
       <Item3>
-        <Filename Value="source\visual\fpspreadsheetctrls.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="fpspreadsheetctrls"/>
+        <Filename Value="source\visual\fpspreadsheetgrid.pas"/>
+        <UnitName Value="fpspreadsheetgrid"/>
       </Item3>
       <Item4>
-        <Filename Value="source\visual\fpspreadsheetgrid.pas"/>
-        <HasRegisterProc Value="True"/>
-        <UnitName Value="fpspreadsheetgrid"/>
-      </Item4>
-      <Item5>
         <Filename Value="source\visual\fpsvisualutils.pas"/>
         <UnitName Value="fpsvisualutils"/>
+      </Item4>
+      <Item5>
+        <Filename Value="source\visual\fpsactions.pas"/>
+        <UnitName Value="fpsActions"/>
       </Item5>
     </Files>
     <RequiredPkgs Count="4">

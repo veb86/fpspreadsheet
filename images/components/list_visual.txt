@@ -26,4 +26,3 @@ tsworkbookchartsource_200.png
 tsworksheetchartsource.png
 tsworksheetchartsource_150.png
 tsworksheetchartsource_200.png
-cur_dragcopy.cur

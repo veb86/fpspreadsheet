@@ -581,8 +581,6 @@ type
 
 function SpreadsheetFormatInClipboard: Boolean;
 
-procedure Register;
-
 
 implementation
 
@@ -602,18 +600,6 @@ var
   cfOpenDocumentFormat: Integer = 0;
   cfStarObjectDescriptor: Integer = 0; }
 
-{@@ ----------------------------------------------------------------------------
-  Registers the spreadsheet components in the Lazarus component palette,
-  page "FPSpreadsheet".
--------------------------------------------------------------------------------}
-procedure Register;
-begin
-  RegisterComponents('FPSpreadsheet', [
-    TsWorkbookSource, TsWorkbookTabControl,
-    TsCellEdit, TsCellIndicator, TsCellCombobox,
-    TsSpreadsheetInspector
-  ]);
-end;
 
 {@@ ----------------------------------------------------------------------------
   Returns TRUE if the clipboard contains a format good for pasting into a
@@ -3937,6 +3923,7 @@ begin
 end;
 
 initialization
+(*
   {$I fpspreadsheetctrls.lrs}
 
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'RowHeights',
@@ -3944,7 +3931,7 @@ initialization
 
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'ColWidths',
     'For compatibility with older Laz versions.', '');
-
+  *)
   { Clipboard formats }
   cfBiff8Format := RegisterclipboardFormat('Biff8');
   cfBiff5Format := RegisterClipboardFormat('Biff5');

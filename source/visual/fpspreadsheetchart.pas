@@ -121,7 +121,7 @@ type
   end;
 
 
-procedure Register;
+//procedure Register;
 
 
 implementation
@@ -129,12 +129,12 @@ implementation
 uses
   Math;
 
-
+{
 procedure Register;
 begin
   RegisterComponents('Chart', [TsWorksheetChartSource, TsWorkbookChartSource]);
 end;
-
+}
 
 { TsWorksheetChartSource }
 
