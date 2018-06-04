@@ -2872,13 +2872,16 @@ var
   n: Word;
   rpnFormula: TsRPNformula;
   formula: PsFormula;
+  isPartOfSharedFormula: Boolean;
 begin
   n := ReadRPNTokenArraySize(AStream);
   if n = 0 then
     exit(false);
 
   Result := ReadRPNTokenArray(AStream, n, rpnFormula, ACell, ASharedFormulaBase);
-  if Result then begin
+  isPartOfSharedFormula := Length(rpnFormula) = 0; // Shared formula parts are handled separately
+
+  if Result and not isPartOfSharedFormula then begin
     formula := TsWorksheet(FWorksheet).Formulas.FindFormula(ACell);
     if formula = nil then begin
       formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ACell^.Row, ACell^.Col);
@@ -2886,10 +2889,13 @@ begin
     end;
     formula^.Parser.RPNFormula := rpnFormula;
     formula^.Text := formula^.Parser.Expression;
+    TsWorksheet(FWorksheet).UseFormulaInCell(ACell, formula);
+    {
     if formula^.Parser.Has3dLinks then
       ACell^.Flags := ACell^.Flags + [cfHasFormula, cf3dFormula]
     else
       ACell^.Flags := ACell^.Flags + [cfHasFormula];
+      }
 {
     strFormula := tsWorksheet(FWorksheet).ConvertRPNFormulaToStringFormula(rpnFormula);
     if strFormula <> '' then begin
@@ -3217,7 +3223,8 @@ begin
   // Copy shared formula to individual cells in the specified range
   for r := r1 to r2 do
     for c := c1 to c2 do
-      TsWorksheet(FWorksheet).CopyFormula(cell, r, c);
+      if (r <> cell^.Row) or (c <> cell^.Col) then
+        TsWorksheet(FWorksheet).CopyFormula(cell, r, c);
 end;
 
 {@@ ----------------------------------------------------------------------------
