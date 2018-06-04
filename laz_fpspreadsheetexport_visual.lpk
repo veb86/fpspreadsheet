@@ -9,8 +9,8 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="export"/>
-        <UnitOutputDirectory Value="export\lib\$(TargetCPU)-$(TargetOS)"/>
+        <OtherUnitFiles Value="source\export"/>
+        <UnitOutputDirectory Value="source\export\lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
         <SyntaxOptions>
@@ -28,11 +28,11 @@ It provides a graphical export component on the Data Export tab."/>
     <Version Major="1" Minor="9"/>
     <Files Count="2">
       <Item1>
-        <Filename Value="export\fpsexport.pas"/>
+        <Filename Value="source\export\fpsexport.pas"/>
         <UnitName Value="fpsexport"/>
       </Item1>
       <Item2>
-        <Filename Value="export\fpsexportreg.pas"/>
+        <Filename Value="source\export\fpsexportreg.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="fpsexportreg"/>
       </Item2>

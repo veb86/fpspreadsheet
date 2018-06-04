@@ -8,19 +8,19 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="crypto"/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)\"/>
+        <OtherUnitFiles Value="source\crypto"/>
+        <UnitOutputDirectory Value="source\lib\$(TargetCPU)-$(TargetOS)\"/>
       </SearchPaths>
     </CompilerOptions>
     <Description Value="Encryption / decryption support for FPSpreadsheet"/>
     <Version Major="1" Minor="9"/>
     <Files Count="2">
       <Item1>
-        <Filename Value="crypto\xlsxdecrypter.pas"/>
+        <Filename Value="source\crypto\xlsxdecrypter.pas"/>
         <UnitName Value="xlsxdecrypter"/>
       </Item1>
       <Item2>
-        <Filename Value="crypto\xlsxooxml_crypto.pas"/>
+        <Filename Value="source\crypto\xlsxooxml_crypto.pas"/>
         <UnitName Value="xlsxooxml_crypto"/>
       </Item2>
     </Files>
