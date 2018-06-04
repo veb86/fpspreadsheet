@@ -1151,9 +1151,6 @@ function TsExpressionScanner.DoIdentifier: TsTokenType;
 var
   C: Char;
   S: String;
-  row, row2: Cardinal;
-  col, col2: Cardinal;
-  flags: TsRelFlags;
 begin
   C := CurrentChar;
   while (not IsWordDelim(C)) and (C <> cNULL) do
@@ -2055,8 +2052,8 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
     right: TsExprNode = nil;
     operand: TsExprNode = nil;
     fek: TFEKind;
-    r,c, r2,c2: Cardinal;
-    idx, idx2: Integer;
+    r,c: Cardinal;
+    idx: Integer;
     flags: TsRelFlags;
     ID: TsExprIdentifierDef;
     i, n: Integer;
@@ -2838,7 +2835,8 @@ end;
 procedure TsBinaryOperationExprNode.IterateNodes(AProc: TsExprNodeProc;
   AData1, AData2: Pointer; var MustRebuildFormulas: Boolean);
 var
-  rebuildLeft, rebuildRight: Boolean;
+  rebuildLeft: Boolean = false;
+  rebuildRight: Boolean = false;
 begin
   FLeft.IterateNodes(AProc, AData1, AData2, rebuildLeft);
   FRight.IterateNodes(AProc, AData1, AData2, rebuildRight);
@@ -4220,11 +4218,9 @@ end;
 
 procedure TsCellRangeExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  r, c, s: Array[TsCellRangeIndex] of Integer;
-  rr, cc, ss: Integer;
+  r, c, s: Array[TsCellRangeIndex] of Cardinal;
+  ss: Integer;
   i: TsCellRangeIndex;
-  cell: PCell;
-  book: TsWorkbook;
   sheet: TsWorksheet;
   formula: PsFormula;
 begin

@@ -7595,7 +7595,6 @@ var
   lStyle: String = '';
   formula: PsFormula;
   formulaStr: String;
-  parser: TsExpressionParser;
   valuetype: String;
   value: string;
   valueStr: String;

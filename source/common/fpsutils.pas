@@ -1251,7 +1251,7 @@ end;
 function GetCellRangeString_ODS(ARange: TsCellRange;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
 begin
-  Result := GetCellRangeString_ODS(ARange, AFlags, true);
+  Result := GetCellRangeString_ODS(ARange, AFlags, Compact);
 end;
 
 

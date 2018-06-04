@@ -1207,7 +1207,6 @@ procedure TsWorksheet.CalcFormula(AFormula: PsFormula);
 var
   lCell, lCellRef: PCell;
   parser: TsExpressionParser = nil;
-  has3DLink: Boolean;
   res: TsExpressionResult;
   p: Integer;
   link, txt: String;
@@ -1223,7 +1222,6 @@ begin
     parser := TsSpreadsheetParser.Create(self);
     try
       parser.Expression := AFormula^.Text;
-      has3DLink := parser.Contains3DRef;
       AFormula^.Parser := parser;
     except
       on E:ECalcEngine do begin
@@ -5849,7 +5847,6 @@ end;
 procedure TsWorksheet.WriteRPNFormula(ACell: PCell; ARPNFormula: TsRPNFormula);
 var
   formula: PsFormula;
-  parser: TsSpreadsheetParser;
 begin
   if ACell = nil then
     exit;
@@ -5863,11 +5860,7 @@ begin
   formula^.Text := formula^.Parser.Expression;
   UseFormulaInCell(ACell, formula);
   ACell^.ContentType := cctFormula;
-                                   (*
-  formuila.Parsed := TsSpreadsheetParser.
-  ACell^.ContentType := cctFormula;
-  ACell^.FormulaValue := ConvertRPNFormulaToStringFormula(AFormula);
-                                     *)
+
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
@@ -7384,7 +7377,6 @@ var
   row: PRow;
   col: PCol;
   i: Integer;
-  r: Cardinal;
   formula: PsFormula;
   sheet: TsWorksheet;
 begin
@@ -7423,7 +7415,7 @@ begin
   begin
     for i:= FRows.Count-1 downto 0 do begin
       row := PRow(FRows.Items[i]);
-      if row^.Row > AIndex then
+      if Integer(row^.Row) > AIndex then
         dec(row^.Row)
       else
         break;
@@ -7436,7 +7428,7 @@ begin
     // Update column index of col records
     for i:=FCols.Count-1 downto 0 do begin
       col := PCol(FCols.Items[i]);
-      if col^.Col > AIndex then
+      if Integer(col^.Col) > AIndex then
         dec(col^.Col)
       else
         break;
@@ -7514,14 +7506,14 @@ begin
     // Update row index of row records
     for i:=0 to FRows.Count-1 do begin
       row := PRow(FRows.Items[i]);
-      if row^.Row >= AIndex then inc(row^.Row);
+      if Integer(row^.Row) >= AIndex then inc(row^.Row);
     end;
   end else
   begin
     // Update column index of column records
     for i:=0 to FCols.Count-1 do begin
       col := PCol(FCols.Items[i]);
-      if col^.Col >= AIndex then inc(col^.Col);
+      if Integer(col^.Col) >= AIndex then inc(col^.Col);
     end;
   end;
 
@@ -7534,7 +7526,7 @@ begin
     for rng in FMergedCells do
     begin
       // The new row is ABOVE the merged block --> Shift entire range down by 1 row
-      if (AIndex < rng^.Row1) then
+      if (AIndex < Integer(rng^.Row1)) then
       begin
         // The formerly first row is no longer merged --> un-tag its cells
         for cell in Cells.GetRowEnumerator(rng^.Row1, rng^.Col1, rng^.Col2) do
@@ -7551,7 +7543,7 @@ begin
       end else
       // The new row goes through this cell block --> Shift only the bottom row
       // of the range down by 1
-      if (AIndex >= rng^.Row1) and (AIndex <= rng^.Row2) then
+      if (AIndex >= Integer(rng^.Row1)) and (AIndex <= Integer(rng^.Row2)) then
         MergeCells(rng^.Row1, rng^.Col1, rng^.Row2+1, rng^.Col2);
     end;
 
@@ -7563,7 +7555,7 @@ begin
     begin
       // The new column is at the LEFT of the merged block
       // --> Shift entire range to the right by 1 column
-      if (AIndex < rng^.Col1) then
+      if (AIndex < Integer(rng^.Col1)) then
       begin
         // The former first column is no longer merged --> un-tag its cells
         for cell in Cells.GetColEnumerator(rng^.Col1, rng^.Row1, rng^.Row2) do
@@ -7580,7 +7572,7 @@ begin
       end else
       // The new column goes through this cell block --> Shift only the right
       // column of the range to the right by 1
-      if (AIndex >= rng^.Col1) and (AIndex <= rng^.Col2) then
+      if (AIndex >= Integer(rng^.Col1)) and (AIndex <= Integer(rng^.Col2)) then
         MergeCells(rng^.Row1, rng^.Col1, rng^.Row2, rng^.Col2+1);
     end;
 
@@ -9674,6 +9666,8 @@ end;
 function TsWorkbook.FixFormula(AFormula: PsFormula;
   ACorrection: TsFormulaCorrection; AData: Pointer; AParam: PtrInt): Boolean;
 begin
+  Unused(AParam);   // Maybe later...
+
   Result := false;
   case ACorrection of
     fcWorksheetRenamed:

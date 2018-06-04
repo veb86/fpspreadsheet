@@ -2871,7 +2871,6 @@ function TsSpreadBIFFReader.ReadRPNTokenArray(AStream: TStream;
 var
   n: Word;
   rpnFormula: TsRPNformula;
-  strFormula: String;
   formula: PsFormula;
 begin
   n := ReadRPNTokenArraySize(AStream);
@@ -4017,7 +4016,7 @@ procedure TsSpreadBIFFWriter.WriteDefinedName(AStream: TStream;
   AIndexToREF, ASheetIndex: Word; AKind: TsBIFFExternKind);
 begin
   Unused(AStream, AWorksheet);
-  Unused(Aname, AIndexToREF);
+  Unused(AName, AIndexToREF, ASheetIndex);
   Unused(AKind);
   // Override
 end;
@@ -4992,6 +4991,8 @@ end;
 function TsSpreadBIFFWriter.WriteRPNSheetIndex(AStream: TStream;
   ADocumentURL: String; ASheet1, ASheet2: Integer): Word;
 begin
+  Unused(AStream, ADocumentURL);
+  Unused(ASheet1, ASheet2);
   Result := $FFFF;      // --> not supported by default.
 end;
 

@@ -745,7 +745,6 @@ begin
         else
           // "Normal" formula
           sheet.WriteFormula(cell, formulaStr);
-//          cell^.FormulaValue := formulaStr;
       except
         on E:EExprParser do begin
           FWorkbook.AddErrorMsg(E.Message);

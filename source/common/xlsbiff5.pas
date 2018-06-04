@@ -656,7 +656,6 @@ var
   idx: Int16;
   s: String;
   sheetList: TsBIFFExternSheetList;
-  sheet: TsWorksheet;
   extsheet: TsBIFFExternSheet;
 begin
   ADocumentURL := '';

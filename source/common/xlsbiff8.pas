@@ -214,7 +214,7 @@ type
     procedure WriteComments(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteDefinedName(AStream: TStream; AWorksheet: TsBasicWorksheet;
        const AName: String; AIndexToREF, ASheetIndex: Word;
-       AKind: TsBIFFExternKind);
+       AKind: TsBIFFExternKind); reintroduce;
     procedure WriteDefinedNames(AStream: TStream);
     procedure WriteDimensions(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteEOF(AStream: TStream);
@@ -777,26 +777,16 @@ begin
 end;
 
 destructor TsSpreadBIFF8Reader.Destroy;
-var
-  j: Integer;
 begin
   { Destroy linked data }
   SetLength(FBiff8ExternSheetArray, 0);
   FBiff8ExternBooks.Free;
 
   { Destroy shared string table }
-  if Assigned(FSharedStringTable) then
-  {
-  begin
-    for j := FSharedStringTable.Count-1 downto 0 do
-      if FSharedStringTable.Objects[j] <> nil then
-        FSharedStringTable.Objects[j].Free;
-  }
-    FSharedStringTable.Free;
-  //end;
+  FSharedStringTable.Free;
 
-  if Assigned(FCommentList) then
-    FCommentList.Free;
+  { Destroy comment list }
+  FCommentList.Free;
 
   inherited;
 end;
@@ -1693,8 +1683,6 @@ var
   LString: String;
   ContinueIndicator: WORD;
   rtParams: TsRichTextParams;
-  p: Pointer;
-  n: Integer;
   ms: TMemoryStream;
 begin
   //Reads the shared string table, only compatible with BIFF8
@@ -4266,7 +4254,7 @@ procedure TsSpreadBIFF8Writer.WriteSST(AStream: TStream);
 var
   sizePos: Int64;
   bytesWritten, totalBytesWritten: Integer;
-  i, j, n: Integer;
+  i, j: Integer;
   rtParams: TsRichTextParams;
   bytesAvail: Integer;
   isASCII: Boolean;

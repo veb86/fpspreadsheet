@@ -1268,7 +1268,6 @@ end;
 constructor TsCustomWorksheetGrid.Create(AOwner: TComponent);
 begin
   inc(FRowHeightLock);
-//  DoubleBuffered := true;
 
   FInternalWorkbookSource := TsWorkbookSource.Create(self);
   FInternalWorkbookSource.Name := 'internal';
@@ -3943,11 +3942,14 @@ begin
 end;
 
 function TsCustomWorksheetGrid.GetDefaultColumnTitle(Column: Integer): string;
+var
+  s: String = '';
 begin
   if Assigned(FGetColHeaderText) then
-    FGetColHeaderText(Self, Column, Result)
+    FGetColHeaderText(Self, Column, s)
   else
-    Result := GetColString(Column - FHeaderCount);
+    s := GetColString(Column - FHeaderCount);
+  Result := s;
 end;
 
 
