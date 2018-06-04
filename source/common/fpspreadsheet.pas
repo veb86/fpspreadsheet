@@ -1939,19 +1939,23 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyFormula(AFromCell, AToCell: PCell);
 var
+  srcSheet, destSheet: TsWorksheet;
   srcFormula, destFormula: PsFormula;
   rpn: TsRPNFormula;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
 
-  DeleteFormula(AToCell);
+  srcSheet := TsWorksheet(AFromCell^.Worksheet);
+  destSheet := TsWorksheet(AToCell^.Worksheet);
+
+  destSheet.DeleteFormula(AToCell);
 
   if not HasFormula(AFromCell) then
     exit;
 
-  srcFormula := FFormulas.FindFormula(AFromCell^.Row, AFromCell^.Col);
-  destFormula := FFormulas.AddFormula(AToCell^.Row, AToCell^.Col);
+  srcFormula := srcSheet.Formulas.FindFormula(AFromCell^.Row, AFromCell^.Col);
+  destFormula := destSheet.Formulas.AddFormula(AToCell^.Row, AToCell^.Col);
   destFormula.Parser := TsSpreadsheetParser.Create(self);
 
   srcFormula^.Parser.PrepareCopyMode(AFromCell, AToCell);
