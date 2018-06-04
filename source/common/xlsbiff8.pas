@@ -2559,14 +2559,15 @@ begin
   AStream.WriteWord(0);
 end;
 
-procedure DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData: Pointer;
+procedure DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData1, AData2: Pointer;
   var MustRebuildFormulas: Boolean);
 var
   sheetlist: TsBIFF8ExternSheetList;
   sheetIdx, sheetIdx1, sheetIdx2: Integer;
 begin
-  Unused(MustRebuildFormulas);
-  sheetlist := TsBIFF8ExternSheetList(AData);
+  Unused(AData2, MustRebuildFormulas);
+
+  sheetlist := TsBIFF8ExternSheetList(AData1);
   if (ANode is TsCellExprNode) and TsCellExprNode(ANode).Has3DLink then
   begin
     sheetIdx := TsCellExprNode(ANode).GetSheetIndex;
@@ -2593,7 +2594,7 @@ procedure TsSpreadBIFF8Writer.CollectExternData;
     formula: PsFormula;
   begin
     for formula in ASheet.Formulas do
-      formula^.Parser.IterateNodes(@DoCollectSheetsWith3dRefs, FBiff8ExternSheets);
+      formula^.Parser.IterateNodes(@DoCollectSheetsWith3dRefs, FBiff8ExternSheets, nil);
   end;
 
 var

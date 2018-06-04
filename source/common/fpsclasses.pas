@@ -193,10 +193,10 @@ type
       AParsedFormula: TsExpressionParser = nil): PsFormula;
     procedure DeleteFormula(ACell: PCell); overload;
     procedure DeleteFormula(ARow, ACol: Cardinal); overload;
-    procedure DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
     function FindFormula(ACell: PCell): PsFormula; overload;
     function FindFormula(ARow, ACol: Cardinal): PsFormula; overload;
-    procedure InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+    procedure FixReferences(AIndex: Cardinal; IsRow, IsDeleting: Boolean;
+      InSheet: TsBasicWorksheet);
     // enumerators
     function GetEnumerator: TsFormulaEnumerator;
   end;
@@ -252,140 +252,209 @@ end;
 
 { Call-back function for formulas when rows/cols are inserted/deleted }
 
-procedure FixDeletedCol(AExprNode: TsExprNode; AData: Pointer;
+procedure FixDeletedCol(AExprNode: TsExprNode; AData1, AData2: Pointer;
   var MustRebuildFormulas: Boolean);
 var
   colIndex: Cardinal;
+  referencedSheet, referencedSheet2: TsBasicWorksheet;
+  changedSheet: TsBasicWorksheet;
   rng: TsCellRange;
 begin
-  colIndex := PtrInt(AData);
+  colIndex := PtrInt(AData1);
+  changedSheet := TsBasicWorksheet(AData2);
   if AExprNode is TsCellExprNode then
   begin
-    if not TsCellExprNode(AExprNode).Has3dLink then
-      if TsCellExprNode(AExprNode).Col > colIndex then begin
-        TsCellExprNode(AExprNode).Col := TsCellexprNode(AExprNode).Col - 1;
-        MustRebuildFormulas := true;
-      end else
-      if TsCellExprNode(AExprNode).Col = colIndex then begin
-        TsCellExprNode(AExprNode).Error := errIllegalRef;
-        MustRebuildFormulas := true;
-      end;
-  end else
+    if TsCellExprNode(AExprNode).Error <> errOK then
+      exit;
+    referencedSheet := TsCellExprNode(AExprNode).GetSheet;
+    if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
+      exit;
+    if TsCellExprNode(AExprNode).Col > colIndex then begin
+      TsCellExprNode(AExprNode).Col := TsCellExprNode(AExprNode).Col - 1;
+      MustRebuildFormulas := true;
+    end else
+    if TsCellExprNode(AExprNode).col = colIndex then begin
+      TsCellExprNode(AExprNode).Error := errIllegalRef;
+      MustRebuildFormulas := true;
+    end;
+  end
+  else
   if AExprNode is TsCellRangeExprNode then
   begin
-    if not TsCellRangeExprNode(AExprNode).Has3dLink then begin
-      rng := TsCellRangeExprNode(AExprNode).Range;
-      if (rng.Col1 = colIndex) and (rng.Col2 = colIndex) then begin
-        TsCellRangeExprNode(AExprNode).Error := errIllegalRef;
+    if TsCellRangeExprNode(AExprNode).Error <> errOK then
+      exit;
+    referencedSheet := TsCellRangeExprNode(AExprNode).GetSheet(1);
+    referencedSheet2 := TsCellRangeExprNode(AExprNode).GetSheet(2);
+    if TsCellRangeExprNode(AExprNode).Has3dLink and
+      (referencedSheet <> changedSheet) and
+      (referencedSheet2 <> changedSheet)
+    then
+      exit;
+    rng := TsCellRangeExprNode(AExprNode).Range;
+    if (rng.Col1 = colIndex) and (rng.Col2 = colIndex) then begin
+      TsCellRangeExprNode(AExprNode).Error := errIllegalRef;
+      MustRebuildFormulas := true;
+    end else begin
+      if rng.Col1 > colIndex then begin
+        dec(rng.Col1);
         MustRebuildFormulas := true;
-      end else begin
-        if rng.Col1 > colIndex then begin
-          dec(rng.Col1);
-          MustRebuildFormulas := true;
-        end;
-        if rng.Col2 >= colIndex then begin
-          dec(rng.Col2);
-          MustRebuildFormulas := true;
-        end;
-        TsCellRangeExprNode(AExprNode).Range := rng;
       end;
+      if rng.Col2 >= colIndex then begin
+        dec(rng.Col2);
+        MustRebuildFormulas := true;
+      end;
+      TsCellRangeExprNode(AExprNode).Range := rng;
     end;
   end;
 end;
 
-procedure FixDeletedRow(AExprNode: TsExprNode; AData: Pointer;
+procedure FixDeletedRow(AExprNode: TsExprNode; AData1, AData2: Pointer;
   var MustRebuildFormulas: Boolean);
 var
   rowIndex: Cardinal;
   rng: TsCellRange;
+  changedSheet: TsBasicWorksheet;
+  referencedSheet, referencedSheet2: TsBasicWorksheet;
 begin
-  rowIndex := PtrInt(AData);
+  rowIndex := PtrInt(AData1);
+  changedSheet := TsBasicWorksheet(AData2);
+
   if AExprNode is TsCellExprNode then
   begin
-    if not TsCellExprNode(AExprNode).Has3dLink then
-      if TsCellExprNode(AExprNode).Row > rowIndex then begin
-        TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row - 1;
-        MustRebuildFormulas := true;
-      end else
-      if TsCellExprNode(AExprNode).Row = rowIndex then begin
-        TsCelLExprNode(AExprNode).Error := errIllegalRef;
-        MustRebuildFormulas := true;
-      end;
-  end else
+    if TsCellExprNode(AExprNode).Error <> errOK then
+      exit;
+    referencedSheet := TsCellExprNode(AExprNode).GetSheet;
+    if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
+      exit;
+    if TsCellExprNode(AExprNode).Row > rowIndex then begin
+      TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row - 1;
+      MustRebuildFormulas := true;
+    end else
+    if TsCellExprNode(AExprNode).Row = rowIndex then begin
+      TsCellExprNode(AExprNode).Error := errIllegalRef;
+      MustRebuildFormulas := true;
+    end;
+  end
+  else
   if AExprNode is TsCellRangeExprNode then
   begin
-    if not TsCellRangeExprNode(AExprNode).Has3dLink then begin
-      rng := TsCellRangeExprNode(AExprNode).Range;
-      if (rng.Row1 = rowIndex) and (rng.Row2 = rowIndex) then begin
-        TsCellRangeExprNode(AExprNode).Error := errIllegalRef;
+    if TsCellRangeExprNode(AExprNode).Error <> errOK then
+      exit;
+    referencedSheet := TsCellRangeExprNode(AExprNode).GetSheet(1);
+    referencedSheet2 := TsCellRangeExprNode(AExprNode).GetSheet(2);
+    if TsCellRangeExprNode(AExprNode).Has3dLink and
+      (referencedSheet <> changedSheet) and
+      (referencedSheet2 <> changedSheet)
+    then
+      exit;
+    rng := TsCellRangeExprNode(AExprNode).Range;
+    if (rng.Row1 = rowIndex) and (rng.Row2 = rowIndex) then begin
+      TsCellRangeExprNode(AExprNode).Error := errIllegalRef;
+      MustRebuildFormulas := true;
+    end else
+    begin
+      if rng.Row1 > rowIndex then begin
+        dec(rng.Row1);
         MustRebuildFormulas := true;
-      end else
-      begin
-        if rng.Row1 > rowIndex then begin
-          dec(rng.Row1);
-          MustRebuildFormulas := true;
-        end;
-        if rng.Row2 >= rowIndex then begin
-          dec(rng.Row2);
-          MustRebuildFormulas := true;
-        end;
-        TsCellRangeExprNode(AExprNode).Range := rng;
       end;
+      if rng.Row2 >= rowIndex then begin
+        dec(rng.Row2);
+        MustRebuildFormulas := true;
+      end;
+      TsCellRangeExprNode(AExprNode).Range := rng;
     end;
   end;
 end;
 
-procedure FixInsertedCol(AExprNode: TsExprNode; AData: Pointer;
+procedure FixInsertedCol(AExprNode: TsExprNode; AData1, AData2: Pointer;
   var MustRebuildFormulas: Boolean);
 var
   colIndex: Cardinal;
+  changedSheet: TsBasicWorksheet;
+  referencedSheet, referencedSheet2: TsBasicWorksheet;
   rng: TsCellRange;
 begin
-  colIndex := PtrInt(AData);
+  colIndex := PtrInt(AData1);
+  changedSheet := TsBasicWorksheet(AData2);
   if AExprNode is TsCellExprNode then
   begin
-    if not TsCellExprNode(AExprNode).Has3dLink then
-      if TsCellExprNode(AExprNode).Col >= colIndex then begin
-        TsCellExprNode(AExprNode).Col := TsCellexprNode(AExprNode).Col + 1;
-        MustRebuildFormulas := true;
-      end;
+    if TsCellExprNode(AExprNode).Error <> errOK then
+      exit;
+    referencedSheet := TsCellExprNode(AExprNode).GetSheet;
+    if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
+      exit;
+    if TsCellExprNode(AExprNode).Col >= colIndex then begin
+      TsCellExprNode(AExprNode).Col := TsCellExprNode(AExprNode).Col + 1;
+      MustRebuildFormulas := true;
+    end;
   end else
   if AExprNode is TsCellRangeExprNode then
   begin
-    if not TsCellRangeExprNode(AExprNode).Has3dLink then begin
-      rng := TsCellRangeExprNode(AExprNode).Range;
-      if rng.Col1 >= colIndex then inc(rng.Col1);
-      if rng.Col2 >= colIndex then inc(rng.Col2);
-      TsCellRangeExprNode(AExprNode).Range := rng;
+    if TsCellRangeExprNode(AExprNode).Error <> errOK then
+      exit;
+    referencedSheet := TsCellRangeExprNode(AExprNode).GetSheet(1);
+    referencedSheet2 := TsCellRangeExprNode(AExprNode).GetSheet(2);
+    if TsCellRangeExprNode(AExprNode).Has3dLink and
+      (referencedSheet <> changedSheet) and
+      (referencedSheet2 <> changedSheet)
+    then
+      exit;
+    rng := TsCellRangeExprNode(AExprNode).Range;
+    if rng.Col1 >= colIndex then begin
+      inc(rng.Col1);
       MustRebuildFormulas := true;
     end;
+    if rng.Col2 >= colIndex then begin
+      inc(rng.Col2);
+      MustRebuildFormulas := true;
+    end;
+    TsCellRangeExprNode(AExprNode).Range := rng;
   end;
 end;
 
-procedure FixInsertedRow(AExprNode: TsExprNode; AData: Pointer;
+procedure FixInsertedRow(AExprNode: TsExprNode; AData1, AData2: Pointer;
   var MustRebuildFormulas: Boolean);
 var
   rowIndex: Cardinal;
+  changedSheet: TsBasicWorksheet;
+  referencedSheet, referencedSheet2: TsBasicWorksheet;
   rng: TsCellRange;
 begin
-  rowIndex := PtrInt(AData);
+  rowIndex := PtrInt(AData1);
+  changedSheet := TsBasicWorksheet(AData2);
   if AExprNode is TsCellExprNode then
   begin
-    if not TsCellexprNode(AExprNode).Has3dLink then
-      if TsCellExprNode(AExprNode).Row >= rowIndex then begin
-        TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row + 1;
-        MustRebuildFormulas := true;
-      end;
+    if TsCellExprNode(AExprNode).Error <> errOK then
+      exit;
+    referencedSheet := TsCellExprNode(AExprNode).GetSheet;
+    if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
+      exit;
+    if TsCellExprNode(AExprNode).Row >= rowIndex then begin
+      TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row + 1;
+      MustRebuildFormulas := true;
+    end;
   end else
   if AExprNode is TsCellRangeExprNode then
   begin
-    if not TsCellRangeExprNode(AExprNode).Has3dLink then begin
-      rng := TsCellRangeExprNode(AExprNode).Range;
-      if rng.Row1 >= rowIndex then inc(rng.Row1);
-      if rng.Row2 >= rowIndex then inc(rng.Row2);
-      TsCellRangeExprNode(AExprNode).Range := rng;
+    if TsCellRangeExprNode(AExprNode).Error <> errOK then
+      exit;
+    referencedSheet := TsCellRangeExprNode(AExprNode).GetSheet(1);
+    referencedSheet2 := TsCellRangeExprNode(AExprNode).GetSheet(2);
+    if TsCellRangeExprNode(AExprNode).Has3dLink and
+      (referencedSheet <> changedSheet) and
+      (referencedSheet2 <> changedSheet)
+    then
+      exit;
+    rng := TsCellRangeExprNode(AExprNode).Range;
+    if rng.Row1 >= rowIndex then begin
+      inc(rng.Row1);
       MustRebuildFormulas := true;
     end;
+    if rng.Row2 >= rowIndex then begin
+      inc(rng.Row2);
+      MustRebuildFormulas := true;
+    end;
+    TsCellRangeExprNode(AExprNode).Range := rng;
   end;
 end;
 
@@ -1436,7 +1505,9 @@ begin
   Delete(ARow, ACol);  // will release memory automatically
 end;
 
-procedure TsFormulas.DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean);
+(*
+procedure TsFormulas.DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean;
+  InSheet: TsBasicWorksheet);
 var
   node, nextnode: TAvgLvlTreeNode;
   formula: PsFormula;
@@ -1476,7 +1547,7 @@ begin
       formula^.Text := formula^.Parser.Expression;
     node := nextnode;
   end;
-end;
+end;     *)
 
 procedure TsFormulas.DisposeData(var AData: Pointer);
 begin
@@ -1501,12 +1572,38 @@ begin
   Result := PsFormula(FindByRowCol(ARow, ACol));
 end;
 
+{ In worksheet "InSheet" a row or column has been inserted or deleted at the
+  given index. "IsRow" tells whether it is a row or a column, and "IsDeleteing"
+  tells whether it has been deleted (true) or inserted (false).
+  This method must scan the formulas of the current worksheet whether there is
+  a reference to the modified sheet and must adapt the reference correspondingly
+}
+procedure TsFormulas.FixReferences(AIndex: Cardinal; IsRow, IsDeleting: Boolean;
+  InSheet: TsBasicWorksheet);
+var
+  formula: PsFormula;
+  proc: TsExprNodeProc;
+begin
+  if IsRow and IsDeleting then
+    proc := @FixDeletedRow
+  else if IsRow and not IsDeleting then
+    proc := @FixInsertedRow
+  else if not IsRow and IsDeleting then
+    proc := @FixDeletedCol
+  else
+    proc := @fixInsertedCol;
+
+  for formula in self do
+    if formula^.Parser.IterateNodes(proc, Pointer(PtrInt(AIndex)), InSheet) then
+      formula^.Text := formula^.Parser.Expression;
+end;
+
 // Formula enumerators (use in "for ... in" syntax)
 function TsFormulas.GetEnumerator: TsFormulaEnumerator;
 begin
   Result := TsFormulaEnumerator.Create(self, 0, 0, $7FFFFFFF, $7FFFFFFF, false);
 end;
-
+                     (*
 procedure TsFormulas.InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
 var
   node: TAvgLvlTreeNode;
@@ -1529,7 +1626,7 @@ begin
       formula^.Text := formula^.Parser.Expression;
     node := FindSuccessor(node);
   end;
-end;
+end;   *)
 
 function TsFormulas.NewData: Pointer;
 var

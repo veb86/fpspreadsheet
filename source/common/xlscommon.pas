@@ -3463,7 +3463,7 @@ begin
   end;
 end;
 
-procedure DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData: Pointer;
+procedure DoCollectSheetsWith3dRefs(ANode: TsExprNode; AData1, AData2: Pointer;
   var MustRebuildFormulas: Boolean);
 var
   sheetlist: TsBIFFExternSheetList;
@@ -3471,8 +3471,9 @@ var
   workbook: TsWorkbook;
   sheetName: String;
 begin
-  Unused(MustRebuildFormulas);
-  sheetlist := TsBIFFExternSheetList(AData);
+  Unused(MustRebuildFormulas, AData2);
+
+  sheetlist := TsBIFFExternSheetList(AData1);
   if (ANode is TsCellExprNode) and TsCellExprNode(ANode).Has3DLink then
   begin
     if (ANode as TsCellExprNode).Error <> errOK then
@@ -3505,7 +3506,7 @@ function TsSpreadBIFFWriter.CollectExternData(AWorksheet: TsBasicWorksheet = nil
     formula: PsFormula;
   begin
     for formula in ASheet.Formulas do
-      formula^.Parser.IterateNodes(@DoCollectSheetsWith3dRefs, ASheetList);
+      formula^.Parser.IterateNodes(@DoCollectSheetsWith3dRefs, ASheetList, nil);
   end;
 
 var

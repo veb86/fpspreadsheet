@@ -7386,6 +7386,7 @@ var
   i: Integer;
   r: Cardinal;
   formula: PsFormula;
+  sheet: TsWorksheet;
 begin
   // Fix merged cells
   FMergedCells.DeleteRowOrCol(AIndex, IsRow);
@@ -7396,8 +7397,14 @@ begin
   // Fix hyperlinks
   FHyperlinks.DeleteRowOrCol(AIndex, IsRow);
 
-  // Fix formulas
+  // Fix formulas:
+  // 1) Fix Row/Col index of in-sheet formulas
   FFormulas.DeleteRowOrCol(AIndex, IsRow);
+  // 2) Fix formula references to this sheet
+  for i := 0 to FWorkbook.GetWorksheetcount-1 do begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet.Formulas.FixReferences(AIndex, IsRow, true, self);
+  end;
 
   // Delete cells
   FCells.DeleteRowOrCol(AIndex, IsRow);
@@ -7483,6 +7490,7 @@ var
   col: PCol;
   i: Integer;
   rng: PsCellRange;
+  sheet: TsWorksheet;
 begin
   // Update row indexes of cell comments
   FComments.InsertRowOrCol(AIndex, IsRow);
@@ -7490,8 +7498,14 @@ begin
   // Update row indexes of cell hyperlinks
   FHyperlinks.InsertRowOrCol(AIndex, IsRow);
 
-  // Update row indexes of cell formulas
+  // Fix formulas:
+  // 1) Update Row/Col index of in-sheet formulas
   FFormulas.InsertRowOrCol(AIndex, IsRow);
+  // 2) Fix formula references to this sheet
+  for i := 0 to FWorkbook.GetWorksheetcount-1 do begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet.Formulas.FixReferences(AIndex, IsRow, false, self);
+  end;
 
   // Update cell indexes of cell records
   FCells.InsertRowOrCol(AIndex, IsRow);
@@ -9600,7 +9614,7 @@ end;
 
 
 { AData points to the deleted worksheet }
-procedure FixWorksheetDeletedCallback(ANode: TsExprNode; AData: Pointer;
+procedure FixWorksheetDeletedCallback(ANode: TsExprNode; AData1, AData2: Pointer;
   var MustRebuildFormulas: Boolean);
 var
   deletedindex: Integer;
@@ -9609,10 +9623,12 @@ var
   rngNode: TsCellRangeExprNode;
   index, index1, index2: Integer;
 begin
+  Unused(AData2);
+
   if ANode is TsCellExprNode then
   begin
     cellNode := TsCellExprNode(ANode);
-    deletedSheet := TsWorksheet(AData);
+    deletedSheet := TsWorksheet(AData1);
     deletedindex := TsWorkbook(cellNode.GetWorkbook).GetWorksheetIndex(deletedSheet);
     index := cellNode.GetSheetIndex;
     if deletedindex < index then begin
@@ -9627,7 +9643,7 @@ begin
   if ANode is TsCellRangeExprNode then
   begin
     rngNode := TsCellRangeExprNode(ANode);
-    deletedSheet := TsWorksheet(AData);
+    deletedSheet := TsWorksheet(AData1);
     deletedIndex := TsWorkbook(rngNode.GetWorkbook).GetWorksheetIndex(deletedSheet);
     index1 := rngNode.GetSheetIndex(1);
     index2 := rngNode.GetSheetIndex(2);
@@ -9663,7 +9679,7 @@ begin
     fcWorksheetRenamed:
       Result := true; // Nothing to do, no sheet names in formula nodes
     fcWorksheetDeleted:
-      Result := AFormula^.Parser.IterateNodes(FixWorksheetDeletedCallback, AData);
+      Result := AFormula^.Parser.IterateNodes(FixWorksheetDeletedCallback, AData, nil);
   end;
 end;
 
