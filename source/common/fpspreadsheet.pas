@@ -1785,6 +1785,8 @@ end;
   and the same formatting. It differs in formula (adapted relative references)
   and col/row indexes.
 
+  Both cells can be in different worksheets.
+
   @param   FromCell   Pointer to the source cell which will be copied
   @param   ToCell     Pointer to the destination cell
 -------------------------------------------------------------------------------}
@@ -1795,14 +1797,15 @@ var
   hyperlink: PsHyperlink;
   fnt: TsFont;
   fntIndex: Integer;
-  srcSheet: TsWorksheet;
+  srcSheet, destSheet: TsWorksheet;
   i: Integer;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
 
-  // Short-cut for source worksheet
+  // Short-cut for source and destination worksheets
   srcSheet := TsWorksheet(AFromcell^.Worksheet);
+  destSheet := TsWorksheet(AToCell^.Worksheet);
 
   // Remember the row and column indexes of the destination cell.
   toRow := AToCell^.Row;
@@ -1812,13 +1815,14 @@ begin
   // not yet be in place.
   FWorkbook.DisableNotifications;
 
-  // Copy cell values
+  // Copy cell values and flags
   AToCell^ := AFromCell^;
 
   // Restore row and column indexes overwritten by the previous instruction
   AToCell^.Row := toRow;
   AToCell^.Col := toCol;
-  AToCell^.Worksheet := self;
+  AToCell^.Worksheet := destSheet;  // restore overwritten destination worksheet
+     // was: self;
 
   // Fix relative references in formulas
   // This also fires the OnChange event.
@@ -1939,15 +1943,24 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CopyFormula(AFromCell, AToCell: PCell);
 var
+  srcBook, destBook: TsWorkbook;
   srcSheet, destSheet: TsWorksheet;
+  referencedSrcSheet, referencedDestSheet: TsWorksheet;
+  referencedSrcSheet2, referencedDestSheet2: TsWorksheet;
+  tmpSrcSheet, tmpDestSheet: TsWorksheet;
+  srcCell, destCell: PCell;
   srcFormula, destFormula: PsFormula;
   rpn: TsRPNFormula;
+  elem: TsFormulaElement;
+  i, j, r, c: Integer;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
 
   srcSheet := TsWorksheet(AFromCell^.Worksheet);
   destSheet := TsWorksheet(AToCell^.Worksheet);
+  srcBook := TsWorkbook(srcSheet.Workbook);
+  destBook := TsWorkbook(destSheet.Workbook);
 
   destSheet.DeleteFormula(AToCell);
 
@@ -1956,11 +1969,37 @@ begin
 
   srcFormula := srcSheet.Formulas.FindFormula(AFromCell^.Row, AFromCell^.Col);
   destFormula := destSheet.Formulas.AddFormula(AToCell^.Row, AToCell^.Col);
-  destFormula.Parser := TsSpreadsheetParser.Create(self);
+//  destFormula.Parser := TsSpreadsheetParser.Create(self);    // wp: why "self" ?
+  destFormula.Parser := TsSpreadsheetParser.Create(destSheet);
 
   srcFormula^.Parser.PrepareCopyMode(AFromCell, AToCell);
   try
     rpn := srcFormula^.Parser.RPNFormula;
+    for i:=0 to High(rpn) do begin
+      elem := rpn[i];
+      if elem.ElementKind in [fekCell3D, fekCellRef3d, fekCellRange3d] then begin
+        referencedSrcSheet := srcBook.GetWorksheetByIndex(elem.Sheet);
+        referencedDestSheet := destBook.GetWorksheetByIndex(elem.Sheet);
+        referencedSrcSheet2 := srcBook.GetWorksheetByIndex(elem.Sheet2);
+        referencedDestSheet2 := destBook.GetWorksheetByIndex(elem.Sheet2);
+        if referencedDestSheet = nil then
+          referencedDestSheet := destBook.AddWorksheet(referencedSrcSheet.Name);
+        if (referencedDestSheet2 = nil) and (elem.Sheet2 <> -1) then
+          referencedDestSheet2 := destbook.AddWorksheet(referencedSrcSheet2.Name);
+        for j:=elem.Sheet to elem.Sheet2 do begin
+          tmpSrcSheet := srcBook.GetWorksheetByIndex(j);
+          tmpDestSheet := destBook.GetWorksheetByIndex(j);
+          for r := elem.Row to elem.Row2 do
+            for c := elem.Col to elem.Col2 do begin
+              srcCell := tmpSrcSheet.FindCell(r, c);
+              if srcCell = nil then
+                continue;
+              destCell := tmpDestSheet.GetCell(r, c);
+              tmpDestSheet.CopyCell(srcCell, destcell);
+            end;
+        end;
+      end;
+    end;
     destFormula^.Parser.RPNFormula := rpn;
     destFormula^.Text := destFormula^.Parser.Expression;
     UseFormulaInCell(AToCell, destFormula);
