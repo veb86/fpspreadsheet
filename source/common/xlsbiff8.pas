@@ -2821,6 +2821,9 @@ begin
         Continue;
       if (cell^.UTF8StringValue = '') then
         Continue;
+      // Only strings longer than 255 characters will be put into SST (speed)
+      if Length(cell^.UTF8StringValue) < 256 then
+        continue;
       idx := IndexOfSharedString(cell^.UTF8StringValue, cell^.RichTextParams);
       inc(FNumStrings);
       if idx > -1 then
@@ -3715,8 +3718,12 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
+  if Length(ACell^.UTF8StringValue) < 256 then
+    idx := -1  // Strings shorter than 256 were not stored in SST.
+  else
+    idx := IndexOfSharedString(ACell^.UTF8StringValue, ACell^.RichTextParams);
+
   // If string is in SST write a LABELSST record
-  idx := IndexOfSharedString(ACell^.UTF8StringValue, ACell^.RichTextParams);
   if idx > -1 then begin
     recSST.RecordID := WordToLE(INT_EXCEL_ID_LABELSST);
     recSST.RecordSize := WordToLE(SizeOf(recSST) - SizeOf(TsBiffHeader));
