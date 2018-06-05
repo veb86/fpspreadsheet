@@ -1,3 +1,13 @@
-(1) Open laz_fpspreadsheet.lpk --> compile
-(2) Open laz_fpspreadsheet_visual.lpk --> Usage --> Install
-(3) Open laz_fpspreadsheetexport_visual.lpk --> Usage --> Install
+(1) ALWAYS: Basic package for reading/writing files
+    Open laz_fpspreadsheet.lpk --> compile
+	
+(2) If you need the visual controls (e.g. TsWorksheetGrid):
+    Open laz_fpspreadsheet_visual.lpk --> compile
+    Open laz_fpspreadsheet_visual_dsgn.lpk --> Use --> Install
+	
+(3) If you need the dbexport component
+    Open laz_fpspreadsheetexport_visual.lpk --> Use --> Install
+	
+(4) If you need to unlock xls file protection
+    Make sure that the package dcpcrypt.lpk can be found by the IDE
+    Open laz_fpspreadsheet_crypt.lpk -- > Compile
