@@ -1945,14 +1945,12 @@ procedure TsWorksheet.CopyFormula(AFromCell, AToCell: PCell);
 var
   srcBook, destBook: TsWorkbook;
   srcSheet, destSheet: TsWorksheet;
-  referencedSrcSheet, referencedDestSheet: TsWorksheet;
-  referencedSrcSheet2, referencedDestSheet2: TsWorksheet;
-  tmpSrcSheet, tmpDestSheet: TsWorksheet;
-  srcCell, destCell: PCell;
+  referencedSheet: TsWorksheet;
+  sheetName: String;
   srcFormula, destFormula: PsFormula;
   rpn: TsRPNFormula;
   elem: TsFormulaElement;
-  i, j, r, c: Integer;
+  i, j: Integer;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
@@ -1969,35 +1967,27 @@ begin
 
   srcFormula := srcSheet.Formulas.FindFormula(AFromCell^.Row, AFromCell^.Col);
   destFormula := destSheet.Formulas.AddFormula(AToCell^.Row, AToCell^.Col);
-//  destFormula.Parser := TsSpreadsheetParser.Create(self);    // wp: why "self" ?
   destFormula.Parser := TsSpreadsheetParser.Create(destSheet);
 
   srcFormula^.Parser.PrepareCopyMode(AFromCell, AToCell);
   try
     rpn := srcFormula^.Parser.RPNFormula;
+    // Make sure that referenced sheets exist in destination workbook
     for i:=0 to High(rpn) do begin
       elem := rpn[i];
       if elem.ElementKind in [fekCell3D, fekCellRef3d, fekCellRange3d] then begin
-        referencedSrcSheet := srcBook.GetWorksheetByIndex(elem.Sheet);
-        referencedDestSheet := destBook.GetWorksheetByIndex(elem.Sheet);
-        referencedSrcSheet2 := srcBook.GetWorksheetByIndex(elem.Sheet2);
-        referencedDestSheet2 := destBook.GetWorksheetByIndex(elem.Sheet2);
-        if referencedDestSheet = nil then
-          referencedDestSheet := destBook.AddWorksheet(referencedSrcSheet.Name);
-        if (referencedDestSheet2 = nil) and (elem.Sheet2 <> -1) then
-          referencedDestSheet2 := destbook.AddWorksheet(referencedSrcSheet2.Name);
-        for j:=elem.Sheet to elem.Sheet2 do begin
-          tmpSrcSheet := srcBook.GetWorksheetByIndex(j);
-          tmpDestSheet := destBook.GetWorksheetByIndex(j);
-          for r := elem.Row to elem.Row2 do
-            for c := elem.Col to elem.Col2 do begin
-              srcCell := tmpSrcSheet.FindCell(r, c);
-              if srcCell = nil then
-                continue;
-              destCell := tmpDestSheet.GetCell(r, c);
-              tmpDestSheet.CopyCell(srcCell, destcell);
-            end;
-        end;
+        sheetName := srcBook.GetWorksheetByIndex(elem.Sheet).Name;
+        referencedSheet := destBook.GetWorksheetByName(sheetName);
+        if referencedSheet = nil then
+          referencedSheet := destBook.AddWorksheet(sheetName);
+        rpn[i].Sheet := destBook.GetWorksheetIndex(referencedSheet);
+        if (elem.Sheet = elem.Sheet2) or (elem.Sheet2 = -1) then
+          continue;
+        sheetName := srcBook.GetWorksheetByIndex(elem.Sheet2).Name;
+        referencedSheet := destBook.GetWorksheetByName(sheetName);
+        if referencedSheet = nil then
+          referencedSheet := destBook.AddWorksheet(sheetName);
+        rpn[i].Sheet2 := destBook.GetWorksheetIndex(referencedSheet);
       end;
     end;
     destFormula^.Parser.RPNFormula := rpn;
@@ -2006,7 +1996,6 @@ begin
   finally
     srcFormula^.Parser.PrepareCopyMode(nil, nil);
   end;
-
   ChangedCell(AToCell^.Row, AToCell^.Col);
 end;
 
@@ -9754,7 +9743,7 @@ begin
           if ActiveWorksheet.IsMerged(srccell) then
             srccell := ActiveWorksheet.FindMergeBase(srccell);
           if srccell <> nil then begin
-            destcell := clipsheet.AddCell(r, c);
+            destcell := clipsheet.GetCell(r, c);  // wp: why was there AddCell?
             clipsheet.CopyCell(srccell, destcell);
           end;
         end;
