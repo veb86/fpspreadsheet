@@ -251,6 +251,7 @@ type
       AFlags: TsRelFlags): Word; override;
     function WriteRPNSheetIndex(AStream: TStream; ADocumentURL: String;
       ASheet1, ASheet2: Integer): Word; override;
+//    procedure WriteSelectionRange(AStream: TStream; ARange: TsCellRange); override;
     procedure WriteSST(AStream: TStream);
     function WriteString_8bitLen(AStream: TStream; AString: String): Integer; override;
     procedure WriteSTRINGRecord(AStream: TStream; AString: string); override;
@@ -4242,6 +4243,24 @@ begin
   // If the procedure gets to this point the buffer has been written completely.
   Result := true;
 end;
+                         (*
+{@@ ----------------------------------------------------------------------------
+  Writes a selection range as part of the SELECTION record.
+  Special BIFF8 version.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteSelectionRange(AStream: TStream;
+  ARange: TsCellRange);
+begin
+  // Index to first and last row of this selected range
+  AStream.WriteWord(WordToLE(Word(ARange.Row1)));
+  AStream.WriteWord(WordToLE(Word(ARange.Row2)));
+
+  // Index to first and last column of this selected range
+  // NOTE: The BIFF8 specification uses only a byte here for the value (256 cols)
+  // but writes 2 bytes!
+  AStream.WriteWord(WordToLE(Byte(ARange.Col1)));
+  AStream.WriteWord(WordToLE(Byte(ARange.Col2)));
+end;                       *)
 
 {@@ ----------------------------------------------------------------------------
   Writes the SharedStringTable (SST) to the stream

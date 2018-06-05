@@ -5247,7 +5247,7 @@ procedure TsSpreadBIFFWriter.WriteSELECTION(AStream: TStream;
   ASheet: TsBasicWorksheet; APane: Byte);
 var
   activeCellRow, activeCellCol: Word;
-  i, n: Integer;
+  i, n, recsize: Integer;
   sel: TsCellRange;
   book: TsWorkbook;
   sheet: TsWorksheet;
@@ -5279,8 +5279,16 @@ begin
          end;
     end;
 
+  n := sheet.GetSelectionCount;
+
   { BIFF record header }
-  WriteBIFFHeader(AStream, INT_EXCEL_ID_SELECTION, 15);
+  recsize := 1 + { pane }
+             2 + 2 + { active cell row/col }
+             2 + { index of active cell in range list }
+             2 + { Count of selections }
+             Max(1, n) * 6;  { 2 word for rows and 2 bytes for cols }
+
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_SELECTION, recsize);
 
   { Pane identifier }
   AStream.WriteByte(APane);
@@ -5304,10 +5312,11 @@ begin
     // Count of cell ranges
     AStream.WriteWord(WordToLE(1));
     // Index to first and last row - are the same here
-    AStream.WriteWord(WordTOLE(activeCellRow));
-    AStream.WriteWord(WordTOLE(activeCellRow));
+    AStream.WriteWord(WordToLE(activeCellRow));
+    AStream.WriteWord(WordToLE(activeCellRow));
     // Index to first and last column - they are the same here again.
     // Note: BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns
+    // NOTE: excelfileformat.pdf is WRONG here!
     AStream.WriteByte(activeCellCol);
     AStream.WriteByte(activeCellCol);
   end else
@@ -5316,16 +5325,14 @@ begin
     // Count of cell ranges
     AStream.WriteWord(WordToLE(n));
     // Write each selected cell range
-    for i := 0 to n-1 do
-    begin
+    for i := 0 to n-1 do begin
       sel := sheet.GetSelection[i];
       // Index to first and last row of this selected range
-      AStream.WriteWord(WordToLE(sel.Row1));
-      AStream.WriteWord(WordToLE(sel.Row2));
+      AStream.WriteWord(WordToLE(word(sel.Row1)));
+      AStream.WriteWord(WordToLE(word(sel.Row2)));
       // Index to first and last column
-      // Note: Even BIFF8 writes bytes here! This is ok because BIFF supports only 256 columns
-      AStream.WriteByte(sel.Col1);
-      AStream.WriteByte(sel.Col2);
+      AStream.WriteByte(byte(sel.Col1));
+      AStream.WriteByte(byte(sel.Col2));
     end;
   end;
 end;
