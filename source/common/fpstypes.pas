@@ -912,7 +912,8 @@ type
                                reading and writing. Lowest memory consumptions,
                                but slow.
     @param  boAutoCalc         Automatically recalculate formulas whenever a
-                               cell value changes.
+                               cell value changes, in particular when file is
+                               loaded.
     @param  boCalcBeforeSaving Calculates formulas before saving the file.
                                Otherwise there are no results when the file is
                                loaded back by fpspreadsheet.

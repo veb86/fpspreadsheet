@@ -399,6 +399,7 @@ begin
   try
     MyWorkbook.Options := Myworkbook.Options + [boReadFormulas];
     MyWorkbook.ReadFromFile(TempFile, AFormat);
+    MyWorkbook.CalcFormulas;
     if AFormat = sfExcel2 then
       MyWorksheet := MyWorkbook.GetFirstWorksheet
     else
@@ -735,7 +736,7 @@ begin
     try
       workbook.Options := workbook.Options + [boReadFormulas];
       workbook.ReadFromFile(TempFile, AFormat);
-//      workbook.CalcFormulas;
+      workbook.CalcFormulas;
 
       if AFormat = sfExcel2 then
         Fail('This test should not be executed')

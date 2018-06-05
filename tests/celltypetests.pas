@@ -118,6 +118,7 @@ begin
   try
     MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
     MyWorkbook.ReadFromFile(TempFile, AFormat);
+    MyWorkbook.CalcFormulas;
     if AFormat in [sfExcel2, sfCSV] then
       MyWorksheet := MyWorkbook.GetFirstWorksheet  // only 1 sheet for BIFF2
     else

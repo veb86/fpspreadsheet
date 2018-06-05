@@ -223,10 +223,7 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteErrorValue(Row, 2, errDivideByZero);
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errDivideByZero);
+  sollValues[Row] := ErrorResult(errDivideByZero);
 
   // Division of cell values
   inc(Row);
@@ -1009,10 +1006,7 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteErrorValue(Row, 2, errOverflow);;
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverFlow);
+  sollValues[Row] := ErrorResult(errOverFlow);
 
    // ARCCOSH - valid result
   inc(Row);
@@ -1044,9 +1038,6 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteErrorValue(Row, 2, errOverflow);
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
   if AFormat = sfExcel2 then
     sollValues[Row] := ErrorResult(errFormulaNotSupported)
   else
@@ -1079,10 +1070,7 @@
     Myworksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteErrorValue(Row, 2, errOverflow);
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverFlow);
+  sollValues[Row] := ErrorResult(errOverFlow);
 
    // ARCSINH
   inc(Row);
@@ -1147,9 +1135,6 @@
     myWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteErrorValue(Row, 2, errOverFlow);
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
   if AFormat = sfExcel2 then
     sollValues[Row] := ErrorResult(errFormulaNotSupported)
   else
@@ -1344,10 +1329,7 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   myWorksheet.WriteText(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverflow);
+  sollValues[Row] := ErrorResult(errOverflow);
 
   // LN - error due to argument < 0
   inc(Row);
@@ -1361,10 +1343,7 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteText(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverflow);
+  sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG10 - valid result
   inc(Row);
@@ -1393,10 +1372,7 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   myWorksheet.WriteText(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverflow);
+  sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG10 - error due to argument < 0
   inc(Row);
@@ -1410,10 +1386,7 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteText(Row, 2, GetErrorValueStr(errOverFlow));
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverflow);
+  sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG - valid result (2 arguments)
   inc(Row);
@@ -1444,10 +1417,7 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteText(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverflow);
+  sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG - valid result (1 argument)
   inc(Row);
@@ -1477,10 +1447,7 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteText(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverflow);
+  sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG - negative value
   inc(Row);
@@ -1495,10 +1462,7 @@
     MyWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteText(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverflow);
+  sollValues[Row] := ErrorResult(errOverflow);
 
   // LOG of cell
   inc(Row);
@@ -1746,10 +1710,7 @@
     myWorksheet.WriteFormula(Row, 1, formula);
   MyWorksheet.WriteText(Row, 2, GetErrorValueStr(errOverflow));
   SetLength(sollValues, Row+1);
-  if AFormat = sfOpenDocument then
-    sollValues[Row] := FloatResult(0)
-  else
-    sollValues[Row] := ErrorResult(errOverflow);
+  sollValues[Row] := ErrorResult(errOverflow);
 
   // SQRT of cell value
   inc(Row);
