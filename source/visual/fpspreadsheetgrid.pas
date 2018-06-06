@@ -827,8 +827,6 @@ var
   {@@ Cursor for copy operation during drag and drop }
   crDragCopy: Integer;
 
-//procedure Register;
-
 
 implementation
 
@@ -6984,26 +6982,16 @@ begin
   end;
 end;
 
-          (*
-{@@ ----------------------------------------------------------------------------
-  Registers the worksheet grid in the Lazarus component palette,
-  page "FPSpreadsheet".
--------------------------------------------------------------------------------}
-procedure Register;
-begin
-  RegisterComponents('FPSpreadsheet', [TsWorksheetGrid]);
-end;        *)
-
 
 initialization
-  {$I ../../resource/fpsvisual.lrs}
+  {$I ../../resource/fpsvisual.lrs}  // contains the DragCopy cursor
 
   fpsutils.ScreenPixelsPerInch := Screen.PixelsPerInch;
   FillPatternStyle := fsNoFill;
-    (*
+
   RegisterPropertyToSkip(TsCustomWorksheetGrid, 'ColWidths',  'taken from worksheet', '');
   RegisterPropertyToSkip(TsCustomWorksheetGrid, 'RowHeights', 'taken from worksheet', '');
-      *)
+
   crDragCopy := 1; //201705;
   Screen.Cursors[crDragCopy] := LoadCursorFromLazarusResource('cur_dragcopy');
 

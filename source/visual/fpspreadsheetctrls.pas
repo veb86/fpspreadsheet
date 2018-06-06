@@ -3922,16 +3922,14 @@ begin
   end;
 end;
 
-initialization
-(*
-  {$I fpspreadsheetctrls.lrs}
 
+initialization
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'RowHeights',
     'For compatibility with older Laz versions.', '');
 
   RegisterPropertyToSkip(TsSpreadsheetInspector, 'ColWidths',
     'For compatibility with older Laz versions.', '');
-  *)
+
   { Clipboard formats }
   cfBiff8Format := RegisterclipboardFormat('Biff8');
   cfBiff5Format := RegisterClipboardFormat('Biff5');
