@@ -5,6 +5,7 @@
 unit fpsexportreg;
 
 {$mode objfpc}{$H+}
+{$R ../../resource/fpsvisualexportreg.res}
 
 interface
 
@@ -26,9 +27,6 @@ procedure Register;
 begin
   RegisterComponents('Data Export', [TFPSExport]);
 end;
-
-initialization
-  {$I fpsexportimg.lrs}
 
 end.
 
