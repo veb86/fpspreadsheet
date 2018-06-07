@@ -7,6 +7,8 @@ OpenOffice Microsoft Excel File Format document }
   {$mode objfpc}{$H+}
 {$endif}
 
+{$I fps.inc}
+
 interface
 
 uses

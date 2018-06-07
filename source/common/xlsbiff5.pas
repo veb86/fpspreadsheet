@@ -653,7 +653,7 @@ end;                                            }
 procedure TsSpreadBIFF5Reader.ReadRPNSheetIndex(AStream: TStream;
   out ADocumentURL: String; out ASheet1, ASheet2: Integer);
 var
-  idx: Int16;
+  idx: SmallInt;
   s: String;
   sheetList: TsBIFFExternSheetList;
   extsheet: TsBIFFExternSheet;
@@ -674,7 +674,7 @@ begin
     AStream.Position := AStream.Position + 8;
 
     // zero-based index to first referenced sheet in workbook (-1 = deleted sheet)
-    ASheet1 := Int16(WordLEToN(AStream.ReadWord));
+    ASheet1 := SmallInt(WordLEToN(AStream.ReadWord));
 
     // zero-based index to last referenced sheet in workbook (-1 = deleted sheet)
     ASheet2 := WordLEToN(AStream.ReadWord);
@@ -1472,7 +1472,7 @@ procedure TsSpreadBIFF5Writer.WriteDefinedName(AStream: TStream;
     if AKind = ebkInternal then begin
       { INTERNAL REFERENCE:
         1-based sheet index, negative to indicate 3D reference }
-      idx := word(-int16(AIndexToRef + 1));
+      idx := word(-SmallInt(AIndexToRef + 1));
       MemStream.WriteWord(WordToLE(idx));
 
       { 8 bytes not used }

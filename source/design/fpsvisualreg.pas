@@ -14,7 +14,7 @@ procedure Register;
 implementation
 
 uses
-  LResources, ActnList,
+  LResources, ActnList, PropEdits,
   fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart, fpsactions;
   
 {@@ ----------------------------------------------------------------------------
@@ -51,7 +51,11 @@ begin
     TsCellCommentAction, TsCellHyperlinkAction,
     TsMergeAction
   ], nil);
-  
+
+  RegisterPropertyEditor(TypeInfo(TFileName),
+    TsWorkbookSource, 'FileName', TFileNamePropertyEditor
+  );
+
 end;
 
 initialization

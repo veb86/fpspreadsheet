@@ -48,19 +48,18 @@ unit xlsbiff8;
   {$mode objfpc}{$H+}
 {$endif}
 
+{$I fps.inc}
+
 // The new OLE code is much better, so always use it
 {$define USE_NEW_OLE}
 
 interface
 
 uses
-  Classes, SysUtils, fpcanvas, DateUtils, contnrs, lazutf8, stringhashlist,
+  Classes, SysUtils, fpcanvas, DateUtils, contnrs, lazutf8,
+  {$IFDEF FPS_NEED_STRINGHASHLIST}fpsstringhashlist,{$ELSE}stringhashlist,{$ENDIF}
   fpstypes, xlscommon,
-  {$ifdef USE_NEW_OLE}
-  fpolebasic,
-  {$else}
-  fpolestorage,
-  {$endif}
+  {$IFDEF USE_NEW_OLE}fpolebasic,{$ELSE}fpolestorage,{$ENDIF}
   fpsutils;
 
 type
@@ -1592,7 +1591,7 @@ end;
 procedure TsSpreadBIFF8Reader.ReadRPNSheetIndex(AStream: TStream;
   out ADocumentURL: String; out ASheet1, ASheet2: Integer);
 var
-  refIndex: Int16;
+  refIndex: SmallInt;
   ref: TsBiff8ExternSheet;
   book: TsBiff8ExternBook;
 begin

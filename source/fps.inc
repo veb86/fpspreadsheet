@@ -42,8 +42,10 @@
   This is not yet available in fpc 2.6.0 }
 {.$DEFINE FPS_PTRINT}
 
-{ RawByteString only has been available since fpc 3.0
-  Activate this define to replace RawByteStringt by an ansistring }
-{.$DEFINE NO_RAWBYTESTRING}
+{ Unit stringhashlist belongs to LCL before Lazarus 1.8. To avoid a requirement
+  of LCL in laz_fpspreadsheet.lpk a copy in the fps directory is provided.
+  This copy is used when the define FPS_NEED_STRINGHASHLIST is active.
+  The define is not needed for Lazarus versions >= 1.8 }
+{.$DEFINE FPS_NEED_STRINGHASHLIST}
 
 
