@@ -601,10 +601,9 @@ type
   TsCellExprNode = class(TsExprNode)
   private
     FWorksheet: TsBasicWorksheet;    // sheet containing the formula
-    FRow, FCol: Cardinal;
-    FFlags: TsRelFlags;
-    FCell: PCell;                    // cell which contains the formula
-//    FSheetName: String;            // referenced other sheet
+    FRow, FCol: Cardinal;            // row/col of referenced cell
+    FFlags: TsRelFlags;              // abs/rel flags of reference
+//    FCell: PCell;                    // cell which contains the formula
     FSheetIndex: Integer;            // index of referenced other sheet
     FHas3DLink: Boolean;
     FIsRef: Boolean;
@@ -3842,6 +3841,10 @@ end;
 
 { TsCellExprNode }
 
+{ AWorksheet -- sheet which contains the formula (needed for non-3d formulas)
+  ASheetIndex -- referenced sheet (needed for 3d formulas, empty for non-3d)
+  ARow, ACol -- row/col indexes of referenced cell
+  AFlags -- determines whether the reference is absolute or relative }
 constructor TsCellExprNode.Create(AParser: TsExpressionParser;
   AWorksheet: TsBasicWorksheet; ASheetName: String; ARow, ACol: Cardinal;
   AFlags: TsRelFlags);
@@ -3861,8 +3864,7 @@ begin
   FRow := ARow;
   FCol := ACol;
   FFlags := AFlags;
-  FCell := TsWorksheet(FWorksheet).FindCell(FRow, FCol);
-//  FCell := (GetSheet as TsWorksheet).FindCell(FRow, FCol);
+//  FCell := TsWorksheet(FWorksheet).FindCell(FRow, FCol);
 end;
 
 function TsCellExprNode.AsRPNItem(ANext: PRPNItem): PRPNItem;
@@ -3951,10 +3953,13 @@ begin
     exit;
   end;
 
+  cell := TsWorksheet(GetSheet).FindCell(GetRow, GetCol);
+  {
   if Parser.CopyMode then
     cell := (FWorksheet as TsWorksheet).FindCell(GetRow, GetCol)
   else
     cell := FCell;
+    }
 
   if (cell <> nil) and HasFormula(cell) then begin
     sheet := TsWorksheet(cell^.Worksheet);
