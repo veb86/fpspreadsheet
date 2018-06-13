@@ -42,6 +42,7 @@ begin
     TsWorksheetZoomAction,
     // Cell or cell range formatting actions
     TsCopyAction,
+    TsClearFormatAction,
     TsFontStyleAction, TsFontDialogAction, TsBackgroundColorDialogAction,
     TsHorAlignmentAction, TsVertAlignmentAction,
     TsTextRotationAction, TsWordWrapAction,

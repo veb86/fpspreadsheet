@@ -9255,6 +9255,11 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbook.GetPointerToCellFormat(AIndex: Integer): PsCellFormat;
 begin
+  if FCellFormatList.Count = 0 then
+    raise Exception.Create('[TsWorkbook.GetPointerToCellFormat]: No format items.');
+
+  if (AIndex < 0) or (AIndex >= FCellFormatList.Count) then
+    AIndex := 0;  // 0 is default format
   Result := FCellFormatList.Items[AIndex];
 end;
 

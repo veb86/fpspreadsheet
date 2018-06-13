@@ -180,6 +180,12 @@ type
     property Visible;
   end;
 
+  { TsClearFormatAction }
+  TsClearFormatAction = class(TsAutoFormatAction)
+  protected
+    procedure ApplyFormatToCell(ACell: PCell); override;
+  end;
+
   { TsFontStyleAction }
   TsFontStyleAction = class(TsAutoFormatAction)
   private
@@ -925,6 +931,18 @@ begin
   if Worksheet.IsMerged(cell) then
     cell := Worksheet.FindMergeBase(cell);
   ExtractFromCell(cell);
+end;
+
+
+{ TsClearFormatAction }
+
+procedure TsClearFormatAction.ApplyFormatToCell(ACell: PCell);
+begin
+  if ACell <> nil then
+  begin
+    ACell^.FormatIndex := 0;  // Default format
+    Worksheet.ChangedCell(ACell^.Row, ACell^.Col);
+  end;
 end;
 
 
