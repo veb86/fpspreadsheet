@@ -308,6 +308,7 @@ type
       const AStyles: TsCellBorderStyles); overload;
 
     procedure WriteCellFormat(ACell: PCell; const ACellFormat: TsCellFormat);
+    procedure WriteCellFormatIndex(ACell: PCell; AIndex: Integer);
 
     function WriteDateTimeFormat(ARow, ACol: Cardinal; ANumFormat: TsNumberFormat;
       const ANumFormatString: String = ''): PCell; overload;
@@ -6783,9 +6784,31 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCellFormat(ACell: PCell;
   const ACellFormat: TsCellFormat);
+var
+  idx: Integer;
 begin
+  idx := Workbook.AddCellFormat(ACellFormat);
+  WriteCellFormatIndex(ACell, idx);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Formats a cell to the cell format stored at the specified index in the
+  workbook's cell format list.
+
+  @param  ACell       Pointer to the cell to be formatted
+  @param  AIndex      Index of the cell format record to be used by the cell
+
+  @see TsCellFormat
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.WriteCellFormatIndex(ACell: PCell; AIndex: Integer);
+begin
+  if AIndex >= Workbook.GetNumCellFormats then
+    raise EFpSpreadsheet.Create('[Worksheet.WriteCellFormat] Invalid cell format index.');
+
+  // The default format index is 0, but it could also be refered to by -1
+  if AIndex < 0 then AIndex := 0;
   if Assigned(ACell) then begin
-    ACell^.FormatIndex := Workbook.AddCellFormat(ACellFormat);
+    ACell^.FormatIndex := AIndex;
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
