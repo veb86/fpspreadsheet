@@ -1632,6 +1632,7 @@ var
   w, w0: Integer;
   fmt: PsCellFormat;
   fc: Integer;
+  idx: Integer;
 begin
   Result := false;
   cell := FDrawingCell;
@@ -1641,7 +1642,9 @@ begin
     exit;
 
 //  fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-  fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
+  idx := Worksheet.GetEffectiveCellFormatIndex(cell);
+  fmt := Workbook.GetPointerToCellFormat(idx);
+//  fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
   if (uffWordWrap in fmt^.UsedFormattingFields) then           // ... word-wrap
     exit;
   if (uffTextRotation in fmt^.UsedFormattingFields) and        // ... vertical text
@@ -2542,6 +2545,7 @@ const
 var
   bs: TsCellBorderStyle;
   fmt: PsCellFormat;
+  idx: Integer;
   r1, c1, r2, c2: Cardinal;
 begin
   if Assigned(Worksheet) then begin
@@ -2570,7 +2574,9 @@ begin
       DrawBorderLine(ARect.Bottom-1, ARect, drawHor, bs);
 
     if ACell <> nil then begin
-      fmt := Worksheet.GetPointerToEffectiveCellFormat(ACell);
+      idx := Worksheet.GetEffectiveCellFormatIndex(ACell);
+      fmt := Workbook.GetPointerToCellFormat(idx);
+//      fmt := Worksheet.GetPointerToEffectiveCellFormat(ACell);
       // Diagonal up
       if cbDiagUp in fmt^.Border then begin
         bs := fmt^.Borderstyles[cbDiagUp];
@@ -3116,6 +3122,7 @@ var
   lCell: PCell;
   fmt: PsCellFormat;
   numfmt: TsNumFormatParams;
+  idx: Integer;
   numFmtColor: TColor;
   sidx: Integer;   // number format section index
   RTL: Boolean;
@@ -3152,8 +3159,9 @@ begin
   if txt = '' then
     exit;
 
-//  fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
-  fmt := Worksheet.GetPointerToEffectiveCellFormat(lCell);
+  idx := Worksheet.GetEffectiveCellFormatIndex(lCell);
+  fmt := Workbook.GetPointerToCellFormat(idx);
+//  fmt := Worksheet.GetPointerToEffectiveCellFormat(lCell);
   wrapped := (uffWordWrap in fmt^.UsedFormattingFields) or (fmt^.TextRotation = rtStacked);
   RTL := IsRightToLeft;
   if (uffBiDi in fmt^.UsedFormattingFields) then
@@ -3349,11 +3357,14 @@ procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACell: PCell);
 
 var
   fmt: PsCellFormat;
+  idx: Integer;
 begin
   if (Worksheet = nil) or (ACell = nil) then
     exit;
 
-  fmt := Worksheet.GetPointerToEffectiveCellFormat(ACell);
+  idx := Worksheet.GetEffectiveCellFormatIndex(ACell);
+  fmt := Workbook.GetPointerToCellFormat(idx);
+//  fmt := Worksheet.GetPointerToEffectiveCellFormat(ACell);
   with ACell^ do
   begin
 //    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
@@ -3740,6 +3751,7 @@ var
   cellR: TRect;
   r1,c1,r2,c2: Cardinal;
   fmt: PsCellFormat;
+  idx: Integer;
   fntIndex: Integer;
   txtRot: TsTextRotation;
   RTL: Boolean;
@@ -3773,8 +3785,9 @@ begin
 
     DoPrepareCanvas(ACol, ARow, []);
 
-//    fmt := Workbook.GetPointerToCellFormat(lCell^.FormatIndex);
-    fmt := Worksheet.GetPointerToEffectiveCellFormat(lCell);
+    idx := Worksheet.GetEffectiveCellFormatIndex(lCell);
+    fmt := Workbook.GetPointerToCellFormat(idx);
+//    fmt := Worksheet.GetPointerToEffectiveCellFormat(lCell);
     if (uffFont in fmt^.UsedFormattingFields) then
       fntIndex := fmt^.FontIndex else fntIndex := DEFAULT_FONTINDEX;
     if (uffTextRotation in fmt^.UsedFormattingFields) then
@@ -4372,6 +4385,7 @@ var
   i: Integer;
   tmp: Integer = 0;
   cell: PCell;
+  idx: Integer;
   fmt: PsCellFormat;
   rct, clip_rct, commentcell_rct, temp_rct: TRect;
   gds: TGridDrawState;
@@ -4404,7 +4418,9 @@ begin
         then
           Continue;
         // Overflow possible from non-merged, non-right-aligned, horizontal label cells
-        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
+        idx := Worksheet.GetEffectiveCellFormatIndex(cell);
+        fmt := Workbook.GetPointerToCellFormat(idx);
+//        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
         if (not Worksheet.IsMerged(cell)) and
            (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
@@ -4431,7 +4447,9 @@ begin
         then
           continue;
         // Overflow possible from non-merged, horizontal, non-left-aligned label cells
-        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
+        idx := Worksheet.GetEffectiveCellFormatIndex(cell);
+        fmt := Workbook.GetPointerToCellFormat(idx);
+//        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
         if (not Worksheet.IsMerged(cell)) and
            (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
@@ -6583,6 +6601,7 @@ procedure TsCustomWorksheetGrid.SetCellValue(ACol, ARow: Integer; AValue: Varian
 var
   cell: PCell = nil;
   fmt: PsCellFormat = nil;
+  idx: Integer;
   nfp: TsNumFormatParams;
   r, c: Cardinal;
   s, plain: String;
@@ -6624,8 +6643,9 @@ begin
     // If it is a date/time format write a date/time cell...
     if cell <> nil then
     begin
-//      fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
-      fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
+      idx := Worksheet.GetEffectiveCellFormatIndex(cell);
+      fmt := Workbook.GetPointerToCellFormat(idx);
+//      fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
       if fmt <> nil then
         nfp := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
       if (fmt <> nil) and IsDateTimeFormat(nfp) then

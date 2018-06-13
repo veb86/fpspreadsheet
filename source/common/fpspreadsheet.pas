@@ -161,9 +161,10 @@ type
     function GetNumberFormatAttributes(ACell: PCell; out ADecimals: Byte;
       out ACurrencySymbol: String): Boolean;
 
-    function  GetEffectiveCellFormatIndex(ACell: PCell): Integer;
-    function  GetPointerToEffectiveCellFormat(ARow, ACol: Cardinal): PsCellFormat; overload;
-    function  GetPointerToEffectiveCellFormat(ACell: PCell): PsCellFormat; overload;
+    function  GetEffectiveCellFormatIndex(ARow, ACol: Cardinal): Integer; overload;
+    function  GetEffectiveCellFormatIndex(ACell: PCell): Integer; overload;
+    function  GetPointerToEffectiveCellFormat(ARow, ACol: Cardinal): PsCellFormat; //overload;
+//    function  GetPointerToEffectiveCellFormat(ACell: PCell): PsCellFormat; overload;
 
     function  ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields;
     function  ReadBackground(ACell: PCell): TsFillPattern;
@@ -1950,7 +1951,7 @@ var
   srcFormula, destFormula: PsFormula;
   rpn: TsRPNFormula;
   elem: TsFormulaElement;
-  i, j: Integer;
+  i: Integer;
 begin
   if (AFromCell = nil) or (AToCell = nil) then
     exit;
@@ -3008,15 +3009,35 @@ end;
   If it is default, look for the row format. If it is default, look for
   the column format. (see "excelfileformat", p. 89)
 -------------------------------------------------------------------------------}
+function TsWorksheet.GetEffectiveCellFormatIndex(ARow, ACol: Cardinal): Integer;
+var
+  cell: PCell;
+begin
+  cell := FindCell(ARow, ACol);
+  if (cell <> nil) then
+    Result := GetEffectiveCellFormatIndex(cell)
+//    Result := cell^.FormatIndex
+  else
+  begin
+    // Col and row formats are needed explicitely only in case of empty cells.
+    // Because if a cells exists the col/row format already has been copied
+    // to the cell.
+    Result := GetRowFormatIndex(ARow);
+    if Result = 0 then
+      Result := GetColFormatIndex(ACol);
+  end;
+end;
+
 function TsWorksheet.GetEffectiveCellFormatIndex(ACell: PCell): Integer;
 begin
   Result := 0;
-  if ACell <> nil then
+  if ACell <> nil then begin
     Result := ACell^.FormatIndex;
-  if Result = 0 then
-    Result := GetRowFormatIndex(ACell^.Row);
-  if Result = 0 then
-    Result := GetColFormatIndex(ACell^.Col);
+    if Result = 0 then
+      Result := GetRowFormatIndex(ACell^.Row);
+    if Result = 0 then
+      Result := GetColFormatIndex(ACell^.Col);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3046,7 +3067,7 @@ begin
   end;
   Result := FWorkbook.GetPointerToCellFormat(fmtIndex);
 end;
-
+                               (*
 {@@ ----------------------------------------------------------------------------
   Mainly like GetPointerToEffectiveCellFormat(ARow, ACol), but avoids looking
   for the cell if ACell <> nil
@@ -3060,7 +3081,7 @@ begin
   else
     fmtIndex := 0;
   Result := FWorkbook.GetPointerToCellFormat(fmtIndex);
-end;
+end;                             *)
 
 {@@ ----------------------------------------------------------------------------
   Reads the set of used formatting fields of a cell.
