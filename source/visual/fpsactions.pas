@@ -92,6 +92,7 @@ type
   { Action for deleting selected worksheet }
   TsWorksheetDeleteAction = class(TsWorksheetAction)
   public
+    constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
   end;
 
@@ -100,6 +101,7 @@ type
   private
     FOnGetWorksheetName: TsWorksheetNameEvent;
   public
+    constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
   published
     property OnGetWorksheetName: TsWorksheetNameEvent
@@ -184,25 +186,29 @@ type
   TsClearFormatAction = class(TsAutoFormatAction)
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
+  public
+    constructor Create(AOwner: TComponent); override;
   end;
 
   { TsFontStyleAction }
   TsFontStyleAction = class(TsAutoFormatAction)
   private
     FFontStyle: TsFontStyle;
+    procedure SetFontStyle(AValue: TsFontStyle);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
   public
     constructor Create(AOwner: TComponent); override;
   published
-    property FontStyle: TsFontStyle read FFontStyle write FFontStyle;
+    property FontStyle: TsFontStyle read FFontStyle write SetFontStyle;
   end;
 
   { TsHorAlignmentAction }
   TsHorAlignmentAction = class(TsAutoFormatAction)
   private
     FHorAlign: TsHorAlignment;
+    procedure SetHorAlign(AValue: TsHorAlignment);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -210,13 +216,14 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property HorAlignment: TsHorAlignment
-      read FHorAlign write FHorAlign default haDefault;
+      read FHorAlign write SetHorAlign default haDefault;
   end;
 
   { TsVertAlignmentAction }
   TsVertAlignmentAction = class(TsAutoFormatAction)
   private
     FVertAlign: TsVertAlignment;
+    procedure SetVertAlign(AValue:TsVertAlignment);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -224,13 +231,14 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property VertAlignment: TsVertAlignment
-      read FVertAlign write FVertAlign default vaDefault;
+      read FVertAlign write SetVertAlign default vaDefault;
   end;
 
   { TsTextRotationAction }
   TsTextRotationAction = class(TsAutoFormatAction)
   private
     FTextRotation: TsTextRotation;
+    procedure SetTextRotation(AValue: TsTextRotation);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -238,7 +246,7 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property TextRotation: TsTextRotation
-      read FTextRotation write FTextRotation default trHorizontal;
+      read FTextRotation write SetTextRotation default trHorizontal;
   end;
 
   { TsWordwrapAction }
@@ -265,6 +273,7 @@ type
     FNumberFormat: TsNumberFormat;
     FNumberFormatStr: string;
     FOnGetNumFormatStr: TsNumFormatStrEvent;
+    procedure SetNumberFormat(AValue: TsNumberFormat);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -272,7 +281,7 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property NumberFormat: TsNumberFormat
-      read FNumberFormat write FNumberFormat default nfGeneral;
+      read FNumberFormat write SetNumberFormat default nfGeneral;
     property NumberFormatString: string
       read FNumberFormatStr write FNumberFormatStr;
     property OnGetNumberFormatString: TsNumFormatStrEvent
@@ -284,6 +293,7 @@ type
   private
     FDecimals: Integer;
     FDelta: Integer;
+    procedure SetDelta(AValue: Integer);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
@@ -291,7 +301,7 @@ type
     constructor Create(AOwner: TComponent); override;
   published
     property Delta: Integer
-      read FDelta write FDelta default +1;
+      read FDelta write SetDelta default +1;
     property Hint stored false;
   end;
 
@@ -311,27 +321,38 @@ type
   end;
 
   { TsCellBorderAction }
+  TsActionBorders = class;
+
   TsActionBorder = class(TPersistent)
   private
+    FOwner: TsActionBorders;
     FLineStyle: TsLineStyle;
     FColor: TColor;
     FVisible: Boolean;
+    procedure SetLineStyle(AVAlue: TsLineStyle);
+  protected
+    procedure Changed;
   public
+    constructor Create(AOwner: TsActionBorders);
     function GetStyle: TsCellBorderStyle;
-    procedure SetStyle(const ABorderStyle: TsCellBorderStyle);
+    procedure SetStyle(const AValue: TsCellBorderStyle);
+    procedure SetVisible(const AValue: Boolean);
   published
-    property LineStyle: TsLineStyle read FLineStyle write FLineStyle;
+    property LineStyle: TsLineStyle read FLineStyle write SetLineStyle;
     property Color: TColor read FColor write FColor;
-    property Visible: Boolean read FVisible write FVisible;
+    property Visible: Boolean read FVisible write SetVisible;
   end;
 
   TsActionBorders = class(TPersistent)
   private
+    FAction: TsCellAction;
     FBorders: Array[0..ord(High(TsCellBorder))+2] of TsActionBorder;
     function GetBorder(AIndex: Integer): TsActionBorder;
     procedure SetBorder(AIndex: integer; AValue: TsActionBorder);
+  protected
+    procedure Update;
   public
-    constructor Create;
+    constructor Create(Action: TsCellAction);
     destructor Destroy; override;
     procedure ExtractFromCell(AWorkbook: TsWorkbook; ACell: PCell);
   published
@@ -384,6 +405,7 @@ type
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
   public
+    constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
   published
     property Caption;
@@ -409,13 +431,15 @@ type
   TsCellCommentAction = class(TsCellAction)
   private
     FMode: TsCellCommentMode;
+    procedure SetMode(AValue: TsCellCommentMode);
   protected
     function EditComment(ACaption: String; var AText: String): Boolean; virtual;
   public
+    constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
     procedure UpdateTarget(Target: TObject); override;
   published
-    property Mode: TsCellCommentMode read FMode write FMode;
+    property Mode: TsCellCommentMode read FMode write SetMode default ccmNew;
     property Caption;
     property Enabled;
     property HelpContext;
@@ -443,13 +467,15 @@ type
   private
     FMode: TsCellHyperlinkMode;
     FOnHyperlink: TsCellHyperlinkEvent;
+    procedure SetMode(AValue: TsCellHyperlinkMode);
   protected
     function EditHyperlink(ACaption: String; var AHyperlink: TsHyperlink): Boolean; virtual;
   public
+    constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
     procedure UpdateTarget(Target: TObject); override;
   published
-    property Mode: TsCellHyperlinkMode read FMode write FMode;
+    property Mode: TsCellHyperlinkMode read FMode write SetMode;
     property OnHyperlink: TsCellHyperlinkEvent read FOnHyperlink write FOnHyperlink;
     property Caption;
     property Enabled;
@@ -539,6 +565,8 @@ type
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
     function GetDialogClass: TCommonDialogClass; override;
+  public
+    constructor Create(AOwner: TComponent); override;
   published
     property Dialog: TFontDialog read GetDialog;
   end;
@@ -554,6 +582,8 @@ type
     procedure DoBeforeExecute; override;
     procedure ExtractFromCell(ACell: PCell); override;
     function GetDialogClass: TCommonDialogClass; override;
+  public
+    constructor Create(AOwner: TComponent); override;
   published
     property Dialog: TColorDialog read GetDialog;
   end;
@@ -563,7 +593,7 @@ implementation
 
 uses
   StdCtrls, ExtCtrls, Buttons, Forms,
-  fpsUtils, fpsNumFormat, fpsVisualUtils, fpSpreadsheetGrid;
+  fpsStrings, fpsUtils, fpsNumFormat, fpsVisualUtils, fpSpreadsheetGrid;
 
   
 { TsSpreadsheetAction }
@@ -697,6 +727,8 @@ end;
 constructor TsWorksheetAddAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  Caption := rsAddCaption;
+  Hint := rsAddWorksheetHint;
   FNameMask := 'Sheet%d';
 end;
 
@@ -753,6 +785,13 @@ end;
 
 { TsWorksheetDeleteAction }
 
+constructor TsWorksheetDeleteAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  Caption := rsDeleteCaption;
+  Hint := rsDeleteWorksheetHint;
+end;
+
 procedure TsWorksheetDeleteAction.ExecuteTarget(Target: TObject);
 begin
   if HandlesTarget(Target) then
@@ -780,6 +819,13 @@ end;
 
 
 { TsWorksheetRenameAction }
+
+constructor TsWorksheetRenameAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  Caption := rsRenameCaption;
+  Hint := rsRenameWorksheetHint;
+end;
 
 procedure TsWorksheetRenameAction.ExecuteTarget(Target: TObject);
 var
@@ -810,6 +856,8 @@ end;
 constructor TsWorksheetZoomAction.Create(AOwner: TComponent);
 begin
   inherited;
+  Caption := rsZoomCaption;
+  Hint := rsZoomWorksheetHint;
   FZoom := 100;
 end;
 
@@ -936,6 +984,13 @@ end;
 
 { TsClearFormatAction }
 
+constructor TsClearFormatAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  Caption := rsClearFormat;
+  Hint := rsClearFormat;
+end;
+
 procedure TsClearFormatAction.ApplyFormatToCell(ACell: PCell);
 begin
   if ACell <> nil then
@@ -950,7 +1005,9 @@ end;
 
 constructor TsFontStyleAction.Create(AOwner: TComponent);
 begin
-  inherited Create(AOwner);
+  inherited;
+  Caption := rsCellFontCaption;
+  Hint := rsCellFontHint;
   AutoCheck := true;
 end;
 
@@ -988,12 +1045,28 @@ begin
     Checked := false;
 end;
 
+procedure TsFontStyleAction.SetFontStyle(AValue: TsFontStyle);
+begin
+  if AValue = FFontStyle then
+    exit;
+  FFontStyle := AValue;
+  case AValue of
+    fssBold      : Caption := rsFontStyle_Bold;
+    fssItalic    : Caption := rsFontStyle_Italic;
+    fssUnderline : Caption := rsFontStyle_Underlined;
+    fssStrikeOut : Caption := rsFontStyle_StrikeThrough;
+  end;
+  Hint := Caption;
+end;
+
 
 { TsHorAlignmentAction }
 
 constructor TsHorAlignmentAction.Create(AOwner: TComponent);
 begin
-  inherited Create(AOwner);
+  inherited;
+  Caption := rsHorAlignment_Default;
+  Hint := rsHorAlignment_Default;
   GroupIndex := 1411122312;    // Date/time when this was written
   AutoCheck := true;
 end;
@@ -1011,12 +1084,27 @@ begin
   Checked := (ACell <> nil) and (Worksheet.ReadHorAlignment(ACell) = FHorAlign);
 end;
 
+procedure TsHorAlignmentAction.SetHorAlign(AValue: TsHorAlignment);
+begin
+  if AValue = FHorAlign then exit;
+  FHorAlign := AValue;
+  case FHorAlign of
+    haDefault: Caption := rsHorAlignment_Default;
+    haLeft   : Caption := rsHorAlignment_Left;
+    haCenter : Caption := rsHorAlignment_Center;
+    haRight  : Caption := rsHorAlignment_Right;
+  end;
+  Hint := Caption;
+end;
+
 
 { TsVertAlignmentAction }
 
 constructor TsVertAlignmentAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  Caption := rsVertAlignment_Default;
+  Hint := rsVertAlignment_Default;
   GroupIndex := 1411122322;    // Date/time when this was written
   AutoCheck := true;
 end;
@@ -1034,12 +1122,27 @@ begin
   Checked := (ACell <> nil) and (Worksheet.ReadVertAlignment(ACell) = FVertAlign);
 end;
 
+procedure TsVertAlignmentAction.SetVertAlign(AValue: TsVertAlignment);
+begin
+  if AValue = FVertAlign then exit;
+  FVertAlign := AValue;
+  case FVertAlign of
+    vaDefault: Caption := rsVertAlignment_Default;
+    vaTop    : Caption := rsVertAlignment_Top;
+    vaCenter : Caption := rsVertAlignment_Center;
+    vaBottom : Caption := rsVertAlignment_Bottom;
+  end;
+  Hint := Caption;
+end;
+
 
 { TsTextRotationAction }
 
 constructor TsTextRotationAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  Caption := rsTextRotation_Hor;
+  Hint := rsTextRotation_Hor;
   GroupIndex := 1411141108;    // Date/time when this was written
   AutoCheck := true;
 end;
@@ -1057,6 +1160,19 @@ begin
   Checked := (ACell <> nil) and (Worksheet.ReadTextRotation(ACell) = FTextRotation);
 end;
 
+procedure TsTextRotationAction.SetTextRotation(AValue: TsTextRotation);
+begin
+  if AValue <> FTextRotation then exit;
+  FTextRotation := AValue;
+  case FTextRotation of
+    trHorizontal                       : Caption := rsTextRotation_Hor;
+    rt90DegreeClockwiseRotation        : Caption := rsTextRotation_Vert_CW;
+    rt90DegreeCounterClockwiseRotation : Caption := rsTextRotation_Vert_CCW;
+    rtStacked                          : Caption := rsTextRotation_Vert_Stacked;
+  end;
+  Hint := Caption;
+end;
+
 
 { TsWordwrapAction }
 
@@ -1064,6 +1180,8 @@ constructor TsWordwrapAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   AutoCheck := true;
+  Caption := rsWordWrap;
+  Hint := rsWordWrap;
 end;
 
 procedure TsWordwrapAction.ApplyFormatToCell(ACell: PCell);
@@ -1092,6 +1210,8 @@ end;
 constructor TsNumberFormatAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
+  Caption := rsNumberFormatCaption_General;
+  Hint := rsNumberFormatHint_General;
   GroupIndex := 1411141258;    // Date/time when this was written
   AutoCheck := true;
 end;
@@ -1134,6 +1254,62 @@ begin
     ((FNumberFormatStr = '') or (nfs = FNumberFormatStr));
 end;
 
+procedure TsNumberFormatAction.SetNumberFormat(AValue: TsNumberFormat);
+
+  procedure CaptionAndHint(ACaption, AHint: String);
+  begin
+    Caption := ACaption;
+    Hint := AHint;
+  end;
+
+begin
+  if AValue = FNumberFormat then exit;
+  FNumberFormat := AValue;
+  case FNumberFormat of
+    nfGeneral:
+      CaptionAndHint(rsNumberFormatCaption_General, rsNumberFormatHint_General);
+    nfFixed:
+      CaptionAndHint(rsNumberFormatCaption_Fixed, rsNumberFormatHint_Fixed);
+    nfFixedTh:
+      CaptionAndHint(rsNumberFormatCaption_FixedTh, rsNumberFormatHint_FixedTh);
+    nfExp:
+      CaptionAndHint(rsNumberFormatCaption_Exp, rsNumberFormatHint_Exp);
+    nfPercentage:
+      CaptionAndHint(rsNumberFormatCaption_Percentage, rsNumberFormatHint_Percentage);
+    nfFraction:
+      CaptionAndHint(rsNumberFormatCaption_Fraction, rsNumberFormatHint_Fraction);
+    nfCurrency:
+      CaptionAndHint(rsNumberFormatCaption_Currency, rsNumberFormatHint_Currency);
+    nfCurrencyRed:
+      CaptionAndHint(rsNumberFormatCaption_CurrencyRed, rsNumberFormatHint_CurrencyRed);
+    nfShortDateTime:
+      CaptionAndHint(rsNumberFormatCaption_ShortDateTime, rsNumberFormatHint_ShortDateTime);
+    nfShortDate:
+      CaptionAndHint(rsNumberFormatCaption_ShortDate, rsNumberFormatHint_ShortDate);
+    nfLongDate:
+      CaptionAndHint(rsNumberFormatCaption_LongDate, rsNumberFormatHint_LongDate);
+    nfShortTime:
+      CaptionAndHint(rsNumberFormatCaption_ShortTime, rsNumberFormatHint_ShortTime);
+    nfLongTime:
+      CaptionAndHint(rsNumberFormatCaption_LongTime, rsNumberFormatHint_LongTime);
+    nfShortTimeAM:
+      CaptionAndHint(rsNumberFormatCaption_ShortTimeAM, rsNumberFormatHint_ShortTimeAM);
+    nfLongTimeAM:
+      CaptionAndHint(rsNumberFormatCaption_LongTimeAM, rsNumberFormatHint_LongTimeAM);
+    nfDayMonth:
+      CaptionAndHint(rsNumberFormatCaption_DayMonth, rsNumberFormatHint_DayMonth);
+    nfMonthYear:
+      CaptionAndHint(rsNumberFormatCaption_MonthYear, rsNumberFormatHint_MonthYear);
+    nfTimeInterval:
+      CaptionAndHint(rsNumberFormatCaption_TimeInterval, rsNumberFormatHint_TimeInterval);
+    nfText:
+      CaptionAndHint(rsNumberFormatCaption_Text, rsNumberFormatHint_Text);
+    nfCustom:
+      CaptionAndHint(rsNumberFormatCaption_Custom, rsNumberFormatHint_Custom);
+  end;
+  Hint := Caption;
+end;
+
 
 { TsDecimalsAction }
 
@@ -1141,6 +1317,8 @@ constructor TsDecimalsAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FDelta := +1;
+  Caption := rsMoreDecimals;
+  Hint := rsLessDecimals;
 end;
 
 procedure TsDecimalsAction.ApplyFormatToCell(ACell: PCell);
@@ -1182,6 +1360,14 @@ begin
   else
     Worksheet.GetNumberFormatAttributes(ACell, decs, csym);
   FDecimals := decs;
+end;
+
+procedure TsDecimalsAction.SetDelta(AValue: Integer);
+begin
+  if AValue = FDelta then exit;
+  FDelta := AValue;
+  if FDelta > 0 then Caption := rsMoreDecimals else Caption := rsLessDecimals;
+  Hint := Caption;
 end;
 
 
@@ -1230,27 +1416,60 @@ end;
 
 { TsCellBorderAction }
 
+constructor TsActionBorder.Create(AOwner: TsActionBorders);
+begin
+  inherited Create;
+  FOwner := AOwner;
+end;
+
+procedure TsActionBorder.Changed;
+begin
+  FOwner.Update;
+end;
+
 function TsActionBorder.GetStyle: TsCellBorderStyle;
 begin
   Result.LineStyle := FLineStyle;
   Result.Color := FColor and $00FFFFFF;
 end;
 
-procedure TsActionBorder.SetStyle(const ABorderStyle: TsCellBorderStyle);
+procedure TsActionBorder.SetLineStyle(AValue: TsLineStyle);
 begin
-  FLineStyle := ABorderStyle.LineStyle;
-  FColor := ColorToRGB(ABorderStyle.Color);
+  if FLineStyle = AValue then
+    exit;
+  FLineStyle := AValue;
+  Changed;
+end;
+
+procedure TsActionBorder.SetStyle(const AValue: TsCellBorderStyle);
+var
+  rgb: TColor;
+begin
+  rgb := ColorToRGB(AValue.Color);
+  if (FLineStyle = AValue.LineStyle) and (FColor = rgb) then
+    exit;
+  FLineStyle := AValue.LineStyle;
+  FColor := rgb;
+  Changed;
+end;
+
+procedure TsActionBorder.SetVisible(const AValue: Boolean);
+begin
+  if FVisible = AValue then exit;
+  FVisible := AValue;
+  Changed;
 end;
 
 { --- }
 
-constructor TsActionBorders.Create;
+constructor TsActionBorders.Create(Action: TsCellAction);
 var
   cb: Integer;
 begin
   inherited Create;
+  FAction := Action;
   for cb := 0 to High(FBorders) do
-    FBorders[cb] := TsActionBorder.Create;
+    FBorders[cb] := TsActionBorder.Create(self);
 end;
 
 destructor TsActionBorders.Destroy;
@@ -1295,6 +1514,162 @@ end;
 procedure TsActionBorders.SetBorder(AIndex: Integer; AValue: TsActionBorder);
 begin
   FBorders[AIndex] := AValue;
+  Update;
+end;
+
+procedure TsActionBorders.Update;
+type
+  TVisibleSet = set of byte;
+
+  { LS = get LineStyle as String }
+  function _LS(ALineStyle: TsLineStyle): String;
+  begin
+    case ALineStyle of
+      lsThin: Result := rsThin;
+      lsMedium: Result := rsMedium;
+      lsDashed: Result := rsDashed;
+      lsDotted: Result := rsDotted;
+      lsThick: Result := rsThick;
+      lsDouble: Result := rsDouble;
+      lsHair: Result := rsHair;
+      lsMediumDash: Result := rsMediumDash;
+      lsDashDot: Result := rsDashDot;
+      lsMediumDashDot: Result := rsMediumDashDot;
+      lsDashDotDot: Result := rsDashDotDot;
+      lsMediumDashDotDot: Result := rsMediumDashDotDot;
+      lsSlantDashDot: Result := rsSlantDashDot;
+      else raise Exception.Create('[TsActionBorders] Linetype not supported.');
+    end;
+  end;
+
+  { CH = set Caption and Hint }
+  procedure _CH(ACaption, AHint: String; AParam: String = '');
+  begin
+    if AParam = '' then begin
+      FAction.Caption := ACaption;
+      FAction.Hint := AHint;
+    end else begin
+      FAction.Caption := Format(ACaption, [AParam]);
+      FAction.Hint := Format(AHint, [AParam]);
+    end;
+  end;
+
+  function Check(const Visible: TVisibleSet): Boolean;
+  { 0 = North, 1 = West, 2 = East, 3 = South, 4 = DiagUp, 5 = DiagDown, 6 = InnerHor, 7 = InnerVert }
+  var
+    i: Byte;
+    iVisible, borderVisible: Boolean;
+  begin
+    Result := false;
+    for i := 0 to 7 do begin
+      iVisible := i in Visible;
+      borderVisible := FBorders[i].Visible;
+      if iVisible and not borderVisible then exit;
+      if not iVisible and borderVisible then exit;
+    end;
+    Result := true;
+  end;
+
+begin
+  if Check([0]) then begin // 0 = North = Top
+    if FBorders[0].LineStyle = lsThin then
+      _CH(rsBorderTop_Menu, rsBorderTop_Hint)
+    else
+      _CH(rsBorderTopFmt_Menu, rsBorderTopFmt_Hint, _LS(FBorders[0].LineStyle));
+  end else
+  if Check([1]) then begin // 1 = West = Left
+    if FBorders[1].LineStyle = lsThin then
+      _CH(rsBorderLeft_Menu, rsBorderLeft_Hint)
+    else
+      _CH(rsBorderLeftFmt_Menu, rsBorderLeftFmt_Hint, _LS(FBorders[1].LineStyle))
+  end else
+  if Check([2]) then begin // 2 = East = Right
+    if FBorders[2].LineStyle = lsThin then
+      _CH(rsBorderRight_Menu, rsBorderRight_Hint)
+    else
+      _CH(rsBorderRightFmt_Menu, rsBorderRightFmt_Hint, _LS(FBorders[2].LineStyle))
+  end else
+  if Check([3]) then begin // 3 = South
+    if FBorders[3].LineStyle = lsThin then
+      _CH(rsBorderBottom_Menu, rsBorderBottom_Hint)
+    else
+      _CH(rsBorderBottomFmt_Menu, rsBorderBottomFmt_Hint, _LS(FBorders[3].LineStyle))
+  end else
+  if Check([4]) then begin // 4 = diagonal up
+    if FBorders[4].LineStyle = lsThin then
+      _CH(rsBorderDiagUp, rsBorderdiagUp)
+    else
+      _CH(rsBorderDiagUpFmt, rsBorderDiagUpFmt, _LS(FBorders[4].LineStyle))
+  end else
+  if Check([5]) then begin // 5 = diagonal down
+    if FBorders[5].LineStyle = lsThin then
+      _CH(rsBorderDiagDown, rsBorderDiagDown)
+    else
+      _CH(rsBorderDiagDownFmt, rsBorderDiagDownFmt, _LS(FBorders[5].LineStyle))
+  end else
+  if Check([6]) then begin // 6 = Inner hor
+    if FBorders[6].LineStyle = lsThin then
+      _CH(rsBorderInnerHor_Menu, rsBorderInnerHor_Hint)
+    else
+      _CH(rsBorderInnerHorFmt_Menu, rsBorderInnerHorFmt_Hint, _LS(FBorders[6].LineStyle))
+  end else
+  if Check([7]) then begin // 7 = InnerVert
+    if FBorders[7].LineStyle = lsThin then
+      _CH(rsBorderInnerVert_Menu, rsBorderInnerVert_Hint)
+    else
+      _CH(rsBorderInnerVertFmt_Menu, rsBorderInnerVertFmt_Hint, _LS(FBorders[7].LineStyle))
+  end else
+  if Check([0, 4]) then  // top & bottom
+  begin
+    if (FBorders[0].LineStyle = lsThin) and (FBorders[4].LineStyle <> lsThin) then
+      // top line always thin, bottom line chan vary
+      _CH(rsBorderBottomFmt_Menu, rsBorderBottomFmt_Hint, _LS(FBorders[4].LineStyle))
+    else
+      _CH(rsBorderBottom_Menu, rsBorderBottom_Hint)
+  end else
+  if check([0, 3, 6]) then begin // all horizontal lines
+    if (FBorders[0].LineStyle = FBorders[3].LineStyle) and
+       (FBorders[3].LineStyle = FBorders[6].LineStyle)
+    then
+      _CH(rsBorderAllHorFmt_Menu, rsBorderAllHorFmt_Hint, _LS(FBorders[3].LineStyle))
+    else
+      _CH(rsBorderAllHor_Menu, rsBorderAllHor_Hint);
+  end else
+  if Check([1, 2, 7]) then begin // all vertical lines
+    if (FBorders[1].LineStyle = FBorders[2].LineStyle) and
+       (FBorders[2].LineStyle = FBorders[7].LineStyle)
+    then
+      _CH(rsBorderAllVertFmt_Menu, rsBorderAllVertFmt_Hint, _LS(FBorders[2].LineStyle))
+    else
+      _CH(rsBorderAllVert_Menu, rsBorderAllVert_Hint)
+  end else
+  if Check([6, 7]) then begin   // all inner lines
+    if (FBorders[6].LineStyle = FBorders[7].LineStyle) then
+      _CH(rsBorderAllInnerFmt_Menu, rsBorderAllInnerFmt_Hint, _LS(FBorders[6].LineStyle))
+    else
+      _CH(rsBorderAllInner_Menu, rsBorderAllInner_Hint)
+  end else
+  if Check([0, 1, 2, 3]) then begin // all outer lines, no inner
+    if (FBorders[0].LineStyle = FBorders[1].LineStyle) and
+       (FBorders[1].LineStyle = FBorders[2].LineStyle) and
+       (FBorders[2].LineStyle = FBorders[3].LineStyle)
+    then
+      _CH(rsBorderAllOuterFmt_Menu, rsBorderAllOuterFmt_Hint, _LS(FBorders[0].LineStyle))
+    else
+      _CH(rsBorderAllOuter_Menu, rsBorderAllOuter_Hint);
+  end else
+  if Check([0, 1, 2, 3, 6, 7]) then begin // inner and outer lines, inner thin, outer may change
+    if (FBorders[0].LineStyle = FBorders[1].LineStyle) and
+       (FBorders[1].LineStyle = FBorders[2].LineStyle) and
+       (FBorders[2].LineStyle = FBorders[3].LineStyle) and
+       (FBorders[6].LineStyle = FBorders[7].LineStyle) and
+       (FBorders[6].LineStyle = lsThin)
+    then
+      _CH(rsBorderAllFmt_Menu, rsBorderAllFmt_Hint, _LS(FBorders[0].LineStyle))
+    else
+      _CH(rsBorderAll_Menu, rsBorderAll_Hint)
+  end else
+    _CH(rsCellBorder, rsCellBorder);
 end;
 
 { --- }
@@ -1302,7 +1677,9 @@ end;
 constructor TsCellBorderAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
-  FBorders := TsActionBorders.Create;
+  FBorders := TsActionBorders.Create(Self);
+  Caption := rsCellBorder;
+  Hint := rsCellBorder;
 end;
 
 destructor TsCellBorderAction.Destroy;
@@ -1450,6 +1827,13 @@ end;
 
 { TsNoCellBordersAction }
 
+constructor TsNoCellBordersAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  Caption := rsNoCellBorders;
+  Hint := rsNoCellBorders;
+end;
+
 procedure TsNoCellBordersAction.ApplyFormatToCell(ACell: PCell);
 begin
   Worksheet.WriteBorders(ACell, []);
@@ -1463,6 +1847,13 @@ end;
 
 
 { TsCellCommentAction }
+
+constructor TsCellCommentAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  Caption := rsCommentCaption_New;
+  Hint := rsCommentHint_New;
+end;
 
 function TsCellCommentAction.EditComment(ACaption: String;
   var AText: String): Boolean;
@@ -1541,10 +1932,27 @@ begin
   end;
 end;
 
+procedure TsCellCommentAction.SetMode(AValue: TsCellCommentMode);
+
+  procedure CaptionAndHint(ACaption, AHint: String);
+  begin
+    Caption := ACaption;
+    Hint := AHint;
+  end;
+
+begin
+  if AValue = FMode then exit;
+  FMode := AValue;
+  case FMode of
+    ccmNew   : CaptionAndHint(rsCommentCaption_New, rsCommentHint_New);
+    ccmEdit  : CaptionAndHint(rsCommentCaption_Edit, rsCommentHint_Edit);
+    ccmDelete: CaptionAndHint(rsCommentCaption_Delete, rsCommentHint_Delete);
+  end;
+end;
+
 procedure TsCellCommentAction.UpdateTarget(Target: TObject);
 begin
   Unused(Target);
-
   case FMode of
     ccmNew:
       Enabled := (Worksheet <> nil) and (Length(GetSelection) > 0) and not Worksheet.HasComment(ActiveCell);
@@ -1555,6 +1963,13 @@ end;
 
 
 { TsCellHyperlinkAction }
+
+constructor TsCellHyperlinkAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  Caption := rsHyperlinkCaption_New;
+  Hint := rsHyperlinkHint_New;
+end;
 
 function TsCellHyperlinkAction.EditHyperlink(ACaption: String;
   var AHyperlink: TsHyperlink): Boolean;
@@ -1608,6 +2023,24 @@ begin
   end;
 end;
 
+procedure TsCellHyperlinkAction.SetMode(AValue: TsCellHyperlinkMode);
+
+  procedure CaptionAndHint(ACaption, AHint: String);
+  begin
+    Caption := ACaption;
+    Hint := AHint;
+  end;
+
+begin
+  if AValue = FMode then exit;
+  FMode := AValue;
+  case FMode of
+    chmNew   : CaptionAndHint(rsHyperlinkCaption_New, rsHyperlinkHint_New);
+    chmEdit  : CaptionAndHint(rsHyperlinkCaption_Edit, rsHyperlinkHint_Edit);
+    chmDelete: CaptionAndHint(rsHyperlinkCaption_Delete, rsHyperlinkHint_Delete);
+  end;
+end;
+
 procedure TsCellHyperlinkAction.UpdateTarget(Target: TObject);
 begin
   Unused(Target);
@@ -1627,6 +2060,8 @@ constructor TsMergeAction.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   AutoCheck := true;
+  Caption := rsMergeUnmerge;
+  Hint := rsMergeUnmerge;
 end;
 
 procedure TsMergeAction.ApplyFormatToRange(ARange: TsCellRange);
@@ -1733,6 +2168,13 @@ end;
 
 { TsFontDialogAction }
 
+constructor TsFontDialogAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  Caption := rsCellFontCaption;
+  Hint := rsCellFontHint;
+end;
+
 procedure TsFontDialogAction.ApplyFormatToCell(ACell: PCell);
 var
   sfnt: TsFont;
@@ -1782,6 +2224,13 @@ end;
 
 
 { TsBackgroundColorDialogAction }
+
+constructor TsBackgroundColorDialogAction.Create(AOwner: TComponent);
+begin
+  inherited;
+  Caption := rsBackgroundColorCaption;
+  Hint := rsBackgroundColorHint;
+end;
 
 procedure TsBackgroundColorDialogAction.ApplyFormatToCell(ACell: PCell);
 begin

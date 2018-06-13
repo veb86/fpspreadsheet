@@ -295,8 +295,6 @@ const
 
      LAST_PALETTE_INDEX   = 63;
 
-     ROWHEIGHT_EPS        = 1E-2;
-
 type
   TFillListData = class
     PatternType: String;
