@@ -246,6 +246,7 @@ type
     function CanEditShow: boolean; override;
     function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
       out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
+    procedure CheckFormula(ACol, ARow: Integer; AExpression: String);
     procedure ColRowMoved(IsColumn: Boolean; FromIndex,ToIndex: Integer); override;
     procedure CreateHandle; override;
     procedure CreateNewWorkbook;
@@ -832,8 +833,8 @@ implementation
 
 uses
   Types, LCLType, LCLIntf, LCLProc, LazUTF8, Math, StrUtils,
-  fpCanvas, {%H-}fpsPatches,
-  fpsStrings, fpsUtils, fpsVisualUtils, fpsHTMLUtils, fpsImages, fpsNumFormat;
+  fpCanvas, {%H-}fpsPatches, fpsStrings, fpsUtils, fpsVisualUtils, fpsHTMLUtils,
+  fpsImages, fpsNumFormat, fpsExprParser;
 
 const
   {@@ Interval how long the mouse buttons has to be held down on a
@@ -1903,6 +1904,23 @@ begin
 
   // Update following row heights because their index has changed
   UpdateRowHeights(AGridRow);
+end;
+
+procedure TsCustomWorksheetGrid.CheckFormula(ACol, ARow: Integer;
+  AExpression: String);
+var
+  parser: TsSpreadsheetParser;
+begin
+  if Assigned(Worksheet) and
+    (AExpression <> '') and (AExpression[1] = '=') then
+  begin
+    parser := TsSpreadsheetParser.Create(Worksheet);
+    try
+      parser.Expression := AExpression;
+    finally
+      parser.Free;
+    end;
+  end;
 end;
 
 procedure TsCustomWorksheetGrid.ColRowMoved(IsColumn: Boolean;
@@ -3256,9 +3274,14 @@ begin
       cell := Worksheet.GetCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
       if Worksheet.IsMerged(cell) then
         cell := Worksheet.FindMergeBase(cell);
-      if (FEditText <> '') and (FEditText[1] = '=') then
-        Worksheet.WriteFormula(cell, Copy(FEditText, 2, Length(FEditText)), true)
-      else
+      if (FEditText <> '') and (FEditText[1] = '=') then begin
+//        try
+          Worksheet.WriteFormula(cell, Copy(FEditText, 2, Length(FEditText)), true)
+//        except
+//          on E: Exception do
+//            cell := nil;
+//        end;
+      end else
         Worksheet.WriteCellValueAsString(cell, FEditText);
       FEditText := '';
       FOldEditorText := '';
@@ -4637,6 +4660,12 @@ procedure TsCustomWorksheetGrid.KeyDown(var Key : Word; Shift : TShiftState);
 var
   R: TRect;
 begin
+  // Check validity for formula before navigating to another cell.
+  case Key of
+    VK_TAB, VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_PRIOR, VK_NEXT, VK_END, VK_HOME:
+      if EditorMode then CheckFormula(Col, Row, FEditText);
+  end;
+
   case Key of
     VK_RIGHT:
       if (aeNavigation in FAutoExpand) and (Col = ColCount-1) then
@@ -5016,6 +5045,9 @@ begin
   if Worksheet = nil then
     exit;
 
+  mouseCell := MouseToCell(Point(X, Y));
+  if EditorMode then CheckFormula(mouseCell.X, mouseCell.Y, FEditText);
+
   if FAllowDragAndDrop and
      (not Assigned(DragManager) or not DragManager.IsDragging) and
      (ssLeft in Shift) and
@@ -5037,7 +5069,6 @@ begin
   begin
     { Prepare processing of the hyperlink: triggers a timer, the hyperlink is
       executed when the timer has expired (see HyperlinkTimerElapsed). }
-    mouseCell := MouseToCell(Point(X, Y));
     r := GetWorksheetRow(mouseCell.Y);
     c := GetWorksheetCol(mouseCell.X);
     cell := Worksheet.FindCell(r, c);
@@ -5064,7 +5095,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MouseMove(Shift: TShiftState; X, Y: Integer);
 {
-  --- wp: removed this for testing: why does the entire grid be repainted when the
+  --- wp: removed this for testing: why is the entire grid repainted when the
           mouse moved to another cell?
 var
   prevMouseCell: TPoint;
@@ -5337,8 +5368,31 @@ function TsCustomWorksheetGrid.SelectCell(ACol, ARow: Integer): Boolean;
 var
   cell: PCell;
   cp: TsCellprotections;
+  parser: TsSpreadsheetParser;
 begin
+  // Checking validity of formula in current cell
+  if Assigned(Worksheet) and EditorMode then begin
+    if (FEditText <> '') and (FEditText[1] = '=') then begin
+      parser := TsSpreadsheetParser.Create(Worksheet);
+      try
+        try
+          parser.LocalizedExpression[Workbook.FormatSettings] := FEditText;
+        except
+          on E:Exception do begin
+            FGridState := gsNormal;
+            MessageDlg(E.Message, mtError, [mbOK], 0);
+            Result := false;
+            exit;
+          end;
+        end;
+      finally
+        parser.Free;
+      end;
+    end;
+  end;
+
   Result := inherited;
+
   if Result and Assigned(Worksheet) and Worksheet.IsProtected then
   begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
