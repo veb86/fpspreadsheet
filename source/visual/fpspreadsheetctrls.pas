@@ -243,6 +243,7 @@ type
   protected
     function CanEditCell(ACell: PCell): Boolean; overload;
     function CanEditCell(ARow, ACol: Cardinal): Boolean; overload;
+    procedure CheckFormula;
     procedure DoEnter; override;
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -588,7 +589,7 @@ uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
   Dialogs, Forms, Clipbrd,
   fpsStrings, fpsCrypto, fpsReaderWriter, fpsUtils, fpsNumFormat, fpsImages,
-  fpsHTMLUtils, fpsCSV;
+  fpsHTMLUtils, fpsCSV, fpsExprParser;
 
 var
   cfBiff8Format: Integer = 0;
@@ -992,7 +993,8 @@ begin
   FreeAndNil(FWorkbook);
   FWorksheet := nil;
   if AWorkbook = nil then
-    FWorkbook := TsWorkbook.Create else
+    FWorkbook := TsWorkbook.Create
+  else
     FWorkbook := AWorkbook;
   FWorkbook.OnOpenWorkbook := @WorkbookOpenedHandler;
   FWorkbook.OnAddWorksheet := @WorksheetAddedHandler;
@@ -1880,9 +1882,23 @@ function TsCellEdit.CanEditCell(ARow, ACol: Cardinal): Boolean;
 var
   cell: PCell;
 begin
-//  cell := Worksheet.Findcell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
   cell := Worksheet.FindCell(ARow, ACol);
   Result := CanEditCell(cell);
+end;
+
+procedure TsCellEdit.CheckFormula;
+var
+  parser: TsSpreadsheetParser;
+begin
+  if Assigned(Worksheet) and (Text <> '') and (Text[1] = '=') then
+  begin
+    parser := TsSpreadsheetParser.Create(Worksheet);
+    try
+      parser.LocalizedExpression[Workbook.FormatSettings] := Text;
+    finally
+      parser.Free;
+    end;
+  end;
 end;
 
 procedure TsCellEdit.DoEnter;
@@ -1896,6 +1912,7 @@ begin
       'before continuing.', mtInformation, [mbOK], 0);
     Abort;
   end;
+
   inherited;
 end;
 
@@ -1913,6 +1930,16 @@ var
 begin
   if Worksheet = nil then
     exit;
+
+  try
+    Checkformula;
+  except
+    on E:Exception do begin
+      MessageDlg(E.Message, mtError, [mbOk], 0);
+      exit;
+    end;
+  end;
+
   cell := Worksheet.GetCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
   if Worksheet.IsMerged(cell) then
     cell := Worksheet.FindMergeBase(cell);

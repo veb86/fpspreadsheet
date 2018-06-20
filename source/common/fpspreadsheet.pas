@@ -5655,7 +5655,9 @@ begin
       ACell.Flags := ACell.Flags - [cf3dFormula];
 
     formula^.Text := AFormula;
-    formula^.Parser := parser;   // parser will be destroyed by formula
+    formula^.Parser := parser;
+
+    // parser will be destroyed by formula
   end;
 
   // Set formula flags in cell

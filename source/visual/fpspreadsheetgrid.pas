@@ -119,7 +119,7 @@ type
     FReadOnly: Boolean;
     FOnClickHyperlink: TsHyperlinkClickEvent;
     FOldEditorText: String;
-    FMultilineStringEditor: TMultilineStringCellEditor;
+    FMultiLineStringEditor: TMultilineStringCellEditor;
     FLineMode: TsEditorLineMode;
     FAllowDragAndDrop: Boolean;
     FDragStartCol, FDragStartRow: Integer;
@@ -246,7 +246,6 @@ type
     function CanEditShow: boolean; override;
     function CellOverflow(ACol, ARow: Integer; AState: TGridDrawState;
       out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
-    procedure CheckFormula(ACol, ARow: Integer; AExpression: String);
     procedure ColRowMoved(IsColumn: Boolean; FromIndex,ToIndex: Integer); override;
     procedure CreateHandle; override;
     procedure CreateNewWorkbook;
@@ -254,6 +253,7 @@ type
     procedure DefineProperties(Filer: TFiler); override;
     procedure DoCopyToClipboard; override;
     procedure DoCutToClipboard; override;
+    procedure DoEditorHide; override;
     procedure DoEditorShow; override;
     procedure DoPasteFromClipboard; override;
     procedure DoOnResize; override;
@@ -314,8 +314,10 @@ type
     function ToPixels(AValue: Double): Integer;
     procedure TopLeftChanged; override;
     function TrimToCell(ACell: PCell): String;
-    procedure WMHScroll(var message : TLMHScroll); message LM_HSCROLL;
-    procedure WMVScroll(var message : TLMVScroll); message LM_VSCROLL;
+    function ValidFormula({ACol, ARow: Integer; }AExpression: String;
+      out AErrMsg: String): Boolean;
+    procedure WMHScroll(var message: TLMHScroll); message LM_HSCROLL;
+    procedure WMVScroll(var message: TLMVScroll); message LM_VSCROLL;
 
     {@@ Allow built-in drag and drop }
     property AllowDragAndDrop: Boolean read FAllowDragAndDrop
@@ -383,6 +385,7 @@ type
     function GetWorksheetRow(AGridRow: Integer): Cardinal; inline;
     procedure InsertCol(AGridCol: Integer);
     procedure InsertRow(AGridRow: Integer);
+
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
@@ -390,13 +393,16 @@ type
     procedure LoadSheetFromSpreadsheetFile(AFileName: String;
       AWorksheetIndex: Integer = -1; AFormatID: TsSpreadFormatID = sfidUnknown);
     procedure LoadFromWorkbook(AWorkbook: TsWorkbook; AWorksheetIndex: Integer = -1);
+
     procedure NewWorkbook(AColCount, ARowCount: Integer);
+
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormat: TsSpreadsheetFormat;
       AOverwriteExisting: Boolean = true); overload; deprecated;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormatID: TsSpreadFormatID;
       AOverwriteExisting: Boolean = true); overload;
+
     procedure SelectSheetByIndex(AIndex: Integer);
 
     procedure MergeCells; overload;
@@ -1167,6 +1173,7 @@ procedure TMultilineStringCellEditor.KeyDown(var Key: Word; Shift: TShiftState);
 
 var
   IntSel: boolean;
+  msg: String;
 begin
   inherited KeyDown(Key,Shift);
   case Key of
@@ -1200,6 +1207,7 @@ begin
           FGrid.EditorHide;
         end;
       end;
+
     else
       doEditorKeyDown;
   end;
@@ -1906,23 +1914,6 @@ begin
   UpdateRowHeights(AGridRow);
 end;
 
-procedure TsCustomWorksheetGrid.CheckFormula(ACol, ARow: Integer;
-  AExpression: String);
-var
-  parser: TsSpreadsheetParser;
-begin
-  if Assigned(Worksheet) and
-    (AExpression <> '') and (AExpression[1] = '=') then
-  begin
-    parser := TsSpreadsheetParser.Create(Worksheet);
-    try
-      parser.Expression := AExpression;
-    finally
-      parser.Free;
-    end;
-  end;
-end;
-
 procedure TsCustomWorksheetGrid.ColRowMoved(IsColumn: Boolean;
   FromIndex,ToIndex: Integer);
 begin
@@ -2004,6 +1995,20 @@ begin
   // This next comment does not seem to be valid any more: Issue handled by eating key in KeyDown
   // Remove for the moment: If TsPasteActions is available this code would be executed twice
   WorkbookSource.PasteCellsFromClipboard(coCopyCell);
+end;
+
+procedure TsCustomWorksheetGrid.DoEditorHide;
+var
+  msg: String;
+begin
+  inherited;
+  // The following code is reached when an error is found in the cell formula
+  // being edited and another control is selected.
+  if (FEditText <> '') then
+    if not ValidFormula(FEditText, msg) then begin
+      MessageDlg(msg, mtError, [mbOK], 0);
+    FEditText := '';
+  end;
 end;
 
 { Make the cell editor the same size as the edited cell, in particular for
@@ -3260,28 +3265,25 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.EditingDone;
 var
-  //oldText: String;
   cell: PCell;
+  msg: String;
 begin
   if (not EditorShowing) and FEditing then
   begin
-    {
-    oldText := GetCellText(Col, Row);
-    if oldText <> FEditText then
-    }
+    if not ValidFormula(FEditText, msg) then
+    begin
+      FEditing := false;
+      exit;
+    end;
+
     if FOldEditorText <> FEditText then
     begin
       cell := Worksheet.GetCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
       if Worksheet.IsMerged(cell) then
         cell := Worksheet.FindMergeBase(cell);
-      if (FEditText <> '') and (FEditText[1] = '=') then begin
-//        try
-          Worksheet.WriteFormula(cell, Copy(FEditText, 2, Length(FEditText)), true)
-//        except
-//          on E: Exception do
-//            cell := nil;
-//        end;
-      end else
+      if (FEditText <> '') and (FEditText[1] = '=') then
+        Worksheet.WriteFormula(cell, Copy(FEditText, 2, Length(FEditText)), true)
+      else
         Worksheet.WriteCellValueAsString(cell, FEditText);
       FEditText := '';
       FOldEditorText := '';
@@ -3295,7 +3297,7 @@ end;
 function TsCustomWorksheetGrid.EditorByStyle(Style: TColumnButtonStyle): TWinControl;
 begin
   if (Style = cbsAuto) and (FLineMode = elmMultiLine) then
-    Result := FMultilineStringEditor
+    Result := FMultiLineStringEditor
   else
     Result := inherited;
 end;
@@ -4659,11 +4661,20 @@ end;
 procedure TsCustomWorksheetGrid.KeyDown(var Key : Word; Shift : TShiftState);
 var
   R: TRect;
+  msg: String;
 begin
   // Check validity for formula before navigating to another cell.
   case Key of
-    VK_TAB, VK_LEFT, VK_RIGHT, VK_UP, VK_DOWN, VK_PRIOR, VK_NEXT, VK_END, VK_HOME:
-      if EditorMode then CheckFormula(Col, Row, FEditText);
+    VK_RETURN,
+    VK_TAB,
+    VK_LEFT, VK_RIGHT,
+    VK_UP, VK_DOWN,
+    VK_PRIOR, VK_NEXT,
+    VK_END, VK_HOME:
+      if not ValidFormula(FEditText, msg) then begin
+        MessageDlg(msg, mtError, [mbOK], 0);
+        Key := 0;
+      end;
   end;
 
   case Key of
@@ -5041,13 +5052,17 @@ var
   mouseCell: TPoint;
   cell: PCell;
   r, c: Cardinal;
+  err: String;
 begin
   if Worksheet = nil then
     exit;
 
-  mouseCell := MouseToCell(Point(X, Y));
-  if EditorMode then CheckFormula(mouseCell.X, mouseCell.Y, FEditText);
+  if not ValidFormula(FEditText, err) then begin
+    MessageDlg(err, mtError, [mbOK], 0);
+    exit;
+  end;
 
+  mouseCell := MouseToCell(Point(X, Y));
   if FAllowDragAndDrop and
      (not Assigned(DragManager) or not DragManager.IsDragging) and
      (ssLeft in Shift) and
@@ -5367,27 +5382,16 @@ end;
 function TsCustomWorksheetGrid.SelectCell(ACol, ARow: Integer): Boolean;
 var
   cell: PCell;
-  cp: TsCellprotections;
-  parser: TsSpreadsheetParser;
+  cp: TsCellProtections;
+  err: String;
 begin
   // Checking validity of formula in current cell
   if Assigned(Worksheet) and EditorMode then begin
-    if (FEditText <> '') and (FEditText[1] = '=') then begin
-      parser := TsSpreadsheetParser.Create(Worksheet);
-      try
-        try
-          parser.LocalizedExpression[Workbook.FormatSettings] := FEditText;
-        except
-          on E:Exception do begin
-            FGridState := gsNormal;
-            MessageDlg(E.Message, mtError, [mbOK], 0);
-            Result := false;
-            exit;
-          end;
-        end;
-      finally
-        parser.Free;
-      end;
+    if not ValidFormula(FEditText, err) then begin
+      FGridState := gsNormal;
+      MessageDlg(err, mtError, [mbOK], 0);
+      Result := false;
+      exit;
     end;
   end;
 
@@ -7055,6 +7059,31 @@ begin
     end;
   end;
 end;
+
+function TsCustomWorksheetGrid.ValidFormula(//ACol, ARow: Integer;
+  AExpression: String; out AErrMsg: String): Boolean;
+var
+  parser: TsSpreadsheetParser;
+begin
+  Result := true;
+  if Assigned(Worksheet) and (AExpression <> '') and (AExpression[1] = '=') then
+  begin
+    parser := TsSpreadsheetParser.Create(Worksheet);
+    try
+      try
+        parser.Expression := AExpression;
+      except
+        on E: Exception do begin
+          AErrMsg := E.Message;
+          Result := false;
+        end;
+      end;
+    finally
+      parser.Free;
+    end;
+  end;
+end;
+
 
 
 initialization
