@@ -1505,50 +1505,6 @@ begin
   Delete(ARow, ACol);  // will release memory automatically
 end;
 
-(*
-procedure TsFormulas.DeleteRowOrCol(AIndex: Cardinal; IsRow: Boolean;
-  InSheet: TsBasicWorksheet);
-var
-  node, nextnode: TAvgLvlTreeNode;
-  formula: PsFormula;
-  changed: Boolean;
-begin
-  node := FindLowest;
-  while Assigned(node) do
-  begin
-    changed := false;
-    nextnode := FindSuccessor(node);
-    formula := PsFormula(node.Data);
-    if IsRow then
-    begin
-      // Remove and destroy the formula record if it is in the deleted row
-      if formula^.Row = AIndex then
-        Delete(node)
-      else begin
-        if formula^.Row > AIndex then
-          dec(formula^.Row);
-        // Update all RowCol records at row indexes above the deleted row
-        changed := formula^.Parser.IterateNodes(@FixDeletedRow, Pointer(PtrInt(AIndex)));
-      end;
-    end else
-    begin
-      // Remove and destroy the formula record if it is in the deleted column
-      if formula^.Col = AIndex then
-        Delete(node)
-      else begin
-        if formula^.Col > AIndex then
-          dec(formula^.Col);
-        // Update all RowCol records at column indexes above the deleted column
-        changed := formula^.Parser.IterateNodes(@FixDeletedCol, Pointer(PtrInt(AIndex)));
-      end;
-    end;
-    // Recreate the formula if required.
-    if changed then
-      formula^.Text := formula^.Parser.Expression;
-    node := nextnode;
-  end;
-end;     *)
-
 procedure TsFormulas.DisposeData(var AData: Pointer);
 begin
   if AData <> nil then begin
@@ -1603,30 +1559,6 @@ function TsFormulas.GetEnumerator: TsFormulaEnumerator;
 begin
   Result := TsFormulaEnumerator.Create(self, 0, 0, $7FFFFFFF, $7FFFFFFF, false);
 end;
-                     (*
-procedure TsFormulas.InsertRowOrCol(AIndex: Cardinal; IsRow: Boolean);
-var
-  node: TAvgLvlTreeNode;
-  formula: PsFormula;
-  changed: Boolean;
-begin
-  node := FindLowest;
-  while Assigned(node) do begin
-    formula := PsFormula(node.Data);
-    if IsRow then
-    begin
-      if formula^.Row >= AIndex then inc(formula^.Row);
-      changed := formula^.Parser.IterateNodes(@FixInsertedRow, Pointer(PtrInt(AIndex)));
-    end else
-    begin
-      if formula^.Col >= AIndex then inc(formula^.Col);
-      changed := formula^.Parser.IterateNodes(@FixInsertedCol, Pointer(PtrInt(AIndex)));
-    end;
-    if changed then
-      formula^.Text := formula^.Parser.Expression;
-    node := FindSuccessor(node);
-  end;
-end;   *)
 
 function TsFormulas.NewData: Pointer;
 var
