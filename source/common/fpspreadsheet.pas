@@ -702,6 +702,8 @@ type
     constructor Create;
     destructor Destroy; override;
 
+    procedure Clear;
+
     procedure ReadFromFile(AFileName: string; AFormatID: TsSpreadFormatID;
       APassword: String = ''; AParams: TsStreamParams = []); overload;
     procedure ReadFromFile(AFileName: string; AFormat: TsSpreadsheetFormat;
@@ -761,6 +763,7 @@ type
     function GetCellFormatAsString(AIndex: Integer): String;
     function GetNumCellFormats: Integer;
     function GetPointerToCellFormat(AIndex: Integer): PsCellFormat;
+    procedure RemoveAllCellFormats(AKeepDefaultFormat: Boolean);
 
     { Font handling }
     function AddFont(const AFontName: String; ASize: Single; AStyle: TsFontStyles;
@@ -787,6 +790,7 @@ type
     function AddNumberFormat(AFormatStr: String): Integer;
     function GetNumberFormat(AIndex: Integer): TsNumFormatParams;
     function GetNumberFormatCount: Integer;
+    procedure RemoveAllNumberFormats;
 
     { Formulas }
     procedure CalcFormulas;
@@ -7988,11 +7992,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.PrepareBeforeReading;
 begin
-  // Initializes fonts
-  InitFonts;
-
-  // Clear error log
-  ClearErrorList;
+  Clear;
 
   // Abort if virtual mode is active without an event handler
   if (boVirtualMode in FOptions) and not Assigned(OnReadCellData) then
@@ -8201,6 +8201,34 @@ begin
 
   inherited Destroy;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Clears content and formats from the workbook
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.Clear;
+begin
+  // Initialize fonts
+  InitFonts;
+
+  // Remove already existing worksheets.
+  RemoveAllWorksheets;
+
+  // Remove all cell formats, but keep the default format
+  RemoveAllCellFormats(true);
+
+  // Remove all number formats
+  RemoveAllNumberFormats;
+
+  // Remove embedded images
+  RemoveAllEmbeddedObj;
+
+  // Reset cryptoinfo
+  InitCryptoInfo(FCryptoInfo);
+
+  // Clear error log
+  ClearErrorList;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Helper method for determining the spreadsheet type. Read the first few bytes
@@ -9309,6 +9337,25 @@ begin
   Result := FCellFormatList.Items[AIndex];
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Removes all cell formats from the workbook.
+
+  If AKeepDefaultFormat is true then index 0 containing the default cell format
+  is retained.
+
+  Use carefully!
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.RemoveAllCellFormats(AKeepDefaultFormat: Boolean);
+var
+  i: Integer;
+begin
+  if AKeepDefaultFormat then
+    for i := FCellFormatList.Count-1 downto 1 do
+      FCellFormatList.Delete(i)
+  else
+    FCellFormatList.Clear;
+end;
+
 
 { Font handling }
 
@@ -9591,6 +9638,22 @@ end;
 function TsWorkbook.GetNumberFormatCount: Integer;
 begin
   Result := FNumFormatList.Count;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes all numberformats
+  Use carefully!
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.RemoveAllNumberFormats;
+var
+  i: Integer;
+  nfp: TsNumFormatParams;
+begin
+  for i:= FEmbeddedObjList.Count-1 downto 0 do begin
+    nfp := TsNumFormatParams(FNumFormatList[i]);
+    FNumFormatList.Delete(i);
+    nfp.Free;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
