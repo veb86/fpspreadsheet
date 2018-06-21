@@ -1490,6 +1490,7 @@ begin
   if Result = nil then
     Result := PsFormula(Add(ARow, ACol));
   Result^.Text := AFormula;           // unparsed formula
+  FreeAndNil(Result^.Parser);         // Destroy previously existing parser
   Result^.Parser := AParsedFormula;   // if nil, will be parsed on next calculation
   Result^.CalcState := csNotCalculated;
 end;
