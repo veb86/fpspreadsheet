@@ -27,9 +27,13 @@ unit fpspreadsheetctrls;
 interface
 
 uses
+  LMessages, LResources, LCLVersion,
   Classes, Graphics, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
-  LResources, LCLVersion,
-  fpstypes, fpspreadsheet; //, {%H-}fpsAllFormats;
+  fpstypes, fpspreadsheet;
+
+const
+  {@@ User-defined message for input validation }
+  UM_VALIDATEINPUT = LM_USER + 100;
 
 type
   {@@ Event handler procedure for displaying a message if an error or
@@ -236,16 +240,25 @@ type
     FWorkbookSource: TsWorkbookSource;
     FShowHTMLText: Boolean;
     FOldText: String;
+    FFormulaError: Boolean;
+    FRefocusing: TObject;
+    FRefocusingCol, FRefocusingRow: Cardinal;
     function GetSelectedCell: PCell;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
+    procedure ValidateInput(var Msg: TLMessage); message UM_VALIDATEINPUT;
+    procedure WMKillFocus(var AMessage: TLMKillFocus); message LM_KILLFOCUS;
   protected
+    FEditText: String;
     function CanEditCell(ACell: PCell): Boolean; overload;
     function CanEditCell(ARow, ACol: Cardinal): Boolean; overload;
-    procedure CheckFormula;
     procedure DoEnter; override;
-    procedure KeyDown(var Key : Word; Shift : TShiftState); override;
+    procedure DoExit; override;
+    function DoValidText(const AText: String): Boolean; virtual;
+    function ValidFormula(AFormula: String; out AErrMsg: String): Boolean;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure KeyUp(var Key: Word; Shift: TShiftState); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure ShowCell(ACell: PCell); virtual;
   public
@@ -1886,21 +1899,6 @@ begin
   Result := CanEditCell(cell);
 end;
 
-procedure TsCellEdit.CheckFormula;
-var
-  parser: TsSpreadsheetParser;
-begin
-  if Assigned(Worksheet) and (Text <> '') and (Text[1] = '=') then
-  begin
-    parser := TsSpreadsheetParser.Create(Worksheet);
-    try
-      parser.LocalizedExpression[Workbook.FormatSettings] := Text;
-    finally
-      parser.Free;
-    end;
-  end;
-end;
-
 procedure TsCellEdit.DoEnter;
 begin
   if Worksheet = nil then
@@ -1913,31 +1911,70 @@ begin
     Abort;
   end;
 
+  if FRefocusing = self then
+    FRefocusing := nil;
+
   inherited;
 end;
 
 {@@ ----------------------------------------------------------------------------
-  EditingDone is called when the user presses the RETURN key to finish editing,
-  or the TAB key which removes focus from the control, or clicks somewhere else
-  The edited text is written to the worksheet which tries to figure out the
-  data type. In particular, if the text begins with an equal sign ("=") then
-  the text is assumed to be a formula.
+  DoExit is called when the edit has lost focus. Posts a message to the end of
+  the message queue in order to complete the focus change operation and to
+  trigger validation of the edit afterwards (which will restore the edit as
+  focused control if validation fails.
+
+  Source of the idea:
+  https://community.embarcadero.com/article/technical-articles/149-tools/12766-validating-input-in-tedit-components
+-------------------------------------------------------------------------------}
+procedure TsCellEdit.DoExit;
+begin
+  if FRefocusing = nil then begin
+    // Remember current text in editor...
+    FEditText := Text;
+    // ... as well as currently selected cell.
+    FRefocusingRow := Worksheet.ActiveCellRow;
+    FRefocusingCol := Worksheet.ActiveCellCol;
+    // Initiate validation of current input
+    PostMessage(Handle, UM_VALIDATEINPUT, 0, LParam(Self));
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Validation function for the current text in the edit control called by the
+  handler of the message posted in DoExit. Checks whether a formula is valid.
+  If not, the currently selected cell and the edit's Text are restored, and an
+  error message is displayed.
+-------------------------------------------------------------------------------}
+function TsCellEdit.DoValidText(const AText: String): Boolean;
+var
+  err: String;
+begin
+  Result := ValidFormula(AText, err);
+  if not Result then begin
+    Worksheet.SelectCell(FRefocusingRow, FRefocusingCol);
+    Text := AText;  // restore orig text lost by interaction with grid
+    SelectAll;
+    MessageDlg(err, mtError, [mbOK], 0);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  EditingDone is called when the user presses the RETURN key to finish editing.
+  If the current Text is an invalid formula an error message is displayed and
+  nothing else happens. Otherwise, however, the edited text is written to the
+  worksheet which tries to figure out the data type.
 -------------------------------------------------------------------------------}
 procedure TsCellEdit.EditingDone;
 var
   s: String;
   cell: PCell;
 begin
-  if Worksheet = nil then
+  if (Worksheet = nil) then
     exit;
 
-  try
-    Checkformula;
-  except
-    on E:Exception do begin
-      MessageDlg(E.Message, mtError, [mbOk], 0);
-      exit;
-    end;
+  if not ValidFormula(Text, s) then begin
+    MessageDlg(s, mtError, [mbOK], 0);
+    exit;
   end;
 
   cell := Worksheet.GetCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
@@ -1994,13 +2031,32 @@ end;
 procedure TsCellEdit.KeyDown(var Key: Word; Shift : TShiftState);
 var
   selpos: Integer;
+  errMsg: String;
 begin
-  if Key = VK_ESCAPE then begin
-    selpos := SelStart;
-    Lines.Text := FOldText;
-    SelStart := selpos;
-    exit;
+  FFormulaError := false;
+  case Key of
+    VK_RETURN:
+      if not ValidFormula(Text, errMsg) then begin
+        Key := 0;
+        FFormulaError := true;
+        MessageDlg(errMsg, mtError, [mbOK], 0);
+      end;
+    VK_ESCAPE:
+      begin
+        Key := 0;
+        selpos := SelStart;
+        Lines.Text := FOldText;
+        SelStart := selpos;
+        exit;
+      end;
   end;
+  inherited;
+end;
+
+procedure TsCellEdit.KeyUp(var Key: Word; Shift : TShiftState);
+begin
+  if FFormulaError and (Key = VK_RETURN) then
+    Key := 0;
   inherited;
 end;
 
@@ -2019,7 +2075,7 @@ procedure TsCellEdit.ListenerNotification(
 var
   cell: PCell;
 begin
-  if (FWorkbookSource = nil) then
+  if (FWorkbookSource = nil) or (FRefocusing = self) then
     exit;
 
   if  (lniSelection in AChangedItems) or
@@ -2122,6 +2178,62 @@ begin
   FOldText := Lines.Text;
 
   ReadOnly := not CanEditCell(ACell);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Validation routine of current input initiated when the edit lost focus.
+  If input is not correct (DoValidText) then state before focus change is
+  re-established.
+-------------------------------------------------------------------------------}
+procedure TsCellEdit.ValidateInput(var Msg: TLMessage);
+var
+  s: String;
+begin
+  if TControl(Msg.lParam) is TsCellEdit then begin
+    s := TsCellEdit(Msg.lParam).FEditText;
+    if not DoValidText(s) then begin
+      FRefocusing := TControl(Msg.lParam);          // Avoid an endless loop
+      TWinControl(Msg.lParam).SetFocus;             // Set focus back
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks valididty of the provided formula and creates a corresponding
+  error message.
+
+  Returns TRUE if the provided string is a valid formula or no formula, FALSE
+  otherwise. In the latter case an error message string is returned as well.
+-------------------------------------------------------------------------------}
+function TsCellEdit.ValidFormula(AFormula: String; out AErrMsg: String): Boolean;
+var
+  parser: TsSpreadsheetParser;
+begin
+  Result := true;
+  AErrMsg := '';
+
+  if Assigned(Worksheet) and (AFormula <> '') and (AFormula[1] = '=') then
+  begin
+    parser := TsSpreadsheetParser.Create(Worksheet);
+    try
+      try
+        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula;
+      except
+        on E: Exception do begin
+          AErrMsg := E.Message;
+          Result := false;
+        end;
+      end;
+    finally
+      parser.Free;
+    end;
+  end;
+end;
+
+procedure TsCellEdit.WMKillFocus(var AMessage: TLMKillFocus);
+begin
+  // Override inherited behavior because we don't want to call EditingDone
+  // here.
 end;
 
 
