@@ -152,6 +152,8 @@ type
     FGetRowHeaderText: TsGetCellTextEvent;
     FGetColHeaderText: TsGetCellTextEvent;
     FRefocusing: TObject;
+    FRefocusingSelStart: Integer;
+    FFormulaError: Boolean;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
@@ -324,6 +326,7 @@ type
       AOverrideTextColor: TColor; ARichTextParams: TsRichTextParams;
       AIsRightToLeft: Boolean);
     procedure KeyDown(var Key : Word; Shift : TShiftState); override;
+    procedure KeyUp(var Key : Word; Shift : TShiftState); override;
     procedure MouseDown(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
     procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
     function MouseOnCellBorder(const APoint: TPoint;
@@ -2286,11 +2289,17 @@ begin
 end;
 
 procedure TsCustomWorksheetGrid.DoExit;
+var
+  ed: TWinControl;
 begin
   { Post a message to myself which indicates it's time to validate the input.
     Pass the grid instance (Self) as the message lParam. }
-  if FRefocusing = nil then
+  if FRefocusing = nil then begin
+    ed := EditorByStyle(cbsAuto);
+    if ed is TCustomEdit then
+      FRefocusingSelStart := TCustomEdit(ed).SelStart;
     PostMessage(Handle, um_ValidateInput, 0, LParam(Self));
+  end;
   FGridState := gsNormal;
 end;
 
@@ -3562,13 +3571,6 @@ end;
 
 function TsCustomWorksheetGrid.EditorByStyle(Style: TColumnButtonStyle): TWinControl;
 begin
-  (*
-  if (Style = cbsAuto) then
-    case FLineMode of
-      elmSingleLine : Result := FSingleLineStringEditor;
-      elmMultiLine  : Result := FMultiLineStringEditor ;
-    end
-  *)
   if (Style = cbsAuto) and (FLineMode = elmMultiLine) then
     Result := FMultiLineStringEditor
   else
@@ -4936,6 +4938,7 @@ var
   R: TRect;
   msg: String;
 begin
+  FFormulaError := false;
   // Check validity for formula before navigating to another cell.
   case Key of
     VK_RETURN,
@@ -4945,6 +4948,7 @@ begin
     VK_PRIOR, VK_NEXT,
     VK_END, VK_HOME:
       if not ValidFormula(FEditText, msg) then begin
+        FFormulaError := true;
         MessageDlg(msg, mtError, [mbOK], 0);
         Key := 0;
       end;
@@ -4982,6 +4986,14 @@ begin
       // Clipboard has already been handled, avoid passing key to CellAction
   end;
 end;
+
+procedure TsCustomWorksheetGrid.KeyUp(var Key : Word; Shift : TShiftState);
+begin
+  if FFormulaError and (Key = VK_RETURN) then
+    Key := 0;
+  inherited;
+end;
+
 
                                (*
 {@@ ----------------------------------------------------------------------------
@@ -7321,6 +7333,7 @@ procedure TsCustomWorksheetGrid.ValidateInput(var Msg: TLMessage);
 var
   grid: TsCustomWorksheetGrid;
   errmsg: String;
+  ed: TWinControl;
 begin
   if TObject(Msg.lParam) is TsCustomWorksheetGrid then begin
     grid := TsCustomWorksheetGrid(Msg.lParam);
@@ -7328,6 +7341,10 @@ begin
       MessageDlg(errmsg, mtError, [mbOK], 0);
       FRefocusing := grid;           // Avoid an endless loop
       grid.SetFocus;                 // Set focus back
+      if grid.EditorMode then begin
+        ed := grid.EditorByStyle(cbsAuto);
+        if ed is TCustomEdit then TCustomEdit(ed).SelStart := FRefocusingSelStart;
+      end;
     end;
   end;
 end;

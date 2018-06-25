@@ -243,6 +243,7 @@ type
     FFormulaError: Boolean;
     FRefocusing: TObject;
     FRefocusingCol, FRefocusingRow: Cardinal;
+    FRefocusingSelStart: Integer;
     function GetSelectedCell: PCell;
     function GetWorkbook: TsWorkbook;
     function GetWorksheet: TsWorksheet;
@@ -1934,6 +1935,7 @@ begin
     // ... as well as currently selected cell.
     FRefocusingRow := Worksheet.ActiveCellRow;
     FRefocusingCol := Worksheet.ActiveCellCol;
+    FRefocusingSelStart := SelStart;
     // Initiate validation of current input
     PostMessage(Handle, UM_VALIDATEINPUT, 0, LParam(Self));
   end;
@@ -1953,7 +1955,7 @@ begin
   if not Result then begin
     Worksheet.SelectCell(FRefocusingRow, FRefocusingCol);
     Text := AText;  // restore orig text lost by interaction with grid
-    SelectAll;
+    SelStart := FRefocusingSelStart;
     MessageDlg(err, mtError, [mbOK], 0);
   end;
 end;
