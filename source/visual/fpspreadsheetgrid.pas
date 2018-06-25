@@ -148,6 +148,7 @@ type
     FDragStartCol, FDragStartRow: Integer;
     FOldDragStartCol, FOldDragStartRow: Integer;
     FDragSelection: TGridRect;
+    FDragTimer: TTimer;
     FGetRowHeaderText: TsGetCellTextEvent;
     FGetColHeaderText: TsGetCellTextEvent;
     FRefocusing: TObject;
@@ -255,6 +256,7 @@ type
     procedure SetWordwraps(ALeft, ATop, ARight, ABottom: Integer; AValue: boolean);
     procedure SetZoomFactor(AValue: Double);
 
+    procedure DragTimerElapsed(Sender: TObject);
     procedure HyperlinkTimerElapsed(Sender: TObject);
 
   protected
@@ -873,6 +875,10 @@ const
   {@@ Interval how long the mouse buttons has to be held down on a
     hyperlink cell until the associated hyperlink is executed. }
   HYPERLINK_TIMER_INTERVAL = 500;
+
+  {@@ Interval how long the mouse must stay on the border of the selected
+    cell for the drag-cursor to appear. }
+  DRAG_TIMER_INTERVAL = 200;
 
 const
   // Constants for AGridPart parameter
@@ -1525,12 +1531,17 @@ begin
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
   FHyperlinkTimer.OnTimer := @HyperlinkTimerElapsed;
+
+  FDragTimer := TTimer.Create(self);
+  FDragTimer.Interval := DRAG_TIMER_INTERVAL;
+  FDragTimer.OnTimer := @DragTimerElapsed;
+  FAllowDragAndDrop := true;
+
   SetWorkbookSource(FInternalWorkbookSource);
  {$IFNDEF FPS_NO_GRID_MULTISELECT}
   RangeSelectMode := rsmMulti;
  {$ENDIF}
 
-  FAllowDragAndDrop := true;
                                      (*
   FSingleLineStringEditor := TsSingleLineStringCellEditor.Create(self);
   FSingleLineStringEditor.name :='SingleLineStringEditor';
@@ -2503,6 +2514,18 @@ begin
           end;
     Accept := true;
   end;
+end;
+
+procedure TsCustomWorksheetGrid.DragTimerElapsed(Sender: TObject);
+var
+  P: TPoint;
+begin
+  FDragTimer.Enabled := false;
+  P := ScreenToClient(Mouse.CursorPos);
+  if MouseOnCellBorder(P, Selection) then
+    Cursor := crSize
+  else
+    Cursor := crDefault;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5385,7 +5408,7 @@ begin
 }
 
   if Assigned(Dragmanager) and DragManager.IsDragging then
-  begin;
+  begin
     Cursor := crDefault;
   end else
   begin
@@ -5393,7 +5416,7 @@ begin
       FHyperlinkTimer.Enabled := false;
 
     if MouseOnCellBorder(Point(X, Y), Selection) then
-      Cursor := crSize
+      FDragTimer.Enabled := true
     else
       Cursor := crDefault;
   end;
