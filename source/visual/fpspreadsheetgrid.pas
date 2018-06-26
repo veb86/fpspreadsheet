@@ -61,29 +61,6 @@ type
     property JoinStyle default pjsMiter;
   end;
 
-  (*
-  TsSingleLineStringCellEditor = class(TEdit)
-  private
-    FGrid: TsCustomWorksheetGrid;
-    FCol, FRow:Integer;
-//    procedure WMKillFocus(var AMessage: TLMKillFocus); message LM_KILLFOCUS;
-  protected
-    procedure Change; override;
-    procedure KeyDown(var AKey: Word; AShift : TShiftState); override;
-    procedure msg_GetGrid(var AMsg: TGridMessage); message GM_GETGRID;
-    procedure msg_GetValue(var AMsg: TGridMessage); message GM_GETVALUE;
-    procedure msg_SelectAll(var AMsg: TGridMessage); message GM_SELECTALL;
-    procedure msg_SetGrid(var AMsg: TGridMessage); message GM_SETGRID;
-    procedure msg_SetPos(var AMsg: TGridMessage); message GM_SETPOS;
-    procedure msg_SetValue(var AMsg: TGridMessage); message GM_SETVALUE;
-    procedure WndProc(var AMsg: TLMessage); override;
-  public
-    constructor Create(AOwner: TComponent); override;
-    procedure EditingDone; override;
-    property OnEditingDone;
-  end;
-  *)
-
   TsMultilineStringCellEditor = class(TMemo)
   private
     FGrid: TsCustomWorksheetGrid;
@@ -281,7 +258,6 @@ type
     procedure DefineProperties(Filer: TFiler); override;
     procedure DoCopyToClipboard; override;
     procedure DoCutToClipboard; override;
-    procedure DoEditorHide; override;
     procedure DoEditorShow; override;
     procedure DoEnter; override;
     procedure DoExit; override;
@@ -1141,185 +1117,6 @@ end;
 
 
 {*******************************************************************************
-*                          TsSingleLineStringCellEditor                        *
-*******************************************************************************}
-                                   (*
-constructor TsSingleLineStringCellEditor.Create(AOwner: TComponent);
-begin
-  inherited Create(AOwner);
-  AutoSize := false;
-end;
-
-procedure TsSingleLineStringCellEditor.Change;
-begin
-  inherited Change;
-  if (FGrid <> nil) and Visible then begin
-    FGrid.EditorTextChanged(FCol, FRow, Text);
-  end;
-end;
-   {
-function TsSingleLineStringCellEditor.DoValidText(const AText: String): Boolean;
-var
-  err: String;
-begin
-  Result := FGrid.ValidFormula(AText, err);
-  if not Result then
-    MessageDlg(err, mtError, [mbOK], 0);
-end;
-  }
-procedure TsSingleLineStringCellEditor.EditingDone;
-begin
-  inherited EditingDone;
-  if FGrid <> nil then
-    FGrid.EditingDone;
-end;
-
-procedure TsSingleLineStringCellEditor.msg_GetGrid(var AMsg: TGridMessage);
-begin
-  AMsg.Grid := FGrid;
-  AMsg.Options:= EO_IMPLEMENTED;
-end;
-
-procedure TsSingleLineStringCellEditor.msg_GetValue(var AMsg: TGridMessage);
-begin
-  AMsg.Col := FCol;
-  AMsg.Row := FRow;
-  AMsg.Value := Text;
-end;
-
-procedure TsSingleLineStringCellEditor.KeyDown(var AKey: Word;
-  AShift: TShiftState);
-
-  function AllSelected: boolean;
-  begin
-    Result := (SelLength > 0) and (SelLength = UTF8Length(Text));
-  end;
-
-  function AtStart: Boolean;
-  begin
-    Result := (SelStart = 0);
-  end;
-
-  function AtEnd: Boolean;
-  begin
-    Result := ((SelStart + 1) > UTF8Length(Text)) or AllSelected;
-  end;
-
-  procedure DoEditorKeyDown;
-  begin
-    if FGrid <> nil then
-      FGrid.EditorkeyDown(Self, AKey, AShift);
-  end;
-
-  procedure DoGridKeyDown;
-  begin
-    if FGrid <> nil then
-      FGrid.KeyDown(AKey, AShift);
-  end;
-
-  function GetFastEntry: boolean;
-  begin
-    if FGrid <> nil then
-      Result := FGrid.FastEditing
-    else
-      Result := False;
-  end;
-
-  procedure CheckEditingKey;
-  begin
-    if (FGrid = nil) or FGrid.EditorIsReadOnly then
-      AKey := 0;
-  end;
-
-var
-  IntSel: boolean;
-begin
-  inherited KeyDown(AKey, AShift);
-  case AKey of
-    VK_F2:
-      if AllSelected then begin
-        SelLength := 0;
-        SelStart := Length(Text);
-      end;
-    VK_DELETE, VK_BACK:
-      CheckEditingKey;
-    VK_UP, VK_DOWN:
-      DoGridKeyDown;
-    VK_LEFT, VK_RIGHT:
-      if GetFastEntry then
-      begin
-        IntSel:=
-          ((AKey = VK_LEFT) and not AtStart) or
-          ((AKey = VK_RIGHT) and not AtEnd);
-        if not IntSel then begin
-          DoGridKeyDown;
-      end;
-    end;
-    VK_END, VK_HOME:
-      ;
-    VK_ESCAPE:
-      begin
-        doGridKeyDown;
-        if AKey <> 0 then begin
-          Text := FGrid.FOldEditorText;
-          FGrid.EditorHide;
-        end;
-      end;
-    else
-      DoEditorKeyDown;
-  end;
-end;
-
-procedure TsSingleLineStringCellEditor.msg_SelectAll(var AMsg: TGridMessage);
-begin
-  Unused(AMsg);
-  SelectAll;
-end;
-
-procedure TsSingleLineStringCellEditor.msg_SetGrid(var AMsg: TGridMessage);
-begin
-  FGrid := AMsg.Grid as TsCustomWorksheetGrid;
-  AMsg.Options := EO_AUTOSIZE or EO_SELECTALL or EO_HOOKKEYPRESS or EO_HOOKKEYUP;
-end;
-
-{
-procedure TsSingleLineStringCellEditor.msg_SetMask(var AMsg: TGridMessage);
-begin
-  EditMask := AMsg.Value;
-end;
-}
-procedure TsSingleLineStringCellEditor.msg_SetPos(var AMsg: TGridMessage);
-begin
-  FCol := AMsg.Col;
-  FRow := AMsg.Row;
-end;
-
-procedure TsSingleLineStringCellEditor.msg_SetValue(var AMsg: TGridMessage);
-begin
-  Text := AMsg.Value;
-  SelStart := UTF8Length(Text);
-end;
-    {
-procedure TsSingleLineStringCellEditor.WMKillFocus(var AMessage: TLMKillFocus);
-begin
-end;
-}
-
-procedure TsSingleLineStringCellEditor.WndProc(var AMsg: TLMessage);
-begin
-  if FGrid <> nil then
-    case AMsg.Msg of
-      LM_CLEAR, LM_CUT, LM_PASTE:
-        begin
-          if FGrid.EditorIsReadOnly then
-            exit;
-        end;
-    end;
-  inherited WndProc(AMsg);
-end;
-                            *)
-
-{*******************************************************************************
 *                           TsMultiLineStringCellEditor                        *
 *******************************************************************************}
 
@@ -1335,15 +1132,6 @@ begin
   if (FGrid <> nil) and Visible then
     FGrid.EditorTextChanged(FCol, FRow, Text);
 end;
-                       (*
-function TsMultiLineStringCellEditor.DoValidText(const AText: String): Boolean;
-var
-  err: String;
-begin
-  Result := FGrid.ValidFormula(AText, err);
-  if not Result then
-    MessageDlg(err, mtError, [mbOK], 0);
-end;                     *)
 
 procedure TsMultilineStringCellEditor.EditingDone;
 begin
@@ -1471,10 +1259,6 @@ begin
   Text := AMsg.Value;
   SelStart := UTF8Length(Text);
 end;
-                           (*
-procedure TsMultiLineStringCellEditor.WMKillFocus(var AMessage: TLMKillFocus);
-begin
-end;                         *)
 
 procedure TsMultilineStringCellEditor.WndProc(var AMsg: TLMessage);
 begin
@@ -1545,14 +1329,6 @@ begin
   RangeSelectMode := rsmMulti;
  {$ENDIF}
 
-                                     (*
-  FSingleLineStringEditor := TsSingleLineStringCellEditor.Create(self);
-  FSingleLineStringEditor.name :='SingleLineStringEditor';
-  FSingleLineStringEditor.Text := '';
-  FSingleLineStringEditor.Visible := False;
-  FSingleLineStringEditor.Align := alNone;
-  FSingleLineStringEditor.BorderStyle := bsNone;      *)
-
   dec(FRowHeightLock);
   UpdateRowHeights;
 end;
@@ -1568,7 +1344,6 @@ begin
   FreeAndNil(FCellFont);
   FreeAndNil(FSelPen);
   FreeAndNil(FFrozenBorderPen);
-//  FreeAndNil(FSingleLineStringEditor);
   FreeAndNil(FMultiLineStringEditor);
   inherited Destroy;
 end;
@@ -1889,10 +1664,8 @@ begin
   if (cell = nil) or not (cell^.ContentType in [cctUTF8String]) then  // ... non-label cells
     exit;
 
-//  fmt := Workbook.GetPointerToCellFormat(cell^.FormatIndex);
   idx := Worksheet.GetEffectiveCellFormatIndex(cell);
   fmt := Workbook.GetPointerToCellFormat(idx);
-//  fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
   if (uffWordWrap in fmt^.UsedFormattingFields) then           // ... word-wrap
     exit;
   if (uffTextRotation in fmt^.UsedFormattingFields) and        // ... vertical text
@@ -2234,22 +2007,6 @@ begin
   // This next comment does not seem to be valid any more: Issue handled by eating key in KeyDown
   // Remove for the moment: If TsPasteActions is available this code would be executed twice
   WorkbookSource.PasteCellsFromClipboard(coCopyCell);
-end;
-
-procedure TsCustomWorksheetGrid.DoEditorHide;
-var
-  msg: String;
-begin
-  inherited;
-  {
-  // The following code is reached when an error is found in the cell formula
-  // being edited and another control is selected.
-  if (FEditText <> '') then begin
-    if not lula(FEditText, msg) then
-      MessageDlg(msg, mtError, [mbOK], 0);
-    FEditText := '';
-  end;
-  }
 end;
 
 { Make the cell editor the same size as the edited cell, in particular for
@@ -3459,7 +3216,6 @@ begin
 
   idx := Worksheet.GetEffectiveCellFormatIndex(lCell);
   fmt := Workbook.GetPointerToCellFormat(idx);
-//  fmt := Worksheet.GetPointerToEffectiveCellFormat(lCell);
   wrapped := (uffWordWrap in fmt^.UsedFormattingFields) or (fmt^.TextRotation = rtStacked);
   RTL := IsRightToLeft;
   if (uffBiDi in fmt^.UsedFormattingFields) then
@@ -3676,82 +3432,6 @@ begin
     SetNeighborBorder(Row+1, Col, cbNorth, fmt^.BorderStyles[cbSouth], cbSouth in fmt^.Border);
   end;
 end;
-
-(*
-{@@ ----------------------------------------------------------------------------
-  The "colors" used by the spreadsheet are indexes into the workbook's color
-  palette. If the user wants to set a color to a particular RGB value this is
-  not possible in general. The method FindNearestPaletteIndex finds the bast
-  matching color in the palette.
-
-  @param  AColor  Color index into the workbook's palette
--------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.FindNearestPaletteIndex(AColor: TColor): TsColor;
-begin
-  Result := fpsVisualUtils.FindNearestPaletteIndex(Workbook, AColor);
-end;
-  *)
-                                          (*
-{@@ ----------------------------------------------------------------------------
-  Notification by the workbook link that a cell has been modified. --> Repaint.
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.CellChanged(ACell: PCell);
-begin
-  Unused(ACell);
-  Invalidate;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Notification by the workbook link that another cell has been selected
-  --> select the cell in the grid
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.CellSelected(ASheetRow, ASheetCol: Cardinal);
-var
-  grow, gcol: Integer;
-begin
-  if (FWorkbookLink <> nil) then
-  begin
-    grow := GetGridRow(ASheetRow);
-    gcol := GetGridCol(ASheetCol);
-    if (grow <> Row) or (gcol <> Col) then begin
-      Row := grow;
-      Col := gcol;
-    end;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Notification by the workbook link that a new workbook is available.
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.WorkbookChanged;
-begin
-  WorksheetChanged;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Notification by the workbook link that a new worksheet has been selected from
-  the current workbook. Is also called internally from WorkbookChanged.
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.WorksheetChanged;
-begin
-  if Worksheet <> nil then begin
-    //Worksheet.OnChangeCell := @ChangedCellHandler;
-    //Worksheet.OnChangeFont := @ChangedFontHandler;
-    ShowHeaders := (soShowHeaders in Worksheet.Options);
-    ShowGridLines := (soShowGridLines in Worksheet.Options);
-    if (soHasFrozenPanes in Worksheet.Options) then begin
-      FrozenCols := Worksheet.LeftPaneWidth;
-      FrozenRows := Worksheet.TopPaneHeight;
-    end else begin
-      FrozenCols := 0;
-      FrozenRows := 0;
-    end;
-    Row := FrozenRows;
-    Col := FrozenCols;
-  end;
-  Setup;
-end;
-                                            *)
 
 {@@ ----------------------------------------------------------------------------
   Returns the background color of a cell. The color is given as an index into
@@ -4236,18 +3916,6 @@ begin
         Result := TrimToCell(cell)
       else
         Result := Worksheet.ReadAsText(cell);
-      {
-      if Worksheet.ReadTextRotation(cell) = rtStacked then
-      begin
-        s := Result;
-        Result := '';
-        for i:=1 to Length(s) do
-        begin
-          Result := Result + s[i];
-          if i < Length(s) then Result := Result + LineEnding;
-        end;
-      end;
-      }
     end;
   end;
 end;
@@ -4491,12 +4159,6 @@ begin
       cbSouth : if ACell^.Row < r2 then Result := false;
       cbEast  : if ACell^.Col < c2 then Result := false;
       cbWest  : if ACell^.Col > c1 then Result := false;
-      {
-      cbEast  : if (IsRightToLeft and (ACell^.Col > c1)) or
-                   (not IsRightToLeft and (ACell^.Col < c2)) then Result := false;
-      cbWest  : if (IsRightToLeft and (ACell^.Col < c2)) or
-                   (not IsRightToLeft and (ACell^.Col > c1)) then Result := false;
-                   }
     end;
   end else
     Result := ABorder in Worksheet.ReadCellBorders(ACell);
@@ -4611,7 +4273,6 @@ begin
   if GetGridCol(Worksheet.GetLastColIndex + 1) >= ColCount then
     ColCount := ColCount + 1;
   c := GetWorksheetCol(AGridCol);
-//  c := AGridCol - FHeaderCount;
   Worksheet.InsertCol(c);
 
   UpdateColWidths(AGridCol);
@@ -4749,7 +4410,6 @@ begin
         // Overflow possible from non-merged, horizontal, non-left-aligned label cells
         idx := Worksheet.GetEffectiveCellFormatIndex(cell);
         fmt := Workbook.GetPointerToCellFormat(idx);
-//        fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
         if (not Worksheet.IsMerged(cell)) and
            (cell^.ContentType = cctUTF8String) and
            not (uffTextRotation in fmt^.UsedFormattingFields) and
@@ -4994,40 +4654,6 @@ begin
   inherited;
 end;
 
-
-                               (*
-{@@ ----------------------------------------------------------------------------
-  Loads the worksheet into the grid and displays its contents.
-
-  @param   AWorksheet   Worksheet to be displayed in the grid
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.LoadFromWorksheet(AWorksheet: TsWorksheet);
-begin
-  if FWorkbookSource <> nil then
-    exit;
-
-  GetWorkbookSource.LoadFro
-  FOwnedWorksheet := AWorksheet;
-  if FOwnedWorksheet <> nil then begin
-    inc(FLockSetup);
-    FOwnedWorksheet.OnChangeCell := @ChangedCellHandler;
-    FOwnedWorksheet.OnChangeFont := @ChangedFontHandler;
-    ShowHeaders := (soShowHeaders in Worksheet.Options);
-    ShowGridLines := (soShowGridLines in Worksheet.Options);
-    if (soHasFrozenPanes in Worksheet.Options) then begin
-      FrozenCols := FOwnedWorksheet.LeftPaneWidth;
-      FrozenRows := FOwnedWorksheet.TopPaneHeight;
-    end else begin
-      FrozenCols := 0;
-      FrozenRows := 0;
-    end;
-    Row := FrozenRows;
-    Col := FrozenCols;
-    dec(FLockSetup);
-  end;
-  Setup;
-end;
-                                 *)
 {@@ ----------------------------------------------------------------------------
   Creates a new workbook and loads the given file into it. The file is assumed
   to have the given file format. Shows the sheet with the given sheet index.
@@ -5393,31 +5019,14 @@ end;
   grid instead.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MouseMove(Shift: TShiftState; X, Y: Integer);
-{
-  --- wp: removed this for testing: why is the entire grid repainted when the
-          mouse moved to another cell?
-var
-  prevMouseCell: TPoint;
-}
 begin
   if Worksheet = nil then
     exit;
-
-{  --- wp
-  prevMouseCell := GCache.MouseCell;
-}
 
   inherited;
 
   if MouseOnHeader(X,Y) then
     exit;
-
-{ --- wp
-  if FTextOverflow and
-     ((prevMouseCell.X <> GCache.MouseCell.X) or (prevMouseCell.Y <> GCache.MouseCell.Y))
-  then
-    InvalidateGrid;
-}
 
   if Assigned(Dragmanager) and DragManager.IsDragging then
   begin
@@ -6212,15 +5821,13 @@ end;
 procedure TsCustomWorksheetGrid.WMHScroll(var message: TLMHScroll);
 begin
   inherited;
-  //if Worksheet.GetImageCount > 0 then
-    Invalidate;
+  Invalidate;
 end;
 
 procedure TsCustomWorksheetGrid.WMVScroll(var message: TLMVScroll);
 begin
   inherited;
-  //if Worksheet.GetImageCount > 0 then
-    Invalidate;
+  Invalidate;
 end;
 
 
@@ -6973,7 +6580,6 @@ begin
     begin
       idx := Worksheet.GetEffectiveCellFormatIndex(cell);
       fmt := Workbook.GetPointerToCellFormat(idx);
-//      fmt := Worksheet.GetPointerToEffectiveCellFormat(cell);
       if fmt <> nil then
         nfp := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
       if (fmt <> nil) and IsDateTimeFormat(nfp) then
