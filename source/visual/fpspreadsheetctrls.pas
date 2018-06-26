@@ -262,6 +262,7 @@ type
     procedure KeyUp(var Key: Word; Shift: TShiftState); override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure ShowCell(ACell: PCell); virtual;
+    procedure WriteToCell;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -1953,12 +1954,13 @@ var
   err: String;
 begin
   Result := ValidFormula(AText, err);
-  if not Result then begin
-    Worksheet.SelectCell(FRefocusingRow, FRefocusingCol);
-    Text := AText;  // restore orig text lost by interaction with grid
-    SelStart := FRefocusingSelStart;
+  Worksheet.SelectCell(FRefocusingRow, FRefocusingCol);
+  Text := AText;  // restore orig text lost by interaction with grid
+  SelStart := FRefocusingSelStart;
+  if Result then
+    WriteToCell
+  else
     MessageDlg(err, mtError, [mbOK], 0);
-  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1970,7 +1972,6 @@ end;
 procedure TsCellEdit.EditingDone;
 var
   s: String;
-  cell: PCell;
 begin
   if (Worksheet = nil) then
     exit;
@@ -1980,14 +1981,7 @@ begin
     exit;
   end;
 
-  cell := Worksheet.GetCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
-  if Worksheet.IsMerged(cell) then
-    cell := Worksheet.FindMergeBase(cell);
-  s := Lines.Text;
-  if (s <> '') and (s[1] = '=') then
-    Worksheet.WriteFormula(cell, Copy(s, 2, Length(s)), true)
-  else
-    Worksheet.WriteCellValueAsString(cell, s);
+  WriteToCell;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2237,6 +2231,25 @@ procedure TsCellEdit.WMKillFocus(var AMessage: TLMKillFocus);
 begin
   // Override inherited behavior because we don't want to call EditingDone
   // here.
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the current edit text to the cell
+  Note: All validation checks already have been performed.
+-------------------------------------------------------------------------------}
+procedure TsCellEdit.WriteToCell;
+var
+  cell: PCell;
+  s: String;
+begin
+  cell := Worksheet.GetCell(Worksheet.ActiveCellRow, Worksheet.ActiveCellCol);
+  if Worksheet.IsMerged(cell) then
+    cell := Worksheet.FindMergeBase(cell);
+  s := Lines.Text;
+  if (s <> '') and (s[1] = '=') then
+    Worksheet.WriteFormula(cell, Copy(s, 2, Length(s)), true)
+  else
+    Worksheet.WriteCellValueAsString(cell, s);
 end;
 
 
