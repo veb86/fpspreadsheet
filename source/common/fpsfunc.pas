@@ -309,13 +309,13 @@ end;
 
 procedure fpsROUND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
+  x: Double;
   n: Integer;
 begin
-  if Args[1].ResultType = rtInteger then
-    n := Args[1].ResInteger
-  else
-    n := round(Args[1].ResFloat);
-  Result := FloatResult(RoundTo(ArgToFloat(Args[0]), -n));
+  x := ArgToFloat(Args[0]);
+  n := Round(ArgToFloat(Args[1]));
+  Result := FloatResult(RoundTo(x, -n));
+    // -n because fpc and Excel have different conventions regarding the sign
 end;
 
 procedure fpsSIGN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
