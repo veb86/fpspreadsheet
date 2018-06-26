@@ -4520,7 +4520,7 @@ begin
   AError := errOK;
   SetLength(AData, BLOCKSIZE);
   n := 0;
-  for i:=0 to High(Args) do
+  for i:=Low(Args) to High(Args) do
   begin
     arg := Args[i];
     if arg.ResultType = rtError then begin

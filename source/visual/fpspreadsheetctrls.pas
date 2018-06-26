@@ -1939,6 +1939,7 @@ begin
     // Initiate validation of current input
     PostMessage(Handle, UM_VALIDATEINPUT, 0, LParam(Self));
   end;
+  inherited;
 end;
 
 {@@ ----------------------------------------------------------------------------

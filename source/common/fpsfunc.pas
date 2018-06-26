@@ -121,7 +121,7 @@ var
   x: TsExprFloat;
   n: Integer;
 begin
-  if Args[0].ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtEmpty] then begin
+  if Args[0].ResultType in [rtCell, rtInteger, rtFloat, rtDateTime, rtEmpty] then begin
     x := ArgToFloat(Args[0]);
     if x > 0 then
     begin
@@ -152,7 +152,7 @@ var
   res: TsExprFloat;
   i, n: Integer;
 begin
-  if Args[0].ResultType in [rtInteger, rtFloat, rtEmpty, rtDateTime] then
+  if Args[0].ResultType in [rtCell, rtInteger, rtFloat, rtEmpty, rtDateTime] then
   begin
     res := 1.0;
     n := ArgToInt(Args[0]);
@@ -263,7 +263,7 @@ var
   x: TsExprFloat;
   n: Integer;
 begin
-  if Args[0].ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtEmpty] then
+  if Args[0].ResultType in [rtCell, rtInteger, rtFloat, rtDateTime, rtEmpty] then
   begin
     x := ArgToFloat(Args[0]);
     if x >= 0 then
@@ -421,22 +421,13 @@ procedure fpsDAY(var Result: TsExpressionResult; const Args: TsExprParameterArra
 // date_value can be a serial number or a string
 var
   y,m,d: Word;
-  dt: TDateTime;
 begin
-  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger]) then
-    DecodeDate(ArgToFloat(Args[0]), y,m,d)
-  else
-  if Args[0].ResultType in [rtString] then
-  begin
-    if TryStrToDate(Args[0].ResString, dt) then
-      DecodeDate(dt, y,m,d)
-    else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
-  end;
-  Result := IntegerResult(d);
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell])
+  then begin
+    DecodeDate(ArgToFloat(Args[0]), y, m, d);
+    Result := IntegerResult(d);
+  end else
+    Result := ErrorResult(errWrongType);
 end;
 
 procedure fpsHOUR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -446,20 +437,12 @@ var
   h, m, s, ms: Word;
   t: double;
 begin
-  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger]) then
-    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms)
-  else
-  if (Args[0].ResultType in [rtString]) then
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
-    if TryStrToTime(Args[0].ResString, t) then
-      DecodeTime(t, h,m,s,ms)
-    else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
-  end;
-  Result := IntegerResult(h);
+    DecodeTime(trunc(ArgToFloat(Args[0])), h,m,s,ms);
+    Result := IntegerResult(h);
+  end else
+    Result := ErrorResult(errWrongType);
 end;
 
 procedure fpsMINUTE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -468,20 +451,12 @@ var
   h, m, s, ms: Word;
   t: double;
 begin
-  if (Args[0].resultType in [rtDateTime, rtFloat, rtInteger]) then
-    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms)
-  else
-  if (Args[0].ResultType in [rtString]) then
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
-    if TryStrToTime(Args[0].ResString, t) then
-      DecodeTime(t, h,m,s,ms)
-    else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
-  end;
-  Result := IntegerResult(m);
+    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms);
+    Result := IntegerResult(m);
+  end else
+    Result := ErrorResult(errWrongType);
 end;
 
 procedure fpsMONTH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -490,20 +465,12 @@ var
   y,m,d: Word;
   dt: TDateTime;
 begin
-  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger]) then
-    DecodeDate(ArgToFloat(Args[0]), y,m,d)
-  else
-  if (Args[0].ResultType in [rtString]) then
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
-    if TryStrToDate(Args[0].ResString, dt) then
-      DecodeDate(dt, y,m,d)
-    else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
-  end;
-  Result := IntegerResult(m);
+    DecodeDate(ArgToFloat(Args[0]), y,m,d);
+    Result := IntegerResult(m);
+  end else
+    Result := ErrorResult(errWrongType);
 end;
 
 procedure fpsNOW(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -521,20 +488,12 @@ var
   h, m, s, ms: Word;
   t: Double;
 begin
-  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger]) then
-    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms)
-  else
-  if (Args[0].ResultType in [rtString]) then
-  begin
-    if TryStrToTime(Args[0].ResString, t) then
-      DecodeTime(t, h,m,s,ms)
-    else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
-  end;
-  Result := IntegerResult(s);
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell])
+  then begin
+    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms);
+    Result := IntegerResult(s);
+  end else
+    Result := ErrorResult(errWrongType);
 end;
 
 procedure fpsTIME(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -580,7 +539,7 @@ begin
     n := ArgToInt(Args[1])
   else
     n := 1;
-  if Args[0].ResultType in [rtCell, rtDateTime, rtFloat, rtInteger] then
+  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtCell] then
     dt := ArgToDateTime(Args[0])
   else
   if Args[0].ResultType in [rtString] then
@@ -604,20 +563,12 @@ var
   y,m,d: Word;
   dt: TDateTime;
 begin
-  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger] then
-    DecodeDate(ArgToFloat(Args[0]), y,m,d)
-  else
-  if Args[0].ResultType in [rtString] then
-  begin
-    if TryStrToDate(Args[0].ResString, dt) then
-      DecodeDate(dt, y,m,d)
-    else
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
-  end;
-  Result := IntegerResult(y);
+  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]
+  then begin
+    DecodeDate(ArgToFloat(Args[0]), y,m,d);
+    Result := IntegerResult(y);
+  end else
+    Result := ErrorResult(errWrongType);
 end;
 
 
@@ -905,7 +856,10 @@ var
 begin
   b := true;
   for i:=0 to High(Args) do
-    b := b and Args[i].ResBoolean;
+    if not ArgToBoolean(Args[i]) then begin
+      b := false;
+      break;
+    end;
   Result.ResBoolean := b;
 end;
 
@@ -921,13 +875,13 @@ procedure fpsIF(var Result: TsExpressionResult; const Args: TsExprParameterArray
 begin
   if Length(Args) > 2 then
   begin
-    if Args[0].ResBoolean then
+    if ArgToBoolean(Args[0]) then
       Result := Args[1]
     else
       Result := Args[2];
   end else
   begin
-    if Args[0].ResBoolean then
+    if ArgToBoolean(Args[0]) then
       Result := Args[1]
     else
       Result.ResBoolean := false;
@@ -937,7 +891,7 @@ end;
 procedure fpsNOT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // NOT( condition )
 begin
-  Result.ResBoolean := not Args[0].ResBoolean;
+  Result.ResBoolean := not ArgToBoolean(Args[0]);
 end;
 
 procedure fpsOR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -949,7 +903,10 @@ var
 begin
   b := false;
   for i:=0 to High(Args) do
-    b := b or Args[i].ResBoolean;
+    if ArgToBoolean(Args[i]) then begin
+      b := true;
+      break;
+    end;
   Result.ResBoolean := b;
 end;
 
