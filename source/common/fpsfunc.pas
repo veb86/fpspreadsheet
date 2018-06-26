@@ -1076,9 +1076,13 @@ var
   r, c: LongInt;
   dr, dc: LongInt;
   cell, addcell: PCell;
+  sh: Integer;
   s: String;
   f: Double;
   dt: TDateTime;
+  book: TsWorkbook;
+  sheet0: TsWorksheet;
+  sheet2: TsWorksheet;
   compareNumber: Double = 0.0;
   compareStr: String = '';
   compareOp: TsCompareOperation = coEqual;
@@ -1286,8 +1290,21 @@ begin
                    else DoCompareEmpty(ArgToString(Args[0]) = '', ArgToFloat(Args[2]));
     end
   else
-  if (Args[0].ResultType = rtCellRange) then
+  if (Args[0].ResultType = rtCellRange) then begin
+    if Args[0].ResCellRange.Sheet1 <> Args[0].ResCellRange.Sheet2 then begin
+      Result := ErrorResult(errArgError);
+      exit;
+    end;
+    if (Length(Args) = 3) and (Args[2].ResCellRange.Sheet1 <> Args[2].ResCellrange.Sheet2) then
+    begin
+      Result := ErrorResult(errArgError);
+      exit;
+    end;
+    book := TsWorkbook(TsWorksheet(Args[0].Worksheet).Workbook);
+    sheet0 := book.GetWorksheetByIndex(Args[0].ResCellRange.Sheet1);
+    sheet2 := book.GetWorksheetbyIndex(Args[2].ResCellrange.Sheet1);
     for r := Args[0].ResCellRange.Row1 to Args[0].ResCellRange.Row2 do
+    begin
       for c := Args[0].ResCellRange.Col1 to Args[0].ResCellRange.Col2 do
       begin
         // Get value to be added. Not needed for counting (AFlag = 0)
@@ -1295,8 +1312,9 @@ begin
         if AFlag > 0 then
         begin
           if Length(Args) = 2 then
-            addcell := (Args[0].Worksheet as TsWorksheet).FindCell(r + dr, c + dc) else
-            addCell := (Args[2].Worksheet as TsWorksheet).FindCell(r + dr, c + dc);
+            addcell := sheet0.FindCell(r + dr, c + dc)
+          else
+            addCell := sheet2.FindCell(r + dr, c + dc);
           if addcell <> nil then
             case addcell^.Contenttype of
               cctNumber  : addnumber := addcell^.NumberValue;
@@ -1305,7 +1323,7 @@ begin
             end;
         end;
 
-        cell := (Args[0].Worksheet as TsWorksheet).FindCell(r, c);
+        cell := sheet0.FindCell(r, c);
         case compareType of
           ctNumber:
             if cell <> nil then
@@ -1326,6 +1344,8 @@ begin
             DoCompareEmpty((cell = nil) or ((cell <> nil) and (cell^.ContentType = cctEmpty)), addNumber);
         end;
       end;
+    end;
+  end;
 
   case AFlag of
     0: Result := IntegerResult(n);
