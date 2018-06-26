@@ -421,13 +421,15 @@ procedure fpsDAY(var Result: TsExpressionResult; const Args: TsExprParameterArra
 // date_value can be a serial number or a string
 var
   y,m,d: Word;
+  dt: TDateTime;
 begin
-  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell])
-  then begin
-    DecodeDate(ArgToFloat(Args[0]), y, m, d);
+  Result := ErrorResult(errWrongType);
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
+  begin
+    dt := ArgToDateTime(Args[0]);
+    DecodeDate(dt, y, m, d);
     Result := IntegerResult(d);
-  end else
-    Result := ErrorResult(errWrongType);
+  end;
 end;
 
 procedure fpsHOUR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -435,28 +437,30 @@ procedure fpsHOUR(var Result: TsExpressionResult; const Args: TsExprParameterArr
 // time_value can be a number or a string.
 var
   h, m, s, ms: Word;
-  t: double;
+  dt: TDateTime;
 begin
+  Result := ErrorResult(errWrongType);
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
-    DecodeTime(trunc(ArgToFloat(Args[0])), h,m,s,ms);
+    dt := ArgToDateTime(Args[0]);
+    DecodeTime(dt, h, m, s, ms);
     Result := IntegerResult(h);
-  end else
-    Result := ErrorResult(errWrongType);
+  end;
 end;
 
 procedure fpsMINUTE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // MINUTE( serial_number or string )
 var
   h, m, s, ms: Word;
-  t: double;
+  dt: TDateTime;
 begin
+  Result := ErrorResult(errWrongType);
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
-    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms);
+    dt := ArgToDateTime(Args[0]);
+    DecodeTime(dt, h, m, s, ms);
     Result := IntegerResult(m);
-  end else
-    Result := ErrorResult(errWrongType);
+  end;
 end;
 
 procedure fpsMONTH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -465,12 +469,13 @@ var
   y,m,d: Word;
   dt: TDateTime;
 begin
+  Result := ErrorResult(errWrongType);
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
-    DecodeDate(ArgToFloat(Args[0]), y,m,d);
+    dt := ArgToDateTime(Args[0]);
+    DecodeDate(dt, y, m, d);
     Result := IntegerResult(m);
-  end else
-    Result := ErrorResult(errWrongType);
+  end;
 end;
 
 procedure fpsNOW(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -486,14 +491,15 @@ procedure fpsSECOND(var Result: TsExpressionResult; const Args: TsExprParameterA
 // SECOND( serial_number )
 var
   h, m, s, ms: Word;
-  t: Double;
+  dt: TDateTime;
 begin
-  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell])
-  then begin
-    DecodeTime(ArgToFloat(Args[0]), h,m,s,ms);
+  Result := ErrorResult(errWrongType);
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
+  begin
+    dt := ArgToDateTime(Args[0]);
+    DecodeTime(dt, h, m, s, ms);
     Result := IntegerResult(s);
-  end else
-    Result := ErrorResult(errWrongType);
+  end;
 end;
 
 procedure fpsTIME(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -563,12 +569,13 @@ var
   y,m,d: Word;
   dt: TDateTime;
 begin
-  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]
-  then begin
-    DecodeDate(ArgToFloat(Args[0]), y,m,d);
+  Result := ErrorResult(errWrongType);
+  if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
+  begin
+    dt := ArgToDateTime(Args[0]);
+    DecodeDate(dt, y, m, d);
     Result := IntegerResult(y);
-  end else
-    Result := ErrorResult(errWrongType);
+  end;
 end;
 
 

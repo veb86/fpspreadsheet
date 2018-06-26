@@ -1810,7 +1810,7 @@
       RPNFunc('DATE', nil))))))
   else
     MyWorksheet.WriteFormula(Row, 1, formula);
-  MyWorksheet.WriteDateTime(Row, 2, EncodeDate(2014,7,1));
+  MyWorksheet.WriteDateTime(Row, 2, EncodeDate(2014,7,1), nfShortDate);
   SetLength(sollValues, Row+1);
   sollValues[Row] := DateTimeResult(EncodeDate(2014,7,1));
 

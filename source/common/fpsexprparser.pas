@@ -4445,16 +4445,15 @@ begin
     rtInteger   : Result := Arg.ResInteger;
     rtFloat     : Result := Arg.ResFloat;
     rtBoolean   : if Arg.ResBoolean then Result := 1.0;
-    rtString,
-    rtHyperlink : begin
-                    fs := (Arg.Worksheet as TsWorksheet).Workbook.FormatSettings;
+    rtHyperlink,
+    rtString    : begin
+                    fs := ExprFormatSettings; //(Arg.Worksheet as TsWorksheet).Workbook.FormatSettings;
                     TryStrToDateTime(ArgToString(Arg), Result, fs);
                   end;
     rtCell      : begin
                     cell := ArgToCell(Arg);
-                    if Assigned(cell) then
-                      if (cell^.ContentType = cctDateTime) then
-                        Result := cell^.DateTimeValue;
+                    if Assigned(cell) and (cell^.ContentType = cctDateTime) then
+                      Result := cell^.DateTimeValue;
                   end;
   end;
 end;
@@ -4712,6 +4711,11 @@ initialization
   ExprFormatSettings := DefaultFormatSettings;
   ExprFormatSettings.DecimalSeparator := '.';
   ExprFormatSettings.ListSeparator := ',';
+  ExprFormatSettings.DateSeparator := '/';
+  ExprFormatSettings.TimeSeparator := ':';
+  ExprFormatSettings.ShortDateFormat := 'yyyy/m/d';  // the parser returns single digits
+  ExprFormatSettings.LongTimeFormat := 'h:n:s';
+  ExprFormatSettings.ShortTimeFormat := 'h:n';
 
   RegisterStdBuiltins(BuiltinIdentifiers);
 

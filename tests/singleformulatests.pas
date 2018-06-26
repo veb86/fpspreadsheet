@@ -41,6 +41,25 @@ type
     procedure AddCells_OOXML;
     procedure AddCells_ODS;
 
+    procedure RoundConst1_ODS;
+    procedure RoundConst2_ODS;
+    procedure RoundCell1_ODS;
+    procedure RoundCell2_ODS;
+
+    procedure YearConst_BIFF8;
+    procedure YearCell_BIFF8;
+    procedure MonthConst_BIFF8;
+    procedure MonthCell_BIFF8;
+    procedure DayConst_BIFF8;
+    procedure DayCell_BIFF8;
+
+    procedure HourConst_BIFF8;
+    procedure HourCell_BIFF8;
+    procedure MinuteConst_BIFF8;
+    procedure MinuteCell_BIFF8;
+    procedure SecondConst_BIFF8;
+    procedure SecondCell_BIFF8;
+
     procedure SumRange_BIFF2;
     procedure SumRange_BIFF5;
     procedure SumRange_BIFF8;
@@ -62,6 +81,11 @@ type
     procedure SumMultiSheetRange_FlippedSheets_OOXML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_OOXML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_ODS;
+
+    procedure CountIfRange_BIFF8;
+    procedure CountIfRangeSheet_BIFF8;
+
+    procedure SumIfRangeSheetSheet_BIFF8;
 
     procedure NonExistantSheet_BIFF5;
     procedure NonExistantSheet_BIFF8;
@@ -137,7 +161,7 @@ begin
     // Create test workbook and write test formula and needed cells
     workbook := TsWorkbook.Create;
     try
-      workbook.FormatSettings.DecimalSeparator := '.';
+      workbook.FormatSettings := ExprFormatSettings;
       workbook.Options := workbook.Options + [boCalcBeforeSaving, boAutoCalc];
       workSheet:= workBook.AddWorksheet(SHEET1);
 
@@ -147,6 +171,9 @@ begin
         worksheet.WriteNumber(3, 2, -2.0);  // C4
         worksheet.WriteNumber(4, 2, 1.5);   // C5
         worksheet.WriteNumber(2, 3, 15.0);  // D3
+
+        worksheet.WriteDateTime( 9, 1, EncodeDate(2012, 2, 5), nfShortDate);    // B10
+        worksheet.WriteDateTime(10, 1, EncodeTime(14, 20, 41, 0), nfLongTime);  // B11
       end;
 
       if ATestKind in [ftkCellRangeSheet, ftkCellRangeSheetRange] then begin
@@ -185,7 +212,7 @@ begin
     // Read file
     workbook := TsWorkbook.Create;
     try
-      workbook.FormatSettings.DecimalSeparator := '.';
+      workbook.FormatSettings := ExprFormatSettings;
       workbook.Options := workbook.Options + [boReadFormulas, boAutoCalc];
       workbook.ReadFromFile(TempFile, AFormat);
       worksheet := workbook.GetFirstWorksheet;
@@ -260,6 +287,110 @@ begin
 end;
 
 { ------ }
+
+procedure TSpreadSingleFormulaTests.RoundConst1_ODS;
+begin
+  TestFormula('ROUND(1234.56789,2)', '1234.57', ftkConstants, sfOpenDocument);
+end;
+
+procedure TSpreadSingleFormulaTests.RoundConst2_ODS;
+begin
+  TestFormula('ROUND(1234.56789,-2)', '1200', ftkConstants, sfOpenDocument);
+end;
+
+procedure TSpreadSingleFormulaTests.RoundCell1_ODS;
+begin
+  TestFormula('ROUND(1234.56789,C3)', '1234.6', ftkCells, sfOpenDocument);  // C3 = 1
+end;
+
+procedure TSpreadSingleFormulaTests.RoundCell2_ODS;
+begin
+  TestFormula('ROUND(1234.56789,C4)', '1200', ftkCells, sfOpenDocument);    // C4 = -2
+end;
+
+{ ------ }
+
+procedure TSpreadSingleFormulaTests.YearConst_BIFF8;
+var
+  s: String;
+begin
+  s := FormatDateTime(ExprFormatSettings.ShortDateFormat, EncodeDate(2012,2,5), ExprFormatSettings);
+  TestFormula(Format('YEAR("%s")', [s]), '2012', ftkConstants, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.YearCell_BIFF8;
+begin
+  TestFormula('YEAR(B10)', '2012', ftkCells, sfExcel8);      // B10: 2012/02/05
+end;
+
+procedure TSpreadSingleFormulaTests.MonthConst_BIFF8;
+var
+  s: String;
+begin
+  s := FormatDateTime(ExprFormatSettings.ShortDateFormat, EncodeDate(2012,2,5), ExprFormatSettings);
+  TestFormula(Format('MONTH("%s")', [s]), '2', ftkConstants, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.MonthCell_BIFF8;
+begin
+  TestFormula('MONTH(B10)', '2', ftkCells, sfExcel8);      // B10: 2012/02/05
+end;
+
+procedure TSpreadSingleFormulaTests.DayConst_BIFF8;
+var
+  s: String;
+begin
+  s := FormatDateTime(ExprFormatSettings.ShortDateFormat, EncodeDate(2012,2,5), ExprFormatSettings);
+  TestFormula(Format('DAY("%s")', [s]), '5', ftkConstants, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.DayCell_BIFF8;
+begin
+  TestFormula('DAY(B10)', '5', ftkCells, sfExcel8);      // B10: 2012/02/05
+end;
+
+{ ----- }
+
+procedure TSpreadSingleFormulaTests.HourConst_BIFF8;
+var
+  s: String;
+begin
+  s := FormatDateTime(ExprFormatSettings.LongTimeFormat, EncodeTime(14, 20, 41, 0), ExprFormatSettings);
+  TestFormula(Format('HOUR("%s")', [s]), '14', ftkConstants, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.HourCell_BIFF8;
+begin
+  TestFormula('HOUR(B11)', '14', ftkCells, sfExcel8);      // B11: 14:20:41
+end;
+
+procedure TSpreadSingleFormulaTests.MinuteConst_BIFF8;
+var
+  s: String;
+begin
+  s := FormatDateTime(ExprFormatSettings.LongTimeFormat, EncodeTime(14, 20, 41, 0), ExprFormatSettings);
+  TestFormula(Format('MINUTE("%s")', [s]), '20', ftkConstants, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.MinuteCell_BIFF8;
+begin
+  TestFormula('MINUTE(B11)', '20', ftkCells, sfExcel8);      // B11: 14:20:41
+end;
+
+procedure TSpreadSingleFormulaTests.SecondConst_BIFF8;
+var
+  s: String;
+begin
+  s := FormatDateTime(ExprFormatSettings.LongTimeFormat, EncodeTime(14, 20, 41, 0), ExprFormatSettings);
+  TestFormula(Format('SECOND("%s")', [s]), '41', ftkConstants, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.SecondCell_BIFF8;
+begin
+  TestFormula('SECOND(B11)', '41', ftkCells, sfExcel8);      // B11: 14:20:41
+end;
+
+{ ---- }
 
 procedure TSpreadSingleFormulaTests.SumRange_BIFF2;
 begin
@@ -362,6 +493,23 @@ begin
 end;
 
 { --- }
+
+procedure TSpreadSingleFormulaTests.CountIfRange_BIFF8;
+begin
+  TestFormula('COUNTIF(C3:C5,">1")', '1', ftkCellRange, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.CountIfRangeSheet_BIFF8;
+begin
+  TestFormula('COUNTIF(Sheet2!C3:C5,">10")', '1', ftkCellRangeSheet, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.SumIfRangeSheetSheet_BIFF8;
+begin
+  TestFormula('SUMIF(Sheet2!C3:C5,">10",Sheet3!C3:C5)', '150', ftkCellRangeSheetRange, sfExcel8);
+end;
+
+{ ---- }
 
 procedure TSpreadSingleFormulaTests.NonExistantSheet_BIFF5;
 begin
@@ -703,11 +851,10 @@ begin
 end;
 
 
-
-
 initialization
   // Register to include these tests in a full run
   RegisterTest(TSpreadSingleFormulaTests);
+
 
 end.
 
