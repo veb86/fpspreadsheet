@@ -7360,7 +7360,7 @@ begin
     parser := TsSpreadsheetParser.Create(Worksheet);
     try
       try
-        parser.Expression := AExpression;
+        parser.LocalizedExpression[Worksheet.FormatSettings] := AExpression;
       except
         on E: Exception do begin
           AErrMsg := E.Message;
