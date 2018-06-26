@@ -1775,15 +1775,14 @@ procedure fpsISBLANK(var Result: TsExpressionResult; const Args: TsExprParameter
 var
   cell: PCell;
 begin
+  Result := BooleanResult(false);
   case Args[0].ResultType of
     rtEmpty : Result := BooleanResult(true);
-    rtString: Result := BooleanResult(Args[0].ResString = '');
+//    rtString: Result := BooleanResult(Args[0].ResString = '');  --> Excel returns false here!
     rtCell  : begin
                 cell := ArgToCell(Args[0]);
                 if (cell = nil) or (cell^.ContentType = cctEmpty) then
-                  Result := BooleanResult(true)
-                else
-                  Result := BooleanResult(false);
+                  Result := BooleanResult(true);
               end;
   end;
 end;
