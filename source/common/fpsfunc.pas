@@ -1777,7 +1777,7 @@ var
 begin
   case Args[0].ResultType of
     rtEmpty : Result := BooleanResult(true);
-    rtString: Result := BooleanResult(Result.ResString = '');
+    rtString: Result := BooleanResult(Args[0].ResString = '');
     rtCell  : begin
                 cell := ArgToCell(Args[0]);
                 if (cell = nil) or (cell^.ContentType = cctEmpty) then
