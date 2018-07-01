@@ -1384,10 +1384,16 @@ end;
   to the workbook
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SetOptions(AValue: TsWorkbookOptions);
+var
+  AutoCalcChanged: Boolean;
 begin
+  AutoCalcChanged := (FOptions * [boAutoCalc]) <> (AValue* [boAutoCalc]);
   FOptions := AValue;
-  if Workbook <> nil then
+  if Workbook <> nil then begin
     Workbook.Options := FOptions;
+    if AutoCalcChanged and (boAutoCalc in FOptions) then
+      Workbook.CalcFormulas;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

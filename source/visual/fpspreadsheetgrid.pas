@@ -3912,6 +3912,9 @@ begin
     cell := Worksheet.FindCell(r, c);
     if cell <> nil then
     begin
+      if HasFormula(cell) and  not (boAutoCalc in Workbook.Options) then
+        Result := '=' + Worksheet.ReadFormula(cell)
+      else
       if ATrim then
         Result := TrimToCell(cell)
       else
@@ -6221,11 +6224,13 @@ begin
   begin
     optns := WorkbookSource.Options;
     if FAutoCalc then
-      Include(optns, boAutoCalc) else
+      Include(optns, boAutoCalc)
+    else
       Exclude(optns, boAutoCalc);
     WorkbookSource.Options := optns;
     if FInternalWorkbookSource <> nil then
       FInternalWorkbookSource.Options := optns;
+    Invalidate;
   end;
 end;
 
