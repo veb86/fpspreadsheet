@@ -660,6 +660,8 @@ type
     FBuiltinFontCount: Integer;
     FReadWriteFlag: TsReadWriteFlag;
     FCalculationLock: Integer;
+    FDeleteFormulaLock: Integer;
+    FNotificationLock: Integer;
     FRebuildFormulaLock: Integer;
     FActiveWorksheet: TsWorksheet;
     FOnOpenWorkbook: TNotifyEvent;
@@ -670,7 +672,6 @@ type
     FOnRemovingWorksheet: TsWorksheetEvent;
     FOnSelectWorksheet: TsWorksheetEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
-    FLockCount: Integer;
     FSearchEngine: TObject;
     FCryptoInfo: TsCryptoInfo;
     {FrevisionsCrypto: TsCryptoInfo;} // Commented out because it needs revision handling
@@ -797,6 +798,8 @@ type
     function FixFormulas(ACorrection: TsFormulaCorrection; AData: Pointer;
       AParam: PtrInt): boolean;
     procedure RebuildFormulas;
+    procedure LockFormulas;
+    procedure UnlockFormulas;
 
     { Clipboard }
     procedure CopyToClipboardStream(AStream: TStream; AFormat: TsSpreadsheetFormat;
@@ -1252,41 +1255,46 @@ begin
 
   // Find or create the formula cell
   lCell := GetCell(AFormula^.Row, AFormula^.Col);
-  // Assign formula result
-  case res.ResultType of
-    rtEmpty     : WriteBlank(lCell, true);
-    rtError     : WriteErrorValue(lCell, res.ResError);
-    rtInteger   : WriteNumber(lCell, res.ResInteger);
-    rtFloat     : WriteNumber(lCell, res.ResFloat);
-    rtDateTime  : WriteDateTime(lCell, res.ResDateTime);
-    rtString    : WriteText(lCell, res.ResString);
-    rtHyperlink : begin
-                    link := ArgToString(res);
-                    p := pos(HYPERLINK_SEPARATOR, link);
-                    if p > 0 then
-                    begin
-                      txt := Copy(link, p+Length(HYPERLINK_SEPARATOR), Length(link));
-                      link := Copy(link, 1, p-1);
-                    end else
-                      txt := link;
-                    WriteHyperlink(lCell, link);
-                    WriteText(lCell, txt);
-                  end;
-    rtBoolean   : WriteBoolValue(lCell, res.ResBoolean);
-    rtCell      : begin
-                    lCellRef := (res.Worksheet as TsWorksheet).FindCell(res.ResRow, res.ResCol);
-                    if lCellRef <> nil then
-                      case lCellRef^.ContentType of
-                        cctNumber    : WriteNumber(lCell, lCellRef^.NumberValue);
-                        cctDateTime  : WriteDateTime(lCell, lCellRef^.DateTimeValue);
-                        cctUTF8String: WriteText(lCell, lCellRef^.UTF8StringValue);
-                        cctBool      : WriteBoolValue(lCell, lCellRef^.Boolvalue);
-                        cctError     : WriteErrorValue(lCell, lCellRef^.ErrorValue);
-                        cctEmpty     : WriteBlank(lCell, true);
-                      end
-                    else
-                      WriteBlank(lCell, true);
-                  end;
+  FWorkbook.LockFormulas;
+  try
+    // Assign formula result
+    case res.ResultType of
+      rtEmpty     : WriteBlank(lCell, true);
+      rtError     : WriteErrorValue(lCell, res.ResError);
+      rtInteger   : WriteNumber(lCell, res.ResInteger);
+      rtFloat     : WriteNumber(lCell, res.ResFloat);
+      rtDateTime  : WriteDateTime(lCell, res.ResDateTime);
+      rtString    : WriteText(lCell, res.ResString);
+      rtHyperlink : begin
+                      link := ArgToString(res);
+                      p := pos(HYPERLINK_SEPARATOR, link);
+                      if p > 0 then
+                      begin
+                        txt := Copy(link, p+Length(HYPERLINK_SEPARATOR), Length(link));
+                        link := Copy(link, 1, p-1);
+                      end else
+                        txt := link;
+                      WriteHyperlink(lCell, link);
+                      WriteText(lCell, txt);
+                    end;
+      rtBoolean   : WriteBoolValue(lCell, res.ResBoolean);
+      rtCell      : begin
+                      lCellRef := (res.Worksheet as TsWorksheet).FindCell(res.ResRow, res.ResCol);
+                      if lCellRef <> nil then
+                        case lCellRef^.ContentType of
+                          cctNumber    : WriteNumber(lCell, lCellRef^.NumberValue);
+                          cctDateTime  : WriteDateTime(lCell, lCellRef^.DateTimeValue);
+                          cctUTF8String: WriteText(lCell, lCellRef^.UTF8StringValue);
+                          cctBool      : WriteBoolValue(lCell, lCellRef^.Boolvalue);
+                          cctError     : WriteErrorValue(lCell, lCellRef^.ErrorValue);
+                          cctEmpty     : WriteBlank(lCell, true);
+                        end
+                      else
+                        WriteBlank(lCell, true);
+                    end;
+    end;
+  finally
+    FWorkbook.UnlockFormulas;
   end;
 
   // Restore the formula. Could have been erased by WriteBlank or WriteText('')
@@ -3641,7 +3649,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.DeleteFormula(ACell: PCell);
 begin
-  if HasFormula(ACell) then begin
+  if HasFormula(ACell) and (FWorkbook.FDeleteFormulaLock = 0) then begin
     FFormulas.DeleteFormula(ACell);
     ACell^.Flags := ACell^.Flags - [cfHasFormula, cf3dFormula];
   end;
@@ -4090,7 +4098,7 @@ begin
     FName := AName;
     if FWorkbook.FReadWriteFlag = rwfNormal then begin
       FWorkbook.RebuildFormulas;
-      if (FWorkbook.FLockCount = 0) and Assigned(FWorkbook.FOnRenameWorksheet) then
+      if (FWorkbook.FNotificationLock = 0) and Assigned(FWorkbook.FOnRenameWorksheet) then
         FWorkbook.FOnRenameWorksheet(FWorkbook, self);
     end;
   end;
@@ -4595,6 +4603,9 @@ begin
     end;
   end;
 
+  // Delete any pre-existing formula
+  DeleteFormula(ACell);
+
   ACell^.UTF8StringValue := AText;
   if (AText = '') then
   begin
@@ -4718,6 +4729,9 @@ end;
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double);
 begin
   if ACell <> nil then begin
+    // Delete any pre-existing formula
+    DeleteFormula(ACell);
+    // Write number to cell
     ACell^.ContentType := cctNumber;
     ACell^.NumberValue := ANumber;
     ChangedCell(ACell^.Row, ACell^.Col);
@@ -4768,6 +4782,10 @@ begin
     raise EFPSpreadsheet.Create(rsInvalidNumberFormat);
 
   if ACell <> nil then begin
+    // Delete any pre-existing formula
+    DeleteFormula(ACell);
+
+    // Write value to cell
     ACell^.ContentType := cctNumber;
     ACell^.NumberValue := ANumber;
 
@@ -4830,6 +4848,13 @@ var
   fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
+    // Delete any pre-existing formula
+    DeleteFormula(ACell);
+
+    // Write value to cell
+    ACell^.ContentType := cctNumber;
+    ACell^.NumberValue := ANumber;
+
     parser := TsNumFormatParser.Create(ANumFormatString, FWorkbook.FormatSettings);
     try
       // Format string ok?
@@ -4843,9 +4868,6 @@ begin
     finally
       parser.Free;
     end;
-
-    ACell^.ContentType := cctNumber;
-    ACell^.NumberValue := ANumber;
 
     fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
     if ANumFormat <> nfGeneral then begin
@@ -4930,6 +4952,9 @@ end;
 procedure TsWorksheet.WriteBoolValue(ACell: PCell; AValue: Boolean);
 begin
   if ACell <> nil then begin
+    // Delete any pre-existing formula
+    DeleteFormula(ACell);
+    // Write value to cell
     ACell^.ContentType := cctBool;
     ACell^.BoolValue := AValue;
     ChangedCell(ACell^.Row, ACell^.Col);
@@ -5031,8 +5056,7 @@ begin
   if ACell = nil then
     exit;
 
-  if HasFormula(ACell) then
-    DeleteFormula(ACell);
+  DeleteFormula(ACell);
 
   if AValue = '' then
   begin
@@ -5258,6 +5282,10 @@ begin
     raise EFPSpreadsheet.Create('[TsWorksheet.WriteCurrency] ANumFormat can only be nfCurrency or nfCurrencyRed');
 
   if (ACell <> nil) then begin
+    // Delete any pre-existing formula
+    DeleteFormula(ACell);
+
+    // Write value to cell
     ACell^.ContentType := cctNumber;
     ACell^.NumberValue := AValue;
 
@@ -5293,6 +5321,9 @@ end;
 procedure TsWorksheet.WriteDateTime(ACell: PCell; AValue: TDateTime);
 begin
   if ACell <> nil then begin
+    // Delete pre-existing formula
+    DeleteFormula(ACell);
+    // Write date to cell
     ACell^.ContentType := cctDateTime;
     ACell^.DateTimeValue := AValue;
     ChangedCell(ACell^.Row, ACell^.Col);
@@ -5341,6 +5372,10 @@ var
   fmt: TsCellFormat;
 begin
   if ACell <> nil then begin
+    // Delete any pre-existing formula
+    DeleteFormula(ACell);
+
+    // Write date to cell
     ACell^.ContentType := cctDateTime;
     ACell^.DateTimeValue := AValue;
 
@@ -5588,6 +5623,9 @@ end;
 procedure TsWorksheet.WriteErrorValue(ACell: PCell; AValue: TsErrorValue);
 begin
   if ACell <> nil then begin
+    // Delete any pre-existing formula
+    DeleteFormula(ACell);
+    // Write value to cell
     ACell^.ContentType := cctError;
     ACell^.ErrorValue := AValue;
     ChangedCell(ACell^.Row, ACell^.Col);
@@ -8120,7 +8158,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.DisableNotifications;
 begin
-  inc(FLockCount);
+  inc(FNotificationLock);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8128,7 +8166,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.EnableNotifications;
 begin
-  dec(FLockCount);
+  dec(FNotificationLock);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8136,7 +8174,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbook.NotificationsEnabled: Boolean;
 begin
-  Result := (FLockCount = 0);
+  Result := (FNotificationLock = 0);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8399,7 +8437,7 @@ begin
     PrepareBeforeReading;
     ok := false;
     FReadWriteFlag := rwfRead;
-    inc(FLockCount);          // This locks various notifications from being sent
+    inc(FNotificationLock);          // This locks various notifications from being sent
     try
       AReader.ReadFromFile(AFileName, APassword, AParams);
       ok := true;
@@ -8410,7 +8448,7 @@ begin
       FFormatID := AFormatID;
     finally
       FReadWriteFlag := rwfNormal;
-      dec(FLockCount);
+      dec(FNotificationLock);
       if ok and Assigned(FOnOpenWorkbook) then   // ok is true if file has been read successfully
         FOnOpenWorkbook(self);   // send common notification
     end;
@@ -8535,7 +8573,7 @@ begin
     PrepareBeforeReading;
     FReadWriteFlag := rwfRead;
     ok := false;
-    inc(FLockCount);
+    inc(FNotificationLock);
     try
       AStream.Position := 0;
       AReader.ReadFromStream(AStream, APassword, AParams);
@@ -8547,7 +8585,7 @@ begin
       FFormatID := AFormatID;
     finally
       FReadWriteFlag := rwfNormal;
-      dec(FLockCount);
+      dec(FNotificationLock);
       if ok and Assigned(FOnOpenWorkbook) then   // ok is true if stream has been read successfully
         FOnOpenWorkbook(self);   // send common notification
     end;
@@ -8720,18 +8758,18 @@ begin
   // Set the name of the new worksheet.
   // For this we turn off notification of listeners. This is not necessary here
   // because it will be repeated at end when OnAddWorksheet is executed below.
-  inc(FLockCount);
+  inc(FNotificationLock);
   inc(FRebuildFormulaLock);
   try
     Result.Name := AName;
   finally
-    dec(FLockCount);
+    dec(FNotificationLock);
     dec(FRebuildFormulaLock);
   end;
 
   // Send notification for new worksheet to listeners. They get the worksheet
   // name here as well.
-  if (FLockCount = 0) and Assigned(FOnAddWorksheet) then
+  if (FNotificationLock = 0) and Assigned(FOnAddWorksheet) then
     FOnAddWorksheet(self, Result);
 
   // Make sure that there is an "active" worksheet
@@ -8766,7 +8804,7 @@ begin
     exit;
 
   Result := AddWorksheet(AWorksheet.Name, ReplaceDuplicateName);
-  inc(FLockCount);
+  inc(FNotificationLock);
   try
     for cell in AWorksheet.Cells do
     begin
@@ -8787,7 +8825,7 @@ begin
       Result.CopyRow(r, r, AWorksheet);
     end;
   finally
-    dec(FLockCount);
+    dec(FNotificationLock);
   end;
 
   Result.ChangedCell(r, c);
@@ -8971,7 +9009,7 @@ begin
   FActiveWorksheet := nil;
   FWorksheets.ForEachCall(RemoveWorksheetsCallback, nil);
   FWorksheets.Clear;
-  if (FLockCount = 0) and Assigned(FOnRemoveWorksheet) then
+  if (FNotificationLock = 0) and Assigned(FOnRemoveWorksheet) then
     FOnRemoveWorksheet(self, -1);
 end;
 
@@ -9748,6 +9786,16 @@ procedure TsWorkbook.RebuildFormulas;
 begin
   if FRebuildFormulaLock = 0 then
     FWorksheets.ForEachCall(RebuildFormulasCallback, nil);
+end;
+
+procedure TsWorkbook.LockFormulas;
+begin
+  inc(FDeleteFormulaLock);
+end;
+
+procedure TsWorkbook.UnlockFormulas;
+begin
+  dec(FDeleteFormulaLock);
 end;
 
 

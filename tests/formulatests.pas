@@ -38,6 +38,7 @@ type
     procedure Test_Write_Read_CalcFormulas(AFormat: TsSpreadsheetformat;
       UseRPNFormula: Boolean);
     procedure Test_Write_Read_Calc3DFormulas(AFormat: TsSpreadsheetFormat);
+    procedure Test_OverwriteFormulaTest(ATest: Integer; AFormat: TsSpreadsheetFormat);
 
   published
     // Writes out formulas & reads them back.
@@ -83,7 +84,30 @@ type
     procedure Test_Write_Read_Calc3DFormula_OOXML;
     procedure Test_Write_Read_Calc3DFormula_ODS;
 
+    { Overwrite formula with other content }
+    procedure Test_OverwriteFormula_Number_BIFF2;
+    procedure Test_OverwriteFormula_Number_BIFF5;
+    procedure Test_OverwriteFormula_Number_BIFF8;
+    procedure Test_OverwriteFormula_Number_OOXML;
+    procedure Test_OverwriteFormula_Number_ODS;
 
+    procedure Test_OverwriteFormula_Text_BIFF2;
+    procedure Test_OverwriteFormula_Text_BIFF5;
+    procedure Test_OverwriteFormula_Text_BIFF8;
+    procedure Test_OverwriteFormula_Text_OOXML;
+    procedure Test_OverwriteFormula_Text_ODS;
+
+    procedure Test_OverwriteFormula_Bool_BIFF2;
+    procedure Test_OverwriteFormula_Bool_BIFF5;
+    procedure Test_OverwriteFormula_Bool_BIFF8;
+    procedure Test_OverwriteFormula_Bool_OOXML;
+    procedure Test_OverwriteFormula_Bool_ODS;
+
+    procedure Test_OverwriteFormula_Error_BIFF2;
+    procedure Test_OverwriteFormula_Error_BIFF5;
+    procedure Test_OverwriteFormula_Error_BIFF8;
+    procedure Test_OverwriteFormula_Error_OOXML;
+    procedure Test_OverwriteFormula_Error_ODS;
   end;
 
 implementation
@@ -840,6 +864,208 @@ procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_ODS;
 begin
   Test_Write_Read_Calc3DFormulas(sfOpenDocument);
 end;
+
+
+{------------------------------------------------------------------------------}
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormulaTest(ATest: Integer;
+  AFormat: TsSpreadsheetFormat);
+type
+  TSollValues = record
+    NumberValue: Integer;
+    TextValue: String;
+    BoolValue: Boolean;
+    ErrorValue: TsErrorValue;
+  end;
+const
+  SollValue: TSollValues = (
+    NumberValue: 100;
+    TextValue: 'abc';
+    BoolValue: false;
+    ErrorValue: errIllegalRef
+  );
+var
+  tempfile: String;
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  x: Float;
+  s: String;
+  b: Boolean;
+  err: TsErrorValue;
+  cell: PCell;
+begin
+  tempFile := GetTempFileName;
+
+  book := TsWorkbook.Create;
+  try
+    book.Options := book.Options + [boAutoCalc];
+    sheet := book.AddWorksheet('Test');
+    sheet.WriteFormula(0, 0, '=1+1');
+    case ATest of
+      0: sheet.WriteNumber(0, 0, sollValue.NumberValue);
+      1: sheet.WriteText(0, 0, sollValue.TextValue);
+      2: sheet.WriteBoolValue(0, 0, sollValue.BoolValue);
+      3: sheet.WriteErrorValue(0, 0, sollValue.ErrorValue);
+    end;
+    cell := sheet.FindCell(0, 0);
+    CheckEquals(true, cell <> nil, 'Cell A1 not found before saving');
+    case ATest of
+      0: begin
+           x := sheet.ReadAsNumber(0, 0);
+           CheckEquals(sollValue.NumberValue, x, 'Cell number content mismatch before saving');
+         end;
+      1: begin
+           s := sheet.ReadAsText(0, 0);
+           CheckEquals(sollValue.TextValue, s, 'Cell string content mismatch before saving');
+         end;
+      2: begin
+           b := cell^.BoolValue;
+           CheckEquals(sollValue.BoolValue, b, 'Cell boolean content mismatch before saving');
+         end;
+      3: begin
+           err := cell^.ErrorValue;
+           CheckEquals(ord(sollValue.ErrorValue), ord(err), 'Cell error ontent mismatch before saving');
+         end;
+    end;
+    book.WriteToFile(tempFile, AFormat, true);
+  finally
+    book.Free;
+  end;
+
+  book := TsWorkbook.Create;
+  try
+    book.Options := book.Options + [boReadFormulas, boAutoCalc];
+    book.ReadFromFile(tempFile, AFormat);
+    sheet := book.GetWorksheetByIndex(0);
+    cell := sheet.FindCell(0, 0);
+    CheckEquals(true, cell <> nil, 'Cell A1 not found after reading');
+    case ATest of
+      0: begin
+           x := sheet.ReadAsNumber(Cell);
+           CheckEquals(sollValue.NumberValue, x, 'Cell number content mismatch before saving');
+         end;
+      1: begin
+           s := sheet.ReadAsText(cell);
+           CheckEquals(sollValue.TextValue, s, 'Cell string content mismatch before saving');
+         end;
+      2: begin
+           b := cell^.BoolValue;
+           CheckEquals(sollValue.BoolValue, b, 'Cell boolean content mismatch before saving');
+         end;
+      3: begin
+           err := cell^.ErrorValue;
+           CheckEquals(ord(sollValue.ErrorValue), ord(err), 'Cell error ontent mismatch before saving');
+         end;
+    end;
+  finally
+    book.Free;
+    deleteFile(tempFile);
+  end;
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Number_BIFF2;
+begin
+  Test_OverwriteFormulaTest(0, sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Number_BIFF5;
+begin
+  Test_OverwriteFormulaTest(0, sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Number_BIFF8;
+begin
+  Test_OverwriteFormulaTest(0, sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Number_OOXML;
+begin
+  Test_OverwriteFormulaTest(0, sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Number_ODS;
+begin
+  Test_OverwriteFormulaTest(0, sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Text_BIFF2;
+begin
+  Test_OverwriteFormulaTest(1, sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Text_BIFF5;
+begin
+  Test_OverwriteFormulaTest(1, sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Text_BIFF8;
+begin
+  Test_OverwriteFormulaTest(1, sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Text_OOXML;
+begin
+  Test_OverwriteFormulaTest(1, sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Text_ODS;
+begin
+  Test_OverwriteFormulaTest(1, sfOpenDocument);
+end;
+
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Bool_BIFF2;
+begin
+  Test_OverwriteFormulaTest(2, sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Bool_BIFF5;
+begin
+  Test_OverwriteFormulaTest(2, sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Bool_BIFF8;
+begin
+  Test_OverwriteFormulaTest(2, sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Bool_OOXML;
+begin
+  Test_OverwriteFormulaTest(2, sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Bool_ODS;
+begin
+  Test_OverwriteFormulaTest(2, sfOpenDocument);
+end;
+
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Error_BIFF2;
+begin
+  Test_OverwriteFormulaTest(3, sfExcel2);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Error_BIFF5;
+begin
+  Test_OverwriteFormulaTest(3, sfExcel5);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Error_BIFF8;
+begin
+  Test_OverwriteFormulaTest(3, sfExcel8);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Error_OOXML;
+begin
+  Test_OverwriteFormulaTest(3, sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Error_ODS;
+begin
+  Test_OverwriteFormulaTest(3, sfOpenDocument);
+end;
+
+
 
 
 initialization

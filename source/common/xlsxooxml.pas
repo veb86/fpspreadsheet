@@ -640,6 +640,7 @@ var
   dataStr: String;
   formulaStr: String;
   formula: PsFormula;
+  isSharedFormula: Boolean;
   nodeName: String;
   sstIndex: Integer;
   number: Double;
@@ -699,7 +700,7 @@ begin
           dataStr := dataStr + GetNodeValue(tnode);
         tnode := tnode.NextSibling;
       end;
-    end else
+    end;
     if (boReadFormulas in book.Options) and (nodeName = 'f') then
     begin
       // Formula to cell
@@ -755,77 +756,83 @@ begin
     datanode := datanode.NextSibling;
   end;
 
-  // get data type
-  s := GetAttrValue(ANode, 't');   // "t" = data type
-  if (s = '') and (dataStr = '') then
-    sheet.WriteBlank(cell, true)     // true --> do not erase the formula!!!
-  else
-  if (s = '') or (s = 'n') then begin
-    // Number or date/time, depending on format
-    number := StrToFloat(dataStr, FPointSeparatorSettings);
-    if IsDateTimeFormat(numFmt) then
-    begin
-      if not IsTimeIntervalFormat(numFmt) then   // no correction of time origin for "time interval" format
-        number := ConvertExcelDateTimeToDateTime(number, FDateMode);
-      sheet.WriteDateTime(cell, number);
+  book.LockFormulas;  // Protect formulas from being deleted by the WriteXXXX calls
+  try
+    // get data type
+    s := GetAttrValue(ANode, 't');   // "t" = data type
+    if (s = '') and (dataStr = '') then
+      sheet.WriteBlank(cell, true)     // true --> do not erase the formula!!!
+    else
+    if (s = '') or (s = 'n') then begin
+      // Number or date/time, depending on format
+      number := StrToFloat(dataStr, FPointSeparatorSettings);
+      if IsDateTimeFormat(numFmt) then
+      begin
+        if not IsTimeIntervalFormat(numFmt) then   // no correction of time origin for "time interval" format
+          number := ConvertExcelDateTimeToDateTime(number, FDateMode);
+        sheet.WriteDateTime(cell, number);
+      end
+      else if IsTextFormat(numFmt) then
+        sheet.WriteText(cell, dataStr)
+      else
+        sheet.WriteNumber(cell, number);
     end
-    else if IsTextFormat(numFmt) then
-      sheet.WriteText(cell, dataStr)
     else
-      sheet.WriteNumber(cell, number);
-  end
-  else
-  if s = 's' then begin
-    // String from shared strings table
-    sstIndex := StrToInt(dataStr);
-    sheet.WriteText(cell, FSharedStrings[sstIndex]);
-    // Read rich-text parameters from the stream stored in the Objects of the stringlist
-    if FSharedStrings.Objects[sstIndex] <> nil then
-    begin
-      ms := TMemoryStream(FSharedStrings.Objects[sstIndex]);
-      ms.Position := 0;
-      n := ms.ReadWord;   // Count of array elements
-      SetLength(cell^.RichTextParams, n);
-      ms.ReadBuffer(cell^.RichTextParams[0], n*SizeOf(TsRichTextParam));
-    end;
-  end else
-  if (s = 'str') or (s = 'inlineStr') then begin
-    // literal string
-//    formulaStr := cell^.FormulaValue;
-    sheet.WriteText(cell, datastr);
-//    cell^.FormulaValue := formulaStr;
-  end else
-  if s = 'b' then
-    // boolean
-    sheet.WriteBoolValue(cell, dataStr='1')
-  else
-  if s = 'e' then begin
-    // error value
-    if dataStr = '#NULL!' then
-      sheet.WriteErrorValue(cell, errEmptyIntersection)
-    else if dataStr = '#DIV/0!' then
-      sheet.WriteErrorValue(cell, errDivideByZero)
-    else if dataStr = '#VALUE!' then
-      sheet.WriteErrorValue(cell, errWrongType)
-    else if dataStr = '#REF!' then
-      sheet.WriteErrorValue(cell, errIllegalRef)
-    else if dataStr = '#NAME?' then
-      sheet.WriteErrorValue(cell, errWrongName)
-    else if dataStr = '#NUM!' then
-      sheet.WriteErrorValue(cell, errOverflow)
-    else if dataStr = '#N/A' then
-      sheet.WriteErrorValue(cell, errArgError)
-    else if dataStr = '' then
-      // rare case...
-      // see http://forum.lazarus.freepascal.org/index.php/topic,38726.0.html
-      sheet.WriteBlank(cell)
+    if s = 's' then begin
+      // String from shared strings table
+      sstIndex := StrToInt(dataStr);
+      sheet.WriteText(cell, FSharedStrings[sstIndex]);
+      // Read rich-text parameters from the stream stored in the Objects of the stringlist
+      if FSharedStrings.Objects[sstIndex] <> nil then
+      begin
+        ms := TMemoryStream(FSharedStrings.Objects[sstIndex]);
+        ms.Position := 0;
+        n := ms.ReadWord;   // Count of array elements
+        SetLength(cell^.RichTextParams, n);
+        ms.ReadBuffer(cell^.RichTextParams[0], n*SizeOf(TsRichTextParam));
+      end;
+    end else
+    if (s = 'str') or (s = 'inlineStr') then begin
+      // literal string
+      sheet.WriteText(cell, datastr);
+    end else
+    if s = 'b' then
+      // boolean
+      sheet.WriteBoolValue(cell, dataStr='1')
     else
-      raise EFPSpreadsheetReader.Create(rsUnknownErrorType);
-  end else
-    raise EFPSpreadsheetReader.Create(rsUnknownDataType);
+    if s = 'e' then begin
+      // error value
+      if dataStr = '#NULL!' then
+        sheet.WriteErrorValue(cell, errEmptyIntersection)
+      else if dataStr = '#DIV/0!' then
+        sheet.WriteErrorValue(cell, errDivideByZero)
+      else if dataStr = '#VALUE!' then
+        sheet.WriteErrorValue(cell, errWrongType)
+      else if dataStr = '#REF!' then
+        sheet.WriteErrorValue(cell, errIllegalRef)
+      else if dataStr = '#NAME?' then
+        sheet.WriteErrorValue(cell, errWrongName)
+      else if dataStr = '#NUM!' then
+        sheet.WriteErrorValue(cell, errOverflow)
+      else if dataStr = '#N/A' then
+        sheet.WriteErrorValue(cell, errArgError)
+      else if dataStr = '' then
+        // rare case...
+        // see http://forum.lazarus.freepascal.org/index.php/topic,38726.0.html
+        sheet.WriteBlank(cell)
+      else
+        raise EFPSpreadsheetReader.Create(rsUnknownErrorType);
 
-  if FIsVirtualMode then
-    book.OnReadCellData(book, rowIndex, colIndex, cell);
+
+    end else
+      raise EFPSpreadsheetReader.Create(rsUnknownDataType);
+
+    if FIsVirtualMode then
+      book.OnReadCellData(book, rowIndex, colIndex, cell);
+
+  finally
+    book.UnlockFormulas;
+  end;
 end;
 
 procedure TsSpreadOOXMLReader.ReadCellXfs(ANode: TDOMNode);

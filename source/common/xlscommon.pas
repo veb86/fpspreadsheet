@@ -1913,7 +1913,7 @@ begin
     if IsDateTime(ResultFormula, nf, nfs, dt) then
       sheet.WriteDateTime(cell, dt) //, nf, nfs)
     else
-      sheet.WriteNumber(cell, ResultFormula); //, nf, nfs);
+      sheet.WriteNumber(cell, ResultFormula);
   end;
 
   { Formula token array }
