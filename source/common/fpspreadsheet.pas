@@ -2220,8 +2220,13 @@ begin
       UnmergeCells(r, c);
 
     // Remove the comment if the cell has one
-    if HasComment(ACell) then
-      WriteComment(r, c, '');
+    RemoveComment(ACell);
+
+    // Removes a hyperlink it the cell has one
+    RemoveHyperlink(ACell);
+
+    // Removes the formula if the cell has one
+    DeleteFormula(ACell);
 
     // Erase all cell content
     InitCell(nil, r, c, ACell^);
