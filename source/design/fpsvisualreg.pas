@@ -2,12 +2,12 @@ unit fpsvisualreg;
 
 {$mode objfpc}{$H+}
 
-{$R ../../resource\fpsvisualreg.res}
+{$R ../../resource/fpsvisualreg.res}
 
 interface
 
 uses
-  Classes, SysUtils, fpsallformats;
+  Classes, SysUtils, {%H-}fpsallformats;
 
 procedure Register;
   

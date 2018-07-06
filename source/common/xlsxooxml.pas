@@ -640,7 +640,6 @@ var
   dataStr: String;
   formulaStr: String;
   formula: PsFormula;
-  isSharedFormula: Boolean;
   nodeName: String;
   sstIndex: Integer;
   number: Double;

@@ -279,7 +279,7 @@ begin
           case RgContent.ItemIndex of
             0: for ACol := 0 to numCols-1 do begin
                  S := 'Xy' + IntToStr(ARow) + 'x' + IntToStr(ACol);
-                 MyWorksheet.WriteUTF8Text(ARow, ACol, S);
+                 MyWorksheet.WriteText(ARow, ACol, S);
                end;
             1: for ACol := 0 to numCols-1 do
                  MyWorksheet.WriteNumber(ARow, ACol, 1E5*ARow + ACol);
@@ -287,7 +287,7 @@ begin
                  if (odd(ARow) and odd(ACol)) or odd(ARow+ACol) then
                  begin
                    S := 'Xy' + IntToStr(ARow) + 'x' + IntToStr(ACol);
-                   MyWorksheet.WriteUTF8Text(ARow, ACol, S);
+                   MyWorksheet.WriteText(ARow, ACol, S);
                  end else
                    MyWorksheet.WriteNumber(ARow, ACol, 1E5*ARow + ACol);
           end;

@@ -74,7 +74,7 @@
       <Filename Value="fpsgrid"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir)"/>
+      <IncludeFiles Value="$(ProjOutDir);..\..\..\source"/>
       <OtherUnitFiles Value="..\..\..\source\common;..\..\..\source\visual"/>
       <UnitOutputDirectory Value="..\..\lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>

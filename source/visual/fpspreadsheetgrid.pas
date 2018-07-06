@@ -1185,7 +1185,6 @@ procedure TsMultilineStringCellEditor.KeyDown(var AKey: Word; AShift: TShiftStat
 
 var
   IntSel: boolean;
-  msg: String;
 begin
   inherited KeyDown(AKey, AShift);
   case AKey of

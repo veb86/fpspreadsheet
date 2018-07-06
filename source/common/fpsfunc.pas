@@ -1083,7 +1083,6 @@ var
   r, c: LongInt;
   dr, dc: LongInt;
   cell, addcell: PCell;
-  sh: Integer;
   s: String;
   f: Double;
   dt: TDateTime;

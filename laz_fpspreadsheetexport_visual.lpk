@@ -9,7 +9,7 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="source\export;source\design"/>
+        <OtherUnitFiles Value="source\export"/>
         <UnitOutputDirectory Value="source\export\lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
       <Parsing>
@@ -25,14 +25,14 @@
 
 It provides a graphical export component on the Data Export tab."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="9"/>
+    <Version Major="1" Minor="10"/>
     <Files Count="2">
       <Item1>
         <Filename Value="source\export\fpsexport.pas"/>
         <UnitName Value="fpsexport"/>
       </Item1>
       <Item2>
-        <Filename Value="source\design\fpsexportreg.pas"/>
+        <Filename Value="source\export\fpsexportreg.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="fpsexportreg"/>
       </Item2>
@@ -43,8 +43,8 @@ It provides a graphical export component on the Data Export tab."/>
       </Item1>
       <Item2>
         <PackageName Value="laz_fpspreadsheet"/>
-        <MaxVersion Major="1" Minor="8"/>
-        <MinVersion Major="1" Minor="9" Valid="True"/>
+        <MaxVersion Major="1" Minor="9"/>
+        <MinVersion Major="1" Minor="10" Valid="True"/>
       </Item2>
       <Item3>
         <PackageName Value="LCL"/>

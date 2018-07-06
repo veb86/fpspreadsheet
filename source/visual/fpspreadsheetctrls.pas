@@ -2235,6 +2235,7 @@ end;
 
 procedure TsCellEdit.WMKillFocus(var AMessage: TLMKillFocus);
 begin
+  Unused(AMessage);
   // Override inherited behavior because we don't want to call EditingDone
   // here.
 end;

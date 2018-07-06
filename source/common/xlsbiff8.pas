@@ -3066,6 +3066,8 @@ var
   sheet: TsWorksheet absolute AWorksheet;
 
 begin
+  Unused(ASheetIndex, AKind);
+
   // Since this is a variable length record we begin by writing the formula
   // to a memory stream
   memstream := TMemoryStream.Create;

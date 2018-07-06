@@ -9,11 +9,11 @@
       <PathDelim Value="\"/>
       <SearchPaths>
         <OtherUnitFiles Value="source\crypto"/>
-        <UnitOutputDirectory Value="source\lib\$(TargetCPU)-$(TargetOS)\"/>
+        <UnitOutputDirectory Value="source\lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
     <Description Value="Encryption / decryption support for FPSpreadsheet"/>
-    <Version Major="1" Minor="9"/>
+    <Version Major="1" Minor="10"/>
     <Files Count="2">
       <Item1>
         <Filename Value="source\crypto\xlsxdecrypter.pas"/>
@@ -30,6 +30,7 @@
       </Item1>
       <Item2>
         <PackageName Value="laz_fpspreadsheet"/>
+        <MinVersion Major="1" Minor="10" Valid="True"/>
       </Item2>
       <Item3>
         <PackageName Value="FCL"/>
