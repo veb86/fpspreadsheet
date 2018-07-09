@@ -8743,8 +8743,12 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddWorksheet(AName: string;
   ReplaceDuplicateName: Boolean = false): TsWorksheet;
+var
+  msg: String;
 begin
   // Check worksheet name
+  if not ReplaceDuplicateName and (GetWorksheetByName(AName) <> nil) then
+    raise EFPSpreadsheet.CreateFmt(rsDuplicateWorksheetName, [AName]);
   if not ValidWorksheetName(AName, ReplaceDuplicateName) then
     raise EFPSpreadsheet.CreateFmt(rsInvalidWorksheetName, [AName]);
 
@@ -9094,11 +9098,12 @@ end;
 function TsWorkbook.ValidWorksheetName(var AName: String;
   ReplaceDuplicateName: Boolean = false): Boolean;
 // see: http://stackoverflow.com/questions/451452/valid-characters-for-excel-sheet-names
+const
+  INVALID_CHARS: set of char = ['[', ']', ':', '*', '?', '/', '\'];
 var
-  INVALID_CHARS: array [0..6] of char = ('[', ']', ':', '*', '?', '/', '\');
-var
-  i: Integer;
   unique: Boolean;
+  ch: char;
+  i: Integer;
 begin
   Result := false;
 
@@ -9113,8 +9118,8 @@ begin
     exit;
   }
   // Name must not contain any of the INVALID_CHARS
-  for i:=0 to High(INVALID_CHARS) do
-    if UTF8Pos(INVALID_CHARS[i], AName) > 0 then
+  for ch in AName  do
+    if ch in INVALID_CHARS then
       exit;
 
   // Name must be unique

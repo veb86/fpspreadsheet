@@ -81,6 +81,10 @@ msgstr "Диапазон печати \"%s\" требует раличных т�
 msgid "An identifier with name \"%s\" already exists."
 msgstr "Переменная с именем \"%s\" уже существует."
 
+#: fpsstrings.rsduplicateworksheetname
+msgid "Duplicate worksheet \"%s\"."
+msgstr ""
+
 #: fpsstrings.rsemptyhyperlink
 msgid "The hyperlink is not specified."
 msgstr "Гиперссылка не указана."

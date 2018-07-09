@@ -91,6 +91,10 @@ msgstr "A(z) \"%s\" nyomtatási tartományhoz szükség van egy másik munkalapr
 msgid "An identifier with name \"%s\" already exists."
 msgstr "Már létezik egy azonosító \"%s\" névvel."
 
+#: fpsstrings.rsduplicateworksheetname
+msgid "Duplicate worksheet \"%s\"."
+msgstr ""
+
 #: fpsstrings.rsemptyhyperlink
 msgid "The hyperlink is not specified."
 msgstr "A hiperhivatkozás nincs megadva."

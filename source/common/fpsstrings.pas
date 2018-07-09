@@ -167,6 +167,7 @@ resourcestring
 
   // Worksheets
   rsDefaultSheetName = 'Sheet%d';
+  rsDuplicateWorksheetName = 'Duplicate worksheet "%s".';
   rsInvalidWorksheetName = '"%s" is not a valid worksheet name.';
   rsWorksheetNotFound = 'Worksheet "%s" not found.';
   rsWorksheetNotFound1 = 'Worksheet not found.';

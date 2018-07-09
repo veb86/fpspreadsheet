@@ -81,6 +81,10 @@ msgstr ""
 msgid "An identifier with name \"%s\" already exists."
 msgstr ""
 
+#: fpsstrings.rsduplicateworksheetname
+msgid "Duplicate worksheet \"%s\"."
+msgstr ""
+
 #: fpsstrings.rsemptyhyperlink
 msgid "The hyperlink is not specified."
 msgstr ""
