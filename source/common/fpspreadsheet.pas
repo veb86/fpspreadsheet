@@ -733,7 +733,7 @@ type
     function  AddWorksheet(AName: string;
       ReplaceDuplicateName: Boolean = false): TsWorksheet;
     function  CopyWorksheetFrom(AWorksheet: TsWorksheet;
-      ReplaceDuplicateName: Boolean = false): TsWorksheet;
+      ReplaceDuplicateName: Boolean): TsWorksheet;
     function  GetFirstWorksheet: TsWorksheet;
     function  GetLastWorksheet: TsWorksheet;
     function  GetNextWorksheet(AWorksheet: TsWorksheet): TsWorksheet;
@@ -8796,7 +8796,7 @@ end;
   @see    TsWorksheet
 -------------------------------------------------------------------------------}
 function TsWorkbook.CopyWorksheetFrom(AWorksheet: TsWorksheet;
-  ReplaceDuplicateName: boolean = false): TsWorksheet;
+  ReplaceDuplicateName: boolean): TsWorksheet;
 var
   r, c: Cardinal;
   cell: PCell;

@@ -20,10 +20,10 @@ uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
   // TChart
   TACustomSource,
-  // FPSpreadsheet
-  fpstypes, fpspreadsheet, fpsutils,
   // FPSpreadsheet Visual
-  fpspreadsheetctrls, fpspreadsheetgrid;
+  fpspreadsheetctrls, fpspreadsheetgrid,
+  // FPSpreadsheet
+  fpstypes, fpspreadsheet, fpsutils;
 
 type
 

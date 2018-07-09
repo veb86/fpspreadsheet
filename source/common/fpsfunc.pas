@@ -18,7 +18,8 @@ implementation
 
 uses
   Math, lazutf8, StrUtils, DateUtils,
-  xlsconst, {%H-}fpsPatches, fpsUtils, fpsnumformat, fpsexprparser, fpspreadsheet;
+  xlsconst, {%H-}fpsPatches, fpsUtils,
+  fpsnumformat, fpspreadsheet, fpsexprparser;
 
 
 {------------------------------------------------------------------------------}

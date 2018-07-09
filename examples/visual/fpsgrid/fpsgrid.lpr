@@ -4,7 +4,7 @@ program fpsgrid;
 
 uses
   Interfaces, // this includes the LCL widgetset
-  Forms, mainform, LResources, laz_fpspreadsheet_visual;
+  Forms, mainform, LResources;
 
 {$R *.res}
 

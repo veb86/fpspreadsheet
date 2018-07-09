@@ -16,7 +16,7 @@
     </CompilerOptions>
     <Description Value="laz_fpspreadsheet_visual_dsgn is the design-tim package for the visual fpspreadsheet components."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="10"/>
+    <Version Major="1" Minor="11"/>
     <Files Count="1">
       <Item1>
         <Filename Value="source\design\fpsvisualreg.pas"/>
@@ -27,7 +27,8 @@
     <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="laz_fpspreadsheet_visual"/>
-        <MinVersion Major="1" Minor="10" Valid="True"/>
+        <MaxVersion Major="1" Minor="10"/>
+        <MinVersion Major="1" Minor="11" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="FCL"/>
