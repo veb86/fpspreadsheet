@@ -209,6 +209,8 @@ type
   private
     FWorkbookSource: TsWorkbookSource;
     FLockCount: Integer;
+    FShowAllSheets: Boolean;
+    procedure SetShowAllSheets(AValue: Boolean);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
   protected
     procedure Change; override;
@@ -217,6 +219,7 @@ type
     function GetWorksheet: TsWorksheet;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
   public
+    constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
     procedure ListenerNotification(AChangedItems: TsNotificationItems;
       AData: Pointer = nil);
@@ -226,6 +229,7 @@ type
     {@@ Identifies the worksheet which corresponds to the selected tab }
     property Worksheet: TsWorksheet read GetWorksheet;
   published
+    property ShowAllSheets: boolean read FShowAllSheets write SetShowAllSheets default true;
     {@@ Link to the WorkbookSource which provides the data. }
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
   end;
@@ -1715,6 +1719,15 @@ end;
 {------------------------------------------------------------------------------}
 
 {@@ ----------------------------------------------------------------------------
+  Constructor of the WorkbookTabControl.
+-------------------------------------------------------------------------------}
+constructor TsWorkbookTabControl.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FShowAllSheets := true;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Destructor of the WorkbookTabControl.
   Removes itself from the WorkbookSource's listener list.
 -------------------------------------------------------------------------------}
@@ -1736,17 +1749,23 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates a (string) list containing the names of the workbook's sheet names.
+  Populates a (string) list with the names of the workbook's sheet names.
+  If ShowHiddenSheets is false hidden worksheets are skipped.
   Is called whenever the workbook changes.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookTabControl.GetSheetList(AList: TStrings);
 var
   i: Integer;
+  sheet: TsWorksheet;
 begin
   AList.Clear;
   if Workbook <> nil then
     for i:=0 to Workbook.GetWorksheetCount-1 do
-      AList.Add(Workbook.GetWorksheetByIndex(i).Name);
+    begin
+      sheet := Workbook.GetWorksheetByIndex(i);
+      if FShowAllSheets or not (soHidden in sheet.Options) then
+        AList.Add(sheet.Name);
+    end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1840,6 +1859,45 @@ end;
 procedure TsWorkbookTabControl.RemoveWorkbookSource;
 begin
   SetWorkbookSource(nil);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Setter method for the property ShowHiddenSheets
+-------------------------------------------------------------------------------}
+procedure TsWorkbookTabControl.SetShowAllSheets(AValue: Boolean);
+var
+  idx, i: Integer;
+  sheet: TsWorksheet;
+begin
+  if AValue = FShowAllSheets then
+    exit;
+  FShowAllSheets := AValue;
+  idx := -1;
+  // Find tabindex of next visible sheet
+  if not FShowAllSheets and (Workbook <> nil) then begin
+    for i:=0 to Workbook.GetWorksheetCount-1 do begin
+      sheet := Workbook.GetWorksheetByIndex(i);
+      if sheet = Worksheet then
+        break;
+      if not (soHidden in sheet.Options) then inc(idx);
+    end;
+    i := idx;
+    while (sheet <> nil) and (soHidden in sheet.Options) do begin
+      inc(i);
+      sheet := Workbook.GetWorksheetByIndex(i);
+    end;
+    if sheet = nil then begin
+      i := idx;
+      while (sheet <> nil) and (soHidden in sheet.Options) do begin
+        dec(i);
+        sheet := Workbook.GetWorksheetByIndex(i);
+      end;
+      if sheet = nil then idx := -1;
+    end;
+  end;
+  Change;
+  if (not FShowAllSheets) then
+    TabIndex := idx;
 end;
 
 {@@ ----------------------------------------------------------------------------

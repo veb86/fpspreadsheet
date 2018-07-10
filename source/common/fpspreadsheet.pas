@@ -8954,7 +8954,7 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbook.GetWorksheetByIndex(AIndex: Integer): TsWorksheet;
 begin
-  if (integer(AIndex) < FWorksheets.Count) and (integer(AIndex)>=0) then
+  if (integer(AIndex) < FWorksheets.Count) and (integer(AIndex) >= 0) then
     Result := TsWorksheet(FWorksheets.Items[AIndex])
   else
     Result := nil;
