@@ -11,8 +11,8 @@ uses
  {$ENDIF}
   Interfaces, Forms, GuiTestRunner, testsutility,
   datetests, stringtests, numberstests, manualtests, internaltests,
-  formattests, colortests, fonttests, optiontests, numformatparsertests,
-  formulatests, rpnFormulaUnit, singleformulatests,
+  fileformattests, formattests, colortests, fonttests, optiontests,
+  numformatparsertests, formulatests, rpnFormulaUnit, singleformulatests,
   exceltests, emptycelltests, errortests, virtualmodetests,
   insertdeletetests, ssttests, celltypetests, sortingtests, copytests,
   enumeratortests, commenttests, hyperlinktests, pagelayouttests, protectiontests;

@@ -687,10 +687,10 @@ type
     FEmbeddedObjList: TFPList;
 
     { Internal methods }
-    class function GetFormatFromFileHeader(const AFileName: TFileName;
-      out AFormatID: TsSpreadFormatID): Boolean; overload;
-    class function GetFormatFromFileHeader(AStream: TStream;
-      out AFormatID: TsSpreadFormatID): Boolean; overload;
+    class procedure GetFormatFromFileHeader(const AFileName: TFileName;
+      out AFormatIDs: TsSpreadFormatIDArray); overload;
+    class procedure GetFormatFromFileHeader(AStream: TStream;
+      out AFormatIDs: TsSpreadFormatIDArray); overload;
 
     procedure PrepareBeforeReading;
     procedure PrepareBeforeSaving;
@@ -8279,14 +8279,14 @@ end;
   signature. Only implemented for xls files where several file types have the
   same extension
 -------------------------------------------------------------------------------}
-class function TsWorkbook.GetFormatFromFileHeader(const AFileName: TFileName;
-  out AFormatID: TsSpreadFormatID): Boolean;
+class procedure TsWorkbook.GetFormatFromFileHeader(const AFileName: TFileName;
+  out AFormatIDs: TsSpreadFormatIDArray);
 var
   stream: TStream;
 begin
   stream := TFileStream.Create(AFileName, fmOpenRead + fmShareDenyNone);
   try
-    Result := GetFormatFromFileHeader(stream, AFormatID)
+    GetFormatFromFileHeader(stream, AFormatIDs)
   finally
     stream.Free;
   end;
@@ -8295,16 +8295,17 @@ end;
 {@@ ----------------------------------------------------------------------------
   Helper method for determining the spreadsheet format. Read the first few bytes
   of a stream and determines the spreadsheet type from the characteristic
-  signature. Only implemented for xls where several file types have the same
-  extension.
+  signature.
 -------------------------------------------------------------------------------}
-class function TsWorkbook.GetFormatFromFileHeader(AStream: TStream;
-  out AFormatID: TsSpreadFormatID): Boolean; overload;
+class procedure TsWorkbook.GetFormatFromFileHeader(AStream: TStream;
+  out AFormatIDs: TsSpreadFormatIDArray); overload;
 const
   BIFF2_HEADER: array[0..3] of byte = (
     $09,$00, $04,$00);  // they are common to all BIFF2 files that I've seen
   BIFF58_HEADER: array[0..7] of byte = (
     $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1);
+  ZIP_HEADER: array[0..1] of byte = (
+    byte('P'), byte('K'));
 
   function ValidOLEStream(AStream: TStream; AName: String): Boolean;
   var
@@ -8325,44 +8326,53 @@ var
   i: Integer;
   ok: Boolean;
 begin
-  Result := false;
+  SetLength(AFormatIDs, 0);
+
   if AStream = nil then
     exit;
 
   // Read first 8 bytes
-  AStream.ReadBuffer(buf, 8);
+  i := AStream.Read(buf, Length(buf));
+  if i < Length(buf) then
+    exit;
+
+  // Check for zip header of xlsx and ods
+  if (buf[0] = ZIP_HEADER[0]) and (buf[1] = ZIP_HEADER[1]) then begin
+    SetLength(AFormatIDs, 2);
+    AFormatIDs[0] := ord(sfOOXML);
+    AFormatIDs[1] := ord(sfOpenDocument);
+    exit;
+  end;
 
   // Check for Excel 2
   ok := true;
   for i:=0 to High(BIFF2_HEADER) do
-    if buf[i] <> BIFF2_HEADER[i] then
+    if buf[i] = BIFF2_HEADER[i] then
     begin
-      ok := false;
-      break;
+      SetLength(AFormatIDs, 1);
+      AFormatIDs[0] := ord(sfExcel2);
+      exit;
     end;
-  if ok then
-  begin
-    AFormatID := ord(sfExcel2);
-    exit(true);
-  end;
 
   // Check for Excel 5 or 8
   for i:=0 to High(BIFF58_HEADER) do
     if buf[i] <> BIFF58_HEADER[i] then
-      exit(false);
+      exit;
 
   // Now we know that the file is a Microsoft compound document.
 
   // We check for Excel 5 in which the stream is named "Book"
   if ValidOLEStream(AStream, 'Book') then begin
-    AFormatID := ord(sfExcel5);
-    exit(true);
+    SetLength(AFormatIDs, 1);
+    AFormatIDs[0] := ord(sfExcel5);
+    exit;
   end;
 
   // Now we check for Excel 8 which names the stream "Workbook"
   if ValidOLEStream(AStream, 'Workbook') then begin
-    AFormatID := ord(sfExcel8);
-    exit(true);
+    SetLength(AFormatIDs, 1);
+    AFormatIDs[0] := ord(sfExcel8);
+    exit;
   end;
 end;
 
@@ -8470,8 +8480,8 @@ end;
 procedure TsWorkbook.ReadFromFile(AFileName: string; APassword: String = '';
   AParams: TsStreamParams = []);
 var
-  formatID: TsSpreadFormatID;
-  canLoad, success: Boolean;
+  formatIDs: TsSpreadFormatIDArray;
+  success: Boolean;
   fileFormats: TsSpreadFormatIDArray;
   ext: String;
   i: Integer;
@@ -8481,12 +8491,18 @@ begin
 
   ext := LowerCase(ExtractFileExt(AFileName));
 
+  // Try to get file format from file header
+  GetFormatFromFileHeader(AFileName, fileformats);
+  if Length(fileformats) = 0 then
+    // If not successful use formats defined by extension
+    fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName);
+                 (*
   // Collect all formats which have the same extension
   fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName);
-  if (Length(fileFormats) > 1) and (ext = STR_EXCEL_EXTENSION) then
+  if (Length(fileFormats) > 1) {and (ext = STR_EXCEL_EXTENSION)} then
   begin
     // In case of xls files we try to determine the format from the header
-    canLoad := GetFormatFromFileHeader(AFilename, formatID);
+    canLoad := GetFormatFromFileHeader(AFilename, formatIDs);
     if canLoad then begin
       // Analysis of the file header was successful --> we know the file
       // format and shorten the list of fileformats to just one item.
@@ -8498,7 +8514,7 @@ begin
       // We begin with BIFF8 which is the most common xls format now.
       // The next command re-reads the format list with BIFF8 at the first place.
       fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName, ord(sfExcel8));
-  end;
+  end;                      *)
 
   // No file format found for this file --> error
   if Length(fileformats) = 0 then

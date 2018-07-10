@@ -38,7 +38,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="30">
+    <Units Count="31">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -161,6 +161,10 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="SingleFormulaTests"/>
       </Unit29>
+      <Unit30>
+        <Filename Value="fileformattests.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit30>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
@@ -186,7 +190,7 @@
     </Other>
   </CompilerOptions>
   <Debugging>
-    <Exceptions Count="6">
+    <Exceptions Count="7">
       <Item1>
         <Name Value="EAbort"/>
         <Enabled Value="False"/>
@@ -209,6 +213,9 @@
         <Name Value="EConvertError"/>
         <Enabled Value="False"/>
       </Item6>
+      <Item7>
+        <Name Value="EFPSpreadsheetReader"/>
+      </Item7>
     </Exceptions>
   </Debugging>
 </CONFIG>
