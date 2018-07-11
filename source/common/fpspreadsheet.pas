@@ -8324,7 +8324,6 @@ const
 var
   buf: packed array[0..7] of byte = (0,0,0,0,0,0,0,0);
   i: Integer;
-  ok: Boolean;
 begin
   SetLength(AFormatIDs, 0);
 
@@ -8345,7 +8344,6 @@ begin
   end;
 
   // Check for Excel 2
-  ok := true;
   for i:=0 to High(BIFF2_HEADER) do
     if buf[i] = BIFF2_HEADER[i] then
     begin
@@ -8480,41 +8478,18 @@ end;
 procedure TsWorkbook.ReadFromFile(AFileName: string; APassword: String = '';
   AParams: TsStreamParams = []);
 var
-  formatIDs: TsSpreadFormatIDArray;
   success: Boolean;
   fileFormats: TsSpreadFormatIDArray;
-  ext: String;
   i: Integer;
 begin
   if not FileExists(AFileName) then
     raise EFPSpreadsheetReader.CreateFmt(rsFileNotFound, [AFileName]);
-
-  ext := LowerCase(ExtractFileExt(AFileName));
 
   // Try to get file format from file header
   GetFormatFromFileHeader(AFileName, fileformats);
   if Length(fileformats) = 0 then
     // If not successful use formats defined by extension
     fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName);
-                 (*
-  // Collect all formats which have the same extension
-  fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName);
-  if (Length(fileFormats) > 1) {and (ext = STR_EXCEL_EXTENSION)} then
-  begin
-    // In case of xls files we try to determine the format from the header
-    canLoad := GetFormatFromFileHeader(AFilename, formatIDs);
-    if canLoad then begin
-      // Analysis of the file header was successful --> we know the file
-      // format and shorten the list of fileformats to just one item.
-      SetLength(fileFormats, 1);
-      fileformats[0] := formatID;
-    end else
-      // If analysis of the header fails we open the file explicitly by
-      // trial and error for each format -- see below.
-      // We begin with BIFF8 which is the most common xls format now.
-      // The next command re-reads the format list with BIFF8 at the first place.
-      fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName, ord(sfExcel8));
-  end;                      *)
 
   // No file format found for this file --> error
   if Length(fileformats) = 0 then
@@ -8759,8 +8734,6 @@ end;
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddWorksheet(AName: string;
   ReplaceDuplicateName: Boolean = false): TsWorksheet;
-var
-  msg: String;
 begin
   // Check worksheet name
   if not ReplaceDuplicateName and (GetWorksheetByName(AName) <> nil) then
