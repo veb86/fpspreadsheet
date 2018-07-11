@@ -553,6 +553,11 @@ type
     { Protection }
     procedure Protect(AEnable: Boolean);
 
+    { Hidden }
+    procedure Hide;
+    function IsHidden: Boolean; inline;
+    procedure Show;
+
     { Notification of changed cells, rows or columns }
     procedure ChangedCell(ARow, ACol: Cardinal);
     procedure ChangedCol(ACol: Cardinal);
@@ -741,6 +746,7 @@ type
     function  GetWorksheetByIndex(AIndex: Integer): TsWorksheet;
     function  GetWorksheetByName(AName: String): TsWorksheet;
     function  GetWorksheetCount: Integer;
+    function  GetVisibleWorksheetCount: Integer;
     function  GetWorksheetIndex(AWorksheet: TsBasicWorksheet): Integer; overload;
     function  GetWorksheetIndex(const AWorksheetName: String): Integer; overload;
     procedure RemoveAllWorksheets;
@@ -4089,6 +4095,69 @@ begin
   FWorkbook.ChangedWorksheet(self);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Hides the worksheet. Makes sure that the last worksheet cannot be hidden.
+  Notifies visual controls
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.Hide;
+var
+  idx, n: Integer;
+  sheet: TsWorksheet;
+begin
+  if IsHidden then
+    exit;
+  if FWorkbook.GetVisibleWorksheetCount = 1 then
+    exit;
+  Options := Options + [soHidden];
+  FWorkbook.ChangedWorksheet(self);
+  if (FWorkbook.ActiveWorksheet = self) then begin
+    n := FWorkbook.GetWorksheetCount;
+    idx := FWorkbook.GetWorksheetIndex(self) + 1;
+    if idx < n then begin
+      sheet := FWorkbook.GetWorksheetByIndex(idx);
+      while Assigned(sheet) and sheet.IsHidden do begin
+        inc(idx);
+        sheet := FWorkbook.GetWorksheetByIndex(idx);
+      end;
+      if sheet <> nil then begin
+        FWorkbook.SelectWorksheet(sheet);
+        exit;
+      end;
+    end;
+    idx := FWorkbook.GetWorkSheetIndex(self) - 1;
+    if idx >= 0 then begin
+      sheet := FWorkbook.GetWorksheetByIndex(idx);
+      while Assigned(sheet) and sheet.IsHidden do begin
+        dec(idx);
+        sheet := FWorkbook.GetWorksheetByIndex(idx);
+      end;
+      if sheet <> nil then begin
+        FWorkbook.SelectWorksheet(sheet);
+        exit;
+      end;
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Shows the worksheet if is was previously hidden
+  Useful for visual controls
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.Show;
+begin
+  if not (soHidden in Options) then
+    exit;
+  Options := Options - [soHidden];
+  FWorkbook.ChangedWorksheet(self);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE if the worksheet is hidden
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsHidden: Boolean;
+begin
+  Result := soHidden in Options;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Setter for the worksheet name property. Checks if the name is valid, and
@@ -8969,6 +9038,19 @@ end;
 function TsWorkbook.GetWorksheetCount: Integer;
 begin
   Result := FWorksheets.Count;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Counts the number of visible (= not hidden) worksheets
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetVisibleWorksheetCount: Integer;
+var
+  i: Integer;
+begin
+  Result := 0;
+  for i:=0 to GetWorksheetCount-1 do
+    if not (soHidden in GetWorksheetByIndex(i).Options) then
+      inc(Result);
 end;
 
 {@@ ----------------------------------------------------------------------------
