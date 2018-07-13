@@ -1742,9 +1742,13 @@ end;
   the corresponding worksheet and notify its listening components of the change.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookTabControl.Change;
+var
+  sheetName: String;
 begin
-  if (FWorkbookSource <> nil) and (FLockCount = 0) then
-    FWorkbookSource.SelectWorksheet(Workbook.GetWorksheetByIndex(TabIndex));
+  if (FWorkbookSource <> nil) and (FLockCount = 0) then begin
+    sheetName := Tabs[TabIndex];
+    FWorkbookSource.SelectWorksheet(Workbook.GetWorksheetByName(sheetName));
+  end;
   inherited;
 end;
 
@@ -1805,6 +1809,8 @@ procedure TsWorkbookTabControl.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
 var
   i: Integer;
+  sheet: TsWorksheet;
+  sheetName: String;
 begin
   Unused(AData);
 
@@ -1813,21 +1819,18 @@ begin
   begin
     inc(FLockCount);    // avoid WorkbookSelect message when adding each tab
     GetSheetList(Tabs);
-    {
-    if (lniWorkbook in AChangedItems) then
-      TabIndex := 0
-    else
-    }
     if (lniWorkbook in AChangedItems) and (Workbook <> nil) then
     begin
-      i := Workbook.GetWorksheetIndex(Workbook.ActiveWorksheet);
+      i := Tabs.IndexOf(Workbook.ActiveWorksheet.Name);
       if i > -1 then TabIndex := i else TabIndex := 0
     end else
     if (lniWorksheetAdd in AChangedItems) then
       TabIndex := Tabs.Count-1
     else
-    if (lniWorksheetRename in AChangedItems) then
-      TabIndex := Workbook.GetWorksheetIndex(TsWorksheet(AData));
+    if (lniWorksheetRename in AChangedItems) then begin
+      sheet := TsWorksheet(AData);
+      TabIndex := Tabs.IndexOf(sheet.Name);
+    end;
     dec(FLockCount);
   end;
 
