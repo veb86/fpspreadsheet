@@ -5,9 +5,9 @@ unit mainform;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, TAGraph, TASeries, Forms, Controls,
-  Graphics, Dialogs, ExtCtrls, StdCtrls,
-  fpstypes, fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart, fpsallformats;
+  Classes, SysUtils, FileUtil, TAGraph, TASources, TASeries, Forms, Controls,
+  Graphics, Dialogs, ExtCtrls, StdCtrls, fpspreadsheetctrls, fpspreadsheetgrid,
+  fpspreadsheetchart, fpsallformats;
 
 type
 
@@ -15,7 +15,7 @@ type
 
   TForm1 = class(TForm)
     Bevel1: TBevel;
-    Button1: TButton;
+    BtnDeleteSheet: TButton;
     Button2: TButton;
     Chart1: TChart;
     Chart1AreaSeries1: TAreaSeries;
@@ -32,13 +32,13 @@ type
     sWorkbookSource1: TsWorkbookSource;
     sWorkbookTabControl1: TsWorkbookTabControl;
     sWorksheetGrid1: TsWorksheetGrid;
-    procedure Button1Click(Sender: TObject);
-    procedure Button2Click(Sender: TObject);
+    procedure BtnDeleteSheetClick(Sender: TObject);
+    procedure BtnRenameSheetClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
   private
-    { private declarations }
+
   public
-    { public declarations }
+
   end;
 
 var
@@ -50,8 +50,19 @@ implementation
 
 { TForm1 }
 
-procedure TForm1.Button1Click(Sender: TObject);
-// The same effect is obtained by using the built-in TsWorksheetDeleteAction.
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  sWorkbookSource1.Filename := 'test-data.xlsx';
+  sWorkbookChartSource1.XRange := 'Sheet1!A2:A21';
+  sWorkbookChartSource1.YRange := 'Sheet1!B2:B21';
+  sWorkbookChartSource2.XRange := 'Sheet2!A2:A16';
+  sWorkbookChartSource2.YRange := 'Sheet2!B2:B16';
+  sWorkbookChartSource3.XRange := 'Sheet3!A2:A5';
+  sWorkbookChartSource3.YRange := 'Sheet3!B2:B5';
+  sWorkbookChartSource3.LabelRange := 'Sheet3!A2:A5';
+end;
+
+procedure TForm1.BtnDeleteSheetClick(Sender: TObject);
 begin
   if sWorkbookSource1.Workbook.GetWorksheetCount = 1 then
     MessageDlg('There must be a least 1 worksheet.', mtError, [mbOK], 0)
@@ -62,7 +73,7 @@ begin
     sWorkbookSource1.Workbook.RemoveWorksheet(sWorkbookSource1.Worksheet);
 end;
 
-procedure TForm1.Button2Click(Sender: TObject);
+procedure TForm1.BtnRenameSheetClick(Sender: TObject);
 var
   s: String;
 begin
@@ -76,16 +87,6 @@ begin
   end;
 end;
 
-procedure TForm1.FormCreate(Sender: TObject);
-begin
-  sWorkbookSource1.Filename := 'test-data.xlsx';
-  sWorkbookChartSource1.XRange := 'Sheet1!A2:A21';
-  sWorkbookChartSource1.YRange := 'Sheet1!B2:B21';
-  sWorkbookChartSource2.XRange := 'Sheet2!A2:A16';
-  sWorkbookChartSource2.YRange := 'Sheet2!B2:B16';
-  sWorkbookChartSource3.XRange := 'Sheet3!A2:A5';
-  sWorkbookChartSource3.YRange := 'Sheet3!B2:B5';
-end;
 
 end.
 

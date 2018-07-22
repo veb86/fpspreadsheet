@@ -1,119 +1,119 @@
 object Form1: TForm1
-  Left = 354
-  Height = 634
-  Top = 132
-  Width = 877
+  Left = 256
+  Height = 618
+  Top = 127
+  Width = 828
   Caption = 'Form1'
-  ClientHeight = 634
-  ClientWidth = 877
+  ClientHeight = 618
+  ClientWidth = 828
   OnCreate = FormCreate
-  LCLVersion = '1.9.0.0'
+  LCLVersion = '1.8.4.0'
   object Panel1: TPanel
     Left = 0
-    Height = 40
+    Height = 33
     Top = 0
-    Width = 877
+    Width = 828
     Align = alTop
+    AutoSize = True
     BevelOuter = bvNone
-    ClientHeight = 40
-    ClientWidth = 877
+    ClientHeight = 33
+    ClientWidth = 828
     TabOrder = 0
-    object Button1: TButton
-      Left = 8
+    object BtnDeleteSheet: TButton
+      AnchorSideLeft.Control = Panel1
+      AnchorSideTop.Control = Panel1
+      Left = 4
       Height = 25
-      Top = 7
-      Width = 91
+      Top = 4
+      Width = 90
+      AutoSize = True
+      BorderSpacing.Left = 4
+      BorderSpacing.Top = 4
+      BorderSpacing.Right = 4
+      BorderSpacing.Bottom = 4
       Caption = 'Delete sheet'
-      OnClick = Button1Click
+      OnClick = BtnDeleteSheetClick
       TabOrder = 0
     end
-    object Button2: TButton
-      Left = 107
+    object BtnRenameSheet: TButton
+      AnchorSideLeft.Control = BtnDeleteSheet
+      AnchorSideLeft.Side = asrBottom
+      AnchorSideTop.Control = BtnDeleteSheet
+      AnchorSideTop.Side = asrCenter
+      Left = 98
       Height = 25
-      Top = 7
-      Width = 93
+      Top = 4
+      Width = 100
+      AutoSize = True
+      BorderSpacing.Right = 4
+      BorderSpacing.Bottom = 4
       Caption = 'Rename sheet'
-      OnClick = Button2Click
+      OnClick = BtnRenameSheetClick
       TabOrder = 1
     end
-    object Bevel1: TBevel
-      Left = 0
-      Height = 3
-      Top = 37
-      Width = 877
-      Align = alBottom
-      Shape = bsBottomLine
-    end
-  end
-  object Splitter1: TSplitter
-    Left = 872
-    Height = 594
-    Top = 40
-    Width = 5
-    Align = alRight
-    ResizeAnchor = akRight
   end
   object sWorkbookTabControl1: TsWorkbookTabControl
-    Left = 6
-    Height = 582
-    Top = 46
-    Width = 390
+    Left = 5
+    Height = 581
+    Top = 37
+    Width = 280
     TabIndex = 0
     Tabs.Strings = (
       'Sheet1'
     )
-    Align = alClient
-    BorderSpacing.Around = 6
-    TabOrder = 2
+    Align = alLeft
+    TabOrder = 1
     WorkbookSource = sWorkbookSource1
     object sWorksheetGrid1: TsWorksheetGrid
       Left = 2
-      Height = 557
+      Height = 556
       Top = 23
-      Width = 386
+      Width = 276
+      AutoCalc = True
       FrozenCols = 0
       FrozenRows = 0
-      ReadFormulas = False
+      ReadFormulas = True
       WorkbookSource = sWorkbookSource1
       Align = alClient
       AutoAdvance = aaDown
       DefaultColWidth = 64
       DefaultRowHeight = 22
-      Font.Color = clBlack
-      Font.Height = -15
-      Font.Name = 'Calibri'
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goThumbTracking]
-      ParentFont = False
+      MouseWheelOption = mwGrid
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goColSizing, goEditing, goThumbTracking, goSmoothScroll]
       TabOrder = 1
-      TitleFont.Color = clBlack
-      TitleFont.Height = -15
-      TitleFont.Name = 'Calibri'
     end
   end
   object Panel2: TPanel
-    Left = 402
-    Height = 594
-    Top = 40
-    Width = 470
-    Align = alRight
+    Left = 285
+    Height = 581
+    Top = 37
+    Width = 543
+    Align = alClient
     BevelOuter = bvNone
-    Caption = 'Panel2'
-    ClientHeight = 594
-    ClientWidth = 470
-    TabOrder = 3
+    ChildSizing.EnlargeHorizontal = crsHomogenousChildResize
+    ChildSizing.EnlargeVertical = crsHomogenousChildResize
+    ChildSizing.ShrinkHorizontal = crsHomogenousChildResize
+    ChildSizing.ShrinkVertical = crsHomogenousChildResize
+    ChildSizing.Layout = cclLeftToRightThenTopToBottom
+    ChildSizing.ControlsPerLine = 1
+    ClientHeight = 581
+    ClientWidth = 543
+    TabOrder = 2
     object Chart1: TChart
       Left = 0
-      Height = 183
+      Height = 194
       Top = 0
-      Width = 470
+      Width = 543
       AxisList = <      
         item
+          Grid.Color = clSilver
           Marks.LabelBrush.Style = bsClear
           Minors = <>
           Title.LabelFont.Orientation = 900
           Title.LabelBrush.Style = bsClear
         end      
         item
+          Grid.Color = clSilver
           Alignment = calBottom
           Marks.LabelBrush.Style = bsClear
           Minors = <>
@@ -128,34 +128,33 @@ object Form1: TForm1
         'Chart from 1st sheet'
       )
       Title.Visible = True
-      Align = alTop
       object Chart1AreaSeries1: TAreaSeries
         AreaBrush.Color = clSkyBlue
         AreaLinesPen.Style = psClear
         Source = sWorkbookChartSource1
-        UseZeroLevel = True
       end
     end
     object Chart2: TChart
       Left = 0
-      Height = 218
-      Top = 183
-      Width = 470
+      Height = 194
+      Top = 194
+      Width = 543
       AxisList = <      
         item
+          Grid.Color = clSilver
           Marks.LabelBrush.Style = bsClear
           Minors = <>
           Title.LabelFont.Orientation = 900
           Title.LabelBrush.Style = bsClear
         end      
         item
+          Grid.Color = clSilver
           Alignment = calBottom
           Marks.LabelBrush.Style = bsClear
           Minors = <>
           Title.LabelBrush.Style = bsClear
         end>
       BackColor = clWhite
-      Depth = 10
       Foot.Brush.Color = clBtnFace
       Foot.Font.Color = clBlue
       Title.Brush.Color = clBtnFace
@@ -164,24 +163,24 @@ object Form1: TForm1
         'Chart from 2nd sheet'
       )
       Title.Visible = True
-      Align = alClient
       object Chart2BarSeries1: TBarSeries
-        Marks.Distance = 15
-        Marks.Format = '%0:.2f'
-        Marks.Frame.Color = clOlive
-        Marks.LabelBrush.Color = clCream
-        Marks.LinkPen.Visible = False
+        Marks.Distance = 5
+        Marks.Format = '%.2f'
+        Marks.Frame.Visible = False
+        Marks.LabelBrush.Color = 13553407
+        Marks.LinkPen.Color = clGray
+        Marks.OverlapPolicy = opHideNeighbour
         Marks.Style = smsCustom
         BarBrush.Color = 9934847
-        Depth = 10
+        Depth = 6
         Source = sWorkbookChartSource2
       end
     end
     object Chart3: TChart
       Left = 0
       Height = 193
-      Top = 401
-      Width = 470
+      Top = 388
+      Width = 543
       AxisList = <      
         item
           Visible = False
@@ -200,7 +199,6 @@ object Form1: TForm1
       Foot.Brush.Color = clBtnFace
       Foot.Font.Color = clBlue
       Frame.Visible = False
-      Legend.Alignment = laCenterRight
       Legend.Visible = True
       Title.Brush.Color = clBtnFace
       Title.Font.Color = clBlue
@@ -208,36 +206,49 @@ object Form1: TForm1
         'Chart from 3rd sheet'
       )
       Title.Visible = True
-      Align = alBottom
       object Chart3PieSeries1: TPieSeries
         Legend.Multiplicity = lmPoint
-        Marks.Distance = 8
+        Marks.Distance = 10
         Marks.Format = '%2:s'
         Marks.Style = smsLabel
+        MarkPositions = pmpInside
         Source = sWorkbookChartSource3
       end
     end
   end
+  object Bevel1: TBevel
+    Left = 0
+    Height = 4
+    Top = 33
+    Width = 828
+    Align = alTop
+    Shape = bsTopLine
+  end
+  object Splitter1: TSplitter
+    Left = 0
+    Height = 581
+    Top = 37
+    Width = 5
+  end
   object sWorkbookSource1: TsWorkbookSource
-    AutoDetectFormat = False
     FileFormat = sfUser
-    Options = []
-    left = 184
-    top = 320
-  end
-  object sWorkbookChartSource1: TsWorkbookChartSource
-    WorkbookSource = sWorkbookSource1
-    left = 640
-    top = 112
-  end
-  object sWorkbookChartSource2: TsWorkbookChartSource
-    WorkbookSource = sWorkbookSource1
-    left = 640
-    top = 320
+    Options = [boAutoCalc, boReadFormulas]
+    left = 152
+    top = 184
   end
   object sWorkbookChartSource3: TsWorkbookChartSource
     WorkbookSource = sWorkbookSource1
-    left = 640
-    top = 512
+    left = 544
+    top = 503
+  end
+  object sWorkbookChartSource2: TsWorkbookChartSource
+    WorkbookSource = sWorkbookSource1
+    left = 544
+    top = 316
+  end
+  object sWorkbookChartSource1: TsWorkbookChartSource
+    WorkbookSource = sWorkbookSource1
+    left = 544
+    top = 120
   end
 end
