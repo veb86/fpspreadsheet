@@ -661,6 +661,7 @@ begin
     FWorkbookSource.AddListener(self);
 //  FWorkbook := GetWorkbook;
   ListenerNotification([lniWorkbook, lniWorksheet]);
+  Prepare;
 end;
 
 {@@ ----------------------------------------------------------------------------
