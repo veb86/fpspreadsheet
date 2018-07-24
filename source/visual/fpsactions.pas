@@ -274,16 +274,18 @@ type
     FNumberFormatStr: string;
     FOnGetNumFormatStr: TsNumFormatStrEvent;
     procedure SetNumberFormat(AValue: TsNumberFormat);
+    procedure SetNumberFormatStr(AValue: String);
   protected
     procedure ApplyFormatToCell(ACell: PCell); override;
     procedure ExtractFromCell(ACell: PCell); override;
+    procedure UpdateCaptionAndHint;
   public
     constructor Create(AOwner: TComponent); override;
   published
     property NumberFormat: TsNumberFormat
       read FNumberFormat write SetNumberFormat default nfGeneral;
     property NumberFormatString: string
-      read FNumberFormatStr write FNumberFormatStr;
+      read FNumberFormatStr write SetNumberFormatStr;
     property OnGetNumberFormatString: TsNumFormatStrEvent
       read FOnGetNumFormatStr write FOnGetNumFormatStr;
   end;
@@ -1212,7 +1214,7 @@ begin
   inherited Create(AOwner);
   Caption := rsNumberFormatCaption_General;
   Hint := rsNumberFormatHint_General;
-  GroupIndex := 1411141258;    // Date/time when this was written
+  GroupIndex := 1411141258;    // Date/time when this code was written
   AutoCheck := true;
 end;
 
@@ -1255,16 +1257,32 @@ begin
 end;
 
 procedure TsNumberFormatAction.SetNumberFormat(AValue: TsNumberFormat);
+begin
+  FNumberFormat := AValue;
+  UpdateCaptionAndHint;
+end;
+
+procedure TsNumberFormatAction.SetNumberFormatStr(AValue: String);
+begin
+  FNumberFormatStr := AValue;
+  UpdateCaptionAndHint;
+end;
+
+procedure TsNumberFormatAction.UpdateCaptionAndHint;
 
   procedure CaptionAndHint(ACaption, AHint: String);
   begin
-    Caption := ACaption;
-    Hint := AHint;
+    if Caption = '' then begin
+      if FNumberFormatStr <> '' then
+        Caption := Format('%s (%s)', [ACaption, FNumberFormatStr])
+      else
+        Caption := ACaption;
+    end;
+    if Hint = '' then
+      Hint := AHint;
   end;
 
 begin
-  if AValue = FNumberFormat then exit;
-  FNumberFormat := AValue;
   case FNumberFormat of
     nfGeneral:
       CaptionAndHint(rsNumberFormatCaption_General, rsNumberFormatHint_General);

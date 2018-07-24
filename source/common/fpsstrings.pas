@@ -266,7 +266,7 @@ const
   rsNumberFormatCaption_Percentage = 'Percent';
   rsNumberFormatCaption_Fraction = 'Fraction';
   rsNumberFormatCaption_Currency = 'Currency';
-  rsNumberFormatCaption_CurrencyRed = 'Currency (red)';
+  rsNumberFormatCaption_CurrencyRed = 'Currency';
   rsNumberFormatCaption_ShortDateTime = 'Date and time';
   rsNumberFormatCaption_ShortDate = 'Short date';
   rsNumberFormatCaption_LongDate = 'Long date';
