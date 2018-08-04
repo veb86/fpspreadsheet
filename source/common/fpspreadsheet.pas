@@ -5208,15 +5208,15 @@ begin
   // "1" as a valid date/time.
   if TryStrToDateTime(AValue, number, AFormatSettings) then
   begin
-    if number < 1.0 then          // this is a time alone
+    if (number < 1.0) or IsTimeFormat(numFmtParams) then          // this is a time alone
     begin
-      if not IsTimeFormat(numFmtParams) then
-      begin
+//      if not IsTimeFormat(numFmtParams) then
+//      begin
         ucValue := Uppercase(AValue);
         isAMPM := (pos('AM', ucValue) > 0) or (pos('PM', ucValue) > 0);
         isLongTime := IsLongTimeFormat(AValue, AFormatSettings.TimeSeparator);
         WriteDateTime(ACell, number, TIME_FMT[isAMPM, isLongTime]);
-      end;
+//      end;
     end else
     if frac(number) = 0.0 then  // this is a date alone
     begin
