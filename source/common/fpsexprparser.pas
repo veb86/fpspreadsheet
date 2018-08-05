@@ -294,56 +294,7 @@ type
     destructor Destroy; override;
     property Operand: TsExprNode read FOperand;
   end;
-             (*
-  { TsNotExprNode }
-  TsNotExprNode = class(TsUnaryOperationExprNode)
-  protected
-    procedure GetNodeValue(out AResult: TsExpressionResult); override;
-  public
-    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
-    function AsString: String; override;
-    procedure Check; override;
-    function NodeType: TsResultType; override;
-  end;
-              *)
-  (*
-  { TsConvertExprNode }
-  TsConvertExprNode = class(TsUnaryOperationExprNode)
-    function AsRPNItem(ANext: PRPNItem): PRPNItem; override;
-    function AsString: String; override;
-  end;
 
-  { TsConvertToIntExprNode }
-  TsConvertToIntExprNode = class(TsConvertExprNode)
-  public
-//    procedure Check; override;
-  end;
-
-  { TsIntToFloatExprNode }
-  TsIntToFloatExprNode = class(TsConvertToIntExprNode)
-  protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
-  public
-    function NodeType: TsResultType; override;
-  end;
-
-  { TsIntToDateTimeExprNode }
-  TsIntToDateTimeExprNode = class(TsConvertToIntExprNode)
-  protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
-  public
-    function NodeType: TsResultType; override;
-  end;
-
-  { TsFloatToDateTimeExprNode }
-  TsFloatToDateTimeExprNode = class(TsConvertExprNode)
-  protected
-    procedure GetNodeValue(out Result: TsExpressionResult); override;
-  public
-//    procedure Check; override;
-    function NodeType: TsResultType; override;
-  end;
-                     *)
   { TsUPlusExprNode }
   TsUPlusExprNode = class(TsUnaryOperationExprNode)
   protected
@@ -3069,6 +3020,7 @@ end;
 procedure TsUMinusExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;
+  val: Extended;
 begin
   Operand.GetNodeValue(Result);
   case Result.ResultType of
@@ -3081,17 +3033,31 @@ begin
     rtCell:
       begin
         cell := ArgToCell(Result);
-        if (cell <> nil) and (cell^.ContentType = cctNumber) then
+        if cell = nil then
+          Result := FloatResult(0.0)
+        else if (cell^.ContentType = cctUTF8String) then begin
+          if TryStrToFloat(cell^.UTF8StringValue, val) then
+            Result := FloatResult(-val)
+          else
+            Result := ErrorResult(errWrongType);
+        end else
+        if (cell^.ContentType = cctNumber) or (cell^.ContentType = cctDateTime) then
         begin
           if frac(cell^.NumberValue) = 0.0 then
             Result := IntegerResult(-trunc(cell^.NumberValue))
           else
             Result := FloatResult(cell^.NumberValue);
         end else
-          Result := FloatResult(0.0);
+        if (cell^.ContentType = cctBool) then
+          Result := ErrorResult(errWrongType);
       end;
     rtEmpty:
       Result := FloatResult(0.0);
+    rtString:
+      if TryStrToFloat(Result.ResString, val) then
+        Result := FloatResult(-val)
+      else
+        Result := ErrorResult(errWrongType);
     else
       Result := ErrorResult(errWrongType);
   end;
@@ -3237,6 +3203,7 @@ end;
 procedure TsEqualExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
+  fL, fR: TsExprFloat;
 begin
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
@@ -3252,8 +3219,14 @@ begin
 
   if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) = ArgToString(RRes))
-  else
-    AResult := BooleanResult(ArgToFloat(LRes) = ArgToFloat(RRes));
+  else begin
+    fL := ArgToFloat(LRes);
+    fR := ArgToFloat(RRes);
+    if IsNaN(fL) or IsNaN(fR) then
+      AResult := BooleanResult(false)
+    else
+      AResult := BooleanResult(fL = fR);
+  end;
 end;
 
 
@@ -3300,6 +3273,7 @@ end;
 procedure TsLessExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
+  fL, fR: TsExprFloat;
 begin
   if HasError(AResult) then
     exit;
@@ -3309,8 +3283,14 @@ begin
 
   if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) < ArgToString(RRes))
-  else
-    AResult := BooleanResult(ArgToFloat(LRes) < ArgToFloat(RRes));
+  else begin
+    fL := ArgToFloat(LRes);
+    fR := ArgToFloat(RRes);
+    if IsNaN(fL) or IsNaN(fR) then
+      AResult := BooleanResult(false)
+    else
+      AResult := BooleanResult(fL < fR);
+  end;
 end;
 
 
@@ -3333,6 +3313,7 @@ end;
 procedure TsGreaterExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
+  fL, fR: TsExprFloat;
 begin
   if HasError(AResult) then
     exit;
@@ -3342,8 +3323,14 @@ begin
 
   if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) > ArgToString(RRes))
-  else
-    AResult := BooleanResult(ArgToFloat(LRes) > ArgToFloat(RRes));
+  else begin
+    fL := ArgToFloat(LRes);
+    fR := ArgToFloat(RRes);
+    if IsNaN(fL) or IsNaN(fR) then
+      AResult := BooleanResult(false)
+    else
+      AResult := BooleanResult(fL > fR);
+  end;
 end;
 
 
@@ -3366,6 +3353,7 @@ end;
 procedure TsGreaterEqualExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
+  fL, fR: TsExprFloat;
 begin
   if HasError(AResult) then
     exit;
@@ -3375,8 +3363,14 @@ begin
 
   if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) >= ArgToString(RRes))
-  else
-    AResult := BooleanResult(ArgToFloat(LRes) >= ArgToFloat(RRes));
+  else begin
+    fL := ArgToFloat(LRes);
+    fR := ArgToFloat(RRes);
+    if IsNaN(fL) or IsNaN(fR) then
+      AResult := BooleanResult (false)
+    else
+      AResult := BooleanResult(fL >= fR);
+  end;
 end;
 
 
@@ -3399,6 +3393,7 @@ end;
 procedure TsLessEqualExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
+  fL, fR: TsExprFloat;
 begin
   if HasError(AResult) then
     exit;
@@ -3408,8 +3403,14 @@ begin
 
   if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) <= ArgToString(RRes))
-  else
-    AResult := BooleanResult(ArgToFloat(LRes) <= ArgToFloat(RRes));
+  else begin
+    fL := ArgToFloat(LRes);
+    fR := ArgToFloat(RRes);
+    if IsNaN(fL) or IsNaN(fR) then
+      AResult := BooleanResult (false)
+    else
+      AResult := BooleanResult(fL <= fR);
+  end;
 end;
 
 
@@ -3474,6 +3475,7 @@ end;
 procedure TsAddExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
+  fL, fR: TsExprFloat;
 begin
   if HasError(AResult) then
     exit;
@@ -3481,10 +3483,12 @@ begin
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
-  if IsInteger(LRes) and IsInteger(RRes) then
-    AResult := IntegerResult(ArgToInt(LRes) + ArgToInt(RRes))
+  fL := ArgToFloat(LRes);
+  fR := ArgToFloat(RRes);
+  if IsNaN(fL) or IsNaN(fR) then
+    AResult := ErrorResult(errWrongType)
   else
-    AResult := FloatResult(ArgToFloat(LRes) + ArgToFloat(RRes));
+    AResult := FloatResult(fL + fR);
 end;
 
 
@@ -3507,6 +3511,7 @@ end;
 procedure TsSubtractExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   lRes, RRes: TsExpressionResult;
+  fL, fR: TsExprFloat;
 begin
   if HasError(AResult) then
     exit;
@@ -3514,11 +3519,12 @@ begin
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
-  if IsInteger(LRes) and IsInteger(RRes)
-  then
-    AResult := IntegerResult(ArgToInt(LRes) - ArgToInt(RRes))
+  fL := ArgToFloat(LRes);
+  fR := ArgToFloat(RRes);
+  if IsNaN(fL) or IsNaN(fR) then
+    AResult := ErrorResult(errWrongType)
   else
-    AResult := FloatResult(ArgToFloat(LRes) - ArgToFloat(RRes))
+    AResult := FloatResult(fL - fR);
 end;
 
 
@@ -3541,14 +3547,20 @@ end;
 procedure TsMultiplyExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
+  fL, fR: TsExprFloat;
 begin
   if HasError(AResult) then
     exit;
 
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
-  try
-    AResult := FloatResult(ArgToFloat(LRes) * ArgToFloat(RRes));
+  fL := ArgToFloat(LRes);
+  fR := ArgToFloat(RRes);
+  if IsNaN(fL) or IsNaN(fR) then
+    AResult := ErrorResult(errWrongType)
+  else
+    try
+      AResult := FloatResult(fL * fR);
   except
     on EInvalidArgument do AResult := ErrorResult(errOverflow);
   end;
@@ -3574,7 +3586,7 @@ end;
 procedure TsDivideExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
-  y: TsExprFloat;
+  fL, fR: TsExprFloat;
 begin
   if HasError(AResult) then
     exit;
@@ -3582,12 +3594,16 @@ begin
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
-  y := ArgToFloat(RRes);
-  if y = 0.0 then
+  fL := ArgToFloat(LRes);
+  fR := ArgToFloat(RRes);
+  if IsNaN(fL) or IsNaN(fR) then
+    AResult := ErrorResult(errWrongType)
+  else
+  if fR = 0.0 then
     AResult := ErrorResult(errDivideByZero)
   else
     try
-      AResult := FloatResult(ArgToFloat(LRes) / y);
+      AResult := FloatResult(fL / fR);
     except
       on EInvalidArgument do AResult := ErrorResult(errOverflow);
     end;
@@ -3618,17 +3634,23 @@ end;
 procedure TsPowerExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   LRes, RRes: TsExpressionResult;
+  fL, fR: TsExprFloat;
 begin
   if HasError(AResult) then
     exit;
 
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
-  try
-    AResult := FloatResult(Power(ArgToFloat(LRes), ArgToFloat(RRes)));
-  except
-    on E: EInvalidArgument do AResult := ErrorResult(errOverflow);
-  end;
+  fL := ArgToFloat(LRes);
+  fR := ArgToFloat(RRes);
+  if IsNaN(fL) or IsNaN(fR) then
+    AResult := ErrorResult(errWrongType)
+  else
+    try
+      AResult := FloatResult(Power(fL, fR));
+    except
+      on E: EInvalidArgument do AResult := ErrorResult(errOverflow);
+    end;
 end;
 
 function TsPowerExprNode.NodeType: TsResultType;
@@ -3766,21 +3788,6 @@ begin
 
     if rta = rtCell then
       Continue;
-                    (*
-    if (rtp <> rta) and not (rta in [rtCellRange, rtError, rtEmpty]) then
-    begin
-      // Automatically convert integers to floats in functions that return a float
-      if (rta = rtInteger) and (rtp = rtFloat) then
-      begin
-        FArgumentNodes[i] := TsIntToFloatExprNode(FArgumentNodes[i]);
-        exit;
-      end;
-      // Floats are truncated automatically to integers - that's what Excel does.
-      if (rta = rtFloat) and (rtp = rtInteger) then
-        exit;
-      RaiseParserError(SErrInvalidArgumentType, [i+1, ResultTypeName(rtp), ResultTypeName(rta)])
-    end;
-    *)
   end;
 end;
 
@@ -3978,30 +3985,6 @@ begin
   AResult.Worksheet := GetSheet;
 end;
 
-(*
-procedure TsCellExprNode.GetNodeValue(out AResult: TsExpressionResult);
-var
-  cell: PCell;
-begin
-  if Parser.CopyMode then
-    cell := (FWorksheet as TsWorksheet).FindCell(GetRow, GetCol)
-  else
-    cell := FCell;
-
-  if (cell <> nil) and HasFormula(cell) then
-    case (FWorksheet as TsWorksheet).GetCalcState(cell) of
-      csNotCalculated:
-        (FWorksheet as TsWorksheet).CalcFormula(cell);
-      csCalculating:
-        raise ECalcEngine.CreateFmt(rsCircularReference, [GetCellString(cell^.Row, cell^.Col)]);
-    end;
-
-  AResult.ResultType := rtCell;
-  AResult.ResRow := GetRow;
-  AResult.ResCol := GetCol;
-  AResult.Worksheet := GetSheet;
-end;
-*)
 
 { See: GetCol }
 function TsCellExprNode.GetRow: Cardinal;
@@ -4223,7 +4206,7 @@ end;
 
 procedure TsCellRangeExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
-  r, c, s: Array[TsCellRangeIndex] of Cardinal;
+  r, c, s: Array[TsCellRangeIndex] of Integer; //Cardinal;
   ss: Integer;
   i: TsCellRangeIndex;
   sheet: TsWorksheet;
@@ -4427,7 +4410,8 @@ begin
                           begin
                             fs := (Arg.Worksheet as TsWorksheet).Workbook.FormatSettings;
                             s := cell^.UTF8StringValue;
-                            TryStrToFloat(s, result, fs);
+                            if not TryStrToFloat(s, Result, fs) then
+                              Result := NaN;
                           end;
                        end;
                    end;
@@ -4601,8 +4585,12 @@ end;
 
 function FloatResult(const AValue: TsExprFloat): TsExpressionResult;
 begin
-  Result.ResultType := rtFloat;
-  Result.ResFloat := AValue;
+  if IsNaN(AValue) then
+    Result := ErrorResult(errWrongType)
+  else begin
+    Result.ResultType := rtFloat;
+    Result.ResFloat := AValue;
+  end;
 end;
 
 function IntegerResult(const AValue: Integer): TsExpressionResult;

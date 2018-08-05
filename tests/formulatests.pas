@@ -38,6 +38,7 @@ type
     procedure Test_Write_Read_CalcFormulas(AFormat: TsSpreadsheetformat;
       UseRPNFormula: Boolean);
     procedure Test_Write_Read_Calc3DFormulas(AFormat: TsSpreadsheetFormat);
+
     procedure Test_OverwriteFormulaTest(ATest: Integer; AFormat: TsSpreadsheetFormat);
 
   published
@@ -108,6 +109,7 @@ type
     procedure Test_OverwriteFormula_Error_BIFF8;
     procedure Test_OverwriteFormula_Error_OOXML;
     procedure Test_OverwriteFormula_Error_ODS;
+
   end;
 
 implementation
@@ -1064,8 +1066,6 @@ procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Error_ODS;
 begin
   Test_OverwriteFormulaTest(3, sfOpenDocument);
 end;
-
-
 
 
 initialization

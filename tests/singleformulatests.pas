@@ -27,6 +27,7 @@ type
       ATestKind: TFormulaTestKind; AFormat: TsSpreadsheetFormat;
       AExpectedFormula: String = '');
     procedure TestWorksheet(ATestKind: TWorksheetTestKind; ATestCase: Integer);
+    procedure TestFormulaErrors(ATest: Integer);
 
   published
     procedure AddConst_BIFF2;
@@ -113,6 +114,25 @@ type
     procedure DeleteWorksheet_Multi_KeepFirst;
     procedure DeleteWorksheet_Multi_All;
 
+    procedure Error_AddStringNumber;
+    procedure Error_SubtractStringNumber;
+    procedure Error_MultiplyStringNumber;
+    procedure Error_DivideStringNumber;
+    procedure Error_PowerStringNumber;
+    procedure Error_SinString;
+    procedure Error_SinStringAddNumber;
+    procedure Error_Equal;
+    procedure Error_NotEqual;
+    procedure Error_Greater;
+    procedure Error_Smaller;
+    procedure Error_GreaterEqual;
+    procedure Error_LessEqual;
+    procedure Error_UnaryPlusString;
+    procedure Error_UnaryMinusString;
+
+    procedure Add_Number_NumString;
+    procedure Equal_Number_NumString;
+    procedure UnaryMinusNumString;
   end;
 
 implementation
@@ -121,7 +141,8 @@ uses
  {$IFDEF FORMULADEBUG}
   LazLogger,
  {$ENDIF}
-  Math, typinfo, lazUTF8, fpsUtils;
+  //Math,
+  typinfo, lazUTF8, fpsUtils;
 
 
 { TSpreadExtendedFormulaTests }
@@ -848,6 +869,148 @@ end;
 procedure TSpreadSingleFormulaTests.DeleteWorksheet_Multi_All;
 begin
   TestWorksheet(wtkDeleteWorksheet, 10);
+end;
+
+
+{ Formula errors }
+
+procedure TSpreadSingleFormulaTests.TestFormulaErrors(ATest: Integer);
+type
+  TTestCase = record
+    Formula: string;
+    Expected: String;
+  end;
+const
+  // Cell A1 is 'abc' (string), A2 is 1.0 (number), A3 is '1' (string)
+  TestCases: array[0..17] of TTestCase = (
+  {0}  (Formula: 'A1+A2';      Expected: '#VALUE!'),
+       (Formula: 'A1-A2';      Expected: '#VALUE!'),
+       (Formula: 'A1*A2';      Expected: '#VALUE!'),
+       (Formula: 'A1/A2';      Expected: '#VALUE!'),
+       (Formula: 'A1^A2';      Expected: '#VALUE!'),
+  {5}  (Formula: 'sin(A1)';    Expected: '#VALUE!'),
+       (Formula: 'sin(A1)+A2'; Expected: '#VALUE!'),
+       (Formula: 'A1=A2';      Expected: 'FALSE'),
+       (Formula: 'A1<>A2';     Expected: 'TRUE'),
+       (Formula: 'A1>A2';      Expected: 'FALSE'),
+  {10} (Formula: 'A1<A2';      Expected: 'FALSE'),
+       (Formula: 'A1>=A2';     Expected: 'FALSE'),
+       (Formula: 'A1<=A2';     Expected: 'FALSE'),
+       (Formula: '+A1';        Expected: 'abc'),
+       (Formula: '-A1';        Expected: '#VALUE!'),
+  {15} (Formula: 'A2+A3';      Expected: '2'),
+       (Formula: 'A2=A3';      Expected: 'TRUE'),
+       (Formula: '-A3';        Expected: '-1')
+  );
+
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  s: String;
+begin
+  book := TsWorkbook.Create;
+  try
+    book.Options := book.Options + [boAutoCalc];
+    sheet := book.AddWorksheet('Test');
+    sheet.WriteText(0, 0, 'abc');  // A1 = 'abc'
+    sheet.WriteNumber(1, 0, 1.0);   // A2 = 1.0
+    sheet.WriteText(2, 0, '1');    // A2 = '1';
+    sheet.WriteFormula(0, 1, TestCases[ATest].Formula);
+    s := sheet.ReadAsText(0, 1);
+    CheckEquals(TestCases[ATest].Expected, s, 'Error value match, formula "' + sheet.ReadFormula(0, 1) + '"');
+  finally
+    book.Free;
+  end;
+end;
+
+procedure TSpreadSingleFormulaTests.Error_AddStringNumber;
+begin
+  TestFormulaErrors(0);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_SubtractStringNumber;
+begin
+  TestFormulaErrors(1);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_MultiplyStringNumber;
+begin
+  TestFormulaErrors(2);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_DivideStringNumber;
+begin
+  TestFormulaErrors(3);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_PowerStringNumber;
+begin
+  TestFormulaErrors(4);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_SinString;
+begin
+  TestFormulaErrors(5);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_SinStringAddNumber;
+begin
+  TestFormulaErrors(6);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_Equal;
+begin
+  TestFormulaErrors(7);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_NotEqual;
+begin
+  TestFormulaErrors(8);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_Greater;
+begin
+  TestFormulaErrors(9);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_Smaller;
+begin
+  TestFormulaErrors(10);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_GreaterEqual;
+begin
+  TestFormulaErrors(11);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_LessEqual;
+begin
+  TestFormulaErrors(12);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_UnaryPlusString;
+begin
+  TestFormulaErrors(13);
+end;
+
+procedure TSpreadSingleFormulaTests.Error_UnaryMinusString;
+begin
+  TestFormulaErrors(14);
+end;
+
+procedure TSpreadSingleFormulaTests.Add_Number_NumString;
+begin
+  TestFormulaErrors(15);
+end;
+
+procedure TSpreadSingleFormulaTests.Equal_Number_NumString;
+begin
+  TestFormulaErrors(16);
+end;
+
+procedure TSpreadSingleFormulaTests.UnaryMinusNumString;
+begin
+  TestFormulaErrors(17);
 end;
 
 

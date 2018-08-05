@@ -798,7 +798,7 @@ type
   THtmlRichTextParam = record
     HTML: String;
     PlainText: String;
-    NumRichTextParams: 0..1;
+    NumRichTextParams: 0..2;
     RichTextParams: array[0..1] of TsRichTextParam;
   end;
 
