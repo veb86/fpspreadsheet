@@ -120,8 +120,7 @@ type
     procedure RemoveAndFreeCell(ARow, ACol: Cardinal);
 
     // Sorting
-    function DoCompareCells(ARow1, ACol1, ARow2, ACol2: Cardinal;
-      ASortOptions: TsSortOptions): Integer;
+    function DoCompareCells(AColRow1, AColRow2: Cardinal): Integer;
     function DoInternalCompareCells(ACell1, ACell2: PCell;
       ASortOptions: TsSortOptions): Integer;
     procedure DoExchangeColRow(AIsColumn: Boolean; AIndex, WithIndex: Cardinal;
@@ -4194,31 +4193,26 @@ end;
            +1 if the first cell is "larger", i.e. is behind the second one
            0  if both cells are equal
 ------------------------------------------------------------------------------- }
-function TsWorksheet.DoCompareCells(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  ASortOptions: TsSortOptions): Integer;
+function TsWorksheet.DoCompareCells(AColRow1, AColRow2: Cardinal): Integer;
 var
   cell1, cell2: PCell;  // Pointers to the cells to be compared
   key: Integer;
 begin
-  cell1 := FindCell(ARow1, ACol1);
-  cell2 := FindCell(ARow2, ACol2);
-  Result := DoInternalCompareCells(cell1, cell2, ASortOptions);
-  if Result = 0 then begin
-    key := 1;
-    while (Result = 0) and (key <= High(FSortParams.Keys)) do
+  Result := 0;
+  key := 0;
+  while (Result = 0) and (key <= High(FSortParams.Keys)) do
+  begin
+    if FSortParams.SortByCols then
     begin
-      if FSortParams.SortByCols then
-      begin
-        cell1 := FindCell(ARow1, FSortParams.Keys[key].ColRowIndex);
-        cell2 := FindCell(ARow2, FSortParams.Keys[key].ColRowIndex);
-      end else
-      begin
-        cell1 := FindCell(FSortParams.Keys[key].ColRowIndex, ACol1);
-        cell2 := FindCell(FSortParams.Keys[key].ColRowIndex, ACol2);
-      end;
-      Result := DoInternalCompareCells(cell1, cell2, ASortOptions);
-      inc(key);
+      cell1 := FindCell(AColRow1, FSortParams.Keys[key].ColRowIndex);
+      cell2 := FindCell(AColRow2, FSortParams.Keys[key].ColRowIndex);
+    end else
+    begin
+      cell1 := FindCell(FSortParams.Keys[key].ColRowIndex, AColRow1);
+      cell2 := FindCell(FSortParams.Keys[key].ColRowIndex, AColRow2);
     end;
+    Result := DoInternalCompareCells(cell1, cell2, FSortParams.Keys[key].Options);
+    inc(key);
   end;
 end;
 
@@ -4366,11 +4360,7 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
   var
     I,J: Integer;
     P: Integer;
-    index: Integer;
-    options: TsSortOptions;
   begin
-    index := ASortParams.Keys[0].ColRowIndex;   // less typing...
-    options := ASortParams.Keys[0].Options;
     repeat
       I := L;
       J := R;
@@ -4378,12 +4368,12 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
       repeat
         if ASortParams.SortByCols then
         begin
-          while DoCompareCells(P, index, I, index, options) > 0 do inc(I);
-          while DoCompareCells(P, index, J, index, options) < 0 do dec(J);
+          while DoCompareCells(P, I) > 0 do inc(I);
+          while DoCompareCells(P, J) < 0 do dec(J);
         end else
         begin
-          while DoCompareCells(index, P, index, I, options) > 0 do inc(I);
-          while DoCompareCells(index, P, index, J, options) < 0 do dec(J);
+          while DoCompareCells(P, I) > 0 do inc(I);
+          while DoCompareCells(P, J) < 0 do dec(J);
         end;
 
         if I <= J then
@@ -4392,11 +4382,11 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
           begin
             if ASortParams.SortByCols then
             begin
-              if DoCompareCells(I, index, J, index, options) <> 0 then
+              if DoCompareCells(I, J) <> 0 then
                 DoExchangeColRow(not ASortParams.SortByCols, J,I, AColFrom, AColTo);
             end else
             begin
-              if DoCompareCells(index, I, index, J, options) <> 0 then
+              if DoCompareCells(I, J) <> 0 then
                 DoExchangeColRow(not ASortParams.SortByCols, J,I, ARowFrom, ARowTo);
             end;
           end;
