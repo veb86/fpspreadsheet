@@ -2531,6 +2531,8 @@ begin
   Result := false;
   case AIdentifier of
     $01: AStream.ReadWord;     // tAttrVolatile token, data not used
+    $02: AStream.ReadWord;     // tAttrIf token, data not used
+    $08: AStream.ReadWord;     // tAttrSkip token, data not used
     $10: AStream.ReadWord;     // tAttrSum token, data not used
     else exit;                 // others not supported by fps --> Result = false
   end;
@@ -2943,10 +2945,8 @@ begin
           supported := ReadRPNAttr(AStream, b);
           if supported then begin
             case b of
-              $10:
-                begin  // one-parameter sum
-                  rpnItem := RPNFunc('SUM', 1, rpnItem)
-                end;
+              $02: ;
+              $10: rpnItem := RPNFunc('SUM', 1, rpnItem);  // one-parameter SUM
             end;
           end;
         end;
