@@ -2463,74 +2463,78 @@ begin
     hasFormula := false;
 
   // Read formula results
-  if hasFormula then TsWorkbook(FWorkbook).LockFormulas;
 
-  valueType := GetAttrValue(ACellNode, 'office:value-type');
-  valueStr := GetAttrValue(ACellNode, 'office:value');
-  calcExtValueType := GetAttrValue(ACellNode, 'calcext:value-type');
-  // ODS wants a 0 in the NumberValue field in case of an error. If there is
-  // no error, this value will be corrected below.
-  cell^.NumberValue := 0.0;
-  // (a) number value
-  if (valueType = 'float') then
-  begin
-    if UpperCase(valueStr) = '1.#INF' then
-      TsWorksheet(FWorksheet).WriteNumber(cell, 1.0/0.0)
-    else
+  // Prevent formulas from being erased when formula results are written to cells
+  TsWorkbook(FWorkbook).LockFormulas;
+  try
+    valueType := GetAttrValue(ACellNode, 'office:value-type');
+    valueStr := GetAttrValue(ACellNode, 'office:value');
+    calcExtValueType := GetAttrValue(ACellNode, 'calcext:value-type');
+    // ODS wants a 0 in the NumberValue field in case of an error. If there is
+    // no error, this value will be corrected below.
+    cell^.NumberValue := 0.0;
+    // (a) number value
+    if (valueType = 'float') then
     begin
-      floatValue := StrToFloat(valueStr, FPointSeparatorSettings);
-      TsWorksheet(FWorksheet).WriteNumber(cell, floatValue);
-    end;
-    if IsDateTimeFormat(fmt^.NumberFormat) then
-    begin
-      cell^.ContentType := cctDateTime;
-      // No datemode correction for intervals and for time-only values
-      if (fmt^.NumberFormat = nfTimeInterval) or (cell^.NumberValue < 1) then
-        cell^.DateTimeValue := cell^.NumberValue
+      if UpperCase(valueStr) = '1.#INF' then
+        TsWorksheet(FWorksheet).WriteNumber(cell, 1.0/0.0)
       else
-        case FDateMode of
-          dmODS1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
-          dmODS1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
-          dmODS1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
-        end;
-    end;
-  end else
-  // (b) Date/time value
-  if (valueType = 'date') or (valueType = 'time') then
-  begin
-    floatValue := ExtractDateTimeFromNode(ACellNode, fmt^.NumberFormat, fmt^.NumberFormatStr);
-    TsWorksheet(FWorkSheet).WriteDateTime(cell, floatValue);
-  end else
-  // (c) text
-  if (valueType = 'string') and (calcextValueType <> 'error') then
-  begin
-    node := ACellNode.FindNode('text:p');
-    if (node <> nil) and (node.FirstChild <> nil) then
+      begin
+        floatValue := StrToFloat(valueStr, FPointSeparatorSettings);
+        TsWorksheet(FWorksheet).WriteNumber(cell, floatValue);
+      end;
+      if IsDateTimeFormat(fmt^.NumberFormat) then
+      begin
+        cell^.ContentType := cctDateTime;
+        // No datemode correction for intervals and for time-only values
+        if (fmt^.NumberFormat = nfTimeInterval) or (cell^.NumberValue < 1) then
+          cell^.DateTimeValue := cell^.NumberValue
+        else
+          case FDateMode of
+            dmODS1899: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1899_BASE;
+            dmODS1900: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1900_BASE;
+            dmODS1904: cell^.DateTimeValue := cell^.NumberValue + DATEMODE_1904_BASE;
+          end;
+      end;
+    end else
+    // (b) Date/time value
+    if (valueType = 'date') or (valueType = 'time') then
     begin
-      valueStr := node.FirstChild.Nodevalue;
+      floatValue := ExtractDateTimeFromNode(ACellNode, fmt^.NumberFormat, fmt^.NumberFormatStr);
+      TsWorksheet(FWorkSheet).WriteDateTime(cell, floatValue);
+    end else
+    // (c) text
+    if (valueType = 'string') and (calcextValueType <> 'error') then
+    begin
+      node := ACellNode.FindNode('text:p');
+      if (node <> nil) and (node.FirstChild <> nil) then
+      begin
+        valueStr := node.FirstChild.Nodevalue;
+        TsWorksheet(FWorksheet).WriteText(cell, valueStr);
+      end;
+    end else
+    // (d) boolean
+    if (valuetype = 'boolean') then
+    begin
+      boolValue := ExtractBoolFromNode(ACellNode);
+      TsWorksheet(FWorksheet).WriteBoolValue(cell, boolValue);
+    end else
+    if (calcextValuetype = 'error') then
+    begin
+      if ExtractErrorFromNode(ACellNode, errorValue) then
+        TsWorksheet(FWorksheet).WriteErrorValue(cell, errorValue) else
+        TsWorksheet(FWorksheet).WriteText(cell, 'ERROR');
+    end else
+    // (e) Text
+    if (valueStr <> '') then
       TsWorksheet(FWorksheet).WriteText(cell, valueStr);
-    end;
-  end else
-  // (d) boolean
-  if (valuetype = 'boolean') then
-  begin
-    boolValue := ExtractBoolFromNode(ACellNode);
-    TsWorksheet(FWorksheet).WriteBoolValue(cell, boolValue);
-  end else
-  if (calcextValuetype = 'error') then
-  begin
-    if ExtractErrorFromNode(ACellNode, errorValue) then
-      TsWorksheet(FWorksheet).WriteErrorValue(cell, errorValue) else
-      TsWorksheet(FWorksheet).WriteText(cell, 'ERROR');
-  end else
-  // (e) Text
-  if (valueStr <> '') then
-    TsWorksheet(FWorksheet).WriteText(cell, valueStr);
 
-  if hasFormula then TsWorkbook(FWorkbook).UnlockFormulas;
+    if FIsVirtualMode then
+      TsWorkbook(Workbook).OnReadCellData(Workbook, ARow, ACol, cell);
 
-  if FIsVirtualMode then
-    TsWorkbook(Workbook).OnReadCellData(Workbook, ARow, ACol, cell);
+  finally
+    TsWorkbook(FWorkbook).UnlockFormulas;
+  end;
 end;
 
 procedure TsSpreadOpenDocReader.ReadFromStream(AStream: TStream;

@@ -953,7 +953,7 @@ end;
   It has the structure [sheet1.C1R1:sheet2.C2R2] }
 function TsExpressionScanner.DoCellRangeODS: TsTokenType;
 type
-  TScannerStateODS = (ssSheet1, ssCol1, ssRow1, ssSheet2, ssCol2, ssRow2);
+  TScannerStateODS = (ssInSheet1, ssInCol1, ssInRow1, ssInSheet2, ssInCol2, ssInRow2);
 var
   C: Char;
   prevC: Char;
@@ -968,7 +968,7 @@ begin
   FCellRange.Col2 := Cardinal(-1);
   FFlags := rfAllRel;
 
-  state := ssSheet1;
+  state := ssInSheet1;
   FToken := '';
   C := NextPos;
   prevC := #0;
@@ -976,33 +976,33 @@ begin
     case C of
       cNULL: ScanError(rsUnexpectedEndOfExpression);
       '.': begin
-             if (state = ssSheet1) then
+             if (state = ssInSheet1) then
              begin
                FSheet1 := FToken;
-               state := ssCol1;
+               state := ssInCol1;
              end else
-             if (state = ssSheet2) then
+             if (state = ssInSheet2) then
              begin
                FSheet2 := FToken;
-               state := ssCol2;
+               state := ssInCol2;
              end else
                ScanError(rsIllegalODSCellRange);
              FToken := '';
              val := 0;
            end;
-      ':': if (state = ssRow1) then
+      ':': if (state = ssInRow1) then
            begin
              FCellRange.Row1 := val-1;
-             state := ssSheet2;
+             state := ssInSheet2;
              FToken := '';
            end else
              ScanError(rsIllegalODSCellRange);
       '$': case state of
-             ssCol1: if prevC = '.' then Exclude(FFlags, rfRelCol) else Exclude(FFlags, rfRelRow);
-             ssCol2: if prevC = '.' then Exclude(FFlags, rfRelCol2) else Exclude(FFlags, rfRelRow2);
+             ssInCol1: if prevC = '.' then Exclude(FFlags, rfRelCol) else Exclude(FFlags, rfRelRow);
+             ssInCol2: if prevC = '.' then Exclude(FFlags, rfRelCol2) else Exclude(FFlags, rfRelRow2);
            end;
       else
-           if (state in [ssSheet1, ssSheet2]) then
+           if (state in [ssInSheet1, ssInSheet2]) then
              FToken := FToken + C
            else
              case C of
@@ -1011,16 +1011,21 @@ begin
                'a'..'z':
                  val := val*10 + ord(C) - ord('a');
                '0'..'9':
-                 if state = ssCol1 then begin
+                 if state = ssInCol1 then begin
                    FCellRange.Col1 := val;
-                   val := ord(C) - ord('0');
-                   state := ssRow1;
+                   val := (ord(C) - ord('0'));
+                   state := ssInRow1;
                  end else
-                 if state = ssCol2 then begin
+                 if state = ssInRow1 then
+                   val := val*10 + (ord(C) - ord('0'))
+                 else
+                 if state = ssInCol2 then begin
                    FCellRange.Col2 := val;
-                   val := ord(C) - ord('0');
-                   state := ssRow2;
-                 end;
+                   val := (ord(C) - ord('0'));
+                   state := ssInRow2;
+                 end else
+                 if state = ssInRow2 then
+                   val := val*10 + (ord(C) - ord('0'));
              end;
     end;
     prevC := C;
@@ -1029,9 +1034,9 @@ begin
   if C <> ']' then
     ScanError(Format(rsRightSquareBracketExpected, [FPos, C]));
   case state of
-    ssRow1:
+    ssInRow1:
       if val > 0 then FCellRange.Row1 := val - 1 else ScanError(rsIllegalODSCellRange);
-    ssRow2:
+    ssInRow2:
       if val > 0 then FCellRange.Row2 := val - 1 else ScanError(rsIllegalODSCellRange);
   end;
   if FCellRange.Col2 = Cardinal(-1) then Exclude(FFlags, rfRelCol2);
