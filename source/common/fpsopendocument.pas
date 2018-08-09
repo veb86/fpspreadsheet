@@ -2400,6 +2400,7 @@ var
   p: Integer;
   fmt: PsCellFormat;
   ns: String;
+  hasFormula: Boolean;
 begin
   {$IFDEF FPSpreadDebug}
   DebugLn(Format('[ReadFormula] ARow=%d, ACol=%d, AStyleIndex=%d', [ARow, ACol, AStyleIndex]));
@@ -2445,7 +2446,10 @@ begin
     formula^.Parser.Expression := formulaStr;
     formula^.Parser.Dialect := fdExcelA1;      // Convert formula to Excel A1 dialect
     formula^.Text := formula^.Parser.Expression;
-                                                                                     {
+    cell^.Flags := cell^.Flags + [cfHasFormula];
+    hasFormula := true;
+
+    {
     cell^.FormulaValue := formula;
     // Note: This formula is still in OpenDocument dialect. Conversion to
     // ExcelA1 dialect (used by fps) is postponed until all sheets have beeon
@@ -2455,9 +2459,12 @@ begin
     {$IFDEF FPSpreadDebug}
     DebugLn('  Formula found: ' + formula);
     {$ENDIF}
-  end;
+  end else
+    hasFormula := false;
 
   // Read formula results
+  if hasFormula then TsWorkbook(FWorkbook).LockFormulas;
+
   valueType := GetAttrValue(ACellNode, 'office:value-type');
   valueStr := GetAttrValue(ACellNode, 'office:value');
   calcExtValueType := GetAttrValue(ACellNode, 'calcext:value-type');
@@ -2519,6 +2526,8 @@ begin
   // (e) Text
   if (valueStr <> '') then
     TsWorksheet(FWorksheet).WriteText(cell, valueStr);
+
+  if hasFormula then TsWorkbook(FWorkbook).UnlockFormulas;
 
   if FIsVirtualMode then
     TsWorkbook(Workbook).OnReadCellData(Workbook, ARow, ACol, cell);

@@ -4793,7 +4793,7 @@ end;
 procedure TsWorksheet.WriteNumber(ACell: PCell; ANumber: Double);
 begin
   if ACell <> nil then begin
-    // Delete any pre-existing formula
+    // Delete any pre-existing formula, but only if FormulaLock is ON.
     DeleteFormula(ACell);
     // Write number to cell
     ACell^.ContentType := cctNumber;

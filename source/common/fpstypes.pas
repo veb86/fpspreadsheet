@@ -1018,12 +1018,34 @@ const
   HEADER_FOOTER_INDEX_EVEN    = 2;
   HEADER_FOOTER_INDEX_ALL     = 1;
 
-var
-  {@@ FPC format settings for which all strings have been converted to UTF8 }
-  UTF8FormatSettings: TFormatSettings;
+procedure InitUTF8FormatSettings(out AFormatSettings: TFormatSettings);
 
 
 implementation
+
+{@@ ----------------------------------------------------------------------------
+  Creates a localized FPC format settings record in which all strings are
+  encoded as UTF8.
+-------------------------------------------------------------------------------}
+procedure InitUTF8FormatSettings(out AFormatSettings: TFormatSettings);
+// remove when available in LazUtils
+var
+  i: Integer;
+begin
+  AFormatSettings := DefaultFormatSettings;
+  AFormatSettings.CurrencyString := AnsiToUTF8(DefaultFormatSettings.CurrencyString);
+  for i:=1 to 12 do begin
+    AFormatSettings.LongMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.LongMonthNames[i]);
+    AFormatSettings.ShortMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortMonthNames[i]);
+  end;
+  for i:=1 to 7 do begin
+    AFormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
+    AFormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
+  end;
+end;
+
+
+{ TsFont }
 
 constructor TsFont.Create(AFontName: String; ASize: Single; AStyle: TsFontStyles;
   AColor: TsColor; APosition: TsFontPosition);
@@ -1078,7 +1100,7 @@ end;
 constructor TsBasicWorkbook.Create;
 begin
   inherited;
-  FormatSettings := UTF8FormatSettings;
+  InitUTF8FormatSettings(FormatSettings);
   FUnits := suMillimeters;              // Units for column width and row height
   FFormatID := sfidUnknown;
   FLog := TStringList.Create;
@@ -1137,32 +1159,6 @@ begin
   Result := (FProtection <> []);
 end;
 
-
-
-{@@ ----------------------------------------------------------------------------
-  Creates a FPC format settings record in which all strings are encoded as
-  UTF8.
--------------------------------------------------------------------------------}
-procedure InitUTF8FormatSettings;
-// remove when available in LazUtils
-var
-  i: Integer;
-begin
-  UTF8FormatSettings := DefaultFormatSettings;
-  UTF8FormatSettings.CurrencyString := AnsiToUTF8(DefaultFormatSettings.CurrencyString);
-  for i:=1 to 12 do begin
-    UTF8FormatSettings.LongMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.LongMonthNames[i]);
-    UTF8FormatSettings.ShortMonthNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortMonthNames[i]);
-  end;
-  for i:=1 to 7 do begin
-    UTF8FormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
-    UTF8FormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
-  end;
-end;
-
-
-initialization
-  InitUTF8FormatSettings;
 
 end.
 

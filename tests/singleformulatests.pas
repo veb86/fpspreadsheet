@@ -83,6 +83,10 @@ type
     procedure SumMultiSheetRange_FlippedSheetsAndCells_OOXML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_ODS;
 
+    procedure IfConst_BIFF8;
+    procedure IfConst_OOXML;
+    procedure IfConst_ODS;
+
     procedure CountIfRange_BIFF8;
     procedure CountIfRangeSheet_BIFF8;
 
@@ -335,7 +339,7 @@ procedure TSpreadSingleFormulaTests.YearConst_BIFF8;
 var
   s: String;
 begin
-  s := FormatDateTime(ExprFormatSettings.ShortDateFormat, EncodeDate(2012,2,5), ExprFormatSettings);
+  s := FormatDateTime(DefaultFormatSettings.ShortDateFormat, EncodeDate(2012,2,5), ExprFormatSettings);
   TestFormula(Format('YEAR("%s")', [s]), '2012', ftkConstants, sfExcel8);
 end;
 
@@ -348,7 +352,7 @@ procedure TSpreadSingleFormulaTests.MonthConst_BIFF8;
 var
   s: String;
 begin
-  s := FormatDateTime(ExprFormatSettings.ShortDateFormat, EncodeDate(2012,2,5), ExprFormatSettings);
+  s := FormatDateTime(DefaultFormatSettings.ShortDateFormat, EncodeDate(2012,2,5), DefaultFormatSettings);
   TestFormula(Format('MONTH("%s")', [s]), '2', ftkConstants, sfExcel8);
 end;
 
@@ -361,7 +365,7 @@ procedure TSpreadSingleFormulaTests.DayConst_BIFF8;
 var
   s: String;
 begin
-  s := FormatDateTime(ExprFormatSettings.ShortDateFormat, EncodeDate(2012,2,5), ExprFormatSettings);
+  s := FormatDateTime(DefaultFormatSettings.ShortDateFormat, EncodeDate(2012,2,5), DefaultFormatSettings);
   TestFormula(Format('DAY("%s")', [s]), '5', ftkConstants, sfExcel8);
 end;
 
@@ -376,7 +380,7 @@ procedure TSpreadSingleFormulaTests.HourConst_BIFF8;
 var
   s: String;
 begin
-  s := FormatDateTime(ExprFormatSettings.LongTimeFormat, EncodeTime(14, 20, 41, 0), ExprFormatSettings);
+  s := FormatDateTime(ExprFormatSettings.LongTimeFormat, EncodeTime(14, 20, 41, 0), DefaultFormatSettings);
   TestFormula(Format('HOUR("%s")', [s]), '14', ftkConstants, sfExcel8);
 end;
 
@@ -511,6 +515,23 @@ end;
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheets_OOXML;
 begin
   TestFormula('SUM(Sheet3:Sheet2!C3:C5)', '55', ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+end;
+
+{ --- }
+
+procedure TSpreadSingleFormulaTests.IfConst_BIFF8;
+begin
+  TestFormula('IF(C3="A","is A","not A")', 'is A', ftkConstants, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.IfConst_OOXML;
+begin
+  TestFormula('IF(C3="A","is A","not A")', 'is A', ftkConstants, sfOOXML);
+end;
+
+procedure TSpreadSingleFormulaTests.IfConst_ODS;
+begin
+  TestFormula('IF(C3="A","is A","not A")', 'is A', ftkConstants, sfOpenDocument);
 end;
 
 { --- }

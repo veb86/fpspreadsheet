@@ -17,7 +17,6 @@
 {------------------------------------------------------------------------------}
   // Addition
   Row := 0;
-
   formula := '1+1';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -1874,7 +1873,7 @@
 
   // DAY  / argument string
   inc(Row);
-  s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
+  s := DateToStr(EncodeDate(2014, 7, 1), ExprFormatSettings);   // Localization of the test
   formula := 'DAY("'+s+'")';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -1906,7 +1905,7 @@
 
   // HOUR  / argument string
   inc(Row);
-  s := TimeToStr(EncodeTime(9, 59, 20, 0));   // Localization of the test
+  s := TimeToStr(EncodeTime(9, 59, 20, 0), ExprFormatSettings);   // Localization of the test
   formula := 'HOUR("'+s+'")';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -1938,7 +1937,7 @@
 
   // MINUTE  / argument string
   inc(Row);
-  s := TimeToStr(EncodeTime(9, 59, 20, 0));   // Localization of the test
+  s := TimeToStr(EncodeTime(9, 59, 20, 0), ExprFormatSettings);   // Localization of the test
   formula := 'MINUTE("'+s+'")';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -1970,7 +1969,7 @@
 
   // MONTH  / argument string
   inc(Row);
-  s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
+  s := DateToStr(EncodeDate(2014, 7, 1), ExprFormatSettings);   // Localization of the test
   formula := 'MONTH("'+s+'")';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -2022,7 +2021,7 @@
 
   // SECOND  / argument string
   inc(Row);
-  s := TimeToStr(EncodeTime(9, 59, 20, 0));   // Localization of the test
+  s := TimeToStr(EncodeTime(9, 59, 20, 0), ExprFormatSettings);   // Localization of the test
   formula := 'SECOND("'+s+'")';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -2054,7 +2053,7 @@
 
   // TIMEVALUE
   inc(Row);
-  s := TimeToStr(EncodeTime(9, 59, 20, 0));  // Localization!
+  s := TimeToStr(EncodeTime(9, 59, 20, 0), ExprFormatSettings);  // Localization!
   formula := 'TIMEVALUE("'+s+'")';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -2104,7 +2103,7 @@
 
   // WEEKDAY  / argument string
   inc(Row);
-  s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
+  s := DateToStr(EncodeDate(2014, 7, 1), ExprFormatSettings);   // Localization of the test
   formula := 'WEEKDAY("'+s+'")';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
@@ -2136,7 +2135,7 @@
 
   // YEAR  / argument string
   inc(Row);
-  s := DateToStr(EncodeDate(2014, 7, 1));   // Localization of the test
+  s := DateToStr(EncodeDate(2014, 7, 1), ExprFormatSettings);   // Localization of the test
   formula := 'YEAR("'+s+'")';
   MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then

@@ -391,6 +391,10 @@ var
 begin
   start_date := ArgToDateTime(Args[0]);
   end_date := ArgToDateTime(Args[1]);
+  if IsNaN(start_date) or IsNaN(end_date) then begin
+    Result := ErrorResult(errWrongType);
+    exit;
+  end;
   interval := ArgToString(Args[2]);
 
   if end_date > start_date then
@@ -428,8 +432,10 @@ begin
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
     dt := ArgToDateTime(Args[0]);
-    DecodeDate(dt, y, m, d);
-    Result := IntegerResult(d);
+    if not IsNaN(dt) then begin
+      DecodeDate(dt, y, m, d);
+      Result := IntegerResult(d);
+    end;
   end;
 end;
 
@@ -444,8 +450,10 @@ begin
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
     dt := ArgToDateTime(Args[0]);
-    DecodeTime(dt, h, m, s, ms);
-    Result := IntegerResult(h);
+    if not IsNaN(dt) then begin
+      DecodeTime(dt, h, m, s, ms);
+      Result := IntegerResult(h);
+    end;
   end;
 end;
 
@@ -459,8 +467,10 @@ begin
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
     dt := ArgToDateTime(Args[0]);
-    DecodeTime(dt, h, m, s, ms);
-    Result := IntegerResult(m);
+    if not IsNaN(dt) then begin
+      DecodeTime(dt, h, m, s, ms);
+      Result := IntegerResult(m);
+    end;
   end;
 end;
 
@@ -474,8 +484,10 @@ begin
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
     dt := ArgToDateTime(Args[0]);
-    DecodeDate(dt, y, m, d);
-    Result := IntegerResult(m);
+    if not IsNaN(dt) then begin
+      DecodeDate(dt, y, m, d);
+      Result := IntegerResult(m);
+    end;
   end;
 end;
 
@@ -498,8 +510,10 @@ begin
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
     dt := ArgToDateTime(Args[0]);
-    DecodeTime(dt, h, m, s, ms);
-    Result := IntegerResult(s);
+    if not IsNaN(dt) then begin
+      DecodeTime(dt, h, m, s, ms);
+      Result := IntegerResult(s);
+    end;
   end;
 end;
 
@@ -542,19 +556,17 @@ var
   dow: Integer;
   dt: TDateTime;
 begin
+  Result := ErrorResult(errWrongType);
   if Length(Args) = 2 then
     n := ArgToInt(Args[1])
   else
     n := 1;
-  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtCell] then
-    dt := ArgToDateTime(Args[0])
-  else
-  if Args[0].ResultType in [rtString] then
-    if not TryStrToDate(Args[0].ResString, dt) then
-    begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
+  dt := NaN;
+  if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtCell, rtString] then
+    dt := ArgToDateTime(Args[0]);
+  if IsNaN(dt) then
+    exit;
+
   dow := DayOfWeek(dt);   // Sunday = 1 ... Saturday = 7
   case n of
     1: ;
@@ -574,8 +586,10 @@ begin
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
     dt := ArgToDateTime(Args[0]);
-    DecodeDate(dt, y, m, d);
-    Result := IntegerResult(y);
+    if not IsNaN(dt) then begin
+      DecodeDate(dt, y, m, d);
+      Result := IntegerResult(y);
+    end;
   end;
 end;
 

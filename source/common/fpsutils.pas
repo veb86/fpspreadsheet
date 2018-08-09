@@ -202,6 +202,7 @@ procedure InitCell(AWorksheet: TsBasicWorksheet; ARow, ACol: Cardinal;
   out ACell: TCell); overload;
 procedure InitCryptoInfo(out AValue: TsCryptoInfo);
 procedure InitFormatRecord(out AValue: TsCellFormat);
+function InitFormatSettings(AWorkbook: TsBasicWorkbook): TFormatSettings;
 procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
   AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
 procedure InitHeaderFooterImageRecord(out AImage: TsHeaderFooterImage);
@@ -2437,6 +2438,25 @@ begin
     // GENERAL format not contained in NumFormatList
   AValue.Protection := DEFAULT_CELL_PROTECTION;
     // NOTE: Cell protection is effective only after protecting a worksheet
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Initializes the FormatSettingsRecord to international (non-localized) values
+-------------------------------------------------------------------------------}
+function InitFormatSettings(AWorkbook: TsBasicWorkbook): TFormatSettings;
+begin
+  Result := DefaultFormatSettings;
+  Result.DecimalSeparator := '.';
+  Result.ThousandSeparator := ',';
+  Result.ListSeparator := ',';
+  if AWorkbook <> nil then
+    with AWorkbook.FormatSettings do begin
+      Result.DateSeparator := DateSeparator;
+      Result.TimeSeparator := TimeSeparator;
+      Result.ShortDateFormat := ShortDateFormat; //'yyyy/m/d';  // the parser returns single digits
+      Result.LongTimeFormat := LongTimeFormat; //'h:n:s';
+      Result.ShortTimeFormat := ShortTimeFormat; //'h:n';
+    end;
 end;
 
 {@@ ----------------------------------------------------------------------------

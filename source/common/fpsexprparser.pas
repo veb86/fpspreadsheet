@@ -687,6 +687,7 @@ type
     FDialect: TsFormulaDialect;
     FSourceCell: PCell;
     FDestCell: PCell;
+    FListSep: Char;
     procedure CheckEOF;
     function GetAsBoolean: Boolean;
     function GetAsDateTime: TDateTime;
@@ -703,13 +704,14 @@ type
     FFormatSettings: TFormatSettings;
     FContains3DRef: Boolean;
     class function BuiltinExpressionManager: TsBuiltInExpressionManager;
-    function BuildStringFormula(AFormatSettings: TFormatSettings): String;
+    function BuildStringFormula: String;
     procedure ParserError(Msg: String);
     function GetExpression: String;
     function GetLocalizedExpression(const AFormatSettings: TFormatSettings): String; virtual;
     procedure SetExpression(const AValue: String);
     procedure SetLocalizedExpression(const AFormatSettings: TFormatSettings;
       const AValue: String); virtual;
+    procedure UpdateExprFormatSettings;
 
     procedure CheckResultType(const Res: TsExpressionResult;
       AType: TsResultType); inline;
@@ -750,6 +752,7 @@ type
     property AsDateTime: TDateTime read GetAsDateTime;
     // The expression to parse
     property Expression: String read GetExpression write SetExpression;
+    property ListSeparator: Char read FListSep;
     property LocalizedExpression[AFormatSettings: TFormatSettings]: String
         read GetLocalizedExpression write SetLocalizedExpression;
     property RPNFormula: TsRPNFormula read GetRPNFormula write SetRPNFormula;
@@ -847,6 +850,7 @@ procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
   const AParamTypes: String; const AExcelCode: Integer; ACallBack: TsExprFunctionEvent); overload;
 
 var
+  // Format settings used in stored parsed formulas.
   ExprFormatSettings: TFormatSettings;
 
 const
@@ -1060,7 +1064,7 @@ begin
       Result := ttLessThanEqual;
   end
   else
-  if D = FParser.FFormatSettings.ListSeparator then
+  if D = FParser.ListSeparator then
     Result := ttListSep
   else
     case D of
@@ -1316,7 +1320,7 @@ end;
 
 function TsExpressionScanner.IsDelim(C: Char): Boolean;
 begin
-  Result := (C in Delimiters) or (C = FParser.FFormatSettings.ListSeparator);
+  Result := (C in Delimiters) or (C = FParser.ListSeparator);
 end;
 
 function TsExpressionScanner.IsDigit(C: Char): Boolean;
@@ -1326,7 +1330,7 @@ end;
 
 function TsExpressionScanner.IsWordDelim(C: Char): Boolean;
 begin
-  Result := (C in WordDelimiters) or (C = FParser.FFormatSettings.ListSeparator);
+  Result := (C in WordDelimiters) or (C = FParser.ListSeparator);
 end;
 
 function TsExpressionScanner.NextPos: Char;
@@ -1368,12 +1372,14 @@ end;
 constructor TsExpressionParser.Create(AWorksheet: TsBasicWorksheet);
 begin
   inherited Create;
-  FDialect := fdExcelA1;
   FWorksheet := AWorksheet;
   FIdentifiers := TsExprIdentifierDefs.Create(TsExprIdentifierDef);
   FIdentifiers.FParser := Self;
   FScanner := TsExpressionScanner.Create(self);
   FHashList := TFPHashObjectList.Create(False);
+  SetDialect(fdExcelA1);
+  FFormatSettings := InitFormatSettings(TsWorksheet(FWorksheet).Workbook);
+  UpdateExprFormatSettings;
 end;
 
 destructor TsExpressionParser.Destroy;
@@ -1386,17 +1392,14 @@ begin
 end;
 
 { Constructs the string formula from the tree of expression nodes. Gets the
-  decimal and list separator from the formatsettings provided. }
-function TsExpressionParser.BuildStringFormula(AFormatSettings: TFormatSettings): String;
+  decimal and list separator from current formatsettings. }
+function TsExpressionParser.BuildStringFormula: String;
 begin
-  ExprFormatSettings := AFormatSettings;
+//  ExprFormatSettings := AFormatSettings;
   if FExprNode = nil then
     Result := ''
   else
-  begin
-    FFormatSettings := AFormatSettings;
     Result := FExprNode.AsString;
-  end;
 end;
 
 class function TsExpressionParser.BuiltinExpressionManager: TsBuiltInExpressionManager;
@@ -1485,6 +1488,8 @@ begin
 end;
 
 procedure TsExpressionParser.EvaluateExpression(out AResult: TsExpressionResult);
+var
+  fs: TFormatSettings;
 begin
   {                         // Not needed. May be missing after copying formulas
   if (FExpression = '') then
@@ -1492,7 +1497,15 @@ begin
     }
   if not Assigned(FExprNode) then
     ParserError(rsErrorInExpression);
-  FExprNode.GetNodeValue(AResult);
+  fs := ExprFormatSettings;
+  try
+    UpdateExprFormatSettings;
+//  ExprFormatSettings := FFormatSettings;
+//  FFormatSettings := ExprFormatSettings;
+    FExprNode.GetNodeValue(AResult);
+  finally
+    ExprFormatSettings := fs;
+  end;
 end;
 
 function TsExpressionParser.GetAsBoolean: Boolean;
@@ -1915,19 +1928,16 @@ begin
 end;
 
 function TsExpressionParser.GetExpression: String;
-var
-  fs: TFormatsettings;
 begin
-  fs := DefaultFormatSettings;
-  fs.DecimalSeparator := '.';
-  fs.ListSeparator := ',';
-  Result := BuildStringFormula(fs);
+  Result := BuildStringFormula; //(FFormatSettings);
 end;
 
 function TsExpressionParser.GetLocalizedExpression(const AFormatSettings: TFormatSettings): String;
 begin
-  ExprFormatSettings := AFormatSettings;
-  Result := BuildStringFormula(AFormatSettings);
+//  ExprFormatSettings := AFormatSettings;
+  FFormatSettings := AFormatSettings;
+  UpdateExprFormatSettings;
+  Result := BuildStringFormula; //(AFormatSettings);
 end;
 
 function TsExpressionParser.Has3DLinks: Boolean;
@@ -1944,26 +1954,17 @@ end;
 
 procedure TsExpressionParser.SetDialect(const AValue: TsFormulaDialect);
 begin
-  if FDialect = AValue then exit;
   FDialect := AValue;
-  {
-  if FScanner <> nil then
-    case FDialect of
-      fdExcelA1, fdExcelR1C1: FScanner.SheetNameTerminator := '!';
-      fdOpenDocument: FScanner.Sheetnameterminator := '.';
-      else raise Exception.Create('TsExpressionParser.SetDialect: Dialect not supported.');
-    end;
-    }
+  case FDialect of
+    fdExcelA1,
+    fdExcelR1C1    : FListSep := ',';
+    fdOpenDocument : FListSep := ';'
+  end;
 end;
 
 procedure TsExpressionParser.SetExpression(const AValue: String);
-var
-  fs: TFormatSettings;
 begin
-  fs := DefaultFormatSettings;
-  fs.DecimalSeparator := '.';
-  fs.ListSeparator := ',';
-  SetLocalizedExpression(fs, AValue);
+  SetLocalizedExpression(FFormatSettings, AValue);
 end;
 
 procedure TsExpressionParser.SetLocalizedExpression(const AFormatSettings: TFormatSettings;
@@ -1972,7 +1973,8 @@ begin
   if FExpression = AValue then
     exit;
   FFormatSettings := AFormatSettings;
-  ExprFormatSettings := AFormatSettings;
+  UpdateExprFormatSettings;
+//  ExprFormatSettings := AFormatSettings;
   FExpression := AValue;
   if (AValue <> '') and (AValue[1] = '=') then
     FScanner.Source := Copy(AValue, 2, Length(AValue))
@@ -2180,6 +2182,16 @@ end;
 function TsExpressionParser.TokenType: TsTokenType;
 begin
   Result := FScanner.TokenType;
+end;
+
+procedure TsExpressionParser.UpdateExprFormatSettings;
+var
+  book: TsWorkbook;
+begin
+  book := TsWorksheet(FWorksheet).Workbook;
+  ExprFormatSettings.ShortDateFormat := book.FormatSettings.ShortDateFormat;
+  ExprFormatSettings.ShortTimeFormat := book.FormatSettings.ShortTimeFormat;
+  ExprFormatSettings.LongTimeFormat := book.FormatSettings.LongTimeFormat;
 end;
 
 
@@ -3738,7 +3750,7 @@ begin
   for i := 0 to Length(FArgumentNodes)-1 do
   begin
     if (S <> '') then
-      S := S + Parser.FFormatSettings.ListSeparator;
+      S := S + Parser.ListSeparator;
     if Assigned(FArgumentNodes[i]) then
       S := S + FArgumentNodes[i].AsString;
   end;
@@ -4431,8 +4443,9 @@ begin
     rtBoolean   : if Arg.ResBoolean then Result := 1.0;
     rtHyperlink,
     rtString    : begin
-                    fs := ExprFormatSettings; //(Arg.Worksheet as TsWorksheet).Workbook.FormatSettings;
-                    TryStrToDateTime(ArgToString(Arg), Result, fs);
+                    fs := ExprFormatSettings;
+                    if not TryStrToDateTime(ArgToString(Arg), Result, fs) then
+                      Result := NaN;
                   end;
     rtCell      : begin
                     cell := ArgToCell(Arg);
@@ -4696,14 +4709,13 @@ begin
 end;
 
 initialization
-  ExprFormatSettings := DefaultFormatSettings;
-  ExprFormatSettings.DecimalSeparator := '.';
-  ExprFormatSettings.ListSeparator := ',';
-  ExprFormatSettings.DateSeparator := '/';
-  ExprFormatSettings.TimeSeparator := ':';
+  // These are the format settings used in storage of parsed formulas.
+  ExprFormatSettings := InitFormatSettings(nil);
+  {
   ExprFormatSettings.ShortDateFormat := 'yyyy/m/d';  // the parser returns single digits
   ExprFormatSettings.LongTimeFormat := 'h:n:s';
   ExprFormatSettings.ShortTimeFormat := 'h:n';
+  }
 
   RegisterStdBuiltins(BuiltinIdentifiers);
 
