@@ -2533,7 +2533,8 @@ begin
     $01: AStream.ReadWord;     // tAttrVolatile token, data not used
     $02: AStream.ReadWord;     // tAttrIf token, data not used
     $08: AStream.ReadWord;     // tAttrSkip token, data not used
-    $10: AStream.ReadWord;     // tAttrSum token, data not used
+    $40: AStream.ReadWord;     // tAttrSum token, data not used
+    $49: AStream.ReadWord;     // tAttrSpace, data not used
     else exit;                 // others not supported by fps --> Result = false
   end;
   Result := true;
@@ -2945,7 +2946,7 @@ begin
           supported := ReadRPNAttr(AStream, b);
           if supported then begin
             case b of
-              $02: ;
+              $02: ;  // IF parameter tag
               $10: rpnItem := RPNFunc('SUM', 1, rpnItem);  // one-parameter SUM
             end;
           end;
