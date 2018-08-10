@@ -3780,7 +3780,7 @@ begin
         AddElement(nftSignBracket, FToken);
       '0', '#', '?', '.', ',', '-':
         ScanNumber;
-      'y', 'Y', 'm', 'M',  'd', 'D', 'h', 'N', 'n', 's':
+      'y', 'Y', 'm', 'M',  'd', 'D', 'h', 'H', 'N', 'n', 's':
         ScanDateTime;
       '[':
         ScanBrackets;
