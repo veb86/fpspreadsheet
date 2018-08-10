@@ -525,7 +525,7 @@ procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
     ABorderStyle.Color := scBlack;
 
     s := GetAttrValue(ANode, 'style');
-    if s = '' then
+    if (s = '') or (s = 'none') then
       exit;
 
     if s = 'thin' then
