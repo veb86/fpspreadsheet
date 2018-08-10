@@ -514,7 +514,7 @@ type
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); virtual;
     // Read row info
     procedure ReadRowInfo(AStream: TStream); virtual;
-    function ReadRPNAttr(AStream: TStream; AIdentifier: Byte): boolean; virtual;
+    procedure ReadRPNAttr(AStream: TStream; AIdentifier: Byte); virtual;
     // Read the array of RPN tokens of a formula
     procedure ReadRPNCellAddress(AStream: TStream; out ARow, ACol: Cardinal;
       out AFlags: TsRelFlags); virtual;
@@ -2522,22 +2522,28 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Reads the special attribute of an RPN formula element.
-  Attributes are ignored by fpspreadsheet.
+  Attributes are usually ignored by fpspreadsheet; this method reads the
+  associated data which is needed to keep the stream in sync with the data
+  structure.
   Structure is value for BIFF3 - BIFF8. Must be overridden for BIFF2.
-  Returns false if the structure is too complex for fps.
 -------------------------------------------------------------------------------}
-function TsSpreadBIFFReader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte): Boolean;
+procedure TsSpreadBIFFReader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte);
+var
+  nc: Integer;
 begin
-  Result := false;
   case AIdentifier of
-    $01: AStream.ReadWord;     // tAttrVolatile token, data not used
-    $02: AStream.ReadWord;     // tAttrIf token, data not used
-    $08: AStream.ReadWord;     // tAttrSkip token, data not used
-    $40: AStream.ReadWord;     // tAttrSum token, data not used
-    $49: AStream.ReadWord;     // tAttrSpace, data not used
-    else exit;                 // others not supported by fps --> Result = false
+    $01: AStream.ReadWord;     // tAttrVolatile token, skip
+    $02: AStream.ReadWord;     // tAttrIf token, supported, but data seem to be redundant
+    $04: begin                 // tAttrChoose, skip
+           nc := WordLEToN(AStream.ReadWord);
+           AStream.Position := AStream.Position + 2*nc + 2;
+         end;
+    $08: AStream.ReadWord;     // tAttrSkip token, skip
+    $10: AStream.ReadWord;     // tAttrSUM, will be processed by ReadRPNTokenArray, data not used
+    $20: AStream.ReadWord;     // tAttrAssign token, skip
+    $40: AStream.ReadWord;     // tAttrSpace token, skip
+    $41: AStream.ReadWord;     // tAttrSpaceVolatile, skip
   end;
-  Result := true;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2943,12 +2949,9 @@ begin
       INT_EXCEL_TOKEN_TATTR:
         begin
           b := AStream.ReadByte;
-          supported := ReadRPNAttr(AStream, b);
-          if supported then begin
-            case b of
-              $02: ;  // IF parameter tag
-              $10: rpnItem := RPNFunc('SUM', 1, rpnItem);  // one-parameter SUM
-            end;
+          ReadRPNAttr(AStream, b);
+          case b of
+            $10: rpnItem := RPNFunc('SUM', 1, rpnItem);  // one-parameter SUM
           end;
         end;
       INT_EXCEL_TOKEN_TREFV:

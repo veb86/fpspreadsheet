@@ -67,7 +67,7 @@ type
     procedure ReadPROTECT(AStream: TStream);
     procedure ReadRowColXF(AStream: TStream; out ARow, ACol: Cardinal; out AXF: Word); override;
     procedure ReadRowInfo(AStream: TStream); override;
-    function ReadRPNAttr(AStream: TStream; AIdentifier: Byte): Boolean; override;
+    procedure ReadRPNAttr(AStream: TStream; AIdentifier: Byte); override;
     function ReadRPNFunc(AStream: TStream): Word; override;
     procedure ReadRPNSharedFormulaBase(AStream: TStream; out ARow, ACol: Cardinal); override;
     function ReadRPNTokenArraySize(AStream: TStream): Word; override;
@@ -998,15 +998,27 @@ begin
   lRow^.FormatIndex := XFToFormatIndex(xf);
 end;
 
-function TsSpreadBIFF2Reader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte): Boolean;
+{ ------------------------------------------------------------------------------
+  Reads the RPN attribute. Most attributes are not handled, but the
+  data associated with it must be read to keep the stream in sync with the
+  data structure.
+  This version of the method is valid for BIFF2 only.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF2Reader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte);
+var
+  nc: Byte;
 begin
-  Result := false;
   case AIdentifier of
     $01: AStream.ReadByte;   // tAttrVolatile, data not used
-    $10: AStream.ReadByte;   // tAttrSum, data not used
-    else exit;       // others not supported by fpspreadsheet --> Result = false
+    $02: AStream.ReadByte;   // tAttrIF, not explicitely used
+    $04: begin               // tAttrChoose, not supported
+           nc := AStream.ReadByte;
+           AStream.Position := AStream.Position + 2*nc + 1;
+         end;
+    $08: AStream.ReadByte;   // tAttrSkip, data not used
+    $10: AStream.ReadByte;   // tAttrSum, to be processed by ReadRPNTokenArray, byte not used
+    $20: AStream.ReadByte;   // tAttrAssign, not used
   end;
-  Result := true;
 end;
 
 {@@ ----------------------------------------------------------------------------
