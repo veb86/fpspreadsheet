@@ -965,8 +965,8 @@ begin
             if (s1 = '1') or (s1 = '2') then
               fmt.BiDiMode := TsBiDiMode(StrToInt(s1));
 
-            s1 := GetAttrValue(childNode, 'wrapText');
-            if (s1 <> '') and (s1 <> '0') then
+            s1 := Lowercase(GetAttrValue(childNode, 'wrapText'));
+            if (s1 <> '') and (s1 <> '0') and (s1 <> 'false') then
               Include(fmt.UsedFormattingFields, uffWordWrap);
 
             s1 := GetAttrValue(childNode, 'textRotation');
