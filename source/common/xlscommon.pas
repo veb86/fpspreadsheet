@@ -1887,33 +1887,40 @@ begin
     // Don't call "AddCell" because, if the cell belongs to a shared formula, it
     // already has been created before, and then would exist in the tree twice.
 
-  // Now determine the type of the formula result
-  if (Data[6] = $FF) and (Data[7] = $FF) then
-    case Data[0] of
-      0: // String -> Value is found in next record (STRING)
-         FIncompleteCell := cell;
+  // Prevent shared formulas (which already may have been written at this time)
+  // being erased when cell content is written
+  TsWorkbook(sheet.Workbook).LockFormulas;
+  try
+    // Now determine the type of the formula result
+    if (Data[6] = $FF) and (Data[7] = $FF) then
+      case Data[0] of
+        0: // String -> Value is found in next record (STRING)
+           FIncompleteCell := cell;
 
-      1: // Boolean value
-         sheet.WriteBoolValue(cell, Data[2] = 1);
+        1: // Boolean value
+           sheet.WriteBoolValue(cell, Data[2] = 1);
 
-      2: begin  // Error value
-           err := ConvertFromExcelError(Data[2]);
-           sheet.WriteErrorValue(cell, err);
-         end;
+        2: begin  // Error value
+             err := ConvertFromExcelError(Data[2]);
+             sheet.WriteErrorValue(cell, err);
+           end;
 
-      3: sheet.WriteBlank(cell);
-    end
-  else
-  begin
-    // Result is a number or a date/time
-    Move(Data[0], ResultFormula, SizeOf(Data));
-
-    {Find out what cell type, set content type and value}
-    ExtractNumberFormat(XF, nf, nfs);
-    if IsDateTime(ResultFormula, nf, nfs, dt) then
-      sheet.WriteDateTime(cell, dt) //, nf, nfs)
+        3: sheet.WriteBlank(cell);
+      end
     else
-      sheet.WriteNumber(cell, ResultFormula);
+    begin
+      // Result is a number or a date/time
+      Move(Data[0], ResultFormula, SizeOf(Data));
+
+      {Find out what cell type, set content type and value}
+      ExtractNumberFormat(XF, nf, nfs);
+      if IsDateTime(ResultFormula, nf, nfs, dt) then
+        sheet.WriteDateTime(cell, dt) //, nf, nfs)
+      else
+        sheet.WriteNumber(cell, ResultFormula);
+    end;
+  finally
+    TsWorkbook(sheet.Workbook).UnlockFormulas;
   end;
 
   { Formula token array }
