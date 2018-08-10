@@ -584,11 +584,11 @@ begin
     nodeName := borderNode.NodeName;
     if nodeName = 'border' then begin
       borders := [];
-      s := GetAttrValue(borderNode, 'diagonalUp');
-      if s = '1' then
+      s := Lowercase(GetAttrValue(borderNode, 'diagonalUp'));
+      if (s = '1') or (s = 'true') then
         Include(borders, cbDiagUp);
-      s := GetAttrValue(borderNode, 'diagonalDown');
-      if s = '1' then
+      s := LowerCase(GetAttrValue(borderNode, 'diagonalDown'));
+      if (s = '1') or (s = 'true') then
         Include(borders, cbDiagDown);
       edgeNode := borderNode.FirstChild;
       while Assigned(edgeNode) do begin
@@ -995,11 +995,11 @@ begin
           nodeName := childNode.NodeName;
           if nodeName = 'protection' then
           begin
-            s1 := GetAttrValue(childNode, 'locked');
-            if (s1 = '0') then
+            s1 := LowerCase(GetAttrValue(childNode, 'locked'));
+            if (s1 = '0') or (s1 = 'false') then
               Exclude(cp, cpLockCell);
-            s1 := GetAttrValue(childNode, 'hidden');
-            if (s1= '1') then
+            s1 := Lowercase(GetAttrValue(childNode, 'hidden'));
+            if (s1 = '1') or (s1 = 'true') then
               Include(cp, cpHideFormulas);
           end;
           childNode := childNode.NextSibling;
@@ -1037,8 +1037,8 @@ var
 begin
   Assert(ANode <> nil);
 
-  s := GetAttrValue(ANode, 'auto');
-  if s = '1' then begin
+  s := Lowercase(GetAttrValue(ANode, 'auto'));
+  if (s = '1') or (s = 'true') then begin
     if ANode.NodeName = 'fgColor' then
       Result := scBlack
     else
@@ -1136,8 +1136,8 @@ begin
       s := GetAttrValue(colNode, 'max');
       if s <> '' then col2 := StrToInt(s)-1 else col2 := col1;
 
-      s := GetAttrValue(colNode, 'customWidth');
-      if s = '1' then begin
+      s := Lowercase(GetAttrValue(colNode, 'customWidth'));
+      if (s = '1') or (s = 'true') then begin
         s := GetAttrValue(colNode, 'width');
         if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
         begin
@@ -1222,8 +1222,8 @@ var
   s: String;
 begin
   if Assigned(ANode) then begin
-    s := GetAttrValue(ANode, 'date1904');
-    if s = '1' then FDateMode := dm1904
+    s := Lowercase(GetAttrValue(ANode, 'date1904'));
+    if (s = '1') or (s = 'true') then FDateMode := dm1904
   end;
 end;
 
@@ -1589,12 +1589,12 @@ begin
   if ANode = nil then
     exit;
 
-  s := GetAttrValue(ANode, 'differentOddEven');
-  if s = '1' then
+  s := Lowercase(GetAttrValue(ANode, 'differentOddEven'));
+  if (s = '1') or (s = 'true') then
     with sheet.PageLayout do Options := Options + [poDifferentOddEven];
 
-  s := GetAttrValue(ANode, 'differentFirst');
-  if s = '1' then
+  s := Lowercase(GetAttrValue(ANode, 'differentFirst'));
+  if (s = '1') or (s = 'true') then
     with sheet.PageLayout do Options := Options + [poDifferentFirst];
 
   node := ANode.FirstChild;
@@ -1823,9 +1823,9 @@ begin
   if s <> '' then
     sheet.PageLayout.StartPageNumber := StrToInt(s);
 
-  s := GetAttrValue(ANode, 'useFirstPageNumber');
+  s := Lowercase(GetAttrValue(ANode, 'useFirstPageNumber'));
   with sheet.PageLayout do
-    if s = '1' then
+    if (s = '1') or (s = 'true') then
       Options := Options + [poUseStartPageNumber]
     else
       Options := Options - [poUseStartPageNumber];
@@ -1836,13 +1836,13 @@ begin
     with sheet.PageLayout do Options := Options + [poPrintPagesByRows];
 
   // Monochrome
-  s := GetAttrValue(ANode, 'blackAndWhite');
-  if s = '1' then
+  s := LowerCase(GetAttrValue(ANode, 'blackAndWhite'));
+  if (s = '1') or (s = 'true') then
     with sheet.PageLayout do Options := Options + [poMonochrome];
 
   // Quality
-  s := GetAttrValue(ANode, 'draft');
-  if s = '1' then
+  s := Lowercase(GetAttrValue(ANode, 'draft'));
+  if (s = '1') or (s = 'true') then
     with sheet.PageLayout do Options := Options + [poDraftQuality];
 end;
 
@@ -1904,12 +1904,12 @@ var
 begin
   if ANode = nil then
     exit;
-  s := GetAttrValue(ANode, 'headings');
-  if (s = '1') then
+  s := Lowercase(GetAttrValue(ANode, 'headings'));
+  if (s = '1') or (s = 'true') then
     with sheet.PageLayout do Options := Options + [poPrintHeaders];
 
-  s := GetAttrValue(ANode, 'gridLines');
-  if (s = '1') then
+  s := Lowercase(GetAttrValue(ANode, 'gridLines'));
+  if (s = '1') or (s = 'true') then
     with sheet.PageLayout do Options := Options + [poPrintGridLines];
 end;
 
@@ -1926,8 +1926,8 @@ begin
     exit;
 
   { Row height type }
-  s := GetAttrValue(ANode, 'customHeight');
-  if s = '1' then
+  s := Lowercase(GetAttrValue(ANode, 'customHeight'));
+  if (s = '1') or (s = 'true') then
     lRow.RowHeightType := rhtCustom
   else
     lRow.RowHeightType := rhtAuto;
@@ -1951,8 +1951,8 @@ begin
 
   { Row format }
   lRow.FormatIndex := 0;  // Default format
-  s := GetAttrValue(ANode, 'customFormat');
-  if s = '1' then begin
+  s := Lowercase(GetAttrValue(ANode, 'customFormat'));
+  if (s = '1') or (s = 'true') then begin
     s := GetAttrValue(ANode, 's');
     if s <> '' then begin
       idx := FCellFormatList.FindIndexOfID(StrToInt(s));
@@ -2115,21 +2115,30 @@ begin
   shp := DEFAULT_SHEET_PROTECTION;
 
   // Attribute not found -> property = false
-  s := GetAttrValue(ANode, 'sheet');
-  if (s = '1') then Include(shp, spCells) else
-    if (s = '0') or (s = '') then Exclude(shp, spCells);
+  s := LowerCase(GetAttrValue(ANode, 'sheet'));
+  if (s = '1') or (s = 'true') then
+    Include(shp, spCells)
+  else if (s = '0') or (s = '') or (s = 'false') then
+    Exclude(shp, spCells);
 
-  s := GetAttrValue(ANode, 'selectLockedCells');
-  if (s = '1') then Include(shp, spSelectLockedCells) else
-    if (s = '0') or (s = '') then Exclude(shp, spSelectLockedCells);
+  s := Lowercase(GetAttrValue(ANode, 'selectLockedCells'));
+  if (s = '1') or (s = 'true') then
+    Include(shp, spSelectLockedCells)
+  else if (s = '0') or (s = '') or (s = 'false') then
+    Exclude(shp, spSelectLockedCells);
 
-  s := GetAttrValue(ANode, 'selectUnlockedCells');
-  if (s = '1') then Include(shp, spSelectUnlockedCells) else
-    if (s = '') or (s = '0') then Exclude(shp, spSelectUnlockedCells);
+  s := LowerCase(GetAttrValue(ANode, 'selectUnlockedCells'));
+  if (s = '1') or (s = 'true') then
+    Include(shp, spSelectUnlockedCells)
+  else if (s = '') or (s = '0') or (s = 'false') then
+    Exclude(shp, spSelectUnlockedCells);
 
-  s := GetAttrValue(ANode, 'objects');
-  if (s = '1') then Include(shp, spObjects) else
-    if (s = '') or (s = '0') then Exclude(shp, spObjects);
+  s := Lowercase(GetAttrValue(ANode, 'objects'));
+  if (s = '1') or (s = 'true') then
+    Include(shp, spObjects)
+  else
+  if (s = '') or (s = '0') or (s = 'false') then
+    Exclude(shp, spObjects);
 
   // these options are currently not supported by fpspreadsheet
   {
@@ -2145,47 +2154,73 @@ begin
     if (s = '') or (s = '1') then Include(shp, spAutoFilter);
   }
 
-  s := GetAttrValue(ANode, 'deleteColumns');
-  if (s = '0') then Exclude(shp, spDeleteColumns) else
-    if (s = '') or (s = '1') then Include(shp, spDeleteColumns);
+  s := LowerCase(GetAttrValue(ANode, 'deleteColumns'));
+  if (s = '0') or (s = 'true') then
+    Exclude(shp, spDeleteColumns)
+  else
+  if (s = '') or (s = '1') or (s = 'false') then
+    Include(shp, spDeleteColumns);
 
-  s := GetAttrValue(ANode, 'deleteRows');
-  if (s = '0') then Exclude(shp, spDeleteRows) else
-    if (s = '') or (s = '1') then Include(shp, spDeleteRows);
+  s := Lowercase(GetAttrValue(ANode, 'deleteRows'));
+  if (s = '0') or (s = 'false') then
+    Exclude(shp, spDeleteRows)
+  else
+  if (s = '') or (s = '1') or (s = 'true') then
+    Include(shp, spDeleteRows);
 
-  s := GetAttrValue(ANode, 'formatCells');
-  if (s = '0') then Exclude(shp, spFormatCells) else
-    if (s = '') or (s = '1') then Include(shp, spFormatCells);
+  s := Lowercase(GetAttrValue(ANode, 'formatCells'));
+  if (s = '0') or (s = 'false') then
+    Exclude(shp, spFormatCells)
+  else
+  if (s = '') or (s = '1') or (s = 'true') then
+    Include(shp, spFormatCells);
 
-  s := GetAttrValue(ANode, 'formatColumns');
-  if (s = '0') then Exclude(shp, spFormatColumns) else
-    if (s = '') or (s = '1') then Include(shp, spFormatColumns);
+  s := Lowercase(GetAttrValue(ANode, 'formatColumns'));
+  if (s = '0') or (s = 'false') then
+    Exclude(shp, spFormatColumns)
+  else
+  if (s = '') or (s = '1') or (s = 'true') then
+    Include(shp, spFormatColumns);
 
-  s := GetAttrValue(ANode, 'formatRows');
-  if (s = '0') then Exclude(shp, spFormatRows) else
-    if (s = '') or (s = '1') then Include(shp, spFormatRows);
+  s := Lowercase(GetAttrValue(ANode, 'formatRows'));
+  if (s = '0') or (s = 'false') then
+    Exclude(shp, spFormatRows)
+  else
+  if (s = '') or (s = '1') or (s = 'true') then
+    Include(shp, spFormatRows);
 
-  s := GetAttrValue(ANode, 'insertColumns');
-  if (s = '0') then Exclude(shp, spInsertColumns) else
-    if (s = '') or (s = '1') then Include(shp, spInsertColumns);
+  s := Lowercase(GetAttrValue(ANode, 'insertColumns'));
+  if (s = '0') or (s = 'false') then
+    Exclude(shp, spInsertColumns)
+  else
+  if (s = '') or (s = '1') or (s = 'true') then
+    Include(shp, spInsertColumns);
 
-  s := GetAttrValue(ANode, 'insertHyperlinks');
-  if (s = '0') then Exclude(shp, spInsertHyperlinks) else
-    if (s = '') or (s = '1') then Include(shp, spInsertHyperlinks);
+  s := Lowercase(GetAttrValue(ANode, 'insertHyperlinks'));
+  if (s = '0') or (s = 'false') then
+    Exclude(shp, spInsertHyperlinks)
+  else
+  if (s = '') or (s = '1') or (s = 'true') then
+    Include(shp, spInsertHyperlinks);
 
   s := GetAttrValue(ANode, 'insertRows');
   if (s = '0') then Exclude(shp, spInsertRows) else
     if (s = '') or (s = '1') then Include(shp, spInsertRows);
 
-  s := GetAttrValue(ANode, 'sort');
-  if (s = '0') then Exclude(shp, spSort) else
-    if (s = '') or (s = '1') then Include(shp, spSort);
+  s := Lowercase(GetAttrValue(ANode, 'sort'));
+  if (s = '0') or (s = 'false') then
+    Exclude(shp, spSort)
+  else
+  if (s = '') or (s = '1') or (s = 'true') then
+    Include(shp, spSort);
 
   // Currently no pivottable support in fpspreadsheet
   {
-  s := GetAttrValue(ANode, 'pivotTables');
-  if (s = '0') then Exclude(shp, spPivotTables) else
-    if (s = '') or (s = '1') then Include(shp, spPivotTables);
+  s := Lowercase(GetAttrValue(ANode, 'pivotTables'));
+  if (s = '0') or (s = 'false') then
+    Exclude(shp, spPivotTables)
+  else if (s = '') or (s = '1') or (s = 'true') then
+    Include(shp, spPivotTables);
   }
 
   with AWorksheet as TsWorksheet do begin
@@ -2211,30 +2246,30 @@ begin
   while Assigned(sheetViewNode) do begin
     nodeName := sheetViewNode.NodeName;
     if nodeName = 'sheetView' then begin
-      s := GetAttrValue(sheetViewNode, 'showGridLines');
-      if s = '0' then
+      s := Lowercase(GetAttrValue(sheetViewNode, 'showGridLines'));
+      if (s = '0') or (s = 'false') then
         sheet.Options := AWorksheet.Options - [soShowGridLines];
 
-      s := GetAttrValue(sheetViewNode, 'showRowColHeaders');
-      if s = '0' then
+      s := LowerCase(GetAttrValue(sheetViewNode, 'showRowColHeaders'));
+      if (s = '0') or (s = 'false') then
          sheet.Options := AWorksheet.Options - [soShowHeaders];
 
-      s := GetAttrValue(sheetViewNode, 'tabSelected');
-      if s = '1' then
+      s := Lowercase(GetAttrValue(sheetViewNode, 'tabSelected'));
+      if (s = '1') or (s = 'false') then
         (FWorkbook as TsWorkbook).ActiveWorksheet := sheet;
 
-      s := GetAttrValue(sheetViewNode, 'windowProtection');
-      if s = '1' then
+      s := Lowercase(GetAttrValue(sheetViewNode, 'windowProtection'));
+      if (s = '1') or (s = 'true') then
         sheet.Options := sheet.Options + [soPanesProtection];
 
       s := GetAttrValue(sheetViewNode, 'zoomScale');
       if s <> '' then
         sheet.ZoomFactor := StrToFloat(s, FPointSeparatorSettings) * 0.01;
 
-      s := GetAttrValue(sheetViewNode, 'rightToLeft');
-      if s = '0' then
+      s := Lowercase(GetAttrValue(sheetViewNode, 'rightToLeft'));
+      if (s = '0') or (s = 'false') then
         sheet.BiDiMode := bdLTR
-      else if s = '1' then
+      else if (s = '1') = (s = 'true') then
         sheet.BiDiMode := bdRTL;
 
       childNode := sheetViewNode.FirstChild;
@@ -2394,16 +2429,16 @@ begin
   end;
   Workbook.RevisionsCrypto := wbc;
   }
-  s := GetAttrValue(ANode, 'lockStructure');
-  if (s = '1') then
+  s := Lowercase(GetAttrValue(ANode, 'lockStructure'));
+  if (s = '1') or (s = 'true')then
     Include(wbp, bpLockStructure);
 
-  s := GetAttrValue(ANode, 'lockWindows');
-  if (s = '1') then
+  s := Lowercase(GetAttrValue(ANode, 'lockWindows'));
+  if (s = '1') or (s = 'true') then
     Include(wbp, bpLockWindows);
 
-  s := GetAttrValue(ANode, 'lockRevision');
-  if (s = '1') then
+  s := Lowercase(GetAttrValue(ANode, 'lockRevision'));
+  if (s = '1') or (s = 'true') then
     Include(wbp, bpLockRevision);
 
   Workbook.Protection := wbp;
