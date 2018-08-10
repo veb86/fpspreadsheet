@@ -2269,7 +2269,7 @@ begin
       s := Lowercase(GetAttrValue(sheetViewNode, 'rightToLeft'));
       if (s = '0') or (s = 'false') then
         sheet.BiDiMode := bdLTR
-      else if (s = '1') = (s = 'true') then
+      else if (s = '1') or (s = 'true') then
         sheet.BiDiMode := bdRTL;
 
       childNode := sheetViewNode.FirstChild;
