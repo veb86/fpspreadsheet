@@ -676,7 +676,7 @@ type
   TsWorkbookProtection = (bpLockRevision, bpLockStructure, bpLockWindows);
   TsWorkbookProtections = set of TsWorkbookProtection;
 
-  {@@ Worksheet protection options. All selected items are locked. }
+  {@@ Worksheet protection options. All used items are locked. }
   TsWorksheetProtection = (
     spFormatCells, spFormatColumns, spFormatRows,
     spDeleteColumns, spDeleteRows,

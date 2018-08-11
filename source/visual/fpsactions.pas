@@ -116,6 +116,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
+    procedure UpdateTarget(Target: TObject); override;
   published
     property Zoom: Integer read FZoom write SetZoom default 100;
   end;
@@ -878,6 +879,11 @@ begin
     raise Exception.Create('Zoomfactor cannot be 0.');
 
   FZoom := AValue;
+end;
+
+procedure TsWorksheetZoomAction.UpdateTarget(Target: TObject);
+begin
+  Checked := (Worksheet <> nil) and (round(Worksheet.ZoomFactor*100) = FZoom);
 end;
 
 
