@@ -2963,6 +2963,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     nf: TsNumberFormat;
     parser: TsNumFormatParser;
     counter: Integer;
+    op: TsCompareOperation;
+    x: Extended;
   begin
     posfmt := '';
     negfmt := '';
@@ -3013,30 +3015,22 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         parser.Free;
       end;
 
-      case condition[1] of
-        '>': begin
-               posfmt := fmt;
-               if (Length(condition) > 1) and (condition[2] = '=') then
-                 zerofmt := fmt;
-             end;
-        '<': begin
-               negfmt := fmt;
-               if (Length(condition) > 1) and (condition[2] = '=') then
-                 zerofmt := fmt;
-             end;
-        '=': begin
-               zerofmt := fmt;
-             end;
+      if TryStrToFloat(AnalyzeCompareStr(condition, op), x, FPointSeparatorSettings) then
+      begin
+        if x = 0 then
+          // This condition is used in currency formats
+          case op of
+            coEqual: zerofmt := fmt;
+            coLess, coLessEqual: negfmt := fmt;
+            coGreater, coGreaterEqual: posfmt := fmt;
+          end
+        else if (x > 1E308) and (op in [coLess, coLessEqual]) then
+          // used "in hh:mm;@"
+          posfmt := fmt;
       end;
       ANode := ANode.NextSibling;
       inc(counter);
     end;
-    {
-    if posfmt = '' then posfmt := currFmt;
-    if negfmt = '' then negfmt := currFmt;
-    }
-//    if posfmt = '' then posfmt := AFormatStr;
-//    if negfmt = '' then negfmt := AFormatStr;
 
     case counter of
       1: begin
