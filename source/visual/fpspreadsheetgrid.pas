@@ -5766,7 +5766,10 @@ begin
               lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
             end else
               // If autocalc mode is off we just take the row height from the row record
-              h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
+              case lRow^.RowHeightType of
+                rhtDefault : h := DefaultRowHeight;
+                rhtAuto    : h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
+              end;
           end;
       end;  // case
     end else
