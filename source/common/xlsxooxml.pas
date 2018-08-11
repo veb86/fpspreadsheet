@@ -1517,14 +1517,14 @@ begin
     if nodename = 'u' then
     begin
       s := GetAttrValue(node, 'val');
-      if (s = '') or StrIsTrue(s) then  // if GetAttrValue(node, 'val') <> 'false' then
+      if not StrIsFalse(s) then   // can have many values, not just booleans
         fntStyles := fntStyles+ [fssUnderline]
     end
     else
     if nodename = 'strike' then
     begin
       s := GetAttrValue(node, 'val');
-      if (s = '') or StrIsTrue(s) then // if GetAttrValue(node, 'val') <> 'false' then
+      if not StrIsFalse(s) then  // can have several values, not just booleans
         fntStyles := fntStyles + [fssStrikeout];
     end
     else
