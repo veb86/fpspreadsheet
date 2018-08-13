@@ -16,7 +16,7 @@
         <CustomOptions Value="$(IDEBuildOptions)"/>
       </Other>
     </CompilerOptions>
-    <Description Value="laz_fpspreadsheet_visual is a visual component that allows you to use the fpspreadsheet package to read/write spreadsheet files in .xls (BIFF/Excel), .ods OpenDocument (LibreOffice/OpenOffice) and .xlsx Open XML (Excel) formats.
+    <Description Value="laz_fpspreadsheet_visual is a package with visual components that allows you display, read and write spreadsheet files in .xls (BIFF/Excel), .ods OpenDocument (LibreOffice/OpenOffice) and .xlsx Open XML (Excel) formats.
 
 It provides graphical components like a grid and chart."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
