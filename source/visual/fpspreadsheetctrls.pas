@@ -2851,21 +2851,29 @@ begin
         fnt := Worksheet.ReadCellFont(cell);
         // No check for nil required because fnt is at least DefaultFont
         ItemIndex := Items.IndexOf(fnt.FontName);
+        if ItemIndex = -1 then
+          Text := fnt.FontName;
       end;
     cfiFontSize:
       begin
         fnt := Worksheet.ReadCellFont(cell);
         ItemIndex := Items.IndexOf(Format('%.0f', [fnt.Size]));
+        if ItemIndex = -1 then
+          Text := Format('%.2g', [fnt.Size]);
       end;
     cfiFontColor:
       begin
         fnt := Worksheet.ReadCellFont(cell);
         ItemIndex := Items.IndexOfObject(TObject(PtrInt(fnt.Color)));
+        if ItemIndex = -1 then
+          Text := GetColorName(fnt.Color);
       end;
     cfiBackgroundColor:
       begin
         clr := Worksheet.ReadBackgroundColor(cell);
         ItemIndex := Max(0, Items.IndexOfObject(TObject(PtrInt(clr))));
+        if ItemIndex = -1 then
+          Text := GetColorName(clr);
       end;
     cfiBorderColor:
       ;
