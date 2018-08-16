@@ -398,7 +398,7 @@ type
 
     procedure Clear;
     procedure DeleteCell(ACell: PCell);
-    procedure EraseCell(ACell: PCell);
+    procedure EraseCell(ACell: PCell; AKeepFormat: Boolean = false);
 
     function  AddCell(ARow, ACol: Cardinal): PCell;
     function  FindCell(ARow, ACol: Cardinal): PCell; overload;
@@ -483,6 +483,7 @@ type
     procedure SelectCell(ARow, ACol: Cardinal);
     procedure ClearSelection;
     procedure DeleteSelection;
+    procedure EraseSelection(AKeepFormat: Boolean = false);
     function GetSelection: TsCellRangeArray;
     function GetSelectionAsString: String;
     function GetSelectionCount: Integer;
@@ -2212,7 +2213,7 @@ end;
 
   @param  ACell  Pointer to cell to be erased.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.EraseCell(ACell: PCell);
+procedure TsWorksheet.EraseCell(ACell: PCell; AKeepFormat: Boolean = false);
 var
   r, c: Cardinal;
 begin
@@ -2233,8 +2234,11 @@ begin
     // Removes the formula if the cell has one
     DeleteFormula(ACell);
 
-    // Erase all cell content
-    InitCell(nil, r, c, ACell^);
+    if AKeepFormat then
+      ACell^.ContentType := cctEmpty
+    else
+      // Erase all cell content
+      InitCell(nil, r, c, ACell^);
   end;
 end;
 
@@ -4480,6 +4484,27 @@ begin
       end;
   ClearSelection;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Erases all selected cells (erase = keep cell, but delete content)
+  If AKeepFormat is true the cell format is left unchanged.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.EraseSelection(AKeepFormat: Boolean = false);
+var
+  i: Integer;
+  r, c: Cardinal;
+  cell: PCell;
+begin
+  for i:=0 to High(FSelection) do
+    for r := FSelection[i].Row1 to FSelection[i].Row2 do
+      for c := FSelection[i].Col1 to FSelection[i].Col2 do
+      begin
+        cell := FindCell(r, c);
+        EraseCell(cell, AKeepFormat);
+      end;
+  ClearSelection;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Returns the list of selected cell ranges
