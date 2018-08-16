@@ -26,7 +26,7 @@ unit fpspreadsheetgrid;
 interface
 
 uses
-  Classes, SysUtils, LMessages, LResources, Variants,
+  Classes, SysUtils, LMessages, LResources, LCLVersion, Variants,
   Forms, Controls, Graphics, Dialogs, Grids, StdCtrls, ExtCtrls,
   fpstypes, fpspreadsheet, fpspreadsheetctrls;
 
@@ -311,6 +311,9 @@ type
       const ACellRect: TGridRect): Boolean;
     function MouseOnHeader(X, Y: Integer): Boolean;
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
+    {$IF LCL_FullVersion >= 1090000}
+    function  MoveNextSelectable(Relative: Boolean; DCol, DRow: Integer): Boolean; override;
+    {$ENDIF}
     procedure MoveSelection; override;
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure PrepareCanvasFont;
@@ -5149,6 +5152,28 @@ begin
   inherited;
   Refresh;
 end;
+
+{$IF LCL_FullVersion >= 1090000}
+function TsCustomWorksheetGrid.MoveNextSelectable(Relative: Boolean; DCol, DRow: Integer
+  ): Boolean;
+var
+  cell: PCell;
+  r1, r2, c1, c2: Cardinal;
+begin
+  if Relative then begin
+    cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
+    if Worksheet.IsMerged(cell) then begin
+      Worksheet.FindMergedRange(cell, r1,c1,r2,c2);
+      // we are only interested on relative movement (basically by keyboard)
+      if DCol>0 then DCol := GetGridCol(c2) - Col + 1 else
+      if DCol<0 then DCol := GetGridCol(c1) - Col - 1 else
+      if DRow>0 then DRow := GetGridRow(r2) - Row + 1 else
+      if DRow<0 then DRow := GetGridRow(r1) - Row - 1;
+    end;
+  end;
+  Result := inherited MoveNextSelectable(Relative, DCol, DRow);
+end;
+{$ENDIF}
 
 {@@ ----------------------------------------------------------------------------
   Creates a new empty workbook with the specified number of columns and rows.
