@@ -156,6 +156,9 @@ type
       out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags); override;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); override;
+    procedure ReadRPNCellRangeAddressOffset(AStream: TStream;
+      out ARowOffset1, AColOffset1, ARowOffset2, AColOffset2: Integer;
+      out AFlags: TsRelFlags); override;
 //    function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; override;
     procedure ReadRPNCellRangeOffset(AStream: TStream;
       out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
@@ -1533,6 +1536,38 @@ begin
   if (c2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
   if (c2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
 end;
+
+procedure TsSpreadBIFF8Reader.ReadRPNCellRangeAddressOffset(AStream: TStream;
+  out ARowOffset1, AColOffset1, ARowOffset2, AColOffset2: Integer;
+  out AFlags: TsRelFlags);
+var
+  dr1, dr2: SmallInt;
+  dc1, dc2: ShortInt;
+  c1, c2: Word;
+begin
+  // 2 bytes for row1 and row2 offsets, each
+  dr1 := ShortInt(WordLEToN(AStream.ReadWord));
+  dr2 := ShortInt(WordLEToN(AStream.ReadWord));
+  ARowOffset1 := dr1;
+  ARowOffset2 := dr2;
+
+  // 2 bytes for col1 and col2 offsets, each
+  c1 := WordLEToN(AStream.ReadWord);
+  c2 := WordLEToN(AStream.ReadWord);
+  dc1 := ShortInt(Lo(c1));
+  dc2 := ShortInt(Lo(c2));
+  AColOffset1 := dc1;
+  AColOffset2 := dc2;
+
+  // Extract info on absolute/relative addresses.
+  AFlags := [];
+  if (c1 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (c1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
+  if (c2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
+  if (c2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
+end;
+
+
   {
 function TsSpreadBIFF8Reader.ReadRPNCellRange3D(AStream: TStream;
   var ARPNItem: PRPNItem): Boolean;

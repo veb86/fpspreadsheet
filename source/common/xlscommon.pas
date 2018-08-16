@@ -522,6 +522,9 @@ type
       out ARowOffset, AColOffset: Integer; out AFlags: TsRelFlags); virtual;
     procedure ReadRPNCellRangeAddress(AStream: TStream;
       out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags); virtual;
+    procedure ReadRPNCellRangeAddressOffset(AStream: TStream;
+      out ARowOffset1, AColOffset1, ARowOffset2, AColOffset2: Integer;
+      out AFlags: TsRelFlags); virtual;
 //    function ReadRPNCellRange3D(AStream: TStream; var ARPNItem: PRPNItem): Boolean; virtual;
     procedure ReadRPNCellRangeOffset(AStream: TStream;
       out ARow1Offset, ACol1Offset, ARow2Offset, ACol2Offset: Integer;
@@ -2637,6 +2640,51 @@ begin
   if (r2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Read the differences between row and column indexes of a cell range and a
+  reference cell.
+  Evaluates the corresponding bits to distinguish between absolute and
+  relative addresses.
+  Implemented here for BIFF2-BIFF5. BIFF8 must be overridden.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadRPNCellRangeAddressOffset(AStream: TStream;
+  out ARowOffset1, AColOffset1, ARowOffset2, AColOffset2: Integer;
+  out AFlags: TsRelFlags);
+var
+  r1, r2: Word;
+  dr1, dr2: SmallInt;
+  dc1, dc2: ShortInt;
+begin
+  // 2 bytes for row1 and row2, each
+  r1 := WordLEToN(AStream.ReadWord);
+  r2 := WordLEToN(AStream.ReadWord);
+
+  // Check sign bits
+  if r1 and $2000 = 0 then
+    dr1 := SmallInt(r1 and $3FFF)
+  else
+    dr1 := SmallInt($C000 or (r1 and $3FFF));
+  ARowOffset1 := dr1;
+
+  if r2 and $2000 = 0 then
+    dr2 := SmallInt(r2 and $3FFF)
+  else
+    dr2 := SmallInt($C000 or (r2 and $3FFF));
+
+  // 1 byte for col1 and col2, each
+  dc1 := ShortInt(AStream.ReadByte);
+  AColOffset1 := dc1;
+  dc2 := ShortInt(AStream.ReadByte);
+  AColOffset2 := dc2;
+
+  // Extract absolute/relative flags
+  AFlags := [];
+  if (r1 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol);
+  if (r1 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow);
+  if (r2 and MASK_EXCEL_RELATIVE_COL <> 0) then Include(AFlags, rfRelCol2);
+  if (r2 and MASK_EXCEL_RELATIVE_ROW <> 0) then Include(AFlags, rfRelRow2);
+end;
+
 {
 function TsSpreadBIFFReader.ReadRPNCellRange3D(AStream: TStream;
   var ARPNItem: PRPNItem): Boolean;
@@ -2936,7 +2984,7 @@ var
   rpnItem: PRPNItem;
   supported: boolean;
   dblVal: Double = 0.0;   // IEEE 8 byte floating point number
-  flags: TsRelFlags;
+  flags, flags2: TsRelFlags;
   r, c, r2, c2: Cardinal;
   dr, dc, dr2, dc2: Integer;
   fek: TFEKind;
@@ -2980,15 +3028,24 @@ begin
         begin
           ReadRPNCellAddressOffset(AStream, dr, dc, flags);
           // For compatibility with other formats, convert offsets back to regular indexes.
-          if (rfRelRow in flags)
-            then r := LongInt(ACell^.Row) + dr
-            else r := dr;
-          if (rfRelCol in flags)
-            then c := LongInt(ACell^.Col) + dc
-            else c := dc;
+          if (rfRelRow in flags) then r := LongInt(ACell^.Row) + dr else r := dr;
+          if (rfRelCol in flags) then c := LongInt(ACell^.Col) + dc else c := dc;
           case token of
             INT_EXCEL_TOKEN_TREFN_V: rpnItem := RPNCellValue(r, c, flags, rpnItem);
             INT_EXCEL_TOKEN_TREFN_R: rpnItem := RPNCellRef(r, c, flags, rpnItem);
+          end;
+        end;
+      INT_EXCEL_TOKEN_TAREAN_R, INT_EXCEL_TOKEN_TAREAN_V:
+        begin
+          ReadRPNCellRangeAddressOffset(AStream, dr, dc, dr2, dc2, flags);
+          // For compatibility with other formats, convert offsets back to regular indexes.
+          if (rfRelRow in flags) then r := LongInt(ACell^.Row) + dr else r := dr;
+          if (rfRelCol in flags) then c := LongInt(ACell^.Col) + dc else c := dc;
+          if (rfRelRow2 in Flags) then r2 := LongInt(ACell^.Row) + dr2 else r2 := dr2;
+          if (rfRelCol2 in Flags) then c2 := LongInt(ACell^.Col) + dc2 else c2 := dc2;
+          case token of
+            INT_EXCEL_TOKEN_TAREAN_R: rpnItem := RPNCellRange(r, c, r2, c2, flags, rpnItem);
+//            INT_EXCEL_TOKEN_TAREAN_V: rpnItem := RPNCellValue(r, c, r2, c2, flags, rpnItem);
           end;
         end;
       INT_EXCEL_TOKEN_TREF3D_V:
