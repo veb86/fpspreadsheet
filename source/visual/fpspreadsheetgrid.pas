@@ -131,6 +131,7 @@ type
     FRefocusing: TObject;
     FRefocusingSelStart: Integer;
     FFormulaError: Boolean;
+    FFixedColWidth: Integer;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
@@ -165,6 +166,7 @@ type
     function GetColWidths(ACol: Integer): Integer;
     function GetDefColWidth: Integer;
     function GetDefRowHeight: Integer;
+    function GetFixedColWidth: Integer;
     function GetHorAlignment(ACol, ARow: Integer): TsHorAlignment;
     function GetHorAlignments(ALeft, ATop, ARight, ABottom: Integer): TsHorAlignment;
     function GetHyperlink(ACol, ARow: Integer): String;
@@ -210,6 +212,7 @@ type
     procedure SetDefColWidth(AValue: Integer);
     procedure SetDefRowHeight(AValue: Integer);
     procedure SetEditorLineMode(AValue: TsEditorLineMode);
+    procedure SetFixedColWidth(AValue: Integer);
     procedure SetFrozenCols(AValue: Integer);
     procedure SetFrozenBorderPen(AValue: TPen);
     procedure SetFrozenRows(AValue: Integer);
@@ -287,7 +290,6 @@ type
     function GetCellText(ACol, ARow: Integer; ATrim: Boolean = true): String;
     function GetEditText(ACol, ARow: Integer): String; override;
     function GetDefaultColumnTitle(Column: Integer): string; override;
-    function GetDefaultHeaderColWidth: Integer;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
     procedure HeaderSizing(const IsColumn:boolean; const AIndex,ASize:Integer); override;
     procedure HeaderSized(IsColumn: Boolean; AIndex: Integer); override;
@@ -342,6 +344,9 @@ type
     {@@ Determines whether a single- or multi-line cell editor is used }
     property EditorLineMode: TsEditorLineMode read FLineMode write SetEditorLineMode
       default elmSingleLine;
+    {@@ Width of the fixed row header column. 0 = auto width detection }
+    property FixedColWidth: Integer read GetFixedColWidth
+      write SetFixedColWidth default 0;
     {@@ This number of columns at the left is "frozen", i.e. it is not possible to
         scroll these columns }
     property FrozenCols: Integer read FFrozenCols write SetFrozenCols;
@@ -612,6 +617,8 @@ type
     property DisplayFixedColRow; deprecated 'Use ShowHeaders';
     {@@ Determines whether a single- or multiline cell editor is used }
     property EditorLineMode;
+    {@@ Width of the first fixed column (= row headers), in pixels }
+    property FixedColWidth;
     {@@ Pen for the line separating the frozen cols/rows from the regular grid }
     property FrozenBorderPen;
     {@@ This number of columns at the left is "frozen", i.e. it is not possible to
@@ -3935,14 +3942,6 @@ end;
 
 
 {@@ ----------------------------------------------------------------------------
-  Returns the width of the fixed header column 0, in pixels
--------------------------------------------------------------------------------}
-function TsCustomWorksheetGrid.GetDefaultHeaderColWidth: Integer;
-begin
-  Result := Canvas.TextWidth(' 9999999 ');
-end;
-
-{@@ ----------------------------------------------------------------------------
   Determines the text to be passed to the cell editor. The text is determined
   from the underlying worksheet cell, but it is possible to intercept this by
   adding a handler for the OnGetEditText event.
@@ -4059,6 +4058,18 @@ begin
       ABorderStyle := GetCellBorderStyle(ACol, ARow, border);
   end else
     Result := false;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the width of the fixed header column 0, in pixels
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.GetFixedColWidth: Integer;
+begin
+  if FFixedColWidth = 0 then begin
+    PrepareCanvasFont;
+    Result := Canvas.TextWidth(' 9999999 ');
+  end else
+    Result := FFixedColWidth;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4219,14 +4230,14 @@ var
   idx: Integer;
   w, h, wdef, hdef: Single;
 begin
-  if (Worksheet = nil) or (FZoomLock <> 0) then
+  if (Worksheet = nil) or (FZoomLock <> 0) or (AIndex < FHeaderCount) then
     exit;
 
   if IsColumn then
   begin
     w := CalcWorksheetColWidth(ColWidths[AIndex]);   // w and wdef are at 100% zoom
     wdef := Worksheet.ReadDefaultColWidth(Workbook.Units);
-    if (AIndex >= FHeaderCount) and not SameValue(w, wdef, EPS) then begin
+    if not SameValue(w, wdef, EPS) then begin
       idx := GetWorksheetCol(AIndex);
       Worksheet.WriteColWidth(idx, w, Workbook.Units);
     end;
@@ -4234,7 +4245,7 @@ begin
   begin
     h := CalcWorksheetRowHeight(RowHeights[AIndex]);
     hdef := Worksheet.ReadDefaultRowHeight(Workbook.Units);
-    if (AIndex >= FHeaderCount) and not SameValue(h, hdef, EPS) then begin
+    if not SameValue(h, hdef, EPS) then begin
       idx := GetWorksheetRow(AIndex);
       Worksheet.WriteRowHeight(idx, h, Workbook.Units);
     end;
@@ -5351,7 +5362,7 @@ begin
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
       PrepareCanvasFont;  // Applies the zoom factor
-      ColWidths[0] := GetDefaultHeaderColWidth;
+      ColWidths[0] := GetFixedColWidth;
       RowHeights[0] := GetDefaultRowHeight;
     end;
     FTopLeft := CalcTopLeft(false);
@@ -5365,7 +5376,7 @@ begin
     FixedRows := FFrozenRows + FHeaderCount;
     if ShowHeaders then begin
       PrepareCanvasFont;
-      ColWidths[0] := GetDefaultHeaderColWidth;
+      ColWidths[0] := GetFixedColWidth;
       RowHeights[0] := GetDefaultRowHeight;
     end;
     FTopLeft := CalcTopLeft(false);
@@ -6620,7 +6631,7 @@ begin
   inherited DefaultColWidth := AValue;
   if (FHeaderCount > 0) and HandleAllocated then begin
     PrepareCanvasFont;
-    ColWidths[0] := GetDefaultHeaderColWidth;
+    ColWidths[0] := GetFixedColWidth;
   end;
   if (FZoomLock = 0) and (Worksheet <> nil) then
     Worksheet.WriteDefaultColWidth(CalcWorksheetColWidth(GetDefColWidth), Workbook.Units);
@@ -6654,6 +6665,17 @@ begin
     FMultilineStringEditor.Visible := False;
     FMultilineStringEditor.Align := alNone;
     FMultilineStringEditor.BorderStyle := bsNone;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetFixedColWidth(AValue: Integer);
+begin
+  if FFixedColWidth = AValue then exit;
+  FFixedColWidth := AValue;
+  if FHeaderCount > 0 then
+  begin
+    ColWidths[0] := GetFixedColWidth;
+    FTopLeft := CalcTopLeft(false);
   end;
 end;
 
