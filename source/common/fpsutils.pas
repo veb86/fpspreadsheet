@@ -112,7 +112,9 @@ function GetCellRangeString_R1C1(ASheet1, ASheet2: String;
   ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
   ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String; overload;
 
-  //  OpenDocument Syntax
+function SheetNameNeedsQuotes(ASheet: String): Boolean;
+
+//  OpenDocument Syntax
 function GetCellRangeString_ODS(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel): String; overload;
 function GetCellRangeString_ODS(ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -944,10 +946,10 @@ begin
     s2 := Copy(AStr, p+1, MaxInt);
     p := pos(':', s1);
     if p = 0 then
-      ASheet1 := s1
+      ASheet1 := UnquoteStr(s1)
     else begin
-      ASheet1 := copy(s1, 1, p-1);
-      ASheet2 := copy(s1, p+1, MaxInt);
+      ASheet1 := UnquoteStr(copy(s1, 1, p-1));
+      ASheet2 := UnquoteStr(copy(s1, p+1, MaxInt));
     end;
   end;
 
@@ -1162,20 +1164,32 @@ begin
     ]);
 end;
 
+function SheetNameNeedsQuotes(ASheet: String): Boolean;
+begin
+  if ASheet <> '' then begin
+    Result := true;
+    if (ASheet[1] in ['0'..'9', '.']) then exit;
+    if (pos(' ', ASheet) > 0) then exit;
+  end;
+  Result := false;
+end;
+
 function GetCellRangeString(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
-var
-  s: String;
 begin
-  s := GetCellRangeString(ARow1, ACol1, ARow2, ACol2, AFlags, Compact);
+  Result := GetCellRangeString(ARow1, ACol1, ARow2, ACol2, AFlags, Compact);
   if (ASheet1 = '') and (ASheet2 = '') then
-    Result := s
-  else if ASheet2 = '' then
-    Result := Format('%s!%s', [ASheet1, s])
+    exit;
+
+  if SheetNameNeedsQuotes(ASheet1) then ASheet1 := QuotedStr(ASheet1);
+  if SheetNameNeedsQuotes(ASheet2) then ASheet2 := QuotedStr(ASheet2);
+
+  if ASheet2 = '' then
+    Result := Format('%s!%s', [ASheet1, Result])
   else if Compact and (ASheet1 = ASheet2) then
-    Result := Format('%s!%s', [ASheet1, s])
+    Result := Format('%s!%s', [ASheet1, Result])
   else
-    Result := Format('%s:%s!%s', [ASheet1, ASheet2, s]);
+    Result := Format('%s:%s!%s', [ASheet1, ASheet2, Result]);
 end;
 
 

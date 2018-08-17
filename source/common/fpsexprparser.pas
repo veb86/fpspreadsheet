@@ -61,7 +61,7 @@ type
     ttNumber, ttString, ttIdentifier, ttSpreadsheetAddress,
     ttPlus, ttMinus, ttMul, ttDiv, ttConcat, ttPercent, ttPower, ttLeft, ttRight,
     ttLessThan, ttLargerThan, ttEqual, ttNotEqual, ttLessThanEqual, ttLargerThanEqual,
-    ttListSep, ttTrue, ttFalse, ttMissingArg, ttError, ttEOF
+    ttListSep, ttQuote, ttTrue, ttFalse, ttMissingArg, ttError, ttEOF
   );
 
   TsExprFloat = Double;
@@ -563,6 +563,7 @@ type
     function GetCol: Cardinal;
     function GetRow: Cardinal;
     procedure GetNodeValue(out AResult: TsExpressionResult); override;
+    function GetQuotedSheetName: String;
   public
     constructor Create(AParser: TsExpressionParser; AWorksheet: TsBasicWorksheet;
       ASheetName: String; ARow, ACol: Cardinal; AFlags: TsRelFlags);
@@ -1110,12 +1111,15 @@ function TsExpressionScanner.DoIdentifier: TsTokenType;
 var
   C: Char;
   S: String;
+  isQuoted: Boolean;
 begin
   C := CurrentChar;
-  while (not IsWordDelim(C)) and (C <> cNULL) do
+  isQuoted := C = '''';
+  while ((not IsWordDelim(C)) or IsQuoted) and (C <> cNULL) do
   begin
     FToken := FToken + C;
     C := NextPos;
+    if C = '''' then isQuoted := false;
   end;
 
   if ParseCellRangeString(FToken, FSheet1, FSheet2,
@@ -1311,7 +1315,7 @@ begin
     Result := DoNumber
   else if (C = cError) then
     Result := DoError
-  else if IsAlpha(C) or (C = '$') then
+  else if IsAlpha(C) or (C = '$') or (C = '''') then
     Result := DoIdentifier
   else
     ScanError(Format(rsUnknownCharacter, [FPos, C]));
@@ -3922,17 +3926,17 @@ begin
 
   r := Getrow;
   c := GetCol;
-  if Has3dLink then
+  if Has3dLink then begin
     case FParser.Dialect of
       fdExcelA1:
-        Result := Format('%s!%s', [GetSheetName, GetCellString(r, c, FFlags)]);
+        Result := Format('%s!%s', [GetQuotedSheetName, GetCellString(r, c, FFlags)]);
       fdExcelR1C1:
-        Result := Format('%s!%s', [GetSheetName,
+        Result := Format('%s!%s', [GetQuotedSheetName,
           GetCellString_R1C1(r, c, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col)]);
       fdOpenDocument:
-        Result := Format('[%s.%s]', [GetSheetName, GetCellString(r, c, FFlags)]);
+        Result := Format('[%s.%s]', [GetQuotedSheetName, GetCellString(r, c, FFlags)]);
     end
-  else
+  end else
     case FParser.Dialect of
       fdExcelA1:
         Result := GetCellString(GetRow, GetCol, FFlags);
@@ -4002,6 +4006,12 @@ begin
   AResult.Worksheet := GetSheet;
 end;
 
+function TsCellExprNode.GetQuotedSheetName: String;
+begin
+  Result := GetSheetName;
+  if SheetNameNeedsQuotes(Result) then
+    Result := QuotedStr(Result);
+end;
 
 { See: GetCol }
 function TsCellExprNode.GetRow: Cardinal;
@@ -4168,10 +4178,14 @@ begin
     s1 := FWorksheet.Name
   else
     s1 := (Workbook as TsWorkbook).GetWorksheetByIndex(FSheetIndex[1]).Name;
+  if SheetNameNeedsQuotes(s1) then s1 := QuotedStr(s1);
+
   if FSheetIndex[2] = -1 then
     s2 := FWorksheet.Name
   else
     s2 := (Workbook as TsWorkbook).GetWorksheetByIndex(FSheetIndex[2]).Name;
+  if SheetNameNeedsQuotes(s2) then s2 := QuotedStr(s2);
+
   r1 := GetRow(1);
   c1 := GetCol(1);
   r2 := GetRow(2);
