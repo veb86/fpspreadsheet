@@ -1977,7 +1977,10 @@ begin
   if RecordSize = 0 then
     exit;
 
-  Len := AStream.ReadByte;
+  len := AStream.ReadByte;
+  if len = 0 then
+    exit;
+
   SetLength(s, len*SizeOf(ansichar));
   AStream.ReadBuffer(s[1], len*SizeOf(ansichar));
   with TsWorksheet(FWorksheet).PageLayout do

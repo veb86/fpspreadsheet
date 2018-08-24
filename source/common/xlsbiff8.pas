@@ -2355,6 +2355,9 @@ begin
     exit;
 
   len := WordLEToN(AStream.ReadWord);
+  if len = 0 then
+    exit;
+
   s := ReadWideString(AStream, len, rtParams);
   with (FWorksheet as TsWorksheet).Pagelayout do
     if AIsHeader then
