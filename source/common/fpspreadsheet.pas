@@ -2239,6 +2239,8 @@ begin
     else
       // Erase all cell content
       InitCell(nil, r, c, ACell^);
+
+    ChangedCell(r, c);
   end;
 end;
 
