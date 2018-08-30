@@ -841,6 +841,7 @@ function EmptyResult: TsExpressionResult;
 function ErrorResult(const AValue: TsErrorValue): TsExpressionResult;
 function FloatResult(const AValue: TsExprFloat): TsExpressionResult;
 function IntegerResult(const AValue: Integer): TsExpressionResult;
+function IsBlank(const AValue: TsExpressionResult): Boolean;
 function IsInteger(const AValue: TsExpressionResult): Boolean;
 function IsString(const AValue: TsExpressionResult): Boolean;
 function StringResult(const AValue: String): TsExpressionResult;
@@ -3238,7 +3239,11 @@ begin
   if HasError(AResult) then
     exit;
 
-  if IsString(LRes) and IsString(RRes) then
+  if IsBlank(LRes) then
+    AResult := BooleanResult(IsBlank(RRes))
+  else if IsBlank(RRes) then
+    AResult := BooleanResult(IsBlank(LRes))
+  else if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) = ArgToString(RRes))
   else begin
     fL := ArgToFloat(LRes);
@@ -3302,6 +3307,9 @@ begin
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
+  if IsBlank(LRes) or IsBlank(RRes) then
+    AResult := BooleanResult(false)
+  else
   if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) < ArgToString(RRes))
   else begin
@@ -3342,6 +3350,9 @@ begin
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
+  if IsBlank(LRes) or IsBlank(RRes) then
+    AResult := BooleanResult(false)
+  else
   if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) > ArgToString(RRes))
   else begin
@@ -3382,7 +3393,11 @@ begin
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
-  if IsString(LRes) and IsString(RRes) then
+  if IsBlank(LRes) then
+    AResult := BooleanResult(IsBlank(RRes))
+  else if IsBlank(RRes) then
+    AResult := BooleanResult(IsBlank(LRes))
+  else if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) >= ArgToString(RRes))
   else begin
     fL := ArgToFloat(LRes);
@@ -3422,7 +3437,11 @@ begin
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
-  if IsString(LRes) and IsString(RRes) then
+  if IsBlank(LRes) then
+    AResult := BooleanResult(IsBlank(RRes))
+  else if IsBlank(RRes) then
+    AResult := BooleanResult(IsBlank(LRes))
+  else if IsString(LRes) and IsString(RRes) then
     AResult := BooleanResult(ArgToString(LRes) <= ArgToString(RRes))
   else begin
     fL := ArgToFloat(LRes);
@@ -4629,6 +4648,26 @@ function IntegerResult(const AValue: Integer): TsExpressionResult;
 begin
   Result.ResultType := rtInteger;
   Result.ResInteger := AValue;
+end;
+
+function IsBlank(const AValue: TsExpressionResult): Boolean;
+var
+  cell: PCell;
+begin
+  case AValue.ResultType of
+    rtString :
+      Result := (AValue.ResString = '');
+    rtInteger, rtFloat, rtError:
+      Result := false;
+    rtEmpty:
+      Result := true;
+    rtCell:
+      begin
+        cell := (AValue.Worksheet as TsWorksheet).FindCell(AValue.ResRow, AValue.ResCol);
+        Result := (cell = nil) or (cell^.ContentType = cctEmpty) or
+          ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''));
+      end;
+  end;
 end;
 
 function IsInteger(const AValue: TsExpressionResult): Boolean;
