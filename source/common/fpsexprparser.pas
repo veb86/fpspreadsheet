@@ -961,6 +961,7 @@ var
   prevC: Char;
   state: TScannerStateODS;
   val: Integer;
+  isQuotedSheetName: Boolean;
 begin
   FSheet1 := '';
   FSheet2 := '';
@@ -970,6 +971,7 @@ begin
   FCellRange.Col2 := Cardinal(-1);
   FFlags := rfAllRel;
 
+  isQuotedSheetName := false;
   state := ssInSheet1;
   FToken := '';
   C := NextPos;
@@ -999,10 +1001,22 @@ begin
              FToken := '';
            end else
              ScanError(rsIllegalODSCellRange);
-      '$': case state of
-             ssInCol1: if prevC = '.' then Exclude(FFlags, rfRelCol) else Exclude(FFlags, rfRelRow);
-             ssInCol2: if prevC = '.' then Exclude(FFlags, rfRelCol2) else Exclude(FFlags, rfRelRow2);
-           end;
+      '$': if (prevC in [#0, ':']) then
+             isQuotedSheetName := true
+           else
+             case state of
+               ssInCol1: if prevC = '.' then Exclude(FFlags, rfRelCol) else Exclude(FFlags, rfRelRow);
+               ssInCol2: if prevC = '.' then Exclude(FFlags, rfRelCol2) else Exclude(FFlags, rfRelRow2);
+             end;
+      '''': if isQuotedSheetName or (prevC in [#0, ':']) then begin
+              C := NextPos;
+              FToken := '';
+              while C <> '''' do begin
+                FToken := FToken + C;
+                C := NextPos;
+              end;
+              isQuotedSheetName := false;
+            end;
       else
            if (state in [ssInSheet1, ssInSheet2]) then
              FToken := FToken + C
@@ -3937,6 +3951,7 @@ end;
 function TsCellExprNode.AsString: string;
 var
   r, c: Cardinal;
+  s: String;
 begin
   if FError <> errOK then begin
     Result := GetErrorValueStr(FError);
@@ -3953,7 +3968,11 @@ begin
         Result := Format('%s!%s', [GetQuotedSheetName,
           GetCellString_R1C1(r, c, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col)]);
       fdOpenDocument:
-        Result := Format('[%s.%s]', [GetQuotedSheetName, GetCellString(r, c, FFlags)]);
+        begin
+          s := GetQuotedSheetName;
+          if s[1] = '''' then s := '$' + s;
+          Result := Format('[%s.%s]', [s, GetCellString(r, c, FFlags)]);
+        end;
     end
   end else
     case FParser.Dialect of
@@ -4218,7 +4237,11 @@ begin
         Result := GetCellRangeString_R1C1(s1, s2, r1, c1, r2, c2, FFlags,
           FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
       fdOpenDocument:
-        Result := GetCellRangeString_ODS(s1, s2, r1, c1, r2, c2, FFlags);
+        begin
+          if (s1[1] = '''') then s1 := '$' + s1;
+          if (s2[1] = '''') then s2 := '$' + s2;
+          Result := GetCellRangeString_ODS(s1, s2, r1, c1, r2, c2, FFlags);
+        end;
     end
   else
     case FParser.Dialect of
