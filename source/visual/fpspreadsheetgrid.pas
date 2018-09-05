@@ -1444,12 +1444,15 @@ end;
   has occured at the border of a row header. Sets optimum row height.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.AutoAdjustRow(ARow: Integer);
+var
+  h: Integer;
 begin
   inc(FZoomLock);
   if Worksheet <> nil then
-    RowHeights[ARow] := CalcAutoRowHeight(ARow)
+    h := CalcAutoRowHeight(ARow)
   else
-    RowHeights[ARow] := DefaultRowHeight;
+    h := -1;
+  RowHeights[ARow] := IfThen(h > -1, h, DefaultRowHeight);
   HeaderSized(false, ARow);
   dec(FZoomLock);
 end;
@@ -1521,15 +1524,10 @@ end;
 function TsCustomWorksheetGrid.CalcAutoRowHeight(ARow: Integer): Integer;
 var
   c: Integer;
-  h: Integer;
 begin
-  h := 0;
+  Result := -1;
   for c := FHeaderCount to ColCount-1 do
-    h := Max(h, GetCellHeight(c, ARow));  // Zoom factor is applied to font size
-  if h = 0 then
-    Result := DefaultRowHeight            // Zoom factor applied by getter function
-  else
-    Result := h;
+    Result := Max(Result, GetCellHeight(c, ARow));  // Zoom factor is applied to font size
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1815,6 +1813,7 @@ procedure TsCustomWorksheetGrid.ChangedFontHandler(ASender: TObject;
 var
   lRow: PRow;
   gr: Integer; // row index in grid units
+  h: Integer;
 begin
   Unused(ASender, ACol);
   if (Worksheet <> nil) then begin
@@ -1823,7 +1822,8 @@ begin
       // There is no row record --> row height changes according to font height
       // Otherwise the row height would be fixed according to the value in the row record.
       gr := GetGridRow(ARow);  // convert row index to grid units
-      RowHeights[gr] := CalcAutoRowHeight(gr);
+      h := CalcAutoRowHeight(gr);
+      RowHeights[gr] := IfThen(h > -1, h, DefaultRowHeight);
     end;
     Invalidate;
   end;
@@ -3745,7 +3745,7 @@ var
   txtRot: TsTextRotation;
   RTL: Boolean;
 begin
-  Result := 0;
+  Result := -1;
   if (ACol < FHeaderCount) or (ARow < FHeaderCount) then
     exit;
   if Worksheet = nil then
@@ -5777,11 +5777,11 @@ begin
     if (lRow <> nil) then begin
       case lRow^.RowHeightType of
         rhtCustom:
-          begin
+          if lRow^.Height > 0 then begin
             h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
             if AEnforceCalcRowHeight then begin
               h := CalcAutoRowHeight(ARow);
-              if h = 0 then begin
+              if h = -1 then begin
                 h := DefaultRowHeight;
                 lRow^.RowHeightType := rhtDefault;
               end else
@@ -5795,7 +5795,7 @@ begin
             if doCalcRowHeight then begin
               // Calculate current grid row height in pixels by iterating over all cells in row
               h := CalcAutoRowHeight(ARow);  // ZoomFactor already applied to font heights
-              if h = 0 then begin
+              if h = -1 then begin
                 h := DefaultRowHeight;       // Zoom factor applied by getter function
                 lRow^.RowHeightType := rhtDefault;
               end else
@@ -5817,8 +5817,10 @@ begin
     begin
       // Case 1: This row does contain cells
       lRow := Worksheet.AddRow(sr);
+      h := -1;
       if AEnforceCalcRowHeight then
-        h := CalcAutoRowHeight(ARow) else
+        h := CalcAutoRowHeight(ARow);
+      if h = -1 then
         h := DefaultRowHeight;
       lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
       if h <> DefaultRowHeight then
@@ -5830,7 +5832,7 @@ begin
       h := DefaultRowHeight;   // Zoom factor is applied by getter function
   end;
 
-  if h = 0 then
+  if h = -1 then
     h := DefaultRowHeight;     // Zoom factor is applied by getter function
 
   inc(FZoomLock);  // We don't want to modify the sheet row heights here.

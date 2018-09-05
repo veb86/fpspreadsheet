@@ -3904,6 +3904,7 @@ var
   rec: TColRecord;
   w: Integer;
   width: Single;
+  optn: Word;
 begin
   if Assigned(ACol) then
   begin
@@ -3927,9 +3928,13 @@ begin
     end;
     w := round(width * 256);
 
+    optn := 0;
+    if ACol^.Hidden then optn := optn + $0001;
+    // outline, collapsed flags are not used
+
     rec.ColWidth := WordToLE(w);
-    rec.XFIndex := WordToLE(FindXFIndex(ACol^.FormatIndex));// Index of XF record
-    rec.OptionFlags := 0;   // hidden, outline, collapsed flags are not used
+    rec.XFIndex := WordToLE(FindXFIndex(ACol^.FormatIndex)); // Index of XF record
+    rec.OptionFlags := WordToLE(optn);
     rec.NotUsed := 0;
 
     { Write out }
@@ -4787,6 +4792,7 @@ begin
 
   { Option flags }
   dw := $00000100;  // bit 8 is always 1
+  if Assigned(ARow) and ARow^.Hidden then dw := dw or $00000020;
   if spaceabove then dw := dw or $10000000;
   if spacebelow then dw := dw or $20000000;
   if (ARow <> nil) and (ARow^.RowHeightType = rhtCustom) then  // Custom row height

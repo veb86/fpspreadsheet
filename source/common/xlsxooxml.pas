@@ -2985,6 +2985,7 @@ var
   customWidth: String;
   customStyle: String;
   sheet: TsWorksheet absolute AWorksheet;
+  hiddenStr: String;
 begin
   AppendToStream(AStream,
     '<cols>');
@@ -2996,6 +2997,7 @@ begin
 
     // The column width is needed in suChars here.
     w := sheet.ReadDefaultColWidth(suChars);
+    hiddenStr := '';
     if lCol <> nil then begin
       if lCol^.ColWidthType = cwtCustom then begin
         w := (FWorkbook as TsWorkbook).ConvertUnits(lCol^.Width, FWorkbook.Units, suChars);
@@ -3003,10 +3005,11 @@ begin
       end;
       if lCol^.FormatIndex > 0 then
         customStyle := Format('style="%d" ', [lCol^.FormatIndex]);
+      if lCol^.Hidden then hiddenStr := ' hidden="1"';
     end;
     AppendToStream(AStream, Format(
-      '<col min="%d" max="%d" width="%.2f" %s%s />',
-      [c+1, c+1, w, customWidth, customStyle], FPointSeparatorSettings)
+      '<col min="%d" max="%d" width="%.2f" %s%s%s />',
+      [c+1, c+1, w, customWidth, customStyle, hiddenStr], FPointSeparatorSettings)
     );
   end;
 
@@ -3457,6 +3460,8 @@ begin
             s := s + ' customHeight="1"';
           if row^.FormatIndex > 0 then
             s := s + Format(' s="%d" customFormat="1"', [row^.FormatIndex]);
+          if row^.Hidden then
+            s := s + ' hidden="1"';
         end;
         AppendToStream(AStream, Format(
           '<row r="%d" spans="1:%d"%s>', [r+1, sheet.VirtualColCount, s]));
@@ -3522,6 +3527,8 @@ begin
           s := s + ' customHeight="1"';
         if row^.FormatIndex > 0 then
           s := s + Format(' s="%d" customFormat="1"', [row^.FormatIndex]);
+        if row^.Hidden then
+          s := s + ' hidden="1"';
       end;
       AppendToStream(AStream, Format(
         '<row r="%d" spans="%d:%d"%s>', [r+1, c1+1, c2+1, s]));
