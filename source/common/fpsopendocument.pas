@@ -5445,15 +5445,17 @@ end;
 procedure TsSpreadOpenDocWriter.WriteColumns(AStream: TStream;
   ASheet: TsBasicWorksheet);
 var
+  sheet: TsWorksheet absolute ASheet;
   lastCol: Integer;
   c, k: Integer;
-  w: Double;
+  w, w1: Double;
   styleName: String;
   colsRepeated: Integer;
   colsRepeatedStr: String;
   firstRepeatedPrintCol, lastRepeatedPrintCol: Longint;
   headerCols: Boolean;
-  sheet: TsWorksheet absolute ASheet;
+  isHidden1, isHidden: Boolean;
+  colHiddenStr: String;
 begin
 //  widthMultiplier := Workbook.GetFont(0).Size / 2;
   lastCol := sheet.GetLastColIndex;
@@ -5468,7 +5470,8 @@ begin
   c := 0;
   while (c <= lastCol) do
   begin
-    w := sheet.GetColWidth(c, FWorkbook.Units);
+    w1 := sheet.GetColWidth(c, FWorkbook.Units);
+    isHidden1 := sheet.ColHidden(c) or (w1 = 0);
 
     if (c = firstRepeatedPrintCol) then
     begin
@@ -5479,7 +5482,7 @@ begin
     // Find width in ColumnStyleList to retrieve corresponding style name
     styleName := '';
     for k := 0 to FColumnStyleList.Count-1 do
-      if SameValue(TColumnStyleData(FColumnStyleList[k]).ColWidth, w, COLWIDTH_EPS) then begin
+      if SameValue(TColumnStyleData(FColumnStyleList[k]).ColWidth, w1, COLWIDTH_EPS) then begin
         styleName := TColumnStyleData(FColumnStyleList[k]).Name;
         break;
       end;
@@ -5491,12 +5494,14 @@ begin
       }
 
     // Determine value for "number-columns-repeated"
-    colsRepeated := 1;
     k := c+1;
+    colsRepeated := 1;
     if headerCols then
       while (k <= lastCol) and (k <= lastRepeatedPrintCol) do
       begin
-        if sheet.GetColWidth(k, FWorkbook.Units) = w then
+        w := sheet.GetColWidth(k, FWorkbook.Units);
+        isHidden := sheet.ColHidden(k) or (w = 0);
+        if (w = w1) and (isHidden = isHidden1) then
           inc(colsRepeated)
         else
           break;
@@ -5505,7 +5510,9 @@ begin
     else
       while (k <= lastCol) and (k < firstRepeatedPrintCol) do
       begin
-        if sheet.GetColWidth(k, FWorkbook.Units) = w then
+        w := sheet.GetColWidth(k, FWorkbook.Units);
+        isHidden := sheet.ColHidden(k) or (w = 0);
+        if (w = w1) and (isHidden = isHidden1) then
           inc(colsRepeated)
         else
           break;
@@ -5514,11 +5521,13 @@ begin
     if FHasRowFormats and (k = lastcol) then
       colsRepeated := FLimitations.MaxColCount - c;
 
-    colsRepeatedStr := IfThen(colsRepeated = 1, '', Format(' table:number-columns-repeated="%d"', [colsRepeated]));
+    colsRepeatedStr := IfThen(colsRepeated > 1,
+      Format(' table:number-columns-repeated="%d"', [colsRepeated]), '');
+    colHiddenStr := IfThen(isHidden1, ' table:visibility="collapse"', '');
 
     AppendToStream(AStream, Format(
-      '<table:table-column table:style-name="%s"%s table:default-cell-style-name="Default" />',
-        [styleName, colsRepeatedStr]));
+      '<table:table-column table:style-name="%s"%s table:default-cell-style-name="Default"%s />',
+        [styleName, colsRepeatedStr, colHiddenStr]));
 
     if headerCols and (k >= lastRepeatedPrintCol) then
     begin
@@ -6130,6 +6139,7 @@ var
   colsRepeated: Integer;
   fmtIndex: integer;
   sheet: TsWorksheet absolute ASheet;
+  rowHiddenStr: String;
 begin
   // Get row
   row := sheet.FindRow(ARowIndex);
@@ -6137,9 +6147,15 @@ begin
   // Get style and height of row
   GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
 
+  // Row hidden?
+  if (round(h) = 0) or row^.Hidden then
+    rowHiddenStr := ' table:visibility="collapse"'
+  else
+    rowHiddenStr := '';
+
   // Write opening row tag. We don't support repeatedRows here.
   AppendToStream(AStream, Format(
-    '<table:table-row table:style-name="%s">', [stylename]));
+    '<table:table-row table:style-name="%s"%s>', [stylename, rowHiddenStr]));
 
   // Find first cell or column in this row
   cell := sheet.Cells.GetFirstCellOfRow(ARowIndex);  // first cell
@@ -6264,12 +6280,19 @@ var
   h, h1: Single;
   fmtIndex: Integer;
   sheet: TsWorksheet absolute ASheet;
+  rowsRepeatedStr: String;
+  rowHiddenStr: String;
+  isHidden1, isHidden: Boolean;
 begin
   // Get style and height of row
   GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
 
   // Determine how often this row is repeated
   row := sheet.FindRow(ARowIndex);
+
+  isHidden1 := (round(h) = 0) or ((row <> nil) and row^.Hidden);
+  rowHiddenStr := IfThen(isHidden1, ' table:visibility="collapse"', '');
+
   // Rows with format are not repeated - too complicated...
   if (row <> nil) and (row^.FormatIndex > 0) then
     ARowsRepeated := 1
@@ -6282,7 +6305,9 @@ begin
       if not sheet.IsEmptyRow(r) then
         break;
       row := sheet.FindRow(r);
-      if (row <> nil) and (row^.FormatIndex > 0) then
+      isHidden := (row <> nil) and
+        (row^.Hidden or ((row^.RowHeightType=rhtCustom) and (row^.Height = 0)));
+      if ((row <> nil) and (row^.FormatIndex > 0)) or (isHidden <> isHidden1) then
         break;
       h1 := sheet.GetRowHeight(r, FWorkbook.Units);
       if not SameValue(h, h1, ROWHEIGHT_EPS) then
@@ -6292,16 +6317,13 @@ begin
     ARowsRepeated := r - ARowIndex;
   end else
     ARowsRepeated := FLimitations.MaxRowCount - ARowIndex;
+  rowsRepeatedStr := IfThen(ARowsRepeated > 1,
+    Format(' table:number-rows-repeated="%d"', [ARowsRepeated]), '');
 
   // Write opening row tag
-  if ARowsRepeated > 1 then
-    AppendToStream(AStream, Format(
-      '<table:table-row table:style-name="%s" table:number-rows-repeated="%d">',
-      [stylename, ARowsRepeated]))
-  else
-    AppendToStream(AStream, Format(
-      '<table:table-row table:style-name="%s">',
-      [styleName]));
+  AppendToStream(AStream, Format(
+    '<table:table-row table:style-name="%s"%s%s>',
+      [stylename, rowsRepeatedStr, rowHiddenStr]));
 
   // Empty cells left of the first column
   colsRepeated := AFirstColIndex;

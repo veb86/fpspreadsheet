@@ -783,12 +783,14 @@ type
                            automatic height
     @param  FormatIndex    Row default format, index into the workbook's
                            FCellFormatList
+    @param  Hidden         Indicates that the row is hidden
     Only rows with non-default height or non-default format have a row record. }
   TRow = record
     Row: Cardinal;
     Height: Single;
     RowHeightType: TsRowHeightType;
     FormatIndex: Integer;
+    Hidden: Boolean;
   end;
 
   {@@ Pointer to a TRow record }
@@ -801,12 +803,14 @@ type
    @param ColWidthType Specifies whether the column has default or custom width
    @param FormatIndex  Column default format, index into the workbook's
                        FCellFormatlist
+   @param Hidden       Indicates that the column is hidden
    Only columns with non-default width or non-default format have a column record. }
   TCol = record
     Col: Cardinal;
     Width: Single;
     ColWidthType: TsColWidthType;
     FormatIndex: Integer;
+    Hidden: Boolean;
   end;
 
   {@@ Pointer to a TCol record }

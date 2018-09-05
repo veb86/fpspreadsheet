@@ -444,6 +444,12 @@ type
     function  GetColWidthType(ACol: Cardinal): TsColWidthType;
     function  HasColFormats: Boolean;
     function  HasRowFormats: Boolean;
+    function  ColHidden(ACol: Cardinal): Boolean;
+    function  RowHidden(ARow: Cardinal): Boolean;
+    procedure HideCol(ACol: Cardinal);
+    procedure HideRow(ARow: Cardinal);
+    procedure ShowCol(ACol: Cardinal);
+    procedure ShowRow(ARow: Cardinal);
     function  IsEmptyRow(ARow: Cardinal): Boolean;
     procedure DeleteCol(ACol: Cardinal);
     procedure DeleteRow(ARow: Cardinal);
@@ -7540,6 +7546,85 @@ begin
     end;
   Result := false;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns whether the specified column is hidden
+-------------------------------------------------------------------------------}
+function TsWorksheet.ColHidden(ACol: Cardinal): Boolean;
+var
+  c: PCol;
+begin
+  c := FindCol(ACol);
+  Result := Assigned(c) and c^.Hidden;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns whether the specified row is hidden
+-------------------------------------------------------------------------------}
+function TsWorksheet.RowHidden(ARow: Cardinal): Boolean;
+var
+  r: PRow;
+begin
+  r := FindRow(ARow);
+  Result := Assigned(r) and r^.Hidden;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Hides the specified column
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.HideCol(ACol: Cardinal);
+var
+  c: PCol;
+begin
+  c := GetCol(ACol);
+  if not c^.Hidden then begin
+    c^.Hidden := true;
+    ChangedCell(0, ACol);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Hides the specified row
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.HideRow(ARow: Cardinal);
+var
+  r: PRow;
+begin
+  r := GetRow(ARow);
+  if not r^.Hidden then begin
+    r^.Hidden := true;
+    ChangedCell(ARow, 0);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Shows the specified column which was hidden previously
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.ShowCol(ACol: Cardinal);
+var
+  c: PCol;
+begin
+  c := FindCol(ACol);
+  if Assigned(c) and c^.Hidden then begin
+    c^.Hidden := false;
+    ChangedCell(0, ACol);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Shows the specified row which was hidden previously
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.ShowRow(ARow: Cardinal);
+var
+  r: PRow;
+begin
+  r := FindRow(ARow);
+  if Assigned(r) and r^.Hidden then begin
+    r^.Hidden := false;
+    ChangedCell(ARow, 0);
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Determines whether the specified row contains any occupied cell.
