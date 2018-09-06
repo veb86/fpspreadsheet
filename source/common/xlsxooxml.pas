@@ -1172,7 +1172,10 @@ begin
       end else
         lCol.FormatIndex := 0;
 
-      if (lCol.ColWidthType = cwtCustom) or (lCol.FormatIndex > 0) then
+      s := GetAttrValue(colNode, 'hidden');
+      lCol.Hidden := StrIsTrue(s);
+
+      if (lCol.ColWidthType = cwtCustom) or (lCol.FormatIndex > 0) or lCol.Hidden then
         for col := col1 to Min(col2, FLastCol) do
           sheet.WriteColInfo(col, lCol);
     end;
@@ -1979,8 +1982,12 @@ begin
     end;
   end;
 
+  { Row visibility }
+  s := GetAttrvalue(ANode, 'hidden');
+  lRow.Hidden := StrIsTrue(s);
+
   { Write out }
-  if (lRow.RowHeightType <> rhtDefault) or (lRow.FormatIndex <> 0) then
+  if (lRow.RowHeightType <> rhtDefault) or (lRow.FormatIndex <> 0) or lRow.Hidden then
     (AWorksheet as TsWorksheet).WriteRowInfo(r, lRow);
 end;
 

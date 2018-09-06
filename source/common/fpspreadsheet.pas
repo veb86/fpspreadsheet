@@ -8038,6 +8038,7 @@ begin
   lRow^.Height := AData.Height;
   lRow^.RowHeightType := AData.RowHeightType;
   lRow^.FormatIndex := AData.FormatIndex;
+  lRow^.Hidden := AData.Hidden;
   ChangedRow(ARow);
 end;
 
@@ -8114,6 +8115,7 @@ begin
   lCol^.Width := AData.Width;
   lCol^.ColWidthType := AData.ColWidthType;
   lCol^.FormatIndex := AData.FormatIndex;
+  lCol^.Hidden := AData.Hidden;
   ChangedCol(ACol);
 end;
 
