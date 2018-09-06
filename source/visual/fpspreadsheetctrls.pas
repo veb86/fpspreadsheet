@@ -3789,6 +3789,9 @@ begin
       ColWidthTypeNames[lCol^.ColWidthType]
     ]));
     UpdateFormatProperties(lCol^.FormatIndex, AStrings);
+    AStrings.Add(Format('Hidden=%s', [
+      BoolToStr(lCol^.Hidden, true)
+    ]));
   end else
   begin
     AStrings.Add('No column record=');
@@ -3831,6 +3834,9 @@ begin
       RowHeightTypeNames[lRow^.RowHeightType]
     ]));
     UpdateFormatProperties(lRow^.FormatIndex, AStrings);
+    AStrings.Add(Format('Hidden=%s', [
+      BoolToStr(lRow^.Hidden, true)
+    ]));
   end else
   begin
     AStrings.Add('No row record=');
