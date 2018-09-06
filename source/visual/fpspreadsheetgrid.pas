@@ -5722,11 +5722,15 @@ begin
   if Worksheet <> nil then
   begin
     lCol := Worksheet.FindCol(ACol - FHeaderCount);
-    if (lCol <> nil) and (lCol^.ColWidthType = cwtCustom) then
-      w100 := CalcColWidthFromSheet(lCol^.Width)
-    else
-      w100 := CalcColWidthFromSheet(Worksheet.ReadDefaultColWidth(Workbook.Units));
-    w := round(w100 * ZoomFactor);
+    if (lCol <> nil) and lCol^.Hidden then
+      w := 0
+    else begin
+      if (lCol <> nil) and (lCol^.ColWidthType = cwtCustom) then
+        w100 := CalcColWidthFromSheet(lCol^.Width)
+      else
+        w100 := CalcColWidthFromSheet(Worksheet.ReadDefaultColWidth(Workbook.Units));
+      w := round(w100 * ZoomFactor);
+    end;
   end else
     w := DefaultColWidth;   // Zoom factor has already been applied by getter
   ColWidths[ACol] := w;
@@ -5769,48 +5773,54 @@ begin
   if ARow < FHeaderCount then
     exit;
 
-  h := 0;
+  h := DefaultRowHeight;
   if Worksheet <> nil then
   begin
     sr := ARow - FHeaderCount;    // worksheet row index
     lRow := Worksheet.FindRow(sr);
     if (lRow <> nil) then begin
-      case lRow^.RowHeightType of
-        rhtCustom:
-          begin
-            h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
-            if AEnforceCalcRowHeight then begin
-              h := CalcAutoRowHeight(ARow);
-              if h = 0 then begin
-                h := DefaultRowHeight;
-                lRow^.RowHeightType := rhtDefault;
-              end else
-                lRow^.RowHeightType := rhtAuto;
-              lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
-            end;
-          end;
-        rhtAuto, rhtDefault:
-          begin
-            doCalcRowHeight := AEnforceCalcRowHeight or (lRow^.Height = 0);
-            if doCalcRowHeight then begin
-              // Calculate current grid row height in pixels by iterating over all cells in row
-              h := CalcAutoRowHeight(ARow);  // ZoomFactor already applied to font heights
-              if h = 0 then begin
-                h := DefaultRowHeight;       // Zoom factor applied by getter function
-                lRow^.RowHeightType := rhtDefault;
-              end else
-                lRow^.RowHeightType := rhtAuto;
-              // Calculate the unzoomed row height in workbook units and store
-              // in row record
-              lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
-            end else
-              // If autocalc mode is off we just take the row height from the row record
-              case lRow^.RowHeightType of
-                rhtDefault : h := DefaultRowHeight;
-                rhtAuto    : h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
+      if lRow^.Hidden then
+        h := 0
+      else begin
+        case lRow^.RowHeightType of
+          rhtCustom:
+            begin
+              h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
+              if AEnforceCalcRowHeight then begin
+                h := CalcAutoRowHeight(ARow);
+                if h = 0 then begin
+                  h := DefaultRowHeight;
+                  lRow^.RowHeightType := rhtDefault;
+                end else
+                  lRow^.RowHeightType := rhtAuto;
+                lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
               end;
-          end;
-      end;  // case
+            end;
+          rhtAuto, rhtDefault:
+            begin
+              doCalcRowHeight := AEnforceCalcRowHeight or (lRow^.Height = 0);
+              if doCalcRowHeight then begin
+                // Calculate current grid row height in pixels by iterating over all cells in row
+                h := CalcAutoRowHeight(ARow);  // ZoomFactor already applied to font heights
+                if h = 0 then begin
+                  h := DefaultRowHeight;       // Zoom factor applied by getter function
+                  lRow^.RowHeightType := rhtDefault;
+                end else
+                  lRow^.RowHeightType := rhtAuto;
+                // Calculate the unzoomed row height in workbook units and store
+                // in row record
+                lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
+              end else
+                // If autocalc mode is off we just take the row height from the row record
+                case lRow^.RowHeightType of
+                  rhtDefault : h := DefaultRowHeight;
+                  rhtAuto    : h := round(CalcRowHeightFromSheet(lRow^.Height) * ZoomFactor);
+                end;
+            end;
+        end;  // case
+        if h = 0 then
+          h := DefaultRowHeight;     // Zoom factor is applied by getter function
+      end;
     end else
     // No row record so far.
     if Worksheet.GetCellCountInRow(sr) > 0 then
@@ -5818,20 +5828,20 @@ begin
       // Case 1: This row does contain cells
       lRow := Worksheet.AddRow(sr);
       if AEnforceCalcRowHeight then
-        h := CalcAutoRowHeight(ARow) else
+        h := CalcAutoRowHeight(ARow)
+      else
         h := DefaultRowHeight;
       lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
       if h <> DefaultRowHeight then
         lRow^.RowHeightType := rhtAuto
       else
         lRow^.RowHeightType := rhtDefault;
+      if h = 0 then
+        h := DefaultRowHeight;     // Zoom factor is applied by getter function
     end else
       // Case 2: No cells in row
       h := DefaultRowHeight;   // Zoom factor is applied by getter function
   end;
-
-  if h = 0 then
-    h := DefaultRowHeight;     // Zoom factor is applied by getter function
 
   inc(FZoomLock);  // We don't want to modify the sheet row heights here.
   RowHeights[ARow] := h;
