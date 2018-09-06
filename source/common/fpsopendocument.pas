@@ -390,6 +390,7 @@ type
     Col: Integer;
     ColStyleIndex: integer;          // index into FColumnStyleList of reader
     DefaultCellStyleIndex: Integer;  // Index of default cell style in FCellStyleList of reader
+    Hidden: Boolean;                 // Indicates that column is hidden
   end;
 
   { Row style items stored in RowStyleList of the reader }
@@ -1118,7 +1119,11 @@ begin
   begin
     colData := TColumnData(FColumnList[i]);
     colIndex := colData.Col;
-
+                     (*
+    writeLn('FColumnList[',i,']:');
+    WriteLn('  colIndex', colData.Col);
+    WriteLn('  hidden: ', colData.Hidden);
+                       *)
     // Skip column records beyond the last data column - there's a bug in OO/LO
     // which adds column records up to the max column limit.
     if colIndex > lastOccCol then
@@ -1143,8 +1148,12 @@ begin
       colWidthType := cwtCustom;
 
     // Write non-default column width to the worksheet
-    if (colWidthType = cwtCustom)  then
+    if (colWidthType = cwtCustom) then
       sheet.WriteColWidth(colIndex, colWidth, FWorkbook.Units);
+
+    // Column visibility
+    if colData.Hidden then
+      sheet.HideCol(colIndex);
 
     // Note: we don't store the column format index here; this is done in the
     // row/cell reading method (ReadRowsAndCells).
@@ -1919,44 +1928,71 @@ var
     s: String;
     colStyleIndex: Integer;
     colData: TColumnData;
-    defCellStyleIndex: Integer;
+    defCellStyleIndex: Integer = -1;
     colsRepeated: Integer;
     j: Integer;
+    isHidden: Boolean;
   begin
     s := GetAttrValue(AColNode, 'table:style-name');
     colStyleIndex := FindColStyleByName(s);
     if colStyleIndex <> -1 then
     begin
       defCellStyleIndex := -1;
+
+      s := GetAttrValue(AColNode, 'table:visibility');
+      isHidden := (s = 'collapse');
+
       s := GetAttrValue(AColNode, 'table:default-cell-style-name');
-      if s <> '' then
+      if (s <> '') or isHidden then
       begin
         defCellStyleIndex := FCellFormatList.FindIndexOfName(s); //FindCellStyleByName(s);
         colData := TColumnData.Create;
         colData.Col := col;
         colData.ColStyleIndex := colStyleIndex;
         colData.DefaultCellStyleIndex := defCellStyleIndex;
+        colData.Hidden := isHidden;
         FColumnList.Add(colData);
       end;
 
       s := GetAttrValue(AColNode, 'table:number-columns-repeated');
       if s = '' then
+        colsRepeated := 0
+      else
+        colsRepeated := StrToInt(s);
+      inc(col);
+      if (defCellStyleIndex > -1) or isHidden then begin
+        for j := 0 to colsRepeated-1 do
+        begin
+          coldata := TColumnData.Create;
+          colData.Col := col + j;
+          colData.ColStyleIndex := colStyleIndex;
+          colData.DefaultCellStyleIndex := defCellStyleIndex;
+          colData.Hidden := isHidden;
+          FColumnList.Add(colData);
+          inc(col);
+        end;
+      end;
+          (*
+
+      if (s = '') and (not isHidden) then
         inc(col)
       else
       begin
         colsRepeated := StrToInt(s);
-        if defCellStyleIndex > -1 then begin
+        if (defCellStyleIndex > -1) or isHidden then begin
           for j:=1 to colsRepeated-1 do
           begin
             colData := TColumnData.Create;
             colData.Col := col + j;
             colData.ColStyleIndex := colStyleIndex;
             colData.DefaultCellStyleIndex := defCellStyleIndex;
+            colData.Hidden := isHidden;
             FColumnList.Add(colData);
           end;
         end;
         inc(col, colsRepeated);
       end;
+      *)
     end;
   end;
 
@@ -2659,7 +2695,7 @@ begin
       ReadPrintRanges(TableNode, FWorksheet);
       // Apply table style
       ApplyTableStyle(FWorksheet, tablestylename);
-      // Handle columns and rows
+      // Handle columns
       ApplyColWidths;
       // Page layout
       FixCols(FWorksheet);
@@ -3651,6 +3687,7 @@ var
     hasRowFormat: Boolean;
     styleIndex: Integer;
     firstStyleIndex: Integer;
+    rowHidden: Boolean;
   begin
     // Read rowstyle
     rowStyleName := GetAttrValue(ARowNode, 'table:style-name');
@@ -3737,20 +3774,29 @@ var
       cellNode := cellNode.NextSibling;
     end; //while Assigned(cellNode)
 
+    // Row visibility
+    rowHidden := GetAttrValue(ARowNode, 'table:visibility') = 'collapse';
+    if rowHidden then
+      TsWorksheet(FWorksheet).HideRow(row);
+
+    // Repeated rows
     s := GetAttrValue(ARowNode, 'table:number-rows-repeated');
     if s = '' then
       rowsRepeated := 1
     else
       rowsRepeated := StrToInt(s);
 
-    // Transfer non-default row heights to sheet's rows
+    // Transfer non-default row heights and row hidden status to sheet's rows
     // This first "if" is a workaround for a bug of LO/OO whichs extends imported
     // xlsx files with blank rows up to their specification limit.
     // Process some rows earlier because the added row range is sometimes split
     // into two parts.
     if row + rowsRepeated < LongInt(FLimitations.MaxRowCount) - 10 then
-      for i:=1 to rowsRepeated do
+      for i:=1 to rowsRepeated do begin
         TsWorksheet(FWorksheet).WriteRowHeight(row + i - 1, rowHeight, FWorkbook.Units, rowHeightType);
+        if rowHidden then
+          TsWorksheet(FWorksheet).HideRow(row + i - 1);
+      end;
 
     // Prepare checking of column format
     if GetRowFormat then begin
@@ -6148,7 +6194,7 @@ begin
   GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
 
   // Row hidden?
-  if (round(h) = 0) or row^.Hidden then
+  if (round(h) = 0) or (Assigned(row) and row^.Hidden) then
     rowHiddenStr := ' table:visibility="collapse"'
   else
     rowHiddenStr := '';

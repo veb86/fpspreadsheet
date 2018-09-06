@@ -380,6 +380,8 @@ begin
         break;
       if sheet.FindNextCellInCol(0, c) <> nil then
         break;
+      if lCol.Hidden then
+        break;
       sheet.RemoveCol(c);
       dec(c);
     end;
@@ -408,7 +410,7 @@ begin
     // ...and delete all column records with non-default format
     for c := sheet.Cols.Count-1 downto 0 do begin
       lCol := PCol(sheet.Cols[c]);
-      if lCol^.FormatIndex = 0 then sheet.RemoveCol(c);
+      if (lCol^.FormatIndex = 0) and (not lCol^.Hidden) then sheet.RemoveCol(c);
     end;
   end;
 end;
@@ -455,7 +457,7 @@ begin
   // ... and delete all row records with default format.
   for r := sheet.Rows.Count-1 downto 0 do begin
     lRow := PRow(sheet.Rows[r]);
-    if lRow^.FormatIndex = 0 then sheet.RemoveRow(r);
+    if (lRow^.FormatIndex = 0) and (not lRow^.Hidden) then sheet.RemoveRow(r);
   end;
 end;
 
