@@ -2504,6 +2504,7 @@ var
   xf: Word;
 begin
   rowrec.RowIndex := 0;   // to silence the compiler...
+
   AStream.ReadBuffer(rowrec, SizeOf(TRowRecord));
   rowrec.RowIndex := WordLEToN(rowrec.RowIndex);
   flags := DWordLEToN(rowrec.Flags);
@@ -2533,8 +2534,7 @@ begin
     lRow.FormatIndex := XFToFormatIndex(xf);
 
   { Row visibility }
-  if DWordLEToN(rowRec.Flags) and $00000020 <> 0 then
-    lRow.Hidden := true;
+  lRow.Hidden := rowRec.Flags and $00000020 <> 0;
 
   // We only create a row record for fpspreadsheet if the row has a
   // non-standard height (i.e. different from default row height) or format.
