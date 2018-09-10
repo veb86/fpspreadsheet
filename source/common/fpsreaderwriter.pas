@@ -454,11 +454,13 @@ begin
   // to the DefaultRowHeight ...
   sheet.WriteDefaultRowHeight(h, FWorkbook.Units);
 
-  // ... and delete all row records with default format.
+  // ... and delete all visible row records with default format.
   for r := sheet.Rows.Count-1 downto 0 do begin
     lRow := PRow(sheet.Rows[r]);
-    if (lRow^.FormatIndex = 0) and (not lRow^.Hidden) then sheet.RemoveRow(r);
+    if (lRow^.FormatIndex = 0) and (not lRow^.Hidden) then
+      sheet.RemoveRow(lRow^.Row);
   end;
+
 end;
 
 {@@ ----------------------------------------------------------------------------
