@@ -4680,7 +4680,7 @@ begin
   case AValue.ResultType of
     rtString :
       Result := (AValue.ResString = '');
-    rtInteger, rtFloat, rtError:
+    rtInteger, rtFloat, rtBoolean, rtError:
       Result := false;
     rtEmpty:
       Result := true;
