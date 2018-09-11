@@ -14,7 +14,7 @@ uses
   fileformattests, formattests, colortests, fonttests, optiontests,
   numformatparsertests, formulatests, rpnFormulaUnit, singleformulatests,
   exceltests, emptycelltests, errortests, virtualmodetests,
-  insertdeletetests, ssttests, celltypetests, sortingtests, copytests,
+  colrowtests, ssttests, celltypetests, sortingtests, copytests,
   enumeratortests, commenttests, hyperlinktests, pagelayouttests, protectiontests;
 
 begin

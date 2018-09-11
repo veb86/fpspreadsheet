@@ -109,7 +109,7 @@
         <IsPartOfProject Value="True"/>
       </Unit16>
       <Unit17>
-        <Filename Value="insertdeletetests.pas"/>
+        <Filename Value="colrowtests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit17>
       <Unit18>

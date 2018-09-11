@@ -2,7 +2,7 @@
   This unit test is writing out to and reading back from files.
 }
 
-unit insertdeletetests;
+unit colrowtests;
 
 {$mode objfpc}{$H+}
 
@@ -46,7 +46,7 @@ var
 
 type
   { TSpreadWriteReadInsertColRowTests }
-  TSpreadWriteRead_InsDelColRow_Tests = class(TTestCase)
+  TSpreadWriteRead_ColRow_Tests = class(TTestCase)
   private
   protected
     // Set up expected values:
@@ -54,6 +54,8 @@ type
     procedure TearDown; override;
     procedure TestWriteRead_InsDelColRow(ATestIndex: Integer;
       AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_HideShowColRow(IsCol: Boolean;
+      IsHide: boolean; IsDefaultColRow: Boolean; AFormat: TsSpreadsheetFormat);
 
   published
 
@@ -215,6 +217,57 @@ type
     procedure TestWriteRead_InsDelColRow_32_ODS;    // row before merged block
     procedure TestWriteRead_InsDelColRow_33_ODS;    // row through merged block
     procedure TestWriteRead_InsDelColRow_34_ODS;    // row after merged block
+
+    // Hide a column having default col width
+    procedure TestWriteRead_HideColDef_BIFF5;
+    procedure TestWriteRead_HideColDef_BIFF8;
+    procedure TestWriteRead_HideColDef_OOXML;
+    procedure TestWriteRead_HideColDef_ODS;
+
+    // Hide a row having default row height
+    procedure TestWriteRead_HideRowDef_BIFF5;
+    procedure TestWriteRead_HideRowDef_BIFF8;
+    procedure TestWriteRead_HideRowDef_OOXML;
+    procedure TestWriteRead_HideRowDef_ODS;
+
+    // Show a hidden column having default col width
+    procedure TestWriteRead_ShowColDef_BIFF5;
+    procedure TestWriteRead_ShowColDef_BIFF8;
+    procedure TestWriteRead_ShowColDef_OOXML;
+    procedure TestWriteRead_ShowColDef_ODS;
+
+    // Show a hidden row having default row height
+    procedure TestWriteRead_ShowRowDef_BIFF5;
+    procedure TestWriteRead_ShowRowDef_BIFF8;
+    procedure TestWriteRead_ShowRowDef_OOXML;
+    procedure TestWriteRead_ShowRowDef_ODS;
+
+
+    // Hide a column
+    procedure TestWriteRead_HideCol_BIFF5;
+    procedure TestWriteRead_HideCol_BIFF8;
+    procedure TestWriteRead_HideCol_OOXML;
+    procedure TestWriteRead_HideCol_ODS;
+
+    // Hide a row
+    procedure TestWriteRead_HideRow_BIFF5;
+    procedure TestWriteRead_HideRow_BIFF8;
+    procedure TestWriteRead_HideRow_OOXML;
+    procedure TestWriteRead_HideRow_ODS;
+
+    // Show a hidden column
+    procedure TestWriteRead_ShowCol_BIFF5;
+    procedure TestWriteRead_ShowCol_BIFF8;
+    procedure TestWriteRead_ShowCol_OOXML;
+    procedure TestWriteRead_ShowCol_ODS;
+
+    // Show a hidden row
+    procedure TestWriteRead_ShowRow_BIFF5;
+    procedure TestWriteRead_ShowRow_BIFF8;
+    procedure TestWriteRead_ShowRow_OOXML;
+    procedure TestWriteRead_ShowRow_ODS;
+
+
   end;
 
 implementation
@@ -224,6 +277,7 @@ uses
 
 const
   InsertColRowSheet = 'InsertDelete_ColumnsRows';
+  HideShowSheet = 'HideShow_ColumnsRows';
 
 procedure InitTestData;
 var
@@ -914,18 +968,18 @@ end;
 
 { TSpreadWriteRead_InsDelColRowTests }
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.SetUp;
+procedure TSpreadWriteRead_ColRow_Tests.SetUp;
 begin
   inherited SetUp;
   InitTestData;
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TearDown;
+procedure TSpreadWriteRead_ColRow_Tests.TearDown;
 begin
   inherited TearDown;
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow(
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow(
   ATestIndex: Integer; AFormat: TsSpreadsheetFormat);
 var
   MyWorksheet: TsWorksheet;
@@ -1104,211 +1158,211 @@ end;
 {                                 BIFF8 tests                                  }
 {------------------------------------------------------------------------------}
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_0_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_0_BIFF8;
 // insert a column before the first one
 begin
   TestWriteRead_InsDelColRow(0, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_1_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_1_BIFF8;
 // insert a column before column 2
 begin
   TestWriteRead_InsDelColRow(1, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_2_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_2_BIFF8;
 // insert a column before the last one
 begin
   TestWriteRead_InsDelColRow(2, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_3_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_3_BIFF8;
 // delete column 0
 begin
   TestWriteRead_InsDelColRow(3, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_4_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_4_BIFF8;
 // delete column 2
 begin
   TestWriteRead_InsDelColRow(4, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_5_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_5_BIFF8;
 // delete last column
 begin
   TestWriteRead_InsDelColRow(5, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_6_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_6_BIFF8;
 // insert row before first one
 begin
   TestWriteRead_InsDelColRow(6, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_7_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_7_BIFF8;
 // insert row before #2
 begin
   TestWriteRead_InsDelColRow(7, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_8_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_8_BIFF8;
 // insert row before last one
 begin
   TestWriteRead_InsDelColRow(8, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_9_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_9_BIFF8;
 // delete first row
 begin
   TestWriteRead_InsDelColRow(9, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_10_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_10_BIFF8;
 // delete row #2
 begin
   TestWriteRead_InsDelColRow(10, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_11_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_11_BIFF8;
 // delete last row
 begin
   TestWriteRead_InsDelColRow(11, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_12_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_12_BIFF8;
 // insert column before formula cell
 begin
   TestWriteRead_InsDelColRow(12, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_13_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_13_BIFF8;
 // insert column after formula cell
 begin
   TestWriteRead_InsDelColRow(13, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_14_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_14_BIFF8;
 // insert row before formula cell
 begin
   TestWriteRead_InsDelColRow(14, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_15_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_15_BIFF8;
 // insert row after formula cell
 begin
   TestWriteRead_InsDelColRow(15, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_16_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_16_BIFF8;
 // delete column before formula cell
 begin
   TestWriteRead_InsDelColRow(16, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_17_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_17_BIFF8;
 // delete column after formula cell
 begin
   TestWriteRead_InsDelColRow(17, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_18_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_18_BIFF8;
 // delete column containing a cell used in formula
 begin
   TestWriteRead_InsDelColRow(18, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_19_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_19_BIFF8;
 // delete row before formula cell
 begin
   TestWriteRead_InsDelColRow(19, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_20_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_20_BIFF8;
 // delete row after formula cell
 begin
   TestWriteRead_InsDelColRow(20, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_21_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_21_BIFF8;
 // delete row containing a cell used in formula
 begin
   TestWriteRead_InsDelColRow(21, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_22_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_22_BIFF8;
 // no insert/delete, just test merged cell block
 begin
   TestWriteRead_InsDelColRow(22, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_23_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_23_BIFF8;
 // insert column before merged block
 begin
   TestWriteRead_InsDelColRow(23, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_24_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_24_BIFF8;
 // insert column through merged block
 begin
   TestWriteRead_InsDelColRow(24, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_25_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_25_BIFF8;
 // insert column behind merged block
 begin
   TestWriteRead_InsDelColRow(25, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_26_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_26_BIFF8;
 // insert row above merged block
 begin
   TestWriteRead_InsDelColRow(26, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_27_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_27_BIFF8;
 // insert row through merged block
 begin
   TestWriteRead_InsDelColRow(27, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_28_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_28_BIFF8;
 // insert row below merged block
 begin
   TestWriteRead_InsDelColRow(28, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColBeforeMerge_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelColBeforeMerge_BIFF8;
 // delete column before merged block
 begin
   TestWriteRead_InsDelColRow(29, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColInMerge_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelColInMerge_BIFF8;
 // delete column through merged block
 begin
   TestWriteRead_InsDelColRow(30, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColAfterMerge_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelColAfterMerge_BIFF8;
 // delete column behind merged block
 begin
   TestWriteRead_InsDelColRow(31, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_32_BIFF8;
 // delete row above merged block
 begin
   TestWriteRead_InsDelColRow(32, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_33_BIFF8;
 // delete row through merged block
 begin
   TestWriteRead_InsDelColRow(33, sfExcel8);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_BIFF8;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_34_BIFF8;
 // delete row below merged block
 begin
   TestWriteRead_InsDelColRow(34, sfExcel8);
@@ -1319,211 +1373,211 @@ end;
 {                              OOXML Tests                                     }
 { -----------------------------------------------------------------------------}
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_0_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_0_OOXML;
 // insert a column before the first one
 begin
   TestWriteRead_InsDelColRow(0, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_1_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_1_OOXML;
 // insert a column before column 2
 begin
   TestWriteRead_InsDelColRow(1, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_2_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_2_OOXML;
 // insert a column before the last one
 begin
   TestWriteRead_InsDelColRow(2, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_3_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_3_OOXML;
 // delete column 0
 begin
   TestWriteRead_InsDelColRow(3, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_4_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_4_OOXML;
 // delete column 2
 begin
   TestWriteRead_InsDelColRow(4, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_5_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_5_OOXML;
 // delete last column
 begin
   TestWriteRead_InsDelColRow(5, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_6_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_6_OOXML;
 // insert row before first one
 begin
   TestWriteRead_InsDelColRow(6, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_7_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_7_OOXML;
 // insert row before #2
 begin
   TestWriteRead_InsDelColRow(7, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_8_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_8_OOXML;
 // insert row before last one
 begin
   TestWriteRead_InsDelColRow(8, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_9_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_9_OOXML;
 // delete first row
 begin
   TestWriteRead_InsDelColRow(9, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_10_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_10_OOXML;
 // delete row #2
 begin
   TestWriteRead_InsDelColRow(10, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_11_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_11_OOXML;
 // delete last row
 begin
   TestWriteRead_InsDelColRow(11, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_12_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_12_OOXML;
 // insert column before formula cell
 begin
   TestWriteRead_InsDelColRow(12, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_13_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_13_OOXML;
 // insert column after formula cell
 begin
   TestWriteRead_InsDelColRow(13, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_14_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_14_OOXML;
 // insert row before formula cell
 begin
   TestWriteRead_InsDelColRow(14, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_15_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_15_OOXML;
 // insert row after formula cell
 begin
   TestWriteRead_InsDelColRow(15, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_16_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_16_OOXML;
 // delete column before formula cell
 begin
   TestWriteRead_InsDelColRow(16, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_17_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_17_OOXML;
 // delete column after formula cell
 begin
   TestWriteRead_InsDelColRow(17, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_18_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_18_OOXML;
 // delete column containing a cell used in formula
 begin
   TestWriteRead_InsDelColRow(18, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_19_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_19_OOXML;
 // delete row before formula cell
 begin
   TestWriteRead_InsDelColRow(19, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_20_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_20_OOXML;
 // delete row after formula cell
 begin
   TestWriteRead_InsDelColRow(20, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_21_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_21_OOXML;
 // delete row containing a cell used in formula
 begin
   TestWriteRead_InsDelColRow(21, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_22_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_22_OOXML;
 // no insert/delete, just test merged cell block
 begin
   TestWriteRead_InsDelColRow(22, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_23_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_23_OOXML;
 // insert column before merged block
 begin
   TestWriteRead_InsDelColRow(23, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_24_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_24_OOXML;
 // insert column through merged block
 begin
   TestWriteRead_InsDelColRow(24, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_25_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_25_OOXML;
 // insert column behind merged block
 begin
   TestWriteRead_InsDelColRow(25, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_26_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_26_OOXML;
 // insert row above merged block
 begin
   TestWriteRead_InsDelColRow(26, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_27_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_27_OOXML;
 // insert row through merged block
 begin
   TestWriteRead_InsDelColRow(27, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_28_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_28_OOXML;
 // insert row below merged block
 begin
   TestWriteRead_InsDelColRow(28, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColBeforeMerge_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelColBeforeMerge_OOXML;
 // delete column before merged block
 begin
   TestWriteRead_InsDelColRow(29, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColInMerge_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelColInMerge_OOXML;
 // delete column through merged block
 begin
   TestWriteRead_InsDelColRow(30, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColAfterMerge_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelColAfterMerge_OOXML;
 // delete column behind merged block
 begin
   TestWriteRead_InsDelColRow(31, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_32_OOXML;
 // delete row above merged block
 begin
   TestWriteRead_InsDelColRow(32, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_33_OOXML;
 // delete row through merged block
 begin
   TestWriteRead_InsDelColRow(33, sfOOXML);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_OOXML;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_34_OOXML;
 // delete row below merged block
 begin
   TestWriteRead_InsDelColRow(34, sfOOXML);
@@ -1534,219 +1588,475 @@ end;
 {                            OpenDocument Tests                                }
 { -----------------------------------------------------------------------------}
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_0_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_0_ODS;
 // insert a column before the first one
 begin
   TestWriteRead_InsDelColRow(0, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_1_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_1_ODS;
 // insert a column before column 2
 begin
   TestWriteRead_InsDelColRow(1, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_2_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_2_ODS;
 // insert a column before the last one
 begin
   TestWriteRead_InsDelColRow(2, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_3_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_3_ODS;
 // delete column 0
 begin
   TestWriteRead_InsDelColRow(3, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_4_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_4_ODS;
 // delete column 2
 begin
   TestWriteRead_InsDelColRow(4, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_5_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_5_ODS;
 // delete last column
 begin
   TestWriteRead_InsDelColRow(5, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_6_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_6_ODS;
 // insert row before first one
 begin
   TestWriteRead_InsDelColRow(6, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_7_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_7_ODS;
 // insert row before #2
 begin
   TestWriteRead_InsDelColRow(7, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_8_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_8_ODS;
 // insert row before last one
 begin
   TestWriteRead_InsDelColRow(8, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_9_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_9_ODS;
 // delete first row
 begin
   TestWriteRead_InsDelColRow(9, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_10_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_10_ODS;
 // delete row #2
 begin
   TestWriteRead_InsDelColRow(10, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_11_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_11_ODS;
 // delete last row
 begin
   TestWriteRead_InsDelColRow(11, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_12_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_12_ODS;
 // insert column before formula cell
 begin
   TestWriteRead_InsDelColRow(12, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_13_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_13_ODS;
 // insert column after formula cell
 begin
   TestWriteRead_InsDelColRow(13, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_14_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_14_ODS;
 // insert row before formula cell
 begin
   TestWriteRead_InsDelColRow(14, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_15_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_15_ODS;
 // insert row after formula cell
 begin
   TestWriteRead_InsDelColRow(15, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_16_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_16_ODS;
 // delete column before formula cell
 begin
   TestWriteRead_InsDelColRow(16, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_17_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_17_ODS;
 // delete column after formula cell
 begin
   TestWriteRead_InsDelColRow(17, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_18_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_18_ODS;
 // delete column containing a cell used in formula
 begin
   TestWriteRead_InsDelColRow(18, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_19_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_19_ODS;
 // delete row before formula cell
 begin
   TestWriteRead_InsDelColRow(19, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_20_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_20_ODS;
 // delete row after formula cell
 begin
   TestWriteRead_InsDelColRow(20, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_21_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_21_ODS;
 // delete row containing a cell used in formula
 begin
   TestWriteRead_InsDelColRow(21, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_22_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_22_ODS;
 // no insert/delete, just test merged cell block
 begin
   TestWriteRead_InsDelColRow(22, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_23_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_23_ODS;
 // insert column before merged block
 begin
   TestWriteRead_InsDelColRow(23, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_24_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_24_ODS;
 // insert column through merged block
 begin
   TestWriteRead_InsDelColRow(24, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_25_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_25_ODS;
 // insert column behind merged block
 begin
   TestWriteRead_InsDelColRow(25, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_26_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_26_ODS;
 // insert row above merged block
 begin
   TestWriteRead_InsDelColRow(26, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_27_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_27_ODS;
 // insert row through merged block
 begin
   TestWriteRead_InsDelColRow(27, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_28_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_28_ODS;
 // insert row below merged block
 begin
   TestWriteRead_InsDelColRow(28, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColBeforeMerge_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelColBeforeMerge_ODS;
 // delete column before merged block
 begin
   TestWriteRead_InsDelColRow(29, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColInMerge_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelColInMerge_ODS;
 begin
   TestWriteRead_InsDelColRow(30, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_DelColAfterMerge_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelColAfterMerge_ODS;
 // delete column behind merged block
 begin
   TestWriteRead_InsDelColRow(31, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_32_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_32_ODS;
 // delete row above merged block
 begin
   TestWriteRead_InsDelColRow(32, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_33_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_33_ODS;
 // delete row through merged block
 begin
   TestWriteRead_InsDelColRow(33, sfOpenDocument);
 end;
 
-procedure TSpreadWriteRead_InsDelColRow_Tests.TestWriteRead_InsDelColRow_34_ODS;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_34_ODS;
 // delete row below merged block
 begin
   TestWriteRead_InsDelColRow(34, sfOpenDocument);
 end;
 
 
+{------------------------------------------------------------------------------}
+{                          Hide/show columns/rows                              }
+{------------------------------------------------------------------------------}
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideShowColRow(
+  IsCol, IsHide, IsDefaultColRow: Boolean; AFormat: TsSpreadsheetFormat);
+const
+  HIDDEN_COL = 2;
+  HIDDEN_ROW = 1;
+var
+  workbook: TsWorkbook;
+  worksheet: TsWorksheet;
+  TempFile: String;
+  col: PCol;
+  row: PRow;
+begin
+  TempFile := GetTempFileName;
+  workbook := TsWorkbook.Create;
+  try
+    workSheet:= workBook.AddWorksheet(HideShowSheet);
+    worksheet.WriteNumber(0, 0, 1.0);
+    worksheet.WriteNumber(1, 0, 2.0);
+    worksheet.WriteNumber(2, 0, 2.0);
+    worksheet.WriteNumber(3, 0, 3.0);
+
+    worksheet.WriteNumber(0, 1, 11.0);
+    worksheet.WriteNumber(1, 1, 12.0);
+    worksheet.WriteNumber(2, 1, 12.0);
+    worksheet.WriteNumber(3, 1, 13.0);
+
+    worksheet.WriteNumber(0, 2, 21.0);
+    worksheet.WriteNumber(1, 2, 22.0);
+    worksheet.WriteNumber(2, 2, 22.0);
+    worksheet.WriteNumber(3, 2, 23.0);
+
+    worksheet.WriteNumber(0, 3, 31.0);
+    worksheet.WriteNumber(1, 3, 32.0);
+    worksheet.WriteNumber(2, 3, 32.0);
+    worksheet.WriteNumber(3, 3, 33.0);
+
+    if IsCol then begin
+      if not IsDefaultColRow then
+        worksheet.WriteColWidth(HIDDEN_COL, 10, suCentimeters);
+      worksheet.HideCol(HIDDEN_COL);
+      CheckEquals(true, worksheet.ColHidden(HIDDEN_COL),
+        'Unsaved hidden state mismatch, col '+IntToStr(HIDDEN_COL));
+      if not IsHide then begin
+        worksheet.ShowCol(HIDDEN_COL);
+        CheckEquals(false, worksheet.ColHidden(HIDDEN_COL),
+          'Unsaved re-show state mismatch, col '+IntToStr(HIDDEN_COL));
+      end;
+    end else begin
+      if not IsDefaultColRow then
+        worksheet.WriteRowHeight(HIDDEN_ROW, 1, suCentimeters);
+      worksheet.HideRow(HIDDEN_ROW);
+      CheckEquals(true, worksheet.RowHidden(HIDDEN_ROW),
+        'Unsaved hidden state mismatch, row '+IntToStr(HIDDEN_ROW));
+      if not IsHide then begin
+        worksheet.ShowRow(HIDDEN_ROW);
+        CheckEquals(false, worksheet.RowHidden(HIDDEN_ROW),
+          'Unsaved re-show state mismatch, row ' + IntToStr(HIDDEN_ROW));
+      end;
+    end;
+
+    workBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    workbook.Free;
+  end;
+
+  workbook := TsWorkbook.Create;
+  try
+    workbook.ReadFromFile(TempFile, AFormat);
+    worksheet := workbook.GetFirstWorksheet;
+    if IsCol then begin
+      if isHide then begin
+        col := worksheet.FindCol(HIDDEN_COL);
+        CheckTRUE(col <> nil, 'Saved column record not found');
+        CheckTRUE(worksheet.ColHidden(HIDDEN_COL),
+          'Saved hidden state mismatch, col ' + IntToStr(HIDDEN_COL))
+      end else begin
+        CheckFALSE(worksheet.ColHidden(HIDDEN_COL),
+          'Saved non-hidden state mismatch, col ' + IntToStr(HIDDEN_COL));
+        worksheet.HideCol(HIDDEN_COL);
+        CheckTRUE(worksheet.ColHidden(HIDDEN_COL),
+          'Save hidden state mismatch, col ' + IntToStr(HIDDEN_COL));
+      end
+    end else begin
+      if isHide then begin
+        row := worksheet.FindRow(HIDDEN_ROW);
+        CheckTRUE(row <> nil, 'Saved row record not found');
+        CheckTRUE(worksheet.RowHidden(HIDDEN_ROW),
+          'Saved hidden state mismatch, row ' + IntToStr(HIDDEN_ROW));
+      end else begin
+        CheckFALSE(worksheet.RowHidden(HIDDEN_ROW),
+          'Saved non-hidden state mismatch, row ' + IntToStr(HIDDEN_ROW));
+        worksheet.HideRow(HIDDEN_ROW);
+        CheckTRUE(worksheet.RowHidden(HIDDEN_ROW),
+          'Saved hidden state mismatch, row ' + IntToStr(HIDDEN_ROW));
+      end;
+    end;
+  finally
+    workbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+
+{ *** Hide/show tests with DEFAULT col width / row height *** }
+
+{ Hide column with default col width }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideColDef_BIFF5;
+begin
+  TestWriteRead_HideShowColRow(true, true, true, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideColDef_BIFF8;
+begin
+  TestWriteRead_HideShowColRow(true, true, true, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideColDef_OOXML;
+begin
+  TestWriteRead_HideShowColRow(true, true, true, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideColDef_ODS;
+begin
+  TestWriteRead_HideShowColRow(true, true, true, sfOpenDocument);
+end;
+
+{ Hide row with default row height }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRowDef_BIFF5;
+begin
+  TestWriteRead_HideShowColRow(false, true, true, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRowDef_BIFF8;
+begin
+  TestWriteRead_HideShowColRow(false, true, true, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRowDef_OOXML;
+begin
+  TestWriteRead_HideShowColRow(false, true, true, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRowDef_ODS;
+begin
+  TestWriteRead_HideShowColRow(false, true, true, sfOpenDocument);
+end;
+
+{ Show column with default col width }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowColDef_BIFF5;
+begin
+  TestWriteRead_HideShowColRow(true, false, true, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowColDef_BIFF8;
+begin
+  TestWriteRead_HideShowColRow(true, false, true, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowColDef_OOXML;
+begin
+  TestWriteRead_HideShowColRow(true, false, true, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowColDef_ODS;
+begin
+  TestWriteRead_HideShowColRow(true, false, true, sfOpenDocument);
+end;
+
+{ Show row with default row height }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRowDef_BIFF5;
+begin
+  TestWriteRead_HideShowColRow(false, false, true, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRowDef_BIFF8;
+begin
+  TestWriteRead_HideShowColRow(false, false, true, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRowDef_OOXML;
+begin
+  TestWriteRead_HideShowColRow(false, false, true, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRowDef_ODS;
+begin
+  TestWriteRead_HideShowColRow(false, false, true, sfOpenDocument);
+end;
+
+
+{ *** Hide/show tests with CHANGED col width / row height *** }
+
+{ Hide col with CHANGED col width }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideCol_BIFF5;
+begin
+  TestWriteRead_HideShowColRow(true, true, false, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideCol_BIFF8;
+begin
+  TestWriteRead_HideShowColRow(true, true, false, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideCol_OOXML;
+begin
+  TestWriteRead_HideShowColRow(true, true, false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideCol_ODS;
+begin
+  TestWriteRead_HideShowColRow(true, true, false, sfOpenDocument);
+end;
+
+{ Hide row  with CHANGED row height }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRow_BIFF5;
+begin
+  TestWriteRead_HideShowColRow(false, true, false, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRow_BIFF8;
+begin
+  TestWriteRead_HideShowColRow(false, true, false, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRow_OOXML;
+begin
+  TestWriteRead_HideShowColRow(false, true, false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRow_ODS;
+begin
+  TestWriteRead_HideShowColRow(false, true, false, sfOpenDocument);
+end;
+
+{ Show col with CHANGED col width }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowCol_BIFF5;
+begin
+  TestWriteRead_HideShowColRow(true, false, false, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowCol_BIFF8;
+begin
+  TestWriteRead_HideShowColRow(true, false, false, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowCol_OOXML;
+begin
+  TestWriteRead_HideShowColRow(true, false, false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowCol_ODS;
+begin
+  TestWriteRead_HideShowColRow(true, false, false, sfOpenDocument);
+end;
+
+{ Show row with CHANGED row height }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRow_BIFF5;
+begin
+  TestWriteRead_HideShowColRow(false, false, false, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRow_BIFF8;
+begin
+  TestWriteRead_HideShowColRow(false, false, false, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRow_OOXML;
+begin
+  TestWriteRead_HideShowColRow(false, false, false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRow_ODS;
+begin
+  TestWriteRead_HideShowColRow(false, false, false, sfOpenDocument);
+end;
+
 
 initialization
-  RegisterTest(TSpreadWriteRead_InsDelColRow_Tests);
+  RegisterTest(TSpreadWriteRead_ColRow_Tests);
   InitTestData;
 
 end.
