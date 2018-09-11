@@ -523,24 +523,24 @@ end;
 
 procedure TSpreadSingleFormulaTests.IfConst_BIFF8;
 begin
-  TestFormula('IF(C3="A","is A","not A")', 'not A', ftkConstants, sfExcel8);
+  TestFormula('IF(C3="A","is A","not A")', 'not A', ftkCellConstant, sfExcel8);
 end;
 
 procedure TSpreadSingleFormulaTests.IfConst_OOXML;
 begin
-  TestFormula('IF(C3="A","is A","not A")', 'not A', ftkConstants, sfOOXML);
+  TestFormula('IF(C3="A","is A","not A")', 'not A', ftkCellConstant, sfOOXML);
 end;
 
 procedure TSpreadSingleFormulaTests.IfConst_ODS;
 begin
-  TestFormula('IF(C3="A","is A","not A")', 'not A', ftkConstants, sfOpenDocument);
+  TestFormula('IF(C3="A","is A","not A")', 'not A', ftkCellConstant, sfOpenDocument);
 end;
 
 { --- }
 
 procedure TSpreadSingleFormulaTests.IfConst_BIFF8_2;
 begin
-  TestFormula('IF(C3=1,"equal","different")', 'equal', ftkConstants, sfExcel8);
+  TestFormula('IF(C3=1,"equal","different")', 'equal', ftkCellConstant, sfExcel8);
 end;
 
 { --- }
