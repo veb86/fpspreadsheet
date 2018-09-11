@@ -1119,11 +1119,7 @@ begin
   begin
     colData := TColumnData(FColumnList[i]);
     colIndex := colData.Col;
-                     (*
-    writeLn('FColumnList[',i,']:');
-    WriteLn('  colIndex', colData.Col);
-    WriteLn('  hidden: ', colData.Hidden);
-                       *)
+
     // Skip column records beyond the last data column - there's a bug in OO/LO
     // which adds column records up to the max column limit.
     if colIndex > lastOccCol then
@@ -1961,7 +1957,7 @@ var
         colsRepeated := StrToInt(s);
       inc(col);
       if (defCellStyleIndex > -1) or isHidden then begin
-        for j := 0 to colsRepeated-1 do
+        for j := 1 to colsRepeated-1 do           // was: j := 0 to ...
         begin
           coldata := TColumnData.Create;
           colData.Col := col + j;

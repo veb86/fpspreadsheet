@@ -961,7 +961,7 @@ begin
     end;
   finally
     book.Free;
-    deleteFile(tempFile);
+    DeleteFile(tempFile);
   end;
 end;
 
