@@ -823,6 +823,8 @@ type
     OffsetX, OffsetY: Double; // mm, relative to anchor
     ScaleX, ScaleY: Double;   // scaling factor of image
     Bitmap: TObject;          // used for bitmap for display in grid
+    HyperlinkTarget: String;  // Hyperlink assigned to the image
+    HyperlinkToolTip: String; // Tooltip for hyperlink of the image
   end;
   PsImage = ^TsImage;
 

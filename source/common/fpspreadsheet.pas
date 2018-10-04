@@ -555,6 +555,8 @@ type
     function WriteImage(ARow, ACol: Cardinal; AImageIndex: Integer;
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0; AScaleX: Double = 1.0;
       AScaleY: Double = 1.0): Integer; overload;
+    procedure AddHyperlinkToImage(AImageIndex: Integer; ATarget: String;
+      AToolTip: String = '');
 
     { Protection }
     procedure Protect(AEnable: Boolean);
@@ -4017,6 +4019,20 @@ begin
   Result := FImages.Add(img);
 end;
 
+{@@ Assigns a hyperlink to an image. The image is specified by its index in the
+  internal image list}
+procedure TsWorksheet.AddHyperlinkToImage(AImageIndex: Integer; ATarget: String;
+  AToolTip: String = '');
+var
+  img: PsImage;
+begin
+  img := GetPointerToImage(AImageIndex);
+  if Assigned(img) then begin
+    img^.HyperlinkTarget := ATarget;
+    img^.HyperlinkToolTip := AToolTip;
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Removes an image from the internal image list.
   The image is identified by its index.
@@ -4027,7 +4043,11 @@ var
   img: PsImage;
 begin
   img := PsImage(FImages[AIndex]);
-  if (img <> nil) and (img^.Bitmap <> nil) then img^.Bitmap.Free;
+  if (img <> nil) then begin
+    if (img^.Bitmap <> nil) then img^.Bitmap.Free;
+    img^.HyperlinkTarget := '';
+    img^.HyperlinkToolTip := '';
+  end;
   Dispose(img);
   FImages.Delete(AIndex);
 end;

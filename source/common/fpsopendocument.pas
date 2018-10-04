@@ -7271,6 +7271,9 @@ var
   r1,c1,r2,c2: Cardinal;
   roffs1,coffs1, roffs2, coffs2: Double;
   x, y, w, h: Double;
+  xml: String;
+  target, bookmark: String;
+  u: TURI;
 begin
   if (ASheet as TsWorksheet).GetImageCount = 0 then
     exit;
@@ -7290,7 +7293,7 @@ begin
       roffs1, coffs1, roffs2, coffs2,  // mm
       x, y, w, h);                     // mm
 
-    AppendToStream(AStream, Format(
+    xml := Format(
       '<draw:frame draw:z-index="%d" draw:name="Image %d" '+
         'draw:style-name="gr1" draw:text-style-name="P1" '+
         'svg:width="%.2fmm" svg:height="%.2fmm" '+
@@ -7303,7 +7306,27 @@ begin
       w, h,
       x, y,
       img.Index+1, GetImageTypeExt(imgType)
-    ], FPointSeparatorSettings));
+    ], FPointSeparatorSettings);
+
+    if img.HyperlinkTarget <> '' then begin
+      SplitHyperlink(img.HyperlinkTarget, target, bookmark);
+      if (target <> '') and (pos('file:', target) = 0) then
+      begin
+        u := ParseURI(target);
+        if u.Protocol = '' then
+          target := '../' + target;
+      end;
+
+      // ods absolutely wants "/" path delimiters in the file uri!
+      FixHyperlinkPathdelims(target);
+
+      if (bookmark <> '') then
+        target := target + '#' + bookmark;
+
+      xml := Format('<draw:a xlink:type="simple" xlink:href="%s">%s</draw:a>', [target, xml]);
+    end;
+
+    AppendToStream(AStream, xml);
   end;
 
   AppendToStream(AStream,

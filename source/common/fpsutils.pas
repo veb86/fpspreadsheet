@@ -2495,6 +2495,8 @@ begin
   AValue.ScaleY := AScaleY;
   AValue.Bitmap := nil;     // to be initialized by viewing application
   AValue.Index := -1;
+  AValue.HyperlinkTarget := '';
+  AValue.HyperlinkToolTip := '';
 end;
 
 {@@ ----------------------------------------------------------------------------
