@@ -3977,6 +3977,9 @@ var
   roffs1, coffs1, roffs2, coffs2: Double;
   x, y, w, h: Double;
   descr: String;
+  hlink: String;
+  xdr_cNvPr: String;
+  rId: Integer;
   book: TsWorkbook;
   sheet: TsWorksheet absolute AWorksheet;
 begin
@@ -3995,6 +3998,7 @@ begin
               'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main">');
 
   // Repeat for each image
+  rId := 1;
   for i:=0 to sheet.GetImageCount - 1 do
   begin
     img := sheet.GetImage(i);
@@ -4007,6 +4011,24 @@ begin
 
     descr := ExtractFileName(book.GetEmbeddedObj(img.index).Filename);
     if descr = '' then descr := 'image';
+
+    // This part defines the relationship to the graphic and, if available, to
+    // a hyperlink.
+    xdr_cNvPr := Format('id="%d" name="Graphic %d" descr="%s"', [i+3,i+2, descr]);
+    if img.HyperlinkTarget <> '' then begin
+      hlink := Format('<a:hlinkClick xmlns:r="%s" r:id="rId%d" ', [
+        SCHEMAS_DOC_RELS, rId
+      ]);
+      inc(rId);
+      if img.HyperlinkToolTip <> '' then
+        hlink := hlink + Format('tooltip="%s" ', [img.HyperlinkToolTip]);
+      hlink := hlink + '/>';
+
+      xdr_cNvPr := '<xdr:cNvPr ' + xdr_cNvPr + '>' +
+                      hlink +
+                   '</xdr:cNvPr>';
+    end else
+      xdr_cNvPr := '<xdr:cNvPr ' + xdr_cNvPr + ' />';
 
     AppendToStream(FSDrawings[FCurSheetNum],
       '<xdr:twoCellAnchor editAs="oneCell">');
@@ -4033,13 +4055,13 @@ begin
     AppendToStream(FSDrawings[FCurSheetNum], Format(
         '<xdr:pic>'+
           '<xdr:nvPicPr>'+
-            '<xdr:cNvPr id="%d" name="Grafik %d" descr="%s"/>'+  // 1, 2, orig file name
+            xdr_cNvPr +
             '<xdr:cNvPicPr>'+
               '<a:picLocks noChangeAspect="1"/>'+
             '</xdr:cNvPicPr>'+
           '</xdr:nvPicPr>'+
           '<xdr:blipFill>'+
-            '<a:blip xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" r:embed="rId%d" cstate="print"/>'+  // 1
+            '<a:blip xmlns:r="%s" r:embed="rId%d" cstate="print"/>'+
             '<a:stretch>'+
               '<a:fillRect/>'+
             '</a:stretch>'+
@@ -4055,13 +4077,14 @@ begin
           '</xdr:spPr>'+
         '</xdr:pic>' +
         '<xdr:clientData/>', [
-        i+2, i+1, descr,
-        i+1,
+       // i + 3, i+2, descr,
+        SCHEMAS_DOC_RELS, rId,
         mmToEMU(x), mmToEMU(y),
         mmToEMU(w), mmToEMU(h)
     ]));
     AppendToStream(FSDrawings[FCurSheetNum],
       '</xdr:twoCellAnchor>');
+    inc(rId, 1);
   end;
   AppendToStream(FSDrawings[FCurSheetNum],
     '</xdr:wsDr>');
@@ -4075,6 +4098,9 @@ var
   i: Integer;
   ext: String;
   img: TsImage;
+  rId: Integer;
+  hlink, target, bookmark: String;
+  u: TURI;
   sheet: TsWorksheet absolute AWorksheet;
 begin
   if (sheet.GetImageCount = 0) then
@@ -4089,14 +4115,35 @@ begin
     '<Relationships xmlns="' + SCHEMAS_RELS + '">' + LineEnding);
 
   // Repeat for each image
+  rId := 1;
   for i:=0 to sheet.GetImageCount - 1 do
   begin
     img := sheet.GetImage(i);
+
+    if img.HyperlinkTarget <> '' then begin
+      SplitHyperlink(img.HyperlinkTarget, target, bookmark);
+      if (target <> '') and (pos('file:', target) = 0) then
+      begin
+        u := ParseURI(target);
+        if u.Protocol = '' then
+          target := '../' + target;
+      end;
+      if (bookmark <> '') then
+        target := target + '#' + bookmark;
+
+      AppendToStream(FSDrawingsRels[FCurSheetNum], Format(
+      '  <Relationship Id="rId%d" Type="%s" Target="%s" TargetMode="External"/>' + LineEnding, [
+         rId, SCHEMAS_HYPERLINK, target
+      ]));
+      inc(rId);
+    end;
+
     ext := GetImageTypeExt((FWorkbook as TsWorkbook).GetEmbeddedObj(img.Index).Imagetype);
     AppendToStream(FSDrawingsRels[FCurSheetNum], Format(
-    '  <Relationship Id="rId%d" Type="%s" Target="../media/image%d.%s"/>' + LineEnding, [
-       i+1, SCHEMAS_IMAGE, img.Index+1, ext
+      '  <Relationship Id="rId%d" Type="%s" Target="../media/image%d.%s"/>' + LineEnding, [
+         rId, SCHEMAS_IMAGE, img.Index+1, ext
     ]));
+    inc(rId);
   end;
 
   AppendToStream(FSDrawingsRels[FCurSheetNum],
