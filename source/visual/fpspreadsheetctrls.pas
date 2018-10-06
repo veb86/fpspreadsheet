@@ -4126,6 +4126,8 @@ begin
         AStrings.Add(Format('  OffsetY=%.2f mm', [img.OffsetY]));
         AStrings.Add(Format('  ScaleX=%.2f', [img.ScaleX]));
         AStrings.Add(Format('  ScaleY=%.2f', [img.ScaleY]));
+        AStrings.Add(Format('  HyperlinkTarget=%s', [img.HyperlinkTarget]));
+        AStrings.Add(Format('  HyperlinkTooltip=%s', [img.HyperlinkToolTip]));
       end;
     end else
       AStrings.Add('(+) Images=(dblclick for more...)');

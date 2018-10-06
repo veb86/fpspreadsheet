@@ -4050,14 +4050,45 @@ end;
       '</draw:frame>', [
 }
 procedure TsSpreadOpenDocReader.ReadShapes(ATableNode: TDOMNode);
+
+  procedure ReadFrame(ANode: TDOMNode; AHLink: String);
+  var
+    r, c: Cardinal;
+    x, y, w, h: Double;
+    dr, dc, sx, sy: Double;
+    childNode: TDOMNode;
+    idx: Integer;
+    href: String;
+    img: PsImage;
+  begin
+    x := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:x')));
+    y := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:y')));
+    w := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:width')));
+    h := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:height')));
+    childNode := ANode.FirstChild;
+    while Assigned(childNode) do
+    begin
+      href := GetAttrValue(childNode, 'xlink:href');
+      if href <> '' then
+      begin
+        idx := TsWorkbook(FWorkbook).FindEmbeddedObj(ExtractFileName(href));
+        with FWorksheet as TsWorksheet do begin
+          CalcImageCell(idx, x, y, w, h, r, c, dr, dc, sx, sy);
+          idx := WriteImage(r, c, idx, dc, dr, sx, sy);    // order of dc and dr is correct!
+          if AHLink <> '' then begin
+            img := GetPointerToImage(idx);
+            img^.HyperlinkTarget := AHLink;
+          end;
+        end;
+      end;
+      childNode := ANode.NextSibling;
+    end;
+  end;
+
 var
-  shapesNode, shapeNode, childShapeNode: TDOMNode;
+  shapesNode, shapeNode, childNode: TDOMNode;
   nodeName: String;
-  r, c: Cardinal;
-  w, h, x, y: Double;
-  dr, dc, sx, sy: Double;
-  idx: Integer;
-  href: String;
+  hlink: String;
 begin
   shapesNode := ATableNode.FirstChild;
   while Assigned(shapesNode) do
@@ -4070,24 +4101,19 @@ begin
       begin
         nodeName := shapeNode.NodeName;
         if nodeName = 'draw:frame' then
-        begin
-          x := PtsToMM(HTMLLengthStrToPts(GetAttrValue(shapeNode, 'svg:x')));
-          y := PtsToMM(HTMLLengthStrToPts(GetAttrValue(shapeNode, 'svg:y')));
-          w := PtsToMM(HTMLLengthStrToPts(GetAttrValue(shapeNode, 'svg:width')));
-          h := PtsToMM(HTMLLengthStrToPts(GetAttrValue(shapeNode, 'svg:height')));
-          childShapeNode := shapeNode.FirstChild;
-          while Assigned(childShapeNode) do
+          ReadFrame(shapeNode, '')
+        else
+        if nodeName = 'draw:a' then begin
+          hlink := GetAttrValue(shapeNode, 'xlink:href');
+          if Lowercase(GetAttrValue(shapeNode, 'xlink:type')) = 'simple' then
           begin
-            href := GetAttrValue(childShapeNode, 'xlink:href');
-            if href <> '' then
-            begin
-              idx := TsWorkbook(FWorkbook).FindEmbeddedObj(ExtractFileName(href));
-              with FWorksheet as TsWorksheet do begin
-                CalcImageCell(idx, x, y, w, h, r, c, dr, dc, sx, sy);
-                WriteImage(r, c, idx, dc, dr, sx, sy);    // order of dc and dr is correct!
-              end;
+            childNode := shapeNode.FirstChild;
+            while assigned(childNode) do begin
+              nodeName := childNode.NodeName;
+              if nodeName = 'draw:frame' then
+                ReadFrame(childNode, hlink);
+              childNode := childNode.NextSibling;
             end;
-            childShapeNode := childShapeNode.NextSibling;
           end;
         end;
         shapeNode := shapeNode.NextSibling;
