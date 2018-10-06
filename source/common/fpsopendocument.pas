@@ -115,6 +115,7 @@ type
 //    procedure FixFormulas;
     procedure ReadCell(ANode: TDOMNode; ARow, ACol: Integer;
       AFormatIndex: Integer; out AColsRepeated: Integer);
+    procedure ReadCellImages(ANode: TDOMNode; ARow, ACol: Cardinal);
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
@@ -132,6 +133,8 @@ type
     procedure ReadPrintRanges(ATableNode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
     procedure ReadRowStyle(AStyleNode: TDOMNode);
+    procedure ReadShape(ANode: TDOMNode; ARow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+      ACol: Cardinal = UNASSIGNED_ROW_COL_INDEX);
     procedure ReadShapes(ATableNode: TDOMNode);
     procedure ReadSheetProtection(ANode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadSheets(ANode: TDOMNode);
@@ -3627,8 +3630,12 @@ begin
         don't understand this mechanism of ods at all }
   end;
 
+
   // Read cell comment
   ReadComment(ARow, ACol, ANode);
+
+  // Read cell image(s)
+  ReadCellImages(ANode, ARow, ACol);
 
   s := GetAttrValue(ANode, 'table:number-columns-spanned');
   if s <> '' then
@@ -3650,6 +3657,21 @@ begin
     AColsRepeated := StrToInt(s)
   else
     AColsRepeated := 1;
+end;
+
+procedure TsSpreadOpenDocReader.ReadCellImages(ANode: TDOMNode;
+  ARow, ACol: Cardinal);
+var
+  childNode: TDOMNode;
+  nodeName: String;
+begin
+  childNode := ANode.FirstChild;
+  while Assigned(childNode) do
+  begin
+    nodeName := childNode.NodeName;
+    ReadShape(childnode, ARow, ACol);
+    childNode := childNode.NextSibling;
+  end;
 end;
 
 { Reads the cells in the given table. Loops through all rows, and then finds all
@@ -4049,13 +4071,20 @@ end;
         '</draw:image>' +
       '</draw:frame>', [
 }
-procedure TsSpreadOpenDocReader.ReadShapes(ATableNode: TDOMNode);
+{ ARow, ACol are specified when called from a cell node,
+  unspecified when called from the Shapes node. }
+procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
+  ARow: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+  ACol: Cardinal = UNASSIGNED_ROW_COL_INDEX);
 
-  procedure ReadFrame(ANode: TDOMNode; AHLink: String);
+  procedure ReadDrawFrame(ANode: TDOMNode; AHLink: String);
   var
     r, c: Cardinal;
     x, y, w, h: Double;
-    dr, dc, sx, sy: Double;
+    dx: Double = 0.0;
+    dy: Double = 0.0;
+    sx: Double = 1.0;
+    sy: Double = 1.0;
     childNode: TDOMNode;
     idx: Integer;
     href: String;
@@ -4073,8 +4102,18 @@ procedure TsSpreadOpenDocReader.ReadShapes(ATableNode: TDOMNode);
       begin
         idx := TsWorkbook(FWorkbook).FindEmbeddedObj(ExtractFileName(href));
         with FWorksheet as TsWorksheet do begin
-          CalcImageCell(idx, x, y, w, h, r, c, dr, dc, sx, sy);
-          idx := WriteImage(r, c, idx, dc, dr, sx, sy);    // order of dc and dr is correct!
+          // When called from a cell node, x and y are relative to the cell.
+          // When called from the Shapes node, x and y refer to the worksheet.
+          CalcImageCell(idx, x, y, w, h, r, c, dy, dx, sx, sy);  // order of dx and dy is correct!
+          if ARow <> UNASSIGNED_ROW_COL_INDEX then begin
+            r := ARow;
+            dy := y;
+          end;
+          if ACol <> UNASSIGNED_ROW_COL_INDEX then begin
+            c := ACol;
+            dx := x;
+          end;
+          idx := WriteImage(r, c, idx, dx, dy, sx, sy);
           if AHLink <> '' then begin
             img := GetPointerToImage(idx);
             img^.HyperlinkTarget := AHLink;
@@ -4086,9 +4125,37 @@ procedure TsSpreadOpenDocReader.ReadShapes(ATableNode: TDOMNode);
   end;
 
 var
-  shapesNode, shapeNode, childNode: TDOMNode;
   nodeName: String;
   hlink: String;
+  linktype: String;
+  childnode: TDOMNode;
+begin
+  if ANode = nil then
+    exit;
+  nodeName := ANode.NodeName;
+  if nodeName = 'draw:frame' then
+    ReadDrawFrame(ANode, '')
+  else
+  if nodeName = 'draw:a' then begin
+    hlink := GetAttrValue(ANode, 'xlink:href');
+    linktype := GetAttrValue(ANode, 'xlink:type');
+    if Lowercase(linktype) = 'simple' then
+    begin
+      childNode := ANode.FirstChild;
+      while assigned(childNode) do begin
+        nodeName := childNode.NodeName;
+        if nodeName = 'draw:frame' then
+          ReadDrawFrame(childNode, hlink);
+        childNode := childNode.NextSibling;
+      end;
+    end;
+  end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadShapes(ATableNode: TDOMNode);
+var
+  shapesNode, shapeNode: TDOMNode;
+  nodeName: String;
 begin
   shapesNode := ATableNode.FirstChild;
   while Assigned(shapesNode) do
@@ -4100,22 +4167,7 @@ begin
       while Assigned(shapeNode) do
       begin
         nodeName := shapeNode.NodeName;
-        if nodeName = 'draw:frame' then
-          ReadFrame(shapeNode, '')
-        else
-        if nodeName = 'draw:a' then begin
-          hlink := GetAttrValue(shapeNode, 'xlink:href');
-          if Lowercase(GetAttrValue(shapeNode, 'xlink:type')) = 'simple' then
-          begin
-            childNode := shapeNode.FirstChild;
-            while assigned(childNode) do begin
-              nodeName := childNode.NodeName;
-              if nodeName = 'draw:frame' then
-                ReadFrame(childNode, hlink);
-              childNode := childNode.NextSibling;
-            end;
-          end;
-        end;
+        ReadShape(shapeNode);
         shapeNode := shapeNode.NextSibling;
       end;
     end;

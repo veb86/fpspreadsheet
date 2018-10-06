@@ -3760,6 +3760,19 @@ begin
   Result := FImages.Count;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Calculates the position of the image with given index relative to the cell
+  containing the top/left corner of the image.
+
+  @@param  x    worksheet-relative coordinate of the left image edge, in workbook units
+  @@param  y    worksheet-relative coordinate of the top image edge, in workbook units
+  @@param  ARow Index of the row containing the top/left corner of the image
+  @@param  ACol Index of the column containing the top/left corner of the image
+  @@param  ARowOffset  Distance, in workbook units, between top cell and image borders
+  @@param  AColOffset  Distance, in workbook units, between left cell and image borders
+  @@param  AScaleX  Scaling factor for the image width
+  @@param  AScaleY  Scaling factor for the image height
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
   out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
 // All lengths are in workbook units!
@@ -3776,17 +3789,6 @@ begin
     colW := GetColWidth(ACol, FWorkbook.Units);
   end;
   AColOffs := x - sum;
-  {
-  sum := 0;
-  repeat
-    colW := GetColWidth(ACol, FWorkbook.Units);;
-    sum := sum + colW;
-    inc(ACol);
-  until sum > x;
-  sum := sum - colW;
-  AColOffs := x - sum;
-  dec(ACol);
-  }
 
   ARow := 0;
   sum := 0;
@@ -3797,18 +3799,6 @@ begin
     rowH := CalcRowHeight(ARow);
   end;
   ARowOffs := y - sum;
-  {
-  ARow := 0;
-  sum := 0;
-  repeat
-    rowH := CalcRowHeight(ARow);
-    sum := sum + rowH;
-    inc(ARow);
-  until sum > y;
-  sum := sum - rowH;
-  ARowOffs := y - sum;
-  dec(ARow);
-  }
 
   embObj := FWorkbook.GetEmbeddedObj(AIndex);
   AScaleX := AWidth / embObj.ImageWidth;
