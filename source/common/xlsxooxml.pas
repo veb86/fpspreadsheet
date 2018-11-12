@@ -512,11 +512,15 @@ procedure TsSpreadOOXMLReader.ReadActiveSheet(ANode: TDOMNode;
 var
   S: string;
   i: Integer;
+  node: TDOMNode;
 begin
   ActiveSheetIndex := -1;
   if ANode = nil then
     Exit;
-  S := GetAttrValue(ANode.FindNode('workbookView'), 'activeTab');
+  node := ANode.FindNode('workbookView');
+  if node = nil then
+    node := ANode.FindNode('x:workbookView');
+  S := GetAttrValue(node, 'activeTab');
   if TryStrToInt(S, i) then
     ActiveSheetIndex := i;
 end;
@@ -568,7 +572,7 @@ procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
     colorNode := ANode.FirstChild;
     while Assigned(colorNode) do begin
       nodeName := colorNode.NodeName;
-      if nodeName = 'color' then
+      if (nodeName = 'color') or (nodename = 'x:color') then
         ABorderStyle.Color := ReadColor(colorNode);
       colorNode := colorNode.NextSibling;
     end;
@@ -592,7 +596,7 @@ begin
   borderNode := ANode.FirstChild;
   while Assigned(borderNode) do begin
     nodeName := borderNode.NodeName;
-    if nodeName = 'border' then begin
+    if (nodeName = 'border') or (nodeName = 'x:border') then begin
       borders := [];
       s := GetAttrValue(borderNode, 'diagonalUp');
       if strIsTrue(s) then
@@ -603,23 +607,23 @@ begin
       edgeNode := borderNode.FirstChild;
       while Assigned(edgeNode) do begin
         nodeName := edgeNode.NodeName;
-        if nodeName = 'left' then begin
+        if (nodeName = 'left') or (nodeName = 'x:left') then begin
           if ReadBorderStyle(edgeNode, borderStyles[cbWest]) then
             Include(borders, cbWest);
         end
-        else if nodeName = 'right' then begin
+        else if (nodeName = 'right') or (nodeName = 'x:right') then begin
           if ReadBorderStyle(edgeNode, borderStyles[cbEast]) then
             Include(borders, cbEast);
         end
-        else if nodeName = 'top' then begin
+        else if (nodeName = 'top') or (nodeName = 'x:top') then begin
           if ReadBorderStyle(edgeNode, borderStyles[cbNorth]) then
             Include(borders, cbNorth);
         end
-        else if nodeName = 'bottom' then begin
+        else if (nodeName = 'bottom') or (nodename = 'x:bottom') then begin
           if ReadBorderStyle(edgeNode, borderStyles[cbSouth]) then
             Include(borders, cbSouth);
         end
-        else if nodeName = 'diagonal' then begin
+        else if (nodeName = 'diagonal') or (nodeName = 'x:diagonal') then begin
           if ReadBorderStyle(edgeNode, borderStyles[cbDiagUp]) then
             borderStyles[cbDiagDown] := borderStyles[cbDiagUp];
         end;
@@ -697,20 +701,20 @@ begin
   while Assigned(datanode) do
   begin
     nodeName := datanode.NodeName;
-    if nodeName = 'v' then
+    if (nodeName = 'v') or (nodeName = 'x:v') then
       dataStr := GetNodeValue(datanode)
     else
-    if nodeName = 'is' then
+    if (nodeName = 'is') or (nodeName = 'x:is') then
     begin
       tnode := datanode.FirstChild;
       while Assigned(tnode) do begin
         nodename := tnode.NodeName;
-        if nodename = 't' then
+        if (nodename = 't') or (nodeName = 'x:t') then
           dataStr := dataStr + GetNodeValue(tnode);
         tnode := tnode.NextSibling;
       end;
     end;
-    if (boReadFormulas in book.Options) and (nodeName = 'f') then
+    if (boReadFormulas in book.Options) and ((nodeName = 'f') or (nodeName = 'x:f'))then
     begin
       // Formula to cell
       formulaStr := GetNodeValue(datanode);
@@ -861,13 +865,16 @@ var
   cp: TsCellProtections;
   book: TsWorkbook;
 begin
+  if ANode = nil then
+    exit;
+
   book := FWorkbook as TsWorkbook;
 
   node := ANode.FirstChild;
   while Assigned(node) do
   begin
     nodeName := node.NodeName;
-    if nodeName = 'xf' then
+    if (nodeName = 'xf') or (nodeName = 'x:xf') then
     begin
       InitFormatRecord(fmt);
       fmt.ID := FCellFormatList.Count;
@@ -951,7 +958,7 @@ begin
         childNode := node.FirstChild;
         while Assigned(childNode) do begin
           nodeName := childNode.NodeName;
-          if nodeName = 'alignment' then begin
+          if (nodeName = 'alignment') or (nodeName = 'x:alignment') then begin
             s1 := GetAttrValue(childNode, 'horizontal');
             if s1 = 'left' then
               fmt.HorAlignment := haLeft
@@ -1004,7 +1011,7 @@ begin
         childNode := node.FirstChild;
         while Assigned(childNode) do begin
           nodeName := childNode.NodeName;
-          if nodeName = 'protection' then
+          if (nodeName = 'protection') or (nodeName = 'x:protection') then
           begin
             s1 := GetAttrValue(childNode, 'locked');
             if StrIsFalse(s1) then
@@ -1045,12 +1052,14 @@ var
   idx: Integer;
   tint: Double;
   n, i: Integer;
+  nodename: String;
 begin
   Assert(ANode <> nil);
 
   s := Lowercase(GetAttrValue(ANode, 'auto'));
   if (s = '1') or (s = 'true') then begin
-    if ANode.NodeName = 'fgColor' then
+    nodename := ANode.NodeName;
+    if (nodeName = 'fgColor') or (nodename = 'x:fgColor') then
       Result := scBlack
     else
       Result := scTransparent;
@@ -1139,7 +1148,7 @@ begin
   colNode := ANode.FirstChild;
   while Assigned(colNode) do begin
     nodeName := colNode.NodeName;
-    if nodename = 'col' then
+    if (nodename = 'col') or (nodeName = 'x:col') then
     begin
       s := GetAttrValue(colNode, 'min');
       if s <> '' then col1 := StrToInt(s)-1 else col1 := 0;
@@ -1212,7 +1221,7 @@ begin
           rchild := rNode.FirstChild;
           while rchild <> nil do begin
             nodename := rchild.NodeName;
-            if nodename = 't' then begin
+            if (nodename = 't') or (nodename = 'x:t') then begin
               s := GetNodeValue(rchild);
               if comment = '' then comment := s else comment := comment + s;
             end;
@@ -1260,7 +1269,7 @@ begin
   node := ANode.FirstChild;
   while node <> nil do begin
     nodename := node.NodeName;
-    if nodename = 'definedName' then
+    if (nodename = 'definedName') or (nodename = 'x:definedName') then
     begin
       localSheetID := GetAttrValue(node, 'localSheetId');
       if (localSheetID = '') or not TryStrToInt(localSheetID, id) then
@@ -1380,17 +1389,17 @@ begin
     patternNode := fillNode.FirstChild;
     while Assigned(patternNode) do begin
       nodename := patternNode.NodeName;
-      if nodename = 'patternFill' then begin
+      if (nodename = 'patternFill') or (nodename = 'x:patternFill') then begin
         patt := GetAttrValue(patternNode, 'patternType');
         fgclr := scWhite;
         bgclr := scBlack;
         colorNode := patternNode.FirstChild;
         while Assigned(colorNode) do begin
           nodeName := colorNode.NodeName;
-          if nodeName = 'fgColor' then
+          if (nodeName = 'fgColor') or (nodeName = 'x:fgColor')then
             fgclr := ReadColor(colorNode)
           else
-          if nodeName = 'bgColor' then
+          if (nodeName = 'bgColor') or (nodeName = 'x:bgColor') then
             bgclr := ReadColor(colorNode);
           colorNode := colorNode.NextSibling;
         end;
@@ -1402,7 +1411,7 @@ begin
         fillData.BgColor := bgclr;
         FFillList.Add(fillData);
       end else
-      if nodeName = 'gradientFill' then
+      if (nodeName = 'gradientFill') or (nodeName = 'x:gradientFill') then
       begin
         // We do not support gradient fills yet. As a replacement, we read
         // the first color of the gradient and use it for a solid fill
@@ -1410,11 +1419,11 @@ begin
         stopNode := patternNode.FirstChild;
         while Assigned(stopNode) do begin
           nodeName := stopNode.NodeName;
-          if nodeName = 'stop' then begin
+          if (nodeName = 'stop') or (nodeName = 'x:stop') then begin
             colorNode := stopNode.FirstChild;
             while Assigned(colorNode) do begin
               nodeName := colorNode.NodeName;
-              if nodeName = 'color' then
+              if (nodeName = 'color') or (nodeName = 'x:color') then
               begin
                 bgclr := ReadColor(colorNode);
                 fgclr := bgclr;
@@ -1490,48 +1499,49 @@ begin
   while node <> nil do
   begin
     nodename := node.NodeName;
-    if (nodename = 'name') or (nodename = 'rFont') then
+    if (nodename = 'name') or (nodename = 'x:name') or
+       (nodename = 'rFont') or (nodename = 'x:rFont') then
     begin
       s := GetAttrValue(node, 'val');
       if s <> '' then fntName := s;
-      if nodename = 'rFont' then acceptDuplicates := false;
+      if (nodename = 'rFont') or (nodename = 'x:rFont') then acceptDuplicates := false;
     end
     else
-    if nodename = 'sz' then
+    if (nodename = 'sz') or (nodeName = 'x:sz') then
     begin
       s := GetAttrValue(node, 'val');
       if s <> '' then fntSize := StrToFloat(s, FPointSeparatorSettings);
     end
     else
-    if nodename = 'b' then
+    if (nodename = 'b') or (nodename = 'x:b') then
     begin
       s := GetAttrValue(node, 'val');
       if (s = '') or StrIsTrue(s) then  //   if GetAttrValue(node, 'val') <> 'false' then
         fntStyles := fntStyles + [fssBold];
     end
     else
-    if nodename = 'i' then
+    if (nodename = 'i') or (nodename = 'x:i') then
     begin
       s := GetAttrValue(node, 'val');
       if (s = '') or StrIsTrue(s) then  // if GetAttrValue(node, 'val') <> 'false' then
         fntStyles := fntStyles + [fssItalic];
     end
     else
-    if nodename = 'u' then
+    if (nodename = 'u') or (nodename = 'x:u') then
     begin
       s := GetAttrValue(node, 'val');
       if not StrIsFalse(s) then   // can have many values, not just booleans
         fntStyles := fntStyles+ [fssUnderline]
     end
     else
-    if nodename = 'strike' then
+    if (nodename = 'strike') or (nodename = 'x:strike') then
     begin
       s := GetAttrValue(node, 'val');
       if not StrIsFalse(s) then  // can have several values, not just booleans
         fntStyles := fntStyles + [fssStrikeout];
     end
     else
-    if nodename = 'vertAlign' then
+    if (nodename = 'vertAlign') or (nodename = 'x:vertAlign') then
     begin
       s := GetAttrValue(node, 'val');
       if s = 'superscript' then
@@ -1543,7 +1553,7 @@ begin
         fntPos := fpNormal;
     end
     else
-    if nodename = 'color' then
+    if (nodename = 'color') or (nodename = 'x:color') then
       fntColor := ReadColor(node);
     node := node.NextSibling;
   end;
@@ -1585,6 +1595,9 @@ procedure TsSpreadOOXMLReader.ReadFonts(ANode: TDOMNode);
 var
   node: TDOMNode;
 begin
+  if ANode = nil then
+    exit;
+
   node := ANode.FirstChild;
   while node <> nil do begin
     ReadFont(node);
@@ -1621,6 +1634,7 @@ begin
   while node <> nil do
   begin
     nodeName := node.NodeName;
+    if pos('x:', nodename) = 1 then Delete(nodeName, 1, 2);
     case nodeName of
       'firstHeader': sheet.PageLayout.Headers[0] := FixLineEnding(GetNodeValue(node));
       'oddHeader'  : sheet.PageLayout.Headers[1] := FixLineEnding(GetNodeValue(node));
@@ -1655,13 +1669,13 @@ var
 begin
   if Assigned(ANode) then begin
     nodename := ANode.NodeName;
-    if nodename = 'hyperlinks' then
+    if (nodename = 'hyperlinks') or (nodename = 'x:hyperlinks') then
     begin
       node := ANode.FirstChild;
       while Assigned(node) do
       begin
         nodename := node.NodeName;
-        if nodename = 'hyperlink' then begin
+        if (nodename = 'hyperlink') or (nodename = 'x:hyperlink') then begin
           hyperlinkData := THyperlinkListData.Create;
           hyperlinkData.CellRef := GetAttrValue(node, 'ref');
           hyperlinkData.ID := GetAttrValue(node, 'r:id');
@@ -1674,13 +1688,13 @@ begin
         node := node.NextSibling;
       end;
     end else
-    if nodename = 'Relationship' then
+    if (nodename = 'Relationship') or (nodename = 'x:Relationship') then
     begin
       node := ANode;
       while Assigned(node) do
       begin
         nodename := node.NodeName;
-        if nodename = 'Relationship' then
+        if (nodename = 'Relationship') or (nodename = 'x:Relationship') then
         begin
           s := GetAttrValue(node, 'Type');
           if s = SCHEMAS_HYPERLINK then
@@ -1720,7 +1734,7 @@ begin
     while Assigned(node) do
     begin
       nodename := node.NodeName;
-      if nodename = 'mergeCell' then begin
+      if (nodename = 'mergeCell') or (nodename = 'x:mergeCell') then begin
         s := GetAttrValue(node, 'ref');
         if s <> '' then
           (AWorksheet as TsWorksheet).MergeCells(s);
@@ -1744,7 +1758,7 @@ begin
     while Assigned(node) do
     begin
       nodeName := node.NodeName;
-      if nodeName = 'numFmt' then
+      if (nodeName = 'numFmt') or (nodeName = 'x:numFmt') then
       begin
         fmtStr := GetAttrValue(node, 'formatCode');
         idStr := GetAttrValue(node, 'numFmtId');
@@ -1891,13 +1905,13 @@ begin
   while Assigned(node) do
   begin
     nodename := node.NodeName;
-    if nodename = 'indexedColors' then
+    if (nodename = 'indexedColors') or (nodename = 'x:indexedColors') then
     begin
       colornode := node.FirstChild;
       while Assigned(colornode) do
       begin
         nodename := colornode.NodeName;
-        if nodename = 'rgbColor' then begin
+        if (nodename = 'rgbColor') or (nodename = 'x:rgbColor') then begin
           s := GetAttrValue(colornode, 'rgb');
           if s <> '' then begin
             rgb := HTMLColorStrToColor('#' + s);
@@ -2003,28 +2017,30 @@ var
   fnt: TsFont;
 begin
   while Assigned(ANode) do begin
-    if ANode.NodeName = 'si' then begin
+    nodename := ANode.NodeName;
+    if (nodeName = 'si') or (nodeName = 'x:si') then begin
       totaltxt := '';
       SetLength(rtParams, 0);
       valuenode := ANode.FirstChild;
       while valuenode <> nil do begin
         nodename := valuenode.NodeName;
-        if nodename = 't' then
+        if (nodename = 't') or (nodename = 'x:t') then
           // this is unformatted text
           totaltxt := GetNodeValue(valuenode)
         else
-        if nodename = 'r' then begin
+        if (nodename = 'r') or (nodename = 'x:r') then begin
           // all rich-text formatted texts are defined by r nodes
           fntIndex := -1;
           childnode := valuenode.FirstChild;
           while childnode <> nil do begin
             nodename := childnode.NodeName;
-            if nodename = 't' then
+            if (nodename = 't') or (nodename = 'x:t') then
             begin
               sval := GetNodeValue(childNode);
               totaltxt := totaltxt + sval;
             end
-            else if nodename = 'rPr' then begin
+            else
+            if (nodename = 'rPr') or (nodename = 'x:rPr') then begin
               fntIndex := ReadFont(childnode);
               // Here we store the font in the internal font list of the reader.
               // But this fontindex may be different from the one needed for the
@@ -2085,10 +2101,13 @@ var
   nodename: String;
   sheetData: TSheetData;
 begin
+  if ANode = nil then
+    exit;
+
   node := ANode.FirstChild;
   while node <> nil do begin
     nodename := node.NodeName;
-    if nodename = 'sheet' then
+    if (nodename = 'sheet') or (nodename = 'x:sheet') then
     begin
       sheetData := TSheetData.Create;
       sheetData.Name := GetAttrValue(node, 'name');
@@ -2276,7 +2295,7 @@ begin
   sheetViewNode := ANode.FirstChild;
   while Assigned(sheetViewNode) do begin
     nodeName := sheetViewNode.NodeName;
-    if nodeName = 'sheetView' then begin
+    if (nodeName = 'sheetView') or (nodeName = 'x:sheetView') then begin
       s := GetAttrValue(sheetViewNode, 'showGridLines');
       if StrIsFalse(s) then //(s = '0') or (s = 'false') then
         sheet.Options := AWorksheet.Options - [soShowGridLines];
@@ -2306,7 +2325,7 @@ begin
       childNode := sheetViewNode.FirstChild;
       while Assigned(childNode) do begin
         nodeName := childNode.NodeName;
-        if nodeName = 'pane' then begin
+        if (nodeName = 'pane') or (nodeName = 'x:pane') then begin
           s := GetAttrValue(childNode, 'state');
           if s = 'frozen' then begin
             sheet.Options := sheet.Options + [soHasFrozenPanes];
@@ -2318,7 +2337,7 @@ begin
               sheet.TopPaneHeight := round(StrToFloat(s, FPointSeparatorSettings));
           end;
         end else
-        if nodeName = 'selection' then begin
+        if (nodeName = 'selection') or (nodeName = 'x:selection') then begin
           s := GetAttrValue(childnode, 'activeCell');
           if s <> '' then
           begin
@@ -2415,11 +2434,11 @@ var
   wbc: TsCryptoInfo;
   wbp: TsWorkbookProtections;
 begin
-  s := '';
-  wbp := [];
-
   if ANode = nil then
     Exit;
+
+  s := '';
+  wbp := [];
 
   InitCryptoInfo(wbc);
   s := GetAttrValue(ANode, 'workbookPassword');
@@ -2480,14 +2499,17 @@ procedure TsSpreadOOXMLReader.ReadWorksheet(ANode: TDOMNode;
 var
   rownode: TDOMNode;
   cellnode: TDOMNode;
+  nodename: String;
 begin
   rownode := ANode.FirstChild;
   while Assigned(rownode) do begin
-    if rownode.NodeName = 'row' then begin
+    nodeName := rownode.NodeName;
+    if (nodeName = 'row') or (nodeName = 'x:row') then begin
       ReadRow(rownode, AWorksheet);
       cellnode := rownode.FirstChild;
       while Assigned(cellnode) do begin
-        if cellnode.NodeName = 'c' then
+        nodename := cellnode.NodeName;
+        if (nodeName = 'c') or (nodeName = 'x:c') then
           ReadCell(cellnode, AWorksheet);
         cellnode := cellnode.NextSibling;
       end;
@@ -2520,6 +2542,13 @@ var
       Result := TMemoryStream.Create;
   end;
 
+  function Doc_FindNode(ANodeName: String): TDOMNode;
+  begin
+    Result := Doc.DocumentElement.FindNode(ANodeName);
+    if Result = nil then
+      Result := Doc.DocumentElement.FindNode('x:' + ANodeName);
+  end;
+
 begin
   Unused(APassword, AParams);
   Doc := nil;
@@ -2544,12 +2573,12 @@ begin
       if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
         raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
       ReadXMLStream(Doc, XMLStream);
-      ReadFileVersion(Doc.DocumentElement.FindNode('fileVersion'));
-      ReadDateMode(Doc.DocumentElement.FindNode('workbookPr'));
-      ReadWorkbookProtection(Doc.DocumentElement.FindNode('workbookProtection'));
-      ReadSheetList(Doc.DocumentElement.FindNode('sheets'));
+      ReadFileVersion(Doc_FindNode('fileVersion'));
+      ReadDateMode(Doc_FindNode('workbookPr'));
+      ReadWorkbookProtection(Doc_FindNode('workbookProtection'));
+      ReadSheetList(Doc_FindNode('sheets'));
       //ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));  -- don't read here because sheets do not yet exist
-      ReadActiveSheet(Doc.DocumentElement.FindNode('bookViews'), actSheetIndex);
+      ReadActiveSheet(Doc_FindNode('bookViews'), actSheetIndex);
       FreeAndNil(Doc);
     finally
       XMLStream.Free;
@@ -2562,12 +2591,12 @@ begin
       if UnzipToStream(AStream, OOXML_PATH_XL_STYLES, XMLStream) then
       begin
         ReadXMLStream(Doc, XMLStream);
-        ReadPalette(Doc.DocumentElement.FindNode('colors'));
-        ReadFonts(Doc.DocumentElement.FindNode('fonts'));
-        ReadFills(Doc.DocumentElement.FindNode('fills'));
-        ReadBorders(Doc.DocumentElement.FindNode('borders'));
-        ReadNumFormats(Doc.DocumentElement.FindNode('numFmts'));
-        ReadCellXfs(Doc.DocumentElement.FindNode('cellXfs'));
+        ReadPalette(Doc_FindNode('colors'));
+        ReadFonts(Doc_FindNode('fonts'));
+        ReadFills(Doc_FindNode('fills'));
+        ReadBorders(Doc_FindNode('borders'));
+        ReadNumFormats(Doc_FindNode('numFmts'));
+        ReadCellXfs(Doc_FindNode('cellXfs'));
         FreeAndNil(Doc);
       end;
     finally
@@ -2581,7 +2610,7 @@ begin
       if UnzipToStream(AStream, OOXML_PATH_XL_STRINGS, XMLStream) then
       begin
         ReadXMLStream(Doc, XMLStream);
-        ReadSharedStrings(Doc.DocumentElement.FindNode('si'));
+        ReadSharedStrings(Doc_FindNode('si'));
         FreeAndNil(Doc);
       end;
     finally
@@ -2616,18 +2645,18 @@ begin
       FSharedFormulaBaseList.Clear;
 
       // Sheet data, formats, etc.
-      ReadDimension(Doc.DocumentElement.FindNode('dimension'), FWorksheet);
-      ReadSheetViews(Doc.DocumentElement.FindNode('sheetViews'), FWorksheet);
-      ReadSheetFormatPr(Doc.DocumentElement.FindNode('sheetFormatPr'), FWorksheet);
-      ReadCols(Doc.DocumentElement.FindNode('cols'), FWorksheet);
-      ReadWorksheet(Doc.DocumentElement.FindNode('sheetData'), FWorksheet);
-      ReadSheetProtection(Doc.DocumentElement.FindNode('sheetProtection'), FWorksheet);
-      ReadMergedCells(Doc.DocumentElement.FindNode('mergeCells'), FWorksheet);
-      ReadHyperlinks(Doc.DocumentElement.FindNode('hyperlinks'));
-      ReadPrintOptions(Doc.DocumentElement.FindNode('printOptions'), FWorksheet);
-      ReadPageMargins(Doc.DocumentElement.FindNode('pageMargins'), FWorksheet);
-      ReadPageSetup(Doc.DocumentElement.FindNode('pageSetup'), FWorksheet);
-      ReadHeaderFooter(Doc.DocumentElement.FindNode('headerFooter'), FWorksheet);
+      ReadDimension(Doc_FindNode('dimension'), FWorksheet);
+      ReadSheetViews(Doc_FindNode('sheetViews'), FWorksheet);
+      ReadSheetFormatPr(Doc_FindNode('sheetFormatPr'), FWorksheet);
+      ReadCols(Doc_FindNode('cols'), FWorksheet);
+      ReadWorksheet(Doc_FindNode('sheetData'), FWorksheet);
+      ReadSheetProtection(Doc_FindNode('sheetProtection'), FWorksheet);
+      ReadMergedCells(Doc_FindNode('mergeCells'), FWorksheet);
+      ReadHyperlinks(Doc_FindNode('hyperlinks'));
+      ReadPrintOptions(Doc_FindNode('printOptions'), FWorksheet);
+      ReadPageMargins(Doc_FindNode('pageMargins'), FWorksheet);
+      ReadPageSetup(Doc_FindNode('pageSetup'), FWorksheet);
+      ReadHeaderFooter(Doc_FindNode('headerFooter'), FWorksheet);
 
       FreeAndNil(Doc);
 
@@ -2643,7 +2672,7 @@ begin
         begin
           // Find exact name of comments<n>.xml file
           ReadXMLStream(Doc, XMLStream);
-          RelsNode := Doc.DocumentElement.FindNode('Relationship');
+          RelsNode := Doc_FindNode('Relationship');
           fn_comments := FindCommentsFileName(RelsNode);
           // Get hyperlink data
           ReadHyperlinks(RelsNode);
@@ -2670,7 +2699,7 @@ begin
           if UnzipToStream(AStream, fn, XMLStream) then
           begin
             ReadXMLStream(Doc, XMLStream);
-            ReadComments(Doc.DocumentElement.FindNode('commentList'), FWorksheet);
+            ReadComments(Doc_FindNode('commentList'), FWorksheet);
             FreeAndNil(Doc);
           end;
         finally
@@ -2693,7 +2722,7 @@ begin
       if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
         raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
       ReadXMLStream(Doc, XMLStream);
-      ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));
+      ReadDefinedNames(Doc_FindNode('definedNames'));
       FreeAndNil(Doc);
     finally
       XMLStream.Free;

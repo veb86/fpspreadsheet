@@ -131,7 +131,8 @@ begin
   while (not complete) and (not Matches(AWorksheet, ARow, ACol)) do
   begin
     if soBackward in FSearchParams.Options then
-      complete := not GotoPrev(AWorkSheet, ARow, ACol) else
+      complete := not GotoPrev(AWorkSheet, ARow, ACol)
+    else
       complete := not GotoNext(AWorkSheet, ARow, ACol);
     // Avoid infinite loop if search phrase does not exist in document.
     if (AWorksheet = sheet) and (ARow = r) and (ACol = c) then

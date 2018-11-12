@@ -859,13 +859,14 @@ type
   TsSearchOptions = set of TsSearchOption;
 
   {@@ Defines which part of document is scanned }
-  TsSearchWithin = (swWorkbook, swWorksheet, swColumn, swRow);
+  TsSearchWithin = (swWorkbook, swWorksheet, swColumn, swRow, swColumns, swRows);
 
   {@@ Search parameters }
   TsSearchParams = record
     SearchText: String;
     Options: TsSearchOptions;
     Within: TsSearchWithin;
+    ColsRows: String;
   end;
 
   {@@ Replace option }
