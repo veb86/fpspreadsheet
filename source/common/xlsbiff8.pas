@@ -133,6 +133,7 @@ type
     function ReadWideString(const AStream: TStream;
       const AUse8BitLength: Boolean): WideString; overload;
   protected
+    class function CheckFileFormatDetails(AStream: TStream): Boolean; override;
     procedure PopulatePalette; override;
     procedure ReadBOUNDSHEET(AStream: TStream);
     procedure ReadCONTINUE(const AStream: TStream);
@@ -366,8 +367,8 @@ uses
   LazLogger,
  {$ENDIF}
   Math, lconvencoding, LazFileUtils, URIParser,
-  fpsStrings, {%H-}fpsPatches, fpsStreams, fpsReaderWriter, fpsPalette,
-  fpspreadsheet, fpsNumFormat, fpsExprParser, xlsEscher;
+  uvirtuallayer_ole, fpsStrings, {%H-}fpsPatches, fpsStreams, fpsReaderWriter,
+  fpsPalette, fpspreadsheet, fpsNumFormat, fpsExprParser, xlsEscher;
 
 const
    { Excel record IDs }
@@ -792,6 +793,24 @@ begin
   FCommentList.Free;
 
   inherited;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks, for automatic file format detection, whether tie OLE stream is named
+  'Workbook' - this is typical of BIFF8 files.
+-------------------------------------------------------------------------------}
+class function TsSpreadBIFF8Reader.CheckFileFormatDetails(AStream: TStream): Boolean;
+var
+  fsOLE: TVirtualLayer_OLE;
+begin
+  AStream.Position := 0;
+  fsOLE := TVirtualLayer_OLE.Create(AStream);
+  try
+    fsOLE.Initialize;
+    Result := fsOLE.FileExists('/Workbook');
+  finally
+    fsOLE.Free;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

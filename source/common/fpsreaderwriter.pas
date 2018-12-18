@@ -46,6 +46,8 @@ type
   { TsBasicSpreadReader }
   TsBasicSpreadReader = class(TsBasicSpreadReaderWriter)
   public
+    { File format detection }
+    class function CheckFileFormat(AStream: TStream): boolean; virtual; abstract;
     { General writing methods }
     procedure ReadFromFile(AFileName: string; APassword: String = '';
       AParams: TsStreamParams = []); virtual; abstract;
@@ -92,6 +94,8 @@ type
 
     { Helper methods }
     procedure AddBuiltinNumFormats; virtual;
+    {@@ More detailed check for file format }
+    class function CheckFileFormatDetails(AStream: TStream): Boolean; virtual;
     {@@ Removes column records if all of them have the same column width }
     procedure FixCols(AWorksheet: TsBasicWorksheet);
     {@@ Removes row records if all of them have the same row height }
@@ -113,7 +117,9 @@ type
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
 
-    { General writing methods }
+    { File format detection }
+    class function CheckFileFormat(AStream: TStream): Boolean; override;
+    { General reading methods }
     procedure ReadFromFile(AFileName: string; APassword: String = '';
       AParams: TsStreamParams = []); override;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
@@ -348,6 +354,24 @@ end;
 procedure TsCustomSpreadReader.AddBuiltinNumFormats;
 begin
   // to be overridden by descendants
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Must be overridden to check the file header for the signature of the file.
+  Returns true by default which means that the file is qualified for trying to
+  be loaded.
+-------------------------------------------------------------------------------}
+class function TsCustomSpreadReader.CheckFileFormat(AStream: TStream): boolean;
+begin
+  Result := true;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  More details check for file format
+-------------------------------------------------------------------------------}
+class function TsCustomSpreadReader.CheckFileFormatDetails(AStream: TStream): Boolean;
+begin
+  Result := true;
 end;
 
 {@@ ----------------------------------------------------------------------------

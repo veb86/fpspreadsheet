@@ -8488,8 +8488,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Helper method for determining the spreadsheet type. Read the first few bytes
   of a file and determines the spreadsheet type from the characteristic
-  signature. Only implemented for xls files where several file types have the
-  same extension
+  signature.
 -------------------------------------------------------------------------------}
 class procedure TsWorkbook.GetFormatFromFileHeader(const AFileName: TFileName;
   out AFormatIDs: TsSpreadFormatIDArray);
@@ -8505,85 +8504,32 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Helper method for determining the spreadsheet format. Read the first few bytes
-  of a stream and determines the spreadsheet type from the characteristic
-  signature.
+  Helper method for determining the spreadsheet format. Reads the first
+  few bytes of a stream and determines the spreadsheet type from the
+  characteristic signature.
 -------------------------------------------------------------------------------}
 class procedure TsWorkbook.GetFormatFromFileHeader(AStream: TStream;
   out AFormatIDs: TsSpreadFormatIDArray); overload;
-const
-  BIFF2_HEADER: array[0..3] of byte = (
-    $09,$00, $04,$00);  // they are common to all BIFF2 files that I've seen
-  BIFF58_HEADER: array[0..7] of byte = (
-    $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1);
-  ZIP_HEADER: array[0..1] of byte = (
-    byte('P'), byte('K'));
-
-  function ValidOLEStream(AStream: TStream; AName: String): Boolean;
-  var
-    fsOLE: TVirtualLayer_OLE;
-  begin
-    AStream.Position := 0;
-    fsOLE := TVirtualLayer_OLE.Create(AStream);
-    try
-      fsOLE.Initialize;
-      Result := fsOLE.FileExists('/'+AName);
-    finally
-      fsOLE.Free;
-    end;
-  end;
-
 var
-  buf: packed array[0..7] of byte = (0,0,0,0,0,0,0,0);
-  i: Integer;
+  reader: TsSpreadReaderClass;
+  fmtIDs: TsSpreadformatIDArray;
+  i, j: Integer;
 begin
   SetLength(AFormatIDs, 0);
-
   if AStream = nil then
     exit;
 
-  // Read first 8 bytes
-  i := AStream.Read(buf, Length(buf));
-  if i < Length(buf) then
-    exit;
-
-  // Check for zip header of xlsx and ods
-  if (buf[0] = ZIP_HEADER[0]) and (buf[1] = ZIP_HEADER[1]) then begin
-    SetLength(AFormatIDs, 2);
-    AFormatIDs[0] := ord(sfOOXML);
-    AFormatIDs[1] := ord(sfOpenDocument);
-    exit;
-  end;
-
-  // Check for Excel 2
-  for i:=0 to High(BIFF2_HEADER) do
-    if buf[i] = BIFF2_HEADER[i] then
-    begin
-      SetLength(AFormatIDs, 1);
-      AFormatIDs[0] := ord(sfExcel2);
-      exit;
+  fmtIDs := GetSpreadFormats(faRead, [ord(sfExcel8)]);
+  SetLength(AFormatIDs, Length(fmtIDs));
+  j := 0;
+  for i:=0 to High(fmtIDs) do begin
+    reader := GetSpreadReaderClass(fmtIDs[i]);
+    if Assigned(reader) and reader.CheckFileFormat(AStream) then begin
+      AFormatIDs[j] := fmtIDs[i];
+      inc(j);
     end;
-
-  // Check for Excel 5 or 8
-  for i:=0 to High(BIFF58_HEADER) do
-    if buf[i] <> BIFF58_HEADER[i] then
-      exit;
-
-  // Now we know that the file is a Microsoft compound document.
-
-  // We check for Excel 5 in which the stream is named "Book"
-  if ValidOLEStream(AStream, 'Book') then begin
-    SetLength(AFormatIDs, 1);
-    AFormatIDs[0] := ord(sfExcel5);
-    exit;
   end;
-
-  // Now we check for Excel 8 which names the stream "Workbook"
-  if ValidOLEStream(AStream, 'Workbook') then begin
-    SetLength(AFormatIDs, 1);
-    AFormatIDs[0] := ord(sfExcel8);
-    exit;
-  end;
+  SetLength(AFormatIDs, j);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8694,21 +8640,10 @@ var
   fmtID: TsSpreadFormatID;
   fileFormats: TsSpreadFormatIDArray;
   i: Integer;
-  found: Boolean;
+  ext: String;
 begin
   if not FileExists(AFileName) then
     raise EFPSpreadsheetReader.CreateFmt(rsFileNotFound, [AFileName]);
-
-  // First try to determine file format from the extension
-  if GetFormatFromFileName(AFilename, fmtID) then begin
-    try
-      ReadFromFile(AFileName, fmtID, APassword, AParams);
-      exit;
-    except
-      // format does not match. We must continue with rest of procedure
-    end;
-  end else
-    fmtID := MaxInt;
 
   // Try to get file format from file header
   GetFormatFromFileHeader(AFileName, fileformats);
@@ -8719,21 +8654,14 @@ begin
   if Length(fileformats) = 0 then
     fileformats := GetSpreadFormats(faRead, [ord(sfExcel8)]);
 
-  // Remove already tested format
-  found := false;
-  i := 0;
-  while (i <= High(fileFormats)) do begin
-    if fileFormats[i] = fmtID then begin
-      found := true;
-      inc(i);
-      while (i <= High(fileFormats)) do begin
-        fileFormats[i-1] := fileFormats[i];
-        inc(i);
-      end;
-    end else
-     inc(i);
-  end;
-  if found then SetLength(fileFormats, Length(fileFormats)-1);
+  // Move file format corresponding to file extension to the top to load it first.
+  ext := Lowercase(ExtractFileExt(AFileName));
+  for i := 0 to High(fileformats) do
+    if ext = GetSpreadFormatExt(fileformats[i]) then begin
+      fmtID := fileformats[0];
+      fileFormats[0] := fileformats[i];
+      fileFormats[i] := fmtID;
+    end;
 
   // No file format found for this file --> error
   if Length(fileformats) = 0 then
@@ -8747,7 +8675,6 @@ begin
       success := true;
       break;  // Exit the loop if we reach this point successfully.
     except
-      //success := false;
     end;
   end;
 

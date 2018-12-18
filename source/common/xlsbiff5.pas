@@ -72,6 +72,7 @@ type
 
   TsSpreadBIFF5Reader = class(TsSpreadBIFFReader)
   protected
+    class function CheckFileFormatDetails(AStream: TStream): Boolean; override;
     procedure PopulatePalette; override;
     { Record writing methods }
     procedure ReadBOUNDSHEET(AStream: TStream);
@@ -229,7 +230,7 @@ uses
   LazLogger,
  {$ENDIF}
   Math,
-  fpsStrings, fpspreadsheet, fpsReaderWriter, fpsStreams,
+  uvirtuallayer_ole, fpsStrings, fpspreadsheet, fpsReaderWriter, fpsStreams,
   fpsPalette, fpsNumFormat, xlsconst;
 
 const
@@ -362,6 +363,24 @@ type
 {------------------------------------------------------------------------------}
 {                           TsSpreadBIFF5Reader                                }
 {------------------------------------------------------------------------------}
+
+{@@ ----------------------------------------------------------------------------
+  Checks, for automatic file format detection, whether tie OLE stream is named
+  'Book' - this is typical of BIFF5 files.
+-------------------------------------------------------------------------------}
+class function TsSpreadBIFF5Reader.CheckFileFormatDetails(AStream: TStream): Boolean;
+var
+  fsOLE: TVirtualLayer_OLE;
+begin
+  AStream.Position := 0;
+  fsOLE := TVirtualLayer_OLE.Create(AStream);
+  try
+    fsOLE.Initialize;
+    Result := fsOLE.FileExists('/Book');
+  finally
+    fsOLE.Free;
+  end;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Populates the reader's default palette using the BIFF5 default colors.

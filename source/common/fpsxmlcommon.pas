@@ -57,6 +57,8 @@ function CreateTempStream(AWorkbook: TsBasicWorkbook;
   AFileNameBase: String): TStream;
 procedure DestroyTempStream(AStream: TStream);
 
+function HasZipHeader(AStream: TStream): Boolean;
+
 
 implementation
 
@@ -409,6 +411,27 @@ begin
     AStream.Free;
 end;
 
+
+{ Returns true if the file begins with a ZIP header *PK'. Needed for
+  file format detection. }
+function HasZipHeader(AStream: TStream): Boolean;
+const
+  ZIP_HEADER: packed array[0..1] of char = ('P', 'K');
+var
+  P: Int64;
+  buf: packed array[0..1] of char;
+begin
+  Result := false;
+  P := AStream.Position;
+  try
+    AStream.Position := 0;
+    if AStream.Read(buf, 2) < 2 then
+      exit;
+    Result := (buf[0] = ZIP_HEADER[0]) and (buf[1] = ZIP_HEADER[1]);
+  finally
+    AStream.Position := P;
+  end;
+end;
 
 end.
 

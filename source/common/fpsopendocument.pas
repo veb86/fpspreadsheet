@@ -171,6 +171,9 @@ type
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
 
+    { File format detection }
+    class function CheckFileFormat(AStream: TStream): Boolean; override;
+
     { General reading methods }
     procedure ReadFromStream(AStream: TStream;
       APassword: String = ''; AParams: TsStreamParams = []); override;
@@ -1157,6 +1160,11 @@ begin
     // Note: we don't store the column format index here; this is done in the
     // row/cell reading method (ReadRowsAndCells).
   end;
+end;
+
+class function TsSpreadOpenDocReader.CheckFileFormat(AStream: TStream): Boolean;
+begin
+  Result := HasZipHeader(AStream);
 end;
 
 function TsSpreadOpenDocReader.ExtractFormatIndexFromStyle(ACellStyleName: String;

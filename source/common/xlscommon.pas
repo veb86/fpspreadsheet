@@ -562,6 +562,8 @@ type
   public
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
+    { File format detection }
+    class function CheckFileFormat(AStream: TStream): Boolean; override;
   end;
 
 
@@ -1179,6 +1181,35 @@ begin
     FNumFormatList, Workbook.FormatSettings, FFirstNumFormatIndexInFile-1
   );
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks the stream header to verify that the file is a BIFF5 or BIFF8 file.
+-------------------------------------------------------------------------------}
+class function TsSpreadBIFFReader.CheckFileFormat(AStream: TStream): Boolean;
+const
+  BIFF58_HEADER: packed array[0..7] of byte = (
+    $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1);
+var
+  P: Int64;
+  buf: packed array[0..7] of byte;
+  n: Integer;
+begin
+  Result := false;
+  P := AStream.Position;
+  try
+    AStream.Position := 0;
+    n := AStream.Read(buf, Length(buf));
+    if n <> Length(BIFF58_HEADER) then
+      exit;
+    for n:=0 to High(BIFF58_HEADER) do
+      if buf[n] <> BIFF58_HEADER[n] then
+        exit;
+    Result := CheckFileFormatDetails(AStream);
+  finally
+    AStream.Position := P;
+  end;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Applies the XF formatting referred to by XFIndex to the specified cell

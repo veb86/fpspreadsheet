@@ -103,6 +103,7 @@ type
   public
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
+    class function CheckFileFormat(AStream: TStream): Boolean; override;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
   end;
@@ -488,6 +489,11 @@ begin
           else
             sheet.WriteHyperlink(r, c, Target+'#'+TextMark, ToolTip);
   end;
+end;
+
+class function TsSpreadOOXMLReader.CheckFileFormat(AStream: TStream): Boolean;
+begin
+  Result := HasZipHeader(AStream);
 end;
 
 function TsSpreadOOXMLReader.FindCommentsFileName(ANode: TDOMNode): String;

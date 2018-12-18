@@ -79,6 +79,8 @@ type
     { General reading methods }
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
+    { File format detection }
+    class function CheckfileFormat(AStream: TStream): Boolean; override;
   end;
 
 
@@ -330,6 +332,35 @@ procedure TsSpreadBIFF2Reader.AddBuiltInNumFormats;
 begin
   FFirstNumFormatIndexInFile := 0;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks the header of the stream for the signature of BIFF2 files
+-------------------------------------------------------------------------------}
+class function TsSpreadBIFF2Reader.CheckFileFormat(AStream: TStream): Boolean;
+const
+  BIFF2_HEADER: packed array[0..3] of byte = (
+    $09,$00, $04,$00);  // they are common to all BIFF2 files that I've seen
+var
+  P: Int64;
+  buf: packed array[0..3] of byte;
+  n: Integer;
+begin
+  Result := false;
+  P := AStream.Position;
+  try
+    AStream.Position := 0;
+    n := AStream.Read(buf, SizeOf(buf));
+    if n < Length(BIFF2_HEADER) then
+      exit;
+    for n:=0 to High(buf) do
+      if buf[n] <> BIFF2_HEADER[n] then
+        exit;
+    Result := true;
+  finally
+    AStream.Position := P;
+  end;
+end;
+
 
 procedure TsSpreadBIFF2Reader.ReadBlank(AStream: TStream);
 var
