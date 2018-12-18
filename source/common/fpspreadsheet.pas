@@ -8716,6 +8716,9 @@ begin
     // If not successful use formats defined by extension
     fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName);
 
+  if Length(fileformats) = 0 then
+    fileformats := GetSpreadFormats(faRead, [ord(sfExcel8)]);
+
   // Remove already tested format
   found := false;
   i := 0;
