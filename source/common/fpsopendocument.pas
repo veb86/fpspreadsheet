@@ -2613,97 +2613,103 @@ begin
       XMLStream.Free;
     end;
 
-    ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
+    if Assigned(Doc) then begin
+      ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
 
-    StylesNode := Doc.DocumentElement.FindNode('office:styles');
-    ReadNumFormats(StylesNode);
-    ReadStyles(StylesNode);
-    ReadAutomaticStyles(Doc.DocumentElement.FindNode('office:automatic-styles'));
-    ReadMasterStyles(Doc.DocumentElement.FindNode('office:master-styles'));
-    FreeAndNil(Doc);
+      StylesNode := Doc.DocumentElement.FindNode('office:styles');
+      ReadNumFormats(StylesNode);
+      ReadStyles(StylesNode);
+      ReadAutomaticStyles(Doc.DocumentElement.FindNode('office:automatic-styles'));
+      ReadMasterStyles(Doc.DocumentElement.FindNode('office:master-styles'));
+      FreeAndNil(Doc);
+    end;
 
     //process the content.xml file
     XMLStream := CreateXMLStream;
     try
       if UnzipToStream(AStream, 'content.xml', XMLStream) then
-        ReadXMLStream(Doc, XMLStream);
+        ReadXMLStream(Doc, XMLStream)
+      else
+        raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['ods']);
     finally
       XMLStream.Free;
     end;
 
-    ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
-    StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
-    ReadNumFormats(StylesNode);
-    ReadStyles(StylesNode);
+    if Assigned(Doc) then begin
+      ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
+      StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
+      ReadNumFormats(StylesNode);
+      ReadStyles(StylesNode);
 
-    BodyNode := Doc.DocumentElement.FindNode('office:body');
-    if not Assigned(BodyNode) then
-      raise EFPSpreadsheet.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:body" not found.');
+      BodyNode := Doc.DocumentElement.FindNode('office:body');
+      if not Assigned(BodyNode) then
+        raise EFPSpreadsheet.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:body" not found.');
 
-    SpreadSheetNode := BodyNode.FindNode('office:spreadsheet');
-    if not Assigned(SpreadSheetNode) then
-      raise EFPSpreadsheet.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:spreadsheet" not found.');
+      SpreadSheetNode := BodyNode.FindNode('office:spreadsheet');
+      if not Assigned(SpreadSheetNode) then
+        raise EFPSpreadsheet.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:spreadsheet" not found.');
 
-    ReadSheets(SpreadsheetNode);
-    ReadDocumentProtection(SpreadsheetNode);
-    ReadDateMode(SpreadSheetNode);
+      ReadSheets(SpreadsheetNode);
+      ReadDocumentProtection(SpreadsheetNode);
+      ReadDateMode(SpreadSheetNode);
 
-    //process each table (sheet)
-    TableNode := SpreadSheetNode.FindNode('table:table');
-    while Assigned(TableNode) do
-    begin
-      nodename := TableNode.Nodename;
-      // These nodes occur due to leading spaces which are not skipped
-      // automatically any more due to PreserveWhiteSpace option applied
-      // to ReadXMLFile
-      if nodeName <> 'table:table' then
+      //process each table (sheet)
+      TableNode := SpreadSheetNode.FindNode('table:table');
+      while Assigned(TableNode) do
       begin
-        TableNode := TableNode.NextSibling;
-        continue;
-      end;
+        nodename := TableNode.Nodename;
+        // These nodes occur due to leading spaces which are not skipped
+        // automatically any more due to PreserveWhiteSpace option applied
+        // to ReadXMLFile
+        if nodeName <> 'table:table' then
+        begin
+          TableNode := TableNode.NextSibling;
+          continue;
+        end;
 
-      // Tables with external references contain a copy of the external table
-      // having the filename as sheet name - which is not valid for fps.
-      // Since external references are not supported ATM we skip this table.
-      if TableNode.FindNode('table:table-source') <> nil then begin
-        TableNode := TableNode.NextSibling;
-        Continue;
-      end;
+        // Tables with external references contain a copy of the external table
+        // having the filename as sheet name - which is not valid for fps.
+        // Since external references are not supported ATM we skip this table.
+        if TableNode.FindNode('table:table-source') <> nil then begin
+          TableNode := TableNode.NextSibling;
+          Continue;
+        end;
 
-      sheetName := GetAttrValue(TableNode, 'table:name');
-      FWorksheet := TsWorkbook(FWorkbook).GetWorksheetByName(sheetName);
+        sheetName := GetAttrValue(TableNode, 'table:name');
+        FWorksheet := TsWorkbook(FWorkbook).GetWorksheetByName(sheetName);
 //      FWorkSheet := TsWorkbook(FWorkbook).AddWorksheet(sheetName, true);
-      tablestyleName := GetAttrValue(TableNode, 'table:style-name');
-      // Read protection
-      ReadSheetProtection(TableNode, FWorksheet);
-      // Collect embedded images
-      ReadShapes(TableNode);
-      // Collect column styles used
-      ReadColumns(TableNode);
-      // Process each row inside the sheet and process each cell of the row
-      ReadRowsAndCells(TableNode);
-      // Read page layout
-      ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'),
-        (FWorksheet as TsWorksheet).PageLayout);
-      // Repeated cols/rows already have been determined.
-      (FWorksheet as TsWorksheet).PageLayout.SetRepeatedRows(
-        FRepeatedRows.FirstIndex, FRepeatedRows.LastIndex);
-      (FWorksheet as TsWorksheet).PageLayout.SetRepeatedCols(
-        FRepeatedCols.FirstIndex, FRepeatedCols.LastIndex);
-      // Read print ranges
-      ReadPrintRanges(TableNode, FWorksheet);
-      // Apply table style
-      ApplyTableStyle(FWorksheet, tablestylename);
-      // Handle columns
-      ApplyColWidths;
-      // Page layout
-      FixCols(FWorksheet);
-      FixRows(FWorksheet);
-      // Continue with next table
-      TableNode := TableNode.NextSibling;
-    end; //while Assigned(TableNode)
+        tablestyleName := GetAttrValue(TableNode, 'table:style-name');
+        // Read protection
+        ReadSheetProtection(TableNode, FWorksheet);
+        // Collect embedded images
+        ReadShapes(TableNode);
+        // Collect column styles used
+        ReadColumns(TableNode);
+        // Process each row inside the sheet and process each cell of the row
+        ReadRowsAndCells(TableNode);
+        // Read page layout
+        ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'),
+          (FWorksheet as TsWorksheet).PageLayout);
+        // Repeated cols/rows already have been determined.
+        (FWorksheet as TsWorksheet).PageLayout.SetRepeatedRows(
+          FRepeatedRows.FirstIndex, FRepeatedRows.LastIndex);
+        (FWorksheet as TsWorksheet).PageLayout.SetRepeatedCols(
+          FRepeatedCols.FirstIndex, FRepeatedCols.LastIndex);
+        // Read print ranges
+        ReadPrintRanges(TableNode, FWorksheet);
+        // Apply table style
+        ApplyTableStyle(FWorksheet, tablestylename);
+        // Handle columns
+        ApplyColWidths;
+        // Page layout
+        FixCols(FWorksheet);
+        FixRows(FWorksheet);
+        // Continue with next table
+        TableNode := TableNode.NextSibling;
+      end; //while Assigned(TableNode)
 
-    FreeAndNil(Doc);
+      FreeAndNil(Doc);
+    end;
 
     // process the settings.xml file (Note: it does not always exist!)
     XMLStream := CreateXMLStream;
@@ -2717,9 +2723,6 @@ begin
     finally
       XMLStream.Free;
     end;
-
-    // Convert formulas from OpenDocument to ExcelA1 dialect
-//    FixFormulas;
 
     // Active sheet
     if FActiveSheet <> '' then

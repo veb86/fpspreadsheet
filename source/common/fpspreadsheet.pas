@@ -8691,17 +8691,46 @@ procedure TsWorkbook.ReadFromFile(AFileName: string; APassword: String = '';
   AParams: TsStreamParams = []);
 var
   success: Boolean;
+  fmtID: TsSpreadFormatID;
   fileFormats: TsSpreadFormatIDArray;
   i: Integer;
+  found: Boolean;
 begin
   if not FileExists(AFileName) then
     raise EFPSpreadsheetReader.CreateFmt(rsFileNotFound, [AFileName]);
+
+  // First try to determine file format from the extension
+  if GetFormatFromFileName(AFilename, fmtID) then begin
+    try
+      ReadFromFile(AFileName, fmtID, APassword, AParams);
+      exit;
+    except
+      // format does not match. We must continue with rest of procedure
+    end;
+  end else
+    fmtID := MaxInt;
 
   // Try to get file format from file header
   GetFormatFromFileHeader(AFileName, fileformats);
   if Length(fileformats) = 0 then
     // If not successful use formats defined by extension
     fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName);
+
+  // Remove already tested format
+  found := false;
+  i := 0;
+  while (i <= High(fileFormats)) do begin
+    if fileFormats[i] = fmtID then begin
+      found := true;
+      inc(i);
+      while (i <= High(fileFormats)) do begin
+        fileFormats[i-1] := fileFormats[i];
+        inc(i);
+      end;
+    end else
+     inc(i);
+  end;
+  if found then SetLength(fileFormats, Length(fileFormats)-1);
 
   // No file format found for this file --> error
   if Length(fileformats) = 0 then

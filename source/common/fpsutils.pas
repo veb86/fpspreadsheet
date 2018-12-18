@@ -1370,7 +1370,7 @@ var
   fileformats: TsSpreadFormatIDArray;
 begin
   fileFormats := GetSpreadFormatsFromFileName(faRead, AFileName, ord(sfExcel8));
-  Result := (Length(fileFormats) > 0) and (fileFormats[0] <= sfidUnknown);
+  Result := (Length(fileFormats) > 0); // and (fileFormats[0] <= sfidUnknown);  // wp - removed for new format detection
   if Result then AFormatID := fileFormats[0];
 end;
 
