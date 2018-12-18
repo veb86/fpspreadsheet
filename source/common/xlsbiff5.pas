@@ -2162,7 +2162,7 @@ var
       lsMediumDashDotDot  : Result := lsDashed;
       lsSlantDashDot      : Result := lsDashed;
     else
-      raise EFPSpreadsheet.Create('[TsSpreadBIFF5Writer.WriteXF] Linestyle not supported.');
+      raise EFPSpreadsheetWriter.Create('[TsSpreadBIFF5Writer.WriteXF] Linestyle not supported.');
     end;
   end;
 

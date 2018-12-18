@@ -2191,7 +2191,7 @@ begin
   else if NullDateSetting = '1904-01-01' then
     FDateMode := dmODS1904
   else
-    raise EFPSpreadsheet.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
+    raise EFPSpreadsheetReader.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
 end;
 
 procedure TsSpreadOpenDocReader.ReadDocumentProtection(ANode: TDOMNode);
@@ -2643,11 +2643,11 @@ begin
 
       BodyNode := Doc.DocumentElement.FindNode('office:body');
       if not Assigned(BodyNode) then
-        raise EFPSpreadsheet.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:body" not found.');
+        raise EFPSpreadsheetReader.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:body" not found.');
 
       SpreadSheetNode := BodyNode.FindNode('office:spreadsheet');
       if not Assigned(SpreadSheetNode) then
-        raise EFPSpreadsheet.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:spreadsheet" not found.');
+        raise EFPSpreadsheetReader.Create('[TsSpreadOpenDocReader.ReadFromStream] Node "office:spreadsheet" not found.');
 
       ReadSheets(SpreadsheetNode);
       ReadDocumentProtection(SpreadsheetNode);
@@ -7670,7 +7670,7 @@ begin
         end;
       end;
       if styleName = '' then
-        raise EFPSpreadsheet.Create(rsRowStyleNotFound);
+        raise EFPSpreadsheetWriter.Create(rsRowStyleNotFound);
     end;
 
     // No empty rows allowed here for the moment!

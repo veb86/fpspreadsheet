@@ -670,7 +670,7 @@ begin
       BIFF2EOF := True;
 
     if not BOFFound then
-      raise EFPSpreadsheet.Create('BOF record not found.');
+      raise EFPSpreadsheetReader.Create('BOF record not found.');
   end;
 
   FixCols(FWorksheet);
