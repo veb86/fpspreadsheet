@@ -274,7 +274,7 @@ type
     errIllegalRef,         // #REF!
     errWrongName,          // #NAME?
     errOverflow,           // #NUM!
-    errArgError,           // #N/A
+    errArgError,           // #N/A  ( = #NV in German )
     // --- no Excel errors --
     errFormulaNotSupported
   );

@@ -14,7 +14,8 @@ uses
 
 type
   TFormulaTestKind = (ftkConstants, ftkCellConstant, ftkCells, ftkCellRange,
-    ftkCellRangeSheet, ftkCellRangeSheetRange);
+    ftkCellRangeSheet, ftkCellRangeSheetRange,
+    ftkSortedNumbersASC, ftkSortedNumbersDESC);
   TWorksheetTestKind = (wtkRenameWorksheet, wtkDeleteWorksheet);
 
   { TSpreadDetailedFormulaFormula }
@@ -94,6 +95,12 @@ type
 
     procedure SumIfRangeSheetSheet_BIFF8;
 
+    procedure MatchColASC_BIFF8;
+    procedure MatchColDESC_BIFF8;
+    procedure MatchCol0_BIFF8;
+    procedure MatchRowASC_BIFF8;
+    procedure MatchRowDESC_BIFF8;
+
     procedure NonExistantSheet_BIFF5;
     procedure NonExistantSheet_BIFF8;
     procedure NonExistantSheet_OOXML;
@@ -170,6 +177,7 @@ const
   SHEET1 = 'Sheet1';
   SHEET2 = 'Sheet2';
   SHEET3 = 'Sheet3';
+  SHEET4 = 'Sheet4';
   TESTCELL_ROW = 1;       // Cell with formula: C2
   TESTCELL_COL = 2;
 var
@@ -213,10 +221,35 @@ begin
 
       if ATestKind = ftkCellRangeSheetRange then begin
         otherSheet := Workbook.AddWorksheet(SHEET3);
-        othersheet.WriteNumber(2, 2, 100.0);   // Sheet3C3
+        othersheet.WriteNumber(2, 2, 100.0);   // Sheet3!C3
         othersheet.WriteNumber(3, 2, -200.0);  // Sheet3!C4
         othersheet.WriteNumber(4, 2, 150.0);   // Sheet3!C5
         othersheet.WriteNumber(2, 3, 1500.0);  // Sheet3!D5
+      end;
+
+      if ATestkind = ftkSortedNumbersAsc then begin
+        othersheet := Workbook.AddWorksheet(SHEET4);
+        othersheet.WriteNumber(2, 2, 10.0);   // Sheet4!C3
+        othersheet.WriteNumber(3, 2, 12.0);   // Sheet4!C4
+        othersheet.WriteNumber(4, 2, 15.0);   // Sheet4!C5
+        othersheet.WriteNumber(5, 2, 20.0);   // Sheet4!C6
+        othersheet.WriteNumber(6, 2, 25.0);   // Sheet4!C7
+        othersheet.WriteNumber(2, 3, 12.0);   // Sheet4!D3
+        othersheet.WriteNumber(2, 4, 15.0);   // Sheet4!E3
+        othersheet.WriteNumber(2, 5, 20.0);   // Sheet4!F3
+        othersheet.WriteNumber(2, 6, 25.0);   // Sheet4!G3
+      end else
+      if ATestkind = ftkSortedNumbersDesc then begin
+        othersheet := Workbook.AddWorksheet(SHEET4);
+        othersheet.WriteNumber(2, 2, 25.0);   // Sheet4!C3
+        othersheet.WriteNumber(3, 2, 20.0);   // Sheet4!C4
+        othersheet.WriteNumber(4, 2, 15.0);   // Sheet4!C5
+        othersheet.WriteNumber(5, 2, 12.0);   // Sheet4!C6
+        othersheet.WriteNumber(6, 2, 10.0);   // Sheet4!C7
+        othersheet.WriteNumber(2, 3, 20.0);   // Sheet4!D3
+        othersheet.WriteNumber(2, 4, 15.0);   // Sheet4!E3
+        othersheet.WriteNumber(2, 5, 12.0);   // Sheet4!F3
+        othersheet.WriteNumber(2, 6, 10.0);   // Sheet4!G3
       end;
 
       // Write the formula
@@ -561,6 +594,33 @@ begin
 end;
 
 { ---- }
+
+procedure TSpreadSingleFormulaTests.MatchColASC_BIFF8;
+begin                     //10,12,15,20,25
+  TestFormula('MATCH(12.5,Sheet4!C3:C7,1)', '2', ftkSortedNumbersASC, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.MatchColDESC_BIFF8;
+begin                     //25,20,15,12,10
+  TestFormula('MATCH(12.5,Sheet4!C3:C7,-1)', '3', ftkSortedNumbersDESC, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.MatchCol0_BIFF8;
+begin                   //10,12,15,20,25
+  TestFormula('MATCH(12,Sheet4!C3:C7,0)', '2', ftkSortedNumbersASC, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.MatchRowASC_BIFF8;
+begin
+  TestFormula('MATCH(12,Sheet4!C3:G3,1)', '2', ftkSortedNumbersASC, sfExcel8);
+end;
+
+procedure TSpreadSingleFormulaTests.MatchRowDESC_BIFF8;
+begin
+  TestFormula('MATCH(12,Sheet4!C3:G3,-1)', '4', ftkSortedNumbersDESC, sfExcel8);
+end;
+
+{ --- }
 
 procedure TSpreadSingleFormulaTests.NonExistantSheet_BIFF5;
 begin
@@ -942,9 +1002,9 @@ begin
   try
     book.Options := book.Options + [boAutoCalc];
     sheet := book.AddWorksheet('Test');
-    sheet.WriteText(0, 0, 'abc');  // A1 = 'abc'
+    sheet.WriteText(0, 0, 'abc');   // A1 = 'abc'
     sheet.WriteNumber(1, 0, 1.0);   // A2 = 1.0
-    sheet.WriteText(2, 0, '1');    // A2 = '1';
+    sheet.WriteText(2, 0, '1');     // A2 = '1';
     sheet.WriteFormula(0, 1, TestCases[ATest].Formula);
     s := sheet.ReadAsText(0, 1);
     CheckEquals(TestCases[ATest].Expected, s, 'Error value match, formula "' + sheet.ReadFormula(0, 1) + '"');

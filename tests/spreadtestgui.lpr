@@ -6,7 +6,6 @@ program spreadtestgui;
 
 uses
  {$IFDEF HEAPTRC}
-  //HeapTrc,
   SysUtils,
  {$ENDIF}
   Interfaces, Forms, GuiTestRunner, testsutility,

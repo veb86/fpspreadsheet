@@ -2468,7 +2468,7 @@ begin
       Result.DateSeparator := DateSeparator;
       Result.TimeSeparator := TimeSeparator;
       Result.ShortDateFormat := ShortDateFormat; //'yyyy/m/d';  // the parser returns single digits
-      Result.LongTimeFormat := LongTimeFormat; //'h:n:s';
+      Result.LongTimeFormat := LongTimeFormat;   //'h:n:s';
       Result.ShortTimeFormat := ShortTimeFormat; //'h:n';
     end;
 end;

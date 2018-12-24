@@ -27,8 +27,14 @@ uses
 {------------------------------------------------------------------------------}
 
 procedure fpsABS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(abs(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(abs(x));
 end;
 
 procedure fpsACOS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -36,6 +42,9 @@ var
   x: TsExprFloat;
 begin
   x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
   if InRange(x, -1, +1) then
     Result := FloatResult(arccos(x))
   else
@@ -47,8 +56,11 @@ var
   x: TsExprFloat;
 begin
   x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
   if x >= 1 then
-    Result := FloatResult(arccosh(ArgToFloat(Args[0])))
+    Result := FloatResult(arccosh(x))
   else
     Result := ErrorResult(errOverflow);
 end;
@@ -58,20 +70,35 @@ var
   x: TsExprFloat;
 begin
   x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
   if InRange(x, -1, +1) then
-    Result := FloatResult(arcsin(ArgToFloat(Args[0])))
+    Result := FloatResult(arcsin(x))
   else
     Result := ErrorResult(errOverflow);
 end;
 
 procedure fpsASINH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(arcsinh(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(arcsinh(x));
 end;
 
 procedure fpsATAN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(arctan(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(arctan(x));
 end;
 
 procedure fpsATANH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -79,8 +106,11 @@ var
   x: TsExprFloat;
 begin
   x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
   if (x > -1) and (x < +1) then
-    Result := FloatResult(arctanh(ArgToFloat(Args[0])))
+    Result := FloatResult(arctanh(x))
   else
     Result := ErrorResult(errOverflow);   // #NUM!
 end;
@@ -93,6 +123,9 @@ var
 begin
   num := ArgToFloat(Args[0]);
   sig := ArgToFloat(Args[1]);
+  if IsNaN(num) or IsNaN(sig) then
+    Result := ErrorResult(errWrongType)
+  else
   if sig = 0 then
     Result := ErrorResult(errDivideByZero)
   else
@@ -100,18 +133,36 @@ begin
 end;
 
 procedure fpsCOS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(cos(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(cos(x));
 end;
 
 procedure fpsCOSH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(cosh(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(cosh(x));
 end;
 
 procedure fpsDEGREES(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(RadToDeg(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(RadToDeg(x));
 end;
 
 procedure fpsEVEN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -124,6 +175,9 @@ var
 begin
   if Args[0].ResultType in [rtCell, rtInteger, rtFloat, rtDateTime, rtEmpty] then begin
     x := ArgToFloat(Args[0]);
+    if IsNaN(x) then
+      Result := ErrorResult(errWrongType)
+    else
     if x > 0 then
     begin
       n := Trunc(x) + 1;
@@ -142,8 +196,14 @@ begin
 end;
 
 procedure fpsEXP(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(exp(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(exp(x));
 end;
 
 procedure fpsFACT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -179,6 +239,9 @@ var
 begin
   num := ArgToFloat(Args[0]);
   sig := ArgToFloat(Args[1]);
+  if IsNaN(num) or IsNaN(sig) then
+    Result := ErrorResult(errWrongType)
+  else
   if sig = 0 then
     Result := ErrorResult(errDivideByZero)
   else
@@ -186,8 +249,14 @@ begin
 end;
 
 procedure fpsINT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(floor(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(floor(x));
 end;
 
 procedure fpsLN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -195,6 +264,9 @@ var
   x: TsExprFloat;
 begin
   x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
   if x > 0 then
     Result := FloatResult(ln(x))
   else
@@ -208,6 +280,11 @@ var
   base: TsExprFloat;
 begin
   x := ArgToFloat(Args[0]);
+  if IsNaN(x) then begin
+    Result := ErrorResult(errWrongType);
+    exit;
+  end;
+
   if x <= 0 then begin
     Result := ErrorResult(errOverflow);  // #NUM!
     exit;
@@ -221,6 +298,10 @@ begin
       exit;
     end;
     base := ArgToFloat(Args[1]);
+    if IsNaN(base) then begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
     if base < 0 then begin
       Result := ErrorResult(errOverflow);  // #NUM!
       exit;
@@ -236,6 +317,9 @@ var
   x: TsExprFloat;
 begin
   x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)    // #VALUE!
+  else
   if x > 0 then
     Result := FloatResult(log10(x))
   else
@@ -267,6 +351,9 @@ begin
   if Args[0].ResultType in [rtCell, rtInteger, rtFloat, rtDateTime, rtEmpty] then
   begin
     x := ArgToFloat(Args[0]);
+    if IsNaN(x) then
+      Result := ErrorResult(errWrongType)
+    else
     if x >= 0 then
     begin
       n := Trunc(x) + 1;
@@ -289,17 +376,30 @@ begin
 end;
 
 procedure fpsPOWER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x, y: TsExprFloat;
 begin
-  try
-    Result := FloatResult(Power(ArgToFloat(Args[0]), ArgToFloat(Args[1])));
-  except
-    Result := ErrorResult(errOverflow);
-  end;
+  x := ArgToFloat(Args[0]);
+  y := ArgToFloat(Args[1]);
+  if IsNaN(x) or IsNaN(y) then
+    Result := ErrorResult(errWrongType)
+  else
+    try
+      Result := FloatResult(Power(x, y));
+    except
+      Result := ErrorResult(errOverflow);
+    end;
 end;
 
 procedure fpsRADIANS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(DegToRad(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(DegToRad(x));
 end;
 
 procedure fpsRAND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -310,28 +410,54 @@ end;
 
 procedure fpsROUND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  x: Double;
+  x: TsExprFloat;
   n: Integer;
 begin
-  x := ArgToFloat(Args[0]);
-  n := Round(ArgToFloat(Args[1]));
-  Result := FloatResult(RoundTo(x, -n));
-    // -n because fpc and Excel have different conventions regarding the sign
+  x := ArgToFloat(Args[1]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else begin
+    n := Round(x);
+    x := ArgToFloat(Args[0]);
+    if IsNaN(x) then
+      Result := ErrorResult(errWrongType)
+    else
+      Result := FloatResult(RoundTo(x, -n));
+      // -n because fpc and Excel have different conventions regarding the sign
+  end;
 end;
 
 procedure fpsSIGN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(sign(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(sign(x));
 end;
 
 procedure fpsSIN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(sin(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(sin(x));
 end;
 
 procedure fpsSINH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(sinh(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(sinh(x));
 end;
 
 procedure fpsSQRT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -339,6 +465,9 @@ var
   x: TsExprFloat;
 begin
   x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
   if x >= 0 then
     Result := FloatResult(sqrt(x))
   else
@@ -350,15 +479,24 @@ var
   x: TsExprFloat;
 begin
   x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
   if frac(x / (pi*0.5)) = 0 then
     Result := ErrorResult(errOverflow)   // #NUM!
   else
-    Result := FloatResult(tan(ArgToFloat(Args[0])));
+    Result := FloatResult(tan(x));
 end;
 
 procedure fpsTANH(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
 begin
-  Result := FloatResult(tanh(ArgToFloat(Args[0])));
+  x := ArgToFloat(Args[0]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result := FloatResult(tanh(x));
 end;
 
 
@@ -1956,6 +2094,127 @@ begin
   Result.ResultType := rtHyperlink;
 end;
 
+procedure fpsMATCH(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
+{ MATCH( value, array, [match_type]
+   match_type = 1 (default): The MATCH function will find the largest value
+     that is less than or equal to value. You should be sure to sort your
+     array in ascending order.
+   match_type = 0: The MATCH function will find the first value that is equal to
+     value. The array can be sorted in any order.)
+   match_type = -1: The MATCH function will find the smallest value that is
+     greater than or equal to value. You should be sure to sort your array in
+     descending order. }
+var
+  match_type: Integer;
+  searchString: String;
+  numSearchValue: Double = 0.0;
+  r1,c1,r2,c2: Cardinal;
+  r, c: Integer;
+  IsCol: Boolean;
+  arg: TsExpressionResult;
+  sheet: TsWorksheet;
+  book: TsWorkbook;
+  f: TsRelFlags;
+
+  function Matches(ACell: PCell): Boolean;
+  var
+    cellval: Double;
+    s: String;
+
+    ok: boolean;
+  begin
+    Result := false;
+    if ACell = nil then exit;
+    if ACell^.ContentType = cctUTF8String then begin
+      s := ACell^.UTF8StringValue;
+      if IsWild(searchString, '*?', false) then
+        Result := FindPart(searchString, s) > 0
+        // NOTE: FindPart currently supports only the wildcard '?'
+      else
+        Result := SameStr(s, searchString);
+    end else
+    begin
+      case ACell^.ContentType of
+        cctNumber: cellval := ACell^.Numbervalue;
+        cctDateTime: cellval := ACell^.DateTimeValue;
+        cctBool: cellval := double(ord(ACell^.BoolValue));
+        cctError: cellval := double(ord(ACell^.ErrorValue));
+        cctEmpty: exit;
+      end;
+      case match_type of
+        1 : Result := cellval <= numSearchValue;
+        0 : Result := cellval = numSearchValue;
+       -1 : Result := cellval >= numSearchValue;
+      end;
+    end;
+    ok := result;
+  end;
+
+begin
+  Result := ErrorResult(errArgError);
+
+  if Length(Args) > 2 then
+    match_type := ArgToInt(Args[2])
+  else
+    match_type := 1;
+  if not ((match_type in [0, 1]) or (match_type = -1)) then
+    match_type := 1;
+
+  arg := Args[1];
+  if arg.ResultType <> rtCellRange then
+    exit;
+
+  if arg.ResCellRange.Sheet1 <> arg.ResCellRange.Sheet2 then
+    exit;
+
+  r1 := arg.ResCellRange.Row1;
+  r2 := arg.ResCellRange.Row2;
+  c1 := arg.ResCellRange.Col1;
+  c2 := arg.ResCellRange.Col2;
+
+  if r1=r2 then
+    IsCol := false
+  else
+  if c1=c2 then
+    IsCol := true
+  else begin
+    Result := ErrorResult(errArgError);
+    exit;
+  end;
+  sheet := arg.Worksheet as TsWorksheet;
+  book := sheet.Workbook as TsWorkbook;
+  sheet := book.GetWorksheetByIndex(arg.ResCellRange.Sheet1);
+
+  if Args[0].ResultType = rtString then
+    searchString := ArgToString(Args[0])
+  else begin
+    numSearchvalue := ArgToFloat(Args[0]);
+    if IsNaN(numSearchValue) then begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+  end;
+
+  if IsCol then
+  begin
+    for r := r2 downto r1 do
+      if Matches(sheet.FindCell(r, c1)) then begin
+        Result := IntegerResult(r - integer(r1) + 1);
+        exit;
+      end;
+  end else
+  begin
+    for c := c2 downto c1 do
+      if Matches(sheet.FindCell(r1, c)) then begin
+        Result := IntegerResult(c - Integer(c1) + 1);
+        exit;
+      end;
+  end;
+
+  // If the procedure gets here, not match has been found --> return error #N/A
+end;
+
 
 {------------------------------------------------------------------------------}
 {   Registration                                                               }
@@ -2085,6 +2344,7 @@ begin
     // Lookup / reference functions
     cat := bcLookup;
     AddFunction(cat, 'HYPERLINK', 'S', 'Ss',   INT_EXCEL_SHEET_FUNC_HYPERLINK,  @fpsHYPERLINK);
+    AddFunction(cat, 'MATCH',     'I', 'SRi',  INT_EXCEL_SHEET_FUNC_MATCH,      @fpsMATCH);
 
     (*
     AddFunction(cat, 'COLUMN',    'I', 'R',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
