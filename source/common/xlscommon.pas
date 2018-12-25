@@ -1191,7 +1191,7 @@ const
     $D0,$CF, $11,$E0, $A1,$B1, $1A,$E1);
 var
   P: Int64;
-  buf: packed array[0..7] of byte;
+  buf: packed array[0..7] of byte = (0, 0, 0, 0, 0, 0, 0, 0);
   n: Integer;
 begin
   Result := false;
@@ -2582,7 +2582,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.ReadRPNAttr(AStream: TStream; AIdentifier: Byte);
 var
-  nc: Integer;
+  nc: Int64;
 begin
   case AIdentifier of
     $01: AStream.ReadWord;     // tAttrVolatile token, skip
@@ -3027,7 +3027,7 @@ var
   rpnItem: PRPNItem;
   supported: boolean;
   dblVal: Double = 0.0;   // IEEE 8 byte floating point number
-  flags, flags2: TsRelFlags;
+  flags: TsRelFlags;
   r, c, r2, c2: Cardinal;
   dr, dc, dr2, dc2: Integer;
   fek: TFEKind;

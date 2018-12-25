@@ -2115,14 +2115,11 @@ var
   arg: TsExpressionResult;
   sheet: TsWorksheet;
   book: TsWorkbook;
-  f: TsRelFlags;
 
   function Matches(ACell: PCell): Boolean;
   var
     cellval: Double;
     s: String;
-
-    ok: boolean;
   begin
     Result := false;
     if ACell = nil then exit;
@@ -2148,7 +2145,6 @@ var
        -1 : Result := cellval >= numSearchValue;
       end;
     end;
-    ok := result;
   end;
 
 begin

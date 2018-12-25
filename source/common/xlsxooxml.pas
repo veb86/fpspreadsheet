@@ -4134,7 +4134,7 @@ var
   ext: String;
   img: TsImage;
   rId: Integer;
-  hlink, target, bookmark: String;
+  target, bookmark: String;
   u: TURI;
   sheet: TsWorksheet absolute AWorksheet;
 begin

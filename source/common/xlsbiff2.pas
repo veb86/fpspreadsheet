@@ -342,7 +342,7 @@ const
     $09,$00, $04,$00);  // they are common to all BIFF2 files that I've seen
 var
   P: Int64;
-  buf: packed array[0..3] of byte;
+  buf: packed array[0..3] of byte = (0, 0, 0, 0);
   n: Integer;
 begin
   Result := false;
@@ -1044,7 +1044,7 @@ begin
     $02: AStream.ReadByte;   // tAttrIF, not explicitely used
     $04: begin               // tAttrChoose, not supported
            nc := AStream.ReadByte;
-           AStream.Position := AStream.Position + 2*nc + 1;
+           AStream.Position := AStream.Position + 2*Int64(nc) + 1;
          end;
     $08: AStream.ReadByte;   // tAttrSkip, data not used
     $10: AStream.ReadByte;   // tAttrSum, to be processed by ReadRPNTokenArray, byte not used

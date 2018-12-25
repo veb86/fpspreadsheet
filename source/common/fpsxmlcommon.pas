@@ -419,7 +419,7 @@ const
   ZIP_HEADER: packed array[0..1] of char = ('P', 'K');
 var
   P: Int64;
-  buf: packed array[0..1] of char;
+  buf: packed array[0..1] of char = (#0, #0);
 begin
   Result := false;
   P := AStream.Position;

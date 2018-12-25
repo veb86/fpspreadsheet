@@ -363,6 +363,7 @@ end;
 -------------------------------------------------------------------------------}
 class function TsCustomSpreadReader.CheckFileFormat(AStream: TStream): boolean;
 begin
+  Unused(AStream);
   Result := true;
 end;
 
@@ -371,6 +372,7 @@ end;
 -------------------------------------------------------------------------------}
 class function TsCustomSpreadReader.CheckFileFormatDetails(AStream: TStream): Boolean;
 begin
+  Unused(AStream);
   Result := true;
 end;
 

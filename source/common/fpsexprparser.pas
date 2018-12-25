@@ -4310,8 +4310,8 @@ begin
       exit;
     end;
     for formula in sheet.Formulas do
-      if (formula^.Row >= r[1]) and (formula^.Row <= r[2]) and
-         (formula^.Col >= c[1]) and (formula^.Col <= c[2])
+      if (Integer(formula^.Row) >= r[1]) and (Integer(formula^.Row) <= r[2]) and
+         (Integer(formula^.Col) >= c[1]) and (Integer(formula^.Col) <= c[2])
       then
         case formula^.CalcState of
           csNotCalculated:
