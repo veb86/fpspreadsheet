@@ -132,6 +132,7 @@ type
     FRefocusingSelStart: Integer;
     FFormulaError: Boolean;
     FFixedColWidth: Integer;
+    FShowFormulas: Boolean;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
@@ -225,6 +226,7 @@ type
     procedure SetReadFormulas(AValue: Boolean);
     procedure SetRowHeights(ARow: Integer; AValue: Integer);
     procedure SetSelPen(AValue: TsSelPen);
+    procedure SetShowFormulas(AValue: Boolean);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
     procedure SetTextRotation(ACol, ARow: Integer; AValue: TsTextRotation);
@@ -363,6 +365,8 @@ type
     property ReadFormulas: Boolean read FReadFormulas write SetReadFormulas;
     {@@ Pen used for drawing the selection rectangle }
     property SelectionPen: TsSelPen read FSelPen write SetSelPen;
+    {@@ Shows/hides formulas in grid when AutoCalc is off}
+    property ShowFormulas: Boolean read FShowFormulas write SetShowFormulas default false;
     {@@ Shows/hides vertical and horizontal grid lines }
     property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
@@ -635,6 +639,8 @@ type
     property ReadFormulas;
     {@@ Pen used for drawing the selection rectangle }
     property SelectionPen;
+    {@@ Shows/hides formulas in grid cells when AutoCalc is offl }
+    property ShowFormulas;
     {@@ Shows/hides vertical and horizontal grid lines. }
     property ShowGridLines;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
@@ -3921,7 +3927,7 @@ begin
     cell := Worksheet.FindCell(r, c);
     if cell <> nil then
     begin
-      if HasFormula(cell) and  not (boAutoCalc in Workbook.Options) then
+      if HasFormula(cell) and  not (boAutoCalc in Workbook.Options) and FShowFormulas then
         Result := '=' + Worksheet.ReadFormula(cell)
       else
       if ATrim then
@@ -6851,6 +6857,15 @@ end;
 procedure TsCustomWorksheetGrid.SetSelPen(AValue: TsSelPen);
 begin
   FSelPen.Assign(AValue);
+  InvalidateGrid;
+end;
+
+{ Shows / hides formulas in the grid when AutoCalc is off }
+procedure TsCustomWorksheetGrid.SetShowFormulas(AValue: Boolean);
+begin
+  if AValue = FShowFormulas then
+    exit;
+  FShowFormulas := AValue;
   InvalidateGrid;
 end;
 
