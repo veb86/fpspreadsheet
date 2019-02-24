@@ -561,6 +561,8 @@ type
       AToolTip: String = '');
 
     { Charts }
+    function GetChartByIndex(AIndex: Integer): TsChart;
+    function GetChartCount: Integer;
     function WriteChart(ARow, ACol: Cardinal; AWidth, AHeight: Double;
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): Integer;
 
@@ -661,6 +663,9 @@ type
   {@@ Event procedure containing a specific worksheet }
   TsWorksheetEvent = procedure (Sender: TObject; ASheet: TsWorksheet) of object;
 
+  {@@ Event procedure containing a specific workbook }
+  TsWorkbookEvent = procedure (Sender: TsWorkbook) of object;
+
   {@@ Event procedure called when a worksheet is removed. ASheetIndex = -1 --> all sheets }
   TsRemoveWorksheetEvent = procedure (Sender: TObject; ASheetIndex: Integer) of object;
 
@@ -684,6 +689,7 @@ type
     FRebuildFormulaLock: Integer;
     FActiveWorksheet: TsWorksheet;
     FOnOpenWorkbook: TNotifyEvent;
+    FOnCalcWorkbook: TsWorkbookEvent;
     FOnChangeWorksheet: TsWorksheetEvent;
     FOnRenameWorksheet: TsWorksheetEvent;
     FOnAddWorksheet: TsWorksheetEvent;
@@ -872,6 +878,9 @@ type
       not encorporated in a spreadsheet, they are just passed through to the
       event handler for processing. Requires option boVirtualMode to be set. }
     property OnReadCellData: TsWorkbookReadCellDataEvent read FOnReadCellData write FOnReadCellData;
+    {@@ This event is fired when the workbook is recalculated. It allows to
+      replace the calculation strategy. }
+    property OnCalcWorkbook: TsWorkbookEvent read FOnCalcWorkbook write FOnCalcWorkbook;
   end;
 
 procedure CopyCellFormat(AFromCell, AToCell: PCell);
@@ -883,7 +892,7 @@ implementation
 
 uses
   Math, StrUtils, DateUtils, TypInfo, lazutf8, lazFileUtils, URIParser,
-  uvirtuallayer_ole, {%H-}fpsPatches, fpsStrings, fpsUtils, fpsHTMLUtils,
+  {%H-}fpsPatches, fpsStrings, fpsUtils, fpsHTMLUtils,
   fpsReaderWriter, fpsCurrency;
 
 (*
@@ -1334,7 +1343,7 @@ procedure TsWorksheet.CalcFormulas;
 begin
   Workbook.CalcFormulas;
   // To do: Determine whether the worksheet has in- and out-going links
-  // to others sheets. If not call the faster "CalcShee".
+  // to others sheets. If not call the faster "CalcSheet".
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3741,6 +3750,25 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns the chart having the given index in the worksheet's chart list
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetChartByIndex(AIndex: Integer): TsChart;
+begin
+  if (AIndex >= 0) and (AIndex < FCharts.Count) then
+    Result := FCharts[AIndex]
+  else
+    Result := nil;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the number of charts embedded on this sheet
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetChartCount: Integer;
+begin
+  Result := FCharts.Count;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Creates a chart object with its top/left corner in the specified row/colum and
   having the specified width. Inserts the chart in the FCharts list of the
   worksheet and returns its index.
@@ -3751,6 +3779,7 @@ var
   chart: TsChart;
 begin
   chart := TsChart.Create;
+  chart.SheetIndex := (FWorkbook as TsWorkbook).GetWorksheetIndex(self);
   chart.Row := ARow;
   chart.Col := ACol;
   chart.OffsetX := AOffsetX;
@@ -9886,7 +9915,9 @@ end;
   2. Formulas are calculated. If referenced formulas are found as being
      "not calculated" they are calculated and then tagged as "calculated".
   This results in an iterative calculation procedure. In the end, all formulas
-  are calculated.
+  are calculated. This strategy is often very ineffective because it
+  unnecessarily recalculates formulas. You can provide a different algorithm in
+  the OnCalcWorkbook event.
 -------------------------------------------------------------------------------}
 procedure TsWorkbook.CalcFormulas;
 var
@@ -9899,6 +9930,12 @@ begin
 
   inc(FCalculationLock);
   try
+    if Assigned(FOnCalcWorkbook) then
+    begin
+      FOnCalcWorkbook(self);
+      exit;
+    end;
+
     // Step1 - mark all formulas as "not calculated"
     for p in FWorksheets do begin
       sheet := TsWorksheet(p);
@@ -10397,6 +10434,7 @@ begin
     TsEmbeddedObj(FEmbeddedObjList[i]).Free;
   FEmbeddedObjList.Clear;
 end;
+
 
                            (*
 {@@ ----------------------------------------------------------------------------
