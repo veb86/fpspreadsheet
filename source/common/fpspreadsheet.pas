@@ -383,6 +383,7 @@ type
     procedure CalcSheet;
     function ConvertFormulaDialect(ACell: PCell; ADialect: TsFormulaDialect): String;
     function ConvertRPNFormulaToStringFormula(const AFormula: TsRPNFormula): String;
+    function GetFormula(ACell: PCell): PsFormula;
 
     { Data manipulation methods - For Cells }
     procedure CopyCell(AFromCell, AToCell: PCell); overload;
@@ -3053,6 +3054,15 @@ begin
   finally
     parser.Free;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns a pointer to the formula record assigned to a cell, or nil if the
+  cell has no formula
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetFormula(ACell: PCell): PsFormula;
+begin
+  Result := FFormulas.FindFormula(ACell);
 end;
 
 {@@ ----------------------------------------------------------------------------
