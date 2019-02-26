@@ -3531,9 +3531,10 @@ var
   LRes, RRes: TsExpressionResult;
   fL, fR: TsExprFloat;
 begin
+  {
   if HasError(AResult) then
     exit;
-
+  }
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
@@ -3567,9 +3568,10 @@ var
   lRes, RRes: TsExpressionResult;
   fL, fR: TsExprFloat;
 begin
+  {
   if HasError(AResult) then
     exit;
-
+  }
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
@@ -3603,9 +3605,10 @@ var
   LRes, RRes: TsExpressionResult;
   fL, fR: TsExprFloat;
 begin
+  {
   if HasError(AResult) then
     exit;
-
+  }
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
   fL := ArgToFloat(LRes);
@@ -3642,9 +3645,10 @@ var
   LRes, RRes: TsExpressionResult;
   fL, fR: TsExprFloat;
 begin
+  {
   if HasError(AResult) then
     exit;
-
+  }
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
 
@@ -3690,9 +3694,10 @@ var
   LRes, RRes: TsExpressionResult;
   fL, fR: TsExprFloat;
 begin
+  {
   if HasError(AResult) then
     exit;
-
+  }
   Left.GetNodeValue(LRes);
   Right.GetNodeValue(RRes);
   fL := ArgToFloat(LRes);
@@ -4469,6 +4474,7 @@ begin
     rtBoolean   : if Arg.ResBoolean then Result := 1.0;
     rtString,
     rtHyperlink : TryStrToFloat(ArgToString(Arg), Result);
+    rtError     : Result := NaN;
     rtCell      : begin
                     cell := ArgToCell(Arg);
                     if Assigned(cell) then
@@ -4486,8 +4492,10 @@ begin
                             if not TryStrToFloat(s, Result, fs) then
                               Result := NaN;
                           end;
+                        cctError:
+                          Result := NaN;
                        end;
-                   end;
+                  end;
   end;
 end;
 
