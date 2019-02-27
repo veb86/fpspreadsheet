@@ -5839,7 +5839,7 @@ end;
 procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: string;
   ALocalized: Boolean = false);
 var
-  parser: TsExpressionParser;
+  parser: TsExpressionParser = nil;
   formula: PsFormula;
 begin
   if ACell = nil then
@@ -5852,6 +5852,7 @@ begin
   end;
 
   formula := FFormulas.AddFormula(ACell^.Row, ACell^.Col, AFormula);
+  // wp: Why is this created when boIgnoreFormulas is active?
 
   if not (boIgnoreFormulas in Workbook.Options) then
   begin
@@ -5860,11 +5861,26 @@ begin
       AFormula := Copy(AFormula, 2, Length(AFormula));
 
     parser := TsSpreadsheetParser.Create(self);
-    if ALocalized then
-      parser.LocalizedExpression[Workbook.FormatSettings] := AFormula
-    else
-      parser.Expression := AFormula;
-    AFormula := parser.Expression;
+    try
+      if ALocalized then
+        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula
+      else
+        parser.Expression := AFormula;
+      AFormula := parser.Expression;
+    except
+      on E:Exception do begin
+        if FWorkbook.FReadWriteFlag = rwfNormal then
+          raise
+        else begin
+          FWorkbook.AddErrorMsg('Formula error in cell "%s!%s": %s', [
+            FName, GetCellString(ACell^.Row, ACell^.Col), E.Message]
+          );
+          parser.Free;
+          FFormulas.DeleteFormula(ACell^.Row, ACell^.Col);
+          exit;
+        end;
+      end;
+    end;
 
     if parser.Has3DLinks then
       ACell.Flags := ACell.Flags + [cf3dFormula]
