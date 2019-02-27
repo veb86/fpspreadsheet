@@ -364,7 +364,7 @@ end;
 class function TsCustomSpreadReader.CheckFileFormat(AStream: TStream): boolean;
 begin
   Unused(AStream);
-  Result := true;
+  Result := not HasZipHeader(AStream);
 end;
 
 {@@ ----------------------------------------------------------------------------

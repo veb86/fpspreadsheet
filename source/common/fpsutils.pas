@@ -212,6 +212,7 @@ procedure InitHeaderFooterImageRecord(out AImage: TsHeaderFooterImage);
 //procedure CopyCellValue(AFromCell, AToCell: PCell);
 function HasFormula(ACell: PCell): Boolean;
 function Has3dFormula(ACell: PCell): Boolean;
+function HasZipHeader(AStream: TStream): Boolean;
 function SameCellBorders(AFormat1, AFormat2: PsCellFormat): Boolean;
 function SameFont(AFont1, AFont2: TsFont): Boolean; overload;
 function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
@@ -2552,6 +2553,29 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Returns true if the file begins with a ZIP header *PK'#03#04.
+  Needed for file format detection.
+-------------------------------------------------------------------------------}
+function HasZipHeader(AStream: TStream): Boolean;
+const
+  ZIP_HEADER: packed array[0..3] of char = ('P', 'K', #03, #04);
+var
+  P: Int64;
+  buf: packed array[0..3] of char = (#0, #0, #0, #0);
+begin
+  Result := false;
+  P := AStream.Position;
+  try
+    AStream.Position := 0;
+    if AStream.Read(buf, 4) < 4 then
+      exit;
+    Result := CompareMem(@buf[0], @ZIP_HEADER[0], 4);
+  finally
+    AStream.Position := P;
+  end;
+end;
+
+{-------------------------------------------------------------------------------
   Checks whether two format records have same border attributes
 
   @param  AFormat1  Pointer to the first one of the two format records to be compared
