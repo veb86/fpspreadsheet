@@ -2076,6 +2076,24 @@ end;
 {    Builtin lookup/reference functions                                        }
 {------------------------------------------------------------------------------}
 
+procedure fpsCOLUMN(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
+{ COLUMN( [reference] )
+  Returns the column number of a cell reference (starting at 1!)
+  "reference" is a reference to a cell or range of cells.
+  If omitted, it is assumed that the reference is the cell address in which the
+  COLUMN function has been entered in. }
+begin
+  Result := ErrorResult(errArgError);
+  if Length(Args) = 0 then
+    exit;  // We don't know here which cell contains the formula.
+  case Args[0].ResultType of
+    rtCell     : Result := IntegerResult(Args[0].ResCol + 1);
+    rtCellRange: Result := IntegerResult(Args[0].ResCellRange.Col1 + 1);
+    else         Result := ErrorResult(errWrongType);
+  end;
+end;
+
 procedure fpsHYPERLINK(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
 begin
@@ -2211,6 +2229,24 @@ begin
   // If the procedure gets here, not match has been found --> return error #N/A
 end;
 
+procedure fpsROW(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
+{ ROW( [reference] )
+  Returns the row number of a cell reference (starting at 1!)
+  "reference" is a reference to a cell or range of cells.
+  If omitted, it is assumed that the reference is the cell address in which the
+  ROW function has been entered in. }
+begin
+  Result := ErrorResult(errArgError);
+  if Length(Args) = 0 then
+    exit;  // We don't know here which cell contains the formula.
+  case Args[0].ResultType of
+    rtCell     : Result := IntegerResult(Args[0].ResRow + 1);
+    rtCellRange: Result := IntegerResult(Args[0].ResCellRange.Row1 + 1);
+    else         Result := ErrorResult(errWrongType);
+  end;
+end;
+
 
 {------------------------------------------------------------------------------}
 {   Registration                                                               }
@@ -2339,8 +2375,10 @@ begin
 
     // Lookup / reference functions
     cat := bcLookup;
+    AddFunction(cat, 'COLUMN',    'I', 'r',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
     AddFunction(cat, 'HYPERLINK', 'S', 'Ss',   INT_EXCEL_SHEET_FUNC_HYPERLINK,  @fpsHYPERLINK);
     AddFunction(cat, 'MATCH',     'I', 'SRi',  INT_EXCEL_SHEET_FUNC_MATCH,      @fpsMATCH);
+    AddFunction(cat, 'ROW',       'I', 'r',    INT_EXCEL_SHEET_FUNC_ROW,        @fpsROW);
 
     (*
     AddFunction(cat, 'COLUMN',    'I', 'R',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
@@ -2351,28 +2389,8 @@ end;
 
 
 { Lookup / reference functions }
-  (*
-function fpsCOLUMN(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ COLUMN( [reference] )
-  Returns the column number of a cell reference (starting at 1).
-  "reference" is a reference to a cell or range of cells.
-  If omitted, it is assumed that the reference is the cell address in which the
-  COLUMN function has been entered in. }
-var
-  arg: TsArgument;
-begin
-  if NumArgs = 0 then
-    Result := CreateErrorArg(errArgError);
-    // We don't know here which cell contains the formula.
 
-  arg := Args.Pop;
-  case arg.ArgumentType of
-    atCell     : Result := CreateNumberArg(arg.Cell^.Col + 1);
-    atCellRange: Result := CreateNumberArg(arg.FirstCol + 1);
-    else         Result := CreateErrorArg(errWrongType);
-  end;
-end;
-
+(*
 function fpsCOLUMNS(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
 { COLUMNS( [reference] )
   returns the number of column in a cell reference. }
@@ -2384,27 +2402,6 @@ begin
   case arg.ArgumentType of
     atCell     : Result := CreateNumberArg(1);
     atCellRange: Result := CreateNumberArg(arg.LastCol - arg.FirstCol + 1);
-    else         Result := CreateErrorArg(errWrongType);
-  end;
-end;
-
-function fpsROW(Args: TsArgumentStack; NumArgs: Integer): TsArgument;
-{ ROW( [reference] )
-  Returns the row number of a cell reference (starting at 1!)
-  "reference" is a reference to a cell or range of cells.
-  If omitted, it is assumed that the reference is the cell address in which the
-  ROW function has been entered in. }
-var
-  arg: TsArgument;
-begin
-  if NumArgs = 0 then
-    Result := CreateErrorArg(errArgError);
-    // We don't know here which cell contains the formula.
-
-  arg := Args.Pop;
-  case arg.ArgumentType of
-    atCell     : Result := CreateNumberArg(arg.Cell^.Row + 1);
-    atCellRange: Result := CreateNumberArg(arg.FirstRow + 1);
     else         Result := CreateErrorArg(errWrongType);
   end;
 end;
