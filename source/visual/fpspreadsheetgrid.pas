@@ -350,7 +350,7 @@ type
     property EditorLineMode: TsEditorLineMode read FLineMode write SetEditorLineMode
       default elmSingleLine;
     {@@ Width of the fixed row header column. 0 = auto width detection }
-    property FixedColWidth: Integer read GetFixedColWidth
+    property FixedColWidth: Integer read FFixedColWidth
       write SetFixedColWidth default 0;
     {@@ This number of columns at the left is "frozen", i.e. it is not possible to
         scroll these columns }
@@ -1316,6 +1316,7 @@ begin
 
   FDefRowHeight100 := inherited GetDefaultRowHeight;
   FDefColWidth100 := inherited DefaultColWidth;
+  FFixedColWidth := 0;
 
   FCellFont := TFont.Create;
   FSelPen := TsSelPen.Create;
