@@ -1499,6 +1499,8 @@ end;
 procedure TsCustomWorksheetGrid.BeginUpdate;
 begin
   inc(FLockCount);
+  Workbook.DisableNotifications;
+  Workbook.LockFormulas;
   inherited BeginUpdate;
 end;
 
@@ -3357,6 +3359,8 @@ end;
 procedure TsCustomWorksheetGrid.EndUpdate(ARefresh: Boolean = true);
 begin
   inherited EndUpdate(false);
+  Workbook.UnlockFormulas;
+  Workbook.EnableNotifications;
   dec(FLockCount);
   if (FLockCount = 0) and ARefresh then
     VisualChange;
@@ -6627,9 +6631,13 @@ begin
       Worksheet.WriteFormula(r, c, Copy(s, 2, Length(s)), true)
     else
     begin
-      cell := Worksheet.GetCell(r, c);
-      HTMLToRichText(Workbook, Worksheet.ReadCellFont(cell), s, plain, rtParams);
-      Worksheet.WriteText(cell, plain, rtParams);  // This will erase a non-formatted cell if s = ''
+      if cell = nil then cell := Worksheet.GetCell(r, c);
+      if s = '' then
+        Worksheet.WriteBlank(cell)
+      else begin
+        HTMLToRichText(Workbook, Worksheet.ReadCellFont(cell), s, plain, rtParams);
+        Worksheet.WriteText(cell, plain, rtParams);  // This will erase a non-formatted cell if s = ''
+      end;
     end;
   end else
   if VarIsType(AValue, varDate) then
