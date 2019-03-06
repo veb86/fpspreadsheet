@@ -6243,8 +6243,7 @@ begin
   if ACell = nil then
     exit;
 
-  if (AFontIndex < 0) or (AFontIndex >= Workbook.GetFontCount) or (AFontIndex = 4) then
-    // note: Font index 4 is not defined in BIFF
+  if (AFontIndex < 0) or (AFontIndex >= Workbook.GetFontCount) then
     raise EFPSpreadsheet.Create(rsInvalidFontIndex);
 
   fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
