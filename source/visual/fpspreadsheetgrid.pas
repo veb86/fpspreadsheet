@@ -4662,10 +4662,12 @@ begin
     VK_F2:
       FEnhEditMode := true;
     VK_DELETE:
-      if (ssCtrl in Shift) then
-        Worksheet.DeleteSelection
-      else
-        Worksheet.EraseSelection(true);
+      if not FReadOnly then begin
+        if (ssCtrl in Shift) then
+          Worksheet.DeleteSelection
+        else
+          Worksheet.EraseSelection(true);
+      end;
   end;
 
   inherited;
