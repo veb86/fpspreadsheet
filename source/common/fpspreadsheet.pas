@@ -1031,7 +1031,6 @@ begin
         fmt.NumberFormatIndex := destSheet.Workbook.AddNumberFormat(nfs);
       end;
     end;
-
     destSheet.WriteCellFormat(AToCell, fmt);
   end;
 end;
