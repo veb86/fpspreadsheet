@@ -1277,17 +1277,26 @@ begin
     nodename := node.NodeName;
     if (nodename = 'definedName') or (nodename = 'x:definedName') then
     begin
+      id := -1;
+      sheet := nil;
       localSheetID := GetAttrValue(node, 'localSheetId');
-      if (localSheetID = '') or not TryStrToInt(localSheetID, id) then
-      begin
-        FWorkbook.AddErrorMsg('no/invalid localID in "definedName" node');
-        node := node.NextSibling;
-        Continue;
+      if (localSheetID <> '') then begin
+        if not TryStrToInt(localSheetID, id) then
+        begin
+          FWorkbook.AddErrorMsg('Invalid localSheetID in "definedName" node');
+          node := node.NextSibling;
+          Continue;
+        end;
+        sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(id);
       end;
+
       namestr := GetAttrValue(node, 'name');
-      sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(id);
       if namestr = '_xlnm.Print_Area' then
       begin
+        if sheet = nil then begin
+          FWorkbook.AddErrorMsg('No localSheetID found for defined name "_xlnm.Print_Area"');
+          continue;
+        end;
         L := TStringList.Create;
         try
           L.Delimiter := ',';
@@ -1295,7 +1304,6 @@ begin
           L.DelimitedText := GetNodeValue(node);
           for j:=0 to L.Count-1 do
           begin
-            //s := ReplaceStr(L[j], '''', '');   // wp: replaced by next line because of Laz 1.0
             s := StringReplace(L[j], '''', '', [rfReplaceAll]);
             p := pos(':', s);
             if p = 0 then
@@ -1313,6 +1321,10 @@ begin
       end else
       if nameStr = '_xlnm.Print_Titles' then
       begin
+        if sheet = nil then begin
+          FWorkbook.AddErrorMsg('No localSheetID found for defined name "_xlnm.Print_Titles"');
+          continue;
+        end;
         L := TStringList.Create;
         try
           L.Delimiter := ',';
