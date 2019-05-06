@@ -124,6 +124,7 @@ type
     FCommentLen: Integer;
     FBiff8ExternBooks: TsBiff8ExternBookList;
     FBiff8ExternSheetArray: array of TsBiff8ExternSheet;
+    procedure FreeSharedStringTable;
     function ReadString(const AStream: TStream; const ALength: Word;
       out ARichTextParams: TsRichTextParams): String;
     function ReadUnformattedWideString(const AStream: TStream;
@@ -786,8 +787,8 @@ begin
   SetLength(FBiff8ExternSheetArray, 0);
   FBiff8ExternBooks.Free;
 
-  { Destroy shared string table }
-  FSharedStringTable.Free;
+  { Destroy shared string table, as well as associated rich-text streams}
+  FreeSharedStringTable;
 
   { Destroy comment list }
   FCommentList.Free;
@@ -811,6 +812,19 @@ begin
   finally
     fsOLE.Free;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Frees the shared string table. Also: destroys the rich-text memory streams
+  which can be assigned to string table items.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Reader.FreeSharedStringTable;
+var
+  j: Integer;
+begin
+  for j := 0 to FSharedStringTable.Count-1 do
+    TObject(FSharedStringTable.Objects[j]).Free;
+  FreeAndNil(FSharedStringTable);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1122,8 +1136,7 @@ begin
     then FCommentList := TObjectList.Create
     else FCommentList.Clear;
 
-  if Assigned(FSharedStringTable) then
-    FreeAndNil(FSharedStringTable);
+  FreeSharedStringTable;
 
   while (not SectionEOF) do begin
     { Read the record header }
