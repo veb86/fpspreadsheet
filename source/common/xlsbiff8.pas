@@ -816,15 +816,17 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Frees the shared string table. Also: destroys the rich-text memory streams
-  which can be assigned to string table items.
+  which may be assigned to string table items.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFF8Reader.FreeSharedStringTable;
 var
   j: Integer;
 begin
-  for j := 0 to FSharedStringTable.Count-1 do
-    TObject(FSharedStringTable.Objects[j]).Free;
-  FreeAndNil(FSharedStringTable);
+  if FSharedStringTable <> nil then begin
+    for j := 0 to FSharedStringTable.Count-1 do
+      TObject(FSharedStringTable.Objects[j]).Free;
+    FreeAndNil(FSharedStringTable);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
