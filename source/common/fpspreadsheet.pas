@@ -123,8 +123,6 @@ type
 
     // Sorting
     function DoCompareCells(AColRow1, AColRow2: Cardinal): Integer;
-    function DoInternalCompareCells(ACell1, ACell2: PCell;
-      ASortOptions: TsSortOptions): Integer;
     procedure DoExchangeColRow(AIsColumn: Boolean; AIndex, WithIndex: Cardinal;
       AFromIndex, AToIndex: Cardinal);
     procedure ExchangeCells(ARow1, ACol1, ARow2, ACol2: Cardinal);
@@ -484,6 +482,8 @@ type
       AColWidthType: TsColWidthType = cwtCustom); overload; deprecated 'Use version with parameter AUnits';
 
     // Sorting
+    function DefaultCompareCells(ACell1, ACell2: PCell;
+      ASortOptions: TsSortOptions): Integer;
     procedure Sort(const ASortParams: TsSortParams;
       ARowFrom, AColFrom, ARowTo, AColTo: Cardinal); overload;
     procedure Sort(ASortParams: TsSortParams; ARange: String); overload;
@@ -4299,7 +4299,10 @@ begin
       cell1 := FindCell(FSortParams.Keys[key].ColRowIndex, AColRow1);
       cell2 := FindCell(FSortParams.Keys[key].ColRowIndex, AColRow2);
     end;
-    Result := DoInternalCompareCells(cell1, cell2, FSortParams.Keys[key].Options);
+    if Assigned(OnCompareCells) then
+      OnCompareCells(Self, cell1, cell2, Result)
+    else
+      Result := DefaultCompareCells(cell1, cell2, FSortParams.Keys[key].Options);
     inc(key);
   end;
 end;
@@ -4323,7 +4326,7 @@ end;
             Empty cells are always at the end (in both ascending and descending
             order)
 -------------------------------------------------------------------------------}
-function TsWorksheet.DoInternalCompareCells(ACell1, ACell2: PCell;
+function TsWorksheet.DefaultCompareCells(ACell1, ACell2: PCell;
   ASortOptions: TsSortOptions): Integer;
 // Sort priority in Excel:
 // numbers < alpha < blank (ascending)
@@ -4331,59 +4334,51 @@ function TsWorksheet.DoInternalCompareCells(ACell1, ACell2: PCell;
 var
   number1, number2: Double;
 begin
-  result := 0;
-  if Assigned(OnCompareCells) then
-    OnCompareCells(Self, ACell1, ACell2, Result)
+  Result := 0;
+
+  if (ACell1 = nil) and (ACell2 = nil) then
+    Result := 0
+  else
+  if (ACell1 <> nil) and (ACell1^.ContentType = cctEmpty) and
+     (ACell2 <> nil) and (ACell2^.ContentType = cctEmpty)
+  then
+    Result := 0
+  else
+  if (ACell1 = nil) or (ACell1^.ContentType = cctEmpty) then
+  begin
+    Result := +1;   // Empty cells go to the end
+    exit;           // Avoid SortOrder to bring the empty cell to the top!
+  end else
+  if (ACell2 = nil) or (ACell2^.ContentType = cctEmpty) then
+  begin
+    Result := -1;   // Empty cells go to the end
+    exit;           // Avoid SortOrder to bring the empty cell to the top!
+  end else
+  if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
+  begin
+    if ssoCaseInsensitive in ASortOptions then
+      Result := UTF8CompareText(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue)
+    else
+      Result := UTF8CompareStr(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue);
+  end else
+  if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType <> cctUTF8String) then
+    case FSortParams.Priority of
+      spNumAlpha: Result := +1;  // numbers before text
+      spAlphaNum: Result := -1;  // text before numbers
+    end
+  else
+  if (ACell1^.ContentType <> cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
+    case FSortParams.Priority of
+      spNumAlpha: Result := -1;
+      spAlphaNum: Result := +1;
+    end
   else
   begin
-    if (ACell1 = nil) and (ACell2 = nil) then
-      Result := 0
-    else
-    if (ACell1 <> nil) and (ACell1^.ContentType = cctEmpty) and
-       (ACell2 <> nil) and (ACell2^.ContentType = cctEmpty)
-    then
-      Result := 0
-    else
-    if (ACell1 = nil) or (ACell1^.ContentType = cctEmpty) then
-    begin
-      Result := +1;   // Empty cells go to the end
-      exit;           // Avoid SortOrder to bring the empty cell to the top!
-    end else
-    if (ACell2 = nil) or (ACell2^.ContentType = cctEmpty) then
-    begin
-      Result := -1;   // Empty cells go to the end
-      exit;           // Avoid SortOrder to bring the empty cell to the top!
-    end else
-    {
-    if (ACell1^.ContentType = cctEmpty) and (ACell2^.ContentType = cctEmpty) then
-      Result := 0
-    else
-    }
-    if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
-    begin
-      if ssoCaseInsensitive in ASortOptions then
-        Result := UTF8CompareText(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue)
-      else
-        Result := UTF8CompareStr(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue);
-    end else
-    if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType <> cctUTF8String) then
-      case FSortParams.Priority of
-        spNumAlpha: Result := +1;  // numbers before text
-        spAlphaNum: Result := -1;  // text before numbers
-      end
-    else
-    if (ACell1^.ContentType <> cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
-      case FSortParams.Priority of
-        spNumAlpha: Result := -1;
-        spAlphaNum: Result := +1;
-      end
-    else
-    begin
-      ReadNumericValue(ACell1, number1);
-      ReadNumericValue(ACell2, number2);
-      Result := CompareValue(number1, number2);
-    end;
+    ReadNumericValue(ACell1, number1);
+    ReadNumericValue(ACell2, number2);
+    Result := CompareValue(number1, number2);
   end;
+
   if ssoDescending in ASortOptions then
     Result := -Result;
 end;
