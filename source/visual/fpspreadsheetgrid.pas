@@ -324,7 +324,6 @@ type
     function  SelectCell(ACol, ARow: Integer): Boolean; override;
     procedure SetEditText(ACol, ARow: Longint; const AValue: string); override;
     procedure Setup;
-    procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
     function ToPixels(AValue: Double): Integer;
     procedure TopLeftChanged; override;
     function TrimToCell(ACell: PCell): String;
@@ -434,6 +433,8 @@ type
     procedure ShowCellBorders(ALeft, ATop, ARight, ABottom: Integer;
       const ALeftOuterStyle, ATopOuterStyle, ARightOuterStyle, ABottomOuterStyle,
       AHorInnerStyle, AVertInnerStyle: TsCellBorderStyle);
+
+    procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
 
     { Row height / col width calculation }
     procedure UpdateColWidth(ACol: Integer);
@@ -5568,6 +5569,7 @@ begin
       0, AIndxFrom-HeaderCount, Worksheet.GetLastRowIndex, AIndxTo-HeaderCount
     );
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Converts a coordinate given in workbook units to pixels using the current

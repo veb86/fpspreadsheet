@@ -4339,6 +4339,11 @@ begin
     if (ACell1 = nil) and (ACell2 = nil) then
       Result := 0
     else
+    if (ACell1 <> nil) and (ACell1^.ContentType = cctEmpty) and
+       (ACell2 <> nil) and (ACell2^.ContentType = cctEmpty)
+    then
+      Result := 0
+    else
     if (ACell1 = nil) or (ACell1^.ContentType = cctEmpty) then
     begin
       Result := +1;   // Empty cells go to the end
@@ -4349,9 +4354,11 @@ begin
       Result := -1;   // Empty cells go to the end
       exit;           // Avoid SortOrder to bring the empty cell to the top!
     end else
+    {
     if (ACell1^.ContentType = cctEmpty) and (ACell2^.ContentType = cctEmpty) then
       Result := 0
     else
+    }
     if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
     begin
       if ssoCaseInsensitive in ASortOptions then
