@@ -4336,24 +4336,25 @@ var
 begin
   Result := 0;
 
-  if (ACell1 = nil) and (ACell2 = nil) then
-    Result := 0
-  else
-  if (ACell1 <> nil) and (ACell1^.ContentType = cctEmpty) and
-     (ACell2 <> nil) and (ACell2^.ContentType = cctEmpty)
-  then
-    Result := 0
-  else
+  if ((ACell1 = nil) or (ACell1^.ContentType = cctEmpty)) and
+     ((ACell2 = nil) or (ACell2^.ContentType = cctEmpty))
+  then begin
+    Result := 0;
+    exit;
+  end;
+
   if (ACell1 = nil) or (ACell1^.ContentType = cctEmpty) then
   begin
     Result := +1;   // Empty cells go to the end
     exit;           // Avoid SortOrder to bring the empty cell to the top!
-  end else
+  end;
+
   if (ACell2 = nil) or (ACell2^.ContentType = cctEmpty) then
   begin
     Result := -1;   // Empty cells go to the end
     exit;           // Avoid SortOrder to bring the empty cell to the top!
-  end else
+  end;
+
   if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
   begin
     if ssoCaseInsensitive in ASortOptions then
