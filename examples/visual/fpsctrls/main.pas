@@ -54,6 +54,7 @@ type
     ToolButton8: TToolButton;
     procedure FileOpen1Accept(Sender: TObject);
     procedure FileSaveAs1Accept(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
 
   protected
@@ -78,6 +79,7 @@ uses
 { TForm1 }
 
 { Loads the spreadsheet file selected by the FileOpen standard action }
+{
 procedure TForm1.FileOpen1Accept(Sender: TObject);
 begin
   sWorkbookSource1.AutodetectFormat := false;
@@ -92,6 +94,35 @@ begin
     8: sWorkbookSource1.FileFormat := sfCSV;              // Text files
   end;
   sWorkbookSource1.FileName :=FileOpen1.Dialog.FileName;  // This loads the file
+  sWorksheetGrid1.ShowHeaders := false;
+end;                                         }
+
+procedure TForm1.FileOpen1Accept(Sender: TObject);
+var
+  wb: TsWorkbook;
+  sh: TsWorksheet;
+  i: Integer;
+begin
+  wb := TsWorkbook.Create;
+  case FileOpen1.Dialog.FilterIndex of
+    1: wb.ReadfromFile(FileOpen1.Dialog.FileName);  // all spreadsheet files --> autodetect
+    2: wb.ReadFromFile(FileOpen1.Dialog.FileName);  // all Excel files --> autodetect
+    3: wb.ReadFromFile(FileOpen1.Dialog.FileName, sfOOXML);   // Exel 2007+
+    4: wb.ReadFromFile(FileOpen1.Dialog.FileName, sfExcel8);  // Excel 97-2003
+    5: wb.ReadFromFile(FileOpen1.Dialog.FileName, sfExcel5);  // Excel 5.0
+    6: wb.ReadFromFile(FileOpen1.Dialog.FileName, sfExcel2);  // Excel 2.1
+    7: wb.ReadFromFile(FileOpen1.Dialog.FileName, sfOpenDocument);  // LibreOffice
+    8: wb.ReadFromFile(FileOpen1.Dialog.FileName, sfCSV);     // Text files
+  else
+    wb.Free;
+    MessageDlg('File format not implemented.', mtError, [mbOk], 0);
+    exit;
+  end;
+  for i := 0 to wb.GetWorksheetCount - 1 do begin
+    sh := wb.GetWorksheetByIndex(i);
+    sh.Options := sh.Options - [soShowHeaders];
+  end;
+  sWorkbookSource1.LoadFromWorkbook(wb);
 end;
 
 { Saves the spreadsheet to the file selected by the FileSaveAs1 action }
@@ -114,6 +145,11 @@ begin
   finally
     Screen.Cursor := crDefault;
   end;
+end;
+
+procedure TForm1.FormCreate(Sender: TObject);
+begin
+  sWorksheetGrid1.ShowHeaders := false;
 end;
 
 end.

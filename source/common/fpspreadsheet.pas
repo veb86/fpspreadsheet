@@ -105,9 +105,11 @@ type
     function  GetDefaultColWidth: Single;
     function  GetDefaultRowHeight: Single;
     function  GetFormatSettings: TFormatSettings;
+    function  GetIndex: Integer;
     procedure SetBiDiMode(AValue: TsBiDiMode);
     procedure SetDefaultColWidth(AValue: Single);
     procedure SetDefaultRowHeight(AValue: Single);
+    procedure SetIndex(AValue: Integer);
     procedure SetVirtualColCount(AValue: Cardinal);
     procedure SetVirtualRowCount(AValue: Cardinal);
     procedure SetZoomFactor(AValue: Double);
@@ -600,6 +602,8 @@ type
     property  Formulas: TsFormulas read FFormulas;
     {@@ FormatSettings for localization of some formatting strings }
     property  FormatSettings: TFormatSettings read GetFormatSettings;
+    {@@ Index of the worksheet in the workbook }
+    property  Index: Integer read GetIndex write SetIndex;
     {@@ Parameters to be used for printing by the Office applications }
     property PageLayout: TsPageLayout read FPageLayout write FPageLayout;
     {@@ List of all row records of the worksheet having a non-standard row height }
@@ -724,6 +728,7 @@ type
     function FixFormula(AFormula: PsFormula; ACorrection: TsFormulaCorrection;
       AData: Pointer; AParam: PtrInt): Boolean;
 
+    procedure MoveSheet(AFromIndex, AToIndex: Integer);
   public
     { Base methods }
     constructor Create;
@@ -4492,7 +4497,6 @@ procedure TsWorksheet.Sort(const ASortParams: TsSortParams;
           dec(J);
         end;
       until I > J;
-
       if L < J then
         QuickSort(L, J);
 
@@ -7246,6 +7250,34 @@ function TsWorksheet.GetFormatSettings: TFormatSettings;
 begin
   Result := FWorkbook.FormatSettings;
 end;
+
+function TsWorksheet.GetIndex: Integer;
+begin
+  Result := TsWorkbook(FWorkbook).GetWorksheetIndex(self);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Moves the worksheet to the specified index in the workbook.
+
+  @param  AValue   New index of the sheet in the workbook. If less than 0 the
+                   worksheet will become the first, if greater than the
+                   worksheet count it will become the last worksheet of the
+                   workbook.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.SetIndex(AValue: Integer);
+var
+  oldIndex: Integer;
+begin
+  if AValue < 0 then
+    AValue := 0
+  else
+  if AValue > TsWorkbook(FWorkbook).GetWorksheetCount then
+    Avalue := TsWorkbook(FWorkbook).GetWorksheetCount - 1;
+  oldIndex := GetIndex;
+  if oldIndex <> AValue then
+    TsWorkbook(FWorkbook).MoveSheet(oldIndex, Avalue);
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Calculates the optimum height of a given row. Depends on the font size
@@ -10116,6 +10148,13 @@ begin
     fcWorksheetDeleted:
       Result := AFormula^.Parser.IterateNodes(FixWorksheetDeletedCallback, AData, nil);
   end;
+end;
+
+procedure TsWorkbook.MoveSheet(AFromIndex, AToIndex: Integer);
+begin
+  FWorksheets.Move(AFromIndex, AToIndex);
+  if Assigned(FOnChangeWorksheet) then
+    FOnChangeWorksheet(Self, GetWorksheetByIndex(AToIndex));
 end;
 
 {@@ ----------------------------------------------------------------------------

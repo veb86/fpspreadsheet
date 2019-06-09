@@ -7,13 +7,15 @@ object Form1: TForm1
   ClientHeight = 601
   ClientWidth = 997
   Menu = MainMenu1
+  OnCreate = FormCreate
   ShowHint = True
-  LCLVersion = '1.9.0.0'
+  LCLVersion = '2.1.0.0'
   object sWorkbookTabControl1: TsWorkbookTabControl
     Left = 0
     Height = 542
     Top = 59
     Width = 997
+    TabIndex = 0
     Tabs.Strings = (
       'Sheet1'
     )
@@ -26,6 +28,7 @@ object Form1: TForm1
       Top = 23
       Width = 993
       AutoCalc = True
+      FixedColWidth = 57
       FrozenCols = 0
       FrozenRows = 0
       ReadFormulas = True
@@ -82,7 +85,7 @@ object Form1: TForm1
       Width = 130
       WorkbookSource = sWorkbookSource1
       DropDownCount = 24
-      ItemIndex = 46
+      ItemIndex = 49
       TabOrder = 0
       Text = 'Arial'
     end
