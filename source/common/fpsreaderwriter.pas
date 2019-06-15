@@ -1168,9 +1168,11 @@ begin
     for i := High(APriorityFormats) downto Low(APriorityFormats) do
     begin
       idx := IndexOf(APriorityFormats[i]);
-      data := TsSpreadFormatData(FList[idx]);
-      FList.Delete(idx);
-      FList.Insert(0, data);
+      if idx > -1 then begin
+        data := TsSpreadFormatData(FList[idx]);
+        FList.Delete(idx);
+        FList.Insert(0, data);
+      end;
     end;
 
   SetLength(Result, FList.Count);
