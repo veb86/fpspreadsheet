@@ -3998,6 +3998,7 @@ begin
   if ASheet = nil then
   begin
     AStrings.Add('Name=');
+    AStrings.Add('Index=');
     AStrings.Add('First row=');
     AStrings.Add('Last row=');
     AStrings.Add('First column=');
@@ -4013,6 +4014,7 @@ begin
   end else
   begin
     AStrings.Add(Format('Name=%s', [ASheet.Name]));
+    AStrings.Add(Format('Index=%d', [ASheet.Index]));
     AStrings.Add(Format('First row=%d', [Integer(ASheet.GetFirstRowIndex)]));
     AStrings.Add(Format('Last row=%d', [ASheet.GetLastRowIndex(true)]));
     AStrings.Add(Format('First column=%d', [Integer(ASheet.GetFirstColIndex)]));
