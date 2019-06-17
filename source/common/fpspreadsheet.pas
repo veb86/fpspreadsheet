@@ -53,6 +53,11 @@ type
   TsCellCompareEvent = procedure (Sender: TObject; ACell1, ACell2: PCell;
     var AResult: Integer) of object;
 
+  {@@ This event can be used to override the built-in comparing function which
+    is called when cells are sorted. }
+  TsCellFullCompareEvent = procedure (Sender: TObject; ACell1, ACell2: PCell;
+     ASortKey: TsSortKey; var AResult: Integer) of object;
+
   {@@ Event fired when writing a file in virtual mode. The event handler has to
     pass data ("AValue") and formatting style to be copied from a template
     cell ("AStyleCell") to the writer }
@@ -98,6 +103,7 @@ type
     FOnChangeRow: TsRowEvent;
     FOnZoom: TsNotifyEvent;
     FOnCompareCells: TsCellCompareEvent;
+    FOnFullCompareCells: TsCellFullCompareEvent;
     FOnSelectCell: TsCellEvent;
     FOnWriteCellData: TsWorksheetWriteCellDataEvent;
 
@@ -484,8 +490,7 @@ type
       AColWidthType: TsColWidthType = cwtCustom); overload; deprecated 'Use version with parameter AUnits';
 
     // Sorting
-    function DefaultCompareCells(ACell1, ACell2: PCell;
-      ASortOptions: TsSortOptions): Integer;
+    function DefaultCompareCells(ACell1, ACell2: PCell; ASortKey: TsSortKey): Integer;
     procedure Sort(const ASortParams: TsSortParams;
       ARowFrom, AColFrom, ARowTo, AColTo: Cardinal); overload;
     procedure Sort(ASortParams: TsSortParams; ARange: String); overload;
@@ -649,7 +654,10 @@ type
     {@@ Event fired when a row height or row formatting has changed }
     property  OnChangeRow: TsRowEvent read FOnChangeRow write FOnChangeRow;
     {@@ Event to override cell comparison for sorting }
-    property  OnCompareCells: TsCellCompareEvent read FOnCompareCells write FOnCompareCells;
+    property  OnCompareCells: TsCellCompareEvent
+      read FOnCompareCells write FOnCompareCells; deprecated 'Use OnFullCompareCells instead';
+    {@@ Event to override cell comparison for sorting }
+    property  OnFullCompareCells: TsCellFullCompareEvent read FOnFullCompareCells write FOnFullCompareCells;
     {@@ Event fired when a cell is "selected". }
     property  OnSelectCell: TsCellEvent read FOnSelectCell write FOnSelectCell;
     {@@ This event allows to provide external cell data for writing to file,
@@ -4068,7 +4076,7 @@ begin
   Result := WriteImage(ARow, ACol, idx, AOffsetX, AOffsetY, AScaleX, AScaleY);
 end;
 
-function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AImageIndex: integer;
+function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AImageIndex: Integer;
   AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
   AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 var
@@ -4304,10 +4312,12 @@ begin
       cell1 := FindCell(FSortParams.Keys[key].ColRowIndex, AColRow1);
       cell2 := FindCell(FSortParams.Keys[key].ColRowIndex, AColRow2);
     end;
-    if Assigned(OnCompareCells) then
-      OnCompareCells(Self, cell1, cell2, Result)
+    if Assigned(FOnFullCompareCells) then
+      FOnFullCompareCells(Self, cell1, cell2, FSortParams.Keys[Key], Result)
+    else if Assigned(FOnCompareCells) then
+      FOnCompareCells(Self, cell1, cell2, Result)
     else
-      Result := DefaultCompareCells(cell1, cell2, FSortParams.Keys[key].Options);
+      Result := DefaultCompareCells(cell1, cell2, FSortParams.Keys[key]);
     inc(key);
   end;
 end;
@@ -4317,7 +4327,8 @@ end;
 
   @param    ACell1        Pointer to the first cell of the comparison
   @param    ACell2        Pointer to the second cell of the comparison
-  @param    ASortOptions  Options for sorting: descending and/or case-insensitive
+  @param    ASortKey      Sorting criteria: sorted column/row, descending,
+                          case-insensitive, numbers first, etc.
   @return   -1 if the first cell is "smaller"
             +1 if the first cell is "larger",
             0 if both cells are "equal"
@@ -4332,7 +4343,7 @@ end;
             order)
 -------------------------------------------------------------------------------}
 function TsWorksheet.DefaultCompareCells(ACell1, ACell2: PCell;
-  ASortOptions: TsSortOptions): Integer;
+  ASortKey: TsSortKey): Integer;
 // Sort priority in Excel:
 // numbers < alpha < blank (ascending)
 // alpha < numbers < blank (descending)
@@ -4341,17 +4352,12 @@ var
 begin
   Result := 0;
 
-  if ((ACell1 = nil) or (ACell1^.ContentType = cctEmpty)) and
-     ((ACell2 = nil) or (ACell2^.ContentType = cctEmpty))
+  if (ACell1 = nil) or (ACell1^.ContentType = cctEmpty)
   then begin
-    Result := 0;
-    exit;
-  end;
+    if (ACell2 <> nil) and (ACell2^.ContentType <> cctEmpty) then
+      Result := +1; // Empty cells go to the end
 
-  if (ACell1 = nil) or (ACell1^.ContentType = cctEmpty) then
-  begin
-    Result := +1;   // Empty cells go to the end
-    exit;           // Avoid SortOrder to bring the empty cell to the top!
+    Exit; // Avoid SortOrder to bring the empty cell to the top!
   end;
 
   if (ACell2 = nil) or (ACell2^.ContentType = cctEmpty) then
@@ -4360,32 +4366,38 @@ begin
     exit;           // Avoid SortOrder to bring the empty cell to the top!
   end;
 
-  if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
-  begin
-    if ssoCaseInsensitive in ASortOptions then
-      Result := UTF8CompareText(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue)
-    else
-      Result := UTF8CompareStr(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue);
+  if (ACell1^.ContentType = cctUTF8String) then begin
+    if (ACell2^.ContentType = cctUTF8String) then
+    begin
+      if ssoCaseInsensitive in ASortKey.Options then
+        Result := AnsiCompareText(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue)
+      else
+        Result := AnsiCompareStr(ACell1^.UTF8StringValue, ACell2^.UTF8StringValue);
+    end else
+    begin
+      if ssoAlphaBeforeNum in ASortKey.Options then
+        Result := -1
+      else
+        Result := 1;
+    end;
+
   end else
-  if (ACell1^.ContentType = cctUTF8String) and (ACell2^.ContentType <> cctUTF8String) then
-    case FSortParams.Priority of
-      spNumAlpha: Result := +1;  // numbers before text
-      spAlphaNum: Result := -1;  // text before numbers
-    end
-  else
-  if (ACell1^.ContentType <> cctUTF8String) and (ACell2^.ContentType = cctUTF8String) then
-    case FSortParams.Priority of
-      spNumAlpha: Result := -1;
-      spAlphaNum: Result := +1;
-    end
-  else
   begin
-    ReadNumericValue(ACell1, number1);
-    ReadNumericValue(ACell2, number2);
-    Result := CompareValue(number1, number2);
+    if (ACell2^.ContentType = cctUTF8String) then
+    begin
+      if ssoAlphaBeforeNum in ASortKey.Options then
+        Result := +1
+      else
+        Result := -1;
+    end else
+    begin
+      ReadNumericValue(ACell1, number1);
+      ReadNumericValue(ACell2, number2);
+      Result := CompareValue(number1, number2);
+    end;
   end;
 
-  if ssoDescending in ASortOptions then
+  if ssoDescending in ASortKey.Options then
     Result := -Result;
 end;
 
@@ -4711,7 +4723,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Setter method for the zoom factor
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.SetZoomfactor(AValue: Double);
+procedure TsWorksheet.SetZoomFactor(AValue: Double);
 begin
   if AValue = FZoomFactor then exit;
   FZoomFactor := AValue;
@@ -4894,7 +4906,7 @@ end;
 
   @return Pointer to cell created or used
 -------------------------------------------------------------------------------}
-function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double): PCell;
+function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: Double): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteNumber(Result, ANumber);
@@ -4931,7 +4943,7 @@ end;
   @return Pointer to cell created or used
   @see    TsNumberFormat
 -------------------------------------------------------------------------------}
-function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: double;
+function TsWorksheet.WriteNumber(ARow, ACol: Cardinal; ANumber: Double;
   ANumFormat: TsNumberFormat; ADecimals: Byte = 2;
   AMinIntDigits: Integer = 1): PCell;
 begin
@@ -5824,7 +5836,7 @@ end;
                      uses dot and comma, respectively.
   @return Pointer to the cell
 -------------------------------------------------------------------------------}
-function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: string;
+function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: String;
   ALocalized: Boolean = false): PCell;
 begin
   Result := GetCell(ARow, ACol);
@@ -5842,7 +5854,7 @@ end;
                      separators of the workbook's FormatSettings. Otherwise
                      uses dot and comma, respectively.
 -------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: string;
+procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: String;
   ALocalized: Boolean = false);
 var
   parser: TsExpressionParser = nil;
@@ -6941,7 +6953,7 @@ end;
   @see WriteBorderStyles
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
-  ABorder: TsCellBorder; ALineStyle: TsLinestyle; AColor: TsColor): PCell;
+  ABorder: TsCellBorder; ALineStyle: TsLineStyle; AColor: TsColor): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteBorderStyle(Result, ABorder, ALineStyle, AColor);
@@ -6959,7 +6971,7 @@ end;
   @see WriteBorderStyles
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
-  ALineStyle: TsLinestyle; AColor: TsColor);
+  ALineStyle: TsLineStyle; AColor: TsColor);
 var
   fmt: TsCellFormat;
 begin

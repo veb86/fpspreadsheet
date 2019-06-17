@@ -2362,7 +2362,10 @@ begin
   SetLength(Result.Keys, ANumSortKeys);
   for i:=0 to High(Result.Keys) do begin
     Result.Keys[i].ColRowIndex := i;
-    Result.Keys[i].Options := [];  // Ascending & case-sensitive
+    if ASortPriority = spAlphaNum then
+      Result.Keys[I].Options := [ssoAlphaBeforeNum]
+    else
+      Result.Keys[i].Options := []; // Ascending & case-sensitive
   end;
 end;
 

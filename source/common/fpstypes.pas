@@ -627,7 +627,7 @@ type
   end;
 
   {@@ Options for sorting }
-  TsSortOption = (ssoDescending, ssoCaseInsensitive);
+  TsSortOption = (ssoDescending, ssoCaseInsensitive, ssoAlphaBeforeNum);
   {@@ Set of options for sorting }
   TsSortOptions = set of TsSortOption;
 
