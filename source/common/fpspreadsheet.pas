@@ -7283,8 +7283,8 @@ begin
   if AValue < 0 then
     AValue := 0
   else
-  if AValue > TsWorkbook(FWorkbook).GetWorksheetCount then
-    Avalue := TsWorkbook(FWorkbook).GetWorksheetCount - 1;
+  if AValue >= TsWorkbook(FWorkbook).GetWorksheetCount then
+    AValue := TsWorkbook(FWorkbook).GetWorksheetCount - 1;
   oldIndex := GetIndex;
   if oldIndex <> AValue then
     TsWorkbook(FWorkbook).MoveSheet(oldIndex, Avalue);
