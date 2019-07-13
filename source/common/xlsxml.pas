@@ -219,6 +219,7 @@ var
   sv: String;
   node: TDOMNode;
   err: TsErrorValue;
+  cell: PCell;
 begin
   if ANode = nil then
     exit;
@@ -226,30 +227,32 @@ begin
   if nodeName <> 'Cell' then
     raise Exception.Create('Only Cell nodes expected.');
 
+  cell := sheet.GetCell(ARow, ACol);
+
   node := ANode.FirstChild;
   if node = nil then
-    sheet.WriteBlank(ARow, ACol)
+    sheet.WriteBlank(cell)
   else
     while node <> nil do begin
       nodeName := node.NodeName;
-      if nodeName = 'Data' then begin
-        sv := GetNodeValue(node);
+      if (nodeName = 'Data') or (nodeName = 'ss:Data') then begin
+        sv := node.TextContent;
         st := GetAttrValue(node, 'ss:Type');
         case st of
           'String':
-            sheet.WriteText(ARow, ACol, sv);
+            sheet.WriteText(cell, sv);
           'Number':
-            sheet.WriteNumber(ARow, ACol, StrToFloat(sv, FPointSeparatorSettings));
+            sheet.WriteNumber(cell, StrToFloat(sv, FPointSeparatorSettings));
           'DateTime':
-            sheet.WriteDateTime(ARow, ACol, ExtractDateTime(sv));
+            sheet.WriteDateTime(cell, ExtractDateTime(sv));
           'Boolean':
             if sv = '1' then
-              sheet.WriteBoolValue(ARow, ACol, true)
+              sheet.WriteBoolValue(cell, true)
             else if sv = '0' then
-              sheet.WriteBoolValue(ARow, ACol, false);
+              sheet.WriteBoolValue(cell, false);
           'Error':
             if TryStrToErrorValue(sv, err) then
-              sheet.WriteErrorValue(ARow, ACol, err);
+              sheet.WriteErrorValue(cell, err);
         end;
       end;
       node := node.NextSibling;
