@@ -23,9 +23,28 @@ interface
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
-  fpsTypes, fpsReaderWriter, xlsCommon;
+  fpsTypes, fpsReaderWriter, fpsXMLCommon, xlsCommon;
 
 type
+  { TsSpreadExcelXMLReader }
+  TsSpreadExcelXMLReader = class(TsSpreadXMLReader)
+  private
+    FPointSeparatorSettings: TFormatSettings;
+    function ExtractDateTime(AText: String): TDateTime;
+    procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow, ACol: Integer);
+    procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow: Integer);
+    procedure ReadTable(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadWorksheetOptions(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadWorksheets(ANode: TDOMNode);
+  protected
+
+  public
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
+    procedure ReadFromStream(AStream: TStream; APassword: String = '';
+      AParams: TsStreamParams = []); override;
+
+  end;
 
   { TsSpreadExcelXMLWriter }
 
@@ -89,8 +108,8 @@ var
 implementation
 
 uses
-  StrUtils, Math,
-  fpsStrings, fpspreadsheet, fpsUtils, fpsNumFormat, fpsXmlCommon, fpsHTMLUtils;
+  StrUtils, DateUtils, Math,
+  fpsStrings, fpspreadsheet, fpsUtils, fpsNumFormat, fpsHTMLUtils;
 
 const
   FMT_OFFSET   = 61;
@@ -157,6 +176,199 @@ begin
     raise EFPSpreadsheet.Create('Content type error in cell ' + GetCellString(ACell^.Row, ACell^.Col));
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Constructor of the ExcelXML reader
+-------------------------------------------------------------------------------}
+constructor TsSpreadExcelXMLReader.Create(AWorkbook: TsBasicWorkbook);
+begin
+  inherited;
+
+  // Special version of FormatSettings using a point decimal separator for sure.
+  FPointSeparatorSettings := DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator := '.';
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Extracts the date/time value from the given string.
+  The string is formatted as 'yyyy-mm-dd"T"hh:nn:ss.zzz'
+-------------------------------------------------------------------------------}
+function TsSpreadExcelXMLReader.ExtractDateTime(AText: String): TDateTime;
+//var
+//  syr, smon, sday, shr, smin, ssec, smsec: String;
+const
+  PATTERN = 'yyyy-mm-ddTdd:nn:ss.zzz';
+var
+  dateStr, timeStr: String;
+begin
+  dateStr := Copy(AText, 1, 10);
+  timeStr := Copy(AText, 12, MaxInt);
+  Result := ScanDateTime('yyyy-mm-dd', dateStr) + ScanDateTime('hh:nn:ss.zzz', timeStr);
+  //Result := ScanDateTime(PATTERN, AText);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads a "Worksheet/Table/Row/Cell" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadCell(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARow, ACol: Integer);
+var
+  sheet: TsWorksheet absolute AWorksheet;
+  nodeName: string;
+  st: String;
+  sv: String;
+  node: TDOMNode;
+  err: TsErrorValue;
+begin
+  if ANode = nil then
+    exit;
+  nodeName := ANode.NodeName;
+  if nodeName <> 'Cell' then
+    raise Exception.Create('Only Cell nodes expected.');
+
+  node := ANode.FirstChild;
+  if node = nil then
+    sheet.WriteBlank(ARow, ACol)
+  else
+    while node <> nil do begin
+      nodeName := node.NodeName;
+      if nodeName = 'Data' then begin
+        sv := GetNodeValue(node);
+        st := GetAttrValue(node, 'ss:Type');
+        case st of
+          'String':
+            sheet.WriteText(ARow, ACol, sv);
+          'Number':
+            sheet.WriteNumber(ARow, ACol, StrToFloat(sv, FPointSeparatorSettings));
+          'DateTime':
+            sheet.WriteDateTime(ARow, ACol, ExtractDateTime(sv));
+          'Boolean':
+            if sv = '1' then
+              sheet.WriteBoolValue(ARow, ACol, true)
+            else if sv = '0' then
+              sheet.WriteBoolValue(ARow, ACol, false);
+          'Error':
+            if TryStrToErrorValue(sv, err) then
+              sheet.WriteErrorValue(ARow, ACol, err);
+        end;
+      end;
+      node := node.NextSibling;
+    end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads a "Worksheet/Table/Row" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadRow(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARow: Integer);
+var
+  nodeName: String;
+  s: String;
+  c: Integer;
+begin
+  c := 0;
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'Cell' then begin
+      s := GetAttrValue(ANode, 'ss:Index');
+      if s <> '' then c := StrToInt(s) - 1;
+      ReadCell(ANode, AWorksheet, ARow, c);
+      inc(c);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Worksheet/Table" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadTable(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  nodeName: String;
+  s: String;
+  r: Integer;
+begin
+  r := 0;
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'Row' then begin
+      s := GetAttrValue(ANode, 'ss:Index');
+      if s <> '' then r := StrToInt(s) - 1;
+      ReadRow(ANode.FirstChild, AWorksheet, r);
+      inc(r);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Worksheet" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadWorksheet(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  nodeName: String;
+  s: String;
+begin
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'Table' then
+      ReadTable(ANode.FirstChild, AWorksheet)
+    else if nodeName = 'WorksheetOptions' then
+      ReadWorksheetOptions(ANode, AWorksheet);
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Worksheet/WorksheetOptions" nodes
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadWorksheetOptions(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+begin
+  // to do
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Worksheet" nodes
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadWorksheets(ANode: TDOMNode);
+var
+  nodeName: String;
+  s: STring;
+begin
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'Worksheet' then begin
+      s := GetAttrValue(ANode, 'ss:Name');
+      if s <> '' then begin   // the case of '' should not happen
+        FWorksheet := TsWorkbook(FWorkbook).AddWorksheet(s);
+        ReadWorksheet(ANode.FirstChild, FWorksheet);
+      end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Reads the workbook from the specified stream
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadFromStream(AStream: TStream;
+  APassword: String = ''; AParams: TsStreamParams = []);
+var
+  doc: TXMLDocument;
+begin
+  try
+    ReadXMLStream(doc, AStream);
+    ReadWorksheets(doc.DocumentElement.FindNode('Worksheet'));
+  finally
+    doc.Free;
+  end;
+end;
+
+
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the ExcelXML writer
@@ -929,7 +1141,7 @@ initialization
 
   // Registers this reader / writer in fpSpreadsheet
   sfidExcelXML := RegisterSpreadFormat(sfExcelXML,
-    nil, TsSpreadExcelXMLWriter,
+    TsSpreadExcelXMLReader, TsSpreadExcelXMLWriter,
     STR_FILEFORMAT_EXCEL_XML, 'ExcelXML', [STR_XML_EXCEL_EXTENSION]
   );
 
