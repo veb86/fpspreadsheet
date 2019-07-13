@@ -291,11 +291,23 @@ var
   nodeName: String;
   s: String;
   r: Integer;
+  x: Double;
 begin
   r := 0;
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
     if nodeName = 'Row' then begin
+      // Default column width
+      s := GetAttrValue(ANode, 'ss:DefaultColumnWidth');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        TsWorksheet(AWorksheet).WriteDefaultColWidth(x, suPoints);
+
+      // Default row height
+      s := GetAttrValue(ANode, 'ss:DefaultRowHeight');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        TsWorksheet(AWorksheet).WriteDefaultRowHeight(x, suPoints);
+
+      // Row
       s := GetAttrValue(ANode, 'ss:Index');
       if s <> '' then r := StrToInt(s) - 1;
       ReadRow(ANode.FirstChild, AWorksheet, r);
