@@ -658,6 +658,10 @@ begin
   // "Default").
   fmt.Name := GetAttrValue(ANode, 'ss:ID');
 
+  if fmt.Name = 's125' then
+    idx := 0;
+
+  // Style elements
   childNode := ANode.FirstChild;
   while childNode <> nil do begin
     nodeName := childNode.NodeName;
@@ -704,29 +708,77 @@ end;
 procedure TsSpreadExcelXMLReader.ReadTable(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
 var
+  sheet: TsWorksheet absolute AWorksheet;
   nodeName: String;
   s: String;
-  r: Integer;
+  r, c: Integer;
   x: Double;
+  idx: Integer;
+  fmt: TsCellFormat;
 begin
   r := 0;
+  c := 0;
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
+    if nodeName = 'Column' then begin
+      // Column index
+      s := GetAttrValue(ANode, 'ss:Index');
+      if (s <> '') and TryStrToInt(s, c) then
+        dec(c);
+
+      // Column width, in Points
+      s := GetAttrValue(ANode, 'ss:Width');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        sheet.WriteColWidth(c, x, suPoints);
+
+      // Column format
+      s := GetAttrValue(ANode, 'ss:StyleID');
+      if s <> '' then begin
+        idx := FCellFormatList.FindIndexOfName(s);
+        if idx <> -1 then begin
+          fmt := FCellFormatList.Items[idx]^;
+          idx := TsWorkbook(FWorkbook).AddCellFormat(fmt);
+          sheet.WriteColFormatIndex(c, idx);
+        end;
+      end;
+
+      inc(c);
+    end
+    else
     if nodeName = 'Row' then begin
       // Default column width
       s := GetAttrValue(ANode, 'ss:DefaultColumnWidth');
       if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-        TsWorksheet(AWorksheet).WriteDefaultColWidth(x, suPoints);
+        sheet.WriteDefaultColWidth(x, suPoints);
 
       // Default row height
       s := GetAttrValue(ANode, 'ss:DefaultRowHeight');
       if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-        TsWorksheet(AWorksheet).WriteDefaultRowHeight(x, suPoints);
+        sheet.WriteDefaultRowHeight(x, suPoints);
 
-      // Row
+      // Index
       s := GetAttrValue(ANode, 'ss:Index');
       if s <> '' then r := StrToInt(s) - 1;
+
+      // Height
+      s := GetAttrValue(ANode, 'ss:Height');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        sheet.WriteRowHeight(r, x, suPoints);
+
+      // Row format
+      s := GetAttrValue(ANode, 'ss:StyleID');
+      if s <> '' then begin
+        idx := FCellFormatList.FindIndexOfName(s);
+        if idx <> -1 then begin
+          fmt := FCellFormatList.Items[idx]^;
+          idx := TsWorkbook(FWorkbook).AddCellFormat(fmt);
+          sheet.WriteRowFormatIndex(r, idx);
+        end;
+      end;
+
+      // Cells in row
       ReadRow(ANode.FirstChild, AWorksheet, r);
+
       inc(r);
     end;
     ANode := ANode.NextSibling;
