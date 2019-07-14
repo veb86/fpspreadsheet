@@ -5595,10 +5595,10 @@ begin
       try
         // Format string ok?
         if parser.Status <> psOK then
-          raise EFPSpreadsheet.Create(rsNoValidNumberFormatString);
+          raise EFPSpreadsheet.CreateFmt(rsNoValidNumberFormatString, [ANumFormatStr]);
         // Make sure that we do not use a number format for date/times values.
         if not parser.IsDateTimeFormat then
-          raise EFPSpreadsheet.Create(rsInvalidDateTimeFormat);
+          raise EFPSpreadsheet.CreateFmt(rsInvalidDateTimeFormat, [ANumFormatStr]);
         // Avoid possible duplication of standard formats
         if ANumFormat = nfCustom then
           ANumFormat := parser.NumFormat;

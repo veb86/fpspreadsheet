@@ -128,10 +128,10 @@ resourcestring
 
   // Format
   rsAmbiguousDecThouSeparator = 'Assuming usage of decimal separator in "%s".';
-  rsInvalidDateTimeFormat = 'Trying to use an incompatible date/time format.';
+  rsInvalidDateTimeFormat = 'Trying to use an incompatible date/time format (%s).';
   rsInvalidFontIndex = 'Invalid font index';
   rsInvalidNumberFormat = 'Trying to use an incompatible number format.';
-  rsNoValidNumberFormatString = 'No valid number format string.';
+  rsNoValidNumberFormatString = 'No valid number format string (%s).';
 
   // Formulas
   rsFormulaNotSupported = 'The formula in cell %s is not supported by this file format: %s';

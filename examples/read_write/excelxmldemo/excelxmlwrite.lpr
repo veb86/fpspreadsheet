@@ -36,6 +36,8 @@ var
   s: String;
 
 begin
+  WriteLn('Creating a demo file in Excel2003/XML format...');
+
   MyDir := ExtractFilePath(ParamStr(0));
 
   // Create the spreadsheet
@@ -394,5 +396,13 @@ begin
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xml', sfExcelXML, true);
   MyWorkbook.Free;
+
+  WriteLn('Done.');
+  WriteLn('File saved as "' + MyDir + 'text.xml"');
+  {$IFDEF WINDOWS}
+  WriteLn;
+  WriteLn('Press ENTER to quit.');
+  ReadLn;
+  {$ENDIF}
 end.
 
