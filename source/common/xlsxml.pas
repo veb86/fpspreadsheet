@@ -31,20 +31,21 @@ type
   private
     FPointSeparatorSettings: TFormatSettings;
     function ExtractDateTime(AText: String): TDateTime;
-    procedure ReadAlignment(ANode: TDOMNode; var AFormat: TsCellFormat);
-    procedure ReadBorder(ANode: TDOMNode; var AFormat: TsCellFormat);
-    procedure ReadBorders(ANode: TDOMNode; var AFormat: TsCellFormat);
-    procedure ReadCellProtection(ANode: TDOMNode; var AFormat: TsCellFormat);
-    procedure ReadFont(ANode: TDOMNode; var AFormat: TsCellFormat);
-    procedure ReadInterior(ANode: TDOMNode; var AFormat: TsCellFormat);
-    procedure ReadNumberFormat(ANode: TDOMNode; var AFormat: TsCellFormat);
 
   protected
     FFirstNumFormatIndexInFile: Integer;
     procedure AddBuiltinNumFormats; override;
 
   protected
+    procedure ReadAlignment(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadBorder(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadBorders(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow, ACol: Integer);
+    procedure ReadCellProtection(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadComment(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ACell: PCell);
+    procedure ReadFont(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadInterior(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadNumberFormat(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow: Integer);
     procedure ReadStyle(ANode: TDOMNode);
     procedure ReadStyles(ANode: TDOMNode);
@@ -436,6 +437,14 @@ begin
   if (mergedCols > 0) or (mergedRows > 0) then
     sheet.MergeCells(ARow, ACol, ARow + mergedRows, ACol + mergedCols);
 
+  // Hyperlink
+  s := GetAttrValue(ANode, 'ss:HRef');
+  if s <> '' then begin
+    st := GetAttrValue(ANode, 'x:HRefScreenTip');
+    sheet.WriteHyperlink(cell, s, st);
+  end;
+
+  // Cell data and comment
   node := ANode.FirstChild;
   if node = nil then
     sheet.WriteBlank(cell)
@@ -461,7 +470,10 @@ begin
             if TryStrToErrorValue(sv, err) then
               sheet.WriteErrorValue(cell, err);
         end;
-      end;
+      end
+      else
+      if (nodeName = 'Comment') then
+        ReadComment(node, AWorksheet, cell);
       node := node.NextSibling;
     end;
 end;
@@ -487,6 +499,18 @@ begin
 
   if AFormat.Protection <> DEFAULT_CELL_PROTECTION then
     Include(AFormat.UsedFormattingFields, uffProtection);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Worksheet/Table/Row/Cell/Comment" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadComment(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ACell: PCell);
+var
+  txt: String;
+begin
+  txt := ANode.TextContent;
+  TsWorksheet(AWorksheet).WriteComment(ACell, txt);
 end;
 
 {@@ ----------------------------------------------------------------------------
