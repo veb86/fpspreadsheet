@@ -126,7 +126,6 @@ begin
   MyWorksheet.WriteBorderLineStyle(5, 13, cbSouth, lsDotted);
 
   // N6 empty cell, left border: double
-//  MyWorksheet.WriteBlank(5, 14);
   MyWorksheet.WriteBorders(5, 14, [cbWest]);
   MyWorksheet.WriteBorderLineStyle(5, 14, cbWest, lsDouble);
 
@@ -142,6 +141,8 @@ begin
   MyWorksheet.WriteText(8, 3, 'Colors...');
   MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
   MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
+
+  (********************* to do...
   MyWorksheet.WriteComment(8, 3, 'This is font "Courier New", Size 12.');
 
   // Write the string formula E1 = A1 + B1 ...
@@ -169,7 +170,7 @@ begin
     RPNSTring('B',
     RPNFunc(fekConcat,
     nil)))));
-
+              *)
   r := 10;
   MyWorksheet.WriteText(r, 0, 'Writing current date/time:');
   inc(r, 2);
@@ -376,6 +377,8 @@ begin
 
   // Set height of rows 0
   MyWorksheet.WriteRowHeight(0, 5, suLines);  // 5 lines
+
+  //----------------------------------------------------------------------------
 
   // Creates a new worksheet
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet2);

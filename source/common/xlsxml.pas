@@ -1174,6 +1174,9 @@ var
   cctStr: String;
   xmlnsStr: String;
   dataTagStr: String;
+  p: Integer;
+  tmp: String;
+  ch:char;
 begin
   if Length(ACell^.RichTextParams) > 0 then
   begin
@@ -1187,6 +1190,24 @@ begin
     );
     xmlnsStr := ' xmlns="http://www.w3.org/TR/REC-html40"';
     dataTagStr := 'ss:';
+
+    // Excel does not like units in font size specification...
+    tmp := valueStr;
+    p := pos('<Font html:Size="', valueStr);
+    if p > 0 then begin
+      valueStr := '';
+      while p > 0 do begin
+        inc(p, Length('<Font html:Size="'));
+        valueStr := valueStr + copy(tmp, 1, p-1);
+        while (tmp[p] <> '"') do begin
+          if (tmp[p] in ['0'..'9', '.']) then valueStr := valueStr + tmp[p];
+          inc(p);
+        end;
+        tmp := copy(tmp, p, MaxInt);
+        p := pos('<Font html:Size="', tmp);
+      end;
+      valueStr := valuestr + tmp;
+    end;
   end else
   begin
     valueStr := AValue;
@@ -1597,8 +1618,8 @@ begin
   // Protection
   protectStr := Format(INDENT3 + '<ProtectObjects>%s</ProtectObjects>' + LF +
                        INDENT3 + '<ProtectScenarios>%s</ProtectScenarios>' + LF, [
-    StrUtils.IfThen(AWorksheet.IsProtected and (spObjects in AWorksheet.Protection), '1', '0'),
-    StrUtils.IfThen(AWorksheet.IsProtected {and [spScenarios in AWorksheet.Protection])}, '1', '0')
+    StrUtils.IfThen(AWorksheet.IsProtected and (spObjects in AWorksheet.Protection), 'True', 'False'),
+    StrUtils.IfThen(AWorksheet.IsProtected {and [spScenarios in AWorksheet.Protection])}, 'True', 'False')
   ]);
 
   // Put it all together...

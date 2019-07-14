@@ -23,8 +23,7 @@ var
 begin
   // Open the input file
   dir := ExtractFilePath(ParamStr(0));
-//  inputFileName := dir + 'test.xml';
-  inputFileName := dir + 'datatypes.xml';
+  inputFileName := dir + 'test.xml';
 
   if not FileExists(inputFileName) then begin
     WriteLn('Input file ', inputFileName, ' does not exist. Please run excelxmlwrite first.');
