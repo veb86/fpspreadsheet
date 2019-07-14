@@ -23,7 +23,7 @@ var
 begin
   // Open the input file
   dir := ExtractFilePath(ParamStr(0));
-  inputFileName := dir + 'test.xml';
+//  inputFileName := dir + 'test.xml';
   inputFileName := dir + 'datatypes.xml';
 
   if not FileExists(inputFileName) then begin

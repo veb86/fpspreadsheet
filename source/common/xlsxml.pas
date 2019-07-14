@@ -31,20 +31,34 @@ type
   private
     FPointSeparatorSettings: TFormatSettings;
     function ExtractDateTime(AText: String): TDateTime;
+    procedure ReadAlignment(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadBorder(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadBorders(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadCellProtection(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadFont(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadInterior(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadNumberFormat(ANode: TDOMNode; var AFormat: TsCellFormat);
+
+  protected
+    FFirstNumFormatIndexInFile: Integer;
+    procedure AddBuiltinNumFormats; override;
+
+  protected
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow, ACol: Integer);
     procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow: Integer);
+    procedure ReadStyle(ANode: TDOMNode);
+    procedure ReadStyles(ANode: TDOMNode);
     procedure ReadTable(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadWorksheetOptions(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadWorksheets(ANode: TDOMNode);
-  protected
 
   public
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
-
   end;
+
 
   { TsSpreadExcelXMLWriter }
 
@@ -109,7 +123,7 @@ implementation
 
 uses
   StrUtils, DateUtils, Math,
-  fpsStrings, fpspreadsheet, fpsUtils, fpsNumFormat, fpsHTMLUtils;
+  fpsStrings, fpsClasses, fpspreadsheet, fpsUtils, fpsNumFormat, fpsHTMLUtils;
 
 const
   FMT_OFFSET   = 61;
@@ -184,9 +198,20 @@ constructor TsSpreadExcelXMLReader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited;
 
+  // Cell formats (named "Styles" here).
+  FCellFormatList := TsCellFormatList.Create(true);  // is destroyed by ancestor
+
   // Special version of FormatSettings using a point decimal separator for sure.
   FPointSeparatorSettings := DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator := '.';
+end;
+
+procedure TsSpreadExcelXMLReader.AddBuiltinNumFormats;
+begin
+  FFirstNumFormatIndexInFile := 164;
+  AddBuiltInBiffFormats(
+    FNumFormatList, FWorkbook.FormatSettings, FFirstNumFormatIndexInFile-1
+  );
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -194,17 +219,180 @@ end;
   The string is formatted as 'yyyy-mm-dd"T"hh:nn:ss.zzz'
 -------------------------------------------------------------------------------}
 function TsSpreadExcelXMLReader.ExtractDateTime(AText: String): TDateTime;
-//var
-//  syr, smon, sday, shr, smin, ssec, smsec: String;
-const
-  PATTERN = 'yyyy-mm-ddTdd:nn:ss.zzz';
 var
   dateStr, timeStr: String;
 begin
   dateStr := Copy(AText, 1, 10);
   timeStr := Copy(AText, 12, MaxInt);
   Result := ScanDateTime('yyyy-mm-dd', dateStr) + ScanDateTime('hh:nn:ss.zzz', timeStr);
-  //Result := ScanDateTime(PATTERN, AText);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the cell alignment from the given node attributes
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadAlignment(ANode: TDOMNode;
+  var AFormat: TsCellFormat);
+var
+  s: String;
+begin
+  // Vertical alignment
+  s := GetAttrValue(ANode, 'ss:Vertical');
+  if s <> '' then
+    with AFormat do begin
+      Include(UsedFormattingFields, uffVertAlign);
+      case s of
+        'Top':
+          VertAlignment := vaTop;
+        'Center':
+          VertAlignment := vaCenter;
+        'Bottom':
+          VertAlignment := vaBottom;
+        else
+          Exclude(UsedFormattingFields, uffVertAlign);
+      end;
+    end;
+
+  // Horizontal alignment
+  s := GetAttrValue(ANode, 'ss:Horizontal');
+  if s <> '' then
+    with AFormat do begin
+      Include(UsedFormattingFields, uffHorAlign);
+      case s of
+        'Left':
+          HorAlignment := haLeft;
+        'Center':
+          HorAlignment := haCenter;
+        'Right':
+          HorAlignment := haRight;
+        else
+          Exclude(UsedFormattingFields, uffHorAlign);
+      end;
+    end;
+
+  // Vertical text
+  s := GetAttrValue(ANode, 'ss:Rotate');
+  if s = '90' then
+    with AFormat do begin
+      TextRotation := rt90DegreeCounterClockwiseRotation;
+      Include(UsedFormattingFields, uffTextRotation);
+    end
+  else if s = '-90' then
+    with AFormat do begin
+      TextRotation := rt90DegreeClockwiseRotation;
+      Include(UsedFormattingFields, uffTextRotation);
+    end;
+  s := GetAttrValue(ANode, 'ss:VerticalText');
+  if s <> '' then
+    with AFormat do begin
+      TextRotation := rtStacked;
+      Include(UsedFormattingFields, uffTextRotation);
+    end;
+
+  // Word wrap
+  s := GetAttrValue(ANode, 'ss:WrapText');
+  if s = '1' then
+    with AFormat do
+      Include(UsedFormattingFields, uffWordWrap);
+
+  // BiDi
+  s := GetAttrValue(ANode, 'ss:ReadingOrder');
+  if s <> '' then
+    with AFormat do begin
+      case s of
+        'RightToLeft': BiDiMode := bdRTL;
+        'LeftToRight': BiDiMode := bdLTR;
+      end;
+      Include(UsedFormattingFields, uffBiDi);
+    end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Read a "Style/Borders/Border" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadBorder(ANode: TDOMNode;
+  var AFormat: TsCellFormat);
+// <Border ss:Position="Right" ss:LineStyle="Continuous" ss:Weight="3" ss:Color="#ED7D31"/>
+var
+  s, sw: String;
+  b: TsCellBorder;
+begin
+  AFormat.UsedFormattingFields := AFormat.UsedFormattingFields + [uffBorder];
+
+  // Border position
+  s := GetAttrValue(ANode, 'ss:Position');
+  case s of
+    'Left':
+      b := cbWest;
+    'Right':
+      b := cbEast;
+    'Top':
+      b := cbNorth;
+    'Bottom':
+      b := cbSouth;
+    'DiagonalRight':
+      b := cbDiagUp;
+    'DiagonalLeft':
+      b := cbDiagDown;
+  end;
+  Include(AFormat.Border, b);
+
+  // Border color
+  s := GetAttrValue(ANode, 'ss:Color');
+  AFormat.BorderStyles[b].Color := HTMLColorStrToColor(s);
+
+  // Line style
+  s := GetAttrValue(ANode, 'ss:LineStyle');
+  sw := GetAttrValue(ANode, 'ss:Weight');
+  case s of
+    'Continuous':
+      if sw = '1' then
+        AFormat.BorderStyles[b].LineStyle := lsThin
+      else if sw = '2' then
+        AFormat.BorderStyles[b].LineStyle := lsMedium
+      else if sw = '3' then
+        AFormat.BorderStyles[b].LineStyle := lsThick
+      else if sw = '' then
+        AFormat.BorderStyles[b].LineStyle := lsHair;
+    'Double':
+      AFormat.BorderStyles[b].LineStyle := lsDouble;
+    'Dot':
+      AFormat.BorderStyles[b].LineStyle := lsDotted;
+    'Dash':
+      if sw = '2' then
+        AFormat.BorderStyles[b].LineStyle := lsMediumDash
+      else
+        AFormat.BorderStyles[b].LineStyle := lsDashed;
+    'DashDot':
+      if sw = '2' then
+        AFormat.BorderStyles[b].LineStyle := lsMediumDashDot
+      else
+        AFormat.BorderStyles[b].LineStyle := lsDashDot;
+    'DashDotDot':
+      if sw = '2' then
+        AFormat.BorderStyles[b].LineStyle := lsMediumDashDotDot
+      else
+        AFormat.BorderStyles[b].LineStyle := lsDashDotDot;
+    'SlantDashDot':
+        AFormat.BorderStyles[b].LineStyle := lsSlantDashDot;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Styles/Style/Borders" nodes
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadBorders(ANode: TDOMNode;
+  var AFormat: TsCellFormat);
+var
+  nodeName: String;
+begin
+  if ANode = nil then exit;
+  ANode := ANode.FirstChild;
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'Border' then
+      ReadBorder(ANode, AFormat);
+    ANode := ANode.NextSibling;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -215,19 +403,29 @@ procedure TsSpreadExcelXMLReader.ReadCell(ANode: TDOMNode;
 var
   sheet: TsWorksheet absolute AWorksheet;
   nodeName: string;
-  st: String;
-  sv: String;
+  s, st, sv: String;
   node: TDOMNode;
   err: TsErrorValue;
   cell: PCell;
+  fmt: TsCellFormat;
+  idx: Integer;
 begin
   if ANode = nil then
     exit;
   nodeName := ANode.NodeName;
   if nodeName <> 'Cell' then
-    raise Exception.Create('Only Cell nodes expected.');
+    raise Exception.Create('[ReadCell] Only "Cell" nodes expected.');
 
   cell := sheet.GetCell(ARow, ACol);
+
+  s := GetAttrValue(ANode, 'ss:StyleID');
+  if s <> '' then begin
+    idx := FCellFormatList.FindIndexOfName(s);
+    if idx <> -1 then begin
+      fmt := FCellFormatList.Items[idx]^;
+      cell^.FormatIndex := TsWorkbook(FWorkbook).AddCellFormat(fmt);
+    end;
+  end;
 
   node := ANode.FirstChild;
   if node = nil then
@@ -260,6 +458,158 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the "Styles/Style/Protection" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadCellProtection(ANode: TDOMNode;
+  var AFormat: TsCellFormat);
+var
+  s: String;
+begin
+  if ANode = nil then
+    exit;
+
+  s := GetAttrValue(ANode, 'ss:Protected');
+  if s = '0' then
+    Exclude(AFormat.Protection, cpLockCell);
+
+  s := GetAttrValue(ANode, 'x:HideFormula');
+  if s = '1' then
+    Include(AFormat.Protection, cpHideFormulas);
+
+  if AFormat.Protection <> DEFAULT_CELL_PROTECTION then
+    Include(AFormat.UsedFormattingFields, uffProtection);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Styles/Style/Font" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLreader.ReadFont(ANode: TDOMNode;
+  var AFormat: TsCellFormat);
+var
+  book: TsWorkbook;
+  fname: String;
+  fsize: Single;
+  fcolor: TsColor;
+  fstyle: TsFontStyles;
+  s: String;
+begin
+  if ANode = nil then
+    exit;
+
+  book := TsWorkbook(FWorkbook);
+
+  fname := GetAttrValue(ANode, 'ss:FontName');
+  if fname = '' then
+    fname := book.GetDefaultFont.FontName;
+
+  s := GetAttrValue(ANode, 'ss:Size');
+  if (s = '') or not TryStrToFloat(s, fsize, FPointSeparatorSettings) then
+    fsize := book.GetDefaultFont.Size;
+
+  s := GetAttrValue(ANode, 'ss:Color');
+  if s <> '' then
+    fcolor := HTMLColorStrToColor(s)
+  else
+    fcolor := book.GetDefaultFont.Color;
+
+  fstyle := [];
+  s := GetAttrValue(ANode, 'ss:Bold');
+  if s = '1' then
+    Include(fstyle, fssBold);
+  s := GetAttrValue(ANode, 'ss:Italic');
+  if s = '1' then
+    Include(fstyle, fssItalic);
+  s := GetAttrValue(ANode, 'ss:UnderLine');
+  if s <> '' then
+    Include(fstyle, fssUnderline);
+  s := GetAttrValue(ANode, 'ss:StrikeThrough');
+  if s = '1' then
+    Include(fstyle, fssStrikeout);
+
+  AFormat.FontIndex := book.AddFont(fname, fsize, fstyle, fcolor);
+  Include(AFormat.UsedFormattingFields, uffFont);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Styles/Style/Interior" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadInterior(ANode: TDOMNode;
+  var AFormat: TsCellFormat);
+var
+  s: String;
+  fs: TsFillStyle;
+begin
+  if ANode = nil then
+    exit;
+
+  s := GetAttrValue(ANode, 'ss:Pattern');
+  if s = '' then
+    exit;
+
+  for fs in TsFillStyle do
+    if FILL_NAMES[fs] = s then begin
+      AFormat.Background.Style := fs;
+      break;
+    end;
+
+  s := GetAttrValue(ANode, 'ss:PatternColor');
+  if s = '' then
+    AFormat.Background.FgColor := scBlack
+  else
+    AFormat.Background.FgColor := HTMLColorStrToColor(s);
+
+  s := GetAttrValue(ANode, 'ss:Color');
+  if s = '' then
+    AFormat.Background.BgColor := scWhite
+  else begin
+    AFormat.Background.BgColor := HTMLColorStrToColor(s);
+    if AFormat.Background.Style = fsSolidFill then
+      AFormat.Background.FgColor := AFormat.Background.BgColor;
+  end;
+
+  Include(AFormat.UsedFormattingFields, uffBackground);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads a "Styles/Style/NumberFormat" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadNumberFormat(ANode: TDOMNode;
+  var AFormat: TsCellFormat);
+var
+  s: String;
+  nf: TsNumberFormat = nfGeneral;
+  nfs: String;
+begin
+  if ANode = nil then
+    exit;
+
+  s := GetAttrValue(ANode, 'ss:Format');
+  case s of
+    'General':
+      exit;
+    'Short Date':
+      begin
+        nf := nfShortDate;
+        nfs := BuildDateTimeFormatString(nf, FWorkbook.FormatSettings);
+      end;
+    'Short Time':
+      begin
+        nf := nfShortTime;
+        nfs := BuildDateTimeFormatString(nf, FWorkbook.FormatSettings);
+      end;
+    else
+      nfs := s;
+  end;
+  if nfs = '' then
+    exit;
+
+  AFormat.NumberFormatIndex := TsWorkbook(FWorkbook).AddNumberFormat(nfs);
+  AFormat.NumberFormatStr := nfs;
+  AFormat.NumberFormat := nf;
+  Include(AFormat.UsedFormattingFields, uffNumberFormat);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads a "Worksheet/Table/Row" node
 -------------------------------------------------------------------------------}
 procedure TsSpreadExcelXMLReader.ReadRow(ANode: TDOMNode;
@@ -279,6 +629,72 @@ begin
       inc(c);
     end;
     ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads a "Styles/Style" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadStyle(ANode: TDOMNode);
+var
+  nodeName: String;
+  fmt: TsCellFormat;
+  s: String;
+  id: Integer;
+  idx: Integer;
+  childNode: TDOMNode;
+begin
+  // Respect ancestor of current style
+  s := GetAttrValue(ANode, 'ss:Parent');
+  if s <> '' then begin
+    idx := FCellFormatList.FindIndexOfName(s);
+    if idx > -1 then
+      fmt := FCellFormatList.Items[idx]^;
+  end else
+    InitFormatRecord(fmt);
+
+  // ID of current style. We store it in the "Name" field of the TsCellFormat
+  // because it is a string while ID is an Integer (mostly "s<number>", but also
+  // "Default").
+  fmt.Name := GetAttrValue(ANode, 'ss:ID');
+
+  childNode := ANode.FirstChild;
+  while childNode <> nil do begin
+    nodeName := childNode.NodeName;
+    if nodeName = 'Alignment' then
+      ReadAlignment(childNode, fmt)
+    else if nodeName = 'Borders' then
+      ReadBorders(childNode, fmt)
+    else if nodeName = 'Interior' then
+      ReadInterior(childNode, fmt)
+    else if nodeName = 'Font' then
+      ReadFont(childNode, fmt)
+    else if nodeName = 'NumberFormat' then
+      ReadNumberFormat(childnode, fmt)
+    else if nodeName = 'Protection' then
+      ReadCellProtection(childNode, fmt);
+    childNode := childNode.NextSibling;
+  end;
+
+  FCellFormatList.Add(fmt);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Styles" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadStyles(ANode: TDOMNode);
+var
+  nodeName: String;
+  styleNode: TDOMNode;
+begin
+  if ANode = nil then
+    exit;
+  styleNode := ANode.FirstChild;
+  while styleNode <> nil do begin
+    nodeName := styleNode.NodeName;
+    if nodeName = 'Style' then
+      ReadStyle(styleNode);
+    styleNode := styleNode.NextSibling;
   end;
 end;
 
@@ -351,7 +767,7 @@ end;
 procedure TsSpreadExcelXMLReader.ReadWorksheets(ANode: TDOMNode);
 var
   nodeName: String;
-  s: STring;
+  s: String;
 begin
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
@@ -377,6 +793,7 @@ var
 begin
   try
     ReadXMLStream(doc, AStream);
+    ReadStyles(doc.DocumentElement.FindNode('Styles'));
     ReadWorksheets(doc.DocumentElement.FindNode('Worksheet'));
   finally
     doc.Free;
