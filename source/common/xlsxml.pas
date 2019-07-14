@@ -409,6 +409,7 @@ var
   cell: PCell;
   fmt: TsCellFormat;
   idx: Integer;
+  mergedCols, mergedRows: Integer;
 begin
   if ANode = nil then
     exit;
@@ -426,6 +427,14 @@ begin
       cell^.FormatIndex := TsWorkbook(FWorkbook).AddCellFormat(fmt);
     end;
   end;
+
+  // Merged cells
+  s := GetAttrValue(ANode, 'ss:MergeAcross');
+  if not ((s <> '') and TryStrToInt(s, mergedCols)) then mergedCols := 0;
+  s := GetAttrValue(ANode, 'ss:MergeDown');
+  if not ((s <> '') and TryStrToint(s, mergedRows)) then mergedRows := 0;
+  if (mergedCols > 0) or (mergedRows > 0) then
+    sheet.MergeCells(ARow, ACol, ARow + mergedRows, ACol + mergedCols);
 
   node := ANode.FirstChild;
   if node = nil then
