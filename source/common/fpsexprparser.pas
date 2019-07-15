@@ -709,9 +709,11 @@ type
     procedure ParserError(Msg: String);
     function GetExpression: String;
     function GetLocalizedExpression(const AFormatSettings: TFormatSettings): String; virtual;
+    function GetR1C1Expression(ACell: PCell): String;
     procedure SetExpression(const AValue: String);
     procedure SetLocalizedExpression(const AFormatSettings: TFormatSettings;
       const AValue: String); virtual;
+    procedure SetR1C1Expression(ACell: PCell; const AValue: String);
     procedure UpdateExprFormatSettings;
 
     procedure CheckResultType(const Res: TsExpressionResult;
@@ -756,6 +758,8 @@ type
     property ListSeparator: Char read FListSep;
     property LocalizedExpression[AFormatSettings: TFormatSettings]: String
         read GetLocalizedExpression write SetLocalizedExpression;
+    property R1C1Expression[ACell: PCell]: String
+        read GetR1C1Expression write SetR1C1Expression;
     property RPNFormula: TsRPNFormula read GetRPNFormula write SetRPNFormula;
     property Identifiers: TsExprIdentifierDefs read FIdentifiers write SetIdentifiers;
     property BuiltIns: TsBuiltInExprCategories read FBuiltIns write SetBuiltIns;
@@ -1123,31 +1127,48 @@ begin
 end;
 
 function TsExpressionScanner.DoIdentifier: TsTokenType;
+
+  function IsR1C1Char(C: Char): Boolean; inline;
+  begin
+    Result := (FParser.Dialect = fdExcelR1C1) and (C in ['[', ']', '-']);
+  end;
+
 var
   C: Char;
   S: String;
   isQuoted: Boolean;
+  ok: Boolean;
 begin
   C := CurrentChar;
   isQuoted := C = '''';
-  while ((not IsWordDelim(C)) or IsQuoted) and (C <> cNULL) do
+
+  while ((not IsWordDelim(C)) or IsQuoted or IsR1C1Char(C)) and (C <> cNULL) do
   begin
     FToken := FToken + C;
     C := NextPos;
     if C = '''' then isQuoted := false;
   end;
 
-  if ParseCellRangeString(FToken, FSheet1, FSheet2,
-       FCellRange.Row1, FCellRange.Col1, FCellRange.Row2, FCellRange.Col2, FFlags
-     ) and (C <> '(')
-  then
+  if (FParser.Dialect = fdExcelR1C1) then begin
+    ok := ParseCellRangeString_R1C1(FToken,
+      FParser.FDestCell^.Row, FParser.FDestCell^.Col,
+      FSheet1, FSheet2,
+      FCellRange.Row1, FCellRange.Col1, FCellRange.Row2, FCellRange.Col2,
+      FFlags)
+  end else begin
+    ok := ParseCellRangeString(FToken,
+      FSheet1, FSheet2,
+      FCellRange.Row1, FCellRange.Col1, FCellRange.Row2, FCellRange.Col2,
+      FFlags);
+  end;
+
+  if ok and (C <> '(') then
   begin
     Result := ttSpreadsheetAddress;
     exit;
   end;
 
   S := LowerCase(FToken);
-
   if (S = 'true') and (C <> '(') then
     Result := ttTrue
   else if (S = 'false') and (C <> '(') then
@@ -1356,7 +1377,13 @@ function TsExpressionScanner.IsWordDelim(C: Char): Boolean;
 begin
   Result := (C in WordDelimiters) or (C = FParser.ListSeparator);
 end;
-
+                                      (*
+function TsExpressionScanner.IsWordDelimR1C1(C: Char): boolean;
+begin
+  Result := not (C in (['[', ']'] + Digits)
+  Result := (C in (WordDelimiters + ['[', ']'])) or (C = FParser.ListSeparator);
+end;
+                                        *)
 function TsExpressionScanner.NextPos: Char;
 begin
   Inc(FPos);
@@ -1575,6 +1602,23 @@ begin
   EvaluateExpression(Res);
   CheckResultType(Res, rtString);
   Result := Res.ResString;
+end;
+
+{ Returns the expression in R1C1 notation.
+  ACell is the cell to which the expression is assumed to be relative. }
+function TsExpressionParser.GetR1C1Expression(ACell: PCell): String;
+var
+  oldDialect: TsFormulaDialect;
+begin
+  oldDialect := FDialect;
+  try
+    FDialect := fdExcelR1C1;
+    PrepareCopyMode(ACell, ACell);
+    Result := Expression;
+  finally
+    PrepareCopyMode(nil, nil);
+    FDialect := oldDialect;
+  end;
 end;
 
 function TsExpressionParser.GetRPNFormula: TsRPNFormula;
@@ -2018,6 +2062,23 @@ end;
 procedure TsExpressionParser.SetIdentifiers(const AValue: TsExprIdentifierDefs);
 begin
   FIdentifiers.Assign(AValue)
+end;
+
+{ Parses an expression in which cell references are given in Excel's R1C1 notation
+  ACell is the cell to which the created expression will be relative. }
+procedure TsExpressionParser.SetR1C1Expression(ACell: PCell; const AValue: String);
+var
+  oldDialect: TsFormulaDialect;
+begin
+  oldDialect := FDialect;
+  try
+    FDialect := fdExcelR1C1;
+    PrepareCopyMode(ACell, ACell);
+    Expression := AValue;
+  finally
+    FDialect := oldDialect;
+    PrepareCopyMode(nil, nil);
+  end;
 end;
 
 procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
