@@ -144,7 +144,6 @@ begin
   MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
   MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
 
-  (********************* to do...
   MyWorksheet.WriteComment(8, 3, 'This is font "Courier New", Size 12.');
 
   // Write the string formula E1 = A1 + B1 ...
@@ -172,7 +171,7 @@ begin
     RPNSTring('B',
     RPNFunc(fekConcat,
     nil)))));
-              *)
+
   r := 10;
   MyWorksheet.WriteText(r, 0, 'Writing current date/time:');
   inc(r, 2);

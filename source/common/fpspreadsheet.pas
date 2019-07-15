@@ -3036,13 +3036,17 @@ begin
   if (ACell = nil) or (not HasFormula(ACell)) then
     exit;
 
-  formula := FFormulas.findFormula(ACell^.Row, ACell^.Col);
+  formula := FFormulas.FindFormula(ACell^.Row, ACell^.Col);
   oldDialect := formula^.Parser.Dialect;
-  try
-    formula^.Parser.Dialect := ADialect;
-    Result := formula^.Parser.Expression;
-  finally
-    formula^.Parser.Dialect := oldDialect;
+  if oldDialect <> ADialect then begin
+    try
+      formula^.Parser.Dialect := ADialect;
+      formula^.Parser.PrepareCopyMode(ACell, nil);
+      Result := formula^.Parser.Expression;
+    finally
+      formula^.Parser.PrepareCopyMode(nil, nil);
+      formula^.Parser.Dialect := oldDialect;
+    end;
   end;
 end;
 
