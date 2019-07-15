@@ -124,7 +124,8 @@ implementation
 
 uses
   StrUtils, DateUtils, Math,
-  fpsStrings, fpsClasses, fpspreadsheet, fpsUtils, fpsNumFormat, fpsHTMLUtils;
+  fpsStrings, fpsClasses, fpspreadsheet, fpsUtils, fpsNumFormat, fpsHTMLUtils,
+  fpsExprParser;
 
 const
   FMT_OFFSET   = 61;
@@ -402,6 +403,7 @@ end;
 procedure TsSpreadExcelXMLReader.ReadCell(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet; ARow, ACol: Integer);
 var
+  book: TsWorkbook;
   sheet: TsWorksheet absolute AWorksheet;
   nodeName: string;
   s, st, sv: String;
@@ -419,13 +421,14 @@ begin
     raise Exception.Create('[ReadCell] Only "Cell" nodes expected.');
 
   cell := sheet.GetCell(ARow, ACol);
+  book := TsWorkbook(FWorkbook);
 
   s := GetAttrValue(ANode, 'ss:StyleID');
   if s <> '' then begin
     idx := FCellFormatList.FindIndexOfName(s);
     if idx <> -1 then begin
       fmt := FCellFormatList.Items[idx]^;
-      cell^.FormatIndex := TsWorkbook(FWorkbook).AddCellFormat(fmt);
+      cell^.FormatIndex := book.AddCellFormat(fmt);
     end;
   end;
 
@@ -436,6 +439,23 @@ begin
   if not ((s <> '') and TryStrToint(s, mergedRows)) then mergedRows := 0;
   if (mergedCols > 0) or (mergedRows > 0) then
     sheet.MergeCells(ARow, ACol, ARow + mergedRows, ACol + mergedCols);
+
+  // Formula
+  s := GetAttrValue(ANode, 'ss:Formula');
+  if s <> '' then begin
+    try
+      sheet.WriteFormula(cell, s, false, true);
+    except
+      on E:EExprParser do begin
+        FWorkbook.AddErrorMsg(E.Message);
+        if (boAbortReadOnFormulaError in FWorkbook.Options) then raise;
+      end;
+      on E:ECalcEngine do begin
+        FWorkbook.AddErrorMsg(E.Message);
+        if (boAbortReadOnFormulaError in FWorkbook.Options) then raise;
+      end;
+    end;
+  end;
 
   // Hyperlink
   s := GetAttrValue(ANode, 'ss:HRef');
@@ -448,34 +468,40 @@ begin
   node := ANode.FirstChild;
   if node = nil then
     sheet.WriteBlank(cell)
-  else
-    while node <> nil do begin
-      nodeName := node.NodeName;
-      if (nodeName = 'Data') or (nodeName = 'ss:Data') then begin
-        sv := node.TextContent;
-        st := GetAttrValue(node, 'ss:Type');
-        case st of
-          'String':
-            sheet.WriteText(cell, sv);
-          'Number':
-            sheet.WriteNumber(cell, StrToFloat(sv, FPointSeparatorSettings));
-          'DateTime':
-            sheet.WriteDateTime(cell, ExtractDateTime(sv));
-          'Boolean':
-            if sv = '1' then
-              sheet.WriteBoolValue(cell, true)
-            else if sv = '0' then
-              sheet.WriteBoolValue(cell, false);
-          'Error':
-            if TryStrToErrorValue(sv, err) then
-              sheet.WriteErrorValue(cell, err);
-        end;
-      end
-      else
-      if (nodeName = 'Comment') then
-        ReadComment(node, AWorksheet, cell);
-      node := node.NextSibling;
+  else begin
+    book.LockFormulas;  // Protect formulas from being deleted by the WriteXXXX calls
+    try
+      while node <> nil do begin
+        nodeName := node.NodeName;
+        if (nodeName = 'Data') or (nodeName = 'ss:Data') then begin
+          sv := node.TextContent;
+          st := GetAttrValue(node, 'ss:Type');
+          case st of
+            'String':
+              sheet.WriteText(cell, sv);
+            'Number':
+              sheet.WriteNumber(cell, StrToFloat(sv, FPointSeparatorSettings));
+            'DateTime':
+              sheet.WriteDateTime(cell, ExtractDateTime(sv));
+            'Boolean':
+              if sv = '1' then
+                sheet.WriteBoolValue(cell, true)
+              else if sv = '0' then
+                sheet.WriteBoolValue(cell, false);
+            'Error':
+              if TryStrToErrorValue(sv, err) then
+                sheet.WriteErrorValue(cell, err);
+          end;
+        end
+        else
+        if (nodeName = 'Comment') then
+          ReadComment(node, AWorksheet, cell);
+        node := node.NextSibling;
+      end;
+    finally
+      book.UnlockFormulas;
     end;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

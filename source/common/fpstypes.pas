@@ -592,8 +592,7 @@ type
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
 
   {@@ Cell flag }
-  TsCellFlag = ({cfCalculating, cfCalculated, }cfHasComment, cfHyperlink, cfMerged,
-    cfHasFormula, cf3dFormula);
+  TsCellFlag = (cfHasComment, cfHyperlink, cfMerged, cfHasFormula, cf3dFormula);
 
   {@@ Set of cell flags }
   TsCellFlags = set of TsCellFlag;

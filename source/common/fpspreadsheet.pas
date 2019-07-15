@@ -236,9 +236,9 @@ type
     procedure WriteErrorValue(ACell: PCell; AValue: TsErrorValue); overload;
 
     function WriteFormula(ARow, ACol: Cardinal; AFormula: String;
-      ALocalized: Boolean = false): PCell; overload;
+      ALocalized: Boolean = false; R1C1Mode: Boolean = false): PCell; overload;
     procedure WriteFormula(ACell: PCell; AFormula: String;
-      ALocalized: Boolean = false); overload;
+      ALocalized: Boolean = false; R1C1Mode: Boolean = false); overload;
 
     function WriteNumber(ARow, ACol: Cardinal; ANumber: double): PCell; overload;
     procedure WriteNumber(ACell: PCell; ANumber: Double); overload;
@@ -5838,13 +5838,16 @@ end;
   @param  ALocalized If true, the formula is expected to have decimal and list
                      separators of the workbook's FormatSettings. Otherwise
                      uses dot and comma, respectively.
+  @param  R1C1Mode   If true, the formula is expected to contain cell references
+                     in Excel's "R1C1" notation; otherwise "A1" references are
+                     expected.
   @return Pointer to the cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFormula(ARow, ACol: Cardinal; AFormula: String;
-  ALocalized: Boolean = false): PCell;
+  ALocalized: Boolean = false; R1C1Mode: Boolean = false): PCell;
 begin
   Result := GetCell(ARow, ACol);
-  WriteFormula(Result, AFormula, ALocalized);
+  WriteFormula(Result, AFormula, ALocalized, R1C1Mode);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5859,7 +5862,7 @@ end;
                      uses dot and comma, respectively.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: String;
-  ALocalized: Boolean = false);
+  ALocalized: Boolean = false; R1C1Mode: Boolean = false);
 var
   parser: TsExpressionParser = nil;
   formula: PsFormula;
@@ -5886,6 +5889,9 @@ begin
     try
       if ALocalized then
         parser.LocalizedExpression[Workbook.FormatSettings] := AFormula
+      else
+      if R1C1Mode then
+        parser.R1C1Expression[ACell] := AFormula
       else
         parser.Expression := AFormula;
       AFormula := parser.Expression;

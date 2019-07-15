@@ -45,7 +45,7 @@ begin
   MyWorkbook.SetDefaultFont('Calibri', 10);
   MyWorkbook.FormatSettings.CurrencyFormat := 2;
   MyWorkbook.FormatSettings.NegCurrFormat := 14;
-  MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving];
+  Myworkbook.Options := Myworkbook.Options + [boCalcBeforeSaving, boAutoCalc];
 
   MyWorksheet := MyWorkbook.AddWorksheet(Str_Worksheet1);
   MyWorksheet.Options := MyWorksheet.Options - [soShowGridLines];

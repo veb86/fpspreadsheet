@@ -102,6 +102,9 @@ function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
   out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean; overload;
 function ParseCellString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
   out ACellRow, ACellCol: Cardinal): Boolean; overload;
+function ParseCellRangeString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
+  out ASheet1, ASheet2: String; out ARow1, ACol1, ARow2, ACol2: Cardinal;
+  out AFlags: TsRelFlags): Boolean; overload;
 
 function GetCellString_R1C1(ARow, ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
   ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String; overload;
@@ -811,6 +814,44 @@ var
 begin
   Result := ParseCellString_R1C1(AStr, ABaseRow, ABaseCol,
     ACellRow, ACellCol, flags);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Parses a 3D cell and sheet range string in Excel R1C1 dialect. Returns the
+  names of the limiting sheets and the indexes of the limiting borders.
+  The function result is false if the provided string is not valid.
+-------------------------------------------------------------------------------}
+function ParseCellRangeString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
+  out ASheet1, ASheet2: String; out ARow1, ACol1, ARow2, ACol2: Cardinal;
+  out AFlags: TsRelFlags): Boolean;
+var
+  s1, s2: string;
+  p: Integer;
+begin
+  p := pos('!', AStr);
+  if p = 0 then begin
+    ASheet1 := '';
+    ASheet2 := '';
+    s2 := AStr;
+  end else begin
+    s1 := Copy(AStr, 1, p-1);
+    s2 := Copy(AStr, p+1, MaxInt);
+    p := pos(':', s1);
+    if p = 0 then
+      ASheet1 := UnquoteStr(s1)
+    else begin
+      ASheet1 := UnquoteStr(copy(s1, 1, p-1));
+      ASheet2 := UnquoteStr(copy(s1, p+1, MaxInt));
+    end;
+  end;
+
+  p := pos(':', s2);
+  if p = 0 then begin
+    ARow2 := Cardinal(-1);
+    ACol2 := Cardinal(-1);
+    Result := ParseCellString_R1C1(s2, ABAseRow, ABaseCol, ARow1, ACol1, AFlags);
+  end else
+    Result := ParseCellRangeString_R1C1(s2, ABAseRow, ABaseCol, ARow1, ACol1, ARow2, ACol2, AFlags);
 end;
 
 
