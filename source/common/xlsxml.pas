@@ -1823,6 +1823,7 @@ begin
     if (uffNumberFormat in fmt^.UsedFormattingFields) then
     begin
       nfp := book.GetNumberFormat(fmt^.NumberFormatIndex);
+      nfp.AllowLocalizedAMPM := false;    // Replace "AMPM" by "AM/PM"
       AppendToStream(AStream, Format(INDENT3 +
         '<NumberFormat ss:Format="%s"/>' + LF, [UTF8TextToXMLText(nfp.NumFormatStr)]));
     end;

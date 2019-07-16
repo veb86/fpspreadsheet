@@ -3363,7 +3363,7 @@ begin
   for i:= FFirstNumFormatIndexInFile to NumFormatList.Count-1 do
   begin
     numFmtStr := NumFormatList[i];
-    parser := TsNumFormatParser.Create(numFmtStr, Workbook.FormatSettings);
+    parser := TsExcelNumFormatParser.Create(numFmtStr, Workbook.FormatSettings);
     try
       numFmtStr := UTF8TextToXMLText(parser.FormatString);
       xmlStr := xmlStr + Format('<numFmt numFmtId="%d" formatCode="%s" />',

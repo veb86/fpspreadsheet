@@ -161,12 +161,14 @@ type
     by the number format parser from a format string. }
   TsNumFormatParams = class(TObject)
   private
+    FAllowLocalizedAMPM: Boolean;
   protected
     function GetNumFormat: TsNumberFormat; virtual;
     function GetNumFormatStr: String; virtual;
   public
     {@@ Array of the format sections }
     Sections: TsNumFormatSections;
+    constructor Create;
     procedure DeleteElement(ASectionIndex, AElementIndex: Integer);
     procedure InsertElement(ASectionIndex, AElementIndex: Integer;
       AToken: TsNumFormatToken);
@@ -175,6 +177,7 @@ type
     procedure SetDecimals(AValue: Byte);
     procedure SetNegativeRed(AEnable: Boolean);
     procedure SetThousandSep(AEnable: Boolean);
+    property AllowLocalizedAMPM: boolean read FAllowLocalizedAMPM write FAllowLocalizedAMPM;
     property NumFormat: TsNumberFormat read GetNumFormat;
     property NumFormatStr: String read GetNumFormatStr;
   end;
@@ -315,7 +318,8 @@ function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
   AMinIntDigits: Integer = 1): String;
 
-function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
+function BuildFormatStringFromSection(const ASection: TsNumFormatSection;
+  AllowLocalizedAMPM: Boolean = true): String;
 
 function ApplyTextFormat(AText: String; AParams: TsNumFormatParams): String;
 function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
@@ -1118,9 +1122,7 @@ end;
 {==============================================================================}
 
 {@@ ----------------------------------------------------------------------------
-  Adds an AM/PM format code to a pre-built time formatting string. The strings
-  replacing "AM" or "PM" in the final formatted number are taken from the
-  TimeAMString or TimePMString of the specified FormatSettings.
+  Adds an AM/PM format code to a pre-built time formatting string.
 
   @param   ATimeFormatString  String of time formatting codes (such as 'hh:nn')
   @param   AFormatSettings    FormatSettings for locale-dependent information
@@ -1130,13 +1132,8 @@ end;
 -------------------------------------------------------------------------------}
 function AddAMPM(const ATimeFormatString: String;
   const AFormatSettings: TFormatSettings): String;
-var
-  am, pm: String;
-  fs: TFormatSettings absolute AFormatSettings;
 begin
-  am := IfThen(fs.TimeAMString <> '', fs.TimeAMString, 'AM');
-  pm := IfThen(fs.TimePMString <> '', fs.TimePMString, 'PM');
-  Result := Format('%s %s/%s', [StripAMPM(ATimeFormatString), am, pm]);
+  Result := Format('%s AM/PM', [StripAMPM(ATimeFormatString)]);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1470,9 +1467,15 @@ end;
 
   @param  ASection  Parsed section of number format elements as created by the
                     number format parser
-  @return Excel-compatible format string
+  @param  AllowLocalizedAMPM  Replaces "AMPM" in a time format string by "AM/PM".
+          "AMPM" is allowed by FPS, but not by Excel. When converting a time to
+          string it is replaced by the localized strings
+          FormatSettings.TimeAMString/.TimePMString.
+
+          @return Excel-compatible format string
 -------------------------------------------------------------------------------}
-function BuildFormatStringFromSection(const ASection: TsNumFormatSection): String;
+function BuildFormatStringFromSection(const ASection: TsNumFormatSection;
+  AllowLocalizedAMPM: Boolean = true): String;
 var
   element: TsNumFormatElement;
   i, n: Integer;
@@ -1542,7 +1545,12 @@ begin
           else Result := Result + DupeString('s', element.IntValue);
       nftMilliseconds:
         Result := Result + DupeString('0', element.IntValue);
-      nftSign, nftSignBracket, nftExpChar, nftExpSign, nftAMPM, nftDateTimeSep:
+      nftAMPM:
+        if Lowercase(element.TextValue) = 'ampm' then
+          Result := Result + 'AM/PM'
+        else if element.TextValue <> '' then
+          Result := Result + element.TextValue;
+      nftSign, nftSignBracket, nftExpChar, nftExpSign, nftDateTimeSep:
         if element.TextValue <> '' then Result := Result + element.TextValue;
       nftCurrSymbol:
         if element.TextValue <> '' then
@@ -2189,6 +2197,12 @@ end;
 {                             TsNumFormatParams                                }
 {==============================================================================}
 
+constructor TsNumFormatParams.Create;
+begin
+  inherited;
+  FAllowLocalizedAMPM := true;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Deletes a parsed number format element from the specified format section.
 
@@ -2249,7 +2263,7 @@ begin
   if Length(Sections) > 0 then begin
     Result := BuildFormatStringFromSection(Sections[0]);
     for i := 1 to High(Sections) do
-      Result := Result + ';' + BuildFormatStringFromSection(Sections[i]);
+      Result := Result + ';' + BuildFormatStringFromSection(Sections[i], FAllowLocalizedAMPM);
   end else
     Result := '';
 end;

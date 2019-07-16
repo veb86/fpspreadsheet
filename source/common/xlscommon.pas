@@ -418,6 +418,11 @@ type
     function GetLocalLinks(AWorksheet: TsBasicWorksheet): TsBiffExternSheetList;
   end;
 
+  TsExcelNumFormatParser = class(TsNumFormatParser)
+  protected
+    function BuildFormatString: String; override;
+  end;
+
 
   { TsSpreadBIFFReader }
   TsSpreadBIFFReader = class(TsCustomSpreadReader)
@@ -1059,6 +1064,20 @@ function TsBIFFLinkLists.GetLocalLinks(
   AWorksheet: TsBasicWorksheet): TsBIFFExternSheetList;
 begin
   Result := GetSheetList(AWorksheet);
+end;
+
+
+{ FPS can use an "ampm" modifier in the time format string, Excel cannot.
+  The function replaces is by "AM/PM". }
+function TsExcelNumFormatParser.BuildFormatString: String;
+var
+  p: Integer;
+begin
+  Result := inherited;
+  if IsTimeFormat or IsDateTimeFormat then begin
+    p := pos('ampm', Lowercase(Result));
+    if p > 0 then Result := Copy(Result, 1, p-1) + 'AM/PM';
+  end;
 end;
 
 
@@ -4357,7 +4376,7 @@ begin
   for i:= FFirstNumFormatIndexInFile to NumFormatList.Count-1 do
   begin
     fmtStr := NumFormatList[i];
-    parser := TsNumFormatParser.Create(fmtStr, Workbook.FormatSettings);
+    parser := TsExcelNumFormatParser.Create(fmtStr, Workbook.FormatSettings);
     try
       fmtStr := parser.FormatString;
       WriteFORMAT(AStream, fmtStr, i);

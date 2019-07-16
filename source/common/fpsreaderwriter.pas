@@ -152,8 +152,6 @@ type
 
     procedure AddBuiltinNumFormats; virtual;
     function  FindNumFormatInList(ANumFormatStr: String): Integer;
-//    function  FixColor(AColor: TsColor): TsColor; virtual;
-    procedure FixFormat(ACell: PCell); virtual;
     procedure GetSheetDimensions(AWorksheet: TsBasicWorksheet;
       out AFirstRow, ALastRow, AFirstCol, ALastCol: Cardinal); virtual;
     procedure ListAllNumFormats; virtual;
@@ -622,21 +620,6 @@ begin
     if SameText(ANumFormatStr, FNumFormatList[Result]) then
       exit;
   Result := -1;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  If formatting features of a cell are not supported by the destination file
-  format of the writer, here is the place to apply replacements.
-  Must be overridden by descendants, nothin happens here. See BIFF2.
-
-  @param  ACell  Pointer to the cell being investigated. Note that this cell
-                 does not belong to the workbook, but is a cell of the
-                 FFormattingStyles array.
--------------------------------------------------------------------------------}
-procedure TsCustomSpreadWriter.FixFormat(ACell: PCell);
-begin
-  Unused(ACell);
-  // to be overridden
 end;
 
 {@@ ----------------------------------------------------------------------------
