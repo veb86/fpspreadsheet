@@ -43,8 +43,10 @@ type
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow, ACol: Integer);
     procedure ReadCellProtection(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadComment(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ACell: PCell);
+    procedure ReadExcelWorkbook(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadInterior(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadNames(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadNumberFormat(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow: Integer);
     procedure ReadStyle(ANode: TDOMNode);
@@ -192,6 +194,11 @@ begin
     raise EFPSpreadsheet.Create('Content type error in cell ' + GetCellString(ACell^.Row, ACell^.Col));
   end;
 end;
+
+
+{===============================================================================
+                          TsSpreadExcelXMLReader
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the ExcelXML reader
@@ -540,6 +547,41 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the "ExcelWorkbook" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadExcelWorkbook(ANode: TDOMNode);
+var
+  s: String;
+  nodeName: String;
+  n: Integer;
+begin
+  if ANode = nil then
+    exit;
+
+  ANode := ANode.FirstChild;
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'ActiveSheet' then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToInt(s, n) then
+        with TsWorkbook(FWorkbook) do
+          SelectWorksheet(GetWorksheetByIndex(n));
+    end else
+    if nodeName = 'ProtectStructure' then begin
+      s := ANode.TextContent;
+      if s = 'True' then
+        FWorkbook.Protection := FWorkbook.Protection + [bpLockStructure];
+    end else
+    if nodeName = 'ProtectWindows' then begin
+      s := ANode.TextContent;
+      if s = 'True' then
+        FWorkbook.Protection := FWorkbook.Protection + [bpLockWindows];
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the "Styles/Style/Font" node
 -------------------------------------------------------------------------------}
 procedure TsSpreadExcelXMLreader.ReadFont(ANode: TDOMNode;
@@ -627,6 +669,91 @@ begin
   end;
 
   Include(AFormat.UsedFormattingFields, uffBackground);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads a "Worksheet/Names" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadNames(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+
+  procedure DoProcess(AStr: String; var ARowIndex, AColIndex: Cardinal;
+    out IsRow: Boolean);
+  var
+    p: Integer;
+  begin
+    p := pos('!', AStr);
+    if p > 0 then AStr := Copy(AStr, p+1, MaxInt);
+    IsRow := AStr[1] in ['R', 'r'];
+    Delete(AStr, 1, 1);
+    if IsRow then
+      ARowIndex := StrToInt(AStr) - 1
+    else
+      AColIndex := StrToInt(AStr) - 1;
+  end;
+
+  procedure DoRepeatedRowsCols(AStr: String);
+  var
+    p: Integer;
+    isRow: Boolean;
+    r1: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+    c1: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+    r2: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+    c2: Cardinal = UNASSIGNED_ROW_COL_INDEX;
+  begin
+    p := pos(':', AStr);
+    // No colon --> Single range, e.g. "=Sheet1!C1"
+    if p = 0 then
+    begin
+      DoProcess(AStr, r1, c1, isRow);
+      r2 := r1;
+      c2 := c1;
+    end else
+    // Colon --> Range block, e.g. "Sheet1!R1:R2"
+    begin
+      DoProcess(copy(AStr, 1, p-1), r1, c1, isRow);
+      DoProcess(copy(AStr, p+1, MaxInt), r2, c2, isRow);
+    end;
+    if isRow then
+      TsWorksheet(AWorksheet).PageLayout.SetRepeatedRows(r1, r2)
+    else
+      TsWorksheet(AWorksheet).PageLayout.SetRepeatedCols(c1, c2);
+  end;
+
+var
+  s, s1: String;
+  nodeName: String;
+  sheet1, sheet2: String;
+  r1, c1, r2, c2: Cardinal;
+  flags: TsRelFlags;
+  p, q: Integer;
+begin
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'NamedRange' then begin
+      s := GetAttrValue(ANode, 'ss:Name');
+      if s = 'Print_Area' then begin
+        // <NamedRange ss:Name="Print_Area" ss:RefersTo="=Tabelle2!R2C2:R5C7"/>
+        s := GetAttrValue(ANode, 'ss:RefersTo');
+        if (s <> '') and ParseCellRangeString_R1C1(s, 0, 0, sheet1, sheet2, r1, c1, r2, c2, flags) then
+          TsWorksheet(AWorksheet).PageLayout.AddPrintRange(r1, c1, r2, c2);
+          // to do: include sheet names here!
+      end else
+      if s = 'Print_Titles' then begin
+        // <NamedRange ss:Name="Print_Titles" ss:RefersTo="=Tabelle2!C1,Tabelle2!R1:R2"/>
+        s := GetAttrValue(ANode, 'ss:RefersTo');
+        if s <> '' then begin
+          p := pos(',', s);
+          if p > 0 then begin
+            DoRepeatedRowsCols(copy(s, 1, p-1));
+            DoRepeatedRowsCols(copy(s, p+1, MaxInt));
+          end else
+            DoRepeatedRowsCols(s);
+        end;
+      end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -801,6 +928,11 @@ begin
         end;
       end;
 
+      // Hidden
+      s := GetAttrValue(ANode, 'ss:Hidden');
+      if s = '1' then
+        sheet.HideCol(c);
+
       inc(c);
     end
     else
@@ -823,6 +955,11 @@ begin
       s := GetAttrValue(ANode, 'ss:Height');
       if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
         sheet.WriteRowHeight(r, x, suPoints);
+
+      // Hidden
+      s := GetAttrValue(ANode, 'ss:Hidden');
+      if (s = '1') then
+        sheet.HideRow(r);
 
       // Row format
       s := GetAttrValue(ANode, 'ss:StyleID');
@@ -853,12 +990,22 @@ var
   nodeName: String;
   s: String;
 begin
+  if ANode = nil then
+    exit;
+
+  s := GetAttrValue(ANode, 'ss:Protected');
+  if s ='1' then
+    AWorksheet.Options := AWorksheet.Options + [soProtected];
+  ;
+  ANode := ANode.FirstChild;
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
     if nodeName = 'Table' then
       ReadTable(ANode.FirstChild, AWorksheet)
     else if nodeName = 'WorksheetOptions' then
-      ReadWorksheetOptions(ANode.FirstChild, AWorksheet);
+      ReadWorksheetOptions(ANode.FirstChild, AWorksheet)
+    else if nodeName = 'Names' then
+      ReadNames(ANode.FirstChild, AWorksheet);
     ANode := ANode.NextSibling;
   end;
 end;
@@ -870,12 +1017,15 @@ procedure TsSpreadExcelXMLReader.ReadWorksheetOptions(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
 var
   sheet: TsWorksheet absolute AWorksheet;
-  node: TDOMNode;
+  node, childnode: TDOMNode;
   nodeName: String;
   s: String;
   x: Double;
   n: Integer;
   hasFitToPage: Boolean = false;
+  c, r: Cardinal;
+  r1, c1, r2, c2: Cardinal;
+  flags: TsRelFlags;
 begin
   if ANode = nil then
     exit;
@@ -984,7 +1134,110 @@ begin
         end;
         node := node.NextSibling;
       end;
+    end else
+    if nodeName = 'Selected' then
+      TsWorkbook(FWorkbook).ActiveWorksheet := sheet
+    else
+    if nodeName = 'Panes' then begin
+      c := sheet.ActiveCellCol;
+      r := sheet.ActiveCellRow;
+      node := ANode.FirstChild;
+      while node <> nil do begin
+        nodeName := node.NodeName;
+        if nodeName = 'Pane' then begin
+          childnode := node.FirstChild;
+          while childnode <> nil do begin
+            nodeName := childNode.NodeName;
+            if nodeName = 'ActiveRow' then begin
+              s := childNode.TextContent;
+              if (s <> '') and TryStrToInt(s, n) then
+                r := n;
+            end else
+            if nodeName = 'ActiveCol' then begin
+              s := childNode.TextContent;
+              if (s <> '') and TryStrToInt(s, n) then
+                c := n;
+            end;
+            childnode := childNode.NextSibling;
+          end;
+        end;
+        node := node.NextSibling;
+      end;
+      sheet.SelectCell(r, c);
+    end else
+    if nodeName = 'FreezePanes' then
+      sheet.Options := sheet.Options + [soHasFrozenPanes]
+    else
+    if (nodeName = 'TopRowBottomPane') then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToInt(s, n) then
+        sheet.TopPaneHeight := n;
+    end else
+    if (nodeName = 'LeftColumnRightPane') then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToInt(s, n) then
+        sheet.LeftPaneWidth := n;
+    end else
+    if nodeName = 'DoNotDisplayGridlines' then
+      sheet.Options := sheet.Options - [soShowGridLines]
+    else
+    if nodeName = 'DoNotDisplayHeadings' then
+      sheet.Options := sheet.Options - [soShowHeaders]
+    else
+    if nodeName = 'Zoom' then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToFloat(s, x) then
+        sheet.Zoomfactor := x * 0.01;
+    end else
+    if nodeName = 'Visible' then begin
+      s := ANode.TextContent;
+      if s = 'SheetHidden' then
+        sheet.Options := sheet.Options + [soHidden];
+    end else
+    if nodeName = 'AllowFormatCells' then
+      sheet.Protection := sheet.Protection - [spFormatCells]
+    else
+    if nodeName = 'AllowSizeCols' then
+      sheet.Protection := sheet.Protection - [spFormatColumns]
+    else
+    if nodeName = 'AllowSizeRows' then
+      sheet.Protection := sheet.Protection - [spFormatRows]
+    else
+    if nodeName = 'AllowInsertCols' then
+      sheet.Protection := sheet.Protection - [spInsertColumns]
+    else
+    if nodeName = 'AllowInsertRows' then
+      sheet.Protection := sheet.Protection - [spInsertRows]
+    else
+    if nodeName = 'AllowInsertHyperlinks' then
+      sheet.Protection := sheet.Protection - [spInsertHyperLinks]
+    else
+    if nodeName = 'AllowDeleteCols' then
+      sheet.Protection := sheet.Protection - [spDeleteColumns]
+    else
+    if nodeName = 'AllowDeleteRows' then
+      sheet.Protection := sheet.Protection - [spDeleteRows]
+    else
+    if nodeName = 'AllowSort' then
+      sheet.Protection := sheet.Protection - [spSort]
+    else
+    if nodeName = 'ProtectObjects' then
+      sheet.Protection := sheet.Protection + [spObjects]
+    else
+      {
+    if nodeName = 'ProtectScenarios' then
+      sheet.Protection := sheet.Protection + [spScenarios];
+    else
+      }
+    if nodeName = 'EnableSelection' then begin
+      s := ANode.TextContent;
+      if s = 'NoSelection' then
+        sheet.Protection := sheet.Protection + [spSelectLockedCells, spSelectUnlockedCells]
+      else
+      if s = 'Unlocked' then
+        sheet.Protection := sheet.Protection + [spSelectLockedCells];
     end;
+
     ANode := ANode.NextSibling;
   end;
 
@@ -1029,7 +1282,7 @@ begin
       s := GetAttrValue(ANode, 'ss:Name');
       if s <> '' then begin   // the case of '' should not happen
         FWorksheet := TsWorkbook(FWorkbook).AddWorksheet(s);
-        ReadWorksheet(ANode.FirstChild, FWorksheet);
+        ReadWorksheet(ANode, FWorksheet);
       end;
     end;
     ANode := ANode.NextSibling;
@@ -1047,14 +1300,26 @@ var
 begin
   try
     ReadXMLStream(doc, AStream);
+
+    // Read style list
     ReadStyles(doc.DocumentElement.FindNode('Styles'));
+
+    // Read worksheets and their contents
     ReadWorksheets(doc.DocumentElement.FindNode('Worksheet'));
+
+    // Read ExcelWorkbook node after worksheet nodes although before it is
+    // found before the worksheet nodes in the file, because is requires
+    // worksheets to be existing.
+    ReadExcelWorkbook(doc.DocumentElement.FindNode('ExcelWorkbook'));
   finally
     doc.Free;
   end;
 end;
 
 
+{===============================================================================
+                          TsSpreadExcelXMLWriter
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Constructor of the ExcelXML writer
@@ -1814,6 +2079,8 @@ begin
     StrUtils.IfThen(AWorksheet.IsProtected and (spObjects in AWorksheet.Protection), 'True', 'False'),
     StrUtils.IfThen(AWorksheet.IsProtected {and [spScenarios in AWorksheet.Protection])}, 'True', 'False')
   ]);
+
+  // todo - Several protection options
 
   // Put it all together...
   AppendToStream(AStream, INDENT2 +

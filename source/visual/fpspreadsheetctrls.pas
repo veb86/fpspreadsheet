@@ -4106,6 +4106,41 @@ begin
       else
         AStrings.Add('  FooterImage, right=');
 
+      if ASheet.PageLayout.NumPrintRanges = 0 then
+        AStrings.Add('  Print ranges=')
+      else
+        for i := 0 to ASheet.PageLayout.NumPrintRanges-1 do
+          with ASheet.PageLayout.PrintRange[i] do
+            AStrings.Add(Format('  Print range #%d=$%s$%s:$%s$%s', [ i,
+              GetColString(Col1), GetRowString(Row1), GetColString(Col2), GetRowString(Row2)
+            ]));
+
+      if ASheet.PageLayout.RepeatedRows.FirstIndex = UNASSIGNED_ROW_COL_INDEX then
+        AStrings.Add('  Repeated rows=')
+      else
+      if ASheet.PageLayout.RepeatedRows.FirstIndex = ASheet.PageLayout.RepeatedRows.LastIndex then
+        AStrings.Add(Format('  Repeated rows=$%s', [
+          GetRowString(ASheet.PageLayout.RepeatedRows.FirstIndex)
+        ]))
+      else
+        AStrings.Add(Format('  Repeated rows=$%s:$%s', [
+          GetRowString(ASheet.PageLayout.RepeatedRows.FirstIndex),
+          GetRowString(ASheet.PageLayout.RepeatedRows.lastIndex)
+        ]));
+
+      if ASheet.PageLayout.RepeatedCols.FirstIndex = UNASSIGNED_ROW_COL_INDEX then
+        AStrings.Add('  Repeated columns=')
+      else
+      if ASheet.PageLayout.RepeatedCols.FirstIndex = ASheet.PageLayout.RepeatedCols.LastIndex then
+        AStrings.Add(Format('  Repeated columns=$%s', [
+          GetColString(ASheet.PageLayout.RepeatedCols.FirstIndex)
+        ]))
+      else
+        AStrings.Add(Format('  Repeated columns=$%s:$%s', [
+          GetColString(ASheet.PageLayout.RepeatedCols.FirstIndex),
+          GetColString(ASheet.PageLayout.RepeatedCols.lastIndex)
+        ]));
+
       s := '';
       for po in TsPrintOption do
         if po in ASheet.PageLayout.Options then s := s + '; ' + GetEnumName(typeInfo(TsPrintOption), ord(po));

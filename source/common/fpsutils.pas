@@ -93,11 +93,14 @@ function GetCellRangeString(ARange: TsCellRange;
 function GetCellString(ARow,ACol: Cardinal;
   AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
 function GetColString(AColIndex: Integer): String;
+function GetRowString(ARowIndex: Integer): String;
 
   // -- "R1C1" syntax
 function ParseCellRangeString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
   out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal;
   out AFlags: TsRelFlags): Boolean;
+function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
+  out ASheet: String; out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean; overload;
 function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
   out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean; overload;
 function ParseCellString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
@@ -701,6 +704,22 @@ begin
   if rfRelCol in f then Include(AFlags, rfRelCol2);
 end;
 
+function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
+  out ASheet: String; out ACellRow, ACellCol: Cardinal;
+  out AFlags: TsRelFlags): Boolean;
+var
+  p: Integer;
+begin
+  p := pos('!', AStr);
+  if p > 0 then begin
+    ASheet := Copy(AStr, 1, p-1);
+    Result := ParseCellString_R1C1(Copy(AStr, p+1, MaxInt), ABaserow, ABaseCol, ACellRow, ACellCol, AFlags);
+  end else begin
+    ASheet := '';
+    Result := ParseCellString_R1C1(AStr, ABaseRow, ABaseCol, ACellRow, ACellCol, AFlags);
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Parses a cell string in "R1C1" notation into zero-based column and row numbers
   'AFlags' indicates relative addresses.
@@ -1076,6 +1095,17 @@ begin
     Result := char(c + ord('A')) + Result;
     n := (n - c) div INT_NUM_LETTERS;
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Calculates an Excel row name ('1', '2' etc) from the zero-based row index
+
+  @param  ARowIndex   Zero-based row index
+  @return  Numerical, one-based row name string.
+-------------------------------------------------------------------------------}
+function GetRowString(ARowIndex: Integer): String;
+begin
+  Result := IntToStr(ARowIndex+1);
 end;
 
 const
