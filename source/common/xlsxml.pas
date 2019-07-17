@@ -69,18 +69,21 @@ type
   private
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
+    FPrevRow, FPrevCol: Cardinal;
     function GetCommentStr(ACell: PCell): String;
     function GetFormulaStr(ACell: PCell): String;
     function GetFrozenPanesStr(AWorksheet: TsBasicWorksheet; AIndent: String): String;
     function GetHyperlinkStr(ACell: PCell): String;
-    function GetIndexStr(AIndex: Integer): String;
+    function GetIndexStr(AIndex, APrevIndex: Integer): String;
     function GetLayoutStr(AWorksheet: TsBasicWorksheet): String;
     function GetMergeStr(ACell: PCell): String;
     function GetPageFooterStr(AWorksheet: TsBasicWorksheet): String;
     function GetPageHeaderStr(AWorksheet: TsBasicWorksheet): String;
     function GetPageMarginStr(AWorksheet: TsBasicWorksheet): String;
     function GetStyleStr(AFormatIndex: Integer): String;
+    procedure WriteColumns(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteExcelWorkbook(AStream: TStream);
+    procedure WriteRows(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
     procedure WriteStyles(AStream: TStream);
     procedure WriteTable(AStream: TStream; AWorksheet: TsBasicWorksheet);
@@ -1451,9 +1454,15 @@ begin
     Result := ' ss:HRef="' + hyperlink^.Target + '"';
 end;
 
-function TsSpreadExcelXMLWriter.GetIndexStr(AIndex: Integer): String;
+function TsSpreadExcelXMLWriter.GetIndexStr(AIndex, APrevIndex: Integer): String;
 begin
-  Result := Format(' ss:Index="%d"', [AIndex]);
+  if (APrevIndex = -1) and (AIndex = 0)  then
+    Result := ''
+  else
+  if (APrevIndex >= 0) and (AIndex = APrevIndex + 1) then
+    Result := ''
+  else
+    Result := Format(' ss:Index="%d"', [AIndex + 1]);
 end;
 
 function TsSpreadExcelXMLWriter.GetLayoutStr(AWorksheet: TsBasicWorksheet): String;
@@ -1537,7 +1546,7 @@ begin
     '<Cell%s%s%s%s>' +              // colIndex, style, hyperlink, merge
       '%s' +                        // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    GetIndexStr(ACol, FPrevCol), GetStyleStr(ACell^.FormatIndex), GetHyperlinkStr(ACell), GetMergeStr(ACell),
     GetCommentStr(ACell)
   ]));
 end;
@@ -1553,7 +1562,7 @@ begin
       '</Data>' +
       '%s' +                     // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+    GetIndexStr(ACol, FPrevCol), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
       GetHyperlinkStr(ACell), GetMergeStr(ACell),
     StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Boolean'),
     StrUtils.IfThen(AValue, '1', '0'),
@@ -1580,6 +1589,41 @@ begin
 
   if (FWorksheet as TsWorksheet).ReadComment(ACell) <> '' then
     WriteComment(AStream, ACell);
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteColumns(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+var
+  c, c1, c2: Cardinal;
+  colwidthStr: String;
+  styleStr: String;
+  col: PCol;
+begin
+  c1 := 0;
+  c2 := TsWorksheet(AWorksheet).GetLastColIndex;
+  FPrevCol := -1;
+  for c := c1 to c2 do
+  begin
+    col := TsWorksheet(AWorksheet).FindCol(c);
+    styleStr := '';
+    colWidthStr := '';
+    if Assigned(col) then
+    begin
+      // column width is needed in pts.
+      if col^.ColWidthType = cwtCustom then
+        colwidthStr := Format(' ss:Width="%0.2f" ss:AutoFitWidth="0"',
+          [(FWorkbook as TsWorkbook).ConvertUnits(col^.Width, FWorkbook.Units, suPoints)],
+          FPointSeparatorSettings);
+      // column style
+      if col^.FormatIndex > 0 then
+        styleStr := GetStyleStr(col^.FormatIndex);
+    end;
+    if (colWidthStr <> '') or (stylestr <> '') then begin
+      AppendToStream(AStream, COL_INDENT + Format(
+        '<Column%s%s%s />' + LF, [GetIndexStr(c, FPrevCol), colWidthStr, styleStr]));
+      FPrevCol := c;
+    end;
+  end;
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteDateTime(AStream: TStream;
@@ -1612,7 +1656,7 @@ begin
       '</Data>' + LF + CELL_INDENT +
       '%s' +                                 // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+    GetIndexStr(ACol, FPrevCol), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
       GetHyperlinkStr(ACell), GetMergeStr(ACell),
     StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'DateTime'),
     valueStr,
@@ -1631,7 +1675,7 @@ begin
       '</Data>' + LF + CELL_INDENT +
       '%s' +                                 // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+    GetIndexStr(ACol, FPrevCol), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
       GetHyperlinkStr(ACell), GetMergeStr(ACell),
     StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Error'),
     GetErrorValueStr(AValue),
@@ -1727,7 +1771,7 @@ begin
       '</%sData>' + LF + CELL_INDENT +       // "ss:"
       '%s' +                                 // Comment
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+    GetIndexStr(ACol, FPrevCol), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
       GetHyperlinkStr(ACell), GetMergeStr(ACell),
     dataTagStr, cctStr, xmlnsStr,
     valueStr,
@@ -1747,12 +1791,88 @@ begin
       '</Data>' + LF + CELL_INDENT +
       '%s' +                                  // Comment <Comment>...</Comment>
     '</Cell>' + LF, [
-    GetIndexStr(ACol+1), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+    GetIndexStr(ACol, FPrevCol), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
       GetHyperlinkStr(ACell), GetMergeStr(ACell),
     StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Number'),
     AValue,
     GetCommentStr(ACell)], FPointSeparatorSettings)
   );
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteRows(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+var
+  c, c1, c2: Cardinal;
+  r, r1, r2: Cardinal;
+  cell: PCell;
+  rowheightStr: String;
+  styleStr: String;
+  row: PRow;
+  hasCells: Boolean;
+  sheet: TsWorksheet absolute AWorksheet;
+begin
+  r1 := 0;
+  c1 := 0;
+  r2 := sheet.GetLastRowIndex;
+  c2 := sheet.GetLastColIndex;
+
+  FPrevRow := -1;
+  for r := r1 to r2 do
+  begin
+    row := sheet.FindRow(r);
+    styleStr := '';
+    // Row height is needed in pts.
+    if Assigned(row) then
+    begin
+      rowheightStr := Format(' ss:Height="%.2f"',
+        [(FWorkbook as TsWorkbook).ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
+        FPointSeparatorSettings
+      );
+      if row^.RowHeightType = rhtCustom then
+        rowHeightStr := ' ss:AutoFitHeight="0"' + rowHeightStr
+      else
+        rowHeightStr := ' ss:AutoFitHeight="1"' + rowHeightStr;
+      if row^.FormatIndex > 0 then
+        styleStr := GetStyleStr(row^.FormatIndex);
+    end else
+      rowheightStr := ' ss:AutoFitHeight="1"';
+
+    hasCells := false;
+    for c := c1 to c2 do begin
+      cell := sheet.FindCell(r, c);
+      if cell <> nil then begin
+        hasCells := true;
+        break;
+      end;
+    end;
+
+    AppendToStream(AStream, ROW_INDENT + Format(
+      '<Row%s%s%s', [GetIndexStr(r, FPrevRow), rowheightStr, styleStr]));
+
+    if hasCells then
+      AppendToStream(AStream, '>' + LF)
+    else begin
+      AppendToStream(AStream, ' />' + LF);
+      Continue;
+    end;
+
+    FPrevCol := -1;
+    for c := c1 to c2 do
+    begin
+      cell := sheet.FindCell(r, c);
+      if cell <> nil then
+      begin
+        if sheet.IsMerged(cell) and not sheet.IsMergeBase(cell) then
+          Continue;
+        WriteCellToStream(AStream, cell);
+        FPrevCol := c;
+      end;
+    end;
+
+    AppendToStream(AStream, ROW_INDENT +
+      '</Row>' + LF);
+    FPrevRow := r;
+  end;
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteStyle(AStream: TStream; AIndex: Integer);
@@ -1957,59 +2077,8 @@ begin
       FPointSeparatorSettings
     ));
 
-  for c := c1 to c2 do
-  begin
-    col := sheet.FindCol(c);
-    styleStr := '';
-    colWidthStr := '';
-    if Assigned(col) then
-    begin
-      // column width is needed in pts.
-      if col^.ColWidthType = cwtCustom then
-        colwidthStr := Format(' ss:Width="%0.2f" ss:AutoFitWidth="0"',
-          [(FWorkbook as TsWorkbook).ConvertUnits(col^.Width, FWorkbook.Units, suPoints)],
-          FPointSeparatorSettings);
-      // column style
-      if col^.FormatIndex > 0 then
-        styleStr := GetStyleStr(col^.FormatIndex);
-    end;
-    AppendToStream(AStream, COL_INDENT + Format(
-      '<Column ss:Index="%d" %s%s />' + LF, [c+1, colWidthStr, styleStr]));
-  end;
-
-  for r := r1 to r2 do
-  begin
-    row := sheet.FindRow(r);
-    styleStr := '';
-    // Row height is needed in pts.
-    if Assigned(row) then
-    begin
-      rowheightStr := Format(' ss:Height="%.2f"',
-        [(FWorkbook as TsWorkbook).ConvertUnits(row^.Height, FWorkbook.Units, suPoints)],
-        FPointSeparatorSettings
-      );
-      if row^.RowHeightType = rhtCustom then
-        rowHeightStr := 'ss:AutoFitHeight="0"' + rowHeightStr else
-        rowHeightStr := 'ss:AutoFitHeight="1"' + rowHeightStr;
-      if row^.FormatIndex > 0 then
-        styleStr := GetStyleStr(row^.FormatIndex);
-    end else
-      rowheightStr := 'ss:AutoFitHeight="1"';
-    AppendToStream(AStream, ROW_INDENT + Format(
-      '<Row %s%s>' + LF, [rowheightStr, styleStr]));
-    for c := c1 to c2 do
-    begin
-      cell := sheet.FindCell(r, c);
-      if cell <> nil then
-      begin
-        if sheet.IsMerged(cell) and not sheet.IsMergeBase(cell) then
-          Continue;
-        WriteCellToStream(AStream, cell);
-      end;
-    end;
-    AppendToStream(AStream, ROW_INDENT +
-      '</Row>' + LF);
-  end;
+  WriteColumns(AStream, AWorksheet);
+  WriteRows(AStream, AWorksheet);
 
   AppendToStream(AStream, TABLE_INDENT +
     '</Table>' + LF);
