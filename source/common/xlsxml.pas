@@ -29,6 +29,7 @@ type
   { TsSpreadExcelXMLReader }
   TsSpreadExcelXMLReader = class(TsSpreadXMLReader)
   private
+    FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
     function ExtractDateTime(AText: String): TDateTime;
 
@@ -449,10 +450,11 @@ var
   err: TsErrorValue;
   cell: PCell;
   fmt: TsCellFormat;
+  nfp: TsNumFormatParams;
   idx: Integer;
   mergedCols, mergedRows: Integer;
   font: TsFont;
-  rtp: TsRichTextParams;
+  dt: TDateTime;
 begin
   if ANode = nil then
     exit;
@@ -470,7 +472,7 @@ begin
     if idx <> -1 then begin
       fmt := FCellFormatList.Items[idx]^;
       cell^.FormatIndex := book.AddCellFormat(fmt);
-      font := book.GetFont(fmt.FontIndex);;
+      font := book.GetFont(fmt.FontIndex);
     end;
   end;
 
@@ -524,7 +526,15 @@ begin
             'Number':
               sheet.WriteNumber(cell, StrToFloat(sv, FPointSeparatorSettings));
             'DateTime':
-              sheet.WriteDateTime(cell, ExtractDateTime(sv));
+              begin
+                dt := ExtractDateTime(sv);
+                if (cell^.FormatIndex > 0) then begin
+                  nfp := TsWorkbook(FWorkbook).GetNumberFormat(fmt.NumberFormatIndex);
+                  if not IsTimeIntervalFormat(nfp) then
+                    dt := ConvertExcelDateTimeToDateTime(dt, FDateMode);
+                end;
+                sheet.WriteDateTime(cell, dt);
+              end;
             'Boolean':
               if sv = '1' then
                 sheet.WriteBoolValue(cell, true)
@@ -616,7 +626,10 @@ begin
       s := ANode.TextContent;
       if s = 'True' then
         FWorkbook.Protection := FWorkbook.Protection + [bpLockWindows];
-    end;
+    end else
+    if nodeName = 'Date1904' then
+      FDateMode := dm1904;
+
     ANode := ANode.NextSibling;
   end;
 end;
@@ -761,12 +774,12 @@ procedure TsSpreadExcelXMLReader.ReadNames(ANode: TDOMNode;
   end;
 
 var
-  s, s1: String;
+  s: String;
   nodeName: String;
   sheet1, sheet2: String;
   r1, c1, r2, c2: Cardinal;
   flags: TsRelFlags;
-  p, q: Integer;
+  p: Integer;
 begin
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
@@ -811,8 +824,27 @@ begin
 
   s := GetAttrValue(ANode, 'ss:Format');
   case s of
-    'General':
-      exit;
+    'General': Exit;
+    'Standard':
+      begin
+        nf := nfFixedTh;
+        nfs := BuildNumberFormatString(nf, FWorkbook.FormatSettings, 2);
+      end;
+    'Fixed':
+      begin
+        nf := nfFixed;
+        nfs := BuildNumberFormatString(nf, FWorkbook.FormatSettings, 2);
+      end;
+    'Percent':
+      begin
+        nf := nfPercentage;
+        nfs := BuildNumberFormatString(nf, FWorkbook.FormatSettings, 2);
+      end;
+    'Scientific':
+      begin
+        nf := nfExp;
+        nfs := BuildNumberFormatString(nf, FWorkbook.FormatSettings);
+      end;
     'Short Date':
       begin
         nf := nfShortDate;
@@ -866,7 +898,6 @@ var
   nodeName: String;
   fmt: TsCellFormat;
   s: String;
-  id: Integer;
   idx: Integer;
   childNode: TDOMNode;
 begin
@@ -1064,8 +1095,6 @@ var
   n: Integer;
   hasFitToPage: Boolean = false;
   c, r: Cardinal;
-  r1, c1, r2, c2: Cardinal;
-  flags: TsRelFlags;
 begin
   if ANode = nil then
     exit;
@@ -1391,7 +1420,11 @@ begin
   Result := '';
   comment := (FWorksheet as TsWorksheet).FindComment(ACell);
   if Assigned(comment) then
-    Result := INDENT1 + '<Comment><Data>' + comment^.Text + '</Data></Comment>' + LF + CELL_INDENT;
+    Result := INDENT1 +
+      '<Comment><Data>' +
+        UTF8TextToXMLText(comment^.Text) +
+      '</Data></Comment>' +
+      LF + CELL_INDENT;
   // If there will be some rich-text-like formatting in the future, use
   //  Result := '<Comment><ss:Data xmlns="http://www.w3.org/TR/REC-html40">'+comment^.Text+'</ss:Data></Comment>':
 end;
@@ -1597,16 +1630,19 @@ var
   c, c1, c2: Cardinal;
   colwidthStr: String;
   styleStr: String;
+  hiddenStr: String;
   col: PCol;
 begin
   c1 := 0;
   c2 := TsWorksheet(AWorksheet).GetLastColIndex;
-  FPrevCol := -1;
+  FPrevCol := UNASSIGNED_ROW_COL_INDEX;
   for c := c1 to c2 do
   begin
     col := TsWorksheet(AWorksheet).FindCol(c);
     styleStr := '';
     colWidthStr := '';
+    hiddenStr := '';
+
     if Assigned(col) then
     begin
       // column width is needed in pts.
@@ -1618,9 +1654,13 @@ begin
       if col^.FormatIndex > 0 then
         styleStr := GetStyleStr(col^.FormatIndex);
     end;
-    if (colWidthStr <> '') or (stylestr <> '') then begin
+
+    if TsWorksheet(AWorksheet).ColHidden(c) then
+      hiddenStr := ' ss:Hidden="1"';
+
+    if (colWidthStr <> '') or (stylestr <> '') or (hiddenstr <> '') then begin
       AppendToStream(AStream, COL_INDENT + Format(
-        '<Column%s%s%s />' + LF, [GetIndexStr(c, FPrevCol), colWidthStr, styleStr]));
+        '<Column%s%s%s%s />' + LF, [GetIndexStr(c, FPrevCol), colWidthStr, styleStr, hiddenStr]));
       FPrevCol := c;
     end;
   end;
@@ -1708,6 +1748,8 @@ end;
 
 procedure TsSpreadExcelXMLWriter.WriteLabel(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: string; ACell: PCell);
+const
+  MAXBYTES = 32767;  // limit for this format
 var
   valueStr: String;
   cctStr: String;
@@ -1715,14 +1757,31 @@ var
   dataTagStr: String;
   p: Integer;
   tmp: String;
-  ch:char;
+  ResultingValue: String;
 begin
+  // Office 2007-2010 (at least) supports no more characters in a cell;
+  if Length(AValue) > MAXBYTES then
+  begin
+    ResultingValue := Copy(AValue, 1, MAXBYTES); //may chop off multicodepoint UTF8 characters but well...
+    Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
+      MAXBYTES, GetCellString(ARow, ACol)
+    ]);
+  end else
+    resultingValue := AValue;
+
+  { Check for invalid characters }
+  if not ValidXMLText(ResultingValue) then
+    Workbook.AddErrorMsg(
+      rsInvalidCharacterInCell, [
+      GetCellString(ARow, ACol)
+    ]);
+
   if Length(ACell^.RichTextParams) > 0 then
   begin
     RichTextToHTML(
       FWorkbook as TsWorkbook,
       (FWorksheet as TsWorksheet).ReadCellFont(ACell),
-      AValue,
+      ResultingValue,
       ACell^.RichTextParams,
       valueStr,             // html-formatted rich text
       'html:', tcProperCase
@@ -1749,7 +1808,7 @@ begin
     end;
   end else
   begin
-    valueStr := AValue;
+    valueStr := ResultingValue;
     if not ValidXMLText(valueStr, true, true) then
       Workbook.AddErrorMsg(
         rsInvalidCharacterInCell, [
@@ -1806,6 +1865,7 @@ var
   r, r1, r2: Cardinal;
   cell: PCell;
   rowheightStr: String;
+  hiddenStr: String;
   styleStr: String;
   row: PRow;
   hasCells: Boolean;
@@ -1816,11 +1876,12 @@ begin
   r2 := sheet.GetLastRowIndex;
   c2 := sheet.GetLastColIndex;
 
-  FPrevRow := -1;
+  FPrevRow := UNASSIGNED_ROW_COL_INDEX;
   for r := r1 to r2 do
   begin
     row := sheet.FindRow(r);
     styleStr := '';
+    hiddenStr := '';
     // Row height is needed in pts.
     if Assigned(row) then
     begin
@@ -1837,6 +1898,9 @@ begin
     end else
       rowheightStr := ' ss:AutoFitHeight="1"';
 
+    if sheet.RowHidden(r) then
+      hiddenStr := ' ss:Hidden="1"';
+
     hasCells := false;
     for c := c1 to c2 do begin
       cell := sheet.FindCell(r, c);
@@ -1847,7 +1911,7 @@ begin
     end;
 
     AppendToStream(AStream, ROW_INDENT + Format(
-      '<Row%s%s%s', [GetIndexStr(r, FPrevRow), rowheightStr, styleStr]));
+      '<Row%s%s%s%s', [GetIndexStr(r, FPrevRow), rowheightStr, styleStr, hiddenStr]));
 
     if hasCells then
       AppendToStream(AStream, '>' + LF)
@@ -1856,7 +1920,7 @@ begin
       Continue;
     end;
 
-    FPrevCol := -1;
+    FPrevCol := UNASSIGNED_ROW_COL_INDEX;
     for c := c1 to c2 do
     begin
       cell := sheet.FindCell(r, c);
@@ -2050,20 +2114,8 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteTable(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
-  c, c1, c2: Cardinal;
-  r, r1, r2: Cardinal;
-  cell: PCell;
-  rowheightStr: String;
-  colwidthStr: String;
-  styleStr: String;
-  col: PCol;
-  row: PRow;
   sheet: TsWorksheet absolute AWorksheet;
 begin
-  r1 := 0;
-  c1 := 0;
-  r2 := sheet.GetLastRowIndex;
-  c2 := sheet.GetLastColIndex;
   AppendToStream(AStream, TABLE_INDENT + Format(
     '<Table ss:ExpandedColumnCount="%d" ss:ExpandedRowCount="%d" ' +
       'x:FullColumns="1" x:FullRows="1" ' +
@@ -2145,6 +2197,7 @@ var
   marginStr: String;
   selectedStr: String;
   protectStr: String;
+  visibleStr: String;
   sheet: TsWorksheet absolute AWorksheet;
 begin
   // Orientation, some PageLayout.Options
@@ -2165,17 +2218,26 @@ begin
 
   // Show/hide grid lines
   if not (soShowGridLines in AWorksheet.Options) then
-    hideGridStr := INDENT3 + '<DoNotDisplayGridlines/>' + LF else
+    hideGridStr := INDENT3 + '<DoNotDisplayGridlines/>' + LF
+  else
     hideGridStr := '';
 
   // Show/hide column/row headers
   if not (soShowHeaders in AWorksheet.Options) then
-    hideHeadersStr := INDENT3 + '<DoNotDisplayHeadings/>' + LF else
+    hideHeadersStr := INDENT3 + '<DoNotDisplayHeadings/>' + LF
+  else
     hideHeadersStr := '';
 
   if (FWorkbook as TsWorkbook).ActiveWorksheet = AWorksheet then
-    selectedStr := INDENT3 + '<Selected/>' + LF else
+    selectedStr := INDENT3 + '<Selected/>' + LF
+  else
     selectedStr := '';
+
+  // Visible
+  if (soHidden in AWorksheet.Options) then
+    visibleStr := INDENT3 + '<Visible>SheetHidden</Visible>' + LF
+  else
+    visibleStr := '';
 
   // Frozen panes
   frozenStr := GetFrozenPanesStr(AWorksheet, INDENT3);
@@ -2198,6 +2260,7 @@ begin
         footerStr +
         marginStr + INDENT3 +
       '</PageSetup>' + LF +
+      visibleStr +
       selectedStr +
       protectStr +
       frozenStr +

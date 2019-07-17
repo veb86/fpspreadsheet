@@ -13,14 +13,21 @@ uses
 const
   TestFileBIFF8_1904='testbiff8_1904.xls'; //with 1904 datemode date system
   TestFileBIFF8_1899='testbiff8_1899.xls'; //with 1899/1900 datemode date system
-  TestFileBIFF8=TestFileBIFF8_1899;
+  TestFileBIFF8 = TestFileBIFF8_1899;
+
   TestFileODF_1904='testodf_1904.ods'; //OpenDocument/LibreOffice with 1904 datemode date system
   TestFileODF_1899='testodf_1899.ods'; //OpenDocument/LibreOffice with 1899/1900 datemode date system
-  TestFileODF=TestFileODF_1899;
+  TestFileODF = TestFileODF_1899;
+
   TestFileOOXML_1904='testooxml_1904.xlsx'; //Excel xlsx with 1904 datemode date system
   TestFileOOXML_1899='testooxml_1899.xlsx'; //Excel xlsx with 1899/1900 datemode date system
-  TestFileOOXML=TestFileOOXML_1899;
-  TestFileManual='testmanual.xls'; //file name for manual checking using external spreadsheet program (Excel/LibreOffice..)
+  TestFileOOXML = TestFileOOXML_1899;
+
+  TestFileXML_1904='testxml_1904.xml';  //Excel 2003/XML file with 1904 datemode date system
+  TestFileXML_1899='testxml_1899.xml';  //Excel 2003/XML file with 1899/1900 datemode date system
+  TestFileXML = TestFileXML_1899;
+
+  TestFileManual = 'testmanual.xls'; //file name for manual checking using external spreadsheet program (Excel/LibreOffice..)
   DatesSheet = 'Dates'; //worksheet name
   FormulasSheet = 'Formulas'; //worksheet name
   ManualSheet = 'ManualTests'; //worksheet names

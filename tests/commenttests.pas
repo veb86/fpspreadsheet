@@ -60,6 +60,12 @@ type
     procedure TestWriteRead_OOXML_NonAscii_Comment;
     procedure TestWriteRead_OOXML_NonXMLChar_Comment;
     procedure TestWriteRead_OOXML_VeryLong_Comment;
+
+    { XML comment tests }
+    procedure TestWriteRead_XML_Standard_Comment;
+    procedure TestWriteRead_XML_NonAscii_Comment;
+    procedure TestWriteRead_XML_NonXMLChar_Comment;
+    procedure TestWriteRead_XML_VeryLong_Comment;
   end;
 
 implementation
@@ -283,6 +289,29 @@ procedure TSpreadWriteReadCommentTests.TestWriteRead_OOXML_VeryLong_Comment;
 begin
   TestWriteRead_Comment(sfOOXML, VERY_LONG_COMMENT);
 end;
+
+
+{ Tests for Excel 2003/XML file format }
+procedure TSpreadWriteReadCommentTests.TestWriteRead_XML_Standard_Comment;
+begin
+  TestWriteRead_Comment(sfExcelXML, STANDARD_COMMENT);
+end;
+
+procedure TSpreadWriteReadCommentTests.TestWriteRead_XML_NonAscii_Comment;
+begin
+  TestWriteRead_Comment(sfExcelXML, COMMENT_UTF8);
+end;
+
+procedure TSpreadWriteReadCommentTests.TestWriteRead_XML_NonXMLChar_Comment;
+begin
+  TestWriteRead_Comment(sfExcelXML, COMMENT_XML);
+end;
+
+procedure TSpreadWriteReadCommentTests.TestWriteRead_XML_VeryLong_Comment;
+begin
+  TestWriteRead_Comment(sfExcelXML, VERY_LONG_COMMENT);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadCommentTests);

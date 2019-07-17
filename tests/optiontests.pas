@@ -94,6 +94,20 @@ type
     procedure TestWriteRead_OOXML_Panes_None;
 
     procedure TestWriteRead_OOXML_HiddenSheet;
+
+    { Excel 2003/XML tests }
+    procedure TestWriteRead_XML_ShowGridLines_ShowHeaders;
+    procedure TestWriteRead_XML_ShowGridLines_HideHeaders;
+    procedure TestWriteRead_XML_HideGridLines_ShowHeaders;
+    procedure TestWriteRead_XML_HideGridLines_HideHeaders;
+
+    procedure TestWriteRead_XML_Panes_HorVert;
+    procedure TestWriteRead_XML_Panes_Hor;
+    procedure TestWriteRead_XML_Panes_Vert;
+    procedure TestWriteRead_XML_Panes_None;
+
+    procedure TestWriteRead_XML_HiddenSheet;
+
   end;
 
 implementation
@@ -272,6 +286,28 @@ begin
 end;
 
 
+{ Tests for Excel2003/XML grid lines and/or headers }
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_XML_ShowGridLines_ShowHeaders;
+begin
+  TestWriteReadGridHeaders(sfExcelXML, true, true);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_XML_ShowGridLines_HideHeaders;
+begin
+  TestWriteReadGridHeaders(sfExcelXML, true, false);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_XML_HideGridLines_ShowHeaders;
+begin
+  TestWriteReadGridHeaders(sfExcelXML, false, true);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_XML_HideGridLines_HideHeaders;
+begin
+  TestWriteReadGridHeaders(sfExcelXML, false, false);
+end;
+
+
 { Test for frozen panes }
 
 procedure TSpreadWriteReadOptionsTests.TestWriteReadPanes(AFormat: TsSpreadsheetFormat;
@@ -431,6 +467,28 @@ begin
 end;
 
 
+{ Tests for Excel 2003/XML frozen panes }
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_XML_Panes_HorVert;
+begin
+  TestWriteReadPanes(sfExcelXML, 1, 2);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_XML_Panes_Hor;
+begin
+  TestWriteReadPanes(sfExcelXML, 1, 0);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_XML_Panes_Vert;
+begin
+  TestWriteReadPanes(sfExcelXML, 0, 2);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_XML_Panes_None;
+begin
+  TestWriteReadPanes(sfExcelXML, 0, 0);
+end;
+
+
 procedure TSpreadWriteReadOptionsTests.TestWriteReadHiddenSheet(
   AFormat: TsSpreadsheetFormat);
 const
@@ -489,6 +547,11 @@ end;
 procedure TSpreadWriteReadOptionsTests.TestWriteRead_ODS_HiddenSheet;
 begin
   TestWriteReadHiddenSheet(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadOptionsTests.TestWriteRead_XML_HiddenSheet;
+begin
+  TestWriteReadHiddenSheet(sfExcelXML);
 end;
 
 

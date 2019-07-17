@@ -35,12 +35,14 @@ type
     procedure AddConst_BIFF5;
     procedure AddConst_BIFF8;
     procedure AddConst_OOXML;
+    procedure AddConst_XML;
     procedure AddConst_ODS;
 
     procedure AddCells_BIFF2;
     procedure AddCells_BIFF5;
     procedure AddCells_BIFF8;
     procedure AddCells_OOXML;
+    procedure AddCells_XML;
     procedure AddCells_ODS;
 
     procedure RoundConst1_ODS;
@@ -66,16 +68,19 @@ type
     procedure SumRange_BIFF5;
     procedure SumRange_BIFF8;
     procedure SumRange_OOXML;
+    procedure SumRange_XML;
     procedure SumRange_ODS;
 
     procedure SumSheetRange_BIFF5;  // no 3d ranges for BIFF2
     procedure SumSheetRange_BIFF8;
     procedure SumSheetRange_OOXML;
+    procedure SumSheetRange_XML;
     procedure SumSheetRange_ODS;
 
     procedure SumMultiSheetRange_BIFF5;
     procedure SumMultiSheetRange_BIFF8;
     procedure SumMultiSheetRange_OOXML;
+    procedure SumMultiSheetRange_XML;
     procedure SumMultiSheetRange_ODS;
 
     procedure SumMultiSheetRange_FlippedCells_BIFF8;
@@ -86,6 +91,7 @@ type
 
     procedure IfConst_BIFF8;
     procedure IfConst_OOXML;
+    procedure IfConst_XML;
     procedure IfConst_ODS;
 
     procedure IfConst_BIFF8_2;
@@ -104,11 +110,13 @@ type
     procedure NonExistantSheet_BIFF5;
     procedure NonExistantSheet_BIFF8;
     procedure NonExistantSheet_OOXML;
+    procedure NonExistantSheet_XML;
     procedure NonExistantSheet_ODS;
 
     procedure NonExistantSheetRange_BIFF5;
     procedure NonExistantSheetRange_BIFF8;
     procedure NonExistantSheetRange_OOXML;
+    procedure NonExistantSheetRange_XML;
     procedure NonExistantSheetRange_ODS;
 
     procedure RenameWorksheet_Single;
@@ -314,6 +322,11 @@ begin
   TestFormula('1+1', '2', ftkConstants, sfOOXML);
 end;
 
+procedure TSpreadSingleFormulaTests.AddConst_XML;
+begin
+  TestFormula('1+1', '2', ftkConstants, sfExcelXML);
+end;
+
 procedure TSpreadSingleFormulaTests.AddConst_ODS;
 begin
   TestFormula('1+1', '2', ftkConstants, sfOpenDocument);
@@ -339,6 +352,11 @@ end;
 procedure TSpreadSingleFormulaTests.AddCells_OOXML;
 begin
   TestFormula('C3+C4', '-1', ftkCells, sfOOXML);
+end;
+
+procedure TSpreadSingleFormulaTests.AddCells_XML;
+begin
+  TestFormula('C3+C4', '-1', ftkCells, sfExcelXML);
 end;
 
 procedure TSpreadSingleFormulaTests.AddCells_ODS;
@@ -472,6 +490,11 @@ begin
   TestFormula('SUM(C3:C5)', '0.5', ftkCellRange, sfOOXML);
 end;
 
+procedure TSpreadSingleFormulaTests.SumRange_XML;
+begin
+  TestFormula('SUM(C3:C5)', '0.5', ftkCellRange, sfExcelXML);
+end;
+
 procedure TSpreadSingleFormulaTests.SumRange_ODS;
 begin
   TestFormula('SUM(C3:C5)', '0.5', ftkCellRange, sfOpenDocument);
@@ -494,6 +517,11 @@ begin
   TestFormula('SUM(Sheet2!C3:C5)', '5', ftkCellRangeSheet, sfOOXML);
 end;
 
+procedure TSpreadSingleFormulaTests.SumSheetRange_XML;
+begin
+  TestFormula('SUM(Sheet2!C3:C5)', '5', ftkCellRangeSheet, sfExcelXML);
+end;
+
 procedure TSpreadSingleFormulaTests.SumSheetRange_ODS;
 begin
   TestFormula('SUM(Sheet2!C3:C5)', '5', ftkCellRangeSheet, sfOpenDocument);
@@ -514,6 +542,11 @@ end;
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_OOXML;
 begin
   TestFormula('SUM(Sheet2:Sheet3!C3:C5)', '55', ftkCellRangeSheetRange, sfOOXML);
+end;
+
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_XML;
+begin
+  TestFormula('SUM(Sheet2:Sheet3!C3:C5)', '55', ftkCellRangeSheetRange, sfExcelXML);
 end;
 
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_ODS;
@@ -562,6 +595,11 @@ end;
 procedure TSpreadSingleFormulaTests.IfConst_OOXML;
 begin
   TestFormula('IF(C3="A","is A","not A")', 'not A', ftkCellConstant, sfOOXML);
+end;
+
+procedure TSpreadSingleFormulaTests.IfConst_XML;
+begin
+  TestFormula('IF(C3="A","is A","not A")', 'not A', ftkCellConstant, sfExcelXML);
 end;
 
 procedure TSpreadSingleFormulaTests.IfConst_ODS;
@@ -637,6 +675,11 @@ begin
   TestFormula('Missing!C3', '#REF!', ftkCellRangeSheet, sfOOXML, '#REF!');
 end;
 
+procedure TSpreadSingleFormulaTests.NonExistantSheet_XML;
+begin
+  TestFormula('Missing!C3', '#REF!', ftkCellRangeSheet, sfExcelXML, '#REF!');
+end;
+
 procedure TSpreadSingleFormulaTests.NonExistantSheet_ODS;
 begin
   TestFormula('Missing!C3', '#REF!', ftkCellRangeSheet, sfOpenDocument, '#REF!');
@@ -657,6 +700,11 @@ end;
 procedure TSpreadSingleFormulaTests.NonExistantSheetRange_OOXML;
 begin
   TestFormula('SUM(Missing1:Missing2!C3)', '#REF!', ftkCellRangeSheet, sfOOXML, 'SUM(#REF!)');
+end;
+
+procedure TSpreadSingleFormulaTests.NonExistantSheetRange_XML;
+begin
+  TestFormula('SUM(Missing1:Missing2!C3)', '#REF!', ftkCellRangeSheet, sfExcelXML, 'SUM(#REF!)');
 end;
 
 procedure TSpreadSingleFormulaTests.NonExistantSheetRange_ODS;

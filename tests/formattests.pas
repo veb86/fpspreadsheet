@@ -154,6 +154,20 @@ type
     procedure TestWriteRead_OOXML_WordWrap;
     procedure TestWriteRead_OOXML_FormatStrings;
 
+    { Excel 2003/XML Tests }
+    procedure TestWriteRead_XML_Alignment;
+    procedure TestWriteRead_XML_Background;
+    procedure TestWriteRead_XML_Border;
+    procedure TestWriteRead_XML_BorderStyles;
+    procedure TestWriteRead_XML_ColWidths;
+    procedure TestWriteRead_XML_RowHeights;
+    procedure TestWriteRead_XML_DateTimeFormats;
+    procedure TestWriteRead_XML_MergedCells;
+    procedure TestWriteRead_XML_NumberFormats;
+    procedure TestWriteRead_XML_TextRotation;
+    procedure TestWriteRead_XML_WordWrap;
+    procedure TestWriteRead_XML_FormatStrings;
+
     { CSV Tests }
     procedure TestWriteRead_CSV_DateTimeFormats;
     procedure TestWriteRead_CSV_NumberFormats_0;
@@ -458,6 +472,11 @@ begin
   TestWriteRead_NumberFormats(sfOOXML);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_NumberFormats;
+begin
+  TestWriteRead_NumberFormats(sfExcelXML);
+end;
+
 procedure TSpreadWriteReadFormatTests.TestWriteRead_CSV_NumberFormats_0;
 begin
   TestWriteRead_NumberFormats(sfCSV, 0);
@@ -563,6 +582,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_DateTimeFormats;
 begin
   TestWriteRead_DateTimeFormats(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_DateTimeFormats;
+begin
+  TestWriteRead_DateTimeFormats(sfExcelXML);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_CSV_DateTimeFormats;
@@ -721,6 +745,11 @@ begin
   TestWriteRead_Alignment(sfOOXML);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_Alignment;
+begin
+  TestWriteRead_Alignment(sfExcelXML);
+end;
+
 
 { This test writes in column A the names of the Background.Styles, in column B
   the background fill with a specific pattern and background color, in column C
@@ -846,6 +875,11 @@ begin
   TestWriteRead_Background(sfOOXML);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_Background;
+begin
+  TestWriteRead_Background(sfExcelXML);
+end;
+
 
 { --- Border on/off tests --- }
 
@@ -951,6 +985,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Border;
 begin
   TestWriteRead_Border(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_Border;
+begin
+  TestWriteRead_Border(sfExcelXML);
 end;
 
 
@@ -1101,6 +1140,11 @@ begin
   TestWriteRead_BorderStyles(sfOOXML);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_BorderStyles;
+begin
+  TestWriteRead_BorderStyles(sfExcelXML);
+end;
+
 
 { --- Column widths tests --- }
 
@@ -1184,6 +1228,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_ColWidths;
 begin
   TestWriteRead_ColWidths(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_ColWidths;
+begin
+  TestWriteRead_ColWidths(sfExcelXML);
 end;
 
 
@@ -1275,6 +1324,11 @@ begin
   TestWriteRead_RowHeights(sfOOXML);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_RowHeights;
+begin
+  TestWriteRead_RowHeights(sfExcelXML);
+end;
+
 
 { --- Text rotation tests --- }
 
@@ -1358,6 +1412,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_TextRotation;
 begin
   TestWriteRead_TextRotation(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_TextRotation;
+begin
+  TestWriteRead_TextRotation(sfExcelXML);
 end;
 
 
@@ -1445,6 +1504,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_Wordwrap;
 begin
   TestWriteRead_Wordwrap(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_Wordwrap;
+begin
+  TestWriteRead_Wordwrap(sfExcelXML);
 end;
 
 
@@ -1601,6 +1665,12 @@ begin
   TestWriteRead_MergedCells(sfOOXML);
 end;
 
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_MergedCells;
+begin
+  TestWriteRead_MergedCells(sfExcelXML);
+end;
+
+
 { If a biff2 file contains more than 62 XF records the XF record index is stored
   in a separats IXFE record. This is tested here. }
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ManyXF(AFormat: TsSpreadsheetFormat);
@@ -1755,6 +1825,11 @@ end;
 procedure TSpreadWriteReadFormatTests.TestWriteRead_OOXML_FormatStrings;
 begin
   TestWriteRead_FormatStrings(sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormatTests.TestWriteRead_XML_FormatStrings;
+begin
+  TestWriteRead_FormatStrings(sfExcelXML);
 end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_ODS_FormatStrings;

@@ -222,51 +222,57 @@ type
     procedure TestWriteRead_HideColDef_BIFF5;
     procedure TestWriteRead_HideColDef_BIFF8;
     procedure TestWriteRead_HideColDef_OOXML;
+    procedure TestWriteRead_HideColDef_XML;
     procedure TestWriteRead_HideColDef_ODS;
 
     // Hide a row having default row height
     procedure TestWriteRead_HideRowDef_BIFF5;
     procedure TestWriteRead_HideRowDef_BIFF8;
     procedure TestWriteRead_HideRowDef_OOXML;
+    procedure TestWriteRead_HideRowDef_XML;
     procedure TestWriteRead_HideRowDef_ODS;
 
     // Show a hidden column having default col width
     procedure TestWriteRead_ShowColDef_BIFF5;
     procedure TestWriteRead_ShowColDef_BIFF8;
     procedure TestWriteRead_ShowColDef_OOXML;
+    procedure TestWriteRead_ShowColDef_XML;
     procedure TestWriteRead_ShowColDef_ODS;
 
     // Show a hidden row having default row height
     procedure TestWriteRead_ShowRowDef_BIFF5;
     procedure TestWriteRead_ShowRowDef_BIFF8;
     procedure TestWriteRead_ShowRowDef_OOXML;
+    procedure TestWriteRead_ShowRowDef_XML;
     procedure TestWriteRead_ShowRowDef_ODS;
-
 
     // Hide a column
     procedure TestWriteRead_HideCol_BIFF5;
     procedure TestWriteRead_HideCol_BIFF8;
     procedure TestWriteRead_HideCol_OOXML;
+    procedure TestWriteRead_HideCol_XML;
     procedure TestWriteRead_HideCol_ODS;
 
     // Hide a row
     procedure TestWriteRead_HideRow_BIFF5;
     procedure TestWriteRead_HideRow_BIFF8;
     procedure TestWriteRead_HideRow_OOXML;
+    procedure TestWriteRead_HideRow_XML;
     procedure TestWriteRead_HideRow_ODS;
 
     // Show a hidden column
     procedure TestWriteRead_ShowCol_BIFF5;
     procedure TestWriteRead_ShowCol_BIFF8;
     procedure TestWriteRead_ShowCol_OOXML;
+    procedure TestWriteRead_ShowCol_XML;
     procedure TestWriteRead_ShowCol_ODS;
 
     // Show a hidden row
     procedure TestWriteRead_ShowRow_BIFF5;
     procedure TestWriteRead_ShowRow_BIFF8;
     procedure TestWriteRead_ShowRow_OOXML;
+    procedure TestWriteRead_ShowRow_XML;
     procedure TestWriteRead_ShowRow_ODS;
-
 
   end;
 
@@ -1920,6 +1926,10 @@ procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideColDef_OOXML;
 begin
   TestWriteRead_HideShowColRow(true, true, true, sfOOXML);
 end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideColDef_XML;
+begin
+  TestWriteRead_HideShowColRow(true, true, true, sfExcelXML);
+end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideColDef_ODS;
 begin
   TestWriteRead_HideShowColRow(true, true, true, sfOpenDocument);
@@ -1937,6 +1947,10 @@ end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRowDef_OOXML;
 begin
   TestWriteRead_HideShowColRow(false, true, true, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRowDef_XML;
+begin
+  TestWriteRead_HideShowColRow(false, true, true, sfExcelXML);
 end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRowDef_ODS;
 begin
@@ -1956,6 +1970,10 @@ procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowColDef_OOXML;
 begin
   TestWriteRead_HideShowColRow(true, false, true, sfOOXML);
 end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowColDef_XML;
+begin
+  TestWriteRead_HideShowColRow(true, false, true, sfExcelXML);
+end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowColDef_ODS;
 begin
   TestWriteRead_HideShowColRow(true, false, true, sfOpenDocument);
@@ -1973,6 +1991,10 @@ end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRowDef_OOXML;
 begin
   TestWriteRead_HideShowColRow(false, false, true, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRowDef_XML;
+begin
+  TestWriteRead_HideShowColRow(false, false, true, sfExcelXML);
 end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRowDef_ODS;
 begin
@@ -1995,6 +2017,10 @@ procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideCol_OOXML;
 begin
   TestWriteRead_HideShowColRow(true, true, false, sfOOXML);
 end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideCol_XML;
+begin
+  TestWriteRead_HideShowColRow(true, true, false, sfExcelXML);
+end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideCol_ODS;
 begin
   TestWriteRead_HideShowColRow(true, true, false, sfOpenDocument);
@@ -2012,6 +2038,10 @@ end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRow_OOXML;
 begin
   TestWriteRead_HideShowColRow(false, true, false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRow_XML;
+begin
+  TestWriteRead_HideShowColRow(false, true, false, sfExcelXML);
 end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_HideRow_ODS;
 begin
@@ -2031,6 +2061,10 @@ procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowCol_OOXML;
 begin
   TestWriteRead_HideShowColRow(true, false, false, sfOOXML);
 end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowCol_XML;
+begin
+  TestWriteRead_HideShowColRow(true, false, false, sfExcelXML);
+end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowCol_ODS;
 begin
   TestWriteRead_HideShowColRow(true, false, false, sfOpenDocument);
@@ -2048,6 +2082,10 @@ end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRow_OOXML;
 begin
   TestWriteRead_HideShowColRow(false, false, false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRow_XML;
+begin
+  TestWriteRead_HideShowColRow(false, false, false, sfExcelXML);
 end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRow_ODS;
 begin

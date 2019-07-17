@@ -297,12 +297,14 @@ type
     procedure TestWriteReadDates_BIFF8;
     procedure TestWriteReadDates_ODS;
     procedure TestWriteReadDates_OOXML;
+    procedure TestWriteReadDates_XML;
 
     procedure TestWriteReadMilliseconds_BIFF2;
     procedure TestWriteReadMilliseconds_BIFF5;
     procedure TestWriteReadMilliseconds_BIFF8;
     procedure TestWriteReadMilliseconds_ODS;
     procedure TestWriteReadMilliseconds_OOXML;
+    procedure TestWriteReadMilliseconds_XML;
   end;
 
 
@@ -563,6 +565,11 @@ end;
 procedure TSpreadWriteReadDateTests.TestWriteReadDates_OOXML;
 begin
   TestWriteReadDates(sfOOXML);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadDates_XML;
+begin
+  TestWriteReadDates(sfExcelXML);
 end;
 
 
@@ -1813,6 +1820,11 @@ end;
 procedure TSpreadWriteReadDateTests.TestWriteReadMilliseconds_OOXML;
 begin
   TestWriteReadMilliseconds(sfOOXML);
+end;
+
+procedure TSpreadWriteReadDateTests.TestWriteReadMilliseconds_XML;
+begin
+  TestWriteReadMilliseconds(sfExcelXML);
 end;
 
 

@@ -94,6 +94,20 @@ type
     procedure TestReadOOXMLString12;
     procedure TestReadOOXMLString13;
 
+    procedure TestReadXMLString0; //Excel2003/XML format empty string
+    procedure TestReadXMLString1;
+    procedure TestReadXMLString2;
+    procedure TestReadXMLString3;
+    procedure TestReadXMLString4;
+    procedure TestReadXMLString5;
+    procedure TestReadXMLString6;
+    procedure TestReadXMLString7;
+    procedure TestReadXMLString8;
+    procedure TestReadXMLString9;
+    procedure TestReadXMLString10;
+    procedure TestReadXMLString11;
+    procedure TestReadXMLString12;
+    procedure TestReadXMLString13;
   end;
 
   { TSpreadWriteReadStringTests }
@@ -340,6 +354,7 @@ begin
     case Uppercase(ExtractFileExt(FileName)) of
       '.XLSX': AFormat := sfOOXML;
       '.ODS' : AFormat := sfOpenDocument;
+      '.XML' : AFormat := sfExcelXML;
       else     AFormat := sfExcel8;
     end;
     TestWorkbook.ReadFromFile(FileName, AFormat);
@@ -511,7 +526,7 @@ begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileODF,13);
 end;
 
-{ ODF Tests }
+{ Excel XLSX Tests }
 procedure TSpreadReadStringTests.TestReadOOXMLString0;
 begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,0);
@@ -580,6 +595,77 @@ end;
 procedure TSpreadReadStringTests.TestReadOOXMLString13;
 begin
   TestReadString(ExtractFilePath(ParamStr(0)) + TestFileOOXML,13);
+end;
+
+{ Excel2003/XML Tests }
+procedure TSpreadReadStringTests.TestReadXMLString0;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,0);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString1;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,1);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString2;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,2);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString3;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,3);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString4;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,4);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString5;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,5);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString6;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,6);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString7;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,7);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString8;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,8);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString9;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,9);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString10;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,10);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString11;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,11);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString12;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,12);
+end;
+
+procedure TSpreadReadStringTests.TestReadXMLString13;
+begin
+  TestReadString(ExtractFilePath(ParamStr(0)) + TestFileXML,13);
 end;
 
 

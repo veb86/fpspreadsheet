@@ -43,6 +43,9 @@ type
     // OOXML test cases
     procedure TestWriteRead_Bool_OOXML;
 
+    // Excel2003/XML test cases
+    procedure TestWriteRead_Bool_XML;
+
     // CSV test cases
     procedure TestWriteRead_Bool_CSV;
   end;
@@ -189,6 +192,12 @@ end;
 procedure TSpreadWriteReadCellTypeTests.TestWriteRead_Bool_OOXML;
 begin
   TestWriteRead_Bool(sfOOXML);
+end;
+
+{ XML }
+procedure TSpreadWriteReadCellTypeTests.TestWriteRead_Bool_XML;
+begin
+  TestWriteRead_Bool(sfExcelXML);
 end;
 
 { CSV }

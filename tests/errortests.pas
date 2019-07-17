@@ -30,6 +30,7 @@ type
     procedure TestWriteErrorMessages_BIFF8;
     procedure TestWriteErrorMessages_ODS;
     procedure TestWriteErrorMessages_OOXML;
+    procedure TestWriteErrorMessages_XML;
   end;
 
 implementation
@@ -251,6 +252,11 @@ end;
 procedure TSpreadErrorTests.TestWriteErrorMessages_OOXML;
 begin
   TestWriteErrorMessages(sfOOXML);
+end;
+
+procedure TSpreadErrorTests.TestWriteErrorMessages_XML;
+begin
+  TestWriteErrorMessages(sfExcelXML);
 end;
 
 

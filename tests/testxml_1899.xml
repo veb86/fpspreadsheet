@@ -1,0 +1,591 @@
+<?xml version="1.0"?>
+<?mso-application progid="Excel.Sheet"?>
+<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:o="urn:schemas-microsoft-com:office:office"
+ xmlns:x="urn:schemas-microsoft-com:office:excel"
+ xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"
+ xmlns:html="http://www.w3.org/TR/REC-html40">
+ <DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+  <Author>Pamler</Author>
+  <LastAuthor>Werner</LastAuthor>
+  <Created>2014-08-05T08:05:53Z</Created>
+  <LastSaved>2015-04-30T11:25:25Z</LastSaved>
+  <Version>16.00</Version>
+ </DocumentProperties>
+ <OfficeDocumentSettings xmlns="urn:schemas-microsoft-com:office:office">
+  <AllowPNG/>
+ </OfficeDocumentSettings>
+ <ExcelWorkbook xmlns="urn:schemas-microsoft-com:office:excel">
+  <WindowHeight>8190</WindowHeight>
+  <WindowWidth>16380</WindowWidth>
+  <WindowTopX>32767</WindowTopX>
+  <WindowTopY>32767</WindowTopY>
+  <TabRatio>500</TabRatio>
+  <ActiveSheet>2</ActiveSheet>
+  <ProtectStructure>False</ProtectStructure>
+  <ProtectWindows>False</ProtectWindows>
+ </ExcelWorkbook>
+ <Styles>
+  <Style ss:ID="Default" ss:Name="Normal">
+   <Alignment ss:Vertical="Bottom"/>
+   <Borders/>
+   <Font ss:FontName="Verdana" x:Family="Swiss"/>
+   <Interior/>
+   <NumberFormat/>
+   <Protection/>
+  </Style>
+  <Style ss:ID="s16">
+   <Font ss:FontName="Verdana" x:Family="Swiss" ss:Bold="1"/>
+  </Style>
+  <Style ss:ID="s17">
+   <NumberFormat ss:Format="Short Date"/>
+  </Style>
+  <Style ss:ID="s18">
+   <NumberFormat ss:Format="hh:mm:ss"/>
+  </Style>
+  <Style ss:ID="s19">
+   <NumberFormat ss:Format="0%"/>
+  </Style>
+  <Style ss:ID="s20">
+   <NumberFormat ss:Format="Percent"/>
+  </Style>
+  <Style ss:ID="s21">
+   <NumberFormat ss:Format="#,##0"/>
+  </Style>
+  <Style ss:ID="s22">
+   <NumberFormat ss:Format="Standard"/>
+  </Style>
+  <Style ss:ID="s23">
+   <NumberFormat ss:Format="Scientific"/>
+  </Style>
+  <Style ss:ID="s24">
+   <NumberFormat ss:Format="h:mm;@"/>
+  </Style>
+  <Style ss:ID="s25">
+   <NumberFormat ss:Format="[$-F400]h:mm:ss\ AM/PM"/>
+  </Style>
+  <Style ss:ID="s26">
+   <NumberFormat ss:Format="[$-409]h:mm\ AM/PM;@"/>
+  </Style>
+  <Style ss:ID="s27">
+   <NumberFormat ss:Format="[$-409]h:mm:ss\ AM/PM;@"/>
+  </Style>
+  <Style ss:ID="s28">
+   <NumberFormat ss:Format="dd/\ mmm"/>
+  </Style>
+  <Style ss:ID="s29">
+   <NumberFormat ss:Format="mmm\ yy"/>
+  </Style>
+  <Style ss:ID="s30">
+   <NumberFormat ss:Format="mm:ss"/>
+  </Style>
+  <Style ss:ID="s31">
+   <NumberFormat ss:Format="[h]:mm:ss"/>
+  </Style>
+  <Style ss:ID="s32">
+   <NumberFormat/>
+  </Style>
+  <Style ss:ID="s33">
+   <NumberFormat ss:Format="General Date"/>
+  </Style>
+  <Style ss:ID="s35">
+   <NumberFormat ss:Format="#,##0.00\ &quot;€&quot;"/>
+  </Style>
+  <Style ss:ID="s36">
+   <NumberFormat ss:Format="#,##0.00\ [$$-409]"/>
+  </Style>
+  <Style ss:ID="s37">
+   <NumberFormat ss:Format="[$$-409]#,##0.00;[Red]\-#,###.00\ [$$-409]"/>
+  </Style>
+  <Style ss:ID="s38">
+   <NumberFormat ss:Format="#,##0.00\ [$EUR];[Red]\(#,##0.00\ [$EUR]\)"/>
+  </Style>
+  <Style ss:ID="s39">
+   <NumberFormat ss:Format="yyyy\-mm\-dd\Thh:mm:ss"/>
+  </Style>
+ </Styles>
+ <Worksheet ss:Name="Numbers">
+  <Table ss:ExpandedColumnCount="5" ss:ExpandedRowCount="23" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultColumnWidth="54">
+   <Column ss:AutoFitWidth="0" ss:Width="95.25"/>
+   <Row>
+    <Cell><Data ss:Type="Number">-59000000</Data></Cell>
+    <Cell><Data ss:Type="String">minus 59 million</Data></Cell>
+    <Cell ss:Index="5" ss:StyleID="s16"><Data ss:Type="String">Please use the A column for cells that will be read by fpspreadsheet</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">-988</Data></Cell>
+    <Cell ss:Index="5" ss:StyleID="s16"><Data ss:Type="String">Do not modify or delete cells; it will mess up the tests</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">-124.23432</Data></Cell>
+    <Cell ss:Index="5" ss:StyleID="s16"><Data ss:Type="String">You can use other cells for comments, intermediate calculations, etc</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">-81.902850873027404</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">-15</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">-2.934E-3</Data></Cell>
+    <Cell><Data ss:Type="String">minus small fraction</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">0</Data></Cell>
+    <Cell><Data ss:Type="String">minus zero</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">0</Data></Cell>
+    <Cell><Data ss:Type="String">zero</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">5.0000000000000001E-9</Data></Cell>
+    <Cell><Data ss:Type="String">small fraction</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">0.98239399999999999</Data></Cell>
+    <Cell><Data ss:Type="String">almost 1</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">3.14159265358979</Data></Cell>
+    <Cell><Data ss:Type="String">some parts of pi</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">59000000</Data></Cell>
+    <Cell><Data ss:Type="String">59 million</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="Number">59000000.100000001</Data></Cell>
+    <Cell><Data ss:Type="String">same + a tenth</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s19"><Data ss:Type="Number">0.35360000000000003</Data></Cell>
+    <Cell><Data ss:Type="String" x:Ticked="1">0.3536 formatted as percent with no decimal</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s20"><Data ss:Type="Number">0.35360000000000003</Data></Cell>
+    <Cell><Data ss:Type="String" x:Ticked="1">0.3536 formatted as percent with two decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s21"><Data ss:Type="Number">59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">59 million + 0.1234, formatted with thousand separator, no decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s22"><Data ss:Type="Number">59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">59 million + 0.1234, formatted with thousand separator, two decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s23"><Data ss:Type="Number">-59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">minus 59 million + 0.1234, formatted as &quot;exp&quot; with 2 decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s35"><Data ss:Type="Number">59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">59 million + 0.1234, formatted as EUROs, € at end, two decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s36"><Data ss:Type="Number">59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">59 million + 0.1234, formatted as DOLLARs, $ at end, two decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s35"><Data ss:Type="Number">-59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">minus 59 million + 0.1234, formatted as EUROs, € at end, two decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s36"><Data ss:Type="Number">-59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">minus 59 million + 0.1234, formatted as DOLLARs, $ at end, two decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s37"><Data ss:Type="Number">-59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">minus 59 million + 0.1234, formatted as DOLLARs, $ at end, negative red, two decimals</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <PageSetup>
+    <Header x:Margin="0.51180555555555551"/>
+    <Footer x:Margin="0.51180555555555551"/>
+    <PageMargins x:Bottom="0.98402777777777772" x:Left="0.74791666666666667"
+     x:Right="0.74791666666666667" x:Top="0.98402777777777772"/>
+   </PageSetup>
+   <Print>
+    <ValidPrinterInfo/>
+    <PaperSizeIndex>9</PaperSizeIndex>
+    <HorizontalResolution>300</HorizontalResolution>
+    <VerticalResolution>300</VerticalResolution>
+   </Print>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+   <EnableSelection>NoSelection</EnableSelection>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="Texts">
+  <Table ss:ExpandedColumnCount="5" ss:ExpandedRowCount="14" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultColumnWidth="54">
+   <Column ss:AutoFitWidth="0" ss:Width="119.25"/>
+   <Row>
+    <Cell ss:Index="2"><Data ss:Type="String">nothing, empty text</Data></Cell>
+    <Cell ss:Index="5" ss:StyleID="s16"><Data ss:Type="String">Please use the A column for cells that will be read by fpspreadsheet</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">a</Data></Cell>
+    <Cell ss:Index="5" ss:StyleID="s16"><Data ss:Type="String">Do not modify or delete cells; it will mess up the tests</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">1</Data></Cell>
+    <Cell><Data ss:Type="String">a number</Data></Cell>
+    <Cell ss:Index="5" ss:StyleID="s16"><Data ss:Type="String">You can use other cells for comments, intermediate calculations, etc</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">The quick brown fox jumps over the lazy dog</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">café au lait</Data></Cell>
+    <Cell><Data ss:Type="String">accent aigue on the e</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">водка</Data></Cell>
+    <Cell><Data ss:Type="String">Cyrillic</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="String">wódka</Data></Cell>
+    <Cell><Data ss:Type="String">Polish o accent aigue</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s19"><Data ss:Type="Number">0.35360000000000003</Data></Cell>
+    <Cell><Data ss:Type="String" x:Ticked="1">0.3536 formatted as percent with no decimal</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s20"><Data ss:Type="Number">0.35360000000000003</Data></Cell>
+    <Cell><Data ss:Type="String" x:Ticked="1">0.3536 formatted as percent with two decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s21"><Data ss:Type="Number">59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">59 million + 0.1234, formatted with thousand separator, no decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s22"><Data ss:Type="Number">59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">59 million + 0.1234, formatted with thousand separator, two decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s23"><Data ss:Type="Number">-59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">minus 59 million + 0.1234, formatted as &quot;exp&quot; with 2 decimals</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s38"><Data ss:Type="Number">59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">59 million + 0.1234, formatted as &quot;currencyRed&quot; with 2 decimals, brackets and EUR</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s38"><Data ss:Type="Number">-59000000.123400003</Data></Cell>
+    <Cell><Data ss:Type="String">minus 59 million + 0.1234, formatted as &quot;currencyRed&quot; with 2 decimals, brackets and EUR</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <PageSetup>
+    <Header x:Margin="0.51180555555555551"/>
+    <Footer x:Margin="0.51180555555555551"/>
+    <PageMargins x:Bottom="0.98402777777777772" x:Left="0.74791666666666667"
+     x:Right="0.74791666666666667" x:Top="0.98402777777777772"/>
+   </PageSetup>
+   <Print>
+    <ValidPrinterInfo/>
+    <PaperSizeIndex>9</PaperSizeIndex>
+    <HorizontalResolution>300</HorizontalResolution>
+    <VerticalResolution>300</VerticalResolution>
+   </Print>
+   <Panes>
+    <Pane>
+     <Number>3</Number>
+     <ActiveRow>11</ActiveRow>
+     <RangeSelection>R12C1:R12C256</RangeSelection>
+    </Pane>
+   </Panes>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+   <EnableSelection>NoSelection</EnableSelection>
+  </WorksheetOptions>
+ </Worksheet>
+ <Worksheet ss:Name="Dates">
+  <Table ss:ExpandedColumnCount="5" ss:ExpandedRowCount="38" x:FullColumns="1"
+   x:FullRows="1" ss:DefaultColumnWidth="66">
+   <Column ss:StyleID="s17" ss:AutoFitWidth="0" ss:Width="108.75"/>
+   <Column ss:StyleID="s17" ss:AutoFitWidth="0" ss:Width="63.75"/>
+   <Column ss:AutoFitWidth="0" ss:Width="134.25"/>
+   <Column ss:AutoFitWidth="0" ss:Width="104.25"/>
+   <Row>
+    <Cell><Data ss:Type="DateTime">1905-09-12T00:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1905-09-12T00:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">midnight</Data></Cell>
+    <Cell ss:StyleID="s16"><Data ss:Type="String">Please use the A column for cells that will be read by fpspreadsheet</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+    <Cell ss:StyleID="s16"><Data ss:Type="String">Do not modify or delete cells; it will mess up the tests</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="DateTime">2013-11-24T00:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">2013-11-24T00:00:00.000</Data></Cell>
+    <Cell ss:Index="5" ss:StyleID="s16"><Data ss:Type="String">You can use other cells for comments, intermediate calculations, etc</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="DateTime">2030-12-31T00:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">2030-12-31T00:00:00.000</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s18"><Data ss:Type="DateTime">1899-12-31T00:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">time only...</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s18"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell><Data ss:Type="String">just after midnight</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s18"><Data ss:Type="DateTime">1899-12-31T01:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T01:00:00.000</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s18"><Data ss:Type="DateTime">1899-12-31T03:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T03:00:00.000</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s18"><Data ss:Type="DateTime">1899-12-31T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s18"><Data ss:Type="DateTime">1899-12-31T18:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T18:00:00.000</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s18"><Data ss:Type="DateTime">1899-12-31T23:59:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:00.000</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s18"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell><Data ss:Type="String">almost midnight</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfShortDateTime</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s24"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfShortTime</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s25"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfLongTime</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s26"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfShortTimeAM</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s27"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfLongTimeAM</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s28"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfDayMonth</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s29"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfMonthYear</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s33"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1908-09-12T12:00:00.000</Data></Cell>
+    <Cell><Data ss:Type="String">noon</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfFmtDateTime, ms</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell><Data ss:Type="String">just after midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfShortDateTime</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s24"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell><Data ss:Type="String">just after midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfShortTime</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s25"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell><Data ss:Type="String">just after midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfLongTime</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s26"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell><Data ss:Type="String">just after midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfShortTimeAM</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s27"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell><Data ss:Type="String">just after midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfLongTimeAM</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s28"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell><Data ss:Type="String">just after midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfDayMonth</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s29"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell><Data ss:Type="String">just after midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfMonthYear</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s30"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T00:00:01.000</Data></Cell>
+    <Cell><Data ss:Type="String">just after midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfFmtDateTime, ms</Data></Cell>
+   </Row>
+   <Row>
+    <Cell><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell><Data ss:Type="String">almost midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfShortDateTime</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s24"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell><Data ss:Type="String">almost midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfShortTime</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s25"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell><Data ss:Type="String">almost midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfLongTime</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s26"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell><Data ss:Type="String">almost midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfShortTimeAM</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s27"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell><Data ss:Type="String">almost midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfLongTimeAM</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s28"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell><Data ss:Type="String">almost midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfDayMonth</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s29"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell><Data ss:Type="String">almost midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfMonthYear</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s30"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell ss:StyleID="s39" ss:Formula="=RC[-2]"><Data ss:Type="DateTime">1899-12-31T23:59:59.000</Data></Cell>
+    <Cell><Data ss:Type="String">almost midnight</Data></Cell>
+    <Cell><Data ss:Type="String">formatted as nfFmtDateTime, ms</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s31"><Data ss:Type="DateTime">1899-12-31T03:45:12.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell><Data ss:Type="String">3 hours 45 mins 12 secs</Data></Cell>
+    <Cell ss:Index="5"><Data ss:Type="String">formatted as nfTimeDuration</Data></Cell>
+   </Row>
+   <Row>
+    <Cell ss:StyleID="s31"><Data ss:Type="DateTime">1900-01-01T03:45:12.000</Data></Cell>
+    <Cell ss:StyleID="s32"/>
+    <Cell><Data ss:Type="String">the same plus 1 day</Data></Cell>
+    <Cell ss:Index="5"><Data ss:Type="String">formatted as nfTimeDuration</Data></Cell>
+   </Row>
+  </Table>
+  <WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel">
+   <PageSetup>
+    <Header x:Margin="0.51180555555555551"/>
+    <Footer x:Margin="0.51180555555555551"/>
+    <PageMargins x:Bottom="0.98402777777777772" x:Left="0.74791666666666667"
+     x:Right="0.74791666666666667" x:Top="0.98402777777777772"/>
+   </PageSetup>
+   <Print>
+    <ValidPrinterInfo/>
+    <PaperSizeIndex>9</PaperSizeIndex>
+    <HorizontalResolution>300</HorizontalResolution>
+    <VerticalResolution>300</VerticalResolution>
+   </Print>
+   <Selected/>
+   <TopRowVisible>9</TopRowVisible>
+   <Panes>
+    <Pane>
+     <Number>3</Number>
+     <ActiveRow>35</ActiveRow>
+     <ActiveCol>4</ActiveCol>
+    </Pane>
+   </Panes>
+   <ProtectObjects>False</ProtectObjects>
+   <ProtectScenarios>False</ProtectScenarios>
+   <EnableSelection>NoSelection</EnableSelection>
+  </WorksheetOptions>
+ </Worksheet>
+</Workbook>

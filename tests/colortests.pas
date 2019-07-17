@@ -1,11 +1,13 @@
+{                                Color tests
+--------------------------------------------------------------------------------
+      This unit tests writing out to and reading back from files.
+}
+
 unit colortests;
 
 {$mode objfpc}{$H+}
 
 interface
-{ Color tests
-This unit tests writing out to and reading back from files.
-}
 
 uses
   // Not using Lazarus package as the user may be working with multiple versions
@@ -78,6 +80,18 @@ type
     procedure TestWriteRead_OOXML_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
     procedure TestWriteRead_OOXML_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
     procedure TestWriteRead_OOXML_Font_RandomPal;          // palette 64, top 56 entries random
+
+    { Excel 2003/XML file format tests }
+    // Background colors...
+    procedure TestWriteRead_XML_Background_InternalPal;    // internal palette
+    procedure TestWriteRead_XML_Background_Biff5Pal;       // official biff5 palette
+    procedure TestWriteRead_XML_Background_Biff8Pal;       // official biff8 palette
+    procedure TestWriteRead_XML_Background_RandomPal;      // palette 64, top 56 entries random
+    // Font colors...
+    procedure TestWriteRead_XML_Font_InternalPal;          // internal palette for BIFF8 file format
+    procedure TestWriteRead_XML_Font_Biff5Pal;             // official biff5 palette in BIFF8 file format
+    procedure TestWriteRead_XML_Font_Biff8Pal;             // official biff8 palette in BIFF8 file format
+    procedure TestWriteRead_XML_Font_RandomPal;            // palette 64, top 56 entries random
   end;
 
 
@@ -455,6 +469,48 @@ end;
 procedure TSpreadWriteReadColorTests.TestWriteRead_OOXML_Font_RandomPal;
 begin
   TestWriteReadFontColors(sfOOXML, 999);
+end;
+
+
+{ Tests for Excel 2003/XML file format }
+procedure TSpreadWriteReadColorTests.TestWriteRead_XML_Background_InternalPal;
+begin
+  TestWriteReadBackgroundColors(sfExcelXML, 0);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_XML_Background_Biff5Pal;
+begin
+  TestWriteReadBackgroundColors(sfExcelXML, 5);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_XML_Background_Biff8Pal;
+begin
+  TestWriteReadBackgroundColors(sfExcelXML, 8);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_XML_Background_RandomPal;
+begin
+  TestWriteReadBackgroundColors(sfExcelXML, 999);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_XML_Font_InternalPal;
+begin
+  TestWriteReadFontColors(sfExcelXML, 0);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_XML_Font_Biff5Pal;
+begin
+  TestWriteReadFontColors(sfExcelXML, 5);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_XML_Font_Biff8Pal;
+begin
+  TestWriteReadFontColors(sfExcelXML, 8);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_XML_Font_RandomPal;
+begin
+  TestWriteReadFontColors(sfExcelXML, 999);
 end;
 
 
