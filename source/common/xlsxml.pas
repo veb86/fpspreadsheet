@@ -195,6 +195,33 @@ begin
   end;
 end;
 
+{ Helper routine to rebuild the html content of the "ss:Data" nodes }
+procedure RebuildChildNodes(ANode: TDOMNode; var AText: String);
+var
+  nodeName: String;
+  s: String;
+  i: Integer;
+begin
+  if ANode = nil then
+    exit;
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = '#text' then
+      AText := AText + ANode.NodeValue
+    else begin
+      s := '';
+      for i := 0 to ANode.Attributes.Length-1 do
+        s := Format('%s %s="%s"', [s, ANode.Attributes.Item[i].NodeName, ANode.Attributes.Item[i].NodeValue]);
+      AText := Format('%s<%s%s>', [AText, nodeName, s]);
+      s := '';
+      RebuildChildNodes(ANode.FirstChild, s);
+      if s <> '' then
+        AText := Format('%s%s</%s>', [AText, s, nodeName]);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 
 {===============================================================================
                           TsSpreadExcelXMLReader
@@ -414,12 +441,15 @@ var
   sheet: TsWorksheet absolute AWorksheet;
   nodeName: string;
   s, st, sv: String;
+  txt: String;
   node: TDOMNode;
   err: TsErrorValue;
   cell: PCell;
   fmt: TsCellFormat;
   idx: Integer;
   mergedCols, mergedRows: Integer;
+  font: TsFont;
+  rtp: TsRichTextParams;
 begin
   if ANode = nil then
     exit;
@@ -429,6 +459,7 @@ begin
 
   cell := sheet.GetCell(ARow, ACol);
   book := TsWorkbook(FWorkbook);
+  font := book.GetDefaultFont;
 
   s := GetAttrValue(ANode, 'ss:StyleID');
   if s <> '' then begin
@@ -436,6 +467,7 @@ begin
     if idx <> -1 then begin
       fmt := FCellFormatList.Items[idx]^;
       cell^.FormatIndex := book.AddCellFormat(fmt);
+      font := book.GetFont(fmt.FontIndex);;
     end;
   end;
 
@@ -498,6 +530,11 @@ begin
             'Error':
               if TryStrToErrorValue(sv, err) then
                 sheet.WriteErrorValue(cell, err);
+          end;
+          if nodeName = 'ss:Data' then begin
+            txt := '';
+            RebuildChildNodes(node, txt);
+            HTMLToRichText(FWorkbook, font, txt, s, cell^.RichTextParams, 'html:');
           end;
         end
         else

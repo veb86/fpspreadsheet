@@ -41,7 +41,7 @@ type
 
 procedure HTMLToRichText(AWorkbook: TsBasicWorkbook; AFont: TsFont;
   const AHTMLText: String; out APlainText: String;
-  out ARichTextParams: TsRichTextParams);
+  out ARichTextParams: TsRichTextParams; APrefix: String = '');
 
 procedure RichTextToHTML(AWorkbook: TsBasicWorkbook; AFont: TsFont;
   const APlainText: String; const ARichTextParams: TsRichTextParams;
@@ -623,6 +623,7 @@ type
     FCurrFont: TsFont;
     FPointSeparatorSettings: TFormatSettings;
     FPreserveSpaces: Boolean;
+    FPrefix: String;
     function AddFont(AFont: TsFont): Integer;
     procedure AddRichTextParam(AFont: TsFont; AHyperlinkIndex: Integer = -1);
     procedure ProcessFontRestore;
@@ -633,6 +634,7 @@ type
     constructor Create(AWorkbook: TsWorkbook; AFont: TsFont; AText: String);
     destructor Destroy; override;
     property PlainText: String read FPlainText;
+    property Prefix: String read FPrefix write FPrefix;
     property RichTextParams: TsRichTextParams read FRichTextParams;
     property PreserveSpaces: Boolean read FPreserveSpaces write FPreserveSpaces;
   end;
@@ -738,9 +740,9 @@ var
   f: Double;
   defFntSize: Single;
 begin
-  idx := FAttrList.IndexOfName('font-family');    // style tag
+  idx := FAttrList.IndexOfName(FPrefix + 'font-family');    // style tag
   if idx = -1 then
-    idx := FAttrList.IndexOfName('face');         // html tag
+    idx := FAttrList.IndexOfName(FPrefix + 'face');         // html tag
   if idx > -1 then begin
     L := TStringList.Create;
     try
@@ -752,9 +754,9 @@ begin
     end;
   end;
 
-  idx := FAttrList.IndexOfName('font-size');
+  idx := FAttrList.IndexOfName(FPrefix + 'font-size');
   if idx = -1 then
-    idx := FAttrList.IndexOfName('size');
+    idx := FAttrList.IndexOfName(FPrefix + 'size');
   if idx > -1 then begin
     defFntSize := FWorkbook.GetDefaultFont.Size;
     s := FAttrList[idx].Value;
@@ -799,7 +801,7 @@ begin
     end;
   end;
 
-  idx := FAttrList.IndexOfName('font-style');
+  idx := FAttrList.IndexOfName(FPrefix + 'font-style');
   if idx > -1 then
     case FAttrList[idx].Value of
       'normal'  : Exclude(AFont.Style, fssItalic);
@@ -807,14 +809,14 @@ begin
       'oblique' : Include(AFont.Style, fssItalic);
     end;
 
-  idx := FAttrList.IndexOfName('font-weight');
+  idx := FAttrList.IndexOfName(FPrefix + 'font-weight');
   if idx > -1 then
   begin
     s := FAttrList[idx].Value;
     if TryStrToInt(s, i) and (i >= 700) then Include(AFont.Style, fssBold);
   end;
 
-  idx := FAttrList.IndexOfName('text-decoration');
+  idx := FAttrList.IndexOfName(FPrefix + 'text-decoration');
   if idx > -1 then
   begin
     s := FAttrList[idx].Value;
@@ -822,7 +824,7 @@ begin
     if pos('line-through', s) <> 0 then Include(AFont.Style, fssStrikeout);
   end;
 
-  idx := FAttrList.IndexOfName('color');
+  idx := FAttrList.IndexOfName(FPrefix + 'color');
   if idx > -1 then
     AFont.Color := HTMLColorStrToColor(FAttrList[idx].Value);
 end;
@@ -942,7 +944,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure HTMLToRichText(AWorkbook: TsBasicWorkbook; AFont: TsFont;
   const AHTMLText: String; out APlainText: String;
-  out ARichTextParams: TsRichTextParams);
+  out ARichTextParams: TsRichTextParams; APrefix: String = '');
 var
   analyzer: TsHTMLAnalyzer;
   j: Integer;
@@ -952,6 +954,7 @@ begin
   analyzer := TsHTMLAnalyzer.Create(AWorkbook as TsWorkbook, AFont, AHTMLText + '<end>');
   try
     analyzer.PreserveSpaces := true;
+    analyzer.Prefix := APrefix;
     analyzer.Exec;
     APlainText := analyzer.PlainText;
     nrtp := Length(analyzer.RichTextParams);
