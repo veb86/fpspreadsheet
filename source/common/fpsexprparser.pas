@@ -1127,26 +1127,38 @@ begin
 end;
 
 function TsExpressionScanner.DoIdentifier: TsTokenType;
+var
+  isInSqBr: Boolean;
+  isQuoted: Boolean;
 
   function IsR1C1Char(C: Char): Boolean; inline;
   begin
-    Result := (FParser.Dialect = fdExcelR1C1) and (C in ['[', ']', '-']);
+    if (FParser.Dialect = fdExcelR1C1) then
+      Result := (C = '[') or (C = ']') or (isInSqBr and (C = '-'))
+    else
+      Result := false;
   end;
 
 var
   C: Char;
   S: String;
-  isQuoted: Boolean;
   ok: Boolean;
 begin
   C := CurrentChar;
   isQuoted := C = '''';
+  isInSqBr := C = '[';
 
   while ((not IsWordDelim(C)) or IsQuoted or IsR1C1Char(C)) and (C <> cNULL) do
   begin
     FToken := FToken + C;
     C := NextPos;
     if C = '''' then isQuoted := false;
+    if (FParser.Dialect = fdExcelR1C1) then begin
+      if (C = '[') then
+        isInSqBr := true
+      else if (C = ']') then
+        isInSqBr := false;
+    end;
   end;
 
   if (FParser.Dialect = fdExcelR1C1) then begin

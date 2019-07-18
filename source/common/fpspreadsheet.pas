@@ -5876,9 +5876,6 @@ begin
     exit;
   end;
 
-  formula := FFormulas.AddFormula(ACell^.Row, ACell^.Col, AFormula);
-  // wp: Why is this created when boIgnoreFormulas is active?
-
   if not (boIgnoreFormulas in Workbook.Options) then
   begin
     // Remove '='; is not stored internally
@@ -5895,6 +5892,8 @@ begin
       else
         parser.Expression := AFormula;
       AFormula := parser.Expression;
+
+      formula := FFormulas.AddFormula(ACell^.Row, ACell^.Col, AFormula);
     except
       on E:Exception do begin
         if FWorkbook.FReadWriteFlag = rwfNormal then
@@ -5904,7 +5903,7 @@ begin
             FName, GetCellString(ACell^.Row, ACell^.Col), E.Message]
           );
           parser.Free;
-          FFormulas.DeleteFormula(ACell^.Row, ACell^.Col);
+          //FFormulas.DeleteFormula(ACell^.Row, ACell^.Col);
           exit;
         end;
       end;

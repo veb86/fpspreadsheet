@@ -1087,7 +1087,7 @@ begin
   s := GetAttrValue(ANode, 'ss:Protected');
   if s ='1' then
     AWorksheet.Options := AWorksheet.Options + [soProtected];
-  ;
+
   ANode := ANode.FirstChild;
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
