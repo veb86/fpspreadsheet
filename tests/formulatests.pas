@@ -89,7 +89,7 @@ type
     procedure Test_Write_Read_Calc3DFormula_BIFF5;
     procedure Test_Write_Read_Calc3DFormula_BIFF8;
     procedure Test_Write_Read_Calc3DFormula_OOXML;
-//    procedure Test_Write_Read_Calc3DFormula_XML;
+    procedure Test_Write_Read_Calc3DFormula_XML;
     procedure Test_Write_Read_Calc3DFormula_ODS;
 
     { Overwrite formula with other content }
@@ -887,11 +887,11 @@ procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_OOXML;
 begin
   Test_Write_Read_Calc3DFormulas(sfOOXML);
 end;
-                                       {
+
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_XML;
 begin
   Test_Write_Read_Calc3DFormulas(sfExcelXML);
-end;                                    }
+end;
 
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_ODS;
 begin

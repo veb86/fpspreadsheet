@@ -1362,17 +1362,30 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadExcelXMLReader.ReadWorksheets(ANode: TDOMNode);
 var
+  node: TDOMNode;
   nodeName: String;
   s: String;
 begin
+  node := ANode;
+  // first iterate through all worksheets, get the name and add them to the
+  // workbook. This is because 3D formulas may refer to sheets not yet loaded.
+  while node <> nil do begin
+    nodeName := node.NodeName;
+    if nodeName = 'Worksheet' then begin
+      s := GetAttrValue(node, 'ss:Name');
+      if s <> '' then       // the case of '' should not happen...
+        FWorksheet := TsWorkbook(FWorkbook).AddWorksheet(s);
+    end;
+    node := node.NextSibling;
+  end;
+
+  // Now iterate through the worksheets again and read their contents
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
     if nodeName = 'Worksheet' then begin
       s := GetAttrValue(ANode, 'ss:Name');
-      if s <> '' then begin   // the case of '' should not happen
-        FWorksheet := TsWorkbook(FWorkbook).AddWorksheet(s);
-        ReadWorksheet(ANode, FWorksheet);
-      end;
+      FWorksheet := TsWorkbook(FWorkbook).GetWorksheetByName(s);
+      ReadWorksheet(ANode, FWorksheet);
     end;
     ANode := ANode.NextSibling;
   end;
