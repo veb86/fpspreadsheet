@@ -815,7 +815,8 @@ begin
             GetColorName(PATTERN_COLOR),
             GetColorName(patt.FgColor),
             'Test saved fill pattern color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
-        if BK_COLOR <> patt.BgColor then
+        if (BK_COLOR <> patt.BgColor) and (style <> fsSolidFill) then
+          // Backgroundcolor is undefined for solid fill
           CheckEquals(
             GetColorName(BK_COLOR),
             GetColorName(patt.BgColor),
@@ -832,21 +833,17 @@ begin
         GetEnumName(TypeInfo(TsFillStyle), ord(style)),
         GetEnumName(TypeInfo(TsFillStyle), ord(patt.Style)),
         'Test saved fill style mismatch, cell ' + CellNotation(MyWorksheet, row, col));
-      if style <> fsNoFill then
+
+      // Skip ExcelXML because it does not store info on transparent background fill.
+      if (style <> fsNoFill) and (AFormat <> sfExcelXML) then
       begin
         if PATTERN_COLOR <> patt.FgColor then
           CheckEquals(
             GetColorName(PATTERN_COLOR),
             GetColorName(patt.FgColor),
             'Test saved fill pattern color mismatch, cell ' + CellNotation(MyWorksheet, row, col));
-        // SolidFill is a special case: here the background color is always equal
-        // to the pattern color - the cell layout does not know this...
-        if style = fsSolidFill then
-          CheckEquals(
-            GetColorName(PATTERN_COLOR),
-            GetColorName(patt.BgColor),
-            'Test saved fill pattern color mismatch, cell ' + CellNotation(MyWorksheet, row, col))
-        else
+        // SolidFill is a special case: here the background color is not defined.
+        if style <> fsSolidFill then
           CheckEquals(
             GetColorName(scTransparent),
             GetColorName(patt.BgColor),
@@ -1004,7 +1001,7 @@ procedure TSpreadWriteReadFormatTests.TestWriteRead_BorderStyles(AFormat: TsSpre
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
-  MyCell: PCell;
+  cell: PCell;
   row, col: Integer;
   b: TsCellBorder;
   expected: Integer;
@@ -1026,7 +1023,7 @@ begin
     MyWorkSheet:= MyWorkBook.AddWorksheet(BordersSheet);
 
     borders := [cbNorth, cbSouth, cbEast, cbWest];
-    if AFormat in [sfExcel8, sfOpenDocument, sfOOXML] then
+    if AFormat in [sfExcel8, sfExcelXML, sfOOXML, sfOpenDocument] then
       borders := borders + [cbDiagUp, cbDiagDown];
 
     c := 0;
@@ -1035,11 +1032,12 @@ begin
     begin
       for col := 1 to 10 do
       begin
-        MyWorksheet.WriteBorders(row*2-1, col*2-1, borders);
+        cell := MyWorksheet.GetCell(row*2-1, col*2-1);
+        MyWorksheet.WriteBorders(cell, borders);
         for b in borders do
         begin
-          MyWorksheet.WriteBorderLineStyle(row*2-1, col*2-1, b, SollBorderLineStyles[ls]);
-          MyWorksheet.WriteBorderColor(row*2-1, col*2-1, b, SollBorderColors[c]);
+          MyWorksheet.WriteBorderLineStyle(cell, b, SollBorderLineStyles[ls]);
+          MyWorksheet.WriteBorderColor(cell, b, SollBorderColors[c]);
           inc(ls);
           if ls > High(SollBorderLineStyles) then
           begin
@@ -1073,12 +1071,12 @@ begin
     begin
       for col := 1 to 10 do
       begin
-        MyCell := MyWorksheet.FindCell(row*2-1, col*2-1);
-        if myCell = nil then
+        cell := MyWorksheet.FindCell(row*2-1, col*2-1);
+        if cell = nil then
           fail('Error in test code. Failed to get cell.');
         for b in borders do
         begin
-          borderStyle := MyWorksheet.ReadCellBorderStyle(MyCell, b);
+          borderStyle := MyWorksheet.ReadCellBorderStyle(cell, b);
           current := ord(borderStyle.LineStyle);
           // In Excel both diagonals have the same line style. The reader picks
           // the line style of the "diagonal-up" border. We use this as expected
@@ -1090,7 +1088,7 @@ begin
               cbDiagDown : expected := diagUp_ls;
             end;
           CheckEquals(expected, current,
-            'Test saved border line style mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
+            'Test saved border line style mismatch, cell ' + CellNotation(MyWorksheet, row*2-1, col*2-1));
           current := borderStyle.Color;
           expected := SollBorderColors[c];
           // In Excel both diagonals have the same line color. The reader picks
@@ -1102,7 +1100,7 @@ begin
               cbDiagDown : expected := diagUp_clr;
             end;
           CheckEquals(expected, current,
-            'Test saved border color mismatch, cell ' + CellNotation(MyWorksheet, row*2, col*2));
+            'Test saved border color mismatch, cell ' + CellNotation(MyWorksheet, row*2-1, col*2-1));
           inc(ls);
           if ls > High(SollBorderLineStyles) then begin
             ls := 0;
@@ -1257,7 +1255,8 @@ begin
     MyWorkSheet:= MyWorkBook.AddWorksheet(RowHeightSheet);
     for Row := Low(SollRowHeights) to High(SollRowHeights) do begin
       if SollRowHeights[Row] < 0 then
-        rht := rhtAuto else
+        rht := rhtAuto
+      else
         rht := rhtCustom;
       MyWorksheet.WriteRowHeight(Row, abs(SollRowHeights[Row]), suLines, rht);
     end;

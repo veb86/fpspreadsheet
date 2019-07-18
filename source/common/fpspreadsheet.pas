@@ -6525,7 +6525,12 @@ end;
   @param  AStyle            Fill style ("pattern") to be used - see TsFillStyle
   @param  APatternColor     RGB value of the pattern color
   @param  ABackgroundColor  RGB value of the background color
+
   @return Index of the new format record.
+
+  @NOTE   When AStyle is fsSolidFill the color is defined by APatternColor,
+          ABackgroundColor is ignored unless the APatternColor is not
+          used (scTransparent).
 -------------------------------------------------------------------------------}
 function TsWorksheet.ChangeBackground(AFormatIndex: Integer; AStyle: TsFillStyle;
   APatternColor: TsColor = scTransparent;
@@ -6543,10 +6548,16 @@ begin
     Include(fmt.UsedFormattingFields, uffBackground);
     fmt.Background.Style := AStyle;
     fmt.Background.FgColor := APatternColor;
+    if (AStyle = fsSolidFill) and (APatternColor = scTransparent) then
+      fmt.Background.FgColor := ABackgroundColor
+    else
+      fmt.Background.BgColor := ABackgroundColor;
+    {
     if (AStyle = fsSolidFill) and (ABackgroundColor = scTransparent) then
       fmt.Background.BgColor := APatternColor
     else
       fmt.Background.BgColor := ABackgroundColor;
+      }
   end;
   Result := Workbook.AddCellFormat(fmt);
 end;
@@ -6561,7 +6572,11 @@ end;
   @param  ABackgroundColor  RGB value of the background color
   @return Pointer to cell
 
-  @NOTE Is replaced by uniform fill if WriteBackgroundColor is called later.
+  @NOTE   When AStyle is fsSolidFill the color is defined by APatternColor,
+          ABackgroundColor is ignored unless the APatternColor is not
+          used (scTransparent).
+
+  @NOTE   Is replaced by uniform fill if WriteBackgroundColor is called later.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBackground(ARow, ACol: Cardinal; AStyle: TsFillStyle;
   APatternColor, ABackgroundColor: TsColor): PCell;
@@ -6578,7 +6593,11 @@ end;
   @param  APatternColor     RGB value of the pattern color
   @param  ABackgroundColor  RGB value of the background color
 
-  @NOTE Is replaced by uniform fill if WriteBackgroundColor is called later.
+  @NOTE   When AStyle is fsSolidFill the color is defined by APatternColor,
+          ABackgroundColor is ignored unless the APatternColor is not
+          used (scTransparent).
+
+  @NOTE   Is replaced by uniform fill if WriteBackgroundColor is called later.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBackground(ACell: PCell; AStyle: TsFillStyle;
   APatternColor: TsColor = scTransparent; ABackgroundColor: TsColor = scTransparent);

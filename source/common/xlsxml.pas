@@ -158,7 +158,8 @@ const
     fsHatchDiag, fsThinHatchDiag, fsThickHatchDiag, fsThinHatchHor) }
   FILL_NAMES: array[TsFillStyle] of string = (
     '', 'Solid',
-    'Gray75', 'Gray50', 'Gray25', 'Gray12', 'Gray0625',
+//    'Solid', 'Solid', 'Solid', 'Solid', 'Solid',
+    'Gray75', 'Gray50', 'Gray25', 'Gray125', 'Gray0625',
     'HorzStripe', 'VertStripe', 'DiagStripe', 'ReverseDiagStripe',
     'ThinHorzStripe', 'ThinVertStripe', 'ThinDiagStripe', 'ThinReverseDiagStripe',
     'DiagCross', 'ThinDiagCross', 'ThickDiagCross', 'ThinHorzCross'
@@ -378,7 +379,10 @@ begin
 
   // Border color
   s := GetAttrValue(ANode, 'ss:Color');
-  AFormat.BorderStyles[b].Color := HTMLColorStrToColor(s);
+  if s = '' then
+    AFormat.BorderStyles[b].Color := scBlack
+  else
+    AFormat.BorderStyles[b].Color := HTMLColorStrToColor(s);
 
   // Line style
   s := GetAttrValue(ANode, 'ss:LineStyle');
@@ -690,12 +694,13 @@ end;
 procedure TsSpreadExcelXMLReader.ReadInterior(ANode: TDOMNode;
   var AFormat: TsCellFormat);
 var
-  s: String;
+  s, sfg, sbg: String;
   fs: TsFillStyle;
 begin
   if ANode = nil then
     exit;
 
+  // Pattern
   s := GetAttrValue(ANode, 'ss:Pattern');
   if s = '' then
     exit;
@@ -706,18 +711,25 @@ begin
       break;
     end;
 
-  s := GetAttrValue(ANode, 'ss:PatternColor');
-  if s = '' then
+  // Foreground color (pattern color)
+  sfg := GetAttrValue(ANode, 'ss:PatternColor');
+  if sfg = '' then
     AFormat.Background.FgColor := scBlack
   else
-    AFormat.Background.FgColor := HTMLColorStrToColor(s);
+    AFormat.Background.FgColor := HTMLColorStrToColor(sfg);
 
-  s := GetAttrValue(ANode, 'ss:Color');
-  if s = '' then
+  // Background color
+  sbg := GetAttrValue(ANode, 'ss:Color');
+  if sbg = '' then
     AFormat.Background.BgColor := scWhite
-  else begin
-    AFormat.Background.BgColor := HTMLColorStrToColor(s);
-    if AFormat.Background.Style = fsSolidFill then
+  else
+    AFormat.Background.BgColor := HTMLColorStrToColor(sbg);
+
+  // Fix solid fill colors: make foreground and background color the same
+  if AFormat.Background.Style = fsSolidFill then begin
+    if (sfg <> '') then
+      AFormat.Background.BgColor := AFormat.Background.FgColor  // Forground priority
+    else if (sfg = '') and (sbg <> '') then
       AFormat.Background.FgColor := AFormat.Background.BgColor;
   end;
 
@@ -972,6 +984,7 @@ var
   x: Double;
   idx: Integer;
   fmt: TsCellFormat;
+  rht: TsRowHeightType;
 begin
   r := 0;
   c := 0;
@@ -1022,10 +1035,17 @@ begin
       s := GetAttrValue(ANode, 'ss:Index');
       if s <> '' then r := StrToInt(s) - 1;
 
+      // AutoFitHeight
+      s := GetAttrValue(ANode, 'ss:AutoFitHeight');
+      if s = '1' then
+        rht := rhtAuto
+      else
+        rht := rhtCustom;
+
       // Height
       s := GetAttrValue(ANode, 'ss:Height');
       if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-        sheet.WriteRowHeight(r, x, suPoints);
+        sheet.WriteRowHeight(r, x, suPoints, rht);
 
       // Hidden
       s := GetAttrValue(ANode, 'ss:Hidden');
@@ -1985,13 +2005,13 @@ begin
       end;
 
     // Vertical alignment
-    fmtVert := 'ss:Vertical="Bottom" ';
+    fmtVert := '';
     if uffVertAlign in fmt^.UsedFormattingFields then
       case fmt^.VertAlignment of
         vaDefault: ;
         vaTop    : fmtVert := 'ss:Vertical="Top" ';
         vaCenter : fmtVert := 'ss:Vertical="Center" ';
-        vaBottom : ;
+        vaBottom : fmtVert := 'ss:Vertical="Bottom" ';
         else
           raise EFPSpreadsheetWriter.Create('[TsSpreadXMLWriter.WriteStyle] Vertical alignment cannot be handled.');
       end;
@@ -2053,12 +2073,20 @@ begin
     if (uffBackground in fmt^.UsedFormattingFields) then
     begin
       fill := fmt^.Background;
-      s := 'ss:Color="' + ColorToHTMLColorStr(fill.BgColor) + '" ';
-      if not (fill.Style in [fsNoFill, fsSolidFill]) then
-        s := s + 'ss:PatternColor="' + ColorToHTMLColorStr(fill.FgColor) + '" ';
-      s := s + 'ss:Pattern="' + FILL_NAMES[fill.Style] + '"';
-      AppendToStream(AStream, INDENT3 +
-        '<Interior ' + s + '/>' + LF)
+      if fill.Style = fsNoFill then
+        AppendToStream(AStream, INDENT3 + '<Interior />' + LF)
+      else begin
+        if fill.Style = fsSolidFill then
+          s := 'ss:Color="' + ColorToHtmlColorStr(fill.FgColor) + '" '
+        else
+          s := Format('ss:Color="%s" ss:PatternColor="%s" ', [
+            ColorToHTMLColorStr(fill.BgColor),
+            ColorToHTMLColorStr(fill.FgColor)
+          ]);
+        s := s + 'ss:Pattern="' + FILL_NAMES[fill.Style] + '" ';
+        AppendToStream(AStream, INDENT3 +
+          '<Interior ' + s + '/>' + LF)
+      end;
     end;
 
     // Borders
@@ -2072,8 +2100,7 @@ begin
             BORDER_NAMES[cb], LINE_STYLES[cbs.LineStyle]]);
           if fmt^.BorderStyles[cb].LineStyle <> lsHair then
             s := Format('%s ss:Weight="%d"', [s, LINE_WIDTHS[cbs.LineStyle]]);
-          if fmt^.BorderStyles[cb].Color <> scBlack then
-            s := Format('%s ss:Color="%s"', [s, ColorToHTMLColorStr(cbs.Color)]);
+          s := Format('%s ss:Color="%s"', [s, ColorToHTMLColorStr(cbs.Color)]);
           s := s + '/>' + LF;
         end;
       if s <> '' then

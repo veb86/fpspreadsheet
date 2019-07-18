@@ -553,7 +553,7 @@ type
   TsFillPattern = record
     Style: TsFillStyle;  // pattern type
     FgColor: TsColor;    // pattern color
-    BgColor: TsColor;    // background color
+    BgColor: TsColor;    // background color (undefined when Style=fsSolidFill)
   end;
 
 const
