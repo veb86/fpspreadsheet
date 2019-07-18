@@ -49,6 +49,7 @@ type
     procedure ReadInterior(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadNames(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadNumberFormat(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadPageSetup(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow: Integer);
     procedure ReadStyle(ANode: TDOMNode);
     procedure ReadStyles(ANode: TDOMNode);
@@ -880,6 +881,70 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the "WorksheetOptions/PageSetup" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadPageSetup(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  sheet: TsWorksheet absolute AWorksheet;
+  nodeName: String;
+  s: String;
+  n: Integer;
+  x: Double;
+begin
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'Layout' then begin
+      s := GetAttrValue(ANode, 'x:Orientation');
+      if s = 'Landscape' then
+        sheet.PageLayout.Orientation := spoLandscape;
+      s := GetAttrValue(ANode, 'x:CenterHorizontal');
+      if s = '1' then
+        sheet.PageLayout.Options := sheet.PageLayout.Options + [poHorCentered];
+      s := GetAttrValue(ANode, 'x:CenterVertical');
+      if s = '1' then
+        sheet.PageLayout.Options := sheet.PageLayout.Options + [poVertCentered];
+      s := GetAttrValue(ANode, 'x:StartPageNumber');
+      if (s <> '') and TryStrToInt(s, n) then
+        sheet.PageLayout.StartPageNumber := n;
+    end
+    else if nodeName = 'Header' then begin
+      s := GetAttrValue(ANode, 'x:Margin');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        sheet.PageLayout.HeaderMargin := InToMM(x);
+      s := GetAttrValue(ANode, 'x:Data');
+      sheet.PageLayout.Headers[0] := s;
+      sheet.PageLayout.Headers[1] := s;
+      sheet.PageLayout.Headers[2] := s;
+    end
+    else if nodeName = 'Footer' then begin
+      s := GetAttrValue(ANode, 'x:Margin');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        sheet.PageLayout.FooterMargin := InToMM(x);
+      s := GetAttrValue(ANode, 'x:Data');
+      sheet.PageLayout.Footers[0] := s;
+      sheet.PageLayout.Footers[1] := s;
+      sheet.PageLayout.Footers[2] := s;
+    end
+    else if nodeName = 'PageMargins' then begin
+      s := GetAttrValue(ANode, 'x:Bottom');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        sheet.PageLayout.BottomMargin := InToMM(x);
+      s := GetAttrValue(ANode, 'x:Top');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        sheet.PageLayout.TopMargin := InToMM(x);
+      s := GetAttrValue(ANode, 'x:Left');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        sheet.PageLayout.LeftMargin := InToMM(x);
+      s := GetAttrValue(ANode, 'x:Right');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        sheet.PageLayout.RightMargin := InToMM(x);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads a "Worksheet/Table/Row" node
 -------------------------------------------------------------------------------}
 procedure TsSpreadExcelXMLReader.ReadRow(ANode: TDOMNode;
@@ -1121,59 +1186,9 @@ begin
 
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
-    if nodeName = 'PageSetup' then begin
-      node := ANode.FirstChild;
-      while node <> nil do begin
-        nodeName := node.NodeName;
-        if nodeName = 'Layout' then begin
-          s := GetAttrValue(node, 'x:Orientation');
-          if s = 'Landscape' then
-            sheet.PageLayout.Orientation := spoLandscape;
-          s := GetAttrValue(node, 'x:CenterHorizontal');
-          if s = '1' then
-            sheet.PageLayout.Options := sheet.PageLayout.Options + [poHorCentered];
-          s := GetAttrValue(node, 'x:CenterVertical');
-          if s = '1' then
-            sheet.PageLayout.Options := sheet.PageLayout.Options + [poVertCentered];
-          s := GetAttrValue(node, 'x:StartPageNumber');
-          if (s <> '') and TryStrToInt(s, n) then
-            sheet.PageLayout.StartPageNumber := n;
-        end
-        else if nodeName = 'Header' then begin
-          s := GetAttrValue(node, 'x:Margin');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-            sheet.PageLayout.HeaderMargin := InToMM(x);
-          s := GetAttrValue(node, 'x:Data');
-          sheet.PageLayout.Headers[0] := s;
-          sheet.PageLayout.Headers[1] := s;
-          sheet.PageLayout.Headers[2] := s;
-        end
-        else if nodeName = 'Footer' then begin
-          s := GetAttrValue(node, 'x:Margin');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-            sheet.PageLayout.FooterMargin := InToMM(x);
-          s := GetAttrValue(node, 'x:Data');
-          sheet.PageLayout.Footers[0] := s;
-          sheet.PageLayout.Footers[1] := s;
-          sheet.PageLayout.Footers[2] := s;
-        end
-        else if nodeName = 'PageMargins' then begin
-          s := GetAttrValue(node, 'x:Bottom');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-            sheet.PageLayout.BottomMargin := InToMM(x);
-          s := GetAttrValue(node, 'x:Top');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-            sheet.PageLayout.TopMargin := InToMM(x);
-          s := GetAttrValue(node, 'x:Left');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-            sheet.PageLayout.LeftMargin := InToMM(x);
-          s := GetAttrValue(node, 'x:Right');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-            sheet.PageLayout.RightMargin := InToMM(x);
-        end;
-        node := node.NextSibling;
-      end;
-    end else
+    if nodeName = 'PageSetup' then
+      ReadPageSetup(ANode.FirstChild, AWorksheet)
+    else
     if nodeName = 'FitToPage' then begin
       hasFitToPage := true;
       sheet.PageLayout.Options := sheet.PageLayout.Options + [poFitPages];
@@ -2232,6 +2247,7 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteWorksheetOptions(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
+  i: Integer;
   footerStr, headerStr: String;
   hideGridStr: String;
   hideHeadersStr: String;
@@ -2241,6 +2257,8 @@ var
   selectedStr: String;
   protectStr: String;
   visibleStr: String;
+  printStr: String;
+  scaleStr: String;
   sheet: TsWorksheet absolute AWorksheet;
 begin
   // Orientation, some PageLayout.Options
@@ -2276,6 +2294,27 @@ begin
   else
     selectedStr := '';
 
+  // Scaling factor
+  if sheet.PageLayout.ScalingFactor <> 100 then
+    scaleStr := '<Scale>' + IntToStr(sheet.PageLayout.ScalingFactor) + '</Scale>' + LF + INDENT4
+  else
+    scaleStr := '';
+  // Print node
+  printStr := '';
+  for i:=0 to High(PAPER_SIZES) do
+    if (SameValue(PAPER_SIZES[i,0], sheet.PageLayout.PageHeight) and
+        SameValue(PAPER_SIZES[i,1], sheet.PageLayout.PageWidth))
+    or (SameValue(PAPER_SIZES[i,1], sheet.PageLayout.PageHeight) and
+        SameValue(PAPER_SIZES[i,0], sheet.PageLayout.PageWidth))
+    then begin
+      printStr := INDENT4 +
+        '<ValidPrinterInfo/>' + LF + INDENT4 +
+        '<PaperSizeIndex>' + IntToStr(i) + '</PaperSizeIndex>' + LF + INDENT4 +
+        scaleStr +
+        '<VerticalResolution>0</VerticalResolution>';
+      break;
+    end;
+
   // Visible
   if (soHidden in AWorksheet.Options) then
     visibleStr := INDENT3 + '<Visible>SheetHidden</Visible>' + LF
@@ -2302,7 +2341,10 @@ begin
         headerStr +
         footerStr +
         marginStr + INDENT3 +
-      '</PageSetup>' + LF +
+      '</PageSetup>' + LF + INDENT3 +
+      '<Print>' + LF +
+        printStr + LF + INDENT3 +
+      '</Print>' + LF +
       visibleStr +
       selectedStr +
       protectStr +
