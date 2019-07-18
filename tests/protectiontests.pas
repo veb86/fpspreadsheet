@@ -97,6 +97,30 @@ type
 
     procedure TestWriteRead_OOXML_Passwords;
 
+    { Excedl2003/XML protection tests }
+    procedure TestWriteRead_XML_WorkbookProtection_None;
+    procedure TestWriteRead_XML_WorkbookProtection_Struct;
+    procedure TestWriteRead_XML_WorkbookProtection_Win;
+    procedure TestWriteRead_XML_WorkbookProtection_StructWin;
+
+    procedure TestWriteRead_XML_WorksheetProtection_Default;
+    procedure TestWriteRead_XML_WorksheetProtection_FormatCells;
+    procedure TestWriteRead_XML_WorksheetProtection_FormatColumns;
+    procedure TestWriteRead_XML_WorksheetProtection_FormatRows;
+    procedure TestWriteRead_XML_WorksheetProtection_DeleteColumns;
+    procedure TestWriteRead_XML_WorksheetProtection_DeleteRows;
+    procedure TestWriteRead_XML_WorksheetProtection_InsertColumns;
+    procedure TestWriteRead_XML_WorksheetProtection_InsertHyperlinks;
+    procedure TestWriteRead_XML_WorksheetProtection_InsertRows;
+    procedure TestWriteRead_XML_WorksheetProtection_Sort;
+    procedure TestWriteRead_XML_WorksheetProtection_SelectLockedCells;
+    procedure TestWriteRead_XML_WorksheetProtection_SelectUnlockedCells;
+    procedure TestWriteRead_XML_WorksheetProtection_Objects;
+
+    procedure TestWriteRead_XML_CellProtection;
+
+    procedure TestWriteRead_XML_Passwords;
+
     { ODS protection tests }
     procedure TestWriteRead_ODS_WorkbookProtection_None;
     procedure TestWriteRead_ODS_WorkbookProtection_Struct;
@@ -109,6 +133,7 @@ type
 
     procedure TestWriteRead_ODS_CellProtection;
 
+    procedure TestWriteRead_ODS_Passwords;
   end;
 
 implementation
@@ -662,7 +687,107 @@ end;
 
 procedure TSpreadWriteReadProtectionTests.TestWriteRead_OOXML_Passwords;
 begin
-  TestWriteRead_Passwords(sfOpenDocument);
+  TestWriteRead_Passwords(sfOOXML);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                          Tests for OOXML file format                         }
+{------------------------------------------------------------------------------}
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorkbookProtection_None;
+begin
+  TestWriteRead_WorkbookProtection(sfExcelXML, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorkbookProtection_Struct;
+begin
+  TestWriteRead_WorkbookProtection(sfExcelXML, 1);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorkbookProtection_Win;
+begin
+  TestWriteRead_WorkbookProtection(sfExcelXML, 2);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorkbookProtection_StructWin;
+begin
+  TestWriteRead_WorkbookProtection(sfExcelXML, 3);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_Default;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 0);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_FormatCells;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 1);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_FormatColumns;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 2);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_FormatRows;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 3);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_DeleteColumns;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 4);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_DeleteRows;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 5);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_InsertColumns;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 6);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_InsertHyperlinks;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 7);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_InsertRows;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 8);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_Sort;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 9);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_SelectLockedCells;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 10);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_SelectUnlockedCells;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 11);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_WorksheetProtection_Objects;
+begin
+  TestWriteRead_WorksheetProtection(sfExcelXML, 12);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_CellProtection;
+begin
+  TestWriteRead_CellProtection(sfExcelXML);
+end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_Passwords;
+begin
+  TestWriteRead_Passwords(sfExcelXML);
 end;
 
 
@@ -709,6 +834,12 @@ procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_CellProtection;
 begin
   TestWriteRead_CellProtection(sfOpenDocument);
 end;
+
+procedure TSpreadWriteReadProtectionTests.TestWriteRead_ODS_Passwords;
+begin
+  TestWriteRead_Passwords(sfOpenDocument);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadProtectionTests);

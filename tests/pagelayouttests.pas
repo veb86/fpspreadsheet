@@ -280,6 +280,79 @@ type
     procedure TestWriteRead_OOXML_RepeatedCol_0_Row_0;
     procedure TestWriteRead_OOXML_RepeatedCols_0_1_Rows_0_1;
 
+    { Excel2003/XML page layout tests }
+    procedure TestWriteRead_XML_PageMargins_1sheet_0;
+    procedure TestWriteRead_XML_PageMargins_1sheet_1;
+    procedure TestWriteRead_XML_PageMargins_1sheet_2;
+    procedure TestWriteRead_XML_PageMargins_1sheet_3;
+    procedure TestWriteRead_XML_PageMargins_2sheets_0;
+    procedure TestWriteRead_XML_PageMargins_2sheets_1;
+    procedure TestWriteRead_XML_PageMargins_2sheets_2;
+    procedure TestWriteRead_XML_PageMargins_2sheets_3;
+    procedure TestWriteRead_XML_PageMargins_3sheets_0;
+    procedure TestWriteRead_XML_PageMargins_3sheets_1;
+    procedure TestWriteRead_XML_PageMargins_3sheets_2;
+    procedure TestWriteRead_XML_PageMargins_3sheets_3;
+
+    procedure TestWriteRead_XML_PageOrientation_1sheet;
+    procedure TestWriteRead_XML_PageOrientation_2sheets;
+    procedure TestWriteRead_XML_PageOrientation_3sheets;
+
+    procedure TestWriteRead_XML_PaperSize_1sheet;
+    procedure TestWriteRead_XML_PaperSize_2sheets;
+    procedure TestWriteRead_XML_PaperSize_3sheets;
+
+    procedure TestWriteRead_XML_ScalingFactor_1sheet;
+    procedure TestWriteRead_XML_ScalingFactor_2sheets;
+    procedure TestWriteRead_XML_ScalingFactor_3sheets;
+
+    procedure TestWriteRead_XML_WidthToPages_1sheet;
+    procedure TestWriteRead_XML_WidthToPages_2sheets;
+    procedure TestWriteRead_XML_WidthToPages_3sheets;
+
+    procedure TestWriteRead_XML_HeightToPages_1sheet;
+    procedure TestWriteRead_XML_HeightToPages_2sheets;
+    procedure TestWriteRead_XML_HeightToPages_3sheets;
+
+    procedure TestWriteRead_XML_PageNumber_1sheet;
+    procedure TestWriteRead_XML_PageNumber_2sheets;
+    procedure TestWriteRead_XML_PageNumber_3sheets;
+
+    procedure TestWriteRead_XML_HeaderFooterRegions_1sheet;
+    procedure TestWriteRead_XML_HeaderFooterRegions_2sheets;
+    procedure TestWriteRead_XML_HeaderFooterRegions_3sheets;
+
+    procedure TestWriteRead_XML_HeaderFooterSymbols_1sheet;
+    procedure TestWriteRead_XML_HeaderFooterSymbols_2sheets;
+    procedure TestWriteRead_XML_HeaderFooterSymbols_3sheets;
+
+    procedure TestWriteRead_XML_HeaderFooterFontSymbols_1sheet;
+    procedure TestWriteRead_XML_HeaderFooterFontSymbols_2sheets;
+    procedure TestWriteRead_XML_HeaderFooterFontSymbols_3sheets;
+
+    procedure TestWriteRead_XML_HeaderFooterFontColor_1sheet;
+    procedure TestWriteRead_XML_HeaderFooterFontColor_2sheets;
+    procedure TestWriteRead_XML_HeaderFooterFontColor_3sheets;
+
+    procedure TestWriteRead_XML_PrintRanges_1sheet_1Range_NoSpace;
+    procedure TestWriteRead_XML_PrintRanges_1sheet_2Ranges_NoSpace;
+    procedure TestWriteRead_XML_PrintRanges_2sheet_1Range_NoSpace;
+    procedure TestWriteRead_XML_PrintRanges_2sheet_2Ranges_NoSpace;
+
+    procedure TestWriteRead_XML_PrintRanges_1sheet_1Range_Space;
+    procedure TestWriteRead_XML_PrintRanges_1sheet_2Ranges_Space;
+    procedure TestWriteRead_XML_PrintRanges_2sheet_1Range_Space;
+    procedure TestWriteRead_XML_PrintRanges_2sheet_2Ranges_Space;
+
+    procedure TestWriteRead_XML_RepeatedRow_0;
+    procedure TestWriteRead_XML_RepeatedRows_0_1;
+    procedure TestWriteRead_XML_RepeatedRows_1_3;
+    procedure TestWriteRead_XML_RepeatedCol_0;
+    procedure TestWriteRead_XML_RepeatedCols_0_1;
+    procedure TestWriteRead_XML_RepeatedCols_1_3;
+    procedure TestWriteRead_XML_RepeatedCol_0_Row_0;
+    procedure TestWriteRead_XML_RepeatedCols_0_1_Rows_0_1;
+
     { OpenDocument page layout tests }
     procedure TestWriteRead_ODS_PageMargins_1sheet_0;
     procedure TestWriteRead_ODS_PageMargins_1sheet_1;
@@ -1869,6 +1942,311 @@ end;
 procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_OOXML_RepeatedCols_0_1_Rows_0_1;
 begin
   TestWriteRead_RepeatedColRows(sfOOXML, 0, 1, 0, 1);
+end;
+
+
+{ Tests for Excdl2003/XML file format }
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_1sheet_0;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 1, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_1sheet_1;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 1, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_1sheet_2;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 1, 2);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_1sheet_3;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 1, 3);
+end;
+
+
+procedure TSpreadWriteReadPagelayoutTests.TestWriteRead_XML_PageMargins_2sheets_0;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 2, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_2sheets_1;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 2, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_2sheets_2;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 2, 2);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_2sheets_3;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 2, 3);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_3sheets_0;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 3, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_3sheets_1;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 3, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_3sheets_2;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 3, 2);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageMargins_3sheets_3;
+begin
+  TestWriteRead_PageMargins(sfExcelXML, 3, 3);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageOrientation_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageOrientation_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageOrientation_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 0);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PaperSize_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PaperSize_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PaperSize_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 1);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_ScalingFactor_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 2);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_ScalingFactor_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 2);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_ScalingFactor_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 2);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_WidthToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_WidthToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_WidthToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 3);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeightToPages_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeightToPages_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 4);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeightToPages_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 4);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageNumber_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageNumber_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 5);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PageNumber_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 5);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterRegions_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterRegions_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 6);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterRegions_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 6);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 7);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 7);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterFontSymbols_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterFontSymbols_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 8);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterFontSymbols_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 8);
+end;
+
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterFontColor_1sheet;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 1, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterFontColor_2sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 2, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_HeaderFooterFontColor_3sheets;
+begin
+  TestWriteRead_PageLayout(sfExcelXML, 3, 9);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PrintRanges_1sheet_1Range_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcelXML, 1, 1, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PrintRanges_1sheet_2Ranges_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcelXML, 1, 2, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PrintRanges_2sheet_1Range_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcelXML, 2, 1, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PrintRanges_2sheet_2Ranges_NoSpace;
+begin
+  TestWriteRead_PrintRanges(sfExcelXML, 2, 2, false);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PrintRanges_1sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcelXML, 1, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PrintRanges_1sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcelXML, 1, 2, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PrintRanges_2sheet_1Range_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcelXML, 2, 1, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_PrintRanges_2sheet_2Ranges_Space;
+begin
+  TestWriteRead_PrintRanges(sfExcelXML, 2, 2, true);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_RepeatedRow_0;
+begin
+  TestWriteRead_RepeatedColRows(sfExcelXML, -1, -1, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_RepeatedRows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfExcelXML, -1, -1, 0, 1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_RepeatedRows_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfExcelXML, -1, -1, 1, 3);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_RepeatedCol_0;
+begin
+  TestWriteRead_RepeatedColRows(sfExcelXML, 0, 0, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_RepeatedCols_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfExcelXML, 0, 1, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_RepeatedCols_1_3;
+begin
+  TestWriteRead_RepeatedColRows(sfExcelXML, 1, 3, -1, -1);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_RepeatedCol_0_Row_0;
+begin
+  TestWriteRead_RepeatedColRows(sfExcelXML, 0, 0, 0, 0);
+end;
+
+procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_XML_RepeatedCols_0_1_Rows_0_1;
+begin
+  TestWriteRead_RepeatedColRows(sfExcelXML, 0, 1, 0, 1);
 end;
 
 

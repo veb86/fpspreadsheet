@@ -145,6 +145,27 @@ type
     procedure TestWriteReadEmptyCells_OOXML_9;
     procedure TestWriteReadEmptyCells_OOXML_9_inv;
 
+    { §xcel/XML file format tests }
+    procedure TestWriteReadEmptyCells_XML_0;
+    procedure TestWriteReadEmptyCells_XML_0_inv;
+    procedure TestWriteReadEmptyCells_XML_1;
+    procedure TestWriteReadEmptyCells_XML_1_inv;
+    procedure TestWriteReadEmptyCells_XML_2;
+    procedure TestWriteReadEmptyCells_XML_2_inv;
+    procedure TestWriteReadEmptyCells_XML_3;
+    procedure TestWriteReadEmptyCells_XML_3_inv;
+    procedure TestWriteReadEmptyCells_XML_4;
+    procedure TestWriteReadEmptyCells_XML_4_inv;
+    procedure TestWriteReadEmptyCells_XML_5;
+    procedure TestWriteReadEmptyCells_XML_5_inv;
+    procedure TestWriteReadEmptyCells_XML_6;
+    procedure TestWriteReadEmptyCells_XML_6_inv;
+    procedure TestWriteReadEmptyCells_XML_7;
+    procedure TestWriteReadEmptyCells_XML_7_inv;
+    procedure TestWriteReadEmptyCells_XML_8;
+    procedure TestWriteReadEmptyCells_XML_8_inv;
+    procedure TestWriteReadEmptyCells_XML_9;
+    procedure TestWriteReadEmptyCells_XML_9_inv;
   end;
 
 implementation
@@ -837,6 +858,109 @@ end;
 procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_OOXML_9_inv;
 begin
   TestWriteReadEmptyCells(sfOOXML, 9, true);
+end;
+
+
+{ Excel2003 / XML tests }
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_0;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 0, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_0_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 0, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_1;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 1, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_1_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 1, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_2;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 2, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_2_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 2, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_3;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 3, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_3_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 3, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_4;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 4, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_4_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 4, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_5;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 5, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_5_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 5, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_6;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 6, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_6_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 6, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_7;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 7, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_7_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 7, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_8;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 8, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_8_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 8, true);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_9;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 9, false);
+end;
+
+procedure TSpreadWriteReadEmptyCellTests.TestWriteReadEmptyCells_XML_9_inv;
+begin
+  TestWriteReadEmptyCells(sfExcelXML, 9, true);
 end;
 
 

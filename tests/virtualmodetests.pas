@@ -32,12 +32,14 @@ type
     procedure TestWriteVirtualMode_BIFF8;
     procedure TestWriteVirtualMode_ODS;
     procedure TestWriteVirtualMode_OOXML;
+    procedure TestWriteVirtualMode_XML;
 
     procedure TestWriteVirtualMode_BIFF2_BufStream;
     procedure TestWriteVirtualMode_BIFF5_BufStream;
     procedure TestWriteVirtualMode_BIFF8_BufStream;
     procedure TestWriteVirtualMode_ODS_BufStream;
     procedure TestWriteVirtualMode_OOXML_BufStream;
+    procedure TestWriteVirtualMode_XML_BufStream;
   end;
 
 implementation
@@ -149,6 +151,11 @@ begin
   TestWriteVirtualMode(sfOOXML, false);
 end;
 
+procedure TSpreadVirtualModeTests.TestWriteVirtualMode_XML;
+begin
+  TestWriteVirtualMode(sfExcelXML, false);
+end;
+
 procedure TSpreadVirtualModeTests.TestWriteVirtualMode_BIFF2_BufStream;
 begin
   TestWriteVirtualMode(sfExcel2, True);
@@ -172,6 +179,11 @@ end;
 procedure TSpreadVirtualModeTests.TestWriteVirtualMode_OOXML_BufStream;
 begin
   TestWriteVirtualMode(sfOOXML, true);
+end;
+
+procedure TSpreadVirtualModeTests.TestWriteVirtualMode_XML_BufStream;
+begin
+  TestWriteVirtualMode(sfExcelXML, true);
 end;
 
 

@@ -33,6 +33,7 @@ type
     procedure TestAutoDetect_BIFF5;
     procedure TestAutoDetect_BIFF8;
     procedure TestAutoDetect_OOXML;
+    procedure TestAutoDetect_XML;
     procedure TestAutoDetect_ODS;
   end;
 
@@ -126,6 +127,12 @@ end;
 procedure TSpreadFileFormatTests.TestAutoDetect_OOXML;
 begin
   TestAutoDetect(sfOOXML);
+end;
+
+{ Excel 2003/XML }
+procedure TSpreadFileFormatTests.TestAutoDetect_XML;
+begin
+  TestAutoDetect(sfExcelXML);
 end;
 
 { ODS }

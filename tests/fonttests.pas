@@ -67,6 +67,12 @@ type
     procedure TestWriteRead_OOXML_Font_Arial;
     procedure TestWriteRead_OOXML_Font_TimesNewRoman;
     procedure TestWriteRead_OOXML_Font_CourierNew;
+
+    // Excel2003/XML test cases
+//    procedure TestWriteRead_XML_Bold;
+    procedure TestWriteRead_XML_Font_Arial;
+    procedure TestWriteRead_XML_Font_TimesNewRoman;
+    procedure TestWriteRead_XML_Font_CourierNew;
   end;
 
 implementation
@@ -300,6 +306,25 @@ procedure TSpreadWriteReadFontTests.TestWriteRead_OOXML_Font_CourierNew;
 begin
   TestWriteReadFont(sfOOXML, 'Courier New');
 end;
+
+
+{ Excel 2003/XML }
+
+procedure TSpreadWriteReadFontTests.TestWriteRead_XML_Font_Arial;
+begin
+  TestWriteReadFont(sfExcelXML, 'Arial');
+end;
+
+procedure TSpreadWriteReadFontTests.TestWriteRead_XML_Font_TimesNewRoman;
+begin
+  TestWriteReadFont(sfExcelXML, 'Times New Roman');
+end;
+
+procedure TSpreadWriteReadFontTests.TestWriteRead_XML_Font_CourierNew;
+begin
+  TestWriteReadFont(sfExcelXML, 'Courier New');
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadFontTests);

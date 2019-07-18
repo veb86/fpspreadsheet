@@ -59,6 +59,7 @@ type
     // Test for invalid sheet names
     procedure InvalidSheetName_BIFF8;
     procedure InvalidSheetName_XLSX;
+    procedure InvalidSheetName_XML;
     procedure InvalidSheetName_ODS;
     // Tests whether overwriting existing file works
     procedure OverwriteExistingFile;
@@ -199,6 +200,11 @@ end;
 procedure TSpreadInternalTests.InvalidSheetName_XLSX;
 begin
   InvalidSheetname(sfOOXML);
+end;
+
+procedure TSpreadInternalTests.InvalidSheetName_XML;
+begin
+  InvalidSheetname(sfExcelXML);
 end;
 
 procedure TSpreadInternalTests.InvalidSheetName_ODS;

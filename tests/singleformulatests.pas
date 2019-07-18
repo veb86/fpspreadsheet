@@ -87,6 +87,9 @@ type
     procedure SumMultiSheetRange_FlippedCells_OOXML;
     procedure SumMultiSheetRange_FlippedSheets_OOXML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_OOXML;
+    procedure SumMultiSheetRange_FlippedCells_XML;
+    procedure SumMultiSheetRange_FlippedSheets_XML;
+    procedure SumMultiSheetRange_FlippedSheetsAndCells_XML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_ODS;
 
     procedure IfConst_BIFF8;
@@ -564,6 +567,11 @@ begin
   TestFormula('SUM(Sheet3:Sheet2!C5:C3)', '55', ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheetsAndCells_XML;
+begin
+  TestFormula('SUM(Sheet3:Sheet2!C5:C3)', '55', ftkCellRangeSheetRange, sfExcelXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+end;
+
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheetsAndCells_ODS;
 begin
   TestFormula('SUM(Sheet3:Sheet2!C5:C3)', '55', ftkCellRangeSheetRange, sfOpenDocument, 'SUM(Sheet2:Sheet3!C3:C5)');
@@ -583,6 +591,16 @@ end;
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheets_OOXML;
 begin
   TestFormula('SUM(Sheet3:Sheet2!C3:C5)', '55', ftkCellRangeSheetRange, sfOOXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+end;
+
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedCells_XML;
+begin
+  TestFormula('SUM(Sheet2:Sheet3!C5:C3)', '55', ftkCellRangeSheetRange, sfExcelXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+end;
+
+procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheets_XML;
+begin
+  TestFormula('SUM(Sheet3:Sheet2!C3:C5)', '55', ftkCellRangeSheetRange, sfExcelXML, 'SUM(Sheet2:Sheet3!C3:C5)');
 end;
 
 { --- }

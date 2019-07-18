@@ -28,10 +28,10 @@ type
       ATestMode, ATooltipMode: Integer);
 
   published
-    { BIFF2 comment tests - nothing to do: BIFF2 does not support hyperlinks }
-    { BIFF5 comment tests - nothing to do: BIFF5 does not support hyperlinks }
+    { BIFF2 hyperlink tests - nothing to do: BIFF2 does not support hyperlinks }
+    { BIFF5 hyperlink tests - nothing to do: BIFF5 does not support hyperlinks }
 
-    { BIFF8 comment tests }
+    { BIFF8 hyperlink tests }
     procedure TestWriteRead_Hyperlink_BIFF8_HTTPLink1;
     procedure TestWriteRead_Hyperlink_BIFF8_HTTPLink1_Tooltip1;
     procedure TestWriteRead_Hyperlink_BIFF8_HTTPLink1_Tooltip2;
@@ -51,7 +51,7 @@ type
     procedure TestWriteRead_Hyperlink_BIFF8_InternalLink_Tooltip1;
     procedure TestWriteRead_Hyperlink_BIFF8_InternalLink_Tooltip2;
 
-    { OpenDocument comment tests }
+    { OpenDocument hyperlink tests }
     procedure TestWriteRead_Hyperlink_ODS_HTTPLink1;
     procedure TestWriteRead_Hyperlink_ODS_HTTPLink1_Tooltip1;
     procedure TestWriteRead_Hyperlink_ODS_HTTPLink1_Tooltip2;
@@ -71,7 +71,7 @@ type
     procedure TestWriteRead_Hyperlink_ODS_InternalLink_Tooltip1;
     procedure TestWriteRead_Hyperlink_ODS_InternalLink_Tooltip2;
 
-    { OOXML comment tests }
+    { OOXML hyperlink tests }
     procedure TestWriteRead_Hyperlink_OOXML_HTTPLink1;
     procedure TestWriteRead_Hyperlink_OOXML_HTTPLink1_Tooltip1;
     procedure TestWriteRead_Hyperlink_OOXML_HTTPLink1_Tooltip2;
@@ -90,6 +90,27 @@ type
     procedure TestWriteRead_Hyperlink_OOXML_InternalLink;
     procedure TestWriteRead_Hyperlink_OOXML_InternalLink_Tooltip1;
     procedure TestWriteRead_Hyperlink_OOXML_InternalLink_Tooltip2;
+
+    { Excel2003/XML hyperlink tests }
+    procedure TestWriteRead_Hyperlink_XML_HTTPLink1;
+    procedure TestWriteRead_Hyperlink_XML_HTTPLink1_Tooltip1;
+    procedure TestWriteRead_Hyperlink_XML_HTTPLink1_Tooltip2;
+    procedure TestWriteRead_Hyperlink_XML_HTTPLink2;
+    procedure TestWriteRead_Hyperlink_XML_HTTPLink2_Tooltip1;
+    procedure TestWriteRead_Hyperlink_XML_HTTPLink2_Tooltip2;
+    procedure TestWriteRead_Hyperlink_XML_FileLink;
+    procedure TestWriteRead_Hyperlink_XML_FileLink_Tooltip1;
+    procedure TestWriteRead_Hyperlink_XML_FileLink_Tooltip2;
+    procedure TestWriteRead_Hyperlink_XML_RelFileLink1;
+    procedure TestWriteRead_Hyperlink_XML_RelFileLink1_Tooltip1;
+    procedure TestWriteRead_Hyperlink_XML_RelFileLink1_Tooltip2;
+    procedure TestWriteRead_Hyperlink_XML_RelFileLink2;
+    procedure TestWriteRead_Hyperlink_XML_RelFileLink2_Tooltip1;
+    procedure TestWriteRead_Hyperlink_XML_RelFileLink2_Tooltip2;
+    procedure TestWriteRead_Hyperlink_XML_InternalLink;
+    procedure TestWriteRead_Hyperlink_XML_InternalLink_Tooltip1;
+    procedure TestWriteRead_Hyperlink_XML_InternalLink_Tooltip2;
+
   end;
 
 implementation
@@ -512,6 +533,99 @@ procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_OOXML_InternalL
 begin
   TestWriteRead_Hyperlink(sfOOXML, 5, 2);
 end;
+
+
+{ Hyperlink tests for Excel2003/XML file format }
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_HttpLink1;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 0, 0);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_HttpLink1_ToolTip1;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 0, 1);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_HttpLink1_ToolTip2;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 0, 2);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_HttpLink2;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 1, 0);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_HttpLink2_ToolTip1;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 1, 1);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_HttpLink2_ToolTip2;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 1, 2);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_FileLink;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 2, 0);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_FileLink_ToolTip1;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 2, 1);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_FileLink_ToolTip2;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 2, 2);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_RelFileLink1;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 3, 0);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_RelFileLink1_ToolTip1;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 3, 1);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_RelFileLink1_ToolTip2;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 3, 2);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_RelFileLink2;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 4, 0);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_RelFileLink2_ToolTip1;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 4, 1);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_RelFileLink2_ToolTip2;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 4, 2);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_InternalLink;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 5, 0);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_InternalLink_ToolTip1;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 5, 1);
+end;
+
+procedure TSpreadWriteReadHyperlinkTests.TestWriteRead_Hyperlink_XML_InternalLink_ToolTip2;
+begin
+  TestWriteRead_Hyperlink(sfExcelXML, 5, 2);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadHyperlinkTests);

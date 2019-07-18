@@ -52,6 +52,8 @@ type
     procedure Test_Write_Read_FormulaStrings_BIFF8;
     { OOXML Tests }
     procedure Test_Write_Read_FormulaStrings_OOXML;
+    { Excel2003/XML Tests }
+    procedure Test_Write_Read_FormulaStrings_XML;
     { ODS Tests }
     procedure Test_Write_Read_FormulaStrings_ODS;
 
@@ -64,6 +66,8 @@ type
     procedure Test_Write_Read_CalcRPNFormula_BIFF8;
     { OOXML Tests }
     procedure Test_Write_Read_CalcRPNFormula_OOXML;
+    { Excel2003/XML Tests }
+    procedure Test_Write_Read_CalcRPNFormula_XML;
     { ODSL Tests }
     procedure Test_Write_Read_CalcRPNFormula_ODS;
 
@@ -76,6 +80,8 @@ type
     procedure Test_Write_Read_CalcStringFormula_BIFF8;
     { OOXML Tests }
     procedure Test_Write_Read_CalcStringFormula_OOXML;
+    { Excel2003/XML Tests }
+    procedure Test_Write_Read_CalcStringFormula_XML;
     { ODS Tests }
     procedure Test_Write_Read_CalcStringFormula_ODS;
 
@@ -83,6 +89,7 @@ type
     procedure Test_Write_Read_Calc3DFormula_BIFF5;
     procedure Test_Write_Read_Calc3DFormula_BIFF8;
     procedure Test_Write_Read_Calc3DFormula_OOXML;
+    procedure Test_Write_Read_Calc3DFormula_XML;
     procedure Test_Write_Read_Calc3DFormula_ODS;
 
     { Overwrite formula with other content }
@@ -90,24 +97,28 @@ type
     procedure Test_OverwriteFormula_Number_BIFF5;
     procedure Test_OverwriteFormula_Number_BIFF8;
     procedure Test_OverwriteFormula_Number_OOXML;
+    procedure Test_OverwriteFormula_Number_XML;
     procedure Test_OverwriteFormula_Number_ODS;
 
     procedure Test_OverwriteFormula_Text_BIFF2;
     procedure Test_OverwriteFormula_Text_BIFF5;
     procedure Test_OverwriteFormula_Text_BIFF8;
     procedure Test_OverwriteFormula_Text_OOXML;
+    procedure Test_OverwriteFormula_Text_XML;
     procedure Test_OverwriteFormula_Text_ODS;
 
     procedure Test_OverwriteFormula_Bool_BIFF2;
     procedure Test_OverwriteFormula_Bool_BIFF5;
     procedure Test_OverwriteFormula_Bool_BIFF8;
     procedure Test_OverwriteFormula_Bool_OOXML;
+    procedure Test_OverwriteFormula_Bool_XML;
     procedure Test_OverwriteFormula_Bool_ODS;
 
     procedure Test_OverwriteFormula_Error_BIFF2;
     procedure Test_OverwriteFormula_Error_BIFF5;
     procedure Test_OverwriteFormula_Error_BIFF8;
     procedure Test_OverwriteFormula_Error_OOXML;
+    procedure Test_OverwriteFormula_Error_XML;
     procedure Test_OverwriteFormula_Error_ODS;
 
   end;
@@ -228,6 +239,11 @@ end;
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_OOXML;
 begin
   Test_Write_Read_FormulaStrings(sfOOXML, true);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_XML;
+begin
+  Test_Write_Read_FormulaStrings(sfExcelXML, true);
 end;
 
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_FormulaStrings_ODS;
@@ -528,6 +544,11 @@ begin
   Test_Write_Read_CalcFormulas(sfOOXML, true);
 end;
 
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcRPNFormula_XML;
+begin
+  Test_Write_Read_CalcFormulas(sfExcelXML, true);
+end;
+
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcRPNFormula_ODS;
 begin
   Test_Write_Read_CalcFormulas(sfOpenDocument, true);
@@ -551,6 +572,11 @@ end;
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_OOXML;
 begin
   Test_Write_Read_CalcFormulas(sfOOXML, false);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_XML;
+begin
+  Test_Write_Read_CalcFormulas(sfExcelXML, false);
 end;
 
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_CalcStringFormula_ODS;
@@ -862,6 +888,11 @@ begin
   Test_Write_Read_Calc3DFormulas(sfOOXML);
 end;
 
+procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_XML;
+begin
+  Test_Write_Read_Calc3DFormulas(sfExcelXML);
+end;
+
 procedure TSpreadWriteReadFormulaTests.Test_Write_Read_Calc3DFormula_ODS;
 begin
   Test_Write_Read_Calc3DFormulas(sfOpenDocument);
@@ -985,6 +1016,11 @@ begin
   Test_OverwriteFormulaTest(0, sfOOXML);
 end;
 
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Number_XML;
+begin
+  Test_OverwriteFormulaTest(0, sfExcelXML);
+end;
+
 procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Number_ODS;
 begin
   Test_OverwriteFormulaTest(0, sfOpenDocument);
@@ -1008,6 +1044,11 @@ end;
 procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Text_OOXML;
 begin
   Test_OverwriteFormulaTest(1, sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Text_XML;
+begin
+  Test_OverwriteFormulaTest(1, sfExcelXML);
 end;
 
 procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Text_ODS;
@@ -1036,6 +1077,11 @@ begin
   Test_OverwriteFormulaTest(2, sfOOXML);
 end;
 
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Bool_XML;
+begin
+  Test_OverwriteFormulaTest(2, sfExcelXML);
+end;
+
 procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Bool_ODS;
 begin
   Test_OverwriteFormulaTest(2, sfOpenDocument);
@@ -1060,6 +1106,11 @@ end;
 procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Error_OOXML;
 begin
   Test_OverwriteFormulaTest(3, sfOOXML);
+end;
+
+procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Error_XML;
+begin
+  Test_OverwriteFormulaTest(3, sfExcelXML);
 end;
 
 procedure TSpreadWriteReadFormulaTests.Test_OverwriteFormula_Error_ODS;
