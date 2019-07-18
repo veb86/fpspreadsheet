@@ -1514,10 +1514,13 @@ function TsSpreadExcelXMLWriter.GetHyperlinkStr(ACell: PCell): String;
 var
   hyperlink: PsHyperlink;
 begin
-  Result := '';
   hyperlink := (FWorksheet as TsWorksheet).FindHyperlink(ACell);
-  if Assigned(hyperlink) then
+  if Assigned(hyperlink) then begin
     Result := ' ss:HRef="' + hyperlink^.Target + '"';
+    if hyperlink^.ToolTip <> '' then
+      Result := Result + ' x:HRefScreenTip="' + UTF8TextToXMLText(hyperlink^.ToolTip) + '"';
+  end else
+    Result := '';
 end;
 
 function TsSpreadExcelXMLWriter.GetIndexStr(AIndex, APrevIndex: Integer): String;
