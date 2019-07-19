@@ -50,6 +50,7 @@ type
     procedure ReadNames(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadNumberFormat(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadPageSetup(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadPrint(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow: Integer);
     procedure ReadStyle(ANode: TDOMNode);
     procedure ReadStyles(ANode: TDOMNode);
@@ -82,9 +83,11 @@ type
     function GetPageFooterStr(AWorksheet: TsBasicWorksheet): String;
     function GetPageHeaderStr(AWorksheet: TsBasicWorksheet): String;
     function GetPageMarginStr(AWorksheet: TsBasicWorksheet): String;
+    function GetPrintStr(AWorksheet: TsBasicWorksheet): String;
     function GetStyleStr(AFormatIndex: Integer): String;
     procedure WriteColumns(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteExcelWorkbook(AStream: TStream);
+    procedure WriteNames(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteRows(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
     procedure WriteStyles(AStream: TStream);
@@ -142,6 +145,8 @@ const
   INDENT3      = '      ';
   INDENT4      = '        ';
   INDENT5      = '          ';
+  NAMES_INDENT = INDENT2;
+  NAME_INDENT  = INDENT3;
   TABLE_INDENT = INDENT2;
   ROW_INDENT   = INDENT3;
   COL_INDENT   = INDENT3;
@@ -787,13 +792,16 @@ procedure TsSpreadExcelXMLReader.ReadNames(ANode: TDOMNode;
   end;
 
 var
-  s: String;
+  sheet: TsWorksheet absolute AWorksheet;
+  s, sr: String;
   nodeName: String;
   sheet1, sheet2: String;
   r1, c1, r2, c2: Cardinal;
   flags: TsRelFlags;
   p: Integer;
+  ok: Boolean;
 begin
+  ok := true;
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
     if nodeName = 'NamedRange' then begin
@@ -801,9 +809,27 @@ begin
       if s = 'Print_Area' then begin
         // <NamedRange ss:Name="Print_Area" ss:RefersTo="=Tabelle2!R2C2:R5C7"/>
         s := GetAttrValue(ANode, 'ss:RefersTo');
-        if (s <> '') and ParseCellRangeString_R1C1(s, 0, 0, sheet1, sheet2, r1, c1, r2, c2, flags) then
-          TsWorksheet(AWorksheet).PageLayout.AddPrintRange(r1, c1, r2, c2);
-          // to do: include sheet names here!
+        if (s <> '') then begin
+          p := pos(',', s);
+          while p > 0 do begin
+            sr := Copy(s, 1, p-1);
+            if ParseCellRangeString_R1C1(sr, 0, 0, sheet1, sheet2, r1, c1, r2, c2, flags) then
+              sheet.PageLayout.AddPrintRange(r1, c1, r2, c2)
+            else begin
+              FWorkbook.AddErrorMsg('Invalid print range.');
+              ok := false;
+              break;
+            end;
+            s := copy(s, p+1, MaxInt);
+            p := pos(',', s);
+          end;
+          if ok then begin
+            if ParseCellRangeString_R1C1(s, 0, 0, sheet1, sheet2, r1, c1, r2, c2, flags) then
+              sheet.PageLayout.AddPrintRange(r1, c1, r2, c2)
+            else
+              FWorkbook.AddErrorMsg('Invalid print range.');
+          end;
+        end;
       end else
       if s = 'Print_Titles' then begin
         // <NamedRange ss:Name="Print_Titles" ss:RefersTo="=Tabelle2!C1,Tabelle2!R1:R2"/>
@@ -939,6 +965,63 @@ begin
       s := GetAttrValue(ANode, 'x:Right');
       if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
         sheet.PageLayout.RightMargin := InToMM(x);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "WorksheetOptions/Print" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadPrint(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  sheet: TsWorksheet absolute AWorksheet;
+  nodeName: String;
+  s: String;
+  n: Integer;
+  x: Double;
+begin
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'PaperSizeIndex' then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToInt(s, n) and (n < Length(PAPER_SIZES)) then begin
+        sheet.PageLayout.PageWidth := PAPER_SIZES[n, 0];
+        sheet.PageLayout.pageHeight := PAPER_SIZES[n, 1];
+      end;
+    end
+    else if nodeName = 'FitHeight' then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToInt(s, n) then
+        sheet.PageLayout.FitHeightToPages := n;
+    end
+    else if nodeName = 'FitWidth' then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToInt(s, n) then
+        sheet.PageLayout.FitWidthToPages := n;
+    end
+    else if nodeName = 'Scale' then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToInt(s, n) then
+        sheet.PageLayout.ScalingFactor := n;
+    end
+    else if nodeName = 'Gridlines' then
+      sheet.PageLayout.Options := sheet.PageLayout.Options + [poPrintGridLines]
+    else if nodeName = 'BlackAndWhite' then
+      sheet.PageLayout.Options := sheet.PageLayout.Options + [poMonochrome]
+    else if nodeName = 'DraftQuality' then
+      sheet.PageLayout.Options := sheet.PageLayout.Options + [poDraftQuality]
+    else if nodeName = 'LeftToRight' then
+      sheet.PageLayout.Options := sheet.PageLayout.Options + [poPrintPagesByRows]
+    else if nodeName = 'RowColHeadings' then
+      sheet.PageLayout.Options := sheet.PageLayout.Options + [poPrintHeaders]
+    else if nodeName = 'CommentsLayout' then begin
+      s := ANode.TextContent;
+      if s = 'SheetEnd' then
+        sheet.PageLayout.Options := sheet.PageLayout.Options + [poCommentsAtEnd]
+      else if s = 'InPlace' then
+        sheet.PageLayout.Options := sheet.PageLayout.Options + [poPrintCellComments];
     end;
     ANode := ANode.NextSibling;
   end;
@@ -1195,49 +1278,7 @@ begin
     end else
     if nodeName = 'Print' then begin
       node := ANode.FirstChild;
-      while node <> nil do begin
-        nodeName := node.NodeName;
-        if nodeName = 'PaperSizeIndex' then begin
-          s := node.TextContent;
-          if (s <> '') and TryStrToInt(s, n) and (n < Length(PAPER_SIZES)) then begin
-            sheet.PageLayout.PageWidth := PAPER_SIZES[n, 0];
-            sheet.PageLayout.pageHeight := PAPER_SIZES[n, 1];
-          end;
-        end
-        else if nodeName = 'FitHeight' then begin
-          s := node.TextContent;
-          if (s <> '') and TryStrToInt(s, n) then
-            sheet.PageLayout.FitHeightToPages := n;
-        end
-        else if nodeName = 'FitWidth' then begin
-          s := node.TextContent;
-          if (s <> '') and TryStrToInt(s, n) then
-            sheet.PageLayout.FitWidthToPages := n;
-        end
-        else if nodeName = 'Scale' then begin
-          s := node.TextContent;
-          if (s <> '') and TryStrToInt(s, n) then
-            sheet.PageLayout.ScalingFactor := n;
-        end
-        else if nodeName = 'Gridlines' then
-          sheet.PageLayout.Options := sheet.PageLayout.Options + [poPrintGridLines]
-        else if nodeName = 'BlackAndWhite' then
-          sheet.PageLayout.Options := sheet.PageLayout.Options + [poMonochrome]
-        else if nodeName = 'DraftQuality' then
-          sheet.PageLayout.Options := sheet.PageLayout.Options + [poDraftQuality]
-        else if nodeName = 'LeftToRight' then
-          sheet.PageLayout.Options := sheet.PageLayout.Options + [poPrintPagesByRows]
-        else if nodeName = 'RowColHeadings' then
-          sheet.PageLayout.Options := sheet.PageLayout.Options + [poPrintHeaders]
-        else if nodeName = 'CommentsLayout' then begin
-          s := node.TextContent;
-          if s = 'SheetEnd' then
-            sheet.PageLayout.Options := sheet.PageLayout.Options + [poCommentsAtEnd]
-          else if s = 'InPlace' then
-            sheet.PageLayout.Options := sheet.PageLayout.Options + [poPrintCellComments];
-        end;
-        node := node.NextSibling;
-      end;
+      ReadPrint(ANode.FirstChild, AWorksheet);
     end else
     if nodeName = 'Selected' then
       TsWorkbook(FWorkbook).ActiveWorksheet := sheet
@@ -1615,6 +1656,49 @@ begin
   Result := '<PageMargins ' + Result + '/>';
 end;
 
+{ Todo: When can the "Print" node be skipped? }
+function TsSpreadExcelXMLWriter.GetPrintStr(AWorksheet: TsBasicWorksheet): String;
+var
+  sheet: TsWorksheet absolute AWorksheet;
+  i, pgSizeIdx: Integer;
+  scalestr: String;
+begin
+  Result := '';
+  pgSizeIdx := -1;
+  for i:=0 to High(PAPER_SIZES) do
+    if (SameValue(PAPER_SIZES[i,0], sheet.PageLayout.PageHeight) and
+        SameValue(PAPER_SIZES[i,1], sheet.PageLayout.PageWidth))
+    or (SameValue(PAPER_SIZES[i,1], sheet.PageLayout.PageHeight) and
+        SameValue(PAPER_SIZES[i,0], sheet.PageLayout.PageWidth))
+    then begin
+      pgSizeIdx := i;
+      break;
+    end;
+
+  if pgSizeidx = -1 then
+    exit;
+
+  // Scaling factor
+  if sheet.PageLayout.ScalingFactor <> 100 then
+    scaleStr := INDENT4 + '<Scale>' + IntToStr(sheet.PageLayout.ScalingFactor) + '</Scale>' + LF
+  else
+    scaleStr := '';
+
+  Result :=
+    INDENT4 + '<ValidPrinterInfo/>' + LF +
+    INDENT4 + '<PaperSizeIndex>' + IntToStr(pgSizeIdx) + '</PaperSizeIndex>' + LF +
+    scaleStr +
+    INDENT4 + '<VerticalResolution>0</VerticalResolution>';
+
+  if sheet.PageLayout.FitHeightToPages > 1 then
+    Result := Result + LF + INDENT4 +
+      '<FitHeight>' + IntToStr(sheet.PageLayout.FitHeightToPages) + '</FitHeight>';
+
+  if sheet.PageLayout.FitWidthToPages > 1 then
+    Result := result + LF + INDENT4 +
+      '<FitWidth>' + IntToStr(sheet.PageLayout.FitWidthToPages) + '</FitWidth>';
+end;
+
 function TsSpreadExcelXMLWriter.GetStyleStr(AFormatIndex: Integer): String;
 begin
   Result := '';
@@ -1888,6 +1972,70 @@ begin
     dataTagStr,
     GetCommentStr(ACell)
   ]));
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteNames(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+var
+  sheet: TsWorksheet absolute AWorksheet;
+  print_titles_str: string = '';
+  print_range_str: String = '';
+  s: String;
+  rng: TsCellRange;
+  i: Integer;
+begin
+  with sheet.PageLayout do begin
+
+    // Print ranges --> Name "Print_Area"
+    for i:=0 to NumPrintRanges-1 do begin
+      rng := GetPrintRange(i);
+      s := GetCellRangeString_R1C1(sheet.Name, sheet.Name, rng.Row1, rng.Col1, rng.Row2, rng.Col2, []);
+      if print_range_str = '' then
+        print_range_str := s
+      else
+        print_range_str := print_range_str + ',' + s;
+    end;
+    if print_range_str <> '' then
+      print_range_str := NAME_INDENT +
+        '<NamedRange ss:Name="Print_Area" ss:RefersTo="' + print_range_str + '"/>' + LF;
+
+    // Repeated columns  -->  Name "Print_Titles"
+    if (RepeatedCols.FirstIndex <> UNASSIGNED_ROW_COL_INDEX) and
+       (RepeatedCols.LastIndex <> UNASSIGNED_ROW_COL_INDEX)
+    then begin
+      s := 'C' + IntToStr(RepeatedCols.FirstIndex + 1);
+      if RepeatedCols.FirstIndex <> RepeatedCols.LastIndex then
+        s := s + ':C' + IntToStr(RepeatedCols.LastIndex + 1);
+      s := sheet.Name + '!' + s;
+      print_titles_str := s;
+    end;
+
+    // Repeated rows  -->  Name "Print_Titles"
+    if (RepeatedRows.FirstIndex <> UNASSIGNED_ROW_COL_INDEX) and
+       (RepeatedRows.LastIndex <> UNASSIGNED_ROW_COL_INDEX)
+    then begin
+      s := 'R' + IntToStr(RepeatedRows.FirstIndex + 1);
+      if RepeatedRows.FirstIndex <> RepeatedRows.LastIndex then
+        s := s + ':R' + IntToStr(RepeatedRows.LastIndex + 1);
+      s := sheet.Name + '!' + s;
+      if print_titles_str = '' then
+        print_titles_str := s
+      else
+        print_titles_str := print_titles_str + ',' + s;
+    end;
+    if print_titles_str <> '' then
+      print_titles_str := NAME_INDENT +
+        '<NamedRange ss:Name="Print_Titles" ss:RefersTo="' + print_titles_str + '"/>' + LF;
+  end;
+
+  if (print_range_str = '') and (print_titles_str = '') then
+    exit;
+
+  AppendToStream(AStream, NAMES_INDENT +
+    '<Names>' + LF +
+      print_titles_str + NAMES_INDENT +
+      print_range_str + NAMES_INDENT +
+    '</Names>' + LF);
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
@@ -2229,7 +2377,8 @@ begin
   FWorksheet := AWorksheet;
 
   if FWorksheet.IsProtected then
-    protectedStr := ' ss:Protected="1"' else
+    protectedStr := ' ss:Protected="1"'
+  else
     protectedStr := '';
 
   AppendToStream(AStream, Format(
@@ -2237,6 +2386,7 @@ begin
     UTF8TextToXMLText(AWorksheet.Name),
     protectedStr
   ]) );
+  WriteNames(AStream, AWorksheet);
   WriteTable(AStream, AWorksheet);
   WriteWorksheetOptions(AStream, AWorksheet);
   AppendToStream(AStream,
@@ -2247,7 +2397,6 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteWorksheetOptions(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
-  i: Integer;
   footerStr, headerStr: String;
   hideGridStr: String;
   hideHeadersStr: String;
@@ -2258,7 +2407,8 @@ var
   protectStr: String;
   visibleStr: String;
   printStr: String;
-  scaleStr: String;
+  fitToPageStr: String;
+  enableSelectionStr: String;
   sheet: TsWorksheet absolute AWorksheet;
 begin
   // Orientation, some PageLayout.Options
@@ -2294,26 +2444,14 @@ begin
   else
     selectedStr := '';
 
-  // Scaling factor
-  if sheet.PageLayout.ScalingFactor <> 100 then
-    scaleStr := '<Scale>' + IntToStr(sheet.PageLayout.ScalingFactor) + '</Scale>' + LF + INDENT4
+  // FitToPage node
+  if poFitPages in sheet.PageLayout.Options then
+    fitToPageStr := INDENT3 + '<FitToPage/>' + LF
   else
-    scaleStr := '';
+    fitToPageStr := '';
+
   // Print node
-  printStr := '';
-  for i:=0 to High(PAPER_SIZES) do
-    if (SameValue(PAPER_SIZES[i,0], sheet.PageLayout.PageHeight) and
-        SameValue(PAPER_SIZES[i,1], sheet.PageLayout.PageWidth))
-    or (SameValue(PAPER_SIZES[i,1], sheet.PageLayout.PageHeight) and
-        SameValue(PAPER_SIZES[i,0], sheet.PageLayout.PageWidth))
-    then begin
-      printStr := INDENT4 +
-        '<ValidPrinterInfo/>' + LF + INDENT4 +
-        '<PaperSizeIndex>' + IntToStr(i) + '</PaperSizeIndex>' + LF + INDENT4 +
-        scaleStr +
-        '<VerticalResolution>0</VerticalResolution>';
-      break;
-    end;
+  printStr := GetPrintStr(AWorksheet);
 
   // Visible
   if (soHidden in AWorksheet.Options) then
@@ -2327,9 +2465,20 @@ begin
   // Protection
   protectStr := Format(INDENT3 + '<ProtectObjects>%s</ProtectObjects>' + LF +
                        INDENT3 + '<ProtectScenarios>%s</ProtectScenarios>' + LF, [
-    StrUtils.IfThen(AWorksheet.IsProtected and (spObjects in AWorksheet.Protection), 'True', 'False'),
+    StrUtils.IfThen(spObjects in AWorksheet.Protection, 'True', 'False'),
     StrUtils.IfThen(AWorksheet.IsProtected {and [spScenarios in AWorksheet.Protection])}, 'True', 'False')
   ]);
+
+  // Enable selection
+  enableSelectionStr := '';
+  if (sheet.Protection * [spSelectLockedCells, spSelectUnlockedCells] <> []) then begin
+    enableSelectionStr := INDENT3 + '<EnableSelection>' + LF;
+    if spSelectUnlockedCells in sheet.Protection then
+      enableSelectionStr := enableSelectionStr + INDENT4 + '<NoSelection/>' + LF;
+    if (sheet.Protection * [spSelectLockedCells, spSelectUnlockedCells] = [spSelectLockedCells]) then
+      enableSelectionStr := enableSelectionStr + INDENT4 + '<Unlocked/>' + LF;
+    enableSelectionStr := INDENT3 + '</EnableSelection>' + LF;
+  end;
 
   // todo - Several protection options
 
@@ -2341,12 +2490,23 @@ begin
         headerStr +
         footerStr +
         marginStr + INDENT3 +
-      '</PageSetup>' + LF + INDENT3 +
+      '</PageSetup>' + LF +
+      fitToPageStr + INDENT3 +
       '<Print>' + LF +
         printStr + LF + INDENT3 +
       '</Print>' + LF +
       visibleStr +
       selectedStr +
+      IfThen(not (spFormatCells in sheet.Protection), INDENT4 + '<AllowFormatCells/>' + LF) +
+      IfThen(not (spFormatColumns in sheet.Protection), INDENT4 + '<AllowSizeCols/>' + LF) +
+      IfThen(not (spFormatRows in sheet.Protection), INDENT4 + '<AllowSizeRows/>' + LF) +
+      IfThen(not (spDeleteColumns in sheet.Protection), INDENT4 + '<AllowDeleteCols/>' + LF) +
+      IfThen(not (spDeleteRows in sheet.Protection), INDENT4 + '<AllowDeleteRows/>' + LF) +
+      IfThen(not (spInsertColumns in sheet.Protection), INDENT4 + '<AllowInsertCols/>' + LF) +
+      IfThen(not (spInsertHyperlinks in sheet.Protection), INDENT4 + '<AllowInsertHyperlinks/>' + LF) +
+      IfThen(not (spInsertRows in sheet.Protection), INDENT4 + '<AllowInsertRows/>' + LF) +
+      IfThen(not (spSort in sheet.Protection), INDENT4 + '<AllowSort/>' + LF) +
+      enableSelectionStr +
       protectStr +
       frozenStr +
       hideGridStr +

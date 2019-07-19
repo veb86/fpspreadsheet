@@ -116,10 +116,8 @@ type
     procedure TestWriteRead_XML_WorksheetProtection_SelectLockedCells;
     procedure TestWriteRead_XML_WorksheetProtection_SelectUnlockedCells;
     procedure TestWriteRead_XML_WorksheetProtection_Objects;
-
     procedure TestWriteRead_XML_CellProtection;
-
-    procedure TestWriteRead_XML_Passwords;
+    //procedure TestWriteRead_XML_Passwords;  // not allowed
 
     { ODS protection tests }
     procedure TestWriteRead_ODS_WorkbookProtection_None;
@@ -237,7 +235,7 @@ begin
       9: Exclude(expected, spSort);
      10: Exclude(expected, spSelectLockedCells);
      11: Exclude(expected, spSelectUnlockedCells);
-     12: Exclude(expected, spObjects);
+     12: Include(expected, spObjects);
     end;
     {
     case ACondition of
@@ -783,11 +781,6 @@ end;
 procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_CellProtection;
 begin
   TestWriteRead_CellProtection(sfExcelXML);
-end;
-
-procedure TSpreadWriteReadProtectionTests.TestWriteRead_XML_Passwords;
-begin
-  TestWriteRead_Passwords(sfExcelXML);
 end;
 
 
