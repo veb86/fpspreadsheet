@@ -72,6 +72,7 @@ type
   private
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
+    FFirstRow, FFirstCol: Cardinal;
     FlastRow, FLastCol: Cardinal;
     FPrevRow, FPrevCol: Cardinal;
     function GetCommentStr(ACell: PCell): String;
@@ -135,7 +136,7 @@ var
 implementation
 
 uses
-  StrUtils, DateUtils, Math,
+  StrUtils, DateUtils, Math, Variants,
   fpsStrings, fpsClasses, fpspreadsheet, fpsUtils, fpsNumFormat, fpsHTMLUtils,
   fpsExprParser;
 
@@ -470,22 +471,36 @@ var
 begin
   if ANode = nil then
     exit;
+
   nodeName := ANode.NodeName;
   if nodeName <> 'Cell' then
-    raise Exception.Create('[ReadCell] Only "Cell" nodes expected.');
+    raise Exception.Create('[ReadCell] "Cell" node expected.');
 
-  cell := sheet.GetCell(ARow, ACol);
   book := TsWorkbook(FWorkbook);
   font := book.GetDefaultFont;
 
+  if FIsVirtualMode then
+  begin
+    if not Assigned(book.OnReadCellData) then
+      exit;
+    InitCell(FWorksheet, ARow, ACol, FVirtualCell);
+    cell := @FVirtualCell;
+  end else
+    cell := sheet.AddCell(ARow, ACol);
+
   s := GetAttrValue(ANode, 'ss:StyleID');
-  if s <> '' then begin
+  if s <> '' then
+  begin
     idx := FCellFormatList.FindIndexOfName(s);
     if idx <> -1 then begin
       fmt := FCellFormatList.Items[idx]^;
       cell^.FormatIndex := book.AddCellFormat(fmt);
       font := book.GetFont(fmt.FontIndex);
     end;
+  end else
+  begin
+    InitFormatRecord(fmt);
+    cell^.FormatIndex := 0;
   end;
 
   // Merged cells
@@ -567,6 +582,10 @@ begin
           ReadComment(node, AWorksheet, cell);
         node := node.NextSibling;
       end;
+
+      if FIsVirtualMode then
+        book.OnReadCellData(book, ARow, ACol, cell);
+
     finally
       book.UnlockFormulas;
     end;
@@ -1766,18 +1785,68 @@ procedure TsSpreadExcelXMLWriter.WriteCellNodes(AStream: TStream;
 var
   c: Cardinal;
   cell: PCell;
+  lCell: TCell;
+  styleCell: PCell;
+  value: variant;
   sheet: TsWorksheet absolute AWorksheet;
 begin
+  if (boVirtualMode in FWorkbook.Options) and (not Assigned(sheet.OnWriteCellData)) then
+    exit;
+
   FPrevCol := UNASSIGNED_ROW_COL_INDEX;
   for c := 0 to FLastCol do
   begin
-    cell := sheet.FindCell(ARow, c);
-    if cell <> nil then
-    begin
-      if sheet.IsMerged(cell) and not sheet.IsMergeBase(cell) then
-        Continue;
-      WriteCellToStream(AStream, cell);
+    if (boVirtualMode in FWorkbook.Options) then begin
+      lCell.Row := ARow; // to silence a compiler hint
+      InitCell(lCell);
+      value := varNull;
+      styleCell := nil;
+      sheet.OnWriteCellData(sheet, ARow, c, value, styleCell);
+      if styleCell <> nil then
+        lCell := styleCell^;
+      lCell.Row := ARow;
+      lCell.Col := c;
+      if VarIsNull(value) then
+      begin
+        if styleCell <> nil then
+          lCell.ContentType := cctEmpty
+        else
+          Continue;
+      end else
+      if VarIsNumeric(value) then
+      begin
+        lCell.ContentType := cctNumber;
+        lCell.NumberValue := value;
+      end else
+      if VarType(value) = varDate then
+      begin
+        lCell.ContentType := cctDateTime;
+        lCell.DateTimeValue := StrToDateTime(VarToStr(value), Workbook.FormatSettings);  // was: StrToDate
+      end else
+      if VarIsStr(value) then
+      begin
+        lCell.ContentType := cctUTF8String;
+        lCell.UTF8StringValue := VarToStrDef(value, '');
+      end else
+      if VarIsBool(value) then
+      begin
+        lCell.ContentType := cctBool;
+        lCell.BoolValue := value <> 0;
+      end;
+      WriteCellToStream(AStream, @lCell);
+      varClear(value);
       FPrevCol := c;
+    end else
+    begin
+      // Normal mode
+      cell := sheet.Findcell(ARow, c);
+      if cell <> nil then
+      begin
+        if sheet.IsMerged(cell) and not sheet.IsMergeBase(cell) then
+          Continue;
+        WriteCellToStream(AStream, cell);
+        FPrevCol := c;
+      end;
     end;
   end;
 end;
@@ -2094,9 +2163,6 @@ var
   hasCells: Boolean;
   sheet: TsWorksheet absolute AWorksheet;
 begin
-  FLastRow := sheet.GetLastRowIndex;
-  FlastCol := sheet.GetLastColIndex;
-
   FPrevRow := UNASSIGNED_ROW_COL_INDEX;
   for r := 0 to FLastRow do
   begin
@@ -2122,12 +2188,16 @@ begin
     if sheet.RowHidden(r) then
       hiddenStr := ' ss:Hidden="1"';
 
-    hasCells := false;
-    for c := 0 to FLastCol do begin
-      cell := sheet.FindCell(r, c);
-      if cell <> nil then begin
-        hasCells := true;
-        break;
+    if boVirtualMode in FWorkbook.Options then
+      hasCells := true
+    else begin
+      hasCells := false;
+      for c := 0 to FLastCol do begin
+        cell := sheet.FindCell(r, c);
+        if cell <> nil then begin
+          hasCells := true;
+          break;
+        end;
       end;
     end;
 
@@ -2335,7 +2405,7 @@ begin
       'ss:DefaultColumnWidth="%.2f" ' +
       'ss:DefaultRowHeight="%.2f">' + LF,
       [
-      sheet.GetLastColIndex + 1, sheet.GetLastRowIndex + 1,
+      FLastCol + 1, FLastRow + 1,
       sheet.ReadDefaultColWidth(suPoints),
       sheet.ReadDefaultRowHeight(suPoints)
       ],
@@ -2382,6 +2452,7 @@ var
   protectedStr: String;
 begin
   FWorksheet := AWorksheet;
+  GetSheetDimensions(FWorksheet, FFirstRow, FLastRow, FFirstCol, FLastCol);
 
   if FWorksheet.IsProtected then
     protectedStr := ' ss:Protected="1"'
