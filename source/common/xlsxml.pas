@@ -72,6 +72,7 @@ type
   private
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
+    FlastRow, FLastCol: Cardinal;
     FPrevRow, FPrevCol: Cardinal;
     function GetCommentStr(ACell: PCell): String;
     function GetFormulaStr(ACell: PCell): String;
@@ -85,6 +86,7 @@ type
     function GetPageMarginStr(AWorksheet: TsBasicWorksheet): String;
     function GetPrintStr(AWorksheet: TsBasicWorksheet): String;
     function GetStyleStr(AFormatIndex: Integer): String;
+    procedure WriteCellNodes(AStream: TStream; AWorksheet: TsBasicWorksheet; ARow: Cardinal);
     procedure WriteColumns(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteNames(AStream: TStream; AWorksheet: TsBasicWorksheet);
@@ -683,7 +685,7 @@ begin
   s := GetAttrValue(ANode, 'ss:Italic');
   if s = '1' then
     Include(fstyle, fssItalic);
-  s := GetAttrValue(ANode, 'ss:UnderLine');
+  s := GetAttrValue(ANode, 'ss:Underline');
   if s <> '' then
     Include(fstyle, fssUnderline);
   s := GetAttrValue(ANode, 'ss:StrikeThrough');
@@ -1759,6 +1761,27 @@ begin
     WriteComment(AStream, ACell);
 end;
 
+procedure TsSpreadExcelXMLWriter.WriteCellNodes(AStream: TStream;
+  AWorksheet: TsBasicWorksheet; ARow: Cardinal);
+var
+  c: Cardinal;
+  cell: PCell;
+  sheet: TsWorksheet absolute AWorksheet;
+begin
+  FPrevCol := UNASSIGNED_ROW_COL_INDEX;
+  for c := 0 to FLastCol do
+  begin
+    cell := sheet.FindCell(ARow, c);
+    if cell <> nil then
+    begin
+      if sheet.IsMerged(cell) and not sheet.IsMergeBase(cell) then
+        Continue;
+      WriteCellToStream(AStream, cell);
+      FPrevCol := c;
+    end;
+  end;
+end;
+
 procedure TsSpreadExcelXMLWriter.WriteColumns(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
@@ -2060,23 +2083,22 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteRows(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
-  c, c1, c2: Cardinal;
-  r, r1, r2: Cardinal;
-  cell: PCell;
+  c: Cardinal;
+  r: Cardinal;
   rowheightStr: String;
   hiddenStr: String;
   styleStr: String;
+  s: String;
   row: PRow;
+  cell: PCell;
   hasCells: Boolean;
   sheet: TsWorksheet absolute AWorksheet;
 begin
-  r1 := 0;
-  c1 := 0;
-  r2 := sheet.GetLastRowIndex;
-  c2 := sheet.GetLastColIndex;
+  FLastRow := sheet.GetLastRowIndex;
+  FlastCol := sheet.GetLastColIndex;
 
   FPrevRow := UNASSIGNED_ROW_COL_INDEX;
-  for r := r1 to r2 do
+  for r := 0 to FLastRow do
   begin
     row := sheet.FindRow(r);
     styleStr := '';
@@ -2101,7 +2123,7 @@ begin
       hiddenStr := ' ss:Hidden="1"';
 
     hasCells := false;
-    for c := c1 to c2 do begin
+    for c := 0 to FLastCol do begin
       cell := sheet.FindCell(r, c);
       if cell <> nil then begin
         hasCells := true;
@@ -2109,32 +2131,17 @@ begin
       end;
     end;
 
-    AppendToStream(AStream, ROW_INDENT + Format(
-      '<Row%s%s%s%s', [GetIndexStr(r, FPrevRow), rowheightStr, styleStr, hiddenStr]));
-
-    if hasCells then
-      AppendToStream(AStream, '>' + LF)
-    else begin
-      AppendToStream(AStream, ' />' + LF);
-      Continue;
-    end;
-
-    FPrevCol := UNASSIGNED_ROW_COL_INDEX;
-    for c := c1 to c2 do
-    begin
-      cell := sheet.FindCell(r, c);
-      if cell <> nil then
-      begin
-        if sheet.IsMerged(cell) and not sheet.IsMergeBase(cell) then
-          Continue;
-        WriteCellToStream(AStream, cell);
-        FPrevCol := c;
-      end;
-    end;
-
-    AppendToStream(AStream, ROW_INDENT +
-      '</Row>' + LF);
-    FPrevRow := r;
+    s := Format('%s%s%s%s', [GetIndexStr(r, FPrevRow), rowheightStr, styleStr, hiddenStr]);
+    if hasCells then begin
+      AppendToStream(AStream, ROW_INDENT + Format(
+        '<Row%s>', [s]) + LF);
+      WriteCellNodes(AStream, AWorksheet, r);
+      AppendToStream(AStream, ROW_INDENT +
+        '</Row>' + LF);
+      FPrevRow := r;
+    end else
+      AppendToStream(AStream, ROW_INDENT + Format(
+        '<Row%s/>', [s]) + LF);
   end;
 end;
 
