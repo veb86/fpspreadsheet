@@ -109,6 +109,8 @@ type
       const AValue: TDateTime; ACell: PCell); override;
     procedure WriteError(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: TsErrorValue; ACell: PCell); override;
+    procedure WriteFormula(AStream: TStream; const ARow, ACol: Cardinal;
+      ACell: PCell); override;
     procedure WriteLabel(AStream: TStream; const ARow, ACol: Cardinal;
       const AValue: string; ACell: PCell); override;
     procedure WriteNumber(AStream: TStream; const ARow, ACol: Cardinal;
@@ -1407,11 +1409,19 @@ begin
     ANode := ANode.NextSibling;
   end;
 
-  // The ScalingFactor is always written to the xml file. This makes TsPageLayout
-  // automatically remove the poFitPages option which is restored here.
-  if hasFitToPage and (sheet.PageLayout.ScalingFactor <> 100) then begin
-    sheet.PageLayout.ScalingFactor := 100;
-    sheet.Pagelayout.Options := sheet.PageLayout.Options + [poFitPages];
+  if hasFitToPage then begin
+    // The ScalingFactor is always written to the xml file. This makes TsPageLayout
+    // automatically remove the poFitPages option which is restored here.
+    if (sheet.PageLayout.ScalingFactor <> 100) then begin
+      sheet.PageLayout.ScalingFactor := 100;
+      sheet.Pagelayout.Options := sheet.PageLayout.Options + [poFitPages];
+    end;
+    // When FitToPages is active, but FitWidthToPages and/or FitHeightToPages
+    // are not specified, they should be set to 1
+    if sheet.PageLayout.FitWidthToPages = 0 then
+      sheet.PageLayout.FitWidthToPages := 1;
+    if sheet.PageLayout.FitHeightToPages = 0 then
+      sheet.PageLayout.FitHeightToPages := 1;
   end;
 end;
 
@@ -1774,6 +1784,8 @@ begin
       WriteNumber(AStream, ACell^.Row, ACell^.Col, ACell^.NumberValue, ACell);
     cctUTF8String:
       WriteLabel(AStream, ACell^.Row, ACell^.Col, ACell^.UTF8StringValue, ACell);
+    cctFormula:
+      WriteFormula(AStream, ACell^.Row, ACell^.Col, ACell);
   end;
 
   if (FWorksheet as TsWorksheet).ReadComment(ACell) <> '' then
@@ -1971,6 +1983,32 @@ begin
       datemodeStr + INDENT2 +
       protectStr + INDENT1 +
     '</ExcelWorkbook>' + LF);
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteFormula(AStream: TStream;
+  const ARow, ACol: Cardinal; ACell: PCell);
+var
+  xmlnsStr: String;
+  dataTagStr: String;
+begin
+  if ACell^.ContentType <> cctFormula then
+    raise Exception.Create('WriteFormula called for calculated cell.');
+
+  xmlnsStr := ' xmlns="http://www.w3.org/TR/REC-html40"';
+  dataTagStr := '';  // or 'ss:' -- to do...
+
+  AppendToStream(AStream, Format(CELL_INDENT +
+    '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge
+      '<%sData%s>'+             // "ss:", data type, "xmlns=.."
+      '</%sData>' + LF + CELL_INDENT +       // "ss:"
+      '%s' +                                 // Comment
+    '</Cell>' + LF, [
+    GetIndexStr(ACell^.Col, FPrevCol), GetStyleStr(ACell^.FormatIndex), GetFormulaStr(ACell),
+      GetHyperlinkStr(ACell), GetMergeStr(ACell),
+    dataTagStr, xmlnsStr,
+    dataTagStr,
+    GetCommentStr(ACell)
+  ]));
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteLabel(AStream: TStream; const ARow,
@@ -2367,12 +2405,10 @@ begin
 
     // Protection
     s := '';
-    if FWorkbook.IsProtected then begin
-      if not (cpLockCell in fmt^.Protection) then
-        s := s + 'ss:Protected="0" ';
-      if cpHideFormulas in fmt^.Protection then
-        s := s + 'x:HideFormula="1" ';
-    end;
+    if not (cpLockCell in fmt^.Protection) then
+      s := s + 'ss:Protected="0" ';
+    if cpHideFormulas in fmt^.Protection then
+      s := s + 'x:HideFormula="1" ';
     if s <> '' then
       AppendToStream(AStream, INDENT3 +
         '<Protection ' + s + '/>' + LF);

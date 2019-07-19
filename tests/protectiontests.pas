@@ -94,7 +94,6 @@ type
     procedure TestWriteRead_OOXML_WorksheetProtection_Objects;
 
     procedure TestWriteRead_OOXML_CellProtection;
-
     procedure TestWriteRead_OOXML_Passwords;
 
     { Excedl2003/XML protection tests }
@@ -116,6 +115,7 @@ type
     procedure TestWriteRead_XML_WorksheetProtection_SelectLockedCells;
     procedure TestWriteRead_XML_WorksheetProtection_SelectUnlockedCells;
     procedure TestWriteRead_XML_WorksheetProtection_Objects;
+
     procedure TestWriteRead_XML_CellProtection;
     //procedure TestWriteRead_XML_Passwords;  // not allowed
 
@@ -130,7 +130,6 @@ type
     procedure TestWriteRead_ODS_WorksheetProtection_SelectUnlockedCells;
 
     procedure TestWriteRead_ODS_CellProtection;
-
     procedure TestWriteRead_ODS_Passwords;
   end;
 
@@ -314,10 +313,10 @@ begin
     // A1 --> lock cell
     cell := Myworksheet.WriteText(0, 0, 'Protected');
     MyWorksheet.WriteCellProtection(cell, [cpLockCell]);
-    // B1 --> not protected at all
+    // A2 --> not protected at all
     cell := MyWorksheet.WriteText(1, 0, 'Not protected');
     MyWorksheet.WriteCellProtection(cell, []);
-    // A2 --> lock cell & hide formulas
+    // B1 --> lock cell & hide formulas
     cell := Myworksheet.WriteFormula(0, 1, '=A1');
     MyWorksheet.WriteCellProtection(cell, [cpLockCell, cpHideFormulas]);
     // B2 --> hide formula only
