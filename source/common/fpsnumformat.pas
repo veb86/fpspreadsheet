@@ -859,8 +859,9 @@ begin
 
   // No decimal separator --> format as integer
   if i >= numEl then begin
-    Result := ProcessIntegerFormat(IntToStr(round(AValue)), fs, AElements, AIndex,
-      (INT_TOKENS + [nftIntTh]), false, useThSep);
+    // fpsUtils.Round() avoids Banker's rounding
+    Result := ProcessIntegerFormat(IntToStr(fpsUtils.Round(AValue)), fs,
+      AElements, AIndex, (INT_TOKENS + [nftIntTh]), false, useThSep);
     exit;
   end;
 

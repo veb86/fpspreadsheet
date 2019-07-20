@@ -9,7 +9,7 @@ uses
   SysUtils,
  {$ENDIF}
   Interfaces, Forms, GuiTestRunner, testsutility,
-  datetests, stringtests, numberstests, manualtests, internaltests,
+  datetests, stringtests, numberstests, manualtests, internaltests, mathtests,
   fileformattests, formattests, colortests, fonttests, optiontests,
   numformatparsertests, formulatests, rpnFormulaUnit, singleformulatests,
   exceltests, emptycelltests, errortests, virtualmodetests,

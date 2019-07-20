@@ -153,6 +153,8 @@ function TryStrToFloatAuto(AText: String; out ANumber: Double;
 function TryFractionStrToFloat(AText: String; out ANumber: Double;
   out AIsMixed: Boolean; out AMaxDigits: Integer): Boolean;
 
+function Round(AValue: Double): Integer;
+
 function cmToPts(AValue: Double): Double; inline;
 function EMUToIn(AValue: Int64): Double; inline;
 function EMUToMM(AValue: Int64): Double; inline;
@@ -1849,6 +1851,16 @@ begin
   Result := true;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Special rounding function which avoids banker's rounding
+-------------------------------------------------------------------------------}
+function Round(AValue: Double): Integer;
+begin
+  if AValue > 0 then
+    Result := trunc(AValue + 0.5)
+  else
+    Result := trunc(AValue - 0.5);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Excel's unit of row heights is "twips", i.e. 1/20 point.

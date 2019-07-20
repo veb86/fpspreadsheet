@@ -408,6 +408,15 @@ begin
   Result := FloatResult(random);
 end;
 
+// Avoids Banker's rounding
+function MyRoundTo(const AValue: Double; const Digits: TRoundToRange): Double;
+var
+  RV: Double;
+begin
+  RV := IntPower(10,Digits);
+  Result := fpsUtils.Round(AValue / RV) * RV;
+end;
+
 procedure fpsROUND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   x: TsExprFloat;
@@ -422,7 +431,7 @@ begin
     if IsNaN(x) then
       Result := ErrorResult(errWrongType)
     else
-      Result := FloatResult(RoundTo(x, -n));
+      Result := FloatResult(MyRoundTo(x, -n));
       // -n because fpc and Excel have different conventions regarding the sign
   end;
 end;
