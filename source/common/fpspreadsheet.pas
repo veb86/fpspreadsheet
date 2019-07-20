@@ -5254,22 +5254,43 @@ begin
 
   DeleteFormula(ACell);
 
+  // Empty cell
   if AValue = '' then
   begin
     WriteText(ACell, '');
     exit;
   end;
 
+  {
   // Force text format by putting an apostrophe at the text beginning
   if AValue[1] = '''' then
   begin
     Delete(AValue, 1, 1);
     WriteNumberFormat(ACell, nfText);
   end;
+  }
+
+  // Typing an apostrophe in front of the text bypasses format detection and
+  // takes the text literally.
+  if AValue[1] = '''' then begin
+    WriteText(ACell, Copy(AValue, 2, MaxInt));
+    exit;
+  end;
+
+  // Cell format
   fmtIndex := GetEffectiveCellFormatIndex(ACell);
   fmt := Workbook.GetCellFormat(fmtIndex);
   numFmtParams := Workbook.GetNumberFormat(fmt.NumberFormatIndex);
   ACell^.FormatIndex := fmtIndex;
+
+  // Handle some cases first in which content autodetection is not wanted.
+  if not (soAutoDetectCellType in FOptions) then begin
+    // Write text content if the cell has number format nfText
+    if IsTextFormat(numFmtParams) then begin
+      WriteText(ACell, AValue);
+      exit;
+    end;
+  end;
 
   isPercent := Pos('%', AValue) = Length(AValue);
   if isPercent then Delete(AValue, Length(AValue), 1);
