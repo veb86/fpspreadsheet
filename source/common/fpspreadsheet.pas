@@ -1183,7 +1183,7 @@ begin
 
   InitCryptoInfo(FCryptoInfo);
 
-  FOptions := [soShowGridLines, soShowHeaders];
+  FOptions := [soShowGridLines, soShowHeaders, soAutoDetectCellType];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5274,21 +5274,17 @@ begin
   isPercent := Pos('%', AValue) = Length(AValue);
   if isPercent then Delete(AValue, Length(AValue), 1);
 
-  {
-  if IsTextFormat(numFmtParams) then
-  begin
-    WriteText(ACell, AValue);
-    exit;
-  end;
-  }
-
+  // Try to detect the cell content type automatically
   if TryStrToCurrency(AValue, number, currSym, AFormatSettings) then
   begin
-    WriteCurrency(ACell, number, nfCurrencyRed, -1, currSym);
-    if IsTextFormat(numFmtParams) then begin
-      WriteNumberFormat(ACell, nfText);
-      WriteText(ACell, AValue);
-    end;
+    if (soAutoDetectCellType in FOptions) then begin
+      WriteCurrency(ACell, number, nfCurrencyRed, -1, currSym);
+      if IsTextFormat(numFmtParams) then begin
+        WriteNumberFormat(ACell, nfText);
+        WriteText(ACell, AValue);
+      end;
+    end else
+      WriteNumber(ACell, number);
     exit;
   end;
 
@@ -5296,11 +5292,13 @@ begin
   if TryFractionStrToFloat(AValue, number, ismixed, maxdig) then
   begin
     WriteNumber(ACell, number);
-    WriteFractionFormat(ACell, ismixed, maxdig, maxdig);
-    if IsTextFormat(numFmtParams) then
-    begin
-      WriteNumberFormat(ACell, nfText);
-      WriteText(ACell, AValue);
+    if (soAutoDetectCellType in FOptions) then begin
+      WriteFractionFormat(ACell, ismixed, maxdig, maxdig);
+      if IsTextFormat(numFmtParams) then
+      begin
+        WriteNumberFormat(ACell, nfText);
+        WriteText(ACell, AValue);
+      end;
     end;
     exit;
   end;
@@ -5308,55 +5306,64 @@ begin
   // Check for a "number" value (floating point, or integer)
   if TryStrToFloat(AValue, number, AFormatSettings) then
   begin
-    if isPercent then
-      WriteNumber(ACell, number/100, nfPercentage)
-    else
-    begin
-      if IsDateTimeFormat(numFmtParams) then
-        WriteNumber(ACell, number, nfGeneral)
+    if (soAutoDetectCellType in FOptions) then begin
+      if isPercent then
+        WriteNumber(ACell, number/100, nfPercentage)
       else
-        WriteNumber(ACell, number);
-    end;
-    if IsTextFormat(numFmtParams) then
-    begin
-      WriteNumberFormat(ACell, nfText);
-      WriteText(ACell, AValue);
-    end;
+      begin
+        if IsDateTimeFormat(numFmtParams) then
+          WriteNumber(ACell, number, nfGeneral)
+        else
+          WriteNumber(ACell, number);
+      end;
+      if IsTextFormat(numFmtParams) then
+      begin
+        WriteNumberFormat(ACell, nfText);
+        WriteText(ACell, AValue);
+      end;
+    end else
+      // Use pre-formatted style
+      WriteNumber(ACell, number);
     exit;
   end;
+
 
   // Check for a date/time value:
   // Must be after float detection because StrToDateTime will accept a string
   // "1" as a valid date/time.
   if TryStrToDateTime(AValue, number, AFormatSettings) then
   begin
-    if number < 1.0 then          // this is a time alone
-    begin
-      if not IsTimeFormat(numFmtParams) then
+    if (soAutoDetectCellType in FOptions) then begin
+      if number < 1.0 then          // this is a time alone
       begin
-        ucValue := Uppercase(AValue);
-        isAMPM := (pos('AM', ucValue) > 0) or (pos('PM', ucValue) > 0);
-        isLongTime := IsLongTimeFormat(AValue, AFormatSettings.TimeSeparator);
-        WriteDateTime(ACell, number, TIME_FMT[isAMPM, isLongTime]);
+        if not IsTimeFormat(numFmtParams) then
+        begin
+          ucValue := Uppercase(AValue);
+          isAMPM := (pos('AM', ucValue) > 0) or (pos('PM', ucValue) > 0);
+          isLongTime := IsLongTimeFormat(AValue, AFormatSettings.TimeSeparator);
+          WriteDateTime(ACell, number, TIME_FMT[isAMPM, isLongTime]);
+        end else
+          WriteDateTime(ACell, number);
       end else
-        WriteDateTime(ACell, number);
-    end else
-    if frac(number) = 0.0 then  // this is a date alone
-    begin
-      if pos(' ', AValue) > 0 then
+      if frac(number) = 0.0 then  // this is a date alone
+      begin
+        if pos(' ', AValue) > 0 then
+          WriteDateTime(ACell, number, nfShortDateTime)
+        else
+          WriteDateTime(ACell, number, nfShortDate);
+      end else
+      if not IsDateTimeFormat(fmt.NumberFormat) then
         WriteDateTime(ACell, number, nfShortDateTime)
       else
-        WriteDateTime(ACell, number, nfShortDate);
+        WriteDateTime(ACell, number);
+      if IsTextFormat(numFmtParams) then
+      begin
+        WriteNumberFormat(ACell, nfText);
+        WriteText(ACell, AValue);
+      end;
     end else
-    if not IsDateTimeFormat(fmt.NumberFormat) then
-      WriteDateTime(ACell, number, nfShortDateTime)
-    else
+      // Use pre-formatted style
       WriteDateTime(ACell, number);
-    if IsTextFormat(numFmtParams) then
-    begin
-      WriteNumberFormat(ACell, nfText);
-      WriteText(ACell, AValue);
-    end;
     exit;
   end;
 

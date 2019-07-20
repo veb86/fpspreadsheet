@@ -896,9 +896,10 @@ type
                               is defined by LeftPaneWidth and TopPaneHeight.
     @param soHidden           Worksheet is hidden.
     @param soProtected        Worksheet is protected
-    @param soPanesProtection  Panes are locked due to workbook protection }
+    @param soPanesProtection  Panes are locked due to workbook protection
+    @param soAutoDetectCellType  Auomatically detect type of cell content}
   TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes, soHidden,
-    soProtected, soPanesProtection);
+    soProtected, soPanesProtection, soAutoDetectCellType);
 
   {@@ Set of user interface options
     @ see TsSheetOption }

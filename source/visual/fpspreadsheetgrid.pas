@@ -99,6 +99,7 @@ type
     FEditing: Boolean;
     FCellFont: TFont;
     FAutoCalc: Boolean;
+    FAutoDetectCellType: Boolean;
     FTextOverflow: Boolean;
     FReadFormulas: Boolean;
     FDrawingCell: PCell;
@@ -187,6 +188,7 @@ type
     function GetWordwraps(ALeft, ATop, ARight, ABottom: Integer): Boolean;
     function GetZoomFactor: Double;
     procedure SetAutoCalc(AValue: Boolean);
+    procedure SetAutoDetectCellType(AValue: Boolean);
     procedure SetBackgroundColor(ACol, ARow: Integer; AValue: TsColor);
     procedure SetBackgroundColors(ALeft, ATop, ARight, ABottom: Integer; AValue: TsColor);
     procedure SetCellBiDiMode(ACol, ARow: Integer; AValue: TsBiDiMode);
@@ -338,6 +340,9 @@ type
       write FAllowDragAndDrop default true;
     {@@ Automatically recalculate formulas whenever a cell value changes. }
     property AutoCalc: Boolean read FAutoCalc write SetAutoCalc default false;
+    {@@ Automatically detect the cell's content type }
+    property AutoDetectCellType: Boolean read FAutoDetectCellType
+      write SetAutoDetectCellType default true;
     {@@ Automatically expand grid dimensions }
     property AutoExpand: TsAutoExpandModes read FAutoExpand write FAutoExpand
       default [aeData, aeNavigation, aeDefault];
@@ -618,6 +623,8 @@ type
     property AllowDragAndDrop;
     {@@ Automatically recalculates the worksheet formulas if a cell value changes. }
     property AutoCalc;
+    {@@ Automatically detect the cell's content type }
+    property AutoDetectCellType;
     {@@ Automatically expand grid dimensions }
     property AutoExpand;
     {@@ Displays column and row headers in the fixed col/row style of the grid.
@@ -1312,6 +1319,7 @@ begin
   AutoAdvance := aaDown;
   ExtendedSelect := true;
   FHeaderCount := 1;
+  FAutoDetectCellType := true;
   ColCount := DEFAULT_COL_COUNT + FHeaderCount;
   RowCount := DEFAULT_ROW_COUNT + FHeaderCount;
 
@@ -1970,6 +1978,7 @@ begin
     WorkbookSource.Options := WorkbookSource.Options + [boReadFormulas] else
     WorkbookSource.Options := Workbooksource.Options - [boReadFormulas];
   SetAutoCalc(FAutoCalc);
+  SetAutoDetectCellType(FAutoDetectCellType);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4709,6 +4718,7 @@ begin
   ae := RelaxAutoExpand;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormat, AWorksheetIndex);
   RestoreAutoExpand(ae);
+  SetAutoDetectCellType(FAutoDetectCellType);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4731,6 +4741,7 @@ begin
   ae := RelaxAutoExpand;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFileName, AFormatID, AWorksheetIndex);
   RestoreAutoExpand(ae);
+  SetAutoDetectCellType(FAutoDetectCellType);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4751,6 +4762,7 @@ begin
   ae := RelaxAutoExpand;
   GetWorkbookSource.LoadFromSpreadsheetFile(AFilename, AFormatID, AWorksheetIndex);
   RestoreAutoExpand(ae);
+  SetAutoDetectCellType(FAutoDetectCellType);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4771,6 +4783,7 @@ begin
   ae := RelaxAutoExpand;
   GetWorkbookSource.LoadFromWorkbook(AWorkbook, AWorksheetIndex);
   RestoreAutoExpand(ae);
+  SetAutoDetectCellType(FAutoDetectCellType);
   Invalidate;
 end;
 
@@ -6300,6 +6313,18 @@ begin
     if FInternalWorkbookSource <> nil then
       FInternalWorkbookSource.Options := optns;
     Invalidate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetAutoDetectCellType(AValue: Boolean);
+begin
+  FAutoDetectCellType := AValue;
+
+  if Assigned(Worksheet) then begin
+    if FAutoDetectCellType then
+      Worksheet.Options := Worksheet.Options + [soAutoDetectCellType]
+    else
+      Worksheet.Options := Worksheet.Options - [soAutoDetectCellType];
   end;
 end;
 
