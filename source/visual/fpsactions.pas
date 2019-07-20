@@ -273,6 +273,7 @@ type
   private
     FNumberFormat: TsNumberFormat;
     FNumberFormatStr: string;
+    FCustomNumberFormatStr: String;
     FOnGetNumFormatStr: TsNumFormatStrEvent;
     procedure SetNumberFormat(AValue: TsNumberFormat);
     procedure SetNumberFormatStr(AValue: String);
@@ -282,6 +283,7 @@ type
     procedure UpdateCaptionAndHint;
   public
     constructor Create(AOwner: TComponent); override;
+    procedure ExecuteTarget(Target: TObject); override;
   published
     property NumberFormat: TsNumberFormat
       read FNumberFormat write SetNumberFormat default nfGeneral;
@@ -1221,7 +1223,7 @@ begin
   Caption := rsNumberFormatCaption_General;
   Hint := rsNumberFormatHint_General;
   GroupIndex := 1411141258;    // Date/time when this code was written
-  AutoCheck := true;
+  //AutoCheck := true;
 end;
 
 procedure TsNumberFormatAction.ApplyFormatToCell(ACell: PCell);
@@ -1231,16 +1233,11 @@ var
 begin
   if Checked then
   begin
-    if (FNumberFormat = nfCustom) and Assigned(FOnGetNumFormatStr) then
-    begin
-      Worksheet.ReadNumFormat(ACell, nf, nfstr);
-      FOnGetNumFormatStr(self, Workbook, nfstr);
-      nf := nfCustom;
-    end else
-    begin
-      nf := FNumberFormat;
+    nf := FNumberFormat;
+    if FNumberFormat = nfCustom then
+      nfstr := FCustomNumberFormatStr
+    else
       nfstr := FNumberFormatStr;
-    end;
   end else
   begin
     nf := nfGeneral;
@@ -1250,6 +1247,23 @@ begin
     Worksheet.WriteDateTimeFormat(ACell, nf, nfstr)
   else
     Worksheet.WriteNumberFormat(ACell, nf, nfstr);
+end;
+
+procedure TsNumberFormatAction.ExecuteTarget(Target: TObject);
+var
+  nf: TsNumberFormat;
+  nfstr: String;
+begin
+  if (FNumberFormat = nfCustom) and Assigned(FOnGetNumFormatStr) then
+  begin
+    Worksheet.ReadNumFormat(ActiveCell, nf, nfstr);
+    FOnGetNumFormatStr(self, Workbook, nfstr);
+    FCustomNumberFormatStr := nfstr;
+    Checked := true;
+  end else
+    Checked := not Checked;
+
+  inherited;
 end;
 
 procedure TsNumberFormatAction.ExtractFromCell(ACell: PCell);
