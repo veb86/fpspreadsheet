@@ -1197,7 +1197,7 @@ var
 begin
   C := CurrentChar;
   prevC := #0;
-  while (not IsWordDelim(C) or (prevC = 'E')) and (C <> cNull) do
+  while (not IsWordDelim(C) or (prevC = 'E') or (C = FParser.FFormatSettings.DecimalSeparator)) and (C <> cNull) do
   begin
     if not ( IsDigit(C)
              or ((FToken <> '') and (Upcase(C) = 'E'))
@@ -2054,7 +2054,6 @@ begin
     exit;
   FFormatSettings := AFormatSettings;
   UpdateExprFormatSettings;
-//  ExprFormatSettings := AFormatSettings;
   FExpression := AValue;
   if (AValue <> '') and (AValue[1] = '=') then
     FScanner.Source := Copy(AValue, 2, Length(AValue))
