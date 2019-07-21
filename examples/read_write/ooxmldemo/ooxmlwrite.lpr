@@ -110,5 +110,12 @@ begin
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test.xlsx', sfOOXML, true);
   MyWorkbook.Free;
+
+  WriteLn('Workbook written to "' + Mydir + 'test.xlsx' + '".');
+
+  {$IFDEF MSWINDOWS}
+  WriteLn('Press ENTER to quit...');
+  ReadLn;
+  {$ENDIF}
 end.
 
