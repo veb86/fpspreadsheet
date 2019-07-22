@@ -2482,23 +2482,14 @@ begin
       Delete(formulaStr, 1, p);
     end;
 
-    // ... and store in cell's FormulaValue field.
+    // ... and store in cell's FormulaValue field. Convert from ODS to ExcelA1 dialect.
     formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ARow, ACol);
     formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
-    formula^.Parser.Dialect := fdOpenDocument;  // Parse in ODS dialect
-    formula^.Parser.Expression := formulaStr;
-    formula^.Parser.Dialect := fdExcelA1;      // Convert formula to Excel A1 dialect
-    formula^.Text := formula^.Parser.Expression;
+    formula^.Parser.Expression[fdOpenDocument] := formulaStr;  // Parse in ODS dialect
+    formula^.Text := formula^.Parser.Expression[fdExcelA1];    // Convert to Excel A1 dialect
     cell^.Flags := cell^.Flags + [cfHasFormula];
     hasFormula := true;
 
-    {
-    cell^.FormulaValue := formula;
-    // Note: This formula is still in OpenDocument dialect. Conversion to
-    // ExcelA1 dialect (used by fps) is postponed until all sheets have beeon
-    // read (--> FixFormulas) because of possible references to other sheets
-    // which might not have been loaded yet at this moment.
-                                                                                      }
     {$IFDEF FPSpreadDebug}
     DebugLn('  Formula found: ' + formula);
     {$ENDIF}
@@ -7834,30 +7825,18 @@ begin
     valueStr := '';
     if formula^.Parser = nil then begin
       formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
-      formula^.Parser.Expression := formula^.Text;
+      formula^.Parser.Expression[fdExcelA1] := formula^.Text;  // the formula text is in ExcelA1 dialect
     end;
     // Convert string formula to the format needed by ods
     oldDialect := formula^.Parser.Dialect;
     try
-      formula^.Parser.Dialect := fdOpenDocument;
-      formulaStr := formula^.Parser.Expression;  // Formula converted to ODS dialect
+      formulaStr := formula^.Parser.Expression[fdOpenDocument];  // Formula converted to ODS dialect
       if (formulaStr <> '') and (formulastr[1] <> '=') then
         formulaStr := '=' + formulaStr;
     finally
       formula^.Parser.Dialect := oldDialect;
     end;
-        {
-    parser := TsSpreadsheetParser.Create(FWorksheet);
-    try
-      parser.Expression := ACell^.FormulaValue;   // Formula still in Excel dialect
-      parser.Dialect := fdOpenDocument;           // Now convert to ODS dialect
-      formula := Parser.LocalizedExpression[FPointSeparatorSettings];
-      if (formula <> '') and (formula[1] <> '=') then
-        formula := '=' + formula;
-    finally
-      parser.Free;
-    end;
-         }
+
     case ACell^.ContentType of
       cctNumber:
         begin

@@ -3016,7 +3016,7 @@ begin
       formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
     end;
     formula^.Parser.RPNFormula := rpnFormula;
-    formula^.Text := formula^.Parser.Expression;
+    formula^.Text := formula^.Parser.Expression[fdExcelA1];
     TsWorksheet(FWorksheet).UseFormulaInCell(ACell, formula);
     {
     if formula^.Parser.Has3dLinks then

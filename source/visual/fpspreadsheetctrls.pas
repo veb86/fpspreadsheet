@@ -2266,6 +2266,8 @@ end;
   Checks valididty of the provided formula and creates a corresponding
   error message.
 
+  It is assumed that the formula is localized.
+
   Returns TRUE if the provided string is a valid formula or no formula, FALSE
   otherwise. In the latter case an error message string is returned as well.
 -------------------------------------------------------------------------------}
@@ -2281,7 +2283,7 @@ begin
     parser := TsSpreadsheetParser.Create(Worksheet);
     try
       try
-        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula;
+        parser.Expression[fdLocalized] := AFormula;
       except
         on E: Exception do begin
           AErrMsg := E.Message;

@@ -6200,9 +6200,11 @@ begin
   Result := GetTextRotation(ALeft, ATop);
   textrot := Result;
   for c := ALeft to ARight do
-    for r := ATop to ABottom do begin
+    for r := ATop to ABottom do
+    begin
       Result := GetTextRotation(c, r);
-      if Result <> textrot then begin
+      if Result <> textrot then
+      begin
         Result := trHorizontal;
         exit;
       end;
@@ -6212,7 +6214,8 @@ end;
 function TsCustomWorksheetGrid.GetWorkbookSource: TsWorkbookSource;
 begin
   if FWorkbookSource <> nil then
-    Result := FWorkbookSource else
+    Result := FWorkbookSource
+  else
     Result := FInternalWorkbookSource;
 end;
 
@@ -6221,7 +6224,8 @@ var
   cell: PCell;
 begin
   Result := vaDefault;
-  if Assigned(Worksheet) then begin
+  if Assigned(Worksheet) then
+  begin
     cell := Worksheet.FindCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
     Result := Worksheet.ReadVertAlignment(cell);
   end;
@@ -7089,7 +7093,7 @@ begin
     parser := TsSpreadsheetParser.Create(Worksheet);
     try
       try
-        parser.LocalizedExpression[Worksheet.FormatSettings] := AExpression;
+        parser.Expression[fdLocalized] := AExpression;
       except
         on E: Exception do begin
           AErrMsg := E.Message;

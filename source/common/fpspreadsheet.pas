@@ -1274,7 +1274,7 @@ begin
   if AFormula^.Parser = nil then begin
     parser := TsSpreadsheetParser.Create(self);
     try
-      parser.Expression := AFormula^.Text;
+      parser.Expression[fdExcelA1] := AFormula^.Text;
       AFormula^.Parser := parser;
     except
       on E:ECalcEngine do begin
@@ -1288,7 +1288,7 @@ begin
     try
       res := AFormula^.Parser.Evaluate;
       if AFormula^.Text = '' then
-        AFormula^.Text := AFormula^.Parser.Expression;
+        AFormula^.Text := AFormula^.Parser.Expression[fdExcelA1];
     except
       on E: ECalcEngine do
       begin
@@ -2049,7 +2049,7 @@ begin
       end;
     end;
     destFormula^.Parser.RPNFormula := rpn;
-    destFormula^.Text := destFormula^.Parser.Expression;
+    destFormula^.Text := destFormula^.Parser.Expression[fdExcelA1];
     UseFormulaInCell(AToCell, destFormula);
   finally
     srcFormula^.Parser.PrepareCopyMode(nil, nil);
@@ -2987,9 +2987,9 @@ begin
   if HasFormula(ACell) then begin
     formula := FFormulas.FindFormula(ACell^.Row, ACell^.Col);
     if ALocalized then
-      Result := formula^.Parser.LocalizedExpression[Workbook.FormatSettings]
+      Result := formula^.Parser.Expression[fdLocalized]
     else
-      Result := formula^.Parser.Expression;
+      Result := formula^.Parser.Expression[fdExcelA1];
   end;
 end;
 
@@ -3029,7 +3029,6 @@ end;
 function TsWorksheet.ConvertFormulaDialect(ACell: PCell;
   ADialect: TsFormulaDialect): String;
 var
-  oldDialect: TsFormulaDialect;
   formula: PsFormula;
 begin
   Result := '';
@@ -3037,17 +3036,10 @@ begin
     exit;
 
   formula := FFormulas.FindFormula(ACell^.Row, ACell^.Col);
-  oldDialect := formula^.Parser.Dialect;
-  if oldDialect <> ADialect then begin
-    try
-      formula^.Parser.Dialect := ADialect;
-      formula^.Parser.PrepareCopyMode(ACell, nil);
-      Result := formula^.Parser.Expression;
-    finally
-      formula^.Parser.PrepareCopyMode(nil, nil);
-      formula^.Parser.Dialect := oldDialect;
-    end;
-  end;
+  if ADialect = fdExcelR1C1 then
+    Result := formula^.Parser.R1C1Expression[ACell]
+  else
+    Result := formula^.Parser.Expression[ADialect];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3066,7 +3058,7 @@ begin
   parser := TsSpreadsheetParser.Create(self);
   try
     parser.RPNFormula := AFormula;
-    Result := parser.Expression;
+    Result := parser.Expression[fdExcelA1];
   finally
     parser.Free;
   end;
@@ -3751,7 +3743,7 @@ begin
   Result := formula^.Text;
 
   if (Result = '') and (formula^.Parser <> nil) then
-    Result := formula^.Parser.Expression;
+    Result := formula^.Parser.Expression[fdExcelA1];
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5913,13 +5905,14 @@ begin
     parser := TsSpreadsheetParser.Create(self);
     try
       if ALocalized then
-        parser.LocalizedExpression[Workbook.FormatSettings] := AFormula
+        parser.Expression[fdLocalized] := AFormula
       else
       if R1C1Mode then
         parser.R1C1Expression[ACell] := AFormula
       else
-        parser.Expression := AFormula;
-      AFormula := parser.Expression;
+        parser.Expression[fdExcelA1] := AFormula;
+
+      AFormula := parser.Expression[fdExcelA1];
 
       formula := FFormulas.AddFormula(ACell^.Row, ACell^.Col, AFormula);
     except
@@ -6201,7 +6194,7 @@ begin
     formula^.Parser := TsSpreadsheetParser.Create(self);
   end;
   formula^.Parser.RPNFormula := ARPNFormula;
-  formula^.Text := formula^.Parser.Expression;
+  formula^.Text := formula^.Parser.Expression[fdExcelA1];
   UseFormulaInCell(ACell, formula);
   ACell^.ContentType := cctFormula;
 
@@ -8500,7 +8493,7 @@ var
 begin
   Unused(Arg);
   for formula in TsWorksheet(Data).Formulas do
-    formula^.Text := formula^.Parser.Expression;
+    formula^.Text := formula^.Parser.Expression[fdExcelA1];
 end;
 
 

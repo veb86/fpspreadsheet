@@ -673,6 +673,7 @@ type
   end;
 
   EExprScanner = class(Exception);
+  PFormatSettings = ^TFormatSettings;
 
   { TsExpressionParser }
   TsExpressionParser = class
@@ -695,25 +696,27 @@ type
     function GetAsFloat: TsExprFloat;
     function GetAsInteger: Int64;
     function GetAsString: String;
+    function GetDecimalSeparator: Char;
+    function GetExpression(ADialect: TsFormulaDialect): String;
+    function GetFormatSettings: TFormatSettings;
+    function GetR1C1Expression(ACell: PCell): String;
     function GetRPNFormula: TsRPNFormula;
     procedure SetBuiltIns(const AValue: TsBuiltInExprCategories);
     procedure SetDialect(const AValue: TsFormulaDialect);
+    procedure SetExpression(ADialect: TsFormulaDialect; const AValue: String);
     procedure SetIdentifiers(const AValue: TsExprIdentifierDefs);
+    procedure SetR1C1Expression(ACell: PCell; const AValue: String);
     procedure SetRPNFormula(const AFormula: TsRPNFormula);
 
   protected
-    FFormatSettings: TFormatSettings;
+    FFormatSettings: PFormatSettings;
     FContains3DRef: Boolean;
     class function BuiltinExpressionManager: TsBuiltInExpressionManager;
     function BuildStringFormula: String;
     procedure ParserError(Msg: String);
-    function GetExpression: String;
-    function GetLocalizedExpression(const AFormatSettings: TFormatSettings): String; virtual;
-    function GetR1C1Expression(ACell: PCell): String;
-    procedure SetExpression(const AValue: String);
-    procedure SetLocalizedExpression(const AFormatSettings: TFormatSettings;
-      const AValue: String); virtual;
-    procedure SetR1C1Expression(ACell: PCell; const AValue: String);
+    //function GetLocalizedExpression: String; virtual;
+    procedure InternalSetExpression(ADialect: TsFormulaDialect; const AValue: String);
+//    procedure SetLocalizedExpression(const AValue: String); virtual;
     procedure UpdateExprFormatSettings;
 
     procedure CheckResultType(const Res: TsExpressionResult;
@@ -753,14 +756,22 @@ type
     property AsString: String read GetAsString;
     property AsBoolean: Boolean read GetAsBoolean;
     property AsDateTime: TDateTime read GetAsDateTime;
+
     // The expression to parse
-    property Expression: String read GetExpression write SetExpression;
-    property ListSeparator: Char read FListSep;
-    property LocalizedExpression[AFormatSettings: TFormatSettings]: String
+    property Expression[ADialect: TsFormulaDialect]: String
+        read GetExpression write SetExpression;
+    {
+    property LocalizedExpression: String
         read GetLocalizedExpression write SetLocalizedExpression;
+        }
     property R1C1Expression[ACell: PCell]: String
         read GetR1C1Expression write SetR1C1Expression;
-    property RPNFormula: TsRPNFormula read GetRPNFormula write SetRPNFormula;
+    property RPNFormula: TsRPNFormula
+        read GetRPNFormula write SetRPNFormula;
+
+    property DecimalSeparator: Char read GetDecimalSeparator;
+    property ListSeparator: Char read FListSep;
+    property FormatSettings: TFormatSettings read GetFormatSettings;
     property Identifiers: TsExprIdentifierDefs read FIdentifiers write SetIdentifiers;
     property BuiltIns: TsBuiltInExprCategories read FBuiltIns write SetBuiltIns;
     property Worksheet: TsBasicWorksheet read FWorksheet;
@@ -1197,7 +1208,7 @@ var
 begin
   C := CurrentChar;
   prevC := #0;
-  while (not IsWordDelim(C) or (prevC = 'E') or (C = FParser.FFormatSettings.DecimalSeparator)) and (C <> cNull) do
+  while (not IsWordDelim(C) or (prevC = 'E') or (C = FParser.DecimalSeparator)) and (C <> cNull) do
   begin
     if not ( IsDigit(C)
              or ((FToken <> '') and (Upcase(C) = 'E'))
@@ -1209,7 +1220,7 @@ begin
     prevC := Upcase(C);
     C := NextPos;
   end;
-  if not TryStrToFloat(FToken, X, FParser.FFormatSettings) then
+  if not TryStrToFloat(FToken, X, FParser.FFormatSettings^) then
     ScanError(Format(rsInvalidNumber, [FToken]));
   Result := ttNumber;
 end;
@@ -1382,7 +1393,7 @@ end;
 
 function TsExpressionScanner.IsDigit(C: Char): Boolean;
 begin
-  Result := (C in Digits) or (C = FParser.FFormatSettings.DecimalSeparator);
+  Result := (C in Digits) or (C = FParser.DecimalSeparator);
 end;
 
 function TsExpressionScanner.IsWordDelim(C: Char): Boolean;
@@ -1440,8 +1451,12 @@ begin
   FIdentifiers.FParser := Self;
   FScanner := TsExpressionScanner.Create(self);
   FHashList := TFPHashObjectList.Create(False);
-  SetDialect(fdExcelA1);
-  FFormatSettings := InitFormatSettings(TsWorksheet(FWorksheet).Workbook);
+
+  // Prepare for ExcelA1 dialect which is the default dialect. Can't call
+  // SetDialect(fdExcelA1) because it exits immediately at default dialect.
+  FDialect := fdExcelA1;
+  FListSep := ',';
+  FFormatSettings := @ExprFormatSettings;
   UpdateExprFormatSettings;
 end;
 
@@ -1614,23 +1629,6 @@ begin
   EvaluateExpression(Res);
   CheckResultType(Res, rtString);
   Result := Res.ResString;
-end;
-
-{ Returns the expression in R1C1 notation.
-  ACell is the cell to which the expression is assumed to be relative. }
-function TsExpressionParser.GetR1C1Expression(ACell: PCell): String;
-var
-  oldDialect: TsFormulaDialect;
-begin
-  oldDialect := FDialect;
-  try
-    FDialect := fdExcelR1C1;
-    PrepareCopyMode(ACell, ACell);
-    Result := Expression;
-  finally
-    PrepareCopyMode(nil, nil);
-    FDialect := oldDialect;
-  end;
 end;
 
 function TsExpressionParser.GetRPNFormula: TsRPNFormula;
@@ -1877,7 +1875,7 @@ begin
     if TryStrToInt64(CurrentToken, I) then
       Result := TsConstExprNode.CreateInteger(self, I)
     else
-    if TryStrToFloat(CurrentToken, X, FFormatSettings) then
+    if TryStrToFloat(CurrentToken, X, FFormatSettings^) then
       Result := TsConstExprNode.CreateFloat(self, X)
     else
       ParserError(Format(rsInvalidFloat, [CurrentToken]));
@@ -2007,19 +2005,61 @@ begin
   FDirty := true;
 end;
 
-function TsExpressionParser.GetExpression: String;
+function TsExpressionParser.GetDecimalSeparator: Char;
 begin
-  Result := BuildStringFormula; //(FFormatSettings);
+  Result := FFormatSettings^.DecimalSeparator;
 end;
 
-function TsExpressionParser.GetLocalizedExpression(const AFormatSettings: TFormatSettings): String;
+{ Builds an expression string for the currently loaded parser tree. The string
+  is created for the specified formula dialect. The formula dialect used by
+  the parser is restored afterwards. }
+function TsExpressionParser.GetExpression(ADialect: TsFormulaDialect): String;
+var
+  oldDialect: TsFormulaDialect;
 begin
-//  ExprFormatSettings := AFormatSettings;
-  FFormatSettings := AFormatSettings;
-  UpdateExprFormatSettings;
-  Result := BuildStringFormula; //(AFormatSettings);
+  if ADialect = fdExcelR1C1 then
+    raise Exception.Create('Please use R1C1Expression');
+
+  oldDialect := FDialect;
+  try
+    SetDialect(ADialect);
+    Result := BuildStringFormula;
+  finally
+    SetDialect(oldDialect);
+  end;
 end;
 
+function TsExpressionParser.GetFormatSettings: TFormatSettings;
+begin
+  Result := FFormatSettings^;
+end;
+
+{ Builds an expression string for the currently loaded parser tree. The string
+  is created for Excel's R1C1 notation. ACell points to the cell to which cell
+  references are relative. The formula dialect used by the parser is
+  restored afterwards. }
+function TsExpressionParser.GetR1C1Expression(ACell: PCell): String;
+var
+  oldDialect: TsFormulaDialect;
+begin
+  oldDialect := FDialect;
+  try
+    SetDialect(fdExcelR1C1);
+    PrepareCopyMode(ACell, ACell);
+    Result := BuildStringFormula;
+  finally
+    PrepareCopyMode(nil, nil);
+    SetDialect(oldDialect);
+  end;
+end;
+
+  {
+function TsExpressionParser.GetLocalizedExpression: String;
+begin
+  SetDialect(fdLocalized);
+  Result := BuildStringFormula;
+end;
+ }
 function TsExpressionParser.Has3DLinks: Boolean;
 begin
   Result := FExprNode.Has3DLink;
@@ -2034,41 +2074,72 @@ end;
 
 procedure TsExpressionParser.SetDialect(const AValue: TsFormulaDialect);
 begin
+  if FDialect = AValue then
+    exit;
+
   FDialect := AValue;
   case FDialect of
     fdExcelA1,
-    fdExcelR1C1    : FListSep := ',';
-    fdOpenDocument : FListSep := ';'
+    fdExcelR1C1:
+      begin
+        FListSep := ',';
+        FFormatSettings := @ExprFormatSettings;
+        UpdateExprFormatSettings;
+      end;
+    fdOpenDocument:
+      begin
+        FListSep := ';';
+        FFormatSettings := @ExprFormatSettings;
+        UpdateExprFormatSettings;
+      end;
+    fdLocalized:
+      begin
+        FFormatSettings := @TsWorksheet(FWorksheet).Workbook.FormatSettings;
+        FListSep := FFormatSettings^.ListSeparator;
+      end;
   end;
 end;
 
-procedure TsExpressionParser.SetExpression(const AValue: String);
-begin
-  SetLocalizedExpression(FFormatSettings, AValue);
-end;
-
-procedure TsExpressionParser.SetLocalizedExpression(const AFormatSettings: TFormatSettings;
+procedure TsExpressionParser.InternalSetExpression(ADialect: TsFormulaDialect;
   const AValue: String);
 begin
   if FExpression = AValue then
     exit;
-  FFormatSettings := AFormatSettings;
-  UpdateExprFormatSettings;
+
   FExpression := AValue;
   if (AValue <> '') and (AValue[1] = '=') then
-    FScanner.Source := Copy(AValue, 2, Length(AValue))
-  else
-    FScanner.Source := AValue;
+    Delete(FExpression, 1, 1);
+
+  SetDialect(ADialect);
+
   FreeAndNil(FExprNode);
-  if (FExpression <> '') then
-  begin
+  FScanner.Source := FExpression;
+  if FExpression <> '' then begin
     GetToken;
     FExprNode := Level1;
-    if (TokenType <> ttEOF) then
-      ParserError(Format(rsUnterminatedExpression, [Scanner.Pos, CurrentToken]));
+    if TokenType <> ttEOF then
+      ParserError(Format(rsUnTerminatedExpression, [Scanner.Pos, CurrentToken]));
     FExprNode.Check;
   end;
 end;
+
+{ Makes the parser analyze the given expression string. The expression string
+  is assumed to be valid for the specified formula dialect. }
+procedure TsExpressionParser.SetExpression(ADialect: TsFormulaDialect;
+  const AValue: String);
+begin
+  if FDialect = fdExcelR1C1 then
+    raise Exception.Create('Please use R1C1Expression');
+
+  InternalSetExpression(ADialect, AValue);
+end;
+                             (*
+{ Sets a localized Excel expression in A1 syntax. The format settings needed
+  for localization are taken from the workbook. }
+procedure TsExpressionParser.SetLocalizedExpression(const AValue: String);
+begin
+  InternalSetExpression(fdLocalized, AValue);
+end;                           *)
 
 procedure TsExpressionParser.SetIdentifiers(const AValue: TsExprIdentifierDefs);
 begin
@@ -2078,16 +2149,11 @@ end;
 { Parses an expression in which cell references are given in Excel's R1C1 notation
   ACell is the cell to which the created expression will be relative. }
 procedure TsExpressionParser.SetR1C1Expression(ACell: PCell; const AValue: String);
-var
-  oldDialect: TsFormulaDialect;
 begin
-  oldDialect := FDialect;
+  PrepareCopyMode(ACell, ACell);
   try
-    FDialect := fdExcelR1C1;
-    PrepareCopyMode(ACell, ACell);
-    Expression := AValue;
+    InternalSetExpression(fdExcelR1C1, AValue);
   finally
-    FDialect := oldDialect;
     PrepareCopyMode(nil, nil);
   end;
 end;
@@ -2554,7 +2620,7 @@ end;
 
 function TsExprIdentifierDef.GetFormatSettings: TFormatSettings;
 begin
-  Result := TsExprIdentifierDefs(Collection).Parser.FFormatSettings;
+  Result := TsExprIdentifierDefs(Collection).Parser.FFormatSettings^;
 end;
 
 function TsExprIdentifierDef.GetResultType: TsResultType;
@@ -3017,9 +3083,9 @@ begin
   case NodeType of
     rtString   : Result := cDoubleQuote + FValue.ResString + cDoubleQuote;
     rtInteger  : Result := IntToStr(FValue.ResInteger);
-    rtDateTime : Result := '''' + FormatDateTime('cccc', FValue.ResDateTime, Parser.FFormatSettings) + '''';    // Probably wrong !!!
+    rtDateTime : Result := '''' + FormatDateTime('cccc', FValue.ResDateTime, Parser.FFormatSettings^) + '''';    // Probably wrong !!!
     rtBoolean  : if FValue.ResBoolean then Result := 'TRUE' else Result := 'FALSE';
-    rtFloat    : Result := FloatToStr(FValue.ResFloat, Parser.FFormatSettings);
+    rtFloat    : Result := FloatToStr(FValue.ResFloat, Parser.FFormatSettings^);
     rtError    : Result := GetErrorValueStr(FValue.ResError);
   end;
 end;
@@ -4039,7 +4105,7 @@ begin
   c := GetCol;
   if Has3dLink then begin
     case FParser.Dialect of
-      fdExcelA1:
+      fdExcelA1, fdLocalized:
         Result := Format('%s!%s', [GetQuotedSheetName, GetCellString(r, c, FFlags)]);
       fdExcelR1C1:
         Result := Format('%s!%s', [GetQuotedSheetName,
@@ -4053,7 +4119,7 @@ begin
     end
   end else
     case FParser.Dialect of
-      fdExcelA1:
+      fdExcelA1, fdLocalized:
         Result := GetCellString(GetRow, GetCol, FFlags);
       fdExcelR1C1:
         Result := GetCellString_R1C1(GetRow, GetCol, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
@@ -4308,7 +4374,7 @@ begin
 
   if F3dRange then
     case FParser.Dialect of
-      fdExcelA1:
+      fdExcelA1, fdLocalized:
         Result := GetCellRangeString(s1, s2, r1, c1, r2, c2, FFlags, true);
       fdExcelR1C1:
         Result := GetCellRangeString_R1C1(s1, s2, r1, c1, r2, c2, FFlags,
@@ -4322,7 +4388,7 @@ begin
     end
   else
     case FParser.Dialect of
-      fdExcelA1:
+      fdExcelA1, fdLocalized:
         Result := GetCellRangeString(r1, c1, r2, c2, FFlags, true);
       fdExcelR1C1:
         Result := GetCellRangeString_R1C1(r1, c1, r2, c2, FFlags,

@@ -229,7 +229,7 @@ type
   TsRPNFormula = array of TsFormulaElement;
 
   {@@ Formula dialect }
-  TsFormulaDialect = (fdExcelA1, fdExcelR1C1, fdOpenDocument);
+  TsFormulaDialect = (fdExcelA1, fdExcelR1C1, fdOpenDocument, fdLocalized);
 
   {@@ Describes the <b>type of content</b> in a cell of a TsWorksheet }
   TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String,

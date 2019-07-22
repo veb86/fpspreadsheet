@@ -1551,8 +1551,8 @@ begin
     proc := @fixInsertedCol;
 
   for formula in self do
-    if formula^.Parser.IterateNodes(proc, Pointer(PtrInt(AIndex)), InSheet) then
-      formula^.Text := formula^.Parser.Expression;
+    if formula^.Parser.IterateNodes(proc, {%H-}Pointer(PtrInt(AIndex)), InSheet) then
+      formula^.Text := formula^.Parser.Expression[fdExcelA1];
 end;
 
 // Formula enumerators (use in "for ... in" syntax)
