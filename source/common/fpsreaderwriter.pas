@@ -404,7 +404,7 @@ begin
         break;
       if sheet.FindNextCellInCol(0, lCol^.Col) <> nil then
         break;
-      if lCol^.Hidden then
+      if (lCol^.Options <> []) then
         break;
       sheet.RemoveCol(lCol^.Col);
       dec(c);
@@ -431,10 +431,11 @@ begin
     // to the DefaultColWidth ...
     sheet.WriteDefaultColWidth(w, FWorkbook.Units);
 
-    // ...and delete all column records with non-default format
+    // ...and delete all visible column records with default format
     for c := sheet.Cols.Count-1 downto 0 do begin
       lCol := PCol(sheet.Cols[c]);
-      if (lCol^.FormatIndex = 0) and (not lCol^.Hidden) then sheet.RemoveCol(lCol^.Col);
+      if (lCol^.FormatIndex = 0) and not (croHidden in lCol^.Options) then
+        sheet.RemoveCol(lCol^.Col);
     end;
   end;
 end;
@@ -481,7 +482,7 @@ begin
   // ... and delete all visible row records with default format.
   for r := sheet.Rows.Count-1 downto 0 do begin
     lRow := PRow(sheet.Rows[r]);
-    if (lRow^.FormatIndex = 0) and (not lRow^.Hidden) then
+    if (lRow^.FormatIndex = 0) and not (croHidden in lRow^.Options) then
       sheet.RemoveRow(lRow^.Row);
   end;
 end;

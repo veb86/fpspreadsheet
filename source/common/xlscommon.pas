@@ -1674,6 +1674,7 @@ var
   fmt: PsCellFormat;
   book: TsWorkbook;
   sheet: TsWorksheet;
+  col: PCol;
 begin
   book := FWorkbook as TsWorkbook;
   sheet := FWorksheet as TsWorksheet;
@@ -1689,24 +1690,36 @@ begin
   { Calculate width in workbook units }
   lCol.Width := book.ConvertUnits(w / 256, suChars, FWorkbook.Units);
   if SameValue(lCol.Width, sheet.ReadDefaultColWidth(FWorkbook.Units), EPS) then
-    lCol.ColWidthType := cwtDefault else
+    lCol.ColWidthType := cwtDefault
+  else
     lCol.ColWidthType := cwtCustom;
 
   { Read xf record index }
   xf := WordLEToN(AStream.ReadWord);
   idx := FCellFormatList.FindIndexOfID(xf);
-  if idx > -1 then begin
+  if idx > -1 then
+  begin
     fmt := FCellFormatList.Items[idx];
     lCol.FormatIndex := book.AddCellFormat(fmt^);
   end else
     lCol.FormatIndex := 0;
 
+  { Get current value of column options to keep already set PageBreak option }
+  col := TsWorksheet(FWorksheet).FindCol(c);
+  if col <> nil then
+    lCol.Options := col^.Options
+  else
+    lCol.Options := [];
+
   { Read column visibility }
   flags := WordLEToN(AStream.ReadWord);
-  lCol.Hidden := (flags and $0001 <> 0);
+  if flags and $0001 = $0001 then
+    Include(lCol.Options, croHidden)
+  else
+    Exclude(lCol.Options, croHidden);
 
   { Assign width and format to columns, but only if different from defaults }
-  if (lCol.FormatIndex > 0) or (lCol.ColWidthType = cwtCustom) or lCol.Hidden then
+  if (lCol.FormatIndex > 0) or (lCol.ColWidthType = cwtCustom) or (lCol.Options <> []) then
     for c := c1 to c2 do
       sheet.WriteColInfo(c, lCol);
 end;
@@ -2544,6 +2557,7 @@ type
 var
   rowrec: TRowRecord;
   lRow: TRow;
+  row: PRow;
   h: word;
   hpts: Single;
   hdef: Single;
@@ -2583,12 +2597,21 @@ begin
     // Find the format with ID xf
     lRow.FormatIndex := XFToFormatIndex(xf);
 
+  { Get current value of row Options to keep Pagebreak already written }
+  row := TsWorksheet(FWorksheet).FindRow(rowRec.RowIndex);
+  if row <> nil then
+    lRow.Options := row^.Options
+  else
+    lRow.Options := [];
   { Row visibility }
-  lRow.Hidden := rowRec.Flags and $00000020 <> 0;
+  if rowRec.Flags and $00000020 <> 0 then
+    Include(lRow.Options, croHidden)
+  else
+    Exclude(lRow.Options, croHidden);
 
   // We only create a row record for fpspreadsheet if the row has a
   // non-standard height (i.e. different from default row height) or format.
-  if isNonDefaultHeight or hasFormat or lRow.Hidden then
+  if isNonDefaultHeight or hasFormat or (lRow.Options <> []) then
     TsWorksheet(FWorksheet).WriteRowInfo(rowrec.RowIndex, lRow);
 end;
 
@@ -3988,7 +4011,7 @@ begin
     w := round(width * 256);
 
     optn := 0;
-    if ACol^.Hidden then optn := optn + $0001;
+    if (croHidden in ACol^.Options) then optn := optn + $0001;
     // outline, collapsed flags are not used
 
     rec.ColWidth := WordToLE(w);
@@ -4851,7 +4874,7 @@ begin
 
   { Option flags }
   dw := $00000100;  // bit 8 is always 1
-  if Assigned(ARow) and ARow^.Hidden then dw := dw or $00000020;
+  if Assigned(ARow) and (croHidden in ARow^.Options) then dw := dw or $00000020;
   if spaceabove then dw := dw or $10000000;
   if spacebelow then dw := dw or $20000000;
   if (ARow <> nil) and (ARow^.RowHeightType = rhtCustom) then  // Custom row height

@@ -1187,10 +1187,12 @@ begin
       end else
         lCol.FormatIndex := 0;
 
+      lCol.Options := [];
       s := GetAttrValue(colNode, 'hidden');
-      lCol.Hidden := StrIsTrue(s);
+      if StrIsTrue(s) then
+        Include(lCol.Options, croHidden);
 
-      if (lCol.ColWidthType = cwtCustom) or (lCol.FormatIndex > 0) or lCol.Hidden then
+      if (lCol.ColWidthType = cwtCustom) or (lCol.FormatIndex > 0) or (lCol.Options <> []) then
         for col := col1 to Min(col2, FLastCol) do
           sheet.WriteColInfo(col, lCol);
     end;
@@ -2015,11 +2017,13 @@ begin
   end;
 
   { Row visibility }
+  lRow.Options := [];
   s := GetAttrvalue(ANode, 'hidden');
-  lRow.Hidden := StrIsTrue(s);
+  if StrIsTrue(s) then
+    Include(lRow.Options, croHidden);
 
   { Write out }
-  if (lRow.RowHeightType <> rhtDefault) or (lRow.FormatIndex <> 0) or lRow.Hidden then
+  if (lRow.RowHeightType <> rhtDefault) or (lRow.FormatIndex <> 0) or (lRow.Options <> []) then
     (AWorksheet as TsWorksheet).WriteRowInfo(r, lRow);
 end;
 
@@ -3059,7 +3063,7 @@ begin
       end;
       if lCol^.FormatIndex > 0 then
         customStyle := Format('style="%d" ', [lCol^.FormatIndex]);
-      if lCol^.Hidden then hiddenStr := ' hidden="1"';
+      if (croHidden in lCol^.Options) then hiddenStr := ' hidden="1"';
     end;
     AppendToStream(AStream, Format(
       '<col min="%d" max="%d" width="%.2f" %s%s%s />',
@@ -3514,7 +3518,7 @@ begin
             s := s + ' customHeight="1"';
           if row^.FormatIndex > 0 then
             s := s + Format(' s="%d" customFormat="1"', [row^.FormatIndex]);
-          if row^.Hidden then
+          if (croHidden in row^.Options) then
             s := s + ' hidden="1"';
         end;
         AppendToStream(AStream, Format(
@@ -3581,7 +3585,7 @@ begin
           s := s + ' customHeight="1"';
         if row^.FormatIndex > 0 then
           s := s + Format(' s="%d" customFormat="1"', [row^.FormatIndex]);
-        if row^.Hidden then
+        if (croHidden in row^.Options) then
           s := s + ' hidden="1"';
       end;
       AppendToStream(AStream, Format(

@@ -6270,7 +6270,7 @@ begin
   GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
 
   // Row hidden?
-  if (round(h) = 0) or (Assigned(row) and row^.Hidden) then
+  if (round(h) = 0) or (Assigned(row) and (croHidden in row^.Options)) then
     rowHiddenStr := ' table:visibility="collapse"'
   else
     rowHiddenStr := '';
@@ -6412,7 +6412,7 @@ begin
   // Determine how often this row is repeated
   row := sheet.FindRow(ARowIndex);
 
-  isHidden1 := (round(h) = 0) or ((row <> nil) and row^.Hidden);
+  isHidden1 := (round(h) = 0) or ((row <> nil) and (croHidden in row^.Options));
   rowHiddenStr := IfThen(isHidden1, ' table:visibility="collapse"', '');
 
   // Rows with format are not repeated - too complicated...
@@ -6428,7 +6428,7 @@ begin
         break;
       row := sheet.FindRow(r);
       isHidden := (row <> nil) and
-        (row^.Hidden or ((row^.RowHeightType=rhtCustom) and (row^.Height = 0)));
+        ((croHidden in row^.Options) or ((row^.RowHeightType=rhtCustom) and (row^.Height = 0)));
       if ((row <> nil) and (row^.FormatIndex > 0)) or (isHidden <> isHidden1) then
         break;
       h1 := sheet.GetRowHeight(r, FWorkbook.Units);

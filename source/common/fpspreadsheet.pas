@@ -489,6 +489,11 @@ type
     procedure WriteColWidth(ACol: Cardinal; AWidth: Single;
       AColWidthType: TsColWidthType = cwtCustom); overload; deprecated 'Use version with parameter AUnits';
 
+    procedure AddPageBreakToCol(ACol: Cardinal);
+    procedure AddPageBreakToRow(ARow: Cardinal);
+    procedure RemovePageBreakFromCol(ACol: Cardinal);
+    procedure RemovePageBreakFromRow(ARow: Cardinal);
+
     // Sorting
     function DefaultCompareCells(ACell1, ACell2: PCell; ASortKey: TsSortKey): Integer;
     procedure Sort(const ASortParams: TsSortParams;
@@ -7742,7 +7747,7 @@ var
   c: PCol;
 begin
   c := FindCol(ACol);
-  Result := Assigned(c) and c^.Hidden;
+  Result := Assigned(c) and (croHidden in c^.Options);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7753,7 +7758,7 @@ var
   r: PRow;
 begin
   r := FindRow(ARow);
-  Result := Assigned(r) and r^.Hidden;
+  Result := Assigned(r) and (croHidden in r^.Options);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -7764,8 +7769,8 @@ var
   c: PCol;
 begin
   c := GetCol(ACol);
-  if not c^.Hidden then begin
-    c^.Hidden := true;
+  if not (croHidden in c^.Options) then begin
+    Include(c^.Options, croHidden);
     ChangedCell(0, ACol);
   end;
 end;
@@ -7778,8 +7783,8 @@ var
   r: PRow;
 begin
   r := GetRow(ARow);
-  if not r^.Hidden then begin
-    r^.Hidden := true;
+  if not (croHidden in r^.Options) then begin
+    Include(r^.Options, croHidden);
     ChangedCell(ARow, 0);
   end;
 end;
@@ -7792,8 +7797,8 @@ var
   c: PCol;
 begin
   c := FindCol(ACol);
-  if Assigned(c) and c^.Hidden then begin
-    c^.Hidden := false;
+  if Assigned(c) and (croHidden in c^.Options) then begin
+    Exclude(c^.Options, croHidden);
     ChangedCell(0, ACol);
   end;
 end;
@@ -7806,8 +7811,8 @@ var
   r: PRow;
 begin
   r := FindRow(ARow);
-  if Assigned(r) and r^.Hidden then begin
-    r^.Hidden := false;
+  if Assigned(r) and (croHidden in r^.Options) then begin
+    Exclude(r^.Options, croHidden);
     ChangedCell(ARow, 0);
   end;
 end;
@@ -8225,7 +8230,7 @@ begin
   lRow^.Height := AData.Height;
   lRow^.RowHeightType := AData.RowHeightType;
   lRow^.FormatIndex := AData.FormatIndex;
-  lRow^.Hidden := AData.Hidden;
+  lRow^.Options := AData.Options;
   ChangedRow(ARow);
 end;
 
@@ -8302,7 +8307,7 @@ begin
   lCol^.Width := AData.Width;
   lCol^.ColWidthType := AData.ColWidthType;
   lCol^.FormatIndex := AData.FormatIndex;
-  lCol^.Hidden := AData.Hidden;
+  lCol^.Options := AData.Options;
   ChangedCol(ACol);
 end;
 
@@ -8384,6 +8389,69 @@ end;
 procedure TsWorksheet.WriteDefaultRowHeight(AValue: Single; AUnits: TsSizeUnits);
 begin
   FDefaultRowHeight := FWorkbook.ConvertUnits(AValue, AUnits, FWorkbook.Units);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Sets the PageBreak flag for the column record with the specified column index.
+  This means that, when printed, a page break will occur before this column.
+  Note that FPS currently does not support printing by itself.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.AddPageBreakToCol(ACol: Cardinal);
+var
+  lCol: PCol;
+begin
+  lCol := AddCol(ACol);
+  Include(lCol^.Options, croPageBreak);
+  ChangedCol(ACol);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Sets the PageBreak flag for the row record with the specified row index.
+  This means that, when printed, a page break will occur before this row.
+  Note that FPS currently does not support printing by itself.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.AddPageBreakToRow(ARow: Cardinal);
+var
+  lRow: PRow;
+begin
+  lRow := AddRow(ARow);
+  Include(lRow^.Options, croPageBreak);
+  ChangedRow(ARow);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the PageBreak flag for the column record with the specified column
+  index.
+  This means that, during printing, page break handling of this column will be
+  automatic.
+  Note that FPS currently does not support printing by itself.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemovePageBreakFromCol(ACol: Cardinal);
+var
+  lCol: PCol;
+begin
+  lCol := FindCol(ACol);
+  if lCol <> nil then begin
+    Exclude(lCol^.Options, croPageBreak);
+    ChangedCol(ACol);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the PageBreak flag for the row record with the specified row index.
+  This means that, during printing, page break handling of this row will be
+  automatic.
+  Note that FPS currently does not support printing by itself.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemovePageBreakFromRow(ARow: Cardinal);
+var
+  lRow: PRow;
+begin
+  lRow := FindRow(ARow);
+  if lRow <> nil then begin
+    Exclude(lRow^.Options, croPageBreak);
+    ChangedRow(ARow);
+  end;
 end;
 
 

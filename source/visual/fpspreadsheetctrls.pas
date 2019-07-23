@@ -3792,7 +3792,10 @@ begin
     ]));
     UpdateFormatProperties(lCol^.FormatIndex, AStrings);
     AStrings.Add(Format('Hidden=%s', [
-      BoolToStr(lCol^.Hidden, true)
+      BoolToStr(croHidden in lCol^.Options, true)
+    ]));
+    AStrings.Add(Format('PageBreak=%s', [
+      BoolToStr(croPageBreak in lCol^.Options, true)
     ]));
   end else
   begin
@@ -3837,7 +3840,10 @@ begin
     ]));
     UpdateFormatProperties(lRow^.FormatIndex, AStrings);
     AStrings.Add(Format('Hidden=%s', [
-      BoolToStr(lRow^.Hidden, true)
+      BoolToStr(croHidden in lRow^.Options, true)
+    ]));
+    AStrings.Add(Format('PageBreak=%s', [
+      BoolToStr(croPageBreak in lRow^.Options, true)
     ]));
   end else
   begin

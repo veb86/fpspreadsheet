@@ -5753,7 +5753,7 @@ begin
   if Worksheet <> nil then
   begin
     lCol := Worksheet.FindCol(ACol - FHeaderCount);
-    if (lCol <> nil) and lCol^.Hidden then
+    if (lCol <> nil) and (croHidden in lCol^.Options) then
       w := 0
     else begin
       if (lCol <> nil) and (lCol^.ColWidthType = cwtCustom) then
@@ -5809,8 +5809,9 @@ begin
   begin
     sr := ARow - FHeaderCount;    // worksheet row index
     lRow := Worksheet.FindRow(sr);
-    if (lRow <> nil) then begin
-      if lRow^.Hidden then
+    if (lRow <> nil) then
+    begin
+      if (croHidden in lRow^.Options) then
         h := 0
       else begin
         case lRow^.RowHeightType of
