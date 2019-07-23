@@ -491,6 +491,8 @@ type
 
     procedure AddPageBreakToCol(ACol: Cardinal);
     procedure AddPageBreakToRow(ARow: Cardinal);
+    function IsPageBreakCol(ACol: Cardinal): Boolean;
+    function IsPageBreakRow(ARow: Cardinal): Boolean;
     procedure RemovePageBreakFromCol(ACol: Cardinal);
     procedure RemovePageBreakFromRow(ARow: Cardinal);
 
@@ -8400,7 +8402,7 @@ procedure TsWorksheet.AddPageBreakToCol(ACol: Cardinal);
 var
   lCol: PCol;
 begin
-  lCol := AddCol(ACol);
+  lCol := GetCol(ACol);
   Include(lCol^.Options, croPageBreak);
   ChangedCol(ACol);
 end;
@@ -8414,9 +8416,33 @@ procedure TsWorksheet.AddPageBreakToRow(ARow: Cardinal);
 var
   lRow: PRow;
 begin
-  lRow := AddRow(ARow);
+  lRow := GetRow(ARow);
   Include(lRow^.Options, croPageBreak);
   ChangedRow(ARow);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns true if the column with the specified index is the first one after a
+  manual page break.
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsPageBreakCol(ACol: Cardinal): Boolean;
+var
+  lCol: PCol;
+begin
+  lCol := FindCol(ACol);
+  Result := Assigned(lCol) and (croPageBreak in lCol^.Options);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns true if the row with the specified index is the first one after a
+  manual page break.
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsPageBreakRow(ARow: Cardinal): Boolean;
+var
+  lRow: PRow;
+begin
+  lRow := FindRow(ARow);
+  Result := Assigned(lRow) and (croPageBreak in lRow^.Options);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8431,8 +8457,11 @@ var
   lCol: PCol;
 begin
   lCol := FindCol(ACol);
-  if lCol <> nil then begin
+  if Assigned(lCol) then begin
     Exclude(lCol^.Options, croPageBreak);
+    // Free and delete node when the col record only has default values now.
+    if (lCol^.Options = []) and (lCol^.FormatIndex = 0) and (lCol^.ColWidthType = cwtDefault) then
+      RemoveCol(ACol);
     ChangedCol(ACol);
   end;
 end;
@@ -8448,8 +8477,11 @@ var
   lRow: PRow;
 begin
   lRow := FindRow(ARow);
-  if lRow <> nil then begin
+  if Assigned(lRow) then begin
     Exclude(lRow^.Options, croPageBreak);
+    // Free and delete node if the row record only has default values now.
+    if (lRow^.Options = []) and (lRow^.FormatIndex = 0) and (lRow^.RowHeightType = rhtDefault) then
+      RemoveRow(ARow);
     ChangedRow(ARow);
   end;
 end;

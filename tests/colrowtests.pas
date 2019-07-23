@@ -52,10 +52,17 @@ type
     // Set up expected values:
     procedure SetUp; override;
     procedure TearDown; override;
+
     procedure TestWriteRead_InsDelColRow(ATestIndex: Integer;
       AFormat: TsSpreadsheetFormat);
     procedure TestWriteRead_HideShowColRow(IsCol: Boolean;
       IsHide: boolean; IsDefaultColRow: Boolean; AFormat: TsSpreadsheetFormat);
+
+    procedure TestWriteRead_AddPageBreak_Col(Hidden: Boolean; AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_AddPageBreak_Row(Hidden: Boolean; AFormat: TsSpreadsheetFormat);
+
+    procedure TestWriteRead_RemovePageBreak_Col(Hidden: Boolean; AFormat: TsSpreadsheetFormat);
+    procedure TestWriteRead_RemovePageBreak_Row(Hidden: Boolean; AFormat: TsSpreadsheetFormat);
 
   published
 
@@ -165,6 +172,7 @@ type
     procedure TestWriteRead_InsDelColRow_33_OOXML;    // row through merged block
     procedure TestWriteRead_InsDelColRow_34_OOXML;    // row after merged block
 
+
     // *** OpenDocument tests ***
 
     // Writes out simple cell layout and inserts columns
@@ -273,6 +281,18 @@ type
     procedure TestWriteRead_ShowRow_OOXML;
     procedure TestWriteRead_ShowRow_XML;
     procedure TestWriteRead_ShowRow_ODS;
+
+    // Add a page break column
+    procedure TestWriteRead_AddPageBreak_Col_OOXML;
+    procedure TestWriteRead_AddPageBreak_ColHidden_OOXML;
+    procedure TestWriteRead_AddPageBreak_Row_OOXML;
+    procedure TestWriteRead_AddPageBreak_RowHidden_OOXML;
+
+    // Remove a page break column
+    procedure TestWriteRead_RemovePageBreak_Col_OOXML;
+    procedure TestWriteRead_RemovePageBreak_ColHidden_OOXML;
+    procedure TestWriteRead_RemovePageBreak_Row_OOXML;
+    procedure TestWriteRead_RemovePageBreak_RowHidden_OOXML;
 
   end;
 
@@ -2090,6 +2110,299 @@ end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_ShowRow_ODS;
 begin
   TestWriteRead_HideShowColRow(false, false, false, sfOpenDocument);
+end;
+
+
+{ *** Add/remove page breaks *** }
+
+{ Add page break to column
+  - Hidden: set the Hidden flag in the options to test whether it is damaged }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Col(
+  Hidden: Boolean; AFormat: TsSpreadsheetFormat);
+const
+  COL_INDEX = 5;
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  tempFile: String;
+  col: PCol;
+begin
+  TempFile := GetTempFileName;
+
+  // Create dummy workbook with forced page break and save to temp file
+  book := TsWorkbook.Create;
+  try
+    sheet := book.AddWorksheet('Test');
+
+    sheet.AddPageBreakToCol(COL_INDEX);
+    if Hidden then
+      sheet.HideCol(COL_INDEX);
+    col := sheet.FindCol(COL_INDEX);
+    CheckEquals(true, col <> nil,
+      'Col record not found, col ' + IntToStr(COL_INDEX));
+    CheckEquals(true, croPageBreak in col^.Options,
+      'Unsaved PageBreak flag mismatch, col ' + IntToStr(COL_INDEX));
+    if Hidden then
+      CheckEquals(true, croHidden in col^.Options,
+       'Unsaved Hidden flag mismatch, col ' + IntToStr(COL_INDEX));
+
+    book.WriteToFile(tempFile, AFormat, true);
+  finally
+    book.Free;
+  end;
+
+  // Read test file
+  book := TsWorkbook.Create;
+  try
+    book.ReadFromFile(tempFile, AFormat);
+    sheet := book.GetFirstWorksheet;
+
+    col := sheet.FindCol(COL_INDEX);
+    CheckEquals(true, col <> nil,
+      'Saved col record not found, col ' + IntToStr(COL_INDEX));
+    CheckEquals(true, croPageBreak in col^.Options,
+      'Saved PageBreak flag mismatch, col ' + IntToStr(COL_INDEX));
+  finally
+    book.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+{ Add page break to row
+  - Hidden: set the Hidden flag in the options to test whether it is damaged }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Row(
+  Hidden: Boolean; AFormat: TsSpreadsheetFormat);
+const
+  ROW_INDEX = 5;
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  tempFile: String;
+  row: PRow;
+begin
+  TempFile := GetTempFileName;
+
+  // Create dummy workbook with forced page break and save to temp file
+  book := TsWorkbook.Create;
+  try
+    sheet := book.AddWorksheet('Test');
+
+    sheet.AddPageBreakToRow(ROW_INDEX);
+    if Hidden then
+      sheet.HideRow(ROW_INDEX);
+    row := sheet.FindRow(ROW_INDEX);
+    CheckEquals(true, row <> nil,
+      'Row record not found, row ' + IntToStr(ROW_INDEX));
+    CheckEquals(true, croPageBreak in row^.Options,
+      'Unsaved PageBreak flag mismatch, row ' + IntToStr(ROW_INDEX));
+    if Hidden then
+      CheckEquals(true, croHidden in row^.Options,
+       'Unsaved Hidden flag mismatch, row ' + IntToStr(ROW_INDEX));
+
+    book.WriteToFile(tempFile, AFormat, true);
+  finally
+    book.Free;
+  end;
+
+  // Read test file
+  book := TsWorkbook.Create;
+  try
+    book.ReadFromFile(tempFile, AFormat);
+    sheet := book.GetFirstWorksheet;
+
+    row := sheet.FindRow(ROW_INDEX);
+    CheckEquals(true, row <> nil,
+      'Saved row record not found, row ' + IntToStr(ROW_INDEX));
+    CheckEquals(true, croPageBreak in row^.Options,
+      'Saved PageBreak flag mismatch, row ' + IntToStr(ROW_INDEX));
+  finally
+    book.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Col_OOXML;
+begin
+  TestWriteRead_AddPageBreak_Col(false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Row_OOXML;
+begin
+  TestWriteRead_AddPageBreak_Row(false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_ColHidden_OOXML;
+begin
+  TestWriteRead_AddPageBreak_Col(true, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_RowHidden_OOXML;
+begin
+  TestWriteRead_AddPageBreak_Row(true, sfOOXML);
+end;
+
+
+{ Remove page break
+  - Hidden: set the Hidden flag in the options to test whether it is damaged
+    In the test, the entire row/col record is removed when Hidden is false. }
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Col(
+  Hidden: Boolean;  AFormat: TsSpreadsheetFormat);
+const
+  COL_INDEX = 5;
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  tempFile: String;
+  col: PCol;
+begin
+  TempFile := GetTempFileName;
+
+  // Create dummy workbook with forced page break and save to temp file
+  book := TsWorkbook.Create;
+  try
+    sheet := book.AddWorksheet('Test');
+    sheet.AddPageBreakToCol(COL_INDEX);
+
+    if Hidden then
+      sheet.HideCol(COL_INDEX);
+    col := sheet.FindCol(COL_INDEX);
+    CheckEquals(true, col <> nil,
+      'Col record not found, col ' + IntToStr(COL_INDEX));
+    CheckEquals(true, croPageBreak in col^.Options,
+      'Unsaved PageBreak flag mismatch, col ' + IntToStr(COL_INDEX));
+    if Hidden then
+      CheckEquals(true, croHidden in col^.Options,
+        'Unsaved Hidden flag mismatch, col ' + IntToStr(COL_INDEX));
+
+    sheet.RemovePageBreakFromCol(COL_INDEX);
+
+    col := sheet.FindCol(COL_INDEX);
+    if Hidden then begin
+      CheckEquals(true, col <> nil,
+        'Col record not found, col ' + IntToStr(COL_INDEX));
+      CheckEquals(false, croPageBreak in col^.Options,
+        'Unsaved PageBreak flag mismatch, col ' + IntToStr(COL_INDEX));
+      CheckEquals(true, croHidden in col^.Options,
+        'Unsaved Hidden flag mismatch, col ' + IntToStr(COL_INDEX));
+    end else begin
+      CheckEquals(true, col = nil,
+        'Unsaved col record still found, col ' + IntToStr(COL_INDEX));
+    end;
+
+    book.WriteToFile(tempFile, AFormat, true);
+  finally
+    book.Free;
+  end;
+
+  // Read test file
+  book := TsWorkbook.Create;
+  try
+    book.ReadFromFile(tempFile, AFormat);
+    sheet := book.GetFirstWorksheet;
+    col := sheet.FindCol(COL_INDEX);
+
+    if Hidden then begin
+      CheckEquals(true, col <> nil,
+        'Col record not found, col ' + IntToStr(COL_INDEX));
+      CheckEquals(false, croPageBreak in col^.Options,
+        'Saved PageBreak flag mismatch, col ' + IntToStr(COL_INDEX));
+      CheckEquals(true, croHidden in col^.Options,
+        'Saved Hidden flag mismatch, col ' + IntToStr(COL_INDEX));
+    end else begin
+      CheckEquals(true, col = nil,
+        'Saved col record still found, col ' + IntToStr(COL_INDEX));
+    end;
+  finally
+    book.Free;
+    DeleteFile(tempFile);
+  end;
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Row(
+  Hidden: Boolean;  AFormat: TsSpreadsheetFormat);
+const
+  ROW_INDEX = 5;
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  tempFile: String;
+  row: PRow;
+begin
+  TempFile := GetTempFileName;
+
+  // Create dummy workbook with forced page break and save to temp file
+  book := TsWorkbook.Create;
+  try
+    sheet := book.AddWorksheet('Test');
+    sheet.AddPageBreakToRow(ROW_INDEX);
+
+    if Hidden then
+      sheet.HideRow(ROW_INDEX);
+    row := sheet.FindRow(ROW_INDEX);
+    CheckEquals(true, row <> nil,
+      'Row record not found, row ' + IntToStr(ROW_INDEX));
+    CheckEquals(true, croPageBreak in row^.Options,
+      'Unsaved PageBreak flag mismatch, row ' + IntToStr(ROW_INDEX));
+    if Hidden then
+      CheckEquals(true, croHidden in row^.Options,
+        'Unsaved Hidden flag mismatch, row ' + IntToStr(ROW_INDEX));
+
+    sheet.RemovePageBreakFromRow(ROW_INDEX);
+
+    row := sheet.FindRow(ROW_INDEX);
+    if Hidden then begin
+      CheckEquals(true, row <> nil,
+        'Row record not found, row ' + IntToStr(ROW_INDEX));
+      CheckEquals(false, croPageBreak in row^.Options,
+        'Unsaved PageBreak flag mismatch, row ' + IntToStr(ROW_INDEX));
+      CheckEquals(true, croHidden in row^.Options,
+        'Unsaved Hidden flag mismatch, row ' + IntToStr(ROW_INDEX));
+    end else begin
+      CheckEquals(true, row = nil,
+        'Unsaved row record still found, row ' + IntToStr(ROW_INDEX));
+    end;
+
+    book.WriteToFile(tempFile, AFormat, true);
+  finally
+    book.Free;
+  end;
+
+  // Read test file
+  book := TsWorkbook.Create;
+  try
+    book.ReadFromFile(tempFile, AFormat);
+    sheet := book.GetFirstWorksheet;
+    row := sheet.FindRow(ROW_INDEX);
+
+    if Hidden then begin
+      CheckEquals(true, row <> nil,
+        'Row record not found, col ' + IntToStr(ROW_INDEX));
+      CheckEquals(false, croPageBreak in row^.Options,
+        'Saved PageBreak flag mismatch, row ' + IntToStr(ROW_INDEX));
+      CheckEquals(true, croHidden in row^.Options,
+        'Saved Hidden flag mismatch, row ' + IntToStr(ROW_INDEX));
+    end else begin
+      CheckEquals(true, row = nil,
+        'Saved row record still found, row ' + IntToStr(ROW_INDEX));
+    end;
+  finally
+    book.Free;
+    DeleteFile(tempFile);
+  end;
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Col_OOXML;
+begin
+  TestWriteRead_RemovePageBreak_Col(false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Row_OOXML;
+begin
+  TestWriteRead_RemovePageBreak_Row(false, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_ColHidden_OOXML;
+begin
+  TestWriteRead_RemovePageBreak_Col(true, sfOOXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_RowHidden_OOXML;
+begin
+  TestWriteRead_RemovePageBreak_Row(true, sfOOXML);
 end;
 
 

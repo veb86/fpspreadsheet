@@ -91,6 +91,7 @@ type
     procedure WriteColumns(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteNames(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WritePageBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteRows(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
     procedure WriteStyles(AStream: TStream);
@@ -2187,6 +2188,66 @@ begin
   );
 end;
 
+procedure TsSpreadExcelXMLWriter.WritePageBreaks(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+var
+  i: Integer;
+  nc, nr: Integer;
+  sheet: TsWorksheet absolute AWorksheet;
+  s: String;
+  col: PCol;
+  row: PRow;
+begin
+  nc := 0;
+  for i := 0 to sheet.Cols.Count - 1 do
+    if (croPageBreak in PCol(sheet.Cols[i])^.Options) then inc(nc);
+
+  nr := 0;
+  for i:= 0 to sheet.Rows.Count - 1 do
+    if (croPageBreak in PRow(sheet.Rows[i])^.Options) then inc(nr);
+
+  if (nc = 0) and (nr = 0) then
+    exit;
+
+  s := INDENT2 +
+    '<PageBreaks xmlns="urn:schemas-microsoft-com:office:excel">' + LF;
+
+  if nc > 0 then begin
+    s := s + INDENT3 +
+      '<ColBreaks>' + LF;
+    for i := 0 to sheet.Cols.Count - 1 do begin
+      col := PCol(sheet.Cols[i]);
+      if (croPageBreak in col^.Options) then
+        s := s + INDENT4 +
+          '<ColBreak>' + LF + INDENT5 +
+            '<Column>' + IntToStr(col^.Col) + '</Column>' + LF + INDENT4 +
+          '</ColBreak>' + LF;
+    end;
+    s := s + INDENT3 +
+        '</ColBreaks>' + LF;
+  end;
+
+  if nr > 0 then begin
+    s := s + INDENT3 +
+      '<RowBreaks>' + LF;
+    for i := 0 to sheet.Rows.Count - 1 do begin
+      row := PRow(sheet.Rows[i]);
+      if (croPageBreak in row^.Options) then
+        s := s + INDENT4 +
+          '<RowBreak>' + LF + INDENT5 +
+            '<Row>' + IntToStr(row^.Row) + '</Row>' + LF + INDENT4 +
+          '</RowBreak>' + LF;
+    end;
+    s := s + INDENT3 +
+      '</RowBreaks>' + LF;
+  end;
+
+  s := s + INDENT2 +
+    '</PageBreaks>' + LF;
+
+  AppendToStream(AStream, s);
+end;
+
 procedure TsSpreadExcelXMLWriter.WriteRows(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
@@ -2503,6 +2564,7 @@ begin
   WriteNames(AStream, AWorksheet);
   WriteTable(AStream, AWorksheet);
   WriteWorksheetOptions(AStream, AWorksheet);
+  WritePageBreaks(AStream, AWorksheet);
   AppendToStream(AStream,
     '  </Worksheet>' + LF
   );

@@ -69,6 +69,7 @@ type
     procedure ReadBorders(ANode: TDOMNode);
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadCellXfs(ANode: TDOMNode);
+    procedure ReadColRowBreaks(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     function  ReadColor(ANode: TDOMNode): TsColor;
     procedure ReadCols(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadComments(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
@@ -135,6 +136,7 @@ type
     function  PrepareFormula(const AFormula: String): String;
     procedure ResetStreams;
     procedure WriteBorderList(AStream: TStream);
+    procedure WriteColBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteCols(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteComments(AWorksheet: TsBasicWorksheet);
     procedure WriteDefinedNames(AStream: TStream);
@@ -153,6 +155,7 @@ type
     procedure WritePageMargins(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WritePageSetup(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WritePrintOptions(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteRowBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteSheetData(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteSheetFormatPr(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteSheetPr(AStream: TStream; AWorksheet: TsBasicWorksheet);
@@ -1046,6 +1049,43 @@ begin
       if fmt.Protection <> DEFAULT_CELL_PROTECTION then
         Include(fmt.UsedFormattingFields, uffProtection);
       FCellFormatList.Add(fmt);
+    end;
+    node := node.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadColRowBreaks(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  s: String;
+  sheet: TsWorksheet absolute AWorksheet;
+  node: TDOMNode;
+  nodeName: String;
+  n: Integer;
+  isCol: Boolean;
+begin
+  if (ANode = nil) or (AWorksheet = nil) then     // just to make sure...
+    exit;
+
+  nodeName := ANode.NodeName;
+  isCol := nodeName = 'colBreaks';
+  node := ANode.FirstChild;
+  while node <> nil do
+  begin
+    nodeName := node.NodeName;
+    if nodeName = 'brk' then begin
+      s := GetAttrValue(node, 'id');
+      if (s <> '') and TryStrToInt(s, n) then
+      begin
+        s := GetAttrValue(node, 'man');
+        if s = '1' then
+        begin
+          if isCol then
+            sheet.AddPageBreakToCol(n)
+          else
+            sheet.AddPageBreakToRow(n);
+        end;
+      end;
     end;
     node := node.NextSibling;
   end;
@@ -2678,6 +2718,8 @@ begin
       ReadPrintOptions(Doc_FindNode('printOptions'), FWorksheet);
       ReadPageMargins(Doc_FindNode('pageMargins'), FWorksheet);
       ReadPageSetup(Doc_FindNode('pageSetup'), FWorksheet);
+      ReadColRowBreaks(Doc_FindNode('rowBreaks'), FWorksheet);
+      ReadColRowBreaks(Doc_FindNode('colBreaks'), FWorksheet);
       ReadHeaderFooter(Doc_FindNode('headerFooter'), FWorksheet);
 
       FreeAndNil(Doc);
@@ -3032,6 +3074,28 @@ begin
 
   AppendToStream(AStream,
     '</borders>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteColBreaks(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+var
+  sheet: TsWorksheet absolute AWorksheet;
+  n: Integer;
+  i: Integer;
+begin
+  n := 0;
+  for i := 0 to sheet.Cols.Count - 1 do
+    if (croPageBreak in PCol(sheet.Cols[i])^.Options) then inc(n);
+  if n = 0 then
+    exit;
+
+  AppendToStream(AStream, Format(
+    '<colBreaks count="%d" manualBreakCount="%d">', [n, n]));
+    for i := 0 to sheet.Cols.Count - 1 do
+      AppendToStream(AStream, Format(
+        '<brk id="%d" max="1048575" man="1" />', [PCol(sheet.Cols[i])^.Col]));
+  AppendToStream(AStream,
+    '</colBreaks>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteCols(AStream: TStream;
@@ -3478,6 +3542,27 @@ begin
   if s <> '' then
     AppendToStream(AStream,
       '<printOptions' + s + ' />');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteRowBreaks(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+var
+  i, n: Integer;
+  sheet: TsWorksheet absolute AWorksheet;
+begin
+  n := 0;
+  for i := 0 to sheet.Rows.Count-1 do
+    if (croPageBreak in PRow(sheet.Rows[i])^.Options) then inc(n);
+  if n = 0 then
+    exit;
+
+  AppendToStream(AStream, Format(
+    '<rowBreaks count="%d" manualBreakCount="%d">', [n, n]));
+    for i := 0 to sheet.Rows.Count - 1 do
+      AppendToStream(AStream, Format(
+        '<brk id="%d" max="16383" man="1" />', [PRow(sheet.Rows[i])^.Row]));
+  AppendToStream(AStream,
+    '</rowBreaks>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteSheetData(AStream: TStream;
@@ -5078,6 +5163,8 @@ begin
   WritePrintOptions(FSSheets[FCurSheetNum], AWorksheet);
   WritePageMargins(FSSheets[FCurSheetNum], AWorksheet);
   WritePageSetup(FSSheets[FCurSheetNum], AWorksheet);
+  WriteRowBreaks(FSSheets[FCurSheetNum], AWorksheet);
+  WriteColBreaks(FSSheets[FCurSheetNum], AWorksheet);
   WriteHeaderFooter(FSSheets[FCurSheetNum], AWorksheet);
 
   { This item is required for all embedded images.
