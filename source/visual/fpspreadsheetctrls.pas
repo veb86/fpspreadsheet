@@ -3852,7 +3852,6 @@ begin
       Worksheet.ReadDefaultRowHeight(Workbook.Units), unitStr,
       Worksheet.ReadDefaultRowHeight(suPoints)
     ]));
-  //  UpdateFormatProperties(-1, AStrings);
   end;
 end;
 

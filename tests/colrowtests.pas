@@ -288,12 +288,21 @@ type
     procedure TestWriteRead_AddPageBreak_Row_OOXML;
     procedure TestWriteRead_AddPageBreak_RowHidden_OOXML;
 
+    procedure TestWriteRead_AddPageBreak_Col_XML;
+    procedure TestWriteRead_AddPageBreak_ColHidden_XML;
+    procedure TestWriteRead_AddPageBreak_Row_XML;
+    procedure TestWriteRead_AddPageBreak_RowHidden_XML;
+
     // Remove a page break column
     procedure TestWriteRead_RemovePageBreak_Col_OOXML;
     procedure TestWriteRead_RemovePageBreak_ColHidden_OOXML;
     procedure TestWriteRead_RemovePageBreak_Row_OOXML;
     procedure TestWriteRead_RemovePageBreak_RowHidden_OOXML;
 
+    procedure TestWriteRead_RemovePageBreak_Col_XML;
+    procedure TestWriteRead_RemovePageBreak_ColHidden_XML;
+    procedure TestWriteRead_RemovePageBreak_Row_XML;
+    procedure TestWriteRead_RemovePageBreak_RowHidden_XML;
   end;
 
 implementation
@@ -2238,6 +2247,23 @@ begin
   TestWriteRead_AddPageBreak_Row(true, sfOOXML);
 end;
 
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Col_XML;
+begin
+  TestWriteRead_AddPageBreak_Col(false, sfExcelXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Row_XML;
+begin
+  TestWriteRead_AddPageBreak_Row(false, sfExcelXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_ColHidden_XML;
+begin
+  TestWriteRead_AddPageBreak_Col(true, sfExcelXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_RowHidden_XML;
+begin
+  TestWriteRead_AddPageBreak_Row(true, sfExcelXML);
+end;
+
 
 { Remove page break
   - Hidden: set the Hidden flag in the options to test whether it is damaged
@@ -2405,6 +2431,22 @@ begin
   TestWriteRead_RemovePageBreak_Row(true, sfOOXML);
 end;
 
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Col_XML;
+begin
+  TestWriteRead_RemovePageBreak_Col(false, sfExcelXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Row_XML;
+begin
+  TestWriteRead_RemovePageBreak_Row(false, sfExcelXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_ColHidden_XML;
+begin
+  TestWriteRead_RemovePageBreak_Col(true, sfExcelXML);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_RowHidden_XML;
+begin
+  TestWriteRead_RemovePageBreak_Row(true, sfExcelXML);
+end;
 
 initialization
   RegisterTest(TSpreadWriteRead_ColRow_Tests);

@@ -49,6 +49,8 @@ type
     procedure ReadInterior(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadNames(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadNumberFormat(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadPageBreak(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadPageBreaks(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadPageSetup(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadPrint(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow: Integer);
@@ -931,6 +933,72 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads a "Worksheet / PageBreaks / RowBreaks / RowBreak" node
+  or a "Worksheet / PageBreaks / ColBreaks / ColBreak" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadPageBreak(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  sheet: TsWorksheet absolute AWorksheet;
+  node: TDOMNode;
+  nodeName: String;
+  s: String;
+  n: Integer;
+begin
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'Row' then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToInt(s, n) then
+        sheet.AddPageBreakToRow(n);
+    end else
+    if nodeName = 'Column' then begin
+      s := ANode.TextContent;
+      if (s <> '') and TryStrToInt(s, n) then
+        sheet.AddPageBreakToCol(n);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Wrksheet / PageBreaks" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadPageBreaks(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  sheet: TsWorksheet absolute AWorksheet;
+  nodeName: String;
+  node: TDOMNode;
+  child: TDOMNode;
+  s: String;
+begin
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'RowBreaks' then begin
+      node := ANode.FirstChild;
+      while node <> nil do begin
+        nodeName := node.NodeName;
+        if nodeName = 'RowBreak' then
+          ReadPageBreak(node.FirstChild, AWorksheet);
+        node := node.NextSibling;
+      end;
+    end else
+    if nodeName = 'ColBreaks' then begin
+      node := ANode.FirstChild;
+      while node <> nil do begin
+        nodeName := node.NodeName;
+        if nodeName = 'ColBreak' then
+          ReadPageBreak(node.FirstChild, AWorksheet);
+        node := node.NextSibling;
+      end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the "WorksheetOptions/PageSetup" node
 -------------------------------------------------------------------------------}
 procedure TsSpreadExcelXMLReader.ReadPageSetup(ANode: TDOMNode;
@@ -1163,6 +1231,11 @@ begin
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
     if nodeName = 'Column' then begin
+      // Default column width
+      s := GetAttrValue(ANode, 'ss:DefaultColumnWidth');
+      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        sheet.WriteDefaultColWidth(x, suPoints);
+
       // Column index
       s := GetAttrValue(ANode, 'ss:Index');
       if (s <> '') and TryStrToInt(s, c) then
@@ -1193,11 +1266,6 @@ begin
     end
     else
     if nodeName = 'Row' then begin
-      // Default column width
-      s := GetAttrValue(ANode, 'ss:DefaultColumnWidth');
-      if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-        sheet.WriteDefaultColWidth(x, suPoints);
-
       // Default row height
       s := GetAttrValue(ANode, 'ss:DefaultRowHeight');
       if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
@@ -1268,7 +1336,9 @@ begin
     else if nodeName = 'WorksheetOptions' then
       ReadWorksheetOptions(ANode.FirstChild, AWorksheet)
     else if nodeName = 'Names' then
-      ReadNames(ANode.FirstChild, AWorksheet);
+      ReadNames(ANode.FirstChild, AWorksheet)
+    else if nodeName = 'PageBreaks' then
+      ReadPageBreaks(ANode.FirstChild, AWorksheet);
     ANode := ANode.NextSibling;
   end;
 end;
