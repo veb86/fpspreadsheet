@@ -558,6 +558,7 @@ begin
       INT_EXCEL_ID_FOOTER        : ReadHeaderFooter(AStream, false);
       INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
       INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
+      INT_EXCEL_ID_HORZPAGEBREAK : ReadHorizontalPageBreaks(AStream, FWorksheet);
       INT_EXCEL_ID_HCENTER       : ReadHCENTER(AStream);
       INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
       INT_EXCEL_ID_LEFTMARGIN    : ReadMargin(AStream, 0);
@@ -584,6 +585,7 @@ begin
       INT_EXCEL_ID_SCL           : ReadSCLRecord(AStream);
       INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
       INT_EXCEL_ID_VCENTER       : ReadVCENTER(AStream);
+      INT_EXCEL_ID_VERTPAGEBREAK : ReadVerticalPageBreaks(AStream, FWorksheet);
       INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
 
      {$IFDEF FPSPREADDEBUG} // Only write out if debugging
@@ -1272,6 +1274,8 @@ begin
       WriteSheetPR(AStream);
 
       // Page settings block
+      WriteHorizontalPageBreaks(AStream, FWorksheet);
+      WriteVerticalPageBreaks(AStream, FWorksheet);
       WriteHeaderFooter(AStream, true);
       WriteHeaderFooter(AStream, false);
       WriteHCenter(AStream);
@@ -1298,7 +1302,7 @@ begin
       WriteDimensions(AStream, FWorksheet);
       WriteWindow2(AStream, FWorksheet);
       WriteSCLRecord(AStream, FWorksheet);
-      WritePane(AStream, FWorksheet, true, pane);  // true for "is BIFF5 or BIFF8"
+      WritePane(AStream, FWorksheet, true, pane);  // true: "is BIFF5 or BIFF8"
       WriteSelection(AStream, FWorksheet, pane);
       //WriteRows(AStream, sheet);
 
@@ -1313,7 +1317,6 @@ begin
   end;
 
   { Cleanup }
-
   SetLength(sheetPos, 0);
 end;
 

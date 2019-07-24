@@ -283,6 +283,19 @@ type
     procedure TestWriteRead_ShowRow_ODS;
 
     // Add a page break column
+    procedure TestWriteRead_AddPageBreak_Col_BIFF2;
+    procedure TestWriteRead_AddPageBreak_Row_BIFF2;
+
+    procedure TestWriteRead_AddPageBreak_Col_BIFF5;
+    procedure TestWriteRead_AddPageBreak_ColHidden_BIFF5;
+    procedure TestWriteRead_AddPageBreak_Row_BIFF5;
+    procedure TestWriteRead_AddPageBreak_RowHidden_BIFF5;
+
+    procedure TestWriteRead_AddPageBreak_Col_BIFF8;
+    procedure TestWriteRead_AddPageBreak_ColHidden_BIFF8;
+    procedure TestWriteRead_AddPageBreak_Row_BIFF8;
+    procedure TestWriteRead_AddPageBreak_RowHidden_BIFF8;
+
     procedure TestWriteRead_AddPageBreak_Col_OOXML;
     procedure TestWriteRead_AddPageBreak_ColHidden_OOXML;
     procedure TestWriteRead_AddPageBreak_Row_OOXML;
@@ -294,6 +307,19 @@ type
     procedure TestWriteRead_AddPageBreak_RowHidden_XML;
 
     // Remove a page break column
+    procedure TestWriteRead_RemovePageBreak_Col_BIFF2;
+    procedure TestWriteRead_RemovePageBreak_Row_BIFF2;
+
+    procedure TestWriteRead_RemovePageBreak_Col_BIFF5;
+    procedure TestWriteRead_RemovePageBreak_ColHidden_BIFF5;
+    procedure TestWriteRead_RemovePageBreak_Row_BIFF5;
+    procedure TestWriteRead_RemovePageBreak_RowHidden_BIFF5;
+
+    procedure TestWriteRead_RemovePageBreak_Col_BIFF8;
+    procedure TestWriteRead_RemovePageBreak_ColHidden_BIFF8;
+    procedure TestWriteRead_RemovePageBreak_Row_BIFF8;
+    procedure TestWriteRead_RemovePageBreak_RowHidden_BIFF8;
+
     procedure TestWriteRead_RemovePageBreak_Col_OOXML;
     procedure TestWriteRead_RemovePageBreak_ColHidden_OOXML;
     procedure TestWriteRead_RemovePageBreak_Row_OOXML;
@@ -2142,6 +2168,7 @@ begin
   book := TsWorkbook.Create;
   try
     sheet := book.AddWorksheet('Test');
+    sheet.WriteNumber(0, 0, 1.0);
 
     sheet.AddPageBreakToCol(COL_INDEX);
     if Hidden then
@@ -2228,6 +2255,49 @@ begin
     book.Free;
     DeleteFile(TempFile);
   end;
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Col_BIFF2;
+begin
+  TestWriteRead_AddPageBreak_Col(false, sfExcel2);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Row_BIFF2;
+begin
+  TestWriteRead_AddPageBreak_Row(false, sfExcel2);
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Col_BIFF5;
+begin
+  TestWriteRead_AddPageBreak_Col(false, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Row_BIFF5;
+begin
+  TestWriteRead_AddPageBreak_Row(false, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_ColHidden_BIFF5;
+begin
+  TestWriteRead_AddPageBreak_Col(true, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_RowHidden_BIFF5;
+begin
+  TestWriteRead_AddPageBreak_Row(true, sfExcel5);
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Col_BIFF8;
+begin
+  TestWriteRead_AddPageBreak_Col(false, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Row_BIFF8;
+begin
+  TestWriteRead_AddPageBreak_Row(false, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_ColHidden_BIFF8;
+begin
+  TestWriteRead_AddPageBreak_Col(true, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_RowHidden_BIFF8;
+begin
+  TestWriteRead_AddPageBreak_Row(true, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Col_OOXML;
@@ -2412,6 +2482,49 @@ begin
     book.Free;
     DeleteFile(tempFile);
   end;
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Col_BIFF2;
+begin
+  TestWriteRead_RemovePageBreak_Col(false, sfExcel2);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Row_BIFF2;
+begin
+  TestWriteRead_RemovePageBreak_Row(false, sfExcel2);
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Col_BIFF5;
+begin
+  TestWriteRead_RemovePageBreak_Col(false, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Row_BIFF5;
+begin
+  TestWriteRead_RemovePageBreak_Row(false, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_ColHidden_BIFF5;
+begin
+  TestWriteRead_RemovePageBreak_Col(true, sfExcel5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_RowHidden_BIFF5;
+begin
+  TestWriteRead_RemovePageBreak_Row(true, sfExcel5);
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Col_BIFF8;
+begin
+  TestWriteRead_RemovePageBreak_Col(false, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Row_BIFF8;
+begin
+  TestWriteRead_RemovePageBreak_Row(false, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_ColHidden_BIFF8;
+begin
+  TestWriteRead_RemovePageBreak_Col(true, sfExcel8);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_RowHidden_BIFF8;
+begin
+  TestWriteRead_RemovePageBreak_Row(true, sfExcel8);
 end;
 
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Col_OOXML;

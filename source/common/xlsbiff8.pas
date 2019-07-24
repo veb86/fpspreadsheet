@@ -1218,6 +1218,7 @@ begin
     INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
     INT_EXCEL_ID_HCENTER       : ReadHCENTER(AStream);
     INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
+    INT_EXCEL_ID_HORZPAGEBREAK : ReadHorizontalPageBreaks(AStream, FWorksheet);
     INT_EXCEL_ID_HLINKTOOLTIP  : ReadHyperlinkToolTip(AStream);
     INT_EXCEL_ID_HYPERLINK     : ReadHyperlink(AStream);
     INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
@@ -1258,6 +1259,7 @@ begin
     INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
     INT_EXCEL_ID_TXO           : ReadTXO(AStream);
     INT_EXCEL_ID_VCENTER       : ReadVCENTER(AStream);
+    INT_EXCEL_ID_VERTPAGEBREAK : ReadVerticalPageBreaks(AStream, FWorksheet);
     INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
     else
       // nothing
@@ -2802,6 +2804,8 @@ begin
       WriteSheetPR(AStream);
 
       // Page setting block
+      WriteHorizontalPageBreaks(AStream, FWorksheet);
+      WriteVerticalPageBreaks(AStream, FWorksheet);
       WriteHeaderFooter(AStream, true);
       WriteHeaderFooter(AStream, false);
       WriteHCenter(AStream);

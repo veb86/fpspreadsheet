@@ -25,6 +25,8 @@ const
   INT_EXCEL_ID_FOOTER        = $0015;
   INT_EXCEL_ID_EXTERNSHEET   = $0017;
   INT_EXCEL_ID_WINDOWPROTECT = $0019;
+  INT_EXCEL_ID_VERTPAGEBREAK = $001A;
+  INT_EXCEL_ID_HORZPAGEBREAK = $001B;
   INT_EXCEL_ID_NOTE          = $001C;
   INT_EXCEL_ID_SELECTION     = $001D;
   INT_EXCEL_ID_DATEMODE      = $0022;
@@ -491,6 +493,7 @@ type
     procedure ReadFormula(AStream: TStream); override;
     procedure ReadHCENTER(AStream: TStream);
     procedure ReadHeaderFooter(AStream: TStream; AIsHeader: Boolean); virtual;
+    procedure ReadHorizontalPageBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure ReadMargin(AStream: TStream; AMargin: Integer);
     // Read multiple blank cells
     procedure ReadMulBlank(AStream: TStream);
@@ -548,12 +551,12 @@ type
     procedure ReadSELECTION(AStream: TStream);
     procedure ReadSharedFormula(AStream: TStream);
     procedure ReadSHEETPR(AStream: TStream);
-
     // Helper function for reading a string with 8-bit length
     function ReadString_8bitLen(AStream: TStream): String; virtual;
     // Read STRING record (result of string formula)
     procedure ReadStringRecord(AStream: TStream); virtual;
     procedure ReadVCENTER(AStream: TStream);
+    procedure ReadVerticalPageBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     // Read WINDOW2 record (gridlines, sheet headers)
     procedure ReadWindow2(AStream: TStream); virtual;
     // Read WINDOWPROTECT record
@@ -642,6 +645,7 @@ type
       ACell: PCell); override;
     procedure WriteHCenter(AStream: TStream);
     procedure WriteHeaderFooter(AStream: TStream; AIsHeader: Boolean); virtual;
+    procedure WriteHorizontalPageBreaks(AStream: TStream; ASheet: TsBasicWorksheet);
     // Writes out page margin for printing
     procedure WriteMARGIN(AStream: TStream; AMargin: Integer);
     // Writes out all FORMAT records
@@ -703,6 +707,7 @@ type
     procedure WriteSheetPR(AStream: TStream);
     procedure WriteSTRINGRecord(AStream: TStream; AString: String); virtual;
     procedure WriteVCenter(AStream: TStream);
+    procedure WriteVerticalPageBreaks(AStream: TStream; ASheet: TsBasicWorksheet);
     // Writes cell content received by workbook in OnNeedCellData event
     procedure WriteVirtualCells(AStream: TStream; ASheet: TsBasicWorksheet);
     // Writes out a WINDOW1 record
@@ -1704,13 +1709,6 @@ begin
   end else
     lCol.FormatIndex := 0;
 
-  { Get current value of column options to keep already set PageBreak option }
-  col := TsWorksheet(FWorksheet).FindCol(c);
-  if col <> nil then
-    lCol.Options := col^.Options
-  else
-    lCol.Options := [];
-
   { Read column visibility }
   flags := WordLEToN(AStream.ReadWord);
   if flags and $0001 = $0001 then
@@ -1719,9 +1717,18 @@ begin
     Exclude(lCol.Options, croHidden);
 
   { Assign width and format to columns, but only if different from defaults }
-  if (lCol.FormatIndex > 0) or (lCol.ColWidthType = cwtCustom) or (lCol.Options <> []) then
-    for c := c1 to c2 do
+  if (lCol.FormatIndex > 0) or (lCol.ColWidthType = cwtCustom) or (croHidden in lCol.Options) then
+    for c := c1 to c2 do begin
+      // PageBreak flag is stored in the Column options, but BIFF has read it
+      // earlier from the VERTICALPAGEBREAKS record. We check whether a column
+      // record already exists and copy PageBreak flag from it.
+      col := sheet.FindCol(c);
+      Exclude(lCol.Options, croPageBreak);
+      if (col <> nil) and (croPageBreak in col^.Options) then
+        Include(lCol.Options, croPageBreak);
+      // Apply column record to worksheet
       sheet.WriteColInfo(c, lCol);
+    end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2063,6 +2070,33 @@ begin
       Footers[2] := '';
     end;
     Options := Options - [poDifferentOddEven];
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the HORIZONALPAGEBREAKS record. It contains the row indexes above which
+  a manual page break is executed during printing.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadHorizontalPageBreaks(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+type
+  TRowBreakRec = packed record
+    RowIndex: Word;     // Index to first row below the page break
+    FirstCol: Word;     // Index to first column of this page break
+    LastCol: Word;      // Index to last column of this page break
+  end;
+var
+  n, r: Word;
+  i: Integer;
+  rec: TRowBreakRec;
+begin
+  // Number of following row indexes
+  n := WordLEToN(AStream.ReadWord);
+
+  for i := 1 to n do begin
+    AStream.ReadBuffer(rec, SizeOf(rec));
+    r := WordLEToN(rec.RowIndex);
+    TsWorksheet(AWorksheet).AddPageBreakToRow(r);
   end;
 end;
 
@@ -2597,12 +2631,13 @@ begin
     // Find the format with ID xf
     lRow.FormatIndex := XFToFormatIndex(xf);
 
-  { Get current value of row Options to keep Pagebreak already written }
+  lRow.Options := [];
+  { Get current value of row Options to keep PageBreak already read
+    from HORIZONTALPAGEBREAKS record }
   row := TsWorksheet(FWorksheet).FindRow(rowRec.RowIndex);
-  if row <> nil then
-    lRow.Options := row^.Options
-  else
-    lRow.Options := [];
+  if (row <> nil) and (croPageBreak in row^.Options) then
+    Include(lRow.Options, croPageBreak);
+
   { Row visibility }
   if rowRec.Flags and $00000020 <> 0 then
     Include(lRow.Options, croHidden)
@@ -3435,6 +3470,33 @@ begin
   if w = 1 then
     with TsWorksheet(FWorksheet).PageLayout do
       Options := Options + [poVertCentered];
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the VERTICALPAGEBREAKS record. It contains the column indexes before
+  which a manual page break is executed during printing.
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFReader.ReadVerticalPageBreaks(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+type
+  TColBreakRec = packed record
+    ColIndex: Word;     // Index to first column following the page break
+    FirstRow: Word;     // Index to first row of this page break
+    LastRow: Word;      // Index to last row of this page break
+  end;
+var
+  n, c: Word;
+  i: Integer;
+  rec: TColBreakRec;
+begin
+  // Number of following column index structures
+  n := WordLEToN(AStream.ReadWord);
+
+  for i := 1 to n do begin
+    AStream.ReadBuffer(rec, SizeOf(rec));
+    c := WordLEToN(rec.ColIndex);
+    TsWorksheet(AWorksheet).AddPageBreakToCol(c);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4491,6 +4553,41 @@ begin
   AStream.WriteBuffer(s[1], len * SizeOf(AnsiChar));
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel HORIZONTALPAGEBREAKS record which contains the indexes of the
+  rows before which a manual page break is executed during printing
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteHorizontalPageBreaks(AStream: TStream;
+  ASheet: TsBasicWorksheet);
+var
+  i, n: Integer;
+  row: PRow;
+  sheet: TsWorksheet absolute ASheet;
+begin
+  n := 0;
+  for i := 0 to sheet.Rows.Count - 1 do
+    if (croPageBreak in PRow(sheet.Rows[i])^.Options) then inc(n);
+  if n = 0 then
+    exit;
+
+  // Biff header
+  WriteBiffHeader(AStream, INT_EXCEL_ID_HORZPAGEBREAK, SizeOf(Word)*(1 + 3*n));
+
+  // Number of following row indexes
+  AStream.WriteWord(WordToLE(n));
+
+  for i := 0 to sheet.Rows.Count - 1 do begin
+    row := PRow(sheet.Rows[i]);
+    if (croPageBreak in row^.Options) then begin
+      // Index to first row below the page break
+      aStream.WriteWord(WordToLE(row^.Row));
+      // Index to first column of this page break
+      AStream.WriteWord(0);
+      // Index to last column of this page break
+      AStream.WriteWord(WordToLE($00FF));
+    end;
+  end;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Writes a 64-bit floating point NUMBER record.
@@ -5652,6 +5749,42 @@ begin
   { Data }
   w := IfThen(poVertCentered in TsWorksheet(FWorksheet).PageLayout.Options, 1, 0);
   AStream.WriteWord(WordToLE(w));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an Excel VERTICALPAGEBREAKS record which contains the indexed of the
+  columns before which a manual page break is executed during printing
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFFWriter.WriteVerticalPageBreaks(AStream: TStream;
+  ASheet: TsBasicWorksheet);
+var
+  i, n: Integer;
+  col: PCol;
+  sheet: TsWorksheet absolute ASheet;
+begin
+  n := 0;
+  for i := 0 to sheet.Cols.Count - 1 do
+    if (croPageBreak in PCol(sheet.Cols[i])^.Options) then inc(n);
+  if n = 0 then
+    exit;
+
+  // BIFF header
+  WriteBiffHeader(AStream, INT_EXCEL_ID_VERTPAGEBREAK, SizeOf(Word)*(1 + 3*n));
+
+  // Number of following column indexes
+  AStream.WriteWord(WordToLE(n));
+
+  for i := 0 to sheet.Cols.Count - 1 do begin
+    col := PCol(sheet.Cols[i]);
+    if (croPageBreak in col^.Options) then begin
+      // Index to first column following the page break
+      AStream.WriteWord(WordToLE(col^.Col));
+      // Index to first row of this page break
+      AStream.WriteWord(0);
+      // Index to last row of this page break
+      AStream.WriteWord(WordToLE($FFFF));
+    end;
+  end;
 end;
 
 procedure TsSpreadBIFFWriter.WriteVirtualCells(AStream: TStream;

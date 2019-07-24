@@ -669,6 +669,7 @@ begin
       INT_EXCEL_ID_FORMAT        : ReadFormat(AStream);
       INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
       INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
+      INT_EXCEL_ID_HORZPAGEBREAK : ReadHorizontalPageBreaks(AStream, FWorksheet);
       INT_EXCEL_ID_INTEGER       : ReadInteger(AStream);
       INT_EXCEL_ID_IXFE          : ReadIXFE(AStream);
       INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
@@ -687,6 +688,7 @@ begin
       INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
       INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
       INT_EXCEL_ID_DEFROWHEIGHT  : ReadDefRowHeight(AStream);
+      INT_EXCEL_ID_VERTPAGEBREAK : ReadVerticalPageBreaks(AStream, FWorksheet);
       INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
       INT_EXCEL_ID_WINDOWPROTECT : ReadWindowProtect(AStream);
       INT_EXCEL_ID_XF            : ReadXF(AStream);
@@ -1660,6 +1662,8 @@ begin
     WritePrintHeaders(AStream);
     WritePrintGridLines(AStream);
     WriteDefaultRowHeight(AStream, FWorksheet);
+    WriteHorizontalPageBreaks(AStream, FWorksheet);
+    WriteVerticalPageBreaks(AStream, FWorksheet);
     WriteFonts(AStream);
 
     // Page settings block
