@@ -368,7 +368,9 @@ const
     ('0.74pt', '1.76pt', '0.74pt', '0.74pt', '2.49pt', '0.74pt', '0.74pt',
      '1.76pt', '0.74pt', '1.76pt', '0.74pt', '1.76pt', '1.76pt');
 
-  FALSE_TRUE: Array[boolean] of String = ('false', 'true');
+  FALSE_TRUE: array[boolean] of String = ('false', 'true');
+
+  PAGE_BREAK: array[boolean] of string = ('auto', 'page');
 
   COLWIDTH_EPS  = 1e-3;
   ROWHEIGHT_EPS = 1e-3;
@@ -387,7 +389,8 @@ type
   TColumnStyleData = class
   public
     Name: String;
-    ColWidth: Double;             // in workbook units
+    ColWidth: Double;                // in workbook units
+    PageBreak: Boolean;              // Indicator that col follows a page break
   end;
 
   { Column data items stored in the ColumnList }
@@ -397,6 +400,7 @@ type
     ColStyleIndex: integer;          // index into FColumnStyleList of reader
     DefaultCellStyleIndex: Integer;  // Index of default cell style in FCellStyleList of reader
     Hidden: Boolean;                 // Indicates that column is hidden
+    PageBreak: Boolean;              // Indicates that page break occurs at left of column
   end;
 
   { Row style items stored in RowStyleList of the reader }
@@ -405,6 +409,7 @@ type
     Name: String;
     RowHeight: Double;    // in workbook units
     RowHeightType: TsRowHeightType;
+    PageBreak: Boolean;
   end;
 
   { PageLayout items stored in PageLayoutList }
@@ -1156,6 +1161,10 @@ begin
     // Column visibility
     if colData.Hidden then
       sheet.HideCol(colIndex);
+
+    // Column page break flag
+    if colData.PageBreak then
+      sheet.AddPageBreakToCol(colIndex);
 
     // Note: we don't store the column format index here; this is done in the
     // row/cell reading method (ReadRowsAndCells).
@@ -1939,6 +1948,7 @@ var
     colsRepeated: Integer;
     j: Integer;
     isHidden: Boolean;
+    isPageBreak: Boolean;
   begin
     s := GetAttrValue(AColNode, 'table:style-name');
     colStyleIndex := FindColStyleByName(s);
@@ -1949,8 +1959,10 @@ var
       s := GetAttrValue(AColNode, 'table:visibility');
       isHidden := (s = 'collapse');
 
+      isPageBreak := TColumnStyleData(FColumnStyleList[colStyleIndex]).PageBreak;
+
       s := GetAttrValue(AColNode, 'table:default-cell-style-name');
-      if (s <> '') or isHidden then
+      if (s <> '') or isHidden or isPageBreak then
       begin
         defCellStyleIndex := FCellFormatList.FindIndexOfName(s); //FindCellStyleByName(s);
         colData := TColumnData.Create;
@@ -1958,6 +1970,7 @@ var
         colData.ColStyleIndex := colStyleIndex;
         colData.DefaultCellStyleIndex := defCellStyleIndex;
         colData.Hidden := isHidden;
+        colData.PageBreak := isPageBreak;
         FColumnList.Add(colData);
       end;
 
@@ -1975,31 +1988,11 @@ var
           colData.ColStyleIndex := colStyleIndex;
           colData.DefaultCellStyleIndex := defCellStyleIndex;
           colData.Hidden := isHidden;
+          colData.PageBreak := isPageBreak;
           FColumnList.Add(colData);
           inc(col);
         end;
       end;
-          (*
-
-      if (s = '') and (not isHidden) then
-        inc(col)
-      else
-      begin
-        colsRepeated := StrToInt(s);
-        if (defCellStyleIndex > -1) or isHidden then begin
-          for j:=1 to colsRepeated-1 do
-          begin
-            colData := TColumnData.Create;
-            colData.Col := col + j;
-            colData.ColStyleIndex := colStyleIndex;
-            colData.DefaultCellStyleIndex := defCellStyleIndex;
-            colData.Hidden := isHidden;
-            FColumnList.Add(colData);
-          end;
-        end;
-        inc(col, colsRepeated);
-      end;
-      *)
     end;
   end;
 
@@ -2039,11 +2032,13 @@ var
   styleName: String;
   styleChildNode: TDOMNode;
   colWidth: double;
+  colPageBreak: Boolean;
   s: String;
 begin
   styleName := GetAttrValue(AStyleNode, 'style:name');
   styleChildNode := AStyleNode.FirstChild;
   colWidth := -1;
+  colPageBreak := false;
 
   while Assigned(styleChildNode) do
   begin
@@ -2051,11 +2046,11 @@ begin
     begin
       s := GetAttrValue(styleChildNode, 'style:column-width');
       if s <> '' then
-      begin
-        colWidth := (FWorkbook as TsWorkbook).ConvertUnits(HTMLLengthStrToPts(s), suPoints, FWorkbook.Units);
         // convert to workbook units
-        break;
-      end;
+        colWidth := (FWorkbook as TsWorkbook).ConvertUnits(HTMLLengthStrToPts(s), suPoints, FWorkbook.Units);
+      s := GetAttrValue(styleChildNode, 'fo:break-before');
+      if s = 'page' then
+        colPageBreak := true;
     end;
     styleChildNode := styleChildNode.NextSibling;
   end;
@@ -2063,6 +2058,7 @@ begin
   colStyle := TColumnStyleData.Create;
   colStyle.Name := styleName;
   colStyle.ColWidth := colWidth;
+  colStyle.PageBreak := colPageBreak;
   FColumnStyleList.Add(colStyle);
 end;
 
@@ -2806,9 +2802,10 @@ var
 
   procedure AddToCellText(AText: String);
   begin
-    if cellText = ''
-       then cellText := AText
-       else cellText := cellText + AText;
+    if cellText = '' then
+      cellText := AText
+    else
+      cellText := cellText + AText;
   end;
 
 begin
@@ -3708,6 +3705,7 @@ var
     styleIndex: Integer;
     firstStyleIndex: Integer;
     rowHidden: Boolean;
+    rowPageBreak: Boolean;
   begin
     // Read rowstyle
     rowStyleName := GetAttrValue(ARowNode, 'table:style-name');
@@ -3717,10 +3715,16 @@ var
       rowStyle := TRowStyleData(FRowStyleList[rowStyleIndex]);
       rowHeight := rowStyle.RowHeight;    // in Workbook units (see ReadRowStyles)
       rowHeightType := rowStyle.RowHeightType;
+      rowPageBreak := rowStyle.PageBreak;
     end else begin
       rowHeight := (FWorksheet as TsWorksheet).ReadDefaultRowHeight(FWorkbook.Units);
       rowHeightTYpe := rhtDefault;
+      rowPageBreak := false;
     end;
+
+    // If the row contains the PageBreak flag we add store it in a row record.
+    if rowPageBreak then
+      (FWorksheet as TsWorksheet).AddPageBreakToRow(row);
 
     col := 0;
     firstStyleIndex := -1;
@@ -3904,6 +3908,7 @@ var
   styleName, nodename: String;
   styleChildNode: TDOMNode;
   rowHeight: Double;
+  rowPageBreak: Boolean;
   s: String;
   rowStyle: TRowStyleData;
   rowHeightType: TsRowHeightType;
@@ -3912,6 +3917,7 @@ begin
   styleChildNode := AStyleNode.FirstChild;
   rowHeight := 0;
   rowHeightType := rhtCustom;
+  rowPageBreak := false;
 
   while Assigned(styleChildNode) do
   begin
@@ -3925,6 +3931,10 @@ begin
       s := GetAttrValue(styleChildNode, 'style:use-optimal-row-height');
       if s = 'true' then
         rowHeightType := rhtAuto;
+      // Page break
+      s := GetAttrValue(styleChildNode, 'fo:break-before');
+      if s = 'page' then
+       rowPageBreak := true;
     end;
     styleChildNode := styleChildNode.NextSibling;
   end;
@@ -3933,6 +3943,7 @@ begin
   rowStyle.Name := styleName;
   rowStyle.RowHeight := rowHeight;
   rowStyle.RowHeightType := rowHeightType;
+  rowStyle.PageBreak := rowPageBreak;
   FRowStyleList.Add(rowStyle);
 end;
 
