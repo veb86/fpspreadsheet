@@ -112,7 +112,6 @@ type
     function FindNumFormatByName(ANumFmtName: String): Integer;
     function FindRowStyleByName(AStyleName: String): Integer;
     function FindTableStyleByName(AStyleName: String): Integer;
-//    procedure FixFormulas;
     procedure ReadCell(ANode: TDOMNode; ARow, ACol: Integer;
       AFormatIndex: Integer; out AColsRepeated: Integer);
     procedure ReadCellImages(ANode: TDOMNode; ARow, ACol: Cardinal);
@@ -242,12 +241,15 @@ type
     procedure AddBuiltinNumFormats; override;
     procedure CreateStreams;
     procedure DestroyStreams;
+    function FindRowStyle(ASheet: TsBasicWorksheet; ARowIndex: Integer): Integer;
     procedure GetHeaderFooterImageName(APageLayout: TsPageLayout;
       out AHeader, AFooter: String);
     procedure GetHeaderFooterImagePosStr(APagelayout: TsPageLayout;
       out AHeader, AFooter: String);
+    {
     procedure GetRowStyleAndHeight(ASheet: TsBasicWorksheet; ARowIndex: Integer;
       out AStyleName: String; out AHeight: Single);
+    }
     procedure InternalWriteToStream(AStream: TStream);
     procedure ListAllColumnStyles;
     procedure ListAllHeaderFooterFonts;
@@ -1461,52 +1463,6 @@ begin
       exit;
   Result := -1;
 end;
-                      (*
-procedure TsSpreadOpenDocReader.FixFormulas;
-
-  procedure FixCell(ACell: PCell);
-  var
-    parser: TsSpreadsheetParser;
-  begin
-    parser := TsSpreadsheetParser.Create(TsWorksheet(ACell^.Worksheet));
-    try
-      try
-        parser.Dialect := fdOpenDocument;
-        parser.LocalizedExpression[FPointSeparatorSettings] := ACell^.FormulaValue;
-        parser.Dialect := fdExcelA1;
-        ACell^.FormulaValue := parser.Expression;
-      except
-        on E:EExprParser do
-          begin
-            FWorkbook.AddErrorMsg(E.Message);
-            ACell^.FormulaValue := '';
-            if (boAbortReadOnFormulaError in Workbook.Options) then raise;
-          end;
-        on E:ECalcEngine do
-          begin
-            Workbook.AddErrorMsg(E.Message);
-            ACell^.FormulaValue := '';
-            if (boAbortReadOnFormulaError in Workbook.Options) then raise;
-          end;
-      end;
-    finally
-      parser.Free;
-    end;
-  end;
-
-var
-  i: Integer;
-  sheet: TsWorksheet;
-  cell: PCell;
-begin
-  if (boIgnoreFormulas in FWorkbook.Options) then
-    exit;
-  for i:=0 to (FWorkbook as TsWorkbook).GetWorksheetCount-1 do begin
-    sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(i);
-    for cell in sheet.Cells do
-      if HasFormula(cell) then FixCell(cell);
-  end;
-end;           *)
 
 procedure TsSpreadOpenDocReader.ReadAutomaticStyles(AStylesNode: TDOMNode);
 var
@@ -4876,82 +4832,67 @@ end;
 procedure TsSpreadOpenDocWriter.ListAllColumnStyles;
 var
   i, j, c: Integer;
+  book: TsWorkbook;
   sheet: TsWorksheet;
   found: Boolean;
   colstyle: TColumnStyleData;
+  item: TColumnStyleData;
+  colPageBreak: Boolean;
   w: Double;
+  wDef: Double;   // Default column width
   col: PCol;
 begin
+  book := TsWorkbook(FWorkbook);
+  sheet := book.GetFirstWorksheet;
+  if sheet = nil then
+    exit;
+
+  wDef := sheet.ReadDefaultColWidth(book.Units);
+
   { At first, add the default column width }
   colStyle := TColumnStyleData.Create;
   colStyle.Name := 'co1';
-  colStyle.ColWidth := TsWorkbook(Workbook).ConvertUnits(12, suChars, FWorkbook.Units);
+  colStyle.ColWidth := wDef;
   FColumnStyleList.Add(colStyle);
 
   { Then iterate through all sheets and all columns and store the unique
     column widths in the FColumnStyleList. }
-  for i:=0 to (Workbook as TsWorkbook).GetWorksheetCount-1 do
+  for i:=0 to book.GetWorksheetCount-1 do
   begin
-    sheet := TsWorkbook(Workbook).GetWorksheetByIndex(i);
+    sheet := book.GetWorksheetByIndex(i);
+    wDef := sheet.ReadDefaultColWidth(book.Units);
     for c := 0 to sheet.Cols.Count-1 do
     begin
       col := PCol(sheet.Cols[c]);
-      if (col <> nil) and (col^.ColWidthType = cwtCustom) then
+      if (col^.ColWidthType = cwtCustom) or (croPageBreak in col^.Options) then
       begin
+        colPageBreak := (croPageBreak in col^.Options);  // has page break?
         w := col^.Width;   // is in workbook units
         // Look for this width in the current ColumnStyleList
         found := false;
-        for j := 0 to FColumnStyleList.Count - 1 do
-          if SameValue(TColumnStyleData(FColumnstyleList[j]).ColWidth, w, COLWIDTH_EPS) then
+        for j := 0 to FColumnStyleList.Count - 1 do begin
+          item := TColumnStyleData(FColumnStyleList[j]);
+          if SameValue(item.ColWidth, w, COLWIDTH_EPS) and (item.PageBreak = colPageBreak) then
           begin
             found := true;
             break;
           end;
+        end;
         // Not found? Then add the column as a new column style
         if not found then
         begin
           colStyle := TColumnStyleData.Create;
           colStyle.Name := Format('co%d', [FColumnStyleList.Count + 1]);
-          colStyle.ColWidth := w;
+          if col^.ColWidthType = cwtDefault then
+            colStyle.ColWidth := wDef
+          else
+            colStyle.ColWidth := w;
+          colStyle.PageBreak := colPageBreak;
           FColumnStyleList.Add(colStyle);
         end;
       end;
     end;
-    {
-    for c:=0 to sheet.GetLastColIndex do
-    begin
-      w := sheet.GetColWidth(c, FWorkbook.Units);
-      // Look for this width in the current ColumnStyleList
-      found := false;
-      for j := 0 to FColumnStyleList.Count-1 do
-        if SameValue(TColumnStyleData(FColumnStyleList[j]).ColWidth, w, COLWIDTH_EPS)
-        then begin
-          found := true;
-          break;
-        end;
-      // Not found? Then add the column as new column style
-      if not found then
-      begin
-        colStyle := TColumnStyleData.Create;
-        colStyle.Name := Format('co%d', [FColumnStyleList.Count+1]);
-        colStyle.ColWidth := w;
-        FColumnStyleList.Add(colStyle);
-      end;
-    end;
-    }
   end;
-                                            (*
-  { fpspreadsheet's column width is the count of '0' characters of the
-    default font. On average, the width of the '0' is about half of the
-    point size of the font. --> we can convert the fps col width to pts and
-    then to millimeters. }
-  multiplier := Workbook.GetFont(0).Size / 2;
-  for i:=0 to FColumnStyleList.Count-1 do
-  begin
-    w := TColumnStyleData(FColumnStyleList[i]).ColWidth * multiplier;
-    TColumnStyleData(FColumnStyleList[i]).ColWidth := PtsToMM(w);
-  end;
-  *)
 end;
 
 { Collects the fonts used by headers and footers in the FHeaderFooterFontList }
@@ -5012,10 +4953,13 @@ var
   row: PRow;
   found: Boolean;
   rowstyle: TRowStyleData;
+  item: TRowStyleData;
+  rowPageBreak: Boolean;
   h: Double;
   book: TsWorkbook;
 begin
   book := FWorkbook as TsWorkbook;
+
   { At first, add the default row height }
   { Initially, row height units will be the same as in the workbook }
   rowStyle := TRowStyleData.Create;
@@ -5032,23 +4976,28 @@ begin
       row := sheet.FindRow(r);
       if row <> nil then
       begin
+        rowPageBreak := (croPageBreak in row^.Options);
         h := sheet.GetRowHeight(r, FWorkbook.Units);
         // Look for this height in the current RowStyleList
         found := false;
-        for j:=0 to FRowStyleList.Count-1 do
-          if SameValue(TRowStyleData(FRowStyleList[j]).RowHeight, h, ROWHEIGHT_EPS)
-            and (TRowStyleData(FRowStyleList[j]).RowHeightType = row^.RowHeightType)
-          then begin
+        for j:=0 to FRowStyleList.Count-1 do begin
+          item := TRowStyleData(FRowStyleList[j]);
+          if SameValue(item.RowHeight, h, ROWHEIGHT_EPS) and
+            (item.RowHeightType = row^.RowHeightType) and
+            (item.PageBreak = rowPageBreak) then
+          begin
             found := true;
             break;
           end;
-        // Not found? Then add the row as a new row style
+        end;
+        // Not found? --> Add the row as a new row style
         if not found then
         begin
           rowStyle := TRowStyleData.Create;
           rowStyle.Name := Format('ro%d', [FRowStyleList.Count+1]);
           rowStyle.RowHeight := h;
           rowStyle.RowHeightType := row^.RowHeightType;
+          rowStyle.PageBreak := rowPageBreak;
           FRowStyleList.Add(rowStyle);
         end;
       end;
@@ -5545,7 +5494,10 @@ procedure TsSpreadOpenDocWriter.WriteColStyles(AStream: TStream);
 var
   i: Integer;
   colstyle: TColumnStyleData;
+  book: TsWorkbook;
 begin
+  book := TsWorkbook(FWorkbook);
+
   if FColumnStyleList.Count = 0 then
   begin
     AppendToStream(AStream,
@@ -5565,9 +5517,11 @@ begin
 
     // Column width
     AppendToStream(AStream, Format(
-        '<style:table-column-properties style:column-width="%.3fmm" fo:break-before="auto"/>',
-          [TsWorkbook(FWorkbook).ConvertUnits(colStyle.ColWidth, FWorkbook.Units, suMillimeters)],
-          FPointSeparatorSettings));
+        '<style:table-column-properties style:column-width="%.3fmm" fo:break-before="%s"/>', [
+          colStyle.ColWidth,
+          PAGE_BREAK[colStyle.PageBreak]
+        ], FPointSeparatorSettings)
+    );
 
     // End
     AppendToStream(AStream,
@@ -5588,9 +5542,10 @@ var
   firstRepeatedPrintCol, lastRepeatedPrintCol: Longint;
   headerCols: Boolean;
   isHidden1, isHidden: Boolean;
+  isPageBreak1, isPageBreak: Boolean;
   colHiddenStr: String;
+  colStyleData: TColumnStyleData;
 begin
-//  widthMultiplier := Workbook.GetFont(0).Size / 2;
   lastCol := sheet.GetLastColIndex;
   firstRepeatedPrintCol := longInt(sheet.PageLayout.RepeatedCols.FirstIndex);
   lastRepeatedPrintCol := longint(sheet.PageLayout.RepeatedCols.LastIndex);
@@ -5605,6 +5560,7 @@ begin
   begin
     w1 := sheet.GetColWidth(c, FWorkbook.Units);
     isHidden1 := sheet.ColHidden(c) or (w1 = 0);
+    isPageBreak1 := sheet.IsPageBreakCol(c);
 
     if (c = firstRepeatedPrintCol) then
     begin
@@ -5614,11 +5570,21 @@ begin
 
     // Find width in ColumnStyleList to retrieve corresponding style name
     styleName := '';
-    for k := 0 to FColumnStyleList.Count-1 do
+    for k := 0 to FColumnStyleList.Count-1 do begin
+      colStyleData := TColumnStyleData(FColumnStyleList[k]);
+      if SameValue(colStyleData.ColWidth, w1, COLWIDTH_EPS) and
+         (colStyleData.PageBreak = isPageBreak1) then
+      begin
+        styleName := colStyleData.Name;
+        break;
+      end;
+    end;
+      {
       if SameValue(TColumnStyleData(FColumnStyleList[k]).ColWidth, w1, COLWIDTH_EPS) then begin
         styleName := TColumnStyleData(FColumnStyleList[k]).Name;
         break;
       end;
+      }
     if stylename = '' then
       stylename := 'co1';
     {
@@ -5634,7 +5600,8 @@ begin
       begin
         w := sheet.GetColWidth(k, FWorkbook.Units);
         isHidden := sheet.ColHidden(k) or (w = 0);
-        if (w = w1) and (isHidden = isHidden1) then
+        isPageBreak := sheet.IsPageBreakCol(k);
+        if (w = w1) and (isHidden = isHidden1) and (isPageBreak = isPageBreak1) then
           inc(colsRepeated)
         else
           break;
@@ -5645,7 +5612,8 @@ begin
       begin
         w := sheet.GetColWidth(k, FWorkbook.Units);
         isHidden := sheet.ColHidden(k) or (w = 0);
-        if (w = w1) and (isHidden = isHidden1) then
+        isPageBreak := sheet.IsPageBreakCol(k);
+        if (w = w1) and (isHidden = isHidden1) and (isPageBreak = isPageBreak1) then
           inc(colsRepeated)
         else
           break;
@@ -6273,10 +6241,30 @@ var
   fmtIndex: integer;
   sheet: TsWorksheet absolute ASheet;
   rowHiddenStr: String;
+  styleIdx: Integer;
+  rowStyleData: TRowStyleData;
 begin
   // Get row
   row := sheet.FindRow(ARowIndex);
 
+  // Get row style
+  styleIdx := FindRowStyle(ASheet, ARowIndex);
+  if styleIdx = -1 then
+  begin
+    stylename := 'ro1';   // Default row style - see ListAllRowStyles
+    rowHiddenStr := '';
+  end else
+  begin
+    rowStyleData := TRowStyleData(FRowStyleList[styleIdx]);
+    styleName := rowStyleData.Name;
+    if (croHidden in row^.Options) or (
+       (round(rowStyleData.RowHeight) = 0) and (rowStyleData.RowHeightType = rhtCustom))
+    then
+      rowHiddenStr := ' table:visibility="collapse"'
+  end;
+
+
+{
   // Get style and height of row
   GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
 
@@ -6285,7 +6273,7 @@ begin
     rowHiddenStr := ' table:visibility="collapse"'
   else
     rowHiddenStr := '';
-
+                   }
   // Write opening row tag. We don't support repeatedRows here.
   AppendToStream(AStream, Format(
     '<table:table-row table:style-name="%s"%s>', [stylename, rowHiddenStr]));
@@ -6416,21 +6404,53 @@ var
   rowsRepeatedStr: String;
   rowHiddenStr: String;
   isHidden1, isHidden: Boolean;
+  isPageBreak1, isPageBreak: Boolean;
+  styleIdx: Integer;
+  rowStyleData: TRowStyleData;
 begin
+  // Get row style
+  styleIdx := FindRowStyle(ASheet, ARowIndex);
+  if styleIdx = -1 then
+  begin
+    stylename := 'ro1';   // Default row style - see ListAllRowStyles
+    h := -1;
+  end else
+  begin
+    rowStyleData := TRowStyleData(FRowStyleList[styleIdx]);
+    styleName := rowStyleData.Name;
+    if rowStyleData.RowHeightType = rhtCustom then
+      h := rowStyleData.RowHeight
+    else
+      h := -1;
+    {
+    if (croHidden in row^.Options) or (
+       (round(rowStyleData.RowHeight) = 0) and (rowStyleData.RowHeightType = rhtCustom))
+    then
+      rowHiddenStr := ' table:visibility="collapse"'
+      }
+  end;
+     {
+
   // Get style and height of row
   GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
+      }
 
   // Determine how often this row is repeated
   row := sheet.FindRow(ARowIndex);
-
-  isHidden1 := (round(h) = 0) or ((row <> nil) and (croHidden in row^.Options));
+  if Assigned(row) then begin
+    isPageBreak1 := (croPageBreak in row^.Options);
+    isHidden1 := (round(h) = 0) or ((row <> nil) and (croHidden in row^.Options));
+  end else begin
+    isPageBreak1 := false;
+    isHidden1 := false;
+  end;
   rowHiddenStr := IfThen(isHidden1, ' table:visibility="collapse"', '');
 
   // Rows with format are not repeated - too complicated...
   if (row <> nil) and (row^.FormatIndex > 0) then
     ARowsRepeated := 1
   else
-  // Count how many rows are empty and have the same height
+  // Count how many rows are empty and have the row record values
   if ALastRowIndex > -1 then begin
     r := ARowIndex + 1;
     while r <= ALastRowIndex do
@@ -6438,9 +6458,13 @@ begin
       if not sheet.IsEmptyRow(r) then
         break;
       row := sheet.FindRow(r);
+      isPageBreak := (row <> nil) and (croPageBreak in row^.Options);
       isHidden := (row <> nil) and
         ((croHidden in row^.Options) or ((row^.RowHeightType=rhtCustom) and (row^.Height = 0)));
-      if ((row <> nil) and (row^.FormatIndex > 0)) or (isHidden <> isHidden1) then
+      if ((row <> nil) and (row^.FormatIndex > 0)) or
+         (isHidden <> isHidden1) or
+         (isPageBreak <> isPageBreak1)
+      then
         break;
       h1 := sheet.GetRowHeight(r, FWorkbook.Units);
       if not SameValue(h, h1, ROWHEIGHT_EPS) then
@@ -6527,6 +6551,36 @@ begin
     '</table:table-row>');
 end;
 
+function TsSpreadOpenDocWriter.FindRowStyle(ASheet: TsBasicWorksheet;
+  ARowIndex: Integer): Integer;
+var
+  row: PRow;
+  k: Integer;
+  rowStyleData: TRowStyleData;
+begin
+  Result := -1;
+
+  row := (ASheet as TsWorksheet).FindRow(ARowIndex);
+  if row = nil then
+    exit;
+
+  for k := 0 to FRowStyleList.Count - 1 do
+  begin
+    rowStyleData := TRowStyleData(FRowStyleList[k]);
+    // Compare elements of row records. Be aware of rounding error when comparing
+    // the row height
+    if (rowStyleData.PageBreak = (croPageBreak in row^.Options)) and
+       ( (rowStyleData.RowHeightType = rhtDefault) or
+         (rowStyleData.RowHeightType = row^.RowHeightType) and
+         SameValue(rowStyleData.RowHeight, row^.Height, ROWHEIGHT_EPS) ) then
+    begin
+      Result := k;
+      exit;
+    end;
+  end;
+end;
+
+{
 procedure TsSpreadOpenDocWriter.GetRowStyleAndHeight(ASheet: TsBasicWorksheet;
   ARowIndex: Integer; out AStyleName: String; out AHeight: Single);
 var
@@ -6541,11 +6595,19 @@ begin
     AHeight := row^.Height;    // row height in workbook units
     for k := 0 to FRowStyleList.Count-1 do begin
       rowStyleData := TRowStyleData(FRowStyleList[k]);
-      // Compare row heights, but be aware of rounding errors
+      // Compare elements of row records. Be aware of rounding errors
+      if (rowStyleData.PageBreak = (croPageBreak in row^.Options)) and
+         ( (rowStyleData.RowHeightType = rhtDefault) or
+           (rowStyleData.RowHeightType = row^.RowHeightType) and
+           SameValue(rowStyleData.RowHeight, AHeight, ROWHEIGHT_EPS)
+         ) then
+                                                                           {
       if SameValue(rowStyleData.RowHeight, AHeight, ROWHEIGHT_EPS) and
          (rowstyleData.RowHeightType = row^.RowHeightType) and
-         (rowstyleData.RowHeightType <> rhtDefault)
-      then begin
+         (rowstyleData.RowHeightType <> rhtDefault) and
+         (rowstyleData.PageBreak = isPageBreak) then
+      }
+      begin
         AStyleName := rowStyleData.Name;
         break;
       end;
@@ -6556,6 +6618,7 @@ begin
     AHeight := (ASheet as TsWorksheet).ReadDefaultRowHeight(FWorkbook.Units);
   end;
 end;
+}
 
 { Write the style nodes for rows ("ro1", "ro2", ...); they contain only
   row height information. "ro1" is the default row height }
@@ -6563,7 +6626,12 @@ procedure TsSpreadOpenDocWriter.WriteRowStyles(AStream: TStream);
 var
   i: Integer;
   rowstyle: TRowStyleData;
+  book: TsWorkbook;
+  sheet: TsWorksheet;
 begin
+  book := TsWorkbook(FWorkbook);
+  sheet := TsWorksheet(FWorksheet);
+
   if FRowStyleList.Count = 0 then
   begin
     AppendToStream(AStream, Format(
@@ -6571,7 +6639,7 @@ begin
         '<style:table-row-properties style:row-height="%.3fmm" ' +
           'fo:break-before="auto" style:use-optimal-row-height="true"/>' +
       '</style:style>',
-      [(FWorksheet as TsWorksheet).ReadDefaultRowHeight(suMillimeters)]
+      [sheet.ReadDefaultRowHeight(suMillimeters)]
     ));
     exit;
   end;
@@ -6587,12 +6655,12 @@ begin
     // Row height
     AppendToStream(AStream, Format(
       '<style:table-row-properties style:row-height="%.3fmm" ',
-        [TsWorkbook(FWorkbook).ConvertUnits(rowStyle.RowHeight, FWorkbook.Units, suMillimeters)],
+        [book.ConvertUnits(rowStyle.RowHeight, book.Units, suMillimeters)],
         FPointSeparatorSettings));
     AppendToStream(AStream, Format(
         'style:use-optimal-row-height="%s" ', [FALSE_TRUE[rowstyle.RowHeightType <> rhtCustom]]));
-    AppendToStream(AStream,
-        'fo:break-before="auto"/>');
+    AppendToStream(AStream, Format(
+        'fo:break-before="%s"/>', [PAGE_BREAK[rowStyle.PageBreak]]));
 
     // End
     AppendToStream(AStream,

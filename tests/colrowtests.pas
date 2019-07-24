@@ -306,6 +306,11 @@ type
     procedure TestWriteRead_AddPageBreak_Row_XML;
     procedure TestWriteRead_AddPageBreak_RowHidden_XML;
 
+    procedure TestWriteRead_AddPageBreak_Col_ODS;
+    procedure TestWriteRead_AddPageBreak_ColHidden_ODS;
+    procedure TestWriteRead_AddPageBreak_Row_ODS;
+    procedure TestWriteRead_AddPageBreak_RowHidden_ODS;
+
     // Remove a page break column
     procedure TestWriteRead_RemovePageBreak_Col_BIFF2;
     procedure TestWriteRead_RemovePageBreak_Row_BIFF2;
@@ -329,6 +334,11 @@ type
     procedure TestWriteRead_RemovePageBreak_ColHidden_XML;
     procedure TestWriteRead_RemovePageBreak_Row_XML;
     procedure TestWriteRead_RemovePageBreak_RowHidden_XML;
+
+    procedure TestWriteRead_RemovePageBreak_Col_ODS;
+    procedure TestWriteRead_RemovePageBreak_ColHidden_ODS;
+    procedure TestWriteRead_RemovePageBreak_Row_ODS;
+    procedure TestWriteRead_RemovePageBreak_RowHidden_ODS;
   end;
 
 implementation
@@ -2334,6 +2344,23 @@ begin
   TestWriteRead_AddPageBreak_Row(true, sfExcelXML);
 end;
 
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Col_ODS;
+begin
+  TestWriteRead_AddPageBreak_Col(false, sfOpenDocument);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_Row_ODS;
+begin
+  TestWriteRead_AddPageBreak_Row(false, sfOpenDocument);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_ColHidden_ODS;
+begin
+  TestWriteRead_AddPageBreak_Col(true, sfOpenDocument);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_AddPageBreak_RowHidden_ODS;
+begin
+  TestWriteRead_AddPageBreak_Row(true, sfOpenDocument);
+end;
+
 
 { Remove page break
   - Hidden: set the Hidden flag in the options to test whether it is damaged
@@ -2559,6 +2586,23 @@ end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_RowHidden_XML;
 begin
   TestWriteRead_RemovePageBreak_Row(true, sfExcelXML);
+end;
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Col_ODS;
+begin
+  TestWriteRead_RemovePageBreak_Col(false, sfOpenDocument);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_Row_ODS;
+begin
+  TestWriteRead_RemovePageBreak_Row(false, sfOpenDocument);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_ColHidden_ODS;
+begin
+  TestWriteRead_RemovePageBreak_Col(true, sfOpenDocument);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_RowHidden_ODS;
+begin
+  TestWriteRead_RemovePageBreak_Row(true, sfOpenDocument);
 end;
 
 initialization
