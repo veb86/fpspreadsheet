@@ -3092,8 +3092,9 @@ begin
   AppendToStream(AStream, Format(
     '<colBreaks count="%d" manualBreakCount="%d">', [n, n]));
     for i := 0 to sheet.Cols.Count - 1 do
-      AppendToStream(AStream, Format(
-        '<brk id="%d" max="1048575" man="1" />', [PCol(sheet.Cols[i])^.Col]));
+      if (croPageBreak in PCol(sheet.Cols[i])^.Options) then
+        AppendToStream(AStream, Format(
+          '<brk id="%d" max="1048575" man="1" />', [PCol(sheet.Cols[i])^.Col]));
   AppendToStream(AStream,
     '</colBreaks>');
 end;
@@ -3559,8 +3560,9 @@ begin
   AppendToStream(AStream, Format(
     '<rowBreaks count="%d" manualBreakCount="%d">', [n, n]));
     for i := 0 to sheet.Rows.Count - 1 do
-      AppendToStream(AStream, Format(
-        '<brk id="%d" max="16383" man="1" />', [PRow(sheet.Rows[i])^.Row]));
+      if (croPageBreak in PRow(sheet.Rows[i])^.Options) then
+        AppendToStream(AStream, Format(
+          '<brk id="%d" max="16383" man="1" />', [PRow(sheet.Rows[i])^.Row]));
   AppendToStream(AStream,
     '</rowBreaks>');
 end;
