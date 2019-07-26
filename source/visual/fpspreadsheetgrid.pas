@@ -107,6 +107,7 @@ type
     FAutoExpand: TsAutoExpandModes;
     FEnhEditMode: Boolean;
     FSelPen: TsSelPen;
+    FPageBreakPen: TPen;
     FFrozenBorderPen: TPen;
     FHyperlinkTimer: TTimer;
     FHyperlinkCell: PCell;      // Selected cell if it stores a hyperlink
@@ -134,6 +135,7 @@ type
     FFormulaError: Boolean;
     FFixedColWidth: Integer;
     FShowFormulas: Boolean;
+    FShowPageBreaks: Boolean;
     function CalcAutoRowHeight(ARow: Integer): Integer;
     function CalcColWidthFromSheet(AWidth: Single): Integer;
     function CalcRowHeightFromSheet(AHeight: Single): Integer;
@@ -225,12 +227,14 @@ type
     procedure SetHyperlink(ACol, ARow: Integer; AValue: String);
     procedure SetNumberFormat(ACol, ARow: Integer; AValue: String);
     procedure SetNumberFormats(ALeft, ATop, ARight, ABottom: Integer; AValue: String);
+    procedure SetPageBreakPen(AValue: TPen);
     procedure SetReadFormulas(AValue: Boolean);
     procedure SetRowHeights(ARow: Integer; AValue: Integer);
     procedure SetSelPen(AValue: TsSelPen);
     procedure SetShowFormulas(AValue: Boolean);
     procedure SetShowGridLines(AValue: Boolean);
     procedure SetShowHeaders(AValue: Boolean);
+    procedure SetShowPageBreaks(AValue: Boolean);
     procedure SetTextRotation(ACol, ARow: Integer; AValue: TsTextRotation);
     procedure SetTextRotations(ALeft, ATop, ARight, ABottom: Integer;
       AValue: TsTextRotation);
@@ -283,6 +287,7 @@ type
     procedure DrawFrozenPaneBorder(AStart, AEnd, ACoord: Integer; IsHor: Boolean);
     procedure DrawFrozenPanes;
     procedure DrawImages(AGridPart: Integer = 0);
+    procedure DrawPageBreaks(AClipRect: TRect); virtual;
     procedure DrawRow(aRow: Integer); override;
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
@@ -364,6 +369,8 @@ type
     {@@ This number of rows at the top is "frozen", i.e. it is not possible to
         scroll these rows. }
     property FrozenRows: Integer read FFrozenRows write SetFrozenRows;
+    {@@ Defines the pen used for the line drawn at the position of page breaks }
+    property PageBreakPen: TPen read FPageBreakPen write SetPageBreakPen;
     {@@ Activates reading of RPN formulas. Should be turned off when
         non-implemented formulas crashe reading of the spreadsheet file. }
     property ReadFormulas: Boolean read FReadFormulas write SetReadFormulas;
@@ -375,6 +382,8 @@ type
     property ShowGridLines: Boolean read GetShowGridLines write SetShowGridLines default true;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
     property ShowHeaders: Boolean read GetShowHeaders write SetShowHeaders default true;
+    {@@ Shows/hides lines at the position of page breaks }
+    property ShowPageBreaks: Boolean read FShowPageBreaks write SetShowPageBreaks default true;
     {@@ Activates text overflow (cells reaching into neighbors) }
     property TextOverflow: Boolean read FTextOverflow write FTextOverflow default false;
     {@@ Event called when an external hyperlink is clicked }
@@ -642,17 +651,21 @@ type
     {@@ This number of rows at the top is "frozen", i.e. it is not possible to
         scroll these rows. }
     property FrozenRows;
+    {@@ Defines the pen used for the lines drawn at the position of page breaks }
+    property PageBreakPen;
     {@@ Activates reading of RPN formulas. Should be turned off when
-        non-implemented formulas crashe reading of the spreadsheet file. }
+        non-implemented formulas crashes reading of the spreadsheet file. }
     property ReadFormulas;
     {@@ Pen used for drawing the selection rectangle }
     property SelectionPen;
-    {@@ Shows/hides formulas in grid cells when AutoCalc is offl }
+    {@@ Shows/hides formulas in grid cells when AutoCalc is off. }
     property ShowFormulas;
     {@@ Shows/hides vertical and horizontal grid lines. }
     property ShowGridLines;
     {@@ Shows/hides column and row headers in the fixed col/row style of the grid. }
     property ShowHeaders;
+    {@@ Shows/hides lines at the position of page breaks }
+    property ShowPageBreaks;
     {@@ Activates text overflow (cells reaching into neighbors) }
     property TextOverflow;
     {@@ Link to the workbook }
@@ -1339,6 +1352,12 @@ begin
   FFrozenBorderPen.Color := clBlack;
   FFrozenBorderPen.OnChange := @GenericPenChangeHandler;
 
+  FPageBreakPen := TPen.Create;
+  FPageBreakPen.Style := psDash;
+  FPageBreakPen.Color := clBlue;
+  FPageBreakPen.OnChange := @GenericPenChangeHandler;
+  FShowPageBreaks := true;
+
   FAutoExpand := [aeData, aeNavigation, aeDefault];
   FHyperlinkTimer := TTimer.Create(self);
   FHyperlinkTimer.Interval := HYPERLINK_TIMER_INTERVAL;
@@ -1368,6 +1387,7 @@ begin
     FInternalWorkbookSource.RemoveListener(self);  // will be destroyed automatically
   FreeAndNil(FCellFont);
   FreeAndNil(FSelPen);
+  FreeAndNil(FPageBreakPen);
   FreeAndNil(FFrozenBorderPen);
   FreeAndNil(FMultiLineStringEditor);
   inherited Destroy;
@@ -2355,6 +2375,8 @@ begin
     cliprect.Left := TL.X - 1;
   cliprect.Top := TL.Y;
 
+  DrawPageBreaks(cliprect);
+
   // Paint cell borders, selection rectangle, images and frozen-pane-borders
   // into this clipped area
   rgn := CreateRectRgn(cliprect.Left, cliprect.top, cliprect.Right, cliprect.Bottom);
@@ -3016,6 +3038,44 @@ begin
     Canvas.RestoreHandleState;
   end;      }
 
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Draws lines with the PageBreakPen along the cell border indicating the
+  position of page breaks
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.DrawPageBreaks(AClipRect: TRect);
+var
+  i: Integer;
+  lCol: PCol;
+  lRow: PRow;
+  idx: Integer;
+  R: TRect;
+begin
+  if not FShowPageBreaks then
+    exit;
+
+  Canvas.Pen.Assign(FPageBreakPen);
+
+  for i:= 0 to Worksheet.Rows.Count-1 do begin
+    lRow := Worksheet.Rows[i];
+    if (croPageBreak in lRow^.Options) then begin
+      idx := GetGridRow(lRow^.Row);
+//      R := CellRect(0, idx);
+      ColRowToOffSet(false, true, idx, R.Top, R.Bottom);
+      Canvas.Line(AClipRect.Left, R.Top-1, AClipRect.Right, R.Top-1);
+    end;
+  end;
+
+  for i:= 0 to Worksheet.Cols.Count-1 do begin
+    lCol := Worksheet.Cols[i];
+    if (croPageBreak in lCol^.Options) then begin
+      idx := GetGridRow(lCol^.Col);
+//      R := CelLRect(idx, 0);
+      ColRowToOffSet(true, true, idx, R.Left, R.Right);
+      Canvas.Line(R.Left-1, AClipRect.Top, R.Left-1, AClipRect.Bottom);
+    end;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6874,6 +6934,12 @@ begin
   end;
 end;
 
+procedure TsCustomWorksheetGrid.SetPageBreakPen(AValue: TPen);
+begin
+  FPageBreakPen.Assign(AValue);
+  InvalidateGrid;
+end;
+
 procedure TsCustomWorksheetGrid.SetReadFormulas(AValue: Boolean);
 var
   optns: TsWorkbookOptions;
@@ -6957,6 +7023,14 @@ begin
       Worksheet.Options := Worksheet.Options - [soShowHeaders];
 
   Setup;
+end;
+
+procedure TsCustomWorksheetGrid.SetShowPageBreaks(AValue: Boolean);
+begin
+  if FShowPageBreaks = AValue then
+    exit;
+  FShowPageBreaks := AValue;
+  InvalidateGrid;
 end;
 
 procedure TsCustomWorksheetGrid.SetTextRotation(ACol, ARow: Integer;
