@@ -448,6 +448,11 @@ type
       const ALeftOuterStyle, ATopOuterStyle, ARightOuterStyle, ABottomOuterStyle,
       AHorInnerStyle, AVertInnerStyle: TsCellBorderStyle);
 
+    procedure ShowCol(ACol: Integer);
+    procedure HideCol(ACol: Integer);
+    procedure ShowRow(ARow: Integer);
+    procedure HideRow(ARow: Integer);
+
     procedure Sort(AColSorting: Boolean; AIndex, AIndxFrom, AIndxTo:Integer); override;
 
     { Row height / col width calculation }
@@ -5606,6 +5611,66 @@ begin
     for r := r1 to r2 do
       for c := c1 to c2-1 do
         ProcessBorder(r, c, cbEast, AVertInnerStyle);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Shows the column with the specified index previously hidden.
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.ShowCol(ACol: Integer);
+var
+  c: Cardinal;
+begin
+  c := GetWorksheetCol(ACol);
+  if Worksheet.ColHidden(c) then begin
+    Worksheet.ShowCol(c);
+    UpdateColWidth(ACol);
+    InvalidateGrid;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Hides the column with the specifed index
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.HideCol(ACol: Integer);
+var
+  c: Cardinal;
+begin
+  c := GetWorksheetCol(ACol);
+  if not Worksheet.ColHidden(c) then begin
+    Worksheet.HideCol(c);
+    UpdateColWidth(ACol);
+    InvalidateGrid;
+  end;
+end;
+
+{@@-----------------------------------------------------------------------------
+  Shows the row with the specified index previously hidden
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.ShowRow(ARow: Integer);
+var
+  r: Cardinal;
+begin
+  r := GetWorksheetRow(ARow);
+  if Worksheet.RowHidden(r) then begin
+    Worksheet.ShowRow(r);
+    UpdateRowHeight(ARow);
+    InvalidateGrid;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Hides the row with the specifed index
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.HideRow(ARow: Integer);
+var
+  r: Cardinal;
+begin
+  r := GetWorksheetRow(ARow);
+  if not Worksheet.RowHidden(r) then begin
+    Worksheet.HideRow(r);
+    UpdateRowHeight(ARow);
+    InvalidateGrid;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
