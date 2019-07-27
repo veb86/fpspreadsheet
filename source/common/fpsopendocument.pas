@@ -97,7 +97,7 @@ type
     FRichTextFontList: TFPList;
     FRepeatedCols: TsRowColRange;
     FRepeatedRows: TsRowColRange;
-    procedure ApplyColWidths;
+    procedure ApplyColData;
     procedure ApplyStyleToCell(ACell: PCell; AStyleIndex: Integer);
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
     function ApplyTableStyle(ASheet: TsBasicWorksheet;
@@ -1110,9 +1110,10 @@ begin
   FNumFormatList.Add('N0:');
 end;
 
-{ Creates for each non-default column width stored internally in FColumnList
-  a TCol record in the current worksheet. }
-procedure TsSpreadOpenDocReader.ApplyColWidths;
+{ Creates for each non-default column width as well as non-default column
+  property stored internally in FColumnList a TCol record in the
+  current worksheet. }
+procedure TsSpreadOpenDocReader.ApplyColData;
 var
   colIndex: Integer;
   colData: TColumnData;
@@ -1128,6 +1129,15 @@ begin
   sheet := FWorksheet as TsWorksheet;
   defColWidth := sheet.ReadDefaultColWidth(FWorkbook.Units);
   lastOccCol := sheet.GetLastOccupiedColIndex;
+
+  for i:=0 to FColumnList.Count-1 do begin
+    colData := TColumnData(FColumnList[i]);
+    if (colData.Col > lastOccCol) then begin
+      if colData.Hidden or colData.PageBreak then
+        lastOccCol := colData.Col
+    end;
+  end;
+
   for i:=0 to FColumnList.Count-1 do
   begin
     colData := TColumnData(FColumnList[i]);
@@ -1149,6 +1159,7 @@ begin
     else
       fmtIndex := 0;
     }
+
     // Prepare column record for the worksheet
     colWidth := colStyle.ColWidth;        // is already in workbook units
     if SameValue(colWidth, defColWidth, COLWIDTH_EPS) then
@@ -2651,7 +2662,7 @@ begin
         // Apply table style
         ApplyTableStyle(FWorksheet, tablestylename);
         // Handle columns
-        ApplyColWidths;
+        ApplyColData;
         // Page layout
         FixCols(FWorksheet);
         FixRows(FWorksheet);
