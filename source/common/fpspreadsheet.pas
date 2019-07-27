@@ -8273,9 +8273,12 @@ begin
   if ARow = UNASSIGNED_ROW_COL_INDEX then
     exit;
   lRow := GetRow(ARow);
-  lRow^.Height := FWorkbook.ConvertUnits(AHeight, AUnits, FWorkbook.FUnits);
-  lRow^.RowHeightType := ARowHeightType;
-  ChangedRow(ARow);
+  if (croHidden in lRow^.Options) then
+  begin
+    lRow^.Height := FWorkbook.ConvertUnits(AHeight, AUnits, FWorkbook.FUnits);
+    lRow^.RowHeightType := ARowHeightType;
+    ChangedRow(ARow);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8351,9 +8354,12 @@ begin
   if ACol = UNASSIGNED_ROW_COL_INDEX then
     exit;
   lCol := GetCol(ACol);
-  lCol^.Width := FWorkbook.ConvertUnits(AWidth, AUnits, FWorkbook.FUnits);
-  lCol^.ColWidthType := AColWidthType;
-  ChangedCol(ACol);
+  if not (croHidden in lCol^.Options) then
+  begin
+    lCol^.Width := FWorkbook.ConvertUnits(AWidth, AUnits, FWorkbook.FUnits);
+    lCol^.ColWidthType := AColWidthType;
+    ChangedCol(ACol);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
