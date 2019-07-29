@@ -434,7 +434,7 @@ begin
     // ...and delete all visible column records with default format
     for c := sheet.Cols.Count-1 downto 0 do begin
       lCol := PCol(sheet.Cols[c]);
-      if (lCol^.FormatIndex = 0) and not (croHidden in lCol^.Options) then
+      if (lCol^.FormatIndex = 0) and ([croHidden, croPageBreak] * lCol^.Options = []) then
         sheet.RemoveCol(lCol^.Col);
     end;
   end;
