@@ -81,7 +81,7 @@ type
     function ReadFont(ANode: TDOMNode): Integer;
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadHeaderFooter(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
-    procedure ReadHyperlinks(ANode: TDOMNode);
+    procedure ReadHyperlinks(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadMergedCells(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadPageMargins(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
@@ -318,6 +318,7 @@ type
     TextMark: String;
     Display: String;
     Tooltip: String;
+    Worksheet: TsBasicWorksheet;
   end;
 
   TSharedFormulaData = class
@@ -473,6 +474,9 @@ begin
   for i:=0 to FHyperlinkList.Count-1 do
   begin
     hyperlinkData := THyperlinkListData(FHyperlinkList.Items[i]);
+    if hyperlinkData.Worksheet <> sheet then
+      Continue;
+
     if pos(':', hyperlinkdata.CellRef) = 0 then
     begin
       ParseCellString(hyperlinkData.CellRef, r1, c1);
@@ -1707,7 +1711,8 @@ begin
   end;
 end;
 
-procedure TsSpreadOOXMLReader.ReadHyperlinks(ANode: TDOMNode);
+procedure TsSpreadOOXMLReader.ReadHyperlinks(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
 var
   node: TDOMNode;
   nodeName: String;
@@ -1743,6 +1748,7 @@ begin
           hyperlinkData.TextMark := GetAttrValue(node, 'location');
           hyperlinkData.Display := GetAttrValue(node, 'display');
           hyperlinkData.Tooltip := GetAttrValue(node, 'tooltip');
+          hyperlinkData.Worksheet := AWorksheet;
         end;
         FHyperlinkList.Add(hyperlinkData);
         node := node.NextSibling;
@@ -2714,7 +2720,7 @@ begin
       ReadWorksheet(Doc_FindNode('sheetData'), FWorksheet);
       ReadSheetProtection(Doc_FindNode('sheetProtection'), FWorksheet);
       ReadMergedCells(Doc_FindNode('mergeCells'), FWorksheet);
-      ReadHyperlinks(Doc_FindNode('hyperlinks'));
+      ReadHyperlinks(Doc_FindNode('hyperlinks'), FWorksheet);
       ReadPrintOptions(Doc_FindNode('printOptions'), FWorksheet);
       ReadPageMargins(Doc_FindNode('pageMargins'), FWorksheet);
       ReadPageSetup(Doc_FindNode('pageSetup'), FWorksheet);
@@ -2739,7 +2745,7 @@ begin
           RelsNode := Doc_FindNode('Relationship');
           fn_comments := FindCommentsFileName(RelsNode);
           // Get hyperlink data
-          ReadHyperlinks(RelsNode);
+          ReadHyperlinks(RelsNode, FWorksheet);
           FreeAndNil(Doc);
         end else
         if (FSheetList.Count = 1) then
