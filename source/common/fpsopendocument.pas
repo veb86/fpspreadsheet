@@ -2001,6 +2001,7 @@ var
   colWidth: double;
   colPageBreak: Boolean;
   s: String;
+  nodeName: String;
 begin
   styleName := GetAttrValue(AStyleNode, 'style:name');
   styleChildNode := AStyleNode.FirstChild;
@@ -2009,7 +2010,8 @@ begin
 
   while Assigned(styleChildNode) do
   begin
-    if styleChildNode.NodeName = 'style:table-column-properties' then
+    nodeName := styleChildNode.NodeName;
+    if nodeName = 'style:table-column-properties' then
     begin
       s := GetAttrValue(styleChildNode, 'style:column-width');
       if s <> '' then
@@ -4862,28 +4864,31 @@ begin
 
   { At first, add the default column width }
   colStyle := TColumnStyleData.Create;
-  colStyle.Name := 'co1';
+  colStyle.Name := 'co1';              // 1 = "one"
   colStyle.ColWidth := wDef;
   FColumnStyleList.Add(colStyle);
 
-  { Then iterate through all sheets and all columns and store the unique
-    column widths in the FColumnStyleList. }
+  { Then iterate through all sheets and all columns and store the records with
+    unique properties in the FColumnStyleList. }
   for i:=0 to book.GetWorksheetCount-1 do
   begin
     sheet := book.GetWorksheetByIndex(i);
-    wDef := sheet.ReadDefaultColWidth(book.Units);
     for c := 0 to sheet.Cols.Count-1 do
     begin
       col := PCol(sheet.Cols[c]);
-      if (col^.ColWidthType = cwtCustom) or (croPageBreak in col^.Options) then
+      if not sheet.IsDefaultCol(col) then
       begin
         colPageBreak := (croPageBreak in col^.Options);  // has page break?
-        w := col^.Width;   // is in workbook units
+        if col^.ColWidthType = cwtDefault then
+          w := wDef
+        else
+          w := col^.Width;   // is in workbook units
         // Look for this width in the current ColumnStyleList
         found := false;
         for j := 0 to FColumnStyleList.Count - 1 do begin
           item := TColumnStyleData(FColumnStyleList[j]);
-          if SameValue(item.ColWidth, w, COLWIDTH_EPS) and (item.PageBreak = colPageBreak) then
+          if SameValue(item.ColWidth, w, COLWIDTH_EPS) and
+            (item.PageBreak = colPageBreak) then
           begin
             found := true;
             break;
@@ -4894,10 +4899,7 @@ begin
         begin
           colStyle := TColumnStyleData.Create;
           colStyle.Name := Format('co%d', [FColumnStyleList.Count + 1]);
-          if col^.ColWidthType = cwtDefault then
-            colStyle.ColWidth := wDef
-          else
-            colStyle.ColWidth := w;
+          colStyle.ColWidth := w;
           colStyle.PageBreak := colPageBreak;
           FColumnStyleList.Add(colStyle);
         end;
@@ -4974,7 +4976,7 @@ begin
   { At first, add the default row height }
   { Initially, row height units will be the same as in the workbook }
   rowStyle := TRowStyleData.Create;
-  rowStyle.Name := 'ro1';
+  rowStyle.Name := 'ro1';        // 1 = "one"
   rowStyle.RowHeight := book.ConvertUnits(15, suPoints, FWorkbook.Units);
   rowStyle.RowHeightType := rhtAuto;
   FRowStyleList.Add(rowStyle);
@@ -4985,7 +4987,7 @@ begin
     for r:=0 to sheet.GetLastRowIndex do
     begin
       row := sheet.FindRow(r);
-      if row <> nil then
+      if not sheet.IsDefaultRow(row) then
       begin
         rowPageBreak := (croPageBreak in row^.Options);
         h := sheet.GetRowHeight(r, FWorkbook.Units);
@@ -5005,7 +5007,7 @@ begin
         if not found then
         begin
           rowStyle := TRowStyleData.Create;
-          rowStyle.Name := Format('ro%d', [FRowStyleList.Count+1]);
+          rowStyle.Name := Format('ro%d', [FRowStyleList.Count + 1]);
           rowStyle.RowHeight := h;
           rowStyle.RowHeightType := row^.RowHeightType;
           rowStyle.PageBreak := rowPageBreak;

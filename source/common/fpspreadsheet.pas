@@ -453,6 +453,8 @@ type
     function  GetColWidthType(ACol: Cardinal): TsColWidthType;
     function  HasColFormats: Boolean;
     function  HasRowFormats: Boolean;
+    function  IsDefaultCol(ACol: PCol): Boolean;
+    function  IsDefaultRow(ARow: PRow): Boolean;
     function  ColHidden(ACol: Cardinal): Boolean;
     function  RowHidden(ARow: Cardinal): Boolean;
     procedure HideCol(ACol: Cardinal);
@@ -7601,6 +7603,15 @@ function TsWorksheet.GetColWidth(ACol: Cardinal; AUnits: TsSizeUnits): Single;
 var
   col: PCol;
 begin
+  Result := FDefaultColWidth;
+  if ACol <> UNASSIGNED_ROW_COL_INDEX then begin
+    col := FindCol(ACol);
+    if (col <> nil) and (col^.ColWidthType <> cwtDefault) then
+      Result := col^.Width;
+  end;
+  Result := FWorkbook.ConvertUnits(Result, FWorkbook.Units, AUnits);
+
+  {
   if ACol = UNASSIGNED_ROW_COL_INDEX then
     Result := 0
   else
@@ -7612,6 +7623,7 @@ begin
       Result := col^.Width;
     Result := FWorkbook.ConvertUnits(Result, FWorkbook.Units, AUnits);
   end;
+  }
 end;
 
 function TsWorksheet.GetColWidth(ACol: Cardinal): Single;
@@ -7675,6 +7687,16 @@ function TsWorksheet.GetRowHeight(ARow: Cardinal; AUnits: TsSizeUnits): Single;
 var
   lRow: PRow;
 begin
+  Result := FDefaultRowHeight;
+  if ARow <> UNASSIGNED_ROW_COL_INDEX then
+  begin
+    lRow := FindRow(ARow);
+    if (lRow <> nil) and (lRow^.RowHeightType <> rhtDefault) then
+      Result := lRow^.Height;
+  end;
+  Result := FWorkbook.ConvertUnits(Result, FWorkbook.Units, AUnits);
+
+  {
   if ARow = UNASSIGNED_ROW_COL_INDEX then
     Result := 0
   else
@@ -7688,6 +7710,7 @@ begin
       Result := FDefaultRowHeight;
     Result := FWorkbook.ConvertUnits(Result, FWorkbook.Units, AUnits);
   end;
+  }
 end;
 
 function TsWorksheet.GetRowHeight(ARow: Cardinal): Single;
@@ -7739,6 +7762,30 @@ begin
       exit;
     end;
   Result := false;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines whether the properties stored in a TCol record are default values
+  only. Such a record usually can be removed.
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsDefaultCol(ACol: PCol): Boolean;
+begin
+  Result :=
+    (ACol = nil) or (
+    (ACol^.ColWidthType = cwtDefault) and (ACol^.FormatIndex = 0) and (ACol^.Options = [])
+    );
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines whether the properties stored in a TRow record are default values
+  only. Such a record normally can be removed.
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsDefaultRow(ARow: PRow): Boolean;
+begin
+  Result :=
+    (ARow = nil) or (
+    (ARow^.RowHeightType = rhtDefault) and (ARow^.FormatIndex = 0) and (ARow^.Options = [])
+    );
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -8273,7 +8320,7 @@ begin
   if ARow = UNASSIGNED_ROW_COL_INDEX then
     exit;
   lRow := GetRow(ARow);
-  if (croHidden in lRow^.Options) then
+  if not (croHidden in lRow^.Options) then
   begin
     lRow^.Height := FWorkbook.ConvertUnits(AHeight, AUnits, FWorkbook.FUnits);
     lRow^.RowHeightType := ARowHeightType;

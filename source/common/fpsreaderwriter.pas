@@ -386,7 +386,7 @@ const
 var
   sheet: TsWorksheet absolute AWorksheet;
   c: LongInt;
-  w: Single;
+  w0, w: Single;
   lCol: PCol;
   sameWidth: Boolean;
 begin
@@ -416,10 +416,20 @@ begin
 
   // Check whether all columns have the same column width
   sameWidth := true;
-  w := PCol(sheet.Cols[0])^.Width;
+  lCol := PCol(sheet.Cols[0]);
+  if lCol^.ColWidthType = cwtCustom then
+    w0 := lCol^.Width
+  else
+    w0 := sheet.DefaultColWidth;
+//  w := PCol(sheet.Cols[0])^.Width;
   for c := 1 to sheet.Cols.Count-1 do begin
     lCol := PCol(sheet.Cols[c]);
-    if not SameValue(lCol^.Width, w, EPS) then
+    if lCol^.ColWidthType = cwtCustom then
+      w := lCol^.Width
+    else
+      w := sheet.DefaultColWidth;
+    if not SameValue(w, w0) then
+//    if not SameValue(lCol^.Width, w, EPS) then
     begin
       sameWidth := false;
       break;
