@@ -2379,8 +2379,11 @@ begin
         '</Row>' + LF);
       FPrevRow := r;
     end else
+    if (rowheightStr <> '') or (styleStr <> '') or (hiddenStr <> '') then begin
       AppendToStream(AStream, ROW_INDENT + Format(
         '<Row%s/>', [s]) + LF);
+      FPrevRow := r;
+    end;
   end;
 end;
 
