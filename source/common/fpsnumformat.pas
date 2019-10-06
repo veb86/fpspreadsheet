@@ -1473,7 +1473,7 @@ end;
           string it is replaced by the localized strings
           FormatSettings.TimeAMString/.TimePMString.
 
-          @return Excel-compatible format string
+  @return Excel-compatible format string
 -------------------------------------------------------------------------------}
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection;
   AllowLocalizedAMPM: Boolean = true): String;
@@ -1527,11 +1527,11 @@ begin
       nftText:
         if element.TextValue <> '' then result := Result + '"' + element.TextValue + '"';
       nftYear:
-        Result := Result + DupeString('Y', element.IntValue);
+        Result := Result + DupeString('y', element.IntValue);
       nftMonth:
-        Result := Result + DupeString('M', element.IntValue);
+        Result := Result + DupeString('m', element.IntValue);
       nftDay:
-        Result := Result + DupeString('D', element.IntValue);
+        Result := Result + DupeString('d', element.IntValue);
       nftHour:
         if element.IntValue < 0
           then Result := Result + '[' + DupeString('h', -element.IntValue) + ']'
