@@ -1113,8 +1113,9 @@ end;
 function GeneralFormatFloat(AValue: Double;
   AFormatSettings: TFormatSettings): String;
 begin
-  Result := FloatToStrF(AValue, ffGeneral, 16, 16, AFormatSettings);
-  // 16 is for best rounding results
+  Result := FloatToStrF(AValue, ffGeneral, 15, 15, AFormatSettings);
+  // 15 is for best rounding results.
+  // Note: Still more than Excel whichrounds pi to 9 digits only.
 end;
 
 
