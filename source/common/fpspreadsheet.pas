@@ -2839,6 +2839,7 @@ begin
   numFmt := Workbook.GetNumberFormat(fmt^.NumberFormatIndex);
 
   with ACell^ do
+  begin
     case ContentType of
       cctUTF8String:
         Result := UTF8StringValue;
@@ -2868,15 +2869,15 @@ begin
 
       cctError:
         Result := GetErrorValueStr(TsErrorValue(ErrorValue));
-
-      else   // blank --> display hyperlink target if available
-        Result := '';
-        if HasHyperlink(ACell) then
-        begin
-          hyperlink := FindHyperlink(ACell);
-          if hyperlink <> nil then Result := hyperlink^.Target;
-        end;
     end;
+
+    if Result = '' then    // blank --> display hyperlink target if available
+      if HasHyperlink(ACell) then
+      begin
+        hyperlink := FindHyperlink(ACell);
+        if hyperlink <> nil then Result := hyperlink^.Target;
+      end;
+  end;
 end;
 
 function TsWorksheet.ReadAsUTF8Text(ACell: PCell;
