@@ -1199,7 +1199,8 @@ begin
   begin
     // Bring the priority format to the top
     idx := IndexOf(APriorityFormat);
-    FList.Exchange(0, idx);
+    if idx > -1 then
+      FList.Exchange(0, idx);
   end;
 
   SetLength(Result, FList.Count);
@@ -1224,7 +1225,8 @@ begin
 
   if APriorityFormat <> sfidUnknown then
     // Restore original order
-    FList.Exchange(idx, 0);
+    if idx > -1 then
+      FList.Exchange(idx, 0);
 end;
 
 function TsSpreadFormatRegistry.GetFormatName(AFormatID: TsSpreadFormatID): String;
