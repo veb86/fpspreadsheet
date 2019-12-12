@@ -1118,7 +1118,10 @@ begin
 
   s := GetAttrValue(ANode, 'rgb');
   if s <> '' then begin
-    Result := HTMLColorStrToColor('#' + s);
+    if s[1] = '#' then
+      Result := HTMLColorStrToColor(s)
+    else
+      Result := HTMLColorStrToColor('#' + s);
     exit;
   end;
 
