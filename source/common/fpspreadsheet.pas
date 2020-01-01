@@ -10383,6 +10383,7 @@ var
   clipbook: TsWorkbook;
   clipsheet: TsWorksheet;
   sel: TsCellRange;
+  range: TsCellRangeArray;
   r, c: Cardinal;
   srccell, destcell: PCell;
 begin
@@ -10412,8 +10413,9 @@ begin
         end;
     end;
     // Select the same cells as in the source workbook.
-    clipsheet.SetSelection(ActiveWorksheet.GetSelection);
-    clipsheet.SelectCell(ActiveWorksheet.ActiveCellRow, ActiveWorksheet.ActiveCellCol);
+    range := ActiveWorksheet.GetSelection;
+    clipsheet.SetSelection(range);
+    clipsheet.SelectCell(range[0].Row1, range[0].Col1);
 
     // Write this workbook to a stream. Set the parameter spClipboard to
     // indicate that this should be the special clipboard version of the stream.
@@ -10488,8 +10490,8 @@ begin
        and (ActiveWorksheet.GetSelection[0].Row1 = ActiveWorksheet.GetSelection[0].Row2)
     then begin
       // Find offset of active cell to left/top cell in clipboard sheet
-      dr := LongInt(ActiveWorksheet.ActiveCellRow) - clipsheet.GetFirstRowIndex(true);
-      dc := LongInt(ActiveWorksheet.ActiveCellCol) - clipsheet.GetFirstColIndex(true);
+      dr := LongInt(ActiveWorksheet.ActiveCellRow) - clipsheet.ActiveCellRow;
+      dc := LongInt(ActiveWorksheet.ActiveCellCol) - clipsheet.ActiveCellCol;
       // Copy cells from clipboard sheet to active worksheet
       // Shift them such that top/left of clipboard sheet is at active cell
       for srcCell in clipsheet.Cells do
@@ -10523,8 +10525,8 @@ begin
         c := clipsheet.ActiveCellCol;
       end else
       begin
-        r := sel.Row2;
-        c := sel.Col2;
+        r := LongInt(sel.Row2);
+        c := LongInt(sel.Col2);
       end;
       if (r <> -1) and (c <> -1) then
         ActiveWorksheet.SelectCell(r + dr, c + dc);
