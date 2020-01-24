@@ -8,7 +8,7 @@ object Form1: TForm1
   ClientWidth = 521
   OnCreate = FormCreate
   OnDestroy = FormDestroy
-  LCLVersion = '1.9.0.0'
+  LCLVersion = '2.1.0.0'
   object PageControl: TPageControl
     Left = 4
     Height = 302
@@ -95,7 +95,7 @@ object Form1: TForm1
           Left = 8
           Height = 15
           Top = 40
-          Width = 324
+          Width = 325
           Caption = 'Please note: the binary xls files can handle only 65536 records.'
           ParentColor = False
         end

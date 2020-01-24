@@ -55,6 +55,7 @@ type
     FHeaderTemplateCell: PCell;
     FDateTemplateCell: PCell;
     FCurrencyTemplatecell: PCell;
+    FSocialSecurityTemplateCell: PCell;
     FImportedFieldNames: TStringList;
     FImportedRowCells: Array of TCell;
     // Actual export code when using FPSpreadsheet's fpsexport:
@@ -130,6 +131,15 @@ const
 
 { TForm1 }
 
+function RandomNumberStr(ALength: Integer): String;
+var
+  i: Integer;
+begin
+  SetLength(Result, ALength);
+  for i := 1 to ALength do
+    Result[i] := char(ord('0') + Random(10));
+end;
+
 { This procedure creates a test dbf table with random data for us to play with }
 procedure TForm1.BtnCreateDatabaseClick(Sender: TObject);
 var
@@ -163,6 +173,7 @@ begin
   FExportDataset.FieldDefs.Add('Last name', ftString);
   FExportDataset.FieldDefs.Add('First name', ftString);
   FExportDataset.FieldDefs.Add('City', ftString);
+  FExportDataset.FieldDefs.Add('Social sec', ftString);
   FExportDataset.FieldDefs.Add('Birthday', ftDate);
   FExportDataset.FieldDefs.Add('Salary', ftCurrency);
   FExportDataset.FieldDefs.Add('Work begin', ftDateTime);
@@ -196,6 +207,7 @@ begin
     FExportDataset.FieldByName('Size').AsFloat := (160 + Random(50)) / 100;
     FExportDataSet.FieldByName('Work begin').AsDateTime := 40000+EncodeTime(6+Random(4), Random(60), Random(60), 0);
     FExportDataSet.FieldByName('Work end').AsDateTime := EncodeTime(15+Random(4), Random(60), Random(60), 0);
+    FExportDataSet.FieldByName('Social sec').AsString := RandomNumberStr(16);
     FExportDataset.Post;
   end;
 
@@ -408,11 +420,12 @@ begin
       Exporter.ExportFields.AddField('City');
       Exporter.Execute;
 
-      // On the second sheet we want "Last name", "First name" and "Birthday"
+      // On the second sheet we want "Last name", "First name", "Birthday" and "Social security number"
       Exporter.ExportFields.Clear;
       Exporter.ExportFields.AddField('Last name');
       Exporter.ExportFields.AddField('First name');
       Exporter.ExportFields.AddField('Birthday');
+      Exporter.ExportFields.AddField('Social sec');
       Exporter.Execute;
 
       // On the third sheet we want "Last name", "First name" and "Income"
@@ -537,6 +550,10 @@ begin
     // Use cell C1 as format template of currency column
     FCurrencyTemplateCell := worksheet.GetCell(0, 2);
     worksheet.WriteNumberFormat(FCurrencyTemplateCell, nfCurrency);
+
+    // Use cell D1 as format template for social security number column
+    FSocialSecurityTemplatecell := worksheet.GetCell(0, 3);
+    worksheet.WriteNumberFormat(FSocialSecurityTemplateCell, nfText);
 
     // Make rows a bit wider
     worksheet.WriteColWidth(0, 20);
@@ -684,8 +701,9 @@ begin
     if FExportDataset.Fields[ACol].DataType = ftDate then
       AStyleCell := FDateTemplateCell
     else if FExportDataset.Fields[ACol].DataType = ftCurrency then
-      AStyleCell := FCurrencyTemplateCell;
-
+      AStyleCell := FCurrencyTemplateCell
+    else if SameText(FExportDataset.Fields[ACol].FieldName, 'Social sec') then
+      AStyleCell := FSocialSecurityTemplateCell;
     if ACol = Sender.VirtualColCount-1 then
     begin
       // Move to next record after last field has been written
