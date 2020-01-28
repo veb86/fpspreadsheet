@@ -223,7 +223,7 @@ begin
   end;
   with ParserTestData[7] do begin
     FormatString := '[$-F400]dd.mm.yy\ hh:mm';
-    SollFormatString := 'DD.MM.YY\ hh:mm';
+    SollFormatString := 'dd.mm.yy\ hh:mm';
     SollNumFormat := nfCustom;
     SollSectionCount := 1;
     SollDecimals := 0;
