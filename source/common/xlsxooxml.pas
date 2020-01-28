@@ -67,7 +67,8 @@ type
     function FindCommentsFileName(ANode: TDOMNode): String;
     procedure ReadActiveSheet(ANode: TDOMNode; out ActiveSheetIndex: Integer);
     procedure ReadBorders(ANode: TDOMNode);
-    procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARowIndex: Cardinal; var AColIndex: Cardinal);
     procedure ReadCellXfs(ANode: TDOMNode);
     procedure ReadColRowBreaks(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     function  ReadColor(ANode: TDOMNode): TsColor;
@@ -88,7 +89,7 @@ type
     procedure ReadPageSetup(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadPalette(ANode: TDOMNode);
     procedure ReadPrintOptions(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
-    procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; var ARowIndex: Cardinal);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadSheetList(ANode: TDOMNode);
@@ -654,7 +655,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLReader.ReadCell(ANode: TDOMNode;
-  AWorksheet: TsBasicWorksheet);
+  AWorksheet: TsBasicWorksheet; ARowIndex: Cardinal; var AColIndex: Cardinal);
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
@@ -683,7 +684,14 @@ begin
 
   // get row and column address
   addr := GetAttrValue(ANode, 'r');       // cell address, like 'A1'
-  ParseCellString(addr, rowIndex, colIndex);
+  if addr <> '' then
+    ParseCellString(addr, rowIndex, colIndex)
+  else
+  begin
+    rowIndex := ARowIndex;
+    colIndex := AColIndex;
+  end;
+  AColIndex := colIndex + 1;
 
   // create cell
   if FIsVirtualMode then
@@ -2017,7 +2025,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLReader.ReadRow(ANode: TDOMNode;
-  AWorksheet: TsBasicWorksheet);
+  AWorksheet: TsBasicWorksheet; var ARowIndex: Cardinal);
 var
   s: String;
   r: Cardinal;
@@ -2050,7 +2058,10 @@ begin
 
   { Row index }
   s := GetAttrValue(ANode, 'r');
-  r := StrToInt(s) - 1;
+  if s = '' then
+    r := ARowIndex
+  else
+    r := StrToInt(s) - 1;
 
   { Row format }
   lRow.FormatIndex := 0;  // Default format
@@ -2571,19 +2582,23 @@ var
   rownode: TDOMNode;
   cellnode: TDOMNode;
   nodename: String;
+  r, c: Cardinal;
 begin
   rownode := ANode.FirstChild;
+  r := 0;
   while Assigned(rownode) do begin
     nodeName := rownode.NodeName;
     if (nodeName = 'row') or (nodeName = 'x:row') then begin
-      ReadRow(rownode, AWorksheet);
+      ReadRow(rownode, AWorksheet, r);
       cellnode := rownode.FirstChild;
+      c := 0;
       while Assigned(cellnode) do begin
         nodename := cellnode.NodeName;
         if (nodeName = 'c') or (nodeName = 'x:c') then
-          ReadCell(cellnode, AWorksheet);
+          ReadCell(cellnode, AWorksheet, r, c);
         cellnode := cellnode.NextSibling;
       end;
+      inc(r);
     end;
     rownode := rownode.NextSibling;
   end;
