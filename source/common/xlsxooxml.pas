@@ -93,6 +93,7 @@ type
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadSheetList(ANode: TDOMNode);
+    procedure ReadSheetPr(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadSheetProtection(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadSheetViews(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadThemeElements(ANode: TDOMNode);
@@ -1112,6 +1113,7 @@ var
   n, i: Integer;
   nodename: String;
 begin
+  Result := scNotDefined;
   Assert(ANode <> nil);
 
   s := Lowercase(GetAttrValue(ANode, 'auto'));
@@ -2203,6 +2205,26 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadSheetPR(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  node: TDOMNode;
+  nodename: String;
+begin
+  if ANode = nil then
+    exit;
+
+  node := ANode.FirstChild;
+  while node <> nil do begin
+    nodeName := node.NodeName;
+    if nodeName = 'tabColor' then
+    begin
+      TsWorksheet(AWorksheet).TabColor := ReadColor(node);
+    end;
+    node := node.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadSheetProtection(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
 var
@@ -2731,6 +2753,7 @@ begin
       FSharedFormulaBaseList.Clear;
 
       // Sheet data, formats, etc.
+      ReadSheetPr(Doc_FindNode('sheetPr'), FWorksheet);
       ReadDimension(Doc_FindNode('dimension'), FWorksheet);
       ReadSheetViews(Doc_FindNode('sheetViews'), FWorksheet);
       ReadSheetFormatPr(Doc_FindNode('sheetFormatPr'), FWorksheet);
@@ -3740,12 +3763,17 @@ procedure TsSpreadOOXMLWriter.WriteSheetPr(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
   s: String;
+  sheet: TsWorksheet absolute AWorksheet;
 begin
   s := '';
-  if ((AWorksheet as TsWorksheet).PageLayout.FitWidthToPages > 0) or
-     ((AWorksheet as TsWorksheet).PageLayout.FitHeightToPages > 0) then
+
+  if (sheet.PageLayout.FitWidthToPages > 0) or
+     (sheet.PageLayout.FitHeightToPages > 0) then
   s := s + ' fitToPage="1"';
   if s <> '' then s := '<pageSetUpPr' + s + ' />';
+
+  if sheet.TabColor <> scNotDefined then
+    s := s + Format('<tabColor rgb="%s" />', [Copy(ColorToHTMLColorStr(sheet.TabColor), 2, MaxInt)]);
 
   if s <> '' then
     AppendToStream(AStream,

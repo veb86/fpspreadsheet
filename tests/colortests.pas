@@ -27,6 +27,7 @@ type
     procedure TearDown; override;
     procedure TestWriteReadBackgroundColors(AFormat: TsSpreadsheetFormat; WhichPalette: Integer);
     procedure TestWriteReadFontColors(AFormat: TsSpreadsheetFormat; WhichPalette: Integer);
+    procedure TestWriteReadTabColor(AFormat: TsSpreadsheetFormat; ATabColor: TsColor);
   published
     // Writes out colors & reads back.
 
@@ -56,6 +57,8 @@ type
     procedure TestWriteRead_BIFF8_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
     procedure TestWriteRead_BIFF8_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
     procedure TestWriteRead_BIFF8_Font_RandomPal;          // palette 64, top 56 entries random
+    // Tab color
+    procedure TestWriteRead_BIFF8_TabColor;
 
     { OpenDocument file format tests }
     // Background colors...
@@ -68,6 +71,8 @@ type
     procedure TestWriteRead_ODS_Font_Biff5Pal;             // official biff5 palette in BIFF8 file format
     procedure TestWriteRead_ODS_Font_Biff8Pal;             // official biff8 palette in BIFF8 file format
     procedure TestWriteRead_ODS_Font_RandomPal;            // palette 64, top 56 entries random
+    // Tab color
+    procedure TestWriteRead_ODS_TabColor;
 
     { OOXML file format tests }
     // Background colors...
@@ -80,6 +85,8 @@ type
     procedure TestWriteRead_OOXML_Font_Biff5Pal;           // official biff5 palette in BIFF8 file format
     procedure TestWriteRead_OOXML_Font_Biff8Pal;           // official biff8 palette in BIFF8 file format
     procedure TestWriteRead_OOXML_Font_RandomPal;          // palette 64, top 56 entries random
+    // Tab color
+    procedure TestWriteRead_OOXML_TabColor;
 
     { Excel 2003/XML file format tests }
     // Background colors...
@@ -299,6 +306,53 @@ begin
   end;
 end;
 
+procedure TSpreadWriteReadColorTests.TestWriteReadTabColor(
+  AFormat: TsSpreadsheetFormat; ATabColor: TsColor);
+const
+  CELLTEXT = 'Color test';
+var
+  MyWorksheet: TsWorksheet;
+  MyWorkbook: TsWorkbook;
+  row, col: Integer;
+  MyCell: PCell;
+  TempFile: string; //write xls/xml to this file and read back from it
+  expectedRGB: DWord;
+  currentRGB: DWord;
+  i: Integer;
+begin
+  if not (AFormat in [sfOOXML, sfExcel8, sfOpenDocument]) then
+    exit;
+
+  TempFile:=GetTempFileName;
+
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkSheet:= MyWorkBook.AddWorksheet(ColorsSheet);
+    MyWorkSheet.TabColor := scRed;
+    currentRGB := MyWorksheet.TabColor;
+    expectedRGB := ATabColor;
+    CheckEquals(expectedRGB, currentRGB, 'Test unsaved tab color');
+    MyWorkBook.WriteToFile(TempFile, AFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Open the spreadsheet
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.ReadFromFile(TempFile, AFormat);
+    MyWorksheet := GetWorksheetByName(MyWorkBook, ColorsSheet);
+    if MyWorksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+    currentRGB := MyWorksheet.TabColor;
+    expectedRGB := ATabColor;
+    CheckEquals(expectedRGB, currentRGB, 'Test saved tab color');
+  finally
+    MyWorkbook.Free;
+    DeleteFile(TempFile);
+  end;
+end;
+
 { Tests for BIFF2 file format }
 { BIFF2 supports only a fixed palette, and no background color --> test only
   internal palette for font color }
@@ -389,6 +443,11 @@ begin
   TestWriteReadFontColors(sfExcel8, 999);
 end;
 
+procedure TSpreadWriteReadColorTests.TestWriteRead_BIFF8_TabColor;
+begin
+  TestWriteReadTabColor(sfExcel8, scRed);
+end;
+
 { Tests for Open Document file format }
 procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Background_InternalPal;
 begin
@@ -428,6 +487,11 @@ end;
 procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_Font_RandomPal;
 begin
   TestWriteReadFontColors(sfOpenDocument, 999);
+end;
+
+procedure TSpreadWriteReadColorTests.TestWriteRead_ODS_TabColor;
+begin
+  TestWriteReadTabColor(sfOpenDocument, scRed);
 end;
 
 { Tests for OOXML file format }
@@ -471,6 +535,10 @@ begin
   TestWriteReadFontColors(sfOOXML, 999);
 end;
 
+procedure TSpreadWriteReadColorTests.TestWriteRead_OOXML_TabColor;
+begin
+  TestWriteReadTabColor(sfOOXML, scRed);
+end;
 
 { Tests for Excel 2003/XML file format }
 procedure TSpreadWriteReadColorTests.TestWriteRead_XML_Background_InternalPal;

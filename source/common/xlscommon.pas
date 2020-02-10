@@ -3916,7 +3916,7 @@ end;
   data to be written immediately afterwards.
 
   @param  ARecID    ID of the record - see the INT_EXCEL_ID_XXXX constants
-  @param  ARedSize  Size (in bytes) of the data which follow immediately
+  @param  ARecSize  Size (in bytes) of the data which follow immediately
                     afterwards
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFWriter.WriteBIFFHeader(AStream: TStream;

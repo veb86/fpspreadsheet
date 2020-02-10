@@ -385,6 +385,7 @@ type
     Name: String;
     BiDiMode: TsBiDiMode;
     Hidden: boolean;
+    TabColor: TsColor;
   end;
 
   { Column style items stored in ColStyleList of the reader }
@@ -1286,6 +1287,7 @@ begin
     sheet.BiDiMode := tableStyle.BiDiMode;
   if tableStyle.Hidden then
     sheet.Options := sheet.Options + [soHidden];
+  sheet.TabColor := tableStyle.TabColor;
   Result := true;
 end;
 
@@ -4657,7 +4659,8 @@ var
   styleChildNode: TDOMNode;
   bidi: String;
   tablestyle: TTableStyleData;
-  display: String;
+  display: String = '';
+  tabColor: String = '';
 begin
  // nodeName := GetAttrValue(AStyleNode, 'style:name');
   stylename := GetAttrValue(AStyleNode, 'style:name');
@@ -4671,6 +4674,7 @@ begin
 //      stylename := GetAttrValue(styleChildNode, 'style:name');
       bidi := GetAttrValue(styleChildNode, 'style:writing-mode');
       display := GetAttrValue(styleChildNode, 'table:display');
+      tabcolor := GetAttrValue(styleChildNode, 'tableooo:tab-color');
     end;
     styleChildNode := styleChildNode.NextSibling;
   end;
@@ -4678,9 +4682,14 @@ begin
   tablestyle := TTableStyleData.Create;
   tablestyle.Name := styleName;
   if bidi = 'rl-tb' then
-    tablestyle.BiDiMode := bdRTL else
+    tablestyle.BiDiMode := bdRTL
+  else
     tablestyle.BiDiMode := bdLTR;
   tablestyle.Hidden := display = 'false';
+  if tabcolor = '' then
+    tablestyle.TabColor := scNotDefined
+  else
+    tablestyle.TabColor := HTMLColorStrToColor(tabcolor);
   FTableStyleList.Add(tablestyle);
 end;
 
@@ -7593,7 +7602,7 @@ procedure TsSpreadOpenDocWriter.WriteTableStyles(AStream: TStream);
 var
   i: Integer;
   sheet: TsWorksheet;
-  sheetname, bidi: String;
+  sheetname, bidi, tabColor: String;
 begin
   for i:=0 to (FWorkbook as TsWorkbook).GetWorksheetCount-1 do
   begin
@@ -7604,12 +7613,16 @@ begin
       bdLTR    : bidi := 'style:writing-mode="lr-tb" ';
       bdRTL    : bidi := 'style:writing-mode="rl-tb" ';
     end;
+    if sheet.TabColor = scNotDefined then
+      tabColor := ''
+    else
+      tabColor := 'tableooo:tab-color="' + ColorToHTMLColorStr(sheet.TabColor) + '" ';
     AppendToStream(AStream, Format(
       '<style:style style:name="ta%d" style:family="table" style:master-page-name="PageStyle_5f_%s">' +
-        '<style:table-properties table:display="%s" %s/>' +
+        '<style:table-properties table:display="%s" %s %s/>' +
       '</style:style>', [
       i+1, UTF8TextToXMLText(sheetname),
-      FALSE_TRUE[not (soHidden in sheet.Options)], bidi
+      FALSE_TRUE[not (soHidden in sheet.Options)], bidi, tabColor
     ]));
     if sheet.GetImageCount > 0 then
     begin

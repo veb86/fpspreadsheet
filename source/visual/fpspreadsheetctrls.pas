@@ -4018,6 +4018,7 @@ begin
     AStrings.Add('Page layout=');
     AStrings.Add('Options=');
     AStrings.Add('Protection=');
+    AStrings.Add('TabColor=');
   end else
   begin
     AStrings.Add(Format('Name=%s', [ASheet.Name]));
@@ -4039,6 +4040,7 @@ begin
     AStrings.Add(Format('Comments=%d items', [ASheet.Comments.Count]));
     AStrings.Add(Format('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]));
     AStrings.Add(Format('MergedCells=%d items', [ASheet.MergedCells.Count]));
+    AStrings.Add(Format('TabColor=$%.8x (%s)', [ASheet.TabColor, GetColorName(ASheet.TabColor)]));
 
     if ienPageLayout in FExpanded then
     begin

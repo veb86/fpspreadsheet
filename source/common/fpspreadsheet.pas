@@ -97,6 +97,7 @@ type
     FVirtualColCount: Cardinal;
     FVirtualRowCount: Cardinal;
     FZoomFactor: Double;
+    FTabColor: TsColor;
     FOnChangeCell: TsCellEvent;
     FOnChangeFont: TsCellEvent;
     FOnChangeCol: TsColEvent;
@@ -116,6 +117,7 @@ type
     procedure SetDefaultColWidth(AValue: Single);
     procedure SetDefaultRowHeight(AValue: Single);
     procedure SetIndex(AValue: Integer);
+    procedure SetTabColor(AValue: TsColor);
     procedure SetVirtualColCount(AValue: Cardinal);
     procedure SetVirtualRowCount(AValue: Cardinal);
     procedure SetZoomFactor(AValue: Double);
@@ -622,6 +624,8 @@ type
     property PageLayout: TsPageLayout read FPageLayout write FPageLayout;
     {@@ List of all row records of the worksheet having a non-standard row height }
     property  Rows: TIndexedAVLTree read FRows;
+    {@@ Color of the tab in the visual control - currently ignored }
+    property  TabColor: TsColor read FTabColor write SetTabColor default scNotDefined;
     {@@ Workbook to which the worksheet belongs }
     property  Workbook: TsWorkbook read FWorkbook;
     {@@ The default column width given in "character units" (width of the
@@ -1181,6 +1185,7 @@ begin
   FDefaultColWidth := ptsToMM(72);   // Excel: about 72 pts
   FDefaultRowHeight := ptsToMM(15);  // Excel: 15pts
   FZoomFactor := 1.0;
+  FTabColor := scNotDefined;
 
   FFirstRowIndex := UNASSIGNED_ROW_COL_INDEX;
   FFirstColIndex := UNASSIGNED_ROW_COL_INDEX;
@@ -7341,14 +7346,19 @@ var
 begin
   if AValue < 0 then
     AValue := 0
-  else
-  if AValue >= TsWorkbook(FWorkbook).GetWorksheetCount then
+  else if AValue >= TsWorkbook(FWorkbook).GetWorksheetCount then
     AValue := TsWorkbook(FWorkbook).GetWorksheetCount - 1;
   oldIndex := GetIndex;
   if oldIndex <> AValue then
     TsWorkbook(FWorkbook).MoveSheet(oldIndex, Avalue);
 end;
 
+procedure TsWorksheet.SetTabColor(AValue: TsColor);
+begin
+  if AValue = FTabColor then exit;
+  FTabColor := AValue;
+  TsWorkbook(FWorkbook).ChangedWorksheet(self);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Calculates the optimum height of a given row. Depends on the font size

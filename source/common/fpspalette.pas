@@ -255,6 +255,8 @@ begin
             AddUniqueColor(fmt.BorderStyles[cb].Color);
       end;
     end;
+    if sheet.TabColor <> scNotDefined then
+      AddUniqueColor(sheet.TabColor);
   end;
 end;
 

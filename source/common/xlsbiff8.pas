@@ -168,6 +168,7 @@ type
     procedure ReadRPNSheetIndex(AStream: TStream; out ADocumentURL: String;
       out ASheet1, ASheet2: Integer); override;
     procedure ReadRSTRING(AStream: TStream);
+    procedure ReadSheetLayout(const AStream: TStream);
     procedure ReadSST(const AStream: TStream);
     function ReadString_8bitLen(AStream: TStream): String; override;
     procedure ReadStringRecord(AStream: TStream); override;
@@ -256,6 +257,7 @@ type
     function WriteRPNSheetIndex(AStream: TStream; ADocumentURL: String;
       ASheet1, ASheet2: Integer): Word; override;
 //    procedure WriteSelectionRange(AStream: TStream; ARange: TsCellRange); override;
+    procedure WriteSheetLayout(AStream: TStream);
     procedure WriteSST(AStream: TStream);
     function WriteString_8bitLen(AStream: TStream; AString: String): Integer; override;
     procedure WriteSTRINGRecord(AStream: TStream; AString: string); override;
@@ -381,6 +383,7 @@ const
      INT_EXCEL_ID_TXO                    = $01B6;  // BIFF8 only
      INT_EXCEL_ID_HYPERLINK              = $01B8;  // BIFF8 only
      INT_EXCEL_ID_HLINKTOOLTIP           = $0800;  // BIFF8 only
+     INT_EXCEL_ID_SHEETLAYOUT            = $0862;  // BIFF8 only
 {%H-}INT_EXCEL_ID_FORCEFULLCALCULATION   = $08A3;
 
    { Excel OBJ subrecord IDs }
@@ -1254,6 +1257,7 @@ begin
     INT_EXCEL_ID_SCL           : ReadSCLRecord(AStream);
     INT_EXCEL_ID_SELECTION     : ReadSELECTION(AStream);
     INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
+    INT_EXCEL_ID_SHEETLAYOUT   : ReadSheetLayout(AStream);
     INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
     INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
     INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
@@ -1745,6 +1749,20 @@ begin
 
   if FIsVirtualMode then
     book.OnReadCellData(book, ARow, ACol, cell);
+end;
+
+procedure TsSpreadBIFF8Reader.ReadSheetLayout(const AStream: TStream);
+var
+  iclr: word;
+  i: Integer;
+begin
+  if WordLEToN(AStream.ReadWord) <> INT_EXCEL_ID_SHEETLAYOUT then
+    exit;
+  for i := 1 to 7 do
+    AStream.ReadWord;  // not used, unknown data
+
+  iclr := WordLEToN(AStream.ReadWord);  // index of tab color
+  TsWorksheet(FWorksheet).TabColor := FPalette[iclr];
 end;
 
 procedure TsSpreadBIFF8Reader.ReadSST(const AStream: TStream);
@@ -2815,6 +2833,7 @@ begin
       WriteMargin(AStream, 2);  // 2 = top margin
       WriteMargin(AStream, 3);  // 3 = bottom margin
       WritePageSetup(AStream);
+      WriteSheetLayout(AStream);
 
       // Protection
       if FWorksheet.IsProtected then begin
@@ -4338,6 +4357,48 @@ begin
   AStream.WriteWord(WordToLE(Byte(ARange.Col1)));
   AStream.WriteWord(WordToLE(Byte(ARange.Col2)));
 end;                       *)
+
+{@@ ----------------------------------------------------------------------------
+  Writes a SHEETLAYOUT record which contains the color of the worksheet's tab
+     offset  size  data
+        0      2   0862H (repeated record identifier)
+        2     10   Not used
+       12      4   Unknown data: 14H 00H 00H 00H
+       16      2   Colour index (➜5.74) for sheet name tab
+       18      2   Not used
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteSheetLayout(AStream: TStream);
+var
+  i: Integer;
+  iclr: Integer;
+  sheet: TsWorksheet;
+begin
+  sheet := TsWorksheet(FWorksheet);
+  if sheet.TabColor = scNotDefined then
+    exit;
+
+  // Biff header
+  WriteBIFFHeader(AStream, INT_EXCEL_ID_SHEETLAYOUT, 20);
+
+  // repeated record identifier
+  AStream.WriteWord(WordToLE(INT_EXCEL_ID_SHEETLAYOUT));
+
+  // not used
+  for i:=1 to 5 do AStream.WriteWord(0);
+
+  // Unknown data
+  AStream.WriteByte($14);
+  AStream.WriteByte(0);
+  AStream.WriteByte(0);
+  AStream.WriteByte(0);
+
+  // palette index of tab color
+  iclr := PaletteIndex(sheet.TabColor);
+  AStream.WriteWord(WordToLE(iclr));
+
+  // not used
+  AStream.WriteWord(0);
+end;
 
 {@@ ----------------------------------------------------------------------------
   Writes the SharedStringTable (SST) to the stream
