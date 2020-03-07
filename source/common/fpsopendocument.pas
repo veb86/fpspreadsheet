@@ -4104,7 +4104,7 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
           end;
         end;
       end;
-      childNode := ANode.NextSibling;
+      childNode := childnode.NextSibling;
     end;
   end;
 
