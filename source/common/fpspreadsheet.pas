@@ -4124,7 +4124,7 @@ var
 begin
   img := PsImage(FImages[AIndex]);
   if (img <> nil) then begin
-    if (img^.Bitmap <> nil) then img^.Bitmap.Free;
+    if (img^.Picture <> nil) then img^.Picture.Free;
     img^.HyperlinkTarget := '';
     img^.HyperlinkToolTip := '';
   end;

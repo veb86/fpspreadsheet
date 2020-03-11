@@ -829,7 +829,7 @@ type
     Index: Integer;           // index into the workbook's embedded streams list
     OffsetX, OffsetY: Double; // mm, relative to anchor
     ScaleX, ScaleY: Double;   // scaling factor of image
-    Bitmap: TObject;          // used for bitmap for display in grid
+    Picture: TObject;         // used for TPicture to display in grid
     HyperlinkTarget: String;  // Hyperlink assigned to the image
     HyperlinkToolTip: String; // Tooltip for hyperlink of the image
   end;

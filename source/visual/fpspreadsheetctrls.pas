@@ -1810,7 +1810,6 @@ procedure TsWorkbookTabControl.ListenerNotification(
 var
   i: Integer;
   sheet: TsWorksheet;
-  sheetName: String;
 begin
   Unused(AData);
 

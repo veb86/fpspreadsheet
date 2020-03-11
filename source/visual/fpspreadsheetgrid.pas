@@ -2965,7 +2965,6 @@ var
   imgRect: TRect;
   w, h: Integer;
   coloffs, rowoffs: Integer;
-  pic: TPicture;
   rgn: HRGN;
   fc, fr: Integer;
   R: TRect = (Left:0; Top:0; Right: 0; Bottom: 0);
@@ -2977,72 +2976,51 @@ begin
   GetScrollOffset(rowOffs, colOffs);
   fc := FHeaderCount + FFrozenCols;
   fr := FHeaderCount + FFrozenRows;
-                           (*
-  Canvas.SaveHandleState;
-  try
-    // Draw bitmap over grid. Take care of clipping.
-    InterSectClipRect(Canvas.Handle,
-      clipArea.Left, clipArea.Top, clipArea.Right, clipArea.Bottom);
-                             *)
-    for i := 0 to Worksheet.GetImageCount-1 do begin
-      img := Worksheet.GetPointerToImage(i);
-      obj := Workbook.GetEmbeddedObj(img^.Index);
 
-      // Frozen part of the grid draw only images which are anchored there.
-      case AGridPart of
-        DRAW_NON_FROZEN:
-          ;
-        DRAW_FROZEN_ROWS:
-          if (integer(img^.Row) >= fr) then Continue;
-        DRAW_FROZEN_COLS:
-          if (integer(img^.Col) >= fc) then Continue;
-        DRAW_FROZEN_CORNER:
-          if (integer(img^.Row) >= fr) or (integer(img^.Col) >= fc) then Continue;
-      end;
+  for i := 0 to Worksheet.GetImageCount-1 do begin
+    img := Worksheet.GetPointerToImage(i);
+    obj := Workbook.GetEmbeddedObj(img^.Index);
 
-      // Size of image and its position
-      w := ToPixels(obj.ImageWidth * img^.ScaleX);
-      h := ToPixels(obj.ImageHeight * img^.ScaleY);
-      imgRect := GetImageRect(img, w, h, rowoffs, coloffs);
-
-      // Nothing to do if image is outside the visible grid area
-      if not IntersectRect(R, clipArea, imgRect) then
-        continue;
-
-      // If not yet done load image stream into bitmap and scale to required size
-      if img^.Bitmap = nil then begin
-        img^.Bitmap := TBitmap.Create;
-        TBitmap(img^.Bitmap).SetSize(w, h);
-        TBitmap(img^.Bitmap).PixelFormat := pf32Bit;
-        TBitmap(img^.Bitmap).Transparent := true;
-      end;
-
-      pic := TPicture.Create;
-      try
-        obj.Stream.Position := 0;
-        pic.LoadFromStream(obj.Stream);
-        if pic.Bitmap <> nil then
-          TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Bitmap)
-        else if pic.Graphic <> nil then
-          TBitmap(img^.Bitmap).Canvas.StretchDraw(Rect(0, 0, w, h), pic.Graphic);
-      finally
-        pic.Free;
-      end;
-
-      // Draw the bitmap
-      rgn := CreateRectRgn(clipArea.Left, clipArea.Top, clipArea.Right, clipArea.Bottom);
-      try
-        SelectClipRgn(Canvas.Handle, rgn);
-        Canvas.Draw(imgRect.Left, imgRect.Top, TBitmap(img^.Bitmap));
-      finally
-        DeleteObject(rgn);
-      end;
+    // Frozen part of the grid draw only images which are anchored there.
+    case AGridPart of
+      DRAW_NON_FROZEN:
+        ;
+      DRAW_FROZEN_ROWS:
+        if (integer(img^.Row) >= fr) then Continue;
+      DRAW_FROZEN_COLS:
+        if (integer(img^.Col) >= fc) then Continue;
+      DRAW_FROZEN_CORNER:
+        if (integer(img^.Row) >= fr) or (integer(img^.Col) >= fc) then Continue;
     end;
-           {
-  finally
-    Canvas.RestoreHandleState;
-  end;      }
 
+    // Size of image and its position
+    w := ToPixels(obj.ImageWidth * img^.ScaleX);
+    h := ToPixels(obj.ImageHeight * img^.ScaleY);
+    imgRect := GetImageRect(img, w, h, rowoffs, coloffs);
+
+    // Nothing to do if image is outside the visible grid area
+    if not IntersectRect(R, clipArea, imgRect) then
+      continue;
+
+    // If not yet done load image stream into picture and scale to required size
+    if img^.Picture = nil then
+    begin
+      img^.Picture := TPicture.Create;
+      obj.Stream.Position := 0;
+      TPicture(img^.Picture).LoadFromStream(obj.Stream);
+    end;
+
+    // Scale and draw image
+    rgn := CreateRectRgn(clipArea.Left, clipArea.Top, clipArea.Right, clipArea.Bottom);
+    try
+      SelectClipRgn(Canvas.Handle, rgn);
+      R := Rect(0, 0, w, h);
+      OffsetRect(R, imgRect.Left, imgRect.Top);
+      Canvas.StretchDraw(R, TPicture(img^.Picture).Graphic);
+    finally
+      DeleteObject(rgn);
+    end;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

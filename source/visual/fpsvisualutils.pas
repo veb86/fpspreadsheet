@@ -106,7 +106,8 @@ type
 implementation
 
 uses
-  Types, Math, LCLType, LCLIntf, LazUTF8, fpsUtils;
+  Types, Math, LCLType, LCLIntf, LazUTF8,
+  fpsUtils;
 
 const
 {@@ Font size factor for sub-/superscript characters }
