@@ -269,6 +269,8 @@ begin
     referencedSheet := TsCellExprNode(AExprNode).GetSheet;
     if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
       exit;
+    if referencedSheet = nil then
+      exit;
     if TsCellExprNode(AExprNode).Col > colIndex then begin
       TsCellExprNode(AExprNode).Col := TsCellExprNode(AExprNode).Col - 1;
       MustRebuildFormulas := true;
@@ -289,6 +291,8 @@ begin
       (referencedSheet <> changedSheet) and
       (referencedSheet2 <> changedSheet)
     then
+      exit;
+    if referencedSheet = nil then
       exit;
     rng := TsCellRangeExprNode(AExprNode).Range;
     if (rng.Col1 = colIndex) and (rng.Col2 = colIndex) then begin
@@ -326,6 +330,8 @@ begin
     referencedSheet := TsCellExprNode(AExprNode).GetSheet;
     if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
       exit;
+    if referencedSheet = nil then
+      exit;
     if TsCellExprNode(AExprNode).Row > rowIndex then begin
       TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row - 1;
       MustRebuildFormulas := true;
@@ -347,6 +353,10 @@ begin
       (referencedSheet2 <> changedSheet)
     then
       exit;
+
+    if (referencedSheet = nil) then
+      exit;
+
     rng := TsCellRangeExprNode(AExprNode).Range;
     if (rng.Row1 = rowIndex) and (rng.Row2 = rowIndex) then begin
       TsCellRangeExprNode(AExprNode).Error := errIllegalRef;
@@ -383,6 +393,8 @@ begin
     referencedSheet := TsCellExprNode(AExprNode).GetSheet;
     if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
       exit;
+    if referencedSheet = nil then
+      exit;
     if TsCellExprNode(AExprNode).Col >= colIndex then begin
       TsCellExprNode(AExprNode).Col := TsCellExprNode(AExprNode).Col + 1;
       MustRebuildFormulas := true;
@@ -398,6 +410,8 @@ begin
       (referencedSheet <> changedSheet) and
       (referencedSheet2 <> changedSheet)
     then
+      exit;
+    if referencedSheet = nil then
       exit;
     rng := TsCellRangeExprNode(AExprNode).Range;
     if rng.Col1 >= colIndex then begin
@@ -429,6 +443,8 @@ begin
     referencedSheet := TsCellExprNode(AExprNode).GetSheet;
     if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
       exit;
+    if referencedSheet = nil then
+      exit;
     if TsCellExprNode(AExprNode).Row >= rowIndex then begin
       TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row + 1;
       MustRebuildFormulas := true;
@@ -444,6 +460,8 @@ begin
       (referencedSheet <> changedSheet) and
       (referencedSheet2 <> changedSheet)
     then
+      exit;
+    if referencedSheet = nil then
       exit;
     rng := TsCellRangeExprNode(AExprNode).Range;
     if rng.Row1 >= rowIndex then begin

@@ -55,6 +55,9 @@ type
 
     procedure TestWriteRead_InsDelColRow(ATestIndex: Integer;
       AFormat: TsSpreadsheetFormat);
+
+    procedure TestWriteRead_InsDelColRow_FormulaOtherSheet(ATestIndex: Integer);
+
     procedure TestWriteRead_HideShowColRow(IsCol: Boolean;
       IsHide: boolean; IsDefaultColRow: Boolean; AFormat: TsSpreadsheetFormat);
 
@@ -339,6 +342,11 @@ type
     procedure TestWriteRead_RemovePageBreak_ColHidden_ODS;
     procedure TestWriteRead_RemovePageBreak_Row_ODS;
     procedure TestWriteRead_RemovePageBreak_RowHidden_ODS;
+
+    procedure TestWriteRead_InsCol_FormulaOtherSheet;
+    procedure TestWriteRead_InsRow_FormulaOtherSheet;
+    procedure TestWriteRead_DelCol_FormulaOtherSheet;
+    procedure TestWriteRead_DelRow_FormulaOtherSheet;
   end;
 
 implementation
@@ -1870,6 +1878,73 @@ end;
 
 
 {------------------------------------------------------------------------------}
+{              Insert/Delete columns/rows in other sheet of formula            }
+{------------------------------------------------------------------------------}
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_FormulaOtherSheet(
+  ATestIndex: Integer);
+var
+  workbook: TsWorkbook;
+  worksheet1: TsWorksheet;
+  worksheet2: TsWorksheet;
+  expected: Double;
+  actual: Double;
+begin
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := workbook.Options + [boAutoCalc];
+    worksheet1 := workbook.AddWorksheet('Sheet 1');
+    worksheet2 := workbook.AddWorksheet('Sheet 2');
+
+    case ATestIndex of
+      0: begin    // Insert a column in unaffected sheet. Formula must be unchanged.
+           worksheet1.WriteNumber(0, 0, 1.0);
+           worksheet1.WriteNumber(0, 1, 2.0);
+           worksheet1.WriteNumber(0, 2, 4.0);
+           worksheet1.WriteFormula(0, 3, 'SUM(A1:C1)');
+           expected := worksheet1.ReadAsNumber(0, 3);
+           worksheet2.InsertCol(1);
+           actual := worksheet1.ReadAsNumber(0, 3);
+           CheckEquals(expected, actual, 'Test 0: Inserting column in other sheet affects formula');
+         end;
+      1: begin     // Delete a column from unaffected sheet. Formula must be unchanged.
+           worksheet1.WriteNumber(0, 0, 1.0);
+           worksheet1.WriteNumber(0, 1, 2.0);
+           worksheet1.WriteNumber(0, 2, 4.0);
+           worksheet1.WriteFormula(0, 3, 'SUM(A1:C1)');
+           expected := worksheet1.ReadAsNumber(0, 3);
+           worksheet2.DeleteCol(1);
+           actual := worksheet1.ReadAsNumber(0, 3);
+           CheckEquals(expected, actual, 'Test 1: Deleting column from other sheet affects formula');
+         end;
+      2: begin    // Insert a row in unaffected sheet. Formula must be unchanged.
+           worksheet1.WriteNumber(0, 0, 1.0);
+           worksheet1.WriteNumber(1, 0, 2.0);
+           worksheet1.WriteNumber(2, 0, 4.0);
+           worksheet1.WriteFormula(3, 0, 'SUM(A1:A3)');
+           expected := worksheet1.ReadAsNumber(3, 0);
+           worksheet2.InsertRow(1);
+           actual := worksheet1.ReadAsNumber(3, 0);
+           CheckEquals(expected, actual, 'Test 2: Inserting row in other sheet affects formula');
+         end;
+      3: begin    // Delete a row from unaffected sheet. Formula must be unchanged.
+           worksheet1.WriteNumber(0, 0, 1.0);
+           worksheet1.WriteNumber(1, 0, 2.0);
+           worksheet1.WriteNumber(2, 0, 4.0);
+           worksheet1.WriteFormula(3, 0, 'SUM(A1:A3)');
+           expected := worksheet1.ReadAsNumber(3, 0);
+           worksheet2.DeleteRow(1);
+           actual := worksheet1.ReadAsNumber(3, 0);
+           CheckEquals(expected, actual, 'Test 3: Deleting row from other sheet affects formula');
+         end;
+    end;
+  finally
+    workbook.Free;
+  end;
+end;
+
+
+
+{------------------------------------------------------------------------------}
 {                          Hide/show columns/rows                              }
 {------------------------------------------------------------------------------}
 
@@ -2603,6 +2678,24 @@ end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_RemovePageBreak_RowHidden_ODS;
 begin
   TestWriteRead_RemovePageBreak_Row(true, sfOpenDocument);
+end;
+
+
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsCol_FormulaOtherSheet;
+begin
+  TestWriteRead_InsDelColRow_FormulaOtherSheet(0);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsRow_FormulaOtherSheet;
+begin
+  TestWriteRead_InsDelColRow_FormulaOtherSheet(1);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelCol_FormulaOtherSheet;
+begin
+  TestWriteRead_InsDelColRow_FormulaOtherSheet(2);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelRow_FormulaOtherSheet;
+begin
+  TestWriteRead_InsDelColRow_FormulaOtherSheet(3);
 end;
 
 initialization
