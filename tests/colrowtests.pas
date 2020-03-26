@@ -56,6 +56,7 @@ type
     procedure TestWriteRead_InsDelColRow(ATestIndex: Integer;
       AFormat: TsSpreadsheetFormat);
 
+    procedure TestWriteRead_InsDelColRow_FormulaSameSheet(ATestIndex: Integer);
     procedure TestWriteRead_InsDelColRow_FormulaOtherSheet(ATestIndex: Integer);
 
     procedure TestWriteRead_HideShowColRow(IsCol: Boolean;
@@ -343,10 +344,22 @@ type
     procedure TestWriteRead_RemovePageBreak_Row_ODS;
     procedure TestWriteRead_RemovePageBreak_RowHidden_ODS;
 
+    procedure TestWriteRead_InsCol_FormulaSameSheet;
+    procedure TestWriteRead_DelCol_FormulaSameSheet;
+    procedure TestWriteRead_InsRow_FormulaSameSheet;
+    procedure TestWriteRead_DelRow_FormulaSameSheet;
+
     procedure TestWriteRead_InsCol_FormulaOtherSheet;
-    procedure TestWriteRead_InsRow_FormulaOtherSheet;
     procedure TestWriteRead_DelCol_FormulaOtherSheet;
+    procedure TestWriteRead_InsRow_FormulaOtherSheet;
     procedure TestWriteRead_DelRow_FormulaOtherSheet;
+
+    procedure TestWriteRead_InsCol_FormulaOtherSheet_Outside3D;
+    procedure TestWriteRead_DelCol_FormulaOtherSheet_Outside3D;
+    procedure TestWriteRead_InsRow_FormulaOtherSheet_Outside3D;
+    procedure TestWriteRead_DelRow_FormulaOtherSheet_Outside3D;
+
+    procedure TestWriteRead_InsCol_FormulaOtherSheet_Inside3D;
   end;
 
 implementation
@@ -1878,6 +1891,88 @@ end;
 
 
 {------------------------------------------------------------------------------}
+{              Insert/Delete columns/rows in same sheet of formula             }
+{------------------------------------------------------------------------------}
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_FormulaSameSheet(
+  ATestIndex: Integer);
+var
+  workbook: TsWorkbook;
+  worksheet: TsWorksheet;
+  expected: Double;
+  actual: Double;
+  expectedformula: String;
+  actualFormula: String;
+begin
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := workbook.Options + [boAutoCalc];
+    worksheet := workbook.AddWorksheet('Sheet 1');
+
+    case ATestIndex of
+      0: begin    // Insert a column in same sheet within range of formula
+           worksheet.WriteNumber(0, 0, 1.0);
+           worksheet.WriteNumber(0, 1, 2.0);
+           worksheet.WriteNumber(0, 2, 4.0);
+           worksheet.WriteFormula(0, 3, 'SUM(A1:C1)');    // formula in D1
+           expected := worksheet.ReadAsNumber(0, 3);
+           worksheet.InsertCol(1);     // Insert a col into formula range --> formula moves to E1 and becomes SUM(A1:D1)
+           actual := worksheet.ReadAsNumber(0, 4);
+           CheckEquals(expected, actual, 'Test 0: Wrong formula result after inserting column into formula''s cell range.');
+           expectedformula := 'SUM(A1:D1)';
+           actualFormula := worksheet.ReadFormula(0, 4);
+           CheckEquals(expectedformula, actualFormula,
+             'Test 0: Wrong formula after inserting column into formula''s cell range.');
+         end;
+      1: begin   // Delete a column from same sheet within range of formula
+           worksheet.WriteNumber(0, 0, 1.0);
+           worksheet.WriteNumber(0, 1, 2.0);   // <--- to be delete --> result will be 1+5=5
+           worksheet.WriteNumber(0, 2, 4.0);
+           worksheet.WriteFormula(0, 3, 'SUM(A1:C1)');    // formula in D1
+           expected := 1.0 + 4.0;
+           worksheet.DeleteCol(1);    // Delete a col from formula range --> formula moves to C1 and becomes SUM(A1:B1)
+           actual := worksheet.ReadAsNumber(0, 2);
+           CheckEquals(expected, actual, 'Test 1: Wrong formula result after deleting column from formula'' cell range');
+           expectedformula := 'SUM(A1:B1)';
+           actualFormula := worksheet.ReadFormula(0, 2);
+           CheckEquals(expectedformula, actualFormula,
+             'Test 1: Wrong formula after deleting column from formula''s cell range.');
+         end;
+      2: begin    // Insert a row into same sheet within range of formula
+           worksheet.WriteNumber(0, 0, 1.0);
+           worksheet.WriteNumber(1, 0, 2.0);
+           worksheet.WriteNumber(2, 0, 4.0);
+           worksheet.WriteFormula(3, 0, 'SUM(A1:A3)');  // formula in A4
+           expected := worksheet.ReadAsNumber(3, 0);
+           worksheet.InsertRow(1);  // Insert a row into formula's range --> formula moves to A5 and becomes SUM(A1:A4)
+           actual := worksheet.ReadAsNumber(4, 0);
+           CheckEquals(expected, actual, 'Test 2: Wrong formula result after inserting row into formula''s cell range');
+           expectedFormula := 'SUM(A1:A4)';
+           actualFormula := worksheet.ReadFormula(4, 0);
+           CheckEquals(expectedformula, actualFormula,
+             'Test 2: Wrong formula after inserting row into formula''s cell range.');
+         end;
+      3: begin    // Delete a row from same sheet within range of formula
+           worksheet.WriteNumber(0, 0, 1.0);
+           worksheet.WriteNumber(1, 0, 2.0);  // delet this row --> result will be 1+4
+           worksheet.WriteNumber(2, 0, 4.0);
+           worksheet.WriteFormula(3, 0, 'SUM(A1:A3)');  // formula in A4
+           expected := 1.0 + 4.0;
+           worksheet.DeleteRow(1);  // Delete a row from formula's range --> formulamoves to A3 and becomes SUM(A1:A2)
+           actual := worksheet.ReadAsNumber(2, 0);
+           CheckEquals(expected, actual, 'Test 3: Deleting row from other sheet affects formula');
+           expectedformula := 'SUM(A1:A2)';
+           actualformula := worksheet.ReadFormula(2, 0);
+           CheckEquals(expectedformula, actualFormula,
+             'Test 3: Wrong formula after deleting row from formula''s cell range.');
+         end;
+    end;
+  finally
+    workbook.Free;
+  end;
+end;
+
+
+{------------------------------------------------------------------------------}
 {              Insert/Delete columns/rows in other sheet of formula            }
 {------------------------------------------------------------------------------}
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsDelColRow_FormulaOtherSheet(
@@ -1886,16 +1981,21 @@ var
   workbook: TsWorkbook;
   worksheet1: TsWorksheet;
   worksheet2: TsWorksheet;
+  worksheet3: TsWorksheet;
   expected: Double;
   actual: Double;
+  expectedFormula: String;
+  actualFormula: String;
 begin
   workbook := TsWorkbook.Create;
   try
     workbook.Options := workbook.Options + [boAutoCalc];
-    worksheet1 := workbook.AddWorksheet('Sheet 1');
-    worksheet2 := workbook.AddWorksheet('Sheet 2');
+    worksheet1 := workbook.AddWorksheet('Sheet1');
+    worksheet2 := workbook.AddWorksheet('Sheet2');
+    worksheet3 := workbook.AddWorksheet('Sheet3');
 
     case ATestIndex of
+      // 2D formulas
       0: begin    // Insert a column in unaffected sheet. Formula must be unchanged.
            worksheet1.WriteNumber(0, 0, 1.0);
            worksheet1.WriteNumber(0, 1, 2.0);
@@ -1935,6 +2035,88 @@ begin
            worksheet2.DeleteRow(1);
            actual := worksheet1.ReadAsNumber(3, 0);
            CheckEquals(expected, actual, 'Test 3: Deleting row from other sheet affects formula');
+         end;
+
+      // 3D formulas
+      4: begin    // Insert a column in unaffected sheet. 3D-Formula must be unchanged.
+           worksheet1.WriteNumber(0, 0, 1.0);
+           worksheet1.WriteNumber(0, 1, 2.0);
+           worksheet1.WriteNumber(0, 2, 4.0);
+           worksheet2.WriteNumber(0, 0, 10.0);
+           worksheet2.WriteNumber(0, 1, 20.0);
+           worksheet2.WriteNumber(0, 2, 40.0);
+           worksheet1.WriteFormula(0, 3, 'SUM(Sheet1:Sheet2!A1:C1)');
+           expected := 1 + 2 + 4 + 10 + 20 + 40;
+           actual := worksheet1.ReadAsNumber(0, 3);
+           CheckEquals(expected, actual, 'Test 4: Wrong formula result');
+           worksheet3.InsertCol(1);
+           actual := worksheet1.ReadAsNumber(0, 3);
+           CheckEquals(expected, actual, 'Test 4: Inserting column in sheet outside 3D range affects formula');
+         end;
+      5: begin    // Delete a column in unaffected sheet. 3D-Formula must be unchanged.
+           worksheet1.WriteNumber(0, 0, 1.0);
+           worksheet1.WriteNumber(0, 1, 2.0);
+           worksheet1.WriteNumber(0, 2, 4.0);
+           worksheet2.WriteNumber(0, 0, 10.0);
+           worksheet2.WriteNumber(0, 1, 20.0);
+           worksheet2.WriteNumber(0, 2, 40.0);
+           worksheet1.WriteFormula(0, 3, 'SUM(Sheet1:Sheet2!A1:C1)');
+           expected := 1 + 2 + 4 + 10 + 20 + 40;
+           actual := worksheet1.ReadAsNumber(0, 3);
+           CheckEquals(expected, actual, 'Test 5: Wrong formula result');
+           worksheet3.DeleteCol(1);
+           actual := worksheet1.ReadAsNumber(0, 3);
+           CheckEquals(expected, actual, 'Test 5: Deleting column from sheet outside 3D range affects formula');
+         end;
+      6: begin    // Insert a row in unaffected sheet. 3D-Formula must be unchanged.
+           worksheet1.WriteNumber(0, 0, 1.0);
+           worksheet1.WriteNumber(1, 0, 2.0);
+           worksheet1.WriteNumber(2, 0, 4.0);
+           worksheet2.WriteNumber(0, 0, 10.0);
+           worksheet2.WriteNumber(1, 0, 20.0);
+           worksheet2.WriteNumber(2, 0, 40.0);
+           worksheet1.WriteFormula(3, 0, 'SUM(Sheet1:Sheet2!A1:A3)');
+           expected := 1 + 2 + 4 + 10 + 20 + 40;
+           actual := worksheet1.ReadAsNumber(3, 0);
+           CheckEquals(expected, actual, 'Test 6: Wrong formula result');
+           worksheet3.InsertRow(1);
+           actual := worksheet1.ReadAsNumber(3, 0);
+           CheckEquals(expected, actual, 'Test 6: Inserting row in sheet outside 3D range affects formula');
+         end;
+      7: begin    // Delete a row from unaffected sheet. 3D-Formula must be unchanged.
+           worksheet1.WriteNumber(0, 0, 1.0);
+           worksheet1.WriteNumber(1, 0, 2.0);
+           worksheet1.WriteNumber(2, 0, 4.0);
+           worksheet2.WriteNumber(0, 0, 10.0);
+           worksheet2.WriteNumber(1, 0, 20.0);
+           worksheet2.WriteNumber(2, 0, 40.0);
+           worksheet1.WriteFormula(3, 0, 'SUM(Sheet1:Sheet2!A1:A3)');
+           expected := 1 + 2 + 4 + 10 + 20 + 40;
+           actual := worksheet1.ReadAsNumber(3, 0);
+           CheckEquals(expected, actual, 'Test 7: Wrong formula result');
+           worksheet3.DeleteRow(1);
+           actual := worksheet1.ReadAsNumber(3, 0);
+           CheckEquals(expected, actual, 'Test 7: Inserting row in sheet outside 3D range affects formula');
+         end;
+
+      8: begin
+           // Insert a column in unaffected sheet, but within 3d range of 3d formula.
+           // In Excel, the 3D formula is unchanged, but the location of the
+           // formula changes.
+           worksheet1.WriteNumber(0, 0, 1.0);
+           worksheet1.WriteNumber(0, 1, 2.0);
+           worksheet1.WriteNumber(0, 2, 4.0);   // <-- insert column before this one.
+           worksheet2.WriteNumber(0, 0, 10.0);
+           worksheet2.WriteNumber(0, 1, 20.0);
+           worksheet2.WriteNumber(0, 2, 40.0);
+           worksheet1.WriteFormula(0, 3, 'SUM(Sheet1:Sheet2!A1:C1)');  // formula in C1
+           worksheet1.InsertCol(1);
+           expectedformula := 'SUM(Sheet1:Sheet2!A1:C1)';  // unchanged
+           actualformula := worksheet1.ReadFormula(0, 4);  // the formula is in E1 now
+           CheckEquals(expectedformula, actualformula, 'Test 8: Wrong formula for case "Insert column in sheet with formula in 3D block');
+           expected := 1 + 2 + 10 + 20 + 40;  // the "4" is moved out of the formula range
+           actual := worksheet1.ReadAsNumber(0, 4);
+           CheckEquals(expected, actual, 'Test 8: Wrong formula for case "Insert column in sheet with formula in 3D block');
          end;
     end;
   finally
@@ -2681,21 +2863,58 @@ begin
 end;
 
 
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsCol_FormulaSameSheet;
+begin
+  TestWriteRead_InsDelColRow_FormulaSameSheet(0);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelCol_FormulaSameSheet;
+begin
+  TestWriteRead_InsDelColRow_FormulaSameSheet(1);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsRow_FormulaSameSheet;
+begin
+  TestWriteRead_InsDelColRow_FormulaSameSheet(2);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelRow_FormulaSameSheet;
+begin
+  TestWriteRead_InsDelColRow_FormulaSameSheet(3);
+end;
+
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsCol_FormulaOtherSheet;
 begin
   TestWriteRead_InsDelColRow_FormulaOtherSheet(0);
 end;
-procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsRow_FormulaOtherSheet;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelCol_FormulaOtherSheet;
 begin
   TestWriteRead_InsDelColRow_FormulaOtherSheet(1);
 end;
-procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelCol_FormulaOtherSheet;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsRow_FormulaOtherSheet;
 begin
   TestWriteRead_InsDelColRow_FormulaOtherSheet(2);
 end;
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelRow_FormulaOtherSheet;
 begin
   TestWriteRead_InsDelColRow_FormulaOtherSheet(3);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsCol_FormulaOtherSheet_Outside3D;
+begin
+  TestWriteRead_InsDelColRow_FormulaOtherSheet(4);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelCol_FormulaOtherSheet_Outside3D;
+begin
+  TestWriteRead_InsDelColRow_FormulaOtherSheet(5);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsRow_FormulaOtherSheet_Outside3D;
+begin
+  TestWriteRead_InsDelColRow_FormulaOtherSheet(6);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelRow_FormulaOtherSheet_Outside3D;
+begin
+  TestWriteRead_InsDelColRow_FormulaOtherSheet(7);
+end;
+procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsCol_FormulaOtherSheet_Inside3D;
+begin
+  TestWriteRead_InsDelColRow_FormulaOtherSheet(8);
 end;
 
 initialization

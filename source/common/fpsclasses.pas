@@ -257,7 +257,7 @@ procedure FixDeletedCol(AExprNode: TsExprNode; AData1, AData2: Pointer;
 var
   colIndex: Cardinal;
   referencedSheet, referencedSheet2: TsBasicWorksheet;
-  changedSheet: TsBasicWorksheet;
+  currentSheet, changedSheet: TsBasicWorksheet;
   rng: TsCellRange;
 begin
   colIndex := PtrInt(AData1);
@@ -285,6 +285,7 @@ begin
   begin
     if TsCellRangeExprNode(AExprNode).Error <> errOK then
       exit;
+    currentSheet := TsCellRangeExprNode(AExprNode).Worksheet;
     referencedSheet := TsCellRangeExprNode(AExprNode).GetSheet(1);
     referencedSheet2 := TsCellRangeExprNode(AExprNode).GetSheet(2);
     if TsCellRangeExprNode(AExprNode).Has3dLink and
@@ -292,7 +293,7 @@ begin
       (referencedSheet2 <> changedSheet)
     then
       exit;
-    if referencedSheet = nil then
+    if (referencedSheet = nil) and (currentSheet <> changedSheet) then
       exit;
     rng := TsCellRangeExprNode(AExprNode).Range;
     if (rng.Col1 = colIndex) and (rng.Col2 = colIndex) then begin
@@ -318,7 +319,7 @@ var
   rowIndex: Cardinal;
   rng: TsCellRange;
   changedSheet: TsBasicWorksheet;
-  referencedSheet, referencedSheet2: TsBasicWorksheet;
+  currentSheet, referencedSheet, referencedSheet2: TsBasicWorksheet;
 begin
   rowIndex := PtrInt(AData1);
   changedSheet := TsBasicWorksheet(AData2);
@@ -346,6 +347,7 @@ begin
   begin
     if TsCellRangeExprNode(AExprNode).Error <> errOK then
       exit;
+    currentSheet := TsCellRangeExprNode(AExprNode).WorkSheet;
     referencedSheet := TsCellRangeExprNode(AExprNode).GetSheet(1);
     referencedSheet2 := TsCellRangeExprNode(AExprNode).GetSheet(2);
     if TsCellRangeExprNode(AExprNode).Has3dLink and
@@ -354,7 +356,7 @@ begin
     then
       exit;
 
-    if (referencedSheet = nil) then
+    if (referencedSheet = nil) and (currentSheet <> changedSheet) then
       exit;
 
     rng := TsCellRangeExprNode(AExprNode).Range;
@@ -380,7 +382,7 @@ procedure FixInsertedCol(AExprNode: TsExprNode; AData1, AData2: Pointer;
   var MustRebuildFormulas: Boolean);
 var
   colIndex: Cardinal;
-  changedSheet: TsBasicWorksheet;
+  currentSheet, changedSheet: TsBasicWorksheet;
   referencedSheet, referencedSheet2: TsBasicWorksheet;
   rng: TsCellRange;
 begin
@@ -404,6 +406,7 @@ begin
   begin
     if TsCellRangeExprNode(AExprNode).Error <> errOK then
       exit;
+    currentSheet := TsCellRangeExprNode(AExprNode).Worksheet;
     referencedSheet := TsCellRangeExprNode(AExprNode).GetSheet(1);
     referencedSheet2 := TsCellRangeExprNode(AExprNode).GetSheet(2);
     if TsCellRangeExprNode(AExprNode).Has3dLink and
@@ -411,7 +414,7 @@ begin
       (referencedSheet2 <> changedSheet)
     then
       exit;
-    if referencedSheet = nil then
+    if (referencedSheet = nil) and (changedSheet <> currentSheet) then
       exit;
     rng := TsCellRangeExprNode(AExprNode).Range;
     if rng.Col1 >= colIndex then begin
@@ -430,7 +433,7 @@ procedure FixInsertedRow(AExprNode: TsExprNode; AData1, AData2: Pointer;
   var MustRebuildFormulas: Boolean);
 var
   rowIndex: Cardinal;
-  changedSheet: TsBasicWorksheet;
+  currentSheet, changedSheet: TsBasicWorksheet;
   referencedSheet, referencedSheet2: TsBasicWorksheet;
   rng: TsCellRange;
 begin
@@ -454,6 +457,7 @@ begin
   begin
     if TsCellRangeExprNode(AExprNode).Error <> errOK then
       exit;
+    currentSheet := TsCellRangeExprNode(AExprNode).Worksheet;
     referencedSheet := TsCellRangeExprNode(AExprNode).GetSheet(1);
     referencedSheet2 := TsCellRangeExprNode(AExprNode).GetSheet(2);
     if TsCellRangeExprNode(AExprNode).Has3dLink and
@@ -461,7 +465,7 @@ begin
       (referencedSheet2 <> changedSheet)
     then
       exit;
-    if referencedSheet = nil then
+    if (referencedSheet = nil) and (currentSheet <> changedSheet) then
       exit;
     rng := TsCellRangeExprNode(AExprNode).Range;
     if rng.Row1 >= rowIndex then begin
