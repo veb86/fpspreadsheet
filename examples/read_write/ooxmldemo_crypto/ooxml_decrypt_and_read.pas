@@ -27,11 +27,9 @@ var
   cell: PCell;
   i: Integer;
   password: String;
-  Prot_enc: Integer = 0;  // 0 - protected, 1 - encrypted workbook
+  Prot_enc: Integer = 1;  // 0 - protected, 1 - encrypted workbook
 
 begin
-  MyDir := ExtractFilePath(ParamStr(0));
-
   // Open the input file
   MyDir := ExtractFilePath(ParamStr(0));
 

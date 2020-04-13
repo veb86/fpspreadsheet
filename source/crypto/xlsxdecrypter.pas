@@ -126,52 +126,22 @@ uses
 implementation
 
 uses
-  fpolebasic
-  ;
+  fpolebasic;
 
-procedure ConcatToByteArray(var outArray: TBytes; Arr1: TBytes; Arr2: TBytes);
-var
-  LenArr1 : Integer;
-  LenArr2 : Integer;
+procedure ConcatToByteArray(var OutArray: TBytes; Ptr1: PByte; ACount1: Integer;
+  Ptr2: PByte; ACount2: Integer);
 begin
-  LenArr1 := Length(Arr1);
-  LenArr2 := Length(Arr2);
-
-  SetLength( outArray, LenArr1 + LenArr2 );
-
-  if LenArr1 > 0 then
-    Move(Arr1[0], outArray[0], LenArr1);
-
-  if LenArr2 > 0 then
-    Move(Arr2[0], outArray[LenArr1], LenArr2);
+  SetLength(OutArray, ACount1 + ACount2);
+  if ACount1 > 0 then
+    Move(Ptr1^, OutArray[0], ACount1);
+  if ACount2 > 0 then
+    Move(Ptr2^, OutArray[ACount1], ACount2);
 end;
 
-procedure ConcatToByteArray(var outArray: TBytes; AValue: DWord; Arr: TBytes);
-var
-  LenArr : Integer;
+procedure ConcatToByteArray(var OutArray: TBytes; Ptr: PByte; ACount: Integer;
+  const Arr: TBytes);
 begin
-  LenArr := Length(Arr);
-
-  SetLength( outArray, 4 + LenArr );
-
-  Move(AValue, outArray[0], 4);
-
-  if LenArr > 0 then
-    Move(Arr[0], outArray[4], LenArr);
-end;
-
-procedure ConcatToByteArray(var outArray: TBytes; Arr: TBytes; AValue: DWord);
-var
-  LenArr : Integer;
-begin
-  LenArr := Length(Arr);
-
-  SetLength( outArray, 4 + LenArr );
-
-  if LenArr > 0 then
-    Move(Arr[0], outArray[0], LenArr);
-
-  Move(AValue, outArray[LenArr], 4);
+  ConcatToByteArray(OutArray, Ptr, ACount, @Arr[0], Length(Arr));
 end;
 
 function TExcelFileDecryptor.InitEncryptionInfo(AStream: TStream): string;
@@ -312,6 +282,8 @@ begin
 end;
 
 function TExcelFileDecryptor.CheckPasswordInternal(APassword: UnicodeString): Boolean;
+const
+  Zero: DWord = 0;
 var
   AES_Cipher: TDCP_rijndael;
 
@@ -340,20 +312,21 @@ begin
 
   // 1.1.Concat Salt and Password
   //     Calculate SHA1(0) =  SHA1(salt + password)
-  ConcatToByteArray( ConcArr
-                   , FEncInfo.Verifier.Salt
-                   , TEncoding.Unicode.GetBytes(APassword));
+  ConcatToByteArray(ConcArr, FEncInfo.Verifier.Salt, Length(FEncInfo.Verifier.Salt),
+    TEncoding.Unicode.GetBytes(APassword));
   LastHash := SHA1Buffer( ConcArr[0], Length(ConcArr) );
 
   // 1.2.Calculate SHA1(n) = SHA1(iterator + SHA1(n-1) ) -- iterator is 32bit
   for  Iterator := 0 to 49999 do
   begin
-    ConcatToByteArray(ConcArr, Iterator, LastHash);
+//    ConcatToByteArray(ConcArr, Iterator, LastHash);
+    ConcatToByteArray(ConcArr, @Iterator, SizeOf(Iterator), @LastHash[0], Length(LastHash));
     LastHash := SHA1Buffer( ConcArr[0], Length(ConcArr) );
   end;
 
   // 1.3.Claculate final hash, SHA1(final) = SHA1(H(n) + block) -- block = 0 (32bit)
-  ConcatToByteArray(ConcArr, LastHash, 0);
+  ConcatTobyteArray(ConcArr, @LastHash[0], Length(LastHash), @Zero, Sizeof(Zero));
+//  ConcatToByteArray(ConcArr, LastHash, 0);
   LastHash := SHA1Buffer( ConcArr[0], Length(ConcArr) );
 
 
