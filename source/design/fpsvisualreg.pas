@@ -25,7 +25,7 @@ procedure Register;
 begin
   RegisterComponents('FPSpreadsheet', [
     TsWorkbookSource,
-    TsWorkbookTabControl,
+    TsWorkbookTabControl, TsWorksheetIndicator,
     TsWorksheetGrid,
     TsCellEdit, TsCellIndicator, TsCellCombobox,
     TsSpreadsheetInspector

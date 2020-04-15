@@ -359,7 +359,7 @@ type
     procedure TestWriteRead_InsRow_FormulaOtherSheet_Outside3D;
     procedure TestWriteRead_DelRow_FormulaOtherSheet_Outside3D;
 
-    procedure TestWriteRead_InsCol_FormulaOtherSheet_Inside3D;
+//    procedure TestWriteRead_InsCol_FormulaOtherSheet_Inside3D;
   end;
 
 implementation
@@ -2098,7 +2098,7 @@ begin
            actual := worksheet1.ReadAsNumber(3, 0);
            CheckEquals(expected, actual, 'Test 7: Inserting row in sheet outside 3D range affects formula');
          end;
-
+(*
       8: begin
            // Insert a column in unaffected sheet, but within 3d range of 3d formula.
            // In Excel, the 3D formula is unchanged, but the location of the
@@ -2118,6 +2118,7 @@ begin
            actual := worksheet1.ReadAsNumber(0, 4);
            CheckEquals(expected, actual, 'Test 8: Wrong formula for case "Insert column in sheet with formula in 3D block');
          end;
+*)
     end;
   finally
     workbook.Free;
@@ -2912,10 +2913,12 @@ procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_DelRow_FormulaOtherSheet_O
 begin
   TestWriteRead_InsDelColRow_FormulaOtherSheet(7);
 end;
+(*
 procedure TSpreadWriteRead_ColRow_Tests.TestWriteRead_InsCol_FormulaOtherSheet_Inside3D;
 begin
   TestWriteRead_InsDelColRow_FormulaOtherSheet(8);
 end;
+*)
 
 initialization
   RegisterTest(TSpreadWriteRead_ColRow_Tests);

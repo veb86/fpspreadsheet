@@ -234,6 +234,106 @@ type
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
   end;
 
+  { TsWorksheetIndicator }
+
+  {@@ TsWorksheetIndicator is a combobox control which displays the sheets of the
+      workbook currently loaded by the WorkbookSource. }
+  TsWorksheetIndicator = class(TCustomComboBox, IsSpreadsheetControl)
+  private
+    FWorkbookSource: TsWorkbookSource;
+    FLockCount: Integer;
+    FShowAllSheets: Boolean;
+    procedure SetShowAllSheets(AValue: Boolean);
+    procedure SetWorkbookSource(AValue: TsWorkbookSource);
+  protected
+    procedure Change; override;
+    procedure GetSheetList(AList: TStrings);
+    function GetWorkbook: TsWorkbook;
+    function GetWorksheet: TsWorksheet;
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure ListenerNotification(AChangedItems: TsNotificationItems;
+      AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
+    property Workbook: TsWorkbook read GetWorkbook;
+    property Worksheet: TsWorksheet read GetWorksheet;
+  published
+    property ShowAllSheets: boolean read FShowAllSheets write SetShowAllSheets default true;
+    property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+
+    { inherited properties }
+    property Align;
+    property Anchors;
+    property ArrowKeysTraverseList;
+    property AutoComplete;
+    property AutoCompleteText;
+    property AutoDropDown;
+    property AutoSelect;
+    property AutoSize; // Note: windows has a fixed height in some styles
+    property BidiMode;
+    property BorderSpacing;
+    property BorderStyle;
+    property CharCase;
+    property Color;
+    property Constraints;
+    property DragCursor;
+    property DragKind;
+    property DragMode;
+    property DropDownCount;
+    property Enabled;
+    property Font;
+//    property ItemHeight;
+    property ItemIndex;
+//    property Items;
+    property ItemWidth;
+    property MaxLength;
+    property OnChange;
+    property OnChangeBounds;
+    property OnClick;
+    property OnCloseUp;
+    property OnContextPopup;
+    property OnDblClick;
+    property OnDragDrop;
+    property OnDragOver;
+    property OnDrawItem;
+    property OnEndDrag;
+    property OnDropDown;
+    property OnEditingDone;
+    property OnEnter;
+    property OnExit;
+    property OnGetItems;
+    property OnKeyDown;
+    property OnKeyPress;
+    property OnKeyUp;
+    property OnMeasureItem;
+    property OnMouseDown;
+    property OnMouseEnter;
+    property OnMouseLeave;
+    property OnMouseMove;
+    property OnMouseUp;
+    property OnMouseWheel;
+    property OnMouseWheelDown;
+    property OnMouseWheelUp;
+    property OnSelect;
+    property OnStartDrag;
+    property OnUTF8KeyPress;
+    property ParentBidiMode;
+    property ParentColor;
+    property ParentFont;
+    property ParentShowHint;
+    property PopupMenu;
+//    property ReadOnly;
+    property ShowHint;
+    property Sorted;
+//    property Style;
+    property TabOrder;
+    property TabStop;
+    property Text;
+    property Visible;
+  end;
+
 
   { TsCellEdit }
 
@@ -1906,6 +2006,163 @@ end;
   Setter method for the WorkbookSource
 -------------------------------------------------------------------------------}
 procedure TsWorkbookTabControl.SetWorkbookSource(AValue: TsWorkbookSource);
+begin
+  if AValue = FWorkbookSource then
+    exit;
+  if FWorkbookSource <> nil then
+    FWorkbookSource.RemoveListener(self);
+  FWorkbookSource := AValue;
+  if FWorkbookSource <> nil then
+    FWorkbookSource.AddListener(self);
+  ListenerNotification([lniWorkbook, lniWorksheet]);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                            TsWorksheetIndicator                              }
+{------------------------------------------------------------------------------}
+
+constructor TsWorksheetIndicator.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  FShowAllSheets := true;
+end;
+
+destructor TsWorksheetIndicator.Destroy;
+begin
+  if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
+  inherited Destroy;
+end;
+
+procedure TsWorksheetIndicator.Change;
+var
+  sheetName: String;
+begin
+  if (FWorkbookSource <> nil) and (FLockCount = 0) then begin
+    sheetName := Items[ItemIndex];
+    FWorkbookSource.SelectWorksheet(Workbook.GetWorksheetByName(sheetName));
+  end;
+  inherited;
+end;
+
+procedure TsWorksheetIndicator.GetSheetList(AList: TStrings);
+var
+  i: Integer;
+  sheet: TsWorksheet;
+begin
+  AList.Clear;
+  if Workbook <> nil then
+    for i:=0 to Workbook.GetWorksheetCount-1 do
+    begin
+      sheet := Workbook.GetWorksheetByIndex(i);
+      if FShowAllSheets or not (soHidden in sheet.Options) then
+        AList.Add(sheet.Name);
+    end;
+end;
+
+function TsWorksheetIndicator.GetWorkbook: TsWorkbook;
+begin
+  if FWorkbookSource <> nil then
+    Result := FWorkbookSource.Workbook
+  else
+    Result := nil;
+end;
+
+function TsWorksheetIndicator.GetWorksheet: TsWorksheet;
+begin
+  if FWorkbookSource <> nil then
+    Result := FWorkbookSource.Worksheet
+  else
+    Result := nil;
+end;
+
+procedure TsWorksheetIndicator.ListenerNotification(
+  AChangedItems: TsNotificationItems; AData: Pointer = nil);
+var
+  i: Integer;
+  sheet: TsWorksheet;
+begin
+  Unused(AData);
+
+  // Workbook changed: new workbook, worksheet added/renamed/deleted
+  if (AChangedItems * [lniWorkbook, lniWorksheetAdd, lniWorksheetRemove, lniWorksheetRename] <> []) then
+  begin
+    inc(FLockCount);    // avoid WorkbookSelect message when adding each tab
+    GetSheetList(Items);
+    if (lniWorkbook in AChangedItems) and (Workbook <> nil) then
+    begin
+      i := Items.IndexOf(Workbook.ActiveWorksheet.Name);
+      if i > -1 then ItemIndex := i else ItemIndex := 0
+    end else
+    if (lniWorksheetAdd in AChangedItems) then
+      ItemIndex := Items.Count-1
+    else
+    if (lniWorksheetRename in AChangedItems) then begin
+      sheet := TsWorksheet(AData);
+      ItemIndex := Items.IndexOf(sheet.Name);
+    end;
+    dec(FLockCount);
+  end;
+
+  // Worksheet selected
+  if (lniWorksheet in AChangedItems) and (Worksheet <> nil) then
+  begin
+    i := Items.IndexOf(Worksheet.Name);
+    if i <> ItemIndex then
+      ItemIndex := i;
+  end;
+end;
+
+procedure TsWorksheetIndicator.Notification(AComponent: TComponent;
+  Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (AComponent = FWorkbookSource) then
+    SetWorkbookSource(nil);
+end;
+
+procedure TsWorksheetIndicator.RemoveWorkbookSource;
+begin
+  SetWorkbookSource(nil);
+end;
+
+procedure TsWorksheetIndicator.SetShowAllSheets(AValue: Boolean);
+var
+  idx, i: Integer;
+  sheet: TsWorksheet;
+begin
+  if AValue = FShowAllSheets then
+    exit;
+  FShowAllSheets := AValue;
+  idx := -1;
+  // Find ItemIndex of next visible sheet
+  if not FShowAllSheets and (Workbook <> nil) then begin
+    for i:=0 to Workbook.GetWorksheetCount-1 do begin
+      sheet := Workbook.GetWorksheetByIndex(i);
+      if sheet = Worksheet then
+        break;
+      if not (soHidden in sheet.Options) then inc(idx);
+    end;
+    i := idx;
+    while (sheet <> nil) and (soHidden in sheet.Options) do begin
+      inc(i);
+      sheet := Workbook.GetWorksheetByIndex(i);
+    end;
+    if sheet = nil then begin
+      i := idx;
+      while (sheet <> nil) and (soHidden in sheet.Options) do begin
+        dec(i);
+        sheet := Workbook.GetWorksheetByIndex(i);
+      end;
+      if sheet = nil then idx := -1;
+    end;
+  end;
+  Change;
+  if (not FShowAllSheets) then
+    ItemIndex := idx;
+end;
+
+procedure TsWorksheetIndicator.SetWorkbookSource(AValue: TsWorkbookSource);
 begin
   if AValue = FWorkbookSource then
     exit;

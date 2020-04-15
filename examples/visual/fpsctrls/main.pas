@@ -30,6 +30,9 @@ type
     MnuFormatBold: TMenuItem;
     MnuFormatItalic: TMenuItem;
     MnuFormatUnderline: TMenuItem;
+    Panel1: TPanel;
+    Splitter1: TSplitter;
+    Splitter2: TSplitter;
     sWorkbookSource1: TsWorkbookSource;
     sWorkbookTabControl1: TsWorkbookTabControl;
     sWorksheetGrid1: TsWorksheetGrid;
@@ -38,13 +41,10 @@ type
     sFontStyleAction1: TsFontStyleAction;
     sFontStyleAction2: TsFontStyleAction;
     sFontStyleAction3: TsFontStyleAction;
-    Panel2: TPanel;
     FontColorCombobox: TsCellCombobox;
     FontNameCombo: TsCellCombobox;
     FontSizeCombo: TsCellCombobox;
-    Splitter2: TSplitter;
-    Splitter3: TSplitter;
-    ToolBar3: TToolBar;
+    sWorksheetIndicator1: TsWorksheetIndicator;
     ToolBar1: TToolBar;
     ToolButton1: TToolButton;
     ToolButton2: TToolButton;
@@ -54,7 +54,6 @@ type
     ToolButton8: TToolButton;
     procedure FileOpen1Accept(Sender: TObject);
     procedure FileSaveAs1Accept(Sender: TObject);
-    procedure FormCreate(Sender: TObject);
   private
 
   protected
@@ -118,10 +117,6 @@ begin
     MessageDlg('File format not implemented.', mtError, [mbOk], 0);
     exit;
   end;
-  for i := 0 to wb.GetWorksheetCount - 1 do begin
-    sh := wb.GetWorksheetByIndex(i);
-    sh.Options := sh.Options - [soShowHeaders];
-  end;
   sWorkbookSource1.LoadFromWorkbook(wb);
 end;
 
@@ -145,11 +140,6 @@ begin
   finally
     Screen.Cursor := crDefault;
   end;
-end;
-
-procedure TForm1.FormCreate(Sender: TObject);
-begin
-  sWorksheetGrid1.ShowHeaders := false;
 end;
 
 end.
