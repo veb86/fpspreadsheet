@@ -736,6 +736,7 @@ begin
         tnode := tnode.NextSibling;
       end;
     end;
+
     if (boReadFormulas in book.Options) and ((nodeName = 'f') or (nodeName = 'x:f'))then
     begin
       // Formula to cell
@@ -800,32 +801,44 @@ begin
     else
     if (s = '') or (s = 'n') then begin
       // Number or date/time, depending on format
-      number := StrToFloat(dataStr, FPointSeparatorSettings);
-      if IsDateTimeFormat(numFmt) then
+      if TryStrToFloat(dataStr, number, FPointSeparatorSettings) then
       begin
-        if not IsTimeIntervalFormat(numFmt) then   // no correction of time origin for "time interval" format
-          number := ConvertExcelDateTimeToDateTime(number, FDateMode);
-        sheet.WriteDateTime(cell, number);
-      end
-      else if IsTextFormat(numFmt) then
-        sheet.WriteText(cell, dataStr)
-      else
-        sheet.WriteNumber(cell, number);
+        if IsDateTimeFormat(numFmt) then
+        begin
+          if not IsTimeIntervalFormat(numFmt) then   // no correction of time origin for "time interval" format
+            number := ConvertExcelDateTimeToDateTime(number, FDateMode);
+          sheet.WriteDateTime(cell, number);
+        end
+        else if IsTextFormat(numFmt) then
+          sheet.WriteText(cell, dataStr)
+        else
+          sheet.WriteNumber(cell, number);
+      end else
+        workbook.AddErrorMsg(
+          'Error reading cell %s: Failure to convert "%s" to number.', [
+          GetCellString(rowindex, colindex), dataStr
+        ]);
     end
     else
     if s = 's' then begin
       // String from shared strings table
-      sstIndex := StrToInt(dataStr);
-      sheet.WriteText(cell, FSharedStrings[sstIndex]);
-      // Read rich-text parameters from the stream stored in the Objects of the stringlist
-      if FSharedStrings.Objects[sstIndex] <> nil then
+      if TryStrToInt(dataStr, sstIndex) then
       begin
-        ms := TMemoryStream(FSharedStrings.Objects[sstIndex]);
-        ms.Position := 0;
-        n := ms.ReadWord;   // Count of array elements
-        SetLength(cell^.RichTextParams, n);
-        ms.ReadBuffer(cell^.RichTextParams[0], n*SizeOf(TsRichTextParam));
-      end;
+        sheet.WriteText(cell, FSharedStrings[sstIndex]);
+        // Read rich-text parameters from the stream stored in the Objects of the stringlist
+        if FSharedStrings.Objects[sstIndex] <> nil then
+        begin
+          ms := TMemoryStream(FSharedStrings.Objects[sstIndex]);
+          ms.Position := 0;
+          n := ms.ReadWord;   // Count of array elements
+          SetLength(cell^.RichTextParams, n);
+          ms.ReadBuffer(cell^.RichTextParams[0], n*SizeOf(TsRichTextParam));
+        end;
+      end else
+        workbook.AddErrorMsg(
+          'Error readind cell %s: Failure to extract SST index from value "%s"', [
+          GetCellString(rowindex, colindex), dataStr
+        ]);
     end else
     if (s = 'str') or (s = 'inlineStr') then begin
       // literal string
