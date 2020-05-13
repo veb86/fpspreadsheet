@@ -3479,14 +3479,9 @@ procedure TsCellCombobox.SetFormatItem(AValue: TsCellFormatItem);
 begin
   FFormatItem := AValue;
   if FFormatItem in [cfiFontColor, cfiBackgroundColor, cfiBorderColor] then
-  begin
-    inherited Style := csOwnerDrawFixed;
-    ReadOnly := true;
-  end else
-  begin
+    inherited Style := csOwnerDrawFixed
+  else
     inherited Style := csDropdown;
-    ReadOnly := false;
-  end;
 
   Populate;
   ExtractFromSheet;
