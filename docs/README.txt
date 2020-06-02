@@ -22,6 +22,9 @@
 - Add them to the system's search path (or copy the two executables to the
   folder docs/wiki of the fpspreadsheet installation.
 
+- You also have to copy the OpenSSL DLLs libeay32.dll and ssleay32.dll of the
+  correct bitness to the folder docs/wiki of the fpspreadsheed installation.
+  
 - Run the script "make_docs.bat" (no Linux script at the moment)
 
 - This script downloads the current fpspreadsheet wiki articles and creates

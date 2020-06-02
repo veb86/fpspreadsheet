@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
-  <Package Version="4">
+  <Package Version="5">
     <PathDelim Value="\"/>
     <Name Value="laz_fpspreadsheet"/>
     <Author Value="Felipe Monteiro de Carvalho and others"/>
@@ -31,10 +31,10 @@
     </CompilerOptions>
     <Description Value="laz_fpspreadsheet is a non-visual component that allows you to use the fpspreadsheet package to read/write spreadsheet files in .xls (BIFF/Excel), .ods OpenDocument (LibreOffice/OpenOffice) and .xlsx Open XML (Excel) formats.
 
-This package is all you need if you don't want graphical components (like grids and charts)."/>
+This package is all you need if you don&apos;t want graphical components (like grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="11"/>
-    <Files Count="47">
+    <Version Major="1" Minor="12"/>
+    <Files Count="46">
       <Item1>
         <Filename Value="source\fps.inc"/>
         <Type Value="Include"/>
@@ -258,10 +258,6 @@ This package is all you need if you don't want graphical components (like grids 
         <Filename Value="source\common\fpscrypto.pas"/>
         <UnitName Value="fpsCrypto"/>
       </Item46>
-      <Item47>
-        <Filename Value="source\common\fpschart.pas"/>
-        <UnitName Value="fpschart"/>
-      </Item47>
     </Files>
     <i18n>
       <EnableI18N Value="True"/>

@@ -234,12 +234,12 @@ ID={D3A588E0-9472-11D3-BDD1-0080C8BA053D}
 [General]
 Author=Felipe Monteiro de Carvalho and Werner Pamler
 AuthorEmail=
-Copyright=Copyright (c) 2008-2015
+Copyright=Copyright (c) 2008-2020
 Summary=Free Pascal Spreadsheet Library
 Title=FPSpreadsheet
 VersionBuild=0
 VersionMajor=1
-VersionMinor=7
+VersionMinor=12
 VersionRelease=0
 
 [Macro Header Files]
@@ -881,13 +881,14 @@ ID9=9
 SavedValues=1
 
 [Source Files]
-Count=6
+Count=7
 File0=..\..\source\common\fpsimages.pas
 File1=..\..\source\common\fpsnumformat.pas
 File2=..\..\source\common\fpspreadsheet.pas
-File3=..\..\source\common\fpsutils.pas
-File4=..\..\source\visual\fpspreadsheetctrls.pas
-File5=..\..\source\visual\fpspreadsheetgrid.pas
+File3=..\..\source\common\fpstypes.pas
+File4=..\..\source\common\fpsutils.pas
+File5=..\..\source\visual\fpspreadsheetctrls.pas
+File6=..\..\source\visual\fpspreadsheetgrid.pas
 
 [Source Include Directories]
 Count=0

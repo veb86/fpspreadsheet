@@ -24,7 +24,7 @@ uses
  {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, avglvltree, lconvencoding,
   fpsTypes, fpsExprParser, fpsClasses, fpsNumFormat, fpsPageLayout,
-  fpsImages, fpsChart;
+  fpsImages;
 
 type
   { Forward declarations }
@@ -75,7 +75,6 @@ type
     FHyperlinks: TsHyperlinks;
     FFormulas: TsFormulas;
     FImages: TFPList;
-    FCharts: TsChartList;
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
     FActiveCellCol: Cardinal;
@@ -578,12 +577,6 @@ type
       AScaleY: Double = 1.0): Integer; overload;
     procedure AddHyperlinkToImage(AImageIndex: Integer; ATarget: String;
       AToolTip: String = '');
-
-    { Charts }
-    function GetChartByIndex(AIndex: Integer): TsChart;
-    function GetChartCount: Integer;
-    function WriteChart(ARow, ACol: Cardinal; AWidth, AHeight: Double;
-      AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): Integer;
 
     { Protection }
     procedure Protect(AEnable: Boolean);
@@ -1178,7 +1171,6 @@ begin
   FHyperlinks := TsHyperlinks.Create;
   FFormulas := TsFormulas.Create;
   FImages := TFPList.Create;
-  FCharts := TsChartList.Create;
 
   FPageLayout := TsPageLayout.Create(self);
 
@@ -1222,7 +1214,6 @@ begin
   FHyperlinks.Free;
   FFormulas.Free;
   FImages.Free;
-  FCharts.Free;
 
   inherited Destroy;
 end;
@@ -3780,46 +3771,6 @@ begin
       ACell^.Flags := ACell^.Flags + [cf3dFormula];
   end else
     DeleteFormula(ACell);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns the chart having the given index in the worksheet's chart list
--------------------------------------------------------------------------------}
-function TsWorksheet.GetChartByIndex(AIndex: Integer): TsChart;
-begin
-  if (AIndex >= 0) and (AIndex < FCharts.Count) then
-    Result := FCharts[AIndex]
-  else
-    Result := nil;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns the number of charts embedded on this sheet
--------------------------------------------------------------------------------}
-function TsWorksheet.GetChartCount: Integer;
-begin
-  Result := FCharts.Count;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Creates a chart object with its top/left corner in the specified row/colum and
-  having the specified width. Inserts the chart in the FCharts list of the
-  worksheet and returns its index.
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteChart(ARow, ACol: Cardinal; AWidth, AHeight: Double;
-  AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): Integer;
-var
-  chart: TsChart;
-begin
-  chart := TsChart.Create;
-  chart.SheetIndex := (FWorkbook as TsWorkbook).GetWorksheetIndex(self);
-  chart.Row := ARow;
-  chart.Col := ACol;
-  chart.OffsetX := AOffsetX;
-  chart.OffsetY := AOffsetY;
-  chart.Width := AWidth;
-  chart.Height := AHeight;
-  Result := FCharts.Add(chart);
 end;
 
 {@@ ----------------------------------------------------------------------------
