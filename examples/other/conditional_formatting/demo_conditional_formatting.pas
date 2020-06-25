@@ -28,7 +28,7 @@ begin
     // ... set the borders
     fmt.SetBorders([cbNorth, cbEast, cbWest], scBlack, lsThin);
     fmt.SetBorders([cbSouth], scRed, lsThick);
-    // ... set the font (bold)   ---- NOT SUPPORTED AT THE MOMENT...
+    // ... set the font (bold)   ---- NOT SUPPORTED AT THE MOMENT FOR WRITING TO XLSX...
     font := wb.CloneFont(0);
     font.Style := [fssBold, fssItalic];
     font.Color := scRed;
