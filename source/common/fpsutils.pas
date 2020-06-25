@@ -1129,9 +1129,9 @@ const
 function GetCellString(ARow, ACol: Cardinal;
   AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
 begin
-  Result := Format('%s%s%s%d', [
+  Result := Format('%s%s%s%s', [
     RELCHAR[rfRelCol in AFlags], GetColString(ACol),
-    RELCHAR[rfRelRow in AFlags], ARow+1
+    RELCHAR[rfRelRow in AFlags], GetRowString(ARow)
   ]);
 end;
 
@@ -2188,7 +2188,7 @@ end;
 
   @param   AValue          RGB color value (compatible with the TColor data type
                            of the graphics unit)
-  @param   AExcelDialect   If TRUE, returned string is in Excels format for xlsx,
+  @param   AExcelDialect   If TRUE, returned string is in Excel's format for xlsx,
                            i.e. in AARRGGBB notation, like '00FF0000' for "red"
   @return  HTML-compatible string, like '#FF0000' (AExcelDialect = false)
 -------------------------------------------------------------------------------}

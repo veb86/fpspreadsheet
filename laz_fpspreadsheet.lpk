@@ -34,7 +34,7 @@
 This package is all you need if you don&apos;t want graphical components (like grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
     <Version Major="1" Minor="13"/>
-    <Files Count="46">
+    <Files Count="48">
       <Item1>
         <Filename Value="source\fps.inc"/>
         <Type Value="Include"/>
@@ -258,6 +258,14 @@ This package is all you need if you don&apos;t want graphical components (like g
         <Filename Value="source\common\fpscrypto.pas"/>
         <UnitName Value="fpsCrypto"/>
       </Item46>
+      <Item47>
+        <Filename Value="source\common\fpsconditionalformat.pas"/>
+        <UnitName Value="fpsConditionalFormat"/>
+      </Item47>
+      <Item48>
+        <Filename Value="source\common\fpspreadsheet_cf.inc"/>
+        <Type Value="Binary"/>
+      </Item48>
     </Files>
     <i18n>
       <EnableI18N Value="True"/>

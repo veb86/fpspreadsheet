@@ -10,6 +10,8 @@
 unit fpsTypes;
 
 {$mode objfpc}{$H+}
+{$modeswitch advancedrecords}
+
 {$include fps.inc}
 
 interface
@@ -719,6 +721,10 @@ type
     // next two are deprecated...
     NumberFormat: TsNumberFormat;
     NumberFormatStr: String;
+    procedure SetBackgroundColor(AColor: TsColor);
+    procedure SetBorders(ABorders: TsCellBorders;
+      AColor: TsColor = scBlack; ALineStyle: TsLineStyle = lsThin);
+    procedure SetFont(AFontIndex: Integer);
   end;
 
   {@@ Pointer to a format record }
@@ -1057,6 +1063,44 @@ begin
     AFormatSettings.LongDayNames[i] := AnsiToUTF8(DefaultFormatSettings.LongDayNames[i]);
     AFormatSettings.ShortDayNames[i] := AnsiToUTF8(DefaultFormatSettings.ShortDayNames[i]);
   end;
+end;
+
+{ TsCellFormat }
+
+procedure TsCellFormat.SetBackgroundColor(AColor: TsColor);
+begin
+  UsedFormattingFields := UsedFormattingFields + [uffBackground];
+  Background.FgColor := AColor;
+  Background.BgColor := AColor;
+  Background.Style := fsSolidFill;
+end;
+
+procedure TsCellFormat.SetBorders(ABorders: TsCellBorders;
+  AColor: TsColor = scBlack; ALineStyle: TsLineStyle = lsThin);
+var
+  cb: TsCellBorder;
+begin
+  for cb in ABorders do
+  begin
+    if (AColor = scNone) or (AColor = scTransparent) then
+      Exclude(Border, cb)
+    else
+    begin
+      Include(Border, cb);
+      BorderStyles[cb].LineStyle := ALineStyle;
+      BorderStyles[cb].Color := AColor;
+    end;
+  end;
+  if Border = [] then
+    UsedFormattingFields := UsedFormattingfields - [uffBorder]
+  else
+    UsedFormattingFields := UsedFormattingfields + [uffBorder];
+end;
+
+procedure TsCellFormat.SetFont(AFontIndex: Integer);
+begin
+  FontIndex := AFontIndex;
+  UsedFormattingFields := UsedFormattingFields + [uffFont];
 end;
 
 

@@ -42,6 +42,7 @@ uses
   fpszipper,
  {$ENDIF}
   fpsTypes, fpsUtils, fpsReaderWriter, fpsNumFormat, fpsPalette,
+  fpsConditionalFormat,
   fpsxmlcommon, xlsCommon;
   
 type
@@ -123,6 +124,7 @@ type
     FSharedStringsCount: Integer;
     FFillList: array of PsCellFormat;
     FBorderList: array of PsCellFormat;
+    FDifferentialFormatIndexList: array of Integer;
     function GetActiveTab: String;
     procedure Get_rId(AWorksheet: TsBasicWorksheet;
       out AComment_rId, AFirstHyperlink_rId, ADrawing_rId, ADrawingHF_rId: Integer);
@@ -134,6 +136,7 @@ type
     function  FindFillInList(AFormat: PsCellFormat): Integer;
     function GetStyleIndex(ACell: PCell): Cardinal;
     procedure ListAllBorders;
+    procedure ListAllDifferentialFormats;
     procedure ListAllFills;
     function  PrepareFormula(const AFormula: String): String;
     procedure ResetStreams;
@@ -141,7 +144,13 @@ type
     procedure WriteColBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteCols(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteComments(AWorksheet: TsBasicWorksheet);
+    procedure WriteConditionalFormat(AStream: TStream; AFormat: TsConditionalFormat; var APriority: Integer);
+    procedure WriteConditionalFormatCellRule(AStream: TStream; ARule: TsCFCellRule; APriority: Integer);
+    procedure WriteConditionalFormatRule(AStream: TStream; ARule: TsCFRule; var APriority: Integer);
+    procedure WriteConditionalFormats(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteDefinedNames(AStream: TStream);
+    procedure WriteDifferentialFormat(AStream: TStream; AFormat: PsCellFormat);
+    procedure WriteDifferentialFormats(AStream: TStream);
     procedure WriteDimension(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteDrawings(AWorksheet: TsBasicWorksheet);
     procedure WriteDrawingRels(AWorksheet: TsBasicWorksheet);
@@ -164,6 +173,7 @@ type
     procedure WriteSheetProtection(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteSheets(AStream: TStream);
     procedure WriteSheetViews(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteStyle(AStream: TStream; ANodeName: String; AFormat: PsCellFormat);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
     procedure WriteVmlDrawings(AWorksheet: TsBasicWorksheet);
     procedure WriteVMLDrawings_Comments(AWorksheet: TsBasicWorksheet);
@@ -313,6 +323,9 @@ type
     BorderStyles: TsCellBorderStyles;
   end;
 
+  TDifferentialFormatData = class
+  end;
+
   THyperlinkListData = class
     ID: String;
     CellRef: String;
@@ -359,6 +372,21 @@ const
     'lightGrid'        // fsHatchThinHor
     );
 
+  LINESTYLE_TYPES: array[TsLineStyle] of String = (
+     'thin',                   // lsThin
+     'medium',                 // lsMedium
+     'dashed',                 // lsDashed
+     'dotted',                 // lsDotted
+     'thick',                  // lsThick
+     'double',                 // lsDouble
+     'hair',                   // lsHair
+     'mediumDashed',           // lsMediumDash
+     'dashDot',                // lsDashDot
+     'mediumDashDot',          // lsMediumDashDot
+     'dashDotDot',             // lsDashDotDot
+     'mediumDashDotDot',       // lsMediumDashDotDot
+     'slantDashDot'            // lsSlantDashDot
+  );
 
 procedure InitOOXMLLimitations(out ALimitations: TsSpreadsheetFormatLimitations);
 begin
@@ -3035,6 +3063,49 @@ begin
   end;
 end;
 
+{ FDifferentialFormatIndexList stores the indexes of the cells formats used
+  in conditional formatting. }
+procedure TsSpreadOOXMLWriter.ListAllDifferentialFormats;
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  n: Integer;
+  idx: Integer;
+  i, j, k, r, d: Integer;
+  CF: TsConditionalFormat;
+  rule: TsCFCellRule;
+begin
+  n := 0;
+  SetLength(FDifferentialFormatIndexList, n);
+
+  book := TsWorkbook(FWorkbook);
+  for i:=0 to book.GetWorksheetCount-1 do begin
+    sheet := book.GetWorksheetByIndex(i);
+    for j := 0 to sheet.ConditionalFormatCount-1 do
+    begin
+      CF := sheet.ReadConditionalFormat(j);
+      for k := 0 to CF.RulesCount-1 do
+        if CF.Rules[k] is TsCFCellRule then
+        begin
+          rule := TsCFCellRule(CF.Rules[k]);
+          idx := -1;
+          for d := 0 to High(FDifferentialFormatIndexList) do
+            if FDifferentialFormatIndexList[d] = rule.FormatIndex then
+            begin
+              idx := d;
+              break;
+            end;
+          if idx = -1 then
+          begin
+            SetLength(FDifferentialFormatIndexList, n+1);
+            FDifferentialFormatIndexList[n] := rule.FormatIndex;
+            inc(n);
+          end;
+        end;
+    end;
+  end;
+end;
+
 { Creates a list of all fill styles found in the workbook.
   The list contains indexes into the array FFormattingStyles for each unique
   combination of fill attributes.
@@ -3067,13 +3138,6 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteBorderList(AStream: TStream);
-const
-  // lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair,
-  // lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot,
-  // lsSlantDashDot
-  LINESTYLE_NAME: Array[TsLineStyle] of String = (
-     'thin', 'medium', 'dashed', 'dotted', 'thick', 'double', 'hair',
-     'mediumDashed', 'dashDot', 'mediumDashDot', 'dashDotDot', 'mediumDashDotDot', 'slantDashDot');
 
   procedure WriteBorderStyle(AStream: TStream; AFormatRecord: PsCellFormat;
     ABorder: TsCellBorder; ABorderName: String);
@@ -3087,7 +3151,7 @@ const
   begin
     if (ABorder in AFormatRecord^.Border) then begin
       // Line style
-      styleName := LINESTYLE_NAME[AFormatRecord^.BorderStyles[ABorder].LineStyle];
+      styleName := LINESTYLE_TYPES[AFormatRecord^.BorderStyles[ABorder].LineStyle];
 
       // Border color
       rgb := AFormatRecord^.BorderStyles[ABorder].Color;
@@ -3252,6 +3316,89 @@ begin
       '</commentList>');
   AppendToStream(FSComments[FCurSheetNum],
     '</comments>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteConditionalFormat(AStream: TStream;
+  AFormat: TsConditionalFormat; var APriority: Integer);
+var
+  rangeStr: String;
+  i: Integer;
+  rule: TsCFRule;
+begin
+  with AFormat.CellRange do
+    rangeStr := GetCellRangeString(Row1, Col1, Row2, Col2,rfAllRel, true);
+  AppendToStream(AStream, Format(
+    '<conditionalFormatting sqref="%s">', [rangeStr]));
+  for i := 0 to AFormat.RulesCount-1 do
+  begin
+    rule := AFormat.Rules[i];
+    WriteConditionalFormatRule(AStream, rule, APriority);
+  end;
+  AppendToStream(AStream,
+    '</conditionalFormatting>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteConditionalFormatCellRule(AStream: TStream;
+  ARule: TsCFCellRule; APriority: Integer);
+const
+  OPERATOR_NAMES_1: array[cfcEqual..cfcLessEqual] of String =
+    ('equal', 'notEqual', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual');
+  OPERATOR_NAMES_2: array[cfcBetween..cfcNotBetween] of String =
+    ('between', 'notBetween');
+begin
+  case ARule.Condition of
+    cfcEqual..cfcLessEqual:
+      AppendToStream(AStream, Format(
+        '<cfRule type="cellIs" dxfId="0" priority="%d" operator="%s">' +
+          '<formula>%s</formula>'+
+        '</cfRule>', [
+        APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1
+      ]));
+
+    cfcBetween, cfcNotBetween:
+      AppendToStream(AStream, Format(
+        '<cfRule type="cellIs" dxfId="0" priority="%d" operator="%s">' +
+          '<formula>%s</formula>'+
+          '<formula>%s</formula>'+
+        '</cfRule>', [
+        APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1, ARule.Operand2
+      ]));
+
+  else
+    FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');
+  end;
+end;
+
+procedure TsSpreadOOXMLWriter.WriteConditionalFormatRule(AStream: TStream;
+  ARule: TsCFRule; var APriority: Integer);
+begin
+  if ARule is TsCFCellRule then begin
+    WriteConditionalFormatCellRule(AStream, TsCFCellRule(ARule), APriority);
+    dec(APriority);
+  end;
+end;
+
+procedure TsSpreadOOXMLWriter.WriteConditionalFormats(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+var
+  worksheet: TsWorksheet absolute AWorksheet;
+  i: Integer;
+  CF: TsConditionalFormat;
+  priority: Integer = 0;
+begin
+  if worksheet.ConditionalFormatCount = 0 then
+    exit;
+
+  for i := 0 to worksheet.ConditionalFormatCount-1 do
+  begin
+    CF := worksheet.ReadConditionalFormat(i);
+    inc(priority, CF.RulesCount);
+  end;
+
+  for i := 0 to worksheet.ConditionalFormatCount-1 do begin
+    CF := worksheet.ReadConditionalFormat(i);
+    WriteConditionalFormat(AStream, CF, priority);
+  end;
 end;
 
 procedure TsSpreadOOXMLWriter.WriteDimension(AStream: TStream;
@@ -4035,16 +4182,137 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLWriter.WriteStyle(AStream: TStream; ANodeName: String;
+  AFormat: PsCellFormat);
+var
+  s: String;
+  sAlign: String;
+  sProtected: String;
+  book: TsWorkbook;
+  numFmtParams: TsNumFormatParams;
+  numFmtStr: String;
+  fontID: Integer;
+  fillID: Integer;
+  borderID: Integer;
+  idx: Integer;
+begin
+  book := TsWorkbook(FWorkbook);
+
+  s := '';
+  sAlign := '';
+  sProtected := '';
+
+  { Number format }
+  if (uffNumberFormat in AFormat^.UsedFormattingFields) then
+  begin
+    numFmtParams := book.GetNumberFormat(AFormat^.NumberFormatIndex);
+    if numFmtParams <> nil then
+    begin
+      numFmtStr := numFmtParams.NumFormatStr;
+      idx := NumFormatList.IndexOf(numFmtStr);
+    end else
+      idx := 0;  // "General" format is at index 0
+    s := s + Format('numFmtId="%d" applyNumberFormat="1" ', [idx]);
+  end else
+    s := s + 'numFmtId="0" ';
+
+  { Font }
+  fontId := 0;
+  if (uffFont in AFormat^.UsedFormattingFields) then
+    fontID := AFormat^.FontIndex;
+  s := s + Format('fontId="%d" ', [fontId]);
+  if fontID > 0 then s := s + 'applyFont="1" ';
+
+  if ANodeName = 'xf' then s := s + 'xfId="0" ';
+//  if ANodeName = 'cellXfs' then s := s + 'xfId="0" ';
+
+  { Text rotation }
+  if (uffTextRotation in AFormat^.UsedFormattingFields) then
+    case AFormat^.TextRotation of
+      trHorizontal:
+        ;
+      rt90DegreeClockwiseRotation:
+        sAlign := sAlign + Format('textRotation="%d" ', [180]);
+      rt90DegreeCounterClockwiseRotation:
+        sAlign := sAlign + Format('textRotation="%d" ',  [90]);
+      rtStacked:
+        sAlign := sAlign + Format('textRotation="%d" ', [255]);
+    end;
+
+  { Text alignment }
+  if (uffHorAlign in AFormat^.UsedFormattingFields) and (AFormat^.HorAlignment <> haDefault)
+  then
+    case AFormat^.HorAlignment of
+      haLeft  : sAlign := sAlign + 'horizontal="left" ';
+      haCenter: sAlign := sAlign + 'horizontal="center" ';
+      haRight : sAlign := sAlign + 'horizontal="right" ';
+    end;
+
+  if (uffVertAlign in AFormat^.UsedFormattingFields) and (AFormat^.VertAlignment <> vaDefault)
+  then
+    case AFormat^.VertAlignment of
+      vaTop   : sAlign := sAlign + 'vertical="top" ';
+      vaCenter: sAlign := sAlign + 'vertical="center" ';
+      vaBottom: sAlign := sAlign + 'vertical="bottom" ';
+    end;
+
+  { Word wrap }
+  if (uffWordWrap in AFormat^.UsedFormattingFields) then
+    sAlign := sAlign + 'wrapText="1" ';
+
+  { BiDi mode }
+  if (uffBiDi in Aformat^.UsedFormattingFields) and (AFormat^.BiDiMode <> bdDefault) then
+    sAlign := sAlign + Format('readingOrder="%d" ', [Ord(AFormat^.BiDiMode)]);
+
+  if sAlign <> '' then
+  begin
+    s := s + 'applyAlignment="1" ';
+    sAlign := '<alignment ' + sAlign + '/>';
+  end;
+
+  { Fill }
+  if (uffBackground in AFormat^.UsedFormattingFields) then
+  begin
+    fillID := FindFillInList(AFormat);
+    if fillID = -1 then fillID := 0;
+    s := s + Format('fillId="%d" applyFill="1" ', [fillID]);
+  end;
+
+  { Border }
+  if (uffBorder in AFormat^.UsedFormattingFields) then
+  begin
+    borderID := FindBorderInList(AFormat);
+    if borderID = -1 then borderID := 0;
+    s := s + Format('borderId="%d" applyBorder="1" ', [borderID]);
+  end;
+
+  { Protection }
+  if not (cpLockCell in AFormat^.Protection) then
+    sProtected := 'locked="0" ';
+
+  if (cpHideFormulas in AFormat^.Protection) then
+    sProtected := sProtected + 'hidden="1" ';
+
+  if sProtected <> '' then
+  begin
+    s := s + 'applyProtection="1" ';
+    sProtected := '<protection ' + sProtected + '/>';
+  end;
+
+  { Write everything to stream }
+  if (sAlign = '') and (sProtected = '') then
+    AppendToStream(AStream,
+      Format('<%s %s />', [ANodeName, s]))
+  else
+    AppendToStream(AStream,
+      Format('<%s %s>', [ANodeName, s]),
+        sAlign + sProtected,
+      Format('</%s>', [ANodeName]));
+end;
+
 { Writes the style list which the workbook has collected in its FormatList }
 procedure TsSpreadOOXMLWriter.WriteStyleList(AStream: TStream; ANodeName: String);
 var
-  s, sAlign, sProtected: String;
-  fontID: Integer;
-  numFmtParams: TsNumFormatParams;
-  numFmtStr: String;
-  fillId: Integer;
-  borderId: Integer;
-  idx: Integer;
   fmt: PsCellFormat;
   i: Integer;
   book: TsWorkbook;
@@ -4057,115 +4325,7 @@ begin
   for i:=0 to book.GetNumCellFormats-1 do
   begin
     fmt := book.GetPointerToCellFormat(i);
-    s := '';
-    sAlign := '';
-    sProtected := '';
-
-    { Number format }
-    if (uffNumberFormat in fmt^.UsedFormattingFields) then
-    begin
-      numFmtParams := book.GetNumberFormat(fmt^.NumberFormatIndex);
-      if numFmtParams <> nil then
-      begin
-        numFmtStr := numFmtParams.NumFormatStr;
-        idx := NumFormatList.IndexOf(numFmtStr);
-      end else
-        idx := 0;  // "General" format is at index 0
-      s := s + Format('numFmtId="%d" applyNumberFormat="1" ', [idx]);
-    end else
-      s := s + 'numFmtId="0" ';
-
-    { Font }
-    fontId := 0;
-    if (uffFont in fmt^.UsedFormattingFields) then
-      fontID := fmt^.FontIndex;
-    s := s + Format('fontId="%d" ', [fontId]);
-    if fontID > 0 then s := s + 'applyFont="1" ';
-
-    if ANodeName = 'cellXfs' then s := s + 'xfId="0" ';
-
-    { Text rotation }
-    if (uffTextRotation in fmt^.UsedFormattingFields) then
-      case fmt^.TextRotation of
-        trHorizontal:
-          ;
-        rt90DegreeClockwiseRotation:
-          sAlign := sAlign + Format('textRotation="%d" ', [180]);
-        rt90DegreeCounterClockwiseRotation:
-          sAlign := sAlign + Format('textRotation="%d" ',  [90]);
-        rtStacked:
-          sAlign := sAlign + Format('textRotation="%d" ', [255]);
-      end;
-
-    { Text alignment }
-    if (uffHorAlign in fmt^.UsedFormattingFields) and (fmt^.HorAlignment <> haDefault)
-    then
-      case fmt^.HorAlignment of
-        haLeft  : sAlign := sAlign + 'horizontal="left" ';
-        haCenter: sAlign := sAlign + 'horizontal="center" ';
-        haRight : sAlign := sAlign + 'horizontal="right" ';
-      end;
-
-    if (uffVertAlign in fmt^.UsedFormattingFields) and (fmt^.VertAlignment <> vaDefault)
-    then
-      case fmt^.VertAlignment of
-        vaTop   : sAlign := sAlign + 'vertical="top" ';
-        vaCenter: sAlign := sAlign + 'vertical="center" ';
-        vaBottom: sAlign := sAlign + 'vertical="bottom" ';
-      end;
-
-    { Word wrap }
-    if (uffWordWrap in fmt^.UsedFormattingFields) then
-      sAlign := sAlign + 'wrapText="1" ';
-
-    { BiDi mode }
-    if (uffBiDi in fmt^.UsedFormattingFields) and (fmt^.BiDiMode <> bdDefault) then
-      sAlign := sAlign + Format('readingOrder="%d" ', [Ord(fmt^.BiDiMode)]);
-
-    if sAlign <> '' then
-    begin
-      s := s + 'applyAlignment="1" ';
-      sAlign := '<alignment ' + sAlign + '/>';
-    end;
-
-    { Fill }
-    if (uffBackground in fmt^.UsedFormattingFields) then
-    begin
-      fillID := FindFillInList(fmt);
-      if fillID = -1 then fillID := 0;
-      s := s + Format('fillId="%d" applyFill="1" ', [fillID]);
-    end;
-
-    { Border }
-    if (uffBorder in fmt^.UsedFormattingFields) then
-    begin
-      borderID := FindBorderInList(fmt);
-      if borderID = -1 then borderID := 0;
-      s := s + Format('borderId="%d" applyBorder="1" ', [borderID]);
-    end;
-
-    { Protection }
-    if not (cpLockCell in fmt^.Protection) then
-      sProtected := 'locked="0" ';
-
-    if (cpHideFormulas in fmt^.Protection) then
-      sProtected := sProtected + 'hidden="1" ';
-
-    if sProtected <> '' then
-    begin
-      s := s + 'applyProtection="1" ';
-      sProtected := '<protection ' + sProtected + '/>';
-    end;
-
-    { Write everything to stream }
-    if (sAlign = '') and (sProtected = '') then
-      AppendToStream(AStream,
-        '<xf ' + s + '/>')
-    else
-      AppendToStream(AStream,
-       '<xf ' + s + '>',
-         sAlign + sProtected,
-       '</xf>');
+    WriteStyle(AStream, 'xf', fmt);
   end;
 
   AppendToStream(FSStyles, Format(
@@ -4850,9 +5010,10 @@ begin
         '<cellStyle name="Normal" xfId="0" builtinId="0" />' +
       '</cellStyles>');
 
+  // Conditional format styles
+  WriteDifferentialFormats(FSStyles);
+
   // Misc
-  AppendToStream(FSStyles,
-      '<dxfs count="0" />');
   AppendToStream(FSStyles,
       '<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleLight16" />');
 
@@ -5081,6 +5242,138 @@ begin
       '<definedNames>' + stotal + '</definedNames>');
 end;
 
+procedure TsSpreadOOXMLWriter.WriteDifferentialFormat(AStream: TStream;
+  AFormat: PsCellFormat);
+
+  procedure WriteBorderStyle(AStream: TStream; AFormatRecord: PsCellFormat;
+    ABorder: TsCellBorder; ABorderName: String);
+  { border names found in xlsx files for Excel selections:
+    "thin", "hair", "dotted", "dashed", "dashDotDot", "dashDot", "mediumDashDotDot",
+    "slantDashDot", "mediumDashDot", "mediumDashed", "medium", "thick", "double" }
+  var
+    styleName: String;
+    colorStr: String;
+    rgb: TsColor;
+  begin
+    if (ABorder in AFormatRecord^.Border) then begin
+      // Line style
+      styleName := LINESTYLE_TYPES[AFormatRecord^.BorderStyles[ABorder].LineStyle];
+
+      // Border color
+      rgb := AFormatRecord^.BorderStyles[ABorder].Color;
+      colorStr := ColorToHTMLColorStr(rgb, true);
+      AppendToStream(AStream, Format(
+        '<%s style="%s"><color rgb="%s" /></%s>',
+          [ABorderName, styleName, colorStr, ABorderName]
+        ));
+    end else
+      AppendToStream(AStream, Format(
+        '<%s />', [ABorderName]));
+  end;
+
+var
+  pt, bc, fc, diag: string;
+  font: TsFont;
+begin
+  AppendToStream(AStream,
+    '<dxf>');
+
+  { background fill }
+  if (uffBackground in AFormat^.UsedFormattingFields) then
+  begin
+    pt := PATTERN_TYPES[AFormat^.Background.Style];
+    if AFormat^.Background.FgColor <> scTransparent then
+      fc := Format('rgb="%s"', [Copy(ColorToHTMLColorStr(AFormat^.Background.FgColor), 2, MaxInt)]);
+    if AFormat^.Background.BgColor = scTransparent then
+      bc := 'auto="1"'
+    else
+      bc := Format('rgb="%s"', [Copy(ColorToHTMLColorStr(AFormat^.Background.BgColor), 2, MaxInt)]);
+    AppendToStream(AStream,
+      '<fill>' + Format(
+        '<patternFill patternType="%s">', [pt]) + Format(
+          '<fgColor %s />', [fc]) + Format(
+          '<bgColor %s />', [bc]) +
+        '</patternFill>' +
+      '</fill>');
+  end;
+
+  { cell borders }
+  if (uffBorder in AFormat^.UsedFormattingFields) then
+  begin
+    diag := '';
+    if (cbDiagUp in AFormat^.Border) then
+      diag := diag + ' diagonalUp="1"';
+    if (cbDiagDown in AFormat^.Border) then
+      diag := diag + ' diagonalDown="1"';
+    AppendToStream(AStream,
+      '<border' + diag + '>');
+        WriteBorderStyle(AStream, AFormat, cbWest, 'left');
+        WriteBorderStyle(AStream, AFormat, cbEast, 'right');
+        WriteBorderStyle(AStream, AFormat, cbNorth, 'top');
+        WriteBorderStyle(AStream, AFormat, cbSouth, 'bottom');
+        // OOXML uses the same border style for both diagonals. In agreement with
+        // the biff implementation we select the style from the diagonal-up line.
+        WriteBorderStyle(AStream, AFormat, cbDiagUp, 'diagonal');
+    AppendToStream(AStream,
+      '</border>');
+
+    // TODO: Fix font handling: although correct in syntax something seems to be missing...
+    { font }
+    {
+    font := TsWorkbook(FWorkbook).GetFont(AFormat^.FontIndex);
+    if font <> nil then
+    begin
+      fc := ColorToHTMLColorStr(font.Color, true);
+      AppendToStream(AStream, '<font>');
+      AppendToStream(AStream, Format('<color rgb="%s" />', [fc] ));
+      if fssBold in font.Style then
+        AppendToStream(AStream,      '<b />');
+      if fssItalic in font.Style then
+        AppendToStream(AStream,      '<i />');
+      if fssStrikeout in font.Style then
+        AppendToStream(AStream,      '<strike />');
+      // Font name, font size, and style underline not supported
+      AppendToStream(AStream, '</font>');
+    end;
+    }
+  end;
+
+  AppendToStream(AStream,
+    '</dxf>');
+end;
+
+procedure TsSpreadOOXMLWriter.WriteDifferentialFormats(AStream: TStream);
+var
+  book: TsWorkbook;
+  i: Integer;
+  fmtIndex: Integer;
+  fmt: PsCellFormat;
+begin
+  if Length(FDifferentialFormatIndexList) = 0 then
+  begin
+    AppendToStream(AStream, '<dxfs count="0" />');
+    exit;
+  end;
+
+  AppendToStream(AStream, Format(
+    '<dxfs count="%d">', [Length(FDifferentialFormatIndexList)]));
+
+  book := TsWorkbook(FWorkbook);
+  for i := 0 to High(FDifferentialFormatIndexList) do
+  begin
+    fmtIndex := FDifferentialFormatIndexList[i];
+    fmt := book.GetPointerToCellFormat(fmtIndex);
+    WriteDifferentialFormat(AStream, fmt);
+  end;
+
+  AppendToStream(AStream,
+    '</dxfs>');
+  {
+  AppendToStream(AStream,
+    '<tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16" />');
+    }
+end;
+
 procedure TsSpreadOOXMLWriter.WriteWorkbook(AStream: TStream);
 begin
   AppendToStream(AStream,
@@ -5226,6 +5519,7 @@ begin
   WriteSheetProtection(FSSheets[FCurSheetNum], AWorksheet);
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
   WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet, rId_FirstHyperlink);
+  WriteConditionalFormats(FSSheets[FCurSheetNum], AWorksheet);
 
   WritePrintOptions(FSSheets[FCurSheetNum], AWorksheet);
   WritePageMargins(FSSheets[FCurSheetNum], AWorksheet);
@@ -5417,6 +5711,7 @@ begin
   ListAllNumFormats;
   ListAllFills;
   ListAllBorders;
+  ListAllDifferentialFormats;
 
   { Create the streams that will hold the file contents }
   CreateStreams;

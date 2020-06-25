@@ -24,7 +24,7 @@ uses
  {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, avglvltree, lconvencoding,
   fpsTypes, fpsExprParser, fpsClasses, fpsNumFormat, fpsPageLayout,
-  fpsImages;
+  fpsImages, fpsConditionalFormat;
 
 type
   { Forward declarations }
@@ -75,6 +75,7 @@ type
     FHyperlinks: TsHyperlinks;
     FFormulas: TsFormulas;
     FImages: TFPList;
+    FConditionalFormats: TsConditionalFormatList;
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
     FActiveCellCol: Cardinal;
@@ -108,6 +109,7 @@ type
     FOnWriteCellData: TsWorksheetWriteCellDataEvent;
 
     { Setter/Getter }
+    function  GetConditionalFormatCount: Integer;
     function  GetDefaultColWidth: Single;
     function  GetDefaultRowHeight: Single;
     function  GetFormatSettings: TFormatSettings;
@@ -383,6 +385,15 @@ type
     procedure WriteCellProtection(ACell: PCell;
       AValue: TsCellProtections); overload;
 
+    { Conditional formatting }
+    function ReadConditionalFormat(AIndex: Integer): TsConditionalFormat;
+    function WriteConditionalCellFormat(ARange: TsCellRange; ACondition: TsCFCondition;
+      ACellFormatIndex: Integer): Integer; overload;
+    function WriteConditionalCellFormat(ARange: TsCellRange; ACondition: TsCFCondition;
+      AParam: Variant; ACellFormatIndex: Integer): Integer; overload;
+    function WriteConditionalCellFormat(ARange: TsCellRange; ACondition: TsCFCondition;
+      AParam1, AParam2: Variant; ACellFormatIndex: Integer): Integer; overload;
+
     { Formulas }
     function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;
     procedure CalcFormula(AFormula: PsFormula);
@@ -599,6 +610,8 @@ type
     property  Cells: TsCells read FCells;
     {@@ List of all column records of the worksheet having a non-standard column width }
     property  Cols: TIndexedAVLTree read FCols;
+    {@@ Count of conditional format entries }
+    property  ConditionalFormatCount: Integer read GetConditionalFormatCount;
     {@@ Information how the worksheet is encrypted }
     property  CryptoInfo: TsCryptoInfo read FCryptoInfo write FCryptoInfo;
     {@@ List of all comment records }
@@ -816,7 +829,8 @@ type
     function AddFont(const AFontName: String; ASize: Single; AStyle: TsFontStyles;
       AColor: TsColor; APosition: TsFontPosition = fpNormal): Integer; overload;
     function AddFont(const AFont: TsFont): Integer; overload;
-    procedure DeleteFont(AFontIndex: Integer);
+    function CloneFont(const AFontIndex: Integer): TsFont;
+    procedure DeleteFont(const AFontIndex: Integer);
     function FindFont(const AFontName: String; ASize: Single; AStyle: TsFontStyles;
       AColor: TsColor; APosition: TsFontPosition = fpNormal): Integer;
     function GetBuiltinFontCount: Integer;
@@ -1171,6 +1185,7 @@ begin
   FHyperlinks := TsHyperlinks.Create;
   FFormulas := TsFormulas.Create;
   FImages := TFPList.Create;
+  FConditionalFormats := TsConditionalFormatList.Create;
 
   FPageLayout := TsPageLayout.Create(self);
 
@@ -1214,6 +1229,7 @@ begin
   FHyperlinks.Free;
   FFormulas.Free;
   FImages.Free;
+  FConditionalFormats.Free;
 
   inherited Destroy;
 end;
@@ -8501,6 +8517,8 @@ begin
   end;
 end;
 
+{$include fpspreadsheet_CF.inc}   // conditional formatting
+
 
 {==============================================================================}
 {                              TsWorkbook                                      }
@@ -9881,12 +9899,31 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Creates a new font as a copy of the font at the specified index.
+  The new font is NOT YET added to the font list.
+  If the user does not add the font to the font list he is responsibile for
+  destroying it.
+-------------------------------------------------------------------------------}
+function TsWorkbook.CloneFont(const AFontIndex: Integer): TsFont;
+var
+  fnt: TsFont;
+begin
+  Result := TsFont.Create;
+  fnt := GetFont(AFontIndex);
+  Result.FontName := fnt.FontName;
+  Result.Size := fnt.Size;
+  Result.Style := fnt.Style;
+  Result.Color := fnt.Color;
+  Result.Position := fnt.Position;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Deletes a font.
   Use with caution because this will screw up the font assignment to cells.
   The only legal reason to call this method is from a reader of a file format
   in which the missing font #4 of BIFF does exist.
 -------------------------------------------------------------------------------}
-procedure TsWorkbook.DeleteFont(AFontIndex: Integer);
+procedure TsWorkbook.DeleteFont(const AFontIndex: Integer);
 var
   fnt: TsFont;
 begin
