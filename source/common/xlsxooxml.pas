@@ -3345,25 +3345,48 @@ const
     ('equal', 'notEqual', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual');
   OPERATOR_NAMES_2: array[cfcBetween..cfcNotBetween] of String =
     ('between', 'notBetween');
+var
+  fmtID: Integer;
+  aveStr, stdDevStr, eqAveStr: String;
 begin
+  fmtID := 0;   // to do: determine dxfId !
+
   case ARule.Condition of
     cfcEqual..cfcLessEqual:
       AppendToStream(AStream, Format(
-        '<cfRule type="cellIs" dxfId="0" priority="%d" operator="%s">' +
+        '<cfRule type="cellIs" dxfId="%d" priority="%d" operator="%s">' +
           '<formula>%s</formula>'+
         '</cfRule>', [
-        APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1
+        fmtID, APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1
       ]));
 
     cfcBetween, cfcNotBetween:
       AppendToStream(AStream, Format(
-        '<cfRule type="cellIs" dxfId="0" priority="%d" operator="%s">' +
+        '<cfRule type="cellIs" dxfId="%d" priority="%d" operator="%s">' +
           '<formula>%s</formula>'+
           '<formula>%s</formula>'+
         '</cfRule>', [
-        APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1, ARule.Operand2
+        fmtId, APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1, ARule.Operand2
       ]));
 
+    cfcAboveAverage..cfcBelowEqualAverage:
+      begin
+        if (ARule.Condition in [cfcAboveAverage, cfcAboveEqualAverage]) then
+          aveStr := ''
+        else
+          aveStr := ' aboveAverage="0"';
+        if (ARule.Condition in [cfcAboveEqualAverage, cfcBelowEqualAverage]) then
+          eqAveStr := ' equalAverage="1"'
+        else
+          eqAveStr := '';
+        if (ARule.Operand1 = varNull) or (ARule.Operand1 = 0) then
+          stdDevStr := ''
+        else
+          stdDevStr := Format(' stdDev="%d"', [ARule.Operand1]);
+        AppendToStream(AStream, Format(
+          '<cfRule type="aboveAverage" dxfId="%d" priority="%d"%s%s%s />',
+            [fmtId, APriority, aveStr, stdDevStr, eqAveStr]));
+      end;
   else
     FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');
   end;

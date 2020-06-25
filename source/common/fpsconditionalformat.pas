@@ -18,7 +18,7 @@ type
     cfcEqual, cfcNotEqual,
     cfcGreaterThan, cfcLessThan, cfcGreaterEqual, cfcLessEqual,
     cfcBetween, cfcNotBetween,
-    cfcAboveAverage, cfcBelowAverage,
+    cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
     cfcBeginsWidth, cfcEndsWith,
     cfcDuplicate, cfcUnique,
     cfcContainsText, cfcNotContaisText,

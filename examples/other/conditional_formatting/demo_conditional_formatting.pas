@@ -39,6 +39,14 @@ begin
     // Use the format as conditional format of A1:A6 when cells are equal to 3.
     sh.WriteConditionalCellFormat(Range(0, 0, 5, 0), cfcEqual, 3.0, fmtIdx);
 
+
+    sh.WriteNumber(0, 2, 10.0);
+    sh.WriteNumber(1, 2, 20.0);
+    sh.WriteNumber(2, 2, 15.0);
+    sh.WriteNumber(3, 2, 11.0);
+    sh.WriteNumber(4, 2, 19.0);
+    sh.WriteConditionalCellFormat(Range(0, 2, 4, 2), cfcBelowEqualAverage, fmtIdx);
+
     wb.WriteToFile('test.xlsx', true);
   finally
     wb.Free;
