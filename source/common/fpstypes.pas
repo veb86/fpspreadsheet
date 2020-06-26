@@ -721,6 +721,7 @@ type
     // next two are deprecated...
     NumberFormat: TsNumberFormat;
     NumberFormatStr: String;
+    procedure SetBackground(AFillStyle: TsFillStyle; AFgColor, ABgColor: TsColor);
     procedure SetBackgroundColor(AColor: TsColor);
     procedure SetBorders(ABorders: TsCellBorders;
       AColor: TsColor = scBlack; ALineStyle: TsLineStyle = lsThin);
@@ -1067,12 +1068,18 @@ end;
 
 { TsCellFormat }
 
-procedure TsCellFormat.SetBackgroundColor(AColor: TsColor);
+procedure TsCellFormat.SetBackground(AFillStyle: TsFillStyle;
+  AFgColor, ABgColor: TsColor);
 begin
   UsedFormattingFields := UsedFormattingFields + [uffBackground];
-  Background.FgColor := AColor;
-  Background.BgColor := AColor;
-  Background.Style := fsSolidFill;
+  Background.FgColor := AFgColor;
+  Background.BgColor := ABgColor;
+  Background.Style := AFillStyle;
+end;
+
+procedure TsCellFormat.SetBackgroundColor(AColor: TsColor);
+begin
+  SetBackground(fsSolidFill, AColor, AColor);
 end;
 
 procedure TsCellFormat.SetBorders(ABorders: TsCellBorders;
@@ -1082,7 +1089,7 @@ var
 begin
   for cb in ABorders do
   begin
-    if (AColor = scNone) or (AColor = scTransparent) then
+    if (AColor = scTransparent) then
       Exclude(Border, cb)
     else
     begin

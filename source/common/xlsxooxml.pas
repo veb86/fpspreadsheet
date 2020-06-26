@@ -3343,12 +3343,34 @@ end;
 procedure TsSpreadOOXMLWriter.WriteConditionalFormatCellRule(AStream: TStream;
   ARule: TsCFCellRule; ARange: TsCellRange; APriority: Integer);
 const
+  TYPE_NAMES: array[TsCFCondition] of String = (
+    'cellIs', 'cellIs',                      // cfcEqual, cfcNotEqual,
+    'cellIs', 'cellIs', 'cellIs', 'cellIs',  //  cfcGreaterThan, cfcLessThan, cfcGreaterEqual, cfcLessEqual,
+    'cellIs', 'cellIs',                      // cfcBetween, cfcNotBetween,
+    'aboveAverage', 'aboveAverage', 'aboveAverage', 'aboveAverage', // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
+    'top10', 'top10', 'top10', 'top10',      // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
+    'duplicateValues', 'uniqueValues',       // cfcDuplicate, cfcUnique,
+    'beginsWith', 'endsWith',                // cfcBeginsWith, cfcEndsWith,
+    'containsText', 'notContainsText',       // cfcContainsText, cfcNotContainsText,
+    'containsErrors', 'notContainsErrors'    // cfcContainsErrors, cfcNotContainsErrors
+  );
+  OPERATOR_NAMES: array[TsCFCondition] of string = (
+    'equal', 'notEqual', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual',
+    'between', 'notBetween',
+    '', '', '', '',   // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
+    '', '', '', '',   // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
+    '', '',           // cfcDuplicate, cfcUnique,
+    '', '', '', 'notContains', //cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
+    '', ''            // cfcContainsErrors, cfcNotContainsErrors
+  );
+{
   OPERATOR_NAMES_1: array[cfcEqual..cfcLessEqual] of String =
     ('equal', 'notEqual', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual');
   OPERATOR_NAMES_2: array[cfcBetween..cfcNotBetween] of String =
     ('between', 'notBetween');
-  OPERATOR_NAMES_Text: array[cfcBeginsWith..cfcNotContainsErrors] of String =
+  TYPE_NAMES: array[cfcBeginsWith..cfcNotContainsErrors] of String =
     ('beginsWith', 'endsWith', 'containsText', 'notContainsText', 'containsErrors', 'notContainsErrors');
+    }
   FORMULA: array[cfcBeginsWith..cfcNotContainsErrors] of String = (
     'LEFT(%0:s,LEN("%1:s"))="%1:s"',     // cfcBeginsWith
     'RIGHT(%0:s,Len("%1:s"))="%1:s"',    // cfcEndsWidth
@@ -3360,8 +3382,9 @@ const
 var
   i: Integer;
   dxfID: Integer;
-  typeStr, aveStr, stdDevStr, eqAveStr, opStr: String;
+  typeStr, opStr, formula1Str, formula2Str, param1Str, param2Str, param3Str: String;
   firstCellOfRange: String;
+  s: String;
 begin
   dxfID := -1;
   for i := 0 to High(FDifferentialFormatIndexList) do
@@ -3371,6 +3394,71 @@ begin
       break;
     end;
 
+  typeStr := TYPE_NAMES[ARule.Condition];
+  if OPERATOR_NAMES[ARule.Condition] = '' then
+    opStr := ''
+  else
+    opStr := ' operator="' + OPERATOR_NAMES[ARule.Condition] + '"';
+  formula1Str := '';
+  formula2Str := '';
+  param1Str := '';
+  param2Str := '';
+  param3Str := '';
+  case ARule.Condition of
+    cfcEqual..cfcNotBetween:
+      begin
+        formula1Str := Format('<formula>%s</formula>', [ARule.Operand1]);
+        if (ARule.Condition in [cfcBetween, cfcNotBetween]) then
+          formula2Str := Format('<formula>%s</formula>',[ ARule.Operand2]);
+      end;
+    cfcAboveAverage..cfcBelowEqualAverage:
+      begin
+        if (ARule.Condition in [cfcBelowAverage, cfcBelowEqualAverage]) then
+          param1Str := ' aboveAverage="0"';
+        if (ARule.Condition in [cfcAboveEqualAverage, cfcBelowEqualAverage]) then
+          param2Str := ' equalAverage="1"';
+        if not ((ARule.Operand1 = varNull) or (ARule.Operand1 = 0)) then
+          param3Str := Format(' stdDev="%d"', [ARule.Operand1]);
+      end;
+    cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent:
+      begin
+        // <cfRule type="top10" dxfId="0" priority="1" percent="1" bottom="1" rank="30" />    // = bottom 30 percent
+        if ARule.Condition in [cfcBottom, cfcBottomPercent] then
+          param1Str := ' bottom="1"';
+        if ARule.Condition in [cfcTopPercent, cfcBottomPercent] then
+          param2Str := ' percent="1"';
+        param3Str := ' rank="' + VarToStr(ARule.Operand1) + '"';
+      end;
+    cfcDuplicate, cfcUnique:
+      ;
+    cfcBeginsWith..cfcNotContainsErrors:
+      begin
+        firstCellOfRange := GetCellString(ARange.Row1, ARange.Col1);
+        formula1Str :=
+          '<formula>' +
+            Format(FORMULA[ARule.Condition], [firstcellOfRange, ARule.Operand1]) +
+          '</formula>';
+        param1Str := ' text="' + VarToStr(ARule.Operand1) + '"';
+      end;
+    else
+      FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');
+  end;
+
+  if formula1Str = '' then
+    s := Format(
+      '<cfRule type="%s" dxfId="%d" priority="%d"%s%s%s%s />', [
+      typeStr, dxfId, APriority, opStr, param1Str, param2Str, param3Str
+    ])
+  else
+    s := Format(
+      '<cfRule type="%s" dxfId="%d" priority="%d"%s%s%s%s>' +
+        '%s%s' +
+      '</cfRule>', [
+      typeStr, dxfId, APriority, opStr, param1Str, param2Str, param3Str,
+      formula1Str, formula2Str
+    ]);
+  AppendToStream(AStream, s);
+(*
   case ARule.Condition of
     cfcEqual..cfcLessEqual:
       AppendToStream(AStream, Format(
@@ -3408,6 +3496,21 @@ begin
             [dxfId, APriority, aveStr, stdDevStr, eqAveStr]));
       end;
 
+    cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent:
+      begin
+        if ARole.Condition in [cfcBottom, cfcBottomPercent] then
+          bottomStr := ' bottom="1"'
+        else
+          bottomStr := '';
+        if ARole.Condition in [cfcTopPercent, cfcBottomPercent] then
+          percentStr := ' percent="1"
+        else
+          percentStr := '';
+        AppendToStream(AStream, Format(
+          '<cfRule type="top10" dxfId="%d" priority="%d"%s%s rank="%d" />',
+          [dxfID, APriority, bottomStr, percentStr, ARole.Operand1]));
+      end;
+
     cfcBeginsWith..cfcNotContainsErrors:
       begin
         firstCellOfRange := GetCellString(ARange.Row1, ARange.Col1);
@@ -3437,6 +3540,7 @@ begin
   else
     FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');
   end;
+*)
 end;
 
 procedure TsSpreadOOXMLWriter.WriteConditionalFormatRule(AStream: TStream;

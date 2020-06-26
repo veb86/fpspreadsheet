@@ -19,17 +19,12 @@ type
     cfcGreaterThan, cfcLessThan, cfcGreaterEqual, cfcLessEqual,
     cfcBetween, cfcNotBetween,
     cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
+    cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
     cfcDuplicate, cfcUnique,
     cfcBeginsWith, cfcEndsWith,
     cfcContainsText, cfcNotContainsText,
     cfcContainsErrors, cfcNotContainsErrors
   );
-
-  {cellIs
-   expression
-   colorScale, dataBar, iconSet
-   containsText, notContainsText, beginsWith, endsWith, containsBlanks, notContainsBlanks, containsErrors, notContainsErrors
-   }
 
   TsCFCellRule = class(TsCFRule)
   public
