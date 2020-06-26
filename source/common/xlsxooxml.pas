@@ -3346,10 +3346,17 @@ const
   OPERATOR_NAMES_2: array[cfcBetween..cfcNotBetween] of String =
     ('between', 'notBetween');
 var
+  i: Integer;
   fmtID: Integer;
   aveStr, stdDevStr, eqAveStr: String;
 begin
-  fmtID := 0;   // to do: determine dxfId !
+  fmtID := -1;
+  for i := 0 to High(FDifferentialFormatIndexList) do
+    if FDifferentialFormatIndexList[i] = ARule.FormatIndex then
+    begin
+      fmtID := i;
+      break;
+    end;
 
   case ARule.Condition of
     cfcEqual..cfcLessEqual:

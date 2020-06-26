@@ -15,6 +15,8 @@ begin
   wb := TsWorkbook.Create;
   try
     sh := wb.AddWorksheet('test');
+
+    { ------ 1st conditional format ------------------------------------------ }
     sh.WriteNumber(0, 0, 1.0);
     sh.WriteNumber(1, 0, 2.0);
     sh.WriteNumber(2, 0, 3.0);
@@ -40,13 +42,20 @@ begin
     sh.WriteConditionalCellFormat(Range(0, 0, 5, 0), cfcEqual, 3.0, fmtIdx);
 
 
+    { ------- 2nd conditional format ----------------------------------------- }
     sh.WriteNumber(0, 2, 10.0);
     sh.WriteNumber(1, 2, 20.0);
     sh.WriteNumber(2, 2, 15.0);
     sh.WriteNumber(3, 2, 11.0);
     sh.WriteNumber(4, 2, 19.0);
+
+    InitFormatRecord(fmt);
+    fmt.SetBackgroundColor(scRed);
+    fmtIdx := wb.AddCellFormat(fmt);
+
     sh.WriteConditionalCellFormat(Range(0, 2, 4, 2), cfcBelowEqualAverage, fmtIdx);
 
+    { ------ Save workbook to file-------------------------------------------- }
     wb.WriteToFile('test.xlsx', true);
   finally
     wb.Free;
