@@ -145,8 +145,10 @@ type
     procedure WriteCols(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteComments(AWorksheet: TsBasicWorksheet);
     procedure WriteConditionalFormat(AStream: TStream; AFormat: TsConditionalFormat; var APriority: Integer);
-    procedure WriteConditionalFormatCellRule(AStream: TStream; ARule: TsCFCellRule; APriority: Integer);
-    procedure WriteConditionalFormatRule(AStream: TStream; ARule: TsCFRule; var APriority: Integer);
+    procedure WriteConditionalFormatCellRule(AStream: TStream; ARule: TsCFCellRule;
+      ARange: TsCellRange; APriority: Integer);
+    procedure WriteConditionalFormatRule(AStream: TStream; ARule: TsCFRule;
+      const ARange: TsCellRange; var APriority: Integer);
     procedure WriteConditionalFormats(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteDefinedNames(AStream: TStream);
     procedure WriteDifferentialFormat(AStream: TStream; AFormat: PsCellFormat);
@@ -3332,29 +3334,38 @@ begin
   for i := 0 to AFormat.RulesCount-1 do
   begin
     rule := AFormat.Rules[i];
-    WriteConditionalFormatRule(AStream, rule, APriority);
+    WriteConditionalFormatRule(AStream, rule, AFormat.CellRange, APriority);
   end;
   AppendToStream(AStream,
     '</conditionalFormatting>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteConditionalFormatCellRule(AStream: TStream;
-  ARule: TsCFCellRule; APriority: Integer);
+  ARule: TsCFCellRule; ARange: TsCellRange; APriority: Integer);
 const
   OPERATOR_NAMES_1: array[cfcEqual..cfcLessEqual] of String =
     ('equal', 'notEqual', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual');
   OPERATOR_NAMES_2: array[cfcBetween..cfcNotBetween] of String =
     ('between', 'notBetween');
+  OPERATOR_NAMES_Text: array[cfcBeginsWith..cfcNotContainsText] of String =
+    ('beginsWith', 'endsWith', 'containsText', 'notContainsText');
+  FORMULA: array[cfcBeginsWith..cfcNotContainsText] of String = (
+    'LEFT(%0:s,LEN("%1:s"))="%1:s"',     // cfcBeginsWith
+    'RIGHT(%0:s,Len("%1:s"))="%1:s"',    // cfcEndsWidth
+    'NOT(ISERROR(SEARCH("%1:s",%0:s)))', // cfcContainsText
+    'ISERROR(SEARCH("%1:s",%0:s))'       // cfcNotContainsText
+  );
 var
   i: Integer;
-  fmtID: Integer;
-  aveStr, stdDevStr, eqAveStr: String;
+  dxfID: Integer;
+  aveStr, stdDevStr, eqAveStr, opStr: String;
+  firstCellOfRange: String;
 begin
-  fmtID := -1;
+  dxfID := -1;
   for i := 0 to High(FDifferentialFormatIndexList) do
     if FDifferentialFormatIndexList[i] = ARule.FormatIndex then
     begin
-      fmtID := i;
+      dxfID := i;
       break;
     end;
 
@@ -3364,7 +3375,7 @@ begin
         '<cfRule type="cellIs" dxfId="%d" priority="%d" operator="%s">' +
           '<formula>%s</formula>'+
         '</cfRule>', [
-        fmtID, APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1
+        dxfID, APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1
       ]));
 
     cfcBetween, cfcNotBetween:
@@ -3373,7 +3384,7 @@ begin
           '<formula>%s</formula>'+
           '<formula>%s</formula>'+
         '</cfRule>', [
-        fmtId, APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1, ARule.Operand2
+        dxfId, APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1, ARule.Operand2
       ]));
 
     cfcAboveAverage..cfcBelowEqualAverage:
@@ -3392,7 +3403,24 @@ begin
           stdDevStr := Format(' stdDev="%d"', [ARule.Operand1]);
         AppendToStream(AStream, Format(
           '<cfRule type="aboveAverage" dxfId="%d" priority="%d"%s%s%s />',
-            [fmtId, APriority, aveStr, stdDevStr, eqAveStr]));
+            [dxfId, APriority, aveStr, stdDevStr, eqAveStr]));
+      end;
+
+    cfcBeginsWith..cfcNotContainsText:
+      begin
+        firstCellOfRange := GetCellString(ARange.Row1, ARange.Col1);
+        if ARule.Condition = cfcNotContainsText then opStr := ' operator="notContains"' else opStr := '';
+        AppendToStream(AStream, Format(
+          '<cfRule type="%2:s" dxfId="%3:d" priority="%4:d"%5:s text="%1:s">'+
+            '<formula>' + FORMULA[ARule.Condition] + '</formula>' +
+          '</cfRule>', [
+          firstCellOfRange,                        // must be 1st ...
+          ARule.Operand1,                          // ... and 2nd parameters (see FORMULA[])
+          OPERATOR_NAMES_TEXT[ARule.Condition],
+          dxfId,
+          APriority,
+          opStr
+        ]));
       end;
   else
     FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');
@@ -3400,10 +3428,10 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteConditionalFormatRule(AStream: TStream;
-  ARule: TsCFRule; var APriority: Integer);
+  ARule: TsCFRule; const ARange: TsCellRange; var APriority: Integer);
 begin
   if ARule is TsCFCellRule then begin
-    WriteConditionalFormatCellRule(AStream, TsCFCellRule(ARule), APriority);
+    WriteConditionalFormatCellRule(AStream, TsCFCellRule(ARule), ARange, APriority);
     dec(APriority);
   end;
 end;

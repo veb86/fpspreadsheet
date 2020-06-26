@@ -16,7 +16,7 @@ begin
   try
     sh := wb.AddWorksheet('test');
 
-    { ------ 1st conditional format ------------------------------------------ }
+    { ------ 1st conditional format : cfcEqual ------------------------------- }
     sh.WriteNumber(0, 0, 1.0);
     sh.WriteNumber(1, 0, 2.0);
     sh.WriteNumber(2, 0, 3.0);
@@ -37,12 +37,11 @@ begin
     fmt.SetFont(wb.AddFont(font));
     // Add format record to format list
     fmtIdx := wb.AddCellFormat(fmt);
-
     // Use the format as conditional format of A1:A6 when cells are equal to 3.
     sh.WriteConditionalCellFormat(Range(0, 0, 5, 0), cfcEqual, 3.0, fmtIdx);
 
 
-    { ------- 2nd conditional format ----------------------------------------- }
+    { ------- 2nd conditional format : cfcBelowEqualAverage ------------------ }
     sh.WriteNumber(0, 2, 10.0);
     sh.WriteNumber(1, 2, 20.0);
     sh.WriteNumber(2, 2, 15.0);
@@ -52,8 +51,24 @@ begin
     InitFormatRecord(fmt);
     fmt.SetBackgroundColor(scRed);
     fmtIdx := wb.AddCellFormat(fmt);
-
     sh.WriteConditionalCellFormat(Range(0, 2, 4, 2), cfcBelowEqualAverage, fmtIdx);
+
+    { ------- 3rd and 4th conditional formats : beginWith, containsText ------ }
+    sh.WriteText(0, 4, 'abc');
+    sh.WriteText(1, 4, 'def');
+    sh.WriteText(2, 4, 'bac');
+    sh.WriteText(3, 4, 'dbc');
+    sh.WriteText(4, 4, 'acb');
+    sh.WriteText(5, 4, 'aca');
+
+    InitFormatRecord(fmt);
+    fmt.SetBackgroundColor($DEF1F4);
+    fmtIdx := wb.AddCellFormat(fmt);
+    sh.WriteConditionalCellFormat(Range(0, 4, 5, 4), cfcBeginsWith, 'a', fmtIdx);
+
+    fmt.SetBackgroundColor($D08330);
+    fmtIdx := wb.AddCellFormat(fmt);
+    sh.WriteConditionalCellFormat(Range(0, 4, 5, 4), cfcContainsText, 'bc', fmtIdx);
 
     { ------ Save workbook to file-------------------------------------------- }
     wb.WriteToFile('test.xlsx', true);

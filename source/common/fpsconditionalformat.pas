@@ -19,9 +19,9 @@ type
     cfcGreaterThan, cfcLessThan, cfcGreaterEqual, cfcLessEqual,
     cfcBetween, cfcNotBetween,
     cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
-    cfcBeginsWidth, cfcEndsWith,
     cfcDuplicate, cfcUnique,
-    cfcContainsText, cfcNotContaisText,
+    cfcBeginsWith, cfcEndsWith,
+    cfcContainsText, cfcNotContainsText,
     cfcContainsErrors, cfcNotContainsErrors
   );
 
