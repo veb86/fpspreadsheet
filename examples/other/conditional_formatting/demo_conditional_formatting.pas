@@ -85,6 +85,16 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(0, 0, 100, 100), cfcContainsErrors, fmtIdx);
 
+
+    { ------ 6th conditional format: unique/duplicate values ----------------- }
+    sh.WriteNumber(0, 1, 1.0);
+    sh.WriteNumber(1, 1, 99.0);
+    InitFormatRecord(fmt);
+    fmt.SetBackgroundColor(scSilver);
+    sh.WriteConditionalCellFormat(Range(0, 0, 1, 1), cfcUnique, wb.AddCellFormat(fmt));
+    fmt.SetBackgroundColor(scGreen);
+    sh.WriteConditionalCellFormat(Range(0, 0, 1, 1), cfcDuplicate, wb.AddCellFormat(fmt));
+
     { ------ Save workbook to file-------------------------------------------- }
     wb.WriteToFile('test.xlsx', true);
   finally

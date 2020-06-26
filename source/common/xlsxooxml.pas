@@ -3360,7 +3360,7 @@ const
 var
   i: Integer;
   dxfID: Integer;
-  aveStr, stdDevStr, eqAveStr, opStr: String;
+  typeStr, aveStr, stdDevStr, eqAveStr, opStr: String;
   firstCellOfRange: String;
 begin
   dxfID := -1;
@@ -3423,6 +3423,16 @@ begin
           APriority,
           opStr
         ]));
+      end;
+
+    cfcDuplicate, cfcUnique:
+      begin
+        if ARule.Condition = cfcUnique then
+          typeStr := 'uniqueValues'
+        else
+          typeStr := 'duplicateValues';
+        AppendToStream(AStream, Format(
+          '<cfRule type="%s" dxfId="%d" priority="%d" />', [typeStr, dxfID, APriority]));
       end;
   else
     FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');
