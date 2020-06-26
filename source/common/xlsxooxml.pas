@@ -3347,13 +3347,15 @@ const
     ('equal', 'notEqual', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual');
   OPERATOR_NAMES_2: array[cfcBetween..cfcNotBetween] of String =
     ('between', 'notBetween');
-  OPERATOR_NAMES_Text: array[cfcBeginsWith..cfcNotContainsText] of String =
-    ('beginsWith', 'endsWith', 'containsText', 'notContainsText');
-  FORMULA: array[cfcBeginsWith..cfcNotContainsText] of String = (
+  OPERATOR_NAMES_Text: array[cfcBeginsWith..cfcNotContainsErrors] of String =
+    ('beginsWith', 'endsWith', 'containsText', 'notContainsText', 'containsErrors', 'notContainsErrors');
+  FORMULA: array[cfcBeginsWith..cfcNotContainsErrors] of String = (
     'LEFT(%0:s,LEN("%1:s"))="%1:s"',     // cfcBeginsWith
     'RIGHT(%0:s,Len("%1:s"))="%1:s"',    // cfcEndsWidth
     'NOT(ISERROR(SEARCH("%1:s",%0:s)))', // cfcContainsText
-    'ISERROR(SEARCH("%1:s",%0:s))'       // cfcNotContainsText
+    'ISERROR(SEARCH("%1:s",%0:s))',       // cfcNotContainsText
+    'ISERROR(%0:s)',                      // cfcContainsErrors
+    'NOT(ISERROR(%0:s))'                  // cfcNotContainsErrors
   );
 var
   i: Integer;
@@ -3406,7 +3408,7 @@ begin
             [dxfId, APriority, aveStr, stdDevStr, eqAveStr]));
       end;
 
-    cfcBeginsWith..cfcNotContainsText:
+    cfcBeginsWith..cfcNotContainsErrors:
       begin
         firstCellOfRange := GetCellString(ARange.Row1, ARange.Col1);
         if ARule.Condition = cfcNotContainsText then opStr := ' operator="notContains"' else opStr := '';

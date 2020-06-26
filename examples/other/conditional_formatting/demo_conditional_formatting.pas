@@ -70,6 +70,21 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(0, 4, 5, 4), cfcContainsText, 'bc', fmtIdx);
 
+    { ------ 5th conditional format: containsErrors -------------------------- }
+    sh.WriteFormula(0, 6, '=1.0/0.0');
+    sh.WriteFormula(1, 6, '=1.0/1.0');
+    sh.WriteFormula(2, 6, '=1.0/2.0');
+
+    InitFormatRecord(fmt);
+    fmt.SetBackgroundColor(scGreen);
+    fmtIdx := wb.AddCellFormat(fmt);
+    sh.WriteConditionalCellFormat(Range(0, 6, 5, 6), cfcNotContainsErrors, fmtIdx);
+
+    // Condition for ContainsErrors after NoContainsErrors to get higher priority
+    fmt.SetBackgroundColor(scRed);
+    fmtIdx := wb.AddCellFormat(fmt);
+    sh.WriteConditionalCellFormat(Range(0, 0, 100, 100), cfcContainsErrors, fmtIdx);
+
     { ------ Save workbook to file-------------------------------------------- }
     wb.WriteToFile('test.xlsx', true);
   finally
