@@ -750,6 +750,8 @@ type
     Flags: TsCellFlags;
     { Index of format record in the workbook's CellFormatList }
     FormatIndex: Integer;
+    { Indexes to worksheet's ConditionalFormats list needed for conditional formatting }
+    ConditionalFormatIndex: array of Integer;
     { Cell content }
     UTF8StringValue: String;   // Strings cannot be part of a variant record
     RichTextParams: TsRichTextParams; // Formatting of individual text ranges

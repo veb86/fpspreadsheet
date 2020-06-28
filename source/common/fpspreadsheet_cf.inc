@@ -15,33 +15,61 @@ begin
   Result := TsConditionalFormat(FConditionalFormats[AIndex]);
 end;
 
+procedure StoreCFIndexInCells(AWorksheet: TsWorksheet; AIndex: Integer;
+  ARange: TsCellRange);
+var
+  r, c: Cardinal;
+  n: Integer;
+  cell: PCell;
+begin
+  for r := ARange.Row1 to ARange.Row2 do
+    for c := ARange.Col1 to ARange.Col2 do
+    begin
+      cell := AWorksheet.GetCell(r, c);
+      n := Length(cell^.ConditionalFormatIndex);
+      SetLength(cell^.ConditionalFormatIndex, n+1);
+      cell^.ConditionalFormatIndex[n] := AIndex;
+    end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Creates a conditional format item for the cells given by ARange.
-  The condition specified must not require parameters, e.g. cfcEmpty
+  The condition specified here must not require parameters, e.g. cfcEmpty
+  The format is primarily stored in the worksheet's ConditionalFormats list,
+  but the format index is also stored in the cell's ConditionalFormatIndex list.
+  Returns the index of the conditional format in the workbook's CF list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteConditionalCellFormat(ARange: TsCellRange;
   ACondition: TsCFCondition; ACellFormatIndex: Integer): Integer;
 begin
   Result := FConditionalFormats.AddCellRule(ARange, ACondition,
     ACellFormatIndex);
+  StoreCFIndexInCells(self, Result, ARange);
 end;
 
 {@@ ----------------------------------------------------------------------------
   Creates a conditional format item for the cells given by ARange.
   The condition specified must require one parameter, e.g. cfcEqual,
   and the parameter must be specified as AParam.
+  The format is primarily stored in the worksheet's ConditionalFormats list,
+  but the format index is also stored in the cell's ConditionalFormatIndex list.
+  Returns the index of the conditional format in the workbook's CF list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteConditionalCellFormat(ARange: TsCellRange;
   ACondition: TsCFCondition; AParam: Variant; ACellFormatIndex: Integer): Integer;
 begin
   Result := FConditionalFormats.AddCellRule(ARange, ACondition,
     AParam, ACellFormatIndex);
+  StoreCFIndexInCells(self, Result, ARange);
 end;
 
 {@@ ----------------------------------------------------------------------------
   Creates a conditional format item for the cells given by ARange.
   The condition specified must requored two parameters, e.g. cfcBetween,
   and the parameters must be specified as AParam1 and AParam2.
+  The format is primarily stored in the worksheet's ConditionalFormats list,
+  but the format index is also stored in the cell's ConditionalFormatIndex list.
+  Returns the index of the conditional format in the workbook's CF list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteConditionalCellFormat(ARange: TsCellRange;
   ACondition: TsCFCondition; AParam1, AParam2: Variant;
@@ -49,5 +77,6 @@ function TsWorksheet.WriteConditionalCellFormat(ARange: TsCellRange;
 begin
   Result := FConditionalFormats.AddCellRule(ARange, ACondition,
     AParam1, AParam2, ACellFormatIndex);
+  StoreCFIndexInCells(self, Result, ARange);
 end;
 

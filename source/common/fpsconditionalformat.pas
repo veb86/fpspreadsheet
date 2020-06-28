@@ -84,6 +84,8 @@ type
   end;
 
   TsConditionalFormatList = class(TFPObjectList)
+  private
+    FWorksheet: TsBasicWorksheet;
   protected
     function AddRule(ARange: TsCellRange; ARule: TsCFRule): Integer;
   public
@@ -95,11 +97,15 @@ type
       AParam1, AParam2: Variant; ACellFormatIndex: Integer): Integer; overload;
     procedure AddColorRangeRule(ARange: TsCellRange);
     procedure AddDataBarRule(ARange: TsCellRange);
+    procedure Delete(AIndex: Integer);
     function Find(ARange: TsCellRange): Integer;
   end;
 
 
 implementation
+
+uses
+  fpSpreadsheet;
 
 procedure TsCFCellRule.Assign(ASource: TsCFRule);
 begin
@@ -262,6 +268,34 @@ end;
 procedure TsConditionalFormatlist.AddDataBarRule(ARange: TsCellRange);
 begin
   raise Exception.Create('DataBars not yet implemented.');
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Deletes the conditional format at the given index from the list.
+  Iterates also through all cell in the range of the CF and removess the
+  format index from the cell's ConditionalFormatIndex array.
+-------------------------------------------------------------------------------}
+procedure TsConditionalFormatList.Delete(AIndex: Integer);
+var
+  CF: TsConditionalFormat;
+  r, c: Cardinal;
+  i: Integer;
+  cell: PCell;
+begin
+  CF := TsConditionalFormat(Items[AIndex]);
+  for r := CF.CellRange.Row1 to CF.CellRange.Row2 do
+    for c := CF.CellRange.Col1 to CF.CellRange.Col2 do
+    begin
+      cell := TsWorksheet(FWorksheet).FindCell(r, c);
+      if Assigned(cell) and (Length(cell^.ConditionalFormatIndex) > 0) then begin
+        for i := AIndex+1 to High(cell^.ConditionalFormatIndex) do
+          cell^.ConditionalFormatIndex[i-1] := cell^.ConditionalFormatIndex[i];
+        SetLength(cell^.ConditionalFormatIndex, Length(cell^.ConditionalFormatIndex)-1);
+      end;
+    end;
+
+  inherited Delete(AIndex);
 end;
 
 
