@@ -1,20 +1,5 @@
 { Included by fpspreadsheet.pas }
 
-{ Returns the count of conditional format items }
-function TsWorksheet.GetConditionalFormatCount: Integer;
-begin
-  Result := FConditionalFormats.Count;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Returns the conditional format item stored in the CF list at the specified
-  index.
--------------------------------------------------------------------------------}
-function TsWorksheet.ReadConditionalFormat(AIndex: Integer): TsConditionalFormat;
-begin
-  Result := TsConditionalFormat(FConditionalFormats[AIndex]);
-end;
-
 procedure StoreCFIndexInCells(AWorksheet: TsWorksheet; AIndex: Integer;
   ARange: TsCellRange);
 var
@@ -42,8 +27,8 @@ end;
 function TsWorksheet.WriteConditionalCellFormat(ARange: TsCellRange;
   ACondition: TsCFCondition; ACellFormatIndex: Integer): Integer;
 begin
-  Result := FConditionalFormats.AddCellRule(ARange, ACondition,
-    ACellFormatIndex);
+  Result := FWorkbook.FConditionalFormatList.AddCellRule(Self, ARange,
+    ACondition, ACellFormatIndex);
   StoreCFIndexInCells(self, Result, ARange);
 end;
 
@@ -58,7 +43,7 @@ end;
 function TsWorksheet.WriteConditionalCellFormat(ARange: TsCellRange;
   ACondition: TsCFCondition; AParam: Variant; ACellFormatIndex: Integer): Integer;
 begin
-  Result := FConditionalFormats.AddCellRule(ARange, ACondition,
+  Result := FWorkbook.FConditionalFormatList.AddCellRule(Self, ARange, ACondition,
     AParam, ACellFormatIndex);
   StoreCFIndexInCells(self, Result, ARange);
 end;
@@ -75,7 +60,7 @@ function TsWorksheet.WriteConditionalCellFormat(ARange: TsCellRange;
   ACondition: TsCFCondition; AParam1, AParam2: Variant;
   ACellFormatIndex: Integer): Integer;
 begin
-  Result := FConditionalFormats.AddCellRule(ARange, ACondition,
+  Result := FWorkbook.FConditionalFormatList.AddCellRule(Self, ARange, ACondition,
     AParam1, AParam2, ACellFormatIndex);
   StoreCFIndexInCells(self, Result, ARange);
 end;

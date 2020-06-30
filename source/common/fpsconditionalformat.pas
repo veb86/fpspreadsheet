@@ -70,35 +70,36 @@ type
   { Conditional format item }
   TsConditionalFormat = class
   private
+    FWorksheet: TsBasicWorksheet;
     FCellRange: TsCellRange;
     FRules: TsCFRules;
     function GetRules(AIndex: Integer): TsCFRule;
     function GetRulesCount: Integer;
   public
-    constructor Create(ACellRange: TsCellRange);
+    constructor Create(AWorksheet: TsBasicWorksheet; ACellRange: TsCellRange);
     destructor Destroy; override;
 
     property CellRange: TsCellRange read FCellRange;
     property Rules[AIndex: Integer]: TsCFRule read GetRules;
     property RulesCount: Integer read GetRulesCount;
+    property Worksheet: TsBasicWorksheet read FWorksheet;
   end;
 
   TsConditionalFormatList = class(TFPObjectList)
-  private
-    FWorksheet: TsBasicWorksheet;
   protected
-    function AddRule(ARange: TsCellRange; ARule: TsCFRule): Integer;
+    function AddRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
+      ARule: TsCFRule): Integer;
   public
-    function AddCellRule(ARange: TsCellRange; ACondition: TsCFCondition;
-      ACellFormatIndex: Integer): Integer; overload;
-    function AddCellRule(ARange: TsCellRange; ACondition: TsCFCondition;
-      AParam: Variant; ACellFormatIndex: Integer): Integer; overload;
-    function AddCellRule(ARange: TsCellRange; ACondition: TsCFCondition;
-      AParam1, AParam2: Variant; ACellFormatIndex: Integer): Integer; overload;
-    procedure AddColorRangeRule(ARange: TsCellRange);
-    procedure AddDataBarRule(ARange: TsCellRange);
+    function AddCellRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
+      ACondition: TsCFCondition;   ACellFormatIndex: Integer): Integer; overload;
+    function AddCellRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
+      ACondition: TsCFCondition; AParam: Variant; ACellFormatIndex: Integer): Integer; overload;
+    function AddCellRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
+      ACondition: TsCFCondition; AParam1, AParam2: Variant; ACellFormatIndex: Integer): Integer; overload;
+    procedure AddColorRangeRule(ASheet: TsBasicWorksheet; ARange: TsCellRange);
+    procedure AddDataBarRule(ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure Delete(AIndex: Integer);
-    function Find(ARange: TsCellRange): Integer;
+    function Find(ASheet: TsBasicWorksheet; ARange: TsCellRange): Integer;
   end;
 
 
@@ -170,9 +171,11 @@ end;
 
 { TsConditonalFormat }
 
-constructor TsConditionalFormat.Create(ACellRange: TsCellRange);
+constructor TsConditionalFormat.Create(AWorksheet: TsBasicWorksheet;
+  ACellRange: TsCellRange);
 begin
   inherited Create;
+  FWorksheet := AWorksheet;
   FCellRange := ACellRange;
   FRules := TsCFRules.Create;
 end;
@@ -202,15 +205,15 @@ end;
   the rule describing the format.
   The rules are grouped for the same cell ranges.
 -------------------------------------------------------------------------------}
-function TsConditionalFormatList.AddRule(ARange: TsCellRange;
-  ARule: TsCFRule): Integer;
+function TsConditionalFormatList.AddRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; ARule: TsCFRule): Integer;
 var
   CF: TsConditionalFormat;
   idx: Integer;
 begin
-  idx := Find(ARange);
+  idx := Find(ASheet, ARange);
   if idx = -1 then begin
-    CF := TsConditionalFormat.Create(ARange);
+    CF := TsConditionalFormat.Create(ASheet, ARange);
     idx := Add(CF);
   end else
     CF := TsConditionalFormat(Items[idx]);
@@ -220,8 +223,9 @@ end;
 
 // TODO: Add pre-checks for compatibility of condition and operands
 
-function TsConditionalFormatList.AddCellRule(ARange: TsCellRange;
-  ACondition: TsCFCondition; ACellFormatIndex: Integer): Integer;
+function TsConditionalFormatList.AddCellRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; ACondition: TsCFCondition;
+  ACellFormatIndex: Integer): Integer;
 var
   rule: TsCFCellRule;
 begin
@@ -230,11 +234,12 @@ begin
   rule.Operand1 := varNull;
   rule.Operand2 := varNull;
   rule.FormatIndex := ACellFormatIndex;
-  Result := AddRule(ARange, rule);
+  Result := AddRule(ASheet, ARange, rule);
 end;
 
-function TsConditionalFormatList.AddCellRule(ARange: TsCellRange;
-  ACondition: TsCFCondition; AParam: Variant; ACellFormatIndex: Integer): Integer;
+function TsConditionalFormatList.AddCellRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; ACondition: TsCFCondition; AParam: Variant;
+  ACellFormatIndex: Integer): Integer;
 var
   rule: TsCFCellRule;
 begin
@@ -243,11 +248,11 @@ begin
   rule.Operand1 := AParam;
   rule.Operand2 := varNull;
   rule.FormatIndex := ACellFormatIndex;
-  Result := AddRule(ARange, rule);
+  Result := AddRule(ASheet, ARange, rule);
 end;
 
-function TsConditionalFormatList.AddCellRule(ARange: TsCellRange;
-  ACondition: TsCFCondition; AParam1, AParam2: Variant;
+function TsConditionalFormatList.AddCellRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; ACondition: TsCFCondition; AParam1, AParam2: Variant;
   ACellFormatIndex: Integer): Integer;
 var
   rule: TsCFCellRule;
@@ -257,15 +262,17 @@ begin
   rule.Operand1 := AParam1;
   rule.Operand2 := AParam2;
   rule.FormatIndex := ACellFormatIndex;
-  Result := AddRule(ARange, rule);
+  Result := AddRule(ASheet, ARange, rule);
 end;
 
-procedure TsConditionalFormatList.AddColorRangeRule(ARange: TsCellRange);
+procedure TsConditionalFormatList.AddColorRangeRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange);
 begin
   raise EXception.Create('ColorRange not yet implemented.');
 end;
 
-procedure TsConditionalFormatlist.AddDataBarRule(ARange: TsCellRange);
+procedure TsConditionalFormatlist.AddDataBarRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange);
 begin
   raise Exception.Create('DataBars not yet implemented.');
 end;
@@ -287,7 +294,7 @@ begin
   for r := CF.CellRange.Row1 to CF.CellRange.Row2 do
     for c := CF.CellRange.Col1 to CF.CellRange.Col2 do
     begin
-      cell := TsWorksheet(FWorksheet).FindCell(r, c);
+      cell := TsWorksheet(CF.Worksheet).FindCell(r, c);
       if Assigned(cell) and (Length(cell^.ConditionalFormatIndex) > 0) then begin
         for i := AIndex+1 to High(cell^.ConditionalFormatIndex) do
           cell^.ConditionalFormatIndex[i-1] := cell^.ConditionalFormatIndex[i];
@@ -304,7 +311,8 @@ end;
   This function searches all format item whether a given cell ranges is
   already listed.
 -------------------------------------------------------------------------------}
-function TsConditionalFormatList.Find(ARange: TsCellRange): Integer;
+function TsConditionalFormatList.Find(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange): Integer;
 var
   i: Integer;
   CF: TsConditionalFormat;
@@ -313,12 +321,15 @@ begin
   for i := 0 to Count-1 do
   begin
     CF := TsConditionalFormat(Items[i]);
-    CFRange := CF.CellRange;
-    if (CFRange.Row1 = ARange.Row1) and (CFRange.Row2 = ARange.Row2) and
-       (CFRange.Col1 = ARange.Col1) and (CFRange.Col2 = ARange.Col2) then
+    if CF.Worksheet = ASheet then
     begin
-      Result := i;
-      exit;
+      CFRange := CF.CellRange;
+      if (CFRange.Row1 = ARange.Row1) and (CFRange.Row2 = ARange.Row2) and
+         (CFRange.Col1 = ARange.Col1) and (CFRange.Col2 = ARange.Col2) then
+      begin
+        Result := i;
+        exit;
+      end;
     end;
   end;
   Result := -1;

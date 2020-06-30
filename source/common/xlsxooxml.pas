@@ -3081,30 +3081,27 @@ begin
   SetLength(FDifferentialFormatIndexList, n);
 
   book := TsWorkbook(FWorkbook);
-  for i:=0 to book.GetWorksheetCount-1 do begin
-    sheet := book.GetWorksheetByIndex(i);
-    for j := 0 to sheet.ConditionalFormatCount-1 do
-    begin
-      CF := sheet.ReadConditionalFormat(j);
-      for k := 0 to CF.RulesCount-1 do
-        if CF.Rules[k] is TsCFCellRule then
-        begin
-          rule := TsCFCellRule(CF.Rules[k]);
-          idx := -1;
-          for d := 0 to High(FDifferentialFormatIndexList) do
-            if FDifferentialFormatIndexList[d] = rule.FormatIndex then
-            begin
-              idx := d;
-              break;
-            end;
-          if idx = -1 then
+  for j := 0 to book.GetNumConditionalFormats-1 do
+  begin
+    CF := book.GetConditionalFormat(j);
+    for k := 0 to CF.RulesCount-1 do
+      if CF.Rules[k] is TsCFCellRule then
+      begin
+        rule := TsCFCellRule(CF.Rules[k]);
+        idx := -1;
+        for d := 0 to High(FDifferentialFormatIndexList) do
+          if FDifferentialFormatIndexList[d] = rule.FormatIndex then
           begin
-            SetLength(FDifferentialFormatIndexList, n+1);
-            FDifferentialFormatIndexList[n] := rule.FormatIndex;
-            inc(n);
-          end;
+            idx := d;
+            break;
+           end;
+        if idx = -1 then
+        begin
+          SetLength(FDifferentialFormatIndexList, n+1);
+          FDifferentialFormatIndexList[n] := rule.FormatIndex;
+          inc(n);
         end;
-    end;
+      end;
   end;
 end;
 
@@ -3555,23 +3552,29 @@ end;
 procedure TsSpreadOOXMLWriter.WriteConditionalFormats(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
+  book: TsWorkbook;
   worksheet: TsWorksheet absolute AWorksheet;
   i: Integer;
   CF: TsConditionalFormat;
   priority: Integer = 0;
+  ncf: Integer;
 begin
-  if worksheet.ConditionalFormatCount = 0 then
+  book := TsWorkbook(FWorkbook);
+  ncf := book.GetNumConditionalFormats;
+  if ncf = 0 then
     exit;
 
-  for i := 0 to worksheet.ConditionalFormatCount-1 do
+  for i := 0 to ncf-1 do
   begin
-    CF := worksheet.ReadConditionalFormat(i);
-    inc(priority, CF.RulesCount);
+    CF := book.GetConditionalFormat(i);
+    if CF.Worksheet = AWorksheet then
+      inc(priority, CF.RulesCount);
   end;
 
-  for i := 0 to worksheet.ConditionalFormatCount-1 do begin
-    CF := worksheet.ReadConditionalFormat(i);
-    WriteConditionalFormat(AStream, CF, priority);
+  for i := 0 to ncf-1 do begin
+    CF := book.GetConditionalFormat(i);
+    if CF.Worksheet = AWorksheet then
+      WriteConditionalFormat(AStream, CF, priority);
   end;
 end;
 

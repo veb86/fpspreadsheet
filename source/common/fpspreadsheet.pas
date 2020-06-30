@@ -75,7 +75,6 @@ type
     FHyperlinks: TsHyperlinks;
     FFormulas: TsFormulas;
     FImages: TFPList;
-    FConditionalFormats: TsConditionalFormatList;
     FRows, FCols: TIndexedAVLTree; // This lists contain only rows or cols with styles different from default
     FActiveCellRow: Cardinal;
     FActiveCellCol: Cardinal;
@@ -109,7 +108,6 @@ type
     FOnWriteCellData: TsWorksheetWriteCellDataEvent;
 
     { Setter/Getter }
-    function  GetConditionalFormatCount: Integer;
     function  GetDefaultColWidth: Single;
     function  GetDefaultRowHeight: Single;
     function  GetFormatSettings: TFormatSettings;
@@ -386,7 +384,6 @@ type
       AValue: TsCellProtections); overload;
 
     { Conditional formatting }
-    function ReadConditionalFormat(AIndex: Integer): TsConditionalFormat;
     function WriteConditionalCellFormat(ARange: TsCellRange; ACondition: TsCFCondition;
       ACellFormatIndex: Integer): Integer; overload;
     function WriteConditionalCellFormat(ARange: TsCellRange; ACondition: TsCFCondition;
@@ -610,8 +607,6 @@ type
     property  Cells: TsCells read FCells;
     {@@ List of all column records of the worksheet having a non-standard column width }
     property  Cols: TIndexedAVLTree read FCols;
-    {@@ Count of conditional format entries }
-    property  ConditionalFormatCount: Integer read GetConditionalFormatCount;
     {@@ Information how the worksheet is encrypted }
     property  CryptoInfo: TsCryptoInfo read FCryptoInfo write FCryptoInfo;
     {@@ List of all comment records }
@@ -741,6 +736,7 @@ type
     FFontList: TFPList;
     FNumFormatList: TFPList;
     FCellFormatList: TsCellFormatList;
+    FConditionalFormatList: TsConditionalFormatList;
     FEmbeddedObjList: TFPList;
 
     { Internal methods }
@@ -824,6 +820,10 @@ type
     function GetNumCellFormats: Integer;
     function GetPointerToCellFormat(AIndex: Integer): PsCellFormat;
     procedure RemoveAllCellFormats(AKeepDefaultFormat: Boolean);
+
+    { Conditional formatting }
+    function GetConditionalFormat(AIndex: Integer): TsConditionalFormat;
+    function GetNumConditionalFormats: Integer;
 
     { Font handling }
     function AddFont(const AFontName: String; ASize: Single; AStyle: TsFontStyles;
@@ -1185,7 +1185,6 @@ begin
   FHyperlinks := TsHyperlinks.Create;
   FFormulas := TsFormulas.Create;
   FImages := TFPList.Create;
-  FConditionalFormats := TsConditionalFormatList.Create;
 
   FPageLayout := TsPageLayout.Create(self);
 
@@ -1229,7 +1228,6 @@ begin
   FHyperlinks.Free;
   FFormulas.Free;
   FImages.Free;
-  FConditionalFormats.Free;
 
   inherited Destroy;
 end;
@@ -8705,6 +8703,7 @@ begin
 
   FNumFormatList := TsNumFormatList.Create(FormatSettings, true);
   FCellFormatList := TsCellFormatList.Create(false);
+  FConditionalFormatList := TsConditionalFormatList.Create;
   FEmbeddedObjList := TFPList.Create;
 
   // Add default cell format
@@ -8725,6 +8724,7 @@ begin
   EnableNotifications;
   FWorksheets.Free;
 
+  FConditionalFormatList.Free;
   FCellFormatList.Free;
   FNumFormatList.Free;
 
@@ -9857,6 +9857,19 @@ begin
       FCellFormatList.Delete(i)
   else
     FCellFormatList.Clear;
+end;
+
+
+{ Conditional formats }
+
+function TsWorkbook.GetConditionalFormat(AIndex: Integer): TsConditionalFormat;
+begin
+  Result := FConditionalFormatList[AIndex] as TsConditionalFormat;
+end;
+
+function TsWorkbook.GetNumConditionalFormats: Integer;
+begin
+  Result := FConditionalFormatList.Count;
 end;
 
 
