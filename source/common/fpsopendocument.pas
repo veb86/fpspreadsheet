@@ -220,7 +220,7 @@ type
     function WriteBorderStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteCellProtectionStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteCommentXMLAsString(AComment: String): String;
-    function WriteConditionalStyleXMLAsString(AFormatIndex: Integer): String;
+    function WriteConditionalStyleXMLAsString(ACFIndex: Integer): String;
     function WriteDefaultFontXMLAsString: String;
     function WriteDefaultGraphicStyleXMLAsString: String; overload;
     function WriteDocumentProtectionXMLAsString: String;
@@ -382,6 +382,16 @@ const
 
   COLWIDTH_EPS  = 1e-3;
   ROWHEIGHT_EPS = 1e-3;
+
+  CF_OPERATORS: array[TsCFCondition] of string = (
+    '=', '!=', '&gt;', '&lt;', '&gt;=', '&lt;=',
+    '', '',          // cfcBetween, cfcNotBetween,
+    '', '', '', '',  // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage
+    '', '', '', '',  // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
+    '', '',          // cfcDuplicate, cfcUnique,
+    '', '', '', '',  // cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
+    '', ''           // cfcContainsErrors, cfcNotContainsErrors
+  );
 
 type
 
@@ -4818,11 +4828,15 @@ function TsSpreadOpenDocWriter.GetStyleName(ACell: PCell): String;
 var
   fmt: TsCellFormat;
   ncf: Integer;
+  cf: Integer;
 begin
   ncf := Length(ACell^.ConditionalFormatIndex);
   if ncf > 0 then
-    Result := Format('ce%d_%d', [ACell^.FormatIndex, ACell^.ConditionalFormatIndex[ncf-1]])
-  else
+  begin
+    cf := ACell^.ConditionalFormatIndex[ncf-1];
+    // Support only last conditional format of cell (having highest priority)
+    Result := 'ce' + IntToStr((cf+1)*1000 + ACell^.FormatIndex);
+  end else
   begin
     fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
     if fmt.UsedFormattingFields <> [] then
@@ -5468,6 +5482,7 @@ begin
     '</table:table>');
 end;
 
+{ Writes the style node in "content.xml" }
 procedure TsSpreadOpenDocWriter.WriteCellStyle(AStream: TStream;
   AFormatIndex, AConditionalFormatIndex: integer);
 var
@@ -5488,11 +5503,12 @@ begin
 
   // The style name will be 'ce' plus format index in the workbook's CellFormats
   // list.
-  styleName := 'ce' + IntToStr(AFormatIndex);
-  // In case of a conditional format the index in the worksheet's
-  // ConditionalFormatList will be added after an underscore character.
+  // In case of a conditional format the style name is a combination of
+  // conditional format index and normal format index.
   if isConditionalFormat then
-    styleName := styleName + '_' + IntToStr(AConditionalFormatIndex);
+    styleName := 'ce' + IntToStr(1000 * (AConditionalFormatIndex+1) + AFormatIndex)
+  else
+    styleName := 'ce' + IntToStr(AFormatIndex);
 
   fmt := book.GetCellFormat(AFormatIndex);
 
@@ -5575,7 +5591,7 @@ var
   cf_range: TsCellRange;
   cf_rule: TsCFCellRule;
   ncf: Integer;
-  i, j, k, p: Integer;
+  i, j: Integer;
   cell: PCell;
   r, c: Cardinal;
   L: TStrings;
@@ -5609,7 +5625,7 @@ begin
           if Assigned(cell) and
              (cell^.ConditionalFormatIndex[High(cell^.ConditionalFormatIndex)] = i)
           then begin
-            s := Format('ce%d_%d', [cell^.FormatIndex, i]);
+            s := 'ce' + IntToStr((i+1) * 1000 + cell^.FormatIndex);
             if L.IndexOf(s) = -1 then
               L.Add(s);
           end;
@@ -5619,11 +5635,10 @@ begin
     // Now write the combined styles to the stream. The styles can be identified
     // from the style name in the string list.
     for i := 0 to L.Count-1 do begin
-      s := L[i];
-      p := pos('_', L[i]);
-      fmtIndex := StrToInt(Copy(L[i], 3, p-3));
-      cfIndex := StrToInt(Copy(L[i], p+1, MaxInt));
-      WriteCellStyle(AStream, fmtIndex, cfIndex);
+      s := Copy(L[i], 3, MaxInt);  // remove 'ce'
+      j := StrToInt(s);
+      DivMod(j, 1000, cfIndex, fmtIndex);
+      WriteCellStyle(AStream, fmtIndex, cfIndex-1);
     end;
   finally
     L.Free;
@@ -5847,76 +5862,82 @@ var
   cf_range: TsCellRange;
   cf_styleName: String;
   cf_cellRule: TsCFCellRule;
-  i, j: Integer;
+  i, j, k: Integer;
   sheet: TsWorksheet;
   rangeStr: String;
   firstCellStr: string;
   value1Str, value2Str: String;
+  opStr: String;
   s: String;
 begin
   book := TsWorkbook(FWorkbook);
   sheet := TsWorksheet(ASheet);
   ncf := book.GetNumConditionalFormats;
+
+  AppendToStream(AStream,
+    '<calcext:conditional-formats>');
+
   for i := 0 to ncf-1 do begin
     cf := book.GetConditionalFormat(i);
     if cf.Worksheet <> ASheet then
       continue;
-    cf_styleName := 'cf' + IntToStr(i);
     cf_range := cf.CellRange;
     firstCellStr := sheet.Name + '.' + GetCellString(cf_range.Row1, cf_range.Col1);
     rangeStr := firstCellStr + ':' + sheet.Name + '.' + GetCellString(cf_range.Row2, cf_range.Col2);
-    if cf.Rules[cf.RulesCount-1] is TsCFCellRule then
+
+    AppendToStream(AStream, Format(
+      '<calcext:conditional-format calcext:target-range-address="%s">', [
+      rangeStr
+    ]));
+
+    for k := 0 to cf.RulesCount-1 do
     begin
-      cf_cellRule := TsCFCellRule(cf.Rules[cf.RulesCount-1]);
-      case cf_cellRule.Condition of
-        cfcEqual:
-          if VarIsStr(cf_cellRule.Operand1) then
-            value1Str := '=' + UTF8TextToXMLText(SafeQuoteStr(cf_cellrule.Operand1))
-          else
-            value1Str := '=' + VarToStr(cf_cellRule.Operand1);
-        else
-          Continue;
-      end;
-      s := Format(
-        '<calcext:conditional-formats>' +
-          '<calcext:conditional-format calcext:target-range-address="%s">' +
-            '<calcext:condition calcext:apply-style-name="%s" calcext:value="%s" calcext:base-cell-address="%s" />' +
-          '</calcext:conditional-format>' +
-        '</calcext:conditional-formats>', [
-        rangeStr, cf_stylename, value1Str, firstCellStr
-      ]);
-      AppendToStream(AStream, s);
-    end;
-    (*
-
-
-
-    for j := 0 to cf.RulesCount-1 do
-    begin
-      range := cf.CellRange;
-      firstCellStr := sheet.Name + '.' + GetCellString(range.Row1, range.Col1);
-      rangeStr := firstCellStr + ':' + sheet.Name + '.' + GetCellString(range.Row2, range.Col2);
-      if cf.Rules[j] is TsCFCellRule then
+      value1Str := '';
+      value2Str := '';
+      opStr := '';
+      if cf.Rules[k] is TsCFCellRule then
       begin
-        cellRule := TsCFCellRule(cf.Rules[j]);
-        cf_styleName := Format('cf%d_%d', [sheet.Index, cellRule.FormatIndex]);
-        case cellRule.Condition of
-          cfcEqual: value1Str := '=' + VarToStr(cellRule.Operand1);
-          else   Continue;
+        cf_cellRule := TsCFCellRule(cf.Rules[k]);
+        cf_styleName := Format('conditional_%d', [cf_CellRule.FormatIndex]);
+        case cf_cellRule.Condition of
+          cfcEqual..cfcLessEqual:
+            begin
+              opStr := CF_OPERATORS[cf_cellRule.Condition];
+              if VarIsStr(cf_cellRule.Operand1) then
+                value1Str := UTF8TextToXMLText(SafeQuoteStr(cf_cellrule.Operand1))
+              else
+                value1Str := VarToStr(cf_cellRule.Operand1);
+              opStr := CF_OPERATORS[cf_cellRule.Condition] + value1Str;
+            end;
+          cfcBetween, cfcNotBetween:
+            begin
+              if VarIsStr(cf_cellRule.Operand1) then
+                value1Str := UTF8TextToXMLText(SafeQuoteStr(cf_cellrule.Operand1))
+              else
+                value1Str := VarToStr(cf_cellRule.Operand1);
+              if VarIsStr(cf_cellRule.Operand2) then
+                value2Str := UTF8TextToXMLText(SafeQuoteStr(cf_cellrule.Operand2))
+              else
+                value2Str := VarToStr(cf_cellRule.Operand2);
+              opStr := Format('between(%s,%s)', [value1Str, value2Str]);
+              if cf_cellRule.Condition = cfcNotBetween then
+                opStr := 'not-' + opStr;
+            end;
+          else
+            Continue;
         end;
-        s := Format(
-          '<calcext:conditional-formats>' +
-            '<calcext:conditional-format calcext:target-range-address="%s">' +
-              '<calcext:condition calcext:apply-style-name="%s" calcext:value="%s" calcext:base-cell-address="%s" />' +
-            '</calcext:conditional-format>' +
-          '</calcext:conditional-formats>', [
-          rangeStr, cf_stylename, value1Str, firstCellStr
-        ]);
-        AppendToStream(AStream, s);
+        AppendToStream(AStream, Format(
+          '<calcext:condition calcext:apply-style-name="%s" calcext:value="%s" calcext:base-cell-address="%s" />',
+          [cf_stylename, opStr, firstCellStr]
+        ));
       end;
     end;
-    *)
+
+    AppendToStream(AStream,
+      '</calcext:conditional-format>');
   end;
+  AppendToStream(AStream,
+    '</calcext:conditional-formats>' );
 end;
 
 { Writes the conditional format part of a style to "styles.xml". }
@@ -5954,7 +5975,9 @@ var
   nCF: Integer;
   CF: TsConditionalFormat;
   fmt: TsCellFormat;
-  cf_rule: TsCFCellRule;
+  fmtIndex: Integer;
+  cf_rule: TsCFRule;
+  stylename: String;
 begin
   book := TsWorkbook(FWorkbook);
   nCF := book.GetNumConditionalFormats;
@@ -5962,6 +5985,20 @@ begin
   for i := 0 to nCF-1 do
   begin
     CF := book.GetConditionalFormat(i);
+    for j := 0 to CF.RulesCount-1 do
+    begin
+      cf_Rule := CF.Rules[j];
+      if cf_Rule is TsCFCellRule then
+      begin
+        fmtIndex := TsCFCellRule(cf_Rule).FormatIndex;
+        fmt := book.GetCellFormat(TsCFCellRule(cf_Rule).FormatIndex);
+        stylename := Format('conditional_%d', [fmtIndex]);
+        WriteConditionalStyle(AStream, stylename, fmt);
+      end;
+    end;
+  end;
+  (*
+
     // for the moment: write only the style of the highest-priority rule
     if CF.Rules[CF.RulesCount-1] is TsCFCellRule then
     begin
@@ -5970,6 +6007,7 @@ begin
       WriteConditionalStyle(AStream, Format('cf%d', [i]), fmt);  // "cf" + index of CF in book's list
     end;
   end;
+  *)
    (*
   for i := 0 to book.GetWorksheetCount-1 do
   begin
@@ -7063,9 +7101,15 @@ var
   r1,c1,r2,c2: Cardinal;
   fmt: TsCellFormat;
   sheet: TsWorksheet;
+  lStyle: String;
 begin
   Unused(ARow, ACol);
   sheet := FWorksheet as TsWorksheet;
+
+  // Style
+  lStyle := GetStyleName(ACell);
+  if lStyle <> '' then
+    lStyle := Format(' table:style-name="%s"', [lStyle]);
 
   // Hyperlink
   if sheet.HasHyperlink(ACell) then
@@ -7087,8 +7131,8 @@ begin
   fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
   if (fmt.UsedFormattingFields <> []) then
     AppendToStream(AStream, Format(
-      '<table:table-cell table:style-name="ce%d"%s>', [ACell^.FormatIndex, spannedStr]),
-      comment,
+      '<table:table-cell table:style-name="%s"%s>', [lStyle, spannedStr]),
+        comment,
       '</table:table-cell>')
   else
   if comment <> '' then
@@ -7116,6 +7160,8 @@ begin
   Unused(ARow, ACol);
 
   valType := 'boolean';
+
+  // Style
   lStyle := GetStyleName(ACell);
   if lStyle <> '' then
     lStyle := Format(' table:style-name="%s"', [lStyle]);
@@ -7300,49 +7346,68 @@ begin
   end;
 end;
 
-function TsSpreadOpenDocWriter.WriteConditionalStyleXMLAsString(AFormatIndex: Integer): string;
+function TsSpreadOpenDocWriter.WriteConditionalStyleXMLAsString(ACFIndex: Integer): string;
 var
   book: TsWorkbook;
-  isConditional: Boolean;
-  i, j, k: Integer;
+  k: Integer;
   cf: TsConditionalFormat;
   cf_CellRule: TsCFCellRule;
   cf_StyleName: String;
   cf_Condition: String;
   cf_Sheet: TsWorksheet;
   firstCellOfRange: String;
-  operand1Str: String;
+  operand1Str, operand2Str: String;
 begin
   Result := '';
 
   book := TsWorkbook(FWorkbook);
-  cf := book.GetConditionalFormat(AFormatIndex);
-  cf_styleName := 'cf' + IntToStr(AFormatIndex);
+  cf := book.GetConditionalFormat(ACFIndex);
   cf_sheet := cf.Worksheet as TsWorksheet;
   firstCellOfRange := cf_sheet.Name + '.' + GetCellString(cf.CellRange.Row1, cf.CellRange.Col1);
 
-  if cf.Rules[cf.RulesCount-1] is TsCFCellRule then
-  begin
-    // for the moment: we only use the highest-priority rule
-    cf_cellRule := TsCFCellRule(cf.Rules[cf.RulesCount-1]);
-    case cf_cellRule.Condition of
-      cfcEqual:
-        begin
-          operand1Str := VarToStr(cf_cellrule.Operand1);
-          if VarIsStr(cf_cellRule.Operand1) then
-            operand1Str := UTF8TextToXMLText(SafeQuoteStr(cf_cellrule.Operand1));
-          cf_Condition := Format('cell-content()=%s', [operand1Str]);
-        end;
-      else
-        cf_Condition := '';
-    end;
+  // Every rule has a style:map node
+  for k := 0 to cf.RulesCount-1 do begin
+    if cf.Rules[k] is TsCFCellRule then
+    begin
+      cf_cellRule := TsCFCellRule(cf.Rules[k]);
+      cf_styleName := Format('conditional_%d', [cf_cellRule.FormatIndex]);
+      case cf_cellRule.Condition of
+        cfcEqual..cfcLessEqual:
+          begin
+            operand1Str := VarToStr(cf_cellrule.Operand1);
+            if VarIsStr(cf_cellRule.Operand1) then
+              operand1Str := UTF8TextToXMLText(SafeQuoteStr(operand1Str));
+            cf_Condition := Format('cell-content()%s%s', [
+              CF_OPERATORS[cf_cellRule.Condition],
+              operand1Str
+            ]);
+          end;
+        cfcBetween, cfcNotBetween:
+          begin
+            operand1Str := VarToStr(cf_cellrule.Operand1);
+            if VarIsStr(cf_cellRule.Operand1) then
+              operand1Str := UTF8TextToXMLText(SafeQuoteStr(operand1Str));
+            operand2Str := VarToStr(cf_cellrule.Operand2);
+            if VarIsStr(cf_cellRule.Operand2) then
+              operand2Str := UTF8TextToXMLText(SafeQuoteStr(operand2Str));
+            case cf_cellRule.Condition of
+              cfcBetween: cf_Condition := 'cell-content-is-between(%s,%s)';
+              cfcNotBetween: cf_Condition := 'cell-content-is-not-between(%s,%s)';
+            end;
+            cf_Condition := Format(cf_Condition, [operand1Str, operand2Str]);
+          end;
+        else
+          cf_Condition := '';
+      end;
 
-    if cf_Condition <> '' then
-      Result := Format('<style:map style:condition="%s" style:apply-style-name="%s" style:base-cell-address="%s" />', [
-        cf_Condition,
-        cf_StyleName,
-        firstCellOfRange
-      ]);
+      if cf_Condition <> '' then
+        Result := Result +
+          Format('<style:map style:condition="%s" style:apply-style-name="%s" style:base-cell-address="%s" />', [
+            cf_Condition,
+            cf_StyleName,
+            firstCellOfRange
+          ]);
+    end;
   end;
     (*
   // Determine whether the format is a conditional format.
@@ -7467,11 +7532,10 @@ begin
 
   sheet := FWorksheet as TsWorksheet;
 
-  fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(ACell^.FormatIndex);
-  if fmt^.UsedFormattingFields <> [] then
-    lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
-  else
-    lStyle := '';
+  // Style
+  lStyle := GetStyleName(ACell);
+  if lStyle <> '' then
+    lStyle := Format(' table:style-name="%s"', [lStyle]);
 
   // Comment
   comment := WriteCommentXMLAsString(sheet.ReadComment(ACell));
@@ -8269,11 +8333,9 @@ begin
   sheet := FWorksheet as TsWorksheet;
 
   // Style
-  fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
-  if fmt.UsedFormattingFields <> [] then
-    lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '" '
-  else
-    lStyle := '';
+  lStyle := GetStyleName(ACell);
+  if lStyle <> '' then
+    lStyle := Format(' table:style-name="%s"', [lStyle]);
 
   // Comment
   comment := WriteCommentXMLAsString(sheet.ReadComment(ACell));
@@ -8459,11 +8521,9 @@ begin
   sheet := FWorksheet as TsWorksheet;
 
   // Style
-  fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
-  if fmt.UsedFormattingFields <> [] then
-    lStyle := ' table:style-name="ce' + IntToStr(ACell^.FormatIndex) + '"'
-  else
-    lStyle := '';
+  lStyle := GetStyleName(ACell);
+  if lStyle <> '' then
+    lStyle := Format(' table:style-name="%s"', [lStyle]);
 
   // Comment
   comment := WriteCommentXMLAsString(sheet.ReadComment(ACell));
@@ -8615,6 +8675,7 @@ begin
   Unused(ARow, ACol);
 
   valType := 'float';
+
   lStyle := GetStyleName(ACell);
   if lStyle <> '' then
     lStyle := Format(' table:style-name="%s"', [lStyle]);
@@ -8714,12 +8775,13 @@ begin
   end else
     spannedStr := '';
 
+  // Style
+  lStyle := GetStyleName(ACell);
+  if lStyle <> '' then
+    lStyle := Format(' table:style-name="%s"', [lStyle]);
+
   fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
   numFmtParams := (FWorkbook as TsWorkbook).GetNumberFormat(fmt.NumberFormatIndex);
-  if fmt.UsedFormattingFields <> [] then
-    lStyle := Format(' table:style-name="ce%d"', [ACell^.FormatIndex])
-  else
-    lStyle := '';
 
   // Comment
   comment := WriteCommentXMLAsString(sheet.ReadComment(ACell));
