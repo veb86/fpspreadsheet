@@ -3404,9 +3404,17 @@ begin
   case ARule.Condition of
     cfcEqual..cfcNotBetween:
       begin
-        formula1Str := Format('<formula>%s</formula>', [ARule.Operand1]);
+        s := VarToStr(ARule.Operand1);
+        if VarIsStr(ARule.Operand1) then
+          s := UTF8TextToXMLText(SafeQuoteStr(s));
+        formula1Str := Format('<formula>%s</formula>', [s]);
         if (ARule.Condition in [cfcBetween, cfcNotBetween]) then
-          formula2Str := Format('<formula>%s</formula>',[ ARule.Operand2]);
+        begin
+          s := VarToStr(ARule.Operand2);
+          if VarIsStr(ARule.Operand2) then
+            s := UTF8TextToXMLText(SafeQuoteStr(s));
+          formula2Str := Format('<formula>%s</formula>', [s]);
+        end;
       end;
     cfcAboveAverage..cfcBelowEqualAverage:
       begin
