@@ -21,7 +21,7 @@ begin
     sh.WriteDefaultColWidth(15, suMillimeters);
 
     sh.WriteText(0, 0, 'Condition');
-    sh.WriteColWidth(0, 60, suMillimeters);
+    sh.WriteColWidth(0, 70, suMillimeters);
     sh.WriteText(0, 1, 'Format');
     sh.WriteColWidth(1, 90, suMillimeters);
     sh.WriteText(0, 2, 'Test values');
@@ -264,6 +264,18 @@ begin
     fmt.SetFont(wb.AddFont('Courier New', 14, [fssBold], scRed));
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsErrors, fmtIdx);
+
+    // Two rules in the same conditional format
+    inc(row);
+    sh.WriteText(row, 0, 'Two rules: #1: equal to 5, #2: equal to 3');
+    sh.WriteText(row, 1, '#1: background yellow, #2: background green');
+    InitFormatRecord(fmt);
+    fmt.SetBackgroundColor(scYellow);
+    fmtIdx := wb.AddCellFormat(fmt);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcEqual, 5, fmtIdx);
+    fmt.SetBackgroundColor(scGreen);
+    fmtIdx := wb.AddCellFormat(fmt);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcEqual, 3, fmtIdx);
 
     { ------ Save workbook to file-------------------------------------------- }
     wb.WriteToFile('test.xlsx', true);
