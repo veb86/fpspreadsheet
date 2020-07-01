@@ -384,12 +384,17 @@ type
       AValue: TsCellProtections); overload;
 
     { Conditional formatting }
+    // cell-related comparisons
     function WriteConditionalCellFormat(ARange: TsCellRange; ACondition: TsCFCondition;
       ACellFormatIndex: Integer): Integer; overload;
     function WriteConditionalCellFormat(ARange: TsCellRange; ACondition: TsCFCondition;
       AParam: Variant; ACellFormatIndex: Integer): Integer; overload;
     function WriteConditionalCellFormat(ARange: TsCellRange; ACondition: TsCFCondition;
       AParam1, AParam2: Variant; ACellFormatIndex: Integer): Integer; overload;
+    // color range
+    function WriteColorRange(ARange: TsCellRange; AStartColor, ACenterColor, AEndColor: TsColor): Integer;
+    // data bars
+    function WriteDataBars(ARange: TsCellRange): Integer;
 
     { Formulas }
     function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;

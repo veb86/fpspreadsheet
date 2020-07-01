@@ -96,8 +96,9 @@ type
       ACondition: TsCFCondition; AParam: Variant; ACellFormatIndex: Integer): Integer; overload;
     function AddCellRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
       ACondition: TsCFCondition; AParam1, AParam2: Variant; ACellFormatIndex: Integer): Integer; overload;
-    procedure AddColorRangeRule(ASheet: TsBasicWorksheet; ARange: TsCellRange);
-    procedure AddDataBarRule(ASheet: TsBasicWorksheet; ARange: TsCellRange);
+    function AddColorRangeRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
+      AStartColor, ACenterColor, AEndColor: TsColor): Integer;
+    function AddDataBarRule(ASheet: TsBasicWorksheet; ARange: TsCellRange): Integer;
     procedure Delete(AIndex: Integer);
     function Find(ASheet: TsBasicWorksheet; ARange: TsCellRange): Integer;
   end;
@@ -265,16 +266,25 @@ begin
   Result := AddRule(ASheet, ARange, rule);
 end;
 
-procedure TsConditionalFormatList.AddColorRangeRule(ASheet: TsBasicWorksheet;
-  ARange: TsCellRange);
+function TsConditionalFormatList.AddColorRangeRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; AStartColor, ACenterColor, AEndColor: TsColor): Integer;
+var
+  rule: TsCFColorRangeRule;
 begin
-  raise EXception.Create('ColorRange not yet implemented.');
+  rule := TsCFColorRangeRule.Create;
+  rule.StartColor := AStartColor;
+  rule.CenterColor := ACenterColor;
+  rule.EndColor := AEndColor;
+  Result := AddRule(ASheet, ARange, rule);
 end;
 
-procedure TsConditionalFormatlist.AddDataBarRule(ASheet: TsBasicWorksheet;
-  ARange: TsCellRange);
+function TsConditionalFormatlist.AddDataBarRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange): Integer;
+var
+  rule: TsCFRule;
 begin
-  raise Exception.Create('DataBars not yet implemented.');
+  rule := TsCFDataBarRule.Create;
+  Result := AddRule(ASheet, ARange, rule);
 end;
 
 

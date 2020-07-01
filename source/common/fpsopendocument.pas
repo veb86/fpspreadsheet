@@ -5891,6 +5891,8 @@ var
   cf_range: TsCellRange;
   cf_styleName: String;
   cf_cellRule: TsCFCellRule;
+  cf_DataBarRule: TsCFDataBarRule;
+  cf_ColorRangeRule: TsCFColorRangeRule;
   i,j: Integer;
   sheet: TsWorksheet;
   rangeStr: String;
@@ -5934,6 +5936,35 @@ begin
             [cf_stylename, opStr, firstCellStr]
           ));
         end;
+      end
+      else
+      if cf.Rules[j] is TsCFDatabarRule then
+      begin
+        cf_DatabarRule := TsCFDatabarRule(cf.Rules[j]);
+        AppendToStream(AStream,
+          '<calcext:data-bar calcext:min-length="10" calcext:max-length="90" ' +
+               'calcext:negative-color="#ff0000"> calcext:positive-color="%ff0000" ' +
+               'calcext:axis-color="#000000">' +
+            '<calext:formatting-entry calcext:value="0" calcext:type="auto-minimum" />' +
+            'calcext:formatting-entry calcext:value="0" calcext:type="auto-maximum" />' +
+          '</calcext:data-bar>'
+        );
+        // This is the default node after import from xlsx
+      end
+      else
+      if cf.Rules[j] is TsCFColorRangeRule then
+      begin
+        cf_ColorRangeRule := TsCFColorRangeRule(cf.Rules[j]);
+        AppendToStream(AStream, Format(
+          '<calcext:color-scale>' +
+            '<calcext:color-scale-entry calcext:value="0" calcext:type="minimum" calcext:color="%s" />' +
+            '<calcext:color-scale-entry calcext:value="50" calcext:type="percentile" calcext:color="%s" />' +
+            '<calcext:color-scale-entry calcext:value="0" calcext:type="maximum" calcext:color="%s" />' +
+          '</calcext:color-scale>', [
+          ColorToHTMLColorStr(cf_ColorRangeRule.StartColor),
+          ColorToHTMLColorStr(cf_ColorRangeRule.CenterColor),
+          ColorToHTMLColorStr(cf_ColorRangeRule.EndColor)
+        ]));
       end;
     end;
 

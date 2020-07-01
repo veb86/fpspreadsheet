@@ -65,3 +65,23 @@ begin
   StoreCFIndexInCells(self, Result, ARange);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes the conditional format "color range"
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteColorRange(ARange: TsCellRange;
+  AStartColor, ACenterColor, AEndColor: TsColor): Integer;
+begin
+  Result := FWorkbook.FConditionalFormatList.AddColorRangeRule(Self, ARange,
+    AStartColor, ACenterColor, AEndColor);
+  StoreCFIndexInCells(Self, Result, ARange);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the conditional format "data bars"
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteDataBars(ARange: TscellRange): Integer;
+begin
+  Result := FWorkbook.FConditionalFormatList.AddDataBarRule(Self, ARange);
+  StoreCFIndexInCells(self, Result, ARange);
+end;
+
