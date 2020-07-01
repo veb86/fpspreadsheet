@@ -391,6 +391,8 @@ const
   );
 
 function CFOperandToStr(v: Variant): String;
+const
+  ERR = cardinal(-1);
 var
   r, c: Cardinal;
 begin
@@ -401,7 +403,7 @@ begin
   if Result[1] = '=' then
     Delete(Result, 1, 1)
   else
-  if ParseCellString(Result, r, c) then
+  if ParseCellString(Result, r, c) and (r <> ERR) and (c <> ERR) then
     Result := GetCellString(r, c, [])
   else
   if VarIsStr(v) then
