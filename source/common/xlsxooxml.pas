@@ -390,6 +390,24 @@ const
      'slantDashDot'            // lsSlantDashDot
   );
 
+function CFOperandToStr(v: Variant): String;
+var
+  r, c: Cardinal;
+begin
+  Result := VarToStr(v);
+  if Result = '' then
+    exit;
+
+  if Result[1] = '=' then
+    Delete(Result, 1, 1)
+  else
+  if ParseCellString(Result, r, c) then
+    Result := GetCellString(r, c, [])
+  else
+  if VarIsStr(v) then
+    Result := UTF8TextToXMLText(SafeQuoteStr(Result));
+end;
+
 procedure InitOOXMLLimitations(out ALimitations: TsSpreadsheetFormatLimitations);
 begin
   // http://en.wikipedia.org/wiki/List_of_spreadsheet_software#Specifications
@@ -3404,15 +3422,11 @@ begin
   case ARule.Condition of
     cfcEqual..cfcNotBetween:
       begin
-        s := VarToStr(ARule.Operand1);
-        if VarIsStr(ARule.Operand1) then
-          s := UTF8TextToXMLText(SafeQuoteStr(s));
+        s := CFOperandToStr(ARule.Operand1);
         formula1Str := Format('<formula>%s</formula>', [s]);
         if (ARule.Condition in [cfcBetween, cfcNotBetween]) then
         begin
-          s := VarToStr(ARule.Operand2);
-          if VarIsStr(ARule.Operand2) then
-            s := UTF8TextToXMLText(SafeQuoteStr(s));
+          s := CFOperandToStr(ARule.Operand2);
           formula2Str := Format('<formula>%s</formula>', [s]);
         end;
       end;

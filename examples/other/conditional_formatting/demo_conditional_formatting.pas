@@ -21,7 +21,7 @@ begin
     sh.WriteDefaultColWidth(20, suMillimeters);
 
     sh.WriteText(0, 0, 'Condition');
-    sh.WriteColWidth(0, 50, suMillimeters);
+    sh.WriteColWidth(0, 60, suMillimeters);
     sh.WriteText(0, 1, 'Format');
     sh.WriteColWidth(1, 70, suMillimeters);
     sh.WriteText(0, 2, 'Test values');
@@ -72,21 +72,21 @@ begin
 
     // conditional format #3: greater than cell reference
     inc(row);
-    sh.WriteText(row, 0, 'greater than cell C3');
+    sh.WriteText(row, 0, 'greater than cell F4');
     sh.WriteText(row, 1, 'all borders, red, thick line');
     InitFormatRecord(fmt);
     fmt.SetBorders([cbEast, cbWest, cbNorth, cbSouth], scRed, lsThick);
     fmtIdx := wb.AddCellFormat(fmt);
-    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcGreaterThan, 'C3', fmtIdx);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcGreaterThan, 'F4', fmtIdx);  // Absolute ref needed but generated automatically
 
     // conditional format #4: less than formula
     inc(row);
-    sh.WriteText(row, 0, 'less than formula "=1+3"');
+    sh.WriteText(row, 0, 'less than formula "=$C$4+$D$4"');
     sh.WriteText(row, 1, 'background red');
     InitFormatRecord(fmt);
     fmt.SetBackgroundColor(scRed);
     fmtIdx := wb.AddCellFormat(fmt);
-    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcLessThan, '=1+3', fmtIdx);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcLessThan, '=$C$4+$D$4', fmtIdx);    // Absolute ref required
 
     // conditional format #5: greater equal constant
     inc(row);
@@ -264,17 +264,11 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsErrors, fmtIdx);
 
-    WriteLn('row = ', row);
-    WriteLn('wb.GetNumcellFormats = ', wb.GetNumCellFormats);
-    WriteLn('wb.GetNumConditionalFormats = ',  wb.GetNumConditionalFormats);
-
     { ------ Save workbook to file-------------------------------------------- }
     wb.WriteToFile('test.xlsx', true);
     wb.WriteToFile('test.ods', true);
   finally
     wb.Free;
   end;
-
-  ReadLn;
 end.
 

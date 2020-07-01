@@ -411,6 +411,37 @@ const
   );
 
 
+function CFOperandToStr(v: variant; AWorksheet: TsWorksheet): String;
+var
+  r,c: Cardinal;
+  parser: TsSpreadsheetParser;
+begin
+  Result := VarToStr(v);
+  if Result = '' then
+    exit;
+
+  if VarIsStr(v) then begin
+    // Special case: v is a formula, i.e. begins with '='
+    if (Length(Result) > 1) and (Result[1] = '=') then
+    begin
+      parser := TsSpreadsheetParser.Create(AWorksheet);
+      try
+        parser.Expression[fdExcelA1] := Result;  // Parse in Excel-A1 dialect
+        Result := parser.Expression[fdOpenDocument];    // Convert to ODS dialect
+      finally
+        parser.Free;
+      end;
+    end
+    else
+    // Special case: cell reference (Note: relative refs are made absolute!)
+    if ParseCellString(Result, r, c) then
+      Result := Format('[.%s]', [GetCellString(r, c, [])])  // Need absolute reference!
+    else
+      Result := UTF8TextToXMLText(SafeQuoteStr(Result))
+  end;
+end;
+
+
 type
 
   { Table style items stored in TableStyleList of the reader }
@@ -5917,45 +5948,23 @@ begin
       begin
         cf_cellRule := TsCFCellRule(cf.Rules[k]);
         cf_styleName := Format('conditional_%d', [cf_CellRule.FormatIndex]);
-        value1Str := VarToStr(cf_cellRule.Operand1);
-        if VarIsStr(cf_cellRule.Operand1) then value1Str := UTF8TextToXMLText(SafeQuoteStr(value1Str));
-        value2Str := VarToStr(cf_cellRule.Operand2);
-        if VarIsStr(cf_cellRule.Operand1) then value2Str := UTF8TextToXMLText(SafeQuoteStr(value2Str));
+        value1Str := CFOperandToStr(cf_cellRule.Operand1, sheet);
+        value2Str := CFOperandToStr(cf_cellRule.Operand2, sheet);
         opStr := Format(CF_CALCEXT_OP[cf_cellRule.Condition], [value1Str, value2str]);
-        (*
-        case cf_cellRule.Condition of
-          cfcEqual..cfcLessEqual:
-            begin
-              opStr := CF_OPERATORS[cf_cellRule.Condition];
-              if VarIsStr(cf_cellRule.Operand1) then
-                value1Str := UTF8TextToXMLText(SafeQuoteStr(cf_cellrule.Operand1))
-              else
-                value1Str := VarToStr(cf_cellRule.Operand1);
-              opStr := CF_OPERATORS[cf_cellRule.Condition] + value1Str;
-            end;
-          cfcBetween, cfcNotBetween:
-            begin
-              if VarIsStr(cf_cellRule.Operand1) then
-                value1Str := UTF8TextToXMLText(SafeQuoteStr(cf_cellrule.Operand1))
-              else
-                value1Str := VarToStr(cf_cellRule.Operand1);
-              if VarIsStr(cf_cellRule.Operand2) then
-                value2Str := UTF8TextToXMLText(SafeQuoteStr(cf_cellrule.Operand2))
-              else
-                value2Str := VarToStr(cf_cellRule.Operand2);
-              opStr := Format('between(%s,%s)', [value1Str, value2Str]);
-              if cf_cellRule.Condition = cfcNotBetween then
-                opStr := 'not-' + opStr;
-            end;
-          else
-            Continue;
-        end;
-        *)
         if opStr <> '' then
+        begin
+          // Fix formula syntax
+          s := VarToStr(cf_cellRule.Operand1);
+          {
+          if (Length(s) > 1) and (s[1] = '=') then
+            opStr := 'of:' + opStr;
+            }
+          // construct calcext string
           AppendToStream(AStream, Format(
             '<calcext:condition calcext:apply-style-name="%s" calcext:value="%s" calcext:base-cell-address="%s" />',
             [cf_stylename, opStr, firstCellStr]
           ));
+        end;
       end;
     end;
 
@@ -7383,6 +7392,7 @@ var
   cf_Sheet: TsWorksheet;
   firstCellOfRange: String;
   operand1Str, operand2Str: String;
+  s: String;
 begin
   Result := '';
 
@@ -7397,100 +7407,27 @@ begin
     begin
       cf_cellRule := TsCFCellRule(cf.Rules[k]);
       cf_styleName := Format('conditional_%d', [cf_cellRule.FormatIndex]);
-      operand1Str := VarToStr(cf_cellrule.Operand1);
-      if VarIsStr(cf_cellRule.Operand1) then operand1Str := UTF8TextToXMLText(SafeQuoteStr(operand1Str));
-      operand2Str := VarToStr(cf_cellrule.Operand2);
-      if VarIsStr(cf_cellRule.Operand2) then operand2Str := UTF8TextToXMLText(SafeQuoteStr(operand2Str));
+      operand1Str := CFOperandToStr(cf_cellrule.Operand1, cf_sheet);
+      operand2Str := CFOperandToStr(cf_cellrule.Operand2, cf_sheet);
       cf_condition := Format(CF_STYLE_OP[cf_cellRule.Condition], [operand1Str, operand2Str]);
-      (*
-      case cf_cellRule.Condition of
-        cfcEqual..cfcLessEqual:
-          begin
-            operand1Str := VarToStr(cf_cellrule.Operand1);
-            if VarIsStr(cf_cellRule.Operand1) then
-              operand1Str := UTF8TextToXMLText(SafeQuoteStr(operand1Str));
-            cf_Condition := Format('cell-content()%s%s', [
-              CF_OPERATORS[cf_cellRule.Condition],
-              operand1Str
-            ]);
-          end;
-        cfcBetween, cfcNotBetween:
-          begin
-            operand1Str := VarToStr(cf_cellrule.Operand1);
-            if VarIsStr(cf_cellRule.Operand1) then
-              operand1Str := UTF8TextToXMLText(SafeQuoteStr(operand1Str));
-            operand2Str := VarToStr(cf_cellrule.Operand2);
-            if VarIsStr(cf_cellRule.Operand2) then
-              operand2Str := UTF8TextToXMLText(SafeQuoteStr(operand2Str));
-            case cf_cellRule.Condition of
-              cfcBetween: cf_Condition := 'cell-content-is-between(%s,%s)';
-              cfcNotBetween: cf_Condition := 'cell-content-is-not-between(%s,%s)';
-            end;
-            cf_Condition := Format(cf_Condition, [operand1Str, operand2Str]);
-          end;
-        else
-          cf_Condition := '';
-      end;
-      *)
 
-      if cf_Condition <> '' then
+      if cf_Condition <> '' then begin
+        // Fix formula syntax
+        (*
+        s := VarToStr(cf_cellRule.Operand1);
+        if (Length(s) > 1) and (s[1] = '=') then
+          cf_condition := 'of:' + cf_Condition;
+        *)
+        // Build style:map string
         Result := Result +
           Format('<style:map style:condition="%s" style:apply-style-name="%s" style:base-cell-address="%s" />', [
             cf_Condition,
             cf_StyleName,
             firstCellOfRange
           ]);
-    end;
-  end;
-    (*
-  // Determine whether the format is a conditional format.
-  isConditional := false;
-  for i := 0 to book.GetWorksheetCount-1 do
-  begin
-    sheet := book.GetWorksheetByIndex(i);
-    for j := 0 to sheet.ConditionalFormatCount-1 do
-    begin
-      cf := sheet.ReadConditionalFormat(j);
-      for k := 0 to cf.RulesCount-1 do
-        if cf.Rules[k] is TsCFCellRule then
-          if TsCFCellRule(cf.Rules[k]).FormatIndex = AFormatIndex then
-          begin
-            isConditional := true;
-            cf_CellRule := TsCFCellRule(cf.Rules[k]);
-            cf_StyleName := Format('cf%d_%d', [i, cf_CellRule.FormatIndex]);
-            firstCellOfRange := GetCellString(cf.CellRange.Row1, cf.CellRange.Col1);
-            firstCellOfRange := sheet.Name + '.' + firstCellOfRange;
-            break;
-          end;
-      if isConditional then break;
-    end;
-    if isConditional then break;
-  end;
-
-  if not isConditional then
-    exit;
-
-  // <style:map style:condition="cell-content()=5" style:apply-style-name="cf" style:base-cell-address="Tabelle1.B4" />
-  // or                         ="cell-content()="abc""
-  case cf_cellRule.Condition of
-    cfcEqual:
-      begin
-        operand1Str := VarToStr(cf_cellrule.Operand1);
-        if VarIsStr(cf_cellRule.Operand1) then
-          operand1Str := UTF8TextToXMLText(SafeQuoteStr(cf_cellrule.Operand1));
-        cf_Condition := Format('cell-content()=%s', [operand1Str]);
       end;
-    else
-      cf_Condition := '';
+    end;
   end;
-
-  if cf_Condition <> '' then
-    Result := Format('<style:map style:condition="%s" style:apply-style-name="%s" style:base-cell-address="%s" />', [
-      cf_Condition,
-      cf_StyleName,
-      firstCellOfRange
-    ]);
-    *)
 end;
 
 function TsSpreadOpenDocWriter.WriteDefaultFontXMLAsString: String;
