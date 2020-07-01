@@ -18,12 +18,12 @@ begin
   wb := TsWorkbook.Create;
   try
     sh := wb.AddWorksheet('test');
-    sh.WriteDefaultColWidth(20, suMillimeters);
+    sh.WriteDefaultColWidth(15, suMillimeters);
 
     sh.WriteText(0, 0, 'Condition');
     sh.WriteColWidth(0, 60, suMillimeters);
     sh.WriteText(0, 1, 'Format');
-    sh.WriteColWidth(1, 70, suMillimeters);
+    sh.WriteColWidth(1, 90, suMillimeters);
     sh.WriteText(0, 2, 'Test values');
 
     row := 2;
@@ -49,7 +49,7 @@ begin
       sh.WriteFormula(i, 18, '=1.0/1.0');
     end;
     lastCol := 18;
-                     (*
+
     // conditional format #1: equal to number constant
     sh.WriteText(row, 0, 'equal to constant 5');
     sh.WriteText(row, 1, 'background yellow');
@@ -255,11 +255,11 @@ begin
     fmt.SetBackgroundColor(scRed);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcContainsErrors, fmtIdx);
-                   *)
+
     // conditional format #6: no errors
     inc(row);
     sh.WriteText(row, 0, 'no errors');
-    sh.WriteText(row, 1, 'background red');
+    sh.WriteText(row, 1, 'background yellow, font "Courier New"/red/bold/14');
     fmt.SetBackgroundColor(scYellow);
     fmt.SetFont(wb.AddFont('Courier New', 14, [fssBold], scRed));
     fmtIdx := wb.AddCellFormat(fmt);

@@ -6022,24 +6022,33 @@ var
   fmtIndex: Integer;
   cf_rule: TsCFRule;
   stylename: String;
+  L: TStrings;
 begin
   book := TsWorkbook(FWorkbook);
   nCF := book.GetNumConditionalFormats;
 
-  for i := 0 to nCF-1 do
-  begin
-    CF := book.GetConditionalFormat(i);
-    for j := 0 to CF.RulesCount-1 do
+  L := TStringList.Create;
+  try
+    for i := 0 to nCF-1 do
     begin
-      cf_Rule := CF.Rules[j];
-      if cf_Rule is TsCFCellRule then
+      CF := book.GetConditionalFormat(i);
+      for j := 0 to CF.RulesCount-1 do
       begin
-        fmtIndex := TsCFCellRule(cf_Rule).FormatIndex;
-        fmt := book.GetCellFormat(TsCFCellRule(cf_Rule).FormatIndex);
-        stylename := Format('conditional_%d', [fmtIndex]);
-        WriteConditionalStyle(AStream, stylename, fmt);
+        cf_Rule := CF.Rules[j];
+        if cf_Rule is TsCFCellRule then
+        begin
+          fmtIndex := TsCFCellRule(cf_Rule).FormatIndex;
+          fmt := book.GetCellFormat(TsCFCellRule(cf_Rule).FormatIndex);
+          stylename := Format('conditional_%d', [fmtIndex]);
+          if L.IndexOf(styleName) = -1 then begin
+            WriteConditionalStyle(AStream, stylename, fmt);
+            L.Add(styleName);
+          end;
+        end;
       end;
     end;
+  finally
+    L.Free;
   end;
 end;
 
