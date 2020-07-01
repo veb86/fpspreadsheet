@@ -640,8 +640,9 @@ type
     imRow, imCol);
 
   {@@ Inspector expanded nodes }
-  TsInspectorExpandedNode = (ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
-    ienEmbeddedObj, ienImages, ienCryptoInfo);
+  TsInspectorExpandedNode = (ienFormatSettings, ienConditionalFormats,
+    ienPageLayout, ienFonts, ienFormats, ienEmbeddedObj, ienImages,
+    ienCryptoInfo);
   TsInspectorExpandedNodes = set of TsInspectorExpandedNode;
 
   {@@ TsSpreadsheetInspector displays all properties of a workbook, worksheet,
@@ -691,8 +692,8 @@ type
     {@@ Displays subproperties }
     property ExpandedNodes: TsInspectorExpandedNodes
       read FExpanded write SetExpanded
-      default [ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
-               ienEmbeddedObj, ienImages, ienCryptoInfo];
+      default [ienFormatSettings, ienConditionalFormats, ienPageLayout,
+               ienFonts, ienFormats, ienEmbeddedObj, ienImages, ienCryptoInfo];
     {@@ inherited from TValueListEditor. Turns of the fixed column by default}
     property FixedCols default 0;
     {@@ inherited from TStringGrid, but not published in TValueListEditor. }
@@ -708,7 +709,7 @@ uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
   Dialogs, Forms, Clipbrd,
   fpsStrings, fpsCrypto, fpsReaderWriter, fpsUtils, fpsNumFormat, fpsImages,
-  fpsHTMLUtils, fpsCSV, fpsExprParser;
+  fpsHTMLUtils, fpsCSV, fpsExprParser, fpsConditionalFormat;
 
 var
   cfBiff8Format: Integer = 0;
@@ -3529,8 +3530,8 @@ begin
   inherited Create(AOwner);
   DisplayOptions := DisplayOptions - [doKeyColFixed];
   FixedCols := 0;
-  FExpanded := [ienFormatSettings, ienPageLayout, ienFonts, ienFormats,
-    ienEmbeddedObj, ienImages, ienCryptoInfo];
+  FExpanded := [ienFormatSettings, ienConditionalFormats, ienPageLayout,
+    ienFonts, ienFormats, ienEmbeddedObj, ienImages, ienCryptoInfo];
   with (TitleCaptions as TStringList) do begin
     OnChange := nil;        // This fixes an issue with Laz 1.0
     Clear;
@@ -3565,6 +3566,12 @@ begin
     if (ienFormatSettings in expNodes)
       then Exclude(expNodes, ienFormatSettings)
       else Include(expNodes, ienFormatSettings);
+  end else
+  if (pos('Conditional formats', s) > 0) or (pos('ConditionalFormats', s) > 0) then
+  begin
+    if (ienConditionalFormats in expNodes)
+      then Exclude(expNodes, ienConditionalFormats)
+      else Include(expNodes, ienConditionalFormats);
   end else
   if (pos('Page layout', s) > 0) or (pos('PageLayout', s) > 0) then
   begin
@@ -4252,6 +4259,7 @@ var
   embObj: TsEmbeddedObj;
   so: TsSheetOption;
   sp: TsWorksheetProtection;
+  cf: TsConditionalFormat;
 begin
   if ASheet = nil then
   begin
@@ -4270,6 +4278,7 @@ begin
     AStrings.Add('Options=');
     AStrings.Add('Protection=');
     AStrings.Add('TabColor=');
+    AStrings.Add('Conditional formats=');
   end else
   begin
     AStrings.Add(Format('Name=%s', [ASheet.Name]));
@@ -4292,7 +4301,23 @@ begin
     AStrings.Add(Format('Hyperlinks=%d items', [ASheet.Hyperlinks.Count]));
     AStrings.Add(Format('MergedCells=%d items', [ASheet.MergedCells.Count]));
     AStrings.Add(Format('TabColor=$%.8x (%s)', [ASheet.TabColor, GetColorName(ASheet.TabColor)]));
-
+                                    (*
+    if ienConditionalFormats in FExpanded then
+    begin
+      AStrings.Add('(-) Conditional formats=');
+      AStrings.Add(Format('  Count=%d', [ASheet.ConditionalFormatCount]));
+      for i := 0 to ASheet.ConditionalFormatCount-1 do
+      begin
+        cf := ASheet.ReadConditionalFormat(i);
+        AStrings.Add('  Item #' + IntToStr(i) + ':');
+        with cf.CellRange do
+          AStrings.Add(Format('    CellRange=%s', [GetCellRangeString(Row1, Col1, Row2, Col2)]));
+      end;
+    end else
+    begin
+      AStrings.Add('(+) Conditional formats=(dblclick for more...)');
+    end;
+                       *)
     if ienPageLayout in FExpanded then
     begin
       AStrings.Add('(-) Page layout=');

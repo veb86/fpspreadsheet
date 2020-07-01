@@ -383,15 +383,33 @@ const
   COLWIDTH_EPS  = 1e-3;
   ROWHEIGHT_EPS = 1e-3;
 
-  CF_OPERATORS: array[TsCFCondition] of string = (
-    '=', '!=', '&gt;', '&lt;', '&gt;=', '&lt;=',
-    '', '',          // cfcBetween, cfcNotBetween,
+  CF_STYLE_OP: array[TsCFCondition] of string = (
+    'cell-content()=%s', 'cell-content()!=%s',              // cfcEqual, cfcNotEqual
+    'cell-content()&gt;%s', 'cell-content()&lt;%s',         //cfcGreaterThan, cfcLessThan
+    'cell-content()&gt;=%s', 'cell-content&lt;=%s',         // cfcGreaterEqual, cfdLessEqual
+    'cell-is-between(%s,%s)', 'cell-is-not-between(%s,%s)', // cfcBetween, cfcNotBetween,
     '', '', '', '',  // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage
     '', '', '', '',  // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
     '', '',          // cfcDuplicate, cfcUnique,
     '', '', '', '',  // cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
     '', ''           // cfcContainsErrors, cfcNotContainsErrors
   );
+
+  CF_CALCEXT_OP: array[TsCFCondition] of string = (
+    '=%s', '!=%s',                          // cfcEqual, cfcNotEqual
+    '&gt;%s', '&lt;%s',                     //cfcGreaterThan, cfcLessThan
+    '&gt;=%s', '&lt;=%s',                   // cfcGreaterEqual, cfdLessEqual
+    'between(%s,%s)', 'not-between(%s,%s)', // cfcBetween, cfcNotBetween,
+    'above-average', 'below-average',       // cfcAboveAverage, cfcBelowAverage,
+    'above-equal-average', 'below-equal-average', // cfcAboveEqualAverage, cfcBelowEqualAverage
+    'top-elements(%s)', 'bottom-elements(%s)',    // cfcTop, cfcBottom,
+    'top-percent(%s)', 'bottom-percent(%s)',      // cfcTopPercent, cfcBottomPercent,
+    '', '',          // cfcDuplicate, cfcUnique,
+    'begins-with(%s)', 'ends-with(%s)',           // cfcBeginsWith, cfcEndsWith,
+    'contains-text(%s)', 'not-contains-text(%s)', // cfcContainsText, cfcNotContainsText,
+    '', ''           // cfcContainsErrors, cfcNotContainsErrors
+  );
+
 
 type
 
@@ -5899,6 +5917,12 @@ begin
       begin
         cf_cellRule := TsCFCellRule(cf.Rules[k]);
         cf_styleName := Format('conditional_%d', [cf_CellRule.FormatIndex]);
+        value1Str := VarToStr(cf_cellRule.Operand1);
+        if VarIsStr(cf_cellRule.Operand1) then value1Str := UTF8TextToXMLText(SafeQuoteStr(value1Str));
+        value2Str := VarToStr(cf_cellRule.Operand2);
+        if VarIsStr(cf_cellRule.Operand1) then value2Str := UTF8TextToXMLText(SafeQuoteStr(value2Str));
+        opStr := Format(CF_CALCEXT_OP[cf_cellRule.Condition], [value1Str, value2str]);
+        (*
         case cf_cellRule.Condition of
           cfcEqual..cfcLessEqual:
             begin
@@ -5926,10 +5950,12 @@ begin
           else
             Continue;
         end;
-        AppendToStream(AStream, Format(
-          '<calcext:condition calcext:apply-style-name="%s" calcext:value="%s" calcext:base-cell-address="%s" />',
-          [cf_stylename, opStr, firstCellStr]
-        ));
+        *)
+        if opStr <> '' then
+          AppendToStream(AStream, Format(
+            '<calcext:condition calcext:apply-style-name="%s" calcext:value="%s" calcext:base-cell-address="%s" />',
+            [cf_stylename, opStr, firstCellStr]
+          ));
       end;
     end;
 
@@ -7365,12 +7391,18 @@ begin
   cf_sheet := cf.Worksheet as TsWorksheet;
   firstCellOfRange := cf_sheet.Name + '.' + GetCellString(cf.CellRange.Row1, cf.CellRange.Col1);
 
-  // Every rule has a style:map node
+  // Some rules have a style:map node
   for k := 0 to cf.RulesCount-1 do begin
     if cf.Rules[k] is TsCFCellRule then
     begin
       cf_cellRule := TsCFCellRule(cf.Rules[k]);
       cf_styleName := Format('conditional_%d', [cf_cellRule.FormatIndex]);
+      operand1Str := VarToStr(cf_cellrule.Operand1);
+      if VarIsStr(cf_cellRule.Operand1) then operand1Str := UTF8TextToXMLText(SafeQuoteStr(operand1Str));
+      operand2Str := VarToStr(cf_cellrule.Operand2);
+      if VarIsStr(cf_cellRule.Operand2) then operand2Str := UTF8TextToXMLText(SafeQuoteStr(operand2Str));
+      cf_condition := Format(CF_STYLE_OP[cf_cellRule.Condition], [operand1Str, operand2Str]);
+      (*
       case cf_cellRule.Condition of
         cfcEqual..cfcLessEqual:
           begin
@@ -7399,6 +7431,7 @@ begin
         else
           cf_Condition := '';
       end;
+      *)
 
       if cf_Condition <> '' then
         Result := Result +

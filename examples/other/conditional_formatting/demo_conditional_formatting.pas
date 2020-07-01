@@ -38,7 +38,7 @@ begin
       sh.WriteNumber(i, 8, 7.0);
       sh.WriteNumber(i, 9, 8.0);
       sh.WriteNumber(i, 10, 9.0);
-      sh.WriteNumber(i, 11, 10.0);
+      //sh.WriteNumber(i, 11, 10.0);
       sh.WriteText(i, 12, 'abc');
       sh.WriteText(i, 13, 'abc');
       sh.WriteBlank(i, 14);
@@ -60,7 +60,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     // Write conditional format
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcEqual, 5, fmtIdx);
-           (*
+
     // conditional format #2: equal to text constant
     inc(row);
     sh.WriteText(row, 0, 'equal to text "abc"');
@@ -123,7 +123,7 @@ begin
     InitFormatRecord(fmt);
     fmt.SetBackground(fsThinStripeDiagUp, scRed, scYellow);
     fmtIdx := wb.AddCellFormat(fmt);
-    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcAboveAverage, fmtIdx);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, 10), cfcAboveAverage, fmtIdx);   // only 1..9 -> ave = 5
 
     // conditional format #6: below average
     inc(row);
@@ -132,7 +132,7 @@ begin
     InitFormatRecord(fmt);
     fmt.SetBackground(fsGray25, scRed, scYellow);
     fmtIdx := wb.AddCellFormat(fmt);
-    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcBelowAverage, fmtIdx);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, 10), cfcBelowAverage, fmtIdx);   // only 1..9 -> ave = 5
 
     // conditional format #6: above or equal to average
     inc(row);
@@ -141,7 +141,7 @@ begin
     InitFormatRecord(fmt);
     fmt.SetBackground(fsThinStripeHor, scRed, scYellow);
     fmtIdx := wb.AddCellFormat(fmt);
-    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcAboveEqualAverage, fmtIdx);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, 10), cfcAboveEqualAverage, fmtIdx);  // only 1..9 -> ave = 5
 
     // conditional format #6: below or equal to average
     inc(row);
@@ -150,7 +150,7 @@ begin
     InitFormatRecord(fmt);
     fmt.SetBackground(fsThinStripeVert, scRed, scYellow);
     fmtIdx := wb.AddCellFormat(fmt);
-    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcBelowEqualAverage, fmtIdx);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, 10), cfcBelowEqualAverage, fmtIdx);  // only 1..9 -> ave = 5
 
     // conditional format #6: top 3 values
     inc(row);
@@ -183,7 +183,7 @@ begin
     fmt.SetBackgroundColor($FFC0C0);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcBottomPercent, 10, fmtIdx);
-
+                                         (*
     // conditional format #6: duplicates
     inc(row);
     sh.WriteText(row, 0, 'duplicate values');
@@ -199,7 +199,7 @@ begin
     fmt.SetBackgroundColor($D0D0FF);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcUnique, fmtIdx);
-
+                                   *)
     // conditional format #6: contains any text
     inc(row);
     sh.WriteText(row, 0, 'contains any text');
@@ -247,7 +247,7 @@ begin
     fmt.SetBackgroundColor(scRed);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsText, 'ef', fmtIdx);
-
+                                        (*
     // conditional format #6: contains error
     inc(row);
     sh.WriteText(row, 0, 'contains error');

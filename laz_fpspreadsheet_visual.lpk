@@ -46,8 +46,8 @@ It provides graphical components like a grid and chart."/>
     <RequiredPkgs Count="4">
       <Item1>
         <PackageName Value="laz_fpspreadsheet"/>
-        <MaxVersion Major="1" Minor="11"/>
-        <MinVersion Major="1" Minor="12" Valid="True"/>
+        <MaxVersion Major="1" Minor="12"/>
+        <MinVersion Major="1" Minor="13" Valid="True"/>
       </Item1>
       <Item2>
         <PackageName Value="tachartlazaruspkg"/>
