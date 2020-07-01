@@ -275,7 +275,17 @@ begin
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcEqual, 5, fmtIdx);
     fmt.SetBackgroundColor(scGreen);
     fmtIdx := wb.AddCellFormat(fmt);
-    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcEqual, 3, fmtIdx);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcEqual, 3, fmtIdx);  // use the same cell range
+
+    // Rotated text
+    inc(row);
+    sh.WriteText(row, 0, 'Equal to "abc"');
+    sh.WriteText(row, 1, 'Rotated text (90 CCW), hor center, vert top');
+    InitFormatRecord(fmt);
+    fmt.SetTextRotation(rt90DegreeCounterClockwiseRotation);
+    fmt.SetHorAlignment(haCenter);
+    fmt.SetVertAlignment(vaTop);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcEqual, 'abc', wb.AddCellFormat(fmt));
 
     { ------ Save workbook to file-------------------------------------------- }
     wb.WriteToFile('test.xlsx', true);
