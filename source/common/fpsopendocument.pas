@@ -426,8 +426,8 @@ begin
     begin
       parser := TsSpreadsheetParser.Create(AWorksheet);
       try
-        parser.Expression[fdExcelA1] := Result;  // Parse in Excel-A1 dialect
-        Result := parser.Expression[fdOpenDocument];    // Convert to ODS dialect
+        parser.Expression[fdExcelA1] := Result;       // Parse in Excel-A1 dialect
+        Result := parser.Expression[fdOpenDocument];  // Convert to ODS dialect
       finally
         parser.Free;
       end;
@@ -5978,16 +5978,25 @@ end;
 { Writes the conditional format part of a style to "styles.xml". }
 procedure TsSpreadopenDocWriter.WriteConditionalStyle(AStream: TStream;
   AStyleName: String; const AFormat: TsCellFormat);
+var
+  s: String;
 begin
   AppendToStream(AStream, Format(
     '<style:style style:name="%s" style:family="table-cell" style:parent-style-name="Default">',
       [AStyleName]));
+
   AppendToStream(AStream, Format(
       '<style:table-cell-properties %s%s />', [
       WriteBackgroundColorStyleXMLAsString(AFormat),
       WriteBorderStyleXMLAsString(AFormat)
       // To do: add the remaining style elements
     ]));
+
+  s := WriteFontStyleXMLAsString(AFormat);
+  if s <> '' then
+    AppendToStream(AStream,
+      '<style:text-properties '+ s + '/>');
+
   AppendToStream(AStream,
     '</style:style>');
 end;
@@ -6032,37 +6041,8 @@ begin
       end;
     end;
   end;
-  (*
-
-    // for the moment: write only the style of the highest-priority rule
-    if CF.Rules[CF.RulesCount-1] is TsCFCellRule then
-    begin
-      cf_rule := TsCFCellRule(CF.Rules[CF.RulesCount-1]);
-      fmt := book.GetCellFormat(cf_rule.FormatIndex);
-      WriteConditionalStyle(AStream, Format('cf%d', [i]), fmt);  // "cf" + index of CF in book's list
-    end;
-  end;
-  *)
-   (*
-  for i := 0 to book.GetWorksheetCount-1 do
-  begin
-    sheet := book.GetWorksheetByIndex(i);
-    for j := 0 to sheet.ConditionalFormatCount-1 do
-    begin
-      CF := sheet.ReadConditionalFormat(j);
-      for k := 0 to CF.RulesCount-1 do
-      begin
-        rule := CF.Rules[k];
-        if rule is TsCFCellRule then
-        begin
-          fmt := book.GetCellFormat(TsCFCelLRule(rule).FormatIndex);
-          WriteConditionalStyle(AStream, Format('cf%d_%d', [i, j]), fmt);  // cf"sheet"_"fmtindex"
-        end;
-      end;
-    end;
-  end;
-  *)
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes the declaration of the font faces used in the workbook.

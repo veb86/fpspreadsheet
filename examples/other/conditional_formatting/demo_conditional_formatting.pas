@@ -49,7 +49,7 @@ begin
       sh.WriteFormula(i, 18, '=1.0/1.0');
     end;
     lastCol := 18;
-
+                     (*
     // conditional format #1: equal to number constant
     sh.WriteText(row, 0, 'equal to constant 5');
     sh.WriteText(row, 1, 'background yellow');
@@ -255,12 +255,13 @@ begin
     fmt.SetBackgroundColor(scRed);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcContainsErrors, fmtIdx);
-
+                   *)
     // conditional format #6: no errors
     inc(row);
     sh.WriteText(row, 0, 'no errors');
     sh.WriteText(row, 1, 'background red');
-    fmt.SetBackgroundColor(scRed);
+    fmt.SetBackgroundColor(scYellow);
+    fmt.SetFont(wb.AddFont('Courier New', 14, [fssBold], scRed));
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsErrors, fmtIdx);
 
