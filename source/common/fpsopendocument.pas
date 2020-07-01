@@ -404,10 +404,10 @@ const
     'above-equal-average', 'below-equal-average', // cfcAboveEqualAverage, cfcBelowEqualAverage
     'top-elements(%s)', 'bottom-elements(%s)',    // cfcTop, cfcBottom,
     'top-percent(%s)', 'bottom-percent(%s)',      // cfcTopPercent, cfcBottomPercent,
-    '', '',          // cfcDuplicate, cfcUnique,
+    'duplicate', 'unique',                        // cfcDuplicate, cfcUnique,
     'begins-with(%s)', 'ends-with(%s)',           // cfcBeginsWith, cfcEndsWith,
     'contains-text(%s)', 'not-contains-text(%s)', // cfcContainsText, cfcNotContainsText,
-    '', ''           // cfcContainsErrors, cfcNotContainsErrors
+    'is-error', 'is-no-error'                     // cfcContainsErrors, cfcNotContainsErrors
   );
 
 

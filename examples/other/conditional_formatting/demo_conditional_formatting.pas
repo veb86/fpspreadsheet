@@ -183,7 +183,7 @@ begin
     fmt.SetBackgroundColor($FFC0C0);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcBottomPercent, 10, fmtIdx);
-                                         (*
+
     // conditional format #6: duplicates
     inc(row);
     sh.WriteText(row, 0, 'duplicate values');
@@ -199,7 +199,7 @@ begin
     fmt.SetBackgroundColor($D0D0FF);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcUnique, fmtIdx);
-                                   *)
+
     // conditional format #6: contains any text
     inc(row);
     sh.WriteText(row, 0, 'contains any text');
@@ -247,7 +247,7 @@ begin
     fmt.SetBackgroundColor(scRed);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsText, 'ef', fmtIdx);
-                                        (*
+
     // conditional format #6: contains error
     inc(row);
     sh.WriteText(row, 0, 'contains error');
@@ -263,7 +263,6 @@ begin
     fmt.SetBackgroundColor(scRed);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsErrors, fmtIdx);
-                      *)
 
     WriteLn('row = ', row);
     WriteLn('wb.GetNumcellFormats = ', wb.GetNumCellFormats);
