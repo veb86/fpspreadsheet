@@ -10,7 +10,6 @@ var
   sh: TsWorksheet;
   fmt: TsCellFormat;
   fmtIdx: Integer;
-  font: TsFont;
   row: Integer;
   i: Integer;
   lastCol: Integer;

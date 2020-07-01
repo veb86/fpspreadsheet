@@ -193,12 +193,10 @@ type
     procedure WriteAutomaticStyles(AStream: TStream);
     procedure WriteCellRow(AStream: TStream; ASheet: TsBasicWorksheet;
       ARowIndex, ALastColIndex: Integer);
-    procedure WriteCellStyle(AStream: TStream; AFormatIndex, AConditionalFormatIndex: integer);
     procedure WriteCellStyles(AStream: TStream);
     procedure WriteColStyles(AStream: TStream);
     procedure WriteColumns(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteConditionalFormats(AStream: TStream; ASheet: TsBasicWorksheet);
-    procedure WriteConditionalStyle(AStream: TStream; AStyleName: String; const AFormat: TsCellFormat);
     procedure WriteConditionalStyles(AStream: TStream);
     procedure WriteEmptyRow(AStream: TStream; ASheet: TsBasicWorksheet;
       ARowIndex, AFirstColIndex, ALastColIndex, ALastRowIndex: Integer;
@@ -210,6 +208,8 @@ type
     procedure WriteRowStyles(AStream: TStream);
     procedure WriteRowsAndCells(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteShapes(AStream: TStream; ASheet: TsBasicWorksheet);
+    procedure WriteStyleNode(AStream: TStream; const AStyleName: String;
+      const AFormat: TsCellFormat; AConditionalFormatIndex: Integer);
     procedure WriteTableSettings(AStream: TStream);
     procedure WriteTableStyles(AStream: TStream);
     procedure WriteTextStyles(AStream: TStream);
@@ -2475,7 +2475,6 @@ var
   p: Integer;
   fmt: PsCellFormat;
   ns: String;
-  hasFormula: Boolean;
 begin
   {$IFDEF FPSpreadDebug}
   DebugLn(Format('[ReadFormula] ARow=%d, ACol=%d, AStyleIndex=%d', [ARow, ACol, AStyleIndex]));
@@ -2490,10 +2489,6 @@ begin
     cell := TsWorksheet(FWorksheet).GetCell(ARow, ACol);   // Don't use AddCell here
 
   ApplyStyleToCell(cell, AStyleIndex);
-  {
-  styleName := GetAttrValue(ACellNode, 'table:style-name');
-  ApplyStyleToCell(cell, stylename);
-  }
   fmt := TsWorkbook(Workbook).GetPointerToCellFormat(cell^.FormatIndex);
 
   formulaStr := '';
@@ -2520,13 +2515,11 @@ begin
     formula^.Parser.Expression[fdOpenDocument] := formulaStr;  // Parse in ODS dialect
     formula^.Text := formula^.Parser.Expression[fdExcelA1];    // Convert to Excel A1 dialect
     cell^.Flags := cell^.Flags + [cfHasFormula];
-    hasFormula := true;
 
     {$IFDEF FPSpreadDebug}
     DebugLn('  Formula found: ' + formula);
     {$ENDIF}
-  end else
-    hasFormula := false;
+  end;
 
   // Read formula results
 
@@ -3698,7 +3691,7 @@ procedure TsSpreadOpenDocReader.ReadCellImages(ANode: TDOMNode;
   ARow, ACol: Cardinal);
 var
   childNode: TDOMNode;
-  nodeName: String;
+  {%H-}nodeName: String;
 begin
   childNode := ANode.FirstChild;
   while Assigned(childNode) do
@@ -5331,6 +5324,87 @@ begin
    '</office:document-settings>');
 end;
 
+{ Writes the style node in "content.xml" as well as the conditional format
+  part of a style to "styles.xml". }
+procedure TsSpreadopenDocWriter.WriteStyleNode(AStream: TStream;
+  const AStyleName: String; const AFormat: TsCellFormat;
+  AConditionalFormatIndex: Integer);
+var
+  s: String;
+  nfs: String;
+  nfParams: TsNumFormatParams;
+  nfIdx: Integer;
+  j, p: Integer;
+  addProtection: Boolean;
+begin
+  addProtection := (AConditionalFormatIndex = -1);
+
+  nfs := '';
+  nfidx := AFormat.NumberFormatIndex;
+  if nfidx <> -1 then
+  begin
+    nfParams := TsWorkbook(FWorkbook).GetNumberFormat(nfidx);
+    if nfParams <> nil then
+    begin
+      nfs := nfParams.NumFormatStr;
+      for j:=0 to NumFormatList.Count-1 do
+      begin
+        s := NumFormatList[j];
+        p := pos(':', s);
+        if SameText(Copy(s, p+1, Length(s)), nfs) then
+        begin
+          nfs := Format(' style:data-style-name="%s"', [copy(s, 1, p-1)]);
+          break;
+        end;
+        p := 0;
+      end;
+      if p = 0 then // not found
+        nfs := '';
+    end;
+  end;
+
+  AppendToStream(AStream, Format(
+    '<style:style style:name="%s" style:family="table-cell" ' +
+                 'style:parent-style-name="Default"%s>',
+    [AStyleName, nfs]
+  ));
+
+  // style:text-properties  --->  font
+  s := WriteFontStyleXMLAsString(AFormat);
+  if s <> '' then
+    AppendToStream(AStream,
+      '<style:text-properties '+ s + '/>');
+
+  // - border, background, wordwrap, text rotation, vertical alignment
+  s := WriteBorderStyleXMLAsString(AFormat) +
+       WriteBackgroundColorStyleXMLAsString(AFormat) +
+       WriteWordwrapStyleXMLAsString(AFormat) +
+       WriteTextRotationStyleXMLAsString(AFormat) +
+       WriteVertAlignmentStyleXMLAsString(AFormat);
+  if addProtection then
+    s := s +  WriteCellProtectionStyleXMLAsString(AFormat);
+  if s <> '' then
+    AppendToStream(AStream,
+      '<style:table-cell-properties ' + s + '/>');
+
+  // style:paragraph-properties  ---> hor alignment, bidi
+  s := WriteHorAlignmentStyleXMLAsString(AFormat) +
+       WriteBiDiModeStyleXMLAsString(AFormat);
+  if s <> '' then
+    AppendToStream(AStream,
+      '<style:paragraph-properties ' + s + '/>');
+
+  if (AConditionalFormatIndex > -1) then
+  begin
+    s := WriteConditionalStyleXMLAsString(AConditionalFormatIndex);
+    if s <> '' then
+      AppendToStream(AStream, s);
+  end;
+
+  AppendToStream(AStream,
+    '</style:style>');
+end;
+
 { Writes the file "styles.xml" }
 procedure TsSpreadOpenDocWriter.WriteStyles;
 begin
@@ -5531,104 +5605,6 @@ begin
     '</table:table>');
 end;
 
-{ Writes the style node in "content.xml" }
-procedure TsSpreadOpenDocWriter.WriteCellStyle(AStream: TStream;
-  AFormatIndex, AConditionalFormatIndex: integer);
-var
-  book: TsWorkbook;
-  fmt: TsCellFormat;
-  nfs: String;
-  nfParams: TsNumFormatParams;
-  nfidx: Integer;
-  s: String;
-  p: Integer;
-  j: Integer;
-  stylename: String;
-  cf: TsConditionalFormat;
-  isConditionalFormat: Boolean;
-begin
-  book := TsWorkbook(FWorkbook);
-  isConditionalFormat := AConditionalFormatIndex > -1;
-
-  // The style name will be 'ce' plus format index in the workbook's CellFormats
-  // list.
-  // In case of a conditional format the style name is a combination of
-  // conditional format index and normal format index.
-  if isConditionalFormat then
-    styleName := 'ce' + IntToStr(1000 * (AConditionalFormatIndex+1) + AFormatIndex)
-  else
-    styleName := 'ce' + IntToStr(AFormatIndex);
-
-  fmt := book.GetCellFormat(AFormatIndex);
-
-  nfs := '';
-  nfidx := fmt.NumberFormatIndex;
-  if nfidx <> -1 then
-  begin
-    nfParams := book.GetNumberFormat(nfidx);
-    if nfParams <> nil then
-    begin
-      nfs := nfParams.NumFormatStr;
-      for j:=0 to NumFormatList.Count-1 do
-      begin
-        s := NumFormatList[j];
-        p := pos(':', s);
-        if SameText(Copy(s, p+1, Length(s)), nfs) then
-        begin
-          nfs := Format('style:data-style-name="%s"', [copy(s, 1, p-1)]);
-          break;
-        end;
-        p := 0;
-      end;
-      if p = 0 then // not found
-        nfs := '';
-    end;
-  end;
-
-  // Start and name
-  AppendToStream(AStream,
-    '<style:style style:name="' + styleName + '" style:family="table-cell" ' +
-                 'style:parent-style-name="Default" '+ nfs + '>');
-
-  // style:text-properties
-  // - font
-  s := WriteFontStyleXMLAsString(fmt);
-  if s <> '' then
-    AppendToStream(AStream,
-      '<style:text-properties '+ s + '/>');
-
-  // - border, background, wordwrap, text rotation, vertical alignment
-  s := WriteBorderStyleXMLAsString(fmt) +
-       WriteBackgroundColorStyleXMLAsString(fmt) +
-       WriteWordwrapStyleXMLAsString(fmt) +
-       WriteTextRotationStyleXMLAsString(fmt) +
-       WriteVertAlignmentStyleXMLAsString(fmt);
-  if not isConditionalFormat then
-    s := s +  WriteCellProtectionStyleXMLAsString(fmt);
-  if s <> '' then
-    AppendToStream(AStream,
-      '<style:table-cell-properties ' + s + '/>');
-
-  // style:paragraph-properties
-  // - hor alignment, bidi
-  s := WriteHorAlignmentStyleXMLAsString(fmt) +
-       WriteBiDiModeStyleXMLAsString(fmt);
-  if s <> '' then
-    AppendToStream(AStream,
-      '<style:paragraph-properties ' + s + '/>');
-
-  if isConditionalFormat then
-  begin
-    s := WriteConditionalStyleXMLAsString(AConditionalFormatIndex);
-    if s <> '' then
-      AppendToStream(AStream, s);
-  end;
-
-  // End
-  AppendToStream(AStream,
-      '</style:style>');
-end;
-
 
 { Writes the cell styles ("ce0", "ce1", ...). Directly maps to the CellFormats
   list of the workbook. "ce0" is the default format }
@@ -5638,20 +5614,24 @@ var
   cf: TsConditionalFormat;
   cf_sheet: TsWorksheet;
   cf_range: TsCellRange;
-  cf_rule: TsCFCellRule;
   ncf: Integer;
-  i, j: Integer;
+  i: Integer;
   cell: PCell;
   r, c: Cardinal;
   L: TStrings;
   s: String;
-  fmtIndex, cfIndex: Integer;
+  styleName: String;
+  fmtIndex: Integer = 0;
+  cfIndex: Integer = 0;
 begin
   book := TsWorkbook(FWorkbook);
 
   // Write fixed formats only
   for i := 0 to book.GetNumCellFormats - 1 do
-    WriteCellStyle(AStream, i, -1);
+  begin
+    styleName := 'ce' + IntToStr(i);
+    WriteStyleNode(AStream, styleName, book.GetCellFormat(i), -1);
+  end;
 
   // Conditional formats contain the fixed formats plus the condition params
   // To avoid duplicate style entries in the file we first collect all style
@@ -5672,22 +5652,25 @@ begin
         begin
           cell := cf_sheet.FindCell(r, c);
           if Assigned(cell) and
-             (cell^.ConditionalFormatIndex[High(cell^.ConditionalFormatIndex)] = i)
+            (cell^.ConditionalFormatIndex[High(cell^.ConditionalFormatIndex)] = i)
           then begin
             s := 'ce' + IntToStr((i+1) * 1000 + cell^.FormatIndex);
+            // To distinguish conditional from fixed format numbers we increment
+            // cfIndex by 1 to have thousands in the number even when cfIndex = 0.
             if L.IndexOf(s) = -1 then
               L.Add(s);
           end;
         end;
     end;
 
-    // Now write the combined styles to the stream. The styles can be identified
-    // from the style name in the string list.
+    // Now write the combined styles to the stream. The style names were stored
+    // in the unique way in the string list; the format index can be extracted
+    // from the style name.
     for i := 0 to L.Count-1 do begin
+      styleName := L.Strings[i];
       s := Copy(L[i], 3, MaxInt);  // remove 'ce'
-      j := StrToInt(s);
-      DivMod(j, 1000, cfIndex, fmtIndex);
-      WriteCellStyle(AStream, fmtIndex, cfIndex-1);
+      DivMod(StrToInt(s), 1000, cfIndex, fmtIndex); // extract cfIndex and fmt Index from style name
+      WriteStyleNode(AStream, styleName, book.GetCellFormat(fmtIndex), cfIndex-1);  // cfIndex was incremented by 1.
     end;
   finally
     L.Free;
@@ -5698,10 +5681,7 @@ procedure TsSpreadOpenDocWriter.WriteColStyles(AStream: TStream);
 var
   i: Integer;
   colstyle: TColumnStyleData;
-  book: TsWorkbook;
 begin
-  book := TsWorkbook(FWorkbook);
-
   if FColumnStyleList.Count = 0 then
   begin
     AppendToStream(AStream,
@@ -5911,13 +5891,12 @@ var
   cf_range: TsCellRange;
   cf_styleName: String;
   cf_cellRule: TsCFCellRule;
-  i, j, k: Integer;
+  i,j: Integer;
   sheet: TsWorksheet;
   rangeStr: String;
   firstCellStr: string;
   value1Str, value2Str: String;
   opStr: String;
-  s: String;
 begin
   book := TsWorkbook(FWorkbook);
   sheet := TsWorksheet(ASheet);
@@ -5939,27 +5918,17 @@ begin
       rangeStr
     ]));
 
-    for k := 0 to cf.RulesCount-1 do
+    for j := 0 to cf.RulesCount-1 do
     begin
-      value1Str := '';
-      value2Str := '';
-      opStr := '';
-      if cf.Rules[k] is TsCFCellRule then
+      if cf.Rules[j] is TsCFCellRule then
       begin
-        cf_cellRule := TsCFCellRule(cf.Rules[k]);
+        cf_cellRule := TsCFCellRule(cf.Rules[j]);
         cf_styleName := Format('conditional_%d', [cf_CellRule.FormatIndex]);
         value1Str := CFOperandToStr(cf_cellRule.Operand1, sheet);
         value2Str := CFOperandToStr(cf_cellRule.Operand2, sheet);
         opStr := Format(CF_CALCEXT_OP[cf_cellRule.Condition], [value1Str, value2str]);
         if opStr <> '' then
         begin
-          // Fix formula syntax
-          s := VarToStr(cf_cellRule.Operand1);
-          {
-          if (Length(s) > 1) and (s[1] = '=') then
-            opStr := 'of:' + opStr;
-            }
-          // construct calcext string
           AppendToStream(AStream, Format(
             '<calcext:condition calcext:apply-style-name="%s" calcext:value="%s" calcext:base-cell-address="%s" />',
             [cf_stylename, opStr, firstCellStr]
@@ -5975,47 +5944,22 @@ begin
     '</calcext:conditional-formats>' );
 end;
 
-{ Writes the conditional format part of a style to "styles.xml". }
-procedure TsSpreadopenDocWriter.WriteConditionalStyle(AStream: TStream;
-  AStyleName: String; const AFormat: TsCellFormat);
-var
-  s: String;
-begin
-  AppendToStream(AStream, Format(
-    '<style:style style:name="%s" style:family="table-cell" style:parent-style-name="Default">',
-      [AStyleName]));
-
-  AppendToStream(AStream, Format(
-      '<style:table-cell-properties %s%s />', [
-      WriteBackgroundColorStyleXMLAsString(AFormat),
-      WriteBorderStyleXMLAsString(AFormat)
-      // To do: add the remaining style elements
-    ]));
-
-  s := WriteFontStyleXMLAsString(AFormat);
-  if s <> '' then
-    AppendToStream(AStream,
-      '<style:text-properties '+ s + '/>');
-
-  AppendToStream(AStream,
-    '</style:style>');
-end;
-
 {@@ ----------------------------------------------------------------------------
   Writes the styles used by conditional formatting to "styles.xml".
-  In total there are three parts which must be implemented
+  In total there are four parts which must be implemented
   for condtional formatting:
-  #1 Definition of the styles (here, and in WriteConditionalStyle) (can be
-     omitted if one of the already existing styles is used)
-  #2 Definition of the cell styles (in WriteCellStyles), style:map nodes)
-  #3 Definition of the cell ranges in WriteConditionalFormats
+  #1 Definition of the styles (here, and in WriteStyleNode) (can be omitted if
+     one of the already existing styles is used)
+  #2 Definition of the cell styles in contents.xml
+     (in WriteCellStyles), style:map nodes)
+  #3 Definition of the cell ranges in WriteConditionalFormats in content.xml
      (calcext:conditional-formattings node)
+  #4 Find the correct style when cells are written in content.xml
 -------------------------------------------------------------------------------}
 procedure TsSpreadOpenDocWriter.WriteConditionalStyles(AStream: TStream);
 var
   book: TsWorkbook;
-  sheet: TsWorksheet;
-  i, j, k: Integer;
+  i, j: Integer;
   nCF: Integer;
   CF: TsConditionalFormat;
   fmt: TsCellFormat;
@@ -6041,7 +5985,7 @@ begin
           fmt := book.GetCellFormat(TsCFCellRule(cf_Rule).FormatIndex);
           stylename := Format('conditional_%d', [fmtIndex]);
           if L.IndexOf(styleName) = -1 then begin
-            WriteConditionalStyle(AStream, stylename, fmt);
+            WriteStyleNode(AStream, stylename, fmt, i);
             L.Add(styleName);
           end;
         end;
@@ -6600,7 +6544,6 @@ var
   col: PCol;
   cell: PCell;
   stylename: string;
-  h: Single;
   firstcol: Integer;
   lastcol: Integer;
   c, cc: integer;
@@ -7179,7 +7122,6 @@ var
   comment: String;
   strValue: String;
   displayStr: String;
-  fmt: TsCellFormat;
 begin
   Unused(ARow, ACol);
 
@@ -7381,7 +7323,6 @@ var
   cf_Sheet: TsWorksheet;
   firstCellOfRange: String;
   operand1Str, operand2Str: String;
-  s: String;
 begin
   Result := '';
 
@@ -7401,13 +7342,6 @@ begin
       cf_condition := Format(CF_STYLE_OP[cf_cellRule.Condition], [operand1Str, operand2Str]);
 
       if cf_Condition <> '' then begin
-        // Fix formula syntax
-        (*
-        s := VarToStr(cf_cellRule.Operand1);
-        if (Length(s) > 1) and (s[1] = '=') then
-          cf_condition := 'of:' + cf_Condition;
-        *)
-        // Build style:map string
         Result := Result +
           Format('<style:map style:condition="%s" style:apply-style-name="%s" style:base-cell-address="%s" />', [
             cf_Condition,
@@ -7478,7 +7412,6 @@ end;
 procedure TsSpreadOpenDocWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 var
-  fmt: PsCellFormat;
   lStyle: String;
   comment: String;
   rowsSpannedStr, colsSpannedStr: String;
@@ -8281,7 +8214,6 @@ var
   spannedStr: String;
   comment: String;
   r1,c1,r2,c2: Cardinal;
-  fmt: TsCellFormat;
   ignoreFormulas: Boolean;
   sheet: TsWorksheet;
   oldDialect: TsFormulaDialect;
@@ -8426,7 +8358,6 @@ var
   spannedStr: String;
   r1,c1,r2,c2: Cardinal;
   totaltxt, target, bookmark, comment: String;
-  fmt: TsCellFormat;
   fnt: TsFont;
   fntName: String;
   hyperlink: PsHyperlink;

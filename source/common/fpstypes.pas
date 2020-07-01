@@ -726,6 +726,9 @@ type
     procedure SetBorders(ABorders: TsCellBorders;
       AColor: TsColor = scBlack; ALineStyle: TsLineStyle = lsThin);
     procedure SetFont(AFontIndex: Integer);
+    procedure SetHorAlignment(AHorAlign: TsHorAlignment);
+    procedure SetTextRotation(ARotation: TsTextRotation);
+    procedure SetVertAlignment(AVertAlign: TsVertAlignment);
   end;
 
   {@@ Pointer to a format record }
@@ -1110,6 +1113,24 @@ procedure TsCellFormat.SetFont(AFontIndex: Integer);
 begin
   FontIndex := AFontIndex;
   UsedFormattingFields := UsedFormattingFields + [uffFont];
+end;
+
+procedure TsCellFormat.SetHorAlignment(AHorAlign: TsHorAlignment);
+begin
+  HorAlignment := AHorAlign;
+  UsedFormattingFields := usedFormattingFields + [uffHorAlign];
+end;
+
+procedure TsCellFormat.SetTextRotation(ARotation: TsTextRotation);
+begin
+  TextRotation := ARotation;
+  UsedFormattingFields := UsedFormattingFields + [uffTextRotation];
+end;
+
+procedure TsCellFormat.SetVertAlignment(AVertAlign: TsVertAlignment);
+begin
+  VertAlignment := AVertAlign;
+  UsedFormattingfields := UsedFormattingFields + [uffVertAlign];
 end;
 
 
