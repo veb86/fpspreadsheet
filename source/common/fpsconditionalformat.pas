@@ -36,19 +36,23 @@ type
   end;
 
   { Color range }
-  TsCFColorRangeValue = (crvMin, crvMax, crvPercentile);
+  TsCFColorRangeValueKind = (crvkMin, crvkMax, crvkPercent, crkValue);
 
   TsCFColorRangeRule = class(TsCFRule)
-    StartValue: TsCFColorRangeValue;
-    CenterValue: TsCFColorRangeValue;
-    EndValue: TsCFColorRangeValue;
-    StartValueParam: Double;
-    CenterValueParam: Double;
-    EndValueParam: Double;
+    StartValueKind: TsCFColorRangeValueKind;
+    CenterValueKind: TsCFColorRangeValueKind;
+    EndValueKind: TsCFColorRangeValueKind;
+    StartValue: Double;
+    CenterValue: Double;
+    EndValue: Double;
     StartColor: TsColor;
     CenterColor: TsColor;
     EndColor: TsColor;
+    constructor Create;
     procedure Assign(ASource: TsCFRule); override;
+    procedure SetupEnd(AColor: TsColor; AKind: TsCFColorRangeValueKind; AValue: Double);
+    procedure SetupCenter(AColor: TsColor; AKind: TsCFColorRangeValueKind; AValue: Double);
+    procedure SetupStart(AColor: TsColor; AKind: TsCFColorRangeValueKind; AValue: Double);
   end;
 
   { DataBars }
@@ -97,7 +101,11 @@ type
     function AddCellRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
       ACondition: TsCFCondition; AParam1, AParam2: Variant; ACellFormatIndex: Integer): Integer; overload;
     function AddColorRangeRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
-      AStartColor, ACenterColor, AEndColor: TsColor): Integer;
+      AStartColor, ACenterColor, AEndColor: TsColor): Integer; overload;
+    function AddColorRangeRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
+      AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
+      ACenterColor: TsColor; ACenterKind: TsCFColorRangeValueKind; ACenterValue: Double;
+      AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer; overload;
     function AddDataBarRule(ASheet: TsBasicWorksheet; ARange: TsCellRange): Integer;
     procedure Delete(AIndex: Integer);
     function Find(ASheet: TsBasicWorksheet; ARange: TsCellRange): Integer;
@@ -130,22 +138,58 @@ begin
     raise Exception.Create('Source cannot be assigned to TCVDataBarRule');
 end;
 
+constructor TsCFColorRangeRule.Create;
+begin
+  inherited;
+  SetupStart(scRed, crvkMin, 0.0);
+  SetupCenter(scYellow, crvkPercent, 50.0);
+  SetupEnd(scBlue, crvkMax, 0.0);
+  EndValueKind := crvkMax;
+  EndValue := 0;
+  EndColor := scBlue;
+end;
+
 procedure TsCFColorRangeRule.Assign(ASource: TsCFRule);
 begin
   if ASource is TsCFColorRangeRule then
   begin
+    StartValueKind := TsCFColorRangeRule(ASource).StartValueKind;
+    CenterValueKind := TsCFColorRangeRule(ASource).CenterValueKind;
+    EndValueKind := TsCFColorRangeRule(ASource).EndValueKind;
     StartValue := TsCFColorRangeRule(ASource).StartValue;
     CenterValue := TsCFColorRangeRule(ASource).CenterValue;
     EndValue := TsCFColorRangeRule(ASource).EndValue;
-    StartValueParam := TsCFColorRangeRule(ASource).StartValueParam;
-    CenterValueParam := TsCFColorRangeRule(ASource).CenterValueParam;
-    EndValueParam := TsCFColorRangeRule(ASource).EndValueParam;
     StartColor := TsCFColorRangeRule(ASource).StartColor;
     CenterColor := TsCFColorRangeRule(ASource).CenterColor;
     EndColor := TsCFColorRangeRule(ASource).EndColor;
   end else
     raise Exception.Create('Source cannot be assigned to TCVDataBarRule');
 end;
+
+procedure TsCFColorRangeRule.SetupCenter(AColor: TsColor;
+  AKind: TsCFColorrangeValueKind; AValue: Double);
+begin
+  CenterValueKind := AKind;
+  CenterValue := AValue;
+  CenterColor := AColor;
+end;
+
+procedure TsCFColorRangeRule.SetupEnd(AColor: TsColor;
+  AKind: TsCFColorRangeValueKind; AValue: Double);
+begin
+  EndValueKind := AKind;
+  EndValue := AValue;
+  EndColor := AColor;
+end;
+
+procedure TsCFColorRangeRule.SetupStart(AColor: TsColor;
+  AKind: TsCFColorrangeValueKind; AValue: Double);
+begin
+  StartValueKind := AKind;
+  StartValue := AValue;
+  StartColor := AColor;
+end;
+
 
 
 { TCFRule }
@@ -275,6 +319,21 @@ begin
   rule.StartColor := AStartColor;
   rule.CenterColor := ACenterColor;
   rule.EndColor := AEndColor;
+  Result := AddRule(ASheet, ARange, rule);
+end;
+
+function TsConditionalFormatList.AddColorRangeRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange;
+  AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
+  ACenterColor: TsColor; ACenterKind: TsCFColorRangeValueKind; ACenterValue: Double;
+  AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer;
+var
+  rule: TsCFColorRangeRule;
+begin
+  rule := TsCFColorRangeRule.Create;
+  rule.SetupStart(AStartColor, AStartKind, AStartValue);
+  rule.SetupCenter(ACenterColor, ACenterKind, ACenterValue);
+  rule.SetupEnd(AEndColor, AEndKind, AEndValue);
   Result := AddRule(ASheet, ARange, rule);
 end;
 

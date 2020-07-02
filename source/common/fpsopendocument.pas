@@ -410,6 +410,12 @@ const
     'is-error', 'is-no-error'                     // cfcContainsErrors, cfcNotContainsErrors
   );
 
+  CF_COLORRANGE_VALUE_KIND: array[TsCFColorRangeValueKind] of string = (
+    'minimum',     // crvkMin
+    'maximum',     // crvkMax
+    'percentile',  // crvkPercent
+    'number'       //crkValue
+  );
 
 function CFOperandToStr(v: variant; AWorksheet: TsWorksheet): String;
 var
@@ -5957,13 +5963,19 @@ begin
         cf_ColorRangeRule := TsCFColorRangeRule(cf.Rules[j]);
         AppendToStream(AStream, Format(
           '<calcext:color-scale>' +
-            '<calcext:color-scale-entry calcext:value="0" calcext:type="minimum" calcext:color="%s" />' +
-            '<calcext:color-scale-entry calcext:value="50" calcext:type="percentile" calcext:color="%s" />' +
-            '<calcext:color-scale-entry calcext:value="0" calcext:type="maximum" calcext:color="%s" />' +
+            '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
+            '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
+            '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
           '</calcext:color-scale>', [
-          ColorToHTMLColorStr(cf_ColorRangeRule.StartColor),
-          ColorToHTMLColorStr(cf_ColorRangeRule.CenterColor),
-          ColorToHTMLColorStr(cf_ColorRangeRule.EndColor)
+          cf_ColorRangeRule.StartValue,
+            CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.StartValueKind],
+            ColorToHTMLColorStr(cf_ColorRangeRule.StartColor),
+          cf_ColorRangeRule.CenterValue,
+            CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.CenterValueKind],
+            ColorToHTMLColorStr(cf_ColorRangeRule.CenterColor),
+          cf_ColorRangeRule.EndValue,
+            CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.EndValueKind],
+            ColorToHTMLColorStr(cf_ColorRangeRule.EndColor)
         ]));
       end;
     end;

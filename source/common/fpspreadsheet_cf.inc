@@ -69,10 +69,23 @@ end;
   Writes the conditional format "color range"
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteColorRange(ARange: TsCellRange;
-  AStartColor, ACenterColor, AEndColor: TsColor): Integer;
+  AStartColor: TsColor = scRed; ACenterColor: TsColor = scYellow;
+  AEndColor: TsColor = scBlue): Integer;
 begin
   Result := FWorkbook.FConditionalFormatList.AddColorRangeRule(Self, ARange,
     AStartColor, ACenterColor, AEndColor);
+  StoreCFIndexInCells(Self, Result, ARange);
+end;
+
+function TsWorksheet.WriteColorRange(ARange: TsCellRange;
+  AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
+  ACenterColor: TsColor; ACenterKind: TsCFColorRangeValueKind; ACenterValue: Double;
+  AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer;
+begin
+  Result := FWorkbook.FConditionalFormatList.AddColorRangeRule(Self, ARange,
+    AStartColor, AStartKind, AStartValue,
+    ACenterColor, ACenterKind, ACenterValue,
+    AEndColor, AEndKind, AEndValue);
   StoreCFIndexInCells(Self, Result, ARange);
 end;
 
