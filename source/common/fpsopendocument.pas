@@ -410,11 +410,12 @@ const
     'is-error', 'is-no-error'                     // cfcContainsErrors, cfcNotContainsErrors
   );
 
-  CF_COLORRANGE_VALUE_KIND: array[TsCFColorRangeValueKind] of string = (
-    'minimum',     // crvkMin
-    'maximum',     // crvkMax
-    'percentile',  // crvkPercent
-    'number'       //crkValue
+  CF_VALUE_KIND: array[TsCFValueKind] of string = (
+    'minimum',     // vkMin
+    'maximum',     // vkMax
+    'percent',     // vkPercent
+    'percentile',  // vkPercentile
+    'number'       // vkValue
   );
 
 function CFOperandToStr(v: variant; AWorksheet: TsWorksheet): String;
@@ -5947,14 +5948,17 @@ begin
       if cf.Rules[j] is TsCFDatabarRule then
       begin
         cf_DatabarRule := TsCFDatabarRule(cf.Rules[j]);
-        AppendToStream(AStream,
-          '<calcext:data-bar calcext:min-length="10" calcext:max-length="90" ' +
-               'calcext:negative-color="#ff0000"> calcext:positive-color="%ff0000" ' +
+        AppendToStream(AStream, Format(
+          '<calcext:data-bar calcext:max-length="100" ' +
+               'calcext:negative-color="%s" calcext:positive-color="%s" ' +
                'calcext:axis-color="#000000">' +
-            '<calext:formatting-entry calcext:value="0" calcext:type="auto-minimum" />' +
-            'calcext:formatting-entry calcext:value="0" calcext:type="auto-maximum" />' +
-          '</calcext:data-bar>'
-        );
+            '<calcext:formatting-entry calcext:value="%g" calcext:type="%s" />' +
+            '<calcext:formatting-entry calcext:value="%g" calcext:type="%s" />' +
+          '</calcext:data-bar>', [
+          ColorToHTMLColorStr(cf_DatabarRule.BarColor), ColorToHTMLColorStr(cf_DatabarRule.BarColor),
+          cf_DatabarRule.StartValue, CF_VALUE_KIND[cf_DatabarRule.StartValueKind],
+          cf_DatabarRule.EndValue, CF_VALUE_KIND[cf_DatabarRule.EndValueKind]
+        ]));
         // This is the default node after import from xlsx
       end
       else
@@ -5969,13 +5973,13 @@ begin
               '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
             '</calcext:color-scale>', [
             cf_ColorRangeRule.StartValue,
-              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.StartValueKind],
+              CF_VALUE_KIND[cf_ColorRangeRule.StartValueKind],
               ColorToHTMLColorStr(cf_ColorRangeRule.StartColor),
             cf_ColorRangeRule.CenterValue,
-              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.CenterValueKind],
+              CF_VALUE_KIND[cf_ColorRangeRule.CenterValueKind],
               ColorToHTMLColorStr(cf_ColorRangeRule.CenterColor),
             cf_ColorRangeRule.EndValue,
-              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.EndValueKind],
+              CF_VALUE_KIND[cf_ColorRangeRule.EndValueKind],
               ColorToHTMLColorStr(cf_ColorRangeRule.EndColor)
           ]))
         else
@@ -5985,10 +5989,10 @@ begin
               '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
             '</calcext:color-scale>', [
             cf_ColorRangeRule.StartValue,
-              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.StartValueKind],
+              CF_VALUE_KIND[cf_ColorRangeRule.StartValueKind],
               ColorToHTMLColorStr(cf_ColorRangeRule.StartColor),
             cf_ColorRangeRule.EndValue,
-              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.EndValueKind],
+              CF_VALUE_KIND[cf_ColorRangeRule.EndValueKind],
               ColorToHTMLColorStr(cf_ColorRangeRule.EndColor)
           ]));
       end;

@@ -289,7 +289,7 @@ begin
     // Databar
     inc(row);
     sh.WriteText(row, 0, 'Data bar');
-    //sh.WriteDatabars(Range(Row, 2, row, 12));
+    sh.WriteDatabars(Range(Row, 2, row, 12), scRed);
 
     // ColorRange
     inc(row);

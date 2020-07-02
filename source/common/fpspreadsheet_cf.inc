@@ -85,8 +85,8 @@ begin
 end;
 
 function TsWorksheet.WriteColorRange(ARange: TsCellRange;
-  AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
-  AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer;
+  AStartColor: TsColor; AStartKind: TsCFValueKind; AStartValue: Double;
+  AEndColor: TsColor; AEndKind: TsCFValueKind; AEndValue: Double): Integer;
 begin
   Result := FWorkbook.FConditionalFormatList.AddColorRangeRule(Self, ARange,
     AStartColor, AStartKind, AStartValue,
@@ -95,9 +95,9 @@ begin
 end;
 
 function TsWorksheet.WriteColorRange(ARange: TsCellRange;
-  AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
-  ACenterColor: TsColor; ACenterKind: TsCFColorRangeValueKind; ACenterValue: Double;
-  AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer;
+  AStartColor: TsColor; AStartKind: TsCFValueKind; AStartValue: Double;
+  ACenterColor: TsColor; ACenterKind: TsCFValueKind; ACenterValue: Double;
+  AEndColor: TsColor; AEndKind: TsCFValueKind; AEndValue: Double): Integer;
 begin
   Result := FWorkbook.FConditionalFormatList.AddColorRangeRule(Self, ARange,
     AStartColor, AStartKind, AStartValue,
@@ -109,9 +109,21 @@ end;
 {@@ ----------------------------------------------------------------------------
   Writes the conditional format "data bars"
 -------------------------------------------------------------------------------}
-function TsWorksheet.WriteDataBars(ARange: TscellRange): Integer;
+function TsWorksheet.WriteDataBars(ARange: TscellRange; ABarColor: TsColor): Integer;
 begin
-  Result := FWorkbook.FConditionalFormatList.AddDataBarRule(Self, ARange);
+  Result := FWorkbook.FConditionalFormatList.AddDataBarRule(Self, ARange, ABarColor);
+  StoreCFIndexInCells(self, Result, ARange);
+end;
+
+function TsWorksheet.WriteDataBars(ARange: TscellRange; ABarColor: TsColor;
+  AStartKind: TsCFValueKind; AStartValue: Double;
+  AEndKind: TsCFValueKind; AEndValue: Double): Integer;
+begin
+  Result := FWorkbook.FConditionalFormatList.AddDataBarRule(Self, ARange,
+    ABarColor,
+    AStartKind, AStartValue,
+    AEndKind, AEndValue
+  );
   StoreCFIndexInCells(self, Result, ARange);
 end;
 

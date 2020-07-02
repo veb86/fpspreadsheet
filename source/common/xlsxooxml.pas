@@ -149,6 +149,8 @@ type
       ARange: TsCellRange; APriority: Integer);
     procedure WriteConditionalFormatColorRangeRule(AStream: TStream; ARule: TsCFColorRangeRule;
       const ARange: TsCellRange; APriority: Integer);
+    procedure WriteConditionalFormatDataBarRule(AStream: TStream; ARule: TsCFDatabarRule;
+      const ARange: TsCellRange; APriority: Integer);
     procedure WriteConditionalFormatRule(AStream: TStream; ARule: TsCFRule;
       const ARange: TsCellRange; var APriority: Integer);
     procedure WriteConditionalFormats(AStream: TStream; AWorksheet: TsBasicWorksheet);
@@ -430,6 +432,24 @@ end;
 function StrIsFalse(s: String): boolean;
 begin
   Result := (s = '0') or (Lowercase(s) = 'false');
+end;
+
+function CF_ValueNode(AKind: TsCFValueKind; AValue: Double): String;
+begin
+  Result := '<cfvo';
+  case AKind of
+    vkMin        : Result := Result + ' type="min"';
+    vkMax        : Result := Result + ' type="max"';
+    vkPercent    : Result := Result + Format(' type="percent" val="%g"', [AValue]);
+    vkPercentile : Result := Result + Format(' type="percentile" val="%g"', [AValue]);
+    vkValue      : Result := Result + Format(' type="num" val="%g"', [AValue]);
+  end;
+  Result := Result + ' />';
+end;
+
+function CF_ColorNode(AColor: TsColor): String;
+begin
+  Result := Format('<color rgb="%s" />', [ColorToHTMLColorStr(AColor, true)]);
 end;
 
 
@@ -3496,43 +3516,54 @@ procedure TsSpreadOOXMLWriter.WriteConditionalFormatColorRangeRule(AStream: TStr
         <color rgb="FF63BE7B" />
       </colorScale>
     </cfRule> }
-
-  function CFVO_Node(AKind: TsCFColorRangeValueKind; AValue: Double): String;
-  begin
-    Result := '<cfvo';
-    case AKind of
-      crvkMin    : Result := Result + ' type="min"';
-      crvkMax    : Result := Result + ' type="max"';
-      crvkPercent: Result := Result + Format(' type="percentile" val="%g"', [AValue]);
-      crvkValue  : Result := Result + Format(' type="num" val="%g"', [AValue]);
-    end;
-    Result := Result + ' />';
-  end;
-
-  function Color_Node(AColor: TsColor): String;
-  begin
-    Result := Format('<color rgb="%s" />', [ColorToHTMLColorStr(AColor, true)]);
-  end;
-
 begin
   AppendToStream(AStream,
     '<cfRule type="colorScale" priority="' + IntToStr(APriority) + '">' +
       '<colorScale>');
   AppendToStream(AStream,
-        CFVO_Node(ARule.StartValueKind, ARule.StartValue),
-        IfThen(ARule.ThreeColors, CFVO_Node(ARule.CenterValueKind, ARule.CenterValue), ''),
-        CFVO_Node(ARule.EndValueKind, ARule.EndValue)
+        CF_ValueNode(ARule.StartValueKind, ARule.StartValue),
+        IfThen(ARule.ThreeColors, CF_ValueNode(ARule.CenterValueKind, ARule.CenterValue), ''),
+        CF_ValueNode(ARule.EndValueKind, ARule.EndValue)
   );
   AppendToStream(AStream,
-        Color_Node(ARule.StartColor),
-        IfThen(ARule.ThreeColors, Color_Node(ARule.CenterColor), ''),
-        Color_Node(ARule.EndColor)
+        CF_ColorNode(ARule.StartColor),
+        IfThen(ARule.ThreeColors, CF_ColorNode(ARule.CenterColor), ''),
+        CF_ColorNode(ARule.EndColor)
   );
   AppendToStream(AStream,
       '</colorScale>' +
     '</cfRule>');
 end;
 
+procedure TsSpreadOOXMLWriter.WriteConditionalFormatDatabarRule(AStream: TStream;
+  ARule: TsCFDataBarRule; const ARange: TsCellRange; APriority: Integer);
+{ example from test file:
+      <cfRule type="dataBar" priority="1">
+        <dataBar>
+          <cfvo type="min" />
+          <cfvo type="max" />
+          <color rgb="FF638EC6" />
+        </dataBar>
+        <extLst>
+          <ext uri="{B025F937-C7B1-47D3-B67F-A62EFF666E3E}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">
+            <x14:id>{A620EE03-2FEC-4D54-872C-66BDB99CB07E}</x14:id>
+          </ext>
+        </extLst>
+      </cfRule>   }
+begin
+  AppendToStream(AStream,
+    '<cfRule type="dataBar" priority="' + IntToStr(APriority) + '">' +
+       '<dataBar>');
+
+  AppendToStream(AStream,
+         CF_ValueNode(ARule.StartValueKind, ARule.StartValue),
+         CF_ValueNode(ARule.EndValueKind, ARule.EndValue),
+         CF_ColorNode(ARule.BarColor) );
+
+  AppendToStream(AStream,
+      '</dataBar>' +
+    '</cfRule>');
+end;
 
 procedure TsSpreadOOXMLWriter.WriteConditionalFormatRule(AStream: TStream;
   ARule: TsCFRule; const ARange: TsCellRange; var APriority: Integer);
@@ -3542,6 +3573,9 @@ begin
   else
   if ARule is TsCFColorRangeRule then
     WriteConditionalFormatColorRangeRule(AStream, TsCFColorRangeRule(ARule), ARange, APriority)
+  else
+  if ARule is TsCFDataBarRule then
+    WriteConditionalFormatDataBarRule(AStream, TsCFDataBarRule(ARule), ARange, APriority)
   else
     exit;
   dec(APriority);

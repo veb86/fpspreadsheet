@@ -397,14 +397,17 @@ type
     function WriteColorRange(ARange: TsCellRange;
       AStartColor, ACenterColor, AEndColor: TsColor): Integer; overload;
     function WriteColorRange(ARange: TsCellRange;
-      AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
-      AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer; overload;
+      AStartColor: TsColor; AStartKind: TsCFValueKind; AStartValue: Double;
+      AEndColor: TsColor; AEndKind: TsCFValueKind; AEndValue: Double): Integer; overload;
     function WriteColorRange(ARange: TsCellRange;
-      AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
-      ACenterColor: TsColor; ACenterKind: TsCFColorRangeValueKind; ACenterValue: Double;
-      AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer; overload;
+      AStartColor: TsColor; AStartKind: TsCFValueKind; AStartValue: Double;
+      ACenterColor: TsColor; ACenterKind: TsCFValueKind; ACenterValue: Double;
+      AEndColor: TsColor; AEndKind: TsCFValueKind; AEndValue: Double): Integer; overload;
     // data bars
-    function WriteDataBars(ARange: TsCellRange): Integer;
+    function WriteDataBars(ARange: TsCellRange; ABarColor: TsColor): Integer; overload;
+    function WriteDataBars(ARange: TsCellRange; ABarColor: TsColor;
+      AStartKind: TsCFValueKind; AStartValue: Double;
+      AEndKind: TsCFValueKind; AEndValue: Double): Integer; overload;
 
     { Formulas }
     function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;
