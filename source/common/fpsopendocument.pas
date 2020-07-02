@@ -5961,22 +5961,36 @@ begin
       if cf.Rules[j] is TsCFColorRangeRule then
       begin
         cf_ColorRangeRule := TsCFColorRangeRule(cf.Rules[j]);
-        AppendToStream(AStream, Format(
-          '<calcext:color-scale>' +
-            '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
-            '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
-            '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
-          '</calcext:color-scale>', [
-          cf_ColorRangeRule.StartValue,
-            CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.StartValueKind],
-            ColorToHTMLColorStr(cf_ColorRangeRule.StartColor),
-          cf_ColorRangeRule.CenterValue,
-            CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.CenterValueKind],
-            ColorToHTMLColorStr(cf_ColorRangeRule.CenterColor),
-          cf_ColorRangeRule.EndValue,
-            CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.EndValueKind],
-            ColorToHTMLColorStr(cf_ColorRangeRule.EndColor)
-        ]));
+        if cf_ColorRangeRule.ThreeColors then
+          AppendToStream(AStream, Format(
+            '<calcext:color-scale>' +
+              '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
+              '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
+              '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
+            '</calcext:color-scale>', [
+            cf_ColorRangeRule.StartValue,
+              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.StartValueKind],
+              ColorToHTMLColorStr(cf_ColorRangeRule.StartColor),
+            cf_ColorRangeRule.CenterValue,
+              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.CenterValueKind],
+              ColorToHTMLColorStr(cf_ColorRangeRule.CenterColor),
+            cf_ColorRangeRule.EndValue,
+              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.EndValueKind],
+              ColorToHTMLColorStr(cf_ColorRangeRule.EndColor)
+          ]))
+        else
+          AppendToStream(AStream, Format(
+            '<calcext:color-scale>' +
+              '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
+              '<calcext:color-scale-entry calcext:value="%g" calcext:type="%s" calcext:color="%s" />' +
+            '</calcext:color-scale>', [
+            cf_ColorRangeRule.StartValue,
+              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.StartValueKind],
+              ColorToHTMLColorStr(cf_ColorRangeRule.StartColor),
+            cf_ColorRangeRule.EndValue,
+              CF_COLORRANGE_VALUE_KIND[cf_ColorRangeRule.EndValueKind],
+              ColorToHTMLColorStr(cf_ColorRangeRule.EndColor)
+          ]));
       end;
     end;
 

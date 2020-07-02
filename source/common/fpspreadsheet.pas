@@ -392,8 +392,13 @@ type
     function WriteConditionalCellFormat(ARange: TsCellRange; ACondition: TsCFCondition;
       AParam1, AParam2: Variant; ACellFormatIndex: Integer): Integer; overload;
     // color range
-    function WriteColorRange(ARange: TsCellRange; AStartColor: TsColor = scRed;
-      ACenterColor: TsColor = scYellow; AEndColor: TsColor = scBlue): Integer; overload;
+    function WriteColorRange(ARange: TsCellRange;
+      AStartColor, AEndColor: TsColor): Integer; overload;
+    function WriteColorRange(ARange: TsCellRange;
+      AStartColor, ACenterColor, AEndColor: TsColor): Integer; overload;
+    function WriteColorRange(ARange: TsCellRange;
+      AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
+      AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer; overload;
     function WriteColorRange(ARange: TsCellRange;
       AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
       ACenterColor: TsColor; ACenterKind: TsCFColorRangeValueKind; ACenterValue: Double;

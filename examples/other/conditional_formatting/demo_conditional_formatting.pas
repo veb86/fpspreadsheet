@@ -289,13 +289,19 @@ begin
     // Databar
     inc(row);
     sh.WriteText(row, 0, 'Data bar');
-    sh.WriteDatabars(Range(Row, 2, row, 12));
+    //sh.WriteDatabars(Range(Row, 2, row, 12));
 
     // ColorRange
     inc(row);
     sh.WriteText(row, 0, 'Color Range');
     sh.WriteText(row, 1, 'yellow -> blue -> red');
     sh.WriteColorRange(Range(Row, 2, row, 12), scYellow, scBlue, scRed);
+
+    // ColorRange
+    inc(row);
+    sh.WriteText(row, 0, 'Color Range');
+    sh.WriteText(row, 1, 'yellow -> red');
+    sh.WriteColorRange(Range(Row, 2, row, 12), scYellow, scRed);
 
     { ------ Save workbook to file-------------------------------------------- }
     wb.WriteToFile('test.xlsx', true);

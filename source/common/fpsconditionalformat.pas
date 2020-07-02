@@ -36,7 +36,7 @@ type
   end;
 
   { Color range }
-  TsCFColorRangeValueKind = (crvkMin, crvkMax, crvkPercent, crkValue);
+  TsCFColorRangeValueKind = (crvkMin, crvkMax, crvkPercent, crvkValue);
 
   TsCFColorRangeRule = class(TsCFRule)
     StartValueKind: TsCFColorRangeValueKind;
@@ -48,6 +48,7 @@ type
     StartColor: TsColor;
     CenterColor: TsColor;
     EndColor: TsColor;
+    ThreeColors: Boolean;
     constructor Create;
     procedure Assign(ASource: TsCFRule); override;
     procedure SetupEnd(AColor: TsColor; AKind: TsCFColorRangeValueKind; AValue: Double);
@@ -100,13 +101,21 @@ type
       ACondition: TsCFCondition; AParam: Variant; ACellFormatIndex: Integer): Integer; overload;
     function AddCellRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
       ACondition: TsCFCondition; AParam1, AParam2: Variant; ACellFormatIndex: Integer): Integer; overload;
+
+    function AddColorRangeRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
+      AStartColor, AEndColor: TsColor): Integer; overload;
     function AddColorRangeRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
       AStartColor, ACenterColor, AEndColor: TsColor): Integer; overload;
     function AddColorRangeRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
       AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
+      AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer; overload;
+    function AddColorRangeRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
+      AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
       ACenterColor: TsColor; ACenterKind: TsCFColorRangeValueKind; ACenterValue: Double;
       AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer; overload;
+
     function AddDataBarRule(ASheet: TsBasicWorksheet; ARange: TsCellRange): Integer;
+
     procedure Delete(AIndex: Integer);
     function Find(ASheet: TsBasicWorksheet; ARange: TsCellRange): Integer;
   end;
@@ -141,6 +150,7 @@ end;
 constructor TsCFColorRangeRule.Create;
 begin
   inherited;
+  ThreeColors := true;
   SetupStart(scRed, crvkMin, 0.0);
   SetupCenter(scYellow, crvkPercent, 50.0);
   SetupEnd(scBlue, crvkMax, 0.0);
@@ -153,6 +163,7 @@ procedure TsCFColorRangeRule.Assign(ASource: TsCFRule);
 begin
   if ASource is TsCFColorRangeRule then
   begin
+    ThreeColors := TsCFColorRangeRule(ASource).ThreeColors;
     StartValueKind := TsCFColorRangeRule(ASource).StartValueKind;
     CenterValueKind := TsCFColorRangeRule(ASource).CenterValueKind;
     EndValueKind := TsCFColorRangeRule(ASource).EndValueKind;
@@ -319,6 +330,33 @@ begin
   rule.StartColor := AStartColor;
   rule.CenterColor := ACenterColor;
   rule.EndColor := AEndColor;
+  rule.ThreeColors := true;
+  Result := AddRule(ASheet, ARange, rule);
+end;
+
+function TsConditionalFormatList.AddColorRangeRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; AStartColor, AEndColor: TsColor): Integer;
+var
+  rule: TsCFColorRangeRule;
+begin
+  rule := TsCFColorRangeRule.Create;
+  rule.StartColor := AStartColor;
+  rule.EndColor := AEndColor;
+  rule.ThreeColors := false;
+  Result := AddRule(ASheet, ARange, rule);
+end;
+
+function TsConditionalFormatList.AddColorRangeRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange;
+  AStartColor: TsColor; AStartKind: TsCFColorRangeValueKind; AStartValue: Double;
+  AEndColor: TsColor; AEndKind: TsCFColorRangeValueKind; AEndValue: Double): Integer;
+var
+  rule: TsCFColorRangeRule;
+begin
+  rule := TsCFColorRangeRule.Create;
+  rule.SetupStart(AStartColor, AStartKind, AStartValue);
+  rule.SetupEnd(AEndColor, AEndKind, AEndValue);
+  rule.ThreeColors := false;
   Result := AddRule(ASheet, ARange, rule);
 end;
 
@@ -334,6 +372,7 @@ begin
   rule.SetupStart(AStartColor, AStartKind, AStartValue);
   rule.SetupCenter(ACenterColor, ACenterKind, ACenterValue);
   rule.SetupEnd(AEndColor, AEndKind, AEndValue);
+  rule.ThreeColors := true;
   Result := AddRule(ASheet, ARange, rule);
 end;
 

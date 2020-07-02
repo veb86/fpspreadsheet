@@ -147,6 +147,8 @@ type
     procedure WriteConditionalFormat(AStream: TStream; AFormat: TsConditionalFormat; var APriority: Integer);
     procedure WriteConditionalFormatCellRule(AStream: TStream; ARule: TsCFCellRule;
       ARange: TsCellRange; APriority: Integer);
+    procedure WriteConditionalFormatColorRangeRule(AStream: TStream; ARule: TsCFColorRangeRule;
+      const ARange: TsCellRange; APriority: Integer);
     procedure WriteConditionalFormatRule(AStream: TStream; ARule: TsCFRule;
       const ARange: TsCellRange; var APriority: Integer);
     procedure WriteConditionalFormats(AStream: TStream; AWorksheet: TsBasicWorksheet);
@@ -3479,98 +3481,70 @@ begin
       formula1Str, formula2Str
     ]);
   AppendToStream(AStream, s);
-(*
-  case ARule.Condition of
-    cfcEqual..cfcLessEqual:
-      AppendToStream(AStream, Format(
-        '<cfRule type="cellIs" dxfId="%d" priority="%d" operator="%s">' +
-          '<formula>%s</formula>'+
-        '</cfRule>', [
-        dxfID, APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1
-      ]));
-
-    cfcBetween, cfcNotBetween:
-      AppendToStream(AStream, Format(
-        '<cfRule type="cellIs" dxfId="%d" priority="%d" operator="%s">' +
-          '<formula>%s</formula>'+
-          '<formula>%s</formula>'+
-        '</cfRule>', [
-        dxfId, APriority, OPERATOR_NAMES_1[ARule.Condition], ARule.Operand1, ARule.Operand2
-      ]));
-
-    cfcAboveAverage..cfcBelowEqualAverage:
-      begin
-        if (ARule.Condition in [cfcAboveAverage, cfcAboveEqualAverage]) then
-          aveStr := ''
-        else
-          aveStr := ' aboveAverage="0"';
-        if (ARule.Condition in [cfcAboveEqualAverage, cfcBelowEqualAverage]) then
-          eqAveStr := ' equalAverage="1"'
-        else
-          eqAveStr := '';
-        if (ARule.Operand1 = varNull) or (ARule.Operand1 = 0) then
-          stdDevStr := ''
-        else
-          stdDevStr := Format(' stdDev="%d"', [ARule.Operand1]);
-        AppendToStream(AStream, Format(
-          '<cfRule type="aboveAverage" dxfId="%d" priority="%d"%s%s%s />',
-            [dxfId, APriority, aveStr, stdDevStr, eqAveStr]));
-      end;
-
-    cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent:
-      begin
-        if ARole.Condition in [cfcBottom, cfcBottomPercent] then
-          bottomStr := ' bottom="1"'
-        else
-          bottomStr := '';
-        if ARole.Condition in [cfcTopPercent, cfcBottomPercent] then
-          percentStr := ' percent="1"
-        else
-          percentStr := '';
-        AppendToStream(AStream, Format(
-          '<cfRule type="top10" dxfId="%d" priority="%d"%s%s rank="%d" />',
-          [dxfID, APriority, bottomStr, percentStr, ARole.Operand1]));
-      end;
-
-    cfcBeginsWith..cfcNotContainsErrors:
-      begin
-        firstCellOfRange := GetCellString(ARange.Row1, ARange.Col1);
-        if ARule.Condition = cfcNotContainsText then opStr := ' operator="notContains"' else opStr := '';
-        AppendToStream(AStream, Format(
-          '<cfRule type="%2:s" dxfId="%3:d" priority="%4:d"%5:s text="%1:s">'+
-            '<formula>' + FORMULA[ARule.Condition] + '</formula>' +
-          '</cfRule>', [
-          firstCellOfRange,                        // must be 1st ...
-          ARule.Operand1,                          // ... and 2nd parameters (see FORMULA[])
-          OPERATOR_NAMES_TEXT[ARule.Condition],
-          dxfId,
-          APriority,
-          opStr
-        ]));
-      end;
-
-    cfcDuplicate, cfcUnique:
-      begin
-        if ARule.Condition = cfcUnique then
-          typeStr := 'uniqueValues'
-        else
-          typeStr := 'duplicateValues';
-        AppendToStream(AStream, Format(
-          '<cfRule type="%s" dxfId="%d" priority="%d" />', [typeStr, dxfID, APriority]));
-      end;
-  else
-    FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');
-  end;
-*)
 end;
+
+procedure TsSpreadOOXMLWriter.WriteConditionalFormatColorRangeRule(AStream: TStream;
+  ARule: TsCFColorRangeRule; const ARange: TsCellRange; APriority: Integer);
+{ example:
+    <cfRule type="colorScale" priority="3">
+      <colorScale>
+        <cfvo type="min" />
+        <cfvo type="percentile" val="50" />
+        <cfvo type="max" />
+        <color rgb="FFF8696B" />
+        <color rgb="FFFFEB84" />
+        <color rgb="FF63BE7B" />
+      </colorScale>
+    </cfRule> }
+
+  function CFVO_Node(AKind: TsCFColorRangeValueKind; AValue: Double): String;
+  begin
+    Result := '<cfvo';
+    case AKind of
+      crvkMin    : Result := Result + ' type="min"';
+      crvkMax    : Result := Result + ' type="max"';
+      crvkPercent: Result := Result + Format(' type="percentile" val="%g"', [AValue]);
+      crvkValue  : Result := Result + Format(' type="num" val="%g"', [AValue]);
+    end;
+    Result := Result + ' />';
+  end;
+
+  function Color_Node(AColor: TsColor): String;
+  begin
+    Result := Format('<color rgb="%s" />', [ColorToHTMLColorStr(AColor, true)]);
+  end;
+
+begin
+  AppendToStream(AStream,
+    '<cfRule type="colorScale" priority="' + IntToStr(APriority) + '">' +
+      '<colorScale>');
+  AppendToStream(AStream,
+        CFVO_Node(ARule.StartValueKind, ARule.StartValue),
+        IfThen(ARule.ThreeColors, CFVO_Node(ARule.CenterValueKind, ARule.CenterValue), ''),
+        CFVO_Node(ARule.EndValueKind, ARule.EndValue)
+  );
+  AppendToStream(AStream,
+        Color_Node(ARule.StartColor),
+        IfThen(ARule.ThreeColors, Color_Node(ARule.CenterColor), ''),
+        Color_Node(ARule.EndColor)
+  );
+  AppendToStream(AStream,
+      '</colorScale>' +
+    '</cfRule>');
+end;
+
 
 procedure TsSpreadOOXMLWriter.WriteConditionalFormatRule(AStream: TStream;
   ARule: TsCFRule; const ARange: TsCellRange; var APriority: Integer);
 begin
-  if ARule is TsCFCellRule then begin
-    WriteConditionalFormatCellRule(AStream, TsCFCellRule(ARule), ARange, APriority);
-    dec(APriority);
-  end;
+  if ARule is TsCFCellRule then
+    WriteConditionalFormatCellRule(AStream, TsCFCellRule(ARule), ARange, APriority)
+  else
+  if ARule is TsCFColorRangeRule then
+    WriteConditionalFormatColorRangeRule(AStream, TsCFColorRangeRule(ARule), ARange, APriority)
+  else
+    exit;
+  dec(APriority);
 end;
 
 procedure TsSpreadOOXMLWriter.WriteConditionalFormats(AStream: TStream;
