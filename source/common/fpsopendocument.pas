@@ -450,7 +450,6 @@ end;
 
 
 type
-
   { Table style items stored in TableStyleList of the reader }
   TTableStyleData = class
   public

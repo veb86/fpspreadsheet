@@ -23,7 +23,7 @@ interface
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
-  fpsTypes, fpsReaderWriter, fpsXMLCommon, xlsCommon;
+  fpsTypes, fpsReaderWriter, fpsConditionalFormat, fpsXMLCommon, xlsCommon;
 
 type
   { TsSpreadExcelXMLReader }
@@ -91,6 +91,9 @@ type
     function GetStyleStr(AFormatIndex: Integer): String;
     procedure WriteCellNodes(AStream: TStream; AWorksheet: TsBasicWorksheet; ARow: Cardinal);
     procedure WriteColumns(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteConditionalFormat(AStream: TStream; AWorksheet: TsBasicWorksheet;
+      AFormat: TsConditionalFormat);
+    procedure WriteConditionalFormatting(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteNames(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WritePageBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
@@ -141,7 +144,7 @@ var
 implementation
 
 uses
-  StrUtils, DateUtils, Math, Variants,
+  StrUtils, DateUtils, Math, Variants, TypInfo,
   fpsStrings, fpsClasses, fpspreadsheet, fpsUtils, fpsNumFormat, fpsHTMLUtils,
   fpsExprParser;
 
@@ -193,6 +196,13 @@ const
     'Dash', 'DashDot', 'DashDot', 'DashDotDot', 'DashDotDot',
     'SlantDashDot'
   );
+
+  LINE_STYLES1: array[TsLineStyle] of string = (
+    'solid', 'solid', 'dashed', 'dotted', 'solid', 'double', 'hairline',
+    'dashed', 'dot-dash', 'dot-dash', 'dot-dot-dash', 'dot-dot-dash',
+    'dot-dash'
+  );
+
   LINE_WIDTHS: array[TsLineStyle] of Integer = (
     1, 2, 1, 1, 3, 3, 0,
     2, 1, 2, 1, 2,
@@ -200,6 +210,28 @@ const
   );
 
   FALSE_TRUE: array[boolean] of string = ('False', 'True');
+
+  CF_CONDITIONS: array[TsCFCondition] of string = (
+    'Equal', 'NotEqual',                                // cfcEqual, cfcNotEqual,
+    'Greater', 'Less', 'GreaterOrEqual', 'LessOrEqual',  // cfcGreaterThan, cfcLessThan, cfcGreaterEqual, cfcLessEqual,
+    'Between', 'NotBetween',                             // cfcBetween, cfcNotBetween,
+    // the following 4 formulas are copies of Excel-generated files, but do not work...
+    '',  //'@RC&gt;AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',  // cfcAboveAverage
+    '',  //'@RC&lt;AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',   // cfcBelowAverage
+    '',  //'@RC&gt;=AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',  // cfcAboveEqualAverage
+    '',  //'@RC&lt;=AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',   // cfcBelowEqualAverage
+    // The next 4 formulas are not supported by Excel-XML
+    '', '', '', '',  // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
+    '@AND(COUNTIF(%2:s, RC)&gt;1,NOT(ISBLANK(RC)))',     // cfcDuplicate
+    '@AND(COUNTIF(%2:s, RC)=1,NOT(ISBLANK(RC)))',        // cfcUnique
+    '@LEFT(RC,LEN(%0:s))=%0:s',                          // cfcBeginsWith
+    '@RIGHT(RC,LEN(%0:s))=%0:s',                         // cfcEndsWith
+    '@NOT(ISERROR(SEARCH(%0:s,RC)))',                    // cfcContainsText
+    '@ISERROR(SEARCH(%0:s,RC))',                         // cfcNotContainsText,
+    '@ISERROR(RC)',                                      // cfcContainsErrors
+    '@NOT(ISERROR(RC))'                                 // cfcNotContainsErrors
+  );
+  // The leading '@' indicates that the formula will be used in <Value1> node
 
 function GetCellContentTypeStr(ACell: PCell): String;
 begin
@@ -241,6 +273,36 @@ begin
   end;
 end;
 
+function CFOperandToStr(v: variant; AWorksheet: TsWorksheet): String;
+var
+  r,c: Cardinal;
+  parser: TsSpreadsheetParser;
+begin
+  Result := VarToStr(v);
+  if Result = '' then
+    exit;
+
+  if VarIsStr(v) then begin
+    // Special case: v is a formula, i.e. begins with '='
+    if (Length(Result) > 1) and (Result[1] = '=') then
+    begin
+      parser := TsSpreadsheetParser.Create(AWorksheet);
+      try
+        parser.Expression[fdExcelA1] := Result;    // Parse in Excel-A1 dialect
+        Result := parser.R1C1Expression[nil];      // Convert to R1C1 dialect
+        // Note: Using nil here to get absolute references.
+      finally
+        parser.Free;
+      end;
+    end
+    else
+    // Special case: cell reference (Note: relative refs are made absolute!)
+    if ParseCellString(Result, r, c) then
+      Result := GetCellString_R1C1(r, c, [])  // Need absolute reference!
+    else
+      Result := UTF8TextToXMLText(SafeQuoteStr(Result))
+  end;
+end;
 
 {===============================================================================
                           TsSpreadExcelXMLReader
@@ -1976,6 +2038,160 @@ begin
   end;
 end;
 
+procedure TsSpreadExcelXMLWriter.WriteConditionalFormat(AStream: TStream;
+  AWorksheet: TsBasicWorksheet; AFormat: TsConditionalFormat);
+
+  function BackgroundStyle(AFormat: TsCellFormat): String;
+  begin
+    Result := '';
+    if not (uffBackground in AFormat.UsedFormattingFields) then
+      exit;
+    Result := Format('background:%s;', [ColorToHTMLColorStr(AFormat.Background.BgColor)]);
+  end;
+
+  function BorderStyle(AFormat: TsCellFormat): String;
+  var
+    cb: TsCellBorder;
+    allEqual: Boolean;
+    bs: TsCellBorderStyle;
+  begin
+    Result := '';
+    if not (uffBorder in AFormat.UsedFormattingFields) then
+      exit;
+    allEqual := ([cbEast, cbWest, cbNorth, cbSouth] = AFormat.Border);
+    if allEqual then begin
+      bs := AFormat.BorderStyles[cbEast];
+      for cb in TsCellBorders do
+        if (AFormat.BorderStyles[cb].Color <> bs.Color) or
+           (AFormat.BorderStyles[cb].LineStyle <> bs.LineStyle) then
+        begin
+          allEqual := false;
+          break;
+        end;
+    end;
+    if allEqual then
+      Result := Format('border:0.5pt %s %s;', [
+        //LINE_WIDTHS[bs.LineStyle]*0.5,
+        LINE_STYLES1[bs.LineStyle],
+        ColorToHTMLColorStr(bs.Color)
+      ])
+    else
+      for cb in TsCellBorders do
+      begin
+        bs := AFormat.BorderStyles[cb];
+        if (cb in AFormat.Border) then
+          Result := Result + Format('border-%s:0.5pt %s %s;', [
+            Lowercase(BORDER_NAMES[cb]),
+            //LINE_WIDTHS[bs.LineStyle]*0.5,
+            LINE_STYLES1[bs.LineStyle],
+            ColorToHTMLColorStr(bs.Color)
+          ]);
+      end;
+  end;
+
+var
+  rangeStr: String;
+  cfRule: TsCFCellRule;
+  i: Integer;
+  value1Str, value2Str: String;
+  sheet: TsWorksheet;
+  book: TsWorkbook;
+  fmt: TsCellFormat;
+  s: String;
+  needToExit: Boolean;
+begin
+  book := TsWorkbook(FWorkbook);
+  sheet := TsWorksheet(AWorksheet);
+
+  needToExit := false;
+  for i := 0 to AFormat.RulesCount-1 do
+    if not (AFormat.Rules[i] is TsCFCellRule) then
+    begin
+      FWorkbook.AddErrorMsg('Conditional formatting rule ' + AFormat.Rules[i].ClassName + ' not supported by Excel-XML.');
+      needToExit := true;
+    end;
+
+  if needToExit then
+    exit;
+
+  AppendToStream(AStream, INDENT2 +
+    '<ConditionalFormatting xmlns="urn:schemas-microsoft-com:office:excel">');
+
+  with AFormat.CellRange do
+    rangeStr := GetCellRangeString_R1C1(Row1, Col1, Row2, Col2, [], Row1, Col1);
+  AppendToStream(AStream, LF + INDENT3 +
+      '<Range>' + rangeStr + '</Range>');
+
+  for i := 0 to AFormat.RulesCount-1 do
+  begin
+    if AFormat.Rules[i] is TsCFCellRule then
+    begin
+      cfRule := TsCFCellRule(AFormat.Rules[i]);
+      if CF_CONDITIONS[cfRule.Condition] = '' then
+      begin
+        s := GetEnumName(TypeInfo(TsCFCondition), Ord(cfRule.Condition));
+        FWorkbook.AddErrorMsg('Conditional formatting rule "' + s + '" not supported by ExcelXML.');
+        Continue;
+      end;
+
+      value1Str := CFOperandToStr(cfRule.Operand1, sheet);
+      value2Str := CFOperandToStr(cfRule.Operand2, sheet);
+
+      s := CF_CONDITIONS[cfRule.Condition];
+      if s[1] = '@' then
+      begin
+        Delete(s, 1,1);
+        s := Format(s, [value1Str, value2Str, rangeStr]);
+        value1Str := s;
+        s := '';
+      end;
+
+      AppendToStream(AStream, LF + INDENT3 +
+        '<Condition>');
+
+      if s <> '' then
+        AppendToStream(AStream, LF + INDENT4 +
+          '<Qualifier>' + s + '</Qualifier>');
+      if value1Str <> '' then
+        AppendToStream(AStream, LF + INDENT4 +
+          '<Value1>' + value1Str + '</Value1>');
+      if (cfRule.Condition in [cfcBetween, cfcNotBetween]) and (value2Str <> '') then
+        AppendToStream(AStream, LF + INDENT4 +
+          '<Value2>' + value2Str + '</Value2>');
+
+      fmt := book.GetCellFormat(cfRule.FormatIndex);
+      s := BackgroundStyle(fmt) + BorderStyle(fmt);
+      if s <> '' then
+        AppendToStream(AStream,  LF + INDENT4 +
+          '<Format Style=''' + s + '''/>');
+
+      AppendToStream(AStream, LF + INDENT3 +
+        '</Condition>'
+      );
+    end;
+  end;
+
+  AppendToStream(AStream, LF + INDENT2 +
+    '</ConditionalFormatting>' + LF);
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteConditionalFormatting(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  cf: TsConditionalFormat;
+  i: Integer;
+begin
+  book := TsWorkbook(FWorkbook);
+  sheet := TsWorksheet(AWorksheet);
+  for i := 0 to book.GetNumConditionalFormats-1 do
+  begin
+    cf := book.GetConditionalFormat(i);
+    WriteConditionalFormat(AStream, AWorksheet, cf);
+  end;
+end;
+
 procedure TsSpreadExcelXMLWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var
@@ -2637,6 +2853,7 @@ begin
   WriteNames(AStream, AWorksheet);
   WriteTable(AStream, AWorksheet);
   WriteWorksheetOptions(AStream, AWorksheet);
+  WriteConditionalFormatting(AStream, AWorksheet);
   WritePageBreaks(AStream, AWorksheet);
   AppendToStream(AStream,
     '  </Worksheet>' + LF

@@ -4108,8 +4108,12 @@ begin
       fdExcelA1, fdLocalized:
         Result := Format('%s!%s', [GetQuotedSheetName, GetCellString(r, c, FFlags)]);
       fdExcelR1C1:
-        Result := Format('%s!%s', [GetQuotedSheetName,
-          GetCellString_R1C1(r, c, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col)]);
+        if FParser.FSourceCell = nil then
+          Result := Format('%s!%s', [GetQuotedSheetName,
+            GetCellString_R1C1(r, c, [])])
+        else
+          Result := Format('%s!%s', [GetQuotedSheetName,
+            GetCellString_R1C1(r, c, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col)]);
       fdOpenDocument:
         begin
           s := GetQuotedSheetName;
@@ -4122,7 +4126,10 @@ begin
       fdExcelA1, fdLocalized:
         Result := GetCellString(GetRow, GetCol, FFlags);
       fdExcelR1C1:
-        Result := GetCellString_R1C1(GetRow, GetCol, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
+        if FParser.FSourceCell = nil then
+          Result := GetCellString_R1C1(GetRow, GetCol, [])
+        else
+          Result := GetCellString_R1C1(GetRow, GetCol, FFlags, FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
       fdOpenDocument:
         Result := '[.' + GetCellString(GetRow, GetCol, FFlags) + ']';
     end;

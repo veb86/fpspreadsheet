@@ -3,7 +3,7 @@ program demo_conditional_formatting;
 uses
   sysUtils,
   fpsTypes, fpsUtils, fpspreadsheet, fpsConditionalFormat,
-  xlsxooxml, fpsOpenDocument;
+  xlsxooxml, xlsxml, fpsOpenDocument;
 
 var
   wb: TsWorkbook;
@@ -91,6 +91,7 @@ begin
     inc(row);
     sh.WriteText(row, 0, 'greater equal constant 5');
     sh.WriteText(row, 1, 'background gray');
+    InitFormatRecord(fmt);
     fmt.SetBackgroundColor(scGray);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcGreaterEqual, 5, fmtIdx);
@@ -103,7 +104,7 @@ begin
 
     // conditional format #6: between
     inc(row);
-    sh.WriteText(row, 0, 'between 3 and 7');
+    sh.WriteText(row, 0, 'between 2 and 7');
     sh.WriteText(row, 1, 'background light gray');
     fmt.SetBackgroundColor($EEEEEE);
     fmtIdx := wb.AddCellFormat(fmt);
@@ -111,7 +112,7 @@ begin
 
     // conditional format #6: not between
     inc(row);
-    sh.WriteText(row, 0, 'not between 3 and 7');
+    sh.WriteText(row, 0, 'not between 2 and 7');
     sh.WriteText(row, 1, 'background light gray');
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotBetween, 2, 7, fmtIdx);
 
@@ -306,6 +307,14 @@ begin
     { ------ Save workbook to file-------------------------------------------- }
     wb.WriteToFile('test.xlsx', true);
     wb.WriteToFile('test.ods', true);
+    wb.WriteToFile('test.xml', true);
+
+    if wb.ErrorMsg <> '' then begin
+      WriteLn(wb.ErrorMsg);
+      WriteLn;
+      WriteLn('Press ENTER to close.');
+      ReadLn;
+    end;
   finally
     wb.Free;
   end;
