@@ -11,9 +11,12 @@ spreadsheet documents in various formats:
 - Comma-separated text files 
 - html files
 - wikimedia wikitable formats
+- there is also a demo file showing how to install user-defined readers/writers
+  for other formats (.slk).
 
 The library is written in a very flexible manner, capable of being extended to 
 support any number of formats easily.
+
 
 Installation
 ============
@@ -26,8 +29,9 @@ Add it to your project like you add other packages.
 
 If you also want GUI components (grid and chart): 
 - Package/Open Package File
-- seleect laz_fpspreadsheet_visual.lpk from the folder "source"
+- select laz_fpspreadsheet_visual.lpk from the fpspreadsheet installation folder
 - click Compile
+- select laz_fpspreadsheet_visual_dsgn.lp from the fpspreadsheet installation folder 
 - then click Use, Install and follow the prompts to rebuild Lazarus with the new package.
 Drop needed grid/chart components on your forms as usual
 
@@ -37,10 +41,20 @@ A third package contains code for export databases to spreadsheet files
 - Click Compile
 - Then click Use, Install and follow the prompts to rebuild Lazarus with the new package.
 Drop export component on your form as usual.
-		
+
+If you want to access encrypted spreadsheet files the following package must be made known 
+to the IDE:
+- Package/Open Package File
+- select laz_fpspreadsheet_crypo.lpk
+- Click Compile
+- NOTE: this package has a dependence on the package DCPCrypt which must be compile first.
+  (you can use the Online-Package-Manager to download this package).
+
+
 License
 =======
 LGPL with static linking exception. This is the same license as is used in the Lazarus Component Library. 
+
 
 More information
 ================
