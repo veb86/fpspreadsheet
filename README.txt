@@ -31,7 +31,7 @@ If you also want GUI components (grid and chart):
 - Package/Open Package File
 - select laz_fpspreadsheet_visual.lpk from the fpspreadsheet installation folder
 - click Compile
-- select laz_fpspreadsheet_visual_dsgn.lp from the fpspreadsheet installation folder 
+- select laz_fpspreadsheet_visual_dsgn.lpk from the fpspreadsheet installation folder 
 - then click Use, Install and follow the prompts to rebuild Lazarus with the new package.
 Drop needed grid/chart components on your forms as usual
 
