@@ -217,6 +217,7 @@ type
       AWorksheet: TsBasicWorksheet): Int64;
     procedure WriteComment(AStream: TStream; ACell: PCell); override;
     procedure WriteComments(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteConditionalFormatting(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteDefinedName(AStream: TStream; AWorksheet: TsBasicWorksheet;
        const AName: String; AIndexToREF, ASheetIndex: Word;
        AKind: TsBIFFExternKind); reintroduce;
@@ -2863,6 +2864,7 @@ begin
       WriteHyperlinks(AStream, FWorksheet);
 
       WriteMergedCells(AStream, FWorksheet);
+      WriteConditionalFormatting(AStream, FWorksheet);
 
     WriteEOF(AStream);
   end;
@@ -3117,6 +3119,15 @@ begin
     WriteNOTE(AStream, comment, index);
     inc(index);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the records needed by Conditional Formatting
+-------------------------------------------------------------------------------}
+procedure TsSpreadBIFF8Writer.WriteConditionalFormatting(AStream: TStream;
+  AWorksheet: TsBasicWorksheet);
+begin
+  // to do: implementation: write CFHEADER and CFRULE records.
 end;
 
 {@@ ----------------------------------------------------------------------------

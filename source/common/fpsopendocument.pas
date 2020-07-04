@@ -23,7 +23,7 @@ NOTICE: Active define FPSpreadDebug in the project options to get a log during
 }
 
 
-unit fpsopendocument;
+unit fpsOpenDocument;
 
 {$ifdef fpc}
   {$mode objfpc}{$H+}

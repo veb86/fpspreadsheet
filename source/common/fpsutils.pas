@@ -5,7 +5,7 @@
   LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
            distribution, for details about the license.
 -------------------------------------------------------------------------------}
-unit fpsutils;
+unit fpsUtils;
 
 // to do: Remove the patched FormatDateTime when the feature of square brackets
 //        in time format codes is in the rtl

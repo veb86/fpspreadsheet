@@ -1,4 +1,4 @@
-unit fpsclasses;
+unit fpsClasses;
 
 {$mode objfpc}{$H+}
 
