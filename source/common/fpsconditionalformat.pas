@@ -305,8 +305,8 @@ var
 begin
   rule := TsCFCellRule.Create;
   rule.Condition := ACondition;
-  rule.Operand1 := varNull;
-  rule.Operand2 := varNull;
+  VarClear(rule.Operand1);
+  VarClear(rule.Operand2);
   rule.FormatIndex := ACellFormatIndex;
   Result := AddRule(ASheet, ARange, rule);
 end;
@@ -320,7 +320,7 @@ begin
   rule := TsCFCellRule.Create;
   rule.Condition := ACondition;
   rule.Operand1 := AParam;
-  rule.Operand2 := varNull;
+  VarClear(rule.Operand2);
   rule.FormatIndex := ACellFormatIndex;
   Result := AddRule(ASheet, ARange, rule);
 end;

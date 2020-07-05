@@ -11,8 +11,9 @@ spreadsheet documents in various formats:
 - Comma-separated text files 
 - html files
 - wikimedia wikitable formats
-- there is also a demo file showing how to install user-defined readers/writers
-  for other formats (.slk).
+- the user can register his own readers/writers for other formats. An example
+  is shown in the "spready" application for the .slk format.
+  ("spready" is in the applications folder of CCR).
 
 The library is written in a very flexible manner, capable of being extended to 
 support any number of formats easily.

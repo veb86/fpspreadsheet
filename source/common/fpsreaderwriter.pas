@@ -83,6 +83,8 @@ type
   protected
     {@@ list of format records collected from the file }
     FCellFormatList: TsCellFormatList;
+    {@@ list for differential formats needed by conditional formatting}
+    FDifferentialFormatList: TFPList;
     {@@ List of fonts collected from the file }
     FFontList: TFPList;
     {@@ Temporary cell for virtual mode}

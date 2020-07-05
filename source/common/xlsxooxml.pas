@@ -59,6 +59,7 @@ type
     FBorderList: TFPList;
     FHyperlinkList: TFPList;
     FSharedFormulaBaseList: TFPList;
+    FDxfList: TFPList;
     FPalette: TsPalette;
     FThemeColors: array of TsColor;
     FLastRow, FLastCol: Cardinal;
@@ -68,15 +69,20 @@ type
     function FindCommentsFileName(ANode: TDOMNode): String;
     procedure ReadActiveSheet(ANode: TDOMNode; out ActiveSheetIndex: Integer);
     procedure ReadBorders(ANode: TDOMNode);
+    function ReadBorderStyle(ANode: TDOMNode; out ABorderStyle: TsCellBorderStyle): Boolean;
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
       ARowIndex: Cardinal; var AColIndex: Cardinal);
     procedure ReadCellXfs(ANode: TDOMNode);
+    procedure ReadCFRule(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadColRowBreaks(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     function  ReadColor(ANode: TDOMNode): TsColor;
     procedure ReadCols(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadComments(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadConditionalFormatting(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadDateMode(ANode: TDOMNode);
     procedure ReadDefinedNames(ANode: TDOMNode);
+    procedure ReadDifferentialFormat(ANode: TDOMNode);
+    procedure ReadDifferentialFormats(ANode: TDOMNode);
     procedure ReadDimension(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadFileVersion(ANode: TDOMNode);
     procedure ReadFills(ANode: TDOMNode);
@@ -330,6 +336,16 @@ type
   end;
 
   TDifferentialFormatData = class
+    CellFormatIndex: Integer;
+    UsedFormattingFields: TsUsedFormattingFields;
+    Borders: TsCellBorders;
+    BorderStyles: TsCellBorderStyles;
+    FillPatternType: TsFillStyle;
+    FillFgColor: TsColor;
+    FillBgColor: TsColor;
+    FontColor: TsColor;
+    FontStyles: TsFontStyles;
+    NumFormatStr: String;
   end;
 
   THyperlinkListData = class
@@ -393,6 +409,66 @@ const
      'mediumDashDotDot',       // lsMediumDashDotDot
      'slantDashDot'            // lsSlantDashDot
   );
+
+  CF_TYPE_NAMES: array[TsCFCondition] of String = (
+    'cellIs', 'cellIs',                      // cfcEqual, cfcNotEqual,
+    'cellIs', 'cellIs', 'cellIs', 'cellIs',  //  cfcGreaterThan, cfcLessThan, cfcGreaterEqual, cfcLessEqual,
+    'cellIs', 'cellIs',                      // cfcBetween, cfcNotBetween,
+    'aboveAverage', 'aboveAverage', 'aboveAverage', 'aboveAverage', // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
+    'top10', 'top10', 'top10', 'top10',      // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
+    'duplicateValues', 'uniqueValues',       // cfcDuplicate, cfcUnique,
+    'beginsWith', 'endsWith',                // cfcBeginsWith, cfcEndsWith,
+    'containsText', 'notContainsText',       // cfcContainsText, cfcNotContainsText,
+    'containsErrors', 'notContainsErrors'    // cfcContainsErrors, cfcNotContainsErrors
+  );
+
+  CF_OPERATOR_NAMES: array[TsCFCondition] of string = (
+    'equal', 'notEqual', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual',
+    'between', 'notBetween',
+    '', '', '', '',   // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
+    '', '', '', '',   // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
+    '', '',           // cfcDuplicate, cfcUnique,
+    '', '', '', 'notContains', //cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
+    '', ''            // cfcContainsErrors, cfcNotContainsErrors
+  );
+
+function StrToFillStyle(s: String): TsFillStyle;
+var
+  fs: TsFillStyle;
+begin
+  if s = '' then
+  begin
+    Result := fsSolidFill;
+    exit;
+  end;
+
+  for fs in TsFillStyle do
+    if PATTERN_TYPES[fs] = s then
+    begin
+      Result := fs;
+      exit;
+    end;
+  Result := fsNoFill;
+end;
+
+function StrToLineStyle(s: String): TsLineStyle;
+var
+  ls: TsLineStyle;
+begin
+  if s = '' then
+  begin
+    Result := lsThin;
+    exit;
+  end;
+
+  for ls in TsLineStyle do
+    if LINESTYLE_TYPES[ls] = s then
+    begin
+      Result := ls;
+      exit;
+    end;
+  Result := lsThin;
+end;
 
 function CFOperandToStr(v: Variant): String;
 const
@@ -468,6 +544,7 @@ begin
   FBorderList := TFPList.Create;
   FHyperlinkList := TFPList.Create;
   FCellFormatList := TsCellFormatList.Create(true);
+  FDifferentialFormatList := TFPList.Create;
   // Allow duplicates because xf indexes used in cell records cannot be found any more.
   FSharedFormulaBaseList := TFPList.Create;
 
@@ -494,6 +571,10 @@ begin
   for j := FHyperlinkList.Count-1 downto 0 do
     TObject(FHyperlinkList[j]).Free;
   FHyperlinkList.Free;
+
+  for j := FDifferentialFormatList.Count-1 downto 0 do
+    TObject(FDifferentialFormatList[j]).Free;
+  FDifferentialFormatList.Free;
 
   for j := FSheetList.Count-1 downto 0 do
     TObject(FSheetList[j]).Free;
@@ -613,59 +694,6 @@ begin
 end;
 
 procedure TsSpreadOOXMLReader.ReadBorders(ANode: TDOMNode);
-
-  function ReadBorderStyle(ANode: TDOMNode;
-    out ABorderStyle: TsCellBorderStyle): Boolean;
-  var
-    s: String;
-    colorNode: TDOMNode;
-    nodeName: String;
-  begin
-    Result := false;
-    ABorderStyle.LineStyle := lsThin;
-    ABorderStyle.Color := scBlack;
-
-    s := GetAttrValue(ANode, 'style');
-    if (s = '') or (s = 'none') then
-      exit;
-
-    if s = 'thin' then
-      ABorderStyle.LineStyle := lsThin
-    else if s = 'medium'then
-      ABorderStyle.LineStyle := lsMedium
-    else if s = 'thick' then
-      ABorderStyle.LineStyle := lsThick
-    else if s = 'dotted' then
-      ABorderStyle.LineStyle := lsDotted
-    else if s = 'dashed' then
-      ABorderStyle.LineStyle := lsDashed
-    else if s = 'double' then
-      ABorderStyle.LineStyle := lsDouble
-    else if s = 'hair' then
-      ABorderStyle.LineStyle := lsHair
-    else if s = 'dashDot' then
-      ABorderStyle.LineStyle := lsDashDot
-    else if s = 'dashDotDot' then
-      ABorderStyle.LineStyle := lsDashDotDot
-    else if s = 'mediumDashed' then
-      ABorderStyle.LineStyle := lsMediumDash
-    else if s = 'mediumDashDot' then
-      ABorderStyle.LineSTyle := lsMediumDashDot
-    else if s = 'mediumDashDotDot' then
-      ABorderStyle.LineStyle := lsMediumDashDotDot
-    else if s = 'slantDashDot' then
-      ABorderStyle.LineStyle := lsSlantDashDot;
-
-    colorNode := ANode.FirstChild;
-    while Assigned(colorNode) do begin
-      nodeName := colorNode.NodeName;
-      if (nodeName = 'color') or (nodename = 'x:color') then
-        ABorderStyle.Color := ReadColor(colorNode);
-      colorNode := colorNode.NextSibling;
-    end;
-    Result := true;
-  end;
-
 var
   borderNode: TDOMNode;
   edgeNode: TDOMNode;
@@ -725,6 +753,61 @@ begin
     end;
     borderNode := borderNode.NextSibling;
   end;
+end;
+
+function TsSpreadOOXMLReader.ReadBorderStyle(ANode: TDOMNode;
+  out ABorderStyle: TsCellBorderStyle): Boolean;
+var
+  s: String;
+  colorNode: TDOMNode;
+  nodeName: String;
+begin
+  Result := false;
+  ABorderStyle.LineStyle := lsThin;
+  ABorderStyle.Color := scBlack;
+
+  s := GetAttrValue(ANode, 'style');
+  if (s = '') or (s = 'none') then
+    exit;
+
+  ABorderStyle.LineStyle := StrToLineStyle(s);
+            {
+  if s = 'thin' then
+    ABorderStyle.LineStyle := lsThin
+  else if s = 'medium'then
+    ABorderStyle.LineStyle := lsMedium
+  else if s = 'thick' then
+    ABorderStyle.LineStyle := lsThick
+  else if s = 'dotted' then
+    ABorderStyle.LineStyle := lsDotted
+  else if s = 'dashed' then
+    ABorderStyle.LineStyle := lsDashed
+  else if s = 'double' then
+    ABorderStyle.LineStyle := lsDouble
+  else if s = 'hair' then
+    ABorderStyle.LineStyle := lsHair
+  else if s = 'dashDot' then
+    ABorderStyle.LineStyle := lsDashDot
+  else if s = 'dashDotDot' then
+    ABorderStyle.LineStyle := lsDashDotDot
+  else if s = 'mediumDashed' then
+    ABorderStyle.LineStyle := lsMediumDash
+  else if s = 'mediumDashDot' then
+    ABorderStyle.LineSTyle := lsMediumDashDot
+  else if s = 'mediumDashDotDot' then
+    ABorderStyle.LineStyle := lsMediumDashDotDot
+  else if s = 'slantDashDot' then
+    ABorderStyle.LineStyle := lsSlantDashDot;
+    }
+
+  colorNode := ANode.FirstChild;
+  while Assigned(colorNode) do begin
+    nodeName := colorNode.NodeName;
+    if (nodeName = 'color') or (nodename = 'x:color') then
+      ABorderStyle.Color := ReadColor(colorNode);
+    colorNode := colorNode.NextSibling;
+  end;
+  Result := true;
 end;
 
 procedure TsSpreadOOXMLReader.ReadCell(ANode: TDOMNode;
@@ -1152,6 +1235,101 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadCFRule(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+  ARange: TsCellRange);
+var
+  nodeName: String;
+  s, sType, sOp: String;
+  sFormula: Array of String;
+  cf: TsCFCondition;
+  found: Boolean;
+  i: Integer;
+  n: Integer;
+  x: Double;
+  r, c: Cardinal;
+  dxf: TDifferentialFormatData;
+  dxfId: Integer;
+  condition: TsCFCondition;
+  values: array of Variant;
+  fmtIdx: Integer;
+  sheet: TsWorksheet;
+begin
+  sheet := TsWorksheet(AWorksheet);
+
+  found := false;
+
+  sType := GetAttrValue(ANode, 'type');
+  sOp := GetAttrValue(ANode, 'operator');
+
+  if sType = 'cellIs' then
+  begin
+    for cf in TsCFCondition do
+      if sOp = CF_OPERATOR_NAMES[cf] then
+      begin
+        found := true;
+        condition := cf;
+        break;
+      end
+  end
+  else
+    for cf in TsCFCondition do
+      if sType = CF_TYPE_NAMES[cf] then
+      begin
+        found := true;
+        condition := cf;
+        break;
+      end;
+  if not found then
+    exit;
+
+  s := GetAttrValue(ANode, 'dxfId');
+  if not TryStrToInt(s, dxfId) then
+    exit;
+  dxf := TDifferentialFormatData(FDifferentialFormatList[dxfId]);
+  fmtIdx := dxf.CellFormatIndex;
+
+  SetLength(sFormula, 0);
+  ANode := ANode.FirstChild;
+  while (ANode <> nil) do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'formula' then
+    begin
+      SetLength(sFormula, Length(sFormula) + 1);
+      sFormula[High(sFormula)] := GetNodeValue(ANode);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  if condition in [cfcEqual..cfcNotBetween] then begin
+    SetLength(values, Length(sFormula));
+    for i := 0 to High(sFormula) do begin
+      values[i] := sFormula[i];
+      if (sFormula[i] <> '') then begin
+        if TryStrToInt(sFormula[i], n) then
+          values[i] := n
+        else if TryStrToFloat(sFormula[i], x, FPointSeparatorSettings) then
+          values[i] := x
+        else if sFormula[i][1] = '"' then
+          values[i] := sFormula[i]
+        else if ParseCellString(sFormula[i], r, c) then
+          values[i] := sFormula[i]
+        else
+          values[i] := '=' + sFormula[i];
+      end;
+    end;
+  end else
+    exit;
+
+  case Length(values) of
+    0: sheet.WriteConditionalCellFormat(ARange, condition, fmtIdx);
+    1: sheet.WriteConditionalCellFormat(ARange, condition, values[0], fmtIdx);
+    2: sheet.WriteConditionalCellFormat(ARange, condition, values[0], values[1], fmtIdx);
+  end;
+end;
+
+
+
 procedure TsSpreadOOXMLReader.ReadColRowBreaks(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
 var
@@ -1391,6 +1569,36 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadConditionalFormatting(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  childNode: TDOMNode;
+  nodeName: string;
+  range: TsCellRange;
+  s: String;
+begin
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if (nodeName = 'conditionalFormatting') then
+    begin
+      s := GetAttrValue(ANode, 'sqref');
+      if ParseCellRangeString(s, range) then
+      begin
+        childNode := ANode.FirstChild;
+        while childNode <> nil do
+        begin
+          nodeName := childNode.NodeName;
+          if nodeName = 'cfRule' then
+            ReadCFRule(childNode, AWorksheet, range);
+          childNode := childNode.NextSibling;
+        end;
+      end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadDateMode(ANode: TDOMNode);
 var
   s: String;
@@ -1500,6 +1708,186 @@ begin
       end;
     end;
     node := node.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadDifferentialFormat(ANode: TDOMNode);
+var
+  nodeName: String;
+  childNode: TDOMNode;
+  pattNode: TDOMNode;
+  s: String;
+  fontStyles: TsFontStyles;
+  fontColor: TsColor;
+  bgColor: TsColor;
+  fgColor: TsColor;
+  fillPatt: String;
+  borders: TsCellBorders;
+  borderStyles: TsCellBorderStyles;
+  uff: TsUsedFormattingFields;
+  dxf: TDifferentialFormatData;
+  fmt: TsCellFormat;
+  numFmtStr: String;
+begin
+  uff := [];
+  borders := [];
+  fontStyles := [];
+  fontColor := scNotDefined;
+  numFmtStr := '';
+
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'font' then
+    begin
+      // read font
+      uff := uff + [uffFont];
+      childNode := ANode.FirstChild;
+      while childNode <> nil do
+      begin
+        nodeName := childNode.NodeName;
+        if (nodename = 'b') then
+          fontStyles := fontStyles + [fssBold]
+        else
+        if (nodename = 'i') then
+          fontStyles := fontStyles + [fssItalic]
+        else
+        if (nodeName = 'strike') then
+          fontStyles := fontStyles + [fssStrikeOut]
+        else
+        if (nodename = 'color') then
+          fontColor := ReadColor(childNode);
+        childNode := childNode.NextSibling;
+      end;
+    end else
+    if nodeName = 'border' then
+    begin
+      // read border
+      uff := uff + [uffBorder];
+      childNode := ANode.FirstChild;
+      while childNode <> nil do
+      begin
+        nodeName := childNode.NodeName;
+        if nodeName = 'left' then
+        begin
+          borders := borders + [cbWest];
+          ReadBorderStyle(childNode, borderStyles[cbWest]);
+        end else
+        if nodeName = 'top' then
+        begin
+          borders := borders + [cbNorth];
+          ReadBorderStyle(childNode, borderStyles[cbNorth]);
+        end else
+        if nodeName = 'right' then
+        begin
+          borders := borders + [cbEast];
+          ReadBorderStyle(childNode, borderStyles[cbEast]);
+        end else
+        if nodeName = 'bottom' then
+        begin
+          borders := borders + [cbSouth];
+          ReadBorderStyle(childNode, borderStyles[cbSouth]);
+        end;
+        childNode := childNode.NextSibling;
+      end;
+    end else
+    if nodeName = 'fill'  then
+    begin
+      // read fill
+      uff := uff + [uffBackground];
+      pattNode := ANode.FirstChild;
+      while pattNode <> nil do begin
+        nodeName := pattNode.NodeName;
+        if nodeName = 'patternFill' then
+        begin
+          fillPatt := GetAttrValue(pattNode, 'patternType');
+          childNode := pattNode.FirstChild;
+          while childNode <> nil do
+          begin
+            nodeName := childNode.NodeName;
+            if nodeName = 'bgColor' then
+              bgColor := ReadColor(childNode)
+            else if nodeName = 'fgColor' then
+              fgColor := ReadColor(childNode);
+            childNode := childNode.NextSibling;
+          end;
+        end;
+        pattNode := pattNode.NextSibling;
+      end;
+      {
+      fillPatt := GetAttrValue(ANode, 'patternType');
+      childNode := ANode.FirstChild;
+      while childNode <> nil do begin
+        nodeName := childNode.NodeName;
+        if nodeName = 'bgColor' then
+          bgColor := ReadColor(childNode)
+        else
+        if nodeName ='fgColor' then
+          fgColor := ReadColor(childNode);
+        childNode := childNode.NextSibling;
+      end;
+      }
+    end else
+    if nodeName = 'numFmt' then
+    begin
+      // Nuzmber format
+      uff := uff + [uffNumberFormat];
+      numFmtStr := GetAttrValue(ANode, 'formatCode');
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  InitFormatRecord(fmt);
+  if uff <> [] then
+  begin
+    dxf := TDifferentialFormatData.Create;
+    dxf.UsedFormattingFields := uff;
+    fmt.UsedFormattingFields := uff;
+    if (uffBackground in uff) then
+    begin
+      dxf.FillPatternType := StrToFillStyle(fillPatt);
+      dxf.FillBgColor := bgColor;
+      dxf.FillFgColor := fgColor;
+      fmt.SetBackground(dxf.FillPatternType, dxf.FillFgColor, dxf.FillBgColor);
+    end;
+    if (uffBorder in uff) then
+    begin
+      dxf.Borders := borders;
+      dxf.BorderStyles := borderStyles;
+      fmt.Border := borders;
+      fmt.BorderStyles := borderStyles;
+    end;
+    if (uffFont in uff) then
+    begin
+      dxf.FontColor := fontColor;
+      dxf.FontStyles := fontStyles;
+      fmt.FontIndex := TsWorkbook(FWorkbook).AddFont('', -1, fontStyles, fontColor);
+    end else
+    if (uffNumberFormat in uff) then
+    begin
+      dxf.NumFormatStr := numFmtStr;
+      fmt.NumberFormatStr := numFmtStr;
+      fmt.NumberFormatIndex := TsWorkbook(FWorkbook).AddNumberFormat(numFmtStr);
+    end;
+    dxf.CellFormatIndex := TsWorkbook(FWorkbook).AddCellFormat(fmt);
+    FDifferentialFormatList.Add(dxf);
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadDifferentialFormats(ANode: TDOMNode);
+var
+  nodeName: String;
+begin
+  if ANode = nil then
+    exit;
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'dxf' then
+      ReadDifferentialFormat(ANode);
+    ANode := ANode.NextSibling;
   end;
 end;
 
@@ -2790,6 +3178,7 @@ begin
         ReadBorders(Doc_FindNode('borders'));
         ReadNumFormats(Doc_FindNode('numFmts'));
         ReadCellXfs(Doc_FindNode('cellXfs'));
+        ReadDifferentialFormats(DOC_FindNode('dxfs'));
         FreeAndNil(Doc);
       end;
     finally
@@ -2844,6 +3233,7 @@ begin
       ReadSheetFormatPr(Doc_FindNode('sheetFormatPr'), FWorksheet);
       ReadCols(Doc_FindNode('cols'), FWorksheet);
       ReadWorksheet(Doc_FindNode('sheetData'), FWorksheet);
+      ReadConditionalFormatting(Doc_FindNode('conditionalFormatting'), FWorksheet);
       ReadSheetProtection(Doc_FindNode('sheetProtection'), FWorksheet);
       ReadMergedCells(Doc_FindNode('mergeCells'), FWorksheet);
       ReadHyperlinks(Doc_FindNode('hyperlinks'), FWorksheet);
@@ -3382,34 +3772,6 @@ end;
 procedure TsSpreadOOXMLWriter.WriteConditionalFormatCellRule(AStream: TStream;
   ARule: TsCFCellRule; ARange: TsCellRange; APriority: Integer);
 const
-  TYPE_NAMES: array[TsCFCondition] of String = (
-    'cellIs', 'cellIs',                      // cfcEqual, cfcNotEqual,
-    'cellIs', 'cellIs', 'cellIs', 'cellIs',  //  cfcGreaterThan, cfcLessThan, cfcGreaterEqual, cfcLessEqual,
-    'cellIs', 'cellIs',                      // cfcBetween, cfcNotBetween,
-    'aboveAverage', 'aboveAverage', 'aboveAverage', 'aboveAverage', // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
-    'top10', 'top10', 'top10', 'top10',      // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
-    'duplicateValues', 'uniqueValues',       // cfcDuplicate, cfcUnique,
-    'beginsWith', 'endsWith',                // cfcBeginsWith, cfcEndsWith,
-    'containsText', 'notContainsText',       // cfcContainsText, cfcNotContainsText,
-    'containsErrors', 'notContainsErrors'    // cfcContainsErrors, cfcNotContainsErrors
-  );
-  OPERATOR_NAMES: array[TsCFCondition] of string = (
-    'equal', 'notEqual', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual',
-    'between', 'notBetween',
-    '', '', '', '',   // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
-    '', '', '', '',   // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
-    '', '',           // cfcDuplicate, cfcUnique,
-    '', '', '', 'notContains', //cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
-    '', ''            // cfcContainsErrors, cfcNotContainsErrors
-  );
-{
-  OPERATOR_NAMES_1: array[cfcEqual..cfcLessEqual] of String =
-    ('equal', 'notEqual', 'greaterThan', 'lessThan', 'greaterThanOrEqual', 'lessThanOrEqual');
-  OPERATOR_NAMES_2: array[cfcBetween..cfcNotBetween] of String =
-    ('between', 'notBetween');
-  TYPE_NAMES: array[cfcBeginsWith..cfcNotContainsErrors] of String =
-    ('beginsWith', 'endsWith', 'containsText', 'notContainsText', 'containsErrors', 'notContainsErrors');
-    }
   FORMULA: array[cfcBeginsWith..cfcNotContainsErrors] of String = (
     'LEFT(%0:s,LEN("%1:s"))="%1:s"',     // cfcBeginsWith
     'RIGHT(%0:s,Len("%1:s"))="%1:s"',    // cfcEndsWidth
@@ -3433,11 +3795,11 @@ begin
       break;
     end;
 
-  typeStr := TYPE_NAMES[ARule.Condition];
-  if OPERATOR_NAMES[ARule.Condition] = '' then
+  typeStr := CF_TYPE_NAMES[ARule.Condition];
+  if CF_OPERATOR_NAMES[ARule.Condition] = '' then
     opStr := ''
   else
-    opStr := ' operator="' + OPERATOR_NAMES[ARule.Condition] + '"';
+    opStr := ' operator="' + CF_OPERATOR_NAMES[ARule.Condition] + '"';
   formula1Str := '';
   formula2Str := '';
   param1Str := '';
