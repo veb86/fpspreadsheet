@@ -411,6 +411,7 @@ const
   );
 
   CF_VALUE_KIND: array[TsCFValueKind] of string = (
+    '',            // vkNone
     'minimum',     // vkMin
     'maximum',     // vkMax
     'percent',     // vkPercent
@@ -5954,7 +5955,7 @@ begin
             '<calcext:formatting-entry calcext:value="%g" calcext:type="%s" />' +
             '<calcext:formatting-entry calcext:value="%g" calcext:type="%s" />' +
           '</calcext:data-bar>', [
-          ColorToHTMLColorStr(cf_DatabarRule.BarColor), ColorToHTMLColorStr(cf_DatabarRule.BarColor),
+          ColorToHTMLColorStr(cf_DatabarRule.Color), ColorToHTMLColorStr(cf_DatabarRule.Color),
           cf_DatabarRule.StartValue, CF_VALUE_KIND[cf_DatabarRule.StartValueKind],
           cf_DatabarRule.EndValue, CF_VALUE_KIND[cf_DatabarRule.EndValueKind]
         ]));

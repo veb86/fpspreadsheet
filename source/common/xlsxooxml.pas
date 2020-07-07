@@ -73,7 +73,18 @@ type
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
       ARowIndex: Cardinal; var AColIndex: Cardinal);
     procedure ReadCellXfs(ANode: TDOMNode);
-    procedure ReadCFRule(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARange: TsCellRange);
+    procedure ReadCFAverage(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARange: TsCellRange; AFormatIndex: Integer);
+    procedure ReadCFCellFormat(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARange: TsCellRange; AFormatIndex: Integer);
+    procedure ReadCFColorRange(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARange: TsCellRange);
+    procedure ReadCFDataBars(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARange: TsCellRange);
+    procedure ReadCFMisc(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARange: TsCellRange; AFormatIndex: Integer);
+    procedure ReadCFTop10(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARange: TsCellRange; AFormatIndex: Integer);
     procedure ReadColRowBreaks(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     function  ReadColor(ANode: TDOMNode): TsColor;
     procedure ReadCols(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
@@ -468,6 +479,24 @@ begin
       exit;
     end;
   Result := lsThin;
+end;
+
+function StrToCFValueKind(s: String): TsCFValueKind;
+begin
+  case s of
+    'min', 'automin':
+      Result := vkMin;
+    'max', 'automax':
+      Result := vkMax;
+    'percent':
+      Result := vkPercent;
+    'percentile':
+      Result := vkPercentile;
+    'num':
+      Result := vkValue;
+    else
+      Result := vkMin;
+  end;
 end;
 
 function CFOperandToStr(v: Variant): String;
@@ -1235,8 +1264,43 @@ begin
   end;
 end;
 
-procedure TsSpreadOOXMLReader.ReadCFRule(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
-  ARange: TsCellRange);
+procedure TsSpreadOOXMLReader.ReadCFAverage(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
+var
+  s, sEquAve, sAboveAve: String;
+  condition: TsCFCondition;
+  stdDev: Double;
+  sheet: TsWorksheet;
+begin
+  sheet := TsWorksheet(AWorksheet);
+
+  s := GetAttrValue(ANode, 'stdDev');
+  if not TryStrToFloat(s, stdDev, FPointSeparatorSettings) then
+    stdDev := 0.0;
+
+  sEquAve := GetAttrValue(ANode, 'equalAverage');
+  sAboveAve := GetAttrValue(ANode, 'aboveAverage');
+
+  if (sEquAve='1') then
+  begin
+    if (sAboveAve='0') then
+      condition := cfcBelowEqualAverage
+    else
+      condition := cfcAboveEqualAverage;
+  end else
+  begin
+    if (sAboveAve = '0') then
+      condition := cfcBelowAverage
+    else
+      condition := cfcAboveAverage;
+  end;
+
+  sheet.WriteConditionalCellFormat(ARange, condition, stdDev, AFormatIndex);
+end;
+
+
+procedure TsSpreadOOXMLReader.ReadCFCellFormat(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
 var
   nodeName: String;
   s, sType, sOp: String;
@@ -1247,47 +1311,25 @@ var
   n: Integer;
   x: Double;
   r, c: Cardinal;
-  dxf: TDifferentialFormatData;
-  dxfId: Integer;
   condition: TsCFCondition;
   values: array of Variant;
-  fmtIdx: Integer;
   sheet: TsWorksheet;
 begin
   sheet := TsWorksheet(AWorksheet);
 
-  found := false;
-
-  sType := GetAttrValue(ANode, 'type');
   sOp := GetAttrValue(ANode, 'operator');
-
-  if sType = 'cellIs' then
-  begin
-    for cf in TsCFCondition do
-      if sOp = CF_OPERATOR_NAMES[cf] then
-      begin
-        found := true;
-        condition := cf;
-        break;
-      end
-  end
-  else
-    for cf in TsCFCondition do
-      if sType = CF_TYPE_NAMES[cf] then
-      begin
-        found := true;
-        condition := cf;
-        break;
-      end;
-  if not found then
+  found := false;
+  for cf in TsCFCondition do
+    if sOp = CF_OPERATOR_NAMES[cf] then
+    begin
+      found := true;
+      condition := cf;
+      break;
+    end;
+  if (not found) or not (condition in [cfcEqual..cfcNotBetween]) then
     exit;
 
-  s := GetAttrValue(ANode, 'dxfId');
-  if not TryStrToInt(s, dxfId) then
-    exit;
-  dxf := TDifferentialFormatData(FDifferentialFormatList[dxfId]);
-  fmtIdx := dxf.CellFormatIndex;
-
+  // Process cases related to (un)equality of cells
   SetLength(sFormula, 0);
   ANode := ANode.FirstChild;
   while (ANode <> nil) do
@@ -1301,34 +1343,229 @@ begin
     ANode := ANode.NextSibling;
   end;
 
-  if condition in [cfcEqual..cfcNotBetween] then begin
-    SetLength(values, Length(sFormula));
-    for i := 0 to High(sFormula) do begin
-      values[i] := sFormula[i];
-      if (sFormula[i] <> '') then begin
-        if TryStrToInt(sFormula[i], n) then
-          values[i] := n
-        else if TryStrToFloat(sFormula[i], x, FPointSeparatorSettings) then
-          values[i] := x
-        else if sFormula[i][1] = '"' then
-          values[i] := sFormula[i]
-        else if ParseCellString(sFormula[i], r, c) then
-          values[i] := sFormula[i]
-        else
-          values[i] := '=' + sFormula[i];
-      end;
+  SetLength(values, Length(sFormula));
+  for i := 0 to High(sFormula) do begin
+    values[i] := sFormula[i];
+    if (sFormula[i] <> '') then begin
+      if TryStrToInt(sFormula[i], n) then
+        values[i] := n
+      else if TryStrToFloat(sFormula[i], x, FPointSeparatorSettings) then
+        values[i] := x
+      else if sFormula[i][1] = '"' then
+        values[i] := sFormula[i]
+      else if ParseCellString(sFormula[i], r, c) then
+        values[i] := sFormula[i]
+      else
+        values[i] := '=' + sFormula[i];
     end;
-  end else
-    exit;
+  end;
 
   case Length(values) of
-    0: sheet.WriteConditionalCellFormat(ARange, condition, fmtIdx);
-    1: sheet.WriteConditionalCellFormat(ARange, condition, values[0], fmtIdx);
-    2: sheet.WriteConditionalCellFormat(ARange, condition, values[0], values[1], fmtIdx);
+    0: sheet.WriteConditionalCellFormat(ARange, condition, AFormatIndex);
+    1: sheet.WriteConditionalCellFormat(ARange, condition, values[0], AFormatIndex);
+    2: sheet.WriteConditionalCellFormat(ARange, condition, values[0], values[1], AFormatIndex);
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadCFColorRange(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARange: TsCellRange);
+{ <colorScale>
+    <cfvo type="num" val="2" />
+    <cfvo type="percentile" val="50" />
+    <cfvo type="max" />
+    <color rgb="FF63BE7B" />
+    <color rgb="FFFFEB84" />
+    <color rgb="FFF8696B" />
+  </colorScale>
+}
+var
+  sheet: TsWorksheet;
+  nodeName, s: String;
+  vk: array[0..2] of TsCFValueKind = (vkNone, vkNone, vkNone);
+  v: array[0..2] of Double = (NaN, NaN, NaN);
+  c: array[0..2] of TsColor = (scNotDefined, scNotDefined, scNotDefined);
+  x: Double;
+  iv, ic: Integer;
+  clevels, vlevels: Integer;
+begin
+  iv := 0;
+  ic := 0;
+  ANode := ANode.FirstChild;
+  if (ANode <> nil) and (ANode.NodeName = 'colorScale') then
+    ANode := ANode.FirstChild;
+  while (ANode <> nil) do
+  begin
+    nodeName := ANode.NodeName;
+    if (nodeName = 'color') and (ic <= High(c)) then
+    begin
+      c[ic] := ReadColor(ANode);
+      inc(ic);
+    end;
+    if (nodeName = 'cfvo') and (iv <= High(vk)) then
+    begin
+      s := GetAttrValue(ANode, 'type');
+      vk[iv] := StrToCFValueKind(s);
+      s := GetAttrValue(ANode, 'val');
+      if TryStrToFloat(s, x, FPointSeparatorSettings) then
+        v[iv] := x
+      else
+        v[iv] := 0.0;
+      inc(iv);
+    end;
+    ANode := ANode.NextSibling;
+  end;
 
+  clevels := 0;
+  for ic := 0 to High(c) do
+  begin
+    if c[ic] = scNotDefined then
+      break;
+    inc(cLevels);
+  end;
+
+  vlevels := 0;
+  for iv := 0 to High(vk) do
+  begin
+    if vk[iv] = vkNone then
+      break;
+    inc(vlevels);
+  end;
+
+  // Not 100% sure, but I guess there must be as many colors as value kinds.
+  if vlevels <> cLevels then
+  begin
+    FWorkbook.AddErrorMsg('ColorRange: colors-levels mismatch');
+    exit;
+  end;
+
+  sheet := TsWorksheet(AWorksheet);
+  case clevels of
+    1: exit;
+    2: sheet.WriteColorRange(ARange, c[0],vk[0],v[0], c[1],vk[1],v[1]);
+    3: sheet.WriteColorRange(ARange, c[0],vk[0],v[0], c[1],vk[1],v[1], c[2],vk[2],v[2]);
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadCFDataBars(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARange: TsCelLRange);
+{ <dataBar>
+    <cfvo type="num" val="2" />
+    <cfvo type="percent" val="80" />
+    <color rgb="FFFF0000" />
+  </dataBar>   } // We do not support the x14 namespace extension ATM
+var
+  sheet: TsWorksheet;
+  nodeName, s: String;
+  vk: array[0..1] of TsCFValuekind;
+  v: array[0..1] of Double;
+  x: Double;
+  idx: Integer;
+  clr: TsColor;
+begin
+  idx := 0;
+  ANode := ANode.FirstChild;
+  if (ANode <> nil) and (ANode.NodeName = 'dataBar') then
+    ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'color' then
+      clr := ReadColor(ANode)
+    else
+      clr := scBlue;
+
+    if (nodeName = 'cfvo') and (idx <= 1) then
+    begin
+      s := GetAttrValue(ANode, 'type');
+      vk[idx] := StrToCFValueKind(s);
+
+      s := GetAttrValue(ANode, 'val');
+      if TryStrToFloat(s, x, FPointSeparatorSettings) then
+        v[idx] := x
+      else
+        v[idx] := NaN;
+
+      inc(idx);
+    end;
+
+    ANode := ANode.NextSibling;
+  end;
+
+  // Check for value attribute. If not existing, use simple min/max scaling and log error.
+  if ((vk[0] in [vkPercent, vkPercentile, vkValue]) and IsNaN(v[0])) or
+     ((vk[1] in [vkPercent, vkPercentile, vkValue]) and IsNaN(v[1])) then
+  begin
+    FWorkbook.AddErrorMsg('DataBars: value needed.');
+    vk[0] := vkMin;
+    vk[1] := vkMax;
+  end;
+
+  sheet := TsWorksheet(AWorksheet);
+  sheet.WriteDataBars(ARange, clr, vk[0], v[0], vk[1], v[1]);
+end;
+
+procedure TsSpreadOOXMLReader.ReadCFMisc(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
+var
+  sheet: TsWorksheet;
+  s: String;
+  cf, condition: TsCFCondition;
+  found: Boolean;
+begin
+  sheet := TsWorksheet(AWorksheet);
+
+  found := false;
+  s := GetAttrValue(ANode, 'type');
+  for cf in TsCFCondition do
+    if CF_TYPE_NAMES[cf] = s then
+    begin
+      condition := cf;
+      found := true;
+      break;
+    end;
+  if not found then
+    exit;
+
+  if condition in [cfcAboveAverage..cfcBottomPercent] then
+  begin
+    s := GetAttrValue(ANode, 'text');
+    sheet. WriteConditionalCellFormat(ARange, condition, s, AFormatIndex);
+  end else
+    sheet. WriteConditionalCellFormat(ARange, condition, AFormatIndex);
+end;
+
+procedure TsSpreadOOXMLReader.ReadCFTop10(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
+var
+  sheet: TsWorksheet;
+  rank: Integer;
+  s, sPercent, sBottom: String;
+  condition: TsCFCondition;
+begin
+  sheet := TsWorksheet(AWorksheet);
+
+  s := GetAttrValue(ANode, 'rank');
+  if not TryStrToInt(s, rank) then
+    rank := 10;
+
+  sPercent := GetAttrValue(ANode, 'percent');
+  sBottom := GetAttrValue(ANode, 'bottom');
+  if (sBottom = '1') then
+  begin
+    if sPercent = '1' then
+      condition := cfcBottomPercent
+    else
+      condition := cfcBottom;
+  end else
+  begin
+    if sPercent = '1' then
+      condition := cfcTopPercent
+    else
+      condition := cfcTop;
+  end;
+
+  sheet.WriteConditionalCellFormat(ARange, condition, rank, AFormatIndex);
+end;
 
 procedure TsSpreadOOXMLReader.ReadColRowBreaks(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
@@ -1576,6 +1813,9 @@ var
   nodeName: string;
   range: TsCellRange;
   s: String;
+  dxf: TDifferentialFormatData;
+  dxfId: Integer;
+  fmtIdx: Integer;
 begin
   while ANode <> nil do
   begin
@@ -1590,7 +1830,34 @@ begin
         begin
           nodeName := childNode.NodeName;
           if nodeName = 'cfRule' then
-            ReadCFRule(childNode, AWorksheet, range);
+          begin
+            // Get format index
+            s := GetAttrValue(childNode, 'dxfId');
+            if TryStrToInt(s, dxfId) then
+            begin
+              dxf := TDifferentialFormatData(FDifferentialFormatList[dxfId]);
+              fmtIdx := dxf.CellFormatIndex;
+            end else
+              fmtIdx := 0;
+
+            s := GetAttrValue(childNode, 'type');
+            case s of
+              'cellIs':
+                ReadCFCellFormat(childNode, AWorksheet, range, fmtIdx);
+              'aboveAverage':
+                ReadCFAverage(childNode, AWorksheet, range, fmtIdx);
+              'top10':
+                ReadCFTop10(childNode, AWorksheet, range, fmtIdx);
+              'unique', 'duplicate', 'containsErrors', 'notContainsErrors':
+                ReadCFMisc(childNode, AWorksheet, range, fmtIdx);
+              'containsText', 'notContainsText', 'beginsWith', 'endsWith':
+                ReadCFMisc(childNode, AWorksheet, range, fmtIdx);
+              'colorScale':
+                ReadCFColorRange(childNode, AWorksheet, range);
+              'dataBar':
+                ReadCFDataBars(childNode, AWorksheet, range);
+            end;
+          end;
           childNode := childNode.NextSibling;
         end;
       end;
@@ -3920,7 +4187,7 @@ begin
   AppendToStream(AStream,
          CF_ValueNode(ARule.StartValueKind, ARule.StartValue),
          CF_ValueNode(ARule.EndValueKind, ARule.EndValue),
-         CF_ColorNode(ARule.BarColor) );
+         CF_ColorNode(ARule.Color) );
 
   AppendToStream(AStream,
       '</dataBar>' +

@@ -35,7 +35,7 @@ type
     procedure Assign(ASource: TsCFRule); override;
   end;
 
-  TsCFValueKind = (vkMin, vkMax, vkPercent, vkPercentile, vkValue);
+  TsCFValueKind = (vkNone, vkMin, vkMax, vkPercent, vkPercentile, vkValue);
 
   { Color range }
   TsCFColorRangeRule = class(TsCFRule)
@@ -62,7 +62,7 @@ type
     EndValueKind: TsCFValueKind;
     StartValue: Double;
     EndValue: Double;
-    BarColor: TsColor;
+    Color: TsColor;
     constructor Create;
     procedure Assign(ASource: TsCFRule); override;
   end;
@@ -134,6 +134,7 @@ type
 implementation
 
 uses
+  Math,
   fpSpreadsheet;
 
 procedure TsCFCellRule.Assign(ASource: TsCFRule);
@@ -153,7 +154,7 @@ begin
   inherited;
   StartValueKind := vkMin;
   EndValueKind := vkMax;
-  BarColor := scBlue;
+  Color := scBlue;
 end;
 
 procedure TsCFDataBarRule.Assign(ASource: TsCFRule);
@@ -359,6 +360,7 @@ var
 begin
   rule := TsCFColorRangeRule.Create;
   rule.StartColor := AStartColor;
+  rule.CenterColor := scNotDefined;
   rule.EndColor := AEndColor;
   rule.ThreeColors := false;
   Result := AddRule(ASheet, ARange, rule);
@@ -373,6 +375,7 @@ var
 begin
   rule := TsCFColorRangeRule.Create;
   rule.SetupStart(AStartColor, AStartKind, AStartValue);
+  rule.SetupCenter(scNotDefined, vkNone, NaN);
   rule.SetupEnd(AEndColor, AEndKind, AEndValue);
   rule.ThreeColors := false;
   Result := AddRule(ASheet, ARange, rule);
@@ -400,7 +403,7 @@ var
   rule: TsCFDataBarRule;
 begin
   rule := TsCFDataBarRule.Create;
-  rule.BarColor:= ABarColor;
+  rule.Color := ABarColor;
   Result := AddRule(ASheet, ARange, rule);
 end;
 
@@ -411,7 +414,7 @@ var
   rule: TsCFDataBarRule;
 begin
   rule := TsCFDataBarRule.Create;
-  rule.BarColor:= ABarColor;
+  rule.Color:= ABarColor;
   rule.StartValueKind := AStartKind;
   rule.StartValue := AStartValue;
   rule.EndValueKind := AEndKind;
