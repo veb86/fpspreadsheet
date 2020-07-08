@@ -995,7 +995,7 @@ type
     FFormatID: TsSpreadFormatID;
     FOptions: TsWorkbookOptions;
     FProtection: TsWorkbookProtections;
-    FUnits: TsSizeUnits;
+    FUnits: TsSizeUnits;  // Units for row heights and col widths
   public
     {@@ A copy of SysUtil's DefaultFormatSettings (converted to UTF8) to provide
       some kind of localization to some formatting strings.

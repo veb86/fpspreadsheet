@@ -87,8 +87,8 @@ type
     FFirstColIndex: Cardinal;
     FLastRowIndex: Cardinal;
     FLastColIndex: Cardinal;
-    FDefaultColWidth: Single;   // in "characters". Excel uses the width of char "0" in 1st font
-    FDefaultRowHeight: Single;  // in "character heights", i.e. line count
+    FDefaultColWidth: Single;
+    FDefaultRowHeight: Single;
     FSortParams: TsSortParams;  // Parameters of the current sorting operation
     FBiDiMode: TsBiDiMode;
     FCryptoInfo: TsCryptoInfo;
@@ -108,13 +108,10 @@ type
     FOnWriteCellData: TsWorksheetWriteCellDataEvent;
 
     { Setter/Getter }
-    function  GetDefaultColWidth: Single;
-    function  GetDefaultRowHeight: Single;
+
     function  GetFormatSettings: TFormatSettings;
     function  GetIndex: Integer;
     procedure SetBiDiMode(AValue: TsBiDiMode);
-    procedure SetDefaultColWidth(AValue: Single);
-    procedure SetDefaultRowHeight(AValue: Single);
     procedure SetIndex(AValue: Integer);
     procedure SetTabColor(AValue: TsColor);
     procedure SetVirtualColCount(AValue: Cardinal);
@@ -647,13 +644,6 @@ type
     property  TabColor: TsColor read FTabColor write SetTabColor default scNotDefined;
     {@@ Workbook to which the worksheet belongs }
     property  Workbook: TsWorkbook read FWorkbook;
-    {@@ The default column width given in "character units" (width of the
-      character "0" in the default font) }
-    property DefaultColWidth: Single read GetDefaultColWidth write SetDefaultColWidth;
-      deprecated 'Use Read/WriteDefaultColWidth';
-    {@@ The default row height is given in "line count" (height of the default font }
-    property DefaultRowHeight: Single read GetDefaultRowHeight write SetDefaultRowHeight;
-      deprecated 'Use Read/WriteDefaultColWidth';
     {@@ In VirtualMode, the value of VirtualColCount signals how many colums
       will be transferred to the worksheet. }
     property VirtualColCount: cardinal read FVirtualColCount write SetVirtualColCount;
@@ -7285,26 +7275,6 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-function TsWorksheet.GetDefaultColWidth: Single;
-begin
-  Result := ReadDefaultColWidth(suChars);
-end;
-
-procedure TsWorksheet.SetDefaultColWidth(AValue: Single);
-begin
-  WriteDefaultColWidth(AValue, suChars);
-end;
-
-function TsWorksheet.GetDefaultRowHeight: Single;
-begin
-  Result := ReadDefaultRowHeight(suLines);
-end;
-
-procedure TsWorksheet.SetDefaultRowHeight(AValue: Single);
-begin
-  WriteDefaultRowHeight(AValue, suLines);
-end;
-
 function TsWorksheet.GetFormatSettings: TFormatSettings;
 begin
   Result := FWorkbook.FormatSettings;
@@ -9267,7 +9237,7 @@ var
   col: PCol;
   row: PRow;
   i: Integer;
-  w: Single;
+  w, h: Single;
   fnt: TsFont;
 begin
   Result := nil;
@@ -9285,8 +9255,12 @@ begin
     end;
 
     // Copy DefaultColWidth
-    w := AWorksheet.ReadDefaultColWidth(suMillimeters);
-    Result.WriteDefaultColWidth(w, suMillimeters);
+    w := AWorksheet.ReadDefaultColWidth(Units);
+    Result.WriteDefaultColWidth(w, Units);
+
+    // Copy DefaultRowHeight
+    h := AWorksheet.ReadDefaultRowHeight(Units);
+    Result.WriteDefaultRowHeight(h, Units);
 
     // Copy cells (incl formulas, comments, hyperlinks etc).
     for cell in AWorksheet.Cells do

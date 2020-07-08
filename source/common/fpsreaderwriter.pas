@@ -429,7 +429,7 @@ begin
     if lCol^.ColWidthType = cwtCustom then
       w := lCol^.Width
     else
-      w := sheet.DefaultColWidth;
+      w := sheet.ReadDefaultColWidth(sheet.Workbook.Units);
     if not SameValue(w, w0) then
 //    if not SameValue(lCol^.Width, w, EPS) then
     begin
