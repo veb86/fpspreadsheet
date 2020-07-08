@@ -11,6 +11,7 @@ uses
   Interfaces, Forms, GuiTestRunner, testsutility,
   datetests, stringtests, numberstests, manualtests, internaltests, mathtests,
   fileformattests, formattests, colortests, fonttests, optiontests,
+  conditionalformattests,
   numformatparsertests, formulatests, rpnFormulaUnit, singleformulatests,
   exceltests, emptycelltests, errortests, virtualmodetests,
   colrowtests, ssttests, celltypetests, sortingtests, copytests,
