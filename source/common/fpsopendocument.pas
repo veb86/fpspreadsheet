@@ -7159,7 +7159,7 @@ begin
   fmt := (FWorkbook as TsWorkbook).GetCellFormat(ACell^.FormatIndex);
   if (fmt.UsedFormattingFields <> []) then
     AppendToStream(AStream, Format(
-      '<table:table-cell table:style-name="%s"%s>', [lStyle, spannedStr]),
+      '<table:table-cell%s%s>', [lStyle, spannedStr]),
         comment,
       '</table:table-cell>')
   else

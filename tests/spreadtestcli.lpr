@@ -12,7 +12,7 @@ uses
 
   {the actual tests}
   datetests, manualtests, stringtests, internaltests, testsutility, testutils,
-  formattests, colortests, emptycelltests, insertdeletetests, errortests,
+  formattests, colortests, emptycelltests, errortests,
   numberstests, fonttests, formulatests, numformatparsertests, optiontests,
   virtualmodetests, dbexporttests, sortingtests, copytests, celltypetests,
   commenttests, enumeratortests, hyperlinktests, pagelayouttests;

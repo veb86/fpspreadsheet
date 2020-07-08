@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="11"/>
+    <Version Value="12"/>
     <PathDelim Value="\"/>
     <General>
       <Flags>
         <MainUnitHasCreateFormStatements Value="False"/>
         <MainUnitHasTitleStatement Value="False"/>
+        <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <MainUnit Value="0"/>
       <Title Value="spreadtestcli"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
@@ -53,8 +53,6 @@
     </BuildModes>
     <PublishOptions>
       <Version Value="2"/>
-      <IncludeFileFilter Value="*.(pas|pp|inc|lfm|lpr|lrs|lpi|lpk|sh|xml)"/>
-      <ExcludeFileFilter Value="*.(bak|ppu|o|so);*~;backup"/>
     </PublishOptions>
     <RunParams>
       <FormatVersion Value="2"/>
@@ -67,7 +65,7 @@
         <PackageName Value="LCLBase"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="25">
+    <Units Count="24">
       <Unit0>
         <Filename Value="spreadtestcli.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -105,69 +103,65 @@
         <IsPartOfProject Value="True"/>
       </Unit8>
       <Unit9>
-        <Filename Value="insertdeletetests.pas"/>
+        <Filename Value="errortests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit9>
       <Unit10>
-        <Filename Value="errortests.pas"/>
+        <Filename Value="numberstests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit10>
       <Unit11>
-        <Filename Value="numberstests.pas"/>
+        <Filename Value="fonttests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit11>
       <Unit12>
-        <Filename Value="fonttests.pas"/>
+        <Filename Value="formulatests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit12>
       <Unit13>
-        <Filename Value="formulatests.pas"/>
+        <Filename Value="numformatparsertests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit13>
       <Unit14>
-        <Filename Value="numformatparsertests.pas"/>
+        <Filename Value="optiontests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit14>
       <Unit15>
-        <Filename Value="optiontests.pas"/>
+        <Filename Value="virtualmodetests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit15>
       <Unit16>
-        <Filename Value="virtualmodetests.pas"/>
+        <Filename Value="dbexporttests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit16>
       <Unit17>
-        <Filename Value="dbexporttests.pas"/>
+        <Filename Value="sortingtests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit17>
       <Unit18>
-        <Filename Value="sortingtests.pas"/>
+        <Filename Value="copytests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit18>
       <Unit19>
-        <Filename Value="copytests.pas"/>
+        <Filename Value="celltypetests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit19>
       <Unit20>
-        <Filename Value="celltypetests.pas"/>
+        <Filename Value="commenttests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit20>
       <Unit21>
-        <Filename Value="commenttests.pas"/>
+        <Filename Value="enumeratortests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit21>
       <Unit22>
-        <Filename Value="enumeratortests.pas"/>
+        <Filename Value="hyperlinktests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit22>
       <Unit23>
-        <Filename Value="hyperlinktests.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit23>
-      <Unit24>
         <Filename Value="pagelayouttests.pas"/>
         <IsPartOfProject Value="True"/>
-      </Unit24>
+      </Unit23>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
