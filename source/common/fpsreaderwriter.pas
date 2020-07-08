@@ -422,7 +422,7 @@ begin
   if lCol^.ColWidthType = cwtCustom then
     w0 := lCol^.Width
   else
-    w0 := sheet.DefaultColWidth;
+    w0 := sheet.ReadDefaultColWidth(sheet.Workbook.Units);
 //  w := PCol(sheet.Cols[0])^.Width;
   for c := 1 to sheet.Cols.Count-1 do begin
     lCol := PCol(sheet.Cols[c]);

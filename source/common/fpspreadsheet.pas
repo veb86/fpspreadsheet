@@ -9267,6 +9267,8 @@ var
   col: PCol;
   row: PRow;
   i: Integer;
+  w: Single;
+  fnt: TsFont;
 begin
   Result := nil;
   if (AWorksheet = nil) then
@@ -9275,18 +9277,34 @@ begin
   Result := AddWorksheet(AWorksheet.Name, ReplaceDuplicateName);
   inc(FNotificationLock);
   try
+    // Make sure to use the same default font, colwidths depend on it!
+    if Result.WorkBook <> AWorksheet.Workbook then
+    begin
+      fnt := AWorksheet.Workbook.GetDefaultFont;
+      Result.Workbook.SetDefaultFont(fnt.FontName, fnt.Size);
+    end;
+
+    // Copy DefaultColWidth
+    w := AWorksheet.ReadDefaultColWidth(suMillimeters);
+    Result.WriteDefaultColWidth(w, suMillimeters);
+
+    // Copy cells (incl formulas, comments, hyperlinks etc).
     for cell in AWorksheet.Cells do
     begin
       r := cell^.Row;
       c := cell^.Col;
       Result.CopyCell(r, c, r, c, AWorksheet);
     end;
+
+    // Copy col records
     for i := 0 to AWorksheet.Cols.Count-1 do
     begin
       col := AWorksheet.Cols[i];
       c := col^.Col;
       Result.CopyCol(c, c, AWorksheet);
     end;
+
+    // Copy row records
     for i := 0 to AWorksheet.Rows.Count-1 do
     begin
       row := AWorksheet.Rows[i];
