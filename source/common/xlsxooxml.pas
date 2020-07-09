@@ -1267,16 +1267,12 @@ end;
 procedure TsSpreadOOXMLReader.ReadCFAverage(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
 var
-  s, sEquAve, sAboveAve: String;
+  s, sStdDev, sEquAve, sAboveAve: String;
   condition: TsCFCondition;
   stdDev: Double;
   sheet: TsWorksheet;
 begin
   sheet := TsWorksheet(AWorksheet);
-
-  s := GetAttrValue(ANode, 'stdDev');
-  if not TryStrToFloat(s, stdDev, FPointSeparatorSettings) then
-    stdDev := 0.0;
 
   sEquAve := GetAttrValue(ANode, 'equalAverage');
   sAboveAve := GetAttrValue(ANode, 'aboveAverage');
@@ -1295,7 +1291,14 @@ begin
       condition := cfcAboveAverage;
   end;
 
-  sheet.WriteConditionalCellFormat(ARange, condition, stdDev, AFormatIndex);
+  sStdDev := GetAttrValue(ANode, 'stdDev');
+  if not TryStrToFloat(sStdDev, stdDev, FPointSeparatorSettings) then
+    sStdDev := '';     // This will omit the "stdDev" attribute
+
+  if sStdDev = '' then
+    sheet.WriteConditionalCellFormat(ARange, condition, AFormatIndex)
+  else
+    sheet.WriteConditionalCellFormat(ARange, condition, stdDev, AFormatIndex);
 end;
 
 
@@ -1526,7 +1529,7 @@ begin
   if not found then
     exit;
 
-  if condition in [cfcAboveAverage..cfcBottomPercent] then
+  if condition in [cfcBeginsWith..cfcNotContainsText] then
   begin
     s := GetAttrValue(ANode, 'text');
     sheet. WriteConditionalCellFormat(ARange, condition, s, AFormatIndex);
@@ -1848,7 +1851,7 @@ begin
                 ReadCFAverage(childNode, AWorksheet, range, fmtIdx);
               'top10':
                 ReadCFTop10(childNode, AWorksheet, range, fmtIdx);
-              'unique', 'duplicate', 'containsErrors', 'notContainsErrors':
+              'uniqueValues', 'duplicateValues', 'containsErrors', 'notContainsErrors':
                 ReadCFMisc(childNode, AWorksheet, range, fmtIdx);
               'containsText', 'notContainsText', 'beginsWith', 'endsWith':
                 ReadCFMisc(childNode, AWorksheet, range, fmtIdx);
@@ -4089,8 +4092,8 @@ begin
           param1Str := ' aboveAverage="0"';
         if (ARule.Condition in [cfcAboveEqualAverage, cfcBelowEqualAverage]) then
           param2Str := ' equalAverage="1"';
-        if not ((ARule.Operand1 = varNull) or (ARule.Operand1 = 0)) then
-          param3Str := Format(' stdDev="%d"', [ARule.Operand1]);
+        if VarIsNumeric(ARule.Operand1) or (ARule.Operand1 = 0) then
+          param3Str := Format(' stdDev="%g"', [double(ARule.Operand1)]);
       end;
     cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent:
       begin
