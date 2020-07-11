@@ -34,6 +34,12 @@ type
     procedure TestWriteRead_CF_CellFmt(AFileFormat: TsSpreadsheetFormat;
       ACondition: TsCFCondition; ACellFormat: TsCellFormat);
 
+    procedure TestWriteRead_CF_ColorRange(AFileFormat: TsSpreadsheetFormat;
+      ThreeColors: Boolean; FullSyntax: Boolean);
+
+    procedure TestWriteRead_CF_DataBars(AFileFormat: TsSpreadsheetFormat;
+      FullSyntax: Boolean);
+
   published
     procedure TestWriteRead_CF_CellFmt_XLSX_Equal_Const;
     procedure TestWriteRead_CF_CellFmt_XLSX_NotEqual_Const;
@@ -63,6 +69,15 @@ type
     procedure TestWriteRead_CF_CellFmt_XLSX_NotContainsErrors;
     procedure TestWriteRead_CF_CellFmt_XLSX_Background;
     procedure TestWriteRead_CF_CellFmt_XLSX_Border;
+
+    procedure TestWriteRead_CF_ColorRange_XLSX_3C_Full;
+    procedure TestWriteRead_CF_ColorRange_XLSX_2C_Full;
+    procedure TestWriteRead_CF_ColorRange_XLSX_3C_Simple;
+    procedure TestWriteRead_CF_ColorRange_XLSX_2C_Simple;
+
+    procedure TestWriteRead_CF_Databars_XLSX_Full;
+    procedure TestWriteRead_CF_Databars_XLSX_Simple;
+
   end;
 
 implementation
@@ -84,8 +99,9 @@ begin
 end;
 
 
-{ Conditional CellFormat tests. Detected cells get a red background. }
-
+{-------------------------------------------------------------------------------
+                        Conditional cell format tests
+-------------------------------------------------------------------------------}
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt(
   AFileFormat: TsSpreadsheetFormat; ACondition: TsCFCondition; ACellFormat: TsCellFormat);
 var
@@ -565,6 +581,289 @@ begin
   fmt.SetBorders([cbNorth, cbEast, cbSouth, cbWest], scBlue, lsDotted);
   TestWriteRead_CF_CellFmt(sfOOXML, cfcEqual, 5, fmt);
 end;
+
+{-------------------------------------------------------------------------------
+                            Color range tests
+--------------------------------------------------------------------------------}
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange(
+  AFileFormat: TsSpreadsheetFormat; ThreeColors: Boolean; FullSyntax: Boolean);
+const
+  SHEET_NAME = 'CF';
+var
+  worksheet: TsWorksheet;
+  workbook: TsWorkbook;
+  row, col: Cardinal;
+  tempFile: string;
+  cf: TsConditionalFormat;
+  rule: TsCFColorRangeRule;
+  sollRange: TsCellRange;
+  sollColor1: TsColor = scRed;
+  sollColor2: TsColor = scYellow;
+  sollColor3: TsColor = scWhite;
+  sollValueKind1: TsCFValueKind = vkMin;
+  sollValueKind2: TsCFValueKind = vkPercentile;
+  sollValueKind3: TsCFValueKind = vkMax;
+  sollValue1: Double = 0.0;
+  sollValue2: Double = 50.0;
+  sollValue3: Double = 0.0;
+  actRange: TsCellRange;
+begin
+  // Write out all test values
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := [boAutoCalc];
+    workSheet:= workBook.AddWorksheet(SHEET_NAME);
+
+    // Add test cells (numeric)
+    row := 0;
+    for Col := 0 to 9 do
+      worksheet.WriteNumber(row, col, col*10.0);
+
+    // Write conditional formats
+    sollRange := Range(0, 0, 0, 9);
+    if not FullSyntax then
+    begin
+      if ThreeColors then
+        worksheet.WriteColorrange(sollRange, sollColor1, sollColor2, sollColor3)
+      else
+        worksheet.WriteColorRange(sollRange, sollColor1, sollColor3);
+    end else
+    begin
+      if ThreeColors then
+        worksheet.WriteColorRange(sollRange,
+          sollColor1, sollValueKind1, sollValue1,
+          sollColor2, sollValueKind2, sollValue2,
+          sollColor3, sollValueKind3, sollValue3)
+      else
+        worksheet.WriteColorRange(sollRange,
+          sollColor1, sollValueKind1, sollValue1,
+          sollColor3, sollValueKind3, sollValue3);
+    end;
+
+    // Save to file
+    tempFile := NewTempFile;
+    workBook.WriteToFile(tempFile, AFileFormat, true);
+  finally
+    workbook.Free;
+  end;
+
+  // Open the spreadsheet
+  workbook := TsWorkbook.Create;
+  try
+    workbook.ReadFromFile(TempFile, AFileFormat);
+    worksheet := GetWorksheetByName(workBook, SHEET_NAME);
+
+    if worksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+
+    // Check count of conditional formats
+    CheckEquals(1, workbook.GetNumConditionalFormats, 'ConditionalFormat count mismatch.');
+
+    // Read conditional format
+    cf := Workbook.GetConditionalFormat(0);
+
+    //Check range
+    actRange := cf.CellRange;
+    CheckEquals(sollRange.Row1, actRange.Row1, 'Conditional format range mismatch (Row1)');
+    checkEquals(sollRange.Col1, actRange.Col1, 'Conditional format range mismatch (Col1)');
+    CheckEquals(sollRange.Row2, actRange.Row2, 'Conditional format range mismatch (Row2)');
+    checkEquals(sollRange.Col2, actRange.Col2, 'Conditional format range mismatch (Col2)');
+
+    // Check rules count
+    CheckEquals(1, cf.RulesCount, 'Conditional format rules count mismatch');
+
+    // Check rules class
+    CheckEquals(TsCFColorRangeRule, cf.Rules[0].ClassType, 'Conditional format rule class mismatch');
+
+    // Now know that the rule is a TsCFColorRangeRule
+    rule := TsCFColorRangeRule(cf.Rules[0]);
+
+    // Check two-color vs three color case
+    CheckEquals(ThreeColors, rule.ThreeColors, 'Color range format: three color case mismatch');
+
+    // Start parameters
+    CheckEquals(TsColor(sollColor1), TsColor(rule.StartColor), 'Color range format: start color mismatch');
+    if FullSyntax then
+    begin
+      CheckEquals(
+        GetEnumName(TypeInfo(TsCFValueKind), integer(sollValueKind1)),
+        GetEnumName(TypeInfo(TsCFValueKind), integer(rule.StartValueKind)),
+        'Color range format: start value kind mismatch.'
+      );
+      CheckEquals(sollValue1, rule.StartValue, 'Color range format: start value mismatch');
+    end;
+
+    // Center parameters
+    if ThreeColors then
+    begin
+      CheckEquals(TsColor(sollColor2), TsColor(rule.CenterColor), 'Color range format: center color mismatch');
+      if FullSyntax then
+      begin
+        CheckEquals(
+          GetEnumName(TypeInfo(TsCFValueKind), integer(sollValueKind2)),
+          GetEnumName(TypeInfo(TsCFValueKind), integer(rule.CenterValueKind)),
+          'Color range format: center value kind mismatch.'
+        );
+        CheckEquals(sollValue2, rule.CenterValue, 'Color range format: center value mismatch');
+      end;
+    end;
+
+    // End parameters
+    CheckEquals(TsColor(sollColor3), TsColor(rule.EndColor), 'Color range format: end color mismatch');
+    if FullSyntax then
+    begin
+      CheckEquals(
+        GetEnumName(TypeInfo(TsCFValueKind), integer(sollValueKind3)),
+        GetEnumName(TypeInfo(TsCFValueKind), integer(rule.EndValueKind)),
+        'Color range format: end value kind mismatch.'
+      );
+      CheckEquals(sollValue3, rule.EndValue, 'Color range format: end value mismatch');
+    end;
+
+  finally
+    workbook.Free;
+    DeleteFile(tempFile);
+  end;
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_XLSX_3C_Full;
+begin
+  TestWriteRead_CF_ColorRange(sfOOXML, true, true);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_XLSX_2C_Full;
+begin
+  TestWriteRead_CF_ColorRange(sfOOXML, false, true);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_XLSX_3C_Simple;
+begin
+  TestWriteRead_CF_ColorRange(sfOOXML, true, false);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_XLSX_2C_Simple;
+begin
+  TestWriteRead_CF_ColorRange(sfOOXML, false, false);
+end;
+
+
+{-------------------------------------------------------------------------------
+                             DataBar tests
+-------------------------------------------------------------------------------}
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Databars(
+  AFileFormat: TsSpreadsheetFormat; FullSyntax: Boolean);
+const
+  SHEET_NAME = 'CF';
+var
+  worksheet: TsWorksheet;
+  workbook: TsWorkbook;
+  row, col: Cardinal;
+  tempFile: string;
+  cf: TsConditionalFormat;
+  rule: TsCFDataBarRule;
+  sollRange: TsCellRange;
+  sollColor: TsColor = scRed;
+  sollValueKind1: TsCFValueKind = vkMin;
+  sollValueKind2: TsCFValueKind = vkMax;
+  sollValue1: Double = 0.0;
+  sollValue2: Double = 0.0;
+  actRange: TsCellRange;
+begin
+  // Write out all test values
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := [boAutoCalc];
+    workSheet:= workBook.AddWorksheet(SHEET_NAME);
+
+    // Add test cells (numeric)
+    row := 0;
+    for Col := 0 to 9 do
+      worksheet.WriteNumber(row, col, col*10.0);
+
+    // Write conditional formats
+    sollRange := Range(0, 0, 0, 9);
+    if FullSyntax then
+      worksheet.WriteDataBars(sollRange, sollColor, sollValueKind1, sollValue1, sollValueKind2, sollValue2)
+    else
+      worksheet.WriteDataBArs(sollRange, sollColor);
+
+    // Save to file
+    tempFile := NewTempFile;
+    workBook.WriteToFile(tempFile, AFileFormat, true);
+  finally
+    workbook.Free;
+  end;
+
+  // Open the spreadsheet
+  workbook := TsWorkbook.Create;
+  try
+    workbook.ReadFromFile(TempFile, AFileFormat);
+    worksheet := GetWorksheetByName(workBook, SHEET_NAME);
+
+    if worksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+
+    // Check count of conditional formats
+    CheckEquals(1, workbook.GetNumConditionalFormats, 'ConditionalFormat count mismatch.');
+
+    // Read conditional format
+    cf := Workbook.GetConditionalFormat(0);
+
+    //Check range
+    actRange := cf.CellRange;
+    CheckEquals(sollRange.Row1, actRange.Row1, 'Conditional format range mismatch (Row1)');
+    checkEquals(sollRange.Col1, actRange.Col1, 'Conditional format range mismatch (Col1)');
+    CheckEquals(sollRange.Row2, actRange.Row2, 'Conditional format range mismatch (Row2)');
+    checkEquals(sollRange.Col2, actRange.Col2, 'Conditional format range mismatch (Col2)');
+
+    // Check rules count
+    CheckEquals(1, cf.RulesCount, 'Conditional format rules count mismatch');
+
+    // Check rules class
+    CheckEquals(TsCFDataBarRule, cf.Rules[0].ClassType, 'Conditional format rule class mismatch');
+
+    // Now know that the rule is a TsCFDataBarRule
+    rule := TsCFDataBarRule(cf.Rules[0]);
+
+    // Color of bars
+    CheckEquals(TsColor(sollColor), TsColor(rule.Color), 'Data bar format: bar color mismatch');
+
+    // Parameters
+    if FullSyntax then
+    begin
+      CheckEquals(
+        GetEnumName(TypeInfo(TsCFValueKind), integer(sollValueKind1)),
+        GetEnumName(TypeInfo(TsCFValueKind), integer(rule.StartValueKind)),
+        'Data bar format: start value kind mismatch.'
+      );
+      if not (sollValueKind1 in [vkMin, vkMax]) then
+        CheckEquals(sollValue1, rule.StartValue, 'Data bar format: start value mismatch');
+
+      CheckEquals(
+        GetEnumName(TypeInfo(TsCFValueKind), integer(sollValueKind2)),
+        GetEnumName(TypeInfo(TsCFValueKind), integer(rule.EndValueKind)),
+        'Data bar format: end value kind mismatch.'
+      );
+      if not (sollValueKind2 in [vkMin, vkMax]) then
+        CheckEquals(sollValue2, rule.EndValue, 'Data bar format: end value mismatch');
+    end;
+
+  finally
+    workbook.Free;
+    DeleteFile(tempFile);
+  end;
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Databars_XLSX_Full;
+begin
+  TestwriteRead_CF_DataBars(sfOOXML, true);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Databars_XLSX_Simple;
+begin
+  TestwriteRead_CF_DataBars(sfOOXML, false);
+end;
+
 
 initialization
   RegisterTest(TSpreadWriteReadCFTests);
