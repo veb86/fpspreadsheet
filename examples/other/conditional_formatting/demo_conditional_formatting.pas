@@ -48,7 +48,7 @@ begin
       sh.WriteFormula(i, 18, '=1.0/1.0');
     end;
     lastCol := 18;
-                                (*
+
     // conditional format #1: equal to number constant
     sh.WriteText(row, 0, 'equal to constant 5');
     sh.WriteText(row, 1, 'background yellow');
@@ -264,7 +264,7 @@ begin
     fmt.SetFont(wb.AddFont('Courier New', 14, [fssBold], scRed));
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsErrors, fmtIdx);
-*)
+
     // conditional format: expression
     inc(row);
     sh.WriteText(row, 0, 'expression: ISNUMBER($E$5)');
@@ -272,7 +272,7 @@ begin
     InitFormatRecord(fmt);
     fmt.SetBackgroundColor(scBlue);
     fmtIdx := wb.AddCellFormat(fmt);
-    sh.WriteConditionalCellFormat(Range(row, 2, row, 2), cfcExpression, '=IS-NUMBER($E$5)', fmtIdx);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, 2), cfcExpression, '=ISNUMBER($E$5)', fmtIdx);
 
     // Two rules in the same conditional format
     inc(row);
