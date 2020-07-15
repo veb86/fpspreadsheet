@@ -289,8 +289,16 @@ begin
     begin
       parser := TsSpreadsheetParser.Create(AWorksheet);
       try
-        parser.Expression[fdExcelA1] := Result;    // Parse in Excel-A1 dialect
-        Result := parser.R1C1Expression[nil];      // Convert to R1C1 dialect
+        try
+          parser.Expression[fdExcelA1] := Result;    // Parse in Excel-A1 dialect
+          Result := parser.R1C1Expression[nil];      // Convert to R1C1 dialect
+        except
+          on EGeneralExprParserError do
+          begin
+            Result := VarToStr(v);
+            AWorksheet.Workbook.AddErrorMsg('Error in CF Expression ' + Result);
+          end;
+        end;
         // Note: Using nil here to get absolute references.
       finally
         parser.Free;

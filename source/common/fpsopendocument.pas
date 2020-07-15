@@ -436,8 +436,16 @@ begin
     begin
       parser := TsSpreadsheetParser.Create(AWorksheet);
       try
-        parser.Expression[fdExcelA1] := Result;       // Parse in Excel-A1 dialect
-        Result := parser.Expression[fdOpenDocument];  // Convert to ODS dialect
+        try
+          parser.Expression[fdExcelA1] := Result;       // Parse in Excel-A1 dialect
+          Result := parser.Expression[fdOpenDocument];  // Convert to ODS dialect
+        except
+          on EGeneralExprParserError do
+          begin
+            Result := VarToStr(v);
+            AWorksheet.Workbook.AddErrorMsg('Error in CF Expression ' + Result);
+          end;
+        end;
       finally
         parser.Free;
       end;

@@ -78,6 +78,8 @@ const
   ];
 
 type
+  EGeneralExprParserError = Exception;
+
   // Forward declarations
   TsExpressionParser = class;
   TsBuiltInExpressionManager = class;
@@ -672,7 +674,7 @@ type
     property SheetnameTerminator: char read FSheetNameTerminator write FSheetNameTerminator;
   end;
 
-  EExprScanner = class(Exception);
+  EExprScanner = class(EGeneralExprParserError);
   PFormatSettings = ^TFormatSettings;
 
   { TsExpressionParser }
@@ -833,8 +835,8 @@ type
   PsFormula = ^TsFormula;
 
   { Exception classes }
-  EExprParser = class(Exception);
-  ECalcEngine = class(Exception);
+  EExprParser = class(EGeneralExprParserError);
+  ECalcEngine = class(EGeneralExprParserError);
 
 function TokenName(AToken: TsTokenType): String;
 function ResultTypeName(AResult: TsResultType): String;
