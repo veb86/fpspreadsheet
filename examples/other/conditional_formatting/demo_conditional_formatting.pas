@@ -274,6 +274,15 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, 2), cfcExpression, '=ISNUMBER($E$5)', fmtIdx);
 
+    // conditional format: expression
+    inc(row);
+    sh.WriteText(row, 0, 'expression: ISNUMBER(E5)');
+    sh.WriteText(row, 1, 'background blue');
+    InitFormatRecord(fmt);
+    fmt.SetBackgroundColor(scBlue);
+    fmtIdx := wb.AddCellFormat(fmt);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, 5), cfcExpression, '=ISNUMBER(E5)', fmtIdx);
+
     // Two rules in the same conditional format
     inc(row);
     sh.WriteText(row, 0, 'Two rules: #1: equal to 5, #2: equal to 3');

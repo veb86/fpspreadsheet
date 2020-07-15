@@ -543,6 +543,8 @@ const
   {@@ Border style to be used for "no border"}
   NO_CELL_BORDER: TsCellBorderStyle = (LineStyle: lsThin; Color: scNotDefined);
 
+  ALL_BORDERS: TsCellBorders = [cbNorth, cbEast, cbSouth, cbWest];
+
 type
   {@@ Style of fill pattern for cell backgrounds }
   TsFillStyle = (fsNoFill, fsSolidFill,
@@ -724,7 +726,7 @@ type
     procedure SetBackground(AFillStyle: TsFillStyle; AFgColor, ABgColor: TsColor);
     procedure SetBackgroundColor(AColor: TsColor);
     procedure SetBorders(ABorders: TsCellBorders;
-      AColor: TsColor = scBlack; ALineStyle: TsLineStyle = lsThin);
+      const AColor: TsColor = scBlack; const ALineStyle: TsLineStyle = lsThin);
     procedure SetFont(AFontIndex: Integer);
     procedure SetHorAlignment(AHorAlign: TsHorAlignment);
     procedure SetTextRotation(ARotation: TsTextRotation);
@@ -1088,13 +1090,13 @@ begin
 end;
 
 procedure TsCellFormat.SetBorders(ABorders: TsCellBorders;
-  AColor: TsColor = scBlack; ALineStyle: TsLineStyle = lsThin);
+  const AColor: TsColor = scBlack; const ALineStyle: TsLineStyle = lsThin);
 var
   cb: TsCellBorder;
 begin
   for cb in ABorders do
   begin
-    if (AColor = scTransparent) then
+    if (AColor = scTransparent) or (AColor = scNotDefined) then
       Exclude(Border, cb)
     else
     begin

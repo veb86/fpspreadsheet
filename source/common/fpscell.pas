@@ -31,6 +31,7 @@ type
     procedure SetBackgroundColor(const AValue: TsColor);
     procedure SetBiDiMode(const AValue: TsBiDiMode);
     procedure SetBorder(const AValue: TsCellBorders);
+    procedure SetBorders(const ABorders: TsCellBorders; const AValue: TsCellBorderStyle);
     procedure SetBorderStyle(const ABorder: TsCellBorder; const AValue: TsCellBorderStyle);
     procedure SetBorderStyles(const AValue: TsCellBorderStyles);
     procedure SetCellFormat(const AValue: TsCellFormat);
@@ -55,6 +56,8 @@ type
       read GetBiDiMode write SetBiDiMode;
     property Border: TsCellBorders
       read GetBorder write SetBorder;
+    property Borders[ABorders: TsCellBorders]: TsCellBorderStyle
+      write SetBorders;  // write-only!
     property BorderStyle[ABorder: TsCellBorder]: TsCellBorderStyle
       read GetBorderStyle write SetBorderStyle;
     property BorderStyles: TsCellBorderStyles
@@ -202,6 +205,16 @@ end;
 procedure TCellHelper.SetBorder(const AValue: TsCellBorders);
 begin
   (Worksheet as TsWorksheet).WriteBorders(@self, AValue);
+end;
+
+procedure TCellHelper.SetBorders(const ABorders: TsCellBorders;
+  const AValue: TsCellBorderStyle);
+var
+  fmt: TsCellFormat;
+begin
+  fmt := CellFormat;
+  fmt.SetBorders(ABorders, AValue.Color, AValue.LineStyle);
+  CellFormat := fmt;
 end;
 
 procedure TCellHelper.SetBorderStyle(const ABorder: TsCellBorder;

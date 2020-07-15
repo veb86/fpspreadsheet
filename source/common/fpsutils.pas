@@ -227,7 +227,11 @@ function SameFont(AFont1, AFont2: TsFont): Boolean; overload;
 function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
   AStyle: TsFontStyles; AColor: TsColor; APos: TsFontPosition): Boolean; overload;
 
-function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange;
+function Range(ARow, ACol: Cardinal): TsCellRange; overload;
+function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange; overload;
+
+function CellBorderStyle(const AColor: TsColor = scBlack;
+  const ALineStyle: TsLineStyle = lsThin): TsCellBorderStyle;
 
 function GetFontAsString(AFont: TsFont): String;
 
@@ -2758,8 +2762,19 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Creates a TsCellRange record from the coordinates of a single cell.
+-------------------------------------------------------------------------------}
+function Range(ARow, ACol: Cardinal): TsCellRange;
+begin
+  Result.Row1 := ARow;
+  Result.Row2 := ARow;
+  Result.Col1 := ACol;
+  Result.Col2 := ACol;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Creates a TsCellRange record from the provided cell corner coordinates.
-  Put the coordinates into right order if needed.
+  Puts the coordinates into right order if needed.
 -------------------------------------------------------------------------------}
 function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange;
 begin
@@ -2803,31 +2818,16 @@ begin
   end;
 end;
 
-
-                                                 (*
 {@@ ----------------------------------------------------------------------------
-  Constructs a string of length "Len" containing random uppercase characters
+  Combines color and linestyle to a TsCellBorderStyle record
 -------------------------------------------------------------------------------}
-function GetRandomString(Len: Integer): String;
+function CellBorderStyle(const AColor: TsColor = scBlack;
+  const ALineStyle: TsLineStyle = lsThin): TsCellBorderStyle;
 begin
-  Result := '';
-  While Length(Result) < Len do
-    Result := Result + char(ord('A') + random(26));
+  Result.Color := AColor;
+  Result.LineStyle := ALineStyle;
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Constructs a unique folder name in the temp directory of the OS
--------------------------------------------------------------------------------}
-function GetUniqueTempDir(Global: Boolean): String;
-var
-  tempdir: String;
-begin
-  tempdir := AppendPathDelim(GetTempDir(Global));
-  repeat
-    Result := tempdir + AppendPathDelim(GetRandomString(8));
-  until not DirectoryExists(Result);
-end;
-    *)
 {@@ ----------------------------------------------------------------------------
   Appends a string to a stream
 
