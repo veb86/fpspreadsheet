@@ -388,26 +388,28 @@ const
     'cell-content()&gt;%s', 'cell-content()&lt;%s',         //cfcGreaterThan, cfcLessThan
     'cell-content()&gt;=%s', 'cell-content&lt;=%s',         // cfcGreaterEqual, cfdLessEqual
     'cell-is-between(%s,%s)', 'cell-is-not-between(%s,%s)', // cfcBetween, cfcNotBetween,
-    '', '', '', '',  // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage
-    '', '', '', '',  // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
-    '', '',          // cfcDuplicate, cfcUnique,
-    '', '', '', '',  // cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
-    '', ''           // cfcContainsErrors, cfcNotContainsErrors
+    '', '', '', '',   // cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage
+    '', '', '', '',   // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
+    '', '',           // cfcDuplicate, cfcUnique,
+    '', '', '', '',   // cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
+    '', '',           // cfcContainsErrors, cfcNotContainsErrors
+    'is-true-formula(%s)'  // cfcExpression
   );
 
   CF_CALCEXT_OP: array[TsCFCondition] of string = (
-    '=%s', '!=%s',                          // cfcEqual, cfcNotEqual
-    '&gt;%s', '&lt;%s',                     //cfcGreaterThan, cfcLessThan
-    '&gt;=%s', '&lt;=%s',                   // cfcGreaterEqual, cfdLessEqual
-    'between(%s,%s)', 'not-between(%s,%s)', // cfcBetween, cfcNotBetween,
-    'above-average', 'below-average',       // cfcAboveAverage, cfcBelowAverage,
+    '=%s', '!=%s',                                // cfcEqual, cfcNotEqual
+    '&gt;%s', '&lt;%s',                           //cfcGreaterThan, cfcLessThan
+    '&gt;=%s', '&lt;=%s',                         // cfcGreaterEqual, cfdLessEqual
+    'between(%s,%s)', 'not-between(%s,%s)',       // cfcBetween, cfcNotBetween,
+    'above-average', 'below-average',             // cfcAboveAverage, cfcBelowAverage,
     'above-equal-average', 'below-equal-average', // cfcAboveEqualAverage, cfcBelowEqualAverage
     'top-elements(%s)', 'bottom-elements(%s)',    // cfcTop, cfcBottom,
     'top-percent(%s)', 'bottom-percent(%s)',      // cfcTopPercent, cfcBottomPercent,
     'duplicate', 'unique',                        // cfcDuplicate, cfcUnique,
     'begins-with(%s)', 'ends-with(%s)',           // cfcBeginsWith, cfcEndsWith,
     'contains-text(%s)', 'not-contains-text(%s)', // cfcContainsText, cfcNotContainsText,
-    'is-error', 'is-no-error'                     // cfcContainsErrors, cfcNotContainsErrors
+    'is-error', 'is-no-error',                    // cfcContainsErrors, cfcNotContainsErrors
+    'formula-is(%s)'                              // cfcExprssion
   );
 
   CF_VALUE_KIND: array[TsCFValueKind] of string = (
@@ -7398,8 +7400,18 @@ begin
     begin
       cf_cellRule := TsCFCellRule(cf.Rules[k]);
       cf_styleName := Format('conditional_%d', [cf_cellRule.FormatIndex]);
-      operand1Str := CFOperandToStr(cf_cellrule.Operand1, cf_sheet);
-      operand2Str := CFOperandToStr(cf_cellrule.Operand2, cf_sheet);
+      if cf_cellRule.Condition = cfcExpression then
+      begin
+        operand1Str := VarToStr(cf_cellRule.Operand1);
+        if (operand1Str <> '') and (operand1Str[1] <> '=') then
+          operand1Str := '=' + operand1Str;
+        operand1Str := CFOperandToStr(operand1Str, cf_sheet);
+        operand2Str := '';
+      end else
+      begin
+        operand1Str := CFOperandToStr(cf_cellrule.Operand1, cf_sheet);
+        operand2Str := CFOperandToStr(cf_cellrule.Operand2, cf_sheet);
+      end;
       cf_condition := Format(CF_STYLE_OP[cf_cellRule.Condition], [operand1Str, operand2Str]);
 
       if cf_Condition <> '' then begin

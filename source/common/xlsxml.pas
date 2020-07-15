@@ -229,7 +229,8 @@ const
     '@NOT(ISERROR(SEARCH(%0:s,RC)))',                    // cfcContainsText
     '@ISERROR(SEARCH(%0:s,RC))',                         // cfcNotContainsText,
     '@ISERROR(RC)',                                      // cfcContainsErrors
-    '@NOT(ISERROR(RC))'                                 // cfcNotContainsErrors
+    '@NOT(ISERROR(RC))',                                 // cfcNotContainsErrors
+    '@'                                                   // cfcExpression
   );
   // The leading '@' indicates that the formula will be used in <Value1> node
 
@@ -2134,14 +2135,26 @@ begin
         Continue;
       end;
 
-      value1Str := CFOperandToStr(cfRule.Operand1, sheet);
-      value2Str := CFOperandToStr(cfRule.Operand2, sheet);
+      if cfRule.Condition = cfcExpression then
+      begin
+        s := cfRule.Operand1;
+        if (s <> '') and (s[1] <> '=') then s := '=' + s;
+        value1Str := CFOperandToStr(s, sheet);
+        value2Str := '';
+      end else
+      begin
+        value1Str := CFOperandToStr(cfRule.Operand1, sheet);
+        value2Str := CFOperandToStr(cfRule.Operand2, sheet);
+      end;
 
       s := CF_CONDITIONS[cfRule.Condition];
       if s[1] = '@' then
       begin
         Delete(s, 1,1);
-        s := Format(s, [value1Str, value2Str, rangeStr]);
+        if s = '' then
+          s := value1Str
+        else
+          s := Format(s, [value1Str, value2Str, rangeStr]);
         value1Str := s;
         s := '';
       end;
@@ -2152,9 +2165,11 @@ begin
       if s <> '' then
         AppendToStream(AStream, LF + INDENT4 +
           '<Qualifier>' + s + '</Qualifier>');
+
       if value1Str <> '' then
         AppendToStream(AStream, LF + INDENT4 +
           '<Value1>' + value1Str + '</Value1>');
+
       if (cfRule.Condition in [cfcBetween, cfcNotBetween]) and (value2Str <> '') then
         AppendToStream(AStream, LF + INDENT4 +
           '<Value2>' + value2Str + '</Value2>');

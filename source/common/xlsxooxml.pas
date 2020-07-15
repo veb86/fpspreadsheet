@@ -430,7 +430,8 @@ const
     'duplicateValues', 'uniqueValues',       // cfcDuplicate, cfcUnique,
     'beginsWith', 'endsWith',                // cfcBeginsWith, cfcEndsWith,
     'containsText', 'notContainsText',       // cfcContainsText, cfcNotContainsText,
-    'containsErrors', 'notContainsErrors'    // cfcContainsErrors, cfcNotContainsErrors
+    'containsErrors', 'notContainsErrors',   // cfcContainsErrors, cfcNotContainsErrors
+    'expression'                             // cfcExpression
   );
 
   CF_OPERATOR_NAMES: array[TsCFCondition] of string = (
@@ -440,7 +441,8 @@ const
     '', '', '', '',   // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
     '', '',           // cfcDuplicate, cfcUnique,
     '', '', '', 'notContains', //cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
-    '', ''            // cfcContainsErrors, cfcNotContainsErrors
+    '', '',           // cfcContainsErrors, cfcNotContainsErrors
+    ''                // cfcExpression
   );
 
 function StrToFillStyle(s: String): TsFillStyle;
@@ -4114,6 +4116,12 @@ begin
             Format(FORMULA[ARule.Condition], [firstcellOfRange, ARule.Operand1]) +
           '</formula>';
         param1Str := ' text="' + VarToStr(ARule.Operand1) + '"';
+      end;
+    cfcExpression:
+      begin
+        s := ARule.Operand1;
+        if (s <> '') and (s[1] = '=') then Delete(s, 1, 1);
+        formula1Str := '<formula>' + s + '</formula>';
       end;
     else
       FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');

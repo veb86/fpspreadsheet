@@ -23,7 +23,8 @@ type
     cfcDuplicate, cfcUnique,
     cfcBeginsWith, cfcEndsWith,
     cfcContainsText, cfcNotContainsText,
-    cfcContainsErrors, cfcNotContainsErrors
+    cfcContainsErrors, cfcNotContainsErrors,
+    cfcExpression
   );
 
   TsCFCellRule = class(TsCFRule)
