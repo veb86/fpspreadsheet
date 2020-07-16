@@ -488,21 +488,31 @@ var
   p: Integer;
   s: String;
   f: TsRelFlags;
+  singleCell: Boolean = false;
 begin
   Result := True;
 
   // First find the colon
   p := pos(':', AStr);
-  if p = 0 then exit(false);
+  if p = 0 then //exit(false);
+  begin
+    singleCell := true;
+    Result := ParseCellString(AStr, AFirstcellRow, AFirstCellCol, f);
+    if not Result then exit;
+    ALastCellRow := AFirstCellRow;
+    ALastCellCol := AFirstCellCol;
+    AFlags := f;
+  end else
+  begin
+    // Analyze part after the colon
+    s := copy(AStr, p+1, Length(AStr));
+    Result := ParseCellString(s, ALastCellRow, ALastCellCol, f);
+    if not Result then exit;
 
-  // Analyze part after the colon
-  s := copy(AStr, p+1, Length(AStr));
-  Result := ParseCellString(s, ALastCellRow, ALastCellCol, f);
-  if not Result then exit;
-
-  // Analyze part before the colon
-  s := copy(AStr, 1, p-1);
-  Result := ParseCellString(s, AFirstCellRow, AFirstCellCol, AFlags);
+    // Analyze part before the colon
+    s := copy(AStr, 1, p-1);
+    Result := ParseCellString(s, AFirstCellRow, AFirstCellCol, AFlags);
+  end;
 
   // Add flags of 2nd part
   if rfRelRow in f then Include(AFlags, rfRelRow2);

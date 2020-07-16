@@ -67,6 +67,7 @@ type
     procedure TestWriteRead_CF_CellFmt_XLSX_Duplicate;
     procedure TestWriteRead_CF_CellFmt_XLSX_ContainsErrors;
     procedure TestWriteRead_CF_CellFmt_XLSX_NotContainsErrors;
+    procedure TestWriteRead_CF_CellFmt_XLSX_Expression;
     procedure TestWriteRead_CF_CellFmt_XLSX_Background;
     procedure TestWriteRead_CF_CellFmt_XLSX_Border;
 
@@ -562,6 +563,15 @@ begin
   InitFormatRecord(fmt);
   fmt.SetBackgroundColor(scRed);
   TestWriteRead_CF_CellFmt(sfOOXML, cfcNotContainsErrors, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_Expression;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOOXML, cfcExpression, 'ISNUMBER(A1)', fmt);
 end;
 
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_Background;

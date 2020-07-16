@@ -81,6 +81,8 @@ type
       ARange: TsCellRange);
     procedure ReadCFDataBars(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
       ARange: TsCellRange);
+    procedure ReadCFExpression(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARange: TsCellRange; AFormatIndex: Integer);
     procedure ReadCFMisc(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
       ARange: TsCellRange; AFormatIndex: Integer);
     procedure ReadCFTop10(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
@@ -1509,6 +1511,29 @@ begin
   sheet.WriteDataBars(ARange, clr, vk[0], v[0], vk[1], v[1]);
 end;
 
+procedure TsSpreadOOXMLReader.ReadCFExpression(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
+var
+  sheet: TsWorksheet;
+  nodeName: String;
+  s: String;
+begin
+  sheet := TsWorksheet(AWorksheet);
+
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'formula' then
+    begin
+      s := GetNodeValue(ANode);
+      sheet.WriteConditionalCellFormat(ARange, cfcExpression, s, AFormatIndex);
+      exit;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadCFMisc(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
 var
@@ -1857,6 +1882,8 @@ begin
                 ReadCFMisc(childNode, AWorksheet, range, fmtIdx);
               'containsText', 'notContainsText', 'beginsWith', 'endsWith':
                 ReadCFMisc(childNode, AWorksheet, range, fmtIdx);
+              'expression':
+                ReadCFExpression(childNode, AWorksheet, range, fmtIdx);
               'colorScale':
                 ReadCFColorRange(childNode, AWorksheet, range);
               'dataBar':
