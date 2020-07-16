@@ -904,10 +904,10 @@ begin
   try
     MyWorkbook.ReadFromFile(TempFile, AFormat);
     MyWorksheet := MyWorkbook.GetWorksheetByName(sheetname);
-    CheckEquals(AFirstRow, MyWorksheet.Pagelayout.RepeatedRows.FirstIndex, 'First repeated row index mismatch');
-    CheckEquals(ALastRow, MyWorksheet.PageLayout.RepeatedRows.LastIndex, 'Last repeated row index mismatch');
-    CheckEquals(AFirstCol, MyWorksheet.PageLayout.RepeatedCols.FirstIndex, 'First repeated col index mismatch');
-    CheckEquals(ALastCol, MyWorksheet.PageLayout.RepeatedCols.LastIndex, 'Last repeated col index mismatch');
+    CheckEquals(Cardinal(AFirstRow), MyWorksheet.Pagelayout.RepeatedRows.FirstIndex, 'First repeated row index mismatch');
+    CheckEquals(Cardinal(ALastRow), MyWorksheet.PageLayout.RepeatedRows.LastIndex, 'Last repeated row index mismatch');
+    CheckEquals(Cardinal(AFirstCol), MyWorksheet.PageLayout.RepeatedCols.FirstIndex, 'First repeated col index mismatch');
+    CheckEquals(Cardinal(ALastCol), MyWorksheet.PageLayout.RepeatedCols.LastIndex, 'Last repeated col index mismatch');
   finally
     MyWorkbook.Free;
     DeleteFile(TempFile);
