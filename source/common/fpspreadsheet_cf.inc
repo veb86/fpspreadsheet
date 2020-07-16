@@ -1,5 +1,11 @@
 { Included by fpspreadsheet.pas }
 
+{ Code for conditional formatting }
+
+{==============================================================================}
+{   TsWorksheet code for conditional formats                                   }
+{==============================================================================}
+
 procedure StoreCFIndexInCells(AWorksheet: TsWorksheet; AIndex: Integer;
   ARange: TsCellRange);
 var
@@ -17,6 +23,7 @@ begin
     end;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Creates a conditional format item for the cells given by ARange.
   The condition specified here must not require parameters, e.g. cfcEmpty
@@ -31,6 +38,7 @@ begin
     ACondition, ACellFormatIndex);
   StoreCFIndexInCells(self, Result, ARange);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Creates a conditional format item for the cells given by ARange.
@@ -47,6 +55,7 @@ begin
     AParam, ACellFormatIndex);
   StoreCFIndexInCells(self, Result, ARange);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Creates a conditional format item for the cells given by ARange.
@@ -65,6 +74,7 @@ begin
   StoreCFIndexInCells(self, Result, ARange);
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Writes the conditional format "color range"
 -------------------------------------------------------------------------------}
@@ -76,6 +86,7 @@ begin
   StoreCFIndexInCells(Self, Result, ARange);
 end;
 
+
 function TsWorksheet.WriteColorRange(ARange: TsCellRange;
   AStartColor, ACenterColor, AEndColor: TsColor): Integer;
 begin
@@ -83,6 +94,7 @@ begin
     AStartColor, ACenterColor, AEndColor);
   StoreCFIndexInCells(Self, Result, ARange);
 end;
+
 
 function TsWorksheet.WriteColorRange(ARange: TsCellRange;
   AStartColor: TsColor; AStartKind: TsCFValueKind; AStartValue: Double;
@@ -93,6 +105,7 @@ begin
     AEndColor, AEndKind, AEndValue);
   StoreCFIndexInCells(Self, Result, ARange);
 end;
+
 
 function TsWorksheet.WriteColorRange(ARange: TsCellRange;
   AStartColor: TsColor; AStartKind: TsCFValueKind; AStartValue: Double;
@@ -106,6 +119,7 @@ begin
   StoreCFIndexInCells(Self, Result, ARange);
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Writes the conditional format "data bars"
 -------------------------------------------------------------------------------}
@@ -114,6 +128,7 @@ begin
   Result := FWorkbook.FConditionalFormatList.AddDataBarRule(Self, ARange, ABarColor);
   StoreCFIndexInCells(self, Result, ARange);
 end;
+
 
 function TsWorksheet.WriteDataBars(ARange: TscellRange; ABarColor: TsColor;
   AStartKind: TsCFValueKind; AStartValue: Double;
@@ -125,5 +140,21 @@ begin
     AEndKind, AEndValue
   );
   StoreCFIndexInCells(self, Result, ARange);
+end;
+
+
+{==============================================================================}
+{   TsWorkbook code for conditional formats                                    }
+{==============================================================================}
+
+function TsWorkbook.GetConditionalFormat(AIndex: Integer): TsConditionalFormat;
+begin
+  Result := FConditionalFormatList[AIndex] as TsConditionalFormat;
+end;
+
+
+function TsWorkbook.GetNumConditionalFormats: Integer;
+begin
+  Result := FConditionalFormatList.Count;
 end;
 

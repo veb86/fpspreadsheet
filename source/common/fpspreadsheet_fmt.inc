@@ -1,6 +1,10 @@
 { Included by fpspreadsheet.pas }
 { Contains code for cell formatting }
 
+{==============================================================================}
+{  TsWorksheet code for format handling                                        }
+{==============================================================================}
+
 {@@ ----------------------------------------------------------------------------
   Modifies the background parameters of the format record stored at the
   specified index.
@@ -40,6 +44,251 @@ begin
   Result := Workbook.AddCellFormat(fmt);
 end;
 
+
+{@@ ----------------------------------------------------------------------------
+  Returns the background fill pattern and colors of a cell.
+
+  @param  ACell  Pointer to the cell
+  @return TsFillPattern record (or EMPTY_FILL, if the cell does not have a
+          filled background
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadBackground(ACell: PCell): TsFillPattern;
+var
+  fmt : PsCellFormat;
+begin
+  Result := EMPTY_FILL;
+  if ACell <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if (uffBackground in fmt^.UsedFormattingFields) then
+      Result := fmt^.Background;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the background color of a cell as rbg value
+
+  @param    ACell  Pointer to the cell
+  @return   Value containing the rgb bytes in little-endian order
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadBackgroundColor(ACell: PCell): TsColor;
+begin
+  Result := scTransparent;
+  if ACell <> nil then
+    Result := ReadBackgroundColor(ACell^.FormatIndex);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the background color stored at the specified index in the format
+  list of the workkbok.
+
+  @param    AFormatIndex  Index of the format record
+  @return   Value containing the rgb bytes in little-endian order
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadBackgroundColor(AFormatIndex: Integer): TsColor;
+var
+  fmt: PsCellFormat;
+begin
+  Result := scTransparent;
+  if AFormatIndex > -1 then begin
+    fmt := Workbook.GetPointerToCellFormat(AFormatIndex);
+    if (uffBackground in fmt^.UsedFormattingFields) then
+    begin
+      if fmt^.Background.Style = fsSolidFill then
+        Result := fmt^.Background.FgColor
+      else
+        Result := fmt^.Background.BgColor;
+    end;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the BiDi mode of the cell (right-to-left or left-to-right)
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadBiDiMode(ACell: PCell): TsBiDiMode;
+var
+  fmt: PsCellFormat;
+begin
+  Result := bdDefault;
+  if (ACell <> nil) then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if (uffBiDi in fmt^.UsedFormattingFields) then
+      Result := fmt^.BiDiMode;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Determines which borders are drawn around a specific cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadCellBorders(ACell: PCell): TsCellBorders;
+var
+  fmt: PsCellFormat;
+begin
+  Result := [];
+  if ACell <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if (uffBorder in fmt^.UsedFormattingFields) then
+      Result := fmt^.Border;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines which the style of a particular cell border
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadCellBorderStyle(ACell: PCell;
+  ABorder: TsCelLBorder): TsCellBorderStyle;
+var
+  fmt: PsCellFormat;
+begin
+  Result := DEFAULT_BORDERSTYLES[ABorder];
+  if ACell <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    Result := fmt^.BorderStyles[ABorder];
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines which all border styles of a given cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadCellBorderStyles(ACell: PCell): TsCellBorderStyles;
+var
+  fmt: PsCellFormat;
+begin
+  Result := DEFAULT_BORDERSTYLES;
+  if ACell <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    Result := Fmt^.BorderStyles;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the format record that is assigned to a specified cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadCellFormat(ACell: PCell): TsCellFormat;
+begin
+  Result := Workbook.GetCellFormat(ACell^.FormatIndex);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the protection flags of the cell.
+
+  NOTE: These flags are active only if sheet protection is active, i.e.
+  soProtected in Worksheet.Options.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadCellProtection(ACell: PCell): TsCellProtections;
+var
+  fmt: PsCellFormat;
+begin
+  Result := DEFAULT_CELL_PROTECTION;
+  if (ACell <> nil) then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if fmt <> nil then
+      Result := fmt^.Protection;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the horizontal alignment of a specific cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadHorAlignment(ACell: PCell): TsHorAlignment;
+var
+  fmt: PsCellFormat;
+begin
+  Result := haDefault;
+  if (ACell <> nil) then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if (uffHorAlign in fmt^.UsedFormattingFields) then
+      Result := fmt^.HorAlignment;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the text orientation of a specific cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadTextRotation(ACell: PCell): TsTextRotation;
+var
+  fmt: PsCellFormat;
+begin
+  Result := trHorizontal;
+  if ACell <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if (uffTextRotation in fmt^.UsedFormattingFields) then
+      Result := fmt^.TextRotation;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Reads the set of used formatting fields of a cell.
+
+  Each cell contains a set of "used formatting fields". Formatting is applied
+  only if the corresponding element is contained in the set.
+
+  @param  ACell   Pointer to the cell
+  @return Set of elements used in formatting the cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields;
+var
+  fmt: PsCellFormat;
+begin
+  if ACell = nil then
+  begin
+    Result := [];
+    Exit;
+  end;
+  fmt := FWorkbook.GetPointerToCellFormat(ACell^.FormatIndex);
+  Result := fmt^.UsedFormattingFields;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the vertical alignment of a specific cell
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadVertAlignment(ACell: PCell): TsVertAlignment;
+var
+  fmt: PsCellFormat;
+begin
+  Result := vaDefault;
+  if (ACell <> nil) then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    if (uffVertAlign in fmt^.UsedFormattingFields) then
+      Result := fmt^.VertAlignment;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns whether a specific cell support word-wrapping.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadWordwrap(ACell: PCell): boolean;
+var
+  fmt: PsCellFormat;
+begin
+  Result := false;
+  if (ACell <> nil) then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    Result := uffWordwrap in fmt^.UsedFormattingFields;
+  end;
+end;
+
+
 {@@ ----------------------------------------------------------------------------
   Defines a background pattern for a cell
 
@@ -62,6 +311,7 @@ begin
   Result := GetCell(ARow, ACol);
   WriteBackground(Result, AStyle, APatternColor, ABackgroundColor);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Defines a background pattern for a cell
@@ -89,6 +339,7 @@ begin
   end;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Sets a uniform background color of a cell.
 
@@ -105,6 +356,7 @@ begin
   Result := GetCell(ARow, ACol);
   WriteBackgroundColor(Result, AColor);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Sets a uniform background color of a cell.
@@ -124,11 +376,13 @@ begin
   end;
 end;
 
+
 function TsWorksheet.WriteBiDiMode(ARow, ACol: Cardinal; AValue: TsBiDiMode): PCell;
 begin
   Result := GetCell(ARow, ACol);
   WriteBiDiMode(Result, AValue);
 end;
+
 
 procedure TsWorksheet.WriteBiDiMode(ACell: PCell; AValue: TsBiDiMode);
 var
@@ -145,6 +399,7 @@ begin
   ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Sets the color of a cell border line.
@@ -163,6 +418,7 @@ begin
   Result := GetCell(ARow, ACol);
   WriteBorderColor(Result, ABorder, AColor);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Sets the color of a cell border line.
@@ -186,6 +442,7 @@ begin
   end;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Sets the linestyle of a cell border.
   Note: the border must be included in the "Borders" set in order to be shown!
@@ -205,6 +462,7 @@ begin
   Result := GetCell(ARow, ACol);
   WriteBorderLineStyle(Result, ABorder, ALineStyle);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Sets the linestyle of a cell border.
@@ -230,6 +488,7 @@ begin
   end;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Shows the cell borders included in the set ABorders. No border lines are drawn
   for those not included.
@@ -247,6 +506,7 @@ begin
   Result := GetCell(ARow, ACol);
   WriteBorders(Result, ABorders);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Shows the cell borders included in the set ABorders. No border lines are drawn
@@ -292,6 +552,7 @@ begin
   WriteBorderStyle(Result, ABorder, AStyle);
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Sets the style of a cell border, i.e. line style and line color.
   Note: the border must be included in the "Borders" set in order to be shown!
@@ -314,6 +575,7 @@ begin
   end;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Sets line style and line color of a cell border.
   Note: the border must be included in the "Borders" set in order to be shown!
@@ -333,6 +595,7 @@ begin
   Result := GetCell(ARow, ACol);
   WriteBorderStyle(Result, ABorder, ALineStyle, AColor);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Sets line style and line color of a cell border.
@@ -359,6 +622,7 @@ begin
   end;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Sets the style of all cell border of a cell, i.e. line style and line color.
   Note: Only those borders included in the "Borders" set are shown!
@@ -376,6 +640,7 @@ begin
   Result := GetCell(ARow, ACol);
   WriteBorderStyles(Result, AStyles);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Sets the style of all cell border of a cell, i.e. line style and line color.
@@ -401,6 +666,7 @@ begin
   end;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Assigns a complete cell format record to a cell
 
@@ -417,6 +683,7 @@ begin
   idx := Workbook.AddCellFormat(ACellFormat);
   WriteCellFormatIndex(ACell, idx);
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Formats a cell to the cell format stored at the specified index in the
@@ -440,6 +707,7 @@ begin
   end;
 end;
 
+
 {@@ ----------------------------------------------------------------------------
   Defines how the cell at the specified row and column is protected: lock
   cell modification and/or hide formulas. Note that this is activated only after
@@ -455,6 +723,7 @@ begin
   Result := GetCell(ARow, ACol);
   WriteCellProtection(Result, AValue);
 end;
+
 
 procedure TsWorksheet.WriteCellProtection(ACell: PCell;
   AValue: TsCellProtections);
@@ -473,259 +742,6 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-{@@ ----------------------------------------------------------------------------
-  Adds font specification to the formatting of a cell. Looks in the workbook's
-  FontList and creates an new entry if the font is not used so far. Returns the
-  index of the font in the font list.
-
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AFontName   Name of the font
-  @param  AFontSize   Size of the font, in points
-  @param  AFontStyle  Set with font style attributes
-                      (don't use those of unit "graphics" !)
-  @param  AFontColor  RGB value of the font's color
-  @param  APosition   Specifies sub- or superscript text
-  @return Index of the font in the workbook's font list.
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFont(ARow, ACol: Cardinal; const AFontName: String;
-  AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor;
-  APosition: TsFontPosition = fpNormal): Integer;
-begin
-  Result := WriteFont(GetCell(ARow, ACol), AFontName, AFontSize, AFontStyle,
-    AFontColor, APosition);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Adds font specification to the formatting of a cell. Looks in the workbook's
-  FontList and creates an new entry if the font is not used so far. Returns the
-  index of the font in the font list.
-
-  @param  ACell       Pointer to the cell considered
-  @param  AFontName   Name of the font
-  @param  AFontSize   Size of the font, in points
-  @param  AFontStyle  Set with font style attributes
-                      (don't use those of unit "graphics" !)
-  @param  AFontColor  RGB value of the font's color
-  @param  APosition   Specified subscript or superscript text.
-  @return Index of the font in the workbook's font list.
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFont(ACell: PCell; const AFontName: String;
-  AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor;
-  APosition: TsFontPosition = fpNormal): Integer;
-var
-  fmt: TsCellFormat;
-begin
-  if ACell = nil then
-  begin
-    Result := -1;
-    Exit;
-  end;
-
-  Result := FWorkbook.FindFont(AFontName, AFontSize, AFontStyle, AFontColor, APosition);
-  if Result = -1 then
-    result := FWorkbook.AddFont(AFontName, AFontSize, AFontStyle, AFontColor, APosition);
-
-  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
-  Include(fmt.UsedFormattingFields, uffFont);
-  fmt.FontIndex := Result;
-  ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
-
-  ChangedFont(ACell^.Row, ACell^.Col);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Applies a font to the formatting of a cell. The font is determined by its
-  index in the workbook's font list:
-
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AFontIndex  Index of the font in the workbook's font list
-  @return Pointer to the cell
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer): PCell;
-begin
-  Result := GetCell(ARow, ACol);
-  WriteFont(Result, AFontIndex);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Applies a font to the formatting of a cell. The font is determined by its
-  index in the workbook's font list:
-
-  @param  ACell       Pointer to the cell considered
-  @param  AFontIndex  Index of the font in the workbook's font list
--------------------------------------------------------------------------------}
-procedure TsWorksheet.WriteFont(ACell: PCell; AFontIndex: Integer);
-var
-  fmt: TsCellFormat;
-begin
-  if ACell = nil then
-    exit;
-
-  if (AFontIndex < 0) or (AFontIndex >= Workbook.GetFontCount) then
-    raise EFPSpreadsheet.Create(rsInvalidFontIndex);
-
-  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
-  Include(fmt.UsedFormattingFields, uffFont);
-  fmt.FontIndex := AFontIndex;
-  ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
-
-  ChangedFont(ACell^.Row, ACell^.Col);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Replaces the text color used in formatting of a cell. Looks in the workbook's
-  font list if this modified font has already been used. If not a new font entry
-  is created. Returns the index of this font in the font list.
-
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AFontColor  RGB value of the new text color
-  @return Index of the font in the workbook's font list.
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
-begin
-  Result := WriteFontColor(GetCell(ARow, ACol), AFontColor);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Replaces the text color used in formatting of a cell. Looks in the workbook's
-  font list if this modified font has already been used. If not a new font entry
-  is created. Returns the index of this font in the font list.
-
-  @param  ACell       Pointer to the cell
-  @param  AFontColor  RGB value of the new text color
-  @return Index of the font in the workbook's font list.
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFontColor(ACell: PCell; AFontColor: TsColor): Integer;
-var
-  fnt: TsFont;
-begin
-  if ACell = nil then begin
-    Result := 0;
-    exit;
-  end;
-  fnt := ReadCellFont(ACell);
-  Result := WriteFont(ACell, fnt.FontName, fnt.Size, fnt.Style, AFontColor);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Replaces the font used in formatting of a cell considering only the font face
-  and leaving font size, style and color unchanged. Looks in the workbook's
-  font list if this modified font has already been used. If not a new font entry
-  is created. Returns the index of this font in the font list.
-
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AFontName   Name of the new font to be used
-  @return Index of the font in the workbook's font list.
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFontName(ARow, ACol: Cardinal; AFontName: String): Integer;
-begin
-  result := WriteFontName(GetCell(ARow, ACol), AFontName);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Replaces the font used in formatting of a cell considering only the font face
-  and leaving font size, style and color unchanged. Looks in the workbook's
-  font list if this modified font has already been used. If not a new font entry
-  is created. Returns the index of this font in the font list.
-
-  @param  ACell       Pointer to the cell
-  @param  AFontName   Name of the new font to be used
-  @return Index of the font in the workbook's font list.
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFontName(ACell: PCell; AFontName: String): Integer;
-var
-  fnt: TsFont;
-begin
-  if ACell = nil then begin
-    Result := 0;
-    exit;
-  end;
-  fnt := ReadCellFont(ACell);
-  result := WriteFont(ACell, AFontName, fnt.Size, fnt.Style, fnt.Color);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Replaces the font size in formatting of a cell. Looks in the workbook's
-  font list if this modified font has already been used. If not a new font entry
-  is created. Returns the index of this font in the font list.
-
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  ASize       Size of the font to be used (in points).
-  @return Index of the font in the workbook's font list.
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFontSize(ARow, ACol: Cardinal; ASize: Single): Integer;
-begin
-  Result := WriteFontSize(GetCell(ARow, ACol), ASize);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Replaces the font size in formatting of a cell. Looks in the workbook's
-  font list if this modified font has already been used. If not a new font entry
-  is created. Returns the index of this font in the font list.
-
-  @param  ACell       Pointer to the cell
-  @param  ASize       Size of the font to be used (in points).
-  @return Index of the font in the workbook's font list.
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFontSize(ACell: PCell; ASize: Single): Integer;
-var
-  fnt: TsFont;
-begin
-  if ACell = nil then begin
-    Result := 0;
-    exit;
-  end;
-  fnt := ReadCellFont(ACell);
-  Result := WriteFont(ACell, fnt.FontName, ASize, fnt.Style, fnt.Color);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Replaces the font style (bold, italic, etc) in formatting of a cell.
-  Looks in the workbook's font list if this modified font has already been used.
-  If not a new font entry is created.
-  Returns the index of this font in the font list.
-
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AStyle      New font style to be used
-  @return Index of the font in the workbook's font list.
-
-  @see TsFontStyle
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFontStyle(ARow, ACol: Cardinal;
-  AStyle: TsFontStyles): Integer;
-begin
-  Result := WriteFontStyle(GetCell(ARow, ACol), AStyle);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Replaces the font style (bold, italic, etc) in formatting of a cell.
-  Looks in the workbook's font list if this modified font has already been used.
-  If not a new font entry is created.
-  Returns the index of this font in the font list.
-
-  @param  ACell       Pointer to the cell considered
-  @param  AStyle      New font style to be used
-  @return Index of the font in the workbook's font list.
-
-  @see TsFontStyle
--------------------------------------------------------------------------------}
-function TsWorksheet.WriteFontStyle(ACell: PCell; AStyle: TsFontStyles): Integer;
-var
-  fnt: TsFont;
-begin
-  if ACell = nil then begin
-    Result := -1;
-    exit;
-  end;
-  fnt := ReadCellFont(ACell);
-  Result := WriteFont(ACell, fnt.FontName, fnt.Size, AStyle, fnt.Color);
-end;
 
 {@@ ----------------------------------------------------------------------------
   Defines the horizontal alignment of text in a cell.
@@ -925,5 +941,126 @@ begin
     Exclude(fmt.UsedFormattingFields, uffWordwrap);
   ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
   ChangedCell(ACell^.Row, ACell^.Col);
+end;
+
+
+{==============================================================================}
+{  TsWorkbook code for format handling                                         }
+{==============================================================================}
+
+{@@ ----------------------------------------------------------------------------
+  Adds the specified format record to the internal list and returns the index
+  in the list. If the record had already been added before the function only
+  returns the index.
+-------------------------------------------------------------------------------}
+function TsWorkbook.AddCellFormat(const AValue: TsCellFormat): Integer;
+begin
+  Result := FCellFormatList.Add(AValue);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the contents of the format record with the specified index.
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetCellFormat(AIndex: Integer): TsCellFormat;
+begin
+  Result := FCellFormatList.Items[AIndex]^;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns a string describing the cell format with the specified index.
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetCellFormatAsString(AIndex: Integer): String;
+var
+  fmt: PsCellFormat;
+  cb: TsCellBorder;
+  s: String;
+  numFmt: TsNumFormatParams;
+begin
+  Result := '';
+  fmt := GetPointerToCellFormat(AIndex);
+  if fmt = nil then
+    exit;
+
+  if (uffFont in fmt^.UsedFormattingFields) then
+    Result := Format('%s; Font%d', [Result, fmt^.FontIndex]);
+  if (uffBackground in fmt^.UsedFormattingFields) then begin
+    Result := Format('%s; Bg %s', [Result, GetColorName(fmt^.Background.BgColor)]);
+    Result := Format('%s; Fg %s', [Result, GetColorName(fmt^.Background.FgColor)]);
+    Result := Format('%s; Pattern %s', [Result, GetEnumName(TypeInfo(TsFillStyle), ord(fmt^.Background.Style))]);
+  end;
+  if (uffHorAlign in fmt^.UsedFormattingfields) then
+    Result := Format('%s; %s', [Result, GetEnumName(TypeInfo(TsHorAlignment), ord(fmt^.HorAlignment))]);
+  if (uffVertAlign in fmt^.UsedFormattingFields) then
+    Result := Format('%s; %s', [Result, GetEnumName(TypeInfo(TsVertAlignment), ord(fmt^.VertAlignment))]);
+  if (uffWordwrap in fmt^.UsedFormattingFields) then
+    Result := Format('%s; Word-wrap', [Result]);
+  if (uffNumberFormat in fmt^.UsedFormattingFields) then
+  begin
+    numFmt := GetNumberFormat(fmt^.NumberFormatIndex);
+    if numFmt <> nil then
+      Result := Format('%s; %s (%s)', [Result,
+        GetEnumName(TypeInfo(TsNumberFormat), ord(numFmt.NumFormat)),
+        numFmt.NumFormatStr
+      ])
+    else
+      Result := Format('%s; %s', [Result, 'nfGeneral']);
+  end else
+    Result := Format('%s; %s', [Result, 'nfGeneral']);
+  if (uffBorder in fmt^.UsedFormattingFields) then
+  begin
+    s := '';
+    for cb in fmt^.Border do
+      if s = '' then s := GetEnumName(TypeInfo(TsCellBorder), ord(cb))
+        else s := s + '+' + GetEnumName(TypeInfo(TsCellBorder), ord(cb));
+    Result := Format('%s; %s', [Result, s]);
+  end;
+  if (uffBiDi in fmt^.UsedFormattingFields) then
+    Result := Format('%s; %s', [Result, GetEnumName(TypeInfo(TsBiDiMode), ord(fmt^.BiDiMode))]);
+  if Result <> '' then Delete(Result, 1, 2);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns the count of format records used all over the workbook
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetNumCellFormats: Integer;
+begin
+  Result := FCellFormatList.Count;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Returns a pointer to the format record with the specified index
+-------------------------------------------------------------------------------}
+function TsWorkbook.GetPointerToCellFormat(AIndex: Integer): PsCellFormat;
+begin
+  if FCellFormatList.Count = 0 then
+    raise Exception.Create('[TsWorkbook.GetPointerToCellFormat]: No format items.');
+
+  if (AIndex < 0) or (AIndex >= FCellFormatList.Count) then
+    AIndex := 0;  // 0 is default format
+  Result := FCellFormatList.Items[AIndex];
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Removes all cell formats from the workbook.
+
+  If AKeepDefaultFormat is true then index 0 containing the default cell format
+  is retained.
+
+  Use carefully!
+-------------------------------------------------------------------------------}
+procedure TsWorkbook.RemoveAllCellFormats(AKeepDefaultFormat: Boolean);
+var
+  i: Integer;
+begin
+  if AKeepDefaultFormat then
+    for i := FCellFormatList.Count-1 downto 1 do
+      FCellFormatList.Delete(i)
+  else
+    FCellFormatList.Clear;
 end;
 

@@ -270,6 +270,30 @@ This package is all you need if you don&apos;t want graphical components (like g
         <Filename Value="source\common\fpspreadsheet_fmt.inc"/>
         <Type Value="Binary"/>
       </Item>
+      <Item>
+        <Filename Value="source\common\fpspreadsheet_hyperlinks.inc"/>
+        <Type Value="Binary"/>
+      </Item>
+      <Item>
+        <Filename Value="source\common\fpspreadsheet_comments.inc"/>
+        <Type Value="Binary"/>
+      </Item>
+      <Item>
+        <Filename Value="source\common\fpspreadsheet_embobj.inc"/>
+        <Type Value="Binary"/>
+      </Item>
+      <Item>
+        <Filename Value="source\common\fpspreadsheet_numfmt.inc"/>
+        <Type Value="Binary"/>
+      </Item>
+      <Item>
+        <Filename Value="source\common\fpspreadsheet_fonts.inc"/>
+        <Type Value="Binary"/>
+      </Item>
+      <Item>
+        <Filename Value="source\common\fpspreadsheet_clipbrd.inc"/>
+        <Type Value="Binary"/>
+      </Item>
     </Files>
     <i18n>
       <EnableI18N Value="True"/>
