@@ -2068,25 +2068,11 @@ begin
       while childNode <> nil do
       begin
         nodeName := childNode.NodeName;
-        if nodeName = 'left' then
-        begin
-          borders := borders + [cbWest];
-          ReadBorderStyle(childNode, borderStyles[cbWest]);
-        end else
-        if nodeName = 'top' then
-        begin
-          borders := borders + [cbNorth];
-          ReadBorderStyle(childNode, borderStyles[cbNorth]);
-        end else
-        if nodeName = 'right' then
-        begin
-          borders := borders + [cbEast];
-          ReadBorderStyle(childNode, borderStyles[cbEast]);
-        end else
-        if nodeName = 'bottom' then
-        begin
-          borders := borders + [cbSouth];
-          ReadBorderStyle(childNode, borderStyles[cbSouth]);
+        case nodeName of
+          'left': if ReadBorderStyle(childNode, borderStyles[cbWest]) then Include(borders, cbWest);
+          'right': if ReadBorderStyle(childNode, borderStyles[cbEast]) then Include(borders, cbEast);
+          'top': if ReadBorderStyle(childNode, borderStyles[cbNorth]) then Include(borders, cbNorth);
+          'bottom': if ReadBorderStyle(childNode, borderStyles[cbSouth]) then Include(borders, cbSouth);
         end;
         childNode := childNode.NextSibling;
       end;

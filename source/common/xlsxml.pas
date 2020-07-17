@@ -44,6 +44,7 @@ type
     procedure ReadCell(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ARow, ACol: Integer);
     procedure ReadCellProtection(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadComment(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ACell: PCell);
+    procedure ReadConditionalFormatting(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadExcelWorkbook(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadInterior(ANode: TDOMNode; var AFormat: TsCellFormat);
@@ -81,7 +82,7 @@ type
     function GetFormulaStr(ACell: PCell): String;
     function GetFrozenPanesStr(AWorksheet: TsBasicWorksheet; AIndent: String): String;
     function GetHyperlinkStr(ACell: PCell): String;
-    function GetIndexStr(AIndex, APrevIndex: Integer): String;
+    function GetIndexStr(AIndex, APrevIndex: Cardinal): String;
     function GetLayoutStr(AWorksheet: TsBasicWorksheet): String;
     function GetMergeStr(ACell: PCell): String;
     function GetPageFooterStr(AWorksheet: TsBasicWorksheet): String;
@@ -182,6 +183,15 @@ const
     'DiagCross', 'ThinDiagCross', 'ThickDiagCross', 'ThinHorzCross'
   );
 
+  { Fill style names as used in the Style attribute for conditional formatting -- not all tested... }
+  CF_FILL_NAMES: array[TsFillStyle] of string = (
+    '', 'solid',
+    'gray-75', 'gray-50', 'gray-25', 'gray-125', 'gray-0625',
+    'horz-stripe', 'vert-stripe', 'diag-stripe', 'reverse-diag-stripe',
+    'thin-horz-stripe', 'thin-vert-stripe', 'thin-diag-stripe', 'thin-reverse-diag-stripe',
+    'diag-cross', 'thin-diag-cross', 'thick-diag-cross', 'thin-horz-cross'
+  );
+
   {TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth, cbDiagUp, cbDiagDown); }
   BORDER_NAMES: array[TsCellBorder] of string = (
     'Top', 'Left', 'Right', 'Bottom', 'DiagonalRight', 'DiagonalLeft'
@@ -197,7 +207,7 @@ const
     'SlantDashDot'
   );
 
-  LINE_STYLES1: array[TsLineStyle] of string = (
+  CF_LINE_STYLES: array[TsLineStyle] of string = (
     'solid', 'solid', 'dashed', 'dotted', 'solid', 'double', 'hairline',
     'dashed', 'dot-dash', 'dot-dash', 'dot-dot-dash', 'dot-dot-dash',
     'dot-dash'
@@ -312,6 +322,42 @@ begin
       Result := UTF8TextToXMLText(SafeQuoteStr(Result))
   end;
 end;
+
+function TryStrToCFLineStyle(s: String; out ALineStyle: TsLineStyle): Boolean;
+var
+  ls: TsLineStyle;
+begin
+  for ls in TsLineStyle do
+    if s = CF_LINE_STYLES[ls] then
+    begin
+      Result := true;
+      ALineStyle := ls;
+      exit;
+    end;
+  Result := false;
+end;
+
+function TryStrToCFCellBorder(s: String; out ABorder: TsCellBorder): Boolean;
+var
+  cb: TsCellBorder;
+begin
+  Result := true;
+  if s = 'border-left' then
+    ABorder := cbWest
+  else if s = 'border-right' then
+    Aborder := cbEast
+  else if s = 'border-top' then
+    ABorder := cbNorth
+  else if s = 'border-bottom' then
+    ABorder := cbSouth
+  else if s = 'border-diagonal-right' then  // not tested !
+    ABorder := cbDiagUp
+  else if s = 'border-diagonal-left' then   // not tested !
+    ABorder := cbDiagDown
+  else
+    Result := false;
+end;
+
 
 {===============================================================================
                           TsSpreadExcelXMLReader
@@ -701,6 +747,247 @@ var
 begin
   txt := ANode.TextContent;
   TsWorksheet(AWorksheet).WriteComment(ACell, txt);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the "Worksheet/ConditionalFormatting" node
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadConditionalFormatting(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  childNode: TDOMNode;
+  nodeName: String;
+  s, nameStr, valueStr, tmpStr: String;
+  range: TsCellRange;
+  flags: TsRelFlags;
+  i, j: Integer;
+  c: TsCFCondition;
+  condition: Integer;
+  op1, op2: Variant;
+  fgColor, bgColor: TsColor;
+  fs, fill: TsFillStyle;
+  p: Integer;
+  L: TStrings;
+  sa: TStringArray;
+  fmt: TsCellFormat;
+  fmtIndex: Integer;
+  fntstyle: TsFontStyles;
+  fntColor: TsColor;
+  fnt: TsFont;
+  cb: TsCellBorder;
+  borders: TsCellBorders;
+  lineStyle: Integer;
+  lineColor: TsColor;
+  commonBorder: TsCellBorderStyle;
+  borderStyles: TsCellBorderStyles;
+begin
+  sheet := TsWorksheet(AWorksheet);
+  book := TsWorkbook(FWorkbook);
+
+  // initialize parameters
+  condition := -1;
+  range := fpsUtils.Range(Cardinal(-1), Cardinal(-1), Cardinal(-1), Cardinal(-1));
+  VarClear(op1);
+  VarClear(op2);
+  bgColor := scNotDefined;
+  fgColor := scNotDefined;
+  fill := fsNoFill;
+  fntStyle := [];
+  fntColor := scNotDefined;
+  commonBorder := NO_CELL_BORDER;
+  borderStyles[cbNorth] := NO_CELL_BORDER;
+  borderStyles[cbSouth] := NO_CELL_BORDER;
+  borderStyles[cbEast] := NO_CELL_BORDER;
+  borderStyles[cbWest] := NO_CELL_BORDER;
+  borders := [];
+
+  nodeName := ANode.NodeName;    // for debugging
+
+  // Read nodes
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'Range' then
+    begin
+      s := GetNodeValue(ANode);
+      if not ParseCellRangeString_R1C1(s, 0, 0,
+        range.Row1, range.Col1, range.Row2, range.Col2, flags) then
+      begin
+        book.AddErrorMsg('Conditional format range %s not readable', [s]);
+        exit;
+      end;
+    end;
+
+    if nodeName = 'Condition' then
+    begin
+      childNode := ANode.FirstChild;
+      while childNode <> nil do
+      begin
+        nodeName := childNode.NodeName;
+        if nodeName = 'Qualifier' then
+        begin
+          s := GetNodeValue(childNode);
+          if (s <> '') and (s[1] <> '@') then
+          begin
+            for c in TsCFCondition do
+              if s = CF_CONDITIONS[c] then
+              begin
+                condition := ord(c);
+                break;
+              end;
+          end;
+        end else
+        if nodeName = 'Value1' then
+        begin
+          s := GetNodeValue(childNode);
+          if s <> '' then
+            op1 := s;
+        end else
+        if nodeName = 'Value2' then
+        begin
+          s := GetNodeValue(childNode);
+          if s <> '' then
+            op2 := s;
+        end else
+        if nodeName = 'Format' then
+        begin
+          s := GetAttrValue(childNode, 'Style');
+          L := TStringList.Create;
+          try
+            L.Delimiter := ';';
+            L.NameValueSeparator := ':';
+            L.StrictDelimiter := true;
+            L.DelimitedText := s;
+            for i := 0 to L.Count-1 do
+            begin
+              nameStr := Trim(L.Names[i]);
+              valueStr := Trim(L.ValueFromIndex[i]);
+              case nameStr of
+                'background':
+                  bgColor := HTMLColorStrToColor(valueStr);
+                'mso-pattern':
+                  for fs in TsFillStyle do
+                  begin
+                    p := pos(CF_FILL_NAMES[fs], valueStr);
+                    if p > 0 then begin
+                      fill := fs;
+                      Delete(valueStr, p, Length(CF_FILL_NAMES[fs]));
+                      fgColor := HTMLColorStrToColor(Trim(valueStr));
+                      break;
+                    end;
+                  end;
+                'font-style':
+                  if valueStr = 'italic' then
+                    fntStyle := fntStyle + [fssItalic];
+                'font-weight':
+                  if StrToInt(valueStr) > 500 then
+                    fntStyle := fntStyle + [fssBold];
+                'text-line-through':
+                  fntStyle := fntStyle + [fssStrikeOut];
+                'color':
+                  fntColor := HTMLColorStrToColor(valueStr);
+                'border', 'border-top', 'border-bottom', 'border-left', 'border-right':
+                  begin
+                    if nameStr = 'border' then
+                      borders := ALL_BORDERS
+                    else
+                    begin
+                      if not TryStrToCFCellBorder(nameStr, cb) then
+                        Continue;
+                      if valueStr = 'none' then
+                        Continue;
+                    end;
+                    sa := valueStr.Split(' ');
+                    lineColor := scNotDefined;
+                    lineStyle := -1;
+                    for j := 0 to High(sa) do begin
+                      tmpStr := Trim(sa[j]);
+                      // Line width not supported
+                      if pos('pt', tmpStr) > 0 then
+                        Continue;
+                      // Extract line style
+                      if (linestyle = -1) and TryStrToCFLineStyle(tmpStr, TsLineStyle(linestyle)) then
+                        Continue;
+                      // Extract line color
+                      if (lineColor = scNotDefined) then
+                        lineColor := HTMLColorStrToColor(tmpStr);
+                    end;
+                    if nameStr = 'border' then
+                    begin
+                      if linestyle = -1 then
+                        commonBorder.LineStyle := lsThin
+                      else
+                        commonBorder.LineStyle := TsLineStyle(linestyle);
+                      commonBorder.Color := lineColor;
+                    end else
+                    begin
+                      Include(borders, cb);
+                      if lineStyle = -1 then
+                        borderStyles[cb].LineStyle := lsThin
+                      else
+                        borderStyles[cb].LineStyle := TsLineStyle(linestyle);
+                      borderStyles[cb].Color := lineColor;
+                    end;
+                  end;
+              end;
+            end;
+          finally
+            L.Free;
+          end;
+        end;
+        childNode := childNode.NextSibling;
+      end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  if (range.Row1 = Cardinal(-1)) or (range.Col1 = Cardinal(-1)) or
+     (range.Row2 = Cardinal(-1)) or (Range.Col2 = Cardinal(-1)) then
+  begin
+    book.AddErrorMsg('Missing cell range for conditional formatting.');
+    exit;
+  end;
+
+  if condition = Cardinal(-1) then
+  begin
+    book.AddErrorMsg('No condition given in conditional format.');
+    exit;
+  end;
+
+  // Prepare format record used by the conditional format
+  InitFormatRecord(fmt);
+  // ... background
+  if (bgColor <> scNotDefined) or (fgColor <> scNotDefined) or (fill <> fsNoFill) then
+  begin
+    if fgColor = scNotDefined then
+      fmt.SetBackgroundColor(bgColor)
+    else
+      fmt.SetBackground(fill, fgColor, bgColor);
+  end;
+  // ... font
+  if (fntStyle <> []) or (fntColor <> scNotDefined) then
+  begin
+    fnt := book.CloneFont(fmt.FontIndex);
+    if fntStyle <> [] then
+      fnt.Style := fntStyle;
+    if fntColor <> scNotDefined then
+      fnt.Color := fntColor;
+    fmt.SetFont(book.AddFont(fnt));
+  end;
+  // .. borders
+  if commonBorder.Color <> scNotDefined then
+    fmt.SetBorders(ALL_BORDERS, commonBorder.Color, commonBorder.LineStyle)
+  else
+    for cb in borders do
+      fmt.SetBorders([cb], borderStyles[cb].Color, borderStyles[cb].LineStyle);
+
+  // Add format record to format list
+  fmtIndex := book.AddCellFormat(fmt);
+
+  // Attach as conditional format to the given cell range of the worksheet
+  sheet.WriteConditionalCellFormat(range, TsCFCondition(condition), op1, op2, fmtIndex);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1409,7 +1696,9 @@ begin
     else if nodeName = 'Names' then
       ReadNames(ANode.FirstChild, AWorksheet)
     else if nodeName = 'PageBreaks' then
-      ReadPageBreaks(ANode.FirstChild, AWorksheet);
+      ReadPageBreaks(ANode.FirstChild, AWorksheet)
+    else if nodeName = 'ConditionalFormatting' then
+      ReadConditionalFormatting(ANode.FirstChild, AWorksheet);
     ANode := ANode.NextSibling;
   end;
 end;
@@ -1752,12 +2041,12 @@ begin
     Result := '';
 end;
 
-function TsSpreadExcelXMLWriter.GetIndexStr(AIndex, APrevIndex: Integer): String;
+function TsSpreadExcelXMLWriter.GetIndexStr(AIndex, APrevIndex: Cardinal): String;
 begin
-  if (APrevIndex = -1) and (AIndex = 0)  then
+  if (APrevIndex = Cardinal(-1)) and (AIndex = 0)  then
     Result := ''
   else
-  if (APrevIndex >= 0) and (AIndex = APrevIndex + 1) then
+  if {(APrevIndex >= 0) and} (AIndex = APrevIndex + 1) then
     Result := ''
   else
     Result := Format(' ss:Index="%d"', [AIndex + 1]);
@@ -2055,7 +2344,14 @@ procedure TsSpreadExcelXMLWriter.WriteConditionalFormat(AStream: TStream;
     Result := '';
     if not (uffBackground in AFormat.UsedFormattingFields) then
       exit;
-    Result := Format('background:%s;', [ColorToHTMLColorStr(AFormat.Background.BgColor)]);
+    if AFormat.Background.Style = fsSolidFill then
+      Result := Format('background:%s;', [ColorToHTMLColorStr(AFormat.Background.BgColor)])
+    else
+      Result := Format('background:%s;mso-pattern:%s %s;', [
+        ColorToHTMLColorStr(AFormat.Background.BgColor),
+        CF_FILL_NAMES[AFormat.Background.Style],
+        ColorToHTMLColorStr(AFormat.Background.FgColor)
+      ]);
   end;
 
   function BorderStyle(AFormat: TsCellFormat): String;
@@ -2071,31 +2367,50 @@ procedure TsSpreadExcelXMLWriter.WriteConditionalFormat(AStream: TStream;
     if allEqual then begin
       bs := AFormat.BorderStyles[cbEast];
       for cb in TsCellBorders do
-        if (AFormat.BorderStyles[cb].Color <> bs.Color) or
-           (AFormat.BorderStyles[cb].LineStyle <> bs.LineStyle) then
-        begin
-          allEqual := false;
-          break;
-        end;
+        if not (cb in [cbDiagUp, cbDiagDown]) then
+          if (AFormat.BorderStyles[cb].Color <> bs.Color) or
+             (AFormat.BorderStyles[cb].LineStyle <> bs.LineStyle) then
+          begin
+            allEqual := false;
+            break;
+          end;
     end;
     if allEqual then
       Result := Format('border:0.5pt %s %s;', [
-        //LINE_WIDTHS[bs.LineStyle]*0.5,
-        LINE_STYLES1[bs.LineStyle],
+        CF_LINE_STYLES[bs.LineStyle],
         ColorToHTMLColorStr(bs.Color)
       ])
     else
       for cb in TsCellBorders do
       begin
+        if cb in [cbDiagUp, cbDiagDown] then
+          Continue;
         bs := AFormat.BorderStyles[cb];
         if (cb in AFormat.Border) then
           Result := Result + Format('border-%s:0.5pt %s %s;', [
             Lowercase(BORDER_NAMES[cb]),
-            //LINE_WIDTHS[bs.LineStyle]*0.5,
-            LINE_STYLES1[bs.LineStyle],
+            CF_LINE_STYLES[bs.LineStyle],
             ColorToHTMLColorStr(bs.Color)
           ]);
       end;
+  end;
+
+  function FontStyle(AFormat: TsCellFormat): String;
+  var
+    fnt: TsFont;
+  begin
+    Result := '';
+    if not (uffFont in AFormat.UsedFormattingFields) then
+      exit;
+    fnt := TsWorkbook(FWorkbook).GetFont(AFormat.FontIndex);
+    if (fssItalic in fnt.Style) then
+      Result := Result + 'font-style:italic;';
+    if (fssBold in fnt.Style) then
+      Result := Result + 'font-weight:700;';
+    if (fssStrikeOut in fnt.Style) then
+      Result := Result + 'text-line-through:single;';
+    if fnt.Color <> scNotDefined then
+      Result := Result + 'color:' + ColorToHTMLColorStr(fnt.Color) + ';';
   end;
 
 var
@@ -2183,10 +2498,13 @@ begin
           '<Value2>' + value2Str + '</Value2>');
 
       fmt := book.GetCellFormat(cfRule.FormatIndex);
-      s := BackgroundStyle(fmt) + BorderStyle(fmt);
+      s := BackgroundStyle(fmt) + BorderStyle(fmt) + FontStyle(fmt);
       if s <> '' then
+      begin
+        if s[Length(s)] = ';' then Delete(s, Length(s), 1);
         AppendToStream(AStream,  LF + INDENT4 +
           '<Format Style=''' + s + '''/>');
+      end;
 
       AppendToStream(AStream, LF + INDENT3 +
         '</Condition>'

@@ -41,6 +41,7 @@ type
       FullSyntax: Boolean);
 
   published
+    { Excel XLSX }
     procedure TestWriteRead_CF_CellFmt_XLSX_Equal_Const;
     procedure TestWriteRead_CF_CellFmt_XLSX_NotEqual_Const;
     procedure TestWriteRead_CF_CellFmt_XLSX_GreaterThan_Const;
@@ -69,7 +70,8 @@ type
     procedure TestWriteRead_CF_CellFmt_XLSX_NotContainsErrors;
     procedure TestWriteRead_CF_CellFmt_XLSX_Expression;
     procedure TestWriteRead_CF_CellFmt_XLSX_Background;
-    procedure TestWriteRead_CF_CellFmt_XLSX_Border;
+    procedure TestWriteRead_CF_CellFmt_XLSX_Border4;
+    procedure TestWriteRead_CF_CellFmt_XLSX_Border2;
 
     procedure TestWriteRead_CF_ColorRange_XLSX_3C_Full;
     procedure TestWriteRead_CF_ColorRange_XLSX_2C_Full;
@@ -78,6 +80,20 @@ type
 
     procedure TestWriteRead_CF_Databars_XLSX_Full;
     procedure TestWriteRead_CF_Databars_XLSX_Simple;
+
+    { Excel XML }
+    procedure TestWriteRead_CF_CellFmt_XML_Equal_Const;
+    procedure TestWriteRead_CF_CellFmt_XML_NotEqual_Const;
+    procedure TestWriteRead_CF_CellFmt_XML_GreaterThan_Const;
+    procedure TestWriteRead_CF_CellFmt_XML_LessThan_Const;
+    procedure TestWriteRead_CF_CellFmt_XML_GreaterEqual_Const;
+    procedure TestWriteRead_CF_CellFmt_XML_LessEqual_Const;
+    procedure TestWriteRead_CF_CellFmt_XML_Between_Const;
+    procedure TestWriteRead_CF_CellFmt_XML_NotBetween_Const;
+    procedure TestWriteRead_CF_CellFmt_XML_Background;
+    procedure TestWriteRead_CF_CellFmt_XML_Border4;
+    procedure TestWriteRead_CF_CellFmt_XML_Border2;
+    procedure TestWriteRead_CF_CellFmt_XML_Font;
 
   end;
 
@@ -128,6 +144,9 @@ procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt(
 const
   SHEET_NAME = 'CF';
   TEXTS: array[0..6] of String = ('abc', 'def', 'ghi', 'abc', 'jkl', 'akl', 'ab');
+  FONT_STYLE = [fssBold, fssItalic];
+  FONT_COLOR = scGreen;
+  NUMBER_FORMAT = '0.000';
 var
   worksheet: TsWorksheet;
   workbook: TsWorkbook;
@@ -135,10 +154,12 @@ var
   tempFile: string;
   sollFmtIdx: Integer;
   sollRange: TsCellRange;
+  sollFont: TsFont = nil;
   actFMT: TsCellFormat;
   actFmtIdx: Integer;
   actRange: TsCellRange;
   actCondition: TsCFCondition;
+  actFont: TsFont;
   actValue1, actValue2: Variant;
   cf: TsConditionalFormat;
 begin
@@ -146,7 +167,7 @@ begin
   workbook := TsWorkbook.Create;
   try
     workbook.Options := [boAutoCalc];
-    workSheet:= workBook.AddWorksheet(SHEET_NAME);
+    worksheet:= workBook.AddWorksheet(SHEET_NAME);
 
     row := 0;
     for Col := 0 to High(TEXTS) do
@@ -158,6 +179,13 @@ begin
     worksheet.WriteFormula(row, col, '=1/0');
 
     // Write format used by the cells detected by conditional formatting
+    if ACellFormat.FontIndex = MaxInt then
+    begin
+      ACellFormat.SetFont(workbook.AddFont(workbook.GetDefaultFont.FontName, workbook.GetDefaultFont.Size, FONT_STYLE, FONT_COLOR));
+      sollFont := workbook.CloneFont(ACellFormat.FontIndex);
+    end;
+    if ACellFormat.NumberFormatIndex = MaxInt then
+      ACellFormat.SetNumberFormat(workbook.AddNumberFormat(NUMBER_FORMAT));
     sollFmtIdx := workbook.AddCellFormat(ACellFormat);
 
     // Write instruction for conditional formatting
@@ -248,6 +276,9 @@ begin
       actFmt := workbook.GetCellFormat(actFmtIdx);
 
       // - formatting fields
+      WriteLn(Integer(ACellFormat.UsedFormattingFields));
+      WriteLn(Integer(actfmt.UsedFormattingFields));
+
       CheckEquals(integer(ACellFormat.UsedFormattingFields), integer(actFmt.UsedFormattingFields), 'Conditional formatting fields mismatch');
 
       // - background
@@ -311,25 +342,49 @@ begin
       // - fonts  // not working for xlsx
       if (uffFont in ACellFormat.UsedFormattingFields) then
       begin
-        if AFileFormat <> sfOOXML then
-        begin
-        end;
+        actFont := workbook.GetFont(actFmt.FontIndex);
+        CheckEquals(
+          sollFont.FontName,
+          actFont.Fontname,
+          'Conditional format font name mismatch'
+        );
+        CheckEquals(
+          sollFont.Size,
+          actFont.Size,
+          'Conditional format font size mismatch'
+        );
+        CheckEquals(
+          Integer(sollFont.Style),
+          Integer(actFont.Style),
+          'Conditional format font style mismatch'
+        );
+        CheckEquals(
+          Integer(sollFont.Color),
+          Integer(actFont.Color),
+          'Conditional format font color mismatch'
+        );
       end;
 
       // - Number format  // not yet implemented for xlsx
-      if (uffNumberFormat in ACEllFormat.UsedFormattingFields) then
+      if (uffNumberFormat in ACellFormat.UsedFormattingFields) then
       begin
-        if AFileFormat <> sfOOXML then
-        begin
-        end;
+        CheckEquals(
+          NUMBER_FORMAT,
+          workbook.GetNumberFormat(actFmt.NumberFormatIndex).NumFormatStr,
+          'Conditional number format mismatch'
+        );
       end;
     end;
 
   finally
     workbook.Free;
+    sollFont.Free;
     DeleteFile(tempFile);
   end;
 end;
+
+
+{ Excel XLSX }
 
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_Equal_Const;
 var
@@ -583,7 +638,7 @@ begin
   TestWriteRead_CF_CellFmt(sfOOXML, cfcEqual, 5, fmt);
 end;
 
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_Border;
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_Border4;
 var
   fmt: TsCellFormat;
 begin
@@ -591,6 +646,16 @@ begin
   fmt.SetBorders([cbNorth, cbEast, cbSouth, cbWest], scBlue, lsDotted);
   TestWriteRead_CF_CellFmt(sfOOXML, cfcEqual, 5, fmt);
 end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_Border2;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBorders([cbNorth,cbSouth], scBlue, lsDashed);
+  TestWriteRead_CF_CellFmt(sfOOXML, cfcEqual, 5, fmt);
+end;
+
 
 {-------------------------------------------------------------------------------
                             Color range tests
@@ -872,6 +937,117 @@ end;
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Databars_XLSX_Simple;
 begin
   TestwriteRead_CF_DataBars(sfOOXML, false);
+end;
+
+
+{ Excel XML }
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Equal_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_NotEqual_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcNotEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_GreaterThan_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcGreaterThan, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_LessThan_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcLessThan, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_GreaterEqual_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcGreaterEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_LessEqual_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcLessEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Between_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcBetween, 3, 7, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_NotBetween_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcNotBetween, 3, 7, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Background;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackground(fsHatchDiag, scYellow, scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Border4;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBorders([cbNorth, cbEast, cbSouth, cbWest], scBlue, lsDotted);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Border2;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBorders([cbNorth,cbSouth], scBlue, lsDashed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Font;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.FontIndex := MaxInt;  // Indicator for the test routine to create a predefined font
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
 end;
 
 

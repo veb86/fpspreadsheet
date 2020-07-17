@@ -652,6 +652,9 @@ function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
       end;
     end;
 
+    if (ACellCol = 0) or (ACellRow = 0) then
+      exit;
+
     dec(ACellCol);
     dec(ACellRow);
     if not isAbs then Include(AFlags, rfRelRow);

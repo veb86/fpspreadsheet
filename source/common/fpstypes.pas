@@ -541,6 +541,7 @@ const
   );
 
   {@@ Border style to be used for "no border"}
+
   NO_CELL_BORDER: TsCellBorderStyle = (LineStyle: lsThin; Color: scNotDefined);
 
   ALL_BORDERS: TsCellBorders = [cbNorth, cbEast, cbSouth, cbWest];
@@ -729,6 +730,7 @@ type
       const AColor: TsColor = scBlack; const ALineStyle: TsLineStyle = lsThin);
     procedure SetFont(AFontIndex: Integer);
     procedure SetHorAlignment(AHorAlign: TsHorAlignment);
+    procedure SetNumberFormat(AIndex: Integer);
     procedure SetTextRotation(ARotation: TsTextRotation);
     procedure SetVertAlignment(AVertAlign: TsVertAlignment);
   end;
@@ -1121,6 +1123,12 @@ procedure TsCellFormat.SetHorAlignment(AHorAlign: TsHorAlignment);
 begin
   HorAlignment := AHorAlign;
   UsedFormattingFields := usedFormattingFields + [uffHorAlign];
+end;
+
+procedure TsCellFormat.SetNumberFormat(AIndex: Integer);
+begin
+  NumberFormatIndex := AIndex;
+  UsedFormattingFields := UsedFormattingFields + [uffNumberFormat];
 end;
 
 procedure TsCellFormat.SetTextRotation(ARotation: TsTextRotation);

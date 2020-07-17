@@ -195,8 +195,9 @@ begin
     // conditional format #6: unique
     inc(row);
     sh.WriteText(row, 0, 'unique values');
-    sh.WriteText(row, 1, 'background bright red');
-    fmt.SetBackgroundColor($D0D0FF);
+    sh.WriteText(row, 1, 'borders all sides');
+    InitFormatRecord(fmt);
+    fmt.SetBorders(ALL_BORDERS);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcUnique, fmtIdx);
 
@@ -204,6 +205,7 @@ begin
     inc(row);
     sh.WriteText(row, 0, 'contains any text');
     sh.WriteText(row, 1, 'background red');
+    InitFormatRecord(fmt);
     fmt.SetBackgroundColor(scRed);
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcContainsText, '', fmtIdx);
