@@ -90,6 +90,22 @@ type
     procedure TestWriteRead_CF_CellFmt_XML_LessEqual_Const;
     procedure TestWriteRead_CF_CellFmt_XML_Between_Const;
     procedure TestWriteRead_CF_CellFmt_XML_NotBetween_Const;
+
+    procedure TestWriteRead_CF_CellFmt_XML_AboveAverage;
+    procedure TestWriteRead_CF_CellFmt_XML_BelowAverage;
+    procedure TestWriteRead_CF_CellFmt_XML_AboveEqualAverage;
+    procedure TestWriteRead_CF_CellFmt_XML_BelowEqualAverage;
+
+    procedure TestWriteRead_CF_CellFmt_XML_BeginsWith;
+    procedure TestWriteRead_CF_CellFmt_XML_EndsWith;
+    procedure TestWriteRead_CF_CellFmt_XML_Contains;
+    procedure TestWriteRead_CF_CellFmt_XML_NotContains;
+    procedure TestWriteRead_CF_CellFmt_XML_Unique;
+    procedure TestWriteRead_CF_CellFmt_XML_Duplicate;
+    procedure TestWriteRead_CF_CellFmt_XML_ContainsErrors;
+    procedure TestWriteRead_CF_CellFmt_XML_NotContainsErrors;
+    procedure TestWriteRead_CF_CellFmt_XML_Expression;
+
     procedure TestWriteRead_CF_CellFmt_XML_Background;
     procedure TestWriteRead_CF_CellFmt_XML_Border4;
     procedure TestWriteRead_CF_CellFmt_XML_Border2;
@@ -626,7 +642,7 @@ var
 begin
   InitFormatRecord(fmt);
   fmt.SetBackgroundColor(scRed);
-  TestWriteRead_CF_CellFmt(sfOOXML, cfcExpression, 'ISNUMBER(A1)', fmt);
+  TestWriteRead_CF_CellFmt(sfOOXML, cfcExpression, 'ISNUMBER($A$1)', fmt);
 end;
 
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_Background;
@@ -654,6 +670,234 @@ begin
   InitFormatRecord(fmt);
   fmt.SetBorders([cbNorth,cbSouth], scBlue, lsDashed);
   TestWriteRead_CF_CellFmt(sfOOXML, cfcEqual, 5, fmt);
+end;
+
+
+{ Excel XML }
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Equal_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_NotEqual_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcNotEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_GreaterThan_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcGreaterThan, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_LessThan_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcLessThan, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_GreaterEqual_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcGreaterEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_LessEqual_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcLessEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Between_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcBetween, 3, 7, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_NotBetween_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcNotBetween, 3, 7, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_AboveAverage;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcAboveAverage, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_BelowAverage;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcBelowAverage, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_AboveEqualAverage;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcAboveEqualAverage, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_BelowEqualAverage;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcBelowEqualAverage, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_BeginsWith;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcBeginsWith, 'ab', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_EndsWith;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEndsWith, 'kl', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Contains;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEndsWith, 'b', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_NotContains;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEndsWith, 'b', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Unique;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcUnique, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Duplicate;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcDuplicate, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_ContainsErrors;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcContainsErrors, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_NotContainsErrors;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcNotContainsErrors, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Expression;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcExpression, 'ISNUMBER($A$1)', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Background;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackground(fsHatchDiag, scYellow, scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Border4;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBorders([cbNorth, cbEast, cbSouth, cbWest], scBlue, lsDotted);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Border2;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBorders([cbNorth,cbSouth], scBlue, lsDashed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Font;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.FontIndex := MaxInt;  // Indicator for the test routine to create a predefined font
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
 end;
 
 
@@ -939,116 +1183,6 @@ begin
   TestwriteRead_CF_DataBars(sfOOXML, false);
 end;
 
-
-{ Excel XML }
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Equal_Const;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBackgroundColor(scRed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_NotEqual_Const;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBackgroundColor(scRed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcNotEqual, 5, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_GreaterThan_Const;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBackgroundColor(scRed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcGreaterThan, 5, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_LessThan_Const;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBackgroundColor(scRed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcLessThan, 5, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_GreaterEqual_Const;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBackgroundColor(scRed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcGreaterEqual, 5, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_LessEqual_Const;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBackgroundColor(scRed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcLessEqual, 5, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Between_Const;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBackgroundColor(scRed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcBetween, 3, 7, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_NotBetween_Const;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBackgroundColor(scRed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcNotBetween, 3, 7, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Background;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBackground(fsHatchDiag, scYellow, scRed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Border4;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBorders([cbNorth, cbEast, cbSouth, cbWest], scBlue, lsDotted);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Border2;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.SetBorders([cbNorth,cbSouth], scBlue, lsDashed);
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
-end;
-
-procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Font;
-var
-  fmt: TsCellFormat;
-begin
-  InitFormatRecord(fmt);
-  fmt.FontIndex := MaxInt;  // Indicator for the test routine to create a predefined font
-  TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
-end;
 
 
 initialization

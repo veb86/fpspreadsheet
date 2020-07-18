@@ -37,6 +37,7 @@ It provides a graphical export component on the Data Export tab."/>
         <UnitName Value="fpsexportreg"/>
       </Item2>
     </Files>
+    <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="4">
       <Item1>
         <PackageName Value="lazdbexport"/>

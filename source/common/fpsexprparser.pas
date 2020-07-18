@@ -1156,6 +1156,7 @@ var
   C: Char;
   S: String;
   ok: Boolean;
+  baseCol, baseRow: Cardinal;
 begin
   C := CurrentChar;
   isQuoted := C = '''';
@@ -1175,8 +1176,16 @@ begin
   end;
 
   if (FParser.Dialect = fdExcelR1C1) then begin
+    if FParser.FDestCell = nil then begin
+      baseRow := 0;
+      baseCol := 0;
+    end else
+    begin
+      baseRow := FParser.FDestCell^.Row;
+      baseCol := FParser.FDestCell^.Col;
+    end;
     ok := ParseCellRangeString_R1C1(FToken,
-      FParser.FDestCell^.Row, FParser.FDestCell^.Col,
+      baseRow, baseCol,
       FSheet1, FSheet2,
       FCellRange.Row1, FCellRange.Col1, FCellRange.Row2, FCellRange.Col2,
       FFlags)

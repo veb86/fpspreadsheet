@@ -24,6 +24,7 @@
         <UnitName Value="xlsxooxml_crypto"/>
       </Item2>
     </Files>
+    <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="3">
       <Item1>
         <PackageName Value="dcpcrypt"/>

@@ -24,6 +24,7 @@
         <UnitName Value="fpsvisualreg"/>
       </Item1>
     </Files>
+    <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="2">
       <Item1>
         <PackageName Value="laz_fpspreadsheet_visual"/>

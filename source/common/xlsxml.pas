@@ -95,8 +95,10 @@ type
     procedure WriteConditionalFormat(AStream: TStream; AWorksheet: TsBasicWorksheet;
       AFormat: TsConditionalFormat);
     procedure WriteConditionalFormatting(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteDocumentProperties(AStream: TStream);
     procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteNames(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteOfficeDocumentSettings(AStream: TStream);
     procedure WritePageBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteRows(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteStyle(AStream: TStream; AIndex: Integer);
@@ -225,11 +227,11 @@ const
     'Equal', 'NotEqual',                                // cfcEqual, cfcNotEqual,
     'Greater', 'Less', 'GreaterOrEqual', 'LessOrEqual',  // cfcGreaterThan, cfcLessThan, cfcGreaterEqual, cfcLessEqual,
     'Between', 'NotBetween',                             // cfcBetween, cfcNotBetween,
-    // the following 4 formulas are copies of Excel-generated files, but do not work...
-    '',  //'@RC&gt;AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',  // cfcAboveAverage
-    '',  //'@RC&lt;AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',   // cfcBelowAverage
-    '',  //'@RC&gt;=AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',  // cfcAboveEqualAverage
-    '',  //'@RC&lt;=AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',   // cfcBelowEqualAverage
+    // the following 4 formulas are copies of Excel-generated files, they exist in the xmls file, but Excel does not display them...
+    '@RC&gt;AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',   // cfcAboveAverage
+    '@RC&lt;AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',   // cfcBelowAverage
+    '@RC&gt;=AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',  // cfcAboveEqualAverage
+    '@RC&lt;=AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',  // cfcBelowEqualAverage
     // The next 4 formulas are not supported by Excel-XML
     '', '', '', '',  // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
     '@AND(COUNTIF(%2:s, RC)&gt;1,NOT(ISBLANK(RC)))',     // cfcDuplicate
@@ -243,6 +245,7 @@ const
     '@'                                                   // cfcExpression
   );
   // The leading '@' indicates that the formula will be used in <Value1> node
+  // Parameter 0 is Operand1, parameter 1 is Operand2 and parameter 2 is Range
 
 function GetCellContentTypeStr(ACell: PCell): String;
 begin
@@ -356,6 +359,73 @@ begin
     ABorder := cbDiagDown
   else
     Result := false;
+end;
+
+{ Analyzes the given expression. Using the @ templates of CF_CONDITIONS it
+  determines the condition type as well as the parameters. }
+procedure AnalyzeCFExpression(AExpr: String; out ACondition: TsCFCondition;
+  out AParam: String);
+var
+  p, n: Integer;
+begin
+  AParam := '';
+  //AExpr := UTF8TextToXMLText(AExpr);
+  if pos('RC>AVERAGE(', AExpr) = 1 then
+    ACondition := cfcAboveAverage
+  else
+  if pos ('RC<AVERAGE(', AExpr) = 1 then
+    ACondition := cfcBelowAverage
+  else
+  if pos('RC>=AVERAGE(', AExpr) = 1 then
+    ACondition := cfcAboveEqualAverage
+  else
+  if pos('RC<=AVERAGE(', AExpr) = 1 then
+    ACondition := cfcBelowEqualAverage
+  else
+  if (pos('AND(COUNTIF(', AExpr) = 1) and (pos('>', AExpr) > 0) then
+    ACondition := cfcDuplicate
+  else
+  if (pos('AND(COUNTIF(', AExpr) = 1) and (pos('=1', AExpr) > 0) then
+    ACondition := cfcUnique
+  else
+  if pos('LEFT(RC,LEN(', AExpr) = 1 then
+  begin
+    ACondition := cfcBeginsWith;
+    p := pos(')', AExpr);
+    n := Length('LEFT(RC,LEN(');
+    AParam := UnquoteStr(Trim(Copy(AExpr, n+1, p-n-1)));
+  end else
+  if pos('RIGHT(RC,LEN(',AExpr) = 1 then
+  begin
+    ACondition := cfcEndsWith;
+    p := pos(')', AExpr);
+    n := Length('RIGHT(RC,LEN(');
+    AParam := UnquoteStr(Trim(Copy(AExpr, n+1, p-n-1)));
+  end else
+  if pos('NOT(ISERROR(SEARCH(', AExpr) = 1 then
+  begin
+    ACondition := cfcContainsText;
+    p := pos(',', AExpr);
+    n := Length('NOT(ISERROR(SEARCH(');
+    AParam := UnquoteStr(Trim(Copy(AExpr, n+1, p-n-1)));
+  end else
+  if pos('ISERROR(SEARCH(', AExpr) = 1 then
+  begin
+    ACondition := cfcNotContainsText;
+    p := pos(',', AExpr);
+    n := Length('ISERROR(SEARCH(');
+    AParam := UnquoteStr(Trim(Copy(AExpr, n+1, p-n-1)));
+  end else
+  if AExpr = 'ISERROR(RC)' then
+    ACondition := cfcContainsErrors
+  else
+  if AExpr = 'NOT(ISERROR(RC))' then
+    ACondition := cfcNotContainsErrors
+  else
+  begin
+    ACondition := cfcExpression;
+    AParam := AExpr;
+  end;
 end;
 
 
@@ -782,6 +852,7 @@ var
   lineColor: TsColor;
   commonBorder: TsCellBorderStyle;
   borderStyles: TsCellBorderStyles;
+  parser: TsSpreadsheetParser;
 begin
   sheet := TsWorksheet(AWorksheet);
   book := TsWorkbook(FWorkbook);
@@ -938,6 +1009,29 @@ begin
           end;
         end;
         childNode := childNode.NextSibling;
+      end;
+
+      if (condition = -1) and (op1 <> '') then
+      begin
+        AnalyzeCFExpression(op1, TsCFCondition(condition), s);
+        if s = '' then
+          VarClear(op1)
+        else
+        if TsCFCondition(condition) = cfcExpression then
+        begin
+          parser := TsSpreadsheetParser.Create(AWorksheet);
+          try
+            try
+              parser.R1C1Expression[nil] := s;       // Parse in Excel-R1C1 dialect
+              op1 := parser.Expression[fdExcelA1];   // Convert to Excel-A1 dialect
+            except
+              VarClear(op1);
+            end;
+          finally
+            parser.Free;
+          end;
+        end else
+          op1 := s;
       end;
     end;
     ANode := ANode.NextSibling;
@@ -2571,6 +2665,24 @@ begin
   ]));
 end;
 
+procedure TsSpreadExcelXMLWriter.WriteDocumentProperties(AStream: TStream);
+begin
+  AppendToStream(AStream, INDENT1 +
+    '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office" />' + LineEnding);
+
+  // replace by these when fpspreadsheet supports these meta data.
+  {
+  AppendToSstream(AStream, INDENT1 +
+    '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">' + LineEnding + INDENT2 +
+      '<Author></Author>' + LineEnding + INDENT2 +
+      '<LastAuthor></LastAuthor>' + LineEnding + INDENT2 +
+      '<Created></Created>' + LineEnding + Indent2 + // Date in format YYYY-mm-ddThh:nn:ssZ
+       '<Version>16.00</Version>' + LineEnding + Indent1 +
+    '</DocumentProperties>' + LineEnding
+  );
+  }
+end;
+
 procedure TsSpreadExcelXMLWriter.WriteError(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TsErrorValue; ACell: PCell);
 begin
@@ -2812,6 +2924,15 @@ begin
     StrUtils.IfThen(HasFormula(ACell), GetCellContentTypeStr(ACell), 'Number'),
     AValue,
     GetCommentStr(ACell)], FPointSeparatorSettings)
+  );
+end;
+
+procedure TsSpreadExcelXMLWriter.WriteOfficeDocumentSettings(AStream: TStream);
+begin
+  AppendToStream(AStream, INDENT1 +
+    '<OfficeDocumentSettings xmlns="urn:schemas-microsoft-com:office:office">' + LineEnding + INDENT2 +
+      '<AllowPNG/>' + LineEnding + INDENT1 +
+    '</OfficeDocumentSettings>' + LineEnding
   );
 end;
 
@@ -3165,6 +3286,8 @@ begin
     '          xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"' + LF +
     '          xmlns:html="http://www.w3.org/TR/REC-html40">' + LF);
 
+  WriteDocumentProperties(AStream);
+  WriteOfficeDocumentSettings(AStream);
   WriteExcelWorkbook(AStream);
   WriteStyles(AStream);
   WriteWorksheets(AStream);

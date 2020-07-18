@@ -43,6 +43,7 @@ It provides graphical components like a grid and chart."/>
         <UnitName Value="fpsActions"/>
       </Item5>
     </Files>
+    <CompatibilityMode Value="True"/>
     <RequiredPkgs Count="4">
       <Item1>
         <PackageName Value="laz_fpspreadsheet"/>
