@@ -116,6 +116,8 @@ type
       AFormatIndex: Integer; out AColsRepeated: Integer);
     procedure ReadCellImages(ANode: TDOMNode; ARow, ACol: Cardinal);
     procedure ReadCFCellFormat(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
+    procedure ReadCFColorScale(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
+    procedure ReadCFDataBars(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     procedure ReadConditionalFormats(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
@@ -2188,10 +2190,11 @@ begin
       while childNode <> nil do
       begin
         nodeName := childNode.NodeName;
-
-        if nodeName = 'calcext:condition' then
-          ReadCFCellFormat(childNode, AWorksheet, range);
-
+        case nodeName of
+          'calcext:condition': ReadCFCellFormat(childNode, AWorksheet, range);
+          'calcext:color-scale': ReadCFColorScale(childNode, AWorksheet, range);
+          'calcext:data-bar': ReadCFDataBars(childNode, AWorksheet, range);
+        end;
         childNode := childNode.NextSibling;
       end;
     end;
@@ -3926,6 +3929,83 @@ begin
   if param1 = '' then VarClear(op1) else op1 := param1;
   if param2 = '' then VarClear(op2) else op2 := param2;
   sheet.WriteConditionalCellFormat(ARange, condition, op1, op2, fmtIndex);
+end;
+
+procedure TsSpreadOpenDocReader.ReadCFColorScale(ANode: TDOMNode;
+  ASheet: TsBasicWorksheet; ARange: TsCellRange);
+{ <calcext:color-scale>
+    <calcext:color-scale-entry calcext:value="0" calcext:type="minimum" calcext:color="#ff0000" />
+    <calcext:color-scale-entry calcext:value="50" calcext:type="percentile" calcext:color="#ffff00" />
+    <calcext:color-scale-entry calcext:value="0" calcext:type="maximum" calcext:color="#00a933" />
+  </calcext:color-scale>
+  }
+var
+  sheet: TsWorksheet;
+  nodeName: String;
+  s: String;
+  values: Array of Double = nil;
+  kinds: Array of TsCFValueKind = nil;
+  colors: Array of TsColor = nil;
+  n: Integer;
+begin
+  sheet := TsWorksheet(ASheet);
+  ANode := ANode.FirstChild;
+  while ANode <> nil do begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'calcext:color-scale-entry' then
+    begin
+      s := GetAttrValue(ANode, 'calcext:value');
+      SetLength(values, Length(values)+1);
+      if not TryStrToFloat(s, values[High(values)]) then
+        values[High(values)] := 0;
+
+      s := GetAttrValue(ANode, 'calcext:type');
+      SetLength(kinds, Length(kinds)+1);
+      case s of
+        '' : kinds[High(kinds)] := vkNone;
+        'minimum': kinds[High(kinds)] := vkMin;
+        'maximum': kinds[High(kinds)] :=  vkMax;
+        'percent': kinds[High(kinds)] := vkPercent;
+        'percentile': kinds[High(kinds)] := vkPercentile;
+        'number': kinds[High(kinds)] := vkValue;
+      end;
+
+      s := GetAttrvalue(ANode, 'calcext:color');
+      if s <> '' then
+      begin
+        SetLength(colors, Length(colors)+1);
+        colors[High(colors)] := HTMLColorStrToColor(s);
+      end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  n := MinValue([Length(values), Length(kinds), Length(colors)]);
+  case n of
+    0,
+    1: exit;
+    2: sheet.WriteColorRange(
+         ARange,
+         colors[0], kinds[0], values[0],
+         colors[1], kinds[1], values[1]
+       );
+    else
+       sheet.WriteColorRange(
+         ARange,
+         colors[0], kinds[0], values[0],
+         colors[1], kinds[1], values[1],
+         colors[2], kinds[2], values[2]
+       );
+  end;
+end;
+
+procedure TsSpreadOpenDocReader.ReadCFDataBars(ANode: TDOMNode;
+  ASheet: TsBasicWorksheet; ARange: TsCellRange);
+var
+  sheet: TsWorksheet;
+begin
+  sheet := TsWorksheet(ASheet);
+  //...
 end;
 
 { Reads the cells in the given table. Loops through all rows, and then finds all

@@ -142,6 +142,11 @@ type
     procedure TestWriteRead_CF_CellFmt_ODS_Background;
     procedure TestWriteRead_CF_CellFmt_ODS_Border4;
     procedure TestWriteRead_CF_CellFmt_ODS_Border2;
+
+    procedure TestWriteRead_CF_ColorRange_ODS_3C_Full;
+    procedure TestWriteRead_CF_ColorRange_ODS_2C_Full;
+    procedure TestWriteRead_CF_ColorRange_ODS_3C_Simple;
+    procedure TestWriteRead_CF_ColorRange_ODS_2C_Simple;
   end;
 
 implementation
@@ -1369,6 +1374,28 @@ end;
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_XLSX_2C_Simple;
 begin
   TestWriteRead_CF_ColorRange(sfOOXML, false, false);
+end;
+
+{ OpenDocument }
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_ODS_3C_Full;
+begin
+  TestWriteRead_CF_ColorRange(sfOpenDocument, true, true);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_ODS_2C_Full;
+begin
+  TestWriteRead_CF_ColorRange(sfOpenDocument, false, true);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_ODS_3C_Simple;
+begin
+  TestWriteRead_CF_ColorRange(sfOpenDocument, true, false);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_ODS_2C_Simple;
+begin
+  TestWriteRead_CF_ColorRange(sfOpenDocument, false, false);
 end;
 
 
