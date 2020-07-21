@@ -147,6 +147,10 @@ type
     procedure TestWriteRead_CF_ColorRange_ODS_2C_Full;
     procedure TestWriteRead_CF_ColorRange_ODS_3C_Simple;
     procedure TestWriteRead_CF_ColorRange_ODS_2C_Simple;
+
+    procedure TestWriteRead_CF_Databars_ODS_Full;
+    procedure TestWriteRead_CF_Databars_ODS_Simple;
+
   end;
 
 implementation
@@ -1356,6 +1360,9 @@ begin
   end;
 end;
 
+
+{ Excel XLSX }
+
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_XLSX_3C_Full;
 begin
   TestWriteRead_CF_ColorRange(sfOOXML, true, true);
@@ -1375,6 +1382,7 @@ procedure TSpreadWriteReadCFTests.TestWriteRead_CF_ColorRange_XLSX_2C_Simple;
 begin
   TestWriteRead_CF_ColorRange(sfOOXML, false, false);
 end;
+
 
 { OpenDocument }
 
@@ -1506,16 +1514,31 @@ begin
   end;
 end;
 
+
+{ Excel XLSX }
+
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Databars_XLSX_Full;
 begin
-  TestwriteRead_CF_DataBars(sfOOXML, true);
+  TestWriteRead_CF_DataBars(sfOOXML, true);
 end;
 
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Databars_XLSX_Simple;
 begin
-  TestwriteRead_CF_DataBars(sfOOXML, false);
+  TestWriteRead_CF_DataBars(sfOOXML, false);
 end;
 
+
+{ OpenDocument }
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Databars_ODS_Full;
+begin
+  TestwriteRead_CF_DataBars(sfOpenDocument, true);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Databars_ODS_Simple;
+begin
+  TestwriteRead_CF_DataBars(sfOpenDocument, false);
+end;
 
 
 initialization

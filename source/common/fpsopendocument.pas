@@ -446,6 +446,19 @@ begin
   end;
 end;
 
+function StrToValueKind(s: String): TsCFValueKind;
+var
+  vk: TsCFValuekind;
+begin
+  for vk in TsCFValueKind do
+    if CF_VALUE_KIND[vk] = s then
+    begin
+      Result := vk;
+      exit;
+    end;
+  Result := vkNone;
+end;
+
 
 type
   { Table style items stored in TableStyleList of the reader }
@@ -3956,19 +3969,12 @@ begin
     begin
       s := GetAttrValue(ANode, 'calcext:value');
       SetLength(values, Length(values)+1);
-      if not TryStrToFloat(s, values[High(values)]) then
+      if not TryStrToFloat(s, values[High(values)], FPointSeparatorSettings) then
         values[High(values)] := 0;
 
       s := GetAttrValue(ANode, 'calcext:type');
       SetLength(kinds, Length(kinds)+1);
-      case s of
-        '' : kinds[High(kinds)] := vkNone;
-        'minimum': kinds[High(kinds)] := vkMin;
-        'maximum': kinds[High(kinds)] :=  vkMax;
-        'percent': kinds[High(kinds)] := vkPercent;
-        'percentile': kinds[High(kinds)] := vkPercentile;
-        'number': kinds[High(kinds)] := vkValue;
-      end;
+      kinds[High(kinds)] := StrToValueKind(s);
 
       s := GetAttrvalue(ANode, 'calcext:color');
       if s <> '' then
@@ -4001,11 +4007,68 @@ end;
 
 procedure TsSpreadOpenDocReader.ReadCFDataBars(ANode: TDOMNode;
   ASheet: TsBasicWorksheet; ARange: TsCellRange);
+{ <calcext:data-bar calcext:min-length="10" calcext:max-length="90" calcext:negative-color="#ff0000" calcext:positive-color="#ff0000" calcext:axis-color="#000000">
+    <calcext:formatting-entry calcext:value="0" calcext:type="auto-minimum" />
+    <calcext:formatting-entry calcext:value="0" calcext:type="auto-maximum" />
+  </calcext:data-bar>  }
 var
   sheet: TsWorksheet;
+  nodeName: String;
+  s: String;
+  values: array of double = nil;
+  kinds: array of TsCFValueKind = nil;
+  posColor, negColor: TsColor;
+  n: Integer;
 begin
+  if ANode = nil then
+    exit;
+
   sheet := TsWorksheet(ASheet);
-  //...
+
+  s := GetAttrValue(ANode, 'calcext:positive-color');
+  if s <> '' then
+    posColor := HTMLColorStrToColor(s)
+  else
+    posColor := scNotDefined;
+
+  s := GetAttrValue(ANode, 'calcext:negative-color');
+  if s <> '' then
+    negColor := HTMLColorStrToColor(s)
+  else
+    negColor := scNotDefined;
+
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'calcext:formatting-entry' then
+    begin
+      s := GetAttrValue(ANode, 'calcext:value');
+      SetLength(values, Length(values)+1);
+      if not TryStrToFloat(s, values[High(values)], FPointSeparatorSettings) then
+        values[High(values)] := 0;
+
+      s := GetAttrValue(ANode, 'calcext:type');
+      SetLength(kinds, Length(kinds)+1);
+      kinds[High(kinds)] := StrToValueKind(s);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  // We only support a single color, ATM.
+  if (posColor = scNotDefined) and (negColor <> scNotDefined) then
+    posColor := negColor;
+
+  n := MaxValue([Length(values), Length(kinds)]);
+  if n < 2 then
+    exit;
+
+  sheet.WriteDataBars(
+    ARange,
+    posColor,
+    kinds[0], values[0],
+    kinds[1], values[1]
+  );
 end;
 
 { Reads the cells in the given table. Loops through all rows, and then finds all
