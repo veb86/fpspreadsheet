@@ -115,8 +115,10 @@ type
     procedure ReadCell(ANode: TDOMNode; ARow, ACol: Integer;
       AFormatIndex: Integer; out AColsRepeated: Integer);
     procedure ReadCellImages(ANode: TDOMNode; ARow, ACol: Cardinal);
+    procedure ReadCFCellFormat(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
+    procedure ReadConditionalFormats(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
     procedure ReadDocumentProtection(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode; var AFontName: String;
@@ -424,7 +426,6 @@ const
 function CFOperandToStr(v: variant; AWorksheet: TsWorksheet): String;
 var
   r,c: Cardinal;
-  parser: TsSpreadsheetParser;
 begin
   Result := VarToStr(v);
   if Result = '' then
@@ -433,23 +434,7 @@ begin
   if VarIsStr(v) then begin
     // Special case: v is a formula, i.e. begins with '='
     if (Length(Result) > 1) and (Result[1] = '=') then
-    begin
-      parser := TsSpreadsheetParser.Create(AWorksheet);
-      try
-        try
-          parser.Expression[fdExcelA1] := Result;       // Parse in Excel-A1 dialect
-          Result := parser.Expression[fdOpenDocument];  // Convert to ODS dialect
-        except
-          on EGeneralExprParserError do
-          begin
-            Result := VarToStr(v);
-            AWorksheet.Workbook.AddErrorMsg('Error in CF Expression ' + Result);
-          end;
-        end;
-      finally
-        parser.Free;
-      end;
-    end
+      Result := ConvertFormulaDialect(Result, fdExcelA1, fdOpenDocument, AWorksheet)
     else
     // Special case: cell reference (Note: relative refs are made absolute!)
     if ParseCellString(Result, r, c) then
@@ -2169,6 +2154,51 @@ begin
     (FWorksheet as TsWorksheet).WriteComment(ARow, ACol, comment);
 end;
 
+procedure TsSpreadOpenDocReader.ReadConditionalFormats(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet);
+var
+  sheet: TsWorksheet;
+  childNode: TDOMNode;
+  nodeName: String;
+  s: String;
+  range: TsCellRange = (Row1: Cardinal(-1); Col1: Cardinal(-1); Row2: Cardinal(-1); Col2: Cardinal(-1));
+  sheet1, sheet2: string;
+  flags: TsRelFlags;
+begin
+  ANode := ANode.FindNode('calcext:conditional-formats');
+  if ANode = nil then
+    exit;
+
+  sheet := TsWorksheet(AWorksheet);
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'calcext:conditional-format' then
+    begin
+      // Cell range
+      s := GetAttrValue(ANode, 'calcext:target-range-address');
+      if (s = '') or not TryStrToCellRange_ODS(s, sheet1, sheet2, range.Row1, range.Col1, range.Row2, range.Col2, flags) then
+      begin
+        ANode := ANode.NextSibling;
+        Continue;
+      end;
+
+      childNode := ANode.FirstChild;
+      while childNode <> nil do
+      begin
+        nodeName := childNode.NodeName;
+
+        if nodeName = 'calcext:condition' then
+          ReadCFCellFormat(childNode, AWorksheet, range);
+
+        childNode := childNode.NextSibling;
+      end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocReader.ReadDateTime(ARow, ACol: Cardinal;
   AStyleIndex: Integer; ACellNode: TDOMNode);
 var
@@ -2728,6 +2758,8 @@ begin
         ReadColumns(TableNode);
         // Process each row inside the sheet and process each cell of the row
         ReadRowsAndCells(TableNode);
+        // Read conditional formats
+        ReadConditionalFormats(TableNode, FWorksheet);
         // Read page layout
         ReadPageLayout(StylesNode, GetAttrValue(TableNode, 'table:style-name'),
           (FWorksheet as TsWorksheet).PageLayout);
@@ -3717,6 +3749,183 @@ begin
     ReadShape(childnode, ARow, ACol);
     childNode := childNode.NextSibling;
   end;
+end;
+
+function ExtractArguments(s: String; IsExpression: Boolean;
+  var arg1, arg2: String): Boolean;
+var
+  p: Integer;
+  sa: TStringArray;
+begin
+  if s = '' then
+    raise Exception.Create('Empty string not allowed');
+
+  if IsExpression then
+  begin
+    p := pos('(', s);
+    if p = 0 then
+      exit(false);
+    Delete(s, 1, p);
+    Delete(s, Length(s), 1);
+    arg1 := UnquoteStr(s);
+    exit(true);
+  end;
+
+  case s[1] of
+    '=': arg1 := UnquoteStr(Copy(s, 2, MaxInt));
+    '<', '>', '!':
+         if (s[2] = '=') then
+           arg1 := UnquoteStr(Copy(s, 3, MaxInt))
+         else
+           arg1 := UnquoteStr(Copy(s, 2, MaxInt));
+  else
+    p := pos('(', s);
+    if p = 0 then
+      exit(false);
+    Delete(s, 1, p);
+
+    p := pos(')', s);
+    if p = 0 then
+      exit(false);
+    Delete(s, p, MaxInt);
+
+    sa := s.Split(',');
+    arg1 := UnquoteStr(sa[0]);
+    if Length(sa) > 1 then
+      arg2 := UnquoteStr(sa[1]);
+  end;
+  Result := true;
+end;
+
+procedure TsSpreadOpenDocReader.ReadCFCellFormat(ANode: TDOMNode;
+  ASheet: TsBasicWorksheet; ARange: TsCellRange);
+const
+  CONDITONS_WITHOUT_ARGUMENTS: set of TsCFCondition = [
+    cfcAboveAverage, cfcBelowAverage, cfcAboveEqualAverage, cfcBelowEqualAverage,
+    cfcUnique, cfcDuplicate,
+    cfcContainsErrors, cfcNotContainsErrors
+  ];
+var
+  s: String;
+  fmtIndex: Integer;
+  fmt: TsCellFormat;
+  ok: Boolean;
+  condition: TsCFCondition;
+  param1, param2: String;
+  op1, op2: Variant;
+  sheet: TsWorksheet;
+begin
+  sheet := TsWorksheet(ASheet);
+
+  // Style
+  s := GetAttrValue(ANode, 'calcext:apply-style-name');
+  if s <> '' then
+  begin
+    fmtIndex := ExtractFormatIndexFromStyle(s, -1);
+    fmt := FCellFormatList.Items[fmtIndex]^;
+    fmtIndex := (FWorkbook as TsWorkbook).AddCellFormat(fmt);
+  end;
+
+  // Type of CF, operation
+  s := GetAttrValue(ANode, 'calcext:value');
+  if s = '' then
+    exit;
+
+  ok := true;
+  case s[1] of
+    '=': condition := cfcEqual;
+    '!': if (s[2] = '=') then
+           condition := cfcNotEqual
+         else
+           ok := false;
+    '<': if (s[2] = '=') then
+           condition := cfcLessEqual
+          else
+            condition := cfcLessThan;
+    '>': if s[2] = '=' then
+           condition := cfcGreaterEqual
+         else
+           condition := cfcGreaterThan;
+    'a': case s of
+           'above-average': condition := cfcAboveAverage;
+           'above-equal-average': condition := cfcAboveEqualAverage
+         end;
+    'b': case s of
+           'below-average': condition := cfcBelowAverage;
+           'below-equal-average': condition := cfcBelowEqualAverage;
+         else
+           if pos('begins-with(', s) = 1 then
+             condition := cfcBeginsWith
+           else
+           if pos('between(', s) = 1 then
+             condition := cfcBetween
+           else
+           if pos('bottom-elements(', s) = 1 then
+             condition := cfcBottom
+           else
+           if pos('bottom-percent(', s) = 1 then
+             condition := cfcBottomPercent
+           else
+             ok := false;
+         end;
+    'c': if pos('contains-text(', s) = 1 then
+           condition := cfcContainsText
+         else
+           ok := false;
+    'd': if s = 'duplicate' then
+           condition := cfcDuplicate
+         else
+           ok := false;
+    'e': if pos('ends-with(', s) = 1 then
+           condition := cfcEndsWith
+         else
+           ok := false;
+    'f': if pos('formula-is(', s) = 1 then
+           condition := cfcExpression
+         else
+           ok := false;
+    'i': if (s = 'is-error') then
+           condition := cfcContainsErrors
+         else if s = 'is-no-error' then
+           condition := cfcNotContainsErrors
+         else
+           ok := false;
+    'n': if pos('not-contains-text(', s) = 1 then
+           condition := cfcNotContainsText
+         else if pos('not-between(', s) = 1 then
+           condition := cfcNotBetween
+         else
+           ok := false;
+    't': if pos('top-elements(', s) = 1 then
+           condition := cfcTop
+         else if pos('top-percent(', s) = 1 then
+           condition := cfcTopPercent
+         else
+           ok := false;
+    'u' : if s = 'unique' then
+            condition := cfcUnique
+          else
+            ok := false;
+  end;
+
+  if ok then
+  begin
+    if (condition in CONDITONS_WITHOUT_ARGUMENTS) then
+      ok := true
+    else if (condition = cfcExpression) then
+    begin
+      ok := ExtractArguments(s, true, param1, param2);
+      param1 := ConvertFormulaDialect(param1, fdOpenDocument, fdExcelA1, sheet);
+    end else
+      ok := ExtractArguments(s, false, param1, param2);
+    end;
+
+  if not ok then
+    exit;
+
+  if param1 = '' then VarClear(op1) else op1 := param1;
+  if param2 = '' then VarClear(op2) else op2 := param2;
+  sheet.WriteConditionalCellFormat(ARange, condition, op1, op2, fmtIndex);
 end;
 
 { Reads the cells in the given table. Loops through all rows, and then finds all

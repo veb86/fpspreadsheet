@@ -111,6 +111,37 @@ type
     procedure TestWriteRead_CF_CellFmt_XML_Border2;
     procedure TestWriteRead_CF_CellFmt_XML_Font;
 
+    { OpenDocument ODS }
+    procedure TestWriteRead_CF_CellFmt_ODS_Equal_Const;
+    procedure TestWriteRead_CF_CellFmt_ODS_NotEqual_Const;
+    procedure TestWriteRead_CF_CellFmt_ODS_GreaterThan_Const;
+    procedure TestWriteRead_CF_CellFmt_ODS_LessThan_Const;
+    procedure TestWriteRead_CF_CellFmt_ODS_GreaterEqual_Const;
+    procedure TestWriteRead_CF_CellFmt_ODS_LessEqual_Const;
+    procedure TestWriteRead_CF_CellFmt_ODS_Between_Const;
+    procedure TestWriteRead_CF_CellFmt_ODS_NotBetween_Const;
+    procedure TestWriteRead_CF_CellFmt_ODS_AboveAverage;
+    procedure TestWriteRead_CF_CellFmt_ODS_BelowAverage;
+    procedure TestWriteRead_CF_CellFmt_ODS_AboveEqualAverage;
+    procedure TestWriteRead_CF_CellFmt_ODS_BelowEqualAverage;
+//    procedure TestWriteRead_CF_CellFmt_ODS_AboveAverage_2StdDev;  // not supported by ODS
+//    procedure TestWriteRead_CF_CellFmt_ODS_BelowAverage_2StdDev;
+    procedure TestWriteRead_CF_CellFmt_ODS_Top3;
+    procedure TestWriteRead_CF_CellFmt_ODS_Top10Percent;
+    procedure TestWriteRead_CF_CellFmt_ODS_Bottom3;
+    procedure TestWriteRead_CF_CellFmt_ODS_Bottom10Percent;
+    procedure TestWriteRead_CF_CellFmt_ODS_BeginsWith;
+    procedure TestWriteRead_CF_CellFmt_ODS_EndsWith;
+    procedure TestWriteRead_CF_CellFmt_ODS_Contains;
+    procedure TestWriteRead_CF_CellFmt_ODS_NotContains;
+    procedure TestWriteRead_CF_CellFmt_ODS_Unique;
+    procedure TestWriteRead_CF_CellFmt_ODS_Duplicate;
+    procedure TestWriteRead_CF_CellFmt_ODS_ContainsErrors;
+    procedure TestWriteRead_CF_CellFmt_ODS_NotContainsErrors;
+    procedure TestWriteRead_CF_CellFmt_ODS_Expression;
+    procedure TestWriteRead_CF_CellFmt_ODS_Background;
+    procedure TestWriteRead_CF_CellFmt_ODS_Border4;
+    procedure TestWriteRead_CF_CellFmt_ODS_Border2;
   end;
 
 implementation
@@ -898,6 +929,281 @@ begin
   InitFormatRecord(fmt);
   fmt.FontIndex := MaxInt;  // Indicator for the test routine to create a predefined font
   TestWriteRead_CF_CellFmt(sfExcelXML, cfcEqual, 5, fmt);
+end;
+
+
+{ OpenDocument ODS }
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Equal_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_NotEqual_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcNotEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_GreaterThan_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcGreaterThan, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_LessThan_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcLessThan, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_GreaterEqual_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcGreaterEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_LessEqual_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcLessEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Between_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcBetween, 3, 7, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_NotBetween_Const;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcNotBetween, 3, 7, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_AboveAverage;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcAboveAverage, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_BelowAverage;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcBelowAverage, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_AboveEqualAverage;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcAboveEqualAverage, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_BelowEqualAverage;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcBelowEqualAverage, fmt);
+end;
+
+{ not supported by ODS
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_AboveAverage_2StdDev;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcAboveAverage, 2.0, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_BelowAverage_2StdDev;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcBelowAverage, 2.0, fmt);
+end;
+}
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Top3;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcTop, 3, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Top10Percent;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcTopPercent, 10, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Bottom3;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcBottom, 3, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Bottom10Percent;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcBottomPercent, 10, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_BeginsWith;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcBeginsWith, 'ab', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_EndsWith;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcEndsWith, 'kl', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Contains;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcEndsWith, 'b', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_NotContains;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcEndsWith, 'b', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Unique;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcUnique, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Duplicate;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcDuplicate, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_ContainsErrors;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcContainsErrors, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_NotContainsErrors;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcNotContainsErrors, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Expression;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcExpression, 'ISNUMBER($A$1)', fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Background;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackground(fsHatchDiag, scYellow, scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Border4;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBorders([cbNorth, cbEast, cbSouth, cbWest], scBlue, lsDotted);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcEqual, 5, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Border2;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBorders([cbNorth,cbSouth], scBlue, lsDashed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcEqual, 5, fmt);
 end;
 
 

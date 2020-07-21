@@ -121,6 +121,9 @@ function GetCellRangeString_R1C1(ASheet1, ASheet2: String;
 function SheetNameNeedsQuotes(ASheet: String): Boolean;
 
 //  OpenDocument Syntax
+function TryStrToCellRange_ODS(const AStr: String; out ASheet1, ASheet2: String;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean;
+
 function GetCellRangeString_ODS(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel): String; overload;
 function GetCellRangeString_ODS(ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -1305,6 +1308,65 @@ function GetCellRangeString(ARange: TsCellRange;
 begin
   Result := GetCellRangeString(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2,
     AFlags, Compact);
+end;
+
+
+{@@ ----------------------------------------------------------------------------
+  Extracts sheets names and cell coordinates from a cell range string in
+  OpenDocument syntax, e.g. "Table1.A1:Table2.B4"
+-------------------------------------------------------------------------------}
+function TryStrToCellRange_ODS(const AStr: String; out ASheet1, ASheet2: String;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean;
+var
+  p: Integer;
+  cell1Str, cell2Str: String;
+  f: TsRelFlags;
+begin
+  p := Pos(':', AStr);
+  if p = 0 then
+  begin
+    cell1Str := AStr;
+    cell2Str := '';
+  end else
+  begin
+    cell1str := Copy(AStr, 1, p-1);
+    cell2Str := Copy(AStr, p+1, MaxInt);
+  end;
+
+  p := pos('.', cell1Str);
+  if p = 0 then
+    ASheet1 := ''
+  else
+  begin
+    ASheet1 := Copy(cell1Str, 1, p-1);
+    cell1Str := Copy(cell1Str, p+1, MaxInt);
+  end;
+  Result := ParseCellString(cell1Str, ARow1, ACol1, AFlags);
+
+  if not Result then
+    exit;
+
+  if cell2Str <> '' then
+  begin
+    p := pos('.', cell2Str);
+    if p = 0 then
+      ASheet2 := ''
+    else
+    begin
+      ASheet2 := Copy(cell2Str, 1, p-1);
+      cell2Str := Copy(cell2Str, p+1, MaxInt);
+    end;
+    Result := ParseCellString(cell2Str, ARow2, ACol2, f);
+    if (rfRelRow in f) then Include(AFlags, rfRelRow2);
+    if (rfRelCol in f) then Include(Aflags, rfRelCol2);
+  end else
+  begin
+    ASheet2 := ASheet1;
+    ARow2 := ARow1;
+    ACol2 := ACol2;
+    if (rfRelRow in AFlags) then Include(AFlags, rfRelRow2);
+    if (rfRelCol in AFlags) then Include(AFlags, rfRelCol2);
+  end;
 end;
 
 

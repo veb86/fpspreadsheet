@@ -868,6 +868,9 @@ procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
 procedure RegisterFunction(const AName: ShortString; const AResultType: Char;
   const AParamTypes: String; const AExcelCode: Integer; ACallBack: TsExprFunctionEvent); overload;
 
+function ConvertFormulaDialect(AFormula: String;
+  ASrcDialect, ADestDialect: TsFormulaDialect; AWorksheet: TsBasicWorksheet): String;
+
 var
   // Format settings used in stored parsed formulas.
   ExprFormatSettings: TFormatSettings;
@@ -4902,6 +4905,40 @@ begin
   Result.ResultType := rtString;
   Result.ResString := AValue;
 end;
+
+
+function ConvertFormulaDialect(AFormula: String;
+  ASrcDialect, ADestDialect: TsFormulaDialect; AWorksheet: TsBasicWorksheet): String;
+var
+  parser: TsSpreadsheetParser;
+begin
+  if ASrcDialect = ADestDialect then
+  begin
+    Result := AFormula;
+    exit;
+  end;
+
+  if (ASrcDialect = fdExcelR1C1) or (ADestDialect = fdExcelR1C1) then
+    raise Exception.Create('ConvertFormulaDialect cannot be used for Excel R1C1 syntax.');
+
+  parser := TsSpreadsheetParser.Create(AWorksheet);
+  try
+    try
+      parser.Expression[ASrcDialect] := AFormula;    // Parse in source dialect
+      Result := parser.Expression[ADestDialect];     // Convert to destination dialect
+    except
+      on EGeneralExprParserError do
+      begin
+        Result := AFormula;
+        (AWorksheet as TsWorksheet).Workbook.AddErrorMsg('Error converting formula "' + AFormula + '"');
+      end;
+    end;
+  finally
+    parser.Free;
+  end;
+
+end;
+
 
 {@@ ---------------------------------------------------------------------------
   Registers a non-built-in function:
