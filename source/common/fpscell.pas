@@ -2,7 +2,7 @@ unit fpsCell;
 
 {$mode objfpc}{$H+}
 {$modeswitch advancedrecords}
-
+{$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 interface
 
 uses

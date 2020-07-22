@@ -28,7 +28,7 @@ unit fpsOpenDocument;
 {$ifdef fpc}
   {$mode objfpc}{$H+}
 {$endif}
-
+{$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 {$I ..\fps.inc}
 
 interface
@@ -3985,7 +3985,8 @@ begin
     ANode := ANode.NextSibling;
   end;
 
-  n := MinValue([Length(values), Length(kinds), Length(colors)]);
+  n := MinValue([Integer(Length(values)), Integer(Length(kinds)), Integer(Length(colors))]);
+  // Cast needed due to stupid 64-bit FPC not knowing which overload to select ...
   case n of
     0,
     1: exit;
@@ -4058,7 +4059,8 @@ begin
   if (posColor = scNotDefined) and (negColor <> scNotDefined) then
     posColor := negColor;
 
-  n := MaxValue([Length(values), Length(kinds)]);
+  n := MinValue([Integer(Length(values)), Integer(Length(kinds))]);
+  // Cast needed due to stupid 64-bit FPC not knowing which overload to select...
   if n < 2 then
     exit;
 

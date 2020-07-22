@@ -2975,8 +2975,8 @@ begin
     // chromatic case
     // saturation
     if L <= 128
-    then S := integer(diff * 255) div (cMax + cMin)
-    else S := integer(diff * 255) div (510 - cMax - cMin);
+    then S := (diff * 255) div (cMax + cMin)
+    else S := (diff * 255) div (510 - cMax - cMin);
 
     // hue
     Rdelta := (cMax - R);
@@ -2984,10 +2984,10 @@ begin
     Bdelta := (cMax - B);
 
     if R = cMax
-    then H := (HUE_000 + integer(Bdelta - Gdelta) * HUE_060 div diff) and $ff
+    then H := (HUE_000 + (Bdelta - Gdelta) * HUE_060 div diff) and $ff
     else if G = cMax
-    then H := HUE_120 + integer(Rdelta - Bdelta) * HUE_060 div diff
-    else H := HUE_240 + integer(Gdelta - Rdelta) * HUE_060 div diff;
+    then H := HUE_120 + (Rdelta - Bdelta) * HUE_060 div diff
+    else H := HUE_240 + (Gdelta - Rdelta) * HUE_060 div diff;
   end;
 end;
 

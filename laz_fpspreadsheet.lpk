@@ -19,7 +19,7 @@
       </Parsing>
       <Other>
         <CompilerMessages>
-          <IgnoredMessages idx5028="True" idx4055="True" idx2005="True"/>
+          <IgnoredMessages idx6058="True" idx5028="True" idx4055="True" idx2005="True"/>
         </CompilerMessages>
         <CustomOptions Value="$(IDEBuildOptions)
 -dDisableWrapperFunctions"/>

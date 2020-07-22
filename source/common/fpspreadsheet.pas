@@ -13,7 +13,7 @@ unit fpSpreadsheet;
   {$mode delphi}{$H+}
 //  {$mode objpas}{$H+}
 {$endif}
-
+{$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 {$include ..\fps.inc}
 
 interface
