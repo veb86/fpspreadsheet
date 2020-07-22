@@ -1255,15 +1255,13 @@ function TsWorksheet.BuildRPNFormula(ACell: PCell;
 var
   formula: PsFormula;
 begin
-  if (ACell = nil) or (not HasFormula(ACell)) then begin
-    SetLength(Result, 0);
+  Result := nil;
+  if (ACell = nil) or (not HasFormula(ACell)) then
     exit;
-  end;
+
   formula := FFormulas.FindFormula(ACell^.Row, ACell^.Col);
-  if formula = nil then begin
-    SetLength(Result, 0);
+  if formula = nil then
     exit;
-  end;
 
   if ADestCell <> nil then begin
     formula^.Parser.PrepareCopyMode(ACell, ADestCell);
@@ -3630,7 +3628,7 @@ function TsWorksheet.GetSelection: TsCellRangeArray;
 var
   i: Integer;
 begin
-  SetLength(Result, Length(FSelection));
+  SetLength(Result{%H-}, Length(FSelection));
   for i:=0 to High(FSelection) do
     Result[i] := FSelection[i];
 end;
@@ -6398,7 +6396,7 @@ var
   fmtIDs: TsSpreadformatIDArray;
   i, j: Integer;
 begin
-  SetLength(AFormatIDs, 0);
+  AFormatIDs := nil;
   if AStream = nil then
     exit;
 
@@ -7314,7 +7312,7 @@ var
 begin
   Result := false;
   AWorksheet := nil;
-  SetLength(ARanges, 0);
+  ARanges := nil;
 
   if AText = '' then
     exit;

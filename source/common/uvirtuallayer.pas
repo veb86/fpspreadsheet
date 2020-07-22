@@ -113,7 +113,7 @@ procedure TVirtualLayer.SplitPath(const APath: UTF8String;const ASplittedPath: T
 var
   j,k: integer;
   LB: integer;
-  Chunk: UTF8String;
+  Chunk: UTF8String = '';
   ChunkC: integer;
 begin
   ASplittedPath.Clear;

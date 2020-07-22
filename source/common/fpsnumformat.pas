@@ -2573,7 +2573,7 @@ end;
 function TsNumFormatList.AddFormat(AFormatStr: String): Integer;
 var
   parser: TsNumFormatParser;
-  newSections: TsNumFormatSections;
+  newSections: TsNumFormatSections = nil;
   i: Integer;
 begin
   parser := TsNumFormatParser.Create(AFormatStr, FFormatSettings);

@@ -1171,7 +1171,7 @@ begin
       end;
     end;
 
-  SetLength(Result, FList.Count);
+  SetLength(Result{%H-}, FList.Count);
   n := 0;
   for i := 0 to FList.Count-1 do
   begin
@@ -1205,7 +1205,7 @@ begin
       FList.Exchange(0, idx);
   end;
 
-  SetLength(Result, FList.Count);
+  SetLength(Result{%H-}, FList.Count);
   n := 0;
   for i := 0 to FList.Count - 1 do
   begin

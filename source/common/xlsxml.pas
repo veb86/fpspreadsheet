@@ -341,8 +341,6 @@ begin
 end;
 
 function TryStrToCFCellBorder(s: String; out ABorder: TsCellBorder): Boolean;
-var
-  cb: TsCellBorder;
 begin
   Result := true;
   if s = 'border-left' then
@@ -860,8 +858,8 @@ begin
   // initialize parameters
   condition := -1;
   range := fpsUtils.Range(Cardinal(-1), Cardinal(-1), Cardinal(-1), Cardinal(-1));
-  VarClear(op1);
-  VarClear(op2);
+  VarClear(op1{%H-});
+  VarClear(op2{%H-});
   bgColor := scNotDefined;
   fgColor := scNotDefined;
   fill := fsNoFill;
@@ -1044,7 +1042,7 @@ begin
     exit;
   end;
 
-  if condition = Cardinal(-1) then
+  if condition = -1 then
   begin
     book.AddErrorMsg('No condition given in conditional format.');
     exit;
@@ -1392,7 +1390,6 @@ procedure TsSpreadExcelXMLReader.ReadPageBreak(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
 var
   sheet: TsWorksheet absolute AWorksheet;
-  node: TDOMNode;
   nodeName: String;
   s: String;
   n: Integer;
@@ -1422,8 +1419,6 @@ var
   sheet: TsWorksheet absolute AWorksheet;
   nodeName: String;
   node: TDOMNode;
-  child: TDOMNode;
-  s: String;
 begin
   while ANode <> nil do
   begin
@@ -1524,7 +1519,6 @@ var
   nodeName: String;
   s: String;
   n: Integer;
-  x: Double;
 begin
   while ANode <> nil do begin
     nodeName := ANode.NodeName;
@@ -2012,6 +2006,8 @@ procedure TsSpreadExcelXMLReader.ReadFromStream(AStream: TStream;
 var
   doc: TXMLDocument;
 begin
+  Unused(APassword, AParams);
+
   try
     ReadXMLStream(doc, AStream);
 
@@ -2614,12 +2610,10 @@ procedure TsSpreadExcelXMLWriter.WriteConditionalFormatting(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
   book: TsWorkbook;
-  sheet: TsWorksheet;
   cf: TsConditionalFormat;
   i: Integer;
 begin
   book := TsWorkbook(FWorkbook);
-  sheet := TsWorksheet(AWorksheet);
   for i := 0 to book.GetNumConditionalFormats-1 do
   begin
     cf := book.GetConditionalFormat(i);
@@ -2731,6 +2725,9 @@ var
   xmlnsStr: String;
   dataTagStr: String;
 begin
+  Unused(ARow);
+  Unused(ACol);
+
   if ACell^.ContentType <> cctFormula then
     raise Exception.Create('WriteFormula called for calculated cell.');
 
@@ -2873,9 +2870,9 @@ begin
     if (RepeatedCols.FirstIndex <> UNASSIGNED_ROW_COL_INDEX) and
        (RepeatedCols.LastIndex <> UNASSIGNED_ROW_COL_INDEX)
     then begin
-      s := 'C' + IntToStr(RepeatedCols.FirstIndex + 1);
+      s := 'C' + {%H-}IntToStr(RepeatedCols.FirstIndex + 1);
       if RepeatedCols.FirstIndex <> RepeatedCols.LastIndex then
-        s := s + ':C' + IntToStr(RepeatedCols.LastIndex + 1);
+        s := s + ':C' + {%H-}IntToStr(RepeatedCols.LastIndex + 1);
       s := sheet.Name + '!' + s;
       print_titles_str := s;
     end;
@@ -2884,9 +2881,9 @@ begin
     if (RepeatedRows.FirstIndex <> UNASSIGNED_ROW_COL_INDEX) and
        (RepeatedRows.LastIndex <> UNASSIGNED_ROW_COL_INDEX)
     then begin
-      s := 'R' + IntToStr(RepeatedRows.FirstIndex + 1);
+      s := 'R' + {%H-}IntToStr(RepeatedRows.FirstIndex + 1);
       if RepeatedRows.FirstIndex <> RepeatedRows.LastIndex then
-        s := s + ':R' + IntToStr(RepeatedRows.LastIndex + 1);
+        s := s + ':R' + {%H-}IntToStr(RepeatedRows.LastIndex + 1);
       s := sheet.Name + '!' + s;
       if print_titles_str = '' then
         print_titles_str := s

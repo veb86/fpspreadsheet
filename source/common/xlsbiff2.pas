@@ -559,7 +559,7 @@ var
   lHeight: Word;
   lOptions: Word;
   Len: Byte;
-  lFontName: UTF8String;
+  lFontName: UTF8String = '';
   isDefaultFont: Boolean;
 begin
   FFont := TsFont.Create;
@@ -613,7 +613,7 @@ end;*)
 procedure TsSpreadBIFF2Reader.ReadFormat(AStream: TStream);
 var
   len: byte;
-  fmtString: AnsiString;
+  fmtString: AnsiString = '';
   nfs: String;
 begin
   // number format string
@@ -798,7 +798,7 @@ var
   L: Byte;
   ARow, ACol: Cardinal;
   XF: Word;
-  ansiStr: ansistring;
+  ansiStr: ansistring = '';
   valueStr: UTF8String;
   cell: PCell;
   sheet: TsWorksheet;
@@ -1099,7 +1099,7 @@ end;
 procedure TsSpreadBIFF2Reader.ReadStringRecord(AStream: TStream);
 var
   len: Byte;
-  s: ansistring;
+  s: ansistring = '';
 begin
   // The string is a byte-string with 8 bit length
   len := AStream.ReadByte;
@@ -1948,7 +1948,7 @@ var
   len: Integer;
   s: string; //ansistring;
   rec: TNumFormatRecord;
-  buf: array of byte;
+  buf: array of byte = nil;
 begin
   Unused(AFormatIndex);
 
@@ -2239,7 +2239,7 @@ var
   L: Byte;
   AnsiText: ansistring;
   rec: TBIFF2_LabelRecord;
-  buf: array of byte;
+  buf: array of byte = nil;
 var
   xf: Word;
 begin

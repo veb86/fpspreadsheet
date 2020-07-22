@@ -951,6 +951,7 @@ var
   len: Integer;
   nrtp: Integer;
 begin
+  ARichTextParams := nil;
   analyzer := TsHTMLAnalyzer.Create(AWorkbook as TsWorkbook, AFont, AHTMLText + '<end>');
   try
     analyzer.PreserveSpaces := true;
@@ -967,8 +968,7 @@ begin
       SetLength(ARichTextParams, nrtp);
       for j:=0 to nrtp-1 do
         ARichTextParams[j] := analyzer.RichTextParams[j];
-    end else
-      SetLength(ARichTextParams, 0);
+    end;
   finally
     analyzer.Free;
   end;
@@ -1162,7 +1162,7 @@ procedure TsHTMLComposer.GetFontsFromWorkbook(out AFonts: TsFontArray);
 var
   i: Integer;
 begin
-  SetLength(AFonts, Length(FRichTextParams));
+  SetLength(AFonts{%H-}, Length(FRichTextParams));
   for i:=0 to High(AFonts) do
     AFonts[i] := FWorkbook.GetFont(FRichTextParams[i].FontIndex);
 end;

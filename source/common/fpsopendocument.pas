@@ -2172,7 +2172,6 @@ end;
 procedure TsSpreadOpenDocReader.ReadConditionalFormats(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
 var
-  sheet: TsWorksheet;
   childNode: TDOMNode;
   nodeName: String;
   s: String;
@@ -2184,7 +2183,6 @@ begin
   if ANode = nil then
     exit;
 
-  sheet := TsWorksheet(AWorksheet);
   ANode := ANode.FirstChild;
   while ANode <> nil do
   begin
@@ -2888,7 +2886,7 @@ var
   nodeName: String;
   cell: PCell;
   hyperlink: string;
-  rtParams: TsRichTextParams;
+  rtParams: TsRichTextParams = nil;
   idx: Integer;
   rtFntIndex, fntIndex: Integer;
   rtFnt, fnt: TsFont;
@@ -3827,7 +3825,8 @@ var
   fmt: TsCellFormat;
   ok: Boolean;
   condition: TsCFCondition;
-  param1, param2: String;
+  param1: String = '';
+  param2: String = '';
   op1, op2: Variant;
   sheet: TsWorksheet;
 begin
@@ -3939,8 +3938,8 @@ begin
   if not ok then
     exit;
 
-  if param1 = '' then VarClear(op1) else op1 := param1;
-  if param2 = '' then VarClear(op2) else op2 := param2;
+  if param1 = '' then VarClear(op1{%H-}) else op1 := param1;
+  if param2 = '' then VarClear(op2{%H-}) else op2 := param2;
   sheet.WriteConditionalCellFormat(ARange, condition, op1, op2, fmtIndex);
 end;
 

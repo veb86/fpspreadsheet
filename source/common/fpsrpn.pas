@@ -472,7 +472,7 @@ begin
   end;
 
   // Set array length of TsRPNFormula result
-  SetLength(Result, n);
+  SetLength(Result{%H-}, n);
 
   // Copy FormulaElements to result and free temporary RPNItems
   item := AItem;

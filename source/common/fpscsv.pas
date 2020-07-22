@@ -192,8 +192,8 @@ procedure TsCSVReader.ReadFromStream(AStream: TStream; APassword: String = '';
   AParams: TsStreamParams = []);
 var
   Parser: TCSVParser;
-  s: String;
   encoding: String;
+  s: String = '';
 begin
   Unused(AParams, APassword);
 

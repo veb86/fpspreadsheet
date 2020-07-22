@@ -59,7 +59,6 @@ type
     FBorderList: TFPList;
     FHyperlinkList: TFPList;
     FSharedFormulaBaseList: TFPList;
-    FDxfList: TFPList;
     FPalette: TsPalette;
     FThemeColors: array of TsColor;
     FLastRow, FLastCol: Cardinal;
@@ -167,9 +166,9 @@ type
     procedure WriteConditionalFormatCellRule(AStream: TStream; ARule: TsCFCellRule;
       ARange: TsCellRange; APriority: Integer);
     procedure WriteConditionalFormatColorRangeRule(AStream: TStream; ARule: TsCFColorRangeRule;
-      const ARange: TsCellRange; APriority: Integer);
+      APriority: Integer);
     procedure WriteConditionalFormatDataBarRule(AStream: TStream; ARule: TsCFDatabarRule;
-      const ARange: TsCellRange; APriority: Integer);
+      APriority: Integer);
     procedure WriteConditionalFormatRule(AStream: TStream; ARule: TsCFRule;
       const ARange: TsCellRange; var APriority: Integer);
     procedure WriteConditionalFormats(AStream: TStream; AWorksheet: TsBasicWorksheet);
@@ -1271,7 +1270,7 @@ end;
 procedure TsSpreadOOXMLReader.ReadCFAverage(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
 var
-  s, sStdDev, sEquAve, sAboveAve: String;
+  sStdDev, sEquAve, sAboveAve: String;
   condition: TsCFCondition;
   stdDev: Double;
   sheet: TsWorksheet;
@@ -1310,8 +1309,8 @@ procedure TsSpreadOOXMLReader.ReadCFCellFormat(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
 var
   nodeName: String;
-  s, sType, sOp: String;
-  sFormula: Array of String;
+  sOp: String;
+  sFormula: Array of String = nil;
   cf: TsCFCondition;
   found: Boolean;
   i: Integer;
@@ -1319,7 +1318,7 @@ var
   x: Double;
   r, c: Cardinal;
   condition: TsCFCondition;
-  values: array of Variant;
+  values: array of Variant = nil;
   sheet: TsWorksheet;
 begin
   sheet := TsWorksheet(AWorksheet);
@@ -2015,7 +2014,6 @@ var
   nodeName: String;
   childNode: TDOMNode;
   pattNode: TDOMNode;
-  s: String;
   fontStyles: TsFontStyles;
   fontColor: TsColor;
   bgColor: TsColor;
@@ -2854,7 +2852,7 @@ var
   nodename: String;
   totaltxt, sval: String;
   fntIndex: Integer;
-  rtParams: TsRichTextParams;
+  rtParams: TsRichTextParams = nil;
   ms: TMemoryStream;
   fnt: TsFont;
 begin
@@ -3787,10 +3785,9 @@ end;
 procedure TsSpreadOOXMLWriter.ListAllDifferentialFormats;
 var
   book: TsWorkbook;
-  sheet: TsWorksheet;
   n: Integer;
   idx: Integer;
-  i, j, k, r, d: Integer;
+  j, k, d: Integer;
   CF: TsConditionalFormat;
   rule: TsCFCellRule;
 begin
@@ -4157,7 +4154,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteConditionalFormatColorRangeRule(AStream: TStream;
-  ARule: TsCFColorRangeRule; const ARange: TsCellRange; APriority: Integer);
+  ARule: TsCFColorRangeRule; APriority: Integer);
 { example:
     <cfRule type="colorScale" priority="3">
       <colorScale>
@@ -4189,7 +4186,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLWriter.WriteConditionalFormatDatabarRule(AStream: TStream;
-  ARule: TsCFDataBarRule; const ARange: TsCellRange; APriority: Integer);
+  ARule: TsCFDataBarRule; APriority: Integer);
 { example from test file:
       <cfRule type="dataBar" priority="1">
         <dataBar>
@@ -4225,10 +4222,10 @@ begin
     WriteConditionalFormatCellRule(AStream, TsCFCellRule(ARule), ARange, APriority)
   else
   if ARule is TsCFColorRangeRule then
-    WriteConditionalFormatColorRangeRule(AStream, TsCFColorRangeRule(ARule), ARange, APriority)
+    WriteConditionalFormatColorRangeRule(AStream, TsCFColorRangeRule(ARule), APriority)
   else
   if ARule is TsCFDataBarRule then
-    WriteConditionalFormatDataBarRule(AStream, TsCFDataBarRule(ARule), ARange, APriority)
+    WriteConditionalFormatDataBarRule(AStream, TsCFDataBarRule(ARule), APriority)
   else
     exit;
   dec(APriority);
@@ -6135,7 +6132,6 @@ procedure TsSpreadOOXMLWriter.WriteDifferentialFormat(AStream: TStream;
 
 var
   pt, bc, fc, diag: string;
-  font: TsFont;
 begin
   AppendToStream(AStream,
     '<dxf>');

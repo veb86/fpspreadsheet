@@ -1873,7 +1873,7 @@ var
   X: TsExprFloat;
   lCount: Integer;
   ID: TsExprIdentifierDef;
-  Args: TsExprArgumentArray;
+  Args: TsExprArgumentArray = nil;
   AI: Integer;
   optional: Boolean;
   token: String;
@@ -2185,7 +2185,7 @@ procedure TsExpressionParser.SetRPNFormula(const AFormula: TsRPNFormula);
     flags: TsRelFlags;
     ID: TsExprIdentifierDef;
     i, n: Integer;
-    args: TsExprArgumentArray;
+    args: TsExprArgumentArray = nil;
     sn, sn2: string;
     rng: TsCellRange;
   begin
@@ -4742,7 +4742,7 @@ var
   idx, idx1, idx2: Integer;
 begin
   AError := errOK;
-  SetLength(AData, BLOCKSIZE);
+  SetLength(AData{%H-}, BLOCKSIZE);
   n := 0;
   for i:=Low(Args) to High(Args) do
   begin

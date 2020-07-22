@@ -76,7 +76,7 @@ var
   clipbook: TsWorkbook;
   clipsheet: TsWorksheet;
   sel: TsCellRange;
-  selArray: TsCellRangeArray;
+  selArray: TsCellRangeArray = nil;
   r, c: LongInt;
   dr, dc: LongInt;
   srcCell, destCell: PCell;

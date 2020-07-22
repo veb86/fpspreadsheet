@@ -1102,7 +1102,7 @@ var
   i, n: Integer;
   elem: TsFormulaElement;
 begin
-  SetLength(Result, 0);
+  Result := nil;
   for i:=0 to Length(FFormula)-1 do begin
     n := Length(Result);
     elem := FFormula[i];
@@ -1740,7 +1740,7 @@ var
   rec: TBIFF25NoteRecord;
   r, c: Cardinal;
   n: Word;
-  s: ansiString;
+  s: ansiString = '';
   List: TStringList;
   sheet: TsWorksheet;
 begin
@@ -1885,7 +1885,7 @@ procedure TsSpreadBIFFReader.ReadEXTERNSHEET(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
   len, b: Byte;
-  ansistr: AnsiString;
+  ansistr: AnsiString = '';
   s: String;
   sheetlist: TsBIFFExternSheetList;
 begin
@@ -2046,7 +2046,7 @@ end;
 procedure TsSpreadBIFFReader.ReadHeaderFooter(AStream: TStream;
   AIsHeader: Boolean);
 var
-  s: ansistring;
+  s: ansistring = '';
   len: Byte;
 begin
   if RecordSize = 0 then
@@ -2094,7 +2094,7 @@ begin
   n := WordLEToN(AStream.ReadWord);
 
   for i := 1 to n do begin
-    AStream.ReadBuffer(rec, SizeOf(rec));
+    AStream.ReadBuffer(rec{%H-}, SizeOf(rec));
     r := WordLEToN(rec.RowIndex);
     TsWorksheet(AWorksheet).AddPageBreakToRow(r);
   end;
@@ -2790,6 +2790,7 @@ begin
     dr2 := SmallInt(r2 and $3FFF)
   else
     dr2 := SmallInt($C000 or (r2 and $3FFF));
+  ARowOffset2 := dr2;
 
   // 1 byte for col1 and col2, each
   dc1 := ShortInt(AStream.ReadByte);
@@ -3341,7 +3342,7 @@ var
   {%H-}rngIndex: Word;
   actRow, actCol: Word;
   n, i: Integer;
-  sel: TsCellRangeArray;
+  sel: TsCellRangeArray = nil;
 begin
   // Pane index
   paneIdx := AStream.ReadByte;
@@ -3441,7 +3442,7 @@ end;
 function TsSpreadBIFFReader.ReadString_8bitLen(AStream: TStream): String;
 var
   len: Byte;
-  s: ansistring;
+  s: ansistring = '';
 begin
   len := AStream.ReadByte;
   SetLength(s, len);
@@ -3493,7 +3494,7 @@ begin
   n := WordLEToN(AStream.ReadWord);
 
   for i := 1 to n do begin
-    AStream.ReadBuffer(rec, SizeOf(rec));
+    AStream.ReadBuffer(rec{%H-}, SizeOf(rec));
     c := WordLEToN(rec.ColIndex);
     TsWorksheet(AWorksheet).AddPageBreakToCol(c);
   end;

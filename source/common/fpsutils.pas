@@ -491,7 +491,6 @@ var
   p: Integer;
   s: String;
   f: TsRelFlags;
-  singleCell: Boolean = false;
 begin
   Result := True;
 
@@ -499,7 +498,6 @@ begin
   p := pos(':', AStr);
   if p = 0 then //exit(false);
   begin
-    singleCell := true;
     Result := ParseCellString(AStr, AFirstcellRow, AFirstCellCol, f);
     if not Result then exit;
     ALastCellRow := AFirstCellRow;
@@ -2355,7 +2353,7 @@ function RandomString(ALen: Integer): String;
 var
   i: Integer;
 begin
-  SetLength(Result, ALen);
+  SetLength(Result{%H-}, ALen);
   for i:=1 to ALen do
     Result[i] := char(Random(26) + ord('a'));
 end;
@@ -2411,6 +2409,7 @@ var
   arr1, arr2: TStringArray;
   i: Integer;
 begin
+  ARichText := nil;
   p := pos(SEPARATOR, AValue);
   if p = 0 then begin
     AText := AValue;
@@ -2438,6 +2437,7 @@ var
   L: TStringList;
   i: Integer;
 begin
+  Result := nil;
   L := TStringList.Create;
   try
     L.Delimiter := ADelimiter;

@@ -967,13 +967,14 @@ function TsSpreadBIFF8Reader.ReadUnformattedWideString(const AStream: TStream;
   const ALength: WORD): WideString;
 var
   flags: Byte;
-  DecomprStrValue: WideString;
+  DecomprStrValue: WideString = '';
   i: Integer;
   len: SizeInt;
   recType: Word;
   {%H-}recSize: Word;
   C: WideChar;
 begin
+  Result := '';
   flags := AStream.ReadByte;
   dec(PendingRecordSize);
   if flags and 1 = 1 Then begin
@@ -1019,8 +1020,8 @@ function TsSpreadBIFF8Reader.ReadWideString(const AStream: TStream;
   const ALength: WORD; out ARichTextParams: TsRichTextParams): WideString;
 var
   StringFlags: BYTE;
-  DecomprStrValue: WideString;
-  AnsiStrValue: ansistring;
+  DecomprStrValue: WideString = '';
+  AnsiStrValue: ansistring = '';
   RunsCounter: WORD;
   AsianPhoneticBytes: DWORD;
   rtf_dummy: TsRichTextParams;
@@ -1031,6 +1032,7 @@ var
   recSize: WORD;
   C: WideChar;
 begin
+  Result := '';
   StringFlags := AStream.ReadByte;
   Dec(PendingRecordSize);
   if StringFlags and 8 = 8 then begin
@@ -1698,7 +1700,7 @@ var
   XF: Word;
   wideStrValue: WideString;
   cell: PCell;
-  rtfRuns: TBiff8_RichTextFormattingRuns;
+  rtfRuns: TBiff8_RichTextFormattingRuns = nil;
   fntIndex: Integer;
   fnt: TsFont;
   book: TsWorkbook;
@@ -1859,7 +1861,7 @@ var
   cell: PCell;
   ms: TMemoryStream;
   i, n: Integer;
-  rtParams: TsRichTextParams;
+  rtParams: TsRichTextParams = nil;
   fnt: TsFont;
   fntIndex: Integer;
   book: TsWorkbook;
@@ -2432,13 +2434,13 @@ var
   row, col, row1, col1, row2, col2: word;
   guid: TGUID;
   flags: DWord;
-  widestr: widestring;
+  widestr: widestring = '';
   len: DWord;
   link: String;
   linkDos: String;
   mark: String;
   dirUpCount: Word;
-  ansistr: ansistring;
+  ansistr: ansistring = '';
   size: DWord;
 begin
   { Row and column index range of cells using the hyperlink }
@@ -2574,7 +2576,7 @@ end;
 procedure TsSpreadBIFF8Reader.ReadHyperlinkToolTip(const AStream: TStream);
 var
   txt: String;
-  widestr: widestring;
+  widestr: widestring = '';
   //row, col,
   row1, col1, row2, col2: Word;
   hyperlink: PsHyperlink;
@@ -2770,7 +2772,7 @@ const
   isBIFF8 = true;
 var
   currentPos: Int64;
-  sheetPos: array of Int64;
+  sheetPos: array of Int64 = nil;
   i: Integer;
   pane: Byte;
   book: TsWorkbook;
@@ -3503,7 +3505,7 @@ var
   len: Integer;
   ws: widestring;
   rec: TNumFormatRecord;
-  buf: array of byte;
+  buf: array of byte = nil;
 begin
   ws := UTF8Decode(ANumFormatStr);
   len := Length(ws);
@@ -3819,9 +3821,9 @@ var
   WideStr: WideString;
   rec: TBIFF8_LabelRecord;
   recSST: TBIFF8_LabelSSTRecord;
-  buf: array of byte;
+  buf: array of byte = nil;
   i, nRuns, idx: Integer;
-  rtfRuns: TBiff8_RichTextFormattingRuns;
+  rtfRuns: TBiff8_RichTextFormattingRuns = nil;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
@@ -4742,7 +4744,7 @@ procedure TsSpreadBIFF8Writer.WriteTXO(AStream: TStream; AComment: PsComment);
 var
   recTXO: TBIFF8TXORecord;
   comment: widestring;
-  compressed: ansistring;
+  compressed: ansistring = '';
   len: Integer;
   wchar: widechar;
   i: Integer;

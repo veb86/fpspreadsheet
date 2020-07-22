@@ -397,7 +397,7 @@ end;
 procedure TsSpreadBIFF5Reader.ReadBOUNDSHEET(AStream: TStream);
 var
   len: Byte;
-  s: AnsiString;
+  s: AnsiString = '';
   sheetState: Byte;
   sheet: TsWorksheet;
   //sheetData: TsSheetData;
@@ -433,7 +433,7 @@ var
   options: Word;
   len: byte;
   formulaSize: Word;
-  ansistr: ansiString;
+  ansistr: ansiString = '';
   defName: String;
   rpnformula: TsRPNFormula;
   {%H-}extsheetIndex: Integer;
@@ -721,10 +721,10 @@ var
   B: Byte;
   ARow, ACol: Cardinal;
   XF: Word;
-  ansistr: ansistring;
+  ansistr: ansistring = '';
   valueStr: UTF8String;
   cell: PCell;
-  rtfRuns: TBiff5_RichTextFormattingRuns;
+  rtfRuns: TBiff5_RichTextFormattingRuns = nil;
   fntIndex: Integer;
   fnt: TsFont;
   sheet: TsWorksheet;
@@ -796,7 +796,7 @@ end;
 procedure TsSpreadBIFF5Reader.ReadStringRecord(AStream: TStream);
 var
   len: Word;
-  s: ansistring;
+  s: ansistring = '';
 begin
   // The string is a byte-string with 16 bit length
   len := WordLEToN(AStream.ReadWord);
@@ -1045,7 +1045,7 @@ var
   lWeight: Word;
   lEsc: Word;
   Len: Byte;
-  fontname: ansistring;
+  fontname: ansistring = '';
   font: TsFont;
   isDefaultFont: Boolean;
 begin
@@ -1132,7 +1132,7 @@ procedure TsSpreadBIFF5Reader.ReadFormat(AStream: TStream);
 var
   len: byte;
   fmtIndex: Integer;
-  fmtString: AnsiString;
+  fmtString: AnsiString = '';
   nfs: String;
 begin
   // Record FORMAT, BIFF 8 (5.49):
@@ -1162,7 +1162,7 @@ var
   ARow, ACol: Cardinal;
   XF: WORD;
   cell: PCell;
-  ansistr: ansistring;
+  ansistr: ansistring = '';
   valuestr: String;
 begin
   rec.Row := 0;  // to silence the compiler...
@@ -1223,7 +1223,7 @@ end;
 procedure TsSpreadBIFF5Writer.InternalWriteToStream(AStream: TStream);
 var
   CurrentPos: Int64;
-  sheetPos: array of Int64;
+  sheetPos: array of Int64 = nil;
   i: Integer;
   pane: Byte;
   book: TsWorkbook;
@@ -1769,7 +1769,7 @@ var
   //fmtStr: String;
   ansiFmtStr: ansiString;
   rec: TNumFormatRecord;
-  buf: array of byte;
+  buf: array of byte = nil;
 begin
   //fmtStr := NumFormatList.FormatStringForWriting(AListIndex);
   ansiFmtStr := ConvertEncoding(ANumFormatStr, encodingUTF8, FCodePage);
@@ -1867,9 +1867,9 @@ var
   L: Word;
   AnsiValue: ansistring;
   rec: TBIFF5_LabelRecord;
-  buf: array of byte;
   i, nRuns: Integer;
-  rtfRuns: TBIFF5_RichTextFormattingRuns;
+  rtfRuns: TBIFF5_RichTextFormattingRuns = nil;
+  buf: array of byte = nil;
 begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
