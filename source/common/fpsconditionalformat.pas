@@ -68,6 +68,41 @@ type
     procedure Assign(ASource: TsCFRule); override;
   end;
 
+  { Icon sets }
+  TsCFIconSet = (
+    is3Arrows, is3ArrowsGray, is3Flags,
+    is3TrafficLights1,  // x14 in xlsx
+    is3TrafficLights2, is3Signs, is3Symbols, is3Symbols2,
+    is3Smilies, is3Stars, is3Triangles, is3ColorSmilies,  // need x14 in xlsx
+    is4Arrows, is4ArrowsGray, is4RedToBlack, is4Rating,
+    is4TrafficLights,   // not in ODS
+    is5Arrows, is5ArrowsGray, is5Rating, is5Quarters,
+    is5Boxes            // needs x14 in Excel
+  );
+  TsCFIconSetRule = class(TsCFRule)
+  private
+    FIconSet: TsCFIconSet;
+    FReverse: Boolean;
+    FShowValue: Boolean;
+    FValueKinds: array of TsCFValuekind;
+    FValues: array of double;
+    function GetIconCount: Integer;
+    function GetValueKinds(AIndex: Integer): TsCFValueKind;
+    function GetValues(AIndex: Integer): Double;
+    procedure SetIconSet(AValue: TsCFIconSet);
+    procedure SetValueKinds(AIndex: Integer; AKind: TsCFValueKind);
+    procedure SetValues(AIndex: Integer; AValue: Double);
+  public
+    constructor Create;
+    procedure Assign(ASource: TsCFRule); override;
+    property IconSet: TsCFIconSet read FIconSet write SetIconSet;
+    property IconCount: Integer read GetIconCount;
+    property Values[AIndex: Integer]: Double read GetValues write SetValues;
+    property ValueKinds[AIndex: Integer]: TsCFValueKind read GetValueKinds write SetValueKinds;
+    property Reverse: Boolean read FReverse write FReverse;
+    property ShowValue: Boolean read FShowValue write FShowValue;
+  end;
+
   { Rules }
   TsCFRules = class(TFPObjectList)
   private
@@ -127,16 +162,43 @@ type
       ABarColor: TsColor; AStartKind: TsCFValueKind; AStartValue: Double;
       AEndKind: TsCFValueKind; AEndValue: Double): Integer; overload;
 
+    function AddIconSetRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
+      AIconSet: TsCFIconSet; AHideValue: Boolean = false; AReverse: Boolean = false): Integer; overload;
+    function AddIconSetRule(ASheet: TsBasicWorksheet; ARange: TsCellRange; AIconSet: TsCFIconSet;
+      AValueKind1: TsCFValueKind; AValue1: Double;
+      AValueKind2: TsCFValueKind; AValue2: Double;
+      AHideValue: Boolean = false; AReverse: Boolean = false): Integer; overload;
+    function AddIconSetRule(ASheet: TsBasicWorksheet; ARange: TsCellRange; AIconSet: TsCFIconSet;
+      AValueKind1: TsCFValueKind; AValue1: Double;
+      AValueKind2: TsCFValueKind; AValue2: Double;
+      AValueKind3: TsCFValueKind; AValue3: Double;
+      AHideValue: Boolean = false; AReverse: Boolean = false): Integer; overload;
+    function AddIconSetRule(ASheet: TsBasicWorksheet; ARange: TsCellRange; AIconSet: TsCFIconSet;
+      AValueKind1: TsCFValueKind; AValue1: Double;
+      AValueKind2: TsCFValueKind; AValue2: Double;
+      AValueKind3: TsCFValueKind; AValue3: Double;
+      AValueKind4: TsCFValueKind; AValue4: Double;
+      AHideValue: Boolean = false; AReverse: Boolean = false): Integer; overload;
+
     procedure Delete(AIndex: Integer);
     function Find(ASheet: TsBasicWorksheet; ARange: TsCellRange): Integer;
   end;
 
+  function GetCFIconCount(AIconSet: TsCFIconSet): Integer;
 
 implementation
 
 uses
-  Math,
+  Math, TypInfo,
   fpSpreadsheet;
+
+function GetCFIconCount(AIconSet: TsCFIconSet): Integer;
+var
+  s: String;
+begin
+  s := GetEnumName(TypeInfo(TsCFIconSet), integer(AIconSet));
+  Result := ord(s[3]) - ord('0');
+end;
 
 procedure TsCFCellRule.Assign(ASource: TsCFRule);
 begin
@@ -164,7 +226,7 @@ begin
   begin
     //
   end else
-    raise Exception.Create('Source cannot be assigned to TCVDataBarRule');
+    raise Exception.Create('Source cannot be assigned to TsCFDataBarRule');
 end;
 
 constructor TsCFColorRangeRule.Create;
@@ -194,7 +256,7 @@ begin
     CenterColor := TsCFColorRangeRule(ASource).CenterColor;
     EndColor := TsCFColorRangeRule(ASource).EndColor;
   end else
-    raise Exception.Create('Source cannot be assigned to TCVDataBarRule');
+    raise Exception.Create('Source cannot be assigned to TsCFColorRangeRule');
 end;
 
 procedure TsCFColorRangeRule.SetupCenter(AColor: TsColor;
@@ -222,8 +284,89 @@ begin
 end;
 
 
+{ TsCFIconSetRule }
 
-{ TCFRule }
+constructor TsCFIconSetRule.Create;
+begin
+  FIconSet := is3Arrows;
+  SetLength(FValues, 2);
+  Setlength(FValueKinds, 2);
+  FValues[0] := 33;
+  FValues[1] := 66;
+  FValueKinds[0] := vkPercent;
+  FValueKinds[1] := vkPercent;
+  FShowValue := true;
+  FReverse := false;
+end;
+
+procedure TsCFIconSetRule.Assign(ASource: TsCFRule);
+var
+  i: Integer;
+begin
+  if ASource is TsCFIconSetRule then
+  begin
+    SetIconSet(TsCFIconSetRule(ASource).IconSet);
+    for i := 0 to High(FValues) do
+      FValues[i] := TsCFIconSetRule(ASource).Values[i];
+    for i := 0 to High(FValueKinds) do
+      FValueKinds[i] := TsCFIconSetRule(ASource).ValueKinds[i];
+    FShowValue := TsCFIconSetRule(ASource).ShowValue;
+    FReverse := TsCFIconSetRule(ASource).Reverse;
+  end else
+    raise Exception.Create('Source cannot be assigned to TsCFIconSetRule');
+end;
+
+function TsCFIconSetRule.GetIconCount: Integer;
+begin
+  Result := Length(FValues) + 1;
+end;
+
+function TsCFIconSetRule.GetValueKinds(AIndex: Integer): TsCFValueKind;
+begin
+  Result := FValueKinds[AIndex];
+end;
+
+function TsCFIconSetRule.GetValues(AIndex: Integer): Double;
+begin
+  Result := FValues[AIndex];
+end;
+
+procedure TsCFIconSetRule.SetIconSet(AValue: TsCFIconSet);
+var
+  s: String;
+  i, n: Integer;
+begin
+  if AValue = FIconSet then exit;
+
+  FIconSet := AValue;
+
+  s := GetEnumName(TypeInfo(TsCFIconSet), integer(AValue));
+  n := Ord(s[3]) - ord('0');
+  SetLength(FValues, n - 1);
+  for i := 0 to High(FValues) do
+    FValues[i] := (i + 1) * 100 div n;
+  SetLength(FValueKinds, n - 1);
+  for i := 0 to High(FValueKinds) do
+    FValueKinds[i] := vkPercent;
+
+  //                     value index
+  //    (min)       0         1         2         (max)
+  //      |---------|---------|---------|----------|
+  //         icon0     icon1     icon2     icon3
+end;
+
+procedure TsCFIconSetRule.SetValueKinds(AIndex: Integer; AKind: TsCFValueKind);
+begin
+  FValueKinds[AIndex] := AKind;
+end;
+
+procedure TsCFIconSetRule.SetValues(AIndex: Integer; AValue: Double);
+begin
+  FValues[AIndex] := AValue;
+end;
+
+
+{ TsCFRule }
 
 function TsCFRules.GetItem(AIndex: Integer): TsCFRule;
 begin
@@ -420,6 +563,115 @@ begin
   rule.StartValue := AStartValue;
   rule.EndValueKind := AEndKind;
   rule.EndValue := AEndValue;
+  Result := AddRule(ASheet, ARange, rule);
+end;
+
+
+function TsConditionalFormatList.AddIconSetRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; AIconSet: TsCFIconSet; AHideValue: Boolean = false;
+  AReverse: Boolean = false): Integer;
+var
+  rule: TsCFIconSetRule;
+  i, n: Integer;
+begin
+  rule := TsCFIconSetRule.Create;
+  rule.IconSet := AIconset;
+  n := rule.IconCount;
+  for i := 0 to n - 2 do
+  begin
+    rule.ValueKinds[i] := vkPercent;
+    rule.Values[i] := ((i+1) * 100) div n
+  end;
+  rule.ShowValue := not AHideValue;
+  rule.Reverse := AReverse;
+  Result := AddRule(ASheet, ARange, rule);
+end;
+
+{ IconSet conditional format for 3 icons, ie. 2 values }
+function TsConditionalFormatList.AddIconSetRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; AIconSet: TsCFIconSet;
+  AValueKind1: TsCFValueKind; AValue1: Double;
+  AValueKind2: TsCFValueKind; AValue2: Double;
+  AHideValue: Boolean = false; AReverse: Boolean = false): Integer;
+var
+  rule: TsCFIconSetRule;
+  n: Integer;
+begin
+  rule := TsCFIconSetRule.Create;
+  rule.IconSet := AIconset;
+  n := rule.IconCount;
+  if n <> 3 then begin
+    rule.Free;
+    Result := -1;
+    exit;
+  end;
+
+  rule.ValueKinds[0] := AValueKind1;   rule.Values[0] := AValue1;
+  rule.ValueKinds[1] := AValueKind2;   rule.Values[1] := AValue2;
+
+  rule.ShowValue := not AHideValue;
+  rule.Reverse := AReverse;
+
+  Result := AddRule(ASheet, ARange, rule);
+end;
+
+{ IconSet conditional format for 4 icons, i.e. 3 values }
+function TsConditionalFormatList.AddIconSetRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; AIconSet: TsCFIconSet;
+  AValueKind1: TsCFValueKind; AValue1: Double;
+  AValueKind2: TsCFValueKind; AValue2: Double;
+  AValueKind3: TsCFValueKind; AValue3: Double;
+  AHideValue: Boolean = false; AReverse: Boolean = false): Integer;
+var
+  rule: TsCFIconSetRule;
+  n: Integer;
+begin
+  rule := TsCFIconSetRule.Create;
+  rule.IconSet := AIconset;
+  n := rule.IconCount;
+  if n <> 4 then begin
+    rule.Free;
+    Result := -1;
+    exit;
+  end;
+
+  rule.ValueKinds[0] := AValueKind1;   rule.Values[0] := AValue1;
+  rule.ValueKinds[1] := AValueKind2;   rule.Values[1] := AValue2;
+  rule.ValueKinds[2] := AValueKind3;   rule.Values[2] := AValue3;
+
+  rule.ShowValue := not AHideValue;
+  rule.Reverse := AReverse;
+
+  Result := AddRule(ASheet, ARange, rule);
+end;
+
+{ Iconset conditional format for 5 icons, i.e. 4 values }
+function TsConditionalFormatList.AddIconSetRule(ASheet: TsBasicWorksheet;
+  ARange: TsCellRange; AIconSet: TsCFIconSet;
+  AValueKind1: TsCFValueKind; AValue1: Double; AValueKind2: TsCFValueKind; AValue2: Double;
+  AValueKind3: TsCFValueKind; AValue3: Double; AValueKind4: TsCFValueKind; AValue4: Double;
+  AHideValue: Boolean = false;  AReverse: Boolean = false): Integer;
+var
+  rule: TsCFIconSetRule;
+  n: Integer;
+begin
+  rule := TsCFIconSetRule.Create;
+  rule.IconSet := AIconset;
+  n := rule.IconCount;
+  if n <> 5 then begin
+    rule.Free;
+    Result := -1;
+    exit;
+  end;
+
+  rule.ValueKinds[0] := AValueKind1;   rule.Values[0] := AValue1;
+  rule.ValueKinds[1] := AValueKind2;   rule.Values[1] := AValue2;
+  rule.ValueKinds[2] := AValueKind3;   rule.Values[2] := AValue3;
+  rule.ValueKinds[3] := AValueKind4;   rule.Values[3] := AValue4;
+
+  rule.ShowValue := not AHideValue;
+  rule.Reverse := AReverse;
+
   Result := AddRule(ASheet, ARange, rule);
 end;
 

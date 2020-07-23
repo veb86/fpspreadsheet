@@ -405,6 +405,24 @@ type
     function WriteDataBars(ARange: TsCellRange; ABarColor: TsColor;
       AStartKind: TsCFValueKind; AStartValue: Double;
       AEndKind: TsCFValueKind; AEndValue: Double): Integer; overload;
+    // icon sets
+    function WriteIconSet(ARange: TsCellRange; AIconSet: TsCFIconSet;
+      AHideText: Boolean = false; AReverse: Boolean = false): Integer; overload;
+    function WriteIconSet(ARange: TsCellRange; AIconSet: TsCFIconSet;   // 3 icons
+      AValueKind1: TsCFValueKind; AValue1: Double;
+      AValueKind2: TsCFValueKind; AValue2: Double;
+      AHideText: Boolean = false; AReverse: Boolean = false): Integer; overload;
+    function WriteIconSet(ARange: TsCellRange; AIconSet: TsCFIconSet;  // 4 icons
+      AValueKind1: TsCFValueKind; AValue1: Double;
+      AValueKind2: TsCFValueKind; AValue2: Double;
+      AValueKind3: TsCFValueKind; AValue3: Double;
+      AHideText: Boolean = false; AReverse: Boolean = false): Integer; overload;
+    function WriteIconSet(ARange: TsCellRange; AIconSet: TsCFIconSet;  // 5 icons
+      AValueKind1: TsCFValueKind; AValue1: Double;
+      AValueKind2: TsCFValueKind; AValue2: Double;
+      AValueKind3: TsCFValueKind; AValue3: Double;
+      AValueKind4: TsCFValueKind; AValue4: Double;
+      AHideText: Boolean = false; AReverse: Boolean = false): Integer; overload;
 
     { Formulas }
     function BuildRPNFormula(ACell: PCell; ADestCell: PCell = nil): TsRPNFormula;

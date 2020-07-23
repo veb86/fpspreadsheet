@@ -143,6 +143,72 @@ begin
 end;
 
 
+{@@ ----------------------------------------------------------------------------
+  Writes the conditional format "icon set"
+-------------------------------------------------------------------------------}
+
+function TsWorksheet.WriteIconSet(ARange: TsCellRange; AIconSet: TsCFIconSet;
+  AHideText: Boolean = false; AReverse: Boolean = false): Integer;
+begin
+  Result := FWorkbook.FConditionalFormatList.AddIconSetRule(Self, ARange,
+    AIconSet,
+    AHideText, AReverse);
+  StoreCFIndexInCells(self, Result, ARange);
+end;
+
+function TsWorksheet.WriteIconSet(ARange: TsCellRange; AIconSet: TsCFIconSet;
+  AValueKind1: TsCFValueKind; AValue1: Double;
+  AValueKind2: TsCFValueKind; AValue2: Double;
+  AHideText: Boolean = false; AReverse: Boolean = false): Integer;
+begin
+  Result := FWorkbook.FConditionalFormatList.AddIconSetRule(Self, ARange,
+    AIconSet,
+    AValueKind1, AValue1,
+    AValueKind2, AValue2,
+    AHideText, AReverse
+  );
+  if Result <> -1 then
+    StoreCFIndexInCells(self, Result, ARange);
+end;
+
+function TsWorksheet.WriteIconSet(ARange: TsCellRange; AIconSet: TsCFIconSet;
+  AValueKind1: TsCFValueKind; AValue1: Double;
+  AValueKind2: TsCFValueKind; AValue2: Double;
+  AValueKind3: TsCFValueKind; AValue3: Double;
+  AHideText: Boolean = false; AReverse: Boolean = false): Integer;
+begin
+  Result := FWorkbook.FConditionalFormatList.AddIconSetRule(Self, ARange,
+    AIconSet,
+    AValueKind1, AValue1,
+    AValueKind2, AValue2,
+    AValueKind3, AValue3,
+    AHideText, AReverse
+  );
+  if Result <> -1 then
+    StoreCFIndexInCells(self, Result, ARange);
+end;
+
+function TsWorksheet.WriteIconSet(ARange: TsCellRange; AIconSet: TsCFIconSet;
+  AValueKind1: TsCFValueKind; AValue1: Double;
+  AValueKind2: TsCFValueKind; AValue2: Double;
+  AValueKind3: TsCFValueKind; AValue3: Double;
+  AValueKind4: TsCFValueKind; AValue4: Double;
+  AHideText: Boolean = false; AReverse: Boolean = false): Integer;
+begin
+  Result := FWorkbook.FConditionalFormatList.AddIconSetRule(Self, ARange,
+    AIconSet,
+    AValueKind1, AValue1,
+    AValueKind2, AValue2,
+    AValueKind3, AValue3,
+    AValueKind4, AValue4,
+    AHideText, AReverse
+  );
+  if Result <> -1 then
+    StoreCFIndexInCells(self, Result, ARange);
+end;
+
+
+
 {==============================================================================}
 {   TsWorkbook code for conditional formats                                    }
 {==============================================================================}

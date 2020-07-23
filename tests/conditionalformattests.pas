@@ -34,11 +34,17 @@ type
     procedure TestWriteRead_CF_CellFmt(AFileFormat: TsSpreadsheetFormat;
       ACondition: TsCFCondition; ACellFormat: TsCellFormat);
 
+    // Test color range format
     procedure TestWriteRead_CF_ColorRange(AFileFormat: TsSpreadsheetFormat;
       ThreeColors: Boolean; FullSyntax: Boolean);
 
+    // Test data bars format
     procedure TestWriteRead_CF_DataBars(AFileFormat: TsSpreadsheetFormat;
       FullSyntax: Boolean);
+
+    // Test icon set format
+    procedure TestWriteRead_CF_IconSet(AFileFormat: TsSpreadsheetFormat;
+      AIconSet: TsCFIconSet; FullSyntax: Boolean);
 
   published
     { Excel XLSX }
@@ -80,6 +86,10 @@ type
 
     procedure TestWriteRead_CF_Databars_XLSX_Full;
     procedure TestWriteRead_CF_Databars_XLSX_Simple;
+
+    procedure TestWriteRead_CF_Iconset_XLSX_Full_5Quarters;
+    procedure TestWriteRead_CF_IconSet_XLSX_Simple_3Arrows;
+    procedure TestWriteRead_CF_IconSet_XLSX_Simple_5Rating;
 
     { Excel XML }
     procedure TestWriteRead_CF_CellFmt_XML_Equal_Const;
@@ -151,6 +161,9 @@ type
     procedure TestWriteRead_CF_Databars_ODS_Full;
     procedure TestWriteRead_CF_Databars_ODS_Simple;
 
+    procedure TestWriteRead_CF_Iconset_ODS_Full_5Quarters;
+    procedure TestWriteRead_CF_IconSet_ODS_Simple_3Arrows;
+    procedure TestWriteRead_CF_IconSet_ODS_Simple_5Rating;
   end;
 
 implementation
@@ -1538,6 +1551,188 @@ end;
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Databars_ODS_Simple;
 begin
   TestwriteRead_CF_DataBars(sfOpenDocument, false);
+end;
+
+
+
+{-------------------------------------------------------------------------------
+                             IconSet tests
+-------------------------------------------------------------------------------}
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_IconSet(
+  AFileFormat: TsSpreadsheetFormat; AIconSet: TsCFIconSet; FullSyntax: Boolean);
+const
+  SHEET_NAME = 'CF';
+  SOLL_VALUE_KIND_1 = vkValue;
+  SOLL_VALUE_KIND_2 = vkPercent;
+  SOLL_VALUE_KIND_3 = vkPercentile;
+  SOLL_VALUE_KIND_4 = vkPercent;
+  SOLL_VALUE_1 = 15;
+  SOLL_VALUE_2 = 42;
+  SOLL_VALUE_3 = 62;
+  SOLL_VALUE_4 = 85;
+
+var
+  worksheet: TsWorksheet;
+  workbook: TsWorkbook;
+  row, col: Cardinal;
+  tempFile: string;
+  cf: TsConditionalFormat;
+  rule: TsCFIconSetRule;
+  sollRange: TsCellRange;
+  actRange: TsCellRange;
+  actIconSet: TsCFIconSet;
+  n: Integer;
+begin
+  // Write out all test values
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := [boAutoCalc];
+    workSheet:= workBook.AddWorksheet(SHEET_NAME);
+
+    // Add test cells (numeric)
+    row := 0;
+    for Col := 0 to 9 do
+      worksheet.WriteNumber(row, col, col*10.0);
+
+    // Write conditional formats
+    sollRange := Range(0, 0, 0, 9);
+    if FullSyntax then
+    begin
+      n := GetCFIconCount(AIconSet);
+      case n of
+        3: worksheet.WriteIconSet(sollRange, AIconSet, SOLL_VALUE_KIND_1, SOLL_VALUE_1, SOLL_VALUE_KIND_2, SOLL_VALUE_2);
+        4: worksheet.WriteIconSet(sollRange, AIconSet, SOLL_VALUE_KIND_1, SOLL_VALUE_1, SOLL_VALUE_KIND_2, SOLL_VALUE_2, SOLL_VALUE_KIND_3, SOLL_VALUE_3);
+        5: worksheet.WriteIconSet(sollRange, AIconSet, SOLL_VALUE_KIND_1, SOLL_VALUE_1, SOLL_VALUE_KIND_2, SOLL_VALUE_2, SOLL_VALUE_KIND_3, SOLL_VALUE_3, SOLL_VALUE_KIND_4, SOLL_VALUE_4);
+      end;
+    end else
+      worksheet.WriteIconSet(sollRange, AIconSet);
+
+    // Save to file
+    tempFile := NewTempFile;
+    workBook.WriteToFile(tempFile, AFileFormat, true);
+  finally
+    workbook.Free;
+  end;
+
+  // Open the spreadsheet
+  workbook := TsWorkbook.Create;
+  try
+    workbook.ReadFromFile(TempFile, AFileFormat);
+    worksheet := GetWorksheetByName(workBook, SHEET_NAME);
+
+    if worksheet=nil then
+      fail('Error in test code. Failed to get named worksheet');
+
+    // Check count of conditional formats
+    CheckEquals(1, workbook.GetNumConditionalFormats, 'ConditionalFormat count mismatch.');
+
+    // Read conditional format
+    cf := Workbook.GetConditionalFormat(0);
+
+    //Check range
+    actRange := cf.CellRange;
+    CheckEquals(sollRange.Row1, actRange.Row1, 'Conditional format range mismatch (Row1)');
+    checkEquals(sollRange.Col1, actRange.Col1, 'Conditional format range mismatch (Col1)');
+    CheckEquals(sollRange.Row2, actRange.Row2, 'Conditional format range mismatch (Row2)');
+    checkEquals(sollRange.Col2, actRange.Col2, 'Conditional format range mismatch (Col2)');
+
+    // Check rules count
+    CheckEquals(1, cf.RulesCount, 'Conditional format rules count mismatch');
+
+    // Check rules class
+    CheckEquals(TsCFIconSetRule, cf.Rules[0].ClassType, 'Conditional format rule class mismatch');
+
+    // Now know that the rule is a TsCFIconsetRule
+    rule := TsCFIconSetRule(cf.Rules[0]);
+
+    // Check icon set
+    actIconSet := rule.IconSet;
+    CheckEquals(
+      GetEnumName(TypeInfo(TsCFIconSet), Integer(AIconSet)),
+      GetEnumName(TypeInfo(TsCFIconSet), Integer(actIconSet)),
+      'IconSet format: icon set mismatch');
+
+    // Parameters
+    if FullSyntax then
+    begin
+      CheckEquals(
+        GetEnumName(TypeInfo(TsCFValueKind), integer(SOLL_VALUE_KIND_1)),
+        GetEnumName(TypeInfo(TsCFValueKind), integer(rule.ValueKinds[0])),
+        'IconSet format: value kind 0 mismatch.'
+      );
+      if not (SOLL_VALUE_KIND_1 in [vkMin, vkMax]) then
+        CheckEquals(SOLL_VALUE_1, rule.Values[0], 'IconSet format: value 0 mismatch');
+
+      CheckEquals(
+        GetEnumName(TypeInfo(TsCFValueKind), integer(SOLL_VALUE_KIND_2)),
+        GetEnumName(TypeInfo(TsCFValueKind), integer(rule.ValueKinds[1])),
+        'IconSet format: value kind 1 mismatch.'
+      );
+      if not (SOLL_VALUE_KIND_2 in [vkMin, vkMax]) then
+        CheckEquals(SOLL_VALUE_2, rule.Values[1], 'IconSet format: value 1 mismatch');
+
+      if n > 2 then
+      begin
+        CheckEquals(
+          GetEnumName(TypeInfo(TsCFValueKind), integer(SOLL_VALUE_KIND_3)),
+          GetEnumName(TypeInfo(TsCFValueKind), integer(rule.ValueKinds[2])),
+          'IconSet format: value kind 2 mismatch.'
+        );
+        if not (SOLL_VALUE_KIND_3 in [vkMin, vkMax]) then
+          CheckEquals(SOLL_VALUE_3, rule.Values[2], 'IconSet format: value 2 mismatch');
+      end;
+
+      if n = 3 then
+      begin
+        CheckEquals(
+          GetEnumName(TypeInfo(TsCFValueKind), integer(SOLL_VALUE_KIND_4)),
+          GetEnumName(TypeInfo(TsCFValueKind), integer(rule.ValueKinds[3])),
+          'IconSet format: value kind 3 mismatch.'
+        );
+        if not (SOLL_VALUE_KIND_4 in [vkMin, vkMax]) then
+          CheckEquals(SOLL_VALUE_4, rule.Values[3], 'IconSet format: value 3 mismatch');
+      end;
+    end;
+
+  finally
+    workbook.Free;
+    DeleteFile(tempFile);
+  end;
+end;
+
+
+{ Excel XLSX }
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Iconset_XLSX_Full_5Quarters;
+begin
+  TestWriteRead_CF_IconSet(sfOOXML, is5Quarters, true);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_IconSet_XLSX_Simple_3Arrows;
+begin
+  TestWriteRead_CF_IconSet(sfOOXML, is3Arrows, false);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_IconSet_XLSX_Simple_5Rating;
+begin
+  TestWriteRead_CF_IconSet(sfOOXML, is5Rating, false);
+end;
+
+{ OpenDocument }
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_Iconset_ODS_Full_5Quarters;
+begin
+  TestWriteRead_CF_IconSet(sfOpenDocument, is5Quarters, true);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_IconSet_ODS_Simple_3Arrows;
+begin
+  TestWriteRead_CF_IconSet(sfOpenDocument, is3Arrows, false);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_IconSet_ODS_Simple_5Rating;
+begin
+  TestWriteRead_CF_IconSet(sfOpenDocument, is5Rating, false);
 end;
 
 

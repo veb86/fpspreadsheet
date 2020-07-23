@@ -82,6 +82,8 @@ type
       ARange: TsCellRange);
     procedure ReadCFExpression(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
       ARange: TsCellRange; AFormatIndex: Integer);
+    procedure ReadCFIconSet(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARange: TsCellRange);
     procedure ReadCFMisc(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
       ARange: TsCellRange; AFormatIndex: Integer);
     procedure ReadCFTop10(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
@@ -159,18 +161,14 @@ type
     function  PrepareFormula(const AFormula: String): String;
     procedure ResetStreams;
     procedure WriteBorderList(AStream: TStream);
+    procedure WriteCFCellRule(AStream: TStream; ARule: TsCFCellRule; ARange: TsCellRange; APriority: Integer);
+    procedure WriteCFColorRangeRule(AStream: TStream; ARule: TsCFColorRangeRule; APriority: Integer);
+    procedure WriteCFDataBarRule(AStream: TStream; ARule: TsCFDatabarRule; APriority: Integer);
+    procedure WriteCFIconSetRule(AStream: TStream; ARule: TsCFIconSetRule; APriority: Integer);
     procedure WriteColBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteCols(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteComments(AWorksheet: TsBasicWorksheet);
     procedure WriteConditionalFormat(AStream: TStream; AFormat: TsConditionalFormat; var APriority: Integer);
-    procedure WriteConditionalFormatCellRule(AStream: TStream; ARule: TsCFCellRule;
-      ARange: TsCellRange; APriority: Integer);
-    procedure WriteConditionalFormatColorRangeRule(AStream: TStream; ARule: TsCFColorRangeRule;
-      APriority: Integer);
-    procedure WriteConditionalFormatDataBarRule(AStream: TStream; ARule: TsCFDatabarRule;
-      APriority: Integer);
-    procedure WriteConditionalFormatRule(AStream: TStream; ARule: TsCFRule;
-      const ARange: TsCellRange; var APriority: Integer);
     procedure WriteConditionalFormats(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteDefinedNames(AStream: TStream);
     procedure WriteDifferentialFormat(AStream: TStream; AFormat: PsCellFormat);
@@ -275,7 +273,7 @@ procedure InitOOXMLLimitations(out ALimitations: TsSpreadsheetFormatLimitations)
 implementation
 
 uses
-  variants, strutils, math, lazutf8, LazFileUtils, uriparser,
+  variants, strutils, math, lazutf8, LazFileUtils, uriparser, typinfo,
   {%H-}fpsPatches, fpSpreadsheet, fpsCrypto, fpsExprParser,
   fpsStrings, fpsStreams, fpsClasses, fpsImages;
 
@@ -444,6 +442,20 @@ const
     '', '', '', 'notContains', //cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
     '', '',           // cfcContainsErrors, cfcNotContainsErrors
     ''                // cfcExpression
+  );
+
+  CF_ICON_SET: array[TsCFIconSet] of string = (
+    '3Arrows', '3ArrowsGray','3Flags',  // is3Arrows, is3ArrowsGray, is3Flags
+    '3TrafficLights2',                  // REPLACEMENT FOR is3TrafficLights1 which requires x14
+    '3TrafficLights',                   // is3TrafficLights2
+    '3Signs', '3Symbols', '3Symbols2',  // is3Signs, is3Symbols, is3Symbols2
+    '3Signs', '3Signs', '3Signs', '3Signs', // REPLACEMENT FOR  is3Smilies, is3Stars, is3Triangles, is3ColorSmilies which need x14
+    '4Arrows', '4ArrowsGray',           // is4Arrows, is4ArrowsGray
+    '4RedToBlack', '4Rating',           // is4RedToBlack, is4Rating
+    '4TrafficLights',                   // is4TrafficLights,
+    '5Arrows', '5ArrowsGray',           // is5Arrows, is5ArrowsGray,
+    '5Rating', '5Quarters',             // is5Rating, is5Quarters,
+    '5Quarters'                         // REPLACEMENT FOR is5Boxes which needs x14
   );
 
 function StrToFillStyle(s: String): TsFillStyle;
@@ -1533,6 +1545,79 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadCFIconSet(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARange: TsCellRange);
+var
+  sheet: TsWorksheet;
+  s: String;
+  sIconSet: String;
+  iconSet: TsCFIconSet;
+  found: Boolean;
+  tmpIconSet: TsCFIconSet;
+  nodeName: String;
+  iv: Integer;
+  vk: array of TsCFValueKind = nil;
+  v: array of Double = nil;
+  n: Integer;
+  x: Double;
+  res: Integer;
+begin
+  ANode := ANode.FirstChild;
+  if (ANode <> nil) and (ANode.NodeName = 'iconSet') then
+  begin
+    sIconSet := GetAttrValue(ANode, 'iconSet');
+    found := false;
+    for tmpIconSet in TsCFIconSet do
+      if 'is' + sIconSet = GetEnumName(typeInfo(TsCFIconSet), integer(tmpIconSet)) then
+      begin
+        iconSet := tmpIconSet;
+        found := true;
+        break;
+      end;
+
+    if (not found) or (sIconSet = '') then
+      Exit;
+
+    // Determine icon count from name of icon set
+    n := GetCFIconCount(iconSet);
+    if (n < 3) or (n > 5) then  // only 3, 4 or 5 icons allowed
+      Exit;
+
+    SetLength(v, n);
+    SetLength(vk, n);
+    iv := 0;
+    ANode := ANode.FirstChild;
+    while (ANode <> nil) do
+    begin
+      nodeName := ANode.NodeName;
+      if (nodeName = 'cfvo') and (iv <= High(vk)) then
+      begin
+        s := GetAttrValue(ANode, 'type');
+        vk[iv] := StrToCFValueKind(s);
+        s := GetAttrValue(ANode, 'val');
+        if TryStrToFloat(s, x, FPointSeparatorSettings) then
+          v[iv] := x
+        else
+          v[iv] := 0.0;
+        inc(iv);
+        if iv >= n then
+          break;
+      end;
+      ANode := ANode.NextSibling;
+    end;
+
+    sheet := TsWorksheet(AWorksheet);
+    // Ignore the first value because it is always 0
+    case n of
+      3: res := sheet.WriteIconSet(ARange, iconSet, vk[1], v[1], vk[2], v[2]);
+      4: res := sheet.WriteIconSet(ARange, iconSet, vk[1], v[1], vk[2], v[2], vk[3], v[3]);
+      5: res := sheet.WriteIconSet(ARange, iconSet, vk[1], v[1], vk[2], v[2], vk[3], v[3], vk[4], v[4]);
+    end;
+
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadCFMisc(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
 var
@@ -1887,6 +1972,8 @@ begin
                 ReadCFColorRange(childNode, AWorksheet, range);
               'dataBar':
                 ReadCFDataBars(childNode, AWorksheet, range);
+              'iconSet':
+                ReadCFIconSet(childNode, AWorksheet, range);
             end;
           end;
           childNode := childNode.NextSibling;
@@ -3913,6 +4000,203 @@ begin
     '</borders>');
 end;
 
+
+procedure TsSpreadOOXMLWriter.WriteCFCellRule(AStream: TStream;
+  ARule: TsCFCellRule; ARange: TsCellRange; APriority: Integer);
+const
+  FORMULA: array[cfcBeginsWith..cfcNotContainsErrors] of String = (
+    'LEFT(%0:s,LEN("%1:s"))="%1:s"',     // cfcBeginsWith
+    'RIGHT(%0:s,Len("%1:s"))="%1:s"',    // cfcEndsWidth
+    'NOT(ISERROR(SEARCH("%1:s",%0:s)))', // cfcContainsText
+    'ISERROR(SEARCH("%1:s",%0:s))',       // cfcNotContainsText
+    'ISERROR(%0:s)',                      // cfcContainsErrors
+    'NOT(ISERROR(%0:s))'                  // cfcNotContainsErrors
+  );
+var
+  i: Integer;
+  dxfID: Integer;
+  typeStr, opStr, formula1Str, formula2Str, param1Str, param2Str, param3Str: String;
+  firstCellOfRange: String;
+  s: String;
+begin
+  dxfID := -1;
+  for i := 0 to High(FDifferentialFormatIndexList) do
+    if FDifferentialFormatIndexList[i] = ARule.FormatIndex then
+    begin
+      dxfID := i;
+      break;
+    end;
+
+  typeStr := CF_TYPE_NAMES[ARule.Condition];
+  if CF_OPERATOR_NAMES[ARule.Condition] = '' then
+    opStr := ''
+  else
+    opStr := ' operator="' + CF_OPERATOR_NAMES[ARule.Condition] + '"';
+  formula1Str := '';
+  formula2Str := '';
+  param1Str := '';
+  param2Str := '';
+  param3Str := '';
+  case ARule.Condition of
+    cfcEqual..cfcNotBetween:
+      begin
+        s := CFOperandToStr(ARule.Operand1);
+        formula1Str := Format('<formula>%s</formula>', [s]);
+        if (ARule.Condition in [cfcBetween, cfcNotBetween]) then
+        begin
+          s := CFOperandToStr(ARule.Operand2);
+          formula2Str := Format('<formula>%s</formula>', [s]);
+        end;
+      end;
+    cfcAboveAverage..cfcBelowEqualAverage:
+      begin
+        if (ARule.Condition in [cfcBelowAverage, cfcBelowEqualAverage]) then
+          param1Str := ' aboveAverage="0"';
+        if (ARule.Condition in [cfcAboveEqualAverage, cfcBelowEqualAverage]) then
+          param2Str := ' equalAverage="1"';
+        if VarIsNumeric(ARule.Operand1) or (ARule.Operand1 = 0) then
+          param3Str := Format(' stdDev="%g"', [double(ARule.Operand1)]);
+      end;
+    cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent:
+      begin
+        // <cfRule type="top10" dxfId="0" priority="1" percent="1" bottom="1" rank="30" />    // = bottom 30 percent
+        if ARule.Condition in [cfcBottom, cfcBottomPercent] then
+          param1Str := ' bottom="1"';
+        if ARule.Condition in [cfcTopPercent, cfcBottomPercent] then
+          param2Str := ' percent="1"';
+        param3Str := ' rank="' + VarToStr(ARule.Operand1) + '"';
+      end;
+    cfcDuplicate, cfcUnique:
+      ;
+    cfcBeginsWith..cfcNotContainsErrors:
+      begin
+        firstCellOfRange := GetCellString(ARange.Row1, ARange.Col1);
+        formula1Str :=
+          '<formula>' +
+            Format(FORMULA[ARule.Condition], [firstcellOfRange, ARule.Operand1]) +
+          '</formula>';
+        param1Str := ' text="' + VarToStr(ARule.Operand1) + '"';
+      end;
+    cfcExpression:
+      begin
+        s := ARule.Operand1;
+        if (s <> '') and (s[1] = '=') then Delete(s, 1, 1);
+        formula1Str := '<formula>' + s + '</formula>';
+      end;
+    else
+      FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');
+  end;
+
+  if formula1Str = '' then
+    s := Format(
+      '<cfRule type="%s" dxfId="%d" priority="%d"%s%s%s%s />', [
+      typeStr, dxfId, APriority, opStr, param1Str, param2Str, param3Str
+    ])
+  else
+    s := Format(
+      '<cfRule type="%s" dxfId="%d" priority="%d"%s%s%s%s>' +
+        '%s%s' +
+      '</cfRule>', [
+      typeStr, dxfId, APriority, opStr, param1Str, param2Str, param3Str,
+      formula1Str, formula2Str
+    ]);
+  AppendToStream(AStream, s);
+end;
+
+
+procedure TsSpreadOOXMLWriter.WriteCFColorRangeRule(AStream: TStream;
+  ARule: TsCFColorRangeRule; APriority: Integer);
+{ example:
+    <cfRule type="colorScale" priority="3">
+      <colorScale>
+        <cfvo type="min" />
+        <cfvo type="percentile" val="50" />
+        <cfvo type="max" />
+        <color rgb="FFF8696B" />
+        <color rgb="FFFFEB84" />
+        <color rgb="FF63BE7B" />
+      </colorScale>
+    </cfRule> }
+begin
+  AppendToStream(AStream,
+    '<cfRule type="colorScale" priority="' + IntToStr(APriority) + '">' +
+      '<colorScale>');
+  AppendToStream(AStream,
+        CF_ValueNode(ARule.StartValueKind, ARule.StartValue),
+        IfThen(ARule.ThreeColors, CF_ValueNode(ARule.CenterValueKind, ARule.CenterValue), ''),
+        CF_ValueNode(ARule.EndValueKind, ARule.EndValue)
+  );
+  AppendToStream(AStream,
+        CF_ColorNode(ARule.StartColor),
+        IfThen(ARule.ThreeColors, CF_ColorNode(ARule.CenterColor), ''),
+        CF_ColorNode(ARule.EndColor)
+  );
+  AppendToStream(AStream,
+      '</colorScale>' +
+    '</cfRule>');
+end;
+
+
+procedure TsSpreadOOXMLWriter.WriteCFDatabarRule(AStream: TStream;
+  ARule: TsCFDataBarRule; APriority: Integer);
+{ example from test file:
+      <cfRule type="dataBar" priority="1">
+        <dataBar>
+          <cfvo type="min" />
+          <cfvo type="max" />
+          <color rgb="FF638EC6" />
+        </dataBar>
+        <extLst>
+          <ext uri="{B025F937-C7B1-47D3-B67F-A62EFF666E3E}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">
+            <x14:id>{A620EE03-2FEC-4D54-872C-66BDB99CB07E}</x14:id>
+          </ext>
+        </extLst>
+      </cfRule>   }
+begin
+  AppendToStream(AStream,
+    '<cfRule type="dataBar" priority="' + IntToStr(APriority) + '">' +
+       '<dataBar>');
+
+  AppendToStream(AStream,
+         CF_ValueNode(ARule.StartValueKind, ARule.StartValue),
+         CF_ValueNode(ARule.EndValueKind, ARule.EndValue),
+         CF_ColorNode(ARule.Color) );
+
+  AppendToStream(AStream,
+      '</dataBar>' +
+    '</cfRule>');
+end;
+
+
+procedure TsSpreadOOXMLWriter.WriteCFIconSetRule(AStream: TStream;
+  ARule: TsCFIconSetRule; APriority: Integer);
+{ <cfRule type="iconSet" priority="13">
+    <iconSet iconSet="3Symbols2">
+      <cfvo type="percent" val="0" />
+      <cfvo type="percent" val="33" />
+      <cfvo type="percent" val="67" />
+    </iconSet>
+  </cfRule> }
+var
+  i: Integer;
+begin
+  AppendToStream(AStream, Format(
+    '<cfRule type="iconSet" priority="%d">' +
+      '<iconSet iconSet="%s">' +
+        '<cfvo type="percent" val="0" />', [
+      APriority, CF_ICON_SET[Arule.IconSet]
+    ]));
+
+  for i := 0 to ARule.IconCount-2 do
+    AppendToStream(AStream,
+        CF_ValueNode(ARule.ValueKinds[i], ARule.Values[i])
+    );
+  AppendToStream(AStream,
+      '</iconSet>' +
+    '</cfRule>');
+end;
+
+
 procedure TsSpreadOOXMLWriter.WriteColBreaks(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
@@ -4045,190 +4329,23 @@ begin
   for i := 0 to AFormat.RulesCount-1 do
   begin
     rule := AFormat.Rules[i];
-    WriteConditionalFormatRule(AStream, rule, AFormat.CellRange, APriority);
+    if rule is TsCFCellRule then
+      WriteCFCellRule(AStream, TsCFCellRule(rule), AFormat.CellRange, APriority)
+    else
+    if rule is TsCFColorRangeRule then
+      WriteCFColorRangeRule(AStream, TsCFColorRangeRule(rule), APriority)
+    else
+    if rule is TsCFDataBarRule then
+      WriteCFDataBarRule(AStream, TsCFDataBarRule(rule), APriority)
+    else
+    if rule is TsCFIconSetRule then
+      WriteCFIconSetRule(AStream, TsCFIconSetRule(rule), APriority)
+    else
+      exit;
+    dec(APriority);
   end;
   AppendToStream(AStream,
     '</conditionalFormatting>');
-end;
-
-procedure TsSpreadOOXMLWriter.WriteConditionalFormatCellRule(AStream: TStream;
-  ARule: TsCFCellRule; ARange: TsCellRange; APriority: Integer);
-const
-  FORMULA: array[cfcBeginsWith..cfcNotContainsErrors] of String = (
-    'LEFT(%0:s,LEN("%1:s"))="%1:s"',     // cfcBeginsWith
-    'RIGHT(%0:s,Len("%1:s"))="%1:s"',    // cfcEndsWidth
-    'NOT(ISERROR(SEARCH("%1:s",%0:s)))', // cfcContainsText
-    'ISERROR(SEARCH("%1:s",%0:s))',       // cfcNotContainsText
-    'ISERROR(%0:s)',                      // cfcContainsErrors
-    'NOT(ISERROR(%0:s))'                  // cfcNotContainsErrors
-  );
-var
-  i: Integer;
-  dxfID: Integer;
-  typeStr, opStr, formula1Str, formula2Str, param1Str, param2Str, param3Str: String;
-  firstCellOfRange: String;
-  s: String;
-begin
-  dxfID := -1;
-  for i := 0 to High(FDifferentialFormatIndexList) do
-    if FDifferentialFormatIndexList[i] = ARule.FormatIndex then
-    begin
-      dxfID := i;
-      break;
-    end;
-
-  typeStr := CF_TYPE_NAMES[ARule.Condition];
-  if CF_OPERATOR_NAMES[ARule.Condition] = '' then
-    opStr := ''
-  else
-    opStr := ' operator="' + CF_OPERATOR_NAMES[ARule.Condition] + '"';
-  formula1Str := '';
-  formula2Str := '';
-  param1Str := '';
-  param2Str := '';
-  param3Str := '';
-  case ARule.Condition of
-    cfcEqual..cfcNotBetween:
-      begin
-        s := CFOperandToStr(ARule.Operand1);
-        formula1Str := Format('<formula>%s</formula>', [s]);
-        if (ARule.Condition in [cfcBetween, cfcNotBetween]) then
-        begin
-          s := CFOperandToStr(ARule.Operand2);
-          formula2Str := Format('<formula>%s</formula>', [s]);
-        end;
-      end;
-    cfcAboveAverage..cfcBelowEqualAverage:
-      begin
-        if (ARule.Condition in [cfcBelowAverage, cfcBelowEqualAverage]) then
-          param1Str := ' aboveAverage="0"';
-        if (ARule.Condition in [cfcAboveEqualAverage, cfcBelowEqualAverage]) then
-          param2Str := ' equalAverage="1"';
-        if VarIsNumeric(ARule.Operand1) or (ARule.Operand1 = 0) then
-          param3Str := Format(' stdDev="%g"', [double(ARule.Operand1)]);
-      end;
-    cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent:
-      begin
-        // <cfRule type="top10" dxfId="0" priority="1" percent="1" bottom="1" rank="30" />    // = bottom 30 percent
-        if ARule.Condition in [cfcBottom, cfcBottomPercent] then
-          param1Str := ' bottom="1"';
-        if ARule.Condition in [cfcTopPercent, cfcBottomPercent] then
-          param2Str := ' percent="1"';
-        param3Str := ' rank="' + VarToStr(ARule.Operand1) + '"';
-      end;
-    cfcDuplicate, cfcUnique:
-      ;
-    cfcBeginsWith..cfcNotContainsErrors:
-      begin
-        firstCellOfRange := GetCellString(ARange.Row1, ARange.Col1);
-        formula1Str :=
-          '<formula>' +
-            Format(FORMULA[ARule.Condition], [firstcellOfRange, ARule.Operand1]) +
-          '</formula>';
-        param1Str := ' text="' + VarToStr(ARule.Operand1) + '"';
-      end;
-    cfcExpression:
-      begin
-        s := ARule.Operand1;
-        if (s <> '') and (s[1] = '=') then Delete(s, 1, 1);
-        formula1Str := '<formula>' + s + '</formula>';
-      end;
-    else
-      FWorkbook.AddErrorMsg('ConditionalFormat operator not supported.');
-  end;
-
-  if formula1Str = '' then
-    s := Format(
-      '<cfRule type="%s" dxfId="%d" priority="%d"%s%s%s%s />', [
-      typeStr, dxfId, APriority, opStr, param1Str, param2Str, param3Str
-    ])
-  else
-    s := Format(
-      '<cfRule type="%s" dxfId="%d" priority="%d"%s%s%s%s>' +
-        '%s%s' +
-      '</cfRule>', [
-      typeStr, dxfId, APriority, opStr, param1Str, param2Str, param3Str,
-      formula1Str, formula2Str
-    ]);
-  AppendToStream(AStream, s);
-end;
-
-procedure TsSpreadOOXMLWriter.WriteConditionalFormatColorRangeRule(AStream: TStream;
-  ARule: TsCFColorRangeRule; APriority: Integer);
-{ example:
-    <cfRule type="colorScale" priority="3">
-      <colorScale>
-        <cfvo type="min" />
-        <cfvo type="percentile" val="50" />
-        <cfvo type="max" />
-        <color rgb="FFF8696B" />
-        <color rgb="FFFFEB84" />
-        <color rgb="FF63BE7B" />
-      </colorScale>
-    </cfRule> }
-begin
-  AppendToStream(AStream,
-    '<cfRule type="colorScale" priority="' + IntToStr(APriority) + '">' +
-      '<colorScale>');
-  AppendToStream(AStream,
-        CF_ValueNode(ARule.StartValueKind, ARule.StartValue),
-        IfThen(ARule.ThreeColors, CF_ValueNode(ARule.CenterValueKind, ARule.CenterValue), ''),
-        CF_ValueNode(ARule.EndValueKind, ARule.EndValue)
-  );
-  AppendToStream(AStream,
-        CF_ColorNode(ARule.StartColor),
-        IfThen(ARule.ThreeColors, CF_ColorNode(ARule.CenterColor), ''),
-        CF_ColorNode(ARule.EndColor)
-  );
-  AppendToStream(AStream,
-      '</colorScale>' +
-    '</cfRule>');
-end;
-
-procedure TsSpreadOOXMLWriter.WriteConditionalFormatDatabarRule(AStream: TStream;
-  ARule: TsCFDataBarRule; APriority: Integer);
-{ example from test file:
-      <cfRule type="dataBar" priority="1">
-        <dataBar>
-          <cfvo type="min" />
-          <cfvo type="max" />
-          <color rgb="FF638EC6" />
-        </dataBar>
-        <extLst>
-          <ext uri="{B025F937-C7B1-47D3-B67F-A62EFF666E3E}" xmlns:x14="http://schemas.microsoft.com/office/spreadsheetml/2009/9/main">
-            <x14:id>{A620EE03-2FEC-4D54-872C-66BDB99CB07E}</x14:id>
-          </ext>
-        </extLst>
-      </cfRule>   }
-begin
-  AppendToStream(AStream,
-    '<cfRule type="dataBar" priority="' + IntToStr(APriority) + '">' +
-       '<dataBar>');
-
-  AppendToStream(AStream,
-         CF_ValueNode(ARule.StartValueKind, ARule.StartValue),
-         CF_ValueNode(ARule.EndValueKind, ARule.EndValue),
-         CF_ColorNode(ARule.Color) );
-
-  AppendToStream(AStream,
-      '</dataBar>' +
-    '</cfRule>');
-end;
-
-procedure TsSpreadOOXMLWriter.WriteConditionalFormatRule(AStream: TStream;
-  ARule: TsCFRule; const ARange: TsCellRange; var APriority: Integer);
-begin
-  if ARule is TsCFCellRule then
-    WriteConditionalFormatCellRule(AStream, TsCFCellRule(ARule), ARange, APriority)
-  else
-  if ARule is TsCFColorRangeRule then
-    WriteConditionalFormatColorRangeRule(AStream, TsCFColorRangeRule(ARule), APriority)
-  else
-  if ARule is TsCFDataBarRule then
-    WriteConditionalFormatDataBarRule(AStream, TsCFDataBarRule(ARule), APriority)
-  else
-    exit;
-  dec(APriority);
 end;
 
 procedure TsSpreadOOXMLWriter.WriteConditionalFormats(AStream: TStream;

@@ -118,6 +118,7 @@ type
     procedure ReadCFCellFormat(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadCFColorScale(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadCFDataBars(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
+    procedure ReadCFIconSet(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     procedure ReadConditionalFormats(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
@@ -423,6 +424,19 @@ const
     'percent',     // vkPercent
     'percentile',  // vkPercentile
     'number'       // vkValue
+  );
+
+  CF_ICON_SET: array[TsCFIconSet] of string = (
+    '3Arrows', '3ArrowsGray', '3Flags',   // is3Arrows, is3ArrowsGray, is3Flags
+    '3TrafficLights1', '3TrafficLights2', // is3TrafficLights1, is3TrafficLights2
+    '3Signs', '3Symbols', '3Symbols2',    // is3Signs, is3Symbols, is3Symbols2
+    '3Smilies', '3Stars', '3Triangles',   // is3Smilies, is3Stars, is3Triangles
+    '3ColorSmilies',                      // is3ColorSmilies,
+    '4Arrows', '4ArrowsGray',             // is4Arrows, is4ArrowsGray
+    '4RedToBlack', '4Rating',             // is4RedToBlack, is4Rating,
+    '4RedToBlack',                        // is4TrafficLights,                   // not in ODS
+    '5Arrows', '5ArrowsGray',             // is5Arrows, is5ArrowsGray
+    '5Rating', '5Quarters', '5Boxes'      // is5Rating, is5Quarters, is5Boxes
   );
 
 function CFOperandToStr(v: variant; AWorksheet: TsWorksheet): String;
@@ -2205,6 +2219,7 @@ begin
           'calcext:condition': ReadCFCellFormat(childNode, AWorksheet, range);
           'calcext:color-scale': ReadCFColorScale(childNode, AWorksheet, range);
           'calcext:data-bar': ReadCFDataBars(childNode, AWorksheet, range);
+          'calcext:icon-set': ReadCFIconSet(childNode, AWorksheet, range);
         end;
         childNode := childNode.NextSibling;
       end;
@@ -4071,6 +4086,74 @@ begin
     kinds[1], values[1]
   );
 end;
+
+procedure TsSpreadOpenDocReader.ReadCFIconSet(ANode: TDOMNode;
+  ASheet: TsBasicWorksheet; ARange: TsCellRange);
+{ <calcext:icon-set calcext:icon-set-type="3Stars">
+    <calcext:formatting-entry calcext:value="0" calcext:type="percent" />
+    <calcext:formatting-entry calcext:value="33" calcext:type="percent" />
+    <calcext:formatting-entry calcext:value="66" calcext:type="percent" />
+  </calcext:icon-set> }
+var
+  sheet: TsWorksheet;
+  nodeName: String;
+  s: String;
+  values: array of double = nil;
+  kinds: array of TsCFValueKind = nil;
+  iconSet, tmp: TsCFIconSet;
+  sIconSet: String;
+  found: Boolean;
+  n: Integer;
+begin
+  if ANode = nil then
+    exit;
+
+  sIconSet := GetAttrValue(ANode, 'calcext:icon-set-type');
+  if sIconSet = '' then
+    exit;
+
+  for tmp in TsCFIconSet do
+    if sIconSet = CF_ICON_SET[tmp] then begin
+      iconSet := tmp;
+      found := true;
+      break;
+    end;
+
+  if (not found) then
+    exit;
+
+  // Number of icons
+  n := GetCFIconCount(iconSet);
+  if (n < 3) or (n > 5) then  // only 3, 4 or 5 icons allowed
+    exit;
+
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'calcext:formatting-entry' then
+    begin
+      s := GetAttrValue(ANode, 'calcext:value');
+      SetLength(values, Length(values)+1);
+      if not TryStrToFloat(s, values[High(values)], FPointSeparatorSettings) then
+        values[High(values)] := 0;
+
+      s := GetAttrValue(ANode, 'calcext:type');
+      SetLength(kinds, Length(kinds)+1);
+      kinds[High(kinds)] := StrToValueKind(s);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  sheet := TsWorksheet(ASheet);
+  // Ignore the first value because it is always 0
+  case n of
+    3: sheet.WriteIconSet(ARange, iconSet, kinds[1], values[1], kinds[2], values[2]);
+    4: sheet.WriteIconSet(ARange, iconSet, kinds[1], values[1], kinds[2], values[2], kinds[3], values[3]);
+    5: sheet.WriteIconSet(ARange, iconSet, kinds[1], values[1], kinds[2], values[2], kinds[3], values[3], kinds[4], values[4]);
+  end;
+end;
+
 
 { Reads the cells in the given table. Loops through all rows, and then finds all
   cells of each row. }
@@ -6263,7 +6346,8 @@ var
   cf_cellRule: TsCFCellRule;
   cf_DataBarRule: TsCFDataBarRule;
   cf_ColorRangeRule: TsCFColorRangeRule;
-  i,j: Integer;
+  cf_IconSetRule: TsCFIconSetRule;
+  i, j, k: Integer;
   sheet: TsWorksheet;
   rangeStr: String;
   firstCellStr: string;
@@ -6358,6 +6442,24 @@ begin
               CF_VALUE_KIND[cf_ColorRangeRule.EndValueKind],
               ColorToHTMLColorStr(cf_ColorRangeRule.EndColor)
           ]));
+      end else
+      if cf.Rules[j] is TsCFIconSetRule then
+      begin
+        cf_IconSetRule := TsCFIconSetRule(cf.Rules[j]);
+        AppendToStream(AStream, Format(
+          '<calcext:icon-set calcext:icon-set-type="%s">', [
+            CF_ICON_SET[cf_IconSetRule.IconSet]
+          ]));
+        AppendToStream(AStream,
+            '<calcext:formatting-entry calcext:value="0" calcext:type="percent" />');
+        for k := 0 to cf_IconSetRule.IconCount-2 do
+          AppendToStream(AStream, Format(
+            '<calcext:formatting-entry calcext:value="%g" calcext:type="%s" />', [
+            cf_IconSetRule.Values[k],
+            CF_VALUE_KIND[cf_IconSetRule.ValueKinds[k]]
+          ]));
+        AppendToStream(AStream,
+          '</calcext:icon-set>');
       end;
     end;
 
