@@ -143,6 +143,7 @@ type
     procedure ReadSheetProtection(ANode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadSheets(ANode: TDOMNode);
     procedure ReadStyle_ParagraphProperties(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadStyle_TableCellProperties(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadTableStyle(AStyleNode: TDOMNode);
 
   protected
@@ -4763,30 +4764,8 @@ begin
     Include(AFormat.UsedFormattingFields, uffBiDi);
 end;
 
-procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
-var
-  styleNode: TDOMNode;
-  styleChildNode: TDOMNode;
-  nodeName: String;
-  family: String;
-  styleName: String;
-  parentstyle: String;
-  fmt: TsCellFormat;
-  numFmtIndexDefault: Integer;
-  numFmtName: String;
-  numFmtStr: String;
-  numFmtIndex: Integer;
-  numFmtParams: TsNumFormatParams;
-  clr: TsColor;
-  fnt: TsFont;
-  fntName: String;
-  fntSize: Single;
-  fntStyle: TsFontStyles;
-  fntColor: TsColor;
-  fntPos: TsFontPosition;
-  fntIndex: Integer;
-  s: String;
-  idx: Integer;
+procedure TsSpreadOpenDocReader.ReadStyle_TableCellProperties(ANode: TDOMNode;
+  var AFormat: TsCellFormat);
 
   procedure SetBorderStyle(ABorder: TsCellBorder; AStyleValue: String);
   const
@@ -4838,41 +4817,193 @@ var
         end;
         rgb := HTMLColorStrToColor(s);
       end;
-      fmt.BorderStyles[ABorder].LineStyle := lsThin;
+      AFormat.BorderStyles[ABorder].LineStyle := lsThin;
       if (linestyle = 'solid') then
       begin
-        if (wid >= 2.4 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsThick
-        else if (wid >= 1.7 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsMedium
+        if (wid >= 2.4 - EPS) then
+          AFormat.BorderStyles[ABorder].LineStyle := lsThick
+        else if (wid >= 1.7 - EPS) then
+          AFormat.BorderStyles[ABorder].LineStyle := lsMedium
       end else
       if (linestyle = 'dotted') then
-        fmt.BorderStyles[ABorder].LineStyle := lsHair
+        AFormat.BorderStyles[ABorder].LineStyle := lsHair
       else
       if (linestyle = 'dashed') then
       begin
-        if (wid >= 1.7 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsMediumDash
-        else fmt.BorderStyles[ABorder].LineStyle := lsDashed
+        if (wid >= 1.7 - EPS) then
+          AFormat.BorderStyles[ABorder].LineStyle := lsMediumDash
+        else
+          AFormat.BorderStyles[ABorder].LineStyle := lsDashed
       end else
       if (linestyle = 'dash-dot') then
       begin
-        if (wid >= 1.7 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsMediumDashDot
-        else fmt.BorderStyles[ABorder].LineStyle := lsDashDot
+        if (wid >= 1.7 - EPS) then
+          AFormat.BorderStyles[ABorder].LineStyle := lsMediumDashDot
+        else
+          AFormat.BorderStyles[ABorder].LineStyle := lsDashDot
       end else
       if (linestyle = 'dash-dot-dot') then
       begin
-        if (wid >= 1.7 - EPS) then fmt.BorderStyles[ABorder].LineStyle := lsMediumDashDotDot
-        else fmt.BorderStyles[ABorder].LineStyle := lsDashDotDot
+        if (wid >= 1.7 - EPS) then
+          AFormat.BorderStyles[ABorder].LineStyle := lsMediumDashDotDot
+        else
+          AFormat.BorderStyles[ABorder].LineStyle := lsDashDotDot
       end else
       if (linestyle = 'fine-dashed') then
-        fmt.BorderStyles[ABorder].LineStyle := lsDotted
+        AFormat.BorderStyles[ABorder].LineStyle := lsDotted
       else
       if (linestyle = 'double') or (linestyle = 'double-thin') then
-        fmt.BorderStyles[ABorder].LineStyle := lsDouble;
-      fmt.BorderStyles[ABorder].Color := IfThen(rgb = scNotDefined, scBlack, rgb);
+        AFormat.BorderStyles[ABorder].LineStyle := lsDouble;
+      AFormat.BorderStyles[ABorder].Color := IfThen(rgb = scNotDefined, scBlack, rgb);
     finally
       L.Free;
     end;
   end;
 
+var
+  s: String;
+  clr: TsColor;
+begin
+  // Background color
+  s := GetAttrValue(ANode, 'fo:background-color');
+  if (s <> '') and (s <> 'transparent') then begin
+    clr := HTMLColorStrToColor(s);
+    // ODS does not support background fill patterns!
+    AFormat.Background.FgColor := IfThen(clr = scNotDefined, scTransparent, clr);
+    AFormat.Background.BgColor := AFormat.Background.FgColor;
+    if (AFormat.Background.BgColor <> scTransparent) then
+    begin
+      AFormat.Background.Style := fsSolidFill;
+      Include(AFormat.UsedFormattingFields, uffBackground);
+    end;
+  end;
+
+  // Borders
+  s := GetAttrValue(ANode, 'fo:border');
+  if (s <> '') and (s <> 'none') then
+  begin
+    AFormat.Border := AFormat.Border + [cbNorth, cbSouth, cbEast, cbWest];
+    SetBorderStyle(cbNorth, s);
+    SetBorderStyle(cbSouth, s);
+    SetBorderStyle(cbEast, s);
+    SetBorderStyle(cbWest, s);
+    Include(AFormat.UsedFormattingFields, uffBorder);
+  end;
+  s := GetAttrValue(ANode, 'fo:border-top');
+  if (s <> '') and (s <> 'none') then
+  begin
+    Include(AFormat.Border, cbNorth);
+    SetBorderStyle(cbNorth, s);
+    Include(AFormat.UsedFormattingFields, uffBorder);
+  end;
+  s := GetAttrValue(ANode, 'fo:border-right');
+  if (s <> '') and (s <> 'none') then
+  begin
+    Include(AFormat.Border, cbEast);
+    SetBorderStyle(cbEast, s);
+    Include(AFormat.UsedFormattingFields, uffBorder);
+  end;
+  s := GetAttrValue(ANode, 'fo:border-bottom');
+  if (s <> '') and (s <> 'none') then
+  begin
+    Include(AFormat.Border, cbSouth);
+    SetBorderStyle(cbSouth, s);
+    Include(AFormat.UsedFormattingFields, uffBorder);
+  end;
+  s := GetAttrValue(ANode, 'fo:border-left');
+  if (s <> '') and (s <> 'none') then
+  begin
+    Include(AFormat.Border, cbWest);
+    SetBorderStyle(cbWest, s);
+    Include(AFormat.UsedFormattingFields, uffBorder);
+  end;
+  s := GetAttrValue(ANode, 'style:diagonal-bl-tr');
+  if (s <> '') and (s <> 'none') then
+  begin
+    Include(AFormat.Border, cbDiagUp);
+    SetBorderStyle(cbDiagUp, s);
+    Include(AFormat.UsedFormattingFields, uffBorder);
+  end;
+  s := GetAttrValue(ANode, 'style:diagonal-tl-br');
+  if (s <> '') and (s <>'none') then
+  begin
+    Include(AFormat.Border, cbDiagDown);
+    SetBorderStyle(cbDiagDown, s);
+    Include(AFormat.UsedFormattingFields, uffBorder);
+  end;
+
+  // Text wrap
+  s := GetAttrValue(ANode, 'fo:wrap-option');
+  if (s = 'wrap') then
+    Include(AFormat.UsedFormattingFields, uffWordwrap);
+
+  // Test rotation
+  s := GetAttrValue(ANode, 'style:rotation-angle');
+  if s = '90' then
+    AFormat.TextRotation := rt90DegreeCounterClockwiseRotation
+  else if s = '270' then
+    AFormat.TextRotation := rt90DegreeClockwiseRotation;
+  s := GetAttrValue(ANode, 'style:direction');
+  if s = 'ttb' then
+    AFormat.TextRotation := rtStacked;
+  if AFormat.TextRotation <> trHorizontal then
+    Include(AFormat.UsedFormattingFields, uffTextRotation);
+
+  // Vertical text alignment
+  s := GetAttrValue(ANode, 'style:vertical-align');
+  if s = 'top' then
+    AFormat.VertAlignment := vaTop
+  else if s = 'middle' then
+    AFormat.VertAlignment := vaCenter
+  else if s = 'bottom' then
+    AFormat.VertAlignment := vaBottom;
+  if AFormat.VertAlignment <> vaDefault then
+    Include(AFormat.UsedFormattingFields, uffVertAlign);
+
+  // Protection
+  s := GetAttrValue(ANode, 'style:cell-protect');
+  if s = 'none' then
+    AFormat.Protection := []
+  else if (s = 'protected formula-hidden') or (s = 'formula-hidden protected') then
+    AFormat.Protection := [cpLockCell, cpHideFormulas]
+  else if s = 'protected' then
+    AFormat.Protection := [cpLockCell]
+  else if s = 'formula-hidden' then
+    AFormat.Protection := [cpHideFormulas]
+  else if s = 'hidden-and-protected' then
+    AFormat.Protection := [cpLockCell, cpHideFormulas];
+  // NOTE: This not exact... According to
+  // https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part1.html,
+  // section 20.246, this hides and locks cell content, not just
+  // formulas...
+  if AFormat.Protection <> DEFAULT_CELL_PROTECTION then
+    Include(AFormat.UsedFormattingFields, uffProtection);
+end;
+
+procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
+var
+  styleNode: TDOMNode;
+  styleChildNode: TDOMNode;
+  nodeName: String;
+  family: String;
+  styleName: String;
+  parentstyle: String;
+  fmt: TsCellFormat;
+  numFmtIndexDefault: Integer;
+  numFmtName: String;
+  numFmtStr: String;
+  numFmtIndex: Integer;
+  numFmtParams: TsNumFormatParams;
+  clr: TsColor;
+  fnt: TsFont;
+  fntName: String;
+  fntSize: Single;
+  fntStyle: TsFontStyles;
+  fntColor: TsColor;
+  fntPos: TsFontPosition;
+  fntIndex: Integer;
+  s: String;
+  idx: Integer;
 begin
   if not Assigned(AStylesNode) then
     exit;
@@ -5006,146 +5137,10 @@ begin
   //          fnt := FWorkbook.GetFont(fntIndex);
           end else
           if nodeName = 'style:table-cell-properties' then
-          begin
-            // Background color
-            s := GetAttrValue(styleChildNode, 'fo:background-color');
-            if (s <> '') and (s <> 'transparent') then begin
-              clr := HTMLColorStrToColor(s);
-              // ODS does not support background fill patterns!
-              fmt.Background.FgColor := IfThen(clr = scNotDefined, scTransparent, clr);
-              fmt.Background.BgColor := fmt.Background.FgColor;
-              if (fmt.Background.BgColor <> scTransparent) then
-              begin
-                fmt.Background.Style := fsSolidFill;
-                Include(fmt.UsedFormattingFields, uffBackground);
-              end;
-            end;
-            // Borders
-            s := GetAttrValue(styleChildNode, 'fo:border');
-            if (s <> '') and (s <> 'none') then
-            begin
-              fmt.Border := fmt.Border + [cbNorth, cbSouth, cbEast, cbWest];
-              SetBorderStyle(cbNorth, s);
-              SetBorderStyle(cbSouth, s);
-              SetBorderStyle(cbEast, s);
-              SetBorderStyle(cbWest, s);
-              Include(fmt.UsedFormattingFields, uffBorder);
-            end;
-            s := GetAttrValue(styleChildNode, 'fo:border-top');
-            if (s <> '') and (s <> 'none') then
-            begin
-              Include(fmt.Border, cbNorth);
-              SetBorderStyle(cbNorth, s);
-              Include(fmt.UsedFormattingFields, uffBorder);
-            end;
-            s := GetAttrValue(styleChildNode, 'fo:border-right');
-            if (s <> '') and (s <> 'none') then
-            begin
-              Include(fmt.Border, cbEast);
-              SetBorderStyle(cbEast, s);
-              Include(fmt.UsedFormattingFields, uffBorder);
-            end;
-            s := GetAttrValue(styleChildNode, 'fo:border-bottom');
-            if (s <> '') and (s <> 'none') then
-            begin
-              Include(fmt.Border, cbSouth);
-              SetBorderStyle(cbSouth, s);
-              Include(fmt.UsedFormattingFields, uffBorder);
-            end;
-            s := GetAttrValue(styleChildNode, 'fo:border-left');
-            if (s <> '') and (s <> 'none') then
-            begin
-              Include(fmt.Border, cbWest);
-              SetBorderStyle(cbWest, s);
-              Include(fmt.UsedFormattingFields, uffBorder);
-            end;
-            s := GetAttrValue(styleChildNode, 'style:diagonal-bl-tr');
-            if (s <> '') and (s <> 'none') then
-            begin
-              Include(fmt.Border, cbDiagUp);
-              SetBorderStyle(cbDiagUp, s);
-              Include(fmt.UsedFormattingFields, uffBorder);
-            end;
-            s := GetAttrValue(styleChildNode, 'style:diagonal-tl-br');
-            if (s <> '') and (s <>'none') then
-            begin
-              Include(fmt.Border, cbDiagDown);
-              SetBorderStyle(cbDiagDown, s);
-              Include(fmt.UsedFormattingFields, uffBorder);
-            end;
-
-            // Text wrap
-            s := GetAttrValue(styleChildNode, 'fo:wrap-option');
-            if (s='wrap') then
-              Include(fmt.UsedFormattingFields, uffWordwrap);
-
-            // Test rotation
-            s := GetAttrValue(styleChildNode, 'style:rotation-angle');
-            if s = '90' then
-              fmt.TextRotation := rt90DegreeCounterClockwiseRotation
-            else if s = '270' then
-              fmt.TextRotation := rt90DegreeClockwiseRotation;
-            s := GetAttrValue(styleChildNode, 'style:direction');
-            if s = 'ttb' then
-              fmt.TextRotation := rtStacked;
-            if fmt.TextRotation <> trHorizontal then
-              Include(fmt.UsedFormattingFields, uffTextRotation);
-
-            // Vertical text alignment
-            s := GetAttrValue(styleChildNode, 'style:vertical-align');
-            if s = 'top' then
-              fmt.VertAlignment := vaTop
-            else if s = 'middle' then
-              fmt.VertAlignment := vaCenter
-            else if s = 'bottom' then
-              fmt.VertAlignment := vaBottom;
-            if fmt.VertAlignment <> vaDefault then
-              Include(fmt.UsedFormattingFields, uffVertAlign);
-
-            // Protection
-            s := GetAttrValue(styleChildNode, 'style:cell-protect');
-            if s = 'none' then
-              fmt.Protection := []
-            else if (s = 'protected formula-hidden') or (s = 'formula-hidden protected') then
-              fmt.Protection := [cpLockCell, cpHideFormulas]
-            else if s = 'protected' then
-              fmt.Protection := [cpLockCell]
-            else if s = 'formula-hidden' then
-              fmt.Protection := [cpHideFormulas]
-            else if s = 'hidden-and-protected' then
-              fmt.Protection := [cpLockCell, cpHideFormulas];
-              // NOTE: This not exact... According to
-              // https://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part1.html,
-              // section 20.246, this hides and locks cell content, not just
-              // formulas...
-            if fmt.Protection <> DEFAULT_CELL_PROTECTION then
-              Include(fmt.UsedFormattingFields, uffProtection);
-          end
+            ReadStyle_TableCellProperties(styleChildNode, fmt)
           else
           if nodeName = 'style:paragraph-properties' then
-          begin
             ReadStyle_ParagraphProperties(styleChildNode, fmt);
-            (*
-            // Horizontal text alignment
-            s := GetAttrValue(styleChildNode, 'fo:text-align');
-            if s = 'start' then
-              fmt.HorAlignment := haLeft
-            else if s = 'end' then
-              fmt.HorAlignment := haRight
-            else if s = 'center' then
-              fmt.HorAlignment := haCenter;
-            if fmt.HorAlignment <> haDefault then
-              Include(fmt.UsedFormattingFields, uffHorAlign);
-            // BiDi mode
-            s := GetAttrValue(styleChildNode, 'style:writing-mode');
-            if s = 'lr-tb' then
-              fmt.BiDiMode := bdRTL
-            else if s = 'rl-tb' then
-              fmt.BiDiMode := bdRTL;
-            if fmt.BiDiMode <> bdDefault then
-              Include(fmt.UsedFormattingFields, uffBiDi);
-            *)
-          end;
           styleChildNode := styleChildNode.NextSibling;
         end;
         FCellFormatList.Add(fmt);
