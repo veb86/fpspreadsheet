@@ -144,6 +144,8 @@ type
     procedure ReadSheets(ANode: TDOMNode);
     procedure ReadStyle_ParagraphProperties(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadStyle_TableCellProperties(ANode: TDOMNode; var AFormat: TsCellFormat);
+    procedure ReadStyle_TextProperties(ANode: TDOMNode; AStyleName: String;
+      AFont: TsFont; var AFormat: TsCellFormat);
     procedure ReadTableStyle(AStyleNode: TDOMNode);
 
   protected
@@ -4980,6 +4982,44 @@ begin
     Include(AFormat.UsedFormattingFields, uffProtection);
 end;
 
+procedure TsSpreadOpenDocReader.ReadStyle_TextProperties(ANode: TDOMNode;
+  AStyleName: String; AFont: TsFont; var AFormat: TsCellFormat);
+var
+  fntName: String;
+  fntSize: Single;
+  fntStyle: TsFontStyles;
+  fntColor: TsColor;
+  fntPos: TsFontPosition;
+begin
+  fntName := AFont.FontName;
+  fntSize := AFont.Size;
+  fntStyle := AFont.Style;
+  fntColor := AFont.Color;
+  fntPos := AFont.Position;
+
+  ReadFont(ANode, fntName, fntSize, fntStyle, fntColor, fntPos);
+
+  if SameText(AStylename, 'Default') then
+  begin
+    TsWorkbook(FWorkbook).ReplaceFont(DEFAULT_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
+    AFormat.FontIndex := DEFAULT_FONTINDEX;
+  end else
+  if SameText(AStylename, 'Excel_20_Built-in_20_Hyperlink') then
+  begin
+    TsWorkbook(FWorkbook).ReplaceFont(HYPERLINK_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
+    AFormat.FontIndex := HYPERLINK_FONTINDEX;
+    //fntIndex := ReadFont(styleChildNode, HYPERLINK_FONTINDEX)
+  end else
+  begin
+    AFormat.FontIndex := TsWorkbook(FWorkbook).FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+    if AFormat.FontIndex = -1 then
+      AFormat.FontIndex := TsWorkbook(FWorkbook).AddFont(fntName, fntSize, fntStyle, fntColor, fntPos);
+  end;
+
+  if AFormat.FontIndex > 0 then
+    Include(AFormat.UsedFormattingFields, uffFont);
+end;
+
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
 var
   styleNode: TDOMNode;
@@ -5111,36 +5151,14 @@ begin
         while Assigned(styleChildNode) do
         begin
           nodeName := styleChildNode.NodeName;
-          if nodeName = 'style:text-properties' then
-          begin
-            ReadFont(styleChildNode, fntName, fntSize, fntStyle, fntColor, fntPos);
-            if SameText(stylename, 'Default') then
-            begin
-              TsWorkbook(FWorkbook).ReplaceFont(DEFAULT_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
-              fmt.FontIndex := DEFAULT_FONTINDEX;
-              //fntIndex := ReadFont(styleChildNode, DEFAULT_FONTINDEX)
-            end else
-            if SameText(stylename, 'Excel_20_Built-in_20_Hyperlink') then
-            begin
-              TsWorkbook(FWorkbook).ReplaceFont(HYPERLINK_FONTINDEX, fntName, fntSize, fntStyle, fntColor, fntPos);
-              fmt.FontIndex := HYPERLINK_FONTINDEX;
-              //fntIndex := ReadFont(styleChildNode, HYPERLINK_FONTINDEX)
-            end else
-            begin
-              fmt.FontIndex := TsWorkbook(FWorkbook).FindFont(fntName, fntSize, fntStyle, fntColor, fntPos);
-              if fmt.FontIndex = -1 then
-                fmt.FontIndex := TsWorkbook(FWorkbook).AddFont(fntName, fntSize, fntStyle, fntColor, fntPos);
-            end;
-            if fmt.FontIndex > 0 then
-              Include(fmt.UsedFormattingFields, uffFont);
-//              fntIndex := ReadFont(styleChildNode);
-  //          fnt := FWorkbook.GetFont(fntIndex);
-          end else
-          if nodeName = 'style:table-cell-properties' then
-            ReadStyle_TableCellProperties(styleChildNode, fmt)
-          else
-          if nodeName = 'style:paragraph-properties' then
-            ReadStyle_ParagraphProperties(styleChildNode, fmt);
+          case nodeName of
+            'style:text-properties':
+              ReadStyle_TextProperties(styleChildNode, styleName, fnt, fmt);
+            'style:table-cell-properties':
+              ReadStyle_TableCellProperties(styleChildNode, fmt);
+            'style:paragraph-properties':
+              ReadStyle_ParagraphProperties(styleChildNode, fmt);
+          end;
           styleChildNode := styleChildNode.NextSibling;
         end;
         FCellFormatList.Add(fmt);
