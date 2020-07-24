@@ -142,6 +142,7 @@ type
     procedure ReadShapes(ATableNode: TDOMNode);
     procedure ReadSheetProtection(ANode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadSheets(ANode: TDOMNode);
+    procedure ReadStyle_ParagraphProperties(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadTableStyle(AStyleNode: TDOMNode);
 
   protected
@@ -4736,6 +4737,32 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocReader.ReadStyle_ParagraphProperties(ANode: TDOMNode;
+  var AFormat: TsCellFormat);
+var
+  s: String;
+begin
+  // Horizontal text alignment
+  s := GetAttrValue(ANode, 'fo:text-align');
+  if s = 'start' then
+    AFormat.HorAlignment := haLeft
+  else if s = 'end' then
+    AFormat.HorAlignment := haRight
+  else if s = 'center' then
+    AFormat.HorAlignment := haCenter;
+  if AFormat.HorAlignment <> haDefault then
+    Include(AFormat.UsedFormattingFields, uffHorAlign);
+
+  // BiDi mode
+  s := GetAttrValue(ANode, 'style:writing-mode');
+  if s = 'lr-tb' then
+    AFormat.BiDiMode := bdRTL
+  else if s = 'rl-tb' then
+    AFormat.BiDiMode := bdRTL;
+  if AFormat.BiDiMode <> bdDefault then
+    Include(AFormat.UsedFormattingFields, uffBiDi);
+end;
+
 procedure TsSpreadOpenDocReader.ReadStyles(AStylesNode: TDOMNode);
 var
   styleNode: TDOMNode;
@@ -5097,6 +5124,8 @@ begin
           else
           if nodeName = 'style:paragraph-properties' then
           begin
+            ReadStyle_ParagraphProperties(styleChildNode, fmt);
+            (*
             // Horizontal text alignment
             s := GetAttrValue(styleChildNode, 'fo:text-align');
             if s = 'start' then
@@ -5115,6 +5144,7 @@ begin
               fmt.BiDiMode := bdRTL;
             if fmt.BiDiMode <> bdDefault then
               Include(fmt.UsedFormattingFields, uffBiDi);
+            *)
           end;
           styleChildNode := styleChildNode.NextSibling;
         end;
