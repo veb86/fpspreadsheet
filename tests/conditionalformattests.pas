@@ -1206,7 +1206,9 @@ var
   fmt: TsCellFormat;
 begin
   InitFormatRecord(fmt);
-  fmt.SetBackground(fsHatchDiag, scYellow, scRed);
+  // ODS supports only solid fill
+  //fmt.SetBackground(fsHatchDiag, scYellow, scRed);
+  fmt.SetBackground(fsSolidFill, scYellow, scYellow);
   TestWriteRead_CF_CellFmt(sfOpenDocument, cfcEqual, 5, fmt);
 end;
 
