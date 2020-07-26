@@ -2021,6 +2021,13 @@ var
     isHidden: Boolean;
     isPageBreak: Boolean;
   begin
+         {
+    for j := 0 to FCellFormatList.Count-1 do
+    begin
+      WriteLn(j, ' ', FCellFormatList[j]^.Name);
+    end;
+          }
+
     s := GetAttrValue(AColNode, 'table:style-name');
     colStyleIndex := FindColStyleByName(s);
     if colStyleIndex <> -1 then
@@ -2730,7 +2737,7 @@ begin
       FreeAndNil(Doc);
     end;
 
-    //process the content.xml file
+    // process the content.xml file
     XMLStream := CreateXMLStream;
     try
       if UnzipToStream(AStream, 'content.xml', XMLStream) then
@@ -6136,6 +6143,8 @@ begin
   end;
 end;
 
+{ Writes the "office:automatic" > "style:style" node for table-column style family
+  in content.xml for all column records. }
 procedure TsSpreadOpenDocWriter.WriteColStyles(AStream: TStream);
 var
   i: Integer;
@@ -6790,6 +6799,18 @@ begin
   AppendToStream(AStream,
     '<office:styles>');
 
+  {   --- causes trouble with empty columns
+  AppendToStream(AStream,
+      '<style:default-style style:family="table-cell">' +
+        '<style:paragraph-properties style:tab-stop-distance="1.25cm" />' +
+        WriteDefaultFontXMLAsString +
+//        '<style:text-properties style:font-name="Liberation Sans" />' +
+      '</style:default-style>');
+  }
+
+  AppendToStream(AStream,
+      '<style:style style:name="Default" style:famile="table-cell" />');
+
   AppendToStream(AStream,
       '<style:style style:name="Default" style:family="table-cell">',
         WriteDefaultFontXMLAsString,
@@ -6805,6 +6826,7 @@ begin
 
   AppendToStream(AStream,
     '</office:styles>');
+
 end;
 
 procedure TsSpreadOpenDocWriter.WriteRowsAndCells(AStream: TStream;
