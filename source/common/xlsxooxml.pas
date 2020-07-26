@@ -2112,6 +2112,7 @@ var
   dxf: TDifferentialFormatData;
   fmt: TsCellFormat;
   numFmtStr: String;
+  numFmtParams: TsNumFormatParams;
 begin
   uff := [];
   borders := [];
@@ -2185,19 +2186,6 @@ begin
         end;
         pattNode := pattNode.NextSibling;
       end;
-      {
-      fillPatt := GetAttrValue(ANode, 'patternType');
-      childNode := ANode.FirstChild;
-      while childNode <> nil do begin
-        nodeName := childNode.NodeName;
-        if nodeName = 'bgColor' then
-          bgColor := ReadColor(childNode)
-        else
-        if nodeName ='fgColor' then
-          fgColor := ReadColor(childNode);
-        childNode := childNode.NextSibling;
-      end;
-      }
     end else
     if nodeName = 'numFmt' then
     begin
@@ -2233,12 +2221,14 @@ begin
       dxf.FontColor := fontColor;
       dxf.FontStyles := fontStyles;
       fmt.FontIndex := TsWorkbook(FWorkbook).AddFont('', -1, fontStyles, fontColor);
+      // Excel does not allow to change font name and font size.
     end else
     if (uffNumberFormat in uff) then
     begin
-      dxf.NumFormatStr := numFmtStr;
-      fmt.NumberFormatStr := numFmtStr;
       fmt.NumberFormatIndex := TsWorkbook(FWorkbook).AddNumberFormat(numFmtStr);
+      numFmtParams := TsWorkbook(FWorkbook).GetNumberFormat(fmt.NumberFormatIndex);
+      fmt.NumberFormatStr := numFmtParams.NumFormatStr;
+      fmt.NumberFormat := numFmtParams.NumFormat;
     end;
     dxf.CellFormatIndex := TsWorkbook(FWorkbook).AddCellFormat(fmt);
     FDifferentialFormatList.Add(dxf);
@@ -6249,7 +6239,11 @@ procedure TsSpreadOOXMLWriter.WriteDifferentialFormat(AStream: TStream;
 
 var
   pt, bc, fc, diag: string;
-  font: TsFont;
+//  font: TsFont;
+  nfp: TsNumFormatParams;
+  nfs: String;
+  nfi: Integer;
+  nfId: String;
 begin
   AppendToStream(AStream,
     '<dxf>');
@@ -6276,6 +6270,17 @@ begin
       AppendToStream(AStream, '</font>');
     end;
     }
+  end;
+
+  { number format }
+  if (uffNumberFormat in AFormat^.UsedFormattingFields) then
+  begin
+    nfp := TsWorkbook(FWorkbook).GetNumberFormat(AFormat^.NumberFormatIndex);
+//    nfs := UTF8TextToXMLText(nfp.NumFormatStr);
+    nfs := nfp.NumFormatStr;
+    nfi := FNumFormatList.IndexOf(nfs);
+    if nfi > -1 then nfId := Format('numFmtId="%d" ', [nfi]) else nfId := '';
+    AppendToStream(AStream, Format('<numFmt %sformatCode="%s" />', [nfId, nfs]));
   end;
 
   { background fill }
