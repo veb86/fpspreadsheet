@@ -6256,9 +6256,10 @@ begin
 
   { font }
   // TODO: Fix font handling: although correct in syntax something seems to be missing...
-  {
   if (uffFont in AFormat^.UsedFormattingFields) then
   begin
+    FWorkbook.AddErrorMsg('Writing conditional font not supported by XLSX writer.');
+    {
     font := TsWorkbook(FWorkbook).GetFont(AFormat^.FontIndex);
     if font <> nil then
     begin
@@ -6274,8 +6275,9 @@ begin
       // Font name, font size, and style underline not supported
       AppendToStream(AStream, '</font>');
     end;
+    }
   end;
-  }
+
   { background fill }
   if (uffBackground in AFormat^.UsedFormattingFields) then
   begin
