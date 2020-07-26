@@ -3068,6 +3068,7 @@ var
   deffnt, fnt: TsFont;
   s, fmtVert, fmtHor, fmtWrap, fmtRot: String;
   nfp: TsNumFormatParams;
+  nfs: String;
   fill: TsFillPattern;
   cb: TsCellBorder;
   cbs: TsCellBorderStyle;
@@ -3168,8 +3169,9 @@ begin
     begin
       nfp := book.GetNumberFormat(fmt^.NumberFormatIndex);
       nfp.AllowLocalizedAMPM := false;    // Replace "AMPM" by "AM/PM"
+      nfs := nfp.NumFormatStr;
       AppendToStream(AStream, Format(INDENT3 +
-        '<NumberFormat ss:Format="%s"/>' + LF, [UTF8TextToXMLText(nfp.NumFormatStr)]));
+        '<NumberFormat ss:Format="%s"/>' + LF, [nfs])); // Do not UTF8TextToXMLText(nfs) because of '%'
     end;
 
     // Background
