@@ -214,6 +214,7 @@ type
     procedure WriteMasterStyles(AStream: TStream);
     procedure WriteNamedExpressions(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteNumFormats(AStream: TStream);
+    procedure WriteOfficeStyles(AStream: TStream);
     procedure WriteRowStyles(AStream: TStream);
     procedure WriteRowsAndCells(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteShapes(AStream: TStream; ASheet: TsBasicWorksheet);
@@ -5902,23 +5903,7 @@ begin
   AppendToStream(FSStyles,
       '</office:font-face-decls>');
 
-  AppendToStream(FSStyles,
-      '<office:styles>');
-  AppendToStream(FSStyles,
-        '<style:style style:name="Default" style:family="table-cell">',
-           WriteDefaultFontXMLAsString,
-        '</style:style>');
-
-  WriteConditionalStyles(FSStyles);
-
-  if (FWorkbook as TsWorkbook).HasEmbeddedSheetImages then
-    AppendToStream(FSStyles,
-        '<style:default-style style:family="graphic">',
-          WriteDefaultGraphicStyleXMLAsString,
-        '</style:default-style>');
-  AppendToStream(FSStyles,
-      '</office:styles>');
-
+  WriteOfficeStyles(FSStyles);
   WriteAutomaticStyles(FSStyles);
   WriteMasterStyles(FSStyles);
 
@@ -6797,6 +6782,29 @@ begin
       parser.Free;
     end;
   end;
+end;
+
+{ Writes the node <office:style> which is in "styles.xml" }
+procedure TsSpreadOpenDocWriter.WriteOfficeStyles(AStream: TStream);
+begin
+  AppendToStream(AStream,
+    '<office:styles>');
+
+  AppendToStream(AStream,
+      '<style:style style:name="Default" style:family="table-cell">',
+        WriteDefaultFontXMLAsString,
+      '</style:style>');
+
+  WriteConditionalStyles(AStream);
+
+  if (FWorkbook as TsWorkbook).HasEmbeddedSheetImages then
+    AppendToStream(AStream,
+      '<style:default-style style:family="graphic">',
+         WriteDefaultGraphicStyleXMLAsString,
+      '</style:default-style>');
+
+  AppendToStream(AStream,
+    '</office:styles>');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteRowsAndCells(AStream: TStream;
