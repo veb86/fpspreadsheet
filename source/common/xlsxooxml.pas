@@ -6249,10 +6249,33 @@ procedure TsSpreadOOXMLWriter.WriteDifferentialFormat(AStream: TStream;
 
 var
   pt, bc, fc, diag: string;
+  font: TsFont;
 begin
   AppendToStream(AStream,
     '<dxf>');
 
+  { font }
+  // TODO: Fix font handling: although correct in syntax something seems to be missing...
+  {
+  if (uffFont in AFormat^.UsedFormattingFields) then
+  begin
+    font := TsWorkbook(FWorkbook).GetFont(AFormat^.FontIndex);
+    if font <> nil then
+    begin
+      AppendToStream(AStream, '<font>');
+      if font.Color <> scNotDefined then
+        AppendToStream(AStream, Format('<color rgb="%s" />', [fc] ));
+      if fssBold in font.Style then
+        AppendToStream(AStream,      '<b />');
+      if fssItalic in font.Style then
+        AppendToStream(AStream,      '<i />');
+      if fssStrikeout in font.Style then
+        AppendToStream(AStream,      '<strike />');
+      // Font name, font size, and style underline not supported
+      AppendToStream(AStream, '</font>');
+    end;
+  end;
+  }
   { background fill }
   if (uffBackground in AFormat^.UsedFormattingFields) then
   begin
@@ -6291,26 +6314,6 @@ begin
         WriteBorderStyle(AStream, AFormat, cbDiagUp, 'diagonal');
     AppendToStream(AStream,
       '</border>');
-
-    // TODO: Fix font handling: although correct in syntax something seems to be missing...
-    { font }
-    {
-    font := TsWorkbook(FWorkbook).GetFont(AFormat^.FontIndex);
-    if font <> nil then
-    begin
-      fc := ColorToHTMLColorStr(font.Color, true);
-      AppendToStream(AStream, '<font>');
-      AppendToStream(AStream, Format('<color rgb="%s" />', [fc] ));
-      if fssBold in font.Style then
-        AppendToStream(AStream,      '<b />');
-      if fssItalic in font.Style then
-        AppendToStream(AStream,      '<i />');
-      if fssStrikeout in font.Style then
-        AppendToStream(AStream,      '<strike />');
-      // Font name, font size, and style underline not supported
-      AppendToStream(AStream, '</font>');
-    end;
-    }
   end;
 
   AppendToStream(AStream,
