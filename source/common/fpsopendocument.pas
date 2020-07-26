@@ -237,6 +237,7 @@ type
     function WriteFontStyleXMLAsString(AFont: TsFont): String; overload;
     function WriteHeaderFooterFontXMLAsString(AFont: TsHeaderFooterFont): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
+    function WriteNumFormatStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WritePageLayoutXMLAsString(AStyleName: String; const APageLayout: TsPageLayout): String;
     function WritePrintRangesXMLAsString(ASheet: TsBasicWorksheet): String;
     function WriteSheetProtectionXMLAsString(ASheet: TsBasicWorksheet): String;
@@ -5835,6 +5836,8 @@ var
 begin
   addProtection := (AConditionalFormatIndex = -1);
 
+  nfs := WriteNumFormatStyleXMLAsString(AFormat);
+  {
   nfs := '';
   nfidx := AFormat.NumberFormatIndex;
   if nfidx <> -1 then
@@ -5858,7 +5861,7 @@ begin
         nfs := '';
     end;
   end;
-
+  }
   AppendToStream(AStream, Format(
     '<style:style style:name="%s" style:family="table-cell" ' +
                  'style:parent-style-name="Default"%s>',
@@ -8161,6 +8164,36 @@ begin
     haLeft   : Result := 'fo:text-align="start" ';
     haCenter : Result := 'fo:text-align="center" ';
     haRight  : Result := 'fo:text-align="end" ';
+  end;
+end;
+
+function TsSpreadOpenDocWriter.WriteNumFormatStyleXMLAsString(
+  const AFormat: TsCellFormat): String;
+var
+  nfParams: TsNumFormatParams;
+  nfs: String;
+  j: Integer;
+  s: String;
+  p: Integer;
+begin
+  Result := '';
+  if not (uffNumberFormat in AFormat.UsedFormattingFields) then
+    exit;
+
+  nfParams := TsWorkbook(FWorkbook).GetNumberFormat(AFormat.NumberFormatIndex);
+  if nfParams <> nil then
+  begin
+    nfs := nfParams.NumFormatStr;
+    for j:=0 to NumFormatList.Count-1 do
+    begin
+      s := NumFormatList[j];
+      p := pos(':', s);
+      if SameText(Copy(s, p+1, Length(s)), nfs) then
+      begin
+        Result := Format(' style:data-style-name="%s"', [copy(s, 1, p-1)]);
+        Exit;
+      end;
+    end;
   end;
 end;
 
