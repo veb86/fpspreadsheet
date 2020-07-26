@@ -678,7 +678,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Deletes the conditional format at the given index from the list.
-  Iterates also through all cell in the range of the CF and removess the
+  Iterates also through all cell in the range of the CF and removes the
   format index from the cell's ConditionalFormatIndex array.
 -------------------------------------------------------------------------------}
 procedure TsConditionalFormatList.Delete(AIndex: Integer);
