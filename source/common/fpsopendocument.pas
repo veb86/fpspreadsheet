@@ -8064,10 +8064,12 @@ begin
   defFnt := (Workbook as TsWorkbook).GetDefaultFont;
   if AFont = nil then AFont := defFnt;
 
-  Result := Result + Format('style:font-name="%s" ', [AFont.FontName]);
+  if AFont.FontName <> '' then
+    Result := Result + Format('style:font-name="%s" ', [AFont.FontName]);
 
-  Result := Result + Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
-    [AFont.Size, AFont.Size, AFont.Size], FPointSeparatorSettings);
+  if AFont.Size > 0 then
+    Result := Result + Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
+      [AFont.Size, AFont.Size, AFont.Size], FPointSeparatorSettings);
 
   if fssBold in AFont.Style then
     Result := Result + 'fo:font-weight="bold" style:font-weight-asian="bold" style:font-weight-complex="bold" ';
@@ -8087,7 +8089,7 @@ begin
   if AFont.Position = fpSuperscript then
     Result := Result + 'style:text-position="super 58%" ';
 
-  if AFont.Color <> defFnt.Color then
+  if (AFont.Color <> defFnt.Color) and (AFont.Color <> scNotDefined) then
     Result := Result + Format('fo:color="%s" ', [ColorToHTMLColorStr(AFont.Color)]);
 end;
 
