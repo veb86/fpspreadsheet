@@ -345,9 +345,6 @@ begin
       actFmt := workbook.GetCellFormat(actFmtIdx);
 
       // - formatting fields
-      WriteLn(Integer(ACellFormat.UsedFormattingFields));
-      WriteLn(Integer(actfmt.UsedFormattingFields));
-
       CheckEquals(integer(ACellFormat.UsedFormattingFields), integer(actFmt.UsedFormattingFields), 'Conditional formatting fields mismatch');
 
       // - background

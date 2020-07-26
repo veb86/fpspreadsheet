@@ -5837,31 +5837,6 @@ begin
   addProtection := (AConditionalFormatIndex = -1);
 
   nfs := WriteNumFormatStyleXMLAsString(AFormat);
-  {
-  nfs := '';
-  nfidx := AFormat.NumberFormatIndex;
-  if nfidx <> -1 then
-  begin
-    nfParams := TsWorkbook(FWorkbook).GetNumberFormat(nfidx);
-    if nfParams <> nil then
-    begin
-      nfs := nfParams.NumFormatStr;
-      for j:=0 to NumFormatList.Count-1 do
-      begin
-        s := NumFormatList[j];
-        p := pos(':', s);
-        if SameText(Copy(s, p+1, Length(s)), nfs) then
-        begin
-          nfs := Format(' style:data-style-name="%s"', [copy(s, 1, p-1)]);
-          break;
-        end;
-        p := 0;
-      end;
-      if p = 0 then // not found
-        nfs := '';
-    end;
-  end;
-  }
   AppendToStream(AStream, Format(
     '<style:style style:name="%s" style:family="table-cell" ' +
                  'style:parent-style-name="Default"%s>',
