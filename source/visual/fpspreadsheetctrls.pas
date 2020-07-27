@@ -2297,8 +2297,6 @@ procedure TsCellEdit.EditingDone;
 var
   s: String;
 begin
-  inherited;
-
   if (Worksheet = nil) then
     exit;
 
@@ -2308,6 +2306,8 @@ begin
   end;
 
   WriteToCell;
+
+  inherited;
 end;
 
 {@@ ----------------------------------------------------------------------------
