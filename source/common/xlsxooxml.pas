@@ -2666,7 +2666,7 @@ begin
       'dc:creator':
         book.MetaData.CreatedBy := s;
       'cp:lastModifiedBy':
-        book.MetaData.ModifiedBy := s;
+        book.MetaData.LastModifiedBy := s;
       'dc:description':
         if s <> '' then
         begin
@@ -2681,10 +2681,10 @@ begin
           book.MetaData.Keywords.Clear;
       'dcterms:created':
         if s <> '' then
-          book.MetaData.CreatedAt := ISO8601StrToDateTime(s);
+          book.MetaData.DateCreated := ISO8601StrToDateTime(s);
       'dcterms:modified':
         if s <> '' then
-          book.MetaData.ModifiedAt :=ISO8601StrToDateTime(s);
+          book.MetaData.DateLastModified :=ISO8601StrToDateTime(s);
     end;
     ANode := ANode.NextSibling;
   end;
@@ -6143,24 +6143,24 @@ begin
       '<dc:description>%s</dc:description>', [s]));
   end;
 
-  if book.MetaData.ModifiedBy = '' then
+  if book.MetaData.LastModifiedBy = '' then
     s := book.MetaData.CreatedBy
   else
-    s := book.MetaData.ModifiedBy;
+    s := book.MetaData.LastModifiedBy;
   AppendToStream(AStream, Format(
       '<cp:lastModifiedBy>%s</cp:lastModifiedBy>', [s]));      // to do: check xml entities
 
-  if book.MetaData.CreatedAt > 0 then
+  if book.MetaData.DateCreated > 0 then
   begin
-    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.CreatedAt) + 'Z';
+    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateCreated) + 'Z';
     AppendToStream(AStream, Format(
       '<dcterms:created xsi:type="dcterms:W3CDTF">%s</dcterms:created>', [s]));
   end;
 
-  if book.MetaData.ModifiedAt = 0 then
-    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.CreatedAt) + 'Z'
+  if book.MetaData.DateLastModified <= 0 then
+    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateCreated) + 'Z'
   else
-    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.ModifiedAt) + 'Z';
+    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateLastModified) + 'Z';
   AppendToStream(AStream, Format(
       '<dcterms:modified xsi:type="dcterms:W3CDTF">%s</dcterms:modified>', [s]));
 

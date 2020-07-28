@@ -62,7 +62,7 @@ begin
   book := TsWorkbook.Create;
   try
     book.MetaData.CreatedBy := 'Donald Duck';
-    book.MetaData.CreatedAt := EncodeDate(2020, 1, 1) + EncodeTime(12, 30, 40, 20);
+    book.MetaData.DateCreated := EncodeDate(2020, 1, 1) + EncodeTime(12, 30, 40, 20);
     book.MetaData.Title := 'Test of metadata äöü';
     book.MetaData.Comments.Add('This is a test of spreadsheet metadata.');
     book.MetaData.Comments.Add('Assign the author to the field CreatedBy.');
@@ -82,16 +82,16 @@ begin
   book := TsWorkbook.Create;
   try
     book.ReadFromFile('test.xlsx');
-    book.MetaData.ModifiedAt := Now();
-    book.MetaData.ModifiedBy := GetUserName;
-    WriteLn('CreatedBy  : ', book.MetaData.CreatedBy);
-    WriteLn('CreatedAt  : ', DateTimeToStr(book.MetaData.CreatedAt));
-    WriteLn('ModifiedBy : ', book.MetaData.ModifiedBy);
-    WriteLn('ModifiedAt : ', DateTimeToStr(book.MetaData.ModifiedAt));
-    WriteLn('Title      : ', book.MetaData.Title);
-    WriteLn('Comments   : ');
+    book.MetaData.DateLastModified := Now();
+    book.MetaData.LastModifiedBy := GetUserName;
+    WriteLn('Created by         : ', book.MetaData.CreatedBy);
+    WriteLn('Date created       : ', DateTimeToStr(book.MetaData.DateCreated));
+    WriteLn('Modified by        : ', book.MetaData.LastModifiedBy);
+    WriteLn('Date last modified : ', DateTimeToStr(book.MetaData.DateLastModified));
+    WriteLn('Title              : ', book.MetaData.Title);
+    WriteLn('Keywords           : ', book.MetaData.Keywords.CommaText);
+    WriteLn('Comments: ');
     WriteLn(book.MetaData.Comments.Text);
-    WriteLn('Keywords   : ', book.MetaData.Keywords.CommaText);
   finally
     book.Free;
   end;

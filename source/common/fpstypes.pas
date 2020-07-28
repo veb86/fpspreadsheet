@@ -969,9 +969,9 @@ type
   TsMetaData = class
   private
     FCreatedBy: String;
-    FCreatedAt: TDateTime;
-    FModifiedBy: String;
-    FModifiedAt: TDateTime;
+    FDateCreated: TDateTime;
+    FDateLastModified: TDateTime;
+    FLastModifiedBy: String;
     FTitle: String;
     FComments: TStrings;
     FKeywords: TStrings;
@@ -980,9 +980,9 @@ type
     destructor Destroy;
     function IsEmpty: Boolean;
     property CreatedBy: String read FCreatedBy write FCreatedBy;
-    property CreatedAt: TDateTime read FCreatedAt write FCreatedAt;
-    property ModifiedBy: String read FModifiedBy write FModifiedBy;
-    property ModifiedAt: TDatetime read FModifiedAt write FModifiedAt;
+    property LastModifiedBy: String read FLastModifiedBy write FlastModifiedBy;
+    property DateCreated: TDateTime read FDateCreated write FDateCreated;
+    property DateLastModified: TDatetime read FDateLastModified write FDateLastModified;
     property Title: String read FTitle write FTitle;
     property Comments: TStrings read FComments write FComments;
     property Keywords: TStrings read FKeywords write FKeywords;
@@ -1208,9 +1208,9 @@ end;
 
 function TsMetaData.IsEmpty: Boolean;
 begin
-  Result := (FCreatedBy = '') and (FModifiedBy = '') and (FTitle = '') and
+  Result := (FCreatedBy = '') and (FLastModifiedBy = '') and (FTitle = '') and
     (FComments.Count = 0) and (FKeywords.Count = 0) and
-    (FCreatedAt = 0) and (FModifiedAt = 0);
+    (FDateCreated = 0) and (FDateLastModified = 0);
 end;
 
 
