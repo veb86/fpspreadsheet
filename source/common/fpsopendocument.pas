@@ -133,6 +133,7 @@ type
       var AFontSize: Double; var AFontStyle: TsHeaderFooterFontStyles;
       var AFontColor: TsColor);
     function ReadHeaderFooterText(ANode: TDOMNode): String;
+    procedure ReadMetaData(ANode: TDOMNode);
     procedure ReadPictures(AStream: TStream);
     procedure ReadPrintRanges(ATableNode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
@@ -1951,6 +1952,40 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocReader.ReadMetaData(ANode: TDOMNode);
+var
+  book: TsWorkbook;
+  nodeName: String;
+  s: String;
+begin
+  book := TsWorkbook(FWorkbook);
+
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    s := GetNodeValue(ANode);
+    case nodeName of
+      'meta:initial-creator':
+        book.MetaData.CreatedBy := s;
+      'meta:creation-date':
+        if s <> '' then
+          book.MetaData.DateCreated := ISO8601StrToDateTime(s);
+      'meta:keyword':
+        if s <> '' then
+          book.MetaData.KeyWords.Add(s);
+      'dc:date':
+        if s <> '' then
+          book.MetaData.DateLastModified := ISO8601StrToDateTime(s);
+      'dc:description':
+        book.MetaData.Comments.Text := s;
+      'dc:title':
+        book.MetaData.Title := s;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Cardinal;
   AStyleIndex: Integer; ACellNode: TDOMNode);
 var
@@ -2824,6 +2859,18 @@ begin
       end; //while Assigned(TableNode)
 
       FreeAndNil(Doc);
+    end;
+
+    // process the meta.xml file
+    XMLStream := CreateXMLStream;
+    try
+      if UnzipToStream(AStream, 'meta.xml', XMLStream) then
+      begin
+        ReadXMLStream(Doc, XMLStream);
+        ReadMetaData(Doc.DocumentElement.FindNode('office:meta'));
+      end;
+    finally
+      XMLStream.Free;
     end;
 
     // process the settings.xml file (Note: it does not always exist!)
@@ -5728,19 +5775,77 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteMeta;
+var
+  book: TsWorkbook;
+  i: Integer;
+  s: String;
 begin
+  book := TsWorkbook(FWorkbook);
+
   AppendToStream(FSMeta,
     XML_HEADER);
+  AppendToStream(FSMeta,
+    '<office:document-meta ' +
+      'xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" ' +
+      'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" ' +
+      'xmlns:grddl="http://www.w3.org/2003/g/data-view#" ' +
+      'xmlns:ooo="http://openoffice.org/2004/office" ' +
+      'xmlns:xlink="http://www.w3.org/1999/xlink" '+
+      'xmlns:dc="http://purl.org/dc/elements/1.1/" '+
+      'office:version="1.2">');
+  {
   AppendToStream(FSMeta,
     '<office:document-meta xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
       '" xmlns:dcterms="' + SCHEMAS_XMLNS_DCTERMS +
       '" xmlns:meta="' + SCHEMAS_XMLNS_META +
       '" xmlns="' + SCHEMAS_XMLNS +
       '" xmlns:ex="' + SCHEMAS_XMLNS + '">');
+      }
   AppendToStream(FSMeta,
       '<office:meta>',
         '<meta:generator>FPSpreadsheet Library</meta:generator>' +
-        '<meta:document-statistic />',
+        '<meta:document-statistic />');
+
+  if book.Metadata.Title <> '' then
+  begin
+    s := book.Metadata.Title;
+    AppendToStream(FSMeta, Format(
+        '<dc:title>%s</dc:title>', [s]));
+  end;
+
+  if book.Metadata.CreatedBy <> '' then
+    AppendToStream(FSMeta, Format(
+        '<meta:initial-creator>%s</meta:initial-creator>', [book.MetaData.CreatedBy]));
+
+  if book.MetaData.DateCreated > 0 then
+  begin
+    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateCreated);
+    AppendToStream(FSMeta, Format(
+        '<meta:creation-date>%s</meta:creation-date>', [s]));
+  end;
+
+  if book.MetaData.DateLastModified > 0 then
+  begin
+    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateLastModified);
+    AppendToStream(FSMeta, Format(
+        '<dc:date>%s</dc:date>', [s]));
+  end;
+
+  if book.MetaData.Keywords.Count > 0 then
+    for i := 0 to book.MetaData.Keywords.Count-1 do
+      AppendToStream(FSMeta, Format(
+        '<meta:keyword>%s</meta:keyword>', [book.MetaData.Keywords[i]]));
+
+  if book.MetaData.Comments.Count > 0 then
+  begin
+    s := book.MetaData.Comments[0];
+    for i := 1 to book.MetaData.Comments.Count-1 do
+      s := s + #10 + book.MetaData.Comments[i];
+    AppendToStream(FSMeta, Format(
+        '<dc:description>%s</dc:description>', [s]));
+  end;
+
+  AppendToStream(FSMeta,
       '</office:meta>');
   AppendToStream(FSMeta,
     '</office:document-meta>');

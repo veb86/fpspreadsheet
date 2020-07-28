@@ -980,7 +980,7 @@ type
     destructor Destroy;
     function IsEmpty: Boolean;
     property CreatedBy: String read FCreatedBy write FCreatedBy;
-    property LastModifiedBy: String read FLastModifiedBy write FlastModifiedBy;
+    property LastModifiedBy: String read FLastModifiedBy write FLastModifiedBy;
     property DateCreated: TDateTime read FDateCreated write FDateCreated;
     property DateLastModified: TDatetime read FDateLastModified write FDateLastModified;
     property Title: String read FTitle write FTitle;

@@ -63,6 +63,8 @@ begin
   try
     book.MetaData.CreatedBy := 'Donald Duck';
     book.MetaData.DateCreated := EncodeDate(2020, 1, 1) + EncodeTime(12, 30, 40, 20);
+    book.MetaData.DateLastModified := Now();
+    book.MetaData.LastModifiedBy := 'Dagobert Duck';
     book.MetaData.Title := 'Test of metadata äöü';
     book.MetaData.Comments.Add('This is a test of spreadsheet metadata.');
     book.MetaData.Comments.Add('Assign the author to the field CreatedBy.');
@@ -81,9 +83,7 @@ begin
 
   book := TsWorkbook.Create;
   try
-    book.ReadFromFile('test.xlsx');
-    book.MetaData.DateLastModified := Now();
-    book.MetaData.LastModifiedBy := GetUserName;
+    book.ReadFromFile('test.ods');
     WriteLn('Created by         : ', book.MetaData.CreatedBy);
     WriteLn('Date created       : ', DateTimeToStr(book.MetaData.DateCreated));
     WriteLn('Modified by        : ', book.MetaData.LastModifiedBy);
