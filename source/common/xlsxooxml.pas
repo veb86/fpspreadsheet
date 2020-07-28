@@ -6105,9 +6105,6 @@ var
 begin
   book := TsWorkbook(FWorkbook);
 
-  if book.MetaData.IsEmpty then
-    exit;
-
   AppendToStream(AStream,
     XML_HEADER);
 
