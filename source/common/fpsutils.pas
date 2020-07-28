@@ -3185,7 +3185,8 @@ begin
     // Strip milliseconds?
     p := Pos('.', s);
     if (p > 1) then begin
-      ms := StrToFloat('0' + Copy(s, p, MaxInt), fs);
+      ms := StrToFloat('0' + Copy(s, p, MaxInt), fs) / SecsPerDay;
+      s := copy(s, 1, p-1);
     end else
       ms := 0;
     Result := StrToDateTime(s, fs) + ms;

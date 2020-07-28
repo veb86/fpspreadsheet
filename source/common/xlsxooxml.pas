@@ -6144,12 +6144,12 @@ begin
       '<dc:description>%s</dc:description>', [s]));
   end;
 
-  if book.MetaData.LastModifiedBy = '' then
-    s := book.MetaData.CreatedBy
-  else
+  if book.MetaData.LastModifiedBy <> '' then
+  begin
     s := book.MetaData.LastModifiedBy;
-  AppendToStream(AStream, Format(
+    AppendToStream(AStream, Format(
       '<cp:lastModifiedBy>%s</cp:lastModifiedBy>', [s]));      // to do: check xml entities
+  end;
 
   if book.MetaData.DateCreated > 0 then
   begin
@@ -6159,13 +6159,13 @@ begin
       '<dcterms:created xsi:type="dcterms:W3CDTF">%s</dcterms:created>', [s]));
   end;
 
-  if book.MetaData.DateLastModified <= 0 then
-    dt := book.MetaData.DateCreated + GetLocalTimeOffset / MinsPerDay
-  else
+  if book.MetaData.DateLastModified >0 then
+  begin
     dt := book.MetaData.DateLastModified + GetLocalTimeOffset / MinsPerDay;
-  s := FormatDateTime(ISO8601FormatExtendedUTC, dt);
-  AppendToStream(AStream, Format(
+    s := FormatDateTime(ISO8601FormatExtendedUTC, dt);
+    AppendToStream(AStream, Format(
       '<dcterms:modified xsi:type="dcterms:W3CDTF">%s</dcterms:modified>', [s]));
+  end;
 
   AppendToStream(AStream,
     '</cp:coreProperties>');
