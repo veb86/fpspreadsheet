@@ -45,6 +45,7 @@ type
     procedure ReadCellProtection(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadComment(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ACell: PCell);
     procedure ReadConditionalFormatting(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadDocumentProperties(ANode: TDOMNode);
     procedure ReadExcelWorkbook(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadInterior(ANode: TDOMNode; var AFormat: TsCellFormat);
@@ -1083,6 +1084,42 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the meta data etc.
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadDocumentProperties(ANode: TDOMNode);
+var
+  book: TsWorkbook;
+  nodeName: String;
+  s: String;
+begin
+  if ANode = nil then
+    exit;
+
+  book := TsWorkbook(FWorkbook);
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    s := GetNodeValue(ANode);
+    case nodeName of
+      'Title':
+        book.MetaData.Title := s;
+      'Author':
+        book.MetaData.CreatedBy := s;
+      'LastAuthor':
+        book.MetaData.LastModifiedBy := s;
+      'Created':
+        if s <> '' then
+          book.MetaData.DateCreated := ISO8601StrToDateTime(s);
+      'LastSaved':
+        if s <> '' then
+          book.MetaData.DateLastModified := ISO8601StrToDateTime(s);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the "ExcelWorkbook" node
 -------------------------------------------------------------------------------}
 procedure TsSpreadExcelXMLReader.ReadExcelWorkbook(ANode: TDOMNode);
@@ -2010,6 +2047,9 @@ begin
 
   try
     ReadXMLStream(doc, AStream);
+
+    // Read meta data
+    ReadDocumentProperties(doc.DocumentElement.FindNode('DocumentProperties'));
 
     // Read style list
     ReadStyles(doc.DocumentElement.FindNode('Styles'));
