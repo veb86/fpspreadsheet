@@ -5,7 +5,7 @@ uses
   windows,
   {$ENDIF}
   SysUtils,
-  fpspreadsheet, fpstypes, xlsxooxml, fpsopendocument;
+  fpspreadsheet, fpstypes, xlsxooxml, fpsopendocument, xlsxml;
 
 function GetUserName: String;
 // http://forum.lazarus.freepascal.org/index.php/topic,23171.msg138057.html#msg138057
@@ -76,7 +76,8 @@ begin
     sheet.WriteText(2, 3, 'abc');
     sheet.WriteBackgroundColor(2, 3, scYellow);
     book.WriteToFile('test.xlsx', true);
-    book.WritetoFile('test.ods', true);
+    book.WriteToFile('test.ods', true);
+    book.WriteToFile('test.xml', true)
   finally
     book.Free;
   end;

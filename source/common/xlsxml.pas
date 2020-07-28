@@ -2660,21 +2660,69 @@ begin
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteDocumentProperties(AStream: TStream);
+const
+  LE = LineEnding;
+var
+  sTitle: String;
+  sAuthor: String;
+  sLastAuthor: String;
+  sDateCreated: String;
+  sDateLastSaved: String;
+  book: TsWorkbook;
+  dt: TDateTime;
 begin
-  AppendToStream(AStream, INDENT1 +
-    '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office" />' + LineEnding);
+  book := TsWorkbook(FWorkbook);
 
-  // replace by these when fpspreadsheet supports these meta data.
-  {
-  AppendToSstream(AStream, INDENT1 +
-    '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">' + LineEnding + INDENT2 +
-      '<Author></Author>' + LineEnding + INDENT2 +
-      '<LastAuthor></LastAuthor>' + LineEnding + INDENT2 +
-      '<Created></Created>' + LineEnding + Indent2 + // Date in format YYYY-mm-ddThh:nn:ssZ
-       '<Version>16.00</Version>' + LineEnding + Indent1 +
-    '</DocumentProperties>' + LineEnding
+  if (book.MetaData.Title = '') and
+     (book.MetaData.CreatedBy = '') and (book.MetaData.LastModifiedBy = '') and
+     (book.MetaData.DateCreated <= 0) and (book.MetaData.DateLastModified <= 0) then
+  begin
+    AppendToStream(AStream, INDENT1 +
+      '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office" />' + LE);
+    exit;
+  end;
+
+  if book.MetaData.Title <> '' then
+    sTitle := '<Title>' + book.MetaData.Title + '</Title>' + LE + INDENT2
+  else
+    sTitle := '';
+
+  if book.MetaData.CreatedBy <> '' then
+    sAuthor := '<Author>' + book.MetaData.CreatedBy + '</Author>' + LE + INDENT2
+  else
+    sAuthor := '';
+
+  if book.MetaData.LastModifiedBy <> '' then
+    sLastAuthor := '<LastAuthor>' + book.MetaData.LastModifiedBy + '</LastAuthor>' + LE + INDENT2
+  else
+    sLastAuthor := '';
+
+  // Dates are UTC and in format YYYY-mm-ddThh:nn:ssZ
+  if book.MetaData.DateCreated > 0 then begin
+    dt := book.MetaData.DateCreated + GetLocalTimeOffset / (24*60);
+    sDateCreated := FormatDateTime(ISO8601FormatExtendedUTC, dt);
+    sDateCreated := '<Created>' + sDateCreated + '</Created>' + LE + INDENT2;
+  end else
+    sDateCreated := '';
+
+  if book.MetaData.DateLastModified > 0 then
+  begin
+    dt := book.MetaData.DateLastModified + GetLocalTimeOffset / (24*60);
+    sDateLastSaved := FormatDateTime(ISO8601FormatExtendedUTC, dt);
+    sDateLastSaved := '<LastSaved>' + sDateLastSaved + '</LastSaved>' + LE + INDENT2;
+  end else
+    sDateLastSaved := '';
+
+  AppendToStream(AStream, INDENT1 +
+    '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">' + LE + INDENT2 +
+      sTitle +
+      sAuthor +
+      sLastAuthor +
+      sDateCreated +
+      sDateLastSaved +
+      '<Version>16.00</Version>' + LE + Indent1 +
+    '</DocumentProperties>' + LE
   );
-  }
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteError(AStream: TStream;

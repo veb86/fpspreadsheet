@@ -41,6 +41,8 @@ const
   ISO8601Format='yyyymmdd"T"hhmmss';
   {@@ Extended ISO 8601 date/time format, used in e.g. ODF/opendocument }
   ISO8601FormatExtended='yyyy"-"mm"-"dd"T"hh":"mm":"ss';
+  {@@ Extended ISO 8601 date/time format, as UTC }
+  ISO8601FormatExtendedUTC='yyyy"-"mm"-"dd"T"hh":"mm":"ss"Z"';
   {@@  ISO 8601 date-only format, used in ODF/opendocument }
   ISO8601FormatDateOnly='yyyy"-"mm"-"dd';
   {@@  ISO 8601 time-only format, used in ODF/opendocument }
@@ -3147,6 +3149,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Converts an ISO8601-formatted date/time to TDateTime
+  Assumes UTC when the input string ends with 'Z' and converts to local time.
 -------------------------------------------------------------------------------}
 function ISO8601StrToDateTime(s: String): TDateTime;
 // example: 2020-07-28T11:07:36Z
@@ -3157,6 +3160,7 @@ var
   hours, mins, days: integer;
   secs: Double;
   hrPos, minPos, secPos: integer;
+  ms: Double;
 begin
   Result := 0;
 
@@ -3180,43 +3184,46 @@ begin
     s[p] := ' ';
     // Strip milliseconds?
     p := Pos('.', s);
-    if (p > 1) then
-       s := Copy(s, 1, p-1);
-    Result := StrToDateTime(s, fs);
-    exit;
-  end;
-
-  p := pos('PT', s);
-  if p = 1 then
+    if (p > 1) then begin
+      ms := StrToFloat('0' + Copy(s, p, MaxInt), fs);
+    end else
+      ms := 0;
+    Result := StrToDateTime(s, fs) + ms;
+  end else
   begin
-    // Get hours
-    hrPos := pos('H', s);
-    if (hrPos > 0) then
-      hours := StrToInt(Copy(s, 3, hrPos-3))
-    else
-      hours := 0;
+    p := pos('PT', s);
+    if p = 1 then
+    begin
+      // Get hours
+      hrPos := pos('H', s);
+      if (hrPos > 0) then
+        hours := StrToInt(Copy(s, 3, hrPos-3))
+      else
+        hours := 0;
 
-    // Get minutes
-    minPos := pos('M', s);
-    if (p > 0) and (minPos > hrPos) then
-      mins := StrToInt(Copy(s, hrPos+1, minPos-hrPos-1))
-    else
-      mins := 0;
+      // Get minutes
+      minPos := pos('M', s);
+      if (p > 0) and (minPos > hrPos) then
+        mins := StrToInt(Copy(s, hrPos+1, minPos-hrPos-1))
+      else
+        mins := 0;
 
-    // Get seconds
-    secPos := pos('S', s);
-    if (secPos > 0) and (secPos > minPos) then
-      secs := StrToFloat(Copy(s, minPos+1, secPos-minPos-1), fs)
-    else
-      secs := 0;
+      // Get seconds
+      secPos := pos('S', s);
+      if (secPos > 0) and (secPos > minPos) then
+        secs := StrToFloat(Copy(s, minPos+1, secPos-minPos-1), fs)
+      else
+        secs := 0;
 
-    days := hours div 24;
-    hours := hours mod 24;
-    Result := days + (hours + (mins + secs/60) / 60) / 24;
+      days := hours div 24;
+      hours := hours mod 24;
+      Result := days + (hours + (mins + secs/60) / 60) / 24;
+    end else
+      exit;
   end;
 
   if isUTC then
-    Result := Result + GetLocalTimeOffset / (60*24);
+    Result := Result - GetLocalTimeOffset / MinsPerDay;
 end;
 
 

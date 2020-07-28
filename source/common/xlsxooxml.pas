@@ -6101,6 +6101,7 @@ procedure TsSpreadOOXMLWriter.WriteMetaData(AStream: TStream);
 var
   book: TsWorkbook;
   s: String;
+  dt: TDateTime;
 begin
   book := TsWorkbook(FWorkbook);
 
@@ -6152,15 +6153,17 @@ begin
 
   if book.MetaData.DateCreated > 0 then
   begin
-    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateCreated) + 'Z';
+    dt := book.MetaData.DateCreated + GetLocalTimeOffset / MinsPerDay;
+    s := FormatDateTime(ISO8601FormatExtendedUTC, dt);
     AppendToStream(AStream, Format(
       '<dcterms:created xsi:type="dcterms:W3CDTF">%s</dcterms:created>', [s]));
   end;
 
   if book.MetaData.DateLastModified <= 0 then
-    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateCreated) + 'Z'
+    dt := book.MetaData.DateCreated + GetLocalTimeOffset / MinsPerDay
   else
-    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateLastModified) + 'Z';
+    dt := book.MetaData.DateLastModified + GetLocalTimeOffset / MinsPerDay;
+  s := FormatDateTime(ISO8601FormatExtendedUTC, dt);
   AppendToStream(AStream, Format(
       '<dcterms:modified xsi:type="dcterms:W3CDTF">%s</dcterms:modified>', [s]));
 
