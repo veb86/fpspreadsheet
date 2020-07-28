@@ -5819,13 +5819,15 @@ begin
 
   if book.MetaData.DateCreated > 0 then
   begin
-    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateCreated);
+    // ODS stored the creation date in UTC.
+    s := FormatDateTime(ISO8601FormatExtendedUTC, book.MetaData.DateCreated);
     AppendToStream(FSMeta, Format(
         '<meta:creation-date>%s</meta:creation-date>', [s]));
   end;
 
   if book.MetaData.DateLastModified > 0 then
   begin
+    // Date of last modification is NOT UTC.
     s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateLastModified);
     AppendToStream(FSMeta, Format(
         '<dc:date>%s</dc:date>', [s]));
