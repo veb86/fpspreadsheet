@@ -104,6 +104,7 @@ type
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadHeaderFooter(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadHyperlinks(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadMetaData(ANode: TDOMNode);
     procedure ReadMergedCells(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadNumFormats(ANode: TDOMNode);
     procedure ReadPageMargins(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
@@ -182,6 +183,7 @@ type
     procedure WriteFontList(AStream: TStream);
     procedure WriteHeaderFooter(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteHyperlinks(AStream: TStream; AWorksheet: TsBasicWorksheet; rId: Integer);
+    procedure WriteMetadata(AStream: TStream);
     procedure WriteMergedCells(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteNumFormatList(AStream: TStream);
     procedure WritePalette(AStream: TStream);
@@ -212,6 +214,7 @@ type
     FSRelsRels: TStream;
     FSWorkbook: TStream;
     FSWorkbookRels: TStream;
+    FSMetaData: TStream;
     FSStyles: TStream;
     FSSharedStrings: TStream;
     FSSharedStrings_complete: TStream;
@@ -273,7 +276,7 @@ procedure InitOOXMLLimitations(out ALimitations: TsSpreadsheetFormatLimitations)
 implementation
 
 uses
-  variants, strutils, math, lazutf8, LazFileUtils, uriparser, typinfo,
+  variants, strutils, dateutils, math, lazutf8, LazFileUtils, uriparser, typinfo,
   {%H-}fpsPatches, fpSpreadsheet, fpsCrypto, fpsExprParser,
   fpsStrings, fpsStreams, fpsClasses, fpsImages;
 
@@ -301,12 +304,14 @@ const
      OOXML_PATH_XL_DRAWINGS_RELS   = 'xl/drawings/_rels/';
      OOXML_PATH_XL_THEME           = 'xl/theme/theme1.xml';
      OOXML_PATH_XL_MEDIA           = 'xl/media/';
+     OOXML_PATH_DOCPROPS_CORE      = 'docProps/core.xml';
 
      { OOXML schemas constants }
      SCHEMAS_TYPES        = 'http://schemas.openxmlformats.org/package/2006/content-types';
      SCHEMAS_RELS         = 'http://schemas.openxmlformats.org/package/2006/relationships';
      SCHEMAS_DOC_RELS     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
      SCHEMAS_DOCUMENT     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument';
+     SCHEMAS_META_CORE    = 'http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties';
      SCHEMAS_WORKSHEET    = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet';
      SCHEMAS_STYLES       = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles';
      SCHEMAS_STRINGS      = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings';
@@ -316,12 +321,13 @@ const
      SCHEMAS_HYPERLINK    = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink';
      SCHEMAS_IMAGE        = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
      SCHEMAS_SPREADML     = 'http://schemas.openxmlformats.org/spreadsheetml/2006/main';
+     SCHEMAS_CORE         = 'http://schemas.openxmlformats.org/package/2006/metadata/core-properties';
 
      { OOXML mime types constants }
-{%H-}MIME_XML             = 'application/xml';
+     MIME_XML             = 'application/xml';
      MIME_RELS            = 'application/vnd.openxmlformats-package.relationships+xml';
      MIME_OFFICEDOCUMENT  = 'application/vnd.openxmlformats-officedocument';
-{%H-}MIME_CORE            = 'application/vnd.openxmlformats-package.core-properties+xml';
+     MIME_CORE            = 'application/vnd.openxmlformats-package.core-properties+xml';
      MIME_SPREADML        = MIME_OFFICEDOCUMENT + '.spreadsheetml';
      MIME_SHEET           = MIME_SPREADML + '.sheet.main+xml';
      MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
@@ -2634,6 +2640,56 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadMetaData(ANode: TDOMNode);
+var
+  nodeName: string;
+  book: TsWorkbook;
+  s: String;
+  dt: TDateTime;
+  fs: TFormatSettings;
+begin
+  if ANode = nil then
+    exit;
+
+  book := TsWorkbook(FWorkbook);
+  fs := DefaultFormatSettings;
+  fs.DateSeparator := '-';
+
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    s := GetNodeValue(ANode);
+    case nodeName of
+      'dc:title':
+        book.MetaData.Title := s;
+      'dc:creator':
+        book.MetaData.CreatedBy := s;
+      'cp:lastModifiedBy':
+        book.MetaData.ModifiedBy := s;
+      'dc:description':
+        if s <> '' then
+        begin
+          s := StringReplace(s, '_x000d_', Lineending, [rfReplaceAll]);
+          book.MetaData.Comments.Text := s;
+        end else
+          book.MetaData.Comments.Clear;
+      'cp:keywords':
+        if s <> '' then
+          book.MetaData.Keywords.CommaText := s
+        else
+          book.MetaData.Keywords.Clear;
+      'dcterms:created':
+        if s <> '' then
+          book.MetaData.CreatedAt := ISO8601StrToDateTime(s);
+      'dcterms:modified':
+        if s <> '' then
+          book.MetaData.ModifiedAt :=ISO8601StrToDateTime(s);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadMergedCells(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
 var
@@ -3465,6 +3521,7 @@ procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream;
   APassword: String = ''; AParams: TsStreamParams = []);
 var
   Doc : TXMLDocument;
+  metadataNode: TDOMNode;
   RelsNode: TDOMNode;
   i, j: Integer;
   fn: String;
@@ -3670,6 +3727,19 @@ begin
       ReadXMLStream(Doc, XMLStream);
       ReadDefinedNames(Doc_FindNode('definedNames'));
       FreeAndNil(Doc);
+    finally
+      XMLStream.Free;
+    end;
+
+    // MetaData
+    XMLStream := CreateXMLStream;
+    try
+      if UnzipToStream(AStream, OOXML_PATH_DOCPROPS_CORE, XMLStream) then
+      begin
+        ReadXMLStream(Doc, XMLStream);
+        ReadMetaData(Doc.DocumentElement);
+        FreeandNil(Doc);
+      end;
     finally
       XMLStream.Free;
     end;
@@ -5933,13 +6003,19 @@ begin
   // Will be written at the end of WriteToStream when all Sheet.rels files are
   // known
 
+  { --- meta data ---- }
+  WriteMetaData(FSMetaData);
+
   { --- _rels/.rels --- }
   AppendToStream(FSRelsRels,
     XML_HEADER + LineEnding);
   AppendToStream(FSRelsRels, Format(
     '<Relationships xmlns="%s">' + LineEnding, [SCHEMAS_RELS]));
   AppendToStream(FSRelsRels, Format(
-    '  <Relationship Id="rId1" Target="xl/workbook.xml" Type="%s" />' + LineEnding,
+      '<Relationship Id="rId2" Target="docProps/core.xml" Type="%s" />' + LineEnding,
+      [SCHEMAS_META_CORE]));
+  AppendToStream(FSRelsRels, Format(
+      '<Relationship Id="rId1" Target="xl/workbook.xml" Type="%s" />' + LineEnding,
       [SCHEMAS_DOCUMENT]));
   AppendToStream(FSRelsRels,
     '</Relationships>');
@@ -6011,6 +6087,87 @@ begin
     AZip.Entries.AddFileEntry(stream, OOXML_PATH_XL_MEDIA + embname);
   end;
 end;
+
+procedure TsSpreadOOXMLWriter.WriteMetaData(AStream: TStream);
+{<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+  <cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <dc:title>test file meta data äöü</dc:title>
+    <dc:creator>Donald Duck</dc:creator>
+    <dc:description>this is a comment_x000d_ in two lines äöü.</dc:description>
+    <cp:lastModifiedBy>Donald Duck</cp:lastModifiedBy>
+    <dcterms:created xsi:type="dcterms:W3CDTF">2015-06-05T18:19:34Z</dcterms:created>
+    <dcterms:modified xsi:type="dcterms:W3CDTF">2020-07-27T21:23:27Z</dcterms:modified>
+  </cp:coreProperties>    }
+var
+  book: TsWorkbook;
+  s: String;
+begin
+  book := TsWorkbook(FWorkbook);
+
+  if book.MetaData.IsEmpty then
+    exit;
+
+  AppendToStream(AStream,
+    XML_HEADER);
+
+  AppendToStream(AStream,
+   '<cp:coreProperties '+
+     'xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '+
+     'xmlns:dc="http://purl.org/dc/elements/1.1/" '+
+     'xmlns:dcterms="http://purl.org/dc/terms/" '+
+     'xmlns:dcmitype="http://purl.org/dc/dcmitype/" '+
+     'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">');
+
+  if book.MetaData.Title <> '' then
+    AppendToStream(AStream, Format(
+      '<dc:title>%s</dc:title>', [UTF8TextToXMLText(book.MetaData.Title)]));
+
+  if book.MetaData.CreatedBy <> '' then
+    AppendToStream(AStream, Format(
+      '<dc:creator>%s</dc:creator>', [UTF8TextToXMLText(book.MetaData.CreatedBy)]));
+
+  if book.MetaData.Keywords.Count > 0 then
+  begin
+    s := book.MetaData.KeyWords.CommaText;
+    AppendToStream(AStream, Format(
+      '<cp:keywords>%s</cp:keywords>', [s]));
+  end;
+
+  if book.MetaData.Comments.Count > 0 then
+  begin
+    s := book.MetaData.Comments.Text;
+    while (s <> '') and (s[Length(s)] in [#10, #13]) do
+      Delete(s, Length(s), 1);
+    s := StringReplace(s, LineEnding, '_x000d_', [rfReplaceAll]);
+    AppendToStream(AStream, Format(
+      '<dc:description>%s</dc:description>', [s]));
+  end;
+
+  if book.MetaData.ModifiedBy = '' then
+    s := book.MetaData.CreatedBy
+  else
+    s := book.MetaData.ModifiedBy;
+  AppendToStream(AStream, Format(
+      '<cp:lastModifiedBy>%s</cp:lastModifiedBy>', [s]));      // to do: check xml entities
+
+  if book.MetaData.CreatedAt > 0 then
+  begin
+    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.CreatedAt) + 'Z';
+    AppendToStream(AStream, Format(
+      '<dcterms:created xsi:type="dcterms:W3CDTF">%s</dcterms:created>', [s]));
+  end;
+
+  if book.MetaData.ModifiedAt = 0 then
+    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.CreatedAt) + 'Z'
+  else
+    s := FormatDateTime(ISO8601FormatExtended, book.MetaData.ModifiedAt) + 'Z';
+  AppendToStream(AStream, Format(
+      '<dcterms:modified xsi:type="dcterms:W3CDTF">%s</dcterms:modified>', [s]));
+
+  AppendToStream(AStream,
+    '</cp:coreProperties>');
+end;
+
 
 {
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -6134,10 +6291,10 @@ begin
       '<Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />' + LineEnding);
   AppendToStream(FSContentTypes,
       '<Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />' + LineEnding);
-  {
+
   AppendToStream(FSContentTypes,
       '<Override PartName="/docProps/core.xml" ContentType="' + MIME_CORE + '" />');
-  }
+
   AppendToStream(FSContentTypes,
     '</Types>');
 end;
@@ -6567,6 +6724,7 @@ begin
   FSStyles := CreateTempStream(FWorkbook, 'fpsSTY');
   FSSharedStrings := CreateTempStream(FWorkbook, 'fpsSS');
   FSSharedStrings_complete := CreateTempStream(FWorkbook, 'fpsSSC');
+  FSMetaData := CreateTempStream(FWorkbook, 'fpsMETA');
   {
   if boFileStream in FWorkbook.Options then
   begin
@@ -6607,6 +6765,7 @@ procedure TsSpreadOOXMLWriter.DestroyStreams;
 var
   stream: TStream;
 begin
+  DestroyTempStream(FSMetaData);
   DestroyTempStream(FSContentTypes);
   DestroyTempStream(FSRelsRels);
   DestroyTempStream(FSWorkbookRels);
@@ -6654,6 +6813,7 @@ begin
   ResetStream(FSWorkbook);
   ResetStream(FSStyles);
   ResetStream(FSSharedStrings_complete);
+  ResetStream(FSMetaData);
   for i:=0 to High(FSSheets) do ResetStream(FSSheets[i]);
   for i:=0 to High(FSSheetRels) do ResetStream(FSSheetRels[i]);
   for i:=0 to High(FSComments) do ResetStream(FSComments[i]);
@@ -6720,6 +6880,7 @@ begin
     FZip.Entries.AddFileEntry(FSStyles, OOXML_PATH_XL_STYLES);
     if FSSharedStrings_complete.Size > 0 then
       FZip.Entries.AddFileEntry(FSSharedStrings_complete, OOXML_PATH_XL_STRINGS);
+    FZip.Entries.AddFileEntry(FSMetaData, OOXML_PATH_DOCPROPS_CORE);
 
     // Write embedded images
     WriteMedia(FZip);

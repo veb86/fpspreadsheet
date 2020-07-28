@@ -238,7 +238,7 @@ function CellBorderStyle(const AColor: TsColor = scBlack;
 
 function GetFontAsString(AFont: TsFont): String;
 
-//function GetUniqueTempDir(Global: Boolean): String;
+function ISO8601StrToDateTime(s: String): TDateTime;
 
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
@@ -2695,6 +2695,7 @@ begin
     Index := -1;
   end;
 end;
+
   (*
 {@@ ----------------------------------------------------------------------------
   Copies the value of a cell to another one. Does not copy the formula, erases
@@ -3143,6 +3144,81 @@ begin
   // messed up result
   {$ENDIF}
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts an ISO8601-formatted date/time to TDateTime
+-------------------------------------------------------------------------------}
+function ISO8601StrToDateTime(s: String): TDateTime;
+// example: 2020-07-28T11:07:36Z
+var
+  p: Integer;
+  fs: TFormatSettings;
+  isUTC: Boolean;
+  hours, mins, days: integer;
+  secs: Double;
+  hrPos, minPos, secPos: integer;
+begin
+  Result := 0;
+
+  fs := DefaultFormatSettings;
+  fs.DecimalSeparator := '.';
+  fs.ShortDateFormat := 'yyyy-mm-dd';
+  fs.DateSeparator := '-';
+  fs.LongTimeFormat := 'hh:nn:ss';
+  fs.Timeseparator := ':';
+
+  if s[Length(s)] = 'Z' then
+  begin
+    isUTC := true;
+    Delete(s, Length(s), 1);
+  end else
+    isUTC := false;
+
+  p := pos('T', s);
+  if p > 0 then
+  begin
+    s[p] := ' ';
+    // Strip milliseconds?
+    p := Pos('.', s);
+    if (p > 1) then
+       s := Copy(s, 1, p-1);
+    Result := StrToDateTime(s, fs);
+    exit;
+  end;
+
+  p := pos('PT', s);
+  if p = 1 then
+  begin
+    // Get hours
+    hrPos := pos('H', s);
+    if (hrPos > 0) then
+      hours := StrToInt(Copy(s, 3, hrPos-3))
+    else
+      hours := 0;
+
+    // Get minutes
+    minPos := pos('M', s);
+    if (p > 0) and (minPos > hrPos) then
+      mins := StrToInt(Copy(s, hrPos+1, minPos-hrPos-1))
+    else
+      mins := 0;
+
+    // Get seconds
+    secPos := pos('S', s);
+    if (secPos > 0) and (secPos > minPos) then
+      secs := StrToFloat(Copy(s, minPos+1, secPos-minPos-1), fs)
+    else
+      secs := 0;
+
+    days := hours div 24;
+    hours := hours mod 24;
+    Result := days + (hours + (mins + secs/60) / 60) / 24;
+  end;
+
+  if isUTC then
+    Result := Result + GetLocalTimeOffset / (60*24);
+end;
+
 
 {$PUSH}{$HINTS OFF}
 {@@ Silence warnings due to an unused parameter }

@@ -965,6 +965,29 @@ type
   {@@ Set of option flags for the workbook }
   TsWorkbookOptions = set of TsWorkbookOption;
 
+  {@@ Meta data for the workbook}
+  TsMetaData = class
+  private
+    FCreatedBy: String;
+    FCreatedAt: TDateTime;
+    FModifiedBy: String;
+    FModifiedAt: TDateTime;
+    FTitle: String;
+    FComments: TStrings;
+    FKeywords: TStrings;
+  public
+    constructor Create;
+    destructor Destroy;
+    function IsEmpty: Boolean;
+    property CreatedBy: String read FCreatedBy write FCreatedBy;
+    property CreatedAt: TDateTime read FCreatedAt write FCreatedAt;
+    property ModifiedBy: String read FModifiedBy write FModifiedBy;
+    property ModifiedAt: TDatetime read FModifiedAt write FModifiedAt;
+    property Title: String read FTitle write FTitle;
+    property Comments: TStrings read FComments write FComments;
+    property Keywords: TStrings read FKeywords write FKeywords;
+  end;
+
   {@@ Basic worksheet class to avoid circular unit references. It has only those
     properties and methods which do not require any other unit than fpstypes. }
   TsBasicWorksheet = class
@@ -1167,7 +1190,32 @@ end;
 
 
 {-------------------------------------------------------------------------------
-                              sBasicWorksheet
+                                TsMetaData
+-------------------------------------------------------------------------------}
+constructor TsMetaData.Create;
+begin
+  inherited;
+  FComments := TStringList.Create;
+  FKeywords := TStringList.Create;
+end;
+
+destructor TsMetaData.Destroy;
+begin
+  FComments.Free;
+  FKeywords.Free;
+  inherited;
+end;
+
+function TsMetaData.IsEmpty: Boolean;
+begin
+  Result := (FCreatedBy = '') and (FModifiedBy = '') and (FTitle = '') and
+    (FComments.Count = 0) and (FKeywords.Count = 0) and
+    (FCreatedAt = 0) and (FModifiedAt = 0);
+end;
+
+
+{-------------------------------------------------------------------------------
+                              TsBasicWorksheet
 -------------------------------------------------------------------------------}
 
 constructor TsBasicWorksheet.Create;

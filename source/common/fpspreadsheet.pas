@@ -752,6 +752,7 @@ type
     FOnReadCellData: TsWorkbookReadCellDataEvent;
     FSearchEngine: TObject;
     FCryptoInfo: TsCryptoInfo;
+    FMetaData: TsMetaData;
     {FrevisionsCrypto: TsCryptoInfo;} // Commented out because it needs revision handling
 
     { Callback procedures }
@@ -919,6 +920,9 @@ type
     property ActiveWorksheet: TsWorksheet read FActiveWorksheet write SelectWorksheet;
     property CryptoInfo: TsCryptoInfo read FCryptoInfo write FCryptoInfo;
     {property RevisionsCrypto: TsCryptoInfo read FRevisionsCrypto write FRevisionsCrypto;}
+
+    {@@ Meta data}
+    property MetaData: TsMetaData read FMetaData write FMetaData;
 
     {@@ This event fires whenever a new worksheet is added }
     property OnAddWorksheet: TsWorksheetEvent read FOnAddWorksheet write FOnAddWorksheet;
@@ -6329,6 +6333,9 @@ begin
 
   // Protection
   InitCryptoInfo(FCryptoInfo);
+
+  // Metadata
+  FMetaData := TsMetaData.Create;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -6341,6 +6348,7 @@ begin
   EnableNotifications;
   FWorksheets.Free;
 
+  FMetaData.Free;
   FConditionalFormatList.Free;
   FCellFormatList.Free;
   FNumFormatList.Free;
