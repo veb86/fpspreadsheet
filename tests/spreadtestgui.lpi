@@ -225,7 +225,7 @@
     </SearchPaths>
     <Linking>
       <Debugging>
-        <UseExternalDbgSyms Value="True"/>
+        <DebugInfoType Value="dsDwarf2"/>
       </Debugging>
     </Linking>
   </CompilerOptions>

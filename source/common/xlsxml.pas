@@ -235,15 +235,25 @@ const
     '@RC&lt;=AVERAGE( IF(ISERROR(%2:s), &quot;&quot;, IF(ISBLANK(%2:s), &quot;&quot;, %2:s)))',  // cfcBelowEqualAverage
     // The next 4 formulas are not supported by Excel-XML
     '', '', '', '',  // cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent,
-    '@AND(COUNTIF(%2:s, RC)&gt;1,NOT(ISBLANK(RC)))',     // cfcDuplicate
-    '@AND(COUNTIF(%2:s, RC)=1,NOT(ISBLANK(RC)))',        // cfcUnique
-    '@LEFT(RC,LEN(%0:s))=%0:s',                          // cfcBeginsWith
-    '@RIGHT(RC,LEN(%0:s))=%0:s',                         // cfcEndsWith
-    '@NOT(ISERROR(SEARCH(%0:s,RC)))',                    // cfcContainsText
-    '@ISERROR(SEARCH(%0:s,RC))',                         // cfcNotContainsText,
-    '@ISERROR(RC)',                                      // cfcContainsErrors
-    '@NOT(ISERROR(RC))',                                 // cfcNotContainsErrors
-    '@'                                                   // cfcExpression
+    '@AND(COUNTIF(%2:s, RC)&gt;1,NOT(ISBLANK(RC)))',           // cfcDuplicate
+    '@AND(COUNTIF(%2:s, RC)=1,NOT(ISBLANK(RC)))',              // cfcUnique
+    '@LEFT(RC,LEN(%0:s))=%0:s',                                // cfcBeginsWith
+    '@RIGHT(RC,LEN(%0:s))=%0:s',                               // cfcEndsWith
+    '@NOT(ISERROR(SEARCH(%0:s,RC)))',                          // cfcContainsText
+    '@ISERROR(SEARCH(%0:s,RC))',                               // cfcNotContainsText,
+    '@ISERROR(RC)',                                            // cfcContainsErrors
+    '@NOT(ISERROR(RC))',                                       // cfcNotContainsErrors
+    '@FLOOR(RC,1)=TODAY()-1',                                  // cfcYesterday
+    '@FLOOR(RC,1)=TODAY()',                                    // cfcToday
+    '@FLOOR(RC,1)=TODAY()+1',                                  // cfcTomorrow
+    '@AND(TODAY()-FLOOR(RC,1)&lt;=6,FLOOR(RC,1)&lt;=TODAY())', // cfcLast7Days
+    '@AND(TODAY()-ROUNDDOWN(RC,0)&gt;=(WEEKDAY(TODAY())),TODAY()-ROUNDDOWN(RC,0)&lt;(WEEKDAY(TODAY())+7))',   // cfcLastWeek
+    '@AND(TODAY()-ROUNDDOWN(RC,0)&lt;=WEEKDAY(TODAY())-1,ROUNDDOWN(RC,0)-TODAY()&lt;=7-WEEKDAY(TODAY()))',    // cfcThisWeek
+    '@AND(ROUNDDOWN(RC,0)-TODAY()&gt;(7-WEEKDAY(TODAY())),ROUNDDOWN(RC,0)-TODAY()&lt;(15-WEEKDAY(TODAY())))', // cfcNextWeek
+    '@AND(MONTH(RC)=MONTH(EDATE(TODAY(),0-1)),YEAR(RC)=YEAR(EDATE(TODAY(),0-1)))',  // cfcLastMonth
+    '@AND(MONTH(RC)=MONTH(TODAY()),YEAR(RC)=YEAR(TODAY()))',                        // cfcThisMonth
+    '@AND(MONTH(RC)=MONTH(EDATE(TODAY(),0+1)),YEAR(RC)=YEAR(EDATE(TODAY(),0+1)))',  // cfcNextMonth
+    '@'                                                  // cfcExpression
   );
   // The leading '@' indicates that the formula will be used in <Value1> node
   // Parameter 0 is Operand1, parameter 1 is Operand2 and parameter 2 is Range
@@ -366,6 +376,8 @@ procedure AnalyzeCFExpression(AExpr: String; out ACondition: TsCFCondition;
   out AParam: String);
 var
   p, n: Integer;
+  c: TsCFCondition;
+  expr: String;
 begin
   AParam := '';
   //AExpr := UTF8TextToXMLText(AExpr);
@@ -415,13 +427,15 @@ begin
     n := Length('ISERROR(SEARCH(');
     AParam := UnquoteStr(Trim(Copy(AExpr, n+1, p-n-1)));
   end else
-  if AExpr = 'ISERROR(RC)' then
-    ACondition := cfcContainsErrors
-  else
-  if AExpr = 'NOT(ISERROR(RC))' then
-    ACondition := cfcNotContainsErrors
-  else
   begin
+    expr := '@' + UTF8TextToXMLText(AExpr);
+    for c in [cfcContainsErrors..cfcNextMonth] do
+      if CF_CONDITIONS[c] = expr then
+      begin
+        ACondition := c;
+        exit;
+      end;
+
     ACondition := cfcExpression;
     AParam := AExpr;
   end;

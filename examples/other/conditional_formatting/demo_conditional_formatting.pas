@@ -46,8 +46,19 @@ begin
       sh.WriteText(i, 16, 'defg');
       sh.WriteFormula(i, 17, '=1.0/0.0');
       sh.WriteFormula(i, 18, '=1.0/1.0');
+
+      sh.WriteDateTime(i, 19, Now()- 30);
+      sh.WriteDateTime(i, 20, Now() - 7);
+      sh.WritedateTime(i, 21, Now() - 1);
+      sh.WriteDatetime(i, 22, Now());
+      sh.WriteDateTime(i, 23, Now() + 1);
+      sh.WriteDateTime(i, 24, Now() + 7);
+      sh.WriteDateTime(i, 25, Now() + 30);
     end;
-    lastCol := 18;
+    lastCol := 25;
+
+    for i := 19 to 25 do
+      sh.WriteColWidth(i, 30, suMillimeters);
 
     // conditional format #1: equal to number constant
     sh.WriteText(row, 0, 'equal to constant 5');
@@ -267,6 +278,61 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsErrors, fmtIdx);
 
+    // conditional date formats
+    inc(row);
+    sh.WriteText(row, 0, 'yesterday');
+    sh.WriteText(row, 1, 'background yellow');
+    InitFormatRecord(fmt);
+    fmt.SetBackgroundColor(scYellow);
+    fmt.SetNumberFormat(wb.AddNumberFormat('yyyy\-mm\-dd'));
+    fmtIdx := wb.AddCellFormat(fmt);
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcYesterday, fmtIdx);
+
+    inc(row);
+    sh.WriteText(row, 0, 'today');
+    sh.WriteText(row, 1, 'background yellow');
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcToday, fmtIdx);
+
+    inc(row);
+    sh.WriteText(row, 0, 'tomorrow');
+    sh.WriteText(row, 1, 'background yellow');
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcTomorrow, fmtIdx);
+
+    inc(row);
+    sh.WriteText(row, 0, 'last 7 days');
+    sh.WriteText(row, 1, 'background yellow');
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcLast7Days, fmtIdx);
+
+    inc(row);
+    sh.WriteText(row, 0, 'last week');
+    sh.WriteText(row, 1, 'background yellow');
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcLastWeek, fmtIdx);
+
+    inc(row);
+    sh.WriteText(row, 0, 'this week');
+    sh.WriteText(row, 1, 'background yellow');
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcThisWeek, fmtIdx);
+
+    inc(row);
+    sh.WriteText(row, 0, 'next week');
+    sh.WriteText(row, 1, 'background yellow');
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNextWeek, fmtIdx);
+
+    inc(row);
+    sh.WriteText(row, 0, 'last month');
+    sh.WriteText(row, 1, 'background yellow');
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcLastMonth, fmtIdx);
+                            (*
+    inc(row);
+    sh.WriteText(row, 0, 'tomorrow');
+    sh.WriteText(row, 1, 'background yellow');
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcThisMonth, fmtIdx);
+
+    inc(row);
+    sh.WriteText(row, 0, 'tomorrow');
+    sh.WriteText(row, 1, 'background yellow');
+    sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNextMonth, fmtIdx);
+                       *)
     // conditional format: expression
     inc(row);
     sh.WriteText(row, 0, 'expression: ISNUMBER($E$5)');

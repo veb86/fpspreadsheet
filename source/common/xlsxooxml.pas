@@ -80,6 +80,8 @@ type
       ARange: TsCellRange);
     procedure ReadCFDataBars(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
       ARange: TsCellRange);
+    procedure ReadCFDateFormat(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
+      ARange: TsCellRange; AFormatIndex: Integer);
     procedure ReadCFExpression(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
       ARange: TsCellRange; AFormatIndex: Integer);
     procedure ReadCFIconSet(ANode: TDOMNode; AWorksheet: TsBasicWorksheet;
@@ -436,6 +438,10 @@ const
     'beginsWith', 'endsWith',                // cfcBeginsWith, cfcEndsWith,
     'containsText', 'notContainsText',       // cfcContainsText, cfcNotContainsText,
     'containsErrors', 'notContainsErrors',   // cfcContainsErrors, cfcNotContainsErrors
+    'timePeriod', 'timePeriod', 'timePeriod',// cfcYesterday, cfcToday, cfcTomorrow
+    'timePeriod',                            // cfcLast7Days
+    'timePeriod', 'timePeriod', 'timePeriod',// cfcLastWeek, cfcThisWeek, cfcNextWeek
+    'timePeriod', 'timePeriod', 'timePeriod',// cfcLastMonth, cfcThisMonth, cfcNextMonth
     'expression'                             // cfcExpression
   );
 
@@ -447,6 +453,9 @@ const
     '', '',           // cfcDuplicate, cfcUnique,
     '', '', '', 'notContains', //cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
     '', '',           // cfcContainsErrors, cfcNotContainsErrors
+    'yesterday', 'today', 'tomorrow', 'last7Days', // cfcYesterday, cfcToday, cfcTomorrow, cfcLast7Days
+    'lastWeek', 'thisWeek', 'nextWeek',            // cfcLastWeek, cfcThisWeek, cfcNextWeek
+    'lastMonth', 'thisMonth', 'nextMonth',         // cfcLastMonth, cfcThisMonth, cfcNextMonth
     ''                // cfcExpression
   );
 
@@ -1528,6 +1537,26 @@ begin
   sheet.WriteDataBars(ARange, clr, vk[0], v[0], vk[1], v[1]);
 end;
 
+procedure TsSpreadOOXMLReader.ReadCFDateFormat(ANode: TDOMNode;
+  AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
+var
+  sheet: TsWorksheet;
+  s: String;
+  cond: TsCFCondition;
+begin
+  if ANode = nil then
+    exit;
+
+  sheet := TsWorksheet(AWorksheet);
+  s := GetAttrValue(ANode, 'timePeriod');
+  for cond in [cfcYesterday..cfcNextMonth] do
+    if CF_OPERATOR_NAMES[cond] = s then
+    begin
+      sheet.WriteConditionalCellFormat(ARange, cond, AFormatIndex);
+      exit;
+    end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadCFExpression(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet; ARange: TsCellRange; AFormatIndex: Integer);
 var
@@ -1972,6 +2001,8 @@ begin
                 ReadCFMisc(childNode, AWorksheet, range, fmtIdx);
               'containsText', 'notContainsText', 'beginsWith', 'endsWith':
                 ReadCFMisc(childNode, AWorksheet, range, fmtIdx);
+              'timePeriod':
+                ReadCFDateFormat(childNode, AWorksheet, range, fmtIdx);
               'expression':
                 ReadCFExpression(childNode, AWorksheet, range, fmtIdx);
               'colorScale':
@@ -4064,13 +4095,23 @@ end;
 procedure TsSpreadOOXMLWriter.WriteCFCellRule(AStream: TStream;
   ARule: TsCFCellRule; ARange: TsCellRange; APriority: Integer);
 const
-  FORMULA: array[cfcBeginsWith..cfcNotContainsErrors] of String = (
+  FORMULA: array[cfcBeginsWith..cfcNextMonth] of String = (
     'LEFT(%0:s,LEN("%1:s"))="%1:s"',     // cfcBeginsWith
     'RIGHT(%0:s,Len("%1:s"))="%1:s"',    // cfcEndsWidth
     'NOT(ISERROR(SEARCH("%1:s",%0:s)))', // cfcContainsText
     'ISERROR(SEARCH("%1:s",%0:s))',       // cfcNotContainsText
     'ISERROR(%0:s)',                      // cfcContainsErrors
-    'NOT(ISERROR(%0:s))'                  // cfcNotContainsErrors
+    'NOT(ISERROR(%0:s))',                 // cfcNotContainsErrors
+    'FLOOR(%s,1)=TODAY()-1',              // cfcYesterday
+    'FLOOR(%s,1)=TODAY()',                // cfcToday
+    'FLOOR(%s,1)=TODAY()+1',              // cfcTomorrow
+    'AND(TODAY()-FLOOR(%0:s,1)&lt;=6,FLOOR(%0:s,1)&lt;=TODAY())',                                                // cfcLasst7Days
+    'AND(TODAY()-ROUNDDOWN(%0:s,0)&gt;=(WEEKDAY(TODAY())),TODAY()-ROUNDDOWN(%0:s,0)&lt;(WEEKDAY(TODAY())+7))',   // cfcLastWeek
+    'AND(TODAY()-ROUNDDOWN(%0:s,0)&lt;=WEEKDAY(TODAY())-1,ROUNDDOWN(%0:s,0)-TODAY()&lt;=7-WEEKDAY(TODAY()))',     // cfcThisWeek
+    'AND(ROUNDDOWN(%0:s,0)-TODAY()&gt;(7-WEEKDAY(TODAY())),ROUNDDOWN(C15,0)-TODAY()&lt;(15-WEEKDAY(TODAY())))', // cfcNextWeek
+    'AND(MONTH(%0:s)=MONTH(EDATE(TODAY(),0-1)),YEAR(%0:s)=YEAR(EDATE(TODAY(),0-1)))',   // cfcLastMonth
+    'AND(MONTH(%0:s)=MONTH(TODAY()),YEAR(%0:s)=YEAR(TODAY()))',                         // cfcThisMonth
+    'AND(MONTH(%0:s)=MONTH(EDATE(TODAY(),0+1)),YEAR(%0:s)=YEAR(EDATE(TODAY(),0+1)))'    // cfcNextMonth
   );
 var
   i: Integer;
@@ -4128,14 +4169,19 @@ begin
       end;
     cfcDuplicate, cfcUnique:
       ;
-    cfcBeginsWith..cfcNotContainsErrors:
+    cfcBeginsWith..cfcNextMonth:
       begin
         firstCellOfRange := GetCellString(ARange.Row1, ARange.Col1);
         formula1Str :=
           '<formula>' +
             Format(FORMULA[ARule.Condition], [firstcellOfRange, ARule.Operand1]) +
           '</formula>';
-        param1Str := ' text="' + VarToStr(ARule.Operand1) + '"';
+        if ARule.Condition >= cfcYesterday then
+        begin
+          param1Str := ' timePeriod="' + CF_OPERATOR_NAMES[ARule.Condition] + '"';
+          opStr := '';
+        end else
+          param1Str := ' text="' + VarToStr(ARule.Operand1) + '"';
       end;
     cfcExpression:
       begin

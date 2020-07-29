@@ -118,6 +118,7 @@ type
     procedure ReadCFCellFormat(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadCFColorScale(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadCFDataBars(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
+    procedure ReadCFDateFormat(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadCFIconSet(ANode: TDOMNode; ASheet: TsBasicWorksheet; ARange: TsCellRange);
     procedure ReadColumns(ATableNode: TDOMNode);
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
@@ -405,6 +406,9 @@ const
     '', '',           // cfcDuplicate, cfcUnique,
     '', '', '', '',   // cfcBeginsWith, cfcEndsWith, cfcContainsText, cfcNotContainsText,
     '', '',           // cfcContainsErrors, cfcNotContainsErrors
+    '', '', '', '',   // cfcYesterday .. cfcLast7Days
+    '', '', '',       // cfcLastWeek .. cfcNextWeek
+    '', '', '',       // cfcLastMonth .. cfcNextMonth
     'is-true-formula(%s)'  // cfcExpression
   );
 
@@ -421,8 +425,11 @@ const
     'begins-with(%s)', 'ends-with(%s)',           // cfcBeginsWith, cfcEndsWith,
     'contains-text(%s)', 'not-contains-text(%s)', // cfcContainsText, cfcNotContainsText,
     'is-error', 'is-no-error',                    // cfcContainsErrors, cfcNotContainsErrors
+    'yesterday', 'today', 'tomorrow', 'last-7-days',   // cfcYesterday .. cfcLast7Days
+    'last-week', 'this-week', 'next-week',        // cfcLastWeek .. cfcNextWeek
+    'last-month', 'this-month', 'next-month',     // cfcLastMonth .. cfcNextMonth
     'formula-is(%s)'                              // cfcExprssion
-  );
+  );                                                                           // ???????????????????
 
   CF_VALUE_KIND: array[TsCFValueKind] of string = (
     '',            // vkNone
@@ -2265,6 +2272,7 @@ begin
         nodeName := childNode.NodeName;
         case nodeName of
           'calcext:condition': ReadCFCellFormat(childNode, AWorksheet, range);
+          'calcext:date-is': ReadCFDateFormat(childNode, AWorksheet, range);
           'calcext:color-scale': ReadCFColorScale(childNode, AWorksheet, range);
           'calcext:data-bar': ReadCFDataBars(childNode, AWorksheet, range);
           'calcext:icon-set': ReadCFIconSet(childNode, AWorksheet, range);
@@ -4145,6 +4153,51 @@ begin
     kinds[0], values[0],
     kinds[1], values[1]
   );
+end;
+
+procedure TsSpreadOpenDocReader.ReadCFDateFormat(ANode: TDOMNode;
+  ASheet: TsBasicWorksheet; ARange: TsCellRange);
+var
+  sheet: TsWorksheet;
+  s: String;
+  c, condition: TsCFCondition;
+  found: Boolean = false;
+  fmt: TsCellFormat;
+  fmtIndex: Integer;
+begin
+  if ANode = nil then
+    exit;
+
+  sheet := TsWorksheet(ASheet);
+
+  // Style
+  s := GetAttrValue(ANode, 'calcext:style');
+  if s <> '' then
+  begin
+    fmtIndex := ExtractFormatIndexFromStyle(s, -1);
+    fmt := FCellFormatList.Items[fmtIndex]^;
+    fmtIndex := (FWorkbook as TsWorkbook).AddCellFormat(fmt);
+  end;
+
+  // value to compare with
+  s := GetAttrValue(ANode, 'calcext:date');
+  if s = '' then
+    exit;
+
+  // condition for comparison
+  for c in [cfcYesterday..cfcNextMonth] do
+    if CF_CALCEXT_OP[c] = s then
+    begin
+      condition := c;
+      found := true;
+      break;
+    end;
+
+  if not found then
+    exit;
+
+  // Write conditional format to worksheet
+  sheet.WriteConditionalCellFormat(ARange, condition, fmtIndex);
 end;
 
 procedure TsSpreadOpenDocReader.ReadCFIconSet(ANode: TDOMNode;
@@ -6459,6 +6512,8 @@ procedure TsSpreadOpenDocWriter.WriteConditionalFormats(AStream: TStream;
       <calcext:condition calcext:apply-style-name="cf" calcext:value="=5" calcext:base-cell-address="Tabelle1.B4" />
     </calcext:conditional-format>
   </calcext:conditional-formats> }
+const
+  VALUE_OR_DATE: array[boolean] of string = ('value', 'date');
 var
   book: TsWorkbook;
   ncf: Integer;
@@ -6475,6 +6530,7 @@ var
   firstCellStr: string;
   value1Str, value2Str: String;
   opStr: String;
+  isDateFmt: Boolean;
 begin
   book := TsWorkbook(FWorkbook);
   sheet := TsWorksheet(ASheet);
@@ -6505,12 +6561,19 @@ begin
         value1Str := CFOperandToStr(cf_cellRule.Operand1, sheet);
         value2Str := CFOperandToStr(cf_cellRule.Operand2, sheet);
         opStr := Format(CF_CALCEXT_OP[cf_cellRule.Condition], [value1Str, value2str]);
+        isDateFmt := cf_cellRule.Condition in [cfcYesterday..cfcNextMonth];
         if opStr <> '' then
         begin
-          AppendToStream(AStream, Format(
-            '<calcext:condition calcext:apply-style-name="%s" calcext:value="%s" calcext:base-cell-address="%s" />',
-            [cf_stylename, opStr, firstCellStr]
-          ));
+          if isDateFmt then
+            AppendToStream(AStream, Format(
+              '<calcext:date-is calcext:style="%s" calcext:date="%s" />',
+              [cf_stylename, opStr]
+            ))
+          else
+            AppendToStream(AStream, Format(
+              '<calcext:condition calcext:apply-style-name="%s" calcext:value="%s" calcext:base-cell-address="%s" />',
+              [cf_stylename, opStr, firstCellStr]
+            ));
         end;
       end
       else

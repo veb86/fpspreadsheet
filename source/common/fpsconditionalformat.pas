@@ -24,6 +24,9 @@ type
     cfcBeginsWith, cfcEndsWith,
     cfcContainsText, cfcNotContainsText,
     cfcContainsErrors, cfcNotContainsErrors,
+    cfcYesterday, cfcToday, cfcTomorrow, cfcLast7Days,
+    cfcLastWeek, cfcThisWeek, cfcNextWeek,
+    cfcLastMonth, cfcThisMonth, cfcNextMonth,
     cfcExpression
   );
 
