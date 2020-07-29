@@ -27,6 +27,7 @@ type
     cfcYesterday, cfcToday, cfcTomorrow, cfcLast7Days,
     cfcLastWeek, cfcThisWeek, cfcNextWeek,
     cfcLastMonth, cfcThisMonth, cfcNextMonth,
+    cfcLastYear, cfcThisYear, cfcNextYear,
     cfcExpression
   );
 

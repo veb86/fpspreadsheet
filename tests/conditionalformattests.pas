@@ -84,6 +84,9 @@ type
     procedure TestWriteRead_CF_CellFmt_XLSX_LastMonth;
     procedure TestWriteRead_CF_CellFmt_XLSX_ThisMonth;
     procedure TestWriteRead_CF_CellFmt_XLSX_NextMonth;
+    procedure TestWriteRead_CF_CellFmt_XLSX_LastYear;
+    procedure TestWriteRead_CF_CellFmt_XLSX_ThisYear;
+    procedure TestWriteRead_CF_CellFmt_XLSX_NextYear;
     procedure TestWriteRead_CF_CellFmt_XLSX_Expression;
     procedure TestWriteRead_CF_CellFmt_XLSX_Background;
     procedure TestWriteRead_CF_CellFmt_XLSX_Border4;
@@ -134,6 +137,9 @@ type
     procedure TestWriteRead_CF_CellFmt_XML_LastMonth;
     procedure TestWriteRead_CF_CellFmt_XML_ThisMonth;
     procedure TestWriteRead_CF_CellFmt_XML_NextMonth;
+    procedure TestWriteRead_CF_CellFmt_XML_LastYear;
+    procedure TestWriteRead_CF_CellFmt_XML_ThisYear;
+    procedure TestWriteRead_CF_CellFmt_XML_NextYear;
     procedure TestWriteRead_CF_CellFmt_XML_Expression;
 
     procedure TestWriteRead_CF_CellFmt_XML_Background;
@@ -178,6 +184,9 @@ type
     procedure TestWriteRead_CF_CellFmt_ODS_LastMonth;
     procedure TestWriteRead_CF_CellFmt_ODS_ThisMonth;
     procedure TestWriteRead_CF_CellFmt_ODS_NextMonth;
+    procedure TestWriteRead_CF_CellFmt_ODS_LastYear;
+    procedure TestWriteRead_CF_CellFmt_ODS_ThisYear;
+    procedure TestWriteRead_CF_CellFmt_ODS_NextYear;
     procedure TestWriteRead_CF_CellFmt_ODS_Expression;
     procedure TestWriteRead_CF_CellFmt_ODS_Background;
     procedure TestWriteRead_CF_CellFmt_ODS_Border4;
@@ -810,6 +819,33 @@ begin
   TestWriteRead_CF_CellFmt(sfOOXML, cfcNextMonth, fmt);
 end;
 
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_LastYear;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOOXML, cfcLastYear, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_ThisYear;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOOXML, cfcThisYear, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_NextYear;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOOXML, cfcNextYear, fmt);
+end;
+
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XLSX_Expression;
 var
   fmt: TsCellFormat;
@@ -1119,6 +1155,32 @@ begin
   TestWriteRead_CF_CellFmt(sfExcelXML, cfcNextMonth, fmt);
 end;
 
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_LastYear;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcLastYear, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_ThisYear;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcThisYear, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_NextYear;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfExcelXML, cfcNextYear, fmt);
+end;
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_XML_Expression;
 var
   fmt: TsCellFormat;
@@ -1491,6 +1553,33 @@ begin
   InitFormatRecord(fmt);
   fmt.SetBackgroundColor(scRed);
   TestWriteRead_CF_CellFmt(sfOpenDocument, cfcNextMonth, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_LastYear;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcLastYear, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_ThisYear;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcThisYear, fmt);
+end;
+
+procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_NextYear;
+var
+  fmt: TsCellFormat;
+begin
+  InitFormatRecord(fmt);
+  fmt.SetBackgroundColor(scRed);
+  TestWriteRead_CF_CellFmt(sfOpenDocument, cfcNextYear, fmt);
 end;
 
 procedure TSpreadWriteReadCFTests.TestWriteRead_CF_CellFmt_ODS_Expression;

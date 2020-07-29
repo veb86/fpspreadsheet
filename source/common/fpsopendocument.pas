@@ -409,6 +409,7 @@ const
     '', '', '', '',   // cfcYesterday .. cfcLast7Days
     '', '', '',       // cfcLastWeek .. cfcNextWeek
     '', '', '',       // cfcLastMonth .. cfcNextMonth
+    '', '', '',       // cfcLastYear .. cfcNextYear
     'is-true-formula(%s)'  // cfcExpression
   );
 
@@ -428,8 +429,9 @@ const
     'yesterday', 'today', 'tomorrow', 'last-7-days',   // cfcYesterday .. cfcLast7Days
     'last-week', 'this-week', 'next-week',        // cfcLastWeek .. cfcNextWeek
     'last-month', 'this-month', 'next-month',     // cfcLastMonth .. cfcNextMonth
+    'last-year', 'this-year', 'next-year',        // cfcLastYear .. cfcNextYear
     'formula-is(%s)'                              // cfcExprssion
-  );                                                                           // ???????????????????
+  );
 
   CF_VALUE_KIND: array[TsCFValueKind] of string = (
     '',            // vkNone
@@ -4185,7 +4187,7 @@ begin
     exit;
 
   // condition for comparison
-  for c in [cfcYesterday..cfcNextMonth] do
+  for c in [cfcYesterday..cfcNextYear] do
     if CF_CALCEXT_OP[c] = s then
     begin
       condition := c;
@@ -6561,7 +6563,7 @@ begin
         value1Str := CFOperandToStr(cf_cellRule.Operand1, sheet);
         value2Str := CFOperandToStr(cf_cellRule.Operand2, sheet);
         opStr := Format(CF_CALCEXT_OP[cf_cellRule.Condition], [value1Str, value2str]);
-        isDateFmt := cf_cellRule.Condition in [cfcYesterday..cfcNextMonth];
+        isDateFmt := cf_cellRule.Condition in [cfcYesterday..cfcNextYear];
         if opStr <> '' then
         begin
           if isDateFmt then

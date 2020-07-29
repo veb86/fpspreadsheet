@@ -253,7 +253,10 @@ const
     '@AND(MONTH(RC)=MONTH(EDATE(TODAY(),0-1)),YEAR(RC)=YEAR(EDATE(TODAY(),0-1)))',  // cfcLastMonth
     '@AND(MONTH(RC)=MONTH(TODAY()),YEAR(RC)=YEAR(TODAY()))',                        // cfcThisMonth
     '@AND(MONTH(RC)=MONTH(EDATE(TODAY(),0+1)),YEAR(RC)=YEAR(EDATE(TODAY(),0+1)))',  // cfcNextMonth
-    '@'                                                  // cfcExpression
+    '@YEAR(RC)=YEAR(TODAY())-1',                    // cfcLastYear
+    '@YEAR(RC)=YEAR(TODAY())',                      // cfcThisYear
+    '@YEAR(RC)=YEAR(TODAY())+1',                    // cfcNextYear
+    '@'                                             // cfcExpression
   );
   // The leading '@' indicates that the formula will be used in <Value1> node
   // Parameter 0 is Operand1, parameter 1 is Operand2 and parameter 2 is Range
@@ -429,7 +432,7 @@ begin
   end else
   begin
     expr := '@' + UTF8TextToXMLText(AExpr);
-    for c in [cfcContainsErrors..cfcNextMonth] do
+    for c in [cfcContainsErrors..cfcNextYear] do
       if CF_CONDITIONS[c] = expr then
       begin
         ACondition := c;
