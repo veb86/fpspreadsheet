@@ -977,7 +977,7 @@ type
     FKeywords: TStrings;
   public
     constructor Create;
-    destructor Destroy;
+    destructor Destroy; override;
     function IsEmpty: Boolean;
     property CreatedBy: String read FCreatedBy write FCreatedBy;
     property LastModifiedBy: String read FLastModifiedBy write FLastModifiedBy;
