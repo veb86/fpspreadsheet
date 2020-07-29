@@ -436,6 +436,36 @@ begin
   end;
 end;
 
+function MyRoundDown(const AValue: Double; const Digits: TRoundToRange): Double;
+var
+  RV: Double;
+begin
+  RV := IntPower(10, Digits);
+  Result := Trunc(AValue / RV) * RV;
+end;
+
+
+{ The Excel ROUNDDOWN function returns a number rounded down to a given number
+  of decimal places. Unlike standard rounding, where only numbers less than 5
+  are rounded down, ROUNDDOWN rounds all numbers down. }
+procedure fpsROUNDDOWN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
+  n: Integer;
+begin
+  x := ArgToFloat(Args[1]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else begin
+    n := Round(x);
+    x := ArgToFloat(Args[0]);
+    if IsNaN(x) then
+      Result := ErrorResult(errWrongType)
+    else
+      Result := FloatResult(MyRoundDown(x, -n));
+  end;
+end;
+
 procedure fpsSIGN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   x: TsExprFloat;
@@ -2296,6 +2326,7 @@ begin
     AddFunction(cat, 'RADIANS',   'F', 'F',    INT_EXCEL_SHEET_FUNC_RADIANS,    @fpsRADIANS);
     AddFunction(cat, 'RAND',      'F', '',     INT_EXCEL_SHEET_FUNC_RAND,       @fpsRAND);
     AddFunction(cat, 'ROUND',     'F', 'FF',   INT_EXCEL_SHEET_FUNC_ROUND,      @fpsROUND);
+    AddFunction(cat, 'ROUNDDOWN', 'F', 'F',    INT_EXCEL_SHEET_FUNC_ROUNDDOWN,  @fpsROUNDDOWN);
     AddFunction(cat, 'SIGN',      'F', 'F',    INT_EXCEL_SHEET_FUNC_SIGN,       @fpsSIGN);
     AddFunction(cat, 'SIN',       'F', 'F',    INT_EXCEL_SHEET_FUNC_SIN,        @fpsSIN);
     AddFunction(cat, 'SINH',      'F', 'F',    INT_EXCEL_SHEET_FUNC_SINH,       @fpsSINH);

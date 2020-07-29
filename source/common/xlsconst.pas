@@ -234,6 +234,7 @@ const
 
   // No BIFF2 after 199
 
+  INT_EXCEL_SHEET_FUNC_ROUNDDOWN  = 213;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_TODAY      = 221;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_MEDIAN     = 227;  // not available in BIFF2
   INT_EXCEL_SHEET_FUNC_SINH       = 229;  // not available in BIFF2
