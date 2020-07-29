@@ -45,6 +45,7 @@ type
     procedure ReadCellProtection(ANode: TDOMNode; var AFormat: TsCellFormat);
     procedure ReadComment(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; ACell: PCell);
     procedure ReadConditionalFormatting(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadCustomDocumentProperties(ANode: TDOMNode);
     procedure ReadDocumentProperties(ANode: TDOMNode);
     procedure ReadExcelWorkbook(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode; var AFormat: TsCellFormat);
@@ -96,6 +97,7 @@ type
     procedure WriteConditionalFormat(AStream: TStream; AWorksheet: TsBasicWorksheet;
       AFormat: TsConditionalFormat);
     procedure WriteConditionalFormatting(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteCustomDocumentProperties(AStream: TStream);
     procedure WriteDocumentProperties(AStream: TStream);
     procedure WriteExcelWorkbook(AStream: TStream);
     procedure WriteNames(AStream: TStream; AWorksheet: TsBasicWorksheet);
@@ -1101,6 +1103,32 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Read the custom meta data fields
+-------------------------------------------------------------------------------}
+procedure TsSpreadExcelXMLReader.ReadCustomDocumentProperties(ANode: TDOMNode);
+var
+  book: TsWorkbook;
+  value: String;
+  nodeName: String;
+begin
+  if ANode = nil then
+    exit;
+
+  book := TsWorkbook(FWorkbook);
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName <> '#text' then
+    begin
+      value := GetNodeValue(ANode);
+      book.MetaData.AddCustom(nodeName, value);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the meta data etc.
 -------------------------------------------------------------------------------}
 procedure TsSpreadExcelXMLReader.ReadDocumentProperties(ANode: TDOMNode);
@@ -2069,6 +2097,7 @@ begin
 
     // Read meta data
     ReadDocumentProperties(doc.DocumentElement.FindNode('DocumentProperties'));
+    ReadCustomDocumentProperties(doc.DocumentElement.FindNode('CustomDocumentProperties'));
 
     // Read style list
     ReadStyles(doc.DocumentElement.FindNode('Styles'));
@@ -2680,6 +2709,33 @@ begin
   end;
 end;
 
+procedure TsSpreadExcelXMLWriter.WriteCustomDocumentProperties(AStream: TStream);
+{   <CustomDocumentProperties xmlns="urn:schemas-microsoft-com:office:office">
+      <Comparny dt:dt="string">Disney</Comparny>
+      <Status dt:dt="string">finished</Status>
+     </CustomDocumentProperties> }
+var
+  book: TsWorkbook;
+  i: Integer;
+begin
+  book := TsWorkbook(FWorkbook);
+  if book.MetaData.Custom.Count = 0 then
+    exit;
+
+  AppendToStream(AStream, INDENT1 +
+    '<CustomDocumentProperties xmlns="urn:schemas-microsoft-com:office:office">' + LF);
+
+  for i := 0 to book.MetaData.Custom.Count-1 do
+    AppendToStream(AStream, Format(INDENT2 +
+      '<%0:s dt:dt="string">%1:s</%0:s>' + LF, [
+      book.MetaData.Custom.Names[i],
+      book.MetaData.Custom.ValueFromIndex[i]
+    ]));
+
+  AppendToStream(AStream, INDENT1 +
+    '</CustomDocumentProperties>' + LF);
+end;
+
 procedure TsSpreadExcelXMLWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var
@@ -2719,8 +2775,6 @@ begin
 end;
 
 procedure TsSpreadExcelXMLWriter.WriteDocumentProperties(AStream: TStream);
-const
-  LE = LineEnding;
 var
   sTitle: String;
   sSubject: String;
@@ -2733,32 +2787,30 @@ var
 begin
   book := TsWorkbook(FWorkbook);
 
-  if (book.MetaData.Title = '') and
-     (book.MetaData.CreatedBy = '') and (book.MetaData.LastModifiedBy = '') and
-     (book.MetaData.DateCreated <= 0) and (book.MetaData.DateLastModified <= 0) then
+  if book.MetaData.IsEmpty then
   begin
     AppendToStream(AStream, INDENT1 +
-      '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office" />' + LE);
+      '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office" />' + LF);
     exit;
   end;
 
   if book.MetaData.Title <> '' then
-    sTitle := '<Title>' + book.MetaData.Title + '</Title>' + LE + INDENT2
+    sTitle := '<Title>' + book.MetaData.Title + '</Title>' + LF + INDENT2
   else
     sTitle := '';
 
   if book.MetaData.Subject <> '' then
-    sSubject := '<Subject>' + book.MetaData.Subject + '</Subject>' + LE + INDENT2
+    sSubject := '<Subject>' + book.MetaData.Subject + '</Subject>' + LF + INDENT2
   else
     sSubject := '';
 
   if book.MetaData.CreatedBy <> '' then
-    sAuthor := '<Author>' + book.MetaData.CreatedBy + '</Author>' + LE + INDENT2
+    sAuthor := '<Author>' + book.MetaData.CreatedBy + '</Author>' + LF + INDENT2
   else
     sAuthor := '';
 
   if book.MetaData.LastModifiedBy <> '' then
-    sLastAuthor := '<LastAuthor>' + book.MetaData.LastModifiedBy + '</LastAuthor>' + LE + INDENT2
+    sLastAuthor := '<LastAuthor>' + book.MetaData.LastModifiedBy + '</LastAuthor>' + LF + INDENT2
   else
     sLastAuthor := '';
 
@@ -2766,7 +2818,7 @@ begin
   if book.MetaData.DateCreated > 0 then begin
     dt := book.MetaData.DateCreated + GetLocalTimeOffset / (24*60);
     sDateCreated := FormatDateTime(ISO8601FormatExtendedUTC, dt);
-    sDateCreated := '<Created>' + sDateCreated + '</Created>' + LE + INDENT2;
+    sDateCreated := '<Created>' + sDateCreated + '</Created>' + LF + INDENT2;
   end else
     sDateCreated := '';
 
@@ -2774,20 +2826,20 @@ begin
   begin
     dt := book.MetaData.DateLastModified + GetLocalTimeOffset / (24*60);
     sDateLastSaved := FormatDateTime(ISO8601FormatExtendedUTC, dt);
-    sDateLastSaved := '<LastSaved>' + sDateLastSaved + '</LastSaved>' + LE + INDENT2;
+    sDateLastSaved := '<LastSaved>' + sDateLastSaved + '</LastSaved>' + LF + INDENT2;
   end else
     sDateLastSaved := '';
 
   AppendToStream(AStream, INDENT1 +
-    '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">' + LE + INDENT2 +
+    '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">' + LF + INDENT2 +
       sTitle +
       sSubject +
       sAuthor +
       sLastAuthor +
       sDateCreated +
       sDateLastSaved +
-      '<Version>16.00</Version>' + LE + Indent1 +
-    '</DocumentProperties>' + LE
+      '<Version>16.00</Version>' + LF + INDENT1 +
+    '</DocumentProperties>' + LF
   );
 end;
 
@@ -3397,9 +3449,11 @@ begin
     '          xmlns:o="urn:schemas-microsoft-com:office:office"' + LF +
     '          xmlns:x="urn:schemas-microsoft-com:office:excel"' + LF +
     '          xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"' + LF +
+    '          xmlns:dt="uuid:C2F41010-65B3-11d1-A29F-00AA00C14882"' + LF +
     '          xmlns:html="http://www.w3.org/TR/REC-html40">' + LF);
 
   WriteDocumentProperties(AStream);
+  WriteCustomDocumentProperties(AStream);
   WriteOfficeDocumentSettings(AStream);
   WriteExcelWorkbook(AStream);
   WriteStyles(AStream);

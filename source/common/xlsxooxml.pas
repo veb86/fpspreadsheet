@@ -173,6 +173,7 @@ type
     procedure WriteComments(AWorksheet: TsBasicWorksheet);
     procedure WriteConditionalFormat(AStream: TStream; AFormat: TsConditionalFormat; var APriority: Integer);
     procedure WriteConditionalFormats(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteCustomMetaData(AStream: TStream);
     procedure WriteDefinedNames(AStream: TStream);
     procedure WriteDifferentialFormat(AStream: TStream; AFormat: PsCellFormat);
     procedure WriteDifferentialFormats(AStream: TStream);
@@ -217,6 +218,7 @@ type
     FSWorkbook: TStream;
     FSWorkbookRels: TStream;
     FSMetaData: TStream;
+    FSCustomMetaData: TStream;
     FSStyles: TStream;
     FSSharedStrings: TStream;
     FSSharedStrings_complete: TStream;
@@ -307,6 +309,7 @@ const
      OOXML_PATH_XL_THEME           = 'xl/theme/theme1.xml';
      OOXML_PATH_XL_MEDIA           = 'xl/media/';
      OOXML_PATH_DOCPROPS_CORE      = 'docProps/core.xml';
+     OOXML_PATH_DOCPROPS_CUSTOM    = 'docProps/custom.xml';
 
      { OOXML schemas constants }
      SCHEMAS_TYPES        = 'http://schemas.openxmlformats.org/package/2006/content-types';
@@ -314,6 +317,7 @@ const
      SCHEMAS_DOC_RELS     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships';
      SCHEMAS_DOCUMENT     = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument';
      SCHEMAS_META_CORE    = 'http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties';
+     SCHEMAS_META_CUSTOM  = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/custom-properties';
      SCHEMAS_WORKSHEET    = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet';
      SCHEMAS_STYLES       = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles';
      SCHEMAS_STRINGS      = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings';
@@ -330,6 +334,7 @@ const
      MIME_RELS            = 'application/vnd.openxmlformats-package.relationships+xml';
      MIME_OFFICEDOCUMENT  = 'application/vnd.openxmlformats-officedocument';
      MIME_CORE            = 'application/vnd.openxmlformats-package.core-properties+xml';
+     MIME_CUSTOM          = 'application/vnd.openxmlformats-officedocument.custom-properties+xml';
      MIME_SPREADML        = MIME_OFFICEDOCUMENT + '.spreadsheetml';
      MIME_SHEET           = MIME_SPREADML + '.sheet.main+xml';
      MIME_WORKSHEET       = MIME_SPREADML + '.worksheet+xml';
@@ -2695,9 +2700,11 @@ end;
 
 procedure TsSpreadOOXMLReader.ReadMetaData(ANode: TDOMNode);
 var
+  childNode: TDOMNode;
   nodeName: string;
   book: TsWorkbook;
   s: String;
+  name: String;
   dt: TDateTime;
   fs: TFormatSettings;
 begin
@@ -2714,6 +2721,7 @@ begin
     nodeName := ANode.NodeName;
     s := GetNodeValue(ANode);
     case nodeName of
+      // These fields are from "core.xml"
       'dc:title':
         book.MetaData.Title := s;
       'dc:subject':
@@ -2740,6 +2748,21 @@ begin
       'dcterms:modified':
         if s <> '' then
           book.MetaData.DateLastModified :=ISO8601StrToDateTime(s);
+
+      // This field is from "custom.xml"
+      'property':
+        begin
+          name := GetAttrValue(ANode, 'name');
+          childNode := ANode.Firstchild;
+          while childNode <> nil do
+          begin
+            nodeName := childNode.NodeName;
+            s := GetNodeValue(childNode);
+            if (s <> '') then
+              book.MetaData.AddCustom(name, s);
+            break;
+          end;
+        end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -3798,6 +3821,18 @@ begin
     finally
       XMLStream.Free;
     end;
+    // custom meta data
+    XMLStream := CreateXMLStream;
+    try
+      if UnzipToStream(AStream, OOXML_PATH_DOCPROPS_CUSTOM, XMLStream) then
+      begin
+        ReadXMLStream(Doc, XMLStream);
+        ReadMetaData(Doc.DocumentElement);
+        FreeAndNil(Doc);
+      end;
+    finally
+      XMLStream.Free;
+    end;
 
   finally
     FreeAndNil(Doc);
@@ -4514,6 +4549,37 @@ begin
     if CF.Worksheet = AWorksheet then
       WriteConditionalFormat(AStream, CF, priority);
   end;
+end;
+
+procedure TsSpreadOOXMLWriter.WriteCustomMetaData(AStream: TStream);
+var
+  book: TsWorkbook;
+  i: Integer;
+  id: Integer;
+begin
+  book := TsWorkbook(FWorkbook);
+  if book.MetaData.Custom.Count = 0 then
+    exit;
+
+  AppendToStream(AStream,
+    '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/custom-properties" ' +
+      'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">');
+
+  id := 2;
+  for i := 0 to book.MetaData.Custom.Count-1 do
+  begin
+    AppendToStream(AStream, Format(
+      '<property fmtid="{D5CDD505-2E9C-101B-9397-08002B2CF9AE}" pid="%d" name="%s">' +
+        '<vt:lpwstr>%s</vt:lpwstr>' +
+      '</property>', [
+      id, book.MetaData.Custom.Names[i],
+      book.MetaData.Custom.ValueFromIndex[i]
+    ]));
+    inc(id);
+  end;
+
+  AppendToStream(AStream,
+    '</Properties>');
 end;
 
 procedure TsSpreadOOXMLWriter.WriteDimension(AStream: TStream;
@@ -6084,18 +6150,29 @@ begin
 
   { --- meta data ---- }
   WriteMetaData(FSMetaData);
+  WriteCustomMetaData(FSCustomMetaData);
 
   { --- _rels/.rels --- }
   AppendToStream(FSRelsRels,
     XML_HEADER + LineEnding);
+
   AppendToStream(FSRelsRels, Format(
-    '<Relationships xmlns="%s">' + LineEnding, [SCHEMAS_RELS]));
-  AppendToStream(FSRelsRels, Format(
-      '<Relationship Id="rId2" Target="docProps/core.xml" Type="%s" />' + LineEnding,
-      [SCHEMAS_META_CORE]));
+    '<Relationships xmlns="%s">' + LineEnding,
+      [SCHEMAS_RELS]));
+
   AppendToStream(FSRelsRels, Format(
       '<Relationship Id="rId1" Target="xl/workbook.xml" Type="%s" />' + LineEnding,
       [SCHEMAS_DOCUMENT]));
+
+  AppendToStream(FSRelsRels, Format(
+      '<Relationship Id="rId2" Target="docProps/core.xml" Type="%s" />' + LineEnding,
+      [SCHEMAS_META_CORE]));
+
+  if TsWorkbook(FWorkbook).MetaData.Custom.Count > 0 then
+    AppendToStream(FSRelsRels, Format(
+      '<Relationship Id="rId3" Target="docProps/custom.xml" Type="%s" />' + LineEnding,
+      [SCHEMAS_META_CUSTOM]));
+
   AppendToStream(FSRelsRels,
     '</Relationships>');
 
@@ -6377,6 +6454,10 @@ begin
 
   AppendToStream(FSContentTypes,
       '<Override PartName="/docProps/core.xml" ContentType="' + MIME_CORE + '" />');
+
+  if book.MetaData.Custom.Count > 0 then
+    AppendToStream(FSContentTypes,
+      '<Override PartName="/docProps/custom.xml" ContentType="' + MIME_CUSTOM + '" />');
 
   AppendToStream(FSContentTypes,
     '</Types>');
@@ -6808,6 +6889,7 @@ begin
   FSSharedStrings := CreateTempStream(FWorkbook, 'fpsSS');
   FSSharedStrings_complete := CreateTempStream(FWorkbook, 'fpsSSC');
   FSMetaData := CreateTempStream(FWorkbook, 'fpsMETA');
+  FSCustomMetaData := CreateTempStream(FWorkbook, 'fpsCM');
   {
   if boFileStream in FWorkbook.Options then
   begin
@@ -6848,6 +6930,7 @@ procedure TsSpreadOOXMLWriter.DestroyStreams;
 var
   stream: TStream;
 begin
+  DestroyTempStream(FSCustomMetaData);
   DestroyTempStream(FSMetaData);
   DestroyTempStream(FSContentTypes);
   DestroyTempStream(FSRelsRels);
@@ -6897,6 +6980,7 @@ begin
   ResetStream(FSStyles);
   ResetStream(FSSharedStrings_complete);
   ResetStream(FSMetaData);
+  ResetStream(FSCustomMetaData);
   for i:=0 to High(FSSheets) do ResetStream(FSSheets[i]);
   for i:=0 to High(FSSheetRels) do ResetStream(FSSheetRels[i]);
   for i:=0 to High(FSComments) do ResetStream(FSComments[i]);
@@ -6964,6 +7048,8 @@ begin
     if FSSharedStrings_complete.Size > 0 then
       FZip.Entries.AddFileEntry(FSSharedStrings_complete, OOXML_PATH_XL_STRINGS);
     FZip.Entries.AddFileEntry(FSMetaData, OOXML_PATH_DOCPROPS_CORE);
+    if TsWorkbook(FWorkbook).MetaData.Custom.Count > 0 then
+      FZip.Entries.AddFileEntry(FSCustomMetaData, OOXML_PATH_DOCPROPS_CUSTOM);
 
     // Write embedded images
     WriteMedia(FZip);

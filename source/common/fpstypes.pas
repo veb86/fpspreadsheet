@@ -976,9 +976,12 @@ type
     FSubject: String;
     FComments: TStrings;
     FKeywords: TStrings;
+    FCustom: TStrings;
   public
     constructor Create;
     destructor Destroy; override;
+    function AddCustom(AName, AValue: String): Integer;
+    procedure Clear;
     function IsEmpty: Boolean;
     property CreatedBy: String read FCreatedBy write FCreatedBy;
     property LastModifiedBy: String read FLastModifiedBy write FLastModifiedBy;
@@ -987,6 +990,7 @@ type
     property Subject: String read FSubject write FSubject;
     property Title: String read FTitle write FTitle;
     property Comments: TStrings read FComments write FComments;
+    property Custom: TStrings read FCustom write FCustom;
     property Keywords: TStrings read FKeywords write FKeywords;
   end;
 
@@ -1199,20 +1203,44 @@ begin
   inherited;
   FComments := TStringList.Create;
   FKeywords := TStringList.Create;
+  FCustom := TStringList.Create;
 end;
 
 destructor TsMetaData.Destroy;
 begin
   FComments.Free;
   FKeywords.Free;
+  FCustom.Free;
   inherited;
+end;
+
+procedure TsMetaData.Clear;
+begin
+  FTitle := '';
+  FSubject := '';
+  FCreatedBy := '';
+  FLastModifiedBy := '';
+  FDateCreated := 0;
+  FDateLastModified := 0;
+  FComments.Clear;
+  FKeywords.Clear;
+  FCustom.Clear;
+end;
+
+function TsMetaData.AddCustom(AName, AValue: String): Integer;
+begin
+  Result := FCustom.IndexOf(AName);
+  if result > -1 then
+    FCustom.ValueFromIndex[Result] := AValue
+  else
+    Result := FCustom.Add(AName + '=' + AValue);
 end;
 
 function TsMetaData.IsEmpty: Boolean;
 begin
   Result := (FCreatedBy = '') and (FLastModifiedBy = '') and
     (FTitle = '') and (FSubject = '') and
-    (FComments.Count = 0) and (FKeywords.Count = 0) and
+    (FComments.Count = 0) and (FKeywords.Count = 0) and (FCustom.Count = 0) and
     (FDateCreated = 0) and (FDateLastModified = 0);
 end;
 

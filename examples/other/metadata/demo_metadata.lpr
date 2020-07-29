@@ -58,6 +58,7 @@ end;
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
+  i: Integer;
 begin
   book := TsWorkbook.Create;
   try
@@ -72,6 +73,8 @@ begin
     book.MetaData.Comments.Add('Assign the creation date to the field CreatedAt.');
     book.MetaData.Keywords.Add('Test');
     book.MetaData.Keywords.Add('FPSpreadsheet');
+    book.MetaData.AddCustom('Comparny', 'Disney');
+    book.MetaData.AddCustom('Status', 'finished');
 
     sheet := book.AddWorksheet('Test');
     sheet.WriteText(2, 3, 'abc');
@@ -86,9 +89,9 @@ begin
   book := TsWorkbook.Create;
   try
     // Select one of these
-    book.ReadFromFile('test.ods');
+//    book.ReadFromFile('test.ods');
 //    book.ReadFromFile('test.xlsx');
-//    book.ReadFromFile('test.xml');
+    book.ReadFromFile('test.xml');
     WriteLn('Created by         : ', book.MetaData.CreatedBy);
     WriteLn('Date created       : ', DateTimeToStr(book.MetaData.DateCreated));
     WriteLn('Modified by        : ', book.MetaData.LastModifiedBy);
@@ -96,6 +99,9 @@ begin
     WriteLn('Title              : ', book.MetaData.Title);
     WriteLn('Subject            : ', book.MetaData.Subject);
     WriteLn('Keywords           : ', book.MetaData.Keywords.CommaText);
+    WriteLn('Custom             : ', 'Name':20, 'Value':20);
+    for i := 0 to book.MetaData.Custom.Count-1 do
+      WriteLn('                     ', book.MetaData.Custom.Names[i]:20, book.MetaData.Custom.ValueFromIndex[i]:20);
     WriteLn('Comments: ');
     WriteLn(book.MetaData.Comments.Text);
   finally

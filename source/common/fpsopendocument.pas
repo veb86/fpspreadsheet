@@ -1966,6 +1966,7 @@ var
   book: TsWorkbook;
   nodeName: String;
   s: String;
+  name: String;
 begin
   book := TsWorkbook(FWorkbook);
 
@@ -1992,6 +1993,12 @@ begin
         book.MetaData.Title := s;
       'dc:subject':
         book.Metadata.Subject := s;
+      'meta:user-defined':
+        begin
+          name := GetAttrValue(ANode, 'meta:name');
+          if name <> '' then
+            book.MetaData.AddCustom(name, s);
+        end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -5909,6 +5916,16 @@ begin
       s := s + #10 + book.MetaData.Comments[i];
     AppendToStream(FSMeta, Format(
         '<dc:description>%s</dc:description>', [s]));
+  end;
+
+  if book.MetaData.Custom.Count > 0 then
+  begin
+    for i := 0 to book.Metadata.Custom.Count-1 do
+      AppendToStream(FSMeta, Format(
+        '<meta:user-defined meta:name="%s">%s</meta:user-defined>', [
+          book.Metadata.Custom.Names[i],
+          book.Metadata.Custom.ValueFromIndex[i]
+        ]));
   end;
 
   AppendToStream(FSMeta,
