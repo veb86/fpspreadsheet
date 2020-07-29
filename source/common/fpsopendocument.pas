@@ -1990,6 +1990,8 @@ begin
         book.MetaData.Comments.Text := s;
       'dc:title':
         book.MetaData.Title := s;
+      'dc:subject':
+        book.Metadata.Subject := s;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -5866,6 +5868,13 @@ begin
     s := book.Metadata.Title;
     AppendToStream(FSMeta, Format(
         '<dc:title>%s</dc:title>', [s]));
+  end;
+
+  if book.Metadata.Subject <> '' then
+  begin
+    s := book.Metadata.Subject;
+    AppendToStream(FSMeta, Format(
+        '<dc:subject>%s</dc:subject>', [s]));
   end;
 
   if book.Metadata.CreatedBy <> '' then

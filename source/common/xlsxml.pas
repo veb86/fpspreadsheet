@@ -1121,6 +1121,8 @@ begin
     case nodeName of
       'Title':
         book.MetaData.Title := s;
+      'Subject':
+        book.MetaData.Subject := s;
       'Author':
         book.MetaData.CreatedBy := s;
       'LastAuthor':
@@ -2721,6 +2723,7 @@ const
   LE = LineEnding;
 var
   sTitle: String;
+  sSubject: String;
   sAuthor: String;
   sLastAuthor: String;
   sDateCreated: String;
@@ -2743,6 +2746,11 @@ begin
     sTitle := '<Title>' + book.MetaData.Title + '</Title>' + LE + INDENT2
   else
     sTitle := '';
+
+  if book.MetaData.Subject <> '' then
+    sSubject := '<Subject>' + book.MetaData.Subject + '</Subject>' + LE + INDENT2
+  else
+    sSubject := '';
 
   if book.MetaData.CreatedBy <> '' then
     sAuthor := '<Author>' + book.MetaData.CreatedBy + '</Author>' + LE + INDENT2
@@ -2773,6 +2781,7 @@ begin
   AppendToStream(AStream, INDENT1 +
     '<DocumentProperties xmlns="urn:schemas-microsoft-com:office:office">' + LE + INDENT2 +
       sTitle +
+      sSubject +
       sAuthor +
       sLastAuthor +
       sDateCreated +

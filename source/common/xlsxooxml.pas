@@ -2716,6 +2716,8 @@ begin
     case nodeName of
       'dc:title':
         book.MetaData.Title := s;
+      'dc:subject':
+        book.MetaData.Subject := s;
       'dc:creator':
         book.MetaData.CreatedBy := s;
       'cp:lastModifiedBy':
@@ -6196,6 +6198,10 @@ begin
   if book.MetaData.Title <> '' then
     AppendToStream(AStream, Format(
       '<dc:title>%s</dc:title>', [UTF8TextToXMLText(book.MetaData.Title)]));
+
+  if book.MetaData.Subject <> '' then
+    AppendToStream(AStream, Format(
+      '<dc:subject>%s</dc:subject>', [UTF8TextToXMLText(book.Metadata.Subject)]));
 
   if book.MetaData.CreatedBy <> '' then
     AppendToStream(AStream, Format(

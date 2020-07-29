@@ -66,6 +66,7 @@ begin
     book.MetaData.DateLastModified := Now();
     book.MetaData.LastModifiedBy := 'Dagobert Duck';
     book.MetaData.Title := 'Test of metadata äöü';
+    book.Metadata.Subject := 'FPSpreadsheet demos';
     book.MetaData.Comments.Add('This is a test of spreadsheet metadata.');
     book.MetaData.Comments.Add('Assign the author to the field CreatedBy.');
     book.MetaData.Comments.Add('Assign the creation date to the field CreatedAt.');
@@ -93,6 +94,7 @@ begin
     WriteLn('Modified by        : ', book.MetaData.LastModifiedBy);
     WriteLn('Date last modified : ', DateTimeToStr(book.MetaData.DateLastModified));
     WriteLn('Title              : ', book.MetaData.Title);
+    WriteLn('Subject            : ', book.MetaData.Subject);
     WriteLn('Keywords           : ', book.MetaData.Keywords.CommaText);
     WriteLn('Comments: ');
     WriteLn(book.MetaData.Comments.Text);

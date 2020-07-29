@@ -973,6 +973,7 @@ type
     FDateLastModified: TDateTime;
     FLastModifiedBy: String;
     FTitle: String;
+    FSubject: String;
     FComments: TStrings;
     FKeywords: TStrings;
   public
@@ -983,6 +984,7 @@ type
     property LastModifiedBy: String read FLastModifiedBy write FLastModifiedBy;
     property DateCreated: TDateTime read FDateCreated write FDateCreated;
     property DateLastModified: TDatetime read FDateLastModified write FDateLastModified;
+    property Subject: String read FSubject write FSubject;
     property Title: String read FTitle write FTitle;
     property Comments: TStrings read FComments write FComments;
     property Keywords: TStrings read FKeywords write FKeywords;
@@ -1208,7 +1210,8 @@ end;
 
 function TsMetaData.IsEmpty: Boolean;
 begin
-  Result := (FCreatedBy = '') and (FLastModifiedBy = '') and (FTitle = '') and
+  Result := (FCreatedBy = '') and (FLastModifiedBy = '') and
+    (FTitle = '') and (FSubject = '') and
     (FComments.Count = 0) and (FKeywords.Count = 0) and
     (FDateCreated = 0) and (FDateLastModified = 0);
 end;
