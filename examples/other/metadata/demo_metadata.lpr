@@ -63,6 +63,7 @@ begin
   book := TsWorkbook.Create;
   try
     book.MetaData.CreatedBy := 'Donald Duck';
+    book.MetaData.Authors.Add('Donald Duck II');
     book.MetaData.DateCreated := EncodeDate(2020, 1, 1) + EncodeTime(12, 30, 40, 20);
     book.MetaData.DateLastModified := Now();
     book.MetaData.LastModifiedBy := 'Dagobert Duck';
@@ -71,7 +72,7 @@ begin
     book.MetaData.Comments.Add('This is a test of spreadsheet metadata.');
     book.MetaData.Comments.Add('Assign the author to the field CreatedBy.');
     book.MetaData.Comments.Add('Assign the creation date to the field CreatedAt.');
-    book.MetaData.Keywords.Add('Test');
+    book.MetaData.Keywords.Add('Test1,Test2');
     book.MetaData.Keywords.Add('FPSpreadsheet');
     book.MetaData.AddCustom('Comparny', 'Disney');
     book.MetaData.AddCustom('Status', 'finished');

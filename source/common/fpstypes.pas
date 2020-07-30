@@ -968,27 +968,30 @@ type
   {@@ Meta data for the workbook}
   TsMetaData = class
   private
-    FCreatedBy: String;
     FDateCreated: TDateTime;
     FDateLastModified: TDateTime;
     FLastModifiedBy: String;
     FTitle: String;
     FSubject: String;
+    FAuthors: TStrings;
     FComments: TStrings;
     FKeywords: TStrings;
     FCustom: TStrings;
+    function GetCreatedBy: String;
+    procedure SetCreatedBy(AValue: String);
   public
     constructor Create;
     destructor Destroy; override;
     function AddCustom(AName, AValue: String): Integer;
     procedure Clear;
     function IsEmpty: Boolean;
-    property CreatedBy: String read FCreatedBy write FCreatedBy;
+    property CreatedBy: String read GetCreatedBy write SetCreatedBy;
     property LastModifiedBy: String read FLastModifiedBy write FLastModifiedBy;
     property DateCreated: TDateTime read FDateCreated write FDateCreated;
     property DateLastModified: TDatetime read FDateLastModified write FDateLastModified;
     property Subject: String read FSubject write FSubject;
     property Title: String read FTitle write FTitle;
+    property Authors: TStrings read FAuthors write FAuthors;
     property Comments: TStrings read FComments write FComments;
     property Custom: TStrings read FCustom write FCustom;
     property Keywords: TStrings read FKeywords write FKeywords;
@@ -1201,6 +1204,9 @@ end;
 constructor TsMetaData.Create;
 begin
   inherited;
+  FAuthors := TStringList.Create;
+  FAuthors.StrictDelimiter := true;
+  FAuthors.Delimiter := ';';
   FComments := TStringList.Create;
   FKeywords := TStringList.Create;
   FCustom := TStringList.Create;
@@ -1208,6 +1214,7 @@ end;
 
 destructor TsMetaData.Destroy;
 begin
+  FAuthors.Free;
   FComments.Free;
   FKeywords.Free;
   FCustom.Free;
@@ -1218,10 +1225,10 @@ procedure TsMetaData.Clear;
 begin
   FTitle := '';
   FSubject := '';
-  FCreatedBy := '';
   FLastModifiedBy := '';
   FDateCreated := 0;
   FDateLastModified := 0;
+  FAuthors.Clear;
   FComments.Clear;
   FKeywords.Clear;
   FCustom.Clear;
@@ -1236,12 +1243,23 @@ begin
     Result := FCustom.Add(AName + '=' + AValue);
 end;
 
+function TsMetaData.GetCreatedBy: String;
+begin
+  Result := FAuthors.DelimitedText;
+end;
+
 function TsMetaData.IsEmpty: Boolean;
 begin
-  Result := (FCreatedBy = '') and (FLastModifiedBy = '') and
-    (FTitle = '') and (FSubject = '') and
-    (FComments.Count = 0) and (FKeywords.Count = 0) and (FCustom.Count = 0) and
-    (FDateCreated = 0) and (FDateLastModified = 0);
+  Result := (FLastModifiedBy = '') and (FTitle = '') and (FSubject = '') and
+    (FAuthors.Count = 0) and (FComments.Count = 0) and (FKeywords.Count = 0) and
+    (FCustom.Count = 0) and (FDateCreated = 0) and (FDateLastModified = 0);
+end;
+
+{ Provide initial author. In case of multiple authors, separate the names by
+  semicolons. }
+procedure TsMetaData.SetCreatedBy(AValue: String);
+begin
+  FAuthors.DelimitedText := AValue;
 end;
 
 

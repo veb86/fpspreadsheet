@@ -1984,6 +1984,9 @@ begin
       'meta:keyword':
         if s <> '' then
           book.MetaData.KeyWords.Add(s);
+      '<dc:creator>':
+        if s <> '' then
+          book.MetaData.LastModifiedBy := s;
       'dc:date':
         if s <> '' then
           book.MetaData.DateLastModified := ISO8601StrToDateTime(s);
@@ -5887,6 +5890,10 @@ begin
   if book.Metadata.CreatedBy <> '' then
     AppendToStream(FSMeta, Format(
         '<meta:initial-creator>%s</meta:initial-creator>', [book.MetaData.CreatedBy]));
+
+  if book.MetaData.LastModifiedBy <> '' then
+    AppendToStream(FSMeta, Format(
+        '<dc:creator>%s</dc:creator>', [book.Metadata.LastMofifiedBy]));
 
   if book.MetaData.DateCreated > 0 then
   begin
