@@ -5893,7 +5893,7 @@ begin
 
   if book.MetaData.LastModifiedBy <> '' then
     AppendToStream(FSMeta, Format(
-        '<dc:creator>%s</dc:creator>', [book.Metadata.LastMofifiedBy]));
+        '<dc:creator>%s</dc:creator>', [book.Metadata.LastModifiedBy]));
 
   if book.MetaData.DateCreated > 0 then
   begin
