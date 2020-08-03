@@ -14,7 +14,8 @@ var
   worksheet: TsWorksheet;
   s: String;
   searchParams: TsSearchParams;
-  RowFound, ColFound: Cardinal;
+  rowFound, colFound: Cardinal;
+  worksheetFound: TsWorksheet;
 
 begin
   workbook := TsWorkbook.Create;
@@ -36,10 +37,12 @@ begin
 
     // Create search engine and execute search
     with TsSearchEngine.Create(workbook) do begin
-      if FindFirst(searchParams, worksheet, RowFound, ColFound) then begin
-        WriteLn('First "', searchparams.SearchText, '" found in cell ', GetCellString(RowFound, ColFound));
-        while FindNext(searchParams, worksheet, RowFound, ColFound) do
-          WriteLn('Next "', searchParams.SearchText, '" found in cell ', GetCellString(RowFound, ColFound));
+      if FindFirst(searchParams, worksheetFound, rowFound, colFound) then begin
+        WriteLn('First "', searchparams.SearchText, '" found in cell ',
+          GetCellString(rowFound, colFound), ' of worksheet ', worksheetFound.Name);
+        while FindNext(searchParams, worksheetFound, rowFound, colFound) do
+          WriteLn('Next "', searchParams.SearchText, '" found in cell ',
+            GetCellString(rowFound, colFound), ' of worksheet ', worksheetFound.Name);
       end;
       Free;
     end;
@@ -47,18 +50,24 @@ begin
     // Now search in comments
     Include(searchparams.Options, soSearchInComment);
     with TsSearchEngine.Create(workbook) do begin
-      if FindFirst(searchParams, worksheet, RowFound, ColFound) then begin
-        WriteLn('First "', searchparams.SearchText, '" found in comment of cell ', GetCellString(RowFound, ColFound));
-        while FindNext(searchParams, worksheet, RowFound, ColFound) do
-          WriteLn('Next "', searchParams.SearchText, '" found in comment of cell ', GetCellString(RowFound, ColFound));
+      if FindFirst(searchParams, worksheetFound, rowFound, colFound) then begin
+        WriteLn('First "', searchparams.SearchText, '" found in comment of cell ',
+          GetCellString(rowFound, colFound), ' of worksheet ', worksheetFound.Name);
+        while FindNext(searchParams, worksheetFound, rowFound, colFound) do
+          WriteLn('Next "', searchParams.SearchText, '" found in comment of cell ',
+            GetCellString(rowFound, colFound), ' of worksheet ', worksheetFound.Name);
       end;
       Free;
     end;
 
-    ReadLn;
-
   finally
     workbook.Free;
   end;
+
+  {$IFDEF MSWINDOWS}
+  WriteLn;
+  WriteLn('Press ENTER to quit...');
+  ReadLn;
+  {$ENDIF}
 end.
 
