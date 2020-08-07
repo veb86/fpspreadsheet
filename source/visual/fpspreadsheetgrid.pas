@@ -678,8 +678,10 @@ type
 
     {@@ inherited from ancestors}
     property Align;
+(*
     {@@ inherited from ancestors}
     property AlternateColor;
+*)
     {@@ inherited from ancestors}
     property Anchors;
     {@@ inherited from ancestors}
