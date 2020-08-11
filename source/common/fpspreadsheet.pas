@@ -6389,6 +6389,9 @@ begin
 
   // Clear error log
   ClearErrorList;
+
+  // Clear metadata
+  FMetaData.Clear;
 end;
 
 
