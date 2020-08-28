@@ -5183,7 +5183,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.MoveSelection;
 var
-  sel: TsCellRangeArray;
+  sel: TsCellRangeArray = nil;
   {$IFNDEF FPS_NO_GRID_MULTISELECT}
   i: Integer;
   {$ENDIF}

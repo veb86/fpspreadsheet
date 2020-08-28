@@ -1042,7 +1042,7 @@ end;                 *)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.ExecutePendingOperation;
 var
-  destSelection: TsCellRangeArray;
+  destSelection: TsCellRangeArray = nil;
   srcCell, destCell: PCell;    // Pointers to source and destination cells
   i, j, k: Cardinal;
   ofsRow, ofsCol: LongInt;
@@ -4261,7 +4261,6 @@ var
   embObj: TsEmbeddedObj;
   so: TsSheetOption;
   sp: TsWorksheetProtection;
-  cf: TsConditionalFormat;
 begin
   if ASheet = nil then
   begin

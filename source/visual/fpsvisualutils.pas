@@ -448,7 +448,11 @@ begin
              break;
            end;
       else
+          {$IF FPC_FullVersion >= 30200}
+           s := s + UnicodeToUTF8(UTF8CodePointToUnicode(FPtr, charLen));
+          {$ELSE}
            s := s + UnicodeToUTF8(UTF8CharacterToUnicode(FPtr, charLen));
+          {$IFEND}
            if FCharIndex = FCharIndexOfNextFont then begin
              DrawText(x, y, s, ALineHeight);
              s := '';
@@ -585,7 +589,11 @@ begin
         P := PChar(s);
         while (P^ <> #0) do
         begin
+          {$IF FPC_FullVersion >= 30200}
+          ch := UnicodeToUTF8(UTF8CodePointToUnicode(P, charLen));
+          {$ELSE}
           ch := UnicodeToUTF8(UTF8CharacterToUnicode(P, charLen));
+          {$IFEND}
           ALineHeight := FCanvas.TextHeight(ch);
           Pt := GetTextPt(x, y, ALineHeight);
           w := FCanvas.TextWidth(ch);
@@ -912,7 +920,11 @@ begin
                tmpWidth := 0;
              end;
              UpdateFont(FCharIndex, FRtpIndex, FCharIndexOfNextFont, FFontHeight, FFontPos);
+             {$IF FPC_FullVersion >= 30200}
+             ch := UnicodeToUTF8(UTF8CodepointToUnicode(FPtr, charLen));
+             {$ELSE}
              ch := UnicodeToUTF8(UTF8CharacterToUnicode(FPtr, charLen));
+             {$IFEND}
              part := part + ch;
              if FTextRotation = rtStacked then
              begin

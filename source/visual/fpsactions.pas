@@ -116,7 +116,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     procedure ExecuteTarget(Target: TObject); override;
-    procedure UpdateTarget(Target: TObject); override;
+    procedure UpdateTarget({%H-}Target: TObject); override;
   published
     property Zoom: Integer read FZoom write SetZoom default 100;
   end;
