@@ -291,6 +291,7 @@ type
     procedure DrawRow(aRow: Integer); override;
     procedure DrawSelection;
     procedure DrawTextInCell(ACol, ARow: Integer; ARect: TRect; AState: TGridDrawState); override;
+    procedure EditorDoGetValue; override;
     procedure ExecuteHyperlink;
     procedure GenericPenChangeHandler(Sender: TObject);
     function GetCellHeight(ACol, ARow: Integer): Integer;
@@ -3372,6 +3373,7 @@ var
   cell: PCell;
   msg: String;
 begin
+  {
   if (not EditorShowing) and FEditing then
   begin
     if not ValidFormula(FEditText, msg) then
@@ -3396,6 +3398,32 @@ begin
   end;
   FEditing := false;
   FEnhEditMode := false;
+  }
+  inherited;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Is called when editing is complete; checks whether input is valid already
+  have been done.
+  The method must transfer the edited cell text to the worksheet cell
+-------------------------------------------------------------------------------}
+procedure TsCustomWorksheetGrid.EditorDoGetValue;
+var
+  cell: Pcell;
+begin
+  if (Editor<>nil) and Editor.Visible and (FOldEditorText <> FEditText) then
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
+    if Worksheet.IsMerged(cell) then
+      cell := Worksheet.FindMergeBase(cell);
+    if (FEditText <> '') and (FEditText[1] = '=') then
+      Worksheet.WriteFormula(cell, Copy(FEditText, 2, Length(FEditText)), true)
+    else
+      Worksheet.WriteCellValueAsString(cell, FEditText);
+    FEditText := '';
+    FOldEditorText := '';
+  end;
+  inherited;
 end;
 
 function TsCustomWorksheetGrid.EditorByStyle(Style: TColumnButtonStyle): TWinControl;
@@ -5395,7 +5423,6 @@ var
   err: String;
 begin
   // Checking validity of formula in current cell
-
   if Assigned(Worksheet) and EditorMode then begin
     if not ValidFormula(FEditText, err) then begin
       FGridState := gsNormal;
@@ -5404,7 +5431,6 @@ begin
       exit;
     end;
   end;
-
 
   Result := inherited;
 
