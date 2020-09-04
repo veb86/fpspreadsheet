@@ -409,7 +409,6 @@ type
     procedure DeleteCol(AGridCol: Integer); reintroduce;
     procedure DeleteRow(AGridRow: Integer); reintroduce;
     procedure DragDrop(Source: TObject; X, Y: Integer); override;
-    procedure EditingDone; override;
     function  EditorByStyle(Style: TColumnButtonStyle): TWinControl; override;
     procedure EndUpdate(ARefresh: Boolean = true);
     function GetGridCol(ASheetCol: Cardinal): Integer; inline;
@@ -3360,46 +3359,6 @@ begin
 
   InternalDrawTextInCell(txt, ARect, horAlign, vertAlign, txtRot, wrapped,
     fntIndex, numfmtColor, lCell^.RichTextParams, RTL);
-end;
-
-{@@ ----------------------------------------------------------------------------
-  This procedure is called when editing of a cell is completed. It determines
-  the worksheet cell and writes the text into the worksheet. Tries to keep the
-  format of the cell, but if it is a new cell, or the content type has changed,
-  tries to figure out the content type (number, date/time, text).
--------------------------------------------------------------------------------}
-procedure TsCustomWorksheetGrid.EditingDone;
-var
-  cell: PCell;
-  msg: String;
-begin
-  {
-  if (not EditorShowing) and FEditing then
-  begin
-    if not ValidFormula(FEditText, msg) then
-    begin
-      FEditing := false;
-      exit;
-    end;
-
-    if FOldEditorText <> FEditText then
-    begin
-      cell := Worksheet.GetCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
-      if Worksheet.IsMerged(cell) then
-        cell := Worksheet.FindMergeBase(cell);
-      if (FEditText <> '') and (FEditText[1] = '=') then
-        Worksheet.WriteFormula(cell, Copy(FEditText, 2, Length(FEditText)), true)
-      else
-        Worksheet.WriteCellValueAsString(cell, FEditText);
-      FEditText := '';
-      FOldEditorText := '';
-    end;
-    inherited EditingDone;
-  end;
-  FEditing := false;
-  FEnhEditMode := false;
-  }
-  inherited;
 end;
 
 {@@ ----------------------------------------------------------------------------
