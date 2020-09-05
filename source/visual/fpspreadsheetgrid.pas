@@ -3370,7 +3370,8 @@ procedure TsCustomWorksheetGrid.EditorDoGetValue;
 var
   cell: Pcell;
 begin
-  if (Editor<>nil) and Editor.Visible and (FOldEditorText <> FEditText) then
+  inherited;
+  if (FOldEditorText <> FEditText) then
   begin
     cell := Worksheet.GetCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
     if Worksheet.IsMerged(cell) then
@@ -3382,7 +3383,6 @@ begin
     FEditText := '';
     FOldEditorText := '';
   end;
-  inherited;
 end;
 
 function TsCustomWorksheetGrid.EditorByStyle(Style: TColumnButtonStyle): TWinControl;
