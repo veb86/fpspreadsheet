@@ -2165,7 +2165,6 @@ begin
   Result := StringResult(resStr);
 end;
 
-
 procedure fpsCOLUMN(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
 { COLUMN( [reference] )
@@ -2201,6 +2200,24 @@ begin
   if Length(Args) > 1 then Result.ResString := Result.ResString + HYPERLINK_SEPARATOR + ArgToString(Args[1]);
   Result.ResultType := rtHyperlink;
 end;
+
+procedure fpsINDIRECT(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
+{ INDIRECT(string_reference, [ref_style])
+  returns the reference to a cell based on its string representation
+  "string_reference": textual representation of a cell reference.
+  "ref_style": TRUE (default) ndicates that string_reference will be interpreted
+  as an A1-style reference. FALSE indicates that string_reference will be
+  interpreted as an R1C1-style reference.
+
+  NOTE: ref_style and mixing of A1 and R1C1 notation is not supported. }
+begin
+  Result := ErrorResult(errArgError);
+  if Length(Args) = 0 then
+    exit;
+  Result := Args[0];
+end;
+
 
 procedure fpsMATCH(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
@@ -2469,6 +2486,7 @@ begin
     AddFunction(cat, 'ADDRESS',   'S', 'IIibs',INT_EXCEL_SHEET_FUNC_ADDRESS,    @fpsADDRESS);
     AddFunction(cat, 'COLUMN',    'I', 'r',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
     AddFunction(cat, 'HYPERLINK', 'S', 'Ss',   INT_EXCEL_SHEET_FUNC_HYPERLINK,  @fpsHYPERLINK);
+    AddFunction(cat, 'INDIRECT',  'C', 'Sb',   INT_EXCEL_SHEET_FUNC_INDIRECT,   @fpsINDIRECT);
     AddFunction(cat, 'MATCH',     'I', 'SRi',  INT_EXCEL_SHEET_FUNC_MATCH,      @fpsMATCH);
     AddFunction(cat, 'ROW',       'I', 'r',    INT_EXCEL_SHEET_FUNC_ROW,        @fpsROW);
 
