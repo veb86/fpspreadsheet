@@ -2115,6 +2115,57 @@ end;
 {    Builtin lookup/reference functions                                        }
 {------------------------------------------------------------------------------}
 
+procedure fpsADDRESS(var Result: TsExpressionResult;
+  const ARgs: TsExprParameterArray);
+{ ADDRESS(row, column, [ref_type], [ref_style], [sheet_name] )
+  Returns a text representation of a cell address.
+  "row" and "col": row and column indices, 1-based.
+  "ref_type" is the type of reference to use: 1=absolute, 2=rel col, abs row,
+    3= abs col, rel row, 4=relative; if omitted, 1 (absolute) is assumed.
+  "ref_style" if true (default) means: address in A1 dialect, otherwise in R1C1.
+  "sheet_name": name of the worksheet. Note, when sheet_name is used the
+    address is presented in Excel dialects only. }
+var
+  c, r: Integer;
+  flags: TsRelFlags;
+  sheet: String;
+  resStr: String;
+  A1Dialect: Boolean;
+begin
+  Result := ErrorResult(errArgError);
+  if Length(Args) < 2 then
+    exit;
+  r := ArgToInt(Args[0]) - 1;
+  c := ArgToInt(Args[1]) - 1;
+
+  flags := [];
+  if Length(Args) > 2 then
+    case ArgToInt(Args[2]) of
+      1: ;
+      2: flags := [rfRelCol];
+      3: flags := [rfRelRow];
+      4: flags := [rfRelCol, rfRelRow];
+    end;
+
+  A1Dialect := true;
+  if Length(Args) > 3 then
+    A1Dialect := ArgToBoolean(Args[3]);
+
+  sheet := '';
+  if Length(Args) > 4 then
+    sheet := ArgToString(Args[4]);
+
+  if A1Dialect then
+    resStr := GetCellString(r, c, flags)
+  else
+    resStr := GetCellString_R1C1(r, c, flags);
+
+  if sheet <> '' then resStr := sheet + '!' + resStr;
+
+  Result := StringResult(resStr);
+end;
+
+
 procedure fpsCOLUMN(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
 { COLUMN( [reference] )
@@ -2415,6 +2466,7 @@ begin
 
     // Lookup / reference functions
     cat := bcLookup;
+    AddFunction(cat, 'ADDRESS',   'S', 'IIibs',INT_EXCEL_SHEET_FUNC_ADDRESS,    @fpsADDRESS);
     AddFunction(cat, 'COLUMN',    'I', 'r',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
     AddFunction(cat, 'HYPERLINK', 'S', 'Ss',   INT_EXCEL_SHEET_FUNC_HYPERLINK,  @fpsHYPERLINK);
     AddFunction(cat, 'MATCH',     'I', 'SRi',  INT_EXCEL_SHEET_FUNC_MATCH,      @fpsMATCH);
