@@ -100,7 +100,8 @@ type
       rtFloat       : (ResFloat       : TsExprFloat);
       rtDateTime    : (ResDateTime    : TDatetime);
       rtCell        : (ResRow, ResCol : Cardinal;
-                       ResSheetIndex  : Integer);
+                       ResSheetIndex  : Integer;
+                       ResSheetName   : String[32]);
       rtCellRange   : (ResCellRange   : TsCellRange3D);
       rtHyperlink   : ();
       rtString      : ();
@@ -3936,7 +3937,8 @@ begin
     n := Length(FArgumentNodes);
   Result := ANext;
   for i:=0 to High(FArgumentNodes) do
-    Result := FArgumentNodes[i].AsRPNItem(Result);
+    if FArgumentNodes[i] <> nil then
+      Result := FArgumentNodes[i].AsRPNItem(Result);
   Result := RPNFunc(FID.Name, n, Result);
 end;
 
@@ -3962,7 +3964,8 @@ var
   i : Integer;
 begin
   for i := 0 to Length(FArgumentParams)-1 do
-    FArgumentNodes[i].GetNodeValue(FArgumentParams[i]);
+    if FArgumentNodes[i] <> nil then
+      FArgumentNodes[i].GetNodeValue(FArgumentParams[i]);
 end;
 
 procedure TsFunctionExprNode.Check;
@@ -4006,8 +4009,9 @@ function TsFunctionExprNode.Has3DLink: Boolean;
 var
   i : Integer;
 begin
-  for i := 0 to Length(FArgumentParams)-1 do
-    if FArgumentNodes[i].Has3DLink then exit(true);
+  i := Length(FArgumentNodes);
+  for i := 0 to High(FArgumentParams) do
+    if (FArgumentNodes[i] <> nil) and FArgumentNodes[i].Has3DLink then exit(true);
   Result := false;
 end;
 
@@ -4017,7 +4021,8 @@ var
   i: Integer;
 begin
   for i:=0 to High(FArgumentParams) do
-    FArgumentNodes[i].IterateNodes(AProc, AData1, AData2, MustRebuildFormulas);
+    if FArgumentNodes[i] <> nil then
+      FArgumentNodes[i].IterateNodes(AProc, AData1, AData2, MustRebuildFormulas);
 end;
 
 
@@ -4205,7 +4210,18 @@ begin
   AResult.ResultType := rtCell;
   AResult.ResRow := GetRow;
   AResult.ResCol := GetCol;
-  AResult.Worksheet := GetSheet;
+  sheet := GetSheet as TsWorksheet;
+  AResult.Worksheet := sheet;
+  {
+  if sheet = FWorksheet then
+  begin
+    AResult.ResSheetName := sheet.Name;
+    AResult.ResSheetIndex := -1;
+  end else
+  begin}
+    AResult.ResSheetname := sheet.Name;
+    AResult.ResSheetIndex := sheet.Workbook.GetWorkSheetIndex(sheet);
+//  end;
 end;
 
 function TsCellExprNode.GetQuotedSheetName: String;
@@ -4795,9 +4811,21 @@ begin
 end;
 
 function CellResult(AValue: String): TsExpressionResult;
+var
+  p: Integer;
 begin
   Result.ResultType := rtCell;
-  ParseCellString(AValue, Result.ResRow, Result.ResCol);
+  p := pos('!', AValue);
+  if p = 0 then
+  begin
+    ParseCellString(AValue, Result.ResRow, Result.ResCol);
+    Result.ResSheetName := '';
+  end else
+  begin
+    Result.ResSheetName := Copy(AValue, 1, p-1);
+    ParseCellString(Copy(AValue, p+1, MaxInt), Result.ResRow, Result.ResCol);
+    Result.Worksheet := nil;  // this signals that the worksheet needs still to be determiend
+  end;
 end;
 
 function CellResult(ACellRow, ACellCol: Cardinal): TsExpressionResult;

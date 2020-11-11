@@ -1370,6 +1370,15 @@ begin
                     end;
       rtBoolean   : WriteBoolValue(lCell, res.ResBoolean);
       rtCell      : begin
+                      if res.Worksheet = nil then
+                      begin
+                        if res.ResSheetName = '' then
+                          res.Worksheet := self
+                        else
+                        res.Worksheet := Workbook.GetWorksheetByName(res.ResSheetName);
+                      end else
+                      if res.ResSheetName <> '' then
+                        res.Worksheet := Workbook.GetWorksheetByName(res.ResSheetname);
                       lCellRef := (res.Worksheet as TsWorksheet).FindCell(res.ResRow, res.ResCol);
                       if lCellRef <> nil then
                         case lCellRef^.ContentType of

@@ -2148,7 +2148,7 @@ begin
     end;
 
   A1Dialect := true;
-  if Length(Args) > 3 then
+  if (Length(Args) > 3) and (Args[3].ResultType <> rtMissingArg) then
     A1Dialect := ArgToBoolean(Args[3]);
 
   sheet := '';
@@ -2162,6 +2162,7 @@ begin
 
   if sheet <> '' then resStr := sheet + '!' + resStr;
 
+//  Result := CellResult(resStr);
   Result := StringResult(resStr);
 end;
 
@@ -2211,11 +2212,28 @@ procedure fpsINDIRECT(var Result: TsExpressionResult;
   interpreted as an R1C1-style reference.
 
   NOTE: ref_style and mixing of A1 and R1C1 notation is not supported. }
+var
+  sheet: TsWorksheet;
+  book: TsWorkbook;
+  addr: String;
 begin
   Result := ErrorResult(errArgError);
   if Length(Args) = 0 then
     exit;
-  Result := Args[0];
+  if (Args[0].ResultType = rtCell) then begin
+    if Args[0].ResSheetIndex = -1 then
+      sheet := TsWorksheet(Args[0].Worksheet)
+    else
+    begin
+      book := TsWorksheet(Args[0].Worksheet).Workbook;
+      sheet := book.GetWorksheetByIndex(Args[0].ResSheetIndex);
+    end;
+    addr := sheet.ReadAsText(Args[0].ResRow, Args[0].ResCol);
+    Result := CellResult(addr);
+    Result.Worksheet := sheet;
+  end else
+  if (Args[0].ResultType = rtString) then
+    Result := CellResult(Args[0].ResString);
 end;
 
 

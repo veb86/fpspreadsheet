@@ -3347,9 +3347,48 @@
 
 
 {------------------------------------------------------------------------------}
-{                        Lookup / reference functions                           }
+{                        Lookup / reference functions                          }
 {------------------------------------------------------------------------------}
-            {
+
+  // ADDRESS
+
+  inc(Row);
+  formula := 'ADDRESS(1,1)';
+  MyWorksheet.WriteText(Row, 0, formula);
+{
+  if UseRPNFormula then
+    MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+      RPNInteger(1,
+      RPNInteger(1,
+      RPNFunc('ADDRESS', nil)))))             // ---> does not work...
+  else
+  }
+    MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('$A$1');
+
+  inc(Row);
+  formula := 'ADDRESS(1,1,4)';
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('A1');
+
+  inc(Row);
+  formula := 'ADDRESS(1,1,,,"Sheet2")';
+  MyWorksheet.WriteText(Row, 0, formula);
+  Myworksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('Sheet2!$A$1');
+
+  inc(Row);
+  formula := 'ADDRESS(1,1,,FALSE,"Sheet2")';
+  MyWorksheet.WriteText(Row, 0, formula);
+  Myworksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('Sheet2!R1C1');
+
+{
   // COLUMN
   MyWorksheet.WriteText(Row, 0, 'COLUMN(A1)');
   MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
