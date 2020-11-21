@@ -5877,23 +5877,23 @@ begin
   begin
     s := book.Metadata.Title;
     AppendToStream(FSMeta, Format(
-        '<dc:title>%s</dc:title>', [s]));
+        '<dc:title>%s</dc:title>', [UTF8TextToXMLText(s)]));
   end;
 
   if book.Metadata.Subject <> '' then
   begin
     s := book.Metadata.Subject;
     AppendToStream(FSMeta, Format(
-        '<dc:subject>%s</dc:subject>', [s]));
+        '<dc:subject>%s</dc:subject>', [UTF8TextToXMLText(s)]));
   end;
 
   if book.Metadata.CreatedBy <> '' then
     AppendToStream(FSMeta, Format(
-        '<meta:initial-creator>%s</meta:initial-creator>', [book.MetaData.CreatedBy]));
+        '<meta:initial-creator>%s</meta:initial-creator>', [UTF8TextToXMLText(book.MetaData.CreatedBy)]));
 
   if book.MetaData.LastModifiedBy <> '' then
     AppendToStream(FSMeta, Format(
-        '<dc:creator>%s</dc:creator>', [book.Metadata.LastModifiedBy]));
+        '<dc:creator>%s</dc:creator>', [UTF8TextToXMLText(book.Metadata.LastModifiedBy)]));
 
   if book.MetaData.DateCreated > 0 then
   begin
@@ -5914,7 +5914,7 @@ begin
   if book.MetaData.Keywords.Count > 0 then
     for i := 0 to book.MetaData.Keywords.Count-1 do
       AppendToStream(FSMeta, Format(
-        '<meta:keyword>%s</meta:keyword>', [book.MetaData.Keywords[i]]));
+        '<meta:keyword>%s</meta:keyword>', [UTF8TextToXMLText(book.MetaData.Keywords[i])]));
 
   if book.MetaData.Comments.Count > 0 then
   begin
@@ -5922,7 +5922,7 @@ begin
     for i := 1 to book.MetaData.Comments.Count-1 do
       s := s + #10 + book.MetaData.Comments[i];
     AppendToStream(FSMeta, Format(
-        '<dc:description>%s</dc:description>', [s]));
+        '<dc:description>%s</dc:description>', [UTF8TextToXMLText(s)]));
   end;
 
   if book.MetaData.Custom.Count > 0 then
@@ -5931,7 +5931,7 @@ begin
       AppendToStream(FSMeta, Format(
         '<meta:user-defined meta:name="%s">%s</meta:user-defined>', [
           book.Metadata.Custom.Names[i],
-          book.Metadata.Custom.ValueFromIndex[i]
+          UTF8TextToXMLText(book.Metadata.Custom.ValueFromIndex[i])
         ]));
   end;
 

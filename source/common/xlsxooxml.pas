@@ -6288,7 +6288,7 @@ begin
   begin
     s := book.MetaData.KeyWords.CommaText;
     AppendToStream(AStream, Format(
-      '<cp:keywords>%s</cp:keywords>', [s]));
+      '<cp:keywords>%s</cp:keywords>', [UTF8TextToXMLText(s)]));
   end;
 
   if book.MetaData.Comments.Count > 0 then
@@ -6298,14 +6298,14 @@ begin
       Delete(s, Length(s), 1);
     s := StringReplace(s, LineEnding, '_x000d_', [rfReplaceAll]);
     AppendToStream(AStream, Format(
-      '<dc:description>%s</dc:description>', [s]));
+      '<dc:description>%s</dc:description>', [UTF8TextToXMLText(s)]));
   end;
 
   if book.MetaData.LastModifiedBy <> '' then
   begin
     s := book.MetaData.LastModifiedBy;
     AppendToStream(AStream, Format(
-      '<cp:lastModifiedBy>%s</cp:lastModifiedBy>', [s]));      // to do: check xml entities
+      '<cp:lastModifiedBy>%s</cp:lastModifiedBy>', [UTF8TextToXMLText(s)]));
   end;
 
   if book.MetaData.DateCreated > 0 then
@@ -6313,7 +6313,7 @@ begin
     dt := book.MetaData.DateCreated + GetLocalTimeOffset / MinsPerDay;
     s := FormatDateTime(ISO8601FormatExtendedUTC, dt);
     AppendToStream(AStream, Format(
-      '<dcterms:created xsi:type="dcterms:W3CDTF">%s</dcterms:created>', [s]));
+      '<dcterms:created xsi:type="dcterms:W3CDTF">%s</dcterms:created>', [UTF8TextToXMLText(s)]));
   end;
 
   if book.MetaData.DateLastModified >0 then

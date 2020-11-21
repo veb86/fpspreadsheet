@@ -2729,7 +2729,7 @@ begin
     AppendToStream(AStream, Format(INDENT2 +
       '<%0:s dt:dt="string">%1:s</%0:s>' + LF, [
       book.MetaData.Custom.Names[i],
-      book.MetaData.Custom.ValueFromIndex[i]
+      UTF8TextToXMLText(book.MetaData.Custom.ValueFromIndex[i])
     ]));
 
   AppendToStream(AStream, INDENT1 +
@@ -2795,22 +2795,22 @@ begin
   end;
 
   if book.MetaData.Title <> '' then
-    sTitle := '<Title>' + book.MetaData.Title + '</Title>' + LF + INDENT2
+    sTitle := '<Title>' + UTF8TextToXMLText(book.MetaData.Title) + '</Title>' + LF + INDENT2
   else
     sTitle := '';
 
   if book.MetaData.Subject <> '' then
-    sSubject := '<Subject>' + book.MetaData.Subject + '</Subject>' + LF + INDENT2
+    sSubject := '<Subject>' + UTF8TextToXMLText(book.MetaData.Subject) + '</Subject>' + LF + INDENT2
   else
     sSubject := '';
 
   if book.MetaData.CreatedBy <> '' then
-    sAuthor := '<Author>' + book.MetaData.CreatedBy + '</Author>' + LF + INDENT2
+    sAuthor := '<Author>' + UTF8TextToXMLText(book.MetaData.CreatedBy) + '</Author>' + LF + INDENT2
   else
     sAuthor := '';
 
   if book.MetaData.LastModifiedBy <> '' then
-    sLastAuthor := '<LastAuthor>' + book.MetaData.LastModifiedBy + '</LastAuthor>' + LF + INDENT2
+    sLastAuthor := '<LastAuthor>' + UTF8TextToXMLText(book.MetaData.LastModifiedBy) + '</LastAuthor>' + LF + INDENT2
   else
     sLastAuthor := '';
 
