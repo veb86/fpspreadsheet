@@ -887,12 +887,12 @@ procedure TsSpreadOOXMLReader.ReadCell(ANode: TDOMNode;
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
-  addr, s: String;
+  addr, s, typeStr: String;
   rowIndex, colIndex: Cardinal;
   cell: PCell;
   lCell: TCell;
   sharedFormulabase: TSharedFormulaData;
-  datanode, tnode: TDOMNode;
+  datanode, tnode, rnode: TDOMNode;
   dataStr: String;
   formulaStr: String;
   formula: PsFormula;
@@ -940,6 +940,9 @@ begin
     cell^.FormatIndex := 0;
   end;
 
+  // Get cell type
+  typeStr := GetAttrValue(ANode, 't');
+
   // get number format parameters
   numFmt := book.GetNumberFormat(fmt.NumberFormatIndex);
 
@@ -958,6 +961,15 @@ begin
       tnode := datanode.FirstChild;
       while Assigned(tnode) do begin
         nodename := tnode.NodeName;
+        if (nodename = 'r') and (typeStr = 'inlineStr') then begin
+          rnode := tnode.FirstChild;
+          while Assigned(rnode) do begin
+            nodename := rnode.NodeName;
+            if (nodename = 't') or (nodeName = 'x:t') then
+              dataStr := dataStr + GetNodeValue(rnode);
+            rnode := rnode.NextSibling;
+          end;
+        end else
         if (nodename = 't') or (nodeName = 'x:t') then
           dataStr := dataStr + GetNodeValue(tnode);
         tnode := tnode.NextSibling;
