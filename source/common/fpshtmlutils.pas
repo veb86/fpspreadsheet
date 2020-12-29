@@ -958,6 +958,15 @@ begin
     analyzer.Prefix := APrefix;
     analyzer.Exec;
     APlainText := analyzer.PlainText;
+
+    // HTML text has an error --> take the input text literally
+    if (AHtmlText <> '') and (APlainText = '') then
+    begin
+      APlainText := AHtmlText;
+      ARichTextParams := nil;
+      exit;
+    end;
+
     nrtp := Length(analyzer.RichTextParams);
     if nrtp > 0 then begin
       // Avoid rich-text parameters beyond text end.
