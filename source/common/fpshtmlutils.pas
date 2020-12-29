@@ -912,6 +912,8 @@ begin
                    (NoCaseTag = '</SUB>') or (NoCaseTag = '</SUP>') then ProcessFontRestore;
            'U': if (NoCaseTag = '</U>') then ProcessFontRestore;
          end;
+  else
+      FPlainText := FPlainText + ActualTag;
   end;
 end;
 
