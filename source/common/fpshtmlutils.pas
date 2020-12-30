@@ -624,6 +624,7 @@ type
     FPointSeparatorSettings: TFormatSettings;
     FPreserveSpaces: Boolean;
     FPrefix: String;
+    FHandled: Boolean;
     function AddFont(AFont: TsFont): Integer;
     procedure AddRichTextParam(AFont: TsFont; AHyperlinkIndex: Integer = -1);
     procedure ProcessFontRestore;
@@ -714,6 +715,7 @@ begin
     FRichTextParams[n].FontIndex := fntIndex;
     FRichTextParams[n].HyperlinkIndex := AHyperlinkIndex;
   end;
+  FHandled := true;
 end;
 
 procedure TsHTMLAnalyzer.ProcessFontRestore;
@@ -831,6 +833,7 @@ end;
 
 procedure TsHTMLAnalyzer.TagFoundHandler(NoCaseTag, ActualTag: String);
 begin
+  FHandled := false;
   case NoCaseTag[2] of
     'B': case NoCaseTag of
            '<B>'  : begin
@@ -860,7 +863,7 @@ begin
            FFontStack.Push(AddFont(FCurrFont));
            FAttrList.Parse(ActualTag);
            ReadFont(FCurrFont);
-           AddRichTextparam(FCurrFont);
+           AddRichTextParam(FCurrFont);
          end;
     'I': case NoCaseTag of
            '<I>'  : begin
@@ -912,9 +915,9 @@ begin
                    (NoCaseTag = '</SUB>') or (NoCaseTag = '</SUP>') then ProcessFontRestore;
            'U': if (NoCaseTag = '</U>') then ProcessFontRestore;
          end;
-  else
-      FPlainText := FPlainText + ActualTag;
   end;
+  if not FHandled then
+    FPlainText := FPlainText + ActualTag;
 end;
 
 procedure TsHTMLAnalyzer.TextFoundHandler(AText: String);
@@ -947,6 +950,8 @@ end;
 procedure HTMLToRichText(AWorkbook: TsBasicWorkbook; AFont: TsFont;
   const AHTMLText: String; out APlainText: String;
   out ARichTextParams: TsRichTextParams; APrefix: String = '');
+const
+  TERMINATION = '<end>';
 var
   analyzer: TsHTMLAnalyzer;
   j: Integer;
@@ -954,12 +959,14 @@ var
   nrtp: Integer;
 begin
   ARichTextParams := nil;
-  analyzer := TsHTMLAnalyzer.Create(AWorkbook as TsWorkbook, AFont, AHTMLText + '<end>');
+  analyzer := TsHTMLAnalyzer.Create(AWorkbook as TsWorkbook, AFont, AHTMLText + TERMINATION);
   try
     analyzer.PreserveSpaces := true;
     analyzer.Prefix := APrefix;
     analyzer.Exec;
     APlainText := analyzer.PlainText;
+    if pos(TERMINATION, APlainText) = Length(APlainText) - Length(TERMINATION) + 1 then
+      Setlength(APlainText, Length(APlainText) - Length(TERMINATION));
 
     // HTML text has an error --> take the input text literally
     if (AHtmlText <> '') and (APlainText = '') then
