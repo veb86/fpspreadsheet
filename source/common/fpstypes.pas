@@ -765,7 +765,7 @@ type
 //    FormulaValue: String;      // Formula for calculation of cell content
     case ContentType: TCellContentType of  // variant part must be at the end
       cctEmpty      : ();      // has no data at all
-      cctFormula    : ();      // FormulaValue is outside the variant record
+//      cctFormula    : ();      // FormulaValue is outside the variant record
       cctNumber     : (Numbervalue: Double);
       cctUTF8String : ();      // UTF8StringValue is outside the variant record
       cctDateTime   : (DateTimeValue: TDateTime);

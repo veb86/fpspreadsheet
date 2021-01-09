@@ -3164,7 +3164,7 @@ begin
     AFormula^.Col := ACell^.Col;
     AFormula^.Row := ACell^.Row;
 
-    ACell^.ContentType := cctFormula;
+//    ACell^.ContentType := cctFormula;
 
     ACell^.Flags := ACell^.Flags + [cfHasFormula];
     if (AFormula^.Parser <> nil) and AFormula^.Parser.Has3DLinks then
@@ -4857,7 +4857,7 @@ begin
   end;
 
   // Set formula flags in cell
-  ACell^.ContentType := cctFormula;
+//  ACell^.ContentType := cctFormula;
   ACell^.Flags := ACell^.Flags + [cfHasFormula];
 
   // Notify controls of changed cell
@@ -4914,7 +4914,7 @@ begin
   formula^.Parser.RPNFormula := ARPNFormula;
   formula^.Text := formula^.Parser.Expression[fdExcelA1];
   UseFormulaInCell(ACell, formula);
-  ACell^.ContentType := cctFormula;
+//  ACell^.ContentType := cctFormula;
 
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
