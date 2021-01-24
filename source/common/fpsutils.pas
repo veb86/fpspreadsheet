@@ -3160,6 +3160,7 @@ var
   hours, mins, days: integer;
   secs: Double;
   hrPos, minPos, secPos: integer;
+  dateStr, timeStr: String;
   ms: Double;
 begin
   Result := 0;
@@ -3171,6 +3172,7 @@ begin
   fs.LongTimeFormat := 'hh:nn:ss';
   fs.Timeseparator := ':';
 
+  // Check for universal time
   if s[Length(s)] = 'Z' then
   begin
     isUTC := true;
@@ -3181,15 +3183,20 @@ begin
   p := pos('T', s);
   if p > 0 then
   begin
-    s[p] := ' ';
+    dateStr := Copy(s, 1, p-1);
+    timeStr := Copy(s, p+1, maxInt);
     // Strip milliseconds?
-    p := Pos('.', s);
+    p := Pos('.', timeStr);
     if (p > 1) then begin
-      ms := StrToFloat('0' + Copy(s, p, MaxInt), fs) / SecsPerDay;
-      s := copy(s, 1, p-1);
+      ms := StrToFloat('0' + Copy(timeStr, p, MaxInt), fs) / SecsPerDay;
+      timeStr := copy(timeStr, 1, p-1);
     end else
       ms := 0;
-    Result := StrToDateTime(s, fs) + ms;
+    // Strip offset to UTC, we only want local time.
+    p := pos('+', timeStr);
+    if p = 0 then p := pos('-', timeStr);
+    if p > 0 then timeStr := copy(timeStr, 1, p-1);
+    Result := StrToDate(dateStr, fs) + StrToTime(timeStr, fs) + ms;
   end else
   begin
     p := pos('PT', s);
