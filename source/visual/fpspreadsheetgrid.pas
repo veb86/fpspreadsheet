@@ -5891,6 +5891,9 @@ var
   h: Integer;     // Row height, in pixels. Contains zoom factor.
   doCalcRowHeight: Boolean;
 begin
+  if not HandleAllocated then
+    exit;
+
   if ARow < FHeaderCount then
     exit;
 
