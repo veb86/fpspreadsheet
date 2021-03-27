@@ -46,15 +46,14 @@ end;
   FontList and creates an new entry if the font is not used so far. Returns the
   index of the font in the font list.
 
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AFontName   Name of the font
-  @param  AFontSize   Size of the font, in points
-  @param  AFontStyle  Set with font style attributes
-                      (don't use those of unit "graphics" !)
-  @param  AFontColor  RGB value of the font's color
-  @param  APosition   Specifies sub- or superscript text
-  @return Index of the font in the workbook's font list.
+  @param   ARow        The row of the cell
+  @param   ACol        The column of the cell
+  @param   AFontName   Name of the font
+  @param   AFontSize   Size of the font, in points
+  @param   AFontStyle  Set with font style attributes (don't use those of unit "graphics" !)
+  @param   AFontColor  RGB value of the font's color
+  @param   APosition   Specifies sub- or superscript text
+  @returns Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFont(ARow, ACol: Cardinal; const AFontName: String;
   AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor;
@@ -70,14 +69,13 @@ end;
   FontList and creates an new entry if the font is not used so far. Returns the
   index of the font in the font list.
 
-  @param  ACell       Pointer to the cell considered
-  @param  AFontName   Name of the font
-  @param  AFontSize   Size of the font, in points
-  @param  AFontStyle  Set with font style attributes
-                      (don't use those of unit "graphics" !)
-  @param  AFontColor  RGB value of the font's color
-  @param  APosition   Specified subscript or superscript text.
-  @return Index of the font in the workbook's font list.
+  @param   ACell       Pointer to the cell considered
+  @param   AFontName   Name of the font
+  @param   AFontSize   Size of the font, in points
+  @param   AFontStyle  Set with font style attributes (don't use those of unit "graphics" !)
+  @param   AFontColor  RGB value of the font's color
+  @param   APosition   Specified subscript or superscript text.
+  @returns Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFont(ACell: PCell; const AFontName: String;
   AFontSize: Single; AFontStyle: TsFontStyles; AFontColor: TsColor;
@@ -108,10 +106,10 @@ end;
   Applies a font to the formatting of a cell. The font is determined by its
   index in the workbook's font list:
 
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AFontIndex  Index of the font in the workbook's font list
-  @return Pointer to the cell
+  @param   ARow        The row of the cell
+  @param   ACol        The column of the cell
+  @param   AFontIndex  Index of the font in the workbook's font list
+  @returns Pointer to the cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFont(ARow, ACol: Cardinal; AFontIndex: Integer): PCell;
 begin
@@ -151,10 +149,10 @@ end;
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
 
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AFontColor  RGB value of the new text color
-  @return Index of the font in the workbook's font list.
+  @param   ARow        The row of the cell
+  @param   ACol        The column of the cell
+  @param   AFontColor  RGB value of the new text color
+  @returns Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontColor(ARow, ACol: Cardinal; AFontColor: TsColor): Integer;
 begin
@@ -167,9 +165,9 @@ end;
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
 
-  @param  ACell       Pointer to the cell
-  @param  AFontColor  RGB value of the new text color
-  @return Index of the font in the workbook's font list.
+  @param   ACell       Pointer to the cell
+  @param   AFontColor  RGB value of the new text color
+  @returns Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontColor(ACell: PCell; AFontColor: TsColor): Integer;
 var
@@ -190,10 +188,10 @@ end;
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
 
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AFontName   Name of the new font to be used
-  @return Index of the font in the workbook's font list.
+  @param   ARow        The row of the cell
+  @param   ACol        The column of the cell
+  @param   AFontName   Name of the new font to be used
+  @returns Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontName(ARow, ACol: Cardinal; AFontName: String): Integer;
 begin
@@ -207,9 +205,9 @@ end;
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
 
-  @param  ACell       Pointer to the cell
-  @param  AFontName   Name of the new font to be used
-  @return Index of the font in the workbook's font list.
+  @param   ACell       Pointer to the cell
+  @param   AFontName   Name of the new font to be used
+  @returns Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontName(ACell: PCell; AFontName: String): Integer;
 var
@@ -229,10 +227,10 @@ end;
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
 
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  ASize       Size of the font to be used (in points).
-  @return Index of the font in the workbook's font list.
+  @param   ARow        The row of the cell
+  @param   ACol        The column of the cell
+  @param   ASize       Size of the font to be used (in points).
+  @returns Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontSize(ARow, ACol: Cardinal; ASize: Single): Integer;
 begin
@@ -245,9 +243,9 @@ end;
   font list if this modified font has already been used. If not a new font entry
   is created. Returns the index of this font in the font list.
 
-  @param  ACell       Pointer to the cell
-  @param  ASize       Size of the font to be used (in points).
-  @return Index of the font in the workbook's font list.
+  @param   ACell       Pointer to the cell
+  @param   ASize       Size of the font to be used (in points).
+  @returns Index of the font in the workbook's font list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontSize(ACell: PCell; ASize: Single): Integer;
 var
@@ -268,12 +266,12 @@ end;
   If not a new font entry is created.
   Returns the index of this font in the font list.
 
-  @param  ARow        The row of the cell
-  @param  ACol        The column of the cell
-  @param  AStyle      New font style to be used
-  @return Index of the font in the workbook's font list.
+  @param   ARow        The row of the cell
+  @param   ACol        The column of the cell
+  @param   AStyle      New font style to be used
+  @returns Index of the font in the workbook's font list.
 
-  @see TsFontStyle
+  @seeAlso TsFontStyle
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontStyle(ARow, ACol: Cardinal;
   AStyle: TsFontStyles): Integer;
@@ -288,11 +286,11 @@ end;
   If not a new font entry is created.
   Returns the index of this font in the font list.
 
-  @param  ACell       Pointer to the cell considered
-  @param  AStyle      New font style to be used
-  @return Index of the font in the workbook's font list.
+  @param   ACell       Pointer to the cell considered
+  @param   AStyle      New font style to be used
+  @returns Index of the font in the workbook's font list.
 
-  @see TsFontStyle
+  @seeAlso TsFontStyle
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFontStyle(ACell: PCell; AStyle: TsFontStyles): Integer;
 var
@@ -320,7 +318,7 @@ end;
   @param AStyle     Style of the font, a combination of TsFontStyle elements
   @param AColor     RGB valoe of the font color
   @param APosition  Specifies subscript or superscript text.
-  @return           Index of the font in the workbook's font list
+  @returns          Index of the font in the workbook's font list
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddFont(const AFontName: String; ASize: Single;
   AStyle: TsFontStyles; AColor: TsColor;
@@ -342,7 +340,7 @@ end;
   Adds a font to the font list. Returns the index in the font list.
 
   @param AFont      TsFont record containing all font parameters
-  @return           Index of the font in the workbook's font list
+  @returns          Index of the font in the workbook's font list
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddFont(const AFont: TsFont): Integer;
 begin
@@ -398,7 +396,7 @@ end;
   @param AStyle     Style of the font, a combination of TsFontStyle elements
   @param AColor     RGB value of the font color
   @param APosition  Specified subscript or superscript text.
-  @return           Index of the font in the font list, or -1 if not found.
+  @returns          Index of the font in the font list, or -1 if not found.
 -------------------------------------------------------------------------------}
 function TsWorkbook.FindFont(const AFontName: String; ASize: Single;
   AStyle: TsFontStyles; AColor: TsColor; APosition: TsFontPosition = fpNormal): Integer;
@@ -438,8 +436,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the font with the given index.
 
-  @param  AIndex   Index of the font to be considered
-  @return Record containing all parameters of the font (or nil if not found).
+  @param   AIndex   Index of the font to be considered
+  @returns @link(TsFont) instance containing all parameters of the font (or nil if not found).
 -------------------------------------------------------------------------------}
 function TsWorkbook.GetFont(AIndex: Integer): TsFont;
 begin
@@ -453,8 +451,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns a string which identifies the font with a given index.
 
-  @param  AIndex    Index of the font
-  @return String with font name, font size etc.
+  @param   AIndex    Index of the font
+  @returns String with font name, font size etc.
 -------------------------------------------------------------------------------}
 function TsWorkbook.GetFontAsString(AIndex: Integer): String;
 begin

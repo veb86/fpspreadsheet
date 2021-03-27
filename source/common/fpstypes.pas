@@ -1,6 +1,7 @@
 {@@ ----------------------------------------------------------------------------
-  Unit fpsTypes collects the most <b>fundamental declarations</b> used
-  throughout the fpspreadsheet library.
+  Unit **fpsTypes** collects the most **fundamental declarations** used
+  throughout the fpspreadsheet library. It is very likey that this unit must
+  be added to the uses clause of the application.
 
   AUTHORS: Werner Pamler
 
@@ -20,6 +21,9 @@ uses
   Classes, SysUtils, fpimage;
 
 {$IF FPC_FullVersion < 30000}
+{@@ This string type is not re-encoded by FPC. It is a standard type of FPC 3.0+,
+  its declaration must be repeated here in order to keep fpSpreadsheet usable by
+  older FPC versions. }
 type
   RawByteString = ansistring;
 {$ENDIF}
@@ -29,7 +33,18 @@ type
   TsBasicWorksheet = class;
   TsBasicWorkbook = class;
 
-  {@@ Built-in file formats of fpspreadsheet }
+  {@@ Built-in file formats of fpspreadsheet 
+    @value sfExcel2    File format of Excel 2.1
+    @value sfExcel5    File format of Excel 5
+    @value sfExcel8    File format of Excel 97
+    @value sfExcelXML  XML file format of Excel 2003
+    @value sfOOXML     Default file format of Excel 2007 and later
+    @value sfOpenDocument  File format of LibreOffice/OpenOffice Calc
+    @value sfCSV       Comma-separated text file
+    @value sfHTML      HTML file format
+    @value sfWikiTable_Pipes  Wiki table file format
+    @value sfWikiTable_WikiMedia  Wiki media file format 
+    @value sfUser      User-defined file format. The user must provide the reader and writer classes. }
   TsSpreadsheetFormat = (sfExcel2, sfExcel5, sfExcel8, sfExcelXML, sfOOXML,
     sfOpenDocument, sfCSV, sfHTML, sfWikiTable_Pipes, sfWikiTable_WikiMedia,
     sfUser);   // Use this for user-defined readers/writers
@@ -41,17 +56,26 @@ type
   TsSpreadFormatIDArray = array of TsSpreadFormatID;
 
 const
-  {@@ Format identifier of an undefined, unknown, etc. file format. }
-  sfidUnknown = -1;
-  { Each unit implementing a reader/writer will define an sfidXXXX value as a
+  {@@ Format identifier of an undefined, unknown, etc. file format. 
+  
+    Each unit implementing a reader/writer will define an sfidXXXX value as a
     numerical identifer of the file format. In case of the built-in formats,
     the identifier is equal to the ord of the TsSpreadsheetFormat value. }
+  sfidUnknown = -1;
 
 type
-  {@@ Flag set during reading or writing of a workbook }
+  {@@ Flag set during reading or writing of a workbook 
+    @value  rwfNormal   The workbook is in normal read/write state, i.e. it is currently neither being read nor being written.
+    @value  rwfRead     The workbook is currently being read.
+    @value  rwfWrite    The workbook is currently being written. }
   TsReadWriteFlag = (rwfNormal, rwfRead, rwfWrite);
 
-  {@@ Record collection limitations of a particular file format }
+  {@@ This record collect limitations of a particular file format.
+    @member  MaxRowCount         Gives the maximum number of rows supported by this file format.
+    @member  MaxColCount         Gives the maximum number of columns supported by this file format.
+    @member  MaxPaletteSize      Gives the maximum count of color palette entries supported by this file format  
+    @member  MaxSheetNameLength  Defines the maximum length of the worksheet name supported by this file format.
+    @member  MaxCharsInTextCell  Defines the maximum length of the text in a cell supported by this file format.    }
   TsSpreadsheetFormatLimitations = record
     MaxRowCount: Cardinal;
     MaxColCount: Cardinal;
@@ -82,13 +106,13 @@ const
   {@@ Explanatory name of sfWikiTableWikiMedia file format }
   STR_FILEFORMAT_WIKITABLE_WIKIMEDIA = 'WikiTable (WikiMedia)';
 
-  {@@ Default binary <b>Excel</b> file extension (<= Excel 97) }
+  {@@ Default binary **Excel** file extension (<= Excel 97) }
   STR_EXCEL_EXTENSION = '.xls';
-  {@@ Default xml <b>Excel</v> file extension (Excel XP, 2003) }
+  {@@ Default xml **Excel** file extension (Excel XP, 2003) }
   STR_XML_EXCEL_EXTENSION = '.xml';
-  {@@ Default xml <b>Excel</b> file extension (>= Excel 2007) }
+  {@@ Default xml **Excel** file extension (>= Excel 2007) }
   STR_OOXML_EXCEL_EXTENSION = '.xlsx';
-  {@@ Default <b>OpenDocument</b> spreadsheet file extension }
+  {@@ Default **OpenDocument** spreadsheet file extension }
   STR_OPENDOCUMENT_CALC_EXTENSION = '.ods';
   {@@ Default extension of <b>comma-separated-values</b> file }
   STR_COMMA_SEPARATED_EXTENSION = '.csv';
@@ -141,11 +165,20 @@ const
 
 
 type
-  {@@ Units for size dimensions }
+  {@@ Units for size dimensions 
+    @value  suChars         Horizontal size is given as the count of '0' characters in the default font (not very exact)
+    @value  suLines         Vertical size is given as the count of lines measured by the height of the default font (not very exact)
+    @value  suMillimeters   Size is given in millimeters
+    @value  suCentimeters   Size is given in centimeters
+    @value  suPoints        Size is given in points
+    @value  suInches        Size is given in inches
+    
+  Adjustment of the @link(fpsutils.ScreenPixelsPerInch) is required for accurate
+  values in case of high-resolution monitors. }
   TsSizeUnits = (suChars, suLines, suMillimeters, suCentimeters, suPoints, suInches);
 
 const
-  {@@ Unit names }
+  {@@ Names of the size units }
   SizeUnitNames: array[TsSizeUnits] of string = (
     'chars', 'lines', 'mm', 'cm', 'pt', 'in');
 
@@ -162,12 +195,12 @@ const
 
 
 type
-  {@@ Tokens to identify the <b>elements in an expanded formula</b>.
+  {@@ Tokens to identify the @bold(elements in an expanded RPN formula).
 
-   NOTE: When adding or rearranging items
+   @note(When adding or rearranging items
    * make sure that the subtypes TOperandTokens and TBasicOperationTokens
      are complete
-   * make sure to keep the table "TokenIDs" in unit xlscommon in sync
+   * make sure to keep the table "TokenIDs" in unit xlscommon in sync)
   }
   TFEKind = (
     { Basic operands }
@@ -191,27 +224,50 @@ type
   TBasicOperationTokens = fekAdd..fekParen;
 
 type
-  {@@ Flags to mark the address or a cell or a range of cells to be <b>absolute</b>
-      or <b>relative</b>. They are used in the set TsRelFlags. }
+  {@@ Flags to mark the address or a cell or a range of cells to be @bold(absolute) or @bold(relative). They are used in the set @link(TsRelFlags). 
+    @value  rfRelRow  Signals that the row reference is relative
+    @value  rfRelCol  Signals that the column reference is relative
+    @value  rfRelRow2 Signals that the reference to the last row of a cell block is relative
+    @value  rfRelCol2 Signals that the reference to the last column of a cell block is relative}
   TsRelFlag = (rfRelRow, rfRelCol, rfRelRow2, rfRelCol2);
 
-  {@@ Flags to mark the address of a cell or a range of cells to be <b>absolute</b>
-      or <b>relative</b>. It is a set consisting of TsRelFlag elements. }
+  {@@ Flags to mark the address of a cell or a range of cells to be @bold(absolute)
+      or @bold(relative). It is a set consisting of @link(TsRelFlag) elements. }
   TsRelFlags = set of TsRelFlag;
 
 const
-  {@@ Abbreviation of all-relative cell reference flags }
+  {@@ Abbreviation of all-relative cell reference flags (@seeAlso(TsRelFlag))}
   rfAllRel = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2];
 
   {@@ Separator between worksheet name and cell (range) reference in an address }
   SHEETSEPARATOR = '!';
 
 type
+  {@@ Flag indicating the calculation state of a formula.
+    @value ffCalculating  The formula is currently being calculated.
+    @value ffCalculated   The calculation of the formula is completed. }
   TsFormulaFlag = (ffCalculating, ffCalculated);
+  
+  {@@ Set of formula calculation state flags, @link(TsFormulaFlag) }
   TsFormulaFlags = set of TsFormulaFlag;
 
-  {@@ Elements of an expanded formula.
-    Note: If ElementKind is fekCellOffset, "Row" and "Col" have to be cast to signed integers! }
+  {@@ Elements of an expanded RPN formula.
+    @member  ElementKind  Identifies the type of the formula element, @seeAlso(TFEKind)
+    @member  Row          Row index of the cell to which this formula refers (zero-based)
+    @member  Row2         Row index of the last cell in the cell range to which this formula refers (zero-based)
+    @member  Col          Column index of the cell to which this formula refers (zero-based)
+    @member  Col2         Column index of the last cell in the cell range to which this formula refers (zero-based)
+    @member  Sheet        Index of the worksheet to which this formula refers (zero-based)
+    @member  Sheet2       Index of the last worksheet in the 3d cell range to which this formula refers (zero-based)
+    @member  SheetNames   Tab-separated list of the worksheet names refered by this formula (intermediate use only).
+    @member  DoubleValue  Floating point value assigned to this formula element
+    @member  IntValue     Integer value assigned to this formula element
+    @member  Stringvalue  String value assigned to this formula element
+    @member  RelFlags     Information about relative/absolute cell addresses, @seeAlso(TsRelFlags)
+    @member  FuncName     Name of the function called by this formula element
+    @member  ParamsNum    Count of parameters needed by this formula element
+    
+    @note(If ElementKind is fekCellOffset, "Row" and "Col" have to be cast to signed integers!) }
   TsFormulaElement = record
     ElementKind: TFEKind;
     Row, Row2: Cardinal;    // zero-based
@@ -230,10 +286,24 @@ type
       Simplifies the task of format writers which need RPN }
   TsRPNFormula = array of TsFormulaElement;
 
-  {@@ Formula dialect }
+  {@@ Formula dialect 
+    @value  fdExcelA1       Default A1 syntax of Excel cell references: Cells are identified by column letters ('A', 'B', ...) and 1-based row numbers ('1', '2') 
+    @value  fdExcelR1C1     R1C1 syntax of excel 
+    @value  fdOpenDocument  Syntax of OpenOffice/LibreOffice Calc.
+    @value  fdLocalized     The formula uses localized format settings in A1 syntax. }
   TsFormulaDialect = (fdExcelA1, fdExcelR1C1, fdOpenDocument, fdLocalized);
 
-  {@@ Describes the <b>type of content</b> in a cell of a TsWorksheet }
+  {@@ Describes the **type of content** in a cell of a @link(TsWorksheet)
+    @value  cctEmpty       The cell is empty, however, can carry a format.
+    @value  cctFormula     The cell contains a formula which has not yet been calculated
+    @value  cctNumber      The cell contains a number (integer or float)
+    @value  cctUTF8String  The cell contains a string which is considered to be UTF8-encoded.
+    @value  cctDateTime    The cell contains a date/time value.
+    @value  cctBool        The cell contains a boolean value
+    @value  cctError       The cell contains an error value
+
+  @seeAlso TsErrorValue
+  }
   TCellContentType = (cctEmpty, cctFormula, cctNumber, cctUTF8String,
     cctDateTime, cctBool, cctError);
 
@@ -252,22 +322,30 @@ type
   {@@ The record TsHyperlink contains info on a hyperlink in a cell
     @param   Row          Row index of the cell containing the hyperlink
     @param   Col          Column index of the cell containing the hyperlink
-    @param   Target       Target of hyperlink: URI of file, web link, mail; or:
-                          internal link (# followed by cell address)
-    @param   Note         Text displayed as a popup hint by Excel }
+    @param   Target       Target of hyperlink: URI of file, web link, mail; or: internal link (# followed by cell address)
+    @param   Tooltip      Text displayed as a popup hint by Excel }
   TsHyperlink = record
     Row, Col: Cardinal;
     Target: String;
     Tooltip: String;
   end;
 
-  {@@ Pointer to a TsHyperlink record }
+  {@@ Pointer to a @link(TsHyperlink) record }
   PsHyperlink = ^TsHyperlink;
 
   {@@ Callback function, e.g. for iterating the internal AVL trees of the workbook/sheet}
   TsCallback = procedure (data, arg: Pointer) of object;
 
-  {@@ Error code values }
+  {@@ Error code values 
+    @value  errOK                  ok, no error
+    @value  errEmptyIntersection   A space was used in formulas that reference multiple ranges; a comma separates range references (#NULL!)
+    @value  errDivideByZero        Trying to divide by zero (#DIV/0!)
+    @value  errWrongType           The wrong type of operand or function argument is used (#VALUE!)
+    @value  errIllegalRef          A reference is invalid (#REF!)
+    @value  errWrongName           Text in the formula is not recognized (#NAME?)
+    @value  errOverflow            A formula has invalid numeric data for the type of operation (#NUM!)
+    @value  errArgError            A formula or a function inside a formula cannot find the referenced data (#N/A)
+    @value  errFormulaNotSupported This formula is not suppored by fpSpreadsheet (error code not used by Excel and Calc)   }
   TsErrorValue = (
     errOK,                 // no error
     errEmptyIntersection,  // #NULL!
@@ -277,18 +355,27 @@ type
     errWrongName,          // #NAME?
     errOverflow,           // #NUM!
     errArgError,           // #N/A  ( = #NV in German )
-    // --- no Excel errors --
-    errFormulaNotSupported
+    errFormulaNotSupported // No excel error
   );
 
-  {@@ List of possible formatting fields }
+  {@@ List of possible formatting fields 
+    @value uffTextRotation  The cell format supports text rotation.
+    @value uffFont          The cell format supports using font different from default. 
+    @value uffBorder        The cell format supports decorating the cell with a border. 
+    @value uffBackground    The cell format supports a dedicated background color and fill style.
+    @value uffNumberFormat  The cell format supports individual number formats of numeric cell values.
+    @value uffWordwrap      The cell format supports wrapping of long cell text into new lines.
+    @value uffHorAlign      The cell format supports horizontal text alignment.
+    @value uffVertAlign     The cell format supports vertical text alignment
+    @value uffBiDi          The cell format supports right-to-left text display.
+    @value uffProtection    The cell format supports locking of cells. }
   TsUsedFormattingField = (uffTextRotation, uffFont, uffBorder, uffBackground,
     uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign, uffBiDi,
     uffProtection
   );
   { NOTE: "uffBackgroundColor" of older versions replaced by "uffBackground" }
 
-  {@@ Describes which formatting fields are active }
+  {@@ Describes which formatting fields are active (see @link(TsUsedFormattingField)). }
   TsUsedFormattingFields = set of TsUsedFormattingField;
 
   {$IFDEF NO_RAWBYTESTRING}
@@ -334,82 +421,97 @@ const
 type
   {@@ Text rotation formatting. The text is rotated relative to the standard
       orientation, which is from left to right horizontal:
-      <pre>
+      @preformatted(
        --->
-       ABC </pre>
+       ABC)
 
       So 90 degrees clockwise means that the text will be:
-      <pre>
+      @preformatted(
        |  A
        |  B
-       v  C </pre>
+       v  C)
 
       And 90 degree counter clockwise will be:
-      <pre>
+      @preformatted(
        ^  C
        |  B
-       |  A</pre>
+       |  A)
 
       Due to limitations of the text mode the characters are not rotated here.
       There is, however, also a "stacked" variant which looks exactly like
       the 90-degrees-clockwise case.
+      
+   @value trHorizontal  Text is written horizontally as usual.
+   @value rt90DegreeClockwiseRotation  Text is written vertically from top to bottom
+   @value rt90DegreeCounterClockwiseRotation  Text is written vertically from bottom to top
+   @value rtStacked  Text is written vertically from top to bottom, but with horizontal chararacters.
   }
   TsTextRotation = (trHorizontal, rt90DegreeClockwiseRotation,
     rt90DegreeCounterClockwiseRotation, rtStacked);
 
-  {@@ Indicates horizontal text alignment in cells }
+  {@@ Indicates horizontal text alignment in cells 
+    @value  haDefault  Default text alignment (left for alphanumeric, right for numbers and dates)
+    @value  haLeft     Left-aligned cell text
+    @value  haCenter   Centered cell text
+    @value  haRight    Right-aligned cell text }
   TsHorAlignment = (haDefault, haLeft, haCenter, haRight);
 
-  {@@ Indicates vertical text alignment in cells }
+  {@@ Indicates vertical text alignment in cells 
+    @value  vaDefault  Default vertical alignment (bottom)
+    @value  vaTop      Top-aligned cell text
+    @value  vaCenter   Vertically centered cell text
+    @value  vaBottom   Bottom-aligned cell text }
   TsVertAlignment = (vaDefault, vaTop, vaCenter, vaBottom);
 
   {@@ Colors in fpspreadsheet are given as rgb values in little-endian notation
     (i.e. "r" is the low-value byte). The highest-value byte, if not zero,
-    indicates special colors. }
+    indicates special colors. 
+    
+    @note(This byte order in TsColor is opposite to that in HTML colors.) }
   TsColor = DWord;
 
 const
   {@@ These are some basic rgb color volues. FPSpreadsheet will support
-    built-in color constants only for the EGA palette.
+    only those built-in color constants originating in the EGA palette.
   }
-  {@@ rgb value of <b>black</b> color, BIFF2 palette index 0, BIFF8 index 8}
+  {@@ rgb value of @bold(black) color, BIFF2 palette index 0, BIFF8 index 8}
   scBlack = $00000000;
-  {@@ rgb value of <b>white</b> color, BIFF2 palette index 1, BIFF8 index 9 }
+  {@@ rgb value of @bold(white) color, BIFF2 palette index 1, BIFF8 index 9 }
   scWhite = $00FFFFFF;
-  {@@ rgb value of <b>red</b> color, BIFF2 palette index 2, BIFF8 index 10 }
+  {@@ rgb value of @bold(red) color, BIFF2 palette index 2, BIFF8 index 10 }
   scRed = $000000FF;
-  {@@ rgb value of <b>green</b> color, BIFF2 palette index 3, BIFF8 index 11 }
+  {@@ rgb value of @bold(green) color, BIFF2 palette index 3, BIFF8 index 11 }
   scGreen = $0000FF00;
-  {@@ rgb value of <b>blue</b> color, BIFF2 palette index 4, BIFF8 indexes 12 and 39}
+  {@@ rgb value of @bold(blue) color, BIFF2 palette index 4, BIFF8 indexes 12 and 39}
   scBlue = $00FF0000;
-  {@@ rgb value of <b>yellow</b> color, BIFF2 palette index 5, BIFF8 indexes 13 and 34}
+  {@@ rgb value of @bold(yellow) color, BIFF2 palette index 5, BIFF8 indexes 13 and 34}
   scYellow = $0000FFFF;
-  {@@ rgb value of <b>magenta</b> color, BIFF2 palette index 6, BIFF8 index 14 and 33}
+  {@@ rgb value of @bold(magenta) color, BIFF2 palette index 6, BIFF8 index 14 and 33}
   scMagenta = $00FF00FF;
-  {@@ rgb value of <b>cyan</b> color, BIFF2 palette index 7, BIFF8 indexes 15}
+  {@@ rgb value of @bold(cyan) color, BIFF2 palette index 7, BIFF8 indexes 15}
   scCyan = $00FFFF00;
-  {@@ rgb value of <b>dark red</b> color, BIFF8 indexes 16 and 35}
+  {@@ rgb value of @bold(dark red) color, BIFF8 indexes 16 and 35}
   scDarkRed = $00000080;
-  {@@ rgb value of <b>dark green</b> color, BIFF8 index 17 }
+  {@@ rgb value of @bold(dark green) color, BIFF8 index 17 }
   scDarkGreen = $00008000;
-  {@@ rgb value of <b>dark blue</b> color }
+  {@@ rgb value of @bold(dark blue) color }
   scDarkBlue = $00800000;
-  {@@ rgb value of <b>olive</b> color }
+  {@@ rgb value of @bold(olive) color }
   scOlive = $00008080;
-  {@@ rgb value of <b>purple</b> color, BIFF8 palette indexes 20 and 36 }
+  {@@ rgb value of @bold(purple) color, BIFF8 palette indexes 20 and 36 }
   scPurple = $00800080;
-  {@@ rgb value of <b>teal</b> color, BIFF8 palette index 21 and 38 }
+  {@@ rgb value of @bold(teal) color, BIFF8 palette index 21 and 38 }
   scTeal = $00808000;
-  {@@ rgb value of <b>silver</b> color }
+  {@@ rgb value of @bold(silver) color }
   scSilver = $00C0C0C0;
-  {@@ rgb value of <b>grey</b> color }
+  {@@ rgb value of @bold(grey) color }
   scGray = $00808080;
-  {@@ rgb value of <b>gray</b> color }
+  {@@ rgb value of @bold(gray) color }
   scGrey = scGray;       // redefine to allow different spelling
 
   {@@ Identifier for not-defined color }
   scNotDefined = $40000000;
-  {@@ Identifier for transparent color }
+  {@@ Identifier for @bold(transparent) color }
   scTransparent = $20000000;
   {@@ Identifier for palette index encoded into the TsColor }
   scPaletteIndexMask = $80000000;
@@ -467,13 +569,20 @@ const
   scWheat = $00B3DEF5 deprecated;
 
 type
-  {@@ Font style (redefined to avoid usage of "Graphics" }
+  {@@ Font style (redefined to avoid usage of graphics unit) 
+    @value fssBold       Bold text
+    @value fssItalic     Italic text
+    @value fssStrikeOut  Strike-through text (there is only a single strike-out line)
+    @value fssUnderLine  Underlined text (there is only a single underline) }
   TsFontStyle = (fssBold, fssItalic, fssStrikeOut, fssUnderline);
 
   {@@ Set of font styles }
   TsFontStyles = set of TsFontStyle;
 
-  {@@ Font position (subscript or superscript) }
+  {@@ Font position (subscript or superscript) 
+    @value fpNormal      Normals character position
+    @value fpSuperscript Superscripted characters, like in @code('10²') 
+    @value fpSubscript   Subscripted characters}
   TsFontPosition = (fpNormal, fpSuperscript, fpSubscript);  // Keep order for compatibility with xls!
 
   {@@ Font record used in fpspreadsheet. Contains the font name, the font size
@@ -481,9 +590,9 @@ type
   TsFont = class
     {@@ Name of the font face, such as 'Arial' or 'Times New Roman' }
     FontName: String;
-    {@@ Size of the font in points }
+    {@@ Size of the font, in points }
     Size: Single;   // in "points"
-    {@@ Font style, such as bold, italics etc. - see TsFontStyle}
+    {@@ Font style, such as bold, italics etc. - see @link(TsFontStyle)}
     Style: TsFontStyles;
     {@@ Text color given as rgb value }
     Color: TsColor;
@@ -497,9 +606,18 @@ type
   {@@ Array of font records }
   TsFontArray = array of TsFont;
 
-  {@@ Parameter describing formatting of an text range in cell text }
+  {@@ Parameter describing formatting of an text range in cell text 
+  
+    @member  FirstIndex      One-based index of the utf8 code-point ("character")
+                             at which the FontIndex should be used.
+    @member  FontIndex       Index of the font in the workbook's font list to
+                             be used for painting the characters following the
+                             FirstIndex.
+    @member  HyperlinkIndex  Index of the hyperlink assigned to the text following
+                             the character at FirstIndex.
+    }
   TsRichTextParam = record
-    FirstIndex: Integer;  // 1-based utf8 code-point ("character") index
+    FirstIndex: Integer; 
     FontIndex: Integer;
     HyperlinkIndex: Integer;
   end;
@@ -507,20 +625,47 @@ type
   {@@ Parameters describing formatting of text ranges in cell text }
   TsRichTextParams = array of TsRichTextParam;
 
-  {@@ Indicates the border for a cell. If included in the CellBorders set the
-      corresponding border is drawn in the style defined by the CellBorderStyle. }
+  {@@ Indicates the border for a cell. If included in the CellBorders set 
+      the corresponding border is drawn in the style defined by 
+      the CellBorderStyle. 
+      
+     @value cbNorth    Horizontal border line at the top of the cell
+     @value cbWest     Vertical border line at the left of the cell
+     @value cbEast     Vertical border line at the right of the cell
+     @value cbSouth    Horizontal border line at the bottom of the cell
+     @value cbDiagUp   Diagonal border line running from the bottom-left to the top-right corner of the cell (/)
+     @value cbDiagDown Diagonal border line running from the top-left to the bottom-right corner of the cell (\)  
+     
+     @seeAlso(TsCellBorderStyle)}
   TsCellBorder = (cbNorth, cbWest, cbEast, cbSouth, cbDiagUp, cbDiagDown);
 
   {@@ Indicates the border for a cell }
   TsCellBorders = set of TsCellBorder;
 
-  {@@ Line style (for cell borders) }
+  {@@ Line style (for cell borders) 
+    @value lsThin             Thin solid line
+    @value lsMedium           Medium thick solid line
+    @value lsDashed           Dashed line, thin
+    @value lsDotted           Dotted line, thin
+    @value lsThick            Very thick solid line
+    @value lsDouble           Double line (solid)
+    @value lsHair             Very thin line
+    @value lsMediumDash       Dashed line, medium thickness
+    @value lsDashDot          Dash-dot line, thin
+    @value lsMediumDashDot    Dash-dot line, medium thickness
+    @value lsDashDotDot       Dash-dot-dot line, thin
+    @value lsMediumDashDotDot Dash-dot-dot line, medium thickness
+    @value lsSlantDashDot     Dash-dot line, slanted segment ends    }
   TsLineStyle = (lsThin, lsMedium, lsDashed, lsDotted, lsThick, lsDouble, lsHair,
     lsMediumDash, lsDashDot, lsMediumDashDot, lsDashDotDot, lsMediumDashDotDot,
     lsSlantDashDot);
 
   {@@ The Cell border style reocrd contains the linestyle and color of a cell
-      border. There is a CellBorderStyle for each border. }
+      border. There is a CellBorderStyle for each border. 
+      
+    @member  LineStyle   LineStyle to be used for this cell border. See @link(TsLineStyle).
+    @member  Color       Color to be used for this  cell border. See @link(TsColor).
+   }
   TsCellBorderStyle = record
     LineStyle: TsLineStyle;
     Color: TsColor;
@@ -541,9 +686,9 @@ const
   );
 
   {@@ Border style to be used for "no border"}
-
   NO_CELL_BORDER: TsCellBorderStyle = (LineStyle: lsThin; Color: scNotDefined);
 
+  {@@ Default border style in which all borders are used. }
   ALL_BORDERS: TsCellBorders = [cbNorth, cbEast, cbSouth, cbWest];
 
 type
@@ -593,30 +738,54 @@ type
     // other (format string goes directly into the file)
     nfCustom);
 
-  {@@ Cell calculation state }
+  {@@ Cell calculation state 
+  
+    @value  csNotCalculated   The cell formula has not yet been calculated.
+    @value  csCalculating     The flag indicates that the cell is currently 
+                              being calculated.
+    @value  csCalculated      The cell formula has been calculated, and the 
+                              result is stored in the cell's data fields. }
   TsCalcState = (csNotCalculated, csCalculating, csCalculated);
 
-  {@@ Cell flag }
+  {@@ Cell flag providing particular information about the state of a cell
+    @value cfHasComment    The cell has a comment record
+    @value cfHyperlink     The cell has a hyperlink record
+    @value cfMerged        The cell belongs to a block of merged cells
+    @value cfHasFormula    The cell has a formula.
+    @value cf3dFormula     The cell formula links to other worksheets. }
   TsCellFlag = (cfHasComment, cfHyperlink, cfMerged, cfHasFormula, cf3dFormula);
 
   {@@ Set of cell flags }
   TsCellFlags = set of TsCellFlag;
 
-  {@@ Record combining a cell's row and column indexes }
+  {@@ Record combining a cell's row and column indexes 
+    @member   Row   Row index of the cell (0-based)
+    @member   Col   Column index of the cell (0-based) }
   TsCellCoord = record
     Row, Col: Cardinal;
   end;
 
-  {@@ Record combining row and column corner indexes of a range of cells }
+  {@@ Record combining row and column corner indexes of a range of cells 
+    @member  Row1    The index of the top row of the cell block (0-based)
+    @member  Col1    The index of the left column of the cell block (0-based)
+    @member  Row2    The index of the bottom row of the cell block (0-based)
+    @member  Col2    The index of the right column of the cell block (0-based)  }
   TsCellRange = record
     Row1, Col1, Row2, Col2: Cardinal;
   end;
+  {@@ Pointer to a @link(TsCellRange) record }
   PsCellRange = ^TsCellRange;
 
   {@@ Array with cell ranges }
   TsCellRangeArray = array of TsCellRange;
 
-  {@@ Record combining sheet index and row/column corner indexes of a cell range }
+  {@@ Record combining sheet index and row/column corner indexes of a 3d cell range 
+    @member  Row1    The index of the top row of the 3d cell block (0-based)
+    @member  Col1    The index of the left column of the 3d cell block (0-based)
+    @member  Row2    The index of the bottom row of the 3d cell block (0-based)
+    @member  Col2    The index of the right column of the 3d cell block (0-based)
+    @member  Sheet1  The index of the first sheet of the 3d cell block (0-based)
+    @member  Sheet2  The index of the last sheet of the 3d cell block (0-based)}
   TsCellRange3d = record
     Row1, Col1, Row2, Col2: Cardinal;
     Sheet1, Sheet2: Integer;
@@ -625,20 +794,34 @@ type
   {@@ Array of 3d cell ranges }
   TsCellRange3dArray = array of TsCellRange3d;
 
-  {@@ Record containing limiting indexes of column or row range }
+  {@@ Record containing limiting indexes of column or row range 
+    @member  FirstIndex   Index of the first column/row of a range of columns/rows 
+    @member  LastIndex    Index of the last column/row of a range of columns/rows }
   TsRowColRange = record
     FirstIndex, LastIndex: Cardinal;
   end;
 
-  {@@ Options for sorting }
+  {@@ Options for sorting 
+    @value  ssoDescending       Sort values in descending order
+    @value  ssoCaseInsensitive  Ignore character case for sorting
+    @value  ssoAlphaBeforeNum   Sort alphanumeric characters to be before 
+                                numeric characters}
   TsSortOption = (ssoDescending, ssoCaseInsensitive, ssoAlphaBeforeNum);
   {@@ Set of options for sorting }
   TsSortOptions = set of TsSortOption;
 
-  {@@ Sort priority }
+  {@@ Sort priority 
+    @value  spNumAlpha  Numbers are considered to be "smaller" than Alpha-Text, 
+                        i.e. will be put before text
+    @value  spAlphaNum  Numbers are considered to be "larger" than Alpha-Text,
+                        i.e. will be sorted after text. }
   TsSortPriority = (spNumAlpha, spAlphaNum);   // spNumAlpha: Number < Text
 
-  {@@ Sort key: sorted column or row index and sort direction }
+  {@@ Sort key: parameters for sorting
+    @member  ColRowIndex    Index of the sorted column or row
+    @member  Options        Options used for sorting)
+    
+    @seeAlso TsSortOption }
   TsSortKey = record
     ColRowIndex: Integer;
     Options: TsSortOptions;
@@ -648,9 +831,9 @@ type
   TsSortKeys = array of TsSortKey;
 
   {@@ Complete set of sorting parameters
-    @param SortByCols  If true sorting is top-down, otherwise left-right
-    @param Priority    Determines whether numbers are before or after text.
-    @param SortKeys    Array of sorting col/row indexes and sorting directions }
+    @member SortByCols  If true sorting is top-down, otherwise left-right
+    @member Priority    Determines whether numbers are before or after text.
+    @member Keys        Array of sorting col/row indexes and sorting directions }
   TsSortParams = record
     SortByCols: Boolean;
     Priority: TsSortPriority;
@@ -734,8 +917,7 @@ type
     procedure SetTextRotation(ARotation: TsTextRotation);
     procedure SetVertAlignment(AVertAlign: TsVertAlignment);
   end;
-
-  {@@ Pointer to a format record }
+  {@@ Pointer to a @link(TsCellFormat) record }
   PsCellFormat = ^TsCellFormat;
 
   {@@ Cell structure for TsWorksheet
@@ -745,21 +927,30 @@ type
 
       Never suppose that all *Value fields are valid,
       only one of the ContentTypes is valid. For other fields
-      use TWorksheet.ReadAsUTF8Text and similar methods
+      use @link(TsWorksheet.ReadAsText) and similar methods
 
-      @see ReadAsUTF8Text }
+      @member  Row            Row index of the cell (zero-based)
+      @member  Col            Column index of the cell (zero-based)
+      @member  Worksheet      Worksheet to which this cell belongs. In order to avoid circular unit references the worksheet is declared as @link(TsBasicWorksheet) here; usually it must be cast to TsWorksheet when used.
+      @member  Flags          Status flags for this cell (see @link(TsCellFlags))
+      @member  FormatIndex    Index to the @link(TsCellFormat) record to be applied to this cell. The format records are collected in the workbook's CellFormatList.
+      @member  ConditionalFormatIndex  Array of indexes to the worksheet's  ConditionalalFormats list needed for conditional formatting
+      @member  UTF8StringValue  String to be displayed in the cell if ContentType is cctUTF8String
+      @member  RichTextParams Descriptions to be used for individual text formatting of parts of the cell text
+      @member  ContentType    Type of the data stored in the cell. See @link(TsCellContentType).
+      @member  NumberValue    Floating point value assigned to the cell. It is valid only when ContentType is cctNumber.
+      @member  DateTimeValue  Date/time value assigned to the cell. It is valid only when ContentType is cctDateTime.
+      @member  BoolValue      Boolean value assigned to the cell. It is valid only when ContentType is cctBoole.
+      @member  ErrorValue     Error value assigned to the cell. The value is valid only when ContentType is cctError. .}
   TCell = record
-    { Location of the cell }
     Row: Cardinal; // zero-based
     Col: Cardinal; // zero-based
     Worksheet: TsBasicWorksheet;   // Must be cast to TsWorksheet when used  (avoids circular unit reference)
-    { Status flags }
     Flags: TsCellFlags;
-    { Index of format record in the workbook's CellFormatList }
     FormatIndex: Integer;
-    { Indexes to worksheet's ConditionalFormats list needed for conditional formatting }
     ConditionalFormatIndex: array of Integer;
-    { Cell content }
+    
+    // Cell content 
     UTF8StringValue: String;   // Strings cannot be part of a variant record
     RichTextParams: TsRichTextParams; // Formatting of individual text ranges
 //    FormulaValue: String;      // Formula for calculation of cell content
@@ -772,39 +963,33 @@ type
       cctBool       : (BoolValue: boolean);
       cctError      : (ErrorValue: TsErrorValue);
   end;
-
-  {@@ Pointer to a TCell record }
+  {@@ Pointer to a @link(TCell) record }
   PCell = ^TCell;
 
   {@@ Types of row heights
-    rhtDefault - default row height
-    rhtAuto - automatically determined row height, depends on font size,
-      text rotation, rich-text parameters, word-wrap
-    rhtCustom - user-determined row height (dragging the row header borders in
-      the grid, or changed by code) }
+    @value rhtDefault  Default row height
+    @value rhtAuto     Automatically determined row height, depends on font size, text rotation, rich-text parameters, word-wrap
+    @value rhtCustom   User-determined row height (dragging the row header borders in the grid, or changed by code) }
   TsRowHeightType = (rhtDefault, rhtCustom, rhtAuto);
 
   {@@ Types of column widths
-    cwtDefault - default column width
-    cwtCustom  - userdefined column width (dragging the column header border
-      in the grid, or by changed by code) }
+    @value cwtDefault  Default column width
+    @value cwtCustom   Userdefined column width (dragging the column header border in the grid, or by changed by code) }
   TsColWidthtype = (cwtDefault, cwtCustom);
 
   {@@ Column or row options
-    croHidden    - Column or row is hidden
-    croPageBreak - Enforces a pagebreak before this column/row during printing }
+    @value croHidden     Column or row is hidden
+    @value croPageBreak  Enforces a pagebreak before this column/row during printing }
   TsColRowOption = (croHidden, croPageBreak);
   TsColRowOptions = set of TsColRowOption;
 
   {@@ The record TRow contains information about a spreadsheet row:
-    @param  Row            The index of the row (beginning with 0)
-    @param  Height         The height of the row (expressed in the units defined
-                           by the workbook)
-    @param  RowHeightType  Specifies whether the row has default, custom, or
-                           automatic height
-    @param  FormatIndex    Row default format, index into the workbook's
-                           FCellFormatList
-    @param  Options        @See TsColRowOption
+    @member  Row            The index of the row (beginning with 0)
+    @member  Height         The height of the row (expressed in the units defined by the workbook)
+    @member  RowHeightType  Specifies whether the row has default, custom, or automatic height
+    @member  FormatIndex    Row default format, index into the workbook's FCellFormatList
+    @member  Options        See @link(TsColRowOption)
+    
     Only rows with non-default height or non-default format or non-default
     Options have a row record. }
   TRow = record
@@ -814,18 +999,16 @@ type
     FormatIndex: Integer;
     Options: TsColRowOptions;
   end;
-
-  {@@ Pointer to a TRow record }
+  {@@ Pointer to a @link(TRow) record }
   PRow = ^TRow;
 
   {@@ The record TCol contains information about a spreadsheet column:
-   @param Col          The index of the column (beginning with 0)
-   @param Width        The width of the column (expressed in the units defined
-                       in the workbook)
-   @param ColWidthType Specifies whether the column has default or custom width
-   @param FormatIndex  Column default format, index into the workbook's
-                       FCellFormatlist
-   @param Options      @see TsColRowOptions
+   @member Col          The index of the column (beginning with 0)
+   @member Width        The width of the column (expressed in the units defined in the workbook)
+   @member ColWidthType Specifies whether the column has default or custom width
+   @member FormatIndex  Column default format, index into the workbook's FCellFormatlist
+   @member Options      See @link(TsColRowOptions)
+   
    Only columns with non-default width or non-default format or non-default
    Options have a column record. }
   TCol = record
@@ -835,28 +1018,41 @@ type
     FormatIndex: Integer;
     Options: TsColRowOptions;
   end;
-
-  {@@ Pointer to a TCol record }
+  {@@ Pointer to a @link(TCol) record }
   PCol = ^TCol;
 
-  {@@ Embedded image }
+  {@@ Embedded image 
+    @member  Row                Row index of the cell at which the top sie of the image is anchored
+    @member  Index              Index of the image in the workbook's embedded streams list.
+    @member  Col                Column index of cell at which the left side of the image is anchored
+    @member  OffsetX            Horizontal displacement of the image relative to the top/left corner of the anchor cell (in millimeters)
+    @member  OffsetY            Vertical displacement of the image relative to the top/left corner of the anchor cell (in millimeters)
+    @member  ScaleX             Horizontal scaling factor of the image
+    @member  ScaleY             Vertical scaling factor of the image
+    @member  Picture            Used internally by TPicture to display the image in the worksheet grid
+    @member  HyperlinkTarget    Hyperlink assigned to the image
+    @member  HyperlinkToolTip   Tooltip for the hyperlink of the image }
   TsImage = record
-    Row, Col: Cardinal;       // cell for top/left edge of the image (anchor)
-    Index: Integer;           // index into the workbook's embedded streams list
-    OffsetX, OffsetY: Double; // mm, relative to anchor
-    ScaleX, ScaleY: Double;   // scaling factor of image
-    Picture: TObject;         // used for TPicture to display in grid
-    HyperlinkTarget: String;  // Hyperlink assigned to the image
-    HyperlinkToolTip: String; // Tooltip for hyperlink of the image
+    Row, Col: Cardinal;       
+    Index: Integer;           
+    OffsetX, OffsetY: Double; 
+    ScaleX, ScaleY: Double;   
+    Picture: TObject;         
+    HyperlinkTarget: String;  
+    HyperlinkToolTip: String; 
   end;
+  {@@ Pointer to a @link(TsImage) record}
   PsImage = ^TsImage;
 
-  {@@ Image embedded in header or footer}
+  {@@ Image embedded in header or footer
+    @member  Index   Index of the image in the workbook's embedded streams list }
   TsHeaderFooterImage = record
-    Index: Integer;           // index into the workbook's embedded streams list
+    Index: Integer;      
   end;
 
-  {@@ Page orientation for printing }
+  {@@ Page orientation for printing 
+    @value  spoPortrait   Printed page is in portrait orientation
+    @value  spoLandscape  Printed page is in landscape orientation }
   TsPageOrientation = (spoPortrait, spoLandscape);
 
   {@@ Options for the print layout records }
@@ -912,60 +1108,38 @@ type
   TsStreamParams = set of TsStreamParam;
 
   {@@ Worksheet user interface options:
-    @param soShowGridLines    Show or hide the grid lines in the spreadsheet
-    @param soShowHeaders      Show or hide the column or row headers of the
-                              spreadsheet
-    @param soHasFrozenPanes   If set a number of rows and columns of the
-                              spreadsheet is fixed and does not scroll. The number
-                              is defined by LeftPaneWidth and TopPaneHeight.
-    @param soHidden           Worksheet is hidden.
-    @param soProtected        Worksheet is protected
-    @param soPanesProtection  Panes are locked due to workbook protection
-    @param soAutoDetectCellType  Auomatically detect type of cell content}
+    @value soShowGridLines    Show or hide the grid lines in the spreadsheet
+    @value soShowHeaders      Show or hide the column or row headers of the spreadsheet
+    @value soHasFrozenPanes   If set a number of rows and columns of the spreadsheet is fixed and does not scroll. The number is defined by LeftPaneWidth and TopPaneHeight.
+    @value soHidden           Worksheet is hidden.
+    @value soProtected        Worksheet is protected
+    @value soPanesProtection  Panes are locked due to workbook protection
+    @value soAutoDetectCellType  Auomatically detect type of cell content}
   TsSheetOption = (soShowGridLines, soShowHeaders, soHasFrozenPanes, soHidden,
     soProtected, soPanesProtection, soAutoDetectCellType);
 
-  {@@ Set of user interface options
-    @ see TsSheetOption }
+  {@@ Set of user interface options (
+    @seeAlso(TsSheetOption) }
   TsSheetOptions = set of TsSheetOption;
 
   {@@ Option flags for the workbook
-    @param  boVirtualMode      If in virtual mode date are not taken from cells
-                               when a spreadsheet is written to file, but are
-                               provided by means of the event OnWriteCellData.
-                               Similarly, when data are read they are not added
-                               as cells but passed the the event OnReadCellData;
-    @param  boBufStream        When this option is set a buffered stream is used
-                               for writing (a memory stream swapping to disk) or
-                               reading (a file stream pre-reading chunks of data
-                               to memory)
-    @param  boFileStream       Uses file streams and temporary files during
-                               reading and writing. Lowest memory consumptions,
-                               but slow.
-    @param  boAutoCalc         Automatically recalculate formulas whenever a
-                               cell value changes, in particular when file is
-                               loaded.
-    @param  boCalcBeforeSaving Calculates formulas before saving the file.
-                               Otherwise there are no results when the file is
-                               loaded back by fpspreadsheet.
-    @param  boReadFormulas     Allows to turn off reading of rpn formulas; this
-                               is a precaution since formulas not correctly
-                               implemented by fpspreadsheet could crash the
-                               reading operation.
-    @param boWriteZoomfactor   Instructs the writer to write the current zoom
-                               factors of the worksheets to file.
-    @param boAbortReadOnFormulaError Aborts reading if a formula error is
-                               encountered
-    @param boIgnoreFormulas    Formulas are not checked and not calculated.
-                               Cannot be used for biff formats. }
+    @value  boVirtualMode      If in virtual mode date are not taken from cells when a spreadsheet is written to file, but are provided by means of the event OnWriteCellData. Similarly, when data are read they are not added  as cells but passed the the event OnReadCellData;
+    @value  boBufStream        When this option is set a buffered stream is used for writing (a memory stream swapping to disk) or reading (a file stream pre-reading chunks of data to memory)
+    @value  boFileStream       Uses file streams and temporary files during reading and writing. Lowest memory consumptions, but slow.
+    @value  boAutoCalc         Automatically recalculate formulas whenever a cell value changes, in particular when file is loaded.
+    @value  boCalcBeforeSaving Calculates formulas before saving the file. Otherwise there are no results when the file is loaded back by fpspreadsheet.
+    @value  boReadFormulas     Allows to turn off reading of rpn formulas; this is a precaution since formulas not correctly implemented by fpspreadsheet could crash the reading operation.
+    @value boWriteZoomfactor   Instructs the writer to write the current zoom factors of the worksheets to file.
+    @value boAbortReadOnFormulaError Aborts reading if a formula error is encountered
+    @value boIgnoreFormulas    Formulas are not checked and not calculated. Cannot be used for biff formats. }
   TsWorkbookOption = (boVirtualMode, boBufStream, boFileStream,
     boAutoCalc, boCalcBeforeSaving, boReadFormulas, boWriteZoomFactor,
     boAbortReadOnFormulaError, boIgnoreFormulas);
 
-  {@@ Set of option flags for the workbook }
+  {@@ Set of option flags for the workbook (see @link(TsWorkbookOption)}
   TsWorkbookOptions = set of TsWorkbookOption;
 
-  {@@ Meta data for the workbook}
+  {@@ Workbook metadata }
   TsMetaData = class
   private
     FDateCreated: TDateTime;
@@ -1013,7 +1187,7 @@ type
       displayed in the tab of the sheet. }
     property Name: string read FName write SetName;
     {@@ Parameters controlling visibility of grid lines and row/column headers,
-      usage of frozen panes etc. }
+      usage of frozen panes etc. See @link(TsSheetOption). }
     property  Options: TsSheetOptions read FOptions write FOptions;
     {@@ Worksheet protection options }
     property Protection: TsWorksheetProtections read FProtection write FProtection;
@@ -1034,7 +1208,7 @@ type
     FUnits: TsSizeUnits;  // Units for row heights and col widths
   public
     {@@ A copy of SysUtil's DefaultFormatSettings (converted to UTF8) to provide
-      some kind of localization to some formatting strings.
+      some kind of localization of some formatting strings.
       Can be modified before loading/writing files }
     FormatSettings: TFormatSettings;
 
@@ -1063,9 +1237,11 @@ type
     property Units: TsSizeUnits read FUnits;
   end;
 
-  {@@ Exception types for fpspreadsheet }
+  {@@ Ancestor of the fpSpreadsheet exceptions } 
   EFpSpreadsheet = class(Exception);
+  {@@ Class of exceptions fired by the workbook reader }
   EFpSpreadsheetReader = class(EFpSpreadsheet);
+  {@@ Class of exceptions fired for the workbook writer }
   EFpSpreadsheetWriter = class(EFpSpreadsheet);
 
 const
@@ -1075,10 +1251,15 @@ const
   ColWidthTypeNames: array[TsColWidthType] of string = (
     'Default', 'Custom');
 
-  {@@ Indexes to be used for the various headers and footers }
+  { Indexes to be used for the various headers and footers }
+  
+  {@@ Index of the first header/footer to be used }
   HEADER_FOOTER_INDEX_FIRST   = 0;
+  {@@ Index of the header/footer to be used for odd page numbers }
   HEADER_FOOTER_INDEX_ODD     = 1;
+  {@@ Index of the header/footer to be used for even page numbers }
   HEADER_FOOTER_INDEX_EVEN    = 2;
+  {@@ Index of the header/footer to be used for all pages }
   HEADER_FOOTER_INDEX_ALL     = 1;
 
 procedure InitUTF8FormatSettings(out AFormatSettings: TFormatSettings);
@@ -1255,8 +1436,10 @@ begin
     (FCustom.Count = 0) and (FDateCreated = 0) and (FDateLastModified = 0);
 end;
 
-{ Provide initial author. In case of multiple authors, separate the names by
-  semicolons. }
+{@@ ----------------------------------------------------------------------------
+  Provide initial author. In case of multiple authors, separate the names by
+  semicolons. 
+-------------------------------------------------------------------------------}
 procedure TsMetaData.SetCreatedBy(AValue: String);
 begin
   FAuthors.DelimitedText := AValue;

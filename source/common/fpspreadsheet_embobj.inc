@@ -10,14 +10,14 @@
   Calculates the position of the image with given index relative to the cell
   containing the top/left corner of the image.
 
-  @@param  x    worksheet-relative coordinate of the left image edge, in workbook units
-  @@param  y    worksheet-relative coordinate of the top image edge, in workbook units
-  @@param  ARow Index of the row containing the top/left corner of the image
-  @@param  ACol Index of the column containing the top/left corner of the image
-  @@param  ARowOffset  Distance, in workbook units, between top cell and image borders
-  @@param  AColOffset  Distance, in workbook units, between left cell and image borders
-  @@param  AScaleX  Scaling factor for the image width
-  @@param  AScaleY  Scaling factor for the image height
+  @param  x    worksheet-relative coordinate of the left image edge, in workbook units
+  @param  y    worksheet-relative coordinate of the top image edge, in workbook units
+  @param  ARow Index of the row containing the top/left corner of the image
+  @param  ACol Index of the column containing the top/left corner of the image
+  @param  ARowOffset  Distance, in workbook units, between top cell and image borders
+  @param  AColOffset  Distance, in workbook units, between left cell and image borders
+  @param  AScaleX  Scaling factor for the image width
+  @param  AScaleY  Scaling factor for the image height
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.CalcImageCell(AIndex: Integer; x, y, AWidth, AHeight: Double;
   out ARow, ACol: Cardinal; out ARowOffs, AColOffs, AScaleX, AScaleY: Double);
@@ -56,8 +56,7 @@ end;
   Calculates image extent
 
   @param  AIndex    Index of the image into the worksheet's image list
-  @param  UsePixels if TRUE then pixels are used for calculation - this improves
-                    the display of the images in Excel
+  @param  UsePixels If @TRUE then pixels are used for calculation - this improves the display of the images in Excel
   @param  ARow1     Index of the row containing the top edge of the image
   @param  ACol1     Index of the column containing the left edege of the image
   @param  ARow2     Index of the row containing the right edge of the image
@@ -179,8 +178,8 @@ end;
   Returns the parameters of the image stored in the internal image list at
   the specified index.
 
-  @param   AIndex    Index of the image to be retrieved
-  @return  TsImage record with all image parameters.
+  @param    AIndex      Index of the image to be retrieved
+  @returns  @link(TsImage) record with all image parameters.
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetImage(AIndex: Integer): TsImage;
 var
@@ -246,15 +245,11 @@ end;
   @param  ARow       Index of the row at which the image begins (top edge)
   @param  ACol       Index of the column at which the image begins (left edge)
   @param  AFileName  Name of the image file
-  @param  AOffsetX   The image is offset horizontally from the left edge of
-                     the anchor cell. May reach into another cell.
-                     Value is in workbook units.
-  @param  AOffsetY   The image is offset vertically from the top edge of the
-                     anchor cell. May reach into another cell.
-                     Value is in workbook units.
+  @param  AOffsetX   The image is offset horizontally from the left edge of the anchor cell. May reach into another cell. Value is in workbook units.
+  @param  AOffsetY   The image is offset vertically from the top edge of the anchor cell. May reach into another cell. Value is in workbook units.
   @param  AScaleX    Horizontal scaling factor of the image
   @param  AScaleY    Vertical scaling factor of the image
-  @return Index into the internal image list.
+  @returns Index into the internal image list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AFileName: String;
   AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
@@ -279,19 +274,15 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds an embedded image to the worksheet. The image passed in a stream.
 
-  @param  ARow       Index of the row at which the image begins (top edge)
-  @param  ACol       Index of the column at which the image begins (left edge)
-  @param  AStream    Stream which contains the image data
-  @param  AOffsetX   The image is offset horizontally from the left edge of
-                     the anchor cell. May reach into another cell.
-                     Value is in workbook units.
-  @param  AOffsetY   The image is offset vertically from the top edge of the
-                     anchor cell. May reach into another cell.
-                     Value is in workbook units.
-  @param  AScaleX    Horizontal scaling factor of the image
-  @param  AScaleY    Vertical scaling factor of the image
-  @param  ASize      Number ob bytes to be read from the input stream.
-  @return Index into the internal image list.
+  @param   ARow       Index of the row at which the image begins (top edge)
+  @param   ACol       Index of the column at which the image begins (left edge)
+  @param   AStream    Stream which contains the image data
+  @param   AOffsetX   The image is offset horizontally from the left edge of the anchor cell. May reach into another cell. Value is in workbook units.
+  @param   AOffsetY   The image is offset vertically from the top edge of the anchor cell. May reach into another cell. Value is in workbook units.
+  @param   AScaleX    Horizontal scaling factor of the image
+  @param   AScaleY    Vertical scaling factor of the image
+  @param   ASize      Number ob bytes to be read from the input stream.
+  @returns Index into the internal image list.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteImage(ARow, ACol: Cardinal; AStream: TStream;
   AOffsetX: Double = 0.0; AOffsetY: Double = 0.0;
@@ -423,7 +414,7 @@ end;
 
 
 {@@ ----------------------------------------------------------------------------
-  Returns true if there is at least one worksheet with an embedded images.
+  Returns @true if there is at least one worksheet with an embedded images.
 -------------------------------------------------------------------------------}
 function TsWorkbook.HasEmbeddedSheetImages: Boolean;
 var

@@ -1,0 +1,7 @@
+../../source/common/fpspreadsheet.pas
+../../source/common/fpstypes.pas
+../../source/common/fpsutils.pas
+../../source/common/fpsimages.pas
+../../source/common/fpsnumformat.pas
+../../source/common/fpsallformats.pas
+../../source/common/fpsrpn.pas

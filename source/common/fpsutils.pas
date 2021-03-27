@@ -1,5 +1,5 @@
 {@@ ----------------------------------------------------------------------------
-  Unit fpsUtils provides a variety of <b>utility functions</b> used
+  Unit **fpsUtils** provides a variety of **utility functions** used
   throughout the fpspreadsheet library.
 
   LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
@@ -284,8 +284,8 @@ const
 {@@ ----------------------------------------------------------------------------
   WordLEToLE converts a word value from big-endian to little-endian byte order.
 
-  @param   AValue  Big-endian word value
-  @return          Little-endian word value
+  @param    AValue   Big-endian word value
+  @returns  Little-endian word value
 -------------------------------------------------------------------------------}
 function WordToLE(AValue: Word): Word;
 begin
@@ -299,8 +299,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   DWordLEToLE converts a DWord value from big-endian to little-endian byte-order.
 
-  @param   AValue  Big-endian DWord value
-  @return          Little-endian DWord value
+  @param    AValue   Big-endian DWord value
+  @returns  Little-endian DWord value
 -------------------------------------------------------------------------------}
 function DWordToLE(AValue: Cardinal): Cardinal;
 begin
@@ -314,8 +314,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts an integer value from big-endian to little-endian byte-order.
 
-  @param   AValue  Big-endian integer value
-  @return          Little-endian integer value
+  @param     AValue  Big-endian integer value
+  @returns   Little-endian integer value
 -------------------------------------------------------------------------------}
 function IntegerToLE(AValue: Integer): Integer;
 begin
@@ -329,8 +329,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts a word value from little-endian to big-endian byte-order.
 
-  @param   AValue  Little-endian word value
-  @return          Big-endian word value
+  @param    AValue  Little-endian word value
+  @returns  Big-endian word value
 -------------------------------------------------------------------------------}
 function WordLEtoN(AValue: Word): Word;
 begin
@@ -344,8 +344,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts a DWord value from little-endian to big-endian byte-order.
 
-  @param   AValue  Little-endian DWord value
-  @return          Big-endian DWord value
+  @param     AValue  Little-endian DWord value
+  @returns   Big-endian DWord value
 -------------------------------------------------------------------------------}
 function DWordLEtoN(AValue: Cardinal): Cardinal;
 begin
@@ -359,8 +359,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts a widestring from big-endian to little-endian byte-order.
 
-  @param   AValue  Big-endian widestring
-  @return          Little-endian widestring
+  @param    AValue  Big-endian widestring
+  @returns  Little-endian widestring
 -------------------------------------------------------------------------------}
 function WideStringToLE(const AValue: WideString): WideString;
 {$IFNDEF FPC}
@@ -385,8 +385,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts a widestring from little-endian to big-endian byte-order.
 
-  @param   AValue  Little-endian widestring
-  @return          Big-endian widestring
+  @param    AValue  Little-endian widestring
+  @returns  Big-endian widestring
 -------------------------------------------------------------------------------}
 function WideStringLEToN(const AValue: WideString): WideString;
 {$IFNDEF FPC}
@@ -415,10 +415,9 @@ end;
   @param  AFirstCellRow  Row index of the first cell of the range (output)
   @param  AFirstCellCol  Column index of the first cell of the range (output)
   @param  ACount         Number of cells included in the range (output)
-  @param  ADirection     fpsVerticalSelection if the range is along a column,
-                         fpsHorizontalSelection if the range is along a row
+  @param  ADirection     fpsVerticalSelection if the range is along a column, fpsHorizontalSelection if the range is along a row
 
-  @return                false if the string is not a valid cell range
+  @returns               @False if the string is not a valid cell range
 -------------------------------------------------------------------------------}
 function ParseIntervalString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ACount: Cardinal;
@@ -480,11 +479,9 @@ end;
   @param  AFirstCellCol  Column index of the top/left cell of the range (output)
   @param  ALastCellRow   Row index of the bottom/right cell of the range (output)
   @param  ALastCellCol   Column index of the bottom/right cell of the range (output)
-  @param  AFlags         a set containing an element for AFirstCellRow, AFirstCellCol,
-                         ALastCellRow, ALastCellCol if they represent relative
-                         cell addresses.
+  @param  AFlags         A set containing an element for AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol if they represent relative cell addresses.
 
-  @return                false if the string is not a valid cell range
+  @returns               @False if the string is not a valid cell range
 -------------------------------------------------------------------------------}
 function ParseCellRangeString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal;
@@ -532,7 +529,7 @@ end;
   @param  AFirstCellCol  Column index of the top/left cell of the range (output)
   @param  ALastCellRow   Row index of the bottom/right cell of the range (output)
   @param  ALastCellCol   Column index of the bottom/right cell of the range (output)
-  @return                false if the string is not a valid cell range
+  @returns               @False if the string is not a valid cell range
 --------------------------------------------------------------------------------}
 function ParseCellRangeString(const AStr: string;
   out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal): Boolean;
@@ -550,14 +547,10 @@ end;
   Parses strings like A5:C10 into a range selection information.
   Returns in AFlags also information on relative/absolute cells.
 
-  @param  AStr           Cell range string, such as A5:C10
-  @param  ARange         TsCellRange record of the zero-based row and column
-                         indexes of the top/left and right/bottom corrners
-  @param  AFlags         a set containing an element for ARange.Row1 (top row),
-                         ARange.Col1 (left column), ARange.Row2 (bottom row),
-                         ARange.Col2 (right column) if they represent relative
-                         cell addresses.
-  @return                false if the string is not a valid cell range
+  @param  AStr    Cell range string, such as A5:C10
+  @param  ARange  @link(TsCellRange) record of the zero-based row and column indexes of the top/left and right/bottom corrners
+  @param  AFlags   A set containing an element for ARange.Row1 (top row), ARange.Col1 (left column), ARange.Row2 (bottom row), ARange.Col2 (right column) if they represent relative cell addresses.
+  @returns         @False if the string is not a valid cell range
 --------------------------------------------------------------------------------}
 function ParseCellRangeString(const AStr: String;
   out ARange: TsCellRange; out AFlags: TsRelFlags): Boolean;
@@ -570,10 +563,9 @@ end;
   Parses strings like A5:C10 into a range selection information.
   Information on relative/absolute cells is ignored.
 
-  @param  AStr           Cell range string, such as A5:C10
-  @param  ARange         TsCellRange record of the zero-based row and column
-                         indexes of the top/left and right/bottom corrners
-  @return                false if the string is not a valid cell range
+  @param  AStr    Cell range string, such as A5:C10
+  @param  ARange  @link(TsCellRange) record of the zero-based row and column indexes of the top/left and right/bottom corrners
+  @returns        @False if the string is not a valid cell range
 --------------------------------------------------------------------------------}
 function ParseCellRangeString(const AStr: String;
   out ARange: TsCellRange): Boolean;
@@ -588,15 +580,14 @@ end;
   Note that there can be several letters to address for more than 26 columns.
   'AFlags' indicates relative addresses.
 
+  Example: "AMP$200" --> (rel) column 1029 (= 26*26*1 + 26*16 + 26 - 1)
+                         (abs) row = 199 (abs)
+
   @param  AStr      Cell range string, such as A1
   @param  ACellRow  Row index of the top/left cell of the range (output)
   @param  ACellCol  Column index of the top/left cell of the range (output)
-  @param  AFlags    A set containing an element for ACellRow and/or ACellCol,
-                    if they represent a relative cell address.
-  @return           False if the string is not a valid cell range
-
-  @example "AMP$200" --> (rel) column 1029 (= 26*26*1 + 26*16 + 26 - 1)
-                         (abs) row = 199 (abs)
+  @param  AFlags    A set containing an element for ACellRow and/or ACellCol, if they represent a relative cell address.
+  @returns          @False if the string is not a valid cell range
 -------------------------------------------------------------------------------}
 function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
   out AFlags: TsRelFlags): Boolean;
@@ -683,19 +674,16 @@ end;
   Extracts information on cell range from a cellrange string in "R1C1" notation.
   Returns in AFlags also information on relative/absolute cells.
 
-  @param  AStr          Cell range string, in R1C1 syntax,
-                        such as R[2]C[3]:R[4]C[8]
+  @param  AStr          Cell range string, in R1C1 syntax, such as R[2]C[3]:R[4]C[8]
   @param  ABaseRow      Row index from which the cell reference is seen.
   @param  ABaseCol      Column index from which the cell reference is seen.
   @param  AFirstCellRow Row index of the top/left cell of the range (output)
   @param  AFirstCellCol Column index of the top/left cell of the range (output)
   @param  ALastCellRow  Row index of the bottom/right cell of the range (output)
   @param  ALastCellCol  Column index of the bottom/right cell of the rng (output)
-  @param  AFlags        A set containing an element for AFirstCellRow,
-                        AFirstCellCol, ALastCellRow, ALastCellCol if they
-                        represent a relative cell address.
+  @param  AFlags        A set containing an element for AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol if they represent a relative cell address.
 
-  @return               FALSE if the string is not a valid cell range
+  @returns              @FALSE if the string is not a valid cell range
 -------------------------------------------------------------------------------}
 function ParseCellRangeString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
   out AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol: Cardinal;
@@ -752,9 +740,8 @@ end;
   @param  ABaseCol  Column index from which the cell reference is seen.
   @param  ACellRow  Row index of the top/left cell of the range (output)
   @param  ACellCol  Column index of the top/left cell of the range (output)
-  @param  AFlags    A set containing an element for ACellRow and/or ACellCol,
-                    if they represent a relative cell address.
-  @return           FALSE if the string is not a valid cell range
+  @param  AFlags    A set containing an element for ACellRow and/or ACellCol, if they represent a relative cell address.
+  @returns          @FALSE if the string is not a valid cell range
 -------------------------------------------------------------------------------}
 function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
   out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean;
@@ -861,7 +848,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Parses a 3D cell and sheet range string in Excel R1C1 dialect. Returns the
   names of the limiting sheets and the indexes of the limiting borders.
-  The function result is false if the provided string is not valid.
+  The function result is @false if the provided string is not valid.
 -------------------------------------------------------------------------------}
 function ParseCellRangeString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
   out ASheet1, ASheet2: String; out ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -907,7 +894,7 @@ end;
   @param  AStr      Cell range string, such as A1
   @param  ACellRow  Row index of the top/left cell of the range (output)
   @param  ACellCol  Column index of the top/left cell of the range (output)
-  @return           False if the string is not a valid cell range
+  @returns          @False if the string is not a valid cell range
 -------------------------------------------------------------------------------}
 function ParseCellString(const AStr: string;
   out ACellRow, ACellCol: Cardinal): Boolean;
@@ -938,7 +925,7 @@ end;
 
   @param  AStr  Cell row string, such as '1', 1-based!
   @param  ARow  Index of the row (zero-based!) (putput)
-  @return       False if the string is not a valid cell row string
+  @returns      @False if the string is not a valid cell row string
 -------------------------------------------------------------------------------}
 function ParseCellRowString(const AStr: string; out ARow: Cardinal): Boolean;
 begin
@@ -956,7 +943,7 @@ end;
 
   @param  AStr   Cell range string, such as A1
   @param  ACol   Zero-based index of the column (output)
-  @return        False if the string is not a valid cell column string
+  @returns       @False if the string is not a valid cell column string
 -------------------------------------------------------------------------------}
 function ParseCellColString(const AStr: string; out ACol: Cardinal): Boolean;
 var
@@ -1012,7 +999,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Parses a 3D cell and sheet range string in Excel A1 dialect. Returns the
   names of the limiting sheets and the indexes of the limiting borders.
-  The function result is false if the provided string is not valid.
+  The function result is @false if the provided string is not valid.
 -------------------------------------------------------------------------------}
 function ParseCellRangeString(const AStr: String; out ASheet1, ASheet2: String;
   out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean;
@@ -1049,7 +1036,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Parses a 3D cell and sheet range string in ODS dialect. Returns the
   names of the limiting sheets and the indexes of the limiting borders.
-  The function result is false if the provided string is not valid.
+  The function result is @false if the provided string is not valid.
 -------------------------------------------------------------------------------}
 function ParseCellRangeString_ODS(const AStr: String; out ASheet1, ASheet2: String;
   out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean;
@@ -1100,9 +1087,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Calculates an Excel column name ('A', 'B' etc) from the zero-based column index
 
-  @param  AColIndex   Zero-based column index
-  @return  Letter-based column name string. Can contain several letter in case of
-           more than 26 columns
+  @param    AColIndex   Zero-based column index
+  @returns  Letter-based column name string. Can contain several letter in case of more than 26 columns
 -------------------------------------------------------------------------------}
 function GetColString(AColIndex: Integer): String;
 { Code adapted from:
@@ -1123,8 +1109,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Calculates an Excel row name ('1', '2' etc) from the zero-based row index
 
-  @param  ARowIndex   Zero-based row index
-  @return  Numerical, one-based row name string.
+  @param    ARowIndex   Zero-based row index
+  @returns  Numerical, one-based row name string.
 -------------------------------------------------------------------------------}
 function GetRowString(ARowIndex: Integer): String;
 begin
@@ -1138,14 +1124,12 @@ const
   Calculates a cell address string from zero-based column and row indexes and
   the relative address state flags.
 
+  Example: ARowIndex = 0, AColIndex = 0, AFlags = [rfRelRow] --> $A1
+
   @param   ARowIndex   Zero-based row index
   @param   AColIndex   Zero-based column index
-  @param   AFlags      An optional set containing an entry for column and row
-                       if these addresses are relative. By default, relative
-                       addresses are assumed.
-  @return  Excel type of cell address containing $ characters for absolute
-           address parts.
-  @example ARowIndex = 0, AColIndex = 0, AFlags = [rfRelRow] --> $A1
+  @param   AFlags      An optional set containing an entry for column and row if these addresses are relative. By default, relative addresses are assumed.
+  @returns  Excel type of cell address containing $ characters for absolute address parts.
 -------------------------------------------------------------------------------}
 function GetCellString(ARow, ACol: Cardinal;
   AFlags: TsRelFlags = [rfRelRow, rfRelCol]): String;
@@ -1162,14 +1146,10 @@ end;
 
   @param   ARow        Zero-based row index
   @param   ACol        Zero-based column index
-  @param   AFlags      An optional set containing an entry for column and row
-                       if these addresses are relative. By default, relative
-                       addresses are assumed.
-  @param   @ARefRow    Zero-based row index of the reference cell in case of
-                       relative address.
-  @param   @ARefCol    Zero-based column index of the reference cell in case of
-                       relative address.
-  @return  Excel type of cell address in R1C1 notation.
+  @param   AFlags      An optional set containing an entry for column and row if these addresses are relative. By default, relative addresses are assumed.
+  @param   @ARefRow    Zero-based row index of the reference cell in case of relative address.
+  @param   @ARefCol    Zero-based column index of the reference cell in case of relative address.
+  @returns Excel type of cell address in R1C1 notation.
 -------------------------------------------------------------------------------}
 function GetCellString_R1C1(ARow, ACol: Cardinal; AFlags: TsRelFlags = [rfRelRow, rfRelCol];
   ARefRow: Cardinal = Cardinal(-1); ARefCol: Cardinal = Cardinal(-1)): String;
@@ -1230,20 +1210,15 @@ end;
   Calculates a cell range address string from zero-based column and row indexes
   and the relative address state flags.
 
-  @param   ARow1       Zero-based index of the first row in the range
-  @param   ACol1       Zero-based index of the first column in the range
-  @param   ARow2       Zero-based index of the last row in the range
-  @param   ACol2       Zero-based index of the last column in the range
-  @param   AFlags      A set containing an entry for first and last column and
-                       row if their addresses are relative.
-  @param   Compact     If the range consists only of a single cell and compact
-                       is true then the simple cell string is returned (e.g. A1).
-                       If compact is false then the cell is repeated (e.g. A1:A1)
-  @return  Excel type of cell address range containing '$' characters for absolute
-           address parts and a ':' to separate the first and last cells of the
-           range
-  @example ARow1 = 0, ACol1 = 0, ARow = 2, ACol = 1, AFlags = [rfRelRow, rfRelRow2]
-           --> $A1:$B3
+  Example: ARow1 = 0, ACol1 = 0, ARow = 2, ACol = 1, AFlags = [rfRelRow, rfRelRow2] --> $A1:$B3
+  
+  @param    ARow1       Zero-based index of the first row in the range
+  @param    ACol1       Zero-based index of the first column in the range
+  @param    ARow2       Zero-based index of the last row in the range
+  @param    ACol2       Zero-based index of the last column in the range
+  @param    AFlags      A set containing an entry for first and last column and row if their addresses are relative.
+  @param    Compact     If the range consists only of a single cell and compact is true then the simple cell string is returned (e.g. A1). If compact is false then the cell is repeated (e.g. A1:A1)
+  @returns  Excel type of cell address range containing '$' characters for absolute address parts and a ':' to separate the first and last cells of the range
 -------------------------------------------------------------------------------}
 function GetCellRangeString(ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
@@ -1292,16 +1267,10 @@ end;
   Calculates a cell range address string from a TsCellRange record
   and the relative address state flags.
 
-  @param   ARange      TsCellRange record containing the zero-based indexes of
-                       the first and last row and columns of the range
-  @param   AFlags      A set containing an entry for first and last column and
-                       row if their addresses are relative.
-  @param   Compact     If the range consists only of a single cell and compact
-                       is true then the simple cell string is returned (e.g. A1).
-                       If compact is false then the cell is repeated (e.g. A1:A1)
-  @return  Excel type of cell address range containing '$' characters for absolute
-           address parts and a ':' to separate the first and last cells of the
-           range
+  @param    ARange   TsCellRange record containing the zero-based indexes of the first and last row and columns of the range
+  @param    AFlags   A set containing an entry for first and last column and row if their addresses are relative.
+  @param    Compact  If the range consists only of a single cell and compact is @true then the simple cell string is returned (e.g. A1). If compact is @false then the cell is repeated (e.g. A1:A1)
+  @returns  Excel type of cell address range containing '$' characters for absolute address parts and a ':' to separate the first and last cells of the range
 -------------------------------------------------------------------------------}
 function GetCellRangeString(ARange: TsCellRange;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
@@ -1425,13 +1394,12 @@ end;
 
 
 {@@ ----------------------------------------------------------------------------
-  Returns the error value code from a string. Result is false, if the string does
+  Returns the error value code from a string. Result is @false, if the string does
   not match one of the predefined error strings.
 
-  @param   AErrorStr   Error string
-  @param   AErr        Corresponding error value code (type TsErrorValue)
-  @result  TRUE if error code could be determined from the error string,
-           FALSE otherwise.
+  @param    AErrorStr   Error string
+  @param    AErr        Corresponding error value code (type TsErrorValue)
+  @returns  @TRUE if error code could be determined from the error string, @FALSE otherwise.
 -------------------------------------------------------------------------------}
 function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
 begin
@@ -1453,8 +1421,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the message text assigned to an error value
 
-  @param   AErrorValue  Error code as defined by TsErrorvalue
-  @return  Text corresponding to the error code.
+  @param    AErrorValue    Error code as defined by @link(TsErrorvalue)
+  @returns  Text corresponding to the error code.
 -------------------------------------------------------------------------------}
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 begin
@@ -1477,12 +1445,9 @@ end;
   Returns the name of the given spreadsheet file format.
 
   @param   AFormat  Identifier of the file format
-  @return  'BIFF2', 'BIFF3', 'BIFF4', 'BIFF5', 'BIFF8', 'OOXML', 'Open Document',
-           'CSV, 'WikiTable Pipes', or 'WikiTable WikiMedia"
+  @returns  'BIFF2', 'BIFF3', 'BIFF4', 'BIFF5', 'BIFF8', 'OOXML', 'Open Document', 'CSV, 'WikiTable Pipes', or 'WikiTable WikiMedia"
 
-  @Note    This function is deprecated. Use GetSpreadFormatName or
-           GetSpreadTechnicalName of fpsRegFileformats instead in order to
-           be able to process user-defined formats as well.
+  @Note    This function is deprecated. Use GetSpreadFormatName or GetSpreadTechnicalName of fpsRegFileformats instead in order to be able to process user-defined formats as well.
 -------------------------------------------------------------------------------}
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): string;
 begin
@@ -1492,8 +1457,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the default extension of each spreadsheet file format
 
-  @param  AFormat  Identifier of the file format
-  @retur  File extension
+  @param    AFormat  Identifier of the file format
+  @returns  File extension
 -------------------------------------------------------------------------------}
 function GetFileFormatExt(AFormat: TsSpreadsheetFormat): String;
 begin
@@ -1511,12 +1476,13 @@ begin
   end;
 end;
   *)
+  
 {@@ ----------------------------------------------------------------------------
   Determines the spreadsheet type from the file type extension
 
-  @param   AFileName   Name of the file to be considered
-  @param   AFormatID   File format ID found from analysis of the extension (output)
-  @return  True if the file matches any of the registered formats, false otherwise
+  @param    AFileName   Name of the file to be considered
+  @param    AFormatID   File format ID found from analysis of the extension (output)
+  @returns  @True if the file matches any of the registered formats, @false otherwise
 -------------------------------------------------------------------------------}
 function GetFormatFromFileName(const AFileName: TFileName;
   out AFormatID: TsSpreadFormatID): Boolean;
@@ -1531,10 +1497,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Determines the spreadsheet type from the file type extension
 
-  @param   AFileName   Name of the file to be considered
-  @param   SheetType   Built-in file format found from analysis of the extension
-                       (output)
-  @return  True if the file matches any of the built-in formats, false otherwise
+  @param    AFileName   Name of the file to be considered
+  @param    SheetType   Built-in file format found from analysis of the extension (output)
+  @returns  @True if the file matches any of the built-in formats, @false otherwise
 -------------------------------------------------------------------------------}
 function GetFormatFromFileName(const AFileName: TFileName;
   out SheetType: TsSpreadsheetFormat): Boolean;
@@ -1598,10 +1563,10 @@ end;
   Helper function to reduce typing: "if a conditions is true return the first
   number format, otherwise return the second format"
 
-  @param   ACondition   Boolean expression
-  @param   AValue1      First built-in number format code
-  @param   AValue2      Second built-in number format code
-  @return  AValue1 if ACondition is true, AValue2 otherwise.
+  @param    ACondition   Boolean expression
+  @param    AValue1      First built-in number format code
+  @param    AValue2      Second built-in number format code
+  @returns  AValue1 if ACondition is true, AValue2 otherwise.
 -------------------------------------------------------------------------------}
 function IfThen(ACondition: Boolean;
   AValue1, AValue2: TsNumberFormat): TsNumberFormat;
@@ -1697,6 +1662,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts a string to a floating point number. No assumption on decimal and
   thousand separator are made.
+  
   Is needed for reading CSV files.
 -------------------------------------------------------------------------------}
 function TryStrToFloatAuto(AText: String; out ANumber: Double;
@@ -1868,14 +1834,13 @@ end;
   Returns also the maximum count of digits used in the numerator or
   denominator of the fraction
 
+  Example:  AText := '1 3/4' --> ANumber = 1.75; AMaxDigits = 1; Result = true
+
   @param  AText       String to be considered
   @param  ANumber     (out) value of the converted floating point number
-  @param  AMaxDigits  Maximum count of digits used in the numerator or
-                      denominator of the fraction
+  @param  AMaxDigits  Maximum count of digits used in the numerator or denominator of the fraction
 
-  @return TRUE if a number value can be retrieved successfully, FALSE otherwise
-
-  @example  AText := '1 3/4' --> ANumber = 1.75; AMaxDigits = 1; Result = true
+  @returns @TRUE if a number value can be retrieved successfully, @FALSE otherwise
 -------------------------------------------------------------------------------}
 function TryFractionStrToFloat(AText: String; out ANumber: Double;
   out AIsMixed: Boolean; out AMaxDigits: Integer): Boolean;
@@ -1946,8 +1911,8 @@ end;
   Excel's unit of row heights is "twips", i.e. 1/20 point.
   Converts Twips to points.
 
-  @param   AValue   Length value in twips
-  @return  Value converted to points
+  @param    AValue   Length value in twips
+  @returns  Value converted to points
 -------------------------------------------------------------------------------}
 function TwipsToPts(AValue: Integer): Single;
 begin
@@ -1957,8 +1922,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts points to twips (1 twip = 1/20 point)
 
-  @param   AValue   Length value in points
-  @return  Value converted to twips
+  @param    AValue   Length value in points
+  @returns  Value converted to twips
 -------------------------------------------------------------------------------}
 function PtsToTwips(AValue: Single): Integer;
 begin
@@ -1968,8 +1933,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts centimeters to points (72 pts = 1 inch)
 
-  @param   AValue  Length value in centimeters
-  @return  Value converted to points
+  @param    AValue  Length value in centimeters
+  @returns  Value converted to points
 -------------------------------------------------------------------------------}
 function cmToPts(AValue: Double): Double;
 begin
@@ -1979,8 +1944,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts points to centimeters
 
-  @param   AValue   Length value in points
-  @return  Value converted to centimeters
+  @param    AValue   Length value in points
+  @returns  Value converted to centimeters
 -------------------------------------------------------------------------------}
 function PtsToCm(AValue: Double): Double;
 begin
@@ -1990,8 +1955,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts inches to EMU (English metric units)
 
-  @param   AValue   Length value in inches
-  @return  Value converted to EMU
+  @param    AValue   Length value in inches
+  @returns  Value converted to EMU
 -------------------------------------------------------------------------------}
 function InToEMU(AValue: Double): Int64;
 begin
@@ -2001,8 +1966,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts EMU (English metric units) to inches
 
-  @param   AValue   Length value in EMU
-  @return  Value converted to inches
+  @param    AValue   Length value in EMU
+  @returns  Value converted to inches
 -------------------------------------------------------------------------------}
 function EMUToIn(AValue: Int64): Double;
 begin
@@ -2013,8 +1978,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts inches to millimeters
 
-  @param   AValue   Length value in inches
-  @return  Value converted to mm
+  @param    AValue   Length value in inches
+  @returns  Value converted to mm
 -------------------------------------------------------------------------------}
 function InToMM(AValue: Double): Double;
 begin
@@ -2024,8 +1989,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts millimeters to inches
 
-  @param   AValue   Length value in millimeters
-  @return  Value converted to inches
+  @param    AValue   Length value in millimeters
+  @returns  Value converted to inches
 -------------------------------------------------------------------------------}
 function mmToIn(AValue: Double): Double;
 begin
@@ -2035,8 +2000,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts inches to points (72 pts = 1 inch)
 
-  @param   AValue   Length value in inches
-  @return  Value converted to points
+  @param    AValue   Length value in inches
+  @returns  Value converted to points
 -------------------------------------------------------------------------------}
 function InToPts(AValue: Double): Double;
 begin
@@ -2046,8 +2011,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts points to inches (72 pts = 1 inch)
 
-  @param   AValue   Length value in points
-  @return  Value converted to inches
+  @param    AValue   Length value in points
+  @returns  Value converted to inches
 -------------------------------------------------------------------------------}
 function PtsToIn(AValue: Double): Double;
 begin
@@ -2057,8 +2022,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts EMU to millimeters
 
-  @param   AValue    Length value in EMU (1 cm = 360000 EMU)
-  @return  Value converted to millimeters
+  @param    AValue    Length value in EMU (1 cm = 360000 EMU)
+  @returns  Value converted to millimeters
 -------------------------------------------------------------------------------}
 function EMUToMM(AValue: Int64): Double;
 begin
@@ -2068,8 +2033,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts millimeters to EMU (english metric units, 1 cm = 360000 EMU)
 
-  @param   AValue    Length value in millimeters
-  @return  Value converted to EMU
+  @param    AValue    Length value in millimeters
+  @returns  Value converted to EMU
 -------------------------------------------------------------------------------}
 function mmToEMU(AValue: Double): Int64; inline;
 begin
@@ -2079,8 +2044,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts millimeters to points (72 pts = 1 inch)
 
-  @param   AValue   Length value in millimeters
-  @return  Value converted to points
+  @param    AValue   Length value in millimeters
+  @returns  Value converted to points
 -------------------------------------------------------------------------------}
 function mmToPts(AValue: Double): Double;
 begin
@@ -2090,8 +2055,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts points to millimeters
 
-  @param    AValue   Length value in points
-  @return   Value converted to millimeters
+  @param     AValue   Length value in points
+  @returns   Value converted to millimeters
 -------------------------------------------------------------------------------}
 function PtsToMM(AValue: Double): Double;
 const
@@ -2103,9 +2068,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts pixels to points.
 
-  @param   AValue                Length value given in pixels
-  @param   AScreenPixelsPerInch  Pixels per inch of the screen
-  @return  Value converted to points
+  @param    AValue                Length value given in pixels
+  @param    AScreenPixelsPerInch  Pixels per inch of the screen
+  @returns  Value converted to points
 -------------------------------------------------------------------------------}
 function pxToPts(AValue, AScreenPixelsPerInch: Integer): Double;
 begin
@@ -2119,9 +2084,9 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Converts points to pixels
-  @param   AValue                Length value given in points
-  @param   AScreenPixelsPerInch  Pixels per inch of the screen
-  @return  Value converted to pixels
+  @param    AValue                Length value given in points
+  @param    AScreenPixelsPerInch  Pixels per inch of the screen
+  @returns  Value converted to pixels
 -------------------------------------------------------------------------------}
 function PtsToPx(AValue: Double; AScreenPixelsPerInch: Integer): Integer;
 begin
@@ -2132,13 +2097,9 @@ end;
   Converts a HTML length string to points. The units are assumed to be the last
   two digits of the string, such as '1.25in'
 
-  @param   AValue   HTML string representing a length with appended units code,
-                    such as '1.25in'. These unit codes are accepted:
-                    'px' (pixels), 'pt' (points), 'in' (inches), 'mm' (millimeters),
-                    'cm' (centimeters).
-  @param   DefaultUnits  String identifying the units to be used if not contained
-                         in AValue.
-  @return  Extracted length in points
+  @param    AValue   HTML string representing a length with appended units code, such as '1.25in'. These unit codes are accepted: 'px' (pixels), 'pt' (points), 'in' (inches), 'mm' (millimeters), 'cm' (centimeters).
+  @param    DefaultUnits  String identifying the units to be used if not contained in AValue.
+  @returns  Extracted length in points
 -------------------------------------------------------------------------------}
 function HTMLLengthStrToPts(AValue: String; DefaultUnits: String = 'pt'): Double;
 var
@@ -2214,9 +2175,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts a HTML color string to a TsColor alue. Needed for the ODS file format.
 
-  @param   AValue         HTML color string, such as '#FF0000'
-  @return  rgb color value in little endian byte-sequence. This value is
-           compatible with the TColor data type of the graphics unit.
+  @param    AValue         HTML color string, such as '#FF0000'
+  @returns  rgb color value in little endian byte-sequence. This value is compatible with the TColor data type of the graphics unit.
 -------------------------------------------------------------------------------}
 function HTMLColorStrToColor(AValue: String): TsColor;
 var
@@ -2266,11 +2226,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Converts an rgb color value to a string as used in HTML code (for ods)
 
-  @param   AValue          RGB color value (compatible with the TColor data type
-                           of the graphics unit)
-  @param   AExcelDialect   If TRUE, returned string is in Excel's format for xlsx,
-                           i.e. in AARRGGBB notation, like '00FF0000' for "red"
-  @return  HTML-compatible string, like '#FF0000' (AExcelDialect = false)
+  @param    AValue          RGB color value (compatible with the TColor data type of the graphics unit)
+  @param    AExcelDialect   If @TRUE, returned string is in Excel's format for xlsx, i.e. in AARRGGBB notation, like '00FF0000' for "red"
+  @returns  HTML-compatible string, like '#FF0000' (AExcelDialect = false)
 -------------------------------------------------------------------------------}
 function ColorToHTMLColorStr(AValue: TsColor;
   AExcelDialect: Boolean = false): String;
@@ -2287,11 +2245,9 @@ end;
   Extracts compare information from an input string such as "<2.4".
   Is needed for some Excel-strings.
 
-  @param  AString     Input string starting with "<", "<=", ">", ">=", "<>" or "="
-                      If this start code is missing a "=" is assumed.
-  @param  ACompareOp  Identifier for the comparing operation extracted
-                      - see TsCompareOperation
-  @return Input string with the comparing characters stripped.
+  @param   AString     Input string starting with "<", "<=", ">", ">=", "<>" or "=". If this start code is missing a "=" is assumed.
+  @param   ACompareOp  Identifier for the comparing operation extracted - see TsCompareOperation
+  @returns Input string with the comparing characters stripped.
 -------------------------------------------------------------------------------}
 function AnalyzeComparestr(AString: String; out ACompareOp: TsCompareOperation): String;
 
@@ -2508,8 +2464,7 @@ end;
   found after searching will be replaced
 
   @param   AReplaceText   Is the text which will be inserted in the found cell
-  @param   AOptions       Defines options for the replacement (see
-                          TsReplaceParams)
+  @param   AOptions       Defines options for the replacement (see TsReplaceParams)
 -------------------------------------------------------------------------------}
 function InitReplaceParams(AReplaceText: String = '';
   AOptions: TsReplaceOptions = []): TsReplaceParams;
@@ -2522,19 +2477,10 @@ end;
   Initializes a Sortparams record. This record sets paramaters used when cells
   are sorted.
 
-  @param  ASortByCols     If true sorting occurs along columns, i.e. the
-                          ColRowIndex of the sorting keys refer to column indexes.
-                          If False, sorting occurs along rows, and the
-                          ColRowIndexes refer to row indexes
-                          Default: true
-  @param  ANumSortKeys    Determines how many columns or rows are used as sorting
-                          keys. (Default: 1). Every sort key is initialized for
-                          ascending sort direction and case-sensitive comparison.
-  @param  ASortPriority   Determines the order or text and numeric data in
-                          mixed content type cell ranges.
-                          Default: spNumAlpha, i.e. numbers before text (in
-                          ascending sort)
-  @return The initializaed TsSortParams record
+  @param   ASortByCols     If @true (default) sorting occurs along columns, i.e. the ColRowIndex of the sorting keys refer to column indexes. If @False, sorting occurs along rows, and the ColRowIndexes refer to row indexes
+  @param   ANumSortKeys    Determines how many columns or rows are used as sorting keys. (Default: 1). Every sort key is initialized for ascending sort direction and case-sensitive comparison.
+  @param   ASortPriority   Determines the order or text and numeric data in mixed content type cell ranges. Default: spNumAlpha, i.e. numbers before text (in ascending sort)
+  @returns The initializaed TsSortParams record
 -------------------------------------------------------------------------------}
 function InitSortParams(ASortByCols: Boolean = true; ANumSortKeys: Integer = 1;
   ASortPriority: TsSortPriority = spNumAlpha): TsSortParams;
@@ -2589,7 +2535,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Initalizes a new cell.
-  @return  New cell record
+  @returns  New cell record
 -------------------------------------------------------------------------------}
 procedure InitCell(out ACell: TCell);
 begin
@@ -2601,10 +2547,10 @@ end;
   Initalizes a new cell and presets the row and column fields of the cell record
   to the parameters passed to the procedure.
 
-  @param  AWorksheet  Pointer to the worksheet containing the cell
-  @param  ARow        Row index of the new cell
-  @param  ACol        Column index of the new cell
-  @return New cell record with row and column fields preset to passed values.
+  @param   AWorksheet  Pointer to the worksheet containing the cell
+  @param   ARow        Row index of the new cell
+  @param   ACol        Column index of the new cell
+  @return  New cell record with row and column fields preset to passed values.
 -------------------------------------------------------------------------------}
 procedure InitCell(AWorksheet: TsbasicWorksheet;
   ARow, ACol: Cardinal; out ACell: TCell);
@@ -2664,13 +2610,11 @@ end;
 {@@ ----------------------------------------------------------------------------
   Initializes the fields of a TsImage record
 
-  @param  ARow      Index of the anchor row
-  @param  ACol      Index of the anchor column
-  @param  AOffsetX  Distance of the left image edge from the left edge of the
-                    anchor column. Measured in the units defined by the workbook.
-  @param  AOffsetY  Distance of the top image edge from the top edge of the
-                    anchor row. Measured in the units defined by the workbook.
-  @return TsImage record containing these values.
+  @param   ARow      Index of the anchor row
+  @param   ACol      Index of the anchor column
+  @param   AOffsetX  Distance of the left image edge from the left edge of the anchor column. Measured in the units defined by the workbook.
+  @param   AOffsetY  Distance of the top image edge from the top edge of the anchor row. Measured in the units defined by the workbook.
+  @returns TsImage record containing these values.
 -------------------------------------------------------------------------------}
 procedure InitImageRecord(out AValue: TsImage; ARow, ACol: Cardinal;
   AOffsetX, AOffsetY, AScaleX, AScaleY: Double);
@@ -2723,9 +2667,10 @@ begin
 end;
 *)
 {@@ ----------------------------------------------------------------------------
-  Returns TRUE if the cell contains a formula.
+  Checks whether the specified cell contains a formula.
 
-  @param   ACell   Pointer to the cell checked
+  @param    ACell   Pointer to the cell checked
+  @returns  @true if the cell contains a formula.
 -------------------------------------------------------------------------------}
 function HasFormula(ACell: PCell): Boolean;
 begin
@@ -2733,7 +2678,11 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns TRUE if the cell has a 3D formula (i.e. reference to another sheet)
+  Checks whether the specified cell contains a 3D formula, i.e. a reference
+  to another sheet.
+  
+  @param    ACell   Pointer to the cell checked
+  @returns  @true if the cell contains a 3D formula.
 -------------------------------------------------------------------------------}
 function Has3dFormula(ACell: PCell): Boolean;
 begin
@@ -2741,7 +2690,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns true if the file begins with a ZIP header *PK'#03#04.
+  Returns @true if the file begins with a ZIP header *PK'#03#04.
   Needed for file format detection.
 -------------------------------------------------------------------------------}
 function HasZipHeader(AStream: TStream): Boolean;
@@ -2840,7 +2789,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates a TsCellRange record from the coordinates of a single cell.
+  Creates a @link(TsCellRange) record from the coordinates of a single cell.
 -------------------------------------------------------------------------------}
 function Range(ARow, ACol: Cardinal): TsCellRange;
 begin
@@ -2851,7 +2800,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates a TsCellRange record from the provided cell corner coordinates.
+  Creates a @link(TsCellRange) record from the provided cell corner coordinates.
   Puts the coordinates into right order if needed.
 -------------------------------------------------------------------------------}
 function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange;
@@ -3071,9 +3020,9 @@ end;
   The algorithm is described in
   http://msdn.microsoft.com/en-us/library/documentformat.openxml.spreadsheet.backgroundcolor.aspx
 
-  @param   AColor   rgb color to be modified
-  @param   tint     Factor (-1...+1) to be used for the operation
-  @return  Modified color
+  @param    AColor   rgb color to be modified
+  @param    tint     Factor (-1...+1) to be used for the operation
+  @returns  Modified color
 -------------------------------------------------------------------------------}
 function TintedColor(AColor: TsColor; tint: Double): TsColor;
 const
@@ -3112,9 +3061,8 @@ end;
   Returns the color index for black or white depending on a color being "bright"
   or "dark".
 
-  @param   AColor      rgb color to be analyzed
-  @return  The color index for black (scBlack) if AColorValue is a "bright" color,
-           or white (scWhite) if AColorValue is a "dark" color.
+  @param    AColor      rgb color to be analyzed
+  @returns  The color index for black (scBlack) if AColorValue is a "bright" color, or white (scWhite) if AColorValue is a "dark" color.
 -------------------------------------------------------------------------------}
 function HighContrastColor(AColor: TsColor): TsColor;
 begin
@@ -3129,8 +3077,8 @@ end;
   In other words: RGBA (where A is 0 and omitted in the function call) => ABGR
   Needed for conversion of palette colors.
 
-  @param  RGB   DWord value containing RGBA bytes in big endian byte-order
-  @return       DWord containing RGB bytes in little-endian byte-order (A = 0)
+  @param    RGB   DWord value containing RGBA bytes in big endian byte-order
+  @returns  DWord containing RGB bytes in little-endian byte-order (A = 0)
 -------------------------------------------------------------------------------}
 function LongRGBToExcelPhysical(const RGB: DWord): DWord;
 begin

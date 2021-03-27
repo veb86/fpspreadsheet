@@ -7,9 +7,8 @@
   Checks whether a cell contains a comment and returns a pointer to the
   comment data.
 
-  @param  ACell  Pointer to the cell
-  @return Pointer to the TsComment record (nil, if the cell does not have a
-          comment)
+  @param   ACell  Pointer to the cell
+  @returns Pointer to the @link(TsComment) record (nil, if the cell does not have a comment)
 -------------------------------------------------------------------------------}
 function TsWorksheet.FindComment(ACell: PCell): PsComment;
 begin
@@ -32,9 +31,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the comment text attached to a specific cell
 
-  @param  ARow   (0-based) index to the row
-  @param  ACol   (0-based) index to the column
-  @return Text assigned to the cell as a comment
+  @param   ARow   (0-based) index to the row
+  @param   ACol   (0-based) index to the column
+  @returns Text assigned to the cell as a comment
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadComment(ARow, ACol: Cardinal): String;
 var
@@ -50,8 +49,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the comment text attached to a specific cell
 
-  @param  ACell  Pointer to the cell
-  @return Text assigned to the cell as a comment
+  @param   ACell  Pointer to the cell
+  @returns Text assigned to the cell as a comment
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadComment(ACell: PCell): String;
 var
@@ -80,10 +79,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds a comment to a specific cell
 
-  @param  ARow   (0-based) row index of the cell
-  @param  ACol   (0-based) column index of the cell
-  @param  AText  Comment text
-  @return Pointer to the cell containing the comment
+  @param   ARow    (0-based) row index of the cell
+  @param   ACol    (0-based) column index of the cell
+  @param   AText   Comment text
+  @returns Pointer to the cell containing the comment
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteComment(ARow, ACol: Cardinal; AText: String): PCell;
 begin

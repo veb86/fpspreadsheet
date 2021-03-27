@@ -1,10 +1,10 @@
-{
-fpsallformats.pas
-
-Unit to quickly add all supported fpspreadsheet formats to the project
+{@@ ----------------------------------------------------------------------------
+  Unit **fpsallformats** quickly adds all supported fpspreadsheet format
+  readers/writers to the project.
 
 AUTHORS: Felipe Monteiro de Carvalho
-}
+-------------------------------------------------------------------------------}
+
 unit fpsallformats;
 
 interface

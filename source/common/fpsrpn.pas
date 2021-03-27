@@ -1,6 +1,6 @@
 {@@ ----------------------------------------------------------------------------
-  The unit fpsRPN contains methods for simple creation of an <b>RPNFormula</b>
-  array to be used in fpspreadsheet.
+  The unit **fpsRPN** contains methods for simple creation of an **RPNFormula**
+  array to be used in fpSpreadsheet.
 
   AUTHORS: Werner Pamler
 
@@ -20,13 +20,13 @@ uses
 
 type
   {@@ Pointer to a TPRNItem record
-      @see    TRPNItem }
+      @seeAlso    TRPNItem }
   PRPNItem = ^TRPNItem;
 
   {@@ Helper record for simplification of RPN formula creation
       @param  FE     Formula element record stored in the RPN item
       @param  Next   Pointer to the next RPN item of the formula
-      @see    TsFormulaElement }
+      @seeAlso    TsFormulaElement }
   TRPNItem = record
     FE: TsFormulaElement;
     Next: PRPNItem;
@@ -81,7 +81,7 @@ uses
   Creates a pointer to a new RPN item. This represents an element in the array
   of token of an RPN formula.
 
-  @return  Pointer to the RPN item
+  @returns  Pointer to the RPN item
 -------------------------------------------------------------------------------}
 function NewRPNItem: PRPNItem;
 begin
@@ -303,7 +303,7 @@ end;
 
   @param  AErrCode  Error code to be inserted (see TsErrorValue
   @param  ANext     Pointer to the next RPN item in the list
-  @see TsErrorValue
+  @seeAlso TsErrorValue
 -------------------------------------------------------------------------------}
 function RPNErr(AErrCode: TsErrorValue; ANext: PRPNItem): PRPNItem;
 begin
@@ -386,11 +386,10 @@ end;
   (--> TFEKind). Note that array elements for all needed parameters must have
   been created before.
 
-  @param  AToken  Formula element indicating the function to be executed,
-                  see the TFEKind enumeration for possible values.
+  @param  AToken  Formula element indicating the function to be executed, see the @link(TFEKind) enumeration for possible values.
   @param  ANext   Pointer to the next RPN item in the list
 
-  @see TFEKind
+  @seeAlso TFEKind
 -------------------------------------------------------------------------------}
 function RPNFunc(AToken: TFEKind; ANext: PRPNItem): PRPNItem;
 begin
@@ -437,16 +436,9 @@ end;
   For each formula element, use one of the RPNxxxx functions implemented here.
   They are designed to be nested into each other. Terminate the chain by using nil.
 
-  @param  AItem     Pointer to the first RPN item representing the formula.
-                    Each item contains a pointer to the next item in the list.
-                    The list is terminated by nil.
-  @param  AReverse  If true the first rpn item in the chained list becomes the
-                    last item in the token array. This feature is needed for
-                    reading an xls file.
-
-  @example
-    The RPN formula for the string expression "$A1+2" can be created as follows:
-    <pre>
+  **Example**:
+  The RPN formula for the string expression "$A1+2" can be created as follows:
+   @preformatted(
       var
         f: TsRPNFormula;
       begin
@@ -455,7 +447,11 @@ end;
           RPNNumber(2,
           RPNFunc(fekAdd,
           nil))));
-    </pre>
+    )
+
+  @param  AItem     Pointer to the first RPN item representing the formula. Each item contains a pointer to the next item in the list. The list is terminated by nil.
+  @param  AReverse  If @true the first rpn item in the chained list becomes the last item in the token array. This feature is needed for reading an xls file.
+
 -------------------------------------------------------------------------------}
 function CreateRPNFormula(AItem: PRPNItem; AReverse: Boolean = false): TsRPNFormula;
 var
@@ -491,9 +487,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Destroys the RPN formula starting with the given RPN item.
 
-  @param  AItem  Pointer to the first RPN items representing the formula.
-                 Each item contains a pointer to the next item in the list.
-                 The list is terminated by nil.
+  @param  AItem  Pointer to the first RPN items representing the formula. Each item contains a pointer to the next item in the list. The list is terminated by nil.
 -------------------------------------------------------------------------------}
 procedure DestroyRPNFormula(AItem: PRPNItem);
 var

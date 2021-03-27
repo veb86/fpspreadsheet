@@ -1,3 +1,12 @@
+{@@ ----------------------------------------------------------------------------
+  Unit **fpsImages** implements basic routines for **embedding images** in
+  worksheets.
+
+  AUTHORS: Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+            distribution, for details about the license.
+-------------------------------------------------------------------------------}
 unit fpsImages;
 
 {$mode objfpc}{$H+}
@@ -703,16 +712,13 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the width and height of the image loaded into the specified stream.
 
-  @param  AStream       Stream containing the image to be analyzed. It is
-                        assumed that the image begins at stream start.
+  @param  AStream       Stream containing the image to be analyzed. It is assumed that the image begins at stream start.
   @param  AWidthInches  Image width, in inches
   @param  AHeightInches Image height, in inches
-  @param  AImageType    Type of the image to be assumed. If this parameter is
-                        missing or itUnknown then the image type is determined
-                        from the file header.
+  @param  AImageType    Type of the image to be assumed. If this parameter is missing or itUnknown then the image type is determined from the file header.
 
-  @return Image type code found from the file header.
-  @see RegisterImageType
+  @returns Image type code found from the file header.
+  @seeAlso RegisterImageType
 -------------------------------------------------------------------------------}
 function GetImageInfo(AStream: TStream; out AWidthInches, AHeightInches: Double;
   AImagetype: TsImageType = itUnknown): TsImageType;
@@ -730,18 +736,15 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the width and height of the image loaded into the specified stream.
 
-  @param  AStream       Stream containing the image to be analyzed. It is
-                        assumed that the image begins at stream start.
+  @param  AStream       Stream containing the image to be analyzed. It is assumed that the image begins at stream start.
   @param  AWidth        Image width, in pixels
   @param  AHeight       Image height, in pixels
   @param  dpiX          Pixel density in x direction, per inch
   @param  dpiY          Pixel density in y direction, per inch
-  @param  AImageType    Type of the image to be assumed. If this parameter is
-                        missing or itUnknown then the image type is determined
-                        from the file header.
+  @param  AImageType    Type of the image to be assumed. If this parameter is missing or itUnknown then the image type is determined from the file header.
 
-  @return Image type code found from the file header.
-  @see RegisterImageType
+  @returns Image type code found from the file header.
+  @seeAlso RegisterImageType
 -------------------------------------------------------------------------------}
 function GetImageInfo(AStream: TStream; out AWidth, AHeight: DWord;
   out dpiX, dpiY: Double; AImageType: TsImageType = itUnknown): TsImageType;
@@ -769,9 +772,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the MimeType of the specified image type
 
-  @param   AImageType    Format code of the image type as returned from the
-                         image registration procedure
-  @return  MimeType of the file format
+  @param   AImageType  Format code of the image type as returned from the image registration procedure
+  @returns MimeType of the file format as string
 -------------------------------------------------------------------------------}
 function GetImageMimeType(AImageType: TsImageType): String;
 begin
@@ -785,6 +787,9 @@ end;
   Returns the file extension belonging the specified image type. If there
   are several extensions the first one is selected. The extension is returned
   without a leading period.
+  
+  @param    AImageType  Format code of the image type as returned from the image registration procedure
+  @returns  String with the file extension used by this image type (without leading dot).
 -------------------------------------------------------------------------------}
 function GetImageTypeExt(AImageType: TsImageType): String;
 var
@@ -805,9 +810,9 @@ end;
   Extracts the image file type identifier from the extension of the specified
   file name.
 
-  @param  AFileName    Name of the file to be analyzed
-  @return Format code value as returned from the image registration procedure
-  @see    RegisterImageType, itXXXX values.
+  @param    AFileName    Name of the file to be analyzed
+  @returns  Format code value as returned from the image registration procedure
+  @seeAlso  RegisterImageType
 -------------------------------------------------------------------------------}
 function GetImageTypeFromFileName(const AFilename: String): TsImageType;
 var
@@ -835,12 +840,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Registers an image type for usage in fpspreadsheet
 
-  @param  AExt            Extension(s) of the file format. Separate by "|" if a
-                          file format can use several extensions.
-  @param  AMimeType       MimeType of the file format, for usage by ods
-  @param  AGetImageSize   Function which can extract the image size and
-                          pixel density. It should only read the file header.
-  @return  Identifier of the image type (consecutive number)
+  @param    AExt           Extension(s) of the file format. Separate by "|" if a file format can use several extensions.
+  @param    AMimeType      MimeType of the file format, for usage by ods 
+  @param    AGetImageSize  Function which can extract the image size and pixel density. It should only read the file header.
+  @returns  Identifier of the image type (consecutive number) 
 -------------------------------------------------------------------------------}
 function RegisterImageType(AMimeType, AExt: String;
   AGetImageSize: TGetImageSizeFunc): TsImageType;

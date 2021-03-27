@@ -10,14 +10,11 @@
   Determines some number format attributes (decimal places, currency symbol) of
   a cell
 
-  @param  ACell            Pointer to the cell under investigation
-  @param  ADecimals        Number of decimal places that can be extracted from
-                           the formatting string, e.g. in case of '0.000' this
-                           would be 3.
-  @param  ACurrencySymbol  String representing the currency symbol extracted from
-                           the formatting string.
+  @param    ACell           Pointer to the cell under investigation
+  @param    ADecimals       Number of decimal places that can be extracted from the formatting string, e.g. in case of '0.000' this would be 3.
+  @param    ACurrencySymbol String representing the currency symbol extracted from the formatting string.
 
-  @return true if the the format string could be analyzed successfully, false if not
+  @returns  @true if the the format string could be analyzed successfully, @false if not
 -------------------------------------------------------------------------------}
 function TsWorksheet.GetNumberFormatAttributes(ACell: PCell; out ADecimals: byte;
   out ACurrencySymbol: String): Boolean;
@@ -61,6 +58,10 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Returns the number format type and format string used in a specific cell
+  
+  @param  ACell          Pointer to the cell of interest
+  @param  ANumFormat     Number format record to be used in this cell.
+  @param  ANumFormatStr  Number format string to be used in this cell.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.ReadNumFormat(ACell: PCell; out ANumFormat: TsNumberFormat;
   out ANumFormatStr: String);
@@ -93,14 +94,13 @@ end;
  {@@ ----------------------------------------------------------------------------
   Adds a date/time format to the formatting of a cell
 
-  @param  ARow             The row of the cell
-  @param  ACol             The column of the cell
-  @param  ANumFormat       Identifier of the format to be applied (nfXXXX constant)
-  @param  ANumFormatString Optional string of formatting codes. Is only considered
-                           if ANumberFormat is nfCustom.
-  @return Pointer to the cell
+  @param    ARow             The row index of the cell (zero-based) 
+  @param    ACol             The column index of the cell (zero-based) 
+  @param    ANumFormat       Identifier of the format to be applied (nfXXXX constant)
+  @param    ANumFormatString Optional string of formatting codes. Is only considered if ANumberFormat is nfCustom.
+  @returns  Pointer to the cell
 
-  @see    TsNumberFormat
+  @seeAlso  TsNumberFormat
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteDateTimeFormat(ARow, ACol: Cardinal;
   ANumFormat: TsNumberFormat; const ANumFormatString: String = ''): PCell;
@@ -113,12 +113,11 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds a date/time format to the formatting of a cell
 
-  @param  ACell             Pointer to the cell considered
-  @param  ANumFormat        Identifier of the format to be applied (nxXXXX constant)
-  @param  ANumFormatString  optional string of formatting codes. Is only considered
-                            if ANumberFormat is nfCustom.
+  @param   ACell             Pointer to the cell considered
+  @param   ANumFormat        Identifier of the format to be applied (nxXXXX constant) 
+  @param   ANumFormatString  Optional string of formatting codes. Is only considered if ANumberFormat is nfCustom.
 
-  @see    TsNumberFormat
+  @seeAlso TsNumberFormat
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteDateTimeFormat(ACell: PCell;
   ANumFormat: TsNumberFormat; const ANumFormatString: String = '');
@@ -175,11 +174,11 @@ end;
   Formats the number in a cell to show a given count of decimal places.
   Is ignored for non-decimal formats (such as most date/time formats).
 
-  @param  ARow       Row indows of the cell considered
-  @param  ACol       Column indows of the cell considered
-  @param  ADecimals  Number of decimal places to be displayed
-  @return Pointer to the cell
-  @see    TsNumberFormat
+  @param    ARow       Row index of the cell considered (zero-based) 
+  @param    ACol       Column index of the cell considered (zero-based) 
+  @param    ADecimals  Number of decimal places to be displayed 
+  @returns  Pointer to the cell
+  @seeAlso  TsNumberFormat
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteDecimals(ARow, ACol: Cardinal; ADecimals: Byte): PCell;
 begin
@@ -189,12 +188,12 @@ end;
 
 
 {@@ ----------------------------------------------------------------------------
-  Formats the number in a cell to show a given count of decimal places.
+  Formats the numeric value in a cell to show a given count of decimal places.
   Is ignored for non-decimal formats (such as most date/time formats).
 
-  @param  ACell      Pointer to the cell considered
-  @param  ADecimals  Number of decimal places to be displayed
-  @see    TsNumberFormat
+  @param    ACell      Pointer to the cell considered
+  @param    ADecimals  Number of decimal places to be displayed
+  @seeAlso  TsNumberFormat
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteDecimals(ACell: PCell; ADecimals: Byte);
 var
@@ -229,15 +228,14 @@ end;
 {@@ ----------------------------------------------------------------------------
   Formats a number as a fraction
 
-  @param  ARow             Row index of the cell
-  @param  ACol             Column index of the cell
-  @param  ANumFormat       Identifier of the format to be applied. Must be
-                           either nfFraction or nfMixedFraction
-  @param  ANumeratorDigts  Count of numerator digits
-  @param  ADenominatorDigits Count of denominator digits
-  @return Pointer to the cell
+  @param    ARow             Row index of the cell
+  @param    ACol             Column index of the cell
+  @param    ANumFormat       Identifier of the format to be applied. Must be either nfFraction or nfMixedFraction
+  @param    ANumeratorDigts  Count of numerator digits
+  @param    ADenominatorDigits Count of denominator digits
+  @returns  Pointer to the cell
 
-  @see    TsNumberFormat
+  @seeAlso  TsNumberFormat
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteFractionFormat(ARow, ACol: Cardinal;
   AMixedFraction: Boolean; ANumeratorDigits, ADenominatorDigits: Integer): PCell;
@@ -249,13 +247,12 @@ end;
 {@@ ----------------------------------------------------------------------------
   Formats a number as a fraction
 
-  @param  ACell            Pointer to the cell to be formatted
-  @param  ANumFormat       Identifier of the format to be applied. Must be
-                           either nfFraction or nfMixedFraction
-  @param  ANumeratorDigts  Count of numerator digits
-  @param  ADenominatorDigits Count of denominator digits
+  @param   ACell              Pointer to the cell to be formatted
+  @param   ANumFormat         Identifier of the format to be applied. Must be either nfFraction or nfMixedFraction
+  @param   ANumeratorDigts    Count of numerator digits
+  @param   ADenominatorDigits Count of denominator digits
 
-  @see    TsNumberFormat
+  @seeAlso TsNumberFormat
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteFractionFormat(ACell: PCell;
   AMixedFraction: Boolean; ANumeratorDigits, ADenominatorDigits: Integer);
@@ -279,16 +276,16 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds a number format to the formatting of a cell
 
-  @param  ARow            The row of the cell
-  @param  ACol            The column of the cell
-  @param  ANumFormat      Identifier of the format to be applied
-  @param  ADecimals       Number of decimal places
-  @param  ACurrencySymbol optional currency symbol in case of nfCurrency
-  @param  APosCurrFormat  optional identifier for positive currencies
-  @param  ANegCurrFormat  optional identifier for negative currencies
-  @return Pointer to the cell
+  @param   ARow            The row of the cell
+  @param   ACol            The column of the cell
+  @param   ANumFormat      Identifier of the format to be applied
+  @param   ADecimals       Number of decimal places
+  @param   ACurrencySymbol optional currency symbol in case of nfCurrency
+  @param   APosCurrFormat  optional identifier for positive currencies
+  @param   ANegCurrFormat  optional identifier for negative currencies
+  @returns Pointer to the cell
 
-  @see    TsNumberFormat
+  @seeAlso TsNumberFormat
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
   ANumFormat: TsNumberFormat; ADecimals: Integer; ACurrencySymbol: String = '';
@@ -302,15 +299,15 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds a number format to the formatting of a cell
 
-  @param  ARow            The row of the cell
-  @param  ACol            The column of the cell
-  @param  ANumFormat      Identifier of the format to be applied
-  @param  ADecimals       Number of decimal places
-  @param  ACurrencySymbol optional currency symbol in case of nfCurrency
-  @param  APosCurrFormat  optional identifier for positive currencies
-  @param  ANegCurrFormat  optional identifier for negative currencies
+  @param   ARow            The row of the cell
+  @param   ACol            The column of the cell
+  @param   ANumFormat      Identifier of the format to be applied
+  @param   ADecimals       Number of decimal places
+  @param   ACurrencySymbol optional currency symbol in case of nfCurrency
+  @param   APosCurrFormat  optional identifier for positive currencies
+  @param   ANegCurrFormat  optional identifier for negative currencies
 
-  @see    TsNumberFormat
+  @seeAlso TsNumberFormat
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumberFormat(ACell: PCell;
   ANumFormat: TsNumberFormat; ADecimals: Integer; ACurrencySymbol: String = '';
@@ -359,14 +356,13 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds a number format to the formatting of a cell
 
-  @param  ARow             The row of the cell
-  @param  ACol             The column of the cell
-  @param  ANumFormat       Identifier of the format to be applied
-  @param  ANumFormatString Optional string of formatting codes. Is only considered
-                           if ANumberFormat is nfCustom.
-  @return Pointer to the cell
+  @param    ARow             The row of the cell
+  @param    ACol             The column of the cell
+  @param    ANumFormat       Identifier of the format to be applied
+  @param    ANumFormatString Optional string of formatting codes. Is only considered if ANumberFormat is nfCustom.
+  @returns  Pointer to the cell
 
-  @see    TsNumberFormat
+  @seeAlso  TsNumberFormat
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteNumberFormat(ARow, ACol: Cardinal;
   ANumFormat: TsNumberFormat; const ANumFormatString: String = ''): PCell;
@@ -381,10 +377,9 @@ end;
 
   @param  ACell            Pointer to the cell considered
   @param  ANumFormat       Identifier of the format to be applied
-  @param  ANumFormatString Optional string of formatting codes. Is only considered
-                           if ANumberFormat is nfCustom.
+  @param  ANumFormatString Optional string of formatting codes. Is only considered if ANumberFormat is nfCustom.
 
-  @see    TsNumberFormat
+  @seeAlso    TsNumberFormat
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteNumberFormat(ACell: PCell;
   ANumFormat: TsNumberFormat; const ANumFormatString: String = '');

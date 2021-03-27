@@ -6,9 +6,8 @@
   Checks whether the specified cell contains a hyperlink and returns a pointer
   to the hyperlink data.
 
-  @param  ACell  Pointer to the cell
-  @return Pointer to the TsHyperlink record, or NIL if the cell does not contain
-          a hyperlink.
+  @param   ACell  Pointer to the cell
+  @returns Pointer to the @link(TsHyperlink) record, or NIL if the cell does not contain a hyperlink.
 -------------------------------------------------------------------------------}
 function TsWorksheet.FindHyperlink(ACell: PCell): PsHyperlink;
 begin
@@ -23,8 +22,7 @@ end;
   Reads the hyperlink information of a specified cell.
 
   @param   ACell         Pointer to the cell considered
-  @returns Record with the hyperlink data assigned to the cell.
-           If the cell is not a hyperlink the result field Kind is hkNone.
+  @returns @link(TsHyperlink) record with the hyperlink data assigned to the cell. If the cell is not a hyperlink the result field Kind is hkNone.
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadHyperlink(ACell: PCell): TsHyperlink;
 var
@@ -61,11 +59,14 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether the passed string represents a valid hyperlink target
 
-  @param   AValue  String to be checked. Must be either a fully qualified URI,
-                   a local relative (!) file name, or a # followed by a cell
-                   address in the current workbook
+  The string must either be
+  * a fully qualified URI, 
+  * a local relative (!) file name, or 
+  * a # followed by a cell address in the current workbook
+  
+  @param   AValue  String to be checked. 
   @param   AErrMsg Error message in case that the string is not correct.
-  @returns TRUE if the string is correct, FALSE otherwise
+  @returns @TRUE if the string is correct, @FALSE otherwise
 -------------------------------------------------------------------------------}
 function TsWorksheet.ValidHyperlink(AValue: String; out AErrMsg: String): Boolean;
 var
@@ -122,9 +123,7 @@ end;
 
   @param  ARow          Row index of the cell considered
   @param  ACol          Column index of the cell considered
-  @param  ATarget       Hyperlink address given as a fully qualitifed URI for
-                        external links, or as a # followed by a cell address
-                        for internal links.
+  @param  ATarget       Hyperlink address given as a fully qualitifed URI for external links, or as a # followed by a cell address for internal links.
   @param  ATooltip      Text for popup tooltip hint used by Excel
   @returns Pointer to the cell with the hyperlink
 -------------------------------------------------------------------------------}
@@ -140,11 +139,7 @@ end;
   Assigns a hyperlink to the specified cell.
 
   @param  ACell         Pointer to the cell considered
-  @param  ATarget       Hyperlink address given as a fully qualitifed URI for
-                        external links, or as a # followed by a cell address
-                        for internal links. Local files can be specified also
-                        by their name relative to the workbook.
-                        An existing hyperlink is removed if ATarget is empty.
+  @param  ATarget       Hyperlink address given as a fully qualitifed URI for external links, or as a # followed by a cell address for internal links. Local files can be specified also by their name relative to the workbook. An existing hyperlink is removed if ATarget is empty.
   @param  ATooltip      Text for popup tooltip hint used by Excel
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteHyperlink(ACell: PCell; ATarget: String;
@@ -218,7 +213,7 @@ end;
 {==============================================================================}
 
 {@@ ----------------------------------------------------------------------------
-  Returns the hypertext font. This is font with index 6 in the font list
+  Returns the hyperlink font. This is the font with index 6 in the font list
 -------------------------------------------------------------------------------}
 function TsWorkbook.GetHyperlinkFont: TsFont;
 begin

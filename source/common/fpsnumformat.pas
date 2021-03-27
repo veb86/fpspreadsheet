@@ -1,6 +1,6 @@
 {@@ ----------------------------------------------------------------------------
-  Unit fpsNumFormat contains classes and procedures to analyze and process
-  <b>number formats</b>.
+  Unit @bold(fpsNumFormat) contains classes and procedures to analyze and process
+  @bold(number formats).
 
   AUTHORS: Werner Pamler
 
@@ -97,15 +97,16 @@ type
   );
 
   {@@ Element of the parsed number format sequence. Each element is identified
-    by a token and has optional parameters stored as integer, float, and/or text. }
+    by a token and has optional parameters stored as integer, float, and/or text. 
+    
+    @member Token     Identifies the number format element
+    @member IntValue  Integer value associated with the number format element 
+    @member FloatValue Floating point value associated with the number format element
+    @member TextValue  String value associated with the number format element }
   TsNumFormatElement = record
-    {@@ Token identifying the number format element }
     Token: TsNumFormatToken;
-    {@@ Integer value associated with the number format element }
     IntValue: Integer;
-    {@@ Floating point value associated with the number format element }
     FloatValue: Double;
-    {@@ String value associated with the number format element }
     TextValue: String;
   end;
 
@@ -157,7 +158,7 @@ type
   { TsNumFormatParams }
 
   {@@ Describes a parsed number format and provides all the information to
-    convert a number to a number or date/time string. These data are created
+    convert a number value to a number or date/time string. These data are created
     by the number format parser from a format string. }
   TsNumFormatParams = class(TObject)
   private
@@ -190,7 +191,7 @@ type
 
   {@@ List containing parsed number format parameters }
   TsNumFormatList = class(TFPList)
-  private
+  { private }
     FOwnsData: Boolean;
     function GetItem(AIndex: Integer): TsNumFormatParams;
     procedure SetItem(AIndex: Integer; const AValue: TsNumFormatParams);
@@ -297,7 +298,6 @@ type
   end;
 
 
-
 { Utility functions }
 
 function AddAMPM(const ATimeFormatString: String;
@@ -381,7 +381,7 @@ uses
   fpsUtils, fpsCurrency;
 
 const
-  {@@ Array of format strings identifying the order of number and
+  { Array of format strings identifying the order of number and
     currency symbol of a positive currency value. The number is expected at
     index 0, the currency symbol at index 1 of the parameter array used by the
     fpc Format() function. }
@@ -391,7 +391,7 @@ const
     ('%1:s %0:s'),       // 2: $ 1
     ('%0:s %1:s')        // 3: 1 $
   );
-  {@@ Array of format strings identifying the order of number and
+  { Array of format strings identifying the order of number and
     currency symbol of a negative currency value. The sign is shown
     as a dash character ("-") or by means of brackets. The number
     is expected at index 0, the currency symbol at index 1 of the
@@ -420,26 +420,26 @@ const
 {==============================================================================}
 
 type
-  {@@ Set of parsed number format tokens }
+  { Set of parsed number format tokens }
   TsNumFormatTokenSet = set of TsNumFormatToken;
 
 const
-  {@@ Set of tokens which terminate number information in a format string }
+  { Set of tokens which terminate number information in a format string }
   TERMINATING_TOKENS: TsNumFormatTokenSet =
     [nftSpace, nftText, nftEscaped, nftPercent, nftCurrSymbol, nftSign, nftSignBracket];
-  {@@ Set of tokens which describe the integer part of a number format }
+  { Set of tokens which describe the integer part of a number format }
   INT_TOKENS: TsNumFormatTokenSet =
     [nftIntOptDigit, nftIntZeroDigit, nftIntSpaceDigit];
-  {@@ Set of tokens which describe the decimals of a number format }
+  { Set of tokens which describe the decimals of a number format }
   DECS_TOKENS: TsNumFormatTokenSet =
     [nftZeroDecs, nftOptDecs, nftSpaceDecs];
-  {@@ Set of tokens which describe the numerator of a fraction format }
+  { Set of tokens which describe the numerator of a fraction format }
   FRACNUM_TOKENS: TsNumFormatTokenSet =
     [nftFracNumOptDigit, nftFracNumZeroDigit, nftFracNumSpaceDigit];
-  {@@ Set of tokens which describe the denominator of a fraction format }
+  { Set of tokens which describe the denominator of a fraction format }
   FRACDENOM_TOKENS: TsNumFormatTokenSet =
     [nftFracDenomOptDigit, nftFracDenomZeroDigit, nftFracDenomSpaceDigit, nftFracDenom];
-  {@@ Set of tokens which describe the exponent in exponential formatting of a number }
+  { Set of tokens which describe the exponent in exponential formatting of a number }
   EXP_TOKENS: TsNumFormatTokenSet =
     [nftExpDigits];   // todo: expand by optional digits (0.00E+#)
 
@@ -897,14 +897,10 @@ end;
   Converts a floating point number to a string as determined by the specified
   number format parameters
 
-  @param AValue           Value to be converted to a string
-  @param AParams          Number format parameters which will be applied in the
-                          conversion. The number format params are obtained
-                          by the number format parser from the number format
-                          string.
-  @param AFormatSettings  Format settings needed by the number format parser for
-                          the conversion
-  @return Converted string
+  @param   AValue           Value to be converted to a string
+  @param   AParams          Number format parameters which will be applied in the conversion. The number format params are obtained by the number format parser from the number format string.
+  @param   AFormatSettings  Format settings needed by the number format parser for the conversion
+  @returns Converted string
 -------------------------------------------------------------------------------}
 function ConvertFloatToStr(AValue: Double; AParams: TsNumFormatParams;
   AFormatSettings: TFormatSettings): String;
@@ -1126,11 +1122,11 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds an AM/PM format code to a pre-built time formatting string.
 
-  @param   ATimeFormatString  String of time formatting codes (such as 'hh:nn')
-  @param   AFormatSettings    FormatSettings for locale-dependent information
-  @result  Formatting string with AM/PM option activated.
-
   Example:  ATimeFormatString = 'hh:nn' ==> 'hh:nn AM/PM'
+
+  @param    ATimeFormatString  String of time formatting codes (such as 'hh:nn')
+  @param    AFormatSettings    FormatSettings for locale-dependent information
+  @returns  Formatting string with AM/PM option activated.
 -------------------------------------------------------------------------------}
 function AddAMPM(const ATimeFormatString: String;
   const AFormatSettings: TFormatSettings): String;
@@ -1143,10 +1139,8 @@ end;
   first time symbol must be enclosed by square brackets. Checks if this is true,
   and adds the brackes if not.
 
-  @param   AFormatString   String with time formatting codes
-  @return  Unchanged format string if its first time code is in square brackets
-           (as in '[h]:nn:ss'). If not, the first time code is enclosed in
-           square brackets.
+  @param    AFormatString   String with time formatting codes
+  @returns  Unchanged format string if its first time code is in square brackets (as in '[h]:nn:ss'). If not, the first time code is enclosed in square brackets.
 -------------------------------------------------------------------------------}
 function AddIntervalBrackets(AFormatString: String): String;
 var
@@ -1170,10 +1164,8 @@ end;
   Builds a string list with samples of the predefined currency formats
 
   @param  AList            String list in which the format samples are stored
-  @param  APositive        If true, samples are built for positive currency
-                           values, otherwise for negative values
-  @param  AValue           Currency value to be used when calculating the sample
-                           strings
+  @param  APositive        If @true, samples are built for positive currency values, otherwise for negative values
+  @param  AValue           Currency value to be used when calculating the sample strings
   @param  ACurrencySymbol  Currency symbol string to be used in the samples
 -------------------------------------------------------------------------------}
 procedure BuildCurrencyFormatList(AList: TStrings;
@@ -1212,27 +1204,17 @@ end;
   or minus signs) is taken from the provided format settings. The format string
   consists of three sections, separated by semicolons.
 
-  @param  ANumberFormat   Identifier of the built-in number format for which the
-                          format string is to be generated.
-  @param  AFormatSettings FormatSettings to be applied (used to extract default
-                          values for the parameters following)
-  @param  ADecimals       number of decimal places. If < 0, the CurrencyDecimals
-                          of the FormatSettings is used.
-  @param  APosCurrFmt     Identifier for the order of currency symbol, value and
-                          spaces of positive values
-                          - see pcfXXXX constants in fpsTypes.pas.
-                          If < 0, the CurrencyFormat of the FormatSettings is used.
-  @param  ANegCurrFmt     Identifier for the order of currency symbol, value and
-                          spaces of negative values. Specifies also usage of ().
-                          - see ncfXXXX constants in fpsTypes.pas.
-                          If < 0, the NegCurrFormat of the FormatSettings is used.
-  @param  ACurrencySymbol String to identify the currency, like $ or USD.
-                          If ? the CurrencyString of the FormatSettings is used.
+  Example: '"$"#,##0.00;("$"#,##0.00);"$"0.00'
+
+  @param  ANumberFormat   Identifier of the built-in number format for which the format string is to be generated.
+  @param  AFormatSettings FormatSettings to be applied (used to extract default values for the parameters following)
+  @param  ADecimals       number of decimal places. If < 0, the CurrencyDecimals of the FormatSettings is used.
+  @param  APosCurrFmt     Identifier for the order of currency symbol, value and spaces of positive values - see pcfXXXX constants in fpsTypes.pas. If < 0, the CurrencyFormat of the FormatSettings is used.
+  @param  ANegCurrFmt     Identifier for the order of currency symbol, value and spaces of negative values. Specifies also usage of (). - see ncfXXXX constants in fpsTypes.pas. If < 0, the NegCurrFormat of the FormatSettings is used.
+  @param  ACurrencySymbol String to identify the currency, like $ or USD. If ? the CurrencyString of the FormatSettings is used.
   @param  Accounting      If true, adds spaces for alignment of decimals
 
-  @return                 String of formatting codes
-
-  @example                '"$"#,##0.00;("$"#,##0.00);"$"0.00'
+  @returns                String of formatting codes
 -------------------------------------------------------------------------------}
 function BuildCurrencyFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings;
@@ -1293,14 +1275,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Builds a date/time format string from the number format code.
 
-  @param   ANumberFormat    built-in number format identifier
-  @param   AFormatSettings  Format settings from which locale-dependent
-                            information like day-month-year order is taken.
-  @param   AFormatString    Optional pre-built formatting string. It is used
-                            only for the format nfInterval where square brackets
-                            are added to the first time code field.
-  @return  String of date/time formatting code constructed from the built-in
-           format information.
+  @param    ANumberFormat    Built-in number format identifier
+  @param    AFormatSettings  Format settings from which locale-dependent information like day-month-year order is taken.
+  @param    AFormatString    Optional pre-built formatting string. It is used only for the format nfInterval where square brackets are added to the first time code field.
+  @returns  String of date/time formatting code constructed from the built-in format information.
 -------------------------------------------------------------------------------}
 function BuildDateTimeFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; AFormatString: String = '') : string;
@@ -1369,13 +1347,11 @@ end;
   Builds a number format string for fraction formatting from the number format
   code and the count of numerator and denominator digits.
 
-  @param  AMixedFraction     If TRUE, fraction is presented as mixed fraction
-  @param  ANumeratorDigits   Count of numerator digits
-  @param  ADenominatorDigits Count of denominator digits. If the value is negative
-                             then its absolute value is inserted literally as
-                             as denominator.
+  @param   AMixedFraction     If @TRUE, fraction is presented as mixed fraction
+  @param   ANumeratorDigits   Count of numerator digits
+  @param   ADenominatorDigits Count of denominator digits. If the value is negative then its absolute value is inserted literally as as denominator.
 
-  @return String of formatting code, here something like: '##/##' or '# ##/##'
+  @returns String of formatting code, here something like: '##/##' or '# ##/##'
 -------------------------------------------------------------------------------}
 function BuildFractionFormatString(AMixedFraction: Boolean;
   ANumeratorDigits, ADenominatorDigits: Integer): String;
@@ -1396,19 +1372,15 @@ end;
   Builds a number format string from the number format code and the count of
   decimal places.
 
-  @param  ANumberFormat   Identifier of the built-in numberformat for which a
-                          format string is to be generated
+  Example:  ANumberFormat = nfFixedTh, ADecimals = 2 --> '#,##0.00'
+
+  @param  ANumberFormat   Identifier of the built-in numberformat for which a format string is to be generated
   @param  AFormatSettings FormatSettings for default parameters
-  @param  ADecimals       Number of decimal places. If < 0 the CurrencyDecimals
-                          value of the FormatSettings is used. In case of a
-                          fraction format "ADecimals" refers to the maximum count
-                          digits of the denominator.
-  @param  AMinIntDigits   minimum count of integer digits, i.e. count of '0' in
-                          the format string before the decimal separator
+  @param  ADecimals       Number of decimal places. If < 0 the CurrencyDecimals value of the FormatSettings is used. In case of a fraction format "ADecimals" refers to the maximum count digits of the denominator.
+  @param  AMinIntDigits   Minimum count of integer digits, i.e. count of '0' in the format string before the decimal separator
 
-  @return String of formatting codes
+  @returns String of formatting codes
 
-  @example  ANumberFormat = nfFixedTh, ADecimals = 2 --> '#,##0.00'
 -------------------------------------------------------------------------------}
 function BuildNumberFormatString(ANumberFormat: TsNumberFormat;
   const AFormatSettings: TFormatSettings; ADecimals: Integer = -1;
@@ -1467,14 +1439,10 @@ end;
   The format string is created according to Excel convention (which is understood
   by ODS as well).
 
-  @param  ASection  Parsed section of number format elements as created by the
-                    number format parser
-  @param  AllowLocalizedAMPM  Replaces "AMPM" in a time format string by "AM/PM".
-          "AMPM" is allowed by FPS, but not by Excel. When converting a time to
-          string it is replaced by the localized strings
-          FormatSettings.TimeAMString/.TimePMString.
+  @param   ASection            Parsed section of number format elements as created by the number format parser
+  @param   AllowLocalizedAMPM  Replaces "AMPM" in a time format string by "AM/PM". "AMPM" is allowed by FPS, but not by Excel. When converting a time to string it is replaced by the localized strings FormatSettings.TimeAMString/.TimePMString.
 
-  @return Excel-compatible format string
+  @returns Excel-compatible format string
 -------------------------------------------------------------------------------}
 function BuildFormatStringFromSection(const ASection: TsNumFormatSection;
   AllowLocalizedAMPM: Boolean = true): String;
@@ -1583,11 +1551,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Counts how many decimal places are coded into a given number format string.
 
-  @param   AFormatString   String with number format codes, such as '0.000'
-  @param   ADecChars       Characters which are considered as symbols for decimals.
-                           For the fixed decimals, this is the '0'. Optional
-                           decimals are encoced as '#'.
-  @return  Count of decimal places found (3 in above example).
+  @param    AFormatString   String with number format codes, such as '0.000'
+  @param    ADecChars       Characters which are considered as symbols for decimals. For the fixed decimals, this is the '0'. Optional decimals are encoced as '#'.
+  @returns  Count of decimal places found
 -------------------------------------------------------------------------------}
 function CountDecs(AFormatString: String; ADecChars: TsDecsChars = ['0']): Byte;
 var
@@ -1633,7 +1599,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Checks whether the specified text corresponds to a boolean value. For this,
-  it must match the specified TRUE and FALSE text phrases.
+  it must match the specified @TRUE and @FALSE text phrases.
 -------------------------------------------------------------------------------}
 function IsBoolValue(const AText, ATrueText, AFalseText: String;
   out AValue: Boolean): Boolean;
@@ -1655,8 +1621,8 @@ end;
   Checks whether the given number format code is for currency,
   i.e. requires a currency symbol.
 
-  @param  AFormat   Built-in number format identifier to be checked
-  @return True if AFormat is nfCurrency or nfCurrencyRed, false otherwise.
+  @param    AFormat   Built-in number format identifier to be checked
+  @returns  @True if AFormat is nfCurrency or nfCurrencyRed, @false otherwise.
 -------------------------------------------------------------------------------}
 function IsCurrencyFormat(AFormat: TsNumberFormat): Boolean;
 begin
@@ -1666,9 +1632,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether the specified number format parameters apply to currency values.
 
-  @param   ANumFormat   Number format parameters
-  @return  True if Kind of the 1st format parameter section contains the
-           nfkCurrency elements; false otherwise
+  @param    ANumFormat   Number format parameters
+  @returns  @True if Kind of the 1st format parameter section contains the nfkCurrency elements; @false otherwise
 -------------------------------------------------------------------------------}
 function IsCurrencyFormat(ANumFormat: TsNumFormatParams): Boolean;
 begin
@@ -1679,9 +1644,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether the given number format code is for date/time values.
 
-  @param   AFormat  Built-in number format identifier to be checked
-  @return  True if AFormat is a date/time format (such as nfShortTime),
-           false otherwise
+  @param    AFormat  Built-in number format identifier to be checked
+  @returns  @True if AFormat is a date/time format (such as nfShortTime), @false otherwise
 -------------------------------------------------------------------------------}
 function IsDateTimeFormat(AFormat: TsNumberFormat): Boolean;
 begin
@@ -1693,9 +1657,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether the given string with formatting codes is for date/time values.
 
-  @param   AFormatStr   String with formatting codes to be checked.
-  @return  True if AFormatStr is a date/time format string (such as 'hh:nn'),
-           false otherwise
+  @param    AFormatStr   String with formatting codes to be checked.
+  @returns  @True if AFormatStr is a date/time format string (such as 'hh:nn'), @false otherwise
 -------------------------------------------------------------------------------}
 function IsDateTimeFormat(AFormatStr: string): Boolean;
 var
@@ -1712,9 +1675,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether the specified number format parameters apply to date/time values.
 
-  @param   ANumFormat   Number format parameters
-  @return  True if Kind of the 1st format parameter section contains the
-           nfkDate or nfkTime elements; false otherwise
+  @param    ANumFormat   Number format parameters
+  @returns  @True if Kind of the 1st format parameter section contains the nfkDate or nfkTime elements; @false otherwise
 -------------------------------------------------------------------------------}
 function IsDateTimeFormat(ANumFormat: TsNumFormatParams): Boolean;
 begin
@@ -1724,7 +1686,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Checks whether the specified text corresponds to a date/time value and returns
-  true, its numerical value and its built-in numberformat if it is.
+  @true, its numerical value and its built-in numberformat if it is.
 -------------------------------------------------------------------------------}
 function IsDateTimeValue(AText: String; const AFormatSettings: TFormatSettings;
   out ADateTime: TDateTime; out ANumFormat: TsNumberFormat): Boolean;
@@ -1774,9 +1736,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether the specified number format parameters apply to a date value.
 
-  @param   ANumFormat   Number format parameters
-  @return  True if Kind of the 1st format parameter section contains the
-           nfkDate, but no nfkTime tags; false otherwise
+  @param    ANumFormat   Number format parameters
+  @returns  @True if Kind of the 1st format parameter section contains the nfkDate, but no nfkTime tags; @false otherwise
 -------------------------------------------------------------------------------}
 function IsDateFormat(ANumFormat: TsNumFormatParams): Boolean;
 begin
@@ -1787,8 +1748,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether the given built-in number format code is for time values.
 
-  @param   AFormat  Built-in number format identifier to be checked
-  @return  True if AFormat represents to a time-format, false otherwise
+  @param    AFormat  Built-in number format identifier to be checked
+  @returns  @True if AFormat represents to a time-format, @false otherwise
 -------------------------------------------------------------------------------}
 function IsTimeFormat(AFormat: TsNumberFormat): boolean;
 begin
@@ -1817,9 +1778,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether the specified number format parameters apply to time values.
 
-  @param   ANumFormat   Number format parameters
-  @return  True if Kind of the 1st format parameter section contains the
-           nfkTime, but no nfkDate elements; false otherwise
+  @param    ANumFormat   Number format parameters
+  @returns  @True if Kind of the 1st format parameter section contains the nfkTime, but no nfkDate elements; @false otherwise
 -------------------------------------------------------------------------------}
 function IsTimeFormat(ANumFormat: TsNumFormatParams): Boolean;
 begin
@@ -1828,8 +1788,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Returns TRUE if the specified format string represents a long time format, i.e.
-  it contains two TimeSeparators.
+  Returns @TRUE if the specified format string represents a long time format, 
+  i.e. it contains two TimeSeparators.
 -------------------------------------------------------------------------------}
 function IsLongTimeFormat(AFormatStr: String; ATimeSeparator: Char): Boolean;
 var
@@ -1843,7 +1803,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Checks whether the specified text corresponds to a numerical value. If it is
-  then the function result is TRUE, and the number value and its formatting
+  then the function result is @TRUE, and the number value and its formatting
   parameters are returned.
 -------------------------------------------------------------------------------}
 function IsNumberValue(AText: String; AutoDetectNumberFormat: Boolean;
@@ -1941,9 +1901,8 @@ end;
   Checks whether the specified number format parameters is a time interval
   format.
 
-  @param   ANumFormat   Number format parameters
-  @return  True if Kind of the 1st format parameter section contains the
-           nfkTimeInterval elements; false otherwise
+  @param    ANumFormat   Number format parameters
+  @returns  @True if Kind of the 1st format parameter section contains the nfkTimeInterval elements; @false otherwise
 -------------------------------------------------------------------------------}
 function IsTimeIntervalFormat(ANumFormat: TsNumFormatParams): Boolean;
 begin
@@ -1962,9 +1921,8 @@ end;
   Retains the order of year-month-day and the separators, but uses 4 digits
   for year and 3 digits of month.
 
-  @param  ADateFormat   String with date formatting code representing a
-                        "short" date, such as 'dd/mm/yy'
-  @return Format string modified to represent a "long" date, such as 'dd/mmm/yyyy'
+  @param   ADateFormat   String with date formatting code representing a "short" date, such as 'dd/mm/yy'
+  @returns Format string modified to represent a "long" date, such as 'dd/mmm/yyyy'
 -------------------------------------------------------------------------------}
 function MakeLongDateFormat(ADateFormat: String): String;
 var
@@ -1997,9 +1955,8 @@ end;
   Modifies the short date format such that it has a two-digit year and a two-digit
   month. Retains the order of year-month-day and the separators.
 
-  @param   ADateFormat   String with date formatting codes representing a
-                         "long" date, such as 'dd/mmm/yyyy'
-  @return  Format string modified to represent a "short" date, such as 'dd/mm/yy'
+  @param    ADateFormat   String with date formatting codes representing a "long" date, such as 'dd/mmm/yyyy'
+  @returns  Format string modified to represent a "short" date, such as 'dd/mm/yy'
 -------------------------------------------------------------------------------}
 function MakeShortDateFormat(ADateFormat: String): String;
 var
@@ -2033,8 +1990,7 @@ end;
   in square brackets.
 
   @param  Src   Source format string, must be a time format string, like 'hh:nn'
-  @param  Dest  Destination format string, will have the first time code element
-                of the src format string in square brackets, like '[hh]:nn'.
+  @param  Dest  Destination format string, will have the first time code element of the src format string in square brackets, like '[hh]:nn'.
 -------------------------------------------------------------------------------}
 procedure MakeTimeIntervalMask(Src: String; var Dest: String);
 var
@@ -2058,8 +2014,8 @@ end;
   of "AM/PM" are considered as well. The string is left unchanged if it does not
   contain AM/PM codes.
 
-  @param   ATimeFormatString  String of time formatting codes (such as 'hh:nn AM/PM')
-  @return  Formatting string with AM/PM being removed (--> 'hh:nn')
+  @param    ATimeFormatString  String of time formatting codes (such as 'hh:nn AM/PM')
+  @returns  Formatting string with AM/PM being removed (--> 'hh:nn')
 -------------------------------------------------------------------------------}
 function StripAMPM(const ATimeFormatString: String): String;
 var
@@ -2208,9 +2164,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Deletes a parsed number format element from the specified format section.
 
-  @param  ASectionIndex   Index of the format section containing the element to
-                          be deleted
-  @param  AElementIndex   Index of the format element to be deleted
+  @param  ASectionIndex  Index of the format section containing the element to be deleted
+  @param  AElementIndex  Index of the format element to be deleted
 -------------------------------------------------------------------------------}
 procedure TsNumFormatParams.DeleteElement(ASectionIndex, AElementIndex: Integer);
 var
@@ -2229,10 +2184,8 @@ end;
   Creates the built-in number format identifier from the parsed number format
   sections and elements
 
-  @return  Built-in number format identifer if the format is built into
-           fpspreadsheet, or nfCustom otherwise
-
-  @see     TsNumFormat
+  @returns  Built-in number format identifer if the format is built into fpspreadsheet, or nfCustom otherwise
+  @seeAlso  TsNumberFormat
 -------------------------------------------------------------------------------}
 function TsNumFormatParams.GetNumFormat: TsNumberFormat;
 begin
@@ -2256,7 +2209,7 @@ end;
   Constructs the number format string from the parsed sections and elements.
   The format symbols are selected according to Excel syntax.
 
-  @return  Excel-compatible number format string.
+  @returns  Excel-compatible number format string.
 -------------------------------------------------------------------------------}
 function TsNumFormatParams.GetNumFormatStr: String;
 var
@@ -2274,13 +2227,11 @@ end;
   Inserts a parsed format token into the specified format section before the
   specified element.
 
-  @param  ASectionIndex   Index of the parsed format section into which the
-                          token is to be inserted
-  @param  AElementIndex   Index of the format element before which the token
-                          is to be inserted
-  @param  AToken          Parsed format token to be inserted
+  @param   ASectionIndex   Index of the parsed format section into which the token is to be inserted
+  @param   AElementIndex   Index of the format element before which the token is to be inserted
+  @param   AToken          Parsed format token to be inserted
 
-  @see    TsNumFormatToken
+  @seeAlso TsNumFormatToken
 -------------------------------------------------------------------------------}
 procedure TsNumFormatParams.InsertElement(ASectionIndex, AElementIndex: Integer;
   AToken: TsNumFormatToken);
@@ -2301,8 +2252,7 @@ end;
   Checks whether the parsed format sections passed as a parameter are identical
   to the interal section array.
 
-  @param  ASections  Array of parsed format sections to be compared with the
-                     internal format sections
+  @param  ASections  Array of parsed format sections to be compared with the internal format sections
 -------------------------------------------------------------------------------}
 function TsNumFormatParams.SectionsEqualTo(ASections: TsNumFormatSections): Boolean;
 var
@@ -2371,8 +2321,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Defines the currency symbol used in the format params sequence
 
-  @param  AValue  String containing the currency symbol to be used in the
-                  converted numbers
+  @param  AValue  String containing the currency symbol to be used in the converted numbers
 -------------------------------------------------------------------------------}
 procedure TsNumFormatParams.SetCurrSymbol(AValue: String);
 var
@@ -2425,8 +2374,7 @@ end;
   If AEnable is false the format tokens are modified such that negative values
   are displayed in default color.
 
-  @param  AEnable  The format tokens are modified such as to display negative
-                   values in red if AEnable is true.
+  @param  AEnable  The format tokens are modified such as to display negative values in red if AEnable is true.
 -------------------------------------------------------------------------------}
 procedure TsNumFormatParams.SetNegativeRed(AEnable: Boolean);
 var
@@ -2468,8 +2416,7 @@ end;
   Inserts a thousand separator token into the format elements at the
   appropriate position, or removes it
 
-  @param  AEnable   A thousand separator is inserted if AEnable is true, or else
-                    deleted.
+  @param  AEnable   A thousand separator is inserted if AEnable is @true, or else deleted.
 -------------------------------------------------------------------------------}
 procedure TsNumFormatParams.SetThousandSep(AEnable: Boolean);
 var
@@ -2515,10 +2462,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Constructor of the number format list class.
 
-  @param  AFormatSettings   Format settings needed internally by the number
-                            format parser (currency symbol, etc.)
-  @param  AOwnsData         If true then the list is responsible to destroy
-                            the list items
+  @param  AFormatSettings   Format settings needed internally by the number format parser (currency symbol, etc.)
+  @param  AOwnsData         If @true then the list is responsible to destroy the list items
 -------------------------------------------------------------------------------}
 constructor TsNumFormatList.Create(AFormatSettings: TFormatSettings;
   AOwnsData: Boolean);
@@ -2544,9 +2489,8 @@ end;
   Adds the specified sections of a parsed number format to the list.
   Duplicates are not checked before adding the format item.
 
-  @param  ASections   Array of number format sections as obtained by the
-                      number format parser for a given format string
-  @return Index of the format item in the list.
+  @param   ASections   Array of number format sections as obtained by the number format parser for a given format string
+  @returns Index of the format item in the list.
 -------------------------------------------------------------------------------}
 function TsNumFormatList.AddFormat(ASections: TsNumFormatSections): Integer;
 var
@@ -2567,8 +2511,8 @@ end;
 
   Duplicates are not checked before adding the format item.
 
-  @param  AFormatStr  Excel-like format string describing the format to be added
-  @return Index of the format item in the list
+  @param    AFormatStr  Excel-like format string describing the format to be added
+  @returns  Index of the format item in the list
 -------------------------------------------------------------------------------}
 function TsNumFormatList.AddFormat(AFormatStr: String): Integer;
 var
@@ -2600,7 +2544,7 @@ end;
   Clears the list.
   If the list "owns" the format items they are destroyed.
 
-  @see  TsNumFormatList.Create
+  @seeAlso  TsNumFormatList.Create
 -------------------------------------------------------------------------------}
 procedure TsNumFormatList.Clear;
 var
@@ -2615,7 +2559,7 @@ end;
   If the list "owns" the format items, the item is destroyed.
 
   @param  AIndex  Index of the format item to be deleted
-  @see TsNumformatList.Create
+  @seeAlso TsNumformatList.Create
 -------------------------------------------------------------------------------}
 procedure TsNumFormatList.Delete(AIndex: Integer);
 var
@@ -2633,9 +2577,8 @@ end;
   Checks whether a parsed format item having the specified format sections is
   contained in the list and returns its index if found, or -1 if not found.
 
-  @param  ASections   Array of number format sections as obtained by the
-                      number format parser for a given format string
-  @return Index of the found format item, or -1 if not found
+  @param   ASections   Array of number format sections as obtained by the number format parser for a given format string
+  @returns Index of the found format item, or -1 if not found
 -------------------------------------------------------------------------------}
 function TsNumFormatList.Find(ASections: TsNumFormatSections): Integer;
 var
@@ -2655,9 +2598,9 @@ end;
 
   Should be called before adding a format to the list to avoid duplicates.
 
-  @param   AFormatStr  Number format string of the format item which is seeked
-  @return  Index of the found format item, or -1 if not found
-  @see     TsNumFormatList.Add
+  @param    AFormatStr  Number format string of the format item which is seeked
+  @returns  Index of the found format item, or -1 if not found
+  @seeAlso  TsNumFormatList.AddFormat
 -------------------------------------------------------------------------------}
 function TsNumFormatList.Find(AFormatStr: String): Integer;
 var
@@ -2672,11 +2615,10 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Getter function returning the correct type of the list items
-  (i.e., TsNumFormatParams which are parsed format descriptions).
+  (i.e., @link(TsNumFormatParams) which are parsed format descriptions).
 
-  @param  AIndex   Index of the format item
-  @return Pointer to the list item at the specified index, cast to the type
-          TsNumFormatParams
+  @param   AIndex   Index of the format item
+  @returns Pointer to the list item at the specified index, cast to the type @link(TsNumFormatParams)
 -------------------------------------------------------------------------------}
 function TsNumFormatList.GetItem(AIndex: Integer): TsNumFormatParams;
 begin
@@ -2687,8 +2629,7 @@ end;
   Setter function for the list items
 
   @param  AIndex  Index of the format item
-  @param  AValue  Pointer to the parsed format description to be stored in the
-                  list at the specified index.
+  @param  AValue  Pointer to the parsed format description to be stored in the list at the specified index.
 -------------------------------------------------------------------------------}
 procedure TsNumFormatList.SetItem(AIndex: Integer;
   const AValue: TsNumFormatParams);
@@ -2810,9 +2751,9 @@ begin
     Result := CurrencyRegistered(AValue);
 end;
 
-{ Creates a formatstring for all sections.
-  Note: this implementation is only valid for the fpc and Excel dialects of
-  format string. }
+{@@ Creates a formatstring for all sections.
+
+  @Note This implementation is only valid for the fpc and Excel dialects of format string. }
 function TsNumFormatParser.BuildFormatString: String;
 var
   i: Integer;
@@ -3040,7 +2981,7 @@ begin
   SetLength(FSections[ASection].Elements, n-1);
 end;
 
-{ Identify the ambiguous "m" token ("month" or "minute") }
+{@@ Identify the ambiguous "m" token ("month" or "minute") }
 procedure TsNumFormatParser.FixMonthMinuteToken(var ASection: TsNumFormatSection);
 var
   i, j: Integer;
@@ -3166,7 +3107,7 @@ begin
   Result := BuildFormatString;
 end;
 
-{ Extracts the currency symbol form the formatting sections. It is assumed that
+{@@ Extracts the currency symbol form the formatting sections. It is assumed that
   all two or three sections of the currency/accounting format use the same
   currency symbol, otherwise it would be custom format anyway which ignores
   the currencysymbol value. }
@@ -3178,7 +3119,7 @@ begin
     Result := '';
 end;
 
-{ Creates a string which summarizes the date/time formats in the given section.
+{@@ Creates a string which summarizes the date/time formats in the given section.
   The string contains a 'y' for a nftYear, a 'm' for a nftMonth, a
   'd' for a nftDay, a 'h' for a nftHour, a 'n' for a nftMinute, a 's' for a
   nftSeconds, and a 'z' for a nftMilliseconds token. The order is retained.
@@ -3206,7 +3147,7 @@ begin
     end;
 end;
 
-{ Extracts the number of decimals from the sections. Since they are needed only
+{@@ Extracts the number of decimals from the sections. Since they are needed only
   for default formats having only a single section, only the first section is
   considered. In case of currency/accounting having two or three sections, it is
   assumed that all sections have the same decimals count, otherwise it would not
@@ -3243,7 +3184,7 @@ begin
     Result := 0;
 end;
 
-{ Tries to extract a common builtin number format from the sections. If there
+{@@ Tries to extract a common built-in number format from the sections. If there
   are multiple sections, it is always a custom format, except for Currency and
   Accounting. }
 function TsNumFormatParser.GetNumFormat: TsNumberFormat;
@@ -3390,7 +3331,8 @@ begin
     (FSections[ASection].Elements[AIndex].TextValue = AText);
 end;
    }
-{ Returns true if the format elements contain only time, no date tokens. }
+   
+{@@ Returns @true if the format elements contain only time, no date tokens. }
 function TsNumFormatParser.IsTimeFormat: Boolean;
 var
   section: TsNumFormatSection;
@@ -3403,6 +3345,7 @@ begin
     end;
   Result := false;
 end;
+
   {
 function TsNumFormatParser.IsTokenAt(AToken: TsNumFormatToken;
   ASection, AIndex: Integer): Boolean;
@@ -3412,7 +3355,8 @@ begin
             (FSections[ASection].Elements[AIndex].Token = AToken);
 end;
    }
-{ Limits the decimals to 0 or 2, as required by Excel2. }
+   
+{@@ Limits the decimals to 0 or 2, as required by Excel2. }
 procedure TsNumFormatParser.LimitDecimals;
 var
   i, j: Integer;
@@ -3470,7 +3414,7 @@ begin
   end;
 end;
 
-{ Scans an AM/PM sequence (or AMPM or A/P).
+{@@ Scans an AM/PM sequence (or AMPM or A/P).
   At exit, cursor is a next character }
 procedure TsNumFormatParser.ScanAMPM;
 var
@@ -3499,7 +3443,7 @@ begin
   end;
 end;
 
-{ Counts the number of characters equal to ATestChar. Stops at the next
+{@@ Counts the number of characters equal to ATestChar. Stops at the next
   different character. This is also where the cursor is at exit. }
 procedure TsNumFormatParser.ScanAndCount(ATestChar: Char; out ACount: Integer);
 begin
@@ -3512,7 +3456,7 @@ begin
   until (FToken <> ATestChar) or (FCurrent >= FEnd);
 end;
 
-{ Extracts the text between square brackets. This can be
+{@@ Extracts the text between square brackets. This can be
   - a time duration like [hh]
   - a condition, like [>= 2.0]
   - a currency symbol like [$€-409]
@@ -3580,7 +3524,7 @@ begin
   end;
 end;
 
-{ Scans a condition like [>=2.0]. Starts after the "[" and ends before at "]".
+{@@ Scans a condition like [>=2.0]. Starts after the "[" and ends before at "]".
   Returns first character after the number (spaces allowed). }
 procedure TsNumFormatParser.ScanCondition(AFirstChar: Char);
 var
@@ -3636,7 +3580,7 @@ begin
   end;
 end;
 
-{ Scans to end of a symbol like [$EUR-409], starting after the $ and ending at
+{@@ Scans to end of a symbol like [$EUR-409], starting after the $ and ending at
   the "]".
   After the "$" follows the currency symbol, after the "-" country information }
 procedure TsNumFormatParser.ScanCurrSymbol;
@@ -3662,7 +3606,7 @@ begin
   end;
 end;
 
-{ Scans a date/time format. Procedure is left with the cursor at the last char
+{@@ Scans a date/time format. Procedure is left with the cursor at the last char
   of the date/time format. }
 procedure TsNumFormatParser.ScanDateTime;
 var
@@ -3829,7 +3773,7 @@ begin
   end;
 end;
 
-{ Scans for the word "General", it may be used like other tokens }
+{@@ Scans for the word "General", it may be used like other tokens }
 procedure TsNumFormatParser.ScanGeneral;
 begin
   FStatus := psErrGeneralExpected;
@@ -3849,7 +3793,7 @@ begin
   FStatus := psOK;
 end;
 
-{ Scans a floating point format. Procedure is left with the cursor at the last
+{@@ Scans a floating point format. Procedure is left with the cursor at the last
   character of the format. }
 procedure TsNumFormatParser.ScanNumber;
 var
@@ -4012,7 +3956,7 @@ begin
   end;
 end;
 
-{ Scans a text in quotation marks. Tries to interpret the text as a currency
+{@@ Scans a text in quotation marks. Tries to interpret the text as a currency
   symbol (--> AnalyzeText).
   The procedure is entered and left with the cursor at a quotation mark. }
 procedure TsNumFormatParser.ScanQuotedText;

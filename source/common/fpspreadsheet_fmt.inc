@@ -9,16 +9,14 @@
   Modifies the background parameters of the format record stored at the
   specified index.
 
-  @param  AFormatIndex      Index of the format record to be changed
-  @param  AStyle            Fill style ("pattern") to be used - see TsFillStyle
-  @param  APatternColor     RGB value of the pattern color
-  @param  ABackgroundColor  RGB value of the background color
+  @param   AFormatIndex      Index of the format record to be changed
+  @param   AStyle            Fill style ("pattern") to be used - see @link(TsFillStyle)
+  @param   APatternColor     RGB value of the pattern color
+  @param   ABackgroundColor  RGB value of the background color
 
-  @return Index of the new format record.
+  @returns Index of the new format record.
 
-  @NOTE   When AStyle is fsSolidFill the color is defined by APatternColor,
-          ABackgroundColor is ignored unless the APatternColor is not
-          used (scTransparent).
+  @NOTE   When AStyle is fsSolidFill the color is defined by APatternColor, ABackgroundColor is ignored unless the APatternColor is not used (scTransparent).
 -------------------------------------------------------------------------------}
 function TsWorksheet.ChangeBackground(AFormatIndex: Integer; AStyle: TsFillStyle;
   APatternColor: TsColor = scTransparent;
@@ -48,9 +46,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the background fill pattern and colors of a cell.
 
-  @param  ACell  Pointer to the cell
-  @return TsFillPattern record (or EMPTY_FILL, if the cell does not have a
-          filled background
+  @param    ACell  Pointer to the cell
+  @returns  @link(TsFillPattern) record (or @link(EMPTY_FILL), if the cell does not have a filled background
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadBackground(ACell: PCell): TsFillPattern;
 var
@@ -69,8 +66,8 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the background color of a cell as rbg value
 
-  @param    ACell  Pointer to the cell
-  @return   Value containing the rgb bytes in little-endian order
+  @param     ACell   Pointer to the cell
+  @returns   Value containing the rgb bytes in little-endian order
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadBackgroundColor(ACell: PCell): TsColor;
 begin
@@ -84,8 +81,8 @@ end;
   Returns the background color stored at the specified index in the format
   list of the workkbok.
 
-  @param    AFormatIndex  Index of the format record
-  @return   Value containing the rgb bytes in little-endian order
+  @param     AFormatIndex    Index of the format record
+  @returns   Value containing the rgb bytes in little-endian order
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadBackgroundColor(AFormatIndex: Integer): TsColor;
 var
@@ -182,8 +179,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the protection flags of the cell.
 
-  NOTE: These flags are active only if sheet protection is active, i.e.
-  soProtected in Worksheet.Options.
+  @NOTE These flags are active only if sheet protection is active, i.e. soProtected in Worksheet.Options.
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadCellProtection(ACell: PCell): TsCellProtections;
 var
@@ -239,8 +235,8 @@ end;
   Each cell contains a set of "used formatting fields". Formatting is applied
   only if the corresponding element is contained in the set.
 
-  @param  ACell   Pointer to the cell
-  @return Set of elements used in formatting the cell
+  @param    ACell   Pointer to the cell
+  @returns  Set of elements used in formatting the cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadUsedFormatting(ACell: PCell): TsUsedFormattingFields;
 var
@@ -292,17 +288,14 @@ end;
 {@@ ----------------------------------------------------------------------------
   Defines a background pattern for a cell
 
-  @param  ARow              Row index of the cell
-  @param  ACol              Column index of the cell
-  @param  AFillStyle        Fill style to be used - see TsFillStyle
-  @param  APatternColor     RGB value of the pattern color
-  @param  ABackgroundColor  RGB value of the background color
-  @return Pointer to cell
+  @param   ARow              Row index of the cell
+  @param   ACol              Column index of the cell
+  @param   AFillStyle        Fill style to be used - see @link(TsFillStyle)
+  @param   APatternColor     RGB value of the pattern color
+  @param   ABackgroundColor  RGB value of the background color
+  @returns Pointer to cell
 
-  @NOTE   When AStyle is fsSolidFill the color is defined by APatternColor,
-          ABackgroundColor is ignored unless the APatternColor is not
-          used (scTransparent).
-
+  @NOTE    When AStyle is fsSolidFill the color is defined by APatternColor, ABackgroundColor is ignored unless the APatternColor is not used (scTransparent).
   @NOTE   Is replaced by uniform fill if WriteBackgroundColor is called later.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBackground(ARow, ACol: Cardinal; AStyle: TsFillStyle;
@@ -317,14 +310,11 @@ end;
   Defines a background pattern for a cell
 
   @param  ACell             Pointer to the cell
-  @param  AStyle            Fill style ("pattern") to be used - see TsFillStyle
+  @param  AStyle            Fill style ("pattern") to be used - see @link(TsFillStyle)
   @param  APatternColor     RGB value of the pattern color
   @param  ABackgroundColor  RGB value of the background color
 
-  @NOTE   When AStyle is fsSolidFill the color is defined by APatternColor,
-          ABackgroundColor is ignored unless the APatternColor is not
-          used (scTransparent).
-
+  @NOTE   When AStyle is fsSolidFill the color is defined by APatternColor, ABackgroundColor is ignored unless the APatternColor is not used (scTransparent).
   @NOTE   Is replaced by uniform fill if WriteBackgroundColor is called later.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBackground(ACell: PCell; AStyle: TsFillStyle;
@@ -343,12 +333,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Sets a uniform background color of a cell.
 
-  @param  ARow       Row index of the cell
-  @param  ACol       Column index of the cell
-  @param  AColor     RGB value of the new background color.
-                     Use the value "scTransparent" to clear an existing
-                     background color.
-  @return Pointer to cell
+  @param   ARow       Row index of the cell
+  @param   ACol       Column index of the cell
+  @param   AColor     RGB value of the new background color. Use the value "scTransparent" to clear an existing background color.
+  @returns Pointer to cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBackgroundColor(ARow, ACol: Cardinal;
   AColor: TsColor): PCell;
@@ -362,9 +350,7 @@ end;
   Sets a uniform background color of a cell.
 
   @param  ACell      Pointer to cell
-  @param  AColor     RGB value of the new background color.
-                     Use the value "scTransparent" to clear an existing
-                     background color.
+  @param  AColor     RGB value of the new background color. Use the value "scTransparent" to clear an existing background color.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBackgroundColor(ACell: PCell; AColor: TsColor);
 begin
@@ -405,12 +391,11 @@ end;
   Sets the color of a cell border line.
   Note: the border must be included in Borders set in order to be shown!
 
-  @param  ARow       Row index of the cell
-  @param  ACol       Column index of the cell
-  @param  ABorder    Indicates to which border (left/top etc) this color is
-                     to be applied
-  @param  AColor     RGB value of the new border color
-  @return Pointer to cell
+  @param   ARow       Row index of the cell
+  @param   ACol       Column index of the cell
+  @param   ABorder    Indicates to which border (left/top etc) this color is to be applied
+  @param   AColor     RGB value of the new border color
+  @returns Pointer to cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderColor(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; AColor: TsColor): PCell;
@@ -425,8 +410,7 @@ end;
   Note: the border must be included in Borders set in order to be shown!
 
   @param  ACell      Pointer to cell
-  @param  ABorder    Indicates to which border (left/top etc) this color is
-                     to be applied
+  @param  ABorder    Indicates to which border (left/top etc) this color is to be applied
   @param  AColor     RGB value of the new border color
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderColor(ACell: PCell; ABorder: TsCellBorder;
@@ -447,14 +431,13 @@ end;
   Sets the linestyle of a cell border.
   Note: the border must be included in the "Borders" set in order to be shown!
 
-  @param  ARow       Row index of the cell
-  @param  ACol       Column index of the cell
-  @param  ABorder    Indicates to which border (left/top etc) this color is
-                     to be applied
-  @param  ALineStyle Identifier of the new line style to be applied.
-  @return Pointer to cell
+  @param   ARow       Row index of the cell
+  @param   ACol       Column index of the cell
+  @param   ABorder    Indicates to which border (left/top etc) this color is to be applied
+  @param   ALineStyle Identifier of the new line style to be applied.
+  @returns Pointer to cell
 
-  @see    TsLineStyle
+  @seeAlso TsLineStyle
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderLineStyle(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; ALineStyle: TsLineStyle): PCell;
@@ -468,12 +451,11 @@ end;
   Sets the linestyle of a cell border.
   Note: the border must be included in the "Borders" set in order to be shown!
 
-  @param  ACell      Pointer to cell
-  @param  ABorder    Indicates to which border (left/top etc) this color is
-                     to be applied
-  @param  ALineStyle Identifier of the new line style to be applied.
+  @param   ACell      Pointer to cell
+  @param   ABorder    Indicates to which border (left/top etc) this color is to be applied
+  @param   ALineStyle Identifier of the new line style to be applied.
 
-  @see    TsLineStyle
+  @seeAlso TsLineStyle
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderLineStyle(ACell: PCell;
   ABorder: TsCellBorder; ALineStyle: TsLineStyle);
@@ -495,11 +477,11 @@ end;
 
   The borders are drawn using the "BorderStyles" assigned to the cell.
 
-  @param  ARow      Row index of the cell
-  @param  ACol      Column index of the cell
-  @param  ABorders  Set with elements to identify the border(s) to will be shown
-  @return Pointer to cell
-  @see    TsCellBorder
+  @param   ARow      Row index of the cell
+  @param   ACol      Column index of the cell
+  @param   ABorders  Set with elements to identify the border(s) to will be shown
+  @returns Pointer to cell
+  @seeAlso TsCellBorder
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorders(ARow, ACol: Cardinal; ABorders: TsCellBorders): PCell;
 begin
@@ -514,9 +496,9 @@ end;
 
   The borders are drawn using the "BorderStyles" assigned to the cell.
 
-  @param  ACell     Pointer to cell
-  @param  ABorders  Set with elements to identify the border(s) to will be shown
-  @see    TsCellBorder
+  @param   ACell     Pointer to cell
+  @param   ABorders  Set with elements to identify the border(s) to will be shown
+  @seeAlso TsCellBorder
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorders(ACell: PCell; ABorders: TsCellBorders);
 var
@@ -538,12 +520,11 @@ end;
   Sets the style of a cell border, i.e. line style and line color.
   Note: the border must be included in the "Borders" set in order to be shown!
 
-  @param  ARow       Row index of the cell considered
-  @param  ACol       Column index of the cell considered
-  @param  ABorder    Identifies the border to be modified (left/top/right/bottom)
-  @param  AStyle     record of parameters controlling how the border line is drawn
-                     (line style, line color)
-  @result Pointer to cell
+  @param   ARow       Row index of the cell considered
+  @param   ACol       Column index of the cell considered
+  @param   ABorder    Identifies the border to be modified (left/top/right/bottom)
+  @param   AStyle     @link(TsCellBorderStyle) record with parameters controlling how the border line is drawn (line style, line color)
+  @returns Pointer to cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; AStyle: TsCellBorderStyle): PCell;
@@ -559,8 +540,7 @@ end;
 
   @param  ACell      Pointer to cell
   @param  ABorder    Identifies the border to be modified (left/top/right/bottom)
-  @param  AStyle     record of parameters controlling how the border line is drawn
-                     (line style, line color)
+  @param  AStyle     @link(TsCellBorderStyle) record with parameters controlling how the border line is drawn (line style, line color)
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
   AStyle: TsCellBorderStyle);
@@ -580,14 +560,14 @@ end;
   Sets line style and line color of a cell border.
   Note: the border must be included in the "Borders" set in order to be shown!
 
-  @param  ARow       Row index of the considered cell
-  @param  ACol       Column index of the considered cell
-  @param  ABorder    Identifier of the border to be modified
-  @param  ALineStyle Identifier for the new line style of the border
-  @param  AColor     RGB value of the border line color
-  @return Pointer to cell
+  @param   ARow       Row index of the considered cell
+  @param   ACol       Column index of the considered cell
+  @param   ABorder    Identifier of the border to be modified
+  @param   ALineStyle Identifier for the new line style of the border
+  @param   AColor     RGB value of the border line color
+  @returns Pointer to cell
 
-  @see WriteBorderStyles
+  @seeAlso WriteBorderStyles
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderStyle(ARow, ACol: Cardinal;
   ABorder: TsCellBorder; ALineStyle: TsLineStyle; AColor: TsColor): PCell;
@@ -606,7 +586,7 @@ end;
   @param  ALineStyle Identifier for the new line style of the border
   @param  AColor     RGB value of the color of the border line
 
-  @see WriteBorderStyles
+  @seeAlso WriteBorderStyles
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderStyle(ACell: PCell; ABorder: TsCellBorder;
   ALineStyle: TsLineStyle; AColor: TsColor);
@@ -627,12 +607,12 @@ end;
   Sets the style of all cell border of a cell, i.e. line style and line color.
   Note: Only those borders included in the "Borders" set are shown!
 
-  @param  ARow    Row index of the considered cell
-  @param  ACol    Column index of the considered cell
-  @param  AStyles Array of CellBorderStyles for each cell border.
-  @return Pointer to cell
+  @param   ARow     Row index of the considered cell
+  @param   ACol     Column index of the considered cell
+  @param   AStyles  Array of @link(CellBorderStyle) records for each cell border.
+  @returns Pointer to cell
 
-  @see WriteBorderStyle
+  @seeAlso WriteBorderStyle
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteBorderStyles(ARow, ACol: Cardinal;
   const AStyles: TsCellBorderStyles): PCell;
@@ -646,11 +626,11 @@ end;
   Sets the style of all cell border of a cell, i.e. line style and line color.
   Note: Only those borders included in the "Borders" set are shown!
 
-  @param  ACell   Pointer to cell
-  @param  ACol    Column index of the considered cell
-  @param  AStyles Array of CellBorderStyles for each cell border.
+  @param  ACell    Pointer to cell
+  @param  ACol     Column index of the considered cell
+  @param  AStyles  Array of @link(CellBorderStyle) records for each cell border.
 
-  @see WriteBorderStyle
+  @seeAlso WriteBorderStyle
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteBorderStyles(ACell: PCell;
   const AStyles: TsCellBorderStyles);
@@ -673,7 +653,7 @@ end;
   @param ACell        Pointer to the cell to be modified
   @param ACellFormat  Cell format record to be used by the cell
 
-  @see TsCellFormat
+  @seeAlso TsCellFormat
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCellFormat(ACell: PCell;
   const ACellFormat: TsCellFormat);
@@ -692,7 +672,7 @@ end;
   @param  ACell       Pointer to the cell to be formatted
   @param  AIndex      Index of the cell format record to be used by the cell
 
-  @see TsCellFormat
+  @seeAlso TsCellFormat
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCellFormatIndex(ACell: PCell; AIndex: Integer);
 begin
@@ -713,9 +693,7 @@ end;
   cell modification and/or hide formulas. Note that this is activated only after
   enabling worksheet protection (worksheet.Protect(true)).
 
-  NOTE:
-  FPSpreadsheet does not enforce these actions. They are only written
-  to the file for the Office application.
+  @NOTE FPSpreadsheet does not enforce these actions. They are only written to the file for the Office application.
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteCellProtection(ARow, ACol: Cardinal;
   AValue: TsCellProtections): PCell;
@@ -748,11 +726,8 @@ end;
 
   @param ARow    Row index of the cell considered
   @param ACol    Column index of the cell considered
-  @param AValue  Parameter for horizontal text alignment
-                 (haDefault, vaLeft, haCenter, haRight)
-                 By default, texts are left-aligned, numbers and dates are
-                 right-aligned.
-  @return Pointer to cell
+  @param AValue  Parameter for horizontal text alignment (haDefault, vaLeft, haCenter, haRight). By default, texts are left-aligned, numbers and dates are right-aligned.
+  @returns Pointer to cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteHorAlignment(ARow, ACol: Cardinal; AValue: TsHorAlignment): PCell;
 begin
@@ -764,10 +739,7 @@ end;
   Defines the horizontal alignment of text in a cell.
 
   @param ACell   Pointer to the cell considered
-  @param AValue  Parameter for horizontal text alignment
-                 (haDefault, vaLeft, haCenter, haRight)
-                 By default, texts are left-aligned, numbers and dates are
-                 right-aligned.
+  @param AValue  Parameter for horizontal text alignment (haDefault, vaLeft, haCenter, haRight). By default, texts are left-aligned, numbers and dates are right-aligned.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteHorAlignment(ACell: PCell; AValue: TsHorAlignment);
 var
@@ -788,12 +760,12 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds text rotation to the formatting of a cell
 
-  @param  ARow      The row of the cell
-  @param  ACol      The column of the cell
-  @param  ARotation How to rotate the text
-  @return Pointer to cell
+  @param   ARow      The row of the cell
+  @param   ACol      The column of the cell
+  @param   ARotation How to rotate the text
+  @returns Pointer to cell
 
-  @see    TsTextRotation
+  @seeAlso TsTextRotation
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteTextRotation(ARow, ACol: Cardinal;
   ARotation: TsTextRotation): PCell;
@@ -805,10 +777,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Adds text rotation to the formatting of a cell
 
-  @param  ACell      Pointer to the cell
-  @param  ARotation  How to rotate the text
+  @param    ACell      Pointer to the cell
+  @param    ARotation  How to rotate the text
 
-  @see    TsTextRotation
+  @seeAlso  TsTextRotation
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteTextRotation(ACell: PCell; ARotation: TsTextRotation);
 var
@@ -829,13 +801,13 @@ end;
   Directly modifies the used formatting fields of a cell.
   Only formatting corresponding to items included in this set is executed.
 
-  @param  ARow            The row of the cell
-  @param  ACol            The column of the cell
-  @param  AUsedFormatting set of the used formatting fields
-  @return Pointer to the (existing or created) cell
+  @param   ARow            The row of the cell
+  @param   ACol            The column of the cell
+  @param   AUsedFormatting set of the used formatting fields
+  @returns Pointer to the (existing or created) cell
 
-  @see    TsUsedFormattingFields
-  @see    TCell
+  @seeAlso TsUsedFormattingFields
+  @seeAlso TCell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteUsedFormatting(ARow, ACol: Cardinal;
   AUsedFormatting: TsUsedFormattingFields): PCell;
@@ -848,11 +820,11 @@ end;
   Directly modifies the used formatting fields of an existing cell.
   Only formatting corresponding to items included in this set is executed.
 
-  @param  ACell           Pointer to the cell to be modified
-  @param  AUsedFormatting set of the used formatting fields
+  @param   ACell            Pointer to the cell to be modified
+  @param   AUsedFormatting  Set of the used formatting fields
 
-  @see    TsUsedFormattingFields
-  @see    TCell
+  @seeAlso TsUsedFormattingFields
+  @seeAlso TCell
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteUsedFormatting(ACell: PCell;
   AUsedFormatting: TsUsedFormattingFields);
@@ -870,12 +842,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Defines the vertical alignment of text in a cell.
 
-  @param ARow    Row index of the cell considered
-  @param ACol    Column index of the cell considered
-  @param AValue  Parameter for vertical text alignment
-                 (vaDefault, vaTop, vaCenter, vaBottom)
-                 By default, texts are bottom-aligned.
-  @return Pointer to cell
+  @param ARow     Row index of the cell considered
+  @param ACol     Column index of the cell considered
+  @param AValue   Parameter for vertical text alignment (vaDefault, vaTop, vaCenter, vaBottom). By default, texts are bottom-aligned.
+  @returns        Pointer to cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteVertAlignment(ARow, ACol: Cardinal;
   AValue: TsVertAlignment): PCell;
@@ -888,9 +858,7 @@ end;
   Defines the vertical alignment of text in a cell.
 
   @param ACell   Poiner to the cell considered
-  @param AValue  Parameter for vertical text alignment
-                 (vaDefault, vaTop, vaCenter, vaBottom)
-                 By default, texts are bottom-aligned.
+  @param AValue  Parameter for vertical text alignment (vaDefault, vaTop, vaCenter, vaBottom). By default, texts are bottom-aligned.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteVertAlignment(ACell: PCell; AValue: TsVertAlignment);
 var
@@ -911,10 +879,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Enables or disables the word-wrapping feature for a cell.
 
-  @param  ARow    Row index of the cell considered
-  @param  ACol    Column index of the cell considered
-  @param  AValue  true = word-wrapping enabled, false = disabled.
-  @return Pointer to cell
+  @param   ARow    Row index of the cell considered
+  @param   ACol    Column index of the cell considered
+  @param   AValue  @true = word-wrapping enabled, @false = disabled.
+  @returns Pointer to cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.WriteWordwrap(ARow, ACol: Cardinal; AValue: boolean): PCell;
 begin
@@ -926,7 +894,7 @@ end;
   Enables or disables the word-wrapping feature for a cell.
 
   @param ACel    Pointer to the cell considered
-  @param AValue  true = word-wrapping enabled, false = disabled.
+  @param AValue  @true = word-wrapping enabled, @false = disabled.
 -------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteWordwrap(ACell: PCell; AValue: boolean);
 var
@@ -1048,7 +1016,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Removes all cell formats from the workbook.
 
-  If AKeepDefaultFormat is true then index 0 containing the default cell format
+  If AKeepDefaultFormat is @true then index 0 containing the default cell format
   is retained.
 
   Use carefully!
