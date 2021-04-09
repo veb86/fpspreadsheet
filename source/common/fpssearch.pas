@@ -464,6 +464,9 @@ begin
       txt := AWorksheet.ReadAsText(cell);
   end;
 
+  if txt = '' then
+    exit(false);
+
   if soRegularExpr in FSearchParams.Options then
     Result := FRegEx.Exec(txt)
   else
