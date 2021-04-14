@@ -102,5 +102,9 @@ begin
   end;
 
   writeln('Finished. Please open "'+Testfile+'" in your spreadsheet program.');
+  {$IFDEF MSWINDOWS}
+  WriteLn('Press [ENTER] to quit.');
+  ReadLn;
+  {$ENDIF}
 end.
 

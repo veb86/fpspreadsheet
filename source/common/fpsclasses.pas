@@ -244,9 +244,9 @@ uses
 
 function CompareRowCol(Item1, Item2: Pointer): Integer;
 begin
-  Result := Longint(PsRowCol(Item1)^.Row) - PsRowCol(Item2)^.Row;
+  Result := Longint(PsRowCol(Item1)^.Row) - LongInt(PsRowCol(Item2)^.Row);
   if Result = 0 then
-    Result := Longint(PsRowCol(Item1)^.Col) - PsRowCol(Item2)^.Col;
+    Result := Longint(PsRowCol(Item1)^.Col) - LongInt(PsRowCol(Item2)^.Col);
 end;
 
 

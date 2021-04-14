@@ -51,10 +51,10 @@ begin
     parser := TsSpreadsheetParser.Create(worksheet);
     try
       try
-        parser.Expression := worksheet.ReadFormula(cell);
+        parser.Expression[fdExcelA1] := worksheet.ReadFormula(cell);
         res := parser.Evaluate;
 
-        WriteLn('A2: ', parser.Expression);
+        WriteLn('A2: ', parser.Expression[fdExcelA1]);
         Write('Result: ');
         case res.ResultType of
           rtEmpty    : WriteLn('--- empty ---');
@@ -66,8 +66,8 @@ begin
           rtError    : WriteLn(GetErrorValueStr(res.ResError));
         end;
 
-        WriteLn('Reconstructed string formula: ', parser.Expression);
-        WriteLn('Reconstructed localized formula: ', parser.LocalizedExpression[DefaultFormatSettings]);
+        WriteLn('Reconstructed string formula: ', parser.Expression[fdExcelA1]);
+        WriteLn('Reconstructed localized formula: ', parser.Expression[fdLocalized]);
         formula := parser.RPNFormula;
 
         for i:=0 to Length(formula)-1 do begin
@@ -97,7 +97,7 @@ begin
     try
       try
         parser.RPNFormula := formula;
-        s := parser.Expression;
+        s := parser.Expression[fdExcelA1];
         WriteLn('String formula, reconstructed from RPN formula: ', s);
       except on E:Exception do
         begin

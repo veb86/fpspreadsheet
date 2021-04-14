@@ -13,7 +13,7 @@ program demo_write_formatting;
 
 uses
   Classes, SysUtils, fpsTypes, fpspreadsheet, xlsbiff8, fpsopendocument,
-  fpscell, laz_fpspreadsheet;
+  fpscell;
 
 var
   MyWorkbook: TsWorkbook;

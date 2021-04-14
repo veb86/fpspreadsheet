@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <CONFIG>
   <ProjectOptions>
-    <Version Value="11"/>
+    <Version Value="12"/>
     <PathDelim Value="\"/>
     <General>
       <Flags>
         <MainUnitHasCreateFormStatements Value="False"/>
         <MainUnitHasTitleStatement Value="False"/>
+        <MainUnitHasScaledStatement Value="False"/>
+        <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <MainUnit Value="0"/>
       <Title Value="demo_sorting"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
@@ -48,15 +49,10 @@
       <Filename Value="demo_sorting"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="..\..\source;$(ProjOutDir)"/>
-      <OtherUnitFiles Value="..\..\source\common"/>
-      <UnitOutputDirectory Value="..\lib\$(TargetCPU)-$(TargetOS)"/>
+      <IncludeFiles Value="..\..\..\source;$(ProjOutDir)"/>
+      <OtherUnitFiles Value="..\..\..\source\common"/>
+      <UnitOutputDirectory Value="..\..\lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
-    <Linking>
-      <Debugging>
-        <UseExternalDbgSyms Value="True"/>
-      </Debugging>
-    </Linking>
   </CompilerOptions>
   <Debugging>
     <Exceptions Count="3">
