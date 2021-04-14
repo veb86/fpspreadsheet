@@ -24,20 +24,20 @@ type
   protected
     FCurrentNode: TAvgLvlTreeNode;
     FTree: TsRowColAVLTree;
-    FStartRow, FEndRow, FStartCol, FEndCol: LongInt;
+    FStartRow, FEndRow, FStartCol, FEndCol: Cardinal;
     FDone: Boolean;
     FReverse: Boolean;
     function GetCurrent: PsRowCol;
   public
     constructor Create(ATree: TsRowColAVLTree;
-      AStartRow, AStartCol, AEndRow, AEndCol: LongInt; AReverse: Boolean);
+      AStartRow, AStartCol, AEndRow, AEndCol: Cardinal; AReverse: Boolean);
     function GetEnumerator: TsRowColEnumerator; inline;
     function MoveNext: Boolean;
     property Current: PsRowCol read GetCurrent;
-    property StartRow: LongInt read FStartRow;
-    property EndRow: LongInt read FEndRow;
-    property StartCol: LongInt read FStartCol;
-    property EndCol: LongInt read FEndCol;
+    property StartRow: Cardinal read FStartRow;
+    property EndRow: Cardinal read FEndRow;
+    property StartCol: Cardinal read FStartCol;
+    property EndCol: Cardinal read FEndCol;
   end;
 
   { TsRowColAVLTree }
@@ -488,7 +488,7 @@ end;
 {==============================================================================}
 
 constructor TsRowColEnumerator.Create(ATree: TsRowColAVLTree;
-  AStartRow, AStartCol, AEndRow, AEndCol: LongInt; AReverse: Boolean);
+  AStartRow, AStartCol, AEndRow, AEndCol: Cardinal; AReverse: Boolean);
 var
   node: TAvgLvlTreeNode;
 begin
