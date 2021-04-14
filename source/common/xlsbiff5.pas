@@ -686,7 +686,7 @@ begin
   { One-based index to EXTERNSHEET record in the booklist.
     Negative to indicate a 3D reference.
     Positive to indicate an external reference }
-  idx := WordLEToN(AStream.ReadWord);
+  idx := SmallInt(WordLEToN(AStream.ReadWord));
 
   if idx < 0 then begin
     { *** Internal 3d reference *** }

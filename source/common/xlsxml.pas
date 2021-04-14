@@ -2224,7 +2224,7 @@ begin
   if (APrevIndex = Cardinal(-1)) and (AIndex = 0)  then
     Result := ''
   else
-  if {(APrevIndex >= 0) and} (AIndex = APrevIndex + 1) then
+  if (APrevIndex <> Cardinal(-1)) and (AIndex = APrevIndex + 1) then
     Result := ''
   else
     Result := Format(' ss:Index="%d"', [AIndex + 1]);

@@ -892,8 +892,8 @@ begin
     for r := 0 to 10 do
       for c := 0 to 10 do
         MyWorksheet.WriteNumber(r, c, r*100+c);
-    MyWorksheet.PageLayout.SetRepeatedRows(AFirstRow, ALastRow);
-    MyWorksheet.PageLayout.SetRepeatedCols(AFirstCol, ALastCol);
+    MyWorksheet.PageLayout.SetRepeatedRows(Cardinal(AFirstRow), Cardinal(ALastRow));
+    MyWorksheet.PageLayout.SetRepeatedCols(Cardinal(AFirstCol), Cardinal(ALastCol));
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
   finally
     MyWorkbook.Free;

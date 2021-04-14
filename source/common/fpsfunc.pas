@@ -1267,7 +1267,13 @@ procedure DoIF(var result: TsExpressionResult; const Args: TsExprParameterArray;
   - "condition" can be a cell, a value or a string starting with a symbol like ">" etc.
     (in the former two cases a value is counted if equal to the criteria value)
   - "sum_range" - option for the values to be added; if missing the values in
-    "range" are used.}
+    "range" are used.
+
+  Examples of Excel-Syntax:
+    COUNTIF(A1:A5, 20)
+    SUMIF(D6:D10, ">100")      or   SUMIF(D6:D10, ">100", E6:E10)
+    AVERAGEIF(A1:A7, "Apple")  or   AVERAGEIF(A1:A7, "Apple", B1:B7)
+  }
 type
   TCompareType = (ctEmpty, ctString, ctNumber);
 var
@@ -1354,6 +1360,9 @@ begin
     Result := IntegerResult(0);
     exit;
   end;
+
+  if (Length(Args) < 2) then
+    Result := ErrorResult(errArgError);
 
   // Get format settings for string-to-float or -to-datetime conversion
   if (Args[0].ResultType in [rtCell, rtCellRange]) then
@@ -1500,7 +1509,10 @@ begin
     end;
     book := TsWorkbook(TsWorksheet(Args[0].Worksheet).Workbook);
     sheet0 := book.GetWorksheetByIndex(Args[0].ResCellRange.Sheet1);
-    sheet2 := book.GetWorksheetbyIndex(Args[2].ResCellrange.Sheet1);
+    if Length(Args) > 2 then
+      sheet2 := book.GetWorksheetbyIndex(Args[2].ResCellrange.Sheet1)
+    else
+      sheet2 := nil;
     for r := Args[0].ResCellRange.Row1 to Args[0].ResCellRange.Row2 do
     begin
       for c := Args[0].ResCellRange.Col1 to Args[0].ResCellRange.Col2 do

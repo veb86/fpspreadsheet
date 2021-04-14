@@ -47,15 +47,15 @@ function RPNCellRef(ARow, ACol: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem; overload;
 function RPNCellRange(ACellRangeAddress: String;
   ANext: PRPNItem): PRPNItem; overload;
-function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
+function RPNCellRange(ARow, ACol, ARow2, ACol2: Cardinal; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem; overload;
 function RPNCellOffset(ARowOffset, AColOffset: Integer; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
-function RPNCellValue3D(ASheet, ARow, ACol: Integer; AFlags: TsRelflags;
+function RPNCellValue3D(ASheet, ARow, ACol: Cardinal; AFlags: TsRelflags;
   ANext: PRPNItem): PRPNItem;
-function RPNCellRef3D(ASheet, ARow, ACol: Integer; AFlags: TsRelFlags;
+function RPNCellRef3D(ASheet, ARow, ACol: Cardinal; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
-function RPNCellRange3D(ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2: Integer;
+function RPNCellRange3D(ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags; ANext: PRPNItem): PRPNItem;
 function RPNErr(AErrCode: TsErrorValue; ANext: PRPNItem): PRPNItem;
 function RPNInteger(AValue: Int64; ANext: PRPNItem): PRPNItem;
@@ -228,7 +228,7 @@ end;
   @param  AFlags   Flags specifying absolute or relative cell addresses
   @param  ANext    Pointer to the next RPN item in the list
 -------------------------------------------------------------------------------}
-function RPNCellRange(ARow, ACol, ARow2, ACol2: Integer; AFlags: TsRelFlags;
+function RPNCellRange(ARow, ACol, ARow2, ACol2: Cardinal; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -262,7 +262,7 @@ begin
   Result^.Next := ANext;
 end;
 
-function RPNCellValue3D(ASheet, ARow, ACol: Integer; AFlags: TsRelflags;
+function RPNCellValue3D(ASheet, ARow, ACol: Cardinal; AFlags: TsRelflags;
   ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -274,7 +274,7 @@ begin
   Result^.Next := ANext;
 end;
 
-function RPNCellRef3D(ASheet, ARow, ACol: Integer; AFlags: TsRelFlags;
+function RPNCellRef3D(ASheet, ARow, ACol: Cardinal; AFlags: TsRelFlags;
   ANext: PRPNItem): PRPNItem;
 begin
   Result := NewRPNItem;
@@ -286,7 +286,7 @@ begin
   Result^.Next := ANext;
 end;
 
-function RPNCellRange3D(ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2: Integer;
+function RPNCellRange3D(ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags; ANext: PRPNItem): PRPNItem;
 begin
   Result := RPNCellRef3d(ASheet1, ARow1, ACol1, AFlags, ANext);

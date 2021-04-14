@@ -700,6 +700,9 @@ var
   P: PsBIFF8ExternSheet;
   idx: Integer;
 begin
+  if ASheetIndex1 = -1 then
+    exit(-1);
+
   Result := IndexOfSheets(ABookName, ASheetIndex1, ASheetIndex2);
   if Result = -1 then
   begin
@@ -2654,7 +2657,8 @@ begin
   if (ANode is TsCellExprNode) and TsCellExprNode(ANode).Has3DLink then
   begin
     sheetIdx := TsCellExprNode(ANode).GetSheetIndex;
-    sheetList.AddSheets('', nil, sheetIdx, sheetIdx);
+    if sheetIdx > -1 then
+      sheetList.AddSheets('', nil, sheetIdx, sheetIdx);
   end else
   if (ANode is TsCellRangeExprNode) and TsCellRangeExprNode(ANode).Has3DLink then
   begin

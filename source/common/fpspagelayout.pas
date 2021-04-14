@@ -663,7 +663,7 @@ begin
   end;
 end;
 
-procedure TsPageLayout.SetRepeatedRows(AFirstRow, AlastRow: Cardinal);
+procedure TsPageLayout.SetRepeatedRows(AFirstRow, ALastRow: Cardinal);
 begin
   if AFirstRow < ALastRow then
   begin
