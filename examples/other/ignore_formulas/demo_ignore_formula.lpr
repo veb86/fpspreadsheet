@@ -6,7 +6,7 @@
   confirmation must be given to save the file because it has been changed
   by LOCalc.
 
-  This method does not work with Excel because it writes an additonal
+  This method does not work with Excel because it writes an additional
   folder and xml files for external links. }
 
 program demo_ignore_formula;

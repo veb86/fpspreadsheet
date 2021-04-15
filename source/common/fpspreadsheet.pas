@@ -4783,12 +4783,14 @@ begin
     exit;
   end;
 
-  if not (boIgnoreFormulas in Workbook.Options) then
-  begin
-    // Remove '='; is not stored internally
-    if (AFormula[1] = '=') then
-      AFormula := Copy(AFormula, 2, Length(AFormula));
+  // Remove '='; is not stored internally
+  if (AFormula[1] = '=') then
+    Delete(AFormula, 1, 1);
 
+  if (boIgnoreFormulas in Workbook.Options) then
+    formula := FFormulas.AddFormula(ACell^.Row, ACell^.Col, AFormula)
+  else
+  begin
     parser := TsSpreadsheetParser.Create(self);
     try
       if ALocalized then
