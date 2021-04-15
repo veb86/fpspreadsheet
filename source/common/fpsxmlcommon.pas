@@ -48,6 +48,7 @@ function LineEndingToBR(const AText: String): String;
 function UTF8TextToXMLText(AText: string; ProcessLineEndings: Boolean = false): string;
 function ValidXMLText(var AText: string; ReplaceSpecialChars: Boolean = true;
   ProcessLineEndings: Boolean = false): Boolean;
+function XMLQuote(AText: String): String;
 
 procedure UnzipFile(AZipFileName, AZippedFile, ADestFolder: String);
 function UnzipToStream(AZipStream: TStream; const AZippedFile: String;
@@ -230,6 +231,15 @@ begin
     AText := UTF8TextToXMLText(AText, ProcessLineEndings);
 end;
 
+function XMLQuote(AText: String): String;
+var
+  i: Integer;
+begin
+  if AText <> '' then
+    Result := StringReplace(AText, '"', '&quot;', [rfReplaceAll])
+  else
+    Result := '';
+end;
 {------------------------------------------------------------------------------}
 {                                 Unzipping                                    }
 {------------------------------------------------------------------------------}

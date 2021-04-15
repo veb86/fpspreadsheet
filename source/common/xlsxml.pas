@@ -3312,7 +3312,7 @@ begin
       fnt := book.GetFont(fmt^.FontIndex);
       s := '';
       if fnt.FontName <> deffnt.FontName then
-        s := s + Format('ss:FontName="%s" ', [fnt.FontName]);
+        s := s + Format('ss:FontName="%s" ', [XMLQuote(fnt.FontName)]);
       if not SameValue(fnt.Size, deffnt.Size, 1E-3) then
         s := s + Format('ss:Size="%g" ', [fnt.Size], FPointSeparatorSettings);
       if fnt.Color <> deffnt.Color then
@@ -3337,7 +3337,7 @@ begin
       nfp.AllowLocalizedAMPM := false;    // Replace "AMPM" by "AM/PM"
       nfs := nfp.NumFormatStr;
       AppendToStream(AStream, Format(INDENT3 +
-        '<NumberFormat ss:Format="%s"/>' + LF, [nfs])); // Do not UTF8TextToXMLText(nfs) because of '%'
+        '<NumberFormat ss:Format="%s"/>' + LF, [XMLQuote(nfs)])); // Do not UTF8TextToXMLText(nfs) because of '%'
     end;
 
     // Background
