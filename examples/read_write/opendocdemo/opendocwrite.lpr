@@ -282,7 +282,7 @@ begin
   MyWorksheet := MyWorkbook.AddWorksheet('My Worksheet 2');
 
   // Save the spreadsheet to a file
-  MyWorkbook.WriteToFile(MyDir + 'test1.ods', sfOpenDocument, true);
+  MyWorkbook.WriteToFile(MyDir + 'test.ods', sfOpenDocument, true);
   MyWorkbook.Free;
 end.
 

@@ -13,6 +13,8 @@ var
   row: Integer;
   i: Integer;
   lastCol: Integer;
+  dir: String;
+
 begin
   wb := TsWorkbook.Create;
   try
@@ -397,9 +399,10 @@ begin
     sh.WriteIconSet(Range(Row, 2, row, 12), is3Flags);
 
     { ------ Save workbook to file-------------------------------------------- }
-    wb.WriteToFile('test.xlsx', true);
-    wb.WriteToFile('test.ods', true);
-    wb.WriteToFile('test.xml', true);
+    dir := ExtractFilePath(ParamStr(0));
+    wb.WriteToFile(dir + 'test.xlsx', true);
+    wb.WriteToFile(dir + 'test.ods', true);
+    wb.WriteToFile(dir + 'test.xml', true);
 
     if wb.ErrorMsg <> '' then
       WriteLn(wb.ErrorMsg);

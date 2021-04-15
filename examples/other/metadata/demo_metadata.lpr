@@ -59,7 +59,10 @@ var
   book: TsWorkbook;
   sheet: TsWorksheet;
   i: Integer;
+  dir: String;
 begin
+  dir := ExtractFilePath(ParamStr(0));
+
   book := TsWorkbook.Create;
   try
     book.MetaData.CreatedBy := 'Donald Duck & Dagobert Duck';
@@ -80,9 +83,9 @@ begin
     sheet := book.AddWorksheet('Test');
     sheet.WriteText(2, 3, 'abc');
     sheet.WriteBackgroundColor(2, 3, scYellow);
-    book.WriteToFile('test.xlsx', true);
-    book.WriteToFile('test.ods', true);
-    book.WriteToFile('test.xml', true)
+    book.WriteToFile(dir + 'test.xlsx', true);
+    book.WriteToFile(dir + 'test.ods', true);
+    book.WriteToFile(dir + 'test.xml', true)
   finally
     book.Free;
   end;

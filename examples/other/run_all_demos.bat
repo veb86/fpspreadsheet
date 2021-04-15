@@ -3,6 +3,7 @@ colors\demo_write_colors -quit
 conditional_formatting\demo_conditional_formatting -quit
 expression_parser\demo_expression_parser -quit
 header_footer_images\demo_write_headerfooter_images -quit
+hyperlinkdemo\collectlinks -quit
 ignore_formulas\demo_ignore_formula -quit
 images\demo_write_images -quit
 metadata\demo_metadata -quit

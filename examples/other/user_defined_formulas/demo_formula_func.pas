@@ -295,13 +295,17 @@ const
   TestFile='test_user_formula.xlsx';  // Format depends on extension selected
   // !!!! ods not working yet !!!!
 
+var
+  dir: String;
+
 begin
   WriteLn('This demo registers user-defined functions for financial calculations');
   WriteLn('and writes and reads the corresponding spreadsheet file.');
   WriteLn;
 
-  WriteFile(TestFile);
-  ReadFile(TestFile);
+  dir := ExtractFilePath(ParamStr(0));
+  WriteFile(dir + TestFile);
+  ReadFile(dir + TestFile);
 
   WriteLn;
   WriteLn('Open the file in Excel or OpenOffice/LibreOffice.');

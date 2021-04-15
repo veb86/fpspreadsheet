@@ -40,6 +40,7 @@ var
   book: TsWorkbook;
   sheet: TsWorksheet;
   cell: PCell;
+  dir: String;
 
   // example for an external ods reference:
   // ='file:///D:/fpspreadsheet/examples/other/external.ods'#$Sheet.A1
@@ -79,6 +80,8 @@ var
   end;
 
 begin
+  dir := ExtractFilePath(ParamStr(0));
+
   // Write external file
   book := TsWorkbook.Create;
   try
@@ -90,7 +93,7 @@ begin
     cell := sheet.GetCell(CELL2);
     sheet.WriteText(cell, 'Hallo');
 
-    book.WriteToFile(EXTERNAL_FILE, FILE_FORMAT, true);
+    book.WriteToFile(dir+EXTERNAL_FILE, FILE_FORMAT, true);
   finally
     book.Free;
   end;
@@ -103,9 +106,9 @@ begin
     sheet := book.AddWorksheet('Sheet');
 
     // Write external references
-    sheet.WriteFormula(0, 0, ExtRef(EXTERNAL_FILE, EXTERNAL_SHEET, CELL1));
-    sheet.WriteFormula(1, 0, ExtRef(EXTERNAL_FILE, EXTERNAL_SHEET, CELL2));
-    book.WriteToFile(MASTER_FILE, FILE_FORMAT, true);
+    sheet.WriteFormula(0, 0, ExtRef(dir + EXTERNAL_FILE, EXTERNAL_SHEET, CELL1));
+    sheet.WriteFormula(1, 0, ExtRef(dir + EXTERNAL_FILE, EXTERNAL_SHEET, CELL2));
+    book.WriteToFile(dir + MASTER_FILE, FILE_FORMAT, true);
 
   finally
     book.Free;

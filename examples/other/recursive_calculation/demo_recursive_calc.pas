@@ -14,17 +14,21 @@ uses
   cthreads,
   {$ENDIF}
   {$ENDIF}
-  Classes, Math,
+  SysUtils, Classes, Math,
   fpstypes, fpspreadsheet, fpsfunc, xlsbiff8;
 
 var
   workbook: TsWorkbook;
   worksheet: TsWorksheet;
+  dir: String;
+
 const
-  OutputFile='test_recursive.xls';
+  OutputFile = 'test_recursive.xls';
 
 begin
   writeln('Starting program.');
+
+  dir := ExtractFilePath(ParamStr(0));
   workbook := TsWorkbook.Create;
   try
     workbook.Options := workbook.Options + [boCalcBeforeSaving];
@@ -39,10 +43,10 @@ begin
     worksheet.WriteUTF8Text(2, 0, '(not dependent)');  // A3
     worksheet.WriteNumber(2, 1, 1);                    // B3
 
-    workbook.WriteToFile(OutputFile, sfExcel8, true);
+    workbook.WriteToFile(dir + OutputFile, sfExcel8, true);
     writeln('Finished.');
     writeln;
-    writeln('Please open "'+OutputFile+'" in "fpsgrid".');
+    writeln('Please open "'+dir+OutputFile+'" in "fpsgrid".');
     writeLn('It must show correct calculation results in cells B1 and B2.');
 
   finally

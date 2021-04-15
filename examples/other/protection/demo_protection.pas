@@ -14,6 +14,8 @@ var
   sheet: TsWorksheet;
   cell: PCell;
   c: TsCryptoInfo;
+  dir: String;
+
 begin
   book := TsWorkbook.Create;
   try
@@ -35,10 +37,11 @@ begin
     sheet.Protection := [spDeleteRows, spDeleteColumns, spInsertRows, spInsertColumns];
     sheet.Protect(true);
 
-    book.WriteToFile('protected.xls', sfExcel8, true);
-    book.WriteToFile('protected.xlsx', sfOOXML, true);
+    dir := ExtractFilePath(ParamStr(0));
+    book.WriteToFile(dir + 'protected.xls', sfExcel8, true);
+    book.WriteToFile(dir + 'protected.xlsx', sfOOXML, true);
     // Note ODS does not write the excel password correctly, yet. --> protection cannot be removed.
-    book.WriteToFile('protected.ods', sfOpenDocument, true);
+    book.WriteToFile(dir + 'protected.ods', sfOpenDocument, true);
 
   finally
     book.Free;

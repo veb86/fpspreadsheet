@@ -28,21 +28,24 @@ var
   sheetFormat: TsSpreadsheetFormat;
   sheetName: String;
   r, c: Cardinal;
+  dir: String;
 
 begin
   // Just for the demo: create the file "source.xls". It contains hyperlinks to
   // some of the "test" files created in the XXXXdemo projects
   Write('Creating source workbook...');
+  dir := ExtractFilePath(ParamStr(0));
+
   srcWorkbook := TsWorkbook.Create;
   try
     sheet := srcWorkbook.AddWorksheet('Sheet');
 
     sheet.WriteText(0, 0, 'Link to biff8 test file');
-    sheet.WriteHyperlink(0, 0, '../excel8demo/test.xls#''My Worksheet 2''!A1');
+    sheet.WriteHyperlink(0, 0, '../../read_write/excel8demo/test.xls#''My Worksheet 2''!A1');
     //sheet.WriteHyperlink(0, 0, '../excel8demo/test.xls#''Meu Relatório''!A1');
 
     sheet.WriteText(1, 0, 'Link to ods test file');
-    sheet.WriteHyperlink(1, 0, '..\opendocdemo\test.ods');
+    sheet.WriteHyperlink(1, 0, '../../read_write/opendocdemo/test.ods');
 
     sheet.WriteText(2, 0, 'E-Mail Link');
     sheet.WriteHyperlink(2, 0, 'mailto:someone@mail.com;someoneelse@mail.com?Subject=This is a test');
@@ -51,7 +54,7 @@ begin
     sheet.WriteHyperlink(3, 0, 'http://www.lazarus-ide.org/');
 
     sheet.WriteText(4, 0, 'File-Link (absolute path)');
-    sheet.WriteHyperlink(4, 0, 'file:///'+ExpandFilename('..\..\..\tests\testooxml_1899.xlsx'));
+    sheet.WriteHyperlink(4, 0, 'file:///'+ExpandFilename('../../../tests/testooxml_1899.xlsx'));
     // This creates the URI such as "file:///D:\Prog_Lazarus\svn\lazarus-ccr\components\fpspreadsheet\tests\testooxml_1899.xlsx"
     // but makes sure that the file exists on your system.
 
@@ -60,7 +63,7 @@ begin
 
     sheet.WriteColWidth(0, 40, suChars);
 
-    srcWorkbook.WriteToFile(srcFile, true);
+    srcWorkbook.WriteToFile(dir + srcFile, true);
   finally
     srcWorkbook.Free;
   end;
@@ -73,7 +76,7 @@ begin
   Write('Reading source workbook, sheet ');
   srcWorkbook := TsWorkbook.Create;
   try
-    srcWorkbook.ReadFromFile(srcFile);
+    srcWorkbook.ReadFromFile(dir + srcFile);
     sheet := srcWorkbook.GetWorksheetByIndex(0);
     WriteLn(sheet.Name, '...');
 
@@ -125,7 +128,7 @@ begin
                   continue;
                 end;
               // Copy linked worksheet to new sheet in destination workbook
-              destSheet := destWorkbook.CopyWorksheetFrom(linkedSheet);
+              destSheet := destWorkbook.CopyWorksheetFrom(linkedSheet, true);
               // Create sheet name
               sheetName := ExtractFileName(fn) + '#' +linkedSheet.Name;
               destWorkbook.ValidWorksheetName(sheetName, true);
@@ -144,23 +147,26 @@ begin
     WriteLn;
     if destWorkbook <> nil then
     begin
-      destworkbook.WriteToFile(destFile+'.xls', true);
-      destworkbook.WriteToFile(destFile+'.xlsx', true);
-      destworkbook.WriteToFile(destFile+'.ods', true);
+      destworkbook.WriteToFile(dir + destFile+'.xls', true);
+      destworkbook.WriteToFile(dir + destFile+'.xlsx', true);
+      destworkbook.WriteToFile(dir + destFile+'.ods', true);
       WriteLn('All hyperlinks to spreadsheets are collected in files ' + destFile + '.*');
     end else
       WriteLn('No hyperlinks found.');
-
-    {$IFDEF Windows}
-    WriteLn;
-    WriteLn('Press ENTER to close...');
-    ReadLn;
-    {$ENDIF}
 
   finally
     // Clean up
     srcWorkbook.Free;
     if destWorkbook <> nil then destWorkbook.Free;
+  end;
+
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWindows}
+    WriteLn;
+    WriteLn('Press ENTER to close...');
+    ReadLn;
+    {$ENDIF}
   end;
 
 end.

@@ -27,6 +27,7 @@ var
   worksheet: TsWorksheet;
   dataAnalyzer: TDataAnalyzer;
   t: TTime;
+  dir: String;
 
   procedure TDataAnalyzer.ReadCellDataHandler(Sender: TObject;
     ARow, ACol: Cardinal; const ADataCell: PCell);
@@ -47,7 +48,9 @@ var
   end;
 
 begin
-  if not FileExists(TestFileName) then begin
+  dir := ExtractFilePath(ParamStr(0));
+
+  if not FileExists(dir + TestFileName) then begin
     WriteLn('The test file does not exist. Please run demo_virtual_write first.');
     Halt;
   end;
@@ -68,7 +71,7 @@ begin
       workbook.OnReadCellData := @dataAnalyzer.ReadCellDataHandler;
 
       t := Now;
-      workbook.ReadFromFile(TestFileName);
+      workbook.ReadFromFile(dir + TestFileName);
       t := Now - t;
 
       WriteLn(Format('The workbook containes %d number and %d label cells, total %d.', [

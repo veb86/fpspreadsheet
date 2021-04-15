@@ -27,6 +27,11 @@
           <Mode Name="default"/>
         </BuildModes>
       </Target>
+      <Target FileName="hyperlinkdemo\collectlinks.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
       <Target FileName="ignore_formulas\demo_ignore_formula.lpi">
         <BuildModes>
           <Mode Name="Default"/>
