@@ -113,8 +113,13 @@ begin
     workbook.Free;
   end;
 
-  WriteLn('Press ENTER to quit...');
-  ReadLn;
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWINDOWS}
+    WriteLn('Press [ENTER] to quit...');
+    ReadLn;
+    {$ENDIF}
+  end;
 
 end.
 

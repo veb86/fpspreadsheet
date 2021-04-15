@@ -14,9 +14,9 @@ var
   i, r, c: Integer;
 
 const
-  image1 = '../../images/components/TSWORKBOOKSOURCE.png';
-  image2 = '../../images/components/TSWORKSHEETGRID.png';
-  image3 = '../../images/components/TSCELLEDIT.png';
+  image1 = '../../../images/components/TSWORKBOOKSOURCE.png';
+  image2 = '../../../images/components/TSWORKSHEETGRID.png';
+  image3 = '../../../images/components/TSCELLEDIT.png';
 
 begin
   Writeln('Starting program "demo_write_headerfooter_images"...');
@@ -49,10 +49,14 @@ begin
 
     WriteLn('Finished.');
     WriteLn('Please open the files "hfimg.*" in your spreadsheet program.');
-   {$ifdef WINDOWS}
-    WriteLn('Press ENTER to close this program...');
-    ReadLn;
-   {$endif}
+
+    if ParamCount = 0 then
+    begin
+      {$IFDEF MSWINDOWS}
+      WriteLn('Press [ENTER] to close this program...');
+      ReadLn;
+      {$ENDIF}
+    end;
 
   finally
     MyWorkbook.Free;

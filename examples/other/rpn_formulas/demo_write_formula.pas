@@ -101,10 +101,14 @@ begin
     MyWorkbook.Free;
   end;
 
-  writeln('Finished. Please open "'+Testfile+'" in your spreadsheet program.');
-  {$IFDEF MSWINDOWS}
-  WriteLn('Press [ENTER] to quit.');
-  ReadLn;
-  {$ENDIF}
+  WriteLn('Finished. Please open "'+Testfile+'" in your spreadsheet program.');
+
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWINDOWS}
+    WriteLn('Press [ENTER] to quit...');
+    ReadLn;
+    {$ENDIF}
+  end;
 end.
 

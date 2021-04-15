@@ -412,7 +412,12 @@ begin
   SortTwoColumns_TwoKeys_1;
   SortTwoRows_TwoKeys_1;
 
-  WriteLn('Press ENTER to quit...');
-  ReadLn;
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWINDOWS}
+    WriteLn('Press [ENTER] to quit...');
+    ReadLn;
+    {$ENDIF}
+  end;
 end.
 

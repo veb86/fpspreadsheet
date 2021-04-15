@@ -51,13 +51,17 @@ begin
 
     WriteLn('Finished.');
     WriteLn('Please open the files "img.*" in your spreadsheet program.');
-   {$ifdef WINDOWS}
-    WriteLn('Press ENTER to close this program...');
-    ReadLn;
-   {$ENDIF}
 
   finally
     MyWorkbook.Free;
+  end;
+
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWINDOWS}
+    WriteLn('Press [ENTER] to quit...');
+    ReadLn;
+    {$ENDIF}
   end;
 end.
 

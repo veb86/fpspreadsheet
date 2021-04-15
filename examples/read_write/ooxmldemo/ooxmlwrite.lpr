@@ -37,9 +37,12 @@ begin
 
   WriteLn('Workbook written to "' + Mydir + 'test.xlsx' + '".');
 
-  {$IFDEF MSWINDOWS}
-  WriteLn('Press ENTER to quit...');
-  ReadLn;
-  {$ENDIF}
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWINDOWS}
+    WriteLn('Press ENTER to quit...');
+    ReadLn;
+    {$ENDIF}
+  end;
 end.
 

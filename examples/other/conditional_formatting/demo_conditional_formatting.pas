@@ -401,14 +401,19 @@ begin
     wb.WriteToFile('test.ods', true);
     wb.WriteToFile('test.xml', true);
 
-    if wb.ErrorMsg <> '' then begin
+    if wb.ErrorMsg <> '' then
       WriteLn(wb.ErrorMsg);
-      WriteLn;
-      WriteLn('Press ENTER to close.');
-      ReadLn;
-    end;
+
   finally
     wb.Free;
+  end;
+
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWINDOWS}
+    WriteLn('Press [ENTER] to quit...');
+    ReadLn;
+    {$ENDIF}
   end;
 end.
 

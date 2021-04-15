@@ -59,10 +59,13 @@ begin
     MyWorkbook.Free;
   end;
 
-  {$ifdef Windows}
-  WriteLn;
-  WriteLn('Press ENTER to quit...');
-  ReadLn;
-  {$endif}
+  if ParamCount = 0 then
+  begin
+    {$ifdef Windows}
+    WriteLn;
+    WriteLn('Press ENTER to quit...');
+    ReadLn;
+    {$endif}
+  end;
 end.
 

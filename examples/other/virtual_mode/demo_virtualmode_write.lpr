@@ -114,7 +114,13 @@ begin
   end;
 
   WriteLn(Format('Execution time: %.3f sec', [t*24*60*60]));
-  WriteLn('Press [ENTER] to quit...');
-  ReadLn;
+
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWINDOWS}
+    WriteLn('Press [ENTER] to quit...');
+    ReadLn;
+    {$ENDIF}
+  end;
 end.
 

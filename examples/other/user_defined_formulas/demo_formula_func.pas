@@ -305,8 +305,14 @@ begin
 
   WriteLn;
   WriteLn('Open the file in Excel or OpenOffice/LibreOffice.');
-  WriteLn('Press [ENTER] to close...');
-  ReadLn;
+
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWINDOWS}
+    WriteLn('Press [ENTER] to quit...');
+    ReadLn;
+    {$ENDIF}
+  end;
 end.
 
 

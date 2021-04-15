@@ -64,9 +64,12 @@ begin
   end;
 
   {$ifdef WINDOWS}
-  WriteLn;
-  WriteLn('Press ENTER to quit...');
-  ReadLn;
+  if ParamCount = 0 then
+  begin
+    WriteLn;
+    WriteLn('Press ENTER to quit...');
+    ReadLn;
+  end;
   {$ENDIF}
 end.
 

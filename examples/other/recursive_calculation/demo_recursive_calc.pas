@@ -45,9 +45,16 @@ begin
     writeln('Please open "'+OutputFile+'" in "fpsgrid".');
     writeLn('It must show correct calculation results in cells B1 and B2.');
 
-    ReadLn;
   finally
     workbook.Free;
+  end;
+
+  if ParamCount = 0 then
+  begin
+    {$IFDEF MSWINDOWS}
+    WriteLn('Press [ENTER] to quit...');
+    ReadLn;
+    {$ENDIF}
   end;
 end.
 
