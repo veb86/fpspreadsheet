@@ -9,6 +9,7 @@ images\demo_write_images -quit
 metadata\demo_metadata -quit
 protection\demo_protection -quit
 recursive_calculation\demo_recursive_calc -quit
+richtext\demo_richtext_utf8 -quit
 rpn_formulas\demo_write_formula -quit
 searching\demo_search -quit
 sorting\demo_sorting -quit

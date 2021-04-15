@@ -93,9 +93,9 @@ begin
   book := TsWorkbook.Create;
   try
     // Select one of these
-//    book.ReadFromFile('test.ods');
-//    book.ReadFromFile('test.xlsx');
-    book.ReadFromFile('test.xml');
+//    book.ReadFromFile(dir + 'test.ods');
+//    book.ReadFromFile(dir + 'test.xlsx');
+    book.ReadFromFile(dir + 'test.xml');
     WriteLn('Created by         : ', book.MetaData.CreatedBy);
     WriteLn('Date created       : ', DateTimeToStr(book.MetaData.DateCreated));
     WriteLn('Modified by        : ', book.MetaData.LastModifiedBy);

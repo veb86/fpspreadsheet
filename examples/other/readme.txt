@@ -26,6 +26,8 @@ This folder contains various demo applications:
   in the first cell is calculated recursive calculation of the other cells 
   is requested.
   
+- richtext/demo_richtext_utf8: shows working with rich text formatting in cells
+
 - rpn_formulas/demo_write_formula: shows some rpn formulas
 
 - searching/demo_search:  demonstrates how specific cell content can be 

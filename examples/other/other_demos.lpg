@@ -57,6 +57,11 @@
           <Mode Name="Default"/>
         </BuildModes>
       </Target>
+      <Target FileName="richtext\demo_richtext_utf8.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
       <Target FileName="rpn_formulas\demo_write_formula.lpi">
         <BuildModes>
           <Mode Name="Debug" Compile="True"/>
