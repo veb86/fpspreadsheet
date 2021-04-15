@@ -43,5 +43,8 @@ This folder contains various demo applications:
 - virtual_mode/demo_virtualmode_reading: demonstrates how the virtual mode 
   of the workbook can be used to read huge spreadsheet files. Requires the 
   file written by demo_virtualmode_writing.
+  
+Users of Lazarus 2.1+ can compile all demo projects with a single click by using
+the other_demos project group.
 
   
