@@ -5,3 +5,5 @@
 ../../source/common/fpsnumformat.pas
 ../../source/common/fpsallformats.pas
 ../../source/common/fpsrpn.pas
+../../source/visual/fpspreadsheetctrls.pas
+../../source/visual/fpspreadsheetgrid.pas

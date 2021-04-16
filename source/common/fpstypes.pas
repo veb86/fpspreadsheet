@@ -6,7 +6,7 @@
   AUTHORS: Werner Pamler
 
   LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
-            distribution, for details about the license.
+           distribution, for details about the license.
 -------------------------------------------------------------------------------}
 unit fpsTypes;
 
@@ -136,26 +136,26 @@ const
   {@@ Explanatory name of sfWikiTableWikiMedia file format }
   STR_FILEFORMAT_WIKITABLE_WIKIMEDIA = 'WikiTable (WikiMedia)';
 
-  {@@ Default binary **Excel** file extension (<= Excel 97) }
+  {@@ Default binary _Excel_ file extension (<= Excel 97) }
   STR_EXCEL_EXTENSION = '.xls';
-  {@@ Default xml **Excel** file extension (Excel XP, 2003) }
+  {@@ Default xml _Excel_ file extension (Excel XP, 2003) }
   STR_XML_EXCEL_EXTENSION = '.xml';
-  {@@ Default xml **Excel** file extension (>= Excel 2007) }
+  {@@ Default xml _Excel_ file extension (>= Excel 2007) }
   STR_OOXML_EXCEL_EXTENSION = '.xlsx';
-  {@@ Default **OpenDocument** spreadsheet file extension }
+  {@@ Default _OpenDocument_ spreadsheet file extension }
   STR_OPENDOCUMENT_CALC_EXTENSION = '.ods';
-  {@@ Default extension of <b>comma-separated-values</b> file }
+  {@@ Default extension of _comma-separated-values_ file }
   STR_COMMA_SEPARATED_EXTENSION = '.csv';
-  {@@ Default extension for <b>HTML</b> files }
+  {@@ Default extension for _HTML_ files }
   STR_HTML_EXTENSION = '.html';
-  {@@ Default extension of <b>wikitable files</b> in <b>pipes</b> format}
+  {@@ Default extension of _wikitable files_ in _pipes_ format}
   STR_WIKITABLE_PIPES_EXTENSION = '.wikitable_pipes';
-  {@@ Default extension of <b>wikitable files</b> in <b>wikimedia</b> format }
+  {@@ Default extension of _wikitable files_ in _wikimedia_ format }
   STR_WIKITABLE_WIKIMEDIA_EXTENSION = '.wikitable_wikimedia';
 
-  {@@ String for boolean value TRUE }
+  {@@ String for boolean value @TRUE }
   STR_TRUE = 'TRUE';
-  {@@ String for boolean value FALSE }
+  {@@ String for boolean value @FALSE }
   STR_FALSE = 'FALSE';
 
   {@@ Error values }

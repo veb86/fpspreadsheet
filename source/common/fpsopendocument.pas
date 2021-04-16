@@ -13,7 +13,6 @@ mimetype        - application/vnd.oasis.opendocument.spreadsheet
 META-INF\manifest.xml  - Describes the other files in the archive
 
 Specifications obtained from:
-
 http://docs.oasis-open.org/office/v1.1/OS/OpenDocument-v1.1.pdf
 
 AUTHORS: Felipe Monteiro de Carvalho / Jose Luis Jurado Rincon / Werner Pamler

@@ -7,7 +7,7 @@
   LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
            distribution, for details about the license.
 
-  EXAMPLE
+  EXAMPLE OF USAGE:
   * Add a _WorkbookSource_ component to the form.
   * Add a _WorksheetTabControl_
   * Add a _WorksheetGrid_ (from unit fpspreadsheetgrid)
@@ -723,7 +723,7 @@ var
 
 
 {@@ ----------------------------------------------------------------------------
-  Returns TRUE if the clipboard contains a format good for pasting into a
+  Returns @TRUE if the clipboard contains a format good for pasting into a
   worksheet grid.
 -------------------------------------------------------------------------------}
 function SpreadsheetFormatInClipboard: Boolean;
@@ -736,6 +736,7 @@ begin
             Clipboard.HasFormat(cfCSVFormat) or
             Clipboard.HasFormat(CF_TEXT);
 end;
+
 
 {------------------------------------------------------------------------------}
 {                               TsCellList                                     }
@@ -786,7 +787,8 @@ begin
   end;
 end;
 
-{ Adds a "non-existing" cell to the list. Such a cell is nil in the worksheet.
+{@@
+  Adds a "non-existing" cell to the list. Such a cell is nil in the worksheet.
   Here it has ContentType = cctEmpty and UsedFormattingFields = [], i.e. it is
   an empty cell without formatting. }
 function TsCellList.AddEmptyCell(ARow, ACol: Cardinal): Integer;
@@ -852,8 +854,7 @@ end;
   Constructor of the WorkbookSource class. Creates the internal list for the
   notified ("listening") components, and creates an empty workbook.
 
-  @param  AOwner  Component which is responsibile for destroying the
-                  WorkbookSource.
+  @param  AOwner  Component which is responsibile for destroying the WorkbookSource.
 -------------------------------------------------------------------------------}
 constructor TsWorkbookSource.Create(AOwner: TComponent);
 begin
@@ -896,8 +897,8 @@ end;
   Adds a component to the listener list. All these components are notified of
   changes in the workbook.
 
-  @param  AListener  Component to be added to the listener list notified of
-                     changes
+  @param(AListener  Component to be added to the listener list notified of
+                    changes.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.AddListener(AListener: TComponent);
 begin
@@ -1003,23 +1004,15 @@ begin
   FWorksheet := FWorkbook.AddWorksheet(Format(rsDefaultSheetName,[1]));
   SelectWorksheet(FWorksheet);
 end;
-                         (*
-{@@ ----------------------------------------------------------------------------
-  Disables notification of listening controls
--------------------------------------------------------------------------------}
-procedure TsWorkbookSource.DisableControls;
-begin
-  inc(FControlLockCount);
-end;                   *)
 
 {@@ ----------------------------------------------------------------------------
   An error has occured during loading of the workbook. Shows a message box by
   default. But a different behavior can be obtained by means of the OnError
   event.
 
-  @param  AErrorMsg  Error message text created by the workbook reader and to be
-                     displayed in a messagebox or by means of the OnError
-                     handler.
+  @param(AErrorMsg  Error message text created by the workbook reader and to be
+                    displayed in a messagebox or by means of the OnError
+                    handler.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.DoShowError(const AErrorMsg: String);
 begin
@@ -1028,14 +1021,6 @@ begin
   else
     MessageDlg(AErrorMsg, mtError, [mbOK], 0);
 end;
-                   (*
-{@@ ----------------------------------------------------------------------------
-  Enables notification of listening controls
--------------------------------------------------------------------------------}
-procedure TsWorkbookSource.EnableControls;
-begin
-  dec(FControlLockCount);
-end;                 *)
 
 {@@ ----------------------------------------------------------------------------
   Executes a "pending operation"
@@ -1131,16 +1116,16 @@ end;
   Internal loader for the spreadsheet file. Is called with various combinations
   of arguments from several procedures.
 
-  @param  AFilename        Name of the spreadsheet file to be loaded
-  @param  AAutoDetect      Instructs the loader to automatically detect the
-                           file format from the file extension or by temporarily
-                           opening the file in all available formats. Note that
-                           an exception is raised in the IDE when an incorrect
-                           format is tested.
-  @param  AFormatID        Identifier of the spreadsheet file format assumed
-                           for the loader.
-                           Is ignored when AAutoDetect is false.
-  @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
+  @param(AFilename        Name of the spreadsheet file to be loaded.)
+  @param(AAutoDetect      Instructs the loader to automatically detect the
+                          file format from the file extension or by temporarily
+                          opening the file in all available formats. Note that
+                          an exception is raised in the IDE when an incorrect
+                          format is tested.)
+  @param(AFormatID        Identifier of the spreadsheet file format assumed
+                          for the loader.
+                          Is ignored when AAutoDetect is @false.)
+  @param(AWorksheetIndex  Index of the worksheet to be selected after loading.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.InternalLoadFromFile(AFileName: string;
   AAutoDetect: Boolean; AFormatID: TsSpreadFormatID;
@@ -1192,6 +1177,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Inherited method which is called after reading the WorkbookSource from the lfm
   file.
+
   Is overridden here to open a spreadsheet file if a file name has been assigned
   to the FileName property at design-time.
 -------------------------------------------------------------------------------}
@@ -1209,10 +1195,10 @@ end;
 
   Call this method only for built-in file formats.
 
-  @param  AFilename        Name of the spreadsheet file to be loaded
-  @param  AFormat          Spreadsheet file format assumed for the file
-  @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
-                           (If empty then the active worksheet is loaded)
+  @param(AFilename        Name of the spreadsheet file to be loaded.)
+  @param(AFormat          Spreadsheet file format assumed for the file.)
+  @param(AWorksheetIndex  Index of the worksheet to be selected after loading.
+                          (If empty then the active worksheet is loaded) )
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1);
@@ -1227,11 +1213,11 @@ end;
 
   Call this methdd for both built-in and user-provided file formats.
 
-  @param  AFilename        Name of the spreadsheet file to be loaded
-  @param  AFormatID        Identifier of the spreadsheet file format assumed
-                           for the file
-  @param  AWorksheetIndex  Index of the worksheet to be selected after loading.
-                           (If empty then the active worksheet is loaded)
+  @param(AFilename        Name of the spreadsheet file to be loaded.)
+  @param(AFormatID        Identifier of the spreadsheet file format assumed
+                          for the file.)
+  @param(AWorksheetIndex  Index of the worksheet to be selected after loading.
+                          (If empty then the active worksheet is loaded) )
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.LoadFromSpreadsheetFile(AFileName: string;
   AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1);
@@ -1279,12 +1265,12 @@ end;
   Notifies listeners of workbook, worksheet, cell, or selection changes.
   The changed item is identified by the parameter AChangedItems.
 
-  @param  AChangedItems  A set of elements lniWorkbook, lniWorksheet,
-                         lniCell, lniSelection which indicate which item has
-                         changed.
-  @param  AData          Additional information on the change. Is used only for
-                         lniCell and points to the cell having a changed value
-                         or formatting.
+  @param(AChangedItems  A set of elements lniWorkbook, lniWorksheet,
+                        lniCell, lniSelection which indicate which item has
+                        changed.)
+  @param(AData          Additional information on the change. Is used only for
+                        lniCell and points to the cell having a changed value
+                        or formatting.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.NotifyListeners(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
@@ -1333,13 +1319,13 @@ end;
 
   Call this method only for built-in file formats.
 
-  @param   AFileName          Name of the file to which the workbook is to be
-                              saved.
-  @param   AFormat            Spreadsheet file format in which the file is to be
-                              saved.
-  @param   AOverwriteExisting If the file already exists, it is overwritten in
-                              the case of AOverwriteExisting = true, or an
-                              exception is raised otherwise.
+  @param(AFileName          Name of the file to which the workbook is to be
+                            saved.)
+  @param(AFormat            Spreadsheet file format in which the file is to be
+                            saved.)
+  @param(AOverwriteExisting If the file already exists, it is overwritten in
+                            the case of AOverwriteExisting = @true, or an
+                            exception is raised otherwise.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SaveToSpreadsheetFile(AFileName: String;
   AFormat: TsSpreadsheetFormat; AOverwriteExisting: Boolean = true);
@@ -1354,13 +1340,13 @@ end;
 
   Call this method for both built-in and user-provided file formats.
 
-  @param   AFileName          Name of the file to which the workbook is to be
-                              saved.
-  @param   AFormatID          Identifier of the spreadsheet file format in which
-                              the file is to be saved.
-  @param   AOverwriteExisting If the file already exists, it is overwritten in
-                              the case of AOverwriteExisting = true, or an
-                              exception is raised otherwise.
+  @param(AFileName          Name of the file to which the workbook is to be
+                            saved.)
+  @param(AFormatID          Identifier of the spreadsheet file format in which
+                            the file is to be saved.)
+  @param(AOverwriteExisting If the file already exists, it is overwritten in
+                            the case of AOverwriteExisting = @true, or an
+                            exception is raised otherwise.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SaveToSpreadsheetFile(AFileName: String;
   AFormatID: TsSpreadFormatID; AOverwriteExisting: Boolean = true);
@@ -1382,13 +1368,13 @@ end;
   If this file name already exists the file is overwritten
   if AOverwriteExisting is true.
 
-  @param   AFileName          Name of the file to which the workbook is to be
-                              saved
-                              If the file format is not known is is written
-                              as BIFF8/XLS.
-  @param   AOverwriteExisting If this file already exists it is overwritten if
-                              AOverwriteExisting = true, or an exception is
-                              raised if AOverwriteExisting = false.
+  @param(AFileName          Name of the file to which the workbook is to be
+                            saved.
+                            If the file format is not known is is written
+                            as BIFF8/XLS. )
+  @param(AOverwriteExisting If this file already exists it is overwritten if
+                            AOverwriteExisting = @true, or an exception is
+                            raised if AOverwriteExisting = @false.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.SaveToSpreadsheetFile(AFileName: String;
   AOverwriteExisting: Boolean = true);
@@ -1626,7 +1612,7 @@ end;
   AOperation determines which "item" of the cell (all, values, formats, formula)
   is pasted.
 
-  If ATranspose is TRUE then rows and columns are interchanged.
+  If ATranspose is @TRUE then rows and columns are interchanged.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.PasteCellsFromClipboard(AItem: TsCopyOperation;
   ATransposed: Boolean = false);
@@ -1715,10 +1701,10 @@ end;
   Event handler called AFTER a worksheet has been removed (deleted) from
   the workbook
 
-  @param  Sender       Points to the workbook from which the sheet has been
-                       deleted
-  @param  ASheetIndex  Index of the sheet that was deleted. The sheet itself
-                       does not exist any more.
+  @param(Sender       Points to the workbook from which the sheet has been
+                      deleted.)
+  @param(ASheetIndex  Index of the sheet that was deleted. The sheet itself
+                      does not exist any more.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.WorksheetRemovedHandler(Sender: TObject;
   ASheetIndex: Integer);
@@ -1898,13 +1884,14 @@ end;
 {@@ ----------------------------------------------------------------------------
   Notification message received from the WorkbookSource telling which
   spreadsheet item has changed.
+
   Responds to workbook changes by reading the worksheet names into the tabs,
   and to worksheet changes by selecting the tab corresponding to the selected
   worksheet.
 
-  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
-                         cell content or cell formatting has changed
-  @param  AData          Additional data, not used here
+  @param(AChangedItems  Set with elements identifying whether workbook,
+                        worksheet cell content or cell formatting has changed.)
+  @param(AData          Additional data, not used here.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookTabControl.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
@@ -2388,10 +2375,10 @@ end;
   of the spreadsheet has changed.
   Responds to selection and cell changes by updating the cell content.
 
-  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
-                         cell content or cell formatting has changed
-  @param  AData          If AChangedItems contains nliCell then AData points to
-                         the modified cell.
+  @param(AChangedItems  Set with elements identifying whether workbook, worksheet
+                        cell content or cell formatting has changed.)
+  @param(AData          If AChangedItems contains nliCell then AData points to
+                        the modified cell.)
 -------------------------------------------------------------------------------}
 procedure TsCellEdit.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
@@ -2527,8 +2514,8 @@ end;
 
   It is assumed that the formula is localized.
 
-  Returns TRUE if the provided string is a valid formula or no formula, FALSE
-  otherwise. In the latter case an error message string is returned as well.
+  @Returns(@TRUE if the provided string is a valid formula or no formula, @FALSE
+  otherwise. In the latter case an error message string is returned as well.)
 -------------------------------------------------------------------------------}
 function TsCellEdit.ValidFormula(AFormula: String; out AErrMsg: String): Boolean;
 var
@@ -2564,7 +2551,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes the current edit text to the cell
-  Note: All validation checks already have been performed.
+
+  @Note  All validation checks already have been performed.
 -------------------------------------------------------------------------------}
 procedure TsCellEdit.WriteToCell;
 var
@@ -2648,11 +2636,11 @@ end;
   The cell indicator reacts to notification that the selection has changed
   and displays the address of the newly selected cell as editable text.
 
-  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
-                         cell or selection has changed. Only the latter element
-                         is considered by the cell indicator.
-  @param  AData          If AChangedItems contains nliCell then AData points to
-                         the modified cell.
+  @param(AChangedItems  Set with elements identifying whether workbook, worksheet
+                        cell or selection has changed. Only the latter element
+                        is considered by the cell indicator.)
+  @param(AData          If AChangedItems contains nliCell then AData points to
+                        the modified cell.)
 -------------------------------------------------------------------------------}
 procedure TsCellIndicator.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
@@ -3300,10 +3288,10 @@ end;
   Notification procedure received whenver "something" changes in the workbook.
   Reacts on all events.
 
-  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
-                         cell or selection has changed.
-  @param  AData          If AChangedItems contains nliCell then AData points to
-                         the modified cell.
+  @param(AChangedItems  Set with elements identifying whether workbook, worksheet
+                        cell or selection has changed.)
+  @param(AData          If AChangedItems contains nliCell then AData points to
+                        the modified cell.)
 -------------------------------------------------------------------------------}
 procedure TsCellCombobox.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
@@ -3408,6 +3396,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Processes the selected combobox item after a new item has been selected or the
   item text has been edited.
+
   Changes the selected cells according to the Mode property by calling
   ApplyFormatToCell.
 -------------------------------------------------------------------------------}
@@ -3681,10 +3670,10 @@ end;
   Notification procedure received whenver "something" changes in the workbook.
   Reacts on all events.
 
-  @param  AChangedItems  Set with elements identifying whether workbook, worksheet
-                         cell or selection has changed.
-  @param  AData          If AChangedItems contains nliCell then AData points to
-                         the modified cell.
+  @param(AChangedItems  Set with elements identifying whether workbook, worksheet
+                        cell or selection has changed.)
+  @param(AData          If AChangedItems contains nliCell then AData points to
+                        the modified cell.)
 -------------------------------------------------------------------------------}
 procedure TsSpreadsheetInspector.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);

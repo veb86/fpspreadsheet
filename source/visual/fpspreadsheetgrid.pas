@@ -1,5 +1,5 @@
 {@@ ----------------------------------------------------------------------------
-  Unit fpspreadsheet implements a <b>grid</b> component which can load and
+  Unit fpspreadsheet implements a **grid** component which can load and
   write data from/to FPSpreadsheet documents.
 
   Can either be used alone or in combination with a TsWorkbookSource component.
@@ -336,8 +336,7 @@ type
     procedure TopLeftChanged; override;
     function TrimToCell(ACell: PCell): String;
     procedure ValidateInput(var Msg: TLMessage); message UM_VALIDATEINPUT;
-    function ValidFormula({ACol, ARow: Integer; }AExpression: String;
-      out AErrMsg: String): Boolean;
+    function ValidFormula(AExpression: String; out AErrMsg: String): Boolean;
     procedure WMHScroll(var message: TLMHScroll); message LM_HSCROLL;
     procedure WMVScroll(var message: TLMVScroll); message LM_VSCROLL;
 
@@ -922,6 +921,7 @@ var
 {@@ ----------------------------------------------------------------------------
   Helper procedure which creates bitmaps used for fill patterns in cell
   backgrounds.
+
   The parameters are buffered in FillPatternXXXX variables to avoid unnecessary
   creation of the same bitmaps again and again.
 -------------------------------------------------------------------------------}
@@ -1119,7 +1119,7 @@ end;                                  *)
 
   @param  c       Color to be modified
   @param  ADelta  Value to be added to the RGB components of the inpur color
-  @result Modified color.
+  @returns Modified color.
 -------------------------------------------------------------------------------}
 function CalcSelectionColor(c: TColor; ADelta: Byte) : TColor;
 type
@@ -1529,6 +1529,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   The BeginUpdate/EndUpdate pair suppresses unnecessary painting of the grid.
+
   Call BeginUpdate to stop refreshing the grid, and call EndUpdate to release
   the lock and to repaint the grid again.
 -------------------------------------------------------------------------------}
@@ -1581,8 +1582,8 @@ end;
   Converts the row height (from a worksheet row record), given in units used by
   the sheet, to pixels as needed by the grid
 
-  @param  AHeight  Row height expressed in units used by the worksheet.
-  @result Row height in pixels.
+  @param   AHeight  Row height expressed in units used by the worksheet.
+  @returns Row height in pixels.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.CalcRowHeightFromSheet(AHeight: Single): Integer;
 var
@@ -1638,8 +1639,8 @@ end;
   Converts the column height given in screen pixels to the units used by the
   worksheet.
 
-  @param   AValue   Column width in pixels
-  @result  Column width expressed in units defined by the workbook.
+  @param    AValue   Column width in pixels
+  @returns  Column width expressed in units defined by the workbook.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.CalcWorksheetColWidth(AValue: Integer): Single;
 var
@@ -1659,8 +1660,8 @@ end;
   Converts the row height given in screen pixels to the units used by the
   worksheet.
 
-  @param   AValue   Row height in pixels
-  @result  Row height expressed in units defined by the workbook.
+  @param    AValue   Row height in pixels
+  @returns  Row height expressed in units defined by the workbook.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.CalcWorksheetRowHeight(AValue: Integer): Single;
 var
@@ -1685,18 +1686,15 @@ end;
   Looks for overflowing cells: if the text of the given cell is longer than
   the cell width the function calculates the column indexes and the rectangle
   to show the complete text.
+
   Ony for non-wordwrapped label cells and for horizontal orientation.
   Function returns false if text overflow needs not to be considered.
 
-  @param ACol, ARow   Column and row indexes (in grid coordinates) of the cell
-                      to be drawn
+  @param ACol,ARow    Column and row indexes (in grid coordinates) of the cell to be drawn
   @param AState       GridDrawState of the cell (normal, fixed, selected etc)
-  @param ACol1,ACol2  (output) Index of the first and last column covered by the
-                      overflowing text
-  @param ARect        (output) Pixel rectangle enclosing the cell and its neighbors
-                      affected
-  @return TRUE if text overflow into neighbor cells is to be considered,
-          FALSE if not.
+  @param ACol1,ACol2  (output) Index of the first and last column covered by the overflowing text
+  @param ARect        (output) Pixel rectangle enclosing the cell and its neighbors affected
+  @returns @TRUE if text overflow into neighbor cells is to be considered, @FALSE if not.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.CellOverflow(ACol, ARow: Integer;
   AState: TGridDrawState; out ACol1, ACol2: Integer; var ARect: TRect): Boolean;
@@ -2484,10 +2482,12 @@ end;
 {@@ ----------------------------------------------------------------------------
   Draws the borders of all cells. Calls DrawCellBorders for each individual cell.
   AGridPart denotes where the cells are painted:
-  0 = normal grid area
-  1 = FrozenRows
-  2 = FrozenCols
-  3 = Top-left corner where FrozenCols and FrozenRows intersect
+  @unorderedlist(
+    @item(0 = normal grid area)
+    @item(1 = FrozenRows)
+    @item(2 = FrozenCols)
+    @item(3 = Top-left corner where FrozenCols and FrozenRows intersect)
+  )
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawCellBorders(AGridPart: Integer = 0);
 var
@@ -2777,10 +2777,9 @@ end;
 
   @param  AStart  Start coordinate of the pane border line
   @param  AEnd    End coordinate of the pane border line
-  @param  ACoord  other coordinate of the border line
-                  (y if horizontal, x if vertical)
-  @param  IsHor   Determines whether a horizontal or vertical line is drawn and,
-                  thus, how AStart, AEnd and ACoord are interpreted.
+  @param  ACoord  Other coordinate of the border line (y if horizontal, x if vertical)
+  @param(IsHor   Determines whether a horizontal or vertical line is drawn and,
+                  thus, how AStart, AEnd and ACoord are interpreted.)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.DrawFrozenPaneBorder(AStart, AEnd, ACoord: Integer;
   IsHor: Boolean);
@@ -3499,9 +3498,9 @@ end;
   Returns the background color of a cell. The color is given as an index into
   the workbook's color palette.
 
-  @param  ACol  Grid column index of the cell
-  @param  ARow  Grid row index of the cell
-  @result Color index of the cell's background color.
+  @param   ACol  Grid column index of the cell
+  @param   ARow  Grid row index of the cell
+  @returns Color index of the cell's background color.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetBackgroundColor(ACol, ARow: Integer): TsColor;
 var
@@ -3524,8 +3523,8 @@ end;
   @param  ATop    Index of the top row of the cell range
   @param  ARight  Index of the right column of the cell range
   @param  ABottom Index of the bottom row of the cell range
-  @return Color index common to all cells within the selection. If the cells'
-          background colors are different the value scUndefined is returned.
+  @return(Color index common to all cells within the selection. If the cells'
+          background colors are different the value scUndefined is returned.)
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetBackgroundColors(ALeft, ATop, ARight, ABottom: Integer): TsColor;
 var
@@ -3607,9 +3606,9 @@ end;
   @param  ATop    Index of the top row of the cell range
   @param  ARight  Index of the right column of the cell range
   @param  ABottom Index of the bottom row of the cell range
-  @return Set with flags indicating where borders are drawn (top/left/right/bottom)
+  @return(Set with flags indicating where borders are drawn (top/left/right/bottom)
           If the individual cells within the range have different borders an
-          empty set is returned.
+          empty set is returned.)
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellBorders(ALeft, ATop, ARight, ABottom: Integer): TsCellBorders;
 var
@@ -3642,10 +3641,8 @@ end;
 
   @param   ACol     Grid column index of the cell
   @param   ARow     Grid row index of the cell
-  @param   ABorder  Identifier of the border at which the line will be drawn
-                    (see TsCellBorder)
-  @return  CellBorderStyle record containing information on line style and
-           line color.
+  @param   ABorder  Identifier of the border at which the line will be drawn (see TsCellBorder)
+  @return  CellBorderStyle record containing information on line style and line color.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellBorderStyle(ACol, ARow: Integer;
   ABorder: TsCellBorder): TsCellBorderStyle;
@@ -3671,10 +3668,8 @@ end;
   @param   ATop    Index of the top row of the cell range
   @param   ARight  Index of the right column of the cell range
   @param   ABottom Index of the bottom row of the cell range
-  @param   ABorder  Identifier of the border where the line will be drawn
-                    (see TsCellBorder)
-  @return  CellBorderStyle record containing information on line style and
-           line color.
+  @param   ABorder  Identifier of the border where the line will be drawn (see TsCellBorder)
+  @return  CellBorderStyle record containing information on line style and line color.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellBorderStyles(ALeft, ATop, ARight, ABottom: Integer;
   ABorder: TsCellBorder): TsCellBorderStyle;
@@ -3780,10 +3775,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Returns the height (in pixels) of the cell at ACol/ARow (of the grid).
 
-  @param   ACol  Grid column index of the cell
-  @param   ARow  Grid row index of the cell
-  @result  Height of the cell in pixels. Wrapped text is handled correctly.
-           Value contains the zoom factor.
+  @param(ACol    Grid column index of the cell.)
+  @param(ARow    Grid row index of the cell.)
+  @return(Height of the cell in pixels. Wrapped text is handled correctly.
+          Value contains the zoom factor.)
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellHeight(ACol, ARow: Integer): Integer;
 var
@@ -3862,6 +3857,7 @@ end;
   This function defines the text to be displayed as a cell hint. By default, it
   is the comment and/or the hyperlink attached to a cell; it can further be
   modified by using the OnGetCellHint event.
+
   Option goCellHints must be active for the cell hint feature to work.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellHintText(ACol, ARow: Integer): String;
@@ -3933,8 +3929,7 @@ end;
 
   @param   ACol   Grid column index of the cell
   @param   ARow   Grid row index of the cell
-  @param   ATrim  If true show replacement characters if numerical data
-                  are wider than cell.
+  @param   ATrim  If true show replacement characters if numerical data are wider than cell.
   @return  Text to be displayed in the cell.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetCellText(ACol, ARow: Integer;
@@ -4044,7 +4039,8 @@ end;
   Determines the style of the border between a cell and its neighbor given by
   ADeltaCol and ADeltaRow (one of them must be 0, the other one can only be +/-1).
   ACol and ARow are in grid units.
-  Result is FALSE if there is no border line.
+
+  @return Result is @FALSE if there is no border line.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetBorderStyle(ACol, ARow, ADeltaCol, ADeltaRow: Integer;
   ACell: PCell; out ABorderStyle: TsCellBorderStyle): Boolean;
@@ -4158,8 +4154,7 @@ end;
   Returns a list of worksheets contained in the file. Useful for assigning to
   user controls like TabControl, Combobox etc. in order to select a sheet.
 
-  @param  ASheets  List of strings containing the names of the worksheets of
-                   the workbook
+  @param ASheets List of strings containing the names of the worksheets of the workbook
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.GetSheets(const ASheets: TStrings);
 var
@@ -4174,7 +4169,7 @@ end;
 {@@ ----------------------------------------------------------------------------
   Calculates the index of the worksheet column that is displayed in the
   given column of the grid. If the sheet headers are turned on, both numbers
-  differ by 1, otherwise they are equal. Saves an "if" in cases.
+  differ by 1, otherwise they are equal. Saves an "if" in some cases.
 
   @param   AGridCol   Index of a grid column
   @return  Index of a the corresponding worksheet column
@@ -4192,8 +4187,8 @@ end;
   given row of the grid. If the sheet headers are turned on, both numbers
   differ by 1, otherwise they are equal. Saves an "if" in some cases.
 
-  @param    AGridRow  Index of a grid row
-  @resturn  Index of the corresponding worksheet row.
+  @param   AGridRow  Index of a grid row
+  @return  Index of the corresponding worksheet row.
 -------------------------------------------------------------------------------}
 function TsCustomWorksheetGrid.GetWorksheetRow(AGridRow: Integer): Cardinal;
 begin
@@ -4275,9 +4270,9 @@ end;
   Inherited from TCustomGrid. Is called when column widths or row heights
   have changed. Stores the new column width or row height in the worksheet.
 
-  @param   IsColumn   Specifies whether the changed parameter is a column width
-                      (true) or a row height (false)
-  @param   Index      Index of the changed column or row
+  @param(IsColumn   Specifies whether the changed parameter is a column width
+                    (@true) or a row height (@false))
+  @param(Index      Index of the changed column or row)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.HeaderSized(IsColumn: Boolean; AIndex: Integer);
 const
@@ -4614,28 +4609,27 @@ end;
 {@@ ----------------------------------------------------------------------------
   Internal general text drawing method.
 
-  @param  AText           Text to be drawn
-  @param  AMeasureText    Text used for checking if the text fits into the
-                          text rectangle. If too large and ReplaceTooLong = true,
-                          a series of # is drawn.
-  @param  ARect           Rectangle in which the text is drawn
-  @param  AJustification  Determines whether the text is drawn at the "start" (0),
-                          "center" (1) or "end" (2) of the drawing rectangle.
-                          Start/center/end are seen along the text drawing
-                          direction.
-  @param ACellHorAlign    Is the HorAlignment property stored in the cell
-  @param ACellVertAlign   Is the VertAlignment property stored in the cell
-  @param ATextRot         Determines the rotation angle of the text.
-  @param ATextWrap        Determines if the text can wrap into multiple lines
-  @param AFontIndex       Font index to be used for drawing non-rich-text.
-  @param ARichTextParams  an array of character and font index combinations for
-                          rich-text formatting of text in cell
-  @param AIsRightToLeft   if true cell must be drawn in right-to-left mode.
+  @param(AText           Text to be drawn)
+  @param(AMeasureText    Text used for checking if the text fits into the text
+                         rectangle. If too large and ReplaceTooLong = @true,
+                         a series of # characters is drawn.)
+  @param(ARect           Rectangle in which the text is drawn.)
+  @param(AJustification  Determines whether the text is drawn at the "start" (0),
+                         "center" (1) or "end" (2) of the drawing rectangle.
+                         Start/center/end are seen along the text drawing direction.)
+  @param(ACellHorAlign   Is the HorAlignment property stored in the cell.)
+  @param(ACellVertAlign  Is the VertAlignment property stored in the cell.)
+  @param(ATextRot        Determines the rotation angle of the text.)
+  @param(ATextWrap       Determines if the text can wrap into multiple lines.)
+  @param(AFontIndex      Font index to be used for drawing non-rich-text.)
+  @param(ARichTextParams An array of character and font index combinations
+                         for rich-text formatting of text in cell)
+  @param(AIsRightToLeft  If @true cell must be drawn in right-to-left mode.)
 
-  @Note The reason to separate AJustification from ACellHorAlign and ACelVertAlign is
-  the output of nfAccounting formatted numbers where the numbers are always
-  right-aligned, and the currency symbol is left-aligned.
-  THIS FEATURE IS CURRENTLY NO LONGER SUPPORTED.
+  @Note(The reason to separate AJustification from ACellHorAlign and ACelVertAlign
+        is the output of nfAccounting formatted numbers where the numbers are
+        always right-aligned, and the currency symbol is left-aligned.
+        THIS FEATURE IS CURRENTLY NO LONGER SUPPORTED.)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.InternalDrawTextInCell(AText: String;
   ARect: TRect; ACellHorAlign: TsHorAlignment; ACellVertAlign: TsVertAlignment;
@@ -4737,10 +4731,10 @@ end;
 
   Call this method only for built-in file formats.
 
-  @param   AFileName        Name of the file to be loaded
-  @param   AFormat          Spreadsheet file format assumed for the file
-  @param   AWorksheetIndex  Index of the worksheet to be displayed in the grid
-                            (If empty then the active worksheet is loaded)
+  @param(AFileName        Name of the file to be loaded)
+  @param(AFormat          Spreadsheet file format assumed for the file)
+  @param(AWorksheetIndex  Index of the worksheet to be displayed in the grid
+                          (If empty then the active worksheet is loaded))
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer);
@@ -4759,11 +4753,11 @@ end;
 
   Call this method for both built-in and user-provided file formats.
 
-  @param   AFileName        Name of the file to be loaded
-  @param   AFormatID        Spreadsheet file format identifier assumed for the
-                            file (automatic detection if empty)
-  @param   AWorksheetIndex  Index of the worksheet to be displayed in the grid
-                            (If empty then the active worksheet is loaded)
+  @param(AFileName        Name of the file to be loaded)
+  @param(AFormatID        Spreadsheet file format identifier assumed for the
+                          file (automatic detection if empty))
+  @param(AWorksheetIndex  Index of the worksheet to be displayed in the grid
+                          (If empty then the active worksheet is loaded))
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromSpreadsheetFile(AFileName: string;
   AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1);
@@ -4780,11 +4774,11 @@ end;
   Creates a new workbook and loads the given file into it. Shows the sheet
   with the specified sheet index. The file format is determined automatically.
 
-  @param   AFileName        Name of the file to be loaded
-  @param   AWorksheetIndex  Index of the worksheet to be shown in the grid
-                            (If empty then the active worksheet is loaded)
-  @param   AFormatID        Spreadsheet file format identifier assumed for the
-                            file (automatic detection if empty)
+  @param(AFileName        Name of the file to be loaded)
+  @param(AWorksheetIndex  Index of the worksheet to be shown in the grid
+                          (If empty then the active worksheet is loaded))
+  @param(AFormatID        Spreadsheet file format identifier assumed for the
+                          file (automatic detection if empty))
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadSheetFromSpreadsheetFile(AFileName: String;
   AWorksheetIndex: Integer = -1; AFormatID: TsSpreadFormatID = sfidUnknown);
@@ -4800,12 +4794,12 @@ end;
 {@@ ----------------------------------------------------------------------------
   Loads an existing workbook into the grid.
 
-  @param   AWorkbook        Workbook that had been created/loaded before.
-  @param   AWorksheetIndex  Index of the worksheet to be shown in the grid
-                            (If empty then the active worksheet is loaded)
+  @param(AWorkbook        Workbook that had been created/loaded before. )
+  @param(AWorksheetIndex  Index of the worksheet to be shown in the grid
+                          (If empty then the active worksheet is loaded))
 
-  @Note THE CALLING PROCEDURE MUST NOT DESTROY THE WORKBOOK! The workbook will
-   be destroyed by the workbook source.
+  @Note(THE CALLING PROCEDURE MUST NOT DESTROY THE WORKBOOK!
+        The workbook will be destroyed by the workbook source.)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.LoadFromWorkbook(AWorkbook: TsWorkbook;
   AWorksheetIndex: Integer = -1);
@@ -5303,13 +5297,11 @@ end;
 
   Call this method only for built-in file formats.
 
-  @param   AFileName          Name of the file to which the workbook is to be
-                              saved.
-  @param   AFormat            Spreadsheet file format in which the file is to be
-                              saved.
-  @param   AOverwriteExisting If the file already exists, it is overwritten in
-                              the case of AOverwriteExisting = true, or an
-                              exception is raised if AOverwriteExisting = false
+  @param(AFileName          Name of the file to which the workbook is to be saved.)
+  @param(AFormat            Spreadsheet file format in which the file is to be saved.)
+  @param(AOverwriteExisting If the file already exists, it is overwritten in the
+                            case of AOverwriteExisting = @true, or an exception
+                            is raised if AOverwriteExisting = @false)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AFormat: TsSpreadsheetFormat; AOverwriteExisting: Boolean = true);
@@ -5323,13 +5315,12 @@ end;
 
   Call this method for both built-in and user-provided file formats.
 
-  @param   AFileName          Name of the file to which the workbook is to be
-                              saved.
-  @param   AFormatID          Identifier for the spreadsheet file format in
-                              which the file is to be saved.
-  @param   AOverwriteExisting If the file already exists, it is overwritten in
-                              the case of AOverwriteExisting = true, or an
-                              exception is raised if AOverwriteExisting = false
+  @param(AFileName          Name of the file to which the workbook is to be saved.)
+  @param(AFormatID          Identifier for the spreadsheet file format in which
+                            the file is to be saved.)
+  @param(AOverwriteExisting If the file already exists, it is overwritten in
+                            the case of AOverwriteExisting = @true, or an
+                            exception is raised if AOverwriteExisting = @false)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AFormatID: TsSpreadFormatID; AOverwriteExisting: Boolean = true);
@@ -5342,13 +5333,11 @@ end;
   Saves the workbook into a file with the specified file name. If this file
   name already exists the file is overwritten if AOverwriteExisting is true.
 
-  @param   AFileName           Name of the file to which the workbook is to be
-                               saved
-                               If the file format is not known it is written
-                               as BIFF8/XLS.
-  @param   AOverwriteExisting  If this file already exists it is overwritten if
-                               AOverwriteExisting = true, or an exception is
-                               raised if AOverwriteExisting = false.
+  @param(AFileName           Name of the file to which the workbook is to be saved.
+                             If the file format is not known it is written as BIFF8/XLS.)
+  @param(AOverwriteExisting  If this file already exists it is overwritten if
+                             AOverwriteExisting = @true, or an exception is raised
+                             if AOverwriteExisting = @false.)
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.SaveToSpreadsheetFile(AFileName: String;
   AOverwriteExisting: Boolean = true);
@@ -5644,13 +5633,13 @@ end;
   Sort direction is determined by the property "SortOrder". Other sorting
   criteria are "case-sensitive" and "numbers first".
 
-  @param AColSorting If true the grid is sorted from top to bottom and the
-                     next parameter, "Index", refers to a column. Otherweise
-                     sorting goes from left to right and "Index" refers to a row.
-  @param AIndex      Index of the column (if ColSorting=true) or row (ColSorting = false)
-                     which is sorted.
-  @param AIndxFrom   Sorting starts at this row (ColSorting=true) / column (ColSorting=false)
-  @param AIndxTo     Sorting ends at this row (ColSorting=true) / column (ColSorting=false)
+  @param(AColSorting If @true the grid is sorted from top to bottom and the
+                     next parameter, "Index", refers to a column. Otherwise
+                     sorting goes from left to right and "Index" refers to a row.)
+  @param(AIndex      Index of the column (if ColSorting=@true) or row (ColSorting=@false)
+                     which is sorted.)
+  @param(AIndxFrom   Sorting starts at this row (ColSorting=@true) / column (ColSorting=@false))
+  @param(AIndxTo     Sorting ends at this row (ColSorting=@true) / column (ColSorting=@false))
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.Sort(AColSorting: Boolean;
   AIndex, AIndxFrom, AIndxTo:Integer);
@@ -5673,7 +5662,6 @@ begin
     );
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Converts a coordinate given in workbook units to pixels using the current
   screen resolution
@@ -5687,7 +5675,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Store the value of the TopLeft cell in the worksheet
+  Is called whenever the worksheet is scrolled.
+  Stores the coordinates of the TopLeft cell in the worksheet
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.TopLeftChanged;
 begin
@@ -5696,7 +5685,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Modifies the text that is show for cells which are too narrow to hold the
+  Modifies the text that is shown for cells which are too narrow to hold the
   entire text. The method follows the behavior of Excel and Open/LibreOffice:
   If the specified cell contains a non-formatted number, then it is formatted
   such that the text fits into the cell. If the text is still too long or
@@ -5881,7 +5870,7 @@ end;
   type is rhtAuto (meaning: "row height is auto-calculated") and the current
   row height in the row record is 0 then the row height is calculated by
   iterating over all cells in this row. This happens also if the parameter
-  AEnforceCalcRowHeight is true.
+  AEnforceCalcRowHeight is @true.
 -------------------------------------------------------------------------------}
 procedure TsCustomWorksheetGrid.UpdateRowHeight(ARow: Integer;
   AEnforceCalcRowHeight: Boolean = false);
@@ -7005,7 +6994,7 @@ begin
   InvalidateGrid;
 end;
 
-{ Shows / hides formulas in the grid when AutoCalc is off }
+{@@ Shows/hides formulas in the grid when AutoCalc is off }
 procedure TsCustomWorksheetGrid.SetShowFormulas(AValue: Boolean);
 begin
   if AValue = FShowFormulas then
@@ -7014,7 +7003,7 @@ begin
   InvalidateGrid;
 end;
 
-{ Shows / hides the worksheet's grid lines }
+{@@ Shows/hides the worksheet's grid lines }
 procedure TsCustomWorksheetGrid.SetShowGridLines(AValue: Boolean);
 begin
   if AValue = GetShowGridLines then
@@ -7032,7 +7021,7 @@ begin
       Worksheet.Options := Worksheet.Options - [soShowGridLines];
 end;
 
-{ Shows / hides the worksheet's row and column headers. }
+{@@ Shows/hides the worksheet's row and column headers. }
 procedure TsCustomWorksheetGrid.SetShowHeaders(AValue: Boolean);
 var
   hdrCount: Integer;
@@ -7190,6 +7179,13 @@ begin
   end;
 end;
 
+{@@ Checks whether the provided expression is a valid spreadsheet formula.
+  If not, a descriptive error message is returned in "AErrMsg", and the function
+  result becomes @false.
+
+  Decimal separator and date/time formats are expected to be localized.
+  In contrast to the Office applications, however, formula names are never
+  localized in fpspreadsheet. }
 function TsCustomWorksheetGrid.ValidFormula(AExpression: String;
   out AErrMsg: String): Boolean;
 var

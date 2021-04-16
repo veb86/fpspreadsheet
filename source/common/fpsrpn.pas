@@ -202,9 +202,8 @@ end;
   Excel-style address, e.g. A1:G5. As in Excel, use a $ sign to indicate
   absolute addresses.
 
-  @param  ACellRangeAddress   Adress of the cell range given in Excel notation,
-                              such as A1:G5
-  @param  ANext               Pointer to the next RPN item in the list
+  @param  ACellRangeAddress Adress of the cell range given in Excel notation, such as A1:G5
+  @param  ANext             Pointer to the next RPN item in the list
 -------------------------------------------------------------------------------}
 function RPNCellRange(ACellRangeAddress: String; ANext: PRPNItem): PRPNItem;
 var
@@ -386,8 +385,9 @@ end;
   (--> TFEKind). Note that array elements for all needed parameters must have
   been created before.
 
-  @param  AToken  Formula element indicating the function to be executed, see the @link(TFEKind) enumeration for possible values.
-  @param  ANext   Pointer to the next RPN item in the list
+  @param(AToken  Formula element indicating the function to be executed, see
+                 the @link(TFEKind) enumeration for possible values.)
+  @param(ANext   Pointer to the next RPN item in the list)
 
   @seeAlso TFEKind
 -------------------------------------------------------------------------------}
@@ -449,9 +449,12 @@ end;
           nil))));
     )
 
-  @param  AItem     Pointer to the first RPN item representing the formula. Each item contains a pointer to the next item in the list. The list is terminated by nil.
-  @param  AReverse  If @true the first rpn item in the chained list becomes the last item in the token array. This feature is needed for reading an xls file.
-
+  @param(AItem     Pointer to the first RPN item representing the formula.
+                   Each item contains a pointer to the next item in the list.
+                   The list is terminated by nil.)
+  @param(AReverse  If @true the first rpn item in the chained list becomes the
+                   last item in the token array. This feature is needed for
+                   reading an xls file.)
 -------------------------------------------------------------------------------}
 function CreateRPNFormula(AItem: PRPNItem; AReverse: Boolean = false): TsRPNFormula;
 var
@@ -487,7 +490,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Destroys the RPN formula starting with the given RPN item.
 
-  @param  AItem  Pointer to the first RPN items representing the formula. Each item contains a pointer to the next item in the list. The list is terminated by nil.
+  @param(AItem  Pointer to the first RPN items representing the formula.
+                Each item contains a pointer to the next item in the list.
+                The list is terminated by nil.)
 -------------------------------------------------------------------------------}
 procedure DestroyRPNFormula(AItem: PRPNItem);
 var

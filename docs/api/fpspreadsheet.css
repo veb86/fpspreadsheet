@@ -149,8 +149,14 @@ td.itemdesc { width:100%; }
 
 div.nodescription { color:red; }
 dl.parameters dt {
+  font-family: monospace;
+  font-size:1.0em;
+}
+/*
+dl.parameters dt {
   color:blue;
 }
+*/
 
 code {
   font-family: monospace;
