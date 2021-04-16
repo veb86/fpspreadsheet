@@ -1389,7 +1389,7 @@ begin
     Result := DoNumber
   else if (C = cError) then
     Result := DoError
-  else if IsAlpha(C) or (C = '$') or (C = '''') then
+  else if IsAlpha(C) or (C = '$') or (C = '''') or (C = '_') then
     Result := DoIdentifier
   else
     ScanError(Format(rsUnknownCharacter, [FPos, C]));
