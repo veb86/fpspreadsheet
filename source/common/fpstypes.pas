@@ -84,6 +84,36 @@ type
     MaxCharsInTextCell: Integer;
   end;
 
+  {@@ Line ending used in CSV files }
+  TsCSVLineEnding = (leSystem, leCRLF, leCR, leLF);
+
+  {@@ Parameters controlling reading from and writing to CSV files
+    @member  SheetIndex     Index of the sheet to be written (write-only)
+    @member  LineEnding     Specification for the line endings to be written (write-only)
+    @member  Delimiter      Column delimiter (read/write)
+    @member  QuoteChar      Character used for quoting text in special cases (read/write)
+    @member  Encoding       String identifying the endoding of the file, such as 'utf8', 'cp1252' etc (read/write)
+    @member  DetectContentType  Try to convert strings to their content type (read-only)
+    @member  NumberFormat   If empty numbers are written like in worksheet, otherwise this format string is applied (write-only)
+    @member  AutoDetectNumberFormat  Try to detect the decimal and thousand separator used in numbers (read-only)
+    @member  TrueText       String for boolean @true (read/write)
+    @member  FalseText      String for boolean @false (read/write)
+    @member  FormatSettings Additional parameter for string conversion (read/write) }
+  TsCSVParams = record   // W = writing, R = reading, RW = reading/writing
+    SheetIndex: Integer;             // W: Index of the sheet to be written
+    LineEnding: TsCSVLineEnding;     // W: Specification for line ending to be written
+    Delimiter: Char;                 // RW: Column delimiter
+    QuoteChar: Char;                 // RW: Character for quoting texts
+    Encoding: String;                // RW: Encoding of file (code page, such as "utf8", "cp1252" etc)
+    DetectContentType: Boolean;      // R: try to convert strings to content types
+    NumberFormat: String;            // W: if empty write numbers like in sheet, otherwise use this format
+    AutoDetectNumberFormat: Boolean; // R: automatically detects decimal/thousand separator used in numbers
+    TrueText: String;                // RW: String for boolean TRUE
+    FalseText: String;               // RW: String for boolean FALSE
+    FormatSettings: TFormatSettings; // RW: add'l parameters for conversion
+  end;
+
+
 const
   {@@ Explanatory name of sfBiff2 file format }
   STR_FILEFORMAT_EXCEL_2 = 'Excel 2.1';
@@ -163,6 +193,19 @@ const
       unique value simplifies many things... }
   FPS_LINE_ENDING = #10;
 
+var
+  CSVParams: TsCSVParams = (
+    SheetIndex: 0;
+    LineEnding: leSystem;
+    Delimiter: ';';
+    QuoteChar: '"';
+    Encoding: '';    // '' = auto-detect when reading, UTF8 when writing
+    DetectContentType: true;
+    NumberFormat: '';
+    AutoDetectNumberFormat: true;
+    TrueText: 'TRUE';
+    FalseText: 'FALSE';
+  {%H-});
 
 type
   {@@ Units for size dimensions 

@@ -709,7 +709,7 @@ uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
   Dialogs, Forms, Clipbrd,
   fpsStrings, fpsCrypto, fpsReaderWriter, fpsUtils, fpsNumFormat, fpsImages,
-  fpsHTMLUtils, fpsCSV, fpsExprParser, fpsConditionalFormat;
+  fpsHTMLUtils, fpsExprParser, fpsConditionalFormat;
 
 var
   cfBiff8Format: Integer = 0;
