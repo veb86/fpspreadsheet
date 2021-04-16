@@ -1,13 +1,14 @@
 unit fpsvisualreg;
 
-{$mode objfpc}{$H+}
+{$MODE objfpc}{$H+}
+{$DEFINE REGISTER_ALL_FILE_FORMATS}
 
 {$R ../../resource/fpsvisualreg.res}
 
 interface
 
 uses
-  Classes, SysUtils, {%H-}fpsallformats;
+  Classes, SysUtils;
 
 procedure Register;
   
@@ -15,6 +16,9 @@ implementation
 
 uses
   LResources, ActnList, PropEdits,
+  {$IFDEF REGISTER_ALL_FILE_FORMATS}
+  fpsallformats,
+  {$ENDIF}
   fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart, fpsactions;
   
 {@@ ----------------------------------------------------------------------------

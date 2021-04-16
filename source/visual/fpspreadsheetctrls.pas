@@ -1,5 +1,5 @@
 {@@ ----------------------------------------------------------------------------
-  Unit fpspreadsheetctrls implements some <b>visual controls</b> which help
+  Unit fpspreadsheetctrls implements some **visual controls** which help
   to create a spreadsheet application without writing too much code.
 
   AUTHORS: Werner Pamler
@@ -8,21 +8,21 @@
            distribution, for details about the license.
 
   EXAMPLE
-  * Add a <i>WorkbookSource</i> component to the form.
-  * Add a <i>WorksheetTabControl</i>
-  * Add a <i>WorksheetGrid</i> (from unit fpspreadsheetgrid)
-  * Link their <i>WorkbookSource</i> properties to the added
-    <i>WorkbookSource</i> component
-  * Set the property <i>FileName</i> of the </i>WorkbookSource</i> to a
+  * Add a _WorkbookSource_ component to the form.
+  * Add a _WorksheetTabControl_
+  * Add a _WorksheetGrid_ (from unit fpspreadsheetgrid)
+  * Link their _WorkbookSource_ properties to the added
+    _WorkbookSource_ component
+  * Set the property _FileName_ of the _WorkbookSource_ to a
     spreadsheet file.
 
-  As a result, the <i>WorksheetTabControl</i> displays tabs for each worksheet
-  in the file, and the <i>WorksheetGrid</i> displays the worksheet according
+  As a result, the _WorksheetTabControl_ displays tabs for each worksheet
+  in the file, and the _WorksheetGrid_ displays the worksheet according
   to the selected tab.
 -------------------------------------------------------------------------------}
 unit fpspreadsheetctrls;
 
-{$mode objfpc}{$H+}
+{$MODE objfpc}{$H+}
 
 interface
 
