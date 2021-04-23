@@ -11,7 +11,7 @@ object Form1: TForm1
   OnCreate = FormCreate
   OnDestroy = FormDestroy
   OnKeyPress = FormKeyPress
-  LCLVersion = '1.8.4.0'
+  LCLVersion = '2.1.0.0'
   object StatusBar: TStatusBar
     Left = 0
     Height = 23
@@ -167,10 +167,11 @@ object Form1: TForm1
         '50k'
         '60k'
         '100k (not for BIFF)'
+        '1000k (not for BIFF)'
       )
       TabOrder = 3
       Data = {
-        0700000002020202020202
+        080000000202020202020202
       }
     end
     object RgColCount: TRadioGroup
@@ -223,7 +224,7 @@ object Form1: TForm1
     DefaultExt = '.txt'
     Filter = 'Text files (*.txt)|*.txt|All files (*.*)|*.*'
     Options = [ofOverwritePrompt, ofPathMustExist, ofEnableSizing, ofViewDetail]
-    left = 708
-    top = 65
+    Left = 708
+    Top = 65
   end
 end
