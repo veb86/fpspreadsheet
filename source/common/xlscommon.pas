@@ -821,29 +821,17 @@ begin
   if (AExcelDateNum < 1) and (AExcelDateNum >= 0)  then
   begin
     Result := AExcelDateNum;
-  end
-  else
+  end else
   begin
     case ADateMode of
       dm1900:
         begin
           Result := AExcelDateNum + DATEMODE_1900_BASE - 1.0;
-          // Excel and Lotus 1-2-3 incorrectly assume that 1900 was a leap year
-          // Therefore all dates before March 01 are off by 1.
-          // The old fps implementation corrected only Feb 29, but all days are
-          // wrong!
-          if AExcelDateNum < 61 then
-            Result := Result + 1.0;
-            (*
-
-          // Check for Lotus 1-2-3 bug with 1900 leap year
-          if AExcelDateNum=61.0 then
-            // 29 feb does not exist, change to 28
-            // Spell out that we remove a day for ehm "clarity".
-            result := 61.0 - 1.0 + DATEMODE_1900_BASE - 1.0
-          else
-            result := AExcelDateNum + DATEMODE_1900_BASE - 1.0;
-          *)
+          { Excel and Lotus 1-2-3 incorrectly assume that 1900 was a leap year
+            Therefore all dates before March 01 are off by 1.
+            Unlike earlier fps versions we no longer attempt to fix this issue
+            because it leads to other issues (when dates are in order then
+            the weekdays are off by 1!) }
         end;
       dm1904:
         result := AExcelDateNum + DATEMODE_1904_BASE;
@@ -857,17 +845,21 @@ function ConvertDateTimeToExcelDateTime(const ADateTime: TDateTime;
   ADateMode: TDateMode): Double;
 begin
   // Time only
-  if (ADateTime<1) and (ADateTime>=0) then
+  if (ADateTime < 1) and (ADateTime >= 0) then
   begin
-    Result:=ADateTime;
+    Result := ADateTime;
   end
   else
   begin
     case ADateMode of
     dm1900:
       begin
+        { Excel and Lotus 1-2-3 incorrectly assume that 1900 was a leap year
+          Therefore all dates before March 01 are off by 1.
+          Unlike earlier fps versions we no longer attempt to fix this issue
+          because it leads to other issues (when dates are in order then
+          the weekdays are off by 1!) }
         Result := ADateTime - DATEMODE_1900_BASE + 1.0;
-        if Result < 61 then Result := Result - 1.0;
       end;
     dm1904:
       Result := ADateTime - DATEMODE_1904_BASE;
@@ -1507,7 +1499,9 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Converts the number to a date/time and return that if it is
+  Converts the number to a date/time and returns that if it is
+  Like LibreOffice Calc, we do not attempt to fix the Year-1900 issue of Excel
+  files because it leads to even more confusion...
 -------------------------------------------------------------------------------}
 function TsSpreadBIFFReader.IsDateTime(Number: Double;
   ANumberFormat: TsNumberFormat; ANumberFormatStr: String;
@@ -2250,7 +2244,7 @@ begin
   end else
     cell := sheet.AddCell(ARow, ACol);  // "real" cell
 
-  if IsDateTime(value, nf, nfs, dt) then   // Year-1900 correction occurs here!
+  if IsDateTime(value, nf, nfs, dt) then   // DateMode correction occurs here!
     sheet.WriteDateTime(cell, dt, nf, nfs)
   else if nf = nfText then
     sheet.WriteText(cell, GeneralFormatFloat(value, FWorkbook.FormatSettings))
@@ -4189,11 +4183,11 @@ var
   cf: TsCellFormat;
   nfp: TsNumFormatParams;
 begin
-  // We must correct the bug of Lotus 1-2-3 which had ignored that year 1900 was
-  // a leap year, but only for "normal" date format, not for time-interval formats
+  // We must convert the date value to the Excel date basis (DateMode),
+  // but not for time-interval formats.
   cf := TsWorksheet(FWorksheet).ReadCellFormat(ACell);
   nfp := TsWorkbook(FWorkbook).GetNumberFormat(cf.NumberFormatIndex);
-  if IsTimeIntervalFormat(nfp) then //or IsTimeFormat(nfp) then
+  if IsTimeIntervalFormat(nfp) then
     ExcelDateSerial := AValue
   else
     ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue, FDateMode);

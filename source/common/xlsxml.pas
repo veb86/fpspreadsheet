@@ -2745,6 +2745,7 @@ var
   fmt: PsCellFormat;
 begin
   Unused(ARow, ACol);
+  (*
   fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(ACell^.FormatIndex);
   if (fmt <> nil) and (uffNumberFormat in fmt^.UsedFormattingFields) then
   begin
@@ -2764,9 +2765,10 @@ begin
   end;
   if valueStr = '' then
   begin
+  *)
     ExcelDate := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
     valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', ExcelDate);
-  end;
+  //end;
 
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge

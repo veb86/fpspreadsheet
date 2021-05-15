@@ -1043,7 +1043,8 @@ begin
       begin
         if IsDateTimeFormat(numFmt) then
         begin
-          if not IsTimeIntervalFormat(numFmt) then   // no correction of time origin for "time interval" format
+          if not IsTimeIntervalFormat(numFmt) then
+            // no correction of time origin for "time" or "time interval" format
             number := ConvertExcelDateTimeToDateTime(number, FDateMode);
           sheet.WriteDateTime(cell, number);
         end
