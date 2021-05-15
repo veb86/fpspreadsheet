@@ -499,7 +499,7 @@ type
     procedure ReadMulBlank(AStream: TStream);
     // Read multiple RK cells
     procedure ReadMulRKValues(const AStream: TStream);
-    // Read floating point number
+    // Read floating point number (or date/time)
     procedure ReadNumber(AStream: TStream); override;
     // Read OBJECTPROTECT record
     procedure ReadObjectProtect(AStream: TStream;
@@ -827,7 +827,6 @@ begin
     case ADateMode of
       dm1900:
         begin
-          {
           Result := AExcelDateNum + DATEMODE_1900_BASE - 1.0;
           // Excel and Lotus 1-2-3 incorrectly assume that 1900 was a leap year
           // Therefore all dates before March 01 are off by 1.
@@ -835,7 +834,7 @@ begin
           // wrong!
           if AExcelDateNum < 61 then
             Result := Result + 1.0;
-            }
+            (*
 
           // Check for Lotus 1-2-3 bug with 1900 leap year
           if AExcelDateNum=61.0 then
@@ -844,6 +843,7 @@ begin
             result := 61.0 - 1.0 + DATEMODE_1900_BASE - 1.0
           else
             result := AExcelDateNum + DATEMODE_1900_BASE - 1.0;
+          *)
         end;
       dm1904:
         result := AExcelDateNum + DATEMODE_1904_BASE;
@@ -867,7 +867,7 @@ begin
     dm1900:
       begin
         Result := ADateTime - DATEMODE_1900_BASE + 1.0;
-        // if Result < 61 then Result := Result - 1.0;
+        if Result < 61 then Result := Result - 1.0;
       end;
     dm1904:
       Result := ADateTime - DATEMODE_1904_BASE;
@@ -2250,7 +2250,7 @@ begin
   end else
     cell := sheet.AddCell(ARow, ACol);  // "real" cell
 
-  if IsDateTime(value, nf, nfs, dt) then
+  if IsDateTime(value, nf, nfs, dt) then   // Year-1900 correction occurs here!
     sheet.WriteDateTime(cell, dt, nf, nfs)
   else if nf = nfText then
     sheet.WriteText(cell, GeneralFormatFloat(value, FWorkbook.FormatSettings))
@@ -4186,8 +4186,17 @@ procedure TsSpreadBIFFWriter.WriteDateTime(AStream: TStream; const ARow,
   ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var
   ExcelDateSerial: double;
+  cf: TsCellFormat;
+  nfp: TsNumFormatParams;
 begin
-  ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
+  // We must correct the bug of Lotus 1-2-3 which had ignored that year 1900 was
+  // a leap year, but only for "normal" date format, not for time-interval formats
+  cf := TsWorksheet(FWorksheet).ReadCellFormat(ACell);
+  nfp := TsWorkbook(FWorkbook).GetNumberFormat(cf.NumberFormatIndex);
+  if IsTimeIntervalFormat(nfp) then //or IsTimeFormat(nfp) then
+    ExcelDateSerial := AValue
+  else
+    ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
   // fpspreadsheet must already have set formatting to a date/datetime format, so
   // this will get written out as a pointer to the relevant XF record.
   // In the end, dates in xls are just numbers with a format. Pass it on to WriteNumber:

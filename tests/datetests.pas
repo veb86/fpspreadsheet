@@ -307,6 +307,23 @@ type
     procedure TestWriteReadMilliseconds_XML;
   end;
 
+  { TSpreadWriteReadYear1900Tests }
+  { Tests to check whether the year-1900 bug in Excel is handled correctly }
+  TSpreadWriteReadYear1900Tests = class(TTestCase)
+  private
+  protected
+    procedure Setup; override;
+    procedure TearDown; override;
+    procedure TestWriteReadYear1900Dates(AFormat: TsSpreadsheetFormat);
+  published
+    procedure TestWriteReadYear1900Dates_BIFF2;
+    procedure TestWriteReadYear1900Dates_BIFF5;
+    procedure TestWriteReadYear1900Dates_BIFF8;
+    procedure TestWriteReadYear1900Dates_ODS;
+    procedure TestWriteReadYear1900Dates_OOXML;
+    procedure TestWriteReadYear1900Dates_XML;
+  end;
+
 
 implementation
 
@@ -405,7 +422,11 @@ begin
     MyWorkSheet:=MyWorkBook.AddWorksheet(DatesSheet);
     for Row := Low(SollDates) to High(SollDates) do
     begin
-      MyWorkSheet.WriteDateTime(Row, 0, SollDates[Row], nfShortDateTime);
+      // The last two test dates are assumed to be formatted as time-interval
+      if Row >= High(SollDates) then
+        MyWorksheet.WriteDateTime(Row, 0, SollDates[Row], nfCustom, '[h]:nn:ss')
+      else
+        MyWorkSheet.WriteDateTime(Row, 0, SollDates[Row], nfShortDateTime);
       // Some checks inside worksheet itself
       if not(MyWorkSheet.ReadAsDateTime(Row,0,ActualDateTime)) then
         Fail('Failed writing date time for cell '+CellNotation(MyWorkSheet,Row));
@@ -1828,10 +1849,194 @@ begin
 end;
 
 
+{ =============================================================================}
+
+var
+  Y1900_SollDates: array of TDate;
+  Y1900_SollTimes: array of TTime;
+  Y1900_SollIntervals: array of TDateTime;
+
+procedure InitY1900_SollDates;
+begin
+  SetLength(Y1900_SollDates, 5);
+  Y1900_SollDates[0] := EncodeDate(1900, 1, 1);
+  Y1900_SollDates[1] := EncodeDate(1900, 1, 2);
+  Y1900_SollDates[2] := EncodeDate(1900, 2, 28);
+  Y1900_SollDates[3] := Encodedate(1900, 3, 1);
+  Y1900_SollDates[4] := Encodedate(1900, 3, 2);
+
+  SetLength(Y1900_SollTimes, 3);
+  Y1900_SollTimes[0] := EncodeTime(0, 0, 0, 0);
+  Y1900_SollTimes[1] := EncodeTime(12, 0, 0, 0);
+  Y1900_SollTimes[2] := EncodeTime(23, 59, 59, 0);
+
+  SetlengtH(Y1900_SollIntervals, 7);
+  Y1900_SollIntervals[0] := EncodeTime(0, 0, 0, 0);
+  Y1900_SollIntervals[1] := EncodeTime(23, 59, 59, 0);
+  Y1900_SollIntervals[2] := EncodeTime(23, 59, 59, 0) + 1.0;
+  Y1900_SollIntervals[3] := EncodeTime(23, 59, 59, 0) + 59.0;
+  Y1900_SollIntervals[4] := EncodeTime(23, 59, 59, 0) + 60.0;
+  Y1900_SollIntervals[5] := EncodeTime(23, 59, 59, 0) + 61.0;
+  Y1900_SollIntervals[6] := EncodeTime(23, 59, 59, 0) + 62.0;
+end;
+
+procedure TSpreadWriteReadYear1900Tests.Setup;
+begin
+  inherited;
+  InitY1900_SollDates;
+end;
+
+procedure TSpreadWriteReadYear1900Tests.TearDown;
+begin
+  inherited;
+end;
+
+procedure TSpreadWriteReadYear1900Tests.TestWriteReadYear1900Dates(AFormat: TsSpreadsheetFormat);
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  r: Cardinal;
+  i: Integer;
+  actualDateTime: TDateTime;
+  ok: boolean;
+  cell: PCell;
+  tempFile: String;
+  ErrorMargin: TDateTime; //margin for error in comparison test
+begin
+  ErrorMargin := 1E-5/(24*60*60*1000);  // = 10 nsec = 1E-8 sec (1 ns fails)
+  tempFile := NewTempFile;
+
+  book := TsWorkbook.Create;
+  try
+    sheet := book.Addworksheet('Year1900');
+    r := 0;
+    for i := Low(Y1900_SollDates) to High(Y1900_SollDates) do
+    begin
+      sheet.WriteDateTime(r, 0, Y1900_SollDates[i], nfShortDateTime);
+      ok := sheet.ReadAsDateTime(r, 0, actualDateTime);
+      CheckEquals(true, ok,
+        'Test date detection error, cell '+CellNotation(sheet, r));
+      CheckEquals(Y1900_SollDates[i], actualDateTime,
+        'Test date value memory reading mismatch, cell '+CellNotation(sheet, r));
+      inc(r);
+    end;
+
+    for i := Low(Y1900_SollTimes) to High(Y1900_SollTimes) do
+    begin
+      sheet.WriteDateTime(r, 0, Y1900_SollTimes[i], nfLongTime);
+      ok := sheet.ReadAsDateTime(r, 0, actualDateTime);
+      CheckEquals(true, ok,
+        'Test time detection error, cell '+CellNotation(sheet, r));
+      CheckEquals(Y1900_SollTimes[i], actualDateTime, ErrorMargin,
+        'Test time value memory reading mismatch, cell '+CellNotation(sheet, r));
+      inc(r);
+    end;
+
+    for i := Low(Y1900_SollIntervals) to High(Y1900_SollIntervals) do
+    begin
+      sheet.WriteDateTime(r, 0, Y1900_SollIntervals[i], nfCustom, '[h]:nn:ss');
+      ok := sheet.ReadAsDateTime(r, 0, actualDateTime);
+      CheckEquals(true, ok,
+        'Test time detection error, cell '+CellNotation(sheet, r));
+      CheckEquals(Y1900_SollIntervals[i], actualDateTime, ErrorMargin,
+        'Test interval value memory reading mismatch, cell '+CellNotation(sheet, r));
+      inc(r);
+    end;
+
+    book.WriteToFile(tempFile, AFormat, true);
+  finally
+    book.Free;
+  end;
+
+  book := TsWorkbook.Create;
+  try
+    book.ReadFromFile(tempFile, AFormat);
+    sheet := book.GetFirstWorksheet;
+    r := 0;
+    for i := Low(Y1900_SollDates) to High(Y1900_SollDates) do
+    begin
+      ok := sheet.ReadAsDateTime(r, 0, actualDateTime);
+      CheckEquals(true, ok,
+        'Test date detection error, cell '+CellNotation(sheet, r));
+      CheckEquals(Y1900_SollDates[i], actualDateTime,
+        'Test date value file reading mismatch, cell '+CellNotation(sheet, r));
+      inc(r);
+    end;
+    for i := Low(Y1900_SollTimes) to High(Y1900_SollTimes) do
+    begin
+      ok := sheet.ReadAsDateTime(r, 0, actualDateTime);
+      CheckEquals(true, ok,
+        'Test time detection error, cell '+CellNotation(sheet, r));
+      CheckEquals(Y1900_SollTimes[i], actualDateTime, ErrorMargin,
+        'Test time value file reading mismatch, cell '+CellNotation(sheet, r));
+      inc(r);
+    end;
+    for i := Low(Y1900_SollIntervals) to High(Y1900_SollIntervals) do
+    begin
+      ok := sheet.ReadAsDateTime(r, 0, actualDateTime);
+      CheckEquals(true, ok,
+        'Test interval detection error, cell '+CellNotation(sheet, r));
+      CheckEquals(Y1900_SollIntervals[i], actualDateTime, ErrorMargin,
+        'Test interval value file reading mismatch, cell '+CellNotation(sheet, r));
+      inc(r);
+    end;
+  finally
+    book.Free;
+  end;
+  DeleteFile(TempFile);
+end;
+
+procedure TSpreadWriteReadYear1900Tests.TestWriteReadYear1900Dates_BIFF2;
+begin
+  TestWriteReadYear1900Dates(sfExcel2);
+end;
+
+procedure TSpreadWriteReadYear1900Tests.TestWriteReadYear1900Dates_BIFF5;
+begin
+  TestWriteReadYear1900Dates(sfExcel5);
+end;
+
+procedure TSpreadWriteReadYear1900Tests.TestWriteReadYear1900Dates_BIFF8;
+begin
+  TestWriteReadYear1900Dates(sfExcel8);
+end;
+
+procedure TSpreadWriteReadYear1900Tests.TestWriteReadYear1900Dates_ODS;
+begin
+  TestWriteReadYear1900Dates(sfOpenDocument);
+end;
+
+procedure TSpreadWriteReadYear1900Tests.TestWriteReadYear1900Dates_OOXML;
+begin
+  TestWriteReadYear1900Dates(sfOOXML);
+end;
+
+procedure TSpreadWriteReadYear1900Tests.TestWriteReadYear1900Dates_XML;
+begin
+  TestWriteReadYear1900Dates(sfExcelXML);
+end;
+
+
+{
+begin
+end;
+published
+  procedure TestWriteReadYear1900Dates_BIFF2;
+  procedure TestWriteReadYear1900Dates_BIFF5;
+  procedure TestWriteReadYear1900Dates_BIFF8;
+  procedure TestWriteReadYear1900Dates_ODS;
+  procedure TestWriteReadYear1900Dates_OOXML;
+  procedure TestWriteReadYear1900Dates_XML;
+end;
+ }
+
+
 initialization
   // Register so these tests are included in a full run
   RegisterTest(TSpreadReadDateTests);
   RegisterTest(TSpreadWriteReadDateTests);
+  RegisterTest(TSpreadWriteReadYear1900Tests);
+
   InitSollDates; //useful to have norm data if other code want to use this unit
 
 finalization

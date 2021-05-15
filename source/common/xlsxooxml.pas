@@ -239,7 +239,6 @@ type
     procedure WriteMedia(AZip: TZipper);
   protected
     { Record writing methods }
-    //todo: add WriteDate
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
@@ -7355,8 +7354,17 @@ procedure TsSpreadOOXMLWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var
   ExcelDateSerial: double;
+  cf: TsCellFormat;
+  nfp: TsNumFormatParams;
 begin
-  ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
+  // We must correct the bug of Lotus 1-2-3 which had ignored that year 1900 was
+  // a leap year, but only for "normal" date format, not for time-interval formats
+  cf := TsWorksheet(FWorksheet).ReadCellFormat(ACell);
+  nfp := TsWorkbook(FWorkbook).GetNumberFormat(cf.NumberFormatIndex);
+  if IsTimeIntervalFormat(nfp) then
+    ExcelDateSerial := AValue
+  else
+    ExcelDateSerial := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
   WriteNumber(AStream, ARow, ACol, ExcelDateSerial, ACell);
 end;
 

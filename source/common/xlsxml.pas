@@ -2739,25 +2739,34 @@ end;
 procedure TsSpreadExcelXMLWriter.WriteDateTime(AStream: TStream;
   const ARow, ACol: Cardinal; const AValue: TDateTime; ACell: PCell);
 var
-  valueStr: String;
+  valueStr: String = '';
   ExcelDate: TDateTime;
   nfp: TsNumFormatParams;
   fmt: PsCellFormat;
 begin
   Unused(ARow, ACol);
-  ExcelDate := AValue;
   fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(ACell^.FormatIndex);
-  // Times have an offset of 1 day!
   if (fmt <> nil) and (uffNumberFormat in fmt^.UsedFormattingFields) then
   begin
     nfp := (FWorkbook as TsWorkbook).GetNumberFormat(fmt^.NumberFormatIndex);
+    if IsTimeIntervalFormat(nfp) then
+      valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', AValue);
+    {
     if IsTimeIntervalFormat(nfp) or IsTimeFormat(nfp) then
+    begin
       case FDateMode of
         dm1900: ExcelDate := AValue + DATEMODE_1900_BASE;
         dm1904: ExcelDate := AValue + DATEMODE_1904_BASE;
       end;
+      valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', AValue);
+    end;
+    }
   end;
-  valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', ExcelDate);
+  if valueStr = '' then
+  begin
+    ExcelDate := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
+    valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', ExcelDate);
+  end;
 
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge
