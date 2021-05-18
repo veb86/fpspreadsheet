@@ -485,6 +485,13 @@ const
     '5Quarters'                         // REPLACEMENT FOR is5Boxes which needs x14
   );
 
+function ColorToExcelStr(AColor: TsColor): String;
+begin
+  Result := ColorToHTMLColorStr(AColor, true);  // --> "00rrggbb"
+  Result[1] := 'F';
+  Result[2] := 'F';  // --> "FFrrggbb"
+end;
+
 function StrToFillStyle(s: String): TsFillStyle;
 var
   fs: TsFillStyle;
@@ -596,7 +603,7 @@ end;
 
 function CF_ColorNode(AColor: TsColor): String;
 begin
-  Result := Format('<color rgb="%s" />', [ColorToHTMLColorStr(AColor, true)]);
+  Result := Format('<color rgb="%s" />', [ColorToExcelStr(AColor)]);
 end;
 
 
@@ -4117,7 +4124,7 @@ procedure TsSpreadOOXMLWriter.WriteBorderList(AStream: TStream);
 
       // Border color
       rgb := AFormatRecord^.BorderStyles[ABorder].Color;
-      colorStr := ColorToHTMLColorStr(rgb, true);
+      colorStr := ColorToExcelStr(rgb);
       AppendToStream(AStream, Format(
         '<%s style="%s"><color rgb="%s" /></%s>',
           [ABorderName, styleName, colorStr, ABorderName]
@@ -4635,11 +4642,11 @@ begin
     if FFillList[i]^.Background.FgColor = scTransparent then
       fc := 'auto="1"'
     else
-      fc := Format('rgb="%s"', [Copy(ColorToHTMLColorStr(FFillList[i]^.Background.FgColor), 2, MaxInt)]);
+      fc := Format('rgb="%s"', [ColorToExcelStr(FFillList[i]^.Background.FgColor)]);
     if FFillList[i]^.Background.BgColor = scTransparent then
       bc := 'auto="1"'
     else
-      bc := Format('rgb="%s"', [Copy(ColorToHTMLColorStr(FFillList[i]^.Background.BgColor), 2, MaxInt)]);
+      bc := Format('rgb="%s"', [ColorToExcelStr(FFillList[i]^.Background.BgColor)]);
     AppendToStream(AStream,
       '<fill>');
     AppendToStream(AStream, Format(
@@ -4681,7 +4688,7 @@ begin
   if (fssStrikeout in AFont.Style) then
     s := s + '<strike />';
   if AFont.Color <> scBlack then
-    s := s + Format('<color rgb="%s" />', [Copy(ColorToHTMLColorStr(AFont.Color), 2, MaxInt)]);
+    s := s + Format('<color rgb="%s" />', [ColorToExcelStr(AFont.Color)]);
   case AFont.Position of
     fpSubscript  : s := s + '<vertAlign val="subscript" />';
     fpSuperscript: s := s + '<vertAlign val="superscript" />';
@@ -5128,7 +5135,7 @@ begin
   if s <> '' then s := '<pageSetUpPr' + s + ' />';
 
   if sheet.TabColor <> scNotDefined then
-    s := s + Format('<tabColor rgb="%s" />', [Copy(ColorToHTMLColorStr(sheet.TabColor), 2, MaxInt)]);
+    s := s + Format('<tabColor rgb="%s" />', [ColorToExcelStr(sheet.TabColor)]);
 
   if s <> '' then
     AppendToStream(AStream,
@@ -6562,7 +6569,7 @@ procedure TsSpreadOOXMLWriter.WriteDifferentialFormat(AStream: TStream;
 
       // Border color
       rgb := AFormatRecord^.BorderStyles[ABorder].Color;
-      colorStr := ColorToHTMLColorStr(rgb, true);
+      colorStr := ColorToExcelStr(rgb);
       AppendToStream(AStream, Format(
         '<%s style="%s"><color rgb="%s" /></%s>',
           [ABorderName, styleName, colorStr, ABorderName]
@@ -6599,7 +6606,7 @@ begin
       AppendToStream(AStream, '<font>');
       if font.Color <> scNotDefined then
       begin
-        fc := Copy(ColorToHTMLColorStr(font.Color), 2, MaxInt);
+        fc := ColorToExcelStr(font.Color);
         AppendToStream(AStream, Format('<color rgb="%s" />', [fc] ));
       end;
       if fssBold in font.Style then
@@ -6629,11 +6636,11 @@ begin
   begin
     pt := PATTERN_TYPES[AFormat^.Background.Style];
     if AFormat^.Background.FgColor <> scTransparent then
-      fc := Format('rgb="%s"', [Copy(ColorToHTMLColorStr(AFormat^.Background.FgColor), 2, MaxInt)]);
+      fc := Format('rgb="%s"', [ColorToExcelStr(AFormat^.Background.FgColor)]);
     if AFormat^.Background.BgColor = scTransparent then
       bc := 'auto="1"'
     else
-      bc := Format('rgb="%s"', [Copy(ColorToHTMLColorStr(AFormat^.Background.BgColor), 2, MaxInt)]);
+      bc := Format('rgb="%s"', [ColorToExcelStr(AFormat^.Background.BgColor)]);
     AppendToStream(AStream,
       '<fill>' + Format(
         '<patternFill patternType="%s">', [pt]) + Format(
