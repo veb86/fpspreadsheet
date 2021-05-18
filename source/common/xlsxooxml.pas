@@ -6591,15 +6591,8 @@ begin
     '<dxf>');
 
   { font }
-  // TODO: Fix font handling: although correct in syntax something seems to be missing...
   if (uffFont in AFormat^.UsedFormattingFields) then
   begin
-    (*
-    AFormat^.UsedFormattingFields := AFormat^.UsedFormattingfields - [uffFont];  // trying to make the file readable...
-    FWorkbook.AddErrorMsg('Writing conditional font not supported by XLSX writer.');
-    {
-    *)
-
     font := TsWorkbook(FWorkbook).GetFont(AFormat^.FontIndex);
     if font <> nil then
     begin
