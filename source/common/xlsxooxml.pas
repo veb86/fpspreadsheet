@@ -4668,8 +4668,10 @@ var
   s: String;
 begin
   s := '';
-  s := s + Format('<sz val="%g" />', [AFont.Size], FPointSeparatorSettings);
-  s := s + Format('<%s val="%s" />', [NAME_TAG[UseInStyleNode], AFont.FontName]);
+  if AFont.Size > 0 then
+    s := s + Format('<sz val="%g" />', [AFont.Size], FPointSeparatorSettings);
+  if AFont.FontName <> '' then
+    s := s + Format('<%s val="%s" />', [NAME_TAG[UseInStyleNode], AFont.FontName]);
   if (fssBold in AFont.Style) then
     s := s + '<b />';
   if (fssItalic in AFont.Style) then
@@ -6572,7 +6574,7 @@ procedure TsSpreadOOXMLWriter.WriteDifferentialFormat(AStream: TStream;
 
 var
   pt, bc, fc, diag: string;
-//  font: TsFont;
+  font: TsFont;
   nfp: TsNumFormatParams;
   nfs: String;
   nfi: Integer;
@@ -6585,24 +6587,30 @@ begin
   // TODO: Fix font handling: although correct in syntax something seems to be missing...
   if (uffFont in AFormat^.UsedFormattingFields) then
   begin
+    (*
+    AFormat^.UsedFormattingFields := AFormat^.UsedFormattingfields - [uffFont];  // trying to make the file readable...
     FWorkbook.AddErrorMsg('Writing conditional font not supported by XLSX writer.');
     {
+    *)
+
     font := TsWorkbook(FWorkbook).GetFont(AFormat^.FontIndex);
     if font <> nil then
     begin
       AppendToStream(AStream, '<font>');
       if font.Color <> scNotDefined then
+      begin
+        fc := Copy(ColorToHTMLColorStr(font.Color), 2, MaxInt);
         AppendToStream(AStream, Format('<color rgb="%s" />', [fc] ));
+      end;
       if fssBold in font.Style then
-        AppendToStream(AStream,      '<b />');
+        AppendToStream(AStream, '<b />');
       if fssItalic in font.Style then
-        AppendToStream(AStream,      '<i />');
+        AppendToStream(AStream, '<i />');
       if fssStrikeout in font.Style then
-        AppendToStream(AStream,      '<strike />');
+        AppendToStream(AStream, '<strike />');
       // Font name, font size, and style underline not supported
       AppendToStream(AStream, '</font>');
     end;
-    }
   end;
 
   { number format }

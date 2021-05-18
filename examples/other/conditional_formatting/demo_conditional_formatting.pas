@@ -76,8 +76,9 @@ begin
     // conditional format #2: equal to text constant
     inc(row);
     sh.WriteText(row, 0, 'equal to text "abc"');
-    sh.WriteText(row, 1, 'background green');
+    sh.WriteText(row, 1, 'background green, bold text');
     fmt.SetBackgroundColor(scGreen);
+    fmt.SetFont(2);  // Font #2 in fps is bold, by default.
     fmtIdx := wb.AddCellFormat(fmt);
     // Write conditional format
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcEqual, 'abc', fmtIdx);
