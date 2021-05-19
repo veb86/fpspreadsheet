@@ -6844,8 +6844,8 @@ begin
   WriteSheetData(FSSheets[FCurSheetNum], AWorksheet);
   WriteSheetProtection(FSSheets[FCurSheetNum], AWorksheet);
   WriteMergedCells(FSSheets[FCurSheetNum], AWorksheet);
+  WriteConditionalFormats(FSSheets[FCurSheetNum], AWorksheet);   // Must be before hyperlinks!!!
   WriteHyperlinks(FSSheets[FCurSheetNum], AWorksheet, rId_FirstHyperlink);
-  WriteConditionalFormats(FSSheets[FCurSheetNum], AWorksheet);
 
   WritePrintOptions(FSSheets[FCurSheetNum], AWorksheet);
   WritePageMargins(FSSheets[FCurSheetNum], AWorksheet);
