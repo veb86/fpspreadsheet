@@ -454,13 +454,22 @@ const
     '5Rating', '5Quarters', '5Boxes'      // is5Rating, is5Quarters, is5Boxes
   );
 
-function CFOperandToStr(v: variant; AWorksheet: TsWorksheet): String;
+function CFOperandToStr(v: variant; AWorksheet: TsWorksheet;
+  const AFormatSettings: TFormatSettings): String;
 var
   r,c: Cardinal;
+  f: Double;
 begin
-  Result := VarToStr(v);
-  if Result = '' then
-    exit;
+  if VarIsFloat(v) then
+  begin
+    f := v;
+    Result := Format('%g', [f], AFormatSettings);
+  end else
+  begin
+    Result := VarToStr(v);
+    if Result = '' then
+      exit;
+  end;
 
   if VarIsStr(v) then begin
     // Special case: v is a formula, i.e. begins with '='
@@ -6592,8 +6601,8 @@ begin
       begin
         cf_cellRule := TsCFCellRule(cf.Rules[j]);
         cf_styleName := Format('conditional_%d', [cf_CellRule.FormatIndex]);
-        value1Str := CFOperandToStr(cf_cellRule.Operand1, sheet);
-        value2Str := CFOperandToStr(cf_cellRule.Operand2, sheet);
+        value1Str := CFOperandToStr(cf_cellRule.Operand1, sheet, FPointSeparatorSettings);
+        value2Str := CFOperandToStr(cf_cellRule.Operand2, sheet, FPointSeparatorSettings);
         opStr := Format(CF_CALCEXT_OP[cf_cellRule.Condition], [value1Str, value2str]);
         isDateFmt := cf_cellRule.Condition in [cfcYesterday..cfcNextYear];
         if opStr <> '' then
@@ -8123,12 +8132,12 @@ begin
         operand1Str := VarToStr(cf_cellRule.Operand1);
         if (operand1Str <> '') and (operand1Str[1] <> '=') then
           operand1Str := '=' + operand1Str;
-        operand1Str := CFOperandToStr(operand1Str, cf_sheet);
+        operand1Str := CFOperandToStr(operand1Str, cf_sheet, FPointSeparatorSettings);
         operand2Str := '';
       end else
       begin
-        operand1Str := CFOperandToStr(cf_cellrule.Operand1, cf_sheet);
-        operand2Str := CFOperandToStr(cf_cellrule.Operand2, cf_sheet);
+        operand1Str := CFOperandToStr(cf_cellrule.Operand1, cf_sheet, FPointSeparatorSettings);
+        operand2Str := CFOperandToStr(cf_cellrule.Operand2, cf_sheet, FPointSeparatorSettings);
       end;
       cf_condition := Format(CF_STYLE_OP[cf_cellRule.Condition], [operand1Str, operand2Str]);
 

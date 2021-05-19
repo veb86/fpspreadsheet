@@ -548,15 +548,23 @@ begin
   end;
 end;
 
-function CFOperandToStr(v: Variant): String;
+function CFOperandToStr(v: Variant; const AFormatSettings: TFormatSettings): String;
 const
   ERR = cardinal(-1);
 var
   r, c: Cardinal;
+  f: Double;
 begin
-  Result := VarToStr(v);
-  if Result = '' then
-    exit;
+  if VarIsFloat(v) then
+  begin
+    f := v;
+    Result := Format('%g', [f], AFormatSettings);
+  end else
+  begin
+    Result := VarToStr(v);
+    if Result = '' then
+      exit;
+  end;
 
   if Result[1] = '=' then
     Delete(Result, 1, 1)
@@ -4219,11 +4227,11 @@ begin
   case ARule.Condition of
     cfcEqual..cfcNotBetween:
       begin
-        s := CFOperandToStr(ARule.Operand1);
+        s := CFOperandToStr(ARule.Operand1, FPointSeparatorSettings);
         formula1Str := Format('<formula>%s</formula>', [s]);
         if (ARule.Condition in [cfcBetween, cfcNotBetween]) then
         begin
-          s := CFOperandToStr(ARule.Operand2);
+          s := CFOperandToStr(ARule.Operand2, FPointSeparatorSettings);
           formula2Str := Format('<formula>%s</formula>', [s]);
         end;
       end;
@@ -4234,7 +4242,7 @@ begin
         if (ARule.Condition in [cfcAboveEqualAverage, cfcBelowEqualAverage]) then
           param2Str := ' equalAverage="1"';
         if VarIsNumeric(ARule.Operand1) or (ARule.Operand1 = 0) then
-          param3Str := Format(' stdDev="%g"', [double(ARule.Operand1)]);
+          param3Str := Format(' stdDev="%g"', [double(ARule.Operand1)], FPointSeparatorSettings);
       end;
     cfcTop, cfcBottom, cfcTopPercent, cfcBottomPercent:
       begin
