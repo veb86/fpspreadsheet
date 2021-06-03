@@ -2013,7 +2013,7 @@ begin
     c := ACell^.Col;
 
     // Unmerge range if the cell is the base of a merged block
-    if IsMergeBase(ACell) then
+    if IsMergeBase(ACell) and not AKeepFormat then
       UnmergeCells(r, c);
 
     // Remove the comment if the cell has one
