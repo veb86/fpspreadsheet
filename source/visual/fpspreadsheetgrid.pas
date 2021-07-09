@@ -300,6 +300,7 @@ type
     function GetCellText(ACol, ARow: Integer; ATrim: Boolean = true): String;
     function GetEditText(ACol, ARow: Integer): String; override;
     function GetDefaultColumnTitle(Column: Integer): string; override;
+    function GetIsCellTitle(ACol, ARow: Integer): boolean; override;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
     procedure HeaderSizing(const IsColumn:boolean; const AIndex,ASize:Integer); override;
     procedure HeaderSized(IsColumn: Boolean; AIndex: Integer); override;
@@ -4148,6 +4149,15 @@ end;
 function TsCustomWorksheetGrid.GetGridRow(ASheetRow: Cardinal): Integer;
 begin
   Result := Integer(ASheetRow) + FHeaderCount;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Inherited method. Is overridden to make sure that no column headers are
+  drawn when ShowHeaders is false.
+-------------------------------------------------------------------------------}
+function TsCustomWorksheetGrid.GetIsCellTitle(ACol, ARow: Integer): Boolean;
+begin
+  Result := (FHeaderCount > 0) and (ARow = 0);
 end;
 
 {@@ ----------------------------------------------------------------------------
