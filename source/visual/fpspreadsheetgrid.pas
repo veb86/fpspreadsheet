@@ -2668,13 +2668,13 @@ begin
     end;
 
     // Left border
-    if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) and (ACol <> FixedCols) then
+    if GetBorderStyle(ACol, ARow, -1, 0, ACell, bs) and (ACol <> LeftCol) then
       if IsRightToLeft then
         DrawBorderLine(ARect.Right, ARect, drawVert, bs)
       else
         DrawBorderLine(ARect.Left-ord(not IsRightToLeft), ARect, drawVert, bs);
     // Right border
-    if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) and (ACol + 1 <> FixedCols) then
+    if GetBorderStyle(ACol, ARow, +1, 0, ACell, bs) and (ACol + 1 <> LeftCol) then
       if IsRightToLeft then
         DrawBorderLine(ARect.Left, ARect, drawVert, bs)
       else
@@ -3462,7 +3462,7 @@ procedure TsCustomWorksheetGrid.FixNeighborCellBorders(ACell: PCell);
     neighbor := Worksheet.FindCell(NewRow, NewCol);
     if neighbor <> nil then
     begin
-      border := Worksheet.ReadCelLBorders(neighbor);
+      border := Worksheet.ReadCellBorders(neighbor);
       if AInclude then
       begin
         Include(border, ANewBorder);
