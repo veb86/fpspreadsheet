@@ -6502,7 +6502,7 @@ begin
       end else
       begin
         Worksheet.WriteBorders(cell, AValue);
-        FixNeighborCellBorders(cell);
+//        FixNeighborCellBorders(cell);
       end;
 
     finally
@@ -6547,7 +6547,7 @@ begin
       end else
       begin
         Worksheet.WriteBorderStyle(cell, ABorder, AValue);
-        FixNeighborCellBorders(cell);
+//        FixNeighborCellBorders(cell);
       end;
     finally
       EndUpdate;
