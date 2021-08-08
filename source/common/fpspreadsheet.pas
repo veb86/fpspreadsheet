@@ -6489,8 +6489,14 @@ begin
       ok := true;
       UpdateCaches;
       if (boAutoCalc in Options) then
-        CalcFormulas;
-//        Recalc;
+        try
+          CalcFormulas;
+        except
+          on E: EExprParser do
+            AddErrorMsg(E.Message);
+          on E: ECalcEngine do
+            AddErrorMsg(E.Message);
+        end;
       FFormatID := AFormatID;
     finally
       FReadWriteFlag := rwfNormal;

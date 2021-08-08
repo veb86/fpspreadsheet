@@ -2664,11 +2664,16 @@ begin
     end;
 
     // ... and store in cell's FormulaValue field. Convert from ODS to ExcelA1 dialect.
-    formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ARow, ACol);
-    formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
-    formula^.Parser.Expression[fdOpenDocument] := formulaStr;  // Parse in ODS dialect
-    formula^.Text := formula^.Parser.Expression[fdExcelA1];    // Convert to Excel A1 dialect
-    cell^.Flags := cell^.Flags + [cfHasFormula];
+    try
+      formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ARow, ACol);
+      formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
+      formula^.Parser.Expression[fdOpenDocument] := formulaStr;  // Parse in ODS dialect
+      formula^.Text := formula^.Parser.Expression[fdExcelA1];    // Convert to Excel A1 dialect
+      cell^.Flags := cell^.Flags + [cfHasFormula];
+    except
+      on E:EExprParser do
+        Workbook.AddErrorMsg(E.Message);
+    end;
 
     {$IFDEF FPSpreadDebug}
     DebugLn('  Formula found: ' + formula);
