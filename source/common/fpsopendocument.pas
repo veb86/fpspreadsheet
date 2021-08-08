@@ -4731,24 +4731,25 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
       if href <> '' then
       begin
         idx := TsWorkbook(FWorkbook).FindEmbeddedObj(ExtractFileName(href));
-        with FWorksheet as TsWorksheet do begin
-          // When called from a cell node, x and y are relative to the cell.
-          // When called from the Shapes node, x and y refer to the worksheet.
-          CalcImageCell(idx, x, y, w, h, r, c, dy, dx, sx, sy);  // order of dx and dy is correct!
-          if ARow <> UNASSIGNED_ROW_COL_INDEX then begin
-            r := ARow;
-            dy := y;
+        if idx > -1 then
+          with FWorksheet as TsWorksheet do begin
+            // When called from a cell node, x and y are relative to the cell.
+            // When called from the Shapes node, x and y refer to the worksheet.
+            CalcImageCell(idx, x, y, w, h, r, c, dy, dx, sx, sy);  // order of dx and dy is correct!
+            if ARow <> UNASSIGNED_ROW_COL_INDEX then begin
+              r := ARow;
+              dy := y;
+            end;
+            if ACol <> UNASSIGNED_ROW_COL_INDEX then begin
+              c := ACol;
+              dx := x;
+            end;
+            idx := WriteImage(r, c, idx, dx, dy, sx, sy);
+            if AHLink <> '' then begin
+              img := GetPointerToImage(idx);
+              img^.HyperlinkTarget := AHLink;
+            end;
           end;
-          if ACol <> UNASSIGNED_ROW_COL_INDEX then begin
-            c := ACol;
-            dx := x;
-          end;
-          idx := WriteImage(r, c, idx, dx, dy, sx, sy);
-          if AHLink <> '' then begin
-            img := GetPointerToImage(idx);
-            img^.HyperlinkTarget := AHLink;
-          end;
-        end;
       end;
       childNode := childnode.NextSibling;
     end;
