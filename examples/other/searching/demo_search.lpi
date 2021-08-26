@@ -35,15 +35,11 @@
         <PackageName Value="laz_fpspreadsheet"/>
       </Item1>
     </RequiredPackages>
-    <Units Count="2">
+    <Units Count="1">
       <Unit0>
         <Filename Value="demo_search.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
-      <Unit1>
-        <Filename Value="..\..\source\common\fpsexprparser.pas"/>
-        <IsPartOfProject Value="True"/>
-      </Unit1>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

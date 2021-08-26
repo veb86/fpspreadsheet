@@ -12,7 +12,6 @@ uses
 var
   workbook: TsWorkbook;
   worksheet: TsWorksheet;
-  s: String;
   searchParams: TsSearchParams;
   rowFound, colFound: Cardinal;
   worksheetFound: TsWorksheet;

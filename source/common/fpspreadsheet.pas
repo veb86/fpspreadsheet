@@ -751,7 +751,6 @@ type
     FOnRemovingWorksheet: TsWorksheetEvent;
     FOnSelectWorksheet: TsWorksheetEvent;
     FOnReadCellData: TsWorkbookReadCellDataEvent;
-    FSearchEngine: TObject;
     FCryptoInfo: TsCryptoInfo;
     FMetaData: TsMetaData;
     {FrevisionsCrypto: TsCryptoInfo;} // Commented out because it needs revision handling
@@ -6322,8 +6321,6 @@ begin
 
   RemoveAllEmbeddedObj;
   FEmbeddedObjList.Free;
-
-  FreeAndNil(FSearchEngine);
 
   inherited Destroy;
 end;
