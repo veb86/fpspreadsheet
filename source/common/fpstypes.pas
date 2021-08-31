@@ -942,7 +942,7 @@ type
     HorAlignment: TsHorAlignment;
     VertAlignment: TsVertAlignment;
     Border: TsCellBorders;
-    BorderStyles: TsCelLBorderStyles;
+    BorderStyles: TsCellBorderStyles;
     Background: TsFillPattern;
     NumberFormatIndex: Integer;
     BiDiMode: TsBiDiMode;
