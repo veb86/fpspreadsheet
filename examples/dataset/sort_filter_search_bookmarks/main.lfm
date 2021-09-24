@@ -1,0 +1,451 @@
+object MainForm: TMainForm
+  Left = 285
+  Height = 542
+  Top = 131
+  Width = 1068
+  Caption = 'fpsWorksheet Demo: Filtering, Searching, Sorting, Bookmarks'
+  ClientHeight = 542
+  ClientWidth = 1068
+  OnCreate = FormCreate
+  LCLVersion = '2.3.0.0'
+  object DBGrid: TDBGrid
+    Left = 0
+    Height = 482
+    Top = 60
+    Width = 1068
+    Align = alClient
+    AlternateColor = clBtnFace
+    Color = clWindow
+    Columns = <>
+    DataSource = DataSource
+    Options = [dgTitles, dgIndicator, dgColumnResize, dgColumnMove, dgColLines, dgRowLines, dgTabs, dgAlwaysShowSelection, dgConfirmDelete, dgCancelOnExit, dgAnyButtonCanSelect, dgTruncCellHints, dgThumbTracking]
+    PopupMenu = DBGridPopupMenu
+    ShowHint = True
+    TabOrder = 0
+    TitleImageList = ImageList12
+    OnTitleClick = DBGridTitleClick
+  end
+  object ToolBar: TToolBar
+    Left = 0
+    Height = 26
+    Top = 34
+    Width = 1068
+    Caption = 'ToolBar'
+    Images = ImageList16
+    TabOrder = 1
+    object DBNavigator1: TDBNavigator
+      Left = 1
+      Height = 22
+      Top = 2
+      Width = 241
+      BevelOuter = bvNone
+      ChildSizing.EnlargeHorizontal = crsScaleChilds
+      ChildSizing.EnlargeVertical = crsScaleChilds
+      ChildSizing.ShrinkHorizontal = crsScaleChilds
+      ChildSizing.ShrinkVertical = crsScaleChilds
+      ChildSizing.Layout = cclLeftToRightThenTopToBottom
+      ChildSizing.ControlsPerLine = 100
+      ClientHeight = 22
+      ClientWidth = 241
+      DataSource = DataSource
+      Options = []
+      TabOrder = 0
+    end
+    object Panel2: TPanel
+      Left = 242
+      Height = 22
+      Top = 2
+      Width = 326
+      BevelOuter = bvNone
+      ClientHeight = 22
+      ClientWidth = 326
+      TabOrder = 1
+      object Label1: TLabel
+        AnchorSideLeft.Control = Panel2
+        AnchorSideTop.Control = Panel2
+        AnchorSideTop.Side = asrCenter
+        Left = 8
+        Height = 15
+        Top = 4
+        Width = 81
+        BorderSpacing.Left = 8
+        Caption = 'Filter countries:'
+      end
+      object cmbFilter: TComboBox
+        AnchorSideLeft.Control = Label1
+        AnchorSideLeft.Side = asrBottom
+        AnchorSideTop.Control = Panel2
+        AnchorSideTop.Side = asrCenter
+        AnchorSideRight.Control = Panel2
+        AnchorSideRight.Side = asrBottom
+        Left = 95
+        Height = 23
+        Top = 0
+        Width = 223
+        Anchors = [akTop, akLeft, akRight]
+        AutoComplete = True
+        AutoCompleteText = [cbactEnabled, cbactEndOfLineComplete, cbactSearchAscending]
+        BorderSpacing.Left = 6
+        BorderSpacing.Right = 8
+        DropDownCount = 40
+        ItemHeight = 15
+        OnEditingDone = cmbFilterEditingDone
+        TabOrder = 0
+      end
+    end
+    object ToolButton1: TToolButton
+      Left = 568
+      Top = 2
+      Action = acFilterByCountry
+    end
+    object ToolButton2: TToolButton
+      Left = 591
+      Top = 2
+      Action = acNoFilter
+    end
+    object ToolButton3: TToolButton
+      Left = 614
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton3'
+      Style = tbsDivider
+    end
+    object ToolButton4: TToolButton
+      Left = 619
+      Top = 2
+      Action = acFindCity
+    end
+    object btnBookmark1: TToolButton
+      Tag = 1
+      Left = 647
+      Top = 2
+      Caption = 'btnBookmark1'
+      DropdownMenu = BookmarkDropdown
+      ImageIndex = 3
+      OnMouseMove = btnBookmark1MouseMove
+      Style = tbsButtonDrop
+    end
+    object ToolButton6: TToolButton
+      Left = 642
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton6'
+      Style = tbsDivider
+    end
+    object btnBookmark2: TToolButton
+      Tag = 2
+      Left = 680
+      Top = 2
+      Caption = 'btnBookmark2'
+      DropdownMenu = BookmarkDropdown
+      ImageIndex = 4
+      OnMouseMove = btnBookmark1MouseMove
+      Style = tbsButtonDrop
+    end
+    object btnBookmark3: TToolButton
+      Tag = 3
+      Left = 713
+      Top = 2
+      Caption = 'btnBookmark3'
+      DropdownMenu = BookmarkDropdown
+      ImageIndex = 5
+      OnMouseMove = btnBookmark1MouseMove
+      Style = tbsButtonDrop
+    end
+    object ToolButton5: TToolButton
+      Left = 746
+      Height = 22
+      Top = 2
+      Caption = 'ToolButton5'
+      Style = tbsDivider
+    end
+    object ToolButton7: TToolButton
+      Left = 751
+      Top = 2
+      Action = acSortAsc
+    end
+    object ToolButton8: TToolButton
+      Left = 774
+      Top = 2
+      Action = acSortDesc
+    end
+  end
+  object Panel1: TPanel
+    Left = 0
+    Height = 34
+    Top = 0
+    Width = 1068
+    Align = alTop
+    BevelOuter = bvNone
+    Caption = 'Average Temperatures in European Cities'
+    Color = clWindowText
+    Font.Color = clWindow
+    Font.Height = -19
+    Font.Style = [fsBold]
+    ParentColor = False
+    ParentFont = False
+    TabOrder = 2
+  end
+  object Dataset: TsWorksheetDataset
+    FieldDefs = <>
+    AfterOpen = DatasetAfterOpen
+    Left = 295
+    Top = 129
+  end
+  object DataSource: TDataSource
+    DataSet = Dataset
+    Left = 435
+    Top = 129
+  end
+  object DBGridPopupMenu: TPopupMenu
+    Images = ImageList16
+    OnPopup = DBGridPopupMenuPopup
+    Left = 296
+    Top = 208
+    object mnuSetBookmarkParent: TMenuItem
+      Caption = 'Set bookmarks'
+      object mnuSetBookmark1: TMenuItem
+        Tag = 1
+        Action = acSetBookmark
+        Caption = 'Bookmark 1'
+        ImageIndex = 3
+        ShortCut = 16433
+      end
+      object mnuSetBookmark2: TMenuItem
+        Tag = 2
+        Action = acSetBookmark
+        Caption = 'Bookmark 2'
+        ImageIndex = 4
+        ShortCut = 16434
+      end
+      object mnuSetBookmark3: TMenuItem
+        Tag = 3
+        Action = acSetBookmark
+        Caption = 'Bookmark 3'
+        ImageIndex = 5
+        ShortCut = 16435
+      end
+    end
+    object mnuGotoBookmarkParent: TMenuItem
+      Caption = 'Go to bookmarks'
+      object mnuGotoBookmark1: TMenuItem
+        Tag = 1
+        Action = acGotoBookmark
+        Caption = 'Bookmark 1'
+        ImageIndex = 3
+        ShortCut = 24625
+      end
+      object mnuGotoBookmark2: TMenuItem
+        Tag = 2
+        Action = acGotoBookmark
+        Caption = 'Bookmark 2'
+        ImageIndex = 4
+        ShortCut = 24626
+      end
+      object mnuGotoBookmark3: TMenuItem
+        Tag = 3
+        Action = acGotoBookmark
+        Caption = 'Bookmark 3'
+        ImageIndex = 5
+        ShortCut = 24627
+      end
+    end
+    object mnuClearBookmarkParent: TMenuItem
+      Caption = 'Clear bookmarks'
+      object mnuClearBookmark1: TMenuItem
+        Tag = 1
+        Action = acClearBookmark
+        Caption = 'Bookmark 1'
+        ImageIndex = 3
+        ShortCut = 49201
+      end
+      object mnuClearBookmark2: TMenuItem
+        Tag = 2
+        Action = acClearBookmark
+        Caption = 'Bookmark 2'
+        ImageIndex = 4
+        ShortCut = 49202
+      end
+      object mnuClearBookmark3: TMenuItem
+        Tag = 3
+        Action = acClearBookmark
+        Caption = 'Bookmark 3'
+        ImageIndex = 5
+        ShortCut = 49203
+      end
+    end
+    object MenuItem3: TMenuItem
+      Caption = '-'
+    end
+    object mnuSortASC: TMenuItem
+      Action = acSortAsc
+      Caption = 'Sort by clicked column (ascending)'
+    end
+    object mnuSortDESC: TMenuItem
+      Action = acSortDesc
+      Caption = 'Sort by clicked column (descending)'
+    end
+    object MenuItem1: TMenuItem
+      Caption = '-'
+    end
+    object mnuFilterByCountry: TMenuItem
+      Caption = 'Filter by Country...'
+      ImageIndex = 0
+      object mnuNoFilter: TMenuItem
+        Action = acNoFilter
+      end
+      object N1: TMenuItem
+        Caption = '-'
+      end
+    end
+    object MenuItem5: TMenuItem
+      Caption = '-'
+    end
+    object mnuFindCity: TMenuItem
+      Action = acFindCity
+    end
+  end
+  object ImageList12: TImageList
+    Height = 12
+    Width = 12
+    Left = 576
+    Top = 129
+    Bitmap = {
+      4C7A020000000C0000000C000000350100000000000078DA6360A03FD851E3EF
+      02C2C4A8DDDE10AC77A025E2E5BE96885720365E732BFC54F636863E7EBDA9ED
+      3F08EF6D0A7BB8BD2240019BDA6D959EA2BB1B43EEBD58DFFCFFC3F66E3006B1
+      773786DDDED1102A84AC7673832FD7EE86D04B4F56D6FD85A9856190D89EA6D0
+      73FB1B1C38406A5785863203CD3D706F69E54F74B5307C6F49C5CF3D0DA1BB1B
+      1A1A98B6D5F8776CAB0EF80574EB6B7C18A4666BA56F3BC328C00BB655FB4FDF
+      5113F0E3605BD40B7C18A4665B8DDFB4FF0C0C8CBB1A4236DE985FF215577C81
+      E4406A406AC171DC10CAB6B321F8C4FDA595BF30E2162806923B9396C68AE2AE
+      064FBEDD0DC1D79FAEAE87A721101B240692C3E6978D657E52C074F7F0E5FA96
+      FF20BCA731F401480C9FFF3797FBE8EF6D0A7FBAAF39FC09884D4C98EDACF273
+      25363F521B0000A4F50CFE
+    }
+  end
+  object ImageList16: TImageList
+    Left = 576
+    Top = 208
+    Bitmap = {
+      4C7A080000001000000010000000E00600000000000078DAED98094CD3571CC7
+      EB96399365993AA5B8796D3AA756C0A9E089E074EA747821A253173C824EE744
+      C503115A659924F3C01B10A55A0F2446D129010F8478206D055B5A74DE533715
+      01158BB4A2FDEEFDFE50A5E5DFF2AF336633BCE49BB6EFFF3EFFF73BDF4B2A12
+      FD37C6C2AC6BF831ED1226EC2FC0B09D5AF826E4A2EB3A25DC6372F0D57A153C
+      63D5E8C1E6FAC8CFC3678706B6FCFCAC6BA6463926785F04C26F03690F81D38F
+      815DC5C0F23BC0F43F81219701777539FAEED49A6CF90559D783C71FB96EE8A2
+      3363F64D606F09A032547EAEBC0B6E6EC425337A275D30F828B4C17C3E4C49BF
+      9232F0F89DF2C9D7017911A029030E3E00D6DD03E6DF02BE49BD69ECADD0A6DA
+      8B41C889EB0DC71DB870D75FFD886388273FE20B81E0DC87E8253F7FBF6782BE
+      B1A3387EBF5FEF352C49FF447ACDC4F99F510AACBF6542CF2D79653DE3F37A09
+      C9C5F05D9A8CFEBB2F3C0F3BF91742326FA3CF76DDF3EE71791942733972A76E
+      ACEFBE2BA5190FCD48BC0FF44DBE54EA197B2E50283F74BBA6533F85EE516669
+      651CBD1234A59EF14A89503E20595FDF3721AFE2D80333B6DC33A3CB7A7545DB
+      B597DF77A61E7DE59ADB7B6E3EC18A2B4FD03536F7B6B3F5EC2BD71E89D11623
+      4C5D8C6E7179E9CEF27DB7E64659EABFEB467594E82D1D9D569D8533B2E52531
+      39C6069965B5F6BD24BB0CB4B6267FD6BFFDBA73659DCF57D8ED7BBF820AB86D
+      C8354856E78CE3F341B24619D371ABCE30E9AAB946DF8732DE6B7B81A1135B63
+      370832BCD3718D2ACBE7C00DA36DDF0FFFFD86C97D9DEA4C4072F2BB8EE2E8B6
+      FC6423B7B5AA3BD3CE16992D7DBF38B7D8ECB15679AFDD0A751321B990ACCCF1
+      B08D37CD894498C3B4CA7A357E650AE3CBA7A56F5FE60B2B9850F559CFFAB710
+      DEEA1D6A7B6C2D3CEDABAA625595BF9DE205EF5FB35E85FBCF3F30AFE65AEE1D
+      F35E773F7A757387458EE61CF1FE81013578DBB9D7C9B379293DF3F6EEF142D5
+      6DB6C8665E6AEB1FED6151F5DF7CCFF8E253C707F0C6BDBA84F2F6EAB28E0F10
+      DC8BFFC771266A789B53CB862932A57E8547970C456AD890C294F983157BE70E
+      6C531B9B1D357C5076D430E3E9A57EC8920EC5B1F06F91BA70205242072039A4
+      BF71D7AC7E831CED4B6CF6323F9C920D81461E8EE7154F41637F880FF6CCF2C6
+      8E19DEC66DD37BF3DA4136D3BEC4E6CB1773AC7EDF6A8EDF3BB327764DEF8EED
+      C15E489CEAA5E0E3C95FB23973C9608E2D60ECA1D9BD383E29B80B14533A2331
+      C8035B823A17F2F1142BF2F7E8A201480BF5E1D8FD333C397E47900489133B20
+      614207C48FEFC85B3714678AD5A1D07E3818D207FB18BB67AA07C7CBC7B743C2
+      D836880B6C83D8C02F78F74F5930584171DEC76245FE92CDB42F8D84319F216E
+      742B6CF46F898DA35BF3FA4FF9A51C519C29569CBFCC661A1C3BAA05368C6C6E
+      DC30B285DD3AA0FC528EB838B35891BF6433ED4BECFA11CD07D55643945FCA51
+      028B33C58AFC259B1DED5B37DEAEFED72996E0A9E121577B26C3039C8E0D75AA
+      FF89556F9AC5F5E1C99869303E7EE054FF6784F5477A550F67FE3619C6D212A7
+      FB3F759E0F2E1CDECCCE12138EAF0876AAFFC966C3FD5B28BCA842CAFC414EF7
+      FFD3720394DB9672FDCFB14EF63FDFA8EBFFBAFEAFEB7FE7EE7FCBD0A66C7CE5
+      FB3F2D6A1CCA4B8B9DEA7FF2F7687410D7FF87656350FEA8D8A9FE3FB1F667B6
+      6709673BB187A326D6F5FF1B1A6AD927ED559162A8A4AE9B5E8567EC2F4C8F99
+      4A4EC85A37B0FAC7E2C48C2092DD7F3944A27A8CBBC63487DEA18E740D78F12C
+      63A60499330D9CD8773EFE5C44536FC63DD3C8C42E2AA97837FB7E8863D3277E
+      604A9BA4674295F43457C376A9388E314626B52AD2E516FBAC50CA9ABA96A604
+      2632C14689D5D9CBB3DABE4F3E33C5AA22C4C19C22C5C5EA0897B996354549DF
+      81C467BB52E6328AAD7F9A13F6E9C736F6E45B7EFF2DFF1AA457CDED8DD81E20
+      F13FCD6B2812E9C0237FCB8A3F62DC41E2E7E9FF496DD74AE93C99944C574522
+      8D8B65457E745B906AB754B78AA988B15F5AE557D60C24C7AC3E8CB1E54CBD6B
+      9CF18B3E02C93E9B3F81F1CFAAFB6C754687BC07123F5B308071158C8F6131F8
+      FCA528AE95E3F84F2290ECEC2DE38F7F7EF89BEB7EDD4D9EFD65C279ADDBCB1A
+      D02731FE11938730FFADECF881C9C4F61E283CFE2F58BFAA3C04399FFF821E8C
+      353045F09E2F0EEB4FDF9671254CA9D6F9175AFF5473BCFDB75B58FFFDDBFEAF
+      8A91AC796376E614AA23C5F1B6CF849C3FECBC9B5E75861A4E2D68F261F5678E
+      CEBF6AF7C729A668A62265842B974321E72F8DDCF066AD1867564788DD9452F1
+      66F63DC399F35F1DE91241673E53329392E979B6CCB5B5D0FB87DD1917D9B99F
+      5E657FB432527C8FDE29E4FE53C95CBDE8DE3D2B73ED582D16AB982ED3BD585B
+      6EE9FED12E6AD9C8AA226592FA34E788FF07815B405B
+    }
+  end
+  object ActionList: TActionList
+    Images = ImageList16
+    Left = 296
+    Top = 280
+    object acFindCity: TAction
+      Caption = 'Find city...'
+      Hint = 'Find a city'
+      ImageIndex = 2
+      OnExecute = acFindCityExecute
+    end
+    object acFilterByCountry: TAction
+      Caption = 'Filter by country'
+      Hint = 'Filter records by country'
+      ImageIndex = 0
+      OnExecute = acFilterByCountryExecute
+    end
+    object acNoFilter: TAction
+      Caption = 'All countries'
+      Hint = 'Remove filter'
+      ImageIndex = 1
+      OnExecute = acNoFilterExecute
+    end
+    object acSetBookmark: TAction
+      Caption = 'Set bookmark'
+      OnExecute = acSetBookmarkExecute
+    end
+    object acGotoBookmark: TAction
+      Caption = 'Go to bookmark'
+      OnExecute = acGotoBookmarkExecute
+    end
+    object acClearBookmark: TAction
+      Caption = 'Clear bookmark'
+      OnExecute = acClearBookmarkExecute
+    end
+    object acSortAsc: TAction
+      Caption = 'Sort ascending'
+      Hint = 'Sort by this column in ascending oder'
+      ImageIndex = 6
+      OnExecute = acSortAscExecute
+    end
+    object acSortDesc: TAction
+      Caption = 'Sort descending'
+      Hint = 'Sort by this column in descending order'
+      ImageIndex = 7
+      OnExecute = acSortDescExecute
+    end
+  end
+  object BookmarkDropdown: TPopupMenu
+    Images = ImageList16
+    OnPopup = BookmarkDropdownPopup
+    Left = 435
+    Top = 208
+    object mnuSetBookmark: TMenuItem
+      Action = acSetBookmark
+    end
+    object mnuGotoBookmark: TMenuItem
+      Action = acGotoBookmark
+    end
+    object mnuClearBookmark: TMenuItem
+      Action = acClearBookmark
+    end
+  end
+end
