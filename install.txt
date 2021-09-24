@@ -11,3 +11,6 @@
 (4) If you need to unlock xls file protection
     Make sure that the package dcpcrypt.lpk can be found by the IDE
     Open laz_fpspreadsheet_crypto.lpk -- > Compile
+    
+(5) If need database access to spreadsheets:
+    Open laz_fpsdataset.lpk --> Use --> Install
