@@ -509,6 +509,9 @@ function TsWorksheetDataset.AddFieldDef(
   AName: String; ADataType: TFieldType; ASize: Integer = 0; AColIndex: Integer = -1;
   ACodePage: TSystemCodePage = CP_UTF8): TsFieldDef;
 begin
+  if not (ADataType in ftSupported) then
+    DatabaseError('Field type not supported.');
+
   if AColIndex = -1 then
     AColIndex := FieldDefs.Count;
   Result := TsFieldDef.Create(TsFieldDefs(FieldDefs),
