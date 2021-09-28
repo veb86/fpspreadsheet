@@ -1,0 +1,57 @@
+object MainForm: TMainForm
+  Left = 285
+  Height = 366
+  Top = 131
+  Width = 714
+  Caption = 'Create Table Demo'
+  ClientHeight = 366
+  ClientWidth = 714
+  OnCreate = FormCreate
+  LCLVersion = '2.3.0.0'
+  object DBGrid: TDBGrid
+    Left = 0
+    Height = 324
+    Top = 0
+    Width = 714
+    Align = alClient
+    Color = clWindow
+    Columns = <>
+    DataSource = DataSource
+    TabOrder = 0
+  end
+  object Panel1: TPanel
+    Left = 8
+    Height = 26
+    Top = 332
+    Width = 698
+    Align = alBottom
+    AutoSize = True
+    BorderSpacing.Around = 8
+    BevelOuter = bvNone
+    ClientHeight = 26
+    ClientWidth = 698
+    TabOrder = 1
+    object btnViewSpreadsheet: TButton
+      AnchorSideTop.Control = Panel1
+      AnchorSideTop.Side = asrCenter
+      Left = 0
+      Height = 25
+      Top = 1
+      Width = 136
+      AutoSize = True
+      Caption = 'View spreadsheet file'
+      OnClick = btnViewSpreadsheetClick
+      TabOrder = 0
+    end
+  end
+  object Dataset: TsWorksheetDataset
+    FieldDefs = <>
+    Left = 77
+    Top = 39
+  end
+  object DataSource: TDataSource
+    DataSet = Dataset
+    Left = 77
+    Top = 104
+  end
+end

@@ -1,0 +1,20 @@
+object SpreadsheetViewerForm: TSpreadsheetViewerForm
+  Left = 617
+  Height = 334
+  Top = 261
+  Width = 564
+  Caption = 'Simple Spreadsheet Viewer'
+  ClientHeight = 334
+  ClientWidth = 564
+  OnCreate = FormCreate
+  LCLVersion = '2.3.0.0'
+  object StringGrid: TStringGrid
+    Left = 0
+    Height = 334
+    Top = 0
+    Width = 564
+    Align = alClient
+    DefaultColWidth = 100
+    TabOrder = 0
+  end
+end
