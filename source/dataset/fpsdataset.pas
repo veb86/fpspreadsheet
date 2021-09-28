@@ -203,6 +203,7 @@ type
       const AWorkbookFileName, ASheetName: String);
     function CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; override;
     procedure CreateTable;
+    procedure Flush;
     function GetFieldData(Field: TField; Buffer: Pointer): Boolean; override;
     function Locate(const KeyFields: String; const KeyValues: Variant;
       Options: TLocateOptions): boolean; override;
@@ -1063,18 +1064,15 @@ begin
   end;
 end;
 
-(*
-// Removes characters from AText which would make it an invalid fieldname.
-function TsWorksheetDataset.FixFieldName(const AText: String): String;
-var
-  ch: char;
+procedure TsWorksheetDataset.Flush;
+const
+  OVERWRITE = true;
 begin
-  Result := '';
-  for ch in AText do
-    if (ch in ['A'..'Z', 'a'..'z', '0'..'9']) then
-      Result := Result + ch;
+  if FAutoFileFormat then
+    FWorkbook.WriteToFile(FFileName, OVERWRITE)
+  else
+    FWorkbook.WriteToFile(FFileName, FFileFormat, OVERWRITE);
 end;
-*)
 
 procedure TsWorksheetDataset.FreeBlobPointers(Buffer: TRecordBuffer);
 var
@@ -1389,10 +1387,7 @@ begin
   FIsOpen := false;
 
   if FModified then begin
-    if FAutoFileFormat then
-      FWorkbook.WriteToFile(FFileName, true)
-    else
-      FWorkbook.WriteToFile(FFileName, FFileFormat, true);
+    Flush;
     FModified := false;
   end;
   FreeWorkbook;
