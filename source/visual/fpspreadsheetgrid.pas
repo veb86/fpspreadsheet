@@ -166,6 +166,9 @@ type
     function GetCellFontSizes(ALeft, ATop, ARight, ABottom: Integer): Single;
     function GetCellFontStyle(ACol, ARow: Integer): TsFontStyles;
     function GetCellFontStyles(ALeft, ATop, ARight, ABottom: Integer): TsFontStyles;
+    function GetCellFormula(ACol, ARow: Integer): String;
+    function GetCellProtection(ACol, ARow: Integer): TsCellProtections;
+    function GetCellProtections(ALeft, ATop, ARight, ABottom: Integer): TsCellProtections;
     function GetCellValue(ACol, ARow: Integer): variant;
     function GetColWidths(ACol: Integer): Integer;
     function GetDefColWidth: Integer;
@@ -212,6 +215,10 @@ type
     procedure SetCellFontStyle(ACol, ARow: Integer; AValue: TsFontStyles);
     procedure SetCellFontStyles(ALeft, ATop, ARight, ABottom: Integer;
       AValue: TsFontStyles);
+    procedure SetCellFormula(ACol, ARow: Integer; AValue: String);
+    procedure SetCellProtection(ACol, ARow: Integer; AValue: TsCellProtections);
+    procedure SetCellProtections(ALeft, ATop, ARight, ABottom: Integer;
+      AValue: TsCellProtections);
     procedure SetCellValue(ACol, ARow: Integer; AValue: variant);
     procedure SetColWidths(ACol: Integer; AValue: Integer);
     procedure SetDefColWidth(AValue: Integer);
@@ -550,6 +557,16 @@ type
         range of column/row indexes defined by the rectangle. }
     property CellFontSizes[ALeft, ATop, ARight, ABottom: Integer]: Single
         read GetCellFontSizes write SetCellFontSizes;
+    {@@ Formula in the given cell, empty if there is no formula }
+    property CellFormula[ACol, ARow: Integer]: String
+        read GetCellFormula write SetCellFormula;
+    {@@ Cell protection elements assigned to the given cell }
+    property CellProtection[ACol, ARow: Integer]: TsCellProtections
+        read GetCellProtection write SetCellProtection;
+    {@@ Cell protection elements assigned to the given cell range. Empty if not
+        consistent with all cells. }
+    property CellProtections[ALeft, ATop, ARight, ABottom: Integer]: TsCellProtections
+        read GetCellProtections write SetCellProtections;
     {@@ Cell values }
     property Cells[ACol, ARow: Integer]: Variant
         read GetCellValue write SetCellValue;
@@ -578,8 +595,9 @@ type
         defined by the rectangle. }
     property TextRotations[ALeft, ATop, ARight, ABottom: Integer]: TsTextRotation
         read GetTextRotations write SetTextRotations;
-    {@@ Parameter for vertical text alignment in the cell at column ACol and
-        row ARow. }
+    {@@ Pixel coordinates of the top-left corner of the grid's cell area}
+    property TopLeftPx: TPoint read  GetPxTopLeft;
+    {@@ Parameter for vertical text alignment in the cell at column ACol and row ARow. }
     property VertAlignment[ACol, ARow: Integer]: TsVertAlignment
         read GetVertAlignment write SetVertAlignment;
     {@@ Parameter for vertical text alignment in the cells having column/row
@@ -2075,7 +2093,9 @@ var
 begin
   FOldEditorText := GetCellText(Col, Row);
   inherited;
-  if (Worksheet <> nil) and (Editor is TStringCellEditor) then
+  if Worksheet = nil then
+    exit;
+  if (Editor is TStringCellEditor) or (Editor is TsMultiLineStringCellEditor) then
   begin
     delta := FSelPen.Width div 2;
     cell := Worksheet.FindCell(GetWorksheetRow(Row), GetWorksheetCol(Col));
@@ -2087,6 +2107,7 @@ begin
     InflateRect(Rct, -delta, -delta);
     inc(Rct.Top);
     if not odd(FSelPen.Width) then dec(Rct.Left);
+    Editor.Font := CellFont[Col, Row];
     Editor.Font.Height := Round(Font.Height * ZoomFactor);
     Editor.SetBounds(Rct.Left, Rct.Top, Rct.Right-Rct.Left-1, Rct.Bottom-Rct.Top-1);
   end;
@@ -6143,6 +6164,48 @@ begin
     end;
 end;
 
+function TsCustomWorksheetGrid.GetCellFormula(ACol, ARow: Integer): String;
+begin
+  if Worksheet <> nil then
+    Result := Worksheet.ReadFormula(GetWorksheetRow(ARow), GetWorksheetCol(ACol))
+  else
+    Result :='';
+end;
+
+function TsCustomWorksheetGrid.GetCellProtection(ACol, ARow: Integer
+  ): TsCellProtections;
+var
+  cell:PCell;
+begin
+  Result :=[];
+  if Worksheet <> nil then
+  begin
+    cell := Worksheet.GetCell(GetWorksheetRow(ARow), GetWorksheetCol(ACol));
+    Result := Worksheet.ReadCellProtection(cell) ;
+  end;
+end;
+
+function TsCustomWorksheetGrid.GetCellProtections(ALeft, ATop, ARight,
+  ABottom: Integer): TsCellProtections;
+var
+  c, r: Integer;
+  b: TsCellProtections;
+begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  Result := GetCellProtection(ALeft, ATop);
+  b := Result;
+  for c := ALeft to ARight do
+    for r := ATop to ABottom do
+    begin
+      Result := GetCellProtection(c, r);
+      if Result <> b then
+      begin
+        Result := [];
+        exit;
+      end;
+    end;
+end;
 function TsCustomWorksheetGrid.GetCellValue(ACol, ARow: Integer): variant;
 var
   cell: PCell;
@@ -6723,6 +6786,37 @@ begin
     for c := ALeft to ARight do
       for r := ATop to ABottom do
         SetCellFontStyle(c, r, AValue);
+  finally
+    EndUpdate;
+  end;
+end;
+
+procedure TsCustomWorksheetGrid.SetCellFormula(ACol, ARow: Integer;
+  AValue: String);
+begin
+  if Assigned(Worksheet) then
+    Worksheet.WriteFormula(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetCellProtection(ACol, ARow: Integer;
+  AValue: TsCellProtections);
+begin
+  if Assigned(Worksheet) then
+    Worksheet.WriteCellProtection(GetWorksheetRow(ARow), GetWorksheetCol(ACol), AValue);
+end;
+
+procedure TsCustomWorksheetGrid.SetCellProtections(ALeft, ATop, ARight,
+  ABottom: Integer; AValue: TsCellProtections);
+var
+  c, r: Integer;
+begin
+  EnsureOrder(ALeft, ARight);
+  EnsureOrder(ATop, ABottom);
+  BeginUpdate;
+  try
+    for c := ALeft to ARight do
+      for r := ATop to ABottom do
+        SetCellProtection(c, r, AValue);
   finally
     EndUpdate;
   end;
