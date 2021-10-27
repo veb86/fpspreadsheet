@@ -365,7 +365,7 @@ type
 implementation
 
 uses
-  StrUtils, fpsUtils;
+  fpsUtils;
 
 const
   InsertColRowSheet = 'InsertDelete_ColumnsRows';
@@ -1984,8 +1984,6 @@ var
   worksheet3: TsWorksheet;
   expected: Double;
   actual: Double;
-  expectedFormula: String;
-  actualFormula: String;
 begin
   workbook := TsWorkbook.Create;
   try

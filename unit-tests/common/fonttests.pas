@@ -161,7 +161,7 @@ begin
       for col := 0 to High(SollStyles) do
       begin
         cellText := Format('%s, %.1f-pt', [AFontName, SollSizes[row]]);
-        MyWorksheet.WriteUTF8Text(row, col, celltext);
+        MyWorksheet.WriteText(row, col, celltext);
         MyWorksheet.WriteFont(row, col, AFontName, SollSizes[row], SollStyles[col], scBlack);
 
         MyCell := MyWorksheet.FindCell(row, col);

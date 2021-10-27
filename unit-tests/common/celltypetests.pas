@@ -77,7 +77,6 @@ var
   MyWorkbook: TsWorkbook;
   row, col: Integer;
   MyCell: PCell;
-  value: Boolean;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
   MyWorkbook := TsWorkbook.Create;
@@ -142,7 +141,6 @@ begin
           GetEnumName(TypeInfo(TCellContentType), ord(MyCell^.ContentType)),
           'Test saved content type mismatch, cell '+CellNotation(MyWorksheet, row, col)
         );
-        value := MyCell^.BoolValue;
         CheckEquals(
           Boolean(col),
           MyCell^.BoolValue,

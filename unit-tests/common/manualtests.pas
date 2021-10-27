@@ -20,8 +20,8 @@ interface
 uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, testutils, testregistry, testdecorator, fpcunit,
-  fpsallformats, fpspreadsheet, fpscell,
+  Classes, SysUtils, testregistry, testdecorator, fpcunit,
+  {%H-}fpsallformats, fpspreadsheet, {%H-}fpscell,
   xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
@@ -75,7 +75,6 @@ uses
 const
   COLORSHEETNAME='color_sheet'; //for background color tests
   RPNSHEETNAME='rpn_formula_sheet'; //for rpn formula tests
-  FORMULASHEETNAME='formula_sheet';  // for string formula tests
   NUMBERFORMATSHEETNAME='number format sheet';  // for number format tests
   OUTPUT_FORMAT = sfExcel8; //change manually if you want to test different formats. To do: automatically output all formats
 
@@ -190,12 +189,12 @@ var
   palette: TsPalette;
 begin
   if OUTPUT_FORMAT <> sfExcel8 then
-    Ignore('This test only applies to BIFF8 XLS output format.');
+    {%H-}Ignore('This test only applies to BIFF8 XLS output format.');
 
   // No worksheets in BIFF2. Since main interest is here in formulas we just jump
   // off here - need to change this in the future...
   if OUTPUT_FORMAT = sfExcel2 then
-    Ignore('BIFF2 does not support worksheets. Ignoring manual tests for now');
+    {%H-}Ignore('BIFF2 does not support worksheets. Ignoring manual tests for now');
 
   if Workbook = nil then
     Workbook := TsWorkbook.Create;
@@ -206,16 +205,16 @@ begin
     palette.AddExcelColors;
 
     Worksheet := Workbook.AddWorksheet(COLORSHEETNAME);
-    WorkSheet.WriteUTF8Text(0, 1, 'TSpreadManualTests.TestBiff8CellBackgroundColor');
+    WorkSheet.WriteText(0, 1, 'TSpreadManualTests.TestBiff8CellBackgroundColor');
     RowOffset := 1;
     for i:=0 to palette.Count-1 do begin
-      cell := WorkSheet.WriteUTF8Text(i+RowOffset,0,'BACKGROUND COLOR TEST');
+      cell := WorkSheet.WriteText(i+RowOffset,0,'BACKGROUND COLOR TEST');
       Worksheet.WriteBackgroundColor(Cell, palette[i]);
       Worksheet.WriteFontColor(cell, HighContrastColor(palette[i]));
-      WorkSheet.WriteUTF8Text(i+RowOffset,1,'Cell to the left should be '+GetColorName(palette[i])+'. Please check.');
+      WorkSheet.WriteText(i+RowOffset,1,'Cell to the left should be '+GetColorName(palette[i])+'. Please check.');
     end;
-    Worksheet.WriteColWidth(0, 30);
-    Worksheet.WriteColWidth(1, 60);
+    Worksheet.WriteColWidth(0, 30, suChars);
+    Worksheet.WriteColWidth(1, 60, suChars);
   finally
     palette.Free;
   end;
@@ -240,34 +239,30 @@ const
   );
 var
   Worksheet: TsWorksheet;
-  Cell : PCell;
-  i: cardinal;
   r, c: Cardinal;
-  palette: TsPalette;
-  nfs: String;
 begin
   if OUTPUT_FORMAT <> sfExcel8 then
-    Ignore('This test only applies to BIFF8 XLS output format.');
+    {%H-}Ignore('This test only applies to BIFF8 XLS output format.');
 
   // No worksheets in BIFF2. Since main interest is here in formulas we just jump
   // off here - need to change this in the future...
   if OUTPUT_FORMAT = sfExcel2 then
-    Ignore('BIFF2 does not support worksheets. Ignoring manual tests for now');
+    {%H-}Ignore('BIFF2 does not support worksheets. Ignoring manual tests for now');
 
   if Workbook = nil then
     Workbook := TsWorkbook.Create;
 
   Worksheet := Workbook.AddWorksheet(NUMBERFORMATSHEETNAME);
-  WorkSheet.WriteUTF8Text(0, 1, 'Number format tests');
+  WorkSheet.WriteText(0, 1, 'Number format tests');
 
   for r:=0 to High(FormatStrings) do
   begin
-    Worksheet.WriteUTF8Text(r+2, 0, FormatStrings[r]);
+    Worksheet.WriteText(r+2, 0, FormatStrings[r]);
     for c:=0 to High(Values) do
       Worksheet.WriteNumber(r+2, c+1, values[c], nfCustom, FormatStrings[r]);
   end;
 
-  Worksheet.WriteColWidth(0, 20);
+  Worksheet.WriteColWidth(0, 20, suChars);
 end;
 
 {$IFDEF FPSPREAD_HAS_NEWRPNSUPPORT}

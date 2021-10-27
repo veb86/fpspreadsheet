@@ -183,7 +183,7 @@ begin
     // in cell defined by CommentIsSortedToXXXIndex (XXX = Number/String)
 
     if AFormat <> sfExcel8 then   // Comments not implemented for writing Excel8
-      MyWorksheet.WriteComment(0, 0, 'Test comment');
+      {%H-}MyWorksheet.WriteComment(0, 0, 'Test comment');
     MyWorksheet.WriteHyperlink(0, 0, 'http://www.google.com');
 
     MyWorkBook.WriteToFile(TempFile, AFormat, true);
@@ -196,7 +196,7 @@ begin
     // Read spreadsheet file...
     MyWorkbook.ReadFromFile(TempFile, AFormat);
     if AFormat = sfExcel2 then
-      MyWorksheet := MyWorkbook.GetFirstWorksheet
+      {%H-}MyWorksheet := MyWorkbook.GetFirstWorksheet
     else
       MyWorksheet := GetWorksheetByName(MyWorkBook, SortingTestSheet);
     if MyWorksheet = nil then
@@ -244,7 +244,7 @@ begin
              CheckEquals(expectednumber, actualnumber,
                'Sorted cell number mismatch, cell '+CellNotation(MyWorksheet, row, col));
              if AFormat <> sfExcel8 then  // Comments are not written for sfExcel8  --> ignore
-               CheckEquals(
+               {%H-}CheckEquals(
                  i=CommentIsSortedToNumberIndex,
                  MyWorksheet.HasComment(cell),
                  'Sorted comment position mismatch, cell '+CellNotation(MyWorksheet, row, col));
@@ -260,7 +260,7 @@ begin
              CheckEquals(expectedstring, actualstring,
                'Sorted cell string mismatch, cell '+CellNotation(MyWorksheet, row, col));
              if AFormat <> sfExcel8 then  // Comments are not written for sfExcel8  --> ignore
-               CheckEquals(
+               {%H-}CheckEquals(
                  i=CommentIsSortedToStringIndex,
                  MyWorksheet.HasComment(cell),
                  'Sorted comment position mismatch, cell '+CellNotation(MyWorksheet, row, col));
@@ -353,7 +353,7 @@ begin
     // Read spreadsheet file...
     MyWorkbook.ReadFromFile(TempFile, AFormat);
     if AFormat = sfExcel2 then
-      MyWorksheet := MyWorkbook.GetFirstWorksheet
+      {%H-}MyWorksheet := MyWorkbook.GetFirstWorksheet
     else
       MyWorksheet := GetWorksheetByName(MyWorkBook, SortingTestSheet);
     if MyWorksheet = nil then

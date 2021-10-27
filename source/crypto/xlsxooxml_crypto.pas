@@ -35,7 +35,7 @@ begin
     begin
       DecryptedStream := TMemoryStream.Create;
       try
-        ExcelDecrypt.Decrypt(AStream, DecryptedStream, APassword);
+        ExcelDecrypt.Decrypt(AStream, DecryptedStream, UnicodeString(APassword));
         // Discard encrypted stream and load decrypted one.
         AStream.Free;
         AStream := TMemoryStream.Create;

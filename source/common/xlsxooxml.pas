@@ -1649,7 +1649,6 @@ var
   v: array of Double = nil;
   n: Integer;
   x: Double;
-  res: Integer;
 begin
   ANode := ANode.FirstChild;
   if (ANode <> nil) and (ANode.NodeName = 'iconSet') then
@@ -1698,9 +1697,9 @@ begin
     sheet := TsWorksheet(AWorksheet);
     // Ignore the first value because it is always 0
     case n of
-      3: res := sheet.WriteIconSet(ARange, iconSet, vk[1], v[1], vk[2], v[2]);
-      4: res := sheet.WriteIconSet(ARange, iconSet, vk[1], v[1], vk[2], v[2], vk[3], v[3]);
-      5: res := sheet.WriteIconSet(ARange, iconSet, vk[1], v[1], vk[2], v[2], vk[3], v[3], vk[4], v[4]);
+      3: sheet.WriteIconSet(ARange, iconSet, vk[1], v[1], vk[2], v[2]);
+      4: sheet.WriteIconSet(ARange, iconSet, vk[1], v[1], vk[2], v[2], vk[3], v[3]);
+      5: sheet.WriteIconSet(ARange, iconSet, vk[1], v[1], vk[2], v[2], vk[3], v[3], vk[4], v[4]);
     end;
 
     ANode := ANode.NextSibling;
@@ -2732,15 +2731,11 @@ var
   book: TsWorkbook;
   s: String;
   name: String;
-  dt: TDateTime;
-  fs: TFormatSettings;
 begin
   if ANode = nil then
     exit;
 
   book := TsWorkbook(FWorkbook);
-  fs := DefaultFormatSettings;
-  fs.DateSeparator := '-';
 
   ANode := ANode.FirstChild;
   while ANode <> nil do
@@ -3626,7 +3621,6 @@ procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream;
   APassword: String = ''; AParams: TsStreamParams = []);
 var
   Doc : TXMLDocument;
-  metadataNode: TDOMNode;
   RelsNode: TDOMNode;
   i, j: Integer;
   fn: String;
@@ -4340,7 +4334,7 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteCFDatabarRule(AStream: TStream;
   ARule: TsCFDataBarRule; APriority: Integer);
-{ example from test file:
+(* example from test file:
       <cfRule type="dataBar" priority="1">
         <dataBar>
           <cfvo type="min" />
@@ -4352,7 +4346,7 @@ procedure TsSpreadOOXMLWriter.WriteCFDatabarRule(AStream: TStream;
             <x14:id>{A620EE03-2FEC-4D54-872C-66BDB99CB07E}</x14:id>
           </ext>
         </extLst>
-      </cfRule>   }
+      </cfRule>   *)
 begin
   AppendToStream(AStream,
     '<cfRule type="dataBar" priority="' + IntToStr(APriority) + '">' +

@@ -90,7 +90,7 @@ begin
       case ADataType of
         ftInteger    : field.AsInteger := TestData[i].IntValue;
         ftString     : field.AsString := TestData[i].StringValue;
-        ftWideString : field.AsString := UTF8Decode(TestData[i].WideStringValue);
+        ftWideString : field.AsString := UTF8Encode(TestData[i].WideStringValue);
       end;
       dataset.Post;
     end;

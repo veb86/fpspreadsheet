@@ -12,8 +12,7 @@ uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testregistry,
-  fpstypes, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
-  testsutility;
+  fpstypes, fpspreadsheet, xlsbiff8;
 
 type
   { TSpreadWriteReadHyperlinkTests }
@@ -469,8 +468,6 @@ var
   MyWorkbook: TsWorkbook;
   row, col, p: Integer;
   sollPageLayout, actualPageLayout: TsPageLayout;
-  expected, actual: String;
-  cell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
   TempFile := GetTempFileName;
@@ -564,7 +561,7 @@ var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
   row, col, p: Integer;
-  sollPageLayout: Array of TsPageLayout;
+  sollPageLayout: Array of TsPageLayout = nil;
   actualPageLayout: TsPageLayout;
   TempFile: string; //write xls/xml to this file and read back from it
 
@@ -876,10 +873,8 @@ procedure TSpreadWriteReadPageLayoutTests.TestWriteRead_RepeatedColRows(
   AFormat: TsSpreadsheetFormat; AFirstCol, ALastCol, AFirstRow, ALastRow: Integer);
 var
   tempFile: String;
-  i, j: Integer;
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
-  rng: TsCellRange;
   sheetname: String;
   r, c: Cardinal;
 begin

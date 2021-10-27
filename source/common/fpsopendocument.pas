@@ -5171,7 +5171,6 @@ var
   numFmtStr: String;
   numFmtIndex: Integer;
   numFmtParams: TsNumFormatParams;
-  clr: TsColor;
   fnt: TsFont;
   fntName: String;
   fntSize: Single;
@@ -5179,7 +5178,6 @@ var
   fntColor: TsColor;
   fntPos: TsFontPosition;
   fntIndex: Integer;
-  s: String;
   idx: Integer;
 begin
   if not Assigned(AStylesNode) then
@@ -6046,9 +6044,6 @@ procedure TsSpreadopenDocWriter.WriteStyleNode(AStream: TStream;
 var
   s: String;
   nfs: String;
-  nfParams: TsNumFormatParams;
-  nfIdx: Integer;
-  j, p: Integer;
   addProtection: Boolean;
 begin
   addProtection := (AConditionalFormatIndex = -1);
@@ -6561,8 +6556,6 @@ procedure TsSpreadOpenDocWriter.WriteConditionalFormats(AStream: TStream;
       <calcext:condition calcext:apply-style-name="cf" calcext:value="=5" calcext:base-cell-address="Tabelle1.B4" />
     </calcext:conditional-format>
   </calcext:conditional-formats> }
-const
-  VALUE_OR_DATE: array[boolean] of string = ('value', 'date');
 var
   book: TsWorkbook;
   ncf: Integer;

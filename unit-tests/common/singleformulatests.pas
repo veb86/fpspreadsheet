@@ -9,8 +9,7 @@ uses
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testregistry,
   fpstypes, fpspreadsheet, fpsexprparser,
-  xlsbiff8 {and a project requirement for lclbase for utf8 handling},
-  testsutility;
+  xlsbiff8;
 
 type
   TFormulaTestKind = (ftkConstants, ftkCellConstant, ftkCells, ftkCellRange,

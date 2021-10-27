@@ -89,7 +89,7 @@ type
 implementation
 
 uses
-  Math, LazUTF8;
+  LazUTF8;
 
 const
   SST_Sheet = 'SST';
@@ -124,18 +124,18 @@ var
   currentText: string;
   currentRtParams: TsRichTextParams;
   currentFont: TsFont;
-  expectedText: array of string;
-  expectedRtParams: array of TsRichTextParams;
+  expectedText: array of string = nil;
+  expectedRtParams: array of TsRichTextParams = nil;
   expectedFont: Array[0..1] of TsFont;
   expectedFontIndex: Array[0..1] of Integer;
   i, j: Integer;
   col, row: Cardinal;
-  fnt: TsFont;
 
   function CreateString(ALen: Integer): String;
   var
     i: Integer;
   begin
+    Result := '';
     SetLength(Result, ALen);
     for i:=1 to ALen do
       Result[i] := char((i-1) mod 26 + ord('A'));
@@ -145,6 +145,7 @@ var
   var
     i: Integer;
   begin
+    Result := nil;
     SetLength(Result, AStrLen div 2);
     for i := 0 to High(Result) do begin
       Result[i].FirstIndex := i*2 + 1;
@@ -159,8 +160,6 @@ begin
 
   MyWorkbook := TsWorkbook.Create;
   try
-    fnt := MyWorkbook.GetDefaultFont;
-
     expectedFontIndex[0] := 1;
     expectedFontIndex[1] := 2;
     for j:=0 to 1 do

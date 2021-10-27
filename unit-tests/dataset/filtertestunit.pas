@@ -346,7 +346,7 @@ begin
       r := 1 + (i - Low(UNFILTERED));
       worksheet.WriteNumber(r, INT_COL, UNFILTERED[i].IntValue, nfFixed, 0);
       worksheet.WriteText(r, STRING_COL, UNFILTERED[i].StringValue);
-      worksheet.WriteText(r, WIDESTRING_COL, UNFILTERED[i].WideStringValue);
+      worksheet.WriteText(r, WIDESTRING_COL, UTF8Encode(UNFILTERED[i].WideStringValue));
     end;
 
     // Save

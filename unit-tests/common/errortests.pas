@@ -36,7 +36,7 @@ type
 implementation
 
 uses
-  StrUtils, fpsPalette, fpsRPN, xlsbiff5;
+  StrUtils, Graphics, fpsPalette, fpsRPN, xlsbiff5;
 
 const
   ERROR_SHEET = 'ErrorTest'; //worksheet name
@@ -165,6 +165,7 @@ begin
         // to file.
         for row := 0 to palette.Count-1 do
         begin
+          s := ColorToString(palette[row]);
           MyWorksheet.WriteText(row, 0, s);
           MyWorksheet.WriteFontColor(row, 0, palette[row]);
         end;

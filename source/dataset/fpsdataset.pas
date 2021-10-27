@@ -54,7 +54,7 @@ unit fpsDataset;
 
 {$mode ObjFPC}{$H+}
 {$R ../../resource/fpsdatasetreg.res}
-
+{$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 interface
 
 uses
@@ -691,7 +691,6 @@ procedure TsWorksheetDataset.CopyFromDataset(ADataset: TDataset;
 var
   i: Integer;
   fsrc, fdest: TField;
-  fd: TFieldDef;
   stream: TMemoryStream;
   bm: TBookmark;
 begin
@@ -709,7 +708,7 @@ begin
   FieldDefs.Clear;
   for fsrc in ADataset.Fields do
   begin
-    fd := AddFieldDef(fsrc.FieldName, fsrc.DataType, fsrc.Size, fsrc.FieldNo-1, CP_UTF8);
+    AddFieldDef(fsrc.FieldName, fsrc.DataType, fsrc.Size, fsrc.FieldNo-1, CP_UTF8);
     if fsrc is TAutoIncField then
     begin
       FAutoIncField := TAutoIncField(fsrc);
@@ -866,7 +865,6 @@ var
   r, c: Integer;
   cLast: cardinal;
   cell: PCell;
-  fd: TFieldDef;
   fn: String;
   ft: TFieldType;
   fs: Integer;
@@ -1903,7 +1901,6 @@ procedure TsWorksheetDataset.SetFieldData(Field: TField; Buffer: Pointer);
 var
   destBuffer: TRecordBuffer;
   idx: Integer;
-  fsize: Integer;
   {%H-}dt: TDateTime;
   dtr: TDateTimeRec;
   s: String;
@@ -2088,7 +2085,7 @@ procedure TsWorksheetDataset.SortOnField(const FieldName: String;
   const Options: TsSortOptions);
 var
   bm: TBookmark;
-  optns: TsSortOptionsArray;
+  optns: TsSortOptionsArray = nil;
 begin
   bm := GetBookmark;
   try
@@ -2146,7 +2143,7 @@ var
   P: Pointer;
   s: String = '';
   ws: WideString = '';
-  curr: Currency;
+  curr: Currency = 0;
 begin
   row := GetCurrentRowIndex;
   P := Buffer;

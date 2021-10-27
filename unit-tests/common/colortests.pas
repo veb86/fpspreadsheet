@@ -167,7 +167,7 @@ begin
       row := 0;
       col := 0;
       for i := 0 to palette.Count-1 do begin
-        MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+        MyWorksheet.WriteText(row, col, CELLTEXT);
         MyCell := MyWorksheet.WriteBackgroundColor(row, col, palette[i]);
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
@@ -255,7 +255,7 @@ begin
       row := 0;
       col := 0;
       for i := 0 to palette.Count-1 do begin
-        MyWorksheet.WriteUTF8Text(row, col, CELLTEXT);
+        MyWorksheet.WriteText(row, col, CELLTEXT);
         MyWorksheet.WriteFontColor(row, col, palette[i]);
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
@@ -308,17 +308,12 @@ end;
 
 procedure TSpreadWriteReadColorTests.TestWriteReadTabColor(
   AFormat: TsSpreadsheetFormat; ATabColor: TsColor);
-const
-  CELLTEXT = 'Color test';
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
-  row, col: Integer;
-  MyCell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
   expectedRGB: DWord;
   currentRGB: DWord;
-  i: Integer;
 begin
   if not (AFormat in [sfOOXML, sfExcel8, sfOpenDocument]) then
     exit;

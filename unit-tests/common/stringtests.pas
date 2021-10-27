@@ -24,8 +24,8 @@ interface
 uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpstypes, fpsallformats, fpsutils, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
+  Classes, SysUtils, fpcunit, testregistry,
+  fpstypes, {%H-}fpsallformats, fpsutils, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
 var
@@ -190,9 +190,9 @@ begin
     MyWorkSheet:=MyWorkBook.AddWorksheet(StringsSheet);
     for Row := Low(SollStrings) to High(SollStrings) do
     begin
-      MyWorkSheet.WriteUTF8Text(Row,0,SollStrings[Row]);
+      MyWorkSheet.WriteText(Row,0,SollStrings[Row]);
       // Some checks inside worksheet itself
-      ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
+      ActualString:=MyWorkSheet.ReadAsText(Row,0);
       CheckEquals(SollStrings[Row],ActualString,'Test value mismatch cell '+CellNotation(MyWorkSheet,Row));
     end;
     TempFile:=NewTempFile;
@@ -212,7 +212,7 @@ begin
     // Read test data from A column & compare if written=original
     for Row := Low(SollStrings) to High(SollStrings) do
     begin
-      ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
+      ActualString:=MyWorkSheet.ReadAsText(Row,0);
       CheckEquals(SollStrings[Row],ActualString,'Test value mismatch, cell '+CellNotation(MyWorkSheet,Row));
     end;
   finally
@@ -256,9 +256,9 @@ begin
       // We could use CheckException but then you can't pass parameters
       TestResult:=true;
       try
-        MyWorkSheet.WriteUTF8Text(Row,0,LocalNormStrings[Row]);
+        MyWorkSheet.WriteText(Row,0,LocalNormStrings[Row]);
         // Some checks inside worksheet itself
-        ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
+        ActualString:=MyWorkSheet.ReadAsText(Row,0);
         CheckEquals(length(LocalNormStrings[Row]),length(ActualString),
           'Test value mismatch cell '+CellNotation(MyWorkSheet,Row)+
           ' for string length.');
@@ -316,7 +316,7 @@ begin
     // Read test data from A column & compare if written=original
     for Row := Low(LocalNormStrings) to High(LocalNormStrings) do
     begin
-      ActualString:=MyWorkSheet.ReadAsUTF8Text(Row,0);
+      ActualString:=MyWorkSheet.ReadAsText(Row,0);
       // Allow for truncation of excessive strings by fpspreadsheet
       if length(LocalNormStrings[Row])>MaxBytesBIFF8 then
         CheckEquals(MaxBytesBIFF8,length(ActualString),

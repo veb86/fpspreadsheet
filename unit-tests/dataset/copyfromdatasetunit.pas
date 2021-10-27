@@ -5,9 +5,9 @@ unit CopyFromDatasetUnit;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry,
+  Classes, SysUtils, fpcunit, {%H-}testutils, testregistry,
   DB, dbf,
-  fpspreadsheet, fpsDataset;
+  fpsDataset;
 
 type
 
@@ -34,7 +34,6 @@ uses
 const
   DBF_FILE_NAME = 'testdata.dbf';
   FILE_NAME = 'testfile.xlsx';
-  SHEET_NAME = 'Sheet';
 
   STRING_FIELD = 'StringCol';
   INT_FIELD = 'IntegerCol';
@@ -80,7 +79,7 @@ begin
   dbf := CreateDbf;
 
   if DEBUG then
-  begin
+  {%H-}begin
     dbf.Close;
     dbf.Open;
   end;
@@ -91,7 +90,7 @@ begin
 
     // Save for debugging
     if DEBUG then
-    begin
+    {%H-}begin
       dataset.Close;
       dataset.Open;
     end;

@@ -17,8 +17,8 @@ uses
   {$ENDIF}
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry, testsutility,
-  fpstypes, fpsallformats, fpspreadsheet, fpscell, xlsbiff8;
+  Classes, SysUtils, fpcunit, testregistry, testsutility,
+  fpstypes, {%H-}fpsallformats, fpspreadsheet, fpscell, xlsbiff8;
 
 var
   // Norm to test against - list of strings that should occur in spreadsheet
@@ -177,7 +177,7 @@ type
 implementation
 
 uses
-  Math, TypInfo, fpsPatches, fpsutils, fpsnumformat, fpspalette, fpscsv;
+  Math, TypInfo, {%H-}fpsPatches, fpsutils, fpsnumformat, fpspalette, fpscsv;
 
 const
   FmtNumbersSheet = 'NumbersFormat'; //let's distinguish it from the regular numbers sheet
@@ -200,7 +200,6 @@ var
   i: Integer;
   fs: TFormatSettings;
   myworkbook: TsWorkbook;
-  ch: Char;
 begin
   // Set up norm - MUST match spreadsheet cells exactly
 
@@ -407,7 +406,7 @@ begin
           MyWorksheet.WriteCurrency(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col])
         else
           MyWorksheet.WriteNumber(Row, Col, SollNumbers[Row], SollNumberFormats[Col], SollNumberDecimals[Col]);
-        ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
+        ActualString := MyWorksheet.ReadAsText(Row, Col);
         CheckEquals(SollNumberStrings[Row, Col], ActualString,
           'Test unsaved string mismatch, cell ' + CellNotation(MyWorksheet,Row,Col));
       end;
@@ -433,7 +432,7 @@ begin
     for Row := Low(SollNumbers) to High(SollNumbers) do
       for Col := Low(SollNumberFormats) to High(SollNumberFormats) do
       begin
-        ActualString := MyWorkSheet.ReadAsUTF8Text(Row,Col);
+        ActualString := MyWorkSheet.ReadAsText(Row,Col);
         ExpectedString := SollNumberStrings[Row, Col];
         if (ExpectedString <> ActualString) then
         begin
@@ -520,7 +519,7 @@ begin
         if (AFormat = sfCSV) and (SollDateTimeFormats[Col] in [nfCustom, nfTimeInterval]) then
           Continue;  // No chance for csv to detect custom formats without further information                                 MyWorksheet.WriteDateTime(Row, Col, SollDateTimes[Row], SollDateTimeFormats[Col], SollDateTimeFormatStrings[Col]);
         MyWorksheet.WriteDateTime(Row, Col, SollDateTimes[Row], SollDateTimeFormats[Col], SollDateTimeFormatStrings[Col]);
-        ActualString := MyWorksheet.ReadAsUTF8Text(Row, Col);
+        ActualString := MyWorksheet.ReadAsText(Row, Col);
         CheckEquals(
           Lowercase(SollDateTimeStrings[Row, Col]),
           Lowercase(ActualString),
@@ -556,7 +555,7 @@ begin
           then
             Continue;  // No chance for csv to detect a datetime format < 1 (must be time only)
         end;
-        ActualString := MyWorksheet.ReadAsUTF8Text(Row,Col);
+        ActualString := MyWorksheet.ReadAsText(Row,Col);
         CheckEquals(
           Lowercase(SollDateTimeStrings[Row, Col]),
           Lowercase(ActualString),
@@ -636,7 +635,7 @@ begin
       if AFormat = sfExcel2 then
       begin
         // BIFF2 can only do horizontal alignment --> no need for vertical alignment.
-        MyWorksheet.WriteUTF8Text(row, col, HORALIGN_TEXT[horAlign]);
+        MyWorksheet.WriteText(row, col, HORALIGN_TEXT[horAlign]);
         MyWorksheet.WriteHorAlignment(row, col, horAlign);
         MyCell := MyWorksheet.FindCell(row, col);
         if MyCell = nil then
@@ -650,7 +649,7 @@ begin
       else
         for vertAlign in TsVertAlignment do
         begin
-          MyWorksheet.WriteUTF8Text(row, col, HORALIGN_TEXT[horAlign]+'/'+VERTALIGN_TEXT[vertAlign]);
+          MyWorksheet.WriteText(row, col, HORALIGN_TEXT[horAlign]+'/'+VERTALIGN_TEXT[vertAlign]);
           MyWorksheet.WriteHorAlignment(row, col, horAlign);
           MyWorksheet.WriteVertAlignment(row, col, vertAlign);
           MyCell := MyWorksheet.FindCell(row, col);
@@ -775,8 +774,6 @@ var
   col, row: Integer;
   style: TsFillStyle;
   TempFile: String;
-  actualstyle: TsFillStyle;
-  actualcolor: TsColor;
   patt: TsFillPattern;
 begin
   // Write out all test values
@@ -785,7 +782,7 @@ begin
     MyWorkSheet:= MyWorkBook.AddWorksheet(BackgroundSheet);
     for style in TsFillStyle do begin
       row := ord(style);
-      MyWorksheet.WriteUTF8Text(row, 0, GetEnumName(TypeInfo(TsFillStyle), ord(style)));
+      MyWorksheet.WriteText(row, 0, GetEnumName(TypeInfo(TsFillStyle), ord(style)));
       MyWorksheet.WriteBackground(row, 1, style, PATTERN_COLOR, BK_COLOR);
       MyWorksheet.WriteBackground(row, 2, style, PATTERN_COLOR, scTransparent);
     end;
@@ -932,7 +929,7 @@ begin
       // It is important for the test to write contents to the cell. Without it
       // the first cell (col=0) would not even contain a format and would be
       // dropped by the ods reader resulting in a matching error.
-      MyCell := MyWorksheet.WriteUTF8Text(row, col, GetBordersAsText(SollBorders[col]));
+      MyCell := MyWorksheet.WriteText(row, col, GetBordersAsText(SollBorders[col]));
       MyWorksheet.WriteBorders(MyCell, SollBorders[col]);
     end;
 
@@ -1163,7 +1160,6 @@ var
   ActualColWidth: Single;
   Col: Integer;
   lpCol: PCol;
-  lCol: TCol;
   TempFile: string; //write xls/xml to this file and read back from it
 begin
   {// Not needed: use workbook.writetofile with overwrite=true
@@ -1449,14 +1445,14 @@ begin
   MyWorkbook := TsWorkbook.Create;
   try
     MyWorkSheet:= MyWorkBook.AddWorksheet(WordwrapSheet);
-    MyWorksheet.WriteUTF8Text(0, 0, LONGTEXT);
+    MyWorksheet.WriteText(0, 0, LONGTEXT);
     MyWorksheet.WriteUsedFormatting(0, 0, [uffWordwrap]);
     MyCell := MyWorksheet.FindCell(0, 0);
     if MyCell = nil then
       fail('Error in test code. Failed to get word-wrapped cell.');
     CheckEquals(true, MyWorksheet.ReadWordwrap(MyCell),
       'Test unsaved word wrap mismatch cell ' + CellNotation(MyWorksheet,0,0));
-    MyWorksheet.WriteUTF8Text(1, 0, LONGTEXT);
+    MyWorksheet.WriteText(1, 0, LONGTEXT);
     MyWorksheet.WriteUsedFormatting(1, 0, []);
     MyCell := MyWorksheet.FindCell(1, 0);
     if MyCell = nil then
@@ -1536,7 +1532,6 @@ var
   cell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
   r1, c1, r2, c2: Cardinal;
-  r, c: Cardinal;
   actual, expected: String;
   i: Integer;
 begin
@@ -1547,7 +1542,7 @@ begin
     for i:=0 to High(TEST_RANGES) do
     begin
       ParseCellRangeString(TEST_RANGES[i], r1, c1, r2, c2);
-      Myworksheet.WriteUTF8Text(r1, c1, CELL_TEXT);
+      Myworksheet.WriteText(r1, c1, CELL_TEXT);
       Myworksheet.MergeCells(r1, c1, r2, c2);
     end;
 
@@ -1564,7 +1559,7 @@ begin
     for i:=0 to High(TEST_RANGES) do
     begin
       ParseCellRangeString(TEST_RANGES[i], r1, c1, r2, c2);
-      Myworksheet.WriteUTF8Text(r1, c1, CELL_TEXT);
+      Myworksheet.WriteText(r1, c1, CELL_TEXT);
       Myworksheet.MergeCells(r1, c1, r2, c2);
       Myworksheet.UnmergeCells(r1, c1);
     end;
@@ -1601,7 +1596,7 @@ begin
       end else
       if not (AFormat in [sfExcel2, sfExcel5]) then
         fail('Unmerged cell found, ' + CellNotation(MyWorksheet, r1, c1));
-      CheckEquals(CELL_TEXT, MyWorksheet.ReadAsUTF8Text(cell),
+      CheckEquals(CELL_TEXT, MyWorksheet.ReadAsText(cell),
         'Merged cell content mismatch, cell '+ CellNotation(MyWorksheet, r1, c1));
     end;
 
@@ -1626,7 +1621,7 @@ begin
       end else
       if AFormat <> sfExcel5 then
         fail('Unmerged cell found, ' + CellNotation(MyWorksheet, r1, c1));
-      CheckEquals('', MyWorksheet.ReadAsUTF8Text(cell),
+      CheckEquals('', MyWorksheet.ReadAsText(cell),
         'Merged cell content mismatch, cell '+CellNotation(MyWorksheet, r1, c1));
     end;
 
@@ -1639,7 +1634,7 @@ begin
       cell := MyWorksheet.FindCell(r1, c1);
       if MyWorksheet.IsMergeBase(cell) then
         fail('Unmerged cell expected, cell ' + CellNotation(MyWorksheet, r1, c1));
-      CheckEquals(CELL_TEXT, MyWorksheet.ReadAsUTF8Text(cell),
+      CheckEquals(CELL_TEXT, MyWorksheet.ReadAsText(cell),
         'Merged/unmerged cell content mismatch, cell '+CellNotation(MyWorksheet, r1, c1));
     end;
 
@@ -1691,11 +1686,9 @@ var
   MyWorksheet: TsWorksheet;
   cell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
-  r1, c1, r2, c2: Cardinal;
   r, c: Cardinal;
   fnt: TsFont;
   actual, expected: String;
-  i: Integer;
   palette: TsPalette;
 begin
   palette := TsPalette.Create;

@@ -12,9 +12,8 @@ interface
 uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry, testsutility,
-  Math, Variants,
-  fpsTypes, fpsUtils, fpsAllFormats, fpSpreadsheet, fpsConditionalFormat;
+  Classes, SysUtils, fpcunit, testregistry, testsutility, Variants,
+  fpsTypes, fpsUtils, {%H-}fpsAllFormats, fpSpreadsheet, fpsConditionalFormat;
 
 type
   { TSpreadWriteReadCFTests }

@@ -8,9 +8,7 @@ uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testregistry,
-  fpstypes, fpspreadsheet, fpsnumformat
-  {and a project requirement for lclbase for utf8 handling},
-  testsutility;
+  fpstypes, fpspreadsheet, fpsnumformat;
 
 type
   TParserTestData = record
@@ -384,7 +382,6 @@ end;
 procedure TSpreadNumFormatParserTests.TestRounding;
 var
   i: Integer;
-  parser: TsNumFormatParser;
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
   actual: String;

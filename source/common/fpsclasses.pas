@@ -260,7 +260,7 @@ var
   currentSheet, changedSheet: TsBasicWorksheet;
   rng: TsCellRange;
 begin
-  colIndex := PtrInt(AData1);
+  colIndex := {%H-}PtrInt(AData1);
   changedSheet := TsBasicWorksheet(AData2);
   if AExprNode is TsCellExprNode then
   begin
@@ -321,7 +321,7 @@ var
   changedSheet: TsBasicWorksheet;
   currentSheet, referencedSheet, referencedSheet2: TsBasicWorksheet;
 begin
-  rowIndex := PtrInt(AData1);
+  rowIndex := {%H-}PtrInt(AData1);
   changedSheet := TsBasicWorksheet(AData2);
 
   if AExprNode is TsCellExprNode then
@@ -386,7 +386,7 @@ var
   referencedSheet, referencedSheet2: TsBasicWorksheet;
   rng: TsCellRange;
 begin
-  colIndex := PtrInt(AData1);
+  colIndex := {%H-}PtrInt(AData1);
   changedSheet := TsBasicWorksheet(AData2);
   if AExprNode is TsCellExprNode then
   begin
@@ -437,7 +437,7 @@ var
   referencedSheet, referencedSheet2: TsBasicWorksheet;
   rng: TsCellRange;
 begin
-  rowIndex := PtrInt(AData1);
+  rowIndex := {%H-}PtrInt(AData1);
   changedSheet := TsBasicWorksheet(AData2);
   if AExprNode is TsCellExprNode then
   begin
@@ -549,8 +549,8 @@ begin
         if not InRange(LongInt(curr^.Col), FStartCol, FEndCol) then
         begin
           rc := curr^;
-          if LongInt(rc.Col) < FStartCol then
-            dec(LongInt(rc.Row));
+          if rc.Col < FStartCol then
+            dec(rc.Row);
           rc.Col := FEndCol;
           FCurrentNode := FTree.FindNearest(@rc);
           if FCurrentNode <> nil then begin
@@ -571,17 +571,17 @@ begin
       begin
         curr := PsRowCol(FCurrentNode.Data);
         rc.Col := FStartCol;
-        if LongInt(rc.Col) > FEndCol then inc(rc.Row);
+        if rc.Col > FEndCol then inc(rc.Row);
         if not InRange(LongInt(curr^.Col), FStartCol, FEndCol) then
         begin
           rc := curr^;
-          if LongInt(rc.Col) > FEndCol then inc(rc.Row);
+          if rc.Col > FEndCol then inc(rc.Row);
           rc.Col := FStartCol;
           FCurrentNode := FTree.FindNearest(@rc);
           if FCurrentNode <> nil then
           begin
             curr := PsRowCol(FCurrentNode.Data);
-            if (LongInt(curr^.Col) < FStartCol) then
+            if (Int64(curr^.Col) < FStartCol) then
               while (FCurrentNode <> nil) and not InRange(curr^.Col, FStartCol, FEndCol) do
               begin
                 FCurrentNode := FTree.FindSuccessor(FCurrentNode);

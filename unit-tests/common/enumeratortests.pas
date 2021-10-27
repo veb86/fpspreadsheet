@@ -177,7 +177,7 @@ begin
     for row := 0 to NUM_ROWS-1 do
       for col := 0 to NUM_COLS-1 do
         if (withGaps and odd(row + col)) or (not withGaps) then
-          MyWorksheet.WriteComment(row, col, IntToStr(row*10000 + col));
+          MyWorksheet.WriteComment(row, col, IntToStr(QWord(row)*10000 + col));
 
     case what of
       1: enumerator := MyWorksheet.Comments.GetEnumerator;
@@ -189,7 +189,7 @@ begin
       row := comment^.Row;
       col := comment^.Col;
       if (withgaps and odd(row + col)) or (not withgaps) then
-        expected := IntToStr(row * 10000 + col)
+        expected := IntToStr(QWord(row) * 10000 + col)
       else
         expected := '';
       actual := MyWorksheet.ReadComment(row, col);

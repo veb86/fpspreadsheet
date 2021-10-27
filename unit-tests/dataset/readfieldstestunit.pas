@@ -9,7 +9,7 @@ unit ReadFieldsTestUnit;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry,
+  Classes, SysUtils, fpcunit, {%H-}testutils, testregistry,
   DB,
   fpspreadsheet, fpstypes, fpsdataset;
 
@@ -201,7 +201,6 @@ var
   dt: TDateTime;
   workbook: TsWorkbook;
   worksheet: TsWorksheet;
-  n: Integer;
 begin
   dataset := CreateAndOpenDataset(AutoFieldDefs);
   try

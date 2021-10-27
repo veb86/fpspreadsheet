@@ -15,8 +15,8 @@ Adding tests/test data:
 uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpstypes, fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
+  Classes, SysUtils, fpcunit, testregistry,
+  fpstypes, {%H-}fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   fpsutils, fpsstreams, fpshtmlutils, testsutility, md5;
 
 type
@@ -226,7 +226,7 @@ begin
   MyWorkbook:=TsWorkbook.Create;
   try
     MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
-    MyWorkSheet.WriteUTF8Text(0,0,FirstFileCellText);
+    MyWorkSheet.WriteText(0,0,FirstFileCellText);
     TempFile:=NewTempFile;
     MyWorkBook.WriteToFile(TempFile, sfExcel8, false);
   finally
@@ -241,7 +241,7 @@ begin
   MyWorkbook:=TsWorkbook.Create;
   try
     MyWorkSheet:=MyWorkBook.AddWorksheet(InternalSheet);
-    MyWorkSheet.WriteUTF8Text(0,0,SecondFileCellText);
+    MyWorkSheet.WriteText(0,0,SecondFileCellText);
     MyWorkBook.WriteToFile(TempFile,sfExcel8,true);
   finally
     MyWorkbook.Free;
@@ -277,7 +277,7 @@ begin
       +'cell '+CellNotation(MyWorkSheet,Row,Column));
 
     //Check reading as string, convert to date & compare
-    ActualDTString:=MyWorkSheet.ReadAsUTF8Text(Row,Column);
+    ActualDTString:=MyWorkSheet.ReadAsText(Row,Column);
     ActualDT:=StrToDateTimeDef(ActualDTString,EncodeDate(1906,1,1));
     CheckEquals(TestDT,ActualDT,'Date/time mismatch using ReadAsUTF8Text');
 
@@ -293,8 +293,8 @@ const
 var
   tempFileName: String;
   stream: TStream;
-  writedata: array of Byte;
-  readdata: array of Byte;
+  writedata: array of Byte = nil;
+  readdata: array of Byte = nil;
   i, n, nread: Integer;
 begin
   RandSeed := 0;
@@ -380,7 +380,9 @@ const
   BUFSIZE = 1024;
 var
   stream: TBufStream;
-  readBuf, writeBuf1, writeBuf2: array of byte;
+  readBuf: array of byte = nil;
+  writeBuf1: array of byte = nil;
+  writeBuf2: array of byte = nil;
   nRead, nWrite1, nWrite2: Integer;
   i: Integer;
 begin
@@ -430,8 +432,8 @@ begin
     stream.WriteBuffer(writeBuf2[0], nWrite2);
 
     // The stream pointer must be at 100+2000, same for the size
-    CheckEquals(nWrite1+nWrite2, stream.Position, 'Stream position mismatch (#9)');
-    CheckEquals(nWrite1+nWrite2, stream.Size, 'Stream size mismatch (#10)');
+    CheckEquals(Int64(nWrite1)+nWrite2, stream.Position, 'Stream position mismatch (#9)');
+    CheckEquals(Int64(nWrite1)+nWrite2, stream.Size, 'Stream size mismatch (#10)');
 
     // Read the last 10 bytes and compare
     Stream.Seek(10, soFromEnd);
@@ -549,7 +551,6 @@ end;
 procedure TSpreadInternalTests.TestCellString_R1C1;
 var
   r,c: Cardinal;
-  s: String;
   flags: TsRelFlags;
   res: Boolean;
 begin
@@ -671,7 +672,6 @@ end;
 procedure TSpreadInternalTests.TestCellRangeString_R1C1;
 var
   r1,c1,r2,c2: Cardinal;
-  s: String;
   flags: TsRelFlags;
   res: Boolean;
 begin
@@ -760,18 +760,13 @@ begin
 end;
 
 procedure TSpreadInternalTests.FractionTest(AMaxDigits: Integer);
-const
-  N = 300;
 var
-  j: Integer;
   sollNum, sollDenom: Integer;
   sollValue: Double;
   actualNum, actualDenom: Int64;
   max: Integer;
-  prec: Double;
 begin
   max := Round(IntPower(10, AMaxDigits));
-  prec := 0.001/max;
   for sollDenom := 1 to max-1 do
     for sollNum := 1 to sollDenom-1 do begin
       sollValue := StrToFloat(FormatFloat('0.000000000', sollNum/sollDenom));
@@ -811,7 +806,7 @@ type
 const
   HtmlRTParams: array[0..3] of THtmlRichTextParam = (
     (HTML: 'ABC'; PlainText: 'ABC';
-      NumRichTextParams: 0),
+      NumRichTextParams: 0{%H-}),
     (HTML: 'ABC<b>abc</b>'; PlainText: 'ABCabc';
       NumRichTextParams: 1;
       RichTextParams: (
@@ -867,7 +862,7 @@ procedure TSpreadInternalTests.RichTextToHtmlTest(ATestIndex: Integer);
 var
   book: TsWorkbook;
   fnt: TsFont;
-  rtparams: TsRichTextParams;
+  rtparams: TsRichTextParams = nil;
   html: String;
   i: Integer;
 begin

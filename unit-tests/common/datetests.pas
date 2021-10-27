@@ -17,8 +17,8 @@ interface
 uses
   // Not using lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpstypes, fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
+  Classes, SysUtils, fpcunit, testregistry,
+  fpstypes, {%H-}fpsallformats, fpspreadsheet, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
 var
@@ -485,7 +485,6 @@ var
   actualDateTime: TDateTime;
   actualStr: String;
   r, c: Cardinal;
-  h, m, s, ms: Word;
   t: TTime;
   tempFile: String;
 begin
@@ -630,7 +629,7 @@ begin
   // We know these are valid time/date/datetime values....
   // Just test for empty string; we'll probably end up in a maze of localized date/time stuff
   // if we don't.
-  CheckNotEquals(TestWorkSheet.ReadAsUTF8Text(Row, 0), '',
+  CheckNotEquals(TestWorkSheet.ReadAsText(Row, 0), '',
     'Could not read date time as string for cell '+CellNotation(TestWorkSheet,Row));
 
   if not(TestWorkSheet.ReadAsDateTime(Row, 0, ActualDateTime)) then
@@ -1899,7 +1898,6 @@ var
   i: Integer;
   actualDateTime: TDateTime;
   ok: boolean;
-  cell: PCell;
   tempFile: String;
   ErrorMargin: TDateTime; //margin for error in comparison test
 begin

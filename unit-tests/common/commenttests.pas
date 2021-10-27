@@ -84,8 +84,6 @@ var
 { TSpreadWriteReadCommentTests }
 
 procedure TSpreadWriteReadCommentTests.SetUp;
-var
-  i: Integer;
 begin
   inherited SetUp;
 

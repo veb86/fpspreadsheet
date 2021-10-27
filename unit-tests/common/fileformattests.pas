@@ -64,9 +64,6 @@ const
 var
   MyWorksheet: TsWorksheet;
   MyWorkbook: TsWorkbook;
-  row, col: Integer;
-  MyCell: PCell;
-  value: Boolean;
   TempFile: string; //write xls/xml to this file and read back from it
   actualText: String;
 begin
@@ -93,7 +90,7 @@ begin
       // If the tests gets here the format was detected correctly.
       // Quickly check the cell content
       MyWorksheet := MyWorkbook.GetFirstWorksheet;
-      actualText := MyWorksheet.ReadAsUTF8Text(0, 0);
+      actualText := MyWorksheet.ReadAsText(0, 0);
       CheckEquals(EXPECTED_TEXT, actualText, 'Cell mismatch in A1');
     except
       fail('Cannot read file with format ' + GetSpreadFormatName(ord(AFormat)));

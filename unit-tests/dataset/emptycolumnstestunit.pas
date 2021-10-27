@@ -137,7 +137,6 @@ const
   NumRows = 10;
 var
   r, c: Integer;
-  s: String;
   workbook: TsWorkbook;
   worksheet: TsWorksheet;
 begin

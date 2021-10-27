@@ -217,7 +217,7 @@ type
       AWorksheet: TsBasicWorksheet): Int64;
     procedure WriteComment(AStream: TStream; ACell: PCell); override;
     procedure WriteComments(AStream: TStream; AWorksheet: TsBasicWorksheet);
-    procedure WriteConditionalFormatting(AStream: TStream; AWorksheet: TsBasicWorksheet);
+    procedure WriteConditionalFormatting({%H-}AStream: TStream; {%H-}AWorksheet: TsBasicWorksheet);
     procedure WriteDefinedName(AStream: TStream; AWorksheet: TsBasicWorksheet;
        const AName: String; AIndexToREF, ASheetIndex: Word;
        AKind: TsBIFFExternKind); reintroduce;

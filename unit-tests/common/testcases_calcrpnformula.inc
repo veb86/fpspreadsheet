@@ -446,7 +446,7 @@
   // Unary plus of cell value
   inc(Row);
   formula := '+(B2)';
-  MyWorksheet.WriteUTF8Text(Row, 0, formula);
+  MyWorksheet.WriteText(Row, 0, formula);
   if UseRPNFormula then
     MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
       RPNCellvalue('B2',

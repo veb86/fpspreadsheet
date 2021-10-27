@@ -2741,34 +2741,11 @@ procedure TsSpreadExcelXMLWriter.WriteDateTime(AStream: TStream;
 var
   valueStr: String = '';
   ExcelDate: TDateTime;
-  nfp: TsNumFormatParams;
-  fmt: PsCellFormat;
 begin
   Unused(ARow, ACol);
-  (*
-  fmt := (FWorkbook as TsWorkbook).GetPointerToCellFormat(ACell^.FormatIndex);
-  if (fmt <> nil) and (uffNumberFormat in fmt^.UsedFormattingFields) then
-  begin
-    nfp := (FWorkbook as TsWorkbook).GetNumberFormat(fmt^.NumberFormatIndex);
-    if IsTimeIntervalFormat(nfp) then
-      valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', AValue);
-    {
-    if IsTimeIntervalFormat(nfp) or IsTimeFormat(nfp) then
-    begin
-      case FDateMode of
-        dm1900: ExcelDate := AValue + DATEMODE_1900_BASE;
-        dm1904: ExcelDate := AValue + DATEMODE_1904_BASE;
-      end;
-      valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', AValue);
-    end;
-    }
-  end;
-  if valueStr = '' then
-  begin
-  *)
-    ExcelDate := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
-    valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', ExcelDate);
-  //end;
+
+  ExcelDate := ConvertDateTimeToExcelDateTime(AValue, FDateMode);
+  valueStr := FormatDateTime('yyyy-mm-dd"T"hh:nn:ss.zzz', ExcelDate);
 
   AppendToStream(AStream, Format(CELL_INDENT +
     '<Cell%s%s%s%s%s>' + LF + VALUE_INDENT + // colIndex, style, formula, hyperlink, merge

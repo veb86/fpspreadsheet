@@ -18,8 +18,8 @@ interface
 uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testutils, testregistry,
-  fpstypes, fpsallformats, fpspreadsheet, fpsexprparser,
+  Classes, SysUtils, fpcunit, testregistry,
+  fpstypes, {%H-}fpsallformats, fpspreadsheet, fpsexprparser,
   xlsbiff8 {and a project requirement for lclbase for utf8 handling},
   testsutility;
 
@@ -133,7 +133,7 @@ uses
 
 var
   // Array containing the "true" results of the formulas, for comparison
-  SollValues: array of TsExpressionResult;
+  SollValues: array of TsExpressionResult = nil;
 
 // Helper for statistics tests
 const
@@ -210,7 +210,7 @@ begin
       cell := MyWorksheet.FindCell(Row, 1);
       if HasFormula(cell) then begin
         actual := MyWorksheet.ReadFormulaAsString(cell);
-        expected := MyWorksheet.ReadAsUTF8Text(Row, 0);
+        expected := MyWorksheet.ReadAsText(Row, 0);
         CheckEquals(expected, actual, 'Test read formula mismatch, cell '+CellNotation(MyWorkSheet,Row,1));
       end;
     end;
@@ -451,7 +451,7 @@ begin
 
     for Row := 0 to MyWorksheet.GetLastRowIndex do
     begin
-      formula := MyWorksheet.ReadAsUTF8Text(Row, 0);
+      formula := MyWorksheet.ReadAsText(Row, 0);
       cell := MyWorksheet.FindCell(Row, 1);
       if (cell = nil) then
         fail('Error in test code: Failed to get cell ' + CellNotation(MyWorksheet, Row, 1));
@@ -759,7 +759,7 @@ var
   tempFile: string;    //write xls/xml to this file and read back from it
   actual, expected: TsExpressionResult;
   cell: PCell;
-  sollValues: array of TsExpressionResult;
+  sollValues: array of TsExpressionResult = nil;
   formula, actualformula: String;
 begin
   TempFile := GetTempFileName;

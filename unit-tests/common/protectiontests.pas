@@ -12,8 +12,7 @@ uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testregistry,
-  fpstypes, fpspreadsheet, //xlsbiff2, xlsbiff5, xlsbiff8 {and a project requirement for lclbase for utf8 handling},
-  testsutility;
+  fpstypes, fpspreadsheet;
 
 type
   { TSpreadWriteReadProtectionTests }
@@ -201,19 +200,12 @@ end;
 
 procedure TSpreadWriteReadProtectionTests.TestWriteRead_WorksheetProtection(
   AFormat: TsSpreadsheetFormat; ACondition: Integer);
-const
-  ALL_SHEET_PROTECTIONS = [
-    spFormatCells, spFormatColumns, spFormatRows,
-    spDeleteColumns, spDeleteRows, spInsertColumns, spInsertRows,
-    spInsertHyperlinks, spSort, spObjects,
-    spSelectLockedCells, spSelectUnlockedCells
-  ];    // NOTE: spCells is handled separately
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
   TempFile: string; //write xls/xml to this file and read back from it
   expected, actual: TsWorksheetProtections;
-  msg: String;
+  msg: String = '';
 begin
   TempFile := GetTempFileName;
 
@@ -302,7 +294,7 @@ var
   MyWorksheet: TsWorksheet;
   cell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
-  expected, actual: TsCellProtections;
+  actual: TsCellProtections;
   msg: String;
 begin
   TempFile := GetTempFileName;
@@ -375,10 +367,8 @@ procedure TSpreadWriteReadProtectionTests.TestWriteRead_Passwords(
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
-  cell: PCell;
   TempFile: string; //write xls/xml to this file and read back from it
   bi, si, cinfo: TsCryptoInfo;
-  msg: String;
 begin
   TempFile := GetTempFileName;
 

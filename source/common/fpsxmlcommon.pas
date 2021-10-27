@@ -232,8 +232,6 @@ begin
 end;
 
 function XMLQuote(AText: String): String;
-var
-  i: Integer;
 begin
   if AText <> '' then
     Result := StringReplace(AText, '"', '&quot;', [rfReplaceAll])

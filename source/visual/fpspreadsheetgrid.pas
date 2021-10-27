@@ -13,6 +13,7 @@
 unit fpspreadsheetgrid;
 
 {$mode objfpc}{$H+}
+{$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 {$I fps.inc}
 
 {.$DEFINE GRID_DEBUG}
@@ -307,7 +308,7 @@ type
     function GetCellText(ACol, ARow: Integer; ATrim: Boolean = true): String;
     function GetEditText(ACol, ARow: Integer): String; override;
     function GetDefaultColumnTitle(Column: Integer): string; override;
-    function GetIsCellTitle(ACol, ARow: Integer): boolean; override;
+    function GetIsCellTitle({%H-}ACol, ARow: Integer): boolean; override;
     function HasBorder(ACell: PCell; ABorder: TsCellBorder): Boolean;
     procedure HeaderSizing(const IsColumn:boolean; const AIndex,ASize:Integer); override;
     procedure HeaderSized(IsColumn: Boolean; AIndex: Integer); override;

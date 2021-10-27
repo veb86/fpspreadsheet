@@ -287,7 +287,7 @@ const
 var
   AES_Cipher: TDCP_rijndael;
 
-  ConcArr : TBytes;
+  ConcArr : TBytes = nil;
   LastHash: TSHA1Digest;
 
   Iterator, i: DWord;
@@ -375,12 +375,12 @@ begin
   // 2. Decrypt the EncryptedVerifier
   AES_Cipher := TDCP_rijndael.Create(nil);
   AES_Cipher.Init( FEncryptionKey[0], FEncInfo.Header.KeySize, nil );
-  AES_Cipher.DecryptECB(FEncInfo.Verifier.EncryptedVerifier[0] , Verifier[0]);
+  AES_Cipher.DecryptECB(FEncInfo.Verifier.EncryptedVerifier[0] , {%H-}Verifier[0]);
 
   // 3. Decrypt the DecryptedVerifierHash
   AES_Cipher.Burn;
   AES_Cipher.Init( FEncryptionKey[0], FEncInfo.Header.KeySize, nil );
-  AES_Cipher.DecryptECB(FEncInfo.Verifier.EncryptedVerifierHash[0] , VerifierHash[0]);
+  AES_Cipher.DecryptECB(FEncInfo.Verifier.EncryptedVerifierHash[0] , {%H-}VerifierHash[0]);
   AES_Cipher.DecryptECB(FEncInfo.Verifier.EncryptedVerifierHash[16], VerifierHash[16]);
   AES_Cipher.Free;
 
@@ -429,8 +429,8 @@ var
   OLEDocument: TOLEDocument;
 
   AES_Cipher :  TDCP_rijndael;
-  inData  : TBytes;
-  outData : TBytes;
+  inData  : TBytes = nil;
+  outData : TBytes = nil;
   StreamSize : QWord;
   KeySizeByte: Integer;
 
