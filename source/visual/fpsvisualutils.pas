@@ -8,9 +8,14 @@ uses
   Classes, SysUtils, Graphics,
   fpstypes, fpspreadsheet;
 
+function Convert_Color_to_sColor(AColor: TColor): TsColor;
+function Convert_sColor_to_Color(sColor: TsColor): TColor;
+
+function Convert_FontStyle_to_sFontStyle(AFontStyle: TFontStyles): TsFontStyles;
+function Convert_sFontStyle_to_FontStyle(sFontStyle: TsFontStyles): TFontStyles;
+
 procedure Convert_sFont_to_Font(sFont: TsFont; AFont: TFont); overload;
 procedure Convert_sFont_to_Font(AWorkbook: TsWorkbook; sFont: TsFont; AFont: TFont); overload; deprecated;
-
 procedure Convert_Font_to_sFont(AFont: TFont; sFont: TsFont); overload;
 procedure Convert_Font_to_sFont(AWorkbook: TsWorkbook; AFont: TFont; sFont: TsFont); overload; deprecated;
 
@@ -114,6 +119,33 @@ const
   SUBSCRIPT_SUPERSCRIPT_FACTOR = 0.66;
 
 {@@ ----------------------------------------------------------------------------
+  Converts a spreadsheet color to a canvas color used for painting.
+
+  @param  sColor     Color parameter as used by fpspreadsheet (input)
+  @result            Color as used by TCanvas for painting (output)
+-------------------------------------------------------------------------------}
+function Convert_sColor_to_Color(sColor: TsColor): TColor;
+begin
+  Result := TColor(sColor and $00FFFFFF);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts a spreadsheet font style to a canvas font style used for painting.
+
+  @param  sFontStyle      Font style as used by fpspreadsheet (input)
+  @result                 Font style as used by TCanvas for painting (output)
+-------------------------------------------------------------------------------}
+function Convert_sFontStyle_to_FontStyle(sFontStyle: TsFontStyles): TFontStyles;
+begin
+  Result := [];
+  if fssBold in sFontStyle then Include(Result, fsBold);
+  if fssItalic in sFontStyle then Include(Result, fsItalic);
+  if fssUnderline in sFontStyle then Include(Result, fsUnderline);
+  if fssStrikeout in sFontStyle then Include(Result, fsStrikeout);
+end;
+  
+  
+{@@ ----------------------------------------------------------------------------
   Converts a spreadsheet font to a font used for painting (TCanvas.Font).
 
   @param  sFont      Font as used by fpspreadsheet (input)
@@ -124,12 +156,8 @@ begin
   if Assigned(AFont) and Assigned(sFont) then begin
     AFont.Name := sFont.FontName;
     AFont.Size := round(sFont.Size);
-    AFont.Style := [];
-    if fssBold in sFont.Style then AFont.Style := AFont.Style + [fsBold];
-    if fssItalic in sFont.Style then AFont.Style := AFont.Style + [fsItalic];
-    if fssUnderline in sFont.Style then AFont.Style := AFont.Style + [fsUnderline];
-    if fssStrikeout in sFont.Style then AFont.Style := AFont.Style + [fsStrikeout];
-    AFont.Color := TColor(sFont.Color and $00FFFFFF);
+    AFont.Style := Convert_sFontStyle_to_FontStyle(sFont.Style);
+    AFont.Color := Convert_sColor_to_Color(sFont.Color);
   end;
 end;
 
@@ -137,6 +165,33 @@ procedure Convert_sFont_to_Font(AWorkbook: TsWorkbook; sFont: TsFont; AFont: TFo
 begin
   Unused(AWorkbook);
   Convert_sFont_to_Font(sFont, AFont);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts a color used for painting (TColor) to a spreadsheet color (TsColor).
+
+  @param  AColor  Color as used by TCanvas for painting (input)
+  @result         Color as used by fpspreadsheet (output)
+-------------------------------------------------------------------------------}
+function Convert_Color_to_sColor(AColor: TColor): TsColor;
+begin
+  Result := ColorToRGB(AColor) and $00FFFFFF;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts a font style used for painting (TCanvas.Font.Style) to a 
+  spreadsheet font style.
+
+  @param  AFontStyle  Font style as used by TCanvas for painting (input)
+  @result             Font style as used by fpspreadsheet (output)
+-------------------------------------------------------------------------------}
+function Convert_FontStyle_to_sFontStyle(AFontStyle: TFontStyles): TsFontStyles;
+begin
+  Result := [];
+  if fsBold in AFontStyle then Include(Result, fssBold);
+  if fsItalic in AFontStyle then Include(Result, fssItalic);
+  if fsUnderline in AFontStyle then Include(Result, fssUnderline);
+  if fsStrikeout in AFontStyle then Include(Result, fssStrikeout);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -150,11 +205,7 @@ begin
   if Assigned(AFont) and Assigned(sFont) then begin
     sFont.FontName := AFont.Name;
     sFont.Size := AFont.Size;
-    sFont.Style := [];
-    if fsBold in AFont.Style then Include(sFont.Style, fssBold);
-    if fsItalic in AFont.Style then Include(sFont.Style, fssItalic);
-    if fsUnderline in AFont.Style then Include(sFont.Style, fssUnderline);
-    if fsStrikeout in AFont.Style then Include(sFont.Style, fssStrikeout);
+    sFont.Style := Convert_FontStyle_to_sFontStyle(AFont.Style);
     sFont.Color := ColorToRGB(AFont.Color);
   end;
 end;
@@ -689,7 +740,8 @@ end;
 function TsTextPainter.GetWidth: Integer;
 begin
   if FTextRotation = trHorizontal then
-    Result := FMaxLineLen else
+    Result := FMaxLineLen 
+  else
     Result := FTotalHeight;
 end;
 
