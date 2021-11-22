@@ -715,6 +715,20 @@ begin
   if rfRelCol in f then Include(AFlags, rfRelCol2);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Extracts a cell's row and column index from a string in "R1C1" notation.
+  Returns in AFlags also information on relative/absolute cells.
+
+  @param  AStr          Cell string, in R1C1 syntax, such as R[2]C[3] or R1C5
+  @param  ABaseRow      Row index from which the cell reference is seen.
+  @param  ABaseCol      Column index from which the cell reference is seen.
+  @param  ASheet        Name of the worksheet which contains the cell (output)
+  @param  ACellRow      Row index of cell (output)
+  @param  ACellCol      Column index of cell (output)
+  @param  AFlags        A set containing an element for AFirstCellRow, AFirstCellCol, ALastCellRow, ALastCellCol if they represent a relative cell address. (output)
+
+  @returns              @FALSE if the string is not a valid cell reference
+-------------------------------------------------------------------------------}
 function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
   out ASheet: String; out ACellRow, ACellCol: Cardinal;
   out AFlags: TsRelFlags): Boolean;
@@ -733,15 +747,15 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Parses a cell string in "R1C1" notation into zero-based column and row numbers
-  'AFlags' indicates relative addresses.
+  AFlags indicates relative addresses.
 
   @param  AStr      Cell reference in R1C1 syntax, such as R[2]C[3] or R1C5
-  @param  ABaseRow  Row index from which the cell reference is seen.
-  @param  ABaseCol  Column index from which the cell reference is seen.
-  @param  ACellRow  Row index of the top/left cell of the range (output)
-  @param  ACellCol  Column index of the top/left cell of the range (output)
-  @param  AFlags    A set containing an element for ACellRow and/or ACellCol, if they represent a relative cell address.
-  @returns          @FALSE if the string is not a valid cell range
+  @param  ABaseRow  Zero-based row index from which the cell reference is seen.
+  @param  ABaseCol  Zero-based column index from which the cell reference is seen.
+  @param  ACellRow  Zero-based row index of the cell (output)
+  @param  ACellCol  Zero-based column index of cell (output)
+  @param  AFlags    A set containing rfRelRow and/or rfRelCol if the row and/or column index is relative to the base cell (output).
+  @returns          @FALSE if the string is not a valid cell address
 -------------------------------------------------------------------------------}
 function ParseCellString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
   out ACellRow, ACellCol: Cardinal; out AFlags: TsRelFlags): Boolean;
@@ -833,8 +847,9 @@ end;
   @param  AStr      Cell reference in R1C1 syntax, such as R[2]C[3] or R1C5
   @param  ABaseRow  Row index from which the cell reference is seen.
   @param  ABaseCol  Column index from which the cell reference is seen.
-  @param  ACellRow  Row index of the top/left cell of the range (output)
-  @param  ACellCol  Column index of the top/left cell of the range (output)
+  @param  ACellRow  Row index of cell (output)
+  @param  ACellCol  Column index of the cell (output)
+  @returns          @FALSE if the string is not a valid cell address  
 -------------------------------------------------------------------------------}
 function ParseCellString_R1C1(const AStr: string; ABaseRow, ABaseCol: Cardinal;
   out ACellRow, ACellCol: Cardinal): Boolean;
@@ -847,8 +862,21 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Parses a 3D cell and sheet range string in Excel R1C1 dialect. Returns the
-  names of the limiting sheets and the indexes of the limiting borders.
+  names of the limiting sheets and the indexes of the limiting row/col borders.
   The function result is @false if the provided string is not valid.
+  
+  @param  AStr          Cell range string, in R1C1 syntax, such as R[2]C[3]:R[4]C[8]
+  @param  ABaseRow      Row index from which the cell range is seen.
+  @param  ABaseCol      Column index from which the cell range is seen.
+  @param  ASheet1       Name of the worksheet with the first cell of the 3D cell block (part before the colon) (output)
+  @param  ASheet1       Name of the worksheet with the second cell of the 3D cell block (part after the colon) (output)
+  @param  ARow1         Index of the left row of the 3D range (part before the colon)(output)
+  @param  ACol1         Index of the top row of the 3D range (part before the colon) (output)
+  @param  ARow2         Index of the right row of the 3D range (part after the colon) (output)
+  @param  ACol2         Index of the bottom row of the 3D range (part after the colon)  (output)
+  @param  AFlags        A set containing element rfRow1, rfCol1, rfRow2, rfCol2 if the corresponding row/column indexes are relative addresses (output)
+
+  @returns              @FALSE if the string is not a valid cell range
 -------------------------------------------------------------------------------}
 function ParseCellRangeString_R1C1(const AStr: String; ABaseRow, ABaseCol: Cardinal;
   out ASheet1, ASheet2: String; out ARow1, ACol1, ARow2, ACol2: Cardinal;
@@ -894,7 +922,7 @@ end;
   @param  AStr      Cell range string, such as A1
   @param  ACellRow  Row index of the top/left cell of the range (output)
   @param  ACellCol  Column index of the top/left cell of the range (output)
-  @returns          @False if the string is not a valid cell range
+  @returns          @False if the string is not a valid cell reference
 -------------------------------------------------------------------------------}
 function ParseCellString(const AStr: string;
   out ACellRow, ACellCol: Cardinal): Boolean;
@@ -904,6 +932,20 @@ begin
   Result := ParseCellString(AStr, ACellRow, ACellCol, flags);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Parses a full cell string, like 'Sheet1!A1' into zero-based column and row numbers
+  Note that there can be several letters to address for more than 26 columns.
+
+  For compatibility with old version which does not return flags for relative
+  cell addresses.
+
+  @param  AStr       Cell range string, such as A1
+  @param  ASheetName Name of the worksheet which contains the cell (output)=
+  @param  ACellRow   Row index of the cell (output)
+  @param  ACellCol   Column index of the cell (output)
+  @param  ASheetSeparator  Character which separates the worksheet name from the cell reference string. By default this is '!' as used by Excel.
+  @returns          @False if the string is not a valid cell reference
+-------------------------------------------------------------------------------}
 function ParseSheetCellString(const AStr: String; out ASheetName: String;
   out ACellRow, ACellCol: Cardinal; ASheetSeparator: Char = '!'): Boolean;
 var
@@ -916,7 +958,6 @@ begin
   end else begin
     ASheetName := UTF8Copy(AStr, 1, p-1);
     Result := ParseCellString(Copy(AStr, p+1, Length(AStr)), ACellRow, ACellCol);
-//    Result := ParseCellString(UTF8Copy(AStr, p+1, UTF8Length(AStr)), ACellRow, ACellCol);
   end;
 end;
 
@@ -924,7 +965,7 @@ end;
   Parses a cell row string to a zero-based row number.
 
   @param  AStr  Cell row string, such as '1', 1-based!
-  @param  ARow  Index of the row (zero-based!) (putput)
+  @param  ARow  Index of the row (zero-based!) (output)
   @returns      @False if the string is not a valid cell row string
 -------------------------------------------------------------------------------}
 function ParseCellRowString(const AStr: string; out ARow: Cardinal): Boolean;
@@ -956,7 +997,8 @@ begin
     exit;
 
   if AStr[1] = '$' then
-    j1 := 2 else
+    j1 := 2 
+  else
     j1 := 1;
 
   for j := j1 to Length(AStr) do
@@ -972,23 +1014,6 @@ begin
 
   dec(ACol);
   Result := true;
-
-                 {
-  if Length(AStr) = 1 then AResult := Ord(AStr[1]) - Ord('A')
-  else if Length(AStr) = 2 then
-  begin
-    AResult := (Ord(AStr[1]) - Ord('A') + 1) * INT_NUM_LETTERS
-     + Ord(AStr[2]) - Ord('A');
-  end
-  else if Length(AStr) = 3 then
-  begin
-    AResult := (Ord(AStr[1]) - Ord('A') + 1) * INT_NUM_LETTERS * INT_NUM_LETTERS
-     + (Ord(AStr[2]) - Ord('A') + 1) * INT_NUM_LETTERS
-     +  Ord(AStr[3]) - Ord('A');
-  end
-  else Exit(False);
-
-  Result := True; }
 end;
 
 function Letter(AValue: Integer): char;
@@ -1204,8 +1229,6 @@ begin
     Result := Format('%s:%s!%s', [ASheet1, ASheet2, s]);
 end;
 
-
-
 {@@ ----------------------------------------------------------------------------
   Calculates a cell range address string from zero-based column and row indexes
   and the relative address state flags.
@@ -1234,6 +1257,14 @@ begin
     ]);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Determines whether a worksheet name must to be quoted. This is needed when
+  the name begins with a numeral or a period, or when the name contains a space
+  character.
+  
+  @param   ASheet  Name of the worksheet to be analyzed
+  @returns @TRUE when the sheet name must be quoted, @FALSE otherwise
+-------------------------------------------------------------------------------}
 function SheetNameNeedsQuotes(ASheet: String): Boolean;
 begin
   if ASheet <> '' then begin

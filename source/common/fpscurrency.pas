@@ -1,3 +1,15 @@
+{@@ ----------------------------------------------------------------------------
+  Unit **fpsCurrency** provides a variety of **utility functions** related to
+  currency values.
+  
+  Currency symbols are the key to detection of currency values. 
+  In order to reckognize strings as currency symbols they have to be registered 
+  in the internal CurrencyList.
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
+-------------------------------------------------------------------------------}
+
 unit fpsCurrency;
 
 {$mode objfpc}{$H+}
@@ -29,12 +41,14 @@ var
   Registers a currency symbol UTF8 string for usage by fpspreadsheet
 
   Currency symbols are the key for detection of currency values. In order to
-  reckognize strings are currency symbols they have to be registered in the
+  reckognize strings as currency symbols they have to be registered in the
   internal CurrencyList.
 
   Registration occurs automatically for USD, "$", the currencystring defined
   in the DefaultFormatSettings and for the currency symbols used explicitly
   when calling WriteCurrency or WriteNumerFormat.
+  
+  @param    ACurrencySymbol   A string symbol which identifies the currency, e.g. '$'                           
 -------------------------------------------------------------------------------}
 procedure RegisterCurrency(ACurrencySymbol: String);
 begin
@@ -42,8 +56,12 @@ begin
     CurrencyList.Add(ACurrencySymbol);
 end;
 
-{@@ RegisterCurrencies registers the currency strings contained in the string list
+{@@ ----------------------------------------------------------------------------
+  RegisterCurrencies() registers the currency strings contained in the string list
   If AReplace is true, the list replaces the currently registered list.
+  
+  @param   AList     A list containing the strings to be registered as currency symbols.
+  @param   AReplace  When this is @true the currently registered symbols are deleted, otherwise the strings are registered as additional currency symbols.
 -------------------------------------------------------------------------------}
 procedure RegisterCurrencies(AList: TStrings; AReplace: Boolean);
 var
@@ -59,6 +77,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Removes registration of a currency symbol string for usage by fpspreadsheet
+  
+  @param    ACurrencySymbol   The currency symbol which is to be un-registered.
 -------------------------------------------------------------------------------}
 procedure UnregisterCurrency(ACurrencySymbol: String);
 var
@@ -70,6 +90,9 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Checks whether a string is registered as valid currency symbol string
+
+  @param    ACurrencySymbol   The currency symbol to be checked.
+  @returns  @true of the currency symbol is registered, @false otherwise.
 -------------------------------------------------------------------------------}
 function CurrencyRegistered(ACurrencySymbol: String): Boolean;
 begin
@@ -78,6 +101,8 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes all registered currency symbols to a string list
+
+  @param    AList   List to which all the registered currency symbols are copied.
 -------------------------------------------------------------------------------}
 procedure GetRegisteredCurrencies(AList: TStrings);
 begin
@@ -87,8 +112,11 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Checks whether the given number string is a negative value. In case of
-  currency value, this can be indicated by brackets, or a minus sign at string
+  currency values, this can be indicated by brackets, or a minus sign at string
   start or end.
+  
+  @param    AText  String to be analyzed. Brackets or minus sign will be removed if the string is found to correspond to a negative value.
+  @returns  @true when the input string was detected to be a negative number, @false otherwise.
 -------------------------------------------------------------------------------}
 function IsNegative(var AText: String): Boolean;
 begin
@@ -119,6 +147,10 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks wheter a specified currency symbol is contained in a string, removes
   the currency symbol and returns the remaining string.
+  
+  @param    ACurrencySymbol   The currency symbol to be detected.
+  @param    AText             String to be checked. On output, the currency symbol will be removed from the string if found.
+  @returns  @true if the input string did contain a currency symbol, @false otherwise.
 -------------------------------------------------------------------------------}
 function RemoveCurrencySymbol(ACurrencySymbol: String; var AText: String): Boolean;
 var
@@ -137,6 +169,12 @@ end;
 {@@ ----------------------------------------------------------------------------
   Checks whether a string is a number with attached currency symbol. Looks also
   for negative values in brackets.
+  
+  @param  AText    String which is to be converted to a currency value.
+  @param  ANumber  Returns the numeric value of the string
+  @param  ACurrencySymbol  Returns the currency symbol found.
+  @param  AFormatSettings  Contains the decimal separator used in the input string.
+  @returns @true if the string could be converted to a number successfully, @false otherwise.
 -------------------------------------------------------------------------------}
 function TryStrToCurrency(AText: String; out ANumber: Double;
   out ACurrencySymbol:String; const AFormatSettings: TFormatSettings): boolean;
