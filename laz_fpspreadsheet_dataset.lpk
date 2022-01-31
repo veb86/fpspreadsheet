@@ -9,16 +9,16 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="source/dataset"/>
-        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)\"/>
+        <OtherUnitFiles Value="source\dataset"/>
+        <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
-    <Description Value="Accesses a spreadsheet file like a database."/>
+    <Description Value="Library to access a spreadsheet file like a database."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="13"/>
+    <Version Major="1" Minor="14"/>
     <Files Count="1">
       <Item1>
-        <Filename Value="source/dataset/fpsdataset.pas"/>
+        <Filename Value="source\dataset\fpsdataset.pas"/>
         <HasRegisterProc Value="True"/>
         <UnitName Value="fpsDataset"/>
       </Item1>

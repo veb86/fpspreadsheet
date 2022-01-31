@@ -13,7 +13,7 @@
       </SearchPaths>
     </CompilerOptions>
     <Description Value="Encryption / decryption support for FPSpreadsheet"/>
-    <Version Major="1" Minor="13"/>
+    <Version Major="1" Minor="14"/>
     <Files Count="2">
       <Item1>
         <Filename Value="source\crypto\xlsxdecrypter.pas"/>
