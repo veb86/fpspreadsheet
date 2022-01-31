@@ -1,0 +1,8 @@
+--------------------------------------------------------------------------------
+Instructions how to create the api documentation chm help file for  fpspreadsheet
+--------------------------------------------------------------------------------
+
+* Download pasdoc (https://github.com/pasdoc/pasdoc).
+* Compile the pasdoc binary.
+* Run the builddoc batch file.
+* Run the make_chm batch file.

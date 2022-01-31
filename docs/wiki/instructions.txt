@@ -1,0 +1,13 @@
+--------------------------------------------------------------------------------
+    Instructions how to create a chm file from the fpspreadsheet wiki pages
+--------------------------------------------------------------------------------
+
+- Compile the console applications wikiget and wikiconvert.
+
+- Note: wikiconvert works correctly only in Laz 2.0.8/fpc3.0.4. 
+  In later versions the contents page is not created correctly 
+  (tested up to Laz 2.2/fpc3.2.2
+  
+- Copy the created exe files into this directory.
+
+- Run the make_docs batch file.
