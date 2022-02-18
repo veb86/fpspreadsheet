@@ -44,34 +44,41 @@ begin
        end;
   end;
 
-  if not FileExists(InputFileName) then begin
-    WriteLn('Input file ', InputFileName, ' does not exist. Please run opendocwrite first.');
-    Halt;
-  end;
-  WriteLn('Opening input file ', InputFilename);
+  if FileExists(InputFileName) then
+  begin
+    WriteLn('Opening input file ', InputFilename);
 
-  // Create the spreadsheet
-  MyWorkbook := TsWorkbook.Create;
+    // Create the spreadsheet
+    MyWorkbook := TsWorkbook.Create;
+    MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
+    try
+      try
+        MyWorkbook.ReadFromFile(InputFilename, sfidOOXML_crypto, password);
 
-  MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
-  MyWorkbook.ReadFromFile(InputFilename, sfidOOXML_crypto, password);
+        MyWorksheet := MyWorkbook.GetFirstWorksheet;
 
-  MyWorksheet := MyWorkbook.GetFirstWorksheet;
+        // Write all cells with contents to the console
+        WriteLn('');
+        WriteLn('Contents of the first worksheet of the file:');
+        WriteLn('');
 
-  // Write all cells with contents to the console
-  WriteLn('');
-  WriteLn('Contents of the first worksheet of the file:');
-  WriteLn('');
+        for cell in MyWorksheet.Cells do
+          WriteLn(
+            'Row: ', cell^.Row,
+           ' Col: ', cell^.Col,
+             ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsText(cell^.Row, cell^.Col))
+          );
+      except
+        WriteLn('Error opening file ', InputFileName);
+      end;
 
-  for cell in MyWorksheet.Cells do
-    WriteLn(
-      'Row: ', cell^.Row,
-      ' Col: ', cell^.Col,
-      ' Value: ', UTF8ToConsole(MyWorkSheet.ReadAsText(cell^.Row, cell^.Col))
-    );
-
-  // Finalization
-  MyWorkbook.Free;
+    finally
+      // Finalization
+      MyWorkbook.Free;
+    end;
+  end 
+  else
+    WriteLn('Input file ', InputFileName, ' does not exist.');
 
   if ParamCount = 0 then
   begin
