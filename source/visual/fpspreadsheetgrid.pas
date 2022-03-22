@@ -5967,26 +5967,30 @@ begin
         if h = 0 then
           h := DefaultRowHeight;     // Zoom factor is applied by getter function
       end;
-    end else
+    end;
+    
     // No row record so far.
-    if Worksheet.GetCellCountInRow(sr) > 0 then
+    if lRow = nil then
     begin
-      // Case 1: This row does contain cells
-      lRow := Worksheet.AddRow(sr);
-      if AEnforceCalcRowHeight then
-        h := CalcAutoRowHeight(ARow)
-      else
-        h := DefaultRowHeight;
-      lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
-      if h <> DefaultRowHeight then
-        lRow^.RowHeightType := rhtAuto
-      else
-        lRow^.RowHeightType := rhtDefault;
-      if h = 0 then
-        h := DefaultRowHeight;     // Zoom factor is applied by getter function
-    end else
-      // Case 2: No cells in row
-      h := DefaultRowHeight;   // Zoom factor is applied by getter function
+      if Worksheet.GetCellCountInRow(sr) > 0 then
+      begin
+        // Case 1: This row does contain cells
+        lRow := Worksheet.AddRow(sr);
+        if AEnforceCalcRowHeight then
+          h := CalcAutoRowHeight(ARow)
+        else
+          h := DefaultRowHeight;
+        lRow^.Height := CalcRowHeightToSheet(round(h / ZoomFactor));
+        if h <> DefaultRowHeight then
+          lRow^.RowHeightType := rhtAuto
+        else
+          lRow^.RowHeightType := rhtDefault;
+        if h = 0 then
+          h := DefaultRowHeight;     // Zoom factor is applied by getter function
+      end else
+        // Case 2: No cells in row
+        h := DefaultRowHeight;   // Zoom factor is applied by getter function
+    end;
   end;
 
   inc(FZoomLock);  // We don't want to modify the sheet row heights here.

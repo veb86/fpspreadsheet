@@ -326,9 +326,10 @@ function RichTextWidth(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
 var
   painter: TsTextPainter;
 begin
+  // In contrast to RichTextHeight, the next two lines have no effect on col
+  // width when a column switches from hidden to visible.
   if (ARect.Left = ARect.Right) or (ARect.Top = ARect.Bottom) then
     exit(0);
-
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
     AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft, AZoomFactor);
   try
@@ -345,9 +346,12 @@ function RichTextHeight(ACanvas: TCanvas; AWorkbook: TsWorkbook; ARect: TRect;
 var
   painter: TsTextPainter;
 begin
+  {   -- causes incorrect row height, when row switches from hidden to visible.
+     // see: https://forum.lazarus.freepascal.org/index.php/topic,58792.msg438090.html#msg438090
+     
   if (ARect.Left = ARect.Right) or (ARect.Top = ARect.Bottom) then
     exit(0);
-
+  }
   painter := TsTextPainter.Create(ACanvas, AWorkbook, ARect, AText, ARichTextParams,
     AFontIndex, ATextRotation, haLeft, vaTop, AWordWrap, ARightToLeft, AZoomFactor);
   try
