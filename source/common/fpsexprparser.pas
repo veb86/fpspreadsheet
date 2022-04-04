@@ -295,6 +295,8 @@ type
     constructor Create(AParser: TsExpressionParser; AOperand: TsExprNode);
     procedure Check; override;
     destructor Destroy; override;
+    procedure IterateNodes(AProc: TsExprNodeProc; AData1, AData2: Pointer;
+      var MustRebuildFormulas: boolean); override;
     property Operand: TsExprNode read FOperand;
   end;
 
@@ -2946,6 +2948,12 @@ procedure TsUnaryOperationExprNode.Check;
 begin
   if not Assigned(Operand) then
     RaiseParserError(rsNoOperand, [Self.ClassName]);
+end;
+
+procedure TsUnaryOperationExprNode.IterateNodes(AProc: TsExprNodeProc;
+  AData1, AData2: Pointer; var MustRebuildFormulas: Boolean);
+begin
+  FOperand.IterateNodes(AProc, AData1, AData2, MustRebuildFormulas);
 end;
 
 
