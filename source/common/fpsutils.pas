@@ -601,6 +601,7 @@ function ParseCellString(const AStr: String; out ACellRow, ACellCol: Cardinal;
     isAbs: Boolean;
   begin
     Result := false;
+    ACellCol := 0;
 
     i := AStartPos;
     // Scan letters

@@ -999,6 +999,7 @@ begin
   FToken := '';
   C := NextPos;
   prevC := #0;
+  val := 0;
   while (C <> ']') and (C <> cNULL) do begin
     case C of
       cNULL: ScanError(rsUnexpectedEndOfExpression);
@@ -1046,12 +1047,12 @@ begin
            else
              case C of
                'A'..'Z':
-                 val := val*10 + ord(C) - ord('A');
+                 val := val*26 + ord(C) - ord('A') + 1;
                'a'..'z':
-                 val := val*10 + ord(C) - ord('a');
+                 val := val*26 + ord(C) - ord('a') + 1;
                '0'..'9':
                  if state = ssInCol1 then begin
-                   FCellRange.Col1 := val;
+                   FCellRange.Col1 := val - 1;
                    val := (ord(C) - ord('0'));
                    state := ssInRow1;
                  end else
@@ -1059,7 +1060,7 @@ begin
                    val := val*10 + (ord(C) - ord('0'))
                  else
                  if state = ssInCol2 then begin
-                   FCellRange.Col2 := val;
+                   FCellRange.Col2 := val - 1;
                    val := (ord(C) - ord('0'));
                    state := ssInRow2;
                  end else
