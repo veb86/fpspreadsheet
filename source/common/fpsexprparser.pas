@@ -3181,7 +3181,10 @@ begin
         else
         if cell^.ContentType = cctNumber then
         begin
-          if frac(cell^.NumberValue) = 0.0 then
+          if (frac(cell^.NumberValue) = 0.0) and 
+             (cell^.Numbervalue >= -Integer(MaxInt)-1) and 
+             (cell^.NumberValue <= MaxInt) 
+          then
             Result := IntegerResult(trunc(cell^.NumberValue))
           else
             Result := FloatResult(cell^.NumberValue);
@@ -3240,11 +3243,14 @@ begin
             Result := ErrorResult(errWrongType);
         end else
         if (cell^.ContentType = cctNumber) or (cell^.ContentType = cctDateTime) then
-        begin
-          if frac(cell^.NumberValue) = 0.0 then
+        begin     
+          if (frac(cell^.NumberValue) = 0.0) and 
+             (cell^.NumberValue >= -Integer(MaxInt)-1) and 
+             (cell^.NumberValue <= MaxInt) 
+          then
             Result := IntegerResult(-trunc(cell^.NumberValue))
-          else
-            Result := FloatResult(cell^.NumberValue);
+          else    
+            Result := FloatResult(-cell^.NumberValue);
         end else
         if (cell^.ContentType = cctBool) then
           Result := ErrorResult(errWrongType);
