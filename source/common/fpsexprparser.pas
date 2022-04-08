@@ -3168,6 +3168,7 @@ end;
 procedure TsUPlusExprNode.GetNodeValue(out Result: TsExpressionResult);
 var
   cell: PCell;
+  val: Extended;
 begin
   Operand.GetNodeValue(Result);
   case Result.ResultType of
@@ -3179,6 +3180,12 @@ begin
         if cell = nil then
           Result := FloatResult(0.0)
         else
+        if (cell^.ContentType = cctUTF8String) then begin
+          if TryStrToFloat(cell^.UTF8StringValue, val) then
+            Result := FloatResult(val)
+          else
+            Result := ErrorResult(errWrongType);
+        end else 
         if cell^.ContentType = cctNumber then
         begin
           if (frac(cell^.NumberValue) = 0.0) and 
