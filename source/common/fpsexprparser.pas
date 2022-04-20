@@ -3184,7 +3184,7 @@ begin
           if TryStrToFloat(cell^.UTF8StringValue, val) then
             Result := FloatResult(val)
           else
-            Result := ErrorResult(errWrongType);
+            Result := StringResult(cell^.UTF8StringValue);
         end else 
         if cell^.ContentType = cctNumber then
         begin
