@@ -267,9 +267,7 @@ begin
     if TsCellExprNode(AExprNode).Error <> errOK then
       exit;
     referencedSheet := TsCellExprNode(AExprNode).GetSheet;
-    if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
-      exit;
-    if referencedSheet = nil then
+    if (referencedSheet = nil) or (referencedSheet <> changedSheet) then
       exit;
     if TsCellExprNode(AExprNode).Col > colIndex then begin
       TsCellExprNode(AExprNode).Col := TsCellExprNode(AExprNode).Col - 1;
@@ -329,9 +327,7 @@ begin
     if TsCellExprNode(AExprNode).Error <> errOK then
       exit;
     referencedSheet := TsCellExprNode(AExprNode).GetSheet;
-    if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
-      exit;
-    if referencedSheet = nil then
+    if (referencedSheet = nil) or (referencedSheet <> changedSheet) then
       exit;
     if TsCellExprNode(AExprNode).Row > rowIndex then begin
       TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row - 1;
@@ -393,11 +389,10 @@ begin
     if TsCellExprNode(AExprNode).Error <> errOK then
       exit;
     referencedSheet := TsCellExprNode(AExprNode).GetSheet;
-    if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
-      exit;
     if referencedSheet = nil then
       exit;
-    if TsCellExprNode(AExprNode).Col >= colIndex then begin
+    if (referencedSheet = changedSheet) and (TsCellExprNode(AExprNode).Col >= colIndex) then 
+    begin
       TsCellExprNode(AExprNode).Col := TsCellExprNode(AExprNode).Col + 1;
       MustRebuildFormulas := true;
     end;
@@ -444,11 +439,10 @@ begin
     if TsCellExprNode(AExprNode).Error <> errOK then
       exit;
     referencedSheet := TsCellExprNode(AExprNode).GetSheet;
-    if TsCellExprNode(AExprNode).Has3dLink and (referencedSheet <> changedSheet) then
-      exit;
     if referencedSheet = nil then
       exit;
-    if TsCellExprNode(AExprNode).Row >= rowIndex then begin
+    if (referencedSheet = changedSheet) and (TsCellExprNode(AExprNode).Row >= rowIndex) then 
+    begin
       TsCellExprNode(AExprNode).Row := TsCellExprNode(AExprNode).Row + 1;
       MustRebuildFormulas := true;
     end;

@@ -5585,7 +5585,12 @@ var
   i: Integer;
   rng: PsCellRange;
   sheet: TsWorksheet;
+  wasAutoCalculating: Boolean;
 begin
+  // Turn off auto-calculation of formulas
+  wasAutoCalculating := (boAutoCalc in Workbook.Options);
+  //Workbook.Options := Workbook.Options - [boAutoCalc];
+
   // Update row indexes of cell comments
   FComments.InsertRowOrCol(AIndex, IsRow);
 
@@ -5600,7 +5605,7 @@ begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
     sheet.Formulas.FixReferences(AIndex, IsRow, false, self);
   end;
-
+    
   // Update cell indexes of cell records
   FCells.InsertRowOrCol(AIndex, IsRow);
 
@@ -5679,6 +5684,13 @@ begin
     end;
 
     ChangedCell(0, AIndex);
+  end;
+  
+  // Calculate formulas
+  if wasAutoCalculating then
+  begin
+    //Workbook.Options := Workbook.Options + [boAutoCalc];
+    //CalcFormulas;
   end;
 end;
 

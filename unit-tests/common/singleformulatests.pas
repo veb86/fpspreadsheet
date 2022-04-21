@@ -28,6 +28,7 @@ type
       AExpectedFormula: String = '');
     procedure TestWorksheet(ATestKind: TWorksheetTestKind; ATestCase: Integer);
     procedure TestFormulaErrors(ATest: Integer);
+    procedure TestInsDelRowCol(ATestIndex: Integer);
 
   published
     procedure AddConst_BIFF2;
@@ -156,6 +157,20 @@ type
     procedure Add_Number_NumString;
     procedure Equal_Number_NumString;
     procedure UnaryMinusNumString;
+    
+    procedure InsertRow_BeforeFormula;
+    procedure InsertRow_AfterFormula;
+    procedure InsertRow_AfterAll;
+    procedure InsertCol_BeforeFormula;
+    procedure InsertCol_AfterFormula;
+    procedure InsertCol_AfterAll;
+    
+    procedure DeleteRow_BeforeFormula;
+    procedure DeleteRow_AfterFormula;
+    procedure DeleteRow_AfterAll;
+    procedure DeleteCol_BeforeFormula;
+    procedure DeleteCol_AfterFormula;
+    procedure DeleteCol_AfterAll;
   end;
 
 implementation
@@ -164,11 +179,10 @@ uses
  {$IFDEF FORMULADEBUG}
   LazLogger,
  {$ENDIF}
-  //Math,
   typinfo, lazUTF8, fpsUtils;
 
 
-{ TSpreadExtendedFormulaTests }
+{ TSpreadSingleFormulaTests }
 
 procedure TSpreadSingleFormulaTests.SetUp;
 begin
@@ -1166,6 +1180,236 @@ end;
 procedure TSpreadSingleFormulaTests.UnaryMinusNumString;
 begin
   TestFormulaErrors(17);
+end;
+
+
+{-------------------------------------------------------------------------------
+                             TestInsDelRowCol
+
+  Inserts/deletes a row or column and checks whether the references used in 
+  formulas are correctly adapted. 
+  
+  Note: other row/col tests are contained in unit colrowtests.pas
+-------------------------------------------------------------------------------}
+procedure TSpreadSingleFormulaTests.TestInsDelRowCol(ATestIndex: Integer);
+const
+  VALUE1 = 'abc-1';
+  VALUE2 = 'abc-2';
+var
+  wb: TsWorkbook;
+  ws1: TsWorksheet;
+  ws2: TsWorksheet;
+begin
+  wb := TsWorkbook.Create;
+  try
+    wb.Options := wb.Options + [boAutoCalc];
+    
+    ws1 := wb.AddWorksheet('Sheet1');
+    ws1.WriteText(6, 4, VALUE1);      // text 'abc-1' in cell E7 of sheet1
+    ws1.WriteFormula(1, 1, '=E7');    // formula =E7 in cell B2
+    
+    ws2 := wb.AddWorksheet('Sheet2');
+    ws2.WriteText(6, 4, VALUE2);      // text 'abc-2' in cell E7 of sheet2
+    ws2.WriteFormula(1, 1, '=E7');    // formula =E7 in cell B2
+    ws2.writeFormula(1, 2, '=Sheet1!E7');  // 3d formula in cell C2 referring to sheet1
+    
+    CheckEquals(VALUE1, ws1.ReadAsText(1, 1), 'Read initial value mismatch, cell Sheet1!B2');
+    CheckEquals('E7', ws1.ReadFormula(1, 1), 'Read initial formula mismatch, cell Sheet1!B2');
+    CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read initial value mismatch, cell Sheet2!B2');
+    CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read initial formula mismatch, cell Sheet2!B2');
+    CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read initial value mismatch, cell Sheet2!C2');
+    CheckEquals('Sheet1!E7', ws2.ReadFormula(1, 2), 'Read initial formula mismatch, cell Sheet2!C2');
+    
+    case ATestIndex of
+      0:  // Insert row in sheet1 before formula and referenced cell
+        begin
+          ws1.InsertRow(0);
+          CheckEquals(VALUE1, ws1.ReadAsText(2, 1), 'Read value mismatch, cell Sheet1!B2');
+          CheckEquals('E8', ws1.ReadFormula(2, 1), 'Read formula mismatch, cell Sheet1!B2');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!E8', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+      1:  // Insert row in sheet1 after formula, but before referenced cell
+        begin
+          ws1.InsertRow(3);
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 1), 'Read value mismatch, cell Sheet1!B2');
+          CheckEquals('E8', ws1.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet1!B2');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!E8', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+      2:  // Insert row in sheet1 after formula and referenced cell
+        begin
+          ws1.InsertRow(10);
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 1), 'Read initial value mismatch, cell Sheet1!B2');
+          CheckEquals('E7', ws1.ReadFormula(1, 1), 'Read initial formula mismatch, cell Sheet1!B2');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read initial value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read initial formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read initial value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!E7', ws2.ReadFormula(1, 2), 'Read initial formula mismatch, cell Sheet2!C2');
+        end;
+      
+      10:  // Insert column in sheet1 before formula and referenced cell
+        begin
+          ws1.InsertCol(0);    
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 2), 'Read value mismatch, cell Sheet1!B2');
+          CheckEquals('F7', ws1.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet1!B2');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!F7', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+      11:  // Insert column in sheet1 after formula, but before referenced cell
+        begin
+          ws1.InsertCol(3);    
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 1), 'Read value mismatch, cell Sheet1!B2');
+          CheckEquals('F7', ws1.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet1!B2');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!F7', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+      12:  // Insert column in sheet1 after formula and referenced cell
+        begin
+          ws1.InsertCol(10);
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 1), 'Read initial value mismatch, cell Sheet1!B2');
+          CheckEquals('E7', ws1.ReadFormula(1, 1), 'Read initial formula mismatch, cell Sheet1!B2');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read initial value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read initial formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read initial value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!E7', ws2.ReadFormula(1, 2), 'Read initial formula mismatch, cell Sheet2!C2');
+        end;
+      
+      20:  // Delete row from sheet1 before formula and referenced cell
+        begin
+          ws1.DeleteRow(0);
+          CheckEquals(VALUE1, ws1.ReadAsText(0, 1), 'Read value mismatch, cell Sheet1!B1');
+          CheckEquals('E6', ws1.ReadFormula(0, 1), 'Read formula mismatch, cell Sheet1!B1');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!E6', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+      21:  // Delete row from sheet1 after formula, but before referenced cell
+        begin
+          ws1.DeleteRow(3);
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 1), 'Read value mismatch, cell Sheet1!B2');
+          CheckEquals('E6', ws1.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet1!B2');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!E6', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+      22:  // Delete row from sheet1 after formula and referenced cell
+        begin
+          ws1.DeleteRow(10);
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 1), 'Read value mismatch, cell Sheet1!B2');
+          CheckEquals('E7', ws1.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet1!21');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!E7', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+      
+      30:  // Delete column from sheet1 before formula and referenced cell
+        begin
+          ws1.DeleteCol(0);
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 0), 'Read value mismatch, cell Sheet1!A2');
+          CheckEquals('D7', ws1.ReadFormula(1, 0), 'Read formula mismatch, cell Sheet1!A2');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!D7', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+      31:  // Delete column from sheet1 after formula, but before referenced cell
+        begin
+          ws1.DeleteCol(3);
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 1), 'Read value mismatch, cell Sheet1!A2');
+          CheckEquals('D7', ws1.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet1!A2');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!D7', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+      32:  // Delete column from sheet1 after formula and referenced cell
+        begin
+          ws1.DeleteCol(10);
+          CheckEquals(VALUE1, ws1.ReadAsText(1, 1), 'Read value mismatch, cell Sheet1!B2');
+          CheckEquals('E7', ws1.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet1!21');
+          CheckEquals(VALUE2, ws2.ReadAsText(1, 1), 'Read value mismatch, cell Sheet2!B2');
+          CheckEquals('E7', ws2.ReadFormula(1, 1), 'Read formula mismatch, cell Sheet2!B2');
+          CheckEquals(VALUE1, ws2.ReadAsText(1, 2), 'Read value mismatch, cell Sheet2!C2');
+          CheckEquals('Sheet1!E7', ws2.ReadFormula(1, 2), 'Read formula mismatch, cell Sheet2!C2');
+        end;
+    end;
+          
+    // wb.WriteToFile('test.xlsx', sfOOXML, true);    // Activate for looking at file, e.g. with Excel
+  finally
+    wb.Free;
+  end;
+end;
+
+procedure TSpreadSingleFormulaTests.InsertRow_BeforeFormula;
+begin
+  TestInsDelRowCol(0);
+end;
+
+procedure TSpreadSingleFormulaTests.InsertRow_AfterFormula;
+begin
+  TestInsDelRowCol(1);
+end;
+
+procedure TSpreadSingleFormulaTests.InsertRow_AfterAll;
+begin
+  TestInsDelRowCol(2);
+end;
+
+procedure TSpreadSingleFormulaTests.InsertCol_BeforeFormula;
+begin
+  TestInsDelRowCol(10);
+end;
+
+procedure TSpreadSingleFormulaTests.InsertCol_AfterFormula;
+begin
+  TestInsDelRowCol(11);
+end;
+
+procedure TSpreadSingleFormulaTests.InsertCol_AfterAll;
+begin
+  TestInsDelRowCol(12);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteRow_BeforeFormula;
+begin
+  TestInsDelRowCol(20);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteRow_AfterFormula;
+begin
+  TestInsDelRowCol(21);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteRow_AfterAll;
+begin
+  TestInsDelRowCol(22);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteCol_BeforeFormula;
+begin
+  TestInsDelRowCol(30);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteCol_AfterFormula;
+begin
+  TestInsDelRowCol(31);
+end;
+
+procedure TSpreadSingleFormulaTests.DeleteCol_AfterAll;
+begin
+  TestInsDelRowCol(32);
 end;
 
 
