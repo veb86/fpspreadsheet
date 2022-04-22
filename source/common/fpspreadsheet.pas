@@ -2276,6 +2276,7 @@ var
   fromRow, fromCol: Cardinal;
   sheet: TsWorksheet;
   i: Integer;
+  formula: String;
 begin
   if ACell = nil then 
     exit;
@@ -2289,7 +2290,16 @@ begin
   fromCol := ACell^.Col;
   
   // Copy cell to new location
+  // Note: In Excel the formula in a moved cell still points to the initial
+  // location. This is different from copying a formula. 
+  // --> We must prevent CopyCell from adjusting the formula 
+  // --> Erase the formula temporarily.
+  formula := ReadFormula(ACell);
+  DeleteFormula(ACell);
   CopyCell(fromRow, fromCol, AToRow, AToCol);
+  // Restore the old formula which points to the old location.
+  if formula <> ''  then
+    WriteFormula(AToRow, AToCol, formula);
     
   // Fix formula references to this cell
   for i := 0 to FWorkbook.GetWorksheetcount-1 do begin
