@@ -2280,6 +2280,10 @@ begin
   if ACell = nil then 
     exit;
     
+  // Avoid misplaced notifications during the copy operations when things could
+  // not yet be in place.
+  FWorkbook.DisableNotifications;
+
   // Store old location
   fromRow := ACell^.Row;
   fromCol := ACell^.Col;
@@ -2296,6 +2300,8 @@ begin
   // Delete cell at old location
   DeleteCell(ACell);
   
+  FWorkbook.EnableNotifications;
+
   // Notify visual controls of changes
   ChangedCell(AToRow, AToCol);
 
