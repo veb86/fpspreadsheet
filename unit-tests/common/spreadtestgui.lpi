@@ -74,7 +74,7 @@
         <PackageName Value="FCL"/>
       </Item4>
     </RequiredPackages>
-    <Units Count="33">
+    <Units Count="34">
       <Unit0>
         <Filename Value="spreadtestgui.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -209,6 +209,10 @@
         <Filename Value="conditionalformattests.pas"/>
         <IsPartOfProject Value="True"/>
       </Unit32>
+      <Unit33>
+        <Filename Value="movetests.pas"/>
+        <IsPartOfProject Value="True"/>
+      </Unit33>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
