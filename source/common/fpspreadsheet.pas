@@ -458,6 +458,8 @@ type
     function  GetCell(AddressStr: String): PCell; overload;
     function  GetCellCount: Cardinal;
 
+    procedure MoveCell(ACell: PCell; AToRow, AToCol: Cardinal);
+    
     function  FindNextCellInCol(ARow, ACol: Cardinal): PCell;
     function  FindNextCellInRow(ARow, ACol: Cardinal): PCell;
     function  FindPrevCellInCol(ARow, ACol: Cardinal): PCell;
@@ -2255,6 +2257,50 @@ end;
 function TsWorksheet.GetCellCount: Cardinal;
 begin
   Result := FCells.Count;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Moves a cell to a different location.
+  
+  All additional data (comments, format, hyperlinks, formulas) are moved to the
+  new location. If the old location was referenced by a formula then the formula
+  is adjusted so that it points to the new location, however, only if the
+  formula references a single cell, not a cell range.
+  
+  @param    ACell   Cell to be moved
+  @param    AToRow  Row index of the new location
+  @param    AToCol  Column index of the new location
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.MoveCell(ACell: PCell; AToRow, AToCol: Cardinal);
+var
+  fromRow, fromCol: Cardinal;
+  sheet: TsWorksheet;
+  i: Integer;
+begin
+  if ACell = nil then 
+    exit;
+    
+  // Store old location
+  fromRow := ACell^.Row;
+  fromCol := ACell^.Col;
+  
+  // Copy cell to new location
+  CopyCell(fromRow, fromCol, AToRow, AToCol);
+    
+  // Fix formula references to this cell
+  for i := 0 to FWorkbook.GetWorksheetcount-1 do begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet.Formulas.FixReferenceToMovedCell(ACell, AToRow, AToCol, self);
+  end;
+  
+  // Delete cell at old location
+  DeleteCell(ACell);
+  
+  // Notify visual controls of changes
+  ChangedCell(AToRow, AToCol);
+
+  // Notify visual controls of possibly changed row heights.
+  ChangedFont(AToRow, AToCol);  
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5585,12 +5631,7 @@ var
   i: Integer;
   rng: PsCellRange;
   sheet: TsWorksheet;
-  wasAutoCalculating: Boolean;
 begin
-  // Turn off auto-calculation of formulas
-  wasAutoCalculating := (boAutoCalc in Workbook.Options);
-  //Workbook.Options := Workbook.Options - [boAutoCalc];
-
   // Update row indexes of cell comments
   FComments.InsertRowOrCol(AIndex, IsRow);
 
@@ -5684,13 +5725,6 @@ begin
     end;
 
     ChangedCell(0, AIndex);
-  end;
-  
-  // Calculate formulas
-  if wasAutoCalculating then
-  begin
-    //Workbook.Options := Workbook.Options + [boAutoCalc];
-    //CalcFormulas;
   end;
 end;
 

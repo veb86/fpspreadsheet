@@ -197,6 +197,8 @@ type
     function FindFormula(ARow, ACol: Cardinal): PsFormula; overload;
     procedure FixReferences(AIndex: Cardinal; IsRow, IsDeleting: Boolean;
       InSheet: TsBasicWorksheet);
+    procedure FixReferenceToMovedCell(ACell: PCell; AToRow, AToCol: Cardinal;
+      ASheet: TsBasicWorksheet);
     // enumerators
     function GetEnumerator: TsFormulaEnumerator;
   end;
@@ -471,6 +473,26 @@ begin
       MustRebuildFormulas := true;
     end;
     TsCellRangeExprNode(AExprNode).Range := rng;
+  end;
+end;
+
+procedure FixFormulaToMovedCell(AExprNode: TsExprNode; AData1, AData2: Pointer;
+  var MustRebuildFormulas: Boolean);
+var
+  oldCell, newCell: PCell;
+begin
+  oldCell := PCell(AData1);
+  newCell := PCell(AData2);
+  if AExprNode is TsCellExprNode then
+  begin
+    if (oldCell^.Worksheet = TsCellExprNode(AExprNode).GetSheet) and
+       (oldCell^.Row = TsCellExprNode(AExprNode).Row) and 
+       (oldCell^.Col = TsCellExprNode(AExprNode).Col) then
+    begin
+      TsCellExprNode(AExprNode).Row := newCell^.Row;
+      TsCellExprNode(AExprNode).Col := newCell^.Col;
+      MustRebuildFormulas := true;
+    end;
   end;
 end;
 
@@ -1568,6 +1590,24 @@ begin
 
   for formula in self do
     if formula^.Parser.IterateNodes(proc, {%H-}Pointer(PtrInt(AIndex)), InSheet) then
+      formula^.Text := formula^.Parser.Expression[fdExcelA1];
+end;
+
+{ A cell in the specified sheet has been moved from its old location at AFromRow/
+  AFromCol to a new location at AToRow/AToCol. If the cell is referenced by
+  a formula the formula must be adjusted such it points to the new location. 
+  However, this occurs only when the reference is a single cell, not a cell range.}
+procedure TsFormulas.FixReferenceToMovedCell(
+  ACell: PCell; AToRow, AToCol: Cardinal; ASheet: TsBasicWorksheet);
+var
+  formula: PsFormula;
+  newCell: TCell;
+begin
+  newCell := ACell^;
+  newCell.Row := AToRow;
+  newCell.Col := AToCol;
+  for formula in self do
+    if formula^.Parser.IterateNodes(@FixFormulaToMovedCell, ACell, @newCell) then
       formula^.Text := formula^.Parser.Expression[fdExcelA1];
 end;
 
