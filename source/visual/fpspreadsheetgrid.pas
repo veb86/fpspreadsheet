@@ -2295,9 +2295,10 @@ begin
           srccell := Worksheet.FindMergeBase(srccell);
         if srccell <> nil then begin
           destcell := Worksheet.GetCell(r + dr, c + dc);
-          Worksheet.CopyCell(srccell, destcell);
           if dragMove then
-            Worksheet.DeleteCell(srccell);
+            Worksheet.MoveCell(srccell, destcell^.Row, destcell^.Col)
+          else
+            Worksheet.CopyCell(srccell, destcell);
         end;
       end;
   end;
