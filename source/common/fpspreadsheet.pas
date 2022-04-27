@@ -2274,9 +2274,12 @@ end;
 procedure TsWorksheet.MoveCell(ACell: PCell; AToRow, AToCol: Cardinal);
 var
   fromRow, fromCol: Cardinal;
+  destCell: PCell;
   sheet: TsWorksheet;
   i: Integer;
-  formula: String;
+  formula: PsFormula;
+  formulaStr: String;
+  srcHasFormula: Boolean;
 begin
   if ACell = nil then 
     exit;
@@ -2294,18 +2297,23 @@ begin
   // location. This is different from copying a formula. 
   // --> We must prevent CopyCell from adjusting the formula 
   // --> Erase the formula temporarily.
-  formula := ReadFormula(ACell);
+  formulaStr := ReadFormula(ACell);
   DeleteFormula(ACell);
   CopyCell(fromRow, fromCol, AToRow, AToCol);
   // Restore the old formula which points to the old location.
-  if formula <> ''  then
-    WriteFormula(AToRow, AToCol, formula);
+  if formulaStr <> '' then
+    WriteFormula(AToRow, AToCol, formulaStr);
     
   // Fix formula references to this cell
   for i := 0 to FWorkbook.GetWorksheetcount-1 do begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
     sheet.Formulas.FixReferenceToMovedCell(ACell, AToRow, AToCol, self);
   end;
+  
+  // Mark destination cell to contain a formula (if applicable).
+  destCell := FindCell(AToRow, AToCol);
+  formula := Formulas.FindFormula(destCell);
+  UseFormulaInCell(destCell, formula);
   
   // Delete cell at old location
   DeleteCell(ACell);

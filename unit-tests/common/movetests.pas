@@ -22,6 +22,7 @@ type
 
   protected
     procedure Test_MoveCell(ATestKind: Integer);
+    procedure Test_MoveCell_CircRef(ATestKind: Integer);
 
   published
     procedure Test_MoveCell_Value;
@@ -32,6 +33,9 @@ type
     procedure Test_MoveCell_Formula_ABS;
     procedure Test_MoveCell_FormulaRef_REL;
     procedure Test_MoveCell_FormulaRef_ABS;
+    
+    procedure Test_MoveCell_FormulaToValue;
+    procedure Test_MoveCell_ValueToFormula;
   end;
 
 implementation
@@ -185,6 +189,68 @@ begin
   Test_MoveCell(8);
 end;
 
+{==============================================================================}
+
+{ In the following test an occupied cell is moved to a different location 
+  such that a circular reference is created. 
+  ATestKind = 1: value cell is moved to formula cell which points to value cell
+              2: formula cell is moved to cell to which it points. }
+procedure TSpreadMoveTests.Test_MoveCell_CircRef(ATestKind: Integer);
+const
+  VALUE_CELL_ROW = 0;
+  VALUE_CELL_COL = 0;
+  FORMULA_CELL_ROW = 11;
+  FORMULA_CELL_COL = 6;
+var
+  worksheet: TsWorksheet;
+  workbook: TsWorkbook;
+  value_cell: PCell = nil;
+  formula_cell: PCell = nil;
+  dest_cell: PCell = nil;
+begin
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := workbook.Options + [boAutoCalc];
+
+    worksheet := workBook.AddWorksheet(MoveTestSheet);
+    
+    // Prepare the worksheet in which a cell is moved.
+    // The value cell is A1, the formula cell is B2 and it points to A1
+    value_cell := worksheet.WriteText(VALUE_CELL_ROW, VALUE_CELL_COL, 'abc');   // A1
+    formula_cell := worksheet.WriteFormula(FORMULA_CELL_ROW, FORMULA_CELL_COL, 'A1');
+    
+    // Move the cell
+    try
+      case ATestKind of
+        1: begin
+             worksheet.MoveCell(value_cell, FORMULA_CELL_ROW, FORMULA_CELL_COL);
+             dest_cell := worksheet.FindCell(FORMULA_CELL_ROW, FORMULA_CELL_COL);
+           end;  
+        2: begin
+             worksheet.MoveCell(formula_cell, VALUE_CELL_ROW, VALUE_CELL_COL);
+             dest_cell := worksheet.FindCell(VALUE_CELL_ROW, VALUE_CELL_COL);
+           end;  
+      end;
+    except
+    end;
+    
+    // In each case, the destination cell should contain a #REF! error
+    CheckEquals(true, dest_cell^.ErrorValue = errIllegalRef, 'Circular reference not detected.');
+    
+  finally
+    workbook.Free;
+  end;
+end;
+
+procedure TSpreadMoveTests.Test_MoveCell_FormulaToValue;
+begin
+  Test_MoveCell_CircRef(1);
+end;
+
+procedure TSpreadMoveTests.Test_MoveCell_ValueToFormula;
+begin
+  Test_MoveCell_CircRef(2);
+end;
 
 initialization
   RegisterTest(TSpreadMoveTests);
