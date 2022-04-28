@@ -1614,6 +1614,7 @@ begin
   // Short-cut for source and destination worksheets
   srcSheet := TsWorksheet(AFromcell^.Worksheet);
   destSheet := TsWorksheet(AToCell^.Worksheet);
+  if destSheet = nil then destSheet := srcSheet;
 
   // Remember the row and column indexes of the destination cell.
   toRow := AToCell^.Row;
@@ -2279,20 +2280,28 @@ var
   i: Integer;
   formula: PsFormula;
   formulaStr: String;
-  srcHasFormula: Boolean;
 begin
-  if ACell = nil then 
+  destCell := FindCell(AToRow, AToCol);
+
+  // Moving an empty cell should clear the destination cell.
+  if ACell = nil then
+  begin
+    DeleteCell(destCell);
     exit;
+  end;
     
-  // Avoid misplaced notifications during the copy operations when things could
-  // not yet be in place.
+  // Avoid misplaced notifications during the copy operations when things are 
+  // not in place, yet.
   FWorkbook.DisableNotifications;
 
   // Store old location
   fromRow := ACell^.Row;
   fromCol := ACell^.Col;
   
-  // Copy cell to new location
+  // Clear destination cell
+  EraseCell(destCell);
+  
+  // Copy cell to new location (taking care of comments, hyperlinks etc)
   // Note: In Excel the formula in a moved cell still points to the initial
   // location. This is different from copying a formula. 
   // --> We must prevent CopyCell from adjusting the formula 
@@ -2304,18 +2313,17 @@ begin
   if formulaStr <> '' then
     WriteFormula(AToRow, AToCol, formulaStr);
     
-  // Fix formula references to this cell
+  // Fix formula references to the source cell (ACell)
   for i := 0 to FWorkbook.GetWorksheetcount-1 do begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
     sheet.Formulas.FixReferenceToMovedCell(ACell, AToRow, AToCol, self);
   end;
   
   // Mark destination cell to contain a formula (if applicable).
-  destCell := FindCell(AToRow, AToCol);
   formula := Formulas.FindFormula(destCell);
   UseFormulaInCell(destCell, formula);
   
-  // Delete cell at old location
+  // Delete source cell at old location
   DeleteCell(ACell);
   
   FWorkbook.EnableNotifications;

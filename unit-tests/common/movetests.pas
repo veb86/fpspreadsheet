@@ -22,7 +22,6 @@ type
 
   protected
     procedure Test_MoveCell(ATestKind: Integer);
-    procedure Test_MoveCell_CircRef(ATestKind: Integer);
 
   published
     procedure Test_MoveCell_Value;
@@ -34,8 +33,10 @@ type
     procedure Test_MoveCell_FormulaRef_REL;
     procedure Test_MoveCell_FormulaRef_ABS;
     
-    procedure Test_MoveCell_FormulaToValue;
-    procedure Test_MoveCell_ValueToFormula;
+    procedure Test_MoveCell_CircRef;
+    procedure Test_MoveCell_OverwriteFormula;
+    procedure Test_MoveCell_EmptyToValue;
+    procedure Test_MoveCell_EmptyToFormula;
   end;
 
 implementation
@@ -191,20 +192,18 @@ end;
 
 {==============================================================================}
 
-{ In the following test an occupied cell is moved to a different location 
-  such that a circular reference is created. 
-  ATestKind = 1: value cell is moved to formula cell which points to value cell
-              2: formula cell is moved to cell to which it points. }
-procedure TSpreadMoveTests.Test_MoveCell_CircRef(ATestKind: Integer);
+{ In the following test an occupied cell with a formula is moved to a location
+  referenced by the formula. 
+  This must result in a circular reference error. }
+procedure TSpreadMoveTests.Test_MoveCell_CircRef;
 const
-  VALUE_CELL_ROW = 0;
+  VALUE_CELL_ROW = 0;        // A1
   VALUE_CELL_COL = 0;
-  FORMULA_CELL_ROW = 11;
+  FORMULA_CELL_ROW = 11;     // F10
   FORMULA_CELL_COL = 6;
 var
   worksheet: TsWorksheet;
   workbook: TsWorkbook;
-  value_cell: PCell = nil;
   formula_cell: PCell = nil;
   dest_cell: PCell = nil;
 begin
@@ -215,26 +214,18 @@ begin
     worksheet := workBook.AddWorksheet(MoveTestSheet);
     
     // Prepare the worksheet in which a cell is moved.
-    // The value cell is A1, the formula cell is B2 and it points to A1
-    value_cell := worksheet.WriteText(VALUE_CELL_ROW, VALUE_CELL_COL, 'abc');   // A1
+    // The value cell is A1, the formula cell is F10 and it points to A1
+    worksheet.WriteText(VALUE_CELL_ROW, VALUE_CELL_COL, 'abc');   // A1
     formula_cell := worksheet.WriteFormula(FORMULA_CELL_ROW, FORMULA_CELL_COL, 'A1');
     
-    // Move the cell
+    // Move the formula cell to overwrite the value cell
     try
-      case ATestKind of
-        1: begin
-             worksheet.MoveCell(value_cell, FORMULA_CELL_ROW, FORMULA_CELL_COL);
-             dest_cell := worksheet.FindCell(FORMULA_CELL_ROW, FORMULA_CELL_COL);
-           end;  
-        2: begin
-             worksheet.MoveCell(formula_cell, VALUE_CELL_ROW, VALUE_CELL_COL);
-             dest_cell := worksheet.FindCell(VALUE_CELL_ROW, VALUE_CELL_COL);
-           end;  
-      end;
+      worksheet.MoveCell(formula_cell, VALUE_CELL_ROW, VALUE_CELL_COL);
+      dest_cell := worksheet.FindCell(VALUE_CELL_ROW, VALUE_CELL_COL);
     except
     end;
     
-    // In each case, the destination cell should contain a #REF! error
+    // The destination cell should contain a #REF! error
     CheckEquals(true, dest_cell^.ErrorValue = errIllegalRef, 'Circular reference not detected.');
     
   finally
@@ -242,16 +233,132 @@ begin
   end;
 end;
 
-procedure TSpreadMoveTests.Test_MoveCell_FormulaToValue;
+{ In the following test an occupied cell with a value formula is moved to 
+  a location with a formula cell pointing to the moved value cell.
+  This operation must delete the formula after moving. }
+procedure TSpreadMoveTests.Test_MoveCell_OverwriteFormula;
+const
+  VALUE_CELL_ROW = 0;        // A1
+  VALUE_CELL_COL = 0;
+  FORMULA_CELL_ROW = 11;     // F10
+  FORMULA_CELL_COL = 6;
+var
+  worksheet: TsWorksheet;
+  workbook: TsWorkbook;
+  value_cell: PCell = nil;
+  dest_cell: PCell = nil;
 begin
-  Test_MoveCell_CircRef(1);
-end;
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := workbook.Options + [boAutoCalc];
 
-procedure TSpreadMoveTests.Test_MoveCell_ValueToFormula;
+    worksheet := workBook.AddWorksheet(MoveTestSheet);
+    
+    // Prepare the worksheet in which a cell is moved.
+    // The value cell is A1, the formula cell is F10 and it points to A1
+    value_cell := worksheet.WriteText(VALUE_CELL_ROW, VALUE_CELL_COL, 'abc');   // A1
+    worksheet.WriteFormula(FORMULA_CELL_ROW, FORMULA_CELL_COL, 'A1');
+    
+    // Move the value cell to overwrite the formula cell
+    try
+      worksheet.MoveCell(value_cell, FORMULA_CELL_ROW, FORMULA_CELL_COL);
+      dest_cell := worksheet.FindCell(FORMULA_CELL_ROW, FORMULA_CELL_COL);
+    except
+    end;
+    
+    // The destination cell should not contain a formula any more.
+    CheckEquals(false, HasFormula(dest_cell), 'Formula has not been removed.');
+    // Check value at destination after moving
+    CheckEquals('abc', worksheet.ReadAsText(dest_cell), 'Moved value mismatch.');
+    // Check value at source after moving
+    CheckEquals('', worksheet.ReadAsText(value_cell), 'Source value mismatch after moving.');
+    
+  finally
+    workbook.Free;
+  end;
+end;
+  
+{ In the following test an empty cell is moved to a location with a value cell. 
+  This operation must delete the value in the destination cell after moving. }
+procedure TSpreadMoveTests.Test_MoveCell_EmptyToValue;
+const
+  SOURCE_CELL_ROW = 0;   // A1
+  SOURCE_CELL_COL = 0;
+  DEST_CELL_ROW = 2;     // C3
+  DEST_CELL_COL = 2; 
+var
+  worksheet: TsWorksheet;
+  workbook: TsWorkbook;
+  src_cell: PCell = nil;
+  dest_cell: PCell = nil;
 begin
-  Test_MoveCell_CircRef(2);
-end;
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := workbook.Options + [boAutoCalc];
 
+    worksheet := workBook.AddWorksheet(MoveTestSheet);
+    
+    // Prepare the worksheet in which an empty cell is moved.
+    src_cell := nil;     // A1
+    dest_cell := worksheet.WriteText(DEST_CELL_ROW, DEST_CELL_COL, 'abc');   // C3
+    
+    // Move the source cell to overwrite the value cell
+    try
+      worksheet.MoveCell(src_cell, DEST_CELL_ROW, DEST_CELL_COL);
+      dest_cell := worksheet.FindCell(DEST_CELL_ROW, DEST_CELL_COL);
+    except
+    end;
+    
+    // The destination cell should be empty.
+    CheckEquals(true, dest_cell = nil, 'Destination cell nas not been deleted.');
+    
+  finally
+    workbook.Free;
+  end;
+end;
+  
+{ In the following test an empty cell is moved to a location with a formula cell.
+  This operation must delete the destination cell after moving. In particular, 
+  there must not be a formula any more. }
+procedure TSpreadMoveTests.Test_MoveCell_EmptyToFormula;
+const
+  SOURCE_CELL_ROW = 0;   // A1
+  SOURCE_CELL_COL = 0;
+  DEST_CELL_ROW = 2;     // C3
+  DEST_CELL_COL = 2; 
+var
+  worksheet: TsWorksheet;
+  workbook: TsWorkbook;
+  src_cell: PCell = nil;
+  dest_cell: PCell = nil;
+begin
+  workbook := TsWorkbook.Create;
+  try
+    workbook.Options := workbook.Options + [boAutoCalc];
+
+    worksheet := workBook.AddWorksheet(MoveTestSheet);
+    
+    // Prepare the worksheet in which a cell is moved.
+    // The value cell is A1, the formula cell is B2 and it points to A1
+    src_cell := nil;     // A1
+    dest_cell := worksheet.WriteFormula(DEST_CELL_ROW, DEST_CELL_COL, 'PI()');   // C3
+    
+    // Move the empty source cell to overwrite the formula cell
+    try
+      worksheet.MoveCell(src_cell, DEST_CELL_ROW, DEST_CELL_COL);
+      dest_cell := worksheet.FindCell(DEST_CELL_ROW, DEST_CELL_COL);
+    except
+    end;
+    
+    // The destination cell should be empty.
+    CheckEquals(false, HasFormula(dest_cell), 'Destination cell still contains a formula.');
+    CheckEquals(true, dest_cell = nil, 'Destination cell has not been deleted.');
+    
+  finally
+    workbook.Free;
+  end;
+end;
+  
 initialization
   RegisterTest(TSpreadMoveTests);
 
