@@ -13,9 +13,9 @@ var
   i: Integer;
 
 const
-  image1 = '../../images/components/TSWORKBOOKSOURCE.png';
-  image2 = '../../images/components/TSWORKSHEETGRID.png';
-  image3 = '../../images/components/TSCELLEDIT.png';
+  image1 = '../../../images/components/TSWORKBOOKSOURCE.png';
+  image2 = '../../../images/components/TSWORKSHEETGRID.png';
+  image3 = '../../../images/components/TSCELLEDIT.png';
 
 begin
   Writeln('Starting program "demo_write_images"...');
