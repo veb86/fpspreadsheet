@@ -53,10 +53,13 @@ type
   private
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
+    FFileNames: TStrings;
     FSharedStrings: TStringList;
     FSheetList: TFPList;
     FFillList: TFPList;
     FBorderList: TFPList;
+    FDrawingToSheetRelList: TFPList;
+    FEmbeddedObjList: TFPList;
     FHyperlinkList: TFPList;
     FSharedFormulaBaseList: TFPList;
     FPalette: TsPalette;
@@ -65,7 +68,9 @@ type
     FWrittenByFPS: Boolean;
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
     procedure ApplyHyperlinks(AWorksheet: TsBasicWorksheet);
+    function CreateXMLStream: TStream;
     function FindCommentsFileName(ANode: TDOMNode): String;
+    function MakeXLPath(AFileName: String): String;
     procedure ReadActiveSheet(ANode: TDOMNode; out ActiveSheetIndex: Integer);
     procedure ReadBorders(ANode: TDOMNode);
     function ReadBorderStyle(ANode: TDOMNode; out ABorderStyle: TsCellBorderStyle): Boolean;
@@ -100,12 +105,17 @@ type
     procedure ReadDifferentialFormat(ANode: TDOMNode);
     procedure ReadDifferentialFormats(ANode: TDOMNode);
     procedure ReadDimension(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadDrawing(ANode: TDOMNode; ASheet: TsBasicWorksheet);
+    function ReadDrawingFileName(AStream: TStream; ASheetRel: String): String;
+    procedure ReadDrawingRels(ANode: TDOMNode; ASheet: TsBasicWorksheet);
+    procedure ReadEmbeddedObjs(AStream: TStream);
     procedure ReadFileVersion(ANode: TDOMNode);
     procedure ReadFills(ANode: TDOMNode);
     function ReadFont(ANode: TDOMNode): Integer;
     procedure ReadFonts(ANode: TDOMNode);
     procedure ReadHeaderFooter(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadHyperlinks(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadMedia(AStream: TStream);
     procedure ReadMetaData(ANode: TDOMNode);
     procedure ReadMergedCells(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadNumFormats(ANode: TDOMNode);
@@ -124,6 +134,9 @@ type
     procedure ReadThemeColors(ANode: TDOMNode);
     procedure ReadWorkbookProtection(ANode: TDOMNode);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+  protected
+    procedure ListAllFileNames(AStream: TStream);
+    procedure ListFileNamesInDir(AList: TStrings; ADir: String); 
   protected
     FFirstNumFormatIndexInFile: Integer;
     procedure AddBuiltinNumFormats; override;
@@ -370,6 +383,21 @@ type
     NumFormatStr: String;
   end;
 
+  TDrawingToSheetRel = class
+    DrawingFileName: String;
+    Worksheet: TsBasicWorksheet;
+  end;
+  
+  TEmbeddedObjData = class
+    RelID: String;
+    MediaName: String;
+    FileName: String;
+    Worksheet: TsBasicWorksheet;
+    ImgIndex: Integer;
+    FromRow, FromCol, ToRow, ToCol: Cardinal;
+    FromRowOffs, FromColOffs, ToRowOffs, ToColOffs: Double;
+  end;
+  
   THyperlinkListData = class
     ID: String;
     CellRef: String;
@@ -391,6 +419,12 @@ type
     Name: String;
     ID: String;
     Hidden: Boolean;
+    DrawingFile: String;
+  end;
+  
+  TSharedObjData = class
+    Picture: array of byte;
+    RelId: String;
   end;
 
 const
@@ -624,6 +658,7 @@ begin
   inherited Create(AWorkbook);
   FDateMode := XlsxSettings.DateMode;
 
+  FFileNames := TStringList.Create;
   FSharedStrings := TStringList.Create;
   FSheetList := TFPList.Create;
   FFillList := TFPList.Create;
@@ -631,6 +666,8 @@ begin
   FHyperlinkList := TFPList.Create;
   FCellFormatList := TsCellFormatList.Create(true);
   FDifferentialFormatList := TFPList.Create;
+  FDrawingToSheetRelList := TFPList.Create;
+  FEmbeddedObjList := TFPList.Create;
   // Allow duplicates because xf indexes used in cell records cannot be found any more.
   FSharedFormulaBaseList := TFPList.Create;
 
@@ -654,6 +691,10 @@ begin
     TObject(FBorderList[j]).Free;
   FBorderList.Free;
 
+  for j := FEmbeddedObjList.Count-1 downto 0 do
+    TObject(FEmbeddedObjList[j]).Free;
+  FEmbeddedObjList.Free;
+  
   for j := FHyperlinkList.Count-1 downto 0 do
     TObject(FHyperlinkList[j]).Free;
   FHyperlinkList.Free;
@@ -662,6 +703,9 @@ begin
     TObject(FDifferentialFormatList[j]).Free;
   FDifferentialFormatList.Free;
 
+  for j := FDrawingToSheetRelList.Count-1 downto 0 do
+    TObject(FDrawingToSheetRelList[j]).Free;
+  FDrawingToSheetRelList.Free;
   for j := FSheetList.Count-1 downto 0 do
     TObject(FSheetList[j]).Free;
   FSheetList.Free;
@@ -677,6 +721,8 @@ begin
   // FCellFormatList, FNumFormatList and FFontList are destroyed by ancestor
 
   FPalette.Free;
+  FFileNames.Free;
+  
   inherited Destroy;
 end;
 
@@ -744,6 +790,17 @@ begin
   Result := HasZipHeader(AStream);
 end;
 
+function TsSpreadOOXMLReader.CreateXMLStream: TStream;
+begin
+  if boFileStream in FWorkbook.Options then
+    Result := TFileStream.Create(GetTempFileName, fmCreate)
+  else
+  if boBufStream in FWorkbook.Options then
+    Result := TBufStream.Create(GetTempFileName, fmCreate)
+  else
+    Result := TMemoryStream.Create;
+end;
+
 function TsSpreadOOXMLReader.FindCommentsFileName(ANode: TDOMNode): String;
 var
   s: String;
@@ -761,6 +818,54 @@ begin
   Result := '';
 end;
 
+procedure TsSpreadOOXMLReader.ListAllFileNames(AStream: TStream);
+var
+  unzip: TStreamUnzipper;
+  fn: String;
+  i: Integer;
+begin
+  FFileNames.Clear;
+  unzip := TStreamUnzipper.Create(AStream);
+  try
+    unzip.Examine;
+    for i := 0 to unzip.Entries.Count-1 do begin
+      fn := unzip.Entries.Entries[i].ArchiveFileName;
+      FFileNames.Add(fn);
+    end;
+  finally
+    unzip.Free;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ListFileNamesInDir(AList: TStrings; ADir: String); 
+var
+  i: Integer;
+  fn: String;
+begin
+  AList.Clear;
+  for fn in FFileNames do
+    if pos(ADir, fn) = 1 then
+      AList.Add(fn);
+end;
+
+{ The rels files store relative file paths (e.g. ../media/image1.png).
+  This function makes sure that the file path begins with 'xl'. This filename
+  can be used by the unzipper to extract the file from the xlsx (zip) archive. }
+function TsSpreadOOXMLReader.MakeXLPath(AFileName: String): String;
+begin
+  Result := AFileName;
+  if Length(AFileName) <= 3 then
+    exit;
+  
+  if (Result[1] = '.') and (Result[2] = '.') then
+  begin
+    Result[1] := 'x';
+    Result[2] := 'l';
+  end else 
+  if not ((Result[1] ='x') and (Result[2] = 'l') and (Result[3] = '/')) then
+    Result := 'xl/' + AFileName;
+end;
+  
 procedure TsSpreadOOXMLReader.ReadActiveSheet(ANode: TDOMNode;
   out ActiveSheetIndex: Integer);
 var
@@ -2366,6 +2471,281 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLReader.ReadDrawing(ANode: TDOMNode; ASheet: TsBasicWorksheet);
+var
+  node, child, child2: TDOMNode;
+  nodeName: String = '';
+  rID, fileName: String;
+  fromCol, fromRow, toCol, toRow: Integer;
+  fromColOffs, fromRowOffs, toColOffs, toRowOffs: Double;
+  data: TEmbeddedObjData;
+begin
+  if ANode = nil then
+    exit;
+  ANode := ANode.FirstChild;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    fromCol := -1;     fromColOffs := 0.0;
+    fromRow := -1;     fromRowOffs := 0.0;
+    toCol := -1;       toColOffs := 0.0;
+    toRow := -1;       toRowOffs := 0.0;
+    rID := '';         fileName := '';
+    if nodeName = 'xdr:twoCellAnchor' then
+    begin
+      node := ANode.FirstChild;
+      while Assigned(node) do begin 
+        nodeName := node.NodeName;
+        if nodeName = 'xdr:from' then
+        begin
+          child := node.FirstChild;
+          while Assigned(child) do begin
+            nodeName := child.NodeName;
+            if nodeName = 'xdr:col' then
+              fromCol := StrToIntDef(GetNodeValue(child), -1)
+            else if nodeName = 'xdr:row' then
+              fromRow := StrToIntDef(GetNodeValue(child), -1)
+            else if nodeName = 'xdr:colOff' then
+              fromColOffs := EMUToMM(StrToInt64Def(GetNodeValue(child), 0))
+            else if nodeName = 'xdr:rowOff' then
+              fromRowOffs := EMUToMM(StrToInt64Def(GetNodeValue(child), 0));
+            child := child.NextSibling;
+          end;
+        end else 
+        if nodeName = 'xdr:to' then
+        begin
+          child := node.FirstChild;
+          while Assigned(child) do begin
+            nodeName := child.NodeName;
+            if nodeName = 'xdr:col' then
+              toCol := StrToIntDef(GetNodeValue(child), -1)
+            else if nodeName = 'xdr:row' then
+              toRow := StrToIntDef(GetNodeValue(child), -1)
+            else if nodeName = 'xdr:colOff' then
+              toColOffs := EMUToMM(StrToInt64Def(GetNodeValue(child), 0))
+            else if nodeName = 'xdr:rowOff' then
+              toRowOffs := EMUToMM(StrToInt64Def(GetNodeValue(child), 0));
+            child := child.NextSibling;
+          end;
+        end else
+        if nodeName = 'xdr:pic' then
+        begin
+          child := node.FirstChild;
+          while Assigned(child) do begin
+            nodeName := child.NodeName;
+            if nodeName = 'xdr:blipFill' then
+            begin
+              child2 := child.FirstChild;
+              while Assigned(child2) do begin
+                nodeName := child2.NodeName;
+                if nodeName = 'a:blip' then
+                  rID := GetAttrValue(child2, 'r:embed');
+                child2 := child2.NextSibling;
+              end;
+            end else
+            if nodeName = 'xdr:nvPicPr' then begin
+              child2 := child.FirstChild;
+              while Assigned(child2) do begin
+                nodeName := child2.NodeName;
+                if nodeName = 'xdr:cNvPr' then
+                  fileName := GetAttrValue(child2, 'descr');
+                child2 := child2.NextSibling;
+              end;
+            end;
+            child := child.NextSibling;
+          end;
+        end;
+        node := node.NextSibling;
+      end;
+    end;
+    
+    if (fromCol <> -1) and (toCol <> -1) and (fromRow <> -1) and (toRow <> -1) and (rID <> '') then
+    begin
+      data := TEmbeddedObjData.Create;
+      data.FromCol := fromCol;
+      data.FromColOffs := fromColOffs;
+      data.ToCol := toCol;
+      data.ToColOffs := toColOffs;
+      data.FromRow := fromRow;
+      data.FromRowOffs := fromRowOffs;
+      data.ToRow := toRow;
+      data.ToRowOffs := toRowOffs;
+      data.RelId := rId;
+      data.FileName := fileName;
+      data.ImgIndex := -1;
+      data.Worksheet := ASheet;
+      FEmbeddedObjList.Add(data);
+    end;
+      
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+function TsSpreadOOXMLReader.ReadDrawingFileName(AStream: TStream; ASheetRel: String): String;
+var
+  XMLStream: TStream;
+  doc: TXMLDocument;
+  node: TDOMNode;
+  relType: String;
+  relTarget: String;
+begin
+  Result := '';
+  doc := nil;
+  XMLStream := CreateXMLStream;
+  try
+    if not UnzipToStream(AStream, ASheetRel, XMLStream) then
+      raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
+    ReadXMLStream(doc, XMLStream);
+    node := doc.DocumentElement.FindNode('Relationship');
+    while Assigned(node) do begin
+      relType := GetAttrValue(node, 'Type');
+      if relType = SCHEMAS_DRAWING then
+      begin
+        relTarget := GetAttrValue(node, 'Target'); // --> '../drawings/drawing1.xml'
+        // Replace '..' by 'xl' (needed by the unzipper to extract the file)
+        Result := MakeXLPath(relTarget);           // --> 'xl/drawings/drawing1.xml'
+        exit;
+      end;
+      node := node.NextSibling;
+    end;
+  finally
+    XMLStream.Free;
+    doc.Free;
+  end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadDrawingRels(ANode: TDOMNode; ASheet: TsBasicWorksheet);
+var
+  nodeName: String;
+  relID, relTarget, relType: String;
+  data: TEmbeddedObjData;
+  j: Integer;
+begin
+  if ANode = nil then
+    exit;
+  nodeName := ANode.NodeName;
+  while Assigned(ANode) do
+  begin 
+    nodeName := ANode.NodeName;
+    relID := GetAttrValue(ANode, 'Id');
+    relTarget := GetAttrValue(ANode, 'Target');
+    relType := GetAttrValue(ANode, 'Type');
+    if (relID <> '') and (relTarget <> '') and (relType = SCHEMAS_IMAGE) then begin
+      relTarget := MakeXLPath(relTarget);
+      for j := 0 to FEmbeddedObjList.Count-1 do
+      begin
+        data := TEmbeddedObjData(FEmbeddedObjList[j]);
+        if (data.Worksheet = ASheet) and (data.RelID = relID) then
+        begin
+          data.MediaName := relTarget;
+          break;
+        end;
+      end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{ Reads embedded images. 
+  Information about them is scattered over several places.
+  - From the worksheets' rel files we get the drawing*.xml files which contain
+    image position information
+  - The related drawing*.xml.rels files contain the location of the media
+    files
+  - The media files themselves. }
+procedure TsSpreadOOXMLReader.ReadEmbeddedObjs(AStream: TStream);
+var
+  i, j: Integer;
+  fn, s: String;
+  XMLStream: TStream;
+  doc: TXMLDocument;
+  sheet: TsWorksheet;
+  data: TEmbeddedObjData;
+  SheetRels: TStrings;
+  sheetData: TSheetData;
+begin
+  SheetRels := TStringList.Create;
+  try
+    // Get the name of the files in xl/worksheet/_rels. 
+    // This should be "sheet1.xml.rels", "sheet2.xml.rels", etc.
+    // They belong to the 1st, 2nd etc. worksheet and contain the name of
+    // the drawing.xml files describing the embedded images.
+    ListFileNamesInDir(sheetRels, OOXML_PATH_XL_WORKSHEETS_RELS);
+    // Get the name of the drawing files and store them in the SheetData
+    for i := 0 to sheetRels.Count-1 do
+    begin
+      // Get index in sheet-rel file. Decremented by 1 this is the index of the
+      // worksheet.
+      fn := SheetRels[i];
+      Delete(fn, 1, Length(OOXML_PATH_XL_WORKSHEETS_RELS + 'sheet'));
+      s := Copy(fn, 1, pos('.', fn)-1);
+      j := StrToInt(s) - 1;
+      sheetData := TSheetData(FSheetList[j]) ;
+      // Store the name of the drawing.xml file in the SheetData
+      sheetData.DrawingFile := ReadDrawingFileName(AStream, SheetRels[i]);  
+    end;
+  finally
+    SheetRels.Free;
+  end;
+  
+  doc := nil;
+  j := 1;
+  try
+    for i := 0 to FSheetList.Count-1 do
+    begin
+      fn := TSheetData(FSheetList[i]).DrawingFile;
+      if fn = '' then 
+        Continue;
+      sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(i);
+      
+      // Read the drawings.xml file
+      XMLStream := CreateXMLStream;
+      try
+        if not UnzipToStream(AStream, fn, XMLStream) then
+          raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
+        ReadXMLStream(doc, XMLStream);
+        // Read drawings parameters and store them in the FEmbeddedObjList.
+        ReadDrawing(doc.DocumentElement, sheet);
+      finally
+        XMLStream.Free;
+      end;
+      
+      XMLStream := CreateXMLStream;
+      try
+        // construct filename of drawing.xml.rels file
+        Delete(fn, 1, Length(OOXML_PATH_XL_DRAWINGS));
+        fn := OOXML_PATH_XL_DRAWINGS_RELS + fn + '.rels';
+        if not UnzipToStream(AStream, fn, XMLStream) then
+          raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
+        ReadXMLStream(doc, XMLStream);
+        // Read rId value for this sheet and look up the media file name. 
+        // Store it in the FEmbeddedObjList.
+        ReadDrawingRels(Doc.DocumentElement.FindNode('Relationship'), sheet);
+      finally
+        XMLStream.Free;
+      end;
+    end;
+              
+    // Read the embedded streams, add them to the workbook...
+    ReadMedia(AStream);
+    
+    // ... and insert them in the worksheet
+    for i := 0 to FEmbeddedObjList.Count-1 do
+    begin
+      data := TEmbeddedObjData(FEmbeddedObjList[i]);
+      sheet := TsWorksheet(data.Worksheet);
+      if (sheet <> nil) and (data.ImgIndex > -1) then
+        sheet.WriteImage(data.FromRow, data.FromCol, 
+          data.ImgIndex,
+          data.FromRowOffs, data.FromColOffs
+        );
+      // to do: ScaleX, ScaleY, ASize
+    end;
+  finally
+    doc.Free;
+  end;
+end;
+
 procedure TsSpreadOOXMLReader.ReadFileVersion(ANode: TDOMNode);
 begin
   FWrittenByFPS := GetAttrValue(ANode, 'appName') = 'fpspreadsheet';
@@ -2722,6 +3102,34 @@ begin
       end;
     end;
   end;
+end;
+
+procedure TsSpreadOOXMLReader.ReadMedia(AStream: TStream);
+var
+  memstream: TMemoryStream;
+  unzip: TStreamUnzipper;
+  i: Integer;
+  data: TEmbeddedObjData;
+begin 
+  unzip := TStreamUnzipper.Create(AStream);
+  try
+    unzip.Examine;
+    for i := 0 to FEmbeddedObjList.Count-1 do
+    begin
+      data := TEmbeddedObjData(FEmbeddedObjList[i]);
+      if data.MediaName <> '' then
+      begin
+        memStream := TMemoryStream.Create;
+        unzip.UnzipFile(data.MediaName, memStream);
+        memStream.Position := 0;
+        if memStream.Size > 0 then
+          data.ImgIndex := (FWorkbook as TsWorkbook).AddEmbeddedObj(memStream, ExtractFileName(data.Filename));
+        memStream.Free;
+      end;
+    end;
+  finally
+    unzip.Free;
+  end;         
 end;
 
 procedure TsSpreadOOXMLReader.ReadMetaData(ANode: TDOMNode);
@@ -3168,6 +3576,7 @@ begin
     (AWorksheet as TsWorksheet).WriteDefaultRowHeight(h, suPoints);
 end;
 
+{ Reads the sheet parameters from the workbook.xml (node sheets) }
 procedure TsSpreadOOXMLReader.ReadSheetList(ANode: TDOMNode);
 var
   node: TDOMNode;
@@ -3628,17 +4037,6 @@ var
   XMLStream: TStream;
   actSheetIndex: Integer;
 
-  function CreateXMLStream: TStream;
-  begin
-    if boFileStream in FWorkbook.Options then
-      Result := TFileStream.Create(GetTempFileName, fmCreate)
-    else
-    if boBufStream in FWorkbook.Options then
-      Result := TBufStream.Create(GetTempFileName, fmCreate)
-    else
-      Result := TMemoryStream.Create;
-  end;
-
   function Doc_FindNode(ANodeName: String): TDOMNode;
   begin
     Result := Doc.DocumentElement.FindNode(ANodeName);
@@ -3651,6 +4049,9 @@ begin
   Doc := nil;
 
   try
+    // Get all filenames contained in the zipped xlsx file.
+    ListAllFileNames(AStream);
+        
     // Retrieve theme colors
     XMLStream := CreateXMLStream;
     try
@@ -3830,6 +4231,9 @@ begin
       XMLStream.Free;
     end;
 
+    // Read embedded images
+    ReadEmbeddedObjs(AStream);
+    
     // MetaData
     XMLStream := CreateXMLStream;
     try
