@@ -3041,7 +3041,10 @@ begin
       SelectClipRgn(Canvas.Handle, rgn);
       R := Rect(0, 0, w, h);
       OffsetRect(R, imgRect.Left, imgRect.Top);
-      Canvas.StretchDraw(R, TPicture(img^.Picture).Graphic);
+      if (img^.ScaleX = 1.0) and (img^.ScaleY = 1.0) then
+        Canvas.Draw(R.Left, R.Top, TPicture(img^.Picture).Graphic)
+      else
+        Canvas.StretchDraw(R, TPicture(img^.Picture).Graphic);
     finally
       DeleteObject(rgn);
     end;
