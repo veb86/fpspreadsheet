@@ -2663,6 +2663,9 @@ var
   data: TEmbeddedObjData;
   SheetRels: TStrings;
   sheetData: TSheetData;
+  w, h: Double;
+  img: TsEmbeddedObj;
+  scaleX, scaleY: Double;
 begin
   SheetRels := TStringList.Create;
   try
@@ -2735,11 +2738,27 @@ begin
       data := TEmbeddedObjData(FEmbeddedObjList[i]);
       sheet := TsWorksheet(data.Worksheet);
       if (sheet <> nil) and (data.ImgIndex > -1) then
+      begin
+        img := TsWorkbook(FWorkbook).GetEmbeddedObj(data.ImgIndex);
+        w := -data.FromColOffs + data.ToColOffs;
+        h := -data.FromRowOffs + data.ToRowOffs;
+        for j := data.FromCol to data.ToCol-1 do 
+          w := w + sheet.GetColWidth(j, suMillimeters);
+        for j := data.FromRow to data.ToRow-1 do 
+          h := h + sheet.GetRowHeight(j, suMillimeters);
+        scaleX := w / img.ImageWidth;
+        scaleY := h / img.ImageHeight;
+        // Scale factor calculation is very inaccurate. We try to round to integers
+        if (scaleX > 0.99) and SameValue(scaleX, round(scaleX), 0.01) then
+          scaleX := round(scaleX);
+        if (scaleY > 0.99) and SameValue(scaleY, round(scaleY), 0.01) then
+          scaleY := round(scaleY);
         sheet.WriteImage(data.FromRow, data.FromCol, 
           data.ImgIndex,
-          data.FromRowOffs, data.FromColOffs
+          data.FromRowOffs, data.FromColOffs,
+          scaleX, scaleY
         );
-      // to do: ScaleX, ScaleY, ASize
+      end;
     end;
   finally
     doc.Free;
