@@ -20,6 +20,24 @@ const
 
 begin
   Writeln('Starting program "demo_write_headerfooter_images"...');
+  if not FileExists(image1) then
+  begin
+    WriteLn(ExpandFilename(image1) + ' not found.');
+    Halt;
+  end;
+    
+  if not FileExists(image2) then
+  begin
+    WriteLn(ExpandFilename(image2) + ' not found.');
+    Halt;
+  end;
+
+  if not FileExists(image3) then
+  begin
+    WriteLn(ExpandFilename(image3) + ' not found.');
+    Halt;
+  end;
+
   // Create the spreadsheet
   MyWorkbook := TsWorkbook.Create;
   try

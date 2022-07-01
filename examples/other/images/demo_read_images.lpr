@@ -7,6 +7,9 @@ program demo_read_images;
 uses
   SysUtils, fpspreadsheet, fpstypes, fpsutils, fpsimages, xlsxooxml, fpsopendocument;
 
+const
+  FILE_NAME = 'img';
+  
 var
   workbook: TsWorkbook;
   worksheet: TsWorksheet;
@@ -24,10 +27,10 @@ begin
     // Read spreadsheet file
     myDir := ExtractFilePath(ParamStr(0));
     {$IFDEF USE_XLSX}
-    workbook.ReadFromFile(myDir + 'img.xlsx', sfOOXML);
+    workbook.ReadFromFile(myDir + FILE_NAME + '.xlsx', sfOOXML);
     {$ENDIF}
     {$IFDEF USE_OPENDOCUMENT}
-    workbook.ReadFromFile(myDir + 'img.ods', sfOpenDocument);
+    workbook.ReadFromFile(myDir + FILE_NAME + '.ods', sfOpenDocument);
     {$ENDIF}
     
     // Get worksheets
@@ -48,7 +51,8 @@ begin
           ', ScaleX=', img^.ScaleX:0:2,
           ', ScaleY=', img^.ScaleY:0:2
         );
-        embobj.Stream.SaveToFile(ExtractFileName(embobj.FileName));
+        if embObj.FileName <> '' then
+          embobj.Stream.SaveToFile(ExtractFileName(embobj.FileName));
       end;
     end;
     WriteLn('Finished.');
