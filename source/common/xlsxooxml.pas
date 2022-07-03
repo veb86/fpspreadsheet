@@ -402,7 +402,7 @@ type
     FromRow, FromCol, ToRow, ToCol: Cardinal;
     FromRowOffs, FromColOffs, ToRowOffs, ToColOffs: Double;
     // This part is for header/footer images.
-    // ... to be completed ...
+    HFImgPosition: string; // 'LH', 'CH', 'RH', 'LF', 'CF', 'RF';
   end;
   
   THyperlinkListData = class
@@ -2662,6 +2662,7 @@ var
   w, h: Double;
   img: TsEmbeddedObj;
   scaleX, scaleY: Double;
+  pageIdx: Integer;
 begin
   doc := nil;
   j := 1;
@@ -2719,7 +2720,24 @@ begin
         img := TsWorkbook(FWorkbook).GetEmbeddedObj(data.ImgIndex);
         if data.IsHeaderFooter then
         begin
-          // to do: add header/footer processing here.
+          if data.HFImgPosition <> '' then
+          begin
+            pageIdx := HEADER_FOOTER_INDEX_ALL;  // wp: Don't know which is the correct index...
+            case data.HFImgPosition[2] of
+              'H':
+                case data.HFImgPosition[1] of
+                  'L': sheet.PageLayout.AddHeaderImage(pageIdx, hfsLeft, data.ImgIndex);
+                  'C': sheet.PageLayout.AddHeaderImage(pageIdx, hfsCenter, data.ImgIndex);
+                  'R': sheet.PageLayout.AddHeaderImage(pageIdx, hfsRight, data.ImgIndex);
+                end;
+              'F':
+                case data.HFImgPosition[1] of
+                  'L': sheet.PageLayout.AddFooterImage(pageIdx, hfsLeft, data.ImgIndex);
+                  'C': sheet.PageLayout.AddFooterImage(pageIdx, hfsCenter, data.ImgIndex);
+                  'R': sheet.PageLayout.AddFooterImage(pageIdx, hfsRight, data.ImgIndex);
+                end;
+            end;
+          end;
         end else
         begin
           w := -data.FromColOffs + data.ToColOffs;
@@ -4030,13 +4048,18 @@ var
   relID: String;
   title: String;
   data: TEmbeddedObjData;
+  id: String;
 begin
   ANode := ANode.FirstChild;
   while Assigned(ANode) do
   begin
+    id := '';
+    relID := '';
+    title := '';
     nodeName := ANode.NodeName;
     if nodeName = 'v:shape' then
     begin
+      id := GetAttrValue(ANode, 'id');
       node := ANode.FirstChild;
       while Assigned(node) do
       begin
@@ -4065,6 +4088,7 @@ begin
         data.ImgIndex := -1;
         data.Worksheet := AWorksheet;
         data.IsHeaderFooter := true;
+        data.HFImgPosition := id;
         FEmbeddedObjList.Add(data);
       end;
     end;
