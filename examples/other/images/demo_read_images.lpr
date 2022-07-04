@@ -20,6 +20,7 @@ var
   
 begin
   WriteLn('Starting program "demo_read_images"...');
+  WriteLn;
   
   // Create a spreadsheet
   workbook := TsWorkbook.Create;
@@ -54,6 +55,7 @@ begin
         if embObj.FileName <> '' then
           embobj.Stream.SaveToFile(ExtractFileName(embobj.FileName));
       end;
+      WriteLn;
     end;
     WriteLn('Finished.');
     

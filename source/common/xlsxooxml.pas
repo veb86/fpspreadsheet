@@ -53,7 +53,6 @@ type
   private
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
-    FFileNames: TStrings;
     FSharedStrings: TStringList;
     FSheetList: TFPList;
     FFillList: TFPList;
@@ -71,6 +70,7 @@ type
     function CreateXMLStream: TStream;
     function FindCommentsFileName(ANode: TDOMNode): String;
     function MakeXLPath(AFileName: String): String;
+  protected
     procedure ReadActiveSheet(ANode: TDOMNode; out ActiveSheetIndex: Integer);
     procedure ReadBorders(ANode: TDOMNode);
     function ReadBorderStyle(ANode: TDOMNode; out ABorderStyle: TsCellBorderStyle): Boolean;
@@ -105,10 +105,9 @@ type
     procedure ReadDifferentialFormat(ANode: TDOMNode);
     procedure ReadDifferentialFormats(ANode: TDOMNode);
     procedure ReadDimension(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
-    procedure ReadDrawing(AStream: TStream; ARelsFile: String; ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadDrawing(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadDrawingRels(ANode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadEmbeddedObjs(AStream: TStream);
-    function ReadFileNameFromRels(AStream: TStream; ARelsFile, ARelType, ARelID: String): String;
     procedure ReadFileVersion(ANode: TDOMNode);
     procedure ReadFills(ANode: TDOMNode);
     function ReadFont(ANode: TDOMNode): Integer;
@@ -123,23 +122,21 @@ type
     procedure ReadPageSetup(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadPalette(ANode: TDOMNode);
     procedure ReadPrintOptions(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadRels(AStream: TStream; ARelsFile: String; ARelsList: TFPList);
     procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; var ARowIndex: Cardinal);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadSheetList(ANode: TDOMNode);
     procedure ReadSheetPr(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadSheetProtection(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
-    procedure ReadSheetRelFileNames(AStream: TStream; AWorksheet: TsBasicWorksheet);
-    procedure ReadSheetRels(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadSheetRels(AStream: TStream);
+    procedure ReadSheetRels(AStream: TStream; ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadSheetViews(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadThemeColors(ANode: TDOMNode);
     procedure ReadThemeElements(ANode: TDOMNode);
-    procedure ReadVmlDrawing(AStream: TStream; ARelsFile: String; ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadVmlDrawing(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadWorkbookProtection(ANode: TDOMNode);
     procedure ReadWorksheet(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
-  protected
-    procedure ListAllFileNames(AStream: TStream);
-    procedure ListFileNamesInDir(AList: TStrings; ADir: String); 
   protected
     FFirstNumFormatIndexInFile: Integer;
     procedure AddBuiltinNumFormats; override;
@@ -422,14 +419,35 @@ type
     Formula: String;
   end;
 
+  TRelationship = class
+    RelID: String;
+    Target: String;
+  end;
+  
+  TRelationshipList = class(TFPList)
+  private
+    function GetItem(AIndex: Integer): TRelationship;
+    procedure SetItem(AIndex: Integer; AValue: TRelationship);
+  public
+    destructor Destroy; override;
+    function Add(ARelID, ATarget: String): TRelationship;
+    procedure Clear; 
+    procedure Delete(AIndex: Integer);
+    function FindTarget(ARelID: String): String;
+    property Items[AIndex: Integer]: TRelationship read GetItem write SetItem; default;
+  end;
+  
   TSheetData = class
     Name: String;
     ID: String;
     Hidden: Boolean;
-    Drawing_relID: String;
+    SheetRels: TFPList;
     Drawing_File: String;
-    VmlDrawing_relID: String;
+    DrawingRels: TRelationshipList;
     VmlDrawing_File: String;
+    VmlDrawingRels: TRelationshipList;
+    constructor Create;
+    destructor Destroy; override;
   end;
   
   TSharedObjData = class
@@ -671,6 +689,82 @@ begin
 end;
 
 
+destructor TRelationshipList.Destroy;
+begin
+  Clear;
+  inherited;
+end;
+
+function TRelationshipList.Add(ARelID, ATarget: String): TRelationship;
+var
+  rel: TRelationship;
+  idx: Integer;
+begin
+  rel := TRelationship.Create;
+  rel.RelID := ARelID;
+  rel.Target := ATarget;
+  idx := inherited Add(rel);
+  Result := Items[idx];
+end;
+  
+procedure TRelationshipList.Clear;
+var
+  j: Integer;
+begin
+  for j := 0 to Count-1 do Items[j].Free;
+  inherited;
+end;
+
+procedure TRelationshipList.Delete(AIndex: Integer);
+begin
+  Items[AIndex].Free;
+  inherited;
+end;
+
+function TRelationshipList.FindTarget(ARelID: String): String;
+var
+  i: Integer;
+  rel: TRelationship;
+begin
+  for i := 0 to Count-1 do
+  begin
+    rel := Items[i];
+    if (rel.RelID = ARelID) then
+    begin
+      Result := rel.Target;
+      exit;
+    end;
+  end;
+  Result := '';
+end;
+  
+function TRelationshipList.GetItem(AIndex: Integer): TRelationship;
+begin
+  Result := TRelationship(inherited Items[AIndex]);
+end;
+
+procedure TRelationshipList.SetItem(AIndex: Integer; AValue: TRelationship);
+begin
+  inherited Items[AIndex] := AValue;
+end;
+
+
+constructor TSheetData.Create;
+begin
+  inherited;
+  SheetRels := TRelationshipList.Create;
+  DrawingRels := TRelationshipList.Create;
+  VmlDrawingRels := TRelationshipList.Create;
+end;
+
+destructor TSheetData.Destroy;
+begin
+  SheetRels.Free;
+  DrawingRels.Free;
+  VmlDrawingRels.Free;
+  inherited;
+end;
+
 {------------------------------------------------------------------------------}
 {                           TsSpreadOOXMLReader                                }
 {------------------------------------------------------------------------------}
@@ -680,7 +774,6 @@ begin
   inherited Create(AWorkbook);
   FDateMode := XlsxSettings.DateMode;
 
-  FFileNames := TStringList.Create;
   FSharedStrings := TStringList.Create;
   FSheetList := TFPList.Create;
   FFillList := TFPList.Create;
@@ -743,7 +836,6 @@ begin
   // FCellFormatList, FNumFormatList and FFontList are destroyed by ancestor
 
   FPalette.Free;
-  FFileNames.Free;
   
   inherited Destroy;
 end;
@@ -832,42 +924,12 @@ begin
     s := GetAttrValue(ANode, 'Type');
     if s = SCHEMAS_COMMENTS then
     begin
-      Result := ExtractFileName(GetAttrValue(ANode, 'Target'));
+      Result := ExtractFileName(GetAttrValue(ANode, 'Target'));      // ??? ExtractFileName here ????
       exit;
     end;
     ANode := ANode.NextSibling;
   end;
   Result := '';
-end;
-
-procedure TsSpreadOOXMLReader.ListAllFileNames(AStream: TStream);
-var
-  unzip: TStreamUnzipper;
-  fn: String;
-  i: Integer;
-begin
-  FFileNames.Clear;
-  unzip := TStreamUnzipper.Create(AStream);
-  try
-    unzip.Examine;
-    for i := 0 to unzip.Entries.Count-1 do begin
-      fn := unzip.Entries.Entries[i].ArchiveFileName;
-      FFileNames.Add(fn);
-    end;
-  finally
-    unzip.Free;
-  end;
-end;
-
-procedure TsSpreadOOXMLReader.ListFileNamesInDir(AList: TStrings; ADir: String); 
-var
-  i: Integer;
-  fn: String;
-begin
-  AList.Clear;
-  for fn in FFileNames do
-    if pos(ADir, fn) = 1 then
-      AList.Add(fn);
 end;
 
 { The rels files store relative file paths (e.g. ../media/image1.png).
@@ -2494,11 +2556,9 @@ begin
 end;
 
 { Reads the parameters of the embedded images defined as children of the 
-  specified node which is in a drawingX.xml file. 
-  ARelsFile is the associated rels file, drawingX.xml.rels in the _rels folder,
-  and contains the media file names of the images. }
-procedure TsSpreadOOXMLReader.ReadDrawing(AStream: TStream; ARelsFile: String;
-  ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+  specified node which is in a drawingX.xml file. }
+procedure TsSpreadOOXMLReader.ReadDrawing(ANode: TDOMNode; 
+  AWorksheet: TsBasicWorksheet);
 var
   node, child, child2: TDOMNode;
   nodeName: String = '';
@@ -2506,10 +2566,13 @@ var
   fromCol, fromRow, toCol, toRow: Integer;
   fromColOffs, fromRowOffs, toColOffs, toRowOffs: Double;
   data: TEmbeddedObjData;
+  sheetData: TSheetData;
 begin
   if ANode = nil then
     exit;
 
+  sheetData := TSheetData(FSheetList[TsWorksheet(AWorksheet).Index]);
+  
   ANode := ANode.FirstChild;
   while Assigned(ANode) do
   begin
@@ -2600,7 +2663,7 @@ begin
       data.ToRowOffs := toRowOffs;
       data.RelId := rId;
       data.FileName := fileName;
-      data.MediaName := ReadFileNameFromRels(AStream, ARelsFile, SCHEMAS_IMAGE, rID);
+      data.MediaName := MakeXLPath(sheetData.DrawingRels.FindTarget(rID));
       data.ImgIndex := -1;
       data.Worksheet := AWorksheet;
       data.IsHeaderFooter := false;
@@ -2672,7 +2735,7 @@ begin
       sheetData := TSheetData(FSheetList[i]);
       sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(i);
       
-      // Read the drawings.xml file
+      // Read the drawing<n>.xml file
       fn := sheetData.Drawing_File;
       if fn <> '' then 
       begin
@@ -2683,13 +2746,13 @@ begin
             raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
           ReadXMLStream(doc, XMLStream);
           relsFn := RelsFileFor(fn);
-          ReadDrawing(AStream, relsFn, doc.DocumentElement, sheet);
+          ReadDrawing(doc.DocumentElement, sheet);
         finally
           XMLStream.Free;
         end;
       end;
         
-      // Now repeat the same with the vmlDrawings file
+      // Now repeat the same with the vmlDrawing<n> file
       fn := sheetData.VmlDrawing_File;
       if fn <> '' then
       begin
@@ -2700,7 +2763,7 @@ begin
             raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
           ReadXMLStream(doc, XMLStream);
           relsFn := RelsFileFor(fn);
-          ReadVmlDrawing(AStream, relsFn, doc.DocumentElement, sheet);
+          ReadVmlDrawing(doc.DocumentElement, sheet);
         finally
           XMLStream.Free;
         end;
@@ -2762,44 +2825,6 @@ begin
       end;
     end;
   finally
-    doc.Free;
-  end;
-end;
-
-function TsSpreadOOXMLReader.ReadFileNameFromRels(AStream: TStream; 
-  ARelsFile, ARelType, ARelID: String): String;
-var
-  XMLStream: TStream;
-  doc: TXMLDocument;
-  node: TDOMNode;
-  relID: String;
-  relType: String;
-  relTarget: String;
-begin
-  Result := '';
-  if ARelID = '' then
-    exit;
-  
-  doc := nil;
-  XMLStream := CreateXMLStream;
-  try
-    if not UnzipToStream(AStream, ARelsFile, XMLStream) then
-      raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
-    ReadXMLStream(doc, XMLStream);
-    node := doc.DocumentElement.FindNode('Relationship');
-    while Assigned(node) do begin
-      relType := GetAttrValue(node, 'Type');
-      relID := GetAttrValue(node, 'Id');
-      if (relType = ARelType) and (relID = ARelID) then
-      begin
-        relTarget := GetAttrValue(node, 'Target');
-        Result := MakeXLPath(relTarget);
-        exit;
-      end;
-      node := node.NextSibling;
-    end;
-  finally
-    XMLStream.Free;
     doc.Free;
   end;
 end;
@@ -3481,13 +3506,53 @@ var
 begin
   if ANode = nil then
     exit;
-  s := Lowercase(GetAttrValue(ANode, 'headings'));
-  if StrIsTrue(s) then //(s = '1') or (s = 'true') then
+  
+  s := GetAttrValue(ANode, 'headings');
+  if StrIsTrue(s) then 
     with sheet.PageLayout do Options := Options + [poPrintHeaders];
 
-  s := Lowercase(GetAttrValue(ANode, 'gridLines'));
-  if StrIsTrue(s) then //(s = '1') or (s = 'true') then
+  s := GetAttrValue(ANode, 'gridLines');
+  if StrIsTrue(s) then 
     with sheet.PageLayout do Options := Options + [poPrintGridLines];
+end;
+
+procedure TsSpreadOOXMLReader.ReadRels(AStream: TStream; ARelsFile: String;
+  ARelsList: TFPList);
+var
+  XMLStream: TStream;
+  doc: TXMLDocument;
+  node: TDOMNode;
+  relID, relTarget: String;
+  nodeName: String;
+begin
+  // Avoid adding items again and again to the same list if this function is 
+  // called multiple times.
+  if ARelsList.Count > 0 then 
+    exit;
+  
+  doc := nil;
+  XMLStream := CreateXMLStream;
+  try
+    // Unzip the requested file or exit if the file does not exist.
+    if not UnzipToStream(AStream, ARelsFile, XMLStream) then
+      exit;
+    ReadXMLStream(doc, XMLStream);
+    node := doc.DocumentElement.FindNode('Relationship');
+    while Assigned(node) do begin
+      nodeName := node.NodeName;
+      if nodeName = 'Relationship' then
+      begin
+        relID := GetAttrValue(node, 'Id');
+        relTarget := GetAttrValue(node, 'Target');
+        if (relID <> '') and (relTarget <> '') then
+          (ARelsList as TRelationshipList).Add(relID, relTarget);
+      end;
+      node := node.NextSibling;
+    end;
+  finally
+    XMLStream.Free;
+    doc.Free;
+  end;
 end;
 
 procedure TsSpreadOOXMLReader.ReadRow(ANode: TDOMNode;
@@ -3660,8 +3725,9 @@ begin
     begin
       sheetData := TSheetData.Create;
       sheetData.Name := GetAttrValue(node, 'name');
-      sheetData.ID := GetAttrvalue(node, 'sheetID');
+      sheetData.ID := GetAttrvalue(node, 'sheetId');
       sheetData.Hidden := GetAttrValue(node, 'state') = 'hidden';
+      // Add the sheetdata to the SheetList.
       FSheetList.Add(sheetData);
       // Create worksheet - needed because of 3d references
       (FWorkbook as TsWorkbook).AddWorksheet(sheetData.Name, true);
@@ -3848,41 +3914,69 @@ begin
   end;
 end;
 
-// Get the names of the files associated with the specified worksheet by means
-// of Relationship IDs.
-procedure TsSpreadOOXMLReader.ReadSheetRelFileNames(AStream: TStream;
-  AWorksheet: TsBasicWorksheet);
+{ Store the contents of the worksheets/_rels/sheet<n>.xml.rels files in the
+  SheetData lists. 
+  They contain the names of the drawing, vmlDrawing etc files needed 
+  at several places.}
+procedure TsSpreadOOXMLReader.ReadSheetRels(AStream: TStream);
 var
+  i: Integer;
   sheetData: TSheetData;
-  sheetIndex: Integer;
   relsFile: String;
 begin
-  sheetIndex := TsWorksheet(AWorksheet).Index;
-  sheetData := TSheetData(FSheetList[sheetIndex]);
-  relsFile := OOXML_PATH_XL_WORKSHEETS_RELS + 'sheet' + IntToStr(sheetIndex+1) + '.xml.rels';
-  sheetData.Drawing_File := ReadFileNameFromRels(AStream, relsFile, SCHEMAS_DRAWING, sheetData.Drawing_relID);
-  sheetData.VMLDrawing_File := ReadFileNameFromRels(AStream, relsFile, SCHEMAS_VMLDRAWING, sheetData.VMLDrawing_relID);
+  for i := 0 to FSheetList.Count-1 do
+  begin
+    sheetData := TSheetData(FSheetList[i]);
+    relsFile := OOXML_PATH_XL_WORKSHEETS + '_rels/sheet' + sheetData.ID + '.xml.rels';
+    ReadRels(AStream, relsfile, sheetData.SheetRels);
+  end;
 end;
 
-{ Extract the Relationship-IDs of the files related to the specified worksheet }
-procedure TsSpreadOOXMLReader.ReadSheetRels(ANode: TDOMNode; 
+{ Extract the rels files related to the specified worksheet 
+  (drawing<n>.xml.rel, vmlDrawing<n>.xml.rel) }
+procedure TsSpreadOOXMLReader.ReadSheetRels(AStream: TStream; ANode: TDOMNode; 
   AWorksheet: TsBasicWorksheet);
 var
   nodeName: string;
   sheetData: TSheetData;
   sheetIndex: Integer;
+  relID: String;
+  sheetRelsFile: String;
+  rels: TRelationshipList;
+  j: Integer;
 begin
   sheetIndex := TsWorksheet(AWorksheet).Index;
   sheetData := TSheetData(FSheetList[sheetIndex]);
+  sheetRelsFile := OOXML_PATH_XL_WORKSHEETS_RELS + 'sheet' + sheetData.ID + '.xml.rels';
   
   ANode := ANode.FirstChild;
   while Assigned(ANode) do 
   begin
     nodeName := ANode.NodeName;
     if nodeName = 'drawing' then
-      sheetData.Drawing_relID := GetAttrValue(ANode, 'r:id')
-    else if nodeName = 'legacyDrawingHF' then
-      sheetData.VMLDrawing_relID := GetAttrValue(ANode, 'r:id');
+    begin
+      rels := TRelationshipList.Create;
+      try
+        ReadRels(AStream, sheetRelsFile, rels);
+        relID := GetAttrValue(ANode, 'r:id');
+        sheetData.Drawing_File := MakeXLPath(rels.FindTarget(relID));
+        ReadRels(AStream, RelsFileFor(sheetData.Drawing_File), sheetData.DrawingRels);
+      finally
+        rels.Free;
+      end;
+    end else 
+    if nodeName = 'legacyDrawingHF' then
+    begin
+      rels := TRelationshipList.Create;
+      try
+        ReadRels(AStream, sheetRelsFile, rels);
+        relID := GetAttrValue(ANode, 'r:id');
+        sheetData.VMLDrawing_File := MakeXLPath(rels.FindTarget(relID));
+        ReadRels(AStream, RelsFileFor(sheetData.VMLDrawing_File), sheetData.VmlDrawingRels);
+      finally
+        rels.Free;
+      end;
+    end;
     ANode := ANode.NextSibling;
   end;
 end;
@@ -4037,11 +4131,9 @@ begin
 end;
 
 { Reads the parameters of the header/footer images defined as children of the 
-  specified node which is in a vmlDrawingX.xml file. 
-  ARelsFile is the associated rels file, vmlDrawingX.xml.rels in the _rels folder,
-  and contains the media file names of the images. }
-procedure TsSpreadOOXMLReader.ReadVmlDrawing(AStream: TStream; ARelsFile: String;
-  ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+  specified node which is in a vmlDrawingX.xml file.  }
+procedure TsSpreadOOXMLReader.ReadVmlDrawing(ANode: TDOMNode; 
+  AWorksheet: TsBasicWorksheet);
 var
   nodeName: String;
   node: TDOMNode;
@@ -4049,7 +4141,10 @@ var
   title: String;
   data: TEmbeddedObjData;
   id: String;
+  sheetData: TSheetData;
 begin
+  sheetData := TSheetData(FSheetList[TsWorksheet(AWorksheet).Index]);
+  
   ANode := ANode.FirstChild;
   while Assigned(ANode) do
   begin
@@ -4084,7 +4179,7 @@ begin
         data.ToRowOffs := 0.0;
         data.RelId := relId;
         data.FileName := title;
-        data.MediaName := ReadFileNameFromRels(AStream, ARelsFile, SCHEMAS_IMAGE, relID);
+        data.MediaName := MakeXLPath(sheetData.VMLDrawingRels.FindTarget(relID));
         data.ImgIndex := -1;
         data.Worksheet := AWorksheet;
         data.IsHeaderFooter := true;
@@ -4215,9 +4310,6 @@ begin
   Doc := nil;
 
   try
-    // Get all filenames contained in the zipped xlsx file.
-    ListAllFileNames(AStream);
-        
     // Retrieve theme colors
     XMLStream := CreateXMLStream;
     try
@@ -4241,6 +4333,7 @@ begin
       ReadDateMode(Doc_FindNode('workbookPr'));
       ReadWorkbookProtection(Doc_FindNode('workbookProtection'));
       ReadSheetList(Doc_FindNode('sheets'));
+      ReadSheetRels(AStream);
       //ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));  -- don't read here because sheets do not yet exist
       ReadActiveSheet(Doc_FindNode('bookViews'), actSheetIndex);
       FreeAndNil(Doc);
@@ -4326,8 +4419,7 @@ begin
       ReadColRowBreaks(Doc_FindNode('rowBreaks'), FWorksheet);
       ReadColRowBreaks(Doc_FindNode('colBreaks'), FWorksheet);
       ReadHeaderFooter(Doc_FindNode('headerFooter'), FWorksheet);
-      ReadSheetRels(Doc.DocumentElement, FWorksheet);
-      ReadSheetRelFileNames(AStream, FWorksheet);
+      ReadSheetRels(AStream, Doc.DocumentElement, FWorksheet);
 
       FreeAndNil(Doc);
 
