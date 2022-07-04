@@ -393,13 +393,15 @@ type
     MediaName: String;
     FileName: String;
     ImgIndex: Integer;
-    IsHeaderFooter: Boolean;
     Worksheet: TsBasicWorksheet;
+    IsHeaderFooter: Boolean;
     // This part is for images embedded in to worksheet
     FromRow, FromCol, ToRow, ToCol: Cardinal;
     FromRowOffs, FromColOffs, ToRowOffs, ToColOffs: Double;
     // This part is for header/footer images.
     HFImgPosition: string; // 'LH', 'CH', 'RH', 'LF', 'CF', 'RF';
+    HFImgWidth: Double;
+    HFImgHeight: Double;
   end;
   
   THyperlinkListData = class
@@ -2785,19 +2787,26 @@ begin
         begin
           if data.HFImgPosition <> '' then
           begin
+            scaleX := data.HFImgWidth / img.ImageWidth;
+            scaleY := data.HFImgHeight / img.ImageHeight;
+            // Scale factor calculation is very inaccurate. We try to round to integers
+            if (scaleX > 0.99) and SameValue(scaleX, round(scaleX), 0.01) then
+              scaleX := round(scaleX);
+            if (scaleY > 0.99) and SameValue(scaleY, round(scaleY), 0.01) then
+              scaleY := round(scaleY);            
             pageIdx := HEADER_FOOTER_INDEX_ALL;  // wp: Don't know which is the correct index...
             case data.HFImgPosition[2] of
               'H':
                 case data.HFImgPosition[1] of
-                  'L': sheet.PageLayout.AddHeaderImage(pageIdx, hfsLeft, data.ImgIndex);
-                  'C': sheet.PageLayout.AddHeaderImage(pageIdx, hfsCenter, data.ImgIndex);
-                  'R': sheet.PageLayout.AddHeaderImage(pageIdx, hfsRight, data.ImgIndex);
+                  'L': sheet.PageLayout.AddHeaderImage(pageIdx, hfsLeft, data.ImgIndex, scaleX, scaleY);
+                  'C': sheet.PageLayout.AddHeaderImage(pageIdx, hfsCenter, data.ImgIndex, scaleX, scaleY);
+                  'R': sheet.PageLayout.AddHeaderImage(pageIdx, hfsRight, data.ImgIndex, scaleX, scaleY);
                 end;
               'F':
                 case data.HFImgPosition[1] of
-                  'L': sheet.PageLayout.AddFooterImage(pageIdx, hfsLeft, data.ImgIndex);
-                  'C': sheet.PageLayout.AddFooterImage(pageIdx, hfsCenter, data.ImgIndex);
-                  'R': sheet.PageLayout.AddFooterImage(pageIdx, hfsRight, data.ImgIndex);
+                  'L': sheet.PageLayout.AddFooterImage(pageIdx, hfsLeft, data.ImgIndex, scaleX, scaleY);
+                  'C': sheet.PageLayout.AddFooterImage(pageIdx, hfsCenter, data.ImgIndex, scaleX, scaleY);
+                  'R': sheet.PageLayout.AddFooterImage(pageIdx, hfsRight, data.ImgIndex, scaleX, scaleY);
                 end;
             end;
           end;
@@ -4134,11 +4143,47 @@ end;
   specified node which is in a vmlDrawingX.xml file.  }
 procedure TsSpreadOOXMLReader.ReadVmlDrawing(ANode: TDOMNode; 
   AWorksheet: TsBasicWorksheet);
+
+  function ExtractFromStyle(AStyle, AKey: String): String;
+  var
+    sa: TStringArray;
+    i: Integer;
+  begin
+    sa := AStyle.Split(';');
+    for i := 0 to High(sa) do
+      if pos(AKey, sa[i]) = 1 then
+      begin
+        Result := Copy(sa[i], Length(AKey)+1, MaxInt);
+        exit;
+      end;
+  end;
+  
+  function ExtractMMFromStyle(AStyle, AKey: String): Double;
+  var
+    s, sval, sunit: String;
+    i: Integer;
+  begin
+    s := ExtractFromStyle(AStyle, AKey);
+    sval := '';
+    for i := 1 to Length(s) do
+      if s[i] in ['0'..'9', '.', '+', '-'] then
+        sval := sval + s[i]
+      else 
+        sunit := sunit + s[i];
+    Result := StrToFloat(sval, FPointSeparatorSettings);
+    case sunit of
+      'pt': Result := PtsToMM(Result);
+      'mm': ;
+      else  raise Exception.Create('Unit not supported.');
+    end;
+  end;
+  
 var
   nodeName: String;
   node: TDOMNode;
   relID: String;
   title: String;
+  style: String;
   data: TEmbeddedObjData;
   id: String;
   sheetData: TSheetData;
@@ -4151,10 +4196,12 @@ begin
     id := '';
     relID := '';
     title := '';
+    style := '';
     nodeName := ANode.NodeName;
     if nodeName = 'v:shape' then
     begin
       id := GetAttrValue(ANode, 'id');
+      style := GetAttrValue(ANode, 'style');
       node := ANode.FirstChild;
       while Assigned(node) do
       begin
@@ -4184,6 +4231,8 @@ begin
         data.Worksheet := AWorksheet;
         data.IsHeaderFooter := true;
         data.HFImgPosition := id;
+        data.HFImgWidth := ExtractMMFromStyle(style, 'width:');
+        data.HFImgHeight := ExtractMMFromStyle(style, 'height:');
         FEmbeddedObjList.Add(data);
       end;
     end;
