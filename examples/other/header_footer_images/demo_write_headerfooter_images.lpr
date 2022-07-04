@@ -10,16 +10,14 @@ var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
   MyDir: string;
-  cell: PCell;
-  i, r, c: Integer;
 
 const
   image1 = '../../../images/components/TSWORKBOOKSOURCE.png';
   image2 = '../../../images/components/TSWORKSHEETGRID.png';
-  image3 = '../../../images/components/TSCELLEDIT.png';
 
 begin
   Writeln('Starting program "demo_write_headerfooter_images"...');
+  
   if not FileExists(image1) then
   begin
     WriteLn(ExpandFilename(image1) + ' not found.');
@@ -29,12 +27,6 @@ begin
   if not FileExists(image2) then
   begin
     WriteLn(ExpandFilename(image2) + ' not found.');
-    Halt;
-  end;
-
-  if not FileExists(image3) then
-  begin
-    WriteLn(ExpandFilename(image3) + ' not found.');
     Halt;
   end;
 
@@ -50,8 +42,8 @@ begin
 
     MyWorksheet := MyWorkbook.AddWorksheet('Sheet 2');
     MyWorksheet.WriteText(0, 0, 'The footer of this sheet contains an image');
-    MyWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL] := '&CFooter with image!';
-    MyWorksheet.PageLayout.AddFooterImage(HEADER_FOOTER_INDEX_ALL, hfsRight, image2);
+    MyWorksheet.PageLayout.Footers[HEADER_FOOTER_INDEX_ALL] := '&CFooter with image, scaled by factor 2!';
+    MyWorksheet.PageLayout.AddFooterImage(HEADER_FOOTER_INDEX_ALL, hfsRight, image2, 2.0, 2.0);
 
     // Save the spreadsheet to files
     MyDir := ExtractFilePath(ParamStr(0));

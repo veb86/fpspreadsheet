@@ -55,18 +55,18 @@ type
 
     { Images embedded in header and/or footer }
     function AddHeaderImage(AHeaderIndex: Integer; ASection: TsHeaderFooterSectionIndex;
-      const AFilename: String): Integer; overload;
+      const AFilename: String; AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
     function AddHeaderImage(AHeaderIndex: Integer; ASection: TsHeaderFooterSectionIndex;
-      AStream: TStream): Integer; overload;
+      AStream: TStream; AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
     procedure AddHeaderImage(AHeaderIndex: Integer; ASection: TsHeaderFooterSectionIndex;
-      AImageIndex: Integer); overload;
+      AImageIndex: Integer; AScaleX: Double = 1.0; AScaleY: Double = 1.0); overload;
 
     function AddFooterImage(AFooterIndex: Integer; ASection: TsHeaderFooterSectionIndex;
-      const AFilename: String): Integer; overload;
+      const AFilename: String; AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
     function AddFooterImage(AFooterIndex: integer; ASection: TsHeaderFooterSectionIndex;
-      AStream: TStream): Integer; overload;
-    procedure AddFooterImage(AFooterIndex: Integer;
-      ASection: TsHeaderFooterSectionIndex; AImageIndex: Integer); overload;
+      AStream: TStream; AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer; overload;
+    procedure AddFooterImage(AFooterIndex: Integer; ASection: TsHeaderFooterSectionIndex; 
+      AImageIndex: Integer; AScaleX: Double = 1.0; AScaleY: Double = 1.0); overload;
 
     function JoinHeaderFooterText(const ALeft, ACenter, ARight: String): String;
     procedure SplitHeaderFooterText(const AText: String; out ALeft, ACenter, ARight: String);
@@ -277,12 +277,15 @@ end;
                          (hfsLeft), center (hfsCenter) or right (hfsRight) part
                          of the header.
   @param   AFileName     Name of the file containing the image
+  @param   AScaleX       Horizontal scaling factor of the image
+  @param   AScaleY       Vertical scaling factor of the image
 
   @return  Index of the image data in the workbook's EmbeddedObjList. Useful
            if the same image will be used in another header or footer.
 -------------------------------------------------------------------------------}
 function TsPageLayout.AddHeaderImage(AHeaderIndex: Integer;
-  ASection: TsHeaderFooterSectionIndex; const AFilename: String): Integer;
+  ASection: TsHeaderFooterSectionIndex; const AFilename: String;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 var
   book: TsWorkbook;
 begin
@@ -293,7 +296,7 @@ begin
   if Result = -1 then
     Result := book.AddEmbeddedObj(AFilename);
   if Result > -1 then
-    AddHeaderImage(AHeaderIndex, ASection, Result);
+    AddHeaderImage(AHeaderIndex, ASection, Result, AScaleX, AScaleY);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -305,12 +308,15 @@ end;
                          (hfsLeft), center (hfsCenter) or right (hfsRight) part
                          of the header.
   @param   AStream       Stream from which the image is read and copied
+  @param   AScaleX       Horizontal scaling factor of the image
+  @param   AScaleY       Vertical scaling factor of the image
 
   @return  Index of the image data in the workbook's EmbeddedObjList. Useful
            if the same image will be used in another header or footer.
 -------------------------------------------------------------------------------}
 function TsPageLayout.AddHeaderImage(AHeaderIndex: Integer;
-  ASection: TsHeaderFooterSectionIndex; AStream: TStream): Integer;
+  ASection: TsHeaderFooterSectionIndex; AStream: TStream;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 var
   book: TsWorkbook;
 begin
@@ -319,7 +325,7 @@ begin
   book := TsWorksheet(FWorksheet).Workbook;
   Result := book.AddEmbeddedObj(AStream);
   if Result > -1 then
-    AddHeaderImage(AHeaderIndex, ASection, Result);
+    AddHeaderImage(AHeaderIndex, ASection, Result, AScaleX, AScaleY);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -331,13 +337,18 @@ end;
                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
                         of the header.
   @param  AImageIndex   Index of the image data into the workbooks EmbeddedObjList
+  @param  AScaleX       Horizontal scaling factor of the image
+  @param  AScaleY       Vertical scaling factor of the image
 -------------------------------------------------------------------------------}
 procedure TsPageLayout.AddHeaderImage(AHeaderIndex: Integer;
-  ASection: TsHeaderFooterSectionIndex; AImageIndex: Integer);
+  ASection: TsHeaderFooterSectionIndex; AImageIndex: Integer;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0);
 var
   s: Array[TsHeaderFooterSectionIndex] of string;
 begin
   FHeaderImages[ASection].Index := AImageIndex;
+  FHeaderImages[ASection].ScaleX := AScaleX;
+  FHeaderImages[ASection].ScaleY := AScaleY;
   SplitHeaderFooterText(FHeaders[AHeaderIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
   // Add the symbol &G only once!
   if (pos('&G', s[ASection]) < 1) or (pos('&g', s[ASection]) < 1) then begin
@@ -355,11 +366,14 @@ end;
                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
                         of the footer.
   @param  AFilename     Name of the file containing the image
+  @param  AScaleX       Horizontal scaling factor of the image
+  @param  AScaleY       Vertical scaling factor of the image
   @return  Index of the image data in the workbook's EmbeddedObjList. Useful
            if the same image will be used in another header or footer.
 -------------------------------------------------------------------------------}
 function TsPageLayout.AddFooterImage(AFooterIndex: Integer;
-  ASection: TsHeaderFooterSectionIndex; const AFileName: String): Integer;
+  ASection: TsHeaderFooterSectionIndex; const AFileName: String; 
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 var
   book: TsWorkbook;
 begin
@@ -371,7 +385,7 @@ begin
     Result := book.AddEmbeddedObj(AFilename);
   if Result = -1 then  // Image not found? Unsupported file format?
     exit;
-  AddFooterImage(AFooterIndex, ASection, Result);
+  AddFooterImage(AFooterIndex, ASection, Result, AScaleX, AScaleY);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -383,11 +397,14 @@ end;
                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
                         of the footer.
   @param  AStream       Stream from which the image is copied
+  @param  AScaleX       Horizontal scaling factor of the image
+  @param  AScaleY       Vertical scaling factor of the image
   @return  Index of the image data in the workbook's EmbeddedObjList. Useful
            if the same image will be used in another header or footer.
 -------------------------------------------------------------------------------}
 function TsPageLayout.AddFooterImage(AFooterIndex: Integer;
-  ASection: TsHeaderFooterSectionIndex; AStream: TStream): Integer;
+  ASection: TsHeaderFooterSectionIndex; AStream: TStream;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0): Integer;
 var
   book: TsWorkbook;
 begin
@@ -396,7 +413,7 @@ begin
   book := TsWorksheet(FWorksheet).Workbook;
   Result := book.AddEmbeddedObj(AStream);
   if Result > -1 then
-    AddFooterImage(AFooterIndex, ASection, Result);
+    AddFooterImage(AFooterIndex, ASection, Result, AScaleX, AScaleY);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -408,13 +425,18 @@ end;
                         (hfsLeft), center (hfsCenter) or right (hfsRight) part
                         of the footer.
   @param  AImageIndex   Index of the image data into the workbooks EmbeddedObjList
+  @param  AScaleX       Horizontal scaling factor of the image
+  @param  AScaleY       Vertical scaling factor of the image
 -------------------------------------------------------------------------------}
 procedure TsPageLayout.AddFooterImage(AFooterIndex: Integer;
-  ASection: TsHeaderFooterSectionIndex; AImageIndex: Integer);
+  ASection: TsHeaderFooterSectionIndex; AImageIndex: Integer;
+  AScaleX: Double = 1.0; AScaleY: Double = 1.0);
 var
   s: Array[TsHeaderFooterSectionIndex] of string;
 begin
   FFooterImages[ASection].Index := AImageIndex;
+  FFooterImages[ASection].ScaleX := AScaleX;
+  FFooterImages[ASection].ScaleY := AScaleY;
   SplitHeaderFooterText(FFooters[AFooterIndex], s[hfsLeft], s[hfsCenter], s[hfsRight]);
   // Add the symbol &G only once!
   if (pos('&G', s[ASection]) < 1) or (pos('&g', s[ASection]) < 1) then begin

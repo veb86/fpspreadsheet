@@ -215,7 +215,7 @@ type
     procedure WriteSheetViews(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteStyle(AStream: TStream; ANodeName: String; AFormat: PsCellFormat);
     procedure WriteStyleList(AStream: TStream; ANodeName: String);
-    procedure WriteVmlDrawings(AWorksheet: TsBasicWorksheet);
+    procedure WriteVMLDrawings(AWorksheet: TsBasicWorksheet);
     procedure WriteVMLDrawings_Comments(AWorksheet: TsBasicWorksheet);
     procedure WriteVMLDrawings_HeaderFooterImages(AWorksheet: TsBasicWorksheet);
     procedure WriteVMLDrawingRels(AWorksheet: TsBasicWorksheet);
@@ -6380,32 +6380,6 @@ begin
   AppendToStream(FSDrawingsRels[FCurSheetNum],
     '</Relationships>');
 end;
-                             (*
-procedure TsSpreadOOXMLWriter.WriteDrawingsOfSheet(AStream: TStream;
-  AWorksheet: TsWorksheet; rId: Integer);
-// Use stream FSDrawingS[sheetindex]
-var
-  i: Integer;
-  AVLNode: TAVLTreeNode;
-  hyperlink: PsHyperlink;
-  target, bookmark: String;
-begin
-  // Keep in sync with WriteWorksheetRels !
-  FNext_rID := IfThen(AWorksheet.Comments.Count = 0, 1, 3);
-
-  AVLNode := AWorksheet.Hyperlinks.FindLowest;
-  while AVLNode <> nil do begin
-    inc(FNext_rID);
-    AVLNode := AWorksheet.Hyperlinks.FindSuccessor(AVLNode);
-  end;
-
-  for i:=0 to AWorksheet.GetImageCount-1 do
-  begin
-    AppendToStream(AStream, Format(
-      '<drawing r:id="rId%d" />', [FNext_rId]));
-    inc(FNext_rId);
-  end;
-end;                           *)
 
 {@ -----------------------------------------------------------------------------
   Writes a VmlDrawings file for the specified worksheet.
@@ -6556,6 +6530,8 @@ var
     AImage: TsHeaderFooterImage; var id, index: Integer);
   var
     fn: String;
+    w, h: Double;
+    img: TsEmbeddedObj;
   begin
     if AImage.Index = -1 then
       exit;
@@ -6569,19 +6545,28 @@ var
       book.AddErrorMsg(rsIncorrectPositionOfImageInHeaderFooter, [AName]);
       exit;
     end;
-    fn := ChangeFileExt(book.GetEmbeddedObj(AImage.Index).FileName, '');
+    
+    img := book.GetEmbeddedObj(AImage.Index);
+    if img = nil then 
+      exit;
+    
+    fn := ChangeFileExt(img.FileName, '');
     if fn = '' then fn := 'image';
+    w := mmToPts(img.ImageWidth * AImage.ScaleX);
+    h := mmToPts(img.ImageHeight * AImage.ScaleY);
     AppendToStream(AStream, Format(
       ' <v:shape id="%s" o:spid="_x0000_s%d" type="#_x0000_t75"' + LineEnding +
       //    e.g.    "CH"         _x0000_s1025
-      '   style=''position:absolute;margin-left:0;margin-top:0;width:12pt;height:12pt;z-index:%d''>' + LineEnding +
-      //    e.g.                                                                      z-index:1
+      '   style=''position:absolute;margin-left:0;margin-top:0;width:%.1fpt;height:%.1fpt;z-index:%d''>' + LineEnding +
+      //    e.g.                                                     width         height         z-index:1
       '   <v:imagedata o:relid="rId%d" o:title="%s"/>' + LineEnding +
       //    e.g.               "rId1"          "arrow_down"
       '   <o:lock v:ext="edit" rotation="t" />' + LineEnding +
       ' </v:shape>' + LineEnding, [
-      ATag + AChar, id, index, index, fn
-    ]));
+      ATag + AChar, id, 
+      w, h, index, 
+      index, fn
+    ], FPointSeparatorSettings));
     inc(id);
     inc(index);
   end;

@@ -1088,9 +1088,13 @@ type
   PsImage = ^TsImage;
 
   {@@ Image embedded in header or footer
-    @member  Index   Index of the image in the workbook's embedded streams list }
+    @member  Index   Index of the image in the workbook's embedded streams list 
+    @member  ScaleX  Scaling factor in horizontal direction
+    @member  ScaleY  Scaling factor in vertical direction }
   TsHeaderFooterImage = record
-    Index: Integer;      
+    Index: Integer;  
+    ScaleX: Double;
+    ScaleY: Double;
   end;
 
   {@@ Page orientation for printing 
