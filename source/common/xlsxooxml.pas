@@ -68,8 +68,6 @@ type
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
     procedure ApplyHyperlinks(AWorksheet: TsBasicWorksheet);
     function CreateXMLStream: TStream;
-    function FindCommentsFileName(ANode: TDOMNode): String;
-    function MakeXLPath(AFileName: String): String;
   protected
     procedure ReadActiveSheet(ANode: TDOMNode; out ActiveSheetIndex: Integer);
     procedure ReadBorders(ANode: TDOMNode);
@@ -424,6 +422,7 @@ type
   TRelationship = class
     RelID: String;
     Target: String;
+    Schema: String;
   end;
   
   TRelationshipList = class(TFPList)
@@ -432,7 +431,7 @@ type
     procedure SetItem(AIndex: Integer; AValue: TRelationship);
   public
     destructor Destroy; override;
-    function Add(ARelID, ATarget: String): TRelationship;
+    function Add(ARelID, ASchema, ATarget: String): TRelationship;
     procedure Clear; 
     procedure Delete(AIndex: Integer);
     function FindTarget(ARelID: String): String;
@@ -448,6 +447,8 @@ type
     DrawingRels: TRelationshipList;
     VmlDrawing_File: String;
     VmlDrawingRels: TRelationshipList;
+    HyperlinkRels: TRelationshipList;
+    Comments_File: String;
     constructor Create;
     destructor Destroy; override;
   end;
@@ -556,6 +557,24 @@ begin
   Result[2] := 'F';  // --> "FFrrggbb"
 end;
 
+{ The rels files store relative file paths (e.g. ../media/image1.png).
+  This function makes sure that the file path begins with 'xl'. This filename
+  can be used by the unzipper to extract the file from the xlsx (zip) archive. }
+function MakeXLPath(AFileName: String): String;
+begin
+  Result := AFileName;
+  if Length(AFileName) <= 3 then
+    exit;
+  
+  if (Result[1] = '.') and (Result[2] = '.') then
+  begin
+    Result[1] := 'x';
+    Result[2] := 'l';
+  end else 
+  if not ((Result[1] ='x') and (Result[2] = 'l') and (Result[3] = '/')) then
+    Result := 'xl/' + AFileName;
+end;
+  
 function RelsFileFor(AFileName: String): String;
 var
   path: String;
@@ -691,19 +710,22 @@ begin
 end;
 
 
+{ TRelationshipList }
+
 destructor TRelationshipList.Destroy;
 begin
   Clear;
   inherited;
 end;
 
-function TRelationshipList.Add(ARelID, ATarget: String): TRelationship;
+function TRelationshipList.Add(ARelID, ASchema, ATarget: String): TRelationship;
 var
   rel: TRelationship;
   idx: Integer;
 begin
   rel := TRelationship.Create;
   rel.RelID := ARelID;
+  rel.Schema := ASchema;
   rel.Target := ATarget;
   idx := inherited Add(rel);
   Result := Items[idx];
@@ -751,12 +773,15 @@ begin
 end;
 
 
+{ TSheetData }
+
 constructor TSheetData.Create;
 begin
   inherited;
   SheetRels := TRelationshipList.Create;
   DrawingRels := TRelationshipList.Create;
   VmlDrawingRels := TRelationshipList.Create;
+  HyperlinkRels := TRelationshipList.Create;
 end;
 
 destructor TSheetData.Destroy;
@@ -764,6 +789,7 @@ begin
   SheetRels.Free;
   DrawingRels.Free;
   VmlDrawingRels.Free;
+  HyperlinkRels.Free;
   inherited;
 end;
 
@@ -917,41 +943,6 @@ begin
     Result := TMemoryStream.Create;
 end;
 
-function TsSpreadOOXMLReader.FindCommentsFileName(ANode: TDOMNode): String;
-var
-  s: String;
-begin
-  while ANode <> nil do
-  begin
-    s := GetAttrValue(ANode, 'Type');
-    if s = SCHEMAS_COMMENTS then
-    begin
-      Result := ExtractFileName(GetAttrValue(ANode, 'Target'));      // ??? ExtractFileName here ????
-      exit;
-    end;
-    ANode := ANode.NextSibling;
-  end;
-  Result := '';
-end;
-
-{ The rels files store relative file paths (e.g. ../media/image1.png).
-  This function makes sure that the file path begins with 'xl'. This filename
-  can be used by the unzipper to extract the file from the xlsx (zip) archive. }
-function TsSpreadOOXMLReader.MakeXLPath(AFileName: String): String;
-begin
-  Result := AFileName;
-  if Length(AFileName) <= 3 then
-    exit;
-  
-  if (Result[1] = '.') and (Result[2] = '.') then
-  begin
-    Result[1] := 'x';
-    Result[2] := 'l';
-  end else 
-  if not ((Result[1] ='x') and (Result[2] = 'l') and (Result[3] = '/')) then
-    Result := 'xl/' + AFileName;
-end;
-  
 procedure TsSpreadOOXMLReader.ReadActiveSheet(ANode: TDOMNode;
   out ActiveSheetIndex: Integer);
 var
@@ -3124,6 +3115,7 @@ procedure TsSpreadOOXMLReader.ReadHyperlinks(ANode: TDOMNode;
 var
   node: TDOMNode;
   nodeName: String;
+  sheetData: TSheetData;
   hyperlinkData: THyperlinkListData;
   s: String;
 
@@ -3140,6 +3132,8 @@ var
   end;
 
 begin
+  sheetData := TSheetData(FSheetList[TsWorksheet(AWorksheet).Index]);
+  
   if Assigned(ANode) then begin
     nodename := ANode.NodeName;
     if (nodename = 'hyperlinks') or (nodename = 'x:hyperlinks') then
@@ -3152,7 +3146,8 @@ begin
           hyperlinkData := THyperlinkListData.Create;
           hyperlinkData.CellRef := GetAttrValue(node, 'ref');
           hyperlinkData.ID := GetAttrValue(node, 'r:id');
-          hyperlinkData.Target := '';
+          if hyperlinkData.ID <> '' then
+            hyperlinkData.Target := sheetData.HyperlinkRels.FindTarget(hyperlinkData.ID);
           hyperlinkData.TextMark := GetAttrValue(node, 'location');
           hyperlinkData.Display := GetAttrValue(node, 'display');
           hyperlinkData.Tooltip := GetAttrValue(node, 'tooltip');
@@ -3161,39 +3156,10 @@ begin
         FHyperlinkList.Add(hyperlinkData);
         node := node.NextSibling;
       end;
-    end else
-    if (nodename = 'Relationship') or (nodename = 'x:Relationship') then
-    begin
-      node := ANode;
-      while Assigned(node) do
-      begin
-        nodename := node.NodeName;
-        if (nodename = 'Relationship') or (nodename = 'x:Relationship') then
-        begin
-          s := GetAttrValue(node, 'Type');
-          if s = SCHEMAS_HYPERLINK then
-          begin
-            s := GetAttrValue(node, 'Id');
-            if s <> '' then
-            begin
-              hyperlinkData := FindHyperlinkID(s);
-              if hyperlinkData <> nil then begin
-                s := GetAttrValue(node, 'Target');
-                if s <> '' then hyperlinkData.Target := s;
-                s := GetAttrValue(node, 'TargetMode');
-                if s <> 'External' then   // Only "External" accepted!
-                begin
-                  hyperlinkData.Target := '';
-                  hyperlinkData.TextMark := '';
-                end;
-              end;
-            end;
-          end;
-        end;
-        node := node.NextSibling;
-      end;
     end;
   end;
+  
+  ApplyHyperlinks(AWorksheet);
 end;
 
 procedure TsSpreadOOXMLReader.ReadMedia(AStream: TStream);
@@ -3531,7 +3497,7 @@ var
   XMLStream: TStream;
   doc: TXMLDocument;
   node: TDOMNode;
-  relID, relTarget: String;
+  relID, relSchema, relTarget: String;
   nodeName: String;
 begin
   // Avoid adding items again and again to the same list if this function is 
@@ -3552,9 +3518,10 @@ begin
       if nodeName = 'Relationship' then
       begin
         relID := GetAttrValue(node, 'Id');
+        relSchema := GetAttrValue(node, 'Type');
         relTarget := GetAttrValue(node, 'Target');
         if (relID <> '') and (relTarget <> '') then
-          (ARelsList as TRelationshipList).Add(relID, relTarget);
+          (ARelsList as TRelationshipList).Add(relID, relSchema, relTarget);
       end;
       node := node.NextSibling;
     end;
@@ -3952,7 +3919,7 @@ var
   relID: String;
   sheetRelsFile: String;
   rels: TRelationshipList;
-  j: Integer;
+  i: Integer;
 begin
   sheetIndex := TsWorksheet(AWorksheet).Index;
   sheetData := TSheetData(FSheetList[sheetIndex]);
@@ -3964,6 +3931,8 @@ begin
     nodeName := ANode.NodeName;
     if nodeName = 'drawing' then
     begin
+      // This node points to the drawing.xml file with parameters for embedded 
+      // images.
       rels := TRelationshipList.Create;
       try
         ReadRels(AStream, sheetRelsFile, rels);
@@ -3976,12 +3945,47 @@ begin
     end else 
     if nodeName = 'legacyDrawingHF' then
     begin
+      // This is the node pointer to parameters for heater/footer images.
       rels := TRelationshipList.Create;
       try
         ReadRels(AStream, sheetRelsFile, rels);
         relID := GetAttrValue(ANode, 'r:id');
         sheetData.VMLDrawing_File := MakeXLPath(rels.FindTarget(relID));
         ReadRels(AStream, RelsFileFor(sheetData.VMLDrawing_File), sheetData.VmlDrawingRels);
+      finally
+        rels.Free;
+      end;
+    end else
+    if nodeName = 'legacyDrawing' then
+    begin
+      // This node is for comment size & position. We do not support this.
+      // But it indicates the presence of comments and extract the name of the
+      // comments.xml file from the sheet<n>.xml.rels file
+      rels := TRelationshipList.Create;
+      try
+        ReadRels(AStream, sheetRelsFile, rels);
+        for i := 0 to rels.Count-1 do
+          if rels[i].Schema = SCHEMAS_COMMENTS then
+          begin
+            sheetData.Comments_File := rels[i].Target;
+            break;
+          end;
+      finally
+        rels.Free;
+      end;
+    end else
+    if nodeName = 'hyperlinks' then
+    begin
+      // This node contains the hyperlink data and will be handled separately.
+      // It contains also the relationship ids to external files listed in
+      // the sheet<n>.xml.rels file. We read these relationships here and store
+      // them in the HyperlinkRels of the sheetdata.
+      rels := TRelationshipList.Create;
+      try
+        ReadRels(AStream, sheetRelsfile, rels);
+        for i := 0 to rels.Count-1 do
+          if rels[i].Schema = SCHEMAS_HYPERLINK then
+            sheetData.HyperlinkRels.Add(rels[i].RelID, rels[i].Schema, rels[i].Target);
       finally
         rels.Free;
       end;
@@ -4340,12 +4344,11 @@ procedure TsSpreadOOXMLReader.ReadFromStream(AStream: TStream;
   APassword: String = ''; AParams: TsStreamParams = []);
 var
   Doc : TXMLDocument;
-  RelsNode: TDOMNode;
   i, j: Integer;
   fn: String;
-  fn_comments: String;
   XMLStream: TStream;
   actSheetIndex: Integer;
+  sheetData: TSheetData;
 
   function Doc_FindNode(ANodeName: String): TDOMNode;
   begin
@@ -4381,7 +4384,7 @@ begin
       ReadFileVersion(Doc_FindNode('fileVersion'));
       ReadDateMode(Doc_FindNode('workbookPr'));
       ReadWorkbookProtection(Doc_FindNode('workbookProtection'));
-      ReadSheetList(Doc_FindNode('sheets'));
+      ReadSheetList(Doc_FindNode('sheets'));    // This creates the worksheets!
       ReadSheetRels(AStream);
       //ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));  -- don't read here because sheets do not yet exist
       ReadActiveSheet(Doc_FindNode('bookViews'), actSheetIndex);
@@ -4424,15 +4427,13 @@ begin
       XMLStream.Free;
     end;
 
-    // read worksheets
+    // read worksheet contents
     for i:=0 to FSheetList.Count-1 do begin
-      {
-      // Create worksheet
-      FWorksheet := (FWorkbook as TsWorkbook).AddWorksheet(TSheetData(FSheetList[i]).Name, true);
-      }
+      sheetData := TSheetData(FSheetList[i]);
+      
       // Worksheets are already created...
-      FWorksheet := (FWorkbook as TsWorkbook).GetWorksheetByName(TSheetData(FSheetList[i]).Name);
-      if TSheetData(FSheetList[i]).Hidden then
+      FWorksheet := (FWorkbook as TsWorkbook).GetWorksheetByName(sheetData.Name);
+      if sheetData.Hidden then
         FWorksheet.Options := FWorksheet.Options + [soHidden];
 
       // unzip sheet file
@@ -4452,6 +4453,7 @@ begin
       FSharedFormulaBaseList.Clear;
 
       // Sheet data, formats, etc.
+      ReadSheetRels(AStream, Doc.DocumentElement, FWorksheet);
       ReadSheetPr(Doc_FindNode('sheetPr'), FWorksheet);
       ReadDimension(Doc_FindNode('dimension'), FWorksheet);
       ReadSheetViews(Doc_FindNode('sheetViews'), FWorksheet);
@@ -4468,44 +4470,20 @@ begin
       ReadColRowBreaks(Doc_FindNode('rowBreaks'), FWorksheet);
       ReadColRowBreaks(Doc_FindNode('colBreaks'), FWorksheet);
       ReadHeaderFooter(Doc_FindNode('headerFooter'), FWorksheet);
-      ReadSheetRels(AStream, Doc.DocumentElement, FWorksheet);
 
       FreeAndNil(Doc);
 
       { Comments:
         The comments are stored in separate "comments<n>.xml" files (n = 1, 2, ...)
-        The relationship which comment belongs to which sheet file must be
-        retrieved from the "sheet<n>.xml.rels" file (n = 1, 2, ...).
+        for each worksheet.
+        The relationship which comment belongs to which sheet file is contained
+        in the "sheet<n>.xml.rels" file (n = 1, 2, ...) which already has been
+        read and stored in the sheetData.
         The rels file contains also the second part of the hyperlink data. }
-      fn := OOXML_PATH_XL_WORKSHEETS_RELS + Format('sheet%d.xml.rels', [i+1]);
-      XMLStream := CreateXMLStream;
-      try
-        if UnzipToStream(AStream, fn, XMLStream) then
-        begin
-          // Find exact name of comments<n>.xml file
-          ReadXMLStream(Doc, XMLStream);
-          RelsNode := Doc_FindNode('Relationship');
-          fn_comments := FindCommentsFileName(RelsNode);
-          // Get hyperlink data
-          ReadHyperlinks(RelsNode, FWorksheet);
-          FreeAndNil(Doc);
-        end else
-        if (FSheetList.Count = 1) then
-          // If the workbook has only one sheet then the sheet.xml.rels file
-          // is missing
-          fn_comments := 'comments1.xml'
-        else
-          // This sheet does not have any cell comments at all
-          fn_comments := '';
-          //continue;
-      finally
-        XMLStream.Free;
-      end;
-
-      // Extract texts from the comments file found and apply to worksheet.
-      if fn_comments <> '' then
+      if sheetData.Comments_File <> '' then
       begin
-        fn := OOXML_PATH_XL + fn_comments;
+        // Extract texts from the comments file found and apply to worksheet.
+        fn := MakeXLPath(sheetData.Comments_File);
         XMLStream := CreateXMLStream;
         try
           if UnzipToStream(AStream, fn, XMLStream) then
@@ -4518,9 +4496,6 @@ begin
           XMLStream.Free;
         end;
       end;
-
-      // Add hyperlinks to cells
-      ApplyHyperlinks(FWorksheet);
 
       // Active worksheet
       if i = actSheetIndex then
@@ -4550,7 +4525,7 @@ begin
       begin
         ReadXMLStream(Doc, XMLStream);
         ReadMetaData(Doc.DocumentElement);
-        FreeandNil(Doc);
+        FreeAndNil(Doc);
       end;
     finally
       XMLStream.Free;
