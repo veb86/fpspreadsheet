@@ -97,6 +97,7 @@ type
     function  ReadColor(ANode: TDOMNode): TsColor;
     procedure ReadCols(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadComments(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
+    procedure ReadComments(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure ReadConditionalFormatting(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadDateMode(ANode: TDOMNode);
     procedure ReadDefinedNames(ANode: TDOMNode);
@@ -2187,6 +2188,43 @@ begin
       end;
     end;
     node := node.NextSibling;
+  end;
+end;
+
+{ The comments are stored in separate "comments<n>.xml" files (n = 1, 2, ...)
+  for each worksheet.
+  The relationship which comment belongs to which sheet file is contained
+  in the "sheet<n>.xml.rels" file (n = 1, 2, ...) which already has been
+  read and stored in the sheetData.
+  The rels file contains also the second part of the hyperlink data. }
+procedure TsSpreadOOXMLReader.ReadComments(AStream: TStream; AWorksheet: TsBasicWorksheet);
+var
+  sheetData: TSheetData;
+  sheetIndex: Integer;
+  XMLStream: TStream;
+  fn: String;
+  Doc: TXMLDocument = nil;
+begin
+  sheetIndex := TsWorksheet(AWorksheet).Index;
+  sheetData := TSheetData(FSheetlist[sheetIndex]);
+  if sheetData.Comments_File <> '' then
+  begin
+    // Extract texts from the comments file found and apply to worksheet.
+    fn := MakeXLPath(sheetData.Comments_File);
+    XMLStream := CreateXMLStream;
+    try
+      if UnzipToStream(AStream, fn, XMLStream) then
+      begin
+        try
+          ReadXMLStream(Doc, XMLStream);
+          ReadComments(Doc.DocumentElement.FindNode('commentList'), AWorksheet);
+        finally
+          FreeAndNil(Doc);
+        end;
+      end;
+    finally
+      XMLStream.Free;
+    end;
   end;
 end;
 
@@ -4386,7 +4424,7 @@ begin
       ReadWorkbookProtection(Doc_FindNode('workbookProtection'));
       ReadSheetList(Doc_FindNode('sheets'));    // This creates the worksheets!
       ReadSheetRels(AStream);
-      //ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));  -- don't read here because sheets do not yet exist
+      ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));
       ReadActiveSheet(Doc_FindNode('bookViews'), actSheetIndex);
       FreeAndNil(Doc);
     finally
@@ -4473,47 +4511,12 @@ begin
 
       FreeAndNil(Doc);
 
-      { Comments:
-        The comments are stored in separate "comments<n>.xml" files (n = 1, 2, ...)
-        for each worksheet.
-        The relationship which comment belongs to which sheet file is contained
-        in the "sheet<n>.xml.rels" file (n = 1, 2, ...) which already has been
-        read and stored in the sheetData.
-        The rels file contains also the second part of the hyperlink data. }
-      if sheetData.Comments_File <> '' then
-      begin
-        // Extract texts from the comments file found and apply to worksheet.
-        fn := MakeXLPath(sheetData.Comments_File);
-        XMLStream := CreateXMLStream;
-        try
-          if UnzipToStream(AStream, fn, XMLStream) then
-          begin
-            ReadXMLStream(Doc, XMLStream);
-            ReadComments(Doc_FindNode('commentList'), FWorksheet);
-            FreeAndNil(Doc);
-          end;
-        finally
-          XMLStream.Free;
-        end;
-      end;
+      ReadComments(AStream, FWorksheet);
 
       // Active worksheet
       if i = actSheetIndex then
         (FWorkbook as TsWorkbook).SelectWorksheet(FWorksheet as TsWorksheet);
     end;  // for
-
-    // 2nd run for the workbook.xml file
-    // Read defined names
-    XMLStream := CreateXMLStream;
-    try
-      if not UnzipToStream(AStream, OOXML_PATH_XL_WORKBOOK, XMLStream) then
-        raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['xlsx']);
-      ReadXMLStream(Doc, XMLStream);
-      ReadDefinedNames(Doc_FindNode('definedNames'));
-      FreeAndNil(Doc);
-    finally
-      XMLStream.Free;
-    end;
 
     // Read embedded images
     ReadEmbeddedObjs(AStream);
