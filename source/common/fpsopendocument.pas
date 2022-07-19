@@ -2902,7 +2902,11 @@ begin
       if UnzipToStream(AStream, 'meta.xml', XMLStream) then
       begin
         ReadXMLStream(Doc, XMLStream);
-        ReadMetaData(Doc.DocumentElement.FindNode('office:meta'));
+        try
+          ReadMetaData(Doc.DocumentElement.FindNode('office:meta'));
+        finally
+          FreeAndNil(Doc);
+        end;
       end;
     finally
       XMLStream.Free;
@@ -2914,8 +2918,12 @@ begin
       if UnzipToStream(AStream, 'settings.xml', XMLStream) then
       begin
         ReadXMLStream(Doc, XMLStream);
-        OfficeSettingsNode := Doc.DocumentElement.FindNode('office:settings');
-        ReadSettings(OfficeSettingsNode);
+        try
+          OfficeSettingsNode := Doc.DocumentElement.FindNode('office:settings');
+          ReadSettings(OfficeSettingsNode);
+        finally
+          FreeAndNil(Doc);
+        end;
       end;
     finally
       XMLStream.Free;
