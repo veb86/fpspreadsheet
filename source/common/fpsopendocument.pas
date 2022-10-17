@@ -21,19 +21,20 @@ NOTICE: Active define FPSpreadDebug in the project options to get a log during
   reading/writing.
 }
 
-
 unit fpsOpenDocument;
 
 {$ifdef fpc}
   {$mode objfpc}{$H+}
 {$endif}
+
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
+
 {$I ..\fps.inc}
 
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, SysUtils, LazVersion,
   laz2_xmlread, laz2_DOM,
   avglvltree, math, dateutils, contnrs,
  {$IF FPC_FULLVERSION >= 20701}
@@ -7370,7 +7371,6 @@ begin
       rowHiddenStr := ' table:visibility="collapse"'
   end;
 
-
 {
   // Get style and height of row
   GetRowStyleAndHeight(ASheet, ARowIndex, stylename, h);
@@ -9203,32 +9203,50 @@ var
   u: TUri;
   i, idx, endidx, fntidx, len: Integer;
   rtParam: TsRichTextParam;
-  wideStr, txt: WideString;
-  ch: WideChar;
   sheet: TsWorksheet;
+  {$IFDEF FPS_NO_LAZUNICODE}
+  ch: WideChar;
+  wideStr, txt: WideString;
+  {$ELSE}
+  ch: String;
+  chArray: array of string = nil;
+  txt: String;
+  {$ENDIF}
 
-  function IsNewLine(var idx: Integer): Boolean;
+  function IsNewLine(var idx: integer): Boolean;
   begin
-    if (wideStr[idx] = #13) or (wideStr[idx] = #10) then
+   {$IFDEF FPS_NO_LAZUNICODE}
+    if (wideStr[idx] = #13) then
     begin
       Result := true;
-      if (idx < len) and (
-         ((wideStr[idx] = #13) and (wideStr[idx+1] = #10)) or
-         ((wideStr[idx] = #10) and (wideStr[idx+1] = #13)) ) then inc(idx);
+      if (idx < len) and (widestr[idx+1] = #10) then inc(idx);
+    end else
+    if (wideStr[idx] = #10) then
+    begin
+      Result := true;
+      if (idx < len) and (widestr[idx+1] = #13) then inc(idx);
     end else
       Result := false;
+   {$ELSE}
+    Result := true;
+    case chArray[idx] of
+      #13: if (chArray[idx+1] = #10) then inc(idx);  // Cannot overrun because we had appended a #0 to string
+      #10: if (chArray[idx+1] = #13) then inc(idx);  // Cannot overrun because we had appended a #0 to string
+      else Result := false;
+    end;
+   {$ENDIF}
   end;
 
   procedure AppendTxt(NewLine: Boolean; FntStyle: String);
   var
     s: String;
   begin
+    {$IFDEF FPS_NO_LAZUNICODE}
     s := UTF8Encode(txt);
+    {$ELSE}
+    s := txt;
+    {$ENDIF}
     ValidXMLText(s);
-    {
-    if FntStyle <> '' then
-      FntStyle := ' text:style-name="' + FntStyle + '"';
-      }
     if NewLine and (s = '') then
       totaltxt := totaltxt + '</text:p><text:p>'
     else
@@ -9305,40 +9323,77 @@ begin
     if Length(ACell^.RichTextParams) = 0 then
     begin
       // Standard text formatting
-      (*
-      { ods writes "<text:line-break/>" nodes for line-breaks. BUT:
+      { See http://docs.oasis-open.org/office/v1.2/os/OpenDocument-v1.2-os-part1.html#element-text_line-break.
+        ods writes "<text:line-break/>" nodes for line-breaks. BUT:
         LibreOffice Calc fails to detect these during reading.
         OpenOffice Calc and Excel are ok.
-        Therefore, we skip this part until LO gets fixed. }
-
-      wideStr := UTF8Decode(AValue);
-      len := Length(wideStr);
-      idx := 1;
+        Therefore, we use "</text:p><text:p>" instead of above
+        (until LO gets fixed).
+      }
       totaltxt := '<text:p>';
-      while idx <= len do
+      len := Length(AValue);
+      idx := 1;
+      while (idx <= len) do
       begin
-        ch := widestr[idx];
-        totaltxt := totaltxt + IfThen(IsNewLine(idx), '<text:line-break />', ch);
+        case AValue[idx] of
+          #13: begin
+                 totaltxt := totaltxt + '</text:p><text:p>';
+                 if (idx < len) and (AValue[idx+1] = #10) then inc(idx);
+               end;
+          #10: begin
+                 totaltxt := totaltxt + '</text:p><text:p>';
+                 if (idx < len) and (AValue[idx+1] = #13) then inc(idx);
+               end;
+          else totaltxt := totaltxt + AValue[idx];
+        end;
         inc(idx);
       end;
       totaltxt := totaltxt + '</text:p>';
-      *)
-      totaltxt := '<text:p>' + totaltxt + '</text:p>' ;  // has &#13; and &#10; for line breaks
     end else
     begin
       // "Rich-text" formatting
+      txt := '';
+      {$IFDEF FPS_NO_LAZUNICODE}
       wideStr := UTF8Decode(AValue);  // Convert to unicode
-      // Before the first formatted section having the cell's format
       len := Length(wideStr);
+      {$ELSE}
+      // Split utf8-encoded string into the individual code points and store them
+      // in an array of strings.
+      // Index 0 of this array is ignored so that indices map to a normal string.
+      // An auxiliary #0 is appended so that the case of #13#10 at the end of
+      // AValue can be handled without complicated checks.
+      SetLength(chArray, Length(AValue));
+      i := 0;
+      for ch in AValue do
+      begin
+        chArray[i] := ch;
+        inc(i);
+      end;
+      len := i;
+      SetLength(chArray, len+2);
+      i := length(chArray)-1;
+      chArray[i] := #0;
+      dec(i);
+      while i > 0 do
+      begin
+        chArray[i] := chArray[i-1];
+        dec(i);
+      end;
+      chArray[0] := #0;
+      {$ENDIF}
+      // Before the first formatted section having the cell's format
       totaltxt := '<text:p>';
       rtParam := ACell^.RichTextParams[0];
       idx := 1;
-      txt := '';
       if rtParam.FirstIndex > 1 then
       begin
         while (idx <= len) and (idx < rtParam.FirstIndex) do
         begin
+          {$IFDEF FPS_NO_LAZUNICODE}
           ch := wideStr[idx];
+          {$ELSE}
+          ch := chArray[idx];
+          {$ENDIF}
           if IsNewLine(idx) then
             AppendTxt(true, '')
           else
@@ -9357,11 +9412,16 @@ begin
         fntidx := FRichTextFontList.IndexOfObject(fnt);
         fntName := FRichTextFontList[fntIdx];
         if i < High(ACell^.RichTextParams) then
-          endidx := ACell^.RichTextParams[i+1].FirstIndex-1 else
+          endidx := ACell^.RichTextParams[i+1].FirstIndex-1
+        else
           endidx := len;
         while (idx <= len) and (idx <= endidx) do
         begin
+          {$IFDEF FPS_NO_LAZUNICODE}
           ch := wideStr[idx];
+          {$ELSE}
+          ch := chArray[idx];
+          {$ENDIF}
           if IsNewLine(idx) then
             AppendTxt(true, fntName)
           else
