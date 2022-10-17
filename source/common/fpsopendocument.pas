@@ -326,6 +326,9 @@ uses
  {$IFDEF FPS_VARISBOOL}
   fpsPatches,
  {$ENDIF}
+ {$IFNDEF FPS_NO_LAZUNICODE}
+  LazUnicode,
+ {$ENDIF}
   fpsStrings, fpsStreams, fpsCrypto, fpsClasses, fpspreadsheet,
   fpsExprParser, fpsImages, fpsConditionalFormat;
 

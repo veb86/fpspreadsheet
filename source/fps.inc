@@ -31,10 +31,10 @@
   FPS_LAZUTF8. Keep undefined for the current Lazarus version. }
 {.$DEFINE FPS_LAZUTF8}
 
-{ fpspreadsheet requires some function from unit LazUnicode which was
+{ fpspreadsheet requires some functions from unit LazUnicode which was
   added to Lazarus in v1.8. If an older Lazarus version is used define
   FPS_NO_LAZUNICODE. Keep undefined for the current Lazarus version. }
-{$DEFINE NO_FPS_LAZUNICODE}
+{.$DEFINE FPS_NO_LAZUNICODE}
   
 { In order to allow selection of multiple ranges in the WorksheetGrid a
   sufficiently new version of the basic TCustomGrid is required. The required
