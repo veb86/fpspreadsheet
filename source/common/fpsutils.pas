@@ -241,7 +241,7 @@ function GetFontAsString(AFont: TsFont): String;
 
 function ISO8601StrToDateTime(s: String): TDateTime;
 
-function UTF8CodePoints(s: string): TStringArray;
+function UTF8CodePoints(s: string; out sa: TStringArray): Boolean;
 
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
@@ -3219,9 +3219,10 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Splits the UTF8-encoded string into its code-points ("characters") and
-  returns them as an array of string.
+  returns them as an array of string (sa). The result of the function is
+  false if at least one codepoint is broken UTF8.
 -------------------------------------------------------------------------------}
-function UTF8CodePoints(s: String): TStringArray;
+function UTF8CodePoints(s: String; out sa: TStringArray): Boolean;
 const
   BROKEN_UTF8_REPLACEMENT = #$E2#$8E#$95; // Box character. Could also be a '?'.
 var
@@ -3230,30 +3231,33 @@ var
   P, PEnd: PChar;
   chLen: Integer;
 begin
+  Result := true;
   if s = '' then
   begin
-    Result := nil;
+    sa := nil;
     exit;
   end;
   n := 0;
-  SetLength(Result, Length(s));
+  SetLength(sa, Length(s));
   P := PChar(s);
   PEnd := P + Length(s);
   while P < PEnd do
   begin
     chLen := UTF8CodePointSize(P);
     if (chLen = 1) and (P^ > #127) then
-      ch := BROKEN_UTF8_REPLACEMENT
-    else
+    begin
+      ch := BROKEN_UTF8_REPLACEMENT;
+      Result := false;
+    end else
     begin
       SetLength(ch, chLen);
       Move(P^, ch[1], chLen);
     end;
-    Result[n] := ch;
+    sa[n] := ch;
     inc(P, chLen);
     inc(n);
   end;
-  SetLength(Result, n);
+  SetLength(sa, n);
 end;
 
 {$PUSH}{$HINTS OFF}

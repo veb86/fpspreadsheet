@@ -9207,7 +9207,7 @@ var
   i, idx, endidx, fntidx, len: Integer;
   rtParam: TsRichTextParam;
   sheet: TsWorksheet;
-  txt: String;
+  lValue, txt: String;
   chArray: array of string = nil;
 
   function IsNewLine(var idx: integer): Boolean;
@@ -9262,8 +9262,8 @@ begin
     spannedStr := '';
 
   // Check for invalid characters, get the error message
-  totaltxt := AValue;
-  if not ValidXMLText(totaltxt) then
+  lValue := AValue;
+  if not ValidXMLText(lValue) then
     Workbook.AddErrorMsg(
       rsInvalidCharacterInCell, [
       GetCellString(ARow, ACol)
@@ -9291,12 +9291,17 @@ begin
     totaltxt := Format(
       '<text:p>'+
         '<text:a xlink:href="%s" xlink:type="simple">%s</text:a>'+
-      '</text:p>', [target, totaltxt]);
+      '</text:p>', [target, lValue]);
   end
   else
   begin
     // Split AValue into separate code points.
-    chArray := UTF8CodePoints(AValue);
+    if not UTF8CodePoints(lValue, chArray) then
+      Workbook.AddErrorMsg(
+        rsInvalidCharacterInCell, [
+        GetCellString(ARow, ACol)
+      ]);
+
     len := Length(chArray);
 
     // No hyperlink, normal text only
