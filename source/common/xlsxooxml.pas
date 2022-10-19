@@ -7947,8 +7947,7 @@ begin
     ResultingValue := AValue;
 
   { Check for invalid characters }
-  txt := ResultingValue;
-  if not ValidXMLText(txt) then
+  if not ValidXMLText(ResultingValue) then
     Workbook.AddErrorMsg(
       rsInvalidCharacterInCell, [
       GetCellString(ARow, ACol)
@@ -7959,7 +7958,7 @@ begin
     // unformatted string
     AppendToStream(FSSharedStrings,
       '<si>' +
-        '<t xml:space="preserve">' + txt + '</t>' +
+        '<t xml:space="preserve">' + ResultingValue + '</t>' +
       '</si>')
   else
   begin

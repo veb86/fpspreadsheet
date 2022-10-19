@@ -62,6 +62,7 @@ procedure DestroyTempStream(AStream: TStream);
 implementation
 
 uses
+  LazUTF8,
   (*
  {$IF FPC_FULLVERSION >= 20701}
   zipper,
@@ -162,7 +163,7 @@ begin
            (Pos('&apos;', AppoSt) = 1) or
            (Pos('&#37;',  AppoSt) = 1)     // %
         then begin
-          //'&' is the first char of a special chat, it must not be converted
+          //'&' is the first char of a special char, it must not be converted
           Result := Result + AText[Idx];
         end else begin
           Result := Result + '&amp;';
@@ -174,21 +175,13 @@ begin
       '''':Result := Result + '&apos;';
       '%': Result := Result + '&#37;';
       #10: if ProcessLineEndings then
-             Result := Result + '&#10;' else
+             Result := Result + '&#10;'
+           else
              Result := Result + #10;
       #13: if ProcessLineEndings then
-             Result := Result + '&#13;' else
+             Result := Result + '&#13;'
+           else
              Result := Result + #13;
-      {     this breaks multi-line labels in xlsx
-      #10: begin
-             Result := Result + '<br />';
-             if (idx < Length(AText)) and (AText[idx+1] = #13) then inc(idx);
-           end;
-      #13: begin
-             Result := Result + '<br />';
-             if (idx < Length(AText)) and (AText[idx+1] = #10) then inc(idx);
-           end;
-           }
     else
       Result := Result + AText[Idx];
     end;
@@ -218,15 +211,21 @@ const
   BOX = #$E2#$8E#$95;
 var
   i: Integer;
+  P: PChar;
 begin
   Result := true;
-  for i := Length(AText) downto 1 do
-    if (AText[i] < #32) and not (AText[i] in [#9, #10, #13]) then begin
-      // Replace invalid character by box symbol
-      Delete(AText, i, 1);
-      Insert(BOX, AText, i);
+
+  repeat
+    P := PChar(AText);
+    i := FindInvalidUTF8CodePoint(P, Length(AText), true);
+    if i >= 0 then
+    begin
+      Delete(AText, i+1, 1);
+      Insert(BOX, AText, i+1);
       Result := false;
     end;
+  until (i < 0);
+
   if ReplaceSpecialChars then
     AText := UTF8TextToXMLText(AText, ProcessLineEndings);
 end;
