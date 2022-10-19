@@ -5814,14 +5814,13 @@ begin
     for c := 0 to LongInt(sheet.VirtualColCount) - 1 do
     begin
       lCell.Row := r; // to silence a compiler hint...
-      InitCell(lCell);
+      InitCell(ASheet, r, c, lCell);
       lCell.Worksheet := ASheet;
       value := varNull;
       styleCell := nil;
       sheet.OnWriteCellData(sheet, r, c, value, styleCell);
-      if styleCell <> nil then lCell := styleCell^;
-      lCell.Row := r;
-      lCell.Col := c;
+      if styleCell <> nil then
+        lCell.FormatIndex := styleCell^.FormatIndex;
       if VarIsNull(value) then
       begin         // ignore empty cells that don't have a format
         if styleCell <> nil then
@@ -5837,7 +5836,7 @@ begin
       if VarType(value) = varDate then
       begin
         lCell.ContentType := cctDateTime;
-        lCell.DateTimeValue := StrToDateTime(VarToStr(value), Workbook.FormatSettings);
+        lCell.DateTimeValue := VarToDateTime(value);
       end else
       if VarIsStr(value) then
       begin
