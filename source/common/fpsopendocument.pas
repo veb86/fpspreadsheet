@@ -34,7 +34,7 @@ unit fpsOpenDocument;
 interface
 
 uses
-  Classes, SysUtils, LazVersion,
+  Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
   avglvltree, math, dateutils, contnrs,
  {$IF FPC_FULLVERSION >= 20701}
@@ -325,9 +325,6 @@ uses
   StrUtils, Variants, LazFileUtils, URIParser, LazUTF8,
  {$IFDEF FPS_VARISBOOL}
   fpsPatches,
- {$ENDIF}
- {$IFNDEF FPS_NO_LAZUNICODE}
-  LazUnicode,
  {$ENDIF}
   fpsStrings, fpsStreams, fpsCrypto, fpsClasses, fpspreadsheet,
   fpsExprParser, fpsImages, fpsConditionalFormat;

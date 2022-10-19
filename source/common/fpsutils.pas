@@ -263,7 +263,6 @@ implementation
 
 uses
   Math, lazutf8, lazfileutils,
-  {$IFNDEF FPS_NO_LAZUNICODE}LazUnicode,{$ENDIF}
   fpsStrings, fpsReaderWriter;
 
 const

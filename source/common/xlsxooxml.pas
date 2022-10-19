@@ -2707,7 +2707,7 @@ end;
 
 procedure TsSpreadOOXMLReader.ReadDrawingRels(ANode: TDOMNode; ASheet: TsBasicWorksheet);
 var
-  nodeName: String;
+  {%H-}nodeName: String;
   relID, relTarget, relType: String;
   data: TEmbeddedObjData;
   j: Integer;
@@ -2747,7 +2747,7 @@ end;
 procedure TsSpreadOOXMLReader.ReadEmbeddedObjs(AStream: TStream);
 var
   i, j: Integer;
-  fn, relsFn, s: String;
+  fn, {%H-}relsFn: String;
   XMLStream: TStream;
   doc: TXMLDocument;
   sheet: TsWorksheet;
@@ -3155,7 +3155,6 @@ var
   nodeName: String;
   sheetData: TSheetData;
   hyperlinkData: THyperlinkListData;
-  s: String;
 
   function FindHyperlinkID(ID: String): THyperlinkListData;
   var
@@ -4202,11 +4201,12 @@ procedure TsSpreadOOXMLReader.ReadVmlDrawing(ANode: TDOMNode;
   
   function ExtractMMFromStyle(AStyle, AKey: String): Double;
   var
-    s, sval, sunit: String;
+    s: String;
+    sval: String = '';
+    sunit: String = '';
     i: Integer;
   begin
     s := ExtractFromStyle(AStyle, AKey);
-    sval := '';
     for i := 1 to Length(s) do
       if s[i] in ['0'..'9', '.', '+', '-'] then
         sval := sval + s[i]
@@ -5685,6 +5685,7 @@ var
 begin
   book := FWorkbook as TsWorkbook;
   sheet := AWorksheet as TsWorksheet;
+  lCell := Default(TCell);
 
   AppendToStream(AStream,
       '<sheetData>');
@@ -5713,15 +5714,12 @@ begin
         AppendToStream(AStream, Format(
           '<row r="%d" spans="1:%d"%s>', [r+1, sheet.VirtualColCount, s]));
         for c := 0 to c2 do begin
-          lCell.Row := r; // to silence a compiler hint
-          InitCell(lCell);
+          InitCell(sheet, r, c, lCell);
           value := varNull;
           styleCell := nil;
           sheet.OnWriteCellData(sheet, r, c, value, styleCell);
           if styleCell <> nil then
             lCell.FormatIndex := styleCell^.FormatIndex;
-          lCell.Row := r;
-          lCell.Col := c;
           if VarIsNull(value) then
           begin
             if styleCell <> nil then
