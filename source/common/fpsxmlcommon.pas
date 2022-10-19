@@ -47,7 +47,7 @@ function GetNodeValue(ANode: TDOMNode): String;
 function LineEndingToBR(const AText: String): String;
 function UTF8TextToXMLText(AText: string; ProcessLineEndings: Boolean = false): string;
 function ValidXMLText(var AText: string; ReplaceSpecialChars: Boolean = true;
-  ProcessLineEndings: Boolean = false): Boolean;
+  ProcessLineEndings: Boolean = false; InvalidUTF8Replacement: String = #$E2#$8E#$95): Boolean;
 function XMLQuote(AText: String): String;
 
 procedure UnzipFile(AZipFileName, AZippedFile, ADestFolder: String);
@@ -202,30 +202,15 @@ end;
                                codes (e.g. '>' --> '&gt;')
   @param  ProcessLineEndings   If TRUE line ending characters are replaced by
                                their HTML entities.
+  @param  InvalidUTF8Replacement  UTF8-character inserted for a malformed UTF8 codepoint.
   @return FALSE if characters < #32 were replaced, TRUE otherwise.
 -------------------------------------------------------------------------------}
 function ValidXMLText(var AText: string;
   ReplaceSpecialChars: Boolean = true;
-  ProcessLineEndings: Boolean = false): Boolean;
-const
-  BOX = #$E2#$8E#$95;
-var
-  i: Integer;
-  P: PChar;
+  ProcessLineEndings: Boolean = false;
+  InvalidUTF8Replacement: String = #$E2#$8E#$95): Boolean;
 begin
-  Result := true;
-
-  repeat
-    P := PChar(AText);
-    i := FindInvalidUTF8CodePoint(P, Length(AText), true);
-    if i >= 0 then
-    begin
-      Delete(AText, i+1, 1);
-      Insert(BOX, AText, i+1);
-      Result := false;
-    end;
-  until (i < 0);
-
+  Result := ValidUTF8Text(AText, InvalidUTF8Replacement);
   if ReplaceSpecialChars then
     AText := UTF8TextToXMLText(AText, ProcessLineEndings);
 end;
