@@ -12,7 +12,6 @@ unit fpsUtils;
 // to do: Remove the declaration UTF8FormatSettings and InitUTF8FormatSettings
 //        when this same modification is in LazUtils of Laz stable
 
-
 {$mode objfpc}{$H+}
 
 interface
@@ -242,6 +241,8 @@ function GetFontAsString(AFont: TsFont): String;
 
 function ISO8601StrToDateTime(s: String): TDateTime;
 
+function UTF8CodePoints(s: string): TStringArray;
+
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2, AString3: String); inline; overload;
@@ -260,7 +261,9 @@ var
 implementation
 
 uses
-  Math, lazutf8, lazfileutils, fpsStrings, fpsReaderWriter;
+  Math, lazutf8, lazfileutils,
+  {$IFNDEF FPS_NO_LAZUNICODE}LazUnicode,{$ENDIF}
+  fpsStrings, fpsReaderWriter;
 
 const
   INT_NUM_LETTERS = 26;
@@ -3214,6 +3217,44 @@ begin
     Result := Result - GetLocalTimeOffset / MinsPerDay;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Splits the UTF8-encoded string into its code-points ("characters") and
+  returns them as an array of string.
+-------------------------------------------------------------------------------}
+function UTF8CodePoints(s: String): TStringArray;
+const
+  BROKEN_UTF8_REPLACEMENT = #$E2#$8E#$95; // Box character. Could also be a '?'.
+var
+  n: Integer;
+  ch: String;
+  P, PEnd: PChar;
+  chLen: Integer;
+begin
+  if s = '' then
+  begin
+    Result := nil;
+    exit;
+  end;
+  n := 0;
+  SetLength(Result, Length(s));
+  P := PChar(s);
+  PEnd := P + Length(s);
+  while P < PEnd do
+  begin
+    chLen := UTF8CodePointSize(P);
+    if (chLen = 1) and (P^ > #127) then
+      ch := BROKEN_UTF8_REPLACEMENT
+    else
+    begin
+      SetLength(ch, chLen);
+      Move(P^, ch[1], chLen);
+    end;
+    Result[n] := ch;
+    inc(P, chLen);
+    inc(n);
+  end;
+  SetLength(Result, n);
+end;
 
 {$PUSH}{$HINTS OFF}
 {@@ Silence warnings due to an unused parameter }

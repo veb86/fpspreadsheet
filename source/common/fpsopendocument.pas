@@ -9207,58 +9207,31 @@ var
   i, idx, endidx, fntidx, len: Integer;
   rtParam: TsRichTextParam;
   sheet: TsWorksheet;
-  {$IFDEF FPS_NO_LAZUNICODE}
-  ch: WideChar;
-  wideStr, txt: WideString;
-  {$ELSE}
-  ch: String;
-  chArray: array of string = nil;
   txt: String;
-  {$ENDIF}
+  chArray: array of string = nil;
 
   function IsNewLine(var idx: integer): Boolean;
   begin
-   {$IFDEF FPS_NO_LAZUNICODE}
-    if (wideStr[idx] = #13) then
-    begin
-      Result := true;
-      if (idx < len) and (widestr[idx+1] = #10) then inc(idx);
-    end else
-    if (wideStr[idx] = #10) then
-    begin
-      Result := true;
-      if (idx < len) and (widestr[idx+1] = #13) then inc(idx);
-    end else
-      Result := false;
-   {$ELSE}
     Result := true;
     case chArray[idx] of
-      #13: if (chArray[idx+1] = #10) then inc(idx);  // Cannot overrun because we had appended a #0 to string
-      #10: if (chArray[idx+1] = #13) then inc(idx);  // Cannot overrun because we had appended a #0 to string
+      #13: if (idx < len-1) and (chArray[idx+1] = #10) then inc(idx);
+      #10: if (idx < len-1) and (chArray[idx+1] = #13) then inc(idx);
       else Result := false;
     end;
-   {$ENDIF}
   end;
 
   procedure AppendTxt(NewLine: Boolean; FntStyle: String);
-  var
-    s: String;
   begin
-    {$IFDEF FPS_NO_LAZUNICODE}
-    s := UTF8Encode(txt);
-    {$ELSE}
-    s := txt;
-    {$ENDIF}
-    ValidXMLText(s);
-    if NewLine and (s = '') then
+    ValidXMLText(txt);
+    if NewLine and (txt = '') then
       totaltxt := totaltxt + '</text:p><text:p>'
     else
     begin
       if FntStyle = '' then
-        totaltxt := totaltxt + s
+        totaltxt := totaltxt + txt
       else
         totaltxt := totaltxt +
-          '<text:span text:style-name="' + FntStyle + '">' + s + '</text:span>';
+          '<text:span text:style-name="' + FntStyle + '">' + txt + '</text:span>';
       if NewLine then
         totaltxt := totaltxt + '</text:p><text:p>';
     end;
@@ -9322,6 +9295,10 @@ begin
   end
   else
   begin
+    // Split AValue into separate code points.
+    chArray := UTF8CodePoints(AValue);
+    len := Length(chArray);
+
     // No hyperlink, normal text only
     if Length(ACell^.RichTextParams) = 0 then
     begin
@@ -9334,73 +9311,33 @@ begin
         (until LO gets fixed).
       }
       totaltxt := '<text:p>';
-      len := Length(AValue);
-      idx := 1;
-      while (idx <= len) do
+      idx := 0;
+      txt := '';
+      while (idx < len) do
       begin
-        case AValue[idx] of
-          #13: begin
-                 totaltxt := totaltxt + '</text:p><text:p>';
-                 if (idx < len) and (AValue[idx+1] = #10) then inc(idx);
-               end;
-          #10: begin
-                 totaltxt := totaltxt + '</text:p><text:p>';
-                 if (idx < len) and (AValue[idx+1] = #13) then inc(idx);
-               end;
-          else totaltxt := totaltxt + AValue[idx];
-        end;
+        if IsNewLine(idx) then
+          AppendTxt(true, '')
+        else
+          totaltxt := totaltxt + chArray[idx];
         inc(idx);
       end;
       totaltxt := totaltxt + '</text:p>';
     end else
     begin
       // "Rich-text" formatting
-      txt := '';
-      {$IFDEF FPS_NO_LAZUNICODE}
-      wideStr := UTF8Decode(AValue);  // Convert to unicode
-      len := Length(wideStr);
-      {$ELSE}
-      // Split utf8-encoded string into the individual code points and store them
-      // in an array of strings.
-      // Index 0 of this array is ignored so that indices map to a normal string.
-      // An auxiliary #0 is appended so that the case of #13#10 at the end of
-      // AValue can be handled without complicated checks.
-      SetLength(chArray, Length(AValue));
-      i := 0;
-      for ch in AValue do
-      begin
-        chArray[i] := ch;
-        inc(i);
-      end;
-      len := i;
-      SetLength(chArray, len+2);
-      i := length(chArray)-1;
-      chArray[i] := #0;
-      dec(i);
-      while i > 0 do
-      begin
-        chArray[i] := chArray[i-1];
-        dec(i);
-      end;
-      chArray[0] := #0;
-      {$ENDIF}
-      // Before the first formatted section having the cell's format
+      // Before the first formatted section, chars are having the cell's format
       totaltxt := '<text:p>';
       rtParam := ACell^.RichTextParams[0];
-      idx := 1;
+      idx := 0;
+      txt := '';
       if rtParam.FirstIndex > 1 then
       begin
-        while (idx <= len) and (idx < rtParam.FirstIndex) do
+        while (idx < len) and (idx + 1 < rtParam.FirstIndex) do
         begin
-          {$IFDEF FPS_NO_LAZUNICODE}
-          ch := wideStr[idx];
-          {$ELSE}
-          ch := chArray[idx];
-          {$ENDIF}
           if IsNewLine(idx) then
             AppendTxt(true, '')
           else
-            txt := txt + ch;
+            txt := txt + chArray[idx];
           inc(idx);
         end;
         if txt <> '' then
@@ -9409,7 +9346,7 @@ begin
       txt := '';
       for i := 0 to High(ACell^.RichTextParams) do
       begin
-        // Formatted parts of the string according the RichTextParams
+        // Formatted parts of the string according to the RichTextParams
         rtParam := ACell^.RichTextParams[i];
         fnt := (FWorkbook as TsWorkbook).GetFont(rtParam.FontIndex);
         fntidx := FRichTextFontList.IndexOfObject(fnt);
@@ -9418,17 +9355,12 @@ begin
           endidx := ACell^.RichTextParams[i+1].FirstIndex-1
         else
           endidx := len;
-        while (idx <= len) and (idx <= endidx) do
+        while (idx < len) and (idx < endidx) do
         begin
-          {$IFDEF FPS_NO_LAZUNICODE}
-          ch := wideStr[idx];
-          {$ELSE}
-          ch := chArray[idx];
-          {$ENDIF}
           if IsNewLine(idx) then
             AppendTxt(true, fntName)
           else
-            txt := txt + ch;
+            txt := txt + chArray[idx];
           inc(idx);
         end;
         if txt <> '' then
