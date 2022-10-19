@@ -8968,8 +8968,9 @@ begin
       InitCell(ASheet, r, c, lCell);
       value := varNull;
       styleCell := nil;
-
       sheet.OnWriteCellData(sheet, r, c, value, styleCell);
+      if styleCell <> nil then
+        lCell.FormatIndex := styleCell^.FormatIndex;
 
       if VarIsNull(value) then
       begin
@@ -8999,7 +9000,7 @@ begin
         if VarType(value) = varDate then
         begin
           lCell.ContentType := cctDateTime;
-          lCell.DateTimeValue := StrToDateTime(VarToStr(value), Workbook.FormatSettings);  // was: StrToDate
+          lCell.DateTimeValue := VarToDateTime(value);
         end else
         if VarIsStr(value) then
         begin
