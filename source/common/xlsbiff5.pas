@@ -1865,7 +1865,8 @@ const
   MAXBYTES = 255;  // Limit for this BIFF5
 var
   L: Word;
-  AnsiValue: ansistring;
+  lValue: String;
+  ansiValue: ansistring;
   rec: TBIFF5_LabelRecord;
   i, nRuns: Integer;
   rtfRuns: TBIFF5_RichTextFormattingRuns = nil;
@@ -1874,8 +1875,14 @@ begin
   if (ARow >= FLimitations.MaxRowCount) or (ACol >= FLimitations.MaxColCount) then
     exit;
 
-  ansiValue := ConvertEncoding(FixLineEnding(AValue), encodingUTF8, FCodePage);
-  if AnsiValue = '' then begin
+  lValue := FixLineEnding(AValue);     // This does not change indices for rtf.
+  if not ValidUTF8Text(lValue, '?') then
+    Workbook.AddErrorMsg(
+      rsInvalidCharacterInCell, [
+      GetCellString(ARow, ACol)
+    ]);
+  ansiValue := ConvertEncoding(lValue, encodingUTF8, FCodePage);
+  if ansiValue = '' then begin
     // Bad formatted UTF8String (maybe ANSI?)
     if Length(AValue) <> 0 then begin
       //It was an ANSI string written as UTF8 quite sure, so raise exception.
@@ -1886,15 +1893,15 @@ begin
     Exit;
   end;
 
-  if Length(AnsiValue) > MAXBYTES then begin
+  if Length(ansiValue) > MAXBYTES then begin
     // Rather than lose data when reading it, let the application programmer deal
     // with the problem or purposefully ignore it.
-    AnsiValue := Copy(AnsiValue, 1, MAXBYTES);
+    ansiValue := Copy(ansiValue, 1, MAXBYTES);
     Workbook.AddErrorMsg(rsTruncateTooLongCellText, [
       MAXBYTES, GetCellString(ARow, ACol)
     ]);
   end;
-  L := Length(AnsiValue);
+  L := Length(ansiValue);
   nRuns := Length(ACell^.RichTextParams);
 
   { BIFF record header }
@@ -1917,7 +1924,7 @@ begin
   { Copy the text characters into a buffer immediately after rec }
   SetLength(buf, SizeOf(rec) + L);
   Move(rec, buf[0], SizeOf(rec));
-  Move(AnsiValue[1], buf[SizeOf(rec)], L);
+  Move(ansiValue[1], buf[SizeOf(rec)], L);
 
   { Write out buffer }
   AStream.WriteBuffer(buf[0], SizeOf(Rec) + L);

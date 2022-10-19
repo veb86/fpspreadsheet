@@ -3779,6 +3779,9 @@ end;
   The line separator for multi-line text in label cells is accepted by xls
   to be either CRLF or LF, CR does not work.
   This procedure replaces accidentally used single CR characters by LF.
+
+  IMPORTANT NOTE FOR RICH-TEXT FORMATTING: This function does not change the
+  character indices at which formatting changes.
 -------------------------------------------------------------------------------}
 function TsSpreadBIFFWriter.FixLineEnding(const AText: String): String;
 var
