@@ -203,14 +203,27 @@ end;
   @param  ProcessLineEndings   If TRUE line ending characters are replaced by
                                their HTML entities.
   @param  InvalidUTF8Replacement  UTF8-character inserted for a malformed UTF8 codepoint.
-  @return FALSE if characters < #32 were replaced, TRUE otherwise.
+  @return FALSE if characters were replaced, TRUE otherwise.
 -------------------------------------------------------------------------------}
 function ValidXMLText(var AText: string;
   ReplaceSpecialChars: Boolean = true;
   ProcessLineEndings: Boolean = false;
   InvalidUTF8Replacement: String = #$E2#$8E#$95): Boolean;
+var
+  i: Integer;
 begin
+  // Replace broken UTF8 codepoints
   Result := ValidUTF8Text(AText, InvalidUTF8Replacement);
+
+  // Replace ASCII characters which are not allowed in XML.
+  for i := Length(AText) downto 1 do
+    if (AText[i] < #32) and not (AText[i] in [#9, #10, #13]) then begin
+      // Replace invalid character by box symbol
+      Delete(AText, i, 1);
+      Insert(InvalidUTF8Replacement, AText, i);
+      Result := false;
+    end;
+
   if ReplaceSpecialChars then
     AText := UTF8TextToXMLText(AText, ProcessLineEndings);
 end;
