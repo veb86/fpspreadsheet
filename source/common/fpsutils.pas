@@ -241,8 +241,8 @@ function GetFontAsString(AFont: TsFont): String;
 
 function ISO8601StrToDateTime(s: String): TDateTime;
 
-function UTF8CodePoints(AText: string; out sa: TStringArray; AReplacement: String = #$E2#$8E#$95): Boolean;
-function ValidUTF8Text(var AText: String; AReplacement: String = #$E2#$8E#$95): Boolean;
+function UTF8CodePoints(AText: string; out sa: TStringArray): Boolean;
+function ValidUTF8Text(var AText: String): Boolean;
 
 procedure AppendToStream(AStream: TStream; const AString: String); inline; overload;
 procedure AppendToStream(AStream: TStream; const AString1, AString2: String); inline; overload;
@@ -3222,8 +3222,7 @@ end;
   returns them as an array of string (sa). The result of the function is
   false if at least one codepoint is broken UTF8.
 -------------------------------------------------------------------------------}
-function UTF8CodePoints(AText: String; out sa: TStringArray;
-  AReplacement: string = #$E2#$8E#$95): Boolean;
+function UTF8CodePoints(AText: String; out sa: TStringArray): Boolean;
 var
   n: Integer;
   ch: String;
@@ -3245,7 +3244,7 @@ begin
     chLen := UTF8CodePointSize(P);
     if (chLen = 1) and (P^ > #127) then
     begin
-      ch := AReplacement;
+      ch := FPS_REPLACEMENT_CHAR;
       Result := false;
     end else
     begin
@@ -3259,7 +3258,7 @@ begin
   SetLength(sa, n);
 end;
 
-function ValidUTF8Text(var AText: string; AReplacement: String = #$E2#$8E#$95): Boolean;
+function ValidUTF8Text(var AText: string): Boolean;
 var
   i: Integer;
   P: PChar;
@@ -3271,7 +3270,7 @@ begin
     if i >= 0 then
     begin
       Delete(AText, i+1, 1);
-      Insert(AReplacement, AText, i+1);
+      Insert(FPS_REPLACEMENT_CHAR, AText, i+1);
       Result := false;
     end;
   until (i < 0);

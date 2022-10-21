@@ -1876,7 +1876,7 @@ begin
     exit;
 
   lValue := FixLineEnding(AValue);     // This does not change indices for rtf.
-  if not ValidUTF8Text(lValue, '?') then
+  if not ValidUTF8Text(lValue) then
     Workbook.AddErrorMsg(
       rsInvalidCharacterInCell, [
       GetCellString(ARow, ACol)

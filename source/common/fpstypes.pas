@@ -168,7 +168,7 @@ const
   STR_ERR_ARG_ERROR = '#N/A';
   // No Excel errors
   STR_ERR_FORMULA_NOT_SUPPORTED= '<FMLA?>';
-  STR_ERR_UNKNOWN = '#UNKNWON!';
+  STR_ERR_UNKNOWN = '#UNKNOWN!';
 
   {@@ Maximum count of worksheet columns}
   MAX_COL_COUNT = 65535;
@@ -192,6 +192,10 @@ const
   {@@ Line ending character in cell texts with fixed line break. Using a
       unique value simplifies many things... }
   FPS_LINE_ENDING = #10;
+
+  {@@ Replacement character used in broken UTF8 strings. Alternate replacement
+      chars could be: #$E2#$8E#$95 = box, or #$EF#$BF#$BD = "unicode replacement character" }
+  FPS_REPLACEMENT_CHAR = '?';
 
 var
   CSVParams: TsCSVParams = (
