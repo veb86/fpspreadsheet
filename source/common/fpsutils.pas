@@ -960,7 +960,9 @@ begin
     Result := ParseCellString(AStr, ACellRow, ACellCol);
     ASheetName := '';
   end else begin
-    ASheetName := UTF8Copy(AStr, 1, p-1);
+    ASheetName := Copy(AStr, 1, p-1);
+    if (ASheetName[1] = '''') and (ASheetName[Length(ASheetName)] = '''') then
+      ASheetName := Copy(ASheetName, 2, Length(ASheetName)-2);
     Result := ParseCellString(Copy(AStr, p+1, Length(AStr)), ACellRow, ACellCol);
   end;
 end;

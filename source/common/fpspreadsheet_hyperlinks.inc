@@ -162,6 +162,25 @@ procedure TsWorksheet.WriteHyperlink(ACell: PCell; ATarget: String;
       Result := ATarget;
   end;
 
+  function CheckTarget(ATarget: String): String;
+  var
+    p1, p2: Integer;
+    sheetName: String;
+  begin
+    Result := ATarget;
+    p1 := pos('#', ATarget);
+    p2 := pos('!', ATarget);
+    if (p1 > 0) and (p2 > p1) then
+    begin
+      sheetName := copy(ATarget, p1+1, p2-p1-1);
+      if (sheetName <> '') and (pos(' ', sheetName) > 0) and (sheetName[1] <> '''') then
+      begin
+        sheetName := '''' + sheetName + '''';
+        Result := copy(ATarget, 1, p1) + sheetName + copy(ATarget, p2, MaxInt);
+      end;
+    end;
+  end;
+
 var
   fmt: TsCellFormat;
   noCellText: Boolean = false;
@@ -186,7 +205,7 @@ begin
       (GetDisplayText(ReadHyperlink(ACell).Target) = ReadAsText(ACell));
 
   // Attach the hyperlink to the cell
-  FHyperlinks.AddHyperlink(ACell^.Row, ACell^.Col, ATarget, ATooltip);
+  FHyperlinks.AddHyperlink(ACell^.Row, ACell^.Col, CheckTarget(ATarget), ATooltip);
   Include(ACell^.Flags, cfHyperlink);
 
   // If there is no other cell content use the target as cell label string.
