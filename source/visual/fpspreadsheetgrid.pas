@@ -2533,21 +2533,21 @@ begin
        end;
     1: begin
          sr1 := 0;
-         sr2 := FFrozenRows - 1;
-         sc1 := FFrozenCols - 1;
+         if FFrozenRows = 0 then sr2 := 0 else sr2 := FFrozenRows - 1;
+         if FFrozenCols = 0 then sc1 := 0 else sc1 := FFrozenCols - 1;
          sc2 := GetWorksheetCol(GCache.VisibleGrid.Right);
        end;
     2: begin
          sc1 := 0;
-         sc2 := FFrozenCols - 1;
-         sr1 := FFrozenRows - 1;
+         if FFrozenCols = 0 then sc2 := 0 else sc2 := FFrozenCols - 1;
+         if FFrozenRows = 0 then sr1 := 0 else sr1 := FFrozenRows - 1;
          sr2 := GetWorksheetRow(GCache.VisibleGrid.Bottom);
        end;
     3: begin
          sc1 := 0;
-         sc2 := FFrozenCols - 1;
+         if FFrozenCols = 0 then sc2 := 0 else sc2 := FFrozenCols - 1;
          sr1 := 0;
-         sr2 := FFrozenRows - 1;
+         if FFrozenRows = 0 then sr2 := 0 else sr2 := FFrozenRows - 1;
        end;
   end;
   if sr1 = UNASSIGNED_ROW_COL_INDEX then sr1 := 0;
