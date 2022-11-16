@@ -2761,20 +2761,22 @@ const
   COMMENT_SIZE = 7;
 var
   P: Array[0..3] of TPoint;
+  commentSize: Integer;
 begin
   Canvas.Brush.Color := clRed;
   Canvas.Brush.Style := bsSolid;
   Canvas.Pen.Style := psClear;
+  commentSize := Scale96ToFont(COMMENT_SIZE);
   if IsRightToLeft then
   begin
     P[0] := Point(ARect.Left, ARect.Top);
-    P[1] := Point(ARect.Left + COMMENT_SIZE, ARect.Top);
-    P[2] := Point(ARect.Left, ARect.Top + COMMENT_SIZE);
+    P[1] := Point(ARect.Left + commentSize, ARect.Top);
+    P[2] := Point(ARect.Left, ARect.Top + commentSize);
   end else
   begin
     P[0] := Point(ARect.Right, ARect.Top);
-    P[1] := Point(ARect.Right - COMMENT_SIZE, ARect.Top);
-    P[2] := Point(ARect.Right, ARect.Top + COMMENT_SIZE);
+    P[1] := Point(ARect.Right - commentSize, ARect.Top);
+    P[2] := Point(ARect.Right, ARect.Top + commentSize);
   end;
   P[3] := P[0];
   Canvas.Polygon(P);
