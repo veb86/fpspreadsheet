@@ -3789,6 +3789,7 @@ begin
     [ARow, ACol, AFormatIndex])
   );
  {$ENDIF}
+  AColsRepeated := 0;
 
   // Workaround for Excel files converted to ods by Calc: These files are
   // expanded to fill the entire max worksheet. They also have single empty
