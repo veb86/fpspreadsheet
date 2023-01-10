@@ -5571,6 +5571,9 @@ begin
   // Fix hyperlinks
   FHyperlinks.DeleteRowOrCol(AIndex, IsRow);
 
+  // Fix conditional formats
+  FWorkbook.FConditionalFormatList.DeleteRowOrCol(Self, AIndex, IsRow);
+
   // Fix formulas:
   // 1) Fix Row/Col index of in-sheet formulas
   FFormulas.DeleteRowOrCol(AIndex, IsRow);
@@ -5669,6 +5672,9 @@ begin
 
   // Update row indexes of cell hyperlinks
   FHyperlinks.InsertRowOrCol(AIndex, IsRow);
+
+  // Update range of conditional formats
+  FWorkbook.FConditionalFormatList.InsertRowOrCol(Self, AIndex, IsRow);
 
   // Fix formulas:
   // 1) Update Row/Col index of in-sheet formulas

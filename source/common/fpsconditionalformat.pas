@@ -129,6 +129,10 @@ type
   public
     constructor Create(AWorksheet: TsBasicWorksheet; ACellRange: TsCellRange);
     destructor Destroy; override;
+    procedure DeleteCol(ACol: Cardinal);
+    procedure DeleteRow(ARow: Cardinal);
+    procedure InsertCol(ACol: Cardinal);
+    procedure InsertRow(ARow: Cardinal);
 
     property CellRange: TsCellRange read FCellRange;
     property Rules[AIndex: Integer]: TsCFRule read GetRules;
@@ -185,7 +189,9 @@ type
       AHideValue: Boolean = false; AReverse: Boolean = false): Integer; overload;
 
     procedure Delete(AIndex: Integer);
+    procedure DeleteRowOrCol(ASheet: TsBasicWorksheet; AIndex: Cardinal; IsRow: Boolean);
     function Find(ASheet: TsBasicWorksheet; ARange: TsCellRange): Integer;
+    procedure InsertRowOrCol(ASheet: TsBasicWorksheet; AIndex: Cardinal; IsRow: Boolean);
   end;
 
   function GetCFIconCount(AIconSet: TsCFIconSet): Integer;
@@ -409,6 +415,22 @@ begin
   inherited;
 end;
 
+procedure TsConditionalFormat.DeleteCol(ACol: Cardinal);
+begin
+  if (ACol <= FCellRange.Col1) and (FCellRange.Col1 > 0) then
+    dec(FCellRange.Col1);
+  if (ACol <= FCellRange.Col2) and (FCellRange.Col2 > 0) then
+    dec(FCellRange.Col2);
+end;
+
+procedure TsConditionalFormat.DeleteRow(ARow: Cardinal);
+begin
+  if (ARow <= FCellRange.Row1) and (FCellRange.Row1 > 0) then
+    dec(FCellRange.Row1);
+  if (ARow <= FCellRange.Row2) and (FCellRange.Row2 > 0) then
+    dec(FCellRange.Row2);
+end;
+
 function TsConditionalFormat.GetRules(AIndex: Integer): TsCFRule;
 begin
   Result := FRules[AIndex];
@@ -417,6 +439,22 @@ end;
 function TsConditionalFormat.GetRulesCount: Integer;
 begin
   Result := FRules.Count;
+end;
+
+procedure TsConditionalFormat.InsertCol(ACol: Cardinal);
+begin
+  if (ACol <= FCellRange.Col1) then
+    inc(FCellRange.Col1);
+  if (ACol <= FCellRange.Col2) then
+    inc(FCellRange.Col2);
+end;
+
+procedure TsConditionalFormat.InsertRow(ARow: Cardinal);
+begin
+  if (ARow <= FCellRange.Row1) then
+    inc(FCellRange.Row1);
+  if (ARow <= FCellRange.Row2) then
+    inc(FCellRange.Row2);
 end;
 
 
@@ -709,6 +747,30 @@ end;
 
 
 {@@ ----------------------------------------------------------------------------
+  A row or column is deleted from the specified worksheet. Call this method to
+  update the range of the conditional formats.
+-------------------------------------------------------------------------------}
+procedure TsConditionalFormatList.DeleteRowOrCol(ASheet: TsBasicWorksheet;
+  AIndex: Cardinal; IsRow: Boolean);
+var
+  CF: TsConditionalFormat;
+  i: Integer;
+begin
+  for i := 0 to Count-1 do
+  begin
+    CF := TsConditionalFormat(Items[i]);
+    if CF.Worksheet = ASheet then
+    begin
+      if IsRow then
+        CF.DeleteRow(AIndex)
+      else
+        CF.DeleteCol(AIndex);
+    end;
+  end;
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   The conditional format list must be unique regarding cell ranges.
   This function searches all format item whether a given cell ranges is
   already listed.
@@ -736,6 +798,31 @@ begin
   end;
   Result := -1;
 end;
+
+
+{@@ ----------------------------------------------------------------------------
+  A row or column is inserted in the specified worksheet. Call this method to
+  update the range of the conditional formats.
+-------------------------------------------------------------------------------}
+procedure TsConditionalFormatList.InsertRowOrCol(ASheet: TsBasicWorksheet;
+  AIndex: Cardinal; IsRow: Boolean);
+var
+  CF: TsConditionalFormat;
+  i: Integer;
+begin
+  for i := 0 to Count-1 do
+  begin
+    CF := TsConditionalFormat(Items[i]);
+    if CF.Worksheet = ASheet then
+    begin
+      if IsRow then
+        CF.InsertRow(AIndex)
+      else
+        CF.InsertCol(AIndex);
+    end;
+  end;
+end;
+
 
 end.
 
