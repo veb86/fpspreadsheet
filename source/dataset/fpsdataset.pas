@@ -200,7 +200,8 @@ type
     procedure Clear(ClearDefs: Boolean);
     function CompareBookmarks(Bookmark1, Bookmark2: TBookmark): Longint; override;
     procedure CopyFromDataset(ADataset: TDataset;
-      const AWorkbookFileName, ASheetName: String);
+      const AWorkbookFileName, ASheetName: String;
+      ASourceCodePage: TSystemCodePage = CP_UTF8);
     function CreateBlobStream(Field: TField; Mode: TBlobStreamMode): TStream; override;
     procedure CreateTable;
     procedure Flush;
@@ -270,7 +271,7 @@ procedure Register;
 implementation
 
 uses
-  LazUTF8, LazUTF16, Math, TypInfo, Variants, FmtBCD, fpsNumFormat;
+  LazUTF8, LazUTF16, LConvEncoding, Math, TypInfo, Variants, FmtBCD, fpsNumFormat;
 
 const  // This are the field types of FPC 3.3.x
   ftSupported = [ftString, ftSmallint, ftInteger, ftWord, ftBoolean, ftFloat,
@@ -681,18 +682,44 @@ begin
   end;
 end;
 
+function SystemCodePageToStr(ACodePage: TSystemCodePage): String;
+begin
+  if (ACodePage = CP_UTF8) then
+    Result := 'utf8'
+  else
+  if (ACodePage < 1000) or ((ACodePage >= 1250) and (ACodePage <= 1258)) then
+    Result := 'cp' + IntToStr(ACodePage)
+  else
+  if (ACodePage >= 28591) and (ACodePage <= 28599) then
+    Result := 'iso88' + IntToStr(ACodePage-28000)
+  else
+  if (ACodePage >=28600) and (ACodePage <= 28605) then
+    Result := 'iso88561' + IntToStr(ACodePage-28600)
+  else
+  if (ACodePage = 20866) then
+    Result := 'koi8r'
+  else
+  if (ACodePage = 21866) then
+    Result := 'koi8u'
+  else
+    Result := '';
+end;
+
 { Copies the specified dataset to the worksheet dataset: copies fielddefs as
   well as data.
   Important: In order to avoid data loss in the worksheet dataset it must be
   closed and FileName and SheetName must be empty; they will be set to the
   values passed as parameters. }
 procedure TsWorksheetDataset.CopyFromDataset(ADataset: TDataset;
-  const AWorkbookFileName, ASheetName: String);
+  const AWorkbookFileName, ASheetName: String; ASourceCodePage: TSystemCodePage = CP_UTF8);
 var
   i: Integer;
   fsrc, fdest: TField;
   stream: TMemoryStream;
   bm: TBookmark;
+  codepageStr: String;
+  s: RawByteString;
+  sUTF8: UTF8String;
 begin
   if Active then
     DatabaseError('Dataset must not be active when calling CopyFromDataset.');
@@ -700,6 +727,8 @@ begin
     DatabaseError('Filename must be empty when calling CopyFromDataset.');
   if FSheetName <> '' then
     DatabaseError('SheetName must be empty when calling CopyFromDataset.');
+
+  codepageStr := SystemCodePageToStr(ASourceCodepage);
 
   FFileName := AWorkbookFileName;
   FSheetName := ASheetName;
@@ -734,7 +763,7 @@ begin
         if not fsrc.IsNull then
           case fdest.DataType of
             ftString, ftFixedChar:
-              fdest.AsString := fsrc.AsString;
+              fdest.AsString := ConvertEncoding(fsrc.AsString, codepageStr, 'utf8');
             ftWideString, ftFixedWideChar:
               fdest.AsWideString := fsrc.AsWideString;
             ftBoolean:
@@ -761,6 +790,15 @@ begin
               begin
                 stream.Clear;
                 TBlobField(fsrc).SaveToStream(stream);
+                if (ASourceCodePage <> CP_UTF8) and (stream.Size > 0) then
+                begin
+                  stream.Position := 0;
+                  SetLength(s, stream.Size);
+                  stream.Write(s[1], stream.Size);
+                  sUTF8 := ConvertEncoding(s, codepageStr, 'utf8');
+                  stream.Clear;
+                  stream.Read(sUTF8[1], Length(sUTF8));
+                end;
                 stream.Position := 0;
                 TBlobField(fdest).LoadFromStream(stream);
               end;
