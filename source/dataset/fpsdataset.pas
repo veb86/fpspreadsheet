@@ -432,7 +432,7 @@ begin
       with PsBlobData(buffer)^ do
         Write(Data[0], Length(Data));   // Writes the data into the stream
     Position := 0;
-    SaveToFile('test.txt');
+//    SaveToFile('test.txt');
   end;
   Position := 0;
 end;
@@ -718,7 +718,7 @@ var
   stream: TMemoryStream;
   bm: TBookmark;
   codepageStr: String;
-  s: RawByteString;
+  s: RawByteString = '';
   sUTF8: UTF8String;
 begin
   if Active then
@@ -816,6 +816,7 @@ begin
     end;
     inc(FAutoIncValue);
     FModified := true;
+    Flush;
   finally
     stream.Free;
     ADataset.GotoBookmark(bm);
