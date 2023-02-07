@@ -346,7 +346,7 @@ begin
     FCSVBuilder.Delimiter := CSVParams.Delimiter;
     FCSVBuilder.LineEnding := LineEndingAsString(CSVParams.LineEnding);
     FCSVBuilder.QuoteChar := CSVParams.QuoteChar;
-    FCSVBuilder.IgnoreOuterWhiteSpace := CSVParams.IgnoreOuterWhiteSpace;
+    FCSVBuilder.QuoteOuterWhiteSpace := CSVParams.QuoteOuterWhiteSpace;
     FCSVBuilder.SetOutput(AStream);
 
     n := sheet.GetCellCount;
