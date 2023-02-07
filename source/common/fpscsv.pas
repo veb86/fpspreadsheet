@@ -187,6 +187,7 @@ begin
     Parser.Delimiter := CSVParams.Delimiter;
     Parser.LineEnding := LineEndingAsString(CSVParams.LineEnding);
     Parser.QuoteChar := CSVParams.QuoteChar;
+    Parser.IgnoreOuterWhiteSpace := CSVParams.IgnoreOuterWhiteSpace;
     // Indicate column counts between rows may differ:
     Parser.EqualColCountPerRow := false;
     Parser.SetSource(AStream);
@@ -345,6 +346,7 @@ begin
     FCSVBuilder.Delimiter := CSVParams.Delimiter;
     FCSVBuilder.LineEnding := LineEndingAsString(CSVParams.LineEnding);
     FCSVBuilder.QuoteChar := CSVParams.QuoteChar;
+    FCSVBuilder.IgnoreOuterWhiteSpace := CSVParams.IgnoreOuterWhiteSpace;
     FCSVBuilder.SetOutput(AStream);
 
     n := sheet.GetCellCount;

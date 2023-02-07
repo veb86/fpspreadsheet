@@ -92,6 +92,8 @@ type
     @member  LineEnding     Specification for the line endings to be written (write-only)
     @member  Delimiter      Column delimiter (read/write)
     @member  QuoteChar      Character used for quoting text in special cases (read/write)
+    @member  QuoteOuterWhiteSpace ...Determines whether cell content beginning/ending with white space will be quoted (write-only)
+    @member  IgnoreOuterWhiteSpace...Ignores white space before/after cell content (read-only)
     @member  Encoding       String identifying the endoding of the file, such as 'utf8', 'cp1252' etc (read/write)
     @member  DetectContentType  Try to convert strings to their content type (read-only)
     @member  NumberFormat   If empty numbers are written like in worksheet, otherwise this format string is applied (write-only)
@@ -104,6 +106,8 @@ type
     LineEnding: TsCSVLineEnding;     // W: Specification for line ending to be written
     Delimiter: Char;                 // RW: Column delimiter
     QuoteChar: Char;                 // RW: Character for quoting texts
+    QuoteOuterWhiteSpace: Boolean;   // W: Quote when cell content begins/ends with white space.
+    IgnoreOuterWhiteSpace: Boolean;  // R: Ignores white space before/after cell content.
     Encoding: String;                // RW: Encoding of file (code page, such as "utf8", "cp1252" etc)
     DetectContentType: Boolean;      // R: try to convert strings to content types
     NumberFormat: String;            // W: if empty write numbers like in sheet, otherwise use this format
@@ -203,6 +207,8 @@ var
     LineEnding: leSystem;
     Delimiter: ';';
     QuoteChar: '"';
+    QuoteOuterWhiteSpace: true;
+    IgnoreOuterWhiteSpace: false;
     Encoding: '';    // '' = auto-detect when reading, UTF8 when writing
     DetectContentType: true;
     NumberFormat: '';
