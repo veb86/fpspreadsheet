@@ -93,6 +93,11 @@
           <Mode Name="Default"/>
         </BuildModes>
       </Target>
+      <Target FileName="frozen_rows_cols\demo_frozen_rows_cols.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
     </Targets>
   </ProjectGroup>
 </CONFIG>

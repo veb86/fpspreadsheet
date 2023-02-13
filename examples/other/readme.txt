@@ -11,6 +11,9 @@ This folder contains various demo applications:
 - expression_parser_demo_expression_parser: shows how the formula engine of
   FPSpreadsheet is used.
   
+- frozen_rowscols/demo_frozen_cols_rows: shows how the first rows and columns
+  can be "frozen", i.e. prevented from scrolling.
+  
 - header_footer_images/demo_write_headerfooter_images: adds images to 
   worksheet headers and footers
   
