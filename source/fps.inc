@@ -48,4 +48,17 @@
   The define is not needed for Lazarus versions >= 1.8 }
 {.$DEFINE FPS_NEED_STRINGHASHLIST}
 
+{ In Lazarus 2.0+ some UTF8 routines in unit LazUTF8 were renamed from
+  UTF8Character... to UTF8CodePoint. Activate the following define when
+  the new routines are not available, i.e. for Lazarus version < 2.0. }
+{.$DEFINE FPS_NO_NEW_UTF8_ROUTINES}
+
+{ Lazarus 1.8+ has unit LazUTF16 for special access to widestring. The following
+  define must be active when this unit is not available, i.e. for Lazarus
+  versions before 1.8.0. }
+{.$DEFINE FPS_NO_LAZUTF16}
+
+{ Activate the following define if FPS does not have the string Split helper,
+  e.g. before v3.0 }
+{.$DEFINE FPS_NO_STRING_SPLIT}
 

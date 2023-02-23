@@ -14,10 +14,11 @@ LICENSE  : For details about the license, see the file
 
 unit xlsxml;
 
-{$ifdef fpc}
-  {$mode objfpc}{$H+}
-{$endif}
+{$mode objfpc}{$H+}
+{$include ../fps.inc}
+
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
+
 interface
 
 uses
@@ -152,7 +153,7 @@ implementation
 uses
   StrUtils, DateUtils, Math, Variants, TypInfo,
   fpsStrings, fpsClasses, fpspreadsheet, fpsUtils, fpsNumFormat, fpsHTMLUtils,
-  fpsExprParser;
+  fpsExprParser, {%H-}fpsPatches;
 
 const
   FMT_OFFSET   = 61;
@@ -988,7 +989,11 @@ begin
                       if valueStr = 'none' then
                         Continue;
                     end;
+                    {$IFDEF FPS_NO_STRING_SPLIT}
+                    sa := SplitString(valueStr, ' ');
+                    {$ELSE}
                     sa := valueStr.Split(' ');
+                    {$ENDIF}
                     lineColor := scNotDefined;
                     lineStyle := -1;
                     for j := 0 to High(sa) do begin

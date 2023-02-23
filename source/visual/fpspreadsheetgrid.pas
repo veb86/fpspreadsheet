@@ -596,8 +596,10 @@ type
         defined by the rectangle. }
     property TextRotations[ALeft, ATop, ARight, ABottom: Integer]: TsTextRotation
         read GetTextRotations write SetTextRotations;
+    {$IF LCL_FullVersion >= 1080000}
     {@@ Pixel coordinates of the top-left corner of the grid's cell area}
     property TopLeftPx: TPoint read  GetPxTopLeft;
+    {$IFEND}
     {@@ Parameter for vertical text alignment in the cell at column ACol and row ARow. }
     property VertAlignment[ACol, ARow: Integer]: TsVertAlignment
         read GetVertAlignment write SetVertAlignment;
@@ -2766,7 +2768,11 @@ begin
   Canvas.Brush.Color := clRed;
   Canvas.Brush.Style := bsSolid;
   Canvas.Pen.Style := psClear;
+  {$IF LCL_FullVersion >= 1080000}
   commentSize := Scale96ToFont(COMMENT_SIZE);
+  {$ELSE}
+  commentSize := ScalePPI(COMMENT_SIZE);
+  {$IFEND}
   if IsRightToLeft then
   begin
     P[0] := Point(ARect.Left, ARect.Top);

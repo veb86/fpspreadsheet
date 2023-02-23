@@ -52,6 +52,12 @@ type
   IntPtr  = PtrInt;
 {$ENDIF}
 
+{$IFDEF FPS_NO_STRING_SPLIT}
+type
+  TStringArray = array of string;
+
+function SplitString(const AString: String; ASeparator: char): TStringArray;
+{$ENDIF}
 
 implementation
 
@@ -1729,6 +1735,26 @@ begin
     {$ENDIF}
 end;
 
+{$ENDIF}
+
+{$IFDEF FPS_NO_STRING_SPLIT}
+function SplitString(const AString: String; ASeparator: char): TStringArray;
+var
+  L: TStrings;
+  i: Integer;
+begin
+  L := TStringList.Create;
+  try
+    L.Delimiter := ASeparator;
+    L.StrictDelimiter := true;
+    L.DelimitedText := AString;
+    SetLength(Result, L.Count);
+    for i := 0 to L.Count-1 do
+      Result[i] := L[i];
+  finally
+    L.Free;
+  end;
+end;
 {$ENDIF}
 
 end.

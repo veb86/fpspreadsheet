@@ -702,6 +702,10 @@ type
 
 function SpreadsheetFormatInClipboard: Boolean;
 
+{$IF LCL_FullVersion < 1080000}
+function ScalePPI(ALength: Integer): Integer;
+{$IFEND}
+
 
 implementation
 
@@ -709,7 +713,7 @@ uses
   Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
   Dialogs, Forms, Clipbrd,
   fpsStrings, fpsCrypto, fpsReaderWriter, fpsUtils, fpsNumFormat, fpsImages,
-  fpsHTMLUtils, fpsExprParser, fpsConditionalFormat;
+  fpsHTMLUtils, fpsExprParser;
 
 var
   cfBiff8Format: Integer = 0;
@@ -737,6 +741,13 @@ begin
             Clipboard.HasFormat(CF_TEXT);
 end;
 
+
+{$IF LCL_FullVersion < 1080000}
+function ScalePPI(ALength: Integer): Integer;
+begin
+  Result := MulDiv(ALength, Screen.PixelsPerInch, 96);
+end;
+{$IFEND}
 
 {------------------------------------------------------------------------------}
 {                               TsCellList                                     }

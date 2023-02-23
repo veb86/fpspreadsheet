@@ -17,7 +17,7 @@ implementation
 uses
   LResources, ActnList, PropEdits,
   {$IFDEF REGISTER_ALL_FILE_FORMATS}
-  fpsallformats,
+  {%H-}fpsallformats,
   {$ENDIF}
   fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart, fpsactions;
   

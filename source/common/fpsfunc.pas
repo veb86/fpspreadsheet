@@ -2284,7 +2284,8 @@ var
         Result := FindPart(searchString, s) > 0
         // NOTE: FindPart currently supports only the wildcard '?'
       else
-        Result := SameStr(s, searchString);
+        Result := CompareStr(s, searchString) = 0;
+        //Result := SameStr(s, searchString);
     end else
     begin
       case ACell^.ContentType of

@@ -23,13 +23,10 @@ NOTICE: Active define FPSpreadDebug in the project options to get a log during
 
 unit fpsOpenDocument;
 
-{$ifdef fpc}
-  {$mode objfpc}{$H+}
-{$endif}
+{$mode objfpc}{$H+}
+{$include ..\fps.inc}
 
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
-
-{$I ..\fps.inc}
 
 interface
 
@@ -323,9 +320,7 @@ uses
   LazLogger,
  {$ENDIF}
   StrUtils, Variants, LazFileUtils, URIParser, LazUTF8,
- {$IFDEF FPS_VARISBOOL}
-  fpsPatches,
- {$ENDIF}
+  {%H-}fpsPatches,
   fpsStrings, fpsStreams, fpsCrypto, fpsClasses, fpspreadsheet,
   fpsExprParser, fpsImages, fpsConditionalFormat;
 
@@ -3923,7 +3918,11 @@ begin
       exit(false);
     Delete(s, p, MaxInt);
 
+    {$IFDEF FPS_NO_STRING_SPLIT}
+    sa := SplitString(s, ',');
+    {$ELSE}
     sa := s.Split(',');
+    {$ENDIF}
     arg1 := UnquoteStr(sa[0]);
     if Length(sa) > 1 then
       arg2 := UnquoteStr(sa[1]);

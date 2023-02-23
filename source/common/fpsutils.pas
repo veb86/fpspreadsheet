@@ -13,12 +13,13 @@ unit fpsUtils;
 //        when this same modification is in LazUtils of Laz stable
 
 {$mode objfpc}{$H+}
+{$include fps.inc}
 
 interface
 
 uses
   Classes, SysUtils, TypInfo,
-  fpstypes;
+  fpsTypes;
 
 // Exported types
 type
@@ -3243,7 +3244,11 @@ begin
   PEnd := P + Length(AText);
   while P < PEnd do
   begin
+    {$IFDEF FPS_NO_NEW_UTF8_ROUTINES}
+    chLen := UTF8CharacterLength(P);
+    {$ELSE}
     chLen := UTF8CodePointSize(P);
+    {$ENDIF}
     if (chLen = 1) and (P^ > #127) then
     begin
       ch := FPS_REPLACEMENT_CHAR;
@@ -3268,7 +3273,11 @@ begin
   Result := true;
   repeat
     P := PChar(AText);
+    {$IFDEF FPS_NO_NEW_UTF8_ROUTINES}
+    i := FindInvalidUTF8Character(P, Length(AText), true);
+    {$ELSE}
     i := FindInvalidUTF8CodePoint(P, Length(AText), true);
+    {$ENDIF}
     if i >= 0 then
     begin
       Delete(AText, i+1, 1);

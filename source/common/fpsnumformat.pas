@@ -9,10 +9,11 @@
 -------------------------------------------------------------------------------}
 unit fpsNumFormat;
 
-{$ifdef fpc}
-  {$mode objfpc}{$H+}
-{$endif}
+{$mode objfpc}{$H+}
+{$include ../fps.inc}
+
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
+
 interface
 
 uses
@@ -3720,7 +3721,11 @@ begin
       '_':  // Excel: Leave width of next character empty
         begin
           FToken := NextToken;
+          {$IFDEF DEFINE FPS_NO_NEW_UTF8_ROUTINES}
           uch := UTF8CharacterToUnicode(FCurrent, n);                           // wp: Why Unicode ???
+          {$ELSE}
+          uch := UTF8CodePointToUnicode(FCurrent, n);
+          {$ENDIF}
           if n > 1 then
           begin
             AddElement(nftEmptyCharWidth, UnicodeToUTF8(uch));
@@ -3761,7 +3766,11 @@ begin
           Exit;
         end;
       else
+        {$IFDEF DEFINE FPS_NO_NEW_UTF8_ROUTINES}
         uch := UTF8CharacterToUnicode(FCurrent, n);
+        {$ELSE}
+        uch := UTF8CodePointToUnicode(FCurrent, n);
+        {$ENDIF}
         if n > 1 then
         begin
           AddElement(nftText, UnicodeToUTF8(uch));

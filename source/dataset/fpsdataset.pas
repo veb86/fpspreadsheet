@@ -53,13 +53,14 @@
 unit fpsDataset;
 
 {$mode ObjFPC}{$H+}
+{$I ../fps.inc}
 {$R ../../resource/fpsdatasetreg.res}
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 interface
 
 uses
-  Classes, SysUtils, Contnrs, DB, BufDataset_Parser,
-  fpSpreadsheet, fpsTypes, fpsUtils, fpsAllFormats;
+  Classes, SysUtils, DB, BufDataset_Parser,
+  fpSpreadsheet, fpsTypes, fpsUtils, {%H-}fpsAllFormats;
 
 type
   TRowIndex = Int64;
@@ -335,6 +336,63 @@ begin
   NullMask^ := nullMask^ and not (1 shl m);
 end;
 
+{$IFDEF FPS_NO_LAZUTF16}
+// Here we borrow some code from newer Lazarus versions to make the package
+// compile also with old versions.
+
+function UTF16CharacterLength(p: PWideChar): integer;
+// returns length of UTF16 character in number of words
+// The endianess of the machine will be taken.
+begin
+  if p<>nil then begin
+    if (ord(p[0]) < $D800) or (ord(p[0]) > $DFFF) then
+      Result:=1
+    else
+      Result:=2;
+  end else begin
+    Result:=0;
+  end;
+end;
+
+function UTF16CharStart(P: PWideChar; Len, CharIndex: PtrInt): PWideChar;
+// Len is the length in words of P.
+// CharIndex is the position of the desired UnicodeChar (starting at 0).
+var
+  CharLen: LongInt;
+begin
+  Result:=P;
+  if Result=nil then Exit;
+  while (CharIndex>0) and (Len>0) do
+  begin
+    CharLen:=UTF16CharacterLength(Result);
+    dec(Len,CharLen);
+    dec(CharIndex);
+    inc(Result,CharLen);
+  end;
+  if (CharIndex<>0) or (Len<0) then
+    Result:=nil;
+end;
+
+function UTF16Copy(const s: UnicodeString; StartCharIndex, CharCount: PtrInt): Unicodestring;
+// returns substring
+var
+  StartPos: PWideChar;
+  EndPos: PWideChar;
+  MaxBytes: PtrInt;
+begin
+  StartPos:=UTF16CharStart(PWideChar(s),length(s),StartCharIndex-1);
+  if StartPos=nil then
+    Result:=''
+  else begin
+    MaxBytes:=PtrInt(PWideChar(s)+length(s)-StartPos);
+    EndPos:=UTF16CharStart(StartPos,MaxBytes,CharCount);
+    if EndPos=nil then
+      Result:=copy(s,StartPos-PWideChar(s)+1,MaxBytes)
+    else
+      Result:=copy(s,StartPos-PWideChar(s)+1,EndPos-StartPos);
+  end;
+end;
+{$ENDIF}
 
 { TsFieldDef }
 

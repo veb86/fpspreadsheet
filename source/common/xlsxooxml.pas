@@ -27,10 +27,11 @@ AUTHORS: Felipe Monteiro de Carvalho, Reinier Olislagers, Werner Pamler
 
 unit xlsxooxml;
 
-{$ifdef fpc}
-  {$mode objfpc}{$H+}
-{$endif}
+{$mode objfpc}{$H+}
+{$include ../fps.inc}
+
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
+
 interface
 
 uses
@@ -4190,7 +4191,11 @@ procedure TsSpreadOOXMLReader.ReadVmlDrawing(ANode: TDOMNode;
     sa: TStringArray;
     i: Integer;
   begin
+    {$IFDEF FPS_NO_STRING_SPLIT}
+    sa := SplitString(AStyle, ',');
+    {$ELSE}
     sa := AStyle.Split(';');
+    {$ENDIF}
     for i := 0 to High(sa) do
       if pos(AKey, sa[i]) = 1 then
       begin
@@ -5685,7 +5690,9 @@ var
 begin
   book := FWorkbook as TsWorkbook;
   sheet := AWorksheet as TsWorksheet;
+  {$IF FPC_FullVersion >= 30000}
   lCell := Default(TCell);
+  {$IFEND}
 
   AppendToStream(AStream,
       '<sheetData>');
