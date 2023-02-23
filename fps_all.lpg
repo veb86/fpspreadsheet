@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CONFIG>
+  <ProjectGroup FileVersion="2">
+    <Targets>
+      <Target FileName="laz_fpspreadsheet.lpk"/>
+      <Target FileName="laz_fpspreadsheet_visual.lpk"/>
+      <Target FileName="laz_fpspreadsheet_visual_dsgn.lpk"/>
+      <Target FileName="laz_fpspreadsheetexport_visual.lpk"/>
+      <Target FileName="laz_fpspreadsheet_dataset.lpk"/>
+      <Target FileName="laz_fpspreadsheet_crypto.lpk"/>
+    </Targets>
+  </ProjectGroup>
+</CONFIG>
