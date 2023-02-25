@@ -1,5 +1,7 @@
 unit fpsCrypto;
 
+{$mode objfpc}{$H+}
+
 interface
 
 uses
