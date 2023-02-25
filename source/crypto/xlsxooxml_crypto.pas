@@ -1,5 +1,7 @@
 unit xlsxooxml_crypto;
 
+{$mode objfpc}{$H+}
+
 interface
 
 uses
