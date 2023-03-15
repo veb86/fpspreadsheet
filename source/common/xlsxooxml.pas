@@ -56,6 +56,7 @@ type
     FPointSeparatorSettings: TFormatSettings;
     FSharedStrings: TStringList;
     FSheetList: TFPList;
+    FWorkbookRels: TFPList;
     FFillList: TFPList;
     FBorderList: TFPList;
     FDrawingToSheetRelList: TFPList;
@@ -443,6 +444,8 @@ type
   TSheetData = class
     Name: String;
     ID: String;
+    RelID : String;
+    Target : String;
     Hidden: Boolean;
     SheetRels: TFPList;
     Drawing_File: String;
@@ -806,6 +809,7 @@ begin
 
   FSharedStrings := TStringList.Create;
   FSheetList := TFPList.Create;
+  FWorkbookRels := TRelationshipList.Create;
   FFillList := TFPList.Create;
   FBorderList := TFPList.Create;
   FHyperlinkList := TFPList.Create;
@@ -854,6 +858,8 @@ begin
   for j := FSheetList.Count-1 downto 0 do
     TObject(FSheetList[j]).Free;
   FSheetList.Free;
+
+  FWorkbookRels.Free;
 
   for j := FSharedStrings.Count-1 downto 0 do
     FSharedStrings.Objects[j].Free;
@@ -3740,6 +3746,7 @@ begin
       sheetData := TSheetData.Create;
       sheetData.Name := GetAttrValue(node, 'name');
       sheetData.ID := GetAttrvalue(node, 'sheetId');
+      sheetData.RelID := GetAttrvalue(node, 'r:id');
       sheetData.Hidden := GetAttrValue(node, 'state') = 'hidden';
       // Add the sheetdata to the SheetList.
       FSheetList.Add(sheetData);
@@ -4428,6 +4435,7 @@ begin
       ReadDateMode(Doc_FindNode('workbookPr'));
       ReadWorkbookProtection(Doc_FindNode('workbookProtection'));
       ReadSheetList(Doc_FindNode('sheets'));    // This creates the worksheets!
+      ReadRels(AStream, OOXML_PATH_XL_RELS_RELS, FWorkbookRels);
       ReadSheetRels(AStream);
       ReadDefinedNames(Doc.DocumentElement.FindNode('definedNames'));
       ReadActiveSheet(Doc_FindNode('bookViews'), actSheetIndex);
@@ -4482,7 +4490,11 @@ begin
       // unzip sheet file
       XMLStream := CreateXMLStream;
       try
-        fn := OOXML_PATH_XL_WORKSHEETS + Format('sheet%d.xml', [i+1]);
+        fn := TRelationshipList(FWorkbookRels).FindTarget(sheetData.RelID);
+        if fn = '' then
+          fn := OOXML_PATH_XL_WORKSHEETS + Format('sheet%d.xml', [i+1])
+        else
+          fn := OOXML_PATH_XL_WORKSHEETS + ExtractFileName(fn);
         if not UnzipToStream(AStream, fn, XMLStream) then
           Continue;
         ReadXMLStream(Doc, XMLStream);
