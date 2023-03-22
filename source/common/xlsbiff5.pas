@@ -504,6 +504,7 @@ begin
       INT_EXCEL_ID_BOF           : ;
       INT_EXCEL_ID_BOUNDSHEET    : ReadBOUNDSHEET(AStream);
       INT_EXCEL_ID_CODEPAGE      : ReadCODEPAGE(AStream);
+      INT_EXCEL_ID_DATEMODE      : ReadDateMode(AStream);
       INT_EXCEL_ID_DEFINEDNAME   : ReadDefinedName(AStream);
       INT_EXCEL_ID_EOF           : SectionEOF := True;
       INT_EXCEL_ID_EXTERNCOUNT   : ReadEXTERNCOUNT(AStream, nil);
@@ -558,8 +559,8 @@ begin
       INT_EXCEL_ID_FOOTER        : ReadHeaderFooter(AStream, false);
       INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
       INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
-      INT_EXCEL_ID_HORZPAGEBREAK : ReadHorizontalPageBreaks(AStream, FWorksheet);
       INT_EXCEL_ID_HCENTER       : ReadHCENTER(AStream);
+      INT_EXCEL_ID_HORZPAGEBREAK : ReadHorizontalPageBreaks(AStream, FWorksheet);
       INT_EXCEL_ID_LABEL         : ReadLabel(AStream);
       INT_EXCEL_ID_LEFTMARGIN    : ReadMargin(AStream, 0);
       INT_EXCEL_ID_MULBLANK      : ReadMulBlank(AStream);
@@ -577,13 +578,13 @@ begin
       INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
       INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
       INT_EXCEL_ID_RSTRING       : ReadRString(AStream); //(RSTRING) This record stores a formatted text cell (Rich-Text). In BIFF8 it is usually replaced by the LABELSST record. Excel still uses this record, if it copies formatted text cells to the clipboard.
+      INT_EXCEL_ID_SCL           : ReadSCLRecord(AStream);
       INT_EXCEL_ID_SELECTION     : ReadSELECTION(AStream);
       INT_EXCEL_ID_SHAREDFMLA    : ReadSharedFormula(AStream);
       INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
       INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
-      INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
-      INT_EXCEL_ID_SCL           : ReadSCLRecord(AStream);
       INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
+      INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
       INT_EXCEL_ID_VCENTER       : ReadVCENTER(AStream);
       INT_EXCEL_ID_VERTPAGEBREAK : ReadVerticalPageBreaks(AStream, FWorksheet);
       INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);

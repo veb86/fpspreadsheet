@@ -1412,7 +1412,7 @@ end;
   palette. Therefore, when reading the font, we cannot determine its rgb color.
   We had stored temporarily the palette index in the font color member and
   are replacing it here by the corresponding rgb color. This is possible because
-  FixFontColors is called at the end of the workbook globals records when
+  FixColors is called at the end of the workbook globals records when
   everything is known.
 -------------------------------------------------------------------------------}
 procedure TsSpreadBIFFReader.FixColors;
@@ -1802,7 +1802,7 @@ end;
   This record specifies the base date for displaying date values.
   All dates are stored as count of days past this base date.
   In BIFF2-BIFF4 this record is part of the Calculation Settings Block.
-  In BIFF5-BIFF8 it is stored in the Workbookk Globals Substream.
+  In BIFF5-BIFF8 it is stored in the Workbook Globals Substream.
 
   Record DATEMODE, BIFF2-BIFF8:
    Offset Size Contents

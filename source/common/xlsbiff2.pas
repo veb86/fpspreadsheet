@@ -665,6 +665,7 @@ begin
       INT_EXCEL_ID_CODEPAGE      : ReadCodePage(AStream);
       INT_EXCEL_ID_COLUMNDEFAULT : ReadColumnDefault(AStream);
       INT_EXCEL_ID_COLWIDTH      : ReadColWidth(AStream);
+      INT_EXCEL_ID_DATEMODE      : ReadDateMode(AStream);
       INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
       INT_EXCEL_ID_EOF           : BIFF2EOF := True;
       INT_EXCEL_ID_FONT          : ReadFont(AStream);
