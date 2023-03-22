@@ -194,6 +194,7 @@ const
   INT_EXCEL_ID_BOOLERROR     = $0005;
   INT_EXCEL_ID_ROW           = $0008;
   INT_EXCEL_ID_BOF           = $0009;
+  INT_EXCEL_ID_BOF_BIFF8     = $0809;
   {%H-}INT_EXCEL_ID_INDEX    = $000B;
   INT_EXCEL_ID_FORMAT        = $001E;
   INT_EXCEL_ID_FORMATCOUNT   = $001F;
@@ -340,6 +341,8 @@ class function TsSpreadBIFF2Reader.CheckFileFormat(AStream: TStream): Boolean;
 const
   BIFF2_HEADER: packed array[0..3] of byte = (
     $09,$00, $04,$00);  // they are common to all BIFF2 files that I've seen
+  BIFF8_BOF: packed array[0..1] of byte = (
+    $09,$08);  // some files begin with the BOF of BIFF8 (don't know whether there are BIFF5 BOFs as well...)
 var
   P: Int64;
   buf: packed array[0..3] of byte = (0, 0, 0, 0);
@@ -352,10 +355,7 @@ begin
     n := AStream.Read(buf, SizeOf(buf));
     if n < Length(BIFF2_HEADER) then
       exit;
-    for n:=0 to High(buf) do
-      if buf[n] <> BIFF2_HEADER[n] then
-        exit;
-    Result := true;
+    Result := CompareMem(@buf[0], @BIFF2_HEADER, 4) or CompareMem(@buf[0], @BIFF8_BOF, 2);
   finally
     AStream.Position := P;
   end;
@@ -656,6 +656,10 @@ begin
     case RecordType of
       INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
       INT_EXCEL_ID_BOF           : BOFFound := true;
+      INT_EXCEL_ID_BOF_BIFF8     : begin
+                                     BOFFound := true;
+                                     FWorkbook.AddErrorMsg('Incorrect file header.');
+                                   end;
       INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
       INT_EXCEL_ID_BOTTOMMARGIN  : ReadMargin(AStream, 3);
       INT_EXCEL_ID_CODEPAGE      : ReadCodePage(AStream);

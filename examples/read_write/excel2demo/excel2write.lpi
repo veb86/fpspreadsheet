@@ -53,6 +53,7 @@
       <Filename Value="excel2write"/>
     </Target>
     <SearchPaths>
+      <IncludeFiles Value="..\..\..\source"/>
       <OtherUnitFiles Value="..\..\..\source\common"/>
       <UnitOutputDirectory Value="..\..\lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
