@@ -1,4 +1,4 @@
-unit xlsBIFF4;
+unit xlsbiff34;
 
 {$mode ObjFPC}{$H+}
 
@@ -10,13 +10,17 @@ uses
 
 type
 
-  { TsSpreadBIFF4Reader }
+  { TsSpreadBIFF34Reader }
 
-  TsSpreadBIFF4Reader = class(TsSpreadBIFFReader)
+  TsSpreadBIFF34Reader = class(TsSpreadBIFFReader)
+  private
+    type TBIFFFormat = (BIFF3, BIFF4);
+    var FFormat: TBIFFFormat;
   protected
     procedure AddBuiltInNumFormats; override;
     procedure PopulatePalette; override;
     procedure ReadDEFINEDNAME(AStream: TStream);
+    procedure ReadDIMENSION(AStream: TStream);
     procedure ReadFONT(const AStream: TStream);
     procedure ReadFORMAT(AStream: TStream); override;
     procedure ReadFORMULA(AStream: TStream); override;
@@ -29,16 +33,31 @@ type
     { General reading methods }
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
+  end;
+
+  TsSpreadBIFF3Reader = class(TsSpreadBIFF34Reader)
+  protected
+    function ReadRPNFunc(AStream: TStream): Word; override;
+  public
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
+    { File format detection }
+    class function CheckfileFormat(AStream: TStream): Boolean; override;
+  end;
+
+  TsSpreadBIFF4Reader = class(TsSpreadBIFF34Reader)
+  public
+    constructor Create(AWorkbook: TsBasicWorkbook); override;
     { File format detection }
     class function CheckfileFormat(AStream: TStream): Boolean; override;
   end;
 
 var
+  sfidExcel3: TsSpreadFormatID;
   sfidExcel4: TsSpreadFormatID;
 
 const
-  {@@ palette of the default BIFF4 colors as "big-endian color" values }
-  PALETTE_BIFF4: array[$00..$17] of TsColor = (
+  {@@ palette of the default BIFF3/BIFF4 colors as "big-endian color" values }
+  PALETTE_BIFF34: array[$00..$17] of TsColor = (
     $000000,  // $00: black
     $FFFFFF,  // $01: white
     $FF0000,  // $02: red
@@ -74,7 +93,7 @@ uses
   fpSpreadsheet, fpsStrings, fpsReaderWriter, fpsPalette, fpsNumFormat;
 
 const
-  BIFF4_MAX_PALETTE_SIZE = 8 + 16;
+  BIFF34_MAX_PALETTE_SIZE = 8 + 16;
   SYS_DEFAULT_FOREGROUND_COLOR  = $18;
   SYS_DEFAULT_BACKGROUND_COLOR  = $19;
 
@@ -83,11 +102,17 @@ const
   INT_EXCEL_ID_NUMBER        = $0203;
   INT_EXCEL_ID_LABEL         = $0204;
   INT_EXCEL_ID_BOOLERROR     = $0205;
-  INT_EXCEL_ID_BOF           = $0409;
+  INT_EXCEL_ID_BOF_3         = $0209;
+  INT_EXCEL_ID_BOF_4         = $0409;
   INT_EXCEL_ID_FONT          = $0231;
-  INT_EXCEL_ID_FORMULA       = $0406;
+  INT_EXCEL_ID_FORMULA_3     = $0206;
+  INT_EXCEL_ID_FORMULA_4     = $0406;
   INT_EXCEL_ID_STANDARDWIDTH = $0099;
-  INT_EXCEL_ID_XF            = $0443;
+  INT_EXCEL_ID_XF_3          = $0243;
+  INT_EXCEL_ID_XF_4          = $0443;
+  INT_EXCEL_ID_FORMAT_3      = $001E;
+  INT_EXCEL_ID_FORMAT_4      = $041E;
+  INT_EXCEL_ID_DIMENSION     = $0200;
 
   // XF Text orientation
   MASK_XF_ORIENTATION     = $C0;
@@ -112,85 +137,64 @@ const
   MASK_XF_BORDER_RIGHT_COLOR  = $F8000000;        // shr 27
 
 type
-  TBIFF4_LabelRecord = packed record
-    RecordID: Word;
-    RecordSize: Word;
+  TBIFF34_LabelRecord = packed record
     Row: Word;
     Col: Word;
     XFIndex: Word;
     TextLen: Word;
   end;
 
-  TBIFF4_XFRecord = packed record
-    RecordID: Word;
-    RecordSize: Word;
+  TBIFF34_XFRecord = packed record
     FontIndex: byte;
     NumFormatIndex: byte;
-    XFType_Prot_ParentXF: Word;
-    Align_TextBreak_Orientation: Byte;
-    UsedAttribGroups: Byte;
-    BackGround: Word;
-    Border: DWord;
+    case integer of
+      3: (XFType_Prot_3: byte;
+          UsedAttribs_3: byte;
+          Align_TextBreak_ParentXF_3: Word;
+          BackGround_3: Word;
+          Border_3: DWord);
+      4: (XFType_Prot_ParentXF_4: Word;
+          Align_TextBreak_Orientation_4: Byte;
+          UsedAttribs_4: byte;
+          BackGround_4: Word;
+          Border_4: DWord);
   end;
 
-procedure InitBiff4Limitations(out ALimitations: TsSpreadsheetFormatLimitations);
+procedure InitBiff34Limitations(out ALimitations: TsSpreadsheetFormatLimitations);
 begin
   InitBiffLimitations(ALimitations);
-  ALimitations.MaxPaletteSize := BIFF4_MAX_PALETTE_SIZE;
+  ALimitations.MaxPaletteSize := BIFF34_MAX_PALETTE_SIZE;
 end;
 
 { ------------------------------------------------------------------------------
-                         TsSpreadBIFF4Reader
+                         TsSpreadBIFF34Reader
 -------------------------------------------------------------------------------}
-constructor TsSpreadBIFF4Reader.Create(AWorkbook: TsBasicWorkbook);
+constructor TsSpreadBIFF34Reader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
-  InitBiff4Limitations(FLimitations);
+  InitBiff34Limitations(FLimitations);
 end;
 
-procedure TsSpreadBIFF4Reader.AddBuiltInNumFormats;
+procedure TsSpreadBIFF34Reader.AddBuiltInNumFormats;
 begin
   FFirstNumFormatIndexInFile := 0;
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Checks the header of the stream for the signature of BIFF2 files
+  Populates the reader's default palette using the BIFF3/BIFF4 default colors.
 -------------------------------------------------------------------------------}
-class function TsSpreadBIFF4Reader.CheckFileFormat(AStream: TStream): Boolean;
-const
-  BIFF4_HEADER: packed array[0..1] of byte = (
-    $09, $04);
-var
-  P: Int64;
-  buf: packed array[0..1] of byte = (0, 0);
-  n: Integer;
-begin
-  Result := false;
-  P := AStream.Position;
-  try
-    AStream.Position := 0;
-    n := AStream.Read(buf, SizeOf(buf));
-    if n < Length(BIFF4_HEADER) then
-      exit;
-    Result := CompareMem(@buf[0], @BIFF4_HEADER, 2);
-  finally
-    AStream.Position := P;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Populates the reader's default palette using the BIFF4 default colors.
--------------------------------------------------------------------------------}
-procedure TsSpreadBIFF4Reader.PopulatePalette;
+procedure TsSpreadBIFF34Reader.PopulatePalette;
 begin
   FPalette.Clear;
-  FPalette.UseColors(PALETTE_BIFF4, true);
+  FPalette.UseColors(PALETTE_BIFF34);
+  // The palette has been defined in big-endian but had been converted to
+  // little-endian in the initialization section.
 end;
 
 {@@ ----------------------------------------------------------------------------
   Reads a DEFINEDNAME record. Currently only extracts print ranges and titles.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF4Reader.ReadDEFINEDNAME(AStream: TStream);
+procedure TsSpreadBIFF34Reader.ReadDEFINEDNAME(AStream: TStream);
 {
 var
   options: Word;
@@ -252,7 +256,21 @@ begin
   *)
 end;
 
-procedure TsSpreadBIFF4Reader.ReadFont(const AStream: TStream);
+procedure TsSpreadBIFF34Reader.ReadDIMENSION(AStream: TStream);
+begin
+  { ATM, we do not need the data found in this record. - This code should go here... }
+
+  { BUT: We had stored palette indices in the colors of the XF records.
+    When, in the following records, cells are read we need the true rgb colors
+    because fps does not support paletted colors. This is prepared by
+    calling FixColors.
+    The ReadDIMENSION record is chosen here it is mantatory and called after
+    reading fonts, XF and palette, and before reading cells.
+    }
+  FixColors;
+end;
+
+procedure TsSpreadBIFF34Reader.ReadFont(const AStream: TStream);
 var
   {%H-}lCodePage: Word;
   lHeight: Word;
@@ -316,20 +334,30 @@ begin
     (FWorkbook as TsWorkbook).SetDefaultFont(font.FontName, font.Size);
 end;
 
-// Read the FORMAT record for formatting numerical data
-procedure TsSpreadBIFF4Reader.ReadFormat(AStream: TStream);
+{@@ Reads the FORMAT record for formatting numerical data.
+
+   Record FORMAT (Section 5.49 in the OpenOffice pdf):
+     BIFF3
+       Offset Size Contents
+       0      var.  Number format string (byte string, 8-bit string length
+
+     BIFF4
+       Offset Size Contents
+       0      2     BIFF4 not used
+       2      var   Number format string (byte string, 8-bit string length)  }
+procedure TsSpreadBIFF34Reader.ReadFormat(AStream: TStream);
 var
   len: byte;
   fmtString: AnsiString = '';
   nfs: String;
 begin
-  // Record FORMAT, BIFF4 (5.49):
-  // Offset Size Contents
-  // 0      2     BIFF4 not used
-  // 2      var   Number format string (byte string, 8-bit string length)
 
-  // not used
-  AStream.ReadWord;
+  { BIFF 4 only }
+  if FFormat = BIFF4 then
+  begin
+    // not used
+    AStream.ReadWord;
+  end;
 
   // number format string
   len := AStream.ReadByte;
@@ -346,9 +374,9 @@ end;
 {@@ ----------------------------------------------------------------------------
   Reads a FORMULA record, retrieves the RPN formula and puts the result in the
   corresponding field. The formula is not recalculated here!
-  Valid for BIFF4.
+  Valid for BIFF3 and BIFF4.
 -------------------------------------------------------------------------------}
-procedure TsSpreadBIFF4Reader.ReadFormula(AStream: TStream);
+procedure TsSpreadBIFF34Reader.ReadFormula(AStream: TStream);
 var
   ARow, ACol: Cardinal;
   XF: WORD;
@@ -446,23 +474,23 @@ begin
     (FWorkbook as TsWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-procedure TsSpreadBIFF4Reader.ReadFromStream(AStream: TStream;
+procedure TsSpreadBIFF34Reader.ReadFromStream(AStream: TStream;
   APassword: String = ''; AParams: TsStreamParams = []);
 var
-  BIFF4EOF: Boolean;
+  BIFF34EOF: Boolean;
   RecordType: Word;
   CurStreamPos: Int64;
   BOFFound: Boolean;
 begin
   Unused(APassword, AParams);
-  BIFF4EOF := False;
+  BIFF34EOF := False;
 
   { In BIFF2 files there is only one worksheet, let's create it }
   FWorksheet := TsWorkbook(FWorkbook).AddWorksheet('Sheet', true);
 
   { Read all records in a loop }
   BOFFound := false;
-  while not BIFF4EOF do
+  while not BIFF34EOF do
   begin
     { Read the record header }
     RecordType := WordLEToN(AStream.ReadWord);
@@ -472,7 +500,8 @@ begin
 
     case RecordType of
       INT_EXCEL_ID_BLANK         : ReadBlank(AStream);
-      INT_EXCEL_ID_BOF           : BOFFound := true;
+      INT_EXCEL_ID_BOF_3         : if FFormat = BIFF3 then BOFFound := true else BIFF34EOF := true;
+      INT_EXCEL_ID_BOF_4         : if FFormat = BIFF4 then BOFFound := true else BIFF34EOF := true;
       INT_EXCEL_ID_BOOLERROR     : ReadBool(AStream);
       INT_EXCEL_ID_BOTTOMMARGIN  : ReadMargin(AStream, 3);
       INT_EXCEL_ID_CODEPAGE      : ReadCodePage(AStream);
@@ -481,13 +510,16 @@ begin
       INT_EXCEL_ID_DEFCOLWIDTH   : ReadDefColWidth(AStream);
       INT_EXCEL_ID_DEFINEDNAME   : ReadDefinedName(AStream);
       INT_EXCEL_ID_DEFROWHEIGHT  : ReadDefRowHeight(AStream);
-      INT_EXCEL_ID_EOF           : BIFF4EOF := True;
+      INT_EXCEL_ID_DIMENSION     : ReadDimension(AStream);
+      INT_EXCEL_ID_EOF           : BIFF34EOF := True;
       INT_EXCEL_ID_EXTERNCOUNT   : ReadEXTERNCOUNT(AStream, FWorksheet);
       INT_EXCEL_ID_EXTERNSHEET   : ReadEXTERNSHEET(AStream, FWorksheet);
       INT_EXCEL_ID_FONT          : ReadFont(AStream);
       INT_EXCEL_ID_FOOTER        : ReadHeaderFooter(AStream, false);
-      INT_EXCEL_ID_FORMAT        : ReadFormat(AStream);
-      INT_EXCEL_ID_FORMULA       : ReadFormula(AStream);
+      INT_EXCEL_ID_FORMAT_3      : if FFormat = BIFF3 then ReadFormat(AStream);
+      INT_EXCEL_ID_FORMAT_4      : if FFormat = BIFF4 then ReadFormat(AStream);
+      INT_EXCEL_ID_FORMULA_3     : if FFormat = BIFF3 then ReadFormula(AStream);
+      INT_EXCEL_ID_FORMULA_4     : if FFormat = BIFF4 then ReadFormula(AStream);
       INT_EXCEL_ID_HEADER        : ReadHeaderFooter(AStream, true);
       INT_EXCEL_ID_HCENTER       : ReadHCENTER(AStream);
       INT_EXCEL_ID_HORZPAGEBREAK : ReadHorizontalPageBreaks(AStream, FWorksheet);
@@ -496,7 +528,7 @@ begin
       INT_EXCEL_ID_NOTE          : ReadComment(AStream);
       INT_EXCEL_ID_NUMBER        : ReadNumber(AStream);
       INT_EXCEL_ID_OBJECTPROTECT : ReadObjectProtect(AStream);
-      INT_EXCEL_ID_PAGESETUP     : ReadPageSetup(AStream);
+      INT_EXCEL_ID_PAGESETUP     : if FFormat = BIFF4 then ReadPageSetup(AStream);
       INT_EXCEL_ID_PALETTE       : ReadPALETTE(AStream);
       INT_EXCEL_ID_PANE          : ReadPane(AStream);
       INT_EXCEL_ID_PASSWORD      : ReadPASSWORD(AStream);
@@ -504,19 +536,20 @@ begin
       INT_EXCEL_ID_PRINTHEADERS  : ReadPrintHeaders(AStream);
       INT_EXCEL_ID_PROTECT       : ReadPROTECT(AStream);
       INT_EXCEL_ID_RIGHTMARGIN   : ReadMargin(AStream, 1);
-      INT_EXCEL_ID_RK            : ReadRKValue(AStream); //(RK) This record represents a cell that contains an RK value (encoded integer or floating-point value). If a floating-point value cannot be encoded to an RK value, a NUMBER record will be written. This record replaces the record INTEGER written in BIFF2.
+      INT_EXCEL_ID_RK            : ReadRKValue(AStream);
       INT_EXCEL_ID_ROW           : ReadRowInfo(AStream);
-      INT_EXCEL_ID_SCL           : ReadSCLRecord(AStream);
+      INT_EXCEL_ID_SCL           : if FFormat = BIFF4 then ReadSCLRecord(AStream);
       INT_EXCEL_ID_SELECTION     : ReadSELECTION(AStream);
       INT_EXCEL_ID_SHEETPR       : ReadSHEETPR(AStream);
-      INT_EXCEL_ID_STANDARDWIDTH : ReadStandardWidth(AStream, FWorksheet);
+      INT_EXCEL_ID_STANDARDWIDTH : if FFormat = BIFF4 then ReadStandardWidth(AStream, FWorksheet);
       INT_EXCEL_ID_STRING        : ReadStringRecord(AStream);
       INT_EXCEL_ID_TOPMARGIN     : ReadMargin(AStream, 2);
       INT_EXCEL_ID_VCENTER       : ReadVCENTER(AStream);
       INT_EXCEL_ID_VERTPAGEBREAK : ReadVerticalPageBreaks(AStream, FWorksheet);
       INT_EXCEL_ID_WINDOW2       : ReadWindow2(AStream);
       INT_EXCEL_ID_WINDOWPROTECT : ReadWindowProtect(AStream);
-      INT_EXCEL_ID_XF            : ReadXF(AStream);
+      INT_EXCEL_ID_XF_3          : if FFormat = BIFF3 then ReadXF(AStream);
+      INT_EXCEL_ID_XF_4          : if FFormat = BIFF4 then ReadXF(AStream);
     else
       // nothing
     end;
@@ -525,22 +558,22 @@ begin
     AStream.Seek(CurStreamPos + RecordSize, soFromBeginning);
 
     if AStream.Position >= AStream.Size then
-      BIFF4EOF := True;
+      BIFF34EOF := True;
 
     if not BOFFound then
       raise EFPSpreadsheetReader.Create('BOF record not found.');
   end;
 
   // Convert palette indexes to rgb colors
-  FixColors;
-
+  //FixColors;
+  // Remove unnecessary column and row records
   FixCols(FWorksheet);
   FixRows(FWorksheet);
 end;
 
-procedure TsSpreadBIFF4Reader.ReadLabel(AStream: TStream);
+procedure TsSpreadBIFF34Reader.ReadLabel(AStream: TStream);
 var
-  rec: TBIFF4_LabelRecord;
+  rec: TBIFF34_LabelRecord;
   L: Word;
   ARow, ACol: Cardinal;
   XF: WORD;
@@ -551,7 +584,7 @@ begin
   rec.Row := 0;  // to silence the compiler...
 
   { Read entire record, starting at Row, except for string data }
-  AStream.ReadBuffer(rec.Row, SizeOf(TBIFF4_LabelRecord) - 2*SizeOf(Word));
+  AStream.ReadBuffer(rec, SizeOf(TBIFF34_LabelRecord));
   ARow := WordLEToN(rec.Row);
   ACol := WordLEToN(rec.Col);
   XF := WordLEToN(rec.XFIndex);
@@ -583,7 +616,7 @@ end;
   is set for the corresponding column. The GCW is ignored here. The column
   width read from the STANDARDWIDTH record overrides the one from the
   DEFCOLWIDTH record. }
-procedure TsSpreadBIFF4Reader.ReadStandardWidth(AStream: TStream;
+procedure TsSpreadBIFF34Reader.ReadStandardWidth(AStream: TStream;
   ASheet: TsBasicWorksheet);
 var
   w: Word;
@@ -594,7 +627,7 @@ begin
 end;
 
 { Reads a STRING record which contains the result of string formula. }
-procedure TsSpreadBIFF4Reader.ReadStringRecord(AStream: TStream);
+procedure TsSpreadBIFF34Reader.ReadStringRecord(AStream: TStream);
 var
   len: Word;
   s: ansistring = '';
@@ -616,14 +649,18 @@ begin
   FIncompleteCell := nil;
 end;
 
-procedure TsSpreadBIFF4Reader.ReadXF(AStream: TStream);
+procedure TsSpreadBIFF34Reader.ReadXF(AStream: TStream);
 var
-  rec: TBIFF4_XFRecord;
+  rec: TBIFF34_XFRecord;
   fmt: TsCellFormat;
   cidx: Integer;
   nfparams: TsNumFormatParams;
   nfs: String;
+  nfIndex: Integer;
+  border: DWord;
+  backgr: Word;
   b: Byte;
+  w: Word;
   dw: DWord;
   fill: Word;
   fs: TsFillStyle;
@@ -635,8 +672,8 @@ begin
   fmt.ID := FCellFormatList.Count;
 
   // Read the complete XF record into a buffer
-  rec.FontIndex := 0;  // to silence the compiler...
-  AStream.ReadBuffer(rec.FontIndex, SizeOf(rec) - 2*SizeOf(Word));
+  rec := Default(TBIFF34_XFRecord);
+  AStream.ReadBuffer(rec, SizeOf(TBIFF34_XFRecord));
 
   // Font index
   fmt.FontIndex := FixFontIndex(rec.FontIndex);
@@ -644,10 +681,11 @@ begin
     Include(fmt.UsedFormattingFields, uffFont);
 
   // Number format index
-  if rec.NumFormatIndex <> 0 then begin
-    nfs := NumFormatList[rec.NumFormatIndex];
+  nfIndex := rec.NumFormatIndex;
+  if nfIndex <> 0 then begin
+    nfs := NumFormatList[nfIndex];
     // "General" (NumFormatIndex = 0) not stored in workbook's NumFormatList
-    if (rec.NumFormatIndex > 0) and not SameText(nfs, 'General') then
+    if (nfIndex > 0) and not SameText(nfs, 'General') then
     begin
       fmt.NumberFormatIndex := book.AddNumberFormat(nfs);
       nfParams := book.GetNumberFormat(fmt.NumberFormatIndex);
@@ -658,71 +696,87 @@ begin
   end;
 
   // Horizontal text alignment
-  b := rec.Align_TextBreak_Orientation AND MASK_XF_HOR_ALIGN;
-  if (b <= ord(High(TsHorAlignment))) then
+  case FFormat of
+    BIFF3: w := WordLEToN(rec.Align_TextBreak_ParentXF_3) and MASK_XF_HOR_ALIGN;
+    BIFF4: w := rec.Align_TextBreak_Orientation_4 AND MASK_XF_HOR_ALIGN;
+  end;
+  if (w <= ord(High(TsHorAlignment))) then
   begin
-    fmt.HorAlignment := TsHorAlignment(b);
+    fmt.HorAlignment := TsHorAlignment(w);
     if fmt.HorAlignment <> haDefault then
       Include(fmt.UsedFormattingFields, uffHorAlign);
   end;
 
   // Vertical text alignment
-  b := (rec.Align_TextBreak_Orientation AND MASK_XF_VERT_ALIGN) shr 4;
-  if (b + 1 <= ord(high(TsVertAlignment))) then
+  if FFormat = BIFF4 then
   begin
-    fmt.VertAlignment := TsVertAlignment(b + 1);      // + 1 due to vaDefault
-    // Unfortunately BIFF does not provide a "default" vertical alignment code.
-    // Without the following correction "non-formatted" cells would always have
-    // the uffVertAlign FormattingField set which contradicts the statement of
-    // not being formatted.
-    if fmt.VertAlignment = vaBottom then
-      fmt.VertAlignment := vaDefault;
-    if fmt.VertAlignment <> vaDefault then
-      Include(fmt.UsedFormattingFields, uffVertAlign);
+    b := (rec.Align_TextBreak_Orientation_4 AND MASK_XF_VERT_ALIGN) shr 4;
+    if (b + 1 <= ord(high(TsVertAlignment))) then
+    begin
+      fmt.VertAlignment := TsVertAlignment(b + 1);      // + 1 due to vaDefault
+      // Unfortunately BIFF does not provide a "default" vertical alignment code.
+      // Without the following correction "non-formatted" cells would always have
+      // the uffVertAlign FormattingField set which contradicts the statement of
+      // not being formatted.
+      if fmt.VertAlignment = vaBottom then
+        fmt.VertAlignment := vaDefault;
+      if fmt.VertAlignment <> vaDefault then
+        Include(fmt.UsedFormattingFields, uffVertAlign);
+    end;
   end;
 
   // Word wrap
-  if (rec.Align_TextBreak_Orientation and MASK_XF_TEXTWRAP) <> 0 then
+  case FFormat of
+    BIFF3: b := rec.Align_TextBreak_ParentXF_3;
+    BIFF4: b := rec.Align_TextBreak_Orientation_4;
+  end;
+  if (b and MASK_XF_TEXTWRAP) <> 0 then
     Include(fmt.UsedFormattingFields, uffWordwrap);
 
   // Text rotation
-  case (rec.Align_TextBreak_Orientation and MASK_XF_ORIENTATION) shr 6 of
-    XF_ROTATION_HORIZONTAL : fmt.TextRotation := trHorizontal;
-    XF_ROTATION_90DEG_CCW  : fmt.TextRotation := rt90DegreeCounterClockwiseRotation;
-    XF_ROTATION_90DEG_CW   : fmt.TextRotation := rt90DegreeClockwiseRotation;
-    XF_ROTATION_STACKED    : fmt.TextRotation := rtStacked;
+  if FFormat = BIFF4 then
+  begin
+    case (rec.Align_TextBreak_Orientation_4 and MASK_XF_ORIENTATION) shr 6 of
+      XF_ROTATION_HORIZONTAL : fmt.TextRotation := trHorizontal;
+      XF_ROTATION_90DEG_CCW  : fmt.TextRotation := rt90DegreeCounterClockwiseRotation;
+      XF_ROTATION_90DEG_CW   : fmt.TextRotation := rt90DegreeClockwiseRotation;
+      XF_ROTATION_STACKED    : fmt.TextRotation := rtStacked;
+    end;
+    if fmt.TextRotation <> trHorizontal then
+      Include(fmt.UsedFormattingFields, uffTextRotation);
   end;
-  if fmt.TextRotation <> trHorizontal then
-    Include(fmt.UsedFormattingFields, uffTextRotation);
 
-  // Cell borders and background
-  rec.Background := WordLEToN(rec.Background);
-  rec.Border := DWordLEToN(rec.Border);
+  // Cell borders
+  case FFormat of
+    BIFF3: border := DWordLEToN(rec.Border_3);
+    BIFF4: border := DWordLEToN(rec.Border_4);
+  end;
+
   // The 4 masked bits encode the line style of the border line. 0 = no line.
   // The case of "no line" is not included in the TsLineStyle enumeration.
   // --> correct by subtracting 1!
-  dw := rec.Border and MASK_XF_BORDER_BOTTOM_STYLE;
+  dw := border and MASK_XF_BORDER_BOTTOM_STYLE;
   if dw <> 0 then
   begin
     Include(fmt.Border, cbSouth);
     fmt.BorderStyles[cbSouth].LineStyle := TsLineStyle(dw shr 16 - 1);
     Include(fmt.UsedFormattingFields, uffBorder);
   end;
-  dw := rec.Border and MASK_XF_BORDER_LEFT_STYLE;
+  dw := border and MASK_XF_BORDER_LEFT_STYLE;
   if dw <> 0 then
   begin
     Include(fmt.Border, cbWest);
     fmt.BorderStyles[cbWest].LineStyle := TsLineStyle(dw shr 8 - 1);
     Include(fmt.UsedFormattingFields, uffBorder);
   end;
-  dw := rec.Border and MASK_XF_BORDER_RIGHT_STYLE;
+  dw := border and MASK_XF_BORDER_RIGHT_STYLE;
   if dw <> 0 then
   begin
     Include(fmt.Border, cbEast);
     fmt.BorderStyles[cbEast].LineStyle := TsLineStyle(dw shr 24 - 1);
     Include(fmt.UsedFormattingFields, uffBorder);
   end;
-  dw := rec.Border and MASK_XF_BORDER_TOP_STYLE;
+  dw := border and MASK_XF_BORDER_TOP_STYLE;
   if dw <> 0 then
   begin
     Include(fmt.Border, cbNorth);
@@ -734,17 +788,21 @@ begin
   // NOTE: It is possible that the palette is not yet known at this moment.
   // Therefore we store the palette index encoded into the colors.
   // They will be converted to rgb in "FixColors".
-  cidx := (rec.Border and MASK_XF_BORDER_LEFT_COLOR) shr 11;
-  fmt.BorderStyles[cbWest].Color := IfThen(cidx >= BIFF4_MAX_PALETTE_SIZE, scBlack, SetAsPaletteIndex(cidx));
-  cidx := (rec.Border and MASK_XF_BORDER_RIGHT_COLOR) shr 27;
-  fmt.BorderStyles[cbEast].Color := IfThen(cidx >= BIFF4_MAX_PALETTE_SIZE, scBlack, SetAsPaletteIndex(cidx));
-  cidx := (rec.Border and MASK_XF_BORDER_TOP_COLOR) shr 3;
-  fmt.BorderStyles[cbNorth].Color := IfThen(cidx >= BIFF4_MAX_PALETTE_SIZE, scBlack, SetAsPaletteIndex(cidx));
-  cidx := (rec.Border and MASK_XF_BORDER_BOTTOM_COLOR) shr 19;
-  fmt.BorderStyles[cbSouth].Color := IfThen(cidx >= BIFF4_MAX_PALETTE_SIZE, scBlack, SetAsPaletteIndex(cidx));
+  cidx := (border and MASK_XF_BORDER_LEFT_COLOR) shr 11;
+  fmt.BorderStyles[cbWest].Color := IfThen(cidx >= BIFF34_MAX_PALETTE_SIZE, scBlack, SetAsPaletteIndex(cidx));
+  cidx := (border and MASK_XF_BORDER_RIGHT_COLOR) shr 27;
+  fmt.BorderStyles[cbEast].Color := IfThen(cidx >= BIFF34_MAX_PALETTE_SIZE, scBlack, SetAsPaletteIndex(cidx));
+  cidx := (border and MASK_XF_BORDER_TOP_COLOR) shr 3;
+  fmt.BorderStyles[cbNorth].Color := IfThen(cidx >= BIFF34_MAX_PALETTE_SIZE, scBlack, SetAsPaletteIndex(cidx));
+  cidx := (border and MASK_XF_BORDER_BOTTOM_COLOR) shr 19;
+  fmt.BorderStyles[cbSouth].Color := IfThen(cidx >= BIFF34_MAX_PALETTE_SIZE, scBlack, SetAsPaletteIndex(cidx));
 
-  // Background
-  fill := rec.Background and MASK_XF_BKGR_FILLPATTERN;
+  // Cell Background
+  case FFormat of
+    BIFF3: backgr := WordLEToN(rec.Background_3);
+    BIFF4: backgr := WordLEToN(rec.Background_4);
+  end;
+  fill := backgr and MASK_XF_BKGR_FILLPATTERN;
   for fs in TsFillStyle do
   begin
     if fs = fsNoFill then
@@ -754,10 +812,10 @@ begin
       // Fill style
       fmt.Background.Style := fs;
       // Pattern color
-      cidx := (rec.Background and MASK_XF_BKGR_PATTERN_COLOR) shr 6;  // Palette index
+      cidx := (backgr and MASK_XF_BKGR_PATTERN_COLOR) shr 6;  // Palette index
       fmt.Background.FgColor := IfThen(cidx = SYS_DEFAULT_FOREGROUND_COLOR,
         scBlack, SetAsPaletteIndex(cidx));
-      cidx := (rec.Background and MASK_XF_BKGR_BACKGROUND_COLOR) shr 11;
+      cidx := (backgr and MASK_XF_BKGR_BACKGROUND_COLOR) shr 11;
       fmt.Background.BgColor := IfThen(cidx = SYS_DEFAULT_BACKGROUND_COLOR,
         scTransparent, SetAsPaletteIndex(cidx));
       Include(fmt.UsedFormattingFields, uffBackground);
@@ -766,7 +824,11 @@ begin
   end;
 
   // Protection
-  case WordLEToN(rec.XFType_Prot_ParentXF) and MASK_XF_TYPE_PROTECTION of
+  case FFormat of
+    BIFF3: w := rec.XFType_Prot_3 and MASK_XF_TYPE_PROTECTION;
+    BIFF4: w := WordLEToN(rec.XFType_Prot_ParentXF_4) and MASK_XF_TYPE_PROTECTION;
+  end;
+  case w of
     0:
       fmt.Protection := [];
     MASK_XF_TYPE_PROT_LOCKED:
@@ -783,10 +845,90 @@ begin
   FCellFormatList.Add(fmt);
 end;
 
+{ ------------------------------------------------------------------------------
+                           TsSpreadBIFF3Reader
+-------------------------------------------------------------------------------}
+constructor TsSpreadBIFF3Reader.Create(AWorkbook: TsBasicWorkbook);
+begin
+  inherited;
+  FFormat := BIFF3;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks the header of the stream for the signature of BIFF3 files
+-------------------------------------------------------------------------------}
+class function TsSpreadBIFF3Reader.CheckFileFormat(AStream: TStream): Boolean;
+var
+  P: Int64;
+  buf: packed array[0..1] of byte = (0, 0);
+  n: Integer;
+begin
+  Result := false;
+  P := AStream.Position;
+  try
+    AStream.Position := 0;
+    n := AStream.Read(buf, SizeOf(buf));
+    if n = SizeOf(buf) then
+      Result := (buf[0] = 9) and (buf[1] = 2);
+  finally
+    AStream.Position := P;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the identifier for an RPN function with fixed argument count from the
+  stream.
+  Valid for BIFF2-BIFF3.
+-------------------------------------------------------------------------------}
+function TsSpreadBIFF3Reader.ReadRPNFunc(AStream: TStream): Word;
+var
+  b: Byte;
+begin
+  b := AStream.ReadByte;
+  Result := b;
+end;
+
+{ ------------------------------------------------------------------------------
+                           TsSpreadBIFF4Reader
+-------------------------------------------------------------------------------}
+constructor TsSpreadBIFF4Reader.Create(AWorkbook: TsBasicWorkbook);
+begin
+  inherited;
+  FFormat := BIFF4;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Checks the header of the stream for the signature of BIFF4 files
+-------------------------------------------------------------------------------}
+class function TsSpreadBIFF4Reader.CheckFileFormat(AStream: TStream): Boolean;
+var
+  P: Int64;
+  buf: packed array[0..1] of byte = (0, 0);
+  n: Integer;
+begin
+  Result := false;
+  P := AStream.Position;
+  try
+    AStream.Position := 0;
+    n := AStream.Read(buf, SizeOf(buf));
+    if n = SizeOf(buf) then
+      Result := (buf[0] = 9) and (buf[1] = 4);
+  finally
+    AStream.Position := P;
+  end;
+end;
+
+
 initialization
+  sfidExcel3 := RegisterSpreadFormat(sfUser,
+    TsSpreadBIFF3Reader, nil, 'Excel 3', 'BIFF3', ['.xls']
+  );
   sfidExcel4 := RegisterSpreadFormat(sfUser,
     TsSpreadBIFF4Reader, nil, 'Excel 4', 'BIFF4', ['.xls']
   );
+
+  // Converts the palette to litte-endian
+  MakeLEPalette(PALETTE_BIFF34);
 
 end.
 

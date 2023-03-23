@@ -295,8 +295,8 @@ This package is all you need if you don&apos;t want graphical components (like g
         <Type Value="Binary"/>
       </Item55>
       <Item56>
-        <Filename Value="source\common\xlsbiff4.pas"/>
-        <UnitName Value="xlsBIFF4"/>
+        <Filename Value="source\common\xlsbiff34.pas"/>
+        <UnitName Value="xlsbiff34"/>
       </Item56>
     </Files>
     <CompatibilityMode Value="True"/>

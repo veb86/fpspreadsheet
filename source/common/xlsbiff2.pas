@@ -113,7 +113,7 @@ type
     procedure AddBuiltinNumFormats; override;
     function FunctionSupported(AExcelCode: Integer;
       const AFuncName: String): Boolean; override;
-    procedure PopulatePalette(AWorkbook: TsbasicWorkbook); override;
+    procedure PopulatePalette(AWorkbook: TsBasicWorkbook); override;
     procedure WriteBlank(AStream: TStream; const ARow, ACol: Cardinal;
       ACell: PCell); override;
     procedure WriteBool(AStream: TStream; const ARow, ACol: Cardinal;
