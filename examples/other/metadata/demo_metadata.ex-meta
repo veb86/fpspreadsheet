@@ -1,0 +1,5 @@
+{ "demo_metadata" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "metadata", "Console", "xlsx", "xml", "ods"],
+   "Description" : "This small console application demonstrates how to access the metadata block (created by, date created, modified by, modification date, title, subject, keyowrds, custom) of Excel xlsx or xml, or Calc ods spreadsheet files."}
+}

@@ -1,0 +1,5 @@
+{ "collectlinks" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "hyperlink", "read", "write", "Console", "xlsx", "xls", "ods"],
+   "Description" : "This small console application demonstrates working with hyperlinks in spreadsheet files. It seeks all spreadsheet hyperlinks in the file \"source.xls\" and adds the linked worksheet to a new workbook."}
+}

@@ -1,0 +1,5 @@
+{ "demo_write_formula" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "formula", "rpn", "xls", "console"],
+   "Description" : "This small console application demonstrates how spreadsheet formulas can be created by means of the less-popular RPN technique."}
+}

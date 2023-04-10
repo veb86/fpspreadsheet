@@ -1,0 +1,5 @@
+{ "demo_expression_parser" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "Parser", "Formula", "RPN", "FPSpreadsheet", "Console"],
+   "Description" : "Creates a small console application that demonstrates operation of the expression parser used by FPSpreadsheet."}
+}

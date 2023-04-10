@@ -1,6 +1,6 @@
 { This demo shows how user-provided functions can be used for calculation of
-  RPN formulas that are built-in to fpspreadsheet, but don't have their own
-  calculation procedure.
+  formulas that are built-in to Excel/Calc, but don't have their own
+  calculation procedure in fpspreadsheet.
 
   The example will show implementation of some financial formulas:
   - FV()    (future value)

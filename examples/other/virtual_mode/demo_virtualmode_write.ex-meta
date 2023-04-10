@@ -1,0 +1,5 @@
+{ "demo_virtualmode_write" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "virtual mode", "write", "console"],
+   "Description" : "This console application shows how a spreadsheet file can be written in virtual mode in order to reduce memory load."}
+}

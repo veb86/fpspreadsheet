@@ -1,0 +1,5 @@
+{ "demo_write_images" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "image", "Console", "xlsx", "ods"],
+   "Description" : "This small console application demonstrates how graphic images can be inserted in worksheets saved as xlsx or ods files."}
+}

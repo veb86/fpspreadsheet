@@ -1,0 +1,5 @@
+{ "demo_write_formatting" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "formatting", "format", "background color", "color", "border"],
+   "Description" : "Creates a small console application which demonstrates how to format cells (e.g., background color, borders)."}
+}

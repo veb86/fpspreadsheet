@@ -1,0 +1,5 @@
+{ "demo_recursive_calculation" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "formula", "recursive", "xlsx", "xls", "ods", "console"],
+   "Description" : "This console application is a test for recursive calculation of cells. The cell formulas are constructed such that the first cell depends on the second, and the second cell depends on the third one. Only the third cell contains a number. Therefore calculation has to be done recursively until the independent third cell is found."}
+}

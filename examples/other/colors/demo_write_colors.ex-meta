@@ -1,0 +1,5 @@
+{ "demo_write_colors" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "Excel", "Color", "FPSpreadsheet", "xls", "Console"],
+   "Description" : "Creates a small console application that writes an Excel file in the xls format which has the colors provided by the file format as well as their names in the cells of the first column."}
+}

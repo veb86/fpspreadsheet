@@ -1,0 +1,5 @@
+{ "demo_conditional_formatting" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "Conditional format", "FPSpreadsheet", "xlsx", "ods", "xml", "Console", "Excel", "Calc", "LibreOffice"],
+   "Description" : "Creates a small console application that demonstrates how conditional formatting can be applied to cells in Excel and Calc spreadsheet files."}
+}

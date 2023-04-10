@@ -1,0 +1,5 @@
+{ "demo_sorting" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "sort", "console"],
+   "Description" : "This small console application demonstrates how spreadsheet cells can be sorted by various criteria."}
+}

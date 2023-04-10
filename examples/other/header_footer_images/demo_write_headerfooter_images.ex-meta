@@ -1,0 +1,5 @@
+{ "demo_write_headerfooter_images" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "header", "footer", "image", "PageLayout", "Console"],
+   "Description" : "Creates a small console application that demonstrates how images can be inserted in the header and footer of printed spreadsheet files."}
+}

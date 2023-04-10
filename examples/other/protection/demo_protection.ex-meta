@@ -1,0 +1,5 @@
+{ "demo_protection" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "protection", "Console", "xlsx", "xls", "ods", "console"],
+   "Description" : "This small console application demonstrates how to activate cell and sheet protection in xls, xlsx and ods spreadsheet files."}
+}
