@@ -1,0 +1,5 @@
+{ "DatasetDemo" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "Database", "Table", "TDataset", "TsWorksheetDataset",  "Filtering", "Sorting", "Searching", "Bookmarks", "gui"],
+   "Description" : "By means of TsWorksheetDataset a spreadsheet file can be considered as a database table. This project shows how the worksheet cells can be filtered, sorted, searched and bookmarks like in any other database."}
+}
