@@ -1,2 +1,2 @@
-The fpschart demo shows usage of the TsWorksheetChartSource component for
+The fpschart demo shows usage of the TsWorkbookChartSource component for
 creating charts from spreadsheet data. 

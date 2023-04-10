@@ -1,4 +1,4 @@
-program fpsgrid;
+program demo_ctrls_no_install;
 
 {$mode objfpc}{$H+}
 
@@ -7,8 +7,7 @@ uses
   cthreads,
   {$ENDIF}{$ENDIF}
   Interfaces, // this includes the LCL widgetset
-  Forms, mainfrm
-  { you can add units after this };
+  Forms, main;
 
 {$R *.res}
 

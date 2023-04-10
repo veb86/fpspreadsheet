@@ -1,0 +1,9 @@
+{ "wikitablemaker" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "WorksheetGrid", "TsWorksheetGrid", "Grid", "zoom", "gui", "wiki", "wikimedia", "table"],
+   "Description" : "WikiTableMaker implements an editor for tables to be used in wikis.
+
+Load a spreadsheet file into the worksheet grid, or type in the data needed. Go to page \"code\" to see the wiki code. Copy it to the clipboard and paste it into the wiki source page.
+
+Technically, WikiTableMaker is a moderately stripped-down version of the \"spready\" application or the \"fpsctrls\" demo project. The worksheetgrid, however, is created at runtime. Therefore, it is not necessary to install the fpspreadsheet packages to run this sample project."}
+}

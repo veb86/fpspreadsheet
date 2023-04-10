@@ -9,7 +9,7 @@ FPSpreadsheetControls are a set of visual components which facilitate creation
 of a spreadsheet application.
 
 TsWorkbookSource is the base of the package: it links the visual components to a
-worksheet instance.
+workbook instance and its worksheets and cells.
 
 TsWorkbookTabControl is a TabControl which displays tabs for each worksheet
 of the workbook. Changing the active tab selects the corresponding worksheet.

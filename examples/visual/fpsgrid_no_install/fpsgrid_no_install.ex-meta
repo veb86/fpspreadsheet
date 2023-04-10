@@ -1,0 +1,7 @@
+{ "fpsgrid_no_install" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "WorksheetGrid", "TsWorksheetGrid", "Grid", "gui"],
+   "Description" : "This project demonstrates use of TsWorksheetGrid, the Lazarus grid component supplied with fpspreadsheet. It demonstrates only the basics; a more extensive example can be found in the \"spready\" application.
+
+The grid is created at run-time, therefore installation of the laz_fpspreadsheet_visual packages is not required. Just compile and run..."}
+}

@@ -1,0 +1,23 @@
+{ "fpsctrls" : {
+   "Category" : "FPSpreadsheet",
+   "Keywords" : ["Spreadsheet", "FPSpreadsheet", "controls", "TsWorkbookSource", "TsWorkbookTabControl", "TsWorksheetGrid", "TsCellEdit", "TsCellIndicator", "TsSpreadsheetInspector", "gui"],
+   "Description" : "This demo is the result of the project explained in the wiki tutorial \"Writing a mini spreadsheet application\" (http://wiki.lazarus.freepascal.org/FPSpreadsheet_tutorial:_Writing_a_mini_spreadsheet_application).
+
+An extended version of this demo is the \"spready\" project which can be found in the \"applications\" folder of the \"Lazarus Components and Code Repository\".
+
+FPSpreadsheetControls are a set of visual components which facilitate creation of a spreadsheet application.
+
+TsWorkbookSource is the base of the package: it links the visual components to a workbook instance and its worksheets and cells.
+
+TsWorkbookTabControl is a TabControl which displays tabs for each worksheet of the workbook. Changing the active tab selects the corresponding worksheet.
+
+TsWorksheetGrid is a grid component which displays the contents of a worksheet. It communicates with the TsWorkbookSource by receiving and sending messages on the selected cell.
+
+TsCellEdit is a multi-line edit control (memo) for entering cell values and formulas. Pressing ENTER transfers the current text into the worksheet.
+
+TsCellIndicator is a simple edit used to display the address of the currently selected cell. Editing the text allows to jump to the cell address.
+
+TsSpreadsheetInspector is a StringGrid (ValueListEditor, to be precise) which displays details on the workbook, the selected worksheet, and the selected cell values and properties.
+
+Linking these controls to a TsWorkbookSource results in a working spreadsheet application without writing any line of code."}
+}

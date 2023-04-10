@@ -8,7 +8,7 @@
         <CompatibilityMode Value="True"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="fpsgrid"/>
+      <Title Value="fpsgrid_no_install"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
       <Icon Value="0"/>
@@ -58,7 +58,7 @@
     </RequiredPackages>
     <Units Count="2">
       <Unit0>
-        <Filename Value="fpsgrid.lpr"/>
+        <Filename Value="fpsgrid_no_install.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
@@ -74,7 +74,7 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="fpsgrid"/>
+      <Filename Value="fpsgrid_no_install"/>
     </Target>
     <SearchPaths>
       <IncludeFiles Value="$(ProjOutDir);..\..\..\source"/>

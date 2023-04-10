@@ -18,7 +18,7 @@
           <Mode Name="Release"/>
         </BuildModes>
       </Target>
-      <Target FileName="fpsctrls_no_install\demo_ctrls.lpi">
+      <Target FileName="fpsctrls_no_install\demo_ctrls_no_install.lpi">
         <BuildModes>
           <Mode Name="Default"/>
         </BuildModes>
@@ -28,7 +28,7 @@
           <Mode Name="default"/>
         </BuildModes>
       </Target>
-      <Target FileName="fpsgrid_no_install\fpsgrid.lpi">
+      <Target FileName="fpsgrid_no_install\fpsgrid_no_install.lpi">
         <BuildModes>
           <Mode Name="Debug" Compile="True"/>
           <Mode Name="Release"/>
