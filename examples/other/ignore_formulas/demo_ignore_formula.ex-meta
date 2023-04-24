@@ -1,5 +1,5 @@
 { "demo_ignore_formula" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "formula", "external reference", "LibreOffice", "Calc", "ods"],
    "Description" : "This example uses the \"ignoreFormula\" workbook option to create an ods file with an external reference.\n\nNOTE: The external reference is not calculated. This will happen when LibreOffice Calc loads the file. When the file is closed in Calc confirmation must be given to save the file because it has been changed by Calc.\n\nThis method does not work with Excel because it writes an additional folder and xml files for external links."}
 }

@@ -1,5 +1,5 @@
 { "CreateTableDemo" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "Database", "Table", "TDataset", "TsWorksheetDataset", "TDBGrid", "gui"],
    "Description" : "This demo creates a workbook based on database technology (by means of TsWorksheetDataset). Therefore, it can be displayed in a TDBGrid."}
 }

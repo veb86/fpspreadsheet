@@ -4,6 +4,7 @@
     <PathDelim Value="\"/>
     <Name Value="laz_fpspreadsheet"/>
     <Author Value="Felipe Monteiro de Carvalho and others"/>
+    <ExamplesDirectory Value="./examples/" />
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -21,8 +22,7 @@
         <CompilerMessages>
           <IgnoredMessages idx6058="True" idx5028="True" idx4055="True" idx2005="True"/>
         </CompilerMessages>
-        <CustomOptions Value="$(IDEBuildOptions)
--dDisableWrapperFunctions"/>
+        <CustomOptions Value="$(IDEBuildOptions) -dDisableWrapperFunctions"/>
         <OtherDefines Count="2">
           <Define0 Value="DisableWrapperFunctions"/>
           <Define1 Value="FPSDebug"/>
@@ -31,7 +31,7 @@
     </CompilerOptions>
     <Description Value="laz_fpspreadsheet is a non-visual package that allows you to read/write spreadsheet files in .xls (BIFF/Excel), .ods OpenDocument (LibreOffice/OpenOffice) and .xlsx Open XML (Excel) formats.
 
-This package is all you need if you don&apos;t want graphical components (like grids and charts)."/>
+This package is all you need if you don&apos;t want graphical components (such as grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
     <Version Major="1" Minor="14"/>
     <Files Count="56">

@@ -1,5 +1,5 @@
 { "demo_read_images" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "image", "Console", "xlsx", "ods"],
    "Description" : "This small console application demonstrates how to read an Excel xlsx or Calc ods file with embedded graphic images and extract them to external files."}
 }

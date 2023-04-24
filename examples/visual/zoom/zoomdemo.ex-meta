@@ -1,5 +1,5 @@
 { "zoomdemo" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "WorksheetGrid", "TsWorksheetGrid", "Grid", "zoom", "gui"],
    "Description" : "This sample project demonstrates two ways of zooming into a WorksheetGrid.\n\nIn the first one (checkbox \"Override file zoom factor\" off), the zoom factor read from the spreadsheet file is used for displaying the worksheet in the grid.\n\nIn the second one (checkbox on), the file zoom factor is ignored.\n\nThe zoom factor can be changed by entering a zoom percentage in the edit box, or by using the mouse wheel with CTRL and SHIFT keys pressed."}
 }

@@ -1,5 +1,5 @@
 { "demo_search" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "search", "find", "console"],
    "Description" : "This small console application demonstrates how spreadsheet cell content can be searched by means of the FPSpreadsheet search engine."}
 }

@@ -1,5 +1,5 @@
 { "fpsctrls" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "controls", "TsWorkbookSource", "TsWorkbookTabControl", "TsWorksheetGrid", "TsCellEdit", "TsCellIndicator", "TsSpreadsheetInspector", "gui"],
    "Description" : "This demo is the result of the project explained in the wiki tutorial \"Writing a mini spreadsheet application\" (http://wiki.lazarus.freepascal.org/FPSpreadsheet_tutorial:_Writing_a_mini_spreadsheet_application).
 

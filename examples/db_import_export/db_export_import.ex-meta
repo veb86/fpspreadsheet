@@ -1,5 +1,5 @@
 { "db_export_import" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "Database", "dbase", "TDbf", "TBufDataset", "Import", "Export", "gui"],
    "Description" : "This example program shows how a large database table can be exported to a spreadsheet using virtual mode or fpspreadsheet's fpsexport. It also shows importing a spreadsheet file into a database using virtual mode.
 

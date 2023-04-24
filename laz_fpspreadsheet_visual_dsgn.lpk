@@ -5,6 +5,7 @@
     <Name Value="laz_fpspreadsheet_visual_dsgn"/>
     <Type Value="RunAndDesignTime"/>
     <Author Value="W. Pamler"/>
+    <ExamplesDirectory Value="./examples/" />
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>

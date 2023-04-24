@@ -1,5 +1,5 @@
 { "wikitablemaker" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "WorksheetGrid", "TsWorksheetGrid", "Grid", "zoom", "gui", "wiki", "wikimedia", "table"],
    "Description" : "WikiTableMaker implements an editor for tables to be used in wikis.
 

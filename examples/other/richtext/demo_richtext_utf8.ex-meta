@@ -1,5 +1,5 @@
 { "demo_richtext_utf8" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "format", "rich-text", "xlsx", "console"],
    "Description" : "This small console application demonstrates how characters of the text in a spreadsheet cell can be formatted individually. Excel calls this feature \"rich-text formatting\"."}
 }

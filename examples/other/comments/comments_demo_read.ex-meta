@@ -1,5 +1,5 @@
 { "comments_demo_read" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet","Comment","FPSpreadsheet","xlsx","Console"],
    "Description" : "Creates a small console application that reads an Excel file in which comments are attached to cells."}
 }

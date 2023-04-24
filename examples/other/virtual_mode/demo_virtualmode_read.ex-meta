@@ -1,5 +1,5 @@
 { "demo_virtualmode_read" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "virtual mode", "read", "console"],
    "Description" : "This console application shows how to read a spreadsheet file in virtual mode in order to reduce memory load."}
 }

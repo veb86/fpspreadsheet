@@ -1,5 +1,5 @@
 { "fpsgrid_no_install" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "WorksheetGrid", "TsWorksheetGrid", "Grid", "gui"],
    "Description" : "This project demonstrates use of TsWorksheetGrid, the Lazarus grid component supplied with fpspreadsheet. It demonstrates only the basics; a more extensive example can be found in the \"spready\" application.
 

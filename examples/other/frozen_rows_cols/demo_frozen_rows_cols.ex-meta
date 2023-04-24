@@ -1,5 +1,5 @@
 { "demo_frozen_rows_cols" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "Frozen", "Scrolling", "FPSpreadsheet", "Console", "xlsx"],
    "Description" : "Creates a small console application which demonstrates how a given number of top rows and/or left columns can be excluded from scrolling a large spreadsheet."}
 }

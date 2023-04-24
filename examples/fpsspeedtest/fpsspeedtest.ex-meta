@@ -1,5 +1,5 @@
 { "fpsspeedtest" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "speedtest", "read", "write", "gui"],
    "Description" : "This demo represents a useful tool for measuring the speed of writing to and reading from various spreadsheet file formats. It contains a gui to setup test conditions and displays test results in a memo.
 

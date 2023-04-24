@@ -1,5 +1,5 @@
 { "demo_formula_func" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "formula", "user-defined", "financial", "console"],
    "Description" : "This console demo application shows how user-provided functions can be used for calculation of formulas that are built-in to Excel/Calc, but are not implemented in fpspreadsheet.\n\nThe example will show implementation of some financial formulas:\n  - FV()    (future value)\n  - PV()    (present value)\n  - PMT()   (payment)\n  - NPER()  (number of payment periods)\n\nThe demo writes a spreadsheet file which uses these formulas and then displays the result in a console window. (Open the generated file in Excel or Open/LibreOffice and compare)."}
 }

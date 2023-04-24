@@ -1,5 +1,5 @@
 { "fpschartsource" : {
-   "Category" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "FPSpreadsheet", "TAChart", "chart", "chartsource", "TsWorkbookChartSource", "gui"],
    "Description" : "The fpschartsource demo shows usage of the TsWorkbookChartSource component for creating charts from spreadsheet data."}
 }
