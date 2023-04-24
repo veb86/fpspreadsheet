@@ -1,5 +1,5 @@
 { "demo_expression_parser" : {
-   "CCR" : "FPSpreadsheet",
+   "Category" : "CCR",
    "Keywords" : ["Spreadsheet", "Parser", "Formula", "RPN", "FPSpreadsheet", "Console"],
    "Description" : "Creates a small console application that demonstrates operation of the expression parser used by FPSpreadsheet."}
 }
