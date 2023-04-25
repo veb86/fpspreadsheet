@@ -2112,6 +2112,7 @@ begin
     if not odd(FSelPen.Width) then dec(Rct.Left);
     Editor.Font := CellFont[Col, Row];
     Editor.Font.Height := Round(Font.Height * ZoomFactor);
+    Editor.Color := BackgroundColor[Col, Row];
     Editor.SetBounds(Rct.Left, Rct.Top, Rct.Right-Rct.Left-1, Rct.Bottom-Rct.Top-1);
   end;
 end;
