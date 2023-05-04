@@ -5712,7 +5712,7 @@ begin
     for rng in FMergedCells do
     begin
       // The new row is ABOVE the merged block --> Shift entire range down by 1 row
-      if (AIndex < Integer(rng^.Row1)) then
+      if (AIndex <= Integer(rng^.Row1)) then
       begin
         // The formerly first row is no longer merged --> un-tag its cells
         for cell in Cells.GetRowEnumerator(rng^.Row1, rng^.Col1, rng^.Col2) do
@@ -5741,7 +5741,7 @@ begin
     begin
       // The new column is at the LEFT of the merged block
       // --> Shift entire range to the right by 1 column
-      if (AIndex < Integer(rng^.Col1)) then
+      if (AIndex <= Integer(rng^.Col1)) then
       begin
         // The former first column is no longer merged --> un-tag its cells
         for cell in Cells.GetColEnumerator(rng^.Col1, rng^.Row1, rng^.Row2) do
