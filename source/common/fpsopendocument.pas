@@ -109,6 +109,7 @@ type
     function FindNumFormatByName(ANumFmtName: String): Integer;
     function FindRowStyleByName(AStyleName: String): Integer;
     function FindTableStyleByName(AStyleName: String): Integer;
+    function NodeIsEmptyCell(ACellNode: TDOMNode): Boolean;
     procedure ReadCell(ANode: TDOMNode; ARow, ACol: Integer;
       AFormatIndex: Integer; out AColsRepeated: Integer);
     procedure ReadCellImages(ANode: TDOMNode; ARow, ACol: Cardinal);
@@ -1593,6 +1594,18 @@ begin
     if TTableStyleData(FTableStyleList[Result]).Name = AStyleName then
       exit;
   Result := -1;
+end;
+
+function TsSpreadOpenDocReader.NodeIsEmptyCell(ACellNode: TDOMNode): Boolean;
+var
+  valuestr: String;
+  typestr: String;
+  formulastr: String;
+begin
+  valueStr := GetAttrValue(ACellNode, 'office:value');
+  typestr := GetAttrValue(ACellNode, 'office:value-type');
+  formulaStr := GetAttrValue(ACellNode, 'table:formula');
+  Result := (valueStr <> '') or (typeStr <> '') or (formulaStr <> '');
 end;
 
 procedure TsSpreadOpenDocReader.ReadAutomaticStyles(AStylesNode: TDOMNode);
@@ -4895,7 +4908,7 @@ end;
   these dummy cells there would be an extreme time and memory penalty. }
 procedure TsSpreadOpenDocReader.RemoveDummyRows(ATableNode: TDOMNode);
 var
-  rowNode, prevNode: TDOMNode;
+  rowNode, cellNode, prevNode: TDOMNode;
   nodeName: String;
   s: String;
   rowsRepeated: Integer;
@@ -4909,7 +4922,7 @@ begin
     if nodeName = 'table:table-row' then
     begin
       // If, coming from the end, we find a row with a large "number-rows-repeated"
-      // value
+      // value --> remove it
       s := GetAttrValue(rowNode, 'table:number-rows-repeated');
       if s <> '' then
       begin
@@ -4921,7 +4934,19 @@ begin
           rowNode := prevNode;
           continue;
         end;
-      end
+      end;
+      // If there is no "number-rows-repeated" row we check whether the row contains
+      // non-empty cells. In this case, we would have left the dummy block
+      // and must stop removing rows.
+      cellNode := rowNode.FirstChild;
+      while cellNode <> nil do
+      begin
+        nodeName := cellNode.NodeName;
+        if nodeName = 'table:table-cell' then
+        if NodeIsEmptyCell(cellNode) then
+          exit;
+        cellNode := cellNode.NextSibling;
+      end;
     end;
     rowNode := rowNode.PreviousSibling;
   end;
