@@ -147,6 +147,8 @@ type
       AFont: TsFont; var AFormat: TsCellFormat);
     procedure ReadTableStyle(AStyleNode: TDOMNode);
 
+    procedure RemoveDummyRows(ATableNode: TDOMNode);
+
   protected
     FPointSeparatorSettings: TFormatSettings;
     procedure AddBuiltinNumFormats; override;
@@ -2864,6 +2866,8 @@ begin
         ReadShapes(TableNode);
         // Collect column styles used
         ReadColumns(TableNode);
+        // Remove excess rows added at the end
+        RemoveDummyRows(TableNode);
         // Process each row inside the sheet and process each cell of the row
         ReadRowsAndCells(TableNode);
         // Read conditional formats
@@ -4883,6 +4887,43 @@ begin
         (FWorkbook as TsWorkbook).AddWorksheet(sheetname, true);
     end;
     ANode := ANode.NextSibling;
+  end;
+end;
+
+{ Removes excess rows added at the end of the data block, as usually happens
+  by export to ods from Excel. Since FPSpreadsheet creates a cell for each of
+  these dummy cells there would be an extreme time and memory penalty. }
+procedure TsSpreadOpenDocReader.RemoveDummyRows(ATableNode: TDOMNode);
+var
+  rowNode, prevNode: TDOMNode;
+  nodeName: String;
+  s: String;
+  rowsRepeated: Integer;
+begin
+  // Read table from the read and remove the rows with a large "number-rows-repeated"
+  // attribute.
+  rowNode := ATableNode.LastChild;
+  while rowNode <> nil do
+  begin
+    nodeName := rowNode.NodeName;
+    if nodeName = 'table:table-row' then
+    begin
+      // If, coming from the end, we find a row with a large "number-rows-repeated"
+      // value
+      s := GetAttrValue(rowNode, 'table:number-rows-repeated');
+      if s <> '' then
+      begin
+        rowsRepeated := StrToInt(s);
+        if rowsRepeated > 1000 then  // 1000 ok?
+        begin
+          prevNode := rowNode.PreviousSibling;
+          rowNode.Free;
+          rowNode := prevNode;
+          continue;
+        end;
+      end
+    end;
+    rowNode := rowNode.PreviousSibling;
   end;
 end;
 
