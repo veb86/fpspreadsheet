@@ -1306,7 +1306,7 @@ var
       coGreater      : if ANumber > compareNumber then ok := true;
       coLessEqual    : if ANumber <= compareNumber then ok := true;
       coGreaterEqual : if ANumber >= compareNumber then ok := true;
-      coNotEqual     : if ANumber >= compareNumber then ok := true;
+      coNotEqual     : if ANumber <> compareNumber then ok := true;
     end;
     if ok then
       case AFlag of
@@ -1321,13 +1321,14 @@ var
     ok: Boolean;
   begin
     ok := false;
+    AStr := UTF8Lowercase(AStr);
     case compareOp of
       coEqual        : if AStr = compareStr then ok := true;
       coLess         : if AStr < compareStr then ok := true;
       coGreater      : if AStr > compareStr then ok := true;
       coLessEqual    : if AStr <= compareStr then ok := true;
       coGreaterEqual : if AStr >= compareStr then ok := true;
-      coNotEqual     : if AStr >= compareStr then ok := true;
+      coNotEqual     : if AStr <> compareStr then ok := true;
     end;
     if ok then
       case AFlag of
@@ -1398,7 +1399,7 @@ begin
           end;
         cctUTF8String:
           begin
-            compareStr := cell^.UTF8StringValue;
+            compareStr := UTF8Lowercase(cell^.UTF8StringValue);
             compareType := ctString;
           end;
         cctEmpty:
@@ -1433,7 +1434,7 @@ begin
     end
     else
     begin
-      compareStr := s;
+      compareStr := UTF8Lowercase(s);
       compareType := ctString;
     end;
   end;
