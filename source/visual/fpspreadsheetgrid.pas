@@ -27,7 +27,7 @@ unit fpspreadsheetgrid;
 interface
 
 uses
-  Classes, SysUtils, LMessages, LResources, LCLVersion, Variants,
+  LCLType, LCLIntf, LCLVersion, Classes, SysUtils, LMessages, LResources, Variants,
   Forms, Controls, Graphics, Dialogs, Grids, StdCtrls, ExtCtrls,
   fpstypes, fpspreadsheet, fpspreadsheetctrls;
 
@@ -911,7 +911,7 @@ var
 implementation
 
 uses
-  Types, LCLType, LCLIntf, LCLProc, LazUTF8, Math, StrUtils,
+  Types, LazUTF8, Math, StrUtils,
   fpCanvas, {%H-}fpsPatches, fpsStrings, fpsUtils, fpsVisualUtils, fpsHTMLUtils,
   fpsImages, fpsNumFormat, fpsExprParser;
 
