@@ -3118,6 +3118,8 @@ begin
               end;
               AddToCellText(spanText);
             end;
+          'text:s':
+            AddToCellText(' ');
           'text:line-break':
             AddToCellText(FPS_LINE_ENDING);
         end;
