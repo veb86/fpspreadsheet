@@ -324,7 +324,7 @@ begin
     LastHash := SHA1Buffer( ConcArr[0], Length(ConcArr) );
   end;
 
-  // 1.3.Claculate final hash, SHA1(final) = SHA1(H(n) + block) -- block = 0 (32bit)
+  // 1.3.Calculate final hash, SHA1(final) = SHA1(H(n) + block) -- block = 0 (32bit)
   ConcatTobyteArray(ConcArr, @LastHash[0], Length(LastHash), @Zero, Sizeof(Zero));
 //  ConcatToByteArray(ConcArr, LastHash, 0);
   LastHash := SHA1Buffer( ConcArr[0], Length(ConcArr) );

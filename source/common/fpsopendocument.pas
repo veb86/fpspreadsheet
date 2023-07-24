@@ -94,6 +94,7 @@ type
     FRichTextFontList: TFPList;
     FRepeatedCols: TsRowColRange;
     FRepeatedRows: TsRowColRange;
+    FManifestFileEntries: TFPList;
     procedure ApplyColData;
     procedure ApplyStyleToCell(ACell: PCell; AStyleIndex: Integer);
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
@@ -133,6 +134,7 @@ type
       var AFontColor: TsColor);
     function ReadHeaderFooterText(ANode: TDOMNode): String;
     procedure ReadMetaData(ANode: TDOMNode);
+    procedure ReadMetaInfManifest(ANode: TDOMNode; out IsEncrypted: Boolean);
     procedure ReadPictures(AStream: TStream);
     procedure ReadPrintRanges(ATableNode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
@@ -573,6 +575,21 @@ type
   end;
   *)
 
+type
+  TManifestFileEntry = class
+    FileName: String;
+    Encrypted: Boolean;
+    EncryptionData_Checksum: String;
+    EncryptionData_ChecksumType: String;
+    AlgorithmName: String;
+    InitializationVector: String;
+    StartKeyGenerationName: String;
+    StartKeySize: Integer;
+    IterationCount: Integer;
+    KeyDerivationName: String;
+    KeySize: Integer;
+    Salt: String;
+  end;
 
 {******************************************************************************}
 {                         Clipboard utility                                    }
@@ -1170,6 +1187,7 @@ begin
   FCellFormatList := TsCellFormatList.Create(true);
     // true = allow duplicates because style names used in cell records will not be found any more.
 
+  FManifestFileEntries := TFPList.Create;
   FTableStyleList := TFPList.Create;
   FColumnStyleList := TFPList.Create;
   FColumnList := TFPList.Create;
@@ -1219,6 +1237,9 @@ begin
 
   for j := FMasterPageList.Count-1 downto 0 do TObject(FMasterPageList[j]).Free;
   FMasterPageList.Free;
+
+  for j := FManifestFileEntries.Count-1 downto 0 do TObject(FManifestFileEntries[j]).Free;
+  FManifestFileEntries.Free;
 
   FHeaderFooterFontList.Free;
   inherited Destroy;
@@ -2026,6 +2047,91 @@ begin
   end;
 end;
 
+// Reads the file META-INF/manifest.xml. It is never encrypted and contains
+// decryption information.
+procedure TsSpreadOpenDocReader.ReadMetaInfManifest(ANode: TDOMNode;
+  out IsEncrypted: Boolean);
+
+  function GetAlgorithmName(ASubNode: TDOMNode; AttrName: String): String;
+  var
+    s: String;
+    p: Integer;
+  begin
+    s := GetAttrValue(ASubNode, AttrName);
+    if s <> '' then
+    begin
+      p := pos('#', s);
+      if p <> 0 then
+        Result := Copy(s, p+1, MaxInt);
+    end else
+      Result := s;
+  end;
+
+  function GetIntValue(ASubNode: TDOMNode; AttrName: String): Integer;
+  var
+    s: String;
+  begin
+    s := GetAttrValue(ASubNode, AttrName);
+    Result := StrToIntDef(s, 0);
+  end;
+
+var
+  encryptionDataNode, childNode: TDOMNode;
+  nodeName: String;
+  entry: TManifestFileEntry;
+begin
+  IsEncrypted := false;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'manifest:file-entry' then
+    begin
+      entry := TManifestFileEntry.Create;
+      entry.FileName := GetAttrValue(ANode, 'manifest:full-path');
+      encryptionDataNode := ANode.FirstChild;
+      while encryptionDataNode <> nil do
+      begin
+        nodeName := encryptionDataNode.NodeName;
+        if nodeName = 'manifest:encryption-data' then
+        begin
+          IsEncrypted := true;
+          entry.Encrypted := true;
+          entry.EncryptionData_ChecksumType := GetAlgorithmName(encryptionDataNode, 'manifest:checksum-type');
+          entry.EncryptionData_Checksum := GetAttrValue(encryptionDataNode, 'manifest:checksum');
+          childNode := encryptionDataNode.FirstChild;
+          while childNode <> nil do
+          begin
+            nodeName := childNode.NodeName;
+            case nodeName of
+              'manifest:algorithm':
+                begin
+                  entry.AlgorithmName := GetAlgorithmName(childNode, 'manifest:algorithm-name');
+                  entry.InitializationVector := GetAttrValue(childNode, 'manifest:initialisation-vector');
+                end;
+              'manifest:start-key-generation':
+                begin
+                  entry.StartKeyGenerationName := GetAlgorithmName(childNode, 'manifest:start-key-generation-name');
+                  entry.StartKeySize := GetIntValue(childNode, 'manifest:key-size');
+                end;
+              'manifest:key-derivation':
+                begin
+                  entry.KeyDerivationName := GetAttrValue(childNode, 'manifest:key-derivation-name');
+                  entry.KeySize := GetIntValue(childNode, 'manifest:key-size');
+                  entry.IterationCount := GetIntValue(childNode, 'manifest:iteration-count');
+                  entry.Salt := GetAttrValue(childNode, 'manifest:salt');
+                end;
+            end;
+            childNode := childNode.NextSibling;
+          end;
+        end;
+        encryptionDataNode := encryptionDataNode.NextSibling;
+      end;
+      FManifestFileEntries.Add(entry);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocReader.ReadBlank(ARow, ACol: Cardinal;
   AStyleIndex: Integer; ACellNode: TDOMNode);
 var
@@ -2778,6 +2884,7 @@ var
   sheet: TsWorksheet;
   sheetName: String;
   tablestyleName: String;
+  isEncrypted: Boolean = false;
 
   function CreateXMLStream: TStream;
   begin
@@ -2795,6 +2902,24 @@ begin
 
   Doc := nil;
   try
+    // Read the META-INF/manifest.xml file to learn about encryption
+    XMLStream := CreateXMLStream;
+    try
+      if UnzipToStream(AStream, 'META-INF/manifest.xml', XMLStream) then
+      begin
+        ReadXMLStream(Doc, XMLStream);
+        if Assigned(Doc) then
+        begin
+          ReadMetaInfManifest(Doc.DocumentElement.FindNode('manifest:file-entry'), isEncrypted);
+          if isEncrypted then
+            raise EFpSpreadsheetReader.Create('File is encrypted.');
+        end;
+      end;
+    finally
+      FreeAndNil(Doc);
+      XMLStream.Free;
+    end;
+
     // Extract the embedded pictures
     ReadPictures(AStream);
 
