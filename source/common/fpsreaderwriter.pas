@@ -204,6 +204,8 @@ function RegisterSpreadFormat(
   AFormatName, ATechnicalName: String;
   const AFileExtensions: array of String): TsSpreadFormatID;
 
+procedure UnregisterSpreadFormat(AFormatID: TsSpreadFormatID);
+
 function GetFileFormatFilter(AListSeparator, AExtSeparator: Char;
   AFileAccess: TsSpreadFileAccess; const APriorityFormats: array of TsSpreadFormatID;
   AllSpreadFormats: Boolean = false; AllExcelFormats: Boolean = false): String;
@@ -1324,6 +1326,18 @@ begin
     fmt.FFormatID := -n;
   end;
   Result := fmt.FormatID;
+end;
+
+procedure UnregisterSpreadFormat(AFormatID: TsSpreadFormatID);
+var
+  n: Integer;
+begin
+  n := SpreadFormatRegistry.IndexOf(AFormatID);
+  if n <> -1 then
+  begin
+    TObject(SpreadFormatRegistry.FList[n]).Free;
+    SpreadFormatRegistry.FList.Delete(n);
+  end;
 end;
 
 function GetFileFormatFilter(AListSeparator, AExtSeparator: Char;

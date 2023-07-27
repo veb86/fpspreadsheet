@@ -76,6 +76,28 @@ type
     function BuildXMLAsString(AFormatName: String): String;
   end;
 
+  { Information contained in META-INF, in particular decryption parameters. }
+
+  TsOpenDocManifestFileEntry = class
+    // General
+    FileName: String;
+    Encrypted: Boolean;
+    // Checksum of encrypted data
+    EncryptionData_Checksum: String;
+    EncryptionData_ChecksumType: String;
+    // Encrypting the data with the pwd hash ("key")
+    AlgorithmName: String;
+    InitializationVector: String;
+    IterationCount: Integer;
+    // Start key generation
+    StartKeyGenerationName: String;
+    StartKeySize: Integer;
+    // Key derivation (encrypting and salting the start key)
+    KeyDerivationName: String;
+    KeySize: Integer;
+    Salt: String;
+  end;
+
   { TsSpreadOpenDocReader }
 
   TsSpreadOpenDocReader = class(TsSpreadXMLReader)
@@ -179,6 +201,11 @@ type
     procedure ReadNumber(ARow, ACol: Cardinal; AStyleIndex: Integer;
       ACellNode: TDOMNode); reintroduce;
 
+    function Decrypt(AStream: TStream; ADecryptionInfo: TsOpenDocManifestFileEntry;
+      APassword: RawByteString; ADestStream: TStream): Boolean; virtual;
+    function SupportsDecryption: Boolean; virtual;
+    function UnzipToStream(AStream: TStream; AZippedFile: String;
+      APassword: RawByteString; ADestStream: TStream): Boolean;
   public
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
@@ -574,22 +601,6 @@ type
     DefaultCellStyleIndex: Integer;  // Index of default row style in FCellStyleList of reader
   end;
   *)
-
-type
-  TManifestFileEntry = class
-    FileName: String;
-    Encrypted: Boolean;
-    EncryptionData_Checksum: String;
-    EncryptionData_ChecksumType: String;
-    AlgorithmName: String;
-    InitializationVector: String;
-    StartKeyGenerationName: String;
-    StartKeySize: Integer;
-    IterationCount: Integer;
-    KeyDerivationName: String;
-    KeySize: Integer;
-    Salt: String;
-  end;
 
 {******************************************************************************}
 {                         Clipboard utility                                    }
@@ -2078,7 +2089,7 @@ procedure TsSpreadOpenDocReader.ReadMetaInfManifest(ANode: TDOMNode;
 var
   encryptionDataNode, childNode: TDOMNode;
   nodeName: String;
-  entry: TManifestFileEntry;
+  entry: TsOpenDocManifestFileEntry;
 begin
   IsEncrypted := false;
   while ANode <> nil do
@@ -2086,7 +2097,7 @@ begin
     nodeName := ANode.NodeName;
     if nodeName = 'manifest:file-entry' then
     begin
-      entry := TManifestFileEntry.Create;
+      entry := TsOpenDocManifestFileEntry.Create;
       entry.FileName := GetAttrValue(ANode, 'manifest:full-path');
       encryptionDataNode := ANode.FirstChild;
       while encryptionDataNode <> nil do
@@ -2898,20 +2909,20 @@ var
   end;
 
 begin
-  Unused(APassword, AParams);
+  Unused(AParams);
 
   Doc := nil;
   try
     // Read the META-INF/manifest.xml file to learn about encryption
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'META-INF/manifest.xml', XMLStream) then
+      if fpsXMLCommon.UnzipToStream(AStream, 'META-INF/manifest.xml', XMLStream) then
       begin
         ReadXMLStream(Doc, XMLStream);
         if Assigned(Doc) then
         begin
           ReadMetaInfManifest(Doc.DocumentElement.FindNode('manifest:file-entry'), isEncrypted);
-          if isEncrypted then
+          if isEncrypted and not SupportsDecryption then
             raise EFpSpreadsheetReader.Create('File is encrypted.');
         end;
       end;
@@ -2926,7 +2937,7 @@ begin
     // process the styles.xml file
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'styles.xml', XMLStream) then
+      if UnzipToStream(AStream, 'styles.xml', APassword, XMLStream) then
         ReadXMLStream(Doc, XMLStream);
     finally
       XMLStream.Free;
@@ -2946,7 +2957,7 @@ begin
     // process the content.xml file
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'content.xml', XMLStream) then
+      if UnzipToStream(AStream, 'content.xml', APassword, XMLStream) then
         ReadXMLStream(Doc, XMLStream)
       else
         raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['ods']);
@@ -3037,7 +3048,7 @@ begin
     // process the meta.xml file
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'meta.xml', XMLStream) then
+      if UnzipToStream(AStream, 'meta.xml', APassword, XMLStream) then
       begin
         ReadXMLStream(Doc, XMLStream);
         try
@@ -3053,7 +3064,7 @@ begin
     // process the settings.xml file (Note: it does not always exist!)
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'settings.xml', XMLStream) then
+      if UnzipToStream(AStream, 'settings.xml', APassword, XMLStream) then
       begin
         ReadXMLStream(Doc, XMLStream);
         try
@@ -5584,6 +5595,56 @@ begin
   FTableStyleList.Add(tablestyle);
 end;
 
+{ The standard ods reader does not support decryption. Must be overridden in a
+  descendant reader class which implements decryption taking advantage of the
+  provided password and the parameters in ADecryptionInfo. }
+function TsSpreadOpenDocReader.Decrypt(AStream: TStream;
+  ADecryptionInfo: TsOpenDocManifestFileEntry; APassword: RawByteString;
+  ADestStream: TStream): Boolean;
+begin
+  Result := false;
+end;
+
+{ If a descendant reader class supports decryption it must return true
+  here. The standard ods reader is not able to read encrypted file content. }
+function TsSpreadOpenDocReader.SupportsDecryption: Boolean;
+begin
+  Result := false;
+end;
+
+function TsSpreadOpenDocReader.UnzipToStream(AStream: TStream; AZippedFile: String;
+  APassword: RawByteString; ADestStream: TStream): Boolean;
+var
+  i: Integer;
+  mfe: TsOpenDocManifestFileEntry;
+  isEncrypted: Boolean;
+  tmpStream: TStream;
+begin
+  mfe := nil;
+
+  // Find the requested file among  the manifest file entries containing
+  // parameters needed for decryption.
+  for i := 0 to FManifestFileEntries.Count-1 do
+    if TsOpenDocManifestFileEntry(FManifestFileEntries[i]).FileName = AZippedFile then
+    begin
+      mfe := TsOpenDocManifestFileEntry(FManifestFileEntries[i]);
+      isEncrypted := mfe.Encrypted;
+      break;
+    end;
+
+  if isEncrypted then begin
+    tmpStream := TMemoryStream.Create;
+    try
+      // Read the encrypted file from the input stream
+      Result := fpsXMLCommon.UnzipToStream(AStream, AZippedFile, tmpStream);
+      // Decrypt the file into the destination stream
+      Result := Result and Decrypt(tmpStream, mfe, APassword, ADestStream);
+    finally
+      tmpStream.Free;
+    end;
+  end else
+    Result := fpsXMLCommon.UnzipToStream(AStream, AZippedFile, ADestStream);
+end;
 
 { TsSpreadOpenDocWriter }
 
