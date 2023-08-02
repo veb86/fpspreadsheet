@@ -8,13 +8,13 @@
       <Version Value="11"/>
       <PathDelim Value="\"/>
       <SearchPaths>
-        <OtherUnitFiles Value="source\crypto"/>
+        <OtherUnitFiles Value="source\crypto;source\crypto\3rdParty\aes;source\crypto\3rdParty\fcl-hash"/>
         <UnitOutputDirectory Value="source\lib\$(TargetCPU)-$(TargetOS)"/>
       </SearchPaths>
     </CompilerOptions>
     <Description Value="Encryption / decryption support for FPSpreadsheet"/>
     <Version Major="1" Minor="14"/>
-    <Files Count="2">
+    <Files Count="3">
       <Item1>
         <Filename Value="source\crypto\xlsxdecrypter.pas"/>
         <UnitName Value="xlsxdecrypter"/>
@@ -23,20 +23,21 @@
         <Filename Value="source\crypto\xlsxooxml_crypto.pas"/>
         <UnitName Value="xlsxooxml_crypto"/>
       </Item2>
+      <Item3>
+        <Filename Value="source\crypto\fpscryptoproc.pas"/>
+        <UnitName Value="fpscryptoproc"/>
+      </Item3>
     </Files>
     <CompatibilityMode Value="True"/>
-    <RequiredPkgs Count="3">
+    <RequiredPkgs Count="2">
       <Item1>
-        <PackageName Value="dcpcrypt"/>
-      </Item1>
-      <Item2>
         <PackageName Value="laz_fpspreadsheet"/>
         <MaxVersion Major="1" Minor="11"/>
         <MinVersion Major="1" Minor="12" Valid="True"/>
-      </Item2>
-      <Item3>
+      </Item1>
+      <Item2>
         <PackageName Value="FCL"/>
-      </Item3>
+      </Item2>
     </RequiredPkgs>
     <UsageOptions>
       <UnitPath Value="$(PkgOutDir)"/>

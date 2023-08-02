@@ -11,11 +11,8 @@ unit xlsxdecrypter;
 interface
 
 uses
-  Classes
-  , SysUtils
-  , sha1
-  , DCPrijndael
-  ;
+  Classes, SysUtils, sha1,
+  fpsCryptoProc;
 
   const
     CFB_Signature = $E11AB1A1E011CFD0; // Compound File Binary Signature
@@ -285,8 +282,6 @@ function TExcelFileDecryptor.CheckPasswordInternal(APassword: UnicodeString): Bo
 const
   Zero: DWord = 0;
 var
-  AES_Cipher: TDCP_rijndael;
-
   ConcArr : TBytes = nil;
   LastHash: TSHA1Digest;
 
@@ -373,16 +368,14 @@ begin
   // 1. Encryption key is FEncryptionKey
 
   // 2. Decrypt the EncryptedVerifier
-  AES_Cipher := TDCP_rijndael.Create(nil);
-  AES_Cipher.Init( FEncryptionKey[0], FEncInfo.Header.KeySize, nil );
-  AES_Cipher.DecryptECB(FEncInfo.Verifier.EncryptedVerifier[0] , {%H-}Verifier[0]);
+  Decrypt_AES_ECB(FEncryptionKey[0], FEncInfo.Header.KeySize,
+    FEncInfo.Verifier.EncryptedVerifier[0], Verifier[0], 16);
 
   // 3. Decrypt the DecryptedVerifierHash
-  AES_Cipher.Burn;
-  AES_Cipher.Init( FEncryptionKey[0], FEncInfo.Header.KeySize, nil );
-  AES_Cipher.DecryptECB(FEncInfo.Verifier.EncryptedVerifierHash[0] , {%H-}VerifierHash[0]);
-  AES_Cipher.DecryptECB(FEncInfo.Verifier.EncryptedVerifierHash[16], VerifierHash[16]);
-  AES_Cipher.Free;
+  Decrypt_AES_ECB(FEncryptionKey[0], FEncInfo.Header.KeySize,
+    FEncInfo.Verifier.EncryptedVerifierHash[0], VerifierHash[0], 16);
+  Decrypt_AES_ECB(FEncryptionKey[0], FEncInfo.Header.KeySize,
+    FEncInfo.Verifier.EncryptedVerifierHash[16], VerifierHash[16], 16);
 
   // 4. Calculate SHA1(Verifier)
   LastHash := SHA1Buffer(Verifier[0], Length(Verifier));
@@ -394,29 +387,32 @@ end;
 function TExcelFileDecryptor.Decrypt(inFileName: string; outStream: TStream
   ): string;
 begin
-  Result := Decrypt(inFileName, outStream, 'VelvetSweatshop' );
+  Result := Decrypt(inFileName, outStream, 'VelvetSweatshop');
 end;
 
 function TExcelFileDecryptor.Decrypt(inFileName: string; outStream: TStream;
   APassword: UnicodeString): string;
 Var
-  inStream : TFileStream;
+  inStream: TFileStream;
 begin
   if not FileExists(inFileName) then
-    Exit( inFileName + ' not found.' );
+  begin
+    Result :=  inFileName + ' not found.';
+    Exit;
+  end;
 
   try
-    inStream := TFileStream.Create( inFileName, fmOpenRead );
+    inStream := TFileStream.Create(inFileName, fmOpenRead);
 
     inStream.Position := 0;
-    Result := Decrypt( inStream, outStream, APassword );
+    Result := Decrypt(inStream, outStream, APassword);
   finally
     inStream.Free;
   end;
 end;
 
-function TExcelFileDecryptor.Decrypt(inStream: TStream; outStream: TStream
-  ): string;
+function TExcelFileDecryptor.Decrypt(inStream: TStream;
+  outStream: TStream): string;
 begin
   Result := Decrypt(inStream, outStream, 'VelvetSweatshop' );
 end;
@@ -427,13 +423,7 @@ var
   OLEStream: TMemoryStream;
   OLEStorage: TOLEStorage;
   OLEDocument: TOLEDocument;
-
-  AES_Cipher :  TDCP_rijndael;
-  inData  : TBytes = nil;
-  outData : TBytes = nil;
   StreamSize : QWord;
-  KeySizeByte: Integer;
-
   Err : string;
 begin
   if (not Assigned(inStream)) or (not Assigned(outStream)) then
@@ -460,45 +450,19 @@ begin
       // Start decryption
       OLEStream.Position:=0;
       outStream.Position:=0;
-
       StreamSize := OLEStream.ReadQWord;
 
-      KeySizeByte := FEncInfo.Header.KeySize div 8;
-      SetLength(inData, KeySizeByte);
-      SetLength(outData, KeySizeByte);
+      DecryptStream_AES_ECB(FEncryptionKey[0], FEncInfo.Header.KeySize,
+        OLEStream, outStream, StreamSize);
 
-      AES_Cipher := TDCP_rijndael.Create(nil);
-      AES_Cipher.Init( FEncryptionKey[0], FEncInfo.Header.KeySize, nil );
-
-      While StreamSize > 0 do
-      begin
-        OLEStream.ReadBuffer(inData[0], KeySizeByte);
-        AES_Cipher.DecryptECB(inData[0], outData[0]);
-
-        if StreamSize < KeySizeByte then
-          outStream.WriteBuffer(outData[0], StreamSize) // Last block less then key size
-        else
-          outStream.WriteBuffer(outData[0], KeySizeByte);
-
-        if StreamSize < KeySizeByte then
-           StreamSize := 0
-        else
-          Dec(StreamSize, KeySizeByte);
-      end;
-
-      AES_Cipher.Free;
-
-       /////
     except
       Err := 'EncryptedPackage not found';
     end;
   finally
-    if Assigned(OLEStorage) then
-      OLEStorage.Free;
-
+    OLEStorage.Free;
     OLEStream.Free;
   end;
-  Exit( Err );
+  Result := Err;
 end;
 
 function TExcelFileDecryptor.isEncryptedAndSupported(AFileName: string

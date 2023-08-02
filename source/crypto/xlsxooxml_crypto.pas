@@ -42,6 +42,10 @@ begin
         AStream.Free;
         AStream := TMemoryStream.Create;
         DecryptedStream.Position := 0;
+
+        TMemoryStream(decryptedStream).SaveToFile('decr.zip');
+        DecryptedStream.Position := 0;
+
         AStream.CopyFrom(DecryptedStream, DecryptedStream.Size);
         AStream.Position := 0;
       finally

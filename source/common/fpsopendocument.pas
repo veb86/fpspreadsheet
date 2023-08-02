@@ -87,7 +87,7 @@ type
     EncryptionData_ChecksumType: String;
     // Encrypting the data with the pwd hash ("key")
     AlgorithmName: String;
-    InitializationVector: String;
+    InitializationVector: RawByteString;
     IterationCount: Integer;
     // Start key generation
     StartKeyGenerationName: String;
@@ -95,7 +95,7 @@ type
     // Key derivation (encrypting and salting the start key)
     KeyDerivationName: String;
     KeySize: Integer;
-    Salt: String;
+    Salt: RawByteString;
   end;
 
   { TsSpreadOpenDocReader }
@@ -204,6 +204,8 @@ type
     function Decrypt(AStream: TStream; ADecryptionInfo: TsOpenDocManifestFileEntry;
       APassword: RawByteString; ADestStream: TStream): Boolean; virtual;
     function SupportsDecryption: Boolean; virtual;
+    function UnzipToStream(AStream: TStream; AZippedFile: String;
+      ADestStream: TStream): Boolean; virtual;
     function UnzipToStream(AStream: TStream; AZippedFile: String;
       APassword: RawByteString; ADestStream: TStream): Boolean;
   public
@@ -2916,7 +2918,7 @@ begin
     // Read the META-INF/manifest.xml file to learn about encryption
     XMLStream := CreateXMLStream;
     try
-      if fpsXMLCommon.UnzipToStream(AStream, 'META-INF/manifest.xml', XMLStream) then
+      if UnzipToStream(AStream, 'META-INF/manifest.xml', XMLStream) then
       begin
         ReadXMLStream(Doc, XMLStream);
         if Assigned(Doc) then
@@ -5612,6 +5614,12 @@ begin
   Result := false;
 end;
 
+function TsSpreadOpenDocReader.UnzipToStream(AStream: TStream;
+  AZippedFile: String; ADestStream: TStream): Boolean;
+begin
+  Result := fpsXMLCommon.UnzipToStream(AStream, AZippedFile, ADestStream);
+end;
+
 function TsSpreadOpenDocReader.UnzipToStream(AStream: TStream; AZippedFile: String;
   APassword: RawByteString; ADestStream: TStream): Boolean;
 var
@@ -5636,14 +5644,14 @@ begin
     tmpStream := TMemoryStream.Create;
     try
       // Read the encrypted file from the input stream
-      Result := fpsXMLCommon.UnzipToStream(AStream, AZippedFile, tmpStream);
+      Result := UnzipToStream(AStream, AZippedFile, tmpStream);
       // Decrypt the file into the destination stream
       Result := Result and Decrypt(tmpStream, mfe, APassword, ADestStream);
     finally
       tmpStream.Free;
     end;
   end else
-    Result := fpsXMLCommon.UnzipToStream(AStream, AZippedFile, ADestStream);
+    Result := UnzipToStream(AStream, AZippedFile, ADestStream);
 end;
 
 { TsSpreadOpenDocWriter }
