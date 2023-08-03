@@ -125,22 +125,6 @@ implementation
 uses
   fpolebasic;
 
-procedure ConcatToByteArray(var OutArray: TBytes; Ptr1: PByte; ACount1: Integer;
-  Ptr2: PByte; ACount2: Integer);
-begin
-  SetLength(OutArray, ACount1 + ACount2);
-  if ACount1 > 0 then
-    Move(Ptr1^, OutArray[0], ACount1);
-  if ACount2 > 0 then
-    Move(Ptr2^, OutArray[ACount1], ACount2);
-end;
-
-procedure ConcatToByteArray(var OutArray: TBytes; Ptr: PByte; ACount: Integer;
-  const Arr: TBytes);
-begin
-  ConcatToByteArray(OutArray, Ptr, ACount, @Arr[0], Length(Arr));
-end;
-
 function TExcelFileDecryptor.InitEncryptionInfo(AStream: TStream): string;
 var
   EncInfoStream: TMemoryStream;
@@ -403,7 +387,6 @@ begin
 
   try
     inStream := TFileStream.Create(inFileName, fmOpenRead);
-
     inStream.Position := 0;
     Result := Decrypt(inStream, outStream, APassword);
   finally

@@ -83,11 +83,11 @@ type
     FileName: String;
     Encrypted: Boolean;
     // Checksum of encrypted data
-    EncryptionData_Checksum: String;
+    EncryptionData_Checksum: string;  // base64
     EncryptionData_ChecksumType: String;
     // Encrypting the data with the pwd hash ("key")
     AlgorithmName: String;
-    InitializationVector: RawByteString;
+    InitializationVector: string;  // base64
     IterationCount: Integer;
     // Start key generation
     StartKeyGenerationName: String;
@@ -95,7 +95,7 @@ type
     // Key derivation (encrypting and salting the start key)
     KeyDerivationName: String;
     KeySize: Integer;
-    Salt: RawByteString;
+    Salt: string;  // base64
   end;
 
   { TsSpreadOpenDocReader }
@@ -202,12 +202,12 @@ type
       ACellNode: TDOMNode); reintroduce;
 
     function Decrypt(AStream: TStream; ADecryptionInfo: TsOpenDocManifestFileEntry;
-      APassword: RawByteString; ADestStream: TStream): Boolean; virtual;
+      APassword: String; ADestStream: TStream; out AErrorMsg: String): Boolean; virtual;
     function SupportsDecryption: Boolean; virtual;
     function UnzipToStream(AStream: TStream; AZippedFile: String;
       ADestStream: TStream): Boolean; virtual;
     function UnzipToStream(AStream: TStream; AZippedFile: String;
-      APassword: RawByteString; ADestStream: TStream): Boolean;
+      APassword: RawByteString; ADestStream: TStream; out AErrorMsg: String): Boolean;
   public
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
@@ -2897,6 +2897,7 @@ var
   sheet: TsWorksheet;
   sheetName: String;
   tablestyleName: String;
+  err: String;
   isEncrypted: Boolean = false;
 
   function CreateXMLStream: TStream;
@@ -2939,8 +2940,10 @@ begin
     // process the styles.xml file
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'styles.xml', APassword, XMLStream) then
-        ReadXMLStream(Doc, XMLStream);
+      if UnzipToStream(AStream, 'styles.xml', APassword, XMLStream, err) then
+        ReadXMLStream(Doc, XMLStream)
+      else
+        raise EFPSpreadsheetReader.Create(err);
     finally
       XMLStream.Free;
     end;
@@ -2959,10 +2962,10 @@ begin
     // process the content.xml file
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'content.xml', APassword, XMLStream) then
+      if UnzipToStream(AStream, 'content.xml', APassword, XMLStream, err) then
         ReadXMLStream(Doc, XMLStream)
       else
-        raise EFPSpreadsheetReader.CreateFmt(rsDefectiveInternalFileStructure, ['ods']);
+        raise EFPSpreadsheetReader.Create(err);
     finally
       XMLStream.Free;
     end;
@@ -3050,7 +3053,7 @@ begin
     // process the meta.xml file
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'meta.xml', APassword, XMLStream) then
+      if UnzipToStream(AStream, 'meta.xml', APassword, XMLStream, err) then
       begin
         ReadXMLStream(Doc, XMLStream);
         try
@@ -3058,7 +3061,8 @@ begin
         finally
           FreeAndNil(Doc);
         end;
-      end;
+      end else
+        raise EFPSpreadsheetReader.Create(err);
     finally
       XMLStream.Free;
     end;
@@ -3066,7 +3070,7 @@ begin
     // process the settings.xml file (Note: it does not always exist!)
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'settings.xml', APassword, XMLStream) then
+      if UnzipToStream(AStream, 'settings.xml', APassword, XMLStream, err) then
       begin
         ReadXMLStream(Doc, XMLStream);
         try
@@ -3075,7 +3079,8 @@ begin
         finally
           FreeAndNil(Doc);
         end;
-      end;
+      end else
+        raise EFPSpreadsheetReader.Create(err);
     finally
       XMLStream.Free;
     end;
@@ -5601,8 +5606,8 @@ end;
   descendant reader class which implements decryption taking advantage of the
   provided password and the parameters in ADecryptionInfo. }
 function TsSpreadOpenDocReader.Decrypt(AStream: TStream;
-  ADecryptionInfo: TsOpenDocManifestFileEntry; APassword: RawByteString;
-  ADestStream: TStream): Boolean;
+  ADecryptionInfo: TsOpenDocManifestFileEntry; APassword: String;
+  ADestStream: TStream; out AErrorMsg: String): Boolean;
 begin
   Result := false;
 end;
@@ -5621,13 +5626,14 @@ begin
 end;
 
 function TsSpreadOpenDocReader.UnzipToStream(AStream: TStream; AZippedFile: String;
-  APassword: RawByteString; ADestStream: TStream): Boolean;
+  APassword: RawByteString; ADestStream: TStream; out AErrorMsg: String): Boolean;
 var
   i: Integer;
   mfe: TsOpenDocManifestFileEntry;
   isEncrypted: Boolean;
   tmpStream: TStream;
 begin
+  AErrorMsg := '';
   mfe := nil;
 
   // Find the requested file among  the manifest file entries containing
@@ -5646,7 +5652,7 @@ begin
       // Read the encrypted file from the input stream
       Result := UnzipToStream(AStream, AZippedFile, tmpStream);
       // Decrypt the file into the destination stream
-      Result := Result and Decrypt(tmpStream, mfe, APassword, ADestStream);
+      Result := Result and Decrypt(tmpStream, mfe, APassword, ADestStream, AErrorMsg);
     finally
       tmpStream.Free;
     end;

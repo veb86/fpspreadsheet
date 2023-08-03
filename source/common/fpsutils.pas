@@ -202,6 +202,8 @@ function SplitStr(const AText: String; ADelimiter: Char): TStringArray;
 function SafeQuoteStr(AString: String): String;
 function UnquoteStr(AString: String): String;
 
+function StringToBytes(const AString: String): TBytes;
+
 function InitSearchParams(ASearchText: String = ''; AOptions: TsSearchOptions = [];
   ASearchWithin: TsSearchWithin = swWorksheet): TsSearchParams;
 function InitReplaceParams(AReplaceText: String = '';
@@ -2479,6 +2481,18 @@ begin
     Delete(Result, 1, 1);
     Delete(Result, Length(Result), 1);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Copies a string to a TBytes variable
+
+  @@param    AString    The string to be copied
+  @@returns  A dynamic array of byte, type TBytes
+-------------------------------------------------------------------------------}
+function StringToBytes(const AString: String): TBytes;
+begin
+  SetLength(Result, Length(AString));
+  Move(AString[1], Result[0], Length(AString));
 end;
 
 {@@ ----------------------------------------------------------------------------
