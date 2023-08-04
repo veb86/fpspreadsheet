@@ -37,10 +37,10 @@ interface
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM, avglvltree,
- {$IF FPC_FULLVERSION >= 20701}
-  zipper,
- {$ELSE}
+ {$IFDEF FPS_PATCHED_ZIPPER}
   fpszipper,
+ {$ELSE}
+  zipper,
  {$ENDIF}
   fpsTypes, fpsUtils, fpsReaderWriter, fpsNumFormat, fpsPalette,
   fpsConditionalFormat,

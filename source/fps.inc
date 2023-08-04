@@ -62,3 +62,8 @@
   e.g. before v3.0 }
 {.$DEFINE FPS_NO_STRING_SPLIT}
 
+{ Very old FPC versions do not contain zip support in the unit zipper, and
+  until v3.3 zipper did not read pass-word protected ods files correctly.
+  Therefore, the following define must be activated if FPC is v3.3 or older. }
+{$DEFINE FPS_PATCHED_ZIPPER}
+

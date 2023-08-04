@@ -1,7 +1,7 @@
 unit fpsOpenDocument_Crypto;
 
 {$MODE ObjFPC}{$H+}
-{$DEFINE UNZIP_ABBREVIA}     // Remove this define when zipper is fixed.
+{.$DEFINE UNZIP_ABBREVIA}     // Remove this define when zipper is fixed.
 
 interface
 

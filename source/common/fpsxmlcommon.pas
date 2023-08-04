@@ -4,16 +4,17 @@
 unit fpsXMLCommon;
 
 {$mode objfpc}{$H+}
+{$include ..\fps.inc}
 
 interface
 
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
- {$IF FPC_FULLVERSION >= 20701}
-  zipper,
- {$ELSE}
+ {$IFDEF FPS_PATCHED_ZIPPER}
   fpszipper,
+ {$ELSE}
+  zipper,
  {$ENDIF}
   fpstypes, fpsreaderwriter;
 
