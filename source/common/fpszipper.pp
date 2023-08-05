@@ -11,8 +11,8 @@
     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 
  **********************************************************************}
-
-(******************************************************************************
+ 
+ (******************************************************************************
  This is a copy of the zipper unit from FPC 3.3.1
 
  Deactivate the FPS_PATCHED_ZIPPER define in fps.inc after a new FPC with
@@ -26,11 +26,19 @@ unit fpsZipper;
 
 Interface
 
+{$IFDEF FPC_DOTTEDUNITS}
+Uses
+  {$IFDEF Unix}
+   UnixApi.Base,
+  {$ENDIF}
+   System.SysUtils,System.Classes,System.ZLib.Zstream;
+{$ELSE FPC_DOTTEDUNITS}
 Uses
   {$IFDEF UNIX}
    BaseUnix,
   {$ENDIF}
    SysUtils,Classes,zstream;
+{$ENDIF FPC_DOTTEDUNITS}
 
 
 Const
@@ -628,7 +636,11 @@ Type
 
 Implementation
 
+{$IFDEF FPC_DOTTEDUNITS}
+uses System.RtlConsts;
+{$ELSE FPC_DOTTEDUNITS}
 uses rtlconsts;
+{$ENDIF FPC_DOTTEDUNITS}
 
 ResourceString
   SErrBufsizeChange = 'Changing buffer size is not allowed while (un)zipping.';
@@ -2324,20 +2336,21 @@ Begin
   With LocalHdr do
     begin
       Item.FBitFlags:=Bit_Flag;
-      Item.FCompressMethod := Compress_Method;
+      // If bit 3 is set in the BitFlags, file size and CRC should be read from
+      // the DataDescriptor record. For simplicity, however, we copy them from
+      // the same fields of the zipfile entry.
+      if Item.FBitFlags and $0008 <> 0 then
+      begin
+        Uncompressed_Size := Item.Size;
+        Compressed_Size := Item.CompressedSize;
+        CRC32 := Item.CRC32;
+      end;
       SetLength(S,Filename_Length);
       FZipStream.ReadBuffer(S[1],Filename_Length);
       if Bit_Flag and EFS_LANGUAGE_ENCODING_FLAG <> 0 then
         SetCodePage(S, CP_UTF8, False);
       Item.ArchiveFileName:=S;
       Item.DiskFileName:=S;
-      if (Item.FCompressMethod = 0) and (Item.Size <> 0) then
-      begin
-        if (Uncompressed_Size = 0) then
-          Uncompressed_Size := Item.Size;
-        if (Compressed_Size = 0) then
-          Compressed_Size := Item.Size;
-      end;
       SavePos:=FZipStream.Position; //after filename, before extra fields
       if Extra_Field_Length>0 then
         begin
@@ -2600,6 +2613,7 @@ Begin
       // Header position will be corrected later with zip64 version, if needed..
       NewNode.HdrPos := Local_Header_Offset;
       NewNode.FBitFlags:=Bit_Flag;
+      NewNode.FCompressMethod := Compress_Method;
       SetLength(S,Filename_Length);
       FZipStream.ReadBuffer(S[1],Filename_Length);
       if Bit_Flag and EFS_LANGUAGE_ENCODING_FLAG <> 0 then
