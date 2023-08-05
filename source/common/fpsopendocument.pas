@@ -156,7 +156,7 @@ type
       var AFontColor: TsColor);
     function ReadHeaderFooterText(ANode: TDOMNode): String;
     procedure ReadMetaData(ANode: TDOMNode);
-    procedure ReadMetaInfManifest(ANode: TDOMNode; out IsEncrypted: Boolean);
+    procedure ReadMetaInfManifest(ANode: TDOMNode);
     procedure ReadPictures(AStream: TStream);
     procedure ReadPrintRanges(ATableNode: TDOMNode; ASheet: TsBasicWorksheet);
     procedure ReadRowsAndCells(ATableNode: TDOMNode);
@@ -177,6 +177,7 @@ type
   protected
     FPointSeparatorSettings: TFormatSettings;
     procedure AddBuiltinNumFormats; override;
+    function NeedsPassword(AStream: TStream): Boolean; override;
     procedure ReadAutomaticStyles(AStylesNode: TDOMNode);
     procedure ReadMasterStyles(AStylesNode: TDOMNode);
     procedure ReadNumFormats(AStylesNode: TDOMNode);
@@ -203,7 +204,6 @@ type
 
     function Decrypt(AStream: TStream; ADecryptionInfo: TsOpenDocManifestFileEntry;
       APassword: String; ADestStream: TStream; out AErrorMsg: String): Boolean; virtual;
-    function SupportsDecryption: Boolean; virtual;
     function UnzipToStream(AStream: TStream; AZippedFile: String;
       ADestStream: TStream): Boolean; virtual;
     function UnzipToStream(AStream: TStream; AZippedFile: String;
@@ -1630,6 +1630,22 @@ begin
   Result := -1;
 end;
 
+{ Returns true if the file is password-protected, i.e. if there are entries
+  in the META-INF/manifest.xml while contain decryption information. }
+function TsSpreadOpenDocReader.NeedsPassword(AStream: TStream): Boolean;
+var
+  i: Integer;
+begin
+  Unused(AStream);
+  for i := 0 to FManifestFileEntries.Count-1 do
+    if TsOpenDocManifestFileEntry(FManifestFileEntries[i]).Encrypted then
+    begin
+      Result := true;
+      exit;
+    end;
+  Result := false;
+end;
+
 function TsSpreadOpenDocReader.NodeIsEmptyCell(ACellNode: TDOMNode): Boolean;
 var
   valuestr: String;
@@ -2062,8 +2078,7 @@ end;
 
 // Reads the file META-INF/manifest.xml. It is never encrypted and contains
 // decryption information.
-procedure TsSpreadOpenDocReader.ReadMetaInfManifest(ANode: TDOMNode;
-  out IsEncrypted: Boolean);
+procedure TsSpreadOpenDocReader.ReadMetaInfManifest(ANode: TDOMNode);
 
   function GetAlgorithmName(ASubNode: TDOMNode; AttrName: String): String;
   var
@@ -2093,7 +2108,6 @@ var
   nodeName: String;
   entry: TsOpenDocManifestFileEntry;
 begin
-  IsEncrypted := false;
   while ANode <> nil do
   begin
     nodeName := ANode.NodeName;
@@ -2107,7 +2121,6 @@ begin
         nodeName := encryptionDataNode.NodeName;
         if nodeName = 'manifest:encryption-data' then
         begin
-          IsEncrypted := true;
           entry.Encrypted := true;
           entry.EncryptionData_ChecksumType := GetAlgorithmName(encryptionDataNode, 'manifest:checksum-type');
           entry.EncryptionData_Checksum := GetAttrValue(encryptionDataNode, 'manifest:checksum');
@@ -2924,9 +2937,8 @@ begin
         ReadXMLStream(Doc, XMLStream);
         if Assigned(Doc) then
         begin
-          ReadMetaInfManifest(Doc.DocumentElement.FindNode('manifest:file-entry'), isEncrypted);
-          if isEncrypted and not SupportsDecryption then
-            raise EFpSpreadsheetReader.Create('File is encrypted.');
+          ReadMetaInfManifest(Doc.DocumentElement.FindNode('manifest:file-entry'));
+          CheckPassword(XMLStream, APassword);
         end;
       end;
     finally
@@ -5608,13 +5620,6 @@ end;
 function TsSpreadOpenDocReader.Decrypt(AStream: TStream;
   ADecryptionInfo: TsOpenDocManifestFileEntry; APassword: String;
   ADestStream: TStream; out AErrorMsg: String): Boolean;
-begin
-  Result := false;
-end;
-
-{ If a descendant reader class supports decryption it must return true
-  here. The standard ods reader is not able to read encrypted file content. }
-function TsSpreadOpenDocReader.SupportsDecryption: Boolean;
 begin
   Result := false;
 end;

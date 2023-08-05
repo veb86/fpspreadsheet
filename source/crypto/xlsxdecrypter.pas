@@ -18,7 +18,7 @@ uses
     CFB_Signature = $E11AB1A1E011CFD0; // Compound File Binary Signature
                                        // Weird is the documentation is equal to
                                        // $D0CF11E0A1B11AE1, but here is inversed
-                                       // maybe related to litle endian thing?!!
+                                       // maybe related to little endian thing?!!
 
     // EncryptionHeaderFlags as defined in 2.3.1 [MS-OFFCRYPTO]
     ehfAES       = $00000004;

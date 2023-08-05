@@ -1228,6 +1228,8 @@ type
     property Keywords: TStrings read FKeywords write FKeywords;
   end;
 
+  TsOnQueryPassword = function: String of object;
+
   {@@ Basic worksheet class to avoid circular unit references. It has only those
     properties and methods which do not require any other unit than fpstypes. }
   TsBasicWorksheet = class
@@ -1256,6 +1258,7 @@ type
   TsBasicWorkbook = class
   private
     FLog: TStringList;
+    FOnQueryPassword: TsOnQueryPassword;
     function GetErrorMsg: String;
   protected
     FFileName: String;
@@ -1292,6 +1295,8 @@ type
     property Protection: TsWorkbookProtections read FProtection write FProtection;
     {@@ Units of row heights and column widths }
     property Units: TsSizeUnits read FUnits;
+    {@@ Event returning the password to open a password-protected workbook }
+    property OnQueryPassword: TsOnQueryPassword read FOnQueryPassword write FOnQueryPassword;
   end;
 
   {@@ Ancestor of the fpSpreadsheet exceptions } 

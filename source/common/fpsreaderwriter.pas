@@ -48,12 +48,16 @@ type
   public
     { File format detection }
     class function CheckFileFormat(AStream: TStream): boolean; virtual; abstract;
-    { General writing methods }
+    { General reading methods }
     procedure ReadFromFile(AFileName: string; APassword: String = '';
       AParams: TsStreamParams = []); virtual; abstract;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); virtual; abstract;
     procedure ReadFromStrings(AStrings: TStrings; AParams: TsStreamParams = []); virtual; abstract;
+    { Related to password-protected files }
+    procedure CheckPassword(AStream: TStream; var APassword: String); virtual;
+    function NeedsPassword(AStream: TStream): Boolean; virtual;
+    function SupportsDecryption: Boolean; virtual;
   end;
 
   { TsBasicSpreadWriter }
@@ -262,6 +266,53 @@ begin
   Result := FLimitations;
 end;
 
+
+{------------------------------------------------------------------------------}
+{                             TsBasicSpreadReader                              }
+{------------------------------------------------------------------------------}
+
+{@@ ----------------------------------------------------------------------------
+  Checks whether the currently processed stream is password-protected.
+  If true, it checks whether the reader class supports decryption and makes
+  sure that a password is provided to the calling routine (ReadFromStream).
+  Exceptions are raised in the error cases.
+  Must be called at the beginning of ReadFromStream when the stream potentially
+  can be decrypted in order to provide the user a reasonable error message.
+-------------------------------------------------------------------------------}
+procedure TsBasicSpreadReader.CheckPassword(AStream: TStream;
+  var APassword: String);
+begin
+  if NeedsPassword(AStream) then
+  begin
+    if SupportsDecryption then
+    begin
+      if (APassword = '') and Assigned(FWorkbook.OnQueryPassword) then
+        APassword := FWorkbook.OnQueryPassword();
+      if (APassword = '') then
+        raise EFpSpreadsheetReader.Create('Password required to open this workbook.');
+    end else
+      raise EFpSpreadsheetReader.Create('File is encrypted.');
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Should return whether the workbook to be loaded is password-protected by
+  encryption.
+-------------------------------------------------------------------------------}
+function TsBasicSpreadReader.NeedsPassword(AStream: TStream): Boolean;
+begin
+  Unused(AStream);
+  Result := false;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns true if this reader class is able to decrypt a password-protected
+  workbook file/stream.
+-------------------------------------------------------------------------------}
+function TsBasicSpreadReader.SupportsDecryption: Boolean;
+begin
+  Result := false;
+end;
 
 {------------------------------------------------------------------------------}
 {                             TsBasicSpreadWriter                              }
@@ -507,7 +558,9 @@ end;
   Opens the file and calls ReadFromStream. Data are stored in the workbook
   specified during construction.
 
-  @param  AFileName The input file name.
+  @param  (AFileName The input file name.)
+  @param  (APassword The password needed to open a password-protected workbook.
+                     Note: Password-protected files are not supported by all readers.)
   @see    TsWorkbook
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.ReadFromFile(AFileName: string;
@@ -545,11 +598,9 @@ end;
 
   Its basic implementation here assumes that the stream is a TStringStream and
   the data are provided by calling ReadFromStrings. This mechanism is valid
-  for wikitables.
+  for wiki-tables.
 
   Data will be stored in the workbook defined at construction.
-
-  @param  AData     Workbook which is filled by the data from the stream.
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.ReadFromStream(AStream: TStream;
   APassword: String; AParams: TsStreamParams = []);
@@ -573,7 +624,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Reads workbook data from a string list. This abstract implementation does
-  nothing and raises an exception. Must be overridden, like for wikitables.
+  nothing and raises an exception. Must be overridden, like for wiki-tables.
 -------------------------------------------------------------------------------}
 procedure TsCustomSpreadReader.ReadFromStrings(AStrings: TStrings;
   AParams: TsStreamParams = []);
@@ -593,8 +644,8 @@ end;
   Creates an internal instance of the number format list according to the
   file format being read/written.
 
-  @param AWorkbook  Workbook from with the file is written. This parameter is
-                    passed from the workbook which creates the writer.
+  @param (AWorkbook  Workbook from which the file is written. This parameter is
+                     passed from the workbook which creates the writer.)
 -------------------------------------------------------------------------------}
 constructor TsCustomSpreadWriter.Create(AWorkbook: TsBasicWorkbook);
 begin

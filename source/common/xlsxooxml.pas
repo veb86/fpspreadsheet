@@ -141,6 +141,8 @@ type
   protected
     FFirstNumFormatIndexInFile: Integer;
     procedure AddBuiltinNumFormats; override;
+    class function IsEncrypted(AStream: TStream): Boolean;
+    function NeedsPassword(AStream: TStream): Boolean; override;
   public
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
@@ -358,6 +360,8 @@ const
      MIME_VMLDRAWING      = MIME_OFFICEDOCUMENT + '.vmlDrawing';
 
      LAST_PALETTE_INDEX   = 63;
+
+     CFB_SIGNATURE        = $E11AB1A1E011CFD0;   // Compound File Binary Signature
 
 type
   TFillListData = class
@@ -949,6 +953,25 @@ begin
     Result := TBufStream.Create(GetTempFileName, fmCreate)
   else
     Result := TMemoryStream.Create;
+end;
+
+{ Checks the file header for the signature of the decrypted file format. }
+class function TsSpreadOOXMLReader.IsEncrypted(AStream: TStream): Boolean;
+var
+  p: Int64;
+  buf: Cardinal;
+begin
+  p := AStream.Position;
+  AStream.Position := 0;
+  AStream.Read(buf, SizeOf(buf));
+  Result := (buf = Cardinal(CFB_SIGNATURE));
+  AStream.Position := p;
+end;
+
+{ Returns TRUE if the file is encrypted and requires a password. }
+function TsSpreadOOXMLReader.NeedsPassword(AStream: TStream): Boolean;
+begin
+  Result := IsEncrypted(AStream);
 end;
 
 procedure TsSpreadOOXMLReader.ReadActiveSheet(ANode: TDOMNode;
@@ -4410,6 +4433,8 @@ var
 begin
   Unused(APassword, AParams);
   Doc := nil;
+
+  CheckPassword(AStream, APassword);
 
   try
     // Retrieve theme colors

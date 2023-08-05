@@ -27,8 +27,8 @@ unit fpspreadsheetctrls;
 interface
 
 uses
-  LMessages, LResources, LCLVersion,
-  Classes, Graphics, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
+  LCLType, LCLIntf, LCLProc, LCLVersion, LMessages, LResources,
+  Classes, Types, Graphics, SysUtils, Controls, StdCtrls, ComCtrls, ValEdit, ActnList,
   fpstypes, fpspreadsheet;
 
 const
@@ -70,6 +70,7 @@ type
     FPendingOperation: TsCopyOperation;
     FOptions: TsWorkbookOptions;
     FOnError: TsWorkbookSourceErrorEvent;
+    FOnQueryPassword: TsOnQueryPassword;
 
     // Getters / setters
     function GetFileFormat: TsSpreadsheetFormat;
@@ -96,10 +97,11 @@ type
 
   protected
     procedure AbortSelection;
+    function DoQueryPassword: String;
     procedure DoShowError(const AErrorMsg: String);
     procedure InternalCreateNewWorkbook(AWorkbook: TsWorkbook = nil);
     procedure InternalLoadFromFile(AFileName: string; AAutoDetect: Boolean;
-      AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer = -1);
+      AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer; APassword: String);
     procedure InternalLoadFromWorkbook(AWorkbook: TsWorkbook;
       AWorksheetIndex: Integer = -1);
     procedure Loaded; override;
@@ -116,15 +118,13 @@ type
   public
     procedure CreateNewWorkbook;
 
+    procedure LoadFromProtectedSpreadsheetFile(AFileName: String;
+      AFormatID: TsSpreadFormatID; APassword: String; AWorksheetIndex: Integer = -1);
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormat: TsSpreadsheetFormat; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromSpreadsheetFile(AFileName: string;
       AFormatID: TsSpreadFormatID = sfidUnknown; AWorksheetIndex: Integer = -1); overload;
     procedure LoadFromWorkbook(AWorkbook: TsWorkbook; AWorksheetIndex: Integer = -1);
-    {
-    procedure LoadFromSpreadsheetFile(AFileName: string;
-      AWorksheetIndex: Integer = -1); overload;
-      }
 
     procedure SaveToSpreadsheetFile(AFileName: string;
       AOverwriteExisting: Boolean = true); overload;
@@ -132,9 +132,6 @@ type
       AOverwriteExisting: Boolean = true); overload;
     procedure SaveToSpreadsheetFile(AFileName: string; AFormatID: TsSpreadFormatID;
       AOverwriteExisting: Boolean = true); overload;
-
-//    procedure DisableControls;
-//    procedure EnableControls;
 
     procedure SelectCell(ASheetRow, ASheetCol: Cardinal);
     procedure SelectWorksheet(AWorkSheet: TsWorksheet);
@@ -183,6 +180,8 @@ type
     {@@ A message box is displayey if an error occurs during loading of a
       spreadsheet. This behavior can be replaced by means of the event OnError. }
     property OnError: TsWorkbookSourceErrorEvent read FOnError write FOnError;
+    {@@ Event fired when a password is required. Handler must return the pwd. }
+    property OnQueryPassword: TsOnQueryPassword read FOnQueryPassword write FOnQueryPassword;
   end;
 
 
@@ -710,8 +709,7 @@ function ScalePPI(ALength: Integer): Integer;
 implementation
 
 uses
-  Types, Math, StrUtils, TypInfo, LCLType, LCLIntf, LCLProc,
-  Dialogs, Forms, Clipbrd,
+  Math, StrUtils, TypInfo, Dialogs, Forms, Clipbrd,
   fpsStrings, fpsCrypto, fpsReaderWriter, fpsUtils, fpsNumFormat, fpsImages,
   fpsHTMLUtils, fpsExprParser;
 
@@ -1016,6 +1014,22 @@ begin
   SelectWorksheet(FWorksheet);
 end;
 
+function TsWorkbookSource.DoQueryPassword: String;
+var
+  crs: TCursor;
+begin
+  crs := Screen.Cursor;
+  Screen.Cursor := crDefault;
+  try
+    if Assigned(FOnQueryPassword) then
+      Result := FOnQueryPassword()
+    else
+      Result := InputBox('Password required to open workbook', 'Password', '');
+  finally
+    Screen.Cursor := crs;
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   An error has occured during loading of the workbook. Shows a message box by
   default. But a different behavior can be obtained by means of the OnError
@@ -1137,20 +1151,23 @@ end;
                           for the loader.
                           Is ignored when AAutoDetect is @false.)
   @param(AWorksheetIndex  Index of the worksheet to be selected after loading.)
+  @param(APassword        Password to open encrypted workbook. Note: this is
+                          supported only by ods and xlsx readers.)
 -------------------------------------------------------------------------------}
 procedure TsWorkbookSource.InternalLoadFromFile(AFileName: string;
-  AAutoDetect: Boolean; AFormatID: TsSpreadFormatID;
-  AWorksheetIndex: Integer = -1);
+  AAutoDetect: Boolean; AFormatID: TsSpreadFormatID; AWorksheetIndex: Integer;
+  APassword: String);
 var
   book: TsWorkbook;
 begin
   book := TsWorkbook.Create;
   try
     book.Options := FOptions;
+    book.OnQueryPassword := @DoQueryPassword;
     if AAutoDetect then
-      book.ReadfromFile(AFileName)
+      book.ReadfromFile(AFileName, APassword)
     else
-      book.ReadFromFile(AFileName, AFormatID);
+      book.ReadFromFile(AFileName, AFormatID, APassword);
     InternalLoadFromWorkbook(book, AWorksheetIndex);
   except
     // book is normally used as current workbook. But it must be destroyed
@@ -1220,9 +1237,11 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Public spreadsheet loader to be used if file format is known.
+  Public loader of a spreadsheet file.
 
-  Call this methdd for both built-in and user-provided file formats.
+  Call this method for both built-in and user-provided file formats.
+
+  If the workbook is password-protected the password is prompted by a dialog.
 
   @param(AFilename        Name of the spreadsheet file to be loaded.)
   @param(AFormatID        Identifier of the spreadsheet file format assumed
@@ -1236,7 +1255,7 @@ var
   autodetect: Boolean;
 begin
   autodetect := (AFormatID = sfidUnknown);
-  InternalLoadFromFile(AFileName, autodetect, AFormatID, AWorksheetIndex);
+  InternalLoadFromFile(AFileName, autodetect, AFormatID, AWorksheetIndex, '');
 end;
                                           (*
 {@@ ------------------------------------------------------------------------------
@@ -1270,6 +1289,26 @@ procedure TsWorkbookSource.LoadFromWorkbook(AWorkbook: TsWorkbook;
   AWorksheetIndex: Integer = -1);
 begin
   InternalLoadFromWorkbook(AWorkbook, AWorksheetIndex);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Public loader of a spreadsheet file.
+
+  Should be called in case of password-protected files when the password is
+  already known and no password dialog should appear.
+
+  Call this method for both built-in and user-provided file formats.
+
+  @param(AFilename        Name of the spreadsheet file to be loaded.)
+  @param(AFormatID        Identifier of the spreadsheet file format assumed
+                          for the file.)
+  @param(AWorksheetIndex  Index of the worksheet to be selected after loading.
+                          (If empty then the active worksheet is loaded) )
+-------------------------------------------------------------------------------}
+procedure TsWorkbookSource.LoadFromProtectedSpreadsheetFile(AFileName: String;
+  AFormatID: TsSpreadFormatID; APassword: String; AWorksheetIndex: Integer = -1);
+begin
+  InternalLoadFromFile(AFileName, false, AFormatID, AWorksheetIndex, APassword);
 end;
 
 {@@ ----------------------------------------------------------------------------

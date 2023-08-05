@@ -10,7 +10,7 @@ uses
   {$IFDEF UNZIP_ABBREVIA}
   ABUnzper,
   {$ENDIF}
-  fpsTypes, fpsOpenDocument;
+  fpsTypes, fpsUtils, fpsOpenDocument;
 
 type
   TsSpreadOpenDocReaderCrypto = class(TsSpreadOpenDocReader)
@@ -140,7 +140,6 @@ begin
   else
     raise EFpSpreadsheetReader.Create('Unsupported key generation method ' + ADecryptionInfo.KeyDerivationName);
 end;
-
 
 { Tells the calling routine that this reader is able to decrypt ods files. }
 function TsSpreadOpenDocReaderCrypto.SupportsDecryption: Boolean;
