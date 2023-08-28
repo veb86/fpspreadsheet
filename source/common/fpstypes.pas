@@ -421,10 +421,11 @@ type
     @value uffHorAlign      The cell format supports horizontal text alignment.
     @value uffVertAlign     The cell format supports vertical text alignment
     @value uffBiDi          The cell format supports right-to-left text display.
-    @value uffProtection    The cell format supports locking of cells. }
+    @value uffProtection    The cell format supports locking of cells.
+    @value uffDoNotPrint    The cell is not printed. }
   TsUsedFormattingField = (uffTextRotation, uffFont, uffBorder, uffBackground,
     uffNumberFormat, uffWordWrap, uffHorAlign, uffVertAlign, uffBiDi,
-    uffProtection
+    uffProtection, uffDoNotPrint
   );
   { NOTE: "uffBackgroundColor" of older versions replaced by "uffBackground" }
 

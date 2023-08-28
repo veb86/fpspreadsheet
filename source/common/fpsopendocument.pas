@@ -273,6 +273,7 @@ type
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteNumFormatStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WritePageLayoutXMLAsString(AStyleName: String; const APageLayout: TsPageLayout): String;
+    function WritePrintContentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WritePrintRangesXMLAsString(ASheet: TsBasicWorksheet): String;
     function WriteSheetProtectionXMLAsString(ASheet: TsBasicWorksheet): String;
     function WriteSheetProtectionDetailsXMLAsString(ASheet: TsBasicWorksheet): String;
@@ -5349,6 +5350,11 @@ begin
   // formulas...
   if AFormat.Protection <> DEFAULT_CELL_PROTECTION then
     Include(AFormat.UsedFormattingFields, uffProtection);
+
+  // Disable cell printing
+  s := GetAttrValue(ANode, 'style:print-content');
+  if s = 'false' then
+    Include(AFormat.UsedFormattingFields, uffDoNotPrint);
 end;
 
 procedure TsSpreadOpenDocReader.ReadStyle_TextProperties(ANode: TDOMNode;
@@ -6348,7 +6354,8 @@ begin
        WriteBackgroundColorStyleXMLAsString(AFormat) +
        WriteWordwrapStyleXMLAsString(AFormat) +
        WriteTextRotationStyleXMLAsString(AFormat) +
-       WriteVertAlignmentStyleXMLAsString(AFormat);
+       WriteVertAlignmentStyleXMLAsString(AFormat) +
+       WritePrintContentStyleXMLAsString(AFormat);
   if addProtection then
     s := s +  WriteCellProtectionStyleXMLAsString(AFormat);
   if s <> '' then
@@ -7321,6 +7328,15 @@ begin
   AppendToStream(AStream,
     '</office:styles>');
 
+end;
+
+function TsSpreadOpenDocWriter.WritePrintContentStyleXMLAsString(
+  const AFormat: TsCellFormat): String;
+begin
+  if (uffDoNotPrint in AFormat.UsedFormattingFields) then
+    Result := 'style:print-content="false"'
+  else
+    Result := '';
 end;
 
 procedure TsSpreadOpenDocWriter.WriteRowsAndCells(AStream: TStream;

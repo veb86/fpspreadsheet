@@ -188,6 +188,7 @@ type
     function  ReadWordwrap(ACell: PCell): boolean;
     function  ReadBiDiMode(ACell: PCell): TsBiDiMode;
     function  ReadCellProtection(ACell: PCell): TsCellProtections;
+    function  ReadDoNotPrintCell(ACell: PCell): Boolean;
 
     function IsEmpty: Boolean;
 
@@ -378,6 +379,9 @@ type
       AValue: TsCellProtections): PCell; overload;
     procedure WriteCellProtection(ACell: PCell;
       AValue: TsCellProtections); overload;
+
+    function WriteDoNotPrintCell(ARow, ACol: Cardinal; AValue: boolean): PCell; overload;
+    procedure WriteDoNotPrintCell(ACell: PCell; AValue: Boolean); overload;
 
     { Conditional formatting }
     

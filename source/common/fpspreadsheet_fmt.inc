@@ -194,6 +194,20 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns whether the cell is not allowed to be printed.
+-------------------------------------------------------------------------------}
+function TsWorksheet.ReadDoNotPrintCell(ACell: PCell): Boolean;
+var
+  fmt: PsCellFormat;
+begin
+  Result := false;
+  if ACell <> nil then
+  begin
+    fmt := Workbook.GetPointerToCellFormat(ACell^.FormatIndex);
+    Result := uffDoNotPrint in fmt.UsedFormattingFields;
+  end;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Returns the horizontal alignment of a specific cell
@@ -716,6 +730,28 @@ begin
     Include(fmt.UsedFormattingFields, uffProtection)
   else
     Exclude(fmt.UsedFormattingFields, uffProtection);
+  ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
+  ChangedCell(ACell^.Row, ACell^.Col);
+end;
+
+function TsWorksheet.WriteDoNotPrintCell(ARow, ACol: Cardinal;
+  AValue: boolean): PCell;
+begin
+  Result := GetCell(ARow, ACol);
+  WriteDoNotPrintCell(Result, AValue);
+end;
+
+procedure TsWorksheet.WriteDoNotPrintCell(ACell: PCell; AValue: Boolean);
+var
+  fmt: TsCellFormat;
+begin
+  if ACell = nil then
+    exit;
+  fmt := Workbook.GetCellFormat(ACell^.FormatIndex);
+  if AValue then
+    Include(fmt.UsedFormattingfields, uffDoNotPrint)
+  else
+    Exclude(fmt.UsedFormattingFields, uffDoNotPrint);
   ACell^.FormatIndex := Workbook.AddCellFormat(fmt);
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
