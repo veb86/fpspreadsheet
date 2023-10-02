@@ -1653,7 +1653,7 @@ begin
 
   // Copy comment
   if srcSheet.HasComment(AFromCell) then
-    WriteComment(AToCell, ReadComment(AFromCell));
+    WriteComment(AToCell, srcSheet.ReadComment(AFromCell));
 
   // Copy hyperlink
   hyperlink := srcSheet.FindHyperlink(AFromCell);

@@ -452,6 +452,7 @@ type
     Target : String;
     Hidden: Boolean;
     SheetRels: TFPList;
+    SheetRelsFile: String;
     Drawing_File: String;
     DrawingRels: TRelationshipList;
     VmlDrawing_File: String;
@@ -3966,13 +3967,13 @@ procedure TsSpreadOOXMLReader.ReadSheetRels(AStream: TStream);
 var
   i: Integer;
   sheetData: TSheetData;
-  relsFile: String;
 begin
   for i := 0 to FSheetList.Count-1 do
   begin
     sheetData := TSheetData(FSheetList[i]);
-    relsFile := OOXML_PATH_XL_WORKSHEETS + '_rels/sheet' + sheetData.ID + '.xml.rels';
-    ReadRels(AStream, relsfile, sheetData.SheetRels);
+    sheetData.Target := TRelationshipList(FWorkbookRels).FindTarget(sheetData.RelID);
+    sheetData.SheetRelsFile := OOXML_PATH_XL_WORKSHEETS + '_rels/' + ExtractFileName(sheetData.Target) + '.rels';
+    ReadRels(AStream, sheetData.SheetRelsFile, sheetData.SheetRels);
   end;
 end;
 
@@ -3991,7 +3992,7 @@ var
 begin
   sheetIndex := TsWorksheet(AWorksheet).Index;
   sheetData := TSheetData(FSheetList[sheetIndex]);
-  sheetRelsFile := OOXML_PATH_XL_WORKSHEETS_RELS + 'sheet' + sheetData.ID + '.xml.rels';
+  sheetRelsFile := sheetData.SheetRelsFile;
   
   ANode := ANode.FirstChild;
   while Assigned(ANode) do 
