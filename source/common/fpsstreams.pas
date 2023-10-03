@@ -6,7 +6,7 @@ unit fpsStreams;
 
 interface
 
-uses
+uses             lazlogger,
   SysUtils, Classes;
 
 var
@@ -29,7 +29,8 @@ type
     procedure CreateFileStream;
     function GetPosition: Int64; override;
     function GetSize: Int64; override;
-    function IsWritingMode: Boolean;
+    class function IsWritingMode(AMode: Word): Boolean;
+    procedure SetSize64(const NewSize: Int64); override;
   public
     constructor Create(AFileName: String; AMode: Word;
       ABufSize: Cardinal = Cardinal(-1)); overload;
@@ -126,7 +127,7 @@ constructor TBufStream.Create(AFileName: String; AMode: Word;
 var
   keep: Boolean;
 begin
-  keep := AMode and (fmCreate + fmOpenWrite) <> 0;
+  keep := IsWritingMode(AMode);
   Create(AFileName, keep, ABufSize);
   FFileMode := AMode;
 end;
@@ -139,7 +140,7 @@ begin
   // Free streams and delete temporary file, if requested
   FreeAndNil(FMemoryStream);
   FreeAndNil(FFileStream);
-  if not FKeepTmpFile and (FFileName <> '') and IsWritingMode then
+  if not FKeepTmpFile and (FFileName <> '') and IsWritingMode(FFileMode) then
     DeleteFile(FFileName);
 
   inherited Destroy;
@@ -179,7 +180,8 @@ end;
   Called when writing. }
 procedure TBufStream.FlushBuffer;
 begin
-  if (FMemoryStream.Size > 0) and not FBufWritten and IsWritingMode then begin
+  if (FMemoryStream.Size > 0) and not FBufWritten and IsWritingMode(FFileMode) then
+  begin
     FMemoryStream.Position := 0;
     CreateFileStream;
     FFileStream.CopyFrom(FMemoryStream, FMemoryStream.Size);
@@ -207,7 +209,7 @@ function TBufStream.GetSize: Int64;
 var
   n: Int64;
 begin
-  if IsWritingMode then begin
+  if IsWritingMode(FFileMode) then begin
     if FFileStream <> nil then
       n := FFileStreamSize
 //      n := FFileStream.Size
@@ -231,9 +233,9 @@ end;
   it start. When data are read the stream pointer advances towards the end.
   When the requested data are not contained in the memory stream another
   ABufSize of bytes are read into the memory stream. }
-function TBufStream.IsWritingMode: Boolean;
+class function TBufStream.IsWritingMode(AMode: Word): Boolean;
 begin
-  Result := FFileMode and (fmCreate + fmOpenWrite) <> 0;
+  Result := (AMode and (fmCreate or fmOpenWrite or fmOpenReadWrite) <> 0);
 end;
 
 {@@
@@ -254,7 +256,7 @@ begin
   // Case 1: Memory stream is empty
   if FMemoryStream.Size = 0 then begin
     CreateFileStream;
-    if IsWritingMode then begin
+    if IsWritingMode(FFileMode) then begin
       Result := FFileStream.Read(Buffer, Count);
       FFileStreamPos := FFileStream.Position;
     end else begin
@@ -271,7 +273,7 @@ begin
   end;
 
   // Case 3: Memory stream is not empty but contains only part of the bytes requested
-  if IsWritingMode then begin
+  if IsWritingMode(FFileMode) then begin
     FlushBuffer;
     FFileStream.Position := p;
     Result := FFileStream.Read(Buffer, Count);
@@ -315,13 +317,27 @@ begin
   end;
 
   // case #3: New position is outside buffer
-  if IsWritingMode then
+  if IsWritingMode(FFileMode) then
     FlushBuffer;
   FFileStream.Position := newPos;
   FFileStreamPos := newPos;
   FMemoryStream.Position := 0;
-  if not IsWritingMode then
+  if not IsWritingMode(FFileMode) then
     FillBuffer;
+end;
+
+procedure TBufStream.SetSize64(const NewSize: Int64);
+begin
+  if NewSize = 0 then
+  begin
+    FMemoryStream.Clear;
+    if not Assigned(FFileStream) then
+      CreateFileStream;
+    FFileStream.Size := 0;
+    FFileStream.Position := 0;
+    FFileStreamPos := 0;
+  end;
+  inherited;
 end;
 
 function TBufStream.Write(const ABuffer; ACount: LongInt): LongInt;
@@ -337,6 +353,8 @@ begin
   // Case #2: Buffer would overflow
   begin;
     savedPos := GetPosition;
+    if (FMemorystream.Size = 0) and (ACount > 0) and (FFileStream = nil) then
+      CreateFileStream;
     FlushBuffer;
     FFileStream.Position := savedPos;
     Result := FFileStream.Write(ABuffer, ACount);
