@@ -30,6 +30,7 @@ type
     function GetPosition: Int64; override;
     function GetSize: Int64; override;
     class function IsWritingMode(AMode: Word): Boolean;
+    procedure SetSize64(const NewValue: Int64); override;
   public
     constructor Create(AFileName: String; AMode: Word;
       ABufSize: Cardinal = Cardinal(-1)); overload;
@@ -43,7 +44,6 @@ type
     function Read(var Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
     function Write(const ABuffer; ACount: Longint): Longint; override;
-    property Size64: Int64 read GetSize;
   end;
 
 procedure ResetStream(var AStream: TStream);
@@ -325,6 +325,14 @@ begin
   FMemoryStream.Position := 0;
   if not IsWritingMode(FFileMode) then
     FillBuffer;
+end;
+
+procedure TBufStream.SetSize64(const NewValue: Int64);
+begin
+  if NewValue = 0 then
+    Clear
+  else
+    raise Exception.Create('Setting the TBufStream.Size is not allowed.');
 end;
 
 procedure TBufStream.Clear;
