@@ -30,7 +30,6 @@ type
     function GetPosition: Int64; override;
     function GetSize: Int64; override;
     class function IsWritingMode(AMode: Word): Boolean;
-    procedure SetSize64(const NewSize: Int64); override;
   public
     constructor Create(AFileName: String; AMode: Word;
       ABufSize: Cardinal = Cardinal(-1)); overload;
@@ -38,11 +37,13 @@ type
       ABufSize: Cardinal = Cardinal(-1)); overload;
     constructor Create(ABufSize: Cardinal = Cardinal(-1)); overload;
     destructor Destroy; override;
+    procedure Clear;
     procedure FillBuffer;
     procedure FlushBuffer;
     function Read(var Buffer; Count: Longint): Longint; override;
     function Seek(const Offset: Int64; Origin: TSeekOrigin): Int64; override;
     function Write(const ABuffer; ACount: Longint): Longint; override;
+    property Size64: Int64 read GetSize;
   end;
 
 procedure ResetStream(var AStream: TStream);
@@ -326,18 +327,14 @@ begin
     FillBuffer;
 end;
 
-procedure TBufStream.SetSize64(const NewSize: Int64);
+procedure TBufStream.Clear;
 begin
-  if NewSize = 0 then
-  begin
-    FMemoryStream.Clear;
-    if not Assigned(FFileStream) then
-      CreateFileStream;
-    FFileStream.Size := 0;
-    FFileStream.Position := 0;
-    FFileStreamPos := 0;
-  end;
-  inherited;
+  FMemoryStream.Clear;
+  if not Assigned(FFileStream) then
+    CreateFileStream;
+  FFileStream.Size := 0;
+  FFileStream.Position := 0;
+  FFileStreamPos := 0;
 end;
 
 function TBufStream.Write(const ABuffer; ACount: LongInt): LongInt;
