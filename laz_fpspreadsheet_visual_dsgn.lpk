@@ -5,7 +5,6 @@
     <Name Value="laz_fpspreadsheet_visual_dsgn"/>
     <Type Value="RunAndDesignTime"/>
     <Author Value="W. Pamler"/>
-    <ExamplesDirectory Value="./examples/" />
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -17,7 +16,7 @@
     </CompilerOptions>
     <Description Value="laz_fpspreadsheet_visual_dsgn is the design-tim package for the visual fpspreadsheet components."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="14"/>
+    <Version Major="1" Minor="16"/>
     <Files Count="1">
       <Item1>
         <Filename Value="source\design\fpsvisualreg.pas"/>

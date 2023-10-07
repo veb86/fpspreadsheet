@@ -4,7 +4,6 @@
     <PathDelim Value="\"/>
     <Name Value="laz_fpspreadsheet"/>
     <Author Value="Felipe Monteiro de Carvalho and others"/>
-    <ExamplesDirectory Value="./examples/" />
     <CompilerOptions>
       <Version Value="11"/>
       <PathDelim Value="\"/>
@@ -33,7 +32,7 @@
 
 This package is all you need if you don&apos;t want graphical components (such as grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
-    <Version Major="1" Minor="14"/>
+    <Version Major="1" Minor="16"/>
     <Files Count="56">
       <Item1>
         <Filename Value="source\fps.inc"/>
