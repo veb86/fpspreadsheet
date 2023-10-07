@@ -198,7 +198,11 @@ begin
   Result := FImages.Count;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns a pointer to the image record at the specified index.
 
+  @param  AIndex   Index of the image to be considered.
+-------------------------------------------------------------------------------}
 function TsWorksheet.GetPointerToImage(AIndex: Integer): PsImage;
 begin
   Result := PsImage(FImages[AIndex]);

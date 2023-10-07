@@ -3015,7 +3015,6 @@ begin
     Result := Workbook.GetDefaultFont;
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Returns @true if the worksheet does not contain any cell, column or row records
 -------------------------------------------------------------------------------}
@@ -3278,9 +3277,6 @@ begin
   begin
     AFormula^.Col := ACell^.Col;
     AFormula^.Row := ACell^.Row;
-
-//    ACell^.ContentType := cctFormula;
-
     ACell^.Flags := ACell^.Flags + [cfHasFormula];
     if (AFormula^.Parser <> nil) and AFormula^.Parser.Has3DLinks then
       ACell^.Flags := ACell^.Flags + [cf3dFormula];
@@ -3288,9 +3284,14 @@ begin
     DeleteFormula(ACell);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Assigns a hyperlink to an image. The image is specified by its index in the
+  internal image list
 
-{@@ Assigns a hyperlink to an image. The image is specified by its index in the
-  internal image list}
+  @param  AImageIndex  Specifies the index of the image in the internal image list.
+  @param  ATarget      Link target
+  @param  AToolTip     Optional text to be displayed as mouse-over popup
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.AddHyperlinkToImage(AImageIndex: Integer; ATarget: String;
   AToolTip: String = '');
 var
@@ -3302,7 +3303,6 @@ begin
     img^.HyperlinkToolTip := AToolTip;
   end;
 end;
-
 
 {@@ ----------------------------------------------------------------------------
   Removes a cell from its tree container. DOES NOT RELEASE ITS MEMORY!
@@ -3761,7 +3761,6 @@ begin
   ClearSelection;
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Returns the list of selected cell ranges
 -------------------------------------------------------------------------------}
@@ -3883,11 +3882,10 @@ begin
   if Assigned(FOnZoom) then FOnZoom(Self);
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Writes UTF-8 encoded text to a cell.
 
-  On formats that don't support unicode, the text will be converted
+  On file formats that don't support unicode, the text will be converted
   to ISO Latin 1.
 
   @param  ARow             The row of the cell
@@ -3977,17 +3975,17 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Writes text containing HTML codes to a cell. Here are the allowed HTML codes:
-    <b>, <strong>  ... bold text
-    <i>, <em> ........ italic text
-    <u>, <ins> ....... underlined text
-    <s>, <del> ....... strike-out text
-    <sub> ............ subscript
-    <sup> ............ superscript
-    <font tags> ...... full font selection. "tags" can be:
+  Writes text containing HTML codes to a cell. Here are the allowed HTML codes:@br
+    @preformatted(  <b>, <strong>  ... bold text)
+    @preformatted(  <i>, <em> ........ italic text)
+    @preformatted(  <u>, <ins> ....... underlined text)
+    @preformatted(  <s>, <del> ....... strike-out text)
+    @preformatted(  <sub> ............ subscript)
+    @preformatted(  <sup> ............ superscript)
+    @preformatted(  <font tags> ...... full font selection. "tags" can be:
                        face="..." ... font name
-                       size="..." ... font size, in pt, em, px, % (add units!)
-                       color="..." .. font color (e.g. red, or #FF0000).
+                       size="..." ... font size, in pt, em, px, %. Add units!
+                       color="..." .. font color, e.g. red, or #FF0000.)
 
   @param  ARow         The row of the cell
   @param  ACol         The column of the cell
@@ -4019,16 +4017,16 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Writes text containing HTML codes to a cell. Here are the allowed HTML codes:
-    <b>, <strong>  ... bold text
-    <i>, <em> ........ italic text
-    <u>, <ins> ....... underlined text
-    <s>, <del> ....... strike-out text
-    <sub> ............ subscript
-    <sup> ............ superscript
-    <font tags> ...... full font selection. "tags" can be:
-                       face="..." ... font name
-                       size="..." ... font size, in pt, em, px, % (add units!)
-                       color="..." .. font color (e.g. red, or #FF0000).
+  @preformatted(  <b>, <strong>  ... bold text)
+  @preformatted(  <i>, <em> ........ italic text)
+  @preformatted(  <u>, <ins> ....... underlined text)
+  @preformatted(  <s>, <del> ....... strike-out text)
+  @preformatted(  <sub> ............ subscript)
+  @preformatted(  <sup> ............ superscript)
+  @preformatted(  <font tags> ...... full font selection. "tags" can be:
+                     face="..." ... font name
+                     size="..." ... font size, in pt, em, px, %. Add units!
+                     color="..." .. font color, e.g. red, or #FF0000.)
 
   @param  ACell        Pointer to the cell
   @param  AText        The text containing the html codes
@@ -5386,6 +5384,10 @@ begin
     Result := lRow^.RowHeightType;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns @TRUE if the workbook contains at least one column with an individual
+  column format.
+-------------------------------------------------------------------------------}
 function TsWorksheet.HasColFormats: Boolean;
 var
   c: Integer;
@@ -5399,6 +5401,10 @@ begin
   Result := false;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns @TRUE if the workbook contains at least one row with an individual
+  row format.
+-------------------------------------------------------------------------------}
 function TsWorksheet.HasRowFormats: Boolean;
 var
   r: Integer;

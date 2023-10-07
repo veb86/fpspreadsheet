@@ -136,7 +136,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Determines which the style of a particular cell border
+  Determines the style of a particular cell border
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadCellBorderStyle(ACell: PCell;
   ABorder: TsCelLBorder): TsCellBorderStyle;
@@ -152,7 +152,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Determines which all border styles of a given cell
+  Determines all border styles of a given cell
 -------------------------------------------------------------------------------}
 function TsWorksheet.ReadCellBorderStyles(ACell: PCell): TsCellBorderStyles;
 var
@@ -166,7 +166,6 @@ begin
   end;
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Returns the format record that is assigned to a specified cell
 -------------------------------------------------------------------------------}
@@ -174,7 +173,6 @@ function TsWorksheet.ReadCellFormat(ACell: PCell): TsCellFormat;
 begin
   Result := Workbook.GetCellFormat(ACell^.FormatIndex);
 end;
-
 
 {@@ ----------------------------------------------------------------------------
   Returns the protection flags of the cell.
@@ -716,7 +714,12 @@ begin
   WriteCellProtection(Result, AValue);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Defines how the specified cell is protected: lock cell modification and/or hide formulas.
+  Note that this is activated only after enabling worksheet protection (worksheet.Protect(true)).
 
+  @NOTE FPSpreadsheet does not enforce these actions. They are only written to the file for the Office application.
+-------------------------------------------------------------------------------}
 procedure TsWorksheet.WriteCellProtection(ACell: PCell;
   AValue: TsCellProtections);
 var

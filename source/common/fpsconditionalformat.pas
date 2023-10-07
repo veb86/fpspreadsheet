@@ -1,7 +1,18 @@
+{@@ ----------------------------------------------------------------------------
+  Unit **fpsConditionalFormat** implements conditional formatting for
+  Excel and OpenDocument spreadsheet documents.
+
+  AUTHORS: Werner Pamler
+
+  LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
+           distribution, for details about the license.
+-------------------------------------------------------------------------------}
+
 unit fpsConditionalFormat;
 
 {$mode objfpc}{$H+}
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
+
 interface
 
 uses
@@ -13,7 +24,8 @@ type
     procedure Assign(ASource: TsCFRule); virtual; abstract;
   end;
 
-  { Cell is... }
+  {@@ Enumeration of the available conditions to be fulfilled by a cell value
+    in conditional formatting }
   TsCFCondition = (
     cfcEqual, cfcNotEqual,
     cfcGreaterThan, cfcLessThan, cfcGreaterEqual, cfcLessEqual,
@@ -40,6 +52,8 @@ type
     procedure Assign(ASource: TsCFRule); override;
   end;
 
+  {@@ Enumeration of the criteria to be fulfilled by the values used in
+    "color range" and "data bar" conditional formatting. }
   TsCFValueKind = (vkNone, vkMin, vkMax, vkPercent, vkPercentile, vkValue);
 
   { Color range }
@@ -72,7 +86,7 @@ type
     procedure Assign(ASource: TsCFRule); override;
   end;
 
-  { Icon sets }
+  {@@ Enumeration of the icon sets available for conditional formatting }
   TsCFIconSet = (
     is3Arrows, is3ArrowsGray, is3Flags,
     is3TrafficLights1,  // x14 in xlsx
@@ -107,7 +121,7 @@ type
     property ShowValue: Boolean read FShowValue write FShowValue;
   end;
 
-  { Rules }
+  {@@ Rule for a conditional format }
   TsCFRules = class(TFPObjectList)
   private
     function GetItem(AIndex: Integer): TsCFRule;
@@ -118,7 +132,7 @@ type
     property Priority[AIndex: Integer]: Integer read GetPriority;
   end;
 
-  { Conditional format item }
+  {@@ Conditional format item. These items are stored in an instance of TsConditionalFormatList. }
   TsConditionalFormat = class
   private
     FWorksheet: TsBasicWorksheet;
@@ -140,6 +154,7 @@ type
     property Worksheet: TsBasicWorksheet read FWorksheet;
   end;
 
+  {@@ List of conditional formats. Maintained by the workbook. }
   TsConditionalFormatList = class(TFPObjectList)
   protected
     function AddRule(ASheet: TsBasicWorksheet; ARange: TsCellRange;
@@ -202,6 +217,13 @@ uses
   Math, TypInfo,
   fpSpreadsheet;
 
+{@@ ----------------------------------------------------------------------------
+  Determines the count of icons available in the specified icon set for
+  conditional formatting.
+
+  @param    AIconSet  Icon set to be checked
+  @returns  Number of icons in the icon set.
+-------------------------------------------------------------------------------}
 function GetCFIconCount(AIconSet: TsCFIconSet): Integer;
 var
   s: String;
@@ -629,7 +651,7 @@ begin
   Result := AddRule(ASheet, ARange, rule);
 end;
 
-{ IconSet conditional format for 3 icons, ie. 2 values }
+{@@ IconSet conditional format for 3 icons, ie. 2 values }
 function TsConditionalFormatList.AddIconSetRule(ASheet: TsBasicWorksheet;
   ARange: TsCellRange; AIconSet: TsCFIconSet;
   AValueKind1: TsCFValueKind; AValue1: Double;
@@ -657,7 +679,7 @@ begin
   Result := AddRule(ASheet, ARange, rule);
 end;
 
-{ IconSet conditional format for 4 icons, i.e. 3 values }
+{@@ IconSet conditional format for 4 icons, i.e. 3 values }
 function TsConditionalFormatList.AddIconSetRule(ASheet: TsBasicWorksheet;
   ARange: TsCellRange; AIconSet: TsCFIconSet;
   AValueKind1: TsCFValueKind; AValue1: Double;
@@ -687,7 +709,7 @@ begin
   Result := AddRule(ASheet, ARange, rule);
 end;
 
-{ Iconset conditional format for 5 icons, i.e. 4 values }
+{@@ Iconset conditional format for 5 icons, i.e. 4 values }
 function TsConditionalFormatList.AddIconSetRule(ASheet: TsBasicWorksheet;
   ARange: TsCellRange; AIconSet: TsCFIconSet;
   AValueKind1: TsCFValueKind; AValue1: Double; AValueKind2: TsCFValueKind; AValue2: Double;

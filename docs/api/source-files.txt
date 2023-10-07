@@ -6,5 +6,6 @@
 ../../source/common/fpsallformats.pas
 ../../source/common/fpsrpn.pas
 ../../source/common/fpscurrency.pas
+../../source/common/fpsconditionalformat.pas
 ../../source/visual/fpspreadsheetctrls.pas
 ../../source/visual/fpspreadsheetgrid.pas

@@ -28,7 +28,7 @@ begin
     sh.WriteText(0, 2, 'Test values');
 
     row := 2;
-    for i := row to row+33 do
+    for i := row to row+42 do
     begin
       sh.WriteNumber(i, 2, 1.0);
       sh.WriteNumber(i, 3, 2.0);
@@ -398,6 +398,11 @@ begin
     sh.WriteText(row, 0, 'IconSet');
     sh.WriteText(row, 1, '3 flags');
     sh.WriteIconSet(Range(Row, 2, row, 12), is3Flags);
+
+    inc(row);
+    sh.WriteText(row, 0, 'IconSet');
+    sh.WriteText(row, 1, '5 quarters');
+    sh.WriteIconSet(Range(Row, 2, row, 12), is5Quarters);
 
     { ------ Save workbook to file-------------------------------------------- }
     dir := ExtractFilePath(ParamStr(0));
