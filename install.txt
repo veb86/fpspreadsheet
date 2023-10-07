@@ -8,9 +8,9 @@
 (3) If you need the dbexport component
     Open laz_fpspreadsheetexport_visual.lpk --> Use --> Install
 	
-(4) If you need to unlock xls file protection
+(4) If you need to unlock xlsx and ods file protection
     Make sure that the package dcpcrypt.lpk can be found by the IDE
     Open laz_fpspreadsheet_crypto.lpk -- > Compile
     
-(5) If need database access to spreadsheets:
+(5) If you need database access to spreadsheets:
     Open laz_fpsdataset.lpk --> Use --> Install

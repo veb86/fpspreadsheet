@@ -3,6 +3,7 @@ fpspreadsheet
 The fpSpreadsheet library offers a convenient way to generate and read 
 spreadsheet documents in various formats:
 - Excel 2.x .xls
+- Excel 3.0 and 4.0 .xls
 - Excel 5.0/Excel 95 .xls
 - Excel 8.0 (Excel 97-XP) .xls
 - Excel XML (Excel 2003) .xml
@@ -33,23 +34,26 @@ If you also want GUI components (grid and chart):
 - select laz_fpspreadsheet_visual.lpk from the fpspreadsheet installation folder
 - click Compile
 - select laz_fpspreadsheet_visual_dsgn.lpk from the fpspreadsheet installation folder 
-- then click Use, Install and follow the prompts to rebuild Lazarus with the new package.
+- then click Use > Install and follow the prompts to rebuild Lazarus with the new package.
 Drop needed grid/chart components on your forms as usual
 
 A third package contains code for export databases to spreadsheet files
 - Package/Open Package File
 - Select laz_fpspreadsheetexport_visual.lpk from the folder "source"
-- Click Compile
-- Then click Use, Install and follow the prompts to rebuild Lazarus with the new package.
+- Then click Use > Install and follow the prompts to rebuild Lazarus with the new package.
 Drop export component on your form as usual.
+
+A fourth package allows to access spreadsheet files with database technology:
+- Package/Open Package File
+- Select laz_fpspreadsheet_dataset.lpk from the folder "source"
+- Click Use, Install and follow the prompts to rebuild Lazarus with the new package.
+Drop dataset component on your form as usual.
 
 If you want to access encrypted spreadsheet files the following package must be made known 
 to the IDE:
 - Package/Open Package File
-- select laz_fpspreadsheet_crypo.lpk
+- Select laz_fpspreadsheet_crypto.lpk
 - Click Compile
-- NOTE: this package has a dependence on the package DCPCrypt which must be compile first.
-  (you can use the Online-Package-Manager to download this package).
 
 
 License
