@@ -3092,15 +3092,15 @@ begin
         finally
           FreeAndNil(Doc);
         end;
-      end else
-        raise EFPSpreadsheetReader.Create(err);
+      end;
     finally
       XMLStream.Free;
     end;
 
     // Active sheet
     if FActiveSheet <> '' then
-      sheet := (FWorkbook as TsWorkbook).GetWorksheetByName(FActiveSheet) else
+      sheet := (FWorkbook as TsWorkbook).GetWorksheetByName(FActiveSheet)
+    else
       sheet := (FWorkbook as TsWorkbook).GetWorksheetByIndex(0);
     (FWorkbook as TsWorkbook).SelectWorksheet(sheet);
 
