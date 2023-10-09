@@ -1269,17 +1269,20 @@ end;
 {@@ ----------------------------------------------------------------------------
   Determines whether a worksheet name must to be quoted. This is needed when
   the name begins with a numeral or a period, or when the name contains a space
-  character.
+  character. Also required if the name contains '<' or '>'.
   
   @param   ASheet  Name of the worksheet to be analyzed
   @returns @TRUE when the sheet name must be quoted, @FALSE otherwise
 -------------------------------------------------------------------------------}
 function SheetNameNeedsQuotes(ASheet: String): Boolean;
+var
+  i: Integer;
 begin
   if ASheet <> '' then begin
     Result := true;
     if (ASheet[1] in ['0'..'9', '.']) then exit;
-    if (pos(' ', ASheet) > 0) then exit;
+    for i := 1 to Length(ASheet) do
+      if (ASheet[i] in [' ', '<', '>', '=']) then exit;
   end;
   Result := false;
 end;
