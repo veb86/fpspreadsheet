@@ -654,6 +654,7 @@ type
     function DoDelimiter: TsTokenType;
 //    function DoSquareBracket: TsTokenType;
     function DoString: TsTokenType;
+    function DoTestExcelSheetName(C: Char): TsTokenType;
     function NextPos: Char; // inline;
     procedure SkipWhiteSpace; // inline;
     function IsWordDelim(C: Char): Boolean; // inline;
@@ -1365,6 +1366,32 @@ begin
   NextPos;
 end;
 
+{ The scanner gets into this procedure in case of invalid characters inthe
+  expression or - in case of Excel A1 dialect sheet names containing UTF8
+  codepoints. }
+function TsExpressionScanner.DoTestExcelSheetName(C: Char): TsTokenType;
+var
+  StartChar: Char;
+  StartPos: Integer;
+begin
+  StartChar := C;
+  StartPos := FPos;
+
+  FToken := C;
+  C := NextPos;
+  while not (C in [cNull, '!']) do
+  begin
+    FToken := FToken + C;
+    C := NextPos;
+  end;
+  if C = '!' then
+  begin
+    Result := DoIdentifier;
+    FTokenType := Result;
+  end else
+    ScanError(Format(rsUnknownCharacter, [StartPos, StartChar]));
+end;
+
 function TsExpressionScanner.GetCurrentChar: Char;
 begin
   if FChar <> nil then
@@ -1395,7 +1422,7 @@ begin
   else if IsAlpha(C) or (C = '$') or (C = '''') or (C = '_') then
     Result := DoIdentifier
   else
-    ScanError(Format(rsUnknownCharacter, [FPos, C]));
+    Result := DoTestExcelSheetName(C);
   FTokenType := Result;
 end;
 
