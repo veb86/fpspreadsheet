@@ -24,7 +24,7 @@ uses
  {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, avglvltree, lconvencoding,
   fpsTypes, fpsExprParser, fpsClasses, fpsNumFormat, fpsPageLayout,
-  fpsImages, fpsConditionalFormat;
+  fpsImages, fpsConditionalFormat, fpsChart;
 
 type
   { Forward declarations }
@@ -625,6 +625,15 @@ type
     procedure AddHyperlinkToImage(AImageIndex: Integer; ATarget: String;
       AToolTip: String = '');
 
+    procedure CalcDrawingExtent(
+      UsePixels: Boolean; AWidth, AHeight: Double;
+      var ARow1, ACol1: Cardinal; out ARow2, ACol2: Cardinal;
+      ARowOffs1, AColOffs1: Double; out ARowOffs2, AColOffs2: Double;
+      out x,y: Double);
+
+    { Chart support }
+    function GetChartCount: Integer;
+
     { Protection }
     procedure Protect(AEnable: Boolean);
 
@@ -771,6 +780,7 @@ type
     FCellFormatList: TsCellFormatList;
     FConditionalFormatList: TsConditionalFormatList;
     FEmbeddedObjList: TFPList;
+    FCharts: TsChartList;
 
     { Internal methods }
     class procedure GetFormatFromFileHeader(const AFileName: TFileName;
@@ -910,6 +920,12 @@ type
     function GetEmbeddedObjCount: Integer;
     function HasEmbeddedSheetImages: Boolean;
     procedure RemoveAllEmbeddedObj;
+
+    { Charts }
+    function AddChart(ASheet: TsBasicWorksheet; ARow, ACol: Cardinal;
+      AWidth, AHeight: Double; AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
+    function GetChartByIndex(AIndex: Integer): TsChart;
+    function GetChartCount: Integer;
 
     { Utilities }
     function ConvertUnits(AValue: Double; AFromUnits, AToUnits: TsSizeUnits): Double;
@@ -1410,6 +1426,147 @@ begin
   Workbook.CalcFormulas;
   // To do: Determine whether the worksheet has in- and out-going links
   // to others sheets. If not call the faster "CalcSheet".
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Calculates the extent of an image or chart (in Excel-speak: a "drawing")
+
+  @param  UsePixels If @TRUE then pixels are used for calculation - this improves the display of images in Excel
+  @param  AWidth    Width of the drawing
+  @param  AHeight   Height of the drawing
+  @param  ARow1     Index of the row containing the top edge of the drawing
+  @param  ACol1     Index of the column containing the left edege of the drawing
+  @param  ARow2     Index of the row containing the right edge of the drawing
+  @param  ACol2     Index of the column containing the bottom edge of the drawing
+  @param  ARowOffs1 Distance between the top edge of drawing and row 1
+  @param  AColOffs1 Distance between the left edge of drawing and column 1
+  @param  ARowOffs2 Distance between the bottom edge of drawing and top of row 2
+  @param  AColOffs2 Distance between the right edge of drawing and left of col 2
+  @param  x         Absolute coordinate of left edge of the drawing
+  @param  y         Absolute coordinate of top edge of the drawing
+
+  All dimensions are in workbook units
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.CalcDrawingExtent(
+  UsePixels: Boolean; AWidth, AHeight: Double;
+  var ARow1, ACol1: Cardinal; out ARow2, ACol2: Cardinal;
+  ARowOffs1, AColOffs1: Double; out ARowOffs2, AColOffs2: Double;
+  out x,y: Double);
+var
+  colW, rowH: Double;
+  totW, totH: Double;
+  r, c: Integer;
+  w_px, h_px: Integer;
+  totH_px, rowH_px: Integer;
+  totW_px, colW_px: Integer;
+  ppi: Integer;
+  u: TsSizeUnits;
+begin
+  // Abbreviations
+  ppi := ScreenPixelsPerInch;
+  u := FWorkbook.Units;
+
+  // Find x coordinate of left graphic edge, in workbook units
+  x := AColOffs1;
+  for c := 0 to ACol1-1 do
+  begin
+    colW := GetColWidth(c, u);
+    x := x + colW;
+  end;
+  // Find y coordinate of top image edge, in workbook units.
+  y := ARowOffs1;
+  for r := 0 to ARow1 - 1 do
+  begin
+    rowH := CalcRowHeight(r);
+    y := y + rowH;
+  end;
+
+  if UsePixels then
+  // Use pixels for calculation. Better for Excel, maybe due to rounding error?
+  begin
+    // If we don't know the ppi of the screen the calculation is not exact!
+    w_px := ptsToPx(FWorkbook.ConvertUnits(AWidth, u, suPoints), ppi);
+    h_px := ptsToPx(FWorkbook.ConvertUnits(AHeight, u, suPoints), ppi);
+    // Find column with right image edge. Find horizontal within-cell-offsets
+    totW_px := -ptsToPx(FWorkbook.ConvertUnits(AColOffs1, u, suPoints), ppi);
+    ACol2 := ACol1;
+    while (totW_px < w_px) do
+    begin
+      colW := GetColWidth(ACol2, u);
+      colW_px := ptsToPx(FWorkbook.ConvertUnits(colW, u, suPoints), ppi);
+      totW_px := totW_px + colW_px;
+      if totW_px > w_px then
+      begin
+        AColOffs2 := FWorkbook.ConvertUnits(pxToPts(colW_px - (totW_px - w_px), ppi), suPoints, u);
+        break;
+      end;
+      inc(ACol2);
+    end;
+    // Find row with bottom image edge. Find vertical within-cell-offset.
+    totH_px := -ptsToPx(FWorkbook.ConvertUnits(ARowOffs1, u, suPoints), ppi);
+    ARow2 := ARow1;
+    while (totH_px < h_px) do
+    begin
+      rowH := CalcRowHeight(ARow2);
+      rowH_px := ptsToPx(FWorkbook.ConvertUnits(rowH, u, suPoints), ppi);
+      totH_px := totH_px + rowH_px;
+      if totH_px > h_px then
+      begin
+        ARowOffs2 := FWorkbook.ConvertUnits(pxToPts(rowH_px - (totH_px - h_px), ppi), suPoints, u);
+        break;
+      end;
+      inc(ARow2);
+    end;
+  end
+  else    // Use workbook units for calculation
+  begin
+    // Find row with bottom image edge. Find horizontal within-cell offset
+    totW := -AColOffs1;
+    ACol2 := ACol1;
+    while (totW < AWidth) do
+    begin
+      colW := GetColWidth(ACol2, u);
+      totW := totW + colW;
+      if totW >= AWidth then
+      begin
+        AColOffs2 := colW - (totW - AWidth);
+        break;
+      end;
+      inc(ACol2);
+    end;
+    // Find row with right image edge. Find vertical within-cell-offsets
+    totH := -ARowOffs1;
+    ARow2 := ARow1;
+    while (totH < AHeight) do
+    begin
+      rowH := CalcRowHeight(ARow2);
+      totH := totH + rowH;
+      if totH >= AHeight then
+      begin
+        ARowOffs2 := rowH - (totH - AHeight);
+        break;
+      end;
+      inc(ARow2);
+    end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines the count of charts on this worksheet
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetChartCount: Integer;
+var
+  i: Integer;
+  chart: TsChart;
+  idx: Integer;
+begin
+  Result := 0;
+  idx := GetIndex;
+  for i := 0 to Workbook.GetChartCount-1 do
+  begin
+    chart := Workbook.GetChartByIndex(i);
+    if chart.SheetIndex = idx then inc(Result);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2318,7 +2475,7 @@ begin
     WriteFormula(AToRow, AToCol, formulaStr);
     
   // Fix formula references to the source cell (ACell)
-  for i := 0 to FWorkbook.GetWorksheetcount-1 do begin
+  for i := 0 to FWorkbook.GetWorksheetCount-1 do begin
     sheet := FWorkbook.GetWorksheetByIndex(i);
     sheet.Formulas.FixReferenceToMovedCell(ACell, AToRow, AToCol, self);
   end;
@@ -6383,6 +6540,7 @@ begin
   FCellFormatList := TsCellFormatList.Create(false);
   FConditionalFormatList := TsConditionalFormatList.Create;
   FEmbeddedObjList := TFPList.Create;
+  FCharts := TsChartList.Create;
 
   // Add default cell format
   InitFormatRecord(fmt);
@@ -6415,6 +6573,7 @@ begin
 
   RemoveAllEmbeddedObj;
   FEmbeddedObjList.Free;
+  FCharts.Free;
 
   inherited Destroy;
 end;
@@ -7627,6 +7786,7 @@ end;
 {$include fpspreadsheet_hyperlinks.inc}  // hyperlinks
 {$include fpspreadsheet_embobj.inc}      // embedded objects
 {$include fpspreadsheet_clipbrd.inc}     // clipboard access
+{$include fpspreadsheet_chart.inc}       // chart support
 
 
 end.   {** End Unit: fpspreadsheet }

@@ -79,6 +79,28 @@ procedure TsWorksheet.CalcImageExtent(AIndex: Integer; UsePixels: Boolean;
 var
   img: TsImage;
   obj: TsEmbeddedObj;
+begin
+  img := GetImage(AIndex);
+  ARow1 := img.Row;
+  ACol1 := img.Col;
+  ARowOffs1 := img.OffsetX;            // in workbook units
+  AColOffs1 := img.OffsetY;            // in workbook units
+
+  obj := FWorkbook.GetEmbeddedObj(img.Index);
+  AWidth := obj.ImageWidth * img.ScaleX;    // in workbook units
+  AHeight := obj.ImageHeight * img.ScaleY;  // in workbook units
+
+  CalcDrawingExtent(UsePixels, AWidth, AHeight, ARow1, ACol1, ARow2, ACol2,
+    ARowOffs1, AColOffs1, ARowOffs2, AColOffs2, x, y);
+end;
+(*
+procedure TsWorksheet.CalcImageExtent(AIndex: Integer; UsePixels: Boolean;
+  out ARow1, ACol1, ARow2, ACol2: Cardinal;
+  out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
+  out x,y, AWidth, AHeight: Double);
+var
+  img: TsImage;
+  obj: TsEmbeddedObj;
   colW, rowH: Double;
   totH: Double;
   r, c: Integer;
@@ -172,7 +194,7 @@ begin
     end;
   end;
 end;
-
+*)
 
 {@@ ----------------------------------------------------------------------------
   Returns the parameters of the image stored in the internal image list at

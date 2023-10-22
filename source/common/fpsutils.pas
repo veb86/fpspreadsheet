@@ -127,11 +127,18 @@ function TryStrToCellRange_ODS(const AStr: String; out ASheet1, ASheet2: String;
   out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean;
 
 function GetCellRangeString_ODS(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
-  AFlags: TsRelFlags = rfAllRel): String; overload;
+  AFlags: TsRelFlags = rfAllRel; WithBrackets: Boolean = true): String; overload;
 function GetCellRangeString_ODS(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false;
+  WithBrackets: Boolean = true): String; overload;
 function GetCellRangeString_ODS(ARange: TsCellRange;
-  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String; overload;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false;
+  WithBrackets: Boolean = true): String; overload;
+function GetSheetCellString_ODS(ASheet: String; ARow, ACol: Cardinal;
+  AFlags: TsRelFlags = rfAllRel; WithBrackets: Boolean = true): String;
+function GetSheetCellRangeString_ODS(ASheet1, ASheet2: String;
+  ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = rfAllRel;
+  WithBrackets: Boolean = true): String;
 
 
 // Error strings
@@ -1386,7 +1393,8 @@ end;
   Calculates a cell range string with sheet specification in OpenDocument syntax
 -------------------------------------------------------------------------------}
 function GetCellRangeString_ODS(ASheet1, ASheet2: String;
-  ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = rfAllRel): String;
+  ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = rfAllRel;
+  WithBrackets: Boolean = true): String;
 var
   s1, s2: String;
 begin
@@ -1402,37 +1410,65 @@ begin
   if (ASheet1 = '') and (ASheet2 = '') then
   begin
     if s1 = s2 then
-      Result := '[.' + s1 + ']'                        // --> [.A1]
+      Result := '.' + s1                             // --> [.A1]
     else
-      Result := Format('[.%s:.%s]', [s1, s2])          // --> [.A1:.B3]
+      Result := Format('.%s:.%s', [s1, s2])          // --> [.A1:.B3]
   end else
   if (ASheet2 = '') or (ASheet1 = ASheet2) then begin
     if s1 = s2 then
-      Result := Format('[%s.%s]', [ASheet1, s1])                   // [Sheet1.A1]
+      Result := Format('%s.%s', [ASheet1, s1])                   // [Sheet1.A1]
     else
-      Result := Format('[%s.%s:.%s]', [ASheet1, s1, s2]);          // [Sheet1.A1:.B2]
+      Result := Format('%s.%s:.%s', [ASheet1, s1, s2]);          // [Sheet1.A1:.B2]
   end else
-    Result := Format('[%s.%s:%s.%s]', [ASheet1, s1, ASheet2, s2]); // [Sheet.A1:Sheet2.B2]
+    Result := Format('%s.%s:%s.%s', [ASheet1, s1, ASheet2, s2]); // [Sheet.A1:Sheet2.B2]
+
+  if WithBrackets then
+    Result := '[' + Result + ']';
 end;
 
 function GetCellRangeString_ODS(ARow1, ACol1, ARow2, ACol2: Cardinal;
-  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false; WithBrackets: Boolean = true): String;
 begin
   if Compact and (ARow1 = ARow2) and (ACol1 = ACol2) then
-    Result := Format('[.%s]', [GetCellString(ARow1, ACol1, AFlags)])
+    Result := Format('.%s', [GetCellString(ARow1, ACol1, AFlags)])
   else
-    Result := Format('[.%s%s%s%d:.%s%s%s%d]', [
+    Result := Format('.%s%s%s%d:.%s%s%s%d', [
       RELCHAR[rfRelCol in AFlags], GetColString(ACol1),
       RELCHAR[rfRelRow in AFlags], ARow1 + 1,
       RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2),
       RELCHAR[rfRelRow2 in AFlags], ARow2 + 1
     ]);
+  if WithBrackets then
+    Result := '[' + Result + ']';
 end;
 
 function GetCellRangeString_ODS(ARange: TsCellRange;
-  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
+  AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false;
+  WithBrackets: Boolean = true): String;
 begin
-  Result := GetCellRangeString_ODS(ARange, AFlags, Compact);
+  Result := GetCellRangeString_ODS(ARange, AFlags, Compact, WithBrackets);
+end;
+
+function GetSheetCellString_ODS(ASheet: String; ARow, ACol: Cardinal;
+  AFlags: TsRelFlags = rfAllRel; WithBrackets: Boolean = true): String;
+begin
+  Result := Format('%s.%s%s%s%d', [
+    ASheet, RELCHAR[rfRelCol in AFlags], GetColString(ACol), RELCHAR[rfRelRow in AFlags], ARow + 1
+  ]);
+  if WithBrackets then
+    Result := '[' + Result + ']';
+end;
+
+function GetSheetCellRangeString_ODS(ASheet1, ASheet2: String;
+  ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = rfAllRel;
+  WithBrackets: Boolean = true): String;
+begin
+  Result := Format('%s.%s%s%s%d:%s.%s%s%s%d', [
+    ASheet1, RELCHAR[rfRelCol in AFlags], GetColString(ACol1), RELCHAR[rfRelRow in AFlags], ARow1 + 1,
+    ASheet2, RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2), RELCHAR[rfRelRow2 in AFlags], ARow2 + 1
+  ]);
+  if WithBrackets then
+    Result := '[' + Result + ']';
 end;
 
 

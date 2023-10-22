@@ -40,7 +40,7 @@ uses
   fpszipper,
  {$ENDIF}
   fpstypes, fpsReaderWriter, fpsutils, fpsHeaderFooterParser,
-  fpsNumFormat, fpsxmlcommon, fpsPagelayout;
+  fpsNumFormat, fpsxmlcommon, fpsPagelayout, fpsChart;
   
 type
   TDateModeODS=(
@@ -236,6 +236,7 @@ type
     procedure WriteCellRow(AStream: TStream; ASheet: TsBasicWorksheet;
       ARowIndex, ALastColIndex: Integer);
     procedure WriteCellStyles(AStream: TStream);
+
     procedure WriteColStyles(AStream: TStream);
     procedure WriteColumns(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteConditionalFormats(AStream: TStream; ASheet: TsBasicWorksheet);
@@ -244,10 +245,12 @@ type
       ARowIndex, AFirstColIndex, ALastColIndex, ALastRowIndex: Integer;
       out ARowsRepeated: Integer);
     procedure WriteFontNames(AStream: TStream);
+    procedure WriteGraphicStyles(AStream: TStream);
     procedure WriteMasterStyles(AStream: TStream);
     procedure WriteNamedExpressions(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteNumFormats(AStream: TStream);
     procedure WriteOfficeStyles(AStream: TStream);
+    procedure WriteParagraphStyles(AStream: TStream);
     procedure WriteRowStyles(AStream: TStream);
     procedure WriteRowsAndCells(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteShapes(AStream: TStream; ASheet: TsBasicWorksheet);
@@ -281,11 +284,24 @@ type
     function WriteVertAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteWordwrapStyleXMLAsString(const AFormat: TsCellFormat): String;
 
+    { Chart support }
+    procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
+    procedure WriteChart(AStream: TStream; AChart: TsChart);
+    procedure WriteChartAxis(AStream: TStream; AChart: TsChart; IsX, IsPrimary: Boolean; AIndent: Integer);
+    procedure WriteChartLegend(AStream: TStream; AChart: TsChart; AIndent: Integer);
+    procedure WriteChartPlotArea(AStream: TStream; AChart: TsChart; AIndent: Integer);
+    procedure WriteChartSeries(AStream: TStream; AChart: TsChart; ASeriesIndex: Integer; AIndent: Integer);
+    procedure WriteChartStyles(AStream: TStream; AChart: TsChart; AIndent: Integer);
+    procedure WriteChartTable(AStream: TStream; AChart: TsChart; AIndent: Integer);
+    procedure WriteChartTitle(AStream: TStream; AChart: TsChart; IsSubtitle: Boolean; AIndent: Integer);
+
   protected
     FPointSeparatorSettings: TFormatSettings;
+
     // Streams with the contents of files
     FSMeta, FSSettings, FSStyles, FSContent: TStream;
     FSMimeType, FSMetaInfManifest: TStream;
+    FSCharts: array of TStream;
 
     { Helpers }
     procedure AddBuiltinNumFormats; override;
@@ -309,6 +325,7 @@ type
     procedure ResetStreams;
 
     { Routines to write those files }
+    procedure WriteCharts;
     procedure WriteContent;
     procedure WriteMetaInfManifest;
     procedure WriteMeta;
@@ -360,6 +377,8 @@ uses
   fpsExprParser, fpsImages, fpsConditionalFormat;
 
 const
+  LE = LineEnding;
+
   { OpenDocument general XML constants }
   XML_HEADER             = '<?xml version="1.0" encoding="utf-8" ?>';
 
@@ -369,8 +388,9 @@ const
   OPENDOC_PATH_SETTINGS  = 'settings.xml';
   OPENDOC_PATH_STYLES    = 'styles.xml';
   OPENDOC_PATH_MIMETYPE  = 'mimetype';
-  {%H-}OPENDOC_PATH_METAINF   = 'META-INF' + '/';
-  {%H-}OPENDOC_PATH_METAINF_MANIFEST = 'META-INF' + '/' + 'manifest.xml';
+  {%H-}OPENDOC_PATH_METAINF   = 'META-INF/';
+  OPENDOC_PATH_METAINF_MANIFEST = 'META-INF/manifest.xml';
+  OPENDOC_PATH_CHART_CONTENT = 'Object %d/content.xml';
 
   { OpenDocument schemas constants }
   SCHEMAS_XMLNS_OFFICE   = 'urn:oasis:names:tc:opendocument:xmlns:office:1.0';
@@ -484,6 +504,11 @@ const
     '5Arrows', '5ArrowsGray',             // is5Arrows, is5ArrowsGray
     '5Rating', '5Quarters', '5Boxes'      // is5Rating, is5Quarters, is5Boxes
   );
+
+  CHART_TYPE_NAMES: array[TsChartType] of string = (
+    '', 'bar', 'line', 'area', 'barLine', 'scatter'
+  );
+
 
 function CFOperandToStr(v: variant; AWorksheet: TsWorksheet;
   const AFormatSettings: TFormatSettings): String;
@@ -2912,7 +2937,6 @@ var
   sheetName: String;
   tablestyleName: String;
   err: String;
-  isEncrypted: Boolean = false;
 
   function CreateXMLStream: TStream;
   begin
@@ -2930,10 +2954,10 @@ begin
 
   Doc := nil;
   try
-    // Read the META-INF/manifest.xml file to learn about encryption
+    // Read the "META-INF/manifest.xml" file to learn about encryption
     XMLStream := CreateXMLStream;
     try
-      if UnzipToStream(AStream, 'META-INF/manifest.xml', XMLStream) then
+      if UnzipToStream(AStream, OPENDOC_PATH_METAINF_MANIFEST, XMLStream) then
       begin
         ReadXMLStream(Doc, XMLStream);
         if Assigned(Doc) then
@@ -5682,6 +5706,8 @@ end;
 { Creates the streams for the individual data files. Will be zipped into a
   single xlsx file. }
 procedure TsSpreadOpenDocWriter.CreateStreams;
+var
+  i, n: Integer;
 begin
   FSMeta := CreateTempStream(FWorkbook, 'fpsM');
   FSSettings := CreateTempStream(FWorkbook, 'fpsS');
@@ -5689,39 +5715,19 @@ begin
   FSContent := CreateTempStream(FWorkbook, 'fpsC');
   FSMimeType := CreateTempStream(FWorkbook, 'fpsMT');
   FSMetaInfManifest := CreateTempStream(FWorkbook, 'fpsMIM');
-  {
-  if boFileStream in FWorkbook.Options then
-  begin
-    FSMeta := TFileStream.Create(GetTempFileName('', 'fpsM'), fmCreate);
-    FSSettings := TFileStream.Create(GetTempFileName('', 'fpsS'), fmCreate);
-    FSStyles := TFileStream.Create(GetTempFileName('', 'fpsSTY'), fmCreate);
-    FSContent := TFileStream.Create(GetTempFileName('', 'fpsC'), fmCreate);
-    FSMimeType := TFileStream.Create(GetTempFileName('', 'fpsMT'), fmCreate);
-    FSMetaInfManifest := TFileStream.Create(GetTempFileName('', 'fpsMIM'), fmCreate);
-  end else
-  if (boBufStream in Workbook.Options) then
-  begin
-    FSMeta := TBufStream.Create(GetTempFileName('', 'fpsM'));
-    FSSettings := TBufStream.Create(GetTempFileName('', 'fpsS'));
-    FSStyles := TBufStream.Create(GetTempFileName('', 'fpsSTY'));
-    FSContent := TBufStream.Create(GetTempFileName('', 'fpsC'));
-    FSMimeType := TBufStream.Create(GetTempFileName('', 'fpsMT'));
-    FSMetaInfManifest := TBufStream.Create(GetTempFileName('', 'fpsMIM'));
-  end else
-  begin
-    FSMeta := TMemoryStream.Create;
-    FSSettings := TMemoryStream.Create;
-    FSStyles := TMemoryStream.Create;
-    FSContent := TMemoryStream.Create;
-    FSMimeType := TMemoryStream.Create;
-    FSMetaInfManifest := TMemoryStream.Create;
-  end;
-  }
+
+  n := TsWorkbook(FWorkbook).GetChartCount;
+  SetLength(FSCharts, n);
+  for i := 0 to n - 1 do
+    FSCharts[i] := CreateTempStream(FWorkbook, 'fpsCh');
+
   // FSSheets will be created when needed.
 end;
 
 { Destroys the temporary streams that were created by the writer }
 procedure TsSpreadOpenDocWriter.DestroyStreams;
+var
+  i: Integer;
 begin
   DestroyTempStream(FSMeta);
   DestroyTempStream(FSSettings);
@@ -5729,6 +5735,9 @@ begin
   DestroyTempStream(FSContent);
   DestroyTempStream(FSMimeType);
   DestroyTempStream(FSMetaInfManifest);
+  for i := 0 to High(FSCharts) do
+    DestroyTempStream(FSCharts[i]);
+  Setlength(FSCharts, 0);
 end;
 
 procedure TsSpreadOpenDocWriter.GetHeaderFooterImageName(
@@ -5810,6 +5819,7 @@ end;
 procedure TsSpreadOpenDocWriter.InternalWriteToStream(AStream: TStream);
 var
   FZip: TZipper;
+  i: Integer;
 begin
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
@@ -5827,6 +5837,7 @@ begin
   WriteSettings();
   WriteStyles();
   WriteContent;
+  WriteCharts;
 
   { Now compress the files }
   FZip := TZipper.Create;
@@ -5839,6 +5850,9 @@ begin
     FZip.Entries.AddFileEntry(FSMimetype, OPENDOC_PATH_MIMETYPE);
     FZip.Entries.AddFileEntry(FSMetaInfManifest, OPENDOC_PATH_METAINF_MANIFEST);
     ZipPictures(FZip);
+    for i := 0 to TsWorkbook(FWorkbook).GetChartCount-1 do
+      FZip.Entries.AddFileEntry(
+        FSCharts[i], Format(OPENDOC_PATH_CHART_CONTENT, [i+1]));
 
     ResetStreams;
 
@@ -6028,6 +6042,8 @@ end;
 
 { Is called before zipping the individual file parts. Rewinds the streams. }
 procedure TsSpreadOpenDocWriter.ResetStreams;
+var
+  i: Integer;
 begin
   FSMeta.Position := 0;
   FSSettings.Position := 0;
@@ -6035,6 +6051,8 @@ begin
   FSContent.Position := 0;
   FSMimeType.Position := 0;
   FSMetaInfManifest.Position := 0;
+  for i := 0 to High(FSCharts) do
+    FSCharts[i].Position := 0;
 end;
 
 { Writes the node "office:automatic-styles". Although this node occurs in both
@@ -6113,17 +6131,19 @@ var
   embObj: TsEmbeddedObj;
 begin
   AppendToStream(FSMetaInfManifest,
-    '<manifest:manifest xmlns:manifest="' + SCHEMAS_XMLNS_MANIFEST + '">');
+    XML_HEADER);
   AppendToStream(FSMetaInfManifest,
-      '<manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.spreadsheet" manifest:full-path="/" />');
+    '<manifest:manifest xmlns:manifest="' + SCHEMAS_XMLNS_MANIFEST + '">' + LE);
   AppendToStream(FSMetaInfManifest,
-      '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="content.xml" />');
+      '  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.spreadsheet" manifest:full-path="/" />' + LE);
   AppendToStream(FSMetaInfManifest,
-      '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="styles.xml" />');
+      '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="content.xml" />' + LE);
   AppendToStream(FSMetaInfManifest,
-      '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml" />');
+      '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="styles.xml" />' + LE);
   AppendToStream(FSMetaInfManifest,
-      '<manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />');
+      '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="meta.xml" />' + LE);
+  AppendToStream(FSMetaInfManifest,
+      '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="settings.xml" />' + LE);
   for i:=0 to (FWorkbook as TsWorkbook).GetEmbeddedObjCount-1 do
   begin
     embObj := TsWorkbook(FWorkbook).GetEmbeddedObj(i);
@@ -6133,9 +6153,21 @@ begin
     mime := GetImageMimeType(imgtype);
     ext := GetImageTypeExt(imgType);
     AppendToStream(FSMetaInfManifest, Format(
-      '<manifest:file-entry manifest:media-type="%s" manifest:full-path="Pictures/%d.%s" />',
+      '  <manifest:file-entry manifest:media-type="%s" manifest:full-path="Pictures/%d.%s" />' + LE,
       [mime, i+1, ext]
     ));
+  end;
+  for i:=0 to (FWorkbook as TsWorkbook).GetChartCount-1 do
+  begin
+    AppendToStream(FSMetaInfManifest, Format(
+      '  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.chart" manifest:full-path="Object %d/" />' + LE,
+      [i+1]
+    ));
+    AppendToStream(FSMetaInfManifest, Format(
+      '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="Object %d/content.xml" />' + LE,
+      [i+1]
+    ));
+    // Object X/styles.xml, Object X/meta.xml and ObjectReplacement/Object X not needed necessarily
   end;
   AppendToStream(FSMetaInfManifest,
     '</manifest:manifest>');
@@ -6150,57 +6182,49 @@ begin
   book := TsWorkbook(FWorkbook);
 
   AppendToStream(FSMeta,
-    XML_HEADER);
+    XML_HEADER + LE);
   AppendToStream(FSMeta,
-    '<office:document-meta ' +
-      'xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" ' +
-      'xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" ' +
-      'xmlns:grddl="http://www.w3.org/2003/g/data-view#" ' +
-      'xmlns:ooo="http://openoffice.org/2004/office" ' +
-      'xmlns:xlink="http://www.w3.org/1999/xlink" '+
-      'xmlns:dc="http://purl.org/dc/elements/1.1/" '+
-      'office:version="1.2">');
-  {
+    '<office:document-meta ' + LE +
+    '    xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0" ' + LE +
+    '    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0" ' + LE +
+    '    xmlns:grddl="http://www.w3.org/2003/g/data-view#" ' + LE +
+    '    xmlns:ooo="http://openoffice.org/2004/office" ' + LE +
+    '    xmlns:xlink="http://www.w3.org/1999/xlink" ' + LE +
+    '    xmlns:dc="http://purl.org/dc/elements/1.1/" ' + LE +
+    '    office:version="1.2">' + LE);
   AppendToStream(FSMeta,
-    '<office:document-meta xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
-      '" xmlns:dcterms="' + SCHEMAS_XMLNS_DCTERMS +
-      '" xmlns:meta="' + SCHEMAS_XMLNS_META +
-      '" xmlns="' + SCHEMAS_XMLNS +
-      '" xmlns:ex="' + SCHEMAS_XMLNS + '">');
-      }
-  AppendToStream(FSMeta,
-      '<office:meta>',
-        '<meta:generator>FPSpreadsheet Library</meta:generator>' +
-        '<meta:document-statistic />');
+    '  <office:meta>' + LE,
+    '    <meta:generator>FPSpreadsheet Library</meta:generator>' + LE +
+    '    <meta:document-statistic />' + LE);
 
   if book.Metadata.Title <> '' then
   begin
     s := book.Metadata.Title;
     AppendToStream(FSMeta, Format(
-        '<dc:title>%s</dc:title>', [UTF8TextToXMLText(s)]));
+      '    <dc:title>%s</dc:title>' + LE, [UTF8TextToXMLText(s)]));
   end;
 
   if book.Metadata.Subject <> '' then
   begin
     s := book.Metadata.Subject;
     AppendToStream(FSMeta, Format(
-        '<dc:subject>%s</dc:subject>', [UTF8TextToXMLText(s)]));
+      '    <dc:subject>%s</dc:subject>' + LE, [UTF8TextToXMLText(s)]));
   end;
 
   if book.Metadata.CreatedBy <> '' then
     AppendToStream(FSMeta, Format(
-        '<meta:initial-creator>%s</meta:initial-creator>', [UTF8TextToXMLText(book.MetaData.CreatedBy)]));
+      '    <meta:initial-creator>%s</meta:initial-creator>' + LE, [UTF8TextToXMLText(book.MetaData.CreatedBy)]));
 
   if book.MetaData.LastModifiedBy <> '' then
     AppendToStream(FSMeta, Format(
-        '<dc:creator>%s</dc:creator>', [UTF8TextToXMLText(book.Metadata.LastModifiedBy)]));
+      '    <dc:creator>%s</dc:creator>' + LE, [UTF8TextToXMLText(book.Metadata.LastModifiedBy)]));
 
   if book.MetaData.DateCreated > 0 then
   begin
     // ODS stored the creation date in UTC.
     s := FormatDateTime(ISO8601FormatExtendedUTC, book.MetaData.DateCreated);
     AppendToStream(FSMeta, Format(
-        '<meta:creation-date>%s</meta:creation-date>', [s]));
+      '    <meta:creation-date>%s</meta:creation-date>' + LE, [s]));
   end;
 
   if book.MetaData.DateLastModified > 0 then
@@ -6208,13 +6232,13 @@ begin
     // Date of last modification is NOT UTC.
     s := FormatDateTime(ISO8601FormatExtended, book.MetaData.DateLastModified);
     AppendToStream(FSMeta, Format(
-        '<dc:date>%s</dc:date>', [s]));
+      '    <dc:date>%s</dc:date>' + LE, [s]));
   end;
 
   if book.MetaData.Keywords.Count > 0 then
     for i := 0 to book.MetaData.Keywords.Count-1 do
       AppendToStream(FSMeta, Format(
-        '<meta:keyword>%s</meta:keyword>', [UTF8TextToXMLText(book.MetaData.Keywords[i])]));
+        '    <meta:keyword>%s</meta:keyword>' + LE, [UTF8TextToXMLText(book.MetaData.Keywords[i])]));
 
   if book.MetaData.Comments.Count > 0 then
   begin
@@ -6222,21 +6246,21 @@ begin
     for i := 1 to book.MetaData.Comments.Count-1 do
       s := s + #10 + book.MetaData.Comments[i];
     AppendToStream(FSMeta, Format(
-        '<dc:description>%s</dc:description>', [UTF8TextToXMLText(s)]));
+      '    <dc:description>%s</dc:description>' + LE, [UTF8TextToXMLText(s)]));
   end;
 
   if book.MetaData.Custom.Count > 0 then
   begin
     for i := 0 to book.Metadata.Custom.Count-1 do
       AppendToStream(FSMeta, Format(
-        '<meta:user-defined meta:name="%s">%s</meta:user-defined>', [
+        '    <meta:user-defined meta:name="%s">%s</meta:user-defined>' + LE, [
           book.Metadata.Custom.Names[i],
           UTF8TextToXMLText(book.Metadata.Custom.ValueFromIndex[i])
         ]));
   end;
 
   AppendToStream(FSMeta,
-      '</office:meta>');
+      '  </office:meta>' + LE);
   AppendToStream(FSMeta,
     '</office:document-meta>');
 end;
@@ -6411,6 +6435,18 @@ begin
     '</office:document-styles>');
 end;
 
+procedure TsSpreadOpenDocWriter.WriteCharts;
+var
+  i: Integer;
+  chart: TsChart;
+begin
+  for i := 0 to TsWorkbook(FWorkbook).GetChartCount - 1 do
+  begin
+    chart := TsWorkbook(FWorkbook).GetChartByIndex(i);
+    WriteChart(FSCharts[i], chart);
+  end;
+end;
+
 procedure TsSpreadOpenDocWriter.WriteContent;
 var
   i: Integer;
@@ -6500,6 +6536,8 @@ begin
   WriteTableStyles(FSContent);       // "ta1" ...
   WriteCellStyles(FSContent);        // "ce1" ...
   WriteTextStyles(FSContent);        // "T1" ...
+  WriteGraphicStyles(FSContent);     // "gr1" ...
+  WriteParagraphStyles(FSContent);   // "P1" ...
 
   AppendToStream(FSContent,
       '</office:automatic-styles>');
@@ -6634,6 +6672,827 @@ begin
   finally
     L.Free;
   end;
+end;
+
+procedure TsSpreadOpenDocWriter.WriteChart(AStream: TStream; AChart: TsChart);
+var
+  chartClass: String;
+begin
+  AppendToStream(AStream,
+    XML_HEADER + LE);
+
+  AppendToStream(AStream,
+    '<office:document-content ' + LE +
+    '    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' + LE +
+    '    xmlns:ooo="http://openoffice.org/2004/office"' + LE +
+    '    xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"' + LE +
+    '    xmlns:xlink="http://www.w3.org/1999/xlink"' + LE +
+    '    xmlns:dc="http://purl.org/dc/elements/1.1/"' + LE +
+    '    xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0"' + LE +
+    '    xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"' + LE +
+    '    xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' + LE +
+    '    xmlns:rpt="http://openoffice.org/2005/report"' + LE +
+    '    xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"' + LE +
+    '    xmlns:dr3d="urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0"' + LE +
+    '    xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"' + LE +
+    '    xmlns:chart="urn:oasis:names:tc:opendocument:xmlns:chart:1.0"' + LE +
+    '    xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"' + LE +
+    '    xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0"' + LE +
+    '    xmlns:ooow="http://openoffice.org/2004/writer"' + LE +
+    '    xmlns:oooc="http://openoffice.org/2004/calc"' + LE +
+    '    xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2"' + LE +
+    '    xmlns:xforms="http://www.w3.org/2002/xforms"' + LE +
+    '    xmlns:tableooo="http://openoffice.org/2009/table"' + LE +
+    '    xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0"' + LE +
+    '    xmlns:drawooo="http://openoffice.org/2010/draw"' + LE +
+    '    xmlns:xhtml="http://www.w3.org/1999/xhtml"' + LE +
+    '    xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0"' + LE +
+    '    xmlns:field="urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0"' + LE +
+    '    xmlns:math="http://www.w3.org/1998/Math/MathML"' + LE +
+    '    xmlns:form="urn:oasis:names:tc:opendocument:xmlns:form:1.0"' + LE +
+    '    xmlns:script="urn:oasis:names:tc:opendocument:xmlns:script:1.0"' + LE +
+    '    xmlns:formx="urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0"' + LE +
+    '    xmlns:dom="http://www.w3.org/2001/xml-events"' + LE +
+    '    xmlns:xsd="http://www.w3.org/2001/XMLSchema"' + LE +
+    '    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"' + LE +
+    '    xmlns:grddl="http://www.w3.org/2003/g/data-view#"' + LE +
+    '    xmlns:css3t="http://www.w3.org/TR/css3-text/"' + LE +
+    '    xmlns:chartooo="http://openoffice.org/2010/chart" office:version="1.3">' + LE
+  );
+
+  WriteChartStyles(AStream, AChart, 2);
+
+  AppendToStream(AStream,
+    '  <office:body>' + LE +
+    '    <office:chart>' + LE
+  );
+
+  chartClass := CHART_TYPE_NAMES[AChart.GetChartType];
+  if chartClass <>  '' then
+    chartClass := ' chart:class="chart:' + chartClass + '"';
+
+  AppendToStream(AStream, Format(
+    '      <chart:chart svg:width="%.3fmm" svg:height="%.3fmm" xlink:href=".." ' + LE +
+    '          xlink:type="simple"' + chartClass + ' chart:style-name="ch1"> ' + LE,
+    [
+    AChart.Width,      // Width, Height are in mm
+    AChart.Height
+    ],  FPointSeparatorSettings
+  ));
+
+  WriteChartTitle(AStream, AChart, false, 8);  // Title
+  WriteChartTitle(AStream, AChart, true, 8);   // Subtitle
+  WriteChartLegend(AStream, AChart, 8);
+  WriteChartPlotArea(AStream, AChart, 8);
+  WriteChartTable(AStream, AChart, 8);
+
+  AppendToStream(AStream,
+    '      </chart:chart>' + LE +
+    '    </office:chart>' + LE +
+    '  </office:body>' + LE +
+    '</office:document-content>');
+end;
+
+procedure TsSpreadOpenDocWriter.WriteChartAxis(AStream: TStream; AChart: TsChart;
+  IsX, IsPrimary: Boolean; AIndent: Integer);
+const
+  AXIS_ID: array[boolean] of string = ('y', 'x');
+  AXIS_LEVEL: array[boolean] of string = ('secondary', 'primary');
+var
+  ind: String;
+  axis: TsChartAxis;
+  series: TsChartSeries;
+  sheet: TsWorksheet;
+  refStr: String;
+  styleID, titleStyleID: Integer;
+  majorGridStyleID: Integer = 8;
+  minorGridstyleID: Integer = 9;
+  r1, c1, r2, c2: Cardinal;
+begin
+  ind := DupeString(' ', AIndent);
+  sheet := TsWorkbook(FWorkbook).GetWorksheetByIndex(AChart.SheetIndex);
+
+  if IsX then
+  begin
+    if IsPrimary then
+    begin
+      axis := AChart.XAxis;
+      styleID := 6;
+    end else
+    begin
+      axis := AChart.X2Axis;
+      styleID := 10;
+    end;
+    titleStyleID := 7;
+  end else
+  begin
+    if IsPrimary then
+    begin
+      axis := AChart.YAxis;
+      styleID := 11;
+    end else
+    begin
+      axis := AChart.Y2Axis;
+      styleID := 12;
+    end;
+    titleStyleID := 12;
+  end;
+
+  AppendToStream(AStream, Format(
+    ind + '<chart:axis chart:dimension="%s" chart:name="%s-%s" chart:style-name="ch%d" chartooo:axis-type="auto">' + LE,
+    [ AXIS_ID[IsX], AXIS_LEVEL[IsPrimary], AXIS_ID[IsX], styleID ]
+  ));
+
+  if IsX and (not AChart.IsScatterChart) and (AChart.Series.Count > 0) then
+  begin
+    series := AChart.Series[0];
+    r1 := series.LabelRange.Row1;
+    c1 := series.LabelRange.Col1;
+    r2 := series.LabelRange.Row2;
+    c2 := series.LabelRange.Col2;
+    refStr := GetSheetCellRangeString_ODS(sheet.Name, sheet.Name, r1, c1, r2, c2, rfAllRel, false);
+    AppendToStream(AStream, Format(
+      ind + '  <chart:categories table:cell-range-address="%s"/>' + LE,
+      [ refStr ]
+    ));
+  end;
+
+  if axis.Caption <> '' then
+    AppendToStream(AStream, Format(
+      ind + '  <chart:title chart:style-name="ch%d">' + LE +
+      ind + '    <text:p>%s</text:p>' + LE +
+      ind + '  </chart:title>' + LE,
+      [ titleStyleID, axis.Caption ]
+    ));
+
+  if axis.ShowMajorGridLines then
+    AppendToStream(AStream, Format(
+      ind + '  <chart:grid chart:style-name="ch%d" chart:class="major"/>' + LE,
+      [ majorGridStyleID ]
+    ));
+
+  if axis.ShowMinorGridLines then
+    AppendToStream(AStream, Format(
+      ind + '  <chart:grid chart:style-name="ch%d" chart:class="minor"/>' + LE,
+      [ minorGridStyleID ]
+    ));
+
+  AppendToStream(AStream,
+    ind + '</chart:axis>' + LE
+  );
+end;
+
+{ Writes the chart's legend to the xml stream }
+procedure TsSpreadOpenDocWriter.WriteChartLegend(AStream: TStream; AChart: TsChart;
+  AIndent: Integer);
+var
+  ind: String;
+  legendStyleID: Integer = 4;
+begin
+  if (not AChart.Legend.Visible) then
+    exit;
+
+  ind := DupeString(' ', AIndent);
+  AppendToStream(AStream, Format(
+    ind + '<chart:legend chart:legend-position="end" ' +
+  //          'svg:x="14.875cm" svg:y="4.201cm" ' +
+            'style:legend-expansion="high" chart:style-name="ch%d"/>' + LE,
+    [ legendStyleID ]
+  ));
+end;
+
+procedure TsSpreadOpenDocWriter.WriteChartPlotArea(AStream: TStream;
+  AChart: TsChart; AIndent: Integer);
+var
+  ind: String;
+  i: Integer;
+  plotAreaStyleID: Integer = 5;
+  wallStyleID: Integer = 22;   // usually second to last of style list
+  floorstyleID: Integer = 23;  // usually last of style list
+begin
+  ind := DupeString(' ', AIndent);
+  AppendToStream(AStream, Format(
+    ind + '<chart:plot-area chart:style-name="ch%d" chart:data-source-has-labels="both">' + LE,
+    [ plotAreastyleID ]
+  ));
+  // ods has a table:cell-range-address here but it is reconstructed by Calc
+
+  WriteChartAxis(AStream, AChart, true,  true, AIndent + 2);  // true = x axis   true = primary
+  WriteChartAxis(AStream, AChart, false, true, AIndent + 2);  // false = y axis  true = primary
+
+  for i := 0 to AChart.Series.Count-1 do
+    WriteChartSeries(AStream, AChart, i, AIndent + 2);
+
+  AppendToStream(AStream, Format(
+    ind + '  <chart:wall chart:style-name="ch%d"/>' + LE +
+    ind + '  <chart:floor chart:style-name="ch%d"/>' + LE +
+    ind + '</chart:plot-area>' + LE,
+    [ wallStyleID, floorStyleID ]
+  ));
+end;
+
+procedure TsSpreadOpenDocWriter.WriteChartSeries(AStream: TStream;
+  AChart: TsChart; ASeriesIndex: Integer; AIndent: Integer);
+var
+  ind: String;
+  sheet: TsWorksheet;
+  series: TsChartSeries;
+  valuesRange: String;
+  titleAddr: String;
+  count: Integer;
+  seriesStyleID: Integer;
+begin
+  ind := DupeString(' ', AIndent);
+
+  series := AChart.Series[ASeriesIndex];
+  sheet := TsWorkbook(FWorkbook).GetWorksheetByIndex(AChart.sheetIndex);
+
+  valuesRange := GetSheetCellRangeString_ODS(
+    sheet.Name, sheet.Name,
+    series.YRange.Row1, series.YRange.Col1,
+    series.YRange.Row2, series.YRange.Col2,
+    rfAllRel, false
+  );
+  titleAddr := GetSheetCellRangeString_ODS(
+    sheet.Name, sheet.Name,
+    series.TitleAddr.Row, series.TitleAddr.Col,
+    series.TitleAddr.Row, series.TitleAddr.Col,
+    rfAllRel, false);
+  count := series.YRange.Row2 - series.YRange.Row1 + 1;
+
+  seriesStyleID := 14 + ASeriesIndex;
+
+  AppendToStream(AStream, Format(
+    ind + '<chart:series chart:style-name="ch%d" ' +
+            'chart:values-cell-range-address="%s" ' +      // y values
+            'chart:label-cell-address="%s" ' +             // series title
+            'chart:class="chart:%s">' + LE,
+    [ seriesStyleID, valuesRange, titleAddr, CHART_TYPE_NAMES[series.ChartType] ]
+  ));
+  AppendToStream(AStream, Format(
+    ind + '  <chart:data-point chart:repeated="%d"/>' + LE,
+    [ count ]
+  ));
+  AppendToStream(AStream,
+    ind + '</chart:series>' + LE
+  );
+end;
+
+{ To do: The list of styles must be updated to the real chart element settings. }
+procedure TsSpreadOpenDocWriter.WriteChartStyles(AStream: TStream;
+  AChart: TsChart; AIndent: Integer);
+var
+  ind: String;
+begin
+  ind := DupeString(' ', AIndent);
+
+  AppendToStream(AStream,
+    ind + '<office:automatic-styles>' + LE +
+    ind + '  <number:number-style style:name="N0">' + LE +
+    ind + '    <number:number number:min-integer-digits="1"/>' + LE +
+    ind + '  </number:number-style>' + LE +
+
+    // ch1: style for <chart:chart> element
+    ind + '  <style:style style:name="ch1" style:family="chart">' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch2: style for <chart:title> element
+    ind + '  <style:style style:name="ch2" style:family="chart">' + LE +
+    ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="13pt" style:font-size-asian="13pt" style:font-size-complex="13pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch3: style for <chart:subtitle element
+    ind + '  <style:style style:name="ch3" style:family="chart">' + LE +
+    ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="11pt" style:font-size-asian="11pt" style:font-size-complex="11pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch 4: style for <chart:legend> element
+    ind + '  <style:style style:name="ch4" style:family="chart">' + LE +
+    ind + '    <style:chart-properties chart:auto-position="true"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none" svg:stroke-color="#b3b3b3" ' +
+                 'draw:fill="none" draw:fill-color="#e6e6e6"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch5: style for <chart:plot-area> element
+    ind + '  <style:style style:name="ch5" style:family="chart">' + LE +
+    ind + '    <style:chart-properties ' +
+                 'chart:symbol-type="automatic" ' +
+                 'chart:include-hidden-cells="false" ' +
+                 'chart:auto-position="true" ' +
+                 'chart:auto-size="true" ' +
+                 'chart:treat-empty-cells="leave-gap" ' +
+                 'chart:right-angled-axes="true"/>' + LE +
+    ind + '  </style:style>' +
+
+                 {
+    ind + '  <style:style style:name="ch5" style:family="chart">' + LE +
+    ind + '    <style:chart-properties ' +
+                 'chart:include-hidden-cells="false" ' +
+                 'chart:auto-position="true" ' +
+                 'chart:auto-size="true" ' +
+                 'chart:treat-empty-cells="leave-gap" ' +
+                 'chart:right-angled-axes="true"/>' + LE +
+    ind + '  </style:style>' + LE +
+                  }
+
+    // ch6: style for first <chart:axis> element, primary x axis
+    ind + '    <style:style style:name="ch6" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '      <style:chart-properties chart:display-label="true" ' +
+                   'chart:logarithmic="false" chart:reverse-direction="false" ' +
+                   'text:line-break="false" loext:try-staggering-first="false" ' +
+                   'chart:link-data-style-to-source="true" chart:axis-position="0"/>' + LE +
+    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch7: style for title at horizontal axes
+    ind + '  <style:style style:name="ch7" style:family="chart">' + LE +
+    ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="9pt" style:font-size-asian="9pt" style:font-size-complex="9pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch8: style for major grid (all axes)
+    ind + '  <style:style style:name="ch8" style:family="chart">' + LE +
+    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
+    ind + '    </style:style>' + LE +
+
+    // ch9: style for minor grid (all axes)
+    ind + '  <style:style style:name="ch9" style:family="chart">' + LE +
+    ind + '    <style:graphic-properties svg:stroke-color="#dddddd"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch10: style for second <chart:axis> element, secondary x axis
+    ind + '  <style:style style:name="ch10" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:display-label="true" ' +
+                 'chart:logarithmic="false" chart:reverse-direction="false" ' +
+                 'text:line-break="false" loext:try-staggering-first="false" ' +
+                 'chart:link-data-style-to-source="true" chart:axis-position="end"/>' + LE +
+    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch11: style for third <chart:axis> element: primary y axis
+    ind + '  <style:style style:name="ch11" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:display-label="true" ' +
+                 'chart:logarithmic="false" chart:reverse-direction="false" ' +
+                 'text:line-break="false" loext:try-staggering-first="false" ' +
+                 'chart:link-data-style-to-source="true" chart:axis-position="0"/>' + LE +
+    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch12: style for vertical axis title (both y and y2 axis)
+    ind + '  <style:style style:name="ch12" style:family="chart">' + LE +
+    ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="90"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="9pt" style:font-size-asian="9pt" style:font-size-complex="9pt"/>' + LE +
+    ind + '  </style:style>' +
+
+    // ch13: style for fourth <chart:axis> element: secondary y axis
+    ind + '  <style:style style:name="ch13" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:display-label="true" ' +
+                 'chart:logarithmic="false" chart:reverse-direction="false" ' +
+                 'text:line-break="false" loext:try-staggering-first="false" ' +
+                 'chart:link-data-style-to-source="true" chart:axis-position="end"/>' + LE +
+    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch14: style for frist series - this is for a line series
+    ind + '  <style:style style:name="ch14" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties ' +
+                 'chart:symbol-type="named-symbol" ' +
+                 'chart:symbol-name="arrow-down" ' +
+                 'chart:symbol-width="0.25cm" ' +
+                 'chart:symbol-height="0.25cm" ' +
+                 'chart:link-data-style-to-source="true"/>' + LE +
+    ind + '    <style:graphic-properties ' +
+                 'svg:stroke-width="0.08cm" ' +
+                 'svg:stroke-color="#ffd320" ' +
+                 'draw:fill-color="#ffd320" ' +
+                 'dr3d:edge-rounding="5%"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' +
+    ind + '  </style:style>' + LE +
+
+    (*
+    // ch14: style for first series - this is for a bar series
+    ind + '  <style:style style:name="ch14" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#004586" dr3d:edge-rounding="5%"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+    *)
+
+    // ch15: style for second series - this is for a bar series
+    ind + '  <style:style style:name="ch15" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#ff420e" dr3d:edge-rounding="5%"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch16: style for third series (bar series, here)
+    ind + '  <style:style style:name="ch16" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#ffd320" dr3d:edge-rounding="5%"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch17: style for 4th series (bar series, here)
+    ind + '  <style:style style:name="ch17" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#579d1c" dr3d:edge-rounding="5%"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch18: style for 5th series (bar series, here)
+    ind + '  <style:style style:name="ch18" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#7e0021" dr3d:edge-rounding="5%"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch19: style for 6th series (bar series, here)
+    ind + '  <style:style style:name="ch19" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#83caff" dr3d:edge-rounding="5%"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch20: style for 7th series (bar series, here)
+    ind + '  <style:style style:name="ch20" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#314004" dr3d:edge-rounding="5%"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // ch21: style for 8th series (bar series, here)
+    ind + '  <style:style style:name="ch21" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#aecf00" dr3d:edge-rounding="5%"/>' + LE +
+    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // next to last: style for wall
+    ind + '  <style:style style:name="ch22" style:family="chart">' + LE +
+    ind + '    <style:graphic-properties draw:stroke="solid" svg:stroke-color="#b3b3b3" draw:fill="none" draw:fill-color="#e6e6e6"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    // last: last style for floor
+    ind + '  <style:style style:name="ch23" style:family="chart">' + LE +
+    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3" draw:fill-color="#cccccc"/>' + LE +
+    ind + '  </style:style>' + LE +
+
+    ind + '</office:automatic-styles>' + LE
+  );
+end;
+
+{ Extracts the cells needed by the given chart from the chart's worksheet and
+  copies their values into a temporary worksheet, AWorksheet, so that these
+  data can be written to the xml immediately.
+  Independently of the layout in the original worksheet, data are arranged in
+  columns of AWorksheet, starting at cell A1.
+  - First column: Categories (or index in case of scatter chart)
+  - Second column:
+      in case of category charts: y values of the first series,
+      in case of scatter series: x values of the first series
+  - Third column:
+      in case of category charts: y values of the second series
+      in case of scatter series. y values of the first series
+  - etc.
+  The first row contains
+  - nothing in case of the first column
+  - cell range reference in ODS syntax for the cells in the original worksheet.
+  The aux worksheet should be contained in a separate workbook to avoid
+  interfering with the writing process.
+  }
+procedure TsSpreadOpenDocWriter.PrepareChartTable(AChart: TsChart;
+  AWorksheet: TsBasicWorksheet);
+var
+  isScatterChart: Boolean;
+  series: TsChartSeries;
+  seriesSheet: TsWorksheet;
+  auxSheet: TsWorksheet;
+  refStr, txt: String;
+  i, j: Integer;
+  srcCell, destCell: PCell;
+  destCol: Cardinal;
+  r1, c1, r2, c2: Cardinal;
+  nRows: Integer;
+begin
+  if AChart.Series.Count = 0 then
+    exit;
+
+  auxSheet := TsWorksheet(AWorksheet);
+  seriesSheet := TsWorkbook(FWorkbook).GetWorksheetByIndex(AChart.SheetIndex);
+  isScatterChart := AChart.IsScatterChart;
+
+  // Determine the number of rows in auxiliary output worksheet.
+  nRows := 0;
+  for i := 0 to AChart.Series.Count-1 do
+  begin
+    series := AChart.Series[i];
+    j := series.GetXCount;
+    if j > nRows then nRows := j;
+    j := series.GetYCount;
+    if j > nRows then nRows := j;
+  end;
+
+  // Write label column. If missing, write consecutive numbers 1, 2, 3, ...
+  destCol := 0;
+  for i := 0 to AChart.Series.Count-1 do
+  begin
+    series := AChart.Series[i];
+
+    // Write the label column. Use consecutive numbers 1, 2, 3, ... if there
+    // are no labels.
+    if series.HasLabels then
+    begin
+      r1 := series.LabelRange.Row1;
+      c1 := series.LabelRange.Col1;
+      r2 := series.LabelRange.Row2;
+      c2 := series.LabelRange.Col2;
+      refStr := GetSheetCellRangeString_ODS(seriesSheet.Name, seriesSheet.Name, r1, c1, r2, c2, rfAllRel, false);
+    end else
+      refStr := '';
+
+    auxSheet.WriteText(0, destCol, '');
+
+    for j := 1 to nRows do
+    begin
+      if series.HasLabels then
+      begin
+        if series.LabelsInCol then
+          srcCell := seriesSheet.FindCell(r1 + j - 1, c1)
+        else
+          srcCell := seriesSheet.FindCell(r1, c1 + j - 1);
+      end else
+        srcCell := nil;
+      if srcCell <> nil then
+      begin
+        destCell := auxsheet.GetCell(j, destCol);
+        seriesSheet.CopyValue(srcCell, destCell);
+      end else
+        destCell := auxSheet.WriteNumber(j, destCol, j);
+    end;
+    if (refStr <> '') then
+      auxsheet.WriteComment(1, destCol, refStr);
+
+    // In case of scatter plot write the x column. Use consecutive numbers 1, 2, 3, ...
+    // if there are no x values.
+    if isScatterChart then
+    begin
+      inc(destCol);
+
+      if series.HasXValues then
+      begin
+        r1 := series.XRange.Row1;
+        c1 := series.XRange.Col1;
+        r2 := series.XRange.Row2;
+        c2 := series.XRange.Col2;
+        refStr := GetSheetCellRangeString_ODS(seriesSheet.Name, seriesSheet.Name, r1, c1, r2, c2, rfAllRel, false);
+        if series.XValuesInCol then
+          txt := 'Col ' + GetColString(c1)
+        else
+          txt := 'Row ' + GetRowString(r1);
+      end else
+      begin
+        refStr := '';
+        txt := '';
+      end;
+
+      auxSheet.WriteText(0, destCol, txt);
+
+      for j := 1 to nRows do
+      begin
+        if series.HasXValues then
+        begin
+          if series.XValuesInCol then
+            srcCell := seriesSheet.FindCell(r1 + j - 1, c1)
+          else
+            srcCell := seriesSheet.FindCell(r1, c1 + j - 1);
+        end else
+          srcCell := nil;
+        if srcCell <> nil then
+        begin
+          destCell := auxsheet.GetCell(j, destCol);
+          seriesSheet.CopyValue(srcCell, destCell);
+        end else
+          destCell := auxSheet.WriteNumber(j, destCol, j);
+      end;
+      if (refStr <> '') then
+        auxsheet.WriteComment(1, destCol, refStr);
+    end;
+
+    // Write the y column
+    if not series.HasYValues then
+      Continue;
+
+    inc(destCol);
+
+    r1 := series.TitleAddr.Row;                   // Series title
+    c1 := series.TitleAddr.Col;
+    txt := seriesSheet.ReadAsText(r1, c1);
+    auxsheet.WriteText(0, destCol, txt);
+    refStr := GetSheetCellRangeString_ODS(seriesSheet.Name, seriesSheet.Name, r1, c1, r1, c1, rfAllRel, false);
+    if (refStr <> '') then
+      auxSheet.WriteComment(0, destCol, refStr);   // Store title reference as comment for svg node
+
+    r1 := series.YRange.Row1;
+    c1 := series.YRange.Col1;
+    r2 := series.YRange.Row2;
+    c2 := series.YRange.Col2;
+    refStr := GetSheetCellRangeString_ODS(seriesSheet.Name, seriesSheet.Name, r1, c1, r2, c2, rfAllRel, false);
+    for j := 1 to series.GetYCount do
+    begin
+      if series.YValuesInCol then
+        srcCell := seriesSheet.FindCell(r1 + j - 1, c1)
+      else
+        srcCell := seriesSheet.FindCell(r1, c1 + j - 1);
+      if srcCell <> nil then
+      begin
+        destCell := auxSheet.GetCell(j, destCol);
+        seriesSheet.CopyValue(srcCell, destCell);
+      end else
+        destCell := auxSheet.WriteNumber(j, destCol, j);
+    end;
+
+    if (refStr <> '') then
+      auxSheet.WriteComment(1, destCol, refStr);   // Store y range reference as comment for svg node
+  end;
+end;
+
+{ Writes the chart's data table. NOTE: The chart gets its data from this table
+  rather than from the worksheet! }
+procedure TsSpreadOpenDocWriter.WriteChartTable(AStream: TStream; AChart: TsChart;
+  AIndent: Integer);
+var
+  auxBook: TsWorkbook;
+  auxSheet: TsWorksheet;
+
+  procedure WriteAuxCell(AIndent: Integer; ACell: PCell);
+  var
+    ind: String;
+    valueType: String;
+    value: String;
+    officeValue: String;
+    draw: String;
+  begin
+    ind := DupeString(' ', AIndent);
+    if (ACell = nil) or (ACell^.ContentType = cctEmpty) then
+    begin
+      AppendToStream(AStream,
+        ind + '<table:table-cell>' + LE +
+        ind + '  <text:p/>' + LE +
+        ind + '</table:table-cell>' + LE
+      );
+      exit;
+    end;
+
+    case ACell^.ContentType of
+      cctUTF8String:
+        begin
+          valueType := 'string';
+          value := auxSheet.ReadAsText(ACell);
+          officeValue := '';
+        end;
+      cctNumber, cctDateTime, cctBool:
+        begin
+          valueType := 'float';
+          value := Format('%g', [auxSheet.ReadAsNumber(ACell)], FPointSeparatorSettings);
+        end;
+      cctError:
+        begin
+          valueType := 'float';
+          value := 'NaN';
+        end;
+    end;
+
+    if ACell^.ContentType = cctUTF8String then
+      officeValue := ''
+    else
+      officeValue := ' office:value="' + value + '"';
+
+    if auxSheet.HasComment(ACell) then
+    begin
+      draw := auxSheet.ReadComment(ACell);
+      if draw <> '' then
+        draw := Format(
+          ind + '  <draw:g>' + LE +
+          ind + '    <svg:desc>%s</svg:desc>' + LE +
+          ind + '  </draw:g>' + LE, [draw]);
+    end else
+      draw := '';
+    AppendToStream(AStream, Format(
+      ind + '<table:table-cell office:value-type="%s"%s>' + LE +
+        ind + '  <text:p>%s</text:p>' + LE +
+        draw +
+        ind + '</table:table-cell>' + LE,
+        [ valueType, officevalue, value ]
+      ));
+  end;
+
+var
+  ind: String;
+  colCountStr: String;
+  n: Integer;
+  r, c: Cardinal;
+begin
+  ind := DupeString(' ', AIndent);
+  n := AChart.Series.Count;
+  if n > 0 then
+  begin
+    if AChart.IsScatterChart then
+      n := n * 2;
+    colCountStr := Format('table:number-columns-repeated="%d"', [n]);
+  end else
+    colCountStr := '';
+
+  AppendToStream(AStream, Format(
+        ind + '<table:table table:name="local-table">' + LE +
+        ind + '  <table:table-header-columns>' + LE +
+        ind + '    <table:table-column/>' + LE +
+        ind + '  </table:table-header-columns>' + LE +
+        ind + '  <table:table-columns>' + LE +
+        ind + '    <table:table-column %s/>' + LE +
+        ind + '  </table:table-columns>' + LE, [ colCountStr ]
+  ));
+
+  auxBook := TsWorkbook.Create;
+  try
+    auxSheet := auxBook.AddWorksheet('chart');
+    PrepareChartTable(AChart, auxSheet);
+
+    // Header rows (containing the series names)
+    AppendToStream(AStream,
+        ind + '  <table:table-header-rows>' + LE +
+        ind + '    <table:table-row>' + LE );
+    for c := 0 to auxSheet.GetLastColIndex do
+      WriteAuxCell(AIndent + 6, auxSheet.FindCell(0, c));
+    AppendToStream(AStream,
+        ind + '    </table:table-row>' + LE +
+        ind + '  </table-header-rows>' + LE
+    );
+
+    // Write data rows
+    AppendToStream(AStream,
+        ind + '  <table:table-rows>' + LE
+    );
+    for r := 1 to auxSheet.GetLastRowIndex do
+    begin
+      AppendToStream(AStream,
+        ind + '    <table:table-row>' + LE
+      );
+      for c := 0 to auxSheet.GetlastColIndex do
+        WriteAuxCell(AIndent + 6, auxSheet.FindCell(r, c));
+      AppendToStream(AStream,
+        ind + '    </table:table-row>' + LE
+      );
+    end;
+    AppendToStream(AStream,
+        ind + '  </table:table-rows>' + LE +
+        ind + '</table:table>' + LE
+    );
+
+    //auxBook.WriteToFile('table.ods', true);
+  finally
+    auxBook.Free;
+  end;
+end;
+
+{ Writes the chart's title to the xml stream }
+procedure TsSpreadOpenDocWriter.WriteChartTitle(AStream: TStream; AChart: TsChart;
+  IsSubTitle: Boolean; AIndent: Integer);
+var
+  ind: String;
+  elementName: String;
+  titleStyleID: Integer;
+  cap: String;
+begin
+  if (not AChart.Title.Visible) or (AChart.Title.Caption = '') then
+    exit;
+
+  ind := DupeString(' ', AIndent);
+  if IsSubTitle then
+  begin
+    elementName := 'subtitle';
+    titleStyleID := 3;
+    cap := AChart.SubTitle.Caption;
+  end else
+  begin
+    elementName := 'title';
+    titleStyleID := 2;
+    cap := AChart.Title.Caption;
+  end;
+  AppendToStream(AStream, Format(
+//    ind + '<chart:title svg:x="%.3fcm" svg:y="%.3fcm" chart:style-name="ch2">' + LE +
+    ind + '<chart:%s chart:style-name="ch%d">' + LE +
+    ind + '  <text:p>%s</text:p>' + LE +
+    ind + '</chart:%s>' + lE,
+    [ elementName, titleStyleID, cap, elementName ], FPointSeparatorSettings
+  ));
 end;
 
 { Writes the "office:automatic" > "style:style" node for table-column style family
@@ -7079,6 +7938,21 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocWriter.WriteGraphicStyles(AStream: TStream);
+begin
+  if TsWorkbook(FWorkbook).GetChartCount = 0 then
+    exit;
+
+  AppendToStream(AStream,
+    '<style:style style:name="gr1" style:family="graphic">' +
+      '<style:graphic-properties draw:stroke="none" draw:fill="none" ' +
+        'draw:textarea-horizontal-align="center" ' +
+        'draw:textarea-vertical-align="middle" draw:ole-draw-aspect="1"/>' +
+      '<style:paragraph-properties fo:text-align="center"/>' +
+    '</style:style>'
+  );
+end;
+
 procedure TsSpreadOpenDocWriter.WriteMasterStyles(AStream: TStream);
 var
   defFnt: TsHeaderFooterFont;
@@ -7328,6 +8202,19 @@ begin
   AppendToStream(AStream,
     '</office:styles>');
 
+end;
+
+procedure TsSpreadOpenDocWriter.WriteParagraphStyles(AStream: TStream);
+begin
+  if TsWorkbook(FWorkbook).GetChartCount = 0 then
+    exit;
+
+  AppendToStream(AStream,
+    '<style:style style:name="P1" style:family="paragraph">' +
+      '<loext:graphic-properties draw:fill="none"/>' +
+      '<style:paragraph-properties fo:text-align="center"/>' +
+    '</style:style>'
+  );
 end;
 
 function TsSpreadOpenDocWriter.WritePrintContentStyleXMLAsString(
@@ -8905,21 +9792,93 @@ procedure TsSpreadOpenDocWriter.WriteShapes(AStream: TStream;
 </table:shapes>
 }
 var
+  sheet: TsWorksheet absolute ASheet;
   i: Integer;
+  sheetIdx: Integer;
+  chart: TsChart;
+  series: TsChartSeries;
   img: TsImage;
   imgType: TsImageType;
   r1,c1,r2,c2: Cardinal;
   roffs1,coffs1, roffs2, coffs2: Double;
   x, y, w, h: Double;
+  xRngAddr, yRngAddr, titleAddr: String;
   xml: String;
   target, bookmark: String;
   u: TURI;
 begin
-  if (ASheet as TsWorksheet).GetImageCount = 0 then
+  if (sheet.GetImageCount = 0) and (sheet.GetChartCount = 0) then
     exit;
 
   AppendToStream(AStream,
     '<table:shapes>');
+
+  sheetIdx := sheet.Index;
+  for i:=0 to TsWorkbook(FWorkbook).GetChartCount-1 do
+  begin
+    chart := TsWorkbook(FWorkbook).GetChartByIndex(i);
+    if chart.SheetIndex <> sheetIdx then
+      Continue;
+    if chart.Series.Count = 0 then
+      Continue;
+
+    r1 := chart.Row;
+    c1 := chart.Col;
+    rOffs1 := chart.OffsetX;
+    cOffs1 := chart.OffsetY;
+    w := chart.Width;
+    h := chart.Height;
+    sheet.CalcDrawingExtent(true, w, h, r1, c1, r2, c2, rOffs1, cOffs1, rOffs2, cOffs2, x, y);
+
+    series := chart.Series[0];
+    if (series.XRange.Row1 <> series.XRange.Row2) or (series.XRange.Col1 <> series.XRange.Col2) then
+      xRngAddr := GetSheetCellRangeString_ODS(
+        sheet.Name, sheet.Name,
+        series.XRange.Row1, series.XRange.Col1,
+        series.XRange.Row2, series.XRange.Col2,
+        rfAllRel, false
+      )
+    else
+      xRngAddr := GetSheetCellRangeString_ODS(
+        sheet.Name, sheet.Name,
+        series.LabelRange.Row1, series.LabelRange.Col1,
+        series.LabelRange.Row2, series.LabelRange.Col2,
+        rfAllRel, false
+      );
+    yRngAddr := GetSheetCellRangeString_ODS(
+      sheet.Name, sheet.Name,
+      series.YRange.Row1, series.YRange.Col1,
+      series.YRange.Row2, series.YRange.Col2,
+      rfAllRel, false
+    );
+    titleAddr := GetSheetCellRangeString_ODS(
+      sheet.Name, sheet.Name,
+      series.TitleAddr.row, series.TitleAddr.Col,
+      series.TitleAddr.row, series.TitleAddr.Col,
+      rfAllRel, false
+    );
+
+    xml := Format(
+      '<draw:frame draw:z-index="%d" ' +
+          'draw:style-name="gr1" draw:text-style-name="P1" ' +
+          'svg:width="%.3fmm" svg:height="%.3fmm" ' +
+          'svg:x="%.3fmm" svg:y="%.3fmm">' +
+        '<draw:object ' +
+            'draw:notify-on-update-of-ranges="%s" ' +
+            'xlink:href="./Object %d" ' +
+            'xlink:type="simple" xlink:show="embed" xlink:actuate="onLoad"> ' +
+          '<loext:p/>' +
+        '</draw:object>' +
+      '</draw:frame>', [
+      i+1,
+      w, h,
+      x, y,
+      xRngAddr + ' ' + titleAddr + ' ' + yrngAddr,
+      chart.Index+1
+    ], FPointSeparatorSettings);
+
+    AppendToStream(AStream, xml);
+  end;
 
   for i:=0 to (ASheet as TsWorksheet).GetImageCount-1 do
   begin
