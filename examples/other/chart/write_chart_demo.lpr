@@ -34,6 +34,18 @@ begin
 
     ch.Border.Color := scWhite;
     ch.Border.Style := clsSolid;
+
+    ch.PlotArea.Background.Style := fsSolidFill;
+    ch.PlotArea.Background.FgColor := $1F1F1F;
+    {$ELSE}
+    ch.Background.FgColor := scWhite;
+    ch.Background.Style := fsSolidFill;
+
+    ch.Border.Color := scBlack;
+    ch.Border.Style := clsSolid;
+
+    ch.PlotArea.Background.Style := fsSolidFill;
+    ch.PlotArea.Background.FgColor := $F0F0F0;
     {$ENDIF}
 
     ch.Title.Caption := 'HALLO';

@@ -747,11 +747,11 @@ begin
   FWidth := 12;
   FHeight := 9;
 
-  FBackground.Style := fsNoFill;
-  FBorder.Style := clsNoLine;
+  // FBackground and FBorder already created by ancestor.
 
   FPlotArea := TsChartFillElement.Create(self);
   FFloor := TsChartFillElement.Create(self);
+  FFloor.Background.Style := fsNoFill;
 
   FTitle := TsChartText.Create(self);
   FTitle.Font.Size := 14;
