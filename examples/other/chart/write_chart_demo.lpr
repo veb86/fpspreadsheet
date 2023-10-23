@@ -22,37 +22,32 @@ begin
       sh1.WriteNumber(i, 1, sin(i-1));
     end;
 
-    ch := b.AddChart(sh1, 4, 4, 125, 95);
+    ch := b.AddChart(sh1, 4, 4, 160, 100);
     ser := TsLineSeries.Create(ch);
     ser.SetTitleAddr(0, 1);
     ser.SetLabelRange(1, 0, 7, 0);
     ser.SetYRange(1, 1, 7, 1);
 
+    ch.Background.Style := fsSolidFill;
+    ch.Border.Style := clsSolid;
+    ch.PlotArea.Background.Style := fsSolidFill;
     {$IFDEF DARK_MODE}
     ch.Background.FgColor := scBlack;
-    ch.Background.Style := fsSolidFill;
-
     ch.Border.Color := scWhite;
-    ch.Border.Style := clsSolid;
-
-    ch.PlotArea.Background.Style := fsSolidFill;
     ch.PlotArea.Background.FgColor := $1F1F1F;
     {$ELSE}
     ch.Background.FgColor := scWhite;
-    ch.Background.Style := fsSolidFill;
-
     ch.Border.Color := scBlack;
-    ch.Border.Style := clsSolid;
-
-    ch.PlotArea.Background.Style := fsSolidFill;
     ch.PlotArea.Background.FgColor := $F0F0F0;
     {$ENDIF}
     ch.XAxis.ShowLabels := true;
     ch.XAxis.LabelFont.Size := 8;
     ch.XAxis.LabelFont.Color := scRed;
+    ch.XAxis.LabelFont.Style := [fssStrikeout];
     ch.XAxis.AxisLine.Color := scRed;
     ch.XAxis.CaptionFont.Color := scRed;
     ch.XAxis.CaptionFont.Size := 12;
+    ch.XAxis.Inverted := true;
 
     ch.YAxis.ShowLabels := true;
     ch.YAxis.LabelFont.Size := 8;
@@ -71,6 +66,13 @@ begin
 
     ch.YAxis.MajorGridLines.Style := clsSolid;
     ch.YAxis.MinorGridLines.Style := clsSolid;
+
+    ch.Legend.Font.Size := 20;
+    ch.Legend.Font.Color := scGreen;
+    ch.Legend.Border.Width := 3;
+    ch.Legend.Border.Color := scRed;
+    ch.Legend.Background.FgColor := scYellow;
+    ch.Legend.Background.Style := fsSolidFill;
 
     // 2nd sheet
     sh2 := b.AddWorksheet('test2');

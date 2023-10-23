@@ -82,6 +82,16 @@ type
     class operator = (A, B: TsChartCaptionRec): Boolean;
   end;
 
+  TsChartLegendRec = record
+    Font: TsChartFontRec;
+    Border: TsChartLineRec;
+    Fill: TsChartFillRec;
+    Visible: Boolean;
+    procedure FromChart(AChart: TsChart);
+    procedure ToChart(AChart: TsChart);
+    class operator = (A, B: TsChartLegendRec): Boolean;
+  end;
+
   {----------------------------------------------------------------------------}
 
   TsChartStyle = class
@@ -131,6 +141,15 @@ type
     property CaptionType: TsChartCaptionType read FCaptionType write FCaptionType;
   end;
 
+  TsChartLegendStyle = class(TsChartStyle)
+  private
+    FLegend: TsChartLegendRec;
+  public
+    procedure ApplyToChart(AChart: TsChart);
+    procedure ExtractFromChart(AChart: TsChart);
+    property Legend: TsChartLegendRec read FLegend write FLegend;
+  end;
+
   { ---------------------------------------------------------------------------}
 
   TsChartStyleList = class(TFPList)
@@ -141,10 +160,12 @@ type
     procedure AddChartAxisStyle(AChart: TsChart; AType: TsChartAxisType);
     procedure AddChartBackgroundStyle(AChart: TsChart; AType: TsChartBackgroundType);
     procedure AddChartCaptionStyle(AChart: TsChart; AType: TsChartCaptionType);
+    procedure AddChartLegendStyle(AChart: TsChart);
     procedure Clear;
     function FindChartAxisStyle(AChart: TsChart; AType: TsChartAxisType): Integer;
     function FindChartBackgroundStyle(AChart: TsChart; AType: TsChartBackgroundType): Integer;
     function FindChartCaptionStyle(AChart: TsChart; AType: TsChartCaptionType): Integer;
+    function FindChartLegendStyle(AChart: TsChart): Integer;
   end;
 
 implementation
@@ -376,6 +397,33 @@ begin
   Result := (A.Font = B.Font) and (A.Visible = B.Visible);
 end;
 
+{ TsChartLegendRec }
+procedure TsChartLegendRec.FromChart(AChart: TsChart);
+begin
+  Font.FromFont(AChart.Legend.Font);
+  Border.FromLine(AChart.Legend.Border);
+  Fill.FromFill(AChart.Legend.Background);
+  Visible := AChart.Legend.Visible;
+end;
+
+procedure TsChartLegendRec.ToChart(AChart: TsChart);
+begin
+  Font.ToFont(AChart.Legend.Font);
+  Border.ToLine(AChart.Legend.Border);
+  Fill.ToFill(AChart.Legend.Background);
+  AChart.Legend.Visible := Visible;
+end;
+
+class operator TsChartLegendRec.= (A, B: TsChartLegendRec): Boolean;
+begin
+  Result := (A.Font = B.Font) and (A.Border = B.Border) and (A.Fill = B.Fill) and
+    (A.Visible = B.Visible);
+end;
+
+
+{==============================================================================}
+{                 Style classes to be listed in ChartStyleList                 }
+{==============================================================================}
 
 { TsChartBackgroundstyle }
 
@@ -477,6 +525,19 @@ begin
 end;
 
 
+{ TsChartLegendStyle }
+
+procedure TsChartLegendStyle.ApplyToChart(AChart: TsChart);
+begin
+  FLegend.ToChart(AChart);
+end;
+
+procedure TsChartLegendStyle.ExtractFromChart(AChart: TsChart);
+begin
+  FLegend.FromChart(AChart);
+end;
+
+
 { TsChartStyleList }
 
 destructor TsChartStyleList.Destroy;
@@ -493,6 +554,14 @@ begin
   FindChartAxisStyle(AChart, AType);
 end;
 
+{ Adds the style of the specified type in the given chart as new style to the
+  style list. But only if the same style does not yet exist. }
+procedure TsChartStyleList.AddChartBackgroundStyle(AChart: TsChart;
+  AType: TsChartBackgroundType);
+begin
+  FindChartBackgroundStyle(AChart, AType);
+end;
+
 { Adds the style of the specified caption in the given chart as new style to
   the style list. But only if the same style does not yet exist. }
 procedure TsChartStyleList.AddChartCaptionStyle(AChart: TsChart;
@@ -501,12 +570,11 @@ begin
   FindChartCaptionStyle(AChart, AType);
 end;
 
-{ Adds the style of the specified type in the given chart as new style to the
-  style list. But only if the same style does not yet exist. }
-procedure TsChartStyleList.AddChartBackgroundStyle(AChart: TsChart;
-  AType: TsChartBackgroundType);
+{ Adds the style of the legend of the given chart chart as new style to
+  the style list. But only if the same style does not yet exist. }
+procedure TsChartStyleList.AddChartLegendStyle(AChart: TsChart);
 begin
-  FindChartBackgroundStyle(AChart, AType);
+  FindChartLegendStyle(AChart);
 end;
 
 procedure TsChartStyleList.Clear;
@@ -611,6 +679,35 @@ begin
     newStyle.Free;
 end;
 
+{ Searches whether the legend style of the given chart is already in the
+  list. If not, a new style is created and added.
+  The type of the requested axis must be provided as parameter.
+  Returns the index of the style. }
+function TsChartStyleList.FindChartLegendStyle(AChart: TsChart): Integer;
+var
+  newStyle, style: TsChartLegendStyle;
+  i: Integer;
+begin
+  Result := -1;
+  newStyle := TsChartLegendStyle.Create;
+  newStyle.ExtractFromChart(AChart);
+  for i := 0 to Count-1 do
+  begin
+    if (TsChartStyle(Items[i]) is TsChartLegendStyle) then
+    begin
+      style := TsChartLegendStyle(Items[i]);
+      if (style.Legend = newStyle.Legend) then
+      begin
+        Result := i;
+        break;
+      end;
+    end;
+  end;
+  if Result = -1 then
+    Result := Add(newStyle)
+  else
+    newStyle.Free;
+end;
 
 end.
 

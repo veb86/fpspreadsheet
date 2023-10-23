@@ -1,4 +1,4 @@
-unit fpschart;
+unit fpsChart;
 
 {$mode objfpc}{$H+}
 {$modeswitch advancedrecords}
@@ -23,6 +23,10 @@ var
   clsLongDash: Integer = -1;
   clsLongDashDot: Integer = -1;
   clsLongDashDotDot: Integer = -1;
+
+const
+  DEFAULT_CHART_LINEWIDTH = 0.75;  // pts
+  DEFAULT_CHART_FONT = 'Arial';
 
 type
   TsChart = class;
@@ -160,7 +164,13 @@ type
     property ShowLabels: Boolean read FShowLabels write FShowLabels;
   end;
 
-  TsChartLegend = class(TsChartText)
+  TsChartLegend = class(TsChartFillElement)
+  private
+    FFont: TsFont;
+  public
+    constructor Create(AChart: TsChart);
+    destructor Destroy; override;
+    property Font: TsFont read FFont write FFont;
   end;
 
   TsChartAxisLink = (alPrimary, alSecondary);
@@ -329,10 +339,6 @@ type
 
 implementation
 
-const
-  DEFAULT_LINE_WIDTH = 0.75;  // pts
-  DEFAULT_FONT = 'Arial';
-
 { TsChartLineStyle }
 
 function TsChartLineStyle.GetID: String;
@@ -398,7 +404,7 @@ begin
   FBackground.FgColor := scWhite;
   FBorder := TsChartLine.Create;
   FBorder.Style := clsSolid;
-  FBorder.Width := PtsToMM(DEFAULT_LINE_WIDTH);
+  FBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
   FBorder.Color := scBlack;
 end;
 
@@ -417,7 +423,6 @@ begin
   inherited Create(AChart);
   FShowCaption := true;
   FFont := TsFont.Create;
-  FFont.FontName := DEFAULT_FONT;
   FFont.Size := 10;
   FFont.Style := [];
   FFont.Color := scBlack;
@@ -440,13 +445,11 @@ begin
   FAutomaticMinorSteps := true;
 
   FCaptionFont := TsFont.Create;
-  FCaptionFont.FontName := DEFAULT_FONT;
   FCaptionFont.Size := 10;
   FCaptionFont.Style := [];
   FCaptionFont.Color := scBlack;
 
   FLabelFont := TsFont.Create;
-  FLabelFont.FontName := DEFAULT_FONT;
   FLabelFont.Size := 9;
   FLabelFont.Style := [];
   FLabelFont.Color := scBlack;
@@ -460,27 +463,27 @@ begin
   FAxisLine := TsChartLine.Create;
   FAxisLine.Color := scBlack;
   FAxisLine.Style := clsSolid;
-  FAxisLine.Width := PtsToMM(DEFAULT_LINE_WIDTH);
+  FAxisLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
 
   FMajorTickLines := TsChartLine.Create;
   FMajorTickLines.Color := scBlack;
   FMajorTickLines.Style := clsSolid;
-  FMajorTickLines.Width := PtsToMM(DEFAULT_LINE_WIDTH);
+  FMajorTickLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
 
   FMinorTickLines := TsChartLine.Create;
   FMinorTickLines.Color := scBlack;
   FMinorTickLines.Style := clsSolid;
-  FMinorTickLines.Width := PtsToMM(DEFAULT_LINE_WIDTH);
+  FMinorTickLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
 
   FMajorGridLines := TsChartLine.Create;
   FMajorGridLines.Color := scSilver;
   FMajorGridLines.Style := clsSolid;
-  FMajorGridLines.Width := PtsToMM(DEFAULT_LINE_WIDTH);
+  FMajorGridLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
 
   FMinorGridLines := TsChartLine.Create;
   FMinorGridLines.Color := scSilver;
   FMinorGridLines.Style := clsDot;
-  FMinorGridLines.Width := PtsToMM(DEFAULT_LINE_WIDTH);
+  FMinorGridLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
 end;
 
 destructor TsChartAxis.Destroy;
@@ -492,6 +495,23 @@ begin
   FAxisLine.Free;
   FLabelFont.Free;
   FCaptionFont.Free;
+  inherited;
+end;
+
+
+{ TsChartLegend }
+
+constructor TsChartLegend.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FFont := TsFont.Create;
+  FFont.Size := 9;
+  FVisible := true;
+end;
+
+destructor TsChartLegend.Destroy;
+begin
+  FFont.Free;
   inherited;
 end;
 
@@ -619,12 +639,12 @@ begin
   FLine := TsChartLine.Create;
   FLine.Color := scBlack;
   FLine.Style := clsSolid;
-  FLine.Width := PtsToMM(DEFAULT_LINE_WIDTH);
+  FLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
 
   FSymbolBorder := TsChartline.Create;
   FSymbolBorder.Color := scBlack;
   FSymbolBorder.Style := clsSolid;
-  FSymbolBorder.Width := PtsToMM(DEFAULT_LINE_WIDTH);
+  FSymbolBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
 
   FSymbolFill := TsChartFill.Create;
   FSymbolFill.FgColor := scWhite;

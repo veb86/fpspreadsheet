@@ -289,6 +289,7 @@ type
     function GetChartAxisStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
     function GetChartBackgroundStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
     function GetChartCaptionStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
+    function GetChartLegendStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
 
     procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
     procedure WriteChart(AStream: TStream; AChart: TsChart);
@@ -5905,6 +5906,8 @@ begin
     styles.AddChartCaptionStyle(chart, cctSecondaryY);
     styles.AddChartCaptionStyle(chart, cctTitle);
     styles.AddChartCaptionStyle(chart, cctSubTitle);
+
+    styles.AddChartLegendStyle(chart);
   end;
 end;
 
@@ -6913,17 +6916,19 @@ procedure TsSpreadOpenDocWriter.WriteChartLegend(AStream: TStream; AChart: TsCha
   AIndent: Integer);
 var
   ind: String;
-  legendStyleID: Integer = 400;
+  legendStyleIdx: Integer = 400;
 begin
   if (not AChart.Legend.Visible) then
     exit;
+
+  legendStyleIdx := TsChartStyleList(FChartStyleList).FindChartLegendStyle(AChart);
 
   ind := DupeString(' ', AIndent);
   AppendToStream(AStream, Format(
     ind + '<chart:legend chart:legend-position="end" ' +
   //          'svg:x="14.875cm" svg:y="4.201cm" ' +
             'style:legend-expansion="high" chart:style-name="ch%d"/>' + LE,
-    [ legendStyleID ]
+    [ legendStyleIdx + 1 ]
   ));
 end;
 
@@ -7011,12 +7016,10 @@ function TsSpreadOpenDocWriter.GetChartAxisStyleAsXML(
 var
   ind: String;
   style: TsChartAxisStyle;
-  displayLabels: string = '';
-  logarithmic: String = '';
-  strokeColor: String = '';
-  styleRotationAngle: String = '';
-  fontSize: String = '';
-  fontColor: String = '';
+  font: TsFont;
+  textProps: String = '';
+  graphProps: String = '';
+  chartProps: String = '';
 begin
   if AStyleIndex = -1 then
   begin
@@ -7030,54 +7033,35 @@ begin
     exit;
 
   if style.Axis.ShowLabels then
-    displayLabels := 'chart:display-label="true" '
-  else
-    displayLabels := '';
+    chartProps := chartProps + 'chart:display-label="true" ';
 
   if style.Axis.Logarithmic then
-    logarithmic := 'logarithmic="true" '
-  else
-    logarithmic := '';
+    chartProps := chartProps + 'chart:logarithmic="true" ';
+
+  if style.Axis.Inverted then
+    chartProps := chartProps + 'chart:reverse-direction="true" ';
 
   if style.Axis.LabelRotation <> 0 then
-    styleRotationAngle := 'style:rotation-ange="' + IntToStr(style.Axis.LabelRotation) + '" ';
+    chartProps := chartProps + Format('style:rotation-angle="%d" ', [style.Axis.LabelRotation]);
 
-  strokeColor := 'svg:stroke-color="' + ColorToHTMLColorStr(style.Axis.AxisLine.Color) + '" ';
+  graphProps := 'svg:stroke-color="' + ColorToHTMLColorStr(style.Axis.AxisLine.Color) + '" ';
 
-  fontSize := Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
-    [style.Axis.LabelFont.Size, style.Axis.LabelFont.Size, style.Axis.LabelFont.Size],
-    FPointSeparatorSettings
-  );
-  fontColor := 'fo:color="' + ColorToHTMLColorStr(style.Axis.LabelFont.Color) + '" ';
+  font := TsFont.Create;
+  try
+    style.Axis.LabelFont.ToFont(font);
+    textProps := WriteFontStyleXMLAsString(font);
+  finally
+    font.Free;
+  end;
 
-  (*
-      <style:style style:name="ch10" style:family="chart"
-       style:data-style-name="N0">
-      <style:chart-properties chart:display-label="true"
-         chart:logarithmic="false"
-         chart:minimum="-2" chart:maximum="2" chart:interval-major="1"
-         chart:interval-minor-divisor="4" chart:reverse-direction="false"
-         text:line-break="false" loext:try-staggering-first="false"
-         chart:link-data-style-to-source="true" chart:axis-position="1"/>
-      <style:graphic-properties svg:stroke-color="#b3b3b3"/>
-      <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt"
-         style:font-size-complex="10pt"/>
-        *)
   ind := DupeString(' ', AIndent);
   Result := Format(
     ind + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="N0">' + LE +
-    ind + '  <style:chart-properties %s%s%s/>' +  LE +
+    ind + '  <style:chart-properties %s/>' +  LE +
     ind + '  <style:graphic-properties %s/>' + LE +
-    ind + '  <style:text-properties %s%s/>' + LE +
+    ind + '  <style:text-properties %s/>' + LE +
     ind + '</style:style>' + LE,
-    [ AStyleIndex + 1,
-      // chart-properties
-      displayLabels, logarithmic, styleRotationAngle,
-      // graphic-properties
-      strokeColor,
-      // text-properties
-      fontSize, fontColor
-    ]
+    [ AStyleIndex + 1, chartProps, graphProps, textProps ]
   );
 end;
 
@@ -7135,9 +7119,9 @@ function TsSpreadOpenDocWriter.GetChartCaptionStyleAsXML(AChart: TsChart;
 var
   style: TsChartCaptionStyle;
   ind: String;
-  fontSize: String = '';
-  fontColor: String = '';
-  styleRotationAngle: String = '';
+  font: TsFont;
+  chartProps: String = '';
+  textProps: String = '';
 begin
   Result := '';
 
@@ -7150,26 +7134,92 @@ begin
     exit;
 
   if style.Caption.Rotation <> 0 then
-    styleRotationAngle := Format('style:rotation-angle="%d" ', [style.Caption.Rotation]);
+    chartProps := chartProps + Format('style:rotation-angle="%d" ', [style.Caption.Rotation]);
 
-  fontSize := Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
-    [ style.Caption.Font.Size, style.Caption.Font.Size, style.Caption.Font.Size ],
-    FPointSeparatorSettings
-  );
-  fontColor := Format('fo:color="%s" ', [ColorToHTMLColorStr(style.Caption.Font.Color)]);
+  font := TsFont.Create;
+  try
+    style.Caption.Font.ToFont(font);
+    textProps := WriteFontStyleXMLAsString(font);
+  finally
+    font.Free;
+  end;
 
   ind := DupeString(' ', AIndent);
   Result := Format(
     ind + '<style:style style:name="ch%d" style:family="chart">' + LE +
     ind + '  <style:chart-properties chart:auto-position="true" %s />' + LE +
-    ind + '  <style:text-properties %s%s/>' + LE +
+    ind + '  <style:text-properties %s/>' + LE +
     ind + '</style:style>' + LE,
-    [AStyleIndex + 1,
-    // chart-properties
-    styleRotationAngle,
-    // text-properties
-    fontSize, fontColor ]
+    [ AStyleIndex + 1, chartProps, textProps ]
   );
+end;
+
+{
+<style:style style:name="ch4" style:family="chart">
+  <style:chart-properties chart:auto-position="true"/>
+  <style:graphic-properties svg:stroke-color="#b3b3b3" draw:fill="none"
+     draw:fill-color="#e6e6e6"/>
+  <style:text-properties fo:font-family="Consolas"
+     style:font-style-name="Standard" style:font-family-generic="modern"
+     style:font-pitch="fixed" fo:font-size="12pt"
+     style:font-size-asian="10pt" style:font-size-complex="10pt"/>
+</style:style>
+}
+function TsSpreadOpenDocWriter.GetChartLegendStyleAsXML(AChart: TsChart;
+  AStyleIndex: Integer; AIndent: Integer): String;
+var
+  ind: String;
+  style: TsChartLegendStyle;
+  font: TsFont;
+  textProps: String = '';
+  graphProps: String = '';
+begin
+  Result := '';
+
+  if AStyleIndex = -1 then
+    exit;
+
+  style := TsChartLegendStyle(FChartStyleList[AStyleIndex]);
+
+  if not style.Legend.Visible then
+    exit;
+
+  if style.Legend.Border.Style = clsNoLine then
+    graphProps := 'draw:stroke="none" '
+  else
+    graphProps := Format('svg:stroke-color="%s" svg:stroke-width="%.1fmm" ',
+      [ColorToHTMLColorStr(style.Legend.Border.Color), style.Legend.Border.Width],
+      FPointSeparatorSettings);
+  if style.Legend.Fill.Style = fsNoFill then
+    graphProps := graphProps + 'draw:fill="none" '
+  else
+    graphProps := graphProps + Format('draw:fill="solid" draw:fill-color="%s" ',
+      [ColorToHTMLColorStr(style.Legend.Fill.FgColor)]);;
+
+  font := TsFont.Create;
+  try
+    style.Legend.Font.ToFont(font);
+    textProps := WriteFontStyleXMLAsString(font);
+  finally
+    font.Free;
+  end;
+
+  ind := DupeString(' ', AIndent);
+  Result := Format(
+    ind + '<style:style style:name="ch%d" style:family="chart">' + LE +
+    ind + '  <style:chart-properties />' + LE +
+    ind + '  <style:graphic-properties %s/>' + LE +
+    ind + '  <style:text-properties %s/>' + LE +
+    ind + '</style:style>' + LE,
+    [
+    AStyleIndex + 1,
+    // chart-properties
+    //...
+    // graphic-properties
+    graphProps,
+    // text-properties
+    textProps
+  ]);
 end;
 
 { To do: The list of styles must be updated to the real chart element settings. }
@@ -7190,6 +7240,7 @@ var
   y2AxisCaptionStyleIdx: Integer;
   titleCaptionStyleIdx: Integer;
   subtitleCaptionStyleIdx: Integer;
+  legendStyleIdx: Integer;
 begin
   backGrStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtBackground);
   wallStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtWall);
@@ -7206,6 +7257,8 @@ begin
   y2AxisCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctSecondaryY);
   titleCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctTitle);
   subtitleCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctSubtitle);
+
+  legendStyleIdx := TsChartStyleList(FChartStyleList).FindChartLegendStyle(AChart);
 
   ind := DupeString(' ', AIndent);
 
@@ -7235,12 +7288,15 @@ begin
     ind + '  </style:style>' + LE +
 
     // ch 4: style for <chart:legend> element
+    GetChartLegendStyleAsXML(AChart, legendStyleIdx, AIndent + 2) +
+    {
     ind + '  <style:style style:name="ch400" style:family="chart">' + LE +
     ind + '    <style:chart-properties chart:auto-position="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" svg:stroke-color="#b3b3b3" ' +
                  'draw:fill="none" draw:fill-color="#e6e6e6"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
+     }
 
     // ch5: style for <chart:plot-area> element
     ind + '  <style:style style:name="ch500" style:family="chart">' + LE +
