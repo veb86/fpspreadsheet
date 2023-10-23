@@ -286,7 +286,9 @@ type
     function WriteWordwrapStyleXMLAsString(const AFormat: TsCellFormat): String;
 
     { Chart support }
+    function GetChartAxisStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
     function GetChartBackgroundStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
+    function GetChartCaptionStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
 
     procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
     procedure WriteChart(AStream: TStream; AChart: TsChart);
@@ -5887,10 +5889,23 @@ begin
   for i := 0 to book.GetChartCount-1 do
   begin
     chart := book.GetChartByIndex(i);
-    styles.AddChartBackGroundStyle(chart, cstBackground);
-    styles.AddChartBackgroundStyle(chart, cstWall);
-    styles.AddChartBackgroundStyle(chart, cstFloor);
-   end;
+
+    styles.AddChartBackGroundStyle(chart, cbtBackground);
+    styles.AddChartBackgroundStyle(chart, cbtWall);
+    styles.AddChartBackgroundStyle(chart, cbtFloor);
+
+    styles.AddChartAxisStyle(chart, catPrimaryX);
+    styles.AddChartAxisStyle(chart, catPrimaryY);
+    styles.AddChartAxisStyle(chart, catSecondaryX);
+    styles.AddChartAxisStyle(chart, catSecondaryY);
+
+    styles.AddChartCaptionStyle(chart, cctPrimaryX);
+    styles.AddChartCaptionStyle(chart, cctPrimaryY);
+    styles.AddChartCaptionStyle(chart, cctSecondaryX);
+    styles.AddChartCaptionStyle(chart, cctSecondaryY);
+    styles.AddChartCaptionStyle(chart, cctTitle);
+    styles.AddChartCaptionStyle(chart, cctSubTitle);
+  end;
 end;
 
 procedure TsSpreadOpenDocWriter.ListAllColumnStyles;
@@ -6778,44 +6793,55 @@ var
   axis: TsChartAxis;
   series: TsChartSeries;
   sheet: TsWorksheet;
+  styles: TsChartStyleList;
   refStr: String;
-  styleID, titleStyleID: Integer;
-  majorGridStyleID: Integer = 8;
-  minorGridstyleID: Integer = 9;
+  styleIdx, titleStyleIdx: Integer;
+//  styleID, titleStyleID: Integer;
+  majorGridStyleID: Integer = 800;
+  minorGridstyleID: Integer = 900;
   r1, c1, r2, c2: Cardinal;
 begin
   ind := DupeString(' ', AIndent);
   sheet := TsWorkbook(FWorkbook).GetWorksheetByIndex(AChart.SheetIndex);
+  styles := TsChartStyleList(FChartStyleList);
 
   if IsX then
   begin
     if IsPrimary then
     begin
       axis := AChart.XAxis;
-      styleID := 6;
+      styleIdx := styles.FindChartAxisStyle(AChart, catPrimaryX);
+      titleStyleIdx := styles.FindChartCaptionStyle(AChart, cctPrimaryX);
+      //styleID := 6;
     end else
     begin
       axis := AChart.X2Axis;
-      styleID := 10;
+      styleIdx := styles.FindChartAxisStyle(AChart, catSecondaryX);
+      titleStyleIdx := styles.FindChartCaptionStyle(AChart, cctSecondaryX);
+      //styleID := 10;
     end;
-    titleStyleID := 7;
+    //titleStyleID := 7;
   end else
   begin
     if IsPrimary then
     begin
       axis := AChart.YAxis;
-      styleID := 11;
+      styleIdx := styles.FindChartAxisStyle(AChart, catPrimaryY);
+      titleStyleIdx := styles.FindChartCaptionStyle(AChart, cctPrimaryY);
+      //styleID := 11;
     end else
     begin
       axis := AChart.Y2Axis;
-      styleID := 12;
+      styleIdx := styles.FindChartAxisStyle(AChart, catSecondaryY);
+      titleStyleIdx := styles.FindChartCaptionStyle(AChart, cctSecondaryY);
+      //styleID := 12;
     end;
-    titleStyleID := 12;
+    //titleStyleID := 12;
   end;
 
   AppendToStream(AStream, Format(
     ind + '<chart:axis chart:dimension="%s" chart:name="%s-%s" chart:style-name="ch%d" chartooo:axis-type="auto">' + LE,
-    [ AXIS_ID[IsX], AXIS_LEVEL[IsPrimary], AXIS_ID[IsX], styleID ]
+    [ AXIS_ID[IsX], AXIS_LEVEL[IsPrimary], AXIS_ID[IsX], styleIdx + 1 ]
   ));
 
   if IsX and (not AChart.IsScatterChart) and (AChart.Series.Count > 0) then
@@ -6832,21 +6858,21 @@ begin
     ));
   end;
 
-  if axis.Caption <> '' then
+  if axis.ShowCaption and (axis.Caption <> '') then
     AppendToStream(AStream, Format(
       ind + '  <chart:title chart:style-name="ch%d">' + LE +
       ind + '    <text:p>%s</text:p>' + LE +
       ind + '  </chart:title>' + LE,
-      [ titleStyleID, axis.Caption ]
+      [ titleStyleIdx + 1, axis.Caption ]
     ));
 
-  if axis.ShowMajorGridLines then
+  if axis.MajorGridLines.Style <> clsNoLine then
     AppendToStream(AStream, Format(
       ind + '  <chart:grid chart:style-name="ch%d" chart:class="major"/>' + LE,
       [ majorGridStyleID ]
     ));
 
-  if axis.ShowMinorGridLines then
+  if axis.MinorGridLines.Style <> clsNoLine then
     AppendToStream(AStream, Format(
       ind + '  <chart:grid chart:style-name="ch%d" chart:class="minor"/>' + LE,
       [ minorGridStyleID ]
@@ -6869,7 +6895,7 @@ begin
   if chartClass <>  '' then
     chartClass := ' chart:class="chart:' + chartClass + '"';
 
-  idx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cstBackground);
+  idx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtBackground);
 
   AppendToStream(AStream, Format(
     '      <chart:chart svg:width="%.3fmm" svg:height="%.3fmm" xlink:href=".." ' + LE +
@@ -6887,7 +6913,7 @@ procedure TsSpreadOpenDocWriter.WriteChartLegend(AStream: TStream; AChart: TsCha
   AIndent: Integer);
 var
   ind: String;
-  legendStyleID: Integer = 4;
+  legendStyleID: Integer = 400;
 begin
   if (not AChart.Legend.Visible) then
     exit;
@@ -6906,7 +6932,7 @@ procedure TsSpreadOpenDocWriter.WriteChartPlotArea(AStream: TStream;
 var
   ind: String;
   i: Integer;
-  plotAreaStyleID: Integer = 5;
+  plotAreaStyleID: Integer = 500;
   wallStyleIdx, floorStyleIdx: Integer;
 begin
   ind := DupeString(' ', AIndent);
@@ -6922,8 +6948,8 @@ begin
   for i := 0 to AChart.Series.Count-1 do
     WriteChartSeries(AStream, AChart, i, AIndent + 2);
 
-  wallStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cstWall);
-  floorStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cstFloor);
+  wallStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtWall);
+  floorStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtFloor);
 
   AppendToStream(AStream, Format(
     ind + '  <chart:wall chart:style-name="ch%d"/>' + LE +
@@ -6962,7 +6988,7 @@ begin
     rfAllRel, false);
   count := series.YRange.Row2 - series.YRange.Row1 + 1;
 
-  seriesStyleID := 14 + ASeriesIndex;
+  seriesStyleID := (14 + ASeriesIndex) * 100;
 
   AppendToStream(AStream, Format(
     ind + '<chart:series chart:style-name="ch%d" ' +
@@ -6977,6 +7003,81 @@ begin
   ));
   AppendToStream(AStream,
     ind + '</chart:series>' + LE
+  );
+end;
+
+function TsSpreadOpenDocWriter.GetChartAxisStyleAsXML(
+  AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
+var
+  ind: String;
+  style: TsChartAxisStyle;
+  displayLabels: string = '';
+  logarithmic: String = '';
+  strokeColor: String = '';
+  styleRotationAngle: String = '';
+  fontSize: String = '';
+  fontColor: String = '';
+begin
+  if AStyleIndex = -1 then
+  begin
+    Result := '';
+    exit;
+  end;
+
+  style := TsChartAxisStyle(FChartStyleList[AStyleIndex]);
+
+  if not style.Axis.Visible then
+    exit;
+
+  if style.Axis.ShowLabels then
+    displayLabels := 'chart:display-label="true" '
+  else
+    displayLabels := '';
+
+  if style.Axis.Logarithmic then
+    logarithmic := 'logarithmic="true" '
+  else
+    logarithmic := '';
+
+  if style.Axis.LabelRotation <> 0 then
+    styleRotationAngle := 'style:rotation-ange="' + IntToStr(style.Axis.LabelRotation) + '" ';
+
+  strokeColor := 'svg:stroke-color="' + ColorToHTMLColorStr(style.Axis.AxisLine.Color) + '" ';
+
+  fontSize := Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
+    [style.Axis.LabelFont.Size, style.Axis.LabelFont.Size, style.Axis.LabelFont.Size],
+    FPointSeparatorSettings
+  );
+  fontColor := 'fo:color="' + ColorToHTMLColorStr(style.Axis.LabelFont.Color) + '" ';
+
+  (*
+      <style:style style:name="ch10" style:family="chart"
+       style:data-style-name="N0">
+      <style:chart-properties chart:display-label="true"
+         chart:logarithmic="false"
+         chart:minimum="-2" chart:maximum="2" chart:interval-major="1"
+         chart:interval-minor-divisor="4" chart:reverse-direction="false"
+         text:line-break="false" loext:try-staggering-first="false"
+         chart:link-data-style-to-source="true" chart:axis-position="1"/>
+      <style:graphic-properties svg:stroke-color="#b3b3b3"/>
+      <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt"
+         style:font-size-complex="10pt"/>
+        *)
+  ind := DupeString(' ', AIndent);
+  Result := Format(
+    ind + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:chart-properties %s%s%s/>' +  LE +
+    ind + '  <style:graphic-properties %s/>' + LE +
+    ind + '  <style:text-properties %s%s/>' + LE +
+    ind + '</style:style>' + LE,
+    [ AStyleIndex + 1,
+      // chart-properties
+      displayLabels, logarithmic, styleRotationAngle,
+      // graphic-properties
+      strokeColor,
+      // text-properties
+      fontSize, fontColor
+    ]
   );
 end;
 
@@ -7018,7 +7119,56 @@ begin
     ind + '<style:style style:name="ch%d" style:family="chart">' + LE +
     ind + '  <style:graphic-properties %s%s%s%s />' + LE +
     ind + '</style:style>' + LE,
-    [ AStyleIndex+1, drawStroke, strokeColor, drawFill, drawFillColor ]
+    [ AStyleIndex+1,
+      drawStroke, strokeColor, drawFill, drawFillColor ]
+  );
+end;
+
+{
+  <style:style style:name="ch7" style:family="chart">
+    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>
+    <style:text-properties fo:font-size="9pt" style:font-size-asian="9pt" style:font-size-complex="9pt"/>
+  </style:style>
+}
+function TsSpreadOpenDocWriter.GetChartCaptionStyleAsXML(AChart: TsChart;
+  AStyleIndex: Integer; AIndent: Integer): String;
+var
+  style: TsChartCaptionStyle;
+  ind: String;
+  fontSize: String = '';
+  fontColor: String = '';
+  styleRotationAngle: String = '';
+begin
+  Result := '';
+
+  if AStyleIndex = -1 then
+    exit;
+
+  style := TsChartCaptionStyle(FChartStyleList[AStyleIndex]);
+
+  if not style.Caption.Visible then
+    exit;
+
+  if style.Caption.Rotation <> 0 then
+    styleRotationAngle := Format('style:rotation-angle="%d" ', [style.Caption.Rotation]);
+
+  fontSize := Format('fo:font-size="%.1fpt" style:font-size-asian="%.1fpt" style:font-size-complex="%.1fpt" ',
+    [ style.Caption.Font.Size, style.Caption.Font.Size, style.Caption.Font.Size ],
+    FPointSeparatorSettings
+  );
+  fontColor := Format('fo:color="%s" ', [ColorToHTMLColorStr(style.Caption.Font.Color)]);
+
+  ind := DupeString(' ', AIndent);
+  Result := Format(
+    ind + '<style:style style:name="ch%d" style:family="chart">' + LE +
+    ind + '  <style:chart-properties chart:auto-position="true" %s />' + LE +
+    ind + '  <style:text-properties %s%s/>' + LE +
+    ind + '</style:style>' + LE,
+    [AStyleIndex + 1,
+    // chart-properties
+    styleRotationAngle,
+    // text-properties
+    fontSize, fontColor ]
   );
 end;
 
@@ -7030,10 +7180,32 @@ var
   backGrStyleIdx: Integer;
   wallStyleIdx: Integer;
   floorStyleIdx: Integer;
+  xAxisStyleIdx: Integer;
+  yAxisStyleIdx: Integer;
+  x2AxisStyleIdx: Integer;
+  y2AxisStyleIdx: Integer;
+  xAxisCaptionStyleIdx: Integer;
+  yAxisCaptionStyleIdx: Integer;
+  x2AxisCaptionStyleIdx: Integer;
+  y2AxisCaptionStyleIdx: Integer;
+  titleCaptionStyleIdx: Integer;
+  subtitleCaptionStyleIdx: Integer;
 begin
-  backGrStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cstBackground);
-  wallStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cstWall);
-  floorStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cstFloor);
+  backGrStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtBackground);
+  wallStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtWall);
+  floorStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtFloor);
+
+  xAxisStyleIdx := TsChartStyleList(FChartStyleList).FindChartAxisStyle(AChart, catPrimaryX);
+  yAxisStyleIdx := TsChartStyleList(FChartStyleList).FindChartAxisStyle(AChart, catPrimaryY);
+  x2AxisStyleIdx := TsChartStyleList(FChartStyleList).FindChartAxisStyle(AChart, catSecondaryX);
+  y2AxisStyleIdx := TsChartStyleList(FChartStyleList).FindChartAxisStyle(AChart, catSecondaryY);
+
+  xAxisCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctPrimaryX);
+  yAxisCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctPrimaryY);
+  x2AxisCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctSecondaryX);
+  y2AxisCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctSecondaryY);
+  titleCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctTitle);
+  subtitleCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctSubtitle);
 
   ind := DupeString(' ', AIndent);
 
@@ -7063,7 +7235,7 @@ begin
     ind + '  </style:style>' + LE +
 
     // ch 4: style for <chart:legend> element
-    ind + '  <style:style style:name="ch4" style:family="chart">' + LE +
+    ind + '  <style:style style:name="ch400" style:family="chart">' + LE +
     ind + '    <style:chart-properties chart:auto-position="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" svg:stroke-color="#b3b3b3" ' +
                  'draw:fill="none" draw:fill-color="#e6e6e6"/>' + LE +
@@ -7071,7 +7243,7 @@ begin
     ind + '  </style:style>' + LE +
 
     // ch5: style for <chart:plot-area> element
-    ind + '  <style:style style:name="ch5" style:family="chart">' + LE +
+    ind + '  <style:style style:name="ch500" style:family="chart">' + LE +
     ind + '    <style:chart-properties ' +
                  'chart:symbol-type="automatic" ' +
                  'chart:include-hidden-cells="false" ' +
@@ -7079,7 +7251,7 @@ begin
                  'chart:auto-size="true" ' +
                  'chart:treat-empty-cells="leave-gap" ' +
                  'chart:right-angled-axes="true"/>' + LE +
-    ind + '  </style:style>' +
+    ind + '  </style:style>' + LE +
 
                  {
     ind + '  <style:style style:name="ch5" style:family="chart">' + LE +
@@ -7092,7 +7264,9 @@ begin
     ind + '  </style:style>' + LE +
                   }
 
-    // ch6: style for first <chart:axis> element, primary x axis
+    // Style for first <chart:axis> element, primary x axis
+    GetChartAxisStyleAsXML(AChart, xAxisStyleIdx, AIndent + 2) +
+    {
     ind + '    <style:style style:name="ch6" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '      <style:chart-properties chart:display-label="true" ' +
                    'chart:logarithmic="false" chart:reverse-direction="false" ' +
@@ -7101,25 +7275,31 @@ begin
     ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
+     }
 
     // ch7: style for title at horizontal axes
+    GetChartCaptionStyleAsXML(AChart, xAxisCaptionStyleIdx, AIndent + 2) +
+    {
     ind + '  <style:style style:name="ch7" style:family="chart">' + LE +
     ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>' + LE +
     ind + '    <style:text-properties fo:font-size="9pt" style:font-size-asian="9pt" style:font-size-complex="9pt"/>' + LE +
     ind + '  </style:style>' + LE +
-
+    }
     // ch8: style for major grid (all axes)
-    ind + '  <style:style style:name="ch8" style:family="chart">' + LE +
+    ind + '  <style:style style:name="ch800" style:family="chart">' + LE +
     ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
     ind + '    </style:style>' + LE +
 
     // ch9: style for minor grid (all axes)
-    ind + '  <style:style style:name="ch9" style:family="chart">' + LE +
+    ind + '  <style:style style:name="ch900" style:family="chart">' + LE +
     ind + '    <style:graphic-properties svg:stroke-color="#dddddd"/>' + LE +
     ind + '  </style:style>' + LE +
 
     // ch10: style for second <chart:axis> element, secondary x axis
-    ind + '  <style:style style:name="ch10" style:family="chart" style:data-style-name="N0">' + LE +
+    GetChartAxisStyleAsXML(AChart, x2AxisStyleIdx, AIndent + 2) +
+    GetChartCaptionStyleAsXML(AChart, x2AxisCaptionStyleIdx, AIndent + 2) +
+    {
+    ind + '  <style:style style:name="ch1000" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:display-label="true" ' +
                  'chart:logarithmic="false" chart:reverse-direction="false" ' +
                  'text:line-break="false" loext:try-staggering-first="false" ' +
@@ -7127,9 +7307,11 @@ begin
     ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
-
+    }
     // ch11: style for third <chart:axis> element: primary y axis
-    ind + '  <style:style style:name="ch11" style:family="chart" style:data-style-name="N0">' + LE +
+    GetChartAxisStyleAsXML(AChart, yAxisStyleIdx, AIndent + 2) +
+    {
+    ind + '  <style:style style:name="ch1100" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:display-label="true" ' +
                  'chart:logarithmic="false" chart:reverse-direction="false" ' +
                  'text:line-break="false" loext:try-staggering-first="false" ' +
@@ -7137,15 +7319,21 @@ begin
     ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
+    }
 
     // ch12: style for vertical axis title (both y and y2 axis)
-    ind + '  <style:style style:name="ch12" style:family="chart">' + LE +
+    GetChartCaptionStyleAsXML(AChart, yAxisCaptionStyleIdx, AIndent + 2) +
+
+    ind + '  <style:style style:name="ch1200" style:family="chart">' + LE +
     ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="90"/>' + LE +
     ind + '    <style:text-properties fo:font-size="9pt" style:font-size-asian="9pt" style:font-size-complex="9pt"/>' + LE +
     ind + '  </style:style>' +
 
     // ch13: style for fourth <chart:axis> element: secondary y axis
-    ind + '  <style:style style:name="ch13" style:family="chart" style:data-style-name="N0">' + LE +
+    GetChartAxisStyleAsXML(AChart, y2AxisStyleIdx, AIndent + 2) +
+    GetChartCaptionStyleAsXML(AChart, y2AxisCaptionStyleIdx, AIndent + 2) +
+    {
+    ind + '  <style:style style:name="ch1300" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:display-label="true" ' +
                  'chart:logarithmic="false" chart:reverse-direction="false" ' +
                  'text:line-break="false" loext:try-staggering-first="false" ' +
@@ -7153,9 +7341,12 @@ begin
     ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
+     }
+
+
 
     // ch14: style for frist series - this is for a line series
-    ind + '  <style:style style:name="ch14" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:style style:name="ch1400" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties ' +
                  'chart:symbol-type="named-symbol" ' +
                  'chart:symbol-name="arrow-down" ' +
@@ -7180,49 +7371,49 @@ begin
     *)
 
     // ch15: style for second series - this is for a bar series
-    ind + '  <style:style style:name="ch15" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:style style:name="ch1500" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#ff420e" dr3d:edge-rounding="5%"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
 
     // ch16: style for third series (bar series, here)
-    ind + '  <style:style style:name="ch16" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:style style:name="ch1600" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#ffd320" dr3d:edge-rounding="5%"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
 
     // ch17: style for 4th series (bar series, here)
-    ind + '  <style:style style:name="ch17" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:style style:name="ch1700" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#579d1c" dr3d:edge-rounding="5%"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
 
     // ch18: style for 5th series (bar series, here)
-    ind + '  <style:style style:name="ch18" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:style style:name="ch1800" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#7e0021" dr3d:edge-rounding="5%"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
 
     // ch19: style for 6th series (bar series, here)
-    ind + '  <style:style style:name="ch19" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:style style:name="ch1900" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#83caff" dr3d:edge-rounding="5%"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
 
     // ch20: style for 7th series (bar series, here)
-    ind + '  <style:style style:name="ch20" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:style style:name="ch2000" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#314004" dr3d:edge-rounding="5%"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
     ind + '  </style:style>' + LE +
 
     // ch21: style for 8th series (bar series, here)
-    ind + '  <style:style style:name="ch21" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:style style:name="ch2100" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#aecf00" dr3d:edge-rounding="5%"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
@@ -7574,7 +7765,7 @@ begin
   if IsSubTitle then
   begin
     elementName := 'subtitle';
-    titleStyleID := 3;
+    titleStyleID := 300;
     cap := AChart.SubTitle.Caption;
   end else
   begin

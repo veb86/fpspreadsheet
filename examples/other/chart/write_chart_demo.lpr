@@ -47,6 +47,21 @@ begin
     ch.PlotArea.Background.Style := fsSolidFill;
     ch.PlotArea.Background.FgColor := $F0F0F0;
     {$ENDIF}
+    ch.XAxis.ShowLabels := true;
+    ch.XAxis.LabelFont.Size := 8;
+    ch.XAxis.LabelFont.Color := scRed;
+    ch.XAxis.AxisLine.Color := scRed;
+    ch.XAxis.CaptionFont.Color := scRed;
+    ch.XAxis.CaptionFont.Size := 12;
+
+    ch.YAxis.ShowLabels := true;
+    ch.YAxis.LabelFont.Size := 8;
+    ch.YAxis.LabelFont.Color := scBlue;
+    ch.YAxis.AxisLine.Color := scBlue;
+    ch.YAxis.CaptionFont.Color := scBlue;
+    ch.YAxis.CaptionFont.Size := 12;
+    ch.YAxis.LabelRotation := 90;
+    ch.YAxis.CaptionRotation := 90;
 
     ch.Title.Caption := 'HALLO';
     ch.Title.Visible := true;
@@ -54,8 +69,8 @@ begin
     ch.SubTitle.Caption := 'hallo';
     ch.SubTitle.Visible := true;
 
-    ch.YAxis.ShowMajorGridLines := true;
-    ch.YAxis.ShowMinorGridLines := true;
+    ch.YAxis.MajorGridLines.Style := clsSolid;
+    ch.YAxis.MinorGridLines.Style := clsSolid;
 
     // 2nd sheet
     sh2 := b.AddWorksheet('test2');
@@ -84,8 +99,10 @@ begin
     ch.Title.Visible := true;
     ch.SubTitle.Caption := 'hallo';
     ch.Subtitle.Visible := true;
-    ch.XAxis.ShowMajorGridLines := true;
-    ch.XAxis.ShowMinorGridLines := true;
+    ch.XAxis.MajorGridLines.Style := clsNoLine;
+    ch.XAxis.MinorGridLines.Style := clsNoLine;
+    ch.YAxis.MajorGridLines.Style := clsNoLine;
+    ch.YAxis.MinorGridLines.Style := clsNoLine;
 
     b.WriteToFile('test.xlsx', true);   // Excel fails to open the file
     b.WriteToFile('test.ods', true);
