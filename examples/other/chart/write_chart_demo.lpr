@@ -8,6 +8,8 @@ var
   ch: TsChart;
   ser: TsChartSeries;
   i: Integer;
+  bg: TsChartFill;
+  frm: TsChartLine;
 begin
   b := TsWorkbook.Create;
   try
@@ -25,6 +27,15 @@ begin
     ser.SetTitleAddr(0, 1);
     ser.SetLabelRange(1, 0, 7, 0);
     ser.SetYRange(1, 1, 7, 1);
+
+    bg.FgColor := scYellow;
+    bg.Style := fsSolidFill;
+    ch.Background := bg;
+
+    frm.color := scRed;
+    frm.Style := clsSolid;
+    ch.Border := frm;
+
     ch.Title.Caption := 'HALLO';
     ch.Title.Visible := true;
     ch.SubTitle.Caption := 'hallo';

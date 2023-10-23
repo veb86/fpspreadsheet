@@ -1,6 +1,7 @@
 unit fpschart;
 
 {$mode objfpc}{$H+}
+{$modeswitch advancedrecords}
 
 interface
 
@@ -13,7 +14,7 @@ const
 
 {@@ Pre-defined chart line styles given as indexes into the chart's LineStyles
   list. Get their value in the constructor of TsChart. Default here to -1
-  while is the code for a solid line, just in case that something goes wrong }
+  which is the code for a solid line, just in case that something goes wrong }
 var
   clsFineDot: Integer = -1;
   clsDot: Integer = -1;
@@ -30,6 +31,7 @@ type
     Style: TsFillStyle;
     FgColor: TsColor;
     BgColor: TsColor;
+    class operator = (A, B: TsChartFill): Boolean;
   end;
 
   TsChartLineSegment = record
@@ -193,7 +195,8 @@ type
   end;
 
   TsChartSeriesSymbol = (
-    cssRect, cssDiamond, cssTriangle, cssTriangleDown, cssCircle, cssStar
+    cssRect, cssDiamond, cssTriangle, cssTriangleDown, cssTriangleLeft,
+    cssTriangleRight, cssCircle, cssStar, cssX, cssPlus, cssAsterisk
   );
 
   TsLineSeries = class(TsChartSeries)
@@ -282,6 +285,10 @@ type
     { Height of the chart, in mm }
     property Height: double read FHeight write FHeight;
 
+    { Attributes of the entire chart background }
+    property Background: TsChartFill read FBackground write FBackground;
+    property Border: TsChartLine read FBorder write FBorder;
+
     { Attributes of the plot area (rectangle enclosed by axes) }
     property PlotArea: TsChartFillElement read FPlotArea write FPlotArea;
     { Attributes of the floor of a 3D chart }
@@ -322,6 +329,14 @@ implementation
 
 const
   DEFAULT_LINE_WIDTH = 0.75;  // pts
+
+{ TsChartFill }
+
+class operator TsChartFill.= (A, B: TsChartFill): Boolean;
+begin
+  Result := (A.Style = B.Style) and (A.FgColor = B.FgColor) and (A.BgColor = B.BgColor);
+end;
+
 
 { TsChartLineStyle }
 
@@ -647,6 +662,9 @@ begin
   FOffsetY := 0.0;
   FWidth := 12;
   FHeight := 9;
+
+  FBackground.Style := fsNoFill;
+  FBorder.Style := clsNoLine;
 
   FPlotArea := TsChartFillElement.Create(self);
   FFloor := TsChartFillElement.Create(self);

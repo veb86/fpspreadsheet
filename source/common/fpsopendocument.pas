@@ -224,6 +224,7 @@ type
 
   TsSpreadOpenDocWriter = class(TsCustomSpreadWriter)
   private
+    FChartStyleList: TFPList;
     FColumnStyleList: TFPList;
     FRowStyleList: TFPList;
     FRichTextFontList: TStringList;
@@ -318,6 +319,7 @@ type
       out AStyleName: String; out AHeight: Single);
     }
     procedure InternalWriteToStream(AStream: TStream);
+    procedure ListAllChartStyles;
     procedure ListAllColumnStyles;
     procedure ListAllHeaderFooterFonts;
     procedure ListAllNumFormats; override;
@@ -374,7 +376,7 @@ uses
   StrUtils, Variants, LazFileUtils, URIParser, LazUTF8,
   {%H-}fpsPatches,
   fpsStrings, fpsStreams, fpsCrypto, fpsClasses, fpspreadsheet,
-  fpsExprParser, fpsImages, fpsConditionalFormat;
+  fpsExprParser, fpsImages, fpsConditionalFormat, fpsChartStyles;
 
 const
   LE = LineEnding;
@@ -508,6 +510,11 @@ const
   CHART_TYPE_NAMES: array[TsChartType] of string = (
     '', 'bar', 'line', 'area', 'barLine', 'scatter'
   );
+
+  CHART_SYMBOL_NAMES: array[TsChartSeriesSymbol] of String = (
+    'square', 'diamond', 'arrow-up', 'arrow-down', 'arrow-left',
+    'arrow-right', 'circle', 'star', 'x', 'plus', 'asterisk'
+  );  // unsupported: bow-tie, hourglass, horizontal-bar, vertical-bar
 
 
 function CFOperandToStr(v: variant; AWorksheet: TsWorksheet;
@@ -5823,6 +5830,7 @@ var
 begin
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
+  ListAllChartStyles;
   ListAllColumnStyles;
   ListAllRowStyles;
   ListAllHeaderFooterFonts;
@@ -5862,6 +5870,22 @@ begin
     DestroyStreams;
     FZip.Free;
   end;
+end;
+
+procedure TsSpreadOpenDocWriter.ListAllChartStyles;
+var
+  book: TsWorkbook;
+  chart: TsChart;
+  i: Integer;
+  styles: TsChartStyleList;
+begin
+  book := TsWorkbook(FWorkbook);
+  styles := TsChartStyleList(FChartStyleList);
+  for i := 0 to book.GetChartCount-1 do
+  begin
+    chart := book.GetChartByIndex(i);
+    styles.FindChartBackGroundStyle(chart);
+   end;
 end;
 
 procedure TsSpreadOpenDocWriter.ListAllColumnStyles;
@@ -6677,6 +6701,7 @@ end;
 procedure TsSpreadOpenDocWriter.WriteChart(AStream: TStream; AChart: TsChart);
 var
   chartClass: String;
+  idx: Integer;
 begin
   AppendToStream(AStream,
     XML_HEADER + LE);
@@ -6731,12 +6756,14 @@ begin
   if chartClass <>  '' then
     chartClass := ' chart:class="chart:' + chartClass + '"';
 
+  idx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart);
   AppendToStream(AStream, Format(
     '      <chart:chart svg:width="%.3fmm" svg:height="%.3fmm" xlink:href=".." ' + LE +
-    '          xlink:type="simple"' + chartClass + ' chart:style-name="ch1"> ' + LE,
+    '          xlink:type="simple"' + chartClass + ' chart:style-name="ch%d"> ' + LE,
     [
     AChart.Width,      // Width, Height are in mm
-    AChart.Height
+    AChart.Height,
+    idx + 1
     ],  FPointSeparatorSettings
   ));
 
@@ -6941,6 +6968,45 @@ end;
 { To do: The list of styles must be updated to the real chart element settings. }
 procedure TsSpreadOpenDocWriter.WriteChartStyles(AStream: TStream;
   AChart: TsChart; AIndent: Integer);
+
+  function GetChartBackgroundStyleXML(AIndent: Integer): String;
+  var
+    ind: String;
+    idx: Integer;
+    style: TsChartBackgroundStyle;
+    s, drawStroke, strokeColor, drawFillColor: String;
+  begin
+    idx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart);
+    if idx = -1 then
+      raise Exception.Create('Chart background style not found.');
+    style := TsChartBackgroundStyle(FChartStyleList[idx]);
+
+    case style.Border.Style of
+      clsNoLine: s := 'none';
+      clsSolid: s := 'solid';
+      else s := 'none';   // FIXME: get correct line styles from chart
+    end;
+    drawStroke := 'draw:stroke="' + s + '" ';
+
+    if style.Border.Style <> clsNoLine then
+      strokeColor := 'svg:stroke-color="' + ColorToHTMLColorStr(style.Border.Color) + '" '
+    else
+      strokeColor := '';
+
+    if style.Background.Style = fsSolidFill then
+      drawFillColor := 'draw:fill-color="' + ColorToHTMLColorStr(style.Background.FGColor) + '" '
+    else
+      drawFillColor := '';
+
+    ind := DupeString(' ', AIndent);
+    Result := Format(
+      ind + '<style:style style:name="ch%d" style:family="chart">' + LE +
+      ind + '  <style:graphic-properties %s%s%s />' + LE +
+      ind + '</style:style>' + LE,
+      [ idx+1, drawStroke, strokeColor, drawFillColor ]
+    );
+  end;
+
 var
   ind: String;
 begin
@@ -6953,10 +7019,12 @@ begin
     ind + '  </number:number-style>' + LE +
 
     // ch1: style for <chart:chart> element
+    GetChartBackgroundStyleXML(AIndent + 2) +
+    {
     ind + '  <style:style style:name="ch1" style:family="chart">' + LE +
-    ind + '    <style:graphic-properties draw:stroke="none"/>' + LE +
+    ind + '    <style:graphic-properties draw:stroke="solid"/>' + LE +     // '
     ind + '  </style:style>' + LE +
-
+     }
     // ch2: style for <chart:title> element
     ind + '  <style:style style:name="ch2" style:family="chart">' + LE +
     ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>' + LE +
@@ -8956,6 +9024,7 @@ constructor TsSpreadOpenDocWriter.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
 
+  FChartStyleList := TsChartStyleList.Create;
   FColumnStyleList := TFPList.Create;
   FRowStyleList := TFPList.Create;
   FRichTextFontList := TStringList.Create;
@@ -8980,6 +9049,7 @@ begin
 
   FRichTextFontList.Free;    // Do not destroy fonts, they are owned by Workbook
   FHeaderFooterFontList.Free;
+  FChartStyleList.Free;
 
   inherited Destroy;
 end;
