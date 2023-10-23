@@ -16,13 +16,13 @@ type
 
   TsChartBackgroundStyle = class(TsChartStyle)
   private
-    FBackground: TsChartFill;
-    FBorder: TsChartLine;
+    FBackground: TsChartFillRec;
+    FBorder: TsChartLineRec;
   public
     procedure ApplyToChart(AChart: TsChart); override;
     procedure ExtractFromChart(AChart: TsChart); override;
-    property Background: TsChartFill read FBackground;
-    property Border: TsChartLine read FBorder;
+    property Background: TsChartFillRec read FBackground;
+    property Border: TsChartLineRec read FBorder;
   end;
 
   TsChartStyleList = class(TFPList)
@@ -38,14 +38,14 @@ implementation
 
 procedure TsChartBackgroundStyle.ApplyToChart(AChart: TsChart);
 begin
-  AChart.Background := FBackground;
-  AChart.Border := FBorder;
+  AChart.Background.FromRecord(FBackground);
+  AChart.Border.FromRecord(FBorder);
 end;
 
 procedure TsChartBackgroundStyle.ExtractFromChart(AChart: TsChart);
 begin
-  FBackground := AChart.Background;
-  FBorder := AChart.Border;
+  FBackground := AChart.Background.ToRecord;
+  FBorder := AChart.Border.ToRecord;
 end;
 
 { TsChartStyleList }

@@ -27,11 +27,36 @@ var
 type
   TsChart = class;
 
-  TsChartFill = record
+  TsChartLineRec = record
+    Style: Integer;        // index into chart's LineStyle list or predefined clsSolid/clsNoLine
+    Width: Double;         // mm
+    Color: TsColor;        // in hex: $00bbggrr, r=red, g=green, b=blue
+    Transparency: Double;  // in percent
+    class operator = (A, B: TsChartLineRec): Boolean;
+  end;
+
+  TsChartLine = class
+    Style: Integer;        // index into chart's LineStyle list or predefined clsSolid/clsNoLine
+    Width: Double;         // mm
+    Color: TsColor;        // in hex: $00bbggrr, r=red, g=green, b=blue
+    Transparency: Double;  // in percent
+    procedure FromRecord(const ALine: TsChartLineRec);
+    function ToRecord: TsChartLineRec;
+  end;
+
+  TsChartFillRec = record
     Style: TsFillStyle;
     FgColor: TsColor;
     BgColor: TsColor;
-    class operator = (A, B: TsChartFill): Boolean;
+    class operator = (A, B: TsChartFillRec): Boolean;
+  end;
+
+  TsChartFill = class
+    Style: TsFillStyle;
+    FgColor: TsColor;
+    BgColor: TsColor;
+    procedure FromRecord(const AFill: TsChartFillRec);
+    function ToRecord: TsChartFillRec;
   end;
 
   TsChartLineSegment = record
@@ -60,13 +85,6 @@ type
     property Items[AIndex: Integer]: TsChartLineStyle read GetItem write SetItem; default;
   end;
 
-  TsChartLine = record
-    Style: Integer;        // index into chart's LineStyle list or predefined clsSolid/clsNoLine
-    Width: Double;         // mm
-    Color: TsColor;        // in hex: $00bbggrr, r=red, g=green, b=blue
-    Transparency: Double;  // in percent
-  end;
-
   TsChartElement = class
   private
     FChart: TsChart;
@@ -83,6 +101,7 @@ type
     FBorder: TsChartLine;
   public
     constructor Create(AChart: TsChart);
+    destructor Destroy; override;
     property Background: TsChartFill read FBackground write FBackground;
     property Border: TsChartLine read FBorder write FBorder;
   end;
@@ -201,9 +220,7 @@ type
 
   TsLineSeries = class(TsChartSeries)
   private
-    FLineStyle: TsChartLine;
-    FShowLines: Boolean;
-    FShowSymbols: Boolean;
+    FLine: TsChartLine;
     FSymbol: TsChartSeriesSymbol;
     FSymbolFill: TsChartFill;
     FSymbolBorder: TsChartLine;
@@ -211,9 +228,8 @@ type
     FSymbolWidth: Double;   // in mm
   public
     constructor Create(AChart: TsChart);
-    property LineStyle: TsChartLine read FLineStyle write FLineStyle;
-    property ShowLines: Boolean read FShowLines write FShowLines;
-    property ShowSymbols: Boolean read FShowSymbols write FShowSymbols;
+    destructor Destroy; override;
+    property Line: TsChartLine read FLine write FLine;
     property Symbol: TsChartSeriesSymbol read FSymbol write FSymbol;
     property SymbolBorder: TsChartLine read FSymbolBorder write FSymbolBorder;
     property SymbolFill: TsChartFill read FSymbolFill write FSymbolFill;
@@ -330,11 +346,49 @@ implementation
 const
   DEFAULT_LINE_WIDTH = 0.75;  // pts
 
-{ TsChartFill }
+{ TsChartLineRec }
+class operator TsChartLineRec.= (A, B: TsChartLineRec): Boolean;
+begin
+  Result := (A.Style = B.Style) and (A.Width = B.Width) and
+    (A.Color = B.Color) and (A.Transparency = B.Transparency);
+end;
 
-class operator TsChartFill.= (A, B: TsChartFill): Boolean;
+{ TsChartLine }
+procedure TsChartLine.FromRecord(const ALine: TsChartLineRec);
+begin
+  Style := ALine.Style;
+  Width := ALine.Width;
+  Color := ALine.Color;
+  Transparency := ALine.Transparency;
+end;
+
+function TsChartLine.ToRecord: TsChartLineRec;
+begin
+  Result.Style := Style;
+  Result.Width := Width;
+  Result.Color := Color;
+  Result.Transparency := Transparency;
+end;
+
+{ TsChartFillRec }
+class operator TsChartFillRec.= (A, B: TsChartFillRec): Boolean;
 begin
   Result := (A.Style = B.Style) and (A.FgColor = B.FgColor) and (A.BgColor = B.BgColor);
+end;
+
+{ TsChartFill }
+procedure TsChartFill.FromRecord(const AFill: TsChartFillRec);
+begin
+  Style := AFill.Style;
+  FgColor := AFill.FgColor;
+  BgColor := AFill.BgColor;
+end;
+
+function TsChartFill.ToRecord: TsChartFillRec;
+begin
+  Result.Style := Style;
+  Result.BgColor := BgColor;
+  Result.FgColor := FgColor;
 end;
 
 
@@ -397,12 +451,21 @@ end;
 constructor TsChartFillElement.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
+  FBackground := TsChartFill.Create;
   FBackground.Style := fsSolidFill;
   FBackground.BgColor := scWhite;
   FBackground.FgColor := scWhite;
+  FBorder := TsChartLine.Create;
   FBorder.Style := clsSolid;
   FBorder.Width := PtsToMM(DEFAULT_LINE_WIDTH);
   FBorder.Color := scBlack;
+end;
+
+destructor TsChartFillElement.Destroy;
+begin
+  FBorder.Free;
+  FBackground.Free;
+  inherited;
 end;
 
 
@@ -443,22 +506,27 @@ begin
 
   FShowLabels := true;
 
+  FAxisLine := TsChartLine.Create;
   FAxisLine.Color := scBlack;
   FAxisLine.Style := clsSolid;
   FAxisLine.Width := PtsToMM(DEFAULT_LINE_WIDTH);
 
+  FMajorTickLines := TsChartLine.Create;
   FMajorTickLines.Color := scBlack;
   FMajorTickLines.Style := clsSolid;
   FMajorTickLines.Width := PtsToMM(DEFAULT_LINE_WIDTH);
 
+  FMinorTickLines := TsChartLine.Create;
   FMinorTickLines.Color := scBlack;
   FMinorTickLines.Style := clsSolid;
   FMinorTickLines.Width := PtsToMM(DEFAULT_LINE_WIDTH);
 
+  FMajorGridLines := TsChartLine.Create;
   FMajorGridLines.Color := scSilver;
   FMajorGridLines.Style := clsSolid;
   FMajorGridLines.Width := PtsToMM(DEFAULT_LINE_WIDTH);
 
+  FMinorGridLines := TsChartLine.Create;
   FMinorGridLines.Color := scSilver;
   FMinorGridLines.Style := clsDot;
   FMinorGridLines.Width := PtsToMM(DEFAULT_LINE_WIDTH);
@@ -466,6 +534,11 @@ end;
 
 destructor TsChartAxis.Destroy;
 begin
+  FMinorGridLines.Free;
+  FMajorGridLines.Free;
+  FMinorTickLines.Free;
+  FMajorTickLines.Free;
+  FAxisLine.Free;
   FLabelFont.Free;
   inherited;
 end;
@@ -623,20 +696,31 @@ begin
 
   FChartType := ctLine;
 
-  FLineStyle.Color := scBlack;
-  FLineStyle.Style := clsSolid;
-  FLineStyle.Width := PtsToMM(DEFAULT_LINE_WIDTH);
+  FLine := TsChartLine.Create;
+  FLine.Color := scBlack;
+  FLine.Style := clsSolid;
+  FLine.Width := PtsToMM(DEFAULT_LINE_WIDTH);
 
+  FSymbolBorder := TsChartline.Create;
   FSymbolBorder.Color := scBlack;
   FSymbolBorder.Style := clsSolid;
   FSymbolBorder.Width := PtsToMM(DEFAULT_LINE_WIDTH);
 
+  FSymbolFill := TsChartFill.Create;
   FSymbolFill.FgColor := scWhite;
   FSymbolFill.BgColor := scWhite;
   FSymbolFill.Style := fsSolidFill;
 
   FSymbolWidth := 2.5;
   FSymbolHeight := 2.5;
+end;
+
+destructor TsLineSeries.Destroy;
+begin
+  FSymbolFill.Free;
+  FSymbolBorder.Free;
+  FLine.Free;
+  inherited;
 end;
 
 

@@ -1,5 +1,7 @@
 program write_chart_demo;
 
+{.$DEFINE DARK_MODE}
+
 uses
   SysUtils, fpspreadsheet, fpstypes, fpschart, xlsxooxml, fpsopendocument;
 var
@@ -8,8 +10,6 @@ var
   ch: TsChart;
   ser: TsChartSeries;
   i: Integer;
-  bg: TsChartFill;
-  frm: TsChartLine;
 begin
   b := TsWorkbook.Create;
   try
@@ -28,18 +28,20 @@ begin
     ser.SetLabelRange(1, 0, 7, 0);
     ser.SetYRange(1, 1, 7, 1);
 
-    bg.FgColor := scYellow;
-    bg.Style := fsSolidFill;
-    ch.Background := bg;
+    {$IFDEF DARK_MODE}
+    ch.Background.FgColor := scBlack;
+    ch.Background.Style := fsSolidFill;
 
-    frm.color := scRed;
-    frm.Style := clsSolid;
-    ch.Border := frm;
+    ch.Border.Color := scWhite;
+    ch.Border.Style := clsSolid;
+    {$ENDIF}
 
     ch.Title.Caption := 'HALLO';
     ch.Title.Visible := true;
+
     ch.SubTitle.Caption := 'hallo';
     ch.SubTitle.Visible := true;
+
     ch.YAxis.ShowMajorGridLines := true;
     ch.YAxis.ShowMinorGridLines := true;
 
