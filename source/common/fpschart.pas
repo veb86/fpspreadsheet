@@ -28,6 +28,10 @@ const
   DEFAULT_CHART_LINEWIDTH = 0.75;  // pts
   DEFAULT_CHART_FONT = 'Arial';
 
+  DEFAULT_SERIES_COLORS: array[0..7] of TsColor = (
+    scRed, scBlue, scGreen, scMagenta, scPurple, scTeal, scBlack, scGray
+  );
+
 type
   TsChart = class;
 
@@ -184,8 +188,12 @@ type
     FYAxis: TsChartAxisLink;
     FTitleAddr: TsCellCoord;
     FLabelFormat: String;
+    FLine: TsChartLine;
+    FFill: TsChartFill;
+    FBorder: TsChartLine;
   public
     constructor Create(AChart: TsChart);
+    destructor Destroy; override;
     function GetCount: Integer;
     function GetXCount: Integer;
     function GetYCount: Integer;
@@ -207,6 +215,10 @@ type
     property XRange: TsCellRange read FXRange;
     property YRange: TsCellRange read FYRange;
     property YAxis: TsChartAxisLink read FYAxis write FYAxis;
+
+    property Border: TsChartLine read FBorder write FBorder;
+    property Fill: TsChartFill read FFill write FFill;
+    property Line: TsChartLine read FLine write FLine;
   end;
 
   TsChartSeriesSymbol = (
@@ -216,21 +228,22 @@ type
 
   TsLineSeries = class(TsChartSeries)
   private
-    FLine: TsChartLine;
     FSymbol: TsChartSeriesSymbol;
-    FSymbolFill: TsChartFill;
-    FSymbolBorder: TsChartLine;
     FSymbolHeight: Double;  // in mm
     FSymbolWidth: Double;   // in mm
+    FShowSymbols: Boolean;
+    function GetSymbolBorder: TsChartLine;
+    function GetSymbolFill: TsChartFill;
+    procedure SetSymbolBorder(Value: TsChartLine);
+    procedure SetSymbolFill(Value: TsChartFill);
   public
     constructor Create(AChart: TsChart);
-    destructor Destroy; override;
-    property Line: TsChartLine read FLine write FLine;
     property Symbol: TsChartSeriesSymbol read FSymbol write FSymbol;
-    property SymbolBorder: TsChartLine read FSymbolBorder write FSymbolBorder;
-    property SymbolFill: TsChartFill read FSymbolFill write FSymbolFill;
+    property SymbolBorder: TsChartLine read GetSymbolBorder write SetSymbolBorder;
+    property SymbolFill: TsChartFill read GetSymbolFill write SetSymbolFill;
     property SymbolHeight: double read FSymbolHeight write FSymbolHeight;
     property SymbolWidth: double read FSymbolWidth write FSymbolWidth;
+    property ShowSymbols: Boolean read FShowSymbols write FShowSymbols;
   end;
 
   TsChartSeriesList = class(TFPList)
@@ -482,7 +495,7 @@ begin
 
   FMinorGridLines := TsChartLine.Create;
   FMinorGridLines.Color := scSilver;
-  FMinorGridLines.Style := clsDot;
+  FMinorGridLines.Style := clsDash;
   FMinorGridLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
 end;
 
@@ -519,9 +532,35 @@ end;
 { TsChartSeries }
 
 constructor TsChartSeries.Create(AChart: TsChart);
+var
+  idx: Integer;
 begin
   inherited Create(AChart);
-  AChart.AddSeries(self);
+
+  idx := AChart.AddSeries(self);
+
+  FBorder := TsChartLine.Create;
+  FBorder.Style := clsSolid;
+  FBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  FBorder.Color := scBlack;
+
+  FFill := TsChartFill.Create;
+  FFill.Style := fsSolidFill;
+  FFill.FgColor := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
+  FFill.BgColor := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
+
+  FLine := TsChartLine.Create;
+  FLine.Style := clsSolid;
+  FLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  FLine.Color := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
+end;
+
+destructor TsChartSeries.Destroy;
+begin
+  FLine.Free;
+  FFill.Free;
+  FBorder.Free;
+  inherited;
 end;
 
 function TsChartSeries.GetCount: Integer;
@@ -633,34 +672,29 @@ end;
 constructor TsLineSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
-
   FChartType := ctLine;
-
-  FLine := TsChartLine.Create;
-  FLine.Color := scBlack;
-  FLine.Style := clsSolid;
-  FLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-
-  FSymbolBorder := TsChartline.Create;
-  FSymbolBorder.Color := scBlack;
-  FSymbolBorder.Style := clsSolid;
-  FSymbolBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-
-  FSymbolFill := TsChartFill.Create;
-  FSymbolFill.FgColor := scWhite;
-  FSymbolFill.BgColor := scWhite;
-  FSymbolFill.Style := fsSolidFill;
-
   FSymbolWidth := 2.5;
   FSymbolHeight := 2.5;
 end;
 
-destructor TsLineSeries.Destroy;
+function TsLineSeries.GetSymbolBorder: TsChartLine;
 begin
-  FSymbolFill.Free;
-  FSymbolBorder.Free;
-  FLine.Free;
-  inherited;
+  Result := FBorder;
+end;
+
+function TsLineSeries.GetSymbolFill: TsChartFill;
+begin
+  Result := FFill;
+end;
+
+procedure TsLineSeries.SetSymbolBorder(Value: TsChartLine);
+begin
+  FBorder := Value;
+end;
+
+procedure TsLineSeries.SetSymbolFill(Value: TsChartFill);
+begin
+  FFill := Value;
 end;
 
 

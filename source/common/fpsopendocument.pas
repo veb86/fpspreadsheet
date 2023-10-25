@@ -26,11 +26,16 @@ unit fpsOpenDocument;
 {$mode objfpc}{$H+}
 {$include ..\fps.inc}
 
+{$define DEBUG_CHART_STYLES}
+
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 
 interface
 
 uses
+  {$IFDEF DEBUG_CHART_STYLES}
+  LazLoggerBase,
+  {$ENDIF}
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
   avglvltree, math, dateutils, contnrs,
@@ -237,7 +242,6 @@ type
     procedure WriteCellRow(AStream: TStream; ASheet: TsBasicWorksheet;
       ARowIndex, ALastColIndex: Integer);
     procedure WriteCellStyles(AStream: TStream);
-
     procedure WriteColStyles(AStream: TStream);
     procedure WriteColumns(AStream: TStream; ASheet: TsBasicWorksheet);
     procedure WriteConditionalFormats(AStream: TStream; ASheet: TsBasicWorksheet);
@@ -286,12 +290,17 @@ type
     function WriteWordwrapStyleXMLAsString(const AFormat: TsCellFormat): String;
 
     { Chart support }
-    function GetChartAxisStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
-    function GetChartBackgroundStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
-    function GetChartCaptionStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
-    function GetChartLegendStyleAsXML(AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
+    function GetChartAxisStyleAsXML(AChart: TsChart; AStyleIndex, AIndent: Integer): String;
+    function GetChartBackgroundStyleAsXML(AChart: TsChart; AStyleIndex, AIndent: Integer): String;
+    function GetChartCaptionStyleAsXML(AChart: TsChart; AStyleIndex, AIndent: Integer): String;
+    function GetChartLegendStyleAsXML(AChart: TsChart; AStyleIndex, AIndent: Integer): String;
+    function GetChartLineStyleAsXML(ALine: TsChartLine; AStyleIndex, AIndent: Integer): String;
+    function GetChartPlotAreaStyleAsXML(AChart: TsChart; AStyleIndex, AIndent: Integer): String;
+    function GetChartSeriesStyleAsXML(AChart: TsChart; AStyleIndex, ASeriesIndex, AIndent: Integer): String;
+    function GetChartTitleStyleAsXML(AChart: TsChart; AStyleIndex, AIndent: Integer): String;
 
     procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
+
     procedure WriteChart(AStream: TStream; AChart: TsChart);
     procedure WriteChartAxis(AStream: TStream; AChart: TsChart; IsX, IsPrimary: Boolean; AIndent: Integer);
     procedure WriteChartBackground(AStream: TStream; AChart: TsChart; AIndent: Integer);
@@ -325,7 +334,6 @@ type
       out AStyleName: String; out AHeight: Single);
     }
     procedure InternalWriteToStream(AStream: TStream);
-    procedure ListAllChartStyles;
     procedure ListAllColumnStyles;
     procedure ListAllHeaderFooterFonts;
     procedure ListAllNumFormats; override;
@@ -2267,13 +2275,6 @@ var
     isHidden: Boolean;
     isPageBreak: Boolean;
   begin
-         {
-    for j := 0 to FCellFormatList.Count-1 do
-    begin
-      WriteLn(j, ' ', FCellFormatList[j]^.Name);
-    end;
-          }
-
     s := GetAttrValue(AColNode, 'table:style-name');
     colStyleIndex := FindColStyleByName(s);
     if colStyleIndex <> -1 then
@@ -5836,7 +5837,6 @@ var
 begin
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;
-  ListAllChartStyles;
   ListAllColumnStyles;
   ListAllRowStyles;
   ListAllHeaderFooterFonts;
@@ -5875,39 +5875,6 @@ begin
   finally
     DestroyStreams;
     FZip.Free;
-  end;
-end;
-
-procedure TsSpreadOpenDocWriter.ListAllChartStyles;
-var
-  book: TsWorkbook;
-  chart: TsChart;
-  i: Integer;
-  styles: TsChartStyleList;
-begin
-  book := TsWorkbook(FWorkbook);
-  styles := TsChartStyleList(FChartStyleList);
-  for i := 0 to book.GetChartCount-1 do
-  begin
-    chart := book.GetChartByIndex(i);
-
-    styles.AddChartBackGroundStyle(chart, cbtBackground);
-    styles.AddChartBackgroundStyle(chart, cbtWall);
-    styles.AddChartBackgroundStyle(chart, cbtFloor);
-
-    styles.AddChartAxisStyle(chart, catPrimaryX);
-    styles.AddChartAxisStyle(chart, catPrimaryY);
-    styles.AddChartAxisStyle(chart, catSecondaryX);
-    styles.AddChartAxisStyle(chart, catSecondaryY);
-
-    styles.AddChartCaptionStyle(chart, cctPrimaryX);
-    styles.AddChartCaptionStyle(chart, cctPrimaryY);
-    styles.AddChartCaptionStyle(chart, cctSecondaryX);
-    styles.AddChartCaptionStyle(chart, cctSecondaryY);
-    styles.AddChartCaptionStyle(chart, cctTitle);
-    styles.AddChartCaptionStyle(chart, cctSubTitle);
-
-    styles.AddChartLegendStyle(chart);
   end;
 end;
 
@@ -6721,52 +6688,95 @@ begin
   end;
 end;
 
+{ Writes the chart to the specified stream.
+  All chart elements are formatted by means of styles. To simplify assignment
+  of styles to elements we first write the elements and create the style of
+  the currently written chart element on the fly. Since styles must be written
+  to the steam first, we write the chart elements to a separate stream which
+  is appended to the main stream afterwards. }
 procedure TsSpreadOpenDocWriter.WriteChart(AStream: TStream; AChart: TsChart);
+var
+  chartStream: TMemoryStream;
 begin
-  AppendToStream(AStream,
-    XML_HEADER + LE);
+  FChartStyleList.Clear;
 
-  AppendToStream(AStream,
-    '<office:document-content ' + LE +
-    '    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' + LE +
-    '    xmlns:ooo="http://openoffice.org/2004/office"' + LE +
-    '    xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"' + LE +
-    '    xmlns:xlink="http://www.w3.org/1999/xlink"' + LE +
-    '    xmlns:dc="http://purl.org/dc/elements/1.1/"' + LE +
-    '    xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0"' + LE +
-    '    xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"' + LE +
-    '    xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' + LE +
-    '    xmlns:rpt="http://openoffice.org/2005/report"' + LE +
-    '    xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"' + LE +
-    '    xmlns:dr3d="urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0"' + LE +
-    '    xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"' + LE +
-    '    xmlns:chart="urn:oasis:names:tc:opendocument:xmlns:chart:1.0"' + LE +
-    '    xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"' + LE +
-    '    xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0"' + LE +
-    '    xmlns:ooow="http://openoffice.org/2004/writer"' + LE +
-    '    xmlns:oooc="http://openoffice.org/2004/calc"' + LE +
-    '    xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2"' + LE +
-    '    xmlns:xforms="http://www.w3.org/2002/xforms"' + LE +
-    '    xmlns:tableooo="http://openoffice.org/2009/table"' + LE +
-    '    xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0"' + LE +
-    '    xmlns:drawooo="http://openoffice.org/2010/draw"' + LE +
-    '    xmlns:xhtml="http://www.w3.org/1999/xhtml"' + LE +
-    '    xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0"' + LE +
-    '    xmlns:field="urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0"' + LE +
-    '    xmlns:math="http://www.w3.org/1998/Math/MathML"' + LE +
-    '    xmlns:form="urn:oasis:names:tc:opendocument:xmlns:form:1.0"' + LE +
-    '    xmlns:script="urn:oasis:names:tc:opendocument:xmlns:script:1.0"' + LE +
-    '    xmlns:formx="urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0"' + LE +
-    '    xmlns:dom="http://www.w3.org/2001/xml-events"' + LE +
-    '    xmlns:xsd="http://www.w3.org/2001/XMLSchema"' + LE +
-    '    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"' + LE +
-    '    xmlns:grddl="http://www.w3.org/2003/g/data-view#"' + LE +
-    '    xmlns:css3t="http://www.w3.org/TR/css3-text/"' + LE +
-    '    xmlns:chartooo="http://openoffice.org/2010/chart" office:version="1.3">' + LE
-  );
+  chartStream := TMemoryStream.Create;
+  try
+    WriteChartBackground(chartStream, AChart, 8);
+    WriteChartTitle(chartStream, AChart, false, 8);  // Title
+    WriteChartTitle(chartStream, AChart, true, 8);   // Subtitle
+    WriteChartLegend(chartStream, AChart, 8);        // Legend
+    WriteChartPlotArea(chartStream, AChart, 8);      // background, wall, axes, series
 
-  WriteChartStyles(AStream, AChart, 2);
+    // Here begins the main stream
+    AppendToStream(AStream,
+      XML_HEADER + LE);
 
+    AppendToStream(AStream,
+      '<office:document-content ' + LE +
+      '    xmlns:office="urn:oasis:names:tc:opendocument:xmlns:office:1.0"' + LE +
+      '    xmlns:ooo="http://openoffice.org/2004/office"' + LE +
+      '    xmlns:fo="urn:oasis:names:tc:opendocument:xmlns:xsl-fo-compatible:1.0"' + LE +
+      '    xmlns:xlink="http://www.w3.org/1999/xlink"' + LE +
+      '    xmlns:dc="http://purl.org/dc/elements/1.1/"' + LE +
+      '    xmlns:meta="urn:oasis:names:tc:opendocument:xmlns:meta:1.0"' + LE +
+      '    xmlns:style="urn:oasis:names:tc:opendocument:xmlns:style:1.0"' + LE +
+      '    xmlns:text="urn:oasis:names:tc:opendocument:xmlns:text:1.0"' + LE +
+      '    xmlns:rpt="http://openoffice.org/2005/report"' + LE +
+      '    xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"' + LE +
+      '    xmlns:dr3d="urn:oasis:names:tc:opendocument:xmlns:dr3d:1.0"' + LE +
+      '    xmlns:svg="urn:oasis:names:tc:opendocument:xmlns:svg-compatible:1.0"' + LE +
+      '    xmlns:chart="urn:oasis:names:tc:opendocument:xmlns:chart:1.0"' + LE +
+      '    xmlns:table="urn:oasis:names:tc:opendocument:xmlns:table:1.0"' + LE +
+      '    xmlns:number="urn:oasis:names:tc:opendocument:xmlns:datastyle:1.0"' + LE +
+      '    xmlns:ooow="http://openoffice.org/2004/writer"' + LE +
+      '    xmlns:oooc="http://openoffice.org/2004/calc"' + LE +
+      '    xmlns:of="urn:oasis:names:tc:opendocument:xmlns:of:1.2"' + LE +
+      '    xmlns:xforms="http://www.w3.org/2002/xforms"' + LE +
+      '    xmlns:tableooo="http://openoffice.org/2009/table"' + LE +
+      '    xmlns:calcext="urn:org:documentfoundation:names:experimental:calc:xmlns:calcext:1.0"' + LE +
+      '    xmlns:drawooo="http://openoffice.org/2010/draw"' + LE +
+      '    xmlns:xhtml="http://www.w3.org/1999/xhtml"' + LE +
+      '    xmlns:loext="urn:org:documentfoundation:names:experimental:office:xmlns:loext:1.0"' + LE +
+      '    xmlns:field="urn:openoffice:names:experimental:ooo-ms-interop:xmlns:field:1.0"' + LE +
+      '    xmlns:math="http://www.w3.org/1998/Math/MathML"' + LE +
+      '    xmlns:form="urn:oasis:names:tc:opendocument:xmlns:form:1.0"' + LE +
+      '    xmlns:script="urn:oasis:names:tc:opendocument:xmlns:script:1.0"' + LE +
+      '    xmlns:formx="urn:openoffice:names:experimental:ooxml-odf-interop:xmlns:form:1.0"' + LE +
+      '    xmlns:dom="http://www.w3.org/2001/xml-events"' + LE +
+      '    xmlns:xsd="http://www.w3.org/2001/XMLSchema"' + LE +
+      '    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"' + LE +
+      '    xmlns:grddl="http://www.w3.org/2003/g/data-view#"' + LE +
+      '    xmlns:css3t="http://www.w3.org/TR/css3-text/"' + LE +
+      '    xmlns:chartooo="http://openoffice.org/2010/chart" office:version="1.3">' + LE
+    );
+
+    // The file begins with the chart styles
+    WriteChartStyles(AStream, AChart, 2);
+
+    // Now the chart part follows
+    AppendToStream(AStream,
+      '  <office:body>' + LE +
+      '    <office:chart>' + LE
+    );
+
+    // Copy the chart element from the temporary stream
+    chartStream.Position := 0;
+    AStream.CopyFrom(chartStream, chartStream.Size);
+
+    // After the chart elements we have the data to be plotted
+    WriteChartTable(AStream, AChart, 8);
+
+    // Finally the footer.
+    AppendToStream(AStream,
+      '      </chart:chart>' + LE +
+      '    </office:chart>' + LE +
+      '  </office:body>' + LE +
+      '</office:document-content>');
+  finally
+    chartStream.Free;
+  end;
+(*
   AppendToStream(AStream,
     '  <office:body>' + LE +
     '    <office:chart>' + LE
@@ -6784,6 +6794,7 @@ begin
     '    </office:chart>' + LE +
     '  </office:body>' + LE +
     '</office:document-content>');
+    *)
 end;
 
 procedure TsSpreadOpenDocWriter.WriteChartAxis(AStream: TStream; AChart: TsChart;
@@ -6798,10 +6809,7 @@ var
   sheet: TsWorksheet;
   styles: TsChartStyleList;
   refStr: String;
-  styleIdx, titleStyleIdx: Integer;
-//  styleID, titleStyleID: Integer;
-  majorGridStyleID: Integer = 800;
-  minorGridstyleID: Integer = 900;
+  styleIdx, titleStyleIdx, majorGridStyleIdx, minorGridStyleIdx: Integer;
   r1, c1, r2, c2: Cardinal;
 begin
   ind := DupeString(' ', AIndent);
@@ -6813,34 +6821,47 @@ begin
     if IsPrimary then
     begin
       axis := AChart.XAxis;
-      styleIdx := styles.FindChartAxisStyle(AChart, catPrimaryX);
-      titleStyleIdx := styles.FindChartCaptionStyle(AChart, cctPrimaryX);
-      //styleID := 6;
+      if not axis.Visible then exit;
+      styleIdx := styles.AddChartStyle(AChart, TsChartAxisStyle, ceXAxis);
+      titleStyleIdx := styles.AddChartStyle(AChart, TsChartCaptionStyle, ceXAxisCaption);
+      majorGridStyleIdx := styles.AddChartStyle(AChart, TsChartLineStyle, ceXAxisMajorGrid);
+      minorGridStyleIdx := styles.AddChartStyle(AChart, TsChartLineStyle, ceXAxisMinorGrid);
     end else
     begin
       axis := AChart.X2Axis;
-      styleIdx := styles.FindChartAxisStyle(AChart, catSecondaryX);
-      titleStyleIdx := styles.FindChartCaptionStyle(AChart, cctSecondaryX);
-      //styleID := 10;
+      if not axis.Visible then exit;
+      styleIdx := styles.AddChartStyle(AChart, TsChartAxisStyle, ceX2Axis);
+      titleStyleIdx := styles.AddChartStyle(AChart, TsChartCaptionStyle, ceX2AxisCaption);
+      majorGridStyleIdx := styles.AddChartStyle(AChart, TsChartLineStyle, ceX2AxisMajorGrid);
+      minorGridStyleIdx := styles.AddChartStyle(AChart, TsChartLineStyle, ceX2AxisMinorGrid);
     end;
-    //titleStyleID := 7;
   end else
   begin
     if IsPrimary then
     begin
       axis := AChart.YAxis;
-      styleIdx := styles.FindChartAxisStyle(AChart, catPrimaryY);
-      titleStyleIdx := styles.FindChartCaptionStyle(AChart, cctPrimaryY);
-      //styleID := 11;
+      if not axis.Visible then exit;
+      styleIdx := styles.AddChartStyle(AChart, TsChartAxisStyle, ceYAxis);
+      titleStyleIdx := styles.AddChartStyle(AChart, TsChartCaptionStyle, ceYAxisCaption);
+      majorGridStyleIdx := styles.AddChartStyle(AChart, TsChartLineStyle, ceYAxisMajorGrid);
+      minorGridStyleIdx := styles.AddChartStyle(AChart, TsChartLineStyle, ceYAxisMinorGrid);
     end else
     begin
       axis := AChart.Y2Axis;
-      styleIdx := styles.FindChartAxisStyle(AChart, catSecondaryY);
-      titleStyleIdx := styles.FindChartCaptionStyle(AChart, cctSecondaryY);
-      //styleID := 12;
+      if not axis.Visible then exit;
+      styleIdx := styles.AddChartStyle(AChart, TsChartAxisStyle, ceY2Axis);
+      titleStyleIdx := styles.AddChartStyle(AChart, TsChartCaptionStyle, ceY2AxisCaption);
+      majorGridStyleIdx := styles.AddChartStyle(AChart, TsChartLineStyle, ceY2AxisMajorGrid);
+      minorGridStyleIdx := styles.AddChartStyle(AChart, TsChartLineStyle, ceY2AxisMinorGrid);
     end;
-    //titleStyleID := 12;
   end;
+
+  {$ifdef DEBUG_CHART_STYLES}
+  DebugLn([PadRight('[WriteChartAxis] ' + IfThen(IsX, 'x','y') + IfThen(IsPrimary, '', '2') + ' axis: Axis style', 50), 'ch', styleIdx + 1]);
+  DebugLn([PadRight('[WriteChartAxis] ' + IfThen(IsX, 'x','y') + IfThen(IsPrimary, '', '2') + ' axis: Caption style', 50), 'ch', titleStyleIdx + 1]);
+  DebugLn([PadRight('[WriteChartAxis] ' + IfThen(IsX, 'x','y') + IfThen(IsPrimary, '', '2') + ' axis: Major grid style', 50), 'ch', majorGridStyleIdx + 1]);
+  DebugLn([PadRight('[WriteChartAxis] ' + IfThen(IsX, 'x','y') + IfThen(IsPrimary, '', '2') + ' axis: Minor grid style', 50), 'ch', minorGridStyleIdx + 1]);
+  {$endif}
 
   AppendToStream(AStream, Format(
     ind + '<chart:axis chart:dimension="%s" chart:name="%s-%s" chart:style-name="ch%d" chartooo:axis-type="auto">' + LE,
@@ -6872,13 +6893,13 @@ begin
   if axis.MajorGridLines.Style <> clsNoLine then
     AppendToStream(AStream, Format(
       ind + '  <chart:grid chart:style-name="ch%d" chart:class="major"/>' + LE,
-      [ majorGridStyleID ]
+      [ majorGridStyleIdx + 1]
     ));
 
   if axis.MinorGridLines.Style <> clsNoLine then
     AppendToStream(AStream, Format(
       ind + '  <chart:grid chart:style-name="ch%d" chart:class="minor"/>' + LE,
-      [ minorGridStyleID ]
+      [ minorGridStyleIdx + 1]
     ));
 
   AppendToStream(AStream,
@@ -6892,23 +6913,29 @@ procedure TsSpreadOpenDocWriter.WriteChartBackground(AStream: TStream;
 var
   ind: String;
   idx: Integer;
+  styles: TsChartStyleList;
   chartClass: String;
 begin
+  styles := TsChartStyleList(FChartStyleList);
+
   chartClass := CHART_TYPE_NAMES[AChart.GetChartType];
   if chartClass <>  '' then
-    chartClass := ' chart:class="chart:' + chartClass + '"';
+    chartClass := 'chart:class="chart:' + chartClass + '"';
 
-  idx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtBackground);
-
+  idx := styles.AddChartStyle(AChart, TsChartBackgroundStyle, ceBackground);
   AppendToStream(AStream, Format(
-    '      <chart:chart svg:width="%.3fmm" svg:height="%.3fmm" xlink:href=".." ' + LE +
-    '          xlink:type="simple"' + chartClass + ' chart:style-name="ch%d"> ' + LE,
+    '      <chart:chart svg:width="%.3fmm" svg:height="%.3fmm" xlink:href=".." ' +
+             'xlink:type="simple" %s chart:style-name="ch%d">' + LE,
     [
-    AChart.Width,      // Width, Height are in mm
-    AChart.Height,
+    AChart.Width, AChart.Height,      // Width, Height are in mm
+    chartClass,
     idx + 1
     ],  FPointSeparatorSettings
   ));
+
+  {$ifdef DEBUG_CHART_STYLES}
+  DebugLn([PadRight('[WriteChartBackground] Background style', 50), 'ch', idx + 1]);
+  {$endif}
 end;
 
 { Writes the chart's legend to the xml stream }
@@ -6916,20 +6943,24 @@ procedure TsSpreadOpenDocWriter.WriteChartLegend(AStream: TStream; AChart: TsCha
   AIndent: Integer);
 var
   ind: String;
-  legendStyleIdx: Integer = 400;
+  styles: TsChartStyleList;
+  idx: Integer = 400;
 begin
   if (not AChart.Legend.Visible) then
     exit;
 
-  legendStyleIdx := TsChartStyleList(FChartStyleList).FindChartLegendStyle(AChart);
+  styles := TsChartStyleList(FChartStyleList);
+  idx := styles.AddChartStyle(AChart, TsChartLegendStyle, ceLegend);
 
   ind := DupeString(' ', AIndent);
   AppendToStream(AStream, Format(
-    ind + '<chart:legend chart:legend-position="end" ' +
-  //          'svg:x="14.875cm" svg:y="4.201cm" ' +
-            'style:legend-expansion="high" chart:style-name="ch%d"/>' + LE,
-    [ legendStyleIdx + 1 ]
+    ind + '<chart:legend chart:style-name="ch%d" chart:legend-position="end" style:legend-expansion="high" />' + LE,
+    [ idx + 1 ]
   ));
+
+  {$ifdef DEBUG_CHART_STYLES}
+  DebugLn([PadRight('[WriteChartLegend] Legend style', 50), 'ch', idx + 1]);
+  {$endif}
 end;
 
 procedure TsSpreadOpenDocWriter.WriteChartPlotArea(AStream: TStream;
@@ -6937,31 +6968,63 @@ procedure TsSpreadOpenDocWriter.WriteChartPlotArea(AStream: TStream;
 var
   ind: String;
   i: Integer;
-  plotAreaStyleID: Integer = 500;
-  wallStyleIdx, floorStyleIdx: Integer;
+  styles: TsChartStyleList;
+  idx: Integer;
 begin
+  styles := TsChartStyleList(FChartStyleList);
   ind := DupeString(' ', AIndent);
+
+  // Plot area
+  idx := styles.AddChartStyle(AChart, TsChartPlotAreaStyle, cePlotArea);
+  {$ifdef DEBUG_CHART_STYLES}
+  DebugLn([PadRight('[WriteChartPlotArea] PlotArea style', 50), 'ch',  idx+1]);
+  {$endif}
   AppendToStream(AStream, Format(
     ind + '<chart:plot-area chart:style-name="ch%d" chart:data-source-has-labels="both">' + LE,
-    [ plotAreastyleID ]
+    [ idx + 1 ]
   ));
   // ods has a table:cell-range-address here but it is reconstructed by Calc
 
-  WriteChartAxis(AStream, AChart, true,  true, AIndent + 2);  // true = x axis   true = primary
-  WriteChartAxis(AStream, AChart, false, true, AIndent + 2);  // false = y axis  true = primary
+  // wall
+  idx := styles.AddChartStyle(AChart, TsChartBackgroundStyle, ceWall);
+  {$ifdef DEBUG_CHART_STYLES}
+  DebugLn([PadRight('[WriteChartPlotArea] Wall style', 50), 'ch',  idx+1]);
+  {$endif}
+  AppendToStream(AStream, Format(
+    ind + '  <chart:wall chart:style-name="ch%d"/>' + LE,
+    [ idx + 1]
+  ));
 
+  // floor
+  idx := styles.AddChartStyle(AChart, TsChartBackgroundStyle, ceFloor);
+  {$ifdef DEBUG_CHART_STYLES}
+  DebugLn([PadRight('[WriteChartPlotArea] Floor style', 50), 'ch', idx+1]);
+  {$endif}
+  AppendToStream(AStream, Format(
+    ind + '  <chart:floor chart:style-name="ch%d"/>' + LE,
+    [ idx + 1]
+  ));
+
+  // primary x axis
+  WriteChartAxis(AStream, AChart, true,  true, AIndent + 2);
+
+  // primary y axis
+  WriteChartAxis(AStream, AChart, false, true, AIndent + 2);
+
+  // secondary x axis
+  WriteChartAxis(AStream, AChart, true, false, AIndent + 2);
+
+  // secondary y axis
+  WriteChartAxis(AStream, AChart, false, false, AIndent + 2);
+
+  // series
   for i := 0 to AChart.Series.Count-1 do
     WriteChartSeries(AStream, AChart, i, AIndent + 2);
 
-  wallStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtWall);
-  floorStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtFloor);
-
-  AppendToStream(AStream, Format(
-    ind + '  <chart:wall chart:style-name="ch%d"/>' + LE +
-    ind + '  <chart:floor chart:style-name="ch%d"/>' + LE +
-    ind + '</chart:plot-area>' + LE,
-    [ wallStyleIdx + 1, floorStyleIdx + 1 ]
-  ));
+  // close xml node
+  AppendToStream(AStream,
+    ind + '</chart:plot-area>' + LE
+  );
 end;
 
 procedure TsSpreadOpenDocWriter.WriteChartSeries(AStream: TStream;
@@ -6973,12 +7036,14 @@ var
   valuesRange: String;
   titleAddr: String;
   count: Integer;
-  seriesStyleID: Integer;
+  styles: TsChartStyleList;
+  seriesStyleIdx: Integer;
 begin
   ind := DupeString(' ', AIndent);
 
   series := AChart.Series[ASeriesIndex];
   sheet := TsWorkbook(FWorkbook).GetWorksheetByIndex(AChart.sheetIndex);
+  styles := TsChartStyleList(FChartStyleList);
 
   valuesRange := GetSheetCellRangeString_ODS(
     sheet.Name, sheet.Name,
@@ -6993,14 +7058,17 @@ begin
     rfAllRel, false);
   count := series.YRange.Row2 - series.YRange.Row1 + 1;
 
-  seriesStyleID := (14 + ASeriesIndex) * 100;
+  seriesStyleIdx := styles.AddChartStyle(AChart, TsChartSeriesStyle, ceSeries, ASeriesIndex);
+  {$ifdef DEBUG_CHART_STYLES}
+  DebugLn([PadRight('[WriteChartSeries] Series ' + IntToStr(ASeriesIndex) + ' style', 50), 'ch', seriesStyleIdx+1]);
+  {$endif}
 
   AppendToStream(AStream, Format(
     ind + '<chart:series chart:style-name="ch%d" ' +
             'chart:values-cell-range-address="%s" ' +      // y values
             'chart:label-cell-address="%s" ' +             // series title
             'chart:class="chart:%s">' + LE,
-    [ seriesStyleID, valuesRange, titleAddr, CHART_TYPE_NAMES[series.ChartType] ]
+    [ seriesStyleIdx + 1, valuesRange, titleAddr, CHART_TYPE_NAMES[series.ChartType] ]
   ));
   AppendToStream(AStream, Format(
     ind + '  <chart:data-point chart:repeated="%d"/>' + LE,
@@ -7012,7 +7080,7 @@ begin
 end;
 
 function TsSpreadOpenDocWriter.GetChartAxisStyleAsXML(
-  AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
+  AChart: TsChart; AStyleIndex, AIndent: Integer): String;
 var
   ind: String;
   style: TsChartAxisStyle;
@@ -7066,13 +7134,20 @@ begin
 end;
 
 function TsSpreadOpenDocWriter.GetChartBackgroundStyleAsXML(
-  AChart: TsChart; AStyleIndex: Integer; AIndent: Integer): String;
+  AChart: TsChart; AStyleIndex, AIndent: Integer): String;
 var
   ind: String;
-  idx: Integer;
   style: TsChartBackgroundStyle;
   s, drawStroke, strokeColor, drawFill, drawFillColor: String;
 begin
+  Result := '';
+
+  if AStyleIndex = -1 then
+    exit;
+
+  if not (TsChartStyle(FChartStyleList[AStyleIndex]) is  TsChartBackgroundStyle) then
+    raise Exception.Create('[GetChartBackgroundStyleAsXML] StyleIndex does not point to a TsChartBackgroundStyle.');
+
   style := TsChartBackgroundStyle(FChartStyleList[AStyleIndex]);
 
   case style.Border.Style of
@@ -7115,7 +7190,7 @@ end;
   </style:style>
 }
 function TsSpreadOpenDocWriter.GetChartCaptionStyleAsXML(AChart: TsChart;
-  AStyleIndex: Integer; AIndent: Integer): String;
+  AStyleIndex, AIndent: Integer): String;
 var
   style: TsChartCaptionStyle;
   ind: String;
@@ -7128,6 +7203,8 @@ begin
   if AStyleIndex = -1 then
     exit;
 
+  if not (TsChartStyle(FChartStyleList[AStyleIndex]) is TsChartCaptionStyle) then
+    raise Exception.Create('[GetChartCaptionStyle] StyleIndex does not point to a TsChartCaptionStyle.');
   style := TsChartCaptionStyle(FChartStyleList[AStyleIndex]);
 
   if not style.Caption.Visible then
@@ -7166,7 +7243,7 @@ end;
 </style:style>
 }
 function TsSpreadOpenDocWriter.GetChartLegendStyleAsXML(AChart: TsChart;
-  AStyleIndex: Integer; AIndent: Integer): String;
+  AStyleIndex, AIndent: Integer): String;
 var
   ind: String;
   style: TsChartLegendStyle;
@@ -7222,84 +7299,66 @@ begin
   ]);
 end;
 
-{ To do: The list of styles must be updated to the real chart element settings. }
-procedure TsSpreadOpenDocWriter.WriteChartStyles(AStream: TStream;
-  AChart: TsChart; AIndent: Integer);
+{ <style:style style:name="ch12" style:family="chart">
+    <style:graphic-properties draw:stroke="dash" draw:stroke-dash="Dot"
+       svg:stroke-color="#ff0000"/>
+  </style:style> }
+function TsSpreadOpenDocWriter.GetChartLineStyleAsXML(ALine: TsChartLine;
+  AStyleIndex, AIndent: Integer): String;
 var
   ind: String;
-  backGrStyleIdx: Integer;
-  wallStyleIdx: Integer;
-  floorStyleIdx: Integer;
-  xAxisStyleIdx: Integer;
-  yAxisStyleIdx: Integer;
-  x2AxisStyleIdx: Integer;
-  y2AxisStyleIdx: Integer;
-  xAxisCaptionStyleIdx: Integer;
-  yAxisCaptionStyleIdx: Integer;
-  x2AxisCaptionStyleIdx: Integer;
-  y2AxisCaptionStyleIdx: Integer;
-  titleCaptionStyleIdx: Integer;
-  subtitleCaptionStyleIdx: Integer;
-  legendStyleIdx: Integer;
+  style: TsChartLineStyle;
+  graphProps: String = '';
+  s: String = '';
 begin
-  backGrStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtBackground);
-  wallStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtWall);
-  floorStyleIdx := TsChartStyleList(FChartStyleList).FindChartBackgroundStyle(AChart, cbtFloor);
+  Result := '';
 
-  xAxisStyleIdx := TsChartStyleList(FChartStyleList).FindChartAxisStyle(AChart, catPrimaryX);
-  yAxisStyleIdx := TsChartStyleList(FChartStyleList).FindChartAxisStyle(AChart, catPrimaryY);
-  x2AxisStyleIdx := TsChartStyleList(FChartStyleList).FindChartAxisStyle(AChart, catSecondaryX);
-  y2AxisStyleIdx := TsChartStyleList(FChartStyleList).FindChartAxisStyle(AChart, catSecondaryY);
+  if AStyleIndex = -1 then
+    exit;
 
-  xAxisCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctPrimaryX);
-  yAxisCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctPrimaryY);
-  x2AxisCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctSecondaryX);
-  y2AxisCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctSecondaryY);
-  titleCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctTitle);
-  subtitleCaptionStyleIdx := TsChartStyleList(FChartStyleList).FindChartCaptionStyle(AChart, cctSubtitle);
+  style := TsChartLineStyle(FChartStyleList[AStyleIndex]);
 
-  legendStyleIdx := TsChartStyleList(FChartStyleList).FindChartLegendStyle(AChart);
+  if style.Line.Style = clsNoLine then
+    exit;
+
+  if style.Line.Style = clsSolid then
+    graphProps := 'draw:stroke="solid" '
+  else
+  begin
+    if style.Line.Style = clsFineDot then s := 'Dot'
+    else if style.Line.Style = clsDot then s := 'Long_20_Dot'
+    else if style.Line.Style = clsDash then s := 'Long_20_Dash'
+    else if style.Line.Style = clsDashDot then s := 'Long_20_Dash_20_Dot'
+    else if style.Line.Style = clsLongDash then s := 'Double_20_Dash'
+    else if style.Line.Style = clsLongDashDot then s := 'Double_20_Dash_20_Dot'
+    else if style.Line.Style = clsLongDashDotDot then s := 'Double_20_Dash_20_Dot_20_Dot';
+    if s <> '' then
+      graphProps := 'draw:stroke="dash" draw:stroke-dash=" ' + s + '" '
+    else
+      graphProps := 'draw:stroke="solid" ';
+  end;
+  graphProps := Format('%s svg:stroke-width="%.2fcm" svg:stroke-color="%s" ',
+    [ graphProps, style.Line.Width*0.1, ColorToHTMLColorStr(style.Line.Color) ],
+    FPointSeparatorSettings
+  );
 
   ind := DupeString(' ', AIndent);
+  Result := Format(
+    ind + '<style:style style:name="ch%d" style:family="chart">' + LE +
+    ind + '  <style:graphic-properties %s/>' + LE +
+    ind + '</style:style>' + LE,
+    [ AStyleIndex + 1, graphProps ]
+  );
+end;
 
-  AppendToStream(AStream,
-    ind + '<office:automatic-styles>' + LE +
-    ind + '  <number:number-style style:name="N0">' + LE +
-    ind + '    <number:number number:min-integer-digits="1"/>' + LE +
-    ind + '  </number:number-style>' + LE +
-
-    // style for <chart:chart> element
-    GetChartBackgroundStyleAsXML(AChart, backGrStyleIdx, AIndent + 2) +
-    {
-    ind + '  <style:style style:name="ch1" style:family="chart">' + LE +
-    ind + '    <style:graphic-properties draw:stroke="solid"/>' + LE +     // '
-    ind + '  </style:style>' + LE +
-     }
-    // ch2: style for <chart:title> element
-    ind + '  <style:style style:name="ch200" style:family="chart">' + LE +
-    ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>' + LE +
-    ind + '    <style:text-properties fo:font-size="13pt" style:font-size-asian="13pt" style:font-size-complex="13pt"/>' + LE +
-    ind + '  </style:style>' + LE +
-
-    // ch3: style for <chart:subtitle element
-    ind + '  <style:style style:name="ch300" style:family="chart">' + LE +
-    ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>' + LE +
-    ind + '    <style:text-properties fo:font-size="11pt" style:font-size-asian="11pt" style:font-size-complex="11pt"/>' + LE +
-    ind + '  </style:style>' + LE +
-
-    // ch 4: style for <chart:legend> element
-    GetChartLegendStyleAsXML(AChart, legendStyleIdx, AIndent + 2) +
-    {
-    ind + '  <style:style style:name="ch400" style:family="chart">' + LE +
-    ind + '    <style:chart-properties chart:auto-position="true"/>' + LE +
-    ind + '    <style:graphic-properties draw:stroke="none" svg:stroke-color="#b3b3b3" ' +
-                 'draw:fill="none" draw:fill-color="#e6e6e6"/>' + LE +
-    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
-    ind + '  </style:style>' + LE +
-     }
-
-    // ch5: style for <chart:plot-area> element
-    ind + '  <style:style style:name="ch500" style:family="chart">' + LE +
+function TsSpreadOpenDocWriter.GetChartPlotAreaStyleAsXML(AChart: TsChart;
+  AStyleIndex, AIndent: Integer): String;
+var
+  ind: String;
+begin
+  ind := DupeString(' ', AIndent);
+  Result := Format(
+    ind + '  <style:style style:name="ch%d" style:family="chart">' + LE +
     ind + '    <style:chart-properties ' +
                  'chart:symbol-type="automatic" ' +
                  'chart:include-hidden-cells="false" ' +
@@ -7307,101 +7366,267 @@ begin
                  'chart:auto-size="true" ' +
                  'chart:treat-empty-cells="leave-gap" ' +
                  'chart:right-angled-axes="true"/>' + LE +
-    ind + '  </style:style>' + LE +
+    ind + '  </style:style>' + LE,
+    [ AStyleIndex ]
+  );
+end;
 
-                 {
-    ind + '  <style:style style:name="ch5" style:family="chart">' + LE +
-    ind + '    <style:chart-properties ' +
-                 'chart:include-hidden-cells="false" ' +
-                 'chart:auto-position="true" ' +
-                 'chart:auto-size="true" ' +
-                 'chart:treat-empty-cells="leave-gap" ' +
-                 'chart:right-angled-axes="true"/>' + LE +
-    ind + '  </style:style>' + LE +
-                  }
+{ <style:style style:name="ch1400" style:family="chart" style:data-style-name="N0">
+    <style:chart-properties
+      chart:symbol-type="named-symbol"
+      chart:symbol-name="arrow-down"
+      chart:symbol-width="0.25cm"
+      chart:symbol-height="0.25cm"
+      chart:link-data-style-to-source="true"/>
+    <style:graphic-properties
+      svg:stroke-width="0.08cm"
+      svg:stroke-color="#ffd320"
+      draw:fill-color="#ffd320"
+      dr3d:edge-rounding="5%"/>
+    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>
+  </style:style> }
+function TsSpreadOpenDocWriter.GetChartSeriesStyleAsXML(AChart: TsChart;
+  AStyleIndex, ASeriesIndex, AIndent: Integer): String;
+var
+  series: TsChartSeries;
+  lineser: TsLineSeries;
+  ind: String;
+  style: TsChartSeriesStyle;
+  chartProps: String = '';
+  graphProps: String = '';
+  textProps: String = '';
+  fillColorStr: String = '';
+  s: String;
+begin
+  Result := '';
 
-    // Style for first <chart:axis> element, primary x axis
-    GetChartAxisStyleAsXML(AChart, xAxisStyleIdx, AIndent + 2) +
-    {
-    ind + '    <style:style style:name="ch6" style:family="chart" style:data-style-name="N0">' + LE +
-    ind + '      <style:chart-properties chart:display-label="true" ' +
-                   'chart:logarithmic="false" chart:reverse-direction="false" ' +
-                   'text:line-break="false" loext:try-staggering-first="false" ' +
-                   'chart:link-data-style-to-source="true" chart:axis-position="0"/>' + LE +
-    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
-    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
-    ind + '  </style:style>' + LE +
-     }
+  if AStyleIndex = -1 then
+    exit;
 
-    // ch7: style for title at horizontal axes
-    GetChartCaptionStyleAsXML(AChart, xAxisCaptionStyleIdx, AIndent + 2) +
-    {
-    ind + '  <style:style style:name="ch7" style:family="chart">' + LE +
-    ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>' + LE +
-    ind + '    <style:text-properties fo:font-size="9pt" style:font-size-asian="9pt" style:font-size-complex="9pt"/>' + LE +
-    ind + '  </style:style>' + LE +
-    }
-    // ch8: style for major grid (all axes)
-    ind + '  <style:style style:name="ch800" style:family="chart">' + LE +
-    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
-    ind + '    </style:style>' + LE +
+  ind := DupeString(' ', AIndent);
+  style := TsChartSeriesStyle(FChartStyleList[AStyleIndex]);
+  series := AChart.Series[ASeriesIndex];
 
-    // ch9: style for minor grid (all axes)
-    ind + '  <style:style style:name="ch900" style:family="chart">' + LE +
-    ind + '    <style:graphic-properties svg:stroke-color="#dddddd"/>' + LE +
-    ind + '  </style:style>' + LE +
+  chartProps := 'chart:symbol-type="none" ';
+  if (series is TsLineSeries) and TsLineSeries(series).ShowSymbols then
+  begin
+    lineSer := TsLineSeries(series);
+    chartProps := Format(
+      'chart:symbol-type="named-symbol" chart:symbol-name="%s" chart:symbol-width="%.1fmm" chart.symbol-height="%.1fmm" ',
+      [CHART_SYMBOL_NAMES[lineSer.Symbol], lineSer.SymbolWidth, lineSer.SymbolHeight ],
+      FPointSeparatorSettings
+    );
+    fillColorStr := 'draw:fill-color="' + ColorToHTMLColorStr(lineSer.SymbolFill.FgColor) + '" ';
+  end;
+  chartProps := chartProps + 'chart:link-data-style-to-source="true" ';
 
-    // ch10: style for second <chart:axis> element, secondary x axis
-    GetChartAxisStyleAsXML(AChart, x2AxisStyleIdx, AIndent + 2) +
-    GetChartCaptionStyleAsXML(AChart, x2AxisCaptionStyleIdx, AIndent + 2) +
-    {
-    ind + '  <style:style style:name="ch1000" style:family="chart" style:data-style-name="N0">' + LE +
-    ind + '    <style:chart-properties chart:display-label="true" ' +
-                 'chart:logarithmic="false" chart:reverse-direction="false" ' +
-                 'text:line-break="false" loext:try-staggering-first="false" ' +
-                 'chart:link-data-style-to-source="true" chart:axis-position="end"/>' + LE +
-    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
-    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
-    ind + '  </style:style>' + LE +
-    }
-    // ch11: style for third <chart:axis> element: primary y axis
-    GetChartAxisStyleAsXML(AChart, yAxisStyleIdx, AIndent + 2) +
-    {
-    ind + '  <style:style style:name="ch1100" style:family="chart" style:data-style-name="N0">' + LE +
-    ind + '    <style:chart-properties chart:display-label="true" ' +
-                 'chart:logarithmic="false" chart:reverse-direction="false" ' +
-                 'text:line-break="false" loext:try-staggering-first="false" ' +
-                 'chart:link-data-style-to-source="true" chart:axis-position="0"/>' + LE +
-    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
-    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
-    ind + '  </style:style>' + LE +
-    }
+  textProps :=
+    'fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt" ';
 
-    // ch12: style for vertical axis title (both y and y2 axis)
-    GetChartCaptionStyleAsXML(AChart, yAxisCaptionStyleIdx, AIndent + 2) +
+  if style.Line.Style = clsSolid then
+    graphProps := 'draw:stroke="solid" '
+  else
+  begin
+    if style.Line.Style = clsFineDot then s := 'Dot'
+    else if style.Line.Style = clsDot then s := 'Long_20_Dot'
+    else if style.Line.Style = clsDash then s := 'Long_20_Dash'
+    else if style.Line.Style = clsDashDot then s := 'Long_20_Dash_20_Dot'
+    else if style.Line.Style = clsLongDash then s := 'Double_20_Dash'
+    else if style.Line.Style = clsLongDashDot then s := 'Double_20_Dash_20_Dot'
+    else if style.Line.Style = clsLongDashDotDot then s := 'Double_20_Dash_20_Dot_20_Dot';
+    if s <> '' then
+      graphProps := 'draw:stroke="dash" draw:stroke-dash=" ' + s + '" '
+    else
+      graphProps := 'draw:stroke="solid" ';
+  end;
+  graphProps := graphProps + Format('svg:stroke-width="%.1fmm" svg:stroke-color="%s" %s',
+    [ style.Line.Width, ColorToHTMLColorStr(style.Line.Color), fillColorStr ],
+    FPointSeparatorSettings
+  );
 
-    ind + '  <style:style style:name="ch1200" style:family="chart">' + LE +
-    ind + '    <style:chart-properties chart:auto-position="true" style:rotation-angle="90"/>' + LE +
-    ind + '    <style:text-properties fo:font-size="9pt" style:font-size-asian="9pt" style:font-size-complex="9pt"/>' + LE +
-    ind + '  </style:style>' +
+  textProps := 'fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt" ';
+//  textProps := WriteFontStyleXMLAsString(font);    // <--- to be completed. this is for the series labels.
 
-    // ch13: style for fourth <chart:axis> element: secondary y axis
-    GetChartAxisStyleAsXML(AChart, y2AxisStyleIdx, AIndent + 2) +
-    GetChartCaptionStyleAsXML(AChart, y2AxisCaptionStyleIdx, AIndent + 2) +
-    {
-    ind + '  <style:style style:name="ch1300" style:family="chart" style:data-style-name="N0">' + LE +
-    ind + '    <style:chart-properties chart:display-label="true" ' +
-                 'chart:logarithmic="false" chart:reverse-direction="false" ' +
-                 'text:line-break="false" loext:try-staggering-first="false" ' +
-                 'chart:link-data-style-to-source="true" chart:axis-position="end"/>' + LE +
-    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3"/>' + LE +
-    ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
-    ind + '  </style:style>' + LE +
-     }
+  Result := Format(
+    ind + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="N0">' + LE +
+    ind + '  <style:chart-properties %s/>' + LE +
+    ind + '  <style:graphic-properties %s/>' + LE +
+    ind + '  <style:text-properties %s/>' + LE +
+    ind + '</style:style>' + LE,
+    [ AStyleIndex + 1, chartProps, graphProps, textProps ]
+  );
+end;
 
+{ <style:style style:name="ch200" style:family="chart">
+    <style:chart-properties chart:auto-position="true" style:rotation-angle="0"/>
+    <style:text-properties fo:font-size="13pt" style:font-size-asian="13pt" style:font-size-complex="13pt"/>
+  </style:style> }
+function TsSpreadOpenDocWriter.GetChartTitleStyleAsXML(AChart: TsChart;
+  AStyleIndex, AIndent: Integer): String;
+var
+  graphProps: String = '';
+  ind: String;
+begin
+  ind := DupeString(' ', AIndent);
+  Result := Format(
+    ind + '<style:style style:name="ch%d" style:family="chart">' + LE +
+    ind + '  <style:graphic-properties %s/>' + LE +
+    ind + '</style:style>' + LE,
+    [ AStyleIndex + 1, graphProps ]
+  );
+end;
 
+procedure TsSpreadOpenDocWriter.WriteChartStyles(AStream: TStream;
+  AChart: TsChart; AIndent: Integer);
+var
+  i: Integer;
+  ind: String;
+  styles: TsChartStyleList;
+  idx: Integer;
+begin
+  styles := TsChartStyleList(FChartStyleList);
+  ind := DupeString(' ', AIndent);
 
-    // ch14: style for frist series - this is for a line series
+  AppendToStream(AStream,
+    ind + '<office:automatic-styles>' + LE +
+    ind + '  <number:number-style style:name="N0">' + LE +
+    ind + '    <number:number number:min-integer-digits="1"/>' + LE +
+    ind + '  </number:number-style>' + LE
+  );
+
+  // Style for <chart:chart> element
+  idx := styles.FindChartStyle(AChart, TsChartBackgroundStyle, ceBackground);
+  AppendToStream(AStream,
+    GetChartBackgroundStyleAsXML(AChart, idx, AIndent + 2)
+  );
+
+  // Style for <chart:title> element
+  idx := styles.FindChartStyle(AChart, TsChartCaptionStyle, ceTitle);
+  AppendToStream(AStream,
+    GetChartCaptionStyleAsXML(AChart, idx, AIndent + 2)  // was: GetChartTextStyle
+  );
+
+  // Style for <chart:subtitle element
+  idx := styles.FindChartStyle(AChart, TsChartCaptionStyle, ceSubtitle);
+  AppendToStream(AStream,
+    GetChartTitleStyleAsXML(AChart, idx, AIndent + 2)
+  );
+
+  // Style for <chart:legend> element
+  idx := styles.FindChartStyle(AChart, TsChartLegendStyle, ceLegend);
+  AppendToStream(AStream,
+    GetChartLegendStyleAsXML(AChart, idx, AIndent + 2)
+  );
+
+  // Styles for wall and floor
+  idx := styles.FindChartStyle(AChart, TsChartBackgroundStyle, ceWall);
+  AppendToStream(AStream,
+    GetChartBackgroundStyleAsXML(AChart, idx, AIndent + 2)
+  );
+  idx := styles.FindChartStyle(AChart, TsChartBackgroundStyle, ceFloor);
+  AppendToStream(AStream,
+    GetChartBackgroundStyleAsXML(AChart, idx, AIndent + 2)
+  );
+
+  // Styles for primary x axis
+  // - axis
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceXAxis);
+  AppendToStream(AStream,
+    GetChartAxisStyleAsXML(AChart, idx, AIndent + 2)
+  );
+  // - axis title
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceXAxisCaption);
+  AppendToStream(AStream,
+    GetChartCaptionStyleAsXML(AChart, idx, AIndent + 2)
+  );
+  // - axis major grid
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceXAxisMajorGrid);
+  AppendToStream(AStream,
+    GetChartLineStyleAsXML(AChart.XAxis.MajorGridLines, idx, AIndent + 2)
+  );
+  // - axis minor grid
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceXAxisMinorGrid);
+  AppendToStream(AStream,
+    GetChartLineStyleAsXML(AChart.XAxis.MinorGridLines, idx, AIndent + 2)
+  );
+
+  // Styles for secondary x axis
+  // - axis
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceX2Axis);
+  AppendToStream(AStream,
+    GetChartAxisStyleAsXML(AChart, idx, AIndent + 2)
+  );
+  // - axis title
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceX2AxisCaption);
+  AppendToStream(AStream,
+    GetChartCaptionStyleAsXML(AChart, idx, AIndent + 2)
+  );
+  // - axis major grid
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceX2AxisMajorGrid);
+  AppendToStream(AStream,
+    GetChartLineStyleAsXML(AChart.X2Axis.MajorGridLines, idx, AIndent + 2)
+  );
+  // - axis minor grid
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceX2AxisMinorGrid);
+  AppendToStream(AStream,
+    GetChartLineStyleAsXML(AChart.X2Axis.MinorGridLines, idx, AIndent + 2)
+  );
+
+  // Styles for primary y axis
+  // - axis
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceYAxis);
+  AppendToStream(AStream,
+    GetChartAxisStyleAsXML(AChart, idx, AIndent + 2)
+  );
+  // - axis title
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceYAxisCaption);
+  AppendToStream(AStream,
+    GetChartCaptionStyleAsXML(AChart, idx, AIndent + 2)
+  );
+  // - axis major grid
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceYAxisMajorGrid);
+  AppendToStream(AStream,
+    GetChartLineStyleAsXML(AChart.YAxis.MajorGridLines, idx, AIndent + 2)
+  );
+  // - axis minor grid
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceYAxisMinorGrid);
+  AppendToStream(AStream,
+    GetChartLineStyleAsXML(AChart.YAxis.MinorGridLines, idx, AIndent + 2)
+  );
+
+  // Styles for seconary y axis
+  // - axis
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceY2Axis);
+  AppendToStream(AStream,
+    GetChartAxisStyleAsXML(AChart, idx, AIndent + 2)
+  );
+  // - axis title
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceY2AxisCaption);
+  AppendToStream(AStream,
+    GetChartCaptionStyleAsXML(AChart, idx, AIndent + 2)
+  );
+  // - axis major grid
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceY2AxisMajorGrid);
+  AppendToStream(AStream,
+    GetChartLineStyleAsXML(AChart.Y2Axis.MajorGridLines, idx, AIndent + 2)
+  );
+  // - axis minor grid
+  idx := styles.FindChartStyle(AChart, TsChartAxisStyle, ceY2AxisMinorGrid);
+  AppendToStream(AStream,
+    GetChartLineStyleAsXML(AChart.Y2Axis.MinorGridLines, idx, AIndent + 2)
+  );
+
+ // Styles for all series
+  for i := 0 to AChart.Series.Count-1 do
+  begin
+    idx := styles.FindChartStyle(AChart, TsChartSeriesStyle, ceSeries, i);
+    AppendToStream(AStream,
+      GetChartSeriesStyleAsXML(AChart, idx, i, AIndent + 2)
+    );
+  end;
+          {
+  // Style for frist series - this is for a line series
+  AppendToStream(AStream,
     ind + '  <style:style style:name="ch1400" style:family="chart" style:data-style-name="N0">' + LE +
     ind + '    <style:chart-properties ' +
                  'chart:symbol-type="named-symbol" ' +
@@ -7473,24 +7698,14 @@ begin
     ind + '    <style:chart-properties chart:link-data-style-to-source="true"/>' + LE +
     ind + '    <style:graphic-properties draw:stroke="none" draw:fill-color="#aecf00" dr3d:edge-rounding="5%"/>' + LE +
     ind + '    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>' + LE +
-    ind + '  </style:style>' + LE +
-
-    GetChartBackgroundStyleAsXML(AChart, wallStyleIdx, AIndent + 2) +
-    GetChartBackgroundStyleAsXML(AChart, floorStyleIdx, AIndent + 2) +
-                         {
-                         // next to last: style for wall
-    ind + '  <style:style style:name="ch22" style:family="chart">' + LE +
-    ind + '    <style:graphic-properties draw:stroke="solid" svg:stroke-color="#b3b3b3" draw:fill="none" draw:fill-color="#e6e6e6"/>' + LE +
-    ind + '  </style:style>' + LE +
-
-    // last: last style for floor
-    ind + '  <style:style style:name="ch23" style:family="chart">' + LE +
-    ind + '    <style:graphic-properties svg:stroke-color="#b3b3b3" draw:fill-color="#cccccc"/>' + LE +
-    ind + '  </style:style>' + LE +
-                          }
+    ind + '  </style:style>' + LE
+  );
+           }
+  AppendToStream(AStream,
     ind + '</office:automatic-styles>' + LE
   );
 end;
+
 
 { Extracts the cells needed by the given chart from the chart's worksheet and
   copies their values into a temporary worksheet, AWorksheet, so that these
@@ -7810,31 +8025,39 @@ procedure TsSpreadOpenDocWriter.WriteChartTitle(AStream: TStream; AChart: TsChar
   IsSubTitle: Boolean; AIndent: Integer);
 var
   ind: String;
+  styles: TsChartStyleList;
   elementName: String;
-  titleStyleID: Integer;
+  idx: Integer;
   cap: String;
 begin
   if (not AChart.Title.Visible) or (AChart.Title.Caption = '') then
     exit;
 
+  styles := TsChartStyleList(FChartStyleList);
+
   ind := DupeString(' ', AIndent);
   if IsSubTitle then
   begin
     elementName := 'subtitle';
-    titleStyleID := 300;
+    idx := styles.AddChartStyle(AChart, TsChartCaptionStyle, ceSubTitle);
     cap := AChart.SubTitle.Caption;
   end else
   begin
     elementName := 'title';
-    titleStyleID := 200;
+    idx := styles.AddChartStyle(AChart, TsChartCaptionStyle, ceTitle);
     cap := AChart.Title.Caption;
   end;
+
+  {$ifdef DEBUG_CHART_STYLES}
+  DebugLn([PadRight('[WriteChartTitle] ' + UpCase(elementName[1]) + Copy(elementName, 2, MaxInt) + ' style', 50), 'ch', idx + 1]);
+  {$endif}
+
   AppendToStream(AStream, Format(
 //    ind + '<chart:title svg:x="%.3fcm" svg:y="%.3fcm" chart:style-name="ch2">' + LE +
     ind + '<chart:%s chart:style-name="ch%d">' + LE +
     ind + '  <text:p>%s</text:p>' + LE +
-    ind + '</chart:%s>' + lE,
-    [ elementName, titleStyleID, cap, elementName ], FPointSeparatorSettings
+    ind + '</chart:%s>' + LE,
+    [ elementName, idx + 1, cap, elementName ], FPointSeparatorSettings
   ));
 end;
 
