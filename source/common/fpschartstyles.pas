@@ -97,6 +97,7 @@ type
     Font: TsChartFontRec;
     Border: TsChartLineRec;
     Fill: TsChartFillRec;
+    Position: TsChartLegendPosition;
     Visible: Boolean;
     procedure FromChart(AChart: TsChart; AElement: TsChartStyleElement);
     procedure ToChart(AChart: TsChart; AElement: TsChartStyleElement);
@@ -605,6 +606,7 @@ begin
   Border.FromChart(AChart, ceLegend, 0);
   Fill.FromChart(AChart, ceLegend, 0);
   Visible := AChart.Legend.Visible;
+  Position := AChart.Legend.Position;
 end;
 
 procedure TsChartLegendRec.ToChart(AChart: TsChart; AElement: TsChartStyleElement);
@@ -614,12 +616,14 @@ begin
   Border.ToChart(AChart, ceLegend, 0);
   Fill.ToChart(AChart, ceLegend, 0);
   AChart.Legend.Visible := Visible;
+  AChart.Legend.Position := Position;
 end;
 
 class operator TsChartLegendRec.= (A, B: TsChartLegendRec): Boolean;
 begin
   Result := (A.Font = B.Font) and (A.Border = B.Border) and (A.Fill = B.Fill) and
-    (A.Visible = B.Visible) and (A.CanOverlapPlotArea = B.CanOverlapPlotArea);
+    (A.Visible = B.Visible) and (A.CanOverlapPlotArea = B.CanOverlapPlotArea) and
+    (A.Position = B.Position);
 end;
 
 { TsChartPlotAreaRec }

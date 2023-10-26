@@ -168,15 +168,19 @@ type
     property ShowLabels: Boolean read FShowLabels write FShowLabels;
   end;
 
+  TsChartLegendPosition = (lpRight, lpTop, lpBottom, lpLeft);
+
   TsChartLegend = class(TsChartFillElement)
   private
     FFont: TsFont;
     FCanOverlapPlotArea: Boolean;
+    FPosition: TsChartLegendPosition;
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
     property CanOverlapPlotArea: Boolean read FCanOverlapPlotArea write FCanOverlapPlotArea;
     property Font: TsFont read FFont write FFont;
+    property Position: TsChartLegendPosition read FPosition write FPosition;
   end;
 
   TsChartAxisLink = (alPrimary, alSecondary);

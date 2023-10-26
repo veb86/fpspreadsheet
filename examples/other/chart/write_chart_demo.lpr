@@ -98,9 +98,10 @@ begin
     ch.Legend.Font.Color := scBlue;
     ch.Legend.Border.Width := 0.3; // mm
     ch.Legend.Border.Color := scGray;
-    ch.Legend.Background.FgColor := scSilver;
+    ch.Legend.Background.FgColor := $F0F0F0;
     ch.Legend.Background.Style := fsSolidFill;
-    ch.Legend.CanOverlapPlotArea := true;
+    //ch.Legend.CanOverlapPlotArea := true;
+    ch.Legend.Position := lpBottom;
 
     // 2nd sheet
     sh2 := b.AddWorksheet('test2');

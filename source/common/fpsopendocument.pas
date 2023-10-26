@@ -7002,6 +7002,10 @@ end;
 { Writes the chart's legend to the xml stream }
 procedure TsSpreadOpenDocWriter.WriteChartLegend(AStream: TStream; AChart: TsChart;
   AIndent: Integer);
+const
+  LEGEND_POSITION: array[TsChartLegendPosition] of string = (
+    'end', 'top', 'bottom', 'start'
+  );
 var
   ind: String;
   styles: TsChartStyleList;
@@ -7020,8 +7024,8 @@ begin
     canOverlap := 'loext:overlay="true" ';
   ind := DupeString(' ', AIndent);
   AppendToStream(AStream, Format(
-    ind + '<chart:legend chart:style-name="ch%d" chart:legend-position="end" style:legend-expansion="high" %s/>' + LE,
-    [ idx + 1, canOverlap ]
+    ind + '<chart:legend chart:style-name="ch%d" chart:legend-position="%s" style:legend-expansion="high" %s/>' + LE,
+    [ idx + 1, LEGEND_POSITION[style.Legend.Position], canOverlap ]
   ));
 
   {$ifdef DEBUG_CHART_STYLES}
