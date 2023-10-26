@@ -93,6 +93,7 @@ type
   end;
 
   TsChartLegendRec = record
+    CanOverlapPlotArea: Boolean;
     Font: TsChartFontRec;
     Border: TsChartLineRec;
     Fill: TsChartFillRec;
@@ -599,6 +600,7 @@ end;
 { TsChartLegendRec }
 procedure TsChartLegendRec.FromChart(AChart: TsChart; AElement: TsChartStyleElement);
 begin
+  CanOverlapPlotArea := AChart.Legend.CanOverlapPlotArea;
   Font.FromChart(AChart, ceLegend);
   Border.FromChart(AChart, ceLegend, 0);
   Fill.FromChart(AChart, ceLegend, 0);
@@ -607,6 +609,7 @@ end;
 
 procedure TsChartLegendRec.ToChart(AChart: TsChart; AElement: TsChartStyleElement);
 begin
+  AChart.Legend.CanOverlapPlotArea := CanOverlapPlotArea;
   Font.ToChart(AChart, ceLegend);
   Border.ToChart(AChart, ceLegend, 0);
   Fill.ToChart(AChart, ceLegend, 0);
@@ -616,7 +619,7 @@ end;
 class operator TsChartLegendRec.= (A, B: TsChartLegendRec): Boolean;
 begin
   Result := (A.Font = B.Font) and (A.Border = B.Border) and (A.Fill = B.Fill) and
-    (A.Visible = B.Visible);
+    (A.Visible = B.Visible) and (A.CanOverlapPlotArea = B.CanOverlapPlotArea);
 end;
 
 { TsChartPlotAreaRec }

@@ -7005,18 +7005,23 @@ procedure TsSpreadOpenDocWriter.WriteChartLegend(AStream: TStream; AChart: TsCha
 var
   ind: String;
   styles: TsChartStyleList;
+  style: TsChartStyle_Legend;
   idx: Integer = 400;
+  canOverlap: String = '';
 begin
   if (not AChart.Legend.Visible) then
     exit;
 
   styles := TsChartStyleList(FChartStyleList);
   idx := styles.AddChartStyle('Legend', AChart, TsChartstyle_Legend, ceLegend);
+  style := TsChartStyle_Legend(styles[idx]);
 
+  if style.Legend.CanOverlapPlotArea then
+    canOverlap := 'loext:overlay="true" ';
   ind := DupeString(' ', AIndent);
   AppendToStream(AStream, Format(
-    ind + '<chart:legend chart:style-name="ch%d" chart:legend-position="end" style:legend-expansion="high" />' + LE,
-    [ idx + 1 ]
+    ind + '<chart:legend chart:style-name="ch%d" chart:legend-position="end" style:legend-expansion="high" %s/>' + LE,
+    [ idx + 1, canOverlap ]
   ));
 
   {$ifdef DEBUG_CHART_STYLES}

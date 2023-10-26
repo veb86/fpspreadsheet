@@ -171,9 +171,11 @@ type
   TsChartLegend = class(TsChartFillElement)
   private
     FFont: TsFont;
+    FCanOverlapPlotArea: Boolean;
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
+    property CanOverlapPlotArea: Boolean read FCanOverlapPlotArea write FCanOverlapPlotArea;
     property Font: TsFont read FFont write FFont;
   end;
 

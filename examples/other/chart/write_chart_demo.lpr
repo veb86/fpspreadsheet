@@ -100,6 +100,7 @@ begin
     ch.Legend.Border.Color := scGray;
     ch.Legend.Background.FgColor := scSilver;
     ch.Legend.Background.Style := fsSolidFill;
+    ch.Legend.CanOverlapPlotArea := true;
 
     // 2nd sheet
     sh2 := b.AddWorksheet('test2');
