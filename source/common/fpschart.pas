@@ -227,6 +227,16 @@ type
     property Line: TsChartLine read FLine write FLine;
   end;
 
+  TsBarSeriesKind = (bskColumns, bskBars);
+
+  TsBarSeries = class(TsChartSeries)
+  private
+    FKind: TsBarSeriesKind;
+  public
+    constructor Create(AChart: TsChart);
+    property Kind: TsBarSeriesKind read FKind write FKind;
+  end;
+
   TsChartSeriesSymbol = (
     cssRect, cssDiamond, cssTriangle, cssTriangleDown, cssTriangleLeft,
     cssTriangleRight, cssCircle, cssStar, cssX, cssPlus, cssAsterisk
@@ -670,6 +680,15 @@ end;
 procedure TsChartSeriesList.SetItem(AIndex: Integer; AValue: TsChartSeries);
 begin
   inherited Items[AIndex] := AValue;
+end;
+
+
+{ TsBarSeries }
+
+constructor TsBarSeries.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FChartType := ctBar;
 end;
 
 

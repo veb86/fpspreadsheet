@@ -115,6 +115,7 @@ type
     Line: TsChartLineRec;
     Fill: TsChartFillRec;
     Border: TsChartFillRec;
+    BarSeriesKind: TsBarSeriesKind;
     procedure FromChart(AChart: TsChart; AElement: TsChartStyleElement; AIndex: Integer);
     procedure ToChart(AChart: TsChart; AElement: TsChartStyleElement; AIndex: Integer);
     class operator = (A, B: TsChartSeriesRec): Boolean;
@@ -648,6 +649,10 @@ begin
   Line.FromChart(AChart, AElement, AIndex);
   Fill.FromChart(AChart, AElement, AIndex);
   Border.FromChart(AChart, AElement, AIndex);
+  if (AChart.Series[AIndex] is TsBarSeries) then
+    BarSeriesKind := TsBarSeries(AChart.Series[AIndex]).Kind
+  else
+    BarSeriesKind := bskColumns;  // Dummy value for non-bar series.
 end;
 
 procedure TsChartSeriesRec.ToChart(AChart: TsChart; AElement: TsChartStyleElement;
@@ -656,11 +661,14 @@ begin
   Line.ToChart(AChart, ceSeriesLine, AIndex);
   Fill.ToChart(AChart, ceSeriesFill, AIndex);
   Border.ToChart(AChart, ceSeriesBorder, AIndex);
+  if (AChart.Series[AIndex] is TsBarSeries) then
+    TsBarSeries(AChart.Series[AIndex]).Kind := BarSeriesKind;
 end;
 
 class operator TsChartSeriesRec.= (A, B: TsChartSeriesRec): Boolean;
 begin
-  Result := (A.Line = B.Line) and (A.Fill = B.Fill) and (A.Border = B.Border);
+  Result := (A.Line = B.Line) and (A.Fill = B.Fill) and (A.Border = B.Border) and
+    (A.BarSeriesKind = B.BarSeriesKind);
 end;
 
 

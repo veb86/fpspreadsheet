@@ -25,6 +25,7 @@ begin
     end;
 
     ch := b.AddChart(sh1, 4, 4, 160, 100);
+             {
     ser := TsLineSeries.Create(ch);
     ser.SetTitleAddr(0, 1);
     ser.SetLabelRange(1, 0, 7, 0);
@@ -32,7 +33,15 @@ begin
     ser.Line.Color := scBlue;
     TsLineSeries(ser).ShowSymbols := true;
     TsLineSeries(ser).Symbol := cssCircle;
+    }
+    ser := TsBarSeries.Create(ch);
+    ser.SetTitleAddr(0, 2);
+    ser.SetLabelRange(1, 0, 7, 0);
+    ser.SetYRange(1, 2, 7, 2);
+    ser.Fill.FgColor := scRed;
+    TsBarSeries(ser).Kind := bskBars;
 
+    {
     ser := TsLineSeries.Create(ch);
     ser.SetTitleAddr(0, 2);
     ser.SetLabelRange(1, 0, 7, 0);
@@ -40,6 +49,7 @@ begin
     ser.Line.Color := scRed;
     TsLineSeries(ser).ShowSymbols := true;
     TsLineSeries(ser).Symbol := cssDiamond;
+    }
 
     {$IFDEF DARK_MODE}
     ch.Background.FgColor := scBlack;

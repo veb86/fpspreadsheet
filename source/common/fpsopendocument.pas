@@ -7420,19 +7420,27 @@ function TsSpreadOpenDocWriter.GetChartPlotAreaStyleAsXML(AChart: TsChart;
   AStyleIndex, AIndent: Integer): String;
 var
   ind: String;
+  verticalStr: String = '';
 begin
   ind := DupeString(' ', AIndent);
+
+  if (AChart.Series.Count > 0) and (AChart.Series[0] is TsBarSeries) and
+    (TsBarSeries(AChart.Series[0]).Kind = bskBars)
+  then
+    verticalStr := 'chart:vertical="true" ';
+
   Result := Format(
     ind + '  <style:style style:name="ch%d" style:family="chart">' + LE +
     ind + '    <style:chart-properties ' +
                  'chart:symbol-type="automatic" ' +
                  'chart:include-hidden-cells="false" ' +
+                 verticalStr +
                  'chart:auto-position="true" ' +
                  'chart:auto-size="true" ' +
                  'chart:treat-empty-cells="leave-gap" ' +
                  'chart:right-angled-axes="true"/>' + LE +
     ind + '  </style:style>' + LE,
-    [ AStyleIndex ]
+    [ AStyleIndex + 1]
   );
 end;
 
@@ -7581,6 +7589,12 @@ begin
   idx := styles.FindStyleIndexByName('Legend');
   AppendToStream(AStream,
     GetChartLegendStyleAsXML(AChart, idx, AIndent + 2)
+  );
+
+  // Style for <chart:plot<area>
+  idx := styles.FindStyleIndexByName('PlotArea');
+  AppendToStream(AStream,
+    GetChartPlotAreaStyleAsXML(AChart, idx, AIndent + 2)
   );
 
   // Styles for wall and floor
