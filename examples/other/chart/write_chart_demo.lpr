@@ -78,13 +78,16 @@ begin
     ch.YAxis.CaptionFont.Size := 12;
     ch.YAxis.LabelRotation := 90;
     ch.YAxis.CaptionRotation := 90;
-    ch.YAxis.MajorGridLines.Style := clsLongDash; //clsSolid;
-    ch.YAxis.MinorGridLines.Style := clsLongDashDot; //Dash; //clsSolid;
     ch.YAxis.MajorGridLines.Color := scBlue;
-    ch.YAxis.MajorGridLines.Width := 1;  // mm
+    ch.YAxis.MajorGridLines.Style := clsLongDash; //clsSolid;
+    ch.YAxis.MajorGridLines.Width := 0.5;  // mm
+//    ch.YAxis.MinorGridLines.Style := clsLongDashDot; //Dash; //clsSolid;
 
     ch.Title.Caption := 'HALLO';
     ch.Title.Visible := true;
+    ch.Title.Font.Color := scMagenta;
+    ch.Title.Font.Size := 20;
+    ch.Title.Font.Style := [fssBold];
 
     ch.SubTitle.Caption := 'hallo';
     ch.SubTitle.Visible := true;
@@ -121,6 +124,7 @@ begin
     ser.SetTitleAddr(0, 2);
     ser.SetLabelRange(1, 0, 7, 0);
     ser.SetYRange(1, 2, 7, 2);
+    ch.Border.Style := clsNoLine;
     ch.Title.Caption := 'HALLO';
     ch.Title.Visible := true;
     ch.SubTitle.Caption := 'hallo';
