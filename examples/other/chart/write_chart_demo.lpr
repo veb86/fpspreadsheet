@@ -145,6 +145,8 @@ begin
     b.Free;
   end;
 
+  WriteLn;
+  Write('Press ENTER to close...');
   ReadLn;
 end.
 

@@ -122,79 +122,74 @@ type
 
   TsChartStyle = class
   private
+    FName: String;
     FElement: TsChartStyleElement;
   public
     constructor Create(AElement: TsChartStyleElement); virtual;
     procedure ApplyToChart(AChart: TsChart; AIndex: Integer); virtual; abstract;
-    function EqualTo(OtherStyle: TsChartStyle): Boolean; virtual; abstract;
     procedure ExtractFromChart(AChart: TsChart; AIndex: Integer); virtual; abstract;
     property Element: TsChartStyleElement read FElement;
+    property Name: String read FName;
   end;
 
   TsChartStyleClass = class of TsChartStyle;
 
-  TsChartBackgroundStyle = class(TsChartStyle)
+  TsChartStyle_Background = class(TsChartStyle)
   private
     FBackground: TsChartFillRec;
     FBorder: TsChartLineRec;
   public
     procedure ApplyToChart(AChart: TsChart; AIndex: Integer); override;
-    function EqualTo(OtherStyle: TsChartStyle): Boolean; override;
     procedure ExtractFromChart(AChart: TsChart; AIndex: Integer); override;
     property Background: TsChartFillRec read FBackground;
     property Border: TsChartLineRec read FBorder;
   end;
 
-  TsChartLineStyle = class(TsChartStyle)
+  TsChartStyle_Line = class(TsChartStyle)
   private
     FLine: TsChartLineRec;
   public
     procedure ApplyToChart(AChart: TsChart; AIndex: Integer); override;
-    function EqualTo(OtherStyle: TsChartStyle): Boolean; override;
     procedure ExtractFromChart(AChart: TsChart; AIndex: Integer); override;
     property Line: TsChartLineRec read FLine;
   end;
 
-  TsChartAxisStyle = class(TsChartStyle)
+  TsChartStyle_Axis = class(TsChartStyle)
   private
     FAxis: TsChartAxisRec;
   public
     procedure ApplyToChart(AChart: TsChart; AIndex: Integer); override;
-    function EqualTo(OtherStyle: TsChartStyle): Boolean; override;
     procedure ExtractFromChart(AChart: TsChart; AIndex: Integer); override;
     property Axis: TsChartAxisRec read FAxis write FAxis;
   end;
 
-  TsChartCaptionStyle = class(TsChartStyle)
+  TsChartStyle_Caption = class(TsChartStyle)
   private
     FCaption: TsChartTextRec;
   public
     procedure ApplyToChart(AChart: TsChart; AIndex: Integer); override;
-    function EqualTo(OtherStyle: TsChartStyle): Boolean; override;
     procedure ExtractFromChart(AChart: TsChart; AIndex: Integer); override;
     property Caption: TsChartTextRec read FCaption write FCaption;
   end;
 
-  TsChartLegendStyle = class(TsChartStyle)
+  TsChartStyle_Legend = class(TsChartStyle)
   private
     FLegend: TsChartLegendRec;
   public
     procedure ApplyToChart(AChart: TsChart; AIndex: Integer); override;
-    function EqualTo(OtherStyle: TsChartStyle): Boolean; override;
     procedure ExtractFromChart(AChart: TsChart; AIndex: Integer); override;
     property Legend: TsChartLegendRec read FLegend write FLegend;
   end;
 
-  TsChartPlotAreaStyle = class(TsChartStyle)
+  TsChartStyle_PlotArea = class(TsChartStyle)
   private
     FPlotArea: TsChartPlotAreaRec;
   public
     procedure ApplyToChart(AChart: TsChart; AIndex: Integer); override;
-    function EqualTo(OtherStyle: TsChartStyle): Boolean; override;
     procedure ExtractFromChart(AChart: TsChart; AIndex: Integer); override;
   end;
 
-  TsChartSeriesStyle = class(TsChartStyle)
+  TsChartStyle_Series = class(TsChartStyle)
   private
     // for all series types
     FLine: TsChartLineRec;
@@ -207,7 +202,6 @@ type
     FShowSymbols: Boolean;
   public
     procedure ApplyToChart(AChart: TsChart; AIndex: Integer); override;
-    function EqualTo(OtherStyle: TsChartStyle): Boolean; override;
     procedure ExtractFromChart(AChart: TsChart; AIndex: Integer); override;
     property Line: TsChartLineRec read FLine write FLine;        // lineseries lines
     property Fill: TsChartFillRec read FFill write FFill;        // symbol fill, bar fill, area border
@@ -226,12 +220,16 @@ type
 
   public
     destructor Destroy; override;
-    function AddChartStyle(AChart: TsChart; AStyleClass: TsChartStyleClass;
-      AElement: TsChartStyleElement; AIndex: Integer = -1): Integer;
+    function AddChartStyle(AName: String; AChart: TsChart;
+      AStyleClass: TsChartStyleClass; AElement: TsChartStyleElement;
+      AIndex: Integer = -1): Integer;
     procedure Clear;
     procedure Delete(AIndex: Integer);
+    function FindStyleIndexByName(const AName: String): Integer;
+    {
     function FindChartStyle(AChart: TsChart; AStyleClass: TsChartStyleClass;
       AElement: TsChartStyleElement; AIndex: Integer = -1): Integer;
+    }
   end;
 
 implementation
@@ -671,39 +669,30 @@ begin
   FElement := AElement;
 end;
 
-{ TsChartBackgroundstyle }
+{ TsChartStyle_Background }
 
-procedure TsChartBackgroundStyle.ApplyToChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Background.ApplyToChart(AChart: TsChart; AIndex: Integer);
 begin
   if (FElement in [ceBackground, ceWall, ceFloor]) then
   begin
     FBackground.ToChart(AChart, FElement, AIndex);
     FBorder.ToChart(AChart, FElement, AIndex);
   end else
-    raise Exception.Create('[TsChartBackgroundStyle.ApplyToChart] Unknown background style.');
+    raise Exception.Create('[TsChartStyle_Background.ApplyToChart] Unknown background style.');
 end;
 
-function TsChartBackgroundStyle.EqualTo(OtherStyle: TsChartStyle): Boolean;
-begin
-  Result := false;
-  if not (OtherStyle is TsChartBackgroundStyle) then
-    exit;
-  Result := (FBackground = TsChartBackgroundStyle(OtherStyle).Background) and
-            (FBorder = TsChartBackgroundStyle(OtherStyle).Border);
-end;
-
-procedure TsChartBackgroundStyle.ExtractFromChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Background.ExtractFromChart(AChart: TsChart; AIndex: Integer);
 begin
   if (FElement in [ceBackground, ceWall, ceFloor]) then
   begin
     FBackground.FromChart(AChart, FElement, AIndex);
     FBorder.FromChart(AChart, FElement, AIndex);
   end else
-    raise Exception.Create('[TsChartBackgroundStyle.ExtractFromChart] Unknown background style.');
+    raise Exception.Create('[TsChartStyle_Background.ExtractFromChart] Unknown background style.');
 end;
 
 
-{ TsChartLineStyle }
+{ TsChartStyle_Line }
 
 const
   ALLOWED_LS = [
@@ -711,158 +700,93 @@ const
     ceYAxisMajorGrid, ceYAxisMinorGrid, ceY2AxisMajorGrid, ceY2AxisMinorGrid
   ];
 
-procedure TsChartLineStyle.ApplyToChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Line.ApplyToChart(AChart: TsChart; AIndex: Integer);
 begin
   if (FElement in ALLOWED_LS) then
     Line.ToChart(AChart, FElement, AIndex)
   else
-    raise Exception.Create('[TsChartLineStyle.ApplytoGrid] Unknown line');
+    raise Exception.Create('[TsChartStyle_Line.ApplytoGrid] Unknown line');
 end;
 
-function TsChartLineStyle.EqualTo(OtherStyle: TsChartStyle): Boolean;
-begin
-  Result := (OtherStyle is TsChartLineStyle) and (Line = TsChartLineStyle(OtherStyle).Line);
-end;
-
-procedure TsChartLineStyle.ExtractFromChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Line.ExtractFromChart(AChart: TsChart; AIndex: Integer);
 begin
   if (FElement in ALLOWED_LS) then
     Line.FromChart(AChart, FElement, AIndex)
   else
-    raise Exception.Create('[TsChartLineStyle.ExtractFromChart] Unknown line');
+    raise Exception.Create('[TsChartStyle_Line.ExtractFromChart] Unknown line');
 end;
 
 
-{ TsChartAxisStyle }
+{ TsChartStyle_Axis }
 
-procedure TsChartAxisStyle.ApplyToChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Axis.ApplyToChart(AChart: TsChart; AIndex: Integer);
 begin
-  case FElement of
-    ceXAxis:
-      begin
-        Axis.ToChart(AChart, ceXAxis);
-        Axis.AxisLine.ToChart(AChart, ceXAxis, AIndex);
-      end;
-    ceYAxis:
-      begin
-        Axis.ToChart(AChart, ceYAxis);
-        Axis.AxisLine.ToChart(AChart, ceYAxis, AIndex);
-      end;
-    ceX2Axis:
-      begin
-        Axis.ToChart(AChart, ceX2Axis);
-        Axis.AxisLine.ToChart(AChart, ceX2Axis, AIndex);
-      end;
-    ceY2Axis:
-      begin
-        Axis.ToChart(AChart, ceY2Axis);
-        Axis.AxisLine.ToChart(AChart, ceY2Axis, AIndex);
-      end;
-  end;
+  Axis.ToChart(AChart, FElement);
+  Axis.AxisLine.ToChart(AChart, FElement, -1);
+  Axis.LabelFont.ToChart(AChart, FElement);
 end;
 
-function TsChartAxisStyle.EqualTo(OtherStyle: TsChartStyle): Boolean;
+procedure TsChartStyle_Axis.ExtractFromChart(AChart: TsChart; AIndex: Integer);
 begin
-  Result := (OtherStyle is TsChartAxisStyle) and (Axis = TsChartAxisStyle(OtherStyle).Axis);
-end;
-
-procedure TsChartAxisStyle.ExtractFromChart(AChart: TsChart; AIndex: Integer);
-begin
-  begin
-    case FElement of
-      ceXAxis:
-        begin
-          Axis.FromChart(AChart, ceXAxis);
-          Axis.AxisLine.FromChart(AChart, ceXAxis, AIndex);
-        end;
-      ceYAxis:
-        begin
-          Axis.FromChart(AChart, ceYAxis);
-          Axis.AxisLine.FromChart(AChart, ceYAxis, AIndex);
-        end;
-      ceX2Axis:
-        begin
-          Axis.FromChart(AChart, ceX2Axis);
-          Axis.AxisLine.FromChart(AChart, ceX2Axis, AIndex);
-        end;
-      ceY2Axis:
-        begin
-          Axis.FromChart(AChart, ceY2Axis);
-          Axis.AxisLine.FromChart(AChart, ceY2Axis, AIndex);
-        end;
-    end;
-  end;
+  Axis.FromChart(AChart, FElement);
+  Axis.AxisLine.FromChart(AChart, FElement, -1);
+  Axis.LabelFont.FromChart(AChart, FElement);
 end;
 
 
-{ TsChartCaptionStyle }
+{ TsChartStyle_Caption }
 
 const
   ALLOWED_CAPTIONS = [ceXAxisCaption, ceX2AxisCaption, ceYAxisCaption, ceY2AxisCaption, ceTitle, ceSubTitle];
 
-procedure TsChartCaptionStyle.ApplyToChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Caption.ApplyToChart(AChart: TsChart; AIndex: Integer);
 begin
   if (FElement in ALLOWED_CAPTIONS) then
     Caption.ToChart(AChart, FElement)
   else
-    raise Exception.Create('[TsChartCaptionStyle.ApplyToChart] Unknown caption');
+    raise Exception.Create('[TsChartstyle_Caption.ApplyToChart] Unknown caption');
 end;
 
-function TsChartCaptionStyle.EqualTo(OtherStyle: TsChartStyle): Boolean;
-begin
-  Result := (OtherStyle is TsChartCaptionStyle) and (Caption = TsChartCaptionStyle(OtherStyle).Caption);
-end;
-
-procedure TsChartCaptionStyle.ExtractFromChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Caption.ExtractFromChart(AChart: TsChart; AIndex: Integer);
 begin
   if (FElement in ALLOWED_CAPTIONS) then
     Caption.FromChart(AChart, FElement)
   else
-    raise Exception.Create('[TsChartCaptionStyle.ExtractFromChart] Unknown caption');
+    raise Exception.Create('[TsChartStyle_Caption.ExtractFromChart] Unknown caption');
 end;
 
 
-{ TsChartLegendStyle }
+{ TsChartStyle_Legend }
 
-procedure TsChartLegendStyle.ApplyToChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Legend.ApplyToChart(AChart: TsChart; AIndex: Integer);
 begin
   FLegend.ToChart(AChart, ceLegend);
 end;
 
-function TsChartLegendStyle.EqualTo(OtherStyle: TsChartStyle): Boolean;
-begin
-  Result := (OtherStyle is TsChartLegendStyle) and (Legend = TsChartLegendStyle(OtherStyle).Legend);
-end;
-
-procedure TsChartLegendStyle.ExtractFromChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Legend.ExtractFromChart(AChart: TsChart; AIndex: Integer);
 begin
   FLegend.FromChart(AChart, ceLegend);
 end;
 
 
-{ TsChartPlotAreaStyle }
+{ TsChartStyle_PlotArea }
 { For the moment, this is a dummy style because I don't know how the plotarea
   parameters are changed in ODS. }
 
-procedure TsChartPlotAreaStyle.ApplyToChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_PlotArea.ApplyToChart(AChart: TsChart; AIndex: Integer);
 begin
   FPlotArea.ToChart(AChart, cePlotArea);
 end;
 
-function TsChartPlotAreaStyle.EqualTo(OtherStyle: TsChartStyle): Boolean;
-begin
-  Result := (OtherStyle is TsChartPlotAreaStyle) and (FPlotArea = TsChartPlotAreaStyle(OtherStyle).FPlotArea);
-end;
-
-procedure TsChartplotAreaStyle.ExtractFromChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_PlotArea.ExtractFromChart(AChart: TsChart; AIndex: Integer);
 begin
   FPlotArea.FromChart(AChart, cePlotArea);
 end;
 
 
-{ TsChartSeriesStyle }
+{ TsChartStyle_Series }
 
-procedure TsChartSeriesStyle.ApplyToChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Series.ApplyToChart(AChart: TsChart; AIndex: Integer);
 begin
   Line.ToChart(AChart, ceSeriesLine, AIndex);
   Fill.ToChart(AChart, ceSeriesFill, AIndex);
@@ -877,24 +801,7 @@ begin
   end;
 end;
 
-function TsChartSeriesStyle.EqualTo(OtherStyle: TsChartStyle): Boolean;
-begin
-  Result :=
-    (OtherStyle is TsChartSeriesStyle) and
-    (Line = TsChartSeriesStyle(OtherStyle).Line) and
-    (Fill = TsChartSeriesStyle(OtherStyle).Fill) and
-    (Border = TsChartSeriesStyle(OtherStyle).Border);
-
-  if Result and FShowSymbols then
-    Result :=
-      (ShowSymbols = TsChartSeriesStyle(OtherStyle).ShowSymbols) and
-      (Symbol = TsChartSeriesStyle(OtherStyle).Symbol) and
-      (SymbolHeight = TsChartSeriesStyle(OtherStyle).SymbolHeight) and
-      (SymbolWidth = TsChartSeriesStyle(OtherStyle).SymbolWidth);
-
-end;
-
-procedure TsChartSeriesStyle.ExtractFromChart(AChart: TsChart; AIndex: Integer);
+procedure TsChartStyle_Series.ExtractFromChart(AChart: TsChart; AIndex: Integer);
 begin
   Line.FromChart(AChart, ceSeriesLine, AIndex);
   Fill.FromChart(AChart, ceSeriesFill, AIndex);
@@ -920,46 +827,23 @@ begin
   Clear;
   inherited;
 end;
-                          (*
-{ Adds the style of the specified axis type in the given chart as new style to
-  the style list. But only if the same style does not yet exist. }
-procedure TsChartStyleList.AddChartAxisStyle(AChart: TsChart;
-  AType: TsChartAxisType);
+
+{ Adds a new style to the style list. The style is created as the given style
+  class. Which piece of chart formatting is included in the style, is determined
+  by the AElement parameter. In case of series styles, the index of the series
+  must be provided as parameter AIndex. }
+function TsChartStyleList.AddChartStyle(AName: String; AChart: TsChart;
+  AStyleClass: TsChartStyleClass; AElement: TsChartStyleElement;
+  AIndex: Integer = -1): Integer;
+var
+  newStyle: TsChartStyle;
 begin
-  FindChartAxisStyle(AChart, AType);
+  newStyle := AStyleClass.Create(AElement);
+  newStyle.ExtractFromChart(AChart, AIndex);
+  newStyle.FName := AName;
+  Result := Add(newStyle);
 end;
 
-{ Adds the style of the specified type in the given chart as new style to the
-  style list. But only if the same style does not yet exist. }
-procedure TsChartStyleList.AddChartBackgroundStyle(AChart: TsChart;
-  AType: TsChartBackgroundType);
-begin
-  FindChartBackgroundStyle(AChart, AType);
-end;
-
-{ Adds the style of the specified caption in the given chart as new style to
-  the style list. But only if the same style does not yet exist. }
-procedure TsChartStyleList.AddChartCaptionStyle(AChart: TsChart;
-  AType: TsChartCaptionType);
-begin
-  FindChartCaptionStyle(AChart, AType);
-end;
-
-{ Adds the style of the legend of the given chart chart as new style to
-  the style list. But only if the same style does not yet exist. }
-procedure TsChartStyleList.AddChartLegendStyle(AChart: TsChart);
-begin
-  FindChartLegendStyle(AChart);
-end;
-
-{ Adds the style of the specified line as new style to the style list.
-  But only when the same style does not yet exist. }
-procedure TsChartStyleList.AddChartLineStyle(AChart: TsChart);
-//  AType: TsChartLineType);
-begin
-  FindChartLineStyle(AChart); //, AType);
-end;
-                         *)
 { Clears the chart style list. Destroys the individual items. }
 procedure TsChartStyleList.Clear;
 var
@@ -976,6 +860,21 @@ begin
   inherited;
 end;
 
+function TsChartStyleList.FindStyleIndexByName(const AName: String): Integer;
+var
+  i: Integer;
+begin
+  for i := 0 to Count-1 do
+  begin
+    if TsChartStyle(Items[i]).Name = AName then
+    begin
+      Result := i;
+      exit;
+    end;
+  end;
+  Result := -1;
+end;
+(*
 { Adds a new style to the style list. The style is created as the given style
   class. Which piece of chart formattting is included in the style, is determined
   by the AElement parameter. In case of series styles, the index of the series
@@ -987,10 +886,13 @@ var
   newStyle, style: TsChartStyle;
   i: Integer;
 begin
-  Result := -1;
+//  Result := -1;
 
   newStyle := AStyleClass.Create(AElement);
   newStyle.ExtractFromChart(AChart, AIndex);
+  Result := Add(newStyle);
+  newStyle.FStyleID := Result;
+  {
   for i := 0 to Count-1 do
   begin
     if (TsChartStyle(Items[i]) is AStyleClass) then
@@ -1008,8 +910,10 @@ begin
     Result := Add(newStyle)
   else
     newStyle.Free;
+    }
 end;
-
+*)
+                (*
 { Finds the index of the style matching the formatting of the given
   chart element (AElement); in case of series styles the series index must be
   provided as AIndex.
@@ -1043,7 +947,7 @@ begin
     newStyle.Free;
   end;
 end;
-
+      *)
 (*
 { Searches whether the style of the specified axis is already in the
   list. If not, a new style is created and added.
