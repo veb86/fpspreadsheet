@@ -230,14 +230,9 @@ type
   end;
   TsChartSeriesClass = class of TsChartSeries;
 
-  TsBarSeriesKind = (bskColumns, bskBars);
-
   TsBarSeries = class(TsChartSeries)
-  private
-    FKind: TsBarSeriesKind;
   public
     constructor Create(AChart: TsChart); override;
-    property Kind: TsBarSeriesKind read FKind write FKind;
   end;
 
   TsChartSeriesSymbol = (
@@ -287,6 +282,8 @@ type
     FX2Axis: TsChartAxis;
     FYAxis: TsChartAxis;
     FY2Axis: TsChartAxis;
+
+    FRotatedAxes: Boolean;   // For bar series: vertical columns <--> horizontal bars
 
     FTitle: TsChartText;
     FSubTitle: TsChartText;
@@ -353,6 +350,8 @@ type
     property YAxis: TsChartAxis read FYAxis write FYAxis;
     { Attributes of the plot's secondary y axis (right) }
     property Y2Axis: TsChartAxis read FY2Axis write FY2Axis;
+    { x and y axes exchanged (for bar series) }
+    property RotatedAxes: Boolean read FRotatedAxes write FRotatedAxes;
 
     property CategoryLabelRange: TsCellRange read GetCategoryLabelRange;
 

@@ -7185,7 +7185,9 @@ end;
 function TsSpreadOpenDocWriter.GetChartAxisStyleAsXML(
   Axis: TsChartAxis; AIndent, AStyleID: Integer): String;
 var
+  chart: TsChart;
   indent: String;
+  angle: Integer;
   textProps: String = '';
   graphProps: String = '';
   chartProps: String = '';
@@ -7193,6 +7195,8 @@ begin
   Result := '';
   if not Axis.Visible then
     exit;
+
+  chart := Axis.Chart;
 
   if Axis.ShowLabels then
     chartProps := chartProps + 'chart:display-label="true" ';
@@ -7203,8 +7207,14 @@ begin
   if Axis.Inverted then
     chartProps := chartProps + 'chart:reverse-direction="true" ';
 
-  if Axis.LabelRotation <> 0 then
-    chartProps := chartProps + Format('style:rotation-angle="%d" ', [Axis.LabelRotation]);
+  angle := Axis.LabelRotation;
+  {
+  if chart.RotatedAxes then
+  begin
+    if angle = 0 then angle := 90 else if angle = 90 then angle := 0;
+  end;
+  }
+  chartProps := chartProps + Format('style:rotation-angle="%d" ', [angle]);
 
   graphProps := 'svg:stroke-color="' + ColorToHTMLColorStr(Axis.AxisLine.Color) + '" ';
 
@@ -7259,7 +7269,6 @@ var
   font: TsFont;
   indent: String;
   rotAngle: Integer;
-  visible: Boolean;
   chartProps: String = '';
   textProps: String = '';
 begin
@@ -7271,7 +7280,6 @@ begin
         if ACaptionKind = 1 then title := AChart.Title else title := AChart.Subtitle;
         font := title.Font;
         rotAngle := title.RotationAngle;
-        visible := title.Visible;
       end;
     3, 4, 5, 6:
       begin
@@ -7283,15 +7291,17 @@ begin
         end;
         font := axis.CaptionFont;
         rotAngle := axis.CaptionRotation;
-        visible := axis.Visible;
+        if AChart.RotatedAxes then
+        begin
+          if rotAngle = 0 then rotAngle := 90 else if rotAngle = 90 then rotAngle := 0;
+        end;
       end;
     else
       raise Exception.Create('[GetChartCaptionStyleAsXML] Unknown caption.');
   end;
 
   chartProps := 'chart:auto-position="true" ';
-  if rotAngle <> 0 then
-    chartProps := chartProps + Format('style:rotation-angle="%d" ', [rotAngle]);
+  chartProps := chartProps + Format('style:rotation-angle="%d" ', [rotAngle]);
 
   textProps := WriteFontStyleXMLAsString(font);
 
@@ -7422,9 +7432,7 @@ var
 begin
   indent := DupeString(' ', AIndent);
 
-  if (AChart.Series.Count > 0) and (AChart.Series[0] is TsBarSeries) and
-    (TsBarSeries(AChart.Series[0]).Kind = bskBars)
-  then
+  if (AChart.Series.Count > 0) and (AChart.Series[0] is TsBarSeries) and AChart.RotatedAxes then
     verticalStr := 'chart:vertical="true" ';
 
   Result := Format(

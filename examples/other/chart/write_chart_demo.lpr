@@ -41,10 +41,6 @@ begin
       TsLineSeries(ser).ShowSymbols := true;
       TsLineSeries(ser).Symbol := cssCircle;
     end;
-    if (ser is TsBarSeries) then
-    begin
-      TsBarSeries(ser).Kind := bskBars;
-    end;
 
     // Add second series
     ser := SERIES_CLASS.Create(ch);
@@ -67,6 +63,7 @@ begin
     ch.Background.Style := fsSolidFill;
     ch.Border.Style := clsSolid;
     ch.PlotArea.Background.Style := fsSolidFill;
+    ch.RotatedAxes := true;
 
     ch.XAxis.ShowLabels := true;
     ch.XAxis.LabelFont.Size := 8;
