@@ -336,7 +336,6 @@ begin
     ceX2AxisMinorGrid: Result := AChart.X2Axis.MinorGridLines;
     ceY2AxisMajorGrid: Result := AChart.Y2Axis.MajorGridLines;
     ceY2AxisMinorGrid: Result := AChart.Y2Axis.MinorGridLines;
-    ceSeriesBorder: Result := AChart.Series[AIndex].Border;
     ceSeriesLine: Result := AChart.Series[AIndex].Line;
     else
       raise Exception.Create('[TsChartLineRec.GetChartLine] Line not supported.');

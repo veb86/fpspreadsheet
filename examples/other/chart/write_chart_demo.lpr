@@ -73,6 +73,7 @@ begin
     ch.PlotArea.Background.Style := fsSolidFill;
     //ch.RotatedAxes := true;
     ch.StackMode := csmStackedPercentage;
+    //ch.Interpolation := ciCubicSpline;
 
     ch.XAxis.ShowLabels := true;
     ch.XAxis.LabelFont.Size := 9;

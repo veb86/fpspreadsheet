@@ -7151,6 +7151,7 @@ begin
   series := AChart.Series[ASeriesIndex];
   sheet := TsWorkbook(FWorkbook).GetWorksheetByIndex(AChart.sheetIndex);
 
+  // These are the x values of a scatter plot.
   if series is TsScatterSeries then
   begin
     domainRange := GetSheetCellRangeString_ODS(
@@ -7161,12 +7162,15 @@ begin
     );
   end;
 
+  // These are the y values
   valuesRange := GetSheetCellRangeString_ODS(
     sheet.Name, sheet.Name,
     series.YRange.Row1, series.YRange.Col1,
     series.YRange.Row2, series.YRange.Col2,
     rfAllRel, false
   );
+
+  // And these are the data point labels.
   titleAddr := GetSheetCellRangeString_ODS(
     sheet.Name, sheet.Name,
     series.TitleAddr.Row, series.TitleAddr.Col,
@@ -7174,7 +7178,7 @@ begin
     rfAllRel, false);
   count := series.YRange.Row2 - series.YRange.Row1 + 1;
 
-  // Series properties
+  // Store the series properties
   AppendToStream(AChartStream, Format(
     indent + '<chart:series chart:style-name="ch%d" ' +
                'chart:values-cell-range-address="%s" ' +      // y values
@@ -7448,6 +7452,7 @@ function TsSpreadOpenDocWriter.GetChartPlotAreaStyleAsXML(AChart: TsChart;
   AIndent, AStyleID: Integer): String;
 var
   indent: String;
+  interpolationStr: String = '';
   verticalStr: String = '';
   stackModeStr: String = '';
 begin
@@ -7455,15 +7460,27 @@ begin
 
   if AChart.RotatedAxes then
     verticalStr := 'chart:vertical="true" ';
+
   case AChart.StackMode of
     csmSideBySide: ;
     csmStacked: stackModeStr := 'chart:stacked="true" ';
     csmStackedPercentage: stackModeStr := 'chart:percentage="true" ';
   end;
 
+  case AChart.Interpolation of
+    ciLinear: ;
+    ciCubicSpline: interpolationStr := 'chart:interpolation="cubic-spline" ';
+    ciBSpline: interpolationStr := 'chart:interpolation="b-spline" ';
+    ciStepStart: interpolationStr := 'chart:interpolation="step-start" ';
+    ciStepEnd: interpolationStr := 'chart:interpolation="step-end" ';
+    ciStepCenterX: interpolationStr := 'chart:interpolation="step-center-x" ';
+    ciStepCenterY: interpolationStr := 'chart:interpolation="step-center-y" ';
+  end;
+
   Result := Format(
     indent + '  <style:style style:name="ch%d" style:family="chart">' + LE +
     indent + '    <style:chart-properties ' +
+                   interpolationStr +
                    verticalStr +
                    stackModeStr +
                    'chart:symbol-type="automatic" ' +
@@ -7502,13 +7519,13 @@ var
   textProps: String = '';
   lineProps: String = '';
   fillProps: String = '';
-  s: String;
 begin
   Result := '';
 
   indent := DupeString(' ', AIndent);
   series := AChart.Series[ASeriesIndex];
 
+  // Chart properties
   chartProps := 'chart:symbol-type="none" ';
   if (series is TsLineSeries) then
   begin
@@ -7522,16 +7539,19 @@ begin
   end;
   chartProps := chartProps + 'chart:link-data-style-to-source="true" ';
 
+  // Graphic properties
   lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, series.Line);
   fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, series.Fill);
-  if (lineser <> nil) then
+  if (series is TsLineSeries) then
   begin
-    if (lineSer.ShowSymbols) then
-      graphProps := lineProps + fillProps
-    else
-      graphProps := lineProps;
-  end;
+    if lineSer.ShowSymbols then
+      graphProps := graphProps + fillProps;
+    if lineSer.ShowLines and (lineser.Line.Style <> clsNoLine) then
+      graphProps := graphProps + lineProps;
+  end else
+    graphProps := fillProps + lineProps;
 
+  // Text properties
   textProps := 'fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt" ';
 //  textProps := WriteFontStyleXMLAsString(font);    // <--- to be completed. this is for the series labels.
 

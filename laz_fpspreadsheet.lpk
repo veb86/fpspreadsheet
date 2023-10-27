@@ -33,7 +33,7 @@
 This package is all you need if you don&apos;t want graphical components (such as grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
     <Version Major="1" Minor="17"/>
-    <Files Count="59">
+    <Files Count="58">
       <Item1>
         <Filename Value="source\fps.inc"/>
         <Type Value="Include"/>
@@ -299,16 +299,12 @@ This package is all you need if you don&apos;t want graphical components (such a
       </Item56>
       <Item57>
         <Filename Value="source\common\fpschart.pas"/>
-        <UnitName Value="fpschart"/>
+        <UnitName Value="fpsChart"/>
       </Item57>
       <Item58>
         <Filename Value="source\common\fpspreadsheet_chart.inc"/>
         <Type Value="Binary"/>
       </Item58>
-      <Item59>
-        <Filename Value="source\common\fpschartstyles.pas"/>
-        <UnitName Value="fpschartstyles"/>
-      </Item59>
     </Files>
     <CompatibilityMode Value="True"/>
     <i18n>

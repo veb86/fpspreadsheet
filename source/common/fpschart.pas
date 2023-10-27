@@ -198,7 +198,6 @@ type
     FLabelFormat: String;
     FLine: TsChartLine;
     FFill: TsChartFill;
-    FBorder: TsChartLine;
   public
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
@@ -215,6 +214,7 @@ type
     function LabelsInCol: Boolean;
     function XValuesInCol: Boolean;
     function YValuesInCol: Boolean;
+
     property ChartType: TsChartType read FChartType;
     property Count: Integer read GetCount;
     property LabelFormat: String read FLabelFormat write FLabelFormat;  // Number format in Excel notation, e.g. '0.00'
@@ -224,7 +224,6 @@ type
     property YRange: TsCellRange read FYRange;
     property YAxis: TsChartAxisLink read FYAxis write FYAxis;
 
-    property Border: TsChartLine read FBorder write FBorder;
     property Fill: TsChartFill read FFill write FFill;
     property Line: TsChartLine read FLine write FLine;
   end;
@@ -250,18 +249,20 @@ type
     FSymbol: TsChartSeriesSymbol;
     FSymbolHeight: Double;  // in mm
     FSymbolWidth: Double;   // in mm
+    FShowLines: Boolean;
     FShowSymbols: Boolean;
-    function GetSymbolBorder: TsChartLine;
+    FBorder: TsChartLine;
     function GetSymbolFill: TsChartFill;
-    procedure SetSymbolBorder(Value: TsChartLine);
     procedure SetSymbolFill(Value: TsChartFill);
   public
     constructor Create(AChart: TsChart); override;
+    destructor Destroy; override;
     property Symbol: TsChartSeriesSymbol read FSymbol write FSymbol;
-    property SymbolBorder: TsChartLine read GetSymbolBorder write SetSymbolBorder;
+    property SymbolBorder: TsChartLine read FBorder write FBorder;
     property SymbolFill: TsChartFill read GetSymbolFill write SetSymbolFill;
     property SymbolHeight: double read FSymbolHeight write FSymbolHeight;
     property SymbolWidth: double read FSymbolWidth write FSymbolWidth;
+    property ShowLines: Boolean read FShowLines write FShowLines;
     property ShowSymbols: Boolean read FShowSymbols write FShowSymbols;
   end;
 
@@ -278,7 +279,12 @@ type
     property Items[AIndex: Integer]: TsChartSeries read GetItem write SetItem; default;
   end;
 
-  TsChartStackMode =(csmSideBySide, csmStacked, csmStackedPercentage);
+  TsChartStackMode = (csmSideBySide, csmStacked, csmStackedPercentage);
+  TsChartInterpolation = (
+    ciLinear,
+    ciCubicSpline, ciBSpline,
+    ciStepStart, ciStepEnd, ciStepCenterX, ciStepCenterY
+  );
 
   TsChart = class(TsChartFillElement)
   private
@@ -295,8 +301,9 @@ type
     FYAxis: TsChartAxis;
     FY2Axis: TsChartAxis;
 
-    FRotatedAxes: Boolean;   // For bar series: vertical columns <--> horizontal bars
-    FStackMode: TsChartStackMode;
+    FRotatedAxes: Boolean;        // For bar series: vertical columns <--> horizontal bars
+    FStackMode: TsChartStackMode; // For bar and area series
+    FInterpolation: TsChartInterpolation; // For line/scatter series: data connection lines
 
     FTitle: TsChartText;
     FSubTitle: TsChartText;
@@ -316,12 +323,7 @@ type
     function GetLineStyle(AIndex: Integer): TsChartLineStyle;
     function IsScatterChart: Boolean;
     function NumLineStyles: Integer;
-    {
-    function CategoriesInCol: Boolean;
-    function CategoriesInRow: Boolean;
-    function GetCategoryCount: Integer;
-    function HasCategories: Boolean;
-     }
+
     { Index of chart in workbook's chart list. }
     property Index: Integer read FIndex write FIndex;
     { Index of worksheet sheet which contains the chart. }
@@ -364,9 +366,11 @@ type
     { Attributes of the plot's secondary y axis (right) }
     property Y2Axis: TsChartAxis read FY2Axis write FY2Axis;
 
+    { Connecting line between data points (for line and scatter series) }
+    property Interpolation: TsChartInterpolation read FInterpolation write FInterpolation;
     { x and y axes exchanged (for bar series) }
     property RotatedAxes: Boolean read FRotatedAxes write FRotatedAxes;
-    { stacked series }
+    { Stacking of series (for bar and area series ) }
     property StackMode: TsChartStackMode read FStackMode write FStackMode;
 
     property CategoryLabelRange: TsCellRange read GetCategoryLabelRange;
@@ -573,11 +577,6 @@ begin
 
   idx := AChart.AddSeries(self);
 
-  FBorder := TsChartLine.Create;
-  FBorder.Style := clsSolid;
-  FBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  FBorder.Color := scBlack;
-
   FFill := TsChartFill.Create;
   FFill.Style := fsSolidFill;
   FFill.FgColor := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
@@ -593,7 +592,6 @@ destructor TsChartSeries.Destroy;
 begin
   FLine.Free;
   FFill.Free;
-  FBorder.Free;
   inherited;
 end;
 
@@ -727,21 +725,24 @@ begin
   FChartType := ctLine;
   FSymbolWidth := 2.5;
   FSymbolHeight := 2.5;
+  FShowSymbols := false;
+  FShowLines := true;
+
+  FBorder := TsChartLine.Create;
+  FBorder.Style := clsSolid;
+  FBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  FBorder.Color := scBlack;
 end;
 
-function TsLineSeries.GetSymbolBorder: TsChartLine;
+destructor TsLineSeries.Destroy;
 begin
-  Result := FBorder;
+  FBorder.Free;
+  inherited;
 end;
 
 function TsLineSeries.GetSymbolFill: TsChartFill;
 begin
   Result := FFill;
-end;
-
-procedure TsLineSeries.SetSymbolBorder(Value: TsChartLine);
-begin
-  FBorder := Value;
 end;
 
 procedure TsLineSeries.SetSymbolFill(Value: TsChartFill);
