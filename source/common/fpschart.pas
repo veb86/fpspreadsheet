@@ -98,6 +98,7 @@ type
   TsChartText = class(TsChartFillElement)
   private
     FCaption: String;
+    FRotationAngle: Integer;
     FShowCaption: Boolean;
     FFont: TsFont;
   public
@@ -106,6 +107,7 @@ type
     property Caption: String read FCaption write FCaption;
     property Font: TsFont read FFont write FFont;
     property ShowCaption: Boolean read FShowCaption write FShowCaption;
+    property RotationAngle: Integer read FRotationAngle write FRotationAngle;
   end;
 
   TsChartAxisPosition = (capStart, capEnd, capValue);
@@ -198,7 +200,7 @@ type
     FFill: TsChartFill;
     FBorder: TsChartLine;
   public
-    constructor Create(AChart: TsChart);
+    constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
     function GetCount: Integer;
     function GetXCount: Integer;
@@ -226,6 +228,7 @@ type
     property Fill: TsChartFill read FFill write FFill;
     property Line: TsChartLine read FLine write FLine;
   end;
+  TsChartSeriesClass = class of TsChartSeries;
 
   TsBarSeriesKind = (bskColumns, bskBars);
 
@@ -233,7 +236,7 @@ type
   private
     FKind: TsBarSeriesKind;
   public
-    constructor Create(AChart: TsChart);
+    constructor Create(AChart: TsChart); override;
     property Kind: TsBarSeriesKind read FKind write FKind;
   end;
 
@@ -253,7 +256,7 @@ type
     procedure SetSymbolBorder(Value: TsChartLine);
     procedure SetSymbolFill(Value: TsChartFill);
   public
-    constructor Create(AChart: TsChart);
+    constructor Create(AChart: TsChart); override;
     property Symbol: TsChartSeriesSymbol read FSymbol write FSymbol;
     property SymbolBorder: TsChartLine read GetSymbolBorder write SetSymbolBorder;
     property SymbolFill: TsChartFill read GetSymbolFill write SetSymbolFill;

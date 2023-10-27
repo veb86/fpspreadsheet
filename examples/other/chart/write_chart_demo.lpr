@@ -4,6 +4,8 @@ program write_chart_demo;
 
 uses
   SysUtils, fpspreadsheet, fpstypes, fpschart, xlsxooxml, fpsopendocument;
+const
+  SERIES_CLASS: TsChartSeriesClass = TsBarSeries;
 var
   b: TsWorkbook;
   sh1, sh2, sh3: TsWorksheet;
@@ -15,41 +17,42 @@ begin
   try
     // 1st sheet
     sh1 := b.AddWorksheet('test1');
-    sh1.WriteText(0, 1, 'sin(x)');
-    sh1.WriteText(0, 2, 'sin(x/2)');
+    sh1.WriteText(0, 1, '1+sin(x)');
+    sh1.WriteText(0, 2, '1+sin(x/2)');
     for i := 1 to 7 do
     begin
       sh1.WriteNumber(i, 0, i-1);
-      sh1.WriteNumber(i, 1, sin(i-1));
-      sh1.WriteNumber(i, 2, sin((i-1)/2));
+      sh1.WriteNumber(i, 1, 1+sin(i-1));
+      sh1.WriteNumber(i, 2, 1+sin((i-1)/2));
     end;
 
+    // Create chart
     ch := b.AddChart(sh1, 4, 4, 160, 100);
-             {
-    ser := TsLineSeries.Create(ch);
+
+    // Add first series (type depending on SERIES_CLASS)
+    ser := SERIES_CLASS.Create(ch);
     ser.SetTitleAddr(0, 1);
     ser.SetLabelRange(1, 0, 7, 0);
     ser.SetYRange(1, 1, 7, 1);
     ser.Line.Color := scBlue;
-    TsLineSeries(ser).ShowSymbols := true;
-    TsLineSeries(ser).Symbol := cssCircle;
-    }
-    ser := TsBarSeries.Create(ch);
-    ser.SetTitleAddr(0, 2);
-    ser.SetLabelRange(1, 0, 7, 0);
-    ser.SetYRange(1, 2, 7, 2);
-    ser.Fill.FgColor := scRed;
-    TsBarSeries(ser).Kind := bskBars;
+    ser.Fill.FgColor := scBlue;
+    if (ser is TsLineSeries) then
+    begin
+      TsLineSeries(ser).ShowSymbols := true;
+      TsLineSeries(ser).Symbol := cssCircle;
+    end;
+    if (ser is TsBarSeries) then
+    begin
+      TsBarSeries(ser).Kind := bskBars;
+    end;
 
-    {
-    ser := TsLineSeries.Create(ch);
+    // Add second series
+    ser := SERIES_CLASS.Create(ch);
     ser.SetTitleAddr(0, 2);
     ser.SetLabelRange(1, 0, 7, 0);
     ser.SetYRange(1, 2, 7, 2);
     ser.Line.Color := scRed;
-    TsLineSeries(ser).ShowSymbols := true;
-    TsLineSeries(ser).Symbol := cssDiamond;
-    }
+    ser.Fill.FgColor := scRed;
 
     {$IFDEF DARK_MODE}
     ch.Background.FgColor := scBlack;
@@ -101,7 +104,6 @@ begin
 
     ch.SubTitle.Caption := 'hallo';
     ch.SubTitle.Visible := true;
-
 
     // Legend working
     ch.Legend.Font.Size := 12;
@@ -159,6 +161,6 @@ begin
 
   WriteLn;
   Write('Press ENTER to close...');
-  ReadLn;
+ // ReadLn;
 end.
 
