@@ -311,7 +311,7 @@ type
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
     procedure WriteChartLegend(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
-    procedure WriteChartNumberStyles(AStream: TStream; AIndent: Integer);
+    procedure WriteChartNumberStyles(AStream: TStream; AIndent: Integer; AChart: TsChart);
     procedure WriteChartPlotArea(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
     procedure WriteChartSeries(AChartStream, AStyleStream: TStream;
@@ -6771,7 +6771,7 @@ begin
   chartStream := TMemoryStream.Create;
   styleStream := TMemoryStream.Create;
   try
-    WriteChartNumberStyles(styleStream, 4);
+    WriteChartNumberStyles(styleStream, 4, AChart);
 
     styleID := 1;
     WriteChartBackground(chartStream, styleStream, 6, 4, AChart, styleID);
@@ -7043,7 +7043,7 @@ begin
 end;
 
 procedure TsSpreadOpenDocWriter.WriteChartNumberStyles(AStream: TStream;
-  AIndent: Integer);
+  AIndent: Integer; AChart: TsChart);
 var
   indent: String;
 begin
@@ -7055,7 +7055,13 @@ begin
     indent + '</number:number-style>' + LE
   );
 
-  // Other styles follow here, for example for "percentage" stacked bars.
+  if AChart.StackMode = csmStackedPercentage then
+    AppendToStream(AStream,
+      indent + '<number:percentage-style style:name="N10010">' + LE +
+      indent + '  <number:number number:decimal-places="0" number:min-decimal-places="0" number:min-integer-digits="1"/>' + LE +
+      indent + '  <number:text>%</number:text>' + LE +
+      indent + '</number:percentage-style>' + LE
+    );
 end;
 
 procedure TsSpreadOpenDocWriter.WriteChartPlotArea(AChartStream, AStyleStream: TStream;
@@ -7191,12 +7197,16 @@ var
   textProps: String = '';
   graphProps: String = '';
   chartProps: String = '';
+  numStyle: String = 'N0';
 begin
   Result := '';
   if not Axis.Visible then
     exit;
 
   chart := Axis.Chart;
+
+  if (Axis = chart.YAxis) and (chart.StackMode = csmStackedPercentage) then
+    numStyle := 'N10010';
 
   if Axis.ShowLabels then
     chartProps := chartProps + 'chart:display-label="true" ';
@@ -7208,12 +7218,6 @@ begin
     chartProps := chartProps + 'chart:reverse-direction="true" ';
 
   angle := Axis.LabelRotation;
-  {
-  if chart.RotatedAxes then
-  begin
-    if angle = 0 then angle := 90 else if angle = 90 then angle := 0;
-  end;
-  }
   chartProps := chartProps + Format('style:rotation-angle="%d" ', [angle]);
 
   graphProps := 'svg:stroke-color="' + ColorToHTMLColorStr(Axis.AxisLine.Color) + '" ';
@@ -7222,12 +7226,12 @@ begin
 
   indent := DupeString(' ', AIndent);
   Result := Format(
-    indent + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="N0">' + LE +
+    indent + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="%s">' + LE +
     indent + '  <style:chart-properties %s/>' +  LE +
     indent + '  <style:graphic-properties %s/>' + LE +
     indent + '  <style:text-properties %s/>' + LE +
     indent + '</style:style>' + LE,
-    [ AStyleID, chartProps, graphProps, textProps ]
+    [ AStyleID, numStyle, chartProps, graphProps, textProps ]
   );
 end;
 
@@ -7429,16 +7433,23 @@ function TsSpreadOpenDocWriter.GetChartPlotAreaStyleAsXML(AChart: TsChart;
 var
   indent: String;
   verticalStr: String = '';
+  stackModeStr: String = '';
 begin
   indent := DupeString(' ', AIndent);
 
-  if (AChart.Series.Count > 0) and (AChart.Series[0] is TsBarSeries) and AChart.RotatedAxes then
+  if AChart.RotatedAxes then
     verticalStr := 'chart:vertical="true" ';
+  case AChart.StackMode of
+    csmSideBySide: ;
+    csmStacked: stackModeStr := 'chart:stacked="true" ';
+    csmStackedPercentage: stackModeStr := 'chart:percentage="true" ';
+  end;
 
   Result := Format(
     indent + '  <style:style style:name="ch%d" style:family="chart">' + LE +
     indent + '    <style:chart-properties ' +
                    verticalStr +
+                   stackModeStr +
                    'chart:symbol-type="automatic" ' +
                    'chart:include-hidden-cells="false" ' +
                    'chart:auto-position="true" ' +

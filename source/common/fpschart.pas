@@ -230,6 +230,11 @@ type
   end;
   TsChartSeriesClass = class of TsChartSeries;
 
+  TsAreaSeries = class(TsChartSeries)
+  public
+    constructor Create(AChart: TsChart); override;
+  end;
+
   TsBarSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
@@ -268,6 +273,8 @@ type
     property Items[AIndex: Integer]: TsChartSeries read GetItem write SetItem; default;
   end;
 
+  TsChartStackMode =(csmSideBySide, csmStacked, csmStackedPercentage);
+
   TsChart = class(TsChartFillElement)
   private
     FIndex: Integer;             // Index in workbook's chart list
@@ -284,6 +291,7 @@ type
     FY2Axis: TsChartAxis;
 
     FRotatedAxes: Boolean;   // For bar series: vertical columns <--> horizontal bars
+    FStackMode: TsChartStackMode;
 
     FTitle: TsChartText;
     FSubTitle: TsChartText;
@@ -350,8 +358,11 @@ type
     property YAxis: TsChartAxis read FYAxis write FYAxis;
     { Attributes of the plot's secondary y axis (right) }
     property Y2Axis: TsChartAxis read FY2Axis write FY2Axis;
+
     { x and y axes exchanged (for bar series) }
     property RotatedAxes: Boolean read FRotatedAxes write FRotatedAxes;
+    { stacked series }
+    property StackMode: TsChartStackMode read FStackMode write FStackMode;
 
     property CategoryLabelRange: TsCellRange read GetCategoryLabelRange;
 
@@ -682,6 +693,15 @@ end;
 procedure TsChartSeriesList.SetItem(AIndex: Integer; AValue: TsChartSeries);
 begin
   inherited Items[AIndex] := AValue;
+end;
+
+
+{ TsAreaSeries }
+
+constructor TsAreaSeries.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FChartType := ctArea;
 end;
 
 

@@ -5,7 +5,7 @@ program write_chart_demo;
 uses
   SysUtils, fpspreadsheet, fpstypes, fpschart, xlsxooxml, fpsopendocument;
 const
-  SERIES_CLASS: TsChartSeriesClass = TsBarSeries;
+  SERIES_CLASS: TsChartSeriesClass = TsAreaSeries;
 var
   b: TsWorkbook;
   sh1, sh2, sh3: TsWorksheet;
@@ -63,20 +63,21 @@ begin
     ch.Background.Style := fsSolidFill;
     ch.Border.Style := clsSolid;
     ch.PlotArea.Background.Style := fsSolidFill;
-    ch.RotatedAxes := true;
+    //ch.RotatedAxes := true;
+    ch.StackMode := csmStackedPercentage;
 
     ch.XAxis.ShowLabels := true;
-    ch.XAxis.LabelFont.Size := 8;
+    ch.XAxis.LabelFont.Size := 9;
     ch.XAxis.LabelFont.Color := scRed;
-    ch.XAxis.LabelFont.Style := [fssStrikeout];
+    //ch.XAxis.LabelFont.Style := [fssStrikeout];
     ch.XAxis.AxisLine.Color := scRed;
     ch.XAxis.Caption := 'This is the x axis';
     ch.XAxis.CaptionFont.Color := scRed;
     ch.XAxis.CaptionFont.Size := 12;
-    ch.XAxis.Inverted := true;
+    //ch.XAxis.Inverted := true;
     ch.XAxis.MajorGridLines.Color := scRed;
     ch.XAxis.MinorGridLines.Color := scBlue;
-    ch.XAxis.MajorGridLines.Style := clsNoLine;//Solid;
+    ch.XAxis.MajorGridLines.Style := clsNoLine; //Solid;
     ch.XAxis.MinorGridLines.Style := clsNoLine; //Solid;
 
     ch.YAxis.ShowLabels := true;
@@ -86,8 +87,8 @@ begin
     ch.YAxis.Caption := 'This is the y axis';
     ch.YAxis.CaptionFont.Color := scBlue;
     ch.YAxis.CaptionFont.Size := 12;
-    ch.YAxis.LabelRotation := 90;
-    ch.YAxis.CaptionRotation := 90;
+    //ch.YAxis.LabelRotation := 90;
+    //ch.YAxis.CaptionRotation := 90;
     ch.YAxis.MajorGridLines.Color := scBlue;
     ch.YAxis.MajorGridLines.Style := clsLongDash; //clsSolid;
     ch.YAxis.MajorGridLines.Width := 0.5;  // mm
