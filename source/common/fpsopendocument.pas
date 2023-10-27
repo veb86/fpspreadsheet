@@ -7073,7 +7073,7 @@ begin
   indent := DupeString(' ', AChartIndent);
 
   // Plot area properties
-  // ods has a table:cell-range-address here but it is reconstructed by Calc
+  // (ods has a table:cell-range-address here but it is reconstructed by Calc)
   AppendToStream(AChartStream, Format(
     indent + '<chart:plot-area chart:style-name="ch%d" chart:data-source-has-labels="both">' + LE,
     [ AStyleID ]
@@ -7142,6 +7142,7 @@ var
   sheet: TsWorksheet;
   series: TsChartSeries;
   valuesRange: String;
+  domainRange: String = '';
   titleAddr: String;
   count: Integer;
 begin
@@ -7149,6 +7150,16 @@ begin
 
   series := AChart.Series[ASeriesIndex];
   sheet := TsWorkbook(FWorkbook).GetWorksheetByIndex(AChart.sheetIndex);
+
+  if series is TsScatterSeries then
+  begin
+    domainRange := GetSheetCellRangeString_ODS(
+      sheet.Name, sheet.Name,
+      series.XRange.Row1, series.XRange.Col1,
+      series.XRange.Row2, series.XRange.Col2,
+      rfAllRel, false
+    );
+  end;
 
   valuesRange := GetSheetCellRangeString_ODS(
     sheet.Name, sheet.Name,
@@ -7171,6 +7182,11 @@ begin
                'chart:class="chart:%s">' + LE,
     [ AStyleID, valuesRange, titleAddr, CHART_TYPE_NAMES[series.ChartType] ]
   ));
+  if domainRange <> '' then
+    AppendToStream(AChartStream, Format(
+      indent + '<chart:domain table:cell-range-address="%s"/>' + LE,
+      [ domainRange ]
+    ));
   AppendToStream(AChartStream, Format(
     indent + '  <chart:data-point chart:repeated="%d"/>' + LE,
     [ count ]

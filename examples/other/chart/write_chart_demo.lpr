@@ -5,10 +5,12 @@ program write_chart_demo;
 uses
   SysUtils, fpspreadsheet, fpstypes, fpschart, xlsxooxml, fpsopendocument;
 const
-  SERIES_CLASS: TsChartSeriesClass = TsAreaSeries;
+  SERIES_CLASS: TsChartSeriesClass = TsScatterSeries;
+  r1 = 1;
+  r2 = 8;
 var
   b: TsWorkbook;
-  sh1, sh2, sh3: TsWorksheet;
+  sheet1, sheet2, sheet3: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
   i: Integer;
@@ -16,24 +18,28 @@ begin
   b := TsWorkbook.Create;
   try
     // 1st sheet
-    sh1 := b.AddWorksheet('test1');
-    sh1.WriteText(0, 1, '1+sin(x)');
-    sh1.WriteText(0, 2, '1+sin(x/2)');
-    for i := 1 to 7 do
+    sheet1 := b.AddWorksheet('test1');
+    sheet1.WriteText(0, 1, '1+sin(x)');
+    sheet1.WriteText(0, 2, '1+sin(x/2)');
+    for i := r1 to r2-1 do
     begin
-      sh1.WriteNumber(i, 0, i-1);
-      sh1.WriteNumber(i, 1, 1+sin(i-1));
-      sh1.WriteNumber(i, 2, 1+sin((i-1)/2));
+      sheet1.WriteNumber(i, 0, i-1);
+      sheet1.WriteNumber(i, 1, 1+sin(i-1));
+      sheet1.WriteNumber(i, 2, 1+sin((i-1)/2));
     end;
+    sheet1.WriteNumber(r2, 0, 9);
+    sheet1.WriteNumber(r2, 1, 2);
+    sheet1.WriteNumber(r2, 2, 2.5);
 
     // Create chart
-    ch := b.AddChart(sh1, 4, 4, 160, 100);
+    ch := b.AddChart(sheet1, 4, 4, 160, 100);
 
     // Add first series (type depending on SERIES_CLASS)
     ser := SERIES_CLASS.Create(ch);
     ser.SetTitleAddr(0, 1);
-    ser.SetLabelRange(1, 0, 7, 0);
-    ser.SetYRange(1, 1, 7, 1);
+    ser.SetLabelRange(r1, 0, r2, 0);
+    ser.SetXRange(r1, 0, r2, 0);     // is used only by scatter series
+    ser.SetYRange(r1, 1, r2, 1);
     ser.Line.Color := scBlue;
     ser.Fill.FgColor := scBlue;
     if (ser is TsLineSeries) then
@@ -44,9 +50,11 @@ begin
 
     // Add second series
     ser := SERIES_CLASS.Create(ch);
+//    ser := TsBarSeries.Create(ch);
     ser.SetTitleAddr(0, 2);
-    ser.SetLabelRange(1, 0, 7, 0);
-    ser.SetYRange(1, 2, 7, 2);
+    ser.SetLabelRange(r1, 0, r2, 0);
+    ser.SetXRange(r1, 0, r2, 0);
+    ser.SetYRange(r1, 2, r2, 2);
     ser.Line.Color := scRed;
     ser.Fill.FgColor := scRed;
 
@@ -114,20 +122,21 @@ begin
     ch.Legend.Position := lpBottom;
 
     // 2nd sheet
-    sh2 := b.AddWorksheet('test2');
+    sheet2 := b.AddWorksheet('test2');
+    sheet2.WriteText(0, 0, 'abc');
 
     // 3rd sheet
-    sh3 := b.AddWorksheet('test3');
-    sh3.WriteText(0, 1, 'cos(x)');
-    sh3.WriteText(0, 2, 'sin(x)');
+    sheet3 := b.AddWorksheet('test3');
+    sheet3.WriteText(0, 1, 'cos(x)');
+    sheet3.WriteText(0, 2, 'sin(x)');
     for i := 1 to 7 do
     begin
-      sh3.WriteNumber(i, 0, i-1);
-      sh3.WriteNumber(i, 1, cos(i-1), nfFixed, 2);
-      sh3.WriteNumber(i, 2, sin(i-1), nfFixed, 2);
+      sheet3.WriteNumber(i, 0, i-1);
+      sheet3.WriteNumber(i, 1, cos(i-1), nfFixed, 2);
+      sheet3.WriteNumber(i, 2, sin(i-1), nfFixed, 2);
     end;
 
-    ch := b.AddChart(sh3, 1, 3, 125, 95);
+    ch := b.AddChart(sheet3, 1, 3, 125, 95);
     ser := TsLineSeries.Create(ch);
     ser.SetTitleAddr(0, 1);
     ser.SetLabelRange(1, 0, 7, 0);

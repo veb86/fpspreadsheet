@@ -265,6 +265,11 @@ type
     property ShowSymbols: Boolean read FShowSymbols write FShowSymbols;
   end;
 
+  TsScatterSeries = class(TsLineSeries)
+  public
+    constructor Create(AChart: TsChart); override;
+  end;
+
   TsChartSeriesList = class(TFPList)
   private
     function GetItem(AIndex: Integer): TsChartSeries;
@@ -742,6 +747,15 @@ end;
 procedure TsLineSeries.SetSymbolFill(Value: TsChartFill);
 begin
   FFill := Value;
+end;
+
+
+{ TsScatterSeries }
+
+constructor TsScatterSeries.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FChartType := ctScatter;
 end;
 
 
