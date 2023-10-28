@@ -111,7 +111,7 @@ type
   end;
 
   TsChartAxisPosition = (capStart, capEnd, capValue);
-  TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter);
+  TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble);
 
   TsChartAxis = class(TsChartFillElement)
   private
@@ -237,6 +237,15 @@ type
   TsBarSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
+  end;
+
+  TsBubbleSeries = class(TsChartSeries)
+  private
+    FBubbleRange: TsCellRange;
+  public
+    constructor Create(AChart: TsChart); override;
+    procedure SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+    property BubbleRange: TsCellRange read FBubbleRange;
   end;
 
   TsChartSeriesSymbol = (
@@ -368,7 +377,7 @@ type
 
     { Connecting line between data points (for line and scatter series) }
     property Interpolation: TsChartInterpolation read FInterpolation write FInterpolation;
-    { x and y axes exchanged (for bar series) }
+    { x and y axes exchanged (mainly for bar series, but works also for scatter and bubble series) }
     property RotatedAxes: Boolean read FRotatedAxes write FRotatedAxes;
     { Stacking of series (for bar and area series ) }
     property StackMode: TsChartStackMode read FStackMode write FStackMode;
@@ -716,6 +725,23 @@ begin
   FChartType := ctBar;
 end;
 
+{ TsBubbleSeries }
+
+constructor TsBubbleSeries.Create(AChart: TsChart);
+begin
+  inherited;
+  FChartType := ctBubble;
+end;
+
+procedure TsBubbleSeries.SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
+    raise Exception.Create('Series bubble values can only be located in a single column or row.');
+  FBubbleRange.Row1 := ARow1;
+  FBubbleRange.Col1 := ACol1;
+  FBubbleRange.Row2 := ARow2;
+  FBubbleRange.Col2 := ACol2;
+end;
 
 { TsLineSeries }
 

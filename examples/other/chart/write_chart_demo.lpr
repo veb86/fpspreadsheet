@@ -5,7 +5,7 @@ program write_chart_demo;
 uses
   SysUtils, fpspreadsheet, fpstypes, fpschart, xlsxooxml, fpsopendocument;
 const
-  SERIES_CLASS: TsChartSeriesClass = TsScatterSeries;
+  SERIES_CLASS: TsChartSeriesClass = TsBubbleSeries; //TsScatterSeries;
   r1 = 1;
   r2 = 8;
 var
@@ -21,18 +21,21 @@ begin
     sheet1 := b.AddWorksheet('test1');
     sheet1.WriteText(0, 1, '1+sin(x)');
     sheet1.WriteText(0, 2, '1+sin(x/2)');
+    sheet1.WriteText(0, 3, 'Bubble');
     for i := r1 to r2-1 do
     begin
       sheet1.WriteNumber(i, 0, i-1);
       sheet1.WriteNumber(i, 1, 1+sin(i-1));
       sheet1.WriteNumber(i, 2, 1+sin((i-1)/2));
+      sheet1.WriteNumber(i, 3, i*i);   // Bubble series radii
     end;
     sheet1.WriteNumber(r2, 0, 9);
     sheet1.WriteNumber(r2, 1, 2);
     sheet1.WriteNumber(r2, 2, 2.5);
+    sheet1.WriteNumber(r2, 3, r2*r2);
 
     // Create chart
-    ch := b.AddChart(sheet1, 4, 4, 160, 100);
+    ch := b.AddChart(sheet1, 4, 6, 160, 100);
 
     // Add first series (type depending on SERIES_CLASS)
     ser := SERIES_CLASS.Create(ch);
@@ -47,16 +50,25 @@ begin
       TsLineSeries(ser).ShowSymbols := true;
       TsLineSeries(ser).Symbol := cssCircle;
     end;
+    if (ser is TsBubbleSeries) then
+    begin
+      TsBubbleSeries(ser).SetXRange(r1, 0, r2, 0);
+      TsBubbleSeries(ser).SetYRange(r1, 2, r2, 2);
+      TsBubbleSeries(ser).SetBubbleRange(r1, 3, r2, 3);
+    end;
 
-    // Add second series
-    ser := SERIES_CLASS.Create(ch);
-//    ser := TsBarSeries.Create(ch);
-    ser.SetTitleAddr(0, 2);
-    ser.SetLabelRange(r1, 0, r2, 0);
-    ser.SetXRange(r1, 0, r2, 0);
-    ser.SetYRange(r1, 2, r2, 2);
-    ser.Line.Color := scRed;
-    ser.Fill.FgColor := scRed;
+    if SERIES_CLASS <> TsBubbleSeries then
+    begin
+      // Add second series
+      ser := SERIES_CLASS.Create(ch);
+  //    ser := TsBarSeries.Create(ch);
+      ser.SetTitleAddr(0, 2);
+      ser.SetLabelRange(r1, 0, r2, 0);
+      ser.SetXRange(r1, 0, r2, 0);
+      ser.SetYRange(r1, 2, r2, 2);
+      ser.Line.Color := scRed;
+      ser.Fill.FgColor := scRed;
+    end;
 
     {$IFDEF DARK_MODE}
     ch.Background.FgColor := scBlack;
@@ -71,7 +83,7 @@ begin
     ch.Background.Style := fsSolidFill;
     ch.Border.Style := clsSolid;
     ch.PlotArea.Background.Style := fsSolidFill;
-    //ch.RotatedAxes := true;
+    ch.RotatedAxes := true;
     ch.StackMode := csmStackedPercentage;
     //ch.Interpolation := ciCubicSpline;
 

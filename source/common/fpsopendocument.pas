@@ -538,7 +538,7 @@ const
   );
 
   CHART_TYPE_NAMES: array[TsChartType] of string = (
-    '', 'bar', 'line', 'area', 'barLine', 'scatter'
+    '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble'
   );
 
   CHART_SYMBOL_NAMES: array[TsChartSeriesSymbol] of String = (
@@ -7142,7 +7142,9 @@ var
   sheet: TsWorksheet;
   series: TsChartSeries;
   valuesRange: String;
-  domainRange: String = '';
+  domainRangeX: String = '';
+  domainRangeY: String = '';
+  rangeStr: String = '';
   titleAddr: String;
   count: Integer;
 begin
@@ -7151,10 +7153,10 @@ begin
   series := AChart.Series[ASeriesIndex];
   sheet := TsWorkbook(FWorkbook).GetWorksheetByIndex(AChart.sheetIndex);
 
-  // These are the x values of a scatter plot.
-  if series is TsScatterSeries then
+  // These are the x values of a scatter or bubble plot.
+  if (series is TsScatterSeries) or (series is TsBubbleSeries) then
   begin
-    domainRange := GetSheetCellRangeString_ODS(
+    domainRangeX := GetSheetCellRangeString_ODS(
       sheet.Name, sheet.Name,
       series.XRange.Row1, series.XRange.Col1,
       series.XRange.Row2, series.XRange.Col2,
@@ -7162,20 +7164,37 @@ begin
     );
   end;
 
-  // These are the y values
-  valuesRange := GetSheetCellRangeString_ODS(
-    sheet.Name, sheet.Name,
-    series.YRange.Row1, series.YRange.Col1,
-    series.YRange.Row2, series.YRange.Col2,
-    rfAllRel, false
-  );
+  if series is TsBubbleSeries then
+  begin
+    domainRangeY := GetSheetCellRangeString_ODS(
+      sheet.Name, sheet.Name,
+      series.YRange.Row1, series.YRange.Col1,
+      series.YRange.Row2, series.YRange.Col2,
+      rfAllRel, false
+    );
+    // These are the bubble radii
+    valuesRange := GetSheetCellRangeString_ODS(
+      sheet.Name, sheet.Name,
+      TsBubbleSeries(series).BubbleRange.Row1, TsBubbleSeries(series).BubbleRange.Col1,
+      TsBubbleSeries(series).BubbleRange.Row2, TsBubbleSeries(series).BubbleRange.Col2,
+      rfAllRel, false
+    );
+  end else
+    // These are the y values of the non-bubble series
+    valuesRange := GetSheetCellRangeString_ODS(
+      sheet.Name, sheet.Name,
+      series.YRange.Row1, series.YRange.Col1,
+      series.YRange.Row2, series.YRange.Col2,
+      rfAllRel, false
+    );
 
   // And these are the data point labels.
   titleAddr := GetSheetCellRangeString_ODS(
     sheet.Name, sheet.Name,
     series.TitleAddr.Row, series.TitleAddr.Col,
     series.TitleAddr.Row, series.TitleAddr.Col,
-    rfAllRel, false);
+    rfAllRel, false
+  );
   count := series.YRange.Row2 - series.YRange.Row1 + 1;
 
   // Store the series properties
@@ -7186,11 +7205,17 @@ begin
                'chart:class="chart:%s">' + LE,
     [ AStyleID, valuesRange, titleAddr, CHART_TYPE_NAMES[series.ChartType] ]
   ));
-  if domainRange <> '' then
+  if domainRangeY <> '' then
     AppendToStream(AChartStream, Format(
       indent + '<chart:domain table:cell-range-address="%s"/>' + LE,
-      [ domainRange ]
+      [ domainRangeY ]
     ));
+  if domainRangeX <> '' then
+    AppendToStream(AChartStream, Format(
+      indent + '<chart:domain table:cell-range-address="%s"/>' + LE,
+      [ domainRangeX ]
+    ));
+
   AppendToStream(AChartStream, Format(
     indent + '  <chart:data-point chart:repeated="%d"/>' + LE,
     [ count ]
@@ -7478,7 +7503,7 @@ begin
   end;
 
   Result := Format(
-    indent + '  <style:style style:name="ch%d" style:family="chart">' + LE +
+    indent + '  <style:style style:name="ch%d" style:family="chart">', [ AStyleID ]) + LE +
     indent + '    <style:chart-properties ' +
                    interpolationStr +
                    verticalStr +
@@ -7489,9 +7514,7 @@ begin
                    'chart:auto-size="true" ' +
                    'chart:treat-empty-cells="leave-gap" ' +
                    'chart:right-angled-axes="true"/>' + LE +
-    indent + '  </style:style>' + LE,
-    [ AStyleID ]
-  );
+    indent + '  </style:style>' + LE;
 end;
 
 { <style:style style:name="ch1400" style:family="chart" style:data-style-name="N0">
