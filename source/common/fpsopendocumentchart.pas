@@ -209,6 +209,22 @@ begin
   if not Axis.AutomaticMinorSteps then
     chartProps := chartProps + Format('chart:interval-minor-divisor="%d" ', [Axis.MinorSteps]);
 
+  case Axis.Position of
+    capStart: chartProps := chartProps + 'chart:axis-position="start" ';
+    capEnd: chartProps := chartProps + 'chart:axis-position="end" ';
+    capValue: chartProps := chartProps + Format('chart:axis-position="%g" ', [Axis.PositionValue], FPointSeparatorSettings);
+  end;
+
+  if (catInside in Axis.MajorTicks) then
+    chartProps := chartProps + 'chart:tick-marks-major-inner="true" ';
+  if (catOutside in Axis.MajorTicks) then
+    chartProps := chartProps + 'chart:tick-marks-major-outer="true" ';
+
+  if (catInside in Axis.MinorTicks) then
+    chartProps := chartProps + 'chart:tick-marks-minor-inner="true" ';
+  if (catOutside in Axis.MinorTicks) then
+    chartProps := chartProps + 'chart:tick-marks-minor-outer="true" ';
+
   if Axis.Inverted then
     chartProps := chartProps + 'chart:reverse-direction="true" ';
 

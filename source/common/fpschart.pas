@@ -111,6 +111,8 @@ type
   end;
 
   TsChartAxisPosition = (capStart, capEnd, capValue);
+  TsChartAxisTick = (catInside, catOutside);
+  TsChartAxisTicks = set of TsChartAxisTick;
   TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble);
 
   TsChartAxis = class(TsChartFillElement)
@@ -131,11 +133,11 @@ type
     FLabelRotation: Integer;
     FLogarithmic: Boolean;
     FMajorInterval: Double;
-    FMajorTickLines: TsChartLine;
+    FMajorTicks: TsChartAxisTicks;
     FMax: Double;
     FMin: Double;
     FMinorSteps: Double;
-    FMinorTickLines: TsChartLine;
+    FMinorTicks: TsChartAxisTicks;
     FPosition: TsChartAxisPosition;
     FPositionValue: Double;
     FShowCaption: Boolean;
@@ -158,12 +160,12 @@ type
     property Logarithmic: Boolean read FLogarithmic write FLogarithmic;
     property MajorGridLines: TsChartLine read FMajorGridLines write FMajorGridLines;
     property MajorInterval: Double read FMajorInterval write FMajorInterval;
-    property MajorTickLines: TsChartLine read FMajorTickLines write FMajorTickLines;
+    property MajorTicks: TsChartAxisTicks read FMajorTicks write FMajorTicks;
     property Max: Double read FMax write FMax;
     property Min: Double read FMin write FMin;
     property MinorGridLines: TsChartLine read FMinorGridLines write FMinorGridLines;
     property MinorSteps: Double read FMinorSteps write FMinorSteps;
-    property MinorTickLines: TsChartLine read FMinorTickLines write FMinorTickLines;
+    property MinorTicks: TsChartAxisTicks read FMinorTicks write FMinorTicks;
     property Position: TsChartAxisPosition read FPosition write FPosition;
     property PositionValue: Double read FPositionValue write FPositionValue;
     property ShowCaption: Boolean read FShowCaption write FShowCaption;
@@ -530,15 +532,8 @@ begin
   FAxisLine.Style := clsSolid;
   FAxisLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
 
-  FMajorTickLines := TsChartLine.Create;
-  FMajorTickLines.Color := scBlack;
-  FMajorTickLines.Style := clsSolid;
-  FMajorTickLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-
-  FMinorTickLines := TsChartLine.Create;
-  FMinorTickLines.Color := scBlack;
-  FMinorTickLines.Style := clsSolid;
-  FMinorTickLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  FMajorTicks := [catOutside];
+  FMinorTicks := [];
 
   FMajorGridLines := TsChartLine.Create;
   FMajorGridLines.Color := scSilver;
@@ -555,8 +550,6 @@ destructor TsChartAxis.Destroy;
 begin
   FMinorGridLines.Free;
   FMajorGridLines.Free;
-  FMinorTickLines.Free;
-  FMajorTickLines.Free;
   FAxisLine.Free;
   FLabelFont.Free;
   FCaptionFont.Free;

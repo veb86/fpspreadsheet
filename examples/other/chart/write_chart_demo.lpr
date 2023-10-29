@@ -116,6 +116,7 @@ begin
     ch.XAxis.MinorGridLines.Color := scBlue;
     ch.XAxis.MajorGridLines.Style := clsNoLine; //Solid;
     ch.XAxis.MinorGridLines.Style := clsNoLine; //Solid;
+    ch.XAxis.Position := capStart;
 
     ch.YAxis.ShowLabels := true;
     ch.YAxis.LabelFont.Size := 8;
@@ -192,6 +193,8 @@ begin
     ch.YAxis.CaptionFont.Size := 18;
     ch.XAxis.LabelFont.Style := [fssItalic];
     ch.YAxis.LabelFont.Style := [fssItalic];
+    ch.YAxis.MajorTicks := [catInside, catOutside];
+    ch.YAxis.MinorTicks := [catOutside];
 
     b.WriteToFile('test.xlsx', true);   // Excel fails to open the file
     b.WriteToFile('test.ods', true);
