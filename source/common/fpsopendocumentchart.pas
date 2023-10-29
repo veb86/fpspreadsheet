@@ -48,7 +48,7 @@ type
     procedure WriteChartSeries(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; ASeriesIndex: Integer;
       var AStyleID: Integer);
-    procedure WriteChartTable(AStream: TStream; AChart: TsChart; AIndent: Integer);
+//    procedure WriteChartTable(AStream: TStream; AChart: TsChart; AIndent: Integer);
     procedure WriteChartTitle(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; IsSubtitle: Boolean;
       var AStyleID: Integer);
@@ -493,7 +493,7 @@ begin
     lineser := TsLineSeries(series);
     if lineser.ShowSymbols then
       chartProps := Format(
-        'chart:symbol-type="named-symbol" chart:symbol-name="%s" chart:symbol-width="%.1fmm" chart.symbol-height="%.1fmm" ',
+        'chart:symbol-type="named-symbol" chart:symbol-name="%s" chart:symbol-width="%.1fmm" chart:symbol-height="%.1fmm" ',
         [CHART_SYMBOL_NAMES[lineSer.Symbol], lineSer.SymbolWidth, lineSer.SymbolHeight ],
         FPointSeparatorSettings
       );
@@ -802,7 +802,8 @@ begin
     AStream.CopyFrom(chartStream, chartStream.Size);
 
     // After the chart elements we have the data to be plotted
-    WriteChartTable(AStream, AChart, 8);
+//    WriteChartTable(AStream, AChart, 8);
+    // wp: writing this makes no change except the series fills not being applied
 
     // Finally the footer.
     AppendToStream(AStream,
@@ -1320,6 +1321,12 @@ begin
     end;
 end;
 
+(* wp:
+   DO NOT DELETE THIS - IT WAS A PAINT TO GET THIS, AND MAYBE IT WILL BE NEEDED
+   LATER.
+   AT THE MOMENT THIS IS NOT NEEDED, IN FACT, IT IS EVEN DETRIMENTAL:
+   WITH THIS CODE INCLUDED, SERIES FILL ARE IGNORED AND TITLES ARE NOT CORRECT.
+
 { Writes the chart's data table. NOTE: The chart gets its data from this table
   rather than from the worksheet! }
 procedure TsSpreadOpenDocChartWriter.WriteChartTable(AStream: TStream;
@@ -1457,7 +1464,7 @@ begin
     auxBook.Free;
   end;
 end;
-
+  *)
 { Writes the chart's title (or subtitle, depending on the value of IsSubTitle)
   to the xml stream (chart stream) and the corresponding style to the stylestream. }
 procedure TsSpreadOpenDocChartWriter.WriteChartTitle(AChartStream, AStyleStream: TStream;

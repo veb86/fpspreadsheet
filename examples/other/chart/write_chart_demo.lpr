@@ -5,10 +5,11 @@ program write_chart_demo;
 uses
   SysUtils, fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
 const
-  SERIES_CLASS: TsChartSeriesClass = TsAreaSeries;
+//  SERIES_CLASS: TsChartSeriesClass = TsAreaSeries;
 //  SERIES_CLASS: TsChartSeriesClass = TsBarSeries;
 //  SERIES_CLASS: TsChartSeriesClass = TsBubbleSeries;
-//  SERIES_CLASS: TsChartSeriesClass = TsLineSeries;
+  SERIES_CLASS: TsChartSeriesClass = TsLineSeries;
+//  SERIES_CLASS: TsChartSeriesClass = TsScatterSeries;
   r1 = 1;
   r2 = 8;
   FILL_COLORS: array[0..r2-r1] of TsColor = (scRed, scGreen, scBlue, scYellow, scMagenta, scSilver, scBlack, scOlive);
@@ -99,7 +100,7 @@ begin
     ch.Border.Style := clsSolid;
     ch.PlotArea.Background.Style := fsSolidFill;
     //ch.RotatedAxes := true;
-    ch.StackMode := csmStackedPercentage;
+    //ch.StackMode := csmStackedPercentage;
     //ch.Interpolation := ciCubicSpline;
 
     ch.XAxis.ShowLabels := true;
