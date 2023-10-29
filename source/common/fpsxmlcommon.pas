@@ -18,6 +18,9 @@ uses
  {$ENDIF}
   fpstypes, fpsreaderwriter;
 
+const
+  XML_HEADER = '<?xml version="1.0" encoding="utf-8" ?>';
+
 type
   TsSpreadXMLReader = class(TsCustomSpreadReader)
   protected

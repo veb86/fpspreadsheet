@@ -83,7 +83,7 @@ begin
     ch.Background.Style := fsSolidFill;
     ch.Border.Style := clsSolid;
     ch.PlotArea.Background.Style := fsSolidFill;
-    ch.RotatedAxes := true;
+    //ch.RotatedAxes := true;
     ch.StackMode := csmStackedPercentage;
     //ch.Interpolation := ciCubicSpline;
 

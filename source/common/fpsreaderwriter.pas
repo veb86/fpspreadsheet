@@ -197,6 +197,19 @@ type
     property NumFormatList: TStringList read FNumFormatList;
   end;
 
+  {@@ Helper class for the spreadsheet writer to keep processing of charts
+    out of the main writer unit. }
+  TsBasicSpreadChartWriter = class
+  protected
+    FWriter: TsBasicSpreadWriter;
+  public
+    constructor Create(AWriter: TsBasicSpreadWriter); virtual;
+    procedure CreateStreams; virtual; abstract;
+    procedure DestroyStreams; virtual; abstract;
+    procedure ResetStreams; virtual; abstract;
+    procedure WriteCharts; virtual; abstract;
+    property Writer: TsBasicSpreadWriter read FWriter;
+  end;
 
 type
   TsSpreadFileAccess = (faRead, faWrite);
@@ -912,6 +925,21 @@ begin
   raise Exception.Create(rsUnsupportedWriteFormat);
 end;
 
+
+{------------------------------------------------------------------------------}
+{                           TsBasicSpreadChartWriter                           }
+{------------------------------------------------------------------------------}
+
+{@@ Constructor of the ChartWriter. It gets the main writer as parameter. }
+constructor TsBasicSpreadChartWriter.Create(AWriter: TsBasicSpreadWriter);
+begin
+  FWriter := AWriter;
+end;
+
+
+{------------------------------------------------------------------------------}
+{                          TsSpreadFormatRegistry                              }
+{------------------------------------------------------------------------------}
 type
   TsSpreadFormatData = class
   private
