@@ -504,6 +504,8 @@ constructor TsChartAxis.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
 
+  FAutomaticMin := true;
+  FAutomaticMax := true;
   FAutomaticMajorInterval := true;
   FAutomaticMinorSteps := true;
 

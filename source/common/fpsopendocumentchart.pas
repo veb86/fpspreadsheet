@@ -197,6 +197,18 @@ begin
   if Axis.Logarithmic then
     chartProps := chartProps + 'chart:logarithmic="true" ';
 
+  if not Axis.AutomaticMin then
+    chartProps := chartProps + Format('chart:minimum="%g" ', [Axis.Min], FPointSeparatorSettings);
+
+  if not Axis.AutomaticMax then
+    chartProps := chartProps + Format('chart:maximum="%g" ', [Axis.Max], FPointSeparatorSettings);
+
+  if not Axis.AutomaticMajorInterval then
+    chartProps := chartProps + Format('chart:interval-major="%g" ', [Axis.MajorInterval], FPointSeparatorSettings);
+
+  if not Axis.AutomaticMinorSteps then
+    chartProps := chartProps + Format('chart:interval-minor-divisor="%d" ', [Axis.MinorSteps]);
+
   if Axis.Inverted then
     chartProps := chartProps + 'chart:reverse-direction="true" ';
 

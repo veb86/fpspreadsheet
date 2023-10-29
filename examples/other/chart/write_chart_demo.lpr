@@ -126,6 +126,10 @@ begin
     ch.YAxis.CaptionFont.Size := 12;
     //ch.YAxis.LabelRotation := 90;
     //ch.YAxis.CaptionRotation := 90;
+    ch.YAxis.Min := -5;
+    ch.yAxis.Max := 5;
+    ch.YAxis.AutomaticMin := false;
+    ch.YAxis.AutomaticMax := false;
     ch.YAxis.MajorGridLines.Color := scBlue;
     ch.YAxis.MajorGridLines.Style := clsLongDash; //clsSolid;
     ch.YAxis.MajorGridLines.Width := 0.5;  // mm
