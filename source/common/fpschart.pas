@@ -193,6 +193,7 @@ type
     FXRange: TsCellRange;          // cell range containing the x data
     FYRange: TsCellRange;
     FLabelRange: TsCellRange;
+    FFillColorRange: TsCellRange;
     FYAxis: TsChartAxisLink;
     FTitleAddr: TsCellCoord;
     FLabelFormat: String;
@@ -211,12 +212,14 @@ type
     procedure SetLabelRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetXRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetYRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+    procedure SetFillColorRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     function LabelsInCol: Boolean;
     function XValuesInCol: Boolean;
     function YValuesInCol: Boolean;
 
     property ChartType: TsChartType read FChartType;
     property Count: Integer read GetCount;
+    property FillColorRange: TsCellRange read FFillColorRange;
     property LabelFormat: String read FLabelFormat write FLabelFormat;  // Number format in Excel notation, e.g. '0.00'
     property LabelRange: TsCellRange read FLabelRange;
     property TitleAddr: TsCellCoord read FTitleAddr write FTitleAddr;
@@ -654,6 +657,16 @@ begin
   FTitleAddr.Col := ACol;
 end;
 
+procedure TsChartSeries.SetFillColorRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
+    raise Exception.Create('Series fill color values can only be located in a single column or row.');
+  FFillColorRange.Row1 := ARow1;
+  FFillColorRange.Col1 := ACol1;
+  FFillColorRange.Row2 := ARow2;
+  FFillColorRange.Col2 := ACol2;
+end;
+
 procedure TsChartSeries.SetLabelRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
@@ -725,6 +738,7 @@ begin
   FChartType := ctBar;
 end;
 
+
 { TsBubbleSeries }
 
 constructor TsBubbleSeries.Create(AChart: TsChart);
@@ -736,12 +750,13 @@ end;
 procedure TsBubbleSeries.SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
-    raise Exception.Create('Series bubble values can only be located in a single column or row.');
+    raise Exception.Create('Bubble series values can only be located in a single column or row.');
   FBubbleRange.Row1 := ARow1;
   FBubbleRange.Col1 := ACol1;
   FBubbleRange.Row2 := ARow2;
   FBubbleRange.Col2 := ACol2;
 end;
+
 
 { TsLineSeries }
 

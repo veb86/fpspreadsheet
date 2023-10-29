@@ -277,7 +277,6 @@ type
     function WriteDefaultGraphicStyleXMLAsString: String; overload;
     function WriteDocumentProtectionXMLAsString: String;
     function WriteFontStyleXMLAsString(const AFormat: TsCellFormat): String; overload;
-//    function WriteFontStyleXMLAsString(AFont: TsFont): String; overload;
     function WriteHeaderFooterFontXMLAsString(AFont: TsHeaderFooterFont): String;
     function WriteHorAlignmentStyleXMLAsString(const AFormat: TsCellFormat): String;
     function WriteNumFormatStyleXMLAsString(const AFormat: TsCellFormat): String;
@@ -296,8 +295,6 @@ type
     // Streams with the contents of files
     FSMeta, FSSettings, FSStyles, FSContent: TStream;
     FSMimeType, FSMetaInfManifest: TStream;
-//    FSCharts: array of TStream;
-//    FSObjectStyles: array of TStream;
 
     { Helpers }
     procedure AddBuiltinNumFormats; override;
@@ -6120,32 +6117,18 @@ begin
   begin
     embObj := TsWorkbook(FWorkbook).GetEmbeddedObj(i);
     imgtype := embObj.ImageType;
-    if imgtype = itUnknown then
-      continue;
-    mime := GetImageMimeType(imgtype);
-    ext := GetImageTypeExt(imgType);
-    AppendToStream(FSMetaInfManifest, Format(
-      '  <manifest:file-entry manifest:media-type="%s" manifest:full-path="Pictures/%d.%s" />' + LE,
-      [mime, i+1, ext]
-    ));
+    if imgtype <> itUnknown then
+    begin
+      mime := GetImageMimeType(imgtype);
+      ext := GetImageTypeExt(imgType);
+      AppendToStream(FSMetaInfManifest, Format(
+        '  <manifest:file-entry manifest:media-type="%s" manifest:full-path="Pictures/%d.%s" />' + LE,
+        [mime, i+1, ext]
+      ));
+    end;
   end;
 
-  for i:=0 to (FWorkbook as TsWorkbook).GetChartCount-1 do
-  begin
-    AppendToStream(FSMetaInfManifest, Format(
-      '  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.chart" manifest:full-path="Object %d/" />' + LE,
-      [i+1]
-    ));
-    AppendToStream(FSMetaInfManifest, Format(
-      '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="Object %d/content.xml" />' + LE,
-      [i+1]
-    ));
-    AppendToStream(FSMetaInfManifest, Format(
-      ' <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="Object %d/styles.xml" />' + LE,
-      [i+1]
-    ));
-    // Object X/meta.xml and ObjectReplacement/Object X not needed necessarily
-  end;
+  TsSpreadOpenDocChartWriter(FChartWriter).AddToMetaInfManifest(FSMetaInfManifest);
 
   AppendToStream(FSMetaInfManifest,
     '</manifest:manifest>');
@@ -6461,30 +6444,6 @@ begin
     '<office:scripts />'
   );
 
-{
-    '<office:document-content xmlns:office="' + SCHEMAS_XMLNS_OFFICE +
-        '" xmlns:fo="'     + SCHEMAS_XMLNS_FO +
-        '" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:dc="http://purl.org/dc/elements/1.1/' +
-        '" xmlns:style="'  + SCHEMAS_XMLNS_STYLE +
-        '" xmlns:text="'   + SCHEMAS_XMLNS_TEXT +
-        '" xmlns:table="'  + SCHEMAS_XMLNS_TABLE +
-        '" xmlns:svg="'    + SCHEMAS_XMLNS_SVG +
-        '" xmlns:number="' + SCHEMAS_XMLNS_NUMBER +
-        '" xmlns:meta="'   + SCHEMAS_XMLNS_META +
-        '" xmlns:chart="'  + SCHEMAS_XMLNS_CHART +
-        '" xmlns:dr3d="'   + SCHEMAS_XMLNS_DR3D +
-        '" xmlns:math="'   + SCHEMAS_XMLNS_MATH +
-        '" xmlns:form="'   + SCHEMAS_XMLNS_FORM +
-        '" xmlns:script="' + SCHEMAS_XMLNS_SCRIPT +
-        '" xmlns:ooo="'    + SCHEMAS_XMLNS_OOO +
-        '" xmlns:ooow="'   + SCHEMAS_XMLNS_OOOW +
-        '" xmlns:oooc="'   + SCHEMAS_XMLNS_OOOC +
-        '" xmlns:dom="'    + SCHEMAS_XMLNS_DOM +
-        '" xmlns:xforms="' + SCHEMAS_XMLNS_XFORMS +
-        '" xmlns:xsd="'    + SCHEMAS_XMLNS_XSD +
-        '" xmlns:xsi="'    + SCHEMAS_XMLNS_XSI + '">' +
-      '<office:scripts />');
-}
   // Fonts
   AppendToStream(FSContent,
       '<office:font-face-decls>');

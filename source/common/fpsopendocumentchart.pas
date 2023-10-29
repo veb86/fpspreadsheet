@@ -56,6 +56,7 @@ type
   public
     constructor Create(AWriter: TsBasicSpreadWriter);
     procedure AddChartsToZip(AZip: TZipper);
+    procedure AddToMetaInfManifest(AStream: TStream);
     procedure CreateStreams; override;
     procedure DestroyStreams; override;
     procedure ResetStreams; override;
@@ -116,6 +117,30 @@ begin
       FSCharts[i], Format(OPENDOC_PATH_CHART_CONTENT, [i+1]));
     AZip.Entries.AddFileEntry(
       FSObjectStyles[i], Format(OPENDOC_PATH_CHART_STYLES, [i+1]));
+  end;
+end;
+
+{ Writes the chart entries needed in the META-INF/manifest.xml file }
+procedure TsSpreadOpenDocChartWriter.AddToMetaInfManifest(AStream: TStream);
+var
+  i: Integer;
+begin
+  for i:=0 to TsWorkbook(Writer.Workbook).GetChartCount-1 do
+  begin
+    AppendToStream(AStream, Format(
+      '  <manifest:file-entry manifest:media-type="application/vnd.oasis.opendocument.chart" manifest:full-path="Object %d/" />' + LE,
+      [i+1]
+    ));
+    AppendToStream(AStream, Format(
+      '  <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="Object %d/content.xml" />' + LE,
+      [i+1]
+    ));
+    AppendToStream(AStream, Format(
+      ' <manifest:file-entry manifest:media-type="text/xml" manifest:full-path="Object %d/styles.xml" />' + LE,
+      [i+1]
+    ));
+
+    // Object X/meta.xml and ObjectReplacement/Object X are not necessarily needed.
   end;
 end;
 
@@ -1167,6 +1192,8 @@ var
   valuesRange: String;
   domainRangeX: String = '';
   domainRangeY: String = '';
+  fillColorRange: String = '';
+  borderColorRange: String = '';
   rangeStr: String = '';
   titleAddr: String;
   count: Integer;
@@ -1211,6 +1238,17 @@ begin
       rfAllRel, false
     );
 
+  // Fill colors for bars, line series symbols, bubbles
+  if (series.FillColorRange.Row1 <> series.FillColorRange.Row2) or
+     (series.FillColorRange.Col1 <> series.FillColorRange.Col2)
+  then
+    fillColorRange := GetSheetCellRangeString_ODS(
+      sheet.Name, sheet.Name,
+      series.FillColorRange.Row1, series.FillColorRange.Col1,
+      series.FillColorRange.Row2, series.FillColorRange.Col2,
+      rfAllRel, false
+    );
+
   // And these are the data point labels.
   titleAddr := GetSheetCellRangeString_ODS(
     sheet.Name, sheet.Name,
@@ -1238,6 +1276,19 @@ begin
       indent + '<chart:domain table:cell-range-address="%s"/>' + LE,
       [ domainRangeX ]
     ));
+  if fillColorRange <> '' then
+    AppendToStream(AChartStream, Format(
+      indent + '<loext:propertry-mapping loext:property="FillColor" loext:cell-range-address="%s"/>' + LE,
+      [ fillColorRange ]
+    ));
+
+  { --- not working...
+  if borderColorRange <> '' then
+    AppendToStream(AChartStream, Format(
+      indent + '<loext:propertry-mapping loext:property="BorderColor" loext:cell-range-address="%s"/>' + LE,
+      [ borderColorRange ]
+    ));
+  }
 
   AppendToStream(AChartStream, Format(
     indent + '  <chart:data-point chart:repeated="%d"/>' + LE,
@@ -1265,6 +1316,7 @@ begin
     begin
       chart := TsWorkbook(Writer.Workbook).GetChartByIndex(i);
       WriteChart(FSCharts[i], chart);
+      WriteObjectStyles(FSObjectStyles[i], chart);
     end;
 end;
 
@@ -1449,7 +1501,6 @@ begin
   // Next style
   inc(AStyleID);
 end;
-
 
 end.
 

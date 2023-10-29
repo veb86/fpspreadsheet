@@ -3,11 +3,15 @@ program write_chart_demo;
 {.$DEFINE DARK_MODE}
 
 uses
-  SysUtils, fpspreadsheet, fpstypes, fpschart, xlsxooxml, fpsopendocument;
+  SysUtils, fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
 const
-  SERIES_CLASS: TsChartSeriesClass = TsBubbleSeries; //TsScatterSeries;
+  SERIES_CLASS: TsChartSeriesClass = TsAreaSeries;
+//  SERIES_CLASS: TsChartSeriesClass = TsBarSeries;
+//  SERIES_CLASS: TsChartSeriesClass = TsBubbleSeries;
+//  SERIES_CLASS: TsChartSeriesClass = TsLineSeries;
   r1 = 1;
   r2 = 8;
+  FILL_COLORS: array[0..r2-r1] of TsColor = (scRed, scGreen, scBlue, scYellow, scMagenta, scSilver, scBlack, scOlive);
 var
   b: TsWorkbook;
   sheet1, sheet2, sheet3: TsWorksheet;
@@ -21,13 +25,23 @@ begin
     sheet1 := b.AddWorksheet('test1');
     sheet1.WriteText(0, 1, '1+sin(x)');
     sheet1.WriteText(0, 2, '1+sin(x/2)');
-    sheet1.WriteText(0, 3, 'Bubble');
+    sheet1.WriteText(0, 3, 'Bubble Radius');
+    sheet1.WriteText(0, 4, 'Fill Color');
+    sheet1.WriteText(0, 5, 'Border Color');
     for i := r1 to r2-1 do
     begin
+      // x values or labels
       sheet1.WriteNumber(i, 0, i-1);
+      // 1st series y values
       sheet1.WriteNumber(i, 1, 1+sin(i-1));
+      // 2nd series y values
       sheet1.WriteNumber(i, 2, 1+sin((i-1)/2));
-      sheet1.WriteNumber(i, 3, i*i);   // Bubble series radii
+      // Bubble radii
+      sheet1.WriteNumber(i, 3, i*i);
+      // Fill colors
+      sheet1.WriteNumber(i, 4, FlipColorBytes(FILL_COLORS[i-r1]));  // !! ODS need red and blue channels exchanged !!
+      // Border colors
+      sheet1.WriteNumber(i, 5, FlipColorBytes(FILL_COLORS[r2-i]));
     end;
     sheet1.WriteNumber(r2, 0, 9);
     sheet1.WriteNumber(r2, 1, 2);
@@ -45,6 +59,7 @@ begin
     ser.SetYRange(r1, 1, r2, 1);
     ser.Line.Color := scBlue;
     ser.Fill.FgColor := scBlue;
+    ser.SetFillColorRange(r1, 4, r2, 4);
     if (ser is TsLineSeries) then
     begin
       TsLineSeries(ser).ShowSymbols := true;

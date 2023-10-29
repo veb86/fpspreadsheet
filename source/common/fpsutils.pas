@@ -189,6 +189,7 @@ function HTMLLengthStrToPts(AValue: String; DefaultUnits: String = 'pt'): Double
 function ColorToHTMLColorStr(AValue: TsColor; AExcelDialect: Boolean = false): String;
 function HTMLColorStrToColor(AValue: String): TsColor;
 
+function FlipColorBytes(AColor: TsColor): TsColor;
 function GetColorName(AColor: TsColor): String;
 function HighContrastColor(AColor: TsColor): TsColor;
 function IsPaletteIndex(AColor: TsColor): Boolean;
@@ -2211,6 +2212,16 @@ begin
     Result := pxToPts(Round(x), ScreenPixelsPerInch)
   else
     raise EFPSpreadsheet.Create('Unknown length units');
+end;
+
+function FlipColorBytes(AColor: TsColor): TsColor;
+var
+  r,g,b: Byte;
+begin
+  r := (AColor and $0000FF);
+  g := (AColor and $00FF00) shr 8;
+  b := (AColor and $FF0000) shr 16;
+  Result := b + g shl 8 + r shl 16;
 end;
 
 {@@ ----------------------------------------------------------------------------
