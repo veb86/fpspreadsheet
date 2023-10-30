@@ -527,6 +527,20 @@ begin
       );
   end;
   chartProps := chartProps + 'chart:link-data-style-to-source="true" ';
+  if ([cdlValue, cdlPercentage] * series.DataLabels = [cdlValue]) then
+    chartProps := chartProps + 'chart:data-label-number="value" '
+  else
+  if ([cdlValue, cdlPercentage] * series.DataLabels = [cdlPercentage]) then
+    chartProps := chartProps + 'chart:data-label-number="percentage" '
+  else
+  if ([cdlValue, cdlPercentage] * series.DataLabels = [cdlValue, cdlPercentage]) then
+    chartProps := chartProps + 'chart:data-label-number="value-and-percentage" ';
+  if (cdlCategory in series.DataLabels) then
+    chartProps := chartProps + 'chart:data-label-text="true" ';
+  if (cdlSeriesName in series.DataLabels) then
+    chartProps := chartProps + 'chart:data-label-series="true" ';
+  if (cdlSymbol in series.DataLabels) then
+    chartProps := chartProps + 'chart:data-label-symbol="true" ';
 
   // Graphic properties
   lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, series.Line);
@@ -541,8 +555,7 @@ begin
     graphProps := fillProps + lineProps;
 
   // Text properties
-  textProps := 'fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt" ';
-//  textProps := WriteFontStyleXMLAsString(font);    // <--- to be completed. this is for the series labels.
+  textProps := TsSpreadOpenDocWriter(Writer).WriteFontStyleXMLAsString(series.LabelFont);
 
   Result := Format(
     indent + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="N0">' + LE +
@@ -1018,7 +1031,7 @@ begin
   // Write legend properties
   indent := DupeString(' ', AChartIndent);
   AppendToStream(AChartStream, Format(
-    indent + '<chart:legend chart:style-name="ch%d" chart:legend-position="%s" style:legend-expansion="high" %s/>' + LE,
+    indent + '<chart:legend chart:style-name="ch%d" chart:legend-position="%s" style:legend-expansion="wide" %s/>' + LE,
     [ AStyleID, LEGEND_POSITION[AChart.Legend.Position], canOverlap ]
   ));
 
@@ -1218,12 +1231,10 @@ var
   indent: String;
   sheet: TsWorksheet;
   series: TsChartSeries;
-  valuesRange: String;
+  valuesRange: String = '';
   domainRangeX: String = '';
   domainRangeY: String = '';
   fillColorRange: String = '';
-  borderColorRange: String = '';
-  rangeStr: String = '';
   titleAddr: String;
   count: Integer;
 begin
@@ -1286,6 +1297,8 @@ begin
     rfAllRel, false
   );
   count := series.YRange.Row2 - series.YRange.Row1 + 1;
+
+
 
   // Store the series properties
   AppendToStream(AChartStream, Format(

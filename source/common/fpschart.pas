@@ -185,9 +185,12 @@ type
     property CanOverlapPlotArea: Boolean read FCanOverlapPlotArea write FCanOverlapPlotArea;
     property Font: TsFont read FFont write FFont;
     property Position: TsChartLegendPosition read FPosition write FPosition;
+    // There is also a "legend-expansion" but this does not seem to have a visual effect in Calc.
   end;
 
   TsChartAxisLink = (alPrimary, alSecondary);
+  TsChartDataLabel = (cdlValue, cdlPercentage, cdlValueAndPercentage, cdlCategory, cdlSeriesName, cdlSymbol);
+  TsChartDataLabels = set of TsChartDataLabel;
 
   TsChartSeries = class(TsChartElement)
   private
@@ -195,12 +198,14 @@ type
     FXRange: TsCellRange;          // cell range containing the x data
     FYRange: TsCellRange;
     FLabelRange: TsCellRange;
+    FLabelFont: TsFont;
     FFillColorRange: TsCellRange;
     FYAxis: TsChartAxisLink;
     FTitleAddr: TsCellCoord;
     FLabelFormat: String;
     FLine: TsChartLine;
     FFill: TsChartFill;
+    FDataLabels: TsChartDataLabels;
   public
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
@@ -221,7 +226,9 @@ type
 
     property ChartType: TsChartType read FChartType;
     property Count: Integer read GetCount;
+    property DataLabels: TsChartDataLabels read FDataLabels write FDataLabels;
     property FillColorRange: TsCellRange read FFillColorRange;
+    property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;  // Number format in Excel notation, e.g. '0.00'
     property LabelRange: TsCellRange read FLabelRange;
     property TitleAddr: TsCellCoord read FTitleAddr write FTitleAddr;
@@ -593,10 +600,15 @@ begin
   FLine.Style := clsSolid;
   FLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
   FLine.Color := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
+
+  FLabelFont := TsFont.Create;
+  FLabelFont := TsFont.Create;
+  FLabelFont.Size := 9;
 end;
 
 destructor TsChartSeries.Destroy;
 begin
+  FLabelFont.Free;
   FLine.Free;
   FFill.Free;
   inherited;

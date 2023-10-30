@@ -61,6 +61,7 @@ begin
     ser.Line.Color := scBlue;
     ser.Fill.FgColor := scBlue;
     ser.SetFillColorRange(r1, 4, r2, 4);
+    ser.DataLabels := [cdlPercentage, cdlSymbol];
     if (ser is TsLineSeries) then
     begin
       TsLineSeries(ser).ShowSymbols := true;
