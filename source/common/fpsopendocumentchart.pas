@@ -54,7 +54,7 @@ type
       var AStyleID: Integer);
 
   public
-    constructor Create(AWriter: TsBasicSpreadWriter);
+    constructor Create(AWriter: TsBasicSpreadWriter); override;
     procedure AddChartsToZip(AZip: TZipper);
     procedure AddToMetaInfManifest(AStream: TStream);
     procedure CreateStreams; override;
@@ -68,20 +68,34 @@ implementation
 uses
   fpsOpenDocument;
 
+type
+  TAxisKind = 3..6;
+
 const
   OPENDOC_PATH_CHART_CONTENT = 'Object %d/content.xml';
   OPENDOC_PATH_CHART_STYLES  = 'Object %d/styles.xml';
 
   CHART_TYPE_NAMES: array[TsChartType] of string = (
-    '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble', 'radar', 'circle', 'ring'
+    '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble',
+    'radar', 'filled-radar', 'circle', 'ring'
   );
-  // Note: a ring series has chart:class = 'circle' at the series level, but 'ring' at the chart level.
-  // This is taken care of.
 
-  CHART_SYMBOL_NAMES: array[TsChartSeriesSymbol] of String = (
+  SYMBOL_NAMES: array[TsChartSeriesSymbol] of String = (
     'square', 'diamond', 'arrow-up', 'arrow-down', 'arrow-left',
     'arrow-right', 'circle', 'star', 'x', 'plus', 'asterisk'
   );  // unsupported: bow-tie, hourglass, horizontal-bar, vertical-bar
+
+  LABEL_POSITION: array[TsChartLabelPosition] of string = (
+    '', 'outside', 'inside', 'center');
+
+  LEGEND_POSITION: array[TsChartLegendPosition] of string = (
+    'end', 'top', 'bottom', 'start'
+  );
+
+  AXIS_ID: array[TAxisKind] of string = ('x', 'y', 'x', 'y');
+  AXIS_LEVEL: array[TAxisKind] of string = ('primary', 'primary', 'secondary', 'secondary');
+
+  FALSE_TRUE: array[boolean] of string = ('false', 'true');
 
   LE = LineEnding;
 
@@ -190,53 +204,71 @@ begin
 
   chart := Axis.Chart;
 
+  // Special number format for numerical axis labels
   if (Axis = chart.YAxis) and (chart.StackMode = csmStackedPercentage) then
     numStyle := 'N10010';
 
+  // Show axis labels
   if Axis.ShowLabels then
     chartProps := chartProps + 'chart:display-label="true" ';
 
+  // Logarithmic axis
   if Axis.Logarithmic then
     chartProps := chartProps + 'chart:logarithmic="true" ';
 
+  // Axis scaling: minimum, maximum, tick intervals
   if not Axis.AutomaticMin then
     chartProps := chartProps + Format('chart:minimum="%g" ', [Axis.Min], FPointSeparatorSettings);
-
   if not Axis.AutomaticMax then
     chartProps := chartProps + Format('chart:maximum="%g" ', [Axis.Max], FPointSeparatorSettings);
-
   if not Axis.AutomaticMajorInterval then
     chartProps := chartProps + Format('chart:interval-major="%g" ', [Axis.MajorInterval], FPointSeparatorSettings);
-
   if not Axis.AutomaticMinorSteps then
     chartProps := chartProps + Format('chart:interval-minor-divisor="%d" ', [Axis.MinorSteps]);
 
+  // Position of the axis
   case Axis.Position of
     capStart: chartProps := chartProps + 'chart:axis-position="start" ';
     capEnd: chartProps := chartProps + 'chart:axis-position="end" ';
     capValue: chartProps := chartProps + Format('chart:axis-position="%g" ', [Axis.PositionValue], FPointSeparatorSettings);
   end;
 
-  if (catInside in Axis.MajorTicks) then
-    chartProps := chartProps + 'chart:tick-marks-major-inner="true" ';
-  if (catOutside in Axis.MajorTicks) then
-    chartProps := chartProps + 'chart:tick-marks-major-outer="true" ';
+  // Tick marks
+  if (chart.GetChartType in [ctRadar, ctFilledRadar]) and (Axis = chart.YAxis) then
+  begin
+    // Radar series needs a "false" to hide the tick-marks
+    chartProps := chartProps + Format('chart:tick-marks-major-inner="%s" ', [FALSE_TRUE[catInside in Axis.MajorTicks]]);
+    chartProps := chartProps + Format('chart:tick-marks-major-outer="%s" ', [FALSE_TRUE[catOutside in Axis.MajorTicks]]);
+    chartProps := chartProps + Format('chart:tick-marks-minor-inner="%s" ', [FALSE_TRUE[catInside in Axis.MinorTicks]]);
+    chartProps := chartProps + Format('chart:tick-marks-minor-outer="%s" ', [FALSE_TRUE[catOutside in Axis.MinorTicks]]);
+  end else
+  begin
+    // The other series hide the tick-marks by default.
+    if (catInside in Axis.MajorTicks) then
+      chartProps := chartProps + 'chart:tick-marks-major-inner="true" ';
+    if (catOutside in Axis.MajorTicks) then
+      chartProps := chartProps + 'chart:tick-marks-major-outer="true" ';
+    if (catInside in Axis.MinorTicks) then
+      chartProps := chartProps + 'chart:tick-marks-minor-inner="true" ';
+    if (catOutside in Axis.MinorTicks) then
+      chartProps := chartProps + 'chart:tick-marks-minor-outer="true" ';
+  end;
 
-  if (catInside in Axis.MinorTicks) then
-    chartProps := chartProps + 'chart:tick-marks-minor-inner="true" ';
-  if (catOutside in Axis.MinorTicks) then
-    chartProps := chartProps + 'chart:tick-marks-minor-outer="true" ';
-
+  // Inverted axis direction
   if Axis.Inverted then
     chartProps := chartProps + 'chart:reverse-direction="true" ';
 
+  // Rotated axis labels
   angle := Axis.LabelRotation;
   chartProps := chartProps + Format('style:rotation-angle="%d" ', [angle]);
 
+  // Label orientation
   graphProps := 'svg:stroke-color="' + ColorToHTMLColorStr(Axis.AxisLine.Color) + '" ';
 
+  // Label font
   textProps := TsSpreadOpenDocWriter(Writer).WriteFontStyleXMLAsString(Axis.LabelFont);
 
+  // Putting it all together...
   indent := DupeString(' ', AIndent);
   Result := Format(
     indent + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="%s">' + LE +
@@ -337,6 +369,7 @@ function TsSpreadOpenDocChartWriter.GetChartFillStyleGraphicPropsAsXML(AChart: T
 var
   fillStr: String;
   fillColorStr: String;
+  fillOpacity: String = '';
 begin
   if AFill.Style = fsNoFill then
   begin
@@ -347,8 +380,10 @@ begin
   // To do: extend with hatched and gradient fills
   fillStr := 'draw:fill="solid" ';
   fillColorStr := 'draw:fill-color="' + ColorToHTMLColorStr(AFill.FgColor) + '" ';
+  if AFill.Transparency > 0 then
+    fillOpacity := Format('draw:opacity="%.0f%%" ', [(1.0 - AFill.Transparency)*100], FPointSeparatorSettings);
 
-  Result := fillStr + fillColorStr;
+  Result := fillStr + fillColorStr + fillOpacity;
 end;
 
 {
@@ -506,9 +541,6 @@ end;
   </style:style> }
 function TsSpreadOpenDocChartWriter.GetChartSeriesStyleAsXML(AChart: TsChart;
   ASeriesIndex, AIndent, AStyleID: Integer): String;
-const
-  LABEL_POSITION: array[TsChartLabelPosition] of string = (
-    '', 'outside', 'inside', 'center');
 var
   series: TsChartSeries;
   lineser: TsLineSeries = nil;
@@ -527,13 +559,13 @@ begin
 
   // Chart properties
   chartProps := 'chart:symbol-type="none" ';
-  if (series is TsLineSeries) then
+  if (series is TsLineSeries) and (series.ChartType <> ctFilledRadar) then
   begin
     lineser := TsLineSeries(series);
     if lineser.ShowSymbols then
       chartProps := Format(
         'chart:symbol-type="named-symbol" chart:symbol-name="%s" chart:symbol-width="%.1fmm" chart:symbol-height="%.1fmm" ',
-        [CHART_SYMBOL_NAMES[lineSer.Symbol], lineSer.SymbolWidth, lineSer.SymbolHeight ],
+        [SYMBOL_NAMES[lineSer.Symbol], lineSer.SymbolWidth, lineSer.SymbolHeight ],
         FPointSeparatorSettings
       );
   end;
@@ -580,7 +612,7 @@ begin
   // Graphic properties
   lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, series.Line);
   fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, series.Fill);
-  if (series is TsLineSeries) then
+  if (series is TsLineSeries) and (series.ChartType <> ctFilledRadar) then
   begin
     if lineSer.ShowSymbols then
       graphProps := graphProps + fillProps;
@@ -897,11 +929,6 @@ procedure TsSpreadOpenDocChartWriter.WriteChartAxis(
   AChartStream, AStyleStream: TStream;
   AChartIndent, AStyleIndent: Integer; Axis: TsChartAxis;
   var AStyleID: Integer);
-type
-  TAxisKind = 3..6;
-const
-  AXIS_ID: array[TAxisKind] of string = ('x', 'y', 'x', 'y');
-  AXIS_LEVEL: array[TAxisKind] of string = ('primary', 'primary', 'secondary', 'secondary');
 var
   indent: String;
   captionKind: Integer;
@@ -1049,10 +1076,6 @@ end;
 { Writes the chart's legend to the xml stream }
 procedure TsSpreadOpenDocChartWriter.WriteChartLegend(AChartStream, AStyleStream: TStream;
   AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
-const
-  LEGEND_POSITION: array[TsChartLegendPosition] of string = (
-    'end', 'top', 'bottom', 'start'
-  );
 var
   indent: String;
   canOverlap: String = '';

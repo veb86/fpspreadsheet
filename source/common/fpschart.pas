@@ -46,6 +46,7 @@ type
     Style: TsFillStyle;
     FgColor: TsColor;
     BgColor: TsColor;
+    Transparency: Double;  // 0.0 ... 1.0
   end;
 
   TsChartLineSegment = record
@@ -113,7 +114,8 @@ type
   TsChartAxisPosition = (capStart, capEnd, capValue);
   TsChartAxisTick = (catInside, catOutside);
   TsChartAxisTicks = set of TsChartAxisTick;
-  TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble, ctRadar, ctPie, ctRing);
+  TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble,
+    ctRadar, ctFilledRadar, ctPie, ctRing);
 
   TsChartAxis = class(TsChartFillElement)
   private
@@ -209,6 +211,8 @@ type
     FLine: TsChartLine;
     FFill: TsChartFill;
     FDataLabels: TsChartDataLabels;
+  protected
+    function GetChartType: TsChartType; virtual;
   public
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
@@ -227,7 +231,7 @@ type
     function XValuesInCol: Boolean;
     function YValuesInCol: Boolean;
 
-    property ChartType: TsChartType read FChartType;
+    property ChartType: TsChartType read GetChartType;
     property Count: Integer read GetCount;
     property DataLabels: TsChartDataLabels read FDataLabels write FDataLabels;
     property FillColorRange: TsCellRange read FFillColorRange;
@@ -298,8 +302,8 @@ type
   end;
 
   TsRadarSeries = class(TsLineSeries)
-  public
-    constructor Create(AChart: TsChart); override;
+  protected
+    function GetChartType: TsChartType; override;
   end;
 
   TsRingSeries = class(TsChartSeries)
@@ -634,6 +638,11 @@ begin
   inherited;
 end;
 
+function TsChartSeries.GetChartType: TsChartType;
+begin
+  Result := FChartType;
+end;
+
 function TsChartSeries.GetCount: Integer;
 begin
   Result := GetYCount;
@@ -829,12 +838,13 @@ end;
 
 
 { TsRadarSeries }
-constructor TsRadarSeries.Create(AChart: TsChart);
+function TsRadarSeries.GetChartType: TsChartType;
 begin
-  inherited Create(AChart);
-  FChartType := ctRadar;
+  if Fill.Style <> fsNoFill then
+    Result := ctFilledRadar
+  else
+    Result := ctRadar;
 end;
-
 
 { TsRingSeries }
 constructor TsRingSeries.Create(AChart: TsChart);
