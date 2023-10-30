@@ -113,7 +113,7 @@ type
   TsChartAxisPosition = (capStart, capEnd, capValue);
   TsChartAxisTick = (catInside, catOutside);
   TsChartAxisTicks = set of TsChartAxisTick;
-  TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble);
+  TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble, ctRadar);
 
   TsChartAxis = class(TsChartFillElement)
   private
@@ -285,6 +285,11 @@ type
     property SymbolWidth: double read FSymbolWidth write FSymbolWidth;
     property ShowLines: Boolean read FShowLines write FShowLines;
     property ShowSymbols: Boolean read FShowSymbols write FShowSymbols;
+  end;
+
+  TsRadarSeries = class(TsLineSeries)
+  public
+    constructor Create(AChart: TsChart); override;
   end;
 
   TsScatterSeries = class(TsLineSeries)
@@ -796,6 +801,14 @@ end;
 procedure TsLineSeries.SetSymbolFill(Value: TsChartFill);
 begin
   FFill := Value;
+end;
+
+
+{ TsRadarSeries }
+constructor TsRadarSeries.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FChartType := ctRadar;
 end;
 
 

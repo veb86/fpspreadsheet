@@ -8,8 +8,9 @@ const
 //  SERIES_CLASS: TsChartSeriesClass = TsAreaSeries;
 //  SERIES_CLASS: TsChartSeriesClass = TsBarSeries;
 //  SERIES_CLASS: TsChartSeriesClass = TsBubbleSeries;
-  SERIES_CLASS: TsChartSeriesClass = TsLineSeries;
+//  SERIES_CLASS: TsChartSeriesClass = TsLineSeries;
 //  SERIES_CLASS: TsChartSeriesClass = TsScatterSeries;
+  SERIES_CLASS: TsChartSeriesClass = TsRadarSeries;
   r1 = 1;
   r2 = 8;
   FILL_COLORS: array[0..r2-r1] of TsColor = (scRed, scGreen, scBlue, scYellow, scMagenta, scSilver, scBlack, scOlive);

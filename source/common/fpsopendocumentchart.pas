@@ -73,7 +73,7 @@ const
   OPENDOC_PATH_CHART_STYLES  = 'Object %d/styles.xml';
 
   CHART_TYPE_NAMES: array[TsChartType] of string = (
-    '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble'
+    '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble', 'radar'
   );
 
   CHART_SYMBOL_NAMES: array[TsChartSeriesSymbol] of String = (
@@ -446,6 +446,7 @@ var
   interpolationStr: String = '';
   verticalStr: String = '';
   stackModeStr: String = '';
+  rightAngledAxes: String = '';
 begin
   indent := DupeString(' ', AIndent);
 
@@ -468,6 +469,9 @@ begin
     ciStepCenterY: interpolationStr := 'chart:interpolation="step-center-y" ';
   end;
 
+  if AChart.GetChartType <> ctRadar then
+    rightAngledAxes := 'chart:right-angled-axes="true" ';
+
   Result := Format(
     indent + '  <style:style style:name="ch%d" style:family="chart">', [ AStyleID ]) + LE +
     indent + '    <style:chart-properties ' +
@@ -479,7 +483,8 @@ begin
                    'chart:auto-position="true" ' +
                    'chart:auto-size="true" ' +
                    'chart:treat-empty-cells="leave-gap" ' +
-                   'chart:right-angled-axes="true"/>' + LE +
+                   rightAngledAxes +
+                  '/>' + LE +
     indent + '  </style:style>' + LE;
 end;
 
@@ -526,7 +531,11 @@ begin
         FPointSeparatorSettings
       );
   end;
+
   chartProps := chartProps + 'chart:link-data-style-to-source="true" ';
+  // to do: link-data-style-to-source must go to "false" in case of a specific
+  // numeric label format. But that requires a number-style in the Object/style.xml
+
   if ([cdlValue, cdlPercentage] * series.DataLabels = [cdlValue]) then
     chartProps := chartProps + 'chart:data-label-number="value" '
   else
