@@ -272,7 +272,6 @@ begin
   ChangedCell(ACell^.Row, ACell^.Col);
 end;
 
-
 {@@ ----------------------------------------------------------------------------
   Adds a number format to the formatting of a cell
 

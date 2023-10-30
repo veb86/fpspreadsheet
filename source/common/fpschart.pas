@@ -113,7 +113,7 @@ type
   TsChartAxisPosition = (capStart, capEnd, capValue);
   TsChartAxisTick = (catInside, catOutside);
   TsChartAxisTicks = set of TsChartAxisTick;
-  TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble, ctRadar);
+  TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble, ctRadar, ctPie, ctRing);
 
   TsChartAxis = class(TsChartFillElement)
   private
@@ -191,6 +191,7 @@ type
   TsChartAxisLink = (alPrimary, alSecondary);
   TsChartDataLabel = (cdlValue, cdlPercentage, cdlValueAndPercentage, cdlCategory, cdlSeriesName, cdlSymbol);
   TsChartDataLabels = set of TsChartDataLabel;
+  TsChartLabelPosition = (lpDefault, lpOutside, lpInside, lpCenter);
 
   TsChartSeries = class(TsChartElement)
   private
@@ -199,6 +200,8 @@ type
     FYRange: TsCellRange;
     FLabelRange: TsCellRange;
     FLabelFont: TsFont;
+    FLabelPosition: TsChartLabelPosition;
+    FLabelSeparator: string;
     FFillColorRange: TsCellRange;
     FYAxis: TsChartAxisLink;
     FTitleAddr: TsCellCoord;
@@ -230,8 +233,10 @@ type
     property FillColorRange: TsCellRange read FFillColorRange;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;  // Number format in Excel notation, e.g. '0.00'
+    property LabelPosition: TsChartLabelPosition read FLabelPosition write FLabelPosition;
     property LabelRange: TsCellRange read FLabelRange;
-    property TitleAddr: TsCellCoord read FTitleAddr write FTitleAddr;
+    property LabelSeparator: string read FLabelSeparator write FLabelSeparator;
+    property TitleAddr: TsCellCoord read FTitleAddr write FTitleAddr;  // use '\n' for line-break
     property XRange: TsCellRange read FXRange;
     property YRange: TsCellRange read FYRange;
     property YAxis: TsChartAxisLink read FYAxis write FYAxis;
@@ -287,7 +292,17 @@ type
     property ShowSymbols: Boolean read FShowSymbols write FShowSymbols;
   end;
 
+  TsPieSeries = class(TsChartSeries)
+  public
+    constructor Create(AChart: TsChart); override;
+  end;
+
   TsRadarSeries = class(TsLineSeries)
+  public
+    constructor Create(AChart: TsChart); override;
+  end;
+
+  TsRingSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
   end;
@@ -804,11 +819,29 @@ begin
 end;
 
 
+{ TsPieSeries }
+constructor TsPieSeries.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FChartType := ctPie;
+  FLine.Color := scBlack;
+end;
+
+
 { TsRadarSeries }
 constructor TsRadarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctRadar;
+end;
+
+
+{ TsRingSeries }
+constructor TsRingSeries.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FChartType := ctRing;
+  FLine.Color := scBlack;
 end;
 
 

@@ -251,6 +251,8 @@ type
     procedure WriteNumber(ACell: PCell; ANumber: Double;
       ANumFormat: TsNumberFormat; ANumFormatString: String); overload;
 
+    function WriteChartColor(ARow, Acol: Cardinal; AColor: TsColor): PCell;
+
     function WriteRPNFormula(ARow, ACol: Cardinal;
       AFormula: TsRPNFormula): PCell; overload;
     procedure WriteRPNFormula(ACell: PCell;
@@ -4377,6 +4379,16 @@ begin
     ChangedCell(ACell^.Row, ACell^.Col);
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes an rgb color value as number to the specified cell. As requested by
+  the chart module the bytes for red and blue are exchanged.
+-------------------------------------------------------------------------------}
+function TsWorksheet.WriteChartColor(ARow, ACol: Cardinal; AColor: TsColor): PCell;
+begin
+  Result := WriteNumber(ARow, ACol, FlipColorBytes(AColor));
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes an empty cell

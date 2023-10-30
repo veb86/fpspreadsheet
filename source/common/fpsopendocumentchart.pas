@@ -73,8 +73,10 @@ const
   OPENDOC_PATH_CHART_STYLES  = 'Object %d/styles.xml';
 
   CHART_TYPE_NAMES: array[TsChartType] of string = (
-    '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble', 'radar'
+    '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble', 'radar', 'circle', 'ring'
   );
+  // Note: a ring series has chart:class = 'circle' at the series level, but 'ring' at the chart level.
+  // This is taken care of.
 
   CHART_SYMBOL_NAMES: array[TsChartSeriesSymbol] of String = (
     'square', 'diamond', 'arrow-up', 'arrow-down', 'arrow-left',
@@ -469,7 +471,7 @@ begin
     ciStepCenterY: interpolationStr := 'chart:interpolation="step-center-y" ';
   end;
 
-  if AChart.GetChartType <> ctRadar then
+  if not (AChart.GetChartType in [ctRadar, ctPie]) then
     rightAngledAxes := 'chart:right-angled-axes="true" ';
 
   Result := Format(
@@ -504,6 +506,9 @@ end;
   </style:style> }
 function TsSpreadOpenDocChartWriter.GetChartSeriesStyleAsXML(AChart: TsChart;
   ASeriesIndex, AIndent, AStyleID: Integer): String;
+const
+  LABEL_POSITION: array[TsChartLabelPosition] of string = (
+    '', 'outside', 'inside', 'center');
 var
   series: TsChartSeries;
   lineser: TsLineSeries = nil;
@@ -513,6 +518,7 @@ var
   textProps: String = '';
   lineProps: String = '';
   fillProps: String = '';
+  labelSeparator: String = '';
 begin
   Result := '';
 
@@ -550,6 +556,26 @@ begin
     chartProps := chartProps + 'chart:data-label-series="true" ';
   if (cdlSymbol in series.DataLabels) then
     chartProps := chartProps + 'chart:data-label-symbol="true" ';
+  if series.LabelPosition <> lpDefault then
+    chartProps := chartProps + 'chart:label-position="' + LABEL_POSITION[series.LabelPosition] + '" ';
+
+  if series.LabelSeparator = ' ' then
+    labelSeparator := ''
+  else
+  begin
+    labelSeparator := series.LabelSeparator;
+    if pos('\n', labelSeparator) > 0 then
+      labelSeparator := StringReplace(labelSeparator, '\n', '<text:line-break/>', [rfReplaceAll, rfIgnoreCase]);
+    labelSeparator :=
+      '    <chart:label-separator>' + LE +
+      '      <text:p>' + labelSeparator + '</text:p>' + LE +
+      '    </chart:label-separator>' + LE;
+  end;
+
+  if labelSeparator <> '' then
+    chartProps := '  <style:chart-properties ' + chartProps + '>' + LE + labelSeparator + '  </style:chart-properties>'
+  else
+    chartProps := '  <style:chart-properties ' + chartProps + '/>';
 
   // Graphic properties
   lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, series.Line);
@@ -568,11 +594,11 @@ begin
 
   Result := Format(
     indent + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="N0">' + LE +
-    indent + '  <style:chart-properties %s/>' + LE +
+    indent + chartProps + LE +
     indent + '  <style:graphic-properties %s/>' + LE +
     indent + '  <style:text-properties %s/>' + LE +
     indent + '</style:style>' + LE,
-    [ AStyleID, chartProps, graphProps, textProps ]
+    [ AStyleID, graphProps, textProps ]
   );
 end;
 
@@ -1244,6 +1270,7 @@ var
   domainRangeX: String = '';
   domainRangeY: String = '';
   fillColorRange: String = '';
+  chartClass: String = '';
   titleAddr: String;
   count: Integer;
 begin
@@ -1307,6 +1334,10 @@ begin
   );
   count := series.YRange.Row2 - series.YRange.Row1 + 1;
 
+  if series is TsRingSeries then
+    chartClass := 'circle'
+  else
+    chartClass := CHART_TYPE_NAMES[series.ChartType];
 
 
   // Store the series properties
@@ -1315,7 +1346,7 @@ begin
                'chart:values-cell-range-address="%s" ' +      // y values
                'chart:label-cell-address="%s" ' +             // series title
                'chart:class="chart:%s">' + LE,
-    [ AStyleID, valuesRange, titleAddr, CHART_TYPE_NAMES[series.ChartType] ]
+    [ AStyleID, valuesRange, titleAddr, chartClass ]
   ));
   if domainRangeY <> '' then
     AppendToStream(AChartStream, Format(
