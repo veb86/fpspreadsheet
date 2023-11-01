@@ -842,9 +842,15 @@ begin
                       AddRichTextParam(FCurrFont);
                     end;
            '<BR>',
-           '<BR/>': FPlainText := FPlainText + FPS_LINE_ENDING;
-           else     if (pos('<BR ', NoCaseTag) = 1) then
+           '<BR/>': begin
                       FPlainText := FPlainText + FPS_LINE_ENDING;
+                      FHandled := True;
+                    end;
+           else     if (pos('<BR ', NoCaseTag) = 1) then
+                    begin
+                      FPlainText := FPlainText + FPS_LINE_ENDING;
+                      FHandled := True;
+                    end;
          end;
     'D': if (NoCaseTag = '<DEL>') then
          begin

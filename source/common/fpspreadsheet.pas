@@ -4122,6 +4122,8 @@ begin
     if Length(ARichTextParams) > 0 then
       for i:=0 to High(ARichTextParams) do
         ACell^.RichTextParams[i] := ARichTextParams[i];
+    if pos(FPS_LINE_ENDING, AText) > 0 then
+      WriteWordWrap(ACell, true);
   end;
 
   ChangedCell(ACell^.Row, ACell^.Col);
