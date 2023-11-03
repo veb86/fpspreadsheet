@@ -49,6 +49,7 @@ begin
     ser.LabelSeparator := '\n'; // this is the symbol for a line-break
     ser.LabelPosition := lpOutside;
     ser.Line.Color := scWhite;
+    ser.LabelFormat := '#,##0';
     //ser.SetFillColorRange(4, 2, 8, 2);
 
     b.WriteToFile('world-population.xlsx', true);   // Excel fails to open the file

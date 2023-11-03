@@ -61,6 +61,7 @@ begin
     ser.Regression.Equation.Border.Color := scRed;
     ser.Regression.Equation.Fill.Style := fsSolidFill;
     ser.Regression.Equation.Fill.FgColor := scSilver;
+    ser.Regression.Equation.NumberFormat := '0.000';
     //ser.Regression.Equation.Top := 5;
     //ser.Regression.Equation.Left := 5;
 

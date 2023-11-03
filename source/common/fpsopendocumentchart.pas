@@ -18,7 +18,9 @@ type
   private
     FSCharts: array of TStream;
     FSObjectStyles: array of TStream;
+    FNumberFormatList: TStrings;
     FPointSeparatorSettings: TFormatSettings;
+
     function GetChartAxisStyleAsXML(Axis: TsChartAxis; AIndent, AStyleID: Integer): String;
     function GetChartBackgroundStyleAsXML(AChart: TsChart; AFill: TsChartFill;
       ABorder: TsChartLine; AIndent: Integer; AStyleID: Integer): String;
@@ -38,6 +40,9 @@ type
     function GetChartRegressionStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: integer): String;
 //    function GetChartTitleStyleAsXML(AChart: TsChart; AStyleIndex, AIndent: Integer): String;
+
+    function GetNumberFormatID(ANumFormat: String): String;
+    procedure ListAllNumberFormats(AChart: TsChart);
     procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
 
   protected
@@ -63,6 +68,7 @@ type
 
   public
     constructor Create(AWriter: TsBasicSpreadWriter); override;
+    destructor Destroy; override;
     procedure AddChartsToZip(AZip: TZipper);
     procedure AddToMetaInfManifest(AStream: TStream);
     procedure CreateStreams; override;
@@ -119,6 +125,36 @@ begin
       Result := Result + Format('_%.2x_', [ord(AName[i])]);
 end;
 
+{------------------------------------------------------------------------------}
+{                        internal number formats                               }
+{------------------------------------------------------------------------------}
+
+type
+  TsChartNumberFormatList = class(TStringList)
+  public
+    constructor Create;
+    function Add(const ANumFormat: String): Integer; override;
+  end;
+
+constructor TsChartNumberFormatList.Create;
+begin
+  inherited;
+  Add('');  // default number format
+end;
+
+// Adds a new format, but make sure to avoid duplicates.
+function TsChartNumberFormatList.Add(const ANumFormat: String): Integer;
+begin
+  if (ANumFormat = '') and (Count > 0) then
+    Result := 0
+  else
+  begin
+    Result := IndexOf(ANumFormat);
+    if Result = -1 then
+      Result := inherited Add(ANumFormat);
+  end;
+end;
+
 
 {------------------------------------------------------------------------------}
 {                        TsSpreadOpenDocChartWriter                            }
@@ -127,8 +163,17 @@ end;
 constructor TsSpreadOpenDocChartWriter.Create(AWriter: TsBasicSpreadWriter);
 begin
   inherited Create(AWriter);
+
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator:='.';
+
+  FNumberFormatList := TsChartNumberFormatList.Create;
+end;
+
+destructor TsSpreadOpenDocChartWriter.Destroy;
+begin
+  FNumberFormatList.Free;
+  inherited;
 end;
 
 procedure TsSpreadOpenDocChartWriter.AddChartsToZip(AZip: TZipper);
@@ -201,6 +246,7 @@ var
   chart: TsChart;
   indent: String;
   angle: Integer;
+  idx: Integer;
   textProps: String = '';
   graphProps: String = '';
   chartProps: String = '';
@@ -212,9 +258,11 @@ begin
 
   chart := Axis.Chart;
 
-  // Special number format for numerical axis labels
+  // Get number format, use percent format for stacked percentage axis
   if (Axis = chart.YAxis) and (chart.StackMode = csmStackedPercentage) then
-    numStyle := 'N10010';
+    numStyle := GetNumberFormatID(Axis.LabelFormatPercent)
+  else
+    numStyle := GetNumberFormatID(Axis.LabelFormat);
 
   // Show axis labels
   if Axis.ShowLabels then
@@ -537,6 +585,7 @@ function TsSpreadOpenDocChartWriter.GetChartRegressionEquationStyleAsXML(
     AChart: TsChart; AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
 var
   indent: String;
+  idx: Integer;
   numStyle: String = 'N0';
   chartprops: String = '';
   lineprops: String = '';
@@ -547,9 +596,7 @@ begin
 
   indent := DupeString(' ', AIndent);
 
-  // TO DO: Create chart number style list and find the current style there!
-  if not AEquation.DefaultNumberFormat then
-    numStyle := 'N0';
+  numStyle := GetNumberFormatID(AEquation.NumberFormat);
 
   if not AEquation.DefaultXName then
     chartprops := chartprops + Format('loext:regression-x-name="%s" ', [AEquation.XName]);
@@ -647,6 +694,7 @@ var
   series: TsChartSeries;
   lineser: TsLineSeries = nil;
   indent: String;
+  numStyle: String;
   chartProps: String = '';
   graphProps: String = '';
   textProps: String = '';
@@ -659,8 +707,12 @@ begin
   indent := DupeString(' ', AIndent);
   series := AChart.Series[ASeriesIndex];
 
+  // Number format
+  numStyle := GetNumberFormatID(series.LabelFormat);
+
   // Chart properties
   chartProps := 'chart:symbol-type="none" ';
+
   if (series is TsLineSeries) and (series.ChartType <> ctFilledRadar) then
   begin
     lineser := TsLineSeries(series);
@@ -672,9 +724,7 @@ begin
       );
   end;
 
-  chartProps := chartProps + 'chart:link-data-style-to-source="true" ';
-  // to do: link-data-style-to-source must go to "false" in case of a specific
-  // numeric label format. But that requires a number-style in the Object/style.xml
+  chartProps := chartProps + Format('chart:link-data-style-to-source="%s" ', [FALSE_TRUE[numStyle = 'N0']]);
 
   if ([cdlValue, cdlPercentage] * series.DataLabels = [cdlValue]) then
     chartProps := chartProps + 'chart:data-label-number="value" '
@@ -729,14 +779,62 @@ begin
   textProps := TsSpreadOpenDocWriter(Writer).WriteFontStyleXMLAsString(series.LabelFont);
 
   Result := Format(
-    indent + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="N0">' + LE +
+    indent + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="%s">' + LE +
     indent + chartProps + LE +
     indent + '  <style:graphic-properties %s/>' + LE +
     indent + '  <style:text-properties %s/>' + LE +
     indent + '</style:style>' + LE,
-    [ AStyleID, graphProps, textProps ]
+    [ AStyleID, numstyle, graphProps, textProps ]
   );
 end;
+
+function TsSpreadOpenDocChartWriter.GetNumberFormatID(ANumFormat: String): String;
+var
+  idx: Integer;
+begin
+  idx := FNumberFormatList.IndexOf(ANumFormat);
+  if idx > -1 then
+    Result := Format('N%d', [idx])
+  else
+    Result := 'N0';
+end;
+
+procedure TsSpreadOpenDocChartWriter.ListAllNumberFormats(AChart: TsChart);
+var
+  i: Integer;
+  series: TsChartSeries;
+  regression: TsChartRegression;
+begin
+  FNumberFormatList.Clear;
+
+  // Formats of axis labels
+  FNumberFormatList.Add(AChart.XAxis.LabelFormat);
+  FNumberFormatList.Add(AChart.YAxis.LabelFormat);
+  FNumberFormatList.Add(AChart.X2Axis.LabelFormat);
+  FNumberFormatList.Add(AChart.Y2Axis.LabelFormat);
+  if AChart.StackMode = csmStackedPercentage then
+  begin
+    FNumberFormatList.Add(AChart.YAxis.LabelFormatPercent);
+    FNumberFormatList.Add(AChart.Y2Axis.LabelFormatPercent);
+  end;
+
+  // Formats of series labels
+  for i := 0 to AChart.Series.Count-1 do
+  begin
+    series := AChart.Series[i];
+    FNumberFormatList.Add(series.LabelFormat);
+    // Format of fit equation
+    if (series is TsScatterSeries) then begin
+      regression := TsScatterSeries(series).Regression;
+      if (regression.RegressionType <> rtNone) and
+         (regression.DisplayEquation or regression.DisplayRSquare) then
+      begin
+        FNumberFormatList.Add(regression.Equation.NumberFormat);
+      end;
+    end;
+  end;
+end;
+
 
 { Extracts the cells needed by the given chart from the chart's worksheet and
   copies their values into a temporary worksheet, AWorksheet, so that these
@@ -936,11 +1034,10 @@ var
   styleStream: TMemoryStream;
   styleID: Integer;
 begin
-//  FChartStyleList.Clear;
-
   chartStream := TMemoryStream.Create;
   styleStream := TMemoryStream.Create;
   try
+    ListAllNumberFormats(AChart);
     WriteChartNumberStyles(styleStream, 4, AChart);
 
     styleID := 1;
@@ -1210,8 +1307,27 @@ procedure TsSpreadOpenDocChartWriter.WriteChartNumberStyles(AStream: TStream;
   AIndent: Integer; AChart: TsChart);
 var
   indent: String;
+  numFmtName: String;
+  numFmtStr: String;
+  numFmtXML: String;
+  i: Integer;
+  parser: TsSpreadOpenDocNumFormatParser;
 begin
   indent := DupeString(' ', AIndent);
+
+  for i := 0 to FNumberFormatList.Count-1 do begin
+    numFmtName := Format('N%d', [i]);
+    numFmtStr := FNumberFormatList[i];
+    parser := TsSpreadOpenDocNumFormatParser.Create(numFmtStr, FWriter.Workbook.FormatSettings);
+    try
+      numFmtXML := parser.BuildXMLAsString(numFmtName);
+      if numFmtXML <> '' then
+        AppendToStream(AStream, indent + numFmtXML);
+    finally
+      parser.Free;
+    end;
+  end;
+  {
 
   AppendToStream(AStream,
     indent + '<number:number-style style:name="N0">' + LE +
@@ -1226,6 +1342,7 @@ begin
       indent + '  <number:text>%</number:text>' + LE +
       indent + '</number:percentage-style>' + LE
     );
+    }
 end;
 
 { Writes the file "Object N/styles.xml" (N = 1, 2, ...) which is needed by the

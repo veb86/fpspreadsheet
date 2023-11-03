@@ -132,6 +132,7 @@ type
     FCaptionRotation: Integer;
     FLabelFont: TsFont;
     FLabelFormat: String;
+    FLabelFormatPercent: String;
     FLabelRotation: Integer;
     FLogarithmic: Boolean;
     FMajorInterval: Double;
@@ -158,6 +159,7 @@ type
     property Inverted: Boolean read FInverted write FInverted;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;
+    property LabelFormatPercent: String read FLabelFormatPercent write FLabelFormatPercent;
     property LabelRotation: Integer read FLabelRotation write FLabelRotation;
     property Logarithmic: Boolean read FLogarithmic write FLogarithmic;
     property MajorGridLines: TsChartLine read FMajorGridLines write FMajorGridLines;
@@ -592,6 +594,8 @@ begin
   FLabelFont.Size := 9;
   FLabelFont.Style := [];
   FLabelFont.Color := scBlack;
+
+  FLabelFormatPercent := '0%';
 
   FCaptionRotation := 0;
   FLabelRotation := 0;
