@@ -311,9 +311,50 @@ type
     constructor Create(AChart: TsChart); override;
   end;
 
+  TsRegressionType = (rtNone, rtLinear, rtLogarithmic, rtExponential, rtPower, rtPolynomial);
+
+  TsRegressionEquation = class
+    Fill: TsChartFill;
+    Font: TsFont;
+    Border: TsChartLine;
+    NumberFormat: String;
+    Left, Top: Double;  // mm, relative to outer chart boundaries!
+    XName: String;
+    YName: String;
+    constructor Create;
+    destructor Destroy; override;
+    function DefaultBorder: Boolean;
+    function DefaultFill: Boolean;
+    function DefaultFont: Boolean;
+    function DefaultNumberFormat: Boolean;
+    function DefaultPosition: Boolean;
+    function DefaultXName: Boolean;
+    function DefaultYName: Boolean;
+  end;
+
+  TsChartRegression = class
+    Title: String;
+    RegressionType: TsRegressionType;
+    ExtrapolateForwardBy: Double;
+    ExtrapolateBackwardBy: Double;
+    ForceYIntercept: Boolean;
+    YInterceptValue: Double;
+    PolynomialDegree: Integer;
+    DisplayEquation: Boolean;
+    DisplayRSquare: Boolean;
+    Equation: TsRegressionEquation;
+    Line: TsChartLine;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
   TsScatterSeries = class(TsLineSeries)
+  private
+    FRegression: TsChartRegression;
   public
     constructor Create(AChart: TsChart); override;
+    destructor Destroy; override;
+    property Regression: TsChartRegression read FRegression write FRegression;
   end;
 
   TsChartSeriesList = class(TFPList)
@@ -846,6 +887,7 @@ begin
     Result := ctRadar;
 end;
 
+
 { TsRingSeries }
 constructor TsRingSeries.Create(AChart: TsChart);
 begin
@@ -855,12 +897,99 @@ begin
 end;
 
 
+{ TsRegressionEquation }
+constructor TsRegressionEquation.Create;
+begin
+  inherited Create;
+  Font := TsFont.Create;
+  Font.Size := 9;
+  Border := TsChartLine.Create;
+  Border.Style := clsNoLine;
+  Border.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  Border.Color := scBlack;
+  Fill := TsChartFill.Create;
+  Fill.FgColor := scWhite;
+  XName := 'x';
+  YName := 'f(x)';
+end;
+
+destructor TsRegressionEquation.Destroy;
+begin
+  Fill.Free;
+  Border.Free;
+  Font.Free;
+  inherited;
+end;
+
+function TsRegressionEquation.DefaultBorder: Boolean;
+begin
+  Result := Border.Style = clsNoLine;
+end;
+
+function TsRegressionEquation.DefaultFill: Boolean;
+begin
+  Result := Fill.Style = fsNoFill;
+end;
+
+function TsRegressionEquation.DefaultFont: Boolean;
+begin
+  Result := (Font.FontName = '') and (Font.Size = 9) and (Font.Style = []) and
+            (Font.Color = scBlack);
+end;
+
+function TsRegressionEquation.DefaultNumberFormat: Boolean;
+begin
+  Result := NumberFormat = '';
+end;
+
+function TsRegressionEquation.DefaultPosition: Boolean;
+begin
+  Result := (Left = 0) and (Top = 0);
+end;
+
+function TsRegressionEquation.DefaultXName: Boolean;
+begin
+  Result := XName = 'x';
+end;
+
+function TsRegressionEquation.DefaultYName: Boolean;
+begin
+  Result := YName = 'f(x)';
+end;
+
+
+{ TsChartRegression }
+constructor TsChartRegression.Create;
+begin
+  inherited Create;
+  Line := TsChartLine.Create;
+  Line.Style := clsSolid;
+  Line.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  Line.Color := scBlack;
+
+  Equation := TsRegressionEquation.Create;
+end;
+
+destructor TsChartRegression.Destroy;
+begin
+  Line.Free;
+  inherited;
+end;
+
+
 { TsScatterSeries }
 
 constructor TsScatterSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctScatter;
+  FRegression := TsChartRegression.Create;
+end;
+
+destructor TsScatterSeries.Destroy;
+begin
+  FRegression.Free;
+  inherited;
 end;
 
 

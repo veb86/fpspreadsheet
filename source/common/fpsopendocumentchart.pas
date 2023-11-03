@@ -23,11 +23,19 @@ type
     function GetChartBackgroundStyleAsXML(AChart: TsChart; AFill: TsChartFill;
       ABorder: TsChartLine; AIndent: Integer; AStyleID: Integer): String;
     function GetChartCaptionStyleAsXML(AChart: TsChart; ACaptionKind, AIndent, AStyleID: Integer): String;
-    function GetChartFillStyleGraphicPropsAsXML(AChart: TsChart; AFill: TsChartFill): String;
-    function GetChartLegendStyleAsXML(AChart: TsChart; AIndent, AStyleID: Integer): String;
-    function GetChartLineStyleAsXML(AChart: TsChart; ALine: TsChartLine; AIndent, AStyleID: Integer): String;
-    function GetChartLineStyleGraphicPropsAsXML(AChart: TsChart; ALine: TsChartLine): String;
-    function GetChartPlotAreaStyleAsXML(AChart: TsChart; AIndent, AStyleID: Integer): String;
+    function GetChartFillStyleGraphicPropsAsXML(AChart: TsChart;
+      AFill: TsChartFill): String;
+    function GetChartLegendStyleAsXML(AChart: TsChart;
+      AIndent, AStyleID: Integer): String;
+    function GetChartLineStyleAsXML(AChart: TsChart;
+      ALine: TsChartLine; AIndent, AStyleID: Integer): String;
+    function GetChartLineStyleGraphicPropsAsXML(AChart: TsChart;
+      ALine: TsChartLine): String;
+    function GetChartPlotAreaStyleAsXML(AChart: TsChart;
+      AIndent, AStyleID: Integer): String;
+    function GetChartRegressionEquationStyleAsXML(AChart: TsChart;
+      AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
+    function GetChartRegressionStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: integer): String;
 //    function GetChartTitleStyleAsXML(AChart: TsChart; AStyleIndex, AIndent: Integer): String;
     procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
@@ -525,6 +533,100 @@ begin
     indent + '  </style:style>' + LE;
 end;
 
+function TsSpreadOpenDocChartWriter.GetChartRegressionEquationStyleAsXML(
+    AChart: TsChart; AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
+var
+  indent: String;
+  numStyle: String = 'N0';
+  chartprops: String = '';
+  lineprops: String = '';
+  fillprops: String = '';
+  textprops: String = '';
+begin
+  Result := '';
+
+  indent := DupeString(' ', AIndent);
+
+  // TO DO: Create chart number style list and find the current style there!
+  if not AEquation.DefaultNumberFormat then
+    numStyle := 'N0';
+
+  if not AEquation.DefaultXName then
+    chartprops := chartprops + Format('loext:regression-x-name="%s" ', [AEquation.XName]);
+  if not AEquation.DefaultYName then
+    chartprops := chartprops + Format('loext:regression-y-name="%s" ', [AEquation.YName])          ;
+
+  if not AEquation.DefaultBorder then
+    lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, AEquation.Border);
+
+  if not AEquation.DefaultFill then
+    fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, AEquation.Fill);
+
+  if not AEquation.DefaultFont then
+    textprops := TsSpreadOpenDocWriter(Writer).WriteFontStyleXMLAsString(AEquation.Font);
+
+  Result := Format(
+    indent + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="%s">' + LE +
+    indent + '  <style:chart-properties %s/>' + LE +
+    indent + '  <style:graphic-properties %s/>' + LE +
+    indent + '  <style:text-properties %s/>' + LE +
+    indent + '</style:style>' + LE,
+    [ AStyleID, numStyle, chartprops, fillprops + lineprops, textprops ]
+  );
+end;
+
+function TsSpreadOpenDocChartWriter.GetChartRegressionStyleAsXML(AChart: TsChart;
+  ASeriesIndex, AIndent, AStyleID: Integer): String;
+const
+  REGRESSION_TYPE: array [TsRegressionType] of string = (
+    '', 'linear', 'logarithmic', 'exponential', 'power', 'polynomial');
+var
+  series: TsScatterSeries;
+  indent: String;
+  chartProps: String = '';
+  graphProps: String = '';
+  textProps: String = '';
+  lineProps: String = '';
+  fillProps: String = '';
+  labelSeparator: String = '';
+begin
+  Result := '';
+  series := AChart.Series[ASeriesIndex] as TsScatterSeries;
+  if series.Regression.RegressionType = rtNone then
+    exit;
+
+  indent := DupeString(' ', AIndent);
+
+  chartprops := Format(
+    'chart:regression-name="%s" ' +
+    'chart:regression-type="%s" ' +
+    'chart:regression-extrapolate-forward="%g" ' +
+    'chart:regression-extrapolate-backward="%g" ' +
+    'chart:regression-force-intercept="%s" ' +
+    'chart:regression-intercept-value="%g" ' +
+    'chart:regression-max-degree="%d" ',
+    [ series.Regression.Title,
+      REGRESSION_TYPE[series.Regression.RegressionType] ,
+      series.Regression.ExtrapolateForwardBy,
+      series.Regression.ExtrapolateBackwardBy,
+      FALSE_TRUE[series.Regression.ForceYIntercept],
+      series.Regression.YInterceptValue,
+      series.Regression.PolynomialDegree
+    ], FPointSeparatorSettings
+  );
+
+  graphprops := GetChartLineStyleGraphicPropsAsXML(AChart, series.Regression.Line);
+
+  Result := Format(
+    indent + '<style:style style:name="ch%d" style:family="chart"> ' + LE +
+    indent + '  <style:chart-properties %s/>' + LE +
+    indent + '  <style:graphic-properties %s/>' + LE +
+    indent + '</style:style>' + LE,
+    [ AStyleID, chartprops, graphprops ]
+  );
+end;
+
+
 { <style:style style:name="ch1400" style:family="chart" style:data-style-name="N0">
     <style:chart-properties
       chart:symbol-type="named-symbol"
@@ -617,7 +719,9 @@ begin
     if lineSer.ShowSymbols then
       graphProps := graphProps + fillProps;
     if lineSer.ShowLines and (lineser.Line.Style <> clsNoLine) then
-      graphProps := graphProps + lineProps;
+      graphProps := graphProps + lineProps
+    else
+      graphProps := graphProps + 'draw:stroke="none" ';
   end else
     graphProps := fillProps + lineProps;
 
@@ -1294,6 +1398,10 @@ var
   domainRangeY: String = '';
   fillColorRange: String = '';
   chartClass: String = '';
+  regressionEquation: String = '';
+  needRegressionStyle: Boolean = false;
+  needRegressionEquationStyle: Boolean = false;
+  regression: TsChartRegression = nil;
   titleAddr: String;
   count: Integer;
 begin
@@ -1366,10 +1474,10 @@ begin
   // Store the series properties
   AppendToStream(AChartStream, Format(
     indent + '<chart:series chart:style-name="ch%d" ' +
+               'chart:class="chart:%s" ' +                    // series type
                'chart:values-cell-range-address="%s" ' +      // y values
-               'chart:label-cell-address="%s" ' +             // series title
-               'chart:class="chart:%s">' + LE,
-    [ AStyleID, valuesRange, titleAddr, chartClass ]
+               'chart:label-cell-address="%s">' + LE,         // series title
+    [ AStyleID, chartClass, valuesRange, titleAddr, chartClass ]
   ));
   if domainRangeY <> '' then
     AppendToStream(AChartStream, Format(
@@ -1390,10 +1498,56 @@ begin
   { --- not working...
   if borderColorRange <> '' then
     AppendToStream(AChartStream, Format(
-      indent + '<loext:propertry-mapping loext:property="BorderColor" loext:cell-range-address="%s"/>' + LE,
+      indent + '<loext:property-mapping loext:property="BorderColor" loext:cell-range-address="%s"/>' + LE,
       [ borderColorRange ]
     ));
   }
+
+  // Regression
+  if (series is TsScatterSeries) then
+  begin
+    regression := TsScatterSeries(series).Regression;
+    if regression.RegressionType <> rtNone then
+    begin
+      if regression.DisplayEquation or regression.DisplayRSquare then
+      begin
+        if (not regression.Equation.DefaultXName) or (not regression.Equation.DefaultYName) or
+           (not regression.Equation.DefaultBorder) or (not regression.Equation.DefaultFill) or
+           (not regression.Equation.DefaultFont) or (not regression.Equation.DefaultNumberFormat) or
+           (not regression.Equation.DefaultPosition) then
+        begin
+          regressionEquation := regressionEquation + Format('chart:style-name="ch%d" ', [AStyleID + 2]);
+          needRegressionEquationStyle := true;
+        end;
+      end;
+      if regression.DisplayEquation then
+        regressionEquation := regressionEquation + 'chart:display-equation="true" ';
+      if regression.DisplayRSquare then
+        regressionEquation := regressionEquation + 'chart:display-r-square="true" ';
+
+      if regressionEquation <> '' then
+      begin
+        if not regression.Equation.DefaultPosition then
+          regressionEquation := regressionEquation + Format(
+            'svg:x="%.2fmm" svg:y="%.2fmm" ',
+            [ regression.Equation.Left, regression.Equation.Top ],
+            FPointSeparatorSettings
+          );
+
+        AppendToStream(AChartStream, Format(
+          indent + '  <chart:regression-curve chart:style-name="ch%d">' + LE +
+          indent + '    <chart:equation %s />' + LE +
+          indent + '  </chart:regression-curve>' + LE,
+          [ AStyleID + 1, regressionEquation ]
+        ))
+      end else
+        AppendToStream(AChartStream, Format(
+          indent + '  <chart:regression-curve chart:style-name="ch%d"/>',
+          [ AStyleID + 1 ]
+        ));
+      needRegressionStyle := true;
+    end;
+  end;
 
   AppendToStream(AChartStream, Format(
     indent + '  <chart:data-point chart:repeated="%d"/>' + LE,
@@ -1407,6 +1561,24 @@ begin
   AppendToStream(AStyleStream,
     GetChartSeriesStyleAsXML(AChart, ASeriesIndex, AStyleIndent, AStyleID)
   );
+
+  // Regression style
+  if needRegressionStyle then
+  begin
+    inc(AStyleID);
+    AppendToStream(AStyleStream,
+      GetChartRegressionStyleAsXML(AChart, ASeriesIndex, AStyleIndent, AStyleID)
+    );
+
+    // Style of regression equation
+    if needRegressionEquationStyle then
+    begin
+      inc(AStyleID);
+      AppendToStream(AStyleStream,
+        GetChartRegressionEquationStyleAsXML(AChart, regression.Equation, AStyleIndent, AStyleID)
+      );
+    end;
+  end;
 
   // Next style
   inc(AStyleID);
