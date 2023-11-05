@@ -1,4 +1,4 @@
-program radarchart_write_demo;
+program barchart_write_demo;
 
 {.$DEFINE DARK_MODE}
 
@@ -14,7 +14,7 @@ begin
   b := TsWorkbook.Create;
   try
     // worksheet
-    sheet := b.AddWorksheet('radar_series');
+    sheet := b.AddWorksheet('bar_series');
 
     // Enter data
     sheet.WriteText( 0, 0, 'School Grades');
@@ -42,26 +42,28 @@ begin
     ch.YAxis.AxisLine.Color := scSilver;
     ch.YAxis.MajorTicks := [];
 
-    // Add 1st radar series ("Student 1")
-    ser := TsRadarSeries.Create(ch);
+    // Add 1st bar series ("Student 1")
+    ser := TsBarSeries.Create(ch);
     ser.SetTitleAddr(2, 1);
     ser.SetLabelRange(3, 0, 10, 0);
     ser.SetYRange(3, 1, 10, 1);
     ser.Line.Color := scDarkRed;
+    ser.Fill.Style := cfsHatched;
+    ser.Fill.Hatch := ch.Hatches.AddHatch('Crossed', chsDouble, scDarkRed, 2, 45, true);
     ser.Fill.Color := scRed;
-    ser.Fill.Transparency := 0.35;
 
-    // Add 2nd radar series ("Student 2")
-    ser := TsRadarSeries.Create(ch);
+    // Add 2nd bar series ("Student 2")
+    ser := TsBarSeries.Create(ch);
     ser.SetTitleAddr(2, 2);
     ser.SetLabelRange(3, 0, 10, 0);
     ser.SetYRange(3, 2, 10, 2);
     ser.Line.Color := scDarkBlue;
+    ser.Fill.Style := cfsHatched;
+    ser.Fill.Hatch := ch.Hatches.AddHatch('Forward', chsSingle, scWhite, 1.5, 45, true);
     ser.Fill.Color := scBlue;
-    ser.Fill.Transparency := 0.35;
 
-    b.WriteToFile('school-grades.xlsx', true);   // Excel fails to open the file
-    b.WriteToFile('school-grades.ods', true);
+//    b.WriteToFile('bars.xlsx', true);   // Excel fails to open the file
+    b.WriteToFile('bars.ods', true);
   finally
     b.Free;
   end;

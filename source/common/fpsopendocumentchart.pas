@@ -49,6 +49,7 @@ type
     // Object X/styles.xml
     procedure WriteObjectStyles(AStream: TStream; AChart: TsChart);
     procedure WriteObjectGradientStyles(AStream: TStream; AChart: TsChart; AIndent: Integer);
+    procedure WriteObjectHatchStyles(AStream: TStream; AChart: TsChart; AIndent: Integer);
     procedure WriteObjectLineStyles(AStream: TStream; AChart: TsChart; AIndent: Integer);
 
     // Object X/content.xml
@@ -106,6 +107,10 @@ const
 
   GRADIENT_STYLES: array[TsChartGradientStyle] of string = (
     'linear', 'axial', 'radial', 'ellipsoid', 'square', 'rectangular'
+  );
+
+  HATCH_STYLES: array[TsChartHatchStyle] of string = (
+    'single', 'double', 'triple'
   );
 
   LABEL_POSITION: array[TsChartLabelPosition] of string = (
@@ -432,23 +437,18 @@ end;
 function TsSpreadOpenDocChartWriter.GetChartFillStyleGraphicPropsAsXML(AChart: TsChart;
   AFill: TsChartFill): String;
 var
-  fillStr: String;
-  fillColorStr: String;
-  fillOpacity: String = '';
   gradient: TsChartGradient;
-  gradientStr: String;
+  hatch: TsChartHatch;
+  fillStr: String = '';
 begin
   case AFill.Style of
     cfsNoFill:
       Result := 'draw:fill="none" ';
     cfsSolid:
-      begin
-        fillStr := 'draw:fill="solid" ';
-        fillColorStr := 'draw:fill-color="' + ColorToHTMLColorStr(AFill.FgColor) + '" ';
-        if AFill.Transparency > 0 then
-          fillOpacity := Format('draw:opacity="%.0f%%" ', [(1.0 - AFill.Transparency)*100], FPointSeparatorSettings);
-        Result := fillStr + fillColorStr + fillOpacity;
-      end;
+      Result := Format(
+        'draw:fill="solid" draw:fill-color="%s" ',
+        [ ColorToHTMLColorStr(AFill.Color) ]
+      );
     cfsGradient:
       begin
         gradient := AChart.Gradients[AFill.Gradient];
@@ -459,7 +459,23 @@ begin
           [ ASCIIName(gradient.Name) ]
         );
       end;
+    cfsHatched:
+      begin
+        hatch := AChart.Hatches[AFill.Hatch];
+        if hatch.Filled then
+          fillStr := 'draw:fill-hatch-solid="true" ';
+        Result := Format(
+          'draw:fill="hatch" draw:fill-color="%s" ' +
+          'draw:fill-hatch-name="%s" %s',
+          [ ColorToHTMLColorStr(AFill.Color), ASCIIName(hatch.Name), fillStr ]
+        );
+      end;
   end;
+  if (AFill.Style <> cfsNoFill) and (AFill.Transparency > 0) then
+    Result := Result + Format('draw:opacity="%.0f%%" ',
+      [ (1.0 - AFill.Transparency) * 100 ],
+      FPointSeparatorSettings
+    );
 end;
 
 {
@@ -1323,12 +1339,13 @@ begin
     case gradient.Style of
       cgsLinear, cgsAxial:
         style := style + Format(
-          'draw:angle="%ddeg" ',
-          [ gradient.Angle ]
+          'draw:angle="%.0fdeg" ',
+          [ gradient.Angle ],
+          FPointSeparatorSettings
         );
       cgsElliptic, cgsSquare, cgsRectangular:
         style := style + Format(
-          'draw:cx="%.0f%%" draw:cy="%.0f%%" draw:angle="%ddeg" ',
+          'draw:cx="%.0f%%" draw:cy="%.0f%%" draw:angle="%.0fdeg" ',
           [ gradient.CenterX * 100, gradient.CenterY * 100, gradient.Angle ],
           FPointSeparatorSettings
         );
@@ -1341,6 +1358,36 @@ begin
     end;
     style := style + '/>' + LE;
 
+    AppendToStream(AStream, style);
+  end;
+end;
+
+procedure TsSpreadOpenDocChartWriter.WriteObjectHatchStyles(AStream: TStream;
+  AChart: TsChart; AIndent: Integer);
+var
+  indent: String;
+  style: String;
+  i: Integer;
+  hatch: TsChartHatch;
+begin
+  indent := DupeString(' ', AIndent);
+  for i := 0 to AChart.Hatches.Count-1 do
+  begin
+    hatch := AChart.Hatches[i];
+    style := Format(indent +
+      '<draw:hatch draw:name="%s" draw:display-name="%s" ' +
+        'draw:style="%s" ' +
+        'draw:color="%s" ' +
+        'draw:distance="%.2fmm" ' +
+        'draw:rotation="%.0f" />',
+      [ ASCIIName(hatch.Name), hatch.Name,
+        HATCH_STYLES[hatch.Style],
+        ColorToHTMLColorStr(hatch.LineColor),
+        hatch.LineDistance,
+        hatch.LineAngle*10
+      ],
+      FPointSeparatorSettings
+    );
     AppendToStream(AStream, style);
   end;
 end;
@@ -1506,6 +1553,7 @@ begin
 
   WriteObjectLineStyles(AStream, AChart, 4);
   WriteObjectGradientStyles(AStream, AChart, 4);
+  WriteObjectHatchStyles(AStream, AChart, 4);
 
   AppendToStream(AStream,
     '  </office:styles>' + LE +

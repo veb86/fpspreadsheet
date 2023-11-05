@@ -63,7 +63,7 @@ begin
     ser.SetXRange(r1, 0, r2, 0);     // is used only by scatter series
     ser.SetYRange(r1, 1, r2, 1);
     ser.Line.Color := scBlue;
-    ser.Fill.FgColor := scBlue;
+    ser.Fill.Color := scBlue;
     ser.SetFillColorRange(r1, 4, r2, 4);
     ser.DataLabels := [cdlPercentage, cdlSymbol];
     if (ser is TsLineSeries) then
@@ -88,7 +88,7 @@ begin
       ser.SetXRange(r1, 0, r2, 0);
       ser.SetYRange(r1, 2, r2, 2);
       ser.Line.Color := scRed;
-      ser.Fill.FgColor := scRed;
+      ser.Fill.Color := scRed;
     end;
 
     {$IFDEF DARK_MODE}
@@ -96,9 +96,9 @@ begin
     ch.Border.Color := scWhite;
     ch.PlotArea.Background.FgColor := $1F1F1F;
     {$ELSE}
-    ch.Background.FgColor := scWhite;
+    ch.Background.Color := scWhite;
     ch.Border.Color := scBlack;
-    ch.PlotArea.Background.FgColor := $F0F0F0;
+    ch.PlotArea.Background.Color := $F0F0F0;
     {$ENDIF}
     // Background and wall working
     ch.Background.Style := cfsSolid;
@@ -155,7 +155,7 @@ begin
     ch.Legend.Font.Color := scBlue;
     ch.Legend.Border.Width := 0.3; // mm
     ch.Legend.Border.Color := scGray;
-    ch.Legend.Background.FgColor := $F0F0F0;
+    ch.Legend.Background.Color := $F0F0F0;
     ch.Legend.Background.Style := cfsSolid;
     //ch.Legend.CanOverlapPlotArea := true;
     ch.Legend.Position := lpBottom;

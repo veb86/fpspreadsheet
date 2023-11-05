@@ -53,7 +53,7 @@ type
     EndIntensity: Double;      // 0.0 ... 1.0
     Border: Double;            // 0.0 ... 1.0
     CenterX, CenterY: Double;  // 0.0 ... 1.0
-    Angle: Integer;            // degrees
+    Angle: Double;             // degrees
     constructor Create;
   end;
 
@@ -63,36 +63,56 @@ type
     procedure SetItem(AIndex: Integer; AValue: TsChartGradient);
     function AddGradient(AName: String; AStyle: TsChartGradientStyle;
       AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity: Double;
-      ABorder, ACenterX, ACenterY: Double; AAngle: Integer): Integer;
+      ABorder, ACenterX, ACenterY, AAngle: Double): Integer;
   public
     function AddAxialGradient(AName: String; AStartColor, AEndColor: TsColor;
-      AStartIntensity, AEndIntensity, ABorder: Double; AAngle: Integer): Integer;
+      AStartIntensity, AEndIntensity, ABorder, AAngle: Double): Integer;
     function AddEllipticGradient(AName: String; AStartColor, AEndColor: TsColor;
-      AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY: Double;
-      AAngle: Integer): Integer;
+      AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, AAngle: Double): Integer;
     function AddLinearGradient(AName: String; AStartColor, AEndColor: TsColor;
-      AStartIntensity, AEndIntensity, ABorder: Double; AAngle: Integer): Integer;
+      AStartIntensity, AEndIntensity, ABorder, AAngle: Double): Integer;
     function AddRadialGradient(AName: String;
       AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity, ABorder: Double;
       ACenterX, ACenterY: Double): Integer;
     function AddRectangularGradient(AName: String; AStartColor, AEndColor: TsColor;
-      AStartIntensity, AEndIntensity: Double; ABorder, ACenterX, ACenterY: Double;
-      AAngle: Integer): Integer;
+      AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, AAngle: Double): Integer;
     function AddSquareGradient(AName: String; AStartColor, AEndColor: TsColor;
-      AStartIntensity, AEndIntensity: Double; ABorder, ACenterX, ACenterY: Double;
-      AAngle: Integer): Integer;
+      AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, AAngle: Double): Integer;
     function IndexOfName(AName: String): Integer;
     function FindByName(AName: String): TsChartGradient;
     property Items[AIndex: Integer]: TsChartGradient read GetItem write SetItem; default;
   end;
 
-  TsChartFillStyle = (cfsNoFill, cfsSolid, cfsGradient);
+  TsChartHatchStyle = (chsSingle, chsDouble, chsTriple);
+
+  TsChartHatch = class
+    Name: String;
+    Style: TsChartHatchStyle;
+    LineColor: TsColor;
+    LineDistance: Double;      // mm
+    LineAngle: Double;         // degrees
+    Filled: Boolean;           // filled with background color or not
+  end;
+
+  TsChartHatchList = class(TFPObjectList)
+  private
+    function GetItem(AIndex: Integer): TsChartHatch;
+    procedure SetItem(AIndex: Integer; AValue: TsChartHatch);
+  public
+    function AddHatch(AName: String; AStyle: TsChartHatchStyle;
+      ALineColor: TsColor; ALineDistance, ALineAngle: Double; AFilled: Boolean): Integer;
+    function FindByName(AName: String): TsChartHatch;
+    function IndexOfName(AName: String): Integer;
+    property Items[AIndex: Integer]: TsChartHatch read GetItem write SetItem; default;
+  end;
+
+  TsChartFillStyle = (cfsNoFill, cfsSolid, cfsGradient, cfsHatched);
 
   TsChartFill = class
     Style: TsChartFillStyle;
-    FgColor: TsColor;
-    BgColor: TsColor;
+    Color: TsColor;
     Gradient: Integer;
+    Hatch: Integer;
     Transparency: Double;  // 0.0 ... 1.0
   end;
 
@@ -447,6 +467,7 @@ type
 
     FLineStyles: TsChartLineStyleList;
     FGradients: TsChartGradientList;
+    FHatches: TsChartHatchList;
     function GetCategoryLabelRange: TsCellRange;
 
   public
@@ -517,6 +538,7 @@ type
     { Style lists }
     property LineStyles: TsChartLineStyleList read FLineStyles;
     property Gradients: TsChartGradientList read FGradients;
+    property Hatches: TsChartHatchList read FHatches;
   end;
 
   TsChartList = class(TObjectList)
@@ -544,23 +566,23 @@ end;
 
 function TsChartGradientList.AddAxialGradient(AName: String;
   AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity, ABorder: Double;
-  AAngle: Integer): Integer;
+  AAngle: Double): Integer;
 begin
   Result := AddGradient(AName, cgsAxial, AStartColor, AEndColor,
     AStartIntensity, AEndIntensity, ABorder, 0.0, 0.0, AAngle);
 end;
 
 function TsChartGradientList.AddEllipticGradient(AName: String;
-  AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity: Double;
-  ABorder, ACenterX, ACenterY: Double; AAngle: Integer): Integer;
+  AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity, ABorder: Double;
+  ACenterX, ACenterY, AAngle: Double): Integer;
 begin
   Result := AddGradient(AName, cgsElliptic, AStartColor, AEndColor,
     AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, AAngle);
 end;
 
 function TsChartGradientList.AddGradient(AName: String; AStyle: TsChartGradientStyle;
-  AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity: Double;
-  ABorder, ACenterX, ACenterY: Double; AAngle: Integer): Integer;
+  AStartColor, AEndColor: TsColor;
+  AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, AAngle: Double): Integer;
 var
   item: TsChartGradient;
 begin
@@ -586,32 +608,32 @@ begin
 end;
 
 function TsChartGradientList.AddLinearGradient(AName: String;
-  AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity, ABorder: Double;
-  AAngle: Integer): Integer;
+  AStartColor, AEndColor: TsColor;
+  AStartIntensity, AEndIntensity, ABorder,AAngle: Double): Integer;
 begin
   Result := AddGradient(AName, cgsLinear, AStartColor, AEndColor,
     AStartIntensity, AEndIntensity, ABorder, 0.0, 0.0, AAngle);
 end;
 
 function TsChartGradientList.AddRadialGradient(AName: String;
-  AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity, ABorder: Double;
-  ACenterX, ACenterY: Double): Integer;
+  AStartColor, AEndColor: TsColor;
+  AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY: Double): Integer;
 begin
   Result := AddGradient(AName, cgsRadial, AStartColor, AEndColor,
     AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, 0);
 end;
 
 function TsChartGradientList.AddRectangularGradient(AName: String;
-  AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity: Double;
-  ABorder, ACenterX, ACenterY: Double; AAngle: Integer): Integer;
+  AStartColor, AEndColor: TsColor;
+  AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, AAngle: Double): Integer;
 begin
   Result := AddGradient(AName, cgsRectangular, AStartColor, AEndColor,
     AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, AAngle);
 end;
 
 function TsChartGradientList.AddSquareGradient(AName: String;
-  AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity: Double;
-  ABorder, ACenterX, ACenterY: Double; AAngle: Integer): Integer;
+  AStartColor, AEndColor: TsColor;
+  AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, AAngle: Double): Integer;
 begin
   Result := AddGradient(AName, cgsSquare, AStartColor, AEndColor,
     AStartIntensity, AEndIntensity, ABorder, ACenterX, ACenterY, AAngle);
@@ -642,6 +664,60 @@ begin
 end;
 
 procedure TsChartGradientList.SetItem(AIndex: Integer; AValue: TsChartGradient);
+begin
+  inherited Items[AIndex] := AValue;
+end;
+
+
+{ TsChartHatchList }
+
+function TsChartHatchList.AddHatch(AName: String; AStyle: TsChartHatchStyle;
+  ALineColor: TsColor; ALineDistance, ALineAngle: Double; AFilled: Boolean): Integer;
+var
+  item: TsChartHatch;
+begin
+  if AName = '' then
+    AName := 'Hatch' + IntToStr(Count+1);
+  Result := IndexOfName(AName);
+  if Result = -1 then
+  begin
+    item := TsChartHatch.Create;
+    Result := inherited Add(item);
+  end else
+    item := Items[Result];
+  item.Name := AName;
+  item.Style := AStyle;
+  item.LineColor := ALineColor;
+  item.LineDistance := ALineDistance;
+  item.LineAngle := ALineAngle;
+  item.Filled := AFilled;
+end;
+
+function TsChartHatchList.FindByName(AName: String): TsChartHatch;
+var
+  idx: Integer;
+begin
+  idx := IndexOfName(AName);
+  if idx > -1 then
+    Result := Items[idx]
+  else
+    Result := nil;
+end;
+
+function TsChartHatchList.GetItem(AIndex: Integer): TsChartHatch;
+begin
+  Result := TsChartHatch(inherited Items[AIndex]);
+end;
+
+function TsChartHatchList.IndexOfName(AName: String): Integer;
+begin
+  for Result := 0 to Count-1 do
+    if SameText(Items[Result].Name, AName) then
+      exit;
+  Result := -1;
+end;
+
+procedure TsChartHatchList.SetItem(AIndex: Integer; AValue: TsChartHatch);
 begin
   inherited Items[AIndex] := AValue;
 end;
@@ -708,9 +784,9 @@ begin
   inherited Create(AChart);
   FBackground := TsChartFill.Create;
   FBackground.Style := cfsSolid;
-  FBackground.BgColor := scWhite;
-  FBackground.FgColor := scWhite;
+  FBackground.Color := scWhite;
   FBackground.Gradient := -1;
+  FBackground.Hatch := -1;
   FBorder := TsChartLine.Create;
   FBorder.Style := clsSolid;
   FBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
@@ -832,9 +908,9 @@ begin
 
   FFill := TsChartFill.Create;
   FFill.Style := cfsSolid;
-  FFill.FgColor := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
-  FFill.BgColor := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
+  FFill.Color := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
   FFill.Gradient := -1;
+  FFill.Hatch := -1;
 
   FLine := TsChartLine.Create;
   FLine.Style := clsSolid;
@@ -1083,7 +1159,7 @@ begin
   Border.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
   Border.Color := scBlack;
   Fill := TsChartFill.Create;
-  Fill.FgColor := scWhite;
+  Fill.Color := scWhite;
   XName := 'x';
   YName := 'f(x)';
 end;
@@ -1184,6 +1260,7 @@ begin
   clsLongDashDotDot := FLineStyles.Add('long dash-dot-dot', 500, 1, 100, 2, 200, true);
 
   FGradients := TsChartGradientList.Create;
+  FHatches := TsChartHatchList.Create;
 
   FSheetIndex := 0;
   FRow := 0;
@@ -1249,6 +1326,7 @@ begin
   FSubtitle.Free;
   FFloor.Free;
   FPlotArea.Free;
+  FHatches.Free;
   FGradients.Free;
   FLineStyles.Free;
   inherited;
