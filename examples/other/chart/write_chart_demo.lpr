@@ -24,7 +24,9 @@ var
 begin
   b := TsWorkbook.Create;
   try
-    // 1st sheet
+    // -------------------------------------------------------------------------
+    //                                1st sheet
+    // -------------------------------------------------------------------------
     sheet1 := b.AddWorksheet('test1');
     sheet1.WriteText(0, 1, '1+sin(x)');
     sheet1.WriteText(0, 2, '1+sin(x/2)');
@@ -99,9 +101,9 @@ begin
     ch.PlotArea.Background.FgColor := $F0F0F0;
     {$ENDIF}
     // Background and wall working
-    ch.Background.Style := fsSolidFill;
+    ch.Background.Style := cfsSolid;
     ch.Border.Style := clsSolid;
-    ch.PlotArea.Background.Style := fsSolidFill;
+    ch.PlotArea.Background.Style := cfsSolid;
     //ch.RotatedAxes := true;
     //ch.StackMode := csmStackedPercentage;
     //ch.Interpolation := ciCubicSpline;
@@ -154,15 +156,19 @@ begin
     ch.Legend.Border.Width := 0.3; // mm
     ch.Legend.Border.Color := scGray;
     ch.Legend.Background.FgColor := $F0F0F0;
-    ch.Legend.Background.Style := fsSolidFill;
+    ch.Legend.Background.Style := cfsSolid;
     //ch.Legend.CanOverlapPlotArea := true;
     ch.Legend.Position := lpBottom;
 
-    // 2nd sheet
+    // -------------------------------------------------------------------------
+    //                                2nd sheet
+    // -------------------------------------------------------------------------
     sheet2 := b.AddWorksheet('test2');
     sheet2.WriteText(0, 0, 'abc');
 
-    // 3rd sheet
+    // -------------------------------------------------------------------------
+    //                                3rd sheet
+    // -------------------------------------------------------------------------
     sheet3 := b.AddWorksheet('test3');
     sheet3.WriteText(0, 1, 'cos(x)');
     sheet3.WriteText(0, 2, 'sin(x)');
@@ -173,7 +179,10 @@ begin
       sheet3.WriteNumber(i, 2, sin(i-1), nfFixed, 2);
     end;
 
+    // Create the chart
     ch := b.AddChart(sheet3, 1, 3, 125, 95);
+
+    // Add two series
     ser := TsLineSeries.Create(ch);
     ser.SetTitleAddr(0, 1);
     ser.SetLabelRange(1, 0, 7, 0);
@@ -182,18 +191,28 @@ begin
     ser.SetTitleAddr(0, 2);
     ser.SetLabelRange(1, 0, 7, 0);
     ser.SetYRange(1, 2, 7, 2);
+
+    // Vertical background gradient (angle = 0) from sky-blue to white:
+    ch.PlotArea.Background.Style := cfsGradient;
+    ch.PlotArea.Background.Gradient := ch.Gradients.AddLinearGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddAxialGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddEllipticGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0.5, 0.5, 45);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddRadialGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0.5, 0.5);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddRectangularGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0.5, 0.5, 0);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddSquareGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0.5, 0.5, 0);
+
     ch.Border.Style := clsNoLine;
     ch.Title.Caption := 'HALLO';
+    ch.Title.Font.Size := 18;
+    ch.Title.Font.Style := [fssBold];
     ch.Title.Visible := true;
-    ch.SubTitle.Caption := 'hallo';
-    ch.Subtitle.Visible := true;
     ch.XAxis.MajorGridLines.Style := clsSolid; //NoLine;
     ch.XAxis.MinorGridLines.Style := clsNoLine;
     ch.YAxis.MajorGridLines.Style := clsNoLine;
     ch.YAxis.MinorGridLines.Style := clsNoLine;
-    ch.YAxis.CaptionRotation := 0;
-    ch.XAxis.CaptionFont.Size := 18;
-    ch.YAxis.CaptionFont.Size := 18;
+    ch.YAxis.CaptionRotation := 90;
+    ch.XAxis.CaptionFont.Size := 14;
+    ch.YAxis.CaptionFont.Size := 14;
     ch.XAxis.LabelFont.Style := [fssItalic];
     ch.YAxis.LabelFont.Style := [fssItalic];
     ch.YAxis.MajorTicks := [catInside, catOutside];

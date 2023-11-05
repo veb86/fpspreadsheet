@@ -46,6 +46,12 @@ type
     procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
 
   protected
+    // Object X/styles.xml
+    procedure WriteObjectStyles(AStream: TStream; AChart: TsChart);
+    procedure WriteObjectGradientStyles(AStream: TStream; AChart: TsChart; AIndent: Integer);
+    procedure WriteObjectLineStyles(AStream: TStream; AChart: TsChart; AIndent: Integer);
+
+    // Object X/content.xml
     procedure WriteChart(AStream: TStream; AChart: TsChart);
     procedure WriteChartAxis(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; Axis: TsChartAxis; var AStyleID: Integer);
@@ -55,7 +61,6 @@ type
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
     procedure WriteChartNumberStyles(AStream: TStream;
       AIndent: Integer; AChart: TsChart);
-    procedure WriteObjectStyles(AStream: TStream; AChart: TsChart);
     procedure WriteChartPlotArea(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
     procedure WriteChartSeries(AChartStream, AStyleStream: TStream;
@@ -98,6 +103,10 @@ const
     'square', 'diamond', 'arrow-up', 'arrow-down', 'arrow-left',
     'arrow-right', 'circle', 'star', 'x', 'plus', 'asterisk'
   );  // unsupported: bow-tie, hourglass, horizontal-bar, vertical-bar
+
+  GRADIENT_STYLES: array[TsChartGradientStyle] of string = (
+    'linear', 'axial', 'radial', 'ellipsoid', 'square', 'rectangular'
+  );
 
   LABEL_POSITION: array[TsChartLabelPosition] of string = (
     '', 'outside', 'inside', 'center');
@@ -426,20 +435,31 @@ var
   fillStr: String;
   fillColorStr: String;
   fillOpacity: String = '';
+  gradient: TsChartGradient;
+  gradientStr: String;
 begin
-  if AFill.Style = fsNoFill then
-  begin
-    Result := 'draw:fill="none" ';
-    exit;
+  case AFill.Style of
+    cfsNoFill:
+      Result := 'draw:fill="none" ';
+    cfsSolid:
+      begin
+        fillStr := 'draw:fill="solid" ';
+        fillColorStr := 'draw:fill-color="' + ColorToHTMLColorStr(AFill.FgColor) + '" ';
+        if AFill.Transparency > 0 then
+          fillOpacity := Format('draw:opacity="%.0f%%" ', [(1.0 - AFill.Transparency)*100], FPointSeparatorSettings);
+        Result := fillStr + fillColorStr + fillOpacity;
+      end;
+    cfsGradient:
+      begin
+        gradient := AChart.Gradients[AFill.Gradient];
+        Result := Format(
+          'draw:fill="gradient" ' +
+          'draw:fill-gradient-name="%s" ' +
+          'draw:gradient-step-count="0" ',
+          [ ASCIIName(gradient.Name) ]
+        );
+      end;
   end;
-
-  // To do: extend with hatched and gradient fills
-  fillStr := 'draw:fill="solid" ';
-  fillColorStr := 'draw:fill-color="' + ColorToHTMLColorStr(AFill.FgColor) + '" ';
-  if AFill.Transparency > 0 then
-    fillOpacity := Format('draw:opacity="%.0f%%" ', [(1.0 - AFill.Transparency)*100], FPointSeparatorSettings);
-
-  Result := fillStr + fillColorStr + fillOpacity;
 end;
 
 {
@@ -1274,6 +1294,101 @@ begin
   inc(AStyleID);
 end;
 
+{ Writes, for each gradient used by the chart, a node to the Object/styles xml file }
+procedure TsSpreadOpenDocChartWriter.WriteObjectGradientStyles(AStream: TStream;
+  AChart: TsChart; AIndent: Integer);
+var
+  i: Integer;
+  gradient: TsChartGradient;
+  style: String;
+  indent: String;
+begin
+  indent := DupeString(' ', AIndent);
+  for i := 0 to AChart.Gradients.Count-1 do
+  begin
+    gradient := AChart.Gradients[i];
+    style := indent + Format(
+      '<draw:gradient draw:name="%s" draw:display-name="%s" ' +
+        'draw:style="%s" ' +
+        'draw:start-color="%s" draw:end-color="%s" ' +
+        'draw:start-intensity="%.0f%%" draw:end-intensity="%.0f%%" ' +
+        'draw:border="%.0f%%" ',
+      [ ASCIIName(gradient.Name), gradient.Name,
+        GRADIENT_STYLES[gradient.Style],
+        ColorToHTMLColorStr(gradient.StartColor), ColorToHTMLColorStr(gradient.EndColor),
+        gradient.StartIntensity * 100, gradient.EndIntensity * 100,
+        gradient.Border * 100
+      ]
+    );
+    case gradient.Style of
+      cgsLinear, cgsAxial:
+        style := style + Format(
+          'draw:angle="%ddeg" ',
+          [ gradient.Angle ]
+        );
+      cgsElliptic, cgsSquare, cgsRectangular:
+        style := style + Format(
+          'draw:cx="%.0f%%" draw:cy="%.0f%%" draw:angle="%ddeg" ',
+          [ gradient.CenterX * 100, gradient.CenterY * 100, gradient.Angle ],
+          FPointSeparatorSettings
+        );
+      cgsRadial:
+        style := style + Format(
+          'draw:cx="%.0f%%" draw:cy="%.0f%%" ',
+          [ gradient.CenterX * 100, gradient.CenterY * 100 ],
+          FPointSeparatorSettings
+        );
+    end;
+    style := style + '/>' + LE;
+
+    AppendToStream(AStream, style);
+  end;
+end;
+
+procedure TsSpreadOpenDocChartWriter.WriteObjectLineStyles(AStream: TStream;
+  AChart: TsChart; AIndent: Integer);
+const
+  LENGTH_UNIT: array[boolean] of string = ('mm', '%'); // relative to line width
+  DECS: array[boolean] of Integer = (1, 0);            // relative to line width
+var
+  i: Integer;
+  lineStyle: TsChartLineStyle;
+  seg1, seg2: String;
+  indent: String;
+begin
+  indent := DupeString(' ', AIndent);
+  for i := 0 to AChart.NumLineStyles-1 do
+  begin
+    lineStyle := AChart.GetLineStyle(i);
+    if linestyle.Segment1.Count > 0 then
+      seg1 := Format('draw:dots1="%d" draw:dots1-length="%.*f%s" ', [
+        lineStyle.Segment1.Count,
+        DECS[linestyle.RelativeToLineWidth], linestyle.Segment1.Length, LENGTH_UNIT[linestyle.RelativeToLineWidth]
+        ], FPointSeparatorSettings
+      )
+    else
+      seg1 := '';
+
+    if linestyle.Segment2.Count > 0 then
+      seg2 := Format('draw:dots2="%d" draw:dots2-length="%.*f%s" ', [
+        lineStyle.Segment2.Count,
+        DECS[linestyle.RelativeToLineWidth], linestyle.Segment2.Length, LENGTH_UNIT[linestyle.RelativeToLineWidth]
+        ], FPointSeparatorSettings
+      )
+    else
+      seg2 := '';
+
+    if (seg1 <> '') or (seg2 <> '') then
+      AppendToStream(AStream, indent + Format(
+        '<draw:stroke-dash draw:name="%s" draw:display-name="%s" draw:style="round" draw:distance="%.*f%s" %s%s/>' + LE, [
+        ASCIIName(linestyle.Name), linestyle.Name,
+        DECS[linestyle.RelativeToLineWidth], linestyle.Distance, LENGTH_UNIT[linestyle.RelativeToLineWidth],
+        seg1, seg2
+        ], FPointSeparatorSettings
+      ));
+  end;
+end;
+
 { Writes the chart's legend to the xml stream }
 procedure TsSpreadOpenDocChartWriter.WriteChartLegend(AChartStream, AStyleStream: TStream;
   AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
@@ -1346,16 +1461,9 @@ begin
 end;
 
 { Writes the file "Object N/styles.xml" (N = 1, 2, ...) which is needed by the
-  charts since it defines the line dash patterns. }
+  charts since it defines the line dash patterns, or gradients. }
 procedure TsSpreadOpenDocChartWriter.WriteObjectStyles(AStream: TStream;
   AChart: TsChart);
-const
-  LENGTH_UNIT: array[boolean] of string = ('mm', '%'); // relative to line width
-  DECS: array[boolean] of Integer = (1, 0);            // relative to line width
-var
-  i: Integer;
-  linestyle: TsChartLineStyle;
-  seg1, seg2: String;
 begin
   AppendToStream(AStream,
     XML_HEADER + LE);
@@ -1396,35 +1504,8 @@ begin
     '  <office:styles>' + LE
   );
 
-  for i := 0 to AChart.NumLineStyles-1 do
-  begin
-    lineStyle := AChart.GetLineStyle(i);
-    if linestyle.Segment1.Count > 0 then
-      seg1 := Format('draw:dots1="%d" draw:dots1-length="%.*f%s" ', [
-        lineStyle.Segment1.Count,
-        DECS[linestyle.RelativeToLineWidth], linestyle.Segment1.Length, LENGTH_UNIT[linestyle.RelativeToLineWidth]
-        ], FPointSeparatorSettings
-      )
-    else
-      seg1 := '';
-
-    if linestyle.Segment2.Count > 0 then
-      seg2 := Format('draw:dots2="%d" draw:dots2-length="%.*f%s" ', [
-        lineStyle.Segment2.Count,
-        DECS[linestyle.RelativeToLineWidth], linestyle.Segment2.Length, LENGTH_UNIT[linestyle.RelativeToLineWidth]
-        ], FPointSeparatorSettings
-      )
-    else
-      seg2 := '';
-
-    if (seg1 <> '') or (seg2 <> '') then
-      AppendToStream(AStream, Format(
-        '    <draw:stroke-dash draw:name="%s" draw:display-name="%s" draw:style="round" draw:distance="%.*f%s" %s%s/>' + LE, [
-        ASCIIName(linestyle.Name), linestyle.Name,
-        DECS[linestyle.RelativeToLineWidth], linestyle.Distance, LENGTH_UNIT[linestyle.RelativeToLineWidth],
-        seg1, seg2
-      ]));
-  end;
+  WriteObjectLineStyles(AStream, AChart, 4);
+  WriteObjectGradientStyles(AStream, AChart, 4);
 
   AppendToStream(AStream,
     '  </office:styles>' + LE +
