@@ -140,6 +140,7 @@ type
       ASeg1Length: Double; ASeg1Count: Integer;
       ASeg2Length: Double; ASeg2Count: Integer;
       ADistance: Double; ARelativeToLineWidth: Boolean): Integer;
+    function IndexOfName(AName: String): Integer;
     property Items[AIndex: Integer]: TsChartLineStyle read GetItem write SetItem; default;
   end;
 
@@ -777,6 +778,14 @@ end;
 function TsChartLineStyleList.GetItem(AIndex: Integer): TsChartLineStyle;
 begin
   Result := TsChartLineStyle(inherited);
+end;
+
+function TsChartLineStyleList.IndexOfName(AName: String): Integer;
+begin
+  for Result := 0 to Count-1 do
+    if Items[Result].Name = AName then
+      exit;
+  Result := -1;
 end;
 
 procedure TsChartLineStyleList.SetItem(AIndex: Integer; AValue: TsChartLineStyle);

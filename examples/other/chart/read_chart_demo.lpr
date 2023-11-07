@@ -21,7 +21,7 @@ begin
       chart := b.GetChartByIndex(i);
       sheet := b.GetWorksheetByIndex(chart.SheetIndex);
       WriteLn('Chart "', chart.Name, '":');
-      WriteLn('  in worksheet "', sheet.Name, '", ',
+      WriteLn('  Worksheet "', sheet.Name, '", ',
         'row:', chart.Row, ' (+',chart.OffsetY:0:0, 'mm) ',
         'col:', chart.Col, ' (+',chart.OffsetX:0:0, 'mm) ',
         'width:', chart.Width:0:0, 'mm height:', chart.Height:0:0,  'mm');
@@ -35,7 +35,7 @@ begin
       for j := 0 to chart.Hatches.Count-1 do
         WriteLn('    "', chart.Hatches[j].Name, '" ',
           GetEnumName(TypeInfo(TsChartHatchStyle), ord(chart.Hatches[j].Style)), ' ',
-          'Line color:', IntToHex(chart.Hatches[j].LineColor, 6), ' ',
+          'LineColor:', IntToHex(chart.Hatches[j].LineColor, 6), ' ',
           'Distance:', chart.Hatches[j].LineDistance:0:0, 'mm ',
           'Angle:', chart.Hatches[j].LineAngle:0:0, 'deg ',
           'Filled:', chart.Hatches[j].Filled);
@@ -52,6 +52,19 @@ begin
           'Angle:', chart.Gradients[j].Angle:0:0, 'deg ',
           'CenterX:', chart.Gradients[j].CenterX*100:0:0, '% ',
           'CenterY:', chart.Gradients[j].CenterY*100:0:0, '% ');
+      WriteLn;
+
+      WriteLn('  Chart border:');
+      WriteLn('    Style:', chart.Border.Style,
+                 ' Width:', chart.Border.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.Border.Color, 6),
+                 ' Transparency:', chart.Border.Transparency:0:2);
+
+      WriteLn('  Chart background:');
+      WriteLn('    Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Background.Style)),
+                 ' Color:', IntToHex(chart.background.Color, 6),
+                 ' Gradient:', chart.Background.Gradient,
+                 ' Hatch:', chart.Background.Hatch);
     end;
 
   finally

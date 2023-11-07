@@ -19,10 +19,21 @@ type
   private
     FChartFiles: TStrings;
     FPointSeparatorSettings: TFormatSettings;
-    procedure ReadChartFiles(AStream: TStream; AFileList: String);
+    function FindStyleNode(AStyleNodes: TDOMNode; AStyleName: String): TDOMNode;
+    procedure GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
+    procedure GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine);
+
+
+    procedure ReadChartBackgroundStyle(AStyleNode: TDOMNode; AChart: TsChart);
+
     procedure ReadObjectGradientStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectHatchStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectLineStyles(ANode: TDOMNode; AChart: TsChart);
+
+    procedure ReadChartProps(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
+  protected
+    procedure ReadChartFiles(AStream: TStream; AFileList: String);
+    procedure ReadChart(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadObjectStyles(ANode: TDOMNode; AChart: TsChart);
   public
     constructor Create(AReader: TsBasicSpreadReader); override;
@@ -37,7 +48,6 @@ type
     FSObjectStyles: array of TStream;
     FNumberFormatList: TStrings;
     FPointSeparatorSettings: TFormatSettings;
-
     function GetChartAxisStyleAsXML(Axis: TsChartAxis; AIndent, AStyleID: Integer): String;
     function GetChartBackgroundStyleAsXML(AChart: TsChart; AFill: TsChartFill;
       ABorder: TsChartLine; AIndent: Integer; AStyleID: Integer): String;
@@ -157,6 +167,31 @@ begin
       Result := Result + Format('_%.2x_', [ord(AName[i])]);
 end;
 
+function UnASCIIName(AName: String): String;
+var
+  i: Integer;
+  s: String;
+  decoding: Boolean;
+begin
+  Result := '';
+  decoding := false;
+  for i := 1 to Length(AName) do
+  begin
+    if AName[i] = '_' then
+    begin
+      if decoding then
+        Result := Result + char(StrToInt('$'+s))
+      else
+        s := '';
+      decoding := not decoding;
+    end else
+    if decoding then
+      s := s + AName[i]
+    else
+      Result := Result + AName[i];
+  end;
+end;
+
 { Extracts the length from an ods length string, e.g. "3.5cm" or "300%". In the
   former case AValue become 35 (in millimeters), in the latter case AValue is
   300 and Relative becomes true }
@@ -253,6 +288,173 @@ begin
   FChartFiles.Add(AFileList);
 end;
 
+procedure TsSpreadOpenDocChartReader.GetChartFillProps(ANode: TDOMNode;
+  AChart: TsChart; AFill: TsChartFill);
+var
+  s: String;
+  sc: String;
+  sn: String;
+  opacity: Double;
+begin
+  s := GetAttrValue(ANode, 'draw:fill');
+  case s of
+    'none':
+      AFill.Style := cfsNoFill;
+    'solid':
+      begin
+        AFill.Style := cfsSolid;
+        sc := GetAttrValue(ANode, 'draw:fill-color');
+        if sc <> '' then
+          AFill.Color := HTMLColorStrToColor(sc);
+      end;
+    'gradient':
+      begin
+        AFill.Style := cfsGradient;
+        sn := GetAttrValue(ANode, 'draw:fill-gradient-name');
+        if sn <> '' then
+          AFill.Gradient := AChart.Gradients.IndexOfName(UnASCIIName(sn));
+      end;
+    'hatch':
+      begin
+        AFill.Style := cfsHatched;
+        sn := GetAttrValue(ANode, 'draw:fill-hatch-name');
+        if sn <> '' then
+          AFill.Hatch := AChart.Hatches.IndexOfName(UnASCIIName(sn));
+        sc := GetAttrValue(ANode, 'draw:fill-color');
+        if sc <> '' then
+          AFill.Color := HTMLColorStrToColor(sc);
+        sc := GetAttrValue(ANode, 'draw:fill-hatch-solid');
+   //     AFill.Hatch.Filled := (sc = 'true');   // !!!! FIX ME: Filled should not be part of the style
+      end;
+  end;
+  s := GetAttrValue(ANode, 'draw:opacity');
+  if (s <> '') and TryPercentStrToFloat(s, opacity) then
+    AFill.Transparency := 1.0 - opacity;
+end;
+
+procedure TsSpreadOpenDocChartReader.GetChartLineProps(ANode: TDOMNode;
+  AChart: TsChart; ALine: TsChartLine);
+var
+  s: String;
+  sn: String;
+  sc: String;
+  sw: String;
+  value: Double;
+  rel: Boolean;
+begin
+  s := GetAttrValue(ANode, 'draw:stroke');
+  if s = 'none' then
+    ALine.Style := clsNoLine
+  else
+  begin
+    if s = 'solid' then
+      ALine.Style := clsSolid
+    else
+    if s = 'dash' then
+    begin
+      sn := GetAttrValue(ANode, 'draw:stroke-dash');
+      if sn <> '' then
+        ALine.Style := AChart.LineStyles.IndexOfName(UnAsciiName(sn));
+    end;
+
+    sc := 'draw:stroke-color';
+    if sc <> '' then
+      ALine.Color := HTMLColorStrToColor(sc);
+
+    sw := 'draw:strike-width';
+    if (sw <> '') and EvalLengthStr(sw, value, rel) then
+      ALine.Width := value;
+  end;
+end;
+
+                            (*
+function TsSpreadOpenDocChartWriter.GetChartBackgroundStyleAsXML(
+  AChart: TsChart; AFill: TsChartFill; ABorder: TsChartLine;
+  AIndent, AStyleID: Integer): String;
+var
+  indent: String;
+  fillStr: String = '';
+  borderStr: String = '';
+begin
+  fillStr := GetChartFillStyleGraphicPropsAsXML(AChart, AFill);
+  borderStr := GetChartLineStyleGraphicPropsAsXML(AChart, ABorder);
+  indent := DupeString(' ', AIndent);
+  Result := Format(
+    indent + '<style:style style:name="ch%d" style:family="chart">' + LE +
+    indent + '  <style:graphic-properties %s%s />' + LE +
+    indent + '</style:style>' + LE,
+    [ AStyleID, fillStr, borderStr ]
+  );
+end;                   *)
+
+procedure TsSpreadOpenDocChartReader.ReadChart(AChartNode, AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  nodeName: String;
+begin
+  AChartNode := AChartNode.FirstChild.FirstChild;   // --> chart:chart
+  while (AChartNode <> nil) do
+  begin
+    nodeName := AChartNode.NodeName;
+    if nodeName = 'chart:chart' then
+    begin
+      ReadChartProps(AChartNode, AStyleNode, AChart);
+    end;
+    AChartNode := AChartNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartBackgroundStyle(AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  nodeName: String;
+begin
+  nodeName := AStyleNode.NodeName;
+  AStyleNode := AStyleNode.FirstChild;
+  while AStyleNode <> nil do begin
+    nodeName := AStyleNode.NodeName;
+    if nodeName = 'style:graphic-properties' then
+    begin
+      GetChartLineProps(AStyleNode, AChart, AChart.Border);
+      GetChartFillProps(AStyleNode, AChart, AChart.Background);
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
+end;
+
+function TsSpreadOpenDocChartReader.FindStyleNode(AStyleNodes: TDOMNode;
+  AStyleName: String): TDOMNode;
+var
+  nodeName: String;
+  sn, sf: String;
+begin
+  Result := AStyleNodes.FirstChild;
+  while (Result <> nil) do
+  begin
+    nodeName := Result.NodeName;
+    if nodeName = 'style:style' then
+    begin
+      sn := GetAttrValue(Result, 'style:name');
+      sf := GetAttrValue(Result, 'style:family');
+      if (sf = 'chart') and (sn = AStyleName) then
+        exit;
+    end;
+    Result := Result.NextSibling;
+  end;
+  Result := nil;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartProps(AChartNode, AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  styleName: String;
+  styleNode: TDOMNode;
+begin
+  styleName := GetAttrValue(AChartNode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, styleName);
+  ReadChartBackgroundStyle(styleNode, AChart);
+end;
+
 procedure TsSpreadOpenDocChartReader.ReadChartFiles(AStream: TStream;
   AFileList: String);
 var
@@ -326,9 +528,15 @@ begin
   end;
 
   if not ok then
-    raise Exception.Create('ODS chart reader: error reading file ' + contentFile);
+    raise Exception.Create('ODS chart reader: error reading content file ' + contentFile);
 
-  // ReadChart(contentDoc.DocumentElement.FindNode('office:body', chart);
+  ReadChart(
+    doc.DocumentElement.FindNode('office:body'),
+    doc.DocumentElement.FindNode('office:automatic-styles'),
+    chart
+  );
+
+  FreeAndNil(doc);
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadCharts(AStream: TStream);
