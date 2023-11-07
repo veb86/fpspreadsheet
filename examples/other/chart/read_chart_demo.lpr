@@ -33,12 +33,25 @@ begin
 
       WriteLn  ('  Hatch styles: ');
       for j := 0 to chart.Hatches.Count-1 do
-        WriteLn('                "', chart.Hatches[j].Name, '" ',
+        WriteLn('    "', chart.Hatches[j].Name, '" ',
           GetEnumName(TypeInfo(TsChartHatchStyle), ord(chart.Hatches[j].Style)), ' ',
-          'Line color: ', IntToHex(chart.Hatches[j].LineColor, 6), ' ',
-          'Distance: ', chart.Hatches[j].LineDistance:0:0, 'mm ',
-          'Angle: ', chart.Hatches[j].LineAngle:0:0, 'deg ',
-          'Filled: ', chart.Hatches[j].Filled);
+          'Line color:', IntToHex(chart.Hatches[j].LineColor, 6), ' ',
+          'Distance:', chart.Hatches[j].LineDistance:0:0, 'mm ',
+          'Angle:', chart.Hatches[j].LineAngle:0:0, 'deg ',
+          'Filled:', chart.Hatches[j].Filled);
+
+      WriteLn  ('  Gradient styles: ');
+      for j := 0 to chart.Gradients.Count-1 do
+        WriteLn('    "', chart.Gradients[j].Name, '" ',
+          GetEnumName(TypeInfo(TsChartGradientStyle), ord(chart.Gradients[j].Style)), ' ',
+          'StartColor:', IntToHex(chart.Gradients[j].StartColor, 6), ' ',
+          'EndColor:', IntToHex(chart.Gradients[j].EndColor, 6), ' ',
+//          'StartIntensity:', chart.Gradients[j].StartIntensity*100:0:0, '% ',
+//          'EndIntensity:', chart.Gradients[j].EndIntensity*100:0:0, '% ',
+          'Border:', chart.Gradients[j].Border*100:0:0, '% ',
+          'Angle:', chart.Gradients[j].Angle:0:0, 'deg ',
+          'CenterX:', chart.Gradients[j].CenterX*100:0:0, '% ',
+          'CenterY:', chart.Gradients[j].CenterY*100:0:0, '% ');
     end;
 
   finally

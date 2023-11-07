@@ -61,10 +61,11 @@ type
   private
     function GetItem(AIndex: Integer): TsChartGradient;
     procedure SetItem(AIndex: Integer; AValue: TsChartGradient);
+  public
     function AddGradient(AName: String; AStyle: TsChartGradientStyle;
       AStartColor, AEndColor: TsColor; AStartIntensity, AEndIntensity: Double;
       ABorder, ACenterX, ACenterY, AAngle: Double): Integer;
-  public
+
     function AddAxialGradient(AName: String; AStartColor, AEndColor: TsColor;
       AStartIntensity, AEndIntensity, ABorder, AAngle: Double): Integer;
     function AddEllipticGradient(AName: String; AStartColor, AEndColor: TsColor;

@@ -20,6 +20,7 @@ type
     FChartFiles: TStrings;
     FPointSeparatorSettings: TFormatSettings;
     procedure ReadChartFiles(AStream: TStream; AFileList: String);
+    procedure ReadObjectGradientStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectHatchStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectLineStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectStyles(ANode: TDOMNode; AChart: TsChart);
@@ -355,10 +356,76 @@ begin
       'draw:hatch':        // read hatch pattern
         ReadObjectHatchStyles(ANode, AChart);
       'draw:gradient':     // gradient definition
-        ;
+        ReadObjectGradientStyles(ANode, AChart);
     end;
     ANode := ANode.NextSibling;
   end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadObjectGradientStyles(ANode: TDOMNode;
+  AChart: TsChart);
+var
+  i: Integer;
+  s: String;
+  styleName: String;
+  gs: TsChartGradientStyle;
+  gradientStyle: TsChartGradientStyle = cgsLinear;
+  startColor: TsColor = scSilver;
+  endColor: TsColor = scWhite;
+  startIntensity, endIntensity: Double;
+  border, centerX, centerY: Double;
+  angle: Double = 0.0;
+begin
+  styleName := GetAttrValue(ANode, 'draw:display-name');
+  if styleName ='' then
+    styleName := GetAttrValue(ANode, 'draw:name');
+
+  s := GetAttrValue(ANode, 'draw:style');
+  if s <> '' then
+    for gs in TsChartGradientStyle do
+      if GRADIENT_STYLES[gs] = s then
+      begin
+        gradientStyle := gs;
+        break;
+      end;
+
+  s := GetAttrValue(ANode, 'draw:start-color');
+  if s <> '' then
+    startColor := HTMLColorStrToColor(s);
+
+  s := GetAttrValue(ANode, 'draw:end-color');
+  if s <> '' then
+    endColor := HTMLColorStrToColor(s);
+
+  s := GetAttrValue(ANode, 'draw:start-intensity');
+  if not TryPercentStrToFloat(s, startIntensity) then
+    startIntensity := 1.0;
+
+  s := GetAttrValue(ANode, 'draw:end-intensity');
+  if not TryPercentStrToFloat(s, endIntensity) then
+    endIntensity := 1.0;
+
+  s := GetAttrValue(ANode, 'draw:border');
+  if not TryPercentStrToFloat(s, border) then
+    border := 0.0;
+
+  s := GetAttrValue(ANode, 'draw:angle');
+  if s <> '' then begin
+    for i := Length(s) downto 1 do
+      if not (s[i] in ['0'..'9', '.', '+', '-']) then Delete(s, i, 1);
+    angle := StrToFloatDef(s, 0.0, FPointSeparatorSettings);
+  end;
+
+  s := GetAttrValue(ANode, 'draw:cx');
+  if not TryPercentStrToFloat(s, centerX) then
+    centerX := 0.0;
+
+  s := GetAttrValue(ANode, 'draw:cy');
+  if not TryPercentStrToFloat(s, centerY) then
+    centerY := 0.0;
+
+  AChart.Gradients.AddGradient(styleName, gradientStyle, startColor, endColor,
+    startIntensity, endIntensity, border, centerX, centerY, angle);
 end;
 
 { Read the hatch pattern stored in the "draw:hatch" nodes of the chart's

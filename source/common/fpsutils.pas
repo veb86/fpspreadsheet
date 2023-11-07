@@ -165,6 +165,8 @@ function TryStrToFloatAuto(AText: String; out ANumber: Double;
 function TryFractionStrToFloat(AText: String; out ANumber: Double;
   out AIsMixed: Boolean; out AMaxDigits: Integer): Boolean;
 
+function TryPercentStrToFloat(AText: String; out ANumber: Double): Boolean;
+
 function Round(AValue: Double): Int64;
 
 function cmToPts(AValue: Double): Double; inline;
@@ -1974,6 +1976,24 @@ begin
   AMaxDigits := Length(sDenom);
 
   Result := true;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Converts a percent-formatted string to a decimal number.
+  Example: '150%' --> 1.5
+-------------------------------------------------------------------------------}
+function TryPercentStrToFloat(AText: String; out ANumber: Double): boolean;
+var
+  res: Integer;
+begin
+  Result := false;
+  if AText = '' then
+    exit;
+  if AText[Length(AText)] = '%' then Delete(AText, Length(AText), 1);
+  val(AText, ANumber, res);
+  Result := (res = 0);
+  if Result then
+    ANumber := ANumber * 0.01;
 end;
 
 {@@ ----------------------------------------------------------------------------
