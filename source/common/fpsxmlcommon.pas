@@ -23,7 +23,7 @@ const
 
 type
   TsSpreadXMLReader = class(TsCustomSpreadReader)
-  protected
+  public
     procedure ReadXMLFile(out ADoc: TXMLDocument; AFileName: String);
     procedure ReadXMLStream(out ADoc: TXMLDocument; AStream: TStream);
   end;

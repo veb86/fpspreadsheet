@@ -443,6 +443,7 @@ type
 
   TsChart = class(TsChartFillElement)
   private
+    FName: String;
     FIndex: Integer;             // Index in workbook's chart list
     FSheetIndex: Integer;
     FRow, FCol: Cardinal;
@@ -481,6 +482,8 @@ type
     function IsScatterChart: Boolean;
     function NumLineStyles: Integer;
 
+    { Name for internal purposes to identify the chart during reading from file }
+    property Name: String read FName write FName;
     { Index of chart in workbook's chart list. }
     property Index: Integer read FIndex write FIndex;
     { Index of worksheet sheet which contains the chart. }
@@ -744,8 +747,23 @@ function TsChartLineStyleList.Add(AName: String;
   ADistance: Double; ARelativeToLineWidth: Boolean): Integer;
 var
   ls: TsChartLineStyle;
+  i: Integer;
 begin
-  ls := TsChartLineStyle.Create;
+  Result := -1;
+  for i := 0 to Count-1 do
+    if TsChartLineStyle(Items[i]).Name = AName then
+    begin
+      Result := i;
+      break;
+    end;
+
+  if Result = -1 then
+  begin
+    ls := TsChartLineStyle.Create;
+    Result := inherited Add(ls);
+  end else
+    ls := TsChartlineStyle(Items[Result]);
+
   ls.Name := AName;
   ls.Segment1.Count := ASeg1Count;
   ls.Segment1.Length := ASeg1Length;
@@ -753,7 +771,6 @@ begin
   ls.Segment2.Length := ASeg2Length;
   ls.Distance := ADistance;
   ls.RelativeToLineWidth := ARelativeToLineWidth;
-  result := inherited Add(ls);
 end;
 
 function TsChartLineStyleList.GetItem(AIndex: Integer): TsChartLineStyle;

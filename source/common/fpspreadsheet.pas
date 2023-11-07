@@ -610,6 +610,8 @@ type
       out ARow1, ACol1, ARow2, ACol2: Cardinal;
       out ARowOffs1, AColOffs1, ARowOffs2, AColOffs2: Double;
       out x, y, AWidth, AHeight: Double);
+    procedure CalcObjectCell(x, y, AWidth, AHeight: Double;
+      out ARow, ACol: Cardinal; out ARowOffs, AColOffs: Double);
     function GetImage(AIndex: Integer): TsImage;
     function GetImageCount: Integer;
     function GetPointerToImage(AIndex: Integer): PsImage;

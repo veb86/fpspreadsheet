@@ -197,6 +197,17 @@ type
     property NumFormatList: TStringList read FNumFormatList;
   end;
 
+  {@@ Helper class for the spreadsheet reader to keep processing of charts
+    out of the main reader unit. }
+  TsBasicSpreadChartReader = class
+  protected
+    FReader: TsBasicSpreadReader;
+  public
+    constructor Create(AReader: TsBasicSpreadReader); virtual;
+    procedure ReadCharts(AStream: TStream); virtual; abstract;
+    property Reader: TsBasicSpreadReader read FReader;
+  end;
+
   {@@ Helper class for the spreadsheet writer to keep processing of charts
     out of the main writer unit. }
   TsBasicSpreadChartWriter = class
@@ -923,6 +934,17 @@ procedure TsCustomSpreadWriter.WriteToStrings(AStrings: TStrings;
 begin
   Unused(AStrings, AParams);
   raise Exception.Create(rsUnsupportedWriteFormat);
+end;
+
+
+{------------------------------------------------------------------------------}
+{                           TsBasicSpreadChartReader                           }
+{------------------------------------------------------------------------------}
+
+{@@ Constructor of the ChartReader. It gets the main reader as parameter. }
+constructor TsBasicSpreadChartReader.Create(AReader: TsBasicSpreadReader);
+begin
+  FReader := AReader;
 end;
 
 

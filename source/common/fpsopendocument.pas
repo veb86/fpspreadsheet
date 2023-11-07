@@ -87,6 +87,7 @@ type
     // General
     FileName: String;
     Encrypted: Boolean;
+    IsChartRoot: Boolean;
     // Checksum of encrypted data
     EncryptionData_Checksum: string;  // base64
     EncryptionData_ChecksumType: String;
@@ -122,11 +123,15 @@ type
     FRepeatedCols: TsRowColRange;
     FRepeatedRows: TsRowColRange;
     FManifestFileEntries: TFPList;
+
+    FChartReader: TsBasicSpreadChartReader;
+
     procedure ApplyColData;
     procedure ApplyStyleToCell(ACell: PCell; AStyleIndex: Integer);
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
     function ApplyTableStyle(ASheet: TsBasicWorksheet;
       AStyleName: String): Boolean;
+    function CollectChartFilesFromManifest: Boolean;
     function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
     function ExtractDateTimeFromNode(ANode: TDOMNode;
       ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
@@ -223,6 +228,9 @@ type
     { General reading methods }
     procedure ReadFromStream(AStream: TStream;
       APassword: String = ''; AParams: TsStreamParams = []); override;
+
+    { Helper methods, public because needed by the chart reader }
+    function CreateXMLStream: TStream;
   end;
 
   { TsSpreadOpenDocWriter }
@@ -1207,6 +1215,8 @@ constructor TsSpreadOpenDocReader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
 
+  FChartReader := TsSpreadOpenDocChartReader.Create(self);
+
   InitOpenDocLimitations(FLimitations);
 
   FPointSeparatorSettings := DefaultFormatSettings;
@@ -1271,6 +1281,9 @@ begin
   FManifestFileEntries.Free;
 
   FHeaderFooterFontList.Free;
+
+  FChartReader.Free;
+
   inherited Destroy;
 end;
 
@@ -1357,6 +1370,17 @@ end;
 class function TsSpreadOpenDocReader.CheckFileFormat(AStream: TStream): Boolean;
 begin
   Result := HasZipHeader(AStream);
+end;
+
+function TsSpreadOpenDocReader.CreateXMLStream: TStream;
+begin
+  if boFileStream in FWorkbook.Options then
+    Result := TFileStream.Create(GetTempFileName, fmCreate)
+  else
+  if boBufStream in FWorkbook.Options then
+    Result := TBufStream.Create(GetTempFileName, fmCreate)
+  else
+    Result := TMemoryStream.Create;
 end;
 
 function TsSpreadOpenDocReader.ExtractFormatIndexFromStyle(ACellStyleName: String;
@@ -1460,6 +1484,53 @@ begin
   Result := true;
 end;
 
+{ Searches the manifest file entries for the names of files needed by charts.
+  Returns false if there no charts are found.
+  The found filenames are passed over to the chart reader for further processing. }
+function TsSpreadOpenDocReader.CollectChartFilesFromManifest: Boolean;
+var
+  i, j: Integer;
+  fn: String;
+  FileList: TStringList;
+  RootList: TStringList;
+  files: String;
+begin
+  Result := false;
+
+  FileList := TStringList.Create;
+  RootList := TStringList.Create;
+  try
+    // Create a sorted list of all file names in manifest entries.
+    FileList.Sorted := true;
+    RootList.Sorted := true;
+    for i := 0 to FManifestFileEntries.Count-1 do begin
+      fn := TsOpenDocManifestFileEntry(FManifestFileEntries[i]).FileName;
+      if TsOpenDocManifestFileEntry(FManifestFileEntries[i]).IsChartRoot then
+        RootList.Add(fn)
+      else
+        FileList.Add(fn);
+    end;
+
+    // No charts found
+    if Rootlist.Count = 0 then
+      exit;
+
+    for i := 0 to RootList.Count-1 do
+    begin
+      files := '';
+      for j := 0 to FileList.Count-1 do
+        if (pos(RootList[i], FileList[j]) = 1) and (RootList[i] <> FileList[j]) then
+          files := files + FileList[j] + ',';
+      Delete(files, Length(files), 1);
+      TsSpreadOpenDocChartReader(FChartReader).AddChartFiles(files);
+    end;
+
+    Result := true;
+  finally
+    RootList.Free;
+    FileList.Free;
+  end;
+end;
 
 { Extracts a boolean value from a "boolean" cell node.
   Is called from ReadBoolean }
@@ -2123,6 +2194,7 @@ var
   encryptionDataNode, childNode: TDOMNode;
   nodeName: String;
   entry: TsOpenDocManifestFileEntry;
+  mediaType: String;
 begin
   while ANode <> nil do
   begin
@@ -2131,6 +2203,8 @@ begin
     begin
       entry := TsOpenDocManifestFileEntry.Create;
       entry.FileName := GetAttrValue(ANode, 'manifest:full-path');
+      mediaType := GetAttrValue(ANode, 'manifest:media-type');
+      entry.IsChartRoot := (mediaType = 'application/vnd.oasis.opendocument.chart');
       encryptionDataNode := ANode.FirstChild;
       while encryptionDataNode <> nil do
       begin
@@ -2920,18 +2994,6 @@ var
   sheetName: String;
   tablestyleName: String;
   err: String;
-
-  function CreateXMLStream: TStream;
-  begin
-    if boFileStream in FWorkbook.Options then
-      Result := TFileStream.Create(GetTempFileName, fmCreate)
-    else
-    if boBufStream in FWorkbook.Options then
-      Result := TBufStream.Create(GetTempFileName, fmCreate)
-    else
-      Result := TMemoryStream.Create;
-  end;
-
 begin
   Unused(AParams);
 
@@ -3103,6 +3165,10 @@ begin
     finally
       XMLStream.Free;
     end;
+
+    // Reading of charts
+    if CollectChartFilesFromManifest then
+      FChartReader.ReadCharts(AStream);
 
     // Active sheet
     if FActiveSheet <> '' then
@@ -4907,15 +4973,20 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
   var
     r, c: Cardinal;
     x, y, w, h: Double;
+    nodeName: String;
     dx: Double = 0.0;
     dy: Double = 0.0;
     sx: Double = 1.0;
     sy: Double = 1.0;
     childNode: TDOMNode;
-    idx: Integer;
+    i, idx: Integer;
     href: String;
     img: PsImage;
+    entry: TsOpenDocManifestFileEntry;
+    chart: TsChart;
+    handled: Boolean;
   begin
+    nodeName := ANode.NodeName;
     x := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:x')));
     y := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:y')));
     w := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:width')));
@@ -4923,29 +4994,55 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
     childNode := ANode.FirstChild;
     while Assigned(childNode) do
     begin
+      nodeName := childNode.NodeName;
       href := GetAttrValue(childNode, 'xlink:href');
       if href <> '' then
       begin
-        idx := TsWorkbook(FWorkbook).FindEmbeddedObj(ExtractFileName(href));
-        if idx > -1 then
-          with FWorksheet as TsWorksheet do begin
-            // When called from a cell node, x and y are relative to the cell.
-            // When called from the Shapes node, x and y refer to the worksheet.
-            CalcImageCell(idx, x, y, w, h, r, c, dy, dx, sx, sy);  // order of dx and dy is correct!
-            if ARow <> UNASSIGNED_ROW_COL_INDEX then begin
-              r := ARow;
-              dy := y;
-            end;
-            if ACol <> UNASSIGNED_ROW_COL_INDEX then begin
-              c := ACol;
-              dx := x;
-            end;
-            idx := WriteImage(r, c, idx, dx, dy, sx, sy);
-            if AHLink <> '' then begin
-              img := GetPointerToImage(idx);
-              img^.HyperlinkTarget := AHLink;
+        if nodeName = 'draw:object' then
+        begin
+          // Is it a chart?
+          for i := 0 to FManifestFileEntries.Count-1 do
+          begin
+            entry := TsOpenDocManifestFileEntry(FManifestFileEntries[i]);
+            if entry.IsChartRoot and ('./' + entry.FileName = href + '/') then
+            begin
+              (FWorksheet as TsWorksheet).CalcObjectCell(x, y, w, h, r, c, dy, dx);
+              chart := (FWorkbook as TsWorkbook).AddChart(FWorksheet, r, c, w, h, dx, dy);
+              chart.Name := entry.FileName;
+              handled := true;
+              break;
             end;
           end;
+          if handled then
+          begin
+            childNode := childNode.NextSibling;
+            Continue;
+          end;
+        end else
+        if nodeName = 'draw:image' then
+        begin
+          // It is an embedded image.
+          idx := TsWorkbook(FWorkbook).FindEmbeddedObj(ExtractFileName(href));
+          if idx > -1 then
+            with FWorksheet as TsWorksheet do begin
+              // When called from a cell node, x and y are relative to the cell.
+              // When called from the Shapes node, x and y refer to the worksheet.
+              CalcImageCell(idx, x, y, w, h, r, c, dy, dx, sx, sy);  // order of dx and dy is correct!
+              if ARow <> UNASSIGNED_ROW_COL_INDEX then begin
+                r := ARow;
+                dy := y;
+              end;
+              if ACol <> UNASSIGNED_ROW_COL_INDEX then begin
+                c := ACol;
+                dx := x;
+              end;
+              idx := WriteImage(r, c, idx, dx, dy, sx, sy);
+              if AHLink <> '' then begin
+                img := GetPointerToImage(idx);
+                img^.HyperlinkTarget := AHLink;
+              end;
+            end;
+        end;
       end;
       childNode := childnode.NextSibling;
     end;

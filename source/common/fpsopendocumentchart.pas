@@ -11,9 +11,25 @@ uses
  {$ELSE}
   fpszipper,
  {$ENDIF}
+  laz2_xmlread, laz2_DOM,
   fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsReaderWriter, fpsXMLCommon;
 
 type
+  TsSpreadOpenDocChartReader = class(TsBasicSpreadChartReader)
+  private
+    FChartFiles: TStrings;
+    FPointSeparatorSettings: TFormatSettings;
+    procedure ReadChartFiles(AStream: TStream; AFileList: String);
+    procedure ReadObjectHatchStyles(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadObjectLineStyles(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadObjectStyles(ANode: TDOMNode; AChart: TsChart);
+  public
+    constructor Create(AReader: TsBasicSpreadReader); override;
+    destructor Destroy; override;
+    procedure AddChartFiles(AFileList: String);
+    procedure ReadCharts(AStream: TStream); override;
+  end;
+
   TsSpreadOpenDocChartWriter = class(TsBasicSpreadChartWriter)
   private
     FSCharts: array of TStream;
@@ -92,8 +108,9 @@ type
   TAxisKind = 3..6;
 
 const
-  OPENDOC_PATH_CHART_CONTENT = 'Object %d/content.xml';
-  OPENDOC_PATH_CHART_STYLES  = 'Object %d/styles.xml';
+  OPENDOC_PATH_METAINF_MANIFEST = 'META-INF/manifest.xml';
+  OPENDOC_PATH_CHART_CONTENT    = 'Object %d/content.xml';
+  OPENDOC_PATH_CHART_STYLES     = 'Object %d/styles.xml';
 
   CHART_TYPE_NAMES: array[TsChartType] of string = (
     '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble',
@@ -139,6 +156,44 @@ begin
       Result := Result + Format('_%.2x_', [ord(AName[i])]);
 end;
 
+{ Extracts the length from an ods length string, e.g. "3.5cm" or "300%". In the
+  former case AValue become 35 (in millimeters), in the latter case AValue is
+  300 and Relative becomes true }
+function EvalLengthStr(AText: String; out AValue: Double; out Relative: Boolean): Boolean;
+var
+  i: Integer;
+  res: Integer;
+  units: String;
+begin
+  Result := false;
+
+  if AText = '' then
+    exit;
+
+  units := '';
+  for i := Length(AText) downto 0 do
+    if AText[i] in ['%', 'm', 'c', 'p', 't', 'i', 'n'] then
+    begin
+      units := AText[i] + units;
+      Delete(AText, i, 1);
+    end;
+  Val(AText, AValue, res);
+  Result := (res = 0);
+  if res = 0 then
+  begin
+    Relative := false;
+    case units of
+      '%': Relative := true;
+      'mm': ;
+      'cm': AValue := AValue * 10;
+      'pt': AValue := PtsToMM(AValue);
+      'in': AValue := InToMM(AValue);
+      else  Result := false;
+    end;
+  end;
+end;
+
+
 {------------------------------------------------------------------------------}
 {                        internal number formats                               }
 {------------------------------------------------------------------------------}
@@ -169,6 +224,226 @@ begin
   end;
 end;
 
+
+{------------------------------------------------------------------------------}
+{                        TsSpreadOpenDocChartReader                            }
+{------------------------------------------------------------------------------}
+
+constructor TsSpreadOpenDocChartReader.Create(AReader: TsBasicSpreadReader);
+begin
+  inherited Create(AReader);
+
+  FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
+  FPointSeparatorSettings.DecimalSeparator:='.';
+
+  FChartFiles := TStringList.Create;
+end;
+
+destructor TsSpreadOpenDocChartReader.Destroy;
+begin
+  FChartFiles.Free;
+  inherited;
+end;
+
+{ AFiles contains a sorted, comma-separated list of all files
+  belonging to each chart. }
+procedure TsSpreadOpenDocChartReader.AddChartFiles(AFileList: String);
+begin
+  FChartFiles.Add(AFileList);
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartFiles(AStream: TStream;
+  AFileList: String);
+var
+  sa: TStringArray;
+  i: Integer;
+  fn: String;
+  contentFile: String = '';
+  stylesFile: String = '';
+  XMLStream: TStream;
+  doc: TXMLDocument = nil;
+  chart: TsChart;
+  ok: Boolean;
+  lReader: TsSpreadOpenDocReader;
+begin
+  lReader := TsSpreadOpenDocReader(Reader);
+
+  sa := SplitStr(AFileList, ',');
+  for i := 0 to High(sa) do
+  begin
+    fn := ExtractFileName(sa[i]);
+    if fn = 'content.xml' then
+      contentFile := sa[i]
+    else if fn = 'styles.xml' then
+      stylesFile := sa[i];
+  end;
+
+  for i := 0 to TsWorkbook(Reader.Workbook).GetChartCount-1 do
+  begin
+    chart := TsWorkbook(Reader.Workbook).GetChartByIndex(i);
+    if pos(chart.Name, contentFile) = 1 then
+      break;
+    chart := nil;
+  end;
+
+  // Chart not found
+  if chart = nil then
+    raise Exception.Create('Chart in "' + contentfile + '" not found.');
+
+  if stylesFile <> '' then
+  begin
+    XMLStream := lReader.CreateXMLStream;
+    try
+      ok := UnzipToStream(AStream, stylesFile, XMLStream);
+      if ok then
+      begin
+        lReader.ReadXMLStream(doc, XMLStream);
+        if not Assigned(doc) then
+          ok := false;
+      end;
+    finally
+      XMLStream.Free;
+    end;
+    if not ok then
+      raise Exception.Create('ODS chart reader: error reading styles file "' + stylesFile + '"');
+
+    ReadObjectStyles(doc.DocumentElement.FindNode('office:styles'), chart);
+    FreeAndNil(doc);
+  end;
+
+  XMLStream := lReader.CreateXMLStream;
+  try
+    ok := UnzipToStream(AStream, contentFile, XMLStream);
+    if ok then
+    begin
+      lReader.ReadXMLStream(doc, XMLStream);
+      if not Assigned(doc) then
+        ok := false;
+    end;
+  finally
+    XMLStream.Free;
+  end;
+
+  if not ok then
+    raise Exception.Create('ODS chart reader: error reading file ' + contentFile);
+
+  // ReadChart(contentDoc.DocumentElement.FindNode('office:body', chart);
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadCharts(AStream: TStream);
+var
+  i: Integer;
+begin
+  for i := 0 to FChartFiles.Count-1 do
+    ReadChartFiles(AStream, FChartFiles[i]);
+end;
+
+{ Reads the styles stored in the Object files. }
+procedure TsSpreadOpenDocChartReader.ReadObjectStyles(ANode: TDOMNode;
+  AChart: TsChart);
+var
+  nodeName: String;
+begin
+  nodeName := ANode.NodeName;
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'draw:stroke-dash':  // read line pattern
+        ReadObjectLineStyles(ANode, AChart);
+      'draw:hatch':        // read hatch pattern
+        ReadObjectHatchStyles(ANode, AChart);
+      'draw:gradient':     // gradient definition
+        ;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{ Read the hatch pattern stored in the "draw:hatch" nodes of the chart's
+  Object styles.xml file. }
+procedure TsSpreadOpenDocChartReader.ReadObjectHatchStyles(ANode: TDOMNode; AChart: TsChart);
+var
+  i: Integer;
+  s: String;
+  styleName: String;
+  hs, hatchStyle: TsChartHatchStyle;
+  hatchColor: TsColor = scBlack;
+  hatchDist: Double;
+  hatchAngle: Double;
+  rel: Boolean;
+begin
+  styleName := GetAttrValue(ANode, 'draw:display-name');
+  if styleName = '' then
+    styleName := GetAttrValue(ANode, 'draw:name');
+
+  s := GetAttrValue(ANode, 'draw:style');
+  hatchStyle := chsSingle;
+  for hs in TsChartHatchStyle do
+    if HATCH_STYLES[hs] = s then
+    begin
+      hatchStyle := hs;
+      break;
+    end;
+
+  s := GetAttrValue(ANode, 'draw:color');
+  if s <> '' then
+    hatchColor := HTMLColorStrToColor(s);
+
+  s := GetAttrValue(ANode, 'draw:distance');
+  if not EvalLengthStr(s, hatchDist, rel) then
+    hatchDist := 2.0;
+
+  s := GetAttrValue(ANode, 'draw:rotation');
+  if TryStrToFloat(s, hatchAngle, FPointSeparatorSettings) then
+    hatchAngle := hatchAngle / 10
+  else
+    hatchAngle := 0;
+
+  AChart.Hatches.AddHatch(styleName, hatchStyle, hatchColor, hatchDist, hatchAngle, false);
+  AChart.Hatches.AddHatch(styleName+' filled', hatchStyle, hatchColor, hatchDist, hatchAngle, true);
+end;
+
+{ Reads the line styles stored as "draw:stroke-dash" nodes in the chart's
+  Object styles.xml file. }
+procedure TsSpreadOpenDocChartReader.ReadObjectLineStyles(ANode: TDOMNode; AChart: TsChart);
+var
+  styleName: String;
+  s: String;
+  dots1: Integer;
+  dots2: Integer = 0;
+  dots1Length: double = 3.0;
+  dots2Length: double = 0.0;
+  distance: double = 3.0;
+  rel1: Boolean = false;
+  rel2: Boolean = false;
+  relDist: Boolean = false;
+begin
+  styleName := GetAttrValue(ANode, 'draw:display-name');
+  if styleName = '' then
+    styleName := GetAttrValue(ANode, 'draw:name');
+
+  s := GetAttrValue(ANode, 'draw:dots1');
+  dots1 := StrToIntDef(s, 1);
+
+  s := GetAttrValue(ANode, 'draw:dots2');
+  dots2 := StrToIntDef(s, 0);
+
+  s := GetAttrValue(ANode, 'draw:dots1-length');
+  if not EvalLengthStr(s, dots1Length, rel1) then
+    dots1Length := 3.0;
+
+  s := GetAttrValue(ANode, 'draw:dots2-length');
+  if not EvalLengthStr(s, dots2Length, rel2) then
+    dots2Length := 0.0;
+
+  s := GetAttrValue(ANode, 'draw:distance');
+  if not EvalLengthstr(s, distance, relDist) then
+    distance := 3.0;
+
+  AChart.LineStyles.Add(styleName, dots1Length, dots1, dots2Length, dots2, distance, rel1 or rel2 or relDist);
+end;
 
 {------------------------------------------------------------------------------}
 {                        TsSpreadOpenDocChartWriter                            }
