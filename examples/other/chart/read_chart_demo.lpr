@@ -26,23 +26,23 @@ begin
         'col:', chart.Col, ' (+',chart.OffsetX:0:0, 'mm) ',
         'width:', chart.Width:0:0, 'mm height:', chart.Height:0:0,  'mm');
 
-      Write('  Line styles: ');
+      Write('  LINE STYLES: ');
       for j := 0 to chart.LineStyles.Count-1 do
         Write('"', chart.GetLineStyle(j).Name, '" ');
       WriteLn;
 
-      WriteLn  ('  Hatch styles: ');
+      WriteLn  ('  HATCH STYLES: ');
       for j := 0 to chart.Hatches.Count-1 do
-        WriteLn('    "', chart.Hatches[j].Name, '" ',
+        WriteLn('    ', j, ': "', chart.Hatches[j].Name, '" ',
           GetEnumName(TypeInfo(TsChartHatchStyle), ord(chart.Hatches[j].Style)), ' ',
           'LineColor:', IntToHex(chart.Hatches[j].LineColor, 6), ' ',
           'Distance:', chart.Hatches[j].LineDistance:0:0, 'mm ',
           'Angle:', chart.Hatches[j].LineAngle:0:0, 'deg ',
           'Filled:', chart.Hatches[j].Filled);
 
-      WriteLn  ('  Gradient styles: ');
+      WriteLn  ('  GRADIENT STYLES: ');
       for j := 0 to chart.Gradients.Count-1 do
-        WriteLn('    "', chart.Gradients[j].Name, '" ',
+        WriteLn('    ', j, ': "', chart.Gradients[j].Name, '" ',
           GetEnumName(TypeInfo(TsChartGradientStyle), ord(chart.Gradients[j].Style)), ' ',
           'StartColor:', IntToHex(chart.Gradients[j].StartColor, 6), ' ',
           'EndColor:', IntToHex(chart.Gradients[j].EndColor, 6), ' ',
@@ -52,19 +52,35 @@ begin
           'Angle:', chart.Gradients[j].Angle:0:0, 'deg ',
           'CenterX:', chart.Gradients[j].CenterX*100:0:0, '% ',
           'CenterY:', chart.Gradients[j].CenterY*100:0:0, '% ');
-      WriteLn;
 
-      WriteLn('  Chart border:');
+      WriteLn;
+      WriteLn('  CHART BORDER');
       WriteLn('    Style:', chart.Border.Style,
                  ' Width:', chart.Border.Width:0:0, 'mm',
                  ' Color:', IntToHex(chart.Border.Color, 6),
                  ' Transparency:', chart.Border.Transparency:0:2);
 
-      WriteLn('  Chart background:');
+      WriteLn;
+      WriteLn('  CHART BACKGROUND');
       WriteLn('    Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Background.Style)),
                  ' Color:', IntToHex(chart.background.Color, 6),
                  ' Gradient:', chart.Background.Gradient,
                  ' Hatch:', chart.Background.Hatch);
+      WriteLn;
+      WriteLn('  CHART LEGEND');
+      WriteLn('    Position: ', GetEnumName(TypeInfo(TsChartLegendPosition), ord(chart.Legend.Position)),
+                 ' CanOverlapPlotArea:', chart.Legend.CanOverlapPlotArea);
+      WriteLn('    Background: Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Legend.Background.Style)),
+                 ' Color:', IntToHex(chart.Legend.Background.Color, 6),
+                 ' Gradient:', chart.Legend.Background.Gradient,
+                 ' Hatch:', chart.Legend.Background.Hatch);
+      WriteLn('    Border: Style:', chart.Legend.Border.Style,
+                 ' Width:', chart.Legend.Border.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.Legend.Border.Color, 6),
+                 ' Transparency:', chart.Legend.Border.Transparency:0:2);
+      WriteLn('    Font: "', chart.Legend.Font.FontName, '" Size:', chart.Legend.Font.Size:0:0,
+                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.Legend.Font.Style), True),
+                 ' Color:', IntToHex(chart.Legend.Font.Color, 6));
     end;
 
   finally

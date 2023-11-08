@@ -231,6 +231,7 @@ type
 
     { Helper methods, public because needed by the chart reader }
     function CreateXMLStream: TStream;
+    procedure ReadFont(ANode: TDOMNode; AFont: TsFont);
   end;
 
   { TsSpreadOpenDocWriter }
@@ -2630,6 +2631,13 @@ begin
   cinfo.PasswordHash := GetAttrValue(ANode, 'table:protection-key');
   cinfo.Algorithm := StrToAlgorithm(GetAttrValue(ANode, 'table:protection-key-digest-algorithm'));
   (Workbook as TsWorkbook).CryptoInfo := cinfo;
+end;
+
+{ Reads font data from an xml node and passes the read properties to the
+  provided font. }
+procedure TsSpreadOpenDocReader.ReadFont(ANode: TDOMNode; AFont: TsFont);
+begin
+  ReadFont(ANode, AFont.FontName, AFont.Size, AFont.Style, AFont.Color, AFont.Position);
 end;
 
 { Reads font data from an xml node and returns the font elements. }

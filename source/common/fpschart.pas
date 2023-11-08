@@ -252,12 +252,15 @@ type
     FFont: TsFont;
     FCanOverlapPlotArea: Boolean;
     FPosition: TsChartLegendPosition;
+    FPosX, FPosY: Double;
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
     property CanOverlapPlotArea: Boolean read FCanOverlapPlotArea write FCanOverlapPlotArea;
     property Font: TsFont read FFont write FFont;
     property Position: TsChartLegendPosition read FPosition write FPosition;
+    property PosX: Double read FPosX write FPosX;
+    property PosY: Double read FPosY write FPosY;
     // There is also a "legend-expansion" but this does not seem to have a visual effect in Calc.
   end;
 

@@ -23,14 +23,15 @@ type
     procedure GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
     procedure GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine);
 
-
     procedure ReadChartBackgroundStyle(AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartProps(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartLegendProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartLegendStyle(AStyleNode: TDOMNode; AChart: TsChart);
 
     procedure ReadObjectGradientStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectHatchStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectLineStyles(ANode: TDOMNode; AChart: TsChart);
-
-    procedure ReadChartProps(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
   protected
     procedure ReadChartFiles(AStream: TStream; AFileList: String);
     procedure ReadChart(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
@@ -155,6 +156,7 @@ const
 
   LE = LineEnding;
 
+// Replaces all non-letters/numbers by their hex ASCII value surrounded by '_'
 function ASCIIName(AName: String): String;
 var
   i: Integer;
@@ -167,6 +169,7 @@ begin
       Result := Result + Format('_%.2x_', [ord(AName[i])]);
 end;
 
+// Reverts the replacement done by ASCIIName.
 function UnASCIIName(AName: String): String;
 var
   i: Integer;
@@ -281,6 +284,30 @@ begin
   inherited;
 end;
 
+{ Searches in the child nodes of AStyleNode for the style:style node with
+  the attributes style:family = chart and style:name = AStyleName. }
+function TsSpreadOpenDocChartReader.FindStyleNode(AStyleNodes: TDOMNode;
+  AStyleName: String): TDOMNode;
+var
+  nodeName: String;
+  sn, sf: String;
+begin
+  Result := AStyleNodes.FirstChild;
+  while (Result <> nil) do
+  begin
+    nodeName := Result.NodeName;
+    if nodeName = 'style:style' then
+    begin
+      sn := GetAttrValue(Result, 'style:name');
+      sf := GetAttrValue(Result, 'style:family');
+      if (sf = 'chart') and (sn = AStyleName) then
+        exit;
+    end;
+    Result := Result.NextSibling;
+  end;
+  Result := nil;
+end;
+
 { AFiles contains a sorted, comma-separated list of all files
   belonging to each chart. }
 procedure TsSpreadOpenDocChartReader.AddChartFiles(AFileList: String);
@@ -339,6 +366,7 @@ var
   sn: String;
   sc: String;
   sw: String;
+  so: String;
   value: Double;
   rel: Boolean;
 begin
@@ -354,16 +382,20 @@ begin
     begin
       sn := GetAttrValue(ANode, 'draw:stroke-dash');
       if sn <> '' then
-        ALine.Style := AChart.LineStyles.IndexOfName(UnAsciiName(sn));
+        ALine.Style := AChart.LineStyles.IndexOfName(UnASCIIName(sn));
     end;
 
     sc := 'draw:stroke-color';
     if sc <> '' then
       ALine.Color := HTMLColorStrToColor(sc);
 
-    sw := 'draw:strike-width';
+    sw := 'draw:stroke-width';
     if (sw <> '') and EvalLengthStr(sw, value, rel) then
       ALine.Width := value;
+
+    so := 'draw:stroke-opacity';
+    if (so <> '') and TryPercentStrToFloat(so, value) then
+      ALine.Transparency := 1.0 - value*0.01;
   end;
 end;
 
@@ -391,6 +423,7 @@ procedure TsSpreadOpenDocChartReader.ReadChart(AChartNode, AStyleNode: TDOMNode;
   AChart: TsChart);
 var
   nodeName: String;
+  node: TDOMNode;
 begin
   AChartNode := AChartNode.FirstChild.FirstChild;   // --> chart:chart
   while (AChartNode <> nil) do
@@ -399,6 +432,17 @@ begin
     if nodeName = 'chart:chart' then
     begin
       ReadChartProps(AChartNode, AStyleNode, AChart);
+      node := AChartNode.FirstChild;
+      while (node <> nil) do
+      begin
+        nodeName := node.NodeName;
+        if nodeName = 'chart:plot-area' then
+          ReadChartPlotAreaProps(node, AStyleNode, AChart)
+        else
+        if nodeName = 'chart:legend' then
+          ReadChartLegendProps(node, AStyleNode, AChart);
+        node := node.NextSibling;
+      end;
     end;
     AChartNode := AChartNode.NextSibling;
   end;
@@ -422,28 +466,6 @@ begin
   end;
 end;
 
-function TsSpreadOpenDocChartReader.FindStyleNode(AStyleNodes: TDOMNode;
-  AStyleName: String): TDOMNode;
-var
-  nodeName: String;
-  sn, sf: String;
-begin
-  Result := AStyleNodes.FirstChild;
-  while (Result <> nil) do
-  begin
-    nodeName := Result.NodeName;
-    if nodeName = 'style:style' then
-    begin
-      sn := GetAttrValue(Result, 'style:name');
-      sf := GetAttrValue(Result, 'style:family');
-      if (sf = 'chart') and (sn = AStyleName) then
-        exit;
-    end;
-    Result := Result.NextSibling;
-  end;
-  Result := nil;
-end;
-
 procedure TsSpreadOpenDocChartReader.ReadChartProps(AChartNode, AStyleNode: TDOMNode;
   AChart: TsChart);
 var
@@ -453,6 +475,70 @@ begin
   styleName := GetAttrValue(AChartNode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, styleName);
   ReadChartBackgroundStyle(styleNode, AChart);
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart);
+begin
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartLegendProps(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  styleName: String;
+  styleNode: TDOMNode;
+  s: String;
+  lp: TsChartLegendPosition;
+  value: Double;
+  rel: Boolean;
+begin
+  styleName := GetAttrValue(ANode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, styleName);
+  ReadChartLegendStyle(styleNode, AChart);
+
+  s := GetAttrValue(ANode, 'chart:legend-position');
+  if s <> '' then
+    for lp in TsChartLegendPosition do
+      if s = LEGEND_POSITION[lp] then
+      begin
+        AChart.Legend.Position := lp;
+        break;
+      end;
+
+  s := GetAttrValue(ANode, 'svg:x');
+  if (s <> '') and EvalLengthStr(s, value, rel) then
+    if not rel then
+      AChart.Legend.PosX := value;
+
+  s := GetAttrValue(ANode, 'svg:y');
+  if (s <> '') and EvalLengthStr(s, value, rel) then
+    if not rel then
+      AChart.Legend.PosY := value;
+
+  s := GetAttrValue(ANode, 'loext:overlay');
+  AChart.Legend.CanOverlapPlotArea := (s = 'true');
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartLegendStyle(AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  nodeName: String;
+begin
+  nodeName := AStyleNode.NodeName;
+  AStyleNode := AStyleNode.FirstChild;
+  while AStyleNode <> nil do begin
+    nodeName := AStyleNode.NodeName;
+    case nodeName of
+      'style:graphic-properties':
+        begin
+          GetChartLineProps(AStyleNode, AChart, AChart.Legend.Border);
+          GetChartFillProps(AStyleNode, AChart, AChart.Legend.Background);
+        end;
+      'style:text-properties':
+        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, AChart.Legend.Font);
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartFiles(AStream: TStream;
