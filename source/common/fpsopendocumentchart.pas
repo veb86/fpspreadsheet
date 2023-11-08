@@ -28,6 +28,8 @@ type
     procedure ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegendProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegendStyle(AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartTitleProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
+    procedure ReadChartTitleStyle(AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
 
     procedure ReadObjectGradientStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectHatchStyles(ANode: TDOMNode; AChart: TsChart);
@@ -436,11 +438,12 @@ begin
       while (node <> nil) do
       begin
         nodeName := node.NodeName;
-        if nodeName = 'chart:plot-area' then
-          ReadChartPlotAreaProps(node, AStyleNode, AChart)
-        else
-        if nodeName = 'chart:legend' then
-          ReadChartLegendProps(node, AStyleNode, AChart);
+        case nodeName of
+          'chart:plot-area': ReadChartPlotAreaProps(node, AStyleNode, AChart);
+          'chart:legend': ReadChartLegendProps(node, AStyleNode, AChart);
+          'chart:title': ReadChartTitleProps(node, AStyleNode, AChart, AChart.Title);
+          'chart:subtitle': ReadChartTitleProps(node, AStyleNode, AChart, AChart.Subtitle);
+        end;
         node := node.NextSibling;
       end;
     end;
@@ -461,81 +464,6 @@ begin
     begin
       GetChartLineProps(AStyleNode, AChart, AChart.Border);
       GetChartFillProps(AStyleNode, AChart, AChart.Background);
-    end;
-    AStyleNode := AStyleNode.NextSibling;
-  end;
-end;
-
-procedure TsSpreadOpenDocChartReader.ReadChartProps(AChartNode, AStyleNode: TDOMNode;
-  AChart: TsChart);
-var
-  styleName: String;
-  styleNode: TDOMNode;
-begin
-  styleName := GetAttrValue(AChartNode, 'chart:style-name');
-  styleNode := FindStyleNode(AStyleNode, styleName);
-  ReadChartBackgroundStyle(styleNode, AChart);
-end;
-
-procedure TsSpreadOpenDocChartReader.ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode;
-  AChart: TsChart);
-begin
-end;
-
-procedure TsSpreadOpenDocChartReader.ReadChartLegendProps(ANode, AStyleNode: TDOMNode;
-  AChart: TsChart);
-var
-  styleName: String;
-  styleNode: TDOMNode;
-  s: String;
-  lp: TsChartLegendPosition;
-  value: Double;
-  rel: Boolean;
-begin
-  styleName := GetAttrValue(ANode, 'chart:style-name');
-  styleNode := FindStyleNode(AStyleNode, styleName);
-  ReadChartLegendStyle(styleNode, AChart);
-
-  s := GetAttrValue(ANode, 'chart:legend-position');
-  if s <> '' then
-    for lp in TsChartLegendPosition do
-      if s = LEGEND_POSITION[lp] then
-      begin
-        AChart.Legend.Position := lp;
-        break;
-      end;
-
-  s := GetAttrValue(ANode, 'svg:x');
-  if (s <> '') and EvalLengthStr(s, value, rel) then
-    if not rel then
-      AChart.Legend.PosX := value;
-
-  s := GetAttrValue(ANode, 'svg:y');
-  if (s <> '') and EvalLengthStr(s, value, rel) then
-    if not rel then
-      AChart.Legend.PosY := value;
-
-  s := GetAttrValue(ANode, 'loext:overlay');
-  AChart.Legend.CanOverlapPlotArea := (s = 'true');
-end;
-
-procedure TsSpreadOpenDocChartReader.ReadChartLegendStyle(AStyleNode: TDOMNode;
-  AChart: TsChart);
-var
-  nodeName: String;
-begin
-  nodeName := AStyleNode.NodeName;
-  AStyleNode := AStyleNode.FirstChild;
-  while AStyleNode <> nil do begin
-    nodeName := AStyleNode.NodeName;
-    case nodeName of
-      'style:graphic-properties':
-        begin
-          GetChartLineProps(AStyleNode, AChart, AChart.Legend.Border);
-          GetChartFillProps(AStyleNode, AChart, AChart.Legend.Background);
-        end;
-      'style:text-properties':
-        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, AChart.Legend.Font);
     end;
     AStyleNode := AStyleNode.NextSibling;
   end;
@@ -623,6 +551,167 @@ begin
   );
 
   FreeAndNil(doc);
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartProps(AChartNode, AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  styleName: String;
+  styleNode: TDOMNode;
+begin
+  styleName := GetAttrValue(AChartNode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, styleName);
+  ReadChartBackgroundStyle(styleNode, AChart);
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart);
+begin
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartLegendProps(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  styleName: String;
+  styleNode: TDOMNode;
+  s: String;
+  lp: TsChartLegendPosition;
+  value: Double;
+  rel: Boolean;
+begin
+  styleName := GetAttrValue(ANode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, styleName);
+  ReadChartLegendStyle(styleNode, AChart);
+
+  s := GetAttrValue(ANode, 'chart:legend-position');
+  if s <> '' then
+    for lp in TsChartLegendPosition do
+      if s = LEGEND_POSITION[lp] then
+      begin
+        AChart.Legend.Position := lp;
+        break;
+      end;
+
+  s := GetAttrValue(ANode, 'svg:x');
+  if (s <> '') and EvalLengthStr(s, value, rel) then
+    if not rel then
+      AChart.Legend.PosX := value;
+
+  s := GetAttrValue(ANode, 'svg:y');
+  if (s <> '') and EvalLengthStr(s, value, rel) then
+    if not rel then
+      AChart.Legend.PosY := value;
+
+  s := GetAttrValue(ANode, 'loext:overlay');
+  AChart.Legend.CanOverlapPlotArea := (s = 'true');
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartLegendStyle(AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  nodeName: String;
+begin
+  nodeName := AStyleNode.NodeName;
+  AStyleNode := AStyleNode.FirstChild;
+  while AStyleNode <> nil do begin
+    nodeName := AStyleNode.NodeName;
+    case nodeName of
+      'style:graphic-properties':
+        begin
+          GetChartLineProps(AStyleNode, AChart, AChart.Legend.Border);
+          GetChartFillProps(AStyleNode, AChart, AChart.Legend.Background);
+        end;
+      'style:text-properties':
+        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, AChart.Legend.Font);
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartTitleProps(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart; ATitle: TsChartText);
+var
+  textNode, childNode: TDOMNode;
+  styleNode: TDOMNode;
+  nodeName: String;
+  s: String;
+  lp: TsChartLegendPosition;
+  value: Double;
+  rel: Boolean;
+begin
+  s := '';
+  textNode := ANode.FirstChild;
+  while textNode <> nil do
+  begin
+    nodeName := textNode.NodeName;
+    if nodeName = 'text:p' then
+    begin
+      // Each 'text:p' node is a paragraph --> we insert a line break except for the first paragraph
+      if s <> '' then
+        s := s + LineEnding;
+      childNode := textNode.FirstChild;
+      while childNode <> nil do
+      begin
+        nodeName := childNode.NodeName;
+        case nodeName of
+          '#text':
+            s := s + childNode.TextContent;
+          'text:s':
+            s := s + ' ';
+          'text:line-break':
+            s := s + LineEnding;
+          // to do: Is rtf formatting supported here? (text:span)
+        end;
+        childNode := childNode.NextSibling;
+      end;
+    end;
+    textNode := textNode.NextSibling;
+  end;
+  ATitle.Caption := s;
+
+  s := GetAttrValue(ANode, 'svg:x');
+  if (s <> '') and EvalLengthStr(s, value, rel) then
+    if not rel then
+      ATitle.PosX := value;
+
+  s := GetAttrValue(ANode, 'svg:y');
+  if (s <> '') and EvalLengthStr(s, value, rel) then
+    if not rel then
+      AChart.Legend.PosY := value;
+
+  s := GetAttrValue(ANode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, s);
+  ReadChartTitleStyle(styleNode, AChart, ATitle);
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartTitleStyle(AStyleNode: TDOMNode;
+  AChart: TsChart; ATitle: TsChartText);
+var
+  nodeName: String;
+  s: String;
+  value: Double;
+begin
+  nodeName := AStyleNode.NodeName;
+  AStyleNode := AStyleNode.FirstChild;
+  while AStyleNode <> nil do begin
+    nodeName := AStyleNode.NodeName;
+    case nodeName of
+      'style:chart-properties':
+        begin
+          s := GetAttrValue(AStyleNode, 'style:rotation-angle');
+          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+            ATitle.RotationAngle := round(value);
+        end;
+      'style:graphic-properties':
+        begin
+          GetChartLineProps(AStyleNode, AChart, ATitle.Border);
+          GetChartFillProps(AStyleNode, AChart, ATitle.Background);
+        end;
+      'style:text-properties':
+        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, ATitle.Font);
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadCharts(AStream: TStream);
@@ -2480,10 +2569,10 @@ begin
 end;
 
 (* wp:
-   DO NOT DELETE THIS - IT WAS A PAINT TO GET THIS, AND MAYBE IT WILL BE NEEDED
+   DO NOT DELETE THIS - IT WAS A PAIN TO GET THIS, AND MAYBE IT WILL BE NEEDED
    LATER.
    AT THE MOMENT THIS IS NOT NEEDED, IN FACT, IT IS EVEN DETRIMENTAL:
-   WITH THIS CODE INCLUDED, SERIES FILL ARE IGNORED AND TITLES ARE NOT CORRECT.
+   WITH THIS CODE INCLUDED, SERIES FILLS ARE IGNORED AND TITLES ARE NOT CORRECT.
 
 { Writes the chart's data table. NOTE: The chart gets its data from this table
   rather than from the worksheet! }

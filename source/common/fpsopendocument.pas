@@ -2670,6 +2670,10 @@ begin
         end;
       end;
     end;
+  if stylename = '' then
+    AFontName := UnquoteStr(GetAttrValue(ANode, 'fo:font-family'));
+    // This case is needed for fonts in charts.
+
   // In all other case, leave the AFontName of the input untouched.
 
   s := GetAttrValue(ANode, 'fo:font-size');

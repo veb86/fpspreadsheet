@@ -171,6 +171,7 @@ type
     FRotationAngle: Integer;
     FShowCaption: Boolean;
     FFont: TsFont;
+    FPosX, FPosY: Double;
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
@@ -178,6 +179,8 @@ type
     property Font: TsFont read FFont write FFont;
     property ShowCaption: Boolean read FShowCaption write FShowCaption;
     property RotationAngle: Integer read FRotationAngle write FRotationAngle;
+    property PosX: Double read FPosX write FPosX;
+    property PosY: Double read FPosY write FPosY;
   end;
 
   TsChartAxisPosition = (capStart, capEnd, capValue);

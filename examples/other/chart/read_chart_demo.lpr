@@ -65,7 +65,8 @@ begin
       WriteLn('    Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Background.Style)),
                  ' Color:', IntToHex(chart.background.Color, 6),
                  ' Gradient:', chart.Background.Gradient,
-                 ' Hatch:', chart.Background.Hatch);
+                 ' Hatch:', chart.Background.Hatch,
+                 ' Transparency:', chart.Background.Transparency:0:2);
       WriteLn;
       WriteLn('  CHART LEGEND');
       WriteLn('    Position: ', GetEnumName(TypeInfo(TsChartLegendPosition), ord(chart.Legend.Position)),
@@ -73,7 +74,8 @@ begin
       WriteLn('    Background: Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Legend.Background.Style)),
                  ' Color:', IntToHex(chart.Legend.Background.Color, 6),
                  ' Gradient:', chart.Legend.Background.Gradient,
-                 ' Hatch:', chart.Legend.Background.Hatch);
+                 ' Hatch:', chart.Legend.Background.Hatch,
+                 ' Transparency:', chart.Legend.Background.Transparency);
       WriteLn('    Border: Style:', chart.Legend.Border.Style,
                  ' Width:', chart.Legend.Border.Width:0:0, 'mm',
                  ' Color:', IntToHex(chart.Legend.Border.Color, 6),
@@ -81,6 +83,40 @@ begin
       WriteLn('    Font: "', chart.Legend.Font.FontName, '" Size:', chart.Legend.Font.Size:0:0,
                  ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.Legend.Font.Style), True),
                  ' Color:', IntToHex(chart.Legend.Font.Color, 6));
+
+      WriteLn;
+      WriteLn('  CHART TITLE');
+      WriteLn('    Caption: "', StringReplace(chart.Title.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
+                 ' Rotation: ', chart.Title.RotationAngle);
+      WriteLn('    Background: Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Title.Background.Style)),
+                 ' Color:', IntToHex(chart.Title.Background.Color, 6),
+                 ' Gradient:', chart.Title.Background.Gradient,
+                 ' Hatch:', chart.Title.Background.Hatch,
+                 ' Transparency:', chart.Title.Background.Transparency);
+      WriteLn('    Border: Style:', chart.Title.Border.Style,
+                 ' Width:', chart.Title.Border.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.Title.Border.Color, 6),
+                 ' Transparency:', chart.Title.Border.Transparency:0:2);
+      WriteLn('    Font: "', chart.Title.Font.FontName, '" Size:', chart.Title.Font.Size:0:0,
+                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.Title.Font.Style), True),
+                 ' Color:', IntToHex(chart.Title.Font.Color, 6));
+
+      WriteLn;
+      WriteLn('  CHART SUBTITLE');
+      WriteLn('    Caption: "', StringReplace(chart.Subtitle.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
+                 ' Rotation: ', chart.Subtitle.RotationAngle);
+      WriteLn('    Background: Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Subtitle.Background.Style)),
+                 ' Color:', IntToHex(chart.Subtitle.Background.Color, 6),
+                 ' Gradient:', chart.Subtitle.Background.Gradient,
+                 ' Hatch:', chart.Subtitle.Background.Hatch,
+                 ' Transparency:', chart.Subtitle.Background.Transparency);
+      WriteLn('    Border: Style:', chart.Subtitle.Border.Style,
+                 ' Width:', chart.Subtitle.Border.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.Subtitle.Border.Color, 6),
+                 ' Transparency:', chart.Subtitle.Border.Transparency:0:2);
+      WriteLn('    Font: "', chart.Subtitle.Font.FontName, '" Size:', chart.Subtitle.Font.Size:0:0,
+                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.Subtitle.Font.Style), True),
+                 ' Color:', IntToHex(chart.Subtitle.Font.Color, 6));
     end;
 
   finally
