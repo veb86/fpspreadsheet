@@ -5,16 +5,19 @@ program regressionchart_write_demo;
 uses
   SysUtils,
   fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
+
+const
+  FILE_NAME = 'regression';
 var
-  b: TsWorkbook;
+  book: TsWorkbook;
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsScatterSeries;
 begin
-  b := TsWorkbook.Create;
+  book := TsWorkbook.Create;
   try
     // worksheet
-    sheet := b.AddWorksheet('regression_test');
+    sheet := book.AddWorksheet('regression_test');
 
     // Enter data
     sheet.WriteText(0, 0, 'Data');
@@ -28,7 +31,7 @@ begin
     sheet.WriteNumber(8, 0, 6.8);  sheet.WriteNumber(8, 1, 7.1);        // sheet.WriteChartColor(8, 2, $FF8080);
 
     // Create chart: left/top in cell D4, 120 mm x 100 mm
-    ch := b.AddChart(sheet, 2, 3, 120, 100);
+    ch := book.AddChart(sheet, 2, 3, 120, 100);
 
     // Chart properties
     ch.Border.Style := clsNoLine;
@@ -65,10 +68,15 @@ begin
     //ser.Regression.Equation.Top := 5;
     //ser.Regression.Equation.Left := 5;
 
-    b.WriteToFile('regression.xlsx', true);   // Excel fails to open the file
-    b.WriteToFile('regression.ods', true);
+    {
+    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
+    WriteLn('Data saved with chart to ', FILE_NAME, '.xlsx');
+    }
+
+    book.WriteToFile('regression.ods', true);
+    WriteLn('Data saved with chart to ', FILE_NAME, '.ods');
   finally
-    b.Free;
+    book.Free;
   end;
 end.
 

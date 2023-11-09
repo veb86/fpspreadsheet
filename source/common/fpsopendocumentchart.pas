@@ -23,9 +23,14 @@ type
     procedure GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
     procedure GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine);
 
+    procedure ReadChartAxisGrid(ANode, AStyleNode: TDOMNode; AChart: TsChart; Axis: TsChartAxis);
+    procedure ReadChartAxisProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartAxisStyle(AStyleNode: TDOMNode; AChart: TsChart; Axis: TsChartAxis);
     procedure ReadChartBackgroundStyle(AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartCellRange(ANode: TDOMNode; AChart: TsChart; var ARange: TsCellRange);
     procedure ReadChartProps(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartPlotAreaStyle(AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegendProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegendStyle(AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartTitleProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
@@ -451,6 +456,158 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocChartReader.ReadChartAxisGrid(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart; Axis: TsChartAxis);
+var
+  s: String;
+  styleNode: TDOMNode;
+  grid: TsChartLine;
+begin
+  s := GetAttrValue(ANode, 'chart:class');
+  case s of
+    'major': grid := Axis.MajorGridLines;
+    'minor': grid := Axis.MinorGridLines;
+    else exit;
+  end;
+
+  s := GetAttrValue(ANode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, s);
+  GetChartLineProps(styleNode, AChart, grid);
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartAxisProps(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  s, styleName, nodeName: String;
+  styleNode, subNode: TDOMNode;
+  axis: TsChartAxis;
+  rng: TsCellRange;
+begin
+  s := GetAttrValue(ANode, 'chart:name');
+  case s of
+    'primary-x': axis := AChart.XAxis;
+    'primary-y': axis := AChart.YAxis;
+    'secondary-x': axis := AChart.X2Axis;
+    'secondary-y': axis := AChart.Y2Axis;
+    else raise Exception.Create('Unknown chart axis.');
+  end;
+
+  s := GetAttrValue(ANode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, s);
+  ReadChartAxisStyle(styleNode, AChart, axis);
+
+  subNode := ANode.FirstChild;
+  while subNode <> nil do
+  begin
+    nodeName := subNode.NodeName;
+    case nodeName of
+      'chart:title':
+        ReadChartTitleProps(subNode, AStyleNode, AChart, axis.Title);
+      'chart:categories':
+        begin
+          rng := axis.CategoryRange;
+          ReadChartCellRange(subNode, AChart, rng);
+          axis.CategoryRange := rng;
+        end;
+      'chart:grid':
+        ReadChartAxisGrid(subNode, AStyleNode, AChart, axis);
+    end;
+    subNode := subNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartAxisStyle(AStyleNode: TDOMNode;
+  AChart: TsChart; Axis: TsChartAxis);
+var
+  nodeName: String;
+  s: String;
+  value: Double;
+  n: Integer;
+  ticks: TsChartAxisTicks = [];
+begin
+  AStyleNode := AStyleNode.FirstChild;
+  while AStyleNode <> nil do
+  begin
+    nodeName := AStyleNode.NodeName;
+    case nodeName of
+      'style:text-properties':
+        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, Axis.LabelFont);
+      'style:graphic-properties':
+        GetChartLineProps(AStyleNode, AChart, Axis.AxisLine);
+      'style:chart-properties':
+        begin
+          s := GetAttrValue(AStyleNode, 'chart:display-label');
+          if s = 'true' then
+            Axis.ShowLabels := true;
+
+          s := GetAttrValue(AStyleNode, 'chart:logarithmic');
+          if s = 'true' then
+            Axis.Logarithmic := true;
+
+          s := GetAttrValue(AStyleNode, 'chart:minimum');
+          if (s = 'true') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+          begin
+            Axis.Min := value;
+            Axis.AutomaticMin := false;
+          end else
+            Axis.AutomaticMin := true;
+
+          s := GetAttrValue(AStyleNode, 'chart:maximum');
+          if (s = 'true') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+          begin
+            Axis.Max := value;
+            Axis.AutomaticMax := false;
+          end else
+            Axis.AutomaticMax := true;
+
+          s := GetAttrValue(AStyleNode, 'chart:interval-major');
+          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+            Axis.MajorInterval := value;
+
+          s := GetAttrValue(AStyleNode, 'chart:interval-minor-divisor');
+          if (s <> '') and TryStrToInt(s, n) then
+            Axis.MinorCount := n;
+
+          s := GetAttrValue(AStyleNode, 'chart:axis-position');
+          case s of
+            'start':
+              Axis.Position := capStart;
+            'end':
+              Axis.Position := capEnd;
+            else
+              if TryStrToFloat(s, value, FPointSeparatorSettings) then
+              begin
+                Axis.Position := capValue;
+                Axis.PositionValue := value;
+              end;
+          end;
+
+          ticks := [];  // To do: check defaults...
+          s := GetAttrValue(AStyleNode, 'chart:tick-marks-major-inner');
+          if s = 'true' then ticks := ticks + [catInside];
+          s := GetAttrValue(AStyleNode, 'chart:tick-marks-major-outer');
+          if s = 'true' then ticks := ticks + [catOutside];
+          Axis.MajorTicks := ticks;
+
+          ticks := [];  // To do: check defaults...
+          s := GetAttrValue(AStyleNode, 'chart:tick-marks-minor-inner');
+          if s = 'true' then ticks := ticks + [catInside];
+          s := GetAttrValue(AStyleNode, 'chart:tick-marks-minor-outer');
+          if s = 'true' then ticks := ticks + [catOutside];
+          Axis.MinorTicks := ticks;
+
+          s := GetAttrValue(AStyleNode, 'chart:reverse-direction');
+          if s = 'true' then Axis.Inverted := true;
+
+          s := GetAttrValue(AStyleNode, 'style:rotation-angle');
+          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+            Axis.LabelRotation := Round(value);
+        end;
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocChartReader.ReadChartBackgroundStyle(AStyleNode: TDOMNode;
   AChart: TsChart);
 var
@@ -467,6 +624,20 @@ begin
     end;
     AStyleNode := AStyleNode.NextSibling;
   end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartCellRange(ANode: TDOMNode;
+  AChart: TsChart; var ARange: TsCellRange);
+var
+  s: String;
+  rng: TsCellRange;
+  sh1, sh2: String;
+  relFlags: TsRelFlags;
+begin
+  s := GetAttrValue(ANode, 'table:cell-range-address');
+  if (s <> '') and TryStrToCellRange_ODS(s, sh1, sh2, rng.Row1, rng.Col1, rng.Row2, rng.Col2, relFlags) then
+    // TO DO: sheets are ignored here !!!
+    ARange := rng;
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartFiles(AStream: TStream;
@@ -566,7 +737,48 @@ end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode;
   AChart: TsChart);
+var
+  nodeName: String;
+  styleName: String;
+  styleNode: TDOMNode;
 begin
+  styleName := GetAttrValue(ANode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, styleName);
+  ReadChartPlotAreaStyle(styleNode, AChart);
+
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'chart:axis':
+        ReadChartAxisProps(ANode, AStyleNode, AChart);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartPlotAreaStyle(AStyleNode: TDOMNode; AChart: TsChart);
+var
+  nodeName, s: String;
+begin
+  AStyleNode := AStyleNode.FirstChild;
+  while AStyleNode <> nil do
+  begin
+    nodeName := AStyleNode.NodeName;
+    case nodeName of
+      'style:chart-properties':
+        begin
+          s := GetAttrValue(AStyleNode, 'chart:stacked');
+          if s = 'true' then
+            AChart.StackMode := csmStacked;
+          s := GetAttrValue(AStyleNode, 'chart:percentage');
+          if s = 'true' then
+            Achart.StackMode := csmStackedPercentage;
+        end;
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartLegendProps(ANode, AStyleNode: TDOMNode;
@@ -1019,7 +1231,7 @@ begin
   if not Axis.AutomaticMajorInterval then
     chartProps := chartProps + Format('chart:interval-major="%g" ', [Axis.MajorInterval], FPointSeparatorSettings);
   if not Axis.AutomaticMinorSteps then
-    chartProps := chartProps + Format('chart:interval-minor-divisor="%d" ', [Axis.MinorSteps]);
+    chartProps := chartProps + Format('chart:interval-minor-divisor="%d" ', [Axis.MinorCount]);
 
   // Position of the axis
   case Axis.Position of
@@ -1133,8 +1345,8 @@ begin
           5: axis := AChart.X2Axis;
           6: axis := AChart.Y2Axis;
         end;
-        font := axis.CaptionFont;
-        rotAngle := axis.CaptionRotation;
+        font := axis.Title.Font;
+        rotAngle := axis.Title.RotationAngle;
         if AChart.RotatedAxes then
         begin
           if rotAngle = 0 then rotAngle := 90 else if rotAngle = 90 then rotAngle := 0;
@@ -1947,13 +2159,13 @@ begin
   inc(AStyleID);
 
   // Axis title
-  if Axis.ShowCaption and (Axis.Caption <> '') then
+  if Axis.Title.Visible and (Axis.Title.Caption <> '') then
   begin
     AppendToStream(AChartStream, Format(
       indent + '  <chart:title chart:style-name="ch%d">' + LE +
       indent + '    <text:p>%s</text:p>' + LE +
       indent + '  </chart:title>' + LE,
-      [ AStyleID, Axis.Caption ]
+      [ AStyleID, Axis.Title.Caption ]
     ));
 
     // Axis title style

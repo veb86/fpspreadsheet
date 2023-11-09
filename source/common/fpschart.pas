@@ -169,7 +169,6 @@ type
   private
     FCaption: String;
     FRotationAngle: Integer;
-    FShowCaption: Boolean;
     FFont: TsFont;
     FPosX, FPosY: Double;
   public
@@ -177,10 +176,10 @@ type
     destructor Destroy; override;
     property Caption: String read FCaption write FCaption;
     property Font: TsFont read FFont write FFont;
-    property ShowCaption: Boolean read FShowCaption write FShowCaption;
     property RotationAngle: Integer read FRotationAngle write FRotationAngle;
     property PosX: Double read FPosX write FPosX;
     property PosY: Double read FPosY write FPosY;
+    property Visible;
   end;
 
   TsChartAxisPosition = (capStart, capEnd, capValue);
@@ -196,12 +195,10 @@ type
     FAutomaticMajorInterval: Boolean;
     FAutomaticMinorSteps: Boolean;
     FAxisLine: TsChartLine;
+    FCategoryRange: TsCellRange;
     FMajorGridLines: TsChartLine;
     FMinorGridLines: TsChartline;
     FInverted: Boolean;
-    FCaption: String;
-    FCaptionFont: TsFont;
-    FCaptionRotation: Integer;
     FLabelFont: TsFont;
     FLabelFormat: String;
     FLabelFormatPercent: String;
@@ -211,11 +208,11 @@ type
     FMajorTicks: TsChartAxisTicks;
     FMax: Double;
     FMin: Double;
-    FMinorSteps: Double;
+    FMinorCount: Integer;
     FMinorTicks: TsChartAxisTicks;
     FPosition: TsChartAxisPosition;
+    FTitle: TsChartText;
     FPositionValue: Double;
-    FShowCaption: Boolean;
     FShowLabels: Boolean;
   public
     constructor Create(AChart: TsChart);
@@ -225,9 +222,7 @@ type
     property AutomaticMajorInterval: Boolean read FAutomaticMajorInterval write FAutomaticMajorInterval;
     property AutomaticMinorSteps: Boolean read FAutomaticMinorSteps write FAutomaticMinorSteps;
     property AxisLine: TsChartLine read FAxisLine write FAxisLine;
-    property Caption: String read FCaption write FCaption;
-    property CaptionFont: TsFont read FCaptionFont write FCaptionFont;
-    property CaptionRotation: Integer read FCaptionRotation write FCaptionRotation;
+    property CategoryRange: TsCellRange read FCategoryRange write FCategoryRange;
     property Inverted: Boolean read FInverted write FInverted;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;
@@ -240,12 +235,13 @@ type
     property Max: Double read FMax write FMax;
     property Min: Double read FMin write FMin;
     property MinorGridLines: TsChartLine read FMinorGridLines write FMinorGridLines;
-    property MinorSteps: Double read FMinorSteps write FMinorSteps;
+    property MinorCount: Integer read FMinorCount write FMinorCount;
     property MinorTicks: TsChartAxisTicks read FMinorTicks write FMinorTicks;
     property Position: TsChartAxisPosition read FPosition write FPosition;
     property PositionValue: Double read FPositionValue write FPositionValue;
-    property ShowCaption: Boolean read FShowCaption write FShowCaption;
     property ShowLabels: Boolean read FShowLabels write FShowLabels;
+    property Title: TsChartText read FTitle write FTitle;
+    property Visible;
   end;
 
   TsChartLegendPosition = (lpRight, lpTop, lpBottom, lpLeft);
@@ -839,11 +835,11 @@ end;
 constructor TsChartText.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
-  FShowCaption := true;
   FFont := TsFont.Create;
   FFont.Size := 10;
   FFont.Style := [];
   FFont.Color := scBlack;
+  FVisible := true;
 end;
 
 destructor TsChartText.Destroy;
@@ -864,10 +860,7 @@ begin
   FAutomaticMajorInterval := true;
   FAutomaticMinorSteps := true;
 
-  FCaptionFont := TsFont.Create;
-  FCaptionFont.Size := 10;
-  FCaptionFont.Style := [];
-  FCaptionFont.Color := scBlack;
+  FTitle := TsChartText.Create(AChart);
 
   FLabelFont := TsFont.Create;
   FLabelFont.Size := 9;
@@ -875,11 +868,7 @@ begin
   FLabelFont.Color := scBlack;
 
   FLabelFormatPercent := '0%';
-
-  FCaptionRotation := 0;
   FLabelRotation := 0;
-
-  FShowCaption := true;
   FShowLabels := true;
 
   FAxisLine := TsChartLine.Create;
@@ -907,7 +896,7 @@ begin
   FMajorGridLines.Free;
   FAxisLine.Free;
   FLabelFont.Free;
-  FCaptionFont.Free;
+  FTitle.Free;
   inherited;
 end;
 
@@ -1318,29 +1307,29 @@ begin
   FLegend := TsChartLegend.Create(self);
 
   FXAxis := TsChartAxis.Create(self);
-  FXAxis.Caption := 'x axis';
-  FXAxis.CaptionFont.Style := [fssBold];
+  FXAxis.Title.Caption := 'x axis';
+  FXAxis.Title.Font.Style := [fssBold];
   FXAxis.LabelFont.Size := 9;
   FXAxis.Position := capStart;
 
   FX2Axis := TsChartAxis.Create(self);
-  FX2Axis.Caption := 'Secondary x axis';
-  FX2Axis.CaptionFont.Style := [fssBold];
+  FX2Axis.Title.Caption := 'Secondary x axis';
+  FX2Axis.Title.Font.Style := [fssBold];
   FX2Axis.LabelFont.Size := 9;
   FX2Axis.Visible := false;
   FX2Axis.Position := capEnd;
 
   FYAxis := TsChartAxis.Create(self);
-  FYAxis.Caption := 'y axis';
-  FYAxis.CaptionFont.Style := [fssBold];
-  FYAxis.CaptionRotation := 90;
+  FYAxis.Title.Caption := 'y axis';
+  FYAxis.Title.Font.Style := [fssBold];
+  FYAxis.Title.RotationAngle := 90;
   FYAxis.LabelFont.Size := 9;
   FYAxis.Position := capStart;
 
   FY2Axis := TsChartAxis.Create(self);
-  FY2Axis.Caption := 'Secondary y axis';
-  FY2Axis.CaptionFont.Style := [fssBold];
-  FY2Axis.CaptionRotation := 90;
+  FY2Axis.Title.Caption := 'Secondary y axis';
+  FY2Axis.Title.Font.Style := [fssBold];
+  FY2Axis.Title.RotationAngle := 90;
   FY2Axis.LabelFont.Size := 9;
   FY2Axis.Visible := false;
   FY2Axis.Position := capEnd;

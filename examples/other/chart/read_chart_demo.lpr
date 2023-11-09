@@ -5,21 +5,23 @@ uses
   fpSpreadsheet, fpsTypes, fpsChart, fpsOpenDocument;
 
 const
-//  FILE_NAME = 'test.ods';
-  FILE_NAME = 'area.ods';
+  FILE_NAME = 'test.ods';
+//  FILE_NAME = 'area.ods';
 var
-  b: TsWorkbook;
+  book: TsWorkbook;
   sheet: TsWorksheet;
   chart: TsChart;
   i, j: Integer;
 begin
-  b := TsWorkbook.Create;
+  book := TsWorkbook.Create;
   try
-    b.ReadFromFile(FILE_NAME);
-    for i := 0 to b.GetChartCount-1 do
+    book.ReadFromFile(FILE_NAME);
+    for i := 0 to book.GetChartCount-1 do
     begin
-      chart := b.GetChartByIndex(i);
-      sheet := b.GetWorksheetByIndex(chart.SheetIndex);
+      chart := book.GetChartByIndex(i);
+      sheet := book.GetWorksheetByIndex(chart.SheetIndex);
+
+      WriteLn('--------------------------------------------------------------------------------');
       WriteLn('Chart "', chart.Name, '":');
       WriteLn('  Worksheet "', sheet.Name, '", ',
         'row:', chart.Row, ' (+',chart.OffsetY:0:0, 'mm) ',
@@ -117,10 +119,70 @@ begin
       WriteLn('    Font: "', chart.Subtitle.Font.FontName, '" Size:', chart.Subtitle.Font.Size:0:0,
                  ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.Subtitle.Font.Style), True),
                  ' Color:', IntToHex(chart.Subtitle.Font.Color, 6));
+
+      WriteLn;
+      WriteLn('  CHART X AXIS');
+      WriteLn('    VISIBLE:', chart.YAxis.Visible);
+      WriteLn('    TITLE: Caption: "', StringReplace(chart.XAxis.Title.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
+                 ' Visible: ', chart.XAxis.Title.Visible,
+                 ' Rotation: ', chart.XAxis.Title.RotationAngle,
+                 ' Font: "', chart.XAxis.Title.Font.FontName, '" Size:', chart.XAxis.Title.Font.Size:0:0,
+                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.XAxis.Title.Font.Style), True),
+                 ' Color:', IntToHex(chart.XAxis.Title.Font.Color, 6));
+      WriteLn('    RANGE: AutomaticMin:', chart.XAxis.AutomaticMin, ' Minimum: ', chart.XAxis.Min:0:3,
+                 ' AutomaticMax:', chart.XAxis.AutomaticMax, ' Maximum: ', chart.XAxis.Max:0:3);
+      WriteLn('    POSITION: ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.XAXis.Position)),
+                 ' Value:', chart.XAxis.PositionValue:0:3);
+      WriteLn('    AXIS TICKS: Major interval:', chart.XAxis.MajorInterval:0:2,
+                 ' Major ticks:', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.XAxis.MajorTicks), True),
+                 ' Minor count:', chart.XAxis.MinorCount,
+                 ' Minor ticks:', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.XAxis.MinorTicks), True));
+      WriteLn('    AXIS LINE: Style:', chart.XAxis.AxisLine.Style,
+                 ' Width:', chart.XAxis.AxisLine.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.XAxis.AxisLine.Color, 6),
+                 ' Transparency:', chart.XAxis.AxisLine.Transparency:0:2);
+      WriteLn('    MAJOR GRID: Style:', chart.XAxis.MajorGridLines.Style,
+                 ' Width:', chart.XAxis.MajorGridLines.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.XAxis.MajorGridLines.Color, 6),
+                 ' Transparency:', chart.XAxis.MajorGridLines.Transparency:0:2);
+      WriteLn('    MINOR GRID: Style:', chart.XAxis.MinorGridLines.Style,
+                 ' Width:', chart.XAxis.MinorGridLines.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.XAxis.MinorGridLines.Color, 6),
+                 ' Transparency:', chart.XAxis.MinorGridLines.Transparency:0:2);
+
+      WriteLn;
+      WriteLn('  CHART Y AXIS:');
+      WriteLn('    VISIBLE:', chart.YAxis.Visible);
+      WriteLn('    TITLE: Caption: "', StringReplace(chart.YAxis.Title.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
+                 ' Visible: ', chart.YAxis.Title.Visible,
+                 ' Rotation: ', chart.YAxis.Title.RotationAngle,
+                 ' Font: "', chart.YAxis.Title.Font.FontName, '" Size:', chart.YAxis.Title.Font.Size:0:0,
+                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.YAxis.Title.Font.Style), True),
+                 ' Color:', IntToHex(chart.YAxis.Title.Font.Color, 6));
+      WriteLn('    RANGE: AutomaticMin:', chart.YAxis.AutomaticMin, ' Minimum: ', chart.YAxis.Min:0:3,
+                 ' AutomaticMax:', chart.YAxis.AutomaticMax, ' Maximum: ', chart.YAxis.Max:0:3);
+      WriteLn('    POSITION: ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.YAXis.Position)),
+                 ' Value:', chart.YAxis.PositionValue:0:3);
+      WriteLn('    AXIS TICKS: Major interval:', chart.YAxis.MajorInterval:0:2,
+                 ' Major ticks:', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.YAxis.MajorTicks), True),
+                 ' Minor count:', chart.YAxis.MinorCount,
+                 ' Minor ticks:', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.YAxis.MinorTicks), True));
+      WriteLn('    AXIS LINE: Style:', chart.YAxis.AxisLine.Style,
+                 ' Width:', chart.YAxis.AxisLine.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.YAxis.AxisLine.Color, 6),
+                 ' Transparency:', chart.YAxis.AxisLine.Transparency:0:2);
+      WriteLn('    MAJOR GRID: Style:', chart.YAxis.MajorGridLines.Style,
+                 ' Width:', chart.YAxis.MajorGridLines.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.YAxis.MajorGridLines.Color, 6),
+                 ' Transparency:', chart.YAxis.MajorGridLines.Transparency:0:2);
+      WriteLn('    MINOR GRID: Style:', chart.YAxis.MinorGridLines.Style,
+                 ' Width:', chart.YAxis.MinorGridLines.Width:0:0, 'mm',
+                 ' Color:', IntToHex(chart.YAxis.MinorGridLines.Color, 6),
+                 ' Transparency:', chart.YAxis.MinorGridLines.Transparency:0:2);
     end;
 
   finally
-    b.Free;
+    book.Free;
   end;
 
   WriteLn;

@@ -5,16 +5,19 @@ program piechart_write_demo;
 uses
   SysUtils,
   fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
+
+const
+  FILE_NAME = 'world-population';
 var
-  b: TsWorkbook;
+  book: TsWorkbook;
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
 begin
-  b := TsWorkbook.Create;
+  book := TsWorkbook.Create;
   try
     // worksheet
-    sheet := b.AddWorksheet('pie_series');
+    sheet := book.AddWorksheet('pie_series');
 
     // Enter data
     sheet.WriteText(0, 0, 'World population');
@@ -29,7 +32,7 @@ begin
     sheet.WriteText(8, 0, 'Oceania');    sheet.WriteNumber(8, 1, 42);        // sheet.WriteChartColor(8, 2, $FF8080);
 
     // Create chart: left/top in cell D4, 120 mm x 100 mm
-    ch := b.AddChart(sheet, 2, 3, 120, 100);
+    ch := book.AddChart(sheet, 2, 3, 120, 100);
 
     // Chart properties
     ch.Border.Style := clsNoLine;
@@ -52,10 +55,15 @@ begin
     ser.LabelFormat := '#,##0';
     //ser.SetFillColorRange(4, 2, 8, 2);
 
-    b.WriteToFile('world-population.xlsx', true);   // Excel fails to open the file
-    b.WriteToFile('world-population.ods', true);
+    {
+    book.WriteToFile(FILE_NAME+'.xlsx', true);   // Excel fails to open the file
+    WriteLn('Data saved with chart in ', FILE_NAME, '.xlsx');
+    }
+
+    book.WriteToFile(FILE_NAME + '.ods', true);
+    WriteLn('Data saved with chart in ', FILE_NAME, '.ods');
   finally
-    b.Free;
+    book.Free;
   end;
 end.
 

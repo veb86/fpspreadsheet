@@ -4,7 +4,9 @@ program write_chart_demo;
 
 uses
   SysUtils, fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
+
 const
+  FILE_NAME = 'test';
 //  SERIES_CLASS: TsChartSeriesClass = TsAreaSeries;
 //  SERIES_CLASS: TsChartSeriesClass = TsBarSeries;
 //  SERIES_CLASS: TsChartSeriesClass = TsBubbleSeries;
@@ -16,18 +18,18 @@ const
   r2 = 8;
   FILL_COLORS: array[0..r2-r1] of TsColor = (scRed, scGreen, scBlue, scYellow, scMagenta, scSilver, scBlack, scOlive);
 var
-  b: TsWorkbook;
+  book: TsWorkbook;
   sheet1, sheet2, sheet3: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
   i: Integer;
 begin
-  b := TsWorkbook.Create;
+  book := TsWorkbook.Create;
   try
     // -------------------------------------------------------------------------
     //                                1st sheet
     // -------------------------------------------------------------------------
-    sheet1 := b.AddWorksheet('test1');
+    sheet1 := book.AddWorksheet('test1');
     sheet1.WriteText(0, 1, '1+sin(x)');
     sheet1.WriteText(0, 2, '1+sin(x/2)');
     sheet1.WriteText(0, 3, 'Bubble Radius');
@@ -54,7 +56,7 @@ begin
     sheet1.WriteNumber(r2, 3, r2*r2);
 
     // Create chart
-    ch := b.AddChart(sheet1, 4, 6, 160, 100);
+    ch := book.AddChart(sheet1, 4, 6, 160, 100);
 
     // Add first series (type depending on SERIES_CLASS)
     ser := SERIES_CLASS.Create(ch);
@@ -113,9 +115,9 @@ begin
     ch.XAxis.LabelFont.Color := scRed;
     //ch.XAxis.LabelFont.Style := [fssStrikeout];
     ch.XAxis.AxisLine.Color := scRed;
-    ch.XAxis.Caption := 'This is the x axis';
-    ch.XAxis.CaptionFont.Color := scRed;
-    ch.XAxis.CaptionFont.Size := 12;
+    ch.XAxis.Title.Caption := 'This is the x axis';
+    ch.XAxis.Title.Font.Color := scRed;
+    ch.XAxis.Title.Font.Size := 12;
     //ch.XAxis.Inverted := true;
     ch.XAxis.MajorGridLines.Color := scRed;
     ch.XAxis.MinorGridLines.Color := scBlue;
@@ -127,9 +129,9 @@ begin
     ch.YAxis.LabelFont.Size := 8;
     ch.YAxis.LabelFont.Color := scBlue;
     ch.YAxis.AxisLine.Color := scBlue;
-    ch.YAxis.Caption := 'This is the y axis';
-    ch.YAxis.CaptionFont.Color := scBlue;
-    ch.YAxis.CaptionFont.Size := 12;
+    ch.YAxis.Title.Caption := 'This is the y axis';
+    ch.YAxis.Title.Font.Color := scBlue;
+    ch.YAxis.Title.Font.Size := 12;
     //ch.YAxis.LabelRotation := 90;
     //ch.YAxis.CaptionRotation := 90;
     ch.YAxis.Min := -5;
@@ -163,13 +165,13 @@ begin
     // -------------------------------------------------------------------------
     //                                2nd sheet
     // -------------------------------------------------------------------------
-    sheet2 := b.AddWorksheet('test2');
+    sheet2 := book.AddWorksheet('test2');
     sheet2.WriteText(0, 0, 'abc');
 
     // -------------------------------------------------------------------------
     //                                3rd sheet
     // -------------------------------------------------------------------------
-    sheet3 := b.AddWorksheet('test3');
+    sheet3 := book.AddWorksheet('test3');
     sheet3.WriteText(0, 1, 'cos(x)');
     sheet3.WriteText(0, 2, 'sin(x)');
     for i := 1 to 7 do
@@ -180,7 +182,7 @@ begin
     end;
 
     // Create the chart
-    ch := b.AddChart(sheet3, 1, 3, 125, 95);
+    ch := book.AddChart(sheet3, 1, 3, 125, 95);
 
     // Add two series
     ser := TsLineSeries.Create(ch);
@@ -210,18 +212,23 @@ begin
     ch.XAxis.MinorGridLines.Style := clsNoLine;
     ch.YAxis.MajorGridLines.Style := clsNoLine;
     ch.YAxis.MinorGridLines.Style := clsNoLine;
-    ch.YAxis.CaptionRotation := 90;
-    ch.XAxis.CaptionFont.Size := 14;
-    ch.YAxis.CaptionFont.Size := 14;
+    ch.YAxis.Title.RotationAngle := 90;
+    ch.XAxis.Title.Font.Size := 14;
+    ch.YAxis.Title.Font.Size := 14;
     ch.XAxis.LabelFont.Style := [fssItalic];
     ch.YAxis.LabelFont.Style := [fssItalic];
     ch.YAxis.MajorTicks := [catInside, catOutside];
     ch.YAxis.MinorTicks := [catOutside];
 
-    b.WriteToFile('test.xlsx', true);   // Excel fails to open the file
-    b.WriteToFile('test.ods', true);
+    {
+    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
+    WriteLn('Data saved with chart in ', FILE_NAME, '.xlsx');
+    }
+
+    book.WriteToFile(FILE_NAME + '.ods', true);
+    WriteLn('Data saved with chart in ', FILE_NAME, '.ods');
   finally
-    b.Free;
+    book.Free;
   end;
 
   WriteLn;

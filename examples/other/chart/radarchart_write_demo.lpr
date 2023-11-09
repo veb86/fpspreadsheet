@@ -5,16 +5,19 @@ program radarchart_write_demo;
 uses
   SysUtils,
   fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
+
+const
+  FILE_NAME = 'school-grades';
 var
-  b: TsWorkbook;
+  book: TsWorkbook;
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
 begin
-  b := TsWorkbook.Create;
+  book := TsWorkbook.Create;
   try
     // worksheet
-    sheet := b.AddWorksheet('radar_series');
+    sheet := book.AddWorksheet('radar_series');
 
     // Enter data
     sheet.WriteText( 0, 0, 'School Grades');
@@ -30,15 +33,15 @@ begin
     sheet.WriteText(10, 0, 'Computer');  sheet.WriteNumber(10, 1, 16);          sheet.WriteNumber(10, 2, 18);
 
     // Create chart: left/top in cell D4, 160 mm x 100 mm
-    ch := b.AddChart(sheet, 2, 3, 120, 100);
+    ch := book.AddChart(sheet, 2, 3, 120, 100);
 
     // Chart properties
     ch.Border.Style := clsNoLine;
     ch.Title.Caption := 'School Grades';
     ch.Title.Font.Style := [fssBold];
     ch.Legend.Border.Style := clsNoLine;
-    ch.XAxis.Caption := '';
-    ch.YAxis.Caption := '';
+    ch.XAxis.Title.Caption := '';
+    ch.YAxis.Title.Caption := '';
     ch.YAxis.AxisLine.Color := scSilver;
     ch.YAxis.MajorTicks := [];
 
@@ -60,10 +63,15 @@ begin
     ser.Fill.Color := scBlue;
     ser.Fill.Transparency := 0.35;
 
-    b.WriteToFile('school-grades.xlsx', true);   // Excel fails to open the file
-    b.WriteToFile('school-grades.ods', true);
+    {
+    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
+    WriteLn('Data saved with chart in ', FILE_NAME, '.xlsx');
+    }
+
+    book.WriteToFile(FILE_NAME + '.ods', true);
+    WriteLn('Data saved with chart in ', FILE_NAME, '.ods');
   finally
-    b.Free;
+    book.Free;
   end;
 end.
 
