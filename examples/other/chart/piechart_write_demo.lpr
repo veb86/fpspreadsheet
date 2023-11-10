@@ -7,7 +7,7 @@ uses
   fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
 
 const
-  FILE_NAME = 'world-population';
+  FILE_NAME = 'pie';
 var
   book: TsWorkbook;
   sheet: TsWorksheet;

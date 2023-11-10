@@ -1466,6 +1466,14 @@ function GetSheetCellRangeString_ODS(ASheet1, ASheet2: String;
   ARow1, ACol1, ARow2, ACol2: Cardinal; AFlags: TsRelFlags = rfAllRel;
   WithBrackets: Boolean = true): String;
 begin
+  if (ASheet1 = '') and (ASheet2 = '') and
+    (ARow1 = UNASSIGNED_ROW_COL_INDEX) and (ACol1 = UNASSIGNED_ROW_COL_INDEX) and
+    (ARow2 = UNASSIGNED_ROW_COL_INDEX) and (ACol2 = UNASSIGNED_ROW_COL_INDEX) then
+  begin
+    Result := '';
+    exit;
+  end;
+
   Result := Format('%s.%s%s%s%d:%s.%s%s%s%d', [
     ASheet1, RELCHAR[rfRelCol in AFlags], GetColString(ACol1), RELCHAR[rfRelRow in AFlags], ARow1 + 1,
     ASheet2, RELCHAR[rfRelCol2 in AFlags], GetColString(ACol2), RELCHAR[rfRelRow2 in AFlags], ARow2 + 1

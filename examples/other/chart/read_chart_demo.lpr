@@ -2,17 +2,22 @@ program read_chart_demo;
 
 uses
   SysUtils, TypInfo,
-  fpSpreadsheet, fpsTypes, fpsChart, fpsOpenDocument;
+  fpSpreadsheet, fpsTypes, fpsUtils, fpsChart, fpsOpenDocument;
 
 const
-  FILE_NAME = 'test.ods';
+//  FILE_NAME = 'test.ods';
 //  FILE_NAME = 'area.ods';
+  FILE_NAME = 'bars.ods';
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
   chart: TsChart;
   i, j: Integer;
+  s: String;
+  isODS: Boolean;
 begin
+  isODS := ExtractFileExt(FILE_NAME) = '.ods';
+
   book := TsWorkbook.Create;
   try
     book.ReadFromFile(FILE_NAME);
@@ -129,6 +134,11 @@ begin
                  ' Font: "', chart.XAxis.Title.Font.FontName, '" Size:', chart.XAxis.Title.Font.Size:0:0,
                  ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.XAxis.Title.Font.Style), True),
                  ' Color:', IntToHex(chart.XAxis.Title.Font.Color, 6));
+      with chart.XAxis.CategoryRange do
+        if isODS then
+          WriteLn('    CATEGORIES: ', GetSheetCellRangeString_ODS(Sheet1, Sheet2, Row1, Col1, Row2, Col2))
+        else
+          WriteLn('    CATEGORIES: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2));
       WriteLn('    RANGE: AutomaticMin:', chart.XAxis.AutomaticMin, ' Minimum: ', chart.XAxis.Min:0:3,
                  ' AutomaticMax:', chart.XAxis.AutomaticMax, ' Maximum: ', chart.XAxis.Max:0:3);
       WriteLn('    POSITION: ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.XAXis.Position)),
@@ -159,6 +169,11 @@ begin
                  ' Font: "', chart.YAxis.Title.Font.FontName, '" Size:', chart.YAxis.Title.Font.Size:0:0,
                  ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.YAxis.Title.Font.Style), True),
                  ' Color:', IntToHex(chart.YAxis.Title.Font.Color, 6));
+      with chart.YAxis.CategoryRange do
+        if isODS then
+          WriteLn('    CATEGORIES: ', GetSheetCellRangeString_ODS(Sheet1, Sheet2, Row1, Col1, Row2, Col2))
+        else
+          WriteLn('    CATEGORIES: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2));
       WriteLn('    RANGE: AutomaticMin:', chart.YAxis.AutomaticMin, ' Minimum: ', chart.YAxis.Min:0:3,
                  ' AutomaticMax:', chart.YAxis.AutomaticMax, ' Maximum: ', chart.YAxis.Max:0:3);
       WriteLn('    POSITION: ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.YAXis.Position)),

@@ -27,7 +27,7 @@ type
     procedure ReadChartAxisProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartAxisStyle(AStyleNode: TDOMNode; AChart: TsChart; Axis: TsChartAxis);
     procedure ReadChartBackgroundStyle(AStyleNode: TDOMNode; AChart: TsChart);
-    procedure ReadChartCellRange(ANode: TDOMNode; AChart: TsChart; var ARange: TsCellRange);
+    procedure ReadChartCellRange(ANode: TDOMNode; ANodeName: String; ARange: TsChartRange);
     procedure ReadChartProps(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartPlotAreaStyle(AStyleNode: TDOMNode; AChart: TsChart);
@@ -430,29 +430,41 @@ procedure TsSpreadOpenDocChartReader.ReadChart(AChartNode, AStyleNode: TDOMNode;
   AChart: TsChart);
 var
   nodeName: String;
-  node: TDOMNode;
+  officeChartNode: TDOMNode;
+  chartChartNode: TDOMNode;
+  chartElementNode: TDOMNode;
 begin
-  AChartNode := AChartNode.FirstChild.FirstChild;   // --> chart:chart
-  while (AChartNode <> nil) do
+  nodeName := AChartNode.NodeName;
+  officeChartNode := AChartNode.FirstChild;
+  while officeChartNode <> nil do
   begin
-    nodeName := AChartNode.NodeName;
-    if nodeName = 'chart:chart' then
+    nodeName := officeChartNode.NodeName;
+    if nodeName = 'office:chart' then
     begin
-      ReadChartProps(AChartNode, AStyleNode, AChart);
-      node := AChartNode.FirstChild;
-      while (node <> nil) do
+      chartChartNode := officeChartNode.FirstChild;
+      while chartChartNode <> nil do
       begin
-        nodeName := node.NodeName;
-        case nodeName of
-          'chart:plot-area': ReadChartPlotAreaProps(node, AStyleNode, AChart);
-          'chart:legend': ReadChartLegendProps(node, AStyleNode, AChart);
-          'chart:title': ReadChartTitleProps(node, AStyleNode, AChart, AChart.Title);
-          'chart:subtitle': ReadChartTitleProps(node, AStyleNode, AChart, AChart.Subtitle);
+        nodeName := chartChartNode.NodeName;
+        if nodeName = 'chart:chart' then
+        begin
+          ReadChartProps(chartChartNode, AStyleNode, AChart);
+          chartElementNode := chartChartNode.FirstChild;
+          while (chartElementNode <> nil) do
+          begin
+            nodeName := chartElementNode.NodeName;
+            case nodeName of
+              'chart:plot-area': ReadChartPlotAreaProps(chartElementNode, AStyleNode, AChart);
+              'chart:legend': ReadChartLegendProps(chartElementNode, AStyleNode, AChart);
+              'chart:title': ReadChartTitleProps(chartElementNode, AStyleNode, AChart, AChart.Title);
+              'chart:subtitle': ReadChartTitleProps(chartElementNode, AStyleNode, AChart, AChart.Subtitle);
+            end;
+            chartElementNode := chartElementNode.NextSibling;
+          end;
         end;
-        node := node.NextSibling;
+        chartChartNode := chartChartNode.NextSibling;
       end;
     end;
-    AChartNode := AChartNode.NextSibling;
+    officeChartNode := officeChartNode.NextSibling;
   end;
 end;
 
@@ -481,7 +493,6 @@ var
   s, styleName, nodeName: String;
   styleNode, subNode: TDOMNode;
   axis: TsChartAxis;
-  rng: TsCellRange;
 begin
   s := GetAttrValue(ANode, 'chart:name');
   case s of
@@ -504,11 +515,7 @@ begin
       'chart:title':
         ReadChartTitleProps(subNode, AStyleNode, AChart, axis.Title);
       'chart:categories':
-        begin
-          rng := axis.CategoryRange;
-          ReadChartCellRange(subNode, AChart, rng);
-          axis.CategoryRange := rng;
-        end;
+        ReadChartCellRange(subNode, 'table:cell-range-address', axis.CategoryRange);
       'chart:grid':
         ReadChartAxisGrid(subNode, AStyleNode, AChart, axis);
     end;
@@ -627,17 +634,23 @@ begin
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartCellRange(ANode: TDOMNode;
-  AChart: TsChart; var ARange: TsCellRange);
+  ANodeName: String; ARange: TsChartRange);
 var
   s: String;
-  rng: TsCellRange;
   sh1, sh2: String;
+  r1, c1, r2, c2: Cardinal;
   relFlags: TsRelFlags;
 begin
-  s := GetAttrValue(ANode, 'table:cell-range-address');
-  if (s <> '') and TryStrToCellRange_ODS(s, sh1, sh2, rng.Row1, rng.Col1, rng.Row2, rng.Col2, relFlags) then
-    // TO DO: sheets are ignored here !!!
-    ARange := rng;
+  s := GetAttrValue(ANode, ANodeName);
+  if (s <> '') and TryStrToCellRange_ODS(s, sh1, sh2, r1, c1, r2, c2, relFlags) then
+  begin
+    ARange.Sheet1 := sh1;
+    ARange.Sheet2 := sh2;
+    ARange.Row1 := r1;
+    ARange.Col1 := c1;
+    ARange.Row2 := r2;
+    ARange.Col2 := c2;
+  end;
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartFiles(AStream: TStream;
@@ -678,6 +691,7 @@ begin
   if chart = nil then
     raise Exception.Create('Chart in "' + contentfile + '" not found.');
 
+  // Read the Object/styles.xml file
   if stylesFile <> '' then
   begin
     XMLStream := lReader.CreateXMLStream;
@@ -699,6 +713,7 @@ begin
     FreeAndNil(doc);
   end;
 
+  // Read the Object/content.xml file
   XMLStream := lReader.CreateXMLStream;
   try
     ok := UnzipToStream(AStream, contentFile, XMLStream);
@@ -2574,7 +2589,6 @@ procedure TsSpreadOpenDocChartWriter.WriteChartSeries(
   var AStyleID: Integer);
 var
   indent: String;
-  sheet: TsWorksheet;
   series: TsChartSeries;
   valuesRange: String = '';
   domainRangeX: String = '';
@@ -2591,13 +2605,12 @@ begin
   indent := DupeString(' ', AChartIndent);
 
   series := AChart.Series[ASeriesIndex];
-  sheet := TsWorkbook(Writer.Workbook).GetWorksheetByIndex(AChart.sheetIndex);
 
   // These are the x values of a scatter or bubble plot.
   if (series is TsScatterSeries) or (series is TsBubbleSeries) then
   begin
     domainRangeX := GetSheetCellRangeString_ODS(
-      sheet.Name, sheet.Name,
+      series.XRange.GetSheet1Name, series.XRange.GetSheet2Name,
       series.XRange.Row1, series.XRange.Col1,
       series.XRange.Row2, series.XRange.Col2,
       rfAllRel, false
@@ -2606,23 +2619,27 @@ begin
 
   if series is TsBubbleSeries then
   begin
+    // These are the y values of the in-plane coordinates of each bubble position.
     domainRangeY := GetSheetCellRangeString_ODS(
-      sheet.Name, sheet.Name,
+      series.YRange.GetSheet1Name, series.YRange.GetSheet2Name,
       series.YRange.Row1, series.YRange.Col1,
       series.YRange.Row2, series.YRange.Col2,
       rfAllRel, false
     );
     // These are the bubble radii
-    valuesRange := GetSheetCellRangeString_ODS(
-      sheet.Name, sheet.Name,
-      TsBubbleSeries(series).BubbleRange.Row1, TsBubbleSeries(series).BubbleRange.Col1,
-      TsBubbleSeries(series).BubbleRange.Row2, TsBubbleSeries(series).BubbleRange.Col2,
-      rfAllRel, false
-    );
+    with TsBubbleSeries(series) do
+    begin
+      valuesRange := GetSheetCellRangeString_ODS(
+        BubbleRange.GetSheet1Name, BubbleRange.GetSheet2Name,
+        BubbleRange.Row1, BubbleRange.Col1,
+        BubbleRange.Row2, BubbleRange.Col2,
+        rfAllRel, false
+      );
+    end
   end else
     // These are the y values of the non-bubble series
     valuesRange := GetSheetCellRangeString_ODS(
-      sheet.Name, sheet.Name,
+      series.YRange.GetSheet1Name, series.YRange.GetSheet2Name,
       series.YRange.Row1, series.YRange.Col1,
       series.YRange.Row2, series.YRange.Col2,
       rfAllRel, false
@@ -2633,20 +2650,25 @@ begin
      (series.FillColorRange.Col1 <> series.FillColorRange.Col2)
   then
     fillColorRange := GetSheetCellRangeString_ODS(
-      sheet.Name, sheet.Name,
+      series.FillColorRange.GetSheet1Name, series.FillColorRange.GetSheet2Name,
       series.FillColorRange.Row1, series.FillColorRange.Col1,
       series.FillColorRange.Row2, series.FillColorRange.Col2,
       rfAllRel, false
     );
 
-  // And these are the data point labels.
+  // And this is the title of the series for the legend
   titleAddr := GetSheetCellRangeString_ODS(
-    sheet.Name, sheet.Name,
+    series.TitleAddr.GetSheetName, series.TitleAddr.GetSheetName,
     series.TitleAddr.Row, series.TitleAddr.Col,
     series.TitleAddr.Row, series.TitleAddr.Col,
     rfAllRel, false
   );
-  count := series.YRange.Row2 - series.YRange.Row1 + 1;
+
+  // Number of data points
+  if series.YValuesInCol then
+    count := series.YRange.Row2 - series.YRange.Row1 + 1
+  else
+    count := series.YRange.Col2 - series.YRange.Col1 + 1;
 
   if series is TsRingSeries then
     chartClass := 'circle'

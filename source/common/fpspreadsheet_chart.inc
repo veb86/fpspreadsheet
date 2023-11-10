@@ -14,6 +14,7 @@ begin
   Result := TsChart.Create;
   if (ASheet = nil) then
     raise Exception.Create('To do: Insert chart as new ChartSheet');
+  Result.Workbook := self;
   Result.SheetIndex := GetWorksheetIndex(ASheet);
   Result.Row := ARow;
   Result.Col := ACol;

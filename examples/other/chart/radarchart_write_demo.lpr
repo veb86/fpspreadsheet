@@ -7,7 +7,7 @@ uses
   fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
 
 const
-  FILE_NAME = 'school-grades';
+  FILE_NAME = 'radar';
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
