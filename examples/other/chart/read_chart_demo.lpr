@@ -7,13 +7,16 @@ uses
 const
 //  FILE_NAME = 'test.ods';
 //  FILE_NAME = 'area.ods';
-  FILE_NAME = 'bars.ods';
+//  FILE_NAME = 'bars.ods';
+  FILE_NAME = 'regression.ods';
+//  FILE_NAME = 'pie.ods';
+//  FILE_NAME = 'radar.ods';
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
   chart: TsChart;
+  series: TsChartSeries;
   i, j: Integer;
-  s: String;
   isODS: Boolean;
 begin
   isODS := ExtractFileExt(FILE_NAME) = '.ods';
@@ -194,6 +197,47 @@ begin
                  ' Width:', chart.YAxis.MinorGridLines.Width:0:0, 'mm',
                  ' Color:', IntToHex(chart.YAxis.MinorGridLines.Color, 6),
                  ' Transparency:', chart.YAxis.MinorGridLines.Transparency:0:2);
+
+      for j := 0 to chart.Series.Count-1 do
+      begin
+        series := chart.Series[j];
+        WriteLn;
+        WriteLn('  SERIES #', j, ': ', series.ClassName);
+        with series.TitleAddr do
+          WriteLn('    TITLE: ', GetCellRangeString(Sheet, Sheet, Row, Col, Row, Col, rfAllRel, false));
+        with series.LabelRange do
+          WriteLn('    LABEL RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
+        if (series is TsScatterSeries) or (series is TsBubbleSeries) then with series.XRange do
+          WriteLn('    X RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
+        with series.YRange do
+          WriteLn('    Y RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
+        with series.FillColorRange do
+          WriteLn('    FILL COLOR RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
+        with series.LineColorRange do
+          WriteLn('    LINE COLOR RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
+        if series is TsBubbleSeries then with TsBubbleSeries(series).BubbleRange do
+          WriteLn('    BUBBLE RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
+        if series is TsLineSeries then with TsLineSeries(series) do
+        begin
+          Write('    SYMBOLS: ');
+          if ShowSymbols then
+            WriteLn('Symbol:', GetEnumName(TypeInfo(TsChartSeriesSymbol), ord(Symbol)),
+                    ' Width:', SymbolWidth:0:1, 'mm',
+                    ' Height:', SymbolHeight:0:1, 'mm')
+          else
+            WriteLn('none');
+        end;
+
+        WriteLn('    FILL: Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(series.Fill.Style)),
+                   ' Color:', IntToHex(series.Fill.Color, 6),
+                   ' Gradient:', series.Fill.Gradient,
+                   ' Hatch:', series.Fill.Hatch,
+                   ' Transparency:', series.Fill.Transparency:0:2);
+        WriteLn('    LINES: Style:', series.Line.Style,
+                   ' Width:', series.Line.Width:0:0, 'mm',
+                   ' Color:', IntToHex(series.Line.Color, 6),
+                   ' Transparency:', series.Line.Transparency:0:2);
+      end;
     end;
 
   finally

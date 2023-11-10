@@ -1300,6 +1300,14 @@ end;
 function GetCellRangeString(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel; Compact: Boolean = false): String;
 begin
+  if (ASheet1 = '') and (ASheet2 = '') and
+    (ARow1 = UNASSIGNED_ROW_COL_INDEX) and (ACol1 = UNASSIGNED_ROW_COL_INDEX) and
+    (ARow2 = UNASSIGNED_ROW_COL_INDEX) and (ACol2 = UNASSIGNED_ROW_COL_INDEX) then
+  begin
+    Result := '';
+    exit;
+  end;
+
   Result := GetCellRangeString(ARow1, ACol1, ARow2, ACol2, AFlags, Compact);
   if (ASheet1 = '') and (ASheet2 = '') then
     exit;

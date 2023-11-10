@@ -165,7 +165,7 @@ type
     procedure Assign(ASource: TsChartRange);
     function GetSheet1Name: String;
     function GetSheet2Name: String;
-    function IsUsed: Boolean;
+    function IsEmpty: Boolean;
   end;
 
   TsChartElement = class
@@ -298,6 +298,7 @@ type
     FXRange: TsChartRange;          // cell range containing the x data
     FYRange: TsChartRange;
     FFillColorRange: TsChartRange;
+    FLineColorRange: TsChartRange;
     FLabelRange: TsChartRange;
     FLabelFont: TsFont;
     FLabelPosition: TsChartLabelPosition;
@@ -329,6 +330,8 @@ type
     procedure SetYRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     procedure SetFillColorRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetFillColorRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    procedure SetLineColorRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+    procedure SetLineColorRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     function LabelsInCol: Boolean;
     function XValuesInCol: Boolean;
     function YValuesInCol: Boolean;
@@ -336,15 +339,16 @@ type
     property ChartType: TsChartType read GetChartType;
     property Count: Integer read GetCount;
     property DataLabels: TsChartDataLabels read FDataLabels write FDataLabels;
-    property FillColorRange: TsChartRange read FFillColorRange;
+    property FillColorRange: TsChartRange read FFillColorRange write FFillColorRange;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;  // Number format in Excel notation, e.g. '0.00'
     property LabelPosition: TsChartLabelPosition read FLabelPosition write FLabelPosition;
-    property LabelRange: TsChartRange read FLabelRange;
+    property LabelRange: TsChartRange read FLabelRange write FLabelRange;
     property LabelSeparator: string read FLabelSeparator write FLabelSeparator;
+    property LineColorRange: TsChartRange read FLineColorRange write FLineColorRange;
     property TitleAddr: TsChartCellAddr read FTitleAddr write FTitleAddr;  // use '\n' for line-break
-    property XRange: TsChartRange read FXRange;
-    property YRange: TsChartRange read FYRange;
+    property XRange: TsChartRange read FXRange write FXRange;
+    property YRange: TsChartRange read FYRange write FYRange;
     property YAxis: TsChartAxisLink read FYAxis write FYAxis;
 
     property Fill: TsChartFill read FFill write FFill;
@@ -898,11 +902,11 @@ begin
   Result := FChart.GetWorksheet.Name;
 end;
 
-function TsChartRange.IsUsed: Boolean;
+function TsChartRange.IsEmpty: Boolean;
 begin
   Result :=
-    (Row1 <> UNASSIGNED_ROW_COL_INDEX) and (Col1 <> UNASSIGNED_ROW_COL_INDEX) and
-    (Row2 <> UNASSIGNED_ROW_COL_INDEX) and (Col2 <> UNASSIGNED_ROW_COL_INDEX);
+    (Row1 = UNASSIGNED_ROW_COL_INDEX) and (Col1 = UNASSIGNED_ROW_COL_INDEX) and
+    (Row2 = UNASSIGNED_ROW_COL_INDEX) and (Col2 = UNASSIGNED_ROW_COL_INDEX);
 end;
 
 
@@ -1044,6 +1048,7 @@ begin
   FXRange := TsChartRange.Create(AChart);
   FYRange := TsChartRange.Create(AChart);
   FFillColorRange := TsChartRange.Create(AChart);
+  FLineColorRange := TsChartRange.Create(AChart);
   FLabelRange := TsChartRange.Create(AChart);
   FTitleAddr := TsChartCellAddr.Create(AChart);
 
@@ -1070,6 +1075,7 @@ begin
   FFill.Free;
   FTitleAddr.Free;
   FLabelRange.Free;
+  FLineColorRange.Free;
   FFillColorRange.Free;
   FYRange.Free;
   FXRange.Free;
@@ -1171,6 +1177,24 @@ begin
   FLabelRange.Sheet2 := ASheet2;
   FLabelRange.Row2 := ARow2;
   FLabelRange.Col2 := ACol2;
+end;
+
+procedure TsChartSeries.SetLineColorRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  SetLineColorRange('', ARow1, ACol1, '', ARow2, ACol2);
+end;
+
+procedure TsChartSeries.SetLineColorRange(ASheet1: String; ARow1, ACol1: Cardinal;
+  ASheet2: String; ARow2, ACol2: Cardinal);
+begin
+  if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
+    raise Exception.Create('Series line color values can only be located in a single column or row.');
+  FLineColorRange.Sheet1 := ASHeet1;
+  FLineColorRange.Row1 := ARow1;
+  FLineColorRange.Col1 := ACol1;
+  FLineColorRange.Sheet2 := ASheet2;
+  FLineColorRange.Row2 := ARow2;
+  FLineColorRange.Col2 := ACol2;
 end;
 
 procedure TsChartSeries.SetXRange(ARow1, ACol1, ARow2, ACol2: Cardinal);

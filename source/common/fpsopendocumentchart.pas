@@ -15,6 +15,9 @@ uses
   fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsReaderWriter, fpsXMLCommon;
 
 type
+
+  { TsSpreadOpenDocChartReader }
+
   TsSpreadOpenDocChartReader = class(TsBasicSpreadChartReader)
   private
     FChartFiles: TStrings;
@@ -27,12 +30,15 @@ type
     procedure ReadChartAxisProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartAxisStyle(AStyleNode: TDOMNode; AChart: TsChart; Axis: TsChartAxis);
     procedure ReadChartBackgroundStyle(AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartCellAddr(ANode: TDOMNode; ANodeName: String; ACellAddr: TsChartCellAddr);
     procedure ReadChartCellRange(ANode: TDOMNode; ANodeName: String; ARange: TsChartRange);
     procedure ReadChartProps(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartPlotAreaStyle(AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegendProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegendStyle(AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartSeriesProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartSeriesStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartTitleProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
     procedure ReadChartTitleStyle(AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
 
@@ -78,7 +84,7 @@ type
 
     function GetNumberFormatID(ANumFormat: String): String;
     procedure ListAllNumberFormats(AChart: TsChart);
-    procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
+//    procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
 
   protected
     // Object X/styles.xml
@@ -633,6 +639,23 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocChartReader.ReadChartCellAddr(ANode: TDOMNode;
+  ANodeName: String; ACellAddr: TsChartCellAddr);
+var
+  s: String;
+  sh1, sh2: String;
+  r1, c1, r2, c2: Cardinal;
+  relFlags: TsRelFlags;
+begin
+  s := GetAttrValue(ANode, ANodeName);
+  if (s <> '') and TryStrToCellRange_ODS(s, sh1, sh2, r1, c1, r2, c2, relFlags) then
+  begin
+    ACellAddr.Sheet := sh1;
+    ACellAddr.Row := r1;
+    ACellAddr.Col := c1;
+  end;
+end;
+
 procedure TsSpreadOpenDocChartReader.ReadChartCellRange(ANode: TDOMNode;
   ANodeName: String; ARange: TsChartRange);
 var
@@ -768,6 +791,8 @@ begin
     case nodeName of
       'chart:axis':
         ReadChartAxisProps(ANode, AStyleNode, AChart);
+      'chart:series':
+        ReadChartSeriesProps(ANode, AStyleNode, AChart);
     end;
     ANode := ANode.NextSibling;
   end;
@@ -850,6 +875,127 @@ begin
         end;
       'style:text-properties':
         TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, AChart.Legend.Font);
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartSeriesProps(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart);
+var
+  s, nodeName: String;
+  series: TsChartSeries;
+  subNode: TDOMNode;
+  styleNode: TDOMNode;
+  xyCounter: Integer;
+begin
+  s := GetAttrValue(ANode, 'chart:class');
+  case s of
+    'chart:area': series := TsAreaSeries.Create(AChart);
+    'chart:bar': series := TsBarSeries.Create(AChart);
+    'chart:bubble': series := TsBubbleSeries.Create(AChart);
+    'chart:circle': series := TsPieSeries.Create(AChart);
+    'chart:filled-radar': series := TsRadarSeries.Create(AChart);
+    'chart:line': series := TsLineSeries.Create(AChart);
+    'chart:radar': series := TsRadarSeries.Create(AChart);
+    'chart:ring': series := TsRingSeries.Create(AChart);
+    'chart:scatter': series := TsScatterSeries.Create(AChart);
+    else raise Exception.Create('Unknown/unsupported series type.');
+  end;
+  AChart.AddSeries(series);
+
+  ReadChartCellAddr(ANode, 'chart:label-cell-address', series.TitleAddr);
+  if (series is TsBubbleSeries) then
+    ReadChartCellRange(ANode, 'chart:values-cell-range-address', TsBubbleSeries(series).BubbleRange)
+  else
+    ReadChartCellRange(ANode, 'chart:values-cell-range-address', series.YRange);
+
+  xyCounter := 0;
+  subnode := ANode.FirstChild;
+  while subnode <> nil do
+  begin
+    nodeName := subNode.NodeName;
+    case nodeName of
+      'chart:domain':
+        begin
+          if xyCounter = 0 then
+          begin
+            ReadChartCellRange(subnode, 'table:cell-range-address', series.XRange);
+            inc(xyCounter);
+          end else
+          if xyCounter = 1 then
+          begin
+            series.YRange.Assign(series.XRange);
+            ReadChartCellRange(subnode, 'table:cell-range-address', series.XRange)
+          end;
+        end;
+      'loext:property-mapping':
+        begin
+          s := GetAttrValue(subnode, 'loext:property');
+          case s of
+            'FillColor':
+              ReadChartCellRange(subNode, 'loext:cell-range-address', series.FillColorRange);
+            'BorderColor':
+              ReadChartCellRange(subNode, 'loext:cell-range-address', series.LineColorRange);
+          end;
+        end;
+    end;
+    subnode := subNode.NextSibling;
+  end;
+
+  if series.LabelRange.IsEmpty then series.LabelRange.Assign(AChart.XAxis.CategoryRange);
+
+  s := GetAttrValue(ANode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, s);
+  ReadChartSeriesStyle(styleNode, AChart, series);
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartSeriesStyle(AStyleNode: TDOMNode;
+  AChart: TsChart; ASeries: TsChartSeries);
+var
+  nodeName: String;
+  s: String;
+  css: TsChartSeriesSymbol;
+  value: Double;
+  rel: Boolean;
+begin
+  nodeName := AStyleNode.NodeName;
+  AStyleNode := AStyleNode.FirstChild;
+  while AStyleNode <> nil do begin
+    nodeName := AStyleNode.NodeName;
+    case nodeName of
+      'style:graphic-properties':
+        begin
+          GetChartLineProps(AStyleNode, AChart, ASeries.Line);
+          GetChartFillProps(AStyleNode, AChart, ASeries.Fill);
+        end;
+      'style:text-properties':
+        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, ASeries.LabelFont);
+      'style:chart-properties':
+        begin
+          if (ASeries is TsLineSeries) then
+          begin
+            s := GetAttrValue(AStyleNode, 'chart:symbol-name');
+            if s <> '' then
+            begin
+              TsLineSeries(ASeries).ShowSymbols := true;
+              for css in TsChartSeriesSymbol do
+                if SYMBOL_NAMES[css] = s then
+                begin
+                  TsLineSeries(ASeries).Symbol := css;
+                  break;
+                end;
+              s := GetAttrValue(AStyleNode, 'symbol-width');
+              if (s <> '') and EvalLengthStr(s, value, rel) then
+                TsLineSeries(ASeries).SymbolWidth := value;
+              s := GetAttrValue(AStyleNode, 'symbol-height');
+              if (s <> '') and EvalLengthStr(s, value, rel) then
+                TsLineSeries(ASeries).SymbolHeight := value;
+            end else
+              TsLineSeries(ASeries).ShowSymbols := false;
+          end;
+        end;
+
     end;
     AStyleNode := AStyleNode.NextSibling;
   end;
@@ -1823,6 +1969,7 @@ begin
   end;
 end;
 
+(* DO NOT DELETE THIS! MAYBE NEEDED LATER...
 
 { Extracts the cells needed by the given chart from the chart's worksheet and
   copies their values into a temporary worksheet, AWorksheet, so that these
@@ -1998,6 +2145,7 @@ begin
       auxSheet.WriteComment(1, destCol, refStr);   // Store y range reference as comment for svg node
   end;
 end;
+*)
 
 procedure TsSpreadOpenDocChartWriter.ResetStreams;
 var
@@ -2594,6 +2742,7 @@ var
   domainRangeX: String = '';
   domainRangeY: String = '';
   fillColorRange: String = '';
+  lineColorRange: String = '';
   chartClass: String = '';
   regressionEquation: String = '';
   needRegressionStyle: Boolean = false;
@@ -2656,6 +2805,15 @@ begin
       rfAllRel, false
     );
 
+  // Line colors for bars, line series symbols, bubbles etc.
+  if not series.LineColorRange.IsEmpty then
+    lineColorRange := GetSheetCellRangeString_ODS(
+      series.LineColorRange.GetSheet1Name, series.LineColorRange.GetSheet2Name,
+      series.LineColorRange.Row1, series.LineColorRange.Col1,
+      series.LineColorRange.Row2, series.LineColorRange.Col2,
+      rfAllRel, false
+    );
+
   // And this is the title of the series for the legend
   titleAddr := GetSheetCellRangeString_ODS(
     series.TitleAddr.GetSheetName, series.TitleAddr.GetSheetName,
@@ -2674,7 +2832,6 @@ begin
     chartClass := 'circle'
   else
     chartClass := CHART_TYPE_NAMES[series.ChartType];
-
 
   // Store the series properties
   AppendToStream(AChartStream, Format(
@@ -2696,17 +2853,14 @@ begin
     ));
   if fillColorRange <> '' then
     AppendToStream(AChartStream, Format(
-      indent + '<loext:propertry-mapping loext:property="FillColor" loext:cell-range-address="%s"/>' + LE,
+      indent + '<loext:property-mapping loext:property="FillColor" loext:cell-range-address="%s"/>' + LE,
       [ fillColorRange ]
     ));
-
-  { --- not working...
-  if borderColorRange <> '' then
+  if lineColorRange <> '' then
     AppendToStream(AChartStream, Format(
       indent + '<loext:property-mapping loext:property="BorderColor" loext:cell-range-address="%s"/>' + LE,
-      [ borderColorRange ]
+      [ lineColorRange ]
     ));
-  }
 
   // Regression
   if (series is TsScatterSeries) then
