@@ -4,6 +4,52 @@ uses
   SysUtils, TypInfo,
   fpSpreadsheet, fpsTypes, fpsUtils, fpsChart, fpsOpenDocument;
 
+function GetFontStr(AFont: TsFont): String;
+begin
+  Result := Format('Name="%s", Size=%.0f, Style=%s, Color=%.6x', [
+    AFont.FontName,
+    AFont.Size,
+    SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(AFont.Style), True),
+    AFont.Color
+  ]);
+end;
+
+function GetFillStr(AFill: TsChartFill): String;
+begin
+  Result := Format('Style=%s, Color=%.6x, Gradient=%d, Hatch=%d, Transparency=%.2f', [
+    GetEnumName(TypeInfo(TsChartFillStyle), ord(AFill.Style)),
+    AFill.Color, AFill.Gradient, AFill.Hatch, AFill.Transparency
+  ]);
+end;
+
+function GetLineStr(ALine: TsChartLine): String;
+var
+  s: String;
+begin
+  if ALine.Style = -1 then
+    s := 'solid'
+  else if ALine.Style = -2 then
+    s := 'noLine'
+  else
+    s := IntToStr(ALine.Style);
+
+  Result := Format('Style=%s, Width=%.0fmm, Color=%.6x, Transparency=%.2f', [
+    s, ALine.Width, ALine.Color, ALine.Transparency
+  ]);
+end;
+
+function GetRangeStr(ARange: TsChartRange): String;
+begin
+  with ARange do
+    Result := GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false);
+end;
+
+function GetCellAddrStr(ACellAddr: TsChartCellAddr): String;
+begin
+  with ACellAddr do
+    Result := GetCellRangeString(Sheet, Sheet, Row, Col, Row, Col, rfAllRel, false);
+end;
+
 const
 //  FILE_NAME = 'test.ods';
 //  FILE_NAME = 'area.ods';
@@ -16,9 +62,11 @@ var
   sheet: TsWorksheet;
   chart: TsChart;
   series: TsChartSeries;
+  regression: TsChartRegression;
   i, j: Integer;
   isODS: Boolean;
 begin
+  FormatSettings.DecimalSeparator := '.';
   isODS := ExtractFileExt(FILE_NAME) = '.ods';
 
   book := TsWorkbook.Create;
@@ -64,179 +112,125 @@ begin
           'CenterY:', chart.Gradients[j].CenterY*100:0:0, '% ');
 
       WriteLn;
-      WriteLn('  CHART BORDER');
-      WriteLn('    Style:', chart.Border.Style,
-                 ' Width:', chart.Border.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.Border.Color, 6),
-                 ' Transparency:', chart.Border.Transparency:0:2);
+      WriteLn('  CHART BORDER        ', GetLineStr(chart.Border));
+      WriteLn('  CHART BACKGROUND    ',GetFillStr(chart.Background));
+      WriteLn;
+
+      WriteLn('  CHART LEGEND        Position=', GetEnumName(TypeInfo(TsChartLegendPosition), ord(chart.Legend.Position)),
+                                  ', CanOverlapPlotArea=', chart.Legend.CanOverlapPlotArea);
+      WriteLn('                      Background: ', GetFillStr(chart.Legend.Background));
+      WriteLn('                      Border: ', GetLineStr(chart.Legend.Border));
+      WriteLn('                      Font: ', GetFontStr(chart.Legend.Font));
+      WriteLn;
+
+      WriteLn('  CHART TITLE         Caption="', StringReplace(chart.Title.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
+                                  ', Rotation=', chart.Title.RotationAngle);
+      WriteLn('                      Background: ', GetFillStr(chart.Title.Background));
+      WriteLn('                      Border: ', GetLineStr(chart.Title.Border));
+      WriteLn('                      Font: ', GetFontStr(chart.Title.Font));
+      WriteLn;
+
+      WriteLn('  CHART SUBTITLE      Caption="', StringReplace(chart.Subtitle.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
+                                  ', Rotation=', chart.Subtitle.RotationAngle);
+      WriteLn('                      Background: ', GetFillStr(chart.Subtitle.Background));
+      WriteLn('                      Border: ', GetLineStr(chart.SubTitle.Border));
+      WriteLn('                      Font: ', GetFontStr(chart.Subtitle.Font));
+      WriteLn;
+
+      WriteLn('  CHART X AXIS        Visible=', chart.XAxis.Visible);
+      WriteLn('    TITLE             Caption="', StringReplace(chart.XAxis.Title.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"');
+      WriteLn('                      Visible=', chart.XAxis.Title.Visible, ', Rotation=', chart.XAxis.Title.RotationAngle);
+      WriteLn('                      Font: ', GetFontStr(chart.XAxis.Title.Font));
+      WriteLn('    CATEGORIES        ', GetRangeStr(chart.XAxis.CategoryRange));
+      WriteLn('    RANGE             AutomaticMin=', chart.XAxis.AutomaticMin, ', Minimum=', chart.XAxis.Min:0:3);
+      WriteLn('                      AutomaticMax=', chart.XAxis.AutomaticMax, ', Maximum=', chart.XAxis.Max:0:3);
+      WriteLn('    POSITION          ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.XAXis.Position)),
+                                  ', Value=', chart.XAxis.PositionValue:0:3);
+      WriteLn('    AXIS TICKS:       Major interval=', chart.XAxis.MajorInterval:0:2,
+                                  ', Major ticks=', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.XAxis.MajorTicks), True));
+      WriteLn('                      Minor count=', chart.XAxis.MinorCount,
+                                  ', Minor ticks=', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.XAxis.MinorTicks), True));
+      WriteLn('    AXIS LINE         ', GetLineStr(chart.XAxis.AxisLine));
+      WriteLn('    MAJOR GRID        ', GetLineStr(chart.XAxis.MajorGridLines));
+      WriteLn('    MINOR GRID        ', GetLineStr(chart.XAxis.MinorGridLines));
 
       WriteLn;
-      WriteLn('  CHART BACKGROUND');
-      WriteLn('    Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Background.Style)),
-                 ' Color:', IntToHex(chart.background.Color, 6),
-                 ' Gradient:', chart.Background.Gradient,
-                 ' Hatch:', chart.Background.Hatch,
-                 ' Transparency:', chart.Background.Transparency:0:2);
-      WriteLn;
-      WriteLn('  CHART LEGEND');
-      WriteLn('    Position: ', GetEnumName(TypeInfo(TsChartLegendPosition), ord(chart.Legend.Position)),
-                 ' CanOverlapPlotArea:', chart.Legend.CanOverlapPlotArea);
-      WriteLn('    Background: Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Legend.Background.Style)),
-                 ' Color:', IntToHex(chart.Legend.Background.Color, 6),
-                 ' Gradient:', chart.Legend.Background.Gradient,
-                 ' Hatch:', chart.Legend.Background.Hatch,
-                 ' Transparency:', chart.Legend.Background.Transparency);
-      WriteLn('    Border: Style:', chart.Legend.Border.Style,
-                 ' Width:', chart.Legend.Border.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.Legend.Border.Color, 6),
-                 ' Transparency:', chart.Legend.Border.Transparency:0:2);
-      WriteLn('    Font: "', chart.Legend.Font.FontName, '" Size:', chart.Legend.Font.Size:0:0,
-                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.Legend.Font.Style), True),
-                 ' Color:', IntToHex(chart.Legend.Font.Color, 6));
-
-      WriteLn;
-      WriteLn('  CHART TITLE');
-      WriteLn('    Caption: "', StringReplace(chart.Title.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
-                 ' Rotation: ', chart.Title.RotationAngle);
-      WriteLn('    Background: Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Title.Background.Style)),
-                 ' Color:', IntToHex(chart.Title.Background.Color, 6),
-                 ' Gradient:', chart.Title.Background.Gradient,
-                 ' Hatch:', chart.Title.Background.Hatch,
-                 ' Transparency:', chart.Title.Background.Transparency);
-      WriteLn('    Border: Style:', chart.Title.Border.Style,
-                 ' Width:', chart.Title.Border.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.Title.Border.Color, 6),
-                 ' Transparency:', chart.Title.Border.Transparency:0:2);
-      WriteLn('    Font: "', chart.Title.Font.FontName, '" Size:', chart.Title.Font.Size:0:0,
-                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.Title.Font.Style), True),
-                 ' Color:', IntToHex(chart.Title.Font.Color, 6));
-
-      WriteLn;
-      WriteLn('  CHART SUBTITLE');
-      WriteLn('    Caption: "', StringReplace(chart.Subtitle.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
-                 ' Rotation: ', chart.Subtitle.RotationAngle);
-      WriteLn('    Background: Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(chart.Subtitle.Background.Style)),
-                 ' Color:', IntToHex(chart.Subtitle.Background.Color, 6),
-                 ' Gradient:', chart.Subtitle.Background.Gradient,
-                 ' Hatch:', chart.Subtitle.Background.Hatch,
-                 ' Transparency:', chart.Subtitle.Background.Transparency);
-      WriteLn('    Border: Style:', chart.Subtitle.Border.Style,
-                 ' Width:', chart.Subtitle.Border.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.Subtitle.Border.Color, 6),
-                 ' Transparency:', chart.Subtitle.Border.Transparency:0:2);
-      WriteLn('    Font: "', chart.Subtitle.Font.FontName, '" Size:', chart.Subtitle.Font.Size:0:0,
-                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.Subtitle.Font.Style), True),
-                 ' Color:', IntToHex(chart.Subtitle.Font.Color, 6));
-
-      WriteLn;
-      WriteLn('  CHART X AXIS');
-      WriteLn('    VISIBLE:', chart.YAxis.Visible);
-      WriteLn('    TITLE: Caption: "', StringReplace(chart.XAxis.Title.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
-                 ' Visible: ', chart.XAxis.Title.Visible,
-                 ' Rotation: ', chart.XAxis.Title.RotationAngle,
-                 ' Font: "', chart.XAxis.Title.Font.FontName, '" Size:', chart.XAxis.Title.Font.Size:0:0,
-                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.XAxis.Title.Font.Style), True),
-                 ' Color:', IntToHex(chart.XAxis.Title.Font.Color, 6));
-      with chart.XAxis.CategoryRange do
-        if isODS then
-          WriteLn('    CATEGORIES: ', GetSheetCellRangeString_ODS(Sheet1, Sheet2, Row1, Col1, Row2, Col2))
-        else
-          WriteLn('    CATEGORIES: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2));
-      WriteLn('    RANGE: AutomaticMin:', chart.XAxis.AutomaticMin, ' Minimum: ', chart.XAxis.Min:0:3,
-                 ' AutomaticMax:', chart.XAxis.AutomaticMax, ' Maximum: ', chart.XAxis.Max:0:3);
-      WriteLn('    POSITION: ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.XAXis.Position)),
-                 ' Value:', chart.XAxis.PositionValue:0:3);
-      WriteLn('    AXIS TICKS: Major interval:', chart.XAxis.MajorInterval:0:2,
-                 ' Major ticks:', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.XAxis.MajorTicks), True),
-                 ' Minor count:', chart.XAxis.MinorCount,
-                 ' Minor ticks:', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.XAxis.MinorTicks), True));
-      WriteLn('    AXIS LINE: Style:', chart.XAxis.AxisLine.Style,
-                 ' Width:', chart.XAxis.AxisLine.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.XAxis.AxisLine.Color, 6),
-                 ' Transparency:', chart.XAxis.AxisLine.Transparency:0:2);
-      WriteLn('    MAJOR GRID: Style:', chart.XAxis.MajorGridLines.Style,
-                 ' Width:', chart.XAxis.MajorGridLines.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.XAxis.MajorGridLines.Color, 6),
-                 ' Transparency:', chart.XAxis.MajorGridLines.Transparency:0:2);
-      WriteLn('    MINOR GRID: Style:', chart.XAxis.MinorGridLines.Style,
-                 ' Width:', chart.XAxis.MinorGridLines.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.XAxis.MinorGridLines.Color, 6),
-                 ' Transparency:', chart.XAxis.MinorGridLines.Transparency:0:2);
-
-      WriteLn;
-      WriteLn('  CHART Y AXIS:');
-      WriteLn('    VISIBLE:', chart.YAxis.Visible);
-      WriteLn('    TITLE: Caption: "', StringReplace(chart.YAxis.Title.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"',
-                 ' Visible: ', chart.YAxis.Title.Visible,
-                 ' Rotation: ', chart.YAxis.Title.RotationAngle,
-                 ' Font: "', chart.YAxis.Title.Font.FontName, '" Size:', chart.YAxis.Title.Font.Size:0:0,
-                 ' Style:', SetToString(PTypeInfo(TypeInfo(TsFontStyles)), integer(chart.YAxis.Title.Font.Style), True),
-                 ' Color:', IntToHex(chart.YAxis.Title.Font.Color, 6));
-      with chart.YAxis.CategoryRange do
-        if isODS then
-          WriteLn('    CATEGORIES: ', GetSheetCellRangeString_ODS(Sheet1, Sheet2, Row1, Col1, Row2, Col2))
-        else
-          WriteLn('    CATEGORIES: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2));
-      WriteLn('    RANGE: AutomaticMin:', chart.YAxis.AutomaticMin, ' Minimum: ', chart.YAxis.Min:0:3,
-                 ' AutomaticMax:', chart.YAxis.AutomaticMax, ' Maximum: ', chart.YAxis.Max:0:3);
-      WriteLn('    POSITION: ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.YAXis.Position)),
-                 ' Value:', chart.YAxis.PositionValue:0:3);
-      WriteLn('    AXIS TICKS: Major interval:', chart.YAxis.MajorInterval:0:2,
-                 ' Major ticks:', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.YAxis.MajorTicks), True),
-                 ' Minor count:', chart.YAxis.MinorCount,
-                 ' Minor ticks:', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.YAxis.MinorTicks), True));
-      WriteLn('    AXIS LINE: Style:', chart.YAxis.AxisLine.Style,
-                 ' Width:', chart.YAxis.AxisLine.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.YAxis.AxisLine.Color, 6),
-                 ' Transparency:', chart.YAxis.AxisLine.Transparency:0:2);
-      WriteLn('    MAJOR GRID: Style:', chart.YAxis.MajorGridLines.Style,
-                 ' Width:', chart.YAxis.MajorGridLines.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.YAxis.MajorGridLines.Color, 6),
-                 ' Transparency:', chart.YAxis.MajorGridLines.Transparency:0:2);
-      WriteLn('    MINOR GRID: Style:', chart.YAxis.MinorGridLines.Style,
-                 ' Width:', chart.YAxis.MinorGridLines.Width:0:0, 'mm',
-                 ' Color:', IntToHex(chart.YAxis.MinorGridLines.Color, 6),
-                 ' Transparency:', chart.YAxis.MinorGridLines.Transparency:0:2);
+      WriteLn('  CHART Y AXIS        Visible=', chart.YAxis.Visible);
+      WriteLn('    TITLE             Caption="', StringReplace(chart.YAxis.Title.Caption, FPS_LINE_ENDING, '\n', [rfReplaceAll]), '"');
+      WriteLn('                      Visible=', chart.YAxis.Title.Visible, ', Rotation: ', chart.YAxis.Title.RotationAngle);
+      WriteLn('                      Font: ', GetFontStr(chart.YAxis.Title.Font));
+      WriteLn('    RANGE             AutomaticMin=', chart.YAxis.AutomaticMin, ', Minimum=', chart.YAxis.Min:0:3);
+      WriteLn('                      AutomaticMax=', chart.YAxis.AutomaticMax, ', Maximum=', chart.YAxis.Max:0:3);
+      WriteLn('    POSITION          ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.YAXis.Position)),
+                                  ', Value:', chart.YAxis.PositionValue:0:3);
+      WriteLn('    AXIS TICKS        Major interval=', chart.YAxis.MajorInterval:0:2,
+                                  ', Major ticks=', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.YAxis.MajorTicks), True));
+      WriteLn('                      Minor count=', chart.YAxis.MinorCount,
+                                  ', Minor ticks=', SetToString(PTypeInfo(TypeInfo(TsChartAxisTicks)), integer(chart.YAxis.MinorTicks), True));
+      WriteLn('    AXIS LINE         ', GetLineStr(chart.YAxis.AxisLine));
+      WriteLn('    MAJOR GRID        ', GetLineStr(chart.YAxis.MajorGridLines));
+      WriteLn('    MINOR GRID        ', GetLineStr(chart.YAxis.MinorGridLines));
 
       for j := 0 to chart.Series.Count-1 do
       begin
         series := chart.Series[j];
         WriteLn;
-        WriteLn('  SERIES #', j, ': ', series.ClassName);
-        with series.TitleAddr do
-          WriteLn('    TITLE: ', GetCellRangeString(Sheet, Sheet, Row, Col, Row, Col, rfAllRel, false));
-        with series.LabelRange do
-          WriteLn('    LABEL RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
-        if (series is TsScatterSeries) or (series is TsBubbleSeries) then with series.XRange do
-          WriteLn('    X RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
-        with series.YRange do
-          WriteLn('    Y RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
-        with series.FillColorRange do
-          WriteLn('    FILL COLOR RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
-        with series.LineColorRange do
-          WriteLn('    LINE COLOR RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
-        if series is TsBubbleSeries then with TsBubbleSeries(series).BubbleRange do
-          WriteLn('    BUBBLE RANGE: ', GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false));
+        WriteLn(  '  SERIES #', j, ': ', series.ClassName);
+        WriteLn(  '    TITLE:            ', GetCellAddrStr(series.TitleAddr));
+        WriteLn(  '    LABEL RANGE:      ', GetRangeStr(series.LabelRange));
+        if (series is TsScatterSeries) or (series is TsBubbleSeries) then
+          WriteLn('    X RANGE:          ', GetRangeStr(series.XRange));
+        WriteLn(  '    Y RANGE:          ', GetRangeStr(series.YRange));
+        WriteLn(  '    FILL COLOR RANGE: ', GetRangeStr(series.FillColorRange));
+        WriteLn(  '    LINE COLOR RANGE: ', GetRangeStr(series.LineColorRange));
+        if series is TsBubbleSeries then
+          WriteLn('    BUBBLE RANGE:     ', GetRangeStr(TsBubbleSeries(series).BubbleRange));
+
         if series is TsLineSeries then with TsLineSeries(series) do
         begin
-          Write('    SYMBOLS: ');
+          Write(  '    SYMBOLS:          ');
           if ShowSymbols then
-            WriteLn('Symbol:', GetEnumName(TypeInfo(TsChartSeriesSymbol), ord(Symbol)),
-                    ' Width:', SymbolWidth:0:1, 'mm',
-                    ' Height:', SymbolHeight:0:1, 'mm')
+            WriteLn('Symbol=', GetEnumName(TypeInfo(TsChartSeriesSymbol), ord(Symbol)),
+                    ', Width=', SymbolWidth:0:1, 'mm',
+                    ', Height=', SymbolHeight:0:1, 'mm')
           else
             WriteLn('none');
         end;
 
-        WriteLn('    FILL: Style:', GetEnumName(TypeInfo(TsChartFillStyle), ord(series.Fill.Style)),
-                   ' Color:', IntToHex(series.Fill.Color, 6),
-                   ' Gradient:', series.Fill.Gradient,
-                   ' Hatch:', series.Fill.Hatch,
-                   ' Transparency:', series.Fill.Transparency:0:2);
-        WriteLn('    LINES: Style:', series.Line.Style,
-                   ' Width:', series.Line.Width:0:0, 'mm',
-                   ' Color:', IntToHex(series.Line.Color, 6),
-                   ' Transparency:', series.Line.Transparency:0:2);
+        WriteLn(  '    FILL:             ', GetFillStr(series.Fill));
+        WriteLn(  '    LINES:            ', GetLineStr(series.Line));
+
+        if (series is TsScatterSeries) and (TsScatterSeries(series).Regression.RegressionType <> rtNone) then
+        begin
+          regression := TsScatterSeries(series).Regression;
+          with regression do
+          begin
+            Write('    REGRESSION:       ');
+            Write(  'Type=', GetEnumName(TypeInfo(TsRegressionType), ord(RegressionType)));
+            if RegressionType = rtPolynomial then
+              Write( ', PolynomialDegree=', PolynomialDegree);
+            Write(   ', ForceYIntercept=', ForceYIntercept);
+            if ForceYIntercept then
+              Write( ', YInterceptValue=', YInterceptValue:0:2);
+            WriteLn;
+            WriteLn('                      ExtrapolateForwardBy=', ExtrapolateForwardBy:0:2,
+                                        ', ExtrapolateBackwardBy=', ExtrapolateBackwardBy:0:2);
+            WriteLn('                      DisplayEquation=', DisplayEquation,
+                                        ', DisplayRSquare=', DisplayRSquare);
+          end;
+          if (regression.DisplayEquation or regression.DisplayRSquare) then
+          begin
+            with regression.Equation do
+            begin
+              WriteLn('    REGR. EQUATION:   XName="', XName,'", YName="', YName,'" ');
+              WriteLn('                      FONT:   ', GetFontStr(regression.Equation.Font));
+              WriteLn('                      FILL:   ', GetFillStr(regression.Equation.Fill));
+              WriteLn('                      BORDER: ', GetLineStr(regression.Equation.Border));
+            end;
+          end;
+
+        end;
+
       end;
     end;
 

@@ -37,6 +37,9 @@ type
     procedure ReadChartPlotAreaStyle(AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegendProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegendStyle(AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartRegressionEquationStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
+    procedure ReadChartRegressionProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
+    procedure ReadChartRegressionStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartSeriesProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartSeriesStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartTitleProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
@@ -164,6 +167,9 @@ const
 
   AXIS_ID: array[TAxisKind] of string = ('x', 'y', 'x', 'y');
   AXIS_LEVEL: array[TAxisKind] of string = ('primary', 'primary', 'secondary', 'secondary');
+
+  REGRESSION_TYPE: array [TsRegressionType] of string = (
+    '', 'linear', 'logarithmic', 'exponential', 'power', 'polynomial');
 
   FALSE_TRUE: array[boolean] of string = ('false', 'true');
 
@@ -880,6 +886,146 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocChartReader.ReadChartRegressionEquationStyle(AStyleNode: TDOMNode;
+  AChart: TsChart; ASeries: TsChartSeries);
+var
+  series: TsScatterSeries;
+  odsReader: TsSpreadOpenDocReader;
+  s, nodeName: String;
+begin
+  if not (ASeries is TsScatterSeries) then
+    exit;
+
+  series := TsScatterSeries(ASeries);
+  odsReader := TsSpreadOpenDocReader(Reader);
+
+  // here: read number format!   (still missing...)
+
+  AStyleNode := AStyleNode.FirstChild;
+  while Assigned(AStyleNode) do
+  begin
+    nodeName := AStyleNode.NodeName;
+    case nodeName of
+      'style:graphic-properties':
+        begin
+          GetChartLineProps(AStyleNode, AChart, series.Regression.Equation.Border);
+          GetChartFillProps(AStyleNode, AChart, series.Regression.Equation.Fill);
+        end;
+      'style:text-properties':
+        odsReader.ReadFont(AStyleNode, series.Regression.Equation.Font);
+      'style:chart-properties':
+        begin
+          s := GetAttrValue(AStyleNode, 'loext:regression-x-name');
+          if s <> '' then
+            series.Regression.Equation.XName := s;
+
+          s := GetAttrValue(AStyleNode, 'loext:regression-y-name');
+          if s <> '' then
+            series.Regression.Equation.YName := s;
+        end;
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartRegressionProps(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart; ASeries: TsChartSeries);
+var
+  series: TsScatterSeries;
+  s, nodeName: String;
+  styleNode: TDOMNode;
+  subNode: TDOMNode;
+begin
+  if not (ASeries is TsScatterSeries) then
+    exit;
+
+  series := TsScatterSeries(ASeries);
+
+  s := GetAttrValue(ANode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, s);
+  ReadChartRegressionStyle(styleNode, AChart, ASeries);
+
+  subNode := ANode.FirstChild;
+  while Assigned(subNode) do
+  begin
+    nodeName := subNode.NodeName;
+    if nodeName = 'chart:equation' then
+    begin
+      s := GetAttrValue(subNode, 'chart:display-equation');
+      series.Regression.DisplayEquation := (s = 'true');
+
+      s := GetAttrValue(subNode, 'chart:display-r-square');
+      series.Regression.DisplayRSquare := (s = 'true');
+
+      s := GetAttrValue(subNode, 'chart:style-name');
+      styleNode := FindStyleNode(AStyleNode, s);
+      ReadChartRegressionEquationStyle(styleNode, AChart, ASeries);
+    end;
+    subNode := subNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartRegressionStyle(AStyleNode: TDOMNode;
+  AChart: TsChart; ASeries: TsChartSeries);
+var
+  series: TsScatterSeries;
+  s, nodeName: String;
+  rt: TsRegressionType;
+  value: Double;
+  intValue: Integer;
+begin
+  if not (ASeries is TsScatterSeries) then
+    exit;
+  series := TsScatterSeries(ASeries);
+
+  AStyleNode := AStyleNode.FirstChild;
+  while Assigned(AStyleNode) do
+  begin
+    nodeName := AStyleNode.NodeName;
+    case nodeName of
+      'style:graphic-properties':
+        GetChartLineProps(AStyleNode, AChart, series.Regression.Line);
+      'style:chart-properties':
+        begin
+          s := GetAttrValue(AStyleNode, 'chart:regression-name');
+          series.Regression.Title := s;
+
+          s := GetAttrValue(AStyleNode, 'chart:regression-type');
+          for rt in TsRegressionType do
+            if (s <> '') and (REGRESSION_TYPE[rt] = s) then
+            begin
+              series.Regression.RegressionType := rt;
+              break;
+            end;
+
+          s := GetAttrValue(AStyleNode, 'chart:regression-max-degree');
+          if (s <> '') and TryStrToInt(s, intValue) then
+            series.Regression.PolynomialDegree := intValue;
+
+          s := GetAttrValue(AStyleNode, 'chart:regression-extrapolate-forward');
+          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+            series.Regression.ExtrapolateForwardBy := value
+          else
+            series.Regression.ExtrapolateForwardBy := 0.0;
+
+          s := GetAttrValue(AStyleNode, 'chart:regression-extrapolate-backward');
+          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+            series.Regression.ExtrapolateBackwardBy := value
+          else
+            series.Regression.ExtrapolateBackwardBy := 0.0;
+
+          s := GetAttrValue(AStyleNode, 'chart:regression-force-intercept');
+          series.Regression.ForceYIntercept := (s = 'true');
+
+          s := GetAttrValue(AStyleNode, 'chart:regression-intercept-value');
+          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+            series.Regression.YInterceptValue := value;
+        end;
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocChartReader.ReadChartSeriesProps(ANode, AStyleNode: TDOMNode;
   AChart: TsChart);
 var
@@ -939,6 +1085,8 @@ begin
               ReadChartCellRange(subNode, 'loext:cell-range-address', series.LineColorRange);
           end;
         end;
+      'chart:regression-curve':
+        ReadChartRegressionProps(subNode, AStyleNode, AChart, series);
     end;
     subnode := subNode.NextSibling;
   end;
@@ -1758,9 +1906,6 @@ end;
 
 function TsSpreadOpenDocChartWriter.GetChartRegressionStyleAsXML(AChart: TsChart;
   ASeriesIndex, AIndent, AStyleID: Integer): String;
-const
-  REGRESSION_TYPE: array [TsRegressionType] of string = (
-    '', 'linear', 'logarithmic', 'exponential', 'power', 'polynomial');
 var
   series: TsScatterSeries;
   indent: String;
