@@ -22,6 +22,7 @@ type
   private
     FChartFiles: TStrings;
     FPointSeparatorSettings: TFormatSettings;
+    FNumberFormatList: TStrings;
     function FindStyleNode(AStyleNodes: TDOMNode; AStyleName: String): TDOMNode;
     procedure GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
     procedure GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine);
@@ -261,6 +262,7 @@ type
   public
     constructor Create;
     function Add(const ANumFormat: String): Integer; override;
+    function FindFormatByName(const AName: String): String;
   end;
 
 constructor TsChartNumberFormatList.Create;
@@ -282,6 +284,22 @@ begin
   end;
 end;
 
+{ The reader adds formats in the form "name:format" where "name" is the
+  identifier used in the style definition, e.g. "N0". }
+function TsChartNumberFormatList.FindFormatByName(const AName: String): String;
+var
+  idx: Integer;
+begin
+  Result := '';
+  idx := IndexOfName(AName);
+  if idx <> -1 then
+  begin
+    Result := Values[AName];
+    if Result = 'General' then
+      Result := '';
+  end;
+end;
+
 
 {------------------------------------------------------------------------------}
 {                        TsSpreadOpenDocChartReader                            }
@@ -295,10 +313,13 @@ begin
   FPointSeparatorSettings.DecimalSeparator:='.';
 
   FChartFiles := TStringList.Create;
+  FNumberFormatList := TsChartNumberFormatList.Create;
+  FNumberFormatList.NameValueSeparator := ':';
 end;
 
 destructor TsSpreadOpenDocChartReader.Destroy;
 begin
+  FNumberFormatList.Free;
   FChartFiles.Free;
   inherited;
 end;
@@ -446,6 +467,10 @@ var
   chartChartNode: TDOMNode;
   chartElementNode: TDOMNode;
 begin
+  nodeName := AStyleNode.NodeName;
+  if nodeName = 'office:automatic-styles' then
+    TsSpreadOpenDocReader(Reader).ReadNumFormats(AStyleNode, FNumberFormatList);
+
   nodeName := AChartNode.NodeName;
   officeChartNode := AChartNode.FirstChild;
   while officeChartNode <> nil do
@@ -544,6 +569,15 @@ var
   n: Integer;
   ticks: TsChartAxisTicks = [];
 begin
+  nodeName := AStyleNode.NodeName;
+  s := GetAttrValue(AStyleNode, 'style:data-style-name');
+  if s <> '' then
+    s := TsChartNumberFormatList(FNumberFormatList).FindFormatByName(s);
+  if (AChart.StackMode = csmStackedPercentage) and ((Axis = AChart.YAxis) or (Axis = AChart.Y2Axis)) then
+    Axis.LabelFormatPercent := s
+  else
+    Axis.LabelFormat := s;
+
   AStyleNode := AStyleNode.FirstChild;
   while AStyleNode <> nil do
   begin
@@ -899,7 +933,11 @@ begin
   series := TsScatterSeries(ASeries);
   odsReader := TsSpreadOpenDocReader(Reader);
 
-  // here: read number format!   (still missing...)
+  nodeName := AStyleNode.NodeName;
+  s := GetAttrValue(AStyleNode, 'style:data-style-name');
+  if s <> '' then
+    s := TsChartNumberFormatList(FNumberFormatList).FindFormatByName(s);
+  series.Regression.Equation.NumberFormat := s;
 
   AStyleNode := AStyleNode.FirstChild;
   while Assigned(AStyleNode) do
@@ -1108,6 +1146,11 @@ var
   rel: Boolean;
 begin
   nodeName := AStyleNode.NodeName;
+  s := GetAttrValue(AStyleNode, 'style:data-style-name');
+  if s <> '' then
+    s := TsChartNumberFormatList(FNumberFormatList).FindFormatByName(s);
+  ASeries.LabelFormat := s;
+
   AStyleNode := AStyleNode.FirstChild;
   while AStyleNode <> nil do begin
     nodeName := AStyleNode.NodeName;

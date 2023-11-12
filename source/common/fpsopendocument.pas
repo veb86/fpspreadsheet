@@ -190,7 +190,6 @@ type
     function NeedsPassword(AStream: TStream): Boolean; override;
     procedure ReadAutomaticStyles(AStylesNode: TDOMNode);
     procedure ReadMasterStyles(AStylesNode: TDOMNode);
-    procedure ReadNumFormats(AStylesNode: TDOMNode);
     procedure ReadPageLayout(AStylesNode: TDOMNode; ATableStyleName: String;
       APageLayout: TsPageLayout);
     procedure ReadSettings(AOfficeSettingsNode: TDOMNode);
@@ -232,6 +231,7 @@ type
     { Helper methods, public because needed by the chart reader }
     function CreateXMLStream: TStream;
     procedure ReadFont(ANode: TDOMNode; AFont: TsFont);
+    procedure ReadNumFormats(AStylesNode: TDOMNode; ANumFormatList: TStrings);
   end;
 
   { TsSpreadOpenDocWriter }
@@ -3046,7 +3046,7 @@ begin
       ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
 
       StylesNode := Doc.DocumentElement.FindNode('office:styles');
-      ReadNumFormats(StylesNode);
+      ReadNumFormats(StylesNode, NumFormatList);
       ReadStyles(StylesNode);
       ReadAutomaticStyles(Doc.DocumentElement.FindNode('office:automatic-styles'));
       ReadMasterStyles(Doc.DocumentElement.FindNode('office:master-styles'));
@@ -3067,7 +3067,7 @@ begin
     if Assigned(Doc) then begin
       ReadFontFaces(Doc.DocumentElement.FindNode('office:font-face-decls'));
       StylesNode := Doc.DocumentElement.FindNode('office:automatic-styles');
-      ReadNumFormats(StylesNode);
+      ReadNumFormats(StylesNode, NumFormatList);
       ReadStyles(StylesNode);
 
       BodyNode := Doc.DocumentElement.FindNode('office:body');
@@ -3450,7 +3450,8 @@ begin
     (Workbook as TsWorkbook).OnReadCellData(Workbook, ARow, ACol, cell);
 end;
 
-procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
+procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode;
+  ANumFormatList: TStrings);
 
   procedure ReadStyleMap(ANode: TDOMNode; var ANumFormat: TsNumberFormat;
     var AFormatStr: String);
@@ -3502,7 +3503,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
         continue;
       end;
 
-      fmt := NumFormatList[styleIndex];
+      fmt := ANumFormatList[styleIndex];
       fmt := Copy(fmt, pos(':', fmt)+1, Length(fmt));
       parser := TsNumFormatParser.Create(fmt, Workbook.FormatSettings);
       try
@@ -3682,7 +3683,7 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     if (ANumFormatNode.NodeName = 'number:currency-style') then
       nf := IfThen(hasColor, nfCurrencyRed, nfCurrency);
 
-    NumFormatList.Add(Format('%s:%s', [ANumFormatName, nfs]));
+    ANumFormatList.Add(Format('%s:%s', [ANumFormatName, nfs]));
   end;
 
   procedure ReadDateTimeStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
@@ -3786,8 +3787,8 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
     if node <> nil then
       ReadStyleMap(node, nf, nfs);
 
-    NumFormatList.Add(ANumFormatName + ':' + nfs);
-//    NumFormatList.AddFormat(ANumFormatName, nf, nfs);
+    ANumFormatList.Add(ANumFormatName + ':' + nfs);
+//    ANumFormatList.AddFormat(ANumFormatName, nf, nfs);
   end;
 
   procedure ReadTextStyle(ANumFormatNode: TDOMNode; ANumFormatName: String);
@@ -3825,9 +3826,9 @@ procedure TsSpreadOpenDocReader.ReadNumFormats(AStylesNode: TDOMNode);
       ReadStyleMap(node, nf, nfs);
     nf := nfCustom;
 
-    NumFormatList.Add(Format('%s:%s', [ANumFormatName, nfs]));
+    ANumFormatList.Add(Format('%s:%s', [ANumFormatName, nfs]));
 
-    //NumFormatList.AddFormat(ANumFormatName, nf, nfs);
+    //ANumFormatList.AddFormat(ANumFormatName, nf, nfs);
   end;
 
 var

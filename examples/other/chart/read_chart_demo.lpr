@@ -26,12 +26,27 @@ function GetLineStr(ALine: TsChartLine): String;
 var
   s: String;
 begin
+
   if ALine.Style = -1 then
     s := 'solid'
   else if ALine.Style = -2 then
     s := 'noLine'
+  else if ALine.Style = clsFineDot then
+    s := 'fine-dot'
+  else if ALine.Style = clsDot then
+    s := 'dot'
+  else if ALine.Style = clsDash then
+    s := 'dash'
+  else if ALine.Style = clsDashDot then
+    s := 'dash-dot'
+  else if ALine.Style = clsLongDash then
+    s := 'long dash'
+  else if ALine.Style = clsLongDashDot then
+    s := 'long dash-dot'
+  else if ALine.Style = clsLongDashDotDot then
+    s := 'long dash-dot-dot'
   else
-    s := IntToStr(ALine.Style);
+    s := 'custom #' + IntToStr(ALine.Style);
 
   Result := Format('Style=%s, Width=%.0fmm, Color=%.6x, Transparency=%.2f', [
     s, ALine.Width, ALine.Color, ALine.Transparency
@@ -42,6 +57,8 @@ function GetRangeStr(ARange: TsChartRange): String;
 begin
   with ARange do
     Result := GetCellRangeString(Sheet1, Sheet2, Row1, Col1, Row2, Col2, rfAllRel, false);
+  if Result = '' then
+    Result := '(none)';
 end;
 
 function GetCellAddrStr(ACellAddr: TsChartCellAddr): String;
@@ -144,6 +161,7 @@ begin
       WriteLn('    CATEGORIES        ', GetRangeStr(chart.XAxis.CategoryRange));
       WriteLn('    RANGE             AutomaticMin=', chart.XAxis.AutomaticMin, ', Minimum=', chart.XAxis.Min:0:3);
       WriteLn('                      AutomaticMax=', chart.XAxis.AutomaticMax, ', Maximum=', chart.XAxis.Max:0:3);
+      WriteLn('    LABELS            Format="', chart.XAxis.LabelFormat, '"');
       WriteLn('    POSITION          ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.XAXis.Position)),
                                   ', Value=', chart.XAxis.PositionValue:0:3);
       WriteLn('    AXIS TICKS:       Major interval=', chart.XAxis.MajorInterval:0:2,
@@ -161,6 +179,7 @@ begin
       WriteLn('                      Font: ', GetFontStr(chart.YAxis.Title.Font));
       WriteLn('    RANGE             AutomaticMin=', chart.YAxis.AutomaticMin, ', Minimum=', chart.YAxis.Min:0:3);
       WriteLn('                      AutomaticMax=', chart.YAxis.AutomaticMax, ', Maximum=', chart.YAxis.Max:0:3);
+      WriteLn('    LABELS            Format="', chart.YAxis.LabelFormat, '", FormatPercent="', chart.YAxis.LabelFormatPercent,'"');
       WriteLn('    POSITION          ', GetEnumName(TypeInfo(TsChartAxisPosition), ord(chart.YAXis.Position)),
                                   ', Value:', chart.YAxis.PositionValue:0:3);
       WriteLn('    AXIS TICKS        Major interval=', chart.YAxis.MajorInterval:0:2,
@@ -177,7 +196,7 @@ begin
         WriteLn;
         WriteLn(  '  SERIES #', j, ': ', series.ClassName);
         WriteLn(  '    TITLE:            ', GetCellAddrStr(series.TitleAddr));
-        WriteLn(  '    LABEL RANGE:      ', GetRangeStr(series.LabelRange));
+        WriteLn(  '    LABEL RANGE:      ', GetRangeStr(series.LabelRange), ', Format="', series.LabelFormat, '"');
         if (series is TsScatterSeries) or (series is TsBubbleSeries) then
           WriteLn('    X RANGE:          ', GetRangeStr(series.XRange));
         WriteLn(  '    Y RANGE:          ', GetRangeStr(series.YRange));
@@ -222,7 +241,7 @@ begin
           begin
             with regression.Equation do
             begin
-              WriteLn('    REGR. EQUATION:   XName="', XName,'", YName="', YName,'" ');
+              WriteLn('    REGR. EQUATION:   XName="', XName,'", YName="', YName,'", Number format="', NumberFormat, '"');
               WriteLn('                      FONT:   ', GetFontStr(regression.Equation.Font));
               WriteLn('                      FILL:   ', GetFillStr(regression.Equation.Fill));
               WriteLn('                      BORDER: ', GetLineStr(regression.Equation.Border));
