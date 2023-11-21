@@ -47,7 +47,7 @@ type
   TsNotificationItem = (lniWorkbook,
     lniWorksheet, lniWorksheetAdd, lniWorksheetRemoving, lniWorksheetRemove,
     lniWorksheetRename, lniWorksheetZoom,
-    lniCell, lniSelection, lniAbortSelection, lniRow, lniCol);
+    lniCell, lniSelection, lniAbortSelection, lniRow, lniCol, lniChart);
   {@@ This set accompanies the notification between WorkbookSource and visual
     controls and describes which items have changed in the spreadsheet. }
   TsNotificationItems = set of TsNotificationItem;

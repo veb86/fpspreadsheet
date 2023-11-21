@@ -19,11 +19,11 @@ interface
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
   // TChart
-  TACustomSource,
+  TATypes, TATextElements, TACustomSource, TAGraph,
   // FPSpreadsheet Visual
-  fpspreadsheetctrls, fpspreadsheetgrid,
+  fpSpreadsheetCtrls, fpSpreadsheetGrid, fpsVisualUtils,
   // FPSpreadsheet
-  fpstypes, fpspreadsheet, fpsutils;
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsChart;
 
 type
 
@@ -75,6 +75,45 @@ type
     property LabelRange: String index rngLabel read GetRange write SetRange;
     property XRange: String index rngX read GetRange write SetRange;
     property YRange: String index rngY read GetRange write SetRange;
+  end;
+
+  {@@ Link between TAChart and the fpspreadsheet chart class }
+
+  { TsWorkbookChartLink }
+
+  TsWorkbookChartLink = class(TComponent, IsSpreadsheetControl)
+  private
+    FChart: TChart;
+    FWorkbookSource: TsWorkbookSource;
+    FWorkbook: TsWorkbook;
+    FWorkbookChartIndex: Integer;
+    procedure SetChart(AValue: TChart);
+    procedure SetWorkbookChartIndex(AValue: Integer);
+    procedure SetWorkbookSource(AValue: TsWorkbookSource);
+
+  protected
+    procedure Notification(AComponent: TComponent; Operation: TOperation); override;
+
+    procedure ClearChart;
+    function GetWorkbookChart: TsChart;
+    procedure PopulateChart;
+    procedure UpdateChartBrush(AWorkbookFill: TsChartFill; ABrush: TBrush);
+    procedure UpdateChartPen(AWorkbookLine: TsChartLine; APen: TPen);
+    procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
+
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+
+    { Interfacing with WorkbookSource}
+    procedure ListenerNotification(AChangedItems: TsNotificationItems; AData: Pointer = nil);
+    procedure RemoveWorkbookSource;
+
+  published
+    property Chart: TChart read FChart write SetChart;
+    property WorkbookChartIndex: Integer read FWorkbookChartIndex write SetWorkbookChartIndex;
+    property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
+
   end;
 
 
@@ -474,5 +513,172 @@ begin
   FYCount := AValue;
 end;
 
+
+{------------------------------------------------------------------------------}
+{                             TsWorkbookChartLink                              }
+{------------------------------------------------------------------------------}
+
+constructor TsWorkbookChartLink.Create(AOwner: TComponent);
+begin
+  inherited;
+  FWorkbookChartIndex := -1;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Destructor of the WorkbookChartLink.
+  Removes itself from the WorkbookSource's listener list.
+-------------------------------------------------------------------------------}
+destructor TsWorkbookChartLink.Destroy;
+begin
+  if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
+  inherited;
+end;
+
+procedure TsWorkbookChartLink.ClearChart;
+begin
+  if FChart = nil then
+    exit;
+  // Clear the title
+  FChart.Title.Text.Clear;
+  // Clear the footer
+  FChart.Foot.Text.Clear;
+  // Clear the series
+  FChart.ClearSeries;
+end;
+
+function TsWorkbookChartLink.GetWorkbookChart: TsChart;
+begin
+  if (FWorkbook <> nil) and (FWorkbookChartIndex > -1) then
+    Result := FWorkbook.GetChartByIndex(FWorkbookChartIndex)
+  else
+    Result := nil;
+end;
+
+procedure TsWorkbookChartLink.ListenerNotification(AChangedItems: TsNotificationItems;
+  AData: Pointer = nil);
+begin
+  // to be completed
+end;
+
+procedure TsWorkbookChartLink.Notification(AComponent: TComponent; Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) then
+  begin
+    if (AComponent = FWorkbookSource) then
+      SetWorkbookSource(nil)
+    else
+    if (AComponent = FChart) then
+      SetChart(nil);
+  end;
+end;
+
+procedure TsWorkbookChartLink.RemoveWorkbookSource;
+begin
+  SetWorkbookSource(nil);
+end;
+
+procedure TsWorkbookChartLink.PopulateChart;
+var
+  ch: TsChart;
+begin
+  if (FChart = nil) then
+    exit;
+  if (FWorkbookSource = nil) or (FWorkbookChartIndex < 0) then
+  begin
+    ClearChart;
+    exit;
+  end;
+
+  ch := GetWorkbookChart;
+  UpdateChartTitle(ch.Title, FChart.Title);
+  UpdateChartTitle(ch.Subtitle, FChart.Foot);
+
+  // ...
+end;
+
+procedure TsWorkbookChartLink.SetChart(AValue: TChart);
+begin
+  if FChart = AValue then
+    exit;
+  FChart := AValue;
+  PopulateChart;
+end;
+
+procedure TSWorkbookChartLink.SetWorkbookChartIndex(AValue: Integer);
+begin
+  if AValue = FWorkbookChartIndex then
+    exit;
+  FWorkbookChartIndex := AValue;
+  PopulateChart;
+end;
+
+procedure TsWorkbookChartLink.SetWorkbookSource(AValue: TsWorkbookSource);
+begin
+  if AValue = FWorkbookSource then
+    exit;
+  if FWorkbookSource <> nil then
+    FWorkbookSource.RemoveListener(self);
+  FWorkbookSource := AValue;
+  if FWorkbookSource <> nil then
+  begin
+    FWorkbookSource.AddListener(self);
+    FWorkbook := FWorkbookSource.Workbook;
+  end else
+    FWorkbook := nil;
+  ListenerNotification([lniWorkbook, lniWorksheet]);
+  PopulateChart;
+end;
+
+procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookFill: TsChartFill;
+  ABrush: TBrush);
+begin
+  if (AWorkbookFill <> nil) and (ABrush <> nil) then
+  begin
+    ABrush.Color := Convert_sColor_to_Color(AWorkbookFill.Color);
+    if AWorkbookFill.Style = cfsNoFill then
+      ABrush.Style := bsClear
+    else
+      ABrush.Style := bsSolid;
+    // NOTE: TAChart will ignore gradient.
+    // To be completed: hatched filles.
+  end;
+end;
+
+procedure TsWorkbookChartLink.UpdateChartPen(AWorkbookLine: TsChartLine;
+  APen: TPen);
+begin
+  if (AWorkbookLine <> nil) and (APen <> nil) then
+  begin
+    APen.Color := Convert_sColor_to_Color(AWorkbookLine.Color);
+    APen.Width := round(mmToIn(AWorkbookLine.Width) * GetParentForm(FChart).PixelsPerInch);
+    case AWorkbookLine.Style of
+      clsNoLine:
+        APen.Style := psClear;
+      clsSolid:
+        APen.Style := psSolid;
+      else  // to be fixed
+        APen.Style := psSolid;
+    end;
+  end;
+end;
+
+{@@ Updates title and footer of the linked TAChart.
+  NOTE: the workbook chart's subtitle is converted to TAChart's footer! }
+procedure TsWorkbookChartLink.UpdateChartTitle(AWorkbookTitle: TsChartText;
+  AChartTitle: TChartTitle);
+begin
+  if (AWorkbookTitle <> nil) and (AChartTitle <> nil) then
+  begin
+    AChartTitle.Text.Text := AWorkbookTitle.Caption;
+    AChartTitle.Visible := AWorkbookTitle.Visible;
+    Convert_sFont_to_Font(AWorkbookTitle.Font, AChartTitle.Font);
+    UpdateChartPen(AWorkbookTitle.Border, AChartTitle.Frame);
+    UpdateChartBrush(AWorkbookTitle.Background, AChartTitle.Brush);
+    AChartTitle.Font.Orientation := round(AWorkbookTitle.RotationAngle * 10);
+    AChartTitle.Frame.Visible := (AChartTitle.Frame.Style <> psClear);
+    AChartTitle.Alignment := taCenter;
+  end;
+end;
 
 end.

@@ -949,10 +949,14 @@ end;
 constructor TsChartText.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
+  FBorder.Style := clsNoLine;
+  FBackground.Style := cfsNoFill;
+
   FFont := TsFont.Create;
   FFont.Size := 10;
   FFont.Style := [];
   FFont.Color := scBlack;
+
   FVisible := true;
 end;
 
