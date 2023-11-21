@@ -30,7 +30,8 @@ type
     procedure ReadChartAxisGrid(ANode, AStyleNode: TDOMNode; AChart: TsChart; Axis: TsChartAxis);
     procedure ReadChartAxisProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartAxisStyle(AStyleNode: TDOMNode; AChart: TsChart; Axis: TsChartAxis);
-    procedure ReadChartBackgroundStyle(AStyleNode: TDOMNode; AChart: TsChart);
+    procedure ReadChartBackgroundProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; AElement: TsChartFillElement);
+    procedure ReadChartBackgroundStyle(AStyleNode: TDOMNode; AChart: TsChart; AElement: TsChartFillElement);
     procedure ReadChartCellAddr(ANode: TDOMNode; ANodeName: String; ACellAddr: TsChartCellAddr);
     procedure ReadChartCellRange(ANode: TDOMNode; ANodeName: String; ARange: TsChartRange);
     procedure ReadChartProps(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
@@ -106,7 +107,7 @@ type
     procedure WriteChartLegend(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
     procedure WriteChartNumberStyles(AStream: TStream;
-      AIndent: Integer; AChart: TsChart);
+      AIndent: Integer; {%H-}AChart: TsChart);
     procedure WriteChartPlotArea(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
     procedure WriteChartSeries(AChartStream, AStyleStream: TStream;
@@ -358,16 +359,19 @@ end;
 procedure TsSpreadOpenDocChartReader.GetChartFillProps(ANode: TDOMNode;
   AChart: TsChart; AFill: TsChartFill);
 var
+  {%H-}nodeName: String;
   s: String;
   sc: String;
   sn: String;
   opacity: Double;
 begin
+  nodeName := ANode.NodeName;
+
   s := GetAttrValue(ANode, 'draw:fill');
   case s of
     'none':
       AFill.Style := cfsNoFill;
-    'solid':
+    '', 'solid':
       begin
         AFill.Style := cfsSolid;
         sc := GetAttrValue(ANode, 'draw:fill-color');
@@ -402,6 +406,7 @@ end;
 procedure TsSpreadOpenDocChartReader.GetChartLineProps(ANode: TDOMNode;
   AChart: TsChart; ALine: TsChartLine);
 var
+  {%H-}nodeName: String;
   s: String;
   sn: String;
   sc: String;
@@ -410,33 +415,37 @@ var
   value: Double;
   rel: Boolean;
 begin
+  nodeName := ANode.NodeName;
+
   s := GetAttrValue(ANode, 'draw:stroke');
-  if s = 'none' then
-    ALine.Style := clsNoLine
-  else
-  begin
-    if s = 'solid' then
-      ALine.Style := clsSolid
-    else
-    if s = 'dash' then
-    begin
-      sn := GetAttrValue(ANode, 'draw:stroke-dash');
-      if sn <> '' then
-        ALine.Style := AChart.LineStyles.IndexOfName(UnASCIIName(sn));
-    end;
-
-    sc := 'draw:stroke-color';
-    if sc <> '' then
-      ALine.Color := HTMLColorStrToColor(sc);
-
-    sw := 'draw:stroke-width';
-    if (sw <> '') and EvalLengthStr(sw, value, rel) then
-      ALine.Width := value;
-
-    so := 'draw:stroke-opacity';
-    if (so <> '') and TryPercentStrToFloat(so, value) then
-      ALine.Transparency := 1.0 - value*0.01;
+  case s of
+    'none':
+      ALine.Style := clsNoLine;
+    'solid':
+      ALine.Style := clsSolid;
+    'dash':
+      begin
+        sn := GetAttrValue(ANode, 'draw:stroke-dash');
+        if sn <> '' then
+          ALine.Style := AChart.LineStyles.IndexOfName(UnASCIIName(sn));
+      end;
   end;
+
+  sc := GetAttrValue(ANode, 'svg:stroke-color');
+  if sc = '' then
+    sc := GetAttrValue(ANode, 'draw:stroke-color');
+  if sc <> '' then
+    ALine.Color := HTMLColorStrToColor(sc);
+
+  sw := GetAttrValue(ANode, 'svg:stroke-width');
+  if sw = '' then
+    sw := GetAttrValue(ANode, 'draw:stroke-width');
+  if (sw <> '') and EvalLengthStr(sw, value, rel) then
+    ALine.Width := value;
+
+  so := 'draw:stroke-opacity';
+  if (so <> '') and TryPercentStrToFloat(so, value) then
+    ALine.Transparency := 1.0 - value*0.01;
 end;
 
                             (*
@@ -508,10 +517,13 @@ end;
 procedure TsSpreadOpenDocChartReader.ReadChartAxisGrid(ANode, AStyleNode: TDOMNode;
   AChart: TsChart; Axis: TsChartAxis);
 var
+  nodeName: String;
   s: String;
-  styleNode: TDOMNode;
+  styleNode, subNode: TDOMNode;
   grid: TsChartLine;
 begin
+  nodeName := ANode.NodeName;
+
   s := GetAttrValue(ANode, 'chart:class');
   case s of
     'major': grid := Axis.MajorGridLines;
@@ -519,15 +531,28 @@ begin
     else exit;
   end;
 
+  // Set default
+  grid.Style := clsSolid;
+
   s := GetAttrValue(ANode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, s);
-  GetChartLineProps(styleNode, AChart, grid);
+  if styleNode <> nil then
+  begin
+    subnode := styleNode.FirstChild;
+    while (subNode <> nil) do
+    begin
+      nodeName := subNode.NodeName;
+      if nodeName = 'style:graphic-properties' then
+        GetChartLineProps(subNode, AChart, grid);
+      subNode := subNode.NextSibling;
+    end;
+  end;
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartAxisProps(ANode, AStyleNode: TDOMNode;
   AChart: TsChart);
 var
-  s, styleName, nodeName: String;
+  s, nodeName: String;
   styleNode, subNode: TDOMNode;
   axis: TsChartAxis;
 begin
@@ -539,6 +564,13 @@ begin
     'secondary-y': axis := AChart.Y2Axis;
     else raise Exception.Create('Unknown chart axis.');
   end;
+
+  // Default values
+  axis.Title.Caption := '';
+  axis.MajorGridLines.Style := clsNoLine;
+  axis.MinorGridLines.Style := clsNoLine;
+  axis.MajorTicks := [catOutside];
+  axis.MinorTicks := [catOutside];
 
   s := GetAttrValue(ANode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, s);
@@ -598,7 +630,7 @@ begin
             Axis.Logarithmic := true;
 
           s := GetAttrValue(AStyleNode, 'chart:minimum');
-          if (s = 'true') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
           begin
             Axis.Min := value;
             Axis.AutomaticMin := false;
@@ -606,7 +638,7 @@ begin
             Axis.AutomaticMin := true;
 
           s := GetAttrValue(AStyleNode, 'chart:maximum');
-          if (s = 'true') and TryStrToFloat(s, value, FPointSeparatorSettings) then
+          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
           begin
             Axis.Max := value;
             Axis.AutomaticMax := false;
@@ -661,8 +693,19 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocChartReader.ReadChartBackgroundProps(ANode, AStyleNode: TDOMNode;
+  AChart: TsChart; AElement: TsChartFillElement);
+var
+  s: String;
+  styleNode: TDOMNode;
+begin
+  s := GetAttrValue(ANode, 'chart:style-name');
+  styleNode := FindStyleNode(AStyleNode, s);
+  ReadChartBackgroundStyle(styleNode, AChart, AElement);
+end;
+
 procedure TsSpreadOpenDocChartReader.ReadChartBackgroundStyle(AStyleNode: TDOMNode;
-  AChart: TsChart);
+  AChart: TsChart; AElement: TsChartFillElement);
 var
   nodeName: String;
 begin
@@ -672,8 +715,8 @@ begin
     nodeName := AStyleNode.NodeName;
     if nodeName = 'style:graphic-properties' then
     begin
-      GetChartLineProps(AStyleNode, AChart, AChart.Border);
-      GetChartFillProps(AStyleNode, AChart, AChart.Background);
+      GetChartLineProps(AStyleNode, AChart, AElement.Border);
+      GetChartFillProps(AStyleNode, AChart, AElement.Background);
     end;
     AStyleNode := AStyleNode.NextSibling;
   end;
@@ -810,7 +853,7 @@ var
 begin
   styleName := GetAttrValue(AChartNode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, styleName);
-  ReadChartBackgroundStyle(styleNode, AChart);
+  ReadChartBackgroundStyle(styleNode, AChart, AChart);
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode;
@@ -824,6 +867,10 @@ begin
   styleNode := FindStyleNode(AStyleNode, styleName);
   ReadChartPlotAreaStyle(styleNode, AChart);
 
+  // Defaults
+  AChart.PlotArea.Border.Style := clsNoLine;
+  AChart.Floor.Border.Style := clsNoLine;
+
   ANode := ANode.FirstChild;
   while ANode <> nil do
   begin
@@ -833,6 +880,10 @@ begin
         ReadChartAxisProps(ANode, AStyleNode, AChart);
       'chart:series':
         ReadChartSeriesProps(ANode, AStyleNode, AChart);
+      'chart:wall':
+        ReadChartBackgroundProps(ANode, AStyleNode, AChart, AChart.PlotArea);
+      'chart:floor':
+        ReadChartBackgroundProps(ANode, AStyleNode, AChart, AChart.Floor);
     end;
     ANode := ANode.NextSibling;
   end;
@@ -1199,7 +1250,6 @@ var
   styleNode: TDOMNode;
   nodeName: String;
   s: String;
-  lp: TsChartLegendPosition;
   value: Double;
   rel: Boolean;
 begin
@@ -1379,7 +1429,6 @@ end;
   Object styles.xml file. }
 procedure TsSpreadOpenDocChartReader.ReadObjectHatchStyles(ANode: TDOMNode; AChart: TsChart);
 var
-  i: Integer;
   s: String;
   styleName: String;
   hs, hatchStyle: TsChartHatchStyle;
@@ -1549,7 +1598,6 @@ var
   chart: TsChart;
   indent: String;
   angle: Integer;
-  idx: Integer;
   textProps: String = '';
   graphProps: String = '';
   chartProps: String = '';
@@ -1833,7 +1881,6 @@ var
   strokeStr: String = '';
   widthStr: String = '';
   colorStr: String = '';
-  s: String;
   linestyle: TsChartLineStyle;
 begin
   if ALine.Style = clsNoLine then
@@ -1910,7 +1957,6 @@ function TsSpreadOpenDocChartWriter.GetChartRegressionEquationStyleAsXML(
     AChart: TsChart; AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
 var
   indent: String;
-  idx: Integer;
   numStyle: String = 'N0';
   chartprops: String = '';
   lineprops: String = '';
@@ -1954,10 +2000,6 @@ var
   indent: String;
   chartProps: String = '';
   graphProps: String = '';
-  textProps: String = '';
-  lineProps: String = '';
-  fillProps: String = '';
-  labelSeparator: String = '';
 begin
   Result := '';
   series := AChart.Series[ASeriesIndex] as TsScatterSeries;

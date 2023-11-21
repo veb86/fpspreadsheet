@@ -19,7 +19,8 @@ interface
 uses
   Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
   // TChart
-  TATypes, TATextElements, TACustomSource, TAGraph,
+  TATypes, TATextElements, TACustomSource,
+  TAChartAxisUtils, TAChartAxis, TALegend, TAGraph,
   // FPSpreadsheet Visual
   fpSpreadsheetCtrls, fpSpreadsheetGrid, fpsVisualUtils,
   // FPSpreadsheet
@@ -97,7 +98,10 @@ type
     procedure ClearChart;
     function GetWorkbookChart: TsChart;
     procedure PopulateChart;
+    procedure UpdateChartAxis(AWorkbookAxis: TsChartAxis);
+    procedure UpdateChartBackground(AWorkbookChart: TsChart);
     procedure UpdateChartBrush(AWorkbookFill: TsChartFill; ABrush: TBrush);
+    procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookLine: TsChartLine; APen: TPen);
     procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
 
@@ -535,15 +539,33 @@ begin
 end;
 
 procedure TsWorkbookChartLink.ClearChart;
+var
+  i, j: Integer;
 begin
   if FChart = nil then
     exit;
-  // Clear the title
-  FChart.Title.Text.Clear;
-  // Clear the footer
-  FChart.Foot.Text.Clear;
+
   // Clear the series
   FChart.ClearSeries;
+
+  // Clear the axes
+  for i := FChart.AxisList.Count-1 downto 0 do
+  begin
+    case FChart.AxisList[i].Alignment of
+      calLeft, calBottom:
+        FChart.AxisList[i].Title.Caption := '';
+      calTop, calRight:
+        FChart.AxisList.Delete(i);
+    end;
+    for j := FChart.AxisList[i].Minors.Count-1 downto 0 do
+      FChart.AxisList[i].Minors.Delete(j);
+  end;
+
+  // Clear the title
+  FChart.Title.Text.Clear;
+
+  // Clear the footer
+  FChart.Foot.Text.Clear;
 end;
 
 function TsWorkbookChartLink.GetWorkbookChart: TsChart;
@@ -591,10 +613,14 @@ begin
   end;
 
   ch := GetWorkbookChart;
+  UpdateChartBackground(ch);
   UpdateChartTitle(ch.Title, FChart.Title);
   UpdateChartTitle(ch.Subtitle, FChart.Foot);
-
-  // ...
+  UpdateChartLegend(ch.Legend, FChart.Legend);
+  UpdateChartAxis(ch.XAxis);
+  UpdateChartAxis(ch.YAxis);
+  UpdateChartAxis(ch.X2Axis);
+  UpdateChartAxis(ch.Y2Axis);
 end;
 
 procedure TsWorkbookChartLink.SetChart(AValue: TChart);
@@ -630,6 +656,94 @@ begin
   PopulateChart;
 end;
 
+procedure TsWorkbookChartLink.UpdateChartAxis(AWorkbookAxis: TsChartAxis);
+var
+  align: TChartAxisAlignment;
+  axis: TChartAxis;
+  minorAxis: TChartMinorAxis;
+begin
+  if AWorkbookAxis = nil then
+    exit;
+  if AWorkbookAxis = AWorkbookAxis.Chart.XAxis then
+    align := calBottom
+  else if AWorkbookAxis = AWorkbookAxis.Chart.X2Axis then
+    align := calTop
+  else if AWorkbookAxis = AWorkbookAxis.Chart.YAxis then
+    align := calLeft
+  else if AWorkbookAxis = AWorkbookAxis.Chart.Y2Axis then
+    align := calRight
+  else
+    raise Exception.Create('Unsupported axis alignment');
+  axis := FChart.AxisList.GetAxisByAlign(align);
+
+  if AWorkbookAxis.Visible and (axis = nil) then
+  begin
+    axis := FChart.AxisList.Add;
+    axis.Alignment := align;
+  end;
+
+  if axis = nil then
+    exit;
+
+  // Entire axis visible?
+  axis.Visible := AWorkbookAxis.Visible;
+
+  // Axis title
+  axis.Title.Caption := AWorkbookAxis.Title.Caption;
+  axis.Title.Visible := true;
+  Convert_sFont_to_Font(AWorkbookAxis.Title.Font, axis.Title.LabelFont);
+
+  // Labels
+  Convert_sFont_to_Font(AWorkbookAxis.LabelFont, axis.Marks.LabelFont);
+//  if not AWorkbookAxis.CategoryRange.IsEmpty then   --- fix me
+//    axis.Marks.Style := smsLabel;
+
+  // Axis line
+  UpdateChartPen(AWorkbookAxis.AxisLine, axis.AxisPen);
+  axis.AxisPen.Visible := axis.AxisPen.Style <> psClear;
+
+  // Major axis grid
+  UpdateChartPen(AWorkbookAxis.MajorGridLines, axis.Grid);
+  axis.Grid.Visible := axis.Grid.Style <> psClear;
+  axis.TickLength := IfThen(catOutside in AWorkbookAxis.MajorTicks, 4, 0);
+  axis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MajorTicks, 4, 0);
+  axis.TickColor := axis.Grid.Color;
+  axis.TickWidth := axis.Grid.Width;
+
+  // Minor axis grid
+  if AWorkbookAxis.MinorGridLines.Style <> clsNoLine then
+  begin
+    minorAxis := axis.Minors.Add;
+    UpdateChartPen(AWorkbookAxis.MinorGridLines, minorAxis.Grid);
+    minorAxis.Grid.Visible := true;
+    minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
+    minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
+    minorAxis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MinorTicks, 2, 0);
+    minorAxis.TickColor := minorAxis.Grid.Color;
+    minorAxis.TickWidth := minorAxis.Grid.Width;
+  end;
+
+  // Inverted?
+  axis.Inverted := AWorkbookAxis.Inverted;
+
+  // Logarithmic?
+  // to do....
+
+  // Scaling
+  axis.Range.UseMin := not AWorkbookAxis.AutomaticMin;
+  axis.Range.UseMax := not AWorkbookAxis.AutomaticMax;
+  axis.Range.Min := AWorkbookAxis.Min;
+  axis.Range.Max := AWorkbookAxis.Max;
+end;
+
+procedure TsWorkbookChartLink.UpdateChartBackground(AWorkbookChart: TsChart);
+begin
+  FChart.Color := Convert_sColor_to_Color(AWorkbookChart.Background.Color);
+  FChart.BackColor := Convert_sColor_to_Color(AWorkbookChart.PlotArea.Background.Color);
+  UpdateChartPen(AWorkbookChart.PlotArea.Border, FChart.Frame);
+  FChart.Frame.Visible := AWorkbookChart.PlotArea.Border.Style <> clsNoLine;
+end;
+
 procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookFill: TsChartFill;
   ABrush: TBrush);
 begin
@@ -642,6 +756,28 @@ begin
       ABrush.Style := bsSolid;
     // NOTE: TAChart will ignore gradient.
     // To be completed: hatched filles.
+  end;
+end;
+
+procedure TsWorkbookChartLink.UpdateChartLegend(AWorkbookLegend: TsChartLegend;
+  ALegend: TChartLegend);
+const
+  LEG_POS: array[TsChartLegendPosition] of TLegendAlignment = (
+    laCenterRight,   // lpRight
+    laTopCenter,     // lpTop
+    laBottomCenter,  // lpBottom
+    laCenterLeft     // lpLeft
+  );
+begin
+  if (AWorkbookLegend <> nil) and (ALegend <> nil) then
+  begin
+    Convert_sFont_to_Font(AWorkbookLegend.Font, ALegend.Font);
+    UpdateChartPen(AWorkbookLegend.Border, ALegend.Frame);
+    UpdateChartBrush(AWorkbookLegend.Background, ALegend.BackgroundBrush);
+    ALegend.Frame.Visible := (ALegend.Frame.Style <> psClear);
+    ALegend.Alignment := LEG_POS[AWorkbookLegend.Position];
+    ALegend.UseSidebar := not AWorkbookLegend.CanOverlapPlotArea;
+    ALegend.Visible := AWorkbookLegend.Visible;
   end;
 end;
 
@@ -658,7 +794,20 @@ begin
       clsSolid:
         APen.Style := psSolid;
       else  // to be fixed
-        APen.Style := psSolid;
+        if (AWorkbookLine.Style in [clsDash, clsLongDash]) then
+          APen.Style := psDash
+        else
+        if (AWorkbookLine.Style = clsDot) then
+          APen.Style := psDot
+        else
+        if (AWorkbookLine.Style in [clsDashDot, clsLongDashDot]) then
+          APen.Style := psDashDot
+        else
+        if (AWorkbookLine.Style in [clsLongDashDotDot]) then
+          APen.Style := psDashDotDot
+        else
+          // to be fixed: create pattern as defined.
+          APen.Style := psDash;
     end;
   end;
 end;
@@ -670,14 +819,15 @@ procedure TsWorkbookChartLink.UpdateChartTitle(AWorkbookTitle: TsChartText;
 begin
   if (AWorkbookTitle <> nil) and (AChartTitle <> nil) then
   begin
-    AChartTitle.Text.Text := AWorkbookTitle.Caption;
+    AChartTitle.Text.Clear;
+    AChartTitle.Text.Add(AWorkbookTitle.Caption);
     AChartTitle.Visible := AWorkbookTitle.Visible;
+    AChartTitle.WordWrap := true;
     Convert_sFont_to_Font(AWorkbookTitle.Font, AChartTitle.Font);
     UpdateChartPen(AWorkbookTitle.Border, AChartTitle.Frame);
     UpdateChartBrush(AWorkbookTitle.Background, AChartTitle.Brush);
     AChartTitle.Font.Orientation := round(AWorkbookTitle.RotationAngle * 10);
     AChartTitle.Frame.Visible := (AChartTitle.Frame.Style <> psClear);
-    AChartTitle.Alignment := taCenter;
   end;
 end;
 
