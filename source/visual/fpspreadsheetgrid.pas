@@ -1,5 +1,5 @@
 {@@ ----------------------------------------------------------------------------
-  Unit fpspreadsheet implements a **grid** component which can load and
+  Unit fpSpreadsheetGrid implements a **grid** component which can load and
   write data from/to FPSpreadsheet documents.
 
   Can either be used alone or in combination with a TsWorkbookSource component.

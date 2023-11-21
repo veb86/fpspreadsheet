@@ -36,7 +36,6 @@ begin
   ]);
 
   RegisterComponents('Chart', [
-    TsWorksheetChartSource,
     TsWorkbookChartSource
   ]);
 
