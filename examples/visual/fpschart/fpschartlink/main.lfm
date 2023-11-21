@@ -1,0 +1,63 @@
+object Form1: TForm1
+  Left = 314
+  Height = 527
+  Top = 130
+  Width = 1101
+  Caption = 'Form1'
+  ClientHeight = 527
+  ClientWidth = 1101
+  LCLVersion = '3.99.0.0'
+  OnCreate = FormCreate
+  object sWorksheetGrid1: TsWorksheetGrid
+    Left = 0
+    Height = 527
+    Top = 0
+    Width = 402
+    FrozenCols = 0
+    FrozenRows = 0
+    PageBreakPen.Color = clBlue
+    PageBreakPen.Style = psDash
+    ReadFormulas = False
+    WorkbookSource = sWorkbookSource1
+    Align = alLeft
+    AutoAdvance = aaDown
+    DefaultColWidth = 64
+    DefaultRowHeight = 22
+    TabOrder = 0
+  end
+  object Splitter1: TSplitter
+    Left = 402
+    Height = 527
+    Top = 0
+    Width = 5
+  end
+  object Chart1: TChart
+    Left = 407
+    Height = 527
+    Top = 0
+    Width = 694
+    AxisList = <    
+      item
+        Marks.LabelBrush.Style = bsClear
+        Minors = <>
+        Title.LabelFont.Orientation = 900
+        Title.LabelBrush.Style = bsClear
+      end    
+      item
+        Alignment = calBottom
+        Marks.LabelBrush.Style = bsClear
+        Minors = <>
+        Title.LabelBrush.Style = bsClear
+      end>
+    Title.Text.Strings = (
+      'TAChart'
+    )
+    Align = alClient
+  end
+  object sWorkbookSource1: TsWorkbookSource
+    FileFormat = sfUser
+    Options = []
+    Left = 244
+    Top = 138
+  end
+end
