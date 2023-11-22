@@ -17,14 +17,17 @@ unit fpspreadsheetchart;
 interface
 
 uses
-  Classes, SysUtils, LResources, Forms, Controls, Graphics, Dialogs,
-  // TChart
-  TATypes, TATextElements, TAChartUtils, TACustomSource, TACustomSeries, TASeries,
-  TAChartAxisUtils, TAChartAxis, TALegend, TAGraph,
-  // FPSpreadsheet Visual
-  fpSpreadsheetCtrls, fpSpreadsheetGrid, fpsVisualUtils,
+  // RTL/FCL
+  Classes, SysUtils,
+  // LCL
+  LCLVersion, Forms, Controls, Graphics, Dialogs,
+  // TAChart
+  TATypes, TATextElements, TAChartUtils, TACustomSource, TACustomSeries,
+  TASeries, TARadialSeries, TAChartAxisUtils, TAChartAxis, TALegend, TAGraph,
   // FPSpreadsheet
-  fpsTypes, fpSpreadsheet, fpsUtils, fpsChart;
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsChart,
+  // FPSpreadsheet Visual
+  fpSpreadsheetCtrls, fpSpreadsheetGrid, fpsVisualUtils;
 
 type
 
@@ -108,6 +111,7 @@ type
     procedure AddSeries(ASeries: TsChartSeries);
     procedure FixAreaSeries(AWorkbookChart: TsChart);
     procedure ClearChart;
+    procedure ConstructSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     function GetWorkbookChart: TsChart;
     procedure UpdateChartAxis(AWorkbookAxis: TsChartAxis);
     procedure UpdateChartAxisLabels(AWorkbookChart: TsChart);
@@ -116,6 +120,8 @@ type
     procedure UpdateChartBrush(AWorkbookFill: TsChartFill; ABrush: TBrush);
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookLine: TsChartLine; APen: TPen);
+    procedure UpdateChartPieSeries(AWorkbookSeries: TsChartSeries; APieSeries: TPieSeries);
+    procedure UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
 
   public
@@ -140,6 +146,9 @@ implementation
 
 uses
   Math;
+
+type
+  TBasicPointSeriesOpener = class(TBasicPointSeries);
 
 function mmToPx(mm: Double; ppi: Integer): Integer;
 begin
@@ -677,11 +686,19 @@ begin
         UpdateChartPen(ASeries.Line, TAreaSeries(ser).AreaContourPen);
         TAreaSeries(ser).AreaLinesPen.Style := psClear;
       end;
+    ctPie, ctRing:
+      begin
+        ser := TPieSeries.Create(FChart);
+        UpdateChartPieSeries(ASeries, TPieSeries(ser));
+      end;
   end;
+
   src.SetTitleAddr(ASeries.TitleAddr);
   ser.Source := src;
   ser.Title := src.Title;
   ser.Transparency := round(ASeries.Fill.Transparency);
+  UpdateChartSeriesMarks(ASeries, ser);
+
   FChart.AddSeries(ser);
 end;
 
@@ -729,6 +746,37 @@ begin
   FChart.Foot.Text.Clear;
 end;
 
+procedure TsWorkbookChartLink.ConstructSeriesMarks(AWorkbookSeries: TsChartSeries;
+  AChartSeries: TChartSeries);
+var
+  sep: String;
+  textFmt: String;
+  valueFmt: String;
+  percentFmt: String;
+begin
+  if AWorkbookSeries.DataLabels = [cdlValue] then
+    AChartSeries.Marks.Style := smsValue
+  else if AWorkbookSeries.DataLabels = [cdlPercentage] then
+    AChartSeries.Marks.Style := smsPercent
+  else if AWorkbookSeries.DataLabels = [cdlCategory] then
+    AChartSeries.Marks.Style := smsLabel
+  else
+  begin
+    sep := AWorkbookSeries.LabelSeparator;
+    valueFmt := '%0:.9g';
+    percentFmt := '%1:.0f';
+    textFmt := '%2:s';
+    if (AWorkbookSeries.DataLabels * [cdlCategory, cdlValue, cdlPercentage] = [cdlCategory, cdlValue, cdlPercentage]) then
+      AChartSeries.Marks.Format := textFmt + sep + valueFmt + sep + percentFmt
+    else
+    if AWorkbookSeries.DataLabels * [cdlValue, cdlPercentage] = [cdlValue, cdlPercentage] then
+      AChartSeries.Marks.Format := valueFmt + sep + percentFmt
+    else if AWorkbookSeries.DataLabels * [cdlCategory, cdlValue] = [cdlCategory, cdlValue] then
+      AChartSeries.Marks.Format := textFmt + sep + valueFmt;
+  end;
+  AChartSeries.Marks.Alignment := taCenter;
+end;
+
 // Fix area series zero level not being clipped at chart's plotrect.
 procedure TsWorkbookChartLink.FixAreaSeries(AWorkbookChart: TsChart);
 var
@@ -736,6 +784,7 @@ var
   ser: TAreaSeries;
   ext: TDoubleRect;
 begin
+  {$IF LCL_FullVersion < 3990000}
   if AWorkbookChart.GetChartType <> ctArea then
     exit;
 
@@ -750,6 +799,7 @@ begin
         ser.ZeroLevel := ext.b.y;
       ser.UseZeroLevel := true;
     end;
+  {$ENDIF}
 end;
 
 function TsWorkbookChartLink.GetWorkbookChart: TsChart;
@@ -888,8 +938,7 @@ begin
 
   // Labels
   Convert_sFont_to_Font(AWorkbookAxis.LabelFont, axis.Marks.LabelFont);
-//  if not AWorkbookAxis.CategoryRange.IsEmpty then   --- fix me
-//    axis.Marks.Style := smsLabel;
+  axis.Marks.LabelFont.Orientation := round(AWorkbookAxis.LabelRotation * 10);
 
   // Axis line
   UpdateChartPen(AWorkbookAxis.AxisLine, axis.AxisPen);
@@ -900,8 +949,8 @@ begin
   axis.Grid.Visible := axis.Grid.Style <> psClear;
   axis.TickLength := IfThen(catOutside in AWorkbookAxis.MajorTicks, 4, 0);
   axis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MajorTicks, 4, 0);
-  axis.TickColor := axis.Grid.Color;
-  axis.TickWidth := axis.Grid.Width;
+  axis.TickColor := axis.AxisPen.Color;
+  axis.TickWidth := axis.AxisPen.Width;
 
   // Minor axis grid
   if AWorkbookAxis.MinorGridLines.Style <> clsNoLine then
@@ -912,7 +961,7 @@ begin
     minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
     minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
     minorAxis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MinorTicks, 2, 0);
-    minorAxis.TickColor := minorAxis.Grid.Color;
+    minorAxis.TickColor := axis.AxisPen.Color;
     minorAxis.TickWidth := minorAxis.Grid.Width;
   end;
 
@@ -1058,6 +1107,55 @@ begin
           APen.Style := psDash;
     end;
   end;
+end;
+
+procedure TsWorkbookChartLink.UpdateChartPieSeries(AWorkbookSeries: TsChartSeries;
+  APieSeries: TPieSeries);
+begin
+  APieSeries.StartAngle := TsPieSeries(AWorkbookSeries).StartAngle;
+  APieSeries.Legend.Multiplicity := lmPoint;
+  APieSeries.Legend.Format := '%2:s';
+  if AWorkbookSeries is TsRingSeries then
+    APieSeries.InnerRadiusPercent := TsRingSeries(AWorkbookSeries).InnerRadiusPercent;
+
+  FChart.BottomAxis.Visible := false;
+  FChart.LeftAxis.Visible := false;
+  FChart.Legend.Inverted := false;
+  FChart.Frame.Visible := false;
+end;
+
+procedure TsWorkbookChartLink.UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries;
+  AChartSeries: TChartSeries);
+begin
+  ConstructSeriesMarks(AWorkbookSeries, AChartSeries);
+  AChartSeries.Marks.LinkPen.Visible := false;
+  if (AChartSeries is TPieSeries) then
+    case AWorkbookSeries.LabelPosition of
+      lpInside:
+        TPieSeries(AChartSeries).MarkPositions := pmpInside;
+      lpCenter:
+        TPieSeries(AChartSeries).MarkPositionCentered := true;
+      else
+        TPieSeries(AChartSeries).MarkPositions := pmpAround;
+    end
+  else
+  if (AChartSeries is TBasicPointSeries) then
+    case AWorkbookSeries.LabelPosition of
+      lpDefault:
+        TBasicPointSeriesOpener(AChartSeries).MarkPositions := lmpOutside;
+      lpOutside:
+        TBasicPointSeriesOpener(AChartSeries).MarkPositions := lmpOutside;
+      lpInside:
+        TBasicPointSeriesOpener(AChartSeries).MarkPositions := lmpInside;
+      lpCenter:
+        begin
+          TBasicPointSeriesOpener(AChartSeries).MarkPositions := lmpInside;
+          TBasicPointSeriesOpener(AChartSeries).MarkPositionCentered := true;
+        end;
+    end;
+
+  UpdateChartPen(AWorkbookSeries.LabelBorder, AChartSeries.Marks.Frame);
+  UpdateChartBrush(AWorkbookSeries.LabelBackground, AChartSeries.Marks.LabelBrush);
 end;
 
 {@@ Updates title and footer of the linked TAChart.

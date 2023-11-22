@@ -35,7 +35,9 @@ implementation
 {$R *.lfm}
 
 const
-  FILE_NAME = '../../../other/chart/bars.ods';
+//  FILE_NAME = '../../../other/chart/bars.ods';
+//  FILE_NAME = '../../../other/chart/area.ods';
+  FILE_NAME = '../../../other/chart/pie.ods';
 
 { TForm1 }
 

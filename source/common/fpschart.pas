@@ -288,7 +288,7 @@ type
   end;
 
   TsChartAxisLink = (alPrimary, alSecondary);
-  TsChartDataLabel = (cdlValue, cdlPercentage, cdlValueAndPercentage, cdlCategory, cdlSeriesName, cdlSymbol);
+  TsChartDataLabel = (cdlValue, cdlPercentage, cdlCategory, cdlSeriesName, cdlSymbol);
   TsChartDataLabels = set of TsChartDataLabel;
   TsChartLabelPosition = (lpDefault, lpOutside, lpInside, lpCenter);
 
@@ -299,6 +299,8 @@ type
     FYRange: TsChartRange;
     FFillColorRange: TsChartRange;
     FLineColorRange: TsChartRange;
+    FLabelBackground: TsChartFill;
+    FLabelBorder: TsChartLine;
     FLabelRange: TsChartRange;
     FLabelFont: TsFont;
     FLabelPosition: TsChartLabelPosition;
@@ -340,6 +342,8 @@ type
     property Count: Integer read GetCount;
     property DataLabels: TsChartDataLabels read FDataLabels write FDataLabels;
     property FillColorRange: TsChartRange read FFillColorRange write FFillColorRange;
+    property LabelBackground: TsChartFill read FLabelBackground write FLabelBackground;
+    property LabelBorder: TsChartLine read FLabelBorder write FLabelBorder;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;  // Number format in Excel notation, e.g. '0.00'
     property LabelPosition: TsChartLabelPosition read FLabelPosition write FLabelPosition;
@@ -405,8 +409,11 @@ type
   end;
 
   TsPieSeries = class(TsChartSeries)
+  private
+    FStartAngle: Integer;         // degrees
   public
     constructor Create(AChart: TsChart); override;
+    property StartAngle: Integer read FStartAngle write FStartAngle;
   end;
 
   TsRadarSeries = class(TsLineSeries)
@@ -415,8 +422,11 @@ type
   end;
 
   TsRingSeries = class(TsChartSeries)
+  private
+    FInnerRadiusPercent: Integer;
   public
     constructor Create(AChart: TsChart); override;
+    property InnerRadiusPercent: Integer read FInnerRadiusPercent write FInnerRadiusPercent;
   end;
 
   TsRegressionType = (rtNone, rtLinear, rtLogarithmic, rtExponential, rtPower, rtPolynomial);
@@ -1070,6 +1080,16 @@ begin
   FLabelFont := TsFont.Create;
   FLabelFont := TsFont.Create;
   FLabelFont.Size := 9;
+
+  FLabelBorder := TsChartLine.Create;
+  FLabelBorder.Color := scBlack;
+  FLabelBorder.Style := clsNoLine;
+
+  FLabelBackground := TsChartFill.Create;
+  FLabelBackground.Color := scWhite;
+  FLabelBackground.Style := cfsNoFill;
+
+  FLabelSeparator := ' ';
 end;
 
 destructor TsChartSeries.Destroy;
@@ -1353,6 +1373,7 @@ constructor TsPieSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctPie;
+  FStartAngle := 90;
   FLine.Color := scBlack;
 end;
 
@@ -1373,6 +1394,7 @@ begin
   inherited Create(AChart);
   FChartType := ctRing;
   FLine.Color := scBlack;
+  FInnerRadiusPercent := 50;
 end;
 
 

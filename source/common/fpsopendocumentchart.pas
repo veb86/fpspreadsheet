@@ -23,6 +23,7 @@ type
     FChartFiles: TStrings;
     FPointSeparatorSettings: TFormatSettings;
     FNumberFormatList: TStrings;
+    FPieSeriesStartAngle: Integer;
     function FindStyleNode(AStyleNodes: TDOMNode; AStyleName: String): TDOMNode;
     procedure GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
     procedure GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine);
@@ -316,6 +317,8 @@ begin
   FChartFiles := TStringList.Create;
   FNumberFormatList := TsChartNumberFormatList.Create;
   FNumberFormatList.NameValueSeparator := ':';
+
+  FPieSeriesStartAngle := 999;
 end;
 
 destructor TsSpreadOpenDocChartReader.Destroy;
@@ -709,6 +712,8 @@ procedure TsSpreadOpenDocChartReader.ReadChartBackgroundStyle(AStyleNode: TDOMNo
 var
   nodeName: String;
 begin
+  AElement.Border.Style := clsNoLine;
+
   nodeName := AStyleNode.NodeName;
   AStyleNode := AStyleNode.FirstChild;
   while AStyleNode <> nil do begin
@@ -905,7 +910,10 @@ begin
             AChart.StackMode := csmStacked;
           s := GetAttrValue(AStyleNode, 'chart:percentage');
           if s = 'true' then
-            Achart.StackMode := csmStackedPercentage;
+            AChart.StackMode := csmStackedPercentage;
+          s := GetAttrValue(AStyleNode, 'chart:angle-offset');
+          if s <> '' then
+            FPieSeriesStartAngle := StrToInt(s);
         end;
     end;
     AStyleNode := AStyleNode.NextSibling;
@@ -1185,6 +1193,9 @@ begin
   s := GetAttrValue(ANode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, s);
   ReadChartSeriesStyle(styleNode, AChart, series);
+
+  if (series is TsPieSeries) and (FPieSeriesStartAngle <> 999) then
+    TsPieSeries(series).StartAngle := FPieSeriesStartAngle;
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartSeriesStyle(AStyleNode: TDOMNode;
@@ -1195,6 +1206,8 @@ var
   css: TsChartSeriesSymbol;
   value: Double;
   rel: Boolean;
+  dataLabels: TsChartDataLabels = [];
+  childNode1, childNode2, childNode3: TDOMNode;
 begin
   nodeName := AStyleNode.NodeName;
   s := GetAttrValue(AStyleNode, 'style:data-style-name');
@@ -1217,6 +1230,72 @@ begin
         TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, ASeries.LabelFont);
       'style:chart-properties':
         begin
+          s := GetAttrValue(AStyleNode, 'chart:label-position');
+          case s of
+            'outside': ASeries.LabelPosition := lpOutside;
+            'inside': ASeries.LabelPosition := lpInside;
+            'center': ASeries.LabelPosition := lpCenter;
+          end;
+
+          s := GetAttrValue(AStyleNode, 'loext:label-stroke-color');
+          if s <> '' then
+            ASeries.LabelBorder.Color := HTMLColorStrToColor(s);
+          s := GetAttrValue(AStyleNode, 'loext:label-stroke');
+          case s of
+            'none': ASeries.LabelBorder.Style := clsNoLine;
+            else    ASeries.LabelBorder.Style := clsSolid;
+          end;
+
+          s := GetAttrValue(AStyleNode, 'chart:data-label-number');
+          if s <> '' then
+            Include(datalabels, cdlValue);
+          s := GetAttrValue(AStyleNode, 'chart:data-label-number="percentage"');
+          if s <> '' then
+            Include(datalabels, cdlPercentage);
+          s := GetAttrValue(AStyleNode, 'chart:data-label-number="value-and-percentage"');
+          if s <> '' then
+            dataLabels := dataLabels + [cdlValue, cdlPercentage];
+          s := GetAttrValue(AStyleNode, 'chart:data-label-text');
+          if s = 'true' then
+            Include(dataLabels, cdlCategory);
+          s := GetAttrValue(AStyleNode, 'chart:data-label-series');
+          if s = 'true' then
+            Include(dataLabels, cdlSeriesName);
+          s := GetAttrValue(AStyleNode, 'chart:data-label-symbol');
+          if s = 'true' then
+            Include(dataLabels, cdlSymbol);
+          ASeries.DataLabels := dataLabels;
+
+          childNode1 := AStyleNode.FirstChild;
+          while childNode1 <> nil do
+          begin
+            nodeName := childNode1.NodeName;
+            if nodeName = 'chart:label-separator' then
+            begin
+              childNode2 := childNode1.FirstChild;
+              while childNode2 <> nil do
+              begin
+                nodeName := childNode2.NodeName;
+                if nodeName = 'text:p' then
+                begin
+                  childNode3 := childNode2.FirstChild;
+                  while childNode3 <> nil do
+                  begin
+                    nodeName := childNode3.NodeName;
+                    if nodeName = 'text:line-break' then
+                    begin
+                      ASeries.LabelSeparator := LineEnding;
+                      break;
+                    end;
+                    childNode3 := childNode3.NextSibling;
+                  end;
+                end;
+                childNode2 := childNode2.NextSibling;
+              end;
+            end;
+            childNode1 := childNode1.NextSibling;
+          end;
+
           if (ASeries is TsLineSeries) then
           begin
             s := GetAttrValue(AStyleNode, 'chart:symbol-name');
@@ -1914,6 +1993,7 @@ var
   verticalStr: String = '';
   stackModeStr: String = '';
   rightAngledAxes: String = '';
+  startAngleStr: String = '';
 begin
   indent := DupeString(' ', AIndent);
 
@@ -1925,6 +2005,9 @@ begin
     csmStacked: stackModeStr := 'chart:stacked="true" ';
     csmStackedPercentage: stackModeStr := 'chart:percentage="true" ';
   end;
+
+  if (AChart.Series.Count > 0) and (AChart.Series[0] is TsPieSeries) then
+    startAngleStr := Format('chart:angle-offset="%.0f" ', [TsPieSeries(AChart.Series[0]).StartAngle]);
 
   case AChart.Interpolation of
     ciLinear: ;
@@ -1945,6 +2028,7 @@ begin
                    interpolationStr +
                    verticalStr +
                    stackModeStr +
+                   startAngleStr +
                    'chart:symbol-type="automatic" ' +
                    'chart:include-hidden-cells="false" ' +
                    'chart:auto-position="true" ' +
@@ -2120,6 +2204,12 @@ begin
       '    <chart:label-separator>' + LE +
       '      <text:p>' + labelSeparator + '</text:p>' + LE +
       '    </chart:label-separator>' + LE;
+  end;
+
+  if series.LabelBorder.Style <> clsNoLine then
+  begin
+    chartProps := chartProps + 'loext:label-stroke="solid" ';
+    chartProps := chartProps + 'loext:label-stroke-color="' + ColorToHTMLColorStr(series.LabelBorder.Color) + '"'
   end;
 
   if labelSeparator <> '' then
