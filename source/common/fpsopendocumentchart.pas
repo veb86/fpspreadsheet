@@ -1208,6 +1208,8 @@ begin
     case nodeName of
       'style:graphic-properties':
         begin
+          if ASeries.ChartType in [ctBar] then
+            ASeries.Line.Style := clsSolid;
           GetChartLineProps(AStyleNode, AChart, ASeries.Line);
           GetChartFillProps(AStyleNode, AChart, ASeries.Fill);
         end;
