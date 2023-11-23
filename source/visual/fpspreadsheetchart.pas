@@ -115,8 +115,11 @@ type
     procedure AddSeries(ASeries: TsChartSeries);
     procedure FixAreaSeries(AWorkbookChart: TsChart);
     procedure ClearChart;
+    procedure ConstructHatchPattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
+    procedure ConstructHatchPatternSolid(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     function GetWorkbookChart: TsChart;
+
     procedure UpdateChartAxis(AWorkbookAxis: TsChartAxis);
     procedure UpdateChartAxisLabels(AWorkbookChart: TsChart);
     procedure UpdateChartBackground(AWorkbookChart: TsChart);
@@ -729,6 +732,127 @@ begin
   FChart.Foot.Text.Clear;
 end;
 
+{ Approximates the empty hatch patterns by the built-in TBrush styles. }
+procedure TsWorkbookChartLink.ConstructHatchPattern(AWorkbookChart: TsChart;
+  AFill: TsChartFill; ABrush: TBrush);
+var
+  hatch: TsChartHatch;
+begin
+  ABrush.Style := bsSolid;   // Fall-back style
+
+  hatch := AWorkbookChart.Hatches[AFill.Hatch];
+  case hatch.Style of
+    chsSingle:
+      if InRange(hatch.LineAngle mod 180, -22.5, 22.5) then  // horizontal "approximation"
+        ABrush.Style := bsHorizontal
+      else
+      if InRange((hatch.LineAngle - 90) mod 180, -22.5, 22.5) then  // vertical
+        ABrush.Style := bsVertical
+      else
+      if Inrange((hatch.LineAngle - 45) mod 180, -22.5, 22.5) then  // diagonal up
+        ABrush.Style := bsBDiagonal
+      else
+      if InRange((hatch.LineAngle + 45) mod 180, -22.5, 22.5) then  // diagonal down
+        ABrush.Style := bsFDiagonal;
+    chsDouble,
+    chsTriple:   // no triple hatches in LCL - fall-back to double hatch
+      if InRange(hatch.LineAngle mod 180, -22.5, 22.5) then   // +++
+        ABrush.Style := bsCross
+      else
+      if InRange((hatch.LineAngle - 45) mod 180, -22.5, 22.5) then // xxx
+        ABrush.Style := bsDiagCross;
+  end;
+end;
+
+{ Constructs a bitmap for the LCL brush. It is filled by AFill.Color and displays
+  a hatch-pattern of hatch index AFill.Hatch. The bitmap is stored in the
+  FBrushBitmaps list and assigned to the ABrush.Bitmap operating in fpImage
+  style. }
+procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart;
+  AFill: TsChartFill; ABrush: TBrush);
+var
+  hatch: TsChartHatch;
+  d, ppi: Integer;
+  png: TPortableNetworkGraphic;
+  sa, ca: Double;
+  bkCol: TColor;
+  fgCol: TColor;
+
+  procedure PrepareCanvas(w, h: Integer);
+  begin
+    png.SetSize(w, h);
+    png.Canvas.Brush.Color := bkCol;
+    png.Canvas.FillRect(0, 0, w, h);
+    png.Canvas.Pen.Color := fgCol;
+  end;
+
+begin
+  ABrush.Style := bsSolid;   // Fall-back style
+
+  hatch := AWorkbookChart.Hatches[AFill.Hatch];
+  ppi := GetParentForm(FChart).PixelsPerInch;
+  d := mmToPx(hatch.LineDistance, ppi);              // line distance in px
+  bkCol := Convert_sColor_to_Color(AFill.Color);     // background color
+  fgCol := Convert_sColor_to_Color(hatch.LineColor); // foreground color
+
+  png := TPortableNetworkGraphic.Create;
+
+  case hatch.Style of
+    chsSingle:
+      begin
+        // horizontal ---
+        if hatch.LineAngle = 0 then
+        begin
+          PrepareCanvas(8, d);
+          png.Canvas.Line(0, 0, png.Width, 0);
+        end else
+        // vertical  |||
+        if hatch.LineAngle = 90 then
+        begin
+          PrepareCanvas(d, 0);
+          png.Canvas.Line(0, 0, 0, png.Height);
+        end else
+        // any angle
+        begin
+          SinCos(DegToRad(hatch.LineAngle), sa, ca);
+          PrepareCanvas(round(abs(d / sa)), round(abs(d / ca)));
+          if sa/ca > 0 then  // sa/ca = tan
+            png.Canvas.Line(0, png.Height-1, png.Width, -1)
+          else
+            png.Canvas.Line(0, 0, png.Width, png.Height);
+        end;
+        //png.SaveToFile('test.png');
+      end;
+    chsDouble, chsTriple:
+      begin  // +++
+        if InRange(hatch.LineAngle mod 180, -22.5, 22.5) then
+        begin
+          PrepareCanvas(d, d);
+          png.Canvas.Line(0, d div 2, d, d div 2);
+          png.Canvas.Line(d div 2, 0, d div 2, d);
+          if hatch.Style = chsTriple then
+            png.Canvas.Line(0, 0, d, d);
+        end else
+        // xxx
+        if InRange((hatch.LineAngle-45) mod 180, -22.5, 22.5) then
+        begin
+          d := round(d * sqrt(2));
+          PrepareCanvas(d, d);
+          png.Canvas.Line(0, 0, d, d);
+          png.Canvas.Line(0, d, d, 0);
+          if hatch.Style = chsTriple then
+            png.Canvas.Line(0, d div 2, d, d div 2);
+        end;
+      end;
+  end;
+
+  // Store the pattern image in the list...
+  FBrushBitmaps.Add(png);
+  // ... and assign the pattern to the brush
+  ABrush.Style := bsImage;
+  ABrush.Bitmap := png;
+end;
+
 procedure TsWorkbookChartLink.ConstructSeriesMarks(AWorkbookSeries: TsChartSeries;
   AChartSeries: TChartSeries);
 var
@@ -1066,8 +1190,10 @@ begin
         ABrush.Style := bsSolid;
       cfsGradient:
         ABrush.Style := bsSolid;  // NOTE: TAChart cannot display gradients
-      cfsHatched, cfsSolidHatched:
-        ABrush.Style := bsSolid;
+      cfsHatched:
+        ConstructHatchPattern(AWorkbookChart, AWorkbookFill, ABrush);
+      cfsSolidHatched:
+        ConstructHatchPatternSolid(AWorkbookChart, AWorkbookFill, ABrush);
       cfsImage:
         begin
           img := AWorkbookChart.Images[AWorkbookFill.Image];
@@ -1107,7 +1233,7 @@ begin
     ALegend.Alignment := LEG_POS[AWorkbookLegend.Position];
     ALegend.UseSidebar := not AWorkbookLegend.CanOverlapPlotArea;
     ALegend.Visible := AWorkbookLegend.Visible;
-    ALegend.Inverted := true;
+  //  ALegend.Inverted := true;
     ALegend.TextFormat := tfHTML;
   end;
 end;
