@@ -18,12 +18,13 @@ interface
 
 uses
   // RTL/FCL
-  Classes, SysUtils,
+  Classes, SysUtils, Types,
   // LCL
   LCLVersion, Forms, Controls, Graphics, Dialogs,
   // TAChart
-  TATypes, TATextElements, TAChartUtils, TACustomSource, TACustomSeries,
-  TASeries, TARadialSeries, TAChartAxisUtils, TAChartAxis, TALegend, TAGraph,
+  TATypes, TATextElements, TAChartUtils, TALegend, TACustomSource,
+  TACustomSeries, TASeries, TARadialSeries, TAFitUtils, TAFuncSeries,
+  TAChartAxisUtils, TAChartAxis, TAGraph,
   // FPSpreadsheet
   fpsTypes, fpSpreadsheet, fpsUtils, fpsChart,
   // FPSpreadsheet Visual
@@ -105,6 +106,8 @@ type
     procedure SetWorkbookChartIndex(AValue: Integer);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
 
+    //procedure FitSeriesFitEquationText(ASeries: TFitSeries; AEquationText: IFitEquationText);
+
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
@@ -120,9 +123,12 @@ type
     procedure UpdateChartBrush(AWorkbookFill: TsChartFill; ABrush: TBrush);
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookLine: TsChartLine; APen: TPen);
-    procedure UpdateChartPieSeries(AWorkbookSeries: TsChartSeries; APieSeries: TPieSeries);
     procedure UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
+
+    procedure UpdateLineSeries(AWorkbookSeries: TsLineSeries; AChartSeries: TLineSeries);
+    procedure UpdatePieSeries(AWorkbookSeries: TsPieSeries; AChartSeries: TPieSeries);
+    procedure UpdateScatterSeries(AWorkbookSeries: TsScatterSeries; AChartSeries: TLineSeries);
 
   public
     constructor Create(AOwner: TComponent); override;
@@ -630,24 +636,9 @@ begin
 end;
 
 procedure TsWorkbookChartLink.AddSeries(ASeries: TsChartSeries);
-const
-  POINTER_STYLES: array[TsChartSeriesSymbol] of TSeriesPointerstyle = (
-    psRectangle,
-    psDiamond,
-    psTriangle,
-    psDownTriangle,
-    psLeftTriangle,
-    psRightTriangle,
-    psCircle,
-    psStar,
-    psDiagCross,
-    psCross,
-    psFullStar
-  );
 var
   src: TsWorkbookChartSource;
   ser: TChartSeries;
-  ppi: Integer;
 begin
   src := TsWorkbookChartSource.Create(self);
   src.WorkbookSource := FWorkbookSource;
@@ -656,41 +647,15 @@ begin
   if not ASeries.YRange.IsEmpty then src.SetYRange(ASeries.YRange);
   if not ASeries.FillColorRange.IsEmpty then src.SetColorRange(ASeries.FillColorRange);
 
-  ppi := GetParentForm(FChart).PixelsPerInch;
   case ASeries.ChartType of
     ctBar:
-      begin
-        ser := TBarSeries.Create(FChart);
-        UpdateChartBrush(ASeries.Fill, TBarSeries(ser).BarBrush);
-        UpdateChartPen(ASeries.Line, TBarSeries(ser).BarPen);
-      end;
+      ser := TBarSeries.Create(FChart);
     ctLine, ctScatter:
-      begin
-        ser := TLineSeries.Create(FChart);
-        UpdateChartPen(ASeries.Line, TLineSeries(ser).LinePen);
-        TLineSeries(ser).ShowLines := ASeries.Line.Style <> clsNoLine;
-        TLineSeries(ser).ShowPoints := TsLineSeries(ASeries).ShowSymbols;
-        if TLineSeries(ser).ShowPoints then
-        begin
-          UpdateChartBrush(ASeries.Fill, TLineSeries(ser).Pointer.Brush);
-          TLineSeries(ser).Pointer.Pen.Color := TLineSeries(ser).LinePen.Color;
-          TLineSeries(ser).Pointer.Style := POINTER_STYLES[TsLineSeries(ASeries).Symbol];
-          TlineSeries(ser).Pointer.HorizSize := mmToPx(TsLineSeries(ASeries).SymbolWidth, ppi);
-          TlineSeries(ser).Pointer.VertSize := mmToPx(TsLineSeries(ASeries).SymbolHeight, ppi);
-        end;
-      end;
+      ser := TLineSeries.Create(FChart);
     ctArea:
-      begin
-        ser := TAreaSeries.Create(FChart);
-        UpdateChartBrush(ASeries.Fill, TAreaSeries(ser).AreaBrush);
-        UpdateChartPen(ASeries.Line, TAreaSeries(ser).AreaContourPen);
-        TAreaSeries(ser).AreaLinesPen.Style := psClear;
-      end;
+      ser := TAreaSeries.Create(FChart);
     ctPie, ctRing:
-      begin
-        ser := TPieSeries.Create(FChart);
-        UpdateChartPieSeries(ASeries, TPieSeries(ser));
-      end;
+      ser := TPieSeries.Create(FChart);
   end;
 
   src.SetTitleAddr(ASeries.TitleAddr);
@@ -700,6 +665,26 @@ begin
   UpdateChartSeriesMarks(ASeries, ser);
 
   FChart.AddSeries(ser);
+
+  case ASeries.ChartType of
+    ctArea:
+      begin
+        UpdateChartBrush(ASeries.Fill, TAreaSeries(ser).AreaBrush);
+        UpdateChartPen(ASeries.Line, TAreaSeries(ser).AreaContourPen);
+        TAreaSeries(ser).AreaLinesPen.Style := psClear;
+      end;
+    ctBar:
+      begin
+        UpdateChartBrush(ASeries.Fill, TBarSeries(ser).BarBrush);
+        UpdateChartPen(ASeries.Line, TBarSeries(ser).BarPen);
+      end;
+    ctLine:
+      UpdateLineSeries(TsLineSeries(ASeries), TLineSeries(ser));
+    ctScatter:
+      UpdateScatterSeries(TsScatterSeries(ASeries), TLineSeries(ser));
+    ctPie, ctRing:
+      UpdatePieSeries(TsPieSeries(ASeries), TPieSeries(ser));
+  end;
 end;
 
 procedure TsWorkbookChartLink.ClearChart;
@@ -777,6 +762,17 @@ begin
   AChartSeries.Marks.Alignment := taCenter;
 end;
 
+{
+procedure TsWorkbookChartLink.FitSeriesFitEquationText(ASeries: TFitSeries;
+  AEquationText: IFitEquationText);
+begin
+  if ASeries.ErrCode = fitOK then
+  begin
+    AEquationText.NumFormat('%.5f');
+    AEquationText.TextFormat(tfHtml)
+  end;
+end;
+ }
 // Fix area series zero level not being clipped at chart's plotrect.
 procedure TsWorkbookChartLink.FixAreaSeries(AWorkbookChart: TsChart);
 var
@@ -1075,6 +1071,7 @@ begin
     ALegend.UseSidebar := not AWorkbookLegend.CanOverlapPlotArea;
     ALegend.Visible := AWorkbookLegend.Visible;
     ALegend.Inverted := true;
+    ALegend.TextFormat := tfHTML;
   end;
 end;
 
@@ -1107,21 +1104,6 @@ begin
           APen.Style := psDash;
     end;
   end;
-end;
-
-procedure TsWorkbookChartLink.UpdateChartPieSeries(AWorkbookSeries: TsChartSeries;
-  APieSeries: TPieSeries);
-begin
-  APieSeries.StartAngle := TsPieSeries(AWorkbookSeries).StartAngle;
-  APieSeries.Legend.Multiplicity := lmPoint;
-  APieSeries.Legend.Format := '%2:s';
-  if AWorkbookSeries is TsRingSeries then
-    APieSeries.InnerRadiusPercent := TsRingSeries(AWorkbookSeries).InnerRadiusPercent;
-
-  FChart.BottomAxis.Visible := false;
-  FChart.LeftAxis.Visible := false;
-  FChart.Legend.Inverted := false;
-  FChart.Frame.Visible := false;
 end;
 
 procedure TsWorkbookChartLink.UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries;
@@ -1174,6 +1156,122 @@ begin
     UpdateChartBrush(AWorkbookTitle.Background, AChartTitle.Brush);
     AChartTitle.Font.Orientation := round(AWorkbookTitle.RotationAngle * 10);
     AChartTitle.Frame.Visible := (AChartTitle.Frame.Style <> psClear);
+  end;
+end;
+
+procedure TsWorkbookChartLink.UpdateLineSeries(AWorkbookSeries: TsLineSeries;
+  AChartSeries: TLineSeries);
+const
+  POINTER_STYLES: array[TsChartSeriesSymbol] of TSeriesPointerstyle = (
+    psRectangle,
+    psDiamond,
+    psTriangle,
+    psDownTriangle,
+    psLeftTriangle,
+    psRightTriangle,
+    psCircle,
+    psStar,
+    psDiagCross,
+    psCross,
+    psFullStar
+  );
+var
+  ppi: Integer;
+begin
+  ppi := GetParentForm(FChart).PixelsPerInch;
+
+  UpdateChartPen(AWorkbookSeries.Line, AChartSeries.LinePen);
+  AChartSeries.ShowLines := AWorkbookSeries.Line.Style <> clsNoLine;
+  AChartSeries.ShowPoints := AWorkbookSeries.ShowSymbols;
+  if AChartSeries.ShowPoints then
+  begin
+    UpdateChartBrush(AWorkbookSeries.Fill, AChartSeries.Pointer.Brush);
+    AChartSeries.Pointer.Pen.Color := AChartSeries.LinePen.Color;
+    AChartSeries.Pointer.Style := POINTER_STYLES[AWorkbookSeries.Symbol];
+    AChartSeries.Pointer.HorizSize := mmToPx(AWorkbookSeries.SymbolWidth, ppi);
+    AChartSeries.Pointer.VertSize := mmToPx(AWorkbookSeries.SymbolHeight, ppi);
+  end;
+end;
+
+procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;
+  AChartSeries: TPieSeries);
+begin
+  AChartSeries.StartAngle := AWorkbookSeries.StartAngle;
+  AChartSeries.Legend.Multiplicity := lmPoint;
+  AChartSeries.Legend.Format := '%2:s';
+  if AWorkbookSeries is TsRingSeries then
+    AChartSeries.InnerRadiusPercent := TsRingSeries(AWorkbookSeries).InnerRadiusPercent;
+
+  FChart.BottomAxis.Visible := false;
+  FChart.LeftAxis.Visible := false;
+  FChart.Legend.Inverted := false;
+  FChart.Frame.Visible := false;
+end;
+
+procedure TsWorkbookChartLink.UpdateScatterSeries(AWorkbookSeries: TsScatterSeries;
+  AChartSeries: TLineSeries);
+var
+  ser: TFitSeries;
+  s: String;
+begin
+  UpdateLineSeries(AWorkbookSeries, AChartSeries);
+
+  if AWorkbookSeries.Regression.RegressionType = rtNone then
+    exit;
+
+  // Create series and assign chartsource
+  ser := TFitSeries.Create(FChart);
+  ser.Source := AChartSeries.Source;
+
+  // Fit equation
+  case AWorkbookSeries.Regression.RegressionType of
+    rtLinear: ser.FitEquation := feLinear;
+    // rtLogarithmic: ser.FitEquation := feLogarithmic;   // to do: implement this!
+    rtExponential: ser.FitEquation := feExp;
+    rtPower: ser.FitEquation := fePower;
+    rtPolynomial:
+      begin
+        ser.FitEquation := fePolynomial;
+        ser.ParamCount := AWorkbookSeries.Regression.PolynomialDegree + 1;
+      end;
+  end;
+
+  // Take care of y intercept
+  if AWorkbookSeries.Regression.ForceYIntercept then
+  begin
+    str(AWorkbookSeries.Regression.YInterceptValue, s);
+    ser.FixedParams := s;
+  end;
+
+  // style of regression line
+  UpdateChartPen(AWorkbookSeries.Regression.Line, ser.Pen);
+
+  FChart.AddSeries(ser);
+
+  // Legend text
+  ser.Title := AWorkbookSeries.Regression.Title;
+
+  // Show fit curve in legend after series.
+  ser.Legend.Order := AChartseries.Legend.Order + 1;
+
+  // Regression equation
+  if AWorkbookSeries.Regression.DisplayEquation or AWorkbookSeries.Regression.DisplayRSquare then
+  begin
+    ser.ExecFit;
+    s := '';
+    if AWorkbookSeries.Regression.DisplayEquation then
+      s := s + ser.EquationText.
+        X(AWorkbookSeries.Regression.Equation.XName).
+        Y(AWorkbookSeries.Regression.Equation.YName).
+        NumFormat('%.3f'). // to do: convert from AWorkbookSeries.Regression.Equation.NumberFormat
+        DecimalSeparator('.').
+        TextFormat(tfHtml).
+        Get;
+    if AWorkbookSeries.Regression.DisplayRSquare then
+      s := s + LineEnding + 'R² = ' + FormatFloat('0.00', ser.FitStatistics.R2);
+    if s <> '' then
+      ser.Title := ser.Title + LineEnding + s;
+//    ser.Legend.Format := '%0:s' + LineEnding + '%2:s';
   end;
 end;
 

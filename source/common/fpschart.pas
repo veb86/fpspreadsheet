@@ -421,7 +421,7 @@ type
     function GetChartType: TsChartType; override;
   end;
 
-  TsRingSeries = class(TsChartSeries)
+  TsRingSeries = class(TsPieSeries)
   private
     FInnerRadiusPercent: Integer;
   public

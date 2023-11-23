@@ -534,8 +534,10 @@ begin
     else exit;
   end;
 
-  // Set default
+  // Set defaults
+  Axis.MajorTicks := [catOutside];
   grid.Style := clsSolid;
+  grid.Color := $c0c0c0;
 
   s := GetAttrValue(ANode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, s);
