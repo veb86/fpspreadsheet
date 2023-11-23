@@ -51,8 +51,8 @@ begin
     ser.SetLabelRange(3, 0, 10, 0);
     ser.SetYRange(3, 1, 10, 1);
     ser.Line.Color := scDarkRed;
-    ser.Fill.Style := cfsHatched;
-    ser.Fill.Hatch := ch.Hatches.AddHatch('Crossed', chsDouble, scDarkRed, 2, 45, true);
+    ser.Fill.Style := cfsSolidHatched;
+    ser.Fill.Hatch := ch.Hatches.AddHatch('Crossed', chsDouble, scDarkRed, 2, 45);
     ser.Fill.Color := scRed;
 
     // Add 2nd bar series ("Student 2")
@@ -61,8 +61,8 @@ begin
     ser.SetLabelRange(3, 0, 10, 0);
     ser.SetYRange(3, 2, 10, 2);
     ser.Line.Color := scDarkBlue;
-    ser.Fill.Style := cfsHatched;
-    ser.Fill.Hatch := ch.Hatches.AddHatch('Forward', chsSingle, scWhite, 1.5, 45, true);
+    ser.Fill.Style := cfsSolidHatched;
+    ser.Fill.Hatch := ch.Hatches.AddHatch('Forward', chsSingle, scWhite, 1.5, 45);
     ser.Fill.Color := scBlue;
 
     {

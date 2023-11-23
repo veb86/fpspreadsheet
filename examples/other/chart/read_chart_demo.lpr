@@ -112,8 +112,7 @@ begin
           GetEnumName(TypeInfo(TsChartHatchStyle), ord(chart.Hatches[j].Style)), ' ',
           'LineColor:', IntToHex(chart.Hatches[j].LineColor, 6), ' ',
           'Distance:', chart.Hatches[j].LineDistance:0:0, 'mm ',
-          'Angle:', chart.Hatches[j].LineAngle:0:0, 'deg ',
-          'Filled:', chart.Hatches[j].Filled);
+          'Angle:', chart.Hatches[j].LineAngle:0:0, 'deg ');
 
       WriteLn  ('  GRADIENT STYLES: ');
       for j := 0 to chart.Gradients.Count-1 do

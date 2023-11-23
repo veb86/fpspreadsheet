@@ -495,7 +495,7 @@ type
     property Regression: TsChartRegression read FRegression write FRegression;
   end;
 
-  TsChartSeriesList = class(TFPList)
+  TsChartSeriesList = class(TFPObjectList)
   private
     function GetItem(AIndex: Integer): TsChartSeries;
     procedure SetItem(AIndex: Integer; AValue: TsChartSeries);
@@ -1170,7 +1170,6 @@ begin
   FLine.Color := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
 
   FLabelFont := TsFont.Create;
-  FLabelFont := TsFont.Create;
   FLabelFont.Size := 9;
 
   FLabelBorder := TsChartLine.Create;
@@ -1557,6 +1556,7 @@ end;
 constructor TsChartRegression.Create;
 begin
   inherited Create;
+
   Line := TsChartLine.Create;
   Line.Style := clsSolid;
   Line.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
@@ -1567,6 +1567,7 @@ end;
 
 destructor TsChartRegression.Destroy;
 begin
+  Equation.Free;
   Line.Free;
   inherited;
 end;
@@ -1664,6 +1665,7 @@ destructor TsChart.Destroy;
 begin
   FSeriesList.Free;
   FXAxis.Free;
+  FX2Axis.Free;
   FYAxis.Free;
   FY2Axis.Free;
   FLegend.Free;

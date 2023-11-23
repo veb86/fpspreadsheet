@@ -2132,7 +2132,7 @@ begin
   end;
 
   if (AChart.Series.Count > 0) and (AChart.Series[0] is TsPieSeries) then
-    startAngleStr := Format('chart:angle-offset="%.0f" ', [TsPieSeries(AChart.Series[0]).StartAngle]);
+    startAngleStr := Format('chart:angle-offset="%d" ', [TsPieSeries(AChart.Series[0]).StartAngle]);
 
   case AChart.Interpolation of
     ciLinear: ;
