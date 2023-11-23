@@ -5,7 +5,7 @@ unit fpsOpenDocumentChart;
 interface
 
 uses
-  Classes, SysUtils, StrUtils,
+  Classes, SysUtils, StrUtils, Contnrs, FPImage,
  {$IF FPC_FULLVERSION >= 20701}
   zipper,
  {$ELSE}
@@ -24,6 +24,7 @@ type
     FPointSeparatorSettings: TFormatSettings;
     FNumberFormatList: TStrings;
     FPieSeriesStartAngle: Integer;
+    FStreamList: TFPObjectList;
     function FindStyleNode(AStyleNodes: TDOMNode; AStyleName: String): TDOMNode;
     procedure GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
     procedure GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine);
@@ -48,13 +49,15 @@ type
     procedure ReadChartTitleProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
     procedure ReadChartTitleStyle(AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
 
+    procedure ReadObjectFillImages(ANode: TDOMNode; AChart: TsChart; ARoot: String);
     procedure ReadObjectGradientStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectHatchStyles(ANode: TDOMNode; AChart: TsChart);
     procedure ReadObjectLineStyles(ANode: TDOMNode; AChart: TsChart);
   protected
     procedure ReadChartFiles(AStream: TStream; AFileList: String);
     procedure ReadChart(AChartNode, AStyleNode: TDOMNode; AChart: TsChart);
-    procedure ReadObjectStyles(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadObjectStyles(ANode: TDOMNode; AChart: TsChart; ARoot: String);
+    procedure ReadPictureFile(AStream: TStream; AFileName: String);
   public
     constructor Create(AReader: TsBasicSpreadReader); override;
     destructor Destroy; override;
@@ -304,6 +307,42 @@ end;
 
 
 {------------------------------------------------------------------------------}
+{                         internal picture storage                             }
+{------------------------------------------------------------------------------}
+type
+  TStreamItem = class
+    Name: String;
+    Stream: TStream;
+    destructor Destroy; override;
+  end;
+
+destructor TStreamItem.Destroy;
+begin
+  Stream.Free;
+  inherited;
+end;
+
+type
+  TStreamList = class(TFPObjectList)
+  public
+    function FindByName(AName: String): TStream;
+  end;
+
+function TStreamList.FindByName(AName: String): TStream;
+var
+  i: Integer;
+begin
+  for i := 0 to Count-1 do
+    if TStreamItem(Items[i]).Name = AName then
+    begin
+      Result := TStreamItem(Items[i]).Stream;
+      exit;
+    end;
+  Result := nil;
+end;
+
+
+{------------------------------------------------------------------------------}
 {                        TsSpreadOpenDocChartReader                            }
 {------------------------------------------------------------------------------}
 
@@ -317,12 +356,14 @@ begin
   FChartFiles := TStringList.Create;
   FNumberFormatList := TsChartNumberFormatList.Create;
   FNumberFormatList.NameValueSeparator := ':';
+  FStreamList := TStreamList.Create;
 
   FPieSeriesStartAngle := 999;
 end;
 
 destructor TsSpreadOpenDocChartReader.Destroy;
 begin
+  FStreamList.Free;
   FNumberFormatList.Free;
   FChartFiles.Free;
   inherited;
@@ -367,6 +408,9 @@ var
   sc: String;
   sn: String;
   opacity: Double;
+  img: TsChartImage;
+  value: Double;
+  rel: Boolean;
 begin
   nodeName := ANode.NodeName;
 
@@ -390,17 +434,41 @@ begin
       end;
     'hatch':
       begin
-        AFill.Style := cfsHatched;
+        sc := GetAttrValue(ANode, 'draw:fill-hatch-solid');
+        if sc = 'true' then
+          AFill.Style := cfsSolidHatched
+        else
+          AFill.Style := cfsHatched;
         sn := GetAttrValue(ANode, 'draw:fill-hatch-name');
         if sn <> '' then
           AFill.Hatch := AChart.Hatches.IndexOfName(UnASCIIName(sn));
         sc := GetAttrValue(ANode, 'draw:fill-color');
         if sc <> '' then
           AFill.Color := HTMLColorStrToColor(sc);
-        sc := GetAttrValue(ANode, 'draw:fill-hatch-solid');
-   //     AFill.Hatch.Filled := (sc = 'true');   // !!!! FIX ME: Filled should not be part of the style
+      end;
+    'bitmap':
+      begin
+        sn := GetAttrValue(ANode, 'draw:fill-image-name');
+        if sn <> '' then
+        begin
+          AFill.Style := cfsImage;
+          AFill.Image := AChart.Images.IndexOfName(UnASCIIName(sn));
+          img := AChart.Images[AFill.Image];
+          sc := GetAttrValue(ANode, 'draw:fill-image-width');
+          if (sc <> '') and EvalLengthStr(sc, value, rel) then
+            img.Width := value
+          else
+            img.Width := -1;
+          sc := GetAttrValue(ANode, 'draw:fill-image-height');
+          if (sc <> '') and EvalLengthStr(sc, value, rel) then
+            img.Height := value
+          else
+            img.Height := -1;
+        end else
+          AFill.Style := cfsSolid;
       end;
   end;
+
   s := GetAttrValue(ANode, 'draw:opacity');
   if (s <> '') and TryPercentStrToFloat(s, opacity) then
     AFill.Transparency := 1.0 - opacity;
@@ -770,8 +838,8 @@ procedure TsSpreadOpenDocChartReader.ReadChartFiles(AStream: TStream;
   AFileList: String);
 var
   sa: TStringArray;
-  i: Integer;
-  fn: String;
+  i, p: Integer;
+  root, fn: String;
   contentFile: String = '';
   stylesFile: String = '';
   XMLStream: TStream;
@@ -789,7 +857,9 @@ begin
     if fn = 'content.xml' then
       contentFile := sa[i]
     else if fn = 'styles.xml' then
-      stylesFile := sa[i];
+      stylesFile := sa[i]
+    else if pos('/Pictures/', sa[i]) > 0 then
+      ReadPictureFile(AStream, sa[i]);
   end;
 
   for i := 0 to TsWorkbook(Reader.Workbook).GetChartCount-1 do
@@ -822,7 +892,9 @@ begin
     if not ok then
       raise Exception.Create('ODS chart reader: error reading styles file "' + stylesFile + '"');
 
-    ReadObjectStyles(doc.DocumentElement.FindNode('office:styles'), chart);
+    p := pos('/', stylesFile);
+    root := copy(stylesFile, 1, p);
+    ReadObjectStyles(doc.DocumentElement.FindNode('office:styles'), chart, root);
     FreeAndNil(doc);
   end;
 
@@ -1421,7 +1493,7 @@ end;
 
 { Reads the styles stored in the Object files. }
 procedure TsSpreadOpenDocChartReader.ReadObjectStyles(ANode: TDOMNode;
-  AChart: TsChart);
+  AChart: TsChart; ARoot: String);
 var
   nodeName: String;
 begin
@@ -1437,8 +1509,35 @@ begin
         ReadObjectHatchStyles(ANode, AChart);
       'draw:gradient':     // gradient definition
         ReadObjectGradientStyles(ANode, AChart);
+      'draw:fill-image':
+        ReadObjectFillImages(ANode, AChart, ARoot);
     end;
     ANode := ANode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadObjectFillImages(ANode: TDOMNode;
+  AChart: TsChart; ARoot: String);
+var
+  styleName: String;
+  imgFileName: string;
+  imgStream: TStream;
+  img: TFPCustomImage;
+begin
+  styleName := GetAttrValue(ANode, 'draw:display-name');
+  if styleName = '' then
+    styleName := GetAttrValue(ANode, 'draw:name');
+
+  imgFileName := GetAttrValue(ANode, 'xlink:href');
+  if imgFileName = '' then
+    exit;
+
+  imgStream := TStreamList(FStreamList).FindByName(ARoot + imgFileName);
+  if imgStream <> nil then
+  begin
+    img := TFPMemoryImage.Create(0, 0);     // do not destroy this image here!
+    img.LoadFromStream(imgStream);
+    AChart.Images.AddImage(styleName, img);
   end;
 end;
 
@@ -1547,8 +1646,7 @@ begin
   else
     hatchAngle := 0;
 
-  AChart.Hatches.AddHatch(styleName, hatchStyle, hatchColor, hatchDist, hatchAngle, false);
-  AChart.Hatches.AddHatch(styleName+' filled', hatchStyle, hatchColor, hatchDist, hatchAngle, true);
+  AChart.Hatches.AddHatch(styleName, hatchStyle, hatchColor, hatchDist, hatchAngle);
 end;
 
 { Reads the line styles stored as "draw:stroke-dash" nodes in the chart's
@@ -1590,6 +1688,31 @@ begin
 
   AChart.LineStyles.Add(styleName, dots1Length, dots1, dots2Length, dots2, distance, rel1 or rel2 or relDist);
 end;
+
+procedure TsSpreadOpenDocChartReader.ReadPictureFile(AStream: TStream;
+  AFileName: String);
+var
+  memStream: TMemoryStream;
+  img: TFPCustomImage;
+  item: TStreamItem;
+begin
+  memStream := TMemoryStream.Create;
+  try
+    if UnzipToStream(AStream, AFileName, memStream) then
+    begin
+      memstream.Position := 0;
+      item := TStreamItem.Create;
+      item.Name := AFileName;
+      item.Stream := TMemoryStream.Create;
+      item.Stream.CopyFrom(memStream, memStream.Size);
+      item.Stream.Position := 0;
+      FStreamList.Add(item);
+    end;
+  finally
+    memstream.Free;
+  end;
+end;
+
 
 {------------------------------------------------------------------------------}
 {                        TsSpreadOpenDocChartWriter                            }
@@ -1879,10 +2002,10 @@ begin
           [ ASCIIName(gradient.Name) ]
         );
       end;
-    cfsHatched:
+    cfsHatched, cfsSolidHatched:
       begin
         hatch := AChart.Hatches[AFill.Hatch];
-        if hatch.Filled then
+        if AFill.Style = cfsSolidHatched then
           fillStr := 'draw:fill-hatch-solid="true" ';
         Result := Format(
           'draw:fill="hatch" draw:fill-color="%s" ' +

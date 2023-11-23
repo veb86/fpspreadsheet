@@ -37,9 +37,10 @@ implementation
 const
 //  FILE_NAME = '../../../other/chart/bars.ods';
 //  FILE_NAME = '../../../other/chart/area.ods';
+  FILE_NAME = '../../../other/chart/area-sameImg.ods';
 //  FILE_NAME = '../../../other/chart/pie.ods';
 //  FILE_NAME = '../../../other/chart/scatter.ods';
-  FILE_NAME = '../../../other/chart/regression.ods';
+//  FILE_NAME = '../../../other/chart/regression.ods';
 
 { TForm1 }
 

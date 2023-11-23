@@ -123,8 +123,8 @@ function GetCellRangeString_R1C1(ASheet1, ASheet2: String;
 function SheetNameNeedsQuotes(ASheet: String): Boolean;
 
 //  OpenDocument Syntax
-function TryStrToCellRange_ODS(const AStr: String; out ASheet1, ASheet2: String;
-  out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean;
+function TryStrToCellRange_ODS(const AStr: String; var ASheet1, ASheet2: String;
+  var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags): Boolean;
 
 function GetCellRangeString_ODS(ASheet1, ASheet2: String; ARow1, ACol1, ARow2, ACol2: Cardinal;
   AFlags: TsRelFlags = rfAllRel; WithBrackets: Boolean = true): String; overload;
@@ -1345,8 +1345,8 @@ end;
   Extracts sheets names and cell coordinates from a cell range string in
   OpenDocument syntax, e.g. "Table1.A1:Table2.B4"
 -------------------------------------------------------------------------------}
-function TryStrToCellRange_ODS(const AStr: String; out ASheet1, ASheet2: String;
-  out ARow1, ACol1, ARow2, ACol2: Cardinal; out AFlags: TsRelFlags): Boolean;
+function TryStrToCellRange_ODS(const AStr: String; var ASheet1, ASheet2: String;
+  var ARow1, ACol1, ARow2, ACol2: Cardinal; var AFlags: TsRelFlags): Boolean;
 var
   p: Integer;
   cell1Str, cell2Str: String;

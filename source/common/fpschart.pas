@@ -6,7 +6,7 @@ unit fpsChart;
 interface
 
 uses
-  Classes, SysUtils, Contnrs, fpsTypes, fpsUtils;
+  Classes, SysUtils, Contnrs, FPImage, fpsTypes, fpsUtils;
 
 const
   clsNoLine = -2;
@@ -55,6 +55,7 @@ type
     CenterX, CenterY: Double;  // 0.0 ... 1.0
     Angle: Double;             // degrees
     constructor Create;
+    destructor Destroy; override;
   end;
 
   TsChartGradientList = class(TFPObjectList)
@@ -92,7 +93,7 @@ type
     LineColor: TsColor;
     LineDistance: Double;      // mm
     LineAngle: Double;         // degrees
-    Filled: Boolean;           // filled with background color or not
+    destructor Destroy; override;
   end;
 
   TsChartHatchList = class(TFPObjectList)
@@ -101,19 +102,38 @@ type
     procedure SetItem(AIndex: Integer; AValue: TsChartHatch);
   public
     function AddHatch(AName: String; AStyle: TsChartHatchStyle;
-      ALineColor: TsColor; ALineDistance, ALineAngle: Double; AFilled: Boolean): Integer;
+      ALineColor: TsColor; ALineDistance, ALineAngle: Double): Integer;
     function FindByName(AName: String): TsChartHatch;
     function IndexOfName(AName: String): Integer;
     property Items[AIndex: Integer]: TsChartHatch read GetItem write SetItem; default;
   end;
 
-  TsChartFillStyle = (cfsNoFill, cfsSolid, cfsGradient, cfsHatched);
+  TsChartImage = class
+    Name: String;
+    Image: TFPCustomImage;
+    Width, Height: Double;  // mm
+    destructor Destroy; override;
+  end;
+
+  TsChartImagelist = class(TFPObjectList)
+  private
+    function GetItem(AIndex: Integer): TsChartImage;
+    procedure SetItem(AIndex: Integer; AValue: TsChartImage);
+  public
+    function AddImage(AName: String; AImage: TFPCustomImage): Integer;
+    function FindByName(AName: String): TsChartImage;
+    function IndexOfName(AName: String): Integer;
+    property Items[Aindex: Integer]: TsChartImage read GetItem write SetItem; default;
+  end;
+
+  TsChartFillStyle = (cfsNoFill, cfsSolid, cfsGradient, cfsHatched, cfsSolidHatched, cfsImage);
 
   TsChartFill = class
     Style: TsChartFillStyle;
     Color: TsColor;
     Gradient: Integer;
     Hatch: Integer;
+    Image: Integer;
     Transparency: Double;  // 0.0 ... 1.0
   end;
 
@@ -519,6 +539,7 @@ type
     FLineStyles: TsChartLineStyleList;
     FGradients: TsChartGradientList;
     FHatches: TsChartHatchList;
+    FImages: TsChartImageList;
     function GetCategoryLabelRange: TsChartRange;
 
   public
@@ -596,6 +617,7 @@ type
     property LineStyles: TsChartLineStyleList read FLineStyles;
     property Gradients: TsChartGradientList read FGradients;
     property Hatches: TsChartHatchList read FHatches;
+    property Images: TsChartImageList read FImages;
   end;
 
   TsChartList = class(TObjectList)
@@ -619,6 +641,12 @@ begin
   inherited Create;
   StartIntensity := 1.0;
   EndIntensity := 1.0;
+end;
+
+destructor TsChartGradient.Destroy;
+begin
+  Name := '';
+  inherited;
 end;
 
 
@@ -729,10 +757,19 @@ begin
 end;
 
 
+{ TsChartHatch }
+
+destructor TsChartHatch.Destroy;
+begin
+  Name := '';
+  inherited;
+end;
+
+
 { TsChartHatchList }
 
 function TsChartHatchList.AddHatch(AName: String; AStyle: TsChartHatchStyle;
-  ALineColor: TsColor; ALineDistance, ALineAngle: Double; AFilled: Boolean): Integer;
+  ALineColor: TsColor; ALineDistance, ALineAngle: Double): Integer;
 var
   item: TsChartHatch;
 begin
@@ -750,7 +787,6 @@ begin
   item.LineColor := ALineColor;
   item.LineDistance := ALineDistance;
   item.LineAngle := ALineAngle;
-  item.Filled := AFilled;
 end;
 
 function TsChartHatchList.FindByName(AName: String): TsChartHatch;
@@ -778,6 +814,62 @@ begin
 end;
 
 procedure TsChartHatchList.SetItem(AIndex: Integer; AValue: TsChartHatch);
+begin
+  inherited Items[AIndex] := AValue;
+end;
+
+
+{ TsChartImage }
+
+destructor TsChartImage.Destroy;
+begin
+  Name := '';
+  Image.Free;
+  inherited;
+end;
+
+
+{ TsChartImageList }
+
+function TsChartImageList.AddImage(AName: String; AImage: TFPCustomImage): Integer;
+var
+  item: TsChartImage;
+begin
+  Result := IndexOfName(AName);
+  if Result = -1 then
+  begin
+    item := TsChartImage.Create;
+    item.Name := AName;
+    Result := inherited Add(item);
+  end;
+  Items[Result].Image := AImage;
+end;
+
+function TsChartImageList.FindByName(AName: String): TsChartImage;
+var
+  idx: Integer;
+begin
+  idx := IndexOfName(AName);
+  if idx <> -1 then
+    Result := Items[idx]
+  else
+    Result := nil;
+end;
+
+function TsChartImageList.GetItem(AIndex: Integer): TsChartImage;
+begin
+  Result := TsChartImage(inherited Items[AIndex]);
+end;
+
+function TsChartImageList.IndexOfName(AName: String): Integer;
+begin
+  for Result := 0 to Count-1 do
+    if SameText(Items[Result].Name, AName) then
+      exit;
+  Result := -1;
+end;
+
+procedure TsChartImageList.SetItem(AIndex: Integer; AValue: TsChartImage);
 begin
   inherited Items[AIndex] := AValue;
 end;
@@ -1094,6 +1186,8 @@ end;
 
 destructor TsChartSeries.Destroy;
 begin
+  FLabelBackground.Free;
+  FLabelBorder.Free;
   FLabelFont.Free;
   FLine.Free;
   FFill.Free;
@@ -1511,6 +1605,7 @@ begin
 
   FGradients := TsChartGradientList.Create;
   FHatches := TsChartHatchList.Create;
+  FImages := TsChartImageList.Create;
 
   FSheetIndex := 0;
   FRow := 0;
@@ -1576,6 +1671,7 @@ begin
   FSubtitle.Free;
   FFloor.Free;
   FPlotArea.Free;
+  FImages.Free;
   FHatches.Free;
   FGradients.Free;
   FLineStyles.Free;

@@ -18,9 +18,9 @@ interface
 
 uses
   // RTL/FCL
-  Classes, SysUtils, Types,
+  Classes, Contnrs, SysUtils, Types,
   // LCL
-  LCLVersion, Forms, Controls, Graphics, Dialogs,
+  LCLVersion, Forms, Controls, Graphics, GraphUtil, Dialogs,
   // TAChart
   TATypes, TATextElements, TAChartUtils, TALegend, TACustomSource,
   TACustomSeries, TASeries, TARadialSeries, TAFitUtils, TAFuncSeries,
@@ -102,6 +102,7 @@ type
     FWorkbookSource: TsWorkbookSource;
     FWorkbook: TsWorkbook;
     FWorkbookChartIndex: Integer;
+    FBrushBitmaps: TFPObjectList;
     procedure SetChart(AValue: TChart);
     procedure SetWorkbookChartIndex(AValue: Integer);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
@@ -120,12 +121,14 @@ type
     procedure UpdateChartAxisLabels(AWorkbookChart: TsChart);
     procedure UpdateChartBackground(AWorkbookChart: TsChart);
     procedure UpdateBarSeries(AWorkbookChart: TsChart);
-    procedure UpdateChartBrush(AWorkbookFill: TsChartFill; ABrush: TBrush);
+    procedure UpdateChartBrush(AWorkbookChart: TsChart; AWorkbookFill: TsChartFill; ABrush: TBrush);
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookLine: TsChartLine; APen: TPen);
     procedure UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
 
+    procedure UpdateAreaSeries(AWorkbookSeries: TsAreaSeries; AChartSeries: TAreaSeries);
+    procedure UpdateBarSeries(AWorkbookSeries: TsBarSeries; AChartSeries: TBarSeries);
     procedure UpdateLineSeries(AWorkbookSeries: TsLineSeries; AChartSeries: TLineSeries);
     procedure UpdatePieSeries(AWorkbookSeries: TsPieSeries; AChartSeries: TPieSeries);
     procedure UpdateScatterSeries(AWorkbookSeries: TsScatterSeries; AChartSeries: TLineSeries);
@@ -622,6 +625,7 @@ end;
 constructor TsWorkbookChartLink.Create(AOwner: TComponent);
 begin
   inherited;
+  FBrushBitmaps := TFPObjectList.Create;
   FWorkbookChartIndex := -1;
 end;
 
@@ -632,6 +636,7 @@ end;
 destructor TsWorkbookChartLink.Destroy;
 begin
   if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
+  FBrushBitmaps.Free;
   inherited;
 end;
 
@@ -668,16 +673,9 @@ begin
 
   case ASeries.ChartType of
     ctArea:
-      begin
-        UpdateChartBrush(ASeries.Fill, TAreaSeries(ser).AreaBrush);
-        UpdateChartPen(ASeries.Line, TAreaSeries(ser).AreaContourPen);
-        TAreaSeries(ser).AreaLinesPen.Style := psClear;
-      end;
+      UpdateAreaSeries(TsAreaSeries(ASeries), TAreaSeries(ser));
     ctBar:
-      begin
-        UpdateChartBrush(ASeries.Fill, TBarSeries(ser).BarBrush);
-        UpdateChartPen(ASeries.Line, TBarSeries(ser).BarPen);
-      end;
+      UpdateBarSeries(TsBarSeries(ASeries), TBarSeries(ser));
     ctLine:
       UpdateLineSeries(TsLineSeries(ASeries), TLineSeries(ser));
     ctScatter:
@@ -863,6 +861,21 @@ begin
   UpdateChart;
 end;
 
+procedure TsWorkbookChartLink.UpdateAreaSeries(AWorkbookSeries: TsAreaSeries;
+  AChartSeries: TAreaSeries);
+begin
+  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.AreaBrush);
+  UpdateChartPen(AWorkbookSeries.Line, AChartSeries.AreaContourPen);
+  AChartSeries.AreaLinesPen.Style := psClear;
+end;
+
+procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
+  AChartSeries: TBarSeries);
+begin
+  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
+  UpdateChartPen(AWorkbookSeries.Line, AChartSeries.BarPen);
+end;
+
 procedure TsWorkbookChartLink.UpdateChart;
 var
   ch: TsChart;
@@ -1036,18 +1049,42 @@ begin
     end;
 end;
 
-procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookFill: TsChartFill;
-  ABrush: TBrush);
+procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookChart: TsChart;
+  AWorkbookFill: TsChartFill; ABrush: TBrush);
+var
+  img: TsChartImage;
+  png: TCustomBitmap;
+  w, h, ppi: Integer;
 begin
   if (AWorkbookFill <> nil) and (ABrush <> nil) then
   begin
     ABrush.Color := Convert_sColor_to_Color(AWorkbookFill.Color);
-    if AWorkbookFill.Style = cfsNoFill then
-      ABrush.Style := bsClear
-    else
-      ABrush.Style := bsSolid;
-    // NOTE: TAChart will ignore gradient.
-    // To be completed: hatched filles.
+    case AWorkbookFill.Style of
+      cfsNoFill:
+        ABrush.Style := bsClear;
+      cfsSolid:
+        ABrush.Style := bsSolid;
+      cfsGradient:
+        ABrush.Style := bsSolid;  // NOTE: TAChart cannot display gradients
+      cfsHatched, cfsSolidHatched:
+        ABrush.Style := bsSolid;
+      cfsImage:
+        begin
+          img := AWorkbookChart.Images[AWorkbookFill.Image];
+          if img <> nil then
+          begin
+            ppi := GetParentForm(FChart).PixelsPerInch;
+            w := mmToPx(img.Width, ppi);
+            h := mmToPx(img.Height, ppi);
+            png := TPortableNetworkGraphic.Create;
+            png.Assign(img.Image);
+            ScaleImg(png, w, h);
+            FBrushBitmaps.Add(png);
+            ABrush.Bitmap := png;
+          end else
+            ABrush.Style := bsSolid;
+        end;
+    end;
   end;
 end;
 
@@ -1065,7 +1102,7 @@ begin
   begin
     Convert_sFont_to_Font(AWorkbookLegend.Font, ALegend.Font);
     UpdateChartPen(AWorkbookLegend.Border, ALegend.Frame);
-    UpdateChartBrush(AWorkbookLegend.Background, ALegend.BackgroundBrush);
+    UpdateChartBrush(AWorkbookLegend.Chart, AWorkbookLegend.Background, ALegend.BackgroundBrush);
     ALegend.Frame.Visible := (ALegend.Frame.Style <> psClear);
     ALegend.Alignment := LEG_POS[AWorkbookLegend.Position];
     ALegend.UseSidebar := not AWorkbookLegend.CanOverlapPlotArea;
@@ -1137,7 +1174,7 @@ begin
     end;
 
   UpdateChartPen(AWorkbookSeries.LabelBorder, AChartSeries.Marks.Frame);
-  UpdateChartBrush(AWorkbookSeries.LabelBackground, AChartSeries.Marks.LabelBrush);
+  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.LabelBackground, AChartSeries.Marks.LabelBrush);
 end;
 
 {@@ Updates title and footer of the linked TAChart.
@@ -1153,7 +1190,7 @@ begin
     AChartTitle.WordWrap := true;
     Convert_sFont_to_Font(AWorkbookTitle.Font, AChartTitle.Font);
     UpdateChartPen(AWorkbookTitle.Border, AChartTitle.Frame);
-    UpdateChartBrush(AWorkbookTitle.Background, AChartTitle.Brush);
+    UpdateChartBrush(AWorkbookTitle.Chart, AWorkbookTitle.Background, AChartTitle.Brush);
     AChartTitle.Font.Orientation := round(AWorkbookTitle.RotationAngle * 10);
     AChartTitle.Frame.Visible := (AChartTitle.Frame.Style <> psClear);
   end;
@@ -1185,7 +1222,7 @@ begin
   AChartSeries.ShowPoints := AWorkbookSeries.ShowSymbols;
   if AChartSeries.ShowPoints then
   begin
-    UpdateChartBrush(AWorkbookSeries.Fill, AChartSeries.Pointer.Brush);
+    UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.Pointer.Brush);
     AChartSeries.Pointer.Pen.Color := AChartSeries.LinePen.Color;
     AChartSeries.Pointer.Style := POINTER_STYLES[AWorkbookSeries.Symbol];
     AChartSeries.Pointer.HorizSize := mmToPx(AWorkbookSeries.SymbolWidth, ppi);
