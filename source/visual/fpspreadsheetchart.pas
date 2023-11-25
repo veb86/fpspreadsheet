@@ -126,7 +126,7 @@ type
     procedure UpdateBarSeries(AWorkbookChart: TsChart);
     procedure UpdateChartBrush(AWorkbookChart: TsChart; AWorkbookFill: TsChartFill; ABrush: TBrush);
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
-    procedure UpdateChartPen(AWorkbookLine: TsChartLine; APen: TPen);
+    procedure UpdateChartPen(AWorkbookChart: TsChart; AWorkbookLine: TsChartLine; APen: TPen);
     procedure UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
 
@@ -153,6 +153,8 @@ type
 
   end;
 
+procedure Convert_sChartLine_to_Pen(AChart: TsChart; ALine: TsChartLine; APen: TPen);
+
 
 implementation
 
@@ -166,6 +168,66 @@ function mmToPx(mm: Double; ppi: Integer): Integer;
 begin
   Result := round(mmToIn(mm * ppi));
 end;
+
+{ Constructs a PenStyle from the TsChartLine pattern style.
+  Note: the conversion is only very rough... }
+procedure Convert_sChartLine_to_Pen(AChart: TsChart; ALine: TsChartLine; APen: TPen);
+var
+  sLineStyle: TsChartLineStyle;
+
+  function IsDot(ASegment: TsChartLineSegment): Boolean;
+  var
+    len: Integer;
+  begin
+    if sLineStyle.RelativeToLineWidth then
+      Result := (ASegment.Length < 200)
+    else
+    begin
+      len := mmToPx(ASegment.Length, ScreenPixelsPerInch);
+      Result := len < 4;
+    end;
+  end;
+
+var
+  dot1, dot2: Boolean;
+begin
+  sLineStyle := AChart.GetLineStyle(ALine.Style);
+  if sLineStyle.Distance = 0 then
+    APen.Style := psSolid
+  else
+  if (sLinestyle.Segment1.Count = 0) and (sLineStyle.Segment2.Count = 0) then
+    APen.Style := psClear
+  else
+  if (sLinestyle.Segment1.Count > 0) and (sLineStyle.Segment2.Count = 0) then
+  begin
+    if IsDot(sLineStyle.Segment1) then
+      APen.Style := psDot
+    else
+      APen.Style := psDash;
+  end else
+  if (sLineStyle.Segment1.Count = 0) and (sLineStyle.Segment2.Count > 0) then
+  begin
+    if IsDot(sLineStyle.Segment2) then
+      APen.Style := psDot
+    else
+      APen.Style := psDash;
+  end else
+  if (sLineStyle.Segment1.Count = 1) and (sLineStyle.Segment2.Count = 1) then
+  begin
+    dot1 := IsDot(sLineStyle.Segment1);
+    dot2 := IsDot(sLineStyle.Segment2);
+    if (dot1 and not dot2) or (not dot1 and dot2) then
+      APen.Style := psDashDot
+    else
+    if dot1 and dot2 then
+      APen.Style := psDot
+    else
+    if (not dot1) and (not dot2) then
+      APen.Style := psDash;
+  end else
+    APen.Style := psDashDotDot
+end;
+
 
 {------------------------------------------------------------------------------}
 {                             TsWorkbookChartSource                            }
@@ -989,7 +1051,7 @@ procedure TsWorkbookChartLink.UpdateAreaSeries(AWorkbookSeries: TsAreaSeries;
   AChartSeries: TAreaSeries);
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.AreaBrush);
-  UpdateChartPen(AWorkbookSeries.Line, AChartSeries.AreaContourPen);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.AreaContourPen);
   AChartSeries.AreaLinesPen.Style := psClear;
 end;
 
@@ -997,7 +1059,7 @@ procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
   AChartSeries: TBarSeries);
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
-  UpdateChartPen(AWorkbookSeries.Line, AChartSeries.BarPen);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BarPen);
 end;
 
 procedure TsWorkbookChartLink.UpdateChart;
@@ -1074,11 +1136,11 @@ begin
   axis.Marks.LabelFont.Orientation := round(AWorkbookAxis.LabelRotation * 10);
 
   // Axis line
-  UpdateChartPen(AWorkbookAxis.AxisLine, axis.AxisPen);
+  UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.AxisLine, axis.AxisPen);
   axis.AxisPen.Visible := axis.AxisPen.Style <> psClear;
 
   // Major axis grid
-  UpdateChartPen(AWorkbookAxis.MajorGridLines, axis.Grid);
+  UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MajorGridLines, axis.Grid);
   axis.Grid.Visible := axis.Grid.Style <> psClear;
   axis.TickLength := IfThen(catOutside in AWorkbookAxis.MajorTicks, 4, 0);
   axis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MajorTicks, 4, 0);
@@ -1089,7 +1151,7 @@ begin
   if AWorkbookAxis.MinorGridLines.Style <> clsNoLine then
   begin
     minorAxis := axis.Minors.Add;
-    UpdateChartPen(AWorkbookAxis.MinorGridLines, minorAxis.Grid);
+    UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MinorGridLines, minorAxis.Grid);
     minorAxis.Grid.Visible := true;
     minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
     minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
@@ -1128,7 +1190,7 @@ procedure TsWorkbookChartLink.UpdateChartBackground(AWorkbookChart: TsChart);
 begin
   FChart.Color := Convert_sColor_to_Color(AWorkbookChart.Background.Color);
   FChart.BackColor := Convert_sColor_to_Color(AWorkbookChart.PlotArea.Background.Color);
-  UpdateChartPen(AWorkbookChart.PlotArea.Border, FChart.Frame);
+  UpdateChartPen(AWorkbookChart, AWorkbookChart.PlotArea.Border, FChart.Frame);
   FChart.Frame.Visible := AWorkbookChart.PlotArea.Border.Style <> clsNoLine;
 end;
 
@@ -1227,7 +1289,7 @@ begin
   if (AWorkbookLegend <> nil) and (ALegend <> nil) then
   begin
     Convert_sFont_to_Font(AWorkbookLegend.Font, ALegend.Font);
-    UpdateChartPen(AWorkbookLegend.Border, ALegend.Frame);
+    UpdateChartPen(AWorkbookLegend.Chart, AWorkbookLegend.Border, ALegend.Frame);
     UpdateChartBrush(AWorkbookLegend.Chart, AWorkbookLegend.Background, ALegend.BackgroundBrush);
     ALegend.Frame.Visible := (ALegend.Frame.Style <> psClear);
     ALegend.Alignment := LEG_POS[AWorkbookLegend.Position];
@@ -1238,8 +1300,8 @@ begin
   end;
 end;
 
-procedure TsWorkbookChartLink.UpdateChartPen(AWorkbookLine: TsChartLine;
-  APen: TPen);
+procedure TsWorkbookChartLink.UpdateChartPen(AWorkbookChart: TsChart;
+  AWorkbookLine: TsChartLine; APen: TPen);
 begin
   if (AWorkbookLine <> nil) and (APen <> nil) then
   begin
@@ -1263,8 +1325,8 @@ begin
         if (AWorkbookLine.Style in [clsLongDashDotDot]) then
           APen.Style := psDashDotDot
         else
-          // to be fixed: create pattern as defined.
-          APen.Style := psDash;
+          Convert_sChartLine_to_Pen(AWorkbookChart, AWorkbookLine, APen);
+          // To do: not very precise - need to create custom patterns!
     end;
   end;
 end;
@@ -1299,7 +1361,7 @@ begin
         end;
     end;
 
-  UpdateChartPen(AWorkbookSeries.LabelBorder, AChartSeries.Marks.Frame);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.LabelBorder, AChartSeries.Marks.Frame);
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.LabelBackground, AChartSeries.Marks.LabelBrush);
 end;
 
@@ -1315,7 +1377,7 @@ begin
     AChartTitle.Visible := AWorkbookTitle.Visible;
     AChartTitle.WordWrap := true;
     Convert_sFont_to_Font(AWorkbookTitle.Font, AChartTitle.Font);
-    UpdateChartPen(AWorkbookTitle.Border, AChartTitle.Frame);
+    UpdateChartPen(AWorkbookTitle.Chart, AWorkbookTitle.Border, AChartTitle.Frame);
     UpdateChartBrush(AWorkbookTitle.Chart, AWorkbookTitle.Background, AChartTitle.Brush);
     AChartTitle.Font.Orientation := round(AWorkbookTitle.RotationAngle * 10);
     AChartTitle.Frame.Visible := (AChartTitle.Frame.Style <> psClear);
@@ -1343,7 +1405,7 @@ var
 begin
   ppi := GetParentForm(FChart).PixelsPerInch;
 
-  UpdateChartPen(AWorkbookSeries.Line, AChartSeries.LinePen);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.LinePen);
   AChartSeries.ShowLines := AWorkbookSeries.Line.Style <> clsNoLine;
   AChartSeries.ShowPoints := AWorkbookSeries.ShowSymbols;
   if AChartSeries.ShowPoints then
@@ -1407,7 +1469,7 @@ begin
   end;
 
   // style of regression line
-  UpdateChartPen(AWorkbookSeries.Regression.Line, ser.Pen);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Regression.Line, ser.Pen);
 
   FChart.AddSeries(ser);
 
