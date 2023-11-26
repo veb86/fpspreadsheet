@@ -7548,9 +7548,9 @@ end;
 function TsWorkbook.TryStrToCellRanges(AText: String; out AWorksheet: TsWorksheet;
   out ARanges: TsCellRangeArray; AListSeparator: Char = #0): Boolean;
 var
-  i: Integer;
+  i, p: Integer;
   L: TStrings;
-  sheetname: String;
+  s, sheetname: String;
 begin
   Result := false;
   AWorksheet := nil;
@@ -7559,11 +7559,11 @@ begin
   if AText = '' then
     exit;
 
-  i := pos(SHEETSEPARATOR, AText);
-  if i = 0 then
+  p := pos(SHEETSEPARATOR, AText);
+  if p = 0 then
     AWorksheet := FActiveWorksheet
   else begin
-    sheetname := Copy(AText, 1, i-1);
+    sheetname := Copy(AText, 1, p-1);
     if (sheetname <> '') and (sheetname[1] = '''') then
       Delete(sheetname, 1, 1);
     if (sheetname <> '') and (sheetname[Length(sheetname)] = '''') then
@@ -7571,7 +7571,7 @@ begin
     AWorksheet := GetWorksheetByName(sheetname);
     if AWorksheet = nil then
       exit;
-    AText := Copy(AText, i+1, Length(AText));
+    AText := Copy(AText, p+1, Length(AText));
   end;
 
   L := TStringList.Create;
@@ -7589,14 +7589,19 @@ begin
     end;
     SetLength(ARanges, L.Count);
     for i:=0 to L.Count-1 do begin
-      if pos(':', L[i]) = 0 then begin
-        Result := ParseCellString(L[i], ARanges[i].Row1, ARanges[i].Col1);
+      p := pos(SHEETSEPARATOR, L[i]);
+      if p > 0 then
+        s := Copy(L[i], p+1, MaxInt)
+      else
+        s := L[i];
+      if pos(':', s) = 0 then begin
+        Result := ParseCellString(s, ARanges[i].Row1, ARanges[i].Col1);
         if Result then begin
           ARanges[i].Row2 := ARanges[i].Row1;
           ARanges[i].Col2 := ARanges[i].Col1;
         end;
       end else
-        Result := ParseCellRangeString(L[i], ARanges[i]);
+        Result := ParseCellRangeString(s, ARanges[i]);
       if not Result then begin
         SetLength(ARanges, 0);
         AWorksheet := nil;
