@@ -524,16 +524,16 @@ end;
   and to worksheet changes by selecting the tab corresponding to the selected
   worksheet.
 
-  @param  AChangedItems  Set with elements identifying whether workbook,
-                         worksheet, cell content or cell formatting has changed
-  @param  AData          Additional data, not used here
+ (@param  AChangedItems  Set of elements identifying whether workbook,
+                         worksheet, cell content or cell formatting has changed)
+ (@param  AData          Additional data, contains the worksheet for worksheet-related items)
 
   @see    TsNotificationItem
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.ListenerNotification(
   AChangedItems: TsNotificationItems; AData: Pointer = nil);
 var
-  ir, i: Integer;
+  ir, i, j: Integer;
   cell: PCell;
   ResetDone: Boolean;
   rng: TsXYLRange;
@@ -555,13 +555,25 @@ begin
 
   // Used worksheet will be deleted?
   if (lniWorksheetRemoving in AChangedItems) then
+  begin
     for rng in TsXYLRange do
       for i := 0 to High(FWorksheets[rng]) do
-        if TsWorksheet(AData) = FWorksheets[rng, i] then begin
-          FWorksheets[rng] := nil;
-          FRangeStr[rng] := BuildRangeStr(rng);
-          Prepare(rng);
+        if TsWorksheet(AData) = FWorksheets[rng, i] then
+        begin
+          for j := i+1 to High(FWorksheets[rng]) do
+            FWorksheets[rng, j-1] := FWorksheets[rng, j];
+          SetLength(FWorkSheets[rng], Length(FWorksheets[rng])-1);
+          for j := i+1 to High(FRanges[rng]) do
+            FRanges[rng, j-1] := FRanges[rng, j];
+          SetLength(FRanges[rng], Length(FRanges[rng])-1);
         end;
+    for rng in TsXYLRange do
+    begin
+      FRangeStr[rng] := BuildRangeStr(rng);
+      Prepare(rng);
+    end;
+    Reset;
+  end;
 
   // Cell changes: Enforce recalculation of axes if modified cell is within the
   // x or y range(s).
@@ -625,12 +637,28 @@ var
   ok: Boolean;
   i, j: Integer;
 begin
+  if (FWorkbookSource = nil) then
+  begin
+    FPointsNumber := 0;
+    Reset;
+    exit;
+  end;
+
+  s := FRangeStr[AIndex];
+  if (s = '') then
+  begin
+    if AIndex = rngY then
+    begin
+      FPointsNumber := 0;
+      Reset;
+      exit;
+    end;
+  end;
+
   // Split range string into parts for the individual xindex and yindex parts.
   // Each part is enclosed by parenthesis.
   // Example for two y ranges:
   //   '(A1:A10) (B1:B5;B6:B11)' --> 1st y range is A1:A10, 2nd y range is B1:B5 and B6:B11
-  s := '';
-  s := FRangeStr[AIndex];
   if (s <> '') and (s[Length(s)] = ')') then
     Delete(s, Length(s), 1);
   for i := 1 to Length(s) do
@@ -656,17 +684,6 @@ begin
     else ;
   end;
 
-  // Trivial valdiation
-  if (Workbook = nil) or (not ok) then
-  begin
-    FWorksheets[AIndex] := nil;
-    SetLength(FRanges[AIndex], 0);
-    if AIndex = rngY then
-      FPointsNumber := 0;
-    Reset;
-    exit;
-  end;
-
   // Extract range parameters and store them in FRanges
   SetLength(FRanges[AIndex], Length(sa));
   SetLength(FWorksheets[AIndex], Length(sa));
@@ -682,8 +699,8 @@ begin
       Reset;
     end else
     if (Workbook.GetWorksheetCount > 0) then begin
-      if FWorksheets[AIndex] = nil then
-        exit;
+      if FWorksheets[AIndex, i] = nil then
+        raise Exception.Create('Worksheet not found in ' + sa[i]);
     end;
   end;
   // Make sure to include worksheet name in RangeString.

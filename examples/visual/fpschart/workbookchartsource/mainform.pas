@@ -5,9 +5,9 @@ unit mainform;
 interface
 
 uses
-  Classes, SysUtils, FileUtil, TAGraph, TASources, TASeries, Forms, Controls,
-  Graphics, Dialogs, ExtCtrls, StdCtrls, fpspreadsheetctrls, fpspreadsheetgrid,
-  fpspreadsheetchart, fpsallformats;
+  Classes, SysUtils, FileUtil, TAGraph, TASources, TASeries, TAStyles, Forms,
+  Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, fpspreadsheetctrls,
+  fpspreadsheetgrid, fpspreadsheetchart, fpsallformats;
 
 type
 
@@ -16,13 +16,16 @@ type
   TForm1 = class(TForm)
     Bevel1: TBevel;
     BtnDeleteSheet: TButton;
+    BtnRenameSheet: TButton;
     Button2: TButton;
     Chart1: TChart;
-    Chart1AreaSeries1: TAreaSeries;
+    Chart1AreaSeries1: TLineSeries;
+    Chart1LineSeries1: TLineSeries;
     Chart2: TChart;
     Chart2BarSeries1: TBarSeries;
     Chart3: TChart;
     Chart3PieSeries1: TPieSeries;
+    ChartStyles1: TChartStyles;
     Panel1: TPanel;
     Panel2: TPanel;
     Splitter1: TSplitter;
@@ -53,11 +56,14 @@ implementation
 procedure TForm1.FormCreate(Sender: TObject);
 begin
   sWorkbookSource1.Filename := 'test-data.xlsx';
-  sWorkbookChartSource1.XRange := 'Sheet1!A2:A21';
-  sWorkbookChartSource1.YRange := 'Sheet1!B2:B21';
-  sWorkbookChartSource2.XRange := 'Sheet2!A2:A16';
-  sWorkbookChartSource2.YRange := 'Sheet2!B2:B16';
-  sWorkbookChartSource3.XRange := 'Sheet3!A2:A5';
+
+  sWorkbookChartSource1.XRange := 'Sheet1!A2:A32';
+  sWorkbookChartSource1.YRange := '(Sheet1!B2:B32) (Sheet1!C2:C32) (Sheet1!D2:D17;Sheet1!E18:E32)';
+
+  sWorkbookChartSource2.XRange := 'Sheet2!A2:A27';
+  sWorkbookChartSource2.YRange := 'Sheet2!B2:B27';
+
+  sWorkbookChartSource3.XRange := 'Sheet3!C2:C5';
   sWorkbookChartSource3.YRange := 'Sheet3!B2:B5';
   sWorkbookChartSource3.LabelRange := 'Sheet3!A2:A5';
 end;
