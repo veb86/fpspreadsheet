@@ -51,6 +51,7 @@ type
     FPointsNumber: Cardinal;
     FTitleCol, FTitleRow: Cardinal;
     FTitleSheetName: String;
+    FCyclicX: Boolean;
     function GetRange(AIndex: TsXYLRange): String;
     function GetTitle: String;
     function GetWorkbook: TsWorkbook;
@@ -68,6 +69,7 @@ type
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
     procedure Prepare; overload;
     procedure Prepare(AIndex: TsXYLRange); overload;
+    procedure SetXCount(AValue: Cardinal); override;
     procedure SetYCount(AValue: Cardinal); override;
   public
     destructor Destroy; override;
@@ -86,6 +88,7 @@ type
   published
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
     property ColorRange: String index rngColor read GetRange write SetRange;
+    property CyclicX: Boolean read FCyclicX write FCyclicX default false;
     property LabelRange: String index rngLabel read GetRange write SetRange;
     property XRange: String index rngX read GetRange write SetRange;
     property YRange: String index rngY read GetRange write SetRange;
@@ -134,6 +137,7 @@ type
     procedure UpdateBarSeries(AWorkbookSeries: TsBarSeries; AChartSeries: TBarSeries);
     procedure UpdateLineSeries(AWorkbookSeries: TsLineSeries; AChartSeries: TLineSeries);
     procedure UpdatePieSeries(AWorkbookSeries: TsPieSeries; AChartSeries: TPieSeries);
+    procedure UpdatePolarSeries(AWorkbookSeries: TsRadarSeries; AChartSeries: TPolarSeries);
     procedure UpdateScatterSeries(AWorkbookSeries: TsScatterSeries; AChartSeries: TLineSeries);
 
   public
@@ -320,7 +324,12 @@ begin
   if FRanges[rngX] <> nil then
     GetXYItem(rngX, AIndex, FCurItem.X, tmpLabel)
   else
-    FCurItem.X := AIndex;
+  begin
+    if FCyclicX then
+      FCurItem.X := AIndex / FPointsNumber * 2*pi
+    else
+      FCurItem.X := AIndex;
+  end;
 
   GetXYItem(rngY, AIndex, FCurItem.Y, dummyString);
 
@@ -673,6 +682,11 @@ begin
   Prepare;
 end;
 
+procedure TsWorkbookChartSource.SetXCount(AValue: Cardinal);
+begin
+  FXCount := AValue;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Inherited ChartSource method telling the series how many y values are used.
   Currently we support only single valued data (YCount = 1, by default).
@@ -726,6 +740,9 @@ begin
       ser := TAreaSeries.Create(FChart);
     ctPie, ctRing:
       ser := TPieSeries.Create(FChart);
+    ctRadar,
+    ctFilledRadar:
+      ser := TPolarSeries.Create(FChart);
   end;
 
   src.SetTitleAddr(ASeries.TitleAddr);
@@ -747,6 +764,8 @@ begin
       UpdateScatterSeries(TsScatterSeries(ASeries), TLineSeries(ser));
     ctPie, ctRing:
       UpdatePieSeries(TsPieSeries(ASeries), TPieSeries(ser));
+    ctRadar, ctFilledRadar:
+      UpdatePolarSeries(TsRadarSeries(ASeries), TPolarSeries(ser));
   end;
 end;
 
@@ -1431,6 +1450,23 @@ begin
   FChart.LeftAxis.Visible := false;
   FChart.Legend.Inverted := false;
   FChart.Frame.Visible := false;
+end;
+
+procedure TsWorkbookChartLink.UpdatePolarSeries(AWorkbookSeries: TsRadarSeries;
+  AChartSeries: TPolarSeries);
+begin
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.LinePen);
+  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.Brush);
+  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
+  AChartSeries.CloseCircle := true;
+  AChartSeries.Filled := (AWorkbookSeries.ChartType = ctFilledRadar);
+  (AChartSeries.Source as TsWorkbookChartSource).CyclicX := true;
+
+  FChart.LeftAxis.Minors.Clear;
+  FChart.LeftAxis.Grid.Visible := false;
+  FChart.BottomAxis.Minors.Clear;
+  FChart.BottomAxis.Grid.Visible := false;
+  FChart.Proportional := true;
 end;
 
 procedure TsWorkbookChartLink.UpdateScatterSeries(AWorkbookSeries: TsScatterSeries;
