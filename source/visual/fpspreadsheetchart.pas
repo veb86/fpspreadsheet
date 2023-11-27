@@ -130,7 +130,7 @@ type
     procedure UpdateChartAxis(AWorkbookAxis: TsChartAxis);
     procedure UpdateChartAxisLabels(AWorkbookChart: TsChart);
     procedure UpdateChartBackground(AWorkbookChart: TsChart);
-    procedure UpdateBarSeries(AWorkbookChart: TsChart);
+//    procedure UpdateBarSeries(AWorkbookChart: TsChart);
     procedure UpdateChartBrush(AWorkbookChart: TsChart; AWorkbookFill: TsChartFill; ABrush: TBrush);
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookChart: TsChart; AWorkbookLine: TsChartLine; APen: TPen);
@@ -912,7 +912,8 @@ begin
       TAreaSeries(Result).Styles := FChartStyles;
     Result.Legend.Multiplicity := lmStyle;
     src.SetTitleAddr(ASeries.TitleAddr);
-  end else
+  end
+  else
   begin
     case ASeries.ChartType of
       ctBar:
@@ -952,7 +953,10 @@ begin
   ser.Transparency := round(ASeries.Fill.Transparency);
   UpdateChartSeriesMarks(ASeries, ser);
   if IsStackable(ASeries) then
+  begin
     UpdateChartStyle(ASeries, ser, FChartStyles.Styles.Count-1);
+    FChart.Legend.Inverted := ASeries.Chart.StackMode <> csmSideBySide;
+  end;
 
   FChart.AddSeries(ser);
 
@@ -1283,6 +1287,11 @@ begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.AreaBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.AreaContourPen);
   AChartSeries.AreaLinesPen.Style := psClear;
+  case AWorkbookSeries.Chart.StackMode of
+    csmSideBySide: AChartSeries.Stacked := false;
+    csmStacked: AChartSeries.Stacked := true;
+    csmStackedPercentage: AChartSeries.Stacked := true;
+  end;
 end;
 
 procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
@@ -1295,7 +1304,6 @@ begin
     csmStacked: AChartSeries.Stacked := true;
     csmStackedPercentage: AChartSeries.Stacked := true;
   end;
-  AChartSeries.ParentChart.Legend.Inverted := AChartSeries.Stacked;
 end;
 
 procedure TsWorkbookChartLink.UpdateChart;
@@ -1326,7 +1334,7 @@ begin
 
   FChart.Prepare;
   UpdateChartAxisLabels(ch);
-  UpdateBarSeries(ch);
+//  UpdateBarSeries(ch);
   FixAreaSeries(ch);
 end;
 
@@ -1430,18 +1438,13 @@ begin
   FChart.Frame.Visible := AWorkbookChart.PlotArea.Border.Style <> clsNoLine;
 end;
 
+{
 procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookChart: TsChart);
 var
   i, n: Integer;
   ser: TBarSeries;
   barWidth, totalBarWidth: Integer;
 begin
-  exit;
-
-
-
-
-
   if AWorkbookChart.GetChartType <> ctBar then
     exit;
 
@@ -1476,6 +1479,7 @@ begin
       end;
     end;
 end;
+}
 
 procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookChart: TsChart;
   AWorkbookFill: TsChartFill; ABrush: TBrush);
@@ -1667,6 +1671,11 @@ begin
     AChartSeries.Pointer.Style := POINTER_STYLES[AWorkbookSeries.Symbol];
     AChartSeries.Pointer.HorizSize := mmToPx(AWorkbookSeries.SymbolWidth, ppi);
     AChartSeries.Pointer.VertSize := mmToPx(AWorkbookSeries.SymbolHeight, ppi);
+  end;
+  case AWorkbookSeries.Chart.StackMode of
+    csmSideBySide: AChartSeries.Stacked := false;
+    csmStacked: AChartSeries.Stacked := true;
+    csmStackedPercentage: AChartSeries.Stacked := true;
   end;
 end;
 
