@@ -22,7 +22,7 @@ uses
   // LCL
   LCLVersion, Forms, Controls, Graphics, GraphUtil, Dialogs,
   // TAChart
-  TATypes, TATextElements, TAChartUtils, TALegend, TACustomSource,
+  TATypes, TATextElements, TAChartUtils, TALegend, TACustomSource, TASources,
   TACustomSeries, TASeries, TARadialSeries, TAFitUtils, TAFuncSeries,
   TAChartAxisUtils, TAChartAxis, TAStyles, TAGraph,
   // FPSpreadsheet
@@ -888,6 +888,7 @@ var
   stackable: Boolean;
   firstSeries: TChartSeries;
   src: TsWorkbookChartSource;
+  calcSrc: TCalculatedChartSource;
   style: TChartStyle;
 begin
   if FChart.Series.Count > 0 then
@@ -901,8 +902,23 @@ begin
   begin
     // A stackable series in TAChart must use multiple y values.
     Result := firstSeries;
-    src := (firstSeries.Source as TsWorkbookChartSource);
-    src.SetYRange(src.YCount, ASeries.YRange);
+    // For percent-stacking we need an additional chart source, a TCalculatedChartSource
+    // which gets its data from the workbook chart source.
+    if (firstSeries.Source is TCalculatedChartSource) then
+    begin
+      calcSrc := TCalculatedChartSource(firstSeries.Source);
+      if (calcSrc.Origin is TsWorkbookChartSource) then
+        src := TsWorkbookChartSource(calcSrc.Origin);
+    end else
+    // ... otherwise we use the workbook chartsource directly.
+    if (firstSeries.Source is TsWorkbookChartSource) then
+    begin
+      src := (firstSeries.Source as TsWorkbookChartSource);
+      calcSrc := nil;
+    end else
+      raise Exception.Create('Unexpected chart source type.');
+
+    src.SetYRange(src.YCount, ASeries.YRange);      // <--- This updates also the YCount
     src.FRangeStr[rngY] := src.BuildRangeStr(rngY);
     if Result is TBarSeries then
       TBarSeries(Result).Styles := FChartStyles
@@ -912,9 +928,17 @@ begin
       TAreaSeries(Result).Styles := FChartStyles;
     Result.Legend.Multiplicity := lmStyle;
     src.SetTitleAddr(ASeries.TitleAddr);
+
+    // Trigger recalculation of YCount of the calculated chart source.
+    if calcSrc <> nil then
+    begin
+      calcSrc.Origin := nil;
+      calcSrc.Origin := src;
+    end;
   end
   else
   begin
+    // This is either for a non-stackable or the first stackable series.
     case ASeries.ChartType of
       ctBar:
         Result := TBarSeries.Create(FChart);
@@ -933,7 +957,14 @@ begin
     if not ASeries.YRange.IsEmpty then src.SetYRange(0, ASeries.YRange);
     if not ASeries.FillColorRange.IsEmpty then src.SetColorRange(ASeries.FillColorRange);
     src.SetTitleAddr(ASeries.TitleAddr);
-    Result.Source := src;
+
+    if stackable then begin
+      calcSrc := TCalculatedChartSource.Create(self);
+      calcSrc.Origin := src;
+      Result.Source := calcSrc;
+      src.Reset;
+    end else
+      Result.Source := src;
     Result.Title := src.Title;
   end;
 
@@ -980,7 +1011,7 @@ procedure TsWorkbookChartLink.ClearChart;
 var
   i, j: Integer;
   ser: TChartSeries;
-  src: TCustomChartSource;
+  src, src1: TCustomChartSource;
 begin
   // Clear the styles
   FChartStyles.Styles.Clear;
@@ -995,6 +1026,13 @@ begin
     begin
       ser :=  TChartSeries(FChart.Series[i]);
       src := ser.Source;
+      if src is TCalculatedChartSource then
+      begin
+        src1 := TCalculatedChartSource(src).Origin;
+        if src1 is TsWorkbookChartSource then
+          src1.Free;
+        src.Free;
+      end else
       if src is TsWorkbookChartSource then
         src.Free;
     end;
@@ -1287,11 +1325,9 @@ begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.AreaBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.AreaContourPen);
   AChartSeries.AreaLinesPen.Style := psClear;
-  case AWorkbookSeries.Chart.StackMode of
-    csmSideBySide: AChartSeries.Stacked := false;
-    csmStacked: AChartSeries.Stacked := true;
-    csmStackedPercentage: AChartSeries.Stacked := true;
-  end;
+  AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
+  if AChartSeries.Source is TCalculatedChartSource then
+    TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
 end;
 
 procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
@@ -1299,11 +1335,9 @@ procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BarPen);
-  case AWorkbookSeries.Chart.StackMode of
-    csmSideBySide: AChartSeries.Stacked := false;
-    csmStacked: AChartSeries.Stacked := true;
-    csmStackedPercentage: AChartSeries.Stacked := true;
-  end;
+  AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
+  if AChartSeries.Source is TCalculatedChartSource then
+    TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
 end;
 
 procedure TsWorkbookChartLink.UpdateChart;
@@ -1672,11 +1706,9 @@ begin
     AChartSeries.Pointer.HorizSize := mmToPx(AWorkbookSeries.SymbolWidth, ppi);
     AChartSeries.Pointer.VertSize := mmToPx(AWorkbookSeries.SymbolHeight, ppi);
   end;
-  case AWorkbookSeries.Chart.StackMode of
-    csmSideBySide: AChartSeries.Stacked := false;
-    csmStacked: AChartSeries.Stacked := true;
-    csmStackedPercentage: AChartSeries.Stacked := true;
-  end;
+  AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
+  if AChartSeries.Source is TCalculatedChartSource then
+    TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
 end;
 
 procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;
