@@ -372,12 +372,26 @@ var
   i: Integer;
   value: Double;
 begin
+  for i := 0 to XCount-1 do
+  begin
+    if FRanges[rngX, i] <> nil then
+    begin
+      GetXYItem(rngX, i, AIndex, value, dummyString);
+      FCurItem.SetX(i, value);
+    end else
+    if FCyclicX then
+      value := AIndex / FPointsNumber * TWO_PI
+    else
+      value := AIndex;
+    FCurItem.SetX(i, value);
+  end;
+(*
   if FRanges[rngX] <> nil then
   begin
     for i := 0 to XCount-1 do
     begin
-      GetXYItem(rngX, i, AIndex, value, tmpLabel);
-      FCurItem.SetX(value);
+      GetXYItem(rngX, i, AIndex, value, dummyString);
+      FCurItem.SetX(i, value);
     end;
   end else
   begin
@@ -386,7 +400,7 @@ begin
     else
       FCurItem.X := AIndex;
   end;
-
+  *)
   for i := 0 to YCount-1 do
   begin
     GetXYItem(rngY, i, AIndex, value, dummyString);
@@ -399,12 +413,13 @@ begin
     if FCurItem.Text = '' then FCurItem.Text := tmpLabel;
   end;
 
+  FCurItem.Color := clTAColor;  // = clDefault
   if FRanges[rngColor] <> nil then
   begin
     GetXYItem(rngColor, 0, AIndex, dummyNumber, dummyString);
-    FCurItem.Color := round(dummyNumber);
-  end else
-    FCurItem.Color := clDefault;
+    if not IsNaN(dummyNumber) then
+      FCurItem.Color := round(dummyNumber);
+  end;
 
   Result := @FCurItem;
 end;
@@ -467,12 +482,12 @@ var
 begin
   ANumber := NaN;
   AText := '';
-  {
+
   if FRanges[ARangeIndex, AListIndex] = nil then
     exit;
   if FWorksheets[ARangeIndex] = nil then
     exit;
-   }
+
   cell := nil;
   idx := 0;
 
@@ -651,8 +666,8 @@ begin
     begin
       FPointsNumber := 0;
       Reset;
-      exit;
     end;
+    exit;
   end;
 
   // Split range string into parts for the individual xindex and yindex parts.
