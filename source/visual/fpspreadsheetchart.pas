@@ -237,6 +237,64 @@ begin
     APen.Style := psDashDotDot
 end;
 
+function Convert_NumFormatStr_to_FormatStr(ANumFormat: String): String;
+var
+  isPercent: Boolean = false;
+  hasThSep: Boolean = false;
+  varDecs: Boolean = false;
+  expFmt: Boolean = false;
+  p, i: Integer;
+  fixedDecs: Integer = 0;
+begin
+  if ANumFormat = '' then
+  begin
+    Result := '%.9g';
+    exit;
+  end;
+
+  i := 1;
+  while i <= Length(ANumFormat) do
+  begin
+    case ANumFormat[i] of
+      ',': hasThSep := true;
+      '%': isPercent := true;
+      '.': begin
+             inc(i);
+             while (i <= Length(ANumFormat)) do
+             begin
+               case ANumFormat[i] of
+                 '0': inc(fixedDecs);
+                 '#': begin
+                        varDecs := true;
+                        break;
+                      end;
+                 'e', 'E':
+                      begin
+                        expFmt := true;
+                        break;
+                      end;
+               end;
+               inc(i);
+             end;
+           end;
+    end;
+    inc(i);
+  end;
+  Result := '%.' + IntToStr(fixedDecs);
+  if expFmt then
+    Result := Result + 'e'
+  else
+  if varDecs then
+    Result := Result + 'g'
+  else
+  if hasThSep then
+    Result := Result + 'n'
+  else
+    Result := Result + 'f';
+  if isPercent then
+    Result := Result + '%%';
+end;
+
 
 {------------------------------------------------------------------------------}
 {                             TsWorkbookChartSource                            }
@@ -977,15 +1035,20 @@ end;
 
 procedure TsWorkbookChartLink.AddSeries(ASeries: TsChartSeries);
 var
-  src: TsWorkbookChartSource;
   ser: TChartSeries;
+  axis: TsChartAxis;
 begin
   ser := ActiveChartSeries(ASeries);
   ser.Transparency := round(ASeries.Fill.Transparency);
+  axis := ASeries.Chart.YAxis;
   UpdateChartSeriesMarks(ASeries, ser);
   if IsStackable(ASeries) then
   begin
     UpdateChartStyle(ASeries, ser, FChartStyles.Styles.Count-1);
+    if ASeries.Chart.StackMode = csmStackedPercentage then
+      FChart.LeftAxis.Marks.Format := Convert_NumFormatStr_to_FormatStr(axis.LabelFormatPercent)
+    else
+      FChart.LeftAxis.Marks.Format := Convert_NumFormatStr_to_FormatStr(axis.LabelFormat);
     FChart.Legend.Inverted := ASeries.Chart.StackMode <> csmSideBySide;
   end;
 
