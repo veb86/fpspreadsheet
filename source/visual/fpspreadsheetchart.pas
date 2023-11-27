@@ -24,7 +24,7 @@ uses
   // TAChart
   TATypes, TATextElements, TAChartUtils, TALegend, TACustomSource,
   TACustomSeries, TASeries, TARadialSeries, TAFitUtils, TAFuncSeries,
-  TAChartAxisUtils, TAChartAxis, TAGraph,
+  TAChartAxisUtils, TAChartAxis, TAStyles, TAGraph,
   // FPSpreadsheet
   fpsTypes, fpSpreadsheet, fpsUtils, fpsChart,
   // FPSpreadsheet Visual
@@ -103,6 +103,7 @@ type
   TsWorkbookChartLink = class(TComponent, IsSpreadsheetControl)
   private
     FChart: TChart;
+    FChartStyles: TChartStyles;
     FWorkbookSource: TsWorkbookSource;
     FWorkbook: TsWorkbook;
     FWorkbookChartIndex: Integer;
@@ -116,6 +117,7 @@ type
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
 
+    function ActiveChartSeries(ASeries: TsChartSeries): TChartSeries;
     procedure AddSeries(ASeries: TsChartSeries);
     procedure FixAreaSeries(AWorkbookChart: TsChart);
     procedure ClearChart;
@@ -123,6 +125,7 @@ type
     procedure ConstructHatchPatternSolid(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     function GetWorkbookChart: TsChart;
+    function IsStackable(ASeries: TsChartSeries): Boolean;
 
     procedure UpdateChartAxis(AWorkbookAxis: TsChartAxis);
     procedure UpdateChartAxisLabels(AWorkbookChart: TsChart);
@@ -132,6 +135,7 @@ type
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookChart: TsChart; AWorkbookLine: TsChartLine; APen: TPen);
     procedure UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
+    procedure UpdateChartStyle(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries; AStyleIndex: Integer);
     procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
 
     procedure UpdateAreaSeries(AWorkbookSeries: TsAreaSeries; AChartSeries: TAreaSeries);
@@ -760,10 +764,17 @@ procedure TsWorkbookChartSource.SetRangeFromChart(ARangeIndex: TsXYLRange;
 begin
   if ARange.Sheet1 <> ARange.Sheet2 then
     raise Exception.Create('A chart cell range can only be from a single worksheet.');
-  if AListIndex > Length(FRanges[ARangeIndex]) then
+
+  // Auto-expand the FRanges amd FWorksheet arrays
+  if AListIndex >= Length(FRanges[ARangeIndex]) then
     SetLength(FRanges[ARangeIndex], Length(FRanges[ARangeIndex]) + 1);
-  if AListIndex > Length(FWorksheets[ARangeIndex]) then
+  if AListIndex >= Length(FWorksheets[ARangeIndex]) then
     SetLength(FWorksheets[ARangeIndex], Length(FWorksheets[ARangeIndex]) + 1);
+
+  case ARangeIndex of
+    rngX: XCount := Length(FRanges[ARangeIndex]);
+    rngY: YCount := Length(FRanges[ARangeIndex]);
+  end;
 
   SetLength(FRanges[ARangeIndex, AListIndex], 1);   // FIXME: Assuming here single-block range !!!
   FRanges[ARangeIndex, AListIndex, 0].Row1 := ARange.Row1;
@@ -856,6 +867,7 @@ constructor TsWorkbookChartLink.Create(AOwner: TComponent);
 begin
   inherited;
   FBrushBitmaps := TFPObjectList.Create;
+  FChartStyles := TChartStyles.Create(self);
   FWorkbookChartIndex := -1;
 end;
 
@@ -867,7 +879,68 @@ destructor TsWorkbookChartLink.Destroy;
 begin
   if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
   FBrushBitmaps.Free;
+  FChartStyles.Free;
   inherited;
+end;
+
+function TsWorkbookChartLink.ActiveChartSeries(ASeries: TsChartSeries): TChartSeries;
+var
+  stackable: Boolean;
+  firstSeries: TChartSeries;
+  src: TsWorkbookChartSource;
+  style: TChartStyle;
+begin
+  if FChart.Series.Count > 0 then
+    firstSeries := FChart.Series[0] as TChartSeries
+  else
+    firstSeries := nil;
+
+  stackable := IsStackable(ASeries);
+
+  if stackable and (firstSeries <> nil) then
+  begin
+    // A stackable series in TAChart must use multiple y values.
+    Result := firstSeries;
+    src := (firstSeries.Source as TsWorkbookChartSource);
+    src.SetYRange(src.YCount, ASeries.YRange);
+    src.FRangeStr[rngY] := src.BuildRangeStr(rngY);
+    if Result is TBarSeries then
+      TBarSeries(Result).Styles := FChartStyles
+    else if Result is TLineSeries then
+      TLineSeries(Result).Styles := FChartStyles
+    else if Result is TAreaSeries then
+      TAreaSeries(Result).Styles := FChartStyles;
+    Result.Legend.Multiplicity := lmStyle;
+    src.SetTitleAddr(ASeries.TitleAddr);
+  end else
+  begin
+    case ASeries.ChartType of
+      ctBar:
+        Result := TBarSeries.Create(FChart);
+      ctLine, ctScatter:
+        Result := TLineSeries.Create(FChart);
+      ctArea:
+        Result := TAreaSeries.Create(FChart);
+      ctRadar, ctFilledRadar:
+        Result := TPolarSeries.Create(FChart);
+    end;
+
+    src := TsWorkbookChartSource.Create(self);
+    src.WorkbookSource := FWorkbookSource;
+    if not ASeries.LabelRange.IsEmpty then src.SetLabelRange(ASeries.LabelRange);
+    if not ASeries.XRange.IsEmpty then src.SetXRange(0, ASeries.XRange);
+    if not ASeries.YRange.IsEmpty then src.SetYRange(0, ASeries.YRange);
+    if not ASeries.FillColorRange.IsEmpty then src.SetColorRange(ASeries.FillColorRange);
+    src.SetTitleAddr(ASeries.TitleAddr);
+    Result.Source := src;
+    Result.Title := src.Title;
+  end;
+
+  if stackable then
+  begin
+    style := TChartStyle(FChartStyles.Styles.Add);
+    style.Text := src.Title;
+  end;
 end;
 
 procedure TsWorkbookChartLink.AddSeries(ASeries: TsChartSeries);
@@ -875,32 +948,11 @@ var
   src: TsWorkbookChartSource;
   ser: TChartSeries;
 begin
-  src := TsWorkbookChartSource.Create(self);
-  src.WorkbookSource := FWorkbookSource;
-  if not ASeries.LabelRange.IsEmpty then src.SetLabelRange(ASeries.LabelRange);
-  if not ASeries.XRange.IsEmpty then src.SetXRange(0, ASeries.XRange);
-  if not ASeries.YRange.IsEmpty then src.SetYRange(0, ASeries.YRange);       // !!! FIX ME: 0 is for YCount=1 only
-  if not ASeries.FillColorRange.IsEmpty then src.SetColorRange(ASeries.FillColorRange);
-
-  case ASeries.ChartType of
-    ctBar:
-      ser := TBarSeries.Create(FChart);
-    ctLine, ctScatter:
-      ser := TLineSeries.Create(FChart);
-    ctArea:
-      ser := TAreaSeries.Create(FChart);
-    ctPie, ctRing:
-      ser := TPieSeries.Create(FChart);
-    ctRadar,
-    ctFilledRadar:
-      ser := TPolarSeries.Create(FChart);
-  end;
-
-  src.SetTitleAddr(ASeries.TitleAddr);
-  ser.Source := src;
-  ser.Title := src.Title;
+  ser := ActiveChartSeries(ASeries);
   ser.Transparency := round(ASeries.Fill.Transparency);
   UpdateChartSeriesMarks(ASeries, ser);
+  if IsStackable(ASeries) then
+    UpdateChartStyle(ASeries, ser, FChartStyles.Styles.Count-1);
 
   FChart.AddSeries(ser);
 
@@ -926,6 +978,9 @@ var
   ser: TChartSeries;
   src: TCustomChartSource;
 begin
+  // Clear the styles
+  FChartStyles.Styles.Clear;
+
   if FChart = nil then
     exit;
 
@@ -1160,6 +1215,11 @@ begin
     Result := nil;
 end;
 
+function TsWorkbookChartLink.IsStackable(ASeries: TsChartSeries): Boolean;
+begin
+  Result := (ASeries.ChartType in [ctBar, ctLine, ctArea]);
+end;
+
 procedure TsWorkbookChartLink.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
 begin
@@ -1230,6 +1290,12 @@ procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BarPen);
+  case AWorkbookSeries.Chart.StackMode of
+    csmSideBySide: AChartSeries.Stacked := false;
+    csmStacked: AChartSeries.Stacked := true;
+    csmStackedPercentage: AChartSeries.Stacked := true;
+  end;
+  AChartSeries.ParentChart.Legend.Inverted := AChartSeries.Stacked;
 end;
 
 procedure TsWorkbookChartLink.UpdateChart;
@@ -1370,6 +1436,12 @@ var
   ser: TBarSeries;
   barWidth, totalBarWidth: Integer;
 begin
+  exit;
+
+
+
+
+
   if AWorkbookChart.GetChartType <> ctBar then
     exit;
 
@@ -1533,6 +1605,16 @@ begin
 
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.LabelBorder, AChartSeries.Marks.Frame);
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.LabelBackground, AChartSeries.Marks.LabelBrush);
+end;
+
+procedure TsWorkbookChartLink.UpdateChartStyle(AWorkbookSeries: TsChartSeries;
+  AChartSeries: TChartSeries; AStyleIndex: Integer);
+var
+  style: TChartStyle;
+begin
+  style := TChartStyle(FChartStyles.Styles[AStyleIndex]);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, style.Pen);
+  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, style.Brush);
 end;
 
 {@@ Updates title and footer of the linked TAChart.
