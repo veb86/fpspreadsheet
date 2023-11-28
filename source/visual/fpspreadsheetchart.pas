@@ -63,6 +63,7 @@ type
   protected
     FCurItem: TChartDataItem;
     function BuildRangeStr(AIndex: TsXYLRange; AListSeparator: char = #0): String;
+    procedure ClearRanges;
     function CountValues(AIndex: TsXYLRange): Integer;
     function GetCount: Integer; override;
     function GetItem(AIndex: Integer): PChartDataItem; override;
@@ -141,7 +142,7 @@ type
     procedure UpdateAreaSeries(AWorkbookSeries: TsAreaSeries; AChartSeries: TAreaSeries);
     procedure UpdateBarSeries(AWorkbookSeries: TsBarSeries; AChartSeries: TBarSeries);
     procedure UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries; AChartSeries: TBubbleSeries);
-    procedure UpdateLineSeries(AWorkbookSeries: TsLineSeries; AChartSeries: TLineSeries);
+    procedure UpdateCustomLineSeries(AWorkbookSeries: TsCustomLineSeries; AChartSeries: TLineSeries);
     procedure UpdatePieSeries(AWorkbookSeries: TsPieSeries; AChartSeries: TPieSeries);
     procedure UpdatePolarSeries(AWorkbookSeries: TsRadarSeries; AChartSeries: TPolarSeries);
     procedure UpdateScatterSeries(AWorkbookSeries: TsScatterSeries; AChartSeries: TLineSeries);
@@ -173,6 +174,7 @@ uses
 
 type
   TBasicPointSeriesOpener = class(TBasicPointSeries);
+  TsCustomLineSeriesOpener = class(TsCustomLineSeries);
 
 function mmToPx(mm: Double; ppi: Integer): Integer;
 begin
@@ -304,15 +306,7 @@ end;
 constructor TsWorkbookChartSource.Create(AOwner: TComponent);
 begin
   inherited;
-  SetLength(FRanges[rngX], 1);
-  SetLength(FRanges[rngY], 1);
-  SetLength(FRanges[rngLabel], 1);
-  SetLength(FRanges[rngColor], 1);
-
-  SetLength(FWorksheets[rngX], 1);
-  SetLength(FWorksheets[rngY], 1);
-  SetLength(FWorksheets[rngLabel], 1);
-  Setlength(FWorksheets[rngColor], 1);
+  ClearRanges;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -379,6 +373,25 @@ begin
     L.Free;
   end;
 end;
+
+procedure TsWorkbookChartSource.ClearRanges;
+begin
+  SetLength(FRanges[rngX], 1);            FRanges[rngX, 0 ] := nil;
+  SetLength(FRanges[rngY], 1);            FRanges[rngY, 0] := nil;
+  SetLength(FRanges[rngLabel], 1);        FRanges[rngLabel, 0] := nil;
+  SetLength(FRanges[rngColor], 1);        FRanges[rngColor, 0] := nil;
+
+  SetLength(FWorksheets[rngX], 1);        FWorksheets[rngX, 0] := nil;
+  SetLength(FWorksheets[rngY], 1);        FWorksheets[rngY, 0] := nil;
+  SetLength(FWorksheets[rngLabel], 1);    FWorksheets[rngLabel, 0] := nil;
+  SetLength(FWorksheets[rngColor], 1);    FWorksheets[rngColor, 0] := nil;
+
+  FRangeStr[rngX] := '';
+  FRangeStr[rngY] := '';
+  FRangeStr[rngLabel] := '';
+  FRangeStr[rngColor] := '';
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Counts the number of x or y values contained in the x/y ranges
@@ -620,7 +633,10 @@ begin
 
   // Workbook has been successfully loaded, all sheets are ready
   if (lniWorkbook in AChangedItems) then
+  begin
+    ClearRanges;
     Prepare;
+  end;
 
   // Used worksheet has been renamed?
   if (lniWorksheetRename in AChangedItems) then
@@ -896,7 +912,6 @@ begin
   FWorkbookSource := AValue;
   if FWorkbookSource <> nil then
     FWorkbookSource.AddListener(self);
-//  FWorkbook := GetWorkbook;
   ListenerNotification([lniWorkbook, lniWorksheet]);
   Prepare;
 end;
@@ -1017,6 +1032,8 @@ begin
           Result := TBubbleSeries.Create(FChart);
           src.SetYRange(1, TsBubbleSeries(ASeries).BubbleRange);
         end;
+      ctPie:
+        Result := TPieSeries.Create(FChart);
       else
         exit(nil);
     end;
@@ -1079,7 +1096,7 @@ begin
     ctBubble:
       UpdateBubbleSeries(TsBubbleSeries(ASeries), TBubbleSeries(ser));
     ctLine:
-      UpdateLineSeries(TsLineSeries(ASeries), TLineSeries(ser));
+      UpdateCustomLineSeries(TsLineSeries(ASeries), TLineSeries(ser));
     ctScatter:
       UpdateScatterSeries(TsScatterSeries(ASeries), TLineSeries(ser));
     ctPie, ctRing:
@@ -1347,7 +1364,11 @@ end;
 procedure TsWorkbookChartLink.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
 begin
-  // to be completed
+  Unused(AData);
+
+  // Workbook has been successfully loaded, all sheets are ready
+  if (lniWorkbook in AChangedItems) then
+    ClearChart;
 end;
 
 procedure TsWorkbookChartLink.Notification(AComponent: TComponent; Operation: TOperation);
@@ -1561,49 +1582,6 @@ begin
   FChart.Frame.Visible := AWorkbookChart.PlotArea.Border.Style <> clsNoLine;
 end;
 
-{
-procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookChart: TsChart);
-var
-  i, n: Integer;
-  ser: TBarSeries;
-  barWidth, totalBarWidth: Integer;
-begin
-  if AWorkbookChart.GetChartType <> ctBar then
-    exit;
-
-  // Count the bar series
-  n := 0;
-  for i := 0 to AWorkbookChart.Series.Count-1 do
-  begin
-    if AWorkbookChart.Series[i].ChartType = ctBar then
-      inc(n);
-  end;
-
-  // Iterate over bar series to put them side-by-side or to stack them
-  totalBarWidth := 90;
-  barWidth := round(totalBarWidth / n);
-  for i := 0 to FChart.SeriesCount-1 do
-    if FChart.Series[i] is TBarSeries then
-    begin
-      ser := TBarSeries(FChart.Series[i]);
-      case AWorkbookChart.Stackmode of
-        csmSideBySide:
-          begin
-            ser.BarWidthPercent := barWidth;
-            ser.BarWidthStyle := bwPercentMin;
-            ser.BarOffsetPercent := round((i - (n - 1)/2)*barWidth);
-          end;
-        csmStacked:
-          ser.Stacked := true;
-        csmStackedPercentage:
-          begin
-            ser.Stacked := true;
-          end;
-      end;
-    end;
-end;
-}
-
 procedure TsWorkbookChartLink.UpdateChartBrush(AWorkbookChart: TsChart;
   AWorkbookFill: TsChartFill; ABrush: TBrush);
 var
@@ -1763,7 +1741,7 @@ begin
   end;
 end;
 
-procedure TsWorkbookChartLink.UpdateLineSeries(AWorkbookSeries: TsLineSeries;
+procedure TsWorkbookChartLink.UpdateCustomLineSeries(AWorkbookSeries: TsCustomLineSeries;
   AChartSeries: TLineSeries);
 const
   POINTER_STYLES: array[TsChartSeriesSymbol] of TSeriesPointerstyle = (
@@ -1781,19 +1759,20 @@ const
   );
 var
   ppi: Integer;
+  openedWorkbookSeries: TsCustomLineSeriesOpener absolute AWorkbookSeries;
 begin
   ppi := GetParentForm(FChart).PixelsPerInch;
 
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.LinePen);
   AChartSeries.ShowLines := AWorkbookSeries.Line.Style <> clsNoLine;
-  AChartSeries.ShowPoints := AWorkbookSeries.ShowSymbols;
+  AChartSeries.ShowPoints := openedWorkbookSeries.ShowSymbols;
   if AChartSeries.ShowPoints then
   begin
     UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.Pointer.Brush);
     AChartSeries.Pointer.Pen.Color := AChartSeries.LinePen.Color;
-    AChartSeries.Pointer.Style := POINTER_STYLES[AWorkbookSeries.Symbol];
-    AChartSeries.Pointer.HorizSize := mmToPx(AWorkbookSeries.SymbolWidth, ppi);
-    AChartSeries.Pointer.VertSize := mmToPx(AWorkbookSeries.SymbolHeight, ppi);
+    AChartSeries.Pointer.Style := POINTER_STYLES[openedWorkbookSeries.Symbol];
+    AChartSeries.Pointer.HorizSize := mmToPx(openedWorkbookSeries.SymbolWidth, ppi);
+    AChartSeries.Pointer.VertSize := mmToPx(openedWorkbookSeries.SymbolHeight, ppi);
   end;
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
@@ -1838,7 +1817,7 @@ var
   ser: TFitSeries;
   s: String;
 begin
-  UpdateLineSeries(AWorkbookSeries, AChartSeries);
+  UpdateCustomLineSeries(AWorkbookSeries, AChartSeries);
 
   if AWorkbookSeries.Regression.RegressionType = rtNone then
     exit;

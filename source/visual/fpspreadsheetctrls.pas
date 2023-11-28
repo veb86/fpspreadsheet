@@ -1331,12 +1331,21 @@ var
 begin
   for j:=0 to FListeners.Count-1 do begin
     C := TComponent(FListeners[j]);
-    if C.GetInterface(GUID_SpreadsheetControl, I) then
-      I.ListenerNotification(AChangedItems, AData)
-    else
-      raise Exception.CreateFmt('[TsWorkbookSource.NotifyListeners] Class %s is not prepared to be a spreadsheet listener.',
-        [C.ClassName]);
+    if (C <> nil) then
+    begin
+      if C.GetInterface(GUID_SpreadsheetControl, I) then
+        I.ListenerNotification(AChangedItems, AData)
+      else
+        raise Exception.CreateFmt('[TsWorkbookSource.NotifyListeners] Class %s is not prepared to be a spreadsheet listener.',
+          [C.ClassName]);
+    end;
   end;
+
+  // Cleanup listener list from removed listeners (= set to nil) while
+  // NotifyListeners was running
+  for j := FListeners.Count-1 downto 0 do
+    if FListeners[j] = nil then
+      FListeners.Delete(j);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1355,11 +1364,20 @@ begin
     C := TComponent(FListeners[j]);
     if C = AListener then
     begin
-      FListeners.Delete(j);
-      if C.GetInterface(GUID_SpreadsheetControl, I) then
-        I.RemoveWorkbookSource
-      else
-        raise Exception.CreateFmt('Class %s not prepared for listening.',[AListener.ClassName]);
+      FListeners[j] := nil;
+      // Do not delete the listener here (FListeners.Delete(j)) because
+      // RemoveListeners may be called while NotifyListeners is still running.
+      // The problem can be that a chart may destroy a listening chart source
+      // which would trigger RemoveListener. If the chart source then would be
+      // deleted from the list the NotifiyListeners loop would access
+      // unallocated memory --> crash
+      if C <> nil then
+      begin
+        if C.GetInterface(GUID_SpreadsheetControl, I) then
+          I.RemoveWorkbookSource
+        else
+          raise Exception.CreateFmt('Class %s not prepared for listening.',[AListener.ClassName]);
+      end;
     end;
   end;
 end;

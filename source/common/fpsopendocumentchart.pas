@@ -3202,8 +3202,8 @@ begin
 
   series := AChart.Series[ASeriesIndex];
 
-  // These are the x values of a scatter or bubble plot.
-  if (series is TsScatterSeries) or (series is TsBubbleSeries) then
+  // These are the x values of a scatter plot.
+  if (series is TsScatterSeries) then
   begin
     domainRangeX := GetSheetCellRangeString_ODS(
       series.XRange.GetSheet1Name, series.XRange.GetSheet2Name,

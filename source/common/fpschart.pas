@@ -390,24 +390,12 @@ type
     constructor Create(AChart: TsChart); override;
   end;
 
-  TsBubbleSeries = class(TsChartSeries)
-  // to do: inherited from ScatterSeries, but without symbols
-  private
-    FBubbleRange: TsChartRange;
-  public
-    constructor Create(AChart: TsChart); override;
-    destructor Destroy; override;
-    procedure SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
-    procedure SetBubbleRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
-    property BubbleRange: TsChartRange read FBubbleRange;
-  end;
-
   TsChartSeriesSymbol = (
     cssRect, cssDiamond, cssTriangle, cssTriangleDown, cssTriangleLeft,
     cssTriangleRight, cssCircle, cssStar, cssX, cssPlus, cssAsterisk
   );
 
-  TsLineSeries = class(TsChartSeries)
+  TsCustomLineSeries = class(TsChartSeries)
   private
     FSymbol: TsChartSeriesSymbol;
     FSymbolHeight: Double;  // in mm
@@ -417,9 +405,7 @@ type
     FBorder: TsChartLine;
     function GetSymbolFill: TsChartFill;
     procedure SetSymbolFill(Value: TsChartFill);
-  public
-    constructor Create(AChart: TsChart); override;
-    destructor Destroy; override;
+  protected
     property Symbol: TsChartSeriesSymbol read FSymbol write FSymbol;
     property SymbolBorder: TsChartLine read FBorder write FBorder;
     property SymbolFill: TsChartFill read GetSymbolFill write SetSymbolFill;
@@ -427,6 +413,20 @@ type
     property SymbolWidth: double read FSymbolWidth write FSymbolWidth;
     property ShowLines: Boolean read FShowLines write FShowLines;
     property ShowSymbols: Boolean read FShowSymbols write FShowSymbols;
+  public
+    constructor Create(AChart: TsChart); override;
+    destructor Destroy; override;
+  end;
+
+  TsLineSeries = class(TsCustomLineSeries)
+  public
+    property Symbol;
+    property SymbolBorder;
+    property SymbolFill;
+    property SymbolHeight;
+    property SymbolWidth;
+    property ShowLines;
+    property ShowSymbols;
   end;
 
   TsPieSeries = class(TsChartSeries)
@@ -487,13 +487,35 @@ type
     destructor Destroy; override;
   end;
 
-  TsScatterSeries = class(TsLineSeries)
+  TsCustomScatterSeries = class(TsCustomLineSeries)
   private
     FRegression: TsChartRegression;
   public
     constructor Create(AChart: TsChart); override;
     destructor Destroy; override;
     property Regression: TsChartRegression read FRegression write FRegression;
+  end;
+
+  TsScatterSeries = class(TsCustomScatterSeries)
+  public
+    property Symbol;
+    property SymbolBorder;
+    property SymbolFill;
+    property SymbolHeight;
+    property SymbolWidth;
+    property ShowLines;
+    property ShowSymbols;
+  end;
+
+  TsBubbleSeries = class(TsCustomScatterSeries)
+  private
+    FBubbleRange: TsChartRange;
+  public
+    constructor Create(AChart: TsChart); override;
+    destructor Destroy; override;
+    procedure SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+    procedure SetBubbleRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    property BubbleRange: TsChartRange read FBubbleRange;
   end;
 
   TsChartSeriesList = class(TFPObjectList)
@@ -1428,9 +1450,9 @@ begin
 end;
 
 
-{ TsLineSeries }
+{ TsCustomLineSeries }
 
-constructor TsLineSeries.Create(AChart: TsChart);
+constructor TsCustomLineSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctLine;
@@ -1445,18 +1467,18 @@ begin
   FBorder.Color := scBlack;
 end;
 
-destructor TsLineSeries.Destroy;
+destructor TsCustomLineSeries.Destroy;
 begin
   FBorder.Free;
   inherited;
 end;
 
-function TsLineSeries.GetSymbolFill: TsChartFill;
+function TsCustomLineSeries.GetSymbolFill: TsChartFill;
 begin
   Result := FFill;
 end;
 
-procedure TsLineSeries.SetSymbolFill(Value: TsChartFill);
+procedure TsCustomLineSeries.SetSymbolFill(Value: TsChartFill);
 begin
   FFill := Value;
 end;
@@ -1574,16 +1596,16 @@ begin
 end;
 
 
-{ TsScatterSeries }
+{ TsCustomScatterSeries }
 
-constructor TsScatterSeries.Create(AChart: TsChart);
+constructor TsCustomScatterSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctScatter;
   FRegression := TsChartRegression.Create;
 end;
 
-destructor TsScatterSeries.Destroy;
+destructor TsCustomScatterSeries.Destroy;
 begin
   FRegression.Free;
   inherited;
