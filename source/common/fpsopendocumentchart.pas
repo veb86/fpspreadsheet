@@ -141,6 +141,8 @@ uses
 type
   TAxisKind = 3..6;
 
+  TsCustomLineSeriesOpener = class(TsCustomLineSeries);
+
 const
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF/manifest.xml';
   OPENDOC_PATH_CHART_CONTENT    = 'Object %d/content.xml';
@@ -1013,6 +1015,7 @@ begin
     for lp in TsChartLegendPosition do
       if s = LEGEND_POSITION[lp] then
       begin
+        AChart.Legend.Visible := true;
         AChart.Legend.Position := lp;
         break;
       end;
@@ -1056,14 +1059,14 @@ end;
 procedure TsSpreadOpenDocChartReader.ReadChartRegressionEquationStyle(AStyleNode: TDOMNode;
   AChart: TsChart; ASeries: TsChartSeries);
 var
-  series: TsScatterSeries;
+  series: TsCustomScatterSeries;
   odsReader: TsSpreadOpenDocReader;
   s, nodeName: String;
 begin
   if not (ASeries is TsScatterSeries) then
     exit;
 
-  series := TsScatterSeries(ASeries);
+  series := TsCustomScatterSeries(ASeries);
   odsReader := TsSpreadOpenDocReader(Reader);
 
   nodeName := AStyleNode.NodeName;
@@ -1102,15 +1105,15 @@ end;
 procedure TsSpreadOpenDocChartReader.ReadChartRegressionProps(ANode, AStyleNode: TDOMNode;
   AChart: TsChart; ASeries: TsChartSeries);
 var
-  series: TsScatterSeries;
+  series: TsCustomScatterSeries;
   s, nodeName: String;
   styleNode: TDOMNode;
   subNode: TDOMNode;
 begin
-  if not (ASeries is TsScatterSeries) then
+  if not (ASeries is TsCustomScatterSeries) then
     exit;
 
-  series := TsScatterSeries(ASeries);
+  series := TsCustomScatterSeries(ASeries);
 
   s := GetAttrValue(ANode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, s);
@@ -1370,26 +1373,26 @@ begin
             childNode1 := childNode1.NextSibling;
           end;
 
-          if (ASeries is TsLineSeries) then
+          if (ASeries is TsCustomLineSeries) then
           begin
             s := GetAttrValue(AStyleNode, 'chart:symbol-name');
             if s <> '' then
             begin
-              TsLineSeries(ASeries).ShowSymbols := true;
+              TsCustomLineSeriesOpener(ASeries).ShowSymbols := true;
               for css in TsChartSeriesSymbol do
                 if SYMBOL_NAMES[css] = s then
                 begin
-                  TsLineSeries(ASeries).Symbol := css;
+                  TsCustomLineSeriesOpener(ASeries).Symbol := css;
                   break;
                 end;
               s := GetAttrValue(AStyleNode, 'symbol-width');
               if (s <> '') and EvalLengthStr(s, value, rel) then
-                TsLineSeries(ASeries).SymbolWidth := value;
+                TsCustomLineSeriesOpener(ASeries).SymbolWidth := value;
               s := GetAttrValue(AStyleNode, 'symbol-height');
               if (s <> '') and EvalLengthStr(s, value, rel) then
-                TsLineSeries(ASeries).SymbolHeight := value;
+                TsCustomLineSeriesOpener(ASeries).SymbolHeight := value;
             end else
-              TsLineSeries(ASeries).ShowSymbols := false;
+              TsCustomLineSeriesOpener(ASeries).ShowSymbols := false;
           end;
         end;
 
