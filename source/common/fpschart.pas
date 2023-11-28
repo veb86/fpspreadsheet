@@ -391,6 +391,7 @@ type
   end;
 
   TsBubbleSeries = class(TsChartSeries)
+  // to do: inherited from ScatterSeries, but without symbols
   private
     FBubbleRange: TsChartRange;
   public
@@ -1629,6 +1630,7 @@ begin
   FSubTitle.Font.Size := 12;
 
   FLegend := TsChartLegend.Create(self);
+  FLegend.Visible := false;
 
   FXAxis := TsChartAxis.Create(self);
   FXAxis.Title.Caption := 'x axis';

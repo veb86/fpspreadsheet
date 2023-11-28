@@ -23,7 +23,7 @@ uses
   LCLVersion, Forms, Controls, Graphics, GraphUtil, Dialogs,
   // TAChart
   TATypes, TATextElements, TAChartUtils, TALegend, TACustomSource, TASources,
-  TACustomSeries, TASeries, TARadialSeries, TAFitUtils, TAFuncSeries,
+  TACustomSeries, TASeries, TARadialSeries, TAFitUtils, TAFuncSeries, TAMultiSeries,
   TAChartAxisUtils, TAChartAxis, TAStyles, TAGraph,
   // FPSpreadsheet
   fpsTypes, fpSpreadsheet, fpsUtils, fpsChart,
@@ -140,6 +140,7 @@ type
 
     procedure UpdateAreaSeries(AWorkbookSeries: TsAreaSeries; AChartSeries: TAreaSeries);
     procedure UpdateBarSeries(AWorkbookSeries: TsBarSeries; AChartSeries: TBarSeries);
+    procedure UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries; AChartSeries: TBubbleSeries);
     procedure UpdateLineSeries(AWorkbookSeries: TsLineSeries; AChartSeries: TLineSeries);
     procedure UpdatePieSeries(AWorkbookSeries: TsPieSeries; AChartSeries: TPieSeries);
     procedure UpdatePolarSeries(AWorkbookSeries: TsRadarSeries; AChartSeries: TPolarSeries);
@@ -830,8 +831,8 @@ begin
     SetLength(FWorksheets[ARangeIndex], Length(FWorksheets[ARangeIndex]) + 1);
 
   case ARangeIndex of
-    rngX: XCount := Length(FRanges[ARangeIndex]);
-    rngY: YCount := Length(FRanges[ARangeIndex]);
+    rngX: XCount := Max(XCount, Length(FRanges[ARangeIndex]));
+    rngY: YCount := Max(YCount, Length(FRanges[ARangeIndex]));
   end;
 
   SetLength(FRanges[ARangeIndex, AListIndex], 1);   // FIXME: Assuming here single-block range !!!
@@ -968,7 +969,7 @@ begin
       if (calcSrc.Origin is TsWorkbookChartSource) then
         src := TsWorkbookChartSource(calcSrc.Origin);
     end else
-    // ... otherwise we use the workbook chartsource directly.
+    // ... otherwise we use the workbook chart source directly.
     if (firstSeries.Source is TsWorkbookChartSource) then
     begin
       src := (firstSeries.Source as TsWorkbookChartSource);
@@ -978,12 +979,14 @@ begin
 
     src.SetYRange(src.YCount, ASeries.YRange);      // <--- This updates also the YCount
     src.FRangeStr[rngY] := src.BuildRangeStr(rngY);
+
     if Result is TBarSeries then
       TBarSeries(Result).Styles := FChartStyles
     else if Result is TLineSeries then
       TLineSeries(Result).Styles := FChartStyles
     else if Result is TAreaSeries then
       TAreaSeries(Result).Styles := FChartStyles;
+
     Result.Legend.Multiplicity := lmStyle;
     src.SetTitleAddr(ASeries.TitleAddr);
 
@@ -997,6 +1000,9 @@ begin
   else
   begin
     // This is either for a non-stackable or the first stackable series.
+    src := TsWorkbookChartSource.Create(self);
+    src.WorkbookSource := FWorkbookSource;
+
     case ASeries.ChartType of
       ctBar:
         Result := TBarSeries.Create(FChart);
@@ -1006,10 +1012,15 @@ begin
         Result := TAreaSeries.Create(FChart);
       ctRadar, ctFilledRadar:
         Result := TPolarSeries.Create(FChart);
+      ctBubble:
+        begin
+          Result := TBubbleSeries.Create(FChart);
+          src.SetYRange(1, TsBubbleSeries(ASeries).BubbleRange);
+        end;
+      else
+        exit(nil);
     end;
 
-    src := TsWorkbookChartSource.Create(self);
-    src.WorkbookSource := FWorkbookSource;
     if not ASeries.LabelRange.IsEmpty then src.SetLabelRange(ASeries.LabelRange);
     if not ASeries.XRange.IsEmpty then src.SetXRange(0, ASeries.XRange);
     if not ASeries.YRange.IsEmpty then src.SetYRange(0, ASeries.YRange);
@@ -1039,6 +1050,12 @@ var
   axis: TsChartAxis;
 begin
   ser := ActiveChartSeries(ASeries);
+  if ser = nil then
+  begin
+    FWorkbook.AddErrorMsg('Series could not be loaded.');
+    exit;
+  end;
+
   ser.Transparency := round(ASeries.Fill.Transparency);
   axis := ASeries.Chart.YAxis;
   UpdateChartSeriesMarks(ASeries, ser);
@@ -1059,6 +1076,8 @@ begin
       UpdateAreaSeries(TsAreaSeries(ASeries), TAreaSeries(ser));
     ctBar:
       UpdateBarSeries(TsBarSeries(ASeries), TBarSeries(ser));
+    ctBubble:
+      UpdateBubbleSeries(TsBubbleSeries(ASeries), TBubbleSeries(ser));
     ctLine:
       UpdateLineSeries(TsLineSeries(ASeries), TLineSeries(ser));
     ctScatter:
@@ -1401,6 +1420,13 @@ begin
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
+end;
+
+procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries;
+  AChartSeries: TBubbleSeries);
+begin
+  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BubbleBrush);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BubblePen);
 end;
 
 procedure TsWorkbookChartLink.UpdateChart;
