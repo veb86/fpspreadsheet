@@ -1462,6 +1462,7 @@ begin
     ClearChart;
     exit;
   end;
+  FChart.Proportional := false;
 
   ch := GetWorkbookChart;
   UpdateChartBackground(ch);
