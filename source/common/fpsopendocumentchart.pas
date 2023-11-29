@@ -28,6 +28,7 @@ type
     function FindStyleNode(AStyleNodes: TDOMNode; AStyleName: String): TDOMNode;
     procedure GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
     procedure GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine);
+    procedure GetChartTextProps(ANode: TDOMNode; AFont: TsFont);
 
     procedure ReadChartAxisGrid(ANode, AStyleNode: TDOMNode; AChart: TsChart; Axis: TsChartAxis);
     procedure ReadChartAxisProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
@@ -145,6 +146,8 @@ const
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF/manifest.xml';
   OPENDOC_PATH_CHART_CONTENT    = 'Object %d/content.xml';
   OPENDOC_PATH_CHART_STYLES     = 'Object %d/styles.xml';
+
+  DEFAULT_FONT_NAME = 'Liberation Sans';
 
   CHART_TYPE_NAMES: array[TsChartType] of string = (
     '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble',
@@ -519,25 +522,13 @@ begin
     ALine.Transparency := 1.0 - value*0.01;
 end;
 
-                            (*
-function TsSpreadOpenDocChartWriter.GetChartBackgroundStyleAsXML(
-  AChart: TsChart; AFill: TsChartFill; ABorder: TsChartLine;
-  AIndent, AStyleID: Integer): String;
-var
-  indent: String;
-  fillStr: String = '';
-  borderStr: String = '';
+procedure TsSpreadOpenDocChartReader.GetChartTextProps(ANode: TDOMNode;
+  AFont: TsFont);
 begin
-  fillStr := GetChartFillStyleGraphicPropsAsXML(AChart, AFill);
-  borderStr := GetChartLineStyleGraphicPropsAsXML(AChart, ABorder);
-  indent := DupeString(' ', AIndent);
-  Result := Format(
-    indent + '<style:style style:name="ch%d" style:family="chart">' + LE +
-    indent + '  <style:graphic-properties %s%s />' + LE +
-    indent + '</style:style>' + LE,
-    [ AStyleID, fillStr, borderStr ]
-  );
-end;                   *)
+  TsSpreadOpenDocReader(Reader).ReadFont(ANode, AFont);
+  if AFont.FontName = '' then
+    AFont.FontName := DEFAULT_FONT_NAME;
+end;
 
 procedure TsSpreadOpenDocChartReader.ReadChart(AChartNode, AStyleNode: TDOMNode;
   AChart: TsChart);
@@ -692,7 +683,7 @@ begin
     nodeName := AStyleNode.NodeName;
     case nodeName of
       'style:text-properties':
-        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, Axis.LabelFont);
+        GetChartTextProps(AStyleNode, Axis.LabelFont);
       'style:graphic-properties':
         GetChartLineProps(AStyleNode, AChart, Axis.AxisLine);
       'style:chart-properties':
@@ -1051,7 +1042,7 @@ begin
           GetChartFillProps(AStyleNode, AChart, AChart.Legend.Background);
         end;
       'style:text-properties':
-        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, AChart.Legend.Font);
+          GetChartTextProps(AStyleNode, AChart.Legend.Font);
     end;
     AStyleNode := AStyleNode.NextSibling;
   end;
@@ -1087,7 +1078,7 @@ begin
           GetChartFillProps(AStyleNode, AChart, series.Regression.Equation.Fill);
         end;
       'style:text-properties':
-        odsReader.ReadFont(AStyleNode, series.Regression.Equation.Font);
+        GetChartTextProps(AStyleNode, series.Regression.Equation.Font);
       'style:chart-properties':
         begin
           s := GetAttrValue(AStyleNode, 'loext:regression-x-name');
@@ -1286,6 +1277,10 @@ var
   dataLabels: TsChartDataLabels = [];
   childNode1, childNode2, childNode3: TDOMNode;
 begin
+  // Defaults
+  ASeries.LabelBorder.Style := clsNoLine;
+  ASeries.LabelBackground.Style := cfsNoFill;
+
   nodeName := AStyleNode.NodeName;
   s := GetAttrValue(AStyleNode, 'style:data-style-name');
   if s <> '' then
@@ -1304,7 +1299,7 @@ begin
           GetChartFillProps(AStyleNode, AChart, ASeries.Fill);
         end;
       'style:text-properties':
-        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, ASeries.LabelFont);
+        GetChartTextProps(AStyleNode, ASeries.LabelFont);
       'style:chart-properties':
         begin
           s := GetAttrValue(AStyleNode, 'chart:label-position');
@@ -1318,10 +1313,11 @@ begin
           if s <> '' then
             ASeries.LabelBorder.Color := HTMLColorStrToColor(s);
           s := GetAttrValue(AStyleNode, 'loext:label-stroke');
-          case s of
-            'none': ASeries.LabelBorder.Style := clsNoLine;
-            else    ASeries.LabelBorder.Style := clsSolid;
-          end;
+          if s <> '' then
+            case s of
+              'none': ASeries.LabelBorder.Style := clsNoLine;
+              else    ASeries.LabelBorder.Style := clsSolid;
+            end;
 
           s := GetAttrValue(AStyleNode, 'chart:data-label-number');
           if s <> '' then
@@ -1480,7 +1476,7 @@ begin
           GetChartFillProps(AStyleNode, AChart, ATitle.Background);
         end;
       'style:text-properties':
-        TsSpreadOpenDocReader(Reader).ReadFont(AStyleNode, ATitle.Font);
+        GetChartTextProps(AStyleNode, ATitle.Font);
     end;
     AStyleNode := AStyleNode.NextSibling;
   end;

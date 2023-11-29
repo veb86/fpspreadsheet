@@ -1906,7 +1906,7 @@ begin
         TextFormat(tfHtml).
         Get;
     if AWorkbookSeries.Regression.DisplayRSquare then
-      s := s + LineEnding + 'R² = ' + FormatFloat('0.00', ser.FitStatistics.R2);
+      s := s + LineEnding + 'R<sup>2</sup> = ' + FormatFloat('0.00', ser.FitStatistics.R2);
     if s <> '' then
       ser.Title := ser.Title + LineEnding + s;
 //    ser.Legend.Format := '%0:s' + LineEnding + '%2:s';

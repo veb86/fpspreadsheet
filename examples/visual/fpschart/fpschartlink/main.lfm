@@ -24,6 +24,7 @@ object Form1: TForm1
     AutoAdvance = aaDown
     DefaultColWidth = 64
     DefaultRowHeight = 22
+    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goEditing, goSmoothScroll]
     TabOrder = 0
   end
   object Splitter1: TSplitter
