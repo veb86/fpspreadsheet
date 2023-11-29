@@ -1586,14 +1586,23 @@ end;
 
 procedure TsWorkbookChartLink.UpdateChartAxisLabels(AWorkbookChart: TsChart);
 begin
-  if (FChart.SeriesCount > 0) and
-     (AWorkbookChart.GetChartType in [ctBar, ctLine, ctArea]) then
-  begin
-    FChart.BottomAxis.Marks.Source := TChartSeries(FChart.Series[0]).Source;
-    if not AWorkbookChart.Series[0].LabelRange.IsEmpty then
-      FChart.BottomAxis.Marks.Style := smsLabel
-    else
-      FChart.BottomAxis.Marks.Style := smsXValue;
+  if FChart.SeriesCount = 0 then
+    exit;
+
+  case AWorkbookChart.GetChartType of
+    ctScatter, ctBubble:
+      begin
+        FChart.BottomAxis.Marks.Source := nil;
+        FChart.BottomAxis.Marks.Style := smsValue;
+      end;
+    ctBar, ctLine, ctArea:
+      begin
+        FChart.BottomAxis.Marks.Source := TChartSeries(FChart.Series[0]).Source;
+        if not AWorkbookChart.Series[0].LabelRange.IsEmpty then
+          FChart.BottomAxis.Marks.Style := smsLabel
+        else
+          FChart.BottomAxis.Marks.Style := smsXValue;
+      end;
   end;
 end;
 
@@ -1665,7 +1674,6 @@ begin
     ALegend.Alignment := LEG_POS[AWorkbookLegend.Position];
     ALegend.UseSidebar := not AWorkbookLegend.CanOverlapPlotArea;
     ALegend.Visible := AWorkbookLegend.Visible;
-  //  ALegend.Inverted := true;
     ALegend.TextFormat := tfHTML;
   end;
 end;
@@ -1877,8 +1885,10 @@ begin
   // Legend text
   ser.Title := AWorkbookSeries.Regression.Title;
 
+  {
   // Show fit curve in legend after series.
   ser.Legend.Order := AChartseries.Legend.Order + 1;
+  }
 
   // Regression equation
   if AWorkbookSeries.Regression.DisplayEquation or AWorkbookSeries.Regression.DisplayRSquare then

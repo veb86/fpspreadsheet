@@ -1654,7 +1654,6 @@ begin
   FSubTitle.Font.Size := 12;
 
   FLegend := TsChartLegend.Create(self);
-  FLegend.Visible := false;
 
   FXAxis := TsChartAxis.Create(self);
   FXAxis.Title.Caption := 'x axis';

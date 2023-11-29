@@ -89,11 +89,9 @@ type
       AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
     function GetChartRegressionStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: integer): String;
-//    function GetChartTitleStyleAsXML(AChart: TsChart; AStyleIndex, AIndent: Integer): String;
 
     function GetNumberFormatID(ANumFormat: String): String;
     procedure ListAllNumberFormats(AChart: TsChart);
-//    procedure PrepareChartTable(AChart: TsChart; AWorksheet: TsBasicWorksheet);
 
   protected
     // Object X/styles.xml
@@ -549,6 +547,9 @@ var
   chartChartNode: TDOMNode;
   chartElementNode: TDOMNode;
 begin
+  // Default values
+  AChart.Legend.Visible := false;
+
   nodeName := AStyleNode.NodeName;
   if nodeName = 'office:automatic-styles' then
     TsSpreadOpenDocReader(Reader).ReadNumFormats(AStyleNode, FNumberFormatList);
@@ -2290,7 +2291,8 @@ begin
   // Chart properties
   chartProps := 'chart:symbol-type="none" ';
 
-  if (series is TsLineSeries) and (series.ChartType <> ctFilledRadar) then
+  if ((series is TsLineSeries) and (series.ChartType <> ctFilledRadar)) or
+     (series is TsScatterSeries) then
   begin
     lineser := TsLineSeries(series);
     if lineser.ShowSymbols then
@@ -3205,7 +3207,7 @@ begin
   series := AChart.Series[ASeriesIndex];
 
   // These are the x values of a scatter plot.
-  if (series is TsScatterSeries) then
+  if (series is TsCustomScatterSeries) then
   begin
     domainRangeX := GetSheetCellRangeString_ODS(
       series.XRange.GetSheet1Name, series.XRange.GetSheet2Name,
