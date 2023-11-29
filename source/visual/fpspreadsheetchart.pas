@@ -244,6 +244,8 @@ begin
     APen.Style := psDashDotDot
 end;
 
+{ Converts an fps format string (e.g. '0.000') to a format string usable in
+  the Format() command (e.g. '%.3f') }
 function Convert_NumFormatStr_to_FormatStr(ANumFormat: String): String;
 var
   isPercent: Boolean = false;
@@ -1899,7 +1901,7 @@ begin
       s := s + ser.EquationText.
         X(AWorkbookSeries.Regression.Equation.XName).
         Y(AWorkbookSeries.Regression.Equation.YName).
-        NumFormat('%.3f'). // to do: convert from AWorkbookSeries.Regression.Equation.NumberFormat
+        NumFormat(Convert_NumFormatStr_to_FormatStr(AWorkbookSeries.Regression.Equation.NumberFormat)).
         DecimalSeparator('.').
         TextFormat(tfHtml).
         Get;

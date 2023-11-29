@@ -1,6 +1,6 @@
 program regressionchart_write_demo;
 
-{.$DEFINE DARK_MODE}
+{$mode objfpc}{$H+}
 
 uses
   SysUtils,
@@ -16,7 +16,7 @@ var
 begin
   book := TsWorkbook.Create;
   try
-    // worksheet
+    // Worksheet
     sheet := book.AddWorksheet('regression_test');
 
     // Enter data
@@ -28,10 +28,10 @@ begin
     sheet.WriteNumber(5, 0, 2.5);  sheet.WriteNumber(5, 1, 2.45);
     sheet.WriteNumber(6, 0, 3.1);  sheet.WriteNumber(6, 1, 3.3);
     sheet.WriteNumber(7, 0, 5.2);  sheet.WriteNumber(7, 1, 4.9);
-    sheet.WriteNumber(8, 0, 6.8);  sheet.WriteNumber(8, 1, 7.1);        // sheet.WriteChartColor(8, 2, $FF8080);
+    sheet.WriteNumber(8, 0, 6.8);  sheet.WriteNumber(8, 1, 7.1);
 
-    // Create chart: left/top in cell D4, 120 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 3, 120, 100);
+    // Create chart: left/top in cell D4, 150 mm x 100 mm
+    ch := book.AddChart(sheet, 2, 3, 150, 100);
 
     // Chart properties
     ch.Border.Style := clsNoLine;
@@ -54,7 +54,7 @@ begin
     ser.Regression.Line.Color := scRed;
     ser.Regression.Line.Style := clsDash;
     ser.Regression.ForceYIntercept := true;  // not used by logarithmic, power
-    ser.Regression.YInterceptValue := 1.0;
+    ser.Regression.YInterceptValue := 1.0;   // dto.
     ser.Regression.PolynomialDegree := 2;
     ser.Regression.DisplayEquation := true;
     ser.Regression.DisplayRSquare := true;
