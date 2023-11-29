@@ -22,8 +22,9 @@ uses
   // LCL
   LCLVersion, Forms, Controls, Graphics, GraphUtil, Dialogs,
   // TAChart
-  TATypes, TATextElements, TAChartUtils, TALegend, TACustomSource, TASources,
-  TACustomSeries, TASeries, TARadialSeries, TAFitUtils, TAFuncSeries, TAMultiSeries,
+  TATypes, TATextElements, TAChartUtils, TADrawUtils, TALegend,
+  TACustomSource, TASources, TACustomSeries, TASeries, TARadialSeries,
+  TAFitUtils, TAFuncSeries, TAMultiSeries,
   TAChartAxisUtils, TAChartAxis, TAStyles, TAGraph,
   // FPSpreadsheet
   fpsTypes, fpSpreadsheet, fpsUtils, fpsChart,
@@ -109,11 +110,14 @@ type
     FWorkbook: TsWorkbook;
     FWorkbookChartIndex: Integer;
     FBrushBitmaps: TFPObjectList;
+    FSavedAfterDraw: TChartDrawEvent;
     procedure SetChart(AValue: TChart);
     procedure SetWorkbookChartIndex(AValue: Integer);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
 
     //procedure FitSeriesFitEquationText(ASeries: TFitSeries; AEquationText: IFitEquationText);
+
+    procedure AfterDrawChartHandler(ASender: TChart; ADrawer: IChartDrawer);
 
   protected
     procedure Notification(AComponent: TComponent; Operation: TOperation); override;
@@ -1106,6 +1110,19 @@ begin
   end;
 end;
 
+procedure TsWorkbookChartLink.AfterDrawChartHandler(ASender: TChart;
+  ADrawer: IChartDrawer);
+begin
+  if FSavedAfterDraw <> nil then
+    FSavedAfterDraw(ASender, ADrawer);
+
+  { TCanvasDrawer.SetBrushParams does not remove the Brush.Bitmap when then
+    Brush.Style does not change. Since Brush.Style will be reset to bsSolid
+    in the last statement of TChart.Draw this will be enforced by setting
+    Brush.Style to bsClear here. }
+  ADrawer.SetBrushParams(bsClear, clTAColor);
+end;
+
 procedure TsWorkbookChartLink.ClearChart;
 var
   i, j: Integer;
@@ -1394,6 +1411,12 @@ begin
   if FChart = AValue then
     exit;
   FChart := AValue;
+  if FChart <> nil then
+  begin
+    FSavedAfterDraw := FChart.OnAfterDraw;
+    FChart.OnAfterDraw := @AfterDrawChartHandler;
+  end else
+    FSavedAfterDraw := nil;
   UpdateChart;
 end;
 
