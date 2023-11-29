@@ -1222,7 +1222,6 @@ begin
     'chart:scatter': series := TsScatterSeries.Create(AChart);
     else raise Exception.Create('Unknown/unsupported series type.');
   end;
-  AChart.AddSeries(series);
 
   ReadChartCellAddr(ANode, 'chart:label-cell-address', series.TitleAddr);
   if (series is TsBubbleSeries) then

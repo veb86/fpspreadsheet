@@ -68,7 +68,6 @@ begin
     ser.Fill.Color := $c47244; //72c4 scBlue;
     ser.Fill.Transparency := 0.25;
     ser.DataLabels := [cdlCategory];
-    ch.AddSeries(ser);
 
     {
     book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file

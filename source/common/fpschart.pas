@@ -565,12 +565,14 @@ type
     FImages: TsChartImageList;
     function GetCategoryLabelRange: TsChartRange;
 
+  protected
+    function AddSeries(ASeries: TsChartSeries): Integer; virtual;
+
   public
     constructor Create;
     destructor Destroy; override;
     function GetWorksheet: TsBasicWorksheet;
 
-    function AddSeries(ASeries: TsChartSeries): Integer;
     procedure DeleteSeries(AIndex: Integer);
 
     function GetChartType: TsChartType;

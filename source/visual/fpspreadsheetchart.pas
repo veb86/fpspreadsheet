@@ -1479,7 +1479,6 @@ begin
 
   FChart.Prepare;
   UpdateChartAxisLabels(ch);
-//  UpdateBarSeries(ch);
   FixAreaSeries(ch);
 end;
 
