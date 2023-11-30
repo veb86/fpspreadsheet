@@ -31,7 +31,6 @@ type
     procedure FormCreate(Sender: TObject);
   private
     sChartLink: TsWorkbookChartLink;
-    FFileName: String;
     procedure LoadFile(AFileName: String);
 
   public
@@ -91,6 +90,7 @@ end;
 procedure TForm1.LoadFile(AFileName: String);
 var
   fn: String;
+  i: Integer;
 begin
   fn := ExpandFileName(AFileName);
   if not FileExists(fn) then
@@ -102,6 +102,9 @@ begin
   sWorkbookSource1.FileFormat := sfOpenDocument;
   if FileExists(fn) then
     sWorkbookSource1.Filename := fn;
+
+  for i := 1 to sWorksheetGrid1.Worksheet.GetLastRowIndex+1 do
+    sWorksheetGrid1.AutoRowHeight(1);
 
   sChartLink := TsWorkbookChartLink.Create(self);
   sChartLink.Chart := Chart1;

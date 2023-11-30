@@ -458,7 +458,7 @@ begin
   begin
     if FRanges[rngX, i] <> nil then
     begin
-      GetXYItem(rngX, i, AIndex, value, dummyString);
+      GetXYItem(rngX, i, AIndex, value, tmpLabel);
       FCurItem.SetX(i, value);
     end else
     if FCyclicX then
@@ -467,22 +467,7 @@ begin
       value := AIndex;
     FCurItem.SetX(i, value);
   end;
-(*
-  if FRanges[rngX] <> nil then
-  begin
-    for i := 0 to XCount-1 do
-    begin
-      GetXYItem(rngX, i, AIndex, value, dummyString);
-      FCurItem.SetX(i, value);
-    end;
-  end else
-  begin
-    if FCyclicX then
-      FCurItem.X := AIndex / FPointsNumber * TWO_PI
-    else
-      FCurItem.X := AIndex;
-  end;
-  *)
+
   for i := 0 to YCount-1 do
   begin
     GetXYItem(rngY, i, AIndex, value, dummyString);
@@ -544,7 +529,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Helper method the prepare the information required for the series data point.
+  Helper method to prepare the information required for the series data point.
 
   @param  ARangeIndex  Identifies whether the method retrieves the x or y
                        coordinate, or the label text
@@ -930,11 +915,14 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Inherited ChartSource method telling the series how many y values are used.
-  Currently we support only single valued data (YCount = 1, by default).
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetYCount(AValue: Cardinal);
 begin
+  {$IF LCL_FullVersion >= 3090900}
+  inherited SetYCount(AValue);
+  {$ELSE}
   FYCount := AValue;
+  {$ENDIF}
   SetLength(FCurItem.YList, YCount-1);
 end;
 
@@ -1036,7 +1024,7 @@ begin
       ctBubble:
         begin
           Result := TBubbleSeries.Create(FChart);
-          src.SetYRange(1, TsBubbleSeries(ASeries).BubbleRange);
+          src.SetYRange(1, TsBubbleSeries(ASeries).BubbleRange);  // The radius is at YIndex 1
         end;
       ctPie:
         Result := TPieSeries.Create(FChart);
@@ -1473,6 +1461,10 @@ procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BubbleBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BubblePen);
+  {$IF LCL_FullVersion >= 3090900}
+  AChartSeries.BubbleRadiusUnits := bruPercentage;
+  AChartSeries.ParentChart.ExpandPercentage := 10;
+  {$IFEND}
 end;
 
 procedure TsWorkbookChartLink.UpdateChart;
@@ -1488,6 +1480,7 @@ begin
     exit;
   end;
   FChart.Proportional := false;
+  FChart.ExpandPercentage := 0;
 
   ch := GetWorkbookChart;
   UpdateChartBackground(ch);
@@ -1716,6 +1709,35 @@ procedure TsWorkbookChartLink.UpdateChartSeriesMarks(AWorkbookSeries: TsChartSer
 begin
   ConstructSeriesMarks(AWorkbookSeries, AChartSeries);
   AChartSeries.Marks.LinkPen.Visible := false;
+
+  AChartSeries.Marks.YIndex := -1;
+  AChartSeries.Marks.Distance := 20;
+  AChartSeries.Marks.Attachment := maDefault;
+  Convert_sFont_to_Font(AWorkbookSeries.LabelFont, AChartSeries.Marks.LabelFont);
+
+  if (AChartSeries is TBubbleSeries) then
+    case AWorkbookSeries.LabelPosition of
+      lpDefault, lpOutside:
+        begin
+          TBubbleSeries(AChartSeries).MarkPositions := lmpPositive;
+          TBubbleSeries(AChartSeries).Marks.YIndex := 1;
+          TBubbleSeries(AChartSeries).Marks.Distance := 5;
+        end;
+      lpInside:
+        begin
+          TBubbleSeries(AChartSeries).MarkPositions := lmpInside;
+          TBubbleSeries(AChartSeries).Marks.YIndex := 1;
+          TBubbleSeries(AChartSeries).Marks.Distance := 5;
+        end;
+      lpCenter:
+        begin
+          TBubbleSeries(AChartSeries).MarkPositions := lmpInside;
+          TBubbleSeries(AChartSeries).Marks.YIndex := 0;  // 0 --> at data point
+          TBubbleSeries(AChartSeries).Marks.Distance := 0;
+          TBubbleSeries(AChartSeries).Marks.Attachment := maCenter;
+        end;
+    end
+  else
   if (AChartSeries is TPieSeries) then
     case AWorkbookSeries.LabelPosition of
       lpInside:

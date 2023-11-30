@@ -1320,7 +1320,7 @@ begin
             end;
 
           s := GetAttrValue(AStyleNode, 'chart:data-label-number');
-          if s <> '' then
+          if (s <> '') and (s <> 'none') then
             Include(datalabels, cdlValue);
           s := GetAttrValue(AStyleNode, 'chart:data-label-number="percentage"');
           if s <> '' then
