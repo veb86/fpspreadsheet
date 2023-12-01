@@ -40,6 +40,7 @@ type
     Width: Double;         // mm
     Color: TsColor;        // in hex: $00bbggrr, r=red, g=green, b=blue
     Transparency: Double;  // in percent
+    procedure CopyFrom(ALine: TsChartLine);
   end;
 
   TsChartGradientStyle = (cgsLinear, cgsAxial, cgsRadial, cgsElliptic, cgsSquare, cgsRectangular);
@@ -135,6 +136,7 @@ type
     Hatch: Integer;
     Image: Integer;
     Transparency: Double;  // 0.0 ... 1.0
+    procedure CopyFrom(AFill: TsChartFill);
   end;
 
   TsChartLineSegment = record
@@ -312,6 +314,8 @@ type
   TsChartDataLabels = set of TsChartDataLabel;
   TsChartLabelPosition = (lpDefault, lpOutside, lpInside, lpCenter);
 
+  TsChartDataPointStyle = class(TsChartFillElement);
+
   TsChartSeries = class(TsChartElement)
   private
     FChartType: TsChartType;
@@ -331,11 +335,14 @@ type
     FLine: TsChartLine;
     FFill: TsChartFill;
     FDataLabels: TsChartDataLabels;
+    FDataPointStyles: TFPObjectList;
   protected
     function GetChartType: TsChartType; virtual;
   public
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
+    procedure AddDataPointStyle(AFill: TsChartFill; ALine: TsChartLine; ACount: Integer = 1);
+    procedure AddDataPointStyle(AColor: TsColor; ACount: Integer = 1);
     function GetCount: Integer;
     function GetXCount: Integer;
     function GetYCount: Integer;
@@ -361,6 +368,7 @@ type
     property ChartType: TsChartType read GetChartType;
     property Count: Integer read GetCount;
     property DataLabels: TsChartDataLabels read FDataLabels write FDataLabels;
+    property DataPointStyles: TFPObjectList read FDataPointStyles;
     property FillColorRange: TsChartRange read FFillColorRange write FFillColorRange;
     property LabelBackground: TsChartFill read FLabelBackground write FLabelBackground;
     property LabelBorder: TsChartLine read FLabelBorder write FLabelBorder;
@@ -659,6 +667,20 @@ implementation
 uses
   fpSpreadsheet;
 
+{ TsChartLine }
+
+procedure TsChartLine.CopyFrom(ALine: TsChartLine);
+begin
+  if ALine <> nil then
+  begin
+    Style := ALine.Style;
+    Width := ALine.Width;
+    Color := ALine.Color;
+    Transparency := ALine.Transparency;
+  end;
+end;
+
+
 { TsChartGradient }
 
 constructor TsChartGradient.Create;
@@ -897,6 +919,22 @@ end;
 procedure TsChartImageList.SetItem(AIndex: Integer; AValue: TsChartImage);
 begin
   inherited Items[AIndex] := AValue;
+end;
+
+
+{ TsChartFill }
+
+procedure TsChartFill.CopyFrom(AFill: TsChartFill);
+begin
+  if AFill <> nil then
+  begin
+    Style := AFill.Style;
+    Color := AFill.Color;
+    Gradient := AFill.Gradient;
+    Hatch := AFill.Hatch;
+    Image := AFill.Image;
+    Transparency := AFill.Transparency;
+  end;
 end;
 
 
@@ -1194,6 +1232,8 @@ begin
   FLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
   FLine.Color := DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)];
 
+  FDataPointStyles := TFPObjectList.Create;
+
   FLabelFont := TsFont.Create;
   FLabelFont.Size := 9;
 
@@ -1213,6 +1253,7 @@ begin
   FLabelBackground.Free;
   FLabelBorder.Free;
   FLabelFont.Free;
+  FDataPointStyles.Free;
   FLine.Free;
   FFill.Free;
   FTitleAddr.Free;
@@ -1222,6 +1263,39 @@ begin
   FYRange.Free;
   FXRange.Free;
   inherited;
+end;
+
+procedure TsChartSeries.AddDataPointStyle(AFill: TsChartFill; ALine: TsChartLine;
+  ACount: Integer = 1);
+var
+  i: Integer;
+  dataPointStyle: TsChartDataPointStyle;
+begin
+  if (AFill = nil) and (ALine = nil) then
+    for i := 1 to ACount do
+      FDataPointStyles.Add(nil)
+  else
+    for i := 1 to ACount do
+    begin
+      dataPointStyle := TsChartDataPointStyle.Create(FChart);
+      dataPointStyle.Background.CopyFrom(AFill);
+      dataPointStyle.Border.CopyFrom(ALine);
+      FDataPointStyles.Add(dataPointStyle);
+    end;
+end;
+
+procedure TsChartSeries.AddDataPointStyle(AColor: TsColor; ACount: Integer = 1);
+var
+  i: Integer;
+  datapointStyle: TsChartDataPointStyle;
+begin
+  for i := 1 to ACount do
+  begin
+    datapointStyle := TsChartDatapointStyle.Create(FChart);
+    dataPointStyle.Background.Style:= cfsSolid;
+    dataPointStyle.Background.Color := AColor;
+    FDataPointStyles.Add(datapointStyle);
+  end;
 end;
 
 function TsChartSeries.GetChartType: TsChartType;

@@ -25,6 +25,7 @@ begin
     sheet.WriteText(1, 0, 'https://en.wikipedia.org/wiki/World_population');
     sheet.WriteHyperlink(1, 0, 'https://en.wikipedia.org/wiki/World_population');
     sheet.WriteText(3, 0, 'Continent');  sheet.WriteText  (3, 1, 'Population (millions)');
+    sheet.WriteFontStyle(3, 0, [fssBold]); sheet.WriteFontStyle(3, 1, [fssBold]);
     sheet.WriteText(4, 0, 'Asia');       sheet.WriteNumber(4, 1, 4641);      // sheet.WriteChartColor(4, 2, scYellow);
     sheet.WriteText(5, 0, 'Africa');     sheet.WriteNumber(5, 1, 1340);      // sheet.WriteChartColor(5, 2, scBrown);
     sheet.WriteText(6, 0, 'America');    sheet.WriteNumber(6, 1, 653 + 368); // sheet.WriteChartColor(6, 2, scRed);
@@ -53,6 +54,15 @@ begin
     ser.LabelPosition := lpOutside;
     ser.Line.Color := scWhite;
     ser.LabelFormat := '#,##0';
+
+    // Individual sector colors
+    // Must be complete, otherwise will be ignored by Calc and replaced by default colors
+    ser.AddDataPointStyle(scYellow);
+    ser.AddDataPointStyle(scMaroon);
+    ser.AddDataPointStyle(scRed);
+    ser.AddDataPointStyle(scWhite);
+    ser.AddDatapointStyle(scBlue);
+
     //ser.SetFillColorRange(4, 2, 8, 2);
 
     {

@@ -26,8 +26,8 @@ type
     FPieSeriesStartAngle: Integer;
     FStreamList: TFPObjectList;
     function FindStyleNode(AStyleNodes: TDOMNode; AStyleName: String): TDOMNode;
-    procedure GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
-    procedure GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine);
+    function GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill): Boolean;
+    function GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine): Boolean;
     procedure GetChartTextProps(ANode: TDOMNode; AFont: TsFont);
 
     procedure ReadChartAxisGrid(ANode, AStyleNode: TDOMNode; AChart: TsChart; Axis: TsChartAxis);
@@ -45,6 +45,8 @@ type
     procedure ReadChartRegressionEquationStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartRegressionProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartRegressionStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
+    procedure ReadChartSeriesDataPointStyle(AStyleNode: TDOMNode; AChart: TsChart;
+      ASeries: TsChartSeries; var AFill: TsChartFill; var ALine: TsChartLine);
     procedure ReadChartSeriesProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartSeriesStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartTitleProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
@@ -89,6 +91,7 @@ type
     function GetChartRegressionEquationStyleAsXML(AChart: TsChart;
       AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
     function GetChartRegressionStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: Integer): String;
+    function GetChartSeriesDataPointStyleAsXML(AChart: TsChart; ASeriesIndex, APointIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: integer): String;
 
     function GetNumberFormatID(ANumFormat: String): String;
@@ -403,11 +406,16 @@ begin
   FChartFiles.Add(AFileList);
 end;
 
-procedure TsSpreadOpenDocChartReader.GetChartFillProps(ANode: TDOMNode;
-  AChart: TsChart; AFill: TsChartFill);
+{@@ ----------------------------------------------------------------------------
+  Reads the fill style properties from the specified node. Returns FALSE, if
+  the node contains no fill-specific attributes.
+-------------------------------------------------------------------------------}
+function TsSpreadOpenDocChartReader.GetChartFillProps(ANode: TDOMNode;
+  AChart: TsChart; AFill: TsChartFill): Boolean;
 var
   {%H-}nodeName: String;
-  s: String;
+  sFill: String;
+  sOpac: String;
   sc: String;
   sn: String;
   opacity: Double;
@@ -417,8 +425,8 @@ var
 begin
   nodeName := ANode.NodeName;
 
-  s := GetAttrValue(ANode, 'draw:fill');
-  case s of
+  sFill := GetAttrValue(ANode, 'draw:fill');
+  case sFill of
     'none':
       AFill.Style := cfsNoFill;
     '', 'solid':
@@ -472,13 +480,19 @@ begin
       end;
   end;
 
-  s := GetAttrValue(ANode, 'draw:opacity');
-  if (s <> '') and TryPercentStrToFloat(s, opacity) then
+  sOpac := GetAttrValue(ANode, 'draw:opacity');
+  if (sOpac <> '') and TryPercentStrToFloat(sOpac, opacity) then
     AFill.Transparency := 1.0 - opacity;
+
+  Result := (sFill <> '') or (sc <> '') or (sn <> '') or (sOpac <> '');
 end;
 
-procedure TsSpreadOpenDocChartReader.GetChartLineProps(ANode: TDOMNode;
-  AChart: TsChart; ALine: TsChartLine);
+{ ------------------------------------------------------------------------------
+  Reads the line formatting properties from the specified node.
+  Returns FALSE, if there are no line-related attributes.
+-------------------------------------------------------------------------------}
+function TsSpreadOpenDocChartReader.GetChartLineProps(ANode: TDOMNode;
+  AChart: TsChart; ALine: TsChartLine): Boolean;
 var
   {%H-}nodeName: String;
   s: String;
@@ -517,9 +531,11 @@ begin
   if (sw <> '') and EvalLengthStr(sw, value, rel) then
     ALine.Width := value;
 
-  so := 'draw:stroke-opacity';
+  so := GetAttrValue(ANode, 'draw:stroke-opacity');
   if (so <> '') and TryPercentStrToFloat(so, value) then
     ALine.Transparency := 1.0 - value*0.01;
+
+  Result := (s <> '') or (sc <> '') or (sw <> '') or (so <> '');
 end;
 
 procedure TsSpreadOpenDocChartReader.GetChartTextProps(ANode: TDOMNode;
@@ -1192,14 +1208,42 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocChartReader.ReadChartSeriesDataPointStyle(AStyleNode: TDOMNode;
+  AChart: TsChart; ASeries: TsChartSeries; var AFill: TsChartFill; var ALine: TsChartLine);
+var
+  nodeName: string;
+  grNode: TDOMNode;
+begin
+  AFill := nil;
+  ALine := nil;
+
+  nodeName := AStyleNode.NodeName;
+  AStyleNode := AStyleNode.FirstChild;
+  while AStyleNode <> nil do
+  begin
+    nodeName := AStyleNode.NodeName;
+    if nodeName = 'style:graphic-properties' then
+    begin
+      AFill := TsChartFill.Create;
+      if not GetChartFillProps(AStyleNode, AChart, AFill) then FreeAndNil(AFill);
+      ALine := TsChartLine.Create;
+      if not GetChartLineProps(AStyleNode, AChart, ALine) then FreeAndNil(ALine);
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocChartReader.ReadChartSeriesProps(ANode, AStyleNode: TDOMNode;
   AChart: TsChart);
 var
   s, nodeName: String;
   series: TsChartSeries;
+  fill: TsChartFill;
+  line: TsChartLine;
   subNode: TDOMNode;
   styleNode: TDOMNode;
   xyCounter: Integer;
+  n: Integer;
 begin
   s := GetAttrValue(ANode, 'chart:class');
   case s of
@@ -1252,6 +1296,24 @@ begin
         end;
       'chart:regression-curve':
         ReadChartRegressionProps(subNode, AStyleNode, AChart, series);
+      'chart:data-point':
+        begin
+          fill := nil;
+          line := nil;
+          n := 1;
+          s := GetAttrValue(subnode, 'chart:style-name');
+          if s <> '' then
+          begin
+            styleNode := FindStyleNode(AStyleNode, s);
+            ReadChartSeriesDataPointStyle(styleNode, AChart, series, fill, line); // creates fill and line!
+          end;
+          s := GetAttrValue(subnode, 'chart:repeated');
+          if (s <> '') then
+            n := StrToIntDef(s, 1);
+          series.AddDataPointStyle(fill, line, n);
+          fill.Free;  // the styles have been copied to the series datapoint list and are not needed any more.
+          line.Free;
+        end;
     end;
     subnode := subNode.NextSibling;
   end;
@@ -2247,6 +2309,37 @@ begin
   );
 end;
 
+function TsSpreadOpenDocChartWriter.GetChartSeriesDataPointStyleAsXML(AChart: TsChart;
+  ASeriesIndex, APointIndex, AIndent, AStyleID: Integer): String;
+var
+  series: TsChartSeries;
+  indent: String;
+  chartProps: String;
+  graphProps: String = '';
+  dataPointStyle: TsChartDataPointStyle;
+begin
+  Result := '';
+  indent := DupeString(' ', AIndent);
+
+  series := AChart.Series[ASeriesIndex];
+  dataPointStyle := TsChartDataPointStyle(series.DataPointStyles[APointIndex]);
+
+  chartProps := 'chart:solid-type="cuboid" ';
+
+  if dataPointStyle.Background <> nil then
+    graphProps := graphProps + GetChartFillStyleGraphicPropsAsXML(AChart, dataPointStyle.Background);
+  if dataPointStyle.Border <> nil then
+    graphProps := graphProps + GetChartLineStyleGraphicPropsAsXML(AChart, dataPointStyle.Border);
+
+  Result := Format(
+    indent + '<style:style style:name="ch%d" style:family="chart">' + LE +
+    indent + '  <style:chart-properties %s/>' + LE +
+    indent + '  <style:graphic-properties %s/>' + LE +
+    indent + '</style:style>' + LE,
+    [ AStyleID, chartProps, graphProps ]
+  );
+end;
+
 
 { <style:style style:name="ch1400" style:family="chart" style:data-style-name="N0">
     <style:chart-properties
@@ -2326,9 +2419,9 @@ begin
     if pos('\n', labelSeparator) > 0 then
       labelSeparator := StringReplace(labelSeparator, '\n', '<text:line-break/>', [rfReplaceAll, rfIgnoreCase]);
     labelSeparator :=
-      '    <chart:label-separator>' + LE +
-      '      <text:p>' + labelSeparator + '</text:p>' + LE +
-      '    </chart:label-separator>' + LE;
+      indent + '    <chart:label-separator>' + LE +
+      indent + '      <text:p>' + labelSeparator + '</text:p>' + LE +
+      indent + '    </chart:label-separator>' + LE;
   end;
 
   if series.LabelBorder.Style <> clsNoLine then
@@ -2338,9 +2431,9 @@ begin
   end;
 
   if labelSeparator <> '' then
-    chartProps := '  <style:chart-properties ' + chartProps + '>' + LE + labelSeparator + '  </style:chart-properties>'
+    chartProps := indent + '  <style:chart-properties ' + chartProps + '>' + LE + labelSeparator + indent + '  </style:chart-properties>'
   else
-    chartProps := '  <style:chart-properties ' + chartProps + '/>';
+    chartProps := indent + '  <style:chart-properties ' + chartProps + '/>';
 
   // Graphic properties
   lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, series.Line);
@@ -2361,7 +2454,7 @@ begin
 
   Result := Format(
     indent + '<style:style style:name="ch%d" style:family="chart" style:data-style-name="%s">' + LE +
-    indent + chartProps + LE +
+    chartProps + LE +
     indent + '  <style:graphic-properties %s/>' + LE +
     indent + '  <style:text-properties %s/>' + LE +
     indent + '</style:style>' + LE,
@@ -3196,9 +3289,11 @@ var
   needRegressionEquationStyle: Boolean = false;
   regression: TsChartRegression = nil;
   titleAddr: String;
-  count: Integer;
+  i, count: Integer;
+  styleID, dpStyleID: Integer;
 begin
   indent := DupeString(' ', AChartIndent);
+  styleID := AStyleID;
 
   series := AChart.Series[ASeriesIndex];
 
@@ -3324,6 +3419,7 @@ begin
         begin
           regressionEquation := regressionEquation + Format('chart:style-name="ch%d" ', [AStyleID + 2]);
           needRegressionEquationStyle := true;
+          styleID := AStyleID + 2;
         end;
       end;
       if regression.DisplayEquation then
@@ -3345,20 +3441,43 @@ begin
           indent + '    <chart:equation %s />' + LE +
           indent + '  </chart:regression-curve>' + LE,
           [ AStyleID + 1, regressionEquation ]
-        ))
+        ));
       end else
         AppendToStream(AChartStream, Format(
           indent + '  <chart:regression-curve chart:style-name="ch%d"/>',
           [ AStyleID + 1 ]
         ));
       needRegressionStyle := true;
+      if styleID = AStyleID then
+        styleID := AStyleID + 1;
     end;
   end;
 
-  AppendToStream(AChartStream, Format(
-    indent + '  <chart:data-point chart:repeated="%d"/>' + LE,
-    [ count ]
-  ));
+  // Individual data point styles
+  if series.DataPointStyles.Count = 0 then
+    AppendToStream(AChartStream, Format(
+      indent + '  <chart:data-point chart:repeated="%d"/>' + LE,
+      [ count ]
+    ))
+  else
+  begin
+    dpStyleID := styleID + 1;
+    for i := 0 to count - 1 do
+    begin
+      if (i >= series.DataPointStyles.Count) or (series.DataPointStyles[i] = nil) then
+        AppendToStream(AChartStream,
+          indent + '  <chart:data-point chart:repeated="1">' + LE
+        )
+      else
+      begin
+        AppendToStream(AChartStream, Format(
+          indent + '  <chart:data-point chart:style-name="ch%d" />' + LE,   // ToDo: could contain "chart:repeated"
+          [ dpStyleID ]
+        ));
+        inc(dpStyleID);
+      end;
+    end;
+  end;
   AppendToStream(AChartStream,
     indent + '</chart:series>' + LE
   );
@@ -3384,6 +3503,15 @@ begin
         GetChartRegressionEquationStyleAsXML(AChart, regression.Equation, AStyleIndent, AStyleID)
       );
     end;
+  end;
+
+  // Data point styles
+  for i := 0 to series.DataPointStyles.Count - 1 do
+  begin
+    inc(AStyleID);
+    AppendToStream(AStyleStream,
+      GetChartSeriesDataPointStyleAsXML(AChart, ASeriesIndex, i, AStyleIndent, AStyleID)
+    );
   end;
 
   // Next style

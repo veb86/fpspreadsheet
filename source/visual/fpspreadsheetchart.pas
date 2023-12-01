@@ -53,6 +53,7 @@ type
     FTitleCol, FTitleRow: Cardinal;
     FTitleSheetName: String;
     FCyclicX: Boolean;
+    FDataPointColors: array of TsColor;
     function GetRange(AIndex: TsXYLRange): String;
     function GetTitle: String;
     function GetWorkbook: TsWorkbook;
@@ -82,6 +83,7 @@ type
     procedure SetXRange(XIndex: Integer;ARange: TsChartRange);
     procedure SetYRange(YIndex: Integer; ARange: TsChartRange);
     procedure SetTitleAddr(Addr: TsChartCellAddr);
+    procedure UseDataPointColors(ASeries: TsChartSeries);
     property PointsNumber: Cardinal read FPointsNumber;
     property Workbook: TsWorkbook read GetWorkbook;
   public
@@ -481,6 +483,8 @@ begin
   end;
 
   FCurItem.Color := clTAColor;  // = clDefault
+  if AIndex <= High(FDataPointColors) then
+    FCurItem.Color := FDataPointColors[AIndex];
   if FRanges[rngColor] <> nil then
   begin
     GetXYItem(rngColor, 0, AIndex, dummyNumber, dummyString);
@@ -537,6 +541,7 @@ end;
   @param  APointIndex  Index of the data point for which the data are required
   @param  ANumber      (output) x or y coordinate of the data point
   @param  AText        Data point marks label text
+  @param  AColor       Individual data point color
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.GetXYItem(ARangeIndex:TsXYLRange;
   AListIndex, APointIndex: Integer; out ANumber: Double; out AText: String);
@@ -891,6 +896,27 @@ begin
   SetRangeFromChart(rngY, YIndex, ARange);
 end;
 
+procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
+var
+  datapointStyle: TsChartDataPointStyle;
+  i: Integer;
+begin
+  if ASeries = nil then
+  begin
+    SetLength(FDataPointColors, 0);
+    exit;
+  end;
+
+  SetLength(FDataPointColors, ASeries.DataPointStyles.Count);
+  for i := 0 to High(FDataPointColors) do
+  begin
+    datapointStyle := TsChartDataPointStyle(ASeries.DatapointStyles[i]);
+    FDataPointColors[i] := clTAColor;
+    if (dataPointStyle <> nil) and (datapointStyle.Background.Style = cfsSolid) then
+      FDataPointColors[i] := Convert_sColor_to_Color(dataPointStyle.Background.Color);
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Setter method for the WorkbookSource
 -------------------------------------------------------------------------------}
@@ -1037,6 +1063,9 @@ begin
     if not ASeries.YRange.IsEmpty then src.SetYRange(0, ASeries.YRange);
     if not ASeries.FillColorRange.IsEmpty then src.SetColorRange(ASeries.FillColorRange);
     src.SetTitleAddr(ASeries.TitleAddr);
+
+    // Copy individual data point colors to the chart series.
+    src.UseDataPointColors(ASeries);
 
     if stackable then begin
       calcSrc := TCalculatedChartSource.Create(self);
