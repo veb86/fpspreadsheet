@@ -57,11 +57,11 @@ begin
 
     // Individual sector colors
     // Must be complete, otherwise will be ignored by Calc and replaced by default colors
-    ser.AddDataPointStyle(scYellow);
-    ser.AddDataPointStyle(scMaroon);
-    ser.AddDataPointStyle(scRed);
-    ser.AddDataPointStyle(scWhite);
-    ser.AddDatapointStyle(scBlue);
+    ser.DataPointStyles.AddSolidFill($C47244);
+    ser.DataPointStyles.AddSolidFill($317DED);
+    ser.DataPointStyles.AddSolidFill($A5A5A5);
+    ser.DataPointStyles.AddSolidFill($00C0FF);
+    ser.DataPointStyles.AddSolidFill($D69B5B);
 
     //ser.SetFillColorRange(4, 2, 8, 2);
 

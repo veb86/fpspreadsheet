@@ -1310,7 +1310,7 @@ begin
           s := GetAttrValue(subnode, 'chart:repeated');
           if (s <> '') then
             n := StrToIntDef(s, 1);
-          series.AddDataPointStyle(fill, line, n);
+          series.DataPointStyles.AddFillAndLine(fill, line, n);
           fill.Free;  // the styles have been copied to the series datapoint list and are not needed any more.
           line.Free;
         end;
@@ -2309,6 +2309,10 @@ begin
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates an xml string which contains the individual style of the
+  datapoint with index APointIndex of the series with index ASeriesIndex.
+-------------------------------------------------------------------------------}
 function TsSpreadOpenDocChartWriter.GetChartSeriesDataPointStyleAsXML(AChart: TsChart;
   ASeriesIndex, APointIndex, AIndent, AStyleID: Integer): String;
 var
@@ -2322,7 +2326,7 @@ begin
   indent := DupeString(' ', AIndent);
 
   series := AChart.Series[ASeriesIndex];
-  dataPointStyle := TsChartDataPointStyle(series.DataPointStyles[APointIndex]);
+  dataPointStyle := series.DataPointStyles[APointIndex];
 
   chartProps := 'chart:solid-type="cuboid" ';
 

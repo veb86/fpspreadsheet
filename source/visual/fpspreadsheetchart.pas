@@ -896,10 +896,16 @@ begin
   SetRangeFromChart(rngY, YIndex, ARange);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Extracts the fill color from the DataPointStyle items of the series. All the
+  other elements are ignored because TAChart does not support them.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
 var
   datapointStyle: TsChartDataPointStyle;
   i: Integer;
+  c: TsColor;
+  g: TsChartGradient;
 begin
   if ASeries = nil then
   begin
@@ -910,12 +916,26 @@ begin
   SetLength(FDataPointColors, ASeries.DataPointStyles.Count);
   for i := 0 to High(FDataPointColors) do
   begin
-    datapointStyle := TsChartDataPointStyle(ASeries.DatapointStyles[i]);
+    datapointStyle := ASeries.DatapointStyles[i];
     FDataPointColors[i] := clTAColor;
-    if (dataPointStyle <> nil) and (datapointStyle.Background.Style = cfsSolid) then
-      FDataPointColors[i] := Convert_sColor_to_Color(dataPointStyle.Background.Color);
+    if (dataPointStyle <> nil) and (dataPointStyle.Background <> nil) then
+    begin
+      if (datapointStyle.Background.Style in [cfsSolid, cfsSolidHatched]) then
+        c := dataPointStyle.Background.Color
+      else
+      if (dataPointStyle.Background.Style = cfsGradient) then
+      begin
+        // TAChart does not support gradient fills. Let's use the start color
+        // of the gradient for a solid fill.
+        g := ASeries.Chart.Gradients[datapointStyle.Background.Gradient];
+        c := g.StartColor;
+      end else
+        Continue;
+      FDataPointColors[i] := Convert_sColor_to_Color(c);
+    end;
   end;
 end;
+
 
 {@@ ----------------------------------------------------------------------------
   Setter method for the WorkbookSource
@@ -1866,6 +1886,7 @@ end;
 procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;
   AChartSeries: TPieSeries);
 begin
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.EdgePen);
   AChartSeries.StartAngle := AWorkbookSeries.StartAngle;
   AChartSeries.Legend.Multiplicity := lmPoint;
   AChartSeries.Legend.Format := '%2:s';
