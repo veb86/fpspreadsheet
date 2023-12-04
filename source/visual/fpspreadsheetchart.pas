@@ -132,7 +132,11 @@ type
     procedure ConstructHatchPattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructHatchPatternSolid(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
+    function GetAutoscaleAxisTransform(AChartAxis: TChartAxis): TAutoScaleAxisTransform;
+    function GetAxisTransform(AChartAxis: TChartAxis; AClass: TAxisTransformClass): TAxisTransform;
+    function GetLogAxisTransform(AChartAxis: TChartAxis): TLogarithmAxisTransform;
     function GetWorkbookChart: TsChart;
+    function IsLogarithmic(Axis: TChartAxis): Boolean;
     function IsSecondaryAxis(Axis: TsChartAxis): boolean;
     function IsStackable(ASeries: TsChartSeries): Boolean;
 
@@ -1099,7 +1103,13 @@ begin
     Result.Title := src.Title;
   end;
 
-  // Assign series to axis for primary and secondary y axes support
+  // Assign series to axis for primary and secondary axes support
+  case ASeries.XAxis of
+    alPrimary:
+      Result.AxisIndexX := FChart.AxisList.GetAxisByAlign(calBottom).Index;
+    alSecondary:
+      Result.AxisIndexX := FChart.AxisList.GetAxisByAlign(calTop).Index;
+  end;
   case ASeries.YAxis of
     alPrimary:
       Result.AxisIndexY := FChart.AxisList.GetAxisByAlign(calLeft).Index;
@@ -1459,12 +1469,44 @@ begin
     end;
 end;
 
+function TsWorkbookChartLink.GetAutoScaleAxisTransform(AChartAxis: TChartAxis): TAutoScaleAxisTransform;
+begin
+  Result := TAutoScaleAxisTransform(GetAxisTransform(AChartAxis, TAutoScaleAxisTransform));
+end;
+
+function TsWorkbookChartLink.GetAxisTransform(AChartAxis: TChartAxis;
+  AClass: TAxisTransformClass): TAxisTransform;
+var
+  T: TAxisTransform;
+begin
+  for T in AChartAxis.Transformations.List do
+    if T is AClass then
+    begin
+      Result := T;
+      exit;
+    end;
+  Result := nil;
+end;
+
+function TsWorkbookChartLink.GetLogAxisTransform(AChartAxis: TChartAxis): TLogarithmAxisTransform;
+begin
+  Result := TLogarithmAxisTransform(GetAxisTransform(AChartAxis, TLogarithmAxisTransform));
+end;
+
 function TsWorkbookChartLink.GetWorkbookChart: TsChart;
 begin
   if (FWorkbook <> nil) and (FWorkbookChartIndex > -1) then
     Result := FWorkbook.GetChartByIndex(FWorkbookChartIndex)
   else
     Result := nil;
+end;
+
+function TsWorkbookChartLink.IsLogarithmic(Axis: TChartAxis): Boolean;
+var
+  T: TLogarithmAxisTransform;
+begin
+  T := GetLogAxisTransform(Axis);
+  Result := (T <> nil) and T.Enabled;
 end;
 
 function TsWorkbookChartLink.IsSecondaryAxis(Axis: TsChartAxis): Boolean;
@@ -1669,6 +1711,25 @@ begin
   // Entire axis visible?
   axis.Visible := AWorkbookAxis.Visible;
 
+  // Usually not needed, but axis handling is simplified when there is
+  // an axis transformations object at each axis with all transforms prepared.
+  if axis.Transformations = nil then
+  begin
+    axis.Transformations := TChartAxisTransformations.Create(FChart);
+
+    // Logarithmic
+    T := TLogarithmAxisTransform.Create(axis.Transformations);
+    T.Transformations := axis.Transformations;
+    TLogarithmAxisTransform(T).Base := 10;
+    TLogarithmAxisTransform(T).Enabled := AWorkbookAxis.Logarithmic;
+
+    // Autoscale transformation for primary and secondary axes
+    T := TAutoScaleAxisTransform.Create(axis.Transformations);
+    T.Transformations := axis.Transformations;
+    if AWorkbookAxis.Logarithmic or (AWorkbookAxis.Chart.GetChartType in [ctRadar, ctFilledRadar]) then
+      T.Enabled := false;
+  end;
+
   // Axis title
   axis.Title.Caption := AWorkbookAxis.Title.Caption;
   axis.Title.Visible := true;
@@ -1697,7 +1758,10 @@ begin
     minorAxis := axis.Minors.Add;
     UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MinorGridLines, minorAxis.Grid);
     minorAxis.Grid.Visible := not IsSecondaryAxis(AWorkbookAxis);
-    minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
+    if AWorkbookAxis.Logarithmic then
+      minorAxis.Intervals.Count := 9
+    else
+      minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
     minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
     minorAxis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MinorTicks, 2, 0);
     minorAxis.TickColor := axis.AxisPen.Color;
@@ -1707,23 +1771,6 @@ begin
   // Inverted?
   axis.Inverted := AWorkbookAxis.Inverted;
 
-  // Usually not needed, but axis handling is simplified when there is
-  // an axis transformation at each axis.
-  if axis.Transformations = nil then
-  begin
-    axis.Transformations := TChartAxisTransformations.Create(FChart);
-    // Autoscale transformation for primary and secondary axes
-    T := TAutoScaleAxisTransform.Create(axis.Transformations);
-    T.Transformations := axis.Transformations;
-    if AWorkbookAxis.Chart.GetChartType in [ctRadar, ctFilledRadar] then
-      T.Enabled := false;
-    // Logarithmic
-    T := TLogarithmAxisTransform.Create(axis.Transformations);
-    T.Transformations := axis.Transformations;
-    TLogarithmAxisTransform(T).Base := 10;
-    TLogarithmAxisTransform(T).Enabled := AWorkbookAxis.Logarithmic;
-  end;
-
   // Scaling
   axis.Range.UseMin := not AWorkbookAxis.AutomaticMin;
   axis.Range.UseMax := not AWorkbookAxis.AutomaticMax;
@@ -1731,16 +1778,17 @@ begin
   axis.Range.Max := AWorkbookAxis.Max;
 
   // Logarithmic
-  logTransf := TLogarithmAxisTransform(axis.Transformations.List[1]);
+  logTransf := GetLogAxisTransform(axis);
   logTransf.Enabled := AWorkbookAxis.Logarithmic;
   if AWorkbookAxis.Logarithmic then
   begin
-//    axis.Intervals.Options := axis.Intervals.Options + [aipInteger];;
+    axis.Intervals.Options := axis.Intervals.Options + [aipGraphCoords];
     axis.Intervals.MaxLength := 150;
     axis.Intervals.MinLength := 30;
     axis.Intervals.Tolerance := 30;
   end else
   begin
+    axis.Intervals.Options := axis.Intervals.Options - [aipGraphCoords];
     axis.Intervals.MaxLength := 100;
     axis.Intervals.MinLength := 20;
     axis.Intervals.Tolerance := 0;

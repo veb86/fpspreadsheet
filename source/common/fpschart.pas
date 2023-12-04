@@ -341,6 +341,7 @@ type
     FLabelFont: TsFont;
     FLabelPosition: TsChartLabelPosition;
     FLabelSeparator: string;
+    FXAxis: TsChartAxisLink;
     FYAxis: TsChartAxisLink;
     FTitleAddr: TsChartCellAddr;
     FLabelFormat: String;
@@ -389,9 +390,10 @@ type
     property LabelSeparator: string read FLabelSeparator write FLabelSeparator;
     property LineColorRange: TsChartRange read FLineColorRange write FLineColorRange;
     property TitleAddr: TsChartCellAddr read FTitleAddr write FTitleAddr;  // use '\n' for line-break
+    property XAxis: TsChartAxisLink read FXAxis write FXAxis;
     property XRange: TsChartRange read FXRange write FXRange;
-    property YRange: TsChartRange read FYRange write FYRange;
     property YAxis: TsChartAxisLink read FYAxis write FYAxis;
+    property YRange: TsChartRange read FYRange write FYRange;
 
     property Fill: TsChartFill read FFill write FFill;
     property Line: TsChartLine read FLine write FLine;
