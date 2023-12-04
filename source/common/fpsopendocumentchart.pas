@@ -94,6 +94,7 @@ type
     function GetChartSeriesDataPointStyleAsXML(AChart: TsChart; ASeriesIndex, APointIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: integer): String;
 
+    procedure CheckAxis(AChart: TsChart; Axis: TsChartAxis);
     function GetNumberFormatID(ANumFormat: String): String;
     procedure ListAllNumberFormats(AChart: TsChart);
 
@@ -649,6 +650,7 @@ begin
   end;
 
   // Default values
+  axis.Visible := true;  // The presence of this node makes the axis visible.
   axis.Title.Caption := '';
   axis.MajorGridLines.Style := clsNoLine;
   axis.MinorGridLines.Style := clsNoLine;
@@ -957,6 +959,10 @@ begin
   ReadChartPlotAreaStyle(styleNode, AChart);
 
   // Defaults
+  AChart.XAxis.Visible := false;
+  AChart.YAxis.Visible := false;
+  AChart.X2Axis.Visible := false;
+  AChart.Y2Axis.Visible := false;
   AChart.PlotArea.Border.Style := clsNoLine;
   AChart.Floor.Border.Style := clsNoLine;
 
@@ -1264,6 +1270,12 @@ begin
     ReadChartCellRange(ANode, 'chart:values-cell-range-address', TsBubbleSeries(series).BubbleRange)
   else
     ReadChartCellRange(ANode, 'chart:values-cell-range-address', series.YRange);
+
+  s := GetAttrValue(ANode, 'chart:attached-axis');
+  if s = 'primary-y' then
+    series.YAxis := alPrimary
+  else if s = 'secondary-y' then
+    series.YAxis := alSecondary;
 
   xyCounter := 0;
   subnode := ANode.FirstChild;
@@ -2513,6 +2525,21 @@ begin
   end;
 end;
 
+{ Switches secondary axes to visible when there are series needing them. }
+procedure TsSpreadOpenDocChartWriter.CheckAxis(AChart: TsChart; Axis: TsChartAxis);
+var
+  i: Integer;
+begin
+  if Axis = AChart.Y2Axis then
+    for i := 0 to AChart.Series.Count - 1 do
+      if AChart.Series[i].YAxis = alSecondary then
+      begin
+        Axis.Visible := true;
+        break;
+      end;
+end;
+
+
 (* DO NOT DELETE THIS! MAYBE NEEDED LATER...
 
 { Extracts the cells needed by the given chart from the chart's worksheet and
@@ -3260,9 +3287,11 @@ begin
   WriteChartAxis(AChartStream, AStyleStream, AChartIndent+2, AStyleIndent, AChart.YAxis, AStyleID);
 
   // secondary x axis
+  CheckAxis(AChart, AChart.X2Axis);
   WriteChartAxis(AChartStream, AStyleStream, AChartIndent+2, AStyleIndent, AChart.X2Axis, AStyleID);
 
   // secondary y axis
+  CheckAxis(AChart, AChart.Y2Axis);
   WriteChartAxis(AChartStream, AStyleStream, AChartIndent+2, AStyleIndent, AChart.Y2Axis, AStyleID);
 
   // series
@@ -3288,6 +3317,7 @@ var
   fillColorRange: String = '';
   lineColorRange: String = '';
   chartClass: String = '';
+  seriesYAxis: String = '';
   regressionEquation: String = '';
   needRegressionStyle: Boolean = false;
   needRegressionEquationStyle: Boolean = false;
@@ -3360,6 +3390,13 @@ begin
       rfAllRel, false
     );
 
+  // Axis of the series
+  if AChart.Y2Axis.Visible then
+    case series.YAxis of
+      alPrimary  : seriesYAxis := 'chart:attached-axis="primary-y" ';
+      alSecondary: seriesYAxis := 'chart:attached-axis="secondary-y" ';
+    end;
+
   // And this is the title of the series for the legend
   titleAddr := GetSheetCellRangeString_ODS(
     series.TitleAddr.GetSheetName, series.TitleAddr.GetSheetName,
@@ -3383,6 +3420,7 @@ begin
   AppendToStream(AChartStream, Format(
     indent + '<chart:series chart:style-name="ch%d" ' +
                'chart:class="chart:%s" ' +                    // series type
+               seriesYAxis +                                  // attached y axis
                'chart:values-cell-range-address="%s" ' +      // y values
                'chart:label-cell-address="%s">' + LE,         // series title
     [ AStyleID, chartClass, valuesRange, titleAddr, chartClass ]

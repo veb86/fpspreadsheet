@@ -1097,6 +1097,14 @@ begin
     Result.Title := src.Title;
   end;
 
+  // Assign series to axis for primary and secondary y axes support
+  case ASeries.YAxis of
+    alPrimary:
+      Result.AxisIndexY := FChart.AxisList.GetAxisByAlign(calLeft).Index;
+    alSecondary:
+      Result.AxisIndexY := FChart.AxisList.GetAxisByAlign(calRight).Index;
+  end;
+
   if stackable then
   begin
     style := TChartStyle(FChartStyles.Styles.Add);
@@ -1199,14 +1207,16 @@ begin
   // Clear the axes
   for i := FChart.AxisList.Count-1 downto 0 do
   begin
+    if FChart.AxisList[i].Minors <> nil then
+      for j := FChart.AxisList[i].Minors.Count-1 downto 0 do
+        FChart.AxisList[i].Minors.Delete(j);
+
     case FChart.AxisList[i].Alignment of
       calLeft, calBottom:
         FChart.AxisList[i].Title.Caption := '';
       calTop, calRight:
         FChart.AxisList.Delete(i);
     end;
-    for j := FChart.AxisList[i].Minors.Count-1 downto 0 do
-      FChart.AxisList[i].Minors.Delete(j);
   end;
 
   // Clear the title
@@ -1413,8 +1423,30 @@ begin
 end;
 
 function TsWorkbookChartLink.IsStackable(ASeries: TsChartSeries): Boolean;
+var
+  nextSeries: TsChartSeries;
+  firstSeries: TsChartSeries;
+  i, numSeries: Integer;
 begin
   Result := (ASeries.ChartType in [ctBar, ctLine, ctArea]);
+  if Result then
+  begin
+    numSeries := ASeries.Chart.Series.Count;
+    firstSeries := ASeries.Chart.Series[0];
+    nextSeries := nil;
+    for i := 0 to numSeries - 1 do
+      if (ASeries.Chart.Series[i] = ASeries) then
+      begin
+        if i < numSeries - 1 then
+          nextSeries := ASeries.Chart.Series[i+1];
+        exit;
+      end;
+    Result := (firstSeries.YAxis = ASeries.YAxis) and
+    (
+      ((nextSeries <> nil) and (nextSeries.YAxis = ASeries.YAxis)) or
+      ((nextSeries = nil) and (firstSeries = ASeries))
+    );
+  end;
 end;
 
 procedure TsWorkbookChartLink.ListenerNotification(AChangedItems: TsNotificationItems;
