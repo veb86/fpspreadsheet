@@ -99,6 +99,9 @@ object Form1: TForm1
         '../../../other/chart/pie.ods'
         '../../../other/chart/radar.ods'
         '../../../other/chart/regression.ods'
+        '../../../other/chart/scatter.ods'
+        '../../../other/chart/scatter_log.ods'
+        '../../../other/chart/scatter_loglog.ods'
       )
       TabOrder = 0
       TextHint = 'Enter or select file name'
