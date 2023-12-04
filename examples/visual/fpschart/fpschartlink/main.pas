@@ -111,5 +111,6 @@ begin
   sChartLink.WorkbookSource := sWorkbookSource1;
   sChartLink.WorkbookChartIndex := 0;
 end;
+
 end.
 

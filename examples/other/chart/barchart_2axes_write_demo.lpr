@@ -57,7 +57,6 @@ begin
     ser.SetYRange(3, 1, 8, 1);
     ser.Fill.Style := cfsSolid;
     ser.Fill.Color := $0075ea; //597bff;
-    ser.Fill.Color := scRed;
     ser.Line.Style := clsNoLine;
 
     // Add 2nd bar series ("Volume")

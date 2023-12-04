@@ -2356,21 +2356,6 @@ begin
   );
 end;
 
-
-{ <style:style style:name="ch1400" style:family="chart" style:data-style-name="N0">
-    <style:chart-properties
-      chart:symbol-type="named-symbol"
-      chart:symbol-name="arrow-down"
-      chart:symbol-width="0.25cm"
-      chart:symbol-height="0.25cm"
-      chart:link-data-style-to-source="true"/>
-    <style:graphic-properties
-      svg:stroke-width="0.08cm"
-      svg:stroke-color="#ffd320"
-      draw:fill-color="#ffd320"
-      dr3d:edge-rounding="5%"/>
-    <style:text-properties fo:font-size="10pt" style:font-size-asian="10pt" style:font-size-complex="10pt"/>
-  </style:style> }
 function TsSpreadOpenDocChartWriter.GetChartSeriesStyleAsXML(AChart: TsChart;
   ASeriesIndex, AIndent, AStyleID: Integer): String;
 var

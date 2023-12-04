@@ -24,8 +24,8 @@ uses
   // TAChart
   TATypes, TATextElements, TAChartUtils, TADrawUtils, TALegend,
   TACustomSource, TASources, TACustomSeries, TASeries, TARadialSeries,
-  TAFitUtils, TAFuncSeries, TAMultiSeries,
-  TAChartAxisUtils, TAChartAxis, TAStyles, TAGraph,
+  TAFitUtils, TAFuncSeries, TAMultiSeries, TATransformations,
+  TAChartAxisUtils, TAChartAxis, TAStyles, TATools, TAGraph,
   // FPSpreadsheet
   fpsTypes, fpSpreadsheet, fpsUtils, fpsChart,
   // FPSpreadsheet Visual
@@ -126,12 +126,14 @@ type
 
     function ActiveChartSeries(ASeries: TsChartSeries): TChartSeries;
     procedure AddSeries(ASeries: TsChartSeries);
-    procedure FixAreaSeries(AWorkbookChart: TsChart);
+    procedure FixAreaSeries({%H-}AWorkbookChart: TsChart);
+    procedure FixBarSeries(AWorkbookChart: TsChart);
     procedure ClearChart;
     procedure ConstructHatchPattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructHatchPatternSolid(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     function GetWorkbookChart: TsChart;
+    function IsSecondaryAxis(Axis: TsChartAxis): boolean;
     function IsStackable(ASeries: TsChartSeries): Boolean;
 
     procedure UpdateChartAxis(AWorkbookAxis: TsChartAxis);
@@ -142,7 +144,7 @@ type
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookChart: TsChart; AWorkbookLine: TsChartLine; APen: TPen);
     procedure UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
-    procedure UpdateChartStyle(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries; AStyleIndex: Integer);
+    procedure UpdateChartStyle(AWorkbookSeries: TsChartSeries; AStyleIndex: Integer);
     procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
 
     procedure UpdateAreaSeries(AWorkbookSeries: TsAreaSeries; AChartSeries: TAreaSeries);
@@ -1129,7 +1131,7 @@ begin
   UpdateChartSeriesMarks(ASeries, ser);
   if IsStackable(ASeries) then
   begin
-    UpdateChartStyle(ASeries, ser, FChartStyles.Styles.Count-1);
+    UpdateChartStyle(ASeries, FChartStyles.Styles.Count-1);
     if ASeries.Chart.StackMode = csmStackedPercentage then
       FChart.LeftAxis.Marks.Format := Convert_NumFormatStr_to_FormatStr(axis.LabelFormatPercent)
     else
@@ -1207,6 +1209,9 @@ begin
   // Clear the axes
   for i := FChart.AxisList.Count-1 downto 0 do
   begin
+    if FChart.AxisList[i].Transformations <> nil then
+      FChart.AxisList[i].Transformations.Free;
+
     if FChart.AxisList[i].Minors <> nil then
       for j := FChart.AxisList[i].Minors.Count-1 downto 0 do
         FChart.AxisList[i].Minors.Delete(j);
@@ -1389,14 +1394,18 @@ begin
   end;
 end;
  }
-// Fix area series zero level not being clipped at chart's plotrect.
+
+{@@ ----------------------------------------------------------------------------
+  Adjusts the area series zero level which, otherwise, is not clipped at the
+  chart's plotrect (in TAChart before v3.99)
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.FixAreaSeries(AWorkbookChart: TsChart);
+{$IF LCL_FullVersion < 3990000}
 var
   i: Integer;
   ser: TAreaSeries;
   ext: TDoubleRect;
 begin
-  {$IF LCL_FullVersion < 3990000}
   if AWorkbookChart.GetChartType <> ctArea then
     exit;
 
@@ -1411,7 +1420,43 @@ begin
         ser.ZeroLevel := ext.b.y;
       ser.UseZeroLevel := true;
     end;
-  {$ENDIF}
+end;
+{$ELSE}
+begin
+  //
+end;
+{$ENDIF}
+
+{@@ ----------------------------------------------------------------------------
+  Adjusts bar widths and offsets for side-by-side bar charts.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartLink.FixBarSeries(AWorkbookChart: TsChart);
+const
+  TOTAL_BARWIDTH = 75;
+var
+  i, n: Integer;
+  wBar: Integer;
+  offs: Integer;
+  ser: TBarSeries;
+begin
+  if AWorkbookChart.GetChartType <> ctBar then
+    exit;
+
+  // Count number of bar series
+  n := 0;
+  for i := 0 to FChart.SeriesCount - 1 do
+    if FChart.Series[i] is TBarSeries then inc(n);
+
+  // Calc bar width and adjust offset of each series within group
+  wBar := TOTAL_BARWIDTH div n;
+  offs := (wBar - TOTAL_BARWIDTH) div 2;
+  for i := 0 to FChart.SeriesCount - 1 do
+    if FChart.Series[i] is TBarSeries then
+    begin
+      ser := TBarSeries(FChart.Series[i]);
+      ser.BarWidthPercent := wBar;
+      ser.BarOffsetPercent := offs + wBar * i;
+    end;
 end;
 
 function TsWorkbookChartLink.GetWorkbookChart: TsChart;
@@ -1422,30 +1467,37 @@ begin
     Result := nil;
 end;
 
+function TsWorkbookChartLink.IsSecondaryAxis(Axis: TsChartAxis): Boolean;
+begin
+  Result := (Axis = Axis.Chart.Y2Axis) or (Axis = Axis.Chart.X2Axis);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Bar, line and area series can be stacked if they are assigned to the same axis.
+-------------------------------------------------------------------------------}
 function TsWorkbookChartLink.IsStackable(ASeries: TsChartSeries): Boolean;
 var
-  nextSeries: TsChartSeries;
-  firstSeries: TsChartSeries;
+  ch: TsChart;
   i, numSeries: Integer;
 begin
   Result := (ASeries.ChartType in [ctBar, ctLine, ctArea]);
   if Result then
   begin
-    numSeries := ASeries.Chart.Series.Count;
-    firstSeries := ASeries.Chart.Series[0];
-    nextSeries := nil;
+    ch := ASeries.Chart;
+    numSeries := ch.Series.Count;
+    if numSeries = 1 then
+      exit;
+
+    // Check whether all series are the same type and same y axis as ASeries.
+    // NOTE: Not perfect yet since there might abe two stackable groups,
+    //       one for the left and one for the right axis...
     for i := 0 to numSeries - 1 do
-      if (ASeries.Chart.Series[i] = ASeries) then
+      if (ch.Series[i].ChartType <> ASeries.ChartType) or
+         (ch.Series[i].YAxis <> ASeries.YAxis) then
       begin
-        if i < numSeries - 1 then
-          nextSeries := ASeries.Chart.Series[i+1];
+        Result := false;
         exit;
       end;
-    Result := (firstSeries.YAxis = ASeries.YAxis) and
-    (
-      ((nextSeries <> nil) and (nextSeries.YAxis = ASeries.YAxis)) or
-      ((nextSeries = nil) and (firstSeries = ASeries))
-    );
   end;
 end;
 
@@ -1579,6 +1631,7 @@ begin
   FChart.Prepare;
   UpdateChartAxisLabels(ch);
   FixAreaSeries(ch);
+  FixBarSeries(ch);
 end;
 
 procedure TsWorkbookChartLink.UpdateChartAxis(AWorkbookAxis: TsChartAxis);
@@ -1586,9 +1639,12 @@ var
   align: TChartAxisAlignment;
   axis: TChartAxis;
   minorAxis: TChartMinorAxis;
+  T: TAxisTransform;
+  logTransf: TLogarithmAxisTransform;
 begin
   if AWorkbookAxis = nil then
     exit;
+
   if AWorkbookAxis = AWorkbookAxis.Chart.XAxis then
     align := calBottom
   else if AWorkbookAxis = AWorkbookAxis.Chart.X2Axis then
@@ -1617,6 +1673,7 @@ begin
   axis.Title.Caption := AWorkbookAxis.Title.Caption;
   axis.Title.Visible := true;
   Convert_sFont_to_Font(AWorkbookAxis.Title.Font, axis.Title.LabelFont);
+  axis.Title.LabelFont.Orientation := round(AWorkbookAxis.Title.RotationAngle * 10);
 
   // Labels
   Convert_sFont_to_Font(AWorkbookAxis.LabelFont, axis.Marks.LabelFont);
@@ -1628,7 +1685,7 @@ begin
 
   // Major axis grid
   UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MajorGridLines, axis.Grid);
-  axis.Grid.Visible := axis.Grid.Style <> psClear;
+  axis.Grid.Visible := (axis.Grid.Style <> psClear) and not IsSecondaryAxis(AWorkbookAxis);
   axis.TickLength := IfThen(catOutside in AWorkbookAxis.MajorTicks, 4, 0);
   axis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MajorTicks, 4, 0);
   axis.TickColor := axis.AxisPen.Color;
@@ -1639,7 +1696,7 @@ begin
   begin
     minorAxis := axis.Minors.Add;
     UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MinorGridLines, minorAxis.Grid);
-    minorAxis.Grid.Visible := true;
+    minorAxis.Grid.Visible := not IsSecondaryAxis(AWorkbookAxis);
     minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
     minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
     minorAxis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MinorTicks, 2, 0);
@@ -1650,14 +1707,44 @@ begin
   // Inverted?
   axis.Inverted := AWorkbookAxis.Inverted;
 
-  // Logarithmic?
-  // to do....
+  // Usually not needed, but axis handling is simplified when there is
+  // an axis transformation at each axis.
+  if axis.Transformations = nil then
+  begin
+    axis.Transformations := TChartAxisTransformations.Create(FChart);
+    // Autoscale transformation for primary and secondary axes
+    T := TAutoScaleAxisTransform.Create(axis.Transformations);
+    T.Transformations := axis.Transformations;
+    if AWorkbookAxis.Chart.GetChartType in [ctRadar, ctFilledRadar] then
+      T.Enabled := false;
+    // Logarithmic
+    T := TLogarithmAxisTransform.Create(axis.Transformations);
+    T.Transformations := axis.Transformations;
+    TLogarithmAxisTransform(T).Base := 10;
+    TLogarithmAxisTransform(T).Enabled := AWorkbookAxis.Logarithmic;
+  end;
 
   // Scaling
   axis.Range.UseMin := not AWorkbookAxis.AutomaticMin;
   axis.Range.UseMax := not AWorkbookAxis.AutomaticMax;
   axis.Range.Min := AWorkbookAxis.Min;
   axis.Range.Max := AWorkbookAxis.Max;
+
+  // Logarithmic
+  logTransf := TLogarithmAxisTransform(axis.Transformations.List[1]);
+  logTransf.Enabled := AWorkbookAxis.Logarithmic;
+  if AWorkbookAxis.Logarithmic then
+  begin
+//    axis.Intervals.Options := axis.Intervals.Options + [aipInteger];;
+    axis.Intervals.MaxLength := 150;
+    axis.Intervals.MinLength := 30;
+    axis.Intervals.Tolerance := 30;
+  end else
+  begin
+    axis.Intervals.MaxLength := 100;
+    axis.Intervals.MinLength := 20;
+    axis.Intervals.Tolerance := 0;
+  end;
 end;
 
 procedure TsWorkbookChartLink.UpdateChartAxisLabels(AWorkbookChart: TsChart);
@@ -1849,7 +1936,7 @@ begin
 end;
 
 procedure TsWorkbookChartLink.UpdateChartStyle(AWorkbookSeries: TsChartSeries;
-  AChartSeries: TChartSeries; AStyleIndex: Integer);
+  AStyleIndex: Integer);
 var
   style: TChartStyle;
 begin
