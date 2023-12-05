@@ -25,6 +25,8 @@ type
     FNumberFormatList: TStrings;
     FPieSeriesStartAngle: Integer;
     FStreamList: TFPObjectList;
+    FChartType: TsChartType;
+    FStockSeries: TsStockSeries;
     function FindStyleNode(AStyleNodes: TDOMNode; AStyleName: String): TDOMNode;
     function GetChartFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill): Boolean;
     function GetChartLineProps(ANode: TDOMNode; AChart: TsChart; ALine: TsChartLine): Boolean;
@@ -49,6 +51,8 @@ type
       ASeries: TsChartSeries; var AFill: TsChartFill; var ALine: TsChartLine);
     procedure ReadChartSeriesProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartSeriesStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
+    procedure ReadChartStockSeriesStyle(AStyleNode: TDOMNode; AChart: TsChart;
+      ASeries: TsStockSeries; ANodeName: String);
     procedure ReadChartTitleProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
     procedure ReadChartTitleStyle(AStyleNode: TDOMNode; AChart: TsChart; ATitle: TsChartText);
 
@@ -155,7 +159,7 @@ const
 
   CHART_TYPE_NAMES: array[TsChartType] of string = (
     '', 'bar', 'line', 'area', 'barLine', 'scatter', 'bubble',
-    'radar', 'filled-radar', 'circle', 'ring'
+    'radar', 'filled-radar', 'circle', 'ring', 'stock'
   );
 
   SYMBOL_NAMES: array[TsChartSeriesSymbol] of String = (
@@ -939,12 +943,41 @@ end;
 procedure TsSpreadOpenDocChartReader.ReadChartProps(AChartNode, AStyleNode: TDOMNode;
   AChart: TsChart);
 var
+  ct: TsChartType;
+  s: String;
   styleName: String;
   styleNode: TDOMNode;
 begin
+  s := GetAttrValue(AChartNode, 'chart:class');
+  if s <> '' then
+  begin
+    Delete(s, 1, Pos(':', s));  // remove "chart:"
+    for ct in TsChartType do
+      if CHART_TYPE_NAMES[ct] = s then
+      begin
+        FChartType := ct;
+        if FChartType = ctStock then
+        begin
+          FStockSeries := TsStockSeries.Create(AChart);
+          FStockSeries.Fill.Style := cfsSolid;
+          FStockSeries.Fill.Color := scWhite;
+          FStockSeries.Line.Style := clsSolid;
+          FStockSeries.Line.Color := scBlack;
+          FStockSeries.RangeLine.Style := clsSolid;
+          FStockSeries.RangeLine.Color := scBlack;
+          FStockSeries.CandleStickDownFill.Style := cfsSolid;
+          FStockSeries.CandleStickDownFill.Color := scBlack;
+          break;
+        end;
+      end;
+  end;
+
   styleName := GetAttrValue(AChartNode, 'chart:style-name');
-  styleNode := FindStyleNode(AStyleNode, styleName);
-  ReadChartBackgroundStyle(styleNode, AChart, AChart);
+  if styleName <> '' then
+  begin
+    styleNode := FindStyleNode(AStyleNode, styleName);
+    ReadChartBackgroundStyle(styleNode, AChart, AChart);
+  end;
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartPlotAreaProps(ANode, AStyleNode: TDOMNode;
@@ -979,6 +1012,17 @@ begin
         ReadChartBackgroundProps(ANode, AStyleNode, AChart, AChart.PlotArea);
       'chart:floor':
         ReadChartBackgroundProps(ANode, AStyleNode, AChart, AChart.Floor);
+      'chart:stock-gain-marker',
+      'chart:stock-loss-marker',
+      'chart:stock-range-line':
+        begin
+          styleName := GetAttrValue(ANode, 'chart:style-name');
+          if (styleName <> '') and (FStockSeries <> nil) then
+          begin
+            styleNode := FindStyleNode(AStyleNode, styleName);
+            ReadChartStockSeriesStyle(styleNode, AChart, FStockSeries, nodeName);
+          end;
+        end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -1004,6 +1048,9 @@ begin
           s := GetAttrValue(AStyleNode, 'chart:angle-offset');
           if s <> '' then
             FPieSeriesStartAngle := StrToInt(s);
+          s := GetAttrValue(AStyleNode, 'chart:japanese-candle-stick');
+          if (s <> '') and (FStockSeries <> nil) then
+            FStockSeries.CandleStick := true;
         end;
     end;
     AStyleNode := AStyleNode.NextSibling;
@@ -1252,20 +1299,38 @@ var
   n: Integer;
 begin
   s := GetAttrValue(ANode, 'chart:class');
-  case s of
-    'chart:area': series := TsAreaSeries.Create(AChart);
-    'chart:bar': series := TsBarSeries.Create(AChart);
-    'chart:bubble': series := TsBubbleSeries.Create(AChart);
-    'chart:circle': series := TsPieSeries.Create(AChart);
-    'chart:filled-radar': series := TsRadarSeries.Create(AChart);
-    'chart:line': series := TsLineSeries.Create(AChart);
-    'chart:radar': series := TsRadarSeries.Create(AChart);
-    'chart:ring': series := TsRingSeries.Create(AChart);
-    'chart:scatter': series := TsScatterSeries.Create(AChart);
-    else raise Exception.Create('Unknown/unsupported series type.');
-  end;
+  if (FChartType = ctStock) then
+    series := FStockSeries
+  else
+    case s of
+      'chart:area': series := TsAreaSeries.Create(AChart);
+      'chart:bar': series := TsBarSeries.Create(AChart);
+      'chart:bubble': series := TsBubbleSeries.Create(AChart);
+      'chart:circle': series := TsPieSeries.Create(AChart);
+      'chart:filled-radar': series := TsRadarSeries.Create(AChart);
+      'chart:line': series := TsLineSeries.Create(AChart);
+      'chart:radar': series := TsRadarSeries.Create(AChart);
+      'chart:ring': series := TsRingSeries.Create(AChart);
+      'chart:scatter': series := TsScatterSeries.Create(AChart);
+      else raise Exception.Create('Unknown/unsupported series type.');
+    end;
 
   ReadChartCellAddr(ANode, 'chart:label-cell-address', series.TitleAddr);
+  if (series is TsStockSeries) then
+  begin
+    if FStockSeries.OpenRange.IsEmpty and FStockSeries.CandleStick then
+      ReadChartCellRange(ANode, 'chart:values-cell-range-address', FStockSeries.OpenRange)
+    else
+    if FStockSeries.HighRange.IsEmpty then
+      ReadChartCellRange(ANode, 'chart:values-cell-range-address', FStockSeries.HighRange)
+    else
+    if FStockSeries.LowRange.IsEmpty then
+      ReadChartCellRange(ANode, 'chart:values-cell-range-address', FStockSeries.LowRange)
+    else
+    if FStockSeries.CloseRange.IsEmpty then
+      ReadChartCellRange(ANode, 'chart:values-cell-range-address', FStockSeries.CloseRange);
+  end
+  else
   if (series is TsBubbleSeries) then
     ReadChartCellRange(ANode, 'chart:values-cell-range-address', TsBubbleSeries(series).BubbleRange)
   else
@@ -1333,8 +1398,11 @@ begin
   if series.LabelRange.IsEmpty then series.LabelRange.Assign(AChart.XAxis.CategoryRange);
 
   s := GetAttrValue(ANode, 'chart:style-name');
-  styleNode := FindStyleNode(AStyleNode, s);
-  ReadChartSeriesStyle(styleNode, AChart, series);
+  if s <> '' then
+  begin
+    styleNode := FindStyleNode(AStyleNode, s);
+    ReadChartSeriesStyle(styleNode, AChart, series);
+  end;
 
   if (series is TsPieSeries) and (FPieSeriesStartAngle <> 999) then
     TsPieSeries(series).StartAngle := FPieSeriesStartAngle;
@@ -1468,6 +1536,34 @@ begin
 
     end;
     AStyleNode := AStyleNode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartStockSeriesStyle(AStyleNode: TDOMNode;
+  AChart: TsChart; ASeries: TsStockSeries; ANodeName: String);
+var
+  nodeName: String;
+begin
+  nodeName := AStyleNode.NodeName;
+  if nodeName = 'style:style' then
+  begin
+    AStyleNode := AStyleNode.Firstchild;
+    while AStyleNode <> nil do
+    begin
+      nodeName := AStyleNode.NodeName;
+      if nodeName = 'style:graphic-properties' then
+      begin
+        if ANodeName = 'chart:stock-gain-marker' then
+          GetChartFillProps(AStyleNode, AChart, ASeries.Fill)
+        else
+        if ANodeName = 'chart:stock-loss-marker' then
+          GetChartFillProps(AStyleNode, AChart, ASeries.CandleStickDownFill)
+        else
+        if ANodeName = 'chart:stock-range-line' then
+          GetChartLineProps(AStyleNode, AChart, ASeries.RangeLine);
+      end;
+      AStyleNode := AStyleNode.NextSibling;
+    end;
   end;
 end;
 

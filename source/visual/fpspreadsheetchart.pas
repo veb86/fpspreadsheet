@@ -77,10 +77,11 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    function RangeIsEmpty(ARange: TsCellRange): Boolean;
     procedure Reset;
     procedure SetColorRange(ARange: TsChartRange);
     procedure SetLabelRange(ARange: TsChartRange);
-    procedure SetXRange(XIndex: Integer;ARange: TsChartRange);
+    procedure SetXRange(XIndex: Integer; ARange: TsChartRange);
     procedure SetYRange(YIndex: Integer; ARange: TsChartRange);
     procedure SetTitleAddr(Addr: TsChartCellAddr);
     procedure UseDataPointColors(ASeries: TsChartSeries);
@@ -155,6 +156,7 @@ type
     procedure UpdateBarSeries(AWorkbookSeries: TsBarSeries; AChartSeries: TBarSeries);
     procedure UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries; AChartSeries: TBubbleSeries);
     procedure UpdateCustomLineSeries(AWorkbookSeries: TsCustomLineSeries; AChartSeries: TLineSeries);
+    procedure UpdateOHLCSeries(AWorkbookSeries: TsStockSeries; AChartSeries: TOpenHighLowCloseSeries);
     procedure UpdatePieSeries(AWorkbookSeries: TsPieSeries; AChartSeries: TPieSeries);
     procedure UpdatePolarSeries(AWorkbookSeries: TsRadarSeries; AChartSeries: TPolarSeries);
     procedure UpdateScatterSeries(AWorkbookSeries: TsScatterSeries; AChartSeries: TLineSeries);
@@ -561,9 +563,9 @@ begin
   ANumber := NaN;
   AText := '';
 
-  if FRanges[ARangeIndex, AListIndex] = nil then
+  if (FRanges[ARangeIndex, AListIndex] = nil) then
     exit;
-  if FWorksheets[ARangeIndex] = nil then
+  if (FWorksheets[ARangeIndex] = nil) or (FWorksheets[ARangeIndex, AListIndex] = nil) then
     exit;
 
   cell := nil;
@@ -571,6 +573,9 @@ begin
 
   for range in FRanges[ARangeIndex, AListIndex] do
   begin
+    if RangeIsEmpty(range) then
+      Continue;
+
     if (range.Col1 = range.Col2) then  // vertical range
     begin
       len := range.Row2 - range.Row1 + 1;
@@ -801,6 +806,16 @@ begin
   end;
   // Make sure to include worksheet name in RangeString.
   FRangeStr[AIndex] := BuildRangeStr(AIndex);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns true when the specified cell range is empty
+-------------------------------------------------------------------------------}
+function TsWorkbookChartSource.RangeIsEmpty(ARange: TsCellRange): Boolean;
+begin
+  Result :=
+    (ARange.Row1 = UNASSIGNED_ROW_COL_INDEX) and (ARange.Col1 = UNASSIGNED_ROW_COL_INDEX) and
+    (ARange.Row2 = UNASSIGNED_ROW_COL_INDEX) and (ARange.Col2 = UNASSIGNED_ROW_COL_INDEX);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1080,14 +1095,27 @@ begin
         end;
       ctPie:
         Result := TPieSeries.Create(FChart);
+      ctStock:
+        begin
+          Result := TOpenHighLowCloseSeries.Create(FChart);
+          src.YCount := 4;
+          src.SetYRange(0, TsStockSeries(ASeries).LowRange);   // 0=Low
+          src.SetYRange(1, TsStockSeries(ASeries).OpenRange);  // 1=Open
+          src.SetYRange(2, TsStockSeries(ASeries).CloseRange); // 2=Close (= Y)
+          src.SetYRange(3, TsStockSeries(ASeries).HighRange);  // 3=High
+        end;
       else
         exit(nil);
     end;
 
-    if not ASeries.LabelRange.IsEmpty then src.SetLabelRange(ASeries.LabelRange);
-    if not ASeries.XRange.IsEmpty then src.SetXRange(0, ASeries.XRange);
-    if not ASeries.YRange.IsEmpty then src.SetYRange(0, ASeries.YRange);
-    if not ASeries.FillColorRange.IsEmpty then src.SetColorRange(ASeries.FillColorRange);
+    if not ASeries.LabelRange.IsEmpty then
+      src.SetLabelRange(ASeries.LabelRange);
+    if not ASeries.XRange.IsEmpty then
+      src.SetXRange(0, ASeries.XRange);
+    if not ASeries.YRange.IsEmpty and not (Result is TOpenHighLowCloseSeries) then
+      src.SetYRange(0, ASeries.YRange);
+    if not ASeries.FillColorRange.IsEmpty then
+      src.SetColorRange(ASeries.FillColorRange);
     src.SetTitleAddr(ASeries.TitleAddr);
 
     // Copy individual data point colors to the chart series.
@@ -1162,6 +1190,8 @@ begin
       UpdateCustomLineSeries(TsLineSeries(ASeries), TLineSeries(ser));
     ctScatter:
       UpdateScatterSeries(TsScatterSeries(ASeries), TLineSeries(ser));
+    ctStock:
+      UpdateOHLCSeries(TsStockSeries(ASeries), TOpenHighLowCloseSeries(ser));
     ctPie, ctRing:
       UpdatePieSeries(TsPieSeries(ASeries), TPieSeries(ser));
     ctRadar, ctFilledRadar:
@@ -2048,6 +2078,22 @@ begin
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
+end;
+
+procedure TsWorkbookChartLink.UpdateOHLCSeries(AWorkbookSeries: TsStockSeries;
+  AChartSeries: TOpenHighLowCloseSeries);
+begin
+  if AWorkbookSeries.CandleStick then
+  begin
+    AChartSeries.Mode := mCandleStick;
+    UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.CandleStickUpBrush);
+    UpdateChartBrush(AWorkbookseries.Chart, AWorkbookseries.CandleStickDownFill, AChartSeries.CandleStickDownBrush);
+  end else
+  begin
+    AChartSeries.Mode := mOHLC;
+  end;
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.LinePen);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.DownLinePen);
 end;
 
 procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;

@@ -232,7 +232,7 @@ type
   TsChartAxisTick = (catInside, catOutside);
   TsChartAxisTicks = set of TsChartAxisTick;
   TsChartType = (ctEmpty, ctBar, ctLine, ctArea, ctBarLine, ctScatter, ctBubble,
-    ctRadar, ctFilledRadar, ctPie, ctRing);
+    ctRadar, ctFilledRadar, ctPie, ctRing, ctStock);
 
   TsChartAxis = class(TsChartFillElement)
   private
@@ -536,6 +536,30 @@ type
     procedure SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetBubbleRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     property BubbleRange: TsChartRange read FBubbleRange;
+  end;
+
+  TsStockSeries = class(TsCustomScatterSeries)
+  private
+    FCandleStick: Boolean;
+    FOpenRange: TsChartRange;
+    FHighRange: TsChartRange;
+    FLowRange: TsChartRange;  // close = normal y range
+    FCandleStickDownFill: TsChartFill;
+    FRangeLine: TsChartLine;
+  public
+    constructor Create(AChart: TsChart); override;
+    destructor Destroy; override;
+    procedure SetOpenRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    procedure SetHighRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    procedure SetLowRange (ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    procedure SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    property CandleStick: Boolean read FCandleStick write FCandleStick;
+    property CandleStickDownFill: TsChartfill read FCandleStickDownFill write FCandleStickDownFill;
+    property RangeLine: TsChartLine read FRangeLine write FRangeLine;
+    property OpenRange: TsChartRange read FOpenRange;
+    property HighRange: TsChartRange read FHighRange;
+    property LowRange: TsChartRange read FLowRange;
+    property CloseRange: TsChartRange read FYRange;
   end;
 
   TsChartSeriesList = class(TFPObjectList)
@@ -1602,7 +1626,6 @@ begin
   FFill := Value;
 end;
 
-
 { TsPieSeries }
 constructor TsPieSeries.Create(AChart: TsChart);
 begin
@@ -1729,6 +1752,81 @@ begin
   FRegression.Free;
   inherited;
 end;
+
+
+{ TsStockSeries }
+
+constructor TsStockSeries.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FChartType := ctStock;
+  FOpenRange := TsChartRange.Create(AChart);
+  FHighRange := TsChartRange.Create(AChart);
+  FLowRange := TsChartRange.Create(AChart);
+
+  // FFill is CandleStickUp
+  FCandleStickDownFill := TsChartFill.Create;
+  FCandleStickDownFill.Style := cfsSolid;
+  FCandleStickDownFill.Color := scBlack;
+  FRangeLine := TsChartLine.Create;
+  FRangeLine.Style := clsSolid;
+  FRangeLine.Color := scBlack;
+end;
+
+destructor TsStockSeries.Destroy;
+begin
+  FRangeLine.Free;
+  FCandleStickDownFill.Free;
+  FOpenRange.Free;
+  FHighRange.Free;
+  FLowRange.Free;
+  inherited;
+end;
+
+procedure TsStockSeries.SetOpenRange(ASheet1: String; ARow1, ACol1: Cardinal;
+  ASheet2: String; ARow2, ACol2: Cardinal);
+ begin
+   if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
+     raise Exception.Create('Stock series values can only be located in a single column or row.');
+   FOpenRange.Sheet1 := ASheet1;
+   FOpenRange.Row1 := ARow1;
+   FOpenRange.Col1 := ACol1;
+   FOpenRange.Sheet2 := ASheet2;
+   FOpenRange.Row2 := ARow2;
+   FOpenRange.Col2 := ACol2;
+ end;
+
+procedure TsStockSeries.SetHighRange(ASheet1: String; ARow1, ACol1: Cardinal;
+  ASheet2: String; ARow2, ACol2: Cardinal);
+begin
+  if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
+    raise Exception.Create('Stock series values can only be located in a single column or row.');
+  FHighRange.Sheet1 := ASheet1;
+  FHighRange.Row1 := ARow1;
+  FHighRange.Col1 := ACol1;
+  FHighRange.Sheet2 := ASheet2;
+  FHighRange.Row2 := ARow2;
+  FHighRange.Col2 := ACol2;
+end;
+
+procedure TsStockSeries.SetLowRange(ASheet1: String; ARow1, ACol1: Cardinal;
+  ASheet2: String; ARow2, ACol2: Cardinal);
+ begin
+   if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
+     raise Exception.Create('Stock series values can only be located in a single column or row.');
+   FLowRange.Sheet1 := ASheet1;
+   FLowRange.Row1 := ARow1;
+   FLowRange.Col1 := ACol1;
+   FLowRange.Sheet2 := ASheet2;
+   FLowRange.Row2 := ARow2;
+   FLowRange.Col2 := ACol2;
+ end;
+
+procedure TsStockSeries.SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal;
+  ASheet2: String; ARow2, ACol2: Cardinal);
+ begin
+   SetYRange(ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2);
+ end;
 
 
 { TsChart }
