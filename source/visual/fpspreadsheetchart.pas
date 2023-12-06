@@ -27,7 +27,7 @@ uses
   TASeries, TARadialSeries, TAFitUtils, TAFuncSeries, TAMultiSeries,
   TATransformations, TAChartAxisUtils, TAChartAxis, TAStyles, TATools, TAGraph,
   // FPSpreadsheet
-  fpsTypes, fpSpreadsheet, fpsUtils, fpsChart,
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormat, fpsChart,
   // FPSpreadsheet Visual
   fpSpreadsheetCtrls, fpSpreadsheetGrid, fpsVisualUtils;
 
@@ -1141,7 +1141,7 @@ begin
     Result.Title := src.Title;
   end;
 
-  // Assign series to axis for primary and secondary axes support
+  // Assign series index to axis for primary and secondary axes support
   case ASeries.XAxis of
     alPrimary:
       Result.AxisIndexX := FChart.AxisList.GetAxisByAlign(calBottom).Index;
@@ -1785,6 +1785,9 @@ begin
   // Labels
   Convert_sFont_to_Font(AWorkbookAxis.LabelFont, axis.Marks.LabelFont);
   axis.Marks.LabelFont.Orientation := round(AWorkbookAxis.LabelRotation * 10);
+  if (AWorkbookAxis.LabelFormat <> '') and not IsDateTimeFormat(AWorkbookAxis.LabelFormat) then
+    axis.Marks.Format := Convert_NumFormatStr_to_FormatStr(AWorkbookAxis.LabelFormat);
+
 
   // Axis line
   UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.AxisLine, axis.AxisPen);
@@ -1839,9 +1842,34 @@ begin
     axis.Intervals.MinLength := 20;
     axis.Intervals.Tolerance := 0;
   end;
+end;
+
+procedure TsWorkbookChartLink.UpdateChartAxisLabels(AWorkbookChart: TsChart);
+var
+  axis: TChartAxis;
+begin
+  if FChart.SeriesCount = 0 then
+    exit;
+
+  axis := FChart.BottomAxis;
+  case AWorkbookChart.GetChartType of
+    ctScatter, ctBubble:
+      begin
+        axis.Marks.Source := nil;
+        axis.Marks.Style := smsValue;
+      end;
+    ctBar, ctLine, ctArea:
+      begin
+        axis.Marks.Source := TChartSeries(FChart.Series[0]).Source;
+        if not AWorkbookChart.Series[0].LabelRange.IsEmpty then
+          axis.Marks.Style := smsLabel
+        else
+          axis.Marks.Style := smsXValue;
+      end;
+  end;
 
   // Date/time?
-  if AWorkbookAxis.DateTime then
+  if AWorkbookChart.XAxis.DateTime then
   begin
     axis.Marks.Source := TDateTimeIntervalChartsource.Create(FChart);
     axis.Marks.Style := smsLabel;
@@ -1850,28 +1878,6 @@ begin
       Params.MaxLength := 120;
       SuppressPrevUnit := false;
     end;
-  end;
-end;
-
-procedure TsWorkbookChartLink.UpdateChartAxisLabels(AWorkbookChart: TsChart);
-begin
-  if FChart.SeriesCount = 0 then
-    exit;
-
-  case AWorkbookChart.GetChartType of
-    ctScatter, ctBubble:
-      begin
-        FChart.BottomAxis.Marks.Source := nil;
-        FChart.BottomAxis.Marks.Style := smsValue;
-      end;
-    ctBar, ctLine, ctArea:
-      begin
-        FChart.BottomAxis.Marks.Source := TChartSeries(FChart.Series[0]).Source;
-        if not AWorkbookChart.Series[0].LabelRange.IsEmpty then
-          FChart.BottomAxis.Marks.Style := smsLabel
-        else
-          FChart.BottomAxis.Marks.Style := smsXValue;
-      end;
   end;
 end;
 

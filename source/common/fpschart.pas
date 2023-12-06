@@ -247,6 +247,8 @@ type
     FInverted: Boolean;
     FLabelFont: TsFont;
     FLabelFormat: String;
+    FLabelFormatFromSource: Boolean;
+    FLabelFormatDateTime: String;
     FLabelFormatPercent: String;
     FLabelRotation: Integer;
     FLogarithmic: Boolean;
@@ -274,6 +276,8 @@ type
     property Inverted: Boolean read FInverted write FInverted;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;
+    property LabelFormatDateTime: String read FLabelFormatDateTime write FLabelFormatDateTime;
+    property LabelFormatFromSource: Boolean read FLabelFormatFromSource write FLabelFormatFromSource;
     property LabelFormatPercent: String read FLabelFormatPercent write FLabelFormatPercent;
     property LabelRotation: Integer read FLabelRotation write FLabelRotation;
     property Logarithmic: Boolean read FLogarithmic write FLogarithmic;
@@ -1190,6 +1194,8 @@ begin
   FLabelFont.Style := [];
   FLabelFont.Color := scBlack;
 
+  FLabelFormatFromSource := true;
+  FLabelFormatDateTime := '';
   FLabelFormatPercent := '0%';
   FLabelRotation := 0;
   FShowLabels := true;

@@ -64,8 +64,11 @@ end;
 
 procedure TForm1.ComboBox1CloseUp(Sender: TObject);
 begin
-  Combobox1.Text := Combobox1.Items[Combobox1.ItemIndex];
-  LoadFile(Combobox1.Text);
+  if ComboBox1.ItemIndex > -1 then
+  begin
+    Combobox1.Text := Combobox1.Items[Combobox1.ItemIndex];
+    LoadFile(Combobox1.Text);
+  end;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);

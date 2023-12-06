@@ -12,7 +12,8 @@ uses
   fpszipper,
  {$ENDIF}
   laz2_xmlread, laz2_DOM,
-  fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsReaderWriter, fpsXMLCommon;
+  fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsNumFormat,
+  fpsReaderWriter, fpsXMLCommon;
 
 type
 
@@ -693,9 +694,15 @@ var
   ticks: TsChartAxisTicks = [];
 begin
   nodeName := AStyleNode.NodeName;
+
   s := GetAttrValue(AStyleNode, 'style:data-style-name');
   if s <> '' then
     s := TsChartNumberFormatList(FNumberFormatList).FindFormatByName(s);
+  if IsDateTimeFormat(s) then
+  begin
+    Axis.DateTime := true;
+    Axis.LabelFormatDateTime := s;
+  end else
   if (AChart.StackMode = csmStackedPercentage) and ((Axis = AChart.YAxis) or (Axis = AChart.Y2Axis)) then
     Axis.LabelFormatPercent := s
   else
