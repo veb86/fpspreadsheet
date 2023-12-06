@@ -53,6 +53,7 @@ type
     FTitleCol, FTitleRow: Cardinal;
     FTitleSheetName: String;
     FCyclicX: Boolean;
+    FIntegerX: Boolean;
     FDataPointColors: array of TsColor;
     function GetRange(AIndex: TsXYLRange): String;
     function GetTitle: String;
@@ -95,6 +96,7 @@ type
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
     property ColorRange: String index rngColor read GetRange write SetRange;
     property CyclicX: Boolean read FCyclicX write FCyclicX default false;
+    property IntegerX: Boolean read FIntegerX write FIntegerX default false;
     property LabelRange: String index rngLabel read GetRange write SetRange;
     property XRange: String index rngX read GetRange write SetRange;
     property YRange: String index rngY read GetRange write SetRange;
@@ -469,7 +471,8 @@ begin
     if FRanges[rngX, i] <> nil then
     begin
       GetXYItem(rngX, i, AIndex, value, tmpLabel);
-      FCurItem.SetX(i, value);
+      if FIntegerX then
+        value := trunc(value);
     end else
     if FCyclicX then
       value := AIndex / FPointsNumber * TWO_PI
@@ -1099,6 +1102,8 @@ begin
         begin
           Result := TOpenHighLowCloseSeries.Create(FChart);
           src.YCount := 4;
+          src.IntegerX := true;
+          src.SetXRange(0, ASeries.Chart.XAxis.CategoryRange);
           src.SetYRange(0, TsStockSeries(ASeries).LowRange);   // 0=Low
           src.SetYRange(1, TsStockSeries(ASeries).OpenRange);  // 1=Open
           src.SetYRange(2, TsStockSeries(ASeries).CloseRange); // 2=Close (= Y)
@@ -1108,12 +1113,17 @@ begin
         exit(nil);
     end;
 
+    // Get x and y ranges (except for OHLC which already has been handled)
+    if not (Result is TOpenHighLowCloseSeries) then
+    begin
+      if not ASeries.XRange.IsEmpty then
+        src.SetXRange(0, ASeries.XRange);
+      if not ASeries.YRange.IsEmpty then
+        src.SetYRange(0, ASeries.YRange);
+    end;
+
     if not ASeries.LabelRange.IsEmpty then
       src.SetLabelRange(ASeries.LabelRange);
-    if not ASeries.XRange.IsEmpty then
-      src.SetXRange(0, ASeries.XRange);
-    if not ASeries.YRange.IsEmpty and not (Result is TOpenHighLowCloseSeries) then
-      src.SetYRange(0, ASeries.YRange);
     if not ASeries.FillColorRange.IsEmpty then
       src.SetColorRange(ASeries.FillColorRange);
     src.SetTitleAddr(ASeries.TitleAddr);
