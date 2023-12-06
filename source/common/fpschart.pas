@@ -260,6 +260,7 @@ type
     FTitle: TsChartText;
     FPositionValue: Double;
     FShowLabels: Boolean;
+    FDateTime: Boolean;
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
@@ -269,6 +270,7 @@ type
     property AutomaticMinorSteps: Boolean read FAutomaticMinorSteps write FAutomaticMinorSteps;
     property AxisLine: TsChartLine read FAxisLine write FAxisLine;
     property CategoryRange: TsChartRange read FCategoryRange write FCategoryRange;
+    property DateTime: Boolean read FDateTime write FDateTime;
     property Inverted: Boolean read FInverted write FInverted;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;

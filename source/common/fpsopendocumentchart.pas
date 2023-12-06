@@ -676,6 +676,8 @@ begin
         ReadChartCellRange(subNode, 'table:cell-range-address', axis.CategoryRange);
       'chart:grid':
         ReadChartAxisGrid(subNode, AStyleNode, AChart, axis);
+      'chartooo:date-scale':
+        axis.DateTime := true;
     end;
     subNode := subNode.NextSibling;
   end;

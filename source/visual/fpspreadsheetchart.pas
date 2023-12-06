@@ -23,9 +23,9 @@ uses
   LCLVersion, Forms, Controls, Graphics, GraphUtil, Dialogs,
   // TAChart
   TATypes, TATextElements, TAChartUtils, TADrawUtils, TALegend,
-  TACustomSource, TASources, TACustomSeries, TASeries, TARadialSeries,
-  TAFitUtils, TAFuncSeries, TAMultiSeries, TATransformations,
-  TAChartAxisUtils, TAChartAxis, TAStyles, TATools, TAGraph,
+  TACustomSource, TASources, TACustomSeries, TAIntervalSources,
+  TASeries, TARadialSeries, TAFitUtils, TAFuncSeries, TAMultiSeries,
+  TATransformations, TAChartAxisUtils, TAChartAxis, TAStyles, TATools, TAGraph,
   // FPSpreadsheet
   fpsTypes, fpSpreadsheet, fpsUtils, fpsChart,
   // FPSpreadsheet Visual
@@ -1266,6 +1266,12 @@ begin
       for j := FChart.AxisList[i].Minors.Count-1 downto 0 do
         FChart.AxisList[i].Minors.Delete(j);
 
+    if (FChart.AxisList[i].Marks.Source is TDateTimeIntervalChartSource) then
+    begin
+      FChart.AxisList[i].Marks.Source.Free;
+      FChart.AxisList[i].Marks.Style := smsValue;
+    end;
+
     case FChart.AxisList[i].Alignment of
       calLeft, calBottom:
         FChart.AxisList[i].Title.Caption := '';
@@ -1832,6 +1838,18 @@ begin
     axis.Intervals.MaxLength := 100;
     axis.Intervals.MinLength := 20;
     axis.Intervals.Tolerance := 0;
+  end;
+
+  // Date/time?
+  if AWorkbookAxis.DateTime then
+  begin
+    axis.Marks.Source := TDateTimeIntervalChartsource.Create(FChart);
+    axis.Marks.Style := smsLabel;
+    with TDateTimeIntervalChartSource(axis.Marks.Source) do
+    begin
+      Params.MaxLength := 120;
+      SuppressPrevUnit := false;
+    end;
   end;
 end;
 
