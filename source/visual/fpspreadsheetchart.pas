@@ -27,7 +27,7 @@ uses
   TASeries, TARadialSeries, TAFitUtils, TAFuncSeries, TAMultiSeries,
   TATransformations, TAChartAxisUtils, TAChartAxis, TAStyles, TATools, TAGraph,
   // FPSpreadsheet
-  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormat, fpsChart,
+  fpsTypes, fpSpreadsheet, fpsUtils, fpsNumFormat, fpsChart, fpsStockSeries,
   // FPSpreadsheet Visual
   fpSpreadsheetCtrls, fpSpreadsheetGrid, fpsVisualUtils;
 
@@ -158,10 +158,10 @@ type
     procedure UpdateBarSeries(AWorkbookSeries: TsBarSeries; AChartSeries: TBarSeries);
     procedure UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries; AChartSeries: TBubbleSeries);
     procedure UpdateCustomLineSeries(AWorkbookSeries: TsCustomLineSeries; AChartSeries: TLineSeries);
-    procedure UpdateOHLCSeries(AWorkbookSeries: TsStockSeries; AChartSeries: TOpenHighLowCloseSeries);
     procedure UpdatePieSeries(AWorkbookSeries: TsPieSeries; AChartSeries: TPieSeries);
     procedure UpdatePolarSeries(AWorkbookSeries: TsRadarSeries; AChartSeries: TPolarSeries);
     procedure UpdateScatterSeries(AWorkbookSeries: TsScatterSeries; AChartSeries: TLineSeries);
+    procedure UpdateStockSeries(AWorkbookSeries: TsStockSeries; AChartSeries: TStockSeries);
 
   public
     constructor Create(AOwner: TComponent); override;
@@ -468,7 +468,7 @@ var
 begin
   for i := 0 to XCount-1 do
   begin
-    if FRanges[rngX, i] <> nil then
+    if (FRanges[rngX, i] <> nil) then
     begin
       GetXYItem(rngX, i, AIndex, value, tmpLabel);
       if FIntegerX then
@@ -1100,7 +1100,7 @@ begin
         Result := TPieSeries.Create(FChart);
       ctStock:
         begin
-          Result := TOpenHighLowCloseSeries.Create(FChart);
+          Result := TStockSeries.Create(FChart);
           src.YCount := 4;
           src.IntegerX := true;
           src.SetXRange(0, ASeries.Chart.XAxis.CategoryRange);
@@ -1114,7 +1114,7 @@ begin
     end;
 
     // Get x and y ranges (except for OHLC which already has been handled)
-    if not (Result is TOpenHighLowCloseSeries) then
+    if not (Result is TStockSeries) then
     begin
       if not ASeries.XRange.IsEmpty then
         src.SetXRange(0, ASeries.XRange);
@@ -1201,7 +1201,7 @@ begin
     ctScatter:
       UpdateScatterSeries(TsScatterSeries(ASeries), TLineSeries(ser));
     ctStock:
-      UpdateOHLCSeries(TsStockSeries(ASeries), TOpenHighLowCloseSeries(ser));
+      UpdateStockSeries(TsStockSeries(ASeries), TStockSeries(ser));
     ctPie, ctRing:
       UpdatePieSeries(TsPieSeries(ASeries), TPieSeries(ser));
     ctRadar, ctFilledRadar:
@@ -1525,18 +1525,19 @@ function TsWorkbookChartLink.GetAxisTransform(AChartAxis: TChartAxis;
 var
   T: TAxisTransform;
 begin
-  for T in AChartAxis.Transformations.List do
-    if T is AClass then
-    begin
-      Result := T;
-      exit;
-    end;
+  if AChartAxis.Transformations <> nil then
+    for T in AChartAxis.Transformations.List do
+      if T is AClass then
+      begin
+        Result := T;
+        exit;
+      end;
   Result := nil;
 end;
 
 function TsWorkbookChartLink.GetLogAxisTransform(AChartAxis: TChartAxis): TLogarithmAxisTransform;
 begin
-  Result := TLogarithmAxisTransform(GetAxisTransform(AChartAxis, TLogarithmAxisTransform));
+  Result := TLogarithmAxisTransform(GetAxisTransform(AChartAxis, TLogarithmAxisTransform))
 end;
 
 function TsWorkbookChartLink.GetWorkbookChart: TsChart;
@@ -1759,7 +1760,7 @@ begin
 
   // Usually not needed, but axis handling is simplified when there is
   // an axis transformations object at each axis with all transforms prepared.
-  if axis.Transformations = nil then
+  if (axis.Transformations = nil) then
   begin
     axis.Transformations := TChartAxisTransformations.Create(FChart);
 
@@ -1772,8 +1773,7 @@ begin
     // Autoscale transformation for primary and secondary axes
     T := TAutoScaleAxisTransform.Create(axis.Transformations);
     T.Transformations := axis.Transformations;
-    if AWorkbookAxis.Logarithmic or (AWorkbookAxis.Chart.GetChartType in [ctRadar, ctFilledRadar]) then
-      T.Enabled := false;
+    T.Enabled := AWorkbookAxis.Visible and AWorkbookAxis.OtherAxis.Visible;
   end;
 
   // Axis title
@@ -1828,7 +1828,8 @@ begin
 
   // Logarithmic
   logTransf := GetLogAxisTransform(axis);
-  logTransf.Enabled := AWorkbookAxis.Logarithmic;
+  if logTransf <> nil then
+    logTransf.Enabled := AWorkbookAxis.Logarithmic;
   if AWorkbookAxis.Logarithmic then
   begin
     axis.Intervals.Options := axis.Intervals.Options + [aipGraphCoords];
@@ -2114,22 +2115,6 @@ begin
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
 end;
 
-procedure TsWorkbookChartLink.UpdateOHLCSeries(AWorkbookSeries: TsStockSeries;
-  AChartSeries: TOpenHighLowCloseSeries);
-begin
-  if AWorkbookSeries.CandleStick then
-  begin
-    AChartSeries.Mode := mCandleStick;
-    UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.CandleStickUpBrush);
-    UpdateChartBrush(AWorkbookseries.Chart, AWorkbookseries.CandleStickDownFill, AChartSeries.CandleStickDownBrush);
-  end else
-  begin
-    AChartSeries.Mode := mOHLC;
-  end;
-  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.LinePen);
-  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.DownLinePen);
-end;
-
 procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;
   AChartSeries: TPieSeries);
 begin
@@ -2230,6 +2215,25 @@ begin
       ser.Title := ser.Title + LineEnding + s;
 //    ser.Legend.Format := '%0:s' + LineEnding + '%2:s';
   end;
+end;
+
+procedure TsWorkbookChartLink.UpdateStockSeries(AWorkbookSeries: TsStockSeries;
+  AChartSeries: TStockSeries);
+begin
+  if AWorkbookSeries.CandleStick then
+  begin
+    AChartSeries.Mode := mCandleStick;
+    UpdateChartBrush(AWorkbookseries.Chart, AWorkbookseries.CandleStickDownFill, AChartSeries.CandleStickDownBrush);
+    UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.CandleStickUpFill, AChartSeries.CandleStickUpBrush);
+    UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.CandleStickDownBorder, AChartSeries.CandleStickDownPen);
+    UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.CandleStickUpBorder, AChartSeries.CandleStickUpPen);
+  end else
+  begin
+    AChartSeries.Mode := mOHLC;
+  end;
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.LinePen);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.DownLinePen);
+  AChartSeries.TickWidthStyle := twsPercentMin;
 end;
 
 end.

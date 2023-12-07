@@ -266,6 +266,7 @@ type
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
+    function OtherAxis: TsChartAxis;
     property AutomaticMax: Boolean read FAutomaticMax write FAutomaticMax;
     property AutomaticMin: Boolean read FAutomaticMin write FAutomaticMin;
     property AutomaticMajorInterval: Boolean read FAutomaticMajorInterval write FAutomaticMajorInterval;
@@ -351,11 +352,11 @@ type
     FYAxis: TsChartAxisLink;
     FTitleAddr: TsChartCellAddr;
     FLabelFormat: String;
-    FLine: TsChartLine;
-    FFill: TsChartFill;
     FDataLabels: TsChartDataLabels;
     FDataPointStyles: TsChartDataPointStyleList;
   protected
+    FLine: TsChartLine;
+    FFill: TsChartFill;
     function GetChartType: TsChartType; virtual;
   public
     constructor Create(AChart: TsChart); virtual;
@@ -551,7 +552,9 @@ type
     FHighRange: TsChartRange;
     FLowRange: TsChartRange;  // close = normal y range
     FCandleStickDownFill: TsChartFill;
-    FRangeLine: TsChartLine;
+    FCandleStickDownBorder: TsChartLine;
+    FCandleStickUpBorder: TsChartLine;
+    // fill is CandleStickUpFill, line is RangeLine
   public
     constructor Create(AChart: TsChart); override;
     destructor Destroy; override;
@@ -560,8 +563,11 @@ type
     procedure SetLowRange (ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     procedure SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     property CandleStick: Boolean read FCandleStick write FCandleStick;
-    property CandleStickDownFill: TsChartfill read FCandleStickDownFill write FCandleStickDownFill;
-    property RangeLine: TsChartLine read FRangeLine write FRangeLine;
+    property CandleStickDownFill: TsChartFill read FCandleStickDownFill write FCandleStickDownFill;
+    property CandleStickUpFill: TsChartFill read FFill write FFill;
+    property CandleStickDownBorder: TsChartLine read FCandleStickDownBorder write FCandleStickDownBorder;
+    property CandleStickUpBorder: TsChartLine read FCandleStickUpBorder write FCandleStickUpBorder;
+    property RangeLine: TsChartLine read FLine write FLine;
     property OpenRange: TsChartRange read FOpenRange;
     property HighRange: TsChartRange read FHighRange;
     property LowRange: TsChartRange read FLowRange;
@@ -1230,6 +1236,21 @@ begin
   inherited;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns the other axis in the same direction, i.e. when the axis is the
+  primary x axis the function returns the secondary x axis, etc.
+-------------------------------------------------------------------------------}
+function TsChartAxis.OtherAxis: TsChartAxis;
+begin
+  if Chart.XAxis = self then
+    Result := Chart.X2Axis
+  else if Chart.X2Axis = self then
+    Result := Chart.XAxis
+  else if Chart.YAxis = self then
+    Result := Chart.Y2Axis
+  else if Chart.Y2Axis = self then
+    Result := Chart.YAxis;
+end;
 
 { TsChartLegend }
 
@@ -1772,18 +1793,24 @@ begin
   FHighRange := TsChartRange.Create(AChart);
   FLowRange := TsChartRange.Create(AChart);
 
-  // FFill is CandleStickUp
+  // FFill is CandleStickUp, FLine is RangeLine
   FCandleStickDownFill := TsChartFill.Create;
   FCandleStickDownFill.Style := cfsSolid;
   FCandleStickDownFill.Color := scBlack;
-  FRangeLine := TsChartLine.Create;
-  FRangeLine.Style := clsSolid;
-  FRangeLine.Color := scBlack;
+  FCandleStickDownBorder := TsChartLine.Create;
+  FCandleStickDownBorder.Style := clsSolid;
+  FCandleStickDownBorder.Color := scBlack;
+  FCandleStickUpBorder := TsChartLine.Create;
+  FCandleStickUpBorder.Style := clsSolid;
+  FCandleStickUpBorder.Color := scBlack;
+  FLine.Style := clsSolid;
+  FLine.Color := scBlack;
 end;
 
 destructor TsStockSeries.Destroy;
 begin
-  FRangeLine.Free;
+  FCandleStickUpBorder.Free;
+  FCandleStickDownBorder.Free;
   FCandleStickDownFill.Free;
   FOpenRange.Free;
   FHighRange.Free;

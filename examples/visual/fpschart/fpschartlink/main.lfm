@@ -2,17 +2,17 @@ object Form1: TForm1
   Left = 314
   Height = 527
   Top = 130
-  Width = 1101
+  Width = 1351
   Caption = 'Form1'
   ClientHeight = 527
-  ClientWidth = 1101
+  ClientWidth = 1351
   LCLVersion = '3.99.0.0'
   OnCreate = FormCreate
   object sWorksheetGrid1: TsWorksheetGrid
     Left = 0
     Height = 489
     Top = 38
-    Width = 402
+    Width = 563
     FrozenCols = 0
     FrozenRows = 0
     PageBreakPen.Color = clBlue
@@ -28,16 +28,16 @@ object Form1: TForm1
     TabOrder = 0
   end
   object Splitter1: TSplitter
-    Left = 402
+    Left = 563
     Height = 489
     Top = 38
     Width = 5
   end
   object Chart1: TChart
-    Left = 407
+    Left = 568
     Height = 489
     Top = 38
-    Width = 694
+    Width = 783
     AxisList = <    
       item
         Marks.LabelBrush.Style = bsClear
@@ -60,12 +60,12 @@ object Form1: TForm1
     Left = 0
     Height = 38
     Top = 0
-    Width = 1101
+    Width = 1351
     Align = alTop
     AutoSize = True
     BevelOuter = bvNone
     ClientHeight = 38
-    ClientWidth = 1101
+    ClientWidth = 1351
     TabOrder = 3
     object Label1: TLabel
       AnchorSideLeft.Control = Panel1
@@ -87,9 +87,10 @@ object Form1: TForm1
       Left = 63
       Height = 23
       Top = 8
-      Width = 911
+      Width = 1161
       Anchors = [akTop, akLeft, akRight]
       BorderSpacing.Around = 6
+      DropDownCount = 32
       ItemHeight = 15
       Items.Strings = (
         '../../../other/chart/area.ods'
@@ -111,7 +112,7 @@ object Form1: TForm1
       AnchorSideTop.Control = Panel1
       AnchorSideTop.Side = asrCenter
       AnchorSideRight.Control = Button2
-      Left = 980
+      Left = 1230
       Height = 25
       Top = 7
       Width = 35
@@ -127,7 +128,7 @@ object Form1: TForm1
       AnchorSideTop.Side = asrCenter
       AnchorSideRight.Control = Panel1
       AnchorSideRight.Side = asrBottom
-      Left = 1021
+      Left = 1271
       Height = 25
       Top = 7
       Width = 74

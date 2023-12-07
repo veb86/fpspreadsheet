@@ -1327,14 +1327,15 @@ begin
   ReadChartCellAddr(ANode, 'chart:label-cell-address', series.TitleAddr);
   if (series is TsStockSeries) then
   begin
+    // The file contains the range in the order Open-Low-High-Close
     if FStockSeries.OpenRange.IsEmpty and FStockSeries.CandleStick then
       ReadChartCellRange(ANode, 'chart:values-cell-range-address', FStockSeries.OpenRange)
     else
-    if FStockSeries.HighRange.IsEmpty then
-      ReadChartCellRange(ANode, 'chart:values-cell-range-address', FStockSeries.HighRange)
-    else
     if FStockSeries.LowRange.IsEmpty then
       ReadChartCellRange(ANode, 'chart:values-cell-range-address', FStockSeries.LowRange)
+    else
+    if FStockSeries.HighRange.IsEmpty then
+      ReadChartCellRange(ANode, 'chart:values-cell-range-address', FStockSeries.HighRange)
     else
     if FStockSeries.CloseRange.IsEmpty then
       ReadChartCellRange(ANode, 'chart:values-cell-range-address', FStockSeries.CloseRange);
@@ -1563,11 +1564,15 @@ begin
       if nodeName = 'style:graphic-properties' then
       begin
         if ANodeName = 'chart:stock-gain-marker' then
-          GetChartFillProps(AStyleNode, AChart, ASeries.Fill)
-        else
+        begin
+          GetChartFillProps(AStyleNode, AChart, ASeries.CandleStickUpFill);
+          GetChartLineProps(AStyleNode, AChart, ASeries.CandleStickUpBorder);
+        end else
         if ANodeName = 'chart:stock-loss-marker' then
-          GetChartFillProps(AStyleNode, AChart, ASeries.CandleStickDownFill)
-        else
+        begin
+          GetChartFillProps(AStyleNode, AChart, ASeries.CandleStickDownFill);
+          GetChartLineProps(AStyleNode, AChart, ASeries.CandleStickDownBorder);
+        end else
         if ANodeName = 'chart:stock-range-line' then
           GetChartLineProps(AStyleNode, AChart, ASeries.RangeLine);
       end;
