@@ -105,7 +105,6 @@ object Form1: TForm1
         '../../../other/chart/scatter_loglog.ods'
       )
       TabOrder = 0
-      TextHint = 'Enter or select file name'
       OnCloseUp = ComboBox1CloseUp
     end
     object Button1: TButton

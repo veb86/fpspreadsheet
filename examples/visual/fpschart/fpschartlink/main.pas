@@ -5,7 +5,8 @@ unit main;
 interface
 
 uses
-  Classes, SysUtils, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
+  Classes, SysUtils,
+  LCLVersion, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
   TAGraph,
   fpSpreadsheet, fpsTypes, fpsOpenDocument,
   fpSpreadsheetCtrls, fpSpreadsheetGrid,  fpSpreadsheetChart;
@@ -73,6 +74,9 @@ end;
 
 procedure TForm1.FormCreate(Sender: TObject);
 begin
+  {$IF LCL_FullVersion >= 2020000}
+  ComboBox1.TextHint := 'Enter or select file name';
+  {$IFEND}
   if ParamCount > 0 then
   begin
     Combobox1.Text := ParamStr(1);

@@ -18,7 +18,7 @@ interface
 
 uses
   // RTL/FCL
-  Classes, Contnrs, SysUtils, Types,
+  Classes, Contnrs, SysUtils, Types, FPCanvas,
   // LCL
   LCLVersion, Forms, Controls, Graphics, GraphUtil, Dialogs,
   // TAChart
@@ -1799,7 +1799,9 @@ begin
   axis.TickLength := IfThen(catOutside in AWorkbookAxis.MajorTicks, 4, 0);
   axis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MajorTicks, 4, 0);
   axis.TickColor := axis.AxisPen.Color;
+  {$IF LCL_FullVersion >= 3000000}
   axis.TickWidth := axis.AxisPen.Width;
+  {$IFEND}
 
   // Minor axis grid
   if AWorkbookAxis.MinorGridLines.Style <> clsNoLine then
@@ -1814,7 +1816,9 @@ begin
     minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
     minorAxis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MinorTicks, 2, 0);
     minorAxis.TickColor := axis.AxisPen.Color;
+    {$IF LCL_FullVersion >= 3000000}
     minorAxis.TickWidth := minorAxis.Grid.Width;
+    {$IFEND}
   end;
 
   // Inverted?
@@ -1921,7 +1925,9 @@ begin
             h := mmToPx(img.Height, ppi);
             png := TPortableNetworkGraphic.Create;
             png.Assign(img.Image);
+            {$IF LCL_FullVersion >= 2020000}
             ScaleImg(png, w, h);
+            {$IFEND}
             FBrushBitmaps.Add(png);
             ABrush.Bitmap := png;
           end else
@@ -2023,8 +2029,10 @@ begin
     case AWorkbookSeries.LabelPosition of
       lpInside:
         TPieSeries(AChartSeries).MarkPositions := pmpInside;
+      {$IF LCL_FullVersion >= 2020000}
       lpCenter:
         TPieSeries(AChartSeries).MarkPositionCentered := true;
+      {$IFEND}
       else
         TPieSeries(AChartSeries).MarkPositions := pmpAround;
     end
@@ -2068,7 +2076,9 @@ begin
     AChartTitle.Text.Clear;
     AChartTitle.Text.Add(AWorkbookTitle.Caption);
     AChartTitle.Visible := AWorkbookTitle.Visible;
+    {$IF LCL_FullVersion >= 2020000}
     AChartTitle.WordWrap := true;
+    {$IFEND}
     Convert_sFont_to_Font(AWorkbookTitle.Font, AChartTitle.Font);
     UpdateChartPen(AWorkbookTitle.Chart, AWorkbookTitle.Border, AChartTitle.Frame);
     UpdateChartBrush(AWorkbookTitle.Chart, AWorkbookTitle.Background, AChartTitle.Brush);
@@ -2119,11 +2129,13 @@ procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;
   AChartSeries: TPieSeries);
 begin
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.EdgePen);
-  AChartSeries.StartAngle := AWorkbookSeries.StartAngle;
   AChartSeries.Legend.Multiplicity := lmPoint;
   AChartSeries.Legend.Format := '%2:s';
+  {$IF LCL_FullVersion >= 2020000}
+  AChartSeries.StartAngle := AWorkbookSeries.StartAngle;
   if AWorkbookSeries is TsRingSeries then
     AChartSeries.InnerRadiusPercent := TsRingSeries(AWorkbookSeries).InnerRadiusPercent;
+  {$IFEND}
 
   FChart.BottomAxis.Visible := false;
   FChart.LeftAxis.Visible := false;

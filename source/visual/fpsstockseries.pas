@@ -73,12 +73,14 @@ type
     function CalcTickWidth(AX: Double; AIndex: Integer): Double;
     procedure GetLegendItems(AItems: TChartLegendItems); override;
     function GetSeriesColor: TColor; override;
+    {$IF LCL_FullVersion >= 2020000}
     class procedure GetXYCountNeeded(out AXCount, AYCount: Cardinal); override;
-    function SkipMissingValues(AIndex: Integer): Boolean; override;
-    function ToolTargetDistance(const AParams: TNearestPointParams;
-      AGraphPt: TDoublePoint; APointIdx, AXIdx, AYIdx: Integer): Integer; override;
     procedure UpdateLabelDirectionReferenceLevel(AIndex, AYIndex: Integer;
       var ALevel: Double); override;
+    function SkipMissingValues(AIndex: Integer): Boolean; override;
+    {$IFEND}
+    function ToolTargetDistance(const AParams: TNearestPointParams;
+      AGraphPt: TDoublePoint; APointIdx, AXIdx, AYIdx: Integer): Integer; override;
   public
     procedure Assign(ASource: TPersistent); override;
     constructor Create(AOwner: TComponent); override;
@@ -436,7 +438,7 @@ begin
     end;
     if Source[i]^.Color <> clTAColor then
     begin
-      ADrawer.SetPenParams(FPen[TOHLCPenKind(idx)].Style, Source[i]^.Color, FPen[TOHLCPenKind(idx)].Width);
+      ADrawer.SetPenParams(FPen[TOHLCPenKind(idx)].Style, Source[i]^.Color {$IF LCL_FUllVersion >= 2020000}, FPen[TOHLCPenKind(idx)].Width{$IFEND});
       ADrawer.SetBrushParams(FBrush[TOHLCBrushKind(idx)].Style, Source[i]^.Color);
     end;
 
@@ -448,10 +450,12 @@ begin
     prevclose := yclose;
   end;
 
+  {$IF LCL_FullVersion >= 2020000}
   GetXYCountNeeded(nx, ny);
   if Source.YCount > ny then
     for i := 0 to ny-1 do DrawLabels(ADrawer, i)
   else
+  {$ENDIF}
     DrawLabels(ADrawer);
 end;
 
@@ -580,11 +584,13 @@ begin
   Result := LinePen.Color;
 end;
 
+{$IF LCL_FullVersion >= 2020000}
 class procedure TStockSeries.GetXYCountNeeded(out AXCount, AYCount: Cardinal);
 begin
   AXCount := 0;
   AYCount := 4;
 end;
+{$IFEND}
 
 procedure TStockSeries.SetBrush(AIndex: TOHLCBrushKind; AValue: TOHLCBrush);
 begin
@@ -649,12 +655,14 @@ begin
   UpdateParentChart;
 end;
 
+{$IF LCL_FullVersion >= 2020000}
 function TStockSeries.SkipMissingValues(AIndex: Integer): Boolean;
 begin
   Result := IsNaN(Source[AIndex]^.Point);
   if not Result then
     Result := HasMissingYValue(AIndex, 4);
 end;
+{$IFEND}
 
 function TStockSeries.ToolTargetDistance(
   const AParams: TNearestPointParams; AGraphPt: TDoublePoint;
@@ -716,6 +724,7 @@ begin
   end;
 end;
 
+{$IF LCL_FullVersion >= 2020000}
 procedure TStockSeries.UpdateLabelDirectionReferenceLevel(
   AIndex, AYIndex: Integer; var ALevel: Double);
 var
@@ -730,6 +739,8 @@ begin
     ALevel := (AxisToGraphY(item^.GetY(FYIndexLow)) + AxisToGraphY(item^.GetY(FYIndexHigh)))*0.5;
   end;
 end;
+{$ENDIF}
+
 {$ENDIF}
 
 end.
