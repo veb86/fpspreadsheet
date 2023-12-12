@@ -976,7 +976,6 @@ begin
           FStockSeries.RangeLine.Color := scBlack;
           FStockSeries.CandleStickDownFill.Style := cfsSolid;
           FStockSeries.CandleStickDownFill.Color := scBlack;
-          break;
         end;
       end;
   end;
@@ -1308,7 +1307,7 @@ var
   n: Integer;
 begin
   s := GetAttrValue(ANode, 'chart:class');
-  if (FChartType = ctStock) then
+  if (FChartType = ctStock) and (s = '') then
     series := FStockSeries
   else
     case s of
@@ -1345,6 +1344,9 @@ begin
     ReadChartCellRange(ANode, 'chart:values-cell-range-address', TsBubbleSeries(series).BubbleRange)
   else
     ReadChartCellRange(ANode, 'chart:values-cell-range-address', series.YRange);
+
+  if series.XRange.IsEmpty then
+    series.XRange.Assign(series.Chart.XAxis.CategoryRange);
 
   s := GetAttrValue(ANode, 'chart:attached-axis');
   if s = 'primary-y' then

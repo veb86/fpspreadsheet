@@ -1084,7 +1084,10 @@ begin
 
     case ASeries.ChartType of
       ctBar:
-        Result := TBarSeries.Create(FChart);
+        begin
+          Result := TBarSeries.Create(FChart);
+          src.IntegerX := true;
+        end;
       ctLine, ctScatter:
         Result := TLineSeries.Create(FChart);
       ctArea:
@@ -1673,6 +1676,7 @@ procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BarPen);
+  AChartSeries.BarWidthStyle := bwPercentMin;
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
