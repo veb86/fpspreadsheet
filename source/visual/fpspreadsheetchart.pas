@@ -1667,6 +1667,7 @@ begin
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.AreaContourPen);
   AChartSeries.AreaLinesPen.Style := psClear;
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
+  AChartSeries.UseZeroLevel := true;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
 end;
