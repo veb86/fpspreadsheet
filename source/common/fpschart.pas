@@ -267,6 +267,8 @@ type
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
     function OtherAxis: TsChartAxis;
+    procedure SetCategoryRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+    procedure SetCategoryRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     property AutomaticMax: Boolean read FAutomaticMax write FAutomaticMax;
     property AutomaticMin: Boolean read FAutomaticMin write FAutomaticMin;
     property AutomaticMajorInterval: Boolean read FAutomaticMajorInterval write FAutomaticMajorInterval;
@@ -558,9 +560,13 @@ type
   public
     constructor Create(AChart: TsChart); override;
     destructor Destroy; override;
+    procedure SetOpenRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetOpenRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    procedure SetHighRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetHighRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    procedure SetLowRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetLowRange (ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    procedure SetCloseRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     property CandleStick: Boolean read FCandleStick write FCandleStick;
     property CandleStickDownFill: TsChartFill read FCandleStickDownFill write FCandleStickDownFill;
@@ -1252,6 +1258,24 @@ begin
     Result := Chart.YAxis;
 end;
 
+procedure TsChartAxis.SetCategoryRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  SetCategoryRange('', ARow1, ACol1, '', ARow2, ACol2);
+end;
+
+procedure TsChartAxis.SetCategoryRange(ASheet1: String; ARow1, ACol1: Cardinal;
+  ASheet2: String; ARow2, ACol2: Cardinal);
+begin
+  if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
+    raise Exception.Create('Category values can only be located in a single column or row.');
+  FCategoryRange.Sheet1 := ASheet1;
+  FCategoryRange.Row1 := ARow1;
+  FCategoryRange.Col1 := ACol1;
+  FCategoryRange.Sheet2 := ASheet2;
+  FCategoryRange.Row2 := ARow2;
+  FCategoryRange.Col2 := ACol2;
+end;
+
 { TsChartLegend }
 
 constructor TsChartLegend.Create(AChart: TsChart);
@@ -1818,6 +1842,11 @@ begin
   inherited;
 end;
 
+procedure TsStockSeries.SetOpenRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  SetOpenRange('', ARow1, ACol1, '', ARow2, ACol2);
+end;
+
 procedure TsStockSeries.SetOpenRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
  begin
@@ -1831,6 +1860,10 @@ procedure TsStockSeries.SetOpenRange(ASheet1: String; ARow1, ACol1: Cardinal;
    FOpenRange.Col2 := ACol2;
  end;
 
+procedure TsStockSeries.SetHighRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  SetHighRange('', ARow1, ACol1, '', ARow2, ACol2);
+end;
 procedure TsStockSeries.SetHighRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
 begin
@@ -1842,6 +1875,11 @@ begin
   FHighRange.Sheet2 := ASheet2;
   FHighRange.Row2 := ARow2;
   FHighRange.Col2 := ACol2;
+end;
+
+procedure TsStockSeries.SetLowRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  SetLowRange('', ARow1, ACol1, '', ARow2, ACol2);
 end;
 
 procedure TsStockSeries.SetLowRange(ASheet1: String; ARow1, ACol1: Cardinal;
@@ -1856,6 +1894,11 @@ procedure TsStockSeries.SetLowRange(ASheet1: String; ARow1, ACol1: Cardinal;
    FLowRange.Row2 := ARow2;
    FLowRange.Col2 := ACol2;
  end;
+
+procedure TsStockSeries.SetCloseRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  SetCloseRange('', ARow1, ACol1, '', ARow2, ACol2);
+end;
 
 procedure TsStockSeries.SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal;
   ASheet2: String; ARow2, ACol2: Cardinal);
@@ -1974,10 +2017,19 @@ begin
 end;
 
 function TsChart.GetChartType: TsChartType;
+var
+  i: Integer;
 begin
   if FSeriesList.Count > 0 then
-    Result := Series[0].ChartType
-  else
+  begin
+    Result := Series[0].ChartType;
+    for i := 0 to FSeriesList.Count-1 do
+      if FSeriesList[i] is TsStockSeries then
+      begin
+        Result := ctStock;
+        exit;
+      end;
+  end else
     Result := ctEmpty;
 end;
 

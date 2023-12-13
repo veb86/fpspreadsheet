@@ -5901,7 +5901,6 @@ end;
 procedure TsSpreadOpenDocWriter.InternalWriteToStream(AStream: TStream);
 var
   FZip: TZipper;
-  i: Integer;
 begin
   { Analyze the workbook and collect all information needed }
   ListAllNumFormats;

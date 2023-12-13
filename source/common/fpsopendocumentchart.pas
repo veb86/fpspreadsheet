@@ -91,13 +91,13 @@ type
       ALine: TsChartLine; AIndent, AStyleID: Integer): String;
     function GetChartLineStyleGraphicPropsAsXML(AChart: TsChart;
       ALine: TsChartLine): String;
-    function GetChartPlotAreaStyleAsXML(AChart: TsChart;
-      AIndent, AStyleID: Integer): String;
+    function GetChartPlotAreaStyleAsXML(AChart: TsChart; AIndent, AStyleID: Integer): String;
     function GetChartRegressionEquationStyleAsXML(AChart: TsChart;
       AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
     function GetChartRegressionStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesDataPointStyleAsXML(AChart: TsChart; ASeriesIndex, APointIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: integer): String;
+    function GetChartStockSeriesStyleAsXML(AChart: TsChart; ASeries: TsStockSeries; AKind: Integer; AIndent, AStyleID: Integer): String;
 
     procedure CheckAxis(AChart: TsChart; Axis: TsChartAxis);
     function GetNumberFormatID(ANumFormat: String): String;
@@ -123,6 +123,9 @@ type
     procedure WriteChartPlotArea(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
     procedure WriteChartSeries(AChartStream, AStyleStream: TStream;
+      AChartIndent, AStyleIndent: Integer; AChart: TsChart; ASeriesIndex: Integer;
+      var AStyleID: Integer);
+    procedure WriteChartStockSeries(AChartStream, AStyleStream: TStream;
       AChartIndent, AStyleIndent: Integer; AChart: TsChart; ASeriesIndex: Integer;
       var AStyleID: Integer);
 //    procedure WriteChartTable(AStream: TStream; AChart: TsChart; AIndent: Integer);
@@ -2304,6 +2307,8 @@ var
   stackModeStr: String = '';
   rightAngledAxes: String = '';
   startAngleStr: String = '';
+  candleStickStr: String = '';
+  i: Integer;
 begin
   indent := DupeString(' ', AIndent);
 
@@ -2332,6 +2337,13 @@ begin
   if not (AChart.GetChartType in [ctRadar, ctPie]) then
     rightAngledAxes := 'chart:right-angled-axes="true" ';
 
+  for i := 0 to AChart.Series.Count-1 do
+    if (AChart.Series[i] is TsStockSeries) and TsStockSeries(AChart.Series[i]).CandleStick then
+    begin
+      candleStickStr := 'chart:japanese-candle-stick="true" ';
+      break;
+    end;
+
   Result := Format(
     indent + '  <style:style style:name="ch%d" style:family="chart">', [ AStyleID ]) + LE +
     indent + '    <style:chart-properties ' +
@@ -2339,6 +2351,7 @@ begin
                    verticalStr +
                    stackModeStr +
                    startAngleStr +
+                   candleStickStr +
                    'chart:symbol-type="automatic" ' +
                    'chart:include-hidden-cells="false" ' +
                    'chart:auto-position="true" ' +
@@ -2573,6 +2586,41 @@ begin
     indent + '</style:style>' + LE,
     [ AStyleID, numstyle, graphProps, textProps ]
   );
+end;
+
+function TsSpreadOpenDocChartWriter.GetChartStockSeriesStyleAsXML(AChart: TsChart;
+  ASeries: TsStockSeries; AKind: Integer; AIndent, AStyleID: Integer): String;
+var
+  indent: String;
+  fillStr: String = '';
+  lineStr: String = '';
+begin
+  case AKind of
+    0: // gain marker
+      begin
+        fillStr := GetChartFillStyleGraphicPropsAsXML(AChart, ASeries.CandleStickUpFill);
+        lineStr := GetChartLineStyleGraphicPropsAsXML(AChart, ASeries.CandleStickUpBorder);
+      end;
+    1: // loss marker
+      begin
+        fillStr := GetChartFillStyleGraphicPropsAsXML(AChart, ASeries.CandleStickDownFill);
+        lineStr := GetChartLineStyleGraphicPropsAsXML(AChart, ASeries.CandleStickDownBorder);
+      end;
+    2:  // range line
+      lineStr := GetChartLineStyleGraphicPropsAsXML(AChart, ASeries.RangeLine);
+  end;
+
+  if (fillStr <> '') or (lineStr <> '') then
+  begin
+    indent := DupeString(' ', AIndent);
+    Result := Format(
+      indent + '<style:style style:name="ch%d" style:family="chart">' + LE +
+      indent + '  <style:graphic-properties ' + fillstr + lineStr + '/>' + LE +
+      indent + '</style:style>' + LE,
+      [ AStyleID ]
+    );
+  end else
+    Result := '';
 end;
 
 function TsSpreadOpenDocChartWriter.GetNumberFormatID(ANumFormat: String): String;
@@ -2931,9 +2979,8 @@ begin
 end;
 
 procedure TsSpreadOpenDocChartWriter.WriteChartAxis(
-  AChartStream, AStyleStream: TStream;
-  AChartIndent, AStyleIndent: Integer; Axis: TsChartAxis;
-  var AStyleID: Integer);
+  AChartStream, AStyleStream: TStream; AChartIndent, AStyleIndent: Integer;
+  Axis: TsChartAxis; var AStyleID: Integer);
 var
   indent: String;
   captionKind: Integer;
@@ -2965,6 +3012,11 @@ begin
     indent + '<chart:axis chart:style-name="ch%d" chart:dimension="%s" chart:name="%s-%s" chartooo:axis-type="auto">' + LE,
     [ AStyleID, AXIS_ID[captionKind], AXIS_LEVEL[captionKind], AXIS_ID[captionKind] ]
   ));
+
+  if Axis.DateTime then
+    AppendToStream(AChartStream,
+      indent + '  <chartooo:date-scale/>' + LE
+    );
 
   if (Axis = chart.XAxis) and (not chart.IsScatterChart) and (chart.Series.Count > 0) then
   begin
@@ -3050,8 +3102,8 @@ end;
 
 { Writes the chart's background to the xml stream }
 procedure TsSpreadOpenDocChartWriter.WriteChartBackground(
-  AChartStream, AStyleStream: TStream;
-  AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
+  AChartStream, AStyleStream: TStream; AChartIndent, AStyleIndent: Integer;
+  AChart: TsChart; var AStyleID: Integer);
 var
   indent: String;
   chartClass: String;
@@ -3064,7 +3116,7 @@ begin
   AppendToStream(AChartStream, Format(
     indent + '<chart:chart chart:style-name="ch%d" %s' + LE +
     indent + '    svg:width="%.3fmm" svg:height="%.3fmm" ' + LE +
-    indent + '    xlink:href=".." xlink:type="simple">' + LE, [
+    indent + '    xlink:type="simple" xlink:href="..">' + LE, [
     AStyleID,
     chartClass,
     AChart.Width, AChart.Height      // Width, Height are in mm
@@ -3205,8 +3257,9 @@ begin
 end;
 
 { Writes the chart's legend to the xml stream }
-procedure TsSpreadOpenDocChartWriter.WriteChartLegend(AChartStream, AStyleStream: TStream;
-  AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
+procedure TsSpreadOpenDocChartWriter.WriteChartLegend(
+  AChartStream, AStyleStream: TStream; AChartIndent, AStyleIndent: Integer;
+  AChart: TsChart; var AStyleID: Integer);
 var
   indent: String;
   canOverlap: String = '';
@@ -3329,8 +3382,9 @@ begin
   );
 end;
 
-procedure TsSpreadOpenDocChartWriter.WriteChartPlotArea(AChartStream, AStyleStream: TStream;
-  AChartIndent, AStyleIndent: Integer; AChart: TsChart; var AStyleID: Integer);
+procedure TsSpreadOpenDocChartWriter.WriteChartPlotArea(
+  AChartStream, AStyleStream: TStream; AChartIndent, AStyleIndent: Integer;
+  AChart: TsChart; var AStyleID: Integer);
 var
   indent: String;
   i: Integer;
@@ -3393,7 +3447,10 @@ begin
 
   // series
   for i := 0 to AChart.Series.Count-1 do
-    WriteChartSeries(AChartStream, AStyleStream, AChartIndent+2, AStyleIndent, AChart, i, AStyleID);
+    if AChart.GetChartType = ctStock then
+      WriteChartStockSeries(AChartStream, AStyleStream, AchartIndent+2, AStyleIndent, AChart, i, AStyleID)
+    else
+      WriteChartSeries(AChartStream, AStyleStream, AChartIndent+2, AStyleIndent, AChart, i, AStyleID);
 
   // close xml node
   AppendToStream(AChartStream,
@@ -3402,9 +3459,8 @@ begin
 end;
 
 procedure TsSpreadOpenDocChartWriter.WriteChartSeries(
-  AChartStream, AStyleStream: TStream;
-  AChartIndent, AStyleIndent: Integer; AChart: TsChart; ASeriesIndex: Integer;
-  var AStyleID: Integer);
+  AChartStream, AStyleStream: TStream; AChartIndent, AStyleIndent: Integer;
+  AChart: TsChart; ASeriesIndex: Integer; var AStyleID: Integer);
 var
   indent: String;
   series: TsChartSeries;
@@ -3513,7 +3569,6 @@ begin
   else
     chartClass := CHART_TYPE_NAMES[series.ChartType];
 
-  // Store the series properties
   AppendToStream(AChartStream, Format(
     indent + '<chart:series chart:style-name="ch%d" ' +
                'chart:class="chart:%s" ' +                    // series type
@@ -3655,6 +3710,119 @@ begin
 
   // Next style
   inc(AStyleID);
+end;
+
+procedure TsSpreadOpenDocChartWriter.WriteChartStockSeries(
+  AChartStream, AStyleStream: TStream; AChartIndent, AStyleIndent: Integer;
+  AChart: TsChart; ASeriesIndex: Integer; var AStyleID: Integer);
+
+  procedure WriteRange(const AIndent, ARangeStr, ATitleStr, AYAxisStr: String; ACount: Integer);
+  begin
+    AppendToStream(AChartStream, Format(
+      AIndent + '<chart:series ' + ARangeStr + AtitleStr + AYAxisStr + '>' + LE +
+      AIndent + '  <chart:data-point chart:repeated="%d"/>' + LE +
+      AIndent + '</chart:series>' + LE,
+      [ ACount ] ));
+  end;
+
+var
+  indent: String;
+  openRange: String = '';
+  highRange: String = '';
+  lowRange: String = '';
+  closeRange: String = '';
+  titleAddr: String = '';
+  seriesYAxis: String = '';
+  series: TsStockSeries;
+  count: Integer;
+begin
+  if not (AChart.Series[ASeriesIndex] is TsStockSeries) then
+    exit;
+  series := TsStockSeries(AChart.Series[ASeriesIndex]);
+  indent := DupeString(' ', AChartIndent);
+
+  // These are the open/high/low/close values of the OHLC series
+  if series.CandleStick and (not series.OpenRange.IsEmpty) then
+    openRange := Format('chart:values-cell-range-address="%s" ', [
+      GetSheetCellRangeString_ODS(
+        series.OpenRange.GetSheet1Name, series.OpenRange.GetSheet2Name,
+        series.OpenRange.Row1, series.OpenRange.Col1,
+        series.OpenRange.Row2, series.OpenRange.Col2,
+        rfAllRel, false)
+      ]);
+  if not series.HighRange.IsEmpty then
+    highRange := Format('chart:values-cell-range-address="%s" ', [
+      GetSheetCellRangeString_ODS(
+        series.HighRange.GetSheet1Name, series.HighRange.GetSheet2Name,
+        series.HighRange.Row1, series.HighRange.Col1,
+        series.HighRange.Row2, series.HighRange.Col2,
+        rfAllRel, false)
+      ]);
+  if not series.LowRange.IsEmpty then
+    lowRange := Format('chart:values-cell-range-address="%s" ', [
+      GetSheetCellRangeString_ODS(
+        series.LowRange.GetSheet1Name, series.LowRange.GetSheet2Name,
+        series.LowRange.Row1, series.LowRange.Col1,
+        series.LowRange.Row2, series.LowRange.Col2,
+        rfAllRel, false)
+      ]);
+  if not series.CloseRange.IsEmpty then
+    closeRange := Format('chart:values-cell-range-address="%s" ',[
+      GetSheetCellRangeString_ODS(
+        series.CloseRange.GetSheet1Name, series.CloseRange.GetSheet2Name,
+        series.CloseRange.Row1, series.CloseRange.Col1,
+        series.CloseRange.Row2, series.CloseRange.Col2,
+        rfAllRel, false)
+      ]);
+
+  // Title of the series for the legend
+  titleAddr := Format('chart:label-cell-address="%s" ', [
+    GetSheetCellRangeString_ODS(
+      series.TitleAddr.GetSheetName, series.TitleAddr.GetSheetName,
+      series.TitleAddr.Row, series.TitleAddr.Col,
+      series.TitleAddr.Row, series.TitleAddr.Col,
+      rfAllRel, false)
+    ]);
+
+  // Axis of the series
+  case series.YAxis of
+    alPrimary  : seriesYAxis := 'chart:attached-axis="primary-y" ';
+    alSecondary: seriesYAxis := 'chart:attached-axis="secondary-y" ';
+  end;
+
+  // Number of data points
+  if series.YValuesInCol then
+    count := series.YRange.Row2 - series.YRange.Row1 + 1
+  else
+    count := series.YRange.Col2 - series.YRange.Col1 + 1;
+
+  // Store the series properties
+
+  // "Open" values, only for CandleStick mode
+  if series.CandleStick then
+    WriteRange(indent, openRange, '', seriesYAxis, count);
+  // "Low" values
+  WriteRange(indent, lowRange, '', seriesYAxis, count);
+  // "High" values
+  WriteRange(indent, highRange, '', seriesYAxis, count);
+  // "Close" values
+  WriteRange(indent, closeRange, titleAddr, seriesYAxis, count);
+
+  // Stock series styles
+  AppendToStream(AChartStream, Format(
+    indent + '<chart:stock-gain-marker chart:style-name="ch%d" />' + LE +
+    indent + '<chart:stock-loss-marker chart:style-name="ch%d" />' + LE +
+    indent + '<chart:stock-range-line chart:style-name="ch%d" />' + LE,
+    [ AStyleID, AStyleID + 1, AStyleID + 2 ]));
+
+  AppendToStream(AStyleStream,
+    GetChartStockSeriesStyleAsXML(AChart, series, 0, AStyleIndent, AStyleID));
+  AppendToStream(AStyleStream,
+    GetChartStockSeriesStyleAsXML(AChart, series, 1, AStyleIndent, AStyleID + 1));
+  AppendToStream(AStyleStream,
+    GetChartStockSeriesStyleAsXML(AChart, series, 2, AStyleIndent, AStyleID + 2));
+
+  inc(AStyleID, 3);
 end;
 
 procedure TsSpreadOpenDocChartWriter.WriteCharts;
@@ -3816,9 +3984,9 @@ end;
   *)
 { Writes the chart's title (or subtitle, depending on the value of IsSubTitle)
   to the xml stream (chart stream) and the corresponding style to the stylestream. }
-procedure TsSpreadOpenDocChartWriter.WriteChartTitle(AChartStream, AStyleStream: TStream;
-  AChartIndent, AStyleIndent: Integer; AChart: TsChart; IsSubtitle: Boolean;
-  var AStyleID: Integer);
+procedure TsSpreadOpenDocChartWriter.WriteChartTitle(
+  AChartStream, AStyleStream: TStream; AChartIndent, AStyleIndent: Integer;
+  AChart: TsChart; IsSubtitle: Boolean; var AStyleID: Integer);
 var
   title: TsChartText;
   captionKind: Integer;

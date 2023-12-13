@@ -103,6 +103,8 @@ object Form1: TForm1
         '../../../other/chart/scatter.ods'
         '../../../other/chart/scatter_log.ods'
         '../../../other/chart/scatter_loglog.ods'
+        '../../../other/chart/stock-candle.ods'
+        '../../../other/chart/stock-hlc.ods'
       )
       TabOrder = 0
       OnCloseUp = ComboBox1CloseUp
