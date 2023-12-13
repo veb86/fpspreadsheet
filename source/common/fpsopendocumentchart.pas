@@ -3447,8 +3447,8 @@ begin
 
   // series
   for i := 0 to AChart.Series.Count-1 do
-    if AChart.GetChartType = ctStock then
-      WriteChartStockSeries(AChartStream, AStyleStream, AchartIndent+2, AStyleIndent, AChart, i, AStyleID)
+    if AChart.Series[i].ChartType = ctStock then
+      WriteChartStockSeries(AChartStream, AStyleStream, AChartIndent+2, AStyleIndent, AChart, i, AStyleID)
     else
       WriteChartSeries(AChartStream, AStyleStream, AChartIndent+2, AStyleIndent, AChart, i, AStyleID);
 

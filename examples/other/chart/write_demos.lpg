@@ -52,6 +52,11 @@
           <Mode Name="Default"/>
         </BuildModes>
       </Target>
+      <Target FileName="stock_volume_write_demo.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
     </Targets>
   </ProjectGroup>
 </CONFIG>
