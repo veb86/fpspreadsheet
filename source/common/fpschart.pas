@@ -135,9 +135,9 @@ type
   TsChartFill = class
     Style: TsChartFillStyle;
     Color: TsColor;
-    Gradient: Integer;
-    Hatch: Integer;
-    Image: Integer;
+    Gradient: Integer;     // Index into chart's Gradients list
+    Hatch: Integer;        // Index into chart's Hatches list
+    Image: Integer;        // Index into chart's Images list
     Transparency: Double;  // 0.0 ... 1.0
     procedure CopyFrom(AFill: TsChartFill);
   end;
@@ -1197,7 +1197,8 @@ end;
 
 procedure TsChartElement.CopyFrom(ASource: TsChartElement);
 begin
-  Visible := ASource.Visible;
+  if ASource <> nil then
+    Visible := ASource.Visible;
 end;
 
 
@@ -1225,12 +1226,30 @@ begin
 end;
 
 procedure TsChartFillElement.CopyFrom(ASource: TsChartElement);
+var
+  srcElement: TsChartFillElement;
 begin
   inherited CopyFrom(ASource);
+
   if ASource is TsChartFillElement then
   begin
-    FBackground.CopyFrom(TsChartFillElement(ASource).Background);
-    FBorder.CopyFrom(TsChartFillElement(ASource).Border);
+    srcElement := TsChartFillElement(ASource);
+
+    if srcElement.Background <> nil then
+    begin
+      if FBackground = nil then
+        FBackground := TsChartFill.Create;
+      FBackground.CopyFrom(srcElement.Background);
+    end else
+      FreeAndNil(FBackground);
+
+    if srcElement.Border <> nil then
+    begin
+      if FBorder = nil then
+        FBorder := TsChartLine.Create;
+      FBorder.CopyFrom(srcElement.Border);
+    end else
+      FreeAndNil(FBorder);
   end;
 end;
 
@@ -1434,6 +1453,8 @@ begin
   FChart := AChart;
 end;
 
+{ Note: You have the responsibility to destroy the AFill and ALine instances
+  after calling AddFillAndLine ! }
 function TsChartDataPointStyleList.AddFillAndLine(AFill: TsChartFill; ALine: TsChartLine;
   ACount: Integer = 1): Integer;
 var
