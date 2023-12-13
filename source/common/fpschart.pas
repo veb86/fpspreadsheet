@@ -57,6 +57,7 @@ type
     Angle: Double;             // degrees
     constructor Create;
     destructor Destroy; override;
+    procedure CopyFrom(ASource: TsChartGradient);
   end;
 
   TsChartGradientList = class(TFPObjectList)
@@ -95,6 +96,7 @@ type
     LineDistance: Double;      // mm
     LineAngle: Double;         // degrees
     destructor Destroy; override;
+    procedure CopyFrom(ASource: TsChartHatch);
   end;
 
   TsChartHatchList = class(TFPObjectList)
@@ -114,6 +116,7 @@ type
     Image: TFPCustomImage;
     Width, Height: Double;  // mm
     destructor Destroy; override;
+    procedure Copyfrom(ASource: TsChartImage);
   end;
 
   TsChartImagelist = class(TFPObjectList)
@@ -150,6 +153,7 @@ type
     Segment2: TsChartLineSegment;
     Distance: Double;     // mm or % of linewidth
     RelativeToLineWidth: Boolean;
+    procedure CopyFrom(ASource: TsChartLineStyle);
     function GetID: String;
   end;
 
@@ -173,6 +177,7 @@ type
     Sheet: String;
     Row, Col: Cardinal;
     constructor Create(AChart: TsChart);
+    procedure CopyFrom(ASource: TsChartCellAddr);
     function GetSheetName: String;
     function IsUsed: Boolean;
   end;
@@ -184,7 +189,7 @@ type
     Sheet1, Sheet2: String;
     Row1, Col1, Row2, Col2: Cardinal;
     constructor Create(AChart: TsChart);
-    procedure Assign(ASource: TsChartRange);
+    procedure CopyFrom(ASource: TsChartRange);
     function GetSheet1Name: String;
     function GetSheet2Name: String;
     function IsEmpty: Boolean;
@@ -196,6 +201,7 @@ type
     FVisible: Boolean;
   public
     constructor Create(AChart: TsChart);
+    procedure CopyFrom(ASource: TsChartElement); virtual;
     property Chart: TsChart read FChart;
     property Visible: Boolean read FVisible write FVisible;
   end;
@@ -207,6 +213,7 @@ type
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
+    procedure CopyFrom(ASource: TsChartElement); override;
     property Background: TsChartFill read FBackground write FBackground;
     property Border: TsChartLine read FBorder write FBorder;
   end;
@@ -220,6 +227,7 @@ type
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
+    procedure CopyFrom(ASource: TsChartElement); override;
     property Caption: String read FCaption write FCaption;
     property Font: TsFont read FFont write FFont;
     property RotationAngle: Integer read FRotationAngle write FRotationAngle;
@@ -266,7 +274,8 @@ type
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
-    function OtherAxis: TsChartAxis;
+    procedure CopyFrom(ASource: TsChartElement); override;
+    function GetOtherAxis: TsChartAxis;
     procedure SetCategoryRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetCategoryRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     property AutomaticMax: Boolean read FAutomaticMax write FAutomaticMax;
@@ -310,6 +319,7 @@ type
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
+    procedure CopyFrom(ASource: TsChartElement); override;
     property CanOverlapPlotArea: Boolean read FCanOverlapPlotArea write FCanOverlapPlotArea;
     property Font: TsFont read FFont write FFont;
     property Position: TsChartLegendPosition read FPosition write FPosition;
@@ -750,6 +760,20 @@ begin
   inherited;
 end;
 
+procedure TsChartGradient.CopyFrom(ASource: TsChartGradient);
+begin
+  Name := ASource.Name;
+  Style := ASource.Style;
+  StartColor := ASource.StartColor;
+  EndColor := ASource.EndColor;
+  StartIntensity := ASource.StartIntensity;
+  EndIntensity := ASource.EndIntensity;
+  Border := ASource.Border;
+  CenterX := ASource.CenterX;
+  CenterY := ASource.CenterY;
+  Angle := ASource.Angle;
+end;
+
 
 { TsChartGradientList }
 
@@ -854,7 +878,7 @@ end;
 
 procedure TsChartGradientList.SetItem(AIndex: Integer; AValue: TsChartGradient);
 begin
-  inherited Items[AIndex] := AValue;
+  TsChartGradient(inherited Items[AIndex]).CopyFrom(AValue);
 end;
 
 
@@ -864,6 +888,15 @@ destructor TsChartHatch.Destroy;
 begin
   Name := '';
   inherited;
+end;
+
+procedure TsChartHatch.CopyFrom(ASource: TsChartHatch);
+begin
+  Name := ASource.Name;
+  Style := ASource.Style;
+  LineColor := ASource.LineColor;
+  LineDistance := ASource.LineDistance;
+  LineAngle := ASource.LineAngle;
 end;
 
 
@@ -916,7 +949,7 @@ end;
 
 procedure TsChartHatchList.SetItem(AIndex: Integer; AValue: TsChartHatch);
 begin
-  inherited Items[AIndex] := AValue;
+  TsChartHatch(inherited Items[AIndex]).CopyFrom(AValue);
 end;
 
 
@@ -925,8 +958,16 @@ end;
 destructor TsChartImage.Destroy;
 begin
   Name := '';
-  Image.Free;
+  //Image.Free;  --- created by caller --> must be destroyed by caller!
   inherited;
+end;
+
+procedure TsChartImage.CopyFrom(ASource: TsChartImage);
+begin
+  Name := ASource.Name;
+  Image := ASource.Image;
+  Width := ASource.Width;
+  Height := ASource.Height;
 end;
 
 
@@ -972,7 +1013,7 @@ end;
 
 procedure TsChartImageList.SetItem(AIndex: Integer; AValue: TsChartImage);
 begin
-  inherited Items[AIndex] := AValue;
+  TsChartImage(inherited Items[AIndex]).CopyFrom(AValue);
 end;
 
 
@@ -993,6 +1034,15 @@ end;
 
 
 { TsChartLineStyle }
+
+procedure TsChartLineStyle.CopyFrom(ASource: TsChartLineStyle);
+begin
+  Name := ASource.Name;
+  Segment1 := ASource.Segment1;
+  Segment2 := ASource.Segment2;
+  Distance := ASource.Distance;
+  RelativeToLineWidth := ASource.RelativeToLineWidth;
+end;
 
 function TsChartLineStyle.GetID: String;
 var
@@ -1054,7 +1104,7 @@ end;
 
 procedure TsChartLineStyleList.SetItem(AIndex: Integer; AValue: TsChartLineStyle);
 begin
-  inherited Items[AIndex] := AValue;
+  TsChartLineStyle(inherited Items[AIndex]).CopyFrom(AValue);
 end;
 
 
@@ -1066,6 +1116,13 @@ begin
   Sheet := '';
   Row := UNASSIGNED_ROW_COL_INDEX;
   Col := UNASSIGNED_ROW_COL_INDEX;
+end;
+
+procedure TsChartCellAddr.CopyFrom(ASource: TsChartCellAddr);
+begin
+  Sheet := ASource.Sheet;
+  Row := ASource.Row;
+  Col := ASource.Col;
 end;
 
 function TsChartCellAddr.GetSheetName: String;
@@ -1095,7 +1152,7 @@ begin
   Col2 := UNASSIGNED_ROW_COL_INDEX;
 end;
 
-procedure TsChartRange.Assign(ASource: TsChartRange);
+procedure TsChartRange.CopyFrom(ASource: TsChartRange);
 begin
   Sheet1 := ASource.Sheet1;
   Sheet2 := ASource.Sheet2;
@@ -1138,6 +1195,11 @@ begin
   FVisible := true;
 end;
 
+procedure TsChartElement.CopyFrom(ASource: TsChartElement);
+begin
+  Visible := ASource.Visible;
+end;
+
 
 { TsChartFillElement }
 
@@ -1162,6 +1224,16 @@ begin
   inherited;
 end;
 
+procedure TsChartFillElement.CopyFrom(ASource: TsChartElement);
+begin
+  inherited CopyFrom(ASource);
+  if ASource is TsChartFillElement then
+  begin
+    FBackground.CopyFrom(TsChartFillElement(ASource).Background);
+    FBorder.CopyFrom(TsChartFillElement(ASource).Border);
+  end;
+end;
+
 
 { TsChartText }
 
@@ -1183,6 +1255,19 @@ destructor TsChartText.Destroy;
 begin
   FFont.Free;
   inherited;
+end;
+
+procedure TsChartText.CopyFrom(ASource: TsChartElement);
+begin
+  inherited CopyFrom(ASource);
+  if ASource is TsChartText then
+  begin
+    FCaption := TsChartText(ASource).Caption;
+    FRotationAngle := TsChartText(ASource).RotationAngle;
+    FFont.CopyOf(TsChartText(ASource).Font);
+    FPosX := TsChartText(ASource).PosX;
+    FPosY := TsChartText(ASource).PosY;
+  end;
 end;
 
 
@@ -1242,11 +1327,46 @@ begin
   inherited;
 end;
 
+procedure TsChartAxis.CopyFrom(ASource: TsChartElement);
+begin
+  inherited CopyFrom(ASource);
+  if ASource is TsChartAxis then
+  begin
+    FAutomaticMax := TsChartAxis(ASource).AutomaticMax;
+    FAutomaticMin := TsChartAxis(ASource).AutomaticMin;
+    FAutomaticMajorInterval := TsChartAxis(ASource).AutomaticMajorInterval;
+    FAutomaticMinorSteps := TsChartAxis(ASource).AutomaticMinorSteps;
+    FAxisLine.CopyFrom(TsChartAxis(ASource).AxisLine);
+    FCategoryRange.CopyFrom(TsChartAxis(ASource).CategoryRange);
+    FMajorGridLines.CopyFrom(TsChartAxis(ASource).MajorGridLines);
+    FMinorGridLines.CopyFrom(TsChartAxis(ASource).MinorGridLines);
+    FInverted := TsChartAxis(ASource).Inverted;
+    FLabelFont.CopyOf(TsChartAxis(ASource).LabelFont);
+    FLabelFormat := TsChartAxis(ASource).LabelFormat;
+    FLabelFormatFromSource := TsChartAxis(ASource).LabelFormatFromSource;
+    FLabelFormatDateTime := TsChartAxis(ASource).LabelFormatDateTime;
+    FLabelFormatPercent := TsChartAxis(ASource).LabelFormatPercent;
+    FLabelRotation := TsChartAxis(ASource).LabelRotation;
+    FLogarithmic :=TsChartAxis(ASource).Logarithmic;
+    FMajorInterval := TsChartAxis(ASource).MajorInterval;
+    FMajorTicks := TsChartAxis(ASource).MajorTicks;
+    FMax := TsChartAxis(ASource).Max;
+    FMin := TsChartAxis(ASource).Min;
+    FMinorCount := TsChartAxis(ASource).MinorCount;
+    FMinorTicks := TsChartAxis(ASource).MinorTicks;
+    FPosition := TsChartAxis(ASource).Position;
+    FTitle.CopyFrom(TsChartAxis(ASource).Title);
+    FPositionValue := TsChartAxis(ASource).PositionValue;
+    FShowLabels := TsChartAxis(ASource).ShowLabels;
+    FDateTime := TsChartAxis(ASource).DateTime;
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Returns the other axis in the same direction, i.e. when the axis is the
   primary x axis the function returns the secondary x axis, etc.
 -------------------------------------------------------------------------------}
-function TsChartAxis.OtherAxis: TsChartAxis;
+function TsChartAxis.GetOtherAxis: TsChartAxis;
 begin
   if Chart.XAxis = self then
     Result := Chart.X2Axis
@@ -1291,6 +1411,20 @@ begin
   FFont.Free;
   inherited;
 end;
+
+procedure TsChartLegend.CopyFrom(ASource: TsChartElement);
+begin
+  inherited CopyFrom(ASource);
+  if ASource is TsChartLegend then
+  begin
+    FFont.CopyOf(TsChartLegend(ASource).Font);
+    FCanOverlapPlotArea := TsChartLegend(ASource).CanOverlapPlotArea;
+    FPosition := TsChartLegend(ASource).Position;
+    FPosX := TsChartLegend(ASource).PosX;
+    FPosY := TsChartLegend(ASource).PosY;
+  end;
+end;
+
 
 { TsChartDataPointStyleList }
 
@@ -1353,7 +1487,7 @@ end;
 procedure TsChartDataPointStyleList.SetItem(AIndex: Integer;
   AValue: TsChartDataPointStyle);
 begin
-  inherited Items[AIndex] := AValue;
+  TsChartDataPointStyle(inherited Items[AIndex]).CopyFrom(AValue);
 end;
 
 

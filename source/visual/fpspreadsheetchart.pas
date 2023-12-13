@@ -988,7 +988,7 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetYCount(AValue: Cardinal);
 begin
-  {$IF LCL_FullVersion >= 3090900}
+  {$IF LCL_FullVersion >= 3990000}
   inherited SetYCount(AValue);
   {$ELSE}
   FYCount := AValue;
@@ -1688,7 +1688,7 @@ procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BubbleBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BubblePen);
-  {$IF LCL_FullVersion >= 3090900}
+  {$IF LCL_FullVersion >= 3990000}
   AChartSeries.BubbleRadiusUnits := bruPercentage;
   AChartSeries.ParentChart.ExpandPercentage := 10;
   {$IFEND}
@@ -1778,7 +1778,7 @@ begin
     // Autoscale transformation for primary and secondary axes
     T := TAutoScaleAxisTransform.Create(axis.Transformations);
     T.Transformations := axis.Transformations;
-    T.Enabled := AWorkbookAxis.Visible and AWorkbookAxis.OtherAxis.Visible;
+    T.Enabled := AWorkbookAxis.Visible and AWorkbookAxis.GetOtherAxis.Visible;
   end;
 
   // Axis title
@@ -1792,7 +1792,6 @@ begin
   axis.Marks.LabelFont.Orientation := round(AWorkbookAxis.LabelRotation * 10);
   if (AWorkbookAxis.LabelFormat <> '') and not IsDateTimeFormat(AWorkbookAxis.LabelFormat) then
     axis.Marks.Format := Convert_NumFormatStr_to_FormatStr(AWorkbookAxis.LabelFormat);
-
 
   // Axis line
   UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.AxisLine, axis.AxisPen);

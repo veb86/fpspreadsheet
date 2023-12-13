@@ -1349,7 +1349,7 @@ begin
     ReadChartCellRange(ANode, 'chart:values-cell-range-address', series.YRange);
 
   if series.XRange.IsEmpty then
-    series.XRange.Assign(series.Chart.XAxis.CategoryRange);
+    series.XRange.CopyFrom(series.Chart.XAxis.CategoryRange);
 
   s := GetAttrValue(ANode, 'chart:attached-axis');
   if s = 'primary-y' then
@@ -1372,7 +1372,7 @@ begin
           end else
           if xyCounter = 1 then
           begin
-            series.YRange.Assign(series.XRange);
+            series.YRange.CopyFrom(series.XRange);
             ReadChartCellRange(subnode, 'table:cell-range-address', series.XRange)
           end;
         end;
@@ -1410,7 +1410,7 @@ begin
     subnode := subNode.NextSibling;
   end;
 
-  if series.LabelRange.IsEmpty then series.LabelRange.Assign(AChart.XAxis.CategoryRange);
+  if series.LabelRange.IsEmpty then series.LabelRange.CopyFrom(AChart.XAxis.CategoryRange);
 
   s := GetAttrValue(ANode, 'chart:style-name');
   if s <> '' then
