@@ -8,7 +8,6 @@ uses
 
 const
   FILE_NAME = 'stock-vol';
-  CANDLE_STICK = true; //false;
 
 var
   book: TsWorkbook;
@@ -19,6 +18,19 @@ var
   r: Integer;
   d: TDate;
   fn: String;
+  candleStickMode: Boolean;
+  volumeMode: char;
+
+  procedure WriteHelp;
+  begin
+    WriteLn('SYNTAX: stock_volume_write_demo hlc|candlestick bar|area|line');
+    WriteLn('  hlc ........... Create high-low-close series');
+    WriteLn('  candlestick ... Create candle-stick series');
+    WriteLn('  area .......... Display volume as area series');
+    WriteLn('  bar ........... Display volume as bar series');
+    WriteLn('  line .......... Display volume as line series');
+    halt;
+  end;
 
   procedure WriteData(var ARow: Integer; var ADate: TDate; AVolume, AOpen, AHigh, ALow, AClose: Double);
   begin
@@ -33,6 +45,44 @@ var
   end;
 
 begin
+  if ParamCount >= 2 then
+  begin
+    case lowercase(ParamStr(1)) of
+      'hlc':
+        begin
+          candleStickMode := false;
+          fn := FILE_NAME + '-hlc';
+        end;
+      'candlestick':
+        begin
+          candleStickMode := true;
+          fn := FILE_NAME + '-candlestick';
+        end;
+      else
+        WriteHelp;
+    end;
+    case lowercase(ParamStr(2)) of
+      'area':
+        begin
+          volumeMode := 'a';
+          fn := fn + '-area';
+        end;
+      'bar', 'bars':
+        begin
+          volumeMode := 'b';
+          fn := fn + '-bars';
+        end;
+      'line':
+        begin
+          volumeMode := 'l';
+          fn := fn + '-line';
+        end;
+      else
+        WriteHelp;
+    end;
+  end else
+    WriteHelp;
+
   book := TsWorkbook.Create;
   try
     // Worksheet
@@ -89,32 +139,28 @@ begin
 
     // Stock series properties
     ser.YAxis := alPrimary;
-    ser.CandleStick := CANDLE_STICK;
+    ser.CandleStick := candleStickMode;
     ser.CandleStickUpFill.Color := scGreen;
     ser.CandlestickDownFill.Color := scRed;
     ser.SetTitleAddr (0, 0);
-    if CANDLE_STICK then ser.SetOpenRange (3, 2, 7, 2);
+    if candleStickMode then ser.SetOpenRange (3, 2, 7, 2);
     ser.SetHighRange (3, 3, 7, 3);
     ser.SetLowRange  (3, 4, 7, 4);
     ser.SetCloseRange(3, 5, 7, 5);
     ser.SetLabelRange(3, 0, 7, 0);
 
-    // Add bar series for volume data
-    // (Activate one of the three next lines)
-    vser := TsBarSeries.Create(ch);
-    //vser := TsAreaSeries.Create(ch);
-    //vser := TsLineSeries.Create(ch);
+    // Add series for volume data, type depending on 2nd commandline argument
+    case volumeMode of
+      'a': vser := TsAreaSeries.Create(ch);
+      'b': vser := TsBarSeries.Create(ch);
+      'l': vser := TsLineSeries.Create(ch);
+    end;
 
-    // Bar series properties
+    // Volume series properties
     vser.YAxis := alSecondary;
     vser.SetLabelRange(3, 0, 7, 0);
     vser.SetYRange    (3, 1, 7, 1);
     vser.SetTitleAddr (2, 1);
-
-    if CANDLE_STICK then
-      fn := FILE_NAME + '-candle'
-    else
-      fn := FILE_NAME + '-hlc';
 
     {
     book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file

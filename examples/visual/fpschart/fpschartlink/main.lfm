@@ -1,7 +1,7 @@
 object Form1: TForm1
-  Left = 314
+  Left = 467
   Height = 527
-  Top = 130
+  Top = 160
   Width = 1351
   Caption = 'Form1'
   ClientHeight = 527
@@ -22,6 +22,7 @@ object Form1: TForm1
     WorkbookSource = sWorkbookSource1
     Align = alLeft
     AutoAdvance = aaDown
+    Color = clWhite
     DefaultColWidth = 64
     DefaultRowHeight = 22
     Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goSmoothScroll]
@@ -93,18 +94,25 @@ object Form1: TForm1
       DropDownCount = 32
       ItemHeight = 15
       Items.Strings = (
-        '../../../other/chart/area.ods'
         '../../../other/chart/bars.ods'
-        '../../../other/chart/bars_2axes.ods'
+        '../../../other/chart/bars-rotated.ods'
+        '../../../other/chart/bars-2axes.ods'
+        '../../../other/chart/bars-2axes-rotated.ods'
         '../../../other/chart/bubble.ods'
         '../../../other/chart/pie.ods'
         '../../../other/chart/radar.ods'
         '../../../other/chart/regression.ods'
-        '../../../other/chart/scatter.ods'
-        '../../../other/chart/scatter_log.ods'
-        '../../../other/chart/scatter_loglog.ods'
-        '../../../other/chart/stock-candle.ods'
+        '../../../other/chart/scatter-lin.ods'
+        '../../../other/chart/scatter-log.ods'
+        '../../../other/chart/scatter-loglog.ods'
+        '../../../other/chart/stock-candlestick.ods'
         '../../../other/chart/stock-hlc.ods'
+        '../../../other/chart/stock-vol-candlestick-area.ods'
+        '../../../other/chart/stock-vol-candlestick-bars.ods'
+        '../../../other/chart/stock-vol-candlestick-line.ods'
+        '../../../other/chart/stock-vol-hlc-area.ods'
+        '../../../other/chart/stock-vol-hlc-bars.ods'
+        '../../../other/chart/stock-vol-hlc-line.ods'
       )
       TabOrder = 0
       OnCloseUp = ComboBox1CloseUp

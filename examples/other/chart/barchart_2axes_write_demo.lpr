@@ -1,19 +1,28 @@
-program barchart_write_demo;
-
-{.$DEFINE DARK_MODE}
+program barchart_2axes_write_demo;
 
 uses
   SysUtils,
   fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
 
+procedure WriteHelp;
+begin
+  WriteLn('SYNTAX: barchart_2axes_write_demo [rotated]');
+  WriteLn('  (no argument) ..... vertical bars');
+  WriteLn('  rotated ........... hoizontal bars');
+  Halt;
+end;
+
 const
-  FILE_NAME = 'bars_2axes';
+  FILE_NAME = 'bars-2axes';
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
+  fn: String;
 begin
+  fn := FILE_NAME;
+
   book := TsWorkbook.Create;
   try
     // worksheet
@@ -40,14 +49,20 @@ begin
     ch.Legend.Border.Style := clsNoLine;
     ch.XAxis.Title.Caption := '';
     ch.YAxis.Title.Caption := 'Count';
-    ch.YAxis.Title.Font.Color := $0075ea; //597bff;
-    ch.YAxis.AxisLine.Color := $0075ea; //597bff;
-    ch.YAxis.LabelFont.Color := $0075ea; //597bff;
+    ch.YAxis.Title.Font.Color := $0075ea;
+    ch.YAxis.AxisLine.Color := $0075ea;
+    ch.YAxis.LabelFont.Color := $0075ea;
     ch.YAxis.MajorTicks := [];
     ch.Y2Axis.Title.Caption := 'Volume';
     ch.Y2Axis.Title.Font.Color := $b08359;
     ch.Y2Axis.AxisLine.Color := $b08359;
     ch.Y2Axis.LabelFont.Color := $b08359;
+
+    if (ParamCount >= 1) and (lowercase(ParamStr(1)) = 'rotated') then
+    begin
+      ch.RotatedAxes := true;
+      fn := fn + '-rotated';
+    end;
 
     // Add 1st bar series ("Count")
     ser := TsBarSeries.Create(ch);
@@ -56,7 +71,7 @@ begin
     ser.SetLabelRange(3, 0, 8, 0);
     ser.SetYRange(3, 1, 8, 1);
     ser.Fill.Style := cfsSolid;
-    ser.Fill.Color := $0075ea; //597bff;
+    ser.Fill.Color := $0075ea;
     ser.Line.Style := clsNoLine;
 
     // Add 2nd bar series ("Volume")
@@ -70,12 +85,12 @@ begin
     ser.Line.Style := clsNoLine;
 
     {
-    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart in ', FILENAME, '.xlsx');
+    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
+    WriteLn('Data saved with chart in ', fn, '.xlsx');
     }
 
-    book.WriteToFile(FILE_NAME + '.ods', true);
-    WriteLn('Data saved with chart in ', FILE_NAME, '.ods');
+    book.WriteToFile(fn + '.ods', true);
+    WriteLn('Data saved with chart in ', fn, '.ods');
   finally
     book.Free;
   end;

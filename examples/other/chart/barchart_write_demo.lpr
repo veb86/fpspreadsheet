@@ -6,6 +6,14 @@ uses
   SysUtils,
   fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
 
+procedure WriteHelp;
+begin
+  WriteLn('SYNTAX: barchart_write_demo [rotated]');
+  WriteLn('  (no argument) ..... vertical bars');
+  WriteLn('  rotated ........... hoizontal bars');
+  Halt;
+end;
+
 const
   FILE_NAME = 'bars';
 var
@@ -13,7 +21,10 @@ var
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
+  fn: String;
 begin
+  fn := FILE_NAME;
+
   book := TsWorkbook.Create;
   try
     // worksheet
@@ -44,6 +55,11 @@ begin
     ch.YAxis.Title.Caption := 'Grade points';
     ch.YAxis.AxisLine.Color := scSilver;
     ch.YAxis.MajorTicks := [];
+    if (ParamCount >= 1) and (lowercase(ParamStr(1)) = 'rotated') then
+    begin
+      ch.RotatedAxes := true;
+      fn := fn + '-rotated';
+    end;
 
     // Add 1st bar series ("Student 1")
     ser := TsBarSeries.Create(ch);
@@ -66,12 +82,12 @@ begin
     ser.Fill.Color := scBlue;
 
     {
-    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart in ', FILENAME, '.xlsx');
+    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
+    WriteLn('Data saved with chart in ', fn, '.xlsx');
     }
 
-    book.WriteToFile(FILE_NAME + '.ods', true);
-    WriteLn('Data saved with chart in ', FILE_NAME, '.ods');
+    book.WriteToFile(fn + '.ods', true);
+    WriteLn('Data saved with chart in ', fn, '.ods');
   finally
     book.Free;
   end;

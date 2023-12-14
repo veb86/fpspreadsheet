@@ -8,7 +8,6 @@ uses
 
 const
   FILE_NAME = 'stock';
-  CANDLE_STICK = false;
 
 var
   book: TsWorkbook;
@@ -18,6 +17,15 @@ var
   r: Integer;
   d: TDate;
   fn: String;
+  candlestickMode: Boolean;
+
+  procedure WriteHelp;
+  begin
+    WriteLn('SYNTAX: stock_write_demo hlc|candlestick');
+    WriteLn('  hlc ........... Create high-low-close series');
+    WriteLn('  candlestick ... Create candle-stick series');
+    halt;
+  end;
 
   procedure WriteData(var ARow: Integer; var ADate: TDate; AOpen, AHigh, ALow, AClose: Double);
   begin
@@ -31,6 +39,25 @@ var
   end;
 
 begin
+  if ParamCount >= 1 then
+  begin
+    case lowercase(ParamStr(1)) of
+      'hlc':
+        begin
+          candleStickMode := false;
+          fn := FILE_NAME + '-hlc';
+        end;
+      'candlestick':
+        begin
+          candleStickMode := true;
+          fn := FILE_NAME + '-candlestick';
+        end;
+      else
+        WriteHelp;
+    end;
+  end else
+    WriteHelp;
+
   book := TsWorkbook.Create;
   try
     // Worksheet
@@ -74,21 +101,16 @@ begin
     ser := TsStockSeries.Create(ch);
 
     // Series properties
-    ser.CandleStick := CANDLE_STICK;
+    ser.CandleStick := candleStickMode;
     ser.CandleStickUpFill.Color := scGreen;
     ser.CandlestickDownFill.Color := scRed;
     ser.SetTitleAddr (0, 0);
-    if CANDLE_STICK then ser.SetOpenRange (3, 1, 7, 1);
+    if candleStickMode then ser.SetOpenRange (3, 1, 7, 1);
     ser.SetHighRange (3, 2, 7, 2);
     ser.SetLowRange  (3, 3, 7, 3);
     ser.SetCloseRange(3, 4, 7, 4);
     ser.SetXRange    (3, 0, 7, 0);
     ser.SetLabelRange(3, 0, 7, 0);
-
-    if CANDLE_STICK then
-      fn := FILE_NAME + '-candle'
-    else
-      fn := FILE_NAME + '-hlc';
 
     {
     book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file

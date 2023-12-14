@@ -1050,15 +1050,23 @@ begin
     case nodeName of
       'style:chart-properties':
         begin
+          // Stacked
           s := GetAttrValue(AStyleNode, 'chart:stacked');
           if s = 'true' then
             AChart.StackMode := csmStacked;
+          // Stacked as percentage
           s := GetAttrValue(AStyleNode, 'chart:percentage');
           if s = 'true' then
             AChart.StackMode := csmStackedPercentage;
+          // Horizontal bars
+          s := GetAttrValue(AStyleNode, 'chart:vertical');
+          if s = 'true' then
+            AChart.RotatedAxes := true;
+          // Pie series start angle
           s := GetAttrValue(AStyleNode, 'chart:angle-offset');
           if s <> '' then
             FPieSeriesStartAngle := StrToInt(s);
+          // Stockseries candlestick mode
           s := GetAttrValue(AStyleNode, 'chart:japanese-candle-stick');
           if (s <> '') and (FStockSeries <> nil) then
             FStockSeries.CandleStick := true;

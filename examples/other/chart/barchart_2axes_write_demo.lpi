@@ -33,7 +33,6 @@
       <Unit>
         <Filename Value="barchart_2axes_write_demo.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="barchart_write_demo"/>
       </Unit>
     </Units>
   </ProjectOptions>
@@ -52,11 +51,6 @@
         <DebugInfoType Value="dsDwarf3"/>
       </Debugging>
     </Linking>
-    <Other>
-      <ConfigFile>
-        <WriteConfigFilePath Value=""/>
-      </ConfigFile>
-    </Other>
   </CompilerOptions>
   <Debugging>
     <Exceptions>

@@ -1022,18 +1022,30 @@ begin
 end;
 
 function TsWorkbookChartLink.ActiveChartSeries(ASeries: TsChartSeries): TChartSeries;
+type
+  TAxisType = (xAx, yAx);
+const
+  AXIS_ALIGNMENT: array[boolean, TsChartAxisLink, TAxisType] of TChartAxisAlignment = (
+    ( (calBottom, calLeft), // not rotated - primary
+      (calTop, calRight) ), // not rotated - secondary
+    ( (calLeft, calBottom), // rotated - primary
+      (calRight, calTop) )  // rotated - secondary
+    );
 var
   stackable: Boolean;
   firstSeries: TChartSeries;
+  ch: TsChart;
   src: TsWorkbookChartSource;
   calcSrc: TCalculatedChartSource;
   style: TChartStyle;
+  axAlign: TChartAxisAlignment;
 begin
   if FChart.Series.Count > 0 then
     firstSeries := FChart.Series[0] as TChartSeries
   else
     firstSeries := nil;
 
+  ch := ASeries.Chart;
   stackable := IsStackable(ASeries);
 
   if stackable and (firstSeries <> nil) then
@@ -1145,6 +1157,11 @@ begin
   end;
 
   // Assign series index to axis for primary and secondary axes support
+  axAlign := AXIS_ALIGNMENT[ch.RotatedAxes, ASeries.XAxis, xAx];
+  Result.AxisIndexX := FChart.AxisList.GetAxisByAlign(axAlign).Index;
+  axAlign := AXIS_ALIGNMENT[ch.RotatedAxes, ASeries.YAxis, yAx];
+  Result.AxisIndexY := FChart.AxisList.GetAxisByAlign(axAlign).Index;
+  {
   case ASeries.XAxis of
     alPrimary:
       Result.AxisIndexX := FChart.AxisList.GetAxisByAlign(calBottom).Index;
@@ -1157,6 +1174,7 @@ begin
     alSecondary:
       Result.AxisIndexY := FChart.AxisList.GetAxisByAlign(calRight).Index;
   end;
+  }
 
   if stackable then
   begin
@@ -1840,13 +1858,13 @@ begin
     logTransf.Enabled := AWorkbookAxis.Logarithmic;
   if AWorkbookAxis.Logarithmic then
   begin
-    axis.Intervals.Options := axis.Intervals.Options + [aipGraphCoords];
+    axis.Intervals.Options := axis.Intervals.Options + [aipGraphCoords{$IF LCL_FullVersion >= 3990000}, aipInteger{$IFEND}];
     axis.Intervals.MaxLength := 150;
     axis.Intervals.MinLength := 30;
     axis.Intervals.Tolerance := 30;
   end else
   begin
-    axis.Intervals.Options := axis.Intervals.Options - [aipGraphCoords];
+    axis.Intervals.Options := axis.Intervals.Options - [aipGraphCoords{$IF LCL_FullVersion >= 3990000}, aipInteger{$IFEND}];
     axis.Intervals.MaxLength := 100;
     axis.Intervals.MinLength := 20;
     axis.Intervals.Tolerance := 0;
