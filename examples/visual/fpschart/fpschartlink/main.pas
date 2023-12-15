@@ -7,7 +7,7 @@ interface
 uses
   Classes, SysUtils,
   LCLVersion, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
-  TAGraph,
+  TAGraph, TASources,
   fpSpreadsheet, fpsTypes, fpsOpenDocument,
   fpSpreadsheetCtrls, fpSpreadsheetGrid,  fpSpreadsheetChart;
 
@@ -21,6 +21,7 @@ type
     Chart1: TChart;
     ComboBox1: TComboBox;
     Label1: TLabel;
+    ListChartSource1: TListChartSource;
     OpenDialog1: TOpenDialog;
     Panel1: TPanel;
     Splitter1: TSplitter;

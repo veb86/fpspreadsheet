@@ -1747,6 +1747,10 @@ begin
 end;
 
 procedure TsWorkbookChartLink.UpdateChartAxis(AWorkbookAxis: TsChartAxis);
+const
+  ROTATED_ALIGNMENT: array[TChartAxisAlignment] of TChartAxisAlignment = (
+  // calLeft,   calTop,  calRight, calBottom
+     calBottom, calRight, calTop,  calLeft);
 var
   align: TChartAxisAlignment;
   axis: TChartAxis;
@@ -1767,6 +1771,10 @@ begin
     align := calRight
   else
     raise Exception.Create('Unsupported axis alignment');
+
+  if AWorkBookAxis.Chart.RotatedAxes then
+    align := ROTATED_ALIGNMENT[align];
+
   axis := FChart.AxisList.GetAxisByAlign(align);
 
   if AWorkbookAxis.Visible and (axis = nil) then
@@ -1878,7 +1886,12 @@ begin
   if FChart.SeriesCount = 0 then
     exit;
 
-  axis := FChart.BottomAxis;
+  if AWorkbookChart.RotatedAxes then
+    axis := FChart.LeftAxis
+  else
+    axis := FChart.BottomAxis;
+  axis.Marks.SourceExchangeXY := AWorkbookChart.RotatedAxes;
+
   case AWorkbookChart.GetChartType of
     ctScatter, ctBubble:
       begin

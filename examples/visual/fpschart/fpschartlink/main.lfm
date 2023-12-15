@@ -163,4 +163,8 @@ object Form1: TForm1
     Left = 976
     Top = 56
   end
+  object ListChartSource1: TListChartSource
+    Left = 327
+    Top = 152
+  end
 end
