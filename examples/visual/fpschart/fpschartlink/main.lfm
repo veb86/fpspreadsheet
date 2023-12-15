@@ -52,6 +52,7 @@ object Form1: TForm1
         Minors = <>
         Title.LabelBrush.Style = bsClear
       end>
+    Legend.SymbolWidth = 40
     Title.Text.Strings = (
       'TAChart'
     )
