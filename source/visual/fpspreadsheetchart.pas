@@ -1288,10 +1288,8 @@ begin
         FChart.AxisList[i].Minors.Delete(j);
 
     if (FChart.AxisList[i].Marks.Source is TDateTimeIntervalChartSource) then
-    begin
       FChart.AxisList[i].Marks.Source.Free;
-      FChart.AxisList[i].Marks.Style := smsValue;
-    end;
+    FChart.AxisList[i].Marks.Style := smsValue;
 
     case FChart.AxisList[i].Alignment of
       calLeft, calBottom:
@@ -1763,12 +1761,12 @@ begin
 
   if AWorkbookAxis = AWorkbookAxis.Chart.XAxis then
     align := calBottom
-  else if AWorkbookAxis = AWorkbookAxis.Chart.X2Axis then
-    align := calTop
   else if AWorkbookAxis = AWorkbookAxis.Chart.YAxis then
     align := calLeft
   else if AWorkbookAxis = AWorkbookAxis.Chart.Y2Axis then
     align := calRight
+  else if AWorkbookAxis = AWorkbookAxis.Chart.X2Axis then
+    align := calTop
   else
     raise Exception.Create('Unsupported axis alignment');
 

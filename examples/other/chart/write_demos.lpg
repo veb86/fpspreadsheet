@@ -37,16 +37,6 @@
           <Mode Name="Default"/>
         </BuildModes>
       </Target>
-      <Target FileName="scatter_log_write_demo.lpi">
-        <BuildModes>
-          <Mode Name="Default"/>
-        </BuildModes>
-      </Target>
-      <Target FileName="scatter_loglog_write_demo.lpi">
-        <BuildModes>
-          <Mode Name="Default"/>
-        </BuildModes>
-      </Target>
       <Target FileName="stock_write_demo.lpi">
         <BuildModes>
           <Mode Name="Default"/>
