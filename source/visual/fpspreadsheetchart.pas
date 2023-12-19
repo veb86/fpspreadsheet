@@ -2230,6 +2230,8 @@ begin
 
   // style of regression line
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Regression.Line, ser.Pen);
+  ser.AxisIndexX := AChartSeries.AxisIndexX;
+  ser.AxisIndexY := AChartSeries.AxisIndexY;
 
   FChart.AddSeries(ser);
 

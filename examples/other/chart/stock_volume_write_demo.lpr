@@ -20,15 +20,17 @@ var
   fn: String;
   candleStickMode: Boolean;
   volumeMode: char;
+  rotated: Boolean;
 
   procedure WriteHelp;
   begin
-    WriteLn('SYNTAX: stock_volume_write_demo hlc|candlestick bar|area|line');
+    WriteLn('SYNTAX: stock_volume_write_demo hlc|candlestick bar|area|line [rotated]');
     WriteLn('  hlc ........... Create high-low-close series');
     WriteLn('  candlestick ... Create candle-stick series');
     WriteLn('  area .......... Display volume as area series');
     WriteLn('  bar ........... Display volume as bar series');
     WriteLn('  line .......... Display volume as line series');
+    WriteLn('  rotated ....... (optional) rotated axes (date axis vertical)');
     halt;
   end;
 
@@ -80,6 +82,8 @@ begin
       else
         WriteHelp;
     end;
+    rotated := (ParamCount >= 3) and (lowercase(ParamStr(3)) = 'rotated');
+    if rotated then fn := fn + '-rotated';
   end else
     WriteHelp;
 
@@ -109,6 +113,8 @@ begin
     ch := book.AddChart(sheet, 2, 6, 150, 100);
 
     // Chart properties
+    ch.RotatedAxes := rotated;
+    
     ch.Border.Style := clsNoLine;
     ch.Legend.Border.Style := clsNoLine;
     ch.Legend.Position := lpBottom;

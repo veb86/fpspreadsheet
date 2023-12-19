@@ -13,7 +13,14 @@ var
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsScatterSeries;
+  fn: String;
+  rotated: Boolean;
 begin
+  fn := FILE_NAME;
+  rotated := (ParamCount >= 1) and (lowercase(ParamStr(1)) = 'rotated');
+  if rotated then
+    fn := fn + '-rotated';
+
   book := TsWorkbook.Create;
   try
     // Worksheet
@@ -23,12 +30,12 @@ begin
     sheet.WriteText(0, 0, 'Data');
     sheet.WriteFont(0, 0, '', 12, [fssBold], scBlack);
     sheet.WriteText  (2, 0, 'x');  sheet.Writetext  (2, 1, 'y');
-    sheet.WriteNumber(3, 0, 1.1);  sheet.WriteNumber(3, 1, 0.9);
-    sheet.WriteNumber(4, 0, 1.9);  sheet.WriteNumber(4, 1, 2.05);
-    sheet.WriteNumber(5, 0, 2.5);  sheet.WriteNumber(5, 1, 2.45);
-    sheet.WriteNumber(6, 0, 3.1);  sheet.WriteNumber(6, 1, 3.3);
-    sheet.WriteNumber(7, 0, 5.2);  sheet.WriteNumber(7, 1, 4.9);
-    sheet.WriteNumber(8, 0, 6.8);  sheet.WriteNumber(8, 1, 7.1);
+    sheet.WriteNumber(3, 0, 1.1);  sheet.WriteNumber(3, 1,  9.0);
+    sheet.WriteNumber(4, 0, 1.9);  sheet.WriteNumber(4, 1, 20.5);
+    sheet.WriteNumber(5, 0, 2.5);  sheet.WriteNumber(5, 1, 24.5);
+    sheet.WriteNumber(6, 0, 3.1);  sheet.WriteNumber(6, 1, 33.2);
+    sheet.WriteNumber(7, 0, 5.2);  sheet.WriteNumber(7, 1, 49.4);
+    sheet.WriteNumber(8, 0, 6.8);  sheet.WriteNumber(8, 1, 71.3);
 
     // Create chart: left/top in cell D4, 150 mm x 100 mm
     ch := book.AddChart(sheet, 2, 3, 150, 100);
@@ -36,6 +43,7 @@ begin
     // Chart properties
     ch.Border.Style := clsNoLine;
     ch.Legend.Border.Style := clsNoLine;
+    ch.RotatedAxes := rotated;
 
     // Add scatter series
     ser := TsScatterSeries.Create(ch);
@@ -69,12 +77,12 @@ begin
     //ser.Regression.Equation.Left := 5;
 
     {
-    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart to ', FILE_NAME, '.xlsx');
+    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
+    WriteLn('Data saved with chart to ', fn, '.xlsx');
     }
 
-    book.WriteToFile('regression.ods', true);
-    WriteLn('Data saved with chart to ', FILE_NAME, '.ods');
+    book.WriteToFile(fn + '.ods', true);
+    WriteLn('Data saved with chart to ', fn, '.ods');
   finally
     book.Free;
   end;

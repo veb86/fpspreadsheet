@@ -18,12 +18,14 @@ var
   d: TDate;
   fn: String;
   candlestickMode: Boolean;
+  rotated: Boolean;
 
   procedure WriteHelp;
   begin
-    WriteLn('SYNTAX: stock_write_demo hlc|candlestick');
+    WriteLn('SYNTAX: stock_write_demo hlc|candlestick [rotated]');
     WriteLn('  hlc ........... Create high-low-close series');
     WriteLn('  candlestick ... Create candle-stick series');
+    WriteLn('  rotated ....... optional: rotated axes (date vertical)');
     halt;
   end;
 
@@ -55,6 +57,8 @@ begin
       else
         WriteHelp;
     end;
+    rotated := (ParamCount >= 2) and (lowercase(ParamStr(2)) = 'rotated');
+    if rotated then fn := fn + '-rotated';
   end else
     WriteHelp;
 
@@ -85,12 +89,13 @@ begin
     // Chart properties
     ch.Border.Style := clsNoLine;
     ch.Legend.Border.Style := clsNoLine;
+    ch.RotatedAxes := rotated;
     ch.XAxis.DateTime := true;
     ch.XAxis.Title.Caption := 'Date';
     ch.XAxis.MajorGridLines.Style := clsNoLine;
     ch.XAxis.MinorGridLines.Style := clsNoLine;
     ch.YAxis.Title.Caption := 'Stock price';
-    ch.YAxis.MajorGridLines.Style := clsSolid;
+    ch.YAxis.MajorGridLines.Style := clsSOLID;
     ch.YAxis.MinorGridLines.Style := clsNoLine;
     ch.YAxis.AutomaticMin := false;
     ch.YAxis.AutomaticMax := false;

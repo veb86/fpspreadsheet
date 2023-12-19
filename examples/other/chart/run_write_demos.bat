@@ -23,10 +23,15 @@ scatter_write_demo log-log
 echo.
 echo Scatter series and regression demo...
 regressionchart_write_demo
+regressionchart_write_demo rotated
 echo.
 echo StockSeries...
 stock_write_demo hlc
 stock_write_demo candlestick
+echo.
+echo StockSeries, rotated axes...
+stock_write_demo hlc rotated
+stock_write_demo candlestick rotated
 echo.
 echo StockSeries with volume...
 stock_volume_write_demo hlc area
@@ -35,4 +40,12 @@ stock_volume_write_demo hlc line
 stock_volume_write_demo candlestick area
 stock_volume_write_demo candlestick bar
 stock_volume_write_demo candlestick line
+echo.
+echo StockSeries with volume, rotated axes...
+stock_volume_write_demo hlc area rotated
+stock_volume_write_demo hlc bar rotated
+stock_volume_write_demo hlc line rotated
+stock_volume_write_demo candlestick area rotated
+stock_volume_write_demo candlestick bar rotated
+stock_volume_write_demo candlestick line rotated
 echo.
