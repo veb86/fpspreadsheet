@@ -62,7 +62,7 @@ begin
     ser.Regression.Line.Color := scRed;
     ser.Regression.Line.Style := clsDash;
     ser.Regression.ForceYIntercept := true;  // not used by logarithmic, power
-    ser.Regression.YInterceptValue := 1.0;   // dto.
+    ser.Regression.YInterceptValue := 10.0;  // dto.
     ser.Regression.PolynomialDegree := 2;
     ser.Regression.DisplayEquation := true;
     ser.Regression.DisplayRSquare := true;

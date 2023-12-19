@@ -6,6 +6,10 @@ barchart_write_demo
 barchart_write_demo rotated
 barchart_2axes_write_demo
 barchart_2axes_write_demo rotated
+barchart_stacked_write_demo
+barchart_stacked_write_demo rotated
+barchart_stacked_write_demo percentage
+barchart_stacked_write_demo percentage rotated
 echo.
 echo Bubble series...
 bubblechart_write_demo

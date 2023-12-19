@@ -97,6 +97,10 @@ object Form1: TForm1
       Items.Strings = (
         '../../../other/chart/bars.ods'
         '../../../other/chart/bars-rotated.ods'
+        '../../../other/chart/bars-stacked.ods'
+        '../../../other/chart/bars-stacked-rotated.ods'
+        '../../../other/chart/bars-stacked-percentage.ods'
+        '../../../other/chart/bars-stacked-percentage-rotated.ods'
         '../../../other/chart/bars-2axes.ods'
         '../../../other/chart/bars-2axes-rotated.ods'
         '../../../other/chart/bubble.ods'
