@@ -347,6 +347,38 @@ type
     property Items[AIndex: Integer]: TsChartDataPointStyle read GetItem write SetItem; default;
   end;
 
+  TsChartErrorBarKind = (cebkConstant, cebkPercentage, cebkStdDev, cebkRange);
+
+  TsChartErrorBars = class(TsChartElement)
+  private
+    FKind: TsChartErrorBarKind;
+    FLine: TsChartLine;
+    FValue: Array[0..1] of Double;  // 0 = positive, 1 = negative error bar value
+    FRange: Array[0..1] of TsChartRange;
+    function GetRange(AIndex: Integer): TsChartRange;
+    function GetValue(AIndex: Integer): Double;
+    procedure InternalSetErrorBarRange(AIndex: Integer;
+      ASheet1: String; ARow1, ACol1: Cardinal;
+      ASheet2: String; ARow2, ACol2: Cardinal);
+    procedure SetLine(AValue: TsChartLine);
+    procedure SetRange(AIndex: Integer; AValue: TsChartRange);
+    procedure SetValue(AIndex: Integer; AValue: Double);
+  public
+    constructor Create(AChart: TsChart);
+    destructor Destroy; override;
+    procedure CopyFrom(ASource: TsChartElement);
+    procedure SetErrorBarRangePos(ARow1, ACol1, ARow2, ACol2: Cardinal);
+    procedure SetErrorBarRangePos(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    procedure SetErrorBarRangeNeg(ARow1, ACol1, ARow2, ACol2: Cardinal);
+    procedure SetErrorBarRangeNeg(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    property Kind: TsChartErrorBarKind read FKind write FKind;
+    property Line: TsChartLine read FLine write SetLine;
+    property RangePos: TsChartRange index 0 read GetRange write SetRange;
+    property RangeNeg: TsChartRange index 1 read GetRange write SetRange;
+    property ValuePos: Double index 0 read GetValue write SetValue;
+    property ValueNeg: Double index 1 read GetValue write SetValue;
+  end;
+
   TsChartSeries = class(TsChartElement)
   private
     FChartType: TsChartType;
@@ -366,10 +398,13 @@ type
     FLabelFormat: String;
     FDataLabels: TsChartDataLabels;
     FDataPointStyles: TsChartDataPointStyleList;
+    FErrorBars: TsChartErrorBars;
+    procedure SetErrorBars(AValue: TsChartErrorBars);
   protected
     FLine: TsChartLine;
     FFill: TsChartFill;
     function GetChartType: TsChartType; virtual;
+    property ErrorBars: TsChartErrorBars read FErrorBars write SetErrorBars;
   public
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
@@ -422,11 +457,13 @@ type
   TsAreaSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
+    property ErrorBars;
   end;
 
   TsBarSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
+    property ErrorBars;
   end;
 
   TsChartSeriesSymbol = (
@@ -459,6 +496,7 @@ type
 
   TsLineSeries = class(TsCustomLineSeries)
   public
+    property ErrorBars;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -537,6 +575,7 @@ type
 
   TsScatterSeries = class(TsCustomScatterSeries)
   public
+    property ErrorBars;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -1512,6 +1551,102 @@ begin
 end;
 
 
+{ TsChartErrorBars }
+
+constructor TsChartErrorBars.Create(AChart: TsChart);
+begin
+  inherited;
+  FLine := TsChartLine.Create;
+  FLine.Style := clsSolid;
+  FLine.Color := scBlack;
+  FRange[0] := TsChartRange.Create(AChart);
+  FRange[1] := TsChartRange.Create(AChart);
+end;
+
+destructor TsChartErrorBars.Destroy;
+begin
+  FRange[1].Free;
+  FRange[0].Free;
+  FLine.Free;
+  inherited;
+end;
+
+procedure TsChartErrorBars.CopyFrom(ASource: TsChartElement);
+begin
+  inherited CopyFrom(ASource);
+  if ASource is TsChartErrorBars then
+  begin
+    FLine.CopyFrom(TsChartErrorBars(ASource).Line);
+    FRange[0].CopyFrom(TsChartErrorBars(ASource).RangePos);
+    FRange[1].CopyFrom(TsChartErrorBars(ASource).RangeNeg);
+    FValue[0] := TsChartErrorBars(ASource).ValuePos;
+    FValue[1] := TsChartErrorBars(ASource).ValueNeg;
+    FKind := TsChartErrorBars(ASource).Kind;
+  end;
+end;
+
+function TsChartErrorBars.GetRange(AIndex: Integer): TsChartRange;
+begin
+  Result := FRange[AIndex];
+end;
+
+function TsChartErrorBars.GetValue(AIndex: Integer): Double;
+begin
+  result := FValue[AIndex];
+end;
+
+procedure TsChartErrorBars.InternalSetErrorBarRange(AIndex: Integer;
+  ASheet1: String; ARow1, ACol1: Cardinal;
+  ASheet2: String; ARow2, ACol2: Cardinal);
+begin
+  if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
+    raise Exception.Create('Errorbar data can only be located in a single column or row.');
+  FRange[AIndex].Sheet1 := ASheet1;
+  FRange[AIndex].Row1 := ARow1;
+  FRange[AIndex].Col1 := ACol1;
+  FRange[AIndex].Sheet2 := ASheet2;
+  FRange[AIndex].Row2 := ARow2;
+  FRange[AIndex].Col2 := ACol2;
+end;
+
+procedure TsChartErrorBars.SetErrorBarRangePos(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  InternalSetErrorBarRange(0, '', ARow1, ACol1, '', ARow2, ACol2);
+end;
+
+procedure TsChartErrorBars.SetErrorBarRangePos(ASheet1: String; ARow1, ACol1: Cardinal;
+  ASheet2: String; ARow2, ACol2: Cardinal);
+begin
+  InternalSetErrorBarRange(0, ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2);
+end;
+
+procedure TsChartErrorBars.SetErrorBarRangeNeg(ARow1, ACol1, ARow2, ACol2: Cardinal);
+begin
+  InternalSetErrorBarRange(1, '', ARow1, ACol1, '', ARow2, ACol2);
+end;
+
+procedure TsChartErrorBars.SetErrorBarRangeNeg(ASheet1: String; ARow1, ACol1: Cardinal;
+  ASheet2: String; ARow2, ACol2: Cardinal);
+begin
+  InternalSetErrorBarRange(1, ASheet1, ARow1, ACol1, ASheet2, ARow2, ACol2);
+end;
+
+procedure TsChartErrorBars.SetLine(AValue: TsChartLine);
+begin
+  FLine.CopyFrom(AValue);
+end;
+
+procedure TsChartErrorBars.SetRange(AIndex: Integer; AValue: TsChartRange);
+begin
+  FRange[AIndex].CopyFrom(AValue);
+end;
+
+procedure TsChartErrorBars.SetValue(AIndex: Integer; AValue: Double);
+begin
+  FValue[AIndex] := AValue;
+end;
+
+
 { TsChartSeries }
 
 constructor TsChartSeries.Create(AChart: TsChart);
@@ -1554,10 +1689,13 @@ begin
   FLabelBackground.Style := cfsNoFill;
 
   FLabelSeparator := ' ';
+
+  FErrorBars := TsChartErrorBars.Create(AChart);
 end;
 
 destructor TsChartSeries.Destroy;
 begin
+  FErrorBars.Free;
   FLabelBackground.Free;
   FLabelBorder.Free;
   FLabelFont.Free;
@@ -1620,6 +1758,11 @@ end;
 function TsChartSeries.LabelsInCol: Boolean;
 begin
   Result := (FLabelRange.Col1 = FLabelRange.Col2) and (FLabelRange.Row1 <> FLabelRange.Row2);
+end;
+
+procedure TsChartSeries.SetErrorBars(AValue: TsChartErrorBars);
+begin
+  FErrorBars.CopyFrom(AValue);
 end;
 
 procedure TsChartSeries.SetTitleAddr(ARow, ACol: Cardinal);
