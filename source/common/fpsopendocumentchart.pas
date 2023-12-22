@@ -50,6 +50,10 @@ type
     procedure ReadChartRegressionStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartSeriesDataPointStyle(AStyleNode: TDOMNode; AChart: TsChart;
       ASeries: TsChartSeries; var AFill: TsChartFill; var ALine: TsChartLine);
+    procedure ReadChartSeriesErrorBarProps(ANode, AStyleNode: TDOMNode; AChart: TsChart;
+      ASeries: TsChartSeries);
+    procedure ReadChartSeriesErrorBarStyle(AStyleNode: TDOMNode; AChart: TsChart;
+      AErrorBars: TsChartErrorBars);
     procedure ReadChartSeriesProps(ANode, AStyleNode: TDOMNode; AChart: TsChart);
     procedure ReadChartSeriesStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartStockSeriesStyle(AStyleNode: TDOMNode; AChart: TsChart;
@@ -1305,6 +1309,83 @@ begin
   end;
 end;
 
+procedure TsSpreadOpenDocChartReader.ReadChartSeriesErrorBarProps(
+  ANode, AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
+var
+  s: String;
+  styleNode: TDOMNode;
+  errorBars: TsChartErrorBars;
+begin
+  s := GetAttrValue(ANode, 'chart:dimension');
+  case s of
+    'x': errorBars := ASeries.XErrorBars;
+    'y': errorBars := ASeries.YErrorBars;
+    else exit;
+  end;
+
+  s := GetAttrValue(ANode, 'chart:style-name');
+  if s <> '' then
+  begin
+    styleNode := FindStyleNode(AStyleNode, s);
+    ReadChartSeriesErrorBarStyle(styleNode, AChart, errorBars);
+  end;
+end;
+
+procedure TsSpreadOpenDocChartReader.ReadChartSeriesErrorBarStyle(
+  AStyleNode: TDOMNode; AChart: TsChart; AErrorBars: TsChartErrorBars);
+var
+  nodeName, s: String;
+  x: Double;
+begin
+  AStyleNode := AStyleNode.FirstChild;
+  while AStyleNode <> nil do
+  begin
+    nodeName := AStyleNode.NodeName;
+    case nodeName of
+      'style:chart-properties':
+        begin
+          s := GetAttrValue(AStyleNode, 'chart:error-category');
+          case s of
+            'constant': AErrorBars.Kind := cebkConstant;
+            'cell-range': AErrorBars.Kind := cebkRange;
+            'percentage': AErrorBars.Kind := cebkPercentage;
+            else
+              exit;
+            // To do: support the statistical categories 'standard-error',
+            //        'variance', 'standard-deviation', 'error-margin'
+          end;
+
+          s := GetAttrValue(AStyleNode, 'chart:error-lower-limit');
+          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+            AErrorBars.ValueNeg := x;
+
+          s := GetAttrValue(AStyleNode, 'chart:error-upper-limit');
+          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+            AErrorBars.ValuePos := x;
+
+          s := GetAttrValue(AStyleNode, 'chart:error-lower-indicator');
+          AErrorBars.ShowNeg := (s = 'true');
+
+          s := GetAttrValue(AStyleNode, 'chart:error-upper-indicator');
+          AErrorBars.ShowPos := (s = 'true');
+
+          s := GetAttrValue(AStyleNode, 'chart:error-percentage');
+          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+          begin
+            AErrorBars.ValueNeg := x;
+            AErrorBars.ValuePos := x;
+          end;
+
+          ReadChartCellRange(AStyleNode, 'chart:error-lower-range', AErrorBars.RangeNeg);
+          ReadChartCellRange(AStyleNode, 'chart:error-upper-range', AErrorBars.RangePos);
+        end;
+      'style:graphic-properties':
+        GetChartLineProps(AStyleNode, AChart, AErrorBars.Line);
+    end;
+    AStyleNode := AStyleNode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocChartReader.ReadChartSeriesProps(ANode, AStyleNode: TDOMNode;
   AChart: TsChart);
 var
@@ -1414,6 +1495,8 @@ begin
           fill.Free;  // the styles have been copied to the series datapoint list and are not needed any more.
           line.Free;
         end;
+      'chart:error-indicator':
+        ReadChartSeriesErrorbarProps(subNode, AStyleNode, AChart, series);
     end;
     subnode := subNode.NextSibling;
   end;

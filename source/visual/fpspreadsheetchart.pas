@@ -41,7 +41,7 @@ type
 
   { TsWorkbookChartSource }
 
-  TsXYLRange = (rngX, rngY, rngLabel, rngColor);
+  TsXYLRange = (rngX, rngY, rngLabel, rngColor, rngXErrors, rngYErrors);
 
   TsWorkbookChartSource = class(TCustomChartSource, IsSpreadsheetControl)
   private
@@ -85,6 +85,8 @@ type
     procedure SetXRange(XIndex: Integer; ARange: TsChartRange);
     procedure SetYRange(YIndex: Integer; ARange: TsChartRange);
     procedure SetTitleAddr(Addr: TsChartCellAddr);
+    procedure SetXErrorBarRange(ARange: TsChartRange);
+    procedure SetYErrorBarRange(ARange: TsChartRange);
     procedure UseDataPointColors(ASeries: TsChartSeries);
     property PointsNumber: Cardinal read FPointsNumber;
     property Workbook: TsWorkbook read GetWorkbook;
@@ -98,9 +100,14 @@ type
     property CyclicX: Boolean read FCyclicX write FCyclicX default false;
     property IntegerX: Boolean read FIntegerX write FIntegerX default false;
     property LabelRange: String index rngLabel read GetRange write SetRange;
+    property XErrorBarRange: String index rngXErrors read GetRange write SetRange;
+    property YErrorBarRange: String index rngYErrors read GetRange write SetRange;
     property XRange: String index rngX read GetRange write SetRange;
     property YRange: String index rngY read GetRange write SetRange;
     property Title: String read GetTitle;
+
+    property XErrorBarData;
+    property YErrorBarData;
   end;
 
   {@@ Link between TAChart and the fpspreadsheet chart class }
@@ -148,6 +155,7 @@ type
     procedure UpdateChartBackground(AWorkbookChart: TsChart);
 //    procedure UpdateBarSeries(AWorkbookChart: TsChart);
     procedure UpdateChartBrush(AWorkbookChart: TsChart; AWorkbookFill: TsChartFill; ABrush: TBrush);
+    procedure UpdateChartErrorBars(AWorkbookSeries: TsChartSeries; ASeries: TBasicPointSeries);
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookChart: TsChart; AWorkbookLine: TsChartLine; APen: TPen);
     procedure UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
@@ -177,7 +185,6 @@ type
     property Chart: TChart read FChart write SetChart;
     property WorkbookChartIndex: Integer read FWorkbookChartIndex write SetWorkbookChartIndex;
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
-
   end;
 
 procedure Convert_sChartLine_to_Pen(AChart: TsChart; ALine: TsChartLine; APen: TPen);
@@ -910,9 +917,19 @@ begin
   FTitleSheetName := Addr.GetSheetName;
 end;
 
+procedure TsWorkbookChartSource.SetXErrorBarRange(ARange: TsChartRange);
+begin
+  SetRangeFromChart(rngXErrors, 0, ARange);
+end;
+
 procedure TsWorkbookChartSource.SetXRange(XIndex: Integer; ARange: TsChartRange);
 begin
   SetRangeFromChart(rngX, XIndex, ARange);
+end;
+
+procedure TsWorkbookChartSource.SetYErrorBarRange(ARange: TsChartRange);
+begin
+  SetRangeFromChart(rngYErrors, 0, ARange);
 end;
 
 procedure TsWorkbookChartSource.SetYRange(YIndex: Integer; ARange: TsChartRange);
@@ -1686,6 +1703,7 @@ begin
   AChartSeries.UseZeroLevel := true;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
+  UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
@@ -1697,6 +1715,7 @@ begin
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
+  UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries;
@@ -1970,6 +1989,63 @@ begin
   end;
 end;
 
+type
+  TErrorbarSeries = class(TBasicPointSeries)
+  public
+    property XErrorBars;
+    property YErrorBars;
+  end;
+
+procedure TsWorkbookChartLink.UpdateChartErrorBars(AWorkbookSeries: TsChartSeries;
+  ASeries: TBasicPointSeries);
+const
+  ERRORBAR_KINDS: array[TsChartErrorBarKind] of TChartErrorBarKind = (
+    ebkConst, ebkPercent, ebkChartSource);
+
+  function GetChartSource(ASource: TCustomChartSource): TsWorkbookChartSource;
+  begin
+    if ASource is TsWorkbookChartSource then
+      Result := TsWorkbookChartSource(ASource)
+    else if (ASource is TCalculatedChartSource) then
+      Result := GetChartSource(TCalculatedChartSource(ASource).Origin)
+    else
+      Result := nil;
+  end;
+
+var
+  series: TErrorBarSeries;
+  source: TsWorkbookChartSource;
+begin
+  source := GetChartSource(ASeries.Source);
+  if source = nil then
+    exit;
+
+  series := TErrorBarSeries(ASeries);
+
+  series.XErrorBars.Visible := AWorkbookSeries.XErrorBars.ShowPos or AWorkbookSeries.XErrorBars.ShowNeg;;
+  series.YErrorBars.Visible := AWorkbookSeries.YErrorBars.ShowPos or AWorkbookSeries.YErrorBars.ShowNeg;;
+
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.XErrorBars.Line, series.XErrorBars.Pen);
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.YErrorBars.Line, series.YErrorBars.Pen);
+
+  source.XErrorBarData.Kind := ERRORBAR_KINDS[AWorkbookSeries.XErrorBars.Kind];
+  source.YErrorBarData.Kind := ERRORBAR_KINDS[AWorkbookSeries.YErrorBars.Kind];
+
+  source.XErrorBarData.ValuePlus := AWorkbookSeries.XErrorBars.ValuePos;
+  source.YErrorBarData.ValuePlus := AWorkbookSeries.YErrorBars.ValuePos;
+
+  source.XErrorBarData.ValueMinus := AWorkbookSeries.XErrorBars.ValueNeg;
+  source.YErrorBarData.ValueMinus := AWorkbookSeries.YErrorBars.ValueNeg;
+
+  { To do: pass the cell range to the workbookchartsource. There's a problem
+    with the following code that TAChart assumes the error values to be stored
+    in additional x and y values of the TChartDataItem...
+
+  if AWorkbookSeries.XErrorBars.Kind = cebkRange then
+    source.SetXErrorBarRange(AWorkbookSeries.XErrorBars.Range
+    }
+end;
+
 procedure TsWorkbookChartLink.UpdateChartLegend(AWorkbookLegend: TsChartLegend;
   ALegend: TChartLegend);
 const
@@ -2156,6 +2232,8 @@ begin
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
+
+  UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;
@@ -2262,6 +2340,9 @@ begin
       ser.Title := ser.Title + LineEnding + s;
 //    ser.Legend.Format := '%0:s' + LineEnding + '%2:s';
   end;
+
+  // Error bars
+  UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartLink.UpdateStockSeries(AWorkbookSeries: TsStockSeries;

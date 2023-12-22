@@ -347,26 +347,29 @@ type
     property Items[AIndex: Integer]: TsChartDataPointStyle read GetItem write SetItem; default;
   end;
 
-  TsChartErrorBarKind = (cebkConstant, cebkPercentage, cebkStdDev, cebkRange);
+  TsChartErrorBarKind = (cebkConstant, cebkPercentage, cebkRange);
 
   TsChartErrorBars = class(TsChartElement)
   private
     FKind: TsChartErrorBarKind;
     FLine: TsChartLine;
-    FValue: Array[0..1] of Double;  // 0 = positive, 1 = negative error bar value
     FRange: Array[0..1] of TsChartRange;
+    FValue: Array[0..1] of Double;  // 0 = positive, 1 = negative error bar value
+    FShow: Array[0..1] of Boolean;
     function GetRange(AIndex: Integer): TsChartRange;
+    function GetShow(AIndex: Integer): Boolean;
     function GetValue(AIndex: Integer): Double;
     procedure InternalSetErrorBarRange(AIndex: Integer;
       ASheet1: String; ARow1, ACol1: Cardinal;
       ASheet2: String; ARow2, ACol2: Cardinal);
     procedure SetLine(AValue: TsChartLine);
     procedure SetRange(AIndex: Integer; AValue: TsChartRange);
+    procedure SetShow(AIndex: Integer; AValue: Boolean);
     procedure SetValue(AIndex: Integer; AValue: Double);
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
-    procedure CopyFrom(ASource: TsChartElement);
+    procedure CopyFrom(ASource: TsChartElement); override;
     procedure SetErrorBarRangePos(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetErrorBarRangePos(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     procedure SetErrorBarRangeNeg(ARow1, ACol1, ARow2, ACol2: Cardinal);
@@ -375,6 +378,8 @@ type
     property Line: TsChartLine read FLine write SetLine;
     property RangePos: TsChartRange index 0 read GetRange write SetRange;
     property RangeNeg: TsChartRange index 1 read GetRange write SetRange;
+    property ShowPos: Boolean index 0 read GetShow write SetShow;
+    property ShowNeg: Boolean index 1 read GetShow write SetShow;
     property ValuePos: Double index 0 read GetValue write SetValue;
     property ValueNeg: Double index 1 read GetValue write SetValue;
   end;
@@ -398,13 +403,14 @@ type
     FLabelFormat: String;
     FDataLabels: TsChartDataLabels;
     FDataPointStyles: TsChartDataPointStyleList;
-    FErrorBars: TsChartErrorBars;
-    procedure SetErrorBars(AValue: TsChartErrorBars);
+    FXErrorBars: TsChartErrorBars;
+    FYErrorBars: TsChartErrorBars;
+    procedure SetXErrorBars(AValue: TsChartErrorBars);
+    procedure SetYErrorBars(AValue: TsChartErrorBars);
   protected
     FLine: TsChartLine;
     FFill: TsChartFill;
     function GetChartType: TsChartType; virtual;
-    property ErrorBars: TsChartErrorBars read FErrorBars write SetErrorBars;
   public
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
@@ -445,8 +451,10 @@ type
     property LineColorRange: TsChartRange read FLineColorRange write FLineColorRange;
     property TitleAddr: TsChartCellAddr read FTitleAddr write FTitleAddr;  // use '\n' for line-break
     property XAxis: TsChartAxisLink read FXAxis write FXAxis;
+    property XErrorBars: TsChartErrorBars read FXErrorBars write SetXErrorBars;
     property XRange: TsChartRange read FXRange write FXRange;
     property YAxis: TsChartAxisLink read FYAxis write FYAxis;
+    property YErrorBars: TsChartErrorBars read FYErrorBars write SetYErrorBars;
     property YRange: TsChartRange read FYRange write FYRange;
 
     property Fill: TsChartFill read FFill write FFill;
@@ -457,13 +465,11 @@ type
   TsAreaSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
-    property ErrorBars;
   end;
 
   TsBarSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
-    property ErrorBars;
   end;
 
   TsChartSeriesSymbol = (
@@ -496,7 +502,6 @@ type
 
   TsLineSeries = class(TsCustomLineSeries)
   public
-    property ErrorBars;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -575,7 +580,6 @@ type
 
   TsScatterSeries = class(TsCustomScatterSeries)
   public
-    property ErrorBars;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -1561,6 +1565,8 @@ begin
   FLine.Color := scBlack;
   FRange[0] := TsChartRange.Create(AChart);
   FRange[1] := TsChartRange.Create(AChart);
+  FShow[0] := true;
+  FShow[1] := true;
 end;
 
 destructor TsChartErrorBars.Destroy;
@@ -1576,18 +1582,25 @@ begin
   inherited CopyFrom(ASource);
   if ASource is TsChartErrorBars then
   begin
-    FLine.CopyFrom(TsChartErrorBars(ASource).Line);
+    FKind := TsChartErrorBars(ASource).Kind;
     FRange[0].CopyFrom(TsChartErrorBars(ASource).RangePos);
     FRange[1].CopyFrom(TsChartErrorBars(ASource).RangeNeg);
+    FShow[0] := TsChartErrorBars(ASource).ShowPos;
+    FShow[1] := TsChartErrorBars(ASource).ShowNeg;
     FValue[0] := TsChartErrorBars(ASource).ValuePos;
     FValue[1] := TsChartErrorBars(ASource).ValueNeg;
-    FKind := TsChartErrorBars(ASource).Kind;
+    FLine.CopyFrom(TsChartErrorBars(ASource).Line);
   end;
 end;
 
 function TsChartErrorBars.GetRange(AIndex: Integer): TsChartRange;
 begin
   Result := FRange[AIndex];
+end;
+
+function TsChartErrorBars.GetShow(AIndex: Integer): Boolean;
+begin
+  Result := FShow[AIndex];
 end;
 
 function TsChartErrorBars.GetValue(AIndex: Integer): Double;
@@ -1641,6 +1654,11 @@ begin
   FRange[AIndex].CopyFrom(AValue);
 end;
 
+procedure TsChartErrorBars.SetShow(AIndex: Integer; AValue: Boolean);
+begin
+  FShow[AIndex] := AValue;
+end;
+
 procedure TsChartErrorBars.SetValue(AIndex: Integer; AValue: Double);
 begin
   FValue[AIndex] := AValue;
@@ -1690,12 +1708,14 @@ begin
 
   FLabelSeparator := ' ';
 
-  FErrorBars := TsChartErrorBars.Create(AChart);
+  FXErrorBars := TsChartErrorBars.Create(AChart);
+  FYErrorBars := TsChartErrorBars.Create(AChart);
 end;
 
 destructor TsChartSeries.Destroy;
 begin
-  FErrorBars.Free;
+  FYErrorBars.Free;
+  FXErrorBars.Free;
   FLabelBackground.Free;
   FLabelBorder.Free;
   FLabelFont.Free;
@@ -1758,11 +1778,6 @@ end;
 function TsChartSeries.LabelsInCol: Boolean;
 begin
   Result := (FLabelRange.Col1 = FLabelRange.Col2) and (FLabelRange.Row1 <> FLabelRange.Row2);
-end;
-
-procedure TsChartSeries.SetErrorBars(AValue: TsChartErrorBars);
-begin
-  FErrorBars.CopyFrom(AValue);
 end;
 
 procedure TsChartSeries.SetTitleAddr(ARow, ACol: Cardinal);
@@ -1831,6 +1846,11 @@ begin
   FLineColorRange.Col2 := ACol2;
 end;
 
+procedure TsChartSeries.SetXErrorBars(AValue: TsChartErrorBars);
+begin
+  FXErrorBars.CopyFrom(AValue);
+end;
+
 procedure TsChartSeries.SetXRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetXRange('', ARow1, ACol1, '', ARow2, ACol2);
@@ -1847,6 +1867,11 @@ begin
   FXRange.Sheet2 := ASheet2;
   FXRange.Row2 := ARow2;
   FXRange.Col2 := ACol2;
+end;
+
+procedure TsChartSeries.SetYErrorBars(AValue: TsChartErrorBars);
+begin
+  FYErrorBars.CopyFrom(AValue);
 end;
 
 procedure TsChartSeries.SetYRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
