@@ -92,7 +92,7 @@ object Form1: TForm1
       Width = 1161
       Anchors = [akTop, akLeft, akRight]
       BorderSpacing.Around = 6
-      DropDownCount = 32
+      DropDownCount = 50
       ItemHeight = 15
       Items.Strings = (
         '../../../other/chart/bars.ods'
@@ -104,6 +104,7 @@ object Form1: TForm1
         '../../../other/chart/bars-2axes.ods'
         '../../../other/chart/bars-2axes-rotated.ods'
         '../../../other/chart/bubble.ods'
+        '../../../other/chart/errorbars.ods'
         '../../../other/chart/pie.ods'
         '../../../other/chart/radar.ods'
         '../../../other/chart/regression.ods'

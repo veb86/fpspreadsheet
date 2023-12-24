@@ -10,7 +10,7 @@
         <MainUnitHasScaledStatement Value="False"/>
       </Flags>
       <SessionStorage Value="InProjectDir"/>
-      <Title Value="piechart_write_demo"/>
+      <Title Value="errorbars_write_demo"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
     </General>
@@ -31,8 +31,9 @@
     </RequiredPackages>
     <Units>
       <Unit>
-        <Filename Value="piechart_write_demo.lpr"/>
+        <Filename Value="errorbars_write_demo.lpr"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="regressionchart_write_demo"/>
       </Unit>
     </Units>
   </ProjectOptions>
@@ -40,10 +41,9 @@
     <Version Value="11"/>
     <PathDelim Value="\"/>
     <Target>
-      <Filename Value="piechart_write_demo"/>
+      <Filename Value="errorbars_write_demo"/>
     </Target>
     <SearchPaths>
-      <IncludeFiles Value="$(ProjOutDir)"/>
       <UnitOutputDirectory Value="lib\$(TargetCPU)-$(TargetOS)"/>
     </SearchPaths>
     <Linking>

@@ -34,6 +34,7 @@ const
 
 type
   TsChart = class;
+  TsChartSeries = class;
 
   TsChartLine = class
     Style: Integer;        // index into chart's LineStyle list or predefined clsSolid/clsNoLine
@@ -199,11 +200,14 @@ type
   private
     FChart: TsChart;
     FVisible: Boolean;
+  protected
+    function GetVisible: Boolean; virtual;
+    procedure SetVisible(AValue: Boolean); virtual;
   public
     constructor Create(AChart: TsChart);
     procedure CopyFrom(ASource: TsChartElement); virtual;
     property Chart: TsChart read FChart;
-    property Visible: Boolean read FVisible write FVisible;
+    property Visible: Boolean read GetVisible write SetVisible;
   end;
 
   TsChartFillElement = class(TsChartElement)
@@ -351,6 +355,7 @@ type
 
   TsChartErrorBars = class(TsChartElement)
   private
+    FSeries: TsChartSeries;
     FKind: TsChartErrorBarKind;
     FLine: TsChartLine;
     FRange: Array[0..1] of TsChartRange;
@@ -366,8 +371,11 @@ type
     procedure SetRange(AIndex: Integer; AValue: TsChartRange);
     procedure SetShow(AIndex: Integer; AValue: Boolean);
     procedure SetValue(AIndex: Integer; AValue: Double);
+  protected
+    function GetVisible: Boolean; override;
+    procedure SetVisible(AValue: Boolean); override;
   public
-    constructor Create(AChart: TsChart);
+    constructor Create(ASeries: TsChartSeries);
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartElement); override;
     procedure SetErrorBarRangePos(ARow1, ACol1, ARow2, ACol2: Cardinal);
@@ -378,6 +386,7 @@ type
     property Line: TsChartLine read FLine write SetLine;
     property RangePos: TsChartRange index 0 read GetRange write SetRange;
     property RangeNeg: TsChartRange index 1 read GetRange write SetRange;
+    property Series: TsChartSeries read FSeries;
     property ShowPos: Boolean index 0 read GetShow write SetShow;
     property ShowNeg: Boolean index 1 read GetShow write SetShow;
     property ValuePos: Double index 0 read GetValue write SetValue;
@@ -1244,6 +1253,16 @@ begin
     Visible := ASource.Visible;
 end;
 
+function TsChartElement.GetVisible: Boolean;
+begin
+  Result := FVisible;
+end;
+
+procedure TsChartElement.SetVisible(AValue: Boolean);
+begin
+  FVisible := AValue;
+end;
+
 
 { TsChartFillElement }
 
@@ -1557,16 +1576,17 @@ end;
 
 { TsChartErrorBars }
 
-constructor TsChartErrorBars.Create(AChart: TsChart);
+constructor TsChartErrorBars.Create(ASeries: TsChartSeries);
 begin
-  inherited;
+  inherited Create(ASeries.Chart);
+  FSeries := ASeries;
   FLine := TsChartLine.Create;
   FLine.Style := clsSolid;
   FLine.Color := scBlack;
-  FRange[0] := TsChartRange.Create(AChart);
-  FRange[1] := TsChartRange.Create(AChart);
-  FShow[0] := true;
-  FShow[1] := true;
+  FRange[0] := TsChartRange.Create(ASeries.Chart);
+  FRange[1] := TsChartRange.Create(ASeries.Chart);
+  FShow[0] := false;
+  FShow[1] := false;
 end;
 
 destructor TsChartErrorBars.Destroy;
@@ -1596,6 +1616,11 @@ end;
 function TsChartErrorBars.GetRange(AIndex: Integer): TsChartRange;
 begin
   Result := FRange[AIndex];
+end;
+
+function TsChartErrorBars.GetVisible: Boolean;
+begin
+  Result := ShowPos or ShowNeg;
 end;
 
 function TsChartErrorBars.GetShow(AIndex: Integer): Boolean;
@@ -1664,6 +1689,12 @@ begin
   FValue[AIndex] := AValue;
 end;
 
+procedure TsChartErrorBars.SetVisible(AValue: Boolean);
+begin
+  ShowPos := AValue;
+  ShowNeg := AValue;
+end;
+
 
 { TsChartSeries }
 
@@ -1708,8 +1739,8 @@ begin
 
   FLabelSeparator := ' ';
 
-  FXErrorBars := TsChartErrorBars.Create(AChart);
-  FYErrorBars := TsChartErrorBars.Create(AChart);
+  FXErrorBars := TsChartErrorBars.Create(Self);
+  FYErrorBars := TsChartErrorBars.Create(Self);
 end;
 
 destructor TsChartSeries.Destroy;

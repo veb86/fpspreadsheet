@@ -47,6 +47,11 @@
           <Mode Name="Default"/>
         </BuildModes>
       </Target>
+      <Target FileName="errorbars_write_demo.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
     </Targets>
   </ProjectGroup>
 </CONFIG>

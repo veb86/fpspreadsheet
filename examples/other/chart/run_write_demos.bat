@@ -25,6 +25,9 @@ scatter_write_demo lin
 scatter_write_demo log
 scatter_write_demo log-log
 echo.
+echo Scatter series with error bars
+errorbars_write_demo
+echo.
 echo Scatter series and regression demo...
 regressionchart_write_demo
 regressionchart_write_demo rotated

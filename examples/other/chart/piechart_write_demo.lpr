@@ -32,13 +32,15 @@ begin
     sheet.WriteText(7, 0, 'Europe');     sheet.WriteNumber(7, 1, 747);       // sheet.WriteChartColor(7, 2, scSilver);
     sheet.WriteText(8, 0, 'Oceania');    sheet.WriteNumber(8, 1, 42);        // sheet.WriteChartColor(8, 2, $FF8080);
 
-    // Create chart: left/top in cell D4, 120 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 3, 120, 100);
+    // Create chart: left/top in cell D4, 150 mm x 150 mm
+    ch := book.AddChart(sheet, 2, 3, 150, 150);
 
     // Chart properties
     ch.Border.Style := clsNoLine;
     ch.Title.Caption := 'World Population';
     ch.Title.Font.Style := [fssBold];
+    ch.SubTitle.Caption := '(in millions)';
+    ch.SubTitle.Font.Size := 10;
     ch.Legend.Border.Style := clsNoLine;
 
     // Add pie series

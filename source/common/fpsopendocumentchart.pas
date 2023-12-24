@@ -84,9 +84,12 @@ type
     FNumberFormatList: TStrings;
     FPointSeparatorSettings: TFormatSettings;
     function GetChartAxisStyleAsXML(Axis: TsChartAxis; AIndent, AStyleID: Integer): String;
-    function GetChartBackgroundStyleAsXML(AChart: TsChart; AFill: TsChartFill;
-      ABorder: TsChartLine; AIndent: Integer; AStyleID: Integer): String;
-    function GetChartCaptionStyleAsXML(AChart: TsChart; ACaptionKind, AIndent, AStyleID: Integer): String;
+    function GetChartBackgroundStyleAsXML(AChart: TsChart;
+      AFill: TsChartFill; ABorder: TsChartLine; AIndent: Integer; AStyleID: Integer): String;
+    function GetChartCaptionStyleAsXML(AChart: TsChart;
+      ACaptionKind, AIndent, AStyleID: Integer): String;
+    function GetChartErrorBarStyleAsXML(AChart: TsChart;
+      AErrorBar: TsChartErrorBars; AIndent, AStyleID: Integer): String;
     function GetChartFillStyleGraphicPropsAsXML(AChart: TsChart;
       AFill: TsChartFill): String;
     function GetChartLegendStyleAsXML(AChart: TsChart;
@@ -95,13 +98,18 @@ type
       ALine: TsChartLine; AIndent, AStyleID: Integer): String;
     function GetChartLineStyleGraphicPropsAsXML(AChart: TsChart;
       ALine: TsChartLine): String;
-    function GetChartPlotAreaStyleAsXML(AChart: TsChart; AIndent, AStyleID: Integer): String;
+    function GetChartPlotAreaStyleAsXML(AChart: TsChart;
+      AIndent, AStyleID: Integer): String;
     function GetChartRegressionEquationStyleAsXML(AChart: TsChart;
       AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
-    function GetChartRegressionStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: Integer): String;
-    function GetChartSeriesDataPointStyleAsXML(AChart: TsChart; ASeriesIndex, APointIndex, AIndent, AStyleID: Integer): String;
-    function GetChartSeriesStyleAsXML(AChart: TsChart; ASeriesIndex, AIndent, AStyleID: integer): String;
-    function GetChartStockSeriesStyleAsXML(AChart: TsChart; ASeries: TsStockSeries; AKind: Integer; AIndent, AStyleID: Integer): String;
+    function GetChartRegressionStyleAsXML(AChart: TsChart;
+      ASeriesIndex, AIndent, AStyleID: Integer): String;
+    function GetChartSeriesDataPointStyleAsXML(AChart: TsChart;
+      ASeriesIndex, APointIndex, AIndent, AStyleID: Integer): String;
+    function GetChartSeriesStyleAsXML(AChart: TsChart;
+      ASeriesIndex, AIndent, AStyleID: integer): String;
+    function GetChartStockSeriesStyleAsXML(AChart: TsChart;
+      ASeries: TsStockSeries; AKind: Integer; AIndent, AStyleID: Integer): String;
 
     procedure CheckAxis(AChart: TsChart; Axis: TsChartAxis);
     function GetNumberFormatID(ANumFormat: String): String;
@@ -2256,6 +2264,70 @@ begin
   );
 end;
 
+function TsSpreadOpenDocChartWriter.GetChartErrorBarStyleAsXML(AChart: TsChart;
+  AErrorBar: TsChartErrorBars; AIndent, AStyleID: Integer): String;
+var
+  graphProps: String;
+  chartProps: String = '';
+  indent: String;
+
+  function GetCellRangeStr(ARange: TsChartRange): String;
+  var
+    sheet1, sheet2: String;
+    r1, c1, r2, c2: Cardinal;
+  begin
+    sheet1 := ARange.GetSheet1Name;
+    sheet2 := ARange.GetSheet2Name;
+    r1 := ARange.Row1;
+    c1 := ARange.Col1;
+    r2 := ARange.Row2;
+    c2 := ARange.Col2;
+    Result := GetSheetCellRangeString_ODS(sheet1, sheet2, r1, c1, r2, c2, rfAllRel, false);
+  end;
+
+begin
+  case AErrorBar.Kind of
+    cebkConstant:
+      begin
+        chartProps := chartProps + 'chart:error-category="constant" ';
+        if AErrorBar.ShowPos then
+          chartProps := chartProps + Format('chart:error-upper-limit="%.9g" ', [ AErrorBar.ValuePos ], FPointSeparatorSettings);
+        if AErrorBar.ShowNeg then
+          chartProps := chartProps + Format('chart:error-lower-limit="%.9g" ', [ AErrorBar.ValueNeg ], FPointSeparatorSettings);
+      end;
+    cebkPercentage:
+      begin
+        chartProps := chartProps + 'chart:error-category="percentage" ';
+        chartProps := chartProps + Format('chart:error-percentage="%.9g" ', [ AErrorBar.ValuePos ], FPointSeparatorSettings);
+        chartProps := chartProps + 'loext:std-weight="1" ';
+      end;
+    cebkRange:
+      begin
+        chartProps := chartProps + 'chart:error-category="cell-range" ';
+        if AErrorBar.ShowPos then
+          chartProps := chartProps + 'chart:error-upper-range="' + GetCellRangeStr(AErrorBar.RangePos) + '" ';
+        if AErrorBar.ShowNeg then
+          chartProps := chartProps + 'chart:error-lower-range="' + GetCellRangeStr(AErrorBar.RangeNeg) + '" ';
+        chartProps := chartProps + 'loext:std-weight="1" ';
+      end;
+  end;
+  if AErrorBar.ShowPos then
+    chartProps := chartProps + 'chart:error-upper-indicator="true" ';
+  if AErrorBar.ShowNeg then
+    chartProps := chartProps + 'chart:error-lower-indicator="true" ';
+
+  graphProps := GetChartLineStyleGraphicPropsAsXML(AChart, AErrorBar.Line);
+
+  indent := DupeString(' ', AIndent);
+  Result := Format(
+    indent + '<style:style style:name="ch%d" style:family="chart">' + LE +
+    indent + '  <style:chart-properties %s/>' + LE +
+    indent + '  <style:graphic-properties %s/>' + LE +
+    indent + '</style:style>' + LE,
+    [ AStyleID, chartProps, graphProps ]
+  );
+end;
+
 function TsSpreadOpenDocChartWriter.GetChartFillStyleGraphicPropsAsXML(AChart: TsChart;
   AFill: TsChartFill): String;
 var
@@ -3563,15 +3635,21 @@ var
   chartClass: String = '';
   seriesYAxis: String = '';
   regressionEquation: String = '';
-  needRegressionStyle: Boolean = false;
-  needRegressionEquationStyle: Boolean = false;
   regression: TsChartRegression = nil;
   titleAddr: String;
   i, count: Integer;
-  styleID, dpStyleID: Integer;
+  nextStyleID, seriesStyleID, regressionStyleID, regressionEquStyleID: Integer;
+  xErrStyleID, yErrStyleID, dataStyleID: Integer;
 begin
   indent := DupeString(' ', AChartIndent);
-  styleID := AStyleID;
+
+  nextstyleID := AStyleID;
+  seriesStyleID := AStyleID;
+  regressionStyleID := -1;
+  regressionEquStyleID := -1;
+  xErrStyleID := -1;
+  yErrStyleID := -1;
+  dataStyleID := -1;
 
   series := AChart.Series[ASeriesIndex];
 
@@ -3666,8 +3744,10 @@ begin
                seriesYAxis +                                  // attached y axis
                'chart:values-cell-range-address="%s" ' +      // y values
                'chart:label-cell-address="%s">' + LE,         // series title
-    [ AStyleID, chartClass, valuesRange, titleAddr, chartClass ]
+    [ seriesStyleID, chartClass, valuesRange, titleAddr, chartClass ]
   ));
+  inc(nextStyleID);
+
   if domainRangeY <> '' then
     AppendToStream(AChartStream, Format(
       indent + '<chart:domain table:cell-range-address="%s"/>' + LE,
@@ -3689,12 +3769,36 @@ begin
       [ lineColorRange ]
     ));
 
+  // Error bars
+  if series.XErrorBars.Visible then
+  begin
+    xErrStyleID := nextStyleID;
+    AppendToStream(AChartStream, Format(
+      indent + '<chart:error-indicator chart:style-name="ch%d" chart:dimension="x" />',
+      [ xErrStyleID ]
+    ));
+    inc(nextStyleID);
+  end;
+
+  if series.YErrorBars.Visible then
+  begin
+    yErrStyleID := nextStyleID;
+    AppendToStream(AChartStream, Format(
+      indent + '<chart:error-indicator chart:style-name="ch%d" chart:dimension="y" />',
+      [ yErrStyleID ]
+    ));
+    inc(nextStyleID);
+  end;
+
   // Regression
   if (series is TsScatterSeries) then
   begin
     regression := TsScatterSeries(series).Regression;
     if regression.RegressionType <> rtNone then
     begin
+      regressionStyleID := nextStyleID;
+      inc(nextStyleID);
+
       if regression.DisplayEquation or regression.DisplayRSquare then
       begin
         if (not regression.Equation.DefaultXName) or (not regression.Equation.DefaultYName) or
@@ -3702,9 +3806,9 @@ begin
            (not regression.Equation.DefaultFont) or (not regression.Equation.DefaultNumberFormat) or
            (not regression.Equation.DefaultPosition) then
         begin
-          regressionEquation := regressionEquation + Format('chart:style-name="ch%d" ', [AStyleID + 2]);
-          needRegressionEquationStyle := true;
-          styleID := AStyleID + 2;
+          regressionEquStyleID := nextStyleID;
+          regressionEquation := regressionEquation + Format('chart:style-name="ch%d" ', [ regressionEquStyleID ]);
+          inc(nextStyleID);
         end;
       end;
       if regression.DisplayEquation then
@@ -3725,28 +3829,25 @@ begin
           indent + '  <chart:regression-curve chart:style-name="ch%d">' + LE +
           indent + '    <chart:equation %s />' + LE +
           indent + '  </chart:regression-curve>' + LE,
-          [ AStyleID + 1, regressionEquation ]
+          [ regressionStyleID, regressionEquation ]
         ));
       end else
         AppendToStream(AChartStream, Format(
           indent + '  <chart:regression-curve chart:style-name="ch%d"/>',
-          [ AStyleID + 1 ]
+          [ regressionStyleID ]
         ));
-      needRegressionStyle := true;
-      if styleID = AStyleID then
-        styleID := AStyleID + 1;
     end;
   end;
 
   // Individual data point styles
   if series.DataPointStyles.Count = 0 then
     AppendToStream(AChartStream, Format(
-      indent + '  <chart:data-point chart:repeated="%d"/>' + LE,
+      indent + '  <chart:data-point chart:repeated="%d" />' + LE,
       [ count ]
     ))
   else
   begin
-    dpStyleID := styleID + 1;
+    dataStyleID := nextStyleID;
     for i := 0 to count - 1 do
     begin
       if (i >= series.DataPointStyles.Count) or (series.DataPointStyles[i] = nil) then
@@ -3757,9 +3858,9 @@ begin
       begin
         AppendToStream(AChartStream, Format(
           indent + '  <chart:data-point chart:style-name="ch%d" />' + LE,   // ToDo: could contain "chart:repeated"
-          [ dpStyleID ]
+          [ dataStyleID + i]
         ));
-        inc(dpStyleID);
+        inc(nextStyleID);
       end;
     end;
   end;
@@ -3769,38 +3870,47 @@ begin
 
   // Series style
   AppendToStream(AStyleStream,
-    GetChartSeriesStyleAsXML(AChart, ASeriesIndex, AStyleIndent, AStyleID)
+    GetChartSeriesStyleAsXML(AChart, ASeriesIndex, AStyleIndent, seriesStyleID)
   );
 
   // Regression style
-  if needRegressionStyle then
+  if regressionStyleID <> -1 then
   begin
-    inc(AStyleID);
     AppendToStream(AStyleStream,
-      GetChartRegressionStyleAsXML(AChart, ASeriesIndex, AStyleIndent, AStyleID)
+      GetChartRegressionStyleAsXML(AChart, ASeriesIndex, AStyleIndent, regressionStyleID)
     );
 
     // Style of regression equation
-    if needRegressionEquationStyle then
+    if regressionEquStyleID <> -1 then
     begin
-      inc(AStyleID);
       AppendToStream(AStyleStream,
-        GetChartRegressionEquationStyleAsXML(AChart, regression.Equation, AStyleIndent, AStyleID)
+        GetChartRegressionEquationStyleAsXML(AChart, regression.Equation, AStyleIndent, regressionEquStyleID)
       );
     end;
   end;
 
+  // Error bar styles
+  if xErrStyleID <> -1 then
+    AppendToStream(AStyleStream,
+      GetChartErrorBarStyleAsXML(AChart, series.XErrorBars, AStyleIndent, xErrStyleID)
+    );
+
+  if yErrStyleID <> -1 then
+    AppendToStream(AStyleStream,
+      GetChartErrorBarStyleAsXML(AChart, series.YErrorBars, AStyleIndent, yErrStyleID)
+    );
+
   // Data point styles
   for i := 0 to series.DataPointStyles.Count - 1 do
   begin
-    inc(AStyleID);
     AppendToStream(AStyleStream,
-      GetChartSeriesDataPointStyleAsXML(AChart, ASeriesIndex, i, AStyleIndent, AStyleID)
+      GetChartSeriesDataPointStyleAsXML(AChart, ASeriesIndex, i, AStyleIndent, dataStyleID)
     );
+    inc(dataStyleID);
   end;
 
   // Next style
-  inc(AStyleID);
+  AStyleID := nextStyleID;
 end;
 
 procedure TsSpreadOpenDocChartWriter.WriteChartStockSeries(
