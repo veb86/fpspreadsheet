@@ -9,10 +9,10 @@ interface
 
 uses
   Classes, SysUtils, StrUtils, Contnrs, FPImage,
- {$IF FPC_FULLVERSION >= 20701}
-  zipper,
- {$ELSE}
+ {$IFDEF FPS_PATCHED_ZIPPER}
   fpszipper,
+ {$ELSE}
+  zipper,
  {$ENDIF}
   laz2_xmlread, laz2_DOM,
   fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsNumFormat,

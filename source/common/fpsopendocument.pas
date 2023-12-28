@@ -41,16 +41,10 @@ uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM,
   avglvltree, math, dateutils, contnrs,
- {$IF FPC_FULLVERSION >= 20701}
-  zipper,
- {$ELSE}
-  fpszipper,
- {$ENDIF}
+ {$IFDEF FPS_PATCHED_ZIPPER} fpszipper, {$ELSE} zipper, {$ENDIF}
   fpstypes, fpsReaderWriter, fpsUtils, fpsHeaderFooterParser,
   fpsNumFormat, fpsXMLCommon,
- {$IFDEF FPS_CHARTS}
-  fpsChart,
- {$ENDIF}
+ {$IFDEF FPS_CHARTS} fpsChart, {$ENDIF}
   fpsPagelayout;
   
 type

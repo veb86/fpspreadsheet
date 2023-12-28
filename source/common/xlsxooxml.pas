@@ -37,13 +37,16 @@ interface
 uses
   Classes, SysUtils,
   laz2_xmlread, laz2_DOM, avglvltree,
- {$IFDEF FPS_PATCHED_ZIPPER}
+ {$ifdef FPS_PATCHED_ZIPPER}
   fpszipper,
- {$ELSE}
+ {$else}
   zipper,
- {$ENDIF}
+ {$endif}
   fpsTypes, fpsUtils, fpsReaderWriter, fpsNumFormat, fpsPalette,
   fpsConditionalFormat,
+ {$ifdef FPS_CHARTS}
+  fpsChart,
+ {$ENDIF}
   fpsxmlcommon, xlsCommon;
   
 type
@@ -52,6 +55,9 @@ type
 
   TsSpreadOOXMLReader = class(TsSpreadXMLReader)
   private
+   {$ifdef FPS_CHARTS}
+    FChartReader: TsBasicSpreadChartReader;
+   {$endif}
     FDateMode: TDateMode;
     FPointSeparatorSettings: TFormatSettings;
     FSharedStrings: TStringList;
@@ -155,6 +161,9 @@ type
 
   TsSpreadOOXMLWriter = class(TsCustomSpreadWriter)
   private
+   {$IFDEF FPS_CHARTS}
+    FChartWriter: TsBasicSpreadChartWriter;
+   {$ENDIF}
     FFirstNumFormatIndexInFile: Integer;
     vmlDrawingCounter: Integer;
   protected
@@ -283,6 +292,7 @@ type
 
   public
     constructor Create(AWorkbook: TsBasicWorkbook); override;
+    destructor Destroy; override;
     { General writing methods }
     procedure WriteStringToFile(AFileName, AString: string);
     procedure WriteToStream(AStream: TStream; AParams: TsStreamParams = []); override;
@@ -308,7 +318,9 @@ implementation
 uses
   variants, strutils, dateutils, math, lazutf8, LazFileUtils, uriparser, typinfo,
   {%H-}fpsPatches, fpSpreadsheet, fpsCrypto, fpsExprParser,
-  fpsStrings, fpsStreams, fpsClasses, fpsImages, fpsChart;
+  fpsStrings, fpsStreams, fpsClasses,
+  {$ifdef FPS_CHARTS}xlsxooxmlChart,{$endif}
+  fpsImages;
 
 const
   { OOXML general XML constants }
@@ -830,6 +842,11 @@ end;
 constructor TsSpreadOOXMLReader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
+
+ {$ifdef FPS_CHARTS}
+  FChartReader := TsSpreadOOXMLChartReader.Create(self);
+ {$endif}
+
   FDateMode := XlsxSettings.DateMode;
 
   FSharedStrings := TStringList.Create;
@@ -898,6 +915,10 @@ begin
 
   FPalette.Free;
   
+ {$ifdef FPS_CHARTS}
+  FChartReader.Free;
+ {$endif}
+
   inherited Destroy;
 end;
 
@@ -4629,6 +4650,10 @@ constructor TsSpreadOOXMLWriter.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
 
+ {$ifdef FPS_CHARTS}
+  FChartWriter := TsSpreadOOXMLChartWriter.Create(self);
+ {$endif}
+
   // Initial base date in case it won't be set otherwise.
   // Use 1900 to get a bit more range between 1900..1904.
   FDateMode := XlsxSettings.DateMode;
@@ -4638,6 +4663,15 @@ begin
   FPointSeparatorSettings.DecimalSeparator := '.';
 
   InitOOXMLLimitations(FLimitations);
+end;
+
+
+destructor TsSpreadOOXMLWriter.Destroy;
+begin
+ {$ifdef FPS_CHARTS}
+  FChartWriter.Free;
+ {$endif}
+  inherited;
 end;
 
 
