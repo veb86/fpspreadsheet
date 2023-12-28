@@ -1806,7 +1806,7 @@ begin
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
-  UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
+  // UpdateChartErrorBars(AWorkbookSeries, AChartSeries);  // <--- No errorbar support by TAChart's barseries
 end;
 
 procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries;
