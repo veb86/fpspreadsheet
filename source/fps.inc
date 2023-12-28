@@ -16,6 +16,10 @@
   methods can only be used to change cell formatting then. }
 {.$DEFINE FPS_NO_RECORD_HELPERS}
 
+{ The next define activates chart support. 
+  The visual package requires to rebuild the IDE after changing this directive! }
+{$DEFINE FPS_CHARTS}
+
 {------------------------------------------------------------------------------}
 
 { The next defines activate code duplicated from new compiler versions in case
@@ -37,7 +41,7 @@
   the package with older versions activate the define FPS_NO_GRID_MULTISELECT }
 {.$DEFINE FPS_NO_GRID_MULTISELECT}
 
-{ In order to provide safe casting of integers to pointers new version of FPC
+{ In order to provide safe casting of integers to pointers new versions of FPC
   provide the types PtrInt and IntPtr.
   This is not yet available in fpc 2.6.0 }
 {.$DEFINE FPS_PTRINT}
@@ -66,6 +70,3 @@
   until v3.3 zipper did not read pass-word protected ods files correctly.
   Therefore, the following define must be activated if FPC is v3.3 or older. }
 {$DEFINE FPS_PATCHED_ZIPPER}
-
-{ The next define activates chart support. }
-{$DEFINE FPS_CHARTS}
