@@ -351,7 +351,7 @@ type
     property Items[AIndex: Integer]: TsChartDataPointStyle read GetItem write SetItem; default;
   end;
 
-  TsChartErrorBarKind = (cebkConstant, cebkPercentage, cebkRange);
+  TsChartErrorBarKind = (cebkConstant, cebkPercentage, cebkCellRange);
 
   TsChartErrorBars = class(TsChartElement)
   private

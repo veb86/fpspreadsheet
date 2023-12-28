@@ -1355,7 +1355,7 @@ begin
           s := GetAttrValue(AStyleNode, 'chart:error-category');
           case s of
             'constant': AErrorBars.Kind := cebkConstant;
-            'cell-range': AErrorBars.Kind := cebkRange;
+            'cell-range': AErrorBars.Kind := cebkCellRange;
             'percentage': AErrorBars.Kind := cebkPercentage;
             else
               exit;
@@ -2301,7 +2301,7 @@ begin
         chartProps := chartProps + Format('chart:error-percentage="%.9g" ', [ AErrorBar.ValuePos ], FPointSeparatorSettings);
         chartProps := chartProps + 'loext:std-weight="1" ';
       end;
-    cebkRange:
+    cebkCellRange:
       begin
         chartProps := chartProps + 'chart:error-category="cell-range" ';
         if AErrorBar.ShowPos then

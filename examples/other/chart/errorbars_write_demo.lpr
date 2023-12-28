@@ -15,8 +15,16 @@ var
   ser: TsScatterSeries;
   fn: String;
   rotated: Boolean;
+  errorRange: Boolean = false;
 begin
+  if (ParamCount > 0) and (lowercase(ParamStr(1)) = 'range') then
+    errorRange := true;
+
   fn := FILE_NAME;
+  if errorRange then
+    fn := fn + '-range'
+  else
+    fn := fn + '-percentage';
 
   book := TsWorkbook.Create;
   try
@@ -26,13 +34,13 @@ begin
     // Enter data
     sheet.WriteText(0, 0, 'Data');
     sheet.WriteFont(0, 0, '', 12, [fssBold], scBlack);
-    sheet.WriteText  (2, 0, 'x');  sheet.Writetext  (2, 1, 'y');
-    sheet.WriteNumber(3, 0, 1.1);  sheet.WriteNumber(3, 1,  9.0);
-    sheet.WriteNumber(4, 0, 1.9);  sheet.WriteNumber(4, 1, 20.5);
-    sheet.WriteNumber(5, 0, 2.5);  sheet.WriteNumber(5, 1, 24.5);
-    sheet.WriteNumber(6, 0, 3.1);  sheet.WriteNumber(6, 1, 33.2);
-    sheet.WriteNumber(7, 0, 5.2);  sheet.WriteNumber(7, 1, 49.4);
-    sheet.WriteNumber(8, 0, 6.8);  sheet.WriteNumber(8, 1, 71.3);
+    sheet.WriteText  (2, 0, 'x');  sheet.Writetext  (2, 1, 'y');   sheet.WriteText  (2, 2, 'dy');
+    sheet.WriteNumber(3, 0, 1.1);  sheet.WriteNumber(3, 1,  9.0);  sheet.WriteNumber(3, 2, 0.5);
+    sheet.WriteNumber(4, 0, 1.9);  sheet.WriteNumber(4, 1, 20.5);  sheet.WriteNumber(4, 2, 3.5);
+    sheet.WriteNumber(5, 0, 2.5);  sheet.WriteNumber(5, 1, 24.5);  sheet.WriteNumber(5, 2, 2.7);
+    sheet.WriteNumber(6, 0, 3.1);  sheet.WriteNumber(6, 1, 33.2);  sheet.WriteNumber(6, 2, 3.1);
+    sheet.WriteNumber(7, 0, 5.2);  sheet.WriteNumber(7, 1, 49.4);  sheet.WriteNumber(7, 2, 6.7);
+    sheet.WriteNumber(8, 0, 6.8);  sheet.WriteNumber(8, 1, 71.3);  sheet.WriteNumber(8, 2, 3.5);
 
     // Create chart: left/top in cell D4, 150 mm x 100 mm
     ch := book.AddChart(sheet, 2, 3, 150, 100);
@@ -59,9 +67,17 @@ begin
     ser.XErrorBars.Line.Color := scRed;
 
     ser.YErrorBars.Visible := true;
-    ser.YErrorBars.Kind := cebkPercentage;
-    ser.YErrorBars.ValuePos := 10;  // percent
-    ser.YErrorBars.ValueNeg := 10;  // percent
+    if errorRange then
+    begin
+      ser.YErrorBars.Kind := cebkCellRange;
+      ser.YErrorBars.SetErrorBarRangePos(3, 2, 8, 2);
+      ser.YErrorBars.SetErrorBarRangeNeg(3, 2, 8, 2);
+    end else
+    begin
+      ser.YErrorBars.Kind := cebkPercentage;
+      ser.YErrorBars.ValuePos := 10;  // percent
+      ser.YErrorBars.ValueNeg := 10;  // percent
+    end;
     ser.YErrorBars.Line.Color := scRed;
 
     {

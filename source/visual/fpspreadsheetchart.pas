@@ -53,7 +53,7 @@ type
     FTitleCol, FTitleRow: Cardinal;
     FTitleSheetName: String;
     FCyclicX: Boolean;
-    FIntegerX: Boolean;
+    FIntegerX: Boolean;       // only integers allowed for x values
     FDataPointColors: array of TsColor;
     function GetRange(AIndex: TsXYLRange): String;
     function GetTitle: String;
@@ -65,6 +65,7 @@ type
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
   protected
     FCurItem: TChartDataItem;
+    FCurItemIndex: Integer;
     function BuildRangeStr(AIndex: TsXYLRange; AListSeparator: char = #0): String;
     procedure ClearRanges;
     function CountValues(AIndex: TsXYLRange): Integer;
@@ -85,8 +86,8 @@ type
     procedure SetXRange(XIndex: Integer; ARange: TsChartRange);
     procedure SetYRange(YIndex: Integer; ARange: TsChartRange);
     procedure SetTitleAddr(Addr: TsChartCellAddr);
-    procedure SetXErrorBarRange(ARange: TsChartRange);
-    procedure SetYErrorBarRange(ARange: TsChartRange);
+    procedure SetXErrorBarRange(APosRange, ANegRange: TsChartRange);
+    procedure SetYErrorBarRange(APosRange, ANegRange: TsChartRange);
     procedure UseDataPointColors(ASeries: TsChartSeries);
     property PointsNumber: Cardinal read FPointsNumber;
     property Workbook: TsWorkbook read GetWorkbook;
@@ -138,6 +139,7 @@ type
     procedure AddSeries(ASeries: TsChartSeries);
     procedure FixAreaSeries({%H-}AWorkbookChart: TsChart);
     procedure FixBarSeries(AWorkbookChart: TsChart);
+    procedure FixSource(AChartSeries: TBasicPointSeries);
     procedure ClearChart;
     procedure ConstructHatchPattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
     procedure ConstructHatchPatternSolid(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
@@ -197,7 +199,14 @@ uses
 
 type
   TBasicPointSeriesOpener = class(TBasicPointSeries);
+
   TsCustomLineSeriesOpener = class(TsCustomLineSeries);
+
+  TErrorbarSeries = class(TBasicPointSeries)
+  public
+    property XErrorBars;
+    property YErrorBars;
+  end;
 
 function mmToPx(mm: Double; ppi: Integer): Integer;
 begin
@@ -331,6 +340,7 @@ end;
 constructor TsWorkbookChartSource.Create(AOwner: TComponent);
 begin
   inherited;
+  FCurItemIndex := -1;
   ClearRanges;
 end;
 
@@ -473,6 +483,12 @@ var
   i: Integer;
   value: Double;
 begin
+  if AIndex = FCurItemIndex then
+  begin
+    Result := @FCurItem;
+    exit;
+  end;
+
   for i := 0 to XCount-1 do
   begin
     if (FRanges[rngX, i] <> nil) then
@@ -510,6 +526,7 @@ begin
       FCurItem.Color := round(dummyNumber);
   end;
 
+  FCurItemIndex := AIndex;
   Result := @FCurItem;
 end;
 
@@ -884,8 +901,10 @@ begin
   FRanges[ARangeIndex, AListIndex, 0].Row2 := ARange.Row2;
   FRanges[ARangeIndex, AListIndex, 0].Col2 := ARange.Col2;
   FWorksheets[ARangeIndex, AListIndex] := FworkbookSource.Workbook.GetWorksheetByName(ARange.Sheet1);
-  if ARangeIndex in [rngX, rngY] then
-    FPointsNumber := Max(CountValues(rngX), CountValues(rngY));
+  case ARangeIndex of
+    rngX, rngY:
+      FPointsNumber := Max(CountValues(rngX), CountValues(rngY));
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -917,9 +936,11 @@ begin
   FTitleSheetName := Addr.GetSheetName;
 end;
 
-procedure TsWorkbookChartSource.SetXErrorBarRange(ARange: TsChartRange);
+procedure TsWorkbookChartSource.SetXErrorBarRange(APosRange, ANegRange: TsChartRange);
 begin
-  SetRangeFromChart(rngXErrors, 0, ARange);
+  // TAChart supports error bars only for single-valued sources.
+  SetRangeFromChart(rngXErrors, 0, APosRange);
+  SetRangeFromChart(rngXErrors, 1, ANegRange)
 end;
 
 procedure TsWorkbookChartSource.SetXRange(XIndex: Integer; ARange: TsChartRange);
@@ -927,9 +948,11 @@ begin
   SetRangeFromChart(rngX, XIndex, ARange);
 end;
 
-procedure TsWorkbookChartSource.SetYErrorBarRange(ARange: TsChartRange);
+procedure TsWorkbookChartSource.SetYErrorBarRange(APosRange, ANegRange: TsChartRange);
 begin
-  SetRangeFromChart(rngYErrors, 0, ARange);
+  // TAChart supports error bars only for single-valued sources.
+  SetRangeFromChart(rngYErrors, 0, APosRange);
+  SetRangeFromChart(rngYErrors, 1, ANegRange);
 end;
 
 procedure TsWorkbookChartSource.SetYRange(YIndex: Integer; ARange: TsChartRange);
@@ -1551,6 +1574,74 @@ begin
     end;
 end;
 
+procedure TsWorkbookChartLink.FixSource(AChartSeries: TBasicPointSeries);
+var
+  i, j, nx, ny: Integer;
+  src: TsWorkbookChartSource;
+  calcsrc: TCalculatedChartSource;
+begin
+  if AChartSeries.Source is TCalculatedChartSource then
+  begin
+    calcSrc := TCalculatedChartSource(AChartSeries.Source);
+    if calcSrc.Origin is TsWorkbookChartSource then
+      src := TsWorkbookChartSource(calcSrc.Origin)
+    else
+      exit;
+  end else
+  if AChartSeries.Source is TsWorkbookChartSource then
+    src := TsWorkbookChartSource(AChartSeries.Source)
+  else
+    exit;
+
+  { TAChart does supports error bars only for single-values chart sources. Only
+    when FixSource is called it is known how many values are used by the source.
+    If ranges have been added as rngXErrors or rgnYErrors display of error bars
+    must be turned off in this case. Otherwise the main series would not be
+    shown correctly. }
+  if (src.XCount > 0) and (Length(src.FRanges[rngXErrors]) > 0) then
+    src.XErrorBarData.Kind := ebkNone;
+
+  if (src.YCount > 1) and (Length(src.FRanges[rngYErrors]) > 0) then
+    src.YErrorbarData.Kind := ebkNone;
+
+  { If we get error bar values from the worksheet the range information must
+    be added to the rngX/rngY ranges because the Worksheet chartsource expects
+    it to be there at the index specified in [X|Y]ErrorBarData.Index[Plus|Minus]. }
+  if src.XErrorBarData.Kind = ebkChartSource then
+  begin
+    nx := src.XCount;
+    SetLength(src.FRanges[rngX], nx + Length(src.FRanges[rngXErrors]));
+    SetLength(src.FWorksheets[rngX], Length(src.FRanges[rngX]));
+    for i := 0 to High(src.FRanges[rngXErrors]) do
+    begin
+      src.FRanges[rngX, nx + i] := src.FRanges[rngXErrors, i];
+      src.FWorksheets[rngX, nx + i] := src.FWorksheets[rngXErrors, i];
+      if odd(i) then
+        src.XErrorBarData.IndexMinus := nx + i
+      else
+        src.XErrorBarData.IndexPlus := nx + i;
+    end;
+    src.XCount := Length(src.FRanges[rngX]);
+  end;
+
+  if src.YErrorBarData.Kind = ebkChartSource then
+  begin
+    ny := src.YCount;
+    SetLength(src.FRanges[rngY], ny + Length(src.FRanges[rngYErrors]));
+    SetLength(src.FWorksheets[rngY], Length(src.FRanges[rngY]));
+    for i := 0 to High(src.FRanges[rngYErrors]) do
+    begin
+      src.FRanges[rngY, ny + i] := src.FRanges[rngYErrors, i];
+      src.FWorksheets[rngY, ny + i] := src.FWorksheets[rngYErrors, i];
+      if odd(i) then
+        src.YErrorBarData.IndexMinus := ny + i
+      else
+        src.YErrorBarData.IndexPlus := ny + i;
+    end;
+    src.YCount := Length(src.Franges[rngY]);
+  end;
+end;
+
 function TsWorkbookChartLink.GetAutoScaleAxisTransform(AChartAxis: TChartAxis): TAutoScaleAxisTransform;
 begin
   Result := TAutoScaleAxisTransform(GetAxisTransform(AChartAxis, TAutoScaleAxisTransform));
@@ -1756,6 +1847,10 @@ begin
 
   for i := 0 to ch.Series.Count-1 do
     AddSeries(ch.Series[i]);
+
+  for i := 0 to FChart.SeriesCount-1 do
+    if FChart.Series[i] is TBasicPointSeries then
+      FixSource(TBasicPointSeries(FChart.Series[i]));
 
   FChart.Prepare;
   UpdateChartAxisLabels(ch);
@@ -1989,13 +2084,6 @@ begin
   end;
 end;
 
-type
-  TErrorbarSeries = class(TBasicPointSeries)
-  public
-    property XErrorBars;
-    property YErrorBars;
-  end;
-
 procedure TsWorkbookChartLink.UpdateChartErrorBars(AWorkbookSeries: TsChartSeries;
   ASeries: TBasicPointSeries);
 const
@@ -2016,34 +2104,33 @@ var
   series: TErrorBarSeries;
   source: TsWorkbookChartSource;
 begin
+  series := TErrorBarSeries(ASeries);
   source := GetChartSource(ASeries.Source);
   if source = nil then
     exit;
 
-  series := TErrorBarSeries(ASeries);
+  // TAChart supports error bars only for single-values sources!
+  if source.XCount = 1 then
+  begin
+    series.XErrorBars.Visible := AWorkbookSeries.XErrorBars.ShowPos or AWorkbookSeries.XErrorBars.ShowNeg;;
+    UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.XErrorBars.Line, series.XErrorBars.Pen);
+    source.XErrorBarData.Kind := ERRORBAR_KINDS[AWorkbookSeries.XErrorBars.Kind];
+    source.XErrorBarData.ValuePlus := AWorkbookSeries.XErrorBars.ValuePos;
+    source.XErrorBarData.ValueMinus := AWorkbookSeries.XErrorBars.ValueNeg;
+    if (AWorkbookSeries.XErrorBars.Kind = cebkCellRange) then
+      source.SetXErrorBarRange(AWorkbookSeries.XErrorBars.RangePos, AWorkbookSeries.XErrorBars.RangeNeg);
+  end;
 
-  series.XErrorBars.Visible := AWorkbookSeries.XErrorBars.ShowPos or AWorkbookSeries.XErrorBars.ShowNeg;;
-  series.YErrorBars.Visible := AWorkbookSeries.YErrorBars.ShowPos or AWorkbookSeries.YErrorBars.ShowNeg;;
-
-  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.XErrorBars.Line, series.XErrorBars.Pen);
-  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.YErrorBars.Line, series.YErrorBars.Pen);
-
-  source.XErrorBarData.Kind := ERRORBAR_KINDS[AWorkbookSeries.XErrorBars.Kind];
-  source.YErrorBarData.Kind := ERRORBAR_KINDS[AWorkbookSeries.YErrorBars.Kind];
-
-  source.XErrorBarData.ValuePlus := AWorkbookSeries.XErrorBars.ValuePos;
-  source.YErrorBarData.ValuePlus := AWorkbookSeries.YErrorBars.ValuePos;
-
-  source.XErrorBarData.ValueMinus := AWorkbookSeries.XErrorBars.ValueNeg;
-  source.YErrorBarData.ValueMinus := AWorkbookSeries.YErrorBars.ValueNeg;
-
-  { To do: pass the cell range to the workbookchartsource. There's a problem
-    with the following code that TAChart assumes the error values to be stored
-    in additional x and y values of the TChartDataItem...
-
-  if AWorkbookSeries.XErrorBars.Kind = cebkRange then
-    source.SetXErrorBarRange(AWorkbookSeries.XErrorBars.Range
-    }
+  if source.YCount = 1 then
+  begin
+    series.YErrorBars.Visible := AWorkbookSeries.YErrorBars.ShowPos or AWorkbookSeries.YErrorBars.ShowNeg;;
+    UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.YErrorBars.Line, series.YErrorBars.Pen);
+    source.YErrorBarData.Kind := ERRORBAR_KINDS[AWorkbookSeries.YErrorBars.Kind];
+    source.YErrorBarData.ValuePlus := AWorkbookSeries.YErrorBars.ValuePos;
+    source.YErrorBarData.ValueMinus := AWorkbookSeries.YErrorBars.ValueNeg;
+    if (AWorkbookSeries.YErrorBars.Kind = cebkCellRange) then
+      source.SetYErrorBarRange(AWorkbookSeries.YErrorBars.RangePos, AWorkbookSeries.YErrorBars.RangeNeg);
+  end;
 end;
 
 procedure TsWorkbookChartLink.UpdateChartLegend(AWorkbookLegend: TsChartLegend;

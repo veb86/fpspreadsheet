@@ -27,6 +27,7 @@ scatter_write_demo log-log
 echo.
 echo Scatter series with error bars
 errorbars_write_demo
+errorbars_write_demo range
 echo.
 echo Scatter series and regression demo...
 regressionchart_write_demo
