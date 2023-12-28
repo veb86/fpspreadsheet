@@ -19,6 +19,8 @@ unit fpsReaderWriter;
   {$mode delphi}{$H+}
 {$endif}
 
+{$include ..\fps.inc}
+
 interface
 
 uses
@@ -197,6 +199,7 @@ type
     property NumFormatList: TStringList read FNumFormatList;
   end;
 
+ {$IFDEF FPS_CHARTS}
   {@@ Helper class for the spreadsheet reader to keep processing of charts
     out of the main reader unit. }
   TsBasicSpreadChartReader = class
@@ -221,6 +224,7 @@ type
     procedure WriteCharts; virtual; abstract;
     property Writer: TsBasicSpreadWriter read FWriter;
   end;
+ {$ENDIF}
 
 type
   TsSpreadFileAccess = (faRead, faWrite);
@@ -937,6 +941,7 @@ begin
 end;
 
 
+{$IFDEF FPS_CHARTS}
 {------------------------------------------------------------------------------}
 {                           TsBasicSpreadChartReader                           }
 {------------------------------------------------------------------------------}
@@ -957,6 +962,7 @@ constructor TsBasicSpreadChartWriter.Create(AWriter: TsBasicSpreadWriter);
 begin
   FWriter := AWriter;
 end;
+{$ENDIF}
 
 
 {------------------------------------------------------------------------------}

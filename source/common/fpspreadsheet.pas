@@ -24,7 +24,11 @@ uses
  {$endif}{$endif}{$endif}
   Classes, SysUtils, fpimage, avglvltree, lconvencoding,
   fpsTypes, fpsExprParser, fpsClasses, fpsNumFormat, fpsPageLayout,
-  fpsImages, fpsConditionalFormat, fpsChart;
+  fpsImages,
+ {$ifdef FPS_CHARTS}
+  fpsChart,
+ {$endif}
+  fpsConditionalFormat;
 
 type
   { Forward declarations }
@@ -251,7 +255,9 @@ type
     procedure WriteNumber(ACell: PCell; ANumber: Double;
       ANumFormat: TsNumberFormat; ANumFormatString: String); overload;
 
+   {$ifdef FPS_CHARTS}
     function WriteChartColor(ARow, Acol: Cardinal; AColor: TsColor): PCell;
+   {$endif}
 
     function WriteRPNFormula(ARow, ACol: Cardinal;
       AFormula: TsRPNFormula): PCell; overload;
@@ -635,8 +641,10 @@ type
       ARowOffs1, AColOffs1: Double; out ARowOffs2, AColOffs2: Double;
       out x,y: Double);
 
+   {$ifdef FPS_CHARTS}
     { Chart support }
     function GetChartCount: Integer;
+   {$endif}
 
     { Protection }
     procedure Protect(AEnable: Boolean);
@@ -784,7 +792,9 @@ type
     FCellFormatList: TsCellFormatList;
     FConditionalFormatList: TsConditionalFormatList;
     FEmbeddedObjList: TFPList;
+   {$ifdef FPS_CHARTS}
     FCharts: TsChartList;
+   {$endif}
 
     { Internal methods }
     class procedure GetFormatFromFileHeader(const AFileName: TFileName;
@@ -925,11 +935,13 @@ type
     function HasEmbeddedSheetImages: Boolean;
     procedure RemoveAllEmbeddedObj;
 
+   {$ifdef FPS_CHARTS}
     { Charts }
     function AddChart(ASheet: TsBasicWorksheet; ARow, ACol: Cardinal;
       AWidth, AHeight: Double; AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
     function GetChartByIndex(AIndex: Integer): TsChart;
     function GetChartCount: Integer;
+   {$endif}
 
     { Utilities }
     function ConvertUnits(AValue: Double; AFromUnits, AToUnits: TsSizeUnits): Double;
@@ -1555,6 +1567,7 @@ begin
   end;
 end;
 
+{$ifdef FPS_CHARTS}
 {@@ ----------------------------------------------------------------------------
   Determines the count of charts on this worksheet
 -------------------------------------------------------------------------------}
@@ -1572,6 +1585,7 @@ begin
     if chart.SheetIndex = idx then inc(Result);
   end;
 end;
+{$endif}
 
 {@@ ----------------------------------------------------------------------------
   Calculates all formulas of the worksheet
@@ -4384,6 +4398,7 @@ begin
   end;
 end;
 
+{$ifdef FPS_CHARTS}
 {@@ ----------------------------------------------------------------------------
   Writes an rgb color value as number to the specified cell. As requested by
   the chart module the bytes for red and blue are exchanged.
@@ -4392,7 +4407,7 @@ function TsWorksheet.WriteChartColor(ARow, ACol: Cardinal; AColor: TsColor): PCe
 begin
   Result := WriteNumber(ARow, ACol, FlipColorBytes(AColor));
 end;
-
+{$endif}
 
 {@@ ----------------------------------------------------------------------------
   Writes an empty cell
@@ -6556,7 +6571,9 @@ begin
   FCellFormatList := TsCellFormatList.Create(false);
   FConditionalFormatList := TsConditionalFormatList.Create;
   FEmbeddedObjList := TFPList.Create;
+ {$ifdef FPS_CHARTS}
   FCharts := TsChartList.Create;
+ {$endif}
 
   // Add default cell format
   InitFormatRecord(fmt);
@@ -6589,7 +6606,9 @@ begin
 
   RemoveAllEmbeddedObj;
   FEmbeddedObjList.Free;
+ {$ifdef FPS_CHARTS}
   FCharts.Free;
+ {$endif}
 
   inherited Destroy;
 end;
@@ -7807,7 +7826,10 @@ end;
 {$include fpspreadsheet_hyperlinks.inc}  // hyperlinks
 {$include fpspreadsheet_embobj.inc}      // embedded objects
 {$include fpspreadsheet_clipbrd.inc}     // clipboard access
+
+{$ifdef FPS_CHARTS}
 {$include fpspreadsheet_chart.inc}       // chart support
+{$endif}
 
 
 end.   {** End Unit: fpspreadsheet }

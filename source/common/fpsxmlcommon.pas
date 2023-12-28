@@ -67,13 +67,6 @@ implementation
 
 uses
   LazUTF8,
-  (*
- {$IF FPC_FULLVERSION >= 20701}
-  zipper,
- {$ELSE}
-  fpszipper,
- {$ENDIF}
- *)
   fpsStreams, fpsUtils;
 
 {------------------------------------------------------------------------------}

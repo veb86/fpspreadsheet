@@ -184,11 +184,13 @@ type
     procedure WriteCFColorRangeRule(AStream: TStream; ARule: TsCFColorRangeRule; APriority: Integer);
     procedure WriteCFDataBarRule(AStream: TStream; ARule: TsCFDatabarRule; APriority: Integer);
     procedure WriteCFIconSetRule(AStream: TStream; ARule: TsCFIconSetRule; APriority: Integer);
+    {$ifdef FPS_CHARTS}
     procedure WriteChart(AStream: TStream; AChartIndex: Integer);
     procedure WriteChartColors;
     procedure WriteChartRels;
     procedure WriteCharts;
     procedure WriteChartStyles;
+    {$endif}
     procedure WriteColBreaks(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteCols(AStream: TStream; AWorksheet: TsBasicWorksheet);
     procedure WriteComments(AWorksheet: TsBasicWorksheet);
@@ -4726,7 +4728,7 @@ begin
   end;
 
   // Charts or embedded images next
-  if (sheet.GetImageCount > 0) or (book.GetChartCount > 0) then
+  if (sheet.GetImageCount > 0) {$ifdef FPS_CHARTS}or (book.GetChartCount > 0){$endif} then
   begin
     ADrawing_rId := next_rId;
     inc(next_rId);
@@ -5145,7 +5147,7 @@ begin
     '</cfRule>');
 end;
 
-
+{$ifdef FPS_CHARTS}
 procedure TsSpreadOOXMLWriter.WriteChart(AStream: TStream;
   AChartIndex: Integer);
 
@@ -5246,7 +5248,9 @@ begin
     '</c:chartSpace>' + LE
   );
 end;
+{$endif}
 
+{$ifdef FPS_CHARTS}
 procedure TsSpreadOOXMLWriter.WriteChartColors;
 var
   i, n: Integer;
@@ -5306,7 +5310,9 @@ begin
     );
   end;
 end;
+{$endif}
 
+{$ifdef FPS_CHARTS}
 { Write the relationship file for all workbook's chart. The file defines which
   xml files contain the ChartStyles and Colors needed by each chart. }
 procedure TsSpreadOOXMLWriter.WriteChartRels;
@@ -5332,7 +5338,9 @@ begin
     ]));
   end;
 end;
+{$endif}
 
+{$ifdef FPS_CHARTS}
 procedure TsSpreadOOXMLWriter.WriteCharts;
 var
   i, n: Integer;
@@ -5347,7 +5355,9 @@ begin
     WriteChart(FSCharts[i], i);
   end;
 end;
+{$endif}
 
+{$ifdef FPS_CHARTS}
 procedure TsSpreadOOXMLWriter.WriteChartStyles;
 var
   i, n: Integer;
@@ -5901,6 +5911,7 @@ begin
     );
   end;
 end;
+{$endif}
 
 procedure TsSpreadOOXMLWriter.WriteColBreaks(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
@@ -7217,7 +7228,7 @@ var
   sheetIdx: Integer;
   chart: TsChart;
 begin
-  if (sheet.GetImageCount = 0) and (sheet.GetChartCount = 0) then
+  if (sheet.GetImageCount = 0) {$ifdef FPS_CHARTS}and (sheet.GetChartCount = 0){$endif}  then
     exit;
 
   SetLength(FSDrawings, FCurSheetNum + 1);
@@ -7238,6 +7249,7 @@ begin
     inc(rId, 1);
   end;
 
+  {$ifdef FPS_CHARTS}
   // Repeat for each chart
   sheetIdx := sheet.Index;
   j := 1;  // Counts the charts in the current sheet
@@ -7251,6 +7263,7 @@ begin
       inc(rId);
     end;
   end;
+  {$endif}
 
   // Close node
   AppendToStream(FSDrawings[FCurSheetNum],
@@ -7274,7 +7287,7 @@ var
   sheet: TsWorksheet absolute AWorksheet;
   sheetIdx: Integer;
 begin
-  if (sheet.GetImageCount = 0) and (sheet.GetChartCount = 0) then
+  if (sheet.GetImageCount = 0) {$ifdef FPS_CHARTS}and (sheet.GetChartCount = 0){$endif} then
     exit;
 
   SetLength(FSDrawingsRels, FCurSheetNum + 1);
@@ -7317,6 +7330,7 @@ begin
     inc(rId);
   end;
 
+  {$ifdef FPS_CHARTS}
   // Repeat for each chart
   sheetIdx := sheet.Index;
   for i := 0 to TsWorkbook(FWorkbook).GetChartCount - 1 do
@@ -7331,6 +7345,7 @@ begin
       inc(rId);
     end;
   end;
+  {$endif}
 
   AppendToStream(FSDrawingsRels[FCurSheetNum],
     '</Relationships>');
@@ -7697,7 +7712,7 @@ begin
 
   // Anything to write?
   if (sheet.Comments.Count = 0) and (sheet.Hyperlinks.Count = 0) and
-     (sheet.GetImageCount = 0) and (sheet.GetChartCount = 0) and
+     (sheet.GetImageCount = 0) {$ifdef FPS_CHARTS}and (sheet.GetChartCount = 0){$endif} and
      (not (sheet.PageLayout.HasHeaderFooterImages))
   then
     exit;
@@ -7750,7 +7765,7 @@ begin
   // Relationships for charts or embedded images
   // relationship with to the ../drawings/drawingX.xml file containing all
   // chart/image infos. X is the 1-based sheet index
-  if (sheet.GetImageCount > 0) or (sheet.GetChartCount > 0) then
+  if (sheet.GetImageCount > 0) {$ifdef FPS_CHARTS}or (sheet.GetChartCount > 0){$endif} then
     AppendToStream(FSSheetRels[FCurSheetNum], Format(
       '  <Relationship Id="rId%d" Target="../drawings/drawing%d.xml" Type="%s" />' + LineEnding,
       [rId_Drawing, FCurSheetNum + 1, SCHEMAS_DRAWING]
@@ -8010,11 +8025,13 @@ begin
         '</sst>');
   end;
 
+ {$ifdef FPS_CHARTS}
   { Write all charts }
   WriteChartRels;
   WriteChartStyles;
   WriteChartColors;
   WriteCharts;
+ {$endif}
 
   { Workbook relations - Mark relation to all sheets }
   WriteWorkbookRels(FSWorkbookRels);
@@ -8064,6 +8081,7 @@ begin
   AppendToStream(FSContentTypes,
       '<Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />' + LineEnding);
 
+  {$ifdef FPS_CHARTS}
   n := 1;
   for i:=0 to book.GetWorksheetCount-1 do
   begin
@@ -8076,6 +8094,7 @@ begin
       inc(n);
     end;
   end;
+  {$endif}
 
   for i:=1 to book.GetWorksheetCount do
   begin
@@ -8488,7 +8507,7 @@ begin
     which contains the image/chart-related data of all images/charts in this sheet.
     The file in turn requires an entry "drawingX.xml.rels" in the drawings rels
     folder }
-  if (worksheet.GetImageCount > 0) or (worksheet.GetChartCount > 0) then
+  if (worksheet.GetImageCount > 0) {$ifdef FPS_CHARTS}or (worksheet.GetChartCount > 0){$endif} then
     AppendToStream(FSSheets[FCurSheetNum], Format(
       '<drawing r:id="rId%d" />', [rId_Drawing]));
 

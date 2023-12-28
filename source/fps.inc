@@ -67,3 +67,5 @@
   Therefore, the following define must be activated if FPC is v3.3 or older. }
 {$DEFINE FPS_PATCHED_ZIPPER}
 
+{ The next define activates chart support. }
+{$DEFINE FPS_CHARTS}

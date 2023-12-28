@@ -1,8 +1,11 @@
 unit fpsOpenDocumentChart;
 
 {$mode objfpc}{$H+}
+{$include ..\fps.inc}
 
 interface
+
+{$IFDEF FPS_CHARTS}
 
 uses
   Classes, SysUtils, StrUtils, Contnrs, FPImage,
@@ -156,7 +159,11 @@ type
     procedure WriteCharts; override;
   end;
 
+{$ENDIF}
+
 implementation
+
+{$IFDEF FPS_CHARTS}
 
 uses
   fpsOpenDocument;
@@ -4226,6 +4233,8 @@ begin
   // Next style
   inc(AStyleID);
 end;
+
+{$ENDIF}
 
 end.
 

@@ -23,6 +23,7 @@
 unit fpspreadsheetctrls;
 
 {$MODE objfpc}{$H+}
+{$include ..\fps.inc}
 
 interface
 

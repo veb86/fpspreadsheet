@@ -13,8 +13,11 @@ LICENSE: See the file COPYING.modifiedLGPL.txt, included in the Lazarus
 unit fpspreadsheetchart;
 
 {$mode objfpc}{$H+}
+{$include ..\fps.inc}
 
 interface
+
+{$ifdef FPS_CHARTS}
 
 uses
   // RTL/FCL
@@ -191,8 +194,11 @@ type
 
 procedure Convert_sChartLine_to_Pen(AChart: TsChart; ALine: TsChartLine; APen: TPen);
 
+{$endif}
 
 implementation
+
+{$ifdef FPS_CHARTS}
 
 uses
   Math;
@@ -2450,5 +2456,7 @@ begin
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.DownLinePen);
   AChartSeries.TickWidthStyle := twsPercentMin;
 end;
+
+{$ENDIF}
 
 end.

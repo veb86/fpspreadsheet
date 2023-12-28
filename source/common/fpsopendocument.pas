@@ -26,14 +26,16 @@ unit fpsOpenDocument;
 {$mode objfpc}{$H+}
 {$include ..\fps.inc}
 
-{$define DEBUG_CHART_STYLES}
+{$IFDEF FPS_CHARTS}
+ {$define DEBUG_CHART_STYLES}
+{$ENDIF}
 
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 
 interface
 
 uses
-  {$IFDEF DEBUG_CHART_STYLES}
+  {$IF DEFINED(DEBUG_CHART_STYLES) or DEFINED(FPSpreadDebug)}
   LazLoggerBase,
   {$ENDIF}
   Classes, SysUtils,
@@ -44,8 +46,12 @@ uses
  {$ELSE}
   fpszipper,
  {$ENDIF}
-  fpstypes, fpsReaderWriter, fpsutils, fpsHeaderFooterParser,
-  fpsNumFormat, fpsxmlcommon, fpsPagelayout, fpsChart;
+  fpstypes, fpsReaderWriter, fpsUtils, fpsHeaderFooterParser,
+  fpsNumFormat, fpsXMLCommon,
+ {$IFDEF FPS_CHARTS}
+  fpsChart,
+ {$ENDIF}
+  fpsPagelayout;
   
 type
   TDateModeODS=(
@@ -124,14 +130,18 @@ type
     FRepeatedRows: TsRowColRange;
     FManifestFileEntries: TFPList;
 
+   {$IFDEF FPS_CHARTS}
     FChartReader: TsBasicSpreadChartReader;
+   {$ENDIF}
 
     procedure ApplyColData;
     procedure ApplyStyleToCell(ACell: PCell; AStyleIndex: Integer);
     function ApplyStyleToCell(ACell: PCell; AStyleName: String): Boolean;
     function ApplyTableStyle(ASheet: TsBasicWorksheet;
       AStyleName: String): Boolean;
+   {$IFDEF FPS_CHARTS}
     function CollectChartFilesFromManifest: Boolean;
+   {$ENDIF}
     function ExtractBoolFromNode(ANode: TDOMNode): Boolean;
     function ExtractDateTimeFromNode(ANode: TDOMNode;
       ANumFormat: TsNumberFormat; const AFormatStr: String): TDateTime;
@@ -244,8 +254,9 @@ type
     FHeaderFooterFontList: TObjectList;
     FHasColFormats: Boolean;
     FHasRowFormats: Boolean;
-
+   {$IFDEF FPS_CHARTS}
     FChartWriter: TsBasicSpreadChartWriter;
+   {$ENDIF}
 
     // Routines to write parts of files
     procedure WriteAutomaticStyles(AStream: TStream);
@@ -372,13 +383,14 @@ var
 implementation
 
 uses
- {$IFDEF FPSpreadDebug}
-  LazLogger,
- {$ENDIF}
   StrUtils, Variants, LazFileUtils, URIParser, LazUTF8,
   {%H-}fpsPatches,
   fpsStrings, fpsStreams, fpsCrypto, fpsClasses, fpSpreadsheet,
-  fpsExprParser, fpsImages, fpsConditionalFormat, fpsOpenDocumentChart;
+  fpsExprParser, fpsImages,
+ {$IFDEF FPS_CHARTS}
+  fpsOpenDocumentChart,
+ {$ENDIF}
+  fpsConditionalFormat;
 
 const
   LE = LineEnding;
@@ -391,10 +403,10 @@ const
   OPENDOC_PATH_SETTINGS  = 'settings.xml';
   OPENDOC_PATH_STYLES    = 'styles.xml';
   OPENDOC_PATH_MIMETYPE  = 'mimetype';
-  {%H-}OPENDOC_PATH_METAINF   = 'META-INF/';
+  {%H-}OPENDOC_PATH_METAINF     = 'META-INF/';
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF/manifest.xml';
-  OPENDOC_PATH_CHART_CONTENT = 'Object %d/content.xml';
-  OPENDOC_PATH_CHART_STYLES  = 'Object %d/styles.xml';
+  OPENDOC_PATH_CHART_CONTENT    = 'Object %d/content.xml';
+  OPENDOC_PATH_CHART_STYLES     = 'Object %d/styles.xml';
 
   { OpenDocument schemas constants }
   SCHEMAS_XMLNS_OFFICE   = 'urn:oasis:names:tc:opendocument:xmlns:office:1.0';
@@ -1216,7 +1228,9 @@ constructor TsSpreadOpenDocReader.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
 
+ {$IFDEF FPS_CHARTS}
   FChartReader := TsSpreadOpenDocChartReader.Create(self);
+ {$ENDIF}
 
   InitOpenDocLimitations(FLimitations);
 
@@ -1283,7 +1297,9 @@ begin
 
   FHeaderFooterFontList.Free;
 
+ {$IFDEF FPS_CHARTS}
   FChartReader.Free;
+ {$ENDIF}
 
   inherited Destroy;
 end;
@@ -1485,6 +1501,7 @@ begin
   Result := true;
 end;
 
+{$IFDEF FPS_CHARTS}
 { Searches the manifest file entries for the names of files needed by charts.
   Returns false if there no charts are found.
   The found filenames are passed over to the chart reader for further processing. }
@@ -1532,6 +1549,7 @@ begin
     FileList.Free;
   end;
 end;
+{$ENDIF}
 
 { Extracts a boolean value from a "boolean" cell node.
   Is called from ReadBoolean }
@@ -3178,9 +3196,11 @@ begin
       XMLStream.Free;
     end;
 
+    {$IFDEF FPS_CHARTS}
     // Reading of charts
     if CollectChartFilesFromManifest then
       FChartReader.ReadCharts(AStream);
+    {$ENDIF}
 
     // Active sheet
     if FActiveSheet <> '' then
@@ -4996,8 +5016,10 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
     href: String;
     img: PsImage;
     entry: TsOpenDocManifestFileEntry;
-    chart: TsChart;
     handled: Boolean;
+   {$IFDEF FPS_CHARTS}
+    chart: TsChart;
+   {$ENDIF}
   begin
     nodeName := ANode.NodeName;
     x := PtsToMM(HTMLLengthStrToPts(GetAttrValue(ANode, 'svg:x')));
@@ -5011,6 +5033,7 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
       href := GetAttrValue(childNode, 'xlink:href');
       if href <> '' then
       begin
+       {$IFDEF FPS_CHARTS}
         if nodeName = 'draw:object' then
         begin
           // Is it a chart?
@@ -5032,6 +5055,7 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
             Continue;
           end;
         end else
+       {$ENDIF}
         if nodeName = 'draw:image' then
         begin
           // It is an embedded image.
@@ -5806,14 +5830,18 @@ begin
   FSContent := CreateTempStream(FWorkbook, 'fpsC');
   FSMimeType := CreateTempStream(FWorkbook, 'fpsMT');
   FSMetaInfManifest := CreateTempStream(FWorkbook, 'fpsMIM');
+ {$IFDEF FPS_CHARTS}
   FChartWriter.CreateStreams;
+ {$ENDIF}
   // FSSheets will be created when needed.
 end;
 
 { Destroys the temporary streams that were created by the writer }
 procedure TsSpreadOpenDocWriter.DestroyStreams;
 begin
+ {$IFDEF FPS_CHARTS}
   FChartWriter.DestroyStreams;
+ {$ENDIF}
   DestroyTempStream(FSMeta);
   DestroyTempStream(FSSettings);
   DestroyTempStream(FSStyles);
@@ -5918,7 +5946,9 @@ begin
   WriteSettings();
   WriteStyles();
   WriteContent;
+ {$IFDEF FPS_CHARTS}
   FChartWriter.WriteCharts;
+ {$ENDIF}
 
   { Now compress the files }
   FZip := TZipper.Create;
@@ -5931,7 +5961,9 @@ begin
     FZip.Entries.AddFileEntry(FSMimetype, OPENDOC_PATH_MIMETYPE);
     FZip.Entries.AddFileEntry(FSMetaInfManifest, OPENDOC_PATH_METAINF_MANIFEST);
     ZipPictures(FZip);
+   {$IFDEF FPS_CHARTS}
     TsSpreadOpenDocChartWriter(FChartWriter).AddChartsToZip(FZip);
+   {$ENDIF}
 
     ResetStreams;
 
@@ -6128,7 +6160,9 @@ begin
   FSContent.Position := 0;
   FSMimeType.Position := 0;
   FSMetaInfManifest.Position := 0;
+ {$IFDEF FPS_CHARTS}
   FChartWriter.ResetStreams;
+ {$ENDIF}
 end;
 
 { Writes the node "office:automatic-styles". Although this node occurs in both
@@ -6237,7 +6271,9 @@ begin
     end;
   end;
 
+ {$IFDEF FPS_CHARTS}
   TsSpreadOpenDocChartWriter(FChartWriter).AddToMetaInfManifest(FSMetaInfManifest);
+ {$ENDIF}
 
   AppendToStream(FSMetaInfManifest,
     '</manifest:manifest>');
@@ -7153,6 +7189,7 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteGraphicStyles(AStream: TStream);
 begin
+ {$IFDEF FPS_CHARTS}
   if TsWorkbook(FWorkbook).GetChartCount = 0 then
     exit;
 
@@ -7164,6 +7201,7 @@ begin
       '<style:paragraph-properties fo:text-align="center"/>' +
     '</style:style>'
   );
+ {$ENDIF}
 end;
 
 procedure TsSpreadOpenDocWriter.WriteMasterStyles(AStream: TStream);
@@ -7419,6 +7457,7 @@ end;
 
 procedure TsSpreadOpenDocWriter.WriteParagraphStyles(AStream: TStream);
 begin
+ {$IFDEF FPS_CHARTS}
   if TsWorkbook(FWorkbook).GetChartCount = 0 then
     exit;
 
@@ -7428,6 +7467,7 @@ begin
       '<style:paragraph-properties fo:text-align="center"/>' +
     '</style:style>'
   );
+ {$ENDIF}
 end;
 
 function TsSpreadOpenDocWriter.WritePrintContentStyleXMLAsString(
@@ -8169,7 +8209,9 @@ constructor TsSpreadOpenDocWriter.Create(AWorkbook: TsBasicWorkbook);
 begin
   inherited Create(AWorkbook);
 
+ {$IFDEF FPS_CHARTS}
   FChartWriter := TsSpreadOpenDocChartWriter.Create(self);
+ {$ENDIF}
 
   FColumnStyleList := TFPList.Create;
   FRowStyleList := TFPList.Create;
@@ -8196,7 +8238,9 @@ begin
   FRichTextFontList.Free;    // Do not destroy fonts, they are owned by Workbook
   FHeaderFooterFontList.Free;
 
+ {$IFDEF FPS_CHARTS}
   FChartWriter.Free;
+ {$ENDIF}
 
   inherited Destroy;
 end;
@@ -9012,8 +9056,6 @@ var
   sheet: TsWorksheet absolute ASheet;
   i: Integer;
   sheetIdx: Integer;
-  chart: TsChart;
-  series: TsChartSeries;
   img: TsImage;
   imgType: TsImageType;
   r1,c1,r2,c2: Cardinal;
@@ -9023,13 +9065,18 @@ var
   xml: String;
   target, bookmark: String;
   u: TURI;
+ {$IFDEF FPS_CHARTS}
+  chart: TsChart;
+  series: TsChartSeries;
+ {$ENDIF}
 begin
-  if (sheet.GetImageCount = 0) and (sheet.GetChartCount = 0) then
+  if (sheet.GetImageCount = 0) {$IFDEF FPS_CHARTS}and (sheet.GetChartCount = 0){$ENDIF} then
     exit;
 
   AppendToStream(AStream,
     '<table:shapes>');
 
+ {$IFDEF FPS_CHARTS}
   sheetIdx := sheet.Index;
   for i:=0 to TsWorkbook(FWorkbook).GetChartCount-1 do
   begin
@@ -9096,6 +9143,7 @@ begin
 
     AppendToStream(AStream, xml);
   end;
+ {$ENDIF}
 
   for i:=0 to (ASheet as TsWorksheet).GetImageCount-1 do
   begin

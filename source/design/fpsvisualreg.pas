@@ -1,6 +1,8 @@
 unit fpsvisualreg;
 
 {$MODE objfpc}{$H+}
+
+{$INCLUDE ..\fps.inc}
 {$DEFINE REGISTER_ALL_FILE_FORMATS}
 
 {$R ../../resource/fpsvisualreg.res}
@@ -19,7 +21,12 @@ uses
   {$IFDEF REGISTER_ALL_FILE_FORMATS}
   {%H-}fpsallformats,
   {$ENDIF}
-  fpspreadsheetctrls, fpspreadsheetgrid, fpspreadsheetchart, fpsactions;
+  fpspreadsheetctrls,
+  fpspreadsheetgrid,
+  {$IFDEF FPS_CHARTS}
+  fpspreadsheetchart,
+  {$ENDIF}
+  fpsactions;
   
 {@@ ----------------------------------------------------------------------------
   Registers the visual spreadsheet components in the Lazarus component palette,
@@ -35,9 +42,11 @@ begin
     TsSpreadsheetInspector
   ]);
 
+ {$ifdef FPS_CHARTS}
   RegisterComponents('Chart', [
     TsWorkbookChartSource
   ]);
+ {$endif}
 
   RegisterActions('FPSpreadsheet', [
     // Worksheet-releated actions
