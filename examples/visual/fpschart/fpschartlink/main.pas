@@ -8,7 +8,7 @@ uses
   Classes, SysUtils,
   LCLVersion, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
   TAGraph, TASources,
-  fpSpreadsheet, fpsTypes, fpsOpenDocument,
+  fpSpreadsheet, fpsTypes, fpsOpenDocument, xlsxOOXML,
   fpSpreadsheetCtrls, fpSpreadsheetGrid,  fpSpreadsheetChart;
 
 type

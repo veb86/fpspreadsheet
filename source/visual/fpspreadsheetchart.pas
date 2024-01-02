@@ -1842,6 +1842,9 @@ begin
   FChart.ExpandPercentage := 0;
 
   ch := GetWorkbookChart;
+  if ch = nil then
+    exit;
+
   UpdateChartBackground(ch);
   UpdateChartTitle(ch.Title, FChart.Title);
   UpdateChartTitle(ch.Subtitle, FChart.Foot);
