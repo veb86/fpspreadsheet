@@ -77,7 +77,7 @@ type
     constructor Create(AReader: TsBasicSpreadReader); override;
     destructor Destroy; override;
     procedure AddChartFiles(AFileList: String);
-    procedure ReadCharts(AStream: TStream); override;
+    procedure ReadCharts(AStream: TStream);
   end;
 
   TsSpreadOpenDocChartWriter = class(TsBasicSpreadChartWriter)

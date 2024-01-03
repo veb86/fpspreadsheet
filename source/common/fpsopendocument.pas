@@ -3193,7 +3193,7 @@ begin
     {$IFDEF FPS_CHARTS}
     // Reading of charts
     if CollectChartFilesFromManifest then
-      FChartReader.ReadCharts(AStream);
+      TsSpreadOpenDocChartReader(FChartReader).ReadCharts(AStream);
     {$ENDIF}
 
     // Active sheet

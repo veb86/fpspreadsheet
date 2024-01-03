@@ -275,6 +275,7 @@ type
     FPositionValue: Double;
     FShowLabels: Boolean;
     FDateTime: Boolean;
+    FID: Integer;
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
@@ -289,6 +290,7 @@ type
     property AxisLine: TsChartLine read FAxisLine write FAxisLine;
     property CategoryRange: TsChartRange read FCategoryRange write FCategoryRange;
     property DateTime: Boolean read FDateTime write FDateTime;
+    property ID: Integer read FID write FID;
     property Inverted: Boolean read FInverted write FInverted;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;
@@ -699,6 +701,7 @@ type
 
     procedure DeleteSeries(AIndex: Integer);
 
+    function GetAxisByID(AID: Integer): TsChartAxis;
     function GetChartType: TsChartType;
     function GetLineStyle(AIndex: Integer): TsChartLineStyle;
     function IsScatterChart: Boolean;
@@ -1421,6 +1424,7 @@ begin
     FCategoryRange.CopyFrom(TsChartAxis(ASource).CategoryRange);
     FMajorGridLines.CopyFrom(TsChartAxis(ASource).MajorGridLines);
     FMinorGridLines.CopyFrom(TsChartAxis(ASource).MinorGridLines);
+    FID := TsChartAxis(ASource).ID;
     FInverted := TsChartAxis(ASource).Inverted;
     FLabelFont.CopyOf(TsChartAxis(ASource).LabelFont);
     FLabelFormat := TsChartAxis(ASource).LabelFormat;
@@ -2363,6 +2367,20 @@ procedure TsChart.DeleteSeries(AIndex: Integer);
 begin
   if (AIndex >= 0) and (AIndex < FSeriesList.Count) then
     FSeriesList.Delete(AIndex);
+end;
+
+function TsChart.GetAxisByID(AID: Integer): TsChartAxis;
+begin
+  if AID = XAxis.ID then
+    Result := XAxis
+  else if AID = YAxis.ID then
+    Result := YAxis
+  else if AID = X2Axis.ID then
+    Result := X2Axis
+  else if AID = Y2Axis.ID then
+    Result := Y2Axis
+  else
+    Result := nil;
 end;
 
 function TsChart.GetCategoryLabelRange: TsChartRange;

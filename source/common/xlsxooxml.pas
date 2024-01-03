@@ -75,7 +75,6 @@ type
     FWrittenByFPS: Boolean;
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
     procedure ApplyHyperlinks(AWorksheet: TsBasicWorksheet);
-    function CreateXMLStream: TStream;
   protected
     procedure ReadActiveSheet(ANode: TDOMNode; out ActiveSheetIndex: Integer);
     procedure ReadBorders(ANode: TDOMNode);
@@ -153,6 +152,7 @@ type
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
     class function CheckFileFormat(AStream: TStream): Boolean; override;
+    function CreateXMLStream: TStream;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
   end;
@@ -431,6 +431,7 @@ type
     FileName: String;
     ImgIndex: Integer;
     Worksheet: TsBasicWorksheet;
+    IsChart: boolean;
     IsHeaderFooter: Boolean;
     // This part is for images embedded in to worksheet
     FromRow, FromCol, ToRow, ToCol: Cardinal;
@@ -2663,13 +2664,15 @@ end;
 procedure TsSpreadOOXMLReader.ReadDrawing(ANode: TDOMNode; 
   AWorksheet: TsBasicWorksheet);
 var
-  node, child, child2: TDOMNode;
+  node, child, child2, child3: TDOMNode;
   nodeName: String = '';
   rID, fileName: String;
   fromCol, fromRow, toCol, toRow: Integer;
   fromColOffs, fromRowOffs, toColOffs, toRowOffs: Double;
+  isChart: Boolean;
   data: TEmbeddedObjData;
   sheetData: TSheetData;
+  graphicFrameName: String;
 begin
   if ANode = nil then
     exit;
@@ -2685,6 +2688,8 @@ begin
     toCol := -1;       toColOffs := 0.0;
     toRow := -1;       toRowOffs := 0.0;
     rID := '';         fileName := '';
+    isChart := false;
+    graphicFrameName := '';
     if nodeName = 'xdr:twoCellAnchor' then
     begin
       node := ANode.FirstChild;
@@ -2748,6 +2753,54 @@ begin
             end;
             child := child.NextSibling;
           end;
+        end else
+        if nodeName = 'xdr:graphicFrame' then
+        begin
+          child := node.FirstChild;
+          while Assigned(child) do
+          begin
+            nodeName := child.NodeName;
+            if nodeName = 'xdr:nvGraphicFramePr' then
+            begin
+              child2 := child.FirstChild;
+              while Assigned(child2) do
+              begin
+                nodeName := child2.NodeName;
+                if nodeName = 'xdr:cNvPr' then
+                begin
+                  graphicFrameName := GetAttrValue(child2, 'name');
+                end;
+                child2 := child2.NextSibling;
+              end;
+            end else
+            if nodeName = 'a:graphic' then
+            begin
+              child2 := child.FirstChild;
+              while Assigned(child2) do
+              begin
+                nodename := child2.Nodename;
+                if nodename = 'a:graphicData' then
+                begin
+                  child3 := child2.Firstchild;
+                  while Assigned(child3) do
+                  begin
+                    nodeName := child3.NodeName;
+                    if nodename = 'c:chart' then
+                    begin
+                      rId := GetAttrValue(child3, 'r:id');
+                      if rId <> '' then
+                      begin
+                        isChart := true;
+                      end;
+                    end;
+                    child3 := child3.NextSibling;
+                  end;
+                end;
+                child2 := child2.NextSibling;
+              end;
+            end;
+            child := child.NextSibling;
+          end;
         end;
         node := node.NextSibling;
       end;
@@ -2769,6 +2822,7 @@ begin
       data.MediaName := MakeXLPath(sheetData.DrawingRels.FindTarget(rID));
       data.ImgIndex := -1;
       data.Worksheet := AWorksheet;
+      data.IsChart := isChart;
       data.IsHeaderFooter := false;
       FEmbeddedObjList.Add(data);
     end;
@@ -2793,19 +2847,28 @@ begin
     relID := GetAttrValue(ANode, 'Id');
     relTarget := GetAttrValue(ANode, 'Target');
     relType := GetAttrValue(ANode, 'Type');
-    if (relID <> '') and (relTarget <> '') and (relType = SCHEMAS_IMAGE) then begin
-      relTarget := MakeXLPath(relTarget);
-      for j := 0 to FEmbeddedObjList.Count-1 do
-      begin
-        data := TEmbeddedObjData(FEmbeddedObjList[j]);
-        if (data.Worksheet = ASheet) and (data.RelID = relID) then
-        begin
-          data.MediaName := relTarget;
-          break;
-        end;
+    if (relID <> '') and (relTarget <> '') then
+    begin
+      case relType of
+        SCHEMAS_IMAGE:
+          begin
+            relTarget := MakeXLPath(relTarget);
+            for j := 0 to FEmbeddedObjList.Count-1 do
+            begin
+              data := TEmbeddedObjData(FEmbeddedObjList[j]);
+              if (data.Worksheet = ASheet) and (data.RelID = relID) then
+              begin
+                data.MediaName := relTarget;
+                break;
+              end;
+            end;
+          end;
+        SCHEMAS_CHART:
+          begin
+          end;
       end;
+      ANode := ANode.NextSibling;
     end;
-    ANode := ANode.NextSibling;
   end;
 end;
 
@@ -2826,9 +2889,12 @@ var
   data: TEmbeddedObjData;
   sheetData: TSheetData;
   w, h: Double;
-  img: TsEmbeddedObj;
+  embObj: TsEmbeddedObj;
   scaleX, scaleY: Double;
   pageIdx: Integer;
+  {$ifdef FPS_Charts}
+  chart: TsChart;
+  {$endif}
 begin
   doc := nil;
   j := 1;
@@ -2875,21 +2941,40 @@ begin
               
     // Read the embedded streams, add them to the workbook...
     ReadMedia(AStream);
-    
+
     // ... and insert them in the worksheet
     for i := 0 to FEmbeddedObjList.Count-1 do
     begin
       data := TEmbeddedObjData(FEmbeddedObjList[i]);
       sheet := TsWorksheet(data.Worksheet);
-      if (sheet <> nil) and (data.ImgIndex > -1) then
+
+      if sheet = nil then
+        Continue;
+
+      // Add chart
+      {$ifdef FPS_Charts}
+      if data.IsChart then
       begin
-        img := TsWorkbook(FWorkbook).GetEmbeddedObj(data.ImgIndex);
+        w := -data.FromColOffs + data.ToColOffs;
+        h := -data.FromRowOffs + data.ToRowOffs;
+        for j := data.FromCol to data.ToCol-1 do
+          w := w + sheet.GetColWidth(j, suMillimeters);
+        for j := data.FromRow to data.ToRow-1 do
+          h := h + sheet.GetRowHeight(j, suMillimeters);
+        chart := TsWorkbook(FWorkbook).AddChart(sheet, data.FromRow, data.FromCol, w, h, data.FromRowOffs, data.FromColOffs);
+        TsSpreadOOXMLChartReader(FChartReader).ReadChartXML(AStream, chart, data.MediaName);
+      end else
+      {$endif}
+      if (data.ImgIndex > -1) then
+      begin
+        embObj := TsWorkbook(FWorkbook).GetEmbeddedObj(data.ImgIndex);
+        // Add header/footer image
         if data.IsHeaderFooter then
         begin
           if data.HFImgPosition <> '' then
           begin
-            scaleX := data.HFImgWidth / img.ImageWidth;
-            scaleY := data.HFImgHeight / img.ImageHeight;
+            scaleX := data.HFImgWidth / embObj.ImageWidth;
+            scaleY := data.HFImgHeight / embObj.ImageHeight;
             // Scale factor calculation is very inaccurate. We try to round to integers
             if (scaleX > 0.99) and SameValue(scaleX, round(scaleX), 0.01) then
               scaleX := round(scaleX);
@@ -2913,20 +2998,21 @@ begin
           end;
         end else
         begin
+          // Add image
           w := -data.FromColOffs + data.ToColOffs;
           h := -data.FromRowOffs + data.ToRowOffs;
           for j := data.FromCol to data.ToCol-1 do 
             w := w + sheet.GetColWidth(j, suMillimeters);
           for j := data.FromRow to data.ToRow-1 do 
             h := h + sheet.GetRowHeight(j, suMillimeters);
-          scaleX := w / img.ImageWidth;
-          scaleY := h / img.ImageHeight;
+          scaleX := w / embObj.ImageWidth;
+          scaleY := h / embObj.ImageHeight;
           // Scale factor calculation is very inaccurate. We try to round to integers
           if (scaleX > 0.99) and SameValue(scaleX, round(scaleX), 0.01) then
             scaleX := round(scaleX);
           if (scaleY > 0.99) and SameValue(scaleY, round(scaleY), 0.01) then
             scaleY := round(scaleY);
-          sheet.WriteImage(data.FromRow, data.FromCol, 
+          sheet.WriteImage(data.FromRow, data.FromCol,
             data.ImgIndex,
             data.FromRowOffs, data.FromColOffs,
             scaleX, scaleY
@@ -2934,6 +3020,7 @@ begin
         end;
       end;
     end;
+
   finally
     doc.Free;
   end;
@@ -3285,7 +3372,7 @@ begin
     for i := 0 to FEmbeddedObjList.Count-1 do
     begin
       data := TEmbeddedObjData(FEmbeddedObjList[i]);
-      if data.MediaName <> '' then
+      if (data.MediaName <> '') and not data.IsChart then
       begin
         memStream := TMemoryStream.Create;
         unzip.UnzipFile(data.MediaName, memStream);

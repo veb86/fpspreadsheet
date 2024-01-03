@@ -207,7 +207,6 @@ type
     FReader: TsBasicSpreadReader;
   public
     constructor Create(AReader: TsBasicSpreadReader); virtual;
-    procedure ReadCharts(AStream: TStream); virtual; abstract;
     property Reader: TsBasicSpreadReader read FReader;
   end;
 

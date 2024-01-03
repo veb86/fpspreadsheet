@@ -87,6 +87,7 @@ end;
 
 procedure TForm1.LoadFile(AFileName: String);
 var
+  ext: String;
   fn: String;
   i: Integer;
 begin
@@ -97,9 +98,12 @@ begin
     exit;
   end;
 
-  sWorkbookSource1.FileFormat := sfOpenDocument;
-  if FileExists(fn) then
-    sWorkbookSource1.Filename := fn;
+  ext :=Lowercase(ExtractFileExt(fn));
+  if ext = '.ods' then
+    sWorkbookSource1.FileFormat := sfOpenDocument
+  else
+    sWorkbookSource1.Fileformat := sfOOXML;
+  sWorkbookSource1.Filename := fn;
 
   for i := 1 to sWorksheetGrid1.Worksheet.GetLastRowIndex+1 do
     sWorksheetGrid1.AutoRowHeight(1);

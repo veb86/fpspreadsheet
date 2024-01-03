@@ -198,6 +198,8 @@ function IsPaletteIndex(AColor: TsColor): Boolean;
 function LongRGBToExcelPhysical(const RGB: DWord): DWord;
 function SetAsPaletteIndex(AIndex: Integer): TsColor;
 function TintedColor(AColor: TsColor; tint: Double): TsColor;
+function LumModColor(AColor: TsColor; AFactor: Double): TsColor;
+function LumOffsetColor(AColor: TsColor; AOffset: Double): TsColor;
 
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
@@ -3166,8 +3168,8 @@ function TintedColor(AColor: TsColor; tint: Double): TsColor;
 const
   HLSMAX = 255;
 var
-  r, g, b: byte;
-  h, l, s: Byte;
+  R, G, B: byte;
+  H, L, S: Byte;
   lum: Double;
 begin
   if (tint = 0) or (TRGBA(AColor).a <> 0) then begin
@@ -3175,24 +3177,67 @@ begin
     exit;
   end;
 
-  r := TRGBA(AColor).r;
-  g := TRGBA(AColor).g;
-  b := TRGBA(AColor).b;
-  RGBToHLS(r, g, b, h, l, s);
+  with TRGBA(AColor) do
+    RGBToHLS(R,G,B, H,L,S);
 
-  lum := l;
+  lum := L;
   if tint < 0 then
     lum := lum * (1.0 + tint)
   else
   if tint > 0 then
     lum := lum * (1.0-tint) + (HLSMAX - HLSMAX * (1.0-tint));
-  l := Min(255, round(lum));
-  HLSToRGB(h, l, s, r, g, b);
+  L := Min(255, round(lum));
 
-  TRGBA(Result).r := r;
-  TRGBA(Result).g := g;
-  TRGBA(Result).b := b;
-  TRGBA(Result).a := 0;
+  with TRGBA(Result) do
+  begin
+    HLSToRGB(H,L,S, R,G,B);
+    A := 0;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+ Returns the input color with its luminance multiplied by the given factor.
+
+ @param    AColor   rgb color to be modified
+ @param    AFactor  Factor to be used for the operation
+ @returns  Modified color
+-------------------------------------------------------------------------------}
+function LumModColor(AColor: TsColor; AFactor: Double): TsColor;
+var
+  H, L, S: Byte;
+begin
+  with TRGBA(AColor) do
+    RGBToHLS(R,G,B, H,L,S);
+  L := EnsureRange(round(L*AFactor), 0, 255);
+  with TRGBA(Result) do
+  begin
+    HLSToRGB(H,L,S, R,G,B);
+    A := 0;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+ Returns the input color with its luminance shifted, but with its hue and
+ saturation unchanged ([ISO/IEC29500-1:2016] section 20.1.2.3.21)
+
+ @param    AColor   rgb color to be modified
+ @param    AOffset  Fraction of the maximum luminance to be added
+ @returns  Modified color
+-------------------------------------------------------------------------------}
+function LumOffsetColor(AColor: TsColor; AOffset: Double): TsColor;
+const
+  HLSMAX = 255;
+var
+  H, L, S: Byte;
+begin
+  with TRGBA(AColor) do
+    RGBToHLS(R,G,B, H,L,S);
+  L := EnsureRange(round(L + HLSMAX * AOffset), 0, 255);
+  with TRGBA(Result) do
+  begin
+    HLSToRGB(H,L,S, R,G,B);
+    A := 0;
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
