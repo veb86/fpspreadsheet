@@ -307,7 +307,7 @@ type
 constructor TsChartNumberFormatList.Create;
 begin
   inherited;
-  Add('');  // default number format
+  Add('N0');  // default number format
 end;
 
 // Adds a new format, but make sure to avoid duplicates.
@@ -390,6 +390,7 @@ begin
   FChartFiles := TStringList.Create;
   FNumberFormatList := TsChartNumberFormatList.Create;
   FNumberFormatList.NameValueSeparator := ':';
+  FNumberFormatList.Add('N0');
   FStreamList := TStreamList.Create;
 
   FPieSeriesStartAngle := 999;
@@ -2097,7 +2098,7 @@ function TsSpreadOpenDocChartWriter.GetChartAxisStyleAsXML(
 var
   chart: TsChart;
   indent: String;
-  angle: Integer;
+  angle: single;
   textProps: String = '';
   graphProps: String = '';
   chartProps: String = '';
@@ -2114,6 +2115,8 @@ begin
     numStyle := GetNumberFormatID(Axis.LabelFormatPercent)
   else
     numStyle := GetNumberFormatID(Axis.LabelFormat);
+  if numStyle <> 'N0' then
+    chartProps := chartProps + 'chart:link-data-style-to-source="false" ';
 
   // Show axis labels
   if Axis.ShowLabels then
@@ -2224,7 +2227,7 @@ var
   axis: TsChartAxis;
   font: TsFont;
   indent: String;
-  rotAngle: Integer;
+  rotAngle: Single;
   chartProps: String = '';
   textProps: String = '';
 begin
@@ -2811,6 +2814,7 @@ var
   regression: TsChartRegression;
 begin
   FNumberFormatList.Clear;
+  FNumberFormatList.Add('N0');
 
   // Formats of axis labels
   FNumberFormatList.Add(AChart.XAxis.LabelFormat);

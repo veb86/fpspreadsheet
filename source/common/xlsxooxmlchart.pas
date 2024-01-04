@@ -25,19 +25,22 @@ type
     function ReadChartColor(ANode: TDOMNode; ADefault: TsColor): TsColor;
     procedure ReadChartFillAndLineProps(ANode: TDOMNode;
       AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine);
+    procedure ReadChartFontProps(ANode: TDOMNode; AFont: TsFont);
     procedure ReadChartLineProps(ANode: TDOMNode; AChart: TsChart; AChartLine: TsChartLine);
+    procedure ReadChartTextProps(ANode: TDOMNode; AFont: TsFont; var AFontRotation: Single);
   protected
     procedure ReadChart(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartAxis(ANode: TDOMNode; AChart: TsChart; AChartAxis: TsChartAxis);
+    procedure ReadChartAxisScaling(ANode: TDOMNode; AChartAxis: TsChartAxis);
     function ReadChartAxisTickMarks(ANode: TDOMNode): TsChartAxisTicks;
     procedure ReadChartBarSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegend(ANode: TDOMNode; AChartLegend: TsChartLegend);
     procedure ReadChartPlotArea(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartSeriesLabels(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesRange(ANode: TDOMNode; ARange: TsChartRange);
     procedure ReadChartSeriesTitle(ANode: TDOMNode; ASeries: TsChartSeries);
-    procedure ReadChartText(ANode: TDOMNode; AText: TsChartText);
-    procedure ReadChartTitle(ANode: TDOMNode; AChartTitle: TsChartText);
+    procedure ReadChartTitle(ANode: TDOMNode; ATitle: TsChartText);
 
   public
     constructor Create(AReader: TsBasicSpreadReader); override;
@@ -69,6 +72,7 @@ uses
 
 const
   PTS_MULTIPLIER = 12700;
+  ANGLE_MULTIPLIER = 60000;
 
 { TsSpreadOOXMLChartReader }
 
@@ -125,10 +129,15 @@ procedure TsSpreadOOXMLChartReader.ReadChartAxis(ANode: TDOMNode;
 var
   nodeName, s: String;
   n: Integer;
+  x: Single;
   node: TDOMNode;
 begin
   if ANode = nil then
     exit;
+
+  // Defaults
+  AChartAxis.Title.Caption := '';
+  AChartAxis.LabelRotation := 0;
 
   while Assigned(ANode) do
   begin
@@ -140,6 +149,10 @@ begin
           if (s <> '') and TryStrToInt(s, n) then
             AChartAxis.ID := n;
         end;
+      'c:axPos':
+        ;
+      'c:scaling':
+        ReadChartAxisScaling(ANode.FirstChild, AChartAxis);
       'c:majorGridlines':
         begin
           node := ANode.FindNode('c:spPr');
@@ -153,7 +166,7 @@ begin
             ReadChartLineProps(node.FirstChild, AChart, AChartAxis.MinorGridLines);
         end;
       'c:title':
-        ReadChartText(ANode.FindNode('c:tx'), AChartAxis.Title);
+        ReadChartTitle(ANode.FirstChild, AChartAxis.Title);
       'c:numFmt':
         ;
       'c:majorTickMark':
@@ -164,6 +177,72 @@ begin
         ;
       'c:spPr':
         ReadChartLineProps(ANode.FirstChild, AChart, AChartAxis.AxisLine);
+      'c:majorUnit':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+          begin
+            AChartAxis.AutomaticMajorInterval := false;
+            AChartAxis.MajorInterval := x;
+          end;
+        end;
+      'c:minorUnit':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+          begin
+            AChartAxis.AutomaticMinorInterval := false;
+            AChartAxis.MinorInterval := x;
+          end;
+        end;
+      'c:txPr':  // Axis labels
+        begin
+          x := 0;
+          ReadChartTextProps(ANode, AChartAxis.LabelFont, x);
+          AChartAxis.LabelRotation := x;
+        end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLChartReader.ReadChartAxisScaling(ANode: TDOMNode;
+  AChartAxis: TsChartAxis);
+var
+  nodeName, s: String;
+  node: TDOMNode;
+  x: Double;
+begin
+  if ANode = nil then
+    exit;
+
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:orientation':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          AChartAxis.Inverted := (s = 'maxMin');
+        end;
+      'c:max':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+          begin
+            AChartAxis.AutomaticMax := false;
+            AChartAxis.Max := x;
+          end;
+        end;
+      'c:min':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+          begin
+            AChartAxis.AutomaticMin := false;
+            AChartAxis.Min := x;
+          end;
+        end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -315,17 +394,99 @@ begin
         end;
       'a:ln':
         ReadChartLineProps(ANode, AChart, ALine);
+      'a:effectLst':
+        ;
     end;
     ANode := ANode.NextSibling;
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Extracts the properties of a font
 
+  @param  ANode  This is a "a:defRPr" node
+  @param  AFont  Font to which the parameters are applied
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartFontProps(ANode: TDOMNode;
+  AFont: TsFont);
+{  Example:
+      <a:defRPr sz="1000" b="1" i="0" u="none" strike="noStrike"
+         kern="1200" spc="-1" baseline="0">
+        <a:solidFill>
+          <a:schemeClr val="tx1"/>
+        </a:solidFill>
+        <a:latin typeface="Arial"/>
+        <a:ea typeface="+mn-ea"/>
+        <a:cs typeface="+mn-cs"/>
+      </a:defRPr> }
+var
+  node: TDOMNode;
+  nodeName, s: String;
+  x: Double;
+  n: Integer;
+begin
+  if ANode = nil then
+    exit;
+
+  nodeName := ANode.NodeName;
+  if not ((nodeName = 'a:defRPr') or (nodeName = 'a:rPr')) then
+    exit;
+
+  // Font size
+  s := GetAttrValue(ANode, 'sz');
+  if (s <> '') and TryStrToInt(s, n) then
+    AFont.Size := n/100;
+
+  // Font styles
+  if GetAttrValue(ANode, 'b') = '1' then
+    AFont.Style := AFont.Style + [fssBold];
+
+  if GetAttrValue(ANode, 'i') = '1' then
+    AFont.Style := AFont.Style + [fssItalic];
+
+  if GetAttrValue(ANode, 'u') = '1' then
+    AFont.Style := AFont.Style + [fssUnderline];
+
+  s := GetAttrValue(ANode, 'strike');
+  if (s <> '') and (s <> 'noStrike') then
+    AFont.Style := AFont.Style + [fssStrikeOut];
+
+  node := ANode.FirstChild;
+  while Assigned(node) do
+  begin
+    nodeName := node.NodeName;
+    case nodeName of
+      // Font color
+      'a:solidFill':
+        AFont.Color := ReadChartColor(node.FirstChild, scBlack);
+
+      // font name
+      'a:latin':
+        begin
+          s := GetAttrValue(node, 'typeface');
+          if s <> '' then
+            AFont.FontName := s;
+        end;
+
+      // not supported
+      'a:ea': ;
+      'a:cs': ;
+    end;
+    node := node.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Extracts the legend properties
+
+  @param  ANode         This is the "c:legend" node
+  @param  AChartLegend  Legend to which the values are applied
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartReader.ReadChartLegend(ANode: TDOMNode;
   AChartLegend: TsChartLegend);
 var
-  child: TDOMNode;
   nodeName, s: String;
+  dummy: Single;
 begin
   if ANode = nil then
     exit;
@@ -334,6 +495,7 @@ begin
   begin
     nodeName := ANode.NodeName;
     case nodeName of
+      // Legend position with respect to the plot area
       'c:legendPos':
         begin
           s := GetAttrValue(ANode, 'val');
@@ -344,16 +506,31 @@ begin
             'r': AChartLegend.Position := lpRight;
           end;
         end;
+
+      // Formatting of individual legend items, not supported
       'c:legendEntry':
         ;
+
+      // Overlap with plot area
       'c:overlay':
         begin
           s := GetAttrValue(ANode, 'val');
           AChartLegend.canOverlapPlotArea := (s = '1');
         end;
+
+      // Background and border
       'c:spPr':
         ReadChartFillAndLineProps(ANode.FirstChild, AChartLegend.Chart, AChartLegend.Background, AChartLegend.Border);
+
+      // Legend font
+      'c:txPr':
+        begin
+          dummy := 0;
+          ReadChartTextProps(ANode, AChartLegend.Font, dummy);
+          //AChartLegend.RotationAngle := dummy;  // we do not support rotated text in legend
+        end;
     end;
+
     ANode := ANode.NextSibling;
   end;
 end;
@@ -374,7 +551,6 @@ var
   child, child2: TDOMNode;
   nodeName, s: String;
   w, d, sp: Int64;
-  n: Integer;
   noLine: Boolean;
 begin
   if ANode = nil then
@@ -422,7 +598,7 @@ begin
                     s := GetAttrValue(child2, 'd');
                     if TryStrToInt64(s, d) then
                     begin
-                      s := getAttrValue(child2, 'sp');
+                      s := GetAttrValue(child2, 'sp');
                       if TryStrToInt64(s, sp) then
                         AChartLine.Style := AChart.LineStyles.Add('', d, 1, (d+sp), 0, 0, false);
                     end;
@@ -460,13 +636,87 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLChartReader.ReadChartSeriesLabels(ANode: TDOMNode;
+  ASeries: TsChartSeries);
+var
+  nodeName, s: String;
+  child, child2, child3: TDOMNode;
+begin
+  if ANode = nil then
+    exit;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:spPr':
+        ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder);
+      'c:txPr':
+        begin
+          child := ANode.FindNode('a:p');
+          if Assigned(child) then
+          begin
+            child2 := child.FirstChild;
+            while Assigned(child2) do
+            begin
+              nodeName := child2.NodeName;
+              if nodeName = 'a:pPr' then
+              begin
+                child3 := child2.FindNode('a:defRPr');
+                if Assigned(child3) then
+                  ReadChartFontProps(child3, ASeries.LabelFont);
+              end;
+              child2 := child2.NextSibling;
+            end;
+          end;
+        end;
+      'c:showLegendKey':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') and (s <> '0') then
+            ASeries.DataLabels := ASeries.DataLabels + [cdlSymbol];
+        end;
+      'c:showVal':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') and (s <> '0') then
+            ASeries.DataLabels := ASeries.DataLabels + [cdlValue];
+        end;
+      'c:showCatName':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') and (s <> '0') then
+            ASeries.DataLabels := ASeries.DataLabels + [cdlCategory];
+        end;
+      'c:showSerName':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') and (s <> '0') then
+            ASeries.DataLabels := ASeries.DataLabels + [cdlSeriesName];
+        end;
+      'c:showPercent':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') and (s <> '0') then
+            ASeries.DataLabels := ASeries.DataLabels + [cdlPercentage];
+        end;
+      'c:showBubbleSize':
+        ;
+      'c:showLeaderLines':
+        ;
+      'c:extLst':
+        ;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
 var
   nodeName: String;
 begin
   if ANode = nil then
     exit;
-  while ANode <> nil do
+  while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
     case nodeName of
@@ -475,11 +725,20 @@ begin
       'c:tx':
         ReadChartSeriesTitle(ANode.FirstChild, ASeries);
       'c:cat':
-        ReadChartSeriesRange(ANode.FirstChild, ASeries.XRange);
+        if ASeries.ChartType = ctScatter then
+          ReadChartSeriesRange(ANode.FirstChild, ASeries.XRange)
+        else
+          ReadChartSeriesRange(ANode.FirstChild, ASeries.LabelRange);
       'c:val':
         ReadChartSeriesRange(ANode.FirstChild, ASeries.YRange);
       'c:spPr':
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.Fill, ASeries.Line);
+      'c:dLbls':
+        ReadChartSeriesLabels(ANode.Firstchild, ASeries);
+      'c:invertIfNegative':
+        ;
+      'c:extLst':
+        ;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -540,11 +799,12 @@ begin
   end;
 end;
 
-procedure TsSpreadOOXMLChartReader.ReadChartTitle(ANode: TDOMNode; AChartTitle: TsChartText);
+{ Extracts the chart and axis titles, their formatting and their texts. }
+procedure TsSpreadOOXMLChartReader.ReadChartTitle(ANode: TDOMNode; ATitle: TsChartText);
 var
-  nodeName: String;
+  nodeName, s, totalText: String;
   child, child2, child3, child4: TDOMNode;
-  s: String;
+  n: Integer;
 begin
   if ANode = nil then
     exit;
@@ -554,58 +814,101 @@ begin
     case nodeName of
       'c:tx':
         begin
-          child := ANode.Firstchild;
-          while Assigned(child) do
+          child := ANode.FindNode('c:rich');
+          if Assigned(child) then
           begin
-            nodeName := child.NodeName;
-            case nodeName of
-              'c:rich':
-                begin
-                  child2 := child.FirstChild;
-                  while Assigned(child2) do
+            child2 := child.FirstChild;
+            while Assigned(child2) do
+            begin
+              nodeName := child2.NodeName;
+              case nodeName of
+                'a:bodyPr':
                   begin
-                    nodeName := child2.NodeName;
-                    case nodeName of
-                      'a:p':
-                        begin
-                          child3 := child2.FirstChild;
-                          while Assigned(child3) do
-                          begin
-                            nodeName := child3.NodeName;
-                            case nodeName of
-                              'a:r':
-                                begin
-                                  child4 := child3.FirstChild;
-                                  while Assigned(child4) do
-                                  begin
-                                    nodeName := child4.NodeName;
-                                    case nodeName of
-                                      'a:t':
-                                        AChartTitle.Caption := GetNodeValue(child4);
-                                    end;
-                                    child4 := child4.NextSibling;
-                                  end;
-                                end;
-                            end;
-                            child3 := child3.NextSibling;
-                          end;
-                        end;
-                    end;
-                    child2 := child2.NextSibling;
+                    s := GetAttrValue(ANode, 'rot');
+                    if (s <> '') and TryStrToInt(s, n) then
+                      ATitle.RotationAngle := -n / ANGLE_MULTIPLIER;
                   end;
-                end;
+                'a:lstStyle':
+                  ;
+                'a:p':
+                  begin
+                    totalText := '';
+                    child3 := child2.FirstChild;
+                    while Assigned(child3) do
+                    begin
+                      nodeName := child3.NodeName;
+                      case NodeName of
+                        'a:pPr':
+                          begin
+                            child4 := child3.FindNode('a:defRPr');
+                            ReadChartFontProps(child4, ATitle.Font);
+                          end;
+                        'a:r':
+                          begin
+                            child4 := child3.FindNode('a:t');
+                            totalText := totalText + GetNodeValue(child4);
+                          end;
+                      end;
+                      child3 := child3.NextSibling;
+                    end;
+                    ATitle.Caption := totalText;
+                  end;
+              end;
+              child2 := child2.NextSibling;
             end;
-            child := child.NextSibling;
-          end;
-        end;
+          end; // "rich" node
+        end;  // "tx" node
+      'c:overlay':
+        ;
+      'c:spPr':
+        ReadChartFillAndLineProps(ANode.FirstChild, ATitle.Chart, ATitle.Background, ATitle.Border);
+      'c:txPr':
+      ;
     end;
     ANode := ANode.NextSibling;
   end;
 end;
 
-procedure TsSpreadOOXMLChartReader.ReadChartText(ANode: TDOMNode;
-  AText: TsChartText);
+{ ANode is a "c:txPr" node }
+procedure TsSpreadOOXMLChartReader.ReadChartTextProps(ANode: TDOMNode; AFont: TsFont;
+  var AFontRotation: Single);
+var
+  nodeName, s: String;
+  n: Integer;
+  child1, child2: TDOMNode;
 begin
+  if (ANode = nil) or (ANode.NodeName <> 'c:txPr') then exit;
+
+  ANode := ANode.FirstChild;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'a:bodyPr':
+        { <a:bodyPr rot="-5400000" spcFirstLastPara="1" vertOverflow="ellipsis"
+             vert="horz" wrap="square" anchor="ctr" anchorCtr="1"/> }
+        begin
+          s := GetAttrValue(ANode, 'rot');
+          if (s <> '') and TryStrToInt(s, n) then
+            AFontRotation := -n / ANGLE_MULTIPLIER;
+        end;
+      'a:lstStyle':
+        ;
+      'a:p':
+        begin
+          child1 := ANode.FirstChild;
+          if Assigned(child1) then
+          begin
+            child2 := child1.FindNode('a:defRPr');
+            if Assigned(child2) then
+              ReadChartFontProps(child2, AFont);
+          end;
+        end;
+      'a:endParaRPr':
+        ;
+    end;
+    ANode := ANode.NextSibling;
+  end;
 end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartXML(AStream: TStream; AChart: TsChart;

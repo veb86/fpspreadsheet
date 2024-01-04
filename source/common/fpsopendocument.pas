@@ -9082,8 +9082,8 @@ begin
 
     r1 := chart.Row;
     c1 := chart.Col;
-    rOffs1 := chart.OffsetX;
-    cOffs1 := chart.OffsetY;
+    rOffs1 := chart.OffsetY;
+    cOffs1 := chart.OffsetX;
     w := chart.Width;
     h := chart.Height;
     sheet.CalcDrawingExtent(true, w, h, r1, c1, r2, c2, rOffs1, cOffs1, rOffs2, cOffs2, x, y);

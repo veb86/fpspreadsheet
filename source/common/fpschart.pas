@@ -225,7 +225,7 @@ type
   TsChartText = class(TsChartFillElement)
   private
     FCaption: String;
-    FRotationAngle: Integer;
+    FRotationAngle: single;
     FFont: TsFont;
     FPosX, FPosY: Double;
   public
@@ -234,7 +234,7 @@ type
     procedure CopyFrom(ASource: TsChartElement); override;
     property Caption: String read FCaption write FCaption;
     property Font: TsFont read FFont write FFont;
-    property RotationAngle: Integer read FRotationAngle write FRotationAngle;
+    property RotationAngle: single read FRotationAngle write FRotationAngle;
     property PosX: Double read FPosX write FPosX;
     property PosY: Double read FPosY write FPosY;
     property Visible;
@@ -251,6 +251,7 @@ type
     FAutomaticMax: Boolean;
     FAutomaticMin: Boolean;
     FAutomaticMajorInterval: Boolean;
+    FAutomaticMinorInterval: Boolean;
     FAutomaticMinorSteps: Boolean;
     FAxisLine: TsChartLine;
     FCategoryRange: TsChartRange;
@@ -262,13 +263,14 @@ type
     FLabelFormatFromSource: Boolean;
     FLabelFormatDateTime: String;
     FLabelFormatPercent: String;
-    FLabelRotation: Integer;
+    FLabelRotation: Single;
     FLogarithmic: Boolean;
     FMajorInterval: Double;
     FMajorTicks: TsChartAxisTicks;
     FMax: Double;
     FMin: Double;
     FMinorCount: Integer;
+    FMinorInterval: Double;
     FMinorTicks: TsChartAxisTicks;
     FPosition: TsChartAxisPosition;
     FTitle: TsChartText;
@@ -286,6 +288,7 @@ type
     property AutomaticMax: Boolean read FAutomaticMax write FAutomaticMax;
     property AutomaticMin: Boolean read FAutomaticMin write FAutomaticMin;
     property AutomaticMajorInterval: Boolean read FAutomaticMajorInterval write FAutomaticMajorInterval;
+    property AutomaticMinorInterval: Boolean read FAutomaticMinorInterval write FAutomaticMinorInterval;
     property AutomaticMinorSteps: Boolean read FAutomaticMinorSteps write FAutomaticMinorSteps;
     property AxisLine: TsChartLine read FAxisLine write FAxisLine;
     property CategoryRange: TsChartRange read FCategoryRange write FCategoryRange;
@@ -297,7 +300,7 @@ type
     property LabelFormatDateTime: String read FLabelFormatDateTime write FLabelFormatDateTime;
     property LabelFormatFromSource: Boolean read FLabelFormatFromSource write FLabelFormatFromSource;
     property LabelFormatPercent: String read FLabelFormatPercent write FLabelFormatPercent;
-    property LabelRotation: Integer read FLabelRotation write FLabelRotation;
+    property LabelRotation: Single read FLabelRotation write FLabelRotation;
     property Logarithmic: Boolean read FLogarithmic write FLogarithmic;
     property MajorGridLines: TsChartLine read FMajorGridLines write FMajorGridLines;
     property MajorInterval: Double read FMajorInterval write FMajorInterval;
@@ -306,6 +309,7 @@ type
     property Min: Double read FMin write FMin;
     property MinorGridLines: TsChartLine read FMinorGridLines write FMinorGridLines;
     property MinorCount: Integer read FMinorCount write FMinorCount;
+    property MinorInterval: Double read FMinorInterval write FMinorInterval;
     property MinorTicks: TsChartAxisTicks read FMinorTicks write FMinorTicks;
     property Position: TsChartAxisPosition read FPosition write FPosition;
     property PositionValue: Double read FPositionValue write FPositionValue;
@@ -1419,6 +1423,7 @@ begin
     FAutomaticMax := TsChartAxis(ASource).AutomaticMax;
     FAutomaticMin := TsChartAxis(ASource).AutomaticMin;
     FAutomaticMajorInterval := TsChartAxis(ASource).AutomaticMajorInterval;
+    FAutomaticMinorInterval := TsChartAxis(ASource).AutomaticMinorInterval;
     FAutomaticMinorSteps := TsChartAxis(ASource).AutomaticMinorSteps;
     FAxisLine.CopyFrom(TsChartAxis(ASource).AxisLine);
     FCategoryRange.CopyFrom(TsChartAxis(ASource).CategoryRange);
@@ -1438,6 +1443,7 @@ begin
     FMax := TsChartAxis(ASource).Max;
     FMin := TsChartAxis(ASource).Min;
     FMinorCount := TsChartAxis(ASource).MinorCount;
+    FMinorInterval := TsChartAxis(ASource).MinorInterval;
     FMinorTicks := TsChartAxis(ASource).MinorTicks;
     FPosition := TsChartAxis(ASource).Position;
     FTitle.CopyFrom(TsChartAxis(ASource).Title);
