@@ -187,8 +187,9 @@ const
 
   SYMBOL_NAMES: array[TsChartSeriesSymbol] of String = (
     'square', 'diamond', 'arrow-up', 'arrow-down', 'arrow-left',
-    'arrow-right', 'circle', 'star', 'x', 'plus', 'asterisk'
-  );  // unsupported: bow-tie, hourglass, horizontal-bar, vertical-bar
+    'arrow-right', 'circle', 'star', 'x', 'plus', 'asterisk',
+    'horizontal-bar', ''
+  );  // unsupported: bow-tie, hourglass, vertical-bar
 
   GRADIENT_STYLES: array[TsChartGradientStyle] of string = (
     'linear', 'axial', 'radial', 'ellipsoid', 'square', 'rectangular'

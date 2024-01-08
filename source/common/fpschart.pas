@@ -489,7 +489,8 @@ type
 
   TsChartSeriesSymbol = (
     cssRect, cssDiamond, cssTriangle, cssTriangleDown, cssTriangleLeft,
-    cssTriangleRight, cssCircle, cssStar, cssX, cssPlus, cssAsterisk
+    cssTriangleRight, cssCircle, cssStar, cssX, cssPlus, cssAsterisk,
+    cssDash, cssDot
   );
 
   TsCustomLineSeries = class(TsChartSeries)

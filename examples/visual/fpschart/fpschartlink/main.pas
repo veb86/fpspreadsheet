@@ -49,8 +49,11 @@ implementation
 { TForm1 }
 
 procedure TForm1.Button1Click(Sender: TObject);
+var
+  fn: String;
 begin
-  OpenDialog1.InitialDir := ExtractFilePath(Combobox1.Text);
+  fn := ExpandFileName(Combobox1.Text);
+  OpenDialog1.InitialDir := ExtractFilePath(fn);
   OpenDialog1.FileName := '';
   if OpenDialog1.Execute then
   begin

@@ -30,13 +30,17 @@ type
     procedure ReadChartTextProps(ANode: TDOMNode; AFont: TsFont; var AFontRotation: Single);
   protected
     procedure ReadChart(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartAreaSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartAxis(ANode: TDOMNode; AChart: TsChart; AChartAxis: TsChartAxis);
     procedure ReadChartAxisScaling(ANode: TDOMNode; AChartAxis: TsChartAxis);
     function ReadChartAxisTickMarks(ANode: TDOMNode): TsChartAxisTicks;
     procedure ReadChartBarSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegend(ANode: TDOMNode; AChartLegend: TsChartLegend);
+    procedure ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartPlotArea(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartScatterSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartSeriesLabels(ANode: TDOMNode; ASeries: TsChartSeries);
+    procedure ReadChartSeriesMarker(ANode: TDOMNode; ASeries: TsCustomLineSeries);
     procedure ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesRange(ANode: TDOMNode; ARange: TsChartRange);
     procedure ReadChartSeriesTitle(ANode: TDOMNode; ASeries: TsChartSeries);
@@ -73,6 +77,18 @@ uses
 const
   PTS_MULTIPLIER = 12700;
   ANGLE_MULTIPLIER = 60000;
+
+type
+  TsOpenCustomLineSeries = class(TsCustomLineSeries)
+  public
+    property Symbol;
+    property SymbolBorder;
+    property SymbolFill;
+    property SymbolHeight;
+    property SymbolWidth;
+    property ShowLines;
+    property ShowSymbols;
+  end;
 
 { TsSpreadOOXMLChartReader }
 
@@ -119,6 +135,42 @@ begin
         ReadChartPlotArea(ANode.FirstChild, AChart);
       'c:legend':
         ReadChartlegend(ANode.FirstChild, AChart.Legend);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLChartReader.ReadChartAreaSeries(ANode: TDOMNode; AChart: TsChart);
+var
+  nodeName: String;
+  s: String;
+  ser: TsAreaSeries;
+begin
+  if ANode = nil then
+    exit;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:grouping':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          case s of
+            'stacked': AChart.StackMode := csmStacked;
+            'percentStacked': AChart.StackMode := csmStackedPercentage;
+          end;
+        end;
+      'c:varyColors':
+        ;
+      'c:ser':
+        begin
+          ser := TsAreaSeries.Create(AChart);
+          ReadChartSeriesProps(ANode.FirstChild, ser);
+        end;
+      'c:dLbls':
+        ;
+      'c:axId':
+        ;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -283,7 +335,13 @@ begin
           end;
         end;
       'c:grouping':
-        ;
+        begin
+          s := GetAttrValue(ANode, 'val');
+          case s of
+            'stacked': AChart.StackMode := csmStacked;
+            'percentStacked': AChart.StackMode := csmStackedPercentage;
+          end;
+        end;
       'c:varyColors':
         ;
       'c:ser':
@@ -615,6 +673,117 @@ begin
     AChartLine.Style := clsNoLine;
 end;
 
+procedure TsSpreadOOXMLChartReader.ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
+var
+  nodeName: String;
+  s: String;
+  ser: TsLineSeries;
+begin
+  if ANode = nil then
+    exit;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:grouping':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          case s of
+            'stacked': AChart.StackMode := csmStacked;
+            'percentStacked': AChart.StackMode := csmStackedPercentage;
+          end;
+        end;
+      'c:varyColors':
+        ;
+      'c:ser':
+        begin
+          ser := TsLineSeries.Create(AChart);
+          ReadChartSeriesMarker(ANode.FirstChild, TsLineSeries(ser));
+          ReadChartSeriesProps(ANode.FirstChild, ser);
+        end;
+      'c:dLbls':
+        ;
+      'c:gapWidth':
+        ;
+      'c:axId':
+        ;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the properties of a line series
+
+  @@param  ANode    Points to the <c:marker> subnode of <c:ser> node
+  @@param  ASeries  Instance of the TsLineSeries created by ReadChartLineSeries
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartSeriesMarker(ANode: TDOMNode; ASeries: TsCustomLineSeries);
+var
+  nodeName, s: String;
+  child: TDOMNode;
+  n: Integer;
+begin
+  if ANode = nil then
+    exit;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:marker':
+        begin
+          TsOpenCustomLineseries(ASeries).ShowSymbols := true;
+          child := ANode.FirstChild;
+          while Assigned(child) do
+          begin
+            nodeName := child.NodeName;
+            case nodeName of
+              'c:symbol':
+                begin
+                  s := GetAttrValue(child, 'val');
+                  with TsOpenCustomLineSeries(ASeries) do
+                    case s of
+                      'none': ShowSymbols := false;
+                      'square': Symbol := cssRect;
+                      'circle': Symbol := cssCircle;
+                      'diamond': Symbol := cssDiamond;
+                      'triangle': Symbol := cssTriangle;
+                      'star': Symbol := cssStar;
+                      'x': Symbol := cssX;
+                      'plus': Symbol := cssPlus;
+                      'dash': Symbol := cssDash;
+                      'dot': Symbol := cssDot;
+                      'picture': Symbol := cssAsterisk;
+                        // to do: read following blipFill node to determine the
+                        // bitmap to be used for symbol
+                      else
+                        Symbol := cssAsterisk
+                    end;
+                end;
+
+              'c:size':
+                begin
+                  s := GetAttrValue(child, 'val');
+                  if (s <> '') and TryStrToInt(s, n) then
+                    with TsOpenCustomlineSeries(ASeries) do
+                    begin
+                      SymbolWidth := PtsToMM(n div 2);
+                      SymbolHeight := SymbolWidth;
+                    end;
+                end;
+
+              'c:spPr':
+                with TsOpenCustomLineSeries(ASeries) do
+                  ReadChartFillAndLineProps(child.FirstChild, Chart, SymbolFill, SymbolBorder);
+            end;
+            child := child.NextSibling;
+          end;
+        end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOOXMLChartReader.ReadChartPlotArea(ANode: TDOMNode; AChart: TsChart);
 var
   nodeName: String;
@@ -625,12 +794,51 @@ begin
   begin
     nodeName := ANode.NodeName;
     case nodeName of
+      'c:areaChart':
+        ReadChartAreaSeries(ANode.FirstChild, AChart);
       'c:barChart':
         ReadChartBarSeries(ANode.FirstChild, AChart);
+      'c:lineChart':
+        ReadChartLineSeries(ANode.FirstChild, AChart);
+      'c:scatterChart':
+        ReadChartScatterSeries(ANode.FirstChild, AChart);
       'c:catAx':
         ReadChartAxis(ANode.FirstChild, AChart, AChart.XAxis);
       'c:valAx':
         ReadChartAxis(ANode.FirstChild, AChart, AChart.YAxis);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLChartReader.ReadChartScatterSeries(ANode: TDOMNode; AChart: TsChart);
+var
+  nodeName: String;
+  s: String;
+  ser: TsScatterSeries;
+begin
+  if ANode = nil then
+    exit;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:grouping':
+        ;
+      'c:varyColors':
+        ;
+      'c:ser':
+        begin
+          ser := TsScatterSeries.Create(AChart);
+          ReadChartSeriesMarker(ANode.FirstChild, TsScatterSeries(ser));
+          ReadChartSeriesProps(ANode.FirstChild, ser);
+        end;
+      'c:dLbls':
+        ;
+      'c:gapWidth':
+        ;
+      'c:axId':
+        ;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -725,11 +933,10 @@ begin
       'c:tx':
         ReadChartSeriesTitle(ANode.FirstChild, ASeries);
       'c:cat':
-        if ASeries.ChartType = ctScatter then
-          ReadChartSeriesRange(ANode.FirstChild, ASeries.XRange)
-        else
-          ReadChartSeriesRange(ANode.FirstChild, ASeries.LabelRange);
-      'c:val':
+        ReadChartSeriesRange(ANode.FirstChild, ASeries.LabelRange);
+      'c:xVal':
+        ReadChartSeriesRange(ANode.FirstChild, ASeries.XRange);
+      'c:val', 'c:yVal':
         ReadChartSeriesRange(ANode.FirstChild, ASeries.YRange);
       'c:spPr':
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.Fill, ASeries.Line);

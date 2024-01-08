@@ -173,7 +173,7 @@ object Form1: TForm1
   end
   object OpenDialog1: TOpenDialog
     DefaultExt = '.ods'
-    Filter = 'OpenDocument Spreadsheet Files|*.ods'
+    Filter = 'Spreadsheet files|*.xlsx;*.ods|Excel 2007+ files|*.xlsx|OpenDocument Spreadsheet Files|*.ods'
     Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
     Left = 976
     Top = 56

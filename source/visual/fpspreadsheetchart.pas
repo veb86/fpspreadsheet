@@ -2306,7 +2306,9 @@ const
     psStar,
     psDiagCross,
     psCross,
-    psFullStar
+    psFullStar,
+    psHorBar,
+    psPoint
   );
 var
   ppi: Integer;
