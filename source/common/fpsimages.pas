@@ -212,6 +212,7 @@ end;
 
 { GIF files }
 
+// https://www.w3.org/Graphics/GIF/spec-gif89a.txt
 function GetGIFSize(AStream: TStream; out AWidth, AHeight: DWord;
   out dpiX, dpiY: Double): Boolean;
 type
@@ -228,8 +229,7 @@ var
   header: TGifHeader;
   imageBlock: TGifImageBlock;
   nResult: integer;
-  x: integer;
-  c: char;
+  b: Byte;
 begin
   Result := false;
 
@@ -239,27 +239,35 @@ begin
   if (strlicomp(PChar(header.Sig), 'GIF87a', 6) <> 0) and
      (strlicomp(PChar(header.Sig), 'GIF89a', 6) <> 0) then exit;
 
-  // Skip color map, if there is one
-  if (header.Flags and $80) > 0 then
-  begin
-    x := 3 * (1 SHL ((header.Flags and 7) + 1));
-    AStream.Position := x;
-    if AStream.Position > AStream.Size then exit; // Color map thrashed
-  end;
   // Step through blocks
   while (AStream.Position < AStream.Size) do
   begin
-    c := char(AStream.ReadByte);
-    if c = ',' then
+    b := AStream.ReadByte;
+
+    if (b = $21) then // Extension Introducer
+    begin
+      b := AStream.ReadByte;
+      // Consume Graphic Control Extensions if we find them
+      while (b = $F9) do   // Graphic Control Label
+      begin
+        if (AStream.ReadByte <> 4) then
+          Exit; //invalid blocksize
+        AStream.ReadDWord;  // Graphic Control Extension Data: 4 bytes - just consume it
+        b := AStream.ReadByte;
+      end;
+    end;
+
+    if (b = $2C) then // Image Separator - Identifies the beginning of an Image Descriptor
     begin
       // Image found
-      nResult := AStream.Read(imageBlock{%H-}, SizeOf(TGIFImageBlock));
-      if nResult <> SizeOf(TGIFImageBlock) then exit; // Invalid image block encountered
-      AWidth := LEToN(imageBlock.Width);
-      AHeight := LEToN(imageBlock.Height);
-      break;
+      if (AStream.Read(ImageBlock{%H-}, SizeOf(TGIFImageBlock)) <> SizeOf(TGIFImageBlock)) then
+        Exit;
+      AWidth := LEToN(ImageBlock.Width);
+      AHeight := LEToN(ImageBlock.Height);
+      Break;
     end;
   end;
+
   dpiX := 96;   // not stored in file, use default screen dpi
   dpiY := 96;
   Result := true;
