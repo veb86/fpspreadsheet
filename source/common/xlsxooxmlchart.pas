@@ -44,6 +44,7 @@ type
     procedure ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesRange(ANode: TDOMNode; ARange: TsChartRange);
     procedure ReadChartSeriesTitle(ANode: TDOMNode; ASeries: TsChartSeries);
+    procedure ReadChartSeriesTrendLine(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartTitle(ANode: TDOMNode; ATitle: TsChartText);
 
   public
@@ -350,7 +351,7 @@ begin
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:dLbls':
-        ;
+        s := '';
       'c:gapWidth':
         ;
       'c:axId':
@@ -609,6 +610,7 @@ var
   child, child2: TDOMNode;
   nodeName, s: String;
   w, d, sp: Int64;
+  dMM, spMM: Double;
   noLine: Boolean;
 begin
   if ANode = nil then
@@ -658,7 +660,11 @@ begin
                     begin
                       s := GetAttrValue(child2, 'sp');
                       if TryStrToInt64(s, sp) then
-                        AChartLine.Style := AChart.LineStyles.Add('', d, 1, (d+sp), 0, 0, false);
+                      begin
+                        dMM := PtsToMM(d / PTS_MULTIPLIER);
+                        spMM := PtsToMM(sp / PTS_MULTIPLIER);
+                        AChartLine.Style := AChart.LineStyles.Add('', dMM, 1, 0, 0, (dMM+spMM), false);
+                      end;
                     end;
                   end;
                 end;
@@ -823,10 +829,8 @@ begin
   begin
     nodeName := ANode.NodeName;
     case nodeName of
-      'c:grouping':
-        ;
-      'c:varyColors':
-        ;
+      'c:grouping':    ;
+      'c:varyColors':  ;
       'c:ser':
         begin
           ser := TsScatterSeries.Create(AChart);
@@ -942,6 +946,8 @@ begin
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.Fill, ASeries.Line);
       'c:dLbls':
         ReadChartSeriesLabels(ANode.Firstchild, ASeries);
+      'c:trendline':
+        ReadChartSeriesTrendLine(ANode.FirstChild, ASeries);
       'c:invertIfNegative':
         ;
       'c:extLst':
@@ -1003,6 +1009,90 @@ begin
         exit;
       end;
     end;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the trend line fitted to a series.
+
+  @@param ANode    Is the first child of the <c:trendline> subnode of <c:ser>.
+  @@param ASeries  Series to which the fit was applied.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartSeriesTrendLine(ANode: TDOMNode;
+  ASeries: TsChartSeries);
+var
+  nodeName, s: String;
+  regression: TsChartRegression;
+  child: TDOMNode;
+  n: Integer;
+  x: Double;
+begin
+  if ANode = nil then
+    exit;
+  if not (ASeries is TsScatterSeries) then   // to do: Excel supports fitting also on bar series!!!
+    exit;
+
+  regression := TsScatterSeries(ASeries).Regression;
+
+  while Assigned(ANode) do begin
+    nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
+    case nodeName of
+      'c:name':
+        regression.Title := GetNodeValue(ANode);
+      'c:spPr':
+        ReadChartLineProps(ANode.FirstChild, ASeries.Chart, regression.Line);
+      'c:trendlineType':
+        case s of
+          'exp': regression.RegressionType := rtExponential;
+          'linear': regression.RegressionType := rtLinear;
+          'log': regression.RegressionType := rtNone;  // rtLog, but not supported.
+          'movingAvg': regression.RegressionType := rtNone;  // rtMovingAvg, but not supported.
+          'poly': regression.RegressionType := rtPolynomial;
+          'power': regression.RegressionType := rtPower;
+        end;
+      'c:order':
+        if (s <> '') and TryStrToInt(s, n) then
+          regression.PolynomialDegree := n;
+      'c:period':
+        if (s <> '') and TryStrToInt(s, n) then ;  // not supported
+          // regression.MovingAvgPeriod := n;
+      'c:forward', 'c:backward':
+        if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+          case nodeName of
+            'c:forward': regression.ExtrapolateForwardBy := x;
+            'c:backward': regression.ExtrapolateBackwardBy := x;
+          end;
+      'c:intercept':
+        if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        begin
+          regression.YInterceptValue := x;
+          regression.ForceYIntercept := true;
+        end;
+      'c:dispRSqr':
+        if s = '1' then
+          regression.DisplayRSquare := true;
+      'c:dispEq':
+        if s = '1' then
+          regression.DisplayEquation := true;
+      'c:trendlineLbl':
+        begin
+          child := ANode.FirstChild;
+          while child <> nil do
+          begin
+            nodeName := child.NodeName;
+            case nodeName of
+              'c:numFmt':
+                begin
+                  s := GetAttrValue(child, 'formatCode');
+                  regression.Equation.NumberFormat := s;
+                end;
+            end;
+            child := child.NextSibling;
+          end;
+        end;
+    end;
+    ANode := ANode.NextSibling;
   end;
 end;
 
