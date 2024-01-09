@@ -158,12 +158,12 @@ type
     procedure UpdateChartAxis(AWorkbookAxis: TsChartAxis);
     procedure UpdateChartAxisLabels(AWorkbookChart: TsChart);
     procedure UpdateChartBackground(AWorkbookChart: TsChart);
-//    procedure UpdateBarSeries(AWorkbookChart: TsChart);
     procedure UpdateChartBrush(AWorkbookChart: TsChart; AWorkbookFill: TsChartFill; ABrush: TBrush);
     procedure UpdateChartErrorBars(AWorkbookSeries: TsChartSeries; ASeries: TBasicPointSeries);
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookChart: TsChart; AWorkbookLine: TsChartLine; APen: TPen);
     procedure UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
+    procedure UpdateChartSeriesRegression(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     procedure UpdateChartStyle(AWorkbookSeries: TsChartSeries; AStyleIndex: Integer);
     procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
 
@@ -208,11 +208,17 @@ type
 
   TsCustomLineSeriesOpener = class(TsCustomLineSeries);
 
+  TsRegressionSeries = class(TsChartSeries)
+  public
+    property Regression;
+  end;
+
   TErrorbarSeries = class(TBasicPointSeries)
   public
     property XErrorBars;
     property YErrorBars;
   end;
+
 
 function mmToPx(mm: Double; ppi: Integer): Integer;
 begin
@@ -1800,6 +1806,11 @@ begin
   AChartSeries.UseZeroLevel := true;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
+
+  // Regression/trend line
+  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
+
+  // Error bars
   UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
 end;
 
@@ -1812,7 +1823,9 @@ begin
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
-  // UpdateChartErrorBars(AWorkbookSeries, AChartSeries);  // <--- No errorbar support by TAChart's barseries
+
+  // Regression/trend line
+  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries;
@@ -1824,6 +1837,9 @@ begin
   AChartSeries.BubbleRadiusUnits := bruPercentage;
   AChartSeries.ParentChart.ExpandPercentage := 10;
   {$IFEND}
+
+  // Regression/trend line
+  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartLink.UpdateChart;
@@ -2261,6 +2277,83 @@ begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.LabelBackground, AChartSeries.Marks.LabelBrush);
 end;
 
+procedure TsWorkbookChartLink.UpdateChartSeriesRegression(AWorkbookSeries: TsChartSeries;
+  AChartSeries: TChartSeries);
+var
+  regressionSeries: TsRegressionSeries;
+  regression: TsChartRegression;
+  ser: TFitSeries;
+  s: String;
+begin
+  if not AWorkbookSeries.SupportsRegression then
+    exit;
+
+  regressionSeries := TsRegressionSeries(AWorkbookSeries);
+  regression := regressionSeries.Regression;
+
+  if regression.RegressionType = rtNone then
+    exit;
+
+  // Create series and assign chartsource
+  ser := TFitSeries.Create(FChart);
+  ser.Source := AChartSeries.Source;
+
+  // Fit equation
+  case regression.RegressionType of
+    rtLinear: ser.FitEquation := feLinear;
+    // rtLogarithmic: ser.FitEquation := feLogarithmic;   // to do: implement this!
+    rtExponential: ser.FitEquation := feExp;
+    rtPower: ser.FitEquation := fePower;
+    rtPolynomial:
+      begin
+        ser.FitEquation := fePolynomial;
+        ser.ParamCount := regression.PolynomialDegree + 1;
+      end;
+  end;
+
+  // Take care of y intercept
+  if regression.ForceYIntercept then
+  begin
+    str(regression.YInterceptValue, s);
+    ser.FixedParams := s;
+  end;
+
+  // style of regression line
+  UpdateChartPen(AWorkbookSeries.Chart, regression.Line, ser.Pen);
+  ser.AxisIndexX := AChartSeries.AxisIndexX;
+  ser.AxisIndexY := AChartSeries.AxisIndexY;
+
+  FChart.AddSeries(ser);
+
+  // Legend text
+  ser.Title := regression.Title;
+
+  {
+  // Show fit curve in legend after series.
+  ser.Legend.Order := AChartseries.Legend.Order + 1;
+  }
+
+  // Regression equation
+  if regression.DisplayEquation or regression.DisplayRSquare then
+  begin
+    ser.ExecFit;
+    s := '';
+    if regression.DisplayEquation then
+      s := s + ser.EquationText.
+        X(regression.Equation.XName).
+        Y(regression.Equation.YName).
+        NumFormat(Convert_NumFormatStr_to_FormatStr(regression.Equation.NumberFormat)).
+        DecimalSeparator('.').
+        TextFormat(tfHtml).
+        Get;
+    if regression.DisplayRSquare then
+      s := s + LineEnding + 'R<sup>2</sup> = ' + FormatFloat('0.00', ser.FitStatistics.R2);
+    if s <> '' then
+      ser.Title := ser.Title + LineEnding + s;
+//    ser.Legend.Format := '%0:s' + LineEnding + '%2:s';
+  end;
+end;
+
 procedure TsWorkbookChartLink.UpdateChartStyle(AWorkbookSeries: TsChartSeries;
   AStyleIndex: Integer);
 var
@@ -2331,7 +2424,11 @@ begin
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
 
+  // Error bars
   UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
+
+  // Regression/trend line
+  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;
@@ -2371,76 +2468,8 @@ end;
 
 procedure TsWorkbookChartLink.UpdateScatterSeries(AWorkbookSeries: TsScatterSeries;
   AChartSeries: TLineSeries);
-var
-  ser: TFitSeries;
-  s: String;
 begin
   UpdateCustomLineSeries(AWorkbookSeries, AChartSeries);
-
-  if AWorkbookSeries.Regression.RegressionType = rtNone then
-    exit;
-
-  // Create series and assign chartsource
-  ser := TFitSeries.Create(FChart);
-  ser.Source := AChartSeries.Source;
-
-  // Fit equation
-  case AWorkbookSeries.Regression.RegressionType of
-    rtLinear: ser.FitEquation := feLinear;
-    // rtLogarithmic: ser.FitEquation := feLogarithmic;   // to do: implement this!
-    rtExponential: ser.FitEquation := feExp;
-    rtPower: ser.FitEquation := fePower;
-    rtPolynomial:
-      begin
-        ser.FitEquation := fePolynomial;
-        ser.ParamCount := AWorkbookSeries.Regression.PolynomialDegree + 1;
-      end;
-  end;
-
-  // Take care of y intercept
-  if AWorkbookSeries.Regression.ForceYIntercept then
-  begin
-    str(AWorkbookSeries.Regression.YInterceptValue, s);
-    ser.FixedParams := s;
-  end;
-
-  // style of regression line
-  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Regression.Line, ser.Pen);
-  ser.AxisIndexX := AChartSeries.AxisIndexX;
-  ser.AxisIndexY := AChartSeries.AxisIndexY;
-
-  FChart.AddSeries(ser);
-
-  // Legend text
-  ser.Title := AWorkbookSeries.Regression.Title;
-
-  {
-  // Show fit curve in legend after series.
-  ser.Legend.Order := AChartseries.Legend.Order + 1;
-  }
-
-  // Regression equation
-  if AWorkbookSeries.Regression.DisplayEquation or AWorkbookSeries.Regression.DisplayRSquare then
-  begin
-    ser.ExecFit;
-    s := '';
-    if AWorkbookSeries.Regression.DisplayEquation then
-      s := s + ser.EquationText.
-        X(AWorkbookSeries.Regression.Equation.XName).
-        Y(AWorkbookSeries.Regression.Equation.YName).
-        NumFormat(Convert_NumFormatStr_to_FormatStr(AWorkbookSeries.Regression.Equation.NumberFormat)).
-        DecimalSeparator('.').
-        TextFormat(tfHtml).
-        Get;
-    if AWorkbookSeries.Regression.DisplayRSquare then
-      s := s + LineEnding + 'R<sup>2</sup> = ' + FormatFloat('0.00', ser.FitStatistics.R2);
-    if s <> '' then
-      ser.Title := ser.Title + LineEnding + s;
-//    ser.Legend.Format := '%0:s' + LineEnding + '%2:s';
-  end;
-
-  // Error bars
-  UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartLink.UpdateStockSeries(AWorkbookSeries: TsStockSeries;
@@ -2460,6 +2489,9 @@ begin
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.LinePen);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.DownLinePen);
   AChartSeries.TickWidthStyle := twsPercentMin;
+
+  // Regression/trend line
+  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
 end;
 
 {$ENDIF}

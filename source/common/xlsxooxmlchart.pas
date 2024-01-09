@@ -91,6 +91,12 @@ type
     property ShowSymbols;
   end;
 
+  TsOpenRegressionSeries = class(TsChartSeries)
+  public
+    property Regression;
+  end;
+
+
 { TsSpreadOOXMLChartReader }
 
 constructor TsSpreadOOXMLChartReader.Create(AReader: TsBasicSpreadReader);
@@ -1013,7 +1019,7 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Reads the trend line fitted to a series.
+  Reads the trend-line fitted to a series (which has SupportsRegression true).
 
   @@param ANode    Is the first child of the <c:trendline> subnode of <c:ser>.
   @@param ASeries  Series to which the fit was applied.
@@ -1029,10 +1035,10 @@ var
 begin
   if ANode = nil then
     exit;
-  if not (ASeries is TsScatterSeries) then   // to do: Excel supports fitting also on bar series!!!
+  if not ASeries.SupportsRegression then
     exit;
 
-  regression := TsScatterSeries(ASeries).Regression;
+  regression := TsOpenRegressionSeries(ASeries).Regression;
 
   while Assigned(ANode) do begin
     nodeName := ANode.NodeName;

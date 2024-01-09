@@ -357,6 +357,43 @@ type
     property Items[AIndex: Integer]: TsChartDataPointStyle read GetItem write SetItem; default;
   end;
 
+  TsRegressionType = (rtNone, rtLinear, rtLogarithmic, rtExponential, rtPower, rtPolynomial);
+
+  TsRegressionEquation = class
+    Fill: TsChartFill;
+    Font: TsFont;
+    Border: TsChartLine;
+    NumberFormat: String;
+    Left, Top: Double;  // mm, relative to outer chart boundaries!
+    XName: String;
+    YName: String;
+    constructor Create;
+    destructor Destroy; override;
+    function DefaultBorder: Boolean;
+    function DefaultFill: Boolean;
+    function DefaultFont: Boolean;
+    function DefaultNumberFormat: Boolean;
+    function DefaultPosition: Boolean;
+    function DefaultXName: Boolean;
+    function DefaultYName: Boolean;
+  end;
+
+  TsChartRegression = class
+    Title: String;
+    RegressionType: TsRegressionType;
+    ExtrapolateForwardBy: Double;
+    ExtrapolateBackwardBy: Double;
+    ForceYIntercept: Boolean;
+    YInterceptValue: Double;
+    PolynomialDegree: Integer;
+    DisplayEquation: Boolean;
+    DisplayRSquare: Boolean;
+    Equation: TsRegressionEquation;
+    Line: TsChartLine;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
   TsChartErrorBarKind = (cebkConstant, cebkPercentage, cebkCellRange);
 
   TsChartErrorBars = class(TsChartElement)
@@ -403,7 +440,7 @@ type
   private
     FChartType: TsChartType;
     FXRange: TsChartRange;          // cell range containing the x data
-    FYRange: TsChartRange;
+    FYRange: TsChartRange;          // ... and the y data
     FFillColorRange: TsChartRange;
     FLineColorRange: TsChartRange;
     FLabelBackground: TsChartFill;
@@ -418,6 +455,8 @@ type
     FLabelFormat: String;
     FDataLabels: TsChartDataLabels;
     FDataPointStyles: TsChartDataPointStyleList;
+    FRegression: TsChartRegression;
+    FSupportsRegression: Boolean;
     FXErrorBars: TsChartErrorBars;
     FYErrorBars: TsChartErrorBars;
     procedure SetXErrorBars(AValue: TsChartErrorBars);
@@ -426,6 +465,7 @@ type
     FLine: TsChartLine;
     FFill: TsChartFill;
     function GetChartType: TsChartType; virtual;
+    property Regression: TsChartRegression read FRegression write FRegression;
   public
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
@@ -465,6 +505,7 @@ type
     property LabelSeparator: string read FLabelSeparator write FLabelSeparator;
     property LineColorRange: TsChartRange read FLineColorRange write FLineColorRange;
     property TitleAddr: TsChartCellAddr read FTitleAddr write FTitleAddr;  // use '\n' for line-break
+    property SupportsRegression: Boolean read FSupportsRegression;
     property XAxis: TsChartAxisLink read FXAxis write FXAxis;
     property XErrorBars: TsChartErrorBars read FXErrorBars write SetXErrorBars;
     property XRange: TsChartRange read FXRange write FXRange;
@@ -480,11 +521,13 @@ type
   TsAreaSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
+    property Regression;
   end;
 
   TsBarSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
+    property Regression;
   end;
 
   TsChartSeriesSymbol = (
@@ -518,6 +561,7 @@ type
 
   TsLineSeries = class(TsCustomLineSeries)
   public
+    property Regression;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -548,50 +592,10 @@ type
     property InnerRadiusPercent: Integer read FInnerRadiusPercent write FInnerRadiusPercent;
   end;
 
-  TsRegressionType = (rtNone, rtLinear, rtLogarithmic, rtExponential, rtPower, rtPolynomial);
-
-  TsRegressionEquation = class
-    Fill: TsChartFill;
-    Font: TsFont;
-    Border: TsChartLine;
-    NumberFormat: String;
-    Left, Top: Double;  // mm, relative to outer chart boundaries!
-    XName: String;
-    YName: String;
-    constructor Create;
-    destructor Destroy; override;
-    function DefaultBorder: Boolean;
-    function DefaultFill: Boolean;
-    function DefaultFont: Boolean;
-    function DefaultNumberFormat: Boolean;
-    function DefaultPosition: Boolean;
-    function DefaultXName: Boolean;
-    function DefaultYName: Boolean;
-  end;
-
-  TsChartRegression = class
-    Title: String;
-    RegressionType: TsRegressionType;
-    ExtrapolateForwardBy: Double;
-    ExtrapolateBackwardBy: Double;
-    ForceYIntercept: Boolean;
-    YInterceptValue: Double;
-    PolynomialDegree: Integer;
-    DisplayEquation: Boolean;
-    DisplayRSquare: Boolean;
-    Equation: TsRegressionEquation;
-    Line: TsChartLine;
-    constructor Create;
-    destructor Destroy; override;
-  end;
-
   TsCustomScatterSeries = class(TsCustomLineSeries)
-  private
-    FRegression: TsChartRegression;
   public
     constructor Create(AChart: TsChart); override;
-    destructor Destroy; override;
-    property Regression: TsChartRegression read FRegression write FRegression;
+    property Regression;
   end;
 
   TsScatterSeries = class(TsCustomScatterSeries)
@@ -1750,6 +1754,8 @@ begin
 
   FLabelSeparator := ' ';
 
+  FRegression := TsChartRegression.Create;
+
   FXErrorBars := TsChartErrorBars.Create(Self);
   FYErrorBars := TsChartErrorBars.Create(Self);
 end;
@@ -1758,6 +1764,7 @@ destructor TsChartSeries.Destroy;
 begin
   FYErrorBars.Free;
   FXErrorBars.Free;
+  FRegression.Free;
   FLabelBackground.Free;
   FLabelBorder.Free;
   FLabelFont.Free;
@@ -1964,6 +1971,7 @@ constructor TsAreaSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctArea;
+  FSupportsRegression := true;
 end;
 
 
@@ -1973,6 +1981,7 @@ constructor TsBarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctBar;
+  FSupportsRegression := true;
 end;
 
 
@@ -2016,7 +2025,10 @@ end;
 constructor TsCustomLineSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
+
   FChartType := ctLine;
+  FSupportsRegression := true;
+
   FSymbolWidth := 2.5;
   FSymbolHeight := 2.5;
   FShowSymbols := false;
@@ -2162,13 +2174,7 @@ constructor TsCustomScatterSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctScatter;
-  FRegression := TsChartRegression.Create;
-end;
-
-destructor TsCustomScatterSeries.Destroy;
-begin
-  FRegression.Free;
-  inherited;
+  FSupportsRegression := true;
 end;
 
 

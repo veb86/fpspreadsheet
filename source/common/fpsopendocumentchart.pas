@@ -173,6 +173,11 @@ type
 
   TsCustomLineSeriesOpener = class(TsCustomLineSeries);
 
+  TsOpenRegressionSeries = class(TsChartSeries)
+  public
+    property Regression;
+  end;
+
 const
   OPENDOC_PATH_METAINF_MANIFEST = 'META-INF/manifest.xml';
   OPENDOC_PATH_CHART_CONTENT    = 'Object %d/content.xml';
@@ -1243,15 +1248,16 @@ end;
 procedure TsSpreadOpenDocChartReader.ReadChartRegressionStyle(AStyleNode: TDOMNode;
   AChart: TsChart; ASeries: TsChartSeries);
 var
-  series: TsScatterSeries;
   s, nodeName: String;
+  regression: TsChartRegression;
   rt: TsRegressionType;
   value: Double;
   intValue: Integer;
 begin
-  if not (ASeries is TsScatterSeries) then
+  if not ASeries.SupportsRegression then
     exit;
-  series := TsScatterSeries(ASeries);
+
+  regression := TsOpenRegressionSeries(ASeries).Regression;
 
   AStyleNode := AStyleNode.FirstChild;
   while Assigned(AStyleNode) do
@@ -1259,42 +1265,42 @@ begin
     nodeName := AStyleNode.NodeName;
     case nodeName of
       'style:graphic-properties':
-        GetChartLineProps(AStyleNode, AChart, series.Regression.Line);
+        GetChartLineProps(AStyleNode, AChart, regression.Line);
       'style:chart-properties':
         begin
           s := GetAttrValue(AStyleNode, 'chart:regression-name');
-          series.Regression.Title := s;
+          regression.Title := s;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-type');
           for rt in TsRegressionType do
             if (s <> '') and (REGRESSION_TYPE[rt] = s) then
             begin
-              series.Regression.RegressionType := rt;
+              regression.RegressionType := rt;
               break;
             end;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-max-degree');
           if (s <> '') and TryStrToInt(s, intValue) then
-            series.Regression.PolynomialDegree := intValue;
+            regression.PolynomialDegree := intValue;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-extrapolate-forward');
           if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
-            series.Regression.ExtrapolateForwardBy := value
+            regression.ExtrapolateForwardBy := value
           else
-            series.Regression.ExtrapolateForwardBy := 0.0;
+            regression.ExtrapolateForwardBy := 0.0;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-extrapolate-backward');
           if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
-            series.Regression.ExtrapolateBackwardBy := value
+            regression.ExtrapolateBackwardBy := value
           else
-            series.Regression.ExtrapolateBackwardBy := 0.0;
+            regression.ExtrapolateBackwardBy := 0.0;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-force-intercept');
-          series.Regression.ForceYIntercept := (s = 'true');
+          regression.ForceYIntercept := (s = 'true');
 
           s := GetAttrValue(AStyleNode, 'chart:regression-intercept-value');
           if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
-            series.Regression.YInterceptValue := value;
+            regression.YInterceptValue := value;
         end;
     end;
     AStyleNode := AStyleNode.NextSibling;
@@ -2579,17 +2585,24 @@ end;
 function TsSpreadOpenDocChartWriter.GetChartRegressionStyleAsXML(AChart: TsChart;
   ASeriesIndex, AIndent, AStyleID: Integer): String;
 var
-  series: TsScatterSeries;
+  regression: TsChartRegression;
+  series: TsChartSeries;
   indent: String;
   chartProps: String = '';
   graphProps: String = '';
 begin
   Result := '';
-  series := AChart.Series[ASeriesIndex] as TsScatterSeries;
-  if series.Regression.RegressionType = rtNone then
+  indent := DupeString(' ', AIndent);
+
+  series := AChart.Series[ASeriesIndex];
+  if not series.SupportsRegression then
     exit;
 
-  indent := DupeString(' ', AIndent);
+  regression := TsOpenRegressionSeries(series).Regression;
+
+  if regression.RegressionType = rtNone then
+    exit;
+  series := AChart.Series[ASeriesIndex] as TsScatterSeries;
 
   chartprops := Format(
     'chart:regression-name="%s" ' +
@@ -2599,17 +2612,17 @@ begin
     'chart:regression-force-intercept="%s" ' +
     'chart:regression-intercept-value="%g" ' +
     'chart:regression-max-degree="%d" ',
-    [ series.Regression.Title,
-      REGRESSION_TYPE[series.Regression.RegressionType] ,
-      series.Regression.ExtrapolateForwardBy,
-      series.Regression.ExtrapolateBackwardBy,
-      FALSE_TRUE[series.Regression.ForceYIntercept],
-      series.Regression.YInterceptValue,
-      series.Regression.PolynomialDegree
+    [ regression.Title,
+      REGRESSION_TYPE[regression.RegressionType] ,
+      regression.ExtrapolateForwardBy,
+      regression.ExtrapolateBackwardBy,
+      FALSE_TRUE[regression.ForceYIntercept],
+      regression.YInterceptValue,
+      regression.PolynomialDegree
     ], FPointSeparatorSettings
   );
 
-  graphprops := GetChartLineStyleGraphicPropsAsXML(AChart, series.Regression.Line);
+  graphprops := GetChartLineStyleGraphicPropsAsXML(AChart, regression.Line);
 
   Result := Format(
     indent + '<style:style style:name="ch%d" style:family="chart"> ' + LE +
@@ -2834,8 +2847,9 @@ begin
     series := AChart.Series[i];
     FNumberFormatList.Add(series.LabelFormat);
     // Format of fit equation
-    if (series is TsScatterSeries) then begin
-      regression := TsScatterSeries(series).Regression;
+    if series.SupportsRegression then
+    begin
+      regression := TsOpenRegressionSeries(series).Regression;
       if (regression.RegressionType <> rtNone) and
          (regression.DisplayEquation or regression.DisplayRSquare) then
       begin
