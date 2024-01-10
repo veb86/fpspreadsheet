@@ -389,21 +389,26 @@ var
   hdr: TPCXHeader;
   n: Integer;
 begin
-  Result := false;
-
   n := SizeOf(hdr);
   Result := (AStream.Read(hdr{%H-}, n) = n)
         and (hdr.FileID in [$0A, $0C])
         and (hdr.ColorPlanes in [1, 3, 4])
         and (hdr.Version in [0, 2, 3, 5])
-        and (hdr.PaletteType in [1, 2]);
+        and (LEToN(hdr.PaletteType) in [1, 2]);
+  if not Result then
+    exit;
+
+  hdr.XMin := LEToN(hdr.XMin);
+  hdr.YMin := LEToN(hdr.YMin);
+  hdr.XMax := LEToN(hdr.XMax);
+  hdr.YMax := LEToN(hdr.YMax);
+  hdr.HRes := LEToN(hdr.HRes);
+  hdr.VRes := LEToN(hdr.VRes);
 
   AWidth := hdr.XMax - hdr.XMin + 1;
   AHeight := hdr.YMax - hdr.YMin + 1;
   dpiX := hdr.HRes;
   dpiY := hdr.VRes;
-
-  Result := True;
 end;
 
 
