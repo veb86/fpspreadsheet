@@ -174,11 +174,11 @@ function GetEMFSize(AStream: TStream; out AWidth, AHeight: DWord;
 // https://msdn.microsoft.com/de-de/library/windows/desktop/dd162607%28v=vs.85%29.aspx
 type
   TEnhMetaHeader = packed record
-     iType: DWord;
+     iType: DWord;         // Must be 1 for a emf
      nSize: DWord;
-     rclBounds: TRect;
-     rclFrame: TRect;
-     dSignature: DWord;   // must be $464D4520
+     rclBounds: TRect;     // Bounds of image in pixels ...
+     rclFrame: TRect;      // ... and in 1/100th millimeters
+     dSignature: DWord;    // Must be $464D4520
      nVersion: DWord;
      nBytes: DWord;
      nRecords: DWord;
@@ -187,8 +187,8 @@ type
      nDescription: DWord;
      offDescription: DWord;
      nPalEntries: DWord;
-     szlDevice: TPoint;
-     szlMillimeters: TPoint;
+     szlDevice: TPoint;           // Size of device in pixels ...
+     szlMillimeters: TPoint;      // ... and in millimeters
      // more to follow
   end;
 var
@@ -199,12 +199,13 @@ begin
 
   n := AStream.Read(hdr{%H-}, SizeOf(hdr));
   if n < SizeOf(hdr) then exit;
-  if hdr.dSignature <> $464D4520 then exit;
+  if (hdr.iType <> 1) or (hdr.dSignature <> $464D4520) then exit;
 
-  AWidth := (hdr.rclFrame.Right - hdr.rclFrame.Left);  // in 0.01 mm
-  AHeight := (hdr.rclFrame.Bottom - hdr.rclFrame.Top);
-  dpiX := 100*25.4;
-  dpiY := 100*25.4;
+  AWidth := hdr.rclBounds.Right - hdr.rclBounds.Left + 1;  // in pixels
+  AHeight := hdr.rclBounds.Bottom - hdr.rclBounds.Top + 1;
+
+  dpiX := hdr.szlDevice.X / hdr.szlMillimeters.X * 25.4;
+  dpiY := hdr.szlDevice.Y / hdr.szlMillimeters.Y * 25.4;
 
   Result := true;
 end;
@@ -367,32 +368,35 @@ function GetPCXSize(AStream: TStream; out AWidth, AHeight: DWord;
   out dpiX, dpiY: Double): Boolean;
 type
   TPCXHeader = packed record
-    FileID: Byte;                      // $0A for PCX files, $CD for SCR files
-    Version: Byte;                     // 0: version 2.5; 2: 2.8 with palette; 3: 2.8 w/o palette; 5: version 3
-    Encoding: Byte;                    // 0: uncompressed; 1: RLE encoded
+    FileID: Byte;                       // $0A for PCX files, $CD for SCR files
+    Version: Byte;                      // 0: version 2.5; 2: 2.8 with palette; 3: 2.8 w/o palette; 5: version 3
+    Encoding: Byte;                     // 0: uncompressed; 1: RLE encoded
     BitsPerPixel: Byte;
     XMin,
     YMin,
     XMax,
-    YMax,                              // coordinates of the corners of the image
-    HRes,                              // horizontal resolution in dpi
-    VRes: Word;                        // vertical resolution in dpi
-    ColorMap: array[0..15*3] of byte;  // color table
+    YMax,                               // coordinates of the corners of the image
+    HRes,                               // horizontal resolution in dpi
+    VRes: Word;                         // vertical resolution in dpi
+    ColorMap: array[0..16*3-1] of byte; // color table
     Reserved,
-    ColorPlanes: Byte;                 // color planes (at most 4)
-    BytesPerLine,                      // number of bytes of one line of one plane
-    PaletteType: Word;                 // 1: color or b&w; 2: gray scale
+    ColorPlanes: Byte;                  // color planes (at most 4)
+    BytesPerLine,                       // number of bytes of one line of one plane
+    PaletteType: Word;                  // 1: color or b&w; 2: gray scale
     Fill: array[0..57] of Byte;
   end;
 var
   hdr: TPCXHeader;
-  n: Int64;
+  n: Integer;
 begin
   Result := false;
 
-  n := AStream.Read(hdr{%H-}, SizeOf(hdr));
-  if n < SizeOf(hdr) then exit;
-  if not (hdr.FileID in [$0A, $CD]) then exit;
+  n := SizeOf(hdr);
+  Result := (AStream.Read(hdr{%H-}, n) = n)
+        and (hdr.FileID in [$0A, $0C])
+        and (hdr.ColorPlanes in [1, 3, 4])
+        and (hdr.Version in [0, 2, 3, 5])
+        and (hdr.PaletteType in [1, 2]);
 
   AWidth := hdr.XMax - hdr.XMin + 1;
   AHeight := hdr.YMax - hdr.YMin + 1;
