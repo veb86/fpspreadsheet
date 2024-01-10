@@ -705,13 +705,34 @@ type
   end;
 var
   hdr: TWMFSpecialHeader;
+  CheckSum: Word;
+  Words: packed array[0..(SizeOf(TWMFSpecialHeader) div 2)-1] of Word absolute hdr;
+  i: Integer;
   n: Int64;
 begin
   Result := false;
 
   n := AStream.Read(hdr{%H-}, SizeOf(hdr));
   if n < SizeOf(hdr) then exit;
-  if hdr.Key <> $9AC6CDD7 then exit;
+
+  // Values in WMF are in little-endian format
+  hdr.Key := LEToN(hdr.Key);
+  hdr.Handle := LEToN(hdr.Handle);
+  hdr.Left := LEToN(hdr.Left);
+  hdr.Right := LEToN(hdr.Right);
+  hdr.Top := LEToN(hdr.Top);
+  hdr.Bottom := LEToN(hdr.Bottom);
+  hdr.Inch := LEToN(hdr.Inch);
+  hdr.Reserved := LEToN(hdr.Reserved);
+  hdr.Checksum := LEToN(hdr.Checksum);
+
+  if (hdr.Key <> $9AC6CDD7) then exit;
+  if (hdr.Handle <> 0) then exit;
+  if (hdr.Reserved <> 0) then exit;
+  CheckSum := 0;
+  for i := Low(Words) to Pred(High(Words)) do
+    CheckSum := CheckSum xor Words[i];
+  if (hdr.Checksum <> CheckSum) then exit;
 
   AWidth := (hdr.Right - hdr.Left);
   AHeight := (hdr.Bottom - hdr.Top);
