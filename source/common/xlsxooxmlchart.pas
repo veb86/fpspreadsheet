@@ -39,6 +39,7 @@ type
     procedure ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartPlotArea(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartScatterSeries(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartSeriesErrorBars(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesLabels(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesMarker(ANode: TDOMNode; ASeries: TsCustomLineSeries);
     procedure ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
@@ -725,10 +726,10 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Reads the properties of a line series
+  Reads the properties of the series marker
 
   @@param  ANode    Points to the <c:marker> subnode of <c:ser> node
-  @@param  ASeries  Instance of the TsLineSeries created by ReadChartLineSeries
+  @@param  ASeries  Instance of the TsCustomLineSeries created by ReadChartLineSeries
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesMarker(ANode: TDOMNode; ASeries: TsCustomLineSeries);
 var
@@ -854,6 +855,96 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Reads the error bar parameters of a series.
+
+  @@param ANode    Is the first child of the <c:errBars> subnode of <c:ser>.
+  @@param ASeries  Series to which the error bars belong.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartSeriesErrorBars(ANode: TDOMNode;
+  ASeries: TsChartSeries);
+var
+  nodeName, s: String;
+  node: TDOMNode;
+  val: Double;
+  errorBars: TsChartErrorBars = nil;
+  part: String = '';
+begin
+  if ANode = nil then
+    exit;
+
+  // We must first find out whether the node is for x or y error bars and
+  // whether it is for positive, negative or both error parts.
+  node := ANode;
+  while Assigned(node) do
+  begin
+    nodeName := node.NodeName;
+    s := GetAttrValue(node, 'val');
+    case nodeName of
+      'c:errDir':
+        begin
+          case s of
+            'x': errorBars := ASeries.XErrorBars;
+            'y': errorBars := ASeries.YErrorBars;
+          end;
+        end;
+      'c:errBarType':
+        part := s;
+    end;
+    if (errorBars <> nil) and (part <> '') then
+      break;
+    node := node.NextSibling;
+  end;
+
+  errorBars.ShowPos := (part = 'both') or (part = 'plus');
+  errorBars.ShowNeg := (part = 'both') or (part = 'minus');
+
+  node := ANode;
+  while Assigned(node) do
+  begin
+    nodeName := node.NodeName;
+    s := GetAttrValue(node, 'val');
+    case nodeName of
+      'c:errValType':
+        case s of
+          'fixedVal': errorBars.Kind := cebkConstant;
+          'percentage': errorBars.Kind := cebkPercentage;
+          'cust': errorBars.Kind := cebkCellRange;
+          'stdDev': errorBars.Visible := false;   // not supported
+          'stdErr': errorBars.Visible := false;   // not supported
+        end;
+      'c:val':
+        if (s <> '') and TryStrToFloat(s, val, FPointSeparatorSettings) then
+          case part of
+            'both':
+              begin
+                errorBars.ValuePos := val;
+                errorBars.ValueNeg := val;
+              end;
+            'plus':
+              errorBars.ValuePos := val;
+            'minus':
+              errorBars.ValueNeg := val;
+          end;
+      'c:plus':
+        ReadChartSeriesRange(node.FirstChild, errorBars.RangePos);
+      'c:minus':
+        ReadChartSeriesRange(node.FirstChild, errorBars.RangeNeg);
+      'c:spPr':
+        ReadChartLineProps(node.FirstChild, ASeries.Chart, errorBars.Line);
+      'c:noEndCap':
+        errorBars.ShowEndCap := (s <> '1');
+    end;
+    node := node.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the labels assigned to the series data points.
+
+  @@param ANode    Is the first child of the <c:dLbls> subnode of <c:ser>.
+  @@param ASeries  Series to which the labels belong.
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesLabels(ANode: TDOMNode;
   ASeries: TsChartSeries);
 var
@@ -865,6 +956,7 @@ begin
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:spPr':
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder);
@@ -888,35 +980,20 @@ begin
           end;
         end;
       'c:showLegendKey':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and (s <> '0') then
-            ASeries.DataLabels := ASeries.DataLabels + [cdlSymbol];
-        end;
+        if (s <> '') and (s <> '0') then
+          ASeries.DataLabels := ASeries.DataLabels + [cdlSymbol];
       'c:showVal':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and (s <> '0') then
-            ASeries.DataLabels := ASeries.DataLabels + [cdlValue];
-        end;
+        if (s <> '') and (s <> '0') then
+          ASeries.DataLabels := ASeries.DataLabels + [cdlValue];
       'c:showCatName':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and (s <> '0') then
-            ASeries.DataLabels := ASeries.DataLabels + [cdlCategory];
-        end;
+        if (s <> '') and (s <> '0') then
+          ASeries.DataLabels := ASeries.DataLabels + [cdlCategory];
       'c:showSerName':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and (s <> '0') then
-            ASeries.DataLabels := ASeries.DataLabels + [cdlSeriesName];
-        end;
+        if (s <> '') and (s <> '0') then
+          ASeries.DataLabels := ASeries.DataLabels + [cdlSeriesName];
       'c:showPercent':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and (s <> '0') then
-            ASeries.DataLabels := ASeries.DataLabels + [cdlPercentage];
-        end;
+        if (s <> '') and (s <> '0') then
+          ASeries.DataLabels := ASeries.DataLabels + [cdlPercentage];
       'c:showBubbleSize':
         ;
       'c:showLeaderLines':
@@ -954,6 +1031,8 @@ begin
         ReadChartSeriesLabels(ANode.Firstchild, ASeries);
       'c:trendline':
         ReadChartSeriesTrendLine(ANode.FirstChild, ASeries);
+      'c:errBars':
+        ReadChartSeriesErrorBars(ANode.FirstChild, ASeries);
       'c:invertIfNegative':
         ;
       'c:extLst':

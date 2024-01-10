@@ -2112,6 +2112,7 @@ end;
 procedure TsWorkbookChartLink.UpdateChartErrorBars(AWorkbookSeries: TsChartSeries;
   ASeries: TBasicPointSeries);
 const
+  EPS = 1E-16;
   ERRORBAR_KINDS: array[TsChartErrorBarKind] of TChartErrorBarKind = (
     ebkConst, ebkPercent, ebkChartSource);
 
@@ -2137,13 +2138,19 @@ begin
   // TAChart supports error bars only for single-values sources!
   if source.XCount = 1 then
   begin
-    series.XErrorBars.Visible := AWorkbookSeries.XErrorBars.ShowPos or AWorkbookSeries.XErrorBars.ShowNeg;;
+    series.XErrorBars.Visible := AWorkbookSeries.XErrorBars.ShowPos or AWorkbookSeries.XErrorBars.ShowNeg;
     UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.XErrorBars.Line, series.XErrorBars.Pen);
     source.XErrorBarData.Kind := ERRORBAR_KINDS[AWorkbookSeries.XErrorBars.Kind];
     source.XErrorBarData.ValuePlus := AWorkbookSeries.XErrorBars.ValuePos;
     source.XErrorBarData.ValueMinus := AWorkbookSeries.XErrorBars.ValueNeg;
+    if not AWorkbookSeries.XErrorBars.ShowPos then
+      source.XErrorBarData.ValuePlus := EPS;    // Note: 0 would mean "no error bar at all" for TAChart!
+    if not AWorkbookSeries.XErrorBars.ShowNeg then
+      source.XErrorBarData.ValueMinus := EPS;
     if (AWorkbookSeries.XErrorBars.Kind = cebkCellRange) then
       source.SetXErrorBarRange(AWorkbookSeries.XErrorBars.RangePos, AWorkbookSeries.XErrorBars.RangeNeg);
+    if not AWorkbookSeries.XErrorBars.ShowEndCap then
+      series.XErrorBars.Width := 0;
   end;
 
   if source.YCount = 1 then
@@ -2153,8 +2160,14 @@ begin
     source.YErrorBarData.Kind := ERRORBAR_KINDS[AWorkbookSeries.YErrorBars.Kind];
     source.YErrorBarData.ValuePlus := AWorkbookSeries.YErrorBars.ValuePos;
     source.YErrorBarData.ValueMinus := AWorkbookSeries.YErrorBars.ValueNeg;
+    if not AWorkbookSeries.YErrorBars.ShowPos then
+      source.YErrorBarData.ValuePlus := EPS;
+    if not AWorkbookSeries.YErrorBars.ShowNeg then
+      source.YErrorBarData.ValueMinus := EPS;
     if (AWorkbookSeries.YErrorBars.Kind = cebkCellRange) then
       source.SetYErrorBarRange(AWorkbookSeries.YErrorBars.RangePos, AWorkbookSeries.YErrorBars.RangeNeg);
+    if not AWorkbookSeries.YErrorBars.ShowEndCap then
+      series.YErrorBars.Width := 0;
   end;
 end;
 

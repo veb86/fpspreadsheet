@@ -404,6 +404,7 @@ type
     FRange: Array[0..1] of TsChartRange;
     FValue: Array[0..1] of Double;  // 0 = positive, 1 = negative error bar value
     FShow: Array[0..1] of Boolean;
+    FShowEndCap: Boolean;
     function GetRange(AIndex: Integer): TsChartRange;
     function GetShow(AIndex: Integer): Boolean;
     function GetValue(AIndex: Integer): Double;
@@ -430,6 +431,7 @@ type
     property RangePos: TsChartRange index 0 read GetRange write SetRange;
     property RangeNeg: TsChartRange index 1 read GetRange write SetRange;
     property Series: TsChartSeries read FSeries;
+    property ShowEndCap: Boolean read FShowEndCap write FShowEndCap;
     property ShowPos: Boolean index 0 read GetShow write SetShow;
     property ShowNeg: Boolean index 1 read GetShow write SetShow;
     property ValuePos: Double index 0 read GetValue write SetValue;
@@ -1602,6 +1604,7 @@ begin
   FRange[1] := TsChartRange.Create(ASeries.Chart);
   FShow[0] := false;
   FShow[1] := false;
+  FShowEndCap := true;
 end;
 
 destructor TsChartErrorBars.Destroy;
@@ -1622,6 +1625,7 @@ begin
     FRange[1].CopyFrom(TsChartErrorBars(ASource).RangeNeg);
     FShow[0] := TsChartErrorBars(ASource).ShowPos;
     FShow[1] := TsChartErrorBars(ASource).ShowNeg;
+    FShowEndCap := TsChartErrorBars(ASource).ShowEndCap;
     FValue[0] := TsChartErrorBars(ASource).ValuePos;
     FValue[1] := TsChartErrorBars(ASource).ValueNeg;
     FLine.CopyFrom(TsChartErrorBars(ASource).Line);
