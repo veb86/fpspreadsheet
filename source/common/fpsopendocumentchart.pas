@@ -1465,9 +1465,9 @@ begin
 
   s := GetAttrValue(ANode, 'chart:attached-axis');
   if s = 'primary-y' then
-    series.YAxis := alPrimary
+    series.YAxis := calPrimary
   else if s = 'secondary-y' then
-    series.YAxis := alSecondary;
+    series.YAxis := calSecondary;
 
   xyCounter := 0;
   subnode := ANode.FirstChild;
@@ -2866,7 +2866,7 @@ var
 begin
   if Axis = AChart.Y2Axis then
     for i := 0 to AChart.Series.Count - 1 do
-      if AChart.Series[i].YAxis = alSecondary then
+      if AChart.Series[i].YAxis = calSecondary then
       begin
         Axis.Visible := true;
         break;
@@ -3741,8 +3741,8 @@ begin
   // Axis of the series
   if AChart.Y2Axis.Visible then
     case series.YAxis of
-      alPrimary  : seriesYAxis := 'chart:attached-axis="primary-y" ';
-      alSecondary: seriesYAxis := 'chart:attached-axis="secondary-y" ';
+      calPrimary  : seriesYAxis := 'chart:attached-axis="primary-y" ';
+      calSecondary: seriesYAxis := 'chart:attached-axis="secondary-y" ';
     end;
 
   // And this is the title of the series for the legend
@@ -4013,8 +4013,8 @@ begin
 
   // Axis of the series
   case series.YAxis of
-    alPrimary  : seriesYAxis := 'chart:attached-axis="primary-y" ';
-    alSecondary: seriesYAxis := 'chart:attached-axis="secondary-y" ';
+    calPrimary  : seriesYAxis := 'chart:attached-axis="primary-y" ';
+    calSecondary: seriesYAxis := 'chart:attached-axis="secondary-y" ';
   end;
 
   // Number of data points

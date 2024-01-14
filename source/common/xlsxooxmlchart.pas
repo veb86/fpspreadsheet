@@ -21,6 +21,8 @@ type
   private
     FPointSeparatorSettings: TFormatSettings;
     FColors: specialize TFPGMap<string, TsColor>;
+    FXAxisID, FYAxisID, FX2AxisID, FY2AxisID: DWord;
+    FXAxisDelete, FYAxisDelete, FX2AxisDelete, FY2AxisDelete: Boolean;
 
     function ReadChartColor(ANode: TDOMNode; ADefault: TsColor): TsColor;
     procedure ReadChartFillAndLineProps(ANode: TDOMNode;
@@ -28,10 +30,12 @@ type
     procedure ReadChartFontProps(ANode: TDOMNode; AFont: TsFont);
     procedure ReadChartLineProps(ANode: TDOMNode; AChart: TsChart; AChartLine: TsChartLine);
     procedure ReadChartTextProps(ANode: TDOMNode; AFont: TsFont; var AFontRotation: Single);
+    procedure SetAxisDefaults(AWorkbookAxis: TsChartAxis);
   protected
     procedure ReadChart(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartAreaSeries(ANode: TDOMNode; AChart: TsChart);
-    procedure ReadChartAxis(ANode: TDOMNode; AChart: TsChart; AChartAxis: TsChartAxis);
+    procedure ReadChartAxis(ANode: TDOMNode; AChart: TsChart; AChartAxis: TsChartAxis;
+      var AxisID: DWord; var ADelete: Boolean);
     procedure ReadChartAxisScaling(ANode: TDOMNode; AChartAxis: TsChartAxis);
     function ReadChartAxisTickMarks(ANode: TDOMNode): TsChartAxisTicks;
     procedure ReadChartBarSeries(ANode: TDOMNode; AChart: TsChart);
@@ -39,6 +43,7 @@ type
     procedure ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartPlotArea(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartScatterSeries(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartSeriesAxis(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesErrorBars(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesLabels(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesMarker(ANode: TDOMNode; ASeries: TsCustomLineSeries);
@@ -107,7 +112,7 @@ begin
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator:='.';
 
-  // The following color values are directly taken from xlsx files written by Excel.
+  // The following color values are directly copied from xlsx files written by Excel.
   // In the long term, they should be read from xl/theme/theme1.xml.
   FColors := specialize TFPGMap<string, TsColor>.Create;
   FColors.Add('dk1', scBlack);
@@ -178,39 +183,42 @@ begin
       'c:dLbls':
         ;
       'c:axId':
-        ;
+        ReadChartSeriesAxis(ANode, ser);
     end;
     ANode := ANode.NextSibling;
   end;
 end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartAxis(ANode: TDOMNode;
-  AChart: TsChart; AChartAxis: TsChartAxis);
+  AChart: TsChart; AChartAxis: TsChartAxis; var AxisID: DWord; var ADelete: Boolean);
 var
   nodeName, s: String;
-  n: Integer;
+  n: LongInt;
   x: Single;
   node: TDOMNode;
 begin
   if ANode = nil then
     exit;
 
-  // Defaults
-  AChartAxis.Title.Caption := '';
-  AChartAxis.LabelRotation := 0;
-
+  ADelete := false;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:axId':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and TryStrToInt(s, n) then
-            AChartAxis.ID := n;
-        end;
+        if (s <> '') and TryStrToInt(s, n) then
+          AxisID := n;
+      'c:delete':
+        if s = '1' then
+          ADelete := true;
       'c:axPos':
-        ;
+        case s of
+          'l': AChartAxis.Alignment := caaLeft;
+          'b': AChartAxis.Alignment := caaBottom;
+          'r': AChartAxis.Alignment := caaRight;
+          't': AChartAxis.Alignment := caaTop;
+        end;
       'c:scaling':
         ReadChartAxisScaling(ANode.FirstChild, AChartAxis);
       'c:majorGridlines':
@@ -238,27 +246,22 @@ begin
       'c:spPr':
         ReadChartLineProps(ANode.FirstChild, AChart, AChartAxis.AxisLine);
       'c:majorUnit':
+        if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
         begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-          begin
-            AChartAxis.AutomaticMajorInterval := false;
-            AChartAxis.MajorInterval := x;
-          end;
+          AChartAxis.AutomaticMajorInterval := false;
+          AChartAxis.MajorInterval := x;
         end;
       'c:minorUnit':
+        if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
         begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-          begin
-            AChartAxis.AutomaticMinorInterval := false;
-            AChartAxis.MinorInterval := x;
-          end;
+          AChartAxis.AutomaticMinorInterval := false;
+          AChartAxis.MinorInterval := x;
         end;
       'c:txPr':  // Axis labels
         begin
           x := 0;
           ReadChartTextProps(ANode, AChartAxis.LabelFont, x);
+          if x = 1000 then x := 0;  // not sure, but maybe 1000 means: default
           AChartAxis.LabelRotation := x;
         end;
     end;
@@ -279,29 +282,27 @@ begin
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:orientation':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          AChartAxis.Inverted := (s = 'maxMin');
-        end;
+        AChartAxis.Inverted := (s = 'maxMin');
       'c:max':
+        if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
         begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-          begin
-            AChartAxis.AutomaticMax := false;
-            AChartAxis.Max := x;
-          end;
+          AChartAxis.AutomaticMax := false;
+          AChartAxis.Max := x;
         end;
       'c:min':
+        if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
         begin
-          s := GetAttrValue(ANode, 'val');
-          if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
-          begin
-            AChartAxis.AutomaticMin := false;
-            AChartAxis.Min := x;
-          end;
+          AChartAxis.AutomaticMin := false;
+          AChartAxis.Min := x;
+        end;
+      'c:logBase':
+        if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
+        begin
+          AChartAxis.Logarithmic := true;
+          AChartAxis.LogBase := x;
         end;
     end;
     ANode := ANode.NextSibling;
@@ -325,11 +326,14 @@ end;
 procedure TsSpreadOOXMLChartReader.ReadChartBarSeries(ANode: TDOMNode; AChart: TsChart);
 var
   nodeName: String;
+  savedNode: TDOMNode;
   s: String;
-  ser: TsBarSeries;
+  w: Double;
+  ser: TsBarSeries = nil;
 begin
   if ANode = nil then
     exit;
+  savedNode := ANode;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
@@ -362,7 +366,24 @@ begin
       'c:gapWidth':
         ;
       'c:axId':
-        ;
+        ReadChartSeriesAxis(ANode, ser);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  if ser = nil then
+    exit;
+
+  // Make sure that the series exists
+  ANode := savedNode;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
+    case nodeName of
+      'c:gapWidth':
+        if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
+          ser.BarWidthPercent := 10; //round(100/(100 + w) * 100);
     end;
     ANode := ANode.NextSibling;
   end;
@@ -399,7 +420,7 @@ begin
         s := GetAttrValue(ANode, 'val');
         if (s <> '') then
         begin
-          idx := FColors.IndexOf(s);
+          idx := FColors.IndexOf(ColorAlias(s));
           if idx > -1 then
           begin
             Result := FColors.Data[idx];
@@ -690,10 +711,13 @@ procedure TsSpreadOOXMLChartReader.ReadChartLineSeries(ANode: TDOMNode; AChart: 
 var
   nodeName: String;
   s: String;
-  ser: TsLineSeries;
+  n: LongInt;
+  node: TDOMNode;
+  ser: TsLineSeries = nil;
 begin
   if ANode = nil then
     exit;
+  node := ANode;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
@@ -719,7 +743,21 @@ begin
       'c:gapWidth':
         ;
       'c:axId':
-        ;
+        ReadChartSeriesAxis(ANode, ser);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  if ser = nil then
+    exit;
+
+  ANode := node;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:axId':
+        ReadChartSeriesAxis(ANode, ser);
     end;
     ANode := ANode.NextSibling;
   end;
@@ -797,38 +835,130 @@ begin
   end;
 end;
 
-procedure TsSpreadOOXMLChartReader.ReadChartPlotArea(ANode: TDOMNode; AChart: TsChart);
+{@@ ----------------------------------------------------------------------------
+  Reads the plot area node and its subnodes.
+
+  @@param   ANode   Is the first subnode of the <c:plotArea> node
+  @@param   AChart  Chart to which the found property values are assigned
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartPlotArea(ANode: TDOMNode;
+  AChart: TsChart);
 var
   nodeName: String;
+  workNode: TDOMNode;
+  isScatterChart: Boolean = false;
+  catAxCounter: Integer = 0;
+  valAxCounter: Integer = 0;
 begin
   if ANode = nil then
     exit;
-  while Assigned(ANode) do
+
+  // We need to know first whether the chart is a scatterchart because the
+  // assignment of axes depends on it.
+  isScatterChart := false;
+  workNode := ANode;
+  while Assigned(workNode) do
   begin
-    nodeName := ANode.NodeName;
+    nodeName := workNode.NodeName;
+    if nodeName = 'c:scatterChart' then
+    begin
+      isScatterChart := true;
+      break;
+    end;
+    workNode := workNode.NextSibling;
+  end;
+
+  SetAxisDefaults(AChart.XAxis);
+  SetAxisDefaults(AChart.YAxis);
+  SetAxisDefaults(AChart.X2Axis);
+  SetAxisDefaults(AChart.Y2Axis);
+
+  // We need the axis IDs before creating the series.
+  workNode := ANode;
+  while Assigned(workNode) do
+  begin
+    nodeName := workNode.NodeName;
+    case nodeName of
+      'c:catAx':
+        begin
+          case catAxCounter of
+            0: ReadChartAxis(workNode.FirstChild, AChart, AChart.XAxis, FXAxisID, FXAxisDelete);
+            1: ReadChartAxis(workNode.FirstChild, AChart, AChart.X2Axis, FX2AxisID, FX2AxisDelete);
+          end;
+          inc(catAxCounter);
+        end;
+      'c:valAx':
+        begin
+          if isScatterChart then
+          begin
+            { Order of value axes in the <c:plotArea> node of a scatterchart:
+                #1: primary x axis
+                #2: primary y axis
+                #3: secondary y axis
+                #4: secondary x axis }
+            case valAxCounter of
+              0: ReadChartAxis(workNode.FirstChild, AChart, AChart.XAxis, FXAxisID, FXAxisDelete);
+              1: ReadChartAxis(workNode.FirstChild, AChart, AChart.YAxis, FYAxisID, FYAxisDelete);
+              2: ReadChartAxis(workNode.FirstChild, AChart, AChart.Y2Axis, FY2AxisID, FY2AxisDelete);
+              3: ReadChartAxis(workNode.FirstChild, AChart, AChart.X2Axis, FX2AxisID, FX2AxisDelete);
+            end;
+            if (AChart.X2Axis.Alignment = AChart.XAxis.Alignment) and FX2AxisDelete then
+            begin
+              // Force using only a single x axis in this case.
+              FX2AxisID := FXAxisID;
+              AChart.X2Axis.Visible := false;
+            end;
+            if (AChart.Y2Axis.Alignment = AChart.YAxis.Alignment) and FY2AxisDelete then
+            begin
+              // ... and dto. with y axis (not tested, did not find a sample file for it).
+              FY2AxisID := FYAxisID;
+              AChart.Y2Axis.Visible := false;
+            end;
+          end else
+          begin
+            case valAxCounter of
+              0: ReadChartAxis(workNode.FirstChild, AChart, AChart.YAxis, FYAxisID,  FYAxisDelete);
+              1: ReadChartAxis(workNode.FirstChild, AChart, AChart.YAxis, FY2AxisID, FY2AxisDelete);
+            end;
+          end;
+          inc(valAxCounter);
+        end;
+    end;
+    workNode := workNode.NextSibling;
+  end;
+
+  workNode := ANode;
+  while Assigned(workNode) do
+  begin
+    nodeName := workNode.NodeName;
     case nodeName of
       'c:areaChart':
-        ReadChartAreaSeries(ANode.FirstChild, AChart);
+        ReadChartAreaSeries(workNode.FirstChild, AChart);
       'c:barChart':
-        ReadChartBarSeries(ANode.FirstChild, AChart);
+        ReadChartBarSeries(workNode.FirstChild, AChart);
       'c:lineChart':
-        ReadChartLineSeries(ANode.FirstChild, AChart);
+        ReadChartLineSeries(workNode.FirstChild, AChart);
       'c:scatterChart':
-        ReadChartScatterSeries(ANode.FirstChild, AChart);
-      'c:catAx':
-        ReadChartAxis(ANode.FirstChild, AChart, AChart.XAxis);
-      'c:valAx':
-        ReadChartAxis(ANode.FirstChild, AChart, AChart.YAxis);
+        ReadChartScatterSeries(workNode.FirstChild, AChart);
     end;
-    ANode := ANode.NextSibling;
+    workNode := workNode.NextSibling;
   end;
 end;
 
-procedure TsSpreadOOXMLChartReader.ReadChartScatterSeries(ANode: TDOMNode; AChart: TsChart);
+{@@ ----------------------------------------------------------------------------
+  Creates a scatter series and reads its parameters.
+  A scatter series is a "line series" with irregularly spaced x values.
+
+  @@param   ANode    Child of a <c:scatterChart> node.
+  @@param   AChart   Chart into which the series will be inserted.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartScatterSeries(ANode: TDOMNode;
+  AChart: TsChart);
 var
   nodeName: String;
   s: String;
   ser: TsScatterSeries;
+  smooth: Boolean;
 begin
   if ANode = nil then
     exit;
@@ -836,7 +966,11 @@ begin
   begin
     nodeName := ANode.NodeName;
     case nodeName of
-      'c:grouping':    ;
+      'c:scatterStyle':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          smooth := (s = 'smoothMarker');    // to do: use it to create a spline series when true.
+        end;
       'c:varyColors':  ;
       'c:ser':
         begin
@@ -846,12 +980,55 @@ begin
         end;
       'c:dLbls':
         ;
-      'c:gapWidth':
-        ;
       'c:axId':
-        ;
+        ReadChartSeriesAxis(ANode, ser);
     end;
     ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads and assigns the axes used by the given series.
+
+  @@param ANode    Node <c:axId>, a child of the <c:XXXXchart> node (XXXX = scatter, bar, line, etc)
+  @@param ASeries  Series to which the axis is assigned.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartSeriesAxis(ANode: TDOMNode;
+  ASeries: TsChartSeries);
+var
+  nodeName, s: String;
+  n: Integer;
+begin
+  if ANode = nil then
+    exit;
+
+  nodeName := ANode.NodeName;
+  if nodeName <> 'c:axId' then
+    exit;
+
+  s := GetAttrValue(ANode, 'val');
+  if (s = '') or not TryStrToInt(s, n) then
+    exit;
+
+  if n = FXAxisID then
+  begin
+    ASeries.XAxis := calPrimary;
+    ASeries.Chart.XAxis.Visible := not FXAxisDelete;
+  end
+  else if n = FYAxisID then
+  begin
+    ASeries.YAxis := calPrimary;
+    ASeries.Chart.YAxis.Visible := not FYAxisDelete;
+  end
+  else if n = FX2AxisID then
+  begin
+    ASeries.XAxis := calSecondary;
+    ASeries.Chart.X2Axis.Visible := not FX2AxisDelete;
+  end
+  else if n = FY2AxisID then
+  begin
+    ASeries.YAxis := calSecondary;
+    ASeries.Chart.Y2Axis.Visible := not FY2AxisDelete;
   end;
 end;
 
@@ -1007,16 +1184,20 @@ end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
 var
-  nodeName: String;
+  nodeName, s: String;
+  n: Integer;
 begin
   if ANode = nil then
     exit;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:idx': ;
-      'c:order': ;
+      'c:order':
+        if (s <> '') and TryStrToInt(s, n) then
+          ASeries.Order := n;
       'c:tx':
         ReadChartSeriesTitle(ANode.FirstChild, ASeries);
       'c:cat':
@@ -1313,6 +1494,15 @@ begin
   finally
     xmlStream.Free;
   end;
+end;
+
+procedure TsSpreadOOXMLChartReader.SetAxisDefaults(AWorkbookAxis: TsChartAxis);
+begin
+  AWorkbookAxis.Title.Caption := '';
+  AWorkbookAxis.LabelRotation := 0;
+  AWorkbookAxis.Visible := false;
+  AWorkbookAxis.MajorGridLines.Style := clsNoLine;
+  AWorkbookAxis.MinorGridLines.Style := clsNoLine;
 end;
 
 

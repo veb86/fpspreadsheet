@@ -9,7 +9,7 @@ uses
   LCLVersion, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
   TAGraph, TASources,
   fpSpreadsheet, fpsTypes, fpsOpenDocument, xlsxOOXML,
-  fpSpreadsheetCtrls, fpSpreadsheetGrid,  fpSpreadsheetChart;
+  fpSpreadsheetCtrls, fpSpreadsheetGrid, fpSpreadsheetChart;
 
 type
 

@@ -4436,6 +4436,7 @@ begin
         data.ImgIndex := -1;
         data.Worksheet := AWorksheet;
         data.IsHeaderFooter := true;
+        data.IsChart := false;
         data.HFImgPosition := id;
         data.HFImgWidth := ExtractMMFromStyle(style, 'width:');
         data.HFImgHeight := ExtractMMFromStyle(style, 'height:');

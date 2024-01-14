@@ -240,6 +240,7 @@ type
     property Visible;
   end;
 
+  TsChartAxisAlignment = (caaLeft, caaTop, caaRight, caaBottom);
   TsChartAxisPosition = (capStart, capEnd, capValue);
   TsChartAxisTick = (catInside, catOutside);
   TsChartAxisTicks = set of TsChartAxisTick;
@@ -248,6 +249,7 @@ type
 
   TsChartAxis = class(TsChartFillElement)
   private
+    FAlignment: TsChartAxisAlignment;
     FAutomaticMax: Boolean;
     FAutomaticMin: Boolean;
     FAutomaticMajorInterval: Boolean;
@@ -265,6 +267,7 @@ type
     FLabelFormatPercent: String;
     FLabelRotation: Single;
     FLogarithmic: Boolean;
+    FLogBase: Double;
     FMajorInterval: Double;
     FMajorTicks: TsChartAxisTicks;
     FMax: Double;
@@ -277,7 +280,6 @@ type
     FPositionValue: Double;
     FShowLabels: Boolean;
     FDateTime: Boolean;
-    FID: Integer;
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
@@ -285,6 +287,7 @@ type
     function GetOtherAxis: TsChartAxis;
     procedure SetCategoryRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetCategoryRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
+    property Alignment: TsChartAxisAlignment read FAlignment write FAlignment;
     property AutomaticMax: Boolean read FAutomaticMax write FAutomaticMax;
     property AutomaticMin: Boolean read FAutomaticMin write FAutomaticMin;
     property AutomaticMajorInterval: Boolean read FAutomaticMajorInterval write FAutomaticMajorInterval;
@@ -293,7 +296,6 @@ type
     property AxisLine: TsChartLine read FAxisLine write FAxisLine;
     property CategoryRange: TsChartRange read FCategoryRange write FCategoryRange;
     property DateTime: Boolean read FDateTime write FDateTime;
-    property ID: Integer read FID write FID;
     property Inverted: Boolean read FInverted write FInverted;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;
@@ -302,6 +304,7 @@ type
     property LabelFormatPercent: String read FLabelFormatPercent write FLabelFormatPercent;
     property LabelRotation: Single read FLabelRotation write FLabelRotation;
     property Logarithmic: Boolean read FLogarithmic write FLogarithmic;
+    property LogBase: Double read FLogBase write FLogBase;
     property MajorGridLines: TsChartLine read FMajorGridLines write FMajorGridLines;
     property MajorInterval: Double read FMajorInterval write FMajorInterval;
     property MajorTicks: TsChartAxisTicks read FMajorTicks write FMajorTicks;
@@ -338,7 +341,7 @@ type
     // There is also a "legend-expansion" but this does not seem to have a visual effect in Calc.
   end;
 
-  TsChartAxisLink = (alPrimary, alSecondary);
+  TsChartAxisLink = (calPrimary, calSecondary);
   TsChartDataLabel = (cdlValue, cdlPercentage, cdlCategory, cdlSeriesName, cdlSymbol);
   TsChartDataLabels = set of TsChartDataLabel;
   TsChartLabelPosition = (lpDefault, lpOutside, lpInside, lpCenter);
@@ -457,6 +460,7 @@ type
     FLabelFormat: String;
     FDataLabels: TsChartDataLabels;
     FDataPointStyles: TsChartDataPointStyleList;
+    FOrder: Integer;
     FRegression: TsChartRegression;
     FSupportsRegression: Boolean;
     FXErrorBars: TsChartErrorBars;
@@ -506,6 +510,7 @@ type
     property LabelRange: TsChartRange read FLabelRange write FLabelRange;
     property LabelSeparator: string read FLabelSeparator write FLabelSeparator;
     property LineColorRange: TsChartRange read FLineColorRange write FLineColorRange;
+    property Order: Integer read FOrder write FOrder;
     property TitleAddr: TsChartCellAddr read FTitleAddr write FTitleAddr;  // use '\n' for line-break
     property SupportsRegression: Boolean read FSupportsRegression;
     property XAxis: TsChartAxisLink read FXAxis write FXAxis;
@@ -527,8 +532,13 @@ type
   end;
 
   TsBarSeries = class(TsChartSeries)
+  private
+    FBarWidthPercent: Integer;
+    FBarOffsetPercent: Integer;
   public
     constructor Create(AChart: TsChart); override;
+    property BarWidthPercent: Integer read FBarWidthPercent write FBarWidthPercent;
+    property BarOffsetPercent: Integer read FBarOffsetPercent write FBarOffsetPercent;
     property Regression;
   end;
 
@@ -712,7 +722,6 @@ type
 
     procedure DeleteSeries(AIndex: Integer);
 
-    function GetAxisByID(AID: Integer): TsChartAxis;
     function GetChartType: TsChartType;
     function GetLineStyle(AIndex: Integer): TsChartLineStyle;
     function IsScatterChart: Boolean;
@@ -1409,6 +1418,9 @@ begin
   FMinorGridLines.Color := scSilver;
   FMinorGridLines.Style := clsDash;
   FMinorGridLines.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+
+  FLogarithmic := false;
+  FLogBase := 10.0;
 end;
 
 destructor TsChartAxis.Destroy;
@@ -1427,6 +1439,7 @@ begin
   inherited CopyFrom(ASource);
   if ASource is TsChartAxis then
   begin
+    FAlignment := TsChartAxis(ASource).Alignment;
     FAutomaticMax := TsChartAxis(ASource).AutomaticMax;
     FAutomaticMin := TsChartAxis(ASource).AutomaticMin;
     FAutomaticMajorInterval := TsChartAxis(ASource).AutomaticMajorInterval;
@@ -1436,7 +1449,6 @@ begin
     FCategoryRange.CopyFrom(TsChartAxis(ASource).CategoryRange);
     FMajorGridLines.CopyFrom(TsChartAxis(ASource).MajorGridLines);
     FMinorGridLines.CopyFrom(TsChartAxis(ASource).MinorGridLines);
-    FID := TsChartAxis(ASource).ID;
     FInverted := TsChartAxis(ASource).Inverted;
     FLabelFont.CopyOf(TsChartAxis(ASource).LabelFont);
     FLabelFormat := TsChartAxis(ASource).LabelFormat;
@@ -1444,7 +1456,8 @@ begin
     FLabelFormatDateTime := TsChartAxis(ASource).LabelFormatDateTime;
     FLabelFormatPercent := TsChartAxis(ASource).LabelFormatPercent;
     FLabelRotation := TsChartAxis(ASource).LabelRotation;
-    FLogarithmic :=TsChartAxis(ASource).Logarithmic;
+    FLogarithmic := TsChartAxis(ASource).Logarithmic;
+    FLogBase := TsChartAxis(ASource).LogBase;
     FMajorInterval := TsChartAxis(ASource).MajorInterval;
     FMajorTicks := TsChartAxis(ASource).MajorTicks;
     FMax := TsChartAxis(ASource).Max;
@@ -1984,6 +1997,8 @@ end;
 constructor TsBarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
+  FBarWidthPercent := 80;
+  FBarOffsetPercent := 0;
   FChartType := ctBar;
   FSupportsRegression := true;
 end;
@@ -2324,12 +2339,14 @@ begin
   FLegend := TsChartLegend.Create(self);
 
   FXAxis := TsChartAxis.Create(self);
+  FXAxis.Alignment := caaBottom;
   FXAxis.Title.Caption := 'x axis';
   FXAxis.Title.Font.Style := [fssBold];
   FXAxis.LabelFont.Size := 9;
   FXAxis.Position := capStart;
 
   FX2Axis := TsChartAxis.Create(self);
+  FX2Axis.Alignment := caaTop;
   FX2Axis.Title.Caption := 'Secondary x axis';
   FX2Axis.Title.Font.Style := [fssBold];
   FX2Axis.LabelFont.Size := 9;
@@ -2337,6 +2354,7 @@ begin
   FX2Axis.Position := capEnd;
 
   FYAxis := TsChartAxis.Create(self);
+  FYAxis.Alignment := caaLeft;
   FYAxis.Title.Caption := 'y axis';
   FYAxis.Title.Font.Style := [fssBold];
   FYAxis.Title.RotationAngle := 90;
@@ -2344,6 +2362,7 @@ begin
   FYAxis.Position := capStart;
 
   FY2Axis := TsChartAxis.Create(self);
+  FY2Axis.Alignment := caaRight;
   FY2Axis.Title.Caption := 'Secondary y axis';
   FY2Axis.Title.Font.Style := [fssBold];
   FY2Axis.Title.RotationAngle := 90;
@@ -2384,20 +2403,6 @@ procedure TsChart.DeleteSeries(AIndex: Integer);
 begin
   if (AIndex >= 0) and (AIndex < FSeriesList.Count) then
     FSeriesList.Delete(AIndex);
-end;
-
-function TsChart.GetAxisByID(AID: Integer): TsChartAxis;
-begin
-  if AID = XAxis.ID then
-    Result := XAxis
-  else if AID = YAxis.ID then
-    Result := YAxis
-  else if AID = X2Axis.ID then
-    Result := X2Axis
-  else if AID = Y2Axis.ID then
-    Result := Y2Axis
-  else
-    Result := nil;
 end;
 
 function TsChart.GetCategoryLabelRange: TsChartRange;

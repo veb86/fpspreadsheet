@@ -127,6 +127,7 @@ type
     FWorkbookChartIndex: Integer;
     FBrushBitmaps: TFPObjectList;
     FSavedAfterDraw: TChartDrawEvent;
+    FLogLabelSource: TListChartSource;
     procedure SetChart(AValue: TChart);
     procedure SetWorkbookChartIndex(AValue: Integer);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
@@ -1059,6 +1060,7 @@ begin
   FBrushBitmaps := TFPObjectList.Create;
   FChartStyles := TChartStyles.Create(self);
   FWorkbookChartIndex := -1;
+  FLogLabelSource := TListChartSource.Create(Self);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1070,6 +1072,7 @@ begin
   if FWorkbookSource <> nil then FWorkbookSource.RemoveListener(self);
   FBrushBitmaps.Free;
   FChartStyles.Free;
+  FLogLabelSource.Free;
   inherited;
 end;
 
@@ -1091,6 +1094,7 @@ var
   calcSrc: TCalculatedChartSource;
   style: TChartStyle;
   axAlign: TChartAxisAlignment;
+  ax: TChartAxis;
 begin
   if FChart.Series.Count > 0 then
     firstSeries := FChart.Series[0] as TChartSeries
@@ -1210,29 +1214,22 @@ begin
 
   // Assign series index to axis for primary and secondary axes support
   axAlign := AXIS_ALIGNMENT[ch.RotatedAxes, ASeries.XAxis, xAx];
-  Result.AxisIndexX := FChart.AxisList.GetAxisByAlign(axAlign).Index;
+  ax := Chart.AxisList.GetAxisByAlign(axAlign);
+  if ax <> nil then
+    Result.AxisIndexX := ax.Index;
+
   axAlign := AXIS_ALIGNMENT[ch.RotatedAxes, ASeries.YAxis, yAx];
-  Result.AxisIndexY := FChart.AxisList.GetAxisByAlign(axAlign).Index;
-  {
-  case ASeries.XAxis of
-    alPrimary:
-      Result.AxisIndexX := FChart.AxisList.GetAxisByAlign(calBottom).Index;
-    alSecondary:
-      Result.AxisIndexX := FChart.AxisList.GetAxisByAlign(calTop).Index;
-  end;
-  case ASeries.YAxis of
-    alPrimary:
-      Result.AxisIndexY := FChart.AxisList.GetAxisByAlign(calLeft).Index;
-    alSecondary:
-      Result.AxisIndexY := FChart.AxisList.GetAxisByAlign(calRight).Index;
-  end;
-  }
+  ax := FChart.AxisList.GetAxisByAlign(axAlign);
+  if ax <> nil then
+    Result.AxisIndexY := ax.Index;
 
   if stackable then
   begin
     style := TChartStyle(FChartStyles.Styles.Add);
     style.Text := src.Title;
   end;
+
+  ax := Chart.AxisList.GetAxisByAlign(calRight);
 end;
 
 procedure TsWorkbookChartLink.AddSeries(ASeries: TsChartSeries);
@@ -1280,6 +1277,8 @@ begin
     ctRadar, ctFilledRadar:
       UpdatePolarSeries(TsRadarSeries(ASeries), TPolarSeries(ser));
   end;
+
+//  ser.Index := ASeries.Order;
 end;
 
 procedure TsWorkbookChartLink.AfterDrawChartHandler(ASender: TChart;
@@ -1819,6 +1818,8 @@ procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BarPen);
+  AChartSeries.BarWidthPercent := AWorkbookSeries.BarWidthPercent;
+  AChartSeries.BarOffsetPercent := AWorkbookSeries.BarOffsetPercent;
   AChartSeries.BarWidthStyle := bwPercentMin;
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
@@ -1895,26 +1896,16 @@ var
   T: TAxisTransform;
   logTransf: TLogarithmAxisTransform;
 begin
-  if AWorkbookAxis = nil then
+  if (AWorkbookAxis = nil) or (not AWorkbookAxis.Visible) then
     exit;
 
-  if AWorkbookAxis = AWorkbookAxis.Chart.XAxis then
-    align := calBottom
-  else if AWorkbookAxis = AWorkbookAxis.Chart.YAxis then
-    align := calLeft
-  else if AWorkbookAxis = AWorkbookAxis.Chart.Y2Axis then
-    align := calRight
-  else if AWorkbookAxis = AWorkbookAxis.Chart.X2Axis then
-    align := calTop
-  else
-    raise Exception.Create('Unsupported axis alignment');
-
+  align := TChartAxisAlignment(ord(AWorkbookAxis.Alignment));
   if AWorkBookAxis.Chart.RotatedAxes then
     align := ROTATED_ALIGNMENT[align];
 
   axis := FChart.AxisList.GetAxisByAlign(align);
 
-  if AWorkbookAxis.Visible and (axis = nil) then
+  if (axis = nil) then
   begin
     axis := FChart.AxisList.Add;
     axis.Alignment := align;
@@ -1935,7 +1926,7 @@ begin
     // Logarithmic
     T := TLogarithmAxisTransform.Create(axis.Transformations);
     T.Transformations := axis.Transformations;
-    TLogarithmAxisTransform(T).Base := 10;
+    TLogarithmAxisTransform(T).Base := AWorkbookAxis.LogBase;
     TLogarithmAxisTransform(T).Enabled := AWorkbookAxis.Logarithmic;
 
     // Autoscale transformation for primary and secondary axes
@@ -1971,22 +1962,19 @@ begin
   {$IFEND}
 
   // Minor axis grid
-  if AWorkbookAxis.MinorGridLines.Style <> clsNoLine then
-  begin
-    minorAxis := axis.Minors.Add;
-    UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MinorGridLines, minorAxis.Grid);
-    minorAxis.Grid.Visible := not IsSecondaryAxis(AWorkbookAxis);
-    if AWorkbookAxis.Logarithmic then
-      minorAxis.Intervals.Count := 9
-    else
-      minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
-    minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
-    minorAxis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MinorTicks, 2, 0);
-    minorAxis.TickColor := axis.AxisPen.Color;
-    {$IF LCL_FullVersion >= 3000000}
-    minorAxis.TickWidth := minorAxis.Grid.Width;
-    {$IFEND}
-  end;
+  minorAxis := axis.Minors.Add;
+  UpdateChartPen(AWorkbookAxis.Chart, AWorkbookAxis.MinorGridLines, minorAxis.Grid);
+  minorAxis.Grid.Visible := (axis.Grid.Style <> psClear) and not IsSecondaryAxis(AWorkbookAxis);
+  if AWorkbookAxis.Logarithmic then
+    minorAxis.Intervals.Count := 9
+  else
+    minorAxis.Intervals.Count := AWorkbookAxis.MinorCount;
+  minorAxis.TickLength := IfThen(catOutside in AWorkbookAxis.MinorTicks, 2, 0);
+  minorAxis.TickInnerLength := IfThen(catInside in AWorkbookAxis.MinorTicks, 2, 0);
+  minorAxis.TickColor := axis.AxisPen.Color;
+  {$IF LCL_FullVersion >= 3000000}
+  minorAxis.TickWidth := minorAxis.Grid.Width;
+  {$IFEND}
 
   // Inverted?
   axis.Inverted := AWorkbookAxis.Inverted;
@@ -2017,11 +2005,47 @@ begin
 end;
 
 procedure TsWorkbookChartLink.UpdateChartAxisLabels(AWorkbookChart: TsChart);
+
+  procedure MayBeLogAxis(Axis: TChartAxis);
+  begin
+    if Axis <> nil then
+    begin
+      if IsLogarithmic(Axis) then
+      begin
+        Axis.Marks.Source := FLogLabelSource;
+        Axis.Marks.Style := smsLabel;
+        Axis.Marks.TextFormat := tfHtml;
+      end else
+      begin
+        Axis.Marks.Source := nil;
+        Axis.Marks.Style := smsValue;
+      end;
+    end;
+  end;
+
 var
   axis: TChartAxis;
+  i: Integer;
+  value: Double;
 begin
   if FChart.SeriesCount = 0 then
     exit;
+
+  if AWorkbookChart.GetChartType in [ctScatter, ctBubble] then
+  begin
+    FLogLabelSource.Clear;
+    value := 1E-15;
+    i := -15;
+    while value < 1E300 do
+    begin
+      FLogLabelSource.Add(value, value, Format('10<sup>%d</sup>', [i]));
+      value := value * 10;
+      inc(i);
+    end;
+    MayBeLogAxis(FChart.BottomAxis);
+    MayBeLogAxis(FChart.LeftAxis);
+    MayBeLogAxis(FChart.AxisList.GetAxisByAlign(calRight));
+  end;
 
   if AWorkbookChart.RotatedAxes then
     axis := FChart.LeftAxis
@@ -2032,8 +2056,17 @@ begin
   case AWorkbookChart.GetChartType of
     ctScatter, ctBubble:
       begin
-        axis.Marks.Source := nil;
-        axis.Marks.Style := smsValue;
+        {
+        if IsLogarithmic(axis) then
+        begin
+          axis.Marks.Source := FLogLabelSource;
+          axis.Marks.Style := smsLabel;
+        end else
+        begin
+          axis.Marks.Source := nil;
+          axis.Marks.Style := smsValue;
+        end;
+        }
       end;
     ctBar, ctLine, ctArea:
       begin
