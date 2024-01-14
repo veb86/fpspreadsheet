@@ -8,37 +8,17 @@ object Form1: TForm1
   ClientWidth = 1351
   LCLVersion = '3.99.0.0'
   OnCreate = FormCreate
-  object sWorksheetGrid1: TsWorksheetGrid
-    Left = 0
-    Height = 489
-    Top = 38
-    Width = 563
-    FrozenCols = 0
-    FrozenRows = 0
-    PageBreakPen.Color = clBlue
-    PageBreakPen.Style = psDash
-    ReadFormulas = False
-    TextOverflow = True
-    WorkbookSource = sWorkbookSource1
-    Align = alLeft
-    AutoAdvance = aaDown
-    Color = clWhite
-    DefaultColWidth = 64
-    DefaultRowHeight = 22
-    Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goSmoothScroll]
-    TabOrder = 0
-  end
   object Splitter1: TSplitter
-    Left = 563
+    Left = 523
     Height = 489
     Top = 38
     Width = 5
   end
   object Chart1: TChart
-    Left = 568
+    Left = 528
     Height = 489
     Top = 38
-    Width = 783
+    Width = 823
     AxisList = <    
       item
         Marks.LabelBrush.Style = bsClear
@@ -68,7 +48,7 @@ object Form1: TForm1
     BevelOuter = bvNone
     ClientHeight = 38
     ClientWidth = 1351
-    TabOrder = 3
+    TabOrder = 2
     object Label1: TLabel
       AnchorSideLeft.Control = Panel1
       AnchorSideTop.Control = Panel1
@@ -165,11 +145,51 @@ object Form1: TForm1
       OnClick = Button2Click
     end
   end
+  object Panel2: TPanel
+    Left = 0
+    Height = 489
+    Top = 38
+    Width = 523
+    Align = alLeft
+    Caption = 'Panel2'
+    ClientHeight = 489
+    ClientWidth = 523
+    TabOrder = 3
+    object sWorksheetGrid1: TsWorksheetGrid
+      Left = 1
+      Height = 375
+      Top = 1
+      Width = 521
+      FrozenCols = 0
+      FrozenRows = 0
+      PageBreakPen.Color = clBlue
+      PageBreakPen.Style = psDash
+      ReadFormulas = False
+      TextOverflow = True
+      WorkbookSource = sWorkbookSource1
+      Align = alClient
+      AutoAdvance = aaDown
+      Color = clWhite
+      DefaultColWidth = 64
+      DefaultRowHeight = 22
+      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goSmoothScroll]
+      TabOrder = 0
+    end
+    object Memo1: TMemo
+      Left = 1
+      Height = 112
+      Top = 376
+      Width = 521
+      Align = alBottom
+      TabOrder = 1
+    end
+  end
   object sWorkbookSource1: TsWorkbookSource
     FileFormat = sfUser
     Options = []
-    Left = 244
-    Top = 138
+    OnError = sWorkbookSource1Error
+    Left = 176
+    Top = 152
   end
   object OpenDialog1: TOpenDialog
     DefaultExt = '.ods'

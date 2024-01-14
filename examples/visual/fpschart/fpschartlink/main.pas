@@ -22,8 +22,10 @@ type
     ComboBox1: TComboBox;
     Label1: TLabel;
     ListChartSource1: TListChartSource;
+    Memo1: TMemo;
     OpenDialog1: TOpenDialog;
     Panel1: TPanel;
+    Panel2: TPanel;
     Splitter1: TSplitter;
     sWorkbookSource1: TsWorkbookSource;
     sWorksheetGrid1: TsWorksheetGrid;
@@ -31,6 +33,7 @@ type
     procedure Button2Click(Sender: TObject);
     procedure ComboBox1CloseUp(Sender: TObject);
     procedure FormCreate(Sender: TObject);
+    procedure sWorkbookSource1Error(Sender: TObject; const AMsg: String);
   private
     sChartLink: TsWorkbookChartLink;
     procedure LoadFile(AFileName: String);
@@ -88,12 +91,19 @@ begin
   end;
 end;
 
+procedure TForm1.sWorkbookSource1Error(Sender: TObject; const AMsg: String);
+begin
+  Memo1.Lines.Add(AMsg);
+end;
+
 procedure TForm1.LoadFile(AFileName: String);
 var
   ext: String;
   fn: String;
   i: Integer;
 begin
+  Memo1.Lines.Clear;
+
   fn := ExpandFileName(AFileName);
   if not FileExists(fn) then
   begin

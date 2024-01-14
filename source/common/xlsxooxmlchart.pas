@@ -940,6 +940,8 @@ begin
         ReadChartLineSeries(workNode.FirstChild, AChart);
       'c:scatterChart':
         ReadChartScatterSeries(workNode.FirstChild, AChart);
+      'c:spPr':
+        ReadChartFillAndLineProps(workNode.FirstChild, AChart, AChart.PlotArea.Background, AChart.PlotArea.Border);
     end;
     workNode := workNode.NextSibling;
   end;
@@ -1041,6 +1043,7 @@ end;
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesErrorBars(ANode: TDOMNode;
   ASeries: TsChartSeries);
 var
+  workbook: TsWorkbook;
   nodeName, s: String;
   node: TDOMNode;
   val: Double;
@@ -1049,6 +1052,8 @@ var
 begin
   if ANode = nil then
     exit;
+
+  workbook := TsSpreadOOXMLReader(Reader).Workbook as TsWorkbook;
 
   // We must first find out whether the node is for x or y error bars and
   // whether it is for positive, negative or both error parts.
@@ -1084,11 +1089,22 @@ begin
     case nodeName of
       'c:errValType':
         case s of
-          'fixedVal': errorBars.Kind := cebkConstant;
-          'percentage': errorBars.Kind := cebkPercentage;
-          'cust': errorBars.Kind := cebkCellRange;
-          'stdDev': errorBars.Visible := false;   // not supported
-          'stdErr': errorBars.Visible := false;   // not supported
+          'fixedVal':
+            errorBars.Kind := cebkConstant;
+          'percentage':
+            errorBars.Kind := cebkPercentage;
+          'cust':
+            errorBars.Kind := cebkCellRange;
+          'stdDev':
+            begin
+              errorBars.Visible := false;
+              workbook.AddErrorMsg('Error bar kind "stdDev" not supported');
+            end;
+          'stdErr':
+            begin
+              errorBars.Visible := false;
+              workbook.AddErrorMsg('Error bar kind "stdErr" not supported.');
+            end;
         end;
       'c:val':
         if (s <> '') and TryStrToFloat(s, val, FPointSeparatorSettings) then
@@ -1480,6 +1496,8 @@ var
   lReader: TsSpreadOOXMLReader;
   xmlStream: TStream;
   doc: TXMLDocument = nil;
+  node: TDOMNode;
+  nodeName: String;
 begin
   lReader := TsSpreadOOXMLReader(Reader);
 
@@ -1488,7 +1506,18 @@ begin
     if UnzipToStream(AStream, AChartXML, xmlStream) then
     begin
       lReader.ReadXMLStream(doc, xmlStream);
-      ReadChart(doc.DocumentElement.FindNode('c:chart'), AChart);
+      node := doc.DocumentElement.FirstChild; //FindNode('c:chart');
+      while Assigned(node) do
+      begin
+        nodeName := node.NodeName;
+        case nodeName of
+          'c:chart':
+            ReadChart(node, AChart);
+          'c:spPr':
+            ReadChartFillAndLineProps(node.FirstChild, AChart, AChart.Background, AChart.Border);
+        end;
+        node := node.NextSibling;
+      end;
       FreeAndNil(doc);
     end;
   finally
