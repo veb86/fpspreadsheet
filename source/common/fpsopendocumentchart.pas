@@ -1905,8 +1905,9 @@ begin
   if not TryPercentStrToFloat(s, centerY) then
     centerY := 0.0;
 
-  AChart.Gradients.AddGradient(styleName, gradientStyle, startColor, endColor,
-    startIntensity, endIntensity, border, centerX, centerY, angle);
+  AChart.Gradients.AddGradient(styleName, gradientStyle,
+    startColor, endColor, 0.0, 0.0, startIntensity, endIntensity,
+    border, centerX, centerY, angle);
 end;
 
 { Read the hatch pattern stored in the "draw:hatch" nodes of the chart's

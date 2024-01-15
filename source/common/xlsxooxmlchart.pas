@@ -25,6 +25,7 @@ type
     FXAxisDelete, FYAxisDelete, FX2AxisDelete, FY2AxisDelete: Boolean;
 
     function ReadChartColor(ANode: TDOMNode; ADefault: TsColor): TsColor;
+    procedure ReadChartColor(ANode: TDOMNode; var AColor: TsColor; var Alpha: Double);
     procedure ReadChartFillAndLineProps(ANode: TDOMNode;
       AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine);
     procedure ReadChartFontProps(ANode: TDOMNode; AFont: TsFont);
@@ -391,6 +392,15 @@ end;
 
 function TsSpreadOOXMLChartReader.ReadChartColor(ANode: TDOMNode;
   ADefault: TsColor): TsColor;
+var
+  alpha: Double;
+begin
+  Result := ADefault;
+  ReadChartColor(ANode, Result, alpha);
+end;
+
+procedure TsSpreadOOXMLChartReader.ReadChartColor(ANode: TDOMNode;
+  var AColor: TsColor; var Alpha: Double);
 
   function ColorAlias(AColorName: String): String;
   const
@@ -409,7 +419,6 @@ var
   n: Integer;
   child: TDOMNode;
 begin
-  Result := ADefault;
   if ANode = nil then
     exit;
 
@@ -423,30 +432,25 @@ begin
           idx := FColors.IndexOf(ColorAlias(s));
           if idx > -1 then
           begin
-            Result := FColors.Data[idx];
+            AColor := FColors.Data[idx];
             child := ANode.FirstChild;
             while Assigned(child) do
             begin
               nodeName := child.NodeName;
+              s := GetAttrValue(child, 'val');
               case nodeName of
                 'a:tint':
-                  begin
-                    s := GetAttrValue(child, 'val');
-                    if (s <> '') and TryStrToInt(s, n) then
-                      Result := TintedColor(Result, n/100000);
-                  end;
+                  if TryStrToInt(s, n) then
+                    AColor := TintedColor(AColor, n/100000);
                 'a:lumMod':     // luminance modulated
-                  begin
-                    s := GetAttrValue(child, 'val');
-                    if (s <> '') and TryStrToInt(s, n) then
-                      Result := LumModColor(Result, n/100000);
-                  end;
+                  if TryStrToInt(s, n) then
+                    AColor := LumModColor(AColor, n/100000);
                 'a:lumOff':
-                  begin
-                    s := GetAttrValue(child, 'val');
-                    if (s <> '') and TryStrToInt(s, n) then
-                      Result := LumOffsetColor(Result, n/100000);
-                  end;
+                  if TryStrToInt(s, n) then
+                    AColor := LumOffsetColor(AColor, n/100000);
+                'a:alpha':
+                  if TryStrToInt(s, n) then
+                    Alpha := n / 100000;
               end;
               child := child.NextSibling;
             end;
@@ -457,7 +461,7 @@ begin
       begin
         s := GetAttrValue(ANode, 'val');
         if s <> '' then
-          Result := HTMLColorStrToColor(s);
+          AColor := HTMLColorStrToColor(s);
       end;
   end;
 end;
@@ -466,6 +470,12 @@ procedure TsSpreadOOXMLChartReader.ReadChartFillAndLineProps(ANode: TDOMNode;
   AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine);
 var
   nodeName, s: String;
+  child1, child2: TDOMNode;
+  n: Integer;
+  value: Double;
+  alpha: Double;
+  gradient: TsChartGradient;
+  color: TsColor;
 begin
   if ANode = nil then
     exit;
@@ -474,15 +484,60 @@ begin
   begin
     nodeName := ANode.NodeName;
     case nodeName of
+      // Solid fill
       'a:solidFill':
         begin
           AFill.Style := cfsSolid;
           AFill.Color := ReadChartColor(ANode.FirstChild, scWhite);
         end;
+
+      // Gradient fill
+      'a:gradFill':
+        begin
+          AFill.Style := cfsGradient;
+          gradient := TsChartGradient.Create;   // Do not destroy gradient, it will be added to the chart.
+          child1 := ANode.FirstChild;
+          while Assigned(child1) do
+          begin
+            nodeName := child1.NodeName;
+            case nodeName of
+              'a:gsLst':
+                begin
+                  child2 := child1.FirstChild;
+                  while Assigned(child2) do
+                  begin
+                    nodeName := child2.NodeName;
+                    if nodeName = 'a:gs' then
+                    begin
+                      s := GetAttrValue(child2, 'pos');
+                      value := StrToIntDef(s, 0) / 100000;
+                      color := scWhite;
+                      alpha := 1.0;
+                      ReadChartColor(child2.FirstChild, color, alpha);
+                      gradient.AddStep(value, color, 1.0 - alpha, 1.0);
+                    end;
+                    child2 := child2.NextSibling;
+                  end;
+                end;
+              'a:lin':
+                begin
+                  gradient.Style := cgsLinear;
+                  s := GetAttrValue(child1, 'ang');
+                  if TryStrToInt(s, n) then
+                    gradient.Angle := n / ANGLE_MULTIPLIER;
+                end;
+            end;
+            child1 := child1.NextSibling;
+          end;
+          AFill.Gradient := AChart.Gradients.AddGradient('', gradient);
+        end;
+
+      // Line style
       'a:ln':
         ReadChartLineProps(ANode, AChart, ALine);
-      'a:effectLst':
-        ;
+
+      // Drawing effects
+      'a:effectLst': ;
     end;
     ANode := ANode.NextSibling;
   end;
