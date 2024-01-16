@@ -40,6 +40,7 @@ type
     procedure ReadChartAxisScaling(ANode: TDOMNode; AChartAxis: TsChartAxis);
     function ReadChartAxisTickMarks(ANode: TDOMNode): TsChartAxisTicks;
     procedure ReadChartBarSeries(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartBubbleSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegend(ANode: TDOMNode; AChartLegend: TsChartLegend);
     procedure ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartPlotArea(ANode: TDOMNode; AChart: TsChart);
@@ -390,6 +391,44 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a bubble series and reads its parameters.
+
+  @@param   ANode    Child of a <c:bubbleChart> node.
+  @@param   AChart   Chart into which the series will be inserted.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartBubbleSeries(ANode: TDOMNode;
+  AChart: TsChart);
+var
+  nodeName: String;
+  s: String;
+  ser: TsBubbleSeries;
+  smooth: Boolean;
+begin
+  if ANode = nil then
+    exit;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
+    case nodeName of
+      'c:bubbleScale': ;
+      'c:showNegBubbles': ;
+      'c:varyColors':  ;
+      'c:ser':
+        begin
+          ser := TsBubbleSeries.Create(AChart);
+          ReadChartSeriesProps(ANode.FirstChild, ser);
+        end;
+      'c:dLbls':
+        ;
+      'c:axId':
+        ReadChartSeriesAxis(ANode, ser);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 function TsSpreadOOXMLChartReader.ReadChartColor(ANode: TDOMNode;
   ADefault: TsColor): TsColor;
 var
@@ -462,6 +501,18 @@ begin
         s := GetAttrValue(ANode, 'val');
         if s <> '' then
           AColor := HTMLColorStrToColor(s);
+        child := ANode.FirstChild;
+        while Assigned(child) do
+        begin
+          nodeName := child.NodeName;
+          s := GetAttrValue(child, 'val');
+          case nodeName of
+            'a:alpha':
+              if TryStrToInt(s, n) then
+                Alpha := n / 100000;
+          end;
+          child := child.NextSibling;
+        end;
       end;
   end;
 end;
@@ -480,6 +531,7 @@ begin
   if ANode = nil then
     exit;
 
+  alpha := 1.0;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
@@ -488,7 +540,8 @@ begin
       'a:solidFill':
         begin
           AFill.Style := cfsSolid;
-          AFill.Color := ReadChartColor(ANode.FirstChild, scWhite);
+          ReadChartColor(ANode.FirstChild, AFill.Color, alpha);
+          AFill.Transparency := 1.0 - alpha;
         end;
 
       // Gradient fill
@@ -915,7 +968,7 @@ begin
   while Assigned(workNode) do
   begin
     nodeName := workNode.NodeName;
-    if nodeName = 'c:scatterChart' then
+    if (nodeName = 'c:scatterChart') or (nodeName = 'c:bubbleChart') then
     begin
       isScatterChart := true;
       break;
@@ -991,6 +1044,8 @@ begin
         ReadChartAreaSeries(workNode.FirstChild, AChart);
       'c:barChart':
         ReadChartBarSeries(workNode.FirstChild, AChart);
+      'c:bubbleChart':
+        ReadChartBubbleSeries(workNode.FirstChild, AChart);
       'c:lineChart':
         ReadChartLineSeries(workNode.FirstChild, AChart);
       'c:scatterChart':
@@ -1277,6 +1332,11 @@ begin
         ReadChartSeriesRange(ANode.FirstChild, ASeries.XRange);
       'c:val', 'c:yVal':
         ReadChartSeriesRange(ANode.FirstChild, ASeries.YRange);
+      'c:bubbleSize':
+        if ASeries is TsBubbleSeries then
+          ReadChartSeriesRange(ANode.FirstChild, TsBubbleSeries(ASeries).BubbleRange);
+      'c:bubble3D':
+        ;
       'c:spPr':
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.Fill, ASeries.Line);
       'c:dLbls':

@@ -1800,6 +1800,7 @@ procedure TsWorkbookChartLink.UpdateAreaSeries(AWorkbookSeries: TsAreaSeries;
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.AreaBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.AreaContourPen);
+  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
   AChartSeries.AreaLinesPen.Style := psClear;
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   AChartSeries.UseZeroLevel := true;
@@ -1818,6 +1819,7 @@ procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BarPen);
+  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
   AChartSeries.BarWidthPercent := AWorkbookSeries.BarWidthPercent;
   AChartSeries.BarOffsetPercent := AWorkbookSeries.BarOffsetPercent;
   AChartSeries.BarWidthStyle := bwPercentMin;
@@ -1834,6 +1836,8 @@ procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BubbleBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BubblePen);
+  AChartSeries.Transparency := round(255*AWorkbookSeries.Fill.Transparency);
+
   {$IF LCL_FullVersion >= 3990000}
   AChartSeries.BubbleRadiusUnits := bruPercentage;
   AChartSeries.ParentChart.ExpandPercentage := 10;
