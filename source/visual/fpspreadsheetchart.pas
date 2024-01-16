@@ -1839,7 +1839,10 @@ begin
   AChartSeries.Transparency := round(255*AWorkbookSeries.Fill.Transparency);
 
   {$IF LCL_FullVersion >= 3990000}
-  AChartSeries.BubbleRadiusUnits := bruPercentage;
+  case AWorkbookSeries.BubbleSizeMode of
+    bsmRadius: AChartSeries.BubbleRadiusUnits := bruPercentageRadius;
+    bsmArea: AChartSeries.BubbleRadiusUnits := bruPercentageArea;
+  end;
   AChartSeries.ParentChart.ExpandPercentage := 10;
   {$IFEND}
 

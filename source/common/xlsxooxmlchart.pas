@@ -167,6 +167,11 @@ begin
   begin
     nodeName := ANode.NodeName;
     case nodeName of
+      'c:ser':
+        begin
+          ser := TsAreaSeries.Create(AChart);
+          ReadChartSeriesProps(ANode.FirstChild, ser);
+        end;
       'c:grouping':
         begin
           s := GetAttrValue(ANode, 'val');
@@ -177,11 +182,6 @@ begin
         end;
       'c:varyColors':
         ;
-      'c:ser':
-        begin
-          ser := TsAreaSeries.Create(AChart);
-          ReadChartSeriesProps(ANode.FirstChild, ser);
-        end;
       'c:dLbls':
         ;
       'c:axId':
@@ -340,6 +340,11 @@ begin
   begin
     nodeName := ANode.NodeName;
     case nodeName of
+      'c:ser':
+        begin
+          ser := TsBarSeries.Create(AChart);
+          ReadChartSeriesProps(ANode.FirstChild, ser);
+        end;
       'c:barDir':
         begin
           s := GetAttrValue(ANode, 'val');
@@ -358,11 +363,6 @@ begin
         end;
       'c:varyColors':
         ;
-      'c:ser':
-        begin
-          ser := TsBarSeries.Create(AChart);
-          ReadChartSeriesProps(ANode.FirstChild, ser);
-        end;
       'c:dLbls':
         s := '';
       'c:gapWidth':
@@ -412,14 +412,15 @@ begin
     nodeName := ANode.NodeName;
     s := GetAttrValue(ANode, 'val');
     case nodeName of
-      'c:bubbleScale': ;
-      'c:showNegBubbles': ;
-      'c:varyColors':  ;
       'c:ser':
         begin
           ser := TsBubbleSeries.Create(AChart);
+          ser.BubbleSizeMode := bsmArea;  // Excel always plots the area of the bubbles
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
+      'c:bubbleScale': ;
+      'c:showNegBubbles': ;
+      'c:varyColors':  ;
       'c:dLbls':
         ;
       'c:axId':
@@ -830,6 +831,12 @@ begin
   begin
     nodeName := ANode.NodeName;
     case nodeName of
+      'c:ser':
+        begin
+          ser := TsLineSeries.Create(AChart);
+          ReadChartSeriesMarker(ANode.FirstChild, TsLineSeries(ser));
+          ReadChartSeriesProps(ANode.FirstChild, ser);
+        end;
       'c:grouping':
         begin
           s := GetAttrValue(ANode, 'val');
@@ -840,12 +847,6 @@ begin
         end;
       'c:varyColors':
         ;
-      'c:ser':
-        begin
-          ser := TsLineSeries.Create(AChart);
-          ReadChartSeriesMarker(ANode.FirstChild, TsLineSeries(ser));
-          ReadChartSeriesProps(ANode.FirstChild, ser);
-        end;
       'c:dLbls':
         ;
       'c:gapWidth':
@@ -1078,18 +1079,18 @@ begin
   begin
     nodeName := ANode.NodeName;
     case nodeName of
-      'c:scatterStyle':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          smooth := (s = 'smoothMarker');    // to do: use it to create a spline series when true.
-        end;
-      'c:varyColors':  ;
       'c:ser':
         begin
           ser := TsScatterSeries.Create(AChart);
           ReadChartSeriesMarker(ANode.FirstChild, TsScatterSeries(ser));
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
+      'c:scatterStyle':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          smooth := (s = 'smoothMarker');    // to do: use it to create a spline series when true.
+        end;
+      'c:varyColors':  ;
       'c:dLbls':
         ;
       'c:axId':
@@ -1282,6 +1283,8 @@ begin
             end;
           end;
         end;
+      'c:dlblPos':
+        ;
       'c:showLegendKey':
         if (s <> '') and (s <> '0') then
           ASeries.DataLabels := ASeries.DataLabels + [cdlSymbol];
@@ -1298,7 +1301,8 @@ begin
         if (s <> '') and (s <> '0') then
           ASeries.DataLabels := ASeries.DataLabels + [cdlPercentage];
       'c:showBubbleSize':
-        ;
+        if (s <> '') and (s <> '0') and (ASeries is TsBubbleSeries) then
+          ASeries.DataLabels := ASeries.DataLabels + [cdlValue];
       'c:showLeaderLines':
         ;
       'c:extLst':
@@ -1340,7 +1344,7 @@ begin
       'c:spPr':
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.Fill, ASeries.Line);
       'c:dLbls':
-        ReadChartSeriesLabels(ANode.Firstchild, ASeries);
+        ReadChartSeriesLabels(ANode.FirstChild, ASeries);
       'c:trendline':
         ReadChartSeriesTrendLine(ANode.FirstChild, ASeries);
       'c:errBars':

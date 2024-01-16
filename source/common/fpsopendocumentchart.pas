@@ -1456,7 +1456,10 @@ begin
   end
   else
   if (series is TsBubbleSeries) then
-    ReadChartCellRange(ANode, 'chart:values-cell-range-address', TsBubbleSeries(series).BubbleRange)
+  begin
+    TsBubbleSeries(series).BubbleSizeMode := bsmArea;
+    ReadChartCellRange(ANode, 'chart:values-cell-range-address', TsBubbleSeries(series).BubbleRange);
+  end
   else
     ReadChartCellRange(ANode, 'chart:values-cell-range-address', series.YRange);
 
