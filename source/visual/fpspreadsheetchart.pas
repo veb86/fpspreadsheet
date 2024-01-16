@@ -2154,7 +2154,7 @@ procedure TsWorkbookChartLink.UpdateChartErrorBars(AWorkbookSeries: TsChartSerie
 const
   EPS = 1E-16;
   ERRORBAR_KINDS: array[TsChartErrorBarKind] of TChartErrorBarKind = (
-    ebkConst, ebkPercent, ebkChartSource);
+    ebkNone, ebkConst, ebkPercent, ebkChartSource);
 
   function GetChartSource(ASource: TCustomChartSource): TsWorkbookChartSource;
   begin

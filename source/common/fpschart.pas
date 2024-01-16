@@ -425,7 +425,7 @@ type
     destructor Destroy; override;
   end;
 
-  TsChartErrorBarKind = (cebkConstant, cebkPercentage, cebkCellRange);
+  TsChartErrorBarKind = (cebkNone, cebkConstant, cebkPercentage, cebkCellRange);
 
   TsChartErrorBars = class(TsChartElement)
   private
@@ -443,6 +443,7 @@ type
       ASheet1: String; ARow1, ACol1: Cardinal;
       ASheet2: String; ARow2, ACol2: Cardinal);
     procedure SetLine(AValue: TsChartLine);
+    procedure SetKind(AValue: TsChartErrorBarKind);
     procedure SetRange(AIndex: Integer; AValue: TsChartRange);
     procedure SetShow(AIndex: Integer; AValue: Boolean);
     procedure SetValue(AIndex: Integer; AValue: Double);
@@ -457,7 +458,7 @@ type
     procedure SetErrorBarRangePos(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     procedure SetErrorBarRangeNeg(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetErrorBarRangeNeg(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
-    property Kind: TsChartErrorBarKind read FKind write FKind;
+    property Kind: TsChartErrorBarKind read FKind write SetKind;
     property Line: TsChartLine read FLine write SetLine;
     property RangePos: TsChartRange index 0 read GetRange write SetRange;
     property RangeNeg: TsChartRange index 1 read GetRange write SetRange;
@@ -1860,6 +1861,11 @@ end;
 procedure TsChartErrorBars.SetLine(AValue: TsChartLine);
 begin
   FLine.CopyFrom(AValue);
+end;
+
+procedure TsChartErrorBars.SetKind(AValue: TsChartErrorBarKind);
+begin
+  FKind := AValue;
 end;
 
 procedure TsChartErrorBars.SetRange(AIndex: Integer; AValue: TsChartRange);
