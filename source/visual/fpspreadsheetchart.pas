@@ -1368,23 +1368,23 @@ begin
   hatch := AWorkbookChart.Hatches[AFill.Hatch];
   case hatch.Style of
     chsSingle:
-      if InRange(hatch.LineAngle mod 180, -22.5, 22.5) then  // horizontal "approximation"
+      if InRange(hatch.PatternAngle mod 180, -22.5, 22.5) then  // horizontal "approximation"
         ABrush.Style := bsHorizontal
       else
-      if InRange((hatch.LineAngle - 90) mod 180, -22.5, 22.5) then  // vertical
+      if InRange((hatch.PatternAngle - 90) mod 180, -22.5, 22.5) then  // vertical
         ABrush.Style := bsVertical
       else
-      if Inrange((hatch.LineAngle - 45) mod 180, -22.5, 22.5) then  // diagonal up
+      if Inrange((hatch.PatternAngle - 45) mod 180, -22.5, 22.5) then  // diagonal up
         ABrush.Style := bsBDiagonal
       else
-      if InRange((hatch.LineAngle + 45) mod 180, -22.5, 22.5) then  // diagonal down
+      if InRange((hatch.PatternAngle + 45) mod 180, -22.5, 22.5) then  // diagonal down
         ABrush.Style := bsFDiagonal;
     chsDouble,
     chsTriple:   // no triple hatches in LCL - fall-back to double hatch
-      if InRange(hatch.LineAngle mod 180, -22.5, 22.5) then   // +++
+      if InRange(hatch.PatternAngle mod 180, -22.5, 22.5) then   // +++
         ABrush.Style := bsCross
       else
-      if InRange((hatch.LineAngle - 45) mod 180, -22.5, 22.5) then // xxx
+      if InRange((hatch.PatternAngle - 45) mod 180, -22.5, 22.5) then // xxx
         ABrush.Style := bsDiagCross;
   end;
 end;
@@ -1397,18 +1397,20 @@ procedure TsWorkbookChartLink.ConstructHatchPatternSolid(AWorkbookChart: TsChart
   AFill: TsChartFill; ABrush: TBrush);
 var
   hatch: TsChartHatch;
-  d, ppi: Integer;
+  w, h, lw, ppi, i, x, y: Integer;
   png: TPortableNetworkGraphic;
   sa, ca: Double;
   bkCol: TColor;
   fgCol: TColor;
+  R: TRect;
 
-  procedure PrepareCanvas(w, h: Integer);
+  procedure PrepareCanvas(AWidth, AHeight: Integer);
   begin
-    png.SetSize(w, h);
+    png.SetSize(AWidth, AHeight);
     png.Canvas.Brush.Color := bkCol;
-    png.Canvas.FillRect(0, 0, w, h);
+    png.Canvas.FillRect(0, 0, AWidth, AHeight);
     png.Canvas.Pen.Color := fgCol;
+    png.Canvas.Pen.Width := w;
   end;
 
 begin
@@ -1416,57 +1418,104 @@ begin
 
   hatch := AWorkbookChart.Hatches[AFill.Hatch];
   ppi := GetParentForm(FChart).PixelsPerInch;
-  d := mmToPx(hatch.LineDistance, ppi);              // line distance in px
-  bkCol := Convert_sColor_to_Color(AFill.Color);     // background color
-  fgCol := Convert_sColor_to_Color(hatch.LineColor); // foreground color
+  if hatch.PatternWidth > 0 then
+    w := mmToPx(hatch.PatternWidth, ppi)                // pattern width in px
+  else
+    w := round(-hatch.PatternWidth);
+  if hatch.PatternHeight > 0 then
+    h := mmToPx(hatch.PatternHeight, ppi)               // pattern height in px
+  else
+    h := round(-hatch.PatternHeight);
+  lw := Max(mmToPx(hatch.LineWidth, ppi), 1);           // line width of pen in px
+  bkCol := Convert_sColor_to_Color(AFill.Color);        // background color
+  fgCol := Convert_sColor_to_Color(hatch.PatternColor); // foreground color  (pattern)
 
   png := TPortableNetworkGraphic.Create;
 
   case hatch.Style of
+    chsDot:
+      begin
+        PrepareCanvas(w, h);
+        for i := 0 to hatch.NumDots-1 do
+        begin
+          // DotPos are interpreted as fractions of the cell size if positive,
+          // or as pixels if negative.
+          if hatch.DotPos[i].X > 0 then
+            x := round(hatch.DotPos[i].X * w)
+          else
+            x := round(-hatch.Dotpos[i].X);
+          if hatch.DotPos[i].Y > 0 then
+            y := round(hatch.DotPos[i].Y * h)
+          else
+            y := round(-hatch.DotPos[i].Y);
+          if (x < w) and (y < h) then
+            png.Canvas.Pixels[x, y] := fgCol;
+        end;
+      end;
     chsSingle:
       begin
         // horizontal ---
-        if hatch.LineAngle = 0 then
+        if hatch.PatternAngle = 0 then
         begin
-          PrepareCanvas(8, d);
+          PrepareCanvas(8, w);
           png.Canvas.Line(0, 0, png.Width, 0);
         end else
         // vertical  |||
-        if hatch.LineAngle = 90 then
+        if hatch.PatternAngle = 90 then
         begin
-          PrepareCanvas(d, 8);
+          PrepareCanvas(w, 8);
           png.Canvas.Line(0, 0, 0, png.Height);
         end else
         // any angle
         begin
-          SinCos(DegToRad(hatch.LineAngle), sa, ca);
-          PrepareCanvas(round(abs(d / sa)), round(abs(d / ca)));
-          if sa/ca > 0 then  // sa/ca = tan
-            png.Canvas.Line(0, png.Height-1, png.Width, -1)
-          else
-            png.Canvas.Line(0, 0, png.Width, png.Height);
+          SinCos(DegToRad(hatch.PatternAngle), sa, ca);
+          PrepareCanvas(round(abs(w / sa)), round(abs(w / ca)));
+          R := Rect(0, 0, png.Width, png.Height);
+          if w = 1 then
+          begin
+            if sa / ca > 0 then   // sa/ca = tangens
+              png.Canvas.Line(R.Left, R.Bottom-1, R.Right, R.Top-1)
+            else
+              png.Canvas.Line(R.Left, R.Top, R.Right, R.Bottom);
+          end else
+          begin
+            if sa / ca > 0 then
+            begin
+              png.Canvas.Line(R.Left, R.Bottom, R.Right, R.Top);
+              OffsetRect(R, R.Width, 0);
+              png.Canvas.Line(R.Left, R.Bottom, R.Right, R.Top);
+              OffsetRect(R, -2*R.Width, 0);
+              png.Canvas.Line(R.Left, R.Bottom, R.Right, R.Top);
+            end else
+            begin
+              png.Canvas.Line(R.Left, R.Top, R.Right, R.Bottom);
+              OffsetRect(R, R.Width, 0);
+              png.Canvas.Line(R.Left, R.Top, R.Right, R.Bottom);
+              OffsetRect(R, -2*R.Width, 0);
+              png.Canvas.Line(R.Left, R.Top, R.Right, R.Bottom);
+            end;
+          end;
         end;
-        //png.SaveToFile('test.png');
       end;
     chsDouble, chsTriple:
       begin  // +++
-        if InRange(hatch.LineAngle mod 180, -22.5, 22.5) then
+        if InRange(hatch.PatternAngle mod 180, -22.5, 22.5) then
         begin
-          PrepareCanvas(d, d);
-          png.Canvas.Line(0, d div 2, d, d div 2);
-          png.Canvas.Line(d div 2, 0, d div 2, d);
+          PrepareCanvas(w, w);
+          png.Canvas.Line(0, w div 2, w, w div 2);
+          png.Canvas.Line(w div 2, 0, w div 2, w);
           if hatch.Style = chsTriple then
-            png.Canvas.Line(0, 0, d, d);
+            png.Canvas.Line(0, 0, w, w);
         end else
         // xxx
-        if InRange((hatch.LineAngle-45) mod 180, -22.5, 22.5) then
+        if InRange((hatch.PatternAngle-45) mod 180, -22.5, 22.5) then
         begin
-          d := round(d * sqrt(2));
-          PrepareCanvas(d, d);
-          png.Canvas.Line(0, 0, d, d);
-          png.Canvas.Line(0, d, d, 0);
+          w := round(w * sqrt(2));
+          PrepareCanvas(w, w);
+          png.Canvas.Line(0, 0, w, w);
+          png.Canvas.Line(0, w, w, 0);
           if hatch.Style = chsTriple then
-            png.Canvas.Line(0, d div 2, d, d div 2);
+            png.Canvas.Line(0, w div 2, w, w div 2);
         end;
       end;
   end;

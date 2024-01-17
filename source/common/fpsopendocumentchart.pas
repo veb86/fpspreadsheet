@@ -201,7 +201,7 @@ const
   );
 
   HATCH_STYLES: array[TsChartHatchStyle] of string = (
-    'single', 'double', 'triple'
+    '', 'single', 'double', 'triple'
   );
 
   LABEL_POSITION: array[TsChartLabelPosition] of string = (
@@ -1952,7 +1952,7 @@ begin
   else
     hatchAngle := 0;
 
-  AChart.Hatches.AddHatch(styleName, hatchStyle, hatchColor, hatchDist, hatchAngle);
+  AChart.Hatches.AddLineHatch(styleName, hatchStyle, hatchColor, hatchdist, 0.1, hatchAngle);
 end;
 
 { Reads the line styles stored as "draw:stroke-dash" nodes in the chart's
@@ -3395,9 +3395,9 @@ begin
         'draw:rotation="%.0f" />',
       [ ASCIIName(hatch.Name), hatch.Name,
         HATCH_STYLES[hatch.Style],
-        ColorToHTMLColorStr(hatch.LineColor),
-        hatch.LineDistance,
-        hatch.LineAngle*10
+        ColorToHTMLColorStr(hatch.PatternColor),
+        hatch.PatternWidth,
+        hatch.PatternAngle*10
       ],
       FPointSeparatorSettings
     );

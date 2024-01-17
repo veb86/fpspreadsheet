@@ -116,14 +116,20 @@ type
     property Items[AIndex: Integer]: TsChartGradient read GetItem write SetItem; default;
   end;
 
-  TsChartHatchStyle = (chsSingle, chsDouble, chsTriple);
+  TsChartHatchStyle = (chsDot, chsSingle, chsDouble, chsTriple);
+
+  TSngPoint = record X, Y: Single; end;
 
   TsChartHatch = class
     Name: String;
     Style: TsChartHatchStyle;
-    LineColor: TsColor;
-    LineDistance: Double;      // mm
-    LineAngle: Double;         // degrees
+    PatternColor: TsColor;
+    PatternWidth: Double;         // Width of pattern (square), in mm if > 0, in px if < 0
+    PatternHeight: Double;        // Height of pattern
+    PatternAngle: Double;         // Rotation angle of pattern, in degrees
+    NumDots: Integer;             // Number of dots within pattern
+    DotPos: Array of TSngPoint;   // fraction of dot coordinates in pattern cell
+    LineWidth: Single;            // Line width of line pattern, in mm
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartHatch);
   end;
@@ -132,9 +138,16 @@ type
   private
     function GetItem(AIndex: Integer): TsChartHatch;
     procedure SetItem(AIndex: Integer; AValue: TsChartHatch);
+  protected
+    function NewPattern(AName: String): Integer;
   public
-    function AddHatch(AName: String; AStyle: TsChartHatchStyle;
-      ALineColor: TsColor; ALineDistance, ALineAngle: Double): Integer;
+    function AddDotHatch(AName: String; ADotColor: TsColor;
+      APatternWidth, APatternHeight: Double;
+      ANumDots: Integer; const ADots: array of single): Integer;
+    function AddDotHatch(AName: String; ADotColor: TsColor;
+      APatternWidth, APatternHeight: Integer; ADots: String): Integer;
+    function AddLineHatch(AName: String; AStyle: TsChartHatchStyle;
+      ALineColor: TsColor; ALineDistance, ALineWidth, ALineAngle: Double): Integer;
     function FindByName(AName: String): TsChartHatch;
     function IndexOfName(AName: String): Integer;
     property Items[AIndex: Integer]: TsChartHatch read GetItem write SetItem; default;
@@ -1123,36 +1136,106 @@ begin
 end;
 
 procedure TsChartHatch.CopyFrom(ASource: TsChartHatch);
+var
+  i: Integer;
 begin
   Name := ASource.Name;
   Style := ASource.Style;
-  LineColor := ASource.LineColor;
-  LineDistance := ASource.LineDistance;
-  LineAngle := ASource.LineAngle;
+  PatternColor := ASource.PatternColor;
+  PatternWidth := ASource.PatternWidth;
+  PatternHeight := ASource.PatternHeight;
+  PatternAngle := ASource.PatternAngle;
+  NumDots := ASource.NumDots;
+  SetLength(DotPos, Length(ASource.DotPos));
+  for i := 0 to High(DotPos) do DotPos[i] := ASource.DotPos[i];
+  LineWidth := ASource.LineWidth;
 end;
 
 
 { TsChartHatchList }
 
-function TsChartHatchList.AddHatch(AName: String; AStyle: TsChartHatchStyle;
-  ALineColor: TsColor; ALineDistance, ALineAngle: Double): Integer;
+function TsChartHatchList.AddDotHatch(AName: String; ADotColor: TsColor;
+  APatternWidth, APatternHeight: Double;
+  ANumDots: Integer; const ADots: array of single): Integer;
+var
+  item: TsChartHatch;
+  i, j: Integer;
+begin
+  Result := NewPattern(AName);
+  item := Items[Result];
+  item.Name := AName;
+  item.Style := chsDot;
+  item.PatternColor := ADotColor;
+  item.PatternWidth := APatternWidth;  // in millimeters (> 0), in px (< 0)
+  item.PatternHeight := APatternHeight;
+  item.PatternAngle:= 0.0;
+  item.NumDots := ANumDots;
+  j := 0;
+  SetLength(item.DotPos, Length(ADots) div 2);
+  for i := 0 to High(item.DotPos) do
+  begin
+    item.DotPos[i].X := ADots[j];
+    item.DotPos[i].Y := ADots[j+1];
+    inc(j, 2);
+  end;
+end;
+
+function TsChartHatchList.AddDotHatch(AName: String; ADotColor: TsColor;
+  APatternWidth, APatternHeight: Integer; ADots: String): Integer;
+var
+  i, x, y: Integer;
+  w, h: Integer;
+  dots: array of single = nil;
+  nDots: Integer;
+begin
+  w := APatternWidth;
+  if w < 0 then w := -w;
+
+  h := APatternHeight;
+  if h < 0 then h := -h;
+
+  if Length(ADots) <> w*h then
+    raise Exception.Create('Hatch pattern error.');
+
+  x := 0;
+  y := 0;
+  nDots := 0;
+  SetLength(dots, Length(ADots)*2);
+  for i := 1 to Length(ADots) do
+  begin
+    if ADots[i] in ['x', 'X', '*'] then
+    begin
+      dots[nDots] := -1.0 * x;
+      dots[nDots+1] := -1.0 * y;
+      inc(nDots, 2);
+    end;
+    inc(x);
+    if x = w then
+    begin
+      inc(y);
+      x := 0;
+    end;
+  end;
+  SetLength(dots, nDots);
+  Result := AddDotHatch(AName, ADotColor, -w, -h, nDots div 2, dots);
+end;
+
+function TsChartHatchList.AddLineHatch(AName: String; AStyle: TsChartHatchStyle;
+  ALineColor: TsColor; ALineDistance, ALineWidth, ALineAngle: Double): Integer;
 var
   item: TsChartHatch;
 begin
-  if AName = '' then
-    AName := 'Hatch' + IntToStr(Count+1);
-  Result := IndexOfName(AName);
-  if Result = -1 then
-  begin
-    item := TsChartHatch.Create;
-    Result := inherited Add(item);
-  end else
-    item := Items[Result];
+  if not (AStyle in [chsSingle, chsDouble, chsTriple]) then
+    exit(-1);
+
+  Result := NewPattern(AName);
+  item := Items[Result];
   item.Name := AName;
   item.Style := AStyle;
-  item.LineColor := ALineColor;
-  item.LineDistance := ALineDistance;
-  item.LineAngle := ALineAngle;
+  item.PatternColor := ALineColor;
+  item.PatternWidth := ALineDistance;
+  item.PatternAngle := ALineAngle;
+  item.LineWidth := ALineWidth;
 end;
 
 function TsChartHatchList.FindByName(AName: String): TsChartHatch;
@@ -1177,6 +1260,20 @@ begin
     if SameText(Items[Result].Name, AName) then
       exit;
   Result := -1;
+end;
+
+function TsChartHatchList.NewPattern(AName: String): integer;
+var
+  item: TsChartHatch;
+begin
+  if AName = '' then
+    AName := 'Hatch' + IntToStr(Count+1);
+  Result := IndexOfName(AName);
+  if Result = -1 then
+  begin
+    item := TsChartHatch.Create;
+    Result := inherited Add(item);
+  end;
 end;
 
 procedure TsChartHatchList.SetItem(AIndex: Integer; AValue: TsChartHatch);

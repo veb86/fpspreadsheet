@@ -33,7 +33,7 @@
 This package is all you need if you don&apos;t want graphical components (such as grids and charts)."/>
     <License Value="LGPL with static linking exception. This is the same license as is used in the LCL (Lazarus Component Library)."/>
     <Version Major="1" Minor="17"/>
-    <Files Count="60">
+    <Files Count="61">
       <Item1>
         <Filename Value="source\fps.inc"/>
         <Type Value="Include"/>
@@ -307,12 +307,16 @@ This package is all you need if you don&apos;t want graphical components (such a
       </Item58>
       <Item59>
         <Filename Value="source\common\fpsopendocumentchart.pas"/>
-        <UnitName Value="fpsopendocumentchart"/>
+        <UnitName Value="fpsOpenDocumentChart"/>
       </Item59>
       <Item60>
         <Filename Value="source\common\xlsxooxmlchart.pas"/>
-        <UnitName Value="xlsxooxmlchart"/>
+        <UnitName Value="xlsxooxmlChart"/>
       </Item60>
+      <Item61>
+        <Filename Value="source\common\xlsxooxmlchart_hatch.inc"/>
+        <Type Value="Binary"/>
+      </Item61>
     </Files>
     <CompatibilityMode Value="True"/>
     <i18n>
