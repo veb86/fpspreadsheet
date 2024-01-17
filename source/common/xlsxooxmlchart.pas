@@ -528,6 +528,7 @@ var
   alpha: Double;
   gradient: TsChartGradient;
   color: TsColor;
+  hatch: string;
 begin
   if ANode = nil then
     exit;
@@ -584,6 +585,42 @@ begin
             child1 := child1.NextSibling;
           end;
           AFill.Gradient := AChart.Gradients.AddGradient('', gradient);
+        end;
+
+      // Hatched fill
+      'a:pattFill':
+        begin
+          AFill.Style := cfsSolidHatched;
+          hatch := GetAttrValue(ANode, 'prst');
+          child1 := ANode.FirstChild;
+          while Assigned(child1) do
+          begin
+            nodeName := child1.NodeName;
+            case nodeName of
+              'a:fgClr':
+                color := ReadChartColor(child1.FirstChild, scBlack);
+              'a:bgClr':
+                AFill.Color := ReadChartColor(child1.FirstChild, scWhite);
+            end;
+            child1 := child1.NextSibling;
+          end;
+
+          case hatch of
+            'ltDnDiag':
+              AFill.Hatch := AChart.Hatches.AddHatch('ltDnDiag', chsSingle, color, 1.0, -45);
+            'ltUpDiag':
+              AFill.Hatch := AChart.Hatches.AddHatch('ltUpDiag', chsSingle, color, 1.0, +45);
+            'ltHorz':
+              AFill.Hatch := AChart.Hatches.AddHatch('ltHorz', chsSingle, color, 1.0, 0);
+            'ltVert':
+              AFill.Hatch := AChart.Hatches.AddHatch('ltVert', chsSingle, color, 1.0, 90);
+            'smGrid':
+              AFill.Hatch := AChart.Hatches.AddHatch('smGrid', chsDouble, color, 1.0, 0);
+            'lgGrid':
+              AFill.Hatch := AChart.Hatches.AddHatch('lgGrid', chsDouble, color, 2.0, 0);
+            'openDmnd':
+              AFill.Hatch := AChart.Hatches.AddHatch('openDmnd', chsDouble, color, 2.0, 45);
+          end;
         end;
 
       // Line style

@@ -1434,7 +1434,7 @@ begin
         // vertical  |||
         if hatch.LineAngle = 90 then
         begin
-          PrepareCanvas(d, 0);
+          PrepareCanvas(d, 8);
           png.Canvas.Line(0, 0, 0, png.Height);
         end else
         // any angle
