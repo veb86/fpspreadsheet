@@ -49,6 +49,46 @@ implementation
 
 {$R *.lfm}
 
+uses
+  TypInfo,
+  TAChartUtils, TAChartAxis, TAChartAxisUtils, TACustomSeries, TATransformations;
+
+procedure PrintChartInfo(AChart: TChart);
+var
+  i, j: Integer;
+  T: TAxisTransform;
+  ax: TChartAxis;
+begin
+  for i := 0 to AChart.AxisList.Count-1 do
+  begin
+    ax := AChart.AxisList[i];
+    Writeln('Axis[',i, ']');
+    WriteLn('  Alignment: ', GetEnumName(TypeInfo(TChartAxisAlignment), integer(ax.Alignment)));
+
+    if ax.Marks.Source <> nil then
+    WriteLn('  Marks.Source.Count: ', ax.Marks.Source.Count, ' .Style: ', GetEnumName(TypeInfo(TSeriesMarksStyle), integer(ax.Marks.Style)));
+
+
+    WriteLn('  Transformations:');
+    if ax.Transformations <> nil then
+    begin
+      for T in ax.Transformations.List do
+      begin
+        WriteLn('    - ', T.ClassName, ' Enabled: ', T.Enabled);
+      end;
+    end else
+      WriteLn('    - none');
+  end;
+
+  for i := 0 to AChart.SeriesCount-1 do
+  begin
+    WriteLn('Series[',i,']: ', AChart.Series[i].ClassName);
+    WriteLn('  XAxisIndex: ', TChartSeries(AChart.Series[i]).AxisIndexX,
+            ', YAxisIndex: ', TChartSeries(AChart.Series[i]).AxisIndexY);
+    WriteLn('  Source.Count: ', TChartSeries(AChart.Series[i]).Source.Count);
+  end;
+end;
+
 { TForm1 }
 
 procedure TForm1.Button1Click(Sender: TObject);
@@ -125,6 +165,11 @@ begin
   sChartLink.Chart := Chart1;
   sChartLink.WorkbookSource := sWorkbookSource1;
   sChartLink.WorkbookChartIndex := 0;
+
+
+  // <<<<<<<<<<<<<<<<< to be removed again...
+  Chart1.Invalidate;
+  PrintChartInfo(Chart1);
 end;
 
 end.

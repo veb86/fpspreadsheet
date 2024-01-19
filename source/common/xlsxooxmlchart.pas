@@ -53,6 +53,8 @@ type
     procedure ReadChartSeriesRange(ANode: TDOMNode; ARange: TsChartRange);
     procedure ReadChartSeriesTitle(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesTrendLine(ANode: TDOMNode; ASeries: TsChartSeries);
+    procedure ReadChartStockSeries(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartStockSeriesUpDownBars(ANode: TDOMNode; ASeries: TsStockSeries);
     procedure ReadChartTitle(ANode: TDOMNode; ATitle: TsChartText);
 
   public
@@ -240,7 +242,13 @@ begin
       'c:title':
         ReadChartTitle(ANode.FirstChild, AChartAxis.Title);
       'c:numFmt':
-        ;
+        begin
+          s := GetAttrValue(ANode, 'formatCode');
+          if s = 'm/d/yyyy' then
+            AChartAxis.LabelFormat := FReader.Workbook.FormatSettings.ShortDateFormat
+          else
+            AChartAxis.LabelFormat := s;
+        end;
       'c:majorTickMark':
         AChartAxis.MajorTicks := ReadChartAxisTickMarks(ANode);
       'c:minorTickMark':
@@ -332,7 +340,7 @@ var
   nodeName: String;
   savedNode: TDOMNode;
   s: String;
-  w: Double;
+  n: Double;
   ser: TsBarSeries = nil;
 begin
   if ANode = nil then
@@ -386,8 +394,11 @@ begin
     s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:gapWidth':
-        if (s <> '') and TryStrToFloat(s, w, FPointSeparatorSettings) then
-          ser.BarWidthPercent := 10; //round(100/(100 + w) * 100);
+        if TryStrToFloat(s, n, FPointSeparatorSettings) then
+          ser.BarWidthPercent := round(100 / (1 + n/100));
+      'c:overlap':
+        if TryStrToFloat(s, n, FPointSeparatorSettings) then
+          ser.BarOffsetPercent := round(n);
     end;
     ANode := ANode.NextSibling;
   end;
@@ -1080,6 +1091,7 @@ var
   workNode: TDOMNode;
   isScatterChart: Boolean = false;
   catAxCounter: Integer = 0;
+  dateAxCounter: Integer = 0;
   valAxCounter: Integer = 0;
 begin
   if ANode = nil then
@@ -1119,6 +1131,26 @@ begin
           end;
           inc(catAxCounter);
         end;
+      'c:dateAx':
+        begin
+          case dateAxCounter of
+            0: begin
+                 ReadChartAxis(workNode.FirstChild, AChart, AChart.XAxis, FXAxisID, FXAxisDelete);
+                 AChart.XAxis.DateTime := true;
+               end;
+            1: begin
+                 ReadChartAxis(workNode.FirstChild, AChart, AChart.X2Axis, FX2AxisID, FX2AxisDelete);
+                 AChart.X2Axis.DateTime := true;
+               end;
+          end;
+          inc(dateAxCounter);
+          if (dateAxCounter > 1) and (AChart.X2Axis.Alignment = AChart.XAxis.Alignment) and FX2AxisDelete then
+          begin
+            // Force using only a single x axis in this case.
+            FX2AxisID := FXAxisID;
+            AChart.X2Axis.Visible := false;
+          end;
+        end;
       'c:valAx':
         begin
           if isScatterChart then
@@ -1140,17 +1172,11 @@ begin
               FX2AxisID := FXAxisID;
               AChart.X2Axis.Visible := false;
             end;
-            if (AChart.Y2Axis.Alignment = AChart.YAxis.Alignment) and FY2AxisDelete then
-            begin
-              // ... and dto. with y axis (not tested, did not find a sample file for it).
-              FY2AxisID := FYAxisID;
-              AChart.Y2Axis.Visible := false;
-            end;
           end else
           begin
             case valAxCounter of
               0: ReadChartAxis(workNode.FirstChild, AChart, AChart.YAxis, FYAxisID,  FYAxisDelete);
-              1: ReadChartAxis(workNode.FirstChild, AChart, AChart.YAxis, FY2AxisID, FY2AxisDelete);
+              1: ReadChartAxis(workNode.FirstChild, AChart, AChart.Y2Axis, FY2AxisID, FY2AxisDelete);
             end;
           end;
           inc(valAxCounter);
@@ -1174,6 +1200,8 @@ begin
         ReadChartLineSeries(workNode.FirstChild, AChart);
       'c:scatterChart':
         ReadChartScatterSeries(workNode.FirstChild, AChart);
+      'c:stockChart':
+        ReadChartStockSeries(workNode.FirstChild, AChart);
       'c:spPr':
         ReadChartFillAndLineProps(workNode.FirstChild, AChart, AChart.PlotArea.Background, AChart.PlotArea.Border);
     end;
@@ -1458,7 +1486,8 @@ begin
       'c:xVal':
         ReadChartSeriesRange(ANode.FirstChild, ASeries.XRange);
       'c:val', 'c:yVal':
-        ReadChartSeriesRange(ANode.FirstChild, ASeries.YRange);
+        if ASeries.YRange.IsEmpty then  // TcStockSeries already has read the y range...
+          ReadChartSeriesRange(ANode.FirstChild, ASeries.YRange);
       'c:bubbleSize':
         if ASeries is TsBubbleSeries then
           ReadChartSeriesRange(ANode.FirstChild, TsBubbleSeries(ASeries).BubbleRange);
@@ -1481,6 +1510,12 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Reads the cell range for a series.
+
+  @@param  ANode   First child of a <c:val>, <c:yval> or <c:cat> node below <c:ser>.
+  @@param  ARange  Cell range to which the range parameters will be assigned.
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesRange(ANode: TDOMNode; ARange: TsChartRange);
 var
   nodeName, s: String;
@@ -1615,6 +1650,118 @@ begin
             child := child.NextSibling;
           end;
         end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+procedure TsSpreadOOXMLChartReader.ReadChartStockSeries(ANode: TDOMNode;
+  AChart: TsChart);
+var
+  ser: TsStockSeries;
+  nodeName: String;
+  sernode, child: TDOMNode;
+  rangeLine: TsChartLine = nil;
+begin
+  if ANode = nil then
+    exit;
+
+  ser := TsStockSeries.Create(AChart);
+
+  // Collecting the ranges which make up the stock series. Note that in Excel's
+  // HLC series there are three ranges for high, low and close, while for the
+  // OHLC series (candle stick) the first series is for "open". Therefore, we
+  // iterate the siblings of ANode from the end.
+  serNode := ANode.ParentNode.LastChild;
+  while Assigned(serNode) do
+  begin
+    nodeName := serNode.NodeName;
+    case nodeName of
+      'c:ser':
+        begin
+          child := serNode.FirstChild;
+          while Assigned(child) do
+          begin
+            nodeName := child.NodeName;
+            case nodeName of
+              {
+              'c:cat':  // is read by ReadChartSeriesProps
+                ReadChartSeriesRange(child.FirstChild, ser.LabelRange);
+                }
+              'c:val':
+                if ser.CloseRange.IsEmpty then
+                  ReadChartSeriesRange(child.FirstChild, ser.CloseRange)
+                else if ser.LowRange.IsEmpty then
+                  ReadChartSeriesRange(child.FirstChild, ser.LowRange)
+                else if ser.HighRange.IsEmpty then
+                  ReadChartSeriesRange(child.FirstChild, ser.HighRange)
+                else if ser.OpenRange.IsEmpty then
+                begin
+                  ReadChartSeriesRange(child.FirstChild, ser.OpenRange);
+                  ser.CandleStick := true;
+                end;
+            end;
+            child := child.NextSibling;
+          end;
+        end;
+    end;
+    serNode := serNode.PreviousSibling;  // we must run backward
+  end;
+
+  ReadChartSeriesProps(ANode.FirstChild, ser);
+
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:hiLowLines':
+        begin
+          child := ANode.FirstChild;
+          if Assigned(child) then
+            ReadChartLineProps(child.FirstChild, AChart, ser.Rangeline);
+        end;
+      'c:upDownBars':
+        ReadChartStockSeriesUpDownBars(ANode.FirstChild, ser);
+      'c:axId':
+        ReadChartSeriesAxis(ANode, ser);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Reads the formatting of the stockseries candlesticks
+
+  @@param   ANode     First child of <c:upDownBars>
+  @@param   ASeries   Series to which the parameters will be applied
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartStockSeriesUpDownBars(ANode: TDOMNode;
+  ASeries: TsStockSeries);
+var
+  nodeName, s: String;
+  n: Double;
+  child: TDOMNode;
+begin
+  if ANode = nil then
+    exit;
+
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    child := ANode.FirstChild;
+    case nodeName of
+      'c:gapWidth':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if TryStrToFloat(s, n, FPointSeparatorSettings) then
+            ASeries.TickWidthPercent := round(100 / (1 + n/100));
+        end;
+      'c:upBars':
+        if Assigned(child) then
+          ReadChartFillAndLineProps(child.FirstChild, ASeries.Chart, ASeries.CandleStickUpFill, ASeries.CandlestickUpBorder);
+      'c:downBars':
+        if Assigned(child) then
+          ReadChartFillAndLineProps(child.FirstChild, ASeries.Chart, ASeries.CandleStickDownFill, ASeries.CandlestickDownBorder);
     end;
     ANode := ANode.NextSibling;
   end;

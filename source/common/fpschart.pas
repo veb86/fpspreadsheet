@@ -678,7 +678,7 @@ type
     property BubbleSizeMode: TsBubbleSizeMode read FBubbleSizeMode write FBubbleSizeMode;
   end;
 
-  TsStockSeries = class(TsCustomScatterSeries)
+  TsStockSeries = class(TsChartSeries)  //CustomScatterSeries)
   private
     FCandleStick: Boolean;
     FOpenRange: TsChartRange;
@@ -687,6 +687,7 @@ type
     FCandleStickDownFill: TsChartFill;
     FCandleStickDownBorder: TsChartLine;
     FCandleStickUpBorder: TsChartLine;
+    FTickWidthPercent: Integer;
     // fill is CandleStickUpFill, line is RangeLine
   public
     constructor Create(AChart: TsChart); override;
@@ -704,6 +705,7 @@ type
     property CandleStickUpFill: TsChartFill read FFill write FFill;
     property CandleStickDownBorder: TsChartLine read FCandleStickDownBorder write FCandleStickDownBorder;
     property CandleStickUpBorder: TsChartLine read FCandleStickUpBorder write FCandleStickUpBorder;
+    property TickWidthPercent: Integer read FTickWidthPercent write FTickWidthPercent;
     property RangeLine: TsChartLine read FLine write FLine;
     property OpenRange: TsChartRange read FOpenRange;
     property HighRange: TsChartRange read FHighRange;
@@ -2478,6 +2480,7 @@ begin
   FCandleStickUpBorder.Color := scBlack;
   FLine.Style := clsSolid;
   FLine.Color := scBlack;
+  FTickWidthPercent := 50;
 end;
 
 destructor TsStockSeries.Destroy;

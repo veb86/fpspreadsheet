@@ -1174,7 +1174,7 @@ begin
           Result := TStockSeries.Create(FChart);
           src.YCount := 4;
           src.IntegerX := true;
-          src.SetXRange(0, ASeries.Chart.XAxis.CategoryRange);
+          //src.SetLabelRange(0, TsStockSeries(ASeries).LabelRange);
           src.SetYRange(0, TsStockSeries(ASeries).LowRange);   // 0=Low
           src.SetYRange(1, TsStockSeries(ASeries).OpenRange);  // 1=Open
           src.SetYRange(2, TsStockSeries(ASeries).CloseRange); // 2=Close (= Y)
@@ -2079,8 +2079,22 @@ procedure TsWorkbookChartLink.UpdateChartAxisLabels(AWorkbookChart: TsChart);
     end;
   end;
 
+  function FindFirstSeriesOfType(ASeriesClass: TSeriesClass): TBasicChartSeries;
+  var
+    i: Integer;
+  begin
+    for i := 0 to FChart.Series.Count-1 do
+      if FChart.Series[i] is ASeriesClass then
+      begin
+        Result := FChart.Series[i] as ASeriesClass;
+        exit;
+      end;
+    Result := nil;
+  end;
+
 var
   axis: TChartAxis;
+  ser: TBasicChartSeries;
   i: Integer;
   value: Double;
 begin
@@ -2132,8 +2146,15 @@ begin
         else
           axis.Marks.Style := smsXValue;
       end;
+    ctStock:
+      begin
+        ser := FindFirstSeriesOfType(TStockSeries);
+        if Assigned(ser) then
+          FChart.BottomAxis.Marks.Source := TChartSeries(ser).Source;
+        FChart.BottomAxis.Marks.Style := smsLabel;
+      end;
   end;
-
+                 (*
   // Date/time?
   if AWorkbookChart.XAxis.DateTime then
   begin
@@ -2143,8 +2164,10 @@ begin
     begin
       Params.MaxLength := 120;
       SuppressPrevUnit := false;
+      DateTimeFormat := AWorkbookChart.XAxis.LabelFormat;
     end;
   end;
+  *)
 end;
 
 procedure TsWorkbookChartLink.UpdateChartBackground(AWorkbookChart: TsChart);
@@ -2591,6 +2614,7 @@ begin
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.LinePen);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.DownLinePen);
   AChartSeries.TickWidthStyle := twsPercentMin;
+  AChartSeries.TickWidth := AWorkbookSeries.TickWidthPercent div 2;
 
   // Regression/trend line
   UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
