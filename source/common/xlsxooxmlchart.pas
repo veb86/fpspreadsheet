@@ -43,6 +43,7 @@ type
     procedure ReadChartBubbleSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartLegend(ANode: TDOMNode; AChartLegend: TsChartLegend);
     procedure ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartPieSeries(ANode: TDOMNode; AChart: TsChart; RingMode: Boolean);
     procedure ReadChartPlotArea(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartScatterSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartSeriesAxis(ANode: TDOMNode; ASeries: TsChartSeries);
@@ -1007,6 +1008,51 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Creates a pie series and reads its properties
+
+  @@param   ANode   First child of the <c:pieChart> node
+  @@param   AChart  Chart to which the series will be attached
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartPieSeries(ANode: TDOMNode;
+  AChart: TsChart; RingMode: Boolean);
+var
+  nodeName, s: String;
+  ser: TsPieSeries;
+  x: Double;
+begin
+  if ANode = nil then
+    exit;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:ser':
+        begin
+          if RingMode then
+            ser := TsRingSeries.Create(AChart)
+          else
+            ser := TsPieSeries.Create(AChart);
+          ReadChartSeriesProps(ANode.FirstChild, ser);
+        end;
+      'c:firstSliceAng':
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if TryStrToFloat(s, x, FPointSeparatorSettings) then
+            ser.StartAngle := round(x);
+        end;
+      'c:holeSize':
+        if RingMode then
+        begin
+          s := GetAttrValue(ANode, 'val');
+          if TryStrToFloat(s, x, FPointSeparatorSettings) then
+            TsRingSeries(ser).InnerRadiusPercent := round(x);
+        end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Reads the properties of the series marker
 
   @@param  ANode    Points to the <c:marker> subnode of <c:ser> node
@@ -1097,8 +1143,8 @@ begin
   if ANode = nil then
     exit;
 
-  // We need to know first whether the chart is a scatterchart because the
-  // assignment of axes depends on it.
+  // We need to know first whether the chart is a scatterchart because the way
+  // how the axes are assigned is special here.
   isScatterChart := false;
   workNode := ANode;
   while Assigned(workNode) do
@@ -1198,6 +1244,8 @@ begin
         ReadChartBubbleSeries(workNode.FirstChild, AChart);
       'c:lineChart':
         ReadChartLineSeries(workNode.FirstChild, AChart);
+      'c:pieChart', 'c:doughnutChart':
+        ReadChartPieSeries(workNode.FirstChild, AChart, nodeName = 'c:doughnutChart');
       'c:scatterChart':
         ReadChartScatterSeries(workNode.FirstChild, AChart);
       'c:stockChart':

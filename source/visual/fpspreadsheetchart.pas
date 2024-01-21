@@ -1167,7 +1167,7 @@ begin
           Result := TBubbleSeries.Create(FChart);
           src.SetYRange(1, TsBubbleSeries(ASeries).BubbleRange);  // The radius is at YIndex 1
         end;
-      ctPie:
+      ctPie, ctRing:
         Result := TPieSeries.Create(FChart);
       ctStock:
         begin

@@ -2667,12 +2667,180 @@ var
   node, child, child2, child3: TDOMNode;
   nodeName: String = '';
   rID, fileName: String;
+  xPos, yPos, horExt, vertExt: Double;
   fromCol, fromRow, toCol, toRow: Integer;
   fromColOffs, fromRowOffs, toColOffs, toRowOffs: Double;
   isChart: Boolean;
   data: TEmbeddedObjData;
   sheetData: TSheetData;
   graphicFrameName: String;
+
+  procedure ReadXdrFromTo(ANode: TDOMNode;
+    out ARow, ACol: Integer; out ARowOffs, AColOffs: Double);
+  var
+    nodeName: string;
+  begin
+    if ANode = nil then
+      exit;
+    while Assigned(ANode) do begin
+      nodeName := ANode.NodeName;
+      case nodeName of
+        'xdr:col':
+          ACol := StrToIntDef(GetNodeValue(ANode), -1);
+        'xdr:row':
+          ARow := StrToIntDef(GetNodeValue(ANode), -1);
+        'xdr:colOff':
+          AColOffs := EMUToMM(StrToInt64Def(GetNodeValue(ANode), 0));
+        'xdr:rowOff':
+          ARowOffs := EMUToMM(StrToInt64Def(GetNodeValue(ANode), 0));
+      end;
+      ANode := ANode.NextSibling;
+    end;
+  end;
+
+  procedure ReadXdrPic(ANode: TDOMNode; out rId: String; out AFileName: String);
+  var
+    nodeName: String;
+    child: TDOMNode;
+  begin
+    if ANode = nil then
+      exit;
+    while Assigned(ANode) do
+    begin
+      nodeName := ANode.NodeName;
+      case nodeName of
+        'xdr:blipFill':
+          begin
+            child := ANode.FirstChild;
+            while Assigned(child) do
+            begin
+              nodeName := child.NodeName;
+              if nodeName = 'a:blip' then
+                rID := GetAttrValue(child, 'r:embed');
+              child := child.NextSibling;
+            end;
+          end;
+        'xdr:nvPicPr':
+          begin
+            child := ANode.FirstChild;
+            while Assigned(child) do
+            begin
+              nodeName := child.NodeName;
+              if nodeName = 'xdr:cNvPr' then
+                AFileName := GetAttrValue(child, 'descr');
+              child := child.NextSibling;
+            end;
+          end;
+      end;
+      ANode := ANode.NextSibling;
+    end;
+  end;
+
+  procedure ReadXdrGraphicFrame(ANode: TDOMNode; out AGraphicFrameName: String;
+    out rID: String; out IsChart: Boolean);
+  var
+    nodeName: String;
+    child, child2: TDOMNode;
+  begin
+    if ANode = nil then
+      exit;
+    while Assigned(ANode) do
+    begin
+      nodeName := ANode.NodeName;
+      case nodeName of
+        'xdr:nvGraphicFramePr':
+          begin
+            child := ANode.FirstChild;
+            while Assigned(child) do
+            begin
+              nodeName := child.NodeName;
+              if nodeName = 'xdr:cNvPr' then
+              begin
+                AGraphicFrameName := GetAttrValue(child, 'name');
+              end;
+              child := child.NextSibling;
+            end;
+          end;
+        'a:graphic':
+          begin
+            child := ANode.FirstChild;
+            while Assigned(child) do
+            begin
+              nodename := child.Nodename;
+              if nodename = 'a:graphicData' then
+              begin
+                child2 := child.Firstchild;
+                while Assigned(child2) do
+                begin
+                  nodeName := child2.NodeName;
+                  if nodename = 'c:chart' then
+                  begin
+                    rId := GetAttrValue(child2, 'r:id');
+                    if rId <> '' then
+                    begin
+                      isChart := true;
+                    end;
+                  end;
+                  child2 := child2.NextSibling;
+                end;
+              end;
+              child := child.NextSibling;
+            end;
+          end;
+      end;
+      ANode := ANode.NextSibling;
+    end;
+  end;
+
+      {
+      child := node.FirstChild;
+      while Assigned(child) do
+      begin
+        nodeName := child.NodeName;
+        if nodeName = 'xdr:nvGraphicFramePr' then
+        begin
+          child2 := child.FirstChild;
+          while Assigned(child2) do
+          begin
+            nodeName := child2.NodeName;
+            if nodeName = 'xdr:cNvPr' then
+            begin
+              graphicFrameName := GetAttrValue(child2, 'name');
+            end;
+            child2 := child2.NextSibling;
+          end;
+        end else
+        if nodeName = 'a:graphic' then
+        begin
+          child2 := child.FirstChild;
+          while Assigned(child2) do
+          begin
+            nodename := child2.Nodename;
+            if nodename = 'a:graphicData' then
+            begin
+              child3 := child2.Firstchild;
+              while Assigned(child3) do
+              begin
+                nodeName := child3.NodeName;
+                if nodename = 'c:chart' then
+                begin
+                  rId := GetAttrValue(child3, 'r:id');
+                  if rId <> '' then
+                  begin
+                    isChart := true;
+                  end;
+                end;
+                child3 := child3.NextSibling;
+              end;
+            end;
+            child2 := child2.NextSibling;
+          end;
+        end;
+        child := child.NextSibling;
+      end;
+    end;
+    }
+
 begin
   if ANode = nil then
     exit;
@@ -2690,71 +2858,54 @@ begin
     rID := '';         fileName := '';
     isChart := false;
     graphicFrameName := '';
+    if nodeName = 'xdr:absoluteAnchor' then
+    begin
+      node := ANode.FirstChild;
+      while Assigned(node) do begin
+        nodeName := node.NodeName;
+        case nodeName of
+          'xdr:pos':
+            begin
+              xpos := EMUToMM(StrToInt64Def(GetAttrValue(node, 'x'), 0));
+              ypos := EMUToMM(StrToInt64Def(GetAttrValue(node, 'y'), 0));
+            end;
+          'xdr:ext':
+            begin
+              horExt := EMUToMM(StrToInt64Def(GetAttrValue(node, 'cx'), 0));
+              vertExt := EMUToMM(StrToInt64Def(GetAttrValue(node, 'cy'), 0));
+            end;
+          'xdr:graphicFrame':
+            ReadXdrGraphicFrame(node.FirstChild, graphicFrameName, rID, isChart);
+        end;
+        node := node.NextSibling
+      end;
+
+      // fix me: Calculate fromRow/fromCol and toRow/toCol from xpos/ypos/horExxt/vertExt
+      fromRow := 0;
+      fromCol := 0;
+      toRow := 10;
+      toCol := 10;
+    end
+    else
     if nodeName = 'xdr:twoCellAnchor' then
     begin
       node := ANode.FirstChild;
       while Assigned(node) do begin 
         nodeName := node.NodeName;
-        if nodeName = 'xdr:from' then
-        begin
-          child := node.FirstChild;
-          while Assigned(child) do begin
-            nodeName := child.NodeName;
-            if nodeName = 'xdr:col' then
-              fromCol := StrToIntDef(GetNodeValue(child), -1)
-            else if nodeName = 'xdr:row' then
-              fromRow := StrToIntDef(GetNodeValue(child), -1)
-            else if nodeName = 'xdr:colOff' then
-              fromColOffs := EMUToMM(StrToInt64Def(GetNodeValue(child), 0))
-            else if nodeName = 'xdr:rowOff' then
-              fromRowOffs := EMUToMM(StrToInt64Def(GetNodeValue(child), 0));
-            child := child.NextSibling;
-          end;
-        end else 
-        if nodeName = 'xdr:to' then
-        begin
-          child := node.FirstChild;
-          while Assigned(child) do begin
-            nodeName := child.NodeName;
-            if nodeName = 'xdr:col' then
-              toCol := StrToIntDef(GetNodeValue(child), -1)
-            else if nodeName = 'xdr:row' then
-              toRow := StrToIntDef(GetNodeValue(child), -1)
-            else if nodeName = 'xdr:colOff' then
-              toColOffs := EMUToMM(StrToInt64Def(GetNodeValue(child), 0))
-            else if nodeName = 'xdr:rowOff' then
-              toRowOffs := EMUToMM(StrToInt64Def(GetNodeValue(child), 0));
-            child := child.NextSibling;
-          end;
-        end else
-        if nodeName = 'xdr:pic' then
-        begin
-          child := node.FirstChild;
-          while Assigned(child) do begin
-            nodeName := child.NodeName;
-            if nodeName = 'xdr:blipFill' then
-            begin
-              child2 := child.FirstChild;
-              while Assigned(child2) do begin
-                nodeName := child2.NodeName;
-                if nodeName = 'a:blip' then
-                  rID := GetAttrValue(child2, 'r:embed');
-                child2 := child2.NextSibling;
-              end;
-            end else
-            if nodeName = 'xdr:nvPicPr' then begin
-              child2 := child.FirstChild;
-              while Assigned(child2) do begin
-                nodeName := child2.NodeName;
-                if nodeName = 'xdr:cNvPr' then
-                  fileName := GetAttrValue(child2, 'descr');
-                child2 := child2.NextSibling;
-              end;
-            end;
-            child := child.NextSibling;
-          end;
-        end else
-        if nodeName = 'xdr:graphicFrame' then
+        case nodeName of
+          'xdr:from':
+            ReadXdrFromTo(node.FirstChild, fromRow, fromCol, fromRowOffs, fromColOffs);
+          'xdr:to':
+            ReadXdrFromTo(node.FirstChild, toRow, toCol, toRowOffs, toColOffs);
+          'xdr:pic':
+            ReadXdrPic(node.FirstChild, rID, filename);
+          'xdr:graphicFrame':
+            ReadXdrGraphicFrame(node.FirstChild, graphicFrameName, rID, isChart);
+        end;
+        node := node.NextSibling;
+      end;
+    end;
+    (*
         begin
           child := node.FirstChild;
           while Assigned(child) do
@@ -2804,7 +2955,7 @@ begin
         end;
         node := node.NextSibling;
       end;
-    end;
+      *)
     
     if (fromCol <> -1) and (toCol <> -1) and (fromRow <> -1) and (toRow <> -1) and (rID <> '') then
     begin
