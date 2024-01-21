@@ -644,7 +644,7 @@ begin
 
   if cell <> nil then
     case cell^.ContentType of
-      cctUTF8String:
+      cctUTF8String, cctDateTime:     // !!! Simplification here: we do not support real date values
         begin
           ANumber := APointIndex;
           AText := FWorksheets[ARangeIndex, AListIndex].ReadAsText(cell);
@@ -2611,6 +2611,7 @@ begin
   begin
     AChartSeries.Mode := mOHLC;
   end;
+
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.LinePen);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.RangeLine, AChartSeries.DownLinePen);
   AChartSeries.TickWidthStyle := twsPercentMin;

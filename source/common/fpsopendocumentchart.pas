@@ -1435,6 +1435,7 @@ begin
       'chart:radar': series := TsRadarSeries.Create(AChart);
       'chart:ring': series := TsRingSeries.Create(AChart);
       'chart:scatter': series := TsScatterSeries.Create(AChart);
+      // 'chart:stock': --- has been created already
       else raise Exception.Create('Unknown/unsupported series type.');
     end;
 
