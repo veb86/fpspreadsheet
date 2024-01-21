@@ -5031,10 +5031,12 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
         if nodeName = 'draw:object' then
         begin
           // Is it a chart?
+          if href[Length(href)] <> '/' then
+            href := href + '/';
           for i := 0 to FManifestFileEntries.Count-1 do
           begin
             entry := TsOpenDocManifestFileEntry(FManifestFileEntries[i]);
-            if entry.IsChartRoot and ('./' + entry.FileName = href + '/') then
+            if entry.IsChartRoot and ((entry.FileName = href) or ('./' + entry.FileName = href)) then
             begin
               (FWorksheet as TsWorksheet).CalcObjectCell(x, y, w, h, r, c, dy, dx);
               chart := (FWorkbook as TsWorkbook).AddChart(FWorksheet, r, c, w, h, dx, dy);

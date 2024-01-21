@@ -2578,6 +2578,9 @@ begin
   FHatches := TsChartHatchList.Create;
   FImages := TsChartImageList.Create;
 
+
+  fgradients.AddLinearGradient('g1', scRed, scBlue, 0, 0, 1, 1, 0, 0);
+
   FSheetIndex := 0;
   FRow := 0;
   FCol := 0;

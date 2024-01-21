@@ -880,7 +880,10 @@ begin
   if (s <> '') and TryStrToCellRange_ODS(s, sh1, sh2, r1, c1, r2, c2, relFlags) then
   begin
     ARange.Sheet1 := sh1;
-    ARange.Sheet2 := sh2;
+    if (sh2 = '') and (ARange.Sheet1 <> '') then
+      ARange.Sheet2 := ARange.Sheet1
+    else
+      ARange.Sheet2 := sh2;
     ARange.Row1 := r1;
     ARange.Col1 := c1;
     ARange.Row2 := r2;
