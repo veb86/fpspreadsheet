@@ -41,6 +41,7 @@ type
     function ReadChartAxisTickMarks(ANode: TDOMNode): TsChartAxisTicks;
     procedure ReadChartBarSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartBubbleSeries(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartSeriesDataPointStyles(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartLegend(ANode: TDOMNode; AChartLegend: TsChartLegend);
     procedure ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartPieSeries(ANode: TDOMNode; AChart: TsChart; RingMode: Boolean);
@@ -808,6 +809,39 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Reads the individual data point styles of a series.
+
+  @param  ANode    First child of the <c:dPt> node
+  @param  ASeries  Series to which these data points belong
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartreader.ReadChartSeriesDataPointStyles(ANode: TDOMNode;
+  ASeries: TsChartSeries);
+var
+  nodename, s: String;
+  fill: TsChartFill;
+  line: TsChartLine;
+begin
+  if ANode = nil then
+    exit;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:spPr':
+        begin
+          fill := TsChartFill.Create;  // will be destroyed by the chart!
+          line := TsChartLine.Create;
+          ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, fill, line);
+          ASeries.DataPointStyles.AddFillAndLine(fill, line);
+        end;
+      'c:explosion':
+        ; // in case of pie series: movement of individual sector away from center
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Extracts the legend properties
 
   @param  ANode         This is the "c:legend" node
@@ -1038,7 +1072,7 @@ begin
         begin
           s := GetAttrValue(ANode, 'val');
           if TryStrToFloat(s, x, FPointSeparatorSettings) then
-            ser.StartAngle := round(x);
+            ser.StartAngle := round(x) + 90;
         end;
       'c:holeSize':
         if RingMode then
@@ -1545,6 +1579,8 @@ begin
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.Fill, ASeries.Line);
       'c:dLbls':
         ReadChartSeriesLabels(ANode.FirstChild, ASeries);
+      'c:dPt':
+        ReadChartSeriesDataPointStyles(ANode.FirstChild, ASeries);
       'c:trendline':
         ReadChartSeriesTrendLine(ANode.FirstChild, ASeries);
       'c:errBars':
