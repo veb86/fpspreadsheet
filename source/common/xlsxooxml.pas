@@ -2905,58 +2905,7 @@ begin
         node := node.NextSibling;
       end;
     end;
-    (*
-        begin
-          child := node.FirstChild;
-          while Assigned(child) do
-          begin
-            nodeName := child.NodeName;
-            if nodeName = 'xdr:nvGraphicFramePr' then
-            begin
-              child2 := child.FirstChild;
-              while Assigned(child2) do
-              begin
-                nodeName := child2.NodeName;
-                if nodeName = 'xdr:cNvPr' then
-                begin
-                  graphicFrameName := GetAttrValue(child2, 'name');
-                end;
-                child2 := child2.NextSibling;
-              end;
-            end else
-            if nodeName = 'a:graphic' then
-            begin
-              child2 := child.FirstChild;
-              while Assigned(child2) do
-              begin
-                nodename := child2.Nodename;
-                if nodename = 'a:graphicData' then
-                begin
-                  child3 := child2.Firstchild;
-                  while Assigned(child3) do
-                  begin
-                    nodeName := child3.NodeName;
-                    if nodename = 'c:chart' then
-                    begin
-                      rId := GetAttrValue(child3, 'r:id');
-                      if rId <> '' then
-                      begin
-                        isChart := true;
-                      end;
-                    end;
-                    child3 := child3.NextSibling;
-                  end;
-                end;
-                child2 := child2.NextSibling;
-              end;
-            end;
-            child := child.NextSibling;
-          end;
-        end;
-        node := node.NextSibling;
-      end;
-      *)
-    
+
     if (fromCol <> -1) and (toCol <> -1) and (fromRow <> -1) and (toRow <> -1) and (rID <> '') then
     begin
       data := TEmbeddedObjData.Create;

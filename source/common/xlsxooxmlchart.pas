@@ -46,6 +46,7 @@ type
     procedure ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartPieSeries(ANode: TDOMNode; AChart: TsChart; RingMode: Boolean);
     procedure ReadChartPlotArea(ANode: TDOMNode; AChart: TsChart);
+    procedure ReadChartRadarSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartScatterSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartSeriesAxis(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesErrorBars(ANode: TDOMNode; ASeries: TsChartSeries);
@@ -985,6 +986,13 @@ begin
     AChartLine.Style := clsNoLine;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a line series and reads its properties
+  In contrast to a scatter series, a line series has equidistance x values!
+
+  @@param   ANode   First child of the <c:lineChart> node
+  @@param   AChart  Chart to which the series will be attached
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartReader.ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
 var
   nodeName: String;
@@ -1003,7 +1011,6 @@ begin
       'c:ser':
         begin
           ser := TsLineSeries.Create(AChart);
-          ReadChartSeriesMarker(ANode.FirstChild, TsLineSeries(ser));
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:grouping':
@@ -1020,8 +1027,10 @@ begin
         ;
       'c:gapWidth':
         ;
+      {
       'c:axId':
         ReadChartSeriesAxis(ANode, ser);
+        }
     end;
     ANode := ANode.NextSibling;
   end;
@@ -1089,70 +1098,58 @@ end;
 {@@ ----------------------------------------------------------------------------
   Reads the properties of the series marker
 
-  @@param  ANode    Points to the <c:marker> subnode of <c:ser> node
+  @@param  ANode    Points to the <c:marker> subnode of <c:ser> node, or to the first child of the <c:marker> node.
   @@param  ASeries  Instance of the TsCustomLineSeries created by ReadChartLineSeries
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesMarker(ANode: TDOMNode; ASeries: TsCustomLineSeries);
 var
   nodeName, s: String;
-  child: TDOMNode;
   n: Integer;
 begin
   if ANode = nil then
     exit;
+
+  nodeName := ANode.NodeName;
+  if nodeName = 'c:marker' then
+    ANode := ANode.FirstChild;
+
+  TsOpenCustomLineSeries(ASeries).ShowSymbols := true;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
     case nodeName of
-      'c:marker':
-        begin
-          TsOpenCustomLineseries(ASeries).ShowSymbols := true;
-          child := ANode.FirstChild;
-          while Assigned(child) do
-          begin
-            nodeName := child.NodeName;
-            case nodeName of
-              'c:symbol':
-                begin
-                  s := GetAttrValue(child, 'val');
-                  with TsOpenCustomLineSeries(ASeries) do
-                    case s of
-                      'none': ShowSymbols := false;
-                      'square': Symbol := cssRect;
-                      'circle': Symbol := cssCircle;
-                      'diamond': Symbol := cssDiamond;
-                      'triangle': Symbol := cssTriangle;
-                      'star': Symbol := cssStar;
-                      'x': Symbol := cssX;
-                      'plus': Symbol := cssPlus;
-                      'dash': Symbol := cssDash;
-                      'dot': Symbol := cssDot;
-                      'picture': Symbol := cssAsterisk;
-                        // to do: read following blipFill node to determine the
-                        // bitmap to be used for symbol
-                      else
-                        Symbol := cssAsterisk
-                    end;
-                end;
-
-              'c:size':
-                begin
-                  s := GetAttrValue(child, 'val');
-                  if (s <> '') and TryStrToInt(s, n) then
-                    with TsOpenCustomlineSeries(ASeries) do
-                    begin
-                      SymbolWidth := PtsToMM(n div 2);
-                      SymbolHeight := SymbolWidth;
-                    end;
-                end;
-
-              'c:spPr':
-                with TsOpenCustomLineSeries(ASeries) do
-                  ReadChartFillAndLineProps(child.FirstChild, Chart, SymbolFill, SymbolBorder);
-            end;
-            child := child.NextSibling;
-          end;
+      'c:symbol':
+        with TsOpenCustomLineSeries(ASeries) do
+          case s of
+            'none': ShowSymbols := false;
+            'square': Symbol := cssRect;
+            'circle': Symbol := cssCircle;
+            'diamond': Symbol := cssDiamond;
+            'triangle': Symbol := cssTriangle;
+            'star': Symbol := cssStar;
+            'x': Symbol := cssX;
+            'plus': Symbol := cssPlus;
+            'dash': Symbol := cssDash;
+            'dot': Symbol := cssDot;
+            'picture': Symbol := cssAsterisk;
+            // to do: read following blipFill node to determine the
+            // bitmap to be used for symbol
+          else
+            Symbol := cssAsterisk;
         end;
+
+      'c:size':
+        if TryStrToInt(s, n) then
+          with TsOpenCustomlineSeries(ASeries) do
+          begin
+            SymbolWidth := PtsToMM(n div 2);
+            SymbolHeight := SymbolWidth;
+          end;
+
+      'c:spPr':
+        with TsOpenCustomLineSeries(ASeries) do
+          ReadChartFillAndLineProps(ANode.FirstChild, Chart, SymbolFill, SymbolBorder);
     end;
     ANode := ANode.NextSibling;
   end;
@@ -1280,6 +1277,8 @@ begin
         ReadChartLineSeries(workNode.FirstChild, AChart);
       'c:pieChart', 'c:doughnutChart':
         ReadChartPieSeries(workNode.FirstChild, AChart, nodeName = 'c:doughnutChart');
+      'c:radarChart':
+        ReadChartRadarSeries(workNode.FirstChild, AChart);
       'c:scatterChart':
         ReadChartScatterSeries(workNode.FirstChild, AChart);
       'c:stockChart':
@@ -1288,6 +1287,39 @@ begin
         ReadChartFillAndLineProps(workNode.FirstChild, AChart, AChart.PlotArea.Background, AChart.PlotArea.Border);
     end;
     workNode := workNode.NextSibling;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Creates a radar series and reads its parameters
+
+  @param  ANode   Child of a <c:radarChart> node.
+  @param  AChart  Chart into which the series will be inserted.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartReader.ReadChartRadarSeries(ANode: TDOMNode; AChart: TsChart);
+var
+  nodeName: String;
+  ser: TsRadarSeries;
+  radarStyle: String = '';
+begin
+  if ANode = nil then
+    exit;
+
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'c:radarStyle':
+        radarStyle := GetAttrValue(ANode, 'val');
+      'c:ser':
+        begin
+          ser := TsRadarSeries.Create(AChart);
+          ReadChartSeriesProps(ANode.FirstChild, ser);
+          if radarStyle <> 'filled' then
+            ser.Fill.Style := cfsNoFill;
+        end;
+    end;
+    ANode := ANode.NextSibling;
   end;
 end;
 
@@ -1315,7 +1347,6 @@ begin
       'c:ser':
         begin
           ser := TsScatterSeries.Create(AChart);
-          ReadChartSeriesMarker(ANode.FirstChild, TsScatterSeries(ser));
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:scatterStyle':
@@ -1577,6 +1608,9 @@ begin
         ;
       'c:spPr':
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.Fill, ASeries.Line);
+      'c:marker':
+        if ASeries is TsCustomLineSeries then
+          ReadChartSeriesMarker(ANode.FirstChild, TsCustomLineSeries(ASeries));
       'c:dLbls':
         ReadChartSeriesLabels(ANode.FirstChild, ASeries);
       'c:dPt':

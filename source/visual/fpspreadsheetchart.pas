@@ -204,6 +204,23 @@ implementation
 uses
   Math;
 
+const
+  POINTER_STYLES: array[TsChartSeriesSymbol] of TSeriesPointerstyle = (
+    psRectangle,
+    psDiamond,
+    psTriangle,
+    psDownTriangle,
+    psLeftTriangle,
+    psRightTriangle,
+    psCircle,
+    psStar,
+    psDiagCross,
+    psCross,
+    psFullStar,
+    psHorBar,
+    psPoint
+  );
+
 type
   TBasicPointSeriesOpener = class(TBasicPointSeries);
 
@@ -2512,22 +2529,6 @@ end;
 
 procedure TsWorkbookChartLink.UpdateCustomLineSeries(AWorkbookSeries: TsCustomLineSeries;
   AChartSeries: TLineSeries);
-const
-  POINTER_STYLES: array[TsChartSeriesSymbol] of TSeriesPointerstyle = (
-    psRectangle,
-    psDiamond,
-    psTriangle,
-    psDownTriangle,
-    psLeftTriangle,
-    psRightTriangle,
-    psCircle,
-    psStar,
-    psDiagCross,
-    psCross,
-    psFullStar,
-    psHorBar,
-    psPoint
-  );
 var
   ppi: Integer;
   openedWorkbookSeries: TsCustomLineSeriesOpener absolute AWorkbookSeries;
@@ -2539,8 +2540,8 @@ begin
   AChartSeries.ShowPoints := openedWorkbookSeries.ShowSymbols;
   if AChartSeries.ShowPoints then
   begin
-    UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.Pointer.Brush);
-    AChartSeries.Pointer.Pen.Color := AChartSeries.LinePen.Color;
+    UpdateChartBrush(AWorkbookSeries.Chart, openedWorkbookSeries.SymbolFill, AChartSeries.Pointer.Brush);
+    UpdateChartPen(AWorkbookSeries.Chart, openedWorkbookSeries.SymbolBorder, AChartSeries.Pointer.Pen);
     AChartSeries.Pointer.Style := POINTER_STYLES[openedWorkbookSeries.Symbol];
     AChartSeries.Pointer.HorizSize := mmToPx(openedWorkbookSeries.SymbolWidth, ppi);
     AChartSeries.Pointer.VertSize := mmToPx(openedWorkbookSeries.SymbolHeight, ppi);
@@ -2576,13 +2577,27 @@ end;
 
 procedure TsWorkbookChartLink.UpdatePolarSeries(AWorkbookSeries: TsRadarSeries;
   AChartSeries: TPolarSeries);
+var
+  ppi: Integer;
 begin
-  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.LinePen);
-  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.Brush);
+  ppi := GetParentForm(FChart).PixelsPerInch;
+
   AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
   AChartSeries.CloseCircle := true;
   AChartSeries.Filled := (AWorkbookSeries.ChartType = ctFilledRadar);
+  AChartSeries.ShowPoints := AWorkbookSeries.ShowSymbols;
   (AChartSeries.Source as TsWorkbookChartSource).CyclicX := true;
+
+  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.LinePen);
+  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.Brush);
+  if AWorkbookSeries.ShowSymbols then
+  begin
+    UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.SymbolFill, AChartSeries.Pointer.Brush);
+    UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.SymbolBorder, AChartSeries.Pointer.Pen);
+    AChartSeries.Pointer.Style := POINTER_STYLES[AWorkbookSeries.Symbol];
+    AChartSeries.Pointer.HorizSize := mmToPx(AWorkbookSeries.SymbolWidth, ppi);
+    AChartSeries.Pointer.VertSize := mmToPx(AWorkbookSeries.SymbolHeight, ppi);
+  end;
 
   FChart.LeftAxis.Minors.Clear;
   FChart.LeftAxis.Grid.Visible := false;
