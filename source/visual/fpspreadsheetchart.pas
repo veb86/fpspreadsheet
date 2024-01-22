@@ -171,7 +171,7 @@ type
     procedure UpdateAreaSeries(AWorkbookSeries: TsAreaSeries; AChartSeries: TAreaSeries);
     procedure UpdateBarSeries(AWorkbookSeries: TsBarSeries; AChartSeries: TBarSeries);
     procedure UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries; AChartSeries: TBubbleSeries);
-    procedure UpdateCustomLineSeries(AWorkbookSeries: TsCustomLineSeries; AChartSeries: TLineSeries);
+    procedure UpdateCustomLineSeries(AWorkbookSeries: TsCustomLineSeries; AChartSeries: TBasicPointSeries);
     procedure UpdatePieSeries(AWorkbookSeries: TsPieSeries; AChartSeries: TPieSeries);
     procedure UpdatePolarSeries(AWorkbookSeries: TsRadarSeries; AChartSeries: TPolarSeries);
     procedure UpdateScatterSeries(AWorkbookSeries: TsScatterSeries; AChartSeries: TLineSeries);
@@ -1174,7 +1174,22 @@ begin
           src.IntegerX := true;
         end;
       ctLine, ctScatter:
-        Result := TLineSeries.Create(FChart);
+        case ch.Interpolation of
+          ciLinear, ciStepStart, ciStepEnd, ciStepCenterX, ciStepCenterY:
+            begin
+              Result := TLineSeries.Create(FChart);
+              case ch.Interpolation of
+                ciLinear: TLineSeries(Result).LineType := ltFromPrevious;
+                ciStepStart: TLineSeries(Result).LineType := ltStepXY;
+                ciStepEnd: TLineSeries(Result).LineType := ltStepYX;
+                else TLineSeries(Result).LineType := ltFromPrevious;
+              end;
+            end;
+          ciCubicSpline:
+            Result := TCubicSplineSeries.Create(FChart);
+          ciBSpline:
+            Result := TBSplineSeries.Create(FChart);
+        end;
       ctArea:
         Result := TAreaSeries.Create(FChart);
       ctRadar, ctFilledRadar:
@@ -2528,27 +2543,47 @@ begin
 end;
 
 procedure TsWorkbookChartLink.UpdateCustomLineSeries(AWorkbookSeries: TsCustomLineSeries;
-  AChartSeries: TLineSeries);
+  AChartSeries: TBasicPointSeries);
 var
   ppi: Integer;
   openedWorkbookSeries: TsCustomLineSeriesOpener absolute AWorkbookSeries;
+  lineSeries: TLineSeries absolute AChartSeries;
+  cubicSplineSeries: TCubicSplineSeries absolute AChartSeries;
+  bSplineSeries: TBSplineSeries absolute AChartSeries;
+  seriesPointer: TSeriesPointer;
 begin
   ppi := GetParentForm(FChart).PixelsPerInch;
 
-  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.LinePen);
-  AChartSeries.ShowLines := AWorkbookSeries.Line.Style <> clsNoLine;
-  AChartSeries.ShowPoints := openedWorkbookSeries.ShowSymbols;
-  if AChartSeries.ShowPoints then
+  if AChartSeries is TLineSeries then
   begin
-    UpdateChartBrush(AWorkbookSeries.Chart, openedWorkbookSeries.SymbolFill, AChartSeries.Pointer.Brush);
-    UpdateChartPen(AWorkbookSeries.Chart, openedWorkbookSeries.SymbolBorder, AChartSeries.Pointer.Pen);
-    AChartSeries.Pointer.Style := POINTER_STYLES[openedWorkbookSeries.Symbol];
-    AChartSeries.Pointer.HorizSize := mmToPx(openedWorkbookSeries.SymbolWidth, ppi);
-    AChartSeries.Pointer.VertSize := mmToPx(openedWorkbookSeries.SymbolHeight, ppi);
+    UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, lineSeries.LinePen);
+    lineSeries.ShowLines := AWorkbookSeries.Line.Style <> clsNoLine;
+    seriesPointer := lineSeries.Pointer;
+    lineSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
+    if lineSeries.Source is TCalculatedChartSource then
+      TCalculatedChartSource(lineSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
+  end
+  else
+  if AChartSeries is TCubicSplineSeries then
+  begin
+    UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, cubicSplineSeries.Pen);
+    cubicSplineSeries.Pen.Visible := AWorkbookSeries.Line.Style <> clsNoLine;
+    seriesPointer := cubicSplineSeries.Pointer;
+  end
+  else
+  if AChartSeries is TBSplineSeries then
+  begin
+    UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, bSplineSeries.Pen);
+    bSplineSeries.Pen.Visible := AWorkbookSeries.Line.Style <> clsNoLine;
+    seriesPointer := bSplineSeries.Pointer;
   end;
-  AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
-  if AChartSeries.Source is TCalculatedChartSource then
-    TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
+
+  seriesPointer.Visible := openedWorkbookSeries.ShowSymbols;
+  UpdateChartBrush(AWorkbookSeries.Chart, openedWorkbookSeries.SymbolFill, seriesPointer.Brush);
+  UpdateChartPen(AWorkbookSeries.Chart, openedWorkbookSeries.SymbolBorder, seriesPointer.Pen);
+  seriesPointer.Style := POINTER_STYLES[openedWorkbookSeries.Symbol];
+  seriesPointer.HorizSize := mmToPx(openedWorkbookSeries.SymbolWidth, ppi);
+  seriesPointer.VertSize := mmToPx(openedWorkbookSeries.SymbolHeight, ppi);
 
   // Error bars
   UpdateChartErrorBars(AWorkbookSeries, AChartSeries);

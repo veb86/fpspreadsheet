@@ -1087,6 +1087,17 @@ begin
           s := GetAttrValue(AStyleNode, 'chart:percentage');
           if s = 'true' then
             AChart.StackMode := csmStackedPercentage;
+          // Line series interpolation
+          s := GetAttrValue(AStyleNode, 'chart:interpolation');
+          case s of
+            'cubic-spline': AChart.Interpolation := ciCubicSpline;
+            'b-spline': AChart.Interpolation := ciBSpline;
+            'step-start': AChart.Interpolation := ciStepStart;
+            'step-end': AChart.Interpolation := ciStepEnd;
+            'step-center-x': AChart.Interpolation := ciStepCenterX;
+            'step-center-y': AChart.Interpolation := ciStepCenterY;
+            else AChart.Interpolation := ciLinear;
+          end;
           // Horizontal bars
           s := GetAttrValue(AStyleNode, 'chart:vertical');
           if s = 'true' then

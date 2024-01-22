@@ -1336,7 +1336,6 @@ var
   nodeName: String;
   s: String;
   ser: TsScatterSeries;
-  smooth: Boolean;
 begin
   if ANode = nil then
     exit;
@@ -1352,7 +1351,8 @@ begin
       'c:scatterStyle':
         begin
           s := GetAttrValue(ANode, 'val');
-          smooth := (s = 'smoothMarker');    // to do: use it to create a spline series when true.
+          if (s = 'smoothMarker') then
+            AChart.Interpolation := ciCubicSpline;
         end;
       'c:varyColors':  ;
       'c:dLbls':
