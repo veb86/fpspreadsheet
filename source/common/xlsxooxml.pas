@@ -433,7 +433,8 @@ type
     Worksheet: TsBasicWorksheet;
     IsChart: boolean;
     IsHeaderFooter: Boolean;
-    // This part is for images embedded in to worksheet
+    // This part is for images or charts embedded in the worksheet
+    XPos, YPos, Width, Height: Double;
     FromRow, FromCol, ToRow, ToCol: Cardinal;
     FromRowOffs, FromColOffs, ToRowOffs, ToColOffs: Double;
     // This part is for header/footer images.
@@ -2663,17 +2664,6 @@ end;
   specified node which is in a drawingX.xml file. }
 procedure TsSpreadOOXMLReader.ReadDrawing(ANode: TDOMNode; 
   AWorksheet: TsBasicWorksheet);
-var
-  node, child, child2, child3: TDOMNode;
-  nodeName: String = '';
-  rID, fileName: String;
-  xPos, yPos, horExt, vertExt: Double;
-  fromCol, fromRow, toCol, toRow: Integer;
-  fromColOffs, fromRowOffs, toColOffs, toRowOffs: Double;
-  isChart: Boolean;
-  data: TEmbeddedObjData;
-  sheetData: TSheetData;
-  graphicFrameName: String;
 
   procedure ReadXdrFromTo(ANode: TDOMNode;
     out ARow, ACol: Integer; out ARowOffs, AColOffs: Double);
@@ -2792,54 +2782,17 @@ var
     end;
   end;
 
-      {
-      child := node.FirstChild;
-      while Assigned(child) do
-      begin
-        nodeName := child.NodeName;
-        if nodeName = 'xdr:nvGraphicFramePr' then
-        begin
-          child2 := child.FirstChild;
-          while Assigned(child2) do
-          begin
-            nodeName := child2.NodeName;
-            if nodeName = 'xdr:cNvPr' then
-            begin
-              graphicFrameName := GetAttrValue(child2, 'name');
-            end;
-            child2 := child2.NextSibling;
-          end;
-        end else
-        if nodeName = 'a:graphic' then
-        begin
-          child2 := child.FirstChild;
-          while Assigned(child2) do
-          begin
-            nodename := child2.Nodename;
-            if nodename = 'a:graphicData' then
-            begin
-              child3 := child2.Firstchild;
-              while Assigned(child3) do
-              begin
-                nodeName := child3.NodeName;
-                if nodename = 'c:chart' then
-                begin
-                  rId := GetAttrValue(child3, 'r:id');
-                  if rId <> '' then
-                  begin
-                    isChart := true;
-                  end;
-                end;
-                child3 := child3.NextSibling;
-              end;
-            end;
-            child2 := child2.NextSibling;
-          end;
-        end;
-        child := child.NextSibling;
-      end;
-    end;
-    }
+var
+  node, child, child2, child3: TDOMNode;
+  nodeName: String = '';
+  rID, fileName: String;
+  xPos, yPos, horExt, vertExt: Double;
+  fromCol, fromRow, toCol, toRow: Integer;
+  fromColOffs, fromRowOffs, toColOffs, toRowOffs: Double;
+  isChart: Boolean;
+  data: TEmbeddedObjData;
+  sheetData: TSheetData;
+  graphicFrameName: String;
 
 begin
   if ANode = nil then
@@ -2851,6 +2804,7 @@ begin
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
+    horExt := -1.0;    vertExt := -1.0;
     fromCol := -1;     fromColOffs := 0.0;
     fromRow := -1;     fromRowOffs := 0.0;
     toCol := -1;       toColOffs := 0.0;
@@ -2879,12 +2833,6 @@ begin
         end;
         node := node.NextSibling
       end;
-
-      // fix me: Calculate fromRow/fromCol and toRow/toCol from xpos/ypos/horExxt/vertExt
-      fromRow := 0;
-      fromCol := 0;
-      toRow := 10;
-      toCol := 10;
     end
     else
     if nodeName = 'xdr:twoCellAnchor' then
@@ -2906,9 +2854,15 @@ begin
       end;
     end;
 
-    if (fromCol <> -1) and (toCol <> -1) and (fromRow <> -1) and (toRow <> -1) and (rID <> '') then
+    if (rID <> '') and (
+       ( (fromCol <> -1) and (toCol <> -1) and (fromRow <> -1) and (toRow <> -1) and (rID <> '')) or
+       ( (horExt <> -1) and (vertext <> -1) ) ) then
     begin
       data := TEmbeddedObjData.Create;
+      data.XPos := xPos;
+      data.YPos := yPos;
+      data.Width := horExt;
+      data.Height := vertExt;
       data.FromCol := fromCol;
       data.FromColOffs := fromColOffs;
       data.ToCol := toCol;
