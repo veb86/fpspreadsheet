@@ -733,7 +733,8 @@ type
     FName: String;
     FIndex: Integer;             // Index in workbook's chart list
     FWorkbook: TsBasicWorkbook;
-    FSheetIndex: Integer;
+    FWorksheet: TsBasicWorksheet;
+//    FSheetIndex: Integer;
     FRow, FCol: Cardinal;
     FOffsetX, FOffsetY: Double;
     FWidth, FHeight: Double;     // Width, Height of the chart, in mm.
@@ -766,7 +767,7 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    function GetWorksheet: TsBasicWorksheet;
+//    function GetWorksheet: TsBasicWorksheet;
 
     procedure DeleteSeries(AIndex: Integer);
 
@@ -779,8 +780,12 @@ type
     property Name: String read FName write FName;
     { Index of chart in workbook's chart list. }
     property Index: Integer read FIndex write FIndex;
+    { Worksheet into which the chart is embedded }
+    property Worksheet: TsBasicWorksheet read FWorksheet write FWorksheet;
+    (*
     { Index of worksheet sheet which contains the chart. }
     property SheetIndex: Integer read FSheetIndex write FSheetIndex;
+    *)
     { Row index of the cell in which the chart has its top/left corner (anchor) }
     property Row: Cardinal read FRow write FRow;
     { Column index of the cell in which the chart has its top/left corner (anchor) }
@@ -1461,7 +1466,7 @@ begin
   if Sheet <> '' then
     Result := Sheet
   else
-    Result := FChart.GetWorksheet.Name;
+    Result := FChart.Worksheet.Name;
 end;
 
 function TsChartCellAddr.IsUsed: Boolean;
@@ -1498,7 +1503,7 @@ begin
   if Sheet1 <> '' then
     Result := Sheet1
   else
-  Result := FChart.GetWorksheet.Name;
+  Result := FChart.Worksheet.Name;
 end;
 
 function TsChartRange.GetSheet2Name: String;
@@ -1506,7 +1511,7 @@ begin
   if Sheet2 <> '' then
     Result := Sheet2
   else
-  Result := FChart.GetWorksheet.Name;
+  Result := FChart.Worksheet.Name;
 end;
 
 function TsChartRange.IsEmpty: Boolean;
@@ -2581,7 +2586,7 @@ begin
 
   fgradients.AddLinearGradient('g1', scRed, scBlue, 0, 0, 1, 1, 0, 0);
 
-  FSheetIndex := 0;
+  FWorksheet := nil;
   FRow := 0;
   FCol := 0;
   FOffsetX := 0.0;
@@ -2700,11 +2705,12 @@ begin
     Result := nil;
 end;
 
+{
 function TsChart.GetWorksheet: TsBasicWorksheet;
 begin
   Result := TsWorkbook(FWorkbook).GetWorksheetByIndex(FSheetIndex);
 end;
-
+}
 function TsChart.IsScatterChart: Boolean;
 begin
   Result := GetChartType = ctScatter;

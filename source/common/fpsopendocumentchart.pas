@@ -3251,7 +3251,7 @@ begin
   if (Axis = chart.XAxis) and (not chart.IsScatterChart) and (chart.Series.Count > 0) then
   begin
     series := chart.Series[0];
-    sheet := TsWorkbook(Writer.Workbook).GetWorksheetByIndex(chart.SheetIndex);
+    sheet := TsWorksheet(chart.Worksheet);
     r1 := series.LabelRange.Row1;
     c1 := series.LabelRange.Col1;
     r2 := series.LabelRange.Row2;

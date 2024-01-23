@@ -9070,7 +9070,6 @@ procedure TsSpreadOpenDocWriter.WriteShapes(AStream: TStream;
 var
   sheet: TsWorksheet absolute ASheet;
   i: Integer;
-  sheetIdx: Integer;
   img: TsImage;
   imgType: TsImageType;
   r1,c1,r2,c2: Cardinal;
@@ -9092,11 +9091,10 @@ begin
     '<table:shapes>');
 
  {$IFDEF FPS_CHARTS}
-  sheetIdx := sheet.Index;
   for i:=0 to TsWorkbook(FWorkbook).GetChartCount-1 do
   begin
     chart := TsWorkbook(FWorkbook).GetChartByIndex(i);
-    if chart.SheetIndex <> sheetIdx then
+    if chart.Worksheet <> sheet then
       Continue;
     if chart.Series.Count = 0 then
       Continue;

@@ -15,7 +15,7 @@ begin
   if (ASheet = nil) then
     raise Exception.Create('To do: Insert chart as new ChartSheet');
   Result.Workbook := self;
-  Result.SheetIndex := GetWorksheetIndex(ASheet);
+  Result.Worksheet := ASheet;
   Result.Row := ARow;
   Result.Col := ACol;
   Result.OffsetX := AOffsetX;

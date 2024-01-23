@@ -644,6 +644,8 @@ type
    {$ifdef FPS_CHARTS}
     { Chart support }
     function GetChartCount: Integer;
+    procedure RemoveAllCharts;
+    procedure RemoveChart(AChart: TsChart);
    {$endif}
 
     { Protection }
@@ -1273,6 +1275,9 @@ end;
 -------------------------------------------------------------------------------}
 destructor TsWorksheet.Destroy;
 begin
+  {$IFDEF FPS_CHARTS}
+  RemoveAllCharts;
+  {$ENDIF}
   RemoveAllImages;
   RemoveAllRows;
   RemoveAllCols;
@@ -1582,8 +1587,34 @@ begin
   for i := 0 to Workbook.GetChartCount-1 do
   begin
     chart := Workbook.GetChartByIndex(i);
-    if chart.SheetIndex = idx then inc(Result);
+    if chart.Worksheet = self then inc(Result);
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Destroys all charts from the worksheet
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveAllCharts;
+var
+  i: Integer;
+begin
+  for i := Workbook.FCharts.Count-1 downto 0 do
+    if Workbook.GetChartByIndex(i).Worksheet = Self then
+      Workbook.FCharts.Delete(i);    // This destroys the chart
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the specified chart from the worksheet and destroys it
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveChart(AChart: TsChart);
+var
+  idx: Integer;
+begin
+  if AChart.Worksheet <> self then
+    exit;
+
+  idx := Workbook.FCharts.IndexOf(AChart);
+  if idx > -1 then Workbook.FCharts.Delete(idx);  // This destroys the chart
 end;
 {$endif}
 

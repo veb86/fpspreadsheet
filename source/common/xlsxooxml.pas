@@ -7357,7 +7357,7 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
     cOffs1 := AChart.OffsetY;
     w := AChart.Width;
     h := AChart.Height;
-    sheet := TsWorkbook(FWorkbook).GetWorksheetByIndex(AChart.SheetIndex);
+    sheet := TsWorksheet(AChart.Worksheet);
     sheet.CalcDrawingExtent(true, w, h, r1, c1, r2, c2, rOffs1, cOffs1, rOffs2, cOffs2, x, y);
 
     AppendToStream(AStream,
@@ -7401,7 +7401,6 @@ var
   i, j: Integer;
   rId: Integer;
   sheet: TsWorksheet absolute AWorksheet;
-  sheetIdx: Integer;
   chart: TsChart;
 begin
   if (sheet.GetImageCount = 0) {$ifdef FPS_CHARTS}and (sheet.GetChartCount = 0){$endif}  then
@@ -7427,12 +7426,11 @@ begin
 
   {$ifdef FPS_CHARTS}
   // Repeat for each chart
-  sheetIdx := sheet.Index;
   j := 1;  // Counts the charts in the current sheet
   for i := 0 to TsWorkbook(FWorkbook).GetChartCount - 1 do
   begin
     chart := TsWorkbook(FWorkbook).GetChartByIndex(i);
-    if chart.SheetIndex = sheetIdx then
+    if chart.Worksheet = AWorksheet then
     begin
       DoWriteChart(FSDrawings[FCurSheetNum], chart, j, rId);
       inc(j);
@@ -7461,7 +7459,6 @@ var
   target, bookmark: String;
   u: TURI;
   sheet: TsWorksheet absolute AWorksheet;
-  sheetIdx: Integer;
 begin
   if (sheet.GetImageCount = 0) {$ifdef FPS_CHARTS}and (sheet.GetChartCount = 0){$endif} then
     exit;
@@ -7508,11 +7505,10 @@ begin
 
   {$ifdef FPS_CHARTS}
   // Repeat for each chart
-  sheetIdx := sheet.Index;
   for i := 0 to TsWorkbook(FWorkbook).GetChartCount - 1 do
   begin
     chart := TsWorkbook(FWorkbook).GetChartByIndex(i);
-    if chart.SheetIndex = sheetIdx then
+    if chart.Worksheet = AWorksheet then
     begin
       AppendToStream(FSDrawingsRels[FCurSheetNum], Format(
        '  <Relationship Id="rId%d" Type="%s" Target="../charts/chart%d.xml"/>' + LE, [
