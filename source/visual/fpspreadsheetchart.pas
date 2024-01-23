@@ -1503,7 +1503,7 @@ begin
           SinCos(DegToRad(hatch.PatternAngle), sa, ca);
           PrepareCanvas(round(abs(w / sa)), round(abs(w / ca)), lw);
           R := Rect(0, 0, png.Width, png.Height);
-          if w = 1 then
+          if lw = 1 then
           begin
             if sa / ca > 0 then   // sa/ca = tangens
               png.Canvas.Line(R.Left, R.Bottom-1, R.Right, R.Top-1)
