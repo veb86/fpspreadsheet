@@ -3857,9 +3857,27 @@ begin
   while Assigned(NumFormatNode) do
   begin
     numfmt_nodename := NumFormatNode.NodeName;
+    numfmtName := GetAttrValue(NumFormatNode, 'style:name');
+    case numfmt_nodename of
+      // Numbers
+      'number:number-style',
+      'number:percentage-style',
+      'number:currency-style':
+        ReadNumberStyle(NumFormatNode, numfmtName);
 
+      // Date/time values
+      'number:date-style',
+      'number:time-style':
+        ReadDateTimeStyle(NumFormatNode, numFmtName);
+
+      // Text values
+      'number:text-style':
+        ReadTextStyle(NumFormatNode, numFmtName);
+    end;
+    {
     if NumFormatNode.HasAttributes then
-      numfmtName := GetAttrValue(NumFormatNode, 'style:name') else
+      numfmtName := GetAttrValue(NumFormatNode, 'style:name')
+    else
       numfmtName := '';
 
     // Numbers (nfFixed, nfFixedTh, nfExp, nfPercentage)
@@ -3876,6 +3894,7 @@ begin
     // Text values
     if (numfmt_nodename = 'number:text-style') then
       ReadTextStyle(NumFormatNode, numfmtName);
+    }
 
     // Next node
     NumFormatNode := NumFormatNode.NextSibling;

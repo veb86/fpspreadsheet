@@ -308,24 +308,28 @@ type
     constructor Create;
     function Add(const ANumFormat: String): Integer; override;
     function FindFormatByName(const AName: String): String;
+    function IndexOfFormat(ANumFormat: String): Integer;
   end;
 
 constructor TsChartNumberFormatList.Create;
 begin
   inherited;
-  Add('N0');  // default number format
+  NameValueSeparator := ':';
+  Add('');  // default number format
 end;
 
 // Adds a new format, but make sure to avoid duplicates.
+// The format list stores the item internally as name:value pair with
+// name = 'N'+index and value = ANumFormat
 function TsChartNumberFormatList.Add(const ANumFormat: String): Integer;
 begin
   if (ANumFormat = '') and (Count > 0) then
     Result := 0
   else
   begin
-    Result := IndexOf(ANumFormat);
+    Result := IndexOfFormat(ANumFormat);
     if Result = -1 then
-      Result := inherited Add(ANumFormat);
+      Result := inherited Add(Format('N%d:%s', [Count, ANumFormat]));
   end;
 end;
 
@@ -343,6 +347,24 @@ begin
     if Result = 'General' then
       Result := '';
   end;
+end;
+
+function TsChartNumberFormatList.IndexOfFormat(ANumFormat: String): Integer;
+var
+  i: Integer;
+  fmt: String;
+begin
+  ANumFormat := lowercase(ANumFormat);
+  for i := 0 to Count-1 do
+  begin
+    fmt := Lowercase(ValueFromIndex[i]);
+    if fmt = ANumFormat then
+    begin
+      Result := i;
+      exit;
+    end;
+  end;
+  Result := -1;
 end;
 
 
@@ -395,8 +417,6 @@ begin
 
   FChartFiles := TStringList.Create;
   FNumberFormatList := TsChartNumberFormatList.Create;
-  FNumberFormatList.NameValueSeparator := ':';
-  FNumberFormatList.Add('N0');
   FStreamList := TStreamList.Create;
 
   FPieSeriesStartAngle := 999;
@@ -2670,6 +2690,8 @@ begin
 
   series := AChart.Series[ASeriesIndex];
   dataPointStyle := series.DataPointStyles[APointIndex];
+  if dataPointStyle = nil then
+    exit;
 
   chartProps := 'chart:solid-type="cuboid" ';
 
@@ -2847,7 +2869,7 @@ var
   regression: TsChartRegression;
 begin
   FNumberFormatList.Clear;
-  FNumberFormatList.Add('N0');
+  FNumberFormatList.Add('');
 
   // Formats of axis labels
   FNumberFormatList.Add(AChart.XAxis.LabelFormat);
@@ -3508,7 +3530,7 @@ begin
 
   for i := 0 to FNumberFormatList.Count-1 do begin
     numFmtName := Format('N%d', [i]);
-    numFmtStr := FNumberFormatList[i];
+    numFmtStr := FNumberFormatList.ValueFromIndex[i];
     parser := TsSpreadOpenDocNumFormatParser.Create(numFmtStr, FWriter.Workbook.FormatSettings);
     try
       numFmtXML := parser.BuildXMLAsString(numFmtName);
@@ -3518,22 +3540,6 @@ begin
       parser.Free;
     end;
   end;
-  {
-
-  AppendToStream(AStream,
-    indent + '<number:number-style style:name="N0">' + LE +
-    indent + '  <number:number number:min-integer-digits="1"/>' + LE +
-    indent + '</number:number-style>' + LE
-  );
-
-  if AChart.StackMode = csmStackedPercentage then
-    AppendToStream(AStream,
-      indent + '<number:percentage-style style:name="N10010">' + LE +
-      indent + '  <number:number number:decimal-places="0" number:min-decimal-places="0" number:min-integer-digits="1"/>' + LE +
-      indent + '  <number:text>%</number:text>' + LE +
-      indent + '</number:percentage-style>' + LE
-    );
-    }
 end;
 
 { Writes the file "Object N/styles.xml" (N = 1, 2, ...) which is needed by the
