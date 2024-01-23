@@ -109,8 +109,8 @@ begin
     WriteData(r, d, 110000, 109, 115,  99, 110);
     WriteData(r, d,  95000, 110, 119, 103, 115);
 
-    // Create chart: left/top in cell D4, 150 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 6, 150, 100);
+    // Create chart: left/top in cell D4, 160 mm x 100 mm
+    ch := book.AddChart(sheet, 2, 6, 160, 100);
 
     // Chart properties
     ch.RotatedAxes := rotated;
@@ -144,7 +144,7 @@ begin
     ser := TsStockSeries.Create(ch);
 
     // Stock series properties
-    ser.YAxis := alPrimary;
+    ser.YAxis := calPrimary;
     ser.CandleStick := candleStickMode;
     ser.CandleStickUpFill.Color := scGreen;
     ser.CandlestickDownFill.Color := scRed;
@@ -163,7 +163,7 @@ begin
     end;
 
     // Volume series properties
-    vser.YAxis := alSecondary;
+    vser.YAxis := calSecondary;
     vser.SetLabelRange(3, 0, 7, 0);
     vser.SetYRange    (3, 1, 7, 1);
     vser.SetTitleAddr (2, 1);

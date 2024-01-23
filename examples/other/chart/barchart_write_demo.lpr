@@ -44,7 +44,7 @@ begin
     sheet.WriteText(10, 0, 'Computer');  sheet.WriteNumber(10, 1, 16);          sheet.WriteNumber(10, 2, 18);
 
     // Create chart: left/top in cell D4, 160 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 3, 120, 100);
+    ch := book.AddChart(sheet, 2, 3, 160, 100);
 
     // Chart properties
     ch.Border.Style := clsNoLine;
@@ -63,22 +63,22 @@ begin
 
     // Add 1st bar series ("Student 1")
     ser := TsBarSeries.Create(ch);
-    ser.SetTitleAddr(2, 1);
-    ser.SetLabelRange(3, 0, 10, 0);
-    ser.SetYRange(3, 1, 10, 1);
+    ser.SetTitleAddr(2, 1);              // series 1 title in cell B3
+    ser.SetLabelRange(3, 0, 10, 0);      // series 1 x labels in A4:A11
+    ser.SetYRange(3, 1, 10, 1);          // series 1 y values in B4:B11
     ser.Line.Color := scDarkRed;
     ser.Fill.Style := cfsSolidHatched;
-    ser.Fill.Hatch := ch.Hatches.AddHatch('Crossed', chsDouble, scDarkRed, 2, 45);
+    ser.Fill.Hatch := ch.Hatches.AddLineHatch('Crossed', chsDouble, scDarkRed, 2, 0.1, 45);
     ser.Fill.Color := scRed;
 
     // Add 2nd bar series ("Student 2")
     ser := TsBarSeries.Create(ch);
-    ser.SetTitleAddr(2, 2);
-    ser.SetLabelRange(3, 0, 10, 0);
-    ser.SetYRange(3, 2, 10, 2);
+    ser.SetTitleAddr(2, 2);              // series 2 title in cell C3
+    ser.SetLabelRange(3, 0, 10, 0);      // series 2 x labels in A4:A11
+    ser.SetYRange(3, 2, 10, 2);          // series 2 y values in C4:C11
     ser.Line.Color := scDarkBlue;
     ser.Fill.Style := cfsSolidHatched;
-    ser.Fill.Hatch := ch.Hatches.AddHatch('Forward', chsSingle, scWhite, 1.5, 45);
+    ser.Fill.Hatch := ch.Hatches.AddLineHatch('Forward', chsSingle, scWhite, 1.5, 0.1, 45);
     ser.Fill.Color := scBlue;
 
     {

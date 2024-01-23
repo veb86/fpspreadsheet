@@ -2196,7 +2196,7 @@ begin
 
   // Rotated axis labels
   angle := Axis.LabelRotation;
-  chartProps := chartProps + Format('style:rotation-angle="%d" ', [angle]);
+  chartProps := chartProps + Format('style:rotation-angle="%.1f" ', [angle], FPointSeparatorSettings);
 
   // Label orientation
   graphProps := 'svg:stroke-color="' + ColorToHTMLColorStr(Axis.AxisLine.Color) + '" ';
@@ -2286,7 +2286,7 @@ begin
   end;
 
   chartProps := 'chart:auto-position="true" ';
-  chartProps := chartProps + Format('style:rotation-angle="%d" ', [rotAngle]);
+  chartProps := chartProps + Format('style:rotation-angle="%.1f" ', [rotAngle], FPointSeparatorSettings);
 
   textProps := TsSpreadOpenDocWriter(Writer).WriteFontStyleXMLAsString(font);
 

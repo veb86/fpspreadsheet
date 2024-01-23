@@ -66,7 +66,7 @@ begin
 
     // Add 1st bar series ("Count")
     ser := TsBarSeries.Create(ch);
-    ser.YAxis := alPrimary;
+    ser.YAxis := calPrimary;
     ser.SetTitleAddr(2, 1);
     ser.SetLabelRange(3, 0, 8, 0);
     ser.SetYRange(3, 1, 8, 1);
@@ -76,7 +76,7 @@ begin
 
     // Add 2nd bar series ("Volume")
     ser := TsBarSeries.Create(ch);
-    ser.YAxis := alSecondary;
+    ser.YAxis := calSecondary;
     ser.SetTitleAddr(2, 2);
     ser.SetLabelRange(3, 0, 8, 0);
     ser.SetYRange(3, 2, 8, 2);
