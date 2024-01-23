@@ -1436,13 +1436,13 @@ var
   fgCol: TColor;
   R: TRect;
 
-  procedure PrepareCanvas(AWidth, AHeight: Integer);
+  procedure PrepareCanvas(AWidth, AHeight, ALineWidth: Integer);
   begin
     png.SetSize(AWidth, AHeight);
     png.Canvas.Brush.Color := bkCol;
     png.Canvas.FillRect(0, 0, AWidth, AHeight);
     png.Canvas.Pen.Color := fgCol;
-    png.Canvas.Pen.Width := w;
+    png.Canvas.Pen.Width := ALineWidth;
   end;
 
 begin
@@ -1467,7 +1467,7 @@ begin
   case hatch.Style of
     chsDot:
       begin
-        PrepareCanvas(w, h);
+        PrepareCanvas(w, h, lw);
         for i := 0 to hatch.NumDots-1 do
         begin
           // DotPos are interpreted as fractions of the cell size if positive,
@@ -1489,19 +1489,19 @@ begin
         // horizontal ---
         if hatch.PatternAngle = 0 then
         begin
-          PrepareCanvas(8, w);
+          PrepareCanvas(8, w, lw);
           png.Canvas.Line(0, 0, png.Width, 0);
         end else
         // vertical  |||
         if hatch.PatternAngle = 90 then
         begin
-          PrepareCanvas(w, 8);
+          PrepareCanvas(w, 8, lw);
           png.Canvas.Line(0, 0, 0, png.Height);
         end else
         // any angle
         begin
           SinCos(DegToRad(hatch.PatternAngle), sa, ca);
-          PrepareCanvas(round(abs(w / sa)), round(abs(w / ca)));
+          PrepareCanvas(round(abs(w / sa)), round(abs(w / ca)), lw);
           R := Rect(0, 0, png.Width, png.Height);
           if w = 1 then
           begin
@@ -1533,7 +1533,7 @@ begin
       begin  // +++
         if InRange(hatch.PatternAngle mod 180, -22.5, 22.5) then
         begin
-          PrepareCanvas(w, w);
+          PrepareCanvas(w, w, lw);
           png.Canvas.Line(0, w div 2, w, w div 2);
           png.Canvas.Line(w div 2, 0, w div 2, w);
           if hatch.Style = chsTriple then
@@ -1543,7 +1543,7 @@ begin
         if InRange((hatch.PatternAngle-45) mod 180, -22.5, 22.5) then
         begin
           w := round(w * sqrt(2));
-          PrepareCanvas(w, w);
+          PrepareCanvas(w, w, lw);
           png.Canvas.Line(0, 0, w, w);
           png.Canvas.Line(0, w, w, 0);
           if hatch.Style = chsTriple then
