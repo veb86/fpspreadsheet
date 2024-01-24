@@ -1,0 +1,5 @@
+{ "opendocread" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "LibreOffice", "OpenOffice", "Calc", "XML", "Office", "read"],
+   "Description" : "Small console application which demonstrates how a LibreOffice/OpenOffice spreadsheet file can be read into the FPSpreadsheet datastructures.\nPlease run the opendocwrite demo first in order to create the file which will be read here."}
+}

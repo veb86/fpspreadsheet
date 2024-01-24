@@ -1,0 +1,5 @@
+{ "ooxmlread" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "Excel", "Excel 2007", "OOXML", "Office Open XML", "Office", "read"],
+   "Description" : "Small console application which demonstrates how an Excel file (format of Excel 2007) can be read into the FPSpreadsheet datastructures.\nPlease run the excelooxmlwrite demo first in order to create the file which will be read here."}
+}

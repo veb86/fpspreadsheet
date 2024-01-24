@@ -1,0 +1,5 @@
+{ "excel5write" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "Excel", "Excel 5", "BIFF5", "Office", "write"],
+   "Description" : "Small console application which demonstrates how an Excel file can be created by means of FPSpreadsheet in the format of Excel 5 (BIFF 5).\nUse the application excel5read to read the written file."}
+}

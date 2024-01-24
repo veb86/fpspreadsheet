@@ -342,5 +342,6 @@ This package is all you need if you don&apos;t want graphical components (such a
     <CustomOptions Items="ExternHelp" Version="2">
       <_ExternHelp Items="Count"/>
     </CustomOptions>
+    <ExamplesDirectory Value="examples/"/>
   </Package>
 </CONFIG>

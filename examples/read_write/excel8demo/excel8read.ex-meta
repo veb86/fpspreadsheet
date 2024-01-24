@@ -1,0 +1,5 @@
+{ "excel8read" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "Excel", "Excel 8", "BIFF8", "Office", "read"],
+   "Description" : "Small console application which demonstrates how an Excel file (format of Excel 8) can be read into the FPSpreadsheet datastructures.\nPlease run the excel8write demo first in order to create the file which will be read here."}
+}

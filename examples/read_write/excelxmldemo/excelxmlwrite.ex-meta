@@ -1,0 +1,5 @@
+{ "excelxmlwrite" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "Excel", "Excel XML", "XML", "Office", "write"],
+   "Description" : "Small console application which demonstrates how an Excel file can be created by means of FPSpreadsheet in the xml format of Excel 2003.\nUse the application excelxmlread to read the written file."}
+}

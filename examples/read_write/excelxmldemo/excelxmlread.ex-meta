@@ -1,0 +1,5 @@
+{ "excelxmlread" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "Excel", "Excel XML", "XML", "Office", "read"],
+   "Description" : "Small console application which demonstrates how an Excel file (format of Excel 2003) can be read into the FPSpreadsheet datastructures.\nPlease run the excelxmlwrite demo first in order to create the file which will be read here."}
+}

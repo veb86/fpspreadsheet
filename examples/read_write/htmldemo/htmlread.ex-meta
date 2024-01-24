@@ -1,0 +1,5 @@
+{ "htmlread" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "html", "Office"],
+   "Description" : "Small console application which demonstrates how a html table can be read into a worksheet of the FPSpreadsheet library.\nPlease run the htmlwrite demo first in order to create the file which will be read here."}
+}

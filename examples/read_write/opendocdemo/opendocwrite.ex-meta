@@ -1,0 +1,5 @@
+{ "opendocwrite" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "LibreOffice", "OpenOffice", "Calc", "XML", "Office", "write"],
+   "Description" : "Small console application which demonstrates how a LibreOffice/OpenOffice spreadsheet file can be created by means of FPSpreadsheet.\nUse the application opendocread to read the written file."}
+}

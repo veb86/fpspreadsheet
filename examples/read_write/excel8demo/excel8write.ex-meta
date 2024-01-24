@@ -1,0 +1,5 @@
+{ "excel8write" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "Excel", "Excel 8", "BIFF8", "Office", "write"],
+   "Description" : "Small console application which demonstrates how an Excel file can be created by means of FPSpreadsheet in the format of Excel 8 (BIFF 8).\nUse the application excel8read to read the written file."}
+}

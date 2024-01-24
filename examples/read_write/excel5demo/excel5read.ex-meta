@@ -1,0 +1,5 @@
+{ "excel5read" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "Excel", "Excel 5", "BIFF5", "Office", "read"],
+   "Description" : "Small console application which demonstrates how an Excel file (format of Excel 5) can be read into the FPSpreadsheet datastructures.\nPlease run the excel5write demo first in order to create the file which will be read here."}
+}

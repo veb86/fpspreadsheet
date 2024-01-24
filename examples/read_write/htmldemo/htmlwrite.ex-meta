@@ -1,0 +1,5 @@
+{ "htmlwrite" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "html", "Office"],
+   "Description" : "Small console application which demonstrates how a html table can be created from a worksheet by means of the FPSpreadsheet library."}
+}

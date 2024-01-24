@@ -1,0 +1,5 @@
+{ "csvread" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "CSV", "Office", "read"],
+   "Description" : "Small console application which demonstrates how a CSV file can be read into the FPSpreadsheet datastructures.\nPlease run the csvwrite demo first in order to create the file which will be read here."}
+}

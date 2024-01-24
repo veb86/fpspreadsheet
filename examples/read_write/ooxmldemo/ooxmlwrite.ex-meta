@@ -1,0 +1,5 @@
+{ "ooxmlwrite" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "Excel", "Excel 2007", "OOXML", "Office Open XML", "Office", "write"],
+   "Description" : "Small console application which demonstrates how an Excel file can be created by means of FPSpreadsheet in the xml format of Excel 2007 and newer.\nUse the application excelooxmlread to read the written file."}
+}

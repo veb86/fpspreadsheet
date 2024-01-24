@@ -1,0 +1,5 @@
+{ "excel2read" : {
+   "Category" : "ThirdParty",
+   "Keywords" : ["FPSpreadsheet", "Excel", "Excel 2.1", "BIFF2", "Office", "read"],
+   "Description" : "Small console application which demonstrates how an Excel file (format of Excel 2.1) can be read into the FPSpreadsheet datastructures.\nPlease run the excel2write demo first in order to create the file which will be read here."}
+}
