@@ -3903,7 +3903,7 @@ begin
     begin
       if (i >= series.DataPointStyles.Count) or (series.DataPointStyles[i] = nil) then
         AppendToStream(AChartStream,
-          indent + '  <chart:data-point chart:repeated="1">' + LE
+          indent + '  <chart:data-point chart:repeated="1" />' + LE
         )
       else
       begin
