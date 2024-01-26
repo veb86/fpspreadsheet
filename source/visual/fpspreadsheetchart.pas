@@ -1182,6 +1182,10 @@ begin
                 ciLinear: TLineSeries(Result).LineType := ltFromPrevious;
                 ciStepStart: TLineSeries(Result).LineType := ltStepXY;
                 ciStepEnd: TLineSeries(Result).LineType := ltStepYX;
+                {$IF LCL_FullVersion >= 3990000}
+                ciStepCenterX: TLineSeries(Result).LineType := ltStepCenterXY;
+                ciStepCenterY: TLineSeries(Result).LineType := ltStepCenterYX;
+                {$ENDIF}
                 else TLineSeries(Result).LineType := ltFromPrevious;
               end;
             end;
