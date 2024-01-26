@@ -50,6 +50,24 @@ uses
   fpsxmlcommon, xlsCommon;
   
 type
+  TXlsxRelationship = class
+    RelID: String;
+    Target: String;
+    Schema: String;
+  end;
+
+  TXlsxRelationshipList = class(TFPList)
+  private
+    function GetItem(AIndex: Integer): TXlsxRelationship;
+    procedure SetItem(AIndex: Integer; AValue: TXlsxRelationship);
+  public
+    destructor Destroy; override;
+    function Add(ARelID, ASchema, ATarget: String): TXlsxRelationship;
+    procedure Clear;
+    procedure Delete(AIndex: Integer);
+    function FindTarget(ARelID: String): String;
+    property Items[AIndex: Integer]: TXlsxRelationship read GetItem write SetItem; default;
+  end;
 
   { TsSpreadOOXMLReader }
 
@@ -128,7 +146,6 @@ type
     procedure ReadPageSetup(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadPalette(ANode: TDOMNode);
     procedure ReadPrintOptions(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
-    procedure ReadRels(AStream: TStream; ARelsFile: String; ARelsList: TFPList);
     procedure ReadRow(ANode: TDOMNode; AWorksheet: TsBasicWorksheet; var ARowIndex: Cardinal);
     procedure ReadSharedStrings(ANode: TDOMNode);
     procedure ReadSheetFormatPr(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
@@ -155,6 +172,7 @@ type
     function CreateXMLStream: TStream;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
+    procedure ReadRels(AStream: TStream; ARelsFile: String; ARelsList: TFPList);
   end;
 
   { TsSpreadOOXMLWriter }
@@ -311,6 +329,7 @@ var
   sfidOOXML: TsSpreadFormatID;
 
 procedure InitOOXMLLimitations(out ALimitations: TsSpreadsheetFormatLimitations);
+function MakeXLPath(AFileName: String): String;
 
 
 implementation
@@ -460,25 +479,6 @@ type
     Formula: String;
   end;
 
-  TRelationship = class
-    RelID: String;
-    Target: String;
-    Schema: String;
-  end;
-  
-  TRelationshipList = class(TFPList)
-  private
-    function GetItem(AIndex: Integer): TRelationship;
-    procedure SetItem(AIndex: Integer; AValue: TRelationship);
-  public
-    destructor Destroy; override;
-    function Add(ARelID, ASchema, ATarget: String): TRelationship;
-    procedure Clear; 
-    procedure Delete(AIndex: Integer);
-    function FindTarget(ARelID: String): String;
-    property Items[AIndex: Integer]: TRelationship read GetItem write SetItem; default;
-  end;
-  
   TSheetData = class
     Name: String;
     ID: String;
@@ -488,10 +488,10 @@ type
     SheetRels: TFPList;
     SheetRelsFile: String;
     Drawing_File: String;
-    DrawingRels: TRelationshipList;
+    DrawingRels: TXlsxRelationshipList;
     VmlDrawing_File: String;
-    VmlDrawingRels: TRelationshipList;
-    HyperlinkRels: TRelationshipList;
+    VmlDrawingRels: TXlsxRelationshipList;
+    HyperlinkRels: TXlsxRelationshipList;
     Comments_File: String;
     constructor Create;
     destructor Destroy; override;
@@ -754,20 +754,20 @@ begin
 end;
 
 
-{ TRelationshipList }
+{ TXlsxRelationshipList }
 
-destructor TRelationshipList.Destroy;
+destructor TXlsxRelationshipList.Destroy;
 begin
   Clear;
   inherited;
 end;
 
-function TRelationshipList.Add(ARelID, ASchema, ATarget: String): TRelationship;
+function TXlsxRelationshipList.Add(ARelID, ASchema, ATarget: String): TXlsxRelationship;
 var
-  rel: TRelationship;
+  rel: TXlsxRelationship;
   idx: Integer;
 begin
-  rel := TRelationship.Create;
+  rel := TXlsxRelationship.Create;
   rel.RelID := ARelID;
   rel.Schema := ASchema;
   rel.Target := ATarget;
@@ -775,7 +775,7 @@ begin
   Result := Items[idx];
 end;
   
-procedure TRelationshipList.Clear;
+procedure TXlsxRelationshipList.Clear;
 var
   j: Integer;
 begin
@@ -783,16 +783,16 @@ begin
   inherited;
 end;
 
-procedure TRelationshipList.Delete(AIndex: Integer);
+procedure TXlsxRelationshipList.Delete(AIndex: Integer);
 begin
   Items[AIndex].Free;
   inherited;
 end;
 
-function TRelationshipList.FindTarget(ARelID: String): String;
+function TXlsxRelationshipList.FindTarget(ARelID: String): String;
 var
   i: Integer;
-  rel: TRelationship;
+  rel: TXlsxRelationship;
 begin
   for i := 0 to Count-1 do
   begin
@@ -806,12 +806,12 @@ begin
   Result := '';
 end;
   
-function TRelationshipList.GetItem(AIndex: Integer): TRelationship;
+function TXlsxRelationshipList.GetItem(AIndex: Integer): TXlsxRelationship;
 begin
-  Result := TRelationship(inherited Items[AIndex]);
+  Result := TXlsxRelationship(inherited Items[AIndex]);
 end;
 
-procedure TRelationshipList.SetItem(AIndex: Integer; AValue: TRelationship);
+procedure TXlsxRelationshipList.SetItem(AIndex: Integer; AValue: TXlsxRelationship);
 begin
   inherited Items[AIndex] := AValue;
 end;
@@ -822,10 +822,10 @@ end;
 constructor TSheetData.Create;
 begin
   inherited;
-  SheetRels := TRelationshipList.Create;
-  DrawingRels := TRelationshipList.Create;
-  VmlDrawingRels := TRelationshipList.Create;
-  HyperlinkRels := TRelationshipList.Create;
+  SheetRels := TXlsxRelationshipList.Create;
+  DrawingRels := TXlsxRelationshipList.Create;
+  VmlDrawingRels := TXlsxRelationshipList.Create;
+  HyperlinkRels := TXlsxRelationshipList.Create;
 end;
 
 destructor TSheetData.Destroy;
@@ -853,7 +853,7 @@ begin
 
   FSharedStrings := TStringList.Create;
   FSheetList := TFPList.Create;
-  FWorkbookRels := TRelationshipList.Create;
+  FWorkbookRels := TXlsxRelationshipList.Create;
   FFillList := TFPList.Create;
   FBorderList := TFPList.Create;
   FHyperlinkList := TFPList.Create;
@@ -3771,7 +3771,7 @@ begin
         relSchema := GetAttrValue(node, 'Type');
         relTarget := GetAttrValue(node, 'Target');
         if (relID <> '') and (relTarget <> '') then
-          (ARelsList as TRelationshipList).Add(relID, relSchema, relTarget);
+          (ARelsList as TXlsxRelationshipList).Add(relID, relSchema, relTarget);
       end;
       node := node.NextSibling;
     end;
@@ -4153,7 +4153,7 @@ begin
   for i := 0 to FSheetList.Count-1 do
   begin
     sheetData := TSheetData(FSheetList[i]);
-    sheetData.Target := TRelationshipList(FWorkbookRels).FindTarget(sheetData.RelID);
+    sheetData.Target := TXlsxRelationshipList(FWorkbookRels).FindTarget(sheetData.RelID);
     sheetData.SheetRelsFile := OOXML_PATH_XL_WORKSHEETS + '_rels/' + ExtractFileName(sheetData.Target) + '.rels';
     ReadRels(AStream, sheetData.SheetRelsFile, sheetData.SheetRels);
   end;
@@ -4169,7 +4169,7 @@ var
   sheetIndex: Integer;
   relID: String;
   sheetRelsFile: String;
-  rels: TRelationshipList;
+  rels: TXlsxRelationshipList;
   i: Integer;
 begin
   sheetIndex := TsWorksheet(AWorksheet).Index;
@@ -4184,7 +4184,7 @@ begin
     begin
       // This node points to the drawing.xml file with parameters for embedded 
       // images.
-      rels := TRelationshipList.Create;
+      rels := TXlsxRelationshipList.Create;
       try
         ReadRels(AStream, sheetRelsFile, rels);
         relID := GetAttrValue(ANode, 'r:id');
@@ -4197,7 +4197,7 @@ begin
     if nodeName = 'legacyDrawingHF' then
     begin
       // This is the node pointer to parameters for heater/footer images.
-      rels := TRelationshipList.Create;
+      rels := TXlsxRelationshipList.Create;
       try
         ReadRels(AStream, sheetRelsFile, rels);
         relID := GetAttrValue(ANode, 'r:id');
@@ -4212,7 +4212,7 @@ begin
       // This node is for comment size & position. We do not support this.
       // But it indicates the presence of comments and extract the name of the
       // comments.xml file from the sheet<n>.xml.rels file
-      rels := TRelationshipList.Create;
+      rels := TXlsxRelationshipList.Create;
       try
         ReadRels(AStream, sheetRelsFile, rels);
         for i := 0 to rels.Count-1 do
@@ -4231,7 +4231,7 @@ begin
       // It contains also the relationship ids to external files listed in
       // the sheet<n>.xml.rels file. We read these relationships here and store
       // them in the HyperlinkRels of the sheetdata.
-      rels := TRelationshipList.Create;
+      rels := TXlsxRelationshipList.Create;
       try
         ReadRels(AStream, sheetRelsfile, rels);
         for i := 0 to rels.Count-1 do
@@ -4699,7 +4699,7 @@ begin
       // unzip sheet file
       XMLStream := CreateXMLStream;
       try
-        fn := TRelationshipList(FWorkbookRels).FindTarget(sheetData.RelID);
+        fn := TXlsxRelationshipList(FWorkbookRels).FindTarget(sheetData.RelID);
         if fn = '' then
           fn := OOXML_PATH_XL_WORKSHEETS + Format('sheet%d.xml', [i+1])
         else

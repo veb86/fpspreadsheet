@@ -41,7 +41,7 @@ type
     function ReadChartAxisTickMarks(ANode: TDOMNode): TsChartAxisTicks;
     procedure ReadChartBarSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartBubbleSeries(ANode: TDOMNode; AChart: TsChart);
-    procedure ReadChartSeriesDataPointStyles(ANode: TDOMNode; ASeries: TsChartSeries);
+    procedure ReadChartImages(AStream: TStream; AChart: TsChart; ARelsList: TFPList);
     procedure ReadChartLegend(ANode: TDOMNode; AChartLegend: TsChartLegend);
     procedure ReadChartLineSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartPieSeries(ANode: TDOMNode; AChart: TsChart; RingMode: Boolean);
@@ -49,6 +49,7 @@ type
     procedure ReadChartRadarSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartScatterSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartSeriesAxis(ANode: TDOMNode; ASeries: TsChartSeries);
+    procedure ReadChartSeriesDataPointStyles(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesErrorBars(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesLabels(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesMarker(ANode: TDOMNode; ASeries: TsCustomLineSeries);
@@ -59,11 +60,10 @@ type
     procedure ReadChartStockSeries(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartStockSeriesUpDownBars(ANode: TDOMNode; ASeries: TsStockSeries);
     procedure ReadChartTitle(ANode: TDOMNode; ATitle: TsChartText);
-
   public
     constructor Create(AReader: TsBasicSpreadReader); override;
     destructor Destroy; override;
-    procedure ReadChartXML(AStream: TStream; AChart: TsChart; AChartXML: String);
+    procedure ReadChartXML(AStream: TStream; AChart: TsChart; AChartXMLFile: String);
 
   end;
 
@@ -545,6 +545,8 @@ var
   gradient: TsChartGradient;
   color: TsColor;
   hatch: string;
+  relID: String;
+  imgWidth, imgHeight: Double;
 begin
   if ANode = nil then
     exit;
@@ -723,6 +725,27 @@ begin
           end;
         end;
 
+      // Image fill
+      // to do: only partially supported since TAChart cannot display this and we cannot write it back.
+      'a:blipFill':
+        begin
+          AFill.Style := cfsImage;
+          child1 := ANode.FirstChild;
+          while Assigned(child1) do
+          begin
+            nodeName := child1.NodeName;
+            case nodeName of
+              'a:blip':
+                relID := GetAttrValue(child1, 'r:embed');
+              'a:tile':
+                // contains x/y scaling factor and image offset.
+                ;
+            end;
+            child1 := child1.NextSibling;
+          end;
+          AFill.Image := AChart.Images.IndexOf(relID);
+        end;
+
       // Line style
       'a:ln':
         ReadChartLineProps(ANode, AChart, ALine);
@@ -809,13 +832,54 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLChartReader.ReadChartImages(AStream: TStream;
+  AChart: TsChart; ARelsList: TFPList);
+var
+  i: Integer;
+  rel: TXlsxRelationship;
+  img: TFPCustomImage;
+  imgFileName: string;
+  memStream: TMemoryStream;
+  unzip: TStreamUnzipper;
+begin
+  for i := 0 to ARelsList.Count-1 do
+  begin
+    rel := TXlsxRelationshipList(ARelsList)[i];
+    if rel.Schema = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image' then
+    begin
+      imgFileName := MakeXLPath(rel.Target);
+      if imgFileName = '' then
+        Continue;
+      unzip := TStreamUnzipper.Create(AStream);
+      try
+        unzip.Examine;
+        memStream := TMemoryStream.Create;
+        try
+          unzip.UnzipFile(imgFileName, memStream);
+          memStream.Position := 0;
+          if memStream.Size > 0 then
+          begin
+            img := TFPMemoryImage.Create(0, 0);     // do not destroy this image here!
+            img.LoadFromStream(memStream);
+            AChart.Images.AddImage(rel.RelID, img);
+          end;
+        finally
+          memStream.Free;
+        end;
+      finally
+        unzip.Free;
+      end;
+    end;
+  end;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Reads the individual data point styles of a series.
 
   @param  ANode    First child of the <c:dPt> node
   @param  ASeries  Series to which these data points belong
 -------------------------------------------------------------------------------}
-procedure TsSpreadOOXMLChartreader.ReadChartSeriesDataPointStyles(ANode: TDOMNode;
+procedure TsSpreadOOXMLChartReader.ReadChartSeriesDataPointStyles(ANode: TDOMNode;
   ASeries: TsChartSeries);
 var
   nodename, s: String;
@@ -1997,23 +2061,44 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Reads the main xml file of a chart (and the associated rels file)
+
+  @param   AStream        Stream of the xlsx file
+  @param   AChart         Chart instance, already created, but empty
+  @param   AChartXMLFile  Name of the xml file with the chart data, usually 'xl/charts/chart1.xml'
+-------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartReader.ReadChartXML(AStream: TStream; AChart: TsChart;
-  AChartXML: String);
+  AChartXMLFile: String);
 var
   lReader: TsSpreadOOXMLReader;
   xmlStream: TStream;
   doc: TXMLDocument = nil;
   node: TDOMNode;
   nodeName: String;
+  relsFileName: String;
+  relsList: TXlsxRelationshipList;
 begin
   lReader := TsSpreadOOXMLReader(Reader);
 
+  // Read the rels file of the chart. The items go into the FRelsList.
+  relsFileName := ExtractFilePath(AChartXMLFile) + '_rels/' + ExtractFileName(AChartXMLFile) + '.rels';
+  relsList := TXlsxRelationshipList.Create;
+  try
+    lReader.ReadRels(AStream, relsFileName, relsList);
+    // Read the images mentioned in the rels file.
+    ReadChartImages(AStream, AChart, relsList);
+  finally
+    relsList.Free;
+  end;
+
+  // Read the xml file of the chart
   xmlStream := lReader.CreateXMLStream;
   try
-    if UnzipToStream(AStream, AChartXML, xmlStream) then
+    if UnzipToStream(AStream, AChartXMLFile, xmlStream) then
     begin
       lReader.ReadXMLStream(doc, xmlStream);
-      node := doc.DocumentElement.FirstChild; //FindNode('c:chart');
+      node := doc.DocumentElement.FirstChild;
       while Assigned(node) do
       begin
         nodeName := node.NodeName;

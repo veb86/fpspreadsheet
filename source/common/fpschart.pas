@@ -158,7 +158,7 @@ type
     Image: TFPCustomImage;
     Width, Height: Double;  // mm
     destructor Destroy; override;
-    procedure Copyfrom(ASource: TsChartImage);
+    procedure CopyFrom(ASource: TsChartImage);
   end;
 
   TsChartImagelist = class(TFPObjectList)
