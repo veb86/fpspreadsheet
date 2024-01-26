@@ -2034,6 +2034,26 @@ begin
     Result := BooleanResult(true);
 end;
 
+procedure fpsIFERROR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+// IFERROR( value; value_if_error )
+// If "value" is an error value (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?
+// or #NULL), this function will return Args[1]. Otherwise, it will return Args[0].
+var
+  cell: PCell;
+begin
+  if (Args[0].ResultType = rtCell) then
+  begin
+    cell := ArgToCell(Args[0]);
+    if (cell <> nil) and (cell^.ContentType = cctError) and (cell^.ErrorValue <= errArgError)
+      then Result := Args[1]
+    else result := Args[0];
+  end else
+  if (Args[0].ResultType = rtError) then
+    Result := Args[1]
+  else
+    Result := Args[0];
+end;
+
 procedure fpsISLOGICAL(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // ISLOGICAL( value )
 var
@@ -2512,6 +2532,8 @@ begin
     AddFunction(cat, 'ISNUMBER',  'B', '?',    INT_EXCEL_SHEET_FUNC_ISNUMBER,   @fpsISNUMBER);
     AddFunction(cat, 'ISREF',     'B', '?',    INT_EXCEL_SHEET_FUNC_ISREF,      @fpsISREF);
     AddFunction(cat, 'ISTEXT',    'B', '?',    INT_EXCEL_SHEET_FUNC_ISTEXT,     @fpsISTEXT);
+
+    AddFunction(cat, 'IFERROR',   'S', '?S',   INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFERROR);   // not supported by .xls
 
     // Lookup / reference functions
     cat := bcLookup;

@@ -272,6 +272,7 @@ const
 
   INT_EXCEL_SHEET_FUNC_HYPERLINK  = 359;  // BIFF8 only
 
+  INT_EXCEL_SHEET_FUNC_UNKNOWN    = 255;  // not available in any BIFF
 
 
 implementation
