@@ -386,6 +386,11 @@ type
   TsChartDataLabel = (cdlValue, cdlPercentage, cdlCategory, cdlSeriesName, cdlSymbol);
   TsChartDataLabels = set of TsChartDataLabel;
   TsChartLabelPosition = (lpDefault, lpOutside, lpInside, lpCenter);
+  TsChartLabelCalloutShape = (
+    lcsRectangle, lcsRoundRect, lcsEllipse,
+    lcsLeftArrow, lcsUpArrow, lcsRightArrow, lcsDownArrow,
+    lcsRectangleWedge, lcsRoundRectWedge, lcsEllipseWedge
+  );
 
   TsChartDataPointStyle = class(TsChartFillElement);
 
@@ -501,6 +506,7 @@ type
     FTitleAddr: TsChartCellAddr;
     FLabelFormat: String;
     FDataLabels: TsChartDataLabels;
+    FDataLabelCalloutShape: TsChartLabelCalloutShape;
     FDataPointStyles: TsChartDataPointStyleList;
     FOrder: Integer;
     FRegression: TsChartRegression;
@@ -542,6 +548,7 @@ type
     property ChartType: TsChartType read GetChartType;
     property Count: Integer read GetCount;
     property DataLabels: TsChartDataLabels read FDataLabels write FDataLabels;
+    property DataLabelCalloutShape: TsChartLabelCalloutShape read FDataLabelCalloutShape write FDataLabelCalloutShape;
     property DataPointStyles: TsChartDatapointStyleList read FDataPointStyles;
     property FillColorRange: TsChartRange read FFillColorRange write FFillColorRange;
     property LabelBackground: TsChartFill read FLabelBackground write FLabelBackground;

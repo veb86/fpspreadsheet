@@ -1662,7 +1662,7 @@ procedure TsSpreadOOXMLChartReader.ReadChartSeriesLabels(ANode: TDOMNode;
   ASeries: TsChartSeries);
 var
   nodeName, s: String;
-  child, child2, child3: TDOMNode;
+  child1, child2, child3: TDOMNode;
 begin
   if ANode = nil then
     exit;
@@ -1675,10 +1675,10 @@ begin
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder);
       'c:txPr':
         begin
-          child := ANode.FindNode('a:p');
-          if Assigned(child) then
+          child1 := ANode.FindNode('a:p');
+          if Assigned(child1) then
           begin
-            child2 := child.FirstChild;
+            child2 := child1.FirstChild;
             while Assigned(child2) do
             begin
               nodeName := child2.NodeName;
@@ -1715,7 +1715,50 @@ begin
       'c:showLeaderLines':
         ;
       'c:extLst':
-        ;
+        begin
+          child1 := ANode.FirstChild;
+          while Assigned(child1) do
+          begin
+            nodeName := child1.NodeName;
+            if nodeName = 'c:ext' then
+            begin
+              child2 := child1.FirstChild;
+              while Assigned(child2) do
+              begin
+                nodeName := child2.NodeName;
+                if nodeName = 'c15:spPr' then
+                begin
+                  child3 := child2.FindNode('a:prstGeom');
+                  if Assigned(child3) then
+                  begin
+                    s := GetAttrValue(child3, 'prst');
+                    case s of
+                      'rect': ASeries.DataLabelCalloutShape := lcsRectangle;
+                      'roundRect': ASeries.DataLabelCalloutShape := lcsRoundRect;
+                      'ellipse': ASeries.DataLabelCalloutShape := lcsEllipse;
+                      'rightArrowCallout': ASeries.DataLabelCalloutShape := lcsRightArrow;
+                      'downArrowCallout': ASeries.DataLabelCalloutShape := lcsDownArrow;
+                      'leftArrowCallout': ASeries.DataLabelCalloutShape := lcsLeftArrow;
+                      'upArrowCallout': ASeries.DataLabelCalloutShape := lcsUpArrow;
+                      'wedgeRectCallout': ASeries.DataLabelCalloutShape := lcsRectangleWedge;
+                      'wedgeRoundRectCallout': ASeries.DataLabelCalloutShape := lcsRoundRectWedge;
+                      'wedgeEllipseCallout': ASeries.DataLabelCalloutShape := lcsEllipseWedge;
+                      else ASeries.DataLabelCalloutShape := lcsRectangle;
+                      {
+                      'borderCallout1': ;
+                      'borderCallout2': ;
+                      'accentCallout1': ;
+                      'accentCallout2': ;
+                      }
+                    end;
+                  end;
+                end;
+                child2 := child2.NextSibling;
+              end;
+            end;
+            child1 := child1.NextSibling;
+          end;
+        end;
     end;
     ANode := ANode.NextSibling;
   end;

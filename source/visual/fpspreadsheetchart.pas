@@ -2435,6 +2435,15 @@ begin
 
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.LabelBorder, AChartSeries.Marks.Frame);
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.LabelBackground, AChartSeries.Marks.LabelBrush);
+  case AWorkbookSeries.DataLabelCalloutShape of
+    lcsRectangle: AChartSeries.Marks.Shape := clsRectangle;
+    lcsRoundRect: AChartSeries.Marks.Shape := clsRoundRect;
+    lcsEllipse: AChartSeries.Marks.Shape := clsEllipse;
+    lcsRectangleWedge: AChartSeries.Marks.Shape := clsRectangle;  // replacement
+    lcsRoundRectWedge: AChartSeries.Marks.Shape := clsRoundRect;  // replacement
+    lcsEllipseWedge: AChartSeries.Marks.Shape := clsEllipse;      // replacement
+    else AChartSeries.Marks.Shape := clsRectangle;                // replacement
+  end;
 end;
 
 procedure TsWorkbookChartLink.UpdateChartSeriesRegression(AWorkbookSeries: TsChartSeries;
