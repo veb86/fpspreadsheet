@@ -1313,6 +1313,8 @@ function TsChartImageList.AddImage(AName: String; AImage: TFPCustomImage): Integ
 var
   item: TsChartImage;
 begin
+  if AName = '' then
+    AName := 'Img' + IntToStr(Count + 1);
   Result := IndexOfName(AName);
   if Result = -1 then
   begin

@@ -11,7 +11,7 @@ uses
   Classes, SysUtils, StrUtils, Contnrs, FPImage, fgl,
   {$ifdef FPS_PATCHED_ZIPPER}fpszipper,{$else}zipper,{$endif}
   laz2_xmlread, laz2_DOM,
-  fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsNumFormat,
+  fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsNumFormat, fpsImages,
   fpsReaderWriter, fpsXMLCommon;
 
 type
@@ -21,6 +21,7 @@ type
   private
     FPointSeparatorSettings: TFormatSettings;
     FColors: specialize TFPGMap<string, TsColor>;
+    FImages: TFPObjectList;
     FXAxisID, FYAxisID, FX2AxisID, FY2AxisID: DWord;
     FXAxisDelete, FYAxisDelete, FX2AxisDelete, FY2AxisDelete: Boolean;
 
@@ -29,6 +30,9 @@ type
     procedure ReadChartFillAndLineProps(ANode: TDOMNode;
       AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine);
     procedure ReadChartFontProps(ANode: TDOMNode; AFont: TsFont);
+    procedure ReadChartGradientFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
+    procedure ReadChartHatchFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
+    procedure ReadChartImageFillProps(ANode: TDOMNode; AChart: TsChart; AFill: TsChartFill);
     procedure ReadChartLineProps(ANode: TDOMNode; AChart: TsChart; AChartLine: TsChartLine);
     procedure ReadChartTextProps(ANode: TDOMNode; AFont: TsFont; var AFontRotation: Single);
     procedure SetAxisDefaults(AWorkbookAxis: TsChartAxis);
@@ -91,8 +95,35 @@ uses
 const
   PTS_MULTIPLIER = 12700;
   ANGLE_MULTIPLIER = 60000;
+  PERCENT_MULTIPLIER = 1000;
+  FACTOR_MULTIPLIER = 100000;
 
 {$INCLUDE xlsxooxmlchart_hatch.inc}
+
+type
+  TNamedStreamItem = class
+    Name: String;
+    Stream: TStream;
+  end;
+
+  TNamedStreamList = class(TFPObjectList)
+  public
+    function FindStreamByName(const AName: String): TStream;
+  end;
+
+function TNamedStreamList.FindStreamByName(const AName: String): TStream;
+var
+  i: Integer;
+begin
+  for i := 0 to Count-1 do
+    if TNamedStreamItem(Items[i]).Name = AName then
+    begin
+      Result := TNamedStreamItem(Items[i]).Stream;
+      exit;
+    end;
+  Result := nil;
+end;
+
 
 type
   TsOpenCustomLineSeries = class(TsCustomLineSeries)
@@ -134,10 +165,13 @@ begin
   FColors.Add('accent4', FlipColorBytes($FFC000));
   FColors.Add('accent5', FlipColorBytes($5B9BD5));
   FColors.Add('accent6', FlipColorBytes($70AD47));
+
+  FImages := TFPObjectList.Create;
 end;
 
 destructor TsSpreadOOXMLChartReader.Destroy;
 begin
+  FImages.Free;
   FColors.Free;
   inherited;
 end;
@@ -497,13 +531,13 @@ begin
               case nodeName of
                 'a:tint':
                   if TryStrToInt(s, n) then
-                    AColor := TintedColor(AColor, n/100000);
+                    AColor := TintedColor(AColor, n/FACTOR_MULTIPLIER);
                 'a:lumMod':     // luminance modulated
                   if TryStrToInt(s, n) then
-                    AColor := LumModColor(AColor, n/100000);
+                    AColor := LumModColor(AColor, n/FACTOR_MULTIPLIER);
                 'a:lumOff':
                   if TryStrToInt(s, n) then
-                    AColor := LumOffsetColor(AColor, n/100000);
+                    AColor := LumOffsetColor(AColor, n/FACTOR_MULTIPLIER);
                 'a:alpha':
                   if TryStrToInt(s, n) then
                     Alpha := n / 100000;
@@ -526,11 +560,186 @@ begin
           case nodeName of
             'a:alpha':
               if TryStrToInt(s, n) then
-                Alpha := n / 100000;
+                Alpha := n / FACTOR_MULTIPLIER;
           end;
           child := child.NextSibling;
         end;
       end;
+  end;
+end;
+
+procedure TsSpreadOOXMLChartReader.ReadChartGradientFillProps(ANode: TDOMNode;
+  AChart: TsChart; AFill: TsChartFill);
+var
+  nodeName, s: String;
+  value, alpha: Double;
+  color: TsColor;
+  child: TDOMNode;
+  gradient: TsChartGradient;
+begin
+  if ANode = nil then
+    exit;
+
+  AFill.Style := cfsGradient;
+  gradient := TsChartGradient.Create;   // Do not destroy gradient, it will be added to the chart.
+  ANode := ANode.FirstChild;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'a:gsLst':
+        begin
+          child := ANode.FirstChild;
+          while Assigned(child) do
+          begin
+            nodeName := child.NodeName;
+            if nodeName = 'a:gs' then
+            begin
+              s := GetAttrValue(child, 'pos');
+              value := StrToFloatDef(s, 0.0, FPointSeparatorSettings) / FACTOR_MULTIPLIER;
+              color := scWhite;
+              alpha := 1.0;
+              ReadChartColor(child.FirstChild, color, alpha);
+              gradient.AddStep(value, color, 1.0 - alpha, 1.0);
+            end;
+            child := child.NextSibling;
+          end;
+        end;
+      'a:lin':
+        begin
+          gradient.Style := cgsLinear;
+          s := GetAttrValue(ANode, 'ang');
+          if TryStrToFloat(s, value, FPointSeparatorSettings) then
+            gradient.Angle := value / ANGLE_MULTIPLIER;
+        end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+  AFill.Gradient := AChart.Gradients.AddGradient('', gradient);
+end;
+
+procedure TsSpreadOOXMLChartReader.ReadChartHatchFillProps(ANode: TDOMNode;
+  AChart: TsChart; AFill: TsChartFill);
+var
+  nodeName: String;
+  hatch: String;
+  color: TsColor;
+begin
+  AFill.Style := cfsSolidHatched;
+  hatch := GetAttrValue(ANode, 'prst');
+
+  ANode := ANode.FirstChild;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'a:fgClr':
+        color := ReadChartColor(ANode.FirstChild, scBlack);
+      'a:bgClr':
+        AFill.Color := ReadChartColor(ANode.FirstChild, scWhite);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  case hatch of
+    'pct5':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY5_PATTERN);
+    'pct10':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY10_PATTERN);
+    'pct20':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY20_PATTERN);
+    'pct25':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY25_PATTERN);
+    'pct30':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY30_PATTERN);
+    'pct40':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY40_PATTERN);
+    'pct50':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY50_PATTERN);
+    'pct60':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY60_PATTERN);
+    'pct70':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY70_PATTERN);
+    'pct75':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY75_PATTERN);
+    'pct80':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY80_PATTERN);
+    'pct90':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY90_PATTERN);
+    'dashDnDiag':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_DNDIAG_PATTERN);
+    'dashUpDiag':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_UPDIAG_PATTERN);
+    'dashHorz':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_HORZ_PATTERN);
+    'dashVert':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_VERT_PATTERN);
+    'smConfetti':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CONFETTI_PATTERN);
+    'lgConfetti':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CONFETTI_PATTERN);
+    'zigZag':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_ZIGZAG_PATTERN);
+    'wave':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WAVE_PATTERN);
+    'diagBrick':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIAG_BRICK_PATTERN);
+    'horzBrick':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_HORZ_BRICK_PATTERN);
+    'weave':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WEAVE_PATTERN);
+    'plaid':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_PLAID_PATTERN);
+    'divot':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIVOT_PATTERN);
+    'dotGrid':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_GRID_PATTERN);
+    'dotDmnd':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_DIAMOND_PATTERN);
+    'shingle':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SHINGLE_PATTERN);
+    'trellis':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_TRELLIS_PATTERN);
+    'sphere':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SPHERE_PATTERN);
+    'smCheck':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CHECKERBOARD_PATTERN);
+    'lgCheck':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CHECKBOARD_PATTERN);
+    'solidDmnd':
+      AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SOLID_DIAMOND_PATTERN);
+
+    // The following patterns are line patterns to simplify interfacing with ODS.
+    'ltDnDiag':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, -45);
+    'ltUpDiag':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, +45);
+    'dkDnDiag':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, -45);
+    'dkUpDiag':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, +45);
+    'wdDnDiag':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, -45);
+    'wdUpDiag':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, +45);
+    'ltHorz':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 0);
+    'ltVert':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 90);
+    'narVert':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 90);
+    'narHorz':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 0);
+    'dkHorz':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 0);
+    'dkVert':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 90);
+    'smGrid':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 1.0, 0.1, 0);
+    'lgGrid':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 0);
+    'openDmnd':
+      AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 45);
   end;
 end;
 
@@ -544,9 +753,6 @@ var
   alpha: Double;
   gradient: TsChartGradient;
   color: TsColor;
-  hatch: string;
-  relID: String;
-  imgWidth, imgHeight: Double;
 begin
   if ANode = nil then
     exit;
@@ -566,185 +772,15 @@ begin
 
       // Gradient fill
       'a:gradFill':
-        begin
-          AFill.Style := cfsGradient;
-          gradient := TsChartGradient.Create;   // Do not destroy gradient, it will be added to the chart.
-          child1 := ANode.FirstChild;
-          while Assigned(child1) do
-          begin
-            nodeName := child1.NodeName;
-            case nodeName of
-              'a:gsLst':
-                begin
-                  child2 := child1.FirstChild;
-                  while Assigned(child2) do
-                  begin
-                    nodeName := child2.NodeName;
-                    if nodeName = 'a:gs' then
-                    begin
-                      s := GetAttrValue(child2, 'pos');
-                      value := StrToIntDef(s, 0) / 100000;
-                      color := scWhite;
-                      alpha := 1.0;
-                      ReadChartColor(child2.FirstChild, color, alpha);
-                      gradient.AddStep(value, color, 1.0 - alpha, 1.0);
-                    end;
-                    child2 := child2.NextSibling;
-                  end;
-                end;
-              'a:lin':
-                begin
-                  gradient.Style := cgsLinear;
-                  s := GetAttrValue(child1, 'ang');
-                  if TryStrToInt(s, n) then
-                    gradient.Angle := n / ANGLE_MULTIPLIER;
-                end;
-            end;
-            child1 := child1.NextSibling;
-          end;
-          AFill.Gradient := AChart.Gradients.AddGradient('', gradient);
-        end;
+        ReadChartGradientFillProps(ANode, AChart, AFill);
 
       // Hatched fill
       'a:pattFill':
-        begin
-          AFill.Style := cfsSolidHatched;
-          hatch := GetAttrValue(ANode, 'prst');
-          child1 := ANode.FirstChild;
-          while Assigned(child1) do
-          begin
-            nodeName := child1.NodeName;
-            case nodeName of
-              'a:fgClr':
-                color := ReadChartColor(child1.FirstChild, scBlack);
-              'a:bgClr':
-                AFill.Color := ReadChartColor(child1.FirstChild, scWhite);
-            end;
-            child1 := child1.NextSibling;
-          end;
-
-          case hatch of
-            'pct5':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY5_PATTERN);
-            'pct10':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY10_PATTERN);
-            'pct20':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY20_PATTERN);
-            'pct25':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY25_PATTERN);
-            'pct30':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY30_PATTERN);
-            'pct40':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY40_PATTERN);
-            'pct50':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY50_PATTERN);
-            'pct60':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY60_PATTERN);
-            'pct70':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY70_PATTERN);
-            'pct75':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY75_PATTERN);
-            'pct80':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY80_PATTERN);
-            'pct90':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_GRAY90_PATTERN);
-            'dashDnDiag':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_DNDIAG_PATTERN);
-            'dashUpDiag':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_UPDIAG_PATTERN);
-            'dashHorz':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_HORZ_PATTERN);
-            'dashVert':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DASH_VERT_PATTERN);
-            'smConfetti':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CONFETTI_PATTERN);
-            'lgConfetti':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CONFETTI_PATTERN);
-            'zigZag':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_ZIGZAG_PATTERN);
-            'wave':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WAVE_PATTERN);
-            'diagBrick':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIAG_BRICK_PATTERN);
-            'horzBrick':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_HORZ_BRICK_PATTERN);
-            'weave':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_WEAVE_PATTERN);
-            'plaid':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_PLAID_PATTERN);
-            'divot':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DIVOT_PATTERN);
-            'dotGrid':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_GRID_PATTERN);
-            'dotDmnd':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_DOT_DIAMOND_PATTERN);
-            'shingle':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SHINGLE_PATTERN);
-            'trellis':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_TRELLIS_PATTERN);
-            'sphere':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SPHERE_PATTERN);
-            'smCheck':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SMALL_CHECKERBOARD_PATTERN);
-            'lgCheck':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_LARGE_CHECKBOARD_PATTERN);
-            'solidDmnd':
-              AFill.Hatch := AChart.Hatches.AddDotHatch(hatch, color, 8, 8, OOXML_SOLID_DIAMOND_PATTERN);
-
-            // The following patterns are line patterns to simplify interfacing with ODS.
-            'ltDnDiag':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, -45);
-            'ltUpDiag':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, +45);
-            'dkDnDiag':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, -45);
-            'dkUpDiag':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.5, +45);
-            'wdDnDiag':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, -45);
-            'wdUpDiag':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 2.0, 0.7, +45);
-            'ltHorz':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 0);
-            'ltVert':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.1, 90);
-            'narVert':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 90);
-            'narHorz':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 0.6, 0.3, 0);
-            'dkHorz':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 0);
-            'dkVert':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsSingle, color, 1.0, 0.7, 90);
-            'smGrid':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 1.0, 0.1, 0);
-            'lgGrid':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 0);
-            'openDmnd':
-              AFill.Hatch := AChart.Hatches.AddLineHatch(hatch, chsDouble, color, 2.0, 0.1, 45);
-          end;
-        end;
+        ReadChartHatchFillProps(ANode, AChart, AFill);
 
       // Image fill
-      // to do: only partially supported since TAChart cannot display this and we cannot write it back.
       'a:blipFill':
-        begin
-          AFill.Style := cfsImage;
-          child1 := ANode.FirstChild;
-          while Assigned(child1) do
-          begin
-            nodeName := child1.NodeName;
-            case nodeName of
-              'a:blip':
-                relID := GetAttrValue(child1, 'r:embed');
-              'a:tile':
-                // contains x/y scaling factor and image offset.
-                ;
-            end;
-            child1 := child1.NextSibling;
-          end;
-          AFill.Image := AChart.Images.IndexOfName(relID);
-        end;
+        ReadChartImageFillProps(ANode, AChart, AFill);
 
       // Line style
       'a:ln':
@@ -832,6 +868,56 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLChartReader.ReadChartImageFillProps(ANode: TDOMNode;
+  AChart: TsChart; AFill: TsChartFill);
+var
+  nodeName: String;
+  relID: String = '';
+  widthFactor: Double = 1.0;
+  heightFactor: Double = 1.0;
+  imgWidthInches, imgHeightInches: Double;
+  img: TFPCustomImage;
+  sImg: TsChartImage;
+  stream: TStream;
+begin
+  if ANode = nil then
+    exit;
+
+  AFill.Style := cfsImage;
+  ANode := ANode.FirstChild;
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'a:blip':
+        relID := GetAttrValue(ANode, 'r:embed');
+      'a:tile':
+        begin
+          widthFactor := StrToFloatDef(GetAttrValue(ANode, 'cx'), 100000, FPointSeparatorSettings) / 100000;
+          heightFactor := StrToFloatDef(GetAttrValue(ANode, 'cy'), 100000, FPointSeparatorSettings) / 100000;
+        end;
+    end;
+    ANode := ANode.NextSibling;
+  end;
+
+  if relID <> '' then
+  begin
+    stream := TNamedStreamList(FImages).FindStreamByName(relID);
+    if stream <> nil then
+    begin
+      stream.Position := 0;
+      GetImageInfo(stream, imgWidthInches, imgHeightInches);
+      stream.Position := 0;
+      img := TFPMemoryImage.Create(0, 0); // will be destroyed by the chart's images list.
+      img.LoadFromStream(stream);
+      AFill.Image := AChart.Images.AddImage('', img);
+      sImg := AChart.Images[AFill.Image];
+      sImg.Width := InToMM(imgWidthInches) * widthFactor;
+      sImg.Height := InToMM(imgHeightInches) * heightFactor;
+    end;
+  end;
+end;
+
 procedure TsSpreadOOXMLChartReader.ReadChartImages(AStream: TStream;
   AChart: TsChart; ARelsList: TFPList);
 var
@@ -839,9 +925,11 @@ var
   rel: TXlsxRelationship;
   img: TFPCustomImage;
   imgFileName: string;
-  memStream: TMemoryStream;
+  namedStreamItem: TNamedStreamItem;
   unzip: TStreamUnzipper;
 begin
+  FImages.Clear;
+
   for i := 0 to ARelsList.Count-1 do
   begin
     rel := TXlsxRelationshipList(ARelsList)[i];
@@ -853,19 +941,12 @@ begin
       unzip := TStreamUnzipper.Create(AStream);
       try
         unzip.Examine;
-        memStream := TMemoryStream.Create;
-        try
-          unzip.UnzipFile(imgFileName, memStream);
-          memStream.Position := 0;
-          if memStream.Size > 0 then
-          begin
-            img := TFPMemoryImage.Create(0, 0);     // do not destroy this image here!
-            img.LoadFromStream(memStream);
-            AChart.Images.AddImage(rel.RelID, img);
-          end;
-        finally
-          memStream.Free;
-        end;
+        namedStreamItem := TNamedStreamItem.Create;
+        namedStreamItem.Name := rel.RelID;
+        namedStreamItem.Stream := TMemoryStream.Create;
+        unzip.UnzipFile(imgFileName, namedStreamItem.Stream);
+        namedStreamItem.Stream.Position := 0;
+        FImages.Add(namedStreamItem);
       finally
         unzip.Free;
       end;
@@ -1654,7 +1735,7 @@ begin
     case nodeName of
       'c:idx': ;
       'c:order':
-        if (s <> '') and TryStrToInt(s, n) then
+        if TryStrToInt(s, n) then
           ASeries.Order := n;
       'c:tx':
         ReadChartSeriesTitle(ANode.FirstChild, ASeries);

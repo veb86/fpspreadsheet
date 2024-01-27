@@ -1314,7 +1314,7 @@ begin
       UpdatePolarSeries(TsRadarSeries(ASeries), TPolarSeries(ser));
   end;
 
-//  ser.Index := ASeries.Order;
+  //ser.Index := ASeries.Order;
 end;
 
 procedure TsWorkbookChartLink.AfterDrawChartHandler(ASender: TChart;
@@ -2245,9 +2245,8 @@ begin
             h := mmToPx(img.Height, ppi);
             png := TPortableNetworkGraphic.Create;
             png.Assign(img.Image);
-            {$IF LCL_FullVersion >= 2020000}
-            ScaleImg(png, w, h);
-            {$IFEND}
+            if (img.Width <> -1) and (img.Height <> -1) then
+              ScaleImg(png, w, h);
             FBrushBitmaps.Add(png);
             ABrush.Bitmap := png;
           end else

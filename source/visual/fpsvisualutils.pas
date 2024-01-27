@@ -108,10 +108,12 @@ type
     property Width: Integer read GetWidth;
   end;
 
+procedure ScaleImg(AImage: TCustomBitmap; AWidth, AHeight: Integer);
+
 implementation
 
 uses
-  Types, Math, LCLType, LCLIntf, LazUTF8,
+  Types, Math, LCLType, LCLIntf, LazUTF8, IntfGraphics, LazCanvas,
   fpsUtils;
 
 const
@@ -1067,6 +1069,34 @@ begin
     if fnt.Position <> fpNormal then
       FCanvas.Font.Size := round(fnt.Size * SUBSCRIPT_SUPERSCRIPT_FACTOR);
     ACurrFontPos := fnt.Position;
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Scales the specified image to the given size
+
+  @param  AImage   Original bitmapped image
+  @param  AWidth   New width of the scaled image, in pixels
+  @param  AHeight  New height of the scaled image, in pixels
+-------------------------------------------------------------------------------}
+procedure ScaleImg(AImage: TCustomBitmap; AWidth, AHeight: Integer);
+var
+  srcImg: TLazIntfImage = nil;
+  destCanvas: TLazCanvas = nil;
+begin
+  try
+    // Create the source LazIntfImage
+    srcImg := AImage.CreateIntfImage;
+    // Create the destination LazCanvas
+    destCanvas := TLazCanvas.Create(srcImg);
+    // Execute the canvas.StretchDraw
+    destCanvas.StretchDraw(0, 0, AWidth, AHeight, srcImg);
+    // Reload the stretched image into the CustomBitmap
+    AImage.LoadFromIntfImage(srcImg);
+    AImage.SetSize(AWidth, AHeight);
+  finally
+    destCanvas.Free;
+    srcImg.Free;
   end;
 end;
 

@@ -71,7 +71,7 @@ type
 
 
 function GetImageInfo(AStream: TStream; out AWidthInches, AHeightInches: Double;
-  AImagetype: TsImageType = itUnknown): TsImageType; overload;
+  AImageType: TsImageType = itUnknown): TsImageType; overload;
 
 function GetImageInfo(AStream: TStream; out AWidth, AHeight: DWord;
   out dpiX, dpiY: Double; AImageType: TsImageType = itUnknown): TsImageType; overload;
@@ -759,7 +759,7 @@ end;
   @seeAlso RegisterImageType
 -------------------------------------------------------------------------------}
 function GetImageInfo(AStream: TStream; out AWidthInches, AHeightInches: Double;
-  AImagetype: TsImageType = itUnknown): TsImageType;
+  AImageType: TsImageType = itUnknown): TsImageType;
 var
   w, h: DWord;
   xdpi, ydpi: Double;
