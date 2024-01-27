@@ -743,7 +743,7 @@ begin
             end;
             child1 := child1.NextSibling;
           end;
-          AFill.Image := AChart.Images.IndexOf(relID);
+          AFill.Image := AChart.Images.IndexOfName(relID);
         end;
 
       // Line style
