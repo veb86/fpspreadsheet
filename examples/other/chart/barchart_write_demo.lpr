@@ -81,10 +81,8 @@ begin
     ser.Fill.Hatch := ch.Hatches.AddLineHatch('Forward', chsSingle, scWhite, 1.5, 0.1, 45);
     ser.Fill.Color := scBlue;
 
-    {
-    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
+    book.WriteToFile(fn + '.xlsx', true);
     WriteLn('Data saved with chart in ', fn, '.xlsx');
-    }
 
     book.WriteToFile(fn + '.ods', true);
     WriteLn('Data saved with chart in ', fn, '.ods');

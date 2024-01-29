@@ -68,19 +68,41 @@ type
     constructor Create(AReader: TsBasicSpreadReader); override;
     destructor Destroy; override;
     procedure ReadChartXML(AStream: TStream; AChart: TsChart; AChartXMLFile: String);
-
   end;
+
+  { TsSpreadOOXMLChartWriter }
 
   TsSpreadOOXMLChartWriter = class(TsBasicSpreadChartWriter)
   private
+    FSCharts: array of TStream;
+    FSChartRels: array of TStream;
+    FSChartStyles: array of TStream;
+    FSChartColors: array of TStream;
     FPointSeparatorSettings: TFormatSettings;
+    function GetChartFillAndLineXML(AIndent: Integer; AFill: TsChartFill; ALine: TsChartLine): String;
 
   protected
+    procedure WriteChartLegend(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
+    procedure WriteChartPlotArea(AStream: TStream; AIndent: Integer; AChart: TsChart);
+    procedure WriteChartTitle(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
+
+    // Called by the public functions
+    procedure WriteChartColorsXML(AStream: TStream; AChartIndex: Integer);
+    procedure WriteChartRelsXML(AStream: TStream; AChartIndex: Integer);
+    procedure WriteChartStylesXML(AStream: TStream; AChartIndex: Integer);
+    procedure WriteChartXML(AStream: TStream; AChartIndex: Integer);
 
   public
     constructor Create(AWriter: TsBasicSpreadWriter); override;
     destructor Destroy; override;
 
+    // Public functions called by the main writer
+    procedure AddChartsToZip(AZip: TZipper);
+    procedure CreateStreams; override;
+    procedure DestroyStreams; override;
+    procedure ResetStreams; override;
+    procedure WriteChartContentTypes(AStream: TStream);
+    procedure WriteCharts; override;
   end;
 
 {$ENDIF}
@@ -93,6 +115,19 @@ uses
   xlsxooxml;
 
 const
+  MIME_DRAWINGML_CHART        = 'application/vnd.openxmlformats-officedocument.drawingml.chart+xml';
+  MIME_DRAWINGML_CHART_STYLE  = 'application/vnd.ms-office.chartstyle+xml';
+  MIME_DRAWINGML_CHART_COLORS = 'application/vnd.ms-office.chartcolorstyle+xml';
+
+  SCHEMAS_RELS         = 'http://schemas.openxmlformats.org/package/2006/relationships';
+  SCHEMAS_CHART_COLORS = 'http://schemas.microsoft.com/office/2011/relationships/chartColorStyle';
+  SCHEMAS_CHART_STYLE  = 'http://schemas.microsoft.com/office/2011/relationships/chartStyle';
+
+  OOXML_PATH_XL_CHARTS      = 'xl/charts/';
+  OOXML_PATH_XL_CHARTS_RELS = 'xl/charts/_rels/';
+
+  LE = LineEnding;
+
   PTS_MULTIPLIER = 12700;
   ANGLE_MULTIPLIER = 60000;
   PERCENT_MULTIPLIER = 1000;
@@ -2264,6 +2299,1095 @@ end;
 destructor TsSpreadOOXMLChartWriter.Destroy;
 begin
   inherited;
+end;
+
+procedure TsSpreadOOXMLChartWriter.AddChartsToZip(AZip: TZipper);
+var
+  i: Integer;
+begin
+  // Add chart relationships to zip
+  for i := 0 to High(FSChartRels) do
+  begin
+    if (FSChartRels[i] = nil) or (FSChartRels[i].Size = 0) then Continue;
+    FSChartRels[i].Position := 0;
+    AZip.Entries.AddFileEntry(FSChartRels[i], OOXML_PATH_XL_CHARTS_RELS + Format('chart%d.xml.rels', [i+1]));
+  end;
+
+  // Add chart styles to zip
+  for i:=0 to High(FSChartStyles) do
+  begin
+    if (FSChartStyles[i] = nil) or (FSChartStyles[i].Size = 0) then Continue;
+    FSChartStyles[i].Position := 0;
+    AZip.Entries.AddFileEntry(FSChartStyles[i], OOXML_PATH_XL_CHARTS + Format('style%d.xml', [i+1]));
+  end;
+
+  // Add chart colors to zip
+  for i:=0 to High(FSChartColors) do
+  begin
+    if (FSChartColors[i] = nil) or (FSChartColors[i].Size = 0) then Continue;
+    FSChartColors[i].Position := 0;
+    AZip.Entries.AddFileEntry(FSChartColors[i], OOXML_PATH_XL_CHARTS + Format('colors%d.xml', [i+1]));
+  end;
+
+  // Add charts top zip
+  for i:=0 to High(FSCharts) do
+  begin
+    if (FSCharts[i] = nil) or (FSCharts[i].Size = 0) then Continue;
+    FSCharts[i].Position := 0;
+    AZip.Entries.AddFileEntry(FSCharts[i], OOXML_PATH_XL_CHARTS + Format('chart%d.xml', [i+1]));
+  end;
+end;
+
+procedure TsSpreadOOXMLChartWriter.CreateStreams;
+var
+  n, i: Integer;
+  workbook: TsWorkbook;
+begin
+  workbook := TsWorkbook(Writer.Workbook);
+  n := workbook.GetChartCount;
+  SetLength(FSCharts, n);
+  SetLength(FSChartRels, n);
+  SetLength(FSChartStyles, n);
+  SetLength(FSChartColors, n);
+
+  for i := 0 to n - 1 do
+  begin
+    FSCharts[i] := CreateTempStream(workbook, Format('fpsCh%d', [i]));
+    FSChartRels[i] := CreateTempStream(workbook, Format('fpsChRels%d', [i]));
+    FSChartStyles[i] := CreateTempStream(workbook, Format('fpsChSty%d', [i]));
+    FSChartColors[i] := CreateTempStream(workbook, Format('fpsChCol%d', [i]));
+  end;
+end;
+
+procedure TsSpreadOOXMLChartWriter.DestroyStreams;
+var
+  stream: TStream;
+begin
+  for stream in FSCharts do DestroyTempStream(stream);
+  SetLength(FSCharts, 0);
+
+  for stream in FSChartRels do DestroyTempStream(stream);
+  SetLength(FSChartRels, 0);
+
+  for stream in FSChartStyles do DestroyTempStream(stream);
+  SetLength(FSChartStyles, 0);
+
+  for stream in FSChartColors do DestroyTempStream(stream);
+  SetLength(FSChartColors, 0);
+end;
+
+procedure TsSpreadOOXMLChartWriter.ResetStreams;
+var
+  stream: TStream;
+begin
+  for stream in FSCharts do stream.Position := 0;
+  for stream in FSChartRels do stream.Position := 0;
+  for stream in FSChartStyles do stream.Position := 0;
+  for stream in FSChartColors do stream.Position := 0;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the xl/charts/colorsN.xml file where N is the number AChartIndex.
+
+  So far, the code is just copied from a file writen by Excel.
+
+  @param  AStream  Stream to which the xml text is written
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartColorsXML(AStream: TStream;
+  AChartIndex: Integer);
+begin
+  AppendToStream(AStream,
+    XML_Header);
+
+  AppendToStream(AStream,
+    '<?xml version="1.0" encoding="UTF-8"?>' + LE +
+
+    '<cs:colorStyle ' + LE +
+    '    xmlns:cs="http://schemas.microsoft.com/office/drawing/2012/chartStyle"' + LE +
+    '    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main"' + LE +
+    '    meth="cycle" id="10">' + LE +
+
+    '  <a:schemeClr val="accent1"/>' + LE +
+    '  <a:schemeClr val="accent2"/>' + LE +
+    '  <a:schemeClr val="accent3"/>' + LE +
+    '  <a:schemeClr val="accent4"/>' + LE +
+    '  <a:schemeClr val="accent5"/>' + LE +
+    '  <a:schemeClr val="accent6"/>' + LE +
+
+    '  <cs:variation/>' + LE +
+    '  <cs:variation>' + LE +
+    '    <a:lumMod val="60000"/>' + LE +
+    '  </cs:variation>' + LE +
+    '  <cs:variation>' + LE +
+    '    <a:lumMod val="80000"/>' + LE +
+    '    <a:lumOff val="20000"/>' + LE +
+    '  </cs:variation>' + LE +
+    '  <cs:variation>' + LE +
+    '    <a:lumMod val="80000"/>' + LE +
+    '  </cs:variation>' + LE +
+    '  <cs:variation>' + LE +
+    '    <a:lumMod val="60000"/>' + LE +
+    '    <a:lumOff val="40000"/>' + LE +
+    '  </cs:variation>' + LE +
+    '  <cs:variation>' + LE +
+    '    <a:lumMod val="50000"/>'+ LE +
+    '  </cs:variation>' + LE +
+    '  <cs:variation>'+ LE +
+    '    <a:lumMod val="70000"/>' + LE +
+    '    <a:lumOff val="30000"/>' + LE +
+    '  </cs:variation>' + LE +
+    '  <cs:variation>' + LE +
+    '    <a:lumMod val="70000"/>' + LE +
+    '  </cs:variation>' + LE +
+    '  <cs:variation>' + LE +
+    '    <a:lumMod val="50000"/>' + LE +
+    '    <a:lumOff val="50000"/>' + LE +
+    '  </cs:variation>'+ LE +
+
+    '</cs:colorStyle>' + LE
+  );
+end;
+
+{ Write the relationship file for the chart with the given index.
+  The file defines which xml files contain the ChartStyles and Colors, as well
+  as images needed by each chart. }
+procedure TsSpreadOOXMLChartWriter.WriteChartRelsXML(AStream: TStream;
+  AChartIndex: Integer);
+begin
+  AppendToStream(AStream,
+    XML_HEADER);
+  AppendToStream(AStream, Format(
+    '<Relationships xmlns="%s">' + LE +
+    '  <Relationship Id="rId1" Target="style%d.xml" Type="%s" />' + LE +
+    '  <Relationship Id="rId2" Target="colors%d.xml" Type="%s" />' + LE +
+    '</Relationships>' + LE, [
+    SCHEMAS_RELS,
+    AChartIndex + 1, SCHEMAS_CHART_STYLE,
+    AChartIndex + 1, SCHEMAS_CHART_COLORS
+  ]));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the xl/charts/stylesN.xml file where N is the number AChartIndex.
+
+  So far, the code is just copied from a file written by Excel.
+
+  @param  AStream   Stream to which the xml text is written.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartStylesXML(AStream: TStream;
+  AChartIndex: Integer);
+begin
+  AppendToStream(AStream,
+    XML_Header);
+
+  AppendToStream(AStream,
+    '<cs:chartStyle ' +
+         'xmlns:cs="http://schemas.microsoft.com/office/drawing/2012/chartStyle" ' +
+         'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" id="201">' + LE +
+    '  <cs:axisTitle>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1">' + LE +
+    '        <a:lumMod val="65000"/>' + LE +
+    '        <a:lumOff val="35000"/>' + LE +
+    '      </a:schemeClr>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:defRPr sz="1000" kern="1200"/>' + LE +
+    '  </cs:axisTitle>' + LE +
+
+    '  <cs:categoryAxis>'+ LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1">' + LE +
+    '        <a:lumMod val="65000"/>' + LE +
+    '        <a:lumOff val="35000"/>' + LE +
+    '      </a:schemeClr>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="15000"/>' + LE +
+    '            <a:lumOff val="85000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '    <cs:defRPr sz="900" kern="1200"/>' + LE +
+    '  </cs:categoryAxis>' + LE +
+
+    '  <cs:chartArea mods="allowNoFillOverride allowNoLineOverride">' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:solidFill>' + LE +
+    '        <a:schemeClr val="bg1"/>' + LE +
+    '      </a:solidFill>' + LE +
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE+
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="15000"/>' + LE +
+    '            <a:lumOff val="85000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '    <cs:defRPr sz="1000" kern="1200"/>' + LE +
+    '  </cs:chartArea>' + LE +
+
+    '  <cs:dataLabel>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1">' + LE +
+    '        <a:lumMod val="75000"/>' + LE +
+    '        <a:lumOff val="25000"/>' + LE +
+    '      </a:schemeClr>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:defRPr sz="900" kern="1200"/>' + LE +
+    '  </cs:dataLabel>' + LE +
+
+    '  <cs:dataLabelCallout>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="dk1">' + LE +
+    '        <a:lumMod val="65000"/>' + LE +
+    '        <a:lumOff val="35000"/>' + LE +
+    '      </a:schemeClr>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:solidFill>' + LE +
+    '        <a:schemeClr val="lt1"/>' + LE +
+    '      </a:solidFill>' + lE+
+    '      <a:ln>' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="dk1">' + LE +
+    '            <a:lumMod val="25000"/>' + LE +
+    '            <a:lumOff val="75000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '    <cs:defRPr sz="900" kern="1200"/>' + LE +
+    '    <cs:bodyPr rot="0" spcFirstLastPara="1" vertOverflow="clip" ' + LE +
+    '        horzOverflow="clip" vert="horz" wrap="square" lIns="36576" ' + LE +
+    '        tIns="18288" rIns="36576" bIns="18288" anchor="ctr" anchorCtr="1">' + LE +
+    '      <a:spAutoFit/>' + LE +
+    '    </cs:bodyPr>' + LE +
+    '  </cs:dataLabelCallout>' + LE +
+
+    '  <cs:dataPoint>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="1">' + LE +
+    '      <cs:styleClr val="auto"/>' + LE +
+    '    </cs:fillRef>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '  </cs:dataPoint>' + LE +
+
+    '  <cs:dataPoint3D>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="1">' + LE +
+    '      <cs:styleClr val="auto"/>' + LE +
+    '    </cs:fillRef>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '  </cs:dataPoint3D>' + LE +
+
+    '  <cs:dataPointLine>' + LE +
+    '    <cs:lnRef idx="0">' + LE +
+    '      <cs:styleClr val="auto"/>' + LE +
+    '    </cs:lnRef>' + LE +
+    '    <cs:fillRef idx="1"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="28575" cap="rnd">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="phClr"/>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:dataPointLine>' + LE +
+
+    '  <cs:dataPointMarker>' + LE +
+    '    <cs:lnRef idx="0">' + LE +
+    '      <cs:styleClr val="auto"/>' + LE +
+    '    </cs:lnRef>' + LE +
+    '    <cs:fillRef idx="1">' + LE +
+    '      <cs:styleClr val="auto"/>' + LE +
+    '    </cs:fillRef>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="9525">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="phClr"/>' + LE +
+    '        </a:solidFill>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:dataPointMarker>' + LE +
+
+    '  <cs:dataPointMarkerLayout symbol="circle" size="5"/>' + LE +
+
+    '  <cs:dataPointWireframe>' + LE +
+    '    <cs:lnRef idx="0">' + LE +
+    '      <cs:styleClr val="auto"/>' + LE +
+    '    </cs:lnRef>' + LE +
+    '    <cs:fillRef idx="1"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="9525" cap="rnd">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="phClr"/>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:dataPointWireframe>' + LE +
+
+    '  <cs:dataTable>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1">' + LE +
+    '        <a:lumMod val="65000"/>' + LE +
+    '        <a:lumOff val="35000"/>' + LE +
+    '      </a:schemeClr>'  + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:noFill/>' + LE +
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="15000"/>' + LE +
+    '            <a:lumOff val="85000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>'  + lE +
+    '    <cs:defRPr sz="900" kern="1200"/>' + LE +
+    '  </cs:dataTable>' + LE +
+
+    '  <cs:downBar>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="dk1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:solidFill>' + LE +
+    '        <a:schemeClr val="dk1">' + LE +
+    '          <a:lumMod val="65000"/>' + LE +
+    '          <a:lumOff val="35000"/>' + LE +
+    '        </a:schemeClr>' + LE +
+    '      </a:solidFill>' + LE +
+    '      <a:ln w="9525">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="65000"/>' + LE +
+    '            <a:lumOff val="35000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:downBar>' + LE +
+
+    '  <cs:dropLine>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="35000"/>' + LE +
+    '            <a:lumOff val="65000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:dropLine>' + LE +
+
+    '  <cs:errorBar>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="65000"/>' + LE +
+    '            <a:lumOff val="35000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:errorBar>' + LE +
+
+    '  <cs:floor>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:noFill/>' + LE +
+    '      <a:ln>' + LE +
+    '        <a:noFill/>' + LE+
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:floor>' + LE +
+
+    '  <cs:gridlineMajor>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="15000"/>' + LE +
+    '            <a:lumOff val="85000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:gridlineMajor>' + LE +
+
+    '  <cs:gridlineMinor>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="5000"/>' + LE +
+    '            <a:lumOff val="95000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:gridlineMinor>' + LE +
+
+    '  <cs:hiLoLine>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="75000"/>' + LE +
+    '            <a:lumOff val="25000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:hiLoLine>' + LE +
+
+    '  <cs:leaderLine>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="35000"/>' + LE +
+    '            <a:lumOff val="65000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:leaderLine>' + LE +
+
+    '  <cs:legend>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1">'  + LE +
+    '        <a:lumMod val="65000"/>' + LE +
+    '        <a:lumOff val="35000"/>' + LE +
+    '      </a:schemeClr>' + LE +
+    '    </cs:fontRef>' + LE+
+    '    <cs:defRPr sz="900" kern="1200"/>' + LE +
+    '  </cs:legend>' + LE +
+
+    '  <cs:plotArea mods="allowNoFillOverride allowNoLineOverride">' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '  </cs:plotArea>' + LE +
+
+    '  <cs:plotArea3D mods="allowNoFillOverride allowNoLineOverride">' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">'  + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '  </cs:plotArea3D>' + LE +
+
+    '  <cs:seriesAxis>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1">' + LE +
+    '        <a:lumMod val="65000"/>' + LE +
+    '        <a:lumOff val="35000"/>' + LE +
+    '      </a:schemeClr>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:defRPr sz="900" kern="1200"/>' + LE +
+    '  </cs:seriesAxis>' + LE +
+
+    '  <cs:seriesLine>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '      <cs:fontRef idx="minor">' + LE +
+    '        <a:schemeClr val="tx1"/>' + LE +
+    '      </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE+
+    '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="35000"/>' + LE +
+    '            <a:lumOff val="65000"/>' + LE +
+    '          </a:schemeClr>' + LE+
+    '        </a:solidFill>' + LE +
+    '        <a:round/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:seriesLine>' + LE +
+
+    '  <cs:title>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1">' + LE +
+    '        <a:lumMod val="65000"/>' + LE +
+    '        <a:lumOff val="35000"/>' + LE +
+    '      </a:schemeClr>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:defRPr sz="1400" b="0" kern="1200" spc="0" baseline="0"/>' + LE +
+    '  </cs:title>' + LE +
+
+    '  <cs:trendline>' + LE +
+    '    <cs:lnRef idx="0">' + LE +
+    '      <cs:styleClr val="auto"/>' + LE +
+    '    </cs:lnRef>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:ln w="19050" cap="rnd">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="phClr"/>' + LE +
+    '        </a:solidFill>' + LE +
+    '        <a:prstDash val="sysDot"/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:trendline>' + LE +
+
+    '  <cs:trendlineLabel>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1">' + LE +
+    '        <a:lumMod val="65000"/>' + LE +
+    '        <a:lumOff val="35000"/>' + LE +
+    '      </a:schemeClr>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:defRPr sz="900" kern="1200"/>' + LE +
+    '  </cs:trendlineLabel>' + LE +
+
+    '  <cs:upBar>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>'  + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="dk1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:solidFill>' + LE +
+    '        <a:schemeClr val="lt1"/>' + LE +
+    '      </a:solidFill>' + LE +
+    '      <a:ln w="9525">' + LE +
+    '        <a:solidFill>' + LE +
+    '          <a:schemeClr val="tx1">' + LE +
+    '            <a:lumMod val="15000"/>' + LE +
+    '            <a:lumOff val="85000"/>' + LE +
+    '          </a:schemeClr>' + LE +
+    '        </a:solidFill>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:upBar>' + LE +
+
+    '  <cs:valueAxis>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE +
+    '      <a:schemeClr val="tx1">' + LE +
+    '        <a:lumMod val="65000"/>' + LE +
+    '        <a:lumOff val="35000"/>' + LE +
+    '      </a:schemeClr>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:defRPr sz="900" kern="1200"/>' + LE +
+    '  </cs:valueAxis>' +
+
+    '  <cs:wall>' + LE +
+    '    <cs:lnRef idx="0"/>' + LE +
+    '    <cs:fillRef idx="0"/>' + LE +
+    '    <cs:effectRef idx="0"/>' + LE +
+    '    <cs:fontRef idx="minor">' + LE+
+    '      <a:schemeClr val="tx1"/>' + LE +
+    '    </cs:fontRef>' + LE +
+    '    <cs:spPr>' + LE +
+    '      <a:noFill/>' + LE +
+    '      <a:ln>' + LE +
+    '        <a:noFill/>' + LE +
+    '      </a:ln>' + LE +
+    '    </cs:spPr>' + LE +
+    '  </cs:wall>' + LE +
+
+    '</cs:chartStyle>' + LE
+  );
+end;
+
+procedure TsSpreadOOXMLChartWriter.WriteChartXML(AStream: TStream; AChartIndex: Integer);
+
+  function GetChartAxisXML(AIndent: Integer; AChart: TsChart;
+    AxisID, OtherAxisID: Integer; NodeName, AxPos: String): String;
+  var
+    ind: String;
+  begin
+    ind := DupeString(' ', AIndent);
+    Result := Format(
+      ind + '<%s>' + LE +                                   // 1
+      ind + '  <c:axId val="%d" />' + LE +                  // 2
+      ind + '  <c:scaling>' + LE +
+      ind + '    <c:orientation val="minMax" />' + LE +
+      ind + '  </c:scaling>' + LE +
+      ind + '  <c:axPos val="%s" />' + LE +                 // 3
+      ind + '  <c:tickLblPos val="nextTo" />' + LE +
+      IfThen(AxPos='l', ind + '  <c:majorGridlines />' + LE, '') +
+      ind + '  <c:crossAx val="%d" />' + LE +               // 4
+      ind + '  <c:crosses val="autoZero" />' + LE +
+      IfThen(AxPos='l', ind + '  <c:crossBetween val="between" />' + LE, '') +
+      IfThen(AxPos='b', ind + '  <c:auto val="1" />' + LE, '') +
+      IfThen(AxPos='b', ind + '  <c:lblAlgn val="ctr" />' + LE, '') +
+      IfThen(AxPos='b', ind + '  <c:lblOffset val="100" />' + LE, '') +
+      ind + '</%s>',  [                                     // 5
+      NodeName,                     // 1
+      AxisID,                       // 2
+      AxPos,                        // 3
+      OtherAxisID,                  // 4
+      NodeName                      // 5
+    ]);
+  end;
+
+  function GetBarChartXML(Indent: Integer; AChart: TsChart; CatAxID, ValAxID: Integer): String;
+  var
+    ind: String;
+  begin
+    ind := DupeString(' ', Indent);
+    Result := Format(
+      ind + '<c:barChart>' + LE +
+      ind + '  <c:barDir val="col" />' + LE +
+      ind + '  <c:grouping val="clustered" />' + LE +
+      ind + '  <c:axId val="%d" />' + LE +         // categories axis (x)
+      ind + '  <c:axId val="%d" />' + LE +         // values axis (y)
+      ind + '</c:barChart>', [
+      CatAxID,
+      ValAxID
+    ]);
+  end;
+
+  function GetLegendXML(Indent: Integer; AChart: TsChart): string;
+  var
+    ind: String;
+  begin
+    ind := DupeString(' ', Indent);
+    Result :=
+      ind + '<c:legend>' + LE +
+      ind + '  <c:legendPos val="r" />' + LE +
+      ind + '  <c:layout />' + LE +
+      ind + '</c:legend>';
+  end;
+
+var
+  chart: TsChart;
+  xAxID, yAxID: Integer;
+begin
+  chart := TsWorkbook(Writer.Workbook).GetChartByIndex(AChartIndex);
+  AppendToStream(AStream,
+    XML_HEADER + LE);
+
+  AppendToStream(AStream,
+    '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" ' + LE +
+    '    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' + LE +
+    '    xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' + LE
+//    '    xmlns:c16r2="http://schemas.microsoft.com/office/drawing/2015/06/chart">' + LE
+  );
+
+  xAxID := Random(MaxInt);
+  yAxID := Random(MaxInt);
+
+  AppendToStream(AStream,
+    '  <c:date1904 val="0" />' + LE +      // to do: get correct value
+    '  <c:chart>');
+
+  WriteChartTitle(AStream, 4, chart.Title);
+  WriteChartPlotArea(AStream, 4, chart);
+  WriteChartLegend(AStream, 4, chart.Legend);
+
+  AppendToStream(AStream,
+    '    <c:plotVisOnly val="1" />' + LE +
+    '  </c:chart>' + LE
+  );
+
+  AppendToStream(AStream,
+    '</c:chartSpace>' + LE
+  );
+end;
+
+function TsSpreadOOXMLChartWriter.GetChartFillAndLineXML(AIndent: Integer;
+  AFill: TsChartFill; ALine: TsChartLine): String;
+var
+  ind: String;
+begin
+  ind := DupeString(' ', AIndent);
+
+  Result :=
+    ind + '<c:spPr>' + LE +
+    ind + '  <a:noFill/>' + LE +
+    ind + '  <a:ln>' + LE +
+    ind + '    <a:noFill/>' + LE +
+    ind + '  </a:ln>' + LE +
+    ind + '  <a:effectLst/>'+ LE +
+    ind + '</c:spPr>' + LE
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the chart-related entries to the [Content_Types].xml file
+
+  @param  AStream   Stream holding the other content types
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartContentTypes(AStream: TStream);
+var
+  i, j, n: Integer;
+  workbook: TsWorkbook;
+  sheet: TsWorksheet;
+begin
+  workbook := TsWorkbook(Writer.Workbook);
+  n := 1;
+  for i:=0 to workbook.GetWorksheetCount-1 do
+  begin
+    sheet := workbook.GetWorksheetByIndex(i);
+    for j:=0 to sheet.GetChartCount-1 do
+    begin
+      AppendToStream(AStream, Format(
+        '<Override PartName="/xl/charts/chart%d.xml" ContentType="%s" />' + LE,
+          [n, MIME_DRAWINGML_CHART]));
+      AppendToStream(AStream, Format(
+        '<Override PartName="/xl/charts/style%d.xml" ContentType="%s" />' + LE,
+          [n, MIME_DRAWINGML_CHART_STYLE]));
+      AppendToStream(AStream, Format(
+        '<Override PartName="/xl/charts/colors%d.xml" ContentType="%s" />' + LE,
+          [n, MIME_DRAWINGML_CHART_COLORS]));
+      inc(n);
+    end;
+  end;
+end;
+
+procedure TsSpreadOOXMLChartWriter.WriteChartLegend(AStream: TStream;
+  AIndent: Integer; ALegend: TsChartLegend);
+var
+  ind: String;
+begin
+  if not ALegend.Visible then
+    exit;
+
+  ind := DupeString(' ', AIndent);
+
+  AppendToStream(AStream,
+    ind + '<c:legend>' + LE +
+    ind + '  <c:legendPos val="r"/>' + LE +
+    ind + '  <c:layout/>' + LE +
+    ind + '</c:legend>' + LE
+  );
+end;
+
+procedure TsSpreadOOXMLChartWriter.WriteChartPlotArea(AStream: TStream;
+  AIndent: Integer; AChart: TsChart);
+var
+  ind: String;
+begin
+  ind := DupeString(' ', AIndent);
+
+  AppendToStream(AStream,
+    ind + '<c:plotArea>' + LE +
+    ind + '  <c:layout/>' + LE +
+
+    ind + '  <c:barChart>' + LE +
+    ind + '    <c:barDir val="col"/>' + LE +
+    ind + '    <c:grouping val="clustered"/>' + LE +
+    ind + '    <c:varyColors val="0"/>' + LE +
+    ind + '    <c:dLbls>' + LE +
+    ind + '      <c:showLegendKey val="0"/>' + LE +
+    ind + '      <c:showVal val="0"/>' + LE +
+    ind + '      <c:showCatName val="0"/>' + LE +
+    ind + '      <c:showSerName val="0"/>' + LE +
+    ind + '      <c:showPercent val="0"/>' + LE +
+    ind + '      <c:showBubbleSize val="0"/>' + LE +
+    ind + '    </c:dLbls>' + LE +
+    ind + '    <c:gapWidth val="219"/>' + LE +
+    ind + '    <c:overlap val="-27"/>' + LE +
+    ind + '    <c:axId val="402915176"/>' + LE +
+    ind + '    <c:axId val="402915536"/>' + LE +
+    ind + '  </c:barChart>' + LE +
+
+    ind + '  <c:catAx>' + LE +
+    ind + '    <c:axId val="402915176"/>' + LE +
+    ind + '    <c:scaling>' + LE +
+    ind + '    <c:orientation val="minMax"/>' + LE +
+    ind + '    </c:scaling>' + LE +
+    ind + '    <c:delete val="0"/>' + LE +
+    ind + '    <c:axPos val="b"/>' + LE +
+    ind + '    <c:majorTickMark val="none"/>' + LE +
+    ind + '    <c:minorTickMark val="none"/>' + LE +
+    ind + '    <c:tickLblPos val="nextTo"/>' + LE +
+    ind + '    <c:spPr>' + LE +
+    ind + '      <a:noFill/>' + LE +
+    ind + '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    ind + '        <a:solidFill>' + LE +
+    ind + '          <a:schemeClr val="tx1">' + LE +
+    ind + '            <a:lumMod val="15000"/>' + LE +
+    ind + '            <a:lumOff val="85000"/>' + LE +
+    ind + '          </a:schemeClr>' + LE +
+    ind + '        </a:solidFill>' + LE +
+    ind + '        <a:round/>' + LE +
+    ind + '      </a:ln>' + LE +
+    ind + '      <a:effectLst/>' + LE +
+    ind + '    </c:spPr>' + LE +
+    ind + '    <c:txPr>' + LE+
+    ind + '      <a:bodyPr rot="-60000000" spcFirstLastPara="1" vertOverflow="ellipsis" '+
+                    'vert="horz" wrap="square" anchor="ctr" anchorCtr="1"/>' + LE +
+    ind + '      <a:lstStyle/>' + LE +
+    ind + '      <a:p>' + LE +
+    ind + '        <a:pPr>' + LE +
+    ind + '          <a:defRPr sz="900" b="0" i="0" u="none" strike="noStrike" kern="1200" baseline="0">' + LE +
+    ind + '            <a:solidFill>' + LE +
+    ind + '              <a:schemeClr val="tx1">' + LE +
+    ind + '                <a:lumMod val="65000"/>' + LE +
+    ind + '                <a:lumOff val="35000"/>' + LE +
+    ind + '              </a:schemeClr>' + LE +
+    ind + '            </a:solidFill>'+ LE +
+    ind + '            <a:latin typeface="+mn-lt"/>' + LE +
+    ind + '            <a:ea typeface="+mn-ea"/>' + LE +
+    ind + '            <a:cs typeface="+mn-cs"/>' + LE +
+    ind + '          </a:defRPr>' + LE +
+    ind + '        </a:pPr>' + LE +
+    ind + '        <a:endParaRPr lang="de-DE"/>' + LE +
+    ind + '      </a:p>' + LE +
+    ind + '    </c:txPr>' + LE +
+    ind + '    <c:crossAx val="402915536"/>' + LE +
+    ind + '    <c:crosses val="autoZero"/>' + LE +
+    ind + '    <c:auto val="1"/>' + LE +
+    ind + '    <c:lblAlgn val="ctr"/>' + LE +
+    ind + '    <c:lblOffset val="100"/>' + LE +
+    ind + '    <c:noMultiLvlLbl val="0"/>' + LE +
+    ind + '  </c:catAx>' + LE +
+
+    ind + '  <c:valAx>' + LE +
+    ind + '    <c:axId val="402915536"/>' + LE +
+    ind + '    <c:scaling>' + LE +
+    ind + '      <c:orientation val="minMax"/>' + LE +
+    ind + '    </c:scaling>' + LE +
+    ind + '    <c:delete val="0"/>' + LE +
+    ind + '    <c:axPos val="l"/>' + LE +
+    ind + '    <c:majorGridlines>' + LE +
+    ind + '      <c:spPr>' + LE +
+    ind + '        <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
+    ind + '          <a:solidFill>' + LE +
+    ind + '            <a:schemeClr val="tx1">' + LE +
+    ind + '              <a:lumMod val="15000"/>' + LE +
+    ind + '              <a:lumOff val="85000"/>' + LE +
+    ind + '            </a:schemeClr>' + LE +
+    ind + '          </a:solidFill>' + LE +
+    ind + '          <a:round/>' + LE +
+    ind + '        </a:ln>' + LE +
+    ind + '        <a:effectLst/>' + LE +
+    ind + '      </c:spPr>' + LE +
+    ind + '    </c:majorGridlines>' + LE +
+    ind + '    <c:majorTickMark val="none"/>' + LE +
+    ind + '    <c:minorTickMark val="none"/>' + LE +
+    ind + '    <c:tickLblPos val="nextTo"/>' + LE +
+    ind + '    <c:spPr>' + LE +
+    ind + '      <a:noFill/>' + LE +
+    ind + '      <a:ln>' + LE +
+    ind + '        <a:noFill/>' + LE +
+    ind + '      </a:ln>' + LE +
+    ind + '      <a:effectLst/>' + LE +
+    ind + '    </c:spPr>' + LE +
+    ind + '    <c:txPr>' + LE +
+    ind + '      <a:bodyPr rot="-60000000" spcFirstLastPara="1" vertOverflow="ellipsis" ' +
+                   'vert="horz" wrap="square" anchor="ctr" anchorCtr="1"/>' + LE +
+    ind + '      <a:lstStyle/>' + LE +
+    ind + '      <a:p>' + LE +
+    ind + '        <a:pPr>' + LE +
+    ind + '          <a:defRPr sz="900" b="0" i="0" u="none" strike="noStrike" kern="1200" baseline="0">' + LE +
+    ind + '            <a:solidFill>' + LE +
+    ind + '              <a:schemeClr val="tx1">' + LE +
+    ind + '                <a:lumMod val="65000"/>' + LE +
+    ind + '                <a:lumOff val="35000"/>' + LE +
+    ind + '              </a:schemeClr>' + LE +
+    ind + '            </a:solidFill>' + LE +
+    ind + '            <a:latin typeface="+mn-lt"/>' + LE +
+    ind + '            <a:ea typeface="+mn-ea"/>' + LE +
+    ind + '            <a:cs typeface="+mn-cs"/>' + LE +
+    ind + '          </a:defRPr>' + LE +
+    ind + '        </a:pPr>' + LE +
+    ind + '        <a:endParaRPr lang="de-DE"/>' + LE +
+    ind + '      </a:p>' + LE +
+    ind + '    </c:txPr>' + LE +
+    ind + '    <c:crossAx val="402915176"/>' + LE +
+    ind + '    <c:crosses val="autoZero"/>' + LE +
+    ind + '    <c:crossBetween val="between"/>' + LE +
+    ind + '  </c:valAx>' + LE +
+    ind + '  <c:spPr>' + LE +
+    ind + '    <a:noFill/>' + LE +
+    ind + '    <a:ln>' + LE +
+    ind + '      <a:noFill/>' + LE +
+    ind + '    </a:ln>' + LE +
+    ind + '    <a:effectLst/>' + LE +
+    ind + '  </c:spPr>' + LE +
+    ind + '</c:plotArea>' + LE
+  );
+end;
+
+procedure TsSpreadOOXMLChartWriter.WriteCharts;
+var
+  i: Integer;
+begin
+  for i := 0 to TsWorkbook(Writer.Workbook).GetChartCount - 1 do
+  begin
+    WriteChartRelsXML(FSChartRels[i], i);
+    WriteChartStylesXML(FSChartStyles[i], i);
+    WriteChartColorsXML(FSChartColors[i], i);
+    WriteChartXML(FSCharts[i], i);
+  end;
+end;
+
+procedure TsSpreadOOXMLChartWriter.WriteChartTitle(AStream: TStream;
+  AIndent: Integer; ATitle: TsChartText);
+var
+  ind: String;
+begin
+  ind := DupeString(' ', AIndent);
+
+  AppendToStream(AStream,
+    ind + '<c:title>' + LE +
+    ind + '  <c:overlay val="0"/>' + LE
+  );
+
+  AppendToStream(AStream,
+    GetChartFillAndLineXML(AIndent + 2, ATitle.Background, ATitle.Border)
+  );
+
+  AppendToStream(AStream,
+    ind + '  <c:txPr>' + LE +
+    ind + '    <a:bodyPr rot="0" spcFirstLastPara="1" vertOverflow="ellipsis" ' +
+                 'vert="horz" wrap="square" anchor="ctr" anchorCtr="1"/>' + LE +
+    ind + '    <a:lstStyle/>' + LE +
+    ind + '    <a:p>' + LE +
+    ind + '      <a:pPr>' + LE +
+    ind + '        <a:defRPr sz="1400" b="0" i="0" u="none" strike="noStrike" '+
+                     'kern="1200" spc="0" baseline="0">'+ LE +
+    ind + '          <a:solidFill>' + LE +
+    ind + '            <a:schemeClr val="tx1">' + LE +
+    ind + '              <a:lumMod val="65000"/>' + LE +
+    ind + '              <a:lumOff val="35000"/>' + LE +
+    ind + '            </a:schemeClr>' + LE +
+    ind + '          </a:solidFill>' + LE +
+    ind + '          <a:latin typeface="+mn-lt"/>' + LE +
+    ind + '          <a:ea typeface="+mn-ea"/>' + LE +
+    ind + '          <a:cs typeface="+mn-cs"/>' + LE +
+    ind + '        </a:defRPr>' + LE +
+    ind + '      </a:pPr>' + LE +
+    ind + '      <a:endParaRPr lang="de-DE"/>' + LE +
+    ind + '    </a:p>' + LE +
+    ind + '  </c:txPr>' + LE
+  );
+
+  AppendToStream(AStream,
+    ind + '</c:title>' + LE
+  );
 end;
 
 {$ENDIF}

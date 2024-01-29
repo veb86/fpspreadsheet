@@ -151,8 +151,10 @@ type
   public
     constructor Create(AWriter: TsBasicSpreadWriter); override;
     destructor Destroy; override;
+
     procedure AddChartsToZip(AZip: TZipper);
     procedure AddToMetaInfManifest(AStream: TStream);
+
     procedure CreateStreams; override;
     procedure DestroyStreams; override;
     procedure ResetStreams; override;
