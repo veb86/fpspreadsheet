@@ -2533,7 +2533,7 @@ begin
     AddFunction(cat, 'ISREF',     'B', '?',    INT_EXCEL_SHEET_FUNC_ISREF,      @fpsISREF);
     AddFunction(cat, 'ISTEXT',    'B', '?',    INT_EXCEL_SHEET_FUNC_ISTEXT,     @fpsISTEXT);
 
-    AddFunction(cat, 'IFERROR',   'S', '?S',   INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFERROR);   // not supported by .xls
+    AddFunction(cat, 'IFERROR',   '?', '?S',   INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFERROR);   // not supported by .xls
 
     // Lookup / reference functions
     cat := bcLookup;
