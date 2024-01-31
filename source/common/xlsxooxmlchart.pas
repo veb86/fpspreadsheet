@@ -83,7 +83,7 @@ type
     function GetChartFillAndLineXML(AIndent: Integer; AFill: TsChartFill; ALine: TsChartLine): String;
     function GetChartFillXML(AIndent: Integer; AFill: TsChartFill): String;
     function GetChartLineXML(AIndent: Integer; ALine: TsChartLine): String;
-    function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange): String;
+    function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange; ARefKind: String): String;
     function GetChartSeriesMarkerXML(AIndent: Integer; ASeries: TsScatterSeries): String;
 
   protected
@@ -102,7 +102,8 @@ type
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
 
     // Writing the nodes of the series types
-    procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries);
+    procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
+    procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
 
   public
     constructor Create(AWriter: TsBasicSpreadWriter); override;
@@ -3206,7 +3207,7 @@ begin
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartRangeXML(AIndent: Integer;
-  ARange: TsChartRange): String;
+  ARange: TsChartRange; ARefKind: String): String;
 var
   indent: String;
 begin
@@ -3216,10 +3217,52 @@ begin
   else
     Result := GetCellRangeString(ARange.GetSheet1Name, ARange.GetSheet2Name, ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2, []);
 
-  Result :=
-    indent + '<c:numRef> ' + LE +
+  Result := Format(
+    indent + '<c:%0:s> ' + LE +
     indent + '  <c:f>' + Result + '</c:f>' + LE +
-    indent + '</c:numRef>';
+    indent + '</c:%0:s>',
+    [ ARefKind ]
+  );
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the properties of the given bar series to the <c:plotArea> node of
+  file chartN.xml
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteBarSeries(AStream: TStream;
+  AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
+var
+  indent: String;
+begin
+  indent := DupeString(' ', AIndent);
+
+  AppendToStream(AStream, Format(
+    indent + '<c:barChart>' + LE +
+    indent + '  <c:barDir val="col"/>' + LE +
+    indent + '  <c:grouping val="clustered"/>' + LE +
+    indent + '  <c:ser>' + LE +
+    indent + '    <c:idx val="%d"/>' + LE +
+    indent + '    <c:order val="%d"/>' + LE +
+    indent + '    <c:spPr>' + LE +
+                    GetChartFillAndLineXML(AIndent + 6, ASeries.Fill, ASeries.Line) + LE +
+    indent + '    </c:spPr>' + LE +
+    indent + '    <c:cat>' + LE +
+                    GetChartRangeXML(AIndent + 6, ASeries.XRange, 'strRef') + LE +
+    indent + '    </c:cat>' + LE +
+    indent + '    <c:val>' + LE +
+                    GetChartRangeXML(AIndent + 6, ASeries.YRange, 'numRef') + LE +
+    indent + '    </c:val>' + LE +
+    indent + '  </c:ser>' + LE +
+    indent + '  <c:axId val="%d"/>' + LE +
+    indent + '  <c:axId val="%d"/>' + LE +
+    indent + '</c:barChart>' + LE,
+    [
+      ASeriesIndex,  // <c:val>
+      ASeriesIndex,  // <c:order>
+      FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
+      FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
+    ]
+  ));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3414,10 +3457,12 @@ begin
   begin
     ser := TsChartSeries(AChart.Series[i]);
     case ser.ChartType of
+      ctBar:
+        WriteBarSeries(AStream, AIndent + 2, TsBarSeries(ser), i);
       ctScatter:
         begin
-          WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser));
-          xAxKind := 'catAx';
+          WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), i);
+          xAxKind := 'valAx';
         end;
     end;
   end;
@@ -3444,7 +3489,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLChartWriter.WriteScatterSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsScatterSeries);
+  AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
 var
   indent: String;
 begin
@@ -3454,8 +3499,8 @@ begin
     indent + '<c:scatterChart>' + LE +
     indent + '  <c:scatterStyle val="lineMarker"/>' + LE +
     indent + '  <c:ser>' + LE +
-    indent + '    <c:idx val="0"/>' + LE +
-    indent + '    <c:order val="0"/>' + LE +
+    indent + '    <c:idx val="%d"/>' + LE +
+    indent + '    <c:order val="%d"/>' + LE +
     indent + '    <c:spPr>' + LE +
                     GetChartFillAndLineXML(AIndent + 6, ASeries.Fill, ASeries.Line) + LE +
     indent + '    </c:spPr>' + LE +
@@ -3463,16 +3508,20 @@ begin
                     GetChartSeriesMarkerXML(AIndent + 6, ASeries) + LE +
     indent + '    </c:marker>' + LE +
     indent + '    <c:xVal>' + LE +
-                    GetChartRangeXML(AIndent + 6, ASeries.XRange) + LE +
+                    GetChartRangeXML(AIndent + 6, ASeries.XRange, 'numRef') + LE +
     indent + '    </c:xVal>' + LE +
     indent + '    <c:yVal>' + LE +
-                    GetChartRangeXML(AIndent + 6, ASeries.YRange) + LE +
+                    GetChartRangeXML(AIndent + 6, ASeries.YRange, 'numRef') + LE +
     indent + '    </c:yVal>' + LE +
     indent + '  </c:ser>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '</c:scatterChart>' + LE,
-    [ FAxisID[ASeries.Chart.XAxis.Alignment], FAxisID[ASeries.Chart.YAxis.Alignment] ]
+    [ ASeriesIndex,   // <c:idx>
+      ASeriesIndex,   // <c:order>
+      FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
+      FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
+    ]
   ));
 end;
 
