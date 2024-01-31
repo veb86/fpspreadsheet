@@ -114,18 +114,21 @@ begin
 
     // Series properties
     ser.SetTitleAddr(0, 0);
-    ser.SetXRange(3, 0, 10, 0);
-    ser.SetYRange(3, 1, 10, 1);
+    ser.SetXRange(3, 0, 10, 0);    // A4:A11
+    ser.SetYRange(3, 1, 10, 1);    // B4:B11
     ser.ShowLines := true;
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
+    ser.SymbolBorder.Style := clsNoLine;
+    ser.Line.Style := clsDash;
+    ser.Line.Width := 1;
 
-    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart to ', fn, '.xlsx');
+    book.WriteToFile(fn + '.xlsx', true);
+    WriteLn('Data saved with chart to ', fn + '.xlsx');
 
     book.Options := book.Options + [boCalcBeforeSaving];
     book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart to ', fn, '.ods');
+    WriteLn('Data saved with chart to ', fn + '.ods');
   finally
     book.Free;
   end;

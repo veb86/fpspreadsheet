@@ -80,9 +80,9 @@ type
     FSChartColors: array of TStream;
     FPointSeparatorSettings: TFormatSettings;
     FAxisID: array[TsChartAxisAlignment] of DWord;
-    function GetChartFillAndLineXML(AIndent: Integer; AFill: TsChartFill; ALine: TsChartLine): String;
-    function GetChartFillXML(AIndent: Integer; AFill: TsChartFill): String;
-    function GetChartLineXML(AIndent: Integer; ALine: TsChartLine): String;
+    function GetChartFillAndLineXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine): String;
+    function GetChartFillXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill): String;
+    function GetChartLineXML(AIndent: Integer; AChart: TsChart; ALine: TsChartLine): String;
     function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange; ARefKind: String): String;
     function GetChartSeriesMarkerXML(AIndent: Integer; ASeries: TsScatterSeries): String;
 
@@ -3140,16 +3140,16 @@ end;
   Assembles the xml string for the children of a <c:spPr> node (fill and line style)
 -------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartFillAndLineXML(AIndent: Integer;
-  AFill: TsChartFill; ALine: TsChartLine): String;
+  AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine): String;
 begin
   Result :=
-    GetChartFillXML(AIndent, AFill) + LE +
-    GetChartLineXML(AIndent, ALine);
+    GetChartFillXML(AIndent, AChart, AFill) + LE +
+    GetChartLineXML(AIndent, AChart, ALine);
   //  indent + '<a:effectLst/>';
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartFillXML(AIndent: Integer;
-  AFill: TsChartFill): String;
+  AChart: TsChart; AFill: TsChartFill): String;
 var
   indent: String;
 begin
@@ -3172,15 +3172,70 @@ begin
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartLineXML(AIndent: Integer;
-  ALine: TsChartline): String;
+  AChart: TsChart; ALine: TsChartline): String;
 var
   indent: String;
   noLine: Boolean;
+  lineStyle: TsChartLineStyle;
+  w: Double;
+  len1: Double;
+  len2: Double;
+  space: Double;
 begin
   indent := DupeString(' ', AIndent);
 
   if (ALine <> nil) and (ALine.Style <> clsNoLine) then
-    Result := Format('<a:ln w="%.0f">', [ALine.Width * PTS_MULTIPLIER])
+  begin
+    Result := Format(
+      indent + '<a:ln w="%.0f">' + LE +
+      indent + '  <a:solidFill>' + LE +
+      indent + '    <a:srgbClr val="%s"/>' + LE +
+      indent + '  </a:solidFill>' + LE,
+      [ mmToPts(ALine.Width) * PTS_MULTIPLIER, HtmlColorStr(ALine.Color) ]
+    );
+    if ALine.Style <> clsSolid then
+    begin
+      lineStyle := AChart.LineStyles[ALine.Style];
+      if lineStyle.RelativeToLineWidth then
+      begin
+        w := ALine.Width;
+        if w < 1 then w := 1.0;
+        len1 := w * lineStyle.Segment1.Length * 0.01;
+        len2 := w * lineStyle.Segment2.Length * 0.01;
+        space := w * lineStyle.Distance * 0.01;
+      end else
+      begin
+        len1 := lineStyle.Segment1.Length;
+        len2 := lineStyle.Segment2.Length;
+        space := lineStyle.Distance;
+      end;
+      Result := Result + Format(
+        indent + '  <a:custDash>' + LE +
+        indent + '    <a:ds d="%.0f" sp="%.0f"/>' + LE +
+        indent + '  </a:custDash>' + LE,
+        [ mmToPts(len1) * PTS_MULTIPLIER, mmToPts(space) * PTS_MULTIPLIER ]
+      );
+      // To do: how to handle multiple segments?
+    end;
+    Result := Result + indent + '</a:ln>';
+  end else
+    Result := indent + '<a:ln>' + LE +
+              indent + '  <a:noFill/>' + LE +
+              indent + '</a:ln>';
+  (*
+
+
+
+    Result := Format('<a:ln w="%.0f">', [ALine.Width * PTS_MULTIPLIER]);
+
+    Result := Result + LE + Format(
+      indent + '  <a:solidFill>' + LE +
+      indent + '    <a:srgbClr val="%s"/>' + LE +
+      indent + '  </a:solidFill>' + LE +
+      indent + '  <a:round/>' + LE,     // must not be dropped!
+      [ HtmlColorStr(ALine.Color) ]
+    )
+
   else
     Result := '<a:ln>';
   Result := indent + Result;
@@ -3204,6 +3259,7 @@ begin
     Result := Result + indent + '  <a:noFill/>';
 
   Result := Result + indent + '</a:ln>';
+  *)
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartRangeXML(AIndent: Integer;
@@ -3233,8 +3289,10 @@ procedure TsSpreadOOXMLChartWriter.WriteBarSeries(AStream: TStream;
   AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
 var
   indent: String;
+  chart: TsChart;
 begin
   indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
 
   AppendToStream(AStream, Format(
     indent + '<c:barChart>' + LE +
@@ -3244,7 +3302,7 @@ begin
     indent + '    <c:idx val="%d"/>' + LE +
     indent + '    <c:order val="%d"/>' + LE +
     indent + '    <c:spPr>' + LE +
-                    GetChartFillAndLineXML(AIndent + 6, ASeries.Fill, ASeries.Line) + LE +
+                    GetChartFillAndLineXML(AIndent + 6, chart, ASeries.Fill, ASeries.Line) + LE +
     indent + '    </c:spPr>' + LE +
     indent + '    <c:cat>' + LE +
                     GetChartRangeXML(AIndent + 6, ASeries.XRange, 'strRef') + LE +
@@ -3394,8 +3452,10 @@ function TsSpreadOOXMLChartWriter.GetChartSeriesMarkerXML(AIndent: Integer;
 var
   indent: String;
   markerStr: String;
+  chart: TsChart;
 begin
   indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
 
   if ASeries.ShowSymbols then
     case ASeries.Symbol of
@@ -3421,7 +3481,7 @@ begin
     indent + '<c:symbol val="%s"/>' + LE +
     indent + '<c:size val="%.0f"/>' + LE +
     indent + '<c:spPr>' + LE +
-               GetChartFillAndLineXML(AIndent+2, ASeries.SymbolFill, ASeries.SymbolBorder) + LE +
+               GetChartFillAndLineXML(AIndent + 2, chart, ASeries.SymbolFill, ASeries.SymbolBorder) + LE +
     indent + '</c:spPr>',
     [ markerStr, mmToPts(ASeries.SymbolWidth + ASeries.SymbolHeight) ]
   );
@@ -3492,8 +3552,10 @@ procedure TsSpreadOOXMLChartWriter.WriteScatterSeries(AStream: TStream;
   AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
 var
   indent: String;
+  chart: TsChart;
 begin
   indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
 
   AppendToStream(AStream, Format(
     indent + '<c:scatterChart>' + LE +
@@ -3502,7 +3564,7 @@ begin
     indent + '    <c:idx val="%d"/>' + LE +
     indent + '    <c:order val="%d"/>' + LE +
     indent + '    <c:spPr>' + LE +
-                    GetChartFillAndLineXML(AIndent + 6, ASeries.Fill, ASeries.Line) + LE +
+                    GetChartFillAndLineXML(AIndent + 6, chart, ASeries.Fill, ASeries.Line) + LE +
     indent + '    </c:spPr>' + LE +
     indent + '    <c:marker>' + LE +
                     GetChartSeriesMarkerXML(AIndent + 6, ASeries) + LE +

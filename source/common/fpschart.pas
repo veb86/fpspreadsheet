@@ -2601,13 +2601,21 @@ begin
 
   FLineStyles := TsChartLineStyleList.Create;
   clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);
+  clsDot := FLineStyles.Add('dot', 400, 1, 0, 0, 400, true);
+  clsDash := FLineStyles.Add('dash', 1200, 1, 0, 0, 800, true);
+  clsDashDot := FLineStyles.Add('dash-dot', 1000, 1, 300, 1, 2000, true);
+  clsLongDash := FLineStyles.Add('long dash', 2400, 1, 0, 0, 800, true);
+  clsLongDashDot := FLineStyles.Add('long dash-dot', 1600, 1, 800, 1, 800, true);
+  clsLongDashDotDot := FLineStyles.Add('long dash-dot-dot', 1600, 1, 800, 2, 800, true);
+   {
+  clsFineDot := FLineStyles.Add('fine-dot', 100, 1, 0, 0, 100, false);
   clsDot := FLineStyles.Add('dot', 150, 1, 0, 0, 150, true);
   clsDash := FLineStyles.Add('dash', 300, 1, 0, 0, 150, true);
   clsDashDot := FLineStyles.Add('dash-dot', 300, 1, 100, 1, 150, true);
   clsLongDash := FLineStyles.Add('long dash', 400, 1, 0, 0, 200, true);
   clsLongDashDot := FLineStyles.Add('long dash-dot', 500, 1, 100, 1, 200, true);
   clsLongDashDotDot := FLineStyles.Add('long dash-dot-dot', 500, 1, 100, 2, 200, true);
-
+  }
   FGradients := TsChartGradientList.Create;
   FHatches := TsChartHatchList.Create;
   FImages := TsChartImageList.Create;
