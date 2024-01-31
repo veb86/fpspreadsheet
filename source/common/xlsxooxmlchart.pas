@@ -84,6 +84,7 @@ type
     function GetChartFillXML(AIndent: Integer; AFill: TsChartFill): String;
     function GetChartLineXML(AIndent: Integer; ALine: TsChartLine): String;
     function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange): String;
+    function GetChartSeriesMarkerXML(AIndent: Integer; ASeries: TsScatterSeries): String;
 
   protected
     // Called by the public functions
@@ -101,6 +102,7 @@ type
 
     // Writing the nodes of the series types
     procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries);
+
   public
     constructor Create(AWriter: TsBasicSpreadWriter); override;
     destructor Destroy; override;
@@ -3189,7 +3191,7 @@ begin
         indent + '  <a:solidFill>' + LE +
         indent + '    <a:srgbClr val="%s"/>' + LE +
         indent + '  </a:solidFill>' + LE +
-        indent + '  <a:round/>',
+        indent + '  <a:round/>' + LE,     // must not be dropped!
         [ HtmlColorStr(ALine.Color) ]
       )
     else
@@ -3315,6 +3317,47 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Assembles the <c:marker> node of a scatter series as a string
+-------------------------------------------------------------------------------}
+function TsSpreadOOXMLChartWriter.GetChartSeriesMarkerXML(AIndent: Integer;
+  ASeries: TsScatterSeries): String;
+var
+  indent: String;
+  markerStr: String;
+begin
+  indent := DupeString(' ', AIndent);
+
+  if ASeries.ShowSymbols then
+    case ASeries.Symbol of
+      cssRect: markerStr := 'square';
+      cssDiamond: markerStr := 'diamong';
+      cssTriangle: markerStr := 'triangle';
+      cssTriangleDown: markerStr := 'triangle';  // !!!!
+      cssTriangleLeft: markerStr := 'triangle';  // !!!!
+      cssTriangleRight: markerStr := 'triangle';  // !!!!
+      cssCircle: markerStr := 'circle';
+      cssStar: markerStr := 'star';
+      cssX: markerstr := 'x';
+      cssPlus: markerStr := '+';
+      cssAsterisk: markerStr := 'star';  // !!!
+      cssDash: markerStr := 'dash';
+      cssDot: markerStr := 'dot';
+      else markerStr := 'star';  // !!!
+    end
+  else
+    markerStr := 'none';
+
+  Result := Format(
+    indent + '<c:symbol val="%s"/>' + LE +
+    indent + '<c:size val="%.0f"/>' + LE +
+    indent + '<c:spPr>' + LE +
+               GetChartFillAndLineXML(AIndent+2, ASeries.SymbolFill, ASeries.SymbolBorder) + LE +
+    indent + '</c:spPr>',
+    [ markerStr, mmToPts(ASeries.SymbolWidth + ASeries.SymbolHeight) ]
+  );
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes the <c:plotArea> node. It contains the series and axes as subnodes.
 
   @param  AStream   Stream for the chartN.xml file
@@ -3386,15 +3429,18 @@ begin
     indent + '  <c:ser>' + LE +
     indent + '    <c:idx val="0"/>' + LE +
     indent + '    <c:order val="0"/>' + LE +
-    indent + '      <c:spPr>' + LE +
-                      GetChartFillAndLineXML(AIndent + 8, ASeries.Fill, ASeries.Line) + LE +
-    indent + '      </c:spPr>' + LE +
-    indent + '      <c:xVal>' + LE +
-                      GetChartRangeXML(AIndent + 8, ASeries.XRange) + LE +
-    indent + '      </c:xVal>' + LE +
-    indent + '      <c:yVal>' + LE +
-                      GetChartRangeXML(AIndent + 8, ASeries.YRange) + LE +
-    indent + '      </c:yVal>' + LE +
+    indent + '    <c:spPr>' + LE +
+                    GetChartFillAndLineXML(AIndent + 6, ASeries.Fill, ASeries.Line) + LE +
+    indent + '    </c:spPr>' + LE +
+    indent + '    <c:marker>' + LE +
+                    GetChartSeriesMarkerXML(AIndent + 6, ASeries) + LE +
+    indent + '    </c:marker>' + LE +
+    indent + '    <c:xVal>' + LE +
+                    GetChartRangeXML(AIndent + 6, ASeries.XRange) + LE +
+    indent + '    </c:xVal>' + LE +
+    indent + '    <c:yVal>' + LE +
+                    GetChartRangeXML(AIndent + 6, ASeries.YRange) + LE +
+    indent + '    </c:yVal>' + LE +
     indent + '  </c:ser>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
