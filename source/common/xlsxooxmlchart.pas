@@ -3150,8 +3150,24 @@ end;
 
 function TsSpreadOOXMLChartWriter.GetChartFillXML(AIndent: Integer;
   AChart: TsChart; AFill: TsChartFill): String;
+const
+  HATCH_NAMES: array[0..47] of string = (
+    'pct5', 'pct10', 'pct20', 'pct25', 'pct30',                 // 0..4
+    'pct40', 'pct50', 'pct60', 'pct70', 'pct75',                // 5..9
+    'pct80', 'pct90', 'dashDnDiag', 'dashUpDiag', 'dashHorz',   // 10..14
+    'dashVert', 'smConfetti', 'lgConfetti', 'zigZag', 'wave',   // 15..19
+    'diagBrick', 'horzBrick', 'weave', 'plaid', 'divot',        // 20..24
+    'dotGrid', 'dotDmnd', 'shingle', 'trellis', 'sphere',       // 25..29
+    'smCheck', 'lgCheck', 'solidDmnd', 'ltDnDiag', 'ltUpDiag',  // 30..34
+    'dkDnDiag', 'dkUpDiag', 'wdDnDiag', 'wdUpDiag', 'ltHorz',   // 35..39
+    'ltVert', 'narVert', 'narHorz', 'dkHorz', 'dkVert',         // 40..44
+    'smGrid', 'lgGrid', 'openDmnd'                              // 45..47
+  );
 var
   indent: String;
+  hatch: TsChartHatch;
+  i: Integer;
+  presetIdx: Integer;
 begin
   indent := DupeString(' ', AIndent);
 
@@ -3160,12 +3176,51 @@ begin
   else
     case AFill.Style of
       cfsSolid:
-        Result := Format(
-          indent + '<a:solidFill>' + LE +
-          indent + '  <a:srgbClr val="%s"/>' + LE +
-          indent + '</a:solidFill>',
-          [ HtmlColorStr(AFill.Color) ]
-        );
+        begin
+          Result := Format(
+            indent + '<a:solidFill>' + LE +
+            indent + '  <a:srgbClr val="%s"/>' + LE +
+            indent + '</a:solidFill>',
+            [ HtmlColorStr(AFill.Color) ]
+          );
+        end;
+      cfsHatched, cfsSolidHatched:
+        begin
+          hatch := AChart.Hatches[AFill.Hatch];
+          presetIdx := -1;
+          for i := 0 to High(HATCH_NAMES) do
+            if hatch.Name = HATCH_NAMES[i] then
+            begin
+              presetIdx := i;
+              break;
+            end;
+          if presetIdx = -1 then
+            case Lowercase(hatch.Name) of
+              'crossed': presetIdx := 47;   // openDmnd
+              'forward': presetIdx := 34;   // ltUpDiag
+              'backward': presetIdx := 33;  // ltDnDiag
+            end;
+          if presetIdx > -1 then
+            Result := Format(
+              indent + '<a:pattFill prst="%s">' + LE +
+              indent + '  <a:fgClr>' + LE +
+              indent + '    <a:srgbClr val="%s"/>' + LE +
+              indent + '  </a:fgClr>' + LE +
+              indent + '  <a:bgClr>' + LE +
+              indent + '    <a:srgbClr val="%s"/>' + LE +
+              indent + '  </a:bgClr>' + LE +
+              indent + '</a:pattFill>',
+              [ HATCH_NAMES[presetIdx], HtmlColorStr(hatch.PatternColor), HtmlColorStr(AFill.Color) ]
+            )
+          else
+            // unknown pattern - use a solid fill
+            Result := Format(
+              indent + '<a:solidFill>' + LE +
+              indent + '  <a:srgbClr val="%s"/>' + LE +
+              indent + '</a:solidFill>',
+              [ HtmlColorStr(AFill.Color) ]
+            );
+        end;
       else
         Result := indent + '<a:noFill/>';
     end;

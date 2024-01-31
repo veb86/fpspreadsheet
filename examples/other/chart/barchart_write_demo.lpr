@@ -82,10 +82,10 @@ begin
     ser.Fill.Color := scBlue;
 
     book.WriteToFile(fn + '.xlsx', true);
-    WriteLn('Data saved with chart in ', fn, '.xlsx');
+    WriteLn('Data saved with chart in ', fn + '.xlsx');
 
     book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart in ', fn, '.ods');
+    WriteLn('Data saved with chart in ', fn + '.ods');
   finally
     book.Free;
   end;
