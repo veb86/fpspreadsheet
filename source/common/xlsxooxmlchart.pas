@@ -95,6 +95,7 @@ type
 
     // Writing the main chart xml nodes
     procedure WriteChartNode(AStream: TStream; AIndent: Integer; AChartIndex: Integer);
+
     procedure WriteChartAxisNode(AStream: TStream; AIndent: Integer; Axis: TsChartAxis; AxisKind: String);
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
@@ -3234,6 +3235,19 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteChartAxisNode(AStream: TStream;
   AIndent: Integer; Axis: TsChartAxis; AxisKind: String);
+
+  function GetTickMarkStr(ATicks: TsChartAxisTicks): String;
+  begin
+    if ATicks = [] then
+      Result := 'none'
+    else if ATicks = [catInside] then
+      Result := 'in'
+    else if ATicks = [catOutside] then
+      Result := 'out'
+    else
+      Result := 'cross';
+  end;
+
 const
   AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
 var
@@ -3249,13 +3263,26 @@ begin
   AppendToStream(AStream, Format(
     indent + '<c:%0:s>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
-    indent + '  <c:axPos val="%s" />' + LE +
     indent + '  <c:scaling>' + LE +
     indent + '    <c:orientation val="minMax"/>' + LE +
     indent + '  </c:scaling>' + LE +
+    indent + '  <c:delete val="0"/>' + LE +
+    indent + '  <c:axPos val="%s" />' + LE +
+    indent + '  <c:numFmt formatCode="General" sourceLinked="1"/>' + LE +
+    indent + '  <c:majorTickMark val="%s"/>' + LE +
+    indent + '  <c:minorTickMark val="%s"/>' + LE +
+    indent + '  <c:tickLblPos val="nextTo"/>' + LE +
     indent + '  <c:crossAx val="%d" />' + LE +
+    indent + '  <c:crosses val="autoZero"/>' + LE +
+//    indent + '  <c:auto val="1"/>' + LE +
     indent + '</c:%0:s>' + LE,
-    [ AxisKind, axID, AX_POS[Axis.Alignment], rotAxID ]
+    [ AxisKind,                         // <c:catAx> or <c:valAx>
+      axID,                             // <c:axID>
+      AX_POS[Axis.Alignment],           // <c:axPos>
+      GetTickMarkStr(Axis.MajorTicks),  // <c:majorTickMark>
+      GetTickMarkStr(Axis.MinorTicks),  // <c:minorTickMark>
+      rotAxID                           // <c:crossAx>
+    ]
   ));
 end;
 
