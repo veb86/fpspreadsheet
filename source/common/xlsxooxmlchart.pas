@@ -3404,6 +3404,25 @@ procedure TsSpreadOOXMLChartWriter.WriteChartAxisNode(AStream: TStream;
       Result := 'cross';
   end;
 
+  function GetGridLineStr(AIndent: Integer; ANodeName: String; ALine: TsChartLine): String;
+  var
+    indent: String;
+  begin
+    if ALine.Style <> clsNoLine then
+    begin
+      indent := DupeString(' ', AIndent);
+      Result := Format(
+        indent + '<%0:s>' + LE +
+        indent + '  <c:spPr>' + LE +
+                      '%s' + LE +
+        indent + '  </c:spPr>' + LE +
+        indent + '</%0:s>' + LE,
+        [ ANodeName, GetChartLineXML(AIndent + 4, Axis.Chart, ALine) ]
+      )
+    end else
+      Result := '';
+  end;
+
 const
   AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
 var
@@ -3424,6 +3443,8 @@ begin
     indent + '  </c:scaling>' + LE +
     indent + '  <c:delete val="0"/>' + LE +
     indent + '  <c:axPos val="%s" />' + LE +
+                GetGridLineStr(AIndent + 2, 'c:majorGridlines', Axis.MajorGridLines) +
+                GetGridLineStr(AIndent + 2, 'c:minorGridlines', Axis.MinorGridLines) +
     indent + '  <c:numFmt formatCode="General" sourceLinked="1"/>' + LE +
     indent + '  <c:majorTickMark val="%s"/>' + LE +
     indent + '  <c:minorTickMark val="%s"/>' + LE +
