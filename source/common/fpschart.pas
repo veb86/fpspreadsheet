@@ -326,6 +326,7 @@ type
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartElement); override;
     function GetOtherAxis: TsChartAxis;
+    function GetRotatedAxis: TsChartAxis;
     procedure SetCategoryRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetCategoryRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     property Alignment: TsChartAxisAlignment read FAlignment write FAlignment;
@@ -1757,6 +1758,21 @@ begin
     Result := Chart.Y2Axis
   else if Chart.Y2Axis = self then
     Result := Chart.YAxis;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the axis in the other direction when the chart is rotate.
+-------------------------------------------------------------------------------}
+function TsChartAxis.GetRotatedAxis: TsChartAxis;
+begin
+  if Chart.XAxis = self then
+    Result := Chart.YAxis
+  else if Chart.X2Axis = self then
+    Result := Chart.Y2Axis
+  else if Chart.YAxis = self then
+    Result := Chart.XAxis
+  else if Chart.Y2Axis = self then
+    Result := Chart.X2Axis;
 end;
 
 procedure TsChartAxis.SetCategoryRange(ARow1, ACol1, ARow2, ACol2: Cardinal);

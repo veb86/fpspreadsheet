@@ -79,19 +79,25 @@ type
     FSChartStyles: array of TStream;
     FSChartColors: array of TStream;
     FPointSeparatorSettings: TFormatSettings;
+    FAxisID: array[TsChartAxisAlignment] of DWord;
     function GetChartFillAndLineXML(AIndent: Integer; AFill: TsChartFill; ALine: TsChartLine): String;
 
   protected
-    procedure WriteChartLegend(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
-    procedure WriteChartPlotArea(AStream: TStream; AIndent: Integer; AChart: TsChart);
-    procedure WriteChartTitle(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
-
     // Called by the public functions
     procedure WriteChartColorsXML(AStream: TStream; AChartIndex: Integer);
     procedure WriteChartRelsXML(AStream: TStream; AChartIndex: Integer);
     procedure WriteChartStylesXML(AStream: TStream; AChartIndex: Integer);
-    procedure WriteChartXML(AStream: TStream; AChartIndex: Integer);
+    procedure WriteChartSpaceXML(AStream: TStream; AChartIndex: Integer);
 
+    // Writing the main chart xml nodes
+    procedure WriteChartNode(AStream: TStream; AIndent: Integer; AChartIndex: Integer);
+    procedure WriteChartAxisNode(AStream: TStream; AIndent: Integer; Axis: TsChartAxis; AxisKind: String);
+    procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
+    procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
+    procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
+
+    // Writing the nodes of the series types
+    procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries);
   public
     constructor Create(AWriter: TsBasicSpreadWriter); override;
     destructor Destroy; override;
@@ -2448,6 +2454,32 @@ begin
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Writes the main chart node, below <c:chartSpace> in chartN.xml
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartNode(AStream: TStream;
+  AIndent: Integer; AChartIndex: Integer);
+var
+  indent: String;
+  chart: TsChart;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := TsWorkbook(Writer.Workbook).GetChartByIndex(AChartIndex);
+
+  AppendToStream(AStream,
+    '<c:chart>' + LE
+  );
+
+  WriteChartTitleNode(AStream, AIndent + 2, chart.Title);
+  WriteChartPlotAreaNode(AStream, AIndent + 2, chart);
+  WriteChartLegendNode(AStream, AIndent + 2, chart.Legend);
+
+  AppendToStream(AStream,
+    '  <c:plotVisOnly val="1" />' + LE +
+    '</c:chart>' + LE
+  );
+end;
+
 { Write the relationship file for the chart with the given index.
   The file defines which xml files contain the ChartStyles and Colors, as well
   as images needed by each chart. }
@@ -3019,7 +3051,11 @@ begin
   );
 end;
 
-procedure TsSpreadOOXMLChartWriter.WriteChartXML(AStream: TStream; AChartIndex: Integer);
+{@@ ----------------------------------------------------------------------------
+  Writes the root node of the file chartN.xml (where N is chart number)
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartSpaceXML(AStream: TStream;
+  AChartIndex: Integer);
 
   function GetChartAxisXML(AIndent: Integer; AChart: TsChart;
     AxisID, OtherAxisID: Integer; NodeName, AxPos: String): String;
@@ -3068,91 +3104,20 @@ procedure TsSpreadOOXMLChartWriter.WriteChartXML(AStream: TStream; AChartIndex: 
     ]);
   end;
 
-  function GetLegendXML(Indent: Integer; AChart: TsChart): string;
-  var
-    ind: String;
-  begin
-    ind := DupeString(' ', Indent);
-    Result :=
-      ind + '<c:legend>' + LE +
-      ind + '  <c:legendPos val="r" />' + LE +
-      ind + '  <c:layout />' + LE +
-      ind + '</c:legend>';
-  end;
-
-var
-  chart: TsChart;
-  xAxID, yAxID: Integer;
 begin
   AppendToStream(AStream,
     '<?xml version="1.0" encoding="utf-8" standalone="yes"?>' + LE +
-    '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' + LE +
-    '  <c:chart>' + LE +
-    '    <c:plotArea>' + LE +
-    '      <c:scatterChart>' + LE +
-    '        <c:scatterStyle val="lineMarker"/>' + LE +
-    '        <c:ser>' + LE +
-    '          <c:idx val="0"/>' + LE +
-    '          <c:order val="0"/>' + LE +
-    '        </c:ser>' + LE +
-    '        <c:axId val="62239872"/>' + LE +
-    '        <c:axId val="62229888"/>' + LE +
-    '      </c:scatterChart>' + LE +
-    '      <c:valAx>' + LE +
-    '        <c:axId val="62239872"/>' + LE +
-    '        <c:axPos val="b" />' + LE +
-    '        <c:scaling>' + LE +
-    '          <c:orientation val="minMax"/>' + LE +
-    '        </c:scaling>' + LE +
-    '        <c:crossAx val="62229888" />' + LE +
-    '      </c:valAx>' + LE +
-    '      <c:valAx>' + LE +
-    '        <c:axId val="62229888"/>' + LE +
-    '        <c:axPos val="l" />' + LE +
-    '        <c:scaling>' + LE +
-    '          <c:orientation val="minMax"/>' + LE +
-    '        </c:scaling>' + LE +
-    '        <c:crossAx val="62239872" />' + LE +
-    '      </c:valAx>' + LE +
-    '    </c:plotArea>' + LE +
-    '  </c:chart>' + LE +
-    '</c:chartSpace>' + LE
-  );
-  (*
-
-
-
-  chart := TsWorkbook(Writer.Workbook).GetChartByIndex(AChartIndex);
-  AppendToStream(AStream,
-    XML_HEADER + LE);
-
-  AppendToStream(AStream,
     '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" ' + LE +
-    '    xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' + LE +
-    '    xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' + LE
-//    '    xmlns:c16r2="http://schemas.microsoft.com/office/drawing/2015/06/chart">' + LE
+    '              xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' + LE +
+    '              xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' + LE +
+    '  <c:date1904 val="0" />' + LE      // to do: get correct value
   );
 
-  xAxID := Random(MaxInt);
-  yAxID := Random(MaxInt);
-
-  AppendToStream(AStream,
-    '  <c:date1904 val="0" />' + LE +      // to do: get correct value
-    '  <c:chart>');
-
-  WriteChartTitle(AStream, 4, chart.Title);
-  WriteChartPlotArea(AStream, 4, chart);
-  WriteChartLegend(AStream, 4, chart.Legend);
-
-  AppendToStream(AStream,
-    '    <c:plotVisOnly val="1" />' + LE +
-    '  </c:chart>' + LE
-  );
+  WriteChartNode(AStream, 2, AChartIndex);
 
   AppendToStream(AStream,
     '</c:chartSpace>' + LE
   );
-  *)
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartFillAndLineXML(AIndent: Integer;
@@ -3170,6 +3135,44 @@ begin
     ind + '  </a:ln>' + LE +
     ind + '  <a:effectLst/>'+ LE +
     ind + '</c:spPr>' + LE
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Write the properties of the given chart axis to the chartN.xml file under
+  the <c:plotArea> node
+
+  Depending on AxisKind, the node is either <c:catAx> or <c:valAx>.
+
+  @param  AStream   Stream of the chartN.xml file
+  @param  AIndent   Count of indentation spaces to increase readability
+  @param  Axis      Chart axis processed
+  @param  AxisKind  'catAx' when Axis is a category axis, otherwise 'valAx'
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartAxisNode(AStream: TStream;
+  AIndent: Integer; Axis: TsChartAxis; AxisKind: String);
+const
+  AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
+var
+  indent: String;
+  axID: DWord;
+  rotAxID: DWord;
+begin
+  indent := DupeString(' ', AIndent);
+
+  axID := FAxisID[Axis.Alignment];
+  rotAxID := FAxisID[Axis.GetRotatedAxis.Alignment];
+
+  AppendToStream(AStream, Format(
+    indent + '<c:%0:s>' + LE +
+    indent + '  <c:axId val="%d"/>' + LE +
+    indent + '  <c:axPos val="%s" />' + LE +
+    indent + '  <c:scaling>' + LE +
+    indent + '    <c:orientation val="minMax"/>' + LE +
+    indent + '  </c:scaling>' + LE +
+    indent + '  <c:crossAx val="%d" />' + LE +
+    indent + '</c:%0:s>' + LE,
+    [ AxisKind, axID, AX_POS[Axis.Alignment], rotAxID ]
+  ));
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3204,7 +3207,14 @@ begin
   end;
 end;
 
-procedure TsSpreadOOXMLChartWriter.WriteChartLegend(AStream: TStream;
+{@@ ----------------------------------------------------------------------------
+  Writes the <c:legend> node of a chart.
+
+  @param  AStream  Stream containing the chartN.xml file
+  @param  AIndent  Count of indentation spaces, for better legibility
+  @param  ALegend  Chart legend which is processed here
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartLegendNode(AStream: TStream;
   AIndent: Integer; ALegend: TsChartLegend);
 var
   ind: String;
@@ -3222,162 +3232,49 @@ begin
   );
 end;
 
-procedure TsSpreadOOXMLChartWriter.WriteChartPlotArea(AStream: TStream;
+{@@ ----------------------------------------------------------------------------
+  Writes the <c:plotArea> node. It contains the series and axes as subnodes.
+
+  @param  AStream   Stream for the chartN.xml file
+  @param  AIndent   Count of indentation spaces, for better legibility
+  @param  AChart    Chart which is being processed here
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartPlotAreaNode(AStream: TStream;
   AIndent: Integer; AChart: TsChart);
 var
-  ind: String;
+  indent: String;
+  i: Integer;
+  ser: TsChartSeries;
+  xAxKind, yAxKind: String;
 begin
-  ind := DupeString(' ', AIndent);
+  indent := DupeString(' ', AIndent);
+  FAxisID[caaBottom] := Random(MaxInt);
+  FAxisID[caaLeft] := Random(MaxInt);
 
   AppendToStream(AStream,
-    ind + '<c:plotArea>' + LE +
-    ind + '  <c:layout/>' + LE +
+    indent + '<c:plotArea>' + LE
+  );
 
-    ind + '  <c:scatterChart>' +LE +
-    ind + '    <c:scatterStyle val="lineMarker"/>' + LE +
-    ind + '    <c:ser>' + LE +
-    ind + '      <c:idx val="0"/>' + LE +
-    ind + '      <c:order val="0"/>' + LE +
-    ind + '    </c:ser>' + LE +
-    ind + '    <c:axId val="62239872"/>' + LE +
-    ind + '    <c:axId val="62229888"/>' + LE +
-    ind + '  </c:scatterChart>' + LE +
-                                      {
-    ind + '  <c:barChart>' + LE +
-    ind + '    <c:barDir val="col"/>' + LE +
-    ind + '    <c:grouping val="clustered"/>' + LE +
-    ind + '    <c:varyColors val="0"/>' + LE +
-    ind + '    <c:dLbls>' + LE +
-    ind + '      <c:showLegendKey val="0"/>' + LE +
-    ind + '      <c:showVal val="0"/>' + LE +
-    ind + '      <c:showCatName val="0"/>' + LE +
-    ind + '      <c:showSerName val="0"/>' + LE +
-    ind + '      <c:showPercent val="0"/>' + LE +
-    ind + '      <c:showBubbleSize val="0"/>' + LE +
-    ind + '    </c:dLbls>' + LE +
-    ind + '    <c:gapWidth val="219"/>' + LE +
-    ind + '    <c:overlap val="-27"/>' + LE +
-    ind + '    <c:axId val="402915176"/>' + LE +
-    ind + '    <c:axId val="402915536"/>' + LE +
-    ind + '  </c:barChart>' + LE +
-                                      }
-    ind + '  <c:catAx>' + LE +
-    ind + '    <c:axId val="62239872"/>' + LE +
-    ind + '    <c:scaling>' + LE +
-    ind + '      <c:orientation val="minMax"/>' + LE +
-    ind + '    </c:scaling>' + LE +
-    ind + '    <c:delete val="0"/>' + LE +
-    ind + '    <c:axPos val="b"/>' + LE +
-    ind + '    <c:majorTickMark val="none"/>' + LE +
-    ind + '    <c:minorTickMark val="none"/>' + LE +
-    ind + '    <c:tickLblPos val="nextTo"/>' + LE +
-    ind + '    <c:spPr>' + LE +
-    ind + '      <a:noFill/>' + LE +
-    ind + '      <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
-    ind + '        <a:solidFill>' + LE +
-    ind + '          <a:schemeClr val="tx1">' + LE +
-    ind + '            <a:lumMod val="15000"/>' + LE +
-    ind + '            <a:lumOff val="85000"/>' + LE +
-    ind + '          </a:schemeClr>' + LE +
-    ind + '        </a:solidFill>' + LE +
-    ind + '        <a:round/>' + LE +
-    ind + '      </a:ln>' + LE +
-    ind + '      <a:effectLst/>' + LE +
-    ind + '    </c:spPr>' + LE +
-    ind + '    <c:txPr>' + LE+
-    ind + '      <a:bodyPr rot="-60000000" spcFirstLastPara="1" vertOverflow="ellipsis" '+
-                    'vert="horz" wrap="square" anchor="ctr" anchorCtr="1"/>' + LE +
-    ind + '      <a:lstStyle/>' + LE +
-    ind + '      <a:p>' + LE +
-    ind + '        <a:pPr>' + LE +
-    ind + '          <a:defRPr sz="900" b="0" i="0" u="none" strike="noStrike" kern="1200" baseline="0">' + LE +
-    ind + '            <a:solidFill>' + LE +
-    ind + '              <a:schemeClr val="tx1">' + LE +
-    ind + '                <a:lumMod val="65000"/>' + LE +
-    ind + '                <a:lumOff val="35000"/>' + LE +
-    ind + '              </a:schemeClr>' + LE +
-    ind + '            </a:solidFill>'+ LE +
-    ind + '            <a:latin typeface="+mn-lt"/>' + LE +
-    ind + '            <a:ea typeface="+mn-ea"/>' + LE +
-    ind + '            <a:cs typeface="+mn-cs"/>' + LE +
-    ind + '          </a:defRPr>' + LE +
-    ind + '        </a:pPr>' + LE +
-    ind + '        <a:endParaRPr lang="de-DE"/>' + LE +
-    ind + '      </a:p>' + LE +
-    ind + '    </c:txPr>' + LE +
-    ind + '    <c:crossAx val="62229888"/>' + LE +
-    ind + '    <c:crosses val="autoZero"/>' + LE +
-    ind + '    <c:auto val="1"/>' + LE +
-    ind + '    <c:lblAlgn val="ctr"/>' + LE +
-    ind + '    <c:lblOffset val="100"/>' + LE +
-    ind + '    <c:noMultiLvlLbl val="0"/>' + LE +
-    ind + '  </c:catAx>' + LE +
+  xAxKind := 'catAx';
+  yAxKind := 'valAx';
 
-    ind + '  <c:valAx>' + LE +
-    ind + '    <c:axId val="62229888"/>' + LE +
-    ind + '    <c:scaling>' + LE +
-    ind + '      <c:orientation val="minMax"/>' + LE +
-    ind + '    </c:scaling>' + LE +
-    ind + '    <c:delete val="0"/>' + LE +
-    ind + '    <c:axPos val="l"/>' + LE +
-    ind + '    <c:majorGridlines>' + LE +
-    ind + '      <c:spPr>' + LE +
-    ind + '        <a:ln w="9525" cap="flat" cmpd="sng" algn="ctr">' + LE +
-    ind + '          <a:solidFill>' + LE +
-    ind + '            <a:schemeClr val="tx1">' + LE +
-    ind + '              <a:lumMod val="15000"/>' + LE +
-    ind + '              <a:lumOff val="85000"/>' + LE +
-    ind + '            </a:schemeClr>' + LE +
-    ind + '          </a:solidFill>' + LE +
-    ind + '          <a:round/>' + LE +
-    ind + '        </a:ln>' + LE +
-    ind + '        <a:effectLst/>' + LE +
-    ind + '      </c:spPr>' + LE +
-    ind + '    </c:majorGridlines>' + LE +
-    ind + '    <c:majorTickMark val="none"/>' + LE +
-    ind + '    <c:minorTickMark val="none"/>' + LE +
-    ind + '    <c:tickLblPos val="nextTo"/>' + LE +
-    ind + '    <c:spPr>' + LE +
-    ind + '      <a:noFill/>' + LE +
-    ind + '      <a:ln>' + LE +
-    ind + '        <a:noFill/>' + LE +
-    ind + '      </a:ln>' + LE +
-    ind + '      <a:effectLst/>' + LE +
-    ind + '    </c:spPr>' + LE +
-    ind + '    <c:txPr>' + LE +
-    ind + '      <a:bodyPr rot="-60000000" spcFirstLastPara="1" vertOverflow="ellipsis" ' +
-                   'vert="horz" wrap="square" anchor="ctr" anchorCtr="1"/>' + LE +
-    ind + '      <a:lstStyle/>' + LE +
-    ind + '      <a:p>' + LE +
-    ind + '        <a:pPr>' + LE +
-    ind + '          <a:defRPr sz="900" b="0" i="0" u="none" strike="noStrike" kern="1200" baseline="0">' + LE +
-    ind + '            <a:solidFill>' + LE +
-    ind + '              <a:schemeClr val="tx1">' + LE +
-    ind + '                <a:lumMod val="65000"/>' + LE +
-    ind + '                <a:lumOff val="35000"/>' + LE +
-    ind + '              </a:schemeClr>' + LE +
-    ind + '            </a:solidFill>' + LE +
-    ind + '            <a:latin typeface="+mn-lt"/>' + LE +
-    ind + '            <a:ea typeface="+mn-ea"/>' + LE +
-    ind + '            <a:cs typeface="+mn-cs"/>' + LE +
-    ind + '          </a:defRPr>' + LE +
-    ind + '        </a:pPr>' + LE +
-    ind + '        <a:endParaRPr lang="de-DE"/>' + LE +
-    ind + '      </a:p>' + LE +
-    ind + '    </c:txPr>' + LE +
-    ind + '    <c:crossAx val="62239872"/>' + LE +
-    ind + '    <c:crosses val="autoZero"/>' + LE +
-    ind + '    <c:crossBetween val="between"/>' + LE +
-    ind + '  </c:valAx>' + LE +
-    ind + '  <c:spPr>' + LE +
-    ind + '    <a:noFill/>' + LE +
-    ind + '    <a:ln>' + LE +
-    ind + '      <a:noFill/>' + LE +
-    ind + '    </a:ln>' + LE +
-    ind + '    <a:effectLst/>' + LE +
-    ind + '  </c:spPr>' + LE +
+  for i := 0 to AChart.Series.Count-1 do
+  begin
+    ser := TsChartSeries(AChart.Series[i]);
+    case ser.ChartType of
+      ctScatter:
+        begin
+          WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser));
+          xAxKind := 'catAx';
+        end;
+    end;
+  end;
 
-    ind + '</c:plotArea>' + LE
+  WriteChartAxisNode(AStream, AIndent, AChart.XAxis, xAxKind);
+  WriteChartAxisNode(AStream, AIndent, AChart.YAxis, yAxKind);
+
+  AppendToStream(AStream,
+    indent + '</c:plotArea>' + LE
   );
 end;
 
@@ -3390,20 +3287,48 @@ begin
   //  WriteChartRelsXML(FSChartRels[i], i);
   //  WriteChartStylesXML(FSChartStyles[i], i);
   //  WriteChartColorsXML(FSChartColors[i], i);
-    WriteChartXML(FSCharts[i], i);
+    WriteChartSpaceXML(FSCharts[i], i);
   end;
 end;
 
-procedure TsSpreadOOXMLChartWriter.WriteChartTitle(AStream: TStream;
+procedure TsSpreadOOXMLChartWriter.WriteScatterSeries(AStream: TStream;
+  AIndent: Integer; ASeries: TsScatterSeries);
+var
+  indent: String;
+begin
+  indent := DupeString(' ', AIndent);
+
+  AppendToStream(AStream, Format(
+    indent + '<c:scatterChart>' + LE +
+    indent + '  <c:scatterStyle val="lineMarker"/>' + LE +
+    indent + '  <c:ser>' + LE +
+    indent + '    <c:idx val="0"/>' + LE +
+    indent + '    <c:order val="0"/>' + LE +
+    indent + '  </c:ser>' + LE +
+    indent + '  <c:axId val="%d"/>' + LE +
+    indent + '  <c:axId val="%d"/>' + LE +
+    indent + '</c:scatterChart>' + LE,
+    [ FAxisID[ASeries.Chart.XAxis.Alignment], FAxisID[ASeries.Chart.YAxis.Alignment] ]
+  ));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the <c:title> node defining the chart's title
+
+  @param  AStream   Stream to receive the data
+  @param  AIndent   Count of indentation spaces, fr better legibility
+  @param  ATitle    Title of the chart which is being processed here
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartTitleNode(AStream: TStream;
   AIndent: Integer; ATitle: TsChartText);
 var
-  ind: String;
+  indent: String;
 begin
-  ind := DupeString(' ', AIndent);
+  indent := DupeString(' ', AIndent);
 
   AppendToStream(AStream,
-    ind + '<c:title>' + LE +
-    ind + '  <c:overlay val="0"/>' + LE
+    indent + '<c:title>' + LE +
+    indent + '  <c:overlay val="0"/>' + LE
   );
 {
   AppendToStream(AStream,
@@ -3436,7 +3361,7 @@ begin
   );
                    }
   AppendToStream(AStream,
-    ind + '</c:title>' + LE
+    indent + '</c:title>' + LE
   );
 
 end;

@@ -120,10 +120,8 @@ begin
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
 
-    {
-    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart to ', FILE_NAME, '.xlsx');
-    }
+    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
+    WriteLn('Data saved with chart to ', fn, '.xlsx');
 
     book.Options := book.Options + [boCalcBeforeSaving];
     book.WriteToFile(fn + '.ods', true);
