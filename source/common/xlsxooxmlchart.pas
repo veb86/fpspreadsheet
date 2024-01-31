@@ -81,6 +81,8 @@ type
     FPointSeparatorSettings: TFormatSettings;
     FAxisID: array[TsChartAxisAlignment] of DWord;
     function GetChartFillAndLineXML(AIndent: Integer; AFill: TsChartFill; ALine: TsChartLine): String;
+    function GetChartFillXML(AIndent: Integer; AFill: TsChartFill): String;
+    function GetChartLineXML(AIndent: Integer; ALine: TsChartLine): String;
     function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange): String;
 
   protected
@@ -183,6 +185,15 @@ type
   public
     property Regression;
   end;
+
+
+function HTMLColorStr(AValue: TsColor): string;
+var
+  rgb: TRGBA absolute AValue;
+begin
+  Result := Lowercase(Format('%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b]));
+end;
+
 
 
 { TsSpreadOOXMLChartReader }
@@ -3121,21 +3132,74 @@ begin
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Assembles the xml string for the children of a <c:spPr> node (fill and line style)
+-------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartFillAndLineXML(AIndent: Integer;
   AFill: TsChartFill; ALine: TsChartLine): String;
-var
-  ind: String;
 begin
-  ind := DupeString(' ', AIndent);
-
   Result :=
-    ind + '<c:spPr>' + LE +
-    ind + '  <a:noFill/>' + LE +
-    ind + '  <a:ln>' + LE +
-    ind + '    <a:noFill/>' + LE +
-    ind + '  </a:ln>' + LE +
-    ind + '  <a:effectLst/>'+ LE +
-    ind + '</c:spPr>' + LE
+    GetChartFillXML(AIndent, AFill) + LE +
+    GetChartLineXML(AIndent, ALine);
+  //  indent + '<a:effectLst/>';
+end;
+
+function TsSpreadOOXMLChartWriter.GetChartFillXML(AIndent: Integer;
+  AFill: TsChartFill): String;
+var
+  indent: String;
+begin
+  indent := DupeString(' ', AIndent);
+
+  if (AFill = nil) or (AFill.Style = cfsNoFill) then
+    Result := indent + '<a:noFill/>'
+  else
+    case AFill.Style of
+      cfsSolid:
+        Result := Format(
+          indent + '<a:solidFill>' + LE +
+          indent + '  <a:srgbClr val="%s"/>' + LE +
+          indent + '</a:solidFill>',
+          [ HtmlColorStr(AFill.Color) ]
+        );
+      else
+        Result := indent + '<a:noFill/>';
+    end;
+end;
+
+function TsSpreadOOXMLChartWriter.GetChartLineXML(AIndent: Integer;
+  ALine: TsChartline): String;
+var
+  indent: String;
+  noLine: Boolean;
+begin
+  indent := DupeString(' ', AIndent);
+
+  if (ALine <> nil) and (ALine.Style <> clsNoLine) then
+    Result := Format('<a:ln w="%.0f">', [ALine.Width * PTS_MULTIPLIER])
+  else
+    Result := '<a:ln>';
+  Result := indent + Result;
+
+  noLine := false;
+  if (ALine <> nil) then
+  begin
+    if ALine.Style = clsSolid then
+      Result := Result + LE + Format(
+        indent + '  <a:solidFill>' + LE +
+        indent + '    <a:srgbClr val="%s"/>' + LE +
+        indent + '  </a:solidFill>' + LE +
+        indent + '  <a:round/>',
+        [ HtmlColorStr(ALine.Color) ]
+      )
+    else
+      noLine := true;
+  end;
+
+  if noLine then
+    Result := Result + indent + '  <a:noFill/>';
+
+  Result := Result + indent + '</a:ln>';
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartRangeXML(AIndent: Integer;
@@ -3322,11 +3386,14 @@ begin
     indent + '  <c:ser>' + LE +
     indent + '    <c:idx val="0"/>' + LE +
     indent + '    <c:order val="0"/>' + LE +
+    indent + '      <c:spPr>' + LE +
+                      GetChartFillAndLineXML(AIndent + 8, ASeries.Fill, ASeries.Line) + LE +
+    indent + '      </c:spPr>' + LE +
     indent + '      <c:xVal>' + LE +
-    indent + '        ' + GetChartRangeXML(AIndent + 8, ASeries.XRange) + LE +
+                      GetChartRangeXML(AIndent + 8, ASeries.XRange) + LE +
     indent + '      </c:xVal>' + LE +
     indent + '      <c:yVal>' + LE +
-    indent + '        ' + GetChartRangeXML(AIndent + 8, ASeries.YRange) + LE +
+                      GetChartRangeXML(AIndent + 8, ASeries.YRange) + LE +
     indent + '      </c:yVal>' + LE +
     indent + '  </c:ser>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
