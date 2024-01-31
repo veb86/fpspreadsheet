@@ -81,6 +81,7 @@ type
     FPointSeparatorSettings: TFormatSettings;
     FAxisID: array[TsChartAxisAlignment] of DWord;
     function GetChartFillAndLineXML(AIndent: Integer; AFill: TsChartFill; ALine: TsChartLine): String;
+    function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange): String;
 
   protected
     // Called by the public functions
@@ -3137,6 +3138,23 @@ begin
     ind + '</c:spPr>' + LE
 end;
 
+function TsSpreadOOXMLChartWriter.GetChartRangeXML(AIndent: Integer;
+  ARange: TsChartRange): String;
+var
+  indent: String;
+begin
+  indent := DupeString(' ', AIndent);
+  if ARange.Sheet1 = ARange.Sheet2 then
+    Result := ARange.GetSheet1Name + '!' + GetCellRangeString(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2, [])
+  else
+    Result := GetCellRangeString(ARange.GetSheet1Name, ARange.GetSheet2Name, ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2, []);
+
+  Result :=
+    indent + '<c:numRef> ' + LE +
+    indent + '  <c:f>' + Result + '</c:f>' + LE +
+    indent + '</c:numRef>';
+end;
+
 {@@ ----------------------------------------------------------------------------
   Write the properties of the given chart axis to the chartN.xml file under
   the <c:plotArea> node
@@ -3304,6 +3322,12 @@ begin
     indent + '  <c:ser>' + LE +
     indent + '    <c:idx val="0"/>' + LE +
     indent + '    <c:order val="0"/>' + LE +
+    indent + '      <c:xVal>' + LE +
+    indent + '        ' + GetChartRangeXML(AIndent + 8, ASeries.XRange) + LE +
+    indent + '      </c:xVal>' + LE +
+    indent + '      <c:yVal>' + LE +
+    indent + '        ' + GetChartRangeXML(AIndent + 8, ASeries.YRange) + LE +
+    indent + '      </c:yVal>' + LE +
     indent + '  </c:ser>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +

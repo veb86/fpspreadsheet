@@ -1514,6 +1514,8 @@ begin
     Result := Sheet1
   else
   Result := FChart.Worksheet.Name;
+  if SheetNameNeedsQuotes(Result) then
+    Result := QuotedStr(Result);
 end;
 
 function TsChartRange.GetSheet2Name: String;
@@ -1522,6 +1524,8 @@ begin
     Result := Sheet2
   else
   Result := FChart.Worksheet.Name;
+  if SheetNameNeedsQuotes(Result) then
+    Result := QuotedStr(Result);
 end;
 
 function TsChartRange.IsEmpty: Boolean;
