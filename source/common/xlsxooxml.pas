@@ -6570,6 +6570,7 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
     roffs1, coffs1, roffs2, coffs2: Double;
     x, y, w, h: Double;
     sheet: TsWorksheet;
+    guid: TGUID;
   begin
     r1 := AChart.Row;
     c1 := AChart.Col;
@@ -6590,16 +6591,20 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
       AnchorAsXML(4, 'xdr:to', c2, r2, coffs2, roffs2) + LE
     );
 
+    CreateGUID(guid);
     AppendToStream(AStream, Format(
       '    <xdr:graphicFrame macro="">' + LE +
       '      <xdr:nvGraphicFramePr>' + LE +
       '        <xdr:cNvPr id="%d" name="Diagram %d">' + LE +         // line 1
+      //{
       '          <a:extLst>' + LE +
       '            <a:ext uri="{FF2B5EF4-FFF2-40B4-BE49-F238E27FC236}">' + LE +
       '              <a16:creationId  xmlns:a16="http://schemas.microsoft.com/office/drawing/2014/main" ' +
-                       'id="{00000000-0008-0000-0000-000002000000}"/>' + LE +
+                       'id="' + GUIDToString(guid) + '"/>' + LE +
+       //                'id="{00000000-0008-0000-0000-000002000000}"/>' + LE +
       '            </a:ext>' + LE +
       '          </a:extLst>' + LE +
+      //}
       '        </xdr:cNvPr>' + LE +
       '        <xdr:cNvGraphicFramePr />' + LE +
       '      </xdr:nvGraphicFramePr>' + LE +
@@ -7454,7 +7459,7 @@ begin
       '<Default Extension="rels" ContentType="%s" />' + LineEnding, [MIME_RELS]));
   AppendToStream(FSContentTypes, Format(
       '<Default Extension="xml" ContentType="%s" />' + LineEnding, [MIME_XML]));
-  AppendToStream(FSContentTypes, Format(
+   AppendToStream(FSContentTypes, Format(
       '<Default Extension="vml" ContentType="%s" />' + LineEnding, [MIME_VMLDRAWING]));
 
   if book.GetEmbeddedObjCount > 0 then
@@ -7479,17 +7484,13 @@ begin
   AppendToStream(FSContentTypes,
       '<Override PartName="/xl/workbook.xml" ContentType="' + MIME_SHEET + '" />' + LineEnding);
 
-  {$ifdef FPS_CHARTS}
-  TsSpreadOOXMLChartWriter(FChartWriter).WriteChartContentTypes(FSContentTypes);
-  {$endif}
-
   for i:=1 to book.GetWorksheetCount do
   begin
     AppendToStream(FSContentTypes, Format(
       '<Override PartName="/xl/worksheets/sheet%d.xml" ContentType="%s" />' + LineEnding,
         [i, MIME_WORKSHEET]));
     sheet := book.GetWorksheetByIndex(i-1);
-    if sheet.GetImageCount > 0 then
+    if (sheet.GetImageCount > 0) {$ifdef FPS_CHARTS} or (sheet.GetChartCount > 0){$endif} then
       AppendToStream(FSContentTypes, Format(
         '<Override PartName="/xl/drawings/drawing%d.xml" ContentType="%s"/>' + LineEnding,
         [i, MIME_DRAWING]));
@@ -7504,6 +7505,10 @@ begin
       '<Override PartName="/xl/styles.xml" ContentType="' + MIME_STYLES + '" />' + LineEnding);
   AppendToStream(FSContentTypes,
       '<Override PartName="/xl/sharedStrings.xml" ContentType="' + MIME_STRINGS + '" />' + LineEnding);
+
+  {$ifdef FPS_CHARTS}
+  TsSpreadOOXMLChartWriter(FChartWriter).WriteChartContentTypes(FSContentTypes);
+  {$endif}
 
   AppendToStream(FSContentTypes,
       '<Override PartName="/docProps/core.xml" ContentType="' + MIME_CORE + '" />');

@@ -3084,6 +3084,44 @@ var
   chart: TsChart;
   xAxID, yAxID: Integer;
 begin
+  AppendToStream(AStream,
+    '<?xml version="1.0" encoding="utf-8" standalone="yes"?>' + LE +
+    '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' + LE +
+    '  <c:chart>' + LE +
+    '    <c:plotArea>' + LE +
+    '      <c:scatterChart>' + LE +
+    '        <c:scatterStyle val="lineMarker"/>' + LE +
+    '        <c:ser>' + LE +
+    '          <c:idx val="0"/>' + LE +
+    '          <c:order val="0"/>' + LE +
+    '        </c:ser>' + LE +
+    '        <c:axId val="62239872"/>' + LE +
+    '        <c:axId val="62229888"/>' + LE +
+    '      </c:scatterChart>' + LE +
+    '      <c:valAx>' + LE +
+    '        <c:axId val="62239872"/>' + LE +
+    '        <c:axPos val="b" />' + LE +
+    '        <c:scaling>' + LE +
+    '          <c:orientation val="minMax"/>' + LE +
+    '        </c:scaling>' + LE +
+    '        <c:crossAx val="62229888" />' + LE +
+    '      </c:valAx>' + LE +
+    '      <c:valAx>' + LE +
+    '        <c:axId val="62229888"/>' + LE +
+    '        <c:axPos val="l" />' + LE +
+    '        <c:scaling>' + LE +
+    '          <c:orientation val="minMax"/>' + LE +
+    '        </c:scaling>' + LE +
+    '        <c:crossAx val="62239872" />' + LE +
+    '      </c:valAx>' + LE +
+    '    </c:plotArea>' + LE +
+    '  </c:chart>' + LE +
+    '</c:chartSpace>' + LE
+  );
+  (*
+
+
+
   chart := TsWorkbook(Writer.Workbook).GetChartByIndex(AChartIndex);
   AppendToStream(AStream,
     XML_HEADER + LE);
@@ -3114,6 +3152,7 @@ begin
   AppendToStream(AStream,
     '</c:chartSpace>' + LE
   );
+  *)
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartFillAndLineXML(AIndent: Integer;
@@ -3194,6 +3233,16 @@ begin
     ind + '<c:plotArea>' + LE +
     ind + '  <c:layout/>' + LE +
 
+    ind + '  <c:scatterChart>' +LE +
+    ind + '    <c:scatterStyle val="lineMarker"/>' + LE +
+    ind + '    <c:ser>' + LE +
+    ind + '      <c:idx val="0"/>' + LE +
+    ind + '      <c:order val="0"/>' + LE +
+    ind + '    </c:ser>' + LE +
+    ind + '    <c:axId val="62239872"/>' + LE +
+    ind + '    <c:axId val="62229888"/>' + LE +
+    ind + '  </c:scatterChart>' + LE +
+                                      {
     ind + '  <c:barChart>' + LE +
     ind + '    <c:barDir val="col"/>' + LE +
     ind + '    <c:grouping val="clustered"/>' + LE +
@@ -3211,11 +3260,11 @@ begin
     ind + '    <c:axId val="402915176"/>' + LE +
     ind + '    <c:axId val="402915536"/>' + LE +
     ind + '  </c:barChart>' + LE +
-
+                                      }
     ind + '  <c:catAx>' + LE +
-    ind + '    <c:axId val="402915176"/>' + LE +
+    ind + '    <c:axId val="62239872"/>' + LE +
     ind + '    <c:scaling>' + LE +
-    ind + '    <c:orientation val="minMax"/>' + LE +
+    ind + '      <c:orientation val="minMax"/>' + LE +
     ind + '    </c:scaling>' + LE +
     ind + '    <c:delete val="0"/>' + LE +
     ind + '    <c:axPos val="b"/>' + LE +
@@ -3256,7 +3305,7 @@ begin
     ind + '        <a:endParaRPr lang="de-DE"/>' + LE +
     ind + '      </a:p>' + LE +
     ind + '    </c:txPr>' + LE +
-    ind + '    <c:crossAx val="402915536"/>' + LE +
+    ind + '    <c:crossAx val="62229888"/>' + LE +
     ind + '    <c:crosses val="autoZero"/>' + LE +
     ind + '    <c:auto val="1"/>' + LE +
     ind + '    <c:lblAlgn val="ctr"/>' + LE +
@@ -3265,7 +3314,7 @@ begin
     ind + '  </c:catAx>' + LE +
 
     ind + '  <c:valAx>' + LE +
-    ind + '    <c:axId val="402915536"/>' + LE +
+    ind + '    <c:axId val="62229888"/>' + LE +
     ind + '    <c:scaling>' + LE +
     ind + '      <c:orientation val="minMax"/>' + LE +
     ind + '    </c:scaling>' + LE +
@@ -3316,7 +3365,7 @@ begin
     ind + '        <a:endParaRPr lang="de-DE"/>' + LE +
     ind + '      </a:p>' + LE +
     ind + '    </c:txPr>' + LE +
-    ind + '    <c:crossAx val="402915176"/>' + LE +
+    ind + '    <c:crossAx val="62239872"/>' + LE +
     ind + '    <c:crosses val="autoZero"/>' + LE +
     ind + '    <c:crossBetween val="between"/>' + LE +
     ind + '  </c:valAx>' + LE +
@@ -3327,6 +3376,7 @@ begin
     ind + '    </a:ln>' + LE +
     ind + '    <a:effectLst/>' + LE +
     ind + '  </c:spPr>' + LE +
+
     ind + '</c:plotArea>' + LE
   );
 end;
@@ -3337,9 +3387,9 @@ var
 begin
   for i := 0 to TsWorkbook(Writer.Workbook).GetChartCount - 1 do
   begin
-    WriteChartRelsXML(FSChartRels[i], i);
-    WriteChartStylesXML(FSChartStyles[i], i);
-    WriteChartColorsXML(FSChartColors[i], i);
+  //  WriteChartRelsXML(FSChartRels[i], i);
+  //  WriteChartStylesXML(FSChartStyles[i], i);
+  //  WriteChartColorsXML(FSChartColors[i], i);
     WriteChartXML(FSCharts[i], i);
   end;
 end;
@@ -3355,7 +3405,7 @@ begin
     ind + '<c:title>' + LE +
     ind + '  <c:overlay val="0"/>' + LE
   );
-
+{
   AppendToStream(AStream,
     GetChartFillAndLineXML(AIndent + 2, ATitle.Background, ATitle.Border)
   );
@@ -3384,10 +3434,11 @@ begin
     ind + '    </a:p>' + LE +
     ind + '  </c:txPr>' + LE
   );
-
+                   }
   AppendToStream(AStream,
     ind + '</c:title>' + LE
   );
+
 end;
 
 {$ENDIF}
