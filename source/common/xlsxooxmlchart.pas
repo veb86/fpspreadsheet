@@ -82,6 +82,7 @@ type
     FAxisID: array[TsChartAxisAlignment] of DWord;
     function GetChartFillAndLineXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine): String;
     function GetChartFillXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill): String;
+    function GetChartFontXML(AIndent: Integer; AFont: TsFont; ANodeName: String): String;
     function GetChartLineXML(AIndent: Integer; AChart: TsChart; ALine: TsChartLine): String;
     function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange; ARefKind: String): String;
     function GetChartSeriesMarkerXML(AIndent: Integer; ASeries: TsScatterSeries): String;
@@ -96,7 +97,8 @@ type
     // Writing the main chart xml nodes
     procedure WriteChartNode(AStream: TStream; AIndent: Integer; AChartIndex: Integer);
 
-    procedure WriteChartAxisNode(AStream: TStream; AIndent: Integer; Axis: TsChartAxis; AxisKind: String);
+    procedure WriteChartAxisNode(AStream: TStream; AIndent: Integer; Axis: TsChartAxis; ANodeName: String);
+    procedure WriteChartAxisTitle(AStream: TStream; AIndent: Integer; Axis: TsChartAxis);
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
@@ -104,6 +106,9 @@ type
     // Writing the nodes of the series types
     procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
     procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
+
+    procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
+    procedure WriteChartText(AStream: TStream; AIndent: Integer; AText: TsChartText);
 
   public
     constructor Create(AWriter: TsBasicSpreadWriter); override;
@@ -145,6 +150,10 @@ const
   ANGLE_MULTIPLIER = 60000;
   PERCENT_MULTIPLIER = 1000;
   FACTOR_MULTIPLIER = 100000;
+
+  DEFAULT_FONT_NAME = 'Liberation Sans';
+
+  FALSE_TRUE: Array[boolean] of String = ('0', '1');
 
 {$INCLUDE xlsxooxmlchart_hatch.inc}
 
@@ -2476,14 +2485,14 @@ end;
 procedure TsSpreadOOXMLChartWriter.WriteChartNode(AStream: TStream;
   AIndent: Integer; AChartIndex: Integer);
 var
-  indent: String;
   chart: TsChart;
+  indent: String;
 begin
   indent := DupeString(' ', AIndent);
   chart := TsWorkbook(Writer.Workbook).GetChartByIndex(AChartIndex);
 
   AppendToStream(AStream,
-    '<c:chart>' + LE
+    indent + '<c:chart>' + LE
   );
 
   WriteChartTitleNode(AStream, AIndent + 2, chart.Title);
@@ -2491,8 +2500,8 @@ begin
   WriteChartLegendNode(AStream, AIndent + 2, chart.Legend);
 
   AppendToStream(AStream,
-    '  <c:plotVisOnly val="1" />' + LE +
-    '</c:chart>' + LE
+    indent  + '  <c:plotVisOnly val="1" />' + LE +
+    indent + '</c:chart>' + LE
   );
 end;
 
@@ -3072,61 +3081,15 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteChartSpaceXML(AStream: TStream;
   AChartIndex: Integer);
-
-  function GetChartAxisXML(AIndent: Integer; AChart: TsChart;
-    AxisID, OtherAxisID: Integer; NodeName, AxPos: String): String;
-  var
-    ind: String;
-  begin
-    ind := DupeString(' ', AIndent);
-    Result := Format(
-      ind + '<%s>' + LE +                                   // 1
-      ind + '  <c:axId val="%d" />' + LE +                  // 2
-      ind + '  <c:scaling>' + LE +
-      ind + '    <c:orientation val="minMax" />' + LE +
-      ind + '  </c:scaling>' + LE +
-      ind + '  <c:axPos val="%s" />' + LE +                 // 3
-      ind + '  <c:tickLblPos val="nextTo" />' + LE +
-      IfThen(AxPos='l', ind + '  <c:majorGridlines />' + LE, '') +
-      ind + '  <c:crossAx val="%d" />' + LE +               // 4
-      ind + '  <c:crosses val="autoZero" />' + LE +
-      IfThen(AxPos='l', ind + '  <c:crossBetween val="between" />' + LE, '') +
-      IfThen(AxPos='b', ind + '  <c:auto val="1" />' + LE, '') +
-      IfThen(AxPos='b', ind + '  <c:lblAlgn val="ctr" />' + LE, '') +
-      IfThen(AxPos='b', ind + '  <c:lblOffset val="100" />' + LE, '') +
-      ind + '</%s>',  [                                     // 5
-      NodeName,                     // 1
-      AxisID,                       // 2
-      AxPos,                        // 3
-      OtherAxisID,                  // 4
-      NodeName                      // 5
-    ]);
-  end;
-
-  function GetBarChartXML(Indent: Integer; AChart: TsChart; CatAxID, ValAxID: Integer): String;
-  var
-    ind: String;
-  begin
-    ind := DupeString(' ', Indent);
-    Result := Format(
-      ind + '<c:barChart>' + LE +
-      ind + '  <c:barDir val="col" />' + LE +
-      ind + '  <c:grouping val="clustered" />' + LE +
-      ind + '  <c:axId val="%d" />' + LE +         // categories axis (x)
-      ind + '  <c:axId val="%d" />' + LE +         // values axis (y)
-      ind + '</c:barChart>', [
-      CatAxID,
-      ValAxID
-    ]);
-  end;
-
 begin
   AppendToStream(AStream,
     '<?xml version="1.0" encoding="utf-8" standalone="yes"?>' + LE +
     '<c:chartSpace xmlns:c="http://schemas.openxmlformats.org/drawingml/2006/chart" ' + LE +
     '              xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" ' + LE +
     '              xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">' + LE +
-    '  <c:date1904 val="0" />' + LE      // to do: get correct value
+    '  <c:date1904 val="0"/>' + LE +      // to do: get correct value
+    '  <c:roundedCorners val="0"/>' + LE
+
   );
 
   WriteChartNode(AStream, 2, AChartIndex);
@@ -3224,6 +3187,44 @@ begin
       else
         Result := indent + '<a:noFill/>';
     end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Assembles the xml string for a font to be used in a chart
+
+  @param   AIndent  Number of indentation spaces, for better legibility
+  @param   AFont    Font to be processed
+  @param   ANode    String for the node in which the result is used. Either '<a:defRPr>', or '<a:rPr>'
+-------------------------------------------------------------------------------}
+function TsSpreadOOXMLChartWriter.GetChartFontXML(AIndent: Integer;
+  AFont: TsFont; ANodeName: String): String;
+var
+  indent: String;
+  fontname: String;
+  bold: String;
+  italic: String;
+  strike: String;
+  underline: String;
+begin
+  indent := DupeString('  ', AIndent);
+
+  fontName := IfThen(AFont.FontName <> '', AFont.FontName, DEFAULT_FONTNAME);
+  bold := IfThen(fssBold in AFont.Style, 'b="1" ', 'b="0" ');
+  italic := IfThen(fssItalic in AFont.Style, 'i="1" ', '');
+  strike := IfThen(fssStrikeOut in AFont.Style, 'strike="sngStrike" ', 'strike="noStrike" ');  // no support for double-strike...
+  underline := IfThen(fssUnderline in AFont.Style, 'u="sng" ', '');  // no support for double-underline
+
+  Result := Format(
+    indent + '<%0:s sz="%d" spc="-1" %s%s%s%s>' + LE +
+    indent + '  <a:latin typeface="%s"/>' + LE +
+    indent + '</%0:s>',
+    [
+      ANodeName,
+      round(AFont.Size * 100),
+      bold, italic, strike, underline,
+      fontName
+    ]
+  );
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartLineXML(AIndent: Integer;
@@ -3345,9 +3346,16 @@ procedure TsSpreadOOXMLChartWriter.WriteBarSeries(AStream: TStream;
 var
   indent: String;
   chart: TsChart;
+  xRng: TsChartRange;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
+
+  xRng := ASeries.XRange;
+  if xRng.IsEmpty then
+    xRng := ASeries.LabelRange;
+  if xRng.IsEmpty then
+    xRng := chart.CategoryLabelRange;
 
   AppendToStream(AStream, Format(
     indent + '<c:barChart>' + LE +
@@ -3360,7 +3368,7 @@ begin
                     GetChartFillAndLineXML(AIndent + 6, chart, ASeries.Fill, ASeries.Line) + LE +
     indent + '    </c:spPr>' + LE +
     indent + '    <c:cat>' + LE +
-                    GetChartRangeXML(AIndent + 6, ASeries.XRange, 'strRef') + LE +
+                    GetChartRangeXML(AIndent + 6, xRng, 'strRef') + LE +
     indent + '    </c:cat>' + LE +
     indent + '    <c:val>' + LE +
                     GetChartRangeXML(AIndent + 6, ASeries.YRange, 'numRef') + LE +
@@ -3390,7 +3398,7 @@ end;
   @param  AxisKind  'catAx' when Axis is a category axis, otherwise 'valAx'
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteChartAxisNode(AStream: TStream;
-  AIndent: Integer; Axis: TsChartAxis; AxisKind: String);
+  AIndent: Integer; Axis: TsChartAxis; ANodeName: String);
 
   function GetTickMarkStr(ATicks: TsChartAxisTicks): String;
   begin
@@ -3429,39 +3437,90 @@ var
   indent: String;
   axID: DWord;
   rotAxID: DWord;
+  crosses: String = 'autoZero';
 begin
   indent := DupeString(' ', AIndent);
 
   axID := FAxisID[Axis.Alignment];
   rotAxID := FAxisID[Axis.GetRotatedAxis.Alignment];
+  if (Axis = Axis.Chart.YAxis) and (Axis.Chart.GetChartType in [ctBar]) then
+    crosses := 'min';
 
   AppendToStream(AStream, Format(
-    indent + '<c:%0:s>' + LE +
+    indent + '<%s>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '  <c:scaling>' + LE +
     indent + '    <c:orientation val="minMax"/>' + LE +
     indent + '  </c:scaling>' + LE +
     indent + '  <c:delete val="0"/>' + LE +
-    indent + '  <c:axPos val="%s" />' + LE +
-                GetGridLineStr(AIndent + 2, 'c:majorGridlines', Axis.MajorGridLines) +
-                GetGridLineStr(AIndent + 2, 'c:minorGridlines', Axis.MinorGridLines) +
+    indent + '  <c:axPos val="%s" />' + LE,
+    [
+      ANodeName,                        // <c:catAx> or <c:valAx>
+      axID,                             // <c:axID>
+      AX_POS[Axis.Alignment]            // <c:axPos>
+    ]
+  ));
+
+  // Grid lines
+  AppendToStream(AStream,
+    GetGridLineStr(AIndent + 2, 'c:majorGridlines', Axis.MajorGridLines) +
+    GetGridLineStr(AIndent + 2, 'c:minorGridlines', Axis.MinorGridLines)
+  );
+
+  // Axis title
+  WriteChartAxisTitle(AStream, AIndent + 2, Axis);
+
+  // Axis labels
+  if Axis.ShowLabels then
+    WriteChartLabels(AStream, AIndent + 2, Axis.LabelFont);
+
+  AppendToStream(AStream, Format(
     indent + '  <c:numFmt formatCode="General" sourceLinked="1"/>' + LE +
     indent + '  <c:majorTickMark val="%s"/>' + LE +
     indent + '  <c:minorTickMark val="%s"/>' + LE +
     indent + '  <c:tickLblPos val="nextTo"/>' + LE +
     indent + '  <c:crossAx val="%d" />' + LE +
-    indent + '  <c:crosses val="autoZero"/>' + LE +
+    indent + '  <c:crosses val="%s"/>' + LE +
 //    indent + '  <c:auto val="1"/>' + LE +
-    indent + '</c:%0:s>' + LE,
-    [ AxisKind,                         // <c:catAx> or <c:valAx>
-      axID,                             // <c:axID>
-      AX_POS[Axis.Alignment],           // <c:axPos>
+    indent + '</%s>' + LE,
+    [
       GetTickMarkStr(Axis.MajorTicks),  // <c:majorTickMark>
       GetTickMarkStr(Axis.MinorTicks),  // <c:minorTickMark>
-      rotAxID                           // <c:crossAx>
+      rotAxID,                          // <c:crossAx>
+      crosses,                          // <c:crosses>
+      ANodeName                         // </c:catAx> or </c:valAx>
     ]
   ));
 end;
+
+procedure TsSpreadOOXMLChartWriter.WriteChartAxisTitle(AStream: TStream;
+  AIndent: Integer; Axis: TsChartAxis);
+var
+  indent: String;
+begin
+  if not Axis.Title.Visible or (Axis.Title.Caption = '') then
+    exit;
+
+  indent := DupeString(' ', AIndent);
+
+  AppendToStream(AStream,
+    indent + '<c:title>' + LE
+  );
+
+  WriteChartText(AStream, AIndent + 4, Axis.Title);
+
+  AppendToStream(AStream,
+    indent + '  <c:overlay val="0"/>' + LE +
+    indent + '  <c:spPr>' + LE +
+                  GetChartFillAndLineXML(AIndent + 6, Axis.Chart, Axis.Title.Background, Axis.Title.Border) + LE +
+    indent + '  </c:spPr>' + LE
+  );
+
+  AppendToStream(AStream,
+    indent + '</c:title>' + LE
+  );
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes the chart-related entries to the [Content_Types].xml file
@@ -3496,6 +3555,33 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes a <c:txPr> node for chart or axis labels
+
+  @param  AStream  Stream to be written to
+  @param  AIndent  Number of indentation spaced, for better legibility
+  @param  AFont    Font to be used by the labels
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartLabels(AStream: TStream;
+  AIndent: Integer; AFont: TsFont);
+var
+  indent: String;
+begin
+  indent := DupeString(' ', AIndent);
+
+  AppendToStream(AStream,
+    indent + '<c:txPr>' + LE +
+    indent + '  <a:bodyPr/>' + LE +
+//    indent + '  <a:lstStyle/>' + LE +
+    indent + '  <a:p>' + LE +
+    indent + '    <a:aPr>' + LE +
+                    GetChartFontXML(AIndent + 6, AFont, 'a:defRPr') + LE +
+    indent + '    </a:aPr>' + LE +
+    indent + '  </a:p>' + LE +
+    indent + '</c:txPr>' + LE
+  );
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes the <c:legend> node of a chart.
 
   @param  AStream  Stream containing the chartN.xml file
@@ -3505,18 +3591,30 @@ end;
 procedure TsSpreadOOXMLChartWriter.WriteChartLegendNode(AStream: TStream;
   AIndent: Integer; ALegend: TsChartLegend);
 var
-  ind: String;
+  indent: String;
 begin
   if not ALegend.Visible then
     exit;
 
-  ind := DupeString(' ', AIndent);
+  indent := DupeString(' ', AIndent);
 
   AppendToStream(AStream,
-    ind + '<c:legend>' + LE +
-    ind + '  <c:legendPos val="r"/>' + LE +
-    ind + '  <c:layout/>' + LE +
-    ind + '</c:legend>' + LE
+    indent + '<c:legend>' + LE +
+    indent + '  <c:legendPos val="r"/>' + LE +
+    indent + '  <c:layout val="0"/>' + LE +
+    indent + '  <c:spPr>' + LE +
+    GetChartFillAndLineXML(AIndent + 4, ALegend.Chart, ALegend.Background, ALegend.Border) + LE +
+    indent + '  </c:spPr>' + LE +
+    indent + '  <c:txPr>' + LE +
+    indent + '    <a:bodyPr/>' + LE +
+    indent + '    <a:lstStyle/>' + LE +
+    indent + '    <a:p>' + LE +
+    indent + '      <a:pPr>' + LE +
+    GetChartFontXML(AIndent + 8, ALegend.Font, 'a:defRPr') + LE +
+    indent + '      </a:pPr>' + LE +
+    indent + '    </a:p>' + LE +
+    indent + '  </c:txPr>' + LE +
+    indent + '</c:legend>' + LE
   );
 end;
 
@@ -3586,8 +3684,8 @@ begin
     indent + '<c:plotArea>' + LE
   );
 
-  xAxKind := 'catAx';
-  yAxKind := 'valAx';
+  xAxKind := 'c:catAx';
+  yAxKind := 'c:valAx';
 
   for i := 0 to AChart.Series.Count-1 do
   begin
@@ -3598,7 +3696,7 @@ begin
       ctScatter:
         begin
           WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), i);
-          xAxKind := 'valAx';
+          xAxKind := 'c:valAx';
         end;
     end;
   end;
@@ -3664,6 +3762,39 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes a <c:tx> node containing either the chart title or axis title.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartText(AStream: TStream;
+  AIndent: Integer; AText: TsChartText);
+var
+  indent: String;
+  rotStr: String;
+begin
+  if not AText.Visible then
+    exit;
+
+  str(-AText.RotationAngle * ANGLE_MULTIPLIER:0:0, rotStr);
+
+  indent := DupeString(' ', AIndent);
+  AppendToStream(AStream,
+    indent + '<c:tx>' + LE +
+    indent + '  <c:rich>' + LE +
+    indent + '    <a:bodyPr rot="' + rotStr + '"/>' + LE +
+    indent + '    <a:p>' + LE +
+    indent + '      <a:pPr>' + LE +
+                      GetChartFontXML(AIndent + 8, AText.Font, 'a:defRPr') + LE +
+    indent + '      </a:pPr>' + LE +
+    indent + '      <a:r>' + LE +
+                      GetChartFontXML(AIndent + 8, AText.Font, 'a:rPr') + LE +
+    indent + '        <a:t>' + AText.Caption + '</a:t>' + LE +
+    indent + '      </a:r>' + LE +
+    indent + '    </a:p>' + LE +
+    indent + '  </c:rich>' + LE +
+    indent + '</c:tx>' + LE
+  );
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes the <c:title> node defining the chart's title
 
   @param  AStream   Stream to receive the data
@@ -3675,46 +3806,24 @@ procedure TsSpreadOOXMLChartWriter.WriteChartTitleNode(AStream: TStream;
 var
   indent: String;
 begin
+  if not ATitle.Visible or (ATitle.Caption = '') then
+    exit;
+
   indent := DupeString(' ', AIndent);
-
   AppendToStream(AStream,
-    indent + '<c:title>' + LE +
-    indent + '  <c:overlay val="0"/>' + LE
-  );
-{
-  AppendToStream(AStream,
-    GetChartFillAndLineXML(AIndent + 2, ATitle.Background, ATitle.Border)
+    indent + '<c:title>' + LE
   );
 
+  WriteChartText(AStream, AIndent + 2, ATitle);
+
   AppendToStream(AStream,
-    ind + '  <c:txPr>' + LE +
-    ind + '    <a:bodyPr rot="0" spcFirstLastPara="1" vertOverflow="ellipsis" ' +
-                 'vert="horz" wrap="square" anchor="ctr" anchorCtr="1"/>' + LE +
-    ind + '    <a:lstStyle/>' + LE +
-    ind + '    <a:p>' + LE +
-    ind + '      <a:pPr>' + LE +
-    ind + '        <a:defRPr sz="1400" b="0" i="0" u="none" strike="noStrike" '+
-                     'kern="1200" spc="0" baseline="0">'+ LE +
-    ind + '          <a:solidFill>' + LE +
-    ind + '            <a:schemeClr val="tx1">' + LE +
-    ind + '              <a:lumMod val="65000"/>' + LE +
-    ind + '              <a:lumOff val="35000"/>' + LE +
-    ind + '            </a:schemeClr>' + LE +
-    ind + '          </a:solidFill>' + LE +
-    ind + '          <a:latin typeface="+mn-lt"/>' + LE +
-    ind + '          <a:ea typeface="+mn-ea"/>' + LE +
-    ind + '          <a:cs typeface="+mn-cs"/>' + LE +
-    ind + '        </a:defRPr>' + LE +
-    ind + '      </a:pPr>' + LE +
-    ind + '      <a:endParaRPr lang="de-DE"/>' + LE +
-    ind + '    </a:p>' + LE +
-    ind + '  </c:txPr>' + LE
+    indent + '  <c:overlay val="0"/>' + LE +
+                GetChartFillAndLineXML(AIndent + 2, ATitle.Chart, ATitle.Background, ATitle.Border) + LE
   );
-                   }
+
   AppendToStream(AStream,
     indent + '</c:title>' + LE
   );
-
 end;
 
 {$ENDIF}
