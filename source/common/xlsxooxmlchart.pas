@@ -98,10 +98,12 @@ type
     procedure WriteChartNode(AStream: TStream; AIndent: Integer; AChartIndex: Integer);
 
     procedure WriteChartAxisNode(AStream: TStream; AIndent: Integer; Axis: TsChartAxis; ANodeName: String);
+    procedure WriteChartAxisScaling(AStream: TStream; AIndent: Integer; Axis: TsChartAxis);
     procedure WriteChartAxisTitle(AStream: TStream; AIndent: Integer; Axis: TsChartAxis);
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
     procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: Integer);
+    procedure WriteChartSeriesTitle(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
 
     // Writing the nodes of the series types
@@ -154,6 +156,7 @@ const
 
   DEFAULT_FONT_NAME = 'Liberation Sans';
 
+  AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
   FALSE_TRUE: Array[boolean] of String = ('0', '1');
   LEGEND_POS: Array[TsChartLegendPosition] of string = ('r', 't', 'b', 'l');
   GROUPING: Array[TsChartStackMode] of string = ('clustered', 'stacked', 'percentStacked');
@@ -1907,25 +1910,29 @@ var
 begin
   if ANode = nil then
     exit;
-  nodeName := ANode.NodeName;
-  if (nodeName = 'c:strRef') or (nodeName = 'c:numRef') then
+  while Assigned(ANode) do
   begin
-    ANode := ANode.FindNode('c:f');
-    if ANode <> nil then
+    nodeName := ANode.NodeName;
+    if (nodeName = 'c:strRef') or (nodeName = 'c:numRef') then
     begin
-      s := GetNodeValue(ANode);
-      if ParseCellRangeString(s, sheet1, sheet2, r1, c1, r2, c2, flags) then
+      ANode := ANode.FindNode('c:f');
+      if ANode <> nil then
       begin
-        if sheet2 = '' then sheet2 := sheet1;
-        ARange.Sheet1 := sheet1;
-        ARange.Sheet2 := sheet2;
-        ARange.Row1 := r1;
-        ARange.Col1 := c1;
-        ARange.Row2 := R2;
-        ARange.Col2 := C2;
-        exit;
+        s := GetNodeValue(ANode);
+        if ParseCellRangeString(s, sheet1, sheet2, r1, c1, r2, c2, flags) then
+        begin
+          if sheet2 = '' then sheet2 := sheet1;
+          ARange.Sheet1 := sheet1;
+          ARange.Sheet2 := sheet2;
+          ARange.Row1 := r1;
+          ARange.Col1 := c1;
+          ARange.Row2 := R2;
+          ARange.Col2 := C2;
+          exit;
+        end;
       end;
     end;
+    ANode := ANode.NextSibling;
   end;
 end;
 
@@ -1935,21 +1942,23 @@ var
   sheet: String;
   r, c: Cardinal;
 begin
-  if ANode = nil then
-    exit;
-  nodeName := ANode.NodeName;
-  if (nodeName = 'c:strRef') then
+  while Assigned(ANode) do
   begin
-    ANode := ANode.FindNode('c:f');
-    if ANode <> nil then
+    nodeName := ANode.NodeName;
+    if (nodeName = 'c:strRef') then
     begin
-      s := GetNodeValue(ANode);
-      if ParseSheetCellString(s, sheet, r, c) then
+      ANode := ANode.FindNode('c:f');
+      if ANode <> nil then
       begin
-        ASeries.SetTitleAddr(sheet, r, c);
-        exit;
+        s := GetNodeValue(ANode);
+        if ParseSheetCellString(s, sheet, r, c) then
+        begin
+          ASeries.SetTitleAddr(sheet, r, c);
+          exit;
+        end;
       end;
     end;
+    ANode := ANode.NextSibling;
   end;
 end;
 
@@ -3360,22 +3369,6 @@ var
   overlap: Integer = 999;
   isFirstOfGroup: Boolean = true;
   isLastOfGroup: Boolean = true;
-                 {
-  function GroupWidth: Integer;
-  var
-    i: Integer;
-    ser: TsChartSeries;
-  begin
-    Result := 1;
-    if chart.StackMode = csmSideBySide then
-      for i := ASeriesIndex-1 downto 0 do
-      begin
-        ser := chart.Series[i];
-        if (ser is TsBarseries) and (ser.GroupIndex = ASeries.GroupIndex) then
-          inc(Result);
-      end;
-  end;
-                  }
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -3466,13 +3459,12 @@ procedure TsSpreadOOXMLChartWriter.WriteChartAxisNode(AStream: TStream;
       Result := '';
   end;
 
-const
-  AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
 var
   indent: String;
   axID: DWord;
   rotAxID: DWord;
   crosses: String = 'autoZero';
+  logarithmic: String = '';
 begin
   indent := DupeString(' ', AIndent);
 
@@ -3483,17 +3475,16 @@ begin
 
   AppendToStream(AStream, Format(
     indent + '<%s>' + LE +
-    indent + '  <c:axId val="%d"/>' + LE +
-    indent + '  <c:scaling>' + LE +
-    indent + '    <c:orientation val="minMax"/>' + LE +
-    indent + '  </c:scaling>' + LE +
+    indent + '  <c:axId val="%d"/>' + LE,
+    [ ANodeName, axID ]
+  ));
+
+  WriteChartAxisScaling(AStream, AIndent + 2, Axis);
+
+  AppendToStream(AStream, Format(
     indent + '  <c:delete val="0"/>' + LE +
     indent + '  <c:axPos val="%s" />' + LE,
-    [
-      ANodeName,                        // <c:catAx> or <c:valAx>
-      axID,                             // <c:axID>
-      AX_POS[Axis.Alignment]            // <c:axPos>
-    ]
+    [ AX_POS[Axis.Alignment] ]
   ));
 
   // Grid lines
@@ -3526,6 +3517,25 @@ begin
       ANodeName                         // </c:catAx> or </c:valAx>
     ]
   ));
+end;
+
+procedure TsSpreadOOXMLChartWriter.WriteChartAxisScaling(AStream: TStream;
+  AIndent: Integer; Axis: TsChartAxis);
+var
+  indent: String;
+  logStr: String = '';
+begin
+  indent := DupeString(' ', AIndent);
+
+  if Axis.Logarithmic then
+    logStr := indent + Format('  <c:logBase val="%g"/>', [Axis.LogBase], FPointSeparatorSettings) + LE;
+
+  AppendToStream(AStream,
+    indent + '<c:scaling>' + LE +
+                logStr +
+    indent + '  <c:orientation val="minMax"/>' + LE +
+    indent + '</c:scaling>' + LE
+  );
 end;
 
 procedure TsSpreadOOXMLChartWriter.WriteChartAxisTitle(AStream: TStream;
@@ -3838,6 +3848,9 @@ begin
     ]
   ));
 
+  // Series title
+  WriteChartSeriesTitle(AStream, AIndent + 2, ASeries);
+
   // Series main formatting
   AppendToStream(AStream,
     indent + '  <c:spPr>' + LE +
@@ -3890,6 +3903,26 @@ begin
 
   AppendToStream(AStream,
     indent + '</c:ser>' + LE
+  );
+end;
+
+procedure TsSpreadOOXMLChartWriter.WriteChartSeriesTitle(AStream: TStream;
+  AIndent: Integer; ASeries: TsChartSeries);
+var
+  indent: String;
+  cellAddr: String;
+begin
+  indent := DupeString(' ', AIndent);
+
+  with ASeries.TitleAddr do
+    cellAddr := Format('%s!%s', [GetSheetName, GetCellString(Row, Col, []) ]);
+
+  AppendToStream(AStream,
+    indent + '<c:tx>' + LE +
+    indent + '  <c:strRef>' + LE +
+    indent + '    <c:f>' + cellAddr + '</c:f>' + LE +
+    indent + '  </c:strRef>' + LE +
+    indent + '</c:tx>' + LE
   );
 end;
 

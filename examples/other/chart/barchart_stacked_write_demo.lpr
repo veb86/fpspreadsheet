@@ -93,13 +93,11 @@ begin
     ser.Fill.Color := $4200A8;
     ser.Line.Style := clsNoLine;
 
-    {
-    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart in ', fn, '.xlsx');
-    }
+    book.WriteToFile(fn + '.xlsx', true);
+    WriteLn('Data saved with chart in ', fn + '.xlsx');
 
     book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart in ', fn, '.ods');
+    WriteLn('Data saved with chart in ', fn + '.ods');
   finally
     book.Free;
   end;

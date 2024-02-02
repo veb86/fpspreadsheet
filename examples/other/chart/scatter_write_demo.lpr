@@ -60,7 +60,7 @@ begin
     sheet.WriteFont(0, 0, '', 12, [fssBold], scBlack);
     sheet.WriteText         ( 2, 0,  'x');   sheet.WriteText   ( 2, 1, 'y');
     case mode of
-      0: begin
+      0: begin   // linear
            sheet.WriteNumber( 3, 0,  0.1);  sheet.WriteFormula( 3, 1, 'A4^2');
            sheet.WriteNumber( 4, 0,  8.8);  sheet.WriteFormula( 4, 1, 'A5^2');
            sheet.WriteNumber( 5, 0, 16.9);  sheet.WriteFormula( 5, 1, 'A6^2');
@@ -70,7 +70,7 @@ begin
            sheet.WriteNumber( 9, 0, 55.6);  sheet.WriteFormula( 9, 1, 'A10^2');
            sheet.WriteNumber(10, 0, 68.3);  sheet.WriteFormula(10, 1, 'A11^2');
          end;
-      1: begin
+      1: begin    // log
            sheet.WriteNumber(3, 0, 0.1);  sheet.WriteFormula(3, 1, 'exp(A4)');
            sheet.WriteNumber(4, 0, 0.8);  sheet.WriteFormula(4, 1, 'exp(A5)');
            sheet.WriteNumber(5, 0, 1.4);  sheet.WriteFormula(5, 1, 'exp(A6)');
@@ -78,8 +78,9 @@ begin
            sheet.WriteNumber(7, 0, 4.3);  sheet.WriteFormula(7, 1, 'exp(A8)');
            sheet.WriteNumber(8, 0, 5.9);  sheet.WriteFormula(8, 1, 'exp(A9)');
            sheet.WriteNumber(9, 0, 7.5);  sheet.WriteFormula(9, 1, 'exp(A10)');
+           sheet.WriteNumber(10,0, 8.6);  sheet.WriteFormula(10,1, 'exp(A11)');
          end;
-      2: begin
+      2: begin    // log-log
            sheet.WriteNumber(3, 0, 0.1);  sheet.WriteFormula(3, 1, 'A4^2');
            sheet.WriteNumber(4, 0, 0.8);  sheet.WriteFormula(4, 1, 'A5^2');
            sheet.WriteNumber(5, 0, 1.9);  sheet.WriteFormula(5, 1, 'A6^2');

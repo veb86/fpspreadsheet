@@ -65,7 +65,7 @@ object Form1: TForm1
       AnchorSideLeft.Side = asrBottom
       AnchorSideTop.Control = Panel1
       AnchorSideTop.Side = asrCenter
-      AnchorSideRight.Control = Button1
+      AnchorSideRight.Control = btnBrowse
       Left = 63
       Height = 23
       Top = 8
@@ -113,10 +113,10 @@ object Form1: TForm1
       TabOrder = 0
       OnCloseUp = ComboBox1CloseUp
     end
-    object Button1: TButton
+    object btnBrowse: TButton
       AnchorSideTop.Control = Panel1
       AnchorSideTop.Side = asrCenter
-      AnchorSideRight.Control = Button2
+      AnchorSideRight.Control = btnOpen
       Left = 1230
       Height = 25
       Top = 7
@@ -126,9 +126,9 @@ object Form1: TForm1
       BorderSpacing.Around = 6
       Caption = '...'
       TabOrder = 1
-      OnClick = Button1Click
+      OnClick = btnBrowseClick
     end
-    object Button2: TButton
+    object btnOpen: TButton
       AnchorSideTop.Control = Panel1
       AnchorSideTop.Side = asrCenter
       AnchorSideRight.Control = Panel1
@@ -142,7 +142,7 @@ object Form1: TForm1
       BorderSpacing.Around = 6
       Caption = 'Open file'
       TabOrder = 2
-      OnClick = Button2Click
+      OnClick = btnOpenClick
     end
   end
   object Panel2: TPanel
@@ -186,7 +186,7 @@ object Form1: TForm1
   end
   object sWorkbookSource1: TsWorkbookSource
     FileFormat = sfUser
-    Options = []
+    Options = [boAutoCalc, boReadFormulas]
     OnError = sWorkbookSource1Error
     Left = 176
     Top = 152

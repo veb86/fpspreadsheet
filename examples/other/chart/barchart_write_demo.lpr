@@ -8,9 +8,12 @@ uses
 
 procedure WriteHelp;
 begin
-  WriteLn('SYNTAX: barchart_write_demo [rotated]');
+  WriteLn('SYNTAX: barchart_write_demo [rotated] [side-by-side|stacked|percent-stacked] ');
   WriteLn('  (no argument) ..... vertical bars');
-  WriteLn('  rotated ........... hoizontal bars');
+  WriteLn('  rotated ........... horizontal bars');
+  WriteLn('  side-by-side ...... bars side-by-side (default)');
+  WriteLn('  stacked ........... stacked bars');
+  WriteLn('  percentstacked .... stacked by percentage');
   Halt;
 end;
 
@@ -22,8 +25,31 @@ var
   ch: TsChart;
   ser: TsChartSeries;
   fn: String;
+  stackMode: TsChartStackMode = csmSideBySide;
+  rotated: Boolean = false;
+  i: Integer;
 begin
   fn := FILE_NAME;
+
+  for i := 1 to ParamCount do
+    case lowercase(ParamStr(i)) of
+      'rotated':
+        rotated := true;
+      'stacked':
+        stackMode := csmStacked;
+      'side-by-side':
+        stackMode := csmSideBySide;
+      'percent-stacked', 'stacked-percent':
+        stackMode := csmStackedPercentage;
+    end;
+
+  if rotated then
+    fn := fn + '_rotated';
+  case stackMode of
+    csmSideBySide: ;
+    csmStacked: fn := fn + '_stacked';
+    csmStackedPercentage: fn := fn + '_stackedPercent';
+  end;
 
   book := TsWorkbook.Create;
   try
@@ -55,11 +81,8 @@ begin
     ch.YAxis.Title.Caption := 'Grade points';
     ch.YAxis.AxisLine.Color := scSilver;
     ch.YAxis.MajorTicks := [];
-    if (ParamCount >= 1) and (lowercase(ParamStr(1)) = 'rotated') then
-    begin
-      ch.RotatedAxes := true;
-      fn := fn + '-rotated';
-    end;
+    ch.RotatedAxes := rotated;
+    ch.StackMode := stackMode;
     ch.BarGapWidthPercent := 75;
 
     // Add 1st bar series ("Student 1")

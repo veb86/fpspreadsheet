@@ -1891,8 +1891,8 @@ begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BarPen);
   AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
-  AChartSeries.BarWidthPercent := CalcBarWidthPercent; //AWorkbookSeries.BarWidthPercent;
-  AChartSeries.BarOffsetPercent := 0; //AWorkbookSeries.BarOffsetPercent;
+  AChartSeries.BarWidthPercent := CalcBarWidthPercent;
+  AChartSeries.BarOffsetPercent := 0; // TAChart currently does not support offsets in multiple-y bar series.
   AChartSeries.BarWidthStyle := bwPercentMin;
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then

@@ -16,8 +16,8 @@ type
   { TForm1 }
 
   TForm1 = class(TForm)
-    Button1: TButton;
-    Button2: TButton;
+    btnBrowse: TButton;
+    btnOpen: TButton;
     Chart1: TChart;
     ComboBox1: TComboBox;
     Label1: TLabel;
@@ -29,8 +29,8 @@ type
     Splitter1: TSplitter;
     sWorkbookSource1: TsWorkbookSource;
     sWorksheetGrid1: TsWorksheetGrid;
-    procedure Button1Click(Sender: TObject);
-    procedure Button2Click(Sender: TObject);
+    procedure btnBrowseClick(Sender: TObject);
+    procedure btnOpenClick(Sender: TObject);
     procedure ComboBox1CloseUp(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure sWorkbookSource1Error(Sender: TObject; const AMsg: String);
@@ -91,7 +91,7 @@ end;
 
 { TForm1 }
 
-procedure TForm1.Button1Click(Sender: TObject);
+procedure TForm1.btnBrowseClick(Sender: TObject);
 var
   fn: String;
 begin
@@ -105,7 +105,7 @@ begin
   end;
 end;
 
-procedure TForm1.Button2Click(Sender: TObject);
+procedure TForm1.btnOpenClick(Sender: TObject);
 begin
   LoadFile(Combobox1.Text);
 end;

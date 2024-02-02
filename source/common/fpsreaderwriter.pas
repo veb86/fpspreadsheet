@@ -907,7 +907,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   This routine has the purpose to write the workbook to a stream.
-  Present implementation writes to a stringlists by means of WriteToStrings;
+  Present implementation writes to a stringlist by means of WriteToStrings;
   this behavior is required for wikitables.
   Must be overriden in descendent classes for all other cases.
 
