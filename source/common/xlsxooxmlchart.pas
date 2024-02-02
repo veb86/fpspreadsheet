@@ -154,6 +154,7 @@ const
   DEFAULT_FONT_NAME = 'Liberation Sans';
 
   FALSE_TRUE: Array[boolean] of String = ('0', '1');
+  LEGEND_POS: Array[TsChartLegendPosition] of string = ('r', 't', 'b', 'l');
 
 {$INCLUDE xlsxooxmlchart_hatch.inc}
 
@@ -1064,6 +1065,7 @@ procedure TsSpreadOOXMLChartReader.ReadChartLegend(ANode: TDOMNode;
 var
   nodeName, s: String;
   dummy: Single;
+  lp: TsChartLegendPosition;
 begin
   if ANode = nil then
     exit;
@@ -1076,12 +1078,12 @@ begin
       'c:legendPos':
         begin
           s := GetAttrValue(ANode, 'val');
-          case s of
-            't': AChartLegend.Position := lpTop;
-            'b': AChartLegend.Position := lpBottom;
-            'l': AChartLegend.Position := lpLeft;
-            'r': AChartLegend.Position := lpRight;
-          end;
+          for lp in TsChartLegendPosition do
+            if s = LEGEND_POS[lp] then
+            begin
+              AChartLegend.Position := lp;
+              break;
+            end;
         end;
 
       // Formatting of individual legend items, not supported
@@ -3571,11 +3573,11 @@ begin
   AppendToStream(AStream,
     indent + '<c:txPr>' + LE +
     indent + '  <a:bodyPr/>' + LE +
-//    indent + '  <a:lstStyle/>' + LE +
+    indent + '  <a:lstStyle/>' + LE +
     indent + '  <a:p>' + LE +
-    indent + '    <a:aPr>' + LE +
+    indent + '    <a:pPr>' + LE +
                     GetChartFontXML(AIndent + 6, AFont, 'a:defRPr') + LE +
-    indent + '    </a:aPr>' + LE +
+    indent + '    </a:pPr>' + LE +
     indent + '  </a:p>' + LE +
     indent + '</c:txPr>' + LE
   );
@@ -3592,28 +3594,49 @@ procedure TsSpreadOOXMLChartWriter.WriteChartLegendNode(AStream: TStream;
   AIndent: Integer; ALegend: TsChartLegend);
 var
   indent: String;
+  indent2: String;
+  overlay: String = '';
+  legendPos: String = '';
+  formatStr: String = '';
+  fontStr: String = '';
 begin
   if not ALegend.Visible then
     exit;
 
   indent := DupeString(' ', AIndent);
+  indent2 := indent + '  ';
 
+  // Legend position
+  legendPos := indent2 + Format('<c:legendPos val="%s"/>', [LEGEND_POS[ALegend.Position]]) + LE;
+
+  // Inside/outside plot area?
+  overlay := indent2 + Format('<c:overlay val="%s"/>', [FALSE_TRUE[ALegend.CanOverlapPlotArea]]) + LE;
+
+  // Background and border formatting
+  formatStr :=
+    indent2 + '<c:spPr>' + LE +
+    GetChartFillAndLineXML(AIndent + 4, ALegend.Chart, ALegend.Background, ALegend.Border) + LE +
+    indent2 + '</c:spPr>' + LE;
+
+  // Font of text items
+  fontStr :=
+    indent2 + '<c:txPr>' + LE +
+    indent2 + '  <a:bodyPr/>' + LE +
+    indent2 + '  <a:lstStyle/>' + LE +
+    indent2 + '  <a:p>' + LE +
+    indent2 + '    <a:pPr>' + LE +
+    GetChartFontXML(AIndent + 6, ALegend.Font, 'a:defRPr') + LE +
+    indent2 + '    </a:pPr>' + LE +
+    indent2 + '  </a:p>' + LE +
+    indent2 + '</c:txPr>' + LE;
+
+  // Write out
   AppendToStream(AStream,
     indent + '<c:legend>' + LE +
-    indent + '  <c:legendPos val="r"/>' + LE +
-    indent + '  <c:layout val="0"/>' + LE +
-    indent + '  <c:spPr>' + LE +
-    GetChartFillAndLineXML(AIndent + 4, ALegend.Chart, ALegend.Background, ALegend.Border) + LE +
-    indent + '  </c:spPr>' + LE +
-    indent + '  <c:txPr>' + LE +
-    indent + '    <a:bodyPr/>' + LE +
-    indent + '    <a:lstStyle/>' + LE +
-    indent + '    <a:p>' + LE +
-    indent + '      <a:pPr>' + LE +
-    GetChartFontXML(AIndent + 8, ALegend.Font, 'a:defRPr') + LE +
-    indent + '      </a:pPr>' + LE +
-    indent + '    </a:p>' + LE +
-    indent + '  </c:txPr>' + LE +
+    legendPos +
+    overlay +
+    formatStr +
+    fontStr +
     indent + '</c:legend>' + LE
   );
 end;
