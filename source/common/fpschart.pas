@@ -514,6 +514,7 @@ type
     FSupportsRegression: Boolean;
     FXErrorBars: TsChartErrorBars;
     FYErrorBars: TsChartErrorBars;
+    FGroupIndex: Integer;  // series with the same GroupIndex can be stacked
     procedure SetXErrorBars(AValue: TsChartErrorBars);
     procedure SetYErrorBars(AValue: TsChartErrorBars);
   protected
@@ -552,6 +553,7 @@ type
     property DataLabelCalloutShape: TsChartLabelCalloutShape read FDataLabelCalloutShape write FDataLabelCalloutShape;
     property DataPointStyles: TsChartDatapointStyleList read FDataPointStyles;
     property FillColorRange: TsChartRange read FFillColorRange write FFillColorRange;
+    property GroupIndex: Integer read FGroupIndex write FGroupIndex;
     property LabelBackground: TsChartFill read FLabelBackground write FLabelBackground;
     property LabelBorder: TsChartLine read FLabelBorder write FLabelBorder;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
@@ -582,13 +584,8 @@ type
   end;
 
   TsBarSeries = class(TsChartSeries)
-  private
-    FBarWidthPercent: Integer;
-    FBarOffsetPercent: Integer;
   public
     constructor Create(AChart: TsChart); override;
-    property BarWidthPercent: Integer read FBarWidthPercent write FBarWidthPercent;
-    property BarOffsetPercent: Integer read FBarOffsetPercent write FBarOffsetPercent;
     property Regression;
   end;
 
@@ -757,6 +754,8 @@ type
     FRotatedAxes: Boolean;        // For bar series: vertical columns <--> horizontal bars
     FStackMode: TsChartStackMode; // For bar and area series
     FInterpolation: TsChartInterpolation; // For line/scatter series: data connection lines
+    FBarGapWidthPercent: Integer; // For bar series: distance between bars (relative to single bar width)
+    FBarOverlapPercent: Integer;  // For bar series: overlap between bars
 
     FTitle: TsChartText;
     FSubTitle: TsChartText;
@@ -833,6 +832,11 @@ type
     property YAxis: TsChartAxis read FYAxis write FYAxis;
     { Attributes of the plot's secondary y axis (right) }
     property Y2Axis: TsChartAxis read FY2Axis write FY2Axis;
+
+    { Gap between bars/bar groups, as percentage of single bar width }
+    property BarGapWidthPercent: Integer read FBarGapWidthPercent write FBarGapWidthPercent;
+    { Overlapping of bars, as percentage of single bar width }
+    property BarOverlapPercent: Integer read FBarOverlapPercent write FBarOverlapPercent;
 
     { Connecting line between data points (for line and scatter series) }
     property Interpolation: TsChartInterpolation read FInterpolation write FInterpolation;
@@ -2039,6 +2043,7 @@ begin
   FLineColorRange := TsChartRange.Create(AChart);
   FLabelRange := TsChartRange.Create(AChart);
   FTitleAddr := TsChartCellAddr.Create(AChart);
+  FGroupIndex := -1;
 
   FFill := TsChartFill.Create;
   FFill.Style := cfsSolid;
@@ -2284,6 +2289,7 @@ begin
   inherited Create(AChart);
   FChartType := ctArea;
   FSupportsRegression := true;
+  FGroupIndex := 0;
 end;
 
 
@@ -2292,10 +2298,9 @@ end;
 constructor TsBarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
-  FBarWidthPercent := 80;
-  FBarOffsetPercent := 0;
   FChartType := ctBar;
   FSupportsRegression := true;
+  FGroupIndex := 0;
 end;
 
 
@@ -2314,7 +2319,7 @@ begin
   inherited;
 end;
 
-{ Empty sheet name will be replace by name of the sheet containing the chart. }
+{ Empty sheet name will be replaced by the name of the sheet containing the chart. }
 procedure TsBubbleSeries.SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
 begin
   SetBubbleRange('', ARow1, ACol1, '', ARow2, ACol2);
@@ -2620,7 +2625,6 @@ begin
   FHatches := TsChartHatchList.Create;
   FImages := TsChartImageList.Create;
 
-
   fgradients.AddLinearGradient('g1', scRed, scBlue, 0, 0, 1, 1, 0, 0);
 
   FWorksheet := nil;
@@ -2678,6 +2682,9 @@ begin
   FY2Axis.Position := capEnd;
 
   FSeriesList := TsChartSeriesList.Create;
+
+  FBarGapWidthPercent := 50;
+  FBarOverlapPercent := 0;
 end;
 
 destructor TsChart.Destroy;

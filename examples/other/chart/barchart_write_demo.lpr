@@ -60,6 +60,7 @@ begin
       ch.RotatedAxes := true;
       fn := fn + '-rotated';
     end;
+    ch.BarGapWidthPercent := 75;
 
     // Add 1st bar series ("Student 1")
     ser := TsBarSeries.Create(ch);

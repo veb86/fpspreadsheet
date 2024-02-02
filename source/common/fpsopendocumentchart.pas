@@ -836,6 +836,14 @@ begin
           s := GetAttrValue(AStyleNode, 'style:rotation-angle');
           if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
             Axis.LabelRotation := Round(value);
+
+          s := GetAttrValue(AStyleNode, 'chart:gap-width');  // why did they put this here ???
+          if TryStrToFloat(s, value, FPointSeparatorSettings) then
+            AChart.BarGapWidthPercent := round(value);
+
+          s := GetAttrValue(AStyleNode, 'chart:overlap');    // why did they put this here ???
+          if TryStrToFloat(s, value, FPointSeparatorSettings) then
+            AChart.BarOverlapPercent := round(value);
         end;
     end;
     AStyleNode := AStyleNode.NextSibling;
@@ -2219,6 +2227,11 @@ begin
   // Rotated axis labels
   angle := Axis.LabelRotation;
   chartProps := chartProps + Format('style:rotation-angle="%.1f" ', [angle], FPointSeparatorSettings);
+
+  // Bar series gap distance and over lap -- why did they put it here?
+  if (chart.GetChartType = ctBar) and (Axis = chart.YAxis) then
+    chartProps := chartProps + Format(
+      'chart:gap-width="%d" chart:overlap="%d" ', [chart.BarGapWidthPercent, chart.BarOverlapPercent]);
 
   // Label orientation
   graphProps := 'svg:stroke-color="' + ColorToHTMLColorStr(Axis.AxisLine.Color) + '" ';

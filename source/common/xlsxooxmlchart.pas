@@ -156,6 +156,8 @@ const
 
   FALSE_TRUE: Array[boolean] of String = ('0', '1');
   LEGEND_POS: Array[TsChartLegendPosition] of string = ('r', 't', 'b', 'l');
+  GROUPING: Array[TsChartStackMode] of string = ('clustered', 'stacked', 'percentStacked');
+
 
 {$INCLUDE xlsxooxmlchart_hatch.inc}
 
@@ -454,6 +456,7 @@ begin
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:ser':
         begin
@@ -461,27 +464,23 @@ begin
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:barDir':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          case s of
-            'col': AChart.RotatedAxes := false;
-            'bar': AChart.RotatedAxes := true;
-          end;
+        case s of
+          'col': AChart.RotatedAxes := false;
+          'bar': AChart.RotatedAxes := true;
         end;
       'c:grouping':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          case s of
-            'stacked': AChart.StackMode := csmStacked;
-            'percentStacked': AChart.StackMode := csmStackedPercentage;
-          end;
+        case s of
+          'stacked': AChart.StackMode := csmStacked;
+          'percentStacked': AChart.StackMode := csmStackedPercentage;
         end;
       'c:varyColors':
         ;
       'c:dLbls':
         s := '';
       'c:gapWidth':
-        ;
+        ;  // see BarSeries
+      'c:overlap':
+        ;  // see BarSeries
       'c:axId':
         ReadChartSeriesAxis(ANode, ser);
     end;
@@ -500,10 +499,18 @@ begin
     case nodeName of
       'c:gapWidth':
         if TryStrToFloat(s, n, FPointSeparatorSettings) then
+          AChart.BarGapWidthPercent := round(n);
+        {
+        if TryStrToFloat(s, n, FPointSeparatorSettings) then
           ser.BarWidthPercent := round(100 / (1 + n/100));
+          }
       'c:overlap':
         if TryStrToFloat(s, n, FPointSeparatorSettings) then
+          AChart.BarOverlapPercent := round(n);
+      {
+        if TryStrToFloat(s, n, FPointSeparatorSettings) then
           ser.BarOffsetPercent := round(n);
+      }
     end;
     ANode := ANode.NextSibling;
   end;
@@ -3349,27 +3356,69 @@ procedure TsSpreadOOXMLChartWriter.WriteBarSeries(AStream: TStream;
 var
   indent: String;
   chart: TsChart;
+  gapWidth: Integer = 0;
+  overlap: Integer = 999;
+  isFirstOfGroup: Boolean = true;
+  isLastOfGroup: Boolean = true;
+                 {
+  function GroupWidth: Integer;
+  var
+    i: Integer;
+    ser: TsChartSeries;
+  begin
+    Result := 1;
+    if chart.StackMode = csmSideBySide then
+      for i := ASeriesIndex-1 downto 0 do
+      begin
+        ser := chart.Series[i];
+        if (ser is TsBarseries) and (ser.GroupIndex = ASeries.GroupIndex) then
+          inc(Result);
+      end;
+  end;
+                  }
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
-  AppendToStream(AStream,
-    indent + '<c:barChart>' + LE +
-    indent + '  <c:barDir val="col"/>' + LE +
-    indent + '  <c:grouping val="clustered"/>' + LE
-  );
+  if ASeries.GroupIndex > -1 then
+  begin
+    if (ASeriesIndex > 0) and (chart.Series[ASeriesIndex-1].GroupIndex = ASeries.GroupIndex) then
+      isfirstOfGroup := false;
+    if (ASeriesIndex < chart.Series.Count-1) and (chart.Series[ASeriesIndex+1].GroupIndex = ASeries.GroupIndex) then
+      isLastOfGroup := false;
+    if chart.StackMode <> csmSideBySide then
+      overlap := 100
+  end;
+
+  if isFirstOfGroup then
+    AppendToStream(AStream, Format(
+      indent + '<c:barChart>' + LE +
+      indent + '  <c:barDir val="col"/>' + LE +
+      indent + '  <c:grouping val="%s"/>' + LE,
+      [ GROUPING[chart.StackMode] ]
+    ));
 
   WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
 
-  AppendToStream(AStream, Format(
-    indent + '  <c:axId val="%d"/>' + LE +
-    indent + '  <c:axId val="%d"/>' + LE +
-    indent + '</c:barChart>' + LE,
-    [
-      FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
-      FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
-    ]
-  ));
+  if isLastOfGroup then
+  begin
+    if overlap = 999 then
+      overlap := chart.BarOverlapPercent;
+    gapWidth := chart.BarGapWidthPercent;
+    AppendToStream(AStream, Format(
+      indent + '  <c:gapWidth val="%d"/>' + LE +
+      indent + '  <c:overlap val="%d"/>' + LE +
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '</c:barChart>' + LE,
+      [
+        gapWidth,                                // <c:gapWidth>
+        overlap,                                 // <c:overlap>
+        FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
+        FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
+      ]
+    ));
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

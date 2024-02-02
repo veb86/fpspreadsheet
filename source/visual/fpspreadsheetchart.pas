@@ -142,7 +142,6 @@ type
     function ActiveChartSeries(ASeries: TsChartSeries): TChartSeries;
     procedure AddSeries(ASeries: TsChartSeries);
     procedure FixAreaSeries({%H-}AWorkbookChart: TsChart);
-    procedure FixBarSeries(AWorkbookChart: TsChart);
     procedure FixSource(AChartSeries: TBasicPointSeries);
     procedure ClearChart;
     procedure ConstructHatchPattern(AWorkbookChart: TsChart; AFill: TsChartFill; ABrush: TBrush);
@@ -1638,38 +1637,6 @@ begin
 end;
 {$ENDIF}
 
-{@@ ----------------------------------------------------------------------------
-  Adjusts bar widths and offsets for side-by-side bar charts.
--------------------------------------------------------------------------------}
-procedure TsWorkbookChartLink.FixBarSeries(AWorkbookChart: TsChart);
-const
-  TOTAL_BARWIDTH = 75;
-var
-  i, n: Integer;
-  wBar: Integer;
-  offs: Integer;
-  ser: TBarSeries;
-begin
-  if AWorkbookChart.GetChartType <> ctBar then
-    exit;
-
-  // Count number of bar series
-  n := 0;
-  for i := 0 to FChart.SeriesCount - 1 do
-    if FChart.Series[i] is TBarSeries then inc(n);
-
-  // Calc bar width and adjust offset of each series within group
-  wBar := TOTAL_BARWIDTH div n;
-  offs := (wBar - TOTAL_BARWIDTH) div 2;
-  for i := 0 to FChart.SeriesCount - 1 do
-    if FChart.Series[i] is TBarSeries then
-    begin
-      ser := TBarSeries(FChart.Series[i]);
-      ser.BarWidthPercent := wBar;
-      ser.BarOffsetPercent := offs + wBar * i;
-    end;
-end;
-
 procedure TsWorkbookChartLink.FixSource(AChartSeries: TBasicPointSeries);
 var
   i, j, nx, ny: Integer;
@@ -1901,12 +1868,31 @@ end;
 
 procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
   AChartSeries: TBarSeries);
+
+  function CalcBarWidthPercent: Integer;
+  var
+    ser: TsChartSeries;
+    gapwidth: Integer;
+    i, n: Integer;
+  begin
+    n := 1;
+    if (AWorkbookSeries.Chart.GetChartType = ctBar) and (AWorkbookSeries.Chart.StackMode = csmSideBySide) then
+      for i := 0 to AWorkbookSeries.Chart.Series.Count-1 do
+      begin
+        ser := AWorkbookSeries.Chart.Series[i];
+        if (ser <> AWorkbookSeries) and (ser.GroupIndex = AWorkbookSeries.GroupIndex) then
+          inc(n);
+      end;
+    gapWidth := AWorkbookSeries.Chart.BarGapWidthPercent;
+    Result := round(100/(n + gapWidth/100) * n);
+  end;
+
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BarPen);
   AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
-  AChartSeries.BarWidthPercent := AWorkbookSeries.BarWidthPercent;
-  AChartSeries.BarOffsetPercent := AWorkbookSeries.BarOffsetPercent;
+  AChartSeries.BarWidthPercent := CalcBarWidthPercent; //AWorkbookSeries.BarWidthPercent;
+  AChartSeries.BarOffsetPercent := 0; //AWorkbookSeries.BarOffsetPercent;
   AChartSeries.BarWidthStyle := bwPercentMin;
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
   if AChartSeries.Source is TCalculatedChartSource then
@@ -1973,7 +1959,6 @@ begin
   FChart.Prepare;
   UpdateChartAxisLabels(ch);
   FixAreaSeries(ch);
-  FixBarSeries(ch);
 end;
 
 procedure TsWorkbookChartLink.UpdateChartAxis(AWorkbookAxis: TsChartAxis);
