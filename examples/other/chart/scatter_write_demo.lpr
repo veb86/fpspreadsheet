@@ -120,8 +120,8 @@ begin
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
     ser.SymbolBorder.Style := clsNoLine;
-    ser.Line.Style := clsDash;
-    ser.Line.Width := 1;
+//    ser.Line.Style := clsDash;
+    ser.Line.Width := 0.5;  // mm
 
     book.WriteToFile(fn + '.xlsx', true);
     WriteLn('Data saved with chart to ', fn + '.xlsx');

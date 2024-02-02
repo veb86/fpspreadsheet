@@ -101,6 +101,7 @@ type
     procedure WriteChartAxisTitle(AStream: TStream; AIndent: Integer; Axis: TsChartAxis);
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
+    procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: Integer);
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
 
     // Writing the nodes of the series types
@@ -3348,40 +3349,23 @@ procedure TsSpreadOOXMLChartWriter.WriteBarSeries(AStream: TStream;
 var
   indent: String;
   chart: TsChart;
-  xRng: TsChartRange;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
-  xRng := ASeries.XRange;
-  if xRng.IsEmpty then
-    xRng := ASeries.LabelRange;
-  if xRng.IsEmpty then
-    xRng := chart.CategoryLabelRange;
-
-  AppendToStream(AStream, Format(
+  AppendToStream(AStream,
     indent + '<c:barChart>' + LE +
     indent + '  <c:barDir val="col"/>' + LE +
-    indent + '  <c:grouping val="clustered"/>' + LE +
-    indent + '  <c:ser>' + LE +
-    indent + '    <c:idx val="%d"/>' + LE +
-    indent + '    <c:order val="%d"/>' + LE +
-    indent + '    <c:spPr>' + LE +
-                    GetChartFillAndLineXML(AIndent + 6, chart, ASeries.Fill, ASeries.Line) + LE +
-    indent + '    </c:spPr>' + LE +
-    indent + '    <c:cat>' + LE +
-                    GetChartRangeXML(AIndent + 6, xRng, 'strRef') + LE +
-    indent + '    </c:cat>' + LE +
-    indent + '    <c:val>' + LE +
-                    GetChartRangeXML(AIndent + 6, ASeries.YRange, 'numRef') + LE +
-    indent + '    </c:val>' + LE +
-    indent + '  </c:ser>' + LE +
+    indent + '  <c:grouping val="clustered"/>' + LE
+  );
+
+  WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
+
+  AppendToStream(AStream, Format(
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '</c:barChart>' + LE,
     [
-      ASeriesIndex,  // <c:val>
-      ASeriesIndex,  // <c:order>
       FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
       FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
     ]
@@ -3754,34 +3738,110 @@ begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
-  AppendToStream(AStream, Format(
+  AppendToStream(AStream,
     indent + '<c:scatterChart>' + LE +
-    indent + '  <c:scatterStyle val="lineMarker"/>' + LE +
-    indent + '  <c:ser>' + LE +
-    indent + '    <c:idx val="%d"/>' + LE +
-    indent + '    <c:order val="%d"/>' + LE +
-    indent + '    <c:spPr>' + LE +
-                    GetChartFillAndLineXML(AIndent + 6, chart, ASeries.Fill, ASeries.Line) + LE +
-    indent + '    </c:spPr>' + LE +
-    indent + '    <c:marker>' + LE +
-                    GetChartSeriesMarkerXML(AIndent + 6, ASeries) + LE +
-    indent + '    </c:marker>' + LE +
-    indent + '    <c:xVal>' + LE +
-                    GetChartRangeXML(AIndent + 6, ASeries.XRange, 'numRef') + LE +
-    indent + '    </c:xVal>' + LE +
-    indent + '    <c:yVal>' + LE +
-                    GetChartRangeXML(AIndent + 6, ASeries.YRange, 'numRef') + LE +
-    indent + '    </c:yVal>' + LE +
-    indent + '  </c:ser>' + LE +
+    indent + '  <c:scatterStyle val="lineMarker"/>' + LE
+  );
+
+  WriteChartSeriesNode(AStream, AIndent + 4, ASeries, ASeriesIndex);
+
+  AppendToStream(AStream, Format(
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '</c:scatterChart>' + LE,
-    [ ASeriesIndex,   // <c:idx>
-      ASeriesIndex,   // <c:order>
-      FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
-      FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
+    [
+      FAxisID[chart.XAxis.Alignment],  // <c:axId>
+      FAxisID[chart.YAxis.Alignment]   // <c:axId>
     ]
   ));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the <c:ser> node for the specified chart series
+  Is called by all series types.
+
+  @param  AStream       Stream of the chartN.xml file
+  @param  AIndent       Number of indentation spaces, for better legibility
+  @param  ASeries       Series to be written
+  @param  ASeriesIndex  Index of ther series to be written
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartSeriesNode(AStream: TStream;
+  AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: integer);
+var
+  indent: string;
+  chart: TsChart;
+  xRng, yRng: TsChartRange;
+  xValName, yValName, xRefName, yRefName: String;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
+
+  AppendToStream(AStream,
+    indent + '<c:ser>' + LE
+  );
+
+  AppendToStream(AStream, Format(
+    indent + '  <c:idx val="%d"/>' + LE +
+    indent + '  <c:order val="%d"/>' + LE,
+    [
+      ASeriesIndex,   // <c:idx>
+      ASeriesIndex    // <c:order>
+    ]
+  ));
+
+  // Series main formatting
+  AppendToStream(AStream,
+    indent + '  <c:spPr>' + LE +
+                  GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
+    indent + '  </c:spPr>' + LE
+  );
+
+  // Scatter series: symbol markers
+  if ASeries is TsScatterSeries then
+    AppendToStream(AStream,
+      indent + '  <c:marker>' + LE +
+                    GetChartSeriesMarkerXML(AIndent + 4, TsScatterSeries(ASeries)) + LE +
+      indent + '  </c:marker>' + LE
+    );
+
+  // Cell ranges
+  if (ASeries is TsScatterSeries) or (ASeries is TsBubbleSeries) then
+  begin
+    xRng := ASeries.XRange;
+    xValName := 'c:xVal';
+    yValName := 'c:yVal';
+    xRefName := 'numRef';
+  end else
+  begin
+    xRng := ASeries.XRange;
+    if xRng.IsEmpty then
+      xRng := ASeries.LabelRange;
+    if xRng.IsEmpty then
+      xRng := chart.CategoryLabelRange;
+    xValName := 'c:cat';
+    yValName := 'c:val';
+    xRefName := 'strRef';
+  end;
+  yRng := ASeries.YRange;
+  yRefName := 'numRef';
+  // x range
+  AppendToStream(AStream, Format(
+    indent + '  <%0:s>' + LE +
+                 GetChartRangeXML(AIndent + 4, xRng, xRefName) + LE +
+    indent + '  </%0:s>' + LE,
+    [ xValName ]
+  ));
+  // y range
+  AppendToStream(AStream, Format(
+    indent + '  <%0:s>' + LE +
+                 GetChartRangeXML(AIndent + 4, yRng, yRefName) + LE +
+    indent + '  </%0:s>' + LE,
+    [ yValName ]
+  ));
+
+  AppendToStream(AStream,
+    indent + '</c:ser>' + LE
+  );
 end;
 
 {@@ ----------------------------------------------------------------------------
