@@ -678,6 +678,7 @@ type
   TsBubbleSeries = class(TsCustomScatterSeries)
   private
     FBubbleRange: TsChartRange;
+    FBubbleScale: Double;
     FBubbleSizeMode: TsBubbleSizeMode;
   public
     constructor Create(AChart: TsChart); override;
@@ -685,6 +686,7 @@ type
     procedure SetBubbleRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
     procedure SetBubbleRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     property BubbleRange: TsChartRange read FBubbleRange;
+    property BubbleScale: Double read FBubbleScale write FBubbleScale;
     property BubbleSizeMode: TsBubbleSizeMode read FBubbleSizeMode write FBubbleSizeMode;
   end;
 
@@ -2373,6 +2375,7 @@ constructor TsBubbleSeries.Create(AChart: TsChart);
 begin
   inherited;
   FBubbleRange := TsChartRange.Create(AChart);
+  FBubbleScale := 1.0;
   FChartType := ctBubble;
 end;
 

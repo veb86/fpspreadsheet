@@ -54,11 +54,13 @@ begin
     ch.XAxis.Title.Caption := 'Distance from Sun (relative to Earth)';
     ch.XAxis.MinorGridLines.Style := clsNoLine;
     ch.XAxis.Logarithmic := true;
+    ch.XAxis.Min := 0.1;
     ch.XAxis.Max := 100;
     ch.YAxis.Title.Caption := 'Orbital period (relative to Earth)';
     ch.YAxis.AxisLine.Color := scSilver;
     ch.YAxis.MinorGridLines.Style := clsNoLine;
     ch.YAxis.Logarithmic := true;
+    ch.YAxis.Min := 0.1;
     ch.YAxis.Max := 1000;
 
     // Add data as bubble series

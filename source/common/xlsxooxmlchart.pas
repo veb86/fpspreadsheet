@@ -3457,6 +3457,7 @@ procedure TsSpreadOOXMLChartWriter.WriteBubbleSeries(AStream: TStream;
 var
   indent: String;
   chart: TsChart;
+  diameterMode: String;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -3468,18 +3469,24 @@ begin
 
   WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
 
+  if ASeries.BubbleSizeMode = bsmRadius then
+    AppendToStream(AStream,
+      indent + '  <c:sizeRepresents val="w"/>' + LE
+    );
+
   AppendToStream(AStream, Format(
+    indent + '  <c:bubbleScale val="%d"/>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '</c:bubbleChart>' + LE,
     [
+      round(ASeries.BubbleScale*100),          // <c:bubbleScale>
       FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
       FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
     ]
   ));
+  // Note:  <c:showNegBubbles> not supported
 end;
-
-
 
 {@@ ----------------------------------------------------------------------------
   Writes the properties of the given chart axis to the chartN.xml file under
@@ -3601,7 +3608,7 @@ begin
     maxStr := indent + Format('  <c:max val="%g"/>', [Axis.Max], FPointSeparatorSettings) + LE;
 
   if not Axis.AutomaticMin then
-    minStr := indent + Format('  <c:min val="&g"/>', [Axis.Min], FPointSeparatorSettings) + LE;
+    minStr := indent + Format('  <c:min val="%g"/>', [Axis.Min], FPointSeparatorSettings) + LE;
 
   if Axis.Logarithmic then
     logStr := indent + Format('  <c:logBase val="%g"/>', [Axis.LogBase], FPointSeparatorSettings) + LE;
