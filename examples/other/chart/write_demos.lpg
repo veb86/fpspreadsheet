@@ -2,6 +2,11 @@
 <CONFIG>
   <ProjectGroup FileVersion="2">
     <Targets>
+      <Target FileName="areachart_write_demo.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
       <Target FileName="barchart_write_demo.lpi">
         <BuildModes>
           <Mode Name="Default"/>

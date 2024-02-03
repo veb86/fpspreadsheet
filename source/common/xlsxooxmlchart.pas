@@ -211,7 +211,7 @@ function HTMLColorStr(AValue: TsColor): string;
 var
   rgb: TRGBA absolute AValue;
 begin
-  Result := Lowercase(Format('%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b]));
+  Result := Format('%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b]);
 end;
 
 
@@ -587,62 +587,63 @@ var
   n: Integer;
   child: TDOMNode;
 begin
-  if ANode = nil then
-    exit;
-
-  nodeName := ANode.NodeName;
-  case nodeName of
-    'a:schemeClr':
-      begin
-        s := GetAttrValue(ANode, 'val');
-        if (s <> '') then
+  while Assigned(ANode) do
+  begin
+    nodeName := ANode.NodeName;
+    case nodeName of
+      'a:schemeClr':
         begin
-          idx := FColors.IndexOf(ColorAlias(s));
-          if idx > -1 then
+          s := GetAttrValue(ANode, 'val');
+          if (s <> '') then
           begin
-            AColor := FColors.Data[idx];
-            child := ANode.FirstChild;
-            while Assigned(child) do
+            idx := FColors.IndexOf(ColorAlias(s));
+            if idx > -1 then
             begin
-              nodeName := child.NodeName;
-              s := GetAttrValue(child, 'val');
-              case nodeName of
-                'a:tint':
-                  if TryStrToInt(s, n) then
-                    AColor := TintedColor(AColor, n/FACTOR_MULTIPLIER);
-                'a:lumMod':     // luminance modulated
-                  if TryStrToInt(s, n) then
-                    AColor := LumModColor(AColor, n/FACTOR_MULTIPLIER);
-                'a:lumOff':
-                  if TryStrToInt(s, n) then
-                    AColor := LumOffsetColor(AColor, n/FACTOR_MULTIPLIER);
-                'a:alpha':
-                  if TryStrToInt(s, n) then
-                    Alpha := n / 100000;
+              AColor := FColors.Data[idx];
+              child := ANode.FirstChild;
+              while Assigned(child) do
+              begin
+                nodeName := child.NodeName;
+                s := GetAttrValue(child, 'val');
+                case nodeName of
+                  'a:tint':
+                    if TryStrToInt(s, n) then
+                      AColor := TintedColor(AColor, n/FACTOR_MULTIPLIER);
+                  'a:lumMod':     // luminance modulated
+                    if TryStrToInt(s, n) then
+                      AColor := LumModColor(AColor, n/FACTOR_MULTIPLIER);
+                  'a:lumOff':
+                    if TryStrToInt(s, n) then
+                      AColor := LumOffsetColor(AColor, n/FACTOR_MULTIPLIER);
+                  'a:alpha':
+                    if TryStrToInt(s, n) then
+                      Alpha := n / 100000;
+                end;
+                child := child.NextSibling;
               end;
-              child := child.NextSibling;
             end;
           end;
         end;
-      end;
-    'a:srgbClr':
-      begin
-        s := GetAttrValue(ANode, 'val');
-        if s <> '' then
-          AColor := HTMLColorStrToColor(s);
-        child := ANode.FirstChild;
-        while Assigned(child) do
+      'a:srgbClr':
         begin
-          nodeName := child.NodeName;
-          s := GetAttrValue(child, 'val');
-          case nodeName of
-            'a:alpha':
-              if TryStrToInt(s, n) then
-                Alpha := n / FACTOR_MULTIPLIER;
+          s := GetAttrValue(ANode, 'val');
+          if s <> '' then
+            AColor := HTMLColorStrToColor(s);
+          child := ANode.FirstChild;
+          while Assigned(child) do
+          begin
+            nodeName := child.NodeName;
+            s := GetAttrValue(child, 'val');
+            case nodeName of
+              'a:alpha':
+                if TryStrToInt(s, n) then
+                  Alpha := n / FACTOR_MULTIPLIER;
+            end;
+            child := child.NextSibling;
           end;
-          child := child.NextSibling;
         end;
-      end;
+    end;
+    ANode := ANode.NextSibling;
   end;
 end;
 
@@ -3235,12 +3236,16 @@ begin
 
   Result := Format(
     indent + '<%0:s sz="%d" spc="-1" %s%s%s%s>' + LE +
+    indent + '  <a:solidFill>' + LE +
+    indent + '    <a:srgbClr val="%s"/>' + LE +
+    indent + '  </a:solidFill>' + LE +
     indent + '  <a:latin typeface="%s"/>' + LE +
     indent + '</%0:s>',
     [
       ANodeName,
       round(AFont.Size * 100),
       bold, italic, strike, underline,
+      HTMLColorStr(AFont.Color),
       fontName
     ]
   );
