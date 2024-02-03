@@ -110,6 +110,7 @@ type
     // Writing the nodes of the series types
     procedure WriteAreaSeries(AStream: TStream; AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex: Integer);
     procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
+    procedure WriteBubbleSeries(AStream: TStream; AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex: Integer);
     procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
 
     procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
@@ -3307,6 +3308,13 @@ begin
               indent + '</a:ln>';
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates an xml string for a cell range to be used in ARange
+
+  @param  AIndent   Number of intentation spaces, for better legibility
+  @param  ARange    Range containing the worksheet names and cell references
+  @param  ARefKind  Determines whether the range contains strings ('c:strRef') or numbers ('c:numRef'). Must be a valid Excel nodename (including "c:")
+-------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartRangeXML(AIndent: Integer;
   ARange: TsChartRange; ARefKind: String): String;
 var
@@ -3319,9 +3327,9 @@ begin
     Result := GetCellRangeString(ARange.GetSheet1Name, ARange.GetSheet2Name, ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2, []);
 
   Result := Format(
-    indent + '<c:%0:s> ' + LE +
+    indent + '<%0:s> ' + LE +
     indent + '  <c:f>' + Result + '</c:f>' + LE +
-    indent + '</c:%0:s>',
+    indent + '</%0:s>',
     [ ARefKind ]
   );
 end;
@@ -3435,7 +3443,44 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Write the properties of the given chart axis to the chartN.xml file under
+  Writes the properties of the given bubble series to the <c:plotArea> node
+  of the chart.
+
+  @param  AStream       Stream to be written, it becomes the chartN.xml file
+  @param  AIndent       Count of indentation spaces, for better legibility
+  @param  ASeries       Bubble series to be processed
+  @param  ASeriesIndex  Index of the series in the chart's series list
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteBubbleSeries(AStream: TStream;
+  AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex: Integer);
+var
+  indent: String;
+  chart: TsChart;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
+
+  AppendToStream(AStream,
+    indent + '<c:bubbleChart>' + LE
+  );
+
+  WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
+
+  AppendToStream(AStream, Format(
+    indent + '  <c:axId val="%d"/>' + LE +
+    indent + '  <c:axId val="%d"/>' + LE +
+    indent + '</c:bubbleChart>' + LE,
+    [
+      FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
+      FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
+    ]
+  ));
+end;
+
+
+
+{@@ ----------------------------------------------------------------------------
+  Writes the properties of the given chart axis to the chartN.xml file under
   the <c:plotArea> node
 
   Depending on AxisKind, the node is either <c:catAx> or <c:valAx>.
@@ -3783,6 +3828,11 @@ begin
         WriteAreaSeries(AStream, AIndent + 2, TsAreaSeries(ser), i);
       ctBar:
         WriteBarSeries(AStream, AIndent + 2, TsBarSeries(ser), i);
+      ctBubble:
+        begin
+          WriteBubbleSeries(AStream, AIndent + 2, TsBubbleSeries(ser), i);
+          xAxKind := 'c:valAx';
+        end;
       ctScatter:
         begin
           WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), i);
@@ -3854,8 +3904,11 @@ var
   backwardStr: String = '';
   forwardStr: String = '';
 begin
-  indent := DupeString(' ', AIndent);
   regression := TsOpenRegressionSeries(ASeries).Regression;
+  if regression.RegressionType = rtNone then
+    exit;
+
+  indent := DupeString(' ', AIndent);
 
   if regression.Title <> '' then
     nameStr := Format(
@@ -3915,7 +3968,6 @@ var
   xRng, yRng: TsChartRange;
   forceNoLine: Boolean;
   xValName, yValName, xRefName, yRefName: String;
-  regression: TsChartRegression;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -3969,7 +4021,7 @@ begin
     xRng := ASeries.XRange;
     xValName := 'c:xVal';
     yValName := 'c:yVal';
-    xRefName := 'numRef';
+    xRefName := 'c:numRef';
   end else
   begin
     xRng := ASeries.XRange;
@@ -3979,10 +4031,10 @@ begin
       xRng := chart.CategoryLabelRange;
     xValName := 'c:cat';
     yValName := 'c:val';
-    xRefName := 'strRef';
+    xRefName := 'cstrRef';
   end;
   yRng := ASeries.YRange;
-  yRefName := 'numRef';
+  yRefName := 'c:numRef';
   // x range
   AppendToStream(AStream, Format(
     indent + '  <%0:s>' + LE +
@@ -3998,6 +4050,16 @@ begin
     [ yValName ]
   ));
 
+  if (ASeries is TsBubbleSeries) then
+  begin
+    // Bubble size range
+    AppendToStream(AStream,
+      indent +  '<c:bubbleSize>' + LE +
+      indent +   GetChartRangeXML(AIndent + 4, TsBubbleSeries(ASeries).BubbleRange, 'c:numRef') + LE +
+      indent +  '</c:bubbleSize>' + LE
+    );
+  end;
+
   AppendToStream(AStream,
     indent + '</c:ser>' + LE
   );
@@ -4009,10 +4071,15 @@ var
   indent: String;
   cellAddr: String;
 begin
-  indent := DupeString(' ', AIndent);
-
   with ASeries.TitleAddr do
+  begin
+    if not IsUsed then
+      exit;
+
     cellAddr := Format('%s!%s', [GetSheetName, GetCellString(Row, Col, []) ]);
+  end;
+
+  indent := DupeString(' ', AIndent);
 
   AppendToStream(AStream,
     indent + '<c:tx>' + LE +

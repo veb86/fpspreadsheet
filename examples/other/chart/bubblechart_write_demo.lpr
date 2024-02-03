@@ -49,6 +49,7 @@ begin
     ch.Border.Style := clsNoLine;
     ch.Title.Caption := 'Solar System';
     ch.Title.Font.Style := [fssBold];
+    ch.Title.Font.Color := scBlue;
     ch.Legend.Visible := false;
     ch.XAxis.Title.Caption := 'Distance from Sun (relative to Earth)';
     ch.XAxis.MinorGridLines.Style := clsNoLine;
@@ -69,13 +70,11 @@ begin
     ser.Fill.Transparency := 0.25;
     ser.DataLabels := [cdlCategory];
 
-    {
-    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart in ', FILENAME, '.xlsx');
-    }
+    book.WriteToFile(FILE_NAME + '.xlsx', true);
+    WriteLn('Data saved with chart in ', FILE_NAME + '.xlsx');
 
     book.WriteToFile(FILE_NAME + '.ods', true);
-    WriteLn('Data saved with chart in ', FILE_NAME, '.ods');
+    WriteLn('Data saved with chart in ', FILE_NAME + '.ods');
   finally
     book.Free;
   end;
