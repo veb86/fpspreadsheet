@@ -100,7 +100,7 @@ type
     function GetChartLineStyleAsXML(AChart: TsChart;
       ALine: TsChartLine; AIndent, AStyleID: Integer): String;
     function GetChartLineStyleGraphicPropsAsXML(AChart: TsChart;
-      ALine: TsChartLine): String;
+      ALine: TsChartLine; ForceNoLine: Boolean = false): String;
     function GetChartPlotAreaStyleAsXML(AChart: TsChart;
       AIndent, AStyleID: Integer): String;
     function GetChartRegressionEquationStyleAsXML(AChart: TsChart;
@@ -2504,14 +2504,14 @@ end;
 
 { Constructs the xml for a line style to be used in the <style:graphic-properties> }
 function TsSpreadOpenDocChartWriter.GetChartLineStyleGraphicPropsAsXML(
-  AChart: TsChart; ALine: TsChartLine): String;
+  AChart: TsChart; ALine: TsChartLine; ForceNoLine: Boolean = false): String;
 var
   strokeStr: String = '';
   widthStr: String = '';
   colorStr: String = '';
   linestyle: TsChartLineStyle;
 begin
-  if ALine.Style = clsNoLine then
+  if (ALine.Style = clsNoLine) or ForceNoLine then
   begin
     Result := 'draw:stroke="none" ';
     exit;
@@ -2731,6 +2731,7 @@ var
   lineser: TsLineSeries = nil;
   indent: String;
   numStyle: String;
+  forceNoLine: Boolean = false;
   chartProps: String = '';
   graphProps: String = '';
   textProps: String = '';
@@ -2759,6 +2760,7 @@ begin
         [SYMBOL_NAMES[lineSer.Symbol], lineSer.SymbolWidth, lineSer.SymbolHeight ],
         FPointSeparatorSettings
       );
+    forceNoLine := not lineSer.ShowLines;
   end;
 
   chartProps := chartProps + Format('chart:link-data-style-to-source="%s" ', [FALSE_TRUE[numStyle = 'N0']]);
@@ -2805,7 +2807,7 @@ begin
     chartProps := indent + '  <style:chart-properties ' + chartProps + '/>';
 
   // Graphic properties
-  lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, series.Line);
+  lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, series.Line, forceNoLine);
   fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, series.Fill);
   if (series is TsLineSeries) and (series.ChartType <> ctFilledRadar) then
   begin

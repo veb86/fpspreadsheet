@@ -83,9 +83,9 @@ type
     function GetChartFillAndLineXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine): String;
     function GetChartFillXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill): String;
     function GetChartFontXML(AIndent: Integer; AFont: TsFont; ANodeName: String): String;
-    function GetChartLineXML(AIndent: Integer; AChart: TsChart; ALine: TsChartLine): String;
+    function GetChartLineXML(AIndent: Integer; AChart: TsChart; ALine: TsChartLine; OverrideOff: Boolean = false): String;
     function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange; ARefKind: String): String;
-    function GetChartSeriesMarkerXML(AIndent: Integer; ASeries: TsScatterSeries): String;
+    function GetChartSeriesMarkerXML(AIndent: Integer; ASeries: TsCustomLineSeries): String;
 
   protected
     // Called by the public functions
@@ -102,6 +102,7 @@ type
     procedure WriteChartAxisTitle(AStream: TStream; AIndent: Integer; Axis: TsChartAxis);
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
+    procedure WriteChartRegression(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: Integer);
     procedure WriteChartSeriesTitle(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
@@ -160,6 +161,8 @@ const
   AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
   FALSE_TRUE: Array[boolean] of String = ('0', '1');
   LEGEND_POS: Array[TsChartLegendPosition] of string = ('r', 't', 'b', 'l');
+  TRENDLINE_TYPES: Array[TsRegressionType] of string = ('', 'linear', 'log', 'exp', 'power', 'poly');
+    // 'movingAvg' and 'log' not supported, so far
 
 
 {$INCLUDE xlsxooxmlchart_hatch.inc}
@@ -3252,7 +3255,7 @@ begin
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartLineXML(AIndent: Integer;
-  AChart: TsChart; ALine: TsChartline): String;
+  AChart: TsChart; ALine: TsChartline; OverrideOff: Boolean = false): String;
 var
   indent: String;
   noLine: Boolean;
@@ -3264,7 +3267,7 @@ var
 begin
   indent := DupeString(' ', AIndent);
 
-  if (ALine <> nil) and (ALine.Style <> clsNoLine) then
+  if (ALine <> nil) and (ALine.Style <> clsNoLine) and not OverrideOff then
   begin
     Result := Format(
       indent + '<a:ln w="%.0f">' + LE +
@@ -3302,44 +3305,6 @@ begin
     Result := indent + '<a:ln>' + LE +
               indent + '  <a:noFill/>' + LE +
               indent + '</a:ln>';
-  (*
-
-
-
-    Result := Format('<a:ln w="%.0f">', [ALine.Width * PTS_MULTIPLIER]);
-
-    Result := Result + LE + Format(
-      indent + '  <a:solidFill>' + LE +
-      indent + '    <a:srgbClr val="%s"/>' + LE +
-      indent + '  </a:solidFill>' + LE +
-      indent + '  <a:round/>' + LE,     // must not be dropped!
-      [ HtmlColorStr(ALine.Color) ]
-    )
-
-  else
-    Result := '<a:ln>';
-  Result := indent + Result;
-
-  noLine := false;
-  if (ALine <> nil) then
-  begin
-    if ALine.Style = clsSolid then
-      Result := Result + LE + Format(
-        indent + '  <a:solidFill>' + LE +
-        indent + '    <a:srgbClr val="%s"/>' + LE +
-        indent + '  </a:solidFill>' + LE +
-        indent + '  <a:round/>' + LE,     // must not be dropped!
-        [ HtmlColorStr(ALine.Color) ]
-      )
-    else
-      noLine := true;
-  end;
-
-  if noLine then
-    Result := Result + indent + '  <a:noFill/>';
-
-  Result := Result + indent + '</a:ln>';
-  *)
 end;
 
 function TsSpreadOOXMLChartWriter.GetChartRangeXML(AIndent: Integer;
@@ -3743,17 +3708,19 @@ end;
   Assembles the <c:marker> node of a scatter series as a string
 -------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartSeriesMarkerXML(AIndent: Integer;
-  ASeries: TsScatterSeries): String;
+  ASeries: TsCustomLineSeries): String;
 var
   indent: String;
   markerStr: String;
   chart: TsChart;
+  ser: TsOpenCustomLineSeries;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
+  ser := TsOpencustomLineseries(ASeries);
 
-  if ASeries.ShowSymbols then
-    case ASeries.Symbol of
+  if ser.ShowSymbols then
+    case ser.Symbol of
       cssRect: markerStr := 'square';
       cssDiamond: markerStr := 'diamong';
       cssTriangle: markerStr := 'triangle';
@@ -3776,9 +3743,9 @@ begin
     indent + '<c:symbol val="%s"/>' + LE +
     indent + '<c:size val="%.0f"/>' + LE +
     indent + '<c:spPr>' + LE +
-               GetChartFillAndLineXML(AIndent + 2, chart, ASeries.SymbolFill, ASeries.SymbolBorder) + LE +
+               GetChartFillAndLineXML(AIndent + 2, chart, ser.SymbolFill, ser.SymbolBorder) + LE +
     indent + '</c:spPr>',
-    [ markerStr, mmToPts(ASeries.SymbolWidth + ASeries.SymbolHeight) ]
+    [ markerStr, mmToPts(ser.SymbolWidth + ser.SymbolHeight) ]
   );
 end;
 
@@ -3873,6 +3840,65 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes the <c:trendline> node for the specified chart series if a trendline
+  is activated.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartRegression(AStream: TStream;
+  AIndent: Integer; ASeries: TsChartSeries);
+var
+  indent: String;
+  regression: TsChartRegression;
+  nameStr: String = '';
+  orderStr: String = '';
+  interceptStr: String = '';
+  backwardStr: String = '';
+  forwardStr: String = '';
+begin
+  indent := DupeString(' ', AIndent);
+  regression := TsOpenRegressionSeries(ASeries).Regression;
+
+  if regression.Title <> '' then
+    nameStr := Format(
+      indent + '  <c:name>%s</c:name>' + LE, [regression.Title]);
+
+  if regression.RegressionType = rtPolynomial then
+    orderStr := Format(
+      indent + '  <c:order val="%d"/>' + LE, [regression.PolynomialDegree]);
+
+  if regression.ForceYIntercept then
+    interceptStr := Format(
+      indent + '  <c:intercept val="%g"/>' + LE, [regression.YInterceptValue], FPointSeparatorSettings);
+
+  if regression.ExtrapolateForwardBy <> 0 then
+    forwardStr := Format(
+      indent + '  <c:forward val="%g"/>' + LE, [regression.ExtrapolateForwardBy], FPointSeparatorSettings);
+
+  if regression.ExtrapolateBackwardBy <> 0 then
+    backwardStr := Format(
+      indent + '  <c:backward val="%g"/>' + LE, [regression.ExtrapolateBackwardBy], FPointSeparatorSettings);
+
+  AppendToStream(AStream, Format(
+      indent + '<c:trendline>' + LE +
+                  nameStr +
+      indent + '  <c:spPr>' + LE +
+                   GetChartLineXML(AIndent + 4, ASeries.Chart, regression.Line) + LE +
+      indent + '  </c:spPr>' + LE +
+      indent + '  <c:trendlineType val="%s"/>' + LE +
+                  orderStr +
+                  interceptStr +
+                  forwardStr +
+                  backwardStr +
+      indent + '  <c:dispRSqr val="%s"/>' + LE +
+      indent + '  <c:dispEq val="%s"/>' + LE +
+      indent + '</c:trendline>' + LE,
+      [ TRENDLINE_TYPES[regression.RegressionType],
+        FALSE_TRUE[regression.DisplayRSquare],
+        FALSE_TRUE[regression.DisplayEquation]
+      ]
+  ));
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes the <c:ser> node for the specified chart series
   Is called by all series types.
 
@@ -3887,7 +3913,9 @@ var
   indent: string;
   chart: TsChart;
   xRng, yRng: TsChartRange;
+  forceNoLine: Boolean;
   xValName, yValName, xRefName, yRefName: String;
+  regression: TsChartRegression;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -3908,20 +3936,32 @@ begin
   // Series title
   WriteChartSeriesTitle(AStream, AIndent + 2, ASeries);
 
-  // Series main formatting
-  AppendToStream(AStream,
-    indent + '  <c:spPr>' + LE +
-                  GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
-    indent + '  </c:spPr>' + LE
-  );
-
-  // Scatter series: symbol markers
-  if ASeries is TsScatterSeries then
+  // Line & scatter series: symbol markers
+  if (ASeries is TsCustomLineSeries) then
+  begin
+    forceNoLine := not TsOpenCustomLineSeries(ASeries).ShowLines;
     AppendToStream(AStream,
-      indent + '  <c:marker>' + LE +
-                    GetChartSeriesMarkerXML(AIndent + 4, TsScatterSeries(ASeries)) + LE +
-      indent + '  </c:marker>' + LE
+      indent + '  <c:spPr>' + LE +
+                    GetChartLineXML(AIndent, chart, ASeries.Line, forceNoLine) + LE +
+      indent + '  </c:spPr>' + LE
     );
+    if TsOpenCustomLineSeries(ASeries).ShowSymbols then
+      AppendToStream(AStream,
+        indent + '  <c:marker>' + LE +
+                      GetChartSeriesMarkerXML(AIndent + 4, TsOpenCustomLineSeries(ASeries)) + LE +
+        indent + '  </c:marker>' + LE
+      );
+  end else
+    // Series main formatting
+    AppendToStream(AStream,
+      indent + '  <c:spPr>' + LE +
+                    GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
+      indent + '  </c:spPr>' + LE
+    );
+
+  // Regression
+  if ASeries.SupportsRegression then
+    WriteChartRegression(AStream, AIndent + 2, ASeries);
 
   // Cell ranges
   if (ASeries is TsScatterSeries) or (ASeries is TsBubbleSeries) then

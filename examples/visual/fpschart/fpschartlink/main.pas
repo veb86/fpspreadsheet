@@ -166,10 +166,11 @@ begin
   sChartLink.WorkbookSource := sWorkbookSource1;
   sChartLink.WorkbookChartIndex := 0;
 
-
+  {
   // <<<<<<<<<<<<<<<<< to be removed again...
   Chart1.Invalidate;
   PrintChartInfo(Chart1);
+  }
 end;
 
 end.

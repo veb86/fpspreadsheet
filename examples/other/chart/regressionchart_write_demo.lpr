@@ -17,6 +17,7 @@ var
   rotated: Boolean;
 begin
   fn := FILE_NAME;
+
   rotated := (ParamCount >= 1) and (lowercase(ParamStr(1)) = 'rotated');
   if rotated then
     fn := fn + '-rotated';
@@ -76,13 +77,11 @@ begin
     //ser.Regression.Equation.Top := 5;
     //ser.Regression.Equation.Left := 5;
 
-    {
-    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart to ', fn, '.xlsx');
-    }
+    book.WriteToFile(fn + '.xlsx', true);
+    WriteLn('Data saved with chart to ', fn + '.xlsx');
 
     book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart to ', fn, '.ods');
+    WriteLn('Data saved with chart to ', fn + '.ods');
   finally
     book.Free;
   end;
