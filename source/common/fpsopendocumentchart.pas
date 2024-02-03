@@ -104,7 +104,7 @@ type
     function GetChartPlotAreaStyleAsXML(AChart: TsChart;
       AIndent, AStyleID: Integer): String;
     function GetChartRegressionEquationStyleAsXML(AChart: TsChart;
-      AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
+      AEquation: TsTrendlineEquation; AIndent, AStyleID: Integer): String;
     function GetChartRegressionStyleAsXML(AChart: TsChart;
       ASeriesIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesDataPointStyleAsXML(AChart: TsChart;
@@ -173,11 +173,11 @@ uses
 type
   TAxisKind = 3..6;
 
-  TsCustomLineSeriesOpener = class(TsCustomLineSeries);
+  TsOpenedCustomLineSeries = class(TsCustomLineSeries);
 
-  TsOpenRegressionSeries = class(TsChartSeries)
+  TsOpenedTrendlineSeries = class(TsChartSeries)
   public
-    property Regression;
+    property Trendline;
   end;
 
 const
@@ -216,7 +216,7 @@ const
   AXIS_ID: array[TAxisKind] of string = ('x', 'y', 'x', 'y');
   AXIS_LEVEL: array[TAxisKind] of string = ('primary', 'primary', 'secondary', 'secondary');
 
-  REGRESSION_TYPE: array [TsRegressionType] of string = (
+  REGRESSION_TYPE: array [TsTrendlineType] of string = (
     '', 'linear', 'logarithmic', 'exponential', 'power', 'polynomial');
 
   FALSE_TRUE: array[boolean] of string = ('false', 'true');
@@ -1210,6 +1210,7 @@ procedure TsSpreadOpenDocChartReader.ReadChartRegressionEquationStyle(AStyleNode
   AChart: TsChart; ASeries: TsChartSeries);
 var
   series: TsCustomScatterSeries;
+  trendline: TsChartTrendline;
   odsReader: TsSpreadOpenDocReader;
   s, nodeName: String;
 begin
@@ -1217,13 +1218,14 @@ begin
     exit;
 
   series := TsCustomScatterSeries(ASeries);
+  trendline := series.Trendline;
   odsReader := TsSpreadOpenDocReader(Reader);
 
   nodeName := AStyleNode.NodeName;
   s := GetAttrValue(AStyleNode, 'style:data-style-name');
   if s <> '' then
     s := TsChartNumberFormatList(FNumberFormatList).FindFormatByName(s);
-  series.Regression.Equation.NumberFormat := s;
+  trendline.Equation.NumberFormat := s;
 
   AStyleNode := AStyleNode.FirstChild;
   while Assigned(AStyleNode) do
@@ -1232,20 +1234,20 @@ begin
     case nodeName of
       'style:graphic-properties':
         begin
-          GetChartLineProps(AStyleNode, AChart, series.Regression.Equation.Border);
-          GetChartFillProps(AStyleNode, AChart, series.Regression.Equation.Fill);
+          GetChartLineProps(AStyleNode, AChart, trendline.Equation.Border);
+          GetChartFillProps(AStyleNode, AChart, trendline.Equation.Fill);
         end;
       'style:text-properties':
-        GetChartTextProps(AStyleNode, series.Regression.Equation.Font);
+        GetChartTextProps(AStyleNode, trendline.Equation.Font);
       'style:chart-properties':
         begin
           s := GetAttrValue(AStyleNode, 'loext:regression-x-name');
           if s <> '' then
-            series.Regression.Equation.XName := s;
+            trendline.Equation.XName := s;
 
           s := GetAttrValue(AStyleNode, 'loext:regression-y-name');
           if s <> '' then
-            series.Regression.Equation.YName := s;
+            trendline.Equation.YName := s;
         end;
     end;
     AStyleNode := AStyleNode.NextSibling;
@@ -1256,6 +1258,7 @@ procedure TsSpreadOpenDocChartReader.ReadChartRegressionProps(ANode, AStyleNode:
   AChart: TsChart; ASeries: TsChartSeries);
 var
   series: TsCustomScatterSeries;
+  trendline: TsChartTrendline;
   s, nodeName: String;
   styleNode: TDOMNode;
   subNode: TDOMNode;
@@ -1264,6 +1267,7 @@ begin
     exit;
 
   series := TsCustomScatterSeries(ASeries);
+  trendline := series.Trendline;
 
   s := GetAttrValue(ANode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, s);
@@ -1276,10 +1280,10 @@ begin
     if nodeName = 'chart:equation' then
     begin
       s := GetAttrValue(subNode, 'chart:display-equation');
-      series.Regression.DisplayEquation := (s = 'true');
+      trendline.DisplayEquation := (s = 'true');
 
       s := GetAttrValue(subNode, 'chart:display-r-square');
-      series.Regression.DisplayRSquare := (s = 'true');
+      trendline.DisplayRSquare := (s = 'true');
 
       s := GetAttrValue(subNode, 'chart:style-name');
       styleNode := FindStyleNode(AStyleNode, s);
@@ -1293,15 +1297,15 @@ procedure TsSpreadOpenDocChartReader.ReadChartRegressionStyle(AStyleNode: TDOMNo
   AChart: TsChart; ASeries: TsChartSeries);
 var
   s, nodeName: String;
-  regression: TsChartRegression;
-  rt: TsRegressionType;
+  trendline: TsChartTrendline;
+  rt: TsTrendlineType;
   value: Double;
   intValue: Integer;
 begin
-  if not ASeries.SupportsRegression then
+  if not ASeries.SupportsTrendline then
     exit;
 
-  regression := TsOpenRegressionSeries(ASeries).Regression;
+  trendline := TsOpenedTrendlineSeries(ASeries).Trendline;
 
   AStyleNode := AStyleNode.FirstChild;
   while Assigned(AStyleNode) do
@@ -1309,42 +1313,42 @@ begin
     nodeName := AStyleNode.NodeName;
     case nodeName of
       'style:graphic-properties':
-        GetChartLineProps(AStyleNode, AChart, regression.Line);
+        GetChartLineProps(AStyleNode, AChart, trendline.Line);
       'style:chart-properties':
         begin
           s := GetAttrValue(AStyleNode, 'chart:regression-name');
-          regression.Title := s;
+          trendline.Title := s;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-type');
-          for rt in TsRegressionType do
+          for rt in TsTrendlineType do
             if (s <> '') and (REGRESSION_TYPE[rt] = s) then
             begin
-              regression.RegressionType := rt;
+              trendline.TrendlineType := rt;
               break;
             end;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-max-degree');
-          if (s <> '') and TryStrToInt(s, intValue) then
-            regression.PolynomialDegree := intValue;
+          if TryStrToInt(s, intValue) then
+            trendline.PolynomialDegree := intValue;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-extrapolate-forward');
-          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
-            regression.ExtrapolateForwardBy := value
+          if TryStrToFloat(s, value, FPointSeparatorSettings) then
+            trendline.ExtrapolateForwardBy := value
           else
-            regression.ExtrapolateForwardBy := 0.0;
+            trendline.ExtrapolateForwardBy := 0.0;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-extrapolate-backward');
-          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
-            regression.ExtrapolateBackwardBy := value
+          if TryStrToFloat(s, value, FPointSeparatorSettings) then
+            trendline.ExtrapolateBackwardBy := value
           else
-            regression.ExtrapolateBackwardBy := 0.0;
+            trendline.ExtrapolateBackwardBy := 0.0;
 
           s := GetAttrValue(AStyleNode, 'chart:regression-force-intercept');
-          regression.ForceYIntercept := (s = 'true');
+          trendline.ForceYIntercept := (s = 'true');
 
           s := GetAttrValue(AStyleNode, 'chart:regression-intercept-value');
-          if (s <> '') and TryStrToFloat(s, value, FPointSeparatorSettings) then
-            regression.YInterceptValue := value;
+          if TryStrToFloat(s, value, FPointSeparatorSettings) then
+            trendline.YInterceptValue := value;
         end;
     end;
     AStyleNode := AStyleNode.NextSibling;
@@ -1693,21 +1697,21 @@ begin
             s := GetAttrValue(AStyleNode, 'chart:symbol-name');
             if s <> '' then
             begin
-              TsCustomLineSeriesOpener(ASeries).ShowSymbols := true;
+              TsOpenedCustomLineSeries(ASeries).ShowSymbols := true;
               for css in TsChartSeriesSymbol do
                 if SYMBOL_NAMES[css] = s then
                 begin
-                  TsCustomLineSeriesOpener(ASeries).Symbol := css;
+                  TsOpenedCustomLineSeries(ASeries).Symbol := css;
                   break;
                 end;
               s := GetAttrValue(AStyleNode, 'symbol-width');
               if (s <> '') and EvalLengthStr(s, value, rel) then
-                TsCustomLineSeriesOpener(ASeries).SymbolWidth := value;
+                TsOpenedCustomLineSeries(ASeries).SymbolWidth := value;
               s := GetAttrValue(AStyleNode, 'symbol-height');
               if (s <> '') and EvalLengthStr(s, value, rel) then
-                TsCustomLineSeriesOpener(ASeries).SymbolHeight := value;
+                TsOpenedCustomLineSeries(ASeries).SymbolHeight := value;
             end else
-              TsCustomLineSeriesOpener(ASeries).ShowSymbols := false;
+              TsOpenedCustomLineSeries(ASeries).ShowSymbols := false;
           end;
         end;
 
@@ -2597,7 +2601,7 @@ begin
 end;
 
 function TsSpreadOpenDocChartWriter.GetChartRegressionEquationStyleAsXML(
-    AChart: TsChart; AEquation: TsRegressionEquation; AIndent, AStyleID: Integer): String;
+    AChart: TsChart; AEquation: TsTrendlineEquation; AIndent, AStyleID: Integer): String;
 var
   indent: String;
   numStyle: String = 'N0';
@@ -2639,8 +2643,8 @@ end;
 function TsSpreadOpenDocChartWriter.GetChartRegressionStyleAsXML(AChart: TsChart;
   ASeriesIndex, AIndent, AStyleID: Integer): String;
 var
-  regression: TsChartRegression;
   series: TsChartSeries;
+  trendline: TsChartTrendline;
   indent: String;
   chartProps: String = '';
   graphProps: String = '';
@@ -2649,12 +2653,12 @@ begin
   indent := DupeString(' ', AIndent);
 
   series := AChart.Series[ASeriesIndex];
-  if not series.SupportsRegression then
+  if not series.SupportsTrendline then
     exit;
 
-  regression := TsOpenRegressionSeries(series).Regression;
+  trendline := TsOpenedTrendlineSeries(series).Trendline;
 
-  if regression.RegressionType = rtNone then
+  if trendline.TrendlineType = tltNone then
     exit;
   series := AChart.Series[ASeriesIndex] as TsScatterSeries;
 
@@ -2666,17 +2670,17 @@ begin
     'chart:regression-force-intercept="%s" ' +
     'chart:regression-intercept-value="%g" ' +
     'chart:regression-max-degree="%d" ',
-    [ regression.Title,
-      REGRESSION_TYPE[regression.RegressionType] ,
-      regression.ExtrapolateForwardBy,
-      regression.ExtrapolateBackwardBy,
-      FALSE_TRUE[regression.ForceYIntercept],
-      regression.YInterceptValue,
-      regression.PolynomialDegree
+    [ trendline.Title,
+      REGRESSION_TYPE[trendline.TrendlineType] ,
+      trendline.ExtrapolateForwardBy,
+      trendline.ExtrapolateBackwardBy,
+      FALSE_TRUE[trendline.ForceYIntercept],
+      trendline.YInterceptValue,
+      trendline.PolynomialDegree
     ], FPointSeparatorSettings
   );
 
-  graphprops := GetChartLineStyleGraphicPropsAsXML(AChart, regression.Line);
+  graphprops := GetChartLineStyleGraphicPropsAsXML(AChart, trendline.Line);
 
   Result := Format(
     indent + '<style:style style:name="ch%d" style:family="chart"> ' + LE +
@@ -2883,7 +2887,7 @@ procedure TsSpreadOpenDocChartWriter.ListAllNumberFormats(AChart: TsChart);
 var
   i: Integer;
   series: TsChartSeries;
-  regression: TsChartRegression;
+  trendline: TsChartTrendline;
 begin
   FNumberFormatList.Clear;
   FNumberFormatList.Add('');
@@ -2905,13 +2909,13 @@ begin
     series := AChart.Series[i];
     FNumberFormatList.Add(series.LabelFormat);
     // Format of fit equation
-    if series.SupportsRegression then
+    if series.SupportsTrendline then
     begin
-      regression := TsOpenRegressionSeries(series).Regression;
-      if (regression.RegressionType <> rtNone) and
-         (regression.DisplayEquation or regression.DisplayRSquare) then
+      trendline := TsOpenedTrendlineSeries(series).Trendline;
+      if (trendline.TrendlineType <> tltNone) and
+         (trendline.DisplayEquation or trendline.DisplayRSquare) then
       begin
-        FNumberFormatList.Add(regression.Equation.NumberFormat);
+        FNumberFormatList.Add(trendline.Equation.NumberFormat);
       end;
     end;
   end;
@@ -3702,19 +3706,19 @@ var
   lineColorRange: String = '';
   chartClass: String = '';
   seriesYAxis: String = '';
-  regressionEquation: String = '';
-  regression: TsChartRegression = nil;
+  trendlineEquation: String = '';
+  trendline: TsChartTrendline = nil;
   titleAddr: String;
   i, count: Integer;
-  nextStyleID, seriesStyleID, regressionStyleID, regressionEquStyleID: Integer;
+  nextStyleID, seriesStyleID, trendlineStyleID, trendlineEquStyleID: Integer;
   xErrStyleID, yErrStyleID, dataStyleID: Integer;
 begin
   indent := DupeString(' ', AChartIndent);
 
   nextstyleID := AStyleID;
   seriesStyleID := AStyleID;
-  regressionStyleID := -1;
-  regressionEquStyleID := -1;
+  trendlineStyleID := -1;
+  trendlineEquStyleID := -1;
   xErrStyleID := -1;
   yErrStyleID := -1;
   dataStyleID := -1;
@@ -3861,35 +3865,35 @@ begin
   // Regression
   if (series is TsScatterSeries) then
   begin
-    regression := TsScatterSeries(series).Regression;
-    if regression.RegressionType <> rtNone then
+    trendline := TsScatterSeries(series).trendline;
+    if trendline.TrendlineType <> tltNone then
     begin
-      regressionStyleID := nextStyleID;
+      trendlineStyleID := nextStyleID;
       inc(nextStyleID);
 
-      if regression.DisplayEquation or regression.DisplayRSquare then
+      if trendline.DisplayEquation or trendline.DisplayRSquare then
       begin
-        if (not regression.Equation.DefaultXName) or (not regression.Equation.DefaultYName) or
-           (not regression.Equation.DefaultBorder) or (not regression.Equation.DefaultFill) or
-           (not regression.Equation.DefaultFont) or (not regression.Equation.DefaultNumberFormat) or
-           (not regression.Equation.DefaultPosition) then
+        if (not trendline.Equation.DefaultXName) or (not trendline.Equation.DefaultYName) or
+           (not trendline.Equation.DefaultBorder) or (not trendline.Equation.DefaultFill) or
+           (not trendline.Equation.DefaultFont) or (not trendline.Equation.DefaultNumberFormat) or
+           (not trendline.Equation.DefaultPosition) then
         begin
-          regressionEquStyleID := nextStyleID;
-          regressionEquation := regressionEquation + Format('chart:style-name="ch%d" ', [ regressionEquStyleID ]);
+          trendlineEquStyleID := nextStyleID;
+          trendlineEquation := trendlineEquation + Format('chart:style-name="ch%d" ', [ trendlineEquStyleID ]);
           inc(nextStyleID);
         end;
       end;
-      if regression.DisplayEquation then
-        regressionEquation := regressionEquation + 'chart:display-equation="true" ';
-      if regression.DisplayRSquare then
-        regressionEquation := regressionEquation + 'chart:display-r-square="true" ';
+      if trendline.DisplayEquation then
+        trendlineEquation := trendlineEquation + 'chart:display-equation="true" ';
+      if trendline.DisplayRSquare then
+        trendlineEquation := trendlineEquation + 'chart:display-r-square="true" ';
 
-      if regressionEquation <> '' then
+      if trendlineEquation <> '' then
       begin
-        if not regression.Equation.DefaultPosition then
-          regressionEquation := regressionEquation + Format(
+        if not trendline.Equation.DefaultPosition then
+          trendlineEquation := trendlineEquation + Format(
             'svg:x="%.2fmm" svg:y="%.2fmm" ',
-            [ regression.Equation.Left, regression.Equation.Top ],
+            [ trendline.Equation.Left, trendline.Equation.Top ],
             FPointSeparatorSettings
           );
 
@@ -3897,12 +3901,12 @@ begin
           indent + '  <chart:regression-curve chart:style-name="ch%d">' + LE +
           indent + '    <chart:equation %s />' + LE +
           indent + '  </chart:regression-curve>' + LE,
-          [ regressionStyleID, regressionEquation ]
+          [ trendlineStyleID, trendlineEquation ]
         ));
       end else
         AppendToStream(AChartStream, Format(
           indent + '  <chart:regression-curve chart:style-name="ch%d"/>',
-          [ regressionStyleID ]
+          [ trendlineStyleID ]
         ));
     end;
   end;
@@ -3942,17 +3946,17 @@ begin
   );
 
   // Regression style
-  if regressionStyleID <> -1 then
+  if trendlineStyleID <> -1 then
   begin
     AppendToStream(AStyleStream,
-      GetChartRegressionStyleAsXML(AChart, ASeriesIndex, AStyleIndent, regressionStyleID)
+      GetChartRegressionStyleAsXML(AChart, ASeriesIndex, AStyleIndent, trendlineStyleID)
     );
 
     // Style of regression equation
-    if regressionEquStyleID <> -1 then
+    if trendlineEquStyleID <> -1 then
     begin
       AppendToStream(AStyleStream,
-        GetChartRegressionEquationStyleAsXML(AChart, regression.Equation, AStyleIndent, regressionEquStyleID)
+        GetChartRegressionEquationStyleAsXML(AChart, trendline.Equation, AStyleIndent, trendlineEquStyleID)
       );
     end;
   end;

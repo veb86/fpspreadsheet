@@ -163,7 +163,7 @@ const
   AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
   FALSE_TRUE: Array[boolean] of String = ('0', '1');
   LEGEND_POS: Array[TsChartLegendPosition] of string = ('r', 't', 'b', 'l');
-  TRENDLINE_TYPES: Array[TsRegressionType] of string = ('', 'linear', 'log', 'exp', 'power', 'poly');
+  TRENDLINE_TYPES: Array[TsTrendlineType] of string = ('', 'linear', 'log', 'exp', 'power', 'poly');
     // 'movingAvg' and 'log' not supported, so far
 
 
@@ -195,7 +195,7 @@ end;
 
 
 type
-  TsOpenCustomLineSeries = class(TsCustomLineSeries)
+  TsOpenedCustomLineSeries = class(TsCustomLineSeries)
   public
     property Symbol;
     property SymbolBorder;
@@ -206,9 +206,9 @@ type
     property ShowSymbols;
   end;
 
-  TsOpenRegressionSeries = class(TsChartSeries)
+  TsOpenedTrendlineSeries = class(TsChartSeries)
   public
-    property Regression;
+    property Trendline;
   end;
 
 
@@ -1343,14 +1343,14 @@ begin
   if nodeName = 'c:marker' then
     ANode := ANode.FirstChild;
 
-  TsOpenCustomLineSeries(ASeries).ShowSymbols := true;
+  TsOpenedCustomLineSeries(ASeries).ShowSymbols := true;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
     s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:symbol':
-        with TsOpenCustomLineSeries(ASeries) do
+        with TsOpenedCustomLineSeries(ASeries) do
           case s of
             'none': ShowSymbols := false;
             'square': Symbol := cssRect;
@@ -1371,14 +1371,14 @@ begin
 
       'c:size':
         if TryStrToInt(s, n) then
-          with TsOpenCustomlineSeries(ASeries) do
+          with TsOpenedCustomLineSeries(ASeries) do
           begin
             SymbolWidth := PtsToMM(n div 2);
             SymbolHeight := SymbolWidth;
           end;
 
       'c:spPr':
-        with TsOpenCustomLineSeries(ASeries) do
+        with TsOpenedCustomLineSeries(ASeries) do
           ReadChartFillAndLineProps(ANode.FirstChild, Chart, SymbolFill, SymbolBorder);
     end;
     ANode := ANode.NextSibling;
@@ -1978,59 +1978,59 @@ procedure TsSpreadOOXMLChartReader.ReadChartSeriesTrendLine(ANode: TDOMNode;
   ASeries: TsChartSeries);
 var
   nodeName, s: String;
-  regression: TsChartRegression;
+  trendline: TsChartTrendline;
   child: TDOMNode;
   n: Integer;
   x: Double;
 begin
   if ANode = nil then
     exit;
-  if not ASeries.SupportsRegression then
+  if not ASeries.SupportsTrendline then
     exit;
 
-  regression := TsOpenRegressionSeries(ASeries).Regression;
+  trendline := TsOpenedTrendlineSeries(ASeries).Trendline;
 
   while Assigned(ANode) do begin
     nodeName := ANode.NodeName;
     s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:name':
-        regression.Title := GetNodeValue(ANode);
+        trendline.Title := GetNodeValue(ANode);
       'c:spPr':
-        ReadChartLineProps(ANode.FirstChild, ASeries.Chart, regression.Line);
+        ReadChartLineProps(ANode.FirstChild, ASeries.Chart, trendline.Line);
       'c:trendlineType':
         case s of
-          'exp': regression.RegressionType := rtExponential;
-          'linear': regression.RegressionType := rtLinear;
-          'log': regression.RegressionType := rtNone;  // rtLog, but not supported.
-          'movingAvg': regression.RegressionType := rtNone;  // rtMovingAvg, but not supported.
-          'poly': regression.RegressionType := rtPolynomial;
-          'power': regression.RegressionType := rtPower;
+          'exp': trendline.TrendlineType := tltExponential;
+          'linear': trendline.TrendlineType := tltLinear;
+          'log': trendline.TrendlineType := tltNone;  // rtLog, but not supported.
+          'movingAvg': trendline.TrendlineType := tltNone;  // rtMovingAvg, but not supported.
+          'poly': trendline.TrendlineType := tltPolynomial;
+          'power': trendline.TrendlineType := tltPower;
         end;
       'c:order':
         if (s <> '') and TryStrToInt(s, n) then
-          regression.PolynomialDegree := n;
+          trendline.PolynomialDegree := n;
       'c:period':
         if (s <> '') and TryStrToInt(s, n) then ;  // not supported
-          // regression.MovingAvgPeriod := n;
+          // trendline.MovingAvgPeriod := n;
       'c:forward', 'c:backward':
         if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
           case nodeName of
-            'c:forward': regression.ExtrapolateForwardBy := x;
-            'c:backward': regression.ExtrapolateBackwardBy := x;
+            'c:forward': trendline.ExtrapolateForwardBy := x;
+            'c:backward': trendline.ExtrapolateBackwardBy := x;
           end;
       'c:intercept':
         if (s <> '') and TryStrToFloat(s, x, FPointSeparatorSettings) then
         begin
-          regression.YInterceptValue := x;
-          regression.ForceYIntercept := true;
+          trendline.YInterceptValue := x;
+          trendline.ForceYIntercept := true;
         end;
       'c:dispRSqr':
         if s = '1' then
-          regression.DisplayRSquare := true;
+          trendline.DisplayRSquare := true;
       'c:dispEq':
         if s = '1' then
-          regression.DisplayEquation := true;
+          trendline.DisplayEquation := true;
       'c:trendlineLbl':
         begin
           child := ANode.FirstChild;
@@ -2041,7 +2041,7 @@ begin
               'c:numFmt':
                 begin
                   s := GetAttrValue(child, 'formatCode');
-                  regression.Equation.NumberFormat := s;
+                  trendline.Equation.NumberFormat := s;
                 end;
             end;
             child := child.NextSibling;
@@ -3790,11 +3790,11 @@ var
   indent: String;
   markerStr: String;
   chart: TsChart;
-  ser: TsOpenCustomLineSeries;
+  ser: TsOpenedCustomLineSeries;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
-  ser := TsOpencustomLineseries(ASeries);
+  ser := TsOpenedCustomLineSeries(ASeries);
 
   if ser.ShowSymbols then
     case ser.Symbol of
@@ -3960,44 +3960,44 @@ procedure TsSpreadOOXMLChartWriter.WriteChartRegression(AStream: TStream;
   AIndent: Integer; ASeries: TsChartSeries);
 var
   indent: String;
-  regression: TsChartRegression;
+  trendline: TsChartTrendline;
   nameStr: String = '';
   orderStr: String = '';
   interceptStr: String = '';
   backwardStr: String = '';
   forwardStr: String = '';
 begin
-  regression := TsOpenRegressionSeries(ASeries).Regression;
-  if regression.RegressionType = rtNone then
+  trendline := TsOpenedTrendlineSeries(ASeries).Trendline;
+  if trendline.TrendlineType = tltNone then
     exit;
 
   indent := DupeString(' ', AIndent);
 
-  if regression.Title <> '' then
+  if trendline.Title <> '' then
     nameStr := Format(
-      indent + '  <c:name>%s</c:name>' + LE, [regression.Title]);
+      indent + '  <c:name>%s</c:name>' + LE, [trendline.Title]);
 
-  if regression.RegressionType = rtPolynomial then
+  if trendline.TrendlineType = tltPolynomial then
     orderStr := Format(
-      indent + '  <c:order val="%d"/>' + LE, [regression.PolynomialDegree]);
+      indent + '  <c:order val="%d"/>' + LE, [trendline.PolynomialDegree]);
 
-  if regression.ForceYIntercept then
+  if trendline.ForceYIntercept then
     interceptStr := Format(
-      indent + '  <c:intercept val="%g"/>' + LE, [regression.YInterceptValue], FPointSeparatorSettings);
+      indent + '  <c:intercept val="%g"/>' + LE, [trendline.YInterceptValue], FPointSeparatorSettings);
 
-  if regression.ExtrapolateForwardBy <> 0 then
+  if trendline.ExtrapolateForwardBy <> 0 then
     forwardStr := Format(
-      indent + '  <c:forward val="%g"/>' + LE, [regression.ExtrapolateForwardBy], FPointSeparatorSettings);
+      indent + '  <c:forward val="%g"/>' + LE, [trendline.ExtrapolateForwardBy], FPointSeparatorSettings);
 
-  if regression.ExtrapolateBackwardBy <> 0 then
+  if trendline.ExtrapolateBackwardBy <> 0 then
     backwardStr := Format(
-      indent + '  <c:backward val="%g"/>' + LE, [regression.ExtrapolateBackwardBy], FPointSeparatorSettings);
+      indent + '  <c:backward val="%g"/>' + LE, [trendline.ExtrapolateBackwardBy], FPointSeparatorSettings);
 
   AppendToStream(AStream, Format(
       indent + '<c:trendline>' + LE +
                   nameStr +
       indent + '  <c:spPr>' + LE +
-                   GetChartLineXML(AIndent + 4, ASeries.Chart, regression.Line) + LE +
+                   GetChartLineXML(AIndent + 4, ASeries.Chart, trendline.Line) + LE +
       indent + '  </c:spPr>' + LE +
       indent + '  <c:trendlineType val="%s"/>' + LE +
                   orderStr +
@@ -4007,9 +4007,9 @@ begin
       indent + '  <c:dispRSqr val="%s"/>' + LE +
       indent + '  <c:dispEq val="%s"/>' + LE +
       indent + '</c:trendline>' + LE,
-      [ TRENDLINE_TYPES[regression.RegressionType],
-        FALSE_TRUE[regression.DisplayRSquare],
-        FALSE_TRUE[regression.DisplayEquation]
+      [ TRENDLINE_TYPES[trendline.TrendlineType],
+        FALSE_TRUE[trendline.DisplayRSquare],
+        FALSE_TRUE[trendline.DisplayEquation]
       ]
   ));
 end;
@@ -4054,16 +4054,16 @@ begin
   // Line & scatter series: symbol markers
   if (ASeries is TsCustomLineSeries) then
   begin
-    forceNoLine := not TsOpenCustomLineSeries(ASeries).ShowLines;
+    forceNoLine := not TsOpenedCustomLineSeries(ASeries).ShowLines;
     AppendToStream(AStream,
       indent + '  <c:spPr>' + LE +
                     GetChartLineXML(AIndent, chart, ASeries.Line, forceNoLine) + LE +
       indent + '  </c:spPr>' + LE
     );
-    if TsOpenCustomLineSeries(ASeries).ShowSymbols then
+    if TsOpenedCustomLineSeries(ASeries).ShowSymbols then
       AppendToStream(AStream,
         indent + '  <c:marker>' + LE +
-                      GetChartSeriesMarkerXML(AIndent + 4, TsOpenCustomLineSeries(ASeries)) + LE +
+                      GetChartSeriesMarkerXML(AIndent + 4, TsOpenedCustomLineSeries(ASeries)) + LE +
         indent + '  </c:marker>' + LE
       );
   end else
@@ -4075,7 +4075,7 @@ begin
     );
 
   // Regression
-  if ASeries.SupportsRegression then
+  if ASeries.SupportsTrendline then
     WriteChartRegression(AStream, AIndent + 2, ASeries);
 
   // Cell ranges

@@ -56,26 +56,26 @@ begin
     ser.ShowLines := false;
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
-    ser.Regression.Title := 'Fit curve';
-    ser.Regression.RegressionType := rtPolynomial; //rtLinear;
-    ser.Regression.ExtrapolateForwardBy := 10;
-    ser.Regression.ExtrapolateBackwardBy := 10;
-    ser.Regression.Line.Color := scRed;
-    ser.Regression.Line.Style := clsDash;
-    ser.Regression.ForceYIntercept := true;  // not used by logarithmic, power
-    ser.Regression.YInterceptValue := 10.0;  // dto.
-    ser.Regression.PolynomialDegree := 2;
-    ser.Regression.DisplayEquation := true;
-    ser.Regression.DisplayRSquare := true;
-    ser.Regression.Equation.XName := 'X';
-    ser.Regression.Equation.YName := 'Y';
-    ser.Regression.Equation.Border.Style := clsSolid;
-    ser.Regression.Equation.Border.Color := scRed;
-    ser.Regression.Equation.Fill.Style := cfsSolid;
-    ser.Regression.Equation.Fill.Color := scSilver;
-    ser.Regression.Equation.NumberFormat := '0.000';
-    //ser.Regression.Equation.Top := 5;
-    //ser.Regression.Equation.Left := 5;
+    ser.Trendline.Title := 'Fit curve';
+    ser.Trendline.TrendlineType := tltPolynomial; //tltLinear;
+    ser.Trendline.ExtrapolateForwardBy := 10;
+    ser.Trendline.ExtrapolateBackwardBy := 10;
+    ser.Trendline.Line.Color := scRed;
+    ser.Trendline.Line.Style := clsDash;
+    ser.Trendline.ForceYIntercept := true;  // not used by logarithmic, power
+    ser.Trendline.YInterceptValue := 10.0;  // dto.
+    ser.Trendline.PolynomialDegree := 2;
+    ser.Trendline.DisplayEquation := true;
+    ser.Trendline.DisplayRSquare := true;
+    ser.Trendline.Equation.XName := 'X';
+    ser.Trendline.Equation.YName := 'Y';
+    ser.Trendline.Equation.Border.Style := clsSolid;
+    ser.Trendline.Equation.Border.Color := scRed;
+    ser.Trendline.Equation.Fill.Style := cfsSolid;
+    ser.Trendline.Equation.Fill.Color := scSilver;
+    ser.Trendline.Equation.NumberFormat := '0.000';
+    //ser.Trendline.Equation.Top := 5;
+    //ser.Trendline.Equation.Left := 5;
 
     book.WriteToFile(fn + '.xlsx', true);
     WriteLn('Data saved with chart to ', fn + '.xlsx');

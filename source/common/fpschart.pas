@@ -412,9 +412,9 @@ type
     property Items[AIndex: Integer]: TsChartDataPointStyle read GetItem write SetItem; default;
   end;
 
-  TsRegressionType = (rtNone, rtLinear, rtLogarithmic, rtExponential, rtPower, rtPolynomial);
+  TsTrendlineType = (tltNone, tltLinear, tltLogarithmic, tltExponential, tltPower, tltPolynomial);
 
-  TsRegressionEquation = class
+  TsTrendlineEquation = class
     Fill: TsChartFill;
     Font: TsFont;
     Border: TsChartLine;
@@ -433,9 +433,9 @@ type
     function DefaultYName: Boolean;
   end;
 
-  TsChartRegression = class
+  TsChartTrendline = class
     Title: String;
-    RegressionType: TsRegressionType;
+    TrendlineType: TsTrendlineType;
     ExtrapolateForwardBy: Double;
     ExtrapolateBackwardBy: Double;
     ForceYIntercept: Boolean;
@@ -443,7 +443,7 @@ type
     PolynomialDegree: Integer;
     DisplayEquation: Boolean;
     DisplayRSquare: Boolean;
-    Equation: TsRegressionEquation;
+    Equation: TsTrendlineEquation;
     Line: TsChartLine;
     constructor Create;
     destructor Destroy; override;
@@ -515,8 +515,8 @@ type
     FDataLabelCalloutShape: TsChartLabelCalloutShape;
     FDataPointStyles: TsChartDataPointStyleList;
     FOrder: Integer;
-    FRegression: TsChartRegression;
-    FSupportsRegression: Boolean;
+    FTrendline: TsChartTrendline;
+    FSupportsTrendline: Boolean;
     FXErrorBars: TsChartErrorBars;
     FYErrorBars: TsChartErrorBars;
     FGroupIndex: Integer;  // series with the same GroupIndex can be stacked
@@ -526,7 +526,7 @@ type
     FLine: TsChartLine;
     FFill: TsChartFill;
     function GetChartType: TsChartType; virtual;
-    property Regression: TsChartRegression read FRegression write FRegression;
+    property Trendline: TsChartTrendline read FTrendline write FTrendline;
   public
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
@@ -569,7 +569,7 @@ type
     property LineColorRange: TsChartRange read FLineColorRange write FLineColorRange;
     property Order: Integer read FOrder write FOrder;
     property TitleAddr: TsChartCellAddr read FTitleAddr write FTitleAddr;  // use '\n' for line-break
-    property SupportsRegression: Boolean read FSupportsRegression;
+    property SupportsTrendline: Boolean read FSupportsTrendline;
     property XAxis: TsChartAxisLink read FXAxis write FXAxis;
     property XErrorBars: TsChartErrorBars read FXErrorBars write SetXErrorBars;
     property XRange: TsChartRange read FXRange write FXRange;
@@ -585,13 +585,13 @@ type
   TsAreaSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
-    property Regression;
+    property Trendline;
   end;
 
   TsBarSeries = class(TsChartSeries)
   public
     constructor Create(AChart: TsChart); override;
-    property Regression;
+    property Trendline;
   end;
 
   TsChartSeriesSymbol = (
@@ -625,7 +625,6 @@ type
 
   TsLineSeries = class(TsCustomLineSeries)
   public
-    property Regression;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -633,6 +632,7 @@ type
     property SymbolWidth;
     property ShowLines;
     property ShowSymbols;
+    property Trendline;
   end;
 
   TsSliceOrder = (soCCW, soCW);
@@ -663,7 +663,7 @@ type
   TsCustomScatterSeries = class(TsCustomLineSeries)
   public
     constructor Create(AChart: TsChart); override;
-    property Regression;
+    property Trendline;
   end;
 
   TsScatterSeries = class(TsCustomScatterSeries)
@@ -2140,7 +2140,7 @@ begin
 
   FLabelSeparator := ' ';
 
-  FRegression := TsChartRegression.Create;
+  FTrendline := TsChartTrendline.Create;
 
   FXErrorBars := TsChartErrorBars.Create(Self);
   FYErrorBars := TsChartErrorBars.Create(Self);
@@ -2150,7 +2150,7 @@ destructor TsChartSeries.Destroy;
 begin
   FYErrorBars.Free;
   FXErrorBars.Free;
-  FRegression.Free;
+  FTrendline.Free;
   FLabelBackground.Free;
   FLabelBorder.Free;
   FLabelFont.Free;
@@ -2357,7 +2357,7 @@ constructor TsAreaSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctArea;
-  FSupportsRegression := true;
+  FSupportsTrendline := true;
   FGroupIndex := 0;
 end;
 
@@ -2368,7 +2368,7 @@ constructor TsBarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctBar;
-  FSupportsRegression := true;
+  FSupportsTrendline := true;
   FGroupIndex := 0;
 end;
 
@@ -2416,7 +2416,7 @@ begin
   inherited Create(AChart);
 
   FChartType := ctLine;
-  FSupportsRegression := true;
+  FSupportsTrendline := true;
 
   FSymbolWidth := 2.5;
   FSymbolHeight := 2.5;
@@ -2475,8 +2475,8 @@ begin
 end;
 
 
-{ TsRegressionEquation }
-constructor TsRegressionEquation.Create;
+{ TsTrendlineEquation }
+constructor TsTrendlineEquation.Create;
 begin
   inherited Create;
   Font := TsFont.Create;
@@ -2491,7 +2491,7 @@ begin
   YName := 'f(x)';
 end;
 
-destructor TsRegressionEquation.Destroy;
+destructor TsTrendlineEquation.Destroy;
 begin
   Fill.Free;
   Border.Free;
@@ -2499,45 +2499,45 @@ begin
   inherited;
 end;
 
-function TsRegressionEquation.DefaultBorder: Boolean;
+function TsTrendlineEquation.DefaultBorder: Boolean;
 begin
   Result := Border.Style = clsNoLine;
 end;
 
-function TsRegressionEquation.DefaultFill: Boolean;
+function TsTrendlineEquation.DefaultFill: Boolean;
 begin
   Result := Fill.Style = cfsNoFill;
 end;
 
-function TsRegressionEquation.DefaultFont: Boolean;
+function TsTrendlineEquation.DefaultFont: Boolean;
 begin
   Result := (Font.FontName = '') and (Font.Size = 9) and (Font.Style = []) and
             (Font.Color = scBlack);
 end;
 
-function TsRegressionEquation.DefaultNumberFormat: Boolean;
+function TsTrendlineEquation.DefaultNumberFormat: Boolean;
 begin
   Result := NumberFormat = '';
 end;
 
-function TsRegressionEquation.DefaultPosition: Boolean;
+function TsTrendlineEquation.DefaultPosition: Boolean;
 begin
   Result := (Left = 0) and (Top = 0);
 end;
 
-function TsRegressionEquation.DefaultXName: Boolean;
+function TsTrendlineEquation.DefaultXName: Boolean;
 begin
   Result := XName = 'x';
 end;
 
-function TsRegressionEquation.DefaultYName: Boolean;
+function TsTrendlineEquation.DefaultYName: Boolean;
 begin
   Result := YName = 'f(x)';
 end;
 
 
-{ TsChartRegression }
-constructor TsChartRegression.Create;
+{ TsChartTrendline }
+constructor TsChartTrendline.Create;
 begin
   inherited Create;
 
@@ -2546,10 +2546,10 @@ begin
   Line.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
   Line.Color := scBlack;
 
-  Equation := TsRegressionEquation.Create;
+  Equation := TsTrendlineEquation.Create;
 end;
 
-destructor TsChartRegression.Destroy;
+destructor TsChartTrendline.Destroy;
 begin
   Equation.Free;
   Line.Free;
@@ -2563,7 +2563,7 @@ constructor TsCustomScatterSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
   FChartType := ctScatter;
-  FSupportsRegression := true;
+  FSupportsTrendline := true;
 end;
 
 

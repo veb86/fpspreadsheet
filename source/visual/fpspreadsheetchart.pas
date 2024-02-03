@@ -221,16 +221,16 @@ const
   );
 
 type
-  TBasicPointSeriesOpener = class(TBasicPointSeries);
+  TOpenedBasicPointSeries = class(TBasicPointSeries);
 
-  TsCustomLineSeriesOpener = class(TsCustomLineSeries);
+  TsOpenedCustomLineSeries = class(TsCustomLineSeries);
 
-  TsRegressionSeries = class(TsChartSeries)
+  TsOpenedTrendlineSeries = class(TsChartSeries)
   public
-    property Regression;
+    property Trendline;
   end;
 
-  TErrorbarSeries = class(TBasicPointSeries)
+  TOpenedErrorbarSeries = class(TBasicPointSeries)
   public
     property XErrorBars;
     property YErrorBars;
@@ -2259,10 +2259,10 @@ const
   end;
 
 var
-  series: TErrorBarSeries;
+  series: TOpenedErrorbarSeries;
   source: TsWorkbookChartSource;
 begin
-  series := TErrorBarSeries(ASeries);
+  series := TOpenedErrorbarSeries(ASeries);
   source := GetChartSource(ASeries.Source);
   if source = nil then
     exit;
@@ -2406,15 +2406,15 @@ begin
   if (AChartSeries is TBasicPointSeries) then
     case AWorkbookSeries.LabelPosition of
       lpDefault:
-        TBasicPointSeriesOpener(AChartSeries).MarkPositions := lmpOutside;
+        TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpOutside;
       lpOutside:
-        TBasicPointSeriesOpener(AChartSeries).MarkPositions := lmpOutside;
+        TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpOutside;
       lpInside:
-        TBasicPointSeriesOpener(AChartSeries).MarkPositions := lmpInside;
+        TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpInside;
       lpCenter:
         begin
-          TBasicPointSeriesOpener(AChartSeries).MarkPositions := lmpInside;
-          TBasicPointSeriesOpener(AChartSeries).MarkPositionCentered := true;
+          TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpInside;
+          TOpenedBasicPointSeries(AChartSeries).MarkPositionCentered := true;
         end;
     end;
 
@@ -2434,18 +2434,18 @@ end;
 procedure TsWorkbookChartLink.UpdateChartSeriesRegression(AWorkbookSeries: TsChartSeries;
   AChartSeries: TChartSeries);
 var
-  regressionSeries: TsRegressionSeries;
-  regression: TsChartRegression;
+  trendlineSeries: TsOpenedTrendlineSeries;
+  trendline: TsChartTrendline;
   ser: TFitSeries;
   s: String;
 begin
-  if not AWorkbookSeries.SupportsRegression then
+  if not AWorkbookSeries.SupportsTrendline then
     exit;
 
-  regressionSeries := TsRegressionSeries(AWorkbookSeries);
-  regression := regressionSeries.Regression;
+  trendlineSeries := TsOpenedTrendlineSeries(AWorkbookSeries);
+  trendline := trendlineSeries.Trendline;
 
-  if regression.RegressionType = rtNone then
+  if trendline.TrendlineType = tltNone then
     exit;
 
   // Create series and assign chartsource
@@ -2453,54 +2453,54 @@ begin
   ser.Source := AChartSeries.Source;
 
   // Fit equation
-  case regression.RegressionType of
-    rtLinear: ser.FitEquation := feLinear;
+  case trendline.TrendlineType of
+    tltLinear: ser.FitEquation := feLinear;
     // rtLogarithmic: ser.FitEquation := feLogarithmic;   // to do: implement this!
-    rtExponential: ser.FitEquation := feExp;
-    rtPower: ser.FitEquation := fePower;
-    rtPolynomial:
+    tltExponential: ser.FitEquation := feExp;
+    tltPower: ser.FitEquation := fePower;
+    tltPolynomial:
       begin
         ser.FitEquation := fePolynomial;
-        ser.ParamCount := regression.PolynomialDegree + 1;
+        ser.ParamCount := trendline.PolynomialDegree + 1;
       end;
   end;
 
   // Take care of y intercept
-  if regression.ForceYIntercept then
+  if trendline.ForceYIntercept then
   begin
-    str(regression.YInterceptValue, s);
+    str(trendline.YInterceptValue, s);
     ser.FixedParams := s;
   end;
 
-  // style of regression line
-  UpdateChartPen(AWorkbookSeries.Chart, regression.Line, ser.Pen);
+  // style of trend line
+  UpdateChartPen(AWorkbookSeries.Chart, trendline.Line, ser.Pen);
   ser.AxisIndexX := AChartSeries.AxisIndexX;
   ser.AxisIndexY := AChartSeries.AxisIndexY;
 
   FChart.AddSeries(ser);
 
   // Legend text
-  ser.Title := regression.Title;
+  ser.Title := trendline.Title;
 
   {
   // Show fit curve in legend after series.
   ser.Legend.Order := AChartseries.Legend.Order + 1;
   }
 
-  // Regression equation
-  if regression.DisplayEquation or regression.DisplayRSquare then
+  // Trendline equation
+  if trendline.DisplayEquation or trendline.DisplayRSquare then
   begin
     ser.ExecFit;
     s := '';
-    if regression.DisplayEquation then
+    if trendline.DisplayEquation then
       s := s + ser.EquationText.
-        X(regression.Equation.XName).
-        Y(regression.Equation.YName).
-        NumFormat(Convert_NumFormatStr_to_FormatStr(regression.Equation.NumberFormat)).
+        X(trendline.Equation.XName).
+        Y(trendline.Equation.YName).
+        NumFormat(Convert_NumFormatStr_to_FormatStr(trendline.Equation.NumberFormat)).
         DecimalSeparator('.').
         TextFormat(tfHtml).
         Get;
-    if regression.DisplayRSquare then
+    if trendline.DisplayRSquare then
       s := s + LineEnding + 'R<sup>2</sup> = ' + FormatFloat('0.00', ser.FitStatistics.R2);
     if s <> '' then
       ser.Title := ser.Title + LineEnding + s;
@@ -2543,7 +2543,7 @@ procedure TsWorkbookChartLink.UpdateCustomLineSeries(AWorkbookSeries: TsCustomLi
   AChartSeries: TBasicPointSeries);
 var
   ppi: Integer;
-  openedWorkbookSeries: TsCustomLineSeriesOpener absolute AWorkbookSeries;
+  openedWorkbookSeries: TsOpenedCustomLineSeries absolute AWorkbookSeries;
   lineSeries: TLineSeries absolute AChartSeries;
   cubicSplineSeries: TCubicSplineSeries absolute AChartSeries;
   bSplineSeries: TBSplineSeries absolute AChartSeries;
