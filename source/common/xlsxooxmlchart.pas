@@ -107,6 +107,7 @@ type
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
 
     // Writing the nodes of the series types
+    procedure WriteAreaSeries(AStream: TStream; AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex: Integer);
     procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
     procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
 
@@ -159,7 +160,6 @@ const
   AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
   FALSE_TRUE: Array[boolean] of String = ('0', '1');
   LEGEND_POS: Array[TsChartLegendPosition] of string = ('r', 't', 'b', 'l');
-  GROUPING: Array[TsChartStackMode] of string = ('clustered', 'stacked', 'percentStacked');
 
 
 {$INCLUDE xlsxooxmlchart_hatch.inc}
@@ -3357,11 +3357,61 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Writes the properties of the given area series to the <c:plotArea> node of
+  file chartN.xml
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteAreaSeries(AStream: TStream;
+  AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex: Integer);
+const
+  GROUPING: Array[TsChartStackMode] of string = ('standard', 'stacked', 'percentStacked');
+var
+  indent: String;
+  chart: TsChart;
+  isFirstOfGroup: Boolean = true;
+  isLastOfGroup: Boolean = true;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
+
+  if ASeries.GroupIndex > -1 then
+  begin
+    if (ASeriesIndex > 0) and (chart.Series[ASeriesIndex-1].GroupIndex = ASeries.GroupIndex) then
+      isfirstOfGroup := false;
+    if (ASeriesIndex < chart.Series.Count-1) and (chart.Series[ASeriesIndex+1].GroupIndex = ASeries.GroupIndex) then
+      isLastOfGroup := false;
+  end;
+
+  if isFirstOfGroup then
+    AppendToStream(AStream, Format(
+      indent + '<c:areaChart>' + LE +
+      indent + '  <c:grouping val="%s"/>' + LE,
+      [ GROUPING[chart.StackMode] ]
+    ));
+
+  WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
+
+  if isLastOfGroup then
+  begin
+    AppendToStream(AStream, Format(
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '</c:areaChart>' + LE,
+      [
+        FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
+        FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
+      ]
+    ));
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes the properties of the given bar series to the <c:plotArea> node of
   file chartN.xml
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteBarSeries(AStream: TStream;
   AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
+const
+  GROUPING: Array[TsChartStackMode] of string = ('clustered', 'stacked', 'percentStacked');
 var
   indent: String;
   chart: TsChart;
@@ -3757,6 +3807,8 @@ begin
   begin
     ser := TsChartSeries(AChart.Series[i]);
     case ser.ChartType of
+      ctArea:
+        WriteAreaSeries(AStream, AIndent + 2, TsAreaSeries(ser), i);
       ctBar:
         WriteBarSeries(AStream, AIndent + 2, TsBarSeries(ser), i);
       ctScatter:

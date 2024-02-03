@@ -13,7 +13,7 @@ begin
   WriteLn('  rotated ........... horizontal bars');
   WriteLn('  side-by-side ...... bars side-by-side (default)');
   WriteLn('  stacked ........... stacked bars');
-  WriteLn('  percentstacked .... stacked by percentage');
+  WriteLn('  percent-stacked ... stacked by percentage');
   Halt;
 end;
 
@@ -29,6 +29,9 @@ var
   rotated: Boolean = false;
   i: Integer;
 begin
+  if ParamCount = 0 then
+    WriteHelp;
+
   fn := FILE_NAME;
 
   for i := 1 to ParamCount do
@@ -39,7 +42,7 @@ begin
         stackMode := csmStacked;
       'side-by-side':
         stackMode := csmSideBySide;
-      'percent-stacked', 'stacked-percent':
+      'percent-stacked', 'stacked-percent', 'percentstacked', 'stackedpercent', 'percentage', 'percent':
         stackMode := csmStackedPercentage;
     end;
 

@@ -1,6 +1,14 @@
 @echo off
 echo Generating chart demo files:
 echo.
+echo Area series...
+areachart_write_demo
+areachart_write_demo stacked
+areachart_write_demo percentage
+areachart_write_demo rotated
+areachart_write_demo stacked rotated
+areachart_write_demo percentage rotated
+echo.
 echo Bar series...
 barchart_write_demo
 barchart_write_demo rotated
