@@ -321,6 +321,11 @@ type
     FPositionValue: Double;
     FShowLabels: Boolean;
     FDateTime: Boolean;
+    procedure SetMax(AValue: Double);
+    procedure SetMin(AValue: Double);
+    procedure SetMinorCount(AValue: Integer);
+    procedure SetMajorInterval(AValue: Double);
+    procedure SetMinorInterval(AValue: Double);
   public
     constructor Create(AChart: TsChart);
     destructor Destroy; override;
@@ -348,13 +353,13 @@ type
     property Logarithmic: Boolean read FLogarithmic write FLogarithmic;
     property LogBase: Double read FLogBase write FLogBase;
     property MajorGridLines: TsChartLine read FMajorGridLines write FMajorGridLines;
-    property MajorInterval: Double read FMajorInterval write FMajorInterval;
+    property MajorInterval: Double read FMajorInterval write SetMajorInterval;
     property MajorTicks: TsChartAxisTicks read FMajorTicks write FMajorTicks;
-    property Max: Double read FMax write FMax;
-    property Min: Double read FMin write FMin;
+    property Max: Double read FMax write SetMax;
+    property Min: Double read FMin write SetMin;
     property MinorGridLines: TsChartLine read FMinorGridLines write FMinorGridLines;
-    property MinorCount: Integer read FMinorCount write FMinorCount;
-    property MinorInterval: Double read FMinorInterval write FMinorInterval;
+    property MinorCount: Integer read FMinorCount write SetMinorCount;
+    property MinorInterval: Double read FMinorInterval write SetMinorInterval;
     property MinorTicks: TsChartAxisTicks read FMinorTicks write FMinorTicks;
     property Position: TsChartAxisPosition read FPosition write FPosition;
     property PositionValue: Double read FPositionValue write FPositionValue;
@@ -869,7 +874,7 @@ type
 implementation
 
 uses
-  fpSpreadsheet;
+  Math, fpSpreadsheet;
 
 { TsChartLine }
 
@@ -1663,6 +1668,7 @@ begin
   FAutomaticMin := true;
   FAutomaticMax := true;
   FAutomaticMajorInterval := true;
+  FAutomaticMinorInterval := true;
   FAutomaticMinorSteps := true;
 
   FCategoryRange := TsChartRange.Create(AChart);
@@ -1800,6 +1806,63 @@ begin
   FCategoryRange.Row2 := ARow2;
   FCategoryRange.Col2 := ACol2;
 end;
+
+procedure TsChartAxis.SetMajorInterval(AValue: Double);
+begin
+  if IsNaN(AValue) or (AValue <= 0) then
+    FAutomaticMajorInterval := true
+  else
+  begin
+    FAutomaticMajorInterval := false;
+    FMajorInterval := AValue;
+  end;
+end;
+
+procedure TsChartAxis.SetMax(AValue: Double);
+begin
+  if IsNaN(AValue) then
+    FAutomaticMax := true
+  else
+  begin
+    FAutomaticMax := false;
+    FMax := AValue;
+  end;
+end;
+
+procedure TsChartAxis.SetMin(AValue: Double);
+begin
+  if IsNaN(AValue) then
+    FAutomaticMin := true
+  else
+  begin
+    FAutomaticMin := false;
+    FMin := AValue;
+  end;
+end;
+
+procedure TsChartAxis.SetMinorCount(AValue: Integer);
+begin
+  if IsNaN(AValue) or (AValue < 0) then
+    FAutomaticMinorSteps := true
+  else
+  begin
+    FAutomaticMinorSteps := false;
+    FMinorCount := AValue;
+  end;
+end;
+
+
+procedure TsChartAxis.SetMinorInterval(AValue: Double);
+begin
+  if IsNaN(AValue) or (AValue < 0) then
+    FAutomaticMinorInterval := true
+  else
+  begin
+    FAutomaticMinorInterval := false;
+    FMinorInterval := AValue;
+  end;
+end;
+
 
 { TsChartLegend }
 

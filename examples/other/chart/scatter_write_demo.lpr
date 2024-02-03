@@ -100,12 +100,14 @@ begin
     ch.Legend.Border.Style := clsNoLine;
     // Set up logarithmic axes if needed.
     case mode of
-      0: ;
+      0: begin
+           ch.XAxis.MajorInterval := 20;
+           ch.XAxis.MinorInterval := 5;
+         end;
       1: ch.YAxis.Logarithmic := true;
       2: begin
            ch.XAxis.Logarithmic := true;
            ch.XAxis.Max := 100;
-           ch.XAxis.AutomaticMax := false;
            ch.YAxis.Logarithmic := true;
         end;
     end;
@@ -114,7 +116,7 @@ begin
     ser := TsScatterSeries.Create(ch);
 
     // Series properties
-    ser.SetTitleAddr(0, 0);
+    ser.SetTitleAddr(0, 0);        // A1
     ser.SetXRange(3, 0, 10, 0);    // A4:A11
     ser.SetYRange(3, 1, 10, 1);    // B4:B11
     ser.ShowLines := true;

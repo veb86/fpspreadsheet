@@ -3415,6 +3415,7 @@ begin
     AppendToStream(AStream, Format(
       indent + '<c:barChart>' + LE +
       indent + '  <c:barDir val="col"/>' + LE +
+      indent + '  <c:varyColors val="0"/>' + LE +
       indent + '  <c:grouping val="%s"/>' + LE,
       [ GROUPING[chart.StackMode] ]
     ));
@@ -3461,7 +3462,8 @@ begin
   chart := ASeries.Chart;
 
   AppendToStream(AStream,
-    indent + '<c:bubbleChart>' + LE
+    indent + '<c:bubbleChart>' + LE +
+    indent + '  <c:varyColors val="0"/>' + LE
   );
 
   WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
@@ -3588,19 +3590,41 @@ procedure TsSpreadOOXMLChartWriter.WriteChartAxisScaling(AStream: TStream;
   AIndent: Integer; Axis: TsChartAxis);
 var
   indent: String;
+  intv: Double;
   logStr: String = '';
+  maxStr: String = '';
+  minStr: String = '';
 begin
   indent := DupeString(' ', AIndent);
+
+  if not Axis.AutomaticMax then
+    maxStr := indent + Format('  <c:max val="%g"/>', [Axis.Max], FPointSeparatorSettings) + LE;
+
+  if not Axis.AutomaticMin then
+    minStr := indent + Format('  <c:min val="&g"/>', [Axis.Min], FPointSeparatorSettings) + LE;
 
   if Axis.Logarithmic then
     logStr := indent + Format('  <c:logBase val="%g"/>', [Axis.LogBase], FPointSeparatorSettings) + LE;
 
   AppendToStream(AStream,
     indent + '<c:scaling>' + LE +
+                maxStr +
+                minStr +
                 logStr +
     indent + '  <c:orientation val="minMax"/>' + LE +
     indent + '</c:scaling>' + LE
   );
+
+  // The following nodes are outside the <c:scaling node> !
+  if not Axis.AutomaticMajorInterval then
+    AppendToStream(AStream, Format(
+      indent + '<c:majorUnit val="%g"/>', [Axis.MajorInterval], fPointSeparatorSettings) + LE
+    );
+
+  if not Axis.AutomaticMinorInterval then
+    AppendToStream(AStream, Format(
+      indent + '<c:minorUnit val="%g"/>', [Axis.MinorInterval], FPointSeparatorSettings) + LE
+    );
 end;
 
 procedure TsSpreadOOXMLChartWriter.WriteChartAxisTitle(AStream: TStream;
@@ -3873,6 +3897,7 @@ begin
 
   AppendToStream(AStream,
     indent + '<c:scatterChart>' + LE +
+    indent + '  <c:varyColors val="0"/>' + LE +
     indent + '  <c:scatterStyle val="lineMarker"/>' + LE
   );
 
