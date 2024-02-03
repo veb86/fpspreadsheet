@@ -635,12 +635,16 @@ type
     property ShowSymbols;
   end;
 
+  TsSliceOrder = (soCCW, soCW);
+
   TsPieSeries = class(TsChartSeries)
   private
     FStartAngle: Integer;         // degrees
+    FSliceOrder: TsSliceOrder;
   public
     constructor Create(AChart: TsChart); override;
     property StartAngle: Integer read FStartAngle write FStartAngle;
+    property SliceOrder: TsSliceOrder read FSliceOrder write FSliceOrder;
   end;
 
   TsRadarSeries = class(TsLineSeries)

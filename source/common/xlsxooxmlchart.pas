@@ -111,6 +111,7 @@ type
     procedure WriteAreaSeries(AStream: TStream; AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex: Integer);
     procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
     procedure WriteBubbleSeries(AStream: TStream; AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex: Integer);
+    procedure WritePieSeries(AStream: TStream; AIndent: Integer; ASeries: TsPieSeries; ASeriesIndex: Integer);
     procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
 
     procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
@@ -3864,6 +3865,8 @@ begin
           WriteBubbleSeries(AStream, AIndent + 2, TsBubbleSeries(ser), i);
           xAxKind := 'c:valAx';
         end;
+      ctPie:
+        WritePieSeries(AStream, AIndent + 2, TsPieSeries(ser), i);
       ctScatter:
         begin
           WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), i);
@@ -3872,8 +3875,11 @@ begin
     end;
   end;
 
-  WriteChartAxisNode(AStream, AIndent, AChart.XAxis, xAxKind);
-  WriteChartAxisNode(AStream, AIndent, AChart.YAxis, yAxKind);
+  if not (ser is TsPieSeries) then
+  begin
+    WriteChartAxisNode(AStream, AIndent, AChart.XAxis, xAxKind);
+    WriteChartAxisNode(AStream, AIndent, AChart.YAxis, yAxKind);
+  end;
 
   AppendToStream(AStream,
     indent + '</c:plotArea>' + LE
@@ -3891,6 +3897,31 @@ begin
   //  WriteChartColorsXML(FSChartColors[i], i);
     WriteChartSpaceXML(FSCharts[i], i);
   end;
+end;
+
+procedure TsSpreadOOXMLChartWriter.WritePieSeries(AStream: TStream;
+  AIndent: Integer; ASeries: TsPieSeries; ASeriesIndex: Integer);
+var
+  indent: String;
+  chart: TsChart;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
+
+  AppendToStream(AStream,
+    indent + '<c:pieChart>' + LE +
+    indent + '  <c:varyColors val="1"/>' + LE
+  );
+
+  WriteChartSeriesNode(AStream, AIndent + 4, ASeries, ASeriesIndex);
+
+  AppendToStream(AStream, Format(
+    indent + '<c:firstSliceAng val="%d"/>' + LE,
+    [ (90 - ASeries.StartAngle) mod 360 ]
+  ));
+  AppendToStream(AStream,
+    indent + '</c:pieChart>' + LE
+  );
 end;
 
 procedure TsSpreadOOXMLChartWriter.WriteScatterSeries(AStream: TStream;
@@ -4063,7 +4094,7 @@ begin
       xRng := chart.CategoryLabelRange;
     xValName := 'c:cat';
     yValName := 'c:val';
-    xRefName := 'cstrRef';
+    xRefName := 'c:strRef';
   end;
   yRng := ASeries.YRange;
   yRefName := 'c:numRef';

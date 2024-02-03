@@ -67,13 +67,11 @@ begin
 
     //ser.SetFillColorRange(4, 2, 8, 2);
 
-    {
-    book.WriteToFile(FILE_NAME+'.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart in ', FILE_NAME, '.xlsx');
-    }
+    book.WriteToFile(FILE_NAME+'.xlsx', true);
+    WriteLn('Data saved with chart in ', FILE_NAME+'.xlsx');
 
     book.WriteToFile(FILE_NAME + '.ods', true);
-    WriteLn('Data saved with chart in ', FILE_NAME, '.ods');
+    WriteLn('Data saved with chart in ', FILE_NAME+'.ods');
   finally
     book.Free;
   end;
