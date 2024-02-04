@@ -4031,6 +4031,9 @@ var
   xRng, yRng: TsChartRange;
   forceNoLine: Boolean;
   xValName, yValName, xRefName, yRefName: String;
+  explosionStr: String = '';
+  dps: TsChartDataPointStyle;
+  i: Integer;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -4050,6 +4053,22 @@ begin
 
   // Series title
   WriteChartSeriesTitle(AStream, AIndent + 2, ASeries);
+
+  // Individual data point formats
+  if ASeries.DataPointStyles.Count > 0 then
+    for i := 0 to ASeries.DataPointStyles.Count-1 do
+    begin
+      dps := ASeries.DataPointStyles[i];
+      AppendToStream(AStream,
+        indent + '  <c:dPt>' + LE +
+        indent + '    <c:idx val="' + IntToStr(i) + '"/>' + LE +
+        explosionStr +                        // to do: read explosion value from worksheet!
+        indent + '    <c:spPr>' + LE +
+        GetChartFillAndLineXML(AIndent + 6, chart, dps.Background, dps.Border) + LE +
+        indent + '   </c:spPr>' + LE +
+        indent + '  </c:dPt>' + LE
+      );
+    end;
 
   // Line & scatter series: symbol markers
   if (ASeries is TsCustomLineSeries) then

@@ -41,6 +41,7 @@ type
     Width: Double;         // mm
     Color: TsColor;        // in hex: $00bbggrr, r=red, g=green, b=blue
     Transparency: Double;  // in percent
+    constructor CreateSolid(AColor: TsColor; AWidth: Double);
     procedure CopyFrom(ALine: TsChartLine);
   end;
 
@@ -408,7 +409,7 @@ type
   public
     constructor Create(AChart: TsChart);
     function AddFillAndLine(AFill: TsChartFill; ALine: TsChartline; ACount: Integer = 1): Integer;
-    function AddSolidFill(AColor: TsColor; ACount: Integer = 1): Integer;
+    function AddSolidFill(AColor: TsColor; ALine: TsChartLine = nil; ACount: Integer = 1): Integer;
     property Items[AIndex: Integer]: TsChartDataPointStyle read GetItem write SetItem; default;
   end;
 
@@ -883,6 +884,14 @@ uses
   Math, fpSpreadsheet;
 
 { TsChartLine }
+
+constructor TsChartLine.CreateSolid(AColor: TsColor; AWidth: Double);
+begin
+  inherited Create;
+  Style := clsSolid;
+  Color := AColor;
+  Width := AWidth;
+end;
 
 procedure TsChartLine.CopyFrom(ALine: TsChartLine);
 begin
@@ -1941,7 +1950,8 @@ begin
     end;
 end;
 
-function TsChartDataPointStyleList.AddSolidFill(AColor: TsColor; ACount: Integer = 1): Integer;
+function TsChartDataPointStyleList.AddSolidFill(AColor: TsColor;
+  ALine: TsChartLine = nil; ACount: Integer = 1): Integer;
 var
   fill: TsChartFill;
 begin
@@ -1949,7 +1959,7 @@ begin
   try
     fill.Style := cfsSolid;
     fill.Color := AColor;
-    Result := AddFillAndLine(fill, nil, ACount);
+    Result := AddFillAndLine(fill, ALine, ACount);
   finally
     fill.Free;
   end;

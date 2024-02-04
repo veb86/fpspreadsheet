@@ -163,7 +163,7 @@ type
     procedure UpdateChartLegend(AWorkbookLegend: TsChartLegend; ALegend: TChartLegend);
     procedure UpdateChartPen(AWorkbookChart: TsChart; AWorkbookLine: TsChartLine; APen: TPen);
     procedure UpdateChartSeriesMarks(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
-    procedure UpdateChartSeriesRegression(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
+    procedure UpdateChartSeriesTrendline(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
     procedure UpdateChartStyle(AWorkbookSeries: TsChartSeries; AStyleIndex: Integer);
     procedure UpdateChartTitle(AWorkbookTitle: TsChartText; AChartTitle: TChartTitle);
 
@@ -1859,8 +1859,8 @@ begin
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
 
-  // Regression/trend line
-  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
+  // Trend line
+  UpdateChartSeriesTrendline(AWorkbookSeries, AChartSeries);
 
   // Error bars
   UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
@@ -1898,8 +1898,8 @@ begin
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
 
-  // Regression/trend line
-  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
+  // Trend line
+  UpdateChartSeriesTrendLine(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries;
@@ -1917,8 +1917,8 @@ begin
   AChartSeries.ParentChart.ExpandPercentage := 10;
   {$IFEND}
 
-  // Regression/trend line
-  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
+  // Trend line
+  UpdateChartSeriesTrendline(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartLink.UpdateChart;
@@ -2431,7 +2431,7 @@ begin
   end;
 end;
 
-procedure TsWorkbookChartLink.UpdateChartSeriesRegression(AWorkbookSeries: TsChartSeries;
+procedure TsWorkbookChartLink.UpdateChartSeriesTrendline(AWorkbookSeries: TsChartSeries;
   AChartSeries: TChartSeries);
 var
   trendlineSeries: TsOpenedTrendlineSeries;
@@ -2585,8 +2585,8 @@ begin
   // Error bars
   UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
 
-  // Regression/trend line
-  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
+  // Trend line
+  UpdateChartSeriesTrendline(AWorkbookSeries, AChartSeries);
 end;
 
 procedure TsWorkbookChartLink.UpdatePieSeries(AWorkbookSeries: TsPieSeries;
@@ -2664,8 +2664,8 @@ begin
   AChartSeries.TickWidthStyle := twsPercentMin;
   AChartSeries.TickWidth := AWorkbookSeries.TickWidthPercent div 2;
 
-  // Regression/trend line
-  UpdateChartSeriesRegression(AWorkbookSeries, AChartSeries);
+  // Trend line
+  UpdateChartSeriesTrendline(AWorkbookSeries, AChartSeries);
 end;
 
 {$ENDIF}

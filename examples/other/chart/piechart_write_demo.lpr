@@ -13,6 +13,8 @@ var
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
+  fill: TsChartFill;
+  line: TsChartLine;
 begin
   book := TsWorkbook.Create;
   try
@@ -54,16 +56,17 @@ begin
     ser.DataLabels := [cdlCategory, cdlValue];
     ser.LabelSeparator := '\n'; // this is the symbol for a line-break
     ser.LabelPosition := lpOutside;
-    ser.Line.Color := scWhite;
     ser.LabelFormat := '#,##0';
 
-    // Individual sector colors
+    // Individual sector colors, with white border
     // Must be complete, otherwise will be ignored by Calc and replaced by default colors
-    ser.DataPointStyles.AddSolidFill($C47244);
-    ser.DataPointStyles.AddSolidFill($317DED);
-    ser.DataPointStyles.AddSolidFill($A5A5A5);
-    ser.DataPointStyles.AddSolidFill($00C0FF);
-    ser.DataPointStyles.AddSolidFill($D69B5B);
+    line := TsChartline.CreateSolid(scWhite, 0.8);
+    ser.DataPointStyles.AddSolidFill($C47244, line);
+    ser.DataPointStyles.AddSolidFill($317DED, line);
+    ser.DataPointStyles.AddSolidFill($A5A5A5, line);
+    ser.DataPointStyles.AddSolidFill($00C0FF, line);
+    ser.DataPointStyles.AddSolidFill($D69B5B, line);
+    line.Free;
 
     //ser.SetFillColorRange(4, 2, 8, 2);
 
