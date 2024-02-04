@@ -103,6 +103,7 @@ type
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
     procedure WriteChartRegression(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
+    procedure WriteChartSeriesDatapointLabels(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: Integer);
     procedure WriteChartSeriesTitle(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
@@ -161,7 +162,7 @@ const
   DEFAULT_FONT_NAME = 'Liberation Sans';
 
   AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
-  FALSE_TRUE: Array[boolean] of String = ('0', '1');
+  FALSE_TRUE: Array[boolean] of Byte = (0, 1);
   LEGEND_POS: Array[TsChartLegendPosition] of string = ('r', 't', 'b', 'l');
   TRENDLINE_TYPES: Array[TsTrendlineType] of string = ('', 'linear', 'log', 'exp', 'power', 'poly');
     // 'movingAvg' and 'log' not supported, so far
@@ -537,6 +538,8 @@ var
   s: String;
   ser: TsBubbleSeries;
   smooth: Boolean;
+  mode: TsBubbleSizeMode = bsmArea;
+  scale: Integer = 100;
 begin
   if ANode = nil then
     exit;
@@ -548,10 +551,12 @@ begin
       'c:ser':
         begin
           ser := TsBubbleSeries.Create(AChart);
-          ser.BubbleSizeMode := bsmArea;  // Excel always plots the area of the bubbles
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
-      'c:bubbleScale': ;
+      'c:sizeRepresents':
+        if s = 'w' then mode := bsmRadius;
+      'c:bubbleScale':
+        scale := StrToIntDef(s, 100);
       'c:showNegBubbles': ;
       'c:varyColors':  ;
       'c:dLbls':
@@ -560,6 +565,11 @@ begin
         ReadChartSeriesAxis(ANode, ser);
     end;
     ANode := ANode.NextSibling;
+  end;
+  if Assigned(ser) then
+  begin
+    ser.BubbleSizeMode := mode;
+    ser.BubbleScale := scale / 100;
   end;
 end;
 
@@ -1748,6 +1758,7 @@ procedure TsSpreadOOXMLChartReader.ReadChartSeriesLabels(ANode: TDOMNode;
 var
   nodeName, s: String;
   child1, child2, child3: TDOMNode;
+  dataLabels: TsChartDataLabels = [];
 begin
   if ANode = nil then
     exit;
@@ -1780,25 +1791,26 @@ begin
       'c:dlblPos':
         ;
       'c:showLegendKey':
-        if (s <> '') and (s <> '0') then
-          ASeries.DataLabels := ASeries.DataLabels + [cdlSymbol];
+        if (s = '1') then
+          dataLabels := dataLabels + [cdlSymbol];
       'c:showVal':
-        if (s <> '') and (s <> '0') then
-          ASeries.DataLabels := ASeries.DataLabels + [cdlValue];
+        if (s = '1') then
+          dataLabels := dataLabels + [cdlValue];
       'c:showCatName':
-        if (s <> '') and (s <> '0') then
-          ASeries.DataLabels := ASeries.DataLabels + [cdlCategory];
+        if (s = '1') then
+          dataLabels := dataLabels + [cdlCategory];
       'c:showSerName':
-        if (s <> '') and (s <> '0') then
-          ASeries.DataLabels := ASeries.DataLabels + [cdlSeriesName];
+        if (s = '1') then
+          dataLabels := dataLabels + [cdlSeriesName];
       'c:showPercent':
-        if (s <> '') and (s <> '0') then
-          ASeries.DataLabels := ASeries.DataLabels + [cdlPercentage];
+        if (s = '1') then
+          dataLabels := dataLabels + [cdlPercentage];
       'c:showBubbleSize':
-        if (s <> '') and (s <> '0') and (ASeries is TsBubbleSeries) then
-          ASeries.DataLabels := ASeries.DataLabels + [cdlValue];
+        if (s = '1') then
+          dataLabels := dataLabels + [cdlValue];
       'c:showLeaderLines':
-        ;
+        if (s = '1') then
+          dataLabels := dataLabels + [cdlLeaderLines];
       'c:extLst':
         begin
           child1 := ANode.FirstChild;
@@ -1847,6 +1859,8 @@ begin
     end;
     ANode := ANode.NextSibling;
   end;
+
+  ASeries.DataLabels := dataLabels;
 end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
@@ -3750,7 +3764,7 @@ begin
   legendPos := indent2 + Format('<c:legendPos val="%s"/>', [LEGEND_POS[ALegend.Position]]) + LE;
 
   // Inside/outside plot area?
-  overlay := indent2 + Format('<c:overlay val="%s"/>', [FALSE_TRUE[ALegend.CanOverlapPlotArea]]) + LE;
+  overlay := indent2 + Format('<c:overlay val="%d"/>', [FALSE_TRUE[ALegend.CanOverlapPlotArea]]) + LE;
 
   // Background and border formatting
   formatStr :=
@@ -4004,13 +4018,56 @@ begin
                   interceptStr +
                   forwardStr +
                   backwardStr +
-      indent + '  <c:dispRSqr val="%s"/>' + LE +
-      indent + '  <c:dispEq val="%s"/>' + LE +
+      indent + '  <c:dispRSqr val="%d"/>' + LE +
+      indent + '  <c:dispEq val="%d"/>' + LE +
       indent + '</c:trendline>' + LE,
       [ TRENDLINE_TYPES[trendline.TrendlineType],
         FALSE_TRUE[trendline.DisplayRSquare],
         FALSE_TRUE[trendline.DisplayEquation]
       ]
+  ));
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Write series data point labels if requested. The corresponding node is
+  <c:dLbls> underneath <c:ser>.
+
+  @param  AStream      Stream of the chartN.xml file
+  @param  AIndent      Number of indentation spaces, for better legibility
+  @param  ASeries      Series to which the labels are attached
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartSeriesDatapointLabels(AStream: TStream;
+  AIndent: Integer; ASeries: TsChartSeries);
+var
+  indent: String;
+begin
+  if ASeries.DataLabels = [] then
+    exit;
+
+  indent := DupeString(' ', AIndent);
+
+  AppendToStream(AStream, Format(
+    indent + '<c:dLbls>' + LE +
+    indent + '  <c:spPr>' + LE +
+                GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder) + LE +
+    indent + '  </c:spPr>' + LE +
+    indent + '  <c:showLegendKey val="%d"/>' + LE +
+    indent + '  <c:showVal val="%d"/>' + LE +
+    indent + '  <c:showCatName val="%d"/>' + LE +
+    indent + '  <c:showSerName val="%d"/>' + LE +
+    indent + '  <c:showPercent val="%d"/>' + LE +
+    indent + '  <c:showBubbleSize val="%d"/>' + LE +
+    indent + '  <c:showLeaderLines val="%d"/>' + LE +
+    indent + '</c:dLbls>' + LE,
+    [
+      FALSE_TRUE[cdlSymbol in ASeries.DataLabels],
+      FALSE_TRUE[cdlValue in ASeries.DataLabels],
+      FALSE_TRUE[cdlCategory in ASeries.DataLabels],
+      FALSE_TRUE[cdlSeriesName in ASeries.DataLabels],
+      FALSE_TRUE[cdlPercentage in ASeries.DataLabels],
+      FALSE_TRUE[false],  // bubble size -- to do...
+      FALSE_TRUE[cdlLeaderLines in ASeries.DataLabels]
+    ]
   ));
 end;
 
@@ -4093,9 +4150,12 @@ begin
       indent + '  </c:spPr>' + LE
     );
 
-  // Regression
+  // Trend line
   if ASeries.SupportsTrendline then
     WriteChartRegression(AStream, AIndent + 2, ASeries);
+
+  // Data point labels
+  WriteChartSeriesDatapointLabels(AStream, AIndent + 2, ASeries);
 
   // Cell ranges
   if (ASeries is TsScatterSeries) or (ASeries is TsBubbleSeries) then

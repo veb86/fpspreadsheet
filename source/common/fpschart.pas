@@ -390,7 +390,7 @@ type
   end;
 
   TsChartAxisLink = (calPrimary, calSecondary);
-  TsChartDataLabel = (cdlValue, cdlPercentage, cdlCategory, cdlSeriesName, cdlSymbol);
+  TsChartDataLabel = (cdlValue, cdlPercentage, cdlCategory, cdlSeriesName, cdlSymbol, cdlLeaderLines);
   TsChartDataLabels = set of TsChartDataLabel;
   TsChartLabelPosition = (lpDefault, lpOutside, lpInside, lpCenter);
   TsChartLabelCalloutShape = (
@@ -2390,6 +2390,7 @@ begin
   inherited;
   FBubbleRange := TsChartRange.Create(AChart);
   FBubbleScale := 1.0;
+  FBubbleSizeMode := bsmArea;
   FChartType := ctBubble;
 end;
 

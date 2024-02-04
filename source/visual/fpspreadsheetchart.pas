@@ -1591,6 +1591,7 @@ begin
       AChartSeries.Marks.Format := textFmt + sep + valueFmt;
   end;
   AChartSeries.Marks.Alignment := taCenter;
+  AChartSeries.Marks.LinkPen.Visible := cdlLeaderLines in AWorkbookSeries.DataLabels;
 end;
 
 {

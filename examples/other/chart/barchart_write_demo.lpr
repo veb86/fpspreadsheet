@@ -8,7 +8,7 @@ uses
 
 procedure WriteHelp;
 begin
-  WriteLn('SYNTAX: barchart_write_demo [rotated] [side-by-side|stacked|percent-stacked] ');
+  WriteLn('SYNTAX: barchart_write_demo [horz|vert] [side-by-side|stacked|percent-stacked] ');
   WriteLn('  (no argument) ..... vertical bars');
   WriteLn('  rotated ........... horizontal bars');
   WriteLn('  side-by-side ...... bars side-by-side (default)');
@@ -36,8 +36,10 @@ begin
 
   for i := 1 to ParamCount do
     case lowercase(ParamStr(i)) of
-      'rotated':
+      'horz', 'horizontal':
         rotated := true;
+      'vert', 'vertical', 'rotated':
+        rotated := false;
       'stacked':
         stackMode := csmStacked;
       'side-by-side':
@@ -46,8 +48,10 @@ begin
         stackMode := csmStackedPercentage;
     end;
 
-  if rotated then
-    fn := fn + '_rotated';
+  case rotated of
+    false: fn := fn + '_vert';
+    true: fn := fn + '_horiz';
+  end;
   case stackMode of
     csmSideBySide: ;
     csmStacked: fn := fn + '_stacked';
@@ -97,6 +101,7 @@ begin
     ser.Fill.Style := cfsSolidHatched;
     ser.Fill.Hatch := ch.Hatches.AddLineHatch('Crossed', chsDouble, scDarkRed, 2, 0.1, 45);
     ser.Fill.Color := scRed;
+    ser.DataLabels := [cdlValue];
 
     // Add 2nd bar series ("Student 2")
     ser := TsBarSeries.Create(ch);
