@@ -2008,7 +2008,10 @@ end;
 
 function TsChartDataPointStyleList.GetItem(AIndex: Integer): TsChartDataPointStyle;
 begin
-  Result := TsChartDataPointStyle(inherited Items[AIndex]);
+  if (AIndex >= 0) and (AIndex < Count) then
+    Result := TsChartDataPointStyle(inherited Items[AIndex])
+  else
+    Result := nil;
 end;
 
 function TsChartDataPointStyleList.IndexOfDataPoint(ADataPointIndex: Integer): Integer;

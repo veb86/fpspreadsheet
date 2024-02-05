@@ -1292,6 +1292,7 @@ begin
     src.CheckPieSeriesMode(ASeries);
     // ... as well as datapoint styles/colors
     CreateChartStylesFromDatapoints(ASeries, src.Styles);
+    src.UseDataPointColors(ASeries);
     {$if LCL_FullVersion >= 3990000}
     if (Result is TPieSeries) then
       TPieSeries(Result).Styles := src.Styles
