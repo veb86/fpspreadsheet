@@ -4104,7 +4104,7 @@ begin
         explosionStr := Format('<c:explosion val="%d"/>', [dps.PieOffset]);
       AppendToStream(AStream,
         indent + '<c:dPt>' + LE +
-        indent + '  <c:idx val="' + IntToStr(i) + '"/>' + LE +
+        indent + '  <c:idx val="' + IntToStr(dps.DataPointIndex) + '"/>' + LE +
                     explosionStr +
         indent + '  <c:spPr>' + LE +
                       GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, dps.Background, dps.Border) + LE +
@@ -4158,13 +4158,22 @@ begin
   // Individual data point formats
   WriteChartSeriesDatapointStyles(AStream, AIndent + 2, ASeries);
 
+  // Bubble series
+  if (ASeries is TsBubbleSeries) then
+  begin
+    AppendToStream(AStream,
+      indent + '  <c:spPr>' + LE +
+                    GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
+      indent + '  </c:spPr>' + LE
+    );
+  end else
   // Line & scatter series: symbol markers
   if (ASeries is TsCustomLineSeries) then
   begin
     forceNoLine := not TsOpenedCustomLineSeries(ASeries).ShowLines;
     AppendToStream(AStream,
       indent + '  <c:spPr>' + LE +
-                    GetChartLineXML(AIndent, chart, ASeries.Line, forceNoLine) + LE +
+                    GetChartLineXML(AIndent + 4, chart, ASeries.Line, forceNoLine) + LE +
       indent + '  </c:spPr>' + LE
     );
     if TsOpenedCustomLineSeries(ASeries).ShowSymbols then

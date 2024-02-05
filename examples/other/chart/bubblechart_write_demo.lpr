@@ -69,10 +69,13 @@ begin
     ser.SetXRange(3, 1, 10, 1);
     ser.SetYRange(3, 2, 10, 2);
     ser.SetBubbleRange(3, 3, 10, 3);
-    ser.Line.Style := clsNoLine;
-    ser.Fill.Color := $c47244; //72c4 scBlue;
+    ser.Line.Style := clsSolid; //NoLine;
+    ser.Line.Color := scSilver;
+    ser.Fill.Color := scYellow;
     ser.Fill.Transparency := 0.25;
     ser.DataLabels := [cdlCategory];
+    ser.DataPointStyles.AddSolidFill(2, $c47244);
+    ser.DataPointStyles.AddSolidFill(3, scRed);
 
     book.WriteToFile(FILE_NAME + '.xlsx', true);
     WriteLn('Data saved with chart in ', FILE_NAME + '.xlsx');
