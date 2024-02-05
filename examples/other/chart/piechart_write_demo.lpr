@@ -63,10 +63,10 @@ begin
     line := TsChartline.CreateSolid(scWhite, 0.8);
     fill := TsChartFill.CreateHatchFill(ch.Hatches.AddLineHatch('ltHorz', chsSingle, $00C0FF, 1, 0.1, 0), scWhite);
     ser.DataPointStyles.AddSolidFill(0, $C47244, line);
-    ser.DataPointStyles.AddSolidFill(1, $317DED, line, 10);  // with explode offset, as percentage
+    ser.DataPointStyles.AddSolidFill(1, $317DED, line, 20);  // with explode offset, as percentage
     ser.DataPointStyles.AddSolidFill(2, $A5A5A5, line);
     ser.DataPointStyles.AddFillAndLine(3, fill, line);
-    ser.DataPointStyles.AddSolidFill(4, $D69B5B, line, 20);
+    ser.DataPointStyles.AddSolidFill(4, $D69B5B, line);
     line.Free;
     fill.Free;
 

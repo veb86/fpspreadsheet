@@ -34,10 +34,6 @@ uses
   // FPSpreadsheet Visual
   fpSpreadsheetCtrls, fpSpreadsheetGrid, fpsVisualUtils;
 
-{$if LCL_FullVersion >= 3990000}
- {$define DATAPOINT_STYLES}
-{$ifend}
-
 type
 
   {@@ Chart data source designed to work together with TChart from Lazarus
@@ -62,6 +58,10 @@ type
     FCyclicX: Boolean;
     FIntegerX: Boolean;       // only integers allowed for x values
     FDataPointColors: array of TsColor;
+    FPieSeriesMode: boolean;
+    FPieOffsets: Array of Double;
+    FStyles: TChartStyles;
+
     function GetRange(AIndex: TsXYLRange): String;
     function GetTitle: String;
     function GetWorkbook: TsWorkbook;
@@ -86,7 +86,7 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    function RangeIsEmpty(ARange: TsCellRange): Boolean;
+    procedure CheckPieSeriesMode(ASeries: TsChartSeries);
     procedure Reset;
     procedure SetColorRange(ARange: TsChartRange);
     procedure SetLabelRange(ARange: TsChartRange);
@@ -95,13 +95,17 @@ type
     procedure SetTitleAddr(Addr: TsChartCellAddr);
     procedure SetXErrorBarRange(APosRange, ANegRange: TsChartRange);
     procedure SetYErrorBarRange(APosRange, ANegRange: TsChartRange);
-    procedure UseDataPointColors(ASeries: TsChartSeries);
     property PointsNumber: Cardinal read FPointsNumber;
     property Workbook: TsWorkbook read GetWorkbook;
   public
     // Interface to TsWorkbookSource
     procedure ListenerNotification(AChangedItems: TsNotificationItems; AData: Pointer = nil);
     procedure RemoveWorkbookSource;
+  public
+    // Special methods to be called by TsWorkbookChartLink
+    function RangeIsEmpty(ARange: TsCellRange): Boolean;
+    procedure UseDatapointColors(ASeries: TsChartSeries);
+    property Styles: TChartStyles read FStyles;
   published
     property WorkbookSource: TsWorkbookSource read FWorkbookSource write SetWorkbookSource;
     property ColorRange: String index rngColor read GetRange write SetRange;
@@ -180,9 +184,7 @@ type
     procedure UpdateScatterSeries(AWorkbookSeries: TsScatterSeries; AChartSeries: TLineSeries);
     procedure UpdateStockSeries(AWorkbookSeries: TsStockSeries; AChartSeries: TStockSeries);
 
-    {$ifdef DATAPOINT_STYLES}
-    procedure UseDatapointStyles(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
-    {$endif}
+    procedure CreateChartStylesFromDatapoints(AWorkbookSeries: TsChartSeries; AChartStyles: TChartStyles);
 
   public
     constructor Create(AOwner: TComponent); override;
@@ -377,6 +379,7 @@ end;
 constructor TsWorkbookChartSource.Create(AOwner: TComponent);
 begin
   inherited;
+  FStyles := TChartStyles.Create(self);
   FCurItemIndex := -1;
   ClearRanges;
 end;
@@ -462,6 +465,9 @@ begin
   FRangeStr[rngY] := '';
   FRangeStr[rngLabel] := '';
   FRangeStr[rngColor] := '';
+
+  FStyles.Styles.Clear;
+  SetLength(FPieOffsets, 0);
 end;
 
 
@@ -526,20 +532,30 @@ begin
     exit;
   end;
 
-  for i := 0 to XCount-1 do
+  { In PieSeriesMode, the x values are not taken from the worksheet, but
+    have been made available in the separate array FPieOffsets. }
+  if FPieSeriesMode then
   begin
-    if (FRanges[rngX, i] <> nil) then
-    begin
-      GetXYItem(rngX, i, AIndex, value, tmpLabel);
-      if FIntegerX then
-        value := trunc(value);
-    end else
-    if FCyclicX then
-      value := AIndex / FPointsNumber * TWO_PI
+    if (AIndex >= 0) and (AIndex < Length(FPieOffsets)) then
+      FCurItem.SetX(0, FPieOffsets[AIndex])
     else
-      value := AIndex;
-    FCurItem.SetX(i, value);
-  end;
+      FCurItem.SetX(0, 0.0);
+  end
+  else
+    for i := 0 to XCount-1 do
+    begin
+      if (FRanges[rngX, i] <> nil) then
+      begin
+        GetXYItem(rngX, i, AIndex, value, tmpLabel);
+        if FIntegerX then
+          value := trunc(value);
+      end else
+      if FCyclicX then
+        value := AIndex / FPointsNumber * TWO_PI
+      else
+        value := AIndex;
+      FCurItem.SetX(i, value);
+    end;
 
   for i := 0 to YCount-1 do
   begin
@@ -556,6 +572,7 @@ begin
   FCurItem.Color := clTAColor;  // = clDefault
   if AIndex <= High(FDataPointColors) then
     FCurItem.Color := FDataPointColors[AIndex];
+
   if FRanges[rngColor] <> nil then
   begin
     GetXYItem(rngColor, 0, AIndex, dummyNumber, dummyString);
@@ -998,13 +1015,43 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  In case of a pie series, both xlsx and ods files do not provide the
+  pie offsets as worksheet cell ranges but as attributes in the xml files.
+  Therefore, we store these offsets separately in an array, FPieOffsets.
+-------------------------------------------------------------------------------}
+procedure TsWorkbookChartSource.CheckPieSeriesMode(ASeries: TsChartSeries);
+var
+  i, j: Integer;
+  datapointStyle: TsChartDataPointStyle;
+begin
+  FPieSeriesMode := (ASeries is TsPieSeries);
+  if FPieSeriesMode then
+  begin
+    SetLength(FPieOffsets, ASeries.Count);
+    for i := 0 to ASeries.Count-1 do
+    begin
+      j := ASeries.DataPointStyles.IndexOfDataPoint(i);
+      FPieOffsets[i] := 0;
+      dataPointStyle := ASeries.DataPointStyles[j];
+      if dataPointStyle <> nil then
+        FPieOffsets[i] := dataPointStyle.PieOffset * 0.01;
+    end;
+  end else
+    SetLength(FPieOffsets, 0);
+end;
+
+{@@ ----------------------------------------------------------------------------
   Extracts the fill color from the DataPointStyle items of the series. All the
   other elements are ignored because TAChart does not support them.
+
+  But note: Some series types allow to use chartstyles for individual data point
+  formatting. In this case this method is not executed.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
 var
   datapointStyle: TsChartDataPointStyle;
-  i: Integer;
+  style: TChartStyle;
+  i, j: Integer;
   c: TsColor;
   g: TsChartGradient;
 begin
@@ -1036,7 +1083,6 @@ begin
     end;
   end;
 end;
-
 
 {@@ ----------------------------------------------------------------------------
   Setter method for the WorkbookSource
@@ -1242,12 +1288,18 @@ begin
       src.SetColorRange(ASeries.FillColorRange);
     src.SetTitleAddr(ASeries.TitleAddr);
 
-    {$ifdef DATAPOINT_STYLES}
-    UseDatapointStyles(ASeries, Result);
-    {$else}
-    // Copy individual data point colors to the chart series.
-    src.UseDataPointColors(ASeries);
-    {$endif}
+    // Send pie offsets to chart soruce...
+    src.CheckPieSeriesMode(ASeries);
+    // ... as well as datapoint styles/colors
+    CreateChartStylesFromDatapoints(ASeries, src.Styles);
+    {$if LCL_FullVersion >= 3990000}
+    if (Result is TPieSeries) then
+      TPieSeries(Result).Styles := src.Styles
+    else if (Result is TBubbleSeries) then
+      TBubbleSeries(Result).Styles := src.Styles
+    else if (Result is TBarSeries) then
+      TBarSeries(Result).Styles := src.Styles;
+    {$ifend}
 
     if stackable then begin
       calcSrc := TCalculatedChartSource.Create(self);
@@ -2614,6 +2666,7 @@ begin
   if AWorkbookSeries is TsRingSeries then
     AChartSeries.InnerRadiusPercent := TsRingSeries(AWorkbookSeries).InnerRadiusPercent;
   {$IFEND}
+  AChartSeries.Exploded := true;
 
   FChart.BottomAxis.Visible := false;
   FChart.LeftAxis.Visible := false;
@@ -2682,6 +2735,41 @@ begin
   UpdateChartSeriesTrendline(AWorkbookSeries, AChartSeries);
 end;
 
+procedure TsWorkbookChartLink.CreateChartStylesFromDatapoints(AWorkbookSeries: TsChartSeries;
+  AChartStyles: TChartStyles);
+var
+  style: TChartStyle;
+  datapointStyle: TsChartDatapointStyle;
+  i: Integer;
+begin
+  AChartStyles.Styles.Clear;
+
+  if AWorkbookSeries.DataPointStyles.Count = 0 then
+    exit;
+  if not ((AWorkbookSeries is TsPieSeries) or (AWorkbookSeries is TsBubbleSeries)) then
+    exit;
+  if (AWorkbookSeries is TsBarSeries) and (AWorkbookSeries.Chart.Series.Count > 1) then
+    exit;  // TAChart cannot handle datapoint styles for layered bar series
+
+  for i := 0 to AWorkbookSeries.Count-1 do
+  begin
+    style := AChartStyles.Add;
+    datapointStyle := AWorkbookSeries.DataPointStyles[i];
+    if datapointstyle = nil then
+    begin
+      UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, style.brush);
+      UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, style.Pen);
+    end else
+    begin
+      UpdateChartBrush(AWorkbookSeries.Chart, datapointStyle.Background, style.Brush);
+      UpdateChartPen(AWorkbookSeries.Chart, datapointStyle.Border, style.Pen);
+    end;
+  end;
+end;
+
+
+
+                           (*
 {$ifdef DATAPOINT_STYLES}
 procedure TsWorkbookChartLink.UseDatapointStyles(AWorkbookSeries: TsChartSeries;
   AChartSeries: TChartSeries);
@@ -2708,7 +2796,8 @@ begin
     style := styles.Add;
     if dps = nil then
     begin
-      UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.FILL, style.brush);
+      UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, style.brush);
+      UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, style.Pen);
     end else
     begin
       UpdateChartBrush(AWorkbookSeries.Chart, dps.Background, style.Brush);
@@ -2724,7 +2813,7 @@ begin
     TBarSeries(AChartSeries).Styles := styles;
 end;
 {$endif}
-
+            *)
 {$ENDIF}
 
 end.

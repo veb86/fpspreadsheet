@@ -2733,8 +2733,7 @@ begin
 
   if dataPointStyle = nil then
   begin
-    // The series process by the caller has not individual style format.
-    // We must write a node nevertheless...
+    // No style information found. We write a node, nevertheless...  (maybe can be dropped?)
     Result := Format(
       indent + '<style:style style:name="ch%d" style:family="chart">' + LE +
       indent + '  <style:chart-properties/>' + LE +
@@ -3744,7 +3743,7 @@ var
   trendlineEquation: String = '';
   trendline: TsChartTrendline = nil;
   titleAddr: String;
-  i, j, idx, count: Integer;
+  i, idx, count: Integer;
   nextStyleID, seriesStyleID, trendlineStyleID, trendlineEquStyleID: Integer;
   xErrStyleID, yErrStyleID, dataStyleID: Integer;
   datapointStyle: TsChartDataPointStyle;
@@ -3960,7 +3959,7 @@ begin
     for i := 0 to count - 1 do
     begin
       AppendToStream(AChartStream, Format(
-        indent + '  <chart:data-point chart:style.name="ch%d"/>' + LE,
+        indent + '  <chart:data-point chart:style-name="ch%d"/>' + LE,
         [ dataStyleID + i ]
       ));
       inc(nextStyleID);
@@ -4028,17 +4027,7 @@ begin
   begin
     for i := 0 to count - 1 do
     begin
-      idx := -1;
-      for j := 0 to series.DataPointStyles.Count-1 do
-      begin
-        dataPointStyle := series.DataPointstyles[j];
-        if (dataPointStyle <> nil) and (dataPointStyle.DataPointIndex = i) then
-        begin
-          idx := j;
-          break;
-        end;
-      end;
-
+      idx := series.DataPointStyles.IndexOfDatapoint(i);
       AppendToStream(AStyleStream,
         GetChartSeriesDataPointStyleAsXML(AChart, ASeriesIndex, idx, AStyleIndent, dataStyleID)
       );

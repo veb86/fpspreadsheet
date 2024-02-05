@@ -420,6 +420,7 @@ type
     constructor Create(AChart: TsChart);
     function AddFillAndLine(ADataPointIndex: Integer; AFill: TsChartFill; ALine: TsChartline; APieOffset: Integer = 0): Integer;
     function AddSolidFill(ADataPointIndex: Integer; AColor: TsColor; ALine: TsChartLine = nil; APieOffset: Integer = 0): Integer;
+    function IndexOfDataPoint(ADataPointIndex: Integer): Integer;
     property Items[AIndex: Integer]: TsChartDataPointStyle read GetItem write SetItem; default;
   end;
 
@@ -2008,6 +2009,14 @@ end;
 function TsChartDataPointStyleList.GetItem(AIndex: Integer): TsChartDataPointStyle;
 begin
   Result := TsChartDataPointStyle(inherited Items[AIndex]);
+end;
+
+function TsChartDataPointStyleList.IndexOfDataPoint(ADataPointIndex: Integer): Integer;
+begin
+  for Result := 0 to Count - 1 do
+    if Items[Result].DataPointIndex = ADataPointIndex then
+      exit;
+  Result := -1;
 end;
 
 procedure TsChartDataPointStyleList.SetItem(AIndex: Integer;
