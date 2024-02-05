@@ -182,6 +182,8 @@ type
     Hatch: Integer;        // Index into chart's Hatches list
     Image: Integer;        // Index into chart's Images list
     Transparency: Double;  // 0.0 ... 1.0
+    constructor CreateSolidFill(AColor: TsColor);
+    constructor CreateHatchFill(AHatchIndex: Integer; ABkColor: TsColor = scTransparent);
     procedure CopyFrom(AFill: TsChartFill);
   end;
 
@@ -1388,6 +1390,24 @@ end;
 
 
 { TsChartFill }
+
+constructor TsChartFill.CreateSolidFill(AColor: TsColor);
+begin
+  inherited Create;
+  Style := cfsSolid;
+  Color := AColor;
+end;
+
+constructor TsChartFill.CreateHatchFill(AHatchIndex: Integer; ABkColor: TsColor = scTransparent);
+begin
+  inherited Create;
+  if aBkColor = scTransparent then
+    Style := cfsHatched
+  else
+    Style := cfsSolidHatched;
+  Hatch := AHatchIndex;
+  Color := ABkColor;
+end;
 
 procedure TsChartFill.CopyFrom(AFill: TsChartFill);
 begin

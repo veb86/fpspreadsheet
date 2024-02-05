@@ -104,6 +104,7 @@ type
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
     procedure WriteChartRegression(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesDatapointLabels(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
+    procedure WriteChartSeriesDatapointStyles(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: Integer);
     procedure WriteChartSeriesTitle(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
@@ -1069,10 +1070,12 @@ begin
     case nodeName of
       'c:spPr':
         begin
-          fill := TsChartFill.Create;  // will be destroyed by the chart!
+          fill := TsChartFill.Create;
           line := TsChartLine.Create;
           ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, fill, line);
-          ASeries.DataPointStyles.AddFillAndLine(fill, line);
+          ASeries.DataPointStyles.AddFillAndLine(fill, line);   // fill and line are copied here
+          line.Free;
+          fill.Free;
         end;
       'c:explosion':
         ; // in case of pie series: movement of individual sector away from center
@@ -1758,7 +1761,6 @@ procedure TsSpreadOOXMLChartReader.ReadChartSeriesLabels(ANode: TDOMNode;
 var
   nodeName, s: String;
   child1, child2, child3: TDOMNode;
-  dataLabels: TsChartDataLabels = [];
 begin
   if ANode = nil then
     exit;
@@ -1792,25 +1794,25 @@ begin
         ;
       'c:showLegendKey':
         if (s = '1') then
-          dataLabels := dataLabels + [cdlSymbol];
+          ASeries.DataLabels := ASeries.DataLabels + [cdlSymbol];
       'c:showVal':
         if (s = '1') then
-          dataLabels := dataLabels + [cdlValue];
+          ASeries.DataLabels := ASeries.DataLabels + [cdlValue];
       'c:showCatName':
         if (s = '1') then
-          dataLabels := dataLabels + [cdlCategory];
+          ASeries.DataLabels := ASeries.DataLabels + [cdlCategory];
       'c:showSerName':
         if (s = '1') then
-          dataLabels := dataLabels + [cdlSeriesName];
+          ASeries.DataLabels := ASeries.DataLabels + [cdlSeriesName];
       'c:showPercent':
         if (s = '1') then
-          dataLabels := dataLabels + [cdlPercentage];
+          ASeries.DataLabels := ASeries.DataLabels + [cdlPercentage];
       'c:showBubbleSize':
         if (s = '1') then
-          dataLabels := dataLabels + [cdlValue];
+          ASeries.DataLabels := ASeries.DataLabels + [cdlValue];
       'c:showLeaderLines':
         if (s = '1') then
-          dataLabels := dataLabels + [cdlLeaderLines];
+          ASeries.DataLabels := ASeries.DataLabels + [cdlLeaderLines];
       'c:extLst':
         begin
           child1 := ANode.FirstChild;
@@ -1859,8 +1861,6 @@ begin
     end;
     ANode := ANode.NextSibling;
   end;
-
-  ASeries.DataLabels := dataLabels;
 end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
@@ -4072,6 +4072,35 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Write individual data point formatting to the chartN.xml stream. The information
+  is written to <c:dPt> nodes underneath <c:ser>, one <c:dPt> node per data point.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartSeriesDataPointStyles(AStream: TStream;
+  AIndent: Integer; ASeries: TsChartSeries);
+var
+  indent: String;
+  i: Integer;
+  dps: TsChartDatapointStyle;
+  explosionStr: String = '';
+begin
+  indent := DupeString(' ', AIndent);
+  for i := 0 to ASeries.DataPointStyles.Count-1 do
+  begin
+    dps := ASeries.DataPointStyles[i];
+    if dps <> nil then
+      AppendToStream(AStream,
+        indent + '<c:dPt>' + LE +
+        indent + '  <c:idx val="' + IntToStr(i) + '"/>' + LE +
+                    explosionStr +   // to do: read explosion value from worksheet!
+        indent + '  <c:spPr>' + LE +
+                      GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, dps.Background, dps.Border) + LE +
+        indent + '  </c:spPr>' + LE +
+        indent + '</c:dPt>' + LE
+      );
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
   Writes the <c:ser> node for the specified chart series
   Is called by all series types.
 
@@ -4112,20 +4141,7 @@ begin
   WriteChartSeriesTitle(AStream, AIndent + 2, ASeries);
 
   // Individual data point formats
-  if ASeries.DataPointStyles.Count > 0 then
-    for i := 0 to ASeries.DataPointStyles.Count-1 do
-    begin
-      dps := ASeries.DataPointStyles[i];
-      AppendToStream(AStream,
-        indent + '  <c:dPt>' + LE +
-        indent + '    <c:idx val="' + IntToStr(i) + '"/>' + LE +
-        explosionStr +                        // to do: read explosion value from worksheet!
-        indent + '    <c:spPr>' + LE +
-        GetChartFillAndLineXML(AIndent + 6, chart, dps.Background, dps.Border) + LE +
-        indent + '   </c:spPr>' + LE +
-        indent + '  </c:dPt>' + LE
-      );
-    end;
+  WriteChartSeriesDatapointStyles(AStream, AIndent + 2, ASeries);
 
   // Line & scatter series: symbol markers
   if (ASeries is TsCustomLineSeries) then

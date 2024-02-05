@@ -61,10 +61,13 @@ begin
     // Individual sector colors, with white border
     // Must be complete, otherwise will be ignored by Calc and replaced by default colors
     line := TsChartline.CreateSolid(scWhite, 0.8);
+    fill := TsChartFill.CreateHatchFill(ch.Hatches.AddLineHatch('ltHorz', chsSingle, $00C0FF, 1, 0.1, 0), scWhite);
     ser.DataPointStyles.AddSolidFill($C47244, line);
     ser.DataPointStyles.AddSolidFill($317DED, line);
     ser.DataPointStyles.AddSolidFill($A5A5A5, line);
-    ser.DataPointStyles.AddSolidFill($00C0FF, line);
+    ser.DataPointStyles.AddFillAndLine(fill, line);
+//    ser.DataPointStyles.AddSolidFill($00C0FF, line);
+    line.Color := scWhite;
     ser.DataPointStyles.AddSolidFill($D69B5B, line);
     line.Free;
 

@@ -34,6 +34,10 @@ uses
   // FPSpreadsheet Visual
   fpSpreadsheetCtrls, fpSpreadsheetGrid, fpsVisualUtils;
 
+{$if LCL_FullVersion >= 3990000}
+ {$define DATAPOINT_STYLES}
+{$ifend}
+
 type
 
   {@@ Chart data source designed to work together with TChart from Lazarus
@@ -175,6 +179,10 @@ type
     procedure UpdatePolarSeries(AWorkbookSeries: TsRadarSeries; AChartSeries: TPolarSeries);
     procedure UpdateScatterSeries(AWorkbookSeries: TsScatterSeries; AChartSeries: TLineSeries);
     procedure UpdateStockSeries(AWorkbookSeries: TsStockSeries; AChartSeries: TStockSeries);
+
+    {$ifdef DATAPOINT_STYLES}
+    procedure UseDatapointStyles(AWorkbookSeries: TsChartSeries; AChartSeries: TChartSeries);
+    {$endif}
 
   public
     constructor Create(AOwner: TComponent); override;
@@ -1234,8 +1242,12 @@ begin
       src.SetColorRange(ASeries.FillColorRange);
     src.SetTitleAddr(ASeries.TitleAddr);
 
+    {$ifdef DATAPOINT_STYLES}
+    UseDatapointStyles(ASeries, Result);
+    {$else}
     // Copy individual data point colors to the chart series.
     src.UseDataPointColors(ASeries);
+    {$endif}
 
     if stackable then begin
       calcSrc := TCalculatedChartSource.Create(self);
@@ -1401,6 +1413,7 @@ begin
   ABrush.Style := bsSolid;   // Fall-back style
 
   hatch := AWorkbookChart.Hatches[AFill.Hatch];
+  ABrush.Color := Convert_sColor_to_Color(hatch.PatternColor);
   case hatch.Style of
     chsSingle:
       if InRange(hatch.PatternAngle mod 180, -22.5, 22.5) then  // horizontal "approximation"
@@ -2668,6 +2681,49 @@ begin
   // Trend line
   UpdateChartSeriesTrendline(AWorkbookSeries, AChartSeries);
 end;
+
+{$ifdef DATAPOINT_STYLES}
+procedure TsWorkbookChartLink.UseDatapointStyles(AWorkbookSeries: TsChartSeries;
+  AChartSeries: TChartSeries);
+var
+  styles: TChartStyles;
+  style: TChartStyle;
+  dps: TsChartDatapointStyle;
+  i: Integer;
+begin
+  if AWorkbookSeries.DataPointStyles.Count = 0 then
+    exit;
+
+  if not ((AWorkbookSeries is TsPieSeries) or (AWorkbookSeries is TsBubbleSeries)) then
+    exit;
+
+  // TAChart cannot handle data point styles in case of layered bar series
+  if (AWorkbookSeries is TsBarSeries) and (AWorkbookSeries.Chart.Series.Count > 1) then
+    exit;
+
+  styles := TChartStyles.Create(AChartSeries);
+  for i := 0 to AWorkbookSeries.DatapointStyles.Count-1 do
+  begin
+    dps := AWorkbookSeries.DataPointStyles[i];
+    style := styles.Add;
+    if dps = nil then
+    begin
+      UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.FILL, style.brush);
+    end else
+    begin
+      UpdateChartBrush(AWorkbookSeries.Chart, dps.Background, style.Brush);
+      UpdateChartPen(AWorkbookSeries.Chart, dps.Border, style.Pen);
+    end;
+  end;
+
+  if (AChartSeries is TPieSeries) then
+    TPieSeries(AChartSeries).Styles := styles
+  else if (AChartSeries is TBubbleSeries) then
+    TBubbleSeries(AChartSeries).Styles := styles
+  else if (AChartSeries is TBarSeries) then
+    TBarSeries(AChartSeries).Styles := styles;
+end;
+{$endif}
 
 {$ENDIF}
 
