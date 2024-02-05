@@ -6,7 +6,7 @@ unit fpsChart;
 interface
 
 uses
-  Classes, SysUtils, Contnrs, FPImage, fpsTypes, fpsUtils;
+  Classes, SysUtils, Types, Contnrs, FPImage, fpsTypes, fpsUtils;
 
 const
   clsNoLine = -2;
@@ -401,7 +401,15 @@ type
     lcsRectangleWedge, lcsRoundRectWedge, lcsEllipseWedge
   );
 
-  TsChartDataPointStyle = class(TsChartFillElement);
+  TsChartDataPointStyle = class(TsChartFillElement)
+  private
+    FDataPointIndex: Integer;
+    FPieOffset: Integer;
+  public
+    procedure CopyFrom(ASource: TsChartElement);
+    property DataPointIndex: Integer read FDataPointIndex write FDataPointIndex;
+    property PieOffset: Integer read FPieOffset write FPieOffset;  // Percentage
+  end;
 
   TsChartDataPointStyleList = class(TFPObjectList)
   private
@@ -410,8 +418,8 @@ type
     procedure SetItem(AIndex: Integer; AValue: TsChartDataPointStyle);
   public
     constructor Create(AChart: TsChart);
-    function AddFillAndLine(AFill: TsChartFill; ALine: TsChartline; ACount: Integer = 1): Integer;
-    function AddSolidFill(AColor: TsColor; ALine: TsChartLine = nil; ACount: Integer = 1): Integer;
+    function AddFillAndLine(ADataPointIndex: Integer; AFill: TsChartFill; ALine: TsChartline; APieOffset: Integer = 0): Integer;
+    function AddSolidFill(ADataPointIndex: Integer; AColor: TsColor; ALine: TsChartLine = nil; APieOffset: Integer = 0): Integer;
     property Items[AIndex: Integer]: TsChartDataPointStyle read GetItem write SetItem; default;
   end;
 
@@ -642,11 +650,13 @@ type
 
   TsPieSeries = class(TsChartSeries)
   private
-    FStartAngle: Integer;         // degrees
     FSliceOrder: TsSliceOrder;
+    FStartAngle: Integer;         // degrees
+    function GetSliceOffset(ASliceIndex: Integer): Integer;
   public
     constructor Create(AChart: TsChart); override;
     property StartAngle: Integer read FStartAngle write FStartAngle;
+    property SliceOffset[ASliceIndex: Integer]: Integer read GetSliceOffset;  // Percentage
     property SliceOrder: TsSliceOrder read FSliceOrder write FSliceOrder;
   end;
 
@@ -1929,6 +1939,19 @@ begin
 end;
 
 
+{ TsChartDataPointStyle }
+
+procedure TsChartDataPointStyle.CopyFrom(ASource: TsChartElement);
+begin
+  inherited CopyFrom(ASource);
+  if ASource is TsChartDataPointStyle then
+  begin
+    FDataPointIndex := tsChartDataPointStyle(ASource).DataPointIndex;
+    FPieOffset := TsChartDataPointStyle(ASource).PieOffset;
+  end;
+end;
+
+
 { TsChartDataPointStyleList }
 
 constructor TsChartDataPointStyleList.Create(AChart: TsChart);
@@ -1939,39 +1962,36 @@ end;
 
 { Note: You have the responsibility to destroy the AFill and ALine instances
   after calling AddFillAndLine ! }
-function TsChartDataPointStyleList.AddFillAndLine(AFill: TsChartFill; ALine: TsChartLine;
-  ACount: Integer = 1): Integer;
+function TsChartDataPointStyleList.AddFillAndLine(ADatapointIndex: Integer;
+  AFill: TsChartFill; ALine: TsChartLine; APieOffset: Integer = 0): Integer;
 var
   dataPointStyle: TsChartDataPointStyle;
-  i: Integer;
 begin
-  if (AFill = nil) and (ALine = nil) then
-    for i := 1 to ACount do
-      Result := inherited Add(nil)
+  dataPointStyle := TsChartDataPointStyle.Create(FChart);
+  dataPointStyle.PieOffset := APieOffset;
+  dataPointStyle.FDataPointIndex := ADataPointIndex;
+
+  if AFill <> nil then
+    dataPointStyle.Background.CopyFrom(AFill)
   else
-    for i := 1 to ACount do
-    begin
-      dataPointStyle := TsChartDataPointStyle.Create(FChart);
-      if AFill <> nil then
-        dataPointStyle.Background.CopyFrom(AFill)
-      else
-      begin
-        dataPointStyle.Background.Free;
-        dataPointStyle.Background := nil;
-      end;
-      if ALine <> nil then
-        dataPointStyle.Border.CopyFrom(ALine)
-      else
-      begin
-        dataPointStyle.Border.Free;
-        dataPointStyle.Border := nil;
-      end;
-      Result := inherited Add(dataPointStyle);
-    end;
+  begin
+    dataPointStyle.Background.Free;
+    dataPointStyle.Background := nil;
+  end;
+
+  if ALine <> nil then
+    dataPointStyle.Border.CopyFrom(ALine)
+  else
+  begin
+    dataPointStyle.Border.Free;
+    dataPointStyle.Border := nil;
+  end;
+
+  Result := inherited Add(dataPointStyle);
 end;
 
-function TsChartDataPointStyleList.AddSolidFill(AColor: TsColor;
-  ALine: TsChartLine = nil; ACount: Integer = 1): Integer;
+function TsChartDataPointStyleList.AddSolidFill(ADataPointIndex: Integer;
+  AColor: TsColor; ALine: TsChartLine = nil; APieOffset: Integer = 0): Integer;
 var
   fill: TsChartFill;
 begin
@@ -1979,7 +1999,7 @@ begin
   try
     fill.Style := cfsSolid;
     fill.Color := AColor;
-    Result := AddFillAndLine(fill, ALine, ACount);
+    Result := AddFillAndLine(ADataPointIndex, fill, ALine, APieOffset);
   finally
     fill.Free;
   end;
@@ -2483,6 +2503,20 @@ begin
   FChartType := ctPie;
   FStartAngle := 90;
   FLine.Color := scBlack;
+end;
+
+function TsPieSeries.GetSliceOffset(ASliceIndex: Integer): Integer;
+var
+  i: Integer;
+  datapointstyle: TsChartDatapointStyle;
+begin
+  Result := 0;
+  if (ASliceIndex >= 0) and (ASliceIndex < FDataPointStyles.Count) then
+  begin
+    datapointstyle := FDatapointStyles[ASliceIndex];
+    if datapointstyle <> nil then
+      Result := datapointstyle.PieOffset;
+  end;
 end;
 
 

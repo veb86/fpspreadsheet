@@ -9,8 +9,8 @@ uses
 procedure WriteHelp;
 begin
   WriteLn('SYNTAX: barchart_write_demo [horz|vert] [side-by-side|stacked|percent-stacked] ');
-  WriteLn('  (no argument) ..... vertical bars');
-  WriteLn('  rotated ........... horizontal bars');
+  WriteLn('  vert .............. vertical bars');
+  WriteLn('  horiz ............. horizontal bars');
   WriteLn('  side-by-side ...... bars side-by-side (default)');
   WriteLn('  stacked ........... stacked bars');
   WriteLn('  percent-stacked ... stacked by percentage');
@@ -36,7 +36,7 @@ begin
 
   for i := 1 to ParamCount do
     case lowercase(ParamStr(i)) of
-      'horz', 'horizontal':
+      'horiz', 'horizontal':
         rotated := true;
       'vert', 'vertical', 'rotated':
         rotated := false;

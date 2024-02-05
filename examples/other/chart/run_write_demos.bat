@@ -10,8 +10,8 @@ areachart_write_demo stacked rotated
 areachart_write_demo percentage rotated
 echo.
 echo Bar series...
-barchart_write_demo
-barchart_write_demo rotated
+barchart_write_demo vert
+barchart_write_demo horiz
 barchart_2axes_write_demo
 barchart_2axes_write_demo rotated
 barchart_stacked_write_demo

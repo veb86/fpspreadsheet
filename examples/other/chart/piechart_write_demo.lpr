@@ -58,18 +58,17 @@ begin
     ser.LabelPosition := lpOutside;
     ser.LabelFormat := '#,##0';
 
-    // Individual sector colors, with white border
+    // Individual slice colors, with white border, sector index 1 "exploded"
     // Must be complete, otherwise will be ignored by Calc and replaced by default colors
     line := TsChartline.CreateSolid(scWhite, 0.8);
     fill := TsChartFill.CreateHatchFill(ch.Hatches.AddLineHatch('ltHorz', chsSingle, $00C0FF, 1, 0.1, 0), scWhite);
-    ser.DataPointStyles.AddSolidFill($C47244, line);
-    ser.DataPointStyles.AddSolidFill($317DED, line);
-    ser.DataPointStyles.AddSolidFill($A5A5A5, line);
-    ser.DataPointStyles.AddFillAndLine(fill, line);
-//    ser.DataPointStyles.AddSolidFill($00C0FF, line);
-    line.Color := scWhite;
-    ser.DataPointStyles.AddSolidFill($D69B5B, line);
+    ser.DataPointStyles.AddSolidFill(0, $C47244, line);
+    ser.DataPointStyles.AddSolidFill(1, $317DED, line, 10);  // with explode offset, as percentage
+    ser.DataPointStyles.AddSolidFill(2, $A5A5A5, line);
+    ser.DataPointStyles.AddFillAndLine(3, fill, line);
+    ser.DataPointStyles.AddSolidFill(4, $D69B5B, line, 20);
     line.Free;
+    fill.Free;
 
     //ser.SetFillColorRange(4, 2, 8, 2);
 

@@ -1061,26 +1061,34 @@ var
   nodename, s: String;
   fill: TsChartFill;
   line: TsChartLine;
+  idx: Integer;
+  explosion: Integer = 0;
 begin
   if ANode = nil then
     exit;
-  while Assigned(ANode) do
-  begin
-    nodeName := ANode.NodeName;
-    case nodeName of
-      'c:spPr':
-        begin
-          fill := TsChartFill.Create;
-          line := TsChartLine.Create;
+
+  fill := TsChartFill.Create;
+  line := TsChartLine.Create;
+  try
+    while Assigned(ANode) do
+    begin
+      nodeName := ANode.NodeName;
+      s := GetAttrValue(ANode, 'val');
+      case nodeName of
+        'c:idx':
+          if not TryStrToInt(s, idx) then  // This is an error condition!
+            exit;
+        'c:spPr':
           ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, fill, line);
-          ASeries.DataPointStyles.AddFillAndLine(fill, line);   // fill and line are copied here
-          line.Free;
-          fill.Free;
-        end;
-      'c:explosion':
-        ; // in case of pie series: movement of individual sector away from center
+        'c:explosion':
+          explosion := StrToIntDef(s, 0);
+      end;
+      ANode := ANode.NextSibling;
     end;
-    ANode := ANode.NextSibling;
+    ASeries.DataPointStyles.AddFillAndLine(idx, fill, line, explosion);   // fill and line are copied here
+  finally
+    line.Free;
+    fill.Free;
   end;
 end;
 
@@ -1867,9 +1875,11 @@ procedure TsSpreadOOXMLChartReader.ReadChartSeriesProps(ANode: TDOMNode; ASeries
 var
   nodeName, s: String;
   n: Integer;
+  idx: Integer;
 begin
   if ANode = nil then
     exit;
+  idx := 0;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
@@ -4081,22 +4091,27 @@ var
   indent: String;
   i: Integer;
   dps: TsChartDatapointStyle;
-  explosionStr: String = '';
+  explosionStr: String;
 begin
   indent := DupeString(' ', AIndent);
   for i := 0 to ASeries.DataPointStyles.Count-1 do
   begin
     dps := ASeries.DataPointStyles[i];
+    explosionStr := '';
     if dps <> nil then
+    begin
+      if dps.PieOffset > 0 then
+        explosionStr := Format('<c:explosion val="%d"/>', [dps.PieOffset]);
       AppendToStream(AStream,
         indent + '<c:dPt>' + LE +
         indent + '  <c:idx val="' + IntToStr(i) + '"/>' + LE +
-                    explosionStr +   // to do: read explosion value from worksheet!
+                    explosionStr +
         indent + '  <c:spPr>' + LE +
                       GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, dps.Background, dps.Border) + LE +
         indent + '  </c:spPr>' + LE +
         indent + '</c:dPt>' + LE
       );
+    end;
   end;
 end;
 

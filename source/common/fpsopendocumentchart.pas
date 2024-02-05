@@ -52,7 +52,7 @@ type
     procedure ReadChartRegressionProps(ANode, AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartRegressionStyle(AStyleNode: TDOMNode; AChart: TsChart; ASeries: TsChartSeries);
     procedure ReadChartSeriesDataPointStyle(AStyleNode: TDOMNode; AChart: TsChart;
-      ASeries: TsChartSeries; var AFill: TsChartFill; var ALine: TsChartLine);
+      ASeries: TsChartSeries; var AFill: TsChartFill; var ALine: TsChartLine; var APieOffset: Integer);
     procedure ReadChartSeriesErrorBarProps(ANode, AStyleNode: TDOMNode; AChart: TsChart;
       ASeries: TsChartSeries);
     procedure ReadChartSeriesErrorBarStyle(AStyleNode: TDOMNode; AChart: TsChart;
@@ -108,7 +108,7 @@ type
     function GetChartRegressionStyleAsXML(AChart: TsChart;
       ASeriesIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesDataPointStyleAsXML(AChart: TsChart;
-      ASeriesIndex, APointIndex, AIndent, AStyleID: Integer): String;
+      ASeriesIndex, ADataPointStyleIndex, AIndent, AStyleID: Integer): String;
     function GetChartSeriesStyleAsXML(AChart: TsChart;
       ASeriesIndex, AIndent, AStyleID: integer): String;
     function GetChartStockSeriesStyleAsXML(AChart: TsChart;
@@ -1356,25 +1356,36 @@ begin
 end;
 
 procedure TsSpreadOpenDocChartReader.ReadChartSeriesDataPointStyle(AStyleNode: TDOMNode;
-  AChart: TsChart; ASeries: TsChartSeries; var AFill: TsChartFill; var ALine: TsChartLine);
+  AChart: TsChart; ASeries: TsChartSeries; var AFill: TsChartFill; var ALine: TsChartLine;
+  var APieOffset: Integer);
 var
-  nodeName: string;
-  grNode: TDOMNode;
+  nodeName, s: string;
+  value: Double;
 begin
   AFill := nil;
   ALine := nil;
+  APieOffset := 0;
 
   nodeName := AStyleNode.NodeName;
   AStyleNode := AStyleNode.FirstChild;
   while AStyleNode <> nil do
   begin
     nodeName := AStyleNode.NodeName;
-    if nodeName = 'style:graphic-properties' then
-    begin
-      AFill := TsChartFill.Create;
-      if not GetChartFillProps(AStyleNode, AChart, AFill) then FreeAndNil(AFill);
-      ALine := TsChartLine.Create;
-      if not GetChartLineProps(AStyleNode, AChart, ALine) then FreeAndNil(ALine);
+    case nodeName of
+      'style:graphic-properties':
+        begin
+          AFill := TsChartFill.Create;
+          if not GetChartFillProps(AStyleNode, AChart, AFill) then FreeAndNil(AFill);
+          ALine := TsChartLine.Create;
+          if not GetChartLineProps(AStyleNode, AChart, ALine) then FreeAndNil(ALine);
+        end;
+      'style:chart-properties':
+        if ASeries is TsPieSeries then
+        begin
+          s := GetAttrValue(AStyleNode, 'chart:pie-offset');
+          if TryStrToFloat(s, value, FPointSeparatorSettings) then
+            APieOffset := round(value);
+        end;
     end;
     AStyleNode := AStyleNode.NextSibling;
   end;
@@ -1467,7 +1478,7 @@ var
   subNode: TDOMNode;
   styleNode: TDOMNode;
   xyCounter: Integer;
-  n: Integer;
+  i, n, pieOffset, ptIndex: Integer;
 begin
   s := GetAttrValue(ANode, 'chart:class');
   if (FChartType = ctStock) and (s = '') then
@@ -1523,6 +1534,7 @@ begin
 
   xyCounter := 0;
   subnode := ANode.FirstChild;
+  ptIndex := 0;
   while subnode <> nil do
   begin
     nodeName := subNode.NodeName;
@@ -1557,16 +1569,21 @@ begin
           fill := nil;
           line := nil;
           n := 1;
+          pieOffset := 0;
           s := GetAttrValue(subnode, 'chart:style-name');
           if s <> '' then
           begin
             styleNode := FindStyleNode(AStyleNode, s);
-            ReadChartSeriesDataPointStyle(styleNode, AChart, series, fill, line); // creates fill and line!
+            ReadChartSeriesDataPointStyle(styleNode, AChart, series, fill, line, pieOffset); // creates fill and line!
           end;
           s := GetAttrValue(subnode, 'chart:repeated');
           if (s <> '') then
             n := StrToIntDef(s, 1);
-          series.DataPointStyles.AddFillAndLine(fill, line, n);
+          for i := 1 to n do
+          begin
+            series.DataPointStyles.AddFillAndLine(ptIndex, fill, line, pieOffset);
+            inc(ptIndex);
+          end;
           fill.Free;  // the styles have been copied to the series datapoint list and are not needed any more.
           line.Free;
         end;
@@ -2692,11 +2709,11 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Creates an xml string which contains the individual style of the
-  datapoint with index APointIndex of the series with index ASeriesIndex.
+  Creates an xml string which contains the individual datapoint style with index
+  ADataPointStyleIndex for the series with index ASeriesIndex.
 -------------------------------------------------------------------------------}
 function TsSpreadOpenDocChartWriter.GetChartSeriesDataPointStyleAsXML(AChart: TsChart;
-  ASeriesIndex, APointIndex, AIndent, AStyleID: Integer): String;
+  ASeriesIndex, ADataPointStyleIndex, AIndent, AStyleID: Integer): String;
 var
   series: TsChartSeries;
   indent: String;
@@ -2708,11 +2725,29 @@ begin
   indent := DupeString(' ', AIndent);
 
   series := AChart.Series[ASeriesIndex];
-  dataPointStyle := series.DataPointStyles[APointIndex];
+
+  if ADataPointStyleIndex > -1 then
+    dataPointStyle := series.DataPointStyles[ADataPointStyleIndex]
+  else
+    dataPointStyle := nil;
+
   if dataPointStyle = nil then
+  begin
+    // The series process by the caller has not individual style format.
+    // We must write a node nevertheless...
+    Result := Format(
+      indent + '<style:style style:name="ch%d" style:family="chart">' + LE +
+      indent + '  <style:chart-properties/>' + LE +
+      indent + '  <style:graphic-properties/>' + LE +
+      indent + '</style:style>' + LE,
+      [ AStyleID ]
+    );
     exit;
+  end;
 
   chartProps := 'chart:solid-type="cuboid" ';
+  if datapointstyle.PieOffset > 0 then
+    chartProps := chartProps + Format('chart:pie-offset="%d" ', [datapointStyle.PieOffset]);
 
   if dataPointStyle.Background <> nil then
     graphProps := graphProps + GetChartFillStyleGraphicPropsAsXML(AChart, dataPointStyle.Background);
@@ -3709,9 +3744,10 @@ var
   trendlineEquation: String = '';
   trendline: TsChartTrendline = nil;
   titleAddr: String;
-  i, count: Integer;
+  i, j, idx, count: Integer;
   nextStyleID, seriesStyleID, trendlineStyleID, trendlineEquStyleID: Integer;
   xErrStyleID, yErrStyleID, dataStyleID: Integer;
+  datapointStyle: TsChartDataPointStyle;
 begin
   indent := DupeString(' ', AChartIndent);
 
@@ -3862,7 +3898,7 @@ begin
     inc(nextStyleID);
   end;
 
-  // Regression
+  // Trend line
   if (series is TsScatterSeries) then
   begin
     trendline := TsScatterSeries(series).trendline;
@@ -3920,6 +3956,18 @@ begin
   else
   begin
     dataStyleID := nextStyleID;
+    // Every data point gets a <chart:data-point> node with individual format
+    for i := 0 to count - 1 do
+    begin
+      AppendToStream(AChartStream, Format(
+        indent + '  <chart:data-point chart:style.name="ch%d"/>' + LE,
+        [ dataStyleID + i ]
+      ));
+      inc(nextStyleID);
+    end;
+  end;
+
+{
     for i := 0 to count - 1 do
     begin
       if (i >= series.DataPointStyles.Count) or (series.DataPointStyles[i] = nil) then
@@ -3936,16 +3984,19 @@ begin
       end;
     end;
   end;
+  }
   AppendToStream(AChartStream,
     indent + '</chart:series>' + LE
   );
+
+  // ---------------------------------------------------------------------------
 
   // Series style
   AppendToStream(AStyleStream,
     GetChartSeriesStyleAsXML(AChart, ASeriesIndex, AStyleIndent, seriesStyleID)
   );
 
-  // Regression style
+  // Trend line style
   if trendlineStyleID <> -1 then
   begin
     AppendToStream(AStyleStream,
@@ -3973,13 +4024,40 @@ begin
     );
 
   // Data point styles
+  if series.DataPointStyles.Count > 0 then
+  begin
+    for i := 0 to count - 1 do
+    begin
+      idx := -1;
+      for j := 0 to series.DataPointStyles.Count-1 do
+      begin
+        dataPointStyle := series.DataPointstyles[j];
+        if (dataPointStyle <> nil) and (dataPointStyle.DataPointIndex = i) then
+        begin
+          idx := j;
+          break;
+        end;
+      end;
+
+      AppendToStream(AStyleStream,
+        GetChartSeriesDataPointStyleAsXML(AChart, ASeriesIndex, idx, AStyleIndent, dataStyleID)
+      );
+      inc(dataStyleID);
+    end;
+  end;
+    (*
+
   for i := 0 to series.DataPointStyles.Count - 1 do
   begin
+    datapointStyle := series.DatapointStyles[i];
+    for j := prevIdx+1 to datapointStyle.DataPointIndex-1 then;
+
     AppendToStream(AStyleStream,
       GetChartSeriesDataPointStyleAsXML(AChart, ASeriesIndex, i, AStyleIndent, dataStyleID)
     );
     inc(dataStyleID);
   end;
+  *)
 
   // Next style
   AStyleID := nextStyleID;
