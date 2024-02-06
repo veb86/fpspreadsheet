@@ -24,8 +24,8 @@ var
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
-  fn: String;
-  stackMode: TsChartStackMode = csmSideBySide;
+  dir, fn: String;
+  stackMode: TsChartStackMode = csmDefault;
   rotated: Boolean = false;
   i: Integer;
 begin
@@ -43,20 +43,24 @@ begin
       'stacked':
         stackMode := csmStacked;
       'side-by-side':
-        stackMode := csmSideBySide;
+        stackMode := csmDefault;
       'percent-stacked', 'stacked-percent', 'percentstacked', 'stackedpercent', 'percentage', 'percent':
         stackMode := csmStackedPercentage;
     end;
 
   case rotated of
-    false: fn := fn + '_vert';
-    true: fn := fn + '_horiz';
+    false: fn := fn + '-vert';
+    true: fn := fn + '-horiz';
   end;
   case stackMode of
-    csmSideBySide: ;
-    csmStacked: fn := fn + '_stacked';
-    csmStackedPercentage: fn := fn + '_stackedPercent';
+    csmDefault: ;
+    csmStacked: fn := fn + '-stacked';
+    csmStackedPercentage: fn := fn + '-stackedpercent';
   end;
+
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
+  fn := dir + fn;
 
   book := TsWorkbook.Create;
   try

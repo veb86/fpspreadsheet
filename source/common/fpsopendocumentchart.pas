@@ -216,7 +216,7 @@ const
   AXIS_ID: array[TAxisKind] of string = ('x', 'y', 'x', 'y');
   AXIS_LEVEL: array[TAxisKind] of string = ('primary', 'primary', 'secondary', 'secondary');
 
-  REGRESSION_TYPE: array [TsTrendlineType] of string = (
+  TRENDLINE_TYPE: array [TsTrendlineType] of string = (
     '', 'linear', 'logarithmic', 'exponential', 'power', 'polynomial');
 
   FALSE_TRUE: array[boolean] of string = ('false', 'true');
@@ -1321,7 +1321,7 @@ begin
 
           s := GetAttrValue(AStyleNode, 'chart:regression-type');
           for rt in TsTrendlineType do
-            if (s <> '') and (REGRESSION_TYPE[rt] = s) then
+            if (s <> '') and (TRENDLINE_TYPE[rt] = s) then
             begin
               trendline.TrendlineType := rt;
               break;
@@ -1485,17 +1485,31 @@ begin
     series := FStockSeries
   else
     case s of
-      'chart:area': series := TsAreaSeries.Create(AChart);
-      'chart:bar': series := TsBarSeries.Create(AChart);
-      'chart:bubble': series := TsBubbleSeries.Create(AChart);
-      'chart:circle': series := TsPieSeries.Create(AChart);
-      'chart:filled-radar': series := TsRadarSeries.Create(AChart);
-      'chart:line': series := TsLineSeries.Create(AChart);
-      'chart:radar': series := TsRadarSeries.Create(AChart);
-      'chart:ring': series := TsRingSeries.Create(AChart);
-      'chart:scatter': series := TsScatterSeries.Create(AChart);
-      // 'chart:stock': --- has been created already
-      else raise Exception.Create('Unknown/unsupported series type.');
+      'chart:area':
+        series := TsAreaSeries.Create(AChart);
+      'chart:bar':
+        series := TsBarSeries.Create(AChart);
+      'chart:bubble':
+        series := TsBubbleSeries.Create(AChart);
+  //    'chart:circle':
+  //      series := TsPieSeries.Create(AChart);
+      'chart:filled-radar':
+        series := TsRadarSeries.Create(AChart);
+      'chart:line':
+        series := TsLineSeries.Create(AChart);
+      'chart:radar':
+        series := TsRadarSeries.Create(AChart);
+      'chart:circle':
+        begin
+          series := TsPieSeries.Create(AChart);
+          if FChartType = ctRing then
+            TsPieSeries(series).InnerRadiusPercent := 50;
+        end;
+      'chart:scatter':
+        series := TsScatterSeries.Create(AChart);
+      // 'chart:stock': --- has already been created
+      else
+        raise Exception.Create('Unknown/unsupported series type.');
     end;
 
   ReadChartCellAddr(ANode, 'chart:label-cell-address', series.TitleAddr);
@@ -2575,7 +2589,7 @@ begin
     verticalStr := 'chart:vertical="true" ';
 
   case AChart.StackMode of
-    csmSideBySide: ;
+    csmDefault: ;
     csmStacked: stackModeStr := 'chart:stacked="true" ';
     csmStackedPercentage: stackModeStr := 'chart:percentage="true" ';
   end;
@@ -2692,7 +2706,7 @@ begin
     'chart:regression-intercept-value="%g" ' +
     'chart:regression-max-degree="%d" ',
     [ trendline.Title,
-      REGRESSION_TYPE[trendline.TrendlineType] ,
+      TRENDLINE_TYPE[trendline.TrendlineType] ,
       trendline.ExtrapolateForwardBy,
       trendline.ExtrapolateBackwardBy,
       FALSE_TRUE[trendline.ForceYIntercept],
@@ -2920,7 +2934,7 @@ function TsSpreadOpenDocChartWriter.GetNumberFormatID(ANumFormat: String): Strin
 var
   idx: Integer;
 begin
-  idx := FNumberFormatList.IndexOf(ANumFormat);
+  idx := TsChartNumberFormatList(FNumberFormatList).IndexOfFormat(ANumFormat);
   if idx > -1 then
     Result := Format('N%d', [idx])
   else
@@ -3748,7 +3762,7 @@ var
   domainRangeY: String = '';
   fillColorRange: String = '';
   lineColorRange: String = '';
-  chartClass: String = '';
+  chartType: String = '';
   seriesYAxis: String = '';
   trendlineEquation: String = '';
   trendline: TsChartTrendline = nil;
@@ -3756,7 +3770,6 @@ var
   i, idx, count: Integer;
   nextStyleID, seriesStyleID, trendlineStyleID, trendlineEquStyleID: Integer;
   xErrStyleID, yErrStyleID, dataStyleID: Integer;
-  datapointStyle: TsChartDataPointStyle;
 begin
   indent := DupeString(' ', AChartIndent);
 
@@ -3850,10 +3863,10 @@ begin
   else
     count := series.YRange.Col2 - series.YRange.Col1 + 1;
 
-  if series is TsRingSeries then
-    chartClass := 'circle'
+  if series is TsPieSeries then
+    chartType := 'circle'
   else
-    chartClass := CHART_TYPE_NAMES[series.ChartType];
+    chartType := CHART_TYPE_NAMES[series.ChartType];
 
   AppendToStream(AChartStream, Format(
     indent + '<chart:series chart:style-name="ch%d" ' +
@@ -3861,7 +3874,7 @@ begin
                seriesYAxis +                                  // attached y axis
                'chart:values-cell-range-address="%s" ' +      // y values
                'chart:label-cell-address="%s">' + LE,         // series title
-    [ seriesStyleID, chartClass, valuesRange, titleAddr, chartClass ]
+    [ seriesStyleID, chartType, valuesRange, titleAddr, chartType ]
   ));
   inc(nextStyleID);
 

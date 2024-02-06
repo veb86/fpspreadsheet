@@ -13,7 +13,7 @@ var
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsScatterSeries;
-  fn: String;
+  dir, fn: String;
   rotated: Boolean;
 begin
   fn := FILE_NAME;
@@ -21,6 +21,10 @@ begin
   rotated := (ParamCount >= 1) and (lowercase(ParamStr(1)) = 'rotated');
   if rotated then
     fn := fn + '-rotated';
+
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
+  fn := dir + fn;
 
   book := TsWorkbook.Create;
   try
@@ -70,10 +74,15 @@ begin
     ser.Trendline.Equation.XName := 'X';
     ser.Trendline.Equation.YName := 'Y';
     ser.Trendline.Equation.Border.Style := clsSolid;
-    ser.Trendline.Equation.Border.Color := scRed;
+    ser.Trendline.Equation.Border.Color := scGray;
     ser.Trendline.Equation.Fill.Style := cfsSolid;
     ser.Trendline.Equation.Fill.Color := scSilver;
     ser.Trendline.Equation.NumberFormat := '0.000';
+
+    // Fine-tuning the position of the trendline result box is not very
+    // practical and error-prone because its is measure relative to the
+    // top/left corner of the chart, but we don't know where the plotarea is.
+
     //ser.Trendline.Equation.Top := 5;
     //ser.Trendline.Equation.Left := 5;
 

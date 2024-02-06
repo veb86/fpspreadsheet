@@ -1313,36 +1313,37 @@ var
   nodeName, s: String;
   ser: TsPieSeries;
   x: Double;
+  ringRadius: Integer = 50;
+  startAngle: Integer = 90;
 begin
   if ANode = nil then
     exit;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:ser':
         begin
-          if RingMode then
-            ser := TsRingSeries.Create(AChart)
-          else
-            ser := TsPieSeries.Create(AChart);
+          ser := TsPieSeries.Create(AChart);
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:firstSliceAng':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          if TryStrToFloat(s, x, FPointSeparatorSettings) then
-            ser.StartAngle := round(x) + 90;
-        end;
+        if TryStrToFloat(s, x, FPointSeparatorSettings) then
+          startAngle := round(x) + 90;
       'c:holeSize':
         if RingMode then
-        begin
-          s := GetAttrValue(ANode, 'val');
           if TryStrToFloat(s, x, FPointSeparatorSettings) then
-            TsRingSeries(ser).InnerRadiusPercent := round(x);
-        end;
+            ringRadius := round(x);
     end;
     ANode := ANode.NextSibling;
+  end;
+
+  if ser <> nil then
+  begin
+    TsPieSeries(ser).StartAngle := startAngle;
+    if RingMode then
+      TsPieSeries(ser).InnerRadiusPercent := ringRadius;
   end;
 end;
 
@@ -3438,7 +3439,7 @@ begin
       isfirstOfGroup := false;
     if (ASeriesIndex < chart.Series.Count-1) and (chart.Series[ASeriesIndex+1].GroupIndex = ASeries.GroupIndex) then
       isLastOfGroup := false;
-    if chart.StackMode <> csmSideBySide then
+    if chart.StackMode <> csmDefault then
       overlap := 100
   end;
 
@@ -3900,7 +3901,7 @@ begin
           WriteBubbleSeries(AStream, AIndent + 2, TsBubbleSeries(ser), i);
           xAxKind := 'c:valAx';
         end;
-      ctPie:
+      ctPie, ctRing:
         WritePieSeries(AStream, AIndent + 2, TsPieSeries(ser), i);
       ctScatter:
         begin
@@ -3939,23 +3940,35 @@ procedure TsSpreadOOXMLChartWriter.WritePieSeries(AStream: TStream;
 var
   indent: String;
   chart: TsChart;
+  nodeName: String;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
+  if ASeries.InnerRadiusPercent > 0 then
+    nodeName := 'c:doughnutChart'
+  else
+    nodeName := 'c:pieChart';
+
   AppendToStream(AStream,
-    indent + '<c:pieChart>' + LE +
+    indent + '<' + nodeName + '>' + LE +
     indent + '  <c:varyColors val="1"/>' + LE
   );
 
   WriteChartSeriesNode(AStream, AIndent + 4, ASeries, ASeriesIndex);
 
+  if ASeries.InnerRadiusPercent > 0 then
+    AppendToStream(AStream, Format(
+      indent + '<c:holeSize val="%d"/>' + LE, [ASeries.InnerRadiusPercent ]
+    ));
+
   AppendToStream(AStream, Format(
     indent + '<c:firstSliceAng val="%d"/>' + LE,
     [ (90 - ASeries.StartAngle) mod 360 ]
   ));
+
   AppendToStream(AStream,
-    indent + '</c:pieChart>' + LE
+    indent + '</' + nodeName + '>' + LE
   );
 end;
 

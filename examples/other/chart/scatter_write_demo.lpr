@@ -8,10 +8,11 @@ uses
 
 procedure WriteHelp;
 begin
-  WriteLn('SYNTAX: scatter_write_demo lin|log|loglog');
-  WriteLn('  lin ........... Both axes linear');
+  WriteLn('SYNTAX: scatter_write_demo lin|log|loglog [inverted]');
+  WriteLn('  lin ........... Both axes linear (default)');
   WriteLn('  log ........... y axis logarithmic');
   WriteLn('  loglog ........ Both axes logarithmic');
+  WriteLn('  inverted ...... inverted y axis');
   halt;
 end;
 
@@ -22,33 +23,37 @@ var
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsScatterSeries;
-  fn: String;
-  mode: Integer;  // 0=linear, 1=log, 2=log-log
+  dir, fn: String;
+  mode: Integer = 0;  // 0=linear, 1=log, 2=log-log
+  inv: Boolean = false;
+  i: Integer;
 
 begin
-  if ParamCount >= 1 then
-  begin
-    case lowercase(ParamStr(1)) of
+  for i := 1 to ParamCount do
+    case lowercase(ParamStr(i)) of
       'lin':
-        begin
-          mode := 0;
-          fn := FILE_NAME + '-lin';
-        end;
+        mode := 0;
       'log':
-        begin
-          mode := 1;
-          fn := FILE_NAME + '-log';
-        end;
+        mode := 1;
       'loglog', 'log-log':
-        begin
-          mode := 2;
-          fn := FILE_NAME + '-loglog';
-        end;
+        mode := 2;
+      'inverted', 'inv':
+        inv := true;
       else
         WriteHelp;
     end;
-  end else
-    WriteHelp;
+
+  case mode of
+    0: fn := FILE_NAME + '-lin';
+    1: fn := FILE_NAME + '-log';
+    2: fn := FILE_NAME + '-loglog';
+  end;
+  if inv then
+    fn := fn + '-inverted';
+
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
+  fn := dir + fn;
 
   book := TsWorkbook.Create;
   try
@@ -92,8 +97,8 @@ begin
          end;
     end;
 
-    // Create chart: left/top in cell D4, 150 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 3, 150, 100);
+    // Create chart: left/top in cell D4, 160 mm x 100 mm
+    ch := book.AddChart(sheet, 2, 2, 160, 100);
 
     // Chart properties
     ch.Border.Style := clsNoLine;
@@ -111,10 +116,11 @@ begin
            ch.YAxis.Logarithmic := true;
         end;
     end;
+    ch.YAxis.Inverted := inv;
 
-    // For testing:
-    // ch.XAxis.Inverted := true;
-    ch.Interpolation := ciCubicSpline;
+    // For further testing:
+    //  ch.XAxis.Inverted := true;
+    //  ch.Interpolation := ciCubicSpline;
 
     // Add scatter series
     ser := TsScatterSeries.Create(ch);

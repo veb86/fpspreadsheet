@@ -1354,7 +1354,7 @@ begin
       FChart.LeftAxis.Marks.Format := Convert_NumFormatStr_to_FormatStr(axis.LabelFormatPercent)
     else
       FChart.LeftAxis.Marks.Format := Convert_NumFormatStr_to_FormatStr(axis.LabelFormat);
-    FChart.Legend.Inverted := ASeries.Chart.StackMode <> csmSideBySide;
+    FChart.Legend.Inverted := ASeries.Chart.StackMode <> csmDefault;
   end;
 
   FChart.AddSeries(ser);
@@ -1921,7 +1921,7 @@ begin
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.AreaContourPen);
   AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
   AChartSeries.AreaLinesPen.Style := psClear;
-  AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
+  AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmDefault;
   AChartSeries.UseZeroLevel := true;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
@@ -1943,7 +1943,7 @@ procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
     i, n: Integer;
   begin
     n := 1;
-    if (AWorkbookSeries.Chart.GetChartType = ctBar) and (AWorkbookSeries.Chart.StackMode = csmSideBySide) then
+    if (AWorkbookSeries.Chart.GetChartType = ctBar) and (AWorkbookSeries.Chart.StackMode = csmDefault) then
       for i := 0 to AWorkbookSeries.Chart.Series.Count-1 do
       begin
         ser := AWorkbookSeries.Chart.Series[i];
@@ -1961,7 +1961,7 @@ begin
   AChartSeries.BarWidthPercent := CalcBarWidthPercent;
   AChartSeries.BarOffsetPercent := 0; // TAChart currently does not support offsets in multiple-y bar series.
   AChartSeries.BarWidthStyle := bwPercentMin;
-  AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
+  AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmDefault;
   if AChartSeries.Source is TCalculatedChartSource then
     TCalculatedChartSource(AChartSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
 
@@ -2628,7 +2628,7 @@ begin
     UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, lineSeries.LinePen);
     lineSeries.ShowLines := AWorkbookSeries.Line.Style <> clsNoLine;
     seriesPointer := lineSeries.Pointer;
-    lineSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmSideBySide;
+    lineSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmDefault;
     if lineSeries.Source is TCalculatedChartSource then
       TCalculatedChartSource(lineSeries.Source).Percentage := (AWorkbookSeries.Chart.StackMode = csmStackedPercentage);
   end
@@ -2669,8 +2669,8 @@ begin
   AChartSeries.Legend.Format := '%2:s';
   {$IF LCL_FullVersion >= 2020000}
   AChartSeries.StartAngle := AWorkbookSeries.StartAngle;
-  if AWorkbookSeries is TsRingSeries then
-    AChartSeries.InnerRadiusPercent := TsRingSeries(AWorkbookSeries).InnerRadiusPercent;
+  if AWorkbookSeries is TsPieSeries then
+    AChartSeries.InnerRadiusPercent := TsPieSeries(AWorkbookSeries).InnerRadiusPercent;
   {$IFEND}
   AChartSeries.Exploded := true;
 

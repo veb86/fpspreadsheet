@@ -651,11 +651,15 @@ type
 
   TsPieSeries = class(TsChartSeries)
   private
+    FInnerRadiusPercent: Integer;
     FSliceOrder: TsSliceOrder;
     FStartAngle: Integer;         // degrees
     function GetSliceOffset(ASliceIndex: Integer): Integer;
+  protected
+    function GetChartType: TsChartType; override;
   public
     constructor Create(AChart: TsChart); override;
+    property InnerRadiusPercent: Integer read FInnerRadiusPercent write FInnerRadiusPercent;
     property StartAngle: Integer read FStartAngle write FStartAngle;
     property SliceOffset[ASliceIndex: Integer]: Integer read GetSliceOffset;  // Percentage
     property SliceOrder: TsSliceOrder read FSliceOrder write FSliceOrder;
@@ -665,7 +669,7 @@ type
   protected
     function GetChartType: TsChartType; override;
   end;
-
+      {
   TsRingSeries = class(TsPieSeries)
   private
     FInnerRadiusPercent: Integer;
@@ -673,7 +677,7 @@ type
     constructor Create(AChart: TsChart); override;
     property InnerRadiusPercent: Integer read FInnerRadiusPercent write FInnerRadiusPercent;
   end;
-
+       }
   TsCustomScatterSeries = class(TsCustomLineSeries)
   public
     constructor Create(AChart: TsChart); override;
@@ -751,7 +755,7 @@ type
     property Items[AIndex: Integer]: TsChartSeries read GetItem write SetItem; default;
   end;
 
-  TsChartStackMode = (csmSideBySide, csmStacked, csmStackedPercentage);
+  TsChartStackMode = (csmDefault, csmStacked, csmStackedPercentage);
   TsChartInterpolation = (
     ciLinear,
     ciCubicSpline, ciBSpline,
@@ -2517,6 +2521,14 @@ begin
   FLine.Color := scBlack;
 end;
 
+function TsPieSeries.GetChartType: TsChartType;
+begin
+  if FInnerRadiusPercent > 0 then
+    Result := ctRing
+  else
+    Result := ctPie;
+end;
+
 function TsPieSeries.GetSliceOffset(ASliceIndex: Integer): Integer;
 var
   i: Integer;
@@ -2541,7 +2553,7 @@ begin
     Result := ctRadar;
 end;
 
-
+            (*
 { TsRingSeries }
 constructor TsRingSeries.Create(AChart: TsChart);
 begin
@@ -2549,7 +2561,7 @@ begin
   FChartType := ctRing;
   FLine.Color := scBlack;
   FInnerRadiusPercent := 50;
-end;
+end;          *)
 
 
 { TsTrendlineEquation }

@@ -11,12 +11,19 @@ const
   sDISTANCE = 'Distance from Sun' + LineEnding + '(relative to Earth)';
   sPERIOD = 'Orbital period' + LineEnding + '(relative to Earth)';
   sDIAMETER = 'Diameter (km)';
+
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsBubbleSeries;
+  fn, dir: String;
+
 begin
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
+  fn := dir + FILE_NAME;
+
   book := TsWorkbook.Create;
   try
     // worksheet
@@ -77,11 +84,11 @@ begin
     ser.DataPointStyles.AddSolidFill(2, $c47244);
     ser.DataPointStyles.AddSolidFill(3, scRed);
 
-    book.WriteToFile(FILE_NAME + '.xlsx', true);
-    WriteLn('Data saved with chart in ', FILE_NAME + '.xlsx');
+    book.WriteToFile(fn + '.xlsx', true);
+    WriteLn('Data saved with chart in ', fn + '.xlsx');
 
-    book.WriteToFile(FILE_NAME + '.ods', true);
-    WriteLn('Data saved with chart in ', FILE_NAME + '.ods');
+    book.WriteToFile(fn + '.ods', true);
+    WriteLn('Data saved with chart in ', fn + '.ods');
   finally
     book.Free;
   end;

@@ -6,16 +6,29 @@ uses
   SysUtils, LazVersion,
   fpspreadsheet, fpstypes, fpsUtils, fpschart, xlsxooxml, fpsopendocument;
 
-const
-  FILE_NAME = 'pie';
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
   ch: TsChart;
-  ser: TsChartSeries;
+  ser: TsPieSeries;
   fill: TsChartFill;
   line: TsChartLine;
+  fn, dir: String;
+  ringMode: Boolean = false;
 begin
+  if (ParamCount >= 1) then
+    case lowercase(ParamStr(1)) of
+      'ring': ringMode := true;
+    end;
+
+  case ringMode of
+    false: fn := 'pie';
+    true: fn := 'ring';
+  end;
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
+  fn := dir + fn;
+
   book := TsWorkbook.Create;
   try
     // worksheet
@@ -46,8 +59,7 @@ begin
     ch.Legend.Border.Style := clsNoLine;
 
     // Add pie series
-    ser := TsPieSeries.Create(ch);       // Select one of these...
-    //ser := TsRingSeries.Create(ch);
+    ser := TsPieSeries.Create(ch);
 
     // Series properties
     ser.SetTitleAddr(0, 0);
@@ -57,6 +69,8 @@ begin
     ser.LabelSeparator := #10; // '\n'; // this is the symbol for a line-break
     ser.LabelPosition := lpOutside;
     ser.LabelFormat := '#,##0';
+    if ringMode then
+      ser.InnerRadiusPercent := 30;
 
     // Individual slice colors, with white border, sector index 1 "exploded"
     // Must be complete, otherwise will be ignored by Calc and replaced by default colors
@@ -76,11 +90,11 @@ begin
 
     //ser.SetFillColorRange(4, 2, 8, 2);
 
-    book.WriteToFile(FILE_NAME+'.xlsx', true);
-    WriteLn('Data saved with chart in ', FILE_NAME+'.xlsx');
+    book.WriteToFile(fn+'.xlsx', true);
+    WriteLn('Data saved with chart in ', fn+'.xlsx');
 
-    book.WriteToFile(FILE_NAME + '.ods', true);
-    WriteLn('Data saved with chart in ', FILE_NAME+'.ods');
+    book.WriteToFile(fn + '.ods', true);
+    WriteLn('Data saved with chart in ', fn+'.ods');
   finally
     book.Free;
   end;
