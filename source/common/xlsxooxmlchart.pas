@@ -3964,14 +3964,25 @@ procedure TsSpreadOOXMLChartWriter.WriteScatterSeries(AStream: TStream;
 var
   indent: String;
   chart: TsChart;
+  scatterStyleStr: String;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
+  case chart.Interpolation of
+    ciLinear:
+      scatterStyleStr := 'lineMarker';
+    ciCubicSpline, ciBSpline:
+      scatterStyleStr := 'smoothMarker';
+    else
+      //ciStepStart, ciStepEnd, ciCenterX, ciCenterY
+      scatterStyleStr := 'lineMarker';      // better than nothing...
+  end;
+
   AppendToStream(AStream,
     indent + '<c:scatterChart>' + LE +
     indent + '  <c:varyColors val="0"/>' + LE +
-    indent + '  <c:scatterStyle val="lineMarker"/>' + LE
+    indent + '  <c:scatterStyle val="' + scatterStyleStr + '"/>' + LE
   );
 
   WriteChartSeriesNode(AStream, AIndent + 4, ASeries, ASeriesIndex);

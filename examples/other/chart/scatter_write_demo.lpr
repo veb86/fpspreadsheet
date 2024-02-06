@@ -111,7 +111,10 @@ begin
            ch.YAxis.Logarithmic := true;
         end;
     end;
-    ch.XAxis.Inverted := true;
+
+    // For testing:
+    // ch.XAxis.Inverted := true;
+    ch.Interpolation := ciCubicSpline;
 
     // Add scatter series
     ser := TsScatterSeries.Create(ch);
