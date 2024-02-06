@@ -1866,6 +1866,12 @@ begin
             child1 := child1.NextSibling;
           end;
         end;
+      'c:separator':
+        begin
+          s := GetNodeValue(ANode);
+          if (s = #10) or (s = #13#10) or (s = #13) then s := LineEnding;
+          ASeries.LabelSeparator := s;
+        end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -4055,16 +4061,30 @@ procedure TsSpreadOOXMLChartWriter.WriteChartSeriesDatapointLabels(AStream: TStr
   AIndent: Integer; ASeries: TsChartSeries);
 var
   indent: String;
+  separator: String = '';
 begin
   if ASeries.DataLabels = [] then
     exit;
 
   indent := DupeString(' ', AIndent);
 
+  separator := trim(ASeries.LabelSeparator);
+
+  case ASeries.LabelSeparator of
+    '\n', #10, #13, #13#10:
+      separator := FPS_LINE_ENDING;  // Excel wants #10
+    ' ':
+      separator := '';
+    else
+      separator := ASeries.LabelSeparator;
+  end;
+  if separator <> '' then
+    separator := indent + '  <c:separator>' + separator + '</c:separator>' + LE;
+
   AppendToStream(AStream, Format(
     indent + '<c:dLbls>' + LE +
     indent + '  <c:spPr>' + LE +
-                GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder) + LE +
+                  GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder) + LE +
     indent + '  </c:spPr>' + LE +
     indent + '  <c:showLegendKey val="%d"/>' + LE +
     indent + '  <c:showVal val="%d"/>' + LE +
@@ -4073,6 +4093,7 @@ begin
     indent + '  <c:showPercent val="%d"/>' + LE +
     indent + '  <c:showBubbleSize val="%d"/>' + LE +
     indent + '  <c:showLeaderLines val="%d"/>' + LE +
+                separator +
     indent + '</c:dLbls>' + LE,
     [
       FALSE_TRUE[cdlSymbol in ASeries.DataLabels],

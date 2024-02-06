@@ -54,7 +54,7 @@ begin
     ser.SetLabelRange(4, 0, 8, 0);
     ser.SetYRange(4, 1, 8, 1);
     ser.DataLabels := [cdlCategory, cdlValue];
-    ser.LabelSeparator := '\n'; // this is the symbol for a line-break
+    ser.LabelSeparator := #10; // '\n'; // this is the symbol for a line-break
     ser.LabelPosition := lpOutside;
     ser.LabelFormat := '#,##0';
 

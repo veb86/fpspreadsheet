@@ -2428,10 +2428,8 @@ procedure TsWorkbookChartLink.UpdateChartSeriesMarks(AWorkbookSeries: TsChartSer
   AChartSeries: TChartSeries);
 begin
   ConstructSeriesMarks(AWorkbookSeries, AChartSeries);
-  AChartSeries.Marks.LinkPen.Visible := false;
 
   AChartSeries.Marks.YIndex := -1;
-  AChartSeries.Marks.Distance := 20;
   AChartSeries.Marks.Attachment := maDefault;
   Convert_sFont_to_Font(AWorkbookSeries.LabelFont, AChartSeries.Marks.LabelFont);
 
@@ -2496,6 +2494,13 @@ begin
     lcsEllipseWedge: AChartSeries.Marks.Shape := clsEllipse;      // replacement
     else AChartSeries.Marks.Shape := clsRectangle;                // replacement
   end;
+
+  AChartSeries.Marks.LinkPen.Visible := (cdlLeaderLines in AWorkbookSeries.DataLabels);
+  AChartSeries.Marks.LinkPen.Color := AChartSeries.Marks.Frame.Color;
+  if AChartSeries.Marks.LinkPen.Visible then
+    AChartSeries.Marks.Distance := 20
+  else
+    AChartSeries.Marks.Distance := 0;
 end;
 
 procedure TsWorkbookChartLink.UpdateChartSeriesTrendline(AWorkbookSeries: TsChartSeries;

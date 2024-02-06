@@ -1691,16 +1691,20 @@ begin
                 nodeName := childNode2.NodeName;
                 if nodeName = 'text:p' then
                 begin
-                  childNode3 := childNode2.FirstChild;
-                  while childNode3 <> nil do
+                  ASeries.LabelSeparator := GetNodeValue(childNode2);
+                  if ASeries.LabelSeparator = '' then
                   begin
-                    nodeName := childNode3.NodeName;
-                    if nodeName = 'text:line-break' then
+                    childNode3 := childNode2.FirstChild;
+                    while childNode3 <> nil do
                     begin
-                      ASeries.LabelSeparator := LineEnding;
-                      break;
+                      nodeName := childNode3.NodeName;
+                      if nodeName = 'text:line-break' then
+                      begin
+                        ASeries.LabelSeparator := LineEnding;
+                        break;
+                      end;
+                      childNode3 := childNode3.NextSibling;
                     end;
-                    childNode3 := childNode3.NextSibling;
                   end;
                 end;
                 childNode2 := childNode2.NextSibling;
@@ -2825,8 +2829,14 @@ begin
   else
   begin
     labelSeparator := series.LabelSeparator;
-    if pos('\n', labelSeparator) > 0 then
-      labelSeparator := StringReplace(labelSeparator, '\n', '<text:line-break/>', [rfReplaceAll, rfIgnoreCase]);
+    if (pos('\n', labelSeparator) > 0) then
+      labelSeparator := StringReplace(labelSeparator, '\n', '<text:line-break/>', [rfReplaceAll, rfIgnoreCase])
+    else if (pos(#13#10, labelSeparator) > 0) then
+      labelSeparator := StringReplace(labelSeparator, #13#10, '<text:line-break/>', [rfReplaceAll, rfIgnoreCase])
+    else if (pos(#10, labelSeparator) > 0) then
+      labelSeparator := StringReplace(labelSeparator, #10, '<text:line-break/>', [rfReplaceAll, rfIgnoreCase])
+    else if (pos(#13, labelSeparator) > 0) then
+      labelSeparator := StringReplace(labelSeparator, #13, '<text:line-break/>', [rfReplaceAll, rfIgnoreCase]);
     labelSeparator :=
       indent + '    <chart:label-separator>' + LE +
       indent + '      <text:p>' + labelSeparator + '</text:p>' + LE +
@@ -3966,24 +3976,6 @@ begin
     end;
   end;
 
-{
-    for i := 0 to count - 1 do
-    begin
-      if (i >= series.DataPointStyles.Count) or (series.DataPointStyles[i] = nil) then
-        AppendToStream(AChartStream,
-          indent + '  <chart:data-point chart:repeated="1" />' + LE
-        )
-      else
-      begin
-        AppendToStream(AChartStream, Format(
-          indent + '  <chart:data-point chart:style-name="ch%d" />' + LE,   // ToDo: could contain "chart:repeated"
-          [ dataStyleID + i]
-        ));
-        inc(nextStyleID);
-      end;
-    end;
-  end;
-  }
   AppendToStream(AChartStream,
     indent + '</chart:series>' + LE
   );
@@ -4034,19 +4026,6 @@ begin
       inc(dataStyleID);
     end;
   end;
-    (*
-
-  for i := 0 to series.DataPointStyles.Count - 1 do
-  begin
-    datapointStyle := series.DatapointStyles[i];
-    for j := prevIdx+1 to datapointStyle.DataPointIndex-1 then;
-
-    AppendToStream(AStyleStream,
-      GetChartSeriesDataPointStyleAsXML(AChart, ASeriesIndex, i, AStyleIndent, dataStyleID)
-    );
-    inc(dataStyleID);
-  end;
-  *)
 
   // Next style
   AStyleID := nextStyleID;
