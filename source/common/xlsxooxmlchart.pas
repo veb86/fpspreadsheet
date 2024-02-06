@@ -3620,12 +3620,15 @@ end;
 
 procedure TsSpreadOOXMLChartWriter.WriteChartAxisScaling(AStream: TStream;
   AIndent: Integer; Axis: TsChartAxis);
+const
+  INVERTED: array[boolean] of String = ('minMax', 'maxMin');
 var
   indent: String;
   intv: Double;
   logStr: String = '';
   maxStr: String = '';
   minStr: String = '';
+  orientationStr: String;
 begin
   indent := DupeString(' ', AIndent);
 
@@ -3638,12 +3641,14 @@ begin
   if Axis.Logarithmic then
     logStr := indent + Format('  <c:logBase val="%g"/>', [Axis.LogBase], FPointSeparatorSettings) + LE;
 
+  orientationStr := indent + Format('  <c:orientation val="%s"/>', [ INVERTED[Axis.Inverted] ]) + LE;
+
   AppendToStream(AStream,
     indent + '<c:scaling>' + LE +
                 maxStr +
                 minStr +
                 logStr +
-    indent + '  <c:orientation val="minMax"/>' + LE +
+                orientationStr +
     indent + '</c:scaling>' + LE
   );
 

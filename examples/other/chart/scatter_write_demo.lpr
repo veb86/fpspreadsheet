@@ -111,6 +111,7 @@ begin
            ch.YAxis.Logarithmic := true;
         end;
     end;
+    ch.XAxis.Inverted := true;
 
     // Add scatter series
     ser := TsScatterSeries.Create(ch);
