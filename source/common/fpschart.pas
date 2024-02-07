@@ -619,13 +619,12 @@ type
     FSymbolWidth: Double;   // in mm
     FShowLines: Boolean;
     FShowSymbols: Boolean;
-    FBorder: TsChartLine;
-    function GetSymbolFill: TsChartFill;
-    procedure SetSymbolFill(Value: TsChartFill);
+    FSymbolBorder: TsChartLine;
+    FSymbolFill: TsChartFill;
   protected
     property Symbol: TsChartSeriesSymbol read FSymbol write FSymbol;
-    property SymbolBorder: TsChartLine read FBorder write FBorder;
-    property SymbolFill: TsChartFill read GetSymbolFill write SetSymbolFill;
+    property SymbolBorder: TsChartLine read FSymbolBorder write FSymbolBorder;
+    property SymbolFill: TsChartFill read FSymbolFill write FSymbolFill;
     property SymbolHeight: double read FSymbolHeight write FSymbolHeight;
     property SymbolWidth: double read FSymbolWidth write FSymbolWidth;
     property ShowLines: Boolean read FShowLines write FShowLines;
@@ -666,18 +665,15 @@ type
   end;
 
   TsRadarSeries = class(TsLineSeries)
-  protected
-    function GetChartType: TsChartType; override;
-  end;
-      {
-  TsRingSeries = class(TsPieSeries)
-  private
-    FInnerRadiusPercent: Integer;
   public
     constructor Create(AChart: TsChart); override;
-    property InnerRadiusPercent: Integer read FInnerRadiusPercent write FInnerRadiusPercent;
   end;
-       }
+
+  TsFilledRadarSeries = class(TsRadarSeries)
+  public
+    constructor Create(AChart: TsChart); override;
+  end;
+
   TsCustomScatterSeries = class(TsCustomLineSeries)
   public
     constructor Create(AChart: TsChart); override;
@@ -2490,27 +2486,22 @@ begin
   FShowSymbols := false;
   FShowLines := true;
 
-  FBorder := TsChartLine.Create;
-  FBorder.Style := clsSolid;
-  FBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  FBorder.Color := scBlack;
+  FSymbolBorder := TsChartLine.Create;
+  FSymbolBorder.Style := clsSolid;
+  FSymbolBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
+  FSymbolBorder.Color := scBlack;
+
+  FSymbolFill := TsChartFill.Create;
+  FSymbolFill.Style := cfsNoFill;
 end;
 
 destructor TsCustomLineSeries.Destroy;
 begin
-  FBorder.Free;
+  FSymbolBorder.Free;
+  FSymbolFill.Free;
   inherited;
 end;
 
-function TsCustomLineSeries.GetSymbolFill: TsChartFill;
-begin
-  Result := FFill;
-end;
-
-procedure TsCustomLineSeries.SetSymbolFill(Value: TsChartFill);
-begin
-  FFill := Value;
-end;
 
 { TsPieSeries }
 constructor TsPieSeries.Create(AChart: TsChart);
@@ -2545,23 +2536,21 @@ end;
 
 
 { TsRadarSeries }
-function TsRadarSeries.GetChartType: TsChartType;
-begin
-  if Fill.Style <> cfsNoFill then
-    Result := ctFilledRadar
-  else
-    Result := ctRadar;
-end;
-
-            (*
-{ TsRingSeries }
-constructor TsRingSeries.Create(AChart: TsChart);
+constructor TsRadarSeries.Create(AChart: TsChart);
 begin
   inherited Create(AChart);
-  FChartType := ctRing;
-  FLine.Color := scBlack;
-  FInnerRadiusPercent := 50;
-end;          *)
+  FChartType := ctRadar;
+  FFill.Style := cfsNoFill;  // to make the series default to ctRadar rather than ctFilledRadar
+end;
+
+
+{ TsFilledRadarSeries }
+constructor TsFilledRadarSeries.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FChartType := ctFilledRadar;
+  Fill.Style := cfsSolid;
+end;
 
 
 { TsTrendlineEquation }

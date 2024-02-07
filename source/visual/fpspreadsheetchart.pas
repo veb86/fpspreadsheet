@@ -550,10 +550,11 @@ begin
         if FIntegerX then
           value := trunc(value);
       end else
-      if FCyclicX then
-        value := AIndex / FPointsNumber * TWO_PI
-      else
         value := AIndex;
+      // For polar series we rescale the x values to a full circle.
+      // And the angle begins at the 90° position.
+      if FCyclicX then
+        value := value / FPointsNumber * TWO_PI + pi/2;
       FCurItem.SetX(i, value);
     end;
 
@@ -2651,8 +2652,8 @@ begin
   UpdateChartBrush(AWorkbookSeries.Chart, openedWorkbookSeries.SymbolFill, seriesPointer.Brush);
   UpdateChartPen(AWorkbookSeries.Chart, openedWorkbookSeries.SymbolBorder, seriesPointer.Pen);
   seriesPointer.Style := POINTER_STYLES[openedWorkbookSeries.Symbol];
-  seriesPointer.HorizSize := mmToPx(openedWorkbookSeries.SymbolWidth, ppi);
-  seriesPointer.VertSize := mmToPx(openedWorkbookSeries.SymbolHeight, ppi);
+  seriesPointer.HorizSize := mmToPx(openedWorkbookSeries.SymbolWidth / 2, ppi);
+  seriesPointer.VertSize := mmToPx(openedWorkbookSeries.SymbolHeight / 2, ppi);
 
   // Error bars
   UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
@@ -2694,14 +2695,15 @@ begin
   (AChartSeries.Source as TsWorkbookChartSource).CyclicX := true;
 
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.LinePen);
-  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.Brush);
+  if AWorkbookSeries.ChartType = ctFilledRadar then
+    UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.Brush);
   if AWorkbookSeries.ShowSymbols then
   begin
     UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.SymbolFill, AChartSeries.Pointer.Brush);
     UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.SymbolBorder, AChartSeries.Pointer.Pen);
     AChartSeries.Pointer.Style := POINTER_STYLES[AWorkbookSeries.Symbol];
-    AChartSeries.Pointer.HorizSize := mmToPx(AWorkbookSeries.SymbolWidth, ppi);
-    AChartSeries.Pointer.VertSize := mmToPx(AWorkbookSeries.SymbolHeight, ppi);
+    AChartSeries.Pointer.HorizSize := mmToPx(AWorkbookSeries.SymbolWidth / 2, ppi);
+    AChartSeries.Pointer.VertSize := mmToPx(AWorkbookSeries.SymbolHeight / 2, ppi);
   end;
 
   FChart.LeftAxis.Minors.Clear;

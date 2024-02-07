@@ -12,8 +12,13 @@ var
   book: TsWorkbook;
   sheet: TsWorksheet;
   ch: TsChart;
-  ser: TsChartSeries;
+  ser: TsRadarSeries;
+  fn, dir: String;
 begin
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
+  fn := dir + FILE_NAME;
+
   book := TsWorkbook.Create;
   try
     // worksheet
@@ -51,25 +56,29 @@ begin
     ser.SetLabelRange(3, 0, 10, 0);
     ser.SetYRange(3, 1, 10, 1);
     ser.Line.Color := scDarkRed;
-    ser.Fill.Color := scRed;
-    ser.Fill.Transparency := 0.35;
+    //ser.Fill.Style := cfsNoFill;    // --> non-filled radar chrt
+    ser.ShowSymbols := true;
+    ser.Symbol := cssDiamond;
+    ser.SymbolFill.Style := cfsSolid;
+    ser.SymbolFill.Color := scYellow;
+    // in ods the symbol color is always equal to the line color
+    ser.SymbolWidth := 12; //3;
+    ser.SymbolHeight := 12; // 3;
 
     // Add 2nd radar series ("Student 2")
-    ser := TsRadarSeries.Create(ch);
+    ser := TsFilledRadarSeries.Create(ch);
     ser.SetTitleAddr(2, 2);
     ser.SetLabelRange(3, 0, 10, 0);
     ser.SetYRange(3, 2, 10, 2);
     ser.Line.Color := scDarkBlue;
-    ser.Fill.Color := scBlue;
+    ser.Fill.Color := $FFCC99;
     ser.Fill.Transparency := 0.35;
 
-    {
-    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart in ', FILE_NAME, '.xlsx');
-    }
+    book.WriteToFile(fn + '.xlsx', true);
+    WriteLn('Data saved with chart in ', fn + '.xlsx');
 
-    book.WriteToFile(FILE_NAME + '.ods', true);
-    WriteLn('Data saved with chart in ', FILE_NAME, '.ods');
+    book.WriteToFile(fn + '.ods', true);
+    WriteLn('Data saved with chart in ', fn + '.ods');
   finally
     book.Free;
   end;

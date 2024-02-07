@@ -102,7 +102,7 @@ type
     procedure WriteChartAxisTitle(AStream: TStream; AIndent: Integer; Axis: TsChartAxis);
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
-    procedure WriteChartRegression(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
+    procedure WriteChartTrendline(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesDatapointLabels(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesDatapointStyles(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: Integer);
@@ -114,6 +114,7 @@ type
     procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
     procedure WriteBubbleSeries(AStream: TStream; AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex: Integer);
     procedure WritePieSeries(AStream: TStream; AIndent: Integer; ASeries: TsPieSeries; ASeriesIndex: Integer);
+    procedure WriteRadarSeries(AStream: TStream; AIndent: Integer; ASeries: TsRadarSeries; ASeriesIndex: Integer);
     procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
 
     procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
@@ -1395,7 +1396,7 @@ begin
         if TryStrToInt(s, n) then
           with TsOpenedCustomLineSeries(ASeries) do
           begin
-            SymbolWidth := PtsToMM(n div 2);
+            SymbolWidth := PtsToMM(n);
             SymbolHeight := SymbolWidth;
           end;
 
@@ -1550,28 +1551,47 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartReader.ReadChartRadarSeries(ANode: TDOMNode; AChart: TsChart);
 var
-  nodeName: String;
+  node: TDOMNode;
+  nodeName, s: String;
   ser: TsRadarSeries;
-  radarStyle: String = '';
+  filled: Boolean = false;
 begin
   if ANode = nil then
     exit;
 
-  while Assigned(ANode) do
+  // At first, we need the value of c:radarStyle because it determines the
+  // series class to be created.
+  node := ANode;
+  while Assigned(node) do
   begin
-    nodeName := ANode.NodeName;
+    nodeName := node.NodeName;
     case nodeName of
       'c:radarStyle':
-        radarStyle := GetAttrValue(ANode, 'val');
-      'c:ser':
         begin
-          ser := TsRadarSeries.Create(AChart);
-          ReadChartSeriesProps(ANode.FirstChild, ser);
-          if radarStyle <> 'filled' then
-            ser.Fill.Style := cfsNoFill;
+          s := GetAttrValue(node, 'val');
+          filled := s = 'filled';
         end;
     end;
-    ANode := ANode.NextSibling;
+    node := node.NextSibling;
+  end;
+
+  // Search the series node. Then create the series and read its properties
+  // from the subnodes.
+  node := ANode;
+  while Assigned(node) do
+  begin
+    nodeName := node.NodeName;
+    case nodeName of
+      'c:ser':
+        begin
+          if filled then
+            ser := TsFilledRadarSeries.Create(AChart)
+          else
+            ser := TsRadarSeries.Create(AChart);
+          ReadChartSeriesProps(node.FirstChild, ser);
+        end;
+    end;
+    node := node.NextSibling;
   end;
 end;
 
@@ -3827,6 +3847,7 @@ var
   markerStr: String;
   chart: TsChart;
   ser: TsOpenedCustomLineSeries;
+  symbolSizePts: Integer;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -3835,7 +3856,7 @@ begin
   if ser.ShowSymbols then
     case ser.Symbol of
       cssRect: markerStr := 'square';
-      cssDiamond: markerStr := 'diamong';
+      cssDiamond: markerStr := 'diamond';
       cssTriangle: markerStr := 'triangle';
       cssTriangleDown: markerStr := 'triangle';  // !!!!
       cssTriangleLeft: markerStr := 'triangle';  // !!!!
@@ -3852,13 +3873,16 @@ begin
   else
     markerStr := 'none';
 
+  symbolSizePts := round(mmToPts((ser.SymbolWidth + ser.SymbolHeight)/2));
+  if symbolSizePts > 72 then symbolSizePts := 72;
+
   Result := Format(
     indent + '<c:symbol val="%s"/>' + LE +
-    indent + '<c:size val="%.0f"/>' + LE +
+    indent + '<c:size val="%d"/>' + LE +
     indent + '<c:spPr>' + LE +
                GetChartFillAndLineXML(AIndent + 2, chart, ser.SymbolFill, ser.SymbolBorder) + LE +
     indent + '</c:spPr>',
-    [ markerStr, mmToPts(ser.SymbolWidth + ser.SymbolHeight) ]
+    [ markerStr, symbolSizePts ]
   );
 end;
 
@@ -3903,6 +3927,8 @@ begin
         end;
       ctPie, ctRing:
         WritePieSeries(AStream, AIndent + 2, TsPieSeries(ser), i);
+      ctRadar, ctFilledRadar:
+        WriteRadarSeries(AStream, AIndent + 2, TsRadarSeries(ser), i);
       ctScatter:
         begin
           WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), i);
@@ -3972,6 +3998,39 @@ begin
   );
 end;
 
+procedure TsSpreadOOXMLChartWriter.WriteRadarSeries(AStream: TStream;
+  AIndent: Integer; ASeries: TsRadarSeries; ASeriesIndex: Integer);
+var
+  indent: String;
+  chart: TsChart;
+  radarStyle: String;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
+
+  if ASeries.ChartType = ctFilledRadar then
+    radarStyle := 'filled'
+  else
+    radarStyle := 'marker';
+
+  AppendToStream(AStream,
+    indent + '<c:radarChart>' + LE +
+    indent + '  <c:radarStyle val="' + radarStyle + '"/>' + LE
+  );
+
+  WriteChartSeriesNode(AStream, AIndent + 4, ASeries, ASeriesIndex);
+
+  AppendToStream(AStream, Format(
+    indent + '  <c:axId val="%d"/>' + LE +
+    indent + '  <c:axId val="%d"/>' + LE +
+    indent + '</c:radarChart>' + LE,
+    [
+      FAxisID[chart.XAxis.Alignment],  // <c:axId>
+      FAxisID[chart.YAxis.Alignment]   // <c:axId>
+    ]
+  ));
+end;
+
 procedure TsSpreadOOXMLChartWriter.WriteScatterSeries(AStream: TStream;
   AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
 var
@@ -4015,7 +4074,7 @@ end;
   Writes the <c:trendline> node for the specified chart series if a trendline
   is activated.
 -------------------------------------------------------------------------------}
-procedure TsSpreadOOXMLChartWriter.WriteChartRegression(AStream: TStream;
+procedure TsSpreadOOXMLChartWriter.WriteChartTrendline(AStream: TStream;
   AIndent: Integer; ASeries: TsChartSeries);
 var
   indent: String;
@@ -4182,9 +4241,6 @@ var
   xRng, yRng: TsChartRange;
   forceNoLine: Boolean;
   xValName, yValName, xRefName, yRefName: String;
-  explosionStr: String = '';
-  dps: TsChartDataPointStyle;
-  i: Integer;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -4217,15 +4273,24 @@ begin
       indent + '  </c:spPr>' + LE
     );
   end else
-  // Line & scatter series: symbol markers
+  // Line & scatter & radar series: symbol markers
   if (ASeries is TsCustomLineSeries) then
   begin
-    forceNoLine := not TsOpenedCustomLineSeries(ASeries).ShowLines;
-    AppendToStream(AStream,
-      indent + '  <c:spPr>' + LE +
-                    GetChartLineXML(AIndent + 4, chart, ASeries.Line, forceNoLine) + LE +
-      indent + '  </c:spPr>' + LE
-    );
+    if (ASeries.ChartType = ctFilledRadar) then
+      AppendToStream(AStream,
+        indent + '  <c:spPr>' + LE +
+                     GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
+        indent + '  </c:spPr>' + LE
+      )
+    else
+    begin
+      forceNoLine := not TsOpenedCustomLineSeries(ASeries).ShowLines;
+      AppendToStream(AStream,
+        indent + '  <c:spPr>' + LE +
+                      GetChartLineXML(AIndent + 4, chart, ASeries.Line, forceNoLine) + LE +
+        indent + '  </c:spPr>' + LE
+      );
+    end;
     if TsOpenedCustomLineSeries(ASeries).ShowSymbols then
       AppendToStream(AStream,
         indent + '  <c:marker>' + LE +
@@ -4242,7 +4307,7 @@ begin
 
   // Trend line
   if ASeries.SupportsTrendline then
-    WriteChartRegression(AStream, AIndent + 2, ASeries);
+    WriteChartTrendline(AStream, AIndent + 2, ASeries);
 
   // Data point labels
   WriteChartSeriesDatapointLabels(AStream, AIndent + 2, ASeries);

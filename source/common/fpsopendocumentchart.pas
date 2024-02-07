@@ -1491,20 +1491,18 @@ begin
         series := TsBarSeries.Create(AChart);
       'chart:bubble':
         series := TsBubbleSeries.Create(AChart);
-  //    'chart:circle':
-  //      series := TsPieSeries.Create(AChart);
-      'chart:filled-radar':
-        series := TsRadarSeries.Create(AChart);
-      'chart:line':
-        series := TsLineSeries.Create(AChart);
-      'chart:radar':
-        series := TsRadarSeries.Create(AChart);
       'chart:circle':
         begin
           series := TsPieSeries.Create(AChart);
           if FChartType = ctRing then
             TsPieSeries(series).InnerRadiusPercent := 50;
         end;
+      'chart:line':
+        series := TsLineSeries.Create(AChart);
+      'chart:radar':
+        series := TsRadarSeries.Create(AChart);
+      'chart:filled-radar':
+        series := TsFilledRadarSeries.Create(AChart);
       'chart:scatter':
         series := TsScatterSeries.Create(AChart);
       // 'chart:stock': --- has already been created
@@ -1650,7 +1648,14 @@ begin
           if ASeries.ChartType in [ctBar] then
             ASeries.Line.Style := clsSolid;
           GetChartLineProps(AStyleNode, AChart, ASeries.Line);
-          GetChartFillProps(AStyleNode, AChart, ASeries.Fill);
+          if ((ASeries is TsRadarSeries) and (ASeries.ChartType = ctRadar)) or (ASeries is TsCustomLineSeries) then
+          begin
+            // In ods, symbols and lines have the same color
+            TsRadarSeries(ASeries).SymbolFill.Style := cfsSolid;
+            TsRadarSeries(ASeries).SymbolFill.Color := ASeries.Line.Color;
+            TsRadarSeries(ASeries).SymbolBorder.Style := clsNoLine;
+          end else
+            GetChartFillProps(AStyleNode, AChart, ASeries.Fill);
         end;
       'style:text-properties':
         GetChartTextProps(AStyleNode, ASeries.LabelFont);
@@ -1739,10 +1744,10 @@ begin
                   TsOpenedCustomLineSeries(ASeries).Symbol := css;
                   break;
                 end;
-              s := GetAttrValue(AStyleNode, 'symbol-width');
+              s := GetAttrValue(AStyleNode, 'chart:symbol-width');
               if (s <> '') and EvalLengthStr(s, value, rel) then
                 TsOpenedCustomLineSeries(ASeries).SymbolWidth := value;
-              s := GetAttrValue(AStyleNode, 'symbol-height');
+              s := GetAttrValue(AStyleNode, 'chart:symbol-height');
               if (s <> '') and EvalLengthStr(s, value, rel) then
                 TsOpenedCustomLineSeries(ASeries).SymbolHeight := value;
             end else
@@ -2607,7 +2612,7 @@ begin
     ciStepCenterY: interpolationStr := 'chart:interpolation="step-center-y" ';
   end;
 
-  if not (AChart.GetChartType in [ctRadar, ctPie]) then
+  if not (AChart.GetChartType in [ctRadar, ctFilledRadar, ctPie]) then
     rightAngledAxes := 'chart:right-angled-axes="true" ';
 
   for i := 0 to AChart.Series.Count-1 do
@@ -2784,7 +2789,7 @@ function TsSpreadOpenDocChartWriter.GetChartSeriesStyleAsXML(AChart: TsChart;
   ASeriesIndex, AIndent, AStyleID: Integer): String;
 var
   series: TsChartSeries;
-  lineser: TsLineSeries = nil;
+  lineser: TsOpenedCustomLineSeries = nil;
   indent: String;
   numStyle: String;
   forceNoLine: Boolean = false;
@@ -2809,7 +2814,7 @@ begin
   if ((series is TsLineSeries) and (series.ChartType <> ctFilledRadar)) or
      (series is TsScatterSeries) then
   begin
-    lineser := TsLineSeries(series);
+    lineser := TsOpenedCustomLineSeries(series);
     if lineser.ShowSymbols then
       chartProps := Format(
         'chart:symbol-type="named-symbol" chart:symbol-name="%s" chart:symbol-width="%.1fmm" chart:symbol-height="%.1fmm" ',
@@ -2870,9 +2875,10 @@ begin
 
   // Graphic properties
   lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, series.Line, forceNoLine);
-  fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, series.Fill);
   if (series is TsLineSeries) and (series.ChartType <> ctFilledRadar) then
   begin
+    lineSer := TsOpenedCustomLineSeries(series);
+    fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, lineser.SymbolFill);
     if lineSer.ShowSymbols then
       graphProps := graphProps + fillProps;
     if lineSer.ShowLines and (lineser.Line.Style <> clsNoLine) then
@@ -2880,7 +2886,10 @@ begin
     else
       graphProps := graphProps + 'draw:stroke="none" ';
   end else
+  begin
+    fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, series.Fill);
     graphProps := fillProps + lineProps;
+  end;
 
   // Text properties
   textProps := TsSpreadOpenDocWriter(Writer).WriteFontStyleXMLAsString(series.LabelFont);

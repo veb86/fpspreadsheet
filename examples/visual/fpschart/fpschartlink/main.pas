@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,
-  LCLVersion, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls,
+  LCLVersion, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, FileUtil,
   TAGraph, TASources,
   fpSpreadsheet, fpsTypes, fpsOpenDocument, xlsxOOXML,
   fpSpreadsheetCtrls, fpSpreadsheetGrid, fpSpreadsheetChart;
@@ -35,6 +35,7 @@ type
     procedure FormCreate(Sender: TObject);
     procedure sWorkbookSource1Error(Sender: TObject; const AMsg: String);
   private
+    FDir: String;
     sChartLink: TsWorkbookChartLink;
     procedure LoadFile(AFileName: String);
 
@@ -114,13 +115,27 @@ procedure TForm1.ComboBox1CloseUp(Sender: TObject);
 begin
   if ComboBox1.ItemIndex > -1 then
   begin
-    Combobox1.Text := Combobox1.Items[Combobox1.ItemIndex];
+    Combobox1.Text := FDir  + Combobox1.Items[Combobox1.ItemIndex];
     LoadFile(Combobox1.Text);
   end;
 end;
 
 procedure TForm1.FormCreate(Sender: TObject);
+var
+  L: TStrings;
+  i: Integer;
 begin
+  FDir := ExpandFileName(Application.Location + '../../../other/chart/files/');
+  L := TStringList.Create;
+  try
+    FindAllFiles(L, FDir, '*.xlsx;*.ods', false);
+    for i := 0 to L.Count-1 do
+      L[i] := ExtractFileName(L[i]);
+    Combobox1.Items.Assign(L);
+  finally
+    L.Free;
+  end;
+
   {$IF LCL_FullVersion >= 2020000}
   ComboBox1.TextHint := 'Enter or select file name';
   {$IFEND}
