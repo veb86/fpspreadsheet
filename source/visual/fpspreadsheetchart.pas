@@ -1055,16 +1055,21 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
   var
     c: TsColor;
     g: TsChartGradient;
+    fill: TsChartFill;
   begin
     Result := clTAColor;
-    if (ADatapointStyle <> nil) and (ADatapointStyle.Background <> nil) then
+    if (ADatapointStyle <> nil) then
     begin
-      case ADatapointStyle.Background.Style of
+      if ADatapointStyle.Background <> nil then
+        fill := ADataPointstyle.Background
+      else
+        fill := ASeries.Fill;
+      case fill.Style of
         cfsSolid, cfsSolidHatched:
-          c := ADatapointStyle.Background.Color;
+          c := fill.Color;
         cfsGradient:
           begin
-            g := ASeries.Chart.Gradients[ADatapointStyle.Background.Gradient];
+            g := ASeries.Chart.Gradients[fill.Gradient];
             c := g.StartColor;
           end;
       end;
@@ -2777,6 +2782,8 @@ var
   style: TChartStyle;
   datapointStyle: TsChartDatapointStyle;
   i, j: Integer;
+  fill: TsChartFill;
+  line: TsChartLine;
 begin
   AChartStyles.Styles.Clear;
 
@@ -2796,7 +2803,15 @@ begin
       FillAndLineToStyle(AWorkbookSeries.Fill, AWorkbookSeries.Line, style)
     else
     begin
-      FillAndLineToStyle(datapointStyle.Background, datapointStyle.Border, style);
+      if datapointStyle.Background <> nil then
+        fill := datapointstyle.Background
+      else
+        fill := AWorkbookSeries.Fill;
+      if datapointStyle.Border <> nil then
+        line := datapointstyle.Border
+      else
+        line := AWorkbookSeries.Line;
+      FillAndLineToStyle(fill, line, style);
       if j < AWorkbookSeries.DataPointStyles.Count-1 then
       begin
         inc(j);
