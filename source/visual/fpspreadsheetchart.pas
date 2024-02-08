@@ -467,6 +467,7 @@ begin
   FRangeStr[rngColor] := '';
 
   FStyles.Styles.Clear;
+  SetLength(FDatapointColors, 0);
   SetLength(FPieOffsets, 0);
 end;
 
@@ -551,8 +552,8 @@ begin
           value := trunc(value);
       end else
         value := AIndex;
-      // For polar series we rescale the x values to a full circle.
-      // And the angle begins at the 90° position.
+      // For polar series (which sets CyclicX to true) we rescale the x values
+      // to a full circle. And the angle begins at the 90° position.
       if FCyclicX then
         value := value / FPointsNumber * TWO_PI + pi/2;
       FCurItem.SetX(i, value);
@@ -1049,6 +1050,28 @@ end;
   formatting. In this case this method is not executed.
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
+
+  function ColorFromDatapointStyle(ADatapointStyle: TsChartDatapointStyle): TColor;
+  var
+    c: TsColor;
+    g: TsChartGradient;
+  begin
+    Result := clTAColor;
+    if (ADatapointStyle <> nil) and (ADatapointStyle.Background <> nil) then
+    begin
+      case ADatapointStyle.Background.Style of
+        cfsSolid, cfsSolidHatched:
+          c := ADatapointStyle.Background.Color;
+        cfsGradient:
+          begin
+            g := ASeries.Chart.Gradients[ADatapointStyle.Background.Gradient];
+            c := g.StartColor;
+          end;
+      end;
+      Result := Convert_sColor_to_Color(c);
+    end;
+  end;
+
 var
   datapointStyle: TsChartDataPointStyle;
   style: TChartStyle;
@@ -1062,26 +1085,23 @@ begin
     exit;
   end;
 
-  SetLength(FDataPointColors, ASeries.DataPointStyles.Count);
-  for i := 0 to High(FDataPointColors) do
+  SetLength(FDataPointColors, ASeries.Count);
+  i := 0;
+  for j := 0 to ASeries.DataPointstyles.Count-1 do
   begin
-    datapointStyle := ASeries.DatapointStyles[i];
-    FDataPointColors[i] := clTAColor;
-    if (dataPointStyle <> nil) and (dataPointStyle.Background <> nil) then
+    datapointStyle := ASeries.DatapointStyles[j];
+    while (datapointStyle <> nil) and (i < dataPointStyle.DataPointIndex) do
     begin
-      if (datapointStyle.Background.Style in [cfsSolid, cfsSolidHatched]) then
-        c := dataPointStyle.Background.Color
-      else
-      if (dataPointStyle.Background.Style = cfsGradient) then
-      begin
-        // TAChart does not support gradient fills. Let's use the start color
-        // of the gradient for a solid fill.
-        g := ASeries.Chart.Gradients[datapointStyle.Background.Gradient];
-        c := g.StartColor;
-      end else
-        Continue;
-      FDataPointColors[i] := Convert_sColor_to_Color(c);
+      FDataPointColors[i] := clTAColor;
+      inc(i);
     end;
+    FDataPointColors[i] := ColorFromDatapointStyle(datapointStyle);
+    inc(i);
+  end;
+  while i <= High(FDataPointColors) do
+  begin
+    FDataPointColors[i] := clTAColor;
+    inc(i);
   end;
 end;
 
@@ -1976,6 +1996,7 @@ begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BubbleBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BubblePen);
   AChartSeries.Transparency := round(255*AWorkbookSeries.Fill.Transparency);
+  AChartSeries.Legend.Multiplicity := lmPoint;
 
   {$IF LCL_FullVersion >= 3990000}
   case AWorkbookSeries.BubbleSizeMode of
@@ -2745,10 +2766,17 @@ end;
 
 procedure TsWorkbookChartLink.CreateChartStylesFromDatapoints(AWorkbookSeries: TsChartSeries;
   AChartStyles: TChartStyles);
+
+  procedure FillAndLineToStyle(AFill: TsChartFill; ALine: TsChartLine; AStyle: TChartStyle);
+  begin
+    UpdateChartBrush(AWorkbookSeries.Chart, AFill, AStyle.Brush);
+    UpdateChartPen(AWorkbookSeries.Chart, ALine, ASTyle.Pen);
+  end;
+
 var
   style: TChartStyle;
   datapointStyle: TsChartDatapointStyle;
-  i: Integer;
+  i, j: Integer;
 begin
   AChartStyles.Styles.Clear;
 
@@ -2759,69 +2787,26 @@ begin
   if (AWorkbookSeries is TsBarSeries) and (AWorkbookSeries.Chart.Series.Count > 1) then
     exit;  // TAChart cannot handle datapoint styles for layered bar series
 
+  j := 0;
+  datapointStyle := AWorkbookSeries.DataPointStyles[0];
   for i := 0 to AWorkbookSeries.Count-1 do
   begin
     style := AChartStyles.Add;
-    datapointStyle := AWorkbookSeries.DataPointStyles[i];
-    if datapointstyle = nil then
+    if (datapointStyle = nil) or (i < datapointStyle.DatapointIndex) then
+      FillAndLineToStyle(AWorkbookSeries.Fill, AWorkbookSeries.Line, style)
+    else
     begin
-      UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, style.brush);
-      UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, style.Pen);
-    end else
-    begin
-      UpdateChartBrush(AWorkbookSeries.Chart, datapointStyle.Background, style.Brush);
-      UpdateChartPen(AWorkbookSeries.Chart, datapointStyle.Border, style.Pen);
+      FillAndLineToStyle(datapointStyle.Background, datapointStyle.Border, style);
+      if j < AWorkbookSeries.DataPointStyles.Count-1 then
+      begin
+        inc(j);
+        datapointStyle := AWorkbookSeries.DataPointStyles[j];
+      end else
+        datapointStyle := nil;
     end;
   end;
 end;
 
-
-
-                           (*
-{$ifdef DATAPOINT_STYLES}
-procedure TsWorkbookChartLink.UseDatapointStyles(AWorkbookSeries: TsChartSeries;
-  AChartSeries: TChartSeries);
-var
-  styles: TChartStyles;
-  style: TChartStyle;
-  dps: TsChartDatapointStyle;
-  i: Integer;
-begin
-  if AWorkbookSeries.DataPointStyles.Count = 0 then
-    exit;
-
-  if not ((AWorkbookSeries is TsPieSeries) or (AWorkbookSeries is TsBubbleSeries)) then
-    exit;
-
-  // TAChart cannot handle data point styles in case of layered bar series
-  if (AWorkbookSeries is TsBarSeries) and (AWorkbookSeries.Chart.Series.Count > 1) then
-    exit;
-
-  styles := TChartStyles.Create(AChartSeries);
-  for i := 0 to AWorkbookSeries.DatapointStyles.Count-1 do
-  begin
-    dps := AWorkbookSeries.DataPointStyles[i];
-    style := styles.Add;
-    if dps = nil then
-    begin
-      UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, style.brush);
-      UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, style.Pen);
-    end else
-    begin
-      UpdateChartBrush(AWorkbookSeries.Chart, dps.Background, style.Brush);
-      UpdateChartPen(AWorkbookSeries.Chart, dps.Border, style.Pen);
-    end;
-  end;
-
-  if (AChartSeries is TPieSeries) then
-    TPieSeries(AChartSeries).Styles := styles
-  else if (AChartSeries is TBubbleSeries) then
-    TBubbleSeries(AChartSeries).Styles := styles
-  else if (AChartSeries is TBarSeries) then
-    TBarSeries(AChartSeries).Styles := styles;
-end;
-{$endif}
-            *)
 {$ENDIF}
 
 end.

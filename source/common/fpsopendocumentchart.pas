@@ -1648,7 +1648,7 @@ begin
           if ASeries.ChartType in [ctBar] then
             ASeries.Line.Style := clsSolid;
           GetChartLineProps(AStyleNode, AChart, ASeries.Line);
-          if ((ASeries is TsRadarSeries) and (ASeries.ChartType = ctRadar)) or (ASeries is TsCustomLineSeries) then
+          if ((ASeries is TsRadarSeries) and (ASeries.ChartType = ctRadar)) then //or (ASeries is TsCustomLineSeries) then
           begin
             // In ods, symbols and lines have the same color
             TsRadarSeries(ASeries).SymbolFill.Style := cfsSolid;

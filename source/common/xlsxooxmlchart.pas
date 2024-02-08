@@ -261,6 +261,9 @@ procedure TsSpreadOOXMLChartReader.ReadChart(ANode: TDOMNode; AChart: TsChart);
 var
   nodeName: String;
 begin
+  // Defaults  (to be completed...)
+  AChart.Legend.Visible := false;
+
   ANode := ANode.FirstChild;
   while Assigned(ANode) do
   begin
@@ -1108,6 +1111,8 @@ var
 begin
   if ANode = nil then
     exit;
+
+  AChartLegend.Visible := true;
 
   while Assigned(ANode) do
   begin

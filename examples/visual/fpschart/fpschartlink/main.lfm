@@ -141,6 +141,7 @@ object Form1: TForm1
       AutoSize = True
       BorderSpacing.Around = 6
       Caption = 'Open file'
+      Default = True
       TabOrder = 2
       OnClick = btnOpenClick
     end

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils,
-  LCLVersion, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, FileUtil,
+  LCLVersion, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, FileUtil, LazFileUtils,
   TAGraph, TASources,
   fpSpreadsheet, fpsTypes, fpsOpenDocument, xlsxOOXML,
   fpSpreadsheetCtrls, fpSpreadsheetGrid, fpSpreadsheetChart;
@@ -107,8 +107,14 @@ begin
 end;
 
 procedure TForm1.btnOpenClick(Sender: TObject);
+var
+  fn: String;
 begin
-  LoadFile(Combobox1.Text);
+  if FileNameIsAbsolute(Combobox1.Text) then
+    fn := Combobox1.Text
+  else
+    fn := FDir + Combobox1.Text;
+  LoadFile(fn);
 end;
 
 procedure TForm1.ComboBox1CloseUp(Sender: TObject);

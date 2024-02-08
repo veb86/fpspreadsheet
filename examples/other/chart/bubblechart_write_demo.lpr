@@ -79,7 +79,7 @@ begin
     ser.Line.Style := clsSolid; //NoLine;
     ser.Line.Color := scSilver;
     ser.Fill.Color := scYellow;
-    ser.Fill.Transparency := 0.25;
+    //ser.Fill.Transparency := 0.25;
     ser.DataLabels := [cdlCategory];
     ser.DataPointStyles.AddSolidFill(2, $c47244);
     ser.DataPointStyles.AddSolidFill(3, scRed);
