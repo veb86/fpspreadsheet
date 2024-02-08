@@ -230,15 +230,25 @@ var
   header: TGifHeader;
   imageBlock: TGifImageBlock;
   nResult: integer;
+  n: Integer;
   b: Byte;
 begin
   Result := false;
 
   // Read header and ensure valid file
-  nResult := AStream.Read(header{%H-}, SizeOf(TGifHeader));
-  if (nResult <> SizeOf(TGifHeader)) then exit;  // invalid file
+  n := AStream.Read(header{%H-}, SizeOf(TGifHeader));
+  if (n <> SizeOf(TGifHeader)) then exit;  // invalid file
   if (strlicomp(PChar(header.Sig), 'GIF87a', 6) <> 0) and
      (strlicomp(PChar(header.Sig), 'GIF89a', 6) <> 0) then exit;
+
+  // Skip global palette if there is one
+  if (header.Flags and $80) <> 0 then
+  begin
+    n := header.Flags and 7 + 1;
+    AStream.Seek(1 shl n, soFromCurrent);
+  end;
+  if AStream.Position >= AStream.Size then
+    exit;
 
   // Step through blocks
   while (AStream.Position < AStream.Size) do
@@ -261,7 +271,8 @@ begin
     if (b = $2C) then // Image Separator - Identifies the beginning of an Image Descriptor
     begin
       // Image found
-      if (AStream.Read(ImageBlock{%H-}, SizeOf(TGIFImageBlock)) <> SizeOf(TGIFImageBlock)) then
+      n := AStream.Read(ImageBlock{%H-}, SizeOf(TGIFImageBlock));
+      if n <> SizeOf(TGIFImageBlock) then
         Exit;
       AWidth := LEToN(ImageBlock.Width);
       AHeight := LEToN(ImageBlock.Height);
