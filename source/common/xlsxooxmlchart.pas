@@ -163,7 +163,7 @@ const
 
   DEFAULT_FONT_NAME = 'Liberation Sans';
 
-  AX_POS: array[TsChartAxisAlignment] of string = ('l', 't', 'r', 'b');
+  AX_POS: array[boolean, TsChartAxisAlignment] of string = ( ('l', 't', 'r', 'b'), ('b', 'r', 't', 'l') );
   FALSE_TRUE: Array[boolean] of Byte = (0, 1);
   LEGEND_POS: Array[TsChartLegendPosition] of string = ('r', 't', 'b', 'l');
   TRENDLINE_TYPES: Array[TsTrendlineType] of string = ('', 'linear', 'log', 'exp', 'power', 'poly');
@@ -3446,7 +3446,8 @@ end;
 procedure TsSpreadOOXMLChartWriter.WriteBarSeries(AStream: TStream;
   AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
 const
-  GROUPING: Array[TsChartStackMode] of string = ('clustered', 'stacked', 'percentStacked');
+  BAR_DIR: array[boolean] of string = ('col', 'bar');
+  GROUPING: array[TsChartStackMode] of string = ('clustered', 'stacked', 'percentStacked');
 var
   indent: String;
   chart: TsChart;
@@ -3471,10 +3472,10 @@ begin
   if isFirstOfGroup then
     AppendToStream(AStream, Format(
       indent + '<c:barChart>' + LE +
-      indent + '  <c:barDir val="col"/>' + LE +
+      indent + '  <c:barDir val="%s"/>' + LE +
       indent + '  <c:varyColors val="0"/>' + LE +
       indent + '  <c:grouping val="%s"/>' + LE,
-      [ GROUPING[chart.StackMode] ]
+      [ BAR_DIR[chart.RotatedAxes], GROUPING[chart.StackMode] ]
     ));
 
   WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
@@ -3595,7 +3596,6 @@ var
   axID: DWord;
   rotAxID: DWord;
   crosses: String = 'autoZero';
-  logarithmic: String = '';
 begin
   indent := DupeString(' ', AIndent);
 
@@ -3615,7 +3615,8 @@ begin
   AppendToStream(AStream, Format(
     indent + '  <c:delete val="0"/>' + LE +
     indent + '  <c:axPos val="%s" />' + LE,
-    [ AX_POS[Axis.Alignment] ]
+    [ AX_POS[Axis.Chart.RotatedAxes, Axis.Alignment] ]
+    // axis rotation seems to be respected by Excel only for bar series.
   ));
 
   // Grid lines

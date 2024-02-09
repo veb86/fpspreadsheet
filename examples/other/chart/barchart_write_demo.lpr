@@ -36,7 +36,7 @@ begin
 
   for i := 1 to ParamCount do
     case lowercase(ParamStr(i)) of
-      'horiz', 'horizontal':
+      'hor', 'horiz', 'horizontal':
         rotated := true;
       'vert', 'vertical', 'rotated':
         rotated := false;

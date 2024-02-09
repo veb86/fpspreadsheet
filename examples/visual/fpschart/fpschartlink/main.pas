@@ -121,7 +121,7 @@ procedure TForm1.ComboBox1CloseUp(Sender: TObject);
 begin
   if ComboBox1.ItemIndex > -1 then
   begin
-    Combobox1.Text := FDir  + Combobox1.Items[Combobox1.ItemIndex];
+    Combobox1.Text := FDir + Combobox1.Items[Combobox1.ItemIndex];
     LoadFile(Combobox1.Text);
   end;
 end;
