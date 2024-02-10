@@ -1520,6 +1520,20 @@ begin
     workNode := workNode.NextSibling;
   end;
 
+  // The RotatedAxes optionhandles all axis rotations by itself. Therefore we
+  // must reset the Axis.Alignment back to the normal settings, otherwise
+  // rotation will not be correct.
+  if AChart.XAxis.Alignment = caaLeft then
+  begin
+    if AChart.YAxis.Title.RotationAngle = 90 then
+      AChart.YAxis.Title.RotationAngle := 0;
+    AChart.RotatedAxes := true;
+    AChart.XAxis.Alignment := caaBottom;
+    AChart.YAxis.Alignment := caaLeft;
+    AChart.X2Axis.Alignment := caaRight;
+    AChart.Y2Axis.Alignment := caaTop;
+  end;
+
   workNode := ANode;
   while Assigned(workNode) do
   begin
