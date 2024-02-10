@@ -105,7 +105,8 @@ begin
     ser.Fill.Style := cfsSolidHatched;
     ser.Fill.Hatch := ch.Hatches.AddLineHatch('Crossed', chsDouble, scDarkRed, 2, 0.1, 45);
     ser.Fill.Color := scRed;
-    ser.DataLabels := [cdlValue];
+    ser.DataLabels := [cdlValue];        // Show scores as datapoint labels
+    ser.LabelFormat := '0';
 
     // Add 2nd bar series ("Student 2")
     ser := TsBarSeries.Create(ch);
@@ -116,6 +117,8 @@ begin
     ser.Fill.Style := cfsSolidHatched;
     ser.Fill.Hatch := ch.Hatches.AddLineHatch('Forward', chsSingle, scWhite, 1.5, 0.1, 45);
     ser.Fill.Color := scBlue;
+    ser.DataLabels := [cdlValue];        // Show scores as datapoint labels
+    ser.LabelFormat := '0';
 
     book.WriteToFile(fn + '.xlsx', true);
     WriteLn('Data saved with chart in ', fn + '.xlsx');

@@ -311,6 +311,7 @@ type
     function Add(const ANumFormat: String): Integer; override;
     function FindFormatByName(const AName: String): String;
     function IndexOfFormat(ANumFormat: String): Integer;
+    function IndexOfName(const AName: String): Integer; override;
   end;
 
 constructor TsChartNumberFormatList.Create;
@@ -331,7 +332,7 @@ begin
   begin
     Result := IndexOfFormat(ANumFormat);
     if Result = -1 then
-      Result := inherited Add(Format('N%d:%s', [Count, ANumFormat]));
+      Result := inherited Add(ANumFormat); //(Format('N%d:%s', [Count, ANumFormat]));
   end;
 end;
 
@@ -345,7 +346,7 @@ begin
   idx := IndexOfName(AName);
   if idx <> -1 then
   begin
-    Result := Values[AName];
+    Result := ValueFromIndex[idx];
     if Result = 'General' then
       Result := '';
   end;
@@ -369,6 +370,10 @@ begin
   Result := -1;
 end;
 
+function TsChartNumberFormatList.IndexOfName(const AName: String): Integer;
+begin
+  Result := inherited IndexOfName(lowercase(AName));
+end;
 
 {------------------------------------------------------------------------------}
 {                         internal picture storage                             }
@@ -1634,10 +1639,15 @@ begin
   ASeries.LabelBackground.Style := cfsNoFill;
 
   nodeName := AStyleNode.NodeName;
+
+  // Number format of labels as number...
   s := GetAttrValue(AStyleNode, 'style:data-style-name');
   if s <> '' then
-    s := TsChartNumberFormatList(FNumberFormatList).FindFormatByName(s);
-  ASeries.LabelFormat := s;
+    ASeries.LabelFormat := TsChartNumberFormatList(FNumberFormatList).FindFormatByName(s);
+  // ... and as percentage
+  s := GetAttrValue(AStyleNode, 'style:percentage-data-style-name');
+  if s <> '' then
+    ASeries.LabelFormatPercent := TsChartNumberFormatList(FNumberFormatList).FindFormatByName(s);
 
   AStyleNode := AStyleNode.FirstChild;
   while AStyleNode <> nil do begin
@@ -1678,15 +1688,14 @@ begin
               else    ASeries.LabelBorder.Style := clsSolid;
             end;
 
+          // Items in data labels
           s := GetAttrValue(AStyleNode, 'chart:data-label-number');
-          if (s <> '') and (s <> 'none') then
-            Include(datalabels, cdlValue);
-          s := GetAttrValue(AStyleNode, 'chart:data-label-number="percentage"');
-          if s <> '' then
-            Include(datalabels, cdlPercentage);
-          s := GetAttrValue(AStyleNode, 'chart:data-label-number="value-and-percentage"');
-          if s <> '' then
-            dataLabels := dataLabels + [cdlValue, cdlPercentage];
+          case s of
+            'none': ;
+            'value': Include(dataLabels, cdlValue);
+            'percentage': Include(datalabels, cdlPercentage);
+            'value-and-percentage': dataLabels := datalabels + [cdlValue, cdlPercentage];
+          end;
           s := GetAttrValue(AStyleNode, 'chart:data-label-text');
           if s = 'true' then
             Include(dataLabels, cdlCategory);

@@ -157,7 +157,6 @@ object Form1: TForm1
     ClientWidth = 523
     TabOrder = 3
     object sWorksheetGrid1: TsWorksheetGrid
-      Cursor = crSizeAll
       Left = 1
       Height = 375
       Top = 1

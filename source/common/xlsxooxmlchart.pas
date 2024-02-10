@@ -1817,6 +1817,12 @@ begin
     nodeName := ANode.NodeName;
     s := GetAttrValue(ANode, 'val');
     case nodeName of
+      'c:numFmt':
+        begin
+          s := GetAttrValue(ANode, 'formatCode');
+          if s <> '' then
+            ASeries.LabelFormat := s;
+        end;
       'c:spPr':
         ReadChartFillAndLineProps(ANode.FirstChild, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder);
       'c:txPr':
@@ -4165,6 +4171,7 @@ procedure TsSpreadOOXMLChartWriter.WriteChartSeriesDatapointLabels(AStream: TStr
 var
   indent: String;
   separator: String = '';
+  numFmt: String = '';
 begin
   if ASeries.DataLabels = [] then
     exit;
@@ -4172,7 +4179,6 @@ begin
   indent := DupeString(' ', AIndent);
 
   separator := trim(ASeries.LabelSeparator);
-
   case ASeries.LabelSeparator of
     '\n', #10, #13, #13#10:
       separator := FPS_LINE_ENDING;  // Excel wants #10
@@ -4184,8 +4190,12 @@ begin
   if separator <> '' then
     separator := indent + '  <c:separator>' + separator + '</c:separator>' + LE;
 
+  if (ASeries.LabelFormat <> '') then
+    numFmt := '<c:numFmt formatCode="' + ASeries.LabelFormat + '" sourceLinked="0"/>' + LE;
+
   AppendToStream(AStream, Format(
     indent + '<c:dLbls>' + LE +
+                numFmt +
     indent + '  <c:spPr>' + LE +
                   GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder) + LE +
     indent + '  </c:spPr>' + LE +

@@ -1654,49 +1654,89 @@ begin
   ABrush.Bitmap := png;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Constructs the format strings for the series marks allowing: multiple items
+  separated by the WorkbookSeries.LabelSeparator, formatting of numbers as
+  specified by aWorkbookSeries.LabelFormat and AWorkbookseries.LabelFormatPercent.
+
+  NOTE:
+  There are some issues with TAChart:
+
+  A 100%-stacked series gets its values from a CalculatedChartSource which
+  already delivers the percentages, but does not give access to the original
+  values. As a consequence the original y values cannot be displayed when
+  cdlValue is in the series' DataLabels. We display the percentage as a
+  fall-back solution when needed.
+
+  Another issue is that TAChart has only a single format for multiple stack
+  layers. We use the one defined by the last series of the stack.
+
+  And: TAChart calculates percentages in non-100% series as percentage of the
+  all-series-max rather than percentage of the individual stack.
+-------------------------------------------------------------------------------}
 procedure TsWorkbookChartLink.ConstructSeriesMarks(AWorkbookSeries: TsChartSeries;
   AChartSeries: TChartSeries);
 var
   sep: String;
-  textFmt: String;
-  valueFmt: String;
-  percentFmt: String;
+  percentMode: Boolean;
+  valueFmt: String = '%.9g';
+  percentFmt: String = '%.0f%%';
+  textFmt: String = '%2:s';
+  totalFmt: String = '';
 begin
-  if AWorkbookSeries.DataLabels = [cdlValue] then
-    AChartSeries.Marks.Style := smsValue
-  else if AWorkbookSeries.DataLabels = [cdlPercentage] then
-    AChartSeries.Marks.Style := smsPercent
-  else if AWorkbookSeries.DataLabels = [cdlCategory] then
+  percentMode := AWorkbookSeries.Chart.StackMode = csmStackedPercentage;
+
+  // Number format
+  if AWorkbookSeries.LabelFormat <> '' then
+    valueFmt := Convert_NumFormatStr_to_FormatStr(AWorkbookSeries.LabelFormat);
+  System.Delete(valueFmt, 1, 1);  // Delete the '%'; will be re-added later with  value selector.
+
+  // Percent format
+  if AWorkbookSeries.LabelFormatPercent <> '' then
+    percentFmt := Convert_NumFormatStr_to_FormatStr(AWorkbookSeries.LabelFormatPercent);
+  System.Delete(percentFmt, 1, 1);
+
+  // Working around some restrictions of TAChart...
+  if percentMode then
+  begin
+    if cdlValue in AWorkbookSeries.DataLabels then
+      valueFmt := '%0:' + percentFmt
+    else
+      valueFmt := '%0:' + valueFmt;
+    if cdlPercentage in AWorkbookSeries.DataLabels then
+      percentFmt := '%0:' + percentFmt;
+  end else
+  begin
+    valueFmt := '%0:' + valueFmt;
+    percentFmt := '%1:' + percentFmt;
+  end;
+
+  if AWorkbookSeries.DataLabels = [cdlCategory] then
     AChartSeries.Marks.Style := smsLabel
   else
   begin
     sep := AWorkbookSeries.LabelSeparator;
-    valueFmt := '%0:.9g';
-    percentFmt := '%1:.0f';
-    textFmt := '%2:s';
-    if (AWorkbookSeries.DataLabels * [cdlCategory, cdlValue, cdlPercentage] = [cdlCategory, cdlValue, cdlPercentage]) then
-      AChartSeries.Marks.Format := textFmt + sep + valueFmt + sep + percentFmt
-    else
-    if AWorkbookSeries.DataLabels * [cdlValue, cdlPercentage] = [cdlValue, cdlPercentage] then
-      AChartSeries.Marks.Format := valueFmt + sep + percentFmt
-    else if AWorkbookSeries.DataLabels * [cdlCategory, cdlValue] = [cdlCategory, cdlValue] then
-      AChartSeries.Marks.Format := textFmt + sep + valueFmt;
+    if cdlCategory in AWorkbookSeries.DataLabels then
+      totalFmt := textFmt;
+    if cdlValue in AWorkbookSeries.DataLabels then
+    begin
+      if totalFmt <> '' then
+        totalFmt := totalFmt + sep + valuefmt
+      else
+        totalFmt := valueFmt;
+    end;
+    if cdlPercentage in AWorkbookSeries.DataLabels then
+    begin
+      if totalFmt <> '' then
+        totalFmt := totalFmt + sep + percentFmt
+      else
+        totalFmt := percentFmt;
+    end;
+    AChartSeries.Marks.Format := totalFmt;
   end;
   AChartSeries.Marks.Alignment := taCenter;
   AChartSeries.Marks.LinkPen.Visible := cdlLeaderLines in AWorkbookSeries.DataLabels;
 end;
-
-{
-procedure TsWorkbookChartLink.FitSeriesFitEquationText(ASeries: TFitSeries;
-  AEquationText: IFitEquationText);
-begin
-  if ASeries.ErrCode = fitOK then
-  begin
-    AEquationText.NumFormat('%.5f');
-    AEquationText.TextFormat(tfHtml)
-  end;
-end;
- }
 
 {@@ ----------------------------------------------------------------------------
   Adjusts the area series zero level which, otherwise, is not clipped at the
@@ -2527,7 +2567,7 @@ begin
   if AChartSeries.Marks.LinkPen.Visible then
     AChartSeries.Marks.Distance := 20
   else
-    AChartSeries.Marks.Distance := 0;
+    AChartSeries.Marks.Distance := 5;
 end;
 
 procedure TsWorkbookChartLink.UpdateChartSeriesTrendline(AWorkbookSeries: TsChartSeries;

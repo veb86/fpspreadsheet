@@ -523,6 +523,7 @@ type
     FYAxis: TsChartAxisLink;
     FTitleAddr: TsChartCellAddr;
     FLabelFormat: String;
+    FLabelFormatPercent: String;
     FDataLabels: TsChartDataLabels;
     FDataLabelCalloutShape: TsChartLabelCalloutShape;
     FDataPointStyles: TsChartDataPointStyleList;
@@ -575,6 +576,7 @@ type
     property LabelBorder: TsChartLine read FLabelBorder write FLabelBorder;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;  // Number format in Excel notation, e.g. '0.00'
+    property LabelFormatPercent: String read FLabelFormatPercent write FLabelFormatPercent;
     property LabelPosition: TsChartLabelPosition read FLabelPosition write FLabelPosition;
     property LabelRange: TsChartRange read FLabelRange write FLabelRange;
     property LabelSeparator: string read FLabelSeparator write FLabelSeparator;
@@ -2201,6 +2203,7 @@ begin
   FLabelBackground.Style := cfsNoFill;
 
   FLabelSeparator := ' ';
+  FLabelFormatPercent := '0%';
 
   FTrendline := TsChartTrendline.Create;
 
