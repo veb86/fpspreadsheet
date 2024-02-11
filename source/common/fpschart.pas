@@ -394,7 +394,7 @@ type
   TsChartAxisLink = (calPrimary, calSecondary);
   TsChartDataLabel = (cdlValue, cdlPercentage, cdlCategory, cdlSeriesName, cdlSymbol, cdlLeaderLines);
   TsChartDataLabels = set of TsChartDataLabel;
-  TsChartLabelPosition = (lpDefault, lpOutside, lpInside, lpCenter);
+  TsChartLabelPosition = (lpDefault, lpOutside, lpInside, lpCenter, lpAbove, lpBelow, lpNearOrigin);
   TsChartLabelCalloutShape = (
     lcsRectangle, lcsRoundRect, lcsEllipse,
     lcsLeftArrow, lcsUpArrow, lcsRightArrow, lcsDownArrow,

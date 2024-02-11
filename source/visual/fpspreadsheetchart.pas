@@ -2502,13 +2502,19 @@ begin
 
   if (AChartSeries is TBubbleSeries) then
     case AWorkbookSeries.LabelPosition of
-      lpDefault, lpOutside:
+      lpDefault, lpOutside, lpAbove:
         begin
           TBubbleSeries(AChartSeries).MarkPositions := lmpPositive;
           TBubbleSeries(AChartSeries).Marks.YIndex := 1;
           TBubbleSeries(AChartSeries).Marks.Distance := 5;
         end;
-      lpInside:
+      lpBelow:
+        begin
+          TBubbleSeries(AChartSeries).MarkPositions := lmpNegative;
+          TBubbleSeries(AChartSeries).Marks.YIndex := 1;
+          TBubbleSeries(AChartSeries).Marks.Distance := 5;
+        end;
+      lpInside, lpNearOrigin:
         begin
           TBubbleSeries(AChartSeries).MarkPositions := lmpInside;
           TBubbleSeries(AChartSeries).Marks.YIndex := 1;
@@ -2541,13 +2547,17 @@ begin
         TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpOutside;
       lpOutside:
         TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpOutside;
-      lpInside:
+      lpInside, lpNearOrigin:
         TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpInside;
       lpCenter:
         begin
           TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpInside;
           TOpenedBasicPointSeries(AChartSeries).MarkPositionCentered := true;
         end;
+      lpAbove:
+        TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpPositive;
+      lpBelow:
+        TOpenedBasicPointSeries(AChartSeries).MarkPositions := lmpNegative;
     end;
 
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.LabelBorder, AChartSeries.Marks.Frame);
@@ -2565,7 +2575,7 @@ begin
   AChartSeries.Marks.LinkPen.Visible := (cdlLeaderLines in AWorkbookSeries.DataLabels);
   AChartSeries.Marks.LinkPen.Color := AChartSeries.Marks.Frame.Color;
   if AChartSeries.Marks.LinkPen.Visible then
-    AChartSeries.Marks.Distance := 20
+    AChartSeries.Marks.Distance := 16
   else
     AChartSeries.Marks.Distance := 5;
 end;

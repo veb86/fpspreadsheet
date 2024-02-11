@@ -163,11 +163,20 @@ const
 
   DEFAULT_FONT_NAME = 'Liberation Sans';
 
-  AX_POS: array[boolean, TsChartAxisAlignment] of string = ( ('l', 't', 'r', 'b'), ('b', 'r', 't', 'l') );
+  AX_POS: array[boolean, TsChartAxisAlignment] of string = (
+    ('l', 't', 'r', 'b'),
+    ('b', 'r', 't', 'l')
+  );
+
   FALSE_TRUE: Array[boolean] of Byte = (0, 1);
+
   LEGEND_POS: Array[TsChartLegendPosition] of string = ('r', 't', 'b', 'l');
+
   TRENDLINE_TYPES: Array[TsTrendlineType] of string = ('', 'linear', 'log', 'exp', 'power', 'poly');
     // 'movingAvg' and 'log' not supported, so far
+
+  LABEL_POS: Array[TsChartLabelPosition] of string = ('', '', 'inEnd', 'ctr', '', 'inBase', 'inBase');
+    // lpDefault, lpOutside, lpInside, lpCenter, lpAbove, lpBelow, lpNearOrigin
 
 
 {$INCLUDE xlsxooxmlchart_hatch.inc}
@@ -1845,7 +1854,12 @@ begin
           end;
         end;
       'c:dlblPos':
-        ;
+        case s of
+          '': ASeries.LabelPosition := lpOutside;
+          'ctr': ASeries.LabelPosition := lpCenter;
+          'inBase': ASeries.LabelPosition := lpNearOrigin;
+          'inEnd': ASeries.LabelPosition := lpInside;
+        end;
       'c:showLegendKey':
         if (s = '1') then
           ASeries.DataLabels := ASeries.DataLabels + [cdlSymbol];
@@ -4170,6 +4184,9 @@ procedure TsSpreadOOXMLChartWriter.WriteChartSeriesDatapointLabels(AStream: TStr
   AIndent: Integer; ASeries: TsChartSeries);
 var
   indent: String;
+  fillAndLineFmt: String = '';
+  labelPos: String = '';
+  labelItems: String = '';
   separator: String = '';
   numFmt: String = '';
 begin
@@ -4178,38 +4195,26 @@ begin
 
   indent := DupeString(' ', AIndent);
 
-  separator := trim(ASeries.LabelSeparator);
-  case ASeries.LabelSeparator of
-    '\n', #10, #13, #13#10:
-      separator := FPS_LINE_ENDING;  // Excel wants #10
-    ' ':
-      separator := '';
-    else
-      separator := ASeries.LabelSeparator;
-  end;
-  if separator <> '' then
-    separator := indent + '  <c:separator>' + separator + '</c:separator>' + LE;
-
   if (ASeries.LabelFormat <> '') then
-    numFmt := '<c:numFmt formatCode="' + ASeries.LabelFormat + '" sourceLinked="0"/>' + LE;
+    numFmt := indent + '  <c:numFmt formatCode="' + ASeries.LabelFormat + '" sourceLinked="0"/>' + LE;
 
-  AppendToStream(AStream, Format(
-    indent + '<c:dLbls>' + LE +
-                numFmt +
-    indent + '  <c:spPr>' + LE +
-                  GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder) + LE +
-    indent + '  </c:spPr>' + LE +
+  fillAndLineFmt := indent + '  <c:spPr>' + LE +
+    GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, ASeries.LabelBackground, ASeries.LabelBorder) + LE +
+    indent + '</c:spPr>' + LE;
+
+  labelPos := LABEL_POS[ASeries.LabelPosition];
+  if labelPos <> '' then
+    labelPos := indent + '  <c:dLblPos val="' + labelPos + '"/>' + LE;
+
+  labelItems := Format(
     indent + '  <c:showLegendKey val="%d"/>' + LE +
     indent + '  <c:showVal val="%d"/>' + LE +
     indent + '  <c:showCatName val="%d"/>' + LE +
     indent + '  <c:showSerName val="%d"/>' + LE +
     indent + '  <c:showPercent val="%d"/>' + LE +
     indent + '  <c:showBubbleSize val="%d"/>' + LE +
-    indent + '  <c:showLeaderLines val="%d"/>' + LE +
-                separator +
-    indent + '</c:dLbls>' + LE,
-    [
-      FALSE_TRUE[cdlSymbol in ASeries.DataLabels],
+    indent + '  <c:showLeaderLines val="%d"/>' + LE,
+    [ FALSE_TRUE[cdlSymbol in ASeries.DataLabels],
       FALSE_TRUE[cdlValue in ASeries.DataLabels],
       FALSE_TRUE[cdlCategory in ASeries.DataLabels],
       FALSE_TRUE[cdlSeriesName in ASeries.DataLabels],
@@ -4217,7 +4222,29 @@ begin
       FALSE_TRUE[false],  // bubble size -- to do...
       FALSE_TRUE[cdlLeaderLines in ASeries.DataLabels]
     ]
-  ));
+  );
+
+  separator := trim(ASeries.LabelSeparator);
+  case ASeries.LabelSeparator of
+    '\n', #10, #13, #13#10:
+      separator := FPS_LINE_ENDING;  // Excel wants #10
+    ' ':
+      separator := '';    // space is default and not stored in the xml.
+    else
+      separator := ASeries.LabelSeparator;
+  end;
+  if separator <> '' then
+    separator := indent + '  <c:separator>' + separator + '</c:separator>' + LE;
+
+  AppendToStream(AStream,
+    indent + '<c:dLbls>' + LE +
+                numFmt +
+                fillAndLineFmt +
+                labelPos +
+                labelItems +
+                separator +
+    indent + '</c:dLbls>' + LE
+  );
 end;
 
 {@@ ----------------------------------------------------------------------------

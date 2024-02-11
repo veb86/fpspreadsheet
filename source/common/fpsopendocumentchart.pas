@@ -207,7 +207,7 @@ const
   );
 
   LABEL_POSITION: array[TsChartLabelPosition] of string = (
-    '', 'outside', 'inside', 'center');
+    '', 'outside', 'inside', 'center', 'top', 'bottom', 'near-origin');
 
   LEGEND_POSITION: array[TsChartLegendPosition] of string = (
     'end', 'top', 'bottom', 'start'
@@ -1673,9 +1673,13 @@ begin
         begin
           s := GetAttrValue(AStyleNode, 'chart:label-position');
           case s of
+            '': ASeries.LabelPosition := lpDefault;
             'outside': ASeries.LabelPosition := lpOutside;
             'inside': ASeries.LabelPosition := lpInside;
             'center': ASeries.LabelPosition := lpCenter;
+            'top': ASeries.LabelPosition := lpAbove;
+            'bottom': ASeries.LabelPosition := lpBelow;
+            'near-origin': ASeries.LabelPosition := lpNearOrigin;
           end;
 
           s := GetAttrValue(AStyleNode, 'loext:label-stroke-color');

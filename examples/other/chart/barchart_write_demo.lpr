@@ -98,27 +98,25 @@ begin
 
     // Add 1st bar series ("Student 1")
     ser := TsBarSeries.Create(ch);
-    ser.SetTitleAddr(2, 1);              // series 1 title in cell B3
-    ser.SetLabelRange(3, 0, 10, 0);      // series 1 x labels in A4:A11
-    ser.SetYRange(3, 1, 10, 1);          // series 1 y values in B4:B11
+    ser.SetTitleAddr(2, 1);              // series 1, title in cell B3
+    ser.SetLabelRange(3, 0, 10, 0);      // series 1, x labels in A4:A11
+    ser.SetYRange(3, 1, 10, 1);          // series 1, y values in B4:B11
     ser.Line.Color := scDarkRed;
     ser.Fill.Style := cfsSolidHatched;
     ser.Fill.Hatch := ch.Hatches.AddLineHatch('Crossed', chsDouble, scDarkRed, 2, 0.1, 45);
     ser.Fill.Color := scRed;
     ser.DataLabels := [cdlValue];        // Show scores as datapoint labels
-    ser.LabelFormat := '0';
 
     // Add 2nd bar series ("Student 2")
     ser := TsBarSeries.Create(ch);
-    ser.SetTitleAddr(2, 2);              // series 2 title in cell C3
-    ser.SetLabelRange(3, 0, 10, 0);      // series 2 x labels in A4:A11
-    ser.SetYRange(3, 2, 10, 2);          // series 2 y values in C4:C11
+    ser.SetTitleAddr(2, 2);              // series 2, title in cell C3
+    ser.SetLabelRange(3, 0, 10, 0);      // series 2, x labels in A4:A11
+    ser.SetYRange(3, 2, 10, 2);          // series 2, y values in C4:C11
     ser.Line.Color := scDarkBlue;
     ser.Fill.Style := cfsSolidHatched;
     ser.Fill.Hatch := ch.Hatches.AddLineHatch('Forward', chsSingle, scWhite, 1.5, 0.1, 45);
     ser.Fill.Color := scBlue;
     ser.DataLabels := [cdlValue];        // Show scores as datapoint labels
-    ser.LabelFormat := '0';
 
     book.WriteToFile(fn + '.xlsx', true);
     WriteLn('Data saved with chart in ', fn + '.xlsx');
