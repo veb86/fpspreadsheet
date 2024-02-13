@@ -328,6 +328,11 @@ end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartAxis(ANode: TDOMNode;
   AChart: TsChart; AChartAxis: TsChartAxis; var AxisID: DWord; var ADelete: Boolean);
+const                           // caaLeft, caaTop, caaRight, caaBottom
+  DEFAULT_TEXT_DIR: array[boolean, TsChartAxisAlignment] of Integer = (
+    (90, 0, 90, 0),  // not rotated
+    (0, 90, 0, 90)   // rotated
+  );
 var
   nodeName, s: String;
   n: LongInt;
@@ -404,7 +409,8 @@ begin
         begin
           x := 0;
           ReadChartTextProps(ANode, AChartAxis.LabelFont, x);
-          if x = 1000 then x := 0;  // not sure, but maybe 1000 means: default
+          if x = 1000 then
+            x := DEFAULT_TEXT_DIR[AChart.RotatedAxes, AChartAxis.Alignment];  // not sure, but maybe 1000 means: default
           AChartAxis.LabelRotation := x;
         end;
     end;

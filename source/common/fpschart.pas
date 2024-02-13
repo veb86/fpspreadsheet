@@ -795,7 +795,9 @@ type
     FGradients: TsChartGradientList;
     FHatches: TsChartHatchList;
     FImages: TsChartImageList;
+
     function GetCategoryLabelRange: TsChartRange;
+    procedure SetRotatedAxes(AValue: Boolean);
 
   protected
     function AddSeries(ASeries: TsChartSeries): Integer; virtual;
@@ -870,7 +872,7 @@ type
     { Connecting line between data points (for line and scatter series) }
     property Interpolation: TsChartInterpolation read FInterpolation write FInterpolation;
     { x and y axes exchanged (mainly for bar series, but works also for scatter and bubble series) }
-    property RotatedAxes: Boolean read FRotatedAxes write FRotatedAxes;
+    property RotatedAxes: Boolean read FRotatedAxes write SetRotatedAxes;
     { Stacking of series (for bar and area series ) }
     property StackMode: TsChartStackMode read FStackMode write FStackMode;
 
@@ -2820,14 +2822,12 @@ begin
 
   FXAxis := TsChartAxis.Create(self);
   FXAxis.Alignment := caaBottom;
-  FXAxis.Title.Caption := 'x axis';
   FXAxis.Title.Font.Style := [fssBold];
   FXAxis.LabelFont.Size := 9;
   FXAxis.Position := capStart;
 
   FX2Axis := TsChartAxis.Create(self);
   FX2Axis.Alignment := caaTop;
-  FX2Axis.Title.Caption := 'Secondary x axis';
   FX2Axis.Title.Font.Style := [fssBold];
   FX2Axis.LabelFont.Size := 9;
   FX2Axis.Visible := false;
@@ -2835,7 +2835,6 @@ begin
 
   FYAxis := TsChartAxis.Create(self);
   FYAxis.Alignment := caaLeft;
-  FYAxis.Title.Caption := 'y axis';
   FYAxis.Title.Font.Style := [fssBold];
   FYAxis.Title.RotationAngle := 90;
   FYAxis.LabelFont.Size := 9;
@@ -2843,7 +2842,6 @@ begin
 
   FY2Axis := TsChartAxis.Create(self);
   FY2Axis.Alignment := caaRight;
-  FY2Axis.Title.Caption := 'Secondary y axis';
   FY2Axis.Title.Font.Style := [fssBold];
   FY2Axis.Title.RotationAngle := 90;
   FY2Axis.LabelFont.Size := 9;
@@ -2918,12 +2916,6 @@ begin
     Result := nil;
 end;
 
-{
-function TsChart.GetWorksheet: TsBasicWorksheet;
-begin
-  Result := TsWorkbook(FWorkbook).GetWorksheetByIndex(FSheetIndex);
-end;
-}
 function TsChart.IsScatterChart: Boolean;
 begin
   Result := GetChartType = ctScatter;
@@ -2934,6 +2926,25 @@ begin
   Result := FLineStyles.Count;
 end;
 
+procedure TsChart.SetRotatedAxes(AValue: Boolean);
+begin
+  if FRotatedAxes = AValue then
+    exit;
+  FRotatedAxes := AValue;
+  if FRotatedAxes then
+  begin
+    FXAxis.Title.RotationAngle := FXAxis.Title.RotationAngle + 90;
+    FX2Axis.Title.RotationAngle := FX2Axis.Title.RotationAngle + 90;
+    FYAxis.Title.RotationAngle := FYAxis.Title.RotationAngle - 90;
+    FY2Axis.Title.RotationAngle := FY2Axis.Title.RotationAngle - 90;
+  end else
+  begin
+    FXAxis.Title.RotationAngle := FXAxis.Title.RotationAngle - 90;
+    FX2Axis.Title.RotationAngle := FX2Axis.Title.RotationAngle - 90;
+    FYAxis.Title.RotationAngle := FYAxis.Title.RotationAngle + 90;
+    FY2Axis.Title.RotationAngle := FY2Axis.Title.RotationAngle + 90;
+  end;
+end;
 
 { TsChartList }
 

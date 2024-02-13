@@ -2368,10 +2368,6 @@ begin
         end;
         font := axis.Title.Font;
         rotAngle := axis.Title.RotationAngle;
-        if AChart.RotatedAxes then
-        begin
-          if rotAngle = 0 then rotAngle := 90 else if rotAngle = 90 then rotAngle := 0;
-        end;
       end;
     else
       raise Exception.Create('[GetChartCaptionStyleAsXML] Unknown caption.');

@@ -60,7 +60,7 @@ begin
     ch.Title.Caption := 'Test Results';
     ch.Title.Font.Style := [fssBold];
     ch.Legend.Border.Style := clsNoLine;
-    ch.XAxis.Title.Caption := '';
+    ch.XAxis.Title.Caption := 'Cases';
     ch.YAxis.Title.Caption := 'Count';
     ch.YAxis.Title.Font.Color := $0075ea;
     ch.YAxis.AxisLine.Color := $0075ea;
