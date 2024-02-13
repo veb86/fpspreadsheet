@@ -17,7 +17,7 @@ var
 begin
   dir := ExtractFilePath(ParamStr(0)) + 'files/';
   ForceDirectories(dir);
-  fn := dir + FILE_NAME;
+  fn := FILE_NAME;
 
   book := TsWorkbook.Create;
   try
@@ -74,11 +74,11 @@ begin
     ser.Fill.Color := $FFCC99;
     ser.Fill.Transparency := 0.35;
 
-    book.WriteToFile(fn + '.xlsx', true);
-    WriteLn('Data saved with chart in ', fn + '.xlsx');
+    book.WriteToFile(dir + fn + '.xlsx', true);
+    WriteLn('... ', fn + '.xlsx');
 
-    book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart in ', fn + '.ods');
+    book.WriteToFile(dir + fn + '.ods', true);
+    WriteLn('... ', fn + '.ods');
   finally
     book.Free;
   end;

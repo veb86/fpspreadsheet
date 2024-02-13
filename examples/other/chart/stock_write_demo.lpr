@@ -16,7 +16,7 @@ var
   ser: TsStockSeries;
   r: Integer;
   d: TDate;
-  fn: String;
+  dir, fn: String;
   candlestickMode: Boolean;
   rotated: Boolean;
 
@@ -61,6 +61,9 @@ begin
     if rotated then fn := fn + '-rotated';
   end else
     WriteHelp;
+
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
 
   book := TsWorkbook.Create;
   try
@@ -118,12 +121,12 @@ begin
     ser.SetLabelRange(3, 0, 7, 0);
 
     {
-    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart to ', fn, '.xlsx');
+    book.WriteToFile(dir + fn + '.xlsx', true);   // Excel fails to open the file
+    WriteLn('... ', fn + '.xlsx');
     }
 
-    book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart to ', fn, '.ods');
+    book.WriteToFile(dir + fn + '.ods', true);
+    WriteLn('... ', fn + '.ods');
   finally
     book.Free;
   end;

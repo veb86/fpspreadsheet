@@ -17,7 +17,7 @@ var
   vser: TsChartSeries;
   r: Integer;
   d: TDate;
-  fn: String;
+  dir, fn: String;
   candleStickMode: Boolean;
   volumeMode: char;
   rotated: Boolean;
@@ -86,6 +86,9 @@ begin
     if rotated then fn := fn + '-rotated';
   end else
     WriteHelp;
+
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
 
   book := TsWorkbook.Create;
   try
@@ -169,12 +172,12 @@ begin
     vser.SetTitleAddr (2, 1);
 
     {
-    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart to ', fn, '.xlsx');
+    book.WriteToFile(dir + fn + '.xlsx', true);   // Excel fails to open the file
+    WriteLn('... ', fn, '.xlsx');
     }
 
-    book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart to ', fn, '.ods');
+    book.WriteToFile(dir + fn + '.ods', true);
+    WriteLn('... ', fn, '.ods');
   finally
     book.Free;
   end;

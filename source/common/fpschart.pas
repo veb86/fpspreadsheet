@@ -34,6 +34,7 @@ const
 
 type
   TsChart = class;
+  TsChartAxis = class;
   TsChartSeries = class;
 
   TsChartLine = class

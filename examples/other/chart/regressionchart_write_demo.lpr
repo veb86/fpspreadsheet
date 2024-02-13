@@ -24,7 +24,6 @@ begin
 
   dir := ExtractFilePath(ParamStr(0)) + 'files/';
   ForceDirectories(dir);
-  fn := dir + fn;
 
   book := TsWorkbook.Create;
   try
@@ -60,6 +59,8 @@ begin
     ser.ShowLines := false;
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
+    ser.SymbolFill.Color := scRed;
+    ser.SymbolFill.Style := cfsSolid;
     ser.Trendline.Title := 'Fit curve';
     ser.Trendline.TrendlineType := tltPolynomial; //tltLinear;
     ser.Trendline.ExtrapolateForwardBy := 10;
@@ -86,11 +87,11 @@ begin
     //ser.Trendline.Equation.Top := 5;
     //ser.Trendline.Equation.Left := 5;
 
-    book.WriteToFile(fn + '.xlsx', true);
-    WriteLn('Data saved with chart to ', fn + '.xlsx');
+    book.WriteToFile(dir + fn + '.xlsx', true);
+    WriteLn('... ', fn + '.xlsx');
 
-    book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart to ', fn + '.ods');
+    book.WriteToFile(dir + fn + '.ods', true);
+    WriteLn('... ', fn + '.ods');
   finally
     book.Free;
   end;

@@ -7,7 +7,7 @@ interface
 
 {$ifdef FPS_CHARTS}
 
-uses
+uses                                                  //LazLoggerBase,
   Classes, SysUtils, StrUtils, Contnrs, FPImage, fgl,
   {$ifdef FPS_PATCHED_ZIPPER}fpszipper,{$else}zipper,{$endif}
   laz2_xmlread, laz2_DOM,
@@ -179,6 +179,10 @@ const
   LABEL_POS: Array[TsChartLabelPosition] of string = ('', '', 'inEnd', 'ctr', '', 'inBase', 'inBase');
     // lpDefault, lpOutside, lpInside, lpCenter, lpAbove, lpBelow, lpNearOrigin
 
+  DEFAULT_TEXT_DIR: array[boolean, TsChartAxisAlignment] of Integer = (
+    (90, 0, 90, 0),  // not rotated for: caaLeft, caaTop, caaRight, caaBottom
+    (0, 90, 0, 90)   // rotated for: caaLeft, caaTop, caaRight, caaBottom
+  );
 
 {$INCLUDE xlsxooxmlchart_hatch.inc}
 
@@ -328,11 +332,6 @@ end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartAxis(ANode: TDOMNode;
   AChart: TsChart; AChartAxis: TsChartAxis; var AxisID: DWord; var ADelete: Boolean);
-const                           // caaLeft, caaTop, caaRight, caaBottom
-  DEFAULT_TEXT_DIR: array[boolean, TsChartAxisAlignment] of Integer = (
-    (90, 0, 90, 0),  // not rotated
-    (0, 90, 0, 90)   // rotated
-  );
 var
   nodeName, s: String;
   n: LongInt;
@@ -1536,18 +1535,16 @@ begin
     workNode := workNode.NextSibling;
   end;
 
-  // The RotatedAxes optionhandles all axis rotations by itself. Therefore we
+  // The RotatedAxes option handles all axis rotations by itself. Therefore we
   // must reset the Axis.Alignment back to the normal settings, otherwise
   // rotation will not be correct.
   if AChart.XAxis.Alignment = caaLeft then
   begin
-    if AChart.YAxis.Title.RotationAngle = 90 then
-      AChart.YAxis.Title.RotationAngle := 0;
-    AChart.RotatedAxes := true;
     AChart.XAxis.Alignment := caaBottom;
     AChart.YAxis.Alignment := caaLeft;
     AChart.X2Axis.Alignment := caaRight;
     AChart.Y2Axis.Alignment := caaTop;
+//    AChart.RotatedAxes := true;        // Note: this rotates the axis titles!
   end;
 
   workNode := ANode;
@@ -2266,10 +2263,25 @@ procedure TsSpreadOOXMLChartReader.ReadChartTitle(ANode: TDOMNode; ATitle: TsCha
 var
   nodeName, s, totalText: String;
   child, child2, child3, child4: TDOMNode;
+  axis: TsChartAxis;
+  chart: TsChart;
   n: Integer;
 begin
   if ANode = nil then
     exit;
+
+  chart := ATitle.Chart;
+  if ATitle = chart.XAxis.Title then
+    axis := chart.XAxis
+  else if ATitle = chart.YAxis.Title then
+    axis := chart.YAxis
+  else if ATitle = chart.X2Axis.Title then
+    axis := chart.X2Axis
+  else if Atitle = chart.Y2Axis.Title then
+    axis := chart.Y2Axis
+  else
+    axis := nil;
+
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
@@ -2286,9 +2298,18 @@ begin
               case nodeName of
                 'a:bodyPr':
                   begin
-                    s := GetAttrValue(ANode, 'rot');
+                    s := GetAttrValue(child2, 'rot');
                     if (s <> '') and TryStrToInt(s, n) then
+                    begin
+                      if n = 1000 then
+                      begin
+                        if axis <> nil then
+                          n := DEFAULT_TEXT_DIR[axis.Chart.RotatedAxes, axis.Alignment]  // not sure, but maybe 1000 means: default
+                        else
+                          n := 0;
+                      end;
                       ATitle.RotationAngle := -n / ANGLE_MULTIPLIER;
+                    end;
                   end;
                 'a:lstStyle':
                   ;
@@ -2609,9 +2630,18 @@ procedure TsSpreadOOXMLChartWriter.WriteChartNode(AStream: TStream;
 var
   chart: TsChart;
   indent: String;
+  savedRotatedAxes: Boolean;
 begin
   indent := DupeString(' ', AIndent);
   chart := TsWorkbook(Writer.Workbook).GetChartByIndex(AChartIndex);
+
+  // Only bar charts can have rotated axes in Excel
+  savedRotatedAxes := chart.RotatedAxes;
+  if (chart.GetChartType <> ctBar) and chart.RotatedAxes then
+  begin
+    FWriter.Workbook.AddErrorMsg('Axes can be rotated only in bar charts.');
+    chart.RotatedAxes := false;
+  end;
 
   AppendToStream(AStream,
     indent + '<c:chart>' + LE
@@ -2625,6 +2655,8 @@ begin
     indent  + '  <c:plotVisOnly val="1" />' + LE +
     indent + '</c:chart>' + LE
   );
+
+  chart.RotatedAxes := savedRotatedAxes;
 end;
 
 { Write the relationship file for the chart with the given index.
@@ -3446,8 +3478,8 @@ var
   xAxis: TsChartAxis;
   isFirstOfGroup: Boolean;
   isLastOfGroup: Boolean;
-  prevSeriesGroupIndex: Integer;
-  nextSeriesGroupIndex: Integer;
+  prevSeriesGroupIndex: Integer = -1;
+  nextSeriesGroupIndex: Integer = -1;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -3578,6 +3610,7 @@ end;
   @param  AIndent       Count of indentation spaces, for better legibility
   @param  ASeries       Bubble series to be processed
   @param  ASeriesIndex  Index of the series in the chart's series list
+  @param  APosInAxisGroup Bit 1 - first series on primary or secondary axis, bit 2 - last series on primary or secondary axis
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteBubbleSeries(AStream: TStream;
   AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex, APosInAxisGroup: Integer);
@@ -3591,8 +3624,8 @@ begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
-  isFirstOfGroup := APosInAxisGroup = 1;
-  isLastOfGroup := APosInAxisGroup = 2;
+  isFirstOfGroup := (APosInAxisGroup and 1 = 1);
+  isLastOfGroup := (APosInAxisGroup and 2 = 2);
 
   if isFirstOfGroup then
     AppendToStream(AStream,
@@ -3797,11 +3830,13 @@ procedure TsSpreadOOXMLChartWriter.WriteChartAxisTitle(AStream: TStream;
   AIndent: Integer; Axis: TsChartAxis);
 var
   indent: String;
+  chart: TsChart;
 begin
   if not Axis.Title.Visible or (Axis.Title.Caption = '') then
     exit;
 
   indent := DupeString(' ', AIndent);
+  chart := Axis.Chart;
 
   AppendToStream(AStream,
     indent + '<c:title>' + LE
@@ -3940,7 +3975,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Assembles the <c:marker> node of a scatter series as a string
+  Assembles the child nodes of the <c:marker> node of a scatter series as a
+  string
 -------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartSeriesMarkerXML(AIndent: Integer;
   ASeries: TsCustomLineSeries): String;
@@ -3971,7 +4007,7 @@ begin
       cssDash: markerStr := 'dash';
       cssDot: markerStr := 'dot';
       else markerStr := 'star';  // !!!
-    end
+    end                  // The symbols marked by !!! are not available in Excel
   else
     markerStr := 'none';
 
@@ -4020,7 +4056,7 @@ begin
   // Write series attached to secondary y axis
   hasSecondaryAxis := WriteChartSeries(AStream, AIndent + 2, AChart, calSecondary, x2AxKind);
 
-  //if not (ser is TsPieSeries) then
+  if not (AChart.GetChartType in [ctPie, ctRing]) then
   begin
     yAxKind := 'c:valAx';
     WriteChartAxisNode(AStream, AIndent, AChart.XAxis, xAxKind);
@@ -4221,8 +4257,8 @@ begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
-  isFirstOfGroup := APosInAxisGroup = 1;
-  isLastOfGroup := APosInAxisGroup = 2;
+  isFirstOfGroup := (APosInAxisGroup and 1 = 1);
+  isLastOfGroup := (APosInAxisGroup and 2 = 2);
 
   case chart.Interpolation of
     ciLinear:

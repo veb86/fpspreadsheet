@@ -27,7 +27,6 @@ begin
   end;
   dir := ExtractFilePath(ParamStr(0)) + 'files/';
   ForceDirectories(dir);
-  fn := dir + fn;
 
   book := TsWorkbook.Create;
   try
@@ -90,11 +89,11 @@ begin
 
     //ser.SetFillColorRange(4, 2, 8, 2);
 
-    book.WriteToFile(fn+'.xlsx', true);
-    WriteLn('Data saved with chart in ', fn+'.xlsx');
+    book.WriteToFile(dir + fn + '.xlsx', true);
+    WriteLn('... ', fn + '.xlsx');
 
-    book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart in ', fn+'.ods');
+    book.WriteToFile(dir + fn + '.ods', true);
+    WriteLn('... ', fn + '.ods');
   finally
     book.Free;
   end;

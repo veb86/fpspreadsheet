@@ -2,6 +2,7 @@
 echo -----------------------------
 echo  GENERATING CHART DEMO FILES 
 echo -----------------------------
+echo All files are in folder "files"
 echo.
 echo AREA SERIES
 areachart_write_demo
@@ -18,6 +19,10 @@ barchart_write_demo vert stacked
 barchart_write_demo horiz stacked
 barchart_write_demo vert percentage
 barchart_write_demo horiz percentage
+echo.
+echoe BAR SERIES WITH TWO AXES
+barchart_2axes_write_demo
+barchart_2axes_write_demo rotated
 echo.
 echo BUBBLE SERIES
 bubblechart_write_demo

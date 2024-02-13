@@ -53,7 +53,6 @@ begin
 
   dir := ExtractFilePath(ParamStr(0)) + 'files/';
   ForceDirectories(dir);
-  fn := dir + fn;
 
   book := TsWorkbook.Create;
   try
@@ -132,16 +131,18 @@ begin
     ser.ShowLines := true;
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
+    ser.SymbolFill.Style := cfsSolid;
+    ser.SymbolFill.Color := scRed;
     ser.SymbolBorder.Style := clsNoLine;
 //    ser.Line.Style := clsDash;
     ser.Line.Width := 0.5;  // mm
 
-    book.WriteToFile(fn + '.xlsx', true);
-    WriteLn('Data saved with chart to ', fn + '.xlsx');
+    book.WriteToFile(dir + fn + '.xlsx', true);
+    WriteLn('... ', fn + '.xlsx');
 
     book.Options := book.Options + [boCalcBeforeSaving];
-    book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart to ', fn + '.ods');
+    book.WriteToFile(dir + fn + '.ods', true);
+    WriteLn('... ', fn + '.ods');
   finally
     book.Free;
   end;
