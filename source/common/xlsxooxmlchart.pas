@@ -103,6 +103,7 @@ type
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
     procedure WriteChartTrendline(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
+    function WriteChartSeries(AStream: TStream; AIndent: Integer; AChart: TsChart; AxisLink: TsChartAxisLink; out xAxKind: String): Boolean;
     procedure WriteChartSeriesDatapointLabels(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesDatapointStyles(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: Integer);
@@ -110,12 +111,12 @@ type
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
 
     // Writing the nodes of the series types
-    procedure WriteAreaSeries(AStream: TStream; AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex: Integer);
-    procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
-    procedure WriteBubbleSeries(AStream: TStream; AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex: Integer);
+    procedure WriteAreaSeries(AStream: TStream; AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex, APosInAxisGroup: Integer);
+    procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex, APosInAxisGroup: Integer);
+    procedure WriteBubbleSeries(AStream: TStream; AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex, APosInAxisGroup: Integer);
     procedure WritePieSeries(AStream: TStream; AIndent: Integer; ASeries: TsPieSeries; ASeriesIndex: Integer);
     procedure WriteRadarSeries(AStream: TStream; AIndent: Integer; ASeries: TsRadarSeries; ASeriesIndex: Integer);
-    procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
+    procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex, APosInAxisGroup: Integer);
 
     procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
     procedure WriteChartText(AStream: TStream; AIndent: Integer; AText: TsChartText);
@@ -166,7 +167,7 @@ const
   AX_POS: array[boolean, TsChartAxisAlignment] of string = (
     ('l', 't', 'r', 'b'),
     ('b', 'r', 't', 'l')
-  );
+  );  //caaLeft, caaTop, caaRight, caaBottom
 
   FALSE_TRUE: Array[boolean] of Byte = (0, 1);
 
@@ -3430,25 +3431,33 @@ end;
   file chartN.xml
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteAreaSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex: Integer);
+  AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex, APosInAxisGroup: Integer);
 const
   GROUPING: Array[TsChartStackMode] of string = ('standard', 'stacked', 'percentStacked');
 var
   indent: String;
   chart: TsChart;
-  isFirstOfGroup: Boolean = true;
-  isLastOfGroup: Boolean = true;
+  xAxis: TsChartAxis;
+  isFirstOfGroup: Boolean;
+  isLastOfGroup: Boolean;
+  prevSeriesGroupIndex: Integer;
+  nextSeriesGroupIndex: Integer;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
-  if ASeries.GroupIndex > -1 then
-  begin
-    if (ASeriesIndex > 0) and (chart.Series[ASeriesIndex-1].GroupIndex = ASeries.GroupIndex) then
-      isfirstOfGroup := false;
-    if (ASeriesIndex < chart.Series.Count-1) and (chart.Series[ASeriesIndex+1].GroupIndex = ASeries.GroupIndex) then
-      isLastOfGroup := false;
-  end;
+  if (ASeriesIndex > 0) and (chart.Series[ASeriesIndex-1].YAxis = ASeries.YAxis) then
+    prevSeriesGroupIndex := chart.Series[ASeriesIndex-1].GroupIndex;
+  if (ASeriesIndex < chart.Series.Count-1) and (chart.Series[ASeriesIndex+1].YAxis = ASeries.YAxis) then
+    nextSeriesGroupIndex := chart.Series[ASeriesIndex+1].GroupIndex;
+
+  isFirstOfGroup := APosInAxisGroup and 1 = 1;
+  isLastOfGroup := APosInAxisgroup and 2 = 2;
+
+  if ((ASeries.GroupIndex > -1) and (prevSeriesGroupIndex = ASeries.GroupIndex)) then
+    isFirstOfGroup := false;
+  if ((ASeries.GroupIndex > -1) and (nextSeriesGroupIndex = ASeries.GroupIndex)) then
+    isLastOfGroup := false;
 
   if isFirstOfGroup then
     AppendToStream(AStream, Format(
@@ -3461,13 +3470,18 @@ begin
 
   if isLastOfGroup then
   begin
+    if ASeries.YAxis = calPrimary then
+      xAxis := chart.XAxis
+    else
+      xAxis := chart.X2Axis;
+
     AppendToStream(AStream, Format(
       indent + '  <c:axId val="%d"/>' + LE +
       indent + '  <c:axId val="%d"/>' + LE +
       indent + '</c:areaChart>' + LE,
       [
-        FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
-        FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
+        FAxisID[xAxis.Alignment],  // <c:axId>
+        FAxisID[ASeries.GetYAxis.Alignment]   // <c:axId>
       ]
     ));
   end;
@@ -3478,30 +3492,39 @@ end;
   file chartN.xml
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteBarSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex: Integer);
+  AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex, APosInAxisGroup: Integer);
 const
   BAR_DIR: array[boolean] of string = ('col', 'bar');
   GROUPING: array[TsChartStackMode] of string = ('clustered', 'stacked', 'percentStacked');
 var
   indent: String;
   chart: TsChart;
+  xAxis: TsChartAxis;
   gapWidth: Integer = 0;
   overlap: Integer = 999;
-  isFirstOfGroup: Boolean = true;
-  isLastOfGroup: Boolean = true;
+  isFirstOfGroup: Boolean;
+  isLastOfGroup: Boolean;
+  prevSeriesGroupIndex: Integer = -1;
+  nextSeriesGroupIndex: Integer = -1;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
-  if ASeries.GroupIndex > -1 then
-  begin
-    if (ASeriesIndex > 0) and (chart.Series[ASeriesIndex-1].GroupIndex = ASeries.GroupIndex) then
-      isfirstOfGroup := false;
-    if (ASeriesIndex < chart.Series.Count-1) and (chart.Series[ASeriesIndex+1].GroupIndex = ASeries.GroupIndex) then
-      isLastOfGroup := false;
-    if chart.StackMode <> csmDefault then
-      overlap := 100
-  end;
+  if (ASeriesIndex > 0) and (chart.Series[ASeriesIndex-1].YAxis = ASeries.YAxis) then
+    prevSeriesGroupIndex := chart.Series[ASeriesIndex-1].GroupIndex;
+  if (ASeriesIndex < chart.Series.Count-1) and (chart.Series[ASeriesIndex+1].YAxis = ASeries.YAxis) then
+    nextSeriesGroupIndex := chart.Series[ASeriesIndex+1].GroupIndex;
+
+  isFirstOfGroup := APosInAxisGroup and 1 = 1;
+  isLastOfGroup := APosInAxisgroup and 2 = 2;
+
+  if ((ASeries.GroupIndex > -1) and (prevSeriesGroupIndex = ASeries.GroupIndex)) then
+    isFirstOfGroup := false;
+  if ((ASeries.GroupIndex > -1) and (nextSeriesGroupIndex = ASeries.GroupIndex)) then
+    isLastOfGroup := false;
+
+  if (ASeries.GroupIndex > -1) and (chart.StackMode <> csmDefault) then
+    overlap := 100;
 
   if isFirstOfGroup then
     AppendToStream(AStream, Format(
@@ -3519,6 +3542,12 @@ begin
     if overlap = 999 then
       overlap := chart.BarOverlapPercent;
     gapWidth := chart.BarGapWidthPercent;
+
+    if ASeries.YAxis = calPrimary then
+      xAxis := chart.XAxis
+    else
+      xAxis := chart.X2Axis;
+
     AppendToStream(AStream, Format(
       indent + '  <c:gapWidth val="%d"/>' + LE +
       indent + '  <c:overlap val="%d"/>' + LE +
@@ -3528,8 +3557,8 @@ begin
       [
         gapWidth,                                // <c:gapWidth>
         overlap,                                 // <c:overlap>
-        FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
-        FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
+        FAxisID[xAxis.Alignment],  // <c:axId>
+        FAxisID[ASeries.GetYAxis.Alignment]   // <c:axId>
       ]
     ));
   end;
@@ -3545,38 +3574,53 @@ end;
   @param  ASeriesIndex  Index of the series in the chart's series list
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteBubbleSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex: Integer);
+  AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex, APosInAxisGroup: Integer);
 var
   indent: String;
   chart: TsChart;
-  diameterMode: String;
+  xAxis: TsChartAxis;
+  isFirstOfGroup: Boolean;
+  isLastOfGroup: Boolean;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
 
-  AppendToStream(AStream,
-    indent + '<c:bubbleChart>' + LE +
-    indent + '  <c:varyColors val="0"/>' + LE
-  );
+  isFirstOfGroup := APosInAxisGroup = 1;
+  isLastOfGroup := APosInAxisGroup = 2;
+
+  if isFirstOfGroup then
+    AppendToStream(AStream,
+      indent + '<c:bubbleChart>' + LE +
+      indent + '  <c:varyColors val="0"/>' + LE
+    );
 
   WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
 
-  if ASeries.BubbleSizeMode = bsmRadius then
-    AppendToStream(AStream,
-      indent + '  <c:sizeRepresents val="w"/>' + LE
-    );
+  if isLastOfGroup then
+  begin
+    if ASeries.YAxis = calPrimary then
+      xAxis := chart.XAxis
+    else
+      xAxis := chart.X2Axis;
 
-  AppendToStream(AStream, Format(
-    indent + '  <c:bubbleScale val="%d"/>' + LE +
-    indent + '  <c:axId val="%d"/>' + LE +
-    indent + '  <c:axId val="%d"/>' + LE +
-    indent + '</c:bubbleChart>' + LE,
-    [
-      round(ASeries.BubbleScale*100),          // <c:bubbleScale>
-      FAxisID[ASeries.Chart.XAxis.Alignment],  // <c:axId>
-      FAxisID[ASeries.Chart.YAxis.Alignment]   // <c:axId>
-    ]
-  ));
+    if ASeries.BubbleSizeMode = bsmRadius then
+      AppendToStream(AStream,
+        indent + '  <c:sizeRepresents val="w"/>' + LE
+      );
+
+    AppendToStream(AStream, Format(
+      indent + '  <c:bubbleScale val="%d"/>' + LE +
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '</c:bubbleChart>' + LE,
+      [
+        round(ASeries.BubbleScale*100),          // <c:bubbleScale>
+        FAxisID[xAxis.Alignment],  // <c:axId>
+        FAxisID[ASeries.GetYAxis.Alignment]   // <c:axId>
+      ]
+    ));
+  end;
+
   // Note:  <c:showNegBubbles> not supported
 end;
 
@@ -3586,10 +3630,11 @@ end;
 
   Depending on AxisKind, the node is either <c:catAx> or <c:valAx>.
 
-  @param  AStream   Stream of the chartN.xml file
-  @param  AIndent   Count of indentation spaces to increase readability
-  @param  Axis      Chart axis processed
-  @param  AxisKind  'catAx' when Axis is a category axis, otherwise 'valAx'
+  @param  AStream     Stream of the chartN.xml file
+  @param  AIndent     Count of indentation spaces to increase readability
+  @param  Axis        Chart axis processed
+  @param  ANodeName   'catAx' when Axis is a category axis, otherwise 'valAx'
+//  @param  IsSecondary  is true when the axis is used as a secondary axis.
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteChartAxisNode(AStream: TStream;
   AIndent: Integer; Axis: TsChartAxis; ANodeName: String);
@@ -3627,16 +3672,24 @@ procedure TsSpreadOOXMLChartWriter.WriteChartAxisNode(AStream: TStream;
 
 var
   indent: String;
+  chart: TsChart;
   axID: DWord;
   rotAxID: DWord;
   crosses: String = 'autoZero';
+  delete: Integer = 0;
 begin
   indent := DupeString(' ', AIndent);
+  chart := Axis.Chart;
 
   axID := FAxisID[Axis.Alignment];
   rotAxID := FAxisID[Axis.GetRotatedAxis.Alignment];
-  if (Axis = Axis.Chart.YAxis) and (Axis.Chart.GetChartType in [ctBar]) then
+  if (Axis = chart.Y2Axis) then
+    crosses := 'max'
+  else
+  if (Axis = chart.YAxis) and (chart.GetChartType in [ctBar]) then
     crosses := 'min';
+  if Axis = chart.X2Axis then
+    delete := 1;
 
   AppendToStream(AStream, Format(
     indent + '<%s>' + LE +
@@ -3647,17 +3700,20 @@ begin
   WriteChartAxisScaling(AStream, AIndent + 2, Axis);
 
   AppendToStream(AStream, Format(
-    indent + '  <c:delete val="0"/>' + LE +
+    indent + '  <c:delete val="%d"/>' + LE +
     indent + '  <c:axPos val="%s" />' + LE,
-    [ AX_POS[Axis.Chart.RotatedAxes, Axis.Alignment] ]
+    [ delete,
+      AX_POS[Axis.Chart.RotatedAxes, Axis.Alignment]
+    ]
     // axis rotation seems to be respected by Excel only for bar series.
   ));
 
   // Grid lines
-  AppendToStream(AStream,
-    GetGridLineStr(AIndent + 2, 'c:majorGridlines', Axis.MajorGridLines) +
-    GetGridLineStr(AIndent + 2, 'c:minorGridlines', Axis.MinorGridLines)
-  );
+  if Axis <> chart.Y2Axis then
+    AppendToStream(AStream,
+      GetGridLineStr(AIndent + 2, 'c:majorGridlines', Axis.MajorGridLines) +
+      GetGridLineStr(AIndent + 2, 'c:minorGridlines', Axis.MinorGridLines)
+    );
 
   // Axis title
   WriteChartAxisTitle(AStream, AIndent + 2, Axis);
@@ -3939,48 +3995,35 @@ var
   indent: String;
   i: Integer;
   ser: TsChartSeries;
-  xAxKind, yAxKind: String;
+  xAxKind, x2AxKind, yAxKind: String;
+  hasSecondaryAxis: Boolean;
 begin
   indent := DupeString(' ', AIndent);
   FAxisID[caaBottom] := Random(MaxInt);
   FAxisID[caaLeft] := Random(MaxInt);
+  FAxisID[caaRight] := Random(MaxInt);
+  FAxisID[caaTop] := Random(MaxInt);
 
   AppendToStream(AStream,
     indent + '<c:plotArea>' + LE
   );
 
-  xAxKind := 'c:catAx';
-  yAxKind := 'c:valAx';
+  // Write series attached to primary y axis
+  WriteChartSeries(AStream, AIndent + 2, AChart, calPrimary, xAxKind);
 
-  for i := 0 to AChart.Series.Count-1 do
-  begin
-    ser := TsChartSeries(AChart.Series[i]);
-    case ser.ChartType of
-      ctArea:
-        WriteAreaSeries(AStream, AIndent + 2, TsAreaSeries(ser), i);
-      ctBar:
-        WriteBarSeries(AStream, AIndent + 2, TsBarSeries(ser), i);
-      ctBubble:
-        begin
-          WriteBubbleSeries(AStream, AIndent + 2, TsBubbleSeries(ser), i);
-          xAxKind := 'c:valAx';
-        end;
-      ctPie, ctRing:
-        WritePieSeries(AStream, AIndent + 2, TsPieSeries(ser), i);
-      ctRadar, ctFilledRadar:
-        WriteRadarSeries(AStream, AIndent + 2, TsRadarSeries(ser), i);
-      ctScatter:
-        begin
-          WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), i);
-          xAxKind := 'c:valAx';
-        end;
-    end;
-  end;
+  // Write series attached to secondary y axis
+  hasSecondaryAxis := WriteChartSeries(AStream, AIndent + 2, AChart, calSecondary, x2AxKind);
 
-  if not (ser is TsPieSeries) then
+  //if not (ser is TsPieSeries) then
   begin
+    yAxKind := 'c:valAx';
     WriteChartAxisNode(AStream, AIndent, AChart.XAxis, xAxKind);
     WriteChartAxisNode(AStream, AIndent, AChart.YAxis, yAxKind);
+    if hasSecondaryAxis then
+    begin
+      WriteChartAxisNode(AStream, AIndent, AChart.Y2Axis, yAxKind);
+      WriteChartAxisNode(AStream, AIndent, AChart.X2Axis, x2AxKind);
+    end;
   end;
 
   AppendToStream(AStream,
@@ -4000,6 +4043,88 @@ begin
     WriteChartSpaceXML(FSCharts[i], i);
   end;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the nodes for all series which are attached to the same y axis.
+
+  @param  AStream  Stream of the chartN.xml file
+  @param  AIndent  Number of indentation spaces, for better legibility
+  @param  AChart   Chart from which the series are taken
+  @param  AxisLink Type of the y axis (primary or secondary) which selects the series handled in this run.
+  @param  xAxKind  Returns the type name of the x axis: <c:catAx> for a category, <c:valAx> for a value axis
+
+  @returns When no series were attached to the specified axis the function returns false
+-------------------------------------------------------------------------------}
+function TsSpreadOOXMLChartWriter.WriteChartSeries(AStream: TStream;
+  AIndent: Integer; AChart: TsChart; AxisLink: TsChartAxisLink; out xAxKind: string): Boolean;
+var
+  indent: String;
+  i, j, n: Integer;
+  ser: TsChartSeries;
+  axisGroup: Array of Integer = nil;
+  posInGroup: Integer;
+begin
+  Result := false;
+
+  // Collect all series attached to the same y axis, depending on PrimaryAxis parameter.
+  SetLength(axisGroup, AChart.Series.Count);
+  n := 0;
+  for i := 0 to AChart.Series.Count-1 do
+  begin
+    ser := TsChartSeries(AChart.Series[i]);
+    if (AxisLink = calPrimary) and (ser.YAxis = calPrimary) then
+    begin
+      axisGroup[n] := i;
+      inc(n);
+    end;
+    if (AxisLink = calSecondary) and (ser.YAxis = calSecondary) then
+    begin
+      axisGroup[n] := i;
+      inc(n);
+    end;
+  end;
+  SetLength(axisGroup, n);
+
+  if n = 0 then
+    exit;
+
+  xAxKind := 'c:catAx';
+
+  for i := 0 to High(axisGroup) do
+  begin
+    j := axisGroup[i];
+    ser := TsChartSeries(AChart.Series[j]);
+
+    posInGroup := 0;
+    if i = 0 then
+      posInGroup := posInGroup or 1;
+    if i = High(axisGroup) then
+      posInGroup := posInGroup or 2;
+
+    case ser.ChartType of
+      ctArea:
+        WriteAreaSeries(AStream, AIndent + 2, TsAreaSeries(ser), j, posInGroup);
+      ctBar:
+        WriteBarSeries(AStream, AIndent + 2, TsBarSeries(ser), j, posInGroup);
+      ctBubble:
+        begin
+          WriteBubbleSeries(AStream, AIndent + 2, TsBubbleSeries(ser), j, posInGroup);
+          xAxKind := 'c:valAx';
+        end;
+      ctPie, ctRing:
+        WritePieSeries(AStream, AIndent + 2, TsPieSeries(ser), j);
+      ctRadar, ctFilledRadar:
+        WriteRadarSeries(AStream, AIndent + 2, TsRadarSeries(ser), j);
+      ctScatter:
+        begin
+          WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), j, posInGroup);
+          xAxKind := 'c:valAx';
+        end;
+    end;
+  end;
+  Result := true;
+end;
+
 
 procedure TsSpreadOOXMLChartWriter.WritePieSeries(AStream: TStream;
   AIndent: Integer; ASeries: TsPieSeries; ASeriesIndex: Integer);
@@ -4043,6 +4168,7 @@ procedure TsSpreadOOXMLChartWriter.WriteRadarSeries(AStream: TStream;
 var
   indent: String;
   chart: TsChart;
+  xAxis: TsChartAxis;
   radarStyle: String;
 begin
   indent := DupeString(' ', AIndent);
@@ -4052,6 +4178,11 @@ begin
     radarStyle := 'filled'
   else
     radarStyle := 'marker';
+
+  if ASeries.YAxis = calPrimary then
+    xAxis := chart.XAxis
+  else
+    xAxis := chart.X2Axis;
 
   AppendToStream(AStream,
     indent + '<c:radarChart>' + LE +
@@ -4065,21 +4196,27 @@ begin
     indent + '  <c:axId val="%d"/>' + LE +
     indent + '</c:radarChart>' + LE,
     [
-      FAxisID[chart.XAxis.Alignment],  // <c:axId>
-      FAxisID[chart.YAxis.Alignment]   // <c:axId>
+      FAxisID[xAxis.Alignment],             // <c:axId>
+      FAxisID[ASeries.GetYAxis.Alignment]   // <c:axId>
     ]
   ));
 end;
 
 procedure TsSpreadOOXMLChartWriter.WriteScatterSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex: Integer);
+  AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex, APosInAxisGroup: Integer);
 var
   indent: String;
   chart: TsChart;
+  xAxis: TsChartAxis;
   scatterStyleStr: String;
+  isFirstOfGroup: Boolean = true;
+  isLastOfGroup: Boolean = true;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
+
+  isFirstOfGroup := APosInAxisGroup = 1;
+  isLastOfGroup := APosInAxisGroup = 2;
 
   case chart.Interpolation of
     ciLinear:
@@ -4091,23 +4228,32 @@ begin
       scatterStyleStr := 'lineMarker';      // better than nothing...
   end;
 
-  AppendToStream(AStream,
-    indent + '<c:scatterChart>' + LE +
-    indent + '  <c:varyColors val="0"/>' + LE +
-    indent + '  <c:scatterStyle val="' + scatterStyleStr + '"/>' + LE
-  );
+  if isFirstOfGroup then
+    AppendToStream(AStream,
+      indent + '<c:scatterChart>' + LE +
+      indent + '  <c:varyColors val="0"/>' + LE +
+      indent + '  <c:scatterStyle val="' + scatterStyleStr + '"/>' + LE
+    );
 
   WriteChartSeriesNode(AStream, AIndent + 4, ASeries, ASeriesIndex);
 
-  AppendToStream(AStream, Format(
-    indent + '  <c:axId val="%d"/>' + LE +
-    indent + '  <c:axId val="%d"/>' + LE +
-    indent + '</c:scatterChart>' + LE,
-    [
-      FAxisID[chart.XAxis.Alignment],  // <c:axId>
-      FAxisID[chart.YAxis.Alignment]   // <c:axId>
-    ]
-  ));
+  if isLastOfGroup then
+  begin
+    if ASeries.YAxis = calPrimary then
+      xAxis := chart.XAxis
+    else
+      xAxis := chart.X2Axis;
+
+    AppendToStream(AStream, Format(
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '</c:scatterChart>' + LE,
+      [
+        FAxisID[xAxis.Alignment],  // <c:axId>
+        FAxisID[ASeries.GetYAxis.Alignment]   // <c:axId>
+      ]
+    ));
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------

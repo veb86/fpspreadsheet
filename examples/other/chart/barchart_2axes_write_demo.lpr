@@ -8,7 +8,7 @@ procedure WriteHelp;
 begin
   WriteLn('SYNTAX: barchart_2axes_write_demo [rotated]');
   WriteLn('  (no argument) ..... vertical bars');
-  WriteLn('  rotated ........... hoizontal bars');
+  WriteLn('  rotated ........... horizontal bars');
   Halt;
 end;
 
@@ -19,9 +19,22 @@ var
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsChartSeries;
-  fn: String;
+  rotated: Boolean = false;
+  fn, dir: String;
 begin
   fn := FILE_NAME;
+  if ParamCount > 0 then
+    case lowercase(ParamStr(1)) of
+      'rotated': rotated := true;
+      else WriteHelp;
+    end;
+
+  if rotated then
+    fn := fn + '-rotated';
+
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
+  fn := dir + fn;
 
   book := TsWorkbook.Create;
   try
@@ -58,11 +71,8 @@ begin
     ch.Y2Axis.AxisLine.Color := $b08359;
     ch.Y2Axis.LabelFont.Color := $b08359;
 
-    if (ParamCount >= 1) and (lowercase(ParamStr(1)) = 'rotated') then
-    begin
+    if rotated then
       ch.RotatedAxes := true;
-      fn := fn + '-rotated';
-    end;
 
     // Add 1st bar series ("Count")
     ser := TsBarSeries.Create(ch);

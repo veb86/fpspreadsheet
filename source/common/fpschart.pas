@@ -544,6 +544,8 @@ type
     constructor Create(AChart: TsChart); virtual;
     destructor Destroy; override;
     function GetCount: Integer;
+    function GetXAxis: TsChartAxis;
+    function GetYAxis: TsChartAxis;
     function GetXCount: Integer;
     function GetYCount: Integer;
     function HasLabels: Boolean;
@@ -2239,6 +2241,22 @@ end;
 function TsChartSeries.GetCount: Integer;
 begin
   Result := GetYCount;
+end;
+
+function TsChartSeries.GetXAxis: TsChartAxis;
+begin
+  if FXAxis = calPrimary then
+    Result := Chart.XAxis
+  else
+    Result := Chart.X2Axis;
+end;
+
+function TsChartSeries.GetYAxis: TsChartAxis;
+begin
+  if FYAxis = calPrimary then
+    Result := Chart.YAxis
+  else
+    Result := Chart.Y2Axis;
 end;
 
 function TsChartSeries.GetXCount: Integer;
