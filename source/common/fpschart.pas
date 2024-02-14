@@ -302,6 +302,7 @@ type
     FAutomaticMinorSteps: Boolean;
     FAxisLine: TsChartLine;
     FCategoryRange: TsChartRange;
+    FDefaultTitleRotation: Boolean;
     FMajorGridLines: TsChartLine;
     FMinorGridLines: TsChartline;
     FInverted: Boolean;
@@ -325,6 +326,7 @@ type
     FPositionValue: Double;
     FShowLabels: Boolean;
     FDateTime: Boolean;
+    function GetTitleRotationAngle: Single;
     procedure SetMax(AValue: Double);
     procedure SetMin(AValue: Double);
     procedure SetMinorCount(AValue: Integer);
@@ -347,6 +349,7 @@ type
     property AxisLine: TsChartLine read FAxisLine write FAxisLine;
     property CategoryRange: TsChartRange read FCategoryRange write FCategoryRange;
     property DateTime: Boolean read FDateTime write FDateTime;
+    property DefaultTitleRotation: Boolean read FDefaultTitleRotation write FDefaultTitleRotation;
     property Inverted: Boolean read FInverted write FInverted;
     property LabelFont: TsFont read FLabelFont write FLabelFont;
     property LabelFormat: String read FLabelFormat write FLabelFormat;
@@ -369,6 +372,7 @@ type
     property PositionValue: Double read FPositionValue write FPositionValue;
     property ShowLabels: Boolean read FShowLabels write FShowLabels;
     property Title: TsChartText read FTitle write FTitle;
+    property TitleRotationAngle: Single read GetTitleRotationAngle;
     property Visible;
   end;
 
@@ -798,7 +802,6 @@ type
     FImages: TsChartImageList;
 
     function GetCategoryLabelRange: TsChartRange;
-    procedure SetRotatedAxes(AValue: Boolean);
 
   protected
     function AddSeries(ASeries: TsChartSeries): Integer; virtual;
@@ -873,7 +876,7 @@ type
     { Connecting line between data points (for line and scatter series) }
     property Interpolation: TsChartInterpolation read FInterpolation write FInterpolation;
     { x and y axes exchanged (mainly for bar series, but works also for scatter and bubble series) }
-    property RotatedAxes: Boolean read FRotatedAxes write SetRotatedAxes;
+    property RotatedAxes: Boolean read FRotatedAxes write FRotatedAxes;
     { Stacking of series (for bar and area series ) }
     property StackMode: TsChartStackMode read FStackMode write FStackMode;
 
@@ -1727,6 +1730,7 @@ begin
   FCategoryRange := TsChartRange.Create(AChart);
 
   FTitle := TsChartText.Create(AChart);
+  FDefaultTitleRotation := true;
 
   FLabelFont := TsFont.Create;
   FLabelFont.Size := 9;
@@ -1840,6 +1844,26 @@ begin
     Result := Chart.XAxis
   else if Chart.Y2Axis = self then
     Result := Chart.X2Axis;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Returns the text rotation angle of the axis title.
+  When DefaultTitleRotation is true this is either 0 or 90, depending on the
+  axis direction. Otherwise it is the title's RotationAngle.
+-------------------------------------------------------------------------------}
+function TsChartAxis.GetTitleRotationAngle: Single;
+var
+  rotated: Boolean;
+begin
+  if FDefaultTitleRotation then
+  begin
+    rotated := FChart.RotatedAxes;
+    case FAlignment of
+      caaLeft, caaRight: if rotated then Result := 0 else Result := 90;
+      caaBottom, caaTop: if rotated then Result := 90 else Result := 0;
+    end;
+  end else
+    Result := FTitle.RotationAngle;
 end;
 
 procedure TsChartAxis.SetCategoryRange(ARow1, ACol1, ARow2, ACol2: Cardinal);
@@ -2927,25 +2951,6 @@ begin
   Result := FLineStyles.Count;
 end;
 
-procedure TsChart.SetRotatedAxes(AValue: Boolean);
-begin
-  if FRotatedAxes = AValue then
-    exit;
-  FRotatedAxes := AValue;
-  if FRotatedAxes then
-  begin
-    FXAxis.Title.RotationAngle := FXAxis.Title.RotationAngle + 90;
-    FX2Axis.Title.RotationAngle := FX2Axis.Title.RotationAngle + 90;
-    FYAxis.Title.RotationAngle := FYAxis.Title.RotationAngle - 90;
-    FY2Axis.Title.RotationAngle := FY2Axis.Title.RotationAngle - 90;
-  end else
-  begin
-    FXAxis.Title.RotationAngle := FXAxis.Title.RotationAngle - 90;
-    FX2Axis.Title.RotationAngle := FX2Axis.Title.RotationAngle - 90;
-    FYAxis.Title.RotationAngle := FYAxis.Title.RotationAngle + 90;
-    FY2Axis.Title.RotationAngle := FY2Axis.Title.RotationAngle + 90;
-  end;
-end;
 
 { TsChartList }
 

@@ -1071,6 +1071,10 @@ begin
   AChart.YAxis.Visible := false;
   AChart.X2Axis.Visible := false;
   AChart.Y2Axis.Visible := false;
+  AChart.XAxis.DefaultTitleRotation := true;
+  AChart.YAxis.DefaultTitleRotation := true;
+  AChart.X2Axis.DefaultTitleRotation := true;
+  AChart.Y2Axis.DefaultTitleRotation := true;
   AChart.PlotArea.Border.Style := clsNoLine;
   AChart.Floor.Border.Style := clsNoLine;
 
@@ -2346,6 +2350,7 @@ var
   font: TsFont;
   indent: String;
   rotAngle: Single;
+  rotAngleStr: String = '';
   chartProps: String = '';
   textProps: String = '';
 begin
@@ -2368,13 +2373,22 @@ begin
         end;
         font := axis.Title.Font;
         rotAngle := axis.Title.RotationAngle;
+        if not axis.DefaultTitleRotation then
+        begin
+          if AChart.RotatedAxes then
+          begin
+            if rotAngle = 0 then rotAngle := 90 else if rotAngle = 90 then rotAngle := 0;
+          end;
+          rotAngleStr := Format('%.1f', [rotangle], FPointSeparatorSettings);
+        end;
       end;
     else
       raise Exception.Create('[GetChartCaptionStyleAsXML] Unknown caption.');
   end;
 
   chartProps := 'chart:auto-position="true" ';
-  chartProps := chartProps + Format('style:rotation-angle="%.1f" ', [rotAngle], FPointSeparatorSettings);
+  if rotAngleStr <> '' then
+    chartProps := chartProps + Format('style:rotation-angle="%s" ', [rotAngleStr]);
 
   textProps := TsSpreadOpenDocWriter(Writer).WriteFontStyleXMLAsString(font);
 

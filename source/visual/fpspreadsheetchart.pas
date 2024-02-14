@@ -2150,7 +2150,7 @@ begin
   axis.Title.Caption := AWorkbookAxis.Title.Caption;
   axis.Title.Visible := true;
   Convert_sFont_to_Font(AWorkbookAxis.Title.Font, axis.Title.LabelFont);
-  axis.Title.LabelFont.Orientation := round(AWorkbookAxis.Title.RotationAngle * 10);
+  axis.Title.LabelFont.Orientation := round(AWorkbookAxis.TitleRotationAngle * 10);
 
   // Labels
   Convert_sFont_to_Font(AWorkbookAxis.LabelFont, axis.Marks.LabelFont);

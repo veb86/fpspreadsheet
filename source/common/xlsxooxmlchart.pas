@@ -119,7 +119,7 @@ type
     procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex, APosInAxisGroup: Integer);
 
     procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
-    procedure WriteChartText(AStream: TStream; AIndent: Integer; AText: TsChartText);
+    procedure WriteChartText(AStream: TStream; AIndent: Integer; AText: TsChartText; ARotationAngle: Single);
 
   public
     constructor Create(AWriter: TsBasicSpreadWriter); override;
@@ -2301,14 +2301,25 @@ begin
                     s := GetAttrValue(child2, 'rot');
                     if (s <> '') and TryStrToInt(s, n) then
                     begin
-                      if n = 1000 then
+                      if axis <> nil then
                       begin
-                        if axis <> nil then
-                          n := DEFAULT_TEXT_DIR[axis.Chart.RotatedAxes, axis.Alignment]  // not sure, but maybe 1000 means: default
+                        if n = 1000 then
+                          axis.DefaultTitleRotation := true
                         else
-                          n := 0;
+                        begin
+                          if n = 0 then
+                            ATitle.RotationAngle := 0
+                          else
+                            ATitle.RotationAngle := -n / ANGLE_MULTIPLIER;
+                          axis.DefaultTitleRotation := false;
+                        end;
+                      end else
+                      begin
+                        if (n = 1000) or (n = 0) then
+                          ATitle.RotationAngle := 0
+                        else
+                          Atitle.RotationAngle := -n/ANGLE_MULTIPLIER;
                       end;
-                      ATitle.RotationAngle := -n / ANGLE_MULTIPLIER;
                     end;
                   end;
                 'a:lstStyle':
@@ -2453,6 +2464,7 @@ end;
 procedure TsSpreadOOXMLChartReader.SetAxisDefaults(AWorkbookAxis: TsChartAxis);
 begin
   AWorkbookAxis.Title.Caption := '';
+  AWorkbookAxis.DefaultTitleRotation := true;
   AWorkbookAxis.LabelRotation := 0;
   AWorkbookAxis.Visible := false;
   AWorkbookAxis.MajorGridLines.Style := clsNoLine;
@@ -3842,7 +3854,7 @@ begin
     indent + '<c:title>' + LE
   );
 
-  WriteChartText(AStream, AIndent + 4, Axis.Title);
+  WriteChartText(AStream, AIndent + 4, Axis.Title, Axis.TitleRotationAngle);
 
   AppendToStream(AStream,
     indent + '  <c:overlay val="0"/>' + LE +
@@ -4636,7 +4648,7 @@ end;
   Writes a <c:tx> node containing either the chart title or axis title.
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteChartText(AStream: TStream;
-  AIndent: Integer; AText: TsChartText);
+  AIndent: Integer; AText: TsChartText; ARotationAngle: Single);
 var
   indent: String;
   rotStr: String;
@@ -4644,7 +4656,7 @@ begin
   if not AText.Visible then
     exit;
 
-  str(-AText.RotationAngle * ANGLE_MULTIPLIER:0:0, rotStr);
+  str(-ARotationAngle * ANGLE_MULTIPLIER:0:0, rotStr);
 
   indent := DupeString(' ', AIndent);
   AppendToStream(AStream,
@@ -4685,7 +4697,7 @@ begin
     indent + '<c:title>' + LE
   );
 
-  WriteChartText(AStream, AIndent + 2, ATitle);
+  WriteChartText(AStream, AIndent + 2, ATitle, ATitle.RotationAngle);
 
   AppendToStream(AStream,
     indent + '  <c:overlay val="0"/>' + LE +
