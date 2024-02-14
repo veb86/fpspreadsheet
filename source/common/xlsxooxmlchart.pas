@@ -900,8 +900,9 @@ begin
       'a:ln':
         ReadChartLineProps(ANode, AChart, ALine);
 
-      // Drawing effects
-      'a:effectLst': ;
+      // Drawing effects (not supported ATM)
+      'a:effectLst':
+        ;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -1480,6 +1481,14 @@ begin
             1: ReadChartAxis(workNode.FirstChild, AChart, AChart.X2Axis, FX2AxisID, FX2AxisDelete);
           end;
           inc(catAxCounter);
+          {
+          if (AChart.X2Axis.Alignment = AChart.XAxis.Alignment) and FX2AxisDelete then
+          begin
+            // Force using only a single x axis in this case
+            FX2AxisID := FXAxisID;
+            AChart.X2Axis.Visible := false;
+          end;
+          }
         end;
       'c:dateAx':
         begin
@@ -1494,12 +1503,14 @@ begin
                end;
           end;
           inc(dateAxCounter);
+          {
           if (dateAxCounter > 1) and (AChart.X2Axis.Alignment = AChart.XAxis.Alignment) and FX2AxisDelete then
           begin
             // Force using only a single x axis in this case.
             FX2AxisID := FXAxisID;
             AChart.X2Axis.Visible := false;
           end;
+          }
         end;
       'c:valAx':
         begin
@@ -1516,12 +1527,14 @@ begin
               2: ReadChartAxis(workNode.FirstChild, AChart, AChart.Y2Axis, FY2AxisID, FY2AxisDelete);
               3: ReadChartAxis(workNode.FirstChild, AChart, AChart.X2Axis, FX2AxisID, FX2AxisDelete);
             end;
+            {
             if (AChart.X2Axis.Alignment = AChart.XAxis.Alignment) and FX2AxisDelete then
             begin
               // Force using only a single x axis in this case.
               FX2AxisID := FXAxisID;
               AChart.X2Axis.Visible := false;
             end;
+            }
           end else
           begin
             case valAxCounter of
@@ -1535,6 +1548,18 @@ begin
     workNode := workNode.NextSibling;
   end;
 
+  if FX2AxisDelete then
+  begin
+    // Force using only a single x axis in this case.
+    FX2AxisID := FXAxisID;
+    AChart.X2Axis.Visible := false;
+  end;
+  if FY2AxisDelete then
+  begin
+    FY2AxisID := FYAxisID;
+    AChart.Y2Axis.Visible := false;
+  end;
+
   // The RotatedAxes option handles all axis rotations by itself. Therefore we
   // must reset the Axis.Alignment back to the normal settings, otherwise
   // rotation will not be correct.
@@ -1542,9 +1567,9 @@ begin
   begin
     AChart.XAxis.Alignment := caaBottom;
     AChart.YAxis.Alignment := caaLeft;
-    AChart.X2Axis.Alignment := caaRight;
-    AChart.Y2Axis.Alignment := caaTop;
-//    AChart.RotatedAxes := true;        // Note: this rotates the axis titles!
+    AChart.X2Axis.Alignment := caaTop;
+    AChart.Y2Axis.Alignment := caaRight;
+    AChart.RotatedAxes := true;        // Note: this rotates the axis titles!
   end;
 
   workNode := ANode;
