@@ -114,6 +114,7 @@ type
     procedure WriteAreaSeries(AStream: TStream; AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex, APosInAxisGroup: Integer);
     procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex, APosInAxisGroup: Integer);
     procedure WriteBubbleSeries(AStream: TStream; AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex, APosInAxisGroup: Integer);
+    procedure WriteLineSeries(AStream: TStream; AIndent: Integer; ASeries: TsLineSeries; ASeriesIndex, APosInAxisGroup: Integer);
     procedure WritePieSeries(AStream: TStream; AIndent: Integer; ASeries: TsPieSeries; ASeriesIndex: Integer);
     procedure WriteRadarSeries(AStream: TStream; AIndent: Integer; ASeries: TsRadarSeries; ASeriesIndex: Integer);
     procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex, APosInAxisGroup: Integer);
@@ -1280,6 +1281,7 @@ begin
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
+    s := GetAttrValue(ANode, 'val');
     case nodeName of
       'c:ser':
         begin
@@ -1287,18 +1289,13 @@ begin
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:grouping':
-        begin
-          s := GetAttrValue(ANode, 'val');
-          case s of
-            'stacked': AChart.StackMode := csmStacked;
-            'percentStacked': AChart.StackMode := csmStackedPercentage;
-          end;
+        case s of
+          'stacked': AChart.StackMode := csmStacked;
+          'percentStacked': AChart.StackMode := csmStackedPercentage;
         end;
       'c:varyColors':
         ;
       'c:dLbls':
-        ;
-      'c:gapWidth':
         ;
       {
       'c:axId':
@@ -1481,14 +1478,6 @@ begin
             1: ReadChartAxis(workNode.FirstChild, AChart, AChart.X2Axis, FX2AxisID, FX2AxisDelete);
           end;
           inc(catAxCounter);
-          {
-          if (AChart.X2Axis.Alignment = AChart.XAxis.Alignment) and FX2AxisDelete then
-          begin
-            // Force using only a single x axis in this case
-            FX2AxisID := FXAxisID;
-            AChart.X2Axis.Visible := false;
-          end;
-          }
         end;
       'c:dateAx':
         begin
@@ -1503,14 +1492,6 @@ begin
                end;
           end;
           inc(dateAxCounter);
-          {
-          if (dateAxCounter > 1) and (AChart.X2Axis.Alignment = AChart.XAxis.Alignment) and FX2AxisDelete then
-          begin
-            // Force using only a single x axis in this case.
-            FX2AxisID := FXAxisID;
-            AChart.X2Axis.Visible := false;
-          end;
-          }
         end;
       'c:valAx':
         begin
@@ -1527,14 +1508,6 @@ begin
               2: ReadChartAxis(workNode.FirstChild, AChart, AChart.Y2Axis, FY2AxisID, FY2AxisDelete);
               3: ReadChartAxis(workNode.FirstChild, AChart, AChart.X2Axis, FX2AxisID, FX2AxisDelete);
             end;
-            {
-            if (AChart.X2Axis.Alignment = AChart.XAxis.Alignment) and FX2AxisDelete then
-            begin
-              // Force using only a single x axis in this case.
-              FX2AxisID := FXAxisID;
-              AChart.X2Axis.Visible := false;
-            end;
-            }
           end else
           begin
             case valAxCounter of
@@ -1665,6 +1638,7 @@ var
   nodeName: String;
   s: String;
   ser: TsScatterSeries;
+  smooth: Boolean = false;
 begin
   if ANode = nil then
     exit;
@@ -1681,9 +1655,10 @@ begin
         begin
           s := GetAttrValue(ANode, 'val');
           if (s = 'smoothMarker') then
-            AChart.Interpolation := ciCubicSpline;
+            smooth := true;
         end;
-      'c:varyColors':  ;
+      'c:varyColors':
+        ;
       'c:dLbls':
         ;
       'c:axId':
@@ -1691,6 +1666,8 @@ begin
     end;
     ANode := ANode.NextSibling;
   end;
+
+  ser.Smooth := smooth;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -1971,6 +1948,7 @@ var
   nodeName, s: String;
   n: Integer;
   idx: Integer;
+  smooth: Boolean = false;
 begin
   if ANode = nil then
     exit;
@@ -2011,6 +1989,8 @@ begin
         ReadChartSeriesTrendLine(ANode.FirstChild, ASeries);
       'c:errBars':
         ReadChartSeriesErrorBars(ANode.FirstChild, ASeries);
+      'c:smooth':
+        smooth := (s <> '0');
       'c:invertIfNegative':
         ;
       'c:extLst':
@@ -2018,6 +1998,9 @@ begin
     end;
     ANode := ANode.NextSibling;
   end;
+
+  if ASeries is TsCustomLineSeries then
+    TsOpenedCustomLineSeries(ASeries).Smooth := smooth;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4028,25 +4011,28 @@ begin
   chart := ASeries.Chart;
   ser := TsOpenedCustomLineSeries(ASeries);
 
-  if ser.ShowSymbols then
-    case ser.Symbol of
-      cssRect: markerStr := 'square';
-      cssDiamond: markerStr := 'diamond';
-      cssTriangle: markerStr := 'triangle';
-      cssTriangleDown: markerStr := 'triangle';  // !!!!
-      cssTriangleLeft: markerStr := 'triangle';  // !!!!
-      cssTriangleRight: markerStr := 'triangle';  // !!!!
-      cssCircle: markerStr := 'circle';
-      cssStar: markerStr := 'star';
-      cssX: markerstr := 'x';
-      cssPlus: markerStr := '+';
-      cssAsterisk: markerStr := 'star';  // !!!
-      cssDash: markerStr := 'dash';
-      cssDot: markerStr := 'dot';
-      else markerStr := 'star';  // !!!
-    end                  // The symbols marked by !!! are not available in Excel
-  else
-    markerStr := 'none';
+  if not ser.ShowSymbols then
+  begin
+    Result := indent + '<c:symbol val="none"/>';
+    exit;
+  end;
+
+  case ser.Symbol of
+    cssRect: markerStr := 'square';
+    cssDiamond: markerStr := 'diamond';
+    cssTriangle: markerStr := 'triangle';
+    cssTriangleDown: markerStr := 'triangle';  // !!!!
+    cssTriangleLeft: markerStr := 'triangle';  // !!!!
+    cssTriangleRight: markerStr := 'triangle';  // !!!!
+    cssCircle: markerStr := 'circle';
+    cssStar: markerStr := 'star';
+    cssX: markerstr := 'x';
+    cssPlus: markerStr := '+';
+    cssAsterisk: markerStr := 'star';  // !!!
+    cssDash: markerStr := 'dash';
+    cssDot: markerStr := 'dot';
+    else markerStr := 'star';  // !!!
+  end;                  // The symbols marked by !!! are not available in Excel
 
   symbolSizePts := round(mmToPts((ser.SymbolWidth + ser.SymbolHeight)/2));
   if symbolSizePts > 72 then symbolSizePts := 72;
@@ -4190,6 +4176,8 @@ begin
           WriteBubbleSeries(AStream, AIndent + 2, TsBubbleSeries(ser), j, posInGroup);
           xAxKind := 'c:valAx';
         end;
+      ctLine:
+        WriteLineSeries(AStream, AIndent + 2, TsLineSeries(ser), j, posInGroup);
       ctPie, ctRing:
         WritePieSeries(AStream, AIndent + 2, TsPieSeries(ser), j);
       ctRadar, ctFilledRadar:
@@ -4573,12 +4561,11 @@ begin
         indent + '  </c:spPr>' + LE
       );
     end;
-    if TsOpenedCustomLineSeries(ASeries).ShowSymbols then
-      AppendToStream(AStream,
-        indent + '  <c:marker>' + LE +
-                      GetChartSeriesMarkerXML(AIndent + 4, TsOpenedCustomLineSeries(ASeries)) + LE +
-        indent + '  </c:marker>' + LE
-      );
+    AppendToStream(AStream,
+      indent + '  <c:marker>' + LE +
+                    GetChartSeriesMarkerXML(AIndent + 4, TsOpenedCustomLineSeries(ASeries)) + LE +
+      indent + '  </c:marker>' + LE
+    );
   end else
     // Series main formatting
     AppendToStream(AStream,
@@ -4629,15 +4616,22 @@ begin
     [ yValName ]
   ));
 
+  // Bubble series: Bubble size range
   if (ASeries is TsBubbleSeries) then
   begin
-    // Bubble size range
     AppendToStream(AStream,
       indent +  '<c:bubbleSize>' + LE +
       indent +   GetChartRangeXML(AIndent + 4, TsBubbleSeries(ASeries).BubbleRange, 'c:numRef') + LE +
       indent +  '</c:bubbleSize>' + LE
     );
   end;
+
+  // Line series: Interpolation
+  if ASeries is TsLineSeries then
+    if TsLineSeries(ASeries).Interpolation in [ciLinear, ciStepStart, ciStepEnd, ciStepCenterX, ciStepCenterY] then
+      AppendToStream(AStream,
+        indent + '  <c:smooth val="0"/>' + LE
+      );
 
   AppendToStream(AStream,
     indent + '</c:ser>' + LE
@@ -4732,6 +4726,67 @@ begin
   AppendToStream(AStream,
     indent + '</c:title>' + LE
   );
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes the properties of the given line series to the <c:plotArea> node of
+  file chartN.xml
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteLineSeries(AStream: TStream;
+  AIndent: Integer; ASeries: TsLineSeries; ASeriesIndex, APosInAxisGroup: Integer);
+const
+  GROUPING: Array[TsChartStackMode] of string = ('standard', 'stacked', 'percentStacked');
+var
+  indent: String;
+  chart: TsChart;
+  xAxis: TsChartAxis;
+  isFirstOfGroup: Boolean;
+  isLastOfGroup: Boolean;
+  prevSeriesGroupIndex: Integer = -1;
+  nextSeriesGroupIndex: Integer = -1;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
+
+  if (ASeriesIndex > 0) and (chart.Series[ASeriesIndex-1].YAxis = ASeries.YAxis) then
+    prevSeriesGroupIndex := chart.Series[ASeriesIndex-1].GroupIndex;
+  if (ASeriesIndex < chart.Series.Count-1) and (chart.Series[ASeriesIndex+1].YAxis = ASeries.YAxis) then
+    nextSeriesGroupIndex := chart.Series[ASeriesIndex+1].GroupIndex;
+
+  isFirstOfGroup := APosInAxisGroup and 1 = 1;
+  isLastOfGroup := APosInAxisgroup and 2 = 2;
+
+  if ((ASeries.GroupIndex > -1) and (prevSeriesGroupIndex = ASeries.GroupIndex)) then
+    isFirstOfGroup := false;
+  if ((ASeries.GroupIndex > -1) and (nextSeriesGroupIndex = ASeries.GroupIndex)) then
+    isLastOfGroup := false;
+
+  if isFirstOfGroup then
+    AppendToStream(AStream, Format(
+      indent + '<c:lineChart>' + LE +
+      indent + '  <c:grouping val="%s"/>' + LE,
+      [ GROUPING[chart.StackMode] ]
+    ));
+
+  WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
+
+  if isLastOfGroup then
+  begin
+    if ASeries.YAxis = calPrimary then
+      xAxis := chart.XAxis
+    else
+      xAxis := chart.X2Axis;
+
+    AppendToStream(AStream, Format(
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '</c:lineChart>' + LE,
+      [
+        FAxisID[xAxis.Alignment],  // <c:axId>
+        FAxisID[ASeries.GetYAxis.Alignment]   // <c:axId>
+      ]
+    ));
+  end;
 end;
 
 {$ENDIF}

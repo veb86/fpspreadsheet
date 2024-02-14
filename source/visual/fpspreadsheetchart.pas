@@ -19,7 +19,7 @@ interface
 
 {$ifdef FPS_CHARTS}
 
-uses
+uses                        lazloggerbase,
   // RTL/FCL
   Classes, Contnrs, SysUtils, Types, FPCanvas,
   // LCL
@@ -1079,7 +1079,6 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
 
 var
   datapointStyle: TsChartDataPointStyle;
-  style: TChartStyle;
   i, j: Integer;
   c: TsColor;
   g: TsChartGradient;
@@ -1187,6 +1186,7 @@ var
   firstSeries: TChartSeries;
   ch: TsChart;
   src: TsWorkbookChartSource;
+  interpolation: TsChartInterpolation = ciLinear;
   calcSrc: TCalculatedChartSource;
   style: TChartStyle;
   axAlign: TChartAxisAlignment;
@@ -1246,6 +1246,14 @@ begin
     src := TsWorkbookChartSource.Create(self);
     src.WorkbookSource := FWorkbookSource;
 
+    if (ASeries is TsCustomLineSeries) then
+    begin
+      interpolation := TsOpenedCustomLineSeries(ASeries).Interpolation;
+      // TAChart cannot stack spline series.
+      if (interpolation in [ciBSpline, ciCubicSpline]) and (ch.StackMode <> csmDefault) then
+        interpolation := ciLinear;
+    end;
+
     case ASeries.ChartType of
       ctBar:
         begin
@@ -1253,11 +1261,11 @@ begin
           src.IntegerX := true;
         end;
       ctLine, ctScatter:
-        case ch.Interpolation of
+        case interpolation of
           ciLinear, ciStepStart, ciStepEnd, ciStepCenterX, ciStepCenterY:
             begin
               Result := TLineSeries.Create(FChart);
-              case ch.Interpolation of
+              case interpolation of
                 ciLinear: TLineSeries(Result).LineType := ltFromPrevious;
                 ciStepStart: TLineSeries(Result).LineType := ltStepXY;
                 ciStepEnd: TLineSeries(Result).LineType := ltStepYX;
@@ -1890,26 +1898,33 @@ end;
 function TsWorkbookChartLink.IsStackable(ASeries: TsChartSeries): Boolean;
 var
   ch: TsChart;
+  ser: TsChartSeries;
   i, numSeries: Integer;
 begin
-  Result := (ASeries.ChartType in [ctBar, ctLine, ctArea]);
+  Result := (ASeries.ChartType in [ctBar, ctLine, ctArea]) and (ASeries.GroupIndex > -1);
   if Result then
   begin
     ch := ASeries.Chart;
     numSeries := ch.Series.Count;
     if numSeries = 1 then
+    begin
+      Result := false;
       exit;
+    end;
 
     // Check whether all series are the same type and same y axis as ASeries.
     // NOTE: Not perfect yet since there might abe two stackable groups,
     //       one for the left and one for the right axis...
     for i := 0 to numSeries - 1 do
-      if (ch.Series[i].ChartType <> ASeries.ChartType) or
-         (ch.Series[i].YAxis <> ASeries.YAxis) then
+    begin
+      ser := ch.Series[i];
+      if (ser.ChartType <> ASeries.ChartType) or (ser.GroupIndex <> ASeries.GroupIndex) or
+         (ser.YAxis <> ASeries.YAxis) then
       begin
         Result := false;
         exit;
       end;
+    end;
   end;
 end;
 
@@ -2661,10 +2676,15 @@ procedure TsWorkbookChartLink.UpdateChartStyle(AWorkbookSeries: TsChartSeries;
   AStyleIndex: Integer);
 var
   style: TChartStyle;
+  ch: TsChart;
 begin
+  ch := AWorkbookSeries.Chart;
   style := TChartStyle(FChartStyles.Styles[AStyleIndex]);
-  UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, style.Pen);
-  UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, style.Brush);
+  UpdateChartPen(ch, AWorkbookSeries.Line, style.Pen);
+  if (AWorkbookSeries is TsCustomLineSeries) then
+    UpdateChartBrush(ch, TsOpenedCustomLineSeries(AWorkbookSeries).SymbolFill, style.Brush)
+  else
+    UpdateChartBrush(ch, AWorkbookSeries.Fill, style.Brush);
 end;
 
 {@@ Updates title and footer of the linked TAChart.
@@ -2730,6 +2750,9 @@ begin
   seriesPointer.Style := POINTER_STYLES[openedWorkbookSeries.Symbol];
   seriesPointer.HorizSize := mmToPx(openedWorkbookSeries.SymbolWidth / 2, ppi);
   seriesPointer.VertSize := mmToPx(openedWorkbookSeries.SymbolHeight / 2, ppi);
+
+  if lineseries <> nil then
+    DebugLn([BoolToStr(lineseries.ShowPoints, true), ' ', intTostr(ord(lineseries.pointer.Style)), ' ', inttostr(ord(lineseries.pointer.brush.style))]);
 
   // Error bars
   UpdateChartErrorBars(AWorkbookSeries, AChartSeries);

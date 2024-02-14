@@ -177,6 +177,7 @@ type
   TsChartFillStyle = (cfsNoFill, cfsSolid, cfsGradient, cfsHatched, cfsSolidHatched, cfsImage);
 
   TsChartFill = class
+  public
     Style: TsChartFillStyle;
     Color: TsColor;
     Gradient: Integer;     // Index into chart's Gradients list
@@ -621,8 +622,15 @@ type
     cssDash, cssDot
   );
 
+  TsChartInterpolation = (
+    ciLinear,
+    ciCubicSpline, ciBSpline,
+    ciStepStart, ciStepEnd, ciStepCenterX, ciStepCenterY
+  );
+
   TsCustomLineSeries = class(TsChartSeries)
   private
+    FInterpolation: TsChartInterpolation;
     FSymbol: TsChartSeriesSymbol;
     FSymbolHeight: Double;  // in mm
     FSymbolWidth: Double;   // in mm
@@ -630,7 +638,11 @@ type
     FShowSymbols: Boolean;
     FSymbolBorder: TsChartLine;
     FSymbolFill: TsChartFill;
+    function GetSmooth: Boolean;
+    procedure SetSmooth(AValue: Boolean);
   protected
+    property Interpolation: TsChartInterpolation read FInterpolation write FInterpolation;
+    property Smooth: Boolean read GetSmooth write SetSmooth;
     property Symbol: TsChartSeriesSymbol read FSymbol write FSymbol;
     property SymbolBorder: TsChartLine read FSymbolBorder write FSymbolBorder;
     property SymbolFill: TsChartFill read FSymbolFill write FSymbolFill;
@@ -645,6 +657,9 @@ type
 
   TsLineSeries = class(TsCustomLineSeries)
   public
+    constructor Create(AChart: TsChart); override;
+    property Interpolation;
+    property Smooth;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -691,6 +706,8 @@ type
 
   TsScatterSeries = class(TsCustomScatterSeries)
   public
+    property Interpolation;
+    property Smooth;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -761,11 +778,6 @@ type
   end;
 
   TsChartStackMode = (csmDefault, csmStacked, csmStackedPercentage);
-  TsChartInterpolation = (
-    ciLinear,
-    ciCubicSpline, ciBSpline,
-    ciStepStart, ciStepEnd, ciStepCenterX, ciStepCenterY
-  );
 
   TsChart = class(TsChartFillElement)
   private
@@ -2550,6 +2562,30 @@ begin
   inherited;
 end;
 
+function TsCustomLineSeries.GetSmooth: Boolean;
+begin
+  Result := FInterpolation in [ciBSpline, ciCubicSpline];
+end;
+
+procedure TsCustomLineSeries.SetSmooth(AValue: Boolean);
+begin
+  if AValue then
+  begin
+    if not (FInterpolation in [ciBSpline, ciCubicSpline]) then
+      FInterpolation := ciCubicSpline;
+  end else
+  begin
+    if (FInterpolation in [ciBSpline, ciCubicSpline]) then
+    FInterpolation := ciLinear;
+  end;
+end;
+
+{ TsLineSeries }
+constructor TsLineSeries.Create(AChart: TsChart);
+begin
+  inherited Create(AChart);
+  FGroupIndex := 0;
+end;
 
 { TsPieSeries }
 constructor TsPieSeries.Create(AChart: TsChart);

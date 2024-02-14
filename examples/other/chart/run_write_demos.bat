@@ -20,12 +20,20 @@ barchart_write_demo horiz stacked
 barchart_write_demo vert percentage
 barchart_write_demo horiz percentage
 echo.
-echoe BAR SERIES WITH TWO AXES
+echo BAR SERIES WITH TWO AXES
 barchart_2axes_write_demo
 barchart_2axes_write_demo rotated
 echo.
 echo BUBBLE SERIES
 bubblechart_write_demo
+echo.
+echo LINE SERIES
+linechart_write_demo
+linechart_write_demo stacked
+linechart_write_demo percentage
+linechart_write_demo rotated
+linechart_write_demo stacked rotated
+linechart_write_demo percentage rotated
 echo.
 echo PIE SERIES
 piechart_write_demo

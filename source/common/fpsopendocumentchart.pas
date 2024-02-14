@@ -173,7 +173,10 @@ uses
 type
   TAxisKind = 3..6;
 
-  TsOpenedCustomLineSeries = class(TsCustomLineSeries);
+  TsOpenedCustomLineSeries = class(TsCustomLineSeries)
+  public
+    property Interpolation;
+  end;
 
   TsOpenedTrendlineSeries = class(TsChartSeries)
   public
@@ -2603,6 +2606,7 @@ function TsSpreadOpenDocChartWriter.GetChartPlotAreaStyleAsXML(AChart: TsChart;
   AIndent, AStyleID: Integer): String;
 var
   indent: String;
+  interpolation: TsChartInterpolation;
   interpolationStr: String = '';
   verticalStr: String = '';
   stackModeStr: String = '';
@@ -2625,15 +2629,24 @@ begin
   if (AChart.Series.Count > 0) and (AChart.Series[0] is TsPieSeries) then
     startAngleStr := Format('chart:angle-offset="%d" ', [TsPieSeries(AChart.Series[0]).StartAngle]);
 
-  case AChart.Interpolation of
-    ciLinear: ;
-    ciCubicSpline: interpolationStr := 'chart:interpolation="cubic-spline" ';
-    ciBSpline: interpolationStr := 'chart:interpolation="b-spline" ';
-    ciStepStart: interpolationStr := 'chart:interpolation="step-start" ';
-    ciStepEnd: interpolationStr := 'chart:interpolation="step-end" ';
-    ciStepCenterX: interpolationStr := 'chart:interpolation="step-center-x" ';
-    ciStepCenterY: interpolationStr := 'chart:interpolation="step-center-y" ';
-  end;
+  // In FPSpreadsheet individual series can be "smooth", in Calc only all.
+  // As a compromise, when we find at least one smooth series, all series are
+  // treated as such by writing the "chart:interpolation" attribute
+  for i := 0 to AChart.Series.Count-1 do
+    if AChart.Series[i] is TsCustomLineSeries then
+    begin
+      interpolation := TsOpenedCustomLineSeries(AChart.Series[i]).Interpolation;
+      case interpolation of
+        ciLinear: Continue;
+        ciCubicSpline: interpolationStr := 'chart:interpolation="cubic-spline" ';
+        ciBSpline: interpolationStr := 'chart:interpolation="b-spline" ';
+        ciStepStart: interpolationStr := 'chart:interpolation="step-start" ';
+        ciStepEnd: interpolationStr := 'chart:interpolation="step-end" ';
+        ciStepCenterX: interpolationStr := 'chart:interpolation="step-center-x" ';
+        ciStepCenterY: interpolationStr := 'chart:interpolation="step-center-y" ';
+      end;
+      break;
+    end;
 
   if not (AChart.GetChartType in [ctRadar, ctFilledRadar, ctPie]) then
     rightAngledAxes := 'chart:right-angled-axes="true" ';
