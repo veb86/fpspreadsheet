@@ -119,11 +119,11 @@ begin
     ser.SetCloseRange(3, 4, 7, 4);
     ser.SetXRange    (3, 0, 7, 0);
     ser.SetLabelRange(3, 0, 7, 0);
+    ser.RangeLine.Width := 1;
+    ser.RangeLine.Color := scRed;
 
-    {
-    book.WriteToFile(dir + fn + '.xlsx', true);   // Excel fails to open the file
+    book.WriteToFile(dir + fn + '.xlsx', true);
     WriteLn('... ', fn + '.xlsx');
-    }
 
     book.WriteToFile(dir + fn + '.ods', true);
     WriteLn('... ', fn + '.ods');

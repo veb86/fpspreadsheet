@@ -2746,9 +2746,11 @@ begin
   FCandleStickDownBorder := TsChartLine.Create;
   FCandleStickDownBorder.Style := clsSolid;
   FCandleStickDownBorder.Color := scBlack;
+  FCandleStickDownBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
   FCandleStickUpBorder := TsChartLine.Create;
   FCandleStickUpBorder.Style := clsSolid;
   FCandleStickUpBorder.Color := scBlack;
+  FCandleStickUpBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
   FLine.Style := clsSolid;
   FLine.Color := scBlack;
   FTickWidthPercent := 50;

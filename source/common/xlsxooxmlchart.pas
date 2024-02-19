@@ -85,7 +85,10 @@ type
     function GetChartFontXML(AIndent: Integer; AFont: TsFont; ANodeName: String): String;
     function GetChartLineXML(AIndent: Integer; AChart: TsChart; ALine: TsChartLine; OverrideOff: Boolean = false): String;
     function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange; ARefKind: String): String;
-    function GetChartSeriesMarkerXML(AIndent: Integer; ASeries: TsCustomLineSeries): String;
+    function GetChartSeriesMarkerXML(AIndent: Integer; AChart: TsChart;
+      AShowSymbols: Boolean; ASymbolKind: TsChartSeriesSymbol = cssRect;
+      ASymbolWidth: Double = 3.0; ASymbolHeight: Double = 3.0;
+      ASymbolFill: TsChartFill = nil; ASymbolBorder: TsChartLine = nil): String;
 
   protected
     // Called by the public functions
@@ -118,6 +121,8 @@ type
     procedure WritePieSeries(AStream: TStream; AIndent: Integer; ASeries: TsPieSeries; ASeriesIndex: Integer);
     procedure WriteRadarSeries(AStream: TStream; AIndent: Integer; ASeries: TsRadarSeries; ASeriesIndex: Integer);
     procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex, APosInAxisGroup: Integer);
+    procedure WriteStockSeries(AStream: TStream; AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, APosInAxisGroup: Integer);
+    procedure WriteStockSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, OHLCPart: Integer);
 
     procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
     procedure WriteChartText(AStream: TStream; AIndent: Integer; AText: TsChartText; ARotationAngle: Single);
@@ -184,6 +189,11 @@ const
     (90, 0, 90, 0),  // not rotated for: caaLeft, caaTop, caaRight, caaBottom
     (0, 90, 0, 90)   // rotated for: caaLeft, caaTop, caaRight, caaBottom
   );
+
+  OHLC_OPEN = 0;
+  OHLC_HIGH = 1;
+  OHLC_LOW = 2;
+  OHLC_CLOSE = 3;
 
 {$INCLUDE xlsxooxmlchart_hatch.inc}
 
@@ -3405,6 +3415,15 @@ begin
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates an xml string for a line style node <a:ln>. Must be inserted into a
+  <c:spPr> node.
+
+  @param  AIndent  Number of indentation spaces for better legibility
+  @param  AChart   Chart to which this line belongs
+  @param  ALine    Line class with all its properties for which the string is created
+  @param  OverrideOff  Creates a "no-line" string no matter which parameters are in ALine
+-------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartLineXML(AIndent: Integer;
   AChart: TsChart; ALine: TsChartline; OverrideOff: Boolean = false): String;
 var
@@ -3418,7 +3437,11 @@ var
 begin
   indent := DupeString(' ', AIndent);
 
-  if (ALine <> nil) and (ALine.Style <> clsNoLine) and not OverrideOff then
+  if (ALine = nil) or (ALine.Style = clsNoLine) or OverrideOff then
+    Result := indent + '<a:ln>' + LE +
+              indent + '  <a:noFill/>' + LE +
+              indent + '</a:ln>'
+  else
   begin
     Result := Format(
       indent + '<a:ln w="%.0f">' + LE +
@@ -3452,10 +3475,7 @@ begin
       // To do: how to handle multiple segments?
     end;
     Result := Result + indent + '</a:ln>';
-  end else
-    Result := indent + '<a:ln>' + LE +
-              indent + '  <a:noFill/>' + LE +
-              indent + '</a:ln>';
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -3999,25 +4019,23 @@ end;
   string
 -------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartSeriesMarkerXML(AIndent: Integer;
-  ASeries: TsCustomLineSeries): String;
+  AChart: TsChart; AShowSymbols: Boolean; ASymbolKind: TsChartSeriesSymbol = cssRect;
+  ASymbolWidth: Double = 3.0; ASymbolHeight: Double = 3.0;
+  ASymbolFill: TsChartFill = nil; ASymbolBorder: TsChartLine = nil): String;
 var
   indent: String;
   markerStr: String;
-  chart: TsChart;
-  ser: TsOpenedCustomLineSeries;
   symbolSizePts: Integer;
 begin
   indent := DupeString(' ', AIndent);
-  chart := ASeries.Chart;
-  ser := TsOpenedCustomLineSeries(ASeries);
 
-  if not ser.ShowSymbols then
+  if not AShowSymbols then
   begin
     Result := indent + '<c:symbol val="none"/>';
     exit;
   end;
 
-  case ser.Symbol of
+  case ASymbolKind of
     cssRect: markerStr := 'square';
     cssDiamond: markerStr := 'diamond';
     cssTriangle: markerStr := 'triangle';
@@ -4034,14 +4052,14 @@ begin
     else markerStr := 'star';  // !!!
   end;                  // The symbols marked by !!! are not available in Excel
 
-  symbolSizePts := round(mmToPts((ser.SymbolWidth + ser.SymbolHeight)/2));
+  symbolSizePts := round(mmToPts((ASymbolWidth + ASymbolHeight)/2));
   if symbolSizePts > 72 then symbolSizePts := 72;
 
   Result := Format(
     indent + '<c:symbol val="%s"/>' + LE +
     indent + '<c:size val="%d"/>' + LE +
     indent + '<c:spPr>' + LE +
-               GetChartFillAndLineXML(AIndent + 2, chart, ser.SymbolFill, ser.SymbolBorder) + LE +
+               GetChartFillAndLineXML(AIndent + 2, AChart, ASymbolFill, ASymbolBorder) + LE +
     indent + '</c:spPr>',
     [ markerStr, symbolSizePts ]
   );
@@ -4079,6 +4097,12 @@ begin
   // Write series attached to secondary y axis
   hasSecondaryAxis := WriteChartSeries(AStream, AIndent + 2, AChart, calSecondary, x2AxKind);
 
+  if (AChart.GetChartType = ctStock) then
+  begin
+    // Stock series writes first the y, then the x axis.
+    WriteChartAxisNode(AStream, AIndent, AChart.YAxis, 'c:valAx');
+    WriteChartAxisNode(AStream, AIndent, AChart.XAxis, 'c:catAx');
+  end else
   if not (AChart.GetChartType in [ctPie, ctRing]) then
   begin
     yAxKind := 'c:valAx';
@@ -4123,7 +4147,6 @@ end;
 function TsSpreadOOXMLChartWriter.WriteChartSeries(AStream: TStream;
   AIndent: Integer; AChart: TsChart; AxisLink: TsChartAxisLink; out xAxKind: string): Boolean;
 var
-  indent: String;
   i, j, n: Integer;
   ser: TsChartSeries;
   axisGroup: Array of Integer = nil;
@@ -4186,6 +4209,11 @@ begin
         begin
           WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), j, posInGroup);
           xAxKind := 'c:valAx';
+        end;
+      ctStock:
+        begin
+          WriteStockSeries(AStream, AIndent + 2, TsStockSeries(ser), j, posInGroup);
+          xAxKind := 'c:dateAx';
         end;
     end;
   end;
@@ -4321,6 +4349,157 @@ begin
       ]
     ));
   end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a <c:stockChart> node for a stock series.
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteStockSeries(AStream: TStream;
+  AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, APosInAxisGroup: Integer);
+var
+  indent: String;
+  chart: TsChart;
+  xAxis: TsChartAxis;
+  isfirstOfGroup: Boolean;
+  isLastOfGroup: Boolean;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
+
+  isFirstOfGroup := (APosInAxisGroup and 1 = 1);
+  isLastOfGroup := (APosInAxisGroup and 2 = 2);
+
+  if isFirstOfGroup then
+    AppendToStream(AStream,
+      indent + '<c:stockChart>' + LE
+    );
+
+  if ASeries.CandleStick then
+  begin
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex, OHLC_OPEN);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex+1, OHLC_HIGH);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex+2, OHLC_LOW);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, AseriesIndex+3, OHLC_CLOSE);
+  end else
+  begin
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex, OHLC_LOW);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex+1, OHLC_HIGH);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex+2, OHLC_CLOSE);
+  end;
+
+  if isLastOfGroup then
+  begin
+    AppendToStream(AStream,
+      indent + '  <c:hiLowLines>' + LE +
+      indent + '    <c:spPr>' + LE +
+      GetChartLineXML(AIndent + 6, chart, ASeries.RangeLine) + LE +
+      indent + '    </c:spPr>' + LE +
+      indent + '  </c:hiLowLines>' + LE
+    );
+
+    if ASeries.CandleStick then
+      AppendToStream(AStream,
+        indent + '  <c:upDownBars>' + LE +
+        indent + '    <c:gapWidth val="150"/>' + LE +
+        indent + '    <c:upBars>' + LE +
+        indent + '      <c:spPr>' + LE +
+        GetChartFillAndLineXML(AIndent + 6, chart, ASeries.CandleStickUpFill, ASeries.CandleStickUpBorder) + LE +
+        indent + '      </c:spPr>' + LE +
+        indent + '    </c:upBars>' + LE +
+        indent + '    <c:downBars>' + LE +
+        indent + '      <c:spPr>' + LE +
+        GetChartFillAndLineXML(AIndent + 6, chart, ASeries.CandleStickDownFill, ASeries.CandleStickDownBorder) + LE +
+        indent + '      </c:spPr>' + LE +
+        indent + '    </c:downBars>' + LE +
+        indent + '  </c:upDownBars>' + LE
+      );
+
+    if ASeries.YAxis = calPrimary then
+      xAxis := chart.XAxis
+    else
+      xAxis := chart.X2Axis;
+
+    AppendToStream(AStream, Format(
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '  <c:axId val="%d"/>' + LE +
+      indent + '</c:stockChart>' + LE,
+      [
+        FAxisID[xAxis.Alignment],  // <c:axId>
+        FAxisID[ASeries.GetYAxis.Alignment]   // <c:axId>
+      ]
+    ));
+  end;
+end;
+
+{ OHLCLPart: 0=open, 1=high, 2=low, 3=close }
+procedure TsSpreadOOXMLChartWriter.WriteStockSeriesNode(AStream: TStream;
+  AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, OHLCPart: Integer);
+var
+  indent: String;
+  chart: TsChart;
+  markerStr: String;
+  xRng, yRng: TsChartRange;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := ASeries.Chart;
+
+  AppendToStream(AStream, Format(
+    indent + '<c:ser>' + LE +
+    indent + '  <c:idx val="%d"/>' + LE +
+    indent + '  <c:order val="%d"/>' + LE,
+    [ ASeriesIndex, ASeriesIndex]
+  ));
+
+  // No line connecting the data points
+  AppendToStream(AStream,
+    indent + '  <c:spPr>' + LE +
+    indent + '    <a:ln>' + LE +
+    indent + '      <a:noFill/>' + LE +
+    indent + '    </a:ln>' + LE +
+    indent + '  </c:spPr>' + LE
+  );
+
+  // Marker
+  if ASeries.CandleStick or (OHLCPart <> OHLC_CLOSE) then
+    markerStr := GetChartSeriesMarkerXML(AIndent + 4, chart, false) // no marker
+  else
+    markerStr := GetChartSeriesMarkerXML(AIndent + 4, chart, true, cssDot, 10, 10, nil, ASeries.Line);
+
+  AppendToStream(AStream,
+    indent + '  <c:marker>' + LE +
+                 markerStr + LE +
+    indent + '  </c:marker>' + LE
+  );
+
+  // x range
+  xRng := ASeries.XRange;
+  if xRng.IsEmpty then
+    xRng := ASeries.LabelRange;
+  if xRng.IsEmpty then
+    xRng := chart.CategoryLabelRange;
+  AppendToStream(AStream,
+    indent + '  <c:cat>' + LE +
+                 GetChartRangeXML(AIndent + 4, xRng, 'c:numRef') + LE +
+    indent + '  </c:cat>' + LE
+  );
+
+  // y range
+  case OHLCPart of
+    OHLC_OPEN: yRng := ASeries.OpenRange;
+    OHLC_HIGH: yRng := ASeries.HighRange;
+    OHLC_LOW: yRng := ASeries.LowRange;
+    OHLC_CLOSE: yRng := ASeries.CloseRange;
+  end;
+  AppendToStream(AStream,
+    indent + '  <c:val>' + LE +
+                 GetChartRangeXML(AIndent + 4, yRng, 'c:numRef') + LE +
+    indent + '  </c:val>' + LE
+  );
+
+  AppendToStream(AStream,
+    indent + '  <c:smooth val="0"/>' + LE+
+    indent + '</c:ser>' + LE
+  );
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4511,6 +4690,7 @@ var
   xRng, yRng: TsChartRange;
   forceNoLine: Boolean;
   xValName, yValName, xRefName, yRefName: String;
+  lser: TsOpenedCustomLineSeries;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -4539,38 +4719,40 @@ begin
   begin
     AppendToStream(AStream,
       indent + '  <c:spPr>' + LE +
-                    GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
+      GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
       indent + '  </c:spPr>' + LE
     );
   end else
   // Line & scatter & radar series: symbol markers
   if (ASeries is TsCustomLineSeries) then
   begin
+    lSer := TsOpenedCustomLineSeries(ASeries);
+
     if (ASeries.ChartType = ctFilledRadar) then
       AppendToStream(AStream,
         indent + '  <c:spPr>' + LE +
-                     GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
+        GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
         indent + '  </c:spPr>' + LE
       )
     else
     begin
-      forceNoLine := not TsOpenedCustomLineSeries(ASeries).ShowLines;
+      forceNoLine := not lSer.ShowLines;
       AppendToStream(AStream,
         indent + '  <c:spPr>' + LE +
-                      GetChartLineXML(AIndent + 4, chart, ASeries.Line, forceNoLine) + LE +
+        GetChartLineXML(AIndent + 4, chart, ASeries.Line, forceNoLine) + LE +
         indent + '  </c:spPr>' + LE
       );
     end;
     AppendToStream(AStream,
       indent + '  <c:marker>' + LE +
-                    GetChartSeriesMarkerXML(AIndent + 4, TsOpenedCustomLineSeries(ASeries)) + LE +
+      GetChartSeriesMarkerXML(AIndent + 4, chart, lser.ShowSymbols, lser.Symbol, lSer.SymbolWidth, lSer.SymbolWidth, lSer.SymbolFill, lSer.SymbolBorder) + LE +
       indent + '  </c:marker>' + LE
     );
   end else
     // Series main formatting
     AppendToStream(AStream,
       indent + '  <c:spPr>' + LE +
-                    GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
+      GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
       indent + '  </c:spPr>' + LE
     );
 
