@@ -2218,7 +2218,14 @@ begin
     serNode := serNode.PreviousSibling;  // we must run backward
   end;
 
-  ReadChartSeriesProps(ANode.FirstChild, ser);
+  serNode := ANode;
+  while (serNode <> nil) do
+  begin
+    nodeName := serNode.NodeName;
+    if nodeName = 'c:ser' then
+      ReadChartSeriesProps(serNode.FirstChild, ser);
+    serNode := serNode.NextSibling;
+  end;
 
   while Assigned(ANode) do
   begin

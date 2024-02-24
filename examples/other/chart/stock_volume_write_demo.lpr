@@ -171,10 +171,8 @@ begin
     vser.SetYRange    (3, 1, 7, 1);
     vser.SetTitleAddr (2, 1);
 
-    {
-    book.WriteToFile(dir + fn + '.xlsx', true);   // Excel fails to open the file
+    book.WriteToFile(dir + fn + '.xlsx', true);
     WriteLn('... ', fn, '.xlsx');
-    }
 
     book.WriteToFile(dir + fn + '.ods', true);
     WriteLn('... ', fn, '.ods');

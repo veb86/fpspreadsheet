@@ -1297,7 +1297,7 @@ begin
           Result := TStockSeries.Create(FChart);
           src.YCount := 4;
           src.IntegerX := true;
-          //src.SetLabelRange(0, TsStockSeries(ASeries).LabelRange);
+          src.SetLabelRange(TsStockSeries(ASeries).LabelRange);
           src.SetYRange(0, TsStockSeries(ASeries).LowRange);   // 0=Low
           src.SetYRange(1, TsStockSeries(ASeries).OpenRange);  // 1=Open
           src.SetYRange(2, TsStockSeries(ASeries).CloseRange); // 2=Close (= Y)
