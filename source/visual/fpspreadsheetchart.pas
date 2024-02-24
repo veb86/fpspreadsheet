@@ -2751,9 +2751,6 @@ begin
   seriesPointer.HorizSize := mmToPx(openedWorkbookSeries.SymbolWidth / 2, ppi);
   seriesPointer.VertSize := mmToPx(openedWorkbookSeries.SymbolHeight / 2, ppi);
 
-  if lineseries <> nil then
-    DebugLn([BoolToStr(lineseries.ShowPoints, true), ' ', intTostr(ord(lineseries.pointer.Style)), ' ', inttostr(ord(lineseries.pointer.brush.style))]);
-
   // Error bars
   UpdateChartErrorBars(AWorkbookSeries, AChartSeries);
 

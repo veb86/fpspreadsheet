@@ -84,7 +84,6 @@ type
     function GetChartFillXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill): String;
     function GetChartFontXML(AIndent: Integer; AFont: TsFont; ANodeName: String): String;
     function GetChartLineXML(AIndent: Integer; AChart: TsChart; ALine: TsChartLine; OverrideOff: Boolean = false): String;
-    function GetChartRangeXML(AIndent: Integer; ARange: TsChartRange; ARefKind: String): String;
     function GetChartSeriesMarkerXML(AIndent: Integer; AChart: TsChart;
       AShowSymbols: Boolean; ASymbolKind: TsChartSeriesSymbol = cssRect;
       ASymbolWidth: Double = 3.0; ASymbolHeight: Double = 3.0;
@@ -105,6 +104,7 @@ type
     procedure WriteChartAxisTitle(AStream: TStream; AIndent: Integer; Axis: TsChartAxis);
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
+    procedure WriteChartRange(AStream: TStream; AIndent: Integer; ARange: TsChartRange; ANodeName, ARefName: String);
     procedure WriteChartTrendline(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     function WriteChartSeries(AStream: TStream; AIndent: Integer; AChart: TsChart; AxisLink: TsChartAxisLink; out xAxKind: String): Boolean;
     procedure WriteChartSeriesDatapointLabels(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
@@ -126,6 +126,8 @@ type
 
     procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
     procedure WriteChartText(AStream: TStream; AIndent: Integer; AText: TsChartText; ARotationAngle: Single);
+
+    procedure WriteCellNumberValue(AStream: TStream; AIndent: Integer; AWorksheet: TsBasicWorksheet; ARow,ACol,AIndex: Cardinal);
 
   public
     constructor Create(AWriter: TsBasicSpreadWriter); override;
@@ -2170,7 +2172,6 @@ var
   ser: TsStockSeries;
   nodeName: String;
   sernode, child: TDOMNode;
-  rangeLine: TsChartLine = nil;
 begin
   if ANode = nil then
     exit;
@@ -2225,7 +2226,7 @@ begin
     case nodeName of
       'c:hiLowLines':
         begin
-          child := ANode.FirstChild;
+          child := ANode.FindNode('c:spPr');
           if Assigned(child) then
             ReadChartLineProps(child.FirstChild, AChart, ser.Rangeline);
         end;
@@ -2257,7 +2258,6 @@ begin
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
-    child := ANode.FirstChild;
     case nodeName of
       'c:gapWidth':
         begin
@@ -2266,11 +2266,17 @@ begin
             ASeries.TickWidthPercent := round(100 / (1 + n/100));
         end;
       'c:upBars':
-        if Assigned(child) then
-          ReadChartFillAndLineProps(child.FirstChild, ASeries.Chart, ASeries.CandleStickUpFill, ASeries.CandlestickUpBorder);
+        begin
+          child := ANode.FindNode('c:spPr');
+          if Assigned(child) then
+            ReadChartFillAndLineProps(child.FirstChild, ASeries.Chart, ASeries.CandleStickUpFill, ASeries.CandlestickUpBorder);
+        end;
       'c:downBars':
-        if Assigned(child) then
-          ReadChartFillAndLineProps(child.FirstChild, ASeries.Chart, ASeries.CandleStickDownFill, ASeries.CandlestickDownBorder);
+        begin
+          child := ANode.FindNode('c:spPr');
+          if Assigned(child) then
+            ReadChartFillAndLineProps(child.FirstChild, ASeries.Chart, ASeries.CandleStickDownFill, ASeries.CandlestickDownBorder);
+        end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -2589,6 +2595,33 @@ begin
   for stream in FSChartStyles do stream.Position := 0;
   for stream in FSChartColors do stream.Position := 0;
 end;
+
+{@@ ----------------------------------------------------------------------------
+  Writes a cell number value to the xml stream for the series' number cache
+
+  @param  AStream    Stream for the chart
+  @param  AIndent    Number of indentation spaces for better legibility
+  @param  AWorksheet Worksheet to which the cell contains
+  @param  ARow       Row index of the cell
+  @param  ACol       Column index of the cell
+  @param  AIndex     Index of the cell among the series data points
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteCellNumberValue(AStream: TStream;
+  AIndent: Integer; AWorksheet: TsBasicWorksheet; ARow, ACol, AIndex: Cardinal);
+var
+  indent: String;
+  value: Double;
+begin
+  indent := DupeString(' ', AIndent);
+  value := TsWorksheet(AWorksheet).ReadAsNumber(ARow, ACol);
+  AppendToStream(AStream, Format(
+    indent + '<c:pt idx="%d">' + LE +
+    indent + '  <c:v>%g</c:v>' + LE +
+    indent + '</c:pt>' + LE,
+    [ AIndex, value ], FPointSeparatorSettings
+  ));
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Writes the xl/charts/colorsN.xml file where N is the number AChartIndex.
@@ -3421,8 +3454,8 @@ end;
 
   @param  AIndent  Number of indentation spaces for better legibility
   @param  AChart   Chart to which this line belongs
-  @param  ALine    Line class with all its properties for which the string is created
-  @param  OverrideOff  Creates a "no-line" string no matter which parameters are in ALine
+  @param  ALine    Line instance for which the string is created
+  @param  OverrideOff  If true, an empty line string is created no matter which parameters are in ALine
 -------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartLineXML(AIndent: Integer;
   AChart: TsChart; ALine: TsChartline; OverrideOff: Boolean = false): String;
@@ -3476,32 +3509,6 @@ begin
     end;
     Result := Result + indent + '</a:ln>';
   end;
-end;
-
-{@@ ----------------------------------------------------------------------------
-  Creates an xml string for a cell range to be used in ARange
-
-  @param  AIndent   Number of intentation spaces, for better legibility
-  @param  ARange    Range containing the worksheet names and cell references
-  @param  ARefKind  Determines whether the range contains strings ('c:strRef') or numbers ('c:numRef'). Must be a valid Excel nodename (including "c:")
--------------------------------------------------------------------------------}
-function TsSpreadOOXMLChartWriter.GetChartRangeXML(AIndent: Integer;
-  ARange: TsChartRange; ARefKind: String): String;
-var
-  indent: String;
-begin
-  indent := DupeString(' ', AIndent);
-  if ARange.Sheet1 = ARange.Sheet2 then
-    Result := ARange.GetSheet1Name + '!' + GetCellRangeString(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2, [])
-  else
-    Result := GetCellRangeString(ARange.GetSheet1Name, ARange.GetSheet2Name, ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2, []);
-
-  Result := Format(
-    indent + '<%0:s> ' + LE +
-    indent + '  <c:f>' + Result + '</c:f>' + LE +
-    indent + '</%0:s>',
-    [ ARefKind ]
-  );
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4099,9 +4106,9 @@ begin
 
   if (AChart.GetChartType = ctStock) then
   begin
-    // Stock series writes first the y, then the x axis.
+    // Stock series has the y axis first, then the x axis.  //// NOT CLEAR IF THIS IS REQUIRED...
     WriteChartAxisNode(AStream, AIndent, AChart.YAxis, 'c:valAx');
-    WriteChartAxisNode(AStream, AIndent, AChart.XAxis, 'c:catAx');
+    WriteChartAxisNode(AStream, AIndent, AChart.XAxis, 'c:dateAx'); //'c:catAx');
   end else
   if not (AChart.GetChartType in [ctPie, ctRing]) then
   begin
@@ -4118,6 +4125,85 @@ begin
   AppendToStream(AStream,
     indent + '</c:plotArea>' + LE
   );
+end;
+
+{ ------------------------------------------------------------------------------
+  Writes a cell range to the xml stream
+
+  @param  AStream   Stream to which the range is written (chartX.xml)
+  @param  AIndent   Number of indentation spaces, for better legibility
+  @param  ARange    Reference to the cell range to be written
+  @param  ANodeName Name to be used for the node into which the data are embedded
+  @param  ARefName  Identification of the data type in the range, needed by Excel
+-------------------------------------------------------------------------------}
+procedure TsSpreadOOXMLChartWriter.WriteChartRange(AStream: TStream;
+  AIndent: Integer; ARange: TsChartRange; ANodeName, ARefName: String);
+var
+  indent: String;
+  rangeStr: String;
+  r, c, idx: Integer;
+  chart: TsChart;
+  workbook: TsWorkbook;
+  sheet: TsWorksheet;
+begin
+  indent := DupeString(' ', AIndent);
+  chart := ARange.Chart;
+  if ARange.Sheet1 <> '' then
+  begin
+    workbook := TsWorkbook(Writer.Workbook);
+    sheet := workbook.GetWorksheetByName(ARange.Sheet1);
+  end else
+    sheet := TsWorksheet(chart.Worksheet);
+
+  if ARange.Sheet1 = ARange.Sheet2 then
+    rangeStr := ARange.GetSheet1Name + '!' + GetCellRangeString(ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2, [])
+  else
+    rangeStr := GetCellRangeString(ARange.GetSheet1Name, ARange.GetSheet2Name, ARange.Row1, ARange.Col1, ARange.Row2, ARange.Col2, []);
+
+  AppendToStream(AStream, Format(
+    indent + '<%s>' + LE +
+    indent + '  <%s>' + LE +
+    indent + '    <c:f>%s</c:f>' + LE,
+    [ ANodeName, ARefName, rangeStr ]
+  ));
+
+  // Number cache
+  if (ARange.GetSheet1Name = ARange.GetSheet2Name) and (ARefName = 'c:numRef') then
+  begin
+    AppendToStream(AStream, Format(
+      indent + '    <c:numCache>' + LE +
+      indent + '      <c:ptCount val="%d"/>' + LE,
+      [ ARange.NumCells ]
+    ));
+    idx := 0;
+    // Column range
+    if (ARange.Col1 = ARange.Col2) then
+    begin
+      for r := ARange.Row1 to ARange.Row2 do
+      begin
+        WriteCellNumberValue(AStream, AIndent + 6, sheet, r, ARange.Col1, idx);
+        inc(idx);
+      end
+    end else
+    // Row range
+    if (ARange.Row1 = ARange.Row2) then
+    begin
+      for c := ARange.Col1 to ARange.Col2 do
+      begin
+        WriteCellNumberValue(AStream, AIndent, sheet, ARange.Row1, c, idx);
+        inc(idx);
+      end
+    end;
+    AppendToStream(AStream,
+      indent + '    </c:numCache>' + LE
+    );
+  end;
+
+  AppendToStream(AStream, Format(
+    indent + '  </%s>' + LE +
+    indent + '</%s>' + LE,
+    [ ARefName,  ANodeName ]
+  ));
 end;
 
 procedure TsSpreadOOXMLChartWriter.WriteCharts;
@@ -4477,11 +4563,7 @@ begin
     xRng := ASeries.LabelRange;
   if xRng.IsEmpty then
     xRng := chart.CategoryLabelRange;
-  AppendToStream(AStream,
-    indent + '  <c:cat>' + LE +
-                 GetChartRangeXML(AIndent + 4, xRng, 'c:numRef') + LE +
-    indent + '  </c:cat>' + LE
-  );
+  WriteChartRange(AStream, AIndent + 2, xRng, 'c:cat', 'c:numRef');
 
   // y range
   case OHLCPart of
@@ -4490,11 +4572,7 @@ begin
     OHLC_LOW: yRng := ASeries.LowRange;
     OHLC_CLOSE: yRng := ASeries.CloseRange;
   end;
-  AppendToStream(AStream,
-    indent + '  <c:val>' + LE +
-                 GetChartRangeXML(AIndent + 4, yRng, 'c:numRef') + LE +
-    indent + '  </c:val>' + LE
-  );
+  WriteChartRange(AStream, AIndent + 2, yRng, 'c:val', 'c:numRef');
 
   AppendToStream(AStream,
     indent + '  <c:smooth val="0"/>' + LE+
@@ -4783,30 +4861,16 @@ begin
   end;
   yRng := ASeries.YRange;
   yRefName := 'c:numRef';
+
   // x range
-  AppendToStream(AStream, Format(
-    indent + '  <%0:s>' + LE +
-                 GetChartRangeXML(AIndent + 4, xRng, xRefName) + LE +
-    indent + '  </%0:s>' + LE,
-    [ xValName ]
-  ));
+  WriteChartRange(AStream, AIndent + 2, xRng, xValName, xRefName);
+
   // y range
-  AppendToStream(AStream, Format(
-    indent + '  <%0:s>' + LE +
-                 GetChartRangeXML(AIndent + 4, yRng, yRefName) + LE +
-    indent + '  </%0:s>' + LE,
-    [ yValName ]
-  ));
+  WriteChartRange(AStream, AIndent + 2, yRng, yValName, yRefName);
 
   // Bubble series: Bubble size range
   if (ASeries is TsBubbleSeries) then
-  begin
-    AppendToStream(AStream,
-      indent +  '<c:bubbleSize>' + LE +
-      indent +   GetChartRangeXML(AIndent + 4, TsBubbleSeries(ASeries).BubbleRange, 'c:numRef') + LE +
-      indent +  '</c:bubbleSize>' + LE
-    );
-  end;
+    WriteChartRange(AStream, AIndent, TsBubbleSeries(ASeries).BubbleRange, 'c:bubbleSize', 'c:numRef');
 
   // Line series: Interpolation
   if ASeries is TsLineSeries then

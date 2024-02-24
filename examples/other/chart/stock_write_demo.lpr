@@ -91,6 +91,7 @@ begin
 
     // Chart properties
     ch.Border.Style := clsNoLine;
+    ch.Legend.Visible := false;
     ch.Legend.Border.Style := clsNoLine;
     ch.RotatedAxes := rotated;
     ch.XAxis.DateTime := true;
@@ -119,8 +120,7 @@ begin
     ser.SetCloseRange(3, 4, 7, 4);
     ser.SetXRange    (3, 0, 7, 0);
     ser.SetLabelRange(3, 0, 7, 0);
-    ser.RangeLine.Width := 1;
-    ser.RangeLine.Color := scRed;
+    ser.RangeLine.Color := scBlue;
 
     book.WriteToFile(dir + fn + '.xlsx', true);
     WriteLn('... ', fn + '.xlsx');

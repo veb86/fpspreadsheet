@@ -227,6 +227,7 @@ type
     procedure CopyFrom(ASource: TsChartCellAddr);
     function GetSheetName: String;
     function IsUsed: Boolean;
+    property Chart: TsChart read FChart;
   end;
 
   TsChartRange = class
@@ -237,9 +238,11 @@ type
     Row1, Col1, Row2, Col2: Cardinal;
     constructor Create(AChart: TsChart);
     procedure CopyFrom(ASource: TsChartRange);
+    function NumCells: Integer;
     function GetSheet1Name: String;
     function GetSheet2Name: String;
     function IsEmpty: Boolean;
+    property Chart: TsChart read FChart;
   end;
 
   TsChartElement = class
@@ -1612,6 +1615,13 @@ begin
     (Row2 = UNASSIGNED_ROW_COL_INDEX) and (Col2 = UNASSIGNED_ROW_COL_INDEX);
 end;
 
+function TsChartRange.NumCells: Integer;
+begin
+  if IsEmpty then
+    Result := 0
+  else
+    Result := (Col2 - Col1 + 1) * (Row2 - Row1 + 1);
+end;
 
 { TsChartElement }
 
@@ -2395,7 +2405,7 @@ procedure TsChartSeries.SetLineColorRange(ASheet1: String; ARow1, ACol1: Cardina
 begin
   if (ARow1 <> ARow2) and (ACol1 <> ACol2) then
     raise Exception.Create('Series line color values can only be located in a single column or row.');
-  FLineColorRange.Sheet1 := ASHeet1;
+  FLineColorRange.Sheet1 := ASheet1;
   FLineColorRange.Row1 := ARow1;
   FLineColorRange.Col1 := ACol1;
   FLineColorRange.Sheet2 := ASheet2;
