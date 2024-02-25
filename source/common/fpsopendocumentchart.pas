@@ -1599,17 +1599,19 @@ begin
           begin
             styleNode := FindStyleNode(AStyleNode, s);
             ReadChartSeriesDataPointStyle(styleNode, AChart, series, fill, line, pieOffset); // creates fill and line!
+    //      end;   // <<<<<<<<<<<<<<<<<<<<               // !!! wp: putting these two lines back in creates a crash at the end with the stock series
+    //      begin  // <<<<<<<<<<<<<<<<<<<<
+            s := GetAttrValue(subnode, 'chart:repeated');
+            if (s <> '') then
+              n := StrToIntDef(s, 1);
+            for i := 0 to n-1 do
+            begin
+              series.DataPointStyles.AddFillAndLine(ptIndex, fill, line, pieOffset);
+              inc(ptIndex);
+            end;
+            fill.Free;  // the styles have been copied to the series datapoint style list and are not needed any more.
+            line.Free;
           end;
-          s := GetAttrValue(subnode, 'chart:repeated');
-          if (s <> '') then
-            n := StrToIntDef(s, 1);
-          for i := 1 to n do
-          begin
-            series.DataPointStyles.AddFillAndLine(ptIndex, fill, line, pieOffset);
-            inc(ptIndex);
-          end;
-          fill.Free;  // the styles have been copied to the series datapoint list and are not needed any more.
-          line.Free;
         end;
       'chart:error-indicator':
         ReadChartSeriesErrorbarProps(subNode, AStyleNode, AChart, series);

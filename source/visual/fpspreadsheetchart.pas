@@ -1091,7 +1091,7 @@ begin
 
   SetLength(FDataPointColors, ASeries.Count);
   i := 0;
-  for j := 0 to ASeries.DataPointstyles.Count-1 do
+  for j := 0 to ASeries.DataPointStyles.Count-1 do
   begin
     datapointStyle := ASeries.DatapointStyles[j];
     while (datapointStyle <> nil) and (i < dataPointStyle.DataPointIndex) do

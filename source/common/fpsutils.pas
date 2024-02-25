@@ -2300,6 +2300,38 @@ begin
   end;
 end;
 
+function TryHexStrToColor(AValue: String; out AColor: TsColor): Boolean;
+var
+  r, g, b: String[2];
+  c: Integer;
+begin
+  AColor := scNotDefined;
+  if Length(AValue) = 3 then
+  begin
+    r := AValue[1] + AValue[1];
+    g := AValue[2] + AValue[2];
+    b := AValue[3] + AValue[3];
+  end else
+  if Length(AValue) = 6 then
+  begin
+    r := Copy(AValue, 1, 2);
+    g := Copy(AValue, 3, 2);
+    b := Copy(AValue, 5, 2);
+  end else
+  if Length(AValue) = 8 then
+  begin
+    r := Copy(AValue, 3, 2);
+    g := Copy(AValue, 5, 2);
+    b := Copy(AValue, 7, 2);
+  end else
+    exit(false);
+
+  AValue := '$' + b + g + r;
+  Result := TryStrToInt(AValue, c);
+  if Result then
+    AColor := c;
+end;
+
 {@@ ----------------------------------------------------------------------------
   Converts a HTML color string to a TsColor alue. Needed for the ODS file format.
 
@@ -2314,8 +2346,9 @@ begin
     Result := scNotDefined
   else
   if AValue[1] = '#' then begin
-    AValue[1] := '$';
-    Result := LongRGBToExcelPhysical(DWord(StrToInt(AValue)));
+    Delete(AValue, 1,1);
+    if not TryHexStrToColor(AValue, Result) then
+      Result := scNotDefined;
   end else begin
     AValue := lowercase(AValue);
     if AValue = 'red' then
@@ -2344,9 +2377,7 @@ begin
       Result := $008000
     else if AValue = 'olive' then
       Result := $008080
-    else if TryStrToInt('$' + AValue, c) then
-      Result := LongRGBToExcelPhysical(DWord(StrToInt('$' + AValue)))
-    else
+    else if not TryHexStrToColor(AValue, Result) then
       Result := scNotDefined
   end;
 end;
