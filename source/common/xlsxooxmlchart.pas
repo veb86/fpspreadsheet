@@ -80,6 +80,7 @@ type
     FSChartColors: array of TStream;
     FPointSeparatorSettings: TFormatSettings;
     FAxisID: array[TsChartAxisAlignment] of DWord;
+    FSeriesIndex: Integer;
     function GetChartFillAndLineXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine): String;
     function GetChartFillXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill): String;
     function GetChartFontXML(AIndent: Integer; AFont: TsFont; ANodeName: String): String;
@@ -104,25 +105,25 @@ type
     procedure WriteChartAxisTitle(AStream: TStream; AIndent: Integer; Axis: TsChartAxis);
     procedure WriteChartLegendNode(AStream: TStream; AIndent: Integer; ALegend: TsChartLegend);
     procedure WriteChartPlotAreaNode(AStream: TStream; AIndent: Integer; AChart: TsChart);
-    procedure WriteChartRange(AStream: TStream; AIndent: Integer; ARange: TsChartRange; ANodeName, ARefName: String);
+    procedure WriteChartRange(AStream: TStream; AIndent: Integer; ARange: TsChartRange; ANodeName, ARefName: String; WriteCache: Boolean = false);
     procedure WriteChartTrendline(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     function WriteChartSeries(AStream: TStream; AIndent: Integer; AChart: TsChart; AxisLink: TsChartAxisLink; out xAxKind: String): Boolean;
     procedure WriteChartSeriesDatapointLabels(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesDatapointStyles(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
-    procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: Integer);
+    procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesTitle(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
 
     // Writing the nodes of the series types
     procedure WriteAreaSeries(AStream: TStream; AIndent: Integer; ASeries: TsAreaSeries; ASeriesIndex, APosInAxisGroup: Integer);
     procedure WriteBarSeries(AStream: TStream; AIndent: Integer; ASeries: TsBarSeries; ASeriesIndex, APosInAxisGroup: Integer);
-    procedure WriteBubbleSeries(AStream: TStream; AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex, APosInAxisGroup: Integer);
+    procedure WriteBubbleSeries(AStream: TStream; AIndent: Integer; ASeries: TsBubbleSeries; APosInAxisGroup: Integer);
     procedure WriteLineSeries(AStream: TStream; AIndent: Integer; ASeries: TsLineSeries; ASeriesIndex, APosInAxisGroup: Integer);
-    procedure WritePieSeries(AStream: TStream; AIndent: Integer; ASeries: TsPieSeries; ASeriesIndex: Integer);
-    procedure WriteRadarSeries(AStream: TStream; AIndent: Integer; ASeries: TsRadarSeries; ASeriesIndex: Integer);
-    procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex, APosInAxisGroup: Integer);
-    procedure WriteStockSeries(AStream: TStream; AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, APosInAxisGroup: Integer);
-    procedure WriteStockSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, OHLCPart: Integer);
+    procedure WritePieSeries(AStream: TStream; AIndent: Integer; ASeries: TsPieSeries);
+    procedure WriteRadarSeries(AStream: TStream; AIndent: Integer; ASeries: TsRadarSeries);
+    procedure WriteScatterSeries(AStream: TStream; AIndent: Integer; ASeries: TsScatterSeries; APosInAxisGroup: Integer);
+    procedure WriteStockSeries(AStream: TStream; AIndent: Integer; ASeries: TsStockSeries; APosInAxisGroup: Integer);
+    procedure WriteStockSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, OHLCPart: Integer; WriteCache: Boolean);
 
     procedure WriteChartLabels(AStream: TStream; AIndent: Integer; AFont: TsFont);
     procedure WriteChartText(AStream: TStream; AIndent: Integer; AText: TsChartText; ARotationAngle: Single);
@@ -3558,7 +3559,7 @@ begin
       [ GROUPING[chart.StackMode] ]
     ));
 
-  WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
+  WriteChartSeriesNode(AStream, AIndent + 2, ASeries);
 
   if isLastOfGroup then
   begin
@@ -3627,7 +3628,7 @@ begin
       [ BAR_DIR[chart.RotatedAxes], GROUPING[chart.StackMode] ]
     ));
 
-  WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
+  WriteChartSeriesNode(AStream, AIndent + 2, ASeries);
 
   if isLastOfGroup then
   begin
@@ -3663,11 +3664,10 @@ end;
   @param  AStream       Stream to be written, it becomes the chartN.xml file
   @param  AIndent       Count of indentation spaces, for better legibility
   @param  ASeries       Bubble series to be processed
-  @param  ASeriesIndex  Index of the series in the chart's series list
   @param  APosInAxisGroup Bit 1 - first series on primary or secondary axis, bit 2 - last series on primary or secondary axis
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteBubbleSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsBubbleSeries; ASeriesIndex, APosInAxisGroup: Integer);
+  AIndent: Integer; ASeries: TsBubbleSeries; APosInAxisGroup: Integer);
 var
   indent: String;
   chart: TsChart;
@@ -3687,7 +3687,7 @@ begin
       indent + '  <c:varyColors val="0"/>' + LE
     );
 
-  WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
+  WriteChartSeriesNode(AStream, AIndent + 2, ASeries);
 
   if isLastOfGroup then
   begin
@@ -3770,6 +3770,7 @@ var
   rotAxID: DWord;
   crosses: String = 'autoZero';
   delete: Integer = 0;
+  axAlign: TsChartAxisAlignment;
 begin
   indent := DupeString(' ', AIndent);
   chart := Axis.Chart;
@@ -3792,11 +3793,12 @@ begin
 
   WriteChartAxisScaling(AStream, AIndent + 2, Axis);
 
+  if Axis.Alignment = caaTop then axAlign := caaBottom else axAlign := Axis.Alignment;
   AppendToStream(AStream, Format(
     indent + '  <c:delete val="%d"/>' + LE +
     indent + '  <c:axPos val="%s" />' + LE,
     [ delete,
-      AX_POS[Axis.Chart.RotatedAxes, Axis.Alignment]
+      AX_POS[Axis.Chart.RotatedAxes, axAlign]
     ]
     // axis rotation seems to be respected by Excel only for bar series.
   ));
@@ -4100,6 +4102,7 @@ begin
   FAxisID[caaLeft] := Random(MaxInt);
   FAxisID[caaRight] := Random(MaxInt);
   FAxisID[caaTop] := Random(MaxInt);
+  FSeriesIndex := 0;
 
   AppendToStream(AStream,
     indent + '<c:plotArea>' + LE
@@ -4111,11 +4114,33 @@ begin
   // Write series attached to secondary y axis
   hasSecondaryAxis := WriteChartSeries(AStream, AIndent + 2, AChart, calSecondary, x2AxKind);
 
+  // Write the x and y axes. No axes for pie series and related.
+  if not (AChart.GetChartType in [ctPie, ctRing]) then
+  begin
+    yAxKind := 'c:valAx';
+    WriteChartAxisNode(AStream, AIndent, AChart.XAxis, xAxKind);
+    WriteChartAxisNode(AStream, AIndent, AChart.YAxis, yAxKind);
+
+    // Write the secondary axes
+    if hasSecondaryAxis then begin
+      WriteChartAxisNode(AStream, AIndent, AChart.Y2Axis, yAxKind);
+      x2AxKind := xAxKind;
+      WriteChartAxisNode(AStream, AIndent, AChart.X2Axis, x2Axkind);
+    end;
+  end;
+  (*
+  // Wrie the
   if (AChart.GetChartType = ctStock) then
   begin
     // Stock series has the y axis first, then the x axis.  //// NOT CLEAR IF THIS IS REQUIRED...
-    WriteChartAxisNode(AStream, AIndent, AChart.YAxis, 'c:valAx');
     WriteChartAxisNode(AStream, AIndent, AChart.XAxis, 'c:dateAx'); //'c:catAx');
+    WriteChartAxisNode(AStream, AIndent, AChart.YAxis, 'c:valAx');
+//    WriteChartAxisNode(AStream, AIndent, AChart.XAxis, 'c:dateAx'); //'c:catAx');
+    if hasSecondaryAxis then
+    begin
+      WriteChartAxisNode(AStream, AIndent, AChart.Y2Axis, yAxKind);
+      WriteChartAxisNode(AStream, AIndent, AChart.X2Axis, x2AxKind);
+    end;
   end else
   if not (AChart.GetChartType in [ctPie, ctRing]) then
   begin
@@ -4128,6 +4153,7 @@ begin
       WriteChartAxisNode(AStream, AIndent, AChart.X2Axis, x2AxKind);
     end;
   end;
+  *)
 
   AppendToStream(AStream,
     indent + '</c:plotArea>' + LE
@@ -4144,7 +4170,8 @@ end;
   @param  ARefName  Identification of the data type in the range, needed by Excel
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteChartRange(AStream: TStream;
-  AIndent: Integer; ARange: TsChartRange; ANodeName, ARefName: String);
+  AIndent: Integer; ARange: TsChartRange; ANodeName, ARefName: String;
+  WriteCache: Boolean = false);
 var
   indent: String;
   rangeStr: String;
@@ -4174,36 +4201,39 @@ begin
     [ ANodeName, ARefName, rangeStr ]
   ));
 
-  // Number cache
-  if (ARange.GetSheet1Name = ARange.GetSheet2Name) and (ARefName = 'c:numRef') then
+  if WriteCache then
   begin
-    AppendToStream(AStream, Format(
-      indent + '    <c:numCache>' + LE +
-      indent + '      <c:ptCount val="%d"/>' + LE,
-      [ ARange.NumCells ]
-    ));
-    idx := 0;
-    // Column range
-    if (ARange.Col1 = ARange.Col2) then
+    // Number cache
+    if (ARange.GetSheet1Name = ARange.GetSheet2Name) and (ARefName = 'c:numRef') then
     begin
-      for r := ARange.Row1 to ARange.Row2 do
+      AppendToStream(AStream, Format(
+        indent + '    <c:numCache>' + LE +
+        indent + '      <c:ptCount val="%d"/>' + LE,
+        [ ARange.NumCells ]
+      ));
+      idx := 0;
+      // Column range
+      if (ARange.Col1 = ARange.Col2) then
       begin
-        WriteCellNumberValue(AStream, AIndent + 6, sheet, r, ARange.Col1, idx);
-        inc(idx);
-      end
-    end else
-    // Row range
-    if (ARange.Row1 = ARange.Row2) then
-    begin
-      for c := ARange.Col1 to ARange.Col2 do
+        for r := ARange.Row1 to ARange.Row2 do
+        begin
+          WriteCellNumberValue(AStream, AIndent + 6, sheet, r, ARange.Col1, idx);
+          inc(idx);
+        end
+      end else
+      // Row range
+      if (ARange.Row1 = ARange.Row2) then
       begin
-        WriteCellNumberValue(AStream, AIndent, sheet, ARange.Row1, c, idx);
-        inc(idx);
-      end
+        for c := ARange.Col1 to ARange.Col2 do
+        begin
+          WriteCellNumberValue(AStream, AIndent, sheet, ARange.Row1, c, idx);
+          inc(idx);
+        end
+      end;
+      AppendToStream(AStream,
+        indent + '    </c:numCache>' + LE
+      );
     end;
-    AppendToStream(AStream,
-      indent + '    </c:numCache>' + LE
-    );
   end;
 
   AppendToStream(AStream, Format(
@@ -4238,7 +4268,8 @@ end;
   @returns When no series were attached to the specified axis the function returns false
 -------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.WriteChartSeries(AStream: TStream;
-  AIndent: Integer; AChart: TsChart; AxisLink: TsChartAxisLink; out xAxKind: string): Boolean;
+  AIndent: Integer; AChart: TsChart; AxisLink: TsChartAxisLink;
+  out xAxKind: string): Boolean;
 var
   i, j, n: Integer;
   ser: TsChartSeries;
@@ -4289,33 +4320,36 @@ begin
         WriteBarSeries(AStream, AIndent + 2, TsBarSeries(ser), j, posInGroup);
       ctBubble:
         begin
-          WriteBubbleSeries(AStream, AIndent + 2, TsBubbleSeries(ser), j, posInGroup);
+          WriteBubbleSeries(AStream, AIndent + 2, TsBubbleSeries(ser), posInGroup);
           xAxKind := 'c:valAx';
         end;
       ctLine:
         WriteLineSeries(AStream, AIndent + 2, TsLineSeries(ser), j, posInGroup);
       ctPie, ctRing:
-        WritePieSeries(AStream, AIndent + 2, TsPieSeries(ser), j);
+        WritePieSeries(AStream, AIndent + 2, TsPieSeries(ser));
       ctRadar, ctFilledRadar:
-        WriteRadarSeries(AStream, AIndent + 2, TsRadarSeries(ser), j);
+        WriteRadarSeries(AStream, AIndent + 2, TsRadarSeries(ser));
       ctScatter:
         begin
-          WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), j, posInGroup);
+          WriteScatterSeries(AStream, AIndent + 2, TsScatterSeries(ser), posInGroup);
           xAxKind := 'c:valAx';
         end;
       ctStock:
         begin
-          WriteStockSeries(AStream, AIndent + 2, TsStockSeries(ser), j, posInGroup);
+          WriteStockSeries(AStream, AIndent + 2, TsStockSeries(ser), posInGroup);
           xAxKind := 'c:dateAx';
+          if TsStockSeries(ser).CandleStick then inc(FSeriesIndex, 3) else inc(FSeriesIndex, 2);
+          // Together with the following inc(FSeriesIndex) we increment FSeriesIndex by 4 or 3 here.
         end;
     end;
+    inc(FSeriesIndex);
   end;
   Result := true;
 end;
 
 
 procedure TsSpreadOOXMLChartWriter.WritePieSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsPieSeries; ASeriesIndex: Integer);
+  AIndent: Integer; ASeries: TsPieSeries);
 var
   indent: String;
   chart: TsChart;
@@ -4334,7 +4368,7 @@ begin
     indent + '  <c:varyColors val="1"/>' + LE
   );
 
-  WriteChartSeriesNode(AStream, AIndent + 4, ASeries, ASeriesIndex);
+  WriteChartSeriesNode(AStream, AIndent + 4, ASeries);
 
   if ASeries.InnerRadiusPercent > 0 then
     AppendToStream(AStream, Format(
@@ -4352,7 +4386,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLChartWriter.WriteRadarSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsRadarSeries; ASeriesIndex: Integer);
+  AIndent: Integer; ASeries: TsRadarSeries);
 var
   indent: String;
   chart: TsChart;
@@ -4377,7 +4411,7 @@ begin
     indent + '  <c:radarStyle val="' + radarStyle + '"/>' + LE
   );
 
-  WriteChartSeriesNode(AStream, AIndent + 4, ASeries, ASeriesIndex);
+  WriteChartSeriesNode(AStream, AIndent + 4, ASeries);
 
   AppendToStream(AStream, Format(
     indent + '  <c:axId val="%d"/>' + LE +
@@ -4391,7 +4425,7 @@ begin
 end;
 
 procedure TsSpreadOOXMLChartWriter.WriteScatterSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsScatterSeries; ASeriesIndex, APosInAxisGroup: Integer);
+  AIndent: Integer; ASeries: TsScatterSeries; APosInAxisGroup: Integer);
 var
   indent: String;
   chart: TsChart;
@@ -4423,7 +4457,7 @@ begin
       indent + '  <c:scatterStyle val="' + scatterStyleStr + '"/>' + LE
     );
 
-  WriteChartSeriesNode(AStream, AIndent + 4, ASeries, ASeriesIndex);
+  WriteChartSeriesNode(AStream, AIndent + 4, ASeries);
 
   if isLastOfGroup then
   begin
@@ -4448,7 +4482,7 @@ end;
   Writes a <c:stockChart> node for a stock series.
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteStockSeries(AStream: TStream;
-  AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, APosInAxisGroup: Integer);
+  AIndent: Integer; ASeries: TsStockSeries; APosInAxisGroup: Integer);
 var
   indent: String;
   chart: TsChart;
@@ -4467,17 +4501,20 @@ begin
       indent + '<c:stockChart>' + LE
     );
 
+  // Writes the ranges used by the open, high, low and close series of the chart.
+  // Experiments show that at least the close series must be written with cache.
+  // Otherwise the vertical range bar (from high to low) is not drawn by excel.
   if ASeries.CandleStick then
   begin
-    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex, OHLC_OPEN);
-    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex+1, OHLC_HIGH);
-    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex+2, OHLC_LOW);
-    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, AseriesIndex+3, OHLC_CLOSE);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, FSeriesIndex, OHLC_OPEN, false);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, FSeriesIndex+1, OHLC_HIGH, false);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, FSeriesIndex+2, OHLC_LOW, false);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, FseriesIndex+3, OHLC_CLOSE, true);
   end else
   begin
-    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex, OHLC_LOW);
-    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex+1, OHLC_HIGH);
-    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex+2, OHLC_CLOSE);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, FSeriesIndex, OHLC_LOW, false);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, FSeriesIndex+1, OHLC_HIGH, false);
+    WriteStockSeriesNode(AStream, AIndent + 2, ASeries, FSeriesIndex+2, OHLC_CLOSE, true);
   end;
 
   if isLastOfGroup then
@@ -4526,7 +4563,8 @@ end;
 
 { OHLCLPart: 0=open, 1=high, 2=low, 3=close }
 procedure TsSpreadOOXMLChartWriter.WriteStockSeriesNode(AStream: TStream;
-  AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, OHLCPart: Integer);
+  AIndent: Integer; ASeries: TsStockSeries; ASeriesIndex, OHLCPart: Integer;
+  WriteCache: Boolean);
 var
   indent: String;
   chart: TsChart;
@@ -4579,7 +4617,7 @@ begin
     OHLC_LOW: yRng := ASeries.LowRange;
     OHLC_CLOSE: yRng := ASeries.CloseRange;
   end;
-  WriteChartRange(AStream, AIndent + 2, yRng, 'c:val', 'c:numRef');
+  WriteChartRange(AStream, AIndent + 2, yRng, 'c:val', 'c:numRef', WriteCache);
 
   AppendToStream(AStream,
     indent + '  <c:smooth val="0"/>' + LE+
@@ -4768,7 +4806,7 @@ end;
   @param  ASeriesIndex  Index of ther series to be written
 -------------------------------------------------------------------------------}
 procedure TsSpreadOOXMLChartWriter.WriteChartSeriesNode(AStream: TStream;
-  AIndent: Integer; ASeries: TsChartSeries; ASeriesIndex: integer);
+  AIndent: Integer; ASeries: TsChartSeries);
 var
   indent: string;
   chart: TsChart;
@@ -4788,8 +4826,8 @@ begin
     indent + '  <c:idx val="%d"/>' + LE +
     indent + '  <c:order val="%d"/>' + LE,
     [
-      ASeriesIndex,   // <c:idx>
-      ASeriesIndex    // <c:order>
+      FSeriesIndex,   // <c:idx>
+      FSeriesIndex    // <c:order>
     ]
   ));
 
@@ -5021,7 +5059,7 @@ begin
       [ GROUPING[chart.StackMode] ]
     ));
 
-  WriteChartSeriesNode(AStream, AIndent + 2, ASeries, ASeriesIndex);
+  WriteChartSeriesNode(AStream, AIndent + 2, ASeries);
 
   if isLastOfGroup then
   begin
