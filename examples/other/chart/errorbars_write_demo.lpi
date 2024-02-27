@@ -33,7 +33,6 @@
       <Unit>
         <Filename Value="errorbars_write_demo.lpr"/>
         <IsPartOfProject Value="True"/>
-        <UnitName Value="regressionchart_write_demo"/>
       </Unit>
     </Units>
   </ProjectOptions>

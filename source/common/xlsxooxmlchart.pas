@@ -110,6 +110,7 @@ type
     function WriteChartSeries(AStream: TStream; AIndent: Integer; AChart: TsChart; AxisLink: TsChartAxisLink; out xAxKind: String): Boolean;
     procedure WriteChartSeriesDatapointLabels(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesDatapointStyles(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
+    procedure WriteChartSeriesErrorBars(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries; IsYError: Boolean);
     procedure WriteChartSeriesNode(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartSeriesTitle(AStream: TStream; AIndent: Integer; ASeries: TsChartSeries);
     procedure WriteChartTitleNode(AStream: TStream; AIndent: Integer; ATitle: TsChartText);
@@ -4796,6 +4797,96 @@ begin
   end;
 end;
 
+procedure TsSpreadOOXMLChartWriter.WriteChartSeriesErrorBars(AStream: TStream;
+  AIndent: Integer; ASeries: TsChartSeries; IsYError: Boolean);
+var
+  indent: String;
+  errBars: TsChartErrorBars;
+  errDir: String[1];
+  errBarType: String;
+  noEndCap: String[1];
+  valType: String;
+  value: Double;
+begin
+  if IsYError then
+  begin
+    errBars := ASeries.YErrorBars;
+    errDir := 'y';
+  end else
+  begin
+    errBars := ASeries.XErrorBars;
+    errDir := 'x';
+  end;
+
+  case errbars.Kind of
+    cebkNone:
+      exit;
+    cebkConstant:
+      valType := 'fixedVal';
+    cebkPercentage:
+      valType := 'percentage';
+    cebkCellRange:
+      valType := 'cust';
+    else
+      Writer.Workbook.AddErrorMsg(Format('Unsupported %s error bar kind', [errDir]));
+      exit;
+  end;
+
+  if errBars.ShowPos and errBars.ShowNeg then
+    errBarType := 'both'
+  else if errBars.ShowPos then
+    errBarType := 'plus'
+  else if errBars.ShowNeg then
+    errBarType := 'minus'
+  else
+    exit;
+
+  if errBars.ShowEndCap then
+    noEndCap := '0'
+  else
+    noEndCap := '1';
+
+  indent := DupeString(' ', AIndent);
+
+  AppendToStream(AStream, Format(
+    indent + '<c:errBars>' + LE +
+    indent + '  <c:errDir val="%s"/>' + LE +
+    indent + '  <c:errBarType val="%s"/>' + LE +
+    indent + '  <c:errValType val="%s"/>' + LE +
+    indent + '  <c:noEndCap val="%s"/>' + LE,
+    [ errDir, errBarType, valType, noEndCap ]
+  ));
+
+  if errbars.Kind = cebkCellRange then
+  begin
+    if errBars.ShowPos then
+      WriteChartRange(AStream, AIndent + 2, errBars.RangePos, 'c:plus', 'c:numRef');
+    if errBars.ShowNeg then
+      WriteChartRange(AStream, AIndent + 2, errBars.RangeNeg, 'c:minus', 'c:numRef');
+  end else
+  begin
+    if errBars.ShowPos and errBars.ShowNeg then
+      value := errBars.ValuePos
+    else if errBars.ShowPos then
+      value := errBars.ValuePos
+    else if errBars.ShowNeg then
+      value := errBars.ValueNeg;
+    AppendToStream(AStream, Format(
+      indent + '  <c:val val="%g"/>' + LE,
+      [ value ], FPointSeparatorSettings ));
+  end;
+
+  AppendToStream(AStream,
+    indent + '  <c:spPr>' + LE +
+    GetChartFillAndLineXML(AIndent + 4, ASeries.Chart, nil, errBars.Line) + LE +
+    indent + '  </c:spPr>' + LE
+  );
+
+  AppendToStream(AStream,
+    indent + '</c:errBars>' + LE
+  );
+end;
+
 {@@ ----------------------------------------------------------------------------
   Writes the <c:ser> node for the specified chart series
   Is called by all series types.
@@ -4878,6 +4969,13 @@ begin
       GetChartFillAndLineXML(AIndent + 4, chart, ASeries.Fill, ASeries.Line) + LE +
       indent + '  </c:spPr>' + LE
     );
+
+  // Error bars
+  if (ASeries.ChartType in [ctArea, ctBar, ctLine, ctScatter]) then
+  begin
+    WriteChartSeriesErrorBars(AStream, AIndent + 2, ASeries, false);
+    WriteChartSeriesErrorBars(AStream, AIndent + 2, ASeries, true);
+  end;
 
   // Trend line
   if ASeries.SupportsTrendline then

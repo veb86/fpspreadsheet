@@ -1,4 +1,4 @@
-program regressionchart_write_demo;
+program errorbars_write_demo;
 
 {$mode objfpc}{$H+}
 
@@ -13,10 +13,10 @@ var
   sheet: TsWorksheet;
   ch: TsChart;
   ser: TsScatterSeries;
-  fn: String;
-  rotated: Boolean;
+  dir, fn: String;
   errorRange: Boolean = false;
 begin
+  // Error bar kind for y bars only. x bars are always constant
   if (ParamCount > 0) and (lowercase(ParamStr(1)) = 'range') then
     errorRange := true;
 
@@ -25,6 +25,9 @@ begin
     fn := fn + '-range'
   else
     fn := fn + '-percentage';
+
+  dir := ExtractFilePath(ParamStr(0)) + 'files/';
+  ForceDirectories(dir);
 
   book := TsWorkbook.Create;
   try
@@ -59,6 +62,9 @@ begin
     ser.ShowLines := false;
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
+    ser.SymbolFill.Style := cfsSolid;
+    ser.SymbolFill.Color := scRed;
+    ser.SymbolBorder.Style := clsNoLine;
 
     ser.XErrorBars.Visible := true;
     ser.XErrorBars.Kind := cebkConstant;
@@ -80,13 +86,11 @@ begin
     end;
     ser.YErrorBars.Line.Color := scRed;
 
-    {
-    book.WriteToFile(fn + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart to ', fn, '.xlsx');
-    }
+    book.WriteToFile(dir + fn + '.xlsx', true);
+    WriteLn('... ', fn + '.xlsx');
 
-    book.WriteToFile(fn + '.ods', true);
-    WriteLn('Data saved with chart to ', fn, '.ods');
+    book.WriteToFile(dir + fn + '.ods', true);
+    WriteLn('... ', fn + '.ods');
   finally
     book.Free;
   end;

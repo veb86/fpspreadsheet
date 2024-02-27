@@ -2091,6 +2091,7 @@ begin
   FLine := TsChartLine.Create;
   FLine.Style := clsSolid;
   FLine.Color := scBlack;
+  FLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
   FRange[0] := TsChartRange.Create(ASeries.Chart);
   FRange[1] := TsChartRange.Create(ASeries.Chart);
   FShow[0] := false;
