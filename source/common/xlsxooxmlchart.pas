@@ -427,6 +427,20 @@ begin
             x := DEFAULT_TEXT_DIR[AChart.RotatedAxes, AChartAxis.Alignment];  // not sure, but maybe 1000 means: default
           AChartAxis.LabelRotation := x;
         end;
+      'c:crossAx':
+        ;
+      'c:crosses':
+        case s of
+          'min': AChartAxis.Position := capStart;
+          'max': AChartAxis.Position := capEnd;
+          'autoZero': AChartAxis.Position := capStart;
+        end;
+      'c:crossesAt':
+        if TryStrToFloat(s, x, FPointSeparatorSettings) then
+        begin
+          AChartAxis.Position := capValue;
+          AChartAxis.PositionValue := x;
+        end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -3768,21 +3782,17 @@ var
   indent: String;
   chart: TsChart;
   axID: DWord;
-  rotAxID: DWord;
-  crosses: String = 'autoZero';
+  crosses: String;
   delete: Integer = 0;
   axAlign: TsChartAxisAlignment;
+  rotAxID: DWord;
+  rotAxis: TsChartAxis;
 begin
   indent := DupeString(' ', AIndent);
   chart := Axis.Chart;
 
   axID := FAxisID[Axis.Alignment];
   rotAxID := FAxisID[Axis.GetRotatedAxis.Alignment];
-  if (Axis = chart.Y2Axis) then
-    crosses := 'max'
-  else
-  if (Axis = chart.YAxis) and (chart.GetChartType in [ctBar]) then
-    crosses := 'min';
   if Axis = chart.X2Axis then
     delete := 1;
 
@@ -3818,20 +3828,33 @@ begin
   if Axis.ShowLabels then
     WriteChartLabels(AStream, AIndent + 2, Axis.LabelFont);
 
+  // Axis position
+  case Axis.Position of
+    capStart:
+      crosses := '  <c:crosses val="min"/>';
+    capEnd:
+      crosses := '  <c:crosses val="max"/>';
+    capValue:
+      crosses := Format('  <c:crossesAt val="%g"/>', [Axis.PositionValue], FPointSeparatorSettings);
+    else
+      raise Exception.Create('Unsupported value of Axis.Position');
+    // not used here: "autoZero"
+  end;
+  if crosses <> '' then crosses := indent + crosses + LE;
+
   AppendToStream(AStream, Format(
     indent + '  <c:numFmt formatCode="General" sourceLinked="1"/>' + LE +
     indent + '  <c:majorTickMark val="%s"/>' + LE +
     indent + '  <c:minorTickMark val="%s"/>' + LE +
     indent + '  <c:tickLblPos val="nextTo"/>' + LE +
-    indent + '  <c:crossAx val="%d" />' + LE +
-    indent + '  <c:crosses val="%s"/>' + LE +
+    indent + '  <c:crossAx val="%d"/>' + LE +
+                crosses +
 //    indent + '  <c:auto val="1"/>' + LE +
     indent + '</%s>' + LE,
     [
       GetTickMarkStr(Axis.MajorTicks),  // <c:majorTickMark>
       GetTickMarkStr(Axis.MinorTicks),  // <c:minorTickMark>
       rotAxID,                          // <c:crossAx>
-      crosses,                          // <c:crosses>
       ANodeName                         // </c:catAx> or </c:valAx>
     ]
   ));

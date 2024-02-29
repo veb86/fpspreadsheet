@@ -372,6 +372,7 @@ type
     property MinorCount: Integer read FMinorCount write SetMinorCount;
     property MinorInterval: Double read FMinorInterval write SetMinorInterval;
     property MinorTicks: TsChartAxisTicks read FMinorTicks write FMinorTicks;
+    // Position and PositionValue define where the axis is crossed by the other axis
     property Position: TsChartAxisPosition read FPosition write FPosition;
     property PositionValue: Double read FPositionValue write FPositionValue;
     property ShowLabels: Boolean read FShowLabels write FShowLabels;

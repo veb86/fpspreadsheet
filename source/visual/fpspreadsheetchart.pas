@@ -2228,6 +2228,29 @@ begin
     axis.Intervals.MinLength := 20;
     axis.Intervals.Tolerance := 0;
   end;
+
+  // Axis position
+  case AWorkbookAxis.Position of
+    capStart:
+      begin
+        axis.Position := 0;
+        axis.PositionUnits := cuPercent;
+      end;
+    capEnd:
+      begin
+        axis.Position := 100;
+        axis.PositionUnits := cuPercent;
+        // To do: Move TAChart axis labels and title to the other side
+      end;
+    capValue:
+      begin
+        if AWorkbookAxis.GetRotatedAxis.Logarithmic then
+          axis.Position := log10(AWorkbookAxis.PositionValue)
+        else
+          axis.Position := AWorkbookAxis.PositionValue;
+        axis.PositionUnits := cuGraph;  // To do: cuAxis not yet implemented in TAChart...
+      end;
+  end;
 end;
 
 procedure TsWorkbookChartLink.UpdateChartAxisLabels(AWorkbookChart: TsChart);
