@@ -1053,7 +1053,7 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
 
   function ColorFromDatapointStyle(ADatapointStyle: TsChartDatapointStyle): TColor;
   var
-    c: TsColor;
+    c: TsChartColor;
     g: TsChartGradient;
     fill: TsChartFill;
   begin
@@ -1073,7 +1073,7 @@ procedure TsWorkbookChartSource.UseDataPointColors(ASeries: TsChartSeries);
             c := g.StartColor;
           end;
       end;
-      Result := Convert_sColor_to_Color(c);
+      Result := Convert_sColor_to_Color(c.Color);
     end;
   end;
 
@@ -1500,7 +1500,7 @@ begin
   ABrush.Style := bsSolid;   // Fall-back style
 
   hatch := AWorkbookChart.Hatches[AFill.Hatch];
-  ABrush.Color := Convert_sColor_to_Color(hatch.PatternColor);
+  ABrush.Color := Convert_sColor_to_Color(hatch.PatternColor.Color);
   case hatch.Style of
     chsSingle:
       if InRange(hatch.PatternAngle mod 180, -22.5, 22.5) then  // horizontal "approximation"
@@ -1554,16 +1554,16 @@ begin
   hatch := AWorkbookChart.Hatches[AFill.Hatch];
   ppi := GetParentForm(FChart).PixelsPerInch;
   if hatch.PatternWidth > 0 then
-    w := mmToPx(hatch.PatternWidth, ppi)                // pattern width in px
+    w := mmToPx(hatch.PatternWidth, ppi)                      // pattern width in px
   else
     w := round(-hatch.PatternWidth);
   if hatch.PatternHeight > 0 then
-    h := mmToPx(hatch.PatternHeight, ppi)               // pattern height in px
+    h := mmToPx(hatch.PatternHeight, ppi)                     // pattern height in px
   else
     h := round(-hatch.PatternHeight);
-  lw := Max(mmToPx(hatch.LineWidth, ppi), 1);           // line width of pen in px
-  bkCol := Convert_sColor_to_Color(AFill.Color);        // background color
-  fgCol := Convert_sColor_to_Color(hatch.PatternColor); // foreground color  (pattern)
+  lw := Max(mmToPx(hatch.LineWidth, ppi), 1);                 // line width of pen in px
+  bkCol := Convert_sColor_to_Color(AFill.Color.Color);        // background color
+  fgCol := Convert_sColor_to_Color(hatch.PatternColor.Color); // foreground color  (pattern)
 
   png := TPortableNetworkGraphic.Create;
 
@@ -2365,8 +2365,8 @@ end;
 
 procedure TsWorkbookChartLink.UpdateChartBackground(AWorkbookChart: TsChart);
 begin
-  FChart.Color := Convert_sColor_to_Color(AWorkbookChart.Background.Color);
-  FChart.BackColor := Convert_sColor_to_Color(AWorkbookChart.PlotArea.Background.Color);
+  FChart.Color := Convert_sColor_to_Color(AWorkbookChart.Background.Color.Color);
+  FChart.BackColor := Convert_sColor_to_Color(AWorkbookChart.PlotArea.Background.Color.Color);
   UpdateChartPen(AWorkbookChart, AWorkbookChart.PlotArea.Border, FChart.Frame);
   FChart.Frame.Visible := AWorkbookChart.PlotArea.Border.Style <> clsNoLine;
 end;
@@ -2380,7 +2380,7 @@ var
 begin
   if (AWorkbookFill <> nil) and (ABrush <> nil) then
   begin
-    ABrush.Color := Convert_sColor_to_Color(AWorkbookFill.Color);
+    ABrush.Color := Convert_sColor_to_Color(AWorkbookFill.Color.Color);
     case AWorkbookFill.Style of
       cfsNoFill:
         ABrush.Style := bsClear;
@@ -2503,7 +2503,7 @@ procedure TsWorkbookChartLink.UpdateChartPen(AWorkbookChart: TsChart;
 begin
   if (AWorkbookLine <> nil) and (APen <> nil) then
   begin
-    APen.Color := Convert_sColor_to_Color(AWorkbookLine.Color);
+    APen.Color := Convert_sColor_to_Color(AWorkbookLine.Color.Color);
     APen.Width := mmToPx(AWorkbookLine.Width, GetParentForm(FChart).PixelsPerInch);
     case AWorkbookLine.Style of
       clsNoLine:

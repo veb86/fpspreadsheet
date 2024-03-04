@@ -74,7 +74,7 @@ begin
     ch.Legend.Border.Style := clsNoLine;
     ch.XAxis.Title.Caption := '';
     ch.YAxis.Title.Caption := 'Quarter';
-    ch.YAxis.AxisLine.Color := scSilver;
+    ch.YAxis.AxisLine.Color := ChartColor(scSilver);
     ch.YAxis.MajorTicks := [];
 
     // Add 1st bar series ("Product A")
@@ -82,7 +82,7 @@ begin
     ser.SetTitleAddr(2, 1);
     ser.SetLabelRange(3, 0, 6, 0);
     ser.SetYRange(3, 1, 6, 1);
-    ser.Fill.Color := $3810F3;
+    ser.Fill.Color := ChartColor($3810F3);
     ser.Line.Style := clsNoLine;
 
     // Add 2nd bar series ("Product B")
@@ -90,7 +90,7 @@ begin
     ser.SetTitleAddr(2, 2);
     ser.SetLabelRange(3, 0, 6, 0);
     ser.SetYRange(3, 2, 6, 2);
-    ser.Fill.Color := $4200A8;
+    ser.Fill.Color := ChartColor($4200A8);
     ser.Line.Style := clsNoLine;
 
     book.WriteToFile(fn + '.xlsx', true);

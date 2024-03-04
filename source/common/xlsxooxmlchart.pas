@@ -25,8 +25,8 @@ type
     FXAxisID, FYAxisID, FX2AxisID, FY2AxisID: DWord;
     FXAxisDelete, FYAxisDelete, FX2AxisDelete, FY2AxisDelete: Boolean;
 
-    function ReadChartColor(ANode: TDOMNode; ADefault: TsColor): TsColor;
-    procedure ReadChartColor(ANode: TDOMNode; var AColor: TsColor; var Alpha: Double);
+    procedure ReadChartColor(ANode: TDOMNode; var AColor: TsChartColor);
+    function ReadChartColorDef(ANode: TDOMNode; ADefault: TsChartColor): TsChartColor;
     procedure ReadChartFillAndLineProps(ANode: TDOMNode;
       AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine);
     procedure ReadChartFontProps(ANode: TDOMNode; AFont: TsFont);
@@ -81,6 +81,7 @@ type
     FPointSeparatorSettings: TFormatSettings;
     FAxisID: array[TsChartAxisAlignment] of DWord;
     FSeriesIndex: Integer;
+    function GetChartColorXML(AIndent: Integer; ANodeName: String; AColor: TsChartColor): String;
     function GetChartFillAndLineXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine): String;
     function GetChartFillXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill): String;
     function GetChartFontXML(AIndent: Integer; AFont: TsFont; ANodeName: String): String;
@@ -622,17 +623,8 @@ begin
   end;
 end;
 
-function TsSpreadOOXMLChartReader.ReadChartColor(ANode: TDOMNode;
-  ADefault: TsColor): TsColor;
-var
-  alpha: Double;
-begin
-  Result := ADefault;
-  ReadChartColor(ANode, Result, alpha);
-end;
-
 procedure TsSpreadOOXMLChartReader.ReadChartColor(ANode: TDOMNode;
-  var AColor: TsColor; var Alpha: Double);
+  var AColor: TsChartColor);
 
   function ColorAlias(AColorName: String): String;
   const
@@ -663,7 +655,7 @@ begin
             idx := FColors.IndexOf(ColorAlias(s));
             if idx > -1 then
             begin
-              AColor := FColors.Data[idx];
+              AColor.Color := FColors.Data[idx];
               child := ANode.FirstChild;
               while Assigned(child) do
               begin
@@ -672,16 +664,16 @@ begin
                 case nodeName of
                   'a:tint':
                     if TryStrToInt(s, n) then
-                      AColor := TintedColor(AColor, n/FACTOR_MULTIPLIER);
+                      AColor.Color := TintedColor(AColor.Color, n/FACTOR_MULTIPLIER);
                   'a:lumMod':     // luminance modulated
                     if TryStrToInt(s, n) then
-                      AColor := LumModColor(AColor, n/FACTOR_MULTIPLIER);
+                      AColor.Color := LumModColor(AColor.Color, n/FACTOR_MULTIPLIER);
                   'a:lumOff':
                     if TryStrToInt(s, n) then
-                      AColor := LumOffsetColor(AColor, n/FACTOR_MULTIPLIER);
+                      AColor.Color := LumOffsetColor(AColor.Color, n/FACTOR_MULTIPLIER);
                   'a:alpha':
                     if TryStrToInt(s, n) then
-                      Alpha := n / 100000;
+                      AColor.Transparency := 1.0 - n / FACTOR_MULTIPLIER;
                 end;
                 child := child.NextSibling;
               end;
@@ -692,7 +684,7 @@ begin
         begin
           s := GetAttrValue(ANode, 'val');
           if s <> '' then
-            AColor := HTMLColorStrToColor(s);
+            AColor.Color := HTMLColorStrToColor(s);
           child := ANode.FirstChild;
           while Assigned(child) do
           begin
@@ -701,7 +693,7 @@ begin
             case nodeName of
               'a:alpha':
                 if TryStrToInt(s, n) then
-                  Alpha := n / FACTOR_MULTIPLIER;
+                  AColor.Transparency := 1.0 - n / FACTOR_MULTIPLIER;
             end;
             child := child.NextSibling;
           end;
@@ -711,12 +703,19 @@ begin
   end;
 end;
 
+function TsSpreadOOXMLChartReader.ReadChartColorDef(ANode: TDOMNode;
+  ADefault: TsChartColor): TsChartColor;
+begin
+  Result := ADefault;
+  ReadChartColor(ANode, Result);
+end;
+
 procedure TsSpreadOOXMLChartReader.ReadChartGradientFillProps(ANode: TDOMNode;
   AChart: TsChart; AFill: TsChartFill);
 var
   nodeName, s: String;
-  value, alpha: Double;
-  color: TsColor;
+  value: Double;
+  color: TsChartColor;
   child: TDOMNode;
   gradient: TsChartGradient;
 begin
@@ -740,10 +739,9 @@ begin
             begin
               s := GetAttrValue(child, 'pos');
               value := StrToFloatDef(s, 0.0, FPointSeparatorSettings) / FACTOR_MULTIPLIER;
-              color := scWhite;
-              alpha := 1.0;
-              ReadChartColor(child.FirstChild, color, alpha);
-              gradient.AddStep(value, color, 1.0 - alpha, 1.0);
+              color := ChartColor(scWhite);
+              ReadChartColor(child.FirstChild, color);
+              gradient.AddStep(value, color, 1.0);
             end;
             child := child.NextSibling;
           end;
@@ -766,7 +764,7 @@ procedure TsSpreadOOXMLChartReader.ReadChartHatchFillProps(ANode: TDOMNode;
 var
   nodeName: String;
   hatch: String;
-  color: TsColor;
+  color: TsChartColor;
 begin
   AFill.Style := cfsSolidHatched;
   hatch := GetAttrValue(ANode, 'prst');
@@ -777,9 +775,9 @@ begin
     nodeName := ANode.NodeName;
     case nodeName of
       'a:fgClr':
-        color := ReadChartColor(ANode.FirstChild, scBlack);
+        color := ReadChartColorDef(ANode.FirstChild, ChartColor(scBlack));
       'a:bgClr':
-        AFill.Color := ReadChartColor(ANode.FirstChild, scWhite);
+        AFill.Color := ReadChartColorDef(ANode.FirstChild, ChartColor(scWhite));
     end;
     ANode := ANode.NextSibling;
   end;
@@ -900,7 +898,6 @@ begin
   if ANode = nil then
     exit;
 
-  alpha := 1.0;
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
@@ -909,8 +906,7 @@ begin
       'a:solidFill':
         begin
           AFill.Style := cfsSolid;
-          ReadChartColor(ANode.FirstChild, AFill.Color, alpha);
-          AFill.Transparency := 1.0 - alpha;
+          ReadChartColor(ANode.FirstChild, AFill.Color);
         end;
 
       // Gradient fill
@@ -994,7 +990,7 @@ begin
     case nodeName of
       // Font color
       'a:solidFill':
-        AFont.Color := ReadChartColor(node.FirstChild, scBlack);
+        AFont.Color := ReadChartColorDef(node.FirstChild, ChartColor(scBlack)).Color;
 
       // font name
       'a:latin':
@@ -1243,7 +1239,7 @@ begin
                 noLine := true;
               'a:solidFill':
                 begin
-                  AChartLine.Color := ReadChartColor(child.FirstChild, scBlack);
+                  AChartLine.Color := ReadChartColorDef(child.FirstChild, ChartColor(scBlack));
                   AChartLine.Style := clsSolid;
                 end;
               'a:prstDash':
@@ -3340,6 +3336,47 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Creates the xml string representing a color for xlsx
+
+  Example:
+              <a:solidFill>
+                <a:srgbClr val="FF0000">
+                  <a:alpha val="60000"/>
+                </a:srgbClr>
+              </a:solidFill>
+
+  @param  AIndent    Number of indentation spaces for better legibility
+  @param  ANodeName  Name of the outermost xml node, in above example 'a:solidFill'
+  @param  AColor     Color (including transparency) to be encoded
+-------------------------------------------------------------------------------}
+function TsSpreadOOXMLChartWriter.GetChartColorXML(AIndent: Integer;
+  ANodeName: String; AColor: TsChartColor): String;
+var
+  indent: String;
+  rgbStr: String;
+  alpha: Integer;
+begin
+  if (AColor.Transparency > 0) then
+  begin
+    alpha := round((1.0 - AColor.Transparency) * FACTOR_MULTIPLIER);
+    rgbStr := Format('<a:srgbClr val="%s"><a:alpha val="%d"/></a:srgbClr>',
+      [HtmlColorStr(AColor.Color), alpha], FPointSeparatorsettings
+    );
+  end else
+    rgbstr := Format('<a:srgbClr val="%s"/>',
+      [ HtmlColorStr(AColor.Color) ]
+    );
+
+  indent := DupeString(' ', AIndent);
+
+  Result :=
+    indent + '<' + ANodeName + '>' + LE +
+    indent + '  ' + rgbStr +  LE +
+    indent + '</' + ANodeName + '>';
+end;
+
+
+{@@ ----------------------------------------------------------------------------
   Assembles the xml string for the children of a <c:spPr> node (fill and line style)
 -------------------------------------------------------------------------------}
 function TsSpreadOOXMLChartWriter.GetChartFillAndLineXML(AIndent: Integer;
@@ -3371,6 +3408,8 @@ var
   hatch: TsChartHatch;
   i: Integer;
   presetIdx: Integer;
+  alpha: Integer;
+  rgbStr: String;
 begin
   indent := DupeString(' ', AIndent);
 
@@ -3379,14 +3418,7 @@ begin
   else
     case AFill.Style of
       cfsSolid:
-        begin
-          Result := Format(
-            indent + '<a:solidFill>' + LE +
-            indent + '  <a:srgbClr val="%s"/>' + LE +
-            indent + '</a:solidFill>',
-            [ HtmlColorStr(AFill.Color) ]
-          );
-        end;
+        Result := GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
       cfsHatched, cfsSolidHatched:
         begin
           hatch := AChart.Hatches[AFill.Hatch];
@@ -3404,25 +3436,15 @@ begin
               'backward': presetIdx := 33;  // ltDnDiag
             end;
           if presetIdx > -1 then
-            Result := Format(
-              indent + '<a:pattFill prst="%s">' + LE +
-              indent + '  <a:fgClr>' + LE +
-              indent + '    <a:srgbClr val="%s"/>' + LE +
-              indent + '  </a:fgClr>' + LE +
-              indent + '  <a:bgClr>' + LE +
-              indent + '    <a:srgbClr val="%s"/>' + LE +
-              indent + '  </a:bgClr>' + LE +
-              indent + '</a:pattFill>',
-              [ HATCH_NAMES[presetIdx], HtmlColorStr(hatch.PatternColor), HtmlColorStr(AFill.Color) ]
-            )
+            Result :=
+              indent + '<a:pattFill prst="' + HATCH_NAMES[presetIdx] + '">' + LE +
+                       GetChartColorXML(AIndent + 2, 'a:fgClr', hatch.PatternColor) + LE +
+                       GetChartColorXML(AIndent + 2, 'a:bgClr', AFill.Color) + LE +
+              indent + '</a:pattFill>'
           else
             // unknown pattern - use a solid fill
-            Result := Format(
-              indent + '<a:solidFill>' + LE +
-              indent + '  <a:srgbClr val="%s"/>' + LE +
-              indent + '</a:solidFill>',
-              [ HtmlColorStr(AFill.Color) ]
-            );
+            Result :=
+              indent + GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
         end;
       else
         Result := indent + '<a:noFill/>';
@@ -3501,10 +3523,8 @@ begin
   begin
     Result := Format(
       indent + '<a:ln w="%.0f">' + LE +
-      indent + '  <a:solidFill>' + LE +
-      indent + '    <a:srgbClr val="%s"/>' + LE +
-      indent + '  </a:solidFill>' + LE,
-      [ mmToPts(ALine.Width) * PTS_MULTIPLIER, HtmlColorStr(ALine.Color) ]
+               GetChartColorXML(AIndent + 2, 'a:solidFill', ALine.Color) + LE,
+      [ mmToPts(ALine.Width) ]
     );
     if ALine.Style <> clsSolid then
     begin

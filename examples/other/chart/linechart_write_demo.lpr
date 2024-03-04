@@ -85,7 +85,7 @@ begin
     ch.Legend.Border.Style := clsNoLine;
     ch.XAxis.Title.Caption := '';
     ch.YAxis.Title.Caption := 'Grade points';
-    ch.YAxis.AxisLine.Color := scSilver;
+    ch.YAxis.AxisLine.Color := ChartColor(scSilver);
     ch.YAxis.MajorTicks := [];
     ch.RotatedAxes := rotated;
     ch.StackMode := stackMode;
@@ -95,11 +95,11 @@ begin
     ser.SetTitleAddr(2, 1);              // series 1 title in cell B3
     ser.SetLabelRange(3, 0, 10, 0);      // series 1 x labels in A4:A11
     ser.SetYRange(3, 1, 10, 1);          // series 1 y values in B4:B11
-    ser.Line.Color := scRed;
+    ser.Line.Color := ChartColor(scRed);
     ser.ShowSymbols := true;
-    ser.SymbolFill.Color := scRed;
+    ser.SymbolFill.Color := ChartColor(scRed, 0.5);
     ser.SymbolFill.Style := cfsSolid;
-    ser.SymbolBorder.Color := scBlack;
+    ser.SymbolBorder.Color := ChartColor(scBlack);
     ser.Smooth := true;
 //    ser.GroupIndex := -1;
 
@@ -108,10 +108,10 @@ begin
     ser.SetTitleAddr(2, 2);              // series 2 title in cell C3
     ser.SetLabelRange(3, 0, 10, 0);      // series 2 x labels in A4:A11
     ser.SetYRange(3, 2, 10, 2);          // series 2 y values in C4:C11
-    ser.Line.Color := scBlue;
-    ser.SymbolFill.Color := scBlue;
+    ser.Line.Color := chartColor(scBlue);
+    ser.SymbolFill.Color := ChartColor(scBlue, 0.5);
     ser.SymbolFill.Style := cfsSolid;
-    ser.SymbolBorder.Color := scBlack;
+    ser.SymbolBorder.Color := ChartColor(scBlack, 0.5);
     //ser.Smooth := true;
     ser.ShowSymbols := true;
 //    ser.GroupIndex := -1;

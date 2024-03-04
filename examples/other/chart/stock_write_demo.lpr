@@ -111,8 +111,8 @@ begin
 
     // Series properties
     ser.CandleStick := candleStickMode;
-    ser.CandleStickUpFill.Color := scGreen;
-    ser.CandlestickDownFill.Color := scRed;
+    ser.CandleStickUpFill.Color := ChartColor(scGreen);
+    ser.CandlestickDownFill.Color := ChartColor(scRed);
     ser.SetTitleAddr (0, 0);
     if candleStickMode then ser.SetOpenRange (3, 1, 7, 1);
     ser.SetHighRange (3, 2, 7, 2);
@@ -120,7 +120,7 @@ begin
     ser.SetCloseRange(3, 4, 7, 4);
     ser.SetXRange    (3, 0, 7, 0);
     ser.SetLabelRange(3, 0, 7, 0);
-    ser.RangeLine.Color := scBlue;
+    ser.RangeLine.Color := ChartColor(scBlue);
 
     book.WriteToFile(dir + fn + '.xlsx', true);
     WriteLn('... ', fn + '.xlsx');

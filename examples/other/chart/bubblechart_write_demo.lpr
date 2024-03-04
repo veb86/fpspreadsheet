@@ -65,7 +65,7 @@ begin
     ch.XAxis.Min := 0.1;
     ch.XAxis.Max := 100;
     ch.YAxis.Title.Caption := 'Orbital period (relative to Earth)';
-    ch.YAxis.AxisLine.Color := scSilver;
+    ch.YAxis.AxisLine.Color := ChartColor(scSilver);
     ch.YAxis.MinorGridLines.Style := clsNoLine;
     ch.YAxis.Logarithmic := true;
     ch.YAxis.Min := 0.1;
@@ -78,12 +78,12 @@ begin
     ser.SetYRange(3, 2, 10, 2);
     ser.SetBubbleRange(3, 3, 10, 3);
     ser.Line.Style := clsSolid; //NoLine;
-    ser.Line.Color := scSilver;
-    ser.Fill.Color := scYellow;
+    ser.Line.Color := ChartColor(scSilver);
+    ser.Fill.Color := ChartColor(scYellow, 0.4);
     //ser.Fill.Transparency := 0.25;
     ser.DataLabels := [cdlCategory];
-    ser.DataPointStyles.AddSolidFill(2, $c47244);
-    ser.DataPointStyles.AddSolidFill(3, scRed);
+    ser.DataPointStyles.AddSolidFill(2, ChartColor($c47244));
+    ser.DataPointStyles.AddSolidFill(3, ChartColor(scRed));
 
     book.WriteToFile(dir + fn + '.xlsx', true);
     WriteLn('... ', fn + '.xlsx');

@@ -59,13 +59,13 @@ begin
     ser.ShowLines := false;
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
-    ser.SymbolFill.Color := scRed;
+    ser.SymbolFill.Color := ChartColor(scRed);
     ser.SymbolFill.Style := cfsSolid;
     ser.Trendline.Title := 'Fit curve';
     ser.Trendline.TrendlineType := tltPolynomial; //tltLinear;
     ser.Trendline.ExtrapolateForwardBy := 10;
     ser.Trendline.ExtrapolateBackwardBy := 10;
-    ser.Trendline.Line.Color := scRed;
+    ser.Trendline.Line.Color := ChartColor(scRed);
     ser.Trendline.Line.Style := clsDash;
     ser.Trendline.ForceYIntercept := true;  // not used by logarithmic, power
     ser.Trendline.YInterceptValue := 10.0;  // dto.
@@ -75,9 +75,9 @@ begin
     ser.Trendline.Equation.XName := 'X';
     ser.Trendline.Equation.YName := 'Y';
     ser.Trendline.Equation.Border.Style := clsSolid;
-    ser.Trendline.Equation.Border.Color := scGray;
+    ser.Trendline.Equation.Border.Color := ChartColor(scGray);
     ser.Trendline.Equation.Fill.Style := cfsSolid;
-    ser.Trendline.Equation.Fill.Color := scSilver;
+    ser.Trendline.Equation.Fill.Color := ChartColor(scSilver);
     ser.Trendline.Equation.NumberFormat := '0.000';
 
     // Fine-tuning the position of the trendline result box is not very

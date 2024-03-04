@@ -47,7 +47,7 @@ begin
     ch.Legend.Border.Style := clsNoLine;
     ch.XAxis.Title.Caption := '';
     ch.YAxis.Title.Caption := '';
-    ch.YAxis.AxisLine.Color := scSilver;
+    ch.YAxis.AxisLine.Color := ChartColor(scSilver);
     ch.YAxis.MajorTicks := [];
 
     // Add 1st radar series ("Student 1")
@@ -55,12 +55,12 @@ begin
     ser.SetTitleAddr(2, 1);
     ser.SetLabelRange(3, 0, 10, 0);
     ser.SetYRange(3, 1, 10, 1);
-    ser.Line.Color := scDarkRed;
+    ser.Line.Color := ChartColor(scDarkRed);
     //ser.Fill.Style := cfsNoFill;    // --> non-filled radar chrt
     ser.ShowSymbols := true;
     ser.Symbol := cssDiamond;
     ser.SymbolFill.Style := cfsSolid;
-    ser.SymbolFill.Color := scYellow;
+    ser.SymbolFill.Color := ChartColor(scYellow, 0.5);
     // in ods the symbol color is always equal to the line color
     ser.SymbolWidth := 12; //3;
     ser.SymbolHeight := 12; // 3;
@@ -70,9 +70,8 @@ begin
     ser.SetTitleAddr(2, 2);
     ser.SetLabelRange(3, 0, 10, 0);
     ser.SetYRange(3, 2, 10, 2);
-    ser.Line.Color := scDarkBlue;
-    ser.Fill.Color := $FFCC99;
-    ser.Fill.Transparency := 0.35;
+    ser.Line.Color := ChartColor(scDarkBlue, 0.35);
+    ser.Fill.Color := ChartColor($FFCC99, 0.35);
 
     book.WriteToFile(dir + fn + '.xlsx', true);
     WriteLn('... ', fn + '.xlsx');

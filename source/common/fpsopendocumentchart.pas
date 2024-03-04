@@ -8,7 +8,7 @@ interface
 {$IFDEF FPS_CHARTS}
 
 uses
-  Classes, SysUtils, StrUtils, Contnrs, FPImage,
+  Classes, SysUtils, StrUtils, Contnrs, FPImage, Math,
  {$IFDEF FPS_PATCHED_ZIPPER}
   fpszipper,
  {$ELSE}
@@ -499,7 +499,7 @@ begin
         AFill.Style := cfsSolid;
         sc := GetAttrValue(ANode, 'draw:fill-color');
         if sc <> '' then
-          AFill.Color := HTMLColorStrToColor(sc);
+          AFill.Color := ChartColor(HTMLColorStrToColor(sc));
       end;
     'gradient':
       begin
@@ -520,7 +520,7 @@ begin
           AFill.Hatch := AChart.Hatches.IndexOfName(UnASCIIName(sn));
         sc := GetAttrValue(ANode, 'draw:fill-color');
         if sc <> '' then
-          AFill.Color := HTMLColorStrToColor(sc);
+          AFill.Color := ChartColor(HTMLColorStrToColor(sc));
       end;
     'bitmap':
       begin
@@ -547,7 +547,7 @@ begin
 
   sOpac := GetAttrValue(ANode, 'draw:opacity');
   if (sOpac <> '') and TryPercentStrToFloat(sOpac, opacity) then
-    AFill.Transparency := 1.0 - opacity;
+    AFill.Color.Transparency := 1.0 - opacity;
 
   Result := (sFill <> '') or (sc <> '') or (sn <> '') or (sOpac <> '');
 end;
@@ -588,7 +588,7 @@ begin
   if sc = '' then
     sc := GetAttrValue(ANode, 'draw:stroke-color');
   if sc <> '' then
-    ALine.Color := HTMLColorStrToColor(sc);
+    ALine.Color := ChartColor(HTMLColorStrToColor(sc));
 
   sw := GetAttrValue(ANode, 'svg:stroke-width');
   if sw = '' then
@@ -598,7 +598,7 @@ begin
 
   so := GetAttrValue(ANode, 'draw:stroke-opacity');
   if (so <> '') and TryPercentStrToFloat(so, value) then
-    ALine.Transparency := 1.0 - value*0.01;
+    ALine.Color.Transparency := 1.0 - value*0.01;
 
   Result := (s <> '') or (sc <> '') or (sw <> '') or (so <> '');
 end;
@@ -680,7 +680,7 @@ begin
   // Set defaults
   Axis.MajorTicks := [catOutside];
   grid.Style := clsSolid;
-  grid.Color := $c0c0c0;
+  grid.Color := ChartColor($c0c0c0);
 
   s := GetAttrValue(ANode, 'chart:style-name');
   styleNode := FindStyleNode(AStyleNode, s);
@@ -1039,13 +1039,13 @@ begin
         begin
           FStockSeries := TsStockSeries.Create(AChart);
           FStockSeries.Fill.Style := cfsSolid;
-          FStockSeries.Fill.Color := scWhite;
+          FStockSeries.Fill.Color := ChartColor(scWhite);
           FStockSeries.Line.Style := clsSolid;
-          FStockSeries.Line.Color := scBlack;
+          FStockSeries.Line.Color := ChartColor(scBlack);
           FStockSeries.RangeLine.Style := clsSolid;
-          FStockSeries.RangeLine.Color := scBlack;
+          FStockSeries.RangeLine.Color := ChartColor(scBlack);
           FStockSeries.CandleStickDownFill.Style := cfsSolid;
-          FStockSeries.CandleStickDownFill.Color := scBlack;
+          FStockSeries.CandleStickDownFill.Color := ChartColor(scBlack);
         end;
       end;
   end;
@@ -1513,6 +1513,7 @@ begin
         series := TsLineSeries.Create(AChart);
       'chart:radar':
         series := TsRadarSeries.Create(AChart);
+        // Note: In ods, line and symbol colors are equal!
       'chart:filled-radar':
         series := TsFilledRadarSeries.Create(AChart);
       'chart:scatter':
@@ -1691,9 +1692,15 @@ begin
             'near-origin': ASeries.LabelPosition := lpNearOrigin;
           end;
 
+          // Label border color
           s := GetAttrValue(AStyleNode, 'loext:label-stroke-color');
           if s <> '' then
-            ASeries.LabelBorder.Color := HTMLColorStrToColor(s);
+            ASeries.LabelBorder.Color := ChartColor(HTMLColorStrToColor(s));
+          // Label border transparency
+          s := GetAttrValue(AStyleNode, 'loext:label-stroke-opacity');
+          if TryPercentStrToFloat(s, value) then
+            ASeries.LabelBorder.Color.Transparency := 1.0 - value;
+          // Label border line style
           s := GetAttrValue(AStyleNode, 'loext:label-stroke');
           if s <> '' then
             case s of
@@ -1965,8 +1972,8 @@ var
   styleName: String;
   gs: TsChartGradientStyle;
   gradientStyle: TsChartGradientStyle = cgsLinear;
-  startColor: TsColor = scSilver;
-  endColor: TsColor = scWhite;
+  startColor: TsChartColor;
+  endColor: TsChartColor;
   startIntensity, endIntensity: Double;
   border, centerX, centerY: Double;
   angle: Double = 0.0;
@@ -1986,11 +1993,15 @@ begin
 
   s := GetAttrValue(ANode, 'draw:start-color');
   if s <> '' then
-    startColor := HTMLColorStrToColor(s);
+    startColor := ChartColor(HTMLColorStrToColor(s))
+  else
+    startColor := ChartColor(scSilver);
 
   s := GetAttrValue(ANode, 'draw:end-color');
   if s <> '' then
-    endColor := HTMLColorStrToColor(s);
+    endColor := ChartColor(HTMLColorStrToColor(s))
+  else
+    endColor := ChartColor(scWhite);
 
   s := GetAttrValue(ANode, 'draw:start-intensity');
   if not TryPercentStrToFloat(s, startIntensity) then
@@ -2020,7 +2031,7 @@ begin
     centerY := 0.0;
 
   AChart.Gradients.AddGradient(styleName, gradientStyle,
-    startColor, endColor, 0.0, 0.0, startIntensity, endIntensity,
+    startColor, endColor, startIntensity, endIntensity,
     border, centerX, centerY, angle);
 end;
 
@@ -2031,7 +2042,7 @@ var
   s: String;
   styleName: String;
   hs, hatchStyle: TsChartHatchStyle;
-  hatchColor: TsColor = scBlack;
+  hatchColor: TsChartColor;
   hatchDist: Double;
   hatchAngle: Double;
   rel: Boolean;
@@ -2050,8 +2061,7 @@ begin
     end;
 
   s := GetAttrValue(ANode, 'draw:color');
-  if s <> '' then
-    hatchColor := HTMLColorStrToColor(s);
+  hatchColor := ChartColor(IfThen(s <> '', HTMLColorStrToColor(s), scBlack));
 
   s := GetAttrValue(ANode, 'draw:distance');
   if not EvalLengthStr(s, hatchDist, rel) then
@@ -2299,8 +2309,8 @@ begin
     chartProps := chartProps + Format(
       'chart:gap-width="%d" chart:overlap="%d" ', [chart.BarGapWidthPercent, chart.BarOverlapPercent]);
 
-  // Label orientation
-  graphProps := 'svg:stroke-color="' + ColorToHTMLColorStr(Axis.AxisLine.Color) + '" ';
+  // Label color
+  graphProps := 'svg:stroke-color="' + ColorToHTMLColorStr(Axis.AxisLine.Color.Color) + '" ';
 
   // Label font
   textProps := TsSpreadOpenDocWriter(Writer).WriteFontStyleXMLAsString(Axis.LabelFont);
@@ -2477,42 +2487,49 @@ var
   gradient: TsChartGradient;
   hatch: TsChartHatch;
   fillStr: String = '';
+  opacityStr: String = '';
 begin
   case AFill.Style of
     cfsNoFill:
       Result := 'draw:fill="none" ';
     cfsSolid:
-      Result := Format(
-        'draw:fill="solid" draw:fill-color="%s" ',
-        [ ColorToHTMLColorStr(AFill.Color) ]
-      );
+      begin
+        if (AFill.Color.Transparency > 0) then
+          opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - AFill.Color.Transparency))]);
+        Result := Format(
+          'draw:fill="solid" draw:fill-color="%s" %s',
+          [ ColorToHTMLColorStr(AFill.Color.Color), opacityStr ]
+        );
+      end;
     cfsGradient:
       begin
         gradient := AChart.Gradients[AFill.Gradient];
+        if (gradient.StartColor.Transparency > 0) then
+          opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - gradient.StartColor.Transparency))]);
+        // to do: evaluate opacity of all gradient steps
         Result := Format(
           'draw:fill="gradient" ' +
           'draw:fill-gradient-name="%s" ' +
-          'draw:gradient-step-count="0" ',
-          [ ASCIIName(gradient.Name) ]
+          'draw:gradient-step-count="0" %s',
+          [ ASCIIName(gradient.Name), opacityStr ]
         );
       end;
     cfsHatched, cfsSolidHatched:
       begin
         hatch := AChart.Hatches[AFill.Hatch];
+        if (hatch.PatternColor.Transparency > 0) then
+          opacityStr := Format('draw:opacity="%d%%" ', [round(100*(1.0 - hatch.PatternColor.Transparency))]);
         if AFill.Style = cfsSolidHatched then
           fillStr := 'draw:fill-hatch-solid="true" ';
         Result := Format(
-          'draw:fill="hatch" draw:fill-color="%s" ' +
+          'draw:fill="hatch" draw:fill-color="%s" %s' +
           'draw:fill-hatch-name="%s" %s',
-          [ ColorToHTMLColorStr(AFill.Color), ASCIIName(hatch.Name), fillStr ]
+          [ ColorToHTMLColorStr(AFill.Color.Color), opacityStr,
+            ASCIIName(hatch.Name), fillStr
+          ]
         );
       end;
   end;
-  if (AFill.Style <> cfsNoFill) and (AFill.Transparency > 0) then
-    Result := Result + Format('draw:opacity="%.0f%%" ',
-      [ (1.0 - AFill.Transparency) * 100 ],
-      FPointSeparatorSettings
-    );
 end;
 
 {
@@ -2581,6 +2598,7 @@ var
   strokeStr: String = '';
   widthStr: String = '';
   colorStr: String = '';
+  opacityStr: String = '';
   linestyle: TsChartLineStyle;
 begin
   if (ALine.Style = clsNoLine) or ForceNoLine then
@@ -2599,9 +2617,12 @@ begin
 
   if ALine.Width > 0 then
     widthStr := Format('svg:stroke-width="%.1fmm" ', [ALine.Width], FPointSeparatorSettings);
-  colorStr := Format('svg:stroke-color="%s" ', [ColorToHTMLColorStr(ALine.Color)]);
+  colorStr := Format('svg:stroke-color="%s" ', [ColorToHTMLColorStr(ALine.Color.Color)]);
 
-  Result := strokeStr + widthStr + colorStr;
+  if ALine.Color.Transparency > 0 then
+    opacityStr := Format('svg:stroke-opacity="%d%%" ', [round((1.0 - ALine.Color.Transparency)*100)], FPointSeparatorSettings);
+
+  Result := strokeStr + widthStr + colorStr + opacityStr;
 end;
 
 function TsSpreadOpenDocChartWriter.GetChartPlotAreaStyleAsXML(AChart: TsChart;
@@ -2903,7 +2924,9 @@ begin
   if series.LabelBorder.Style <> clsNoLine then
   begin
     chartProps := chartProps + 'loext:label-stroke="solid" ';
-    chartProps := chartProps + 'loext:label-stroke-color="' + ColorToHTMLColorStr(series.LabelBorder.Color) + '"'
+    chartProps := chartProps + 'loext:label-stroke-color="' + ColorToHTMLColorStr(series.LabelBorder.Color.Color) + '"';
+    if series.LabelBorder.Color.Transparency > 0 then
+      chartProps := chartProps + 'loext:label-stroke-opacity="' + IntToStr(round(100*(1.0 - series.LabelBorder.Color.Transparency))) + '"';
   end;
 
   if labelSeparator <> '' then
@@ -3507,7 +3530,7 @@ begin
         'draw:border="%.0f%%" ',
       [ ASCIIName(gradient.Name), gradient.Name,
         GRADIENT_STYLES[gradient.Style],
-        ColorToHTMLColorStr(gradient.StartColor), ColorToHTMLColorStr(gradient.EndColor),
+        ColorToHTMLColorStr(gradient.StartColor.Color), ColorToHTMLColorStr(gradient.EndColor.Color),
         gradient.StartIntensity * 100, gradient.EndIntensity * 100,
         gradient.Border * 100
       ]
@@ -3558,7 +3581,7 @@ begin
         'draw:rotation="%.0f" />',
       [ ASCIIName(hatch.Name), hatch.Name,
         HATCH_STYLES[hatch.Style],
-        ColorToHTMLColorStr(hatch.PatternColor),
+        ColorToHTMLColorStr(hatch.PatternColor.Color),
         hatch.PatternWidth,
         hatch.PatternAngle*10
       ],

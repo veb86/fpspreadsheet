@@ -63,14 +63,14 @@ begin
     ser.ShowSymbols := true;
     ser.Symbol := cssCircle;
     ser.SymbolFill.Style := cfsSolid;
-    ser.SymbolFill.Color := scRed;
+    ser.SymbolFill.Color := ChartColor(scRed);
     ser.SymbolBorder.Style := clsNoLine;
 
     ser.XErrorBars.Visible := true;
     ser.XErrorBars.Kind := cebkConstant;
     ser.XErrorBars.ValuePos := 0.5;
     ser.XErrorBars.ValueNeg := 0.5;
-    ser.XErrorBars.Line.Color := scRed;
+    ser.XErrorBars.Line.Color := ChartColor(scRed);
 
     ser.YErrorBars.Visible := true;
     if errorRange then
@@ -84,7 +84,7 @@ begin
       ser.YErrorBars.ValuePos := 10;  // percent
       ser.YErrorBars.ValueNeg := 10;  // percent
     end;
-    ser.YErrorBars.Line.Color := scRed;
+    ser.YErrorBars.Line.Color := ChartColor(scRed);
 
     book.WriteToFile(dir + fn + '.xlsx', true);
     WriteLn('... ', fn + '.xlsx');

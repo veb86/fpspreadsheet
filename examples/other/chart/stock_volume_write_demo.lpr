@@ -149,8 +149,8 @@ begin
     // Stock series properties
     ser.YAxis := calPrimary;
     ser.CandleStick := candleStickMode;
-    ser.CandleStickUpFill.Color := scGreen;
-    ser.CandlestickDownFill.Color := scRed;
+    ser.CandleStickUpFill.Color := ChartColor(scGreen);
+    ser.CandlestickDownFill.Color := ChartColor(scRed);
     ser.SetTitleAddr (0, 0);
     if candleStickMode then ser.SetOpenRange (3, 2, 7, 2);
     ser.SetHighRange (3, 3, 7, 3);

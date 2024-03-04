@@ -73,18 +73,18 @@ begin
 
     // Individual slice colors, with white border, sector index 1 "exploded"
     // Must be complete, otherwise will be ignored by Calc and replaced by default colors
-    line := TsChartline.CreateSolid(scWhite, 0.8);
-    ser.DataPointStyles.AddSolidFill(0, $C47244, line);
-    ser.DataPointStyles.AddSolidFill(1, $317DED, line, 20);  // with explode offset, as percentage
-    ser.DataPointStyles.AddSolidFill(2, $A5A5A5, line);
+    line := TsChartline.CreateSolid(ChartColor(scWhite), 0.8);
+    ser.DataPointStyles.AddSolidFill(0, ChartColor($C47244), line);
+    ser.DataPointStyles.AddSolidFill(1, ChartColor($317DED), line, 20);  // with explode offset, as percentage
+    ser.DataPointStyles.AddSolidFill(2, ChartColor($A5A5A5), line);
     {$if Laz_FullVersion >= 3990000}
-    fill := TsChartFill.CreateHatchFill(ch.Hatches.AddLineHatch('ltHorz', chsSingle, $00C0FF, 1, 0.1, 0), scWhite);
+    fill := TsChartFill.CreateHatchFill(ch.Hatches.AddLineHatch('ltHorz', chsSingle, ChartColor($00C0FF), 1, 0.1, 0), ChartColor(scWhite));
     ser.DataPointStyles.AddFillAndLine(3, fill, line);
     fill.Free;
     {$else}
-    ser.DataPointStyles.AddSolidFill(3, $00C0FF, line);
+    ser.DataPointStyles.AddSolidFill(3, ChartColor($00C0FF), line);
     {$ifend}
-    ser.DataPointStyles.AddSolidFill(4, $D69B5B, line);
+    ser.DataPointStyles.AddSolidFill(4, ChartColor($D69B5B), line);
     line.Free;
 
     //ser.SetFillColorRange(4, 2, 8, 2);

@@ -62,12 +62,12 @@ begin
     ch.XAxis.Title.Caption := 'Cases';
     ch.YAxis.Title.Caption := 'Count';
     ch.YAxis.Title.Font.Color := $0075ea;
-    ch.YAxis.AxisLine.Color := $0075ea;
+    ch.YAxis.AxisLine.Color := ChartColor($0075ea);
     ch.YAxis.LabelFont.Color := $0075ea;
     ch.YAxis.MajorTicks := [];
     ch.Y2Axis.Title.Caption := 'Volume';
     ch.Y2Axis.Title.Font.Color := $b08359;
-    ch.Y2Axis.AxisLine.Color := $b08359;
+    ch.Y2Axis.AxisLine.Color := ChartColor($b08359);
     ch.Y2Axis.LabelFont.Color := $b08359;
 
     if rotated then
@@ -80,7 +80,7 @@ begin
     ser.SetLabelRange(3, 0, 8, 0);
     ser.SetYRange(3, 1, 8, 1);
     ser.Fill.Style := cfsSolid;
-    ser.Fill.Color := $0075ea;
+    ser.Fill.Color := ChartColor($0075ea);
     ser.Line.Style := clsNoLine;
 
     // Add 2nd bar series ("Volume")
@@ -90,7 +90,7 @@ begin
     ser.SetLabelRange(3, 0, 8, 0);
     ser.SetYRange(3, 2, 8, 2);
     ser.Fill.Style := cfsSolid;
-    ser.Fill.Color := $b08359;
+    ser.Fill.Color := ChartColor($b08359);
     ser.Line.Style := clsNoLine;
 
     book.WriteToFile(dir + fn + '.xlsx', true);

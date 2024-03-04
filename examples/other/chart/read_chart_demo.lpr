@@ -18,7 +18,7 @@ function GetFillStr(AFill: TsChartFill): String;
 begin
   Result := Format('Style=%s, Color=%.6x, Gradient=%d, Hatch=%d, Transparency=%.2f', [
     GetEnumName(TypeInfo(TsChartFillStyle), ord(AFill.Style)),
-    AFill.Color, AFill.Gradient, AFill.Hatch, AFill.Transparency
+    AFill.Color.Color, AFill.Gradient, AFill.Hatch, AFill.Color.Transparency
   ]);
 end;
 
@@ -49,7 +49,7 @@ begin
     s := 'custom #' + IntToStr(ALine.Style);
 
   Result := Format('Style=%s, Width=%.0fmm, Color=%.6x, Transparency=%.2f', [
-    s, ALine.Width, ALine.Color, ALine.Transparency
+    s, ALine.Width, ALine.Color.Color, ALine.Color.Transparency
   ]);
 end;
 
@@ -79,7 +79,7 @@ var
   sheet: TsWorksheet;
   chart: TsChart;
   series: TsChartSeries;
-  regression: TsChartRegression;
+  trendline: TsChartTrendline;
   i, j: Integer;
   isODS: Boolean;
 begin
@@ -92,7 +92,7 @@ begin
     for i := 0 to book.GetChartCount-1 do
     begin
       chart := book.GetChartByIndex(i);
-      sheet := book.GetWorksheetByIndex(chart.SheetIndex);
+      sheet := TsWorksheet(chart.Worksheet);
 
       WriteLn('--------------------------------------------------------------------------------');
       WriteLn('Chart "', chart.Name, '":');
@@ -110,16 +110,16 @@ begin
       for j := 0 to chart.Hatches.Count-1 do
         WriteLn('    ', j, ': "', chart.Hatches[j].Name, '" ',
           GetEnumName(TypeInfo(TsChartHatchStyle), ord(chart.Hatches[j].Style)), ' ',
-          'LineColor:', IntToHex(chart.Hatches[j].LineColor, 6), ' ',
-          'Distance:', chart.Hatches[j].LineDistance:0:0, 'mm ',
-          'Angle:', chart.Hatches[j].LineAngle:0:0, 'deg ');
+          'PatternColor:', IntToHex(chart.Hatches[j].PatternColor.Color, 6), ' ',
+          'Distance:', chart.Hatches[j].PatternWidth:0:0, 'mm ',
+          'Angle:', chart.Hatches[j].PatternAngle:0:0, 'deg ');
 
       WriteLn  ('  GRADIENT STYLES: ');
       for j := 0 to chart.Gradients.Count-1 do
         WriteLn('    ', j, ': "', chart.Gradients[j].Name, '" ',
           GetEnumName(TypeInfo(TsChartGradientStyle), ord(chart.Gradients[j].Style)), ' ',
-          'StartColor:', IntToHex(chart.Gradients[j].StartColor, 6), ' ',
-          'EndColor:', IntToHex(chart.Gradients[j].EndColor, 6), ' ',
+          'StartColor:', IntToHex(chart.Gradients[j].StartColor.Color, 6), ' ',
+          'EndColor:', IntToHex(chart.Gradients[j].EndColor.Color, 6), ' ',
 //          'StartIntensity:', chart.Gradients[j].StartIntensity*100:0:0, '% ',
 //          'EndIntensity:', chart.Gradients[j].EndIntensity*100:0:0, '% ',
           'Border:', chart.Gradients[j].Border*100:0:0, '% ',
@@ -218,14 +218,14 @@ begin
         WriteLn(  '    FILL:             ', GetFillStr(series.Fill));
         WriteLn(  '    LINES:            ', GetLineStr(series.Line));
 
-        if (series is TsScatterSeries) and (TsScatterSeries(series).Regression.RegressionType <> rtNone) then
+        if (series is TsScatterSeries) and (TsScatterSeries(series).TrendLine.TrendLineType <> tltNone) then
         begin
-          regression := TsScatterSeries(series).Regression;
-          with regression do
+          trendline := TsScatterSeries(series).TrendLine;
+          with trendline do
           begin
-            Write('    REGRESSION:       ');
-            Write(  'Type=', GetEnumName(TypeInfo(TsRegressionType), ord(RegressionType)));
-            if RegressionType = rtPolynomial then
+            Write('    TRENDLINE:        ');
+            Write(  'Type=', GetEnumName(TypeInfo(TsTrendlineType), ord(TrendlineType)));
+            if TrendlineType = tltPolynomial then
               Write( ', PolynomialDegree=', PolynomialDegree);
             Write(   ', ForceYIntercept=', ForceYIntercept);
             if ForceYIntercept then
@@ -236,14 +236,14 @@ begin
             WriteLn('                      DisplayEquation=', DisplayEquation,
                                         ', DisplayRSquare=', DisplayRSquare);
           end;
-          if (regression.DisplayEquation or regression.DisplayRSquare) then
+          if (trendline.DisplayEquation or trendline.DisplayRSquare) then
           begin
-            with regression.Equation do
+            with trendline.Equation do
             begin
-              WriteLn('    REGR. EQUATION:   XName="', XName,'", YName="', YName,'", Number format="', NumberFormat, '"');
-              WriteLn('                      FONT:   ', GetFontStr(regression.Equation.Font));
-              WriteLn('                      FILL:   ', GetFillStr(regression.Equation.Fill));
-              WriteLn('                      BORDER: ', GetLineStr(regression.Equation.Border));
+              WriteLn('    TRENDLINE EQU:    XName="', XName,'", YName="', YName,'", Number format="', NumberFormat, '"');
+              WriteLn('                      FONT:   ', GetFontStr(trendline.Equation.Font));
+              WriteLn('                      FILL:   ', GetFillStr(trendline.Equation.Fill));
+              WriteLn('                      BORDER: ', GetLineStr(trendline.Equation.Border));
             end;
           end;
 

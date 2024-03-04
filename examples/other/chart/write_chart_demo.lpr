@@ -64,8 +64,8 @@ begin
     ser.SetLabelRange(r1, 0, r2, 0);
     ser.SetXRange(r1, 0, r2, 0);     // is used only by scatter series
     ser.SetYRange(r1, 1, r2, 1);
-    ser.Line.Color := scBlue;
-    ser.Fill.Color := scBlue;
+    ser.Line.Color := ChartColor(scBlue);
+    ser.Fill.Color := ChartColor(scBlue);
     ser.SetFillColorRange(r1, 4, r2, 4);
     ser.DataLabels := [cdlPercentage, cdlSymbol];
     if (ser is TsLineSeries) then
@@ -89,8 +89,8 @@ begin
       ser.SetLabelRange(r1, 0, r2, 0);
       ser.SetXRange(r1, 0, r2, 0);
       ser.SetYRange(r1, 2, r2, 2);
-      ser.Line.Color := scRed;
-      ser.Fill.Color := scRed;
+      ser.Line.Color := ChartColor(scRed);
+      ser.Fill.Color := ChartColor(scRed);
     end;
 
     {$IFDEF DARK_MODE}
@@ -98,9 +98,9 @@ begin
     ch.Border.Color := scWhite;
     ch.PlotArea.Background.FgColor := $1F1F1F;
     {$ELSE}
-    ch.Background.Color := scWhite;
-    ch.Border.Color := scBlack;
-    ch.PlotArea.Background.Color := $F0F0F0;
+    ch.Background.Color := ChartColor(scWhite);
+    ch.Border.Color := ChartColor(scBlack);
+    ch.PlotArea.Background.Color := ChartColor($F0F0F0);
     {$ENDIF}
     // Background and wall working
     ch.Background.Style := cfsSolid;
@@ -114,13 +114,13 @@ begin
     ch.XAxis.LabelFont.Size := 9;
     ch.XAxis.LabelFont.Color := scRed;
     //ch.XAxis.LabelFont.Style := [fssStrikeout];
-    ch.XAxis.AxisLine.Color := scRed;
+    ch.XAxis.AxisLine.Color := ChartColor(scRed);
     ch.XAxis.Title.Caption := 'This is the x axis';
     ch.XAxis.Title.Font.Color := scRed;
     ch.XAxis.Title.Font.Size := 12;
     //ch.XAxis.Inverted := true;
-    ch.XAxis.MajorGridLines.Color := scRed;
-    ch.XAxis.MinorGridLines.Color := scBlue;
+    ch.XAxis.MajorGridLines.Color := ChartColor(scRed);
+    ch.XAxis.MinorGridLines.Color := ChartColor(scBlue);
     ch.XAxis.MajorGridLines.Style := clsNoLine; //Solid;
     ch.XAxis.MinorGridLines.Style := clsNoLine; //Solid;
     ch.XAxis.Position := capStart;
@@ -128,7 +128,7 @@ begin
     ch.YAxis.ShowLabels := true;
     ch.YAxis.LabelFont.Size := 8;
     ch.YAxis.LabelFont.Color := scBlue;
-    ch.YAxis.AxisLine.Color := scBlue;
+    ch.YAxis.AxisLine.Color := ChartColor(scBlue);
     ch.YAxis.Title.Caption := 'This is the y axis';
     ch.YAxis.Title.Font.Color := scBlue;
     ch.YAxis.Title.Font.Size := 12;
@@ -138,7 +138,7 @@ begin
     ch.yAxis.Max := 5;
     ch.YAxis.AutomaticMin := false;
     ch.YAxis.AutomaticMax := false;
-    ch.YAxis.MajorGridLines.Color := scBlue;
+    ch.YAxis.MajorGridLines.Color := ChartColor(scBlue);
     ch.YAxis.MajorGridLines.Style := clsLongDash; //clsSolid;
     ch.YAxis.MajorGridLines.Width := 0.5;  // mm
 //    ch.YAxis.MinorGridLines.Style := clsLongDashDot; //Dash; //clsSolid;
@@ -156,8 +156,8 @@ begin
     ch.Legend.Font.Size := 12;
     ch.Legend.Font.Color := scBlue;
     ch.Legend.Border.Width := 0.3; // mm
-    ch.Legend.Border.Color := scGray;
-    ch.Legend.Background.Color := $F0F0F0;
+    ch.Legend.Border.Color := ChartColor(scGray);
+    ch.Legend.Background.Color := ChartColor($F0F0F0);
     ch.Legend.Background.Style := cfsSolid;
     //ch.Legend.CanOverlapPlotArea := true;
     ch.Legend.Position := lpBottom;
@@ -196,12 +196,12 @@ begin
 
     // Vertical background gradient (angle = 0) from sky-blue to white:
     ch.PlotArea.Background.Style := cfsGradient;
-    ch.PlotArea.Background.Gradient := ch.Gradients.AddLinearGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddAxialGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddEllipticGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0.5, 0.5, 45);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddRadialGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0.5, 0.5);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddRectangularGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0.5, 0.5, 0);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddSquareGradient('Sky', $F0CAA6, $FFFFFF, 1, 1, 0, 0.5, 0.5, 0);
+    ch.PlotArea.Background.Gradient := ch.Gradients.AddLinearGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddAxialGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddEllipticGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5, 45);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddRadialGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddRectangularGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5, 0);
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddSquareGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5, 0);
 
     ch.Border.Style := clsNoLine;
     ch.Title.Caption := 'HALLO';
@@ -220,13 +220,11 @@ begin
     ch.YAxis.MajorTicks := [catInside, catOutside];
     ch.YAxis.MinorTicks := [catOutside];
 
-    {
-    book.WriteToFile(FILE_NAME + '.xlsx', true);   // Excel fails to open the file
-    WriteLn('Data saved with chart in ', FILE_NAME, '.xlsx');
-    }
+    book.WriteToFile(FILE_NAME + '.xlsx', true);
+    WriteLn('Data saved with chart in ', FILE_NAME + '.xlsx');
 
     book.WriteToFile(FILE_NAME + '.ods', true);
-    WriteLn('Data saved with chart in ', FILE_NAME, '.ods');
+    WriteLn('Data saved with chart in ', FILE_NAME + '.ods');
   finally
     book.Free;
   end;
