@@ -2210,12 +2210,10 @@ end;
 { TsChartSeries }
 
 constructor TsChartSeries.Create(AChart: TsChart);
-var
-  idx: Integer;
 begin
   inherited Create(AChart);
 
-  idx := AChart.AddSeries(self);
+  FOrder := AChart.AddSeries(self);
 
   FXRange := TsChartRange.Create(AChart);
   FYRange := TsChartRange.Create(AChart);
@@ -2227,14 +2225,14 @@ begin
 
   FFill := TsChartFill.Create;
   FFill.Style := cfsSolid;
-  FFill.Color := ChartColor(DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)]);
+  FFill.Color := ChartColor(DEFAULT_SERIES_COLORS[FOrder mod Length(DEFAULT_SERIES_COLORS)]);
   FFill.Gradient := -1;
   FFill.Hatch := -1;
 
   FLine := TsChartLine.Create;
   FLine.Style := clsSolid;
   FLine.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  FLine.Color := ChartColor(DEFAULT_SERIES_COLORS[idx mod Length(DEFAULT_SERIES_COLORS)]);
+  FLine.Color := ChartColor(DEFAULT_SERIES_COLORS[FOrder mod Length(DEFAULT_SERIES_COLORS)]);
 
   FDataPointStyles := TsChartDataPointStyleList.Create(AChart);
 

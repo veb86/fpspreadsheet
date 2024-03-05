@@ -36,6 +36,7 @@ type
     procedure ReadChartLineProps(ANode: TDOMNode; AChart: TsChart; AChartLine: TsChartLine);
     procedure ReadChartTextProps(ANode: TDOMNode; AFont: TsFont; var AFontRotation: Single);
     procedure SetAxisDefaults(AWorkbookAxis: TsChartAxis);
+    procedure SetDefaultSeriesColor(ASeries: TsChartSeries);
   protected
     procedure ReadChart(ANode: TDOMNode; AChart: TsChart);
     procedure ReadChartAreaSeries(ANode: TDOMNode; AChart: TsChart);
@@ -195,6 +196,10 @@ const
     (0, 90, 0, 90)   // rotated for: caaLeft, caaTop, caaRight, caaBottom
   );
 
+  XLSX_SERIES_COLORS: array[0..5] of DWord = (
+    $D59B5B, $317DED, $A5A5A5, $00C0FF, $C47244, $47AD70
+  );
+
   OHLC_OPEN = 0;
   OHLC_HIGH = 1;
   OHLC_LOW = 2;
@@ -245,13 +250,28 @@ type
   end;
 
 
+function CalcDefaultSeriesColor(AIndex: Integer): TsChartColor;
+const
+  LUM:  array[0..8] of Double = (1.0, 0.6, 0.8, 0.8, 0.6, 0.5, 0.7, 0.7, 0.5);
+  OFFS: array[0..8] of Double = (0.0, 0.0, 0.2, 0.0, 0.4, 0.0, 0.3, 0.0, 0.5);
+var
+  c: TsColor;
+  idx, modif: Integer;
+begin
+  idx := AIndex div Length(XLSX_SERIES_COLORS);
+  modif := AIndex mod Length(XLSX_SERIES_COLORS);
+  c := XLSX_SERIES_COLORS[idx];
+  c := LumOffsetColor(c, OFFS[modif]);
+  c := LumModColor(c, LUM[modif]);
+  Result := ChartColor(c);
+end;
+
 function HTMLColorStr(AValue: TsColor): string;
 var
   rgb: TRGBA absolute AValue;
 begin
   Result := Format('%.2x%.2x%.2x', [rgb.r, rgb.g, rgb.b]);
 end;
-
 
 
 { TsSpreadOOXMLChartReader }
@@ -318,6 +338,7 @@ var
 begin
   if ANode = nil then
     exit;
+
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
@@ -325,6 +346,7 @@ begin
       'c:ser':
         begin
           ser := TsAreaSeries.Create(AChart);
+          SetDefaultSeriesColor(ser);
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:grouping':
@@ -512,6 +534,7 @@ begin
   if ANode = nil then
     exit;
   savedNode := ANode;
+
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
@@ -520,6 +543,7 @@ begin
       'c:ser':
         begin
           ser := TsBarSeries.Create(AChart);
+          SetDefaultSeriesColor(ser);
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:barDir':
@@ -601,6 +625,7 @@ begin
       'c:ser':
         begin
           ser := TsBubbleSeries.Create(AChart);
+          SetDefaultSeriesColor(ser);
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:sizeRepresents':
@@ -1310,6 +1335,7 @@ begin
       'c:ser':
         begin
           ser := TsLineSeries.Create(AChart);
+          SetDefaultSeriesColor(ser);
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:grouping':
@@ -1642,6 +1668,7 @@ begin
             ser := TsFilledRadarSeries.Create(AChart)
           else
             ser := TsRadarSeries.Create(AChart);
+          SetDefaultSeriesColor(ser);
           ReadChartSeriesProps(node.FirstChild, ser);
         end;
     end;
@@ -1673,6 +1700,7 @@ begin
       'c:ser':
         begin
           ser := TsScatterSeries.Create(AChart);
+          SetDefaultSeriesColor(ser);
           ReadChartSeriesProps(ANode.FirstChild, ser);
         end;
       'c:scatterStyle':
@@ -2512,6 +2540,13 @@ begin
   AWorkbookAxis.Visible := false;
   AWorkbookAxis.MajorGridLines.Style := clsNoLine;
   AWorkbookAxis.MinorGridLines.Style := clsNoLine;
+end;
+
+procedure TsSpreadOOXMLChartReader.SetDefaultSeriesColor(ASeries: TsChartSeries);
+begin
+  ASeries.Fill.Color := CalcDefaultSeriesColor(ASeries.Order);
+  ASeries.Fill.Style := cfsSolid;
+  ASeries.Line.Style := clsNoLine;
 end;
 
 
