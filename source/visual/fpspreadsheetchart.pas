@@ -1378,7 +1378,7 @@ begin
     exit;
   end;
 
-  ser.Transparency := round(ASeries.Fill.Transparency);
+  ser.Transparency := round(ASeries.Fill.Color.Transparency);
   axis := ASeries.Chart.YAxis;
   UpdateChartSeriesMarks(ASeries, ser);
   if IsStackable(ASeries) then
@@ -2000,7 +2000,7 @@ procedure TsWorkbookChartLink.UpdateAreaSeries(AWorkbookSeries: TsAreaSeries;
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.AreaBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.AreaContourPen);
-  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
+  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Color.Transparency * 255);
   AChartSeries.AreaLinesPen.Style := psClear;
   AChartSeries.Stacked := AWorkbookSeries.Chart.StackMode <> csmDefault;
   AChartSeries.UseZeroLevel := true;
@@ -2038,7 +2038,7 @@ procedure TsWorkbookChartLink.UpdateBarSeries(AWorkbookSeries: TsBarSeries;
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BarBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BarPen);
-  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
+  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Color.Transparency * 255);
   AChartSeries.BarWidthPercent := CalcBarWidthPercent;
   AChartSeries.BarOffsetPercent := 0; // TAChart currently does not support offsets in multiple-y bar series.
   AChartSeries.BarWidthStyle := bwPercentMin;
@@ -2055,7 +2055,7 @@ procedure TsWorkbookChartlink.UpdateBubbleSeries(AWorkbookSeries: TsBubbleSeries
 begin
   UpdateChartBrush(AWorkbookSeries.Chart, AWorkbookSeries.Fill, AChartSeries.BubbleBrush);
   UpdateChartPen(AWorkbookSeries.Chart, AWorkbookSeries.Line, AChartSeries.BubblePen);
-  AChartSeries.Transparency := round(255*AWorkbookSeries.Fill.Transparency);
+  AChartSeries.Transparency := round(255*AWorkbookSeries.Fill.Color.Transparency);
   AChartSeries.Legend.Multiplicity := lmPoint;
 
   {$IF LCL_FullVersion >= 3990000}
@@ -2807,7 +2807,7 @@ var
 begin
   ppi := GetParentForm(FChart).PixelsPerInch;
 
-  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Transparency * 255);
+  AChartSeries.Transparency := round(AWorkbookSeries.Fill.Color.Transparency * 255);
   AChartSeries.CloseCircle := true;
   AChartSeries.Filled := (AWorkbookSeries.ChartType = ctFilledRadar);
   AChartSeries.ShowPoints := AWorkbookSeries.ShowSymbols;

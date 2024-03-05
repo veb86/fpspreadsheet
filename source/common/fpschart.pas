@@ -189,7 +189,6 @@ type
     Gradient: Integer;     // Index into chart's Gradients list
     Hatch: Integer;        // Index into chart's Hatches list
     Image: Integer;        // Index into chart's Images list
-    Transparency: Double;  // 0.0 ... 1.0
     constructor CreateSolidFill(AColor: TsChartColor);
     constructor CreateHatchFill(AHatchIndex: Integer; ABkColor: TsChartColor);
     procedure CopyFrom(AFill: TsChartFill);
@@ -752,7 +751,9 @@ type
     FLowRange: TsChartRange;  // close = normal y range
     FCandleStickDownFill: TsChartFill;
     FCandleStickDownBorder: TsChartLine;
+    FCandleStickUpFill: TsChartFill;
     FCandleStickUpBorder: TsChartLine;
+    FRangeLine: TsChartLine;
     FTickWidthPercent: Integer;
     // fill is CandleStickUpFill, line is RangeLine
   public
@@ -768,11 +769,11 @@ type
     procedure SetCloseRange(ASheet1: String; ARow1, ACol1: Cardinal; ASheet2: String; ARow2, ACol2: Cardinal);
     property CandleStick: Boolean read FCandleStick write FCandleStick;
     property CandleStickDownFill: TsChartFill read FCandleStickDownFill write FCandleStickDownFill;
-    property CandleStickUpFill: TsChartFill read FFill write FFill;
+    property CandleStickUpFill: TsChartFill read FCandleStickUpFill write FCandleStickUpFill;
     property CandleStickDownBorder: TsChartLine read FCandleStickDownBorder write FCandleStickDownBorder;
     property CandleStickUpBorder: TsChartLine read FCandleStickUpBorder write FCandleStickUpBorder;
     property TickWidthPercent: Integer read FTickWidthPercent write FTickWidthPercent;
-    property RangeLine: TsChartLine read FLine write FLine;
+    property RangeLine: TsChartLine read FRangeLine write FRangeLine;
     property OpenRange: TsChartRange read FOpenRange;
     property HighRange: TsChartRange read FHighRange;
     property LowRange: TsChartRange read FLowRange;
@@ -1449,7 +1450,6 @@ begin
     Gradient := AFill.Gradient;
     Hatch := AFill.Hatch;
     Image := AFill.Image;
-    Transparency := AFill.Transparency;
   end;
 end;
 
@@ -2746,24 +2746,18 @@ begin
   FLowRange := TsChartRange.Create(AChart);
 
   // FFill is CandleStickUp, FLine is RangeLine
-  FCandleStickDownFill := TsChartFill.Create;
-  FCandleStickDownFill.Style := cfsSolid;
-  FCandleStickDownFill.Color := ChartColor(scBlack);
-  FCandleStickDownBorder := TsChartLine.Create;
-  FCandleStickDownBorder.Style := clsSolid;
-  FCandleStickDownBorder.Color := ChartColor(scBlack);
-  FCandleStickDownBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  FCandleStickUpBorder := TsChartLine.Create;
-  FCandleStickUpBorder.Style := clsSolid;
-  FCandleStickUpBorder.Color := ChartColor(scBlack);
-  FCandleStickUpBorder.Width := PtsToMM(DEFAULT_CHART_LINEWIDTH);
-  FLine.Style := clsSolid;
-  FLine.Color := ChartColor(scBlack);
+  FCandleStickDownBorder := TsChartLine.CreateSolid(ChartColor(scBlack), PtsToMM(DEFAULT_CHART_LINEWIDTH));
+  FCandleStickDownFill := TsChartFill.CreateSolidFill(ChartColor(scBlack)); // These are the Excel default colors
+  FCandleStickUpBorder := TsChartLine.CreateSolid(ChartColor(scBlack), PtsToMM(DEFAULT_CHART_LINEWIDTH));
+  FCandleStickUpFill := TsChartFill.CreateSolidFill(ChartColor(scWhite));
+  FRangeLine := TsChartLine.CreateSolid(ChartColor(scBlack), PtsToMM(DEFAULT_CHART_LINEWIDTH));
   FTickWidthPercent := 50;
 end;
 
 destructor TsStockSeries.Destroy;
 begin
+  FRangeLine.Free;
+  FCandleStickUpFill.Free;
   FCandleStickUpBorder.Free;
   FCandleStickDownBorder.Free;
   FCandleStickDownFill.Free;
