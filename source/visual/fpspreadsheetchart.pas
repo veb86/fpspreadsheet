@@ -2233,12 +2233,18 @@ begin
   case AWorkbookAxis.Position of
     capStart:
       begin
-        axis.Position := 0;
+        if (axis.Alignment = calLeft) or (axis.Alignment = calBottom) then
+          axis.Position := 0
+        else
+          axis.Position := 100;
         axis.PositionUnits := cuPercent;
       end;
     capEnd:
       begin
-        axis.Position := 100;
+        if (axis.Alignment = calLeft) or (axis.Alignment = calBottom) then
+          axis.Position := 100
+        else
+          axis.Position := 0;
         axis.PositionUnits := cuPercent;
         // To do: Move TAChart axis labels and title to the other side
       end;
