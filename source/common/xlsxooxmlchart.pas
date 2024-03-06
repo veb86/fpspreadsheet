@@ -2217,6 +2217,8 @@ begin
     exit;
 
   ser := TsStockSeries.Create(AChart);
+  AChart.YAxis.AutomaticMin := false;
+  AChart.Y2Axis.AutomaticMin := false;
 
   // Collecting the ranges which make up the stock series. Note that in Excel's
   // HLC series there are three ranges for high, low and close, while for the
