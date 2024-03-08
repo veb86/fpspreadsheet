@@ -1511,6 +1511,8 @@ begin
     workNode := workNode.NextSibling;
   end;
 
+  AChart.PlotArea.Background.Color := ChartColor(scWhite);
+  AChart.PlotArea.Background.Style := cfsSolid;
   SetAxisDefaults(AChart.XAxis);
   SetAxisDefaults(AChart.YAxis);
   SetAxisDefaults(AChart.X2Axis);
@@ -1568,6 +1570,8 @@ begin
           end;
           inc(valAxCounter);
         end;
+      'c:spPr':
+        ReadChartFillAndLineProps(workNode.FirstChild, AChart, AChart.PlotArea.Background, AChart.PlotArea.Border);
     end;
     workNode := workNode.NextSibling;
   end;
@@ -4210,32 +4214,13 @@ begin
       WriteChartAxisNode(AStream, AIndent, AChart.X2Axis, x2Axkind);
     end;
   end;
-  (*
-  // Wrie the
-  if (AChart.GetChartType = ctStock) then
-  begin
-    // Stock series has the y axis first, then the x axis.  //// NOT CLEAR IF THIS IS REQUIRED...
-    WriteChartAxisNode(AStream, AIndent, AChart.XAxis, 'c:dateAx'); //'c:catAx');
-    WriteChartAxisNode(AStream, AIndent, AChart.YAxis, 'c:valAx');
-//    WriteChartAxisNode(AStream, AIndent, AChart.XAxis, 'c:dateAx'); //'c:catAx');
-    if hasSecondaryAxis then
-    begin
-      WriteChartAxisNode(AStream, AIndent, AChart.Y2Axis, yAxKind);
-      WriteChartAxisNode(AStream, AIndent, AChart.X2Axis, x2AxKind);
-    end;
-  end else
-  if not (AChart.GetChartType in [ctPie, ctRing]) then
-  begin
-    yAxKind := 'c:valAx';
-    WriteChartAxisNode(AStream, AIndent, AChart.XAxis, xAxKind);
-    WriteChartAxisNode(AStream, AIndent, AChart.YAxis, yAxKind);
-    if hasSecondaryAxis then
-    begin
-      WriteChartAxisNode(AStream, AIndent, AChart.Y2Axis, yAxKind);
-      WriteChartAxisNode(AStream, AIndent, AChart.X2Axis, x2AxKind);
-    end;
-  end;
-  *)
+
+  // Write the plot area background
+  AppendToStream(AStream,
+    indent + '  <c:spPr>' + LE +
+             GetChartFillAndLineXML(AIndent + 4, AChart, AChart.PlotArea.Background, AChart.PlotArea.Border) + LE +
+    indent + '  </c:spPr>' + LE
+  );
 
   AppendToStream(AStream,
     indent + '</c:plotArea>' + LE

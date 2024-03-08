@@ -3259,52 +3259,7 @@ begin
   with TRGBA(Result) do
     HLStoRGB(round(H*255), round(L*255), round(S*255), R, G, B);
 end;
-(*
-{@@ ----------------------------------------------------------------------------
- Returns the input color with its luminance multiplied by the given factor.
 
- @param    AColor   rgb color to be modified
- @param    AFactor  Factor to be used for the operation
- @returns  Modified color
--------------------------------------------------------------------------------}
-function LumModColor(AColor: TsColor; AFactor: Double): TsColor;
-var
-  H, L, S: Byte;
-begin
-  with TRGBA(AColor) do
-    RGBToHLS(R,G,B, H,L,S);
-  L := EnsureRange(round(L*AFactor), 0, 255);
-  with TRGBA(Result) do
-  begin
-    HLSToRGB(H,L,S, R,G,B);
-    A := 0;
-  end;
-end;
-
-{@@ ----------------------------------------------------------------------------
- Returns the input color with its luminance shifted, but with its hue and
- saturation unchanged ([ISO/IEC29500-1:2016] section 20.1.2.3.21)
-
- @param    AColor   rgb color to be modified
- @param    AOffset  Fraction of the maximum luminance to be added
- @returns  Modified color
--------------------------------------------------------------------------------}
-function LumOffsetColor(AColor: TsColor; AOffset: Double): TsColor;
-const
-  HLSMAX = 255;
-var
-  H, L, S: Byte;
-begin
-  with TRGBA(AColor) do
-    RGBToHLS(R,G,B, H,L,S);
-  L := EnsureRange(round(L + HLSMAX * AOffset), 0, 255);
-  with TRGBA(Result) do
-  begin
-    HLSToRGB(H,L,S, R,G,B);
-    A := 0;
-  end;
-end;
-   *)
 {@@ ----------------------------------------------------------------------------
   Returns the color index for black or white depending on a color being "bright"
   or "dark".

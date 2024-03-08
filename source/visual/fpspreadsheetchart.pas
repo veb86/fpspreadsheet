@@ -1489,6 +1489,13 @@ begin
 
   // Clear the footer
   FChart.Foot.Text.Clear;
+
+  // Restore default background
+  FChart.BackColor := clWindow;
+  FChart.Frame.Color := clDefault;
+  FChart.Frame.Width := 1;
+  FChart.Frame.Style := psSolid;
+  FChart.Frame.Visible := true;
 end;
 
 { Approximates the empty hatch patterns by the built-in TBrush styles. }
