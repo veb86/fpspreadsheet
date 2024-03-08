@@ -2776,8 +2776,15 @@ begin
   WriteChartLegendNode(AStream, AIndent + 2, chart.Legend);
 
   AppendToStream(AStream,
-    indent  + '  <c:plotVisOnly val="1" />' + LE +
+    indent + '  <c:plotVisOnly val="1" />' + LE +
     indent + '</c:chart>' + LE
+  );
+
+  // Write chart background
+  AppendToStream(AStream,
+    indent + '<c:spPr>' + LE +
+             GetChartFillAndLineXML(AIndent, chart, chart.Background, chart.Border) + LE +
+    indent + '</c:spPr>' + LE
   );
 
   chart.RotatedAxes := savedRotatedAxes;
