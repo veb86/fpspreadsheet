@@ -198,9 +198,11 @@ function IsPaletteIndex(AColor: TsColor): Boolean;
 function LongRGBToExcelPhysical(const RGB: DWord): DWord;
 function SetAsPaletteIndex(AIndex: Integer): TsColor;
 function TintedColor(AColor: TsColor; tint: Double): TsColor;
+function LumModOff(AColor: TsColor; ALumMod, ALumOff: Double): TsColor;
+{
 function LumModColor(AColor: TsColor; AFactor: Double): TsColor;
 function LumOffsetColor(AColor: TsColor; AOffset: Double): TsColor;
-
+}
 function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
 procedure FixLineEndings(var AText: String; var ARichTextParams: TsRichTextParams);
@@ -3227,6 +3229,38 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
+  Performs a luminance modulation and luminance offset operation.
+  Inspired by LibreOffice (https://docs.libreoffice.org/tools/html/color_8cxx_source.html), but does not match Excel exactly.
+
+  @param   AColor   rgb color to be modified
+  @param   ALumMod  Factor for luminance modulation. It is multiplied to the luminance of the color
+  @param   ALumOff  Luminance offset, it is added to the luminance of the color
+  @returns Modified color
+-------------------------------------------------------------------------------}
+function LumModOff(AColor: TsColor; ALumMod, ALumOff: Double): TsColor;
+var
+  rgb: TRGBA absolute AColor;
+  bH, bL, bS: Byte;
+  H, L, S: Double;
+begin
+  RGBtoHLS(rgb.R, rgb.G, rgb.B, bH, bL, bS);
+  H := bH/255;
+  L := bL/255;
+  S := bS/255;
+
+  // Multiply luminance with the luminance modulation factor
+  L := EnsureRange(L*ALumMod, 0.0, 1.0);
+  if (L = 0.0) or (L = 1.0) then S := 0.0;
+
+  // Add luminance offset to luminance
+  L := EnsureRange(L + ALumOff, 0.0, 1.0);
+  if (L = 0.0) or (L = 1.0) then S := 0.0;
+
+  with TRGBA(Result) do
+    HLStoRGB(round(H*255), round(L*255), round(S*255), R, G, B);
+end;
+(*
+{@@ ----------------------------------------------------------------------------
  Returns the input color with its luminance multiplied by the given factor.
 
  @param    AColor   rgb color to be modified
@@ -3270,7 +3304,7 @@ begin
     A := 0;
   end;
 end;
-
+   *)
 {@@ ----------------------------------------------------------------------------
   Returns the color index for black or white depending on a color being "bright"
   or "dark".

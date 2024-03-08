@@ -260,9 +260,7 @@ var
 begin
   idx := AIndex div Length(XLSX_SERIES_COLORS);
   modif := AIndex mod Length(XLSX_SERIES_COLORS);
-  c := XLSX_SERIES_COLORS[idx];
-  c := LumOffsetColor(c, OFFS[modif]);
-  c := LumModColor(c, LUM[modif]);
+  c := LumModOff(XLSX_SERIES_COLORS[idx], LUM[modif], OFFS[modif]);
   Result := ChartColor(c);
 end;
 
@@ -667,6 +665,8 @@ var
   idx: Integer;
   n: Integer;
   child: TDOMNode;
+  lumMod: Single = 1.0;
+  lumOff: Single = 0.0;
 begin
   while Assigned(ANode) do
   begin
@@ -692,10 +692,10 @@ begin
                       AColor.Color := TintedColor(AColor.Color, n/FACTOR_MULTIPLIER);
                   'a:lumMod':     // luminance modulated
                     if TryStrToInt(s, n) then
-                      AColor.Color := LumModColor(AColor.Color, n/FACTOR_MULTIPLIER);
+                      lumMod := n/FACTOR_MULTIPLIER;
                   'a:lumOff':
                     if TryStrToInt(s, n) then
-                      AColor.Color := LumOffsetColor(AColor.Color, n/FACTOR_MULTIPLIER);
+                      lumOff := n/FACTOR_MULTIPLIER;
                   'a:alpha':
                     if TryStrToInt(s, n) then
                       AColor.Transparency := 1.0 - n / FACTOR_MULTIPLIER;
@@ -703,6 +703,7 @@ begin
                 child := child.NextSibling;
               end;
             end;
+            AColor.Color := LumModOff(AColor.Color, lumMod, lumOff);
           end;
         end;
       'a:srgbClr':
