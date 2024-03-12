@@ -83,6 +83,7 @@ type
     FAxisID: array[TsChartAxisAlignment] of DWord;
     FSeriesIndex: Integer;
     function GetChartColorXML(AIndent: Integer; ANodeName: String; AColor: TsChartColor): String;
+    function GetChartColorXML(AColor: TsChartColor): String;
     function GetChartFillAndLineXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill; ALine: TsChartLine): String;
     function GetChartFillXML(AIndent: Integer; AChart: TsChart; AFill: TsChartFill): String;
     function GetChartFontXML(AIndent: Integer; AFont: TsFont; ANodeName: String): String;
@@ -778,6 +779,26 @@ begin
           s := GetAttrValue(ANode, 'ang');
           if TryStrToFloat(s, value, FPointSeparatorSettings) then
             gradient.Angle := value / ANGLE_MULTIPLIER;
+        end;
+      'a:path':
+        begin
+          s := GetAttrValue(ANode, 'path');
+          case s of
+            'rect': gradient.Style := cgsRectangular;
+            'circle': gradient.Style := cgsRadial;
+            'shape': gradient.Style := cgsShape;
+          end;
+          child := ANode.FindNode('a:fillToRect');
+          s := GetAttrValue(ANode, 'l');
+          if TryStrToFloat(s, value, FPointSeparatorSettings) then
+            gradient.CenterX := value / FACTOR_MULTIPLIER
+          else
+            gradient.CenterX := 0.0;
+          s := GetAttrValue(aNode, 't');
+          if tryStrToFloat(s, value, FPointSeparatorSettings) then
+            gradient.CenterY := value / FACTOR_MULTIPLIER
+          else
+            gradient.CenterY := 0.0;
         end;
     end;
     ANode := ANode.NextSibling;
@@ -3403,27 +3424,30 @@ function TsSpreadOOXMLChartWriter.GetChartColorXML(AIndent: Integer;
 var
   indent: String;
   rgbStr: String;
-  alpha: Integer;
 begin
-  if (AColor.Transparency > 0) then
-  begin
-    alpha := round((1.0 - AColor.Transparency) * FACTOR_MULTIPLIER);
-    rgbStr := Format('<a:srgbClr val="%s"><a:alpha val="%d"/></a:srgbClr>',
-      [HtmlColorStr(AColor.Color), alpha], FPointSeparatorsettings
-    );
-  end else
-    rgbstr := Format('<a:srgbClr val="%s"/>',
-      [ HtmlColorStr(AColor.Color) ]
-    );
-
   indent := DupeString(' ', AIndent);
-
+  rgbStr := GetChartColorXML(AColor);
   Result :=
     indent + '<' + ANodeName + '>' + LE +
     indent + '  ' + rgbStr +  LE +
     indent + '</' + ANodeName + '>';
 end;
 
+function TsSpreadOOXMLChartWriter.GetChartColorXML(AColor: TsChartColor): String;
+var
+  alpha: Integer;
+begin
+  if (AColor.Transparency > 0) then
+  begin
+    alpha := round((1.0 - AColor.Transparency) * FACTOR_MULTIPLIER);
+    Result := Format('<a:srgbClr val="%s"><a:alpha val="%d"/></a:srgbClr>',
+      [HtmlColorStr(AColor.Color), alpha]
+    );
+  end else
+    Result := Format('<a:srgbClr val="%s"/>',
+      [ HtmlColorStr(AColor.Color) ]
+    );
+end;
 
 {@@ ----------------------------------------------------------------------------
   Assembles the xml string for the children of a <c:spPr> node (fill and line style)
@@ -3455,6 +3479,14 @@ const
 var
   indent: String;
   hatch: TsChartHatch;
+  gradient: TsChartGradient;
+  step: TsChartGradientStep;
+  gSteps: String = '';
+  gStyle: String = '';
+  lStr: String = '';
+  tStr: String = '';
+  rStr: String = '';
+  bStr: String = '';
   i: Integer;
   presetIdx: Integer;
   alpha: Integer;
@@ -3466,8 +3498,62 @@ begin
     Result := indent + '<a:noFill/>'
   else
     case AFill.Style of
+      // Solid fills
       cfsSolid:
         Result := GetChartColorXML(AIndent + 2, 'a:solidFill', AFill.Color);
+
+      // Gradient fills
+      cfsGradient:
+        begin
+          gradient := AChart.Gradients[AFill.Gradient];
+          gSteps := indent + '  <a:gsLst>' + LE;
+          for i := 0 to gradient.NumSteps - 1 do
+          begin
+            step := gradient.Steps[i];
+            gSteps := gSteps + Format(
+              indent + '    <a:gs pos="%.0f">' + LE +
+              indent + '      %s' + LE +
+              indent + '    </a:gs>' + LE,
+              [ step.Value * FACTOR_MULTIPLIER, GetChartColorXML(step.Color) ]
+            );
+          end;
+          gSteps := gSteps + indent + '  </a:gsLst>' + LE;
+          case gradient.Style of
+            cgsLinear:
+              gStyle := indent + Format('  <a:lin ang="%.0f" scaled="1"/>',
+                [ gradient.Angle * ANGLE_MULTIPLIER ]
+              );
+            cgsAxial,
+            cgsRadial,
+            cgsElliptic,
+            cgsSquare,
+            cgsRectangular,
+            cgsShape:
+              begin
+                case gradient.Style of
+                  cgsRectangular, cgsAxial: gStyle := 'rect';
+                  cgsElliptic, cgsRadial: gStyle := 'circle';
+                  else gStyle := 'shape';
+                end;
+                if gradient.CenterX <> 0 then lStr := Format('l="%.0f" ', [gradient.CenterX * FACTOR_MULTIPLIER]);
+                if gradient.CenterX <> 1.0 then rStr := Format('r="%.0f" ', [(1.0-gradient.CenterX) * FACTOR_MULTIPLIER]);
+                if gradient.CenterY <> 0 then tStr := Format('t="%.0f" ', [gradient.CenterY * FACTOR_MULTIPLIER]);
+                if gradient.CenterY <> 1.0 then bStr := Format('b="%.0f" ', [(1.0-gradient.CenterY) * FACTOR_MULTIPLIER]);
+                gStyle := Format(
+                  indent + '  <a:path path="%s">' + LE +
+                  indent + '    <a:fillToRect %s%s%s%s/>' + LE +
+                  indent + '  </a:path>' + LE,
+                  [ gStyle, lStr, tStr, rStr, bStr ]
+                );
+              end;
+          end;
+          Result := indent + '<a:gradFill>' + LE +
+                    gSteps +
+                    gStyle +
+                    indent + '</a:gradFill>' + LE;
+        end;
+
+      // Hatched and pattern fills
       cfsHatched, cfsSolidHatched:
         begin
           hatch := AChart.Hatches[AFill.Hatch];

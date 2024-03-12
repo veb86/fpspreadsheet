@@ -57,7 +57,7 @@ type
     procedure CopyFrom(ALine: TsChartLine);
   end;
 
-  TsChartGradientStyle = (cgsLinear, cgsAxial, cgsRadial, cgsElliptic, cgsSquare, cgsRectangular);
+  TsChartGradientStyle = (cgsLinear, cgsAxial, cgsRadial, cgsElliptic, cgsSquare, cgsRectangular, cgsShape);
 
   TsChartGradientStep = record
     Value: Double;         // 0.0 ... 1.0
@@ -78,8 +78,8 @@ type
     Name: String;
     Style: TsChartGradientStyle;
     Border: Double;            // 0.0 ... 1.0
-    CenterX, CenterY: Double;  // 0.0 ... 1.0
-    Angle: Double;             // degrees
+    CenterX, CenterY: Double;  // 0.0 ... 1.0  ( for gradients which are not linear )
+    Angle: Double;             // degrees, 0° = horizontal, grows CCW
     constructor Create;
     destructor Destroy; override;
     procedure CopyFrom(ASource: TsChartGradient);

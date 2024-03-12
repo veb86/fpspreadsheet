@@ -202,7 +202,7 @@ const
   );  // unsupported: bow-tie, hourglass, vertical-bar
 
   GRADIENT_STYLES: array[TsChartGradientStyle] of string = (
-    'linear', 'axial', 'radial', 'ellipsoid', 'square', 'rectangular'
+    'linear', 'axial', 'radial', 'ellipsoid', 'square', 'rectangular', 'radial'
   );
 
   HATCH_STYLES: array[TsChartHatchStyle] of string = (
@@ -2020,6 +2020,9 @@ begin
     for i := Length(s) downto 1 do
       if not (s[i] in ['0'..'9', '.', '+', '-']) then Delete(s, i, 1);
     angle := StrToFloatDef(s, 0.0, FPointSeparatorSettings);
+    { ods has angle=0 in vertical direction, and orientation is CW
+      --> We must transform to fps angular orientations (0° horizontal, CCW) }
+    angle := (90.0 - angle) mod 360;
   end;
 
   s := GetAttrValue(ANode, 'draw:cx');
@@ -3539,7 +3542,7 @@ begin
       cgsLinear, cgsAxial:
         style := style + Format(
           'draw:angle="%.0fdeg" ',
-          [ gradient.Angle ],
+          [ (90 - gradient.Angle) mod 360 ],   // transform to fps angle orientations
           FPointSeparatorSettings
         );
       cgsElliptic, cgsSquare, cgsRectangular:
@@ -3548,12 +3551,14 @@ begin
           [ gradient.CenterX * 100, gradient.CenterY * 100, gradient.Angle ],
           FPointSeparatorSettings
         );
-      cgsRadial:
+      cgsRadial, cgsShape:
         style := style + Format(
           'draw:cx="%.0f%%" draw:cy="%.0f%%" ',
           [ gradient.CenterX * 100, gradient.CenterY * 100 ],
           FPointSeparatorSettings
         );
+      else
+        raise Exception.Create('Unsupported gradient style');
     end;
     style := style + '/>' + LE;
 
