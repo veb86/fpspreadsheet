@@ -2713,12 +2713,26 @@ procedure TsWorkbookChartLink.UpdateChartStyle(AWorkbookSeries: TsChartSeries;
 var
   style: TChartStyle;
   ch: TsChart;
+  ppi: Integer;
 begin
   ch := AWorkbookSeries.Chart;
   style := TChartStyle(FChartStyles.Styles[AStyleIndex]);
   UpdateChartPen(ch, AWorkbookSeries.Line, style.Pen);
   if (AWorkbookSeries is TsCustomLineSeries) then
-    UpdateChartBrush(ch, TsOpenedCustomLineSeries(AWorkbookSeries).SymbolFill, style.Brush)
+  begin
+    {$IF LCL_FullVersion >= 3990000}
+    ppi := GetParentForm(FChart).PixelsPerInch;
+    style.UsePointer := true;
+    style.Pointer.Visible := true;
+    style.Pointer.Style := POINTER_STYLES[TsOpenedCustomLineSeries(AWorkbookSeries).Symbol];
+    style.Pointer.HorizSize := mmToPx(TsOpenedCustomLineSeries(AWorkbookSeries).SymbolWidth, ppi);
+    style.Pointer.VertSize := mmToPx(TsOpenedCustomLineSeries(AWorkbookSeries).SymbolHeight, ppi);
+    UpdateChartBrush(ch, TsOpenedCustomLineSeries(AWorkbookSeries).SymbolFill, style.Pointer.Brush);
+    UpdateChartPen(ch, TsOpenedCustomLineSeries(AWorkbookSeries).SymbolBorder, style.Pointer.Pen);
+    {$ELSE}
+    UpdateChartBrush(ch, TsOpenedCustomLineSeries(AWorkbookSeries).SymbolFill, style.Brush);
+    {$ENDIF}
+  end
   else
     UpdateChartBrush(ch, AWorkbookSeries.Fill, style.Brush);
 end;
