@@ -134,7 +134,7 @@ begin
   RootDir._cb:=0;
   FillByte(RootDir,sizeof(RootDir),0);
   StreamSeekPosition(DirectoryContext,0,soBeginning);
-  ReadData(DirectoryContext,@RootDir,SizeOf(RootDir));
+  ReadData(DirectoryContext,PByte(@RootDir),SizeOf(RootDir));
   StreamSeekPosition(DirectoryContext,0,soBeginning);
   MiniFATDataContext.FATFirstIndex:=RootDir._sectStart;
   MiniFATDataContext.FATIndex:=RootDir._sectStart;
@@ -397,7 +397,7 @@ begin
     EffectiveRead:=ReadData(MiniFATDataContext,FMiscSectorBuffer,ThisRead);
     AStream.Write(FMiscSectorBuffer^,EffectiveRead);
     StreamSeekPosition(MiniFATContext,int64(NextSector)*BYTES_PER_FAT_ENTRY,soBeginning);
-    ReadData(MiniFATContext,@NextSector,BYTES_PER_FAT_ENTRY);
+    ReadData(MiniFATContext,PByte(@NextSector),BYTES_PER_FAT_ENTRY);
     Dec(ReadBytes,EffectiveRead);
     if ThisRead<>EffectiveRead then exit;
   end;
@@ -1063,9 +1063,9 @@ begin
     DirectoryContext.MiniStream:=nil;
     DirectoryContext.AccessMode:=fmOpenReadWrite;
 
-    WriteData(DirectoryContext,@RootEntry,SizeOf(RootEntry));
+    WriteData(DirectoryContext,PByte(@RootEntry),SizeOf(RootEntry));
     FillByte(RootEntry,sizeof(RootEntry),0);
-    WriteData(DirectoryContext,@RootEntry,SizeOf(RootEntry));
+    WriteData(DirectoryContext,PByte(@RootEntry),SizeOf(RootEntry));
 
     FHeader._sectDirStart:=DirectoryContext.FATFirstIndex;
 

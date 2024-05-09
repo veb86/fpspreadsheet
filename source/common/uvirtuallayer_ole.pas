@@ -647,7 +647,7 @@ begin
   OpenedStreams[0].Handle:=0;
   OpenedStreams[0].Context:=FFATIndirect.DirectoryContext;
   while true do begin
-    EffectiveRead:=FFATIndirect.ReadData(FFATIndirect.DirectoryContext,@Dir,Sizeof(Dir));
+    EffectiveRead:=FFATIndirect.ReadData(FFATIndirect.DirectoryContext,PByte(@Dir),Sizeof(Dir));
     SwapEndian_Record(Dir);
     if EffectiveRead=Sizeof(Dir) Then begin
       if Dir._cb>0 then begin
@@ -679,11 +679,11 @@ begin
     FDirectory[0]._ulSize:=FFATIndirect.MiniFATDataContext.Size;
     FFATIndirect.StreamSeekPosition(FFATIndirect.DirectoryContext,0,soBeginning);
     for j := 0 to High(FDirectory) do begin
-      FFATIndirect.WriteData(FFATIndirect.DirectoryContext,@FDirectory[j],sizeof(FDirectory[j]));
+      FFATIndirect.WriteData(FFATIndirect.DirectoryContext,PByte(@FDirectory[j]),sizeof(FDirectory[j]));
     end;
     EmptyDir._sidRightSib:=0; //Avoid uninitialize hint.
     FillByte(EmptyDir,sizeof(EmptyDir),0);
-    FFATIndirect.WriteData(FFATIndirect.DirectoryContext,@EmptyDir,sizeof(EmptyDir));
+    FFATIndirect.WriteData(FFATIndirect.DirectoryContext,PByte(@EmptyDir),sizeof(EmptyDir));
   end;
   FreeAndNIL(FFATIndirect);
   inherited Destroy();
