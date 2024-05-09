@@ -608,7 +608,7 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_Alignment(AFormat: TsSpreadsheetFormat);
 const
-  HORALIGN_TEXT: Array[TsHorAlignment] of String = ('haDefault', 'haLeft', 'haCenter', 'haRight');
+  HORALIGN_TEXT: Array[TsHorAlignment] of String = ('haDefault', 'haLeft', 'haCenter', 'haRight', 'haJustify');
   VERTALIGN_TEXT: Array[TsVertAlignment] of String = ('vaDefault', 'vaTop', 'vaCenter', 'vaBottom');
 var
   MyWorksheet: TsWorksheet;

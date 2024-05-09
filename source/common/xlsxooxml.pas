@@ -1492,24 +1492,21 @@ begin
           nodeName := childNode.NodeName;
           if (nodeName = 'alignment') or (nodeName = 'x:alignment') then begin
             s1 := GetAttrValue(childNode, 'horizontal');
-            if s1 = 'left' then
-              fmt.HorAlignment := haLeft
-            else
-            if s1 = 'center' then
-              fmt.HorAlignment := haCenter
-            else
-            if s1 = 'right' then
-              fmt.HorAlignment := haRight;
+            case s1 of
+              'left'   : fmt.HorAlignment := haLeft;
+              'center' : fmt.HorAlignment := haCenter;
+              'right'  : fmt.HorAlignment := haRight;
+              'justify': fmt.HorAlignment := haJustify;
+              else       fmt.HorAlignment := haDefault;
+            end;
 
             s1 := GetAttrValue(childNode, 'vertical');
-            if s1 = 'top' then
-              fmt.VertAlignment := vaTop
-            else
-            if s1 = 'center' then
-              fmt.VertAlignment := vaCenter
-            else
-            if s1 = 'bottom' then
-              fmt.VertAlignment := vaBottom;
+            case s1 of
+              'top': fmt.VertAlignment := vaTop;
+              'center': fmt.VertAlignment := vaCenter;
+              'bottom': fmt.VertAlignment := vaBottom;
+              else fmt.VertAlignment := vaDefault;
+            end;
 
             s1 := GetAttrValue(childNode, 'readingOrder');
             if (s1 = '1') or (s1 = '2') then
@@ -6364,9 +6361,10 @@ begin
   if (uffHorAlign in AFormat^.UsedFormattingFields) and (AFormat^.HorAlignment <> haDefault)
   then
     case AFormat^.HorAlignment of
-      haLeft  : sAlign := sAlign + 'horizontal="left" ';
-      haCenter: sAlign := sAlign + 'horizontal="center" ';
-      haRight : sAlign := sAlign + 'horizontal="right" ';
+      haLeft   : sAlign := sAlign + 'horizontal="left" ';
+      haCenter : sAlign := sAlign + 'horizontal="center" ';
+      haRight  : sAlign := sAlign + 'horizontal="right" ';
+      haJustify: sAlign := sAlign + 'horizontal="justify" ';
     end;
 
   if (uffVertAlign in AFormat^.UsedFormattingFields) and (AFormat^.VertAlignment <> vaDefault)

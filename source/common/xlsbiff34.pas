@@ -700,12 +700,14 @@ begin
     BIFF3: w := WordLEToN(rec.Align_TextBreak_ParentXF_3) and MASK_XF_HOR_ALIGN;
     BIFF4: w := rec.Align_TextBreak_Orientation_4 AND MASK_XF_HOR_ALIGN;
   end;
-  if (w <= ord(High(TsHorAlignment))) then
-  begin
-    fmt.HorAlignment := TsHorAlignment(w);
-    if fmt.HorAlignment <> haDefault then
-      Include(fmt.UsedFormattingFields, uffHorAlign);
+  case w of
+    MASK_XF_HOR_ALIGN_LEFT     : fmt.HorAlignment := haLeft;
+    MASK_XF_HOR_ALIGN_CENTER   : fmt.HorAlignment := haCenter;
+    MASK_XF_HOR_ALIGN_RIGHT    : fmt.HorAlignment := haRight;
+    MASK_XF_HOR_ALIGN_JUSTIFIED: fmt.HorAlignment := haJustify;
   end;
+  if fmt.HorAlignment <> haDefault then
+    Include(fmt.UsedFormattingFields, uffHorAlign);
 
   // Vertical text alignment
   if FFormat = BIFF4 then

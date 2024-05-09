@@ -897,9 +897,9 @@ begin
       'left'   : FCurrCellFormat.HorAlignment := haLeft;
       'center' : FCurrCellFormat.HorAlignment := haCenter;
       'right'  : FCurrCellFormat.HorAlignment := haRight;
+      'justify': FCurrCellFormat.HorAlignment := haJustify;
       // -- not implemented in fps
-      // 'justify'
-      // 'char"
+      // 'char'
       else      exit;
     end;
     Include(FCurrCellFormat.UsedFormattingFields, uffHorAlign);
@@ -1382,6 +1382,7 @@ begin
     haLeft   : Result := 'text-align:left;';
     haCenter : Result := 'text-align:center;';
     haRight  : Result := 'text-align:right;';
+    haJustify: Result := 'text-align:justify;';
   end;
 end;
 

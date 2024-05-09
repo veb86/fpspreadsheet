@@ -2011,12 +2011,14 @@ begin
 
   // Horizontal text alignment
   b := rec.Align_TextBreak AND MASK_XF_HOR_ALIGN;
-  if (b <= ord(High(TsHorAlignment))) then
-  begin
-    fmt.HorAlignment := TsHorAlignment(b);
-    if fmt.HorAlignment <> haDefault then
-      Include(fmt.UsedFormattingFields, uffHorAlign);
+  case b of
+    MASK_XF_HOR_ALIGN_LEFT     : fmt.HorAlignment := haLeft;
+    MASK_XF_HOR_ALIGN_CENTER   : fmt.HorAlignment := haCenter;
+    MASK_XF_HOR_ALIGN_RIGHT    : fmt.HorAlignment := haRight;
+    MASK_XF_HOR_ALIGN_JUSTIFIED: fmt.HorAlignment := haJustify;
   end;
+  if fmt.HorAlignment <> haDefault then
+    Include(fmt.UsedFormattingFields, uffHorAlign);
 
   // Vertical text alignment
   b := (rec.Align_TextBreak AND MASK_XF_VERT_ALIGN) shr 4;
@@ -3096,9 +3098,11 @@ procedure TsSpreadBIFF8Writer.WriteComments(AStream: TStream;
 var
   index: Integer;
   comment: PsComment;
+  c: Pscomment;
   sheet: TsWorksheet;
 begin
-  exit;      // Remove after comments can be written correctly
+  (*
+   exit;      // Remove after comments can be written correctly
   {$warning TODO: Fix writing of cell comments in BIFF8 (file is readable by OpenOffice, but not by Excel)}
 
   sheet := AWorksheet as TsWorksheet;
@@ -3125,6 +3129,7 @@ begin
     WriteNOTE(AStream, comment, index);
     inc(index);
   end;
+  *)
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4941,6 +4946,7 @@ begin
         haLeft   : b := b or MASK_XF_HOR_ALIGN_LEFT;
         haCenter : b := b or MASK_XF_HOR_ALIGN_CENTER;
         haRight  : b := b or MASK_XF_HOR_ALIGN_RIGHT;
+        haJustify: b := b or MASK_XF_HOR_ALIGN_JUSTIFIED;
       end;
     // Since the default vertical alignment is vaDefault but "0" corresponds
     // to vaTop, we alwys have to write the vertical alignment.

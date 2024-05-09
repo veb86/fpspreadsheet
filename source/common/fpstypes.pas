@@ -507,8 +507,9 @@ type
     @value  haDefault  Default text alignment (left for alphanumeric, right for numbers and dates)
     @value  haLeft     Left-aligned cell text
     @value  haCenter   Centered cell text
-    @value  haRight    Right-aligned cell text }
-  TsHorAlignment = (haDefault, haLeft, haCenter, haRight);
+    @value  haRight    Right-aligned cell text
+    @value  haJustify  Adjust spaces to fill entire cell width. }
+  TsHorAlignment = (haDefault, haLeft, haCenter, haRight, haJustify);
 
   {@@ Indicates vertical text alignment in cells 
     @value  vaDefault  Default vertical alignment (bottom)

@@ -888,12 +888,15 @@ begin
 
   // Horizontal text alignment
   b := rec.Align_TextBreak AND MASK_XF_HOR_ALIGN;
-  if (b <= ord(High(TsHorAlignment))) then
-  begin
-    fmt.HorAlignment := TsHorAlignment(b);
-    if fmt.HorAlignment <> haDefault then
-      Include(fmt.UsedFormattingFields, uffHorAlign);
+  b := rec.Align_TextBreak AND MASK_XF_HOR_ALIGN;
+  case b of
+    MASK_XF_HOR_ALIGN_LEFT     : fmt.HorAlignment := haLeft;
+    MASK_XF_HOR_ALIGN_CENTER   : fmt.HorAlignment := haCenter;
+    MASK_XF_HOR_ALIGN_RIGHT    : fmt.HorAlignment := haRight;
+    MASK_XF_HOR_ALIGN_JUSTIFIED: fmt.HorAlignment := haJustify;
   end;
+  if fmt.HorAlignment <> haDefault then
+    Include(fmt.UsedFormattingFields, uffHorAlign);
 
   // Vertical text alignment
   b := (rec.Align_TextBreak AND MASK_XF_VERT_ALIGN) shr 4;
@@ -2250,6 +2253,7 @@ begin
         haLeft   : b := b or MASK_XF_HOR_ALIGN_LEFT;
         haCenter : b := b or MASK_XF_HOR_ALIGN_CENTER;
         haRight  : b := b or MASK_XF_HOR_ALIGN_RIGHT;
+        haJustify: b := b or MASK_XF_HOR_ALIGN_JUSTIFIED;
         haDefault: ;
       end;
     // Since the default vertical alignment is vaDefault but "0" corresponds

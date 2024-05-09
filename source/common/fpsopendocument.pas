@@ -5273,21 +5273,22 @@ var
 begin
   // Horizontal text alignment
   s := GetAttrValue(ANode, 'fo:text-align');
-  if s = 'start' then
-    AFormat.HorAlignment := haLeft
-  else if s = 'end' then
-    AFormat.HorAlignment := haRight
-  else if s = 'center' then
-    AFormat.HorAlignment := haCenter;
+  case s of
+    'start'  : AFormat.HorAlignment := haLeft;
+    'end'    : AFormat.HorAlignment := haRight;
+    'center' : AFormat.HorAlignment := haCenter;
+    'justify': AFormat.HorAlignment := haJustify;
+    else       AFormat.HorAlignment := haDefault;
+  end;
   if AFormat.HorAlignment <> haDefault then
     Include(AFormat.UsedFormattingFields, uffHorAlign);
 
   // BiDi mode
   s := GetAttrValue(ANode, 'style:writing-mode');
-  if s = 'lr-tb' then
-    AFormat.BiDiMode := bdRTL
-  else if s = 'rl-tb' then
-    AFormat.BiDiMode := bdRTL;
+  case s of
+    'lr-tb': AFormat.BiDiMode := bdRTL;
+    'rl-tb': AFormat.BiDiMode := bdRTL;
+  end;
   if AFormat.BiDiMode <> bdDefault then
     Include(AFormat.UsedFormattingFields, uffBiDi);
 end;
@@ -8841,6 +8842,7 @@ begin
     haLeft   : Result := 'fo:text-align="start" ';
     haCenter : Result := 'fo:text-align="center" ';
     haRight  : Result := 'fo:text-align="end" ';
+    haJustify: Result := 'fo:text-align="justify" ';
   end;
 end;
 
