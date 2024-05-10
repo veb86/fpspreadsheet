@@ -2012,10 +2012,12 @@ begin
   // Horizontal text alignment
   b := rec.Align_TextBreak AND MASK_XF_HOR_ALIGN;
   case b of
-    MASK_XF_HOR_ALIGN_LEFT     : fmt.HorAlignment := haLeft;
-    MASK_XF_HOR_ALIGN_CENTER   : fmt.HorAlignment := haCenter;
-    MASK_XF_HOR_ALIGN_RIGHT    : fmt.HorAlignment := haRight;
-    MASK_XF_HOR_ALIGN_JUSTIFIED: fmt.HorAlignment := haJustify;
+    MASK_XF_HOR_ALIGN_LEFT       : fmt.HorAlignment := haLeft;
+    MASK_XF_HOR_ALIGN_CENTER     : fmt.HorAlignment := haCenter;
+    MASK_XF_HOR_ALIGN_RIGHT      : fmt.HorAlignment := haRight;
+    MASK_XF_HOR_ALIGN_JUSTIFIED  : fmt.HorAlignment := haJustified;
+    MASK_XF_HOR_ALIGN_DISTRIBUTED: fmt.HorAlignment := haDistributed;
+    MASK_XF_HOR_ALIGN_FILLED     : fmt.HorAlignment := haFilled;
   end;
   if fmt.HorAlignment <> haDefault then
     Include(fmt.UsedFormattingFields, uffHorAlign);
@@ -3101,7 +3103,6 @@ var
   c: Pscomment;
   sheet: TsWorksheet;
 begin
-  (*
    exit;      // Remove after comments can be written correctly
   {$warning TODO: Fix writing of cell comments in BIFF8 (file is readable by OpenOffice, but not by Excel)}
 
@@ -3129,7 +3130,6 @@ begin
     WriteNOTE(AStream, comment, index);
     inc(index);
   end;
-  *)
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -4942,11 +4942,13 @@ begin
     b := 0;
     if (uffHorAlign in AFormatRecord^.UsedFormattingFields) then
       case AFormatRecord^.HorAlignment of
-        haDefault: ;
-        haLeft   : b := b or MASK_XF_HOR_ALIGN_LEFT;
-        haCenter : b := b or MASK_XF_HOR_ALIGN_CENTER;
-        haRight  : b := b or MASK_XF_HOR_ALIGN_RIGHT;
-        haJustify: b := b or MASK_XF_HOR_ALIGN_JUSTIFIED;
+        haDefault    : ;
+        haLeft       : b := b or MASK_XF_HOR_ALIGN_LEFT;
+        haCenter     : b := b or MASK_XF_HOR_ALIGN_CENTER;
+        haRight      : b := b or MASK_XF_HOR_ALIGN_RIGHT;
+        haJustified  : b := b or MASK_XF_HOR_ALIGN_JUSTIFIED;
+        haDistributed: b := b or MASK_XF_HOR_ALIGN_DISTRIBUTED;
+        haFilled     : b := b or MASK_XF_HOR_ALIGN_FILLED;
       end;
     // Since the default vertical alignment is vaDefault but "0" corresponds
     // to vaTop, we alwys have to write the vertical alignment.

@@ -608,7 +608,7 @@ end;
 
 procedure TSpreadWriteReadFormatTests.TestWriteRead_Alignment(AFormat: TsSpreadsheetFormat);
 const
-  HORALIGN_TEXT: Array[TsHorAlignment] of String = ('haDefault', 'haLeft', 'haCenter', 'haRight', 'haJustify');
+  HORALIGN_TEXT: Array[TsHorAlignment] of String = ('haDefault', 'haLeft', 'haCenter', 'haRight', 'haJustified', 'haDistributed', 'haFilled');
   VERTALIGN_TEXT: Array[TsVertAlignment] of String = ('vaDefault', 'vaTop', 'vaCenter', 'vaBottom');
 var
   MyWorksheet: TsWorksheet;
@@ -690,6 +690,8 @@ begin
         if MyCell = nil then
           fail('Error in test code. Failed to get cell.');
         horAlign := TsHorAlignment(col);
+        if (horAlign in [haJustified, haDistributed]) then  // not supported by BIFF2
+          horAlign := haDefault;
         CheckEquals(
           GetEnumName(TypeInfo(TsHorAlignment), Integer(horAlign)),
           GetEnumName(TypeInfo(TsHorAlignment), Integer(MyCell^.HorAlignment)),
@@ -716,6 +718,8 @@ begin
             'Test saved vertical alignment mismatch, cell ' + CellNotation(MyWorksheet,row,col)
           );
           horAlign := TsHorAlignment(col);
+          if (AFormat = sfExcel5) and (horAlign = haDistributed) then  // haDistributed not supported by BIFF5
+            horAlign := haJustified;
           CheckEquals(
             GetEnumName(TypeInfo(TsHorAlignment), Integer(horAlign)),
             GetEnumName(TypeInfo(TsHorAlignment), Integer(MyCell^.HorAlignment)),

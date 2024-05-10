@@ -888,12 +888,13 @@ begin
 
   // Horizontal text alignment
   b := rec.Align_TextBreak AND MASK_XF_HOR_ALIGN;
-  b := rec.Align_TextBreak AND MASK_XF_HOR_ALIGN;
   case b of
     MASK_XF_HOR_ALIGN_LEFT     : fmt.HorAlignment := haLeft;
     MASK_XF_HOR_ALIGN_CENTER   : fmt.HorAlignment := haCenter;
     MASK_XF_HOR_ALIGN_RIGHT    : fmt.HorAlignment := haRight;
-    MASK_XF_HOR_ALIGN_JUSTIFIED: fmt.HorAlignment := haJustify;
+    MASK_XF_HOR_ALIGN_JUSTIFIED: fmt.HorAlignment := haJustified;
+    MASK_XF_HOR_ALIGN_FILLED   : fmt.HorAlignment := haFilled;
+    // MASK_XF_HOR_ALIGN_DISTRIBUTED not supported by BIFF5
   end;
   if fmt.HorAlignment <> haDefault then
     Include(fmt.UsedFormattingFields, uffHorAlign);
@@ -2250,11 +2251,13 @@ begin
     b := 0;
     if (uffHorAlign in AFormatRecord^.UsedFormattingFields) then
       case AFormatRecord^.HorAlignment of
-        haLeft   : b := b or MASK_XF_HOR_ALIGN_LEFT;
-        haCenter : b := b or MASK_XF_HOR_ALIGN_CENTER;
-        haRight  : b := b or MASK_XF_HOR_ALIGN_RIGHT;
-        haJustify: b := b or MASK_XF_HOR_ALIGN_JUSTIFIED;
-        haDefault: ;
+        haDefault    : ;
+        haLeft       : b := b or MASK_XF_HOR_ALIGN_LEFT;
+        haCenter     : b := b or MASK_XF_HOR_ALIGN_CENTER;
+        haRight      : b := b or MASK_XF_HOR_ALIGN_RIGHT;
+        haJustified  : b := b or MASK_XF_HOR_ALIGN_JUSTIFIED;
+        haDistributed: b := b or MASK_XF_HOR_ALIGN_JUSTIFIED;  // distributed not supported by BIFF5
+        haFilled     : b := b or MASK_XF_HOR_ALIGN_FILLED;
       end;
     // Since the default vertical alignment is vaDefault but "0" corresponds
     // to vaTop, we alwys have to write the vertical alignment.

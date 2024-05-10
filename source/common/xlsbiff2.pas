@@ -1216,12 +1216,16 @@ begin
 
   // Horizontal alignment
   b := rec.HorAlign_Border_BkGr and MASK_XF_HOR_ALIGN;
-  if (b <= ord(High(TsHorAlignment))) then
-  begin
-    fmt.HorAlignment := TsHorAlignment(b);
-    if fmt.HorAlignment <> haDefault then
-      Include(fmt.UsedFormattingFields, uffHorAlign);
+  case b of
+    MASK_XF_HOR_ALIGN_LEFT     : fmt.HorAlignment := haLeft;
+    MASK_XF_HOR_ALIGN_CENTER   : fmt.HorAlignment := haCenter;
+    MASK_XF_HOR_ALIGN_RIGHT    : fmt.HorAlignment := haRight;
+    MASK_XF_HOR_ALIGN_FILLED   : fmt.HorAlignment := haFilled;
+    // MASK_XF_HOR_ALIGN_JUSTIFIED   not supported by BIFF2
+    // MASK_XF_HOR_ALIGN_DISTRIBUTED not supported by BIFF2
   end;
+  if fmt.HorAlignment <> haDefault then
+    Include(fmt.UsedFormattingFields, uffHorAlign);
 
   // Vertical alignment - not used in BIFF2
   fmt.VertAlignment := vaDefault;
@@ -1832,7 +1836,15 @@ begin
   if (AFormatRecord <> nil) then
   begin
     if (uffHorAlign in AFormatRecord^.UsedFormattingFields) then
-      b := b + byte(AFormatRecord^.HorAlignment);
+      case AFormatRecord^.HorAlignment of
+        haDefault    : ;
+        haLeft       : b := b or MASK_XF_HOR_ALIGN_LEFT;
+        haCenter     : b := b or MASK_XF_HOR_ALIGN_CENTER;
+        haRight      : b := b or MASK_XF_HOR_ALIGN_RIGHT;
+        haFilled     : b := b or MASK_XF_HOR_ALIGN_FILLED;
+        haJustified  : ;  // not supported by BIFF2
+        haDistributed: ;  // not supported by BIFF2
+      end;
     if (uffBorder in AFormatRecord^.UsedFormattingFields) then
     begin
       if cbWest in AFormatRecord^.Border then b := b or $08;

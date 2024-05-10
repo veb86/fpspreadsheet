@@ -504,12 +504,14 @@ type
     rt90DegreeCounterClockwiseRotation, rtStacked);
 
   {@@ Indicates horizontal text alignment in cells 
-    @value  haDefault  Default text alignment (left for alphanumeric, right for numbers and dates)
-    @value  haLeft     Left-aligned cell text
-    @value  haCenter   Centered cell text
-    @value  haRight    Right-aligned cell text
-    @value  haJustify  Adjust spaces to fill entire cell width. }
-  TsHorAlignment = (haDefault, haLeft, haCenter, haRight, haJustify);
+    @value  haDefault      Default text alignment (left for alphanumeric, right for numbers and dates)
+    @value  haLeft         Left-aligned cell text
+    @value  haCenter       Centered cell text
+    @value  haRight        Right-aligned cell text
+    @value  haJustified    Adjusts spaces to fill entire cell width, except for last line
+    @value  haDistributed  like haJustified, but also applied to last line
+    @value  haFilled       text is repeated over width of cell. }
+  TsHorAlignment = (haDefault, haLeft, haCenter, haRight, haJustified, haDistributed, haFilled);
 
   {@@ Indicates vertical text alignment in cells 
     @value  vaDefault  Default vertical alignment (bottom)

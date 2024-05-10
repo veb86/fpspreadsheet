@@ -526,7 +526,11 @@ begin
         'Right':
           HorAlignment := haRight;
         'Justify':
-          HorAlignment := haJustify;
+          HorAlignment := haJustified;
+        'Distributed':
+          HorAlignment := haDistributed;
+        'Filled':
+          HorAlignment := haFilled;
         else
           Exclude(UsedFormattingFields, uffHorAlign);
       end;
@@ -3260,10 +3264,12 @@ begin
     if uffHorAlign in fmt^.UsedFormattingFields then
       case fmt^.HorAlignment of
         haDefault: ;
-        haLeft   : fmtHor := 'ss:Horizontal="Left" ';
-        haCenter : fmtHor := 'ss:Horizontal="Center" ';
-        haRight  : fmtHor := 'ss:Horizontal="Right" ';
-        haJustify: fmtHor := 'ss:Horizontal="Justify" ';
+        haLeft       : fmtHor := 'ss:Horizontal="Left" ';
+        haCenter     : fmtHor := 'ss:Horizontal="Center" ';
+        haRight      : fmtHor := 'ss:Horizontal="Right" ';
+        haJustified  : fmtHor := 'ss:Horizontal="Justify" ';
+        haDistributed: fmtHor := 'ss:Horizontal="Distributed" ';
+        haFilled     : fmtHor := 'ss:Horizontal="Filled" ';
         else
           raise EFPSpreadsheetWriter.Create('[TsSpreadXMLWriter.WriteStyle] Horizontal alignment cannot be handled.');
       end;

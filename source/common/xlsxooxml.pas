@@ -1493,11 +1493,13 @@ begin
           if (nodeName = 'alignment') or (nodeName = 'x:alignment') then begin
             s1 := GetAttrValue(childNode, 'horizontal');
             case s1 of
-              'left'   : fmt.HorAlignment := haLeft;
-              'center' : fmt.HorAlignment := haCenter;
-              'right'  : fmt.HorAlignment := haRight;
-              'justify': fmt.HorAlignment := haJustify;
-              else       fmt.HorAlignment := haDefault;
+              'left'       : fmt.HorAlignment := haLeft;
+              'center'     : fmt.HorAlignment := haCenter;
+              'right'      : fmt.HorAlignment := haRight;
+              'justify'    : fmt.HorAlignment := haJustified;
+              'distributed': fmt.HorAlignment := haDistributed;
+              'fill'       : fmt.HorAlignment := haFilled;
+              else           fmt.HorAlignment := haDefault;
             end;
 
             s1 := GetAttrValue(childNode, 'vertical');
@@ -6361,10 +6363,12 @@ begin
   if (uffHorAlign in AFormat^.UsedFormattingFields) and (AFormat^.HorAlignment <> haDefault)
   then
     case AFormat^.HorAlignment of
-      haLeft   : sAlign := sAlign + 'horizontal="left" ';
-      haCenter : sAlign := sAlign + 'horizontal="center" ';
-      haRight  : sAlign := sAlign + 'horizontal="right" ';
-      haJustify: sAlign := sAlign + 'horizontal="justify" ';
+      haLeft       : sAlign := sAlign + 'horizontal="left" ';
+      haCenter     : sAlign := sAlign + 'horizontal="center" ';
+      haRight      : sAlign := sAlign + 'horizontal="right" ';
+      haJustified  : sAlign := sAlign + 'horizontal="justify" ';
+      hadistributed: sAlign := sAlign + 'horizontal="distributed" ';
+      haFilled     : sAlign := sAlign + 'horizontal="fill" ';
     end;
 
   if (uffVertAlign in AFormat^.UsedFormattingFields) and (AFormat^.VertAlignment <> vaDefault)

@@ -897,7 +897,7 @@ begin
       'left'   : FCurrCellFormat.HorAlignment := haLeft;
       'center' : FCurrCellFormat.HorAlignment := haCenter;
       'right'  : FCurrCellFormat.HorAlignment := haRight;
-      'justify': FCurrCellFormat.HorAlignment := haJustify;
+      'justify': FCurrCellFormat.HorAlignment := haJustified;
       // -- not implemented in fps
       // 'char'
       else      exit;
@@ -1379,10 +1379,12 @@ end;
 function TsHTMLWriter.GetHorAlignAsStyle(AHorAlign: TsHorAlignment): String;
 begin
   case AHorAlign of
-    haLeft   : Result := 'text-align:left;';
-    haCenter : Result := 'text-align:center;';
-    haRight  : Result := 'text-align:right;';
-    haJustify: Result := 'text-align:justify;';
+    haLeft        : Result := 'text-align:left;';
+    haCenter      : Result := 'text-align:center;';
+    haRight       : Result := 'text-align:right;';
+    haJustified,
+    haDistributed : Result := 'text-align:justify;';
+    // no support for haFilled
   end;
 end;
 

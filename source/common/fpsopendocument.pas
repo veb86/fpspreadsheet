@@ -123,6 +123,7 @@ type
     FRepeatedCols: TsRowColRange;
     FRepeatedRows: TsRowColRange;
     FManifestFileEntries: TFPList;
+    FCellFilled: Boolean;
 
    {$IFDEF FPS_CHARTS}
     FChartReader: TsBasicSpreadChartReader;
@@ -5274,12 +5275,22 @@ begin
   // Horizontal text alignment
   s := GetAttrValue(ANode, 'fo:text-align');
   case s of
-    'start'  : AFormat.HorAlignment := haLeft;
-    'end'    : AFormat.HorAlignment := haRight;
-    'center' : AFormat.HorAlignment := haCenter;
-    'justify': AFormat.HorAlignment := haJustify;
-    else       AFormat.HorAlignment := haDefault;
+    'start':
+      AFormat.HorAlignment := haLeft;
+    'end':
+      AFormat.HorAlignment := haRight;
+    'center':
+      AFormat.HorAlignment := haCenter;
+    'justify':
+      if GetAttrValue(ANode, 'css3t:text-justify') = 'distribute' then
+        AFormat.HorAlignment := haDistributed
+      else
+        AFormat.HorAlignment := haJustified;
+    else
+      AFormat.HorAlignment := haDefault;
   end;
+  if FCellFilled then
+    AFormat.HorAlignment := haFilled;
   if AFormat.HorAlignment <> haDefault then
     Include(AFormat.UsedFormattingFields, uffHorAlign);
 
@@ -5507,6 +5518,15 @@ begin
   // formulas...
   if AFormat.Protection <> DEFAULT_CELL_PROTECTION then
     Include(AFormat.UsedFormattingFields, uffProtection);
+
+  // Filled cell (mis-placed horizontal cell alignment)
+  s := GetAttrValue(ANode, 'style:repeat-content');
+  if s = 'true' then
+  begin
+    AFormat.HorAlignment := haFilled;
+    FCellFilled := true;
+  end else
+    FCellFilled := false;
 
   // Disable cell printing
   s := GetAttrValue(ANode, 'style:print-content');
@@ -6504,6 +6524,8 @@ begin
        WritePrintContentStyleXMLAsString(AFormat);
   if addProtection then
     s := s +  WriteCellProtectionStyleXMLAsString(AFormat);
+  if AFormat.HorAlignment = haFilled then
+    s := s + 'style:repeat-content="true" ';
   if s <> '' then
     AppendToStream(AStream,
       '<style:table-cell-properties ' + s + '/>');
@@ -6921,7 +6943,7 @@ begin
     Result := 'formula-hidden'
   else
     Result := 'protected formula-hidden';   // or:  'hidden-and-protected'
-  Result := ' style:cell-protect="' + Result + '"';
+  Result := ' style:cell-protect="' + Result + '" ';
 end;
 
 function TsSpreadOpenDocWriter.WriteCommentXMLAsString(AComment: String): String;
@@ -8839,10 +8861,12 @@ begin
   if not (uffHorAlign in AFormat.UsedFormattingFields) then
     exit;
   case AFormat.HorAlignment of
-    haLeft   : Result := 'fo:text-align="start" ';
-    haCenter : Result := 'fo:text-align="center" ';
-    haRight  : Result := 'fo:text-align="end" ';
-    haJustify: Result := 'fo:text-align="justify" ';
+    haLeft       : Result := 'fo:text-align="start" ';
+    haCenter     : Result := 'fo:text-align="center" ';
+    haRight      : Result := 'fo:text-align="end" ';
+    haJustified  : Result := 'fo:text-align="justify" css3t:text-justify="auto" ';
+    haDistributed: Result := 'fo:text-align="justify" css3t:text-justify="distribute" ';
+    haFilled     : Result := 'fo:text-align="start" '; // also in "style:table-cell-properties": style:repeat-content="true" ';
   end;
 end;
 

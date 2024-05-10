@@ -704,7 +704,9 @@ begin
     MASK_XF_HOR_ALIGN_LEFT     : fmt.HorAlignment := haLeft;
     MASK_XF_HOR_ALIGN_CENTER   : fmt.HorAlignment := haCenter;
     MASK_XF_HOR_ALIGN_RIGHT    : fmt.HorAlignment := haRight;
-    MASK_XF_HOR_ALIGN_JUSTIFIED: fmt.HorAlignment := haJustify;
+    MASK_XF_HOR_ALIGN_FILLED   : fmt.HorAlignment := haFilled;
+    MASK_XF_HOR_ALIGN_JUSTIFIED: if FFormat = BIFF4 then fmt.HorAlignment := haJustified;  // not in BIFF3
+    //MASK_XF_HOR_ALLIGN_DISTRIBUTED  -- not supported by BIFF3/4
   end;
   if fmt.HorAlignment <> haDefault then
     Include(fmt.UsedFormattingFields, uffHorAlign);
