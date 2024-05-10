@@ -458,17 +458,21 @@ begin
     // xpos is x coordinate of left edge of first character
     if FRightToLeft then
       case FHorAlignment of
-        haJustify,
-        haLeft   : xpos := FRect.Left + lineinfo.Width;
-        haCenter : xpos := (FRect.Left + FRect.Right + lineinfo.Width) div 2;
-        haRight  : xpos := FRect.Right;
+        haJustified, haDistributed, haFilled, haLeft:
+          xpos := FRect.Left + lineinfo.Width;
+        haCenter:
+          xpos := (FRect.Left + FRect.Right + lineinfo.Width) div 2;
+        haRight:
+          xpos := FRect.Right;
       end
     else
       case FHorAlignment of
-        haJustify,
-        haLeft   : xpos := FRect.Left;
-        haCenter : xpos := (FRect.Left + FRect.Right - lineinfo.Width) div 2;
-        haRight  : xpos := FRect.Right - lineinfo.Width;
+        haJustified, haDistributed, haFilled, haLeft:
+          xpos := FRect.Left;
+        haCenter:
+          xpos := (FRect.Left + FRect.Right - lineinfo.Width) div 2;
+        haRight:
+          xpos := FRect.Right - lineinfo.Width;
       end;
     DrawLine(pEnd, xpos, ypos, lineinfo.Height, AOverrideTextColor);
     inc(ypos, lineinfo.Height);
@@ -538,17 +542,21 @@ begin
   dx := lineInfo.Height;
   if FRightToLeft then
     case FHorAlignment of
-      haJustify,
-      haLeft   : xpos := FRect.Left + FTotalHeight + dx;
-      haCenter : xpos := (FRect.Left + FRect.Right + FTotalHeight) div 2 - dx;
-      haRight  : xpos := FRect.Right - dx;
+      haJustified, haDistributed, haFilled, haLeft:
+        xpos := FRect.Left + FTotalHeight + dx;
+      haCenter:
+        xpos := (FRect.Left + FRect.Right + FTotalHeight) div 2 - dx;
+      haRight:
+        xpos := FRect.Right - dx;
     end
   else
     case FHorAlignment of
-      haJustify,
-      haLeft   : xpos := FRect.Left + dx;
-      haCenter : xpos := (FRect.Left + FRect.Right - FTotalHeight) div 2;
-      haRight  : xpos := FRect.Right - FTotalHeight + dx;
+      haJustified, haDistributed, haFilled, haLeft:
+        xpos := FRect.Left + dx;
+      haCenter:
+        xpos := (FRect.Left + FRect.Right - FTotalHeight) div 2;
+      haRight:
+        xpos := FRect.Right - FTotalHeight + dx;
     end;
 
   // (2) Draw text line-by-line
@@ -660,10 +668,12 @@ begin
           w := FCanvas.TextWidth(ch);
           // x is at the center of the character here
           case FHorAlignment of
-            haJustify,
-            haLeft   : FCanvas.TextOut(Pt.x - w div 2, Pt.y, ch);
-            haCenter : FCanvas.TextOut(Pt.x - w div 2, Pt.y, ch);
-            haRight  : FCanvas.TextOut(Pt.x - w div 2, Pt.y, ch);
+            haJustified, haDistributed, haFilled, haLeft:
+              FCanvas.TextOut(Pt.x - w div 2, Pt.y, ch);
+            haCenter:
+              FCanvas.TextOut(Pt.x - w div 2, Pt.y, ch);
+            haRight:
+              FCanvas.TextOut(Pt.x - w div 2, Pt.y, ch);
           end;
           inc(y, ALineHeight);
           inc(nChar);
@@ -684,10 +694,12 @@ var
 begin
   // (1) Get starting point
   case FHorAlignment of
-    haJustify,
-    haLeft   : xpos := IfThen(AClockwise, FRect.Left + FTotalHeight, FRect.Left);
-    haCenter : xpos := (FRect.Left + FRect.Right + FTotalHeight*SGN[AClockwise]) div 2;
-    haRight  : xpos := IfThen(AClockwise, FRect.Right, FRect.Right - FTotalHeight);
+    haJustified, haDistributed, haFilled, haLeft:
+      xpos := IfThen(AClockwise, FRect.Left + FTotalHeight, FRect.Left);
+    haCenter:
+      xpos := (FRect.Left + FRect.Right + FTotalHeight*SGN[AClockwise]) div 2;
+    haRight:
+      xpos := IfThen(AClockwise, FRect.Right, FRect.Right - FTotalHeight);
   end;
 
   // (2) Draw text line by line and respect text rotation

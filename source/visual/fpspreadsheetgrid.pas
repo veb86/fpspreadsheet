@@ -1761,7 +1761,7 @@ begin
   r := GetWorksheetRow(ARow);
   case txtalign of
     haLeft,
-    haJustify,    // to do: get a separate option for haJustify; adjust widths of spaces to fill the entire cell.
+    haJustified, haDistributed, haFilled,  // to do: get a separate option for these
     haDefault:
       // overflow to the right
       while (len > ARect.Right - ARect.Left) and (ACol2 < ColCount-1) do
