@@ -4862,19 +4862,20 @@ end;
 function CellResult(AValue: String): TsExpressionResult;
 var
   p: Integer;
+  sheetName: String;
 begin
   Result.ResultType := rtCell;
   p := pos('!', AValue);
   if p = 0 then
   begin
-    ParseCellString(AValue, Result.ResRow, Result.ResCol);
-    Result.ResSheetName := '';
+    ParseSheetCellString(AValue, sheetName, Result.ResRow, Result.ResCol);
+    Result.ResSheetName := sheetName;
   end else
   begin
     Result.ResSheetName := Copy(AValue, 1, p-1);
     ParseCellString(Copy(AValue, p+1, MaxInt), Result.ResRow, Result.ResCol);
-    Result.Worksheet := nil;  // this signals that the worksheet needs still to be determiend
   end;
+  Result.Worksheet := nil;  // this signals that the worksheet needs still to be determined
 end;
 
 function CellResult(ACellRow, ACellCol: Cardinal): TsExpressionResult;

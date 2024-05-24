@@ -2240,7 +2240,7 @@ procedure fpsINDIRECT(var Result: TsExpressionResult;
 { INDIRECT(string_reference, [ref_style])
   returns the reference to a cell based on its string representation
   "string_reference": textual representation of a cell reference.
-  "ref_style": TRUE (default) ndicates that string_reference will be interpreted
+  "ref_style": TRUE (default) indicates that string_reference will be interpreted
   as an A1-style reference. FALSE indicates that string_reference will be
   interpreted as an R1C1-style reference.
 
