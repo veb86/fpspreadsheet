@@ -21,6 +21,8 @@ uses
   xlsconst, {%H-}fpsPatches, fpsUtils,
   fpsnumformat, fpspreadsheet, fpsexprparser;
 
+const
+  EPS = 1E-12;
 
 {------------------------------------------------------------------------------}
 {   Builtin math functions                                                     }
@@ -438,12 +440,18 @@ end;
 
 function MyRoundDown(const AValue: Double; const Digits: TRoundToRange): Double;
 var
-  RV: Double;
+  RV, uValue, tmp, integral: Double;
 begin
+  uValue := abs(AValue);
   RV := IntPower(10, Digits);
-  Result := Trunc(AValue / RV) * RV;
+  tmp := uValue * RV;
+  integral := Int(tmp);
+  if (1-Frac(tmp))/RV < EPS then
+     tmp := integral +1
+  else
+     tmp := integral;
+  Result := abs(tmp/RV)*sign(AValue);
 end;
-
 
 { The Excel ROUNDDOWN function returns a number rounded down to a given number
   of decimal places. Unlike standard rounding, where only numbers less than 5
@@ -462,7 +470,43 @@ begin
     if IsNaN(x) then
       Result := ErrorResult(errWrongType)
     else
-      Result := FloatResult(MyRoundDown(x, -n));
+      Result := FloatResult(MyRoundDown(x, n));
+  end;
+end;
+
+function MyRoundUp(const AValue: Double; const Digits: TRoundToRange): Double;
+var
+  RV, uValue, tmp, integral: Double;
+begin
+  uValue := abs(AValue);
+  RV := IntPower(10, Digits);
+  tmp := uValue * RV;
+  integral := Int(tmp);
+  if ((Frac(tmp)/RV) < EPS) then
+    tmp := integral
+  else
+    tmp := integral +1;
+  Result := abs(tmp/RV) * sign(AValue);
+end;
+
+{ The Excel ROUNDUP function returns a number rounded UP to a given number
+  of decimal places. Unlike standard rounding, where only numbers less than 5
+  are rounded UP, ROUNDUP rounds all numbers up. }
+procedure fpsROUNDUP(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  x: TsExprFloat;
+  n: Integer;
+begin
+  x := ArgToFloat(Args[1]);
+  if IsNaN(x) then
+    Result := ErrorResult(errWrongType)
+  else begin
+    n := Round(x);
+    x := ArgToFloat(Args[0]);
+    if IsNaN(x) then
+      Result := ErrorResult(errWrongType)
+    else
+      Result := FloatResult(MyRoundUp(x, n));
   end;
 end;
 
@@ -2446,7 +2490,8 @@ begin
     AddFunction(cat, 'RADIANS',   'F', 'F',    INT_EXCEL_SHEET_FUNC_RADIANS,    @fpsRADIANS);
     AddFunction(cat, 'RAND',      'F', '',     INT_EXCEL_SHEET_FUNC_RAND,       @fpsRAND);
     AddFunction(cat, 'ROUND',     'F', 'FF',   INT_EXCEL_SHEET_FUNC_ROUND,      @fpsROUND);
-    AddFunction(cat, 'ROUNDDOWN', 'F', 'F',    INT_EXCEL_SHEET_FUNC_ROUNDDOWN,  @fpsROUNDDOWN);
+    AddFunction(cat, 'ROUNDDOWN', 'F', 'FF',   INT_EXCEL_SHEET_FUNC_ROUNDDOWN,  @fpsROUNDDOWN);
+    AddFunction(cat, 'ROUNDUP',   'F', 'FF',   INT_EXCEL_SHEET_FUNC_ROUNDUP,    @fpsROUNDUP);
     AddFunction(cat, 'SIGN',      'F', 'F',    INT_EXCEL_SHEET_FUNC_SIGN,       @fpsSIGN);
     AddFunction(cat, 'SIN',       'F', 'F',    INT_EXCEL_SHEET_FUNC_SIN,        @fpsSIN);
     AddFunction(cat, 'SINH',      'F', 'F',    INT_EXCEL_SHEET_FUNC_SINH,       @fpsSINH);
