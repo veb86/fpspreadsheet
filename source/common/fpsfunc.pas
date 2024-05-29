@@ -2279,6 +2279,37 @@ begin
   Result.ResultType := rtHyperlink;
 end;
 
+{ INDEX(range, row_no, col_no)
+  Searches for a value in an array based on its coordinates.
+  In contrast to Excel, row_no and col_no cannot be omitted. }
+procedure fpsINDEX(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  rng: TsCellRange3d;
+  col: Int64;  // should be cardinal, but using integer due to subtraction
+  row: Int64;  // dto.
+  book: TsWorkbook;
+begin
+  Result := ErrorResult(errArgError);
+  if Length(Args) < 3 then
+    exit;
+  if not (Args[0].ResultType = rtCellRange) then
+    exit;
+  rng := Args[0].ResCellRange;
+  row := ArgToInt(Args[1]) + rng.Row1 - 1;   // The Args are relative to the range
+  col := ArgToInt(Args[2]) + rng.Col1 - 1;
+  if (row < rng.Row1) or (row > rng.Row2) or (col < rng.Col1) or (col > rng.Col2) then
+  begin
+    Result := ErrorResult(errWrongType); // #VALUE! when row/col are outside the range
+    exit;
+  end;
+  if (rng.Sheet1 <> rng.Sheet2) then     // Only range within same sheet allowed.
+    exit;
+  book := TsWorksheet(Args[0].Worksheet).Workbook;
+  Result := CellResult(row, col);
+  Result.ResSheetIndex := rng.Sheet1;
+  Result.ResSheetName := book.GetWorksheetByIndex(rng.Sheet1).Name;
+end;
+
 procedure fpsINDIRECT(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
 { INDIRECT(string_reference, [ref_style])
@@ -2585,6 +2616,7 @@ begin
     AddFunction(cat, 'ADDRESS',   'S', 'IIibs',INT_EXCEL_SHEET_FUNC_ADDRESS,    @fpsADDRESS);
     AddFunction(cat, 'COLUMN',    'I', 'r',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
     AddFunction(cat, 'HYPERLINK', 'S', 'Ss',   INT_EXCEL_SHEET_FUNC_HYPERLINK,  @fpsHYPERLINK);
+    AddFunction(cat, 'INDEX',     'C', 'RII',  INT_EXCEL_SHEET_FUNC_INDEX,      @fpsINDEX);
     AddFunction(cat, 'INDIRECT',  'C', 'Sb',   INT_EXCEL_SHEET_FUNC_INDIRECT,   @fpsINDIRECT);
     AddFunction(cat, 'MATCH',     'I', 'SRi',  INT_EXCEL_SHEET_FUNC_MATCH,      @fpsMATCH);
     AddFunction(cat, 'ROW',       'I', 'r',    INT_EXCEL_SHEET_FUNC_ROW,        @fpsROW);
