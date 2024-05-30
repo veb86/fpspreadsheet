@@ -2350,8 +2350,15 @@ var
   addr: String;
 begin
   Result := ErrorResult(errArgError);
+  if Length(Args) > 0 then
+    case Args[0].ResultType of
+      rtCell   : Result := CellResult(ArgToString(Args[0]));
+      rtString : Result := CellResult(Args[0].ResString);
+    end;
+  (*
   if Length(Args) = 0 then
     exit;
+
   if (Args[0].ResultType = rtCell) then begin
     if Args[0].ResSheetIndex = -1 then
       sheet := TsWorksheet(Args[0].Worksheet)
@@ -2366,6 +2373,7 @@ begin
   end else
   if (Args[0].ResultType = rtString) then
     Result := CellResult(Args[0].ResString);
+   *)
 end;
 
 

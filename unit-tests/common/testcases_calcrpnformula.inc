@@ -11,7 +11,7 @@
   MyWorksheet.WriteNumber  (1, 13,  2);      // N2
   MyWorksheet.WriteNumber  (1, 14,  3);      // O2
 
-  // Test cell for "INDIRECT"
+  // Test cells for "INDIRECT"
   MyWorksheet.WriteText(0, 15, 'M1');        // P1
 
   // Create an error in H2
@@ -3492,6 +3492,13 @@
 
   inc(Row);
   formula := 'INDIRECT("P1")';
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('M1');
+
+  inc(Row);
+  formula := 'INDIRECT("P"&M2)';
   MyWorksheet.WriteText(Row, 0, formula);
   MyWorksheet.WriteFormula(Row, 1, formula);
   SetLength(sollValues, Row+1);
