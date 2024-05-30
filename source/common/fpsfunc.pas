@@ -2324,7 +2324,7 @@ begin
   // Check whether col/row indices are inside the range
   if (row < rng.Row1) or (row > rng.Row2) or (col < rng.Col1) or (col > rng.Col2) then
   begin
-    Result := ErrorResult(errWrongType); // #VALUE! when row/col are outside the range
+    Result := ErrorResult(errIllegalRef); // #REF! when row/col are outside the range
     exit;
   end;
 

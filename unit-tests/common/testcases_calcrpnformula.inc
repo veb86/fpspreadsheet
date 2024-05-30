@@ -3,11 +3,16 @@
 
   // Setting up some test numbers
 
-  // Test range  M1:N3
+  // Test range  M1:O2
   MyWorksheet.WriteText(0, 12, 'A');         // M1
   MyWorksheet.WriteText(0, 13, 'A');         // N1
+  MyWorksheet.WriteText(0, 14, 'B');         // O1
   MyWorksheet.WriteNumber  (1, 12,  1);      // M2
   MyWorksheet.WriteNumber  (1, 13,  2);      // N2
+  MyWorksheet.WriteNumber  (1, 14,  3);      // O2
+
+  // Test cell for "INDIRECT"
+  MyWorksheet.WriteText(0, 15, 'M1');        // P1
 
   // Create an error in H2
   MyWorksheet.WriteFormula (1, 7, '1/0');
@@ -1588,6 +1593,66 @@
   myWorksheet.WriteNumber(Row, 2, RoundTo(12345.6789, 2));
   SetLength(sollValues, Row+1);
   sollValues[Row] := FloatResult(RoundTo(12345.6789, 2));
+
+  if AFormat <> sfExcel2 then begin
+    // ROUNDDOWN
+    inc(Row);
+    formula := 'ROUNDDOWN(1234.56789,1)';
+    MyWorksheet.WriteText(Row, 0, formula);
+    if UseRPNFormula then
+      MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+        RPNNumber(1234.56789,
+        RPNNumber(1,
+        RPNFunc('ROUNDDOWN', nil)))))
+    else
+      MyWorksheet.WriteFormula(Row, 1, formula);
+    MyWorksheet.WriteNumber(Row, 2, 1234.5);
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := FloatResult(1234.5);
+
+    inc(Row);
+    formula := 'ROUNDDOWN(1234.56789,-1)';
+    MyWorksheet.WriteText(Row, 0, formula);
+    if UseRPNFormula then
+      MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+        RPNNumber(1234.56789,
+        RPNNumber(-1,
+        RPNFunc('ROUNDDOWN', nil)))))
+    else
+      MyWorksheet.WriteFormula(Row, 1, formula);
+    MyWorksheet.WriteNumber(Row, 2, 1230.0);
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := FloatResult(1230.0);
+
+    // ROUNDUP
+    inc(Row);
+    formula := 'ROUNDUP(1234.56789,1)';
+    MyWorksheet.WriteText(Row, 0, formula);
+    if UseRPNFormula then
+      MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+        RPNNumber(1234.56789,
+        RPNNumber(1,
+        RPNFunc('ROUNDUP', nil)))))
+    else
+      MyWorksheet.WriteFormula(Row, 1, formula);
+    MyWorksheet.WriteNumber(Row, 2, 1234.6);
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := FloatResult(1234.6);
+
+    inc(Row);
+    formula := 'ROUNDUP(1234.56789,-1)';
+    MyWorksheet.WriteText(Row, 0, formula);
+    if UseRPNFormula then
+      MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
+        RPNNumber(1234.56789,
+        RPNNumber(-1,
+        RPNFunc('ROUNDUP', nil)))))
+    else
+      MyWorksheet.WriteFormula(Row, 1, formula);
+    MyWorksheet.WriteNumber(Row, 2, 1240.0);
+    SetLength(sollValues, Row+1);
+    sollValues[Row] := FloatResult(1240.0);
+  end;
 
   // SIGN
   inc(Row);
@@ -3387,6 +3452,50 @@
   Myworksheet.WriteFormula(Row, 1, formula);
   SetLength(sollValues, Row+1);
   sollValues[Row] := StringResult('Sheet2!R1C1');
+
+  // INDEX
+  inc(Row);
+  formula := 'INDEX(M1:O2,1,1)';
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('A');
+
+  inc(Row);
+  formula := 'INDEX(M1:O1,3)';
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('B');
+
+  inc(Row);
+  formula := 'INDEX(M1:M2,2)';
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := FloatResult(1.0);
+
+  inc(Row);
+  formula := 'INDEX(M1:O2,1,10)';             // Index out of range
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := ErrorResult(errIllegalRef);
+
+  // INDIRECT
+  inc(Row);
+  formula := 'INDIRECT(P1)';
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('A');
+
+  inc(Row);
+  formula := 'INDIRECT("P1")';
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := StringResult('M1');
 
 {
   // COLUMN
