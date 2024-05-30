@@ -2290,20 +2290,41 @@ var
   book: TsWorkbook;
 begin
   Result := ErrorResult(errArgError);
-  if Length(Args) < 3 then
+  if Length(Args) < 2 then
     exit;
   if not (Args[0].ResultType = rtCellRange) then
     exit;
   rng := Args[0].ResCellRange;
-  row := ArgToInt(Args[1]) + rng.Row1 - 1;   // The Args are relative to the range
-  col := ArgToInt(Args[2]) + rng.Col1 - 1;
+  if (rng.Sheet1 <> rng.Sheet2) then     // Only range within same sheet allowed.
+    exit;
+
+  // 1-d array as column
+  if rng.Col1 = rng.Col2 then
+  begin
+    row := ArgToInt(Args[1]) + rng.Row1 - 1;
+    col := rng.Col1;
+  end else
+  // 1-d array as row
+  if rng.Row1 = rng.Row2 then
+  begin
+    col := ArgToInt(Args[1]) + rng.Col1 - 1;
+    row := rng.Row1;
+  end else
+  // 2-d array
+  begin
+    if Length(Args) < 3 then
+      exit;
+    row := ArgToInt(Args[1]) + rng.Row1 - 1;   // The Args are relative to the range
+    col := ArgToInt(Args[2]) + rng.Col1 - 1;
+  end;
+
+  // Check whether col/row indices are inside the range
   if (row < rng.Row1) or (row > rng.Row2) or (col < rng.Col1) or (col > rng.Col2) then
   begin
     Result := ErrorResult(errWrongType); // #VALUE! when row/col are outside the range
     exit;
   end;
-  if (rng.Sheet1 <> rng.Sheet2) then     // Only range within same sheet allowed.
-    exit;
+
   book := TsWorksheet(Args[0].Worksheet).Workbook;
   Result := CellResult(row, col);
   Result.ResSheetIndex := rng.Sheet1;
@@ -2616,7 +2637,7 @@ begin
     AddFunction(cat, 'ADDRESS',   'S', 'IIibs',INT_EXCEL_SHEET_FUNC_ADDRESS,    @fpsADDRESS);
     AddFunction(cat, 'COLUMN',    'I', 'r',    INT_EXCEL_SHEET_FUNC_COLUMN,     @fpsCOLUMN);
     AddFunction(cat, 'HYPERLINK', 'S', 'Ss',   INT_EXCEL_SHEET_FUNC_HYPERLINK,  @fpsHYPERLINK);
-    AddFunction(cat, 'INDEX',     'C', 'RII',  INT_EXCEL_SHEET_FUNC_INDEX,      @fpsINDEX);
+    AddFunction(cat, 'INDEX',     'C', 'RIi',  INT_EXCEL_SHEET_FUNC_INDEX,      @fpsINDEX);
     AddFunction(cat, 'INDIRECT',  'C', 'Sb',   INT_EXCEL_SHEET_FUNC_INDIRECT,   @fpsINDIRECT);
     AddFunction(cat, 'MATCH',     'I', 'SRi',  INT_EXCEL_SHEET_FUNC_MATCH,      @fpsMATCH);
     AddFunction(cat, 'ROW',       'I', 'r',    INT_EXCEL_SHEET_FUNC_ROW,        @fpsROW);
