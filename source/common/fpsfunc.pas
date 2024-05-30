@@ -2279,9 +2279,12 @@ begin
   Result.ResultType := rtHyperlink;
 end;
 
-{ INDEX(range, row_no, col_no)
+{ INDEX(range, row_no [, col_no])
   Searches for a value in an array based on its coordinates.
-  In contrast to Excel, row_no and col_no cannot be omitted. }
+  When the last parameter, col_no, is omitted, the input range must be a
+  1-d vector, either a row or a column.
+  The case of row_no or col_no equal to zero (returning the entire row or column)
+  is not supported as FPSpreadsheet cannot return a cell range, so far. }
 procedure fpsINDEX(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   rng: TsCellRange3d;
