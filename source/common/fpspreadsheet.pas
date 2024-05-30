@@ -1409,7 +1409,12 @@ begin
                         if res.ResSheetName = '' then
                           res.Worksheet := self
                         else
-                        res.Worksheet := Workbook.GetWorksheetByName(res.ResSheetName);
+                          res.Worksheet := Workbook.GetWorksheetByName(res.ResSheetName);
+                        if res.Worksheet = nil then
+                        begin
+                          WriteErrorValue(lCell, errIllegalRef);
+                          exit;
+                        end;
                       end else
                       if res.ResSheetName <> '' then
                         res.Worksheet := Workbook.GetWorksheetByName(res.ResSheetname);

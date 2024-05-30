@@ -1623,8 +1623,7 @@ begin
   fs := ExprFormatSettings;
   try
     UpdateExprFormatSettings;
-//  ExprFormatSettings := FFormatSettings;
-//  FFormatSettings := ExprFormatSettings;
+    AResult.Worksheet := FWorksheet;
     FExprNode.GetNodeValue(AResult);
   finally
     ExprFormatSettings := fs;

@@ -2335,10 +2335,10 @@ begin
     begin
       book := TsWorksheet(Args[0].Worksheet).Workbook;
       sheet := book.GetWorksheetByIndex(Args[0].ResSheetIndex);
+      Result.Worksheet := sheet;
     end;
     addr := sheet.ReadAsText(Args[0].ResRow, Args[0].ResCol);
     Result := CellResult(addr);
-    Result.Worksheet := sheet;
   end else
   if (Args[0].ResultType = rtString) then
     Result := CellResult(Args[0].ResString);
