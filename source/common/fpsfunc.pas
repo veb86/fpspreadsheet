@@ -2283,8 +2283,8 @@ end;
   Searches for a value in an array based on its coordinates.
   When the last parameter, col_no, is omitted, the input range must be a
   1-d vector, either a row or a column.
-  The case of row_no or col_no equal to zero (returning the entire row or column)
-  is not supported as FPSpreadsheet cannot return a cell range, so far. }
+  Specification of row_no or col_no as zero returns the entire column or row
+  within the range. }
 procedure fpsINDEX(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   rng: TsCellRange3d;
@@ -2319,6 +2319,22 @@ begin
       exit;
     row := ArgToInt(Args[1]) + rng.Row1 - 1;   // The Args are relative to the range
     col := ArgToInt(Args[2]) + rng.Col1 - 1;
+    if ArgToInt(Args[1]) = 0 then // entire column within range
+    begin
+      if (col >= rng.Col1) and (col <= rng.Col2) then
+        Result := CellRangeResult(Args[0].Worksheet, rng.Sheet1, rng.Sheet2, rng.Row1, col, rng.Row2, col)
+      else
+        Result := ErrorResult(errIllegalRef);
+      exit;
+    end;
+    if ArgToInt(Args[2]) = 0 then  // entire row within range
+    begin
+      if (row >= rng.Row1) and (row <= rng.Row2) then
+        Result := CellRangeResult(Args[0].Worksheet, rng.Sheet1, rng.Sheet2, row, rng.Col1, row, rng.Col2)
+      else
+        Result := ErrorResult(errIllegalRef);
+      exit;
+    end;
   end;
 
   // Check whether col/row indices are inside the range
@@ -2330,6 +2346,7 @@ begin
 
   book := TsWorksheet(Args[0].Worksheet).Workbook;
   Result := CellResult(row, col);
+  Result.Worksheet := Args[0].Worksheet;
   Result.ResSheetIndex := rng.Sheet1;
   Result.ResSheetName := book.GetWorksheetByIndex(rng.Sheet1).Name;
 end;
@@ -2344,10 +2361,12 @@ procedure fpsINDIRECT(var Result: TsExpressionResult;
   interpreted as an R1C1-style reference.
 
   NOTE: ref_style and mixing of A1 and R1C1 notation is not supported. }
+{
 var
   sheet: TsWorksheet;
   book: TsWorkbook;
   addr: String;
+}
 begin
   Result := ErrorResult(errArgError);
   if Length(Args) > 0 then

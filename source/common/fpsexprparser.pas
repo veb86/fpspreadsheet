@@ -855,6 +855,8 @@ function ArgToString(Arg: TsExpressionResult): String;
 procedure ArgsToFloatArray(const Args: TsExprParameterArray;
   out AData: TsExprFloatArray; out AError: TsErrorValue);
 function BooleanResult(AValue: Boolean): TsExpressionResult;
+function CellRangeResult(AWorksheet: TsBasicWorksheet; ASheet1Index, ASheet2Index: Integer;
+  ARow1, ACol1, ARow2, ACol2: Cardinal): TsExpressionResult; overload;
 function CellResult(AValue: String): TsExpressionResult; overload;
 function CellResult(ACellRow, ACellCol: Cardinal): TsExpressionResult; overload;
 function DateTimeResult(AValue: TDateTime): TsExpressionResult;
@@ -4085,7 +4087,7 @@ end;
 
 procedure TsFunctionCallBackExprNode.GetNodeValue(out AResult: TsExpressionResult);
 begin
-  AResult.ResultType := NodeType;     // was at end!
+  AResult.ResultType := NodeType;
   if Length(FArgumentParams) > 0 then
     CalcParams;
   FCallBack(AResult, FArgumentParams);
@@ -4103,7 +4105,7 @@ end;
 
 procedure TFPFunctionEventHandlerExprNode.GetNodeValue(out Result: TsExpressionResult);
 begin
-  Result.ResultType := NodeType;    // was at end
+  Result.ResultType := NodeType;
   if Length(FArgumentParams) > 0 then
     CalcParams;
   FCallBack(Result, FArgumentParams);
@@ -4360,8 +4362,8 @@ begin
   FError := errOK;
   book := TsWorkbook(GetWorkbook);
 
-  F3dRange := ((ASheet1 <> '') and (ASheet2 <> '') { and (ASheet1 <> ASheet2)}) or
-    ((ASheet1 <> '') and (ASheet2 = ''));
+  F3dRange := ((ASheet1 <> '') and (ASheet2 <> '')) or
+              ((ASheet1 <> '') and (ASheet2 = ''));
 
   FSheetIndex[1] := book.GetWorksheetIndex(ASheet1);
   if (FSheetIndex[1] = -1) and (ASheet1 <> '')  then
@@ -4858,6 +4860,20 @@ begin
   Result.ResBoolean := AValue;
 end;
 
+function CellRangeResult(AWorksheet: TsBasicWorksheet;
+  ASheet1Index, ASheet2Index: Integer;
+  ARow1, ACol1, ARow2, ACol2: Cardinal): TsExpressionResult;
+begin
+  Result.ResultType := rtCellRange;
+  Result.Worksheet := AWorksheet;   // Worksheet in which the formula sits
+  Result.ResCellRange.Sheet1 := ASheet1Index;
+  Result.ResCellRange.Sheet2 := ASheet2Index;
+  Result.ResCellRange.Row1 := ARow1;
+  Result.ResCellRange.Col1 := ACol1;
+  Result.ResCellRange.Row2 := ARow2;
+  Result.ResCellRange.Col2 := ACol2;
+end;
+
 function CellResult(AValue: String): TsExpressionResult;
 var
   p: Integer;
@@ -4882,6 +4898,7 @@ begin
   Result.ResultType := rtCell;
   Result.ResRow := ACellRow;
   Result.ResCol := ACellCol;
+  Result.Worksheet := nil;
 end;
 
 function DateTimeResult(AValue: TDateTime): TsExpressionResult;
@@ -4934,6 +4951,8 @@ begin
         Result := (cell = nil) or (cell^.ContentType = cctEmpty) or
           ((cell^.ContentType = cctUTF8String) and (cell^.UTF8StringValue = ''));
       end;
+    rtCellRange:
+      Result := false;
   end;
 end;
 
@@ -4960,6 +4979,7 @@ begin
                        Result := TryStrToInt64(cell^.UTF8StringValue, i);
                    end;
                end;
+    rtCellRange: Result := false;
   end;
 end;
 
@@ -4974,6 +4994,7 @@ begin
                 cell := (AValue.Worksheet as TsWorksheet).FindCell(AValue.ResRow, AValue.ResCol);
                 Result := (cell <> nil) and (cell^.ContentType = cctUTF8String);
               end;
+    rtCellRange: Result := false;
   end;
 end;
 

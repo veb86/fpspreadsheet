@@ -3482,6 +3482,20 @@
   SetLength(sollValues, Row+1);
   sollValues[Row] := ErrorResult(errIllegalRef);
 
+  inc(Row);
+  formula := 'SUM(INDEX(M1:O2,0,2))';       // Sum of numbers in 2nd column of M1:O2
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := IntegerResult(2);
+
+  inc(Row);
+  formula := 'SUM(INDEX(M1:O2,2,0))';       // Sum of numbers in 2nd row of M1:O2
+  MyWorksheet.WriteText(Row, 0, formula);
+  MyWorksheet.WriteFormula(Row, 1, formula);
+  SetLength(sollValues, Row+1);
+  sollValues[Row] := IntegerResult(6);
+
   // INDIRECT
   inc(Row);
   formula := 'INDIRECT(P1)';
