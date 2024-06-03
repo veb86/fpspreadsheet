@@ -2410,7 +2410,7 @@ end;
   @param   ACompareOp  Identifier for the comparing operation extracted - see TsCompareOperation
   @returns Input string with the comparing characters stripped.
 -------------------------------------------------------------------------------}
-function AnalyzeComparestr(AString: String; out ACompareOp: TsCompareOperation): String;
+function AnalyzeCompareStr(AString: String; out ACompareOp: TsCompareOperation): String;
 
   procedure RemoveChars(ACount: Integer; ACompare: TsCompareOperation);
   begin

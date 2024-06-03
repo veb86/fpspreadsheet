@@ -2403,8 +2403,6 @@
   end;
 
   // COUNTIF
-{                       currently no support for COUNTIF
-
   if AFormat <> sfExcel2 then begin
     inc(Row);
     formula := 'COUNTIF(M1:N3,1)';
@@ -2472,11 +2470,11 @@
         RPNFunc('COUNTIF', nil)))))
     else
       Myworksheet.WriteFormula(Row, 1, formula);
-    MyWorksheet.WriteNubmer(Row, 2, 2);
+    MyWorksheet.WriteNumber(Row, 2, 2);
     SetLength(sollValues, Row+1);
     sollValues[Row] := IntegerResult(2);
   end;
-                                    }
+
   // MAX
   inc(Row);
   formula := 'MAX(1,1.1,1.2,0.9,0.8)';
@@ -2660,10 +2658,10 @@
     SetLength(sollValues, Row+1);
     sollValues[Row] := FloatResult(SumOfSquares(STATS_NUMBERS));
 
-                      {   ---- SUMIF currently not supported
+   //                   {   ---- SUMIF currently not supported
     // SUMIF
     inc(Row);
-    formula = 'SUMIF(M1:N3,1)';
+    formula := 'SUMIF(M1:N3,1)';
     MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
@@ -2671,21 +2669,21 @@
         RPNNumber(1,                    // "1" is in M2
         RPNFunc('SUMIF', 2, nil)))))
     else
-      MyWorksheet.WriteRPNFormula(Row, 1, formula);
+      MyWorksheet.WriteFormula(Row, 1, formula);
     Myworksheet.WriteNumber(Row, 2, 1);
     SetLength(sollValues, Row+1);
     sollValues[Row] := FloatResult(1);
 
     inc(Row);
     formula := 'SUMIF(M1:N3,">=1")';
-    MyWorksheet.WriteText(Row, 0, formul);
+    MyWorksheet.WriteText(Row, 0, formula);
     if UseRPNFormula then
       MyWorksheet.WriteRPNFormula(Row, 1, CreateRPNFormula(
         RPNCellRange('M1:N3',
         RPNString('>=1',                    // M2=1, N2=2 --> 2
         RPNFunc('SUMIF', 2, nil)))))
     else
-      MyWorksheet.WriteFormula(Row, 1 formula);
+      MyWorksheet.WriteFormula(Row, 1, formula);
     MyWorksheet.WriteNumber(Row, 2, 1.0+2.0);
     SetLength(sollValues, Row+1);
     sollValues[Row] := FloatResult(1.0 + 2.0);
@@ -2700,7 +2698,7 @@
         RPNFunc('SUMIF', 2, nil)))))
     else
       Myworksheet.WriteFormula(Row, 1, formula);
-    MyWorksheet.WriteFormula(Row, 2, 1);
+    MyWorksheet.WriteNumber(Row, 2, 1);
     SetLength(sollValues, Row+1);
     sollValues[Row] := FloatResult(1);
 
@@ -2745,7 +2743,7 @@
     MyWorksheet.WriteNumber(Row, 2, 1);
     SetLength(sollValues, Row+1);
     sollValues[Row] := FloatResult(1);
-    }
+
   end;
 
   // VAR

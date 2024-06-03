@@ -12,13 +12,12 @@ type
   TsSpreadOOXMLReaderCrypto = class(TsSpreadOOXMLReader)
   private
     FNeedsPassword: Boolean;
-  protected
-    function NeedsPassword(AStream: TStream): Boolean; override;
-    function SupportsDecryption: Boolean; override;
   public
     class function CheckFileFormat(AStream: TStream): boolean; override;
+    function NeedsPassword(AStream: TStream): Boolean; override;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
+    function SupportsDecryption: Boolean; override;
   end;
 
 var

@@ -20,10 +20,11 @@ type
   protected
     function Decrypt(AStream: TStream; ADecryptionInfo: TsOpenDocManifestFileEntry;
       APassword: String; ADestStream: TStream; out AErrorMsg: String): Boolean; override;
-    function SupportsDecryption: Boolean; override;
     {$IFDEF UNZIP_ABBREVIA}
     function UnzipToStream(AStream: TStream; AZippedFile: String; ADestStream: TStream): Boolean; override;
     {$ENDIF}
+  public
+    function SupportsDecryption: Boolean; override;
   end;
 
 var
