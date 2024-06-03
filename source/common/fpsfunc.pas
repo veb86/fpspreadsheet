@@ -28,6 +28,20 @@ type
   TsFuncType = (ftCountIF, ftCountIFS, ftSumIF, ftSUMIFS, ftAverageIF, ftAverageIFS);
   TsCompareType = (ctNumber, ctString, ctEmpty);
 
+  { Helper class for calculating COUNTIF(S) or SUMIF(S) or AVERAGEIF(S) formulas.
+
+    Parameters are defined in the constructor:
+    - Args: array of TsExpressionParameters, provided by the expression parser.
+    - AValueRangeIndex: Index in Args defining the parameters for the range,
+      in which values are added for SUMIF(S), AVERAGEIF(S).
+    - ACriteriaRangeIndex: Index in Args defining the first range parameter
+      for comparing with the criterial.
+    - ACriteriaIndex: Index in Args defining the comparison expression, e.g. '>10'
+    - AFuncType: defines the function to be calculated.
+
+    In COUNTIFS, SUMIFS, AVERAGEIFS the criteria range and criteria parameters
+    can be repeated (up to 127, by Excel specification, not checked here).
+  }
   TsFuncComparer = class
   private
     FArgs: TsExprParameterArray;
@@ -1771,312 +1785,6 @@ begin
   Result.ResInteger := n;
 end;
 
-const
-  rtCOUNT = 0;
-  rtSUM = 1;
-  rtAVG = 2;
-
-procedure DoIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray;
-  ARangeIndex, AConditionRangeIndex, AConditionIndex, AResultType: Integer);
-{ Helper function for COUNTIF or SUMIF or AVERAGEIF (depending on AReturnType,
-  see rtXXXX constants):
-  - Args[ARangeIndex] indicates the cell range in which cells will be counted,
-    added or averaged, when the condition is met.
-  - Args[AConditionRangeIndex] indicates the cell range which is compared
-    according to Args[ACondition]
-  - Args[ACondition] specifies the condition which is checked.
-}
-type
-  TCompareType = (ctEmpty, ctString, ctNumber);
-var
-  condIdx, condRngIdx, n: Integer;
-  r, c: LongInt;
-  dr, dc: LongInt;
-  cell, addcell: PCell;
-  s: String;
-  f: Double;
-  dt: TDateTime;
-  book: TsWorkbook;
-  sheet0: TsWorksheet;
-  sheet2: TsWorksheet;
-  compareNumber: Double = 0.0;
-  compareStr: String = '';
-  compareOp: TsCompareOperation = coEqual;
-  compareType: TCompareType;
-  addNumber: Double;
-  fs: TFormatSettings;
-  count: Integer;
-  sum: Double;
-
-  procedure DoCompareNumber(ANumber, AAddNumber: Float);
-  var
-    ok: Boolean;
-  begin
-    ok := false;
-    case compareOp of
-      coEqual        : if ANumber = compareNumber then ok := true;
-      coLess         : if ANumber < compareNumber then ok := true;
-      coGreater      : if ANumber > compareNumber then ok := true;
-      coLessEqual    : if ANumber <= compareNumber then ok := true;
-      coGreaterEqual : if ANumber >= compareNumber then ok := true;
-      coNotEqual     : if ANumber <> compareNumber then ok := true;
-    end;
-    if ok then
-      case AResultType of
-        rtCOUNT: inc(count);
-        rtSUM  : sum := sum + AAddNumber;
-        rtAVG  : begin inc(count); sum := sum + AAddNumber; end;
-      end;
-  end;
-
-  procedure DoCompareString(AStr: String; AAddNumber: Float);
-  var
-    ok: Boolean;
-  begin
-    ok := false;
-    AStr := UTF8Lowercase(AStr);
-    case compareOp of
-      coEqual        : if AStr = compareStr then ok := true;
-      coLess         : if AStr < compareStr then ok := true;
-      coGreater      : if AStr > compareStr then ok := true;
-      coLessEqual    : if AStr <= compareStr then ok := true;
-      coGreaterEqual : if AStr >= compareStr then ok := true;
-      coNotEqual     : if AStr <> compareStr then ok := true;
-    end;
-    if ok then
-      case AResultType of
-        rtCOUNT: inc(count);
-        rtSUM  : sum := sum + AAddNumber;
-        rtAVG  : begin inc(count); sum := sum + AAddNumber; end;
-      end;
-  end;
-
-  procedure DoCompareEmpty(IsEmpty: Boolean; AAddNumber: Float);
-  var
-    ok: Boolean;
-  begin
-    ok := false;
-    case compareOp of
-      coEqual        : if isEmpty then ok := true;
-      coNotEqual     : if not isEmpty then ok := true;
-    end;
-    if ok then
-      case AResultType of
-        rtCOUNT: inc(count);
-        rtSUM  : sum := sum + AAddNumber;
-        rtAVG  : begin inc(count); sum := sum + AAddNumber; end;
-      end;
-  end;
-
-begin
-  // Simple cases
-  if (Length(Args) < 1) then begin
-    AResult := IntegerResult(0);
-    exit;
-  end;
-
-  if (Length(Args) < 2) then
-    AResult := ErrorResult(errArgError);
-
-  if (ARangeIndex < 0) or (ARangeIndex >= Length(Args)) then
-    raise Exception.Create('[DoIF] Range index error.');
-  if (AConditionRangeIndex < 0) or (AConditionRangeIndex >= Length(Args)) then
-    raise Exception.Create('[DoIF] Condition range index error.');
-  if (AConditionIndex < 0) or (AConditionIndex >= Length(Args)) then
-    raise Exception.Create('[DoIF] Condition index error.');
-
-  // Get format settings for string-to-float or -to-datetime conversion
-  if (Args[AConditionRangeIndex].ResultType in [rtCell, rtCellRange]) then
-    fs := (Args[AConditionRangeIndex].Worksheet as TsWorksheet).FormatSettings
-  else
-  begin
-    AResult := ErrorResult(errArgError);
-    exit;
-  end;
-
-  count := 0;
-  sum := 0.0;
-
-  // Iterate over all conditions
-  condIdx := AConditionIndex;
-  condRngIdx := AConditionRangeIndex;
-  while (condIdx < Length(Args)) and (condRngIdx < Length(Args)) do
-  begin
-    // Get compare operation and compare value
-    if (Args[condIdx].ResultType = rtCell) then
-    begin
-      cell := ArgToCell(Args[condIdx]);
-      if cell = nil then
-        comparetype := ctEmpty
-      else
-        case cell^.ContentType of
-          cctNumber:
-            begin
-              compareNumber := cell^.NumberValue;
-              compareType := ctNumber;
-            end;
-          cctDateTime:
-            begin
-              compareNumber := cell^.DateTimevalue;
-              compareType := ctNumber;
-            end;
-          cctBool:
-            begin
-              if cell^.BoolValue then compareNumber := 1.0 else compareNumber := 0.0;
-              compareType := ctNumber;
-            end;
-          cctUTF8String:
-            begin
-              compareStr := UTF8Lowercase(cell^.UTF8StringValue);
-              compareType := ctString;
-            end;
-          cctEmpty:
-            begin
-              compareType := ctEmpty;
-            end;
-          cctError:
-            ; // what to do here?
-        end;
-    end else
-    begin
-      s := ArgToString(Args[condIdx]);
-      if (Length(s) > 1) and (s[1] in ['=', '<', '>']) then
-        s := AnalyzeCompareStr(s, compareOp);
-      if s = '' then
-        compareType := ctEmpty
-      else
-      if TryStrToInt(s, n) then
-      begin
-        compareNumber := n;
-        compareType := ctNumber;
-      end else
-      if TryStrToFloat(s, f, fs) then
-      begin
-        compareNumber := f;
-        compareType := ctNumber;
-      end else
-      if TryStrToDate(s, dt, fs) or TryStrToTime(s, dt, fs) or TryStrToDateTime(s, dt, fs) then
-      begin
-        compareNumber := dt;
-        compareType := ctNumber;
-      end
-      else
-      begin
-        compareStr := UTF8Lowercase(s);
-        compareType := ctString;
-      end;
-    end;
-
-    // Empty cells cannot be checked for <=, <, >, >=  --> error
-    if (compareType = ctEmpty) and not (compareOp in [coEqual, coNotEqual]) then
-    begin
-      AResult := ErrorResult(errArgError);
-      exit;
-    end;
-
-    // Strings cannot be added --> error
-    if (AResultType > rtCount) and (compareType = ctString) and (Length(Args) = 2) then
-    begin
-      AResult := ErrorResult(errArgError);
-      exit;
-    end;
-
-    // The sum of empty cells is be 0.
-    if (AResultType > rtCount) and (compareType = ctEmpty) and (Length(Args) = 2) then
-    begin
-      AResult := FloatResult(0.0);
-      exit;
-    end;
-
-    // Offsets to "add" range
-    if (Args[ARangeIndex].ResultType = rtCellRange) and (Args[condRngIdx].ResultType = rtCellRange) then
-    begin
-      dr := LongInt(Args[ARangeIndex].ResCellRange.Row1) - LongInt(Args[condRngIdx].ResCellRange.Row1);
-      dc := LongInt(Args[ARangeIndex].ResCellRange.Col1) - LongInt(Args[condRngIdx].ResCellRange.Col1);
-    end else
-    if (Args[ARangeIndex].ResultType = rtCell) and (Args[condRngIdx].ResultType = rtCell) then
-    begin
-      dr := LongInt(Args[ARangeIndex].ResRow) - LongInt(Args[condRngIdx].ResRow);
-      dc := LongInt(Args[ARangeIndex].ResCol) - LongInt(Args[condRngIdx].ResRow);
-    end else
-    begin
-      AResult := ErrorResult(errArgError);
-      exit;
-    end;
-
-    // Iterate through range
-    if (Args[0].ResultType = rtCell) then
-      case compareType of
-        ctNumber : DoCompareNumber(ArgToFloat(Args[condRngIdx]), ArgToFloat(Args[ArangeIndex]));
-        ctString : DoCompareString(ArgToString(Args[condRngIdx]), ArgToFloat(Args[ARangeIndex]));
-        ctEmpty  : DoCompareEmpty(ArgToString(Args[condRngIdx]) = '', ArgToFloat(Args[ARangeIndex]));
-      end
-    else
-    if (Args[condRngIdx].ResultType = rtCellRange) then begin
-      if Args[condRngIdx].ResCellRange.Sheet1 <> Args[condRngIdx].ResCellRange.Sheet2 then begin
-        AResult := ErrorResult(errArgError);
-        exit;
-      end;
-      if (Args[ARangeIndex].ResCellRange.Sheet1 <> Args[ARangeIndex].ResCellrange.Sheet2) then
-      begin
-        AResult := ErrorResult(errArgError);
-        exit;
-      end;
-      book := TsWorkbook(TsWorksheet(Args[condRngIdx].Worksheet).Workbook);
-      sheet0 := book.GetWorksheetByIndex(Args[condRngIdx].ResCellRange.Sheet1);
-      sheet2 := book.GetWorksheetbyIndex(Args[ARangeIndex].ResCellrange.Sheet1);
-      for r := Args[condRngIdx].ResCellRange.Row1 to Args[condRngIdx].ResCellRange.Row2 do
-      begin
-        for c := Args[condRngIdx].ResCellRange.Col1 to Args[condRngIdx].ResCellRange.Col2 do
-        begin
-          // Get value to be added for SUM and AVG. Not needed for counting (AResultType = rtCOUNT)
-          addnumber := 0;
-          if AResultType > rtCOUNT then
-          begin
-            addCell := sheet2.FindCell(r + dr, c + dc);
-            if addcell <> nil then
-              case addcell^.Contenttype of
-                cctNumber  : addnumber := addcell^.NumberValue;
-                cctDateTime: addnumber := addcell^.DateTimeValue;
-                cctBool    : if addcell^.BoolValue then addnumber := 1;
-              end;
-          end;
-
-          cell := sheet0.FindCell(r, c);
-          case compareType of
-            ctNumber:
-              if cell <> nil then
-              begin
-                case cell^.ContentType of
-                  cctNumber:
-                    DoCompareNumber(cell^.NumberValue, addNumber);
-                  cctDateTime:
-                    DoCompareNumber(cell^.DateTimeValue, addNumber);
-                  cctBool:
-                    DoCompareNumber(IfThen(cell^.Boolvalue, 1, 0), addNumber);
-                end;
-              end;
-            ctString:
-              if (cell <> nil) and (cell^.ContentType = cctUTF8String) then
-                DoCompareString(cell^.Utf8StringValue, addNumber);
-            ctEmpty:
-              DoCompareEmpty((cell = nil) or ((cell <> nil) and (cell^.ContentType = cctEmpty)), addNumber);
-          end;
-        end;
-      end;
-    end;
-
-    inc(condIdx, 2);
-    inc(condRngIdx, 2);
-  end;
-
-  case AResultType of
-    rtCOUNT: AResult := IntegerResult(count);
-    rtSUM  : AResult := FloatResult(sum);
-    rtAVG  : if count > 0 then AResult := FloatResult(sum/count) else AResult := ErrorResult(errDivideByZero);
-  end;
-end;
-
 procedure fpsAVERAGEIF(var AResult: TsExpressionresult; const Args: TsExprParameterArray);
 { Calculates the average value of the cell values if they meet a given condition.
     AVERAGEIF( range, condition, [ave_range] )
@@ -2087,22 +1795,17 @@ procedure fpsAVERAGEIF(var AResult: TsExpressionresult; const Args: TsExprParame
     "range" are used.}
 var
   cmp: TsFuncComparer;
+  vr, cr, c: Integer;
 begin
-  if Length(Args) = 2 then
-    cmp := TsFuncComparer.Create(Args, 0, 0, 1, ftAVERAGEIF)
-  else
-    cmp := TsFuncComparer.Create(Args, 2, 0, 1, ftAVERAGEIF);
+  cr := 0;   // (First) criteria range arg index
+  c := 1;    // (First) criteria arg index.
+  if Length(Args) = 2 then vr := 0 else vr := 2;  // value range arg index
+  cmp := TsFuncComparer.Create(Args, vr, cr, c, ftAVERAGEIF);
   try
     AResult := cmp.Execute;
   finally
     cmp.Free;
   end;
-  {
-  if Length(Args) = 2 then
-    DoIF(AResult, Args, 0, 0, 1, rtAVG)
-  else
-    DoIF(AResult, Args, 2, 0, 1, rtAVG);
-    }
 end;
 
 procedure fpsAVERAGEIFS(var AResult: TsExpressionresult; const Args: TsExprParameterArray);
@@ -2122,7 +1825,6 @@ begin
   finally
     cmp.Free;
   end;
-//  DoIF(AResult, Args, 0, 1, 2, rtAVG);
 end;
 
 procedure fpsCOUNTIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2140,7 +1842,6 @@ begin
   finally
     cmp.Free;
   end;
-  //DoIF(AResult, Args, 0, 0, 1, rtCOUNT);
 end;
 
 procedure fpsCOUNTIFS(var AResult: TsExpressionresult; const Args: TsExprParameterArray);
@@ -2160,7 +1861,6 @@ begin
   finally
     cmp.Free;
   end;
-  //DoIF(AResult, Args, 0, 1, 2, rtCOUNT);
 end;
 
 procedure fpsSUMIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2175,8 +1875,8 @@ var
   cmp: TsFuncComparer;
   vr, cr, c: Integer;
 begin
-  cr := 0;   // criteria range arg index
-  c := 1;    // criteria arg index
+  cr := 0;   // First criteria range arg index
+  c := 1;    // First criteria arg index
   if Length(Args) = 2 then
     vr := 0  // value range index
   else
@@ -2187,12 +1887,6 @@ begin
   finally
     cmp.Free;
   end;
-  {
-  if Length(Args) = 2 then
-    DoIF(AResult, Args, 0, 0, 1, rtSUM)
-  else
-    DoIF(AResult, Args, 2, 0, 1, rtSUM);
-    }
 end;
 
 procedure fpsSUMIFS(var AResult: TsExpressionresult; const Args: TsExprParameterArray);
@@ -2212,7 +1906,6 @@ begin
   finally
     cmp.Free;
   end;
-//  DoIF(AResult, Args, 0, 1, 2, rtSUM);
 end;
 
 procedure fpsMAX(var Result: TsExpressionResult; const Args: TsExprParameterArray);
