@@ -162,13 +162,12 @@ end;
   returns the result to be used by the formula engine. }
 function TsFuncComparer.Execute: TsExpressionResult;
 var
-  r, r1, r2, c, c1, c2, dr, dc, ridx, cidx: Integer;
+  r, r1, r2, c, c1, c2, rIdx, cIdx: Integer;
   critIdx: Integer;
   critRangeIdx: Integer;
   critSheet: TsBasicWorksheet;
   valueSheet: TsBasicWorksheet;
   matches: Boolean;
-  cell: PCell;
   count: Integer;
   sum: Double;
 begin
@@ -432,19 +431,29 @@ begin
   end;
 
   // Special requirement for xxxIFS operations
+
+  // Pairs of criteria range and criteria arguments required in addition to valuerange
+  case FFuncType of
+    ftCOUNTIFS:
+      if (Length(FArgs) mod 2) <> 0 then
+      begin
+        AValue := ErrorResult(errArgError);
+        exit;
+      end;
+    ftSUMIFS, ftAVERAGEIFS:
+      if (Length(FArgs) - 1) mod 2 <> 0 then
+      begin
+        AValue := ErrorResult(errArgError);
+        exit;
+      end;
+  end;
+
   if (FFuncType in [ftCOUNTIFS, ftSUMIFS, ftAVERAGEIFS]) then
   begin
-    // Pairs of criteria range and criteria arguments required in addition to valuerange
-    if (Length(FArgs) - 1) mod 2 <> 0 then
-    begin
-      AValue := ErrorResult(errArgError);
-      exit;
-    end;
-
     // All ranges must have the same dimensions
     if FArgs[FValueRangeIndex].ResultType = rtCell then
     begin
-      i := 1;
+      if FFuncType = ftCOUNTIFS then i := 0 else i := 1;
       while (i < Length(FArgs)) do
       begin
         if FArgs[i].ResultType <> rtCell then
@@ -457,7 +466,7 @@ begin
     end else
     if FArgs[FValueRangeIndex].ResultType = rtCellRange then
     begin
-      i := 1;
+      if FFuncType = ftCOUNTIFS then i := 0 else i := 1;
       while (i < Length(FArgs)) do
       begin
         if FArgs[i].ResultType <> rtCellRange then
@@ -2104,8 +2113,16 @@ procedure fpsAVERAGEIFS(var AResult: TsExpressionresult; const Args: TsExprParam
   - "criteria" can be a cell, a value or a string starting with a symbol like ">" etc.
     (in the former two cases a value is counted if equal to the criteria value)
 }
+var
+  cmp: TsFuncComparer;
 begin
-  DoIF(AResult, Args, 0, 1, 2, rtAVG);
+  cmp := TsFuncComparer.Create(Args, 0, 1, 2, ftAVERAGEIFS);
+  try
+    AResult := cmp.Execute;
+  finally
+    cmp.Free;
+  end;
+//  DoIF(AResult, Args, 0, 1, 2, rtAVG);
 end;
 
 procedure fpsCOUNTIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2134,8 +2151,16 @@ procedure fpsCOUNTIFS(var AResult: TsExpressionresult; const Args: TsExprParamet
   - "criteria" can be a cell, a value or a string starting with a symbol like ">" etc.
     (in the former two cases a value is counted if equal to the criteria value)
 }
+var
+  cmp: TsFuncComparer;
 begin
-  DoIF(AResult, Args, 0, 1, 2, rtCOUNT);
+  cmp := TsFuncComparer.Create(Args, 0, 0, 1, ftCOUNTIFS);
+  try
+    AResult := cmp.Execute;
+  finally
+    cmp.Free;
+  end;
+  //DoIF(AResult, Args, 0, 1, 2, rtCOUNT);
 end;
 
 procedure fpsSUMIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2178,8 +2203,16 @@ procedure fpsSUMIFS(var AResult: TsExpressionresult; const Args: TsExprParameter
   - "criteria" can be a cell, a value or a string starting with a symbol like ">" etc.
     (in the former two cases a value is counted if equal to the criteria value)
 }
+var
+  cmp: TsFuncComparer;
 begin
-  DoIF(AResult, Args, 0, 1, 2, rtSUM);
+  cmp := TsFuncComparer.Create(Args, 0, 1, 2, ftSUMIFS);
+  try
+    AResult := cmp.Execute;
+  finally
+    cmp.Free;
+  end;
+//  DoIF(AResult, Args, 0, 1, 2, rtSUM);
 end;
 
 procedure fpsMAX(var Result: TsExpressionResult; const Args: TsExprParameterArray);
