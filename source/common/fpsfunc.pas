@@ -11,6 +11,7 @@ interface
 uses
   Classes, SysUtils, fpstypes;
 
+function CompareStringWithWildcards(AString1, AString2: String): Boolean;
 procedure RegisterStdBuiltins(AManager: TComponent);
 
 
@@ -23,6 +24,53 @@ uses
 
 const
   EPS = 1E-12;
+
+{ AString1 is the string with wildcards. }
+function CompareStringWithWildCards(AString1, AString2: String): Boolean;
+var
+  P1, P2, P10, P20: PAnsiChar;
+  n1, n2: Integer;
+begin
+  if (AString1 = '') and (AString2 = '') then
+  begin
+    Result := true;
+    exit;
+  end;
+  if ((AString1 <> '') and (AString2 = '')) or ((AString1 = '') and (AString2 <> '')) then
+  begin
+    Result := false;
+    exit;
+  end;
+
+  n1 := Length(AString1);
+  n2 := Length(AString2);
+  P10 := PAnsiChar(AString1);
+  P20 := PAnsiChar(AString2);
+  P1 := P10;
+  P2 := P20;
+  while P1 < P10 + n1 do begin
+    if P1^ = '*' then
+    begin
+      Result := True;
+      exit;
+    end else
+    if (P1^ = '?') or (P1^ = P2^) then begin
+      inc(P1);
+      if P2 < P20 + n2 then
+        inc(P2)
+      else
+      begin
+        Result := false;
+        exit;
+      end;
+    end else
+    if (P1^ <> P2^) then
+    begin
+      Result := false;
+      exit;
+    end;
+  end;
+end;
 
 type
   TsFuncType = (ftCountIF, ftCountIFS, ftSumIF, ftSUMIFS, ftAverageIF, ftAverageIFS);
@@ -106,12 +154,12 @@ begin
   Result := false;
   AString := UTF8Lowercase(AString);
   case FCompareOperation of
-    coEqual        : if AString = FCompareString then Result := true;
+    coEqual        : Result := CompareStringWithWildCards(FCompareString, AString);
     coLess         : if AString < FCompareString then Result := true;
     coGreater      : if AString > FCompareString then Result := true;
     coLessEqual    : if AString <= FCompareString then Result := true;
     coGreaterEqual : if AString >= FCompareString then Result := true;
-    coNotEqual     : if AString <> FCompareString then Result := true;
+    coNotEqual     : Result := not CompareStringWithWildCards(FCompareString, AString);
   end;
 end;
 
