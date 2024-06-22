@@ -2954,7 +2954,8 @@ begin
     AddFunction(cat, 'AND',       'B', 'B+',   INT_EXCEL_SHEET_FUNC_AND,        @fpsAND);
     AddFunction(cat, 'FALSE',     'B', '',     INT_EXCEL_SHEET_FUNC_FALSE,      @fpsFALSE);
     AddFunction(cat, 'IF',        'B', 'B?+',  INT_EXCEL_SHEET_FUNC_IF,         @fpsIF);
-    AddFunction(cat, 'IFS',       'B', 'BB+',  INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFS);
+//  AddFunction(cat, 'IFS',       'B', 'B?+',  INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFS);
+    AddFunction(cat, 'COM.MICROSOFT.IFS', 'B', 'B?+',  INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFS);
     AddFunction(cat, 'NOT',       'B', 'B',    INT_EXCEL_SHEET_FUNC_NOT,        @fpsNOT);
     AddFunction(cat, 'OR',        'B', 'B+',   INT_EXCEL_SHEET_FUNC_OR,         @fpsOR);
     AddFunction(cat, 'TRUE',      'B', '',     INT_EXCEL_SHEET_FUNC_TRUE ,      @fpsTRUE);
