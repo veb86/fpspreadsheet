@@ -1661,6 +1661,25 @@ begin
   end;
 end;
 
+// IFS( condition, value_if_true, [condition], [value_if_true], [condition], [value_if_true] )
+procedure fpsIFS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  i:integer;
+begin
+  Result := ErrorResult(errArgError);
+  if (Length(Args) mod 2 <> 0) then   // We always need pairs of args
+    exit;                            // --> If not, exit with argument eror
+  i:=0;
+  while(i < Length(Args)-1) do begin
+    if ArgToBoolean(Args[i]) then
+    begin
+      Result := Args[i+1];
+      break;
+    end; // What if ArgToBoolean is false?
+    inc(i, 2);
+  end;
+end;
+
 procedure fpsNOT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // NOT( condition )
 begin
@@ -2935,6 +2954,7 @@ begin
     AddFunction(cat, 'AND',       'B', 'B+',   INT_EXCEL_SHEET_FUNC_AND,        @fpsAND);
     AddFunction(cat, 'FALSE',     'B', '',     INT_EXCEL_SHEET_FUNC_FALSE,      @fpsFALSE);
     AddFunction(cat, 'IF',        'B', 'B?+',  INT_EXCEL_SHEET_FUNC_IF,         @fpsIF);
+    AddFunction(cat, 'IFS',       'B', 'BB+',  INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFS);
     AddFunction(cat, 'NOT',       'B', 'B',    INT_EXCEL_SHEET_FUNC_NOT,        @fpsNOT);
     AddFunction(cat, 'OR',        'B', 'B+',   INT_EXCEL_SHEET_FUNC_OR,         @fpsOR);
     AddFunction(cat, 'TRUE',      'B', '',     INT_EXCEL_SHEET_FUNC_TRUE ,      @fpsTRUE);
