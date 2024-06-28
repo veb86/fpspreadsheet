@@ -164,12 +164,12 @@ type
     FFirstNumFormatIndexInFile: Integer;
     procedure AddBuiltinNumFormats; override;
     class function IsEncrypted(AStream: TStream): Boolean;
-    function NeedsPassword(AStream: TStream): Boolean; override;
   public
     constructor Create(AWorkbook: TsBasicWorkbook); override;
     destructor Destroy; override;
     class function CheckFileFormat(AStream: TStream): Boolean; override;
     function CreateXMLStream: TStream;
+    function NeedsPassword(AStream: TStream): Boolean; override;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
     procedure ReadRels(AStream: TStream; ARelsFile: String; ARelsList: TFPList);
@@ -2955,6 +2955,7 @@ begin
           ReadXMLStream(doc, XMLStream);
           relsFn := RelsFileFor(fn);
           ReadDrawing(doc.DocumentElement, sheet);
+          FreeAndNil(doc);
         finally
           XMLStream.Free;
         end;
@@ -2972,6 +2973,7 @@ begin
           ReadXMLStream(doc, XMLStream);
           relsFn := RelsFileFor(fn);
           ReadVmlDrawing(doc.DocumentElement, sheet);
+          FreeAndNil(doc);
         finally
           XMLStream.Free;
         end;
