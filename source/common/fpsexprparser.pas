@@ -1562,7 +1562,7 @@ end;
 
 { Signals that the parser is in "CopyMode", i.e. there is are source and
   destination cells. All relative references in the formula of the source cell
-  habe to be adapted as seen from the destination cell. }
+  have to be adapted as seen from the destination cell. }
 function TsExpressionParser.CopyMode: Boolean;
 begin
   Result := (FDestCell <> nil) and (FSourceCell <> nil);
@@ -4213,17 +4213,20 @@ end;
   (1) Copy mode:
       The "DestCell" of the parser is the cell for which the formula is
       calculated. The "SourceCell" contains the formula. If the formula contains
-      a relative address in the cell node the function calculates the row
+      a relative address in the cell node the function calculates the column
       address of the cell represented by the node as seen from the DestCell.
-      If the formula contains an absolute address the function returns the row
+      If the formula contains an absolute address the function returns the column
       address of the SourceCell.
   (2) Normal mode:
-      Returns the "true" row address of the cell assigned to the formula node. }
+      Returns the "true" column address of the cell assigned to the formula node. }
 function TsCellExprNode.GetCol: Cardinal;
 begin
   Result := FCol;
-  if FParser.CopyMode and (rfRelCol in FFlags) then
-    Result := FCol - FParser.FSourceCell^.Col + FParser.FDestCell^.Col;
+  if FParser.CopyMode then
+  begin
+    if (rfRelCol in FFlags) then
+      Result := FCol - FParser.FSourceCell^.Col + FParser.FDestCell^.Col;
+  end;
 end;
 
 procedure TsCellExprNode.GetNodeValue(out AResult: TsExpressionResult);
@@ -4285,8 +4288,11 @@ end;
 function TsCellExprNode.GetRow: Cardinal;
 begin
   Result := FRow;
-  if Parser.CopyMode and (rfRelRow in FFlags) then
-    Result := FRow - FParser.FSourceCell^.Row + FParser.FDestCell^.Row;
+  if Parser.CopyMode then
+  begin
+    if (rfRelRow in FFlags) then
+      Result := FRow - FParser.FSourceCell^.Row + FParser.FDestCell^.Row;
+  end;
 end;
 
 function TsCellExprNode.GetSheet: TsBasicWorksheet;
@@ -4497,14 +4503,23 @@ end;
       a relative address in the cell node the function calculates the row
       address of the cell represented by the node as seen from the DestCell.
       If the formula contains an absolute address the function returns the row
-      address of the SourceCell.
+      address of the current cell.
   (2) Normal mode:
       Returns the "true" row address of the cell assigned to the formula node. }
 function TsCellRangeExprNode.GetCol(AIndex: TsCellRangeIndex): Cardinal;
+var
+  isRel: Boolean;
 begin
   Result := FCol[AIndex];
-  if FParser.CopyMode and (rfRelCol in FFlags) then
-    Result := FCol[AIndex] - FParser.FSourceCell^.Col + FParser.FDestCell^.Col;
+  if FParser.CopyMode then
+  begin
+    case AIndex of
+      1: isRel := (rfRelCol in FFlags);
+      2: isRel := (rfRelCol2 in FFlags);
+    end;
+    if isRel then
+      Result := FCol[AIndex] - FParser.FSourceCell^.Col + FParser.FDestCell^.Col;
+  end;
 end;
 
 procedure TsCellRangeExprNode.GetNodeValue(out AResult: TsExpressionResult);
@@ -4571,10 +4586,19 @@ begin
 end;
 
 function TsCellRangeExprNode.GetRow(AIndex: TsCellRangeIndex): Cardinal;
+var
+  isRel: Boolean;
 begin
   Result := FRow[AIndex];
-  if FParser.CopyMode and (rfRelRow in FFlags) then
-    Result := FRow[AIndex] - FParser.FSourceCell^.Row + FParser.FDestCell^.Row;
+  if FParser.CopyMode then
+  begin
+    case AIndex of
+      1: isRel := (rfRelRow in FFlags);
+      2: isRel := (rfRelRow2 in FFlags);
+    end;
+    if isRel then
+      Result := FRow[AIndex] - FParser.FSourceCell^.Row + FParser.FDestCell^.Row;
+  end;
 end;
 
 function TsCellRangeExprNode.GetWorkbook: TsBasicWorkbook;
