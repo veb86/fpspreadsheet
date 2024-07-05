@@ -13,6 +13,7 @@ uses
   // Instead, add .. to unit search path
   Classes, SysUtils, fpcunit, testregistry,
   fpstypes, fpspreadsheet, xlsbiff2, xlsbiff5, xlsbiff8, fpsopendocument, {and a project requirement for lclbase for utf8 handling}
+  fpsExprParser,
   testsutility;
 
 type
@@ -42,7 +43,8 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
 
-    procedure Test_Copy(ATestKind: Integer);
+    procedure Copy(ATestKind: Integer);
+    procedure CopyFormulasWithAbsRelRanges(AFormula, ExpectedFormula: String; ExpectedResult: Double);
 
   published
     procedure Test_CopyValuesToEmptyCells;
@@ -53,6 +55,11 @@ type
 
     procedure Test_CopyFormulasToEmptyCells;
     procedure Test_CopyFormulasToOccupiedCells;
+
+    procedure Test_CopyFormulasWithRelRelRanges;
+    procedure Test_CopyFormulasWithAbsRelRanges1;
+    procedure Test_CopyFormulasWithAbsRelRanges2;
+    procedure Test_CopyFormulasWithAbsAbsRanges;
   end;
 
 implementation
@@ -151,7 +158,7 @@ end;
   the even ATestKind numbers copy them to the occupied column B which contains
   the source data (those from column A), but shifted down by 1 cell.
   The worksheet is saved, reloaded and compared to expectated data }
-procedure TSpreadCopyTests.Test_Copy(ATestKind: Integer);
+procedure TSpreadCopyTests.Copy(ATestKind: Integer);
 const
   AFormat = sfExcel8;
 var
@@ -448,39 +455,151 @@ end;
 { Copy given cell values to empty cells }
 procedure TSpreadCopyTests.Test_CopyValuesToEmptyCells;
 begin
-  Test_Copy(1);
+  Copy(1);
 end;
 
 { Copy given cell values to occupied cells }
 procedure TSpreadCopyTests.Test_CopyValuesToOccupiedCells;
 begin
-  Test_Copy(2);
+  Copy(2);
 end;
 
 { Copy given cell formats to empty cells }
 procedure TSpreadCopyTests.Test_CopyFormatsToEmptyCells;
 begin
-  Test_Copy(3);
+  Copy(3);
 end;
 
 { Copy given cell formats to occupied cells }
 procedure TSpreadCopyTests.Test_CopyFormatsToOccupiedCells;
 begin
-  Test_Copy(4);
+  Copy(4);
 end;
 
 { Copy given cell formulas to empty cells }
 procedure TSpreadCopyTests.Test_CopyFormulasToEmptyCells;
 begin
-  Test_Copy(5);
+  Copy(5);
 end;
 
 { Copy given cell formulas to occupied cells }
 procedure TSpreadCopyTests.Test_CopyFormulasToOccupiedCells;
 begin
-  Test_Copy(6);
+  Copy(6);
 end;
 
+{ A set of tests provided by user veb86 in
+  https://forum.lazarus.freepascal.org/index.php/topic,67763.msg522314.html
+  to test copying of formulas with cell ranges. }
+procedure TSpreadCopyTests.CopyFormulasWithAbsRelRanges(
+  AFormula, ExpectedFormula: String; ExpectedResult: Double);
+const
+  TestFormat = sfOOXML;
+  row = 1;   // Position of test cell (B1)
+  col = 1;
+var
+  TempFile: String;
+  MyWorkbook: TsWorkbook;
+  MyWorkSheet: TsWorksheet;
+  cell: PCell;
+  formula: PsFormula = nil;
+begin
+  TempFile := GetTempFileName;
+
+  // Create test file
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.Options := MyWorkbook.Options + [boCalcBeforeSaving];
+    MyWorkSheet:= MyWorkBook.AddWorksheet(CopyTestSheet);
+
+    // Test data 1..6 in column A, starting at A1
+    MyWorksheet.WriteNumber(0, 0, 1);      // A1 = 1
+    MyWorksheet.WriteNumber(1, 0, 2);      // A2 = 2
+    MyWorksheet.WriteNumber(2, 0, 3);      // A3 = 3
+    MyWorksheet.WriteNumber(3, 0, 4);      // A4 = 4
+    MyWorksheet.WriteNumber(4, 0, 5);      // A5 = 5
+    MyWorksheet.WriteNumber(5, 0, 6);      // A6 = 6
+
+    // Write test formula in B1
+    cell := MyWorksheet.WriteFormula(0, 1, AFormula);
+
+    // Check formula
+    formula := MyWorksheet.GetFormula(cell);
+    CheckFalse(formula = nil, 'Base formula in cell ' +  CellNotation(MyWorksheet, 0, 1) + ' must not be nil');
+    CheckEquals(AFormula, formula^.Text, 'Base formula mismatch in cell ' + CellNotation(MyWorksheet, 0, 1));
+
+    // Copy formula to cell B2
+    MyWorksheet.CopyFormula(cell, row, col);
+
+    // Check copied formula
+    cell := MyWorksheet.FindCell(row, col);
+    formula := MyWorksheet.GetFormula(cell);
+    CheckFalse(formula = nil, 'Copied formula in cell ' +  CellNotation(MyWorksheet, row,col) + ' must not be nil');
+    CheckEquals(ExpectedFormula, formula^.Text, 'Copied formula mismatch in cell ' + CellNotation(MyWorksheet, row,col));
+
+    // Save
+    MyWorkbook.WriteToFile(TempFile, TestFormat, true);
+  finally
+    MyWorkbook.Free;
+  end;
+
+  // Read test file
+  MyWorkbook := TsWorkbook.Create;
+  try
+    MyWorkbook.Options := MyWorkbook.Options + [boReadFormulas];
+    MyWorkbook.ReadFromFile(TempFile, TestFormat);
+    MyWorksheet := MyWorkbook.GetFirstWorksheet;
+
+    // Read copied formula
+    cell := MyWorksheet.FindCell(row, col);
+
+    // Check copied formula
+    formula := MyWorksheet.GetFormula(cell);
+    CheckFalse(
+      formula = nil,
+      'Read formula in cell ' +  CellNotation(MyWorksheet, row,col) + ' must not be nil'
+    );
+
+    CheckEquals(
+      ExpectedFormula,
+      formula^.Text,
+      'Read formula mismatch in cell ' + CellNotation(MyWorksheet, row, col)
+    );
+
+    CheckEquals(
+      ExpectedResult,
+      MyWorksheet.ReadAsNumber(row, col),
+      'Read formula result mismatch in cell ' + CellNotation(MyWorksheet, row, col)
+    );
+
+  finally
+    MyWorkbook.Free;
+  end;
+  DeleteFile(TempFile);
+end;
+
+{ 1st argument: formula in cell B1
+  2nd argument: formula in cell B2 after copying B1
+  3rd argument: result in copied cell B2 }
+procedure TSpreadCopyTests.Test_CopyFormulasWithRelRelRanges;
+begin
+  CopyFormulasWithAbsRelRanges('SUM(A1:A2)', 'SUM(A2:A3)', 5);
+end;
+
+procedure TSpreadCopyTests.Test_CopyFormulasWithAbsRelRanges1;
+begin
+  CopyFormulasWithAbsRelRanges('SUM($A$1:A1)', 'SUM($A$1:A2)', 3);
+end;
+
+procedure TSpreadCopyTests.Test_CopyFormulasWithAbsRelRanges2;
+begin
+  CopyFormulasWithAbsRelRanges('SUM($A$1:A2)', 'SUM($A$1:A3)', 6);
+end;
+
+procedure TSpreadCopyTests.Test_CopyFormulasWithAbsAbsRanges;
+begin
+  CopyFormulasWithAbsRelRanges('SUM($A$1:$A$2)', 'SUM($A$1:$A$2)', 3);
+end;
 
 initialization
   RegisterTest(TSpreadCopyTests);
