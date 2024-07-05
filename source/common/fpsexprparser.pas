@@ -4482,12 +4482,12 @@ begin
   else
     case FParser.Dialect of
       fdExcelA1, fdLocalized:
-        Result := GetCellRangeString(r1, c1, r2, c2, FFlags, true);
+        Result := GetCellRangeString(r1, c1, r2, c2, FFlags, false); //true);
       fdExcelR1C1:
         Result := GetCellRangeString_R1C1(r1, c1, r2, c2, FFlags,
           FParser.FSourceCell^.Row, FParser.FSourceCell^.Col);
       fdOpenDocument:
-        Result := GetCellRangeString_ODS(r1, c1, r2, c2, FFlags, true);
+        Result := GetCellRangeString_ODS(r1, c1, r2, c2, FFlags, false); //true);
     end;
 end;
 
