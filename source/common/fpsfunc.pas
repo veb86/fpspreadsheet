@@ -2830,7 +2830,7 @@ begin
           cctDateTime: numSearchValue := cell^.DateTimeValue;
           cctBool: numSearchValue := ord(cell^.BoolValue);
           cctEmpty: begin Result := ErrorResult(errWrongType); exit; end;
-          cctError: begin Result := ErrorResult(errWrongType); exit; end;
+          cctError: begin Result := ErrorResult(errWrongType);
         end;
       end;
     else
