@@ -2749,6 +2749,7 @@ var
   arg: TsExpressionResult;
   sheet: TsWorksheet;
   book: TsWorkbook;
+  cell: PCell;
 
   function Matches(ACell: PCell): Boolean;
   var
@@ -2817,14 +2818,27 @@ begin
   book := sheet.Workbook as TsWorkbook;
   sheet := book.GetWorksheetByIndex(arg.ResCellRange.Sheet1);
 
-  if Args[0].ResultType = rtString then
-    searchString := ArgToString(Args[0])
-  else begin
-    numSearchvalue := ArgToFloat(Args[0]);
-    if IsNaN(numSearchValue) then begin
-      Result := ErrorResult(errWrongType);
-      exit;
-    end;
+  case Args[0].ResultType of
+    rtString:
+      searchString := ArgToString(Args[0]);
+    rtCell:
+      begin
+        cell := ArgToCell(Args[0]);
+        case cell^.ContentType of
+          cctUTF8String: searchString := cell^.UTF8StringValue;
+          cctNumber: numSearchValue := cell^.NumberValue;
+          cctDateTime: numSearchValue := cell^.DateTimeValue;
+          cctBool: numSearchValue := ord(cell^.BoolValue);
+          cctEmpty: begin Result := ErrorResult(errWrongType); exit; end;
+          cctError: begin Result := ErrorResult(errWrongType); exit; end;
+        end;
+      end;
+    else
+      numSearchvalue := ArgToFloat(Args[0]);
+      if IsNaN(numSearchValue) then begin
+        Result := ErrorResult(errWrongType);
+        exit;
+      end;
   end;
 
   if IsCol then
@@ -2955,7 +2969,9 @@ begin
     AddFunction(cat, 'FALSE',     'B', '',     INT_EXCEL_SHEET_FUNC_FALSE,      @fpsFALSE);
     AddFunction(cat, 'IF',        'B', 'B?+',  INT_EXCEL_SHEET_FUNC_IF,         @fpsIF);
 //  AddFunction(cat, 'IFS',       'B', 'B?+',  INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFS);
-    AddFunction(cat, 'COM.MICROSOFT.IFS', 'B', 'B?+',  INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFS);
+//    AddFunction(cat, 'COM.MICROSOFT.IFS', 'B', 'B?+',  INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFS);
+    AddFunction(cat, '_xlfn.IFS', 'B', 'B?+',  INT_EXCEL_SHEET_FUNC_UNKNOWN,    @fpsIFS);
+
     AddFunction(cat, 'NOT',       'B', 'B',    INT_EXCEL_SHEET_FUNC_NOT,        @fpsNOT);
     AddFunction(cat, 'OR',        'B', 'B+',   INT_EXCEL_SHEET_FUNC_OR,         @fpsOR);
     AddFunction(cat, 'TRUE',      'B', '',     INT_EXCEL_SHEET_FUNC_TRUE ,      @fpsTRUE);
