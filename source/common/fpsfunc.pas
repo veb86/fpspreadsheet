@@ -2843,18 +2843,38 @@ begin
 
   if IsCol then
   begin
-    for r := r2 downto r1 do
-      if Matches(sheet.FindCell(r, c1)) then begin
-        Result := IntegerResult(r - integer(r1) + 1);
-        exit;
-      end;
+    if match_type = -1 then
+    begin
+      for r := r2 downto r1 do
+        if Matches(sheet.FindCell(r, c1)) then begin
+          Result := IntegerResult(r - integer(r1) + 1);
+          exit;
+        end;
+    end else
+    begin
+      for r := r1 to r2 do
+        if Matches(sheet.FindCell(r, c1)) then begin
+          Result := IntegerResult(r - integer(r1) + 1);
+          exit;
+        end;
+    end;
   end else
   begin
-    for c := c2 downto c1 do
-      if Matches(sheet.FindCell(r1, c)) then begin
-        Result := IntegerResult(c - Integer(c1) + 1);
-        exit;
-      end;
+    if match_type = -1 then
+    begin
+      for c := c2 downto c1 do
+        if Matches(sheet.FindCell(r1, c)) then begin
+          Result := IntegerResult(c - Integer(c1) + 1);
+          exit;
+        end;
+    end else
+    begin
+      for c := c1 to c2 do
+        if Matches(sheet.FindCell(r1, c)) then begin
+          Result := IntegerResult(c - Integer(c1) + 1);
+          exit;
+        end;
+    end;
   end;
 
   // If the procedure gets here, not match has been found --> return error #N/A
