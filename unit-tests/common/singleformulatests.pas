@@ -7,7 +7,7 @@ interface
 uses
   // Not using Lazarus package as the user may be working with multiple versions
   // Instead, add .. to unit search path
-  Classes, SysUtils, fpcunit, testregistry,
+  Classes, SysUtils, fpcunit, testregistry, testsutility,
   fpstypes, fpspreadsheet, fpsexprparser,
   xlsbiff8;
 
@@ -29,6 +29,7 @@ type
     procedure TestWorksheet(ATestKind: TWorksheetTestKind; ATestCase: Integer);
     procedure TestFormulaErrors(ATest: Integer);
     procedure TestInsDelRowCol(ATestIndex: Integer);
+    procedure TestSumIFS_Microsoft(AFormat: TsSpreadsheetFormat);
 
   published
     procedure AddConst_BIFF2;
@@ -91,6 +92,9 @@ type
     procedure SumMultiSheetRange_FlippedSheets_XML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_XML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_ODS;
+
+    procedure SumIFS_Microsoft_OOXML;
+    procedure SumIFS_Microsoft_ODS;
 
     procedure IfConst_BIFF8;
     procedure IfConst_OOXML;
@@ -614,6 +618,77 @@ end;
 procedure TSpreadSingleFormulaTests.SumMultiSheetRange_FlippedSheets_XML;
 begin
   TestFormula('SUM(Sheet3:Sheet2!C3:C5)', '55', ftkCellRangeSheetRange, sfExcelXML, 'SUM(Sheet2:Sheet3!C3:C5)');
+end;
+
+{ --- }
+
+{ Example from Microsoft site for SUMIFS:
+  https://support.microsoft.com/en-us/office/sumifs-function-c9e748f5-7ea7-455d-9406-611cebce642b }
+procedure TSpreadSingleFormulaTests.TestSumIFS_Microsoft(AFormat: TsSpreadsheetFormat);
+const
+  ROW1 = 10;
+  ROW2 = 11;
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  value: Double;
+  tempFile: String;
+begin
+  tempFile := GetTempFileName;
+
+  book := TsWorkbook.Create;
+  try
+    sheet := book.AddWorksheet('Test');
+    sheet.WriteText(0, 0, 'Quantity Sold');  sheet.WriteText(0, 1, 'Product');     sheet.WriteText(0, 2, 'SalesPerson');
+    sheet.WriteNumber(1, 0, 5);              sheet.WriteText(1, 1, 'Apples');      sheet.WriteText(1, 2, 'Tom');
+    sheet.WriteNumber(2, 0, 4);              sheet.WriteText(2, 1, 'Apples');      sheet.WriteText(2, 2, 'Sarah');
+    sheet.WriteNumber(3, 0, 15);             sheet.WriteText(3, 1, 'Artichokes');  sheet.WriteText(3, 2, 'Tom');
+    sheet.WriteNumber(4, 0, 3);              sheet.WriteText(4, 1, 'Artichokes');  sheet.WriteText(4, 2, 'Sarah');
+    sheet.WriteNumber(5, 0, 22);             sheet.WriteText(5, 1, 'Bananas');     sheet.WriteText(5, 2, 'Tom');
+    sheet.WriteNumber(6, 0, 12);             sheet.WriteText(6, 1, 'Bananas');     sheet.WriteText(6, 2, 'Sarah');
+    sheet.WriteNumber(7, 0, 10);             sheet.WriteText(7, 1, 'Carrots');     sheet.WriteText(7, 2, 'Tom');
+    sheet.WriteNumber(8, 0, 33);             sheet.WriteText(8, 1, 'Carrots');     sheet.WriteText(8, 2, 'Sarah');
+
+    sheet.WriteFormula(ROW1, 0, 'SUMIFS(A2:A9, B2:B9, "=A*", C2:C9, "Tom")');        // expected: 20
+    sheet.WriteFormula(ROW2, 0, 'SUMIFS(A2:A9, B2:B9, "<>Bananas", C2:C9, "Tom")');  // expected: 30
+
+    sheet.CalcFormulas;
+
+    value := sheet.ReadAsNumber(ROW1, 0);
+    CheckEquals(20, value, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW1, 0));
+
+    value := sheet.ReadAsNumber(ROW2, 0);
+    CheckEquals(30, value, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW2, 0));
+
+    book.WriteToFile(tempFile, AFormat, true);
+  finally
+    book.Free;
+  end;
+
+  book := TsWorkbook.Create;
+  try
+    book.Options := [boReadFormulas, boAutoCalc];
+    book.ReadFromFile(tempFile, AFormat);
+    sheet := book.GetFirstWorksheet;
+
+    value := sheet.ReadAsNumber(10, 0);
+    CheckEquals(20, value, 'Saved value mismatch #2 in cell ' + CellNotation(sheet, 10, 0));
+
+    value := sheet.ReadAsNumber(11, 0);
+    CheckEquals(30, value, 'Saved value mismatch #2 in cell ' + CellNotation(sheet, 11, 0));
+  finally
+    book.Free;
+  end;
+end;
+
+procedure TSpreadSingleFormulaTests.SumIFS_Microsoft_OOXML;
+begin
+  TestSumIFS_Microsoft(sfOOXML);
+end;
+
+procedure TSpreadSingleFormulaTests.SumIFS_Microsoft_ODS;
+begin
+  TestSumIFS_Microsoft(sfOpenDocument);
 end;
 
 { --- }

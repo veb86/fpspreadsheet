@@ -120,7 +120,6 @@ type
     procedure Test_OverwriteFormula_Error_OOXML;
     procedure Test_OverwriteFormula_Error_XML;
     procedure Test_OverwriteFormula_Error_ODS;
-
   end;
 
 implementation
