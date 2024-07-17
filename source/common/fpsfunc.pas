@@ -2738,7 +2738,8 @@ procedure fpsMATCH(var Result: TsExpressionResult;
      value. The array can be sorted in any order.)
    match_type = -1: The MATCH function will find the smallest value that is
      greater than or equal to value. You should be sure to sort your array in
-     descending order. }
+     descending order.
+   Return value is the 1-based index in the array. }
 var
   match_type: Integer;
   searchString: String;
@@ -2843,37 +2844,17 @@ begin
 
   if IsCol then
   begin
-    if match_type = -1 then
-    begin
-      for r := r2 downto r1 do
-        if Matches(sheet.FindCell(r, c1)) then begin
-          Result := IntegerResult(r - integer(r1) + 1);
-          exit;
-        end;
-    end else
-    begin
-      for r := r1 to r2 do
-        if Matches(sheet.FindCell(r, c1)) then begin
-          Result := IntegerResult(r - integer(r1) + 1);
-          exit;
-        end;
-    end;
+    for r := r2 downto r1 do
+      if Matches(sheet.FindCell(r, c1)) then begin
+        Result := IntegerResult(r - integer(r1) + 1);
+        exit;
+      end;
   end else
   begin
-    if match_type = -1 then
-    begin
-      for c := c2 downto c1 do
-        if Matches(sheet.FindCell(r1, c)) then begin
-          Result := IntegerResult(c - Integer(c1) + 1);
-          exit;
-        end;
-    end else
-    begin
-      for c := c1 to c2 do
-        if Matches(sheet.FindCell(r1, c)) then begin
-          Result := IntegerResult(c - Integer(c1) + 1);
-          exit;
-        end;
+    for c := c2 downto c1 do
+      if Matches(sheet.FindCell(r1, c)) then begin
+        Result := IntegerResult(c - Integer(c1) + 1);
+        exit;
     end;
   end;
 
