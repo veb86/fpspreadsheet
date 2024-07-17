@@ -29,7 +29,7 @@ type
     procedure TestWorksheet(ATestKind: TWorksheetTestKind; ATestCase: Integer);
     procedure TestFormulaErrors(ATest: Integer);
     procedure TestInsDelRowCol(ATestIndex: Integer);
-    procedure TestSumIFS_Microsoft(AFormat: TsSpreadsheetFormat);
+    procedure TestCountSumAvgIFS_Microsoft(AFormat: TsSpreadsheetFormat; AFormulaType: Integer);
 
   published
     procedure AddConst_BIFF2;
@@ -93,8 +93,12 @@ type
     procedure SumMultiSheetRange_FlippedSheetsAndCells_XML;
     procedure SumMultiSheetRange_FlippedSheetsAndCells_ODS;
 
+    procedure CountIFS_Microsoft_OOXML;
+    procedure CountIFS_Microsoft_ODS;
     procedure SumIFS_Microsoft_OOXML;
     procedure SumIFS_Microsoft_ODS;
+    procedure AverageIFS_Microsoft_OOXML;
+    procedure AverageIFS_Microsoft_ODS;
 
     procedure IfConst_BIFF8;
     procedure IfConst_OOXML;
@@ -622,16 +626,19 @@ end;
 
 { --- }
 
-{ Example from Microsoft site for SUMIFS:
-  https://support.microsoft.com/en-us/office/sumifs-function-c9e748f5-7ea7-455d-9406-611cebce642b }
-procedure TSpreadSingleFormulaTests.TestSumIFS_Microsoft(AFormat: TsSpreadsheetFormat);
+{ Based on example from Microsoft site for SUMIFS:
+  https://support.microsoft.com/en-us/office/sumifs-function-c9e748f5-7ea7-455d-9406-611cebce642b
+
+  AFormulaType is 0 for COUNTIFS, 1 for SUMIFS, and 2 for AVERAGEIFS }
+procedure TSpreadSingleFormulaTests.TestCountSumAvgIFS_Microsoft(AFormat: TsSpreadsheetFormat;
+  AFormulaType: Integer);
 const
   ROW1 = 10;
   ROW2 = 11;
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
-  value: Double;
+  value1, value2: Double;
   tempFile: String;
 begin
   tempFile := GetTempFileName;
@@ -649,16 +656,39 @@ begin
     sheet.WriteNumber(7, 0, 10);             sheet.WriteText(7, 1, 'Carrots');     sheet.WriteText(7, 2, 'Tom');
     sheet.WriteNumber(8, 0, 33);             sheet.WriteText(8, 1, 'Carrots');     sheet.WriteText(8, 2, 'Sarah');
 
-    sheet.WriteFormula(ROW1, 0, 'SUMIFS(A2:A9, B2:B9, "=A*", C2:C9, "Tom")');        // expected: 20
-    sheet.WriteFormula(ROW2, 0, 'SUMIFS(A2:A9, B2:B9, "<>Bananas", C2:C9, "Tom")');  // expected: 30
+    case AFormulaType of
+      0: begin
+           sheet.WriteFormula(ROW1, 0, 'COUNTIFS(B2:B9, "=A*", C2:C9, "Tom")');        // expected: 2
+           sheet.WriteFormula(ROW2, 0, 'COUNTIFS(B2:B9, "<>Bananas", C2:C9, "Tom")');  // expected: 3
+         end;
+      1: begin
+           sheet.WriteFormula(ROW1, 0, 'SUMIFS(A2:A9, B2:B9, "=A*", C2:C9, "Tom")');        // expected: 20
+           sheet.WriteFormula(ROW2, 0, 'SUMIFS(A2:A9, B2:B9, "<>Bananas", C2:C9, "Tom")');  // expected: 30
+         end;
+      2: begin
+           sheet.WriteFormula(ROW1, 0, 'AVERAGEIFS(A2:A9, B2:B9, "=A*", C2:C9, "Tom")');        // expected: 4.0
+           sheet.WriteFormula(ROW2, 0, 'AVERAGEIFS(A2:A9, B2:B9, "<>Bananas", C2:C9, "Tom")');  // expected: 10.0
+         end;
+    end;
 
     sheet.CalcFormulas;
 
-    value := sheet.ReadAsNumber(ROW1, 0);
-    CheckEquals(20, value, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW1, 0));
-
-    value := sheet.ReadAsNumber(ROW2, 0);
-    CheckEquals(30, value, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW2, 0));
+    value1 := sheet.ReadAsNumber(ROW1, 0);
+    value2 := sheet.ReadAsNumber(ROW2, 0);
+    case AFormulaType of
+      0: begin    // Checking COUNTIFS
+           CheckEquals(2, value1, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW1, 0));
+           CheckEquals(3, value2, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW2, 0));
+         end;
+      1: begin    // Checking SUMIFS
+           CheckEquals(20, value1, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW1, 0));
+           CheckEquals(30, value2, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW2, 0));
+         end;
+      2: begin    // Checking AVERAGEIFS
+           CheckEquals(10.0, value1, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW1, 0));
+           CheckEquals(10.0, value2, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW2, 0));
+         end;
+    end;
 
     book.WriteToFile(tempFile, AFormat, true);
   finally
@@ -671,24 +701,55 @@ begin
     book.ReadFromFile(tempFile, AFormat);
     sheet := book.GetFirstWorksheet;
 
-    value := sheet.ReadAsNumber(10, 0);
-    CheckEquals(20, value, 'Saved value mismatch #2 in cell ' + CellNotation(sheet, 10, 0));
-
-    value := sheet.ReadAsNumber(11, 0);
-    CheckEquals(30, value, 'Saved value mismatch #2 in cell ' + CellNotation(sheet, 11, 0));
+    value1 := sheet.ReadAsNumber(ROW1, 0);
+    value2 := sheet.ReadAsNumber(ROW2, 0);
+    case AFormulaType of
+      0: begin    // Checking COUNTIFS
+           CheckEquals(2, value1, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW1, 0));
+           CheckEquals(3, value2, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW2, 0));
+         end;
+      1: begin    // Checking SUMIFS
+           CheckEquals(20, value1, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW1, 0));
+           CheckEquals(30, value2, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW2, 0));
+         end;
+      2: begin    // Checking AVERAGEIFS
+           CheckEquals(10.0, value1, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW1, 0));
+           CheckEquals(10.0, value2, 'Unsaved value mismatch in cell ' + CellNotation(sheet, ROW2, 0));
+         end;
+    end;
   finally
     book.Free;
   end;
 end;
 
+procedure TSpreadSingleFormulaTests.CountIFS_Microsoft_OOXML;
+begin
+  TestCountSumAvgIFS_Microsoft(sfOOXML, 0);
+end;
+
+procedure TSpreadSingleFormulaTests.CountIFS_Microsoft_ODS;
+begin
+  TestCountSumAvgIFS_Microsoft(sfOpenDocument, 0);
+end;
+
 procedure TSpreadSingleFormulaTests.SumIFS_Microsoft_OOXML;
 begin
-  TestSumIFS_Microsoft(sfOOXML);
+  TestCountSumAvgIFS_Microsoft(sfOOXML, 1);
 end;
 
 procedure TSpreadSingleFormulaTests.SumIFS_Microsoft_ODS;
 begin
-  TestSumIFS_Microsoft(sfOpenDocument);
+  TestCountSumAvgIFS_Microsoft(sfOpenDocument, 1);
+end;
+
+procedure TSpreadSingleFormulaTests.AverageIFS_Microsoft_OOXML;
+begin
+  TestCountSumAvgIFS_Microsoft(sfOOXML, 1);
+end;
+
+procedure TSpreadSingleFormulaTests.AverageIFS_Microsoft_ODS;
+begin
+  TestCountSumAvgIFS_Microsoft(sfOpenDocument, 1);
 end;
 
 { --- }
