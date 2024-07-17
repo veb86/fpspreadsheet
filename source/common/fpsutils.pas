@@ -1316,9 +1316,6 @@ begin
   if (ASheet1 = '') and (ASheet2 = '') then
     exit;
 
-  if SheetNameNeedsQuotes(ASheet1) then ASheet1 := QuotedStr(ASheet1);
-  if SheetNameNeedsQuotes(ASheet2) then ASheet2 := QuotedStr(ASheet2);
-
   if ASheet2 = '' then
     Result := Format('%s!%s', [ASheet1, Result])
   else if Compact and (ASheet1 = ASheet2) then
