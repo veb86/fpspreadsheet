@@ -1344,6 +1344,7 @@ var
   res: TsExpressionResult;
   p: Integer;
   link, txt: String;
+  changed: Boolean;
 begin
   if (boIgnoreFormulas in Workbook.Options) or (AFormula = nil) then
     exit;
@@ -1384,53 +1385,85 @@ begin
   try
     // Assign formula result
     case res.ResultType of
-      rtEmpty     : WriteBlank(lCell, true);
-      rtError     : WriteErrorValue(lCell, res.ResError);
-      rtInteger   : WriteNumber(lCell, res.ResInteger);
-      rtFloat     : WriteNumber(lCell, res.ResFloat);
-      rtDateTime  : WriteDateTime(lCell, res.ResDateTime);
-      rtString    : WriteText(lCell, res.ResString);
-      rtHyperlink : begin
-                      link := ArgToString(res);
-                      p := pos(HYPERLINK_SEPARATOR, link);
-                      if p > 0 then
-                      begin
-                        txt := Copy(link, p+Length(HYPERLINK_SEPARATOR), Length(link));
-                        link := Copy(link, 1, p-1);
-                      end else
-                        txt := link;
-                      WriteHyperlink(lCell, link);
-                      WriteText(lCell, txt);
-                    end;
-      rtBoolean   : WriteBoolValue(lCell, res.ResBoolean);
-      rtCell      : begin
-                      if res.Worksheet = nil then
-                      begin
-                        if res.ResSheetName = '' then
-                          res.Worksheet := self
-                        else
-                          res.Worksheet := Workbook.GetWorksheetByName(res.ResSheetName);
-                        if res.Worksheet = nil then
-                        begin
-                          WriteErrorValue(lCell, errIllegalRef);
-                          exit;
-                        end;
-                      end else
-                      if res.ResSheetName <> '' then
-                        res.Worksheet := Workbook.GetWorksheetByName(res.ResSheetname);
-                      lCellRef := (res.Worksheet as TsWorksheet).FindCell(res.ResRow, res.ResCol);
-                      if lCellRef <> nil then
-                        case lCellRef^.ContentType of
-                          cctNumber    : WriteNumber(lCell, lCellRef^.NumberValue);
-                          cctDateTime  : WriteDateTime(lCell, lCellRef^.DateTimeValue);
-                          cctUTF8String: WriteText(lCell, lCellRef^.UTF8StringValue);
-                          cctBool      : WriteBoolValue(lCell, lCellRef^.Boolvalue);
-                          cctError     : WriteErrorValue(lCell, lCellRef^.ErrorValue);
-                          cctEmpty     : WriteBlank(lCell, true);
-                        end
-                      else
-                        WriteBlank(lCell, true);
-                    end;
+      rtEmpty:
+        begin
+          changed := (lCell^.ContentType <> cctEmpty);
+          if changed then WriteBlank(lCell, true);
+        end;
+      rtError:
+        begin
+          changed := (lCell^.ContentType <> cctError) or (lCell^.ErrorValue <> res.ResError);
+          if changed then WriteErrorValue(lCell, res.ResError);
+        end;
+      rtInteger:
+        begin
+          changed := (lCell^.ContentType <> cctNumber) or (lCell^.Numbervalue <> res.ResInteger);
+          if changed then WriteNumber(lCell, res.ResInteger);
+        end;
+      rtFloat:
+        begin
+          changed := (lCell^.ContentType <> cctNumber) or (lCell^.NumberValue <> res.ResFloat);
+          if changed then WriteNumber(lCell, res.ResFloat);
+        end;
+      rtDateTime:
+        begin
+          changed := (lCell^.ContentType <> cctDateTime) or (lCell^.DateTimeValue <> res.ResDateTime);
+          if changed then WriteDateTime(lCell, res.ResDateTime);
+        end;
+      rtString:
+        begin
+          changed := (lCell^.ContentType <> cctUTF8String) or (lCell^.UTF8StringValue <> res.ResString);
+          if changed then WriteText(lCell, res.ResString);
+        end;
+      rtHyperlink :
+        begin
+          link := ArgToString(res);
+          p := pos(HYPERLINK_SEPARATOR, link);
+          if p > 0 then
+          begin
+            txt := Copy(link, p+Length(HYPERLINK_SEPARATOR), Length(link));
+            link := Copy(link, 1, p-1);
+          end else
+            txt := link;
+          WriteHyperlink(lCell, link);
+          WriteText(lCell, txt);
+        end;
+      rtBoolean:
+        begin
+          changed := (lCell^.ContentType <> cctBool) or (lCell^.BoolValue <> res.ResBoolean);
+          if changed then WriteBoolValue(lCell, res.ResBoolean);
+        end;
+      rtCell:
+        begin
+          if res.Worksheet = nil then
+          begin
+            if res.ResSheetName = '' then
+              res.Worksheet := self
+            else
+              res.Worksheet := Workbook.GetWorksheetByName(res.ResSheetName);
+            if res.Worksheet = nil then
+            begin
+              WriteErrorValue(lCell, errIllegalRef);
+              exit;
+            end;
+          end else
+          begin
+            if res.ResSheetName <> '' then
+              res.Worksheet := Workbook.GetWorksheetByName(res.ResSheetname);
+            lCellRef := (res.Worksheet as TsWorksheet).FindCell(res.ResRow, res.ResCol);
+            if lCellRef <> nil then
+              case lCellRef^.ContentType of
+                cctNumber    : WriteNumber(lCell, lCellRef^.NumberValue);
+                cctDateTime  : WriteDateTime(lCell, lCellRef^.DateTimeValue);
+                cctUTF8String: WriteText(lCell, lCellRef^.UTF8StringValue);
+                cctBool      : WriteBoolValue(lCell, lCellRef^.Boolvalue);
+                cctError     : WriteErrorValue(lCell, lCellRef^.ErrorValue);
+                cctEmpty     : WriteBlank(lCell, true);
+              end
+            else
+              WriteBlank(lCell, true);
+          end;
+        end;
     end;
   finally
     FWorkbook.UnlockFormulas;
