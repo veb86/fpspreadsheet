@@ -337,6 +337,8 @@ begin
 end;
 
 procedure TSpreadNumFormatParserTests.TestNumFormatParser;
+const
+  EPS = 1E-12;  // tolerance for float comparisons
 var
   i: Integer;
   parser: TsNumFormatParser;
@@ -361,7 +363,7 @@ begin
           'Test format (' + ParserTestData[i].FormatString + ') currency symbol detection mismatch');
         CheckEquals(ParserTestData[i].SollSectionCount, parser.ParsedSectionCount,
           'Test format (' + ParserTestData[i].FormatString + ') section count mismatch');
-        CheckEquals(ParserTestData[i].SollFactor, parser.ParsedSections[0].Factor,
+        CheckEquals(ParserTestData[i].SollFactor, parser.ParsedSections[0].Factor, EPS,
           'Test format (' + ParserTestData[i].FormatString + ') factor mismatch');
         CheckEquals(ParserTestData[i].SollNumeratorDigits, parser.ParsedSections[0].FracNumerator,
           'Test format (' + ParserTestData[i].FormatString + ') numerator digits mismatch');
