@@ -70,6 +70,7 @@ begin
       exit;
     end;
   end;
+  Result := true;
 end;
 
 type
@@ -101,7 +102,6 @@ type
     FCompareType: TsCompareType;
     FCompareNumber: Double;
     FCompareString: String;
-    FWorkbook: TsWorkbook;
     FFormatSettings: TFormatSettings;
   protected
     function CompareArg(ArgIndex: Integer): Boolean;
@@ -233,6 +233,8 @@ var
   count: Integer;
   sum: Double;
 begin
+  Result := ErrorResult(errArgError);
+
   if not ValidParams(Result) then
     exit;
 
