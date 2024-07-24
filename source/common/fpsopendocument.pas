@@ -42,7 +42,7 @@ uses
   laz2_xmlread, laz2_DOM,
   avglvltree, math, dateutils, contnrs,
  {$IFDEF FPS_PATCHED_ZIPPER} fpszipper, {$ELSE} zipper, {$ENDIF}
-  fpstypes, fpsReaderWriter, fpsUtils, fpsHeaderFooterParser,
+  fpsTypes, fpsReaderWriter, fpsUtils, fpsClasses, fpsHeaderFooterParser,
   fpsNumFormat, fpsXMLCommon,
  {$IFDEF FPS_CHARTS} fpsChart, {$ENDIF}
   fpsPagelayout;
@@ -160,6 +160,7 @@ type
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     procedure ReadConditionalFormats(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
+    procedure ReadDefinedNames(ANode: TDOMNode);
     procedure ReadDocumentProtection(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode; var AFontName: String;
       var AFontSize: Single; var AFontStyle: TsFontStyles; var AFontColor: TsColor;
@@ -290,6 +291,7 @@ type
     function WriteConditionalStyleXMLAsString(ACFIndex: Integer): String;
     function WriteDefaultFontXMLAsString: String;
     function WriteDefaultGraphicStyleXMLAsString: String; overload;
+    function WriteDefinedNameXMLAsString(ADefinedName: TsDefinedName): String;
     function WriteDocumentProtectionXMLAsString: String;
     function WriteFontStyleXMLAsString(const AFormat: TsCellFormat): String; overload;
     function WriteHeaderFooterFontXMLAsString(AFont: TsHeaderFooterFont): String;
@@ -334,6 +336,7 @@ type
 
     { Routines to write those files }
     procedure WriteContent;
+    procedure WriteDefinedNames(AStream: TStream);
     procedure WriteMetaInfManifest;
     procedure WriteMeta;
     procedure WriteMimetype;
@@ -380,7 +383,7 @@ implementation
 uses
   StrUtils, Variants, LazFileUtils, URIParser, LazUTF8,
   {%H-}fpsPatches,
-  fpsStrings, fpsStreams, fpsCrypto, fpsClasses, fpSpreadsheet,
+  fpsStrings, fpsStreams, fpsCrypto, fpSpreadsheet,
   fpsExprParser, fpsImages,
  {$IFDEF FPS_CHARTS}
   fpsOpenDocumentChart,
@@ -2628,6 +2631,39 @@ begin
     raise EFPSpreadsheetReader.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
 end;
 
+procedure TsSpreadOpenDocReader.ReadDefinedNames(ANode: TDOMNode);
+var
+  book: TsWorkbook;
+  nodeName: String;
+  defName: String;
+  defAddr: String;
+  r1, c1, r2, c2: Cardinal;
+  sheet1, sheet2: String;
+  flags: TsRelFlags;
+begin
+  if ANode = nil then
+    exit;
+
+  ANode := ANode.FindNode('table:named-expressions');
+  if ANode = nil then
+    exit;
+
+  book := TsWorkbook(FWorkbook);
+  ANode := ANode.FirstChild;
+  while ANode <> nil do
+  begin
+    nodeName := ANode.NodeName;
+    if nodeName = 'table:named-range' then
+    begin
+      defName := GetAttrValue(ANode, 'table:name');
+      defAddr := GetAttrValue(ANode, 'table:cell-range-address');
+      if TryStrToCellRange_ODS(defAddr, sheet1, sheet2, r1, c1, r2, c2, flags) then
+        book.DefinedNames.Add(defName, sheet1, sheet2, r1, c1, r2, c2);
+    end;
+    ANode := ANode.NextSibling;
+  end;
+end;
+
 procedure TsSpreadOpenDocReader.ReadDocumentProtection(ANode: TDOMNode);
 var
   cinfo: TsCryptoInfo;
@@ -3154,6 +3190,7 @@ begin
         TableNode := TableNode.NextSibling;
       end; //while Assigned(TableNode)
 
+      ReadDefinedNames(SpreadSheetNode);
       FreeAndNil(Doc);
     end;
 
@@ -6659,11 +6696,30 @@ begin
   for i := 0 to (Workbook as TsWorkbook).GetWorksheetCount - 1 do
     WriteWorksheet(FSContent, i);
 
+  WriteDefinedNames(FSContent);
+
   AppendToStream(FSContent,
         '</office:spreadsheet>' +
       '</office:body>' +
     '</office:document-content>'
   );
+end;
+
+procedure TsSpreadOpenDocWriter.WriteDefinedNames(AStream: TStream);
+var
+  book: TsWorkbook;
+  i: Integer;
+begin
+  book := TsWorkbook(FWorkbook);
+  if book.DefinedNames.Count = 0 then
+    exit;
+
+  AppendToStream(AStream, '<table:named-expressions>');
+
+  for i := 0 to book.DefinedNames.Count-1 do
+    AppendToStream(AStream, WriteDefinedNameXMLAsString(book.DefinedNames[i]));
+
+  AppendToStream(AStream, '</table:named-expressions>');
 end;
 
 procedure TsSpreadOpenDocWriter.WriteWorksheet(AStream: TStream;
@@ -8689,6 +8745,17 @@ begin
   end
   else
     Result := '';
+end;
+
+function TsSpreadOpenDocWriter.WriteDefinedNameXMLAsString(ADefinedName: TsDefinedName): String;
+begin
+  Result := Format(
+    '<table:named-range ' +
+      'table:name="%s" ' +
+      'table:base-cell-address="$%s.$A$1" ' +
+      'table:cell-range-address="%s" />',
+    [ ADefinedName.Name, ADefinedName.SheetName1, ADefinedName.RangeAsString_ODS ]
+  );
 end;
 
 procedure TsSpreadOpenDocWriter.WriteError(AStream: TStream;

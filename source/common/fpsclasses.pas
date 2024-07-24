@@ -231,6 +231,7 @@ type
   public
     procedure CopyFrom(AItem: TsDefinedName);
     function RangeAsString: String;
+    function RangeAsString_ODS: String;
     property Name: String read FName;
     property Range: TsCellRange read FRange write FRange;
     property SheetName1: String read FSheet1 write FSheet1;
@@ -1850,11 +1851,19 @@ begin
   end;
 end;
 
+// Test!$C$3
 function TsDefinedName.RangeAsString: String;
 begin
   Result := GetCellRangeString(FSheet1, FSheet2, FRange.Row1, FRange.Col1, FRange.Row2, FRange.Col2, [], true);
 end;
 
+// $Test.$C$3
+function TsDefinedName.RangeAsString_ODS: String;
+begin
+  Result := Format('$%s.%s', [FSheet1, GetCellString(FRange.Row1, FRange.Col1, [])]);
+  if (FSheet1 <> FSheet2) or (FRange.Row1 <> FRange.Row2) or (FRange.Col1 <> FRange.Col2) then
+    Result := Format('%s:$%s.%s', [Result, FSheet2, GetCellString(FRange.Row2, FRange.Col2, [])]);
+end;
 
 {==============================================================================}
 {                              TsDefinedNames                                  }
