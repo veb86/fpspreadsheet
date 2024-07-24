@@ -789,6 +789,7 @@ type
   TsSpreadsheetParser = class(TsExpressionParser)
   public
     constructor Create(AWorksheet: TsBasicWorksheet); override;
+    procedure AddDefinedNames;
   end;
 
 
@@ -893,7 +894,7 @@ implementation
 
 uses
   typinfo, math, lazutf8, dateutils,
-  fpsutils, fpsfunc, fpsStrings, fpspreadsheet;
+  fpsutils, fpsfunc, fpsStrings, fpsClasses, fpspreadsheet;
 
 const
   cNull = #0;
@@ -2413,6 +2414,55 @@ begin
   BuiltIns := AllBuiltIns;
 end;
 
+procedure TsSpreadsheetParser.AddDefinedNames;
+var
+  i: Integer;
+  book: TsWorkbook;
+  sheet, sheet1, sheet2: TsWorksheet;
+  cell: PCell;
+  r, c: Cardinal;
+  defName: TsDefinedName;
+begin
+  {
+  sheet := TsWorksheet(FWorksheet);
+  book := TsWorkbook(sheet.Workbook);
+  for i := 0 to book.DefinedNames.Count-1 do
+  begin
+    defName := book.DefinedNames[i];
+    sheet1 := book.GetWorksheetByName(defName.SheetName1);
+    sheet2 := book.GetWorksheetByName(defName.SheetName2);
+    if (sheet1 <> sheet2) then
+    begin
+      book.AddErrorMsg('3D ranges are not supported in defined names.');
+      exit;
+    end;
+    if (defName.Range.Row1 = defName.Range.Row2) then
+    begin
+      r := defName.Range.Row1;
+      if (defName.Range.Col2 = defName.Range.Col1+1) then
+        c := defName.Range.Col2
+      else if (defName.Range.Col2 = defName.Range.Col1) then
+        c := defName.Range.Col1
+      else
+        c := Cardinal(-1);
+    end else
+      r := Cardinal(-1);
+    if (r = cardinal(-1)) or (c = cardinal(-1)) then
+    begin
+      book.AddErrorMsg('Defined name "' + defName.Name + '" too complex.');
+      exit;
+    end;
+    cell := sheet1.FindCell(r, c);
+    case cell^.ContentType of
+      cctNumber: Identifiers.AddFloatVariable(defName.Name, cell^.NumberValue);
+      cctDateTime: Identifiers.AddDateTimeVariable(defName.Name, cell^.DateTimeValue);
+      cctUTF8String: Identifiers.AddStringVariable(defName.Name, cell^.UTF8StringValue);
+      cctBool: Identifiers.AddBooleanVariable(defName.Name, cell^.BoolValue);
+      cctError: ;
+    end;
+  end;
+  }
+end;
 
 {------------------------------------------------------------------------------}
 {  TsExprIdentifierDefs                                                        }

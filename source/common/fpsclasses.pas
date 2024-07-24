@@ -5,7 +5,7 @@ unit fpsClasses;
 interface
 
 uses
-  Classes, SysUtils, avglvltree,
+  Classes, SysUtils, contnrs, avglvltree,
   fpstypes, fpsExprParser;
 
 type
@@ -220,6 +220,34 @@ type
     function FindIndexOfName(AName: String): Integer;
     function IndexOf(const AItem: TsCellFormat): Integer; overload;
     property Items[AIndex: Integer]: PsCellFormat read GetItem write SetItem; default;
+  end;
+
+  { TsDefinedName }
+  TsDefinedName = class
+  private
+    FName: String;
+    FRange: TsCellRange;
+    FSheet1, FSheet2: String;
+  public
+    procedure CopyFrom(AItem: TsDefinedName);
+    function RangeAsString: String;
+    property Name: String read FName;
+    property Range: TsCellRange read FRange write FRange;
+    property SheetName1: String read FSheet1 write FSheet1;
+    property SheetName2: String read FSheet2 write FSheet2;
+  end;
+
+  { TsDefinedNames }
+  TsDefinedNames = class(TFPObjectList)
+  private
+    function GetItem(AIndex: Integer): TsDefinedName;
+    procedure SetItem(AIndex: Integer; AValue: TsDefinedName);
+  public
+    function Add(AName: String; ASheetName: String; ARow, ACol: Cardinal): Integer; overload;
+    function Add(AName: String; ASheetName1, ASheetName2: String; ARow1, ACol1, ARow2, ACol2: Cardinal): Integer; overload;
+    function DuplicateName(AName: String): Boolean;
+    function FindIndexOfName(AName: String): Integer;
+    property Items[AIndex: Integer]: TsDefinedName read GetItem write SetItem; default;
   end;
 
   { TsIntegerStack }
@@ -1804,6 +1832,96 @@ end;
 procedure TsCellFormatList.SetItem(AIndex: Integer; const AValue: PsCellFormat);
 begin
   inherited Items[AIndex] := AValue;
+end;
+
+
+{==============================================================================}
+{                              TsDefinedName                                   }
+{==============================================================================}
+
+procedure TsDefinedName.CopyFrom(AItem: TsDefinedName);
+begin
+  if AItem <> nil then
+  begin
+    FName := AItem.Name;
+    FSheet1 := AItem.SheetName1;
+    FSheet2 := AItem.SheetName2;
+    FRange := AItem.Range;
+  end;
+end;
+
+function TsDefinedName.RangeAsString: String;
+begin
+  Result := GetCellRangeString(FSheet1, FSheet2, FRange.Row1, FRange.Col1, FRange.Row2, FRange.Col2, [], true);
+end;
+
+
+{==============================================================================}
+{                              TsDefinedNames                                  }
+{==============================================================================}
+
+{ Adds the named cell to the list and returns the list index. AName must be
+  unique; if not, the return value is -1. }
+function TsDefinedNames.Add(AName: String; ASheetName: String;
+  ARow, ACol: Cardinal): Integer;
+var
+  item: TsDefinedName;
+begin
+  if DuplicateName(AName) then
+    Result := -1
+  else
+  begin
+    item := TsDefinedName.Create;
+    item.FName := AName;
+    item.FRange := Range(ARow, ACol);
+    item.FSheet1 := ASheetName;
+    item.FSheet2 := ASheetName;
+    Result := Add(item);
+  end;
+end;
+
+function TsDefinedNames.Add(AName: String; ASheetName1, ASheetName2: String;
+  ARow1, ACol1, ARow2, ACol2: Cardinal): Integer;
+var
+  item: TsDefinedName;
+begin
+  if DuplicateName(AName) then
+    Result := -1
+  else
+  begin
+    if ARow2 = Cardinal(-1) then ARow2 := ARow1;
+    if ACol2 = Cardinal(-1) then ACol2 := ACol1;
+    if ASheetName2 = '' then ASheetName2 := ASheetName1;
+    item := TsDefinedName.Create;
+    item.FName := AName;
+    item.FRange := Range(ARow1, ACol1, ARow2, ACol2);
+    item.FSheet1 := ASheetName1;
+    item.FSheet2 := ASheetName2;
+    Result := Add(item);
+  end;
+end;
+
+function TsDefinedNames.DuplicateName(AName: String): Boolean;
+begin
+  Result := FindIndexOfName(AName) <> -1;
+end;
+
+function TsDefinedNames.FindIndexOfName(AName: String): Integer;
+begin
+  for Result := 0 to Count-1 do
+    if SameText(Items[Result].Name, AName) then
+      exit;
+  Result := -1;
+end;
+
+function TsDefinedNames.GetItem(AIndex: Integer): TsDefinedName;
+begin
+  Result := TsDefinedName(inherited Items[AIndex]);
+end;
+
+procedure TsDefinedNames.SetItem(AIndex: Integer; AValue: TsDefinedName);
+begin
+  TsDefinedName(inherited Items[AIndex]).CopyFrom(AValue);
 end;
 
 

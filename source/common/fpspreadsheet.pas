@@ -767,6 +767,7 @@ type
     FBuiltinFontCount: Integer;
     FReadWriteFlag: TsReadWriteFlag;
     FCalculationLock: Integer;
+    FDefinedNames: TsDefinedNames;
     FDeleteFormulaLock: Integer;
     FNotificationLock: Integer;
     FRebuildFormulaLock: Integer;
@@ -960,6 +961,9 @@ type
     property ActiveWorksheet: TsWorksheet read FActiveWorksheet write SelectWorksheet;
     property CryptoInfo: TsCryptoInfo read FCryptoInfo write FCryptoInfo;
     {property RevisionsCrypto: TsCryptoInfo read FRevisionsCrypto write FRevisionsCrypto;}
+
+    { Globally defined names }
+    property DefinedNames: TsDefinedNames read FDefinedNames write FDefinedNames;
 
     {@@ Workbook metadata}
     property MetaData: TsMetaData read FMetaData write FMetaData;
@@ -1340,10 +1344,12 @@ end;
 procedure TsWorksheet.CalcFormula(AFormula: PsFormula);
 var
   lCell, lCellRef: PCell;
-  parser: TsExpressionParser = nil;
+  parser: TsSpreadsheetParser = nil;
   res: TsExpressionResult;
   p: Integer;
   link, txt: String;
+  i: Integer;
+  defName: TsDefinedName;
 begin
   if (boIgnoreFormulas in Workbook.Options) or (AFormula = nil) then
     exit;
@@ -1355,6 +1361,7 @@ begin
   if AFormula^.Parser = nil then begin
     parser := TsSpreadsheetParser.Create(self);
     try
+      parser.AddDefinedNames;
       parser.Expression[fdExcelA1] := AFormula^.Text;
       AFormula^.Parser := parser;
     except
@@ -5074,7 +5081,7 @@ end;
 procedure TsWorksheet.WriteFormula(ACell: PCell; AFormula: String;
   ALocalized: Boolean = false; R1C1Mode: Boolean = false);
 var
-  parser: TsExpressionParser = nil;
+  parser: TsSpreadsheetParser = nil;
   formula: PsFormula;
 begin
   if ACell = nil then
@@ -5096,6 +5103,7 @@ begin
   begin
     parser := TsSpreadsheetParser.Create(self);
     try
+      parser.AddDefinedNames;
       if ALocalized then
         parser.Expression[fdLocalized] := AFormula
       else
@@ -6615,6 +6623,9 @@ begin
   InitFormatRecord(fmt);
   AddCellFormat(fmt);
 
+  // Globally defined names
+  FDefinedNames := TsDefinedNames.Create;
+
   // Protection
   InitCryptoInfo(FCryptoInfo);
 
@@ -6632,6 +6643,7 @@ begin
   EnableNotifications;
   FWorksheets.Free;
 
+  FDefinedNames.Free;
   FMetaData.Free;
   FConditionalFormatList.Free;
   FCellFormatList.Free;
@@ -6668,6 +6680,9 @@ begin
 
   // Remove embedded images
   RemoveAllEmbeddedObj;
+
+  // Remove defined names
+  FDefinedNames.Clear;
 
   // Reset cryptoinfo
   InitCryptoInfo(FCryptoInfo);

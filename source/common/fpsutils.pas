@@ -2960,6 +2960,7 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Creates a @link(TsCellRange) record from the coordinates of a single cell.
+  The second corner coordinates are set equal to the first corner coordinates.
 -------------------------------------------------------------------------------}
 function Range(ARow, ACol: Cardinal): TsCellRange;
 begin

@@ -2369,15 +2369,20 @@ var
   node: TDOMNode;
   nodeName: String;
   r1,c1,r2,c2: Cardinal;
+  flags: TsRelFlags;
   id, j, p: Integer;
+  book: TsWorkbook;
   sheet: TsWorksheet;
   localSheetID: String;
   namestr: String;
-  s, sheetname: String;
+  s, sheetname1, sheetName2: String;
   L: TStringList;
 begin
   if ANode = nil then
     exit;
+
+  book := TsWorkbook(FWorkbook);
+
   node := ANode.FirstChild;
   while node <> nil do begin
     nodename := node.NodeName;
@@ -2417,8 +2422,8 @@ begin
               FWorkbook.AddErrorMsg('invalid cell range reference in "definedName" node');
               break;
             end;
-            ParseSheetCellString(Copy(s, 1, p-1), sheetname, r1, c1);
-            ParseSheetCellString(Copy(s, p+1, MaxInt), sheetname, r2, c2);
+            ParseSheetCellString(Copy(s, 1, p-1), sheetname1, r1, c1);
+            ParseSheetCellString(Copy(s, p+1, MaxInt), sheetname2, r2, c2);
             sheet.PageLayout.AddPrintRange(r1, c1, r2, c2);
           end;
         finally
@@ -2460,6 +2465,11 @@ begin
           L.Free;
         end;
       end;
+
+      // "Normal" defined names
+      s := GetNodeValue(node);
+      if ParseCellRangeString(s, sheetName1, sheetName2, r1, c1, r2, c2, flags) then
+        book.DefinedNames.Add(nameStr, sheetName1, sheetName2, r1, c1, r2, c2);
     end;
     node := node.NextSibling;
   end;
@@ -7527,13 +7537,26 @@ end;
 
 procedure TsSpreadOOXMLWriter.WriteDefinedNames(AStream: TStream);
 var
+  book: TsWorkbook;
   sheet: TsWorksheet;
   stotal, srng, sheetname: String;
   i, j: Integer;
   prng: TsCellRange;
   firstIndex, lastIndex: Integer;
+  defName: TsDefinedName;
 begin
   stotal := '';
+
+  // Write global defined names
+  book := TsWorkbook(FWorkbook);
+  for i := 0 to book.DefinedNames.Count-1 do
+  begin
+    defName := book.DefinedNames[i];
+    sTotal := sTotal + Format('<definedName name="%s">%s</definedName>',
+      [ defName.Name, defName.RangeAsString ]
+    );
+  end;
+
 
   // Write print ranges and repeatedly printed rows and columns
   for i := 0 to (Workbook as TsWorkbook).GetWorksheetCount-1 do
@@ -7587,7 +7610,7 @@ begin
 
   // Write to stream if any defined names exist
   if stotal <> '' then
-    AppendtoStream(AStream,
+    AppendToStream(AStream,
       '<definedNames>' + stotal + '</definedNames>');
 end;
 
