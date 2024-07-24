@@ -2376,6 +2376,7 @@ var
   localSheetID: String;
   namestr: String;
   s, sheetname1, sheetName2: String;
+  sheetIdx1, sheetIdx2: Integer;
   L: TStringList;
 begin
   if ANode = nil then
@@ -2469,7 +2470,14 @@ begin
       // "Normal" defined names
       s := GetNodeValue(node);
       if ParseCellRangeString(s, sheetName1, sheetName2, r1, c1, r2, c2, flags) then
-        book.DefinedNames.Add(nameStr, sheetName1, sheetName2, r1, c1, r2, c2);
+      begin
+        if (r2 = UNASSIGNED_ROW_COL_INDEX) then r2 := r1;
+        if (c2 = UNASSIGNED_ROW_COL_INDEX) then c2 := c1;
+        if sheetName2 = '' then sheetName2 := sheetName1;
+        sheetIdx1 := book.GetWorksheetIndex(sheetName1);
+        sheetIdx2 := book.GetWorksheetIndex(sheetName2);
+        book.DefinedNames.Add(nameStr, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
+      end;
     end;
     node := node.NextSibling;
   end;
@@ -7553,10 +7561,9 @@ begin
   begin
     defName := book.DefinedNames[i];
     sTotal := sTotal + Format('<definedName name="%s">%s</definedName>',
-      [ defName.Name, defName.RangeAsString ]
+      [ defName.Name, defName.RangeAsString(FWorkbook) ]
     );
   end;
-
 
   // Write print ranges and repeatedly printed rows and columns
   for i := 0 to (Workbook as TsWorkbook).GetWorksheetCount-1 do

@@ -6,7 +6,7 @@ interface
 
 uses
   Classes, SysUtils, contnrs, avglvltree,
-  fpstypes, fpsExprParser;
+  fpsTypes, fpsExprParser;
 
 type
   { forward declarations }
@@ -226,16 +226,13 @@ type
   TsDefinedName = class
   private
     FName: String;
-    FRange: TsCellRange;
-    FSheet1, FSheet2: String;
+    FRange: TsCellRange3D;
   public
     procedure CopyFrom(AItem: TsDefinedName);
-    function RangeAsString: String;
-    function RangeAsString_ODS: String;
+    function RangeAsString(AWorkbook: TsBasicWorkbook): String;
+    function RangeAsString_ODS(AWorkbook: TsBasicWorkbook): String;
     property Name: String read FName;
-    property Range: TsCellRange read FRange write FRange;
-    property SheetName1: String read FSheet1 write FSheet1;
-    property SheetName2: String read FSheet2 write FSheet2;
+    property Range: TsCellRange3D read FRange write FRange;
   end;
 
   { TsDefinedNames }
@@ -244,8 +241,8 @@ type
     function GetItem(AIndex: Integer): TsDefinedName;
     procedure SetItem(AIndex: Integer; AValue: TsDefinedName);
   public
-    function Add(AName: String; ASheetName: String; ARow, ACol: Cardinal): Integer; overload;
-    function Add(AName: String; ASheetName1, ASheetName2: String; ARow1, ACol1, ARow2, ACol2: Cardinal): Integer; overload;
+    function Add(AName: String; ASheetIndex: Integer; ARow, ACol: Cardinal): Integer; overload;
+    function Add(AName: String; ASheetIndex1, ASheetIndex2: Integer; ARow1, ACol1, ARow2, ACol2: Cardinal): Integer; overload;
     function DuplicateName(AName: String): Boolean;
     function FindIndexOfName(AName: String): Integer;
     property Items[AIndex: Integer]: TsDefinedName read GetItem write SetItem; default;
@@ -268,7 +265,7 @@ implementation
 
 uses
   Math,
-  fpsUtils;
+  fpsUtils, fpSpreadsheet;
 
 
 { Helper function for sorting }
@@ -1845,24 +1842,42 @@ begin
   if AItem <> nil then
   begin
     FName := AItem.Name;
-    FSheet1 := AItem.SheetName1;
-    FSheet2 := AItem.SheetName2;
     FRange := AItem.Range;
   end;
 end;
 
 // Test!$C$3
-function TsDefinedName.RangeAsString: String;
+function TsDefinedName.RangeAsString(AWorkbook: TsBasicWorkbook): String;
+var
+  book: TsWorkbook;
+  sh1, sh2: TsWorksheet;
 begin
-  Result := GetCellRangeString(FSheet1, FSheet2, FRange.Row1, FRange.Col1, FRange.Row2, FRange.Col2, [], true);
+  book := TsWorkbook(AWorkbook);
+  with FRange do
+  begin
+    sh1 := book.GetWorksheetByIndex(Sheet1);
+    sh2 := book.GetWorksheetByIndex(Sheet2);
+    Result := GetCellRangeString(sh1.Name, sh2.Name, Row1, Col1, Row2, Col2, [], true);
+  end;
 end;
 
 // $Test.$C$3
-function TsDefinedName.RangeAsString_ODS: String;
+function TsDefinedName.RangeAsString_ODS(AWorkBook: TsBasicWorkbook): String;
+var
+  book: TsWorkbook;
+  sh1, sh2: TsWorksheet;
 begin
-  Result := Format('$%s.%s', [FSheet1, GetCellString(FRange.Row1, FRange.Col1, [])]);
-  if (FSheet1 <> FSheet2) or (FRange.Row1 <> FRange.Row2) or (FRange.Col1 <> FRange.Col2) then
-    Result := Format('%s:$%s.%s', [Result, FSheet2, GetCellString(FRange.Row2, FRange.Col2, [])]);
+  book := TsWorkbook(AWorkbook);
+  with FRange do
+  begin
+    sh1 := book.GetWorksheetByIndex(Sheet1);
+    Result := Format('$%s.%s', [sh1.Name, GetCellString(Row1, Col1, [])]);
+    if (Sheet1 <> Sheet2) or (Row1 <> Row2) or (Col1 <> Col2) then
+    begin
+      sh2 := book.GetWorksheetByIndex(Sheet2);
+      Result := Format('%s:$%s.%s', [Result, sh2.Name, GetCellString(Row2, Col2, [])]);
+    end;
+  end;
 end;
 
 {==============================================================================}
@@ -1871,8 +1886,7 @@ end;
 
 { Adds the named cell to the list and returns the list index. AName must be
   unique; if not, the return value is -1. }
-function TsDefinedNames.Add(AName: String; ASheetName: String;
-  ARow, ACol: Cardinal): Integer;
+function TsDefinedNames.Add(AName: String; ASheetIndex: Integer; ARow, ACol: Cardinal): Integer;
 var
   item: TsDefinedName;
 begin
@@ -1882,14 +1896,12 @@ begin
   begin
     item := TsDefinedName.Create;
     item.FName := AName;
-    item.FRange := Range(ARow, ACol);
-    item.FSheet1 := ASheetName;
-    item.FSheet2 := ASheetName;
+    item.FRange := Range3D(ASheetIndex, ASheetIndex, ARow, ACol, ARow, ACol);
     Result := Add(item);
   end;
 end;
 
-function TsDefinedNames.Add(AName: String; ASheetName1, ASheetName2: String;
+function TsDefinedNames.Add(AName: String; ASheetIndex1, ASheetIndex2: Integer;
   ARow1, ACol1, ARow2, ACol2: Cardinal): Integer;
 var
   item: TsDefinedName;
@@ -1900,12 +1912,9 @@ begin
   begin
     if ARow2 = Cardinal(-1) then ARow2 := ARow1;
     if ACol2 = Cardinal(-1) then ACol2 := ACol1;
-    if ASheetName2 = '' then ASheetName2 := ASheetName1;
     item := TsDefinedName.Create;
     item.FName := AName;
-    item.FRange := Range(ARow1, ACol1, ARow2, ACol2);
-    item.FSheet1 := ASheetName1;
-    item.FSheet2 := ASheetName2;
+    item.FRange := Range3D(ASheetIndex1, ASheetIndex2, ARow1, ACol1, ARow2, ACol2);
     Result := Add(item);
   end;
 end;

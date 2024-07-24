@@ -250,6 +250,7 @@ function SameFont(AFont: TsFont; AFontName: String; AFontSize: Single;
 
 function Range(ARow, ACol: Cardinal): TsCellRange; overload;
 function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange; overload;
+function Range3D(ASheetIdx1, ASheetIdx2: Integer; ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange3D;
 
 function CellBorderStyle(const AColor: TsColor = scBlack;
   const ALineStyle: TsLineStyle = lsThin): TsCellBorderStyle;
@@ -1370,6 +1371,7 @@ begin
   else
   begin
     ASheet1 := Copy(cell1Str, 1, p-1);
+    if ASheet1[1] = '$' then Delete(ASheet1, 1, 1);
     cell1Str := Copy(cell1Str, p+1, MaxInt);
   end;
   Result := ParseCellString(cell1Str, ARow1, ACol1, AFlags);
@@ -1385,6 +1387,7 @@ begin
     else
     begin
       ASheet2 := Copy(cell2Str, 1, p-1);
+      if ASheet2[1] = '$' then Delete(ASheet2, 1, 1);
       cell2Str := Copy(cell2Str, p+1, MaxInt);
     end;
     Result := ParseCellString(cell2Str, ARow2, ACol2, f);
@@ -1394,7 +1397,7 @@ begin
   begin
     ASheet2 := ASheet1;
     ARow2 := ARow1;
-    ACol2 := ACol2;
+    ACol2 := ACol1;
     if (rfRelRow in AFlags) then Include(AFlags, rfRelRow2);
     if (rfRelCol in AFlags) then Include(AFlags, rfRelCol2);
   end;
@@ -2996,6 +2999,21 @@ begin
     Result.Col2 := ACol1;
   end;
 end;
+
+function Range3D(ASheetIdx1, ASheetIdx2: Integer;
+  ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange3D;
+var
+  rng: TsCellRange;
+begin
+  rng := Range(ARow1, ACol1, ARow2, ACol2);
+  Result.Row1 := rng.Row1;
+  Result.Col1 := rng.Col1;
+  Result.Row2 := rng.Row2;
+  Result.Col2 := rng.Col2;
+  Result.Sheet1 := ASheetIdx1;
+  Result.Sheet2 := ASheetIdx2;
+end;
+
 
 {@@ ----------------------------------------------------------------------------
   Combines the relevant font properties into a string

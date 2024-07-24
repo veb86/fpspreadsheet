@@ -395,6 +395,7 @@ type
     FOnGetValue: TsExprFunctionEvent;
     FOnGetValueCB: TsExprFunctionCallBack;
     function GetAsBoolean: Boolean;
+    function GetAsCellRange: TsCellRange3D;
     function GetAsDateTime: TDateTime;
     function GetAsFloat: TsExprFloat;
     function GetAsInteger: Int64;
@@ -403,6 +404,7 @@ type
     function GetValue: String;
     procedure SetArgumentTypes(const AValue: String);
     procedure SetAsBoolean(const AValue: Boolean);
+    procedure SetAsCellRange(const AValue: TsCellRange3D);
     procedure SetAsDateTime(const AValue: TDateTime);
     procedure SetAsFloat(const AValue: TsExprFloat);
     procedure SetAsInteger(const AValue: Int64);
@@ -470,6 +472,8 @@ type
       AValue: String): TsExprIdentifierDef;
     function AddBooleanVariable(const AName: ShortString;
       AValue: Boolean): TsExprIdentifierDef;
+    function AddCellRangeVariable(const AName: ShortString;
+      AValue: TsCellRange3D): TsExprIdentifierDef;
     function AddIntegerVariable(const AName: ShortString;
       AValue: Integer): TsExprIdentifierDef;
     function AddFloatVariable(const AName: ShortString;
@@ -2419,18 +2423,17 @@ var
   i: Integer;
   book: TsWorkbook;
   sheet, sheet1, sheet2: TsWorksheet;
-  cell: PCell;
   r, c: Cardinal;
   defName: TsDefinedName;
+  rng: TsCellRange3D;
 begin
-  {
   sheet := TsWorksheet(FWorksheet);
   book := TsWorkbook(sheet.Workbook);
   for i := 0 to book.DefinedNames.Count-1 do
   begin
     defName := book.DefinedNames[i];
-    sheet1 := book.GetWorksheetByName(defName.SheetName1);
-    sheet2 := book.GetWorksheetByName(defName.SheetName2);
+    sheet1 := book.GetWorksheetByIndex(defName.Range.Sheet1);
+    sheet2 := book.GetWorksheetByIndex(defName.Range.Sheet2);
     if (sheet1 <> sheet2) then
     begin
       book.AddErrorMsg('3D ranges are not supported in defined names.');
@@ -2452,16 +2455,9 @@ begin
       book.AddErrorMsg('Defined name "' + defName.Name + '" too complex.');
       exit;
     end;
-    cell := sheet1.FindCell(r, c);
-    case cell^.ContentType of
-      cctNumber: Identifiers.AddFloatVariable(defName.Name, cell^.NumberValue);
-      cctDateTime: Identifiers.AddDateTimeVariable(defName.Name, cell^.DateTimeValue);
-      cctUTF8String: Identifiers.AddStringVariable(defName.Name, cell^.UTF8StringValue);
-      cctBool: Identifiers.AddBooleanVariable(defName.Name, cell^.BoolValue);
-      cctError: ;
-    end;
+    rng := Range3D(defName.Range.Sheet1, defName.Range.Sheet2, r, c, r, c);
+    Identifiers.AddCellRangeVariable(defName.Name, rng);
   end;
-  }
 end;
 
 {------------------------------------------------------------------------------}
@@ -2476,6 +2472,17 @@ begin
   Result.Name := AName;
   Result.ResultType := rtBoolean;
   Result.FValue.ResBoolean := AValue;
+end;
+
+// Needed for defined names.
+function TsExprIdentifierDefs.AddCellRangeVariable(const AName: ShortString;
+  AValue: TsCellRange3D): TsExprIdentifierDef;
+begin
+  Result := Add as TsExprIdentifierDef;
+  Result.IdentifierType := itVariable;
+  Result.Name := AName;
+  Result.ResultType := rtCellRange;
+  Result.FValue.ResCellRange := AValue;
 end;
 
 function TsExprIdentifierDefs.AddDateTimeVariable(const AName: ShortString;
@@ -2686,6 +2693,13 @@ begin
   Result := FValue.ResBoolean;
 end;
 
+function TsExprIdentifierDef.GetAsCellRange: TsCellRange3D;
+begin
+  CheckResultType(rtCellRange);
+  CheckVariable;
+  Result := FValue.ResCellRange;
+end;
+
 function TsExprIdentifierDef.GetAsDateTime: TDateTime;
 begin
   CheckResultType(rtDateTime);
@@ -2781,6 +2795,13 @@ begin
   CheckVariable;
   CheckResultType(rtBoolean);
   FValue.ResBoolean := AValue;
+end;
+
+procedure TsExprIdentifierDef.SetAsCellRange(const AValue: TsCellRange3D);
+begin
+  CheckVariable;
+  CheckResultType(rtCellRange);
+  FValue.ResCellRange := AValue;
 end;
 
 procedure TsExprIdentifierDef.SetAsDateTime(const AValue: TDateTime);
@@ -3988,9 +4009,37 @@ begin
 end;
 
 procedure TsIdentifierExprNode.GetNodeValue(out AResult: TsExpressionResult);
+var
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  cell: PCell;
 begin
-  AResult := PResult^;
-  AResult.ResultType := FResultType;
+  if PResult^.ResultType = rtCellRange then
+  begin
+    with PResult^.ResCellRange do
+      if (Row1 = Row2) and (Col1 = Col2) and (Sheet1 = Sheet2) then
+      begin
+        book := TsWorkbook(TsWorksheet(Parser.Worksheet).Workbook);
+        sheet := book.GetWorksheetByIndex(Sheet1);
+        cell := sheet.FindCell(Row1, Col1);
+        if cell <> nil then
+          case cell^.ContentType of
+            cctNumber: AResult := FloatResult(cell^.NumberValue);
+            cctDateTime: AResult := DateTimeResult(cell^.DateTimeValue);
+            cctUTF8String: AResult := StringResult(cell^.UTF8StringValue);
+            cctBool: AResult := BooleanResult(cell^.BoolValue);
+            cctError: AResult := ErrorResult(cell^.ErrorValue);
+            cctEmpty: AResult := EmptyResult;
+          end
+        else
+          AResult := ErrorResult(errIllegalRef);
+      end else
+        AResult := CellRangeResult(PResult^.Worksheet, Sheet1, Sheet2, Row1, Col1, Row2, Col2);
+  end else
+  begin
+    AResult := PResult^;
+    AResult.ResultType := FResultType;
+  end;
 end;
 
 

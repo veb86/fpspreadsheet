@@ -2638,7 +2638,8 @@ var
   defName: String;
   defAddr: String;
   r1, c1, r2, c2: Cardinal;
-  sheet1, sheet2: String;
+  sheetName1, sheetName2: String;
+  sheetIdx1, sheetIdx2: Integer;
   flags: TsRelFlags;
 begin
   if ANode = nil then
@@ -2657,8 +2658,14 @@ begin
     begin
       defName := GetAttrValue(ANode, 'table:name');
       defAddr := GetAttrValue(ANode, 'table:cell-range-address');
-      if TryStrToCellRange_ODS(defAddr, sheet1, sheet2, r1, c1, r2, c2, flags) then
-        book.DefinedNames.Add(defName, sheet1, sheet2, r1, c1, r2, c2);
+      if TryStrToCellRange_ODS(defAddr, sheetName1, sheetName2, r1, c1, r2, c2, flags) then
+      begin
+        if (sheetName1 <> '') and (sheetName1[1] = '$') then Delete(sheetName1, 1,1);
+        if (sheetName2 <> '') and (sheetName2[1] = '$') then Delete(sheetName2, 1,1);
+        sheetIdx1 := book.GetWorksheetIndex(sheetName1);
+        sheetIdx2 := book.GetWorksheetIndex(sheetName2);
+        book.DefinedNames.Add(defName, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
+      end;
     end;
     ANode := ANode.NextSibling;
   end;
@@ -8748,13 +8755,20 @@ begin
 end;
 
 function TsSpreadOpenDocWriter.WriteDefinedNameXMLAsString(ADefinedName: TsDefinedName): String;
+var
+  book: TsWorkbook;
+  sheet1, sheet2: TsWorksheet;
 begin
+  book := TsWorkbook(FWorkbook);
+  sheet1 := book.GetWorksheetByIndex(ADefinedName.Range.Sheet1);
+  sheet2 := book.GetWorksheetByIndex(ADefinedName.Range.Sheet2);
+
   Result := Format(
     '<table:named-range ' +
       'table:name="%s" ' +
       'table:base-cell-address="$%s.$A$1" ' +
       'table:cell-range-address="%s" />',
-    [ ADefinedName.Name, ADefinedName.SheetName1, ADefinedName.RangeAsString_ODS ]
+    [ ADefinedName.Name, sheet1.Name, ADefinedName.RangeAsString_ODS(FWorkbook) ]
   );
 end;
 
