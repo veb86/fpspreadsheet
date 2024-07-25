@@ -2961,6 +2961,7 @@ begin
     try
       formula := TsWorksheet(FWorksheet).Formulas.AddFormula(ARow, ACol);
       formula^.Parser := TsSpreadsheetParser.Create(FWorksheet);
+      TsSpreadsheetParser(formula^.Parser).AddDefinedNames;
       formula^.Parser.Expression[fdOpenDocument] := formulaStr;  // Parse in ODS dialect
       formula^.Text := formula^.Parser.Expression[fdExcelA1];    // Convert to Excel A1 dialect
       cell^.Flags := cell^.Flags + [cfHasFormula];
@@ -3168,6 +3169,8 @@ begin
         ReadSheetProtection(TableNode, FWorksheet);
         // Collect embedded images
         ReadShapes(TableNode);
+        // Read defined names
+        ReadDefinedNames(SpreadSheetNode);
         // Collect column styles used
         ReadColumns(TableNode);
         // Remove excess rows added at the end
@@ -3197,7 +3200,6 @@ begin
         TableNode := TableNode.NextSibling;
       end; //while Assigned(TableNode)
 
-      ReadDefinedNames(SpreadSheetNode);
       FreeAndNil(Doc);
     end;
 
