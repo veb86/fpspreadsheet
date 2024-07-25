@@ -2422,41 +2422,15 @@ procedure TsSpreadsheetParser.AddDefinedNames;
 var
   i: Integer;
   book: TsWorkbook;
-  sheet, sheet1, sheet2: TsWorksheet;
-  r, c: Cardinal;
+  sheet: TsWorksheet;
   defName: TsDefinedName;
-  rng: TsCellRange3D;
 begin
   sheet := TsWorksheet(FWorksheet);
   book := TsWorkbook(sheet.Workbook);
   for i := 0 to book.DefinedNames.Count-1 do
   begin
     defName := book.DefinedNames[i];
-    sheet1 := book.GetWorksheetByIndex(defName.Range.Sheet1);
-    sheet2 := book.GetWorksheetByIndex(defName.Range.Sheet2);
-    if (sheet1 <> sheet2) then
-    begin
-      book.AddErrorMsg('3D ranges are not supported in defined names.');
-      exit;
-    end;
-    if (defName.Range.Row1 = defName.Range.Row2) then
-    begin
-      r := defName.Range.Row1;
-      if (defName.Range.Col2 = defName.Range.Col1+1) then
-        c := defName.Range.Col2
-      else if (defName.Range.Col2 = defName.Range.Col1) then
-        c := defName.Range.Col1
-      else
-        c := Cardinal(-1);
-    end else
-      r := Cardinal(-1);
-    if (r = cardinal(-1)) or (c = cardinal(-1)) then
-    begin
-      book.AddErrorMsg('Defined name "' + defName.Name + '" too complex.');
-      exit;
-    end;
-    rng := Range3D(defName.Range.Sheet1, defName.Range.Sheet2, r, c, r, c);
-    Identifiers.AddCellRangeVariable(defName.Name, rng);
+    Identifiers.AddCellRangeVariable(defName.Name, defName.Range);
   end;
 end;
 
@@ -4017,11 +3991,11 @@ begin
   if PResult^.ResultType = rtCellRange then
   begin
     with PResult^.ResCellRange do
-      if (Row1 = Row2) and (Col1 = Col2) and (Sheet1 = Sheet2) then
+      if (Sheet1 = Sheet2) and (Row1 = Row2) and ((Col1 = Col2) or (Col2 = Col1+1)) then
       begin
         book := TsWorkbook(TsWorksheet(Parser.Worksheet).Workbook);
         sheet := book.GetWorksheetByIndex(Sheet1);
-        cell := sheet.FindCell(Row1, Col1);
+        cell := sheet.FindCell(Row1, Col2);
         if cell <> nil then
           case cell^.ContentType of
             cctNumber: AResult := FloatResult(cell^.NumberValue);
