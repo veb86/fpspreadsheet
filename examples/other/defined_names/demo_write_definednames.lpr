@@ -10,7 +10,11 @@ begin
   wb := TsWorkbook.Create;
   try
     wb.Options := [boAutoCalc];
-    ws := wb.AddWorksheet('Test');
+
+    {----------}
+
+    // Single cell defined names
+    ws := wb.AddWorksheet('Simple');
     wsIdx := wb.GetWorksheetIndex(ws);
 
     wb.DefinedNames.Add('distance', wsIdx, 1, 2);
@@ -21,6 +25,29 @@ begin
 
     wb.DefinedNames.Add('speed', wsIdx, 3, 2);
     ws.WriteText(3, 1, 'speed');        ws.WriteFormula(3, 2, '=distance/time');
+
+    {----------}
+
+    // Cell range as defined name
+    ws := wb.AddWorksheet('Range');
+    wsIdx := wb.GetWorksheetIndex(ws);
+
+    ws.WriteText(0, 0, 'Data');
+    ws.WriteNumber(1, 0, 1.0);
+    ws.WriteNumber(2, 0, 2.0);
+    ws.WriteNumber(3, 0, 3.0);
+    wb.DefinedNames.Add('data', wsIdx, wsIdx, 1, 0, 3, 0);
+    ws.WriteFormula(4, 0, '=SUM(data)');
+
+    {----------}
+
+    // Defined name in other sheet
+    ws := wb.AddWorksheet('Range-2');
+
+    wb.DefinedNames.Add('data', wsIdx, wsIdx, 1, 0, 3, 0);  // wsIdx refers to sheet "Range"
+    ws.WriteFormula(4, 0, '=SUM(data)');
+
+    {----------}
 
     wb.WriteToFile('test_defnames.xlsx', true);
     wb.WriteToFile('test_defnames.ods', true);

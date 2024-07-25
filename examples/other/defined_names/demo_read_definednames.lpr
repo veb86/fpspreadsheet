@@ -19,23 +19,29 @@ begin
   try
     wb.Options := [boAutoCalc, boReadFormulas];
 
-    wb.ReadFromFile(fn);
-    ws := wb.GetFirstWorksheet;
-
     WriteLn('FILE: ', fn, LineEnding);
+    wb.ReadFromFile(fn);
 
-    WriteLn('DEFINED NAMES');
+    WriteLn('DEFINED NAMES (GLOBAL)');
     for i := 0 to wb.DefinedNames.Count-1 do
-      WriteLn(wb.DefinedNames[i].Name, ' --> ', wb.DefinedNames[i].RangeAsString(wb));
+      WriteLn('  ', wb.DefinedNames[i].Name, ' --> ', wb.DefinedNames[i].RangeAsString(wb));
 
-    WriteLn;
-    WriteLn('CELLS');
-    for cell in ws.Cells do
+    WriteLn('--------------------------------------------------------');
+
+    for i := 0 to wb.GetWorksheetCount - 1 do
     begin
-      Write(GetCellString(cell^.Row, cell^.Col), ' --> ', ws.ReadAsText(cell));
-      if HasFormula(cell) then
-        Write(' (formula: ', ws.GetFormula(cell)^.Text, ')');
-      WriteLn;
+      ws := wb.GetWorksheetByIndex(i);
+      WriteLn('WORKSHEET "', ws.Name, '"');
+
+      WriteLn('  CELLS');
+      for cell in ws.Cells do
+      begin
+        Write('    ', GetCellString(cell^.Row, cell^.Col), ' --> ', ws.ReadAsText(cell));
+        if HasFormula(cell) then
+          Write(' (formula: "=', ws.GetFormula(cell)^.Text, '")');
+        WriteLn;
+      end;
+      WriteLn('--------------------------------------------------------');
     end;
 
   finally

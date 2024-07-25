@@ -3986,29 +3986,42 @@ procedure TsIdentifierExprNode.GetNodeValue(out AResult: TsExpressionResult);
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
+  sheetIdx1, sheetIdx2: Integer;
+  r1, c1, r2, c2: Cardinal;
   cell: PCell;
 begin
+  book := TsWorkbook(TsWorksheet(Parser.Worksheet).Workbook);
   if PResult^.ResultType = rtCellRange then
   begin
     with PResult^.ResCellRange do
-      if (Sheet1 = Sheet2) and (Row1 = Row2) and ((Col1 = Col2) or (Col2 = Col1+1)) then
-      begin
-        book := TsWorkbook(TsWorksheet(Parser.Worksheet).Workbook);
-        sheet := book.GetWorksheetByIndex(Sheet1);
-        cell := sheet.FindCell(Row1, Col2);
-        if cell <> nil then
-          case cell^.ContentType of
-            cctNumber: AResult := FloatResult(cell^.NumberValue);
-            cctDateTime: AResult := DateTimeResult(cell^.DateTimeValue);
-            cctUTF8String: AResult := StringResult(cell^.UTF8StringValue);
-            cctBool: AResult := BooleanResult(cell^.BoolValue);
-            cctError: AResult := ErrorResult(cell^.ErrorValue);
-            cctEmpty: AResult := EmptyResult;
-          end
-        else
-          AResult := ErrorResult(errIllegalRef);
-      end else
-        AResult := CellRangeResult(PResult^.Worksheet, Sheet1, Sheet2, Row1, Col1, Row2, Col2);
+    begin
+      sheetIdx1 := Sheet1;
+      sheetIdx2 := Sheet2;
+      r1 := Row1;
+      c1 := Col1;
+      r2 := Row2;
+      c2 := Col2;
+    end;
+    if (sheetIdx1 = sheetIdx2) and (r1 = r2) and ((c1 = c2) or (c2 = c1+1)) then
+    begin
+      sheet := book.GetWorksheetByIndex(sheetIdx1);
+      cell := sheet.FindCell(r1, c2);
+      if cell <> nil then
+        case cell^.ContentType of
+          cctNumber: AResult := FloatResult(cell^.NumberValue);
+          cctDateTime: AResult := DateTimeResult(cell^.DateTimeValue);
+          cctUTF8String: AResult := StringResult(cell^.UTF8StringValue);
+          cctBool: AResult := BooleanResult(cell^.BoolValue);
+          cctError: AResult := ErrorResult(cell^.ErrorValue);
+          cctEmpty: AResult := EmptyResult;
+        end
+      else
+        AResult := ErrorResult(errIllegalRef);
+    end else
+    begin
+      sheet := TsWorksheet(Parser.Worksheet);
+      AResult := CellRangeResult(sheet, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
+    end;
   end else
   begin
     AResult := PResult^;
