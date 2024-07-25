@@ -1773,6 +1773,9 @@ var
   r, c: Cardinal;
   cell: PCell;
   arg: TsExpressionResult;
+  book: TsWorkbook;
+  sheet: TsWorksheet;
+  sheetIdx: Integer;
 begin
   n := 0;
   for i:=0 to High(Args) do
@@ -1796,17 +1799,24 @@ begin
             end;
         end;
       rtCellRange:
-        for r := arg.ResCellRange.Row1 to arg.ResCellRange.Row2 do
-          for c := arg.ResCellRange.Col1 to arg.ResCellRange.Col2 do
+        begin
+          book := TsWorkbook(TsWorksheet(arg.Worksheet).Workbook);
+          for sheetIdx := arg.ResCellRange.Sheet1 to arg.ResCellRange.Sheet2 do
           begin
-            cell := (arg.Worksheet as TsWorksheet).FindCell(r, c);
-            if (cell <> nil) then
-              case cell^.ContentType of
-                cctNumber, cctDateTime, cctBool : inc(n);
-                cctUTF8String: if cell^.UTF8StringValue <> '' then inc(n);
-                cctError: if cell^.ErrorValue <> errOK then inc(n);
+            sheet := book.GetWorksheetByIndex(sheetIdx);
+            for r := arg.ResCellRange.Row1 to arg.ResCellRange.Row2 do
+              for c := arg.ResCellRange.Col1 to arg.ResCellRange.Col2 do
+              begin
+                cell := sheet.FindCell(r, c);
+                if (cell <> nil) then
+                  case cell^.ContentType of
+                    cctNumber, cctDateTime, cctBool : inc(n);
+                    cctUTF8String: if cell^.UTF8StringValue <> '' then inc(n);
+                    cctError: if cell^.ErrorValue <> errOK then inc(n);
+                  end;
               end;
           end;
+        end;
     end;
   end;
   Result.ResInteger := n;

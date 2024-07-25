@@ -3983,6 +3983,22 @@ begin
 end;
 
 procedure TsIdentifierExprNode.GetNodeValue(out AResult: TsExpressionResult);
+
+  function IsSingleCell(ASheet1: TsWorksheet; ARow1, ACol1, ARow2, ACol2: Cardinal): Boolean;
+  var
+    cell: PCell;
+  begin
+    Result := true;
+    if (ARow1 = ARow2) and (ACol1 = ACol2) then exit;
+    cell := ASheet1.FindCell(ARow1, ACol1);
+    if (cell <> nil) and (cell^.ContentType = cctUTF8String) then
+    begin
+      if (ARow1 = ARow2) and (ACol2 = ACol1 + 1) then exit;
+      if (ACol1 = ACol2) and (ARow2 = ARow1 + 1) then exit;
+    end;
+    Result := false;
+  end;
+
 var
   book: TsWorkbook;
   sheet: TsWorksheet;
@@ -4002,21 +4018,14 @@ begin
       r2 := Row2;
       c2 := Col2;
     end;
-    if (sheetIdx1 = sheetIdx2) and (r1 = r2) and ((c1 = c2) or (c2 = c1+1)) then
+
+    sheet := book.GetWorksheetByIndex(sheetIdx1);
+    if (sheetIdx1 = sheetIdx2) and IsSingleCell(sheet, r1, c1, r2, c2) then
     begin
-      sheet := book.GetWorksheetByIndex(sheetIdx1);
-      cell := sheet.FindCell(r1, c2);
-      if cell <> nil then
-        case cell^.ContentType of
-          cctNumber: AResult := FloatResult(cell^.NumberValue);
-          cctDateTime: AResult := DateTimeResult(cell^.DateTimeValue);
-          cctUTF8String: AResult := StringResult(cell^.UTF8StringValue);
-          cctBool: AResult := BooleanResult(cell^.BoolValue);
-          cctError: AResult := ErrorResult(cell^.ErrorValue);
-          cctEmpty: AResult := EmptyResult;
-        end
-      else
-        AResult := ErrorResult(errIllegalRef);
+      AResult := CellResult(r2, c2);
+      AResult.ResSheetIndex := sheetIdx1;
+      AResult.ResSheetName := sheet.Name;
+      AResult.Worksheet := sheet;
     end else
     begin
       sheet := TsWorksheet(Parser.Worksheet);
@@ -4782,9 +4791,9 @@ begin
                     cell := ArgToCell(Arg);
                     if Assigned(cell) then
                       case cell^.ContentType of
-                        cctNumber    : result := trunc(cell^.NumberValue);
-                        cctDateTime  : result := trunc(cell^.DateTimeValue);
-                        cctBool      : if cell^.BoolValue then result := 1;
+                        cctNumber    : Result := trunc(cell^.NumberValue);
+                        cctDateTime  : Result := trunc(cell^.DateTimeValue);
+                        cctBool      : if cell^.BoolValue then Result := 1;
                         cctUTF8String: if not TryStrToInt(cell^.UTF8StringValue, result)
                                          then Result := 0;
                       end;

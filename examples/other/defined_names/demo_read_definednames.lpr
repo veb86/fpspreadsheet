@@ -15,6 +15,8 @@ begin
   fn := 'test_defnames.xlsx';
   {$ENDIF}
 
+  //fn := 'test3D.xlsx';
+
   wb := TsWorkbook.Create;
   try
     wb.Options := [boAutoCalc, boReadFormulas];
