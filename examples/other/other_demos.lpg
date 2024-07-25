@@ -68,6 +68,11 @@
           <Mode Name="Release"/>
         </BuildModes>
       </Target>
+      <Target FileName="defined_names\demo_write_definednames.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
       <Target FileName="searching\demo_search.lpi">
         <BuildModes>
           <Mode Name="Default"/>

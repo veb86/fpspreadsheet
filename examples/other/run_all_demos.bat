@@ -1,6 +1,7 @@
 cell_formats\demo_write_formatting -quit
 colors\demo_write_colors -quit
 conditional_formatting\demo_conditional_formatting -quit
+defined_names\demo_write_definednames -quit
 expression_parser\demo_expression_parser -quit
 frozen_rowscols\demo_frozen_rows_cols -quit
 header_footer_images\demo_write_headerfooter_images -quit

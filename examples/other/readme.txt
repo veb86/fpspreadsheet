@@ -42,6 +42,9 @@ This folder contains various demo applications:
   can be registered in fpspreadsheet for usage in rpn formulas. The example 
   covers some financial functions.
   
+- defined_names: shows how "defined names" (named cells) can be used in
+  FPSpreadsheet. Also in formulas.
+  
 - virtual_mode/demo_virtualmode_writing: demonstrates how the virtual mode 
   of the workbook can be used to create huge spreadsheet files.
   
