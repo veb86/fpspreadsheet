@@ -231,6 +231,7 @@ type
     procedure CopyFrom(AItem: TsDefinedName);
     function RangeAsString(AWorkbook: TsBasicWorkbook): String;
     function RangeAsString_ODS(AWorkbook: TsBasicWorkbook): String;
+    class function ValidName(AName: String): Boolean;
     property Name: String read FName;
     property Range: TsCellRange3D read FRange write FRange;
   end;
@@ -1880,17 +1881,50 @@ begin
   end;
 end;
 
+// https://www.ablebits.com/office-addins-blog/excel-named-range/
+class function TsDefinedName.ValidName(AName: string): Boolean;
+const
+  FORBIDDEN = ' .,;:';
+var
+  i: Integer;
+  r, c: Cardinal;
+begin
+  Result := false;
+
+  if AName = '' then
+    exit;
+
+  // Length max 255 characters
+  if Length(AName) > 255 then exit;
+
+  // Space and punctuation characters are forbidden
+  for i := 1 to Length(FORBIDDEN) do
+    if pos(FORBIDDEN[i], AName) > 0 then exit;
+
+  // Must begin with letter, underscore or backslash
+  if not (AName[1] in ['a'..'z', 'A'..'Z', '_', '\']) then exit;
+
+  // No cell reference
+  if ParseCellString(AName, r, c) then exit;
+
+  // Single letters 'r', 'R', 'c', 'C' forbidden
+  if (Length(AName) = 1) and (AName[1] in ['r', 'R', 'c', 'C']) then exit;
+
+  Result := true;
+end;
+
+
 {==============================================================================}
 {                              TsDefinedNames                                  }
 {==============================================================================}
 
 { Adds the named cell to the list and returns the list index. AName must be
-  unique; if not, the return value is -1. }
+  unique and valid; if not, the return value is -1. }
 function TsDefinedNames.Add(AName: String; ASheetIndex: Integer; ARow, ACol: Cardinal): Integer;
 var
   item: TsDefinedName;
 begin
-  if DuplicateName(AName) then
+  if DuplicateName(AName) or not TsDefinedName.ValidName(AName) then
     Result := -1
   else
   begin
@@ -1906,7 +1940,7 @@ function TsDefinedNames.Add(AName: String; ASheetIndex1, ASheetIndex2: Integer;
 var
   item: TsDefinedName;
 begin
-  if DuplicateName(AName) then
+  if DuplicateName(AName) or not TsDefinedName.ValidName(AName) then
     Result := -1
   else
   begin
