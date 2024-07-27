@@ -419,6 +419,7 @@ type
   public
     function ArgumentCount: Integer;
     procedure Assign(Source: TPersistent); override;
+    property AsCellRange: TsCellRange3D read GetAscellRange write SetAsCellRange;
     property AsFloat: TsExprFloat Read GetAsFloat Write SetAsFloat;
     property AsInteger: Int64 Read GetAsInteger Write SetAsInteger;
     property AsString: String Read GetAsString Write SetAsString;
@@ -3990,12 +3991,14 @@ procedure TsIdentifierExprNode.GetNodeValue(out AResult: TsExpressionResult);
   begin
     Result := true;
     if (ARow1 = ARow2) and (ACol1 = ACol2) then exit;
+    {                                                     // I think this is wrong...
     cell := ASheet1.FindCell(ARow1, ACol1);
     if (cell <> nil) and (cell^.ContentType = cctUTF8String) then
     begin
       if (ARow1 = ARow2) and (ACol2 = ACol1 + 1) then exit;
       if (ACol1 = ACol2) and (ARow2 = ARow1 + 1) then exit;
     end;
+    }
     Result := false;
   end;
 

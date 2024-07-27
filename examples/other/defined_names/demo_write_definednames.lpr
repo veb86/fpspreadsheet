@@ -44,7 +44,7 @@ begin
     // Defined name in other sheet
     ws := wb.AddWorksheet('Range from other sheet');
 
-    wb.DefinedNames.Add('data', wsIdx1, wsIdx1, 1, 0, 3, 0);  // wsIdx refers to sheet "Range"
+    wb.DefinedNames.Add('data', wsIdx1, wsIdx1, 1, 0, 3, 0);  // wsIdx1 refers to sheet "Range"
     ws.WriteFormula(4, 0, '=SUM(data)');
 
     {----------}
