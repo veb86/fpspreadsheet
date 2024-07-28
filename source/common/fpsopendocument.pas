@@ -160,7 +160,7 @@ type
     procedure ReadColumnStyle(AStyleNode: TDOMNode);
     procedure ReadConditionalFormats(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadDateMode(SpreadSheetNode: TDOMNode);
-    procedure ReadDefinedNames(ANode: TDOMNode);
+    procedure ReadDefinedNames(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
     procedure ReadDocumentProtection(ANode: TDOMNode);
     procedure ReadFont(ANode: TDOMNode; var AFontName: String;
       var AFontSize: Single; var AFontStyle: TsFontStyles; var AFontColor: TsColor;
@@ -336,7 +336,7 @@ type
 
     { Routines to write those files }
     procedure WriteContent;
-    procedure WriteDefinedNames(AStream: TStream);
+    procedure WriteDefinedNames(AStream: TStream; ASheetIndex: Integer);
     procedure WriteMetaInfManifest;
     procedure WriteMeta;
     procedure WriteMimetype;
@@ -2631,7 +2631,12 @@ begin
     raise EFPSpreadsheetReader.CreateFmt('Spreadsheet file corrupt: cannot handle null-date format %s', [NullDateSetting]);
 end;
 
-procedure TsSpreadOpenDocReader.ReadDefinedNames(ANode: TDOMNode);
+{ Reads the defined names of the workbook/worksheet (node "table:named-expressions").
+  When AWorksheet is nil, the global defined names are read and stored in the
+  workbook's DefinedNames list.
+  When AWorksheet is <> nil, the local defined names of this workbook are read
+  and stored in its DefinedNames list. }
+procedure TsSpreadOpenDocReader.ReadDefinedNames(ANode: TDOMNode; AWorksheet: TsBasicWorksheet);
 var
   book: TsWorkbook;
   nodeName: String;
@@ -2645,6 +2650,7 @@ begin
   if ANode = nil then
     exit;
 
+  nodeName := ANode.NodeName;
   ANode := ANode.FindNode('table:named-expressions');
   if ANode = nil then
     exit;
@@ -2664,7 +2670,12 @@ begin
         if (sheetName2 <> '') and (sheetName2[1] = '$') then Delete(sheetName2, 1,1);
         sheetIdx1 := book.GetWorksheetIndex(sheetName1);
         sheetIdx2 := book.GetWorksheetIndex(sheetName2);
-        book.DefinedNames.Add(defName, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
+        if AWorksheet = nil then
+          // global defined names
+          book.DefinedNames.Add(defName, sheetIdx1, sheetIdx2, r1, c1, r2, c2)
+        else
+          // local defined names
+          TsWorksheet(AWorksheet).DefinedNames.Add(defName, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
       end;
     end;
     ANode := ANode.NextSibling;
@@ -3163,14 +3174,15 @@ begin
 
         sheetName := GetAttrValue(TableNode, 'table:name');
         FWorksheet := TsWorkbook(FWorkbook).GetWorksheetByName(sheetName);
-//      FWorkSheet := TsWorkbook(FWorkbook).AddWorksheet(sheetName, true);
         tablestyleName := GetAttrValue(TableNode, 'table:style-name');
         // Read protection
         ReadSheetProtection(TableNode, FWorksheet);
         // Collect embedded images
         ReadShapes(TableNode);
-        // Read defined names
-        ReadDefinedNames(SpreadSheetNode);
+        // Read global defined names
+        ReadDefinedNames(SpreadsheetNode, nil);
+        // Read local defined names
+        ReadDefinedNames(TableNode, FWorksheet);
         // Collect column styles used
         ReadColumns(TableNode);
         // Remove excess rows added at the end
@@ -6705,7 +6717,7 @@ begin
   for i := 0 to (Workbook as TsWorkbook).GetWorksheetCount - 1 do
     WriteWorksheet(FSContent, i);
 
-  WriteDefinedNames(FSContent);
+  WriteDefinedNames(FSContent, -1);
 
   AppendToStream(FSContent,
         '</office:spreadsheet>' +
@@ -6714,19 +6726,35 @@ begin
   );
 end;
 
-procedure TsSpreadOpenDocWriter.WriteDefinedNames(AStream: TStream);
+{ Writes the global defined names (if AWorksheetIndex=-1) or the local defined
+  names of the worksheet with the given index to the stream. }
+procedure TsSpreadOpenDocWriter.WriteDefinedNames(AStream: TStream;
+  ASheetIndex: Integer);
 var
   book: TsWorkbook;
+  sheet: TsWorksheet;
   i: Integer;
 begin
   book := TsWorkbook(FWorkbook);
-  if book.DefinedNames.Count = 0 then
-    exit;
+  if ASheetIndex = -1 then
+  begin
+    if book.DefinedNames.Count = 0 then
+      exit;
+  end else
+  begin
+    sheet := book.GetWorksheetByIndex(ASheetIndex);
+    if sheet.DefinedNames.Count = 0 then
+      exit;
+  end;
 
   AppendToStream(AStream, '<table:named-expressions>');
 
-  for i := 0 to book.DefinedNames.Count-1 do
-    AppendToStream(AStream, WriteDefinedNameXMLAsString(book.DefinedNames[i]));
+  if ASheetIndex = -1 then
+    for i := 0 to book.DefinedNames.Count-1 do
+      AppendToStream(AStream, WriteDefinedNameXMLAsString(book.DefinedNames[i]))
+  else
+    for i := 0 to sheet.definedNames.Count-1 do
+      AppendToStream(AStream, WriteDefinedNameXMLAsString(sheet.DefinedNames[i]));
 
   AppendToStream(AStream, '</table:named-expressions>');
 end;
@@ -6767,8 +6795,11 @@ begin
   // Conditional formats
   WriteConditionalFormats(AStream, FWorksheet);
 
-  // named expressions, i.e. print range, repeated cols/rows
+  // named expressions, i.e. print range, repeated cols/rows, local defined names
   WriteNamedExpressions(AStream, FWorksheet);
+
+  // Defined names
+  WriteDefinedNames(AStream, ASheetIndex);
 
   // Footer
   AppendToStream(AStream,

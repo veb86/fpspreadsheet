@@ -1,5 +1,5 @@
 program demo_read_definednames;
-{.$DEFINE ODS}
+{$DEFINE ODS}
 uses
   fpspreadsheet, fpsTypes, fpsClasses, fpsUtils, fpsAllFormats;
 var
