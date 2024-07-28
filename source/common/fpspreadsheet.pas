@@ -75,6 +75,7 @@ type
     FWorkbook: TsWorkbook;
     FCells: TsCells;
     FComments: TsComments;
+    FDefinedNames: TsDefinedNames;
     FMergedCells: TsMergedCells;
     FHyperlinks: TsHyperlinks;
     FFormulas: TsFormulas;
@@ -673,6 +674,8 @@ type
     property  CryptoInfo: TsCryptoInfo read FCryptoInfo write FCryptoInfo;
     {@@ List of all comment records }
     property  Comments: TsComments read FComments;
+    {@@ List of local defined names }
+    property  DefinedNames: TsDefinedNames read FDefinedNames;
     {@@ List of merged cells (contains TsCellRange records) }
     property  MergedCells: TsMergedCells read FMergedCells;
     {@@ List of hyperlink information records }
@@ -962,7 +965,7 @@ type
     property CryptoInfo: TsCryptoInfo read FCryptoInfo write FCryptoInfo;
     {property RevisionsCrypto: TsCryptoInfo read FRevisionsCrypto write FRevisionsCrypto;}
 
-    { Globally defined names }
+    { Global defined names }
     property DefinedNames: TsDefinedNames read FDefinedNames write FDefinedNames;
 
     {@@ Workbook metadata}
@@ -1245,6 +1248,7 @@ begin
   FRows := TIndexedAVLTree.Create(@CompareRows);
   FCols := TIndexedAVLTree.Create(@CompareCols);
   FComments := TsComments.Create;
+  FDefinedNames := TsDefinedNames.Create;
   FMergedCells := TsMergedCells.Create;
   FHyperlinks := TsHyperlinks.Create;
   FFormulas := TsFormulas.Create;
@@ -1291,6 +1295,7 @@ begin
   FRows.Free;
   FCols.Free;
   FComments.Free;
+  FDefinedNames.Free;
   FMergedCells.Free;
   FHyperlinks.Free;
   FFormulas.Free;

@@ -2427,6 +2427,15 @@ var
   defName: TsDefinedName;
 begin
   sheet := TsWorksheet(FWorksheet);
+
+  // FIXME: This code does not distinguish between local and global scope!
+
+  for i := 0 to sheet.Definednames.Count-1 do
+  begin
+    defName := sheet.DefinedNames[i];
+    Identifiers.AddCellRangeVariable(defName.Name, defName.Range);
+  end;
+
   book := TsWorkbook(sheet.Workbook);
   for i := 0 to book.DefinedNames.Count-1 do
   begin

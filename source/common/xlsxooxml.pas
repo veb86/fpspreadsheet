@@ -2476,7 +2476,15 @@ begin
         if sheetName2 = '' then sheetName2 := sheetName1;
         sheetIdx1 := book.GetWorksheetIndex(sheetName1);
         sheetIdx2 := book.GetWorksheetIndex(sheetName2);
-        book.DefinedNames.Add(nameStr, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
+        s := GetAttrValue(node, 'localSheetId');
+        if s <> '' then
+        begin
+          // local defined name
+          sheet := book.GetWorksheetByIndex(StrToInt(s));
+          sheet.DefinedNames.Add(nameStr, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
+        end else
+          // global defined name
+          book.DefinedNames.Add(nameStr, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
       end;
     end;
     node := node.NextSibling;
@@ -7563,6 +7571,18 @@ begin
     sTotal := sTotal + Format('<definedName name="%s">%s</definedName>',
       [ defName.Name, defName.RangeAsString(FWorkbook) ]
     );
+  end;
+
+  for j := 0 to book.GetWorksheetCount-1 do
+  begin
+    sheet := book.GetWorksheetByIndex(j);
+    for i := 0 to sheet.DefinedNames.Count-1 do
+    begin
+      defName := sheet.DefinedNames[i];
+      sTotal := sTotal + Format('<definedName name = "%s" localSheetId="%d">%s</definedName>',
+        [defName.Name, i, defName.RangeAsString(FWorkbook) ]
+      );
+    end;
   end;
 
   // Write print ranges and repeatedly printed rows and columns

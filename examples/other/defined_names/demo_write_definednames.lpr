@@ -17,6 +17,7 @@ begin
     ws := wb.AddWorksheet('Simple');
     wsIdx0 := wb.GetWorksheetIndex(ws);
 
+    // ... global scope
     wb.DefinedNames.Add('distance', wsIdx0, 1, 2);
     ws.WriteText(1, 1, 'distance');     ws.WriteNumber(1, 2, 120);     ws.WriteFormula(1, 3, '=distance');
 
@@ -25,6 +26,11 @@ begin
 
     wb.DefinedNames.Add('speed', wsIdx0, 3, 2);
     ws.WriteText(3, 1, 'speed');        ws.WriteFormula(3, 2, '=distance/time');
+
+    // ... worksheet scope
+    ws.WriteText(4, 1, 'local');        ws.WriteNumber(4, 2, 123.456);
+    ws.DefinedNames.Add('local', wsIdx0, 4, 2);
+    ws.WriteFormula(4, 3, '=local');
 
     {----------}
 

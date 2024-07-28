@@ -6,7 +6,7 @@ var
   wb: TsWorkbook;
   ws: TsWorksheet;
   cell: PCell;
-  i: Integer;
+  i, j: Integer;
   fn: String;
 begin
   {$IFDEF ODS}
@@ -26,7 +26,7 @@ begin
 
     WriteLn('DEFINED NAMES (GLOBAL)');
     for i := 0 to wb.DefinedNames.Count-1 do
-      WriteLn('  ', wb.DefinedNames[i].Name, ' --> ', wb.DefinedNames[i].RangeAsString(wb));
+      WriteLn('  "', wb.DefinedNames[i].Name, '" --> ', wb.DefinedNames[i].RangeAsString(wb));
 
     WriteLn('--------------------------------------------------------');
 
@@ -34,6 +34,13 @@ begin
     begin
       ws := wb.GetWorksheetByIndex(i);
       WriteLn('WORKSHEET "', ws.Name, '"');
+
+      WriteLn('  DEFINED NAMES (LOCAL)');
+      if ws.DefinedNames.Count = 0 then
+        WriteLn('    (none)')
+      else
+        for j := 0 to ws.DefinedNames.Count-1 do
+          WriteLn('    "', ws.DefinedNames[i].Name, '" --> ', ws.DefinedNames[i].RangeAsString(wb));
 
       WriteLn('  CELLS');
       for cell in ws.Cells do
