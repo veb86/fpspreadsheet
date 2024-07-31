@@ -2642,10 +2642,13 @@ var
   nodeName: String;
   defName: String;
   defAddr: String;
+  defExpr: String;
   r1, c1, r2, c2: Cardinal;
   sheetName1, sheetName2: String;
   sheetIdx1, sheetIdx2: Integer;
   flags: TsRelFlags;
+  err: TsErrorValue;
+  isDefName: Boolean;
 begin
   if ANode = nil then
     exit;
@@ -2660,11 +2663,25 @@ begin
   while ANode <> nil do
   begin
     nodeName := ANode.NodeName;
-    if nodeName = 'table:named-range' then
+    if nodeName = 'table:named-expression' then
     begin
       defName := GetAttrValue(ANode, 'table:name');
       defAddr := GetAttrValue(ANode, 'table:cell-range-address');
+      defExpr := GetAttrValue(ANode, 'table:expression');
+      if TryStrToErrorValue(defExpr, '!', sheetName1, err) then        // not clear whether '!' is correct; test file was created from Excel
+      begin
+        r1 := UNASSIGNED_ROW_COL_INDEX;
+        c1 := UNASSIGNED_ROW_COL_INDEX;
+        r2 := UNASSIGNED_ROW_COL_INDEX;
+        c2 := UNASSIGNED_ROW_COL_INDEX;
+        sheetName2 := sheetName1;
+        isDefName := true;
+      end else
       if TryStrToCellRange_ODS(defAddr, sheetName1, sheetName2, r1, c1, r2, c2, flags) then
+        isDefName := true
+      else
+        isDefName := false;
+      if isDefName then
       begin
         if (sheetName1 <> '') and (sheetName1[1] = '$') then Delete(sheetName1, 1,1);
         if (sheetName2 <> '') and (sheetName2[1] = '$') then Delete(sheetName2, 1,1);

@@ -2208,7 +2208,7 @@ begin
   if HasFormula(ACell) then
     WriteFormula(ACell, '');
 
-  // To do: Check if the cell is referencec by a formula. In this case we have
+  // To do: Check if the cell is referenced by a formula. In this case we have
   // a #REF! error.
 
   // Cell is part of a merged block? --> Erase content, formatting etc.
@@ -5821,6 +5821,15 @@ begin
   // Fix conditional formats
   FWorkbook.FConditionalFormatList.DeleteRowOrCol(Self, AIndex, IsRow);
 
+  // Fix defined names
+  i := FWorkbook.GetWorksheetIndex(Self);
+  FWorkbook.DefinedNames.DeleteRowOrCol(i, AIndex, IsRow);
+  for i := 0 to FWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet.DefinedNames.DeleteRowOrCol(i, AIndex, IsRow);
+  end;
+
   // Fix formulas:
   // 1) Fix Row/Col index of in-sheet formulas
   FFormulas.DeleteRowOrCol(AIndex, IsRow);
@@ -5922,6 +5931,15 @@ begin
 
   // Update range of conditional formats
   FWorkbook.FConditionalFormatList.InsertRowOrCol(Self, AIndex, IsRow);
+
+  // Fix defined names
+  i := FWorkbook.GetWorksheetIndex(self);
+  FWorkbook.DefinedNames.InsertRowOrCol(i, AIndex, IsRow);
+  for i := 0 to FWorkbook.GetWorksheetCount-1 do
+  begin
+    sheet := FWorkbook.GetWorksheetByIndex(i);
+    sheet.DefinedNames.InsertRowOrCol(i, AIndex, IsRow);
+  end;
 
   // Fix formulas:
   // 1) Update Row/Col index of in-sheet formulas

@@ -229,8 +229,10 @@ type
     FRange: TsCellRange3D;
   public
     procedure CopyFrom(AItem: TsDefinedName);
+    function IllegalRef: Boolean;
     function RangeAsString(AWorkbook: TsBasicWorkbook): String;
     function RangeAsString_ODS(AWorkbook: TsBasicWorkbook): String;
+    procedure SetIllegalRef;
     class function ValidName(AName: String): Boolean;
     property Name: String read FName;
     property Range: TsCellRange3D read FRange write FRange;
@@ -244,8 +246,10 @@ type
   public
     function Add(AName: String; ASheetIndex: Integer; ARow, ACol: Cardinal): Integer; overload;
     function Add(AName: String; ASheetIndex1, ASheetIndex2: Integer; ARow1, ACol1, ARow2, ACol2: Cardinal): Integer; overload;
+    procedure DeleteRowOrCol(AWorksheetIndex, AColRowIndex: Integer; IsRow: Boolean);
     function DuplicateName(AName: String): Boolean;
     function FindIndexOfName(AName: String): Integer;
+    procedure InsertRowOrCol(AWorksheetIndex, AColRowIndex: Integer; IsRow: Boolean);
     property Items[AIndex: Integer]: TsDefinedName read GetItem write SetItem; default;
   end;
 
@@ -1847,6 +1851,11 @@ begin
   end;
 end;
 
+function TsDefinedName.IllegalRef: Boolean;
+begin
+  Result := (FRange.Row1 = UNASSIGNED_ROW_COL_INDEX);
+end;
+
 // Test!$C$3
 function TsDefinedName.RangeAsString(AWorkbook: TsBasicWorkbook): String;
 var
@@ -1858,7 +1867,10 @@ begin
   begin
     sh1 := book.GetWorksheetByIndex(Sheet1);
     sh2 := book.GetWorksheetByIndex(Sheet2);
-    Result := GetCellRangeString(sh1.Name, sh2.Name, Row1, Col1, Row2, Col2, [], true);
+    if IllegalRef then
+      Result := Format('%s!%s', [sh1.Name, STR_ERR_ILLEGAL_REF])
+    else
+      Result := GetCellRangeString(sh1.Name, sh2.Name, Row1, Col1, Row2, Col2, [], true);
   end;
 end;
 
@@ -1872,6 +1884,11 @@ begin
   with FRange do
   begin
     sh1 := book.GetWorksheetByIndex(Sheet1);
+    if IllegalRef then
+    begin
+      Result := Format('$%s!%s', [sh1.Name, STR_ERR_ILLEGAL_REF]);   // Is '!' correct?
+      exit;
+    end;
     Result := Format('$%s.%s', [sh1.Name, GetCellString(Row1, Col1, [])]);
     if (Sheet1 <> Sheet2) or (Row1 <> Row2) or (Col1 <> Col2) then
     begin
@@ -1879,6 +1896,11 @@ begin
       Result := Format('%s:$%s.%s', [Result, sh2.Name, GetCellString(Row2, Col2, [])]);
     end;
   end;
+end;
+
+procedure TsDefinedName.SetIllegalRef;
+begin
+  FRange.Row1 := UNASSIGNED_ROW_COL_INDEX;
 end;
 
 // https://www.ablebits.com/office-addins-blog/excel-named-range/
@@ -1953,6 +1975,51 @@ begin
   end;
 end;
 
+{ Adjusts the range extent when a row or column is deleted from the worksheet
+  with the given index. Note: Switches the defines names to #REF! when the
+  range is not valid after the deletion. }
+procedure TsDefinedNames.DeleteRowOrCol(AWorksheetIndex, AColRowIndex: Integer;
+  IsRow: Boolean);
+var
+  i: Integer;
+  item: TsDefinedName;
+begin
+  for i := 0 to Count-1 do
+  begin
+    item := Items[i];
+    if (item.Range.Sheet1 <= AWorksheetIndex) and (AWorksheetIndex <= item.Range.Sheet2) then
+    begin
+      if IsRow then
+      begin
+        if (item.Range.Row1 = AColRowIndex) and (item.Range.Row2 = AColRowIndex) then
+          // Deleting the only row of the defined name's range --> #REF!
+          item.SetIllegalRef
+        else
+        if item.Range.Row1 <= AColRowIndex then
+        begin
+          dec(item.FRange.Row1);
+          dec(item.FRange.Row2);
+        end else
+        if AColRowIndex <= item.Range.Row2 then
+          dec(item.FRange.Row2);
+      end else
+      begin
+        if (item.Range.Col1 = AColRowIndex) and (item.Range.Col2 = AColRowIndex) then
+        // Deleting the only column of the defined name's range --> #REF!
+          item.SetIllegalRef
+        else
+        if item.Range.Col1 <= AColRowIndex then
+        begin
+          dec(item.FRange.Col1);
+          dec(item.FRange.Col2);
+        end else
+        if AColRowIndex <= item.Range.Col2 then
+          dec(item.FRange.Col2);
+      end;
+    end;
+  end;
+end;
+
 function TsDefinedNames.DuplicateName(AName: String): Boolean;
 begin
   Result := FindIndexOfName(AName) <> -1;
@@ -1969,6 +2036,43 @@ end;
 function TsDefinedNames.GetItem(AIndex: Integer): TsDefinedName;
 begin
   Result := TsDefinedName(inherited Items[AIndex]);
+end;
+
+{ AWorksheetIndex: Index of the worksheet in which a row/column is inserted
+  AColRowIndex: Index of the row or column to be inserted
+  IsRow: Indicator whether AColRow refers to a row or column }
+procedure TsDefinedNames.InsertRowOrCol(AWorksheetIndex, AColRowIndex: Integer;
+  IsRow: Boolean);
+var
+  i: Integer;
+  item: TsDefinedName;
+begin
+  for i := 0 to Count-1 do
+  begin
+    item := Items[i];
+    if (item.Range.Sheet1 <= AWorksheetIndex) and (AWorksheetIndex <= item.Range.Sheet2) then
+    begin
+      if IsRow then
+      begin
+        if item.Range.Row1 <= AColRowIndex then
+        begin
+          inc(item.FRange.Row1);
+          inc(item.FRange.Row2);
+        end else
+        if AColRowIndex <= item.Range.Row2 then
+          inc(item.FRange.Row2);
+      end else
+      begin
+        if item.Range.Col1 <= AColRowIndex then
+        begin
+          inc(item.FRange.Col1);
+          inc(item.FRange.Col2);
+        end else
+        if AColRowIndex <= item.Range.Col2 then
+          inc(item.FRange.Col2);
+      end;
+    end;
+  end;
 end;
 
 procedure TsDefinedNames.SetItem(AIndex: Integer; AValue: TsDefinedName);

@@ -2428,8 +2428,6 @@ var
 begin
   sheet := TsWorksheet(FWorksheet);
 
-  // FIXME: This code does not distinguish between local and global scope!
-
   for i := 0 to sheet.Definednames.Count-1 do
   begin
     defName := sheet.DefinedNames[i];
@@ -4029,6 +4027,12 @@ begin
       c1 := Col1;
       r2 := Row2;
       c2 := Col2;
+    end;
+
+    if r1 = UNASSIGNED_ROW_COL_INDEX then
+    begin
+      AResult := ErrorResult(errIllegalRef);
+      exit;
     end;
 
     sheet := book.GetWorksheetByIndex(sheetIdx1);

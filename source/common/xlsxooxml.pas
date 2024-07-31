@@ -2377,6 +2377,8 @@ var
   namestr: String;
   s, sheetname1, sheetName2: String;
   sheetIdx1, sheetIdx2: Integer;
+  isDefinedName: Boolean;
+  err: TsErrorValue;
   L: TStringList;
 begin
   if ANode = nil then
@@ -2468,12 +2470,26 @@ begin
       end;
 
       // "Normal" defined names
+      isDefinedName := false;
       s := GetNodeValue(node);
+      if TryStrToErrorValue(s, '!', sheetName1, err) then
+      begin
+        r1 := UNASSIGNED_ROW_COL_INDEX;
+        r2 := UNASSIGNED_ROW_COL_INDEX;
+        c1 := UNASSIGNED_ROW_COL_INDEX;
+        c2 := UNASSIGNED_ROW_COL_INDEX;
+        sheetName2 := sheetName1;
+        isDefinedName := true;
+      end else
       if ParseCellRangeString(s, sheetName1, sheetName2, r1, c1, r2, c2, flags) then
       begin
         if (r2 = UNASSIGNED_ROW_COL_INDEX) then r2 := r1;
         if (c2 = UNASSIGNED_ROW_COL_INDEX) then c2 := c1;
         if sheetName2 = '' then sheetName2 := sheetName1;
+        isDefinedName := true;
+      end;
+      if isDefinedName then
+      begin
         sheetIdx1 := book.GetWorksheetIndex(sheetName1);
         sheetIdx2 := book.GetWorksheetIndex(sheetName2);
         s := GetAttrValue(node, 'localSheetId');

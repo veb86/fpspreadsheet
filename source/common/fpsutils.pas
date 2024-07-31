@@ -145,6 +145,8 @@ function GetSheetCellRangeString_ODS(ASheet1, ASheet2: String;
 
 function GetErrorValueStr(AErrorValue: TsErrorValue): String;
 function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
+function TryStrToErrorValue(AErrorStr: String; SheetSep: Char;
+  out ASheetName: String; out AErr: TsErrorValue): Boolean;
 
 function GetFileFormatName(AFormat: TsSpreadsheetFormat): string; deprecated;
 //function GetFileFormatExt(AFormat: TsSpreadsheetFormat): String;
@@ -1506,7 +1508,7 @@ end;
 function TryStrToErrorValue(AErrorStr: String; out AErr: TsErrorValue): boolean;
 begin
   Result := true;
-  case AErrorStr of
+  case Uppercase(AErrorStr) of
     STR_ERR_EMPTY_INTERSECTION    : AErr := errEmptyIntersection;     // #NULL!
     STR_ERR_DIVIDE_BY_ZERO        : AErr := errDivideByZero;          // #DIV/0!
     STR_ERR_WRONG_TYPE            : AErr := errWrongType;             // #VALUE!
@@ -1518,6 +1520,21 @@ begin
     ''                            : AErr := errOK;
     else                            Result := false;
   end;
+end;
+
+function TryStrToErrorValue(AErrorStr: String; SheetSep: Char;
+  out ASheetName: String; out AErr: TsErrorValue): Boolean;
+var
+  p: Integer;
+begin
+  p := pos(SheetSep, AErrorStr);
+  if p > 0 then
+  begin
+    ASheetName := Copy(AErrorStr, 1, p-1);
+    AErrorStr := Copy(AErrorStr, p+1, Length(AErrorStr));
+  end else
+    ASheetName := '';
+  Result := TryStrToErrorValue(AErrorStr, AErr);
 end;
 
 {@@ ----------------------------------------------------------------------------

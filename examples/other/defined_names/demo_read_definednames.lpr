@@ -1,7 +1,7 @@
 program demo_read_definednames;
 {$DEFINE ODS}
 uses
-  fpspreadsheet, fpsTypes, fpsClasses, fpsUtils, fpsAllFormats;
+  SysUtils, fpspreadsheet, fpsTypes, fpsClasses, fpsUtils, fpsAllFormats;
 var
   wb: TsWorkbook;
   ws: TsWorksheet;
@@ -15,7 +15,7 @@ begin
   fn := 'test_defnames.xlsx';
   {$ENDIF}
 
-  //fn := 'test3D.xlsx';
+  fn := 'Mappe2.ods';
 
   wb := TsWorkbook.Create;
   try
@@ -26,7 +26,13 @@ begin
 
     WriteLn('DEFINED NAMES (GLOBAL)');
     for i := 0 to wb.DefinedNames.Count-1 do
-      WriteLn('  "', wb.DefinedNames[i].Name, '" --> ', wb.DefinedNames[i].RangeAsString(wb));
+    begin
+      Write('  "', wb.DefinedNames[i].Name, '" --> ');
+      case ExtractFileExt(fn) of
+        '.xlsx': WriteLn(wb.DefinedNames[i].RangeAsString(wb));
+        '.ods':  WriteLn(wb.DefinedNames[i].RangeAsString_ODS(wb));
+      end;
+    end;
 
     WriteLn('--------------------------------------------------------');
 
@@ -40,7 +46,13 @@ begin
         WriteLn('    (none)')
       else
         for j := 0 to ws.DefinedNames.Count-1 do
-          WriteLn('    "', ws.DefinedNames[i].Name, '" --> ', ws.DefinedNames[i].RangeAsString(wb));
+        begin
+          Write('  "', ws.DefinedNames[i].Name, '" --> ');
+          case ExtractFileExt(fn) of
+            '.xlsx': WriteLn(ws.DefinedNames[i].RangeAsString(wb));
+            '.ods':  WriteLn(ws.DefinedNames[i].RangeAsString_ODS(wb));
+          end;
+        end;
 
       WriteLn('  CELLS');
       for cell in ws.Cells do

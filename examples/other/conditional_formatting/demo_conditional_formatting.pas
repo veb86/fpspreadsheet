@@ -116,7 +116,7 @@ begin
     sh.WriteText(row, 1, 'background gray');
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcLessEqual, 5, fmtIdx);
 
-    // conditional format #6: between
+    // conditional format #7: between
     inc(row);
     sh.WriteText(row, 0, 'between 2 and 7');
     sh.WriteText(row, 1, 'background light gray');
@@ -124,13 +124,13 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcBetween, 2, 7, fmtIdx);
 
-    // conditional format #6: not between
+    // conditional format #8: not between
     inc(row);
     sh.WriteText(row, 0, 'not between 2 and 7');
     sh.WriteText(row, 1, 'background light gray');
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotBetween, 2, 7, fmtIdx);
 
-    // conditional format #6: above average
+    // conditional format #9: above average
     inc(row);
     sh.WriteText(row, 0, '> average');
     sh.WriteText(row, 1, 'hatched background yellow on red');
@@ -139,7 +139,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, 10), cfcAboveAverage, fmtIdx);   // only 1..9 -> ave = 5
 
-    // conditional format #6: below average
+    // conditional format #10: below average
     inc(row);
     sh.WriteText(row, 0, '< average');
     sh.WriteText(row, 1, 'dotted background yellow on red');
@@ -148,7 +148,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, 10), cfcBelowAverage, fmtIdx);   // only 1..9 -> ave = 5
 
-    // conditional format #6: above or equal to average
+    // conditional format #11: above or equal to average
     inc(row);
     sh.WriteText(row, 0, '>= average');
     sh.WriteText(row, 1, 'hor striped background yellow on red');
@@ -157,7 +157,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, 10), cfcAboveEqualAverage, fmtIdx);  // only 1..9 -> ave = 5
 
-    // conditional format #6: below or equal to average
+    // conditional format #12: below or equal to average
     inc(row);
     sh.WriteText(row, 0, '<= average');
     sh.WriteText(row, 1, 'vert striped background yellow on red');
@@ -166,7 +166,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, 10), cfcBelowEqualAverage, fmtIdx);  // only 1..9 -> ave = 5
 
-    // conditional format #6: top 3 values
+    // conditional format #13: top 3 values
     inc(row);
     sh.WriteText(row, 0, 'top 3 values');
     sh.WriteText(row, 1, 'background green');
@@ -174,7 +174,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcTop, 3, fmtIdx);
 
-    // conditional format #6: smallest 3 values
+    // conditional format #14: smallest 3 values
     inc(row);
     sh.WriteText(row, 0, 'smallest 3 values');
     sh.WriteText(row, 1, 'background bright blue');
@@ -182,7 +182,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcBottom, 3, fmtIdx);
 
-    // conditional format #6: top 30 percent
+    // conditional format #15: top 10 percent
     inc(row);
     sh.WriteText(row, 0, 'top 10 percent');
     sh.WriteText(row, 1, 'background green');
@@ -190,7 +190,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcTopPercent, 10, fmtIdx);
 
-    // conditional format #6: smallest 3 values
+    // conditional format #16: smallest 10 percent
     inc(row);
     sh.WriteText(row, 0, 'smallest 10 percent');
     sh.WriteText(row, 1, 'background bright blue');
@@ -198,7 +198,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcBottomPercent, 10, fmtIdx);
 
-    // conditional format #6: duplicates
+    // conditional format #17: duplicates
     inc(row);
     sh.WriteText(row, 0, 'duplicate values');
     sh.WriteText(row, 1, 'background bright red');
@@ -206,7 +206,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcDuplicate, fmtIdx);
 
-    // conditional format #6: unique
+    // conditional format #18: unique
     inc(row);
     sh.WriteText(row, 0, 'unique values');
     sh.WriteText(row, 1, 'borders all sides');
@@ -215,7 +215,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcUnique, fmtIdx);
 
-    // conditional format #6: contains any text
+    // conditional format #19: contains any text
     inc(row);
     sh.WriteText(row, 0, 'contains any text');
     sh.WriteText(row, 1, 'background red');
@@ -224,7 +224,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcContainsText, '', fmtIdx);
 
-    // conditional format #6: empty
+    // conditional format #20: empty
     inc(row);
     sh.WriteText(row, 0, 'empty');
     sh.WriteText(row, 1, 'background red');
@@ -232,7 +232,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsText, '', fmtIdx);
 
-    // conditional format #6: text begins with 'ab'
+    // conditional format #21: text begins with 'ab'
     inc(row);
     sh.WriteText(row, 0, 'text begins with "ab"');
     sh.WriteText(row, 1, 'background red');
@@ -240,7 +240,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcBeginsWith, 'ab', fmtIdx);
 
-    // conditional format #6: text ends with 'g'
+    // conditional format #22: text ends with 'g'
     inc(row);
     sh.WriteText(row, 0, 'text ends with "g"');
     sh.WriteText(row, 1, 'background red');
@@ -248,7 +248,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcEndsWith, 'g', fmtIdx);
 
-    // conditional format #6: text contains 'ef'
+    // conditional format #23: text contains 'ef'
     inc(row);
     sh.WriteText(row, 0, 'text contains "ef"');
     sh.WriteText(row, 1, 'background red');
@@ -256,7 +256,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcContainsText, 'ef', fmtIdx);
 
-    // conditional format #6: text does NOT contain 'ef'
+    // conditional format #24: text does NOT contain 'ef'
     inc(row);
     sh.WriteText(row, 0, 'text does not contain "ef"');
     sh.WriteText(row, 1, 'background red');
@@ -264,7 +264,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcNotContainsText, 'ef', fmtIdx);
 
-    // conditional format #6: contains error
+    // conditional format #25: contains error
     inc(row);
     sh.WriteText(row, 0, 'contains error');
     sh.WriteText(row, 1, 'background red');
@@ -272,7 +272,7 @@ begin
     fmtIdx := wb.AddCellFormat(fmt);
     sh.WriteConditionalCellFormat(Range(row, 2, row, lastCol), cfcContainsErrors, fmtIdx);
 
-    // conditional format #6: no errors
+    // conditional format #26: no errors
     inc(row);
     sh.WriteText(row, 0, 'no errors');
     sh.WriteText(row, 1, 'background yellow, font "Courier New"/red/bold/14');
