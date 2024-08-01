@@ -2643,12 +2643,23 @@ var
   defName: String;
   defAddr: String;
   defExpr: String;
+  defBaseAddr: String;
   r1, c1, r2, c2: Cardinal;
   sheetName1, sheetName2: String;
-  sheetIdx1, sheetIdx2: Integer;
+  sheetIdx1, sheetIdx2, p: Integer;
   flags: TsRelFlags;
   err: TsErrorValue;
-  isDefName: Boolean;
+
+  procedure ErrorRange(ASheetName: String);
+  begin
+    sheetName1 := ASheetName;
+    sheetName2 := ASheetName;
+    r1 := UNASSIGNED_ROW_COL_INDEX;
+    c1 := UNASSIGNED_ROW_COL_INDEX;
+    r2 := UNASSIGNED_ROW_COL_INDEX;
+    c2 := UNASSIGNED_ROW_COL_INDEX;
+  end;
+
 begin
   if ANode = nil then
     exit;
@@ -2663,37 +2674,43 @@ begin
   while ANode <> nil do
   begin
     nodeName := ANode.NodeName;
-    if nodeName = 'table:named-expression' then
+    if (nodeName = 'table:named-range') or (nodeName = 'table:named-expression') then
     begin
       defName := GetAttrValue(ANode, 'table:name');
       defAddr := GetAttrValue(ANode, 'table:cell-range-address');
+      defBaseAddr := GetAttrValue(ANode, 'table:base-cell-address');
       defExpr := GetAttrValue(ANode, 'table:expression');
-      if TryStrToErrorValue(defExpr, '!', sheetName1, err) then        // not clear whether '!' is correct; test file was created from Excel
+      if TryStrToErrorValue(defAddr, err) and (err <> errOK) then
       begin
-        r1 := UNASSIGNED_ROW_COL_INDEX;
-        c1 := UNASSIGNED_ROW_COL_INDEX;
-        r2 := UNASSIGNED_ROW_COL_INDEX;
-        c2 := UNASSIGNED_ROW_COL_INDEX;
-        sheetName2 := sheetName1;
-        isDefName := true;
+        p := pos('.', defBaseAddr);
+        if p > 0 then
+          sheetName1 := Copy(defBaseAddr, 1, p-1)
+        else
+          sheetName1 := book.GetFirstWorksheet.Name;
+        ErrorRange(sheetName1);
+      end else
+      if (TryStrToErrorValue(defExpr, '!', sheetName1, err) or
+          TryStrToErrorValue(defExpr, '.', sheetName2, err)) and
+         (err <> errOK) then        // not clear whether '!' is correct; test file was created from Excel
+      begin
+        ErrorRange(sheetName1);
       end else
       if TryStrToCellRange_ODS(defAddr, sheetName1, sheetName2, r1, c1, r2, c2, flags) then
-        isDefName := true
-      else
-        isDefName := false;
-      if isDefName then
       begin
-        if (sheetName1 <> '') and (sheetName1[1] = '$') then Delete(sheetName1, 1,1);
-        if (sheetName2 <> '') and (sheetName2[1] = '$') then Delete(sheetName2, 1,1);
-        sheetIdx1 := book.GetWorksheetIndex(sheetName1);
-        sheetIdx2 := book.GetWorksheetIndex(sheetName2);
-        if AWorksheet = nil then
-          // global defined names
-          book.DefinedNames.Add(defName, sheetIdx1, sheetIdx2, r1, c1, r2, c2)
-        else
-          // local defined names
-          TsWorksheet(AWorksheet).DefinedNames.Add(defName, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
-      end;
+        ;
+      end else
+        Continue;
+
+      if (sheetName1 <> '') and (sheetName1[1] = '$') then Delete(sheetName1, 1,1);
+      if (sheetName2 <> '') and (sheetName2[1] = '$') then Delete(sheetName2, 1,1);
+      sheetIdx1 := book.GetWorksheetIndex(sheetName1);
+      sheetIdx2 := book.GetWorksheetIndex(sheetName2);
+      if AWorksheet = nil then
+        // global defined names
+        book.DefinedNames.Add(defName, sheetIdx1, sheetIdx2, r1, c1, r2, c2)
+      else
+        // local defined names
+        TsWorksheet(AWorksheet).DefinedNames.Add(defName, sheetIdx1, sheetIdx2, r1, c1, r2, c2);
     end;
     ANode := ANode.NextSibling;
   end;
@@ -8813,13 +8830,22 @@ begin
   sheet1 := book.GetWorksheetByIndex(ADefinedName.Range.Sheet1);
   sheet2 := book.GetWorksheetByIndex(ADefinedName.Range.Sheet2);
 
-  Result := Format(
-    '<table:named-range ' +
-      'table:name="%s" ' +
-      'table:base-cell-address="$%s.$A$1" ' +
-      'table:cell-range-address="%s" />',
-    [ ADefinedName.Name, sheet1.Name, ADefinedName.RangeAsString_ODS(FWorkbook) ]
-  );
+  if ADefinedName.IllegalRef then
+    Result := Format(
+      '<table:named-expression '+
+        'table:name="%s" ' +
+ //       'table:base-cell-address="$%s.$A$1" ' +
+        'table:expression="$%s.#REF!" />',
+      [ ADefinedName.Name, {sheet1.Name, }sheet1.Name ]
+    )
+  else
+    Result := Format(
+      '<table:named-range ' +
+        'table:name="%s" ' +
+    //    'table:base-cell-address="$%s.$A$1" ' +       // needed when we support relative defined names.
+        'table:cell-range-address="%s" />',
+      [ ADefinedName.Name, {sheet1.Name, }ADefinedName.RangeAsString_ODS(FWorkbook) ]
+    );
 end;
 
 procedure TsSpreadOpenDocWriter.WriteError(AStream: TStream;

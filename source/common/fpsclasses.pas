@@ -1886,13 +1886,14 @@ begin
     sh1 := book.GetWorksheetByIndex(Sheet1);
     if IllegalRef then
     begin
-      Result := Format('$%s!%s', [sh1.Name, STR_ERR_ILLEGAL_REF]);   // Is '!' correct?
+      Result := Format('$%s.%s', [sh1.Name, STR_ERR_ILLEGAL_REF]);   // Is '!' correct?
       exit;
     end;
     Result := Format('$%s.%s', [sh1.Name, GetCellString(Row1, Col1, [])]);
     if (Sheet1 <> Sheet2) or (Row1 <> Row2) or (Col1 <> Col2) then
     begin
       sh2 := book.GetWorksheetByIndex(Sheet2);
+      if sh2 = nil then sh2 := sh1;
       Result := Format('%s:$%s.%s', [Result, sh2.Name, GetCellString(Row2, Col2, [])]);
     end;
   end;

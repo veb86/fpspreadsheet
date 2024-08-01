@@ -68,6 +68,17 @@ begin
 
     {----------}
 
+    // Defined name with illegal reference
+    ws := wb.AddWorksheet('Illegal Ref');
+    wsIdx1 := wb.GetWorksheetIndex(ws);
+    ws.WriteText(0, 0, 'aaa');
+    ws.WriteNumber(1, 0, 123);
+    ws.DefinedNames.Add('aaa', wsIdx1, wsIdx1, 1,0, 1,0);
+    ws.DeleteRow(1);   // Delete the named cell --> should be #REF! now.
+    ws.WriteFormula(2, 0, '=aaa');     // Should be #REF!
+
+    {----------}
+
     wb.WriteToFile('test_defnames.xlsx', true);
     wb.WriteToFile('test_defnames.ods', true);
   finally

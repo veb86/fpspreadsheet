@@ -1365,6 +1365,8 @@ begin
   begin
     cell1str := Copy(AStr, 1, p-1);
     cell2Str := Copy(AStr, p+1, MaxInt);
+    if (cell2Str <> '') and (cell2Str[1] = '.') then
+      System.Delete(cell2str, 1, 1);
   end;
 
   p := pos('.', cell1Str);
@@ -3022,7 +3024,7 @@ function Range3D(ASheetIdx1, ASheetIdx2: Integer;
 var
   rng: TsCellRange;
 begin
-  rng := Range(ARow1, ACol1, ARow2, ACol2);
+  rng := Range(ARow1, ACol1, ARow2, ACol2);  // Make sure that the indices are ordered.
   Result.Row1 := rng.Row1;
   Result.Col1 := rng.Col1;
   Result.Row2 := rng.Row2;

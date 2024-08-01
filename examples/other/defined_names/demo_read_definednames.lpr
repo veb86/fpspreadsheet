@@ -1,5 +1,4 @@
 program demo_read_definednames;
-{$DEFINE ODS}
 uses
   SysUtils, fpspreadsheet, fpsTypes, fpsClasses, fpsUtils, fpsAllFormats;
 var
@@ -8,14 +7,17 @@ var
   cell: PCell;
   i, j: Integer;
   fn: String;
+  fmt: TsSpreadsheetFormat = sfOpendocument;
+//  fmt: TsSpreadsheetFormat = xlsxOOXML;
 begin
-  {$IFDEF ODS}
-  fn := 'test_defnames.ods';
-  {$ELSE}
-  fn := 'test_defnames.xlsx';
-  {$ENDIF}
-
-  fn := 'Mappe2.ods';
+  fn := 'test_defnames';
+  fn := 'Mappe_illegalRef';
+  fn := 'Mappe3';
+  case fmt of
+    sfOpenDocument: fn := fn + '.ods';
+    sfOOXML: fn := fn + '.xlsx';
+    else raise Exception.Create('Format not supported:');
+  end;
 
   wb := TsWorkbook.Create;
   try
@@ -28,9 +30,9 @@ begin
     for i := 0 to wb.DefinedNames.Count-1 do
     begin
       Write('  "', wb.DefinedNames[i].Name, '" --> ');
-      case ExtractFileExt(fn) of
-        '.xlsx': WriteLn(wb.DefinedNames[i].RangeAsString(wb));
-        '.ods':  WriteLn(wb.DefinedNames[i].RangeAsString_ODS(wb));
+      case fmt of
+        sfOOXML: WriteLn(wb.DefinedNames[i].RangeAsString(wb));
+        sfOpenDocument:  WriteLn(wb.DefinedNames[i].RangeAsString_ODS(wb));
       end;
     end;
 
