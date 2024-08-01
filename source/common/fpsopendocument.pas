@@ -2699,7 +2699,10 @@ begin
       begin
         ;
       end else
+      begin
+        ANode := ANode.NextSibling;
         Continue;
+      end;
 
       if (sheetName1 <> '') and (sheetName1[1] = '$') then Delete(sheetName1, 1,1);
       if (sheetName2 <> '') and (sheetName2[1] = '$') then Delete(sheetName2, 1,1);

@@ -14,7 +14,8 @@ uses
   numformatparsertests, formulatests, rpnFormulaUnit, singleformulatests,
   exceltests, emptycelltests, errortests, virtualmodetests, colrowtests,
   ssttests, celltypetests, sortingtests, copytests, movetests, enumeratortests,
-  commenttests, hyperlinktests, pagelayouttests, protectiontests;
+  commenttests, hyperlinktests, pagelayouttests, protectiontests,
+  definednames_tests;
 
 begin
  {$IFDEF HEAPTRC}
