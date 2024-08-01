@@ -2689,8 +2689,8 @@ begin
           sheetName1 := book.GetFirstWorksheet.Name;
         ErrorRange(sheetName1);
       end else
-      if (TryStrToErrorValue(defExpr, '!', sheetName1, err) or
-          TryStrToErrorValue(defExpr, '.', sheetName2, err)) and
+      if (TryStrToErrorValue(defExpr, '.', sheetName1, err) or
+          TryStrToErrorValue(defExpr, '!', sheetName2, err)) and
          (err <> errOK) then        // not clear whether '!' is correct; test file was created from Excel
       begin
         ErrorRange(sheetName1);

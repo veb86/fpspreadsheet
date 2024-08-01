@@ -11,8 +11,8 @@ var
 //  fmt: TsSpreadsheetFormat = xlsxOOXML;
 begin
   fn := 'test_defnames';
-  fn := 'Mappe_illegalRef';
-  fn := 'Mappe3';
+//  fn := 'Mappe_illegalRef';
+//  fn := 'Mappe3';
   case fmt of
     sfOpenDocument: fn := fn + '.ods';
     sfOOXML: fn := fn + '.xlsx';
@@ -49,10 +49,10 @@ begin
       else
         for j := 0 to ws.DefinedNames.Count-1 do
         begin
-          Write('  "', ws.DefinedNames[i].Name, '" --> ');
+          Write('  "', ws.DefinedNames[j].Name, '" --> ');
           case ExtractFileExt(fn) of
-            '.xlsx': WriteLn(ws.DefinedNames[i].RangeAsString(wb));
-            '.ods':  WriteLn(ws.DefinedNames[i].RangeAsString_ODS(wb));
+            '.xlsx': WriteLn(ws.DefinedNames[j].RangeAsString(wb));
+            '.ods':  WriteLn(ws.DefinedNames[j].RangeAsString_ODS(wb));
           end;
         end;
 
