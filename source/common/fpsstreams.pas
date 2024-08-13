@@ -6,7 +6,7 @@ unit fpsStreams;
 
 interface
 
-uses             lazlogger,
+uses
   SysUtils, Classes;
 
 var
