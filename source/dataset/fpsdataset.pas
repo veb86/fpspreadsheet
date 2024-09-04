@@ -2031,7 +2031,7 @@ begin
       if Field.DataType in [ftString, ftFixedChar] then
       begin
         FillChar(destBuffer^, Field.DataSize, 0);
-        // Truncate strings which have more characters than efined by Field.Size.
+        // Truncate strings which have more characters than defined by Field.Size.
         // This should have been done by the calling routine, but it considers
         // only Field.Datasize.
         s := StrPas(PAnsiChar(Buffer));
