@@ -280,7 +280,7 @@ begin
     exit;
 
   units := '';
-  for i := Length(AText) downto 0 do
+  for i := Length(AText) downto 1 do
     if AText[i] in ['%', 'm', 'c', 'p', 't', 'i', 'n'] then
     begin
       units := AText[i] + units;
