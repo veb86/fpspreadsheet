@@ -74,6 +74,9 @@ begin
   MyWorksheet.WriteFontSize(5, 3, 12);
   // or: MyWorksheet.WriteFont(5, 3, 'Arial', 12, [], scWhite);
 
+  // Auto-row-height for row 5
+  MyWorksheet.WriteRowHeight(5, 1, suLines, rhtAuto);
+
   // E6 empty cell, only background color
   MyWorksheet.WriteBackgroundColor(5, 4, scYellow);
 
@@ -124,31 +127,21 @@ begin
   MyWorksheet.WriteBorders(5, 14, [cbWest]);
   MyWorksheet.WriteBorderLineStyle(5, 14, cbWest, lsDouble);
 
-  // Word-wrapped long text in D7
+  // Word-wrapped long text in D7, auto-row-height in this row
   MyWorksheet.WriteText(6, 3, 'This is a very, very, very, very long wrapped text.');
   MyWorksheet.WriteUsedFormatting(6, 3, [uffWordwrap]);
+  MyWorksheet.WriteRowHeight(6, 1, suLines, rhtAuto);
 
-  // Cell with changed font in D8
+  // Cell with changed font in D8, auto-row-height
   MyWorksheet.WriteText(7, 3, 'This is 16pt red bold & italic Times New Roman.');
   Myworksheet.WriteFont(7, 3, 'Times New Roman', 16, [fssBold, fssItalic], scRed);
+  MyWorksheet.WriteRowHeight(7, 1, suLines, rhtAuto);
 
   // Cell with changed font and background in D9 and comment
   MyWorksheet.WriteText(8, 3, 'Colors...');
   MyWorksheet.WriteFont(8, 3, 'Courier New', 12, [fssUnderline], scBlue);
   MyWorksheet.WriteBackgroundColor(8, 3, scYellow);
 //  MyWorksheet.WriteComment(8, 3, 'This is font "Courier New", Size 12.');
-
-                                         {}
-    {
-  // Uncomment this to test large XLS files
-  for i := 50 to 1000 do
-  begin
-//    MyWorksheet.WriteUTF8Text(i, 0, ParamStr(0));
-//    MyWorksheet.WriteUTF8Text(i, 1, ParamStr(0));
-//    MyWorksheet.WriteUTF8Text(i, 2, ParamStr(0));
-    MyWorksheet.WriteUTF8Text(i, 3, ParamStr(0));
-  end;
-     }
 
   // Write the string formula E1 = A1 + B1 ...
   MyWorksheet.WriteFormula(0, 4, 'A1+B1');
@@ -372,12 +365,14 @@ begin
 
   // Set width of columns 0, 1 and 5
   MyWorksheet.WriteColWidth(0, 30);
-  lCol.Width := 25;
+  lCol.Width := 60;  // millimeters
+  lCol.ColWidthType := cwtCustom;
   MyWorksheet.WriteColInfo(1, lCol);
-  MyWorksheet.WriteColWidth(2, 15);
-  MyWorksheet.WriteColWidth(3, 15);
-  MyWorksheet.WriteColWidth(4, 15);
-  lCol.Width := 5;
+  MyWorksheet.WriteColWidth(2, 15, suChars);
+  MyWorksheet.WriteColWidth(3, 15, suChars);
+  MyWorksheet.WriteColWidth(4, 15, suChars);
+  lCol.Width := 10; // millimeters
+  lCol.ColWidthType := cwtCustom;
   MyWorksheet.WriteColInfo(5, lCol);
 
   // Set height of rows 0

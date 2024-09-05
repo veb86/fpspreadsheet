@@ -261,7 +261,7 @@ begin
   MyWorksheet.WriteFontColor(r, 2, scGray);
   inc(r, 2);
   number := 1.333333333;
-  MyWorksheet.WriteUTF8Text(r, 0, 'nfPercentage, 0 decs');
+  MyWorksheet.WriteText(r, 0, 'nfPercentage, 0 decs');
   MyWorksheet.WriteNumber(r, 1, number, nfPercentage, 0);
   inc(r);
   MyWorksheet.WriteText(r, 0, 'nfPercentage, 1 decs');
@@ -305,8 +305,10 @@ begin
 
   // Set height of rows 5 and 6
   lRow.Height := 4;                    // 4 lines
+  lRow.RowHeightType := rhtCustom;
   MyWorksheet.WriteRowInfo(5, lRow);
   lRow.Height := 2;                    // 2 lines
+  lRow.RowHeightType := rhtCustom;
   MyWorksheet.WriteRowInfo(6, lRow);
 
   CSVParams.Delimiter := #9;

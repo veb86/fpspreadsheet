@@ -352,15 +352,16 @@ begin
   // Set width of columns 0 to 3
   MyWorksheet.WriteColWidth(0, 10, suCentimeters);     // 10 cm
   lCol.Width := 40;                 // WriteColInfo uses workbook units, i.e. mm
+  lCol.ColWidthType := cwtCustom;
   MyWorksheet.WriteColInfo(1, lCol);
   MyWorksheet.WriteColInfo(2, lCol);
   MyWorksheet.WriteColInfo(3, lCol);
   MyWorksheet.WriteColInfo(4, lCol);
-  MyWorksheet.WriteColWidth(5, 6);  // default is characters: 6 characters
+  MyWorksheet.WriteColWidth(5, 6, suChars); // 6 default-font characters wide
 
   // Set height of rows 5 and 6
   MyWorksheet.WriteRowHeight(5, 4, suLines);  // Lines
-  MyWorksheet.WriteRowHeight(6, 2);           // Lines is default...
+  MyWorksheet.WriteRowHeight(6, 2, suLines);
 
   // Save the spreadsheet to a file
   MyWorkbook.WriteToFile(MyDir + 'test' + STR_EXCEL_EXTENSION, sfExcel2, true);

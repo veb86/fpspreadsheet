@@ -23,7 +23,7 @@ const
 var
   MyWorkbook: TsWorkbook;
   MyWorksheet: TsWorksheet;
-  MyRPNFormula: TsRPNFormula;
+  MyRPNFormula: TsRPNFormula = nil;
   MyDir: string;
   i, r: Integer;
   number: Double;
@@ -48,14 +48,14 @@ begin
   MyWorkbook.AddFont('Calibri', 20, [], scRed);
 
   // Change row height
-  MyWorksheet.WriteRowHeight(0, 3);  // modify height of row 0 to 3 lines
+  MyWorksheet.WriteRowHeight(0, 3, suLines);   // modify height of row 0 to 3 lines
 
   // Change colum widths
-  MyWorksheet.WriteColWidth(0, 40);   // characters
-  MyWorksheet.WriteColWidth(1, 20);
-  MyWorksheet.WriteColWidth(2, 20);
-  MyWorksheet.WriteColWidth(3, 15);
-  MyWorksheet.WriteColWidth(4, 15);
+  MyWorksheet.WriteColWidth(0, 40, suChars);   // characters
+  MyWorksheet.WriteColWidth(1, 30, suChars);
+  MyWorksheet.WriteColWidth(2, 20, suChars);
+  MyWorksheet.WriteColWidth(3, 15, suChars);
+  MyWorksheet.WriteColWidth(4, 15, suChars);
 
   // Write some cells
   MyWorksheet.WriteNumber(0, 0, 1.0);// A1
@@ -65,6 +65,7 @@ begin
   MyWorksheet.WriteNumber(0, 2, 3.0);// C1
   MyWorksheet.WriteNumber(0, 3, 4.0);// D1
 
+  MyWorksheet.WriteRowHeight(4, 1, suLines, rhtAuto);
   MyWorksheet.WriteText(4, 2, Str_Total);// C5
   MyWorksheet.WriteBorders(4, 2, [cbEast, cbNorth, cbWest, cbSouth]);
   myWorksheet.WriteFontColor(4, 2, scRed);
@@ -74,7 +75,7 @@ begin
   MyWorksheet.WriteNumber(4, 3, 10);         // D5
 
   MyWorksheet.WriteText(4, 4, 'This is a long wrapped text.');
-  MyWorksheet.WriteUsedFormatting(4, 4, [uffWordWrap]);
+  MyWorksheet.WriteUsedFormatting(4, 4, [uffWordWrap]);   // or: MyWorksheet.WriteWordWrap(4, 4, true);
   MyWorksheet.WriteHorAlignment(4, 4, haCenter);
 
   MyWorksheet.WriteText(4, 5, 'Stacked text');
@@ -108,6 +109,7 @@ begin
   // Write current date/time
   MyWorksheet.WriteDateTime(5, 0, now);
   MyWorksheet.WriteFont(5, 0, 'Courier New', 20, [fssBold, fssItalic, fssUnderline], scBlue);
+  MyWorksheet.WriteRowHeight(5, 1, suLines, rhtAuto);
 
   // F6 empty cell, only all thin borders
   MyWorksheet.WriteBorders(5, 5, [cbNorth, cbEast, cbSouth, cbWest]);
@@ -129,17 +131,6 @@ begin
   MyWorksheet.WriteBorderLineStyle(5, 9, cbEast, lsThick);
   MyWorksheet.WriteBorderLineStyle(5, 9, cbWest, lsThick);
   MyWorksheet.WriteBorderLineStyle(5, 9, cbNorth, lsThick);
-
-
-{ Uncomment this to test large XLS files
-  for i := 2 to 20 do
-  begin
-    MyWorksheet.WriteAnsiText(i, 0, ParamStr(0));
-    MyWorksheet.WriteAnsiText(i, 1, ParamStr(0));
-    MyWorksheet.WriteAnsiText(i, 2, ParamStr(0));
-    MyWorksheet.WriteAnsiText(i, 3, ParamStr(0));
-  end;
-}
 
   // Write the formula E1 = A1 + B1 as rpn roken array
   SetLength(MyRPNFormula, 3);

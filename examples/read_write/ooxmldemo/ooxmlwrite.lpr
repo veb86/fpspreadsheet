@@ -10,7 +10,7 @@ program ooxmlwrite;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, fpstypes, fpspreadsheet, fpsallformats, fpscell;
+  Classes, SysUtils, fpstypes, fpspreadsheet, xlsxOOXML, fpscell;
 
 var
   MyWorkbook: TsWorkbook;

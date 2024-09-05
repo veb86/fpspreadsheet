@@ -374,10 +374,13 @@ begin
   MyWorksheet.WriteColWidth(3, 15, suChars);
   MyWorksheet.WriteColWidth(4, 15, suChars);
   lCol.Width := 12;                   // mm
+  lCol.ColWidthType := cwtCustom;
   MyWorksheet.WriteColInfo(5, lCol);
 
-  // Set height of rows 0
+  // Set row heights
   MyWorksheet.WriteRowHeight(0, 5, suLines);  // 5 lines
+  for i := 5 to 9 do
+    MyWorksheet.WriteRowHeight(i, 1, suLines, rhtAuto);  // automatic row height
 
   //----------------------------------------------------------------------------
 

@@ -10,7 +10,7 @@ program ooxmlread;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, LazUTF8, fpstypes, fpspreadsheet, xlsxooxml; //fpsallformats;
+  Classes, SysUtils, LazUTF8, fpstypes, fpspreadsheet, xlsxooxml;
 
 var
   MyWorkbook: TsWorkbook;

@@ -16,8 +16,7 @@ program ooxml_decrypt_and_read;
 {$mode delphi}{$H+}
 
 uses
-  Classes, SysUtils, LazUTF8, fpstypes, fpspreadsheet, //laz_fpspreadsheet,
-  xlsxooxml_crypto;
+  Classes, SysUtils, LazUTF8, fpstypes, fpspreadsheet, xlsxooxml_crypto;
 
 var
   MyWorkbook: TsWorkbook;
