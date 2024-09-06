@@ -1168,6 +1168,11 @@ begin
   FBrushBitmaps.Free;
   FChartStyles.Free;
   FLogLabelSource.Free;
+  if Assigned(FChart) then
+  begin
+    FChart.OnAfterDraw := FSavedAfterDraw;
+    FChart := nil;
+  end;
   inherited;
 end;
 
@@ -1421,10 +1426,10 @@ begin
   if FSavedAfterDraw <> nil then
     FSavedAfterDraw(ASender, ADrawer);
 
-  { TCanvasDrawer.SetBrushParams does not remove the Brush.Bitmap when then
+  { TCanvasDrawer.SetBrushParams does not remove the Brush.Bitmap when the
     Brush.Style does not change. Since Brush.Style will be reset to bsSolid
-    in the last statement of TChart.Draw this will be enforced by setting
-    Brush.Style to bsClear here. }
+    in the last statement of TChart.Draw this will be enforced here by setting
+    Brush.Style to bsClear. }
   ADrawer.SetBrushParams(bsClear, clTAColor);
 end;
 

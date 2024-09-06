@@ -147,6 +147,8 @@ begin
   for i := 1 to sWorksheetGrid1.Worksheet.GetLastRowIndex+1 do
     sWorksheetGrid1.AutoRowHeight(1);
 
+  FreeAndNil(sChartLink);
+
   sChartLink := TsWorkbookChartLink.Create(self);
   sChartLink.Chart := Chart1;
   sChartLink.WorkbookSource := sWorkbookSource1;
