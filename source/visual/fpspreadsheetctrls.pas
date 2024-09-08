@@ -1184,7 +1184,8 @@ begin
   AWorkbook.DisableNotifications;
 
   if AWorkbook <> FWorkbook then
-    InternalCreateNewWorkbook(AWorkbook) else
+    InternalCreateNewWorkbook(AWorkbook)
+  else
     SetOptions(FOptions);
   WorkbookOpenedHandler(self);
 
@@ -1734,7 +1735,8 @@ begin
   Unused(Sender);
   NotifyListeners([lniWorkbook]);
   if FWorkbook.ActiveWorksheet = nil then
-    SelectWorksheet(FWorkbook.GetFirstWorksheet) else
+    SelectWorksheet(FWorkbook.GetFirstWorksheet)
+  else
     SelectWorksheet(FWorkbook.ActiveWorksheet);
 end;
 

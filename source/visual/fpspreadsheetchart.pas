@@ -131,11 +131,11 @@ type
     FChart: TChart;
     FChartStyles: TChartStyles;
     FWorkbookSource: TsWorkbookSource;
-    FWorkbook: TsWorkbook;
     FWorkbookChartIndex: Integer;
     FBrushBitmaps: TFPObjectList;
     FSavedAfterDraw: TChartDrawEvent;
     FLogLabelSource: TListChartSource;
+    function GetWorkbook: TsWorkbook;
     procedure SetChart(AValue: TChart);
     procedure SetWorkbookChartIndex(AValue: Integer);
     procedure SetWorkbookSource(AValue: TsWorkbookSource);
@@ -195,6 +195,7 @@ type
     { Interfacing with WorkbookSource}
     procedure ListenerNotification(AChangedItems: TsNotificationItems; AData: Pointer = nil);
     procedure RemoveWorkbookSource;
+    property Workbook: TsWorkbook read GetWorkbook;
 
   published
     property Chart: TChart read FChart write SetChart;
@@ -1377,9 +1378,9 @@ var
   axis: TsChartAxis;
 begin
   ser := ActiveChartSeries(ASeries);
-  if ser = nil then
+  if (ser = nil) or (Workbook = nil) then
   begin
-    FWorkbook.AddErrorMsg('Series could not be loaded.');
+    Workbook.AddErrorMsg('Series could not be loaded.');
     exit;
   end;
 
@@ -1501,6 +1502,8 @@ begin
   FChart.Frame.Width := 1;
   FChart.Frame.Style := psSolid;
   FChart.Frame.Visible := true;
+
+//  FChart.OnAfterDraw := FSavedAfterDraw;
 end;
 
 { Approximates the empty hatch patterns by the built-in TBrush styles. }
@@ -1885,8 +1888,16 @@ end;
 
 function TsWorkbookChartLink.GetWorkbookChart: TsChart;
 begin
-  if (FWorkbook <> nil) and (FWorkbookChartIndex > -1) then
-    Result := FWorkbook.GetChartByIndex(FWorkbookChartIndex)
+  if (Workbook <> nil) and (FWorkbookChartIndex > -1) then
+    Result := Workbook.GetChartByIndex(FWorkbookChartIndex)
+  else
+    Result := nil;
+end;
+
+function TsWorkbookChartlink.GetWorkbook: TsWorkbook;
+begin
+  if FWorkbookSource <> nil then
+    Result := FWorkbookSource.Workbook
   else
     Result := nil;
 end;
@@ -1947,7 +1958,10 @@ begin
 
   // Workbook has been successfully loaded, all sheets are ready
   if (lniWorkbook in AChangedItems) then
+  begin
     ClearChart;
+    UpdateChart;
+  end;
 end;
 
 procedure TsWorkbookChartLink.Notification(AComponent: TComponent; Operation: TOperation);
@@ -1998,11 +2012,7 @@ begin
     FWorkbookSource.RemoveListener(self);
   FWorkbookSource := AValue;
   if FWorkbookSource <> nil then
-  begin
     FWorkbookSource.AddListener(self);
-    FWorkbook := FWorkbookSource.Workbook;
-  end else
-    FWorkbook := nil;
   ListenerNotification([lniWorkbook, lniWorksheet]);
   UpdateChart;
 end;
