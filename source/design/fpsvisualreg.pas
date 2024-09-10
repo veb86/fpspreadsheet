@@ -43,8 +43,8 @@ begin
   ]);
 
  {$ifdef FPS_CHARTS}
-  RegisterComponents('Chart', [
-    TsWorkbookChartSource
+  RegisterComponents('FPSpreadsheet', [
+    TsWorkbookChartLink, TsWorkbookChartSource
   ]);
  {$endif}
 

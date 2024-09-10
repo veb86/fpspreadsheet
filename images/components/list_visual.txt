@@ -29,3 +29,7 @@ tsworkbookchartsource_200.png
 tsworksheetchartsource.png
 tsworksheetchartsource_150.png
 tsworksheetchartsource_200.png
+tsWorkbookchartlink.png
+tsworkbookchartlink_150.png
+tsworkbookchartlink_200.png
+
