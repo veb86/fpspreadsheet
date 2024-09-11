@@ -2281,6 +2281,12 @@ begin
         else
           axis.Position := AWorkbookAxis.PositionValue;
         axis.PositionUnits := cuGraph;  // To do: cuAxis not yet implemented in TAChart...
+
+        // Workaround for barseries issue: When Position = 0 and PositionUnits = cuGraph
+        // the axis would be moved to the center of the 1st bar which looks
+        // ugly --> revert to cuPercent
+        if (axis.Position = 0) and (AWorkbookAxis.Chart.GetChartType = ctBar) then
+          axis.PositionUnits := cuPercent;
       end;
   end;
 end;
