@@ -937,6 +937,8 @@ end;
 -------------------------------------------------------------------------------}
 procedure TsWorkbookChartSource.SetRangeFromChart(ARangeIndex: TsXYLRange;
   AListIndex: Integer; const ARange: TsChartRange);
+var
+  sheet: TsWorksheet;
 begin
   if ARange.Sheet1 <> ARange.Sheet2 then
     raise Exception.Create('A chart cell range can only be from a single worksheet.');
@@ -957,7 +959,9 @@ begin
   FRanges[ARangeIndex, AListIndex, 0].Col1 := ARange.Col1;
   FRanges[ARangeIndex, AListIndex, 0].Row2 := ARange.Row2;
   FRanges[ARangeIndex, AListIndex, 0].Col2 := ARange.Col2;
-  FWorksheets[ARangeIndex, AListIndex] := FworkbookSource.Workbook.GetWorksheetByName(ARange.Sheet1);
+  sheet := FWorkbookSource.Workbook.GetWorksheetByName(ARange.Sheet1);
+  if sheet = nil then sheet := FWorkbookSource.Workbook.ActiveWorksheet;
+  FWorksheets[ARangeIndex, AListIndex] := sheet;
   case ARangeIndex of
     rngX, rngY:
       FPointsNumber := Max(CountValues(rngX), CountValues(rngY));
