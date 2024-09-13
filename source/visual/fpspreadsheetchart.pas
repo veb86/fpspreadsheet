@@ -994,7 +994,7 @@ procedure TsWorkbookChartSource.SetTitleAddr(Addr: TsChartCellAddr);
 begin
   FTitleRow := Addr.Row;
   FTitleCol := Addr.Col;
-  FTitleSheetName := Addr.GetSheetName;
+  FTitleSheetName := UnquoteStr(Addr.GetSheetName);
 end;
 
 procedure TsWorkbookChartSource.SetXErrorBarRange(APosRange, ANegRange: TsChartRange);

@@ -1552,6 +1552,8 @@ begin
     Result := Sheet
   else
     Result := FChart.Worksheet.Name;
+  if SheetNameNeedsQuotes(Result) then
+    Result := QuotedStr(Result);
 end;
 
 function TsChartCellAddr.IsUsed: Boolean;
