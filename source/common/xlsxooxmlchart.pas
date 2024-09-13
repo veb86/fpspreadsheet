@@ -5064,6 +5064,7 @@ var
   forceNoLine: Boolean;
   xValName, yValName, xRefName, yRefName: String;
   lser: TsOpenedCustomLineSeries;
+  smoothVal: Integer = 0;
 begin
   indent := DupeString(' ', AIndent);
   chart := ASeries.Chart;
@@ -5115,6 +5116,8 @@ begin
         GetChartLineXML(AIndent + 4, chart, ASeries.Line, forceNoLine) + LE +
         indent + '  </c:spPr>' + LE
       );
+      if chart.Interpolation in [ciCubicSpline, ciBSpline] then
+        smoothVal := 1;
     end;
     AppendToStream(AStream,
       indent + '  <c:marker>' + LE +
@@ -5177,9 +5180,12 @@ begin
   // Line series: Interpolation
   if ASeries is TsLineSeries then
     if TsLineSeries(ASeries).Interpolation in [ciLinear, ciStepStart, ciStepEnd, ciStepCenterX, ciStepCenterY] then
-      AppendToStream(AStream,
-        indent + '  <c:smooth val="0"/>' + LE
-      );
+      smoothVal := 0;
+
+  if ASeries is TsCustomLineSeries then
+    AppendToStream(AStream,
+      indent + '  <c:smooth val="' + IntToStr(smoothVal) + '"/>' + LE
+    );
 
   AppendToStream(AStream,
     indent + '</c:ser>' + LE
