@@ -647,11 +647,8 @@ type
     FShowSymbols: Boolean;
     FSymbolBorder: TsChartLine;
     FSymbolFill: TsChartFill;
-    function GetSmooth: Boolean;
-    procedure SetSmooth(AValue: Boolean);
   protected
     property Interpolation: TsChartInterpolation read FInterpolation write FInterpolation;
-    property Smooth: Boolean read GetSmooth write SetSmooth;
     property Symbol: TsChartSeriesSymbol read FSymbol write FSymbol;
     property SymbolBorder: TsChartLine read FSymbolBorder write FSymbolBorder;
     property SymbolFill: TsChartFill read FSymbolFill write FSymbolFill;
@@ -668,7 +665,6 @@ type
   public
     constructor Create(AChart: TsChart); override;
     property Interpolation;
-    property Smooth;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -716,7 +712,6 @@ type
   TsScatterSeries = class(TsCustomScatterSeries)
   public
     property Interpolation;
-    property Smooth;
     property Symbol;
     property SymbolBorder;
     property SymbolFill;
@@ -2566,24 +2561,6 @@ begin
   FSymbolBorder.Free;
   FSymbolFill.Free;
   inherited;
-end;
-
-function TsCustomLineSeries.GetSmooth: Boolean;
-begin
-  Result := FInterpolation in [ciBSpline, ciCubicSpline];
-end;
-
-procedure TsCustomLineSeries.SetSmooth(AValue: Boolean);
-begin
-  if AValue then
-  begin
-    if not (FInterpolation in [ciBSpline, ciCubicSpline]) then
-      FInterpolation := ciCubicSpline;
-  end else
-  begin
-    if (FInterpolation in [ciBSpline, ciCubicSpline]) then
-    FInterpolation := ciLinear;
-  end;
 end;
 
 { TsLineSeries }

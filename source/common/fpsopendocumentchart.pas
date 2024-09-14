@@ -2666,6 +2666,7 @@ begin
         ciLinear: Continue;
         ciCubicSpline: interpolationStr := 'chart:interpolation="cubic-spline" ';
         ciBSpline: interpolationStr := 'chart:interpolation="b-spline" ';
+          // NOTE: LibreOffice v24.2.5.2 does not display the interpolated b-spline line any more...
         ciStepStart: interpolationStr := 'chart:interpolation="step-start" ';
         ciStepEnd: interpolationStr := 'chart:interpolation="step-end" ';
         ciStepCenterX: interpolationStr := 'chart:interpolation="step-center-x" ';

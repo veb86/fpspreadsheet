@@ -610,7 +610,6 @@ var
   nodeName: String;
   s: String;
   ser: TsBubbleSeries;
-  smooth: Boolean;
   mode: TsBubbleSizeMode = bsmArea;
   scale: Integer = 100;
 begin
@@ -1715,7 +1714,6 @@ var
   nodeName: String;
   s: String;
   ser: TsScatterSeries;
-  smooth: Boolean = false;
 begin
   if ANode = nil then
     exit;
@@ -1731,9 +1729,11 @@ begin
         end;
       'c:scatterStyle':
         begin
+          {
           s := GetAttrValue(ANode, 'val');
           if (s = 'smoothMarker') then
             smooth := true;
+            }
         end;
       'c:varyColors':
         ;
@@ -1744,8 +1744,6 @@ begin
     end;
     ANode := ANode.NextSibling;
   end;
-
-  ser.Smooth := smooth;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2077,8 +2075,8 @@ begin
     ANode := ANode.NextSibling;
   end;
 
-  if ASeries is TsCustomLineSeries then
-    TsOpenedCustomLineSeries(ASeries).Smooth := smooth;
+  if ASeries is TsCustomLineSeries and smooth then
+    TsOpenedCustomLineSeries(ASeries).Interpolation := ciBSpline;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -5116,7 +5114,7 @@ begin
         GetChartLineXML(AIndent + 4, chart, ASeries.Line, forceNoLine) + LE +
         indent + '  </c:spPr>' + LE
       );
-      if chart.Interpolation in [ciCubicSpline, ciBSpline] then
+      if lSer.Interpolation in [ciCubicSpline, ciBSpline] then
         smoothVal := 1;
     end;
     AppendToStream(AStream,
@@ -5178,10 +5176,6 @@ begin
     WriteChartRange(AStream, AIndent, TsBubbleSeries(ASeries).BubbleRange, 'c:bubbleSize', 'c:numRef');
 
   // Line series: Interpolation
-  if ASeries is TsLineSeries then
-    if TsLineSeries(ASeries).Interpolation in [ciLinear, ciStepStart, ciStepEnd, ciStepCenterX, ciStepCenterY] then
-      smoothVal := 0;
-
   if ASeries is TsCustomLineSeries then
     AppendToStream(AStream,
       indent + '  <c:smooth val="' + IntToStr(smoothVal) + '"/>' + LE

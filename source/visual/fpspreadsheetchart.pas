@@ -1373,7 +1373,7 @@ begin
     style.Text := src.Title;
   end;
 
-  ax := Chart.AxisList.GetAxisByAlign(calRight);
+  //ax := Chart.AxisList.GetAxisByAlign(calRight);
 end;
 
 procedure TsWorkbookChartLink.AddSeries(ASeries: TsChartSeries);
