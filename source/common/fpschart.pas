@@ -1963,6 +1963,10 @@ begin
   FFont := TsFont.Create;
   FFont.Size := 9;
   FVisible := true;
+
+  // FPosition := lpBottom;
+  // That's the default of xlsx, but TAChart has difficulties with automatically
+  // arranging several items per row. And .ods uses lpRight anyway...
 end;
 
 destructor TsChartLegend.Destroy;
