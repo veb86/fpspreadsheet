@@ -6618,6 +6618,12 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
     sheet: TsWorksheet;
     guid: TGUID;
   begin
+    // When a chart contains no series Excel writes a completely different
+    // node for the chart, otherwise reading of the file crashes.
+    // --> Do not write an empty chart in our way at all.
+    if AChart.Series.Count = 0 then
+      exit;
+
     r1 := AChart.Row;
     c1 := AChart.Col;
     rOffs1 := AChart.OffsetY;
