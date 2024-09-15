@@ -1,12 +1,93 @@
 { Included by fpspreadsheet.pas }
 
-{ Chart support }
+{===============================================================================
+                         Worksheet chart support
+===============================================================================}
+
+{$ifdef FPS_CHARTS}
+{@@ ----------------------------------------------------------------------------
+  Adds a chart to the worksheet.
+
+  @param  ARow     Index of the row in which the top of the chart should be positioned.
+  @param  ACol     Index of the column in which the left side of the chart should be positioned.
+  @param  AWidth   Width of the chart, in workbook units
+  @param  AHeight  Height of the chart, in workbook units
+  @param  AOffsetX Distance of the chart's left side from the left side of column ACol, in workbook units
+  @param  AOffsetY Distance of the chart's top side from the top side of row ARow, in workbook units
+  @returns  The instance of the created chart
+-------------------------------------------------------------------------------}
+function TsWorksheet.AddChart(ARow, ACol: Cardinal; AWidth, AHeight: Double;
+  AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
+begin
+  Result := Workbook.AddChart(self, ARow, ACol, AWidth, AHeight, AOffsetX, AOffsetY);
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Determines the count of charts in this worksheet
+-------------------------------------------------------------------------------}
+function TsWorksheet.GetChartCount: Integer;
+var
+  i: Integer;
+  chart: TsChart;
+  idx: Integer;
+begin
+  Result := 0;
+  idx := GetIndex;
+  for i := 0 to Workbook.GetChartCount-1 do
+  begin
+    chart := Workbook.GetChartByIndex(i);
+    if chart.Worksheet = self then inc(Result);
+  end;
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Destroys all charts from the worksheet and removes them from the workbook's
+  internal FCharts list.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveAllCharts;
+var
+  i: Integer;
+begin
+  for i := Workbook.FCharts.Count-1 downto 0 do
+    if Workbook.GetChartByIndex(i).Worksheet = Self then
+      Workbook.FCharts.Delete(i);    // This destroys the chart
+end;
+
+{@@ ----------------------------------------------------------------------------
+  Removes the specified chart from the worksheet, destroys it and removes it
+  from the workbook's internal FCharts list.
+-------------------------------------------------------------------------------}
+procedure TsWorksheet.RemoveChart(AChart: TsChart);
+var
+  idx: Integer;
+begin
+  if AChart.Worksheet <> self then
+    exit;
+
+  idx := Workbook.FCharts.IndexOf(AChart);
+  if idx > -1 then Workbook.FCharts.Delete(idx);  // This destroys the chart
+end;
+{$endif}
+
+
+{===============================================================================
+                          Workbook chart support
+===============================================================================}
 
 {@@ ----------------------------------------------------------------------------
   Creates a chart object with its top/left corner in the specified row/colum and
   having the specified width (in workbook units).
-  Inserts the chart in the FCharts list of the workbook and returns the chart
-  instance.
+  Inserts the chart in the internal FCharts list of the workbook and returns
+  the chart instance.
+
+  @param  ASheet   Worksheet into which the chart will be inserted.
+  @param  ARow     Index of the row in which the top of the chart should be positioned.
+  @param  ACol     Index of the column in which the left side of the chart should be positioned.
+  @param  AWidth   Width of the chart, in workbook units (usually millimeters)
+  @param  AHeight  Height of the chart, in workbook units
+  @param  AOffsetX Distance of the chart's left side from the left side of column ACol, in workbook units
+  @param  AOffsetY Distance of the chart's top side from the top side of row ARow, in workbook units
+  @returns  The instance of the created chart
 -------------------------------------------------------------------------------}
 function TsWorkbook.AddChart(ASheet: TsBasicWorksheet; ARow, ACol: Cardinal;
   AWidth, AHeight: Double; AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
