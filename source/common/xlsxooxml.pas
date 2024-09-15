@@ -6620,8 +6620,8 @@ procedure TsSpreadOOXMLWriter.WriteDrawings(AWorksheet: TsBasicWorksheet);
   begin
     r1 := AChart.Row;
     c1 := AChart.Col;
-    rOffs1 := AChart.OffsetX;
-    cOffs1 := AChart.OffsetY;
+    rOffs1 := AChart.OffsetY;
+    cOffs1 := AChart.OffsetX;
     w := AChart.Width;
     h := AChart.Height;
     sheet := TsWorksheet(AChart.Worksheet);

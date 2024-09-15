@@ -4271,8 +4271,10 @@ var
   indent: String;
   i: Integer;
   ser: TsChartSeries;
-  xAxKind, x2AxKind, yAxKind: String;
-  hasSecondaryAxis: Boolean;
+  xAxKind: String = 'c:catAx';
+  yAxKind: String = 'c:valAx';
+  x2AxKind: String;
+  hasSecondaryAxis: Boolean = false;
 begin
   indent := DupeString(' ', AIndent);
   FAxisID[caaBottom] := Random(MaxInt);
@@ -4285,11 +4287,14 @@ begin
     indent + '<c:plotArea>' + LE
   );
 
-  // Write series attached to primary y axis
-  WriteChartSeries(AStream, AIndent + 2, AChart, calPrimary, xAxKind);
+  if AChart.Series.Count > 0 then
+  begin
+    // Write series attached to primary y axis
+    WriteChartSeries(AStream, AIndent + 2, AChart, calPrimary, xAxKind);
 
-  // Write series attached to secondary y axis
-  hasSecondaryAxis := WriteChartSeries(AStream, AIndent + 2, AChart, calSecondary, x2AxKind);
+    // Write series attached to secondary y axis
+    hasSecondaryAxis := WriteChartSeries(AStream, AIndent + 2, AChart, calSecondary, x2AxKind);
+  end;
 
   // Write the x and y axes. No axes for pie series and related.
   if not (AChart.GetChartType in [ctPie, ctRing]) then
