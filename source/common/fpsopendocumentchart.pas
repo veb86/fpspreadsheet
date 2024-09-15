@@ -3926,12 +3926,15 @@ begin
     end;
 
   // And this is the title of the series for the legend
-  titleAddr := GetSheetCellRangeString_ODS(
-    series.TitleAddr.GetSheetName, series.TitleAddr.GetSheetName,
-    series.TitleAddr.Row, series.TitleAddr.Col,
-    series.TitleAddr.Row, series.TitleAddr.Col,
-    rfAllRel, false
-  );
+  if series.TitleAddr.IsUsed then
+    titleAddr := GetSheetCellRangeString_ODS(
+      series.TitleAddr.GetSheetName, series.TitleAddr.GetSheetName,
+      series.TitleAddr.Row, series.TitleAddr.Col,
+      series.TitleAddr.Row, series.TitleAddr.Col,
+      rfAllRel, false
+    )
+  else
+    titleAddr := '';
 
   // Number of data points
   if series.YValuesInCol then

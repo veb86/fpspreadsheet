@@ -9314,12 +9314,15 @@ begin
       series.YRange.Row2, series.YRange.Col2,
       rfAllRel, false
     );
-    titleAddr := GetSheetCellRangeString_ODS(
-      sheet.Name, sheet.Name,
-      series.TitleAddr.row, series.TitleAddr.Col,
-      series.TitleAddr.row, series.TitleAddr.Col,
-      rfAllRel, false
-    );
+    if series.TitleAddr.IsUsed then
+      titleAddr := GetSheetCellRangeString_ODS(
+        sheet.Name, sheet.Name,
+        series.TitleAddr.row, series.TitleAddr.Col,
+        series.TitleAddr.row, series.TitleAddr.Col,
+        rfAllRel, false
+      )
+    else
+      titleAddr := '';
 
     xml := Format(
       '<draw:frame draw:z-index="%d" ' +
