@@ -47,7 +47,7 @@ begin
     sheet.WriteText(8, 0, 'Oceania');    sheet.WriteNumber(8, 1, 42);        // sheet.WriteChartColor(8, 2, $FF8080);
 
     // Create chart: left/top in cell D4, 150 mm x 150 mm
-    ch := book.AddChart(sheet, 2, 3, 150, 150);
+    ch := sheet.AddChart(150, 150, 2, 3);
 
     // Chart properties
     ch.Border.Style := clsNoLine;

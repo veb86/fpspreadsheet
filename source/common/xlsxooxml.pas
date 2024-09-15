@@ -3044,7 +3044,7 @@ begin
           w := w + sheet.GetColWidth(j, suMillimeters);
         for j := data.FromRow to data.ToRow-1 do
           h := h + sheet.GetRowHeight(j, suMillimeters);
-        chart := TsWorkbook(FWorkbook).AddChart(sheet, data.FromRow, data.FromCol, w, h, data.FromRowOffs, data.FromColOffs);
+        chart := sheet.AddChart(w, h, data.FromRow, data.FromCol, data.FromRowOffs, data.FromColOffs);
         TsSpreadOOXMLChartReader(FChartReader).ReadChartXML(AStream, chart, data.MediaName);
       end else
       {$endif}

@@ -68,6 +68,10 @@ begin
 end;
 
 const
+  FOLDER = 'files/';
+
+// Uncomment one of the following FILE_NAMEs
+
 //  FILE_NAME = 'test.ods';
 //  FILE_NAME = 'area.ods';
 //  FILE_NAME = 'bars.ods';
@@ -81,14 +85,12 @@ var
   series: TsChartSeries;
   trendline: TsChartTrendline;
   i, j: Integer;
-  isODS: Boolean;
 begin
   FormatSettings.DecimalSeparator := '.';
-  isODS := ExtractFileExt(FILE_NAME) = '.ods';
 
   book := TsWorkbook.Create;
   try
-    book.ReadFromFile(FILE_NAME);
+    book.ReadFromFile(FOLDER + FILE_NAME);
     for i := 0 to book.GetChartCount-1 do
     begin
       chart := book.GetChartByIndex(i);

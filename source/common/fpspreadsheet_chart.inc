@@ -8,18 +8,18 @@
 {@@ ----------------------------------------------------------------------------
   Adds a chart to the worksheet.
 
-  @param  ARow     Index of the row in which the top of the chart should be positioned.
-  @param  ACol     Index of the column in which the left side of the chart should be positioned.
   @param  AWidth   Width of the chart, in workbook units
   @param  AHeight  Height of the chart, in workbook units
+  @param  ARow     Index of the row in which the top of the chart should be positioned.
+  @param  ACol     Index of the column in which the left side of the chart should be positioned.
   @param  AOffsetX Distance of the chart's left side from the left side of column ACol, in workbook units
   @param  AOffsetY Distance of the chart's top side from the top side of row ARow, in workbook units
   @returns  The instance of the created chart
 -------------------------------------------------------------------------------}
-function TsWorksheet.AddChart(ARow, ACol: Cardinal; AWidth, AHeight: Double;
+function TsWorksheet.AddChart(AWidth, AHeight: Double; ARow, ACol: Cardinal;
   AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
 begin
-  Result := Workbook.AddChart(self, ARow, ACol, AWidth, AHeight, AOffsetX, AOffsetY);
+  Result := Workbook.AddChart(self, AWidth, AHeight, ARow, ACol, AOffsetX, AOffsetY);
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -76,21 +76,21 @@ end;
 
 {@@ ----------------------------------------------------------------------------
   Creates a chart object with its top/left corner in the specified row/colum and
-  having the specified width (in workbook units).
+  having the specified width and height (in workbook units).
   Inserts the chart in the internal FCharts list of the workbook and returns
   the chart instance.
 
   @param  ASheet   Worksheet into which the chart will be inserted.
-  @param  ARow     Index of the row in which the top of the chart should be positioned.
-  @param  ACol     Index of the column in which the left side of the chart should be positioned.
   @param  AWidth   Width of the chart, in workbook units (usually millimeters)
   @param  AHeight  Height of the chart, in workbook units
+  @param  ARow     Index of the row in which the top of the chart should be positioned.
+  @param  ACol     Index of the column in which the left side of the chart should be positioned.
   @param  AOffsetX Distance of the chart's left side from the left side of column ACol, in workbook units
   @param  AOffsetY Distance of the chart's top side from the top side of row ARow, in workbook units
   @returns  The instance of the created chart
 -------------------------------------------------------------------------------}
-function TsWorkbook.AddChart(ASheet: TsBasicWorksheet; ARow, ACol: Cardinal;
-  AWidth, AHeight: Double; AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
+function TsWorkbook.AddChart(ASheet: TsBasicWorksheet; AWidth, AHeight: Double;
+  ARow, ACol: Cardinal; AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
 begin
   Result := TsChart.Create;
   if (ASheet = nil) then

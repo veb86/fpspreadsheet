@@ -51,8 +51,8 @@ begin
     sheet.WriteText( 7, 0, 'Case 5');  sheet.WriteNumber( 7, 1,  9);      sheet.WriteNumber( 7, 2,  304);
     sheet.WriteText( 8, 0, 'Case 6');  sheet.WriteNumber( 8, 1,  5);      sheet.WriteNumber( 8, 2, 1285);
 
-    // Create chart: left/top in cell D4, 160 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 3, 120, 100);
+    // Create chart: left/top in cell D4 of sheet "bar_series", 160 mm x 100 mm
+    ch := sheet.AddChart(120, 100, 2, 3);
 
     // Chart properties
     ch.Border.Style := clsNoLine;

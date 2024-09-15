@@ -113,7 +113,7 @@ begin
     WriteData(r, d,  95000, 110, 119, 103, 115);
 
     // Create chart: left/top in cell D4, 160 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 6, 160, 100);
+    ch := sheet.AddChart(160, 100, 2, 6);
 
     // Chart properties
     ch.RotatedAxes := rotated;

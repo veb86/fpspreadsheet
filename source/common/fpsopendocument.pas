@@ -5154,7 +5154,7 @@ procedure TsSpreadOpenDocReader.ReadShape(ANode: TDOMNode;
             if entry.IsChartRoot and ((entry.FileName = href) or ('./' + entry.FileName = href)) then
             begin
               (FWorksheet as TsWorksheet).CalcObjectCell(x, y, w, h, r, c, dy, dx);
-              chart := (FWorkbook as TsWorkbook).AddChart(FWorksheet, r, c, w, h, dx, dy);
+              chart := (FWorksheet as TsWorksheet).AddChart(w, h, r, c, dx, dy);
               chart.Name := entry.FileName;
               handled := true;
               break;

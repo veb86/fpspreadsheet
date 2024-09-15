@@ -644,8 +644,8 @@ type
 
    {$ifdef FPS_CHARTS}
     { Chart support }
-    function AddChart(ARow, ACol: Cardinal;
-      AWidth, AHeight: Double; AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
+    function AddChart(AWidth, AHeight: Double; ARow, ACol: Cardinal;
+      AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
     function GetChartCount: Integer;
     procedure RemoveAllCharts;
     procedure RemoveChart(AChart: TsChart);
@@ -945,8 +945,8 @@ type
 
    {$ifdef FPS_CHARTS}
     { Charts }
-    function AddChart(ASheet: TsBasicWorksheet; ARow, ACol: Cardinal;
-      AWidth, AHeight: Double; AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
+    function AddChart(ASheet: TsBasicWorksheet; AWidth, AHeight: Double;
+      ARow, ACol: Cardinal; AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
     function GetChartByIndex(AIndex: Integer): TsChart;
     function GetChartCount: Integer;
    {$endif}

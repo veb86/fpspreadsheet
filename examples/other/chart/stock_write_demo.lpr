@@ -87,7 +87,7 @@ begin
     WriteData(r, d, 110, 119, 103, 115);
 
     // Create chart: left/top in cell D4, 160 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 5, 160, 100);
+    ch := book.AddChart(sheet, 160, 100, 2, 5);
 
     // Chart properties
     ch.Border.Style := clsNoLine;

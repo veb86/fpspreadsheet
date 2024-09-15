@@ -46,7 +46,7 @@ begin
     sheet.WriteNumber(8, 0, 6.8);  sheet.WriteNumber(8, 1, 71.3);  sheet.WriteNumber(8, 2, 3.5);
 
     // Create chart: left/top in cell D4, 150 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 3, 150, 100);
+    ch := sheet.AddChart(150, 100, 2, 3);
 
     // Chart properties
     ch.Border.Style := clsNoLine;

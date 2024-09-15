@@ -51,7 +51,7 @@ begin
     sheet.WriteColWidth(2, 40.0, suMillimeters);
 
     // Create chart: left/top in cell D4, 150 mm x 150 mm
-    ch := book.AddChart(sheet, 2, 4, 150, 150);
+    ch := sheet.AddChart(150, 150, 2, 4);
 
     // Chart properties
     ch.Border.Style := clsNoLine;

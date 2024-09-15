@@ -56,7 +56,7 @@ begin
     sheet1.WriteNumber(r2, 3, r2*r2);
 
     // Create chart
-    ch := book.AddChart(sheet1, 4, 6, 160, 100);
+    ch := book.AddChart(sheet1, 160, 100, 4, 6);
 
     // Add first series (type depending on SERIES_CLASS)
     ser := SERIES_CLASS.Create(ch);

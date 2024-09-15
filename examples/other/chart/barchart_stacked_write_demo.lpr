@@ -59,7 +59,7 @@ begin
     sheet.WriteText( 6, 0, 'Q4/2022');  sheet.WriteNumber( 6, 1, 311);         sheet.WriteNumber( 6, 2, 183);
 
     // Create chart: left/top in cell D4, 160 mm x 100 mm
-    ch := book.AddChart(sheet, 2, 3, 120, 100);
+    ch := sheet.AddChart(120, 100, 2, 3);
 
     // Chart properties
     if stackedPercentage then
