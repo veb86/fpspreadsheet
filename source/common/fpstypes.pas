@@ -20,7 +20,7 @@ interface
 uses
   Classes, SysUtils, fpimage;
 
-{$IF FPC_FullVersion < 30000}
+{$IFDEF FPS_NO_RAWBYTESTRING}
 {@@ This string type is not re-encoded by FPC. It is a standard type of FPC 3.0+,
   its declaration must be repeated here in order to keep fpSpreadsheet usable by
   older FPC versions. }
@@ -92,8 +92,8 @@ type
     @member  LineEnding     Specification for the line endings to be written (write-only)
     @member  Delimiter      Column delimiter (read/write)
     @member  QuoteChar      Character used for quoting text in special cases (read/write)
-    @member  QuoteOuterWhiteSpace ...Determines whether cell content beginning/ending with white space will be quoted (write-only)
-    @member  IgnoreOuterWhiteSpace...Ignores white space before/after cell content (read-only)
+    @member  QuoteOuterWhiteSpace  Determines whether cell content beginning/ending with white space will be quoted (write-only)
+    @member  IgnoreOuterWhiteSpace Ignores white space before/after cell content (read-only)
     @member  Encoding       String identifying the endoding of the file, such as 'utf8', 'cp1252' etc (read/write)
     @member  DetectContentType  Try to convert strings to their content type (read-only)
     @member  NumberFormat   If empty numbers are written like in worksheet, otherwise this format string is applied (write-only)

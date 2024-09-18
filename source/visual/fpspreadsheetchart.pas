@@ -688,9 +688,15 @@ begin
 
   if cell <> nil then
     case cell^.ContentType of
-      cctUTF8String, cctDateTime:     // !!! Simplification here: we do not support real date values
+      cctUTF8String:
         begin
           ANumber := APointIndex;
+          AText := FWorksheets[ARangeIndex, AListIndex].ReadAsText(cell);
+        end;
+      cctDateTime:
+        begin
+          if not FWorksheets[ARangeIndex, AListIndex].ReadAsDateTime(cell, ANumber) then
+            ANumber := APointIndex;
           AText := FWorksheets[ARangeIndex, AListIndex].ReadAsText(cell);
         end;
       else
@@ -2385,7 +2391,7 @@ begin
         FChart.BottomAxis.Marks.Style := smsLabel;
       end;
   end;
-                 (*
+
   // Date/time?
   if AWorkbookChart.XAxis.DateTime then
   begin
@@ -2398,7 +2404,6 @@ begin
       DateTimeFormat := AWorkbookChart.XAxis.LabelFormat;
     end;
   end;
-  *)
 end;
 
 procedure TsWorkbookChartLink.UpdateChartBackground(AWorkbookChart: TsChart);

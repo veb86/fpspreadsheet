@@ -330,7 +330,7 @@ type
       const ACellRect: TGridRect): Boolean;
     function MouseOnHeader(X, Y: Integer): Boolean;
     procedure MouseUp(Button: TMouseButton; Shift:TShiftState; X,Y:Integer); override;
-    {$IF LCL_FullVersion >= 1090000}
+    {$IFNDEF LCL_FullVersion_LT_190000}
     function  MoveNextSelectable(Relative: Boolean; DCol, DRow: Integer): Boolean; override;
     {$ENDIF}
     procedure MoveSelection; override;
@@ -596,10 +596,10 @@ type
         defined by the rectangle. }
     property TextRotations[ALeft, ATop, ARight, ABottom: Integer]: TsTextRotation
         read GetTextRotations write SetTextRotations;
-    {$IF LCL_FullVersion >= 1080000}
+    {$IFNDEF LCL_FullVersion_LT_180}
     {@@ Pixel coordinates of the top-left corner of the grid's cell area}
     property TopLeftPx: TPoint read  GetPxTopLeft;
-    {$IFEND}
+    {$ENDIF}
     {@@ Parameter for vertical text alignment in the cell at column ACol and row ARow. }
     property VertAlignment[ACol, ARow: Integer]: TsVertAlignment
         read GetVertAlignment write SetVertAlignment;
@@ -2771,11 +2771,11 @@ begin
   Canvas.Brush.Color := clRed;
   Canvas.Brush.Style := bsSolid;
   Canvas.Pen.Style := psClear;
-  {$IF LCL_FullVersion >= 1080000}
-  commentSize := Scale96ToFont(COMMENT_SIZE);
-  {$ELSE}
+  {$IFDEF LCL_FULLVERSION_LT_180}
   commentSize := ScalePPI(COMMENT_SIZE);
-  {$IFEND}
+  {$ELSE}
+  commentSize := Scale96ToFont(COMMENT_SIZE);
+  {$ENDIF}
   if IsRightToLeft then
   begin
     P[0] := Point(ARect.Left, ARect.Top);
@@ -5256,7 +5256,7 @@ begin
   Refresh;
 end;
 
-{$IF LCL_FullVersion >= 1090000}
+{$IFNDEF LCL_FULLVERSION_LT_v190}      // Supported by Laz v1.9+
 function TsCustomWorksheetGrid.MoveNextSelectable(Relative: Boolean; DCol, DRow: Integer
   ): Boolean;
 var

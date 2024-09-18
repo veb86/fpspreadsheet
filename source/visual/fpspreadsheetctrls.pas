@@ -702,7 +702,7 @@ type
 
 function SpreadsheetFormatInClipboard: Boolean;
 
-{$IF LCL_FullVersion < 1080000}
+{$IFDEF LCL_FULLVERSION_LT_180}
 function ScalePPI(ALength: Integer): Integer;
 {$IFEND}
 
@@ -741,7 +741,7 @@ begin
 end;
 
 
-{$IF LCL_FullVersion < 1080000}
+{$IFDEF LCL_FullVersion_LT_180}
 function ScalePPI(ALength: Integer): Integer;
 begin
   Result := MulDiv(ALength, Screen.PixelsPerInch, 96);

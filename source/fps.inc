@@ -25,6 +25,15 @@
 { The next defines activate code duplicated from new compiler versions in case
   an old compiler is used. }
 
+{ Activate the following define if your Lazarus version is older than v1.8 }
+{.$DEFINE LCL_FullVersion_LT_v180}
+
+{ Activate the following define if your Lazarus version is older than v1.9 }
+{.$DEFINE LCL_FullVersion_LT_v190}
+
+{ Activate the following define if your Lazarus version is older than v2.0 }
+{.$DEFINE LCL_FullVersion_LT_v200}
+
 { fpspreadsheet requires the function VarIsBool which was introduced by
   fpc 2.6.4. If an older FPC versions is used define FPS_VARISBOOL. Keep
   undefined for the current FPC version. }
@@ -66,7 +75,22 @@
   e.g. before v3.0 }
 {.$DEFINE FPS_NO_STRING_SPLIT}
 
+{ FPC versions before 3.0 did not support TRawByteString.
+  Enable the define FPS_NO_RAWBYTESTRING here if this is the case. }
+{.$DEFINE FPS_NO_RAWBYTESTRING}
+
 { Very old FPC versions do not contain zip support in the unit zipper, and
   until v3.3 zipper did not read pass-word protected ods files correctly.
   Therefore, the following define must be activated if FPC is v3.3 or older. }
 {$DEFINE FPS_PATCHED_ZIPPER}
+
+// Fix dependent defines
+{$IFDEF LCL_FULLVERSION_LT_200}
+  {$DEFINE LCL_FULLVERSION_LT_190}
+{$ENDIF}
+
+{$IFDEF LCL_FULLVERSION_LT_190}
+  {$DEFINE LCL_FULLVERSION_LT_180}
+{$ENDIF}
+
+

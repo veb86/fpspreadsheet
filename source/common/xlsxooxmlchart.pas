@@ -59,7 +59,7 @@ type
     procedure ReadChartSeriesLabels(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesMarker(ANode: TDOMNode; ASeries: TsCustomLineSeries);
     procedure ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
-    procedure ReadChartSeriesRange(ANode: TDOMNode; ARange: TsChartRange);
+    procedure ReadChartSeriesRange(ANode: TDOMNode; ARange: TsChartRange; var AFormat: String);
     procedure ReadChartSeriesTitle(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartSeriesTrendLine(ANode: TDOMNode; ASeries: TsChartSeries);
     procedure ReadChartStockSeries(ANode: TDOMNode; AChart: TsChart);
@@ -374,6 +374,7 @@ var
   n: LongInt;
   x: Single;
   node: TDOMNode;
+  srcLinked: Boolean;
 begin
   if ANode = nil then
     exit;
@@ -415,11 +416,20 @@ begin
         ReadChartTitle(ANode.FirstChild, AChartAxis.Title);
       'c:numFmt':
         begin
-          s := GetAttrValue(ANode, 'formatCode');
-          if s = 'm/d/yyyy' then
-            AChartAxis.LabelFormat := FReader.Workbook.FormatSettings.ShortDateFormat
-          else
-            AChartAxis.LabelFormat := s;
+          srcLinked := GetAttrValue(ANode, 'sourceLinked') = '1';
+          if not srcLinked then
+          begin
+            s := GetAttrValue(ANode, 'formatCode');
+            if s = 'm/d/yyyy' then
+              AChartAxis.LabelFormat := FReader.Workbook.FormatSettings.ShortDateFormat
+            else
+            if IsDateTimeFormat(s) then
+            begin
+              AChartAxis.DateTime := true;
+              AChartAxis.LabelFormatDateTime := s;
+            end else
+              AChartAxis.LabelFormat := s;
+          end;
         end;
       'c:majorTickMark':
         AChartAxis.MajorTicks := ReadChartAxisTickMarks(ANode);
@@ -1806,6 +1816,7 @@ var
   val: Double;
   errorBars: TsChartErrorBars = nil;
   part: String = '';
+  fmt: String = '';
 begin
   if ANode = nil then
     exit;
@@ -1877,9 +1888,9 @@ begin
               errorBars.ValueNeg := val;
           end;
       'c:plus':
-        ReadChartSeriesRange(node.FirstChild, errorBars.RangePos);
+        ReadChartSeriesRange(node.FirstChild, errorBars.RangePos, fmt);
       'c:minus':
-        ReadChartSeriesRange(node.FirstChild, errorBars.RangeNeg);
+        ReadChartSeriesRange(node.FirstChild, errorBars.RangeNeg, fmt);
       'c:spPr':
         ReadChartLineProps(node.FirstChild, ASeries.Chart, errorBars.Line);
       'c:noEndCap':
@@ -2021,9 +2032,10 @@ end;
 
 procedure TsSpreadOOXMLChartReader.ReadChartSeriesProps(ANode: TDOMNode; ASeries: TsChartSeries);
 var
-  nodeName, s: String;
+  nodeName, fmt, s: String;
   n: Integer;
   idx: Integer;
+  ax: TsChartAxis;
   smooth: Boolean = false;
 begin
   if ANode = nil then
@@ -2040,16 +2052,32 @@ begin
           ASeries.Order := n;
       'c:tx':
         ReadChartSeriesTitle(ANode.FirstChild, ASeries);
-      'c:cat':
-        ReadChartSeriesRange(ANode.FirstChild, ASeries.LabelRange);
-      'c:xVal':
-        ReadChartSeriesRange(ANode.FirstChild, ASeries.XRange);
-      'c:val', 'c:yVal':
+      'c:cat':       // Category axis
+        begin
+          ReadChartSeriesRange(ANode.FirstChild, ASeries.LabelRange, fmt);
+          ax := ASeries.GetXAxis;
+          if IsDateTimeFormat(fmt) then
+          begin
+            if ax.LabelFormatDateTime = '' then
+              ax.LabelFormatDateTime := fmt;
+          end else
+          begin
+            if ax.LabelFormat = '' then
+              ax.LabelFormat := fmt;
+          end;
+        end;
+      'c:xVal':   // x value axis
+        ReadChartSeriesRange(ANode.FirstChild, ASeries.XRange, fmt);
+      'c:val',    // y value axis in categorized series
+      'c:yVal':   // y value axis
         if ASeries.YRange.IsEmpty then  // TcStockSeries already has read the y range...
-          ReadChartSeriesRange(ANode.FirstChild, ASeries.YRange);
+        begin
+          ReadChartSeriesRange(ANode.FirstChild, ASeries.YRange, fmt);
+          ASeries.LabelFormat := fmt;
+        end;
       'c:bubbleSize':
         if ASeries is TsBubbleSeries then
-          ReadChartSeriesRange(ANode.FirstChild, TsBubbleSeries(ASeries).BubbleRange);
+          ReadChartSeriesRange(ANode.FirstChild, TsBubbleSeries(ASeries).BubbleRange, fmt);
       'c:bubble3D':
         ;
       'c:spPr':
@@ -2084,14 +2112,18 @@ end;
 
   @@param  ANode   First child of a <c:val>, <c:yval> or <c:cat> node below <c:ser>.
   @@param  ARange  Cell range to which the range parameters will be assigned.
+  @@param  AFormat Numberformat string
 -------------------------------------------------------------------------------}
-procedure TsSpreadOOXMLChartReader.ReadChartSeriesRange(ANode: TDOMNode; ARange: TsChartRange);
+procedure TsSpreadOOXMLChartReader.ReadChartSeriesRange(ANode: TDOMNode;
+  ARange: TsChartRange; var AFormat: String);
 var
+  node, child: TDomNode;
   nodeName, s: String;
   sheet1, sheet2: String;
   r1, c1, r2, c2: Cardinal;
   flags: TsRelFlags;
 begin
+  AFormat := '';
   if ANode = nil then
     exit;
   while Assigned(ANode) do
@@ -2099,6 +2131,38 @@ begin
     nodeName := ANode.NodeName;
     if (nodeName = 'c:strRef') or (nodeName = 'c:numRef') then
     begin
+      node := ANode.FirstChild;
+      while Assigned(node) do
+      begin
+        nodeName := node.NodeName;
+        case nodeName of
+          'c:f':
+            begin
+              s := GetNodeValue(node);
+              if ParseCellRangeString(s, sheet1, sheet2, r1, c1, r2, c2, flags) then
+              begin
+                if sheet2 = '' then sheet2 := sheet1;
+                ARange.Sheet1 := sheet1;
+                ARange.Sheet2 := sheet2;
+                ARange.Row1 := r1;
+                ARange.Col1 := c1;
+                ARange.Row2 := r2;
+                ARange.Col2 := c2;
+              end;
+            end;
+          'c:numCache':
+            begin
+              child := node.FindNode('c:formatCode');
+              if Assigned(child) then
+                AFormat := GetNodeValue(child);
+            end;
+        end;
+        node := node.NextSibling;
+      end;
+    end;
+    ANode := ANode.NextSibling;
+
+      (*
       ANode := ANode.FindNode('c:f');
       if ANode <> nil then
       begin
@@ -2117,6 +2181,7 @@ begin
       end;
     end;
     ANode := ANode.NextSibling;
+    *)
   end;
 end;
 
@@ -2234,7 +2299,7 @@ procedure TsSpreadOOXMLChartReader.ReadChartStockSeries(ANode: TDOMNode;
   AChart: TsChart);
 var
   ser: TsStockSeries;
-  nodeName: String;
+  nodeName, fmt: String;
   sernode, child: TDOMNode;
 begin
   if ANode = nil then
@@ -2266,14 +2331,14 @@ begin
                 }
               'c:val':
                 if ser.CloseRange.IsEmpty then
-                  ReadChartSeriesRange(child.FirstChild, ser.CloseRange)
+                  ReadChartSeriesRange(child.FirstChild, ser.CloseRange, fmt)
                 else if ser.LowRange.IsEmpty then
-                  ReadChartSeriesRange(child.FirstChild, ser.LowRange)
+                  ReadChartSeriesRange(child.FirstChild, ser.LowRange, fmt)
                 else if ser.HighRange.IsEmpty then
-                  ReadChartSeriesRange(child.FirstChild, ser.HighRange)
+                  ReadChartSeriesRange(child.FirstChild, ser.HighRange, fmt)
                 else if ser.OpenRange.IsEmpty then
                 begin
-                  ReadChartSeriesRange(child.FirstChild, ser.OpenRange);
+                  ReadChartSeriesRange(child.FirstChild, ser.OpenRange, fmt);
                   ser.CandleStick := true;
                 end;
             end;
