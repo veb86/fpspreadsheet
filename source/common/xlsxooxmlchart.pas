@@ -416,8 +416,8 @@ begin
         ReadChartTitle(ANode.FirstChild, AChartAxis.Title);
       'c:numFmt':
         begin
-          srcLinked := GetAttrValue(ANode, 'sourceLinked') = '1';
-          if not srcLinked then
+       //   srcLinked := GetAttrValue(ANode, 'sourceLinked') = '1';
+       //   if not srcLinked then
           begin
             s := GetAttrValue(ANode, 'formatCode');
             if s = 'm/d/yyyy' then
@@ -2104,7 +2104,7 @@ begin
   end;
 
   if ASeries is TsCustomLineSeries and smooth then
-    TsOpenedCustomLineSeries(ASeries).Interpolation := ciBSpline;
+    TsOpenedCustomLineSeries(ASeries).Interpolation := ciCubicSpline; //ciBSpline;
 end;
 
 {@@ ----------------------------------------------------------------------------

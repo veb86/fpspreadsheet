@@ -3278,6 +3278,8 @@ var
   bH, bL, bS: Byte;
   H, L, S: Double;
 begin
+  Result := AColor;
+
   RGBtoHLS(rgb.R, rgb.G, rgb.B, bH, bL, bS);
   H := bH/255;
   L := bL/255;
