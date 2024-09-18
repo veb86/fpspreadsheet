@@ -46,18 +46,20 @@
 
 {$mode objfpc}
 {$H+}
+{.$DEFINE debugexpr}
+
 unit fpsExprParser;
 
 interface
 
 uses
-  Classes, SysUtils, contnrs, fpstypes, fpsrpn;
+  Classes, SysUtils, contnrs, LazLoggerBase,
+  fpstypes, fpsrpn;
 
 type
   { Tokens }
 
   TsTokenType = (
-//    ttCell, ttCellRange, ttSheetName, ttCellRangeODS,
     ttNumber, ttString, ttIdentifier, ttSpreadsheetAddress,
     ttPlus, ttMinus, ttMul, ttDiv, ttConcat, ttPercent, ttPower, ttLeft, ttRight,
     ttLessThan, ttLargerThan, ttEqual, ttNotEqual, ttLessThanEqual, ttLargerThanEqual,
@@ -1707,7 +1709,7 @@ var
   Right: TsExprNode;
   }
 begin
-{$ifdef debugexpr}Writeln('Level 1 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
+{$ifdef debugexpr}DebugLn(['Level 1 ',TokenName(TokenType),': ',CurrentToken]);{$endif debugexpr}
 {
   if TokenType = ttNot then
   begin
@@ -1749,7 +1751,7 @@ var
   tt: TsTokenType;
   C: TsBinaryOperationExprNodeClass;
 begin
-{$ifdef debugexpr} Writeln('Level 2 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
+{$ifdef debugexpr} DebugLn(['Level 2 ',TokenName(TokenType),': ',CurrentToken]);{$endif debugexpr}
   Result := Level3;
   try
     if (TokenType in ttComparisons) then
@@ -1781,7 +1783,7 @@ var
   tt: TsTokenType;
   right: TsExprNode;
 begin
-{$ifdef debugexpr} Writeln('Level 3 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
+{$ifdef debugexpr} DebugLn(['Level 3 ',TokenName(TokenType),': ',CurrentToken]);{$endif debugexpr}
   Result := Level4;
   try
     while TokenType in [ttPlus, ttMinus, ttConcat] do begin
@@ -1806,7 +1808,7 @@ var
   tt: TsTokenType;
   right: TsExprNode;
 begin
-{$ifdef debugexpr} Writeln('Level 4 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
+{$ifdef debugexpr} DebugLn(['Level 4 ',TokenName(TokenType),': ',CurrentToken]);{$endif debugexpr}
   Result := Level5;
   try
     while (TokenType in [ttMul, ttDiv]) do
@@ -1829,7 +1831,7 @@ function TsExpressionParser.Level5: TsExprNode;
 var
   right: TsExprNode;
 begin
-  {$ifdef debugexpr} Writeln('Level 5 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
+  {$ifdef debugexpr} DebugLn(['Level 5 ',TokenName(TokenType),': ',CurrentToken]);{$endif debugexpr}
   Result := Level6;
   try
     while (TokenType = ttPower) do
@@ -1849,7 +1851,7 @@ var
   signs: String;
   i: Integer;
 begin
-{$ifdef debugexpr} Writeln('Level 6 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
+{$ifdef debugexpr} DebugLn(['Level 6 ',TokenName(TokenType),': ',CurrentToken]);{$endif debugexpr}
   signs := '';
   while (TokenType in [ttPlus, ttMinus]) do
   begin
@@ -1879,7 +1881,7 @@ function TsExpressionParser.Level7: TsExprNode;
 var
   currToken: String;
 begin
-{$ifdef debugexpr} Writeln('Level 7 ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
+{$ifdef debugexpr} DebugLn(['Level 7 ',TokenName(TokenType),': ',CurrentToken]);{$endif debugexpr}
   if (TokenType = ttLeft) then
   begin
     GetToken;
@@ -1920,7 +1922,7 @@ var
   rng: TsCellRange;
   flags: TsRelFlags;
 begin
-{$ifdef debugexpr} Writeln('Primitive : ',TokenName(TokenType),': ',CurrentToken);{$endif debugexpr}
+{$ifdef debugexpr} DebugLn(['Primitive : ',TokenName(TokenType),': ',CurrentToken]);{$endif debugexpr}
   SetLength(Args, 0);
   if (TokenType = ttNumber) then
   begin
