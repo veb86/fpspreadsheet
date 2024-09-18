@@ -289,7 +289,7 @@ type
   TsRelFlags = set of TsRelFlag;
 
 const
-  {@@ Abbreviation of all-relative cell reference flags (@seeAlso(TsRelFlag))}
+  {@@ Abbreviation of all-relative cell reference flags (@seeAlso TsRelFlag)}
   rfAllRel = [rfRelRow, rfRelCol, rfRelRow2, rfRelCol2];
 
   {@@ Separator between worksheet name and cell (range) reference in an address }

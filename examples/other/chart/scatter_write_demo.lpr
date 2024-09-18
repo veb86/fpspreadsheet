@@ -62,7 +62,8 @@ begin
     // Enter data
     sheet.WriteText(0, 0, 'Data');
     sheet.WriteFont(0, 0, '', 12, [fssBold], scBlack);
-    sheet.WriteText         ( 2, 0,  'x');   sheet.WriteText   ( 2, 1, 'y');
+    sheet.WriteText( 2, 0,  'x');
+    sheet.WriteText( 2, 1, 'y');
     case mode of
       0: begin   // linear
            sheet.WriteNumber( 3, 0,  0.1);  sheet.WriteFormula( 3, 1, 'A4^2');

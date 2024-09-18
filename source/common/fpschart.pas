@@ -33,6 +33,7 @@ const
   );
 
 type
+  {@@ Record describing a color used by charts, includes a Transparency element }
   TsChartColor = record
     Transparency: single;         // 0.0 (opaque) ... 1.0 (transparent)
     case Integer of
@@ -41,7 +42,7 @@ type
     end;
 
 const
-  sccTransparent: TsChartColor = (Transparency: 255; Color: 0);
+  sccTransparent: TsChartColor = (Transparency: 1.0; Color: 0);
 
 type
   TsChart = class;
@@ -51,8 +52,7 @@ type
   TsChartLine = class
     Style: Integer;        // index into chart's LineStyle list or predefined clsSolid/clsNoLine
     Width: Double;         // mm
-    Color: TsChartColor;   // in hex: $00bbggrr, r=red, g=green, b=blue
-    Transparency: Double;  // in percent
+    Color: TsChartColor;   // in hex: $00bbggrr, r=red, g=green, b=blue; contains Transparency
     constructor CreateSolid(AColor: TsChartColor; AWidth: Double);
     procedure CopyFrom(ALine: TsChartLine);
   end;
@@ -928,6 +928,14 @@ uses
 
 { TsChartColor }
 
+{@@ Helper function to create a record with a color for the fpspreadsheet charts.
+  The record contains a Transparency field.
+
+  @param    AColor   RGB color
+  @param    ATransparency  Transparency of the color, value between 0.0 and 1.0
+
+  @returns  A TsChartColor record
+  @seeAlso  TsColor }
 function ChartColor(AColor: TsColor; ATransparency: Single = 0.0): TsChartColor;
 begin
   Result.Color := AColor;
@@ -952,7 +960,6 @@ begin
     Style := ALine.Style;
     Width := ALine.Width;
     Color := ALine.Color;
-    Transparency := ALine.Transparency;
   end;
 end;
 
