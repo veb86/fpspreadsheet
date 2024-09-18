@@ -8,7 +8,7 @@ unit fpsfunc;
 {$WARN 6058 off : Call to subroutine "$1" marked as inline is not inlined}
 interface
 
-uses
+uses 
   Classes, SysUtils, fpstypes;
 
 function CompareStringWithWildcards(AString1, AString2: String): Boolean;
@@ -1743,6 +1743,9 @@ var
   err: TsErrorValue;
 begin
   ArgsToFloatArray(Args, data, err);
+  if Length(data) = 0 then
+    Result := ErrorResult(errDivideByZero)
+  else
   if err <> errOK then
     Result := ErrorResult(err)
   else
