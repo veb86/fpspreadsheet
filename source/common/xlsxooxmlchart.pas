@@ -8,7 +8,7 @@ interface
 {$ifdef FPS_CHARTS}
 
 uses                                                  //LazLoggerBase,
-  Classes, SysUtils, StrUtils, Contnrs, FPImage, fgl,
+  Classes, SysUtils, StrUtils, Contnrs, FPImage,
   {$ifdef FPS_PATCHED_ZIPPER}fpszipper,{$else}zipper,{$endif}
   laz2_xmlread, laz2_DOM,
   fpsTypes, fpSpreadsheet, fpsChart, fpsUtils, fpsNumFormat, fpsImages,
@@ -20,7 +20,6 @@ type
   TsSpreadOOXMLChartReader = class(TsBasicSpreadChartReader)
   private
     FPointSeparatorSettings: TFormatSettings;
-    FColors: specialize TFPGMap<string, TsColor>;
     FImages: TFPObjectList;
     FXAxisID, FYAxisID, FX2AxisID, FY2AxisID: DWord;
     FXAxisDelete, FYAxisDelete, FX2AxisDelete, FY2AxisDelete: Boolean;
@@ -282,27 +281,12 @@ begin
   FPointSeparatorSettings := SysUtils.DefaultFormatSettings;
   FPointSeparatorSettings.DecimalSeparator:='.';
 
-  // The following color values are directly copied from xlsx files written by Excel.
-  // In the long term, they should be read from xl/theme/theme1.xml.
-  FColors := specialize TFPGMap<string, TsColor>.Create;
-  FColors.Add('dk1', scBlack);
-  FColors.Add('lt1', scWhite);
-  FColors.Add('dk2', FlipColorBytes($44546A));
-  FColors.Add('lt2', FlipColorBytes($E7E6E6));
-  FColors.Add('accent1', FlipColorBytes($4472C4));
-  FColors.Add('accent2', FlipColorBytes($ED7D31));
-  FColors.Add('accent3', FlipColorBytes($A5A5A5));
-  FColors.Add('accent4', FlipColorBytes($FFC000));
-  FColors.Add('accent5', FlipColorBytes($5B9BD5));
-  FColors.Add('accent6', FlipColorBytes($70AD47));
-
   FImages := TFPObjectList.Create;
 end;
 
 destructor TsSpreadOOXMLChartReader.Destroy;
 begin
   FImages.Free;
-  FColors.Free;
   inherited;
 end;
 
@@ -672,9 +656,9 @@ procedure TsSpreadOOXMLChartReader.ReadChartColor(ANode: TDOMNode;
 
 var
   nodeName, s: String;
-  idx: Integer;
   n: Integer;
   child: TDOMNode;
+  themeRGB: TsColor;
   lumMod: Single = 1.0;
   lumOff: Single = 0.0;
 begin
@@ -687,10 +671,10 @@ begin
           s := GetAttrValue(ANode, 'val');
           if (s <> '') then
           begin
-            idx := FColors.IndexOf(ColorAlias(s));
-            if idx > -1 then
+            themeRGB := TsSpreadOOXMLReader(Reader).GetThemeColor(ColorAlias(s));
+            if themeRGB <> scNotDefined then
             begin
-              AColor.Color := FColors.Data[idx];
+              AColor.Color := themeRGB;
               child := ANode.FirstChild;
               while Assigned(child) do
               begin

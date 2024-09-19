@@ -87,8 +87,8 @@ type
     FEmbeddedObjList: TFPList;
     FHyperlinkList: TFPList;
     FSharedFormulaBaseList: TFPList;
+    FThemeColorList: TFPList;
     FPalette: TsPalette;
-    FThemeColors: array of TsColor;
     FLastRow, FLastCol: Cardinal;
     FWrittenByFPS: Boolean;
     procedure ApplyCellFormatting(ACell: PCell; XfIndex: Integer);
@@ -169,6 +169,7 @@ type
     destructor Destroy; override;
     class function CheckFileFormat(AStream: TStream): Boolean; override;
     function CreateXMLStream: TStream;
+    function GetThemeColor(AName: String): Integer;
     function NeedsPassword(AStream: TStream): Boolean; override;
     procedure ReadFromStream(AStream: TStream; APassword: String = '';
       AParams: TsStreamParams = []); override;
@@ -486,6 +487,11 @@ type
   TSharedObjData = class
     Picture: array of byte;
     RelId: String;
+  end;
+
+  TThemeColor = class
+    Name: String;
+    Color: TsColor;
   end;
 
 const
@@ -846,6 +852,7 @@ begin
   FCellFormatList := TsCellFormatList.Create(true);
   FDifferentialFormatList := TFPList.Create;
   FDrawingToSheetRelList := TFPList.Create;
+  FThemeColorList := TFPList.Create;
   FEmbeddedObjList := TFPList.Create;
   // Allow duplicates because xf indexes used in cell records cannot be found any more.
   FSharedFormulaBaseList := TFPList.Create;
@@ -882,9 +889,14 @@ begin
     TObject(FDifferentialFormatList[j]).Free;
   FDifferentialFormatList.Free;
 
+  for j := FThemeColorList.Count-1 downto 0 do
+    TObject(FThemeColorList[j]).Free;
+  FThemeColorList.Free;
+
   for j := FDrawingToSheetRelList.Count-1 downto 0 do
     TObject(FDrawingToSheetRelList[j]).Free;
   FDrawingToSheetRelList.Free;
+
   for j := FSheetList.Count-1 downto 0 do
     TObject(FSheetList[j]).Free;
   FSheetList.Free;
@@ -984,6 +996,21 @@ begin
   else
     Result := TMemoryStream.Create;
 end;
+
+function TsSpreadOOXMLReader.GetThemeColor(AName: String): Integer;
+var
+  i: Integer;
+begin
+  AName := 'a:' + AName;
+  for i := 0 to FThemeColorList.Count-1 do
+    if SameText(TThemeColor(FThemeColorList[i]).Name, AName) then
+    begin
+      Result := TThemeColor(FThemeColorList[i]).Color;
+      exit;
+    end;
+  Result := scNotDefined;
+end;
+
 
 { Checks the file header for the signature of the decrypted file format. }
 class function TsSpreadOOXMLReader.IsEncrypted(AStream: TStream): Boolean;
@@ -2108,7 +2135,7 @@ begin
   s := GetAttrValue(ANode, 'theme');
   if s <> '' then begin
     idx := StrToInt(s);
-    if idx < Length(FThemeColors) then begin
+    if idx < FThemeColorList.Count then begin
       // For some reason the first two pairs of colors are interchanged in Excel!
       case idx of
         0: idx := 1;
@@ -2116,7 +2143,7 @@ begin
         2: idx := 3;
         3: idx := 2;
       end;
-      rgb := FThemeColors[idx];
+      rgb := TThemeColor(FThemeColorList[idx]).Color;
       s := GetAttrValue(ANode, 'tint');
       if s <> '' then begin
         tint := StrToFloat(s, FPointSeparatorSettings);
@@ -4349,14 +4376,37 @@ end;
 
 procedure TsSpreadOOXMLReader.ReadThemeColors(ANode: TDOMNode);
 var
+  child: TDOMNode;
   clrNode: TDOMNode;
   nodeName: String;
+  j: Integer;
 
-  procedure AddColor(AColorStr: String);
+  function GetColorFromNode(ANode: TDOMNode; AAttrName: String): String;
+  var
+    nodeName: String;
+  begin
+    while Assigned(ANode) do
+    begin
+      nodeName := ANode.NodeName;
+      if (nodeName = 'a:sysClr')  or (nodeName = 'a:srgbClr') then
+      begin
+        Result := GetAttrValue(ANode, AAttrName);
+        exit;
+      end;
+      ANode := ANode.NextSibling;
+    end;
+    Result := '';
+  end;
+
+  procedure AddColor(AColorName, AColorStr: String);
+  var
+    themeClr: TThemeColor;
   begin
     if AColorStr <> '' then begin
-      SetLength(FThemeColors, Length(FThemeColors)+1);
-      FThemeColors[Length(FThemeColors)-1] := HTMLColorStrToColor('#' + AColorStr);
+      themeClr := TThemeColor.Create;
+      themeClr.Name := AColorName;
+      themeClr.Color := HTMLColorStrToColor('#' + AColorStr);
+      FThemeColorList.Add(themeClr);
     end;
   end;
 
@@ -4364,45 +4414,52 @@ begin
   if not Assigned(ANode) then
     exit;
 
-  SetLength(FThemeColors, 0);
+  if FThemeColorList.Count > 0 then
+  begin
+    for j := FThemeColorList.Count-1 downto 0 do
+      TObject(FThemeColorList[j]).Free;
+    FThemeColorList.Clear;
+  end;
+
   clrNode := ANode.FirstChild;
   while Assigned(clrNode) do begin
     nodeName := clrNode.NodeName;
+    child := clrNode.FirstChild;
     if nodeName = 'a:dk1' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'lastClr'))
+      AddColor(nodeName, GetColorFromNode(child, 'lastClr'))
     else
     if nodeName = 'a:lt1' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'lastClr'))
+      AddColor(nodeName, GetColorFromNode(child, 'lastClr'))
     else
     if nodeName = 'a:dk2' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+      AddColor(nodeName, GetColorFromNode(child, 'val'))
     else
     if nodeName = 'a:lt2' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+      AddColor(nodeName, GetColorFromNode(child, 'val'))
     else
     if nodeName = 'a:accent1' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+      AddColor(nodeName, GetColorFromNode(child, 'val'))
     else
     if nodeName = 'a:accent2' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+      AddColor(nodeName, GetColorFromNode(child, 'val'))
     else
     if nodeName = 'a:accent3' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+      AddColor(nodeName, GetColorFromNode(child, 'val'))
     else
     if nodeName = 'a:accent4' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+      AddColor(nodeName, GetColorFromNode(child, 'val'))
     else
     if nodeName = 'a:accent5' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+      AddColor(nodeName, GetColorFromNode(child, 'val'))
     else
     if nodeName = 'a:accent6' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+      AddColor(nodeName, GetColorFromNode(child, 'val'))
     else
     if nodeName = 'a:hlink' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'val'))
+      AddColor(nodeName, GetColorFromNode(child, 'val'))
     else
     if nodeName = 'a:folHlink' then
-      AddColor(GetAttrValue(clrNode.FirstChild, 'aval'));
+      AddColor(nodeName, GetColorFromNode(child, 'aval'));
     clrNode := clrNode.NextSibling;
   end;
 end;
