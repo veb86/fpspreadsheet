@@ -2720,7 +2720,7 @@ procedure TsSpreadOOXMLReader.ReadDrawing(ANode: TDOMNode;
   AWorksheet: TsBasicWorksheet);
 
   procedure ReadXdrFromTo(ANode: TDOMNode;
-    out ARow, ACol: Integer; out ARowOffs, AColOffs: Double);
+    out ARow, ACol: Cardinal; out ARowOffs, AColOffs: Double);
   var
     nodeName: string;
   begin
@@ -2841,7 +2841,7 @@ var
   nodeName: String = '';
   rID, fileName: String;
   xPos, yPos, horExt, vertExt: Double;
-  fromCol, fromRow, toCol, toRow: Integer;
+  fromCol, fromRow, toCol, toRow: Cardinal;
   fromColOffs, fromRowOffs, toColOffs, toRowOffs: Double;
   isChart: Boolean;
   data: TEmbeddedObjData;
@@ -2858,12 +2858,13 @@ begin
   while Assigned(ANode) do
   begin
     nodeName := ANode.NodeName;
-    horExt := -1.0;    vertExt := -1.0;
-    fromCol := -1;     fromColOffs := 0.0;
-    fromRow := -1;     fromRowOffs := 0.0;
-    toCol := -1;       toColOffs := 0.0;
-    toRow := -1;       toRowOffs := 0.0;
-    rID := '';         fileName := '';
+    xPos := 0.0;                             yPos := 0.0;
+    horExt := -1.0;                          vertExt := -1.0;
+    fromCol := UNASSIGNED_ROW_COL_INDEX;     fromColOffs := 0.0;
+    fromRow := UNASSIGNED_ROW_COL_INDEX;     fromRowOffs := 0.0;
+    toCol := UNASSIGNED_ROW_COL_INDEX;       toColOffs := 0.0;
+    toRow := UNASSIGNED_ROW_COL_INDEX;       toRowOffs := 0.0;
+    rID := '';                               fileName := '';
     isChart := false;
     graphicFrameName := '';
     if nodeName = 'xdr:absoluteAnchor' then
@@ -2909,7 +2910,11 @@ begin
     end;
 
     if (rID <> '') and (
-       ( (fromCol <> -1) and (toCol <> -1) and (fromRow <> -1) and (toRow <> -1) and (rID <> '')) or
+       ( (fromCol <> UNASSIGNED_ROW_COL_INDEX) and (toCol <> UNASSIGNED_ROW_COL_INDEX) and
+         (fromRow <> UNASSIGNED_ROW_COL_INDEX) and (toRow <> UNASSIGNED_ROW_COL_INDEX) and
+         (rID <> '')
+       )
+       or
        ( (horExt <> -1) and (vertext <> -1) ) ) then
     begin
       data := TEmbeddedObjData.Create;
@@ -2989,7 +2994,8 @@ end;
   - The media files themselves. }
 procedure TsSpreadOOXMLReader.ReadEmbeddedObjs(AStream: TStream);
 var
-  i, j: Integer;
+  i: Integer;
+  j: Cardinal;
   fn, {%H-}relsFn: String;
   XMLStream: TStream;
   doc: TXMLDocument;

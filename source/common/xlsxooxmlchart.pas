@@ -576,17 +576,9 @@ begin
       'c:gapWidth':
         if TryStrToFloat(s, n, FPointSeparatorSettings) then
           AChart.BarGapWidthPercent := round(n);
-        {
-        if TryStrToFloat(s, n, FPointSeparatorSettings) then
-          ser.BarWidthPercent := round(100 / (1 + n/100));
-          }
       'c:overlap':
         if TryStrToFloat(s, n, FPointSeparatorSettings) then
           AChart.BarOverlapPercent := round(n);
-      {
-        if TryStrToFloat(s, n, FPointSeparatorSettings) then
-          ser.BarOffsetPercent := round(n);
-      }
     end;
     ANode := ANode.NextSibling;
   end;
