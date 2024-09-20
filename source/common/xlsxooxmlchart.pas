@@ -412,6 +412,9 @@ begin
               AChartAxis.DateTime := true;
               AChartAxis.LabelFormatDateTime := s;
             end else
+            if s = 'General' then
+              AChartAxis.LabelFormat := ''
+            else
               AChartAxis.LabelFormat := s;
           end;
         end;
