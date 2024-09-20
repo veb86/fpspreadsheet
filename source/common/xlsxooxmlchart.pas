@@ -439,8 +439,8 @@ begin
         begin
           x := 0;
           ReadChartTextProps(ANode, AChartAxis.LabelFont, x);
-          if x = 1000 then
-            x := DEFAULT_TEXT_DIR[AChart.RotatedAxes, AChartAxis.Alignment];  // not sure, but maybe 1000 means: default
+          if x = 1000 then  // default rotation
+            x := 0;
           AChartAxis.LabelRotation := x;
         end;
       'c:crossAx':
