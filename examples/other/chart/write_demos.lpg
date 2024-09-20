@@ -12,6 +12,11 @@
           <Mode Name="Default"/>
         </BuildModes>
       </Target>
+      <Target FileName="barchart_date_write_demo.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
       <Target FileName="barchart_2axes_write_demo.lpi">
         <BuildModes>
           <Mode Name="Default"/>
@@ -43,6 +48,11 @@
         </BuildModes>
       </Target>
       <Target FileName="scatter_write_demo.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
+      <Target FileName="scatter_date write_demo.lpi">
         <BuildModes>
           <Mode Name="Default"/>
         </BuildModes>

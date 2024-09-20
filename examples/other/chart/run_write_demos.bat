@@ -24,6 +24,9 @@ echo BAR SERIES WITH TWO AXES
 barchart_2axes_write_demo
 barchart_2axes_write_demo rotated
 echo.
+echo BAR SERIES WITH DATE AXIS
+barchart_date_write_demo
+echo.
 echo BUBBLE SERIES
 bubblechart_write_demo
 echo.
@@ -49,6 +52,9 @@ scatter_write_demo log-log
 scatter_write_demo lin inverted
 scatter_write_demo log inverted
 scatter_write_demo log-log inverted
+echo.
+echo SCATTER SERIES WITH DATE AXIS
+scatter_date_write_demo
 echo.
 echo SCATTER SERIES WITH ERROR BARS
 errorbars_write_demo
