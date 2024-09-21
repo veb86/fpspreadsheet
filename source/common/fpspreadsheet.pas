@@ -1502,11 +1502,8 @@ var
   ppi: Integer;
   u: TsSizeUnits;
 begin
-  // Default return values
-  ARow1 := 0;  ARowOffs1 := 0.0;
-  ACol1 := 0;  AColOffs1 := 0.0;
-  ARow2 := 0;  ARowOffs2 := 0.0;
-  ACol2 := 0;  AColOffs2 := 0.0;
+  ARowOffs2 := 0.0;
+  AColOffs2 := 0.0;
 
   // Abbreviations
   ppi := ScreenPixelsPerInch;
