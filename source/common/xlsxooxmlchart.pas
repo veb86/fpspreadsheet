@@ -4026,18 +4026,21 @@ begin
     WriteChartLabels(AStream, AIndent + 2, Axis.LabelFont);
 
   // Axis position
-  case Axis.Position of
-    capStart:
-      crosses := '  <c:crosses val="min"/>';
-    capEnd:
-      crosses := '  <c:crosses val="max"/>';
-    capValue:
-      crosses := Format('  <c:crossesAt val="%g"/>', [Axis.PositionValue], FPointSeparatorSettings);
-    else
-      raise Exception.Create('Unsupported value of Axis.Position');
-    // not used here: "autoZero"
+  if delete = 0 then
+  begin
+    case Axis.Position of
+      capStart:
+        crosses := '  <c:crosses val="min"/>';
+      capEnd:
+        crosses := '  <c:crosses val="max"/>';
+      capValue:
+        crosses := Format('  <c:crossesAt val="%g"/>', [Axis.PositionValue], FPointSeparatorSettings);
+      else
+        raise Exception.Create('Unsupported value of Axis.Position');
+      // not used here: "autoZero"
+    end;
+    if crosses <> '' then crosses := indent + crosses + LE;
   end;
-  if crosses <> '' then crosses := indent + crosses + LE;
 
   AppendToStream(AStream, Format(
     indent + '  <c:numFmt formatCode="General" sourceLinked="1"/>' + LE +
