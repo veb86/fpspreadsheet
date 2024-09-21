@@ -2082,7 +2082,7 @@ begin
     ANode := ANode.NextSibling;
   end;
 
-  if ASeries is TsCustomLineSeries and smooth then
+  if (ASeries is TsCustomLineSeries) and smooth then
     TsOpenedCustomLineSeries(ASeries).Interpolation := ciCubicSpline; //ciBSpline;
 end;
 
