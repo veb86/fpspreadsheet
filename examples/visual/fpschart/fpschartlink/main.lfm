@@ -14,7 +14,7 @@ object Form1: TForm1
     Top = 38
     Width = 5
   end
-  object Chart1: TChart
+  object Chart: TChart
     Left = 528
     Height = 489
     Top = 38
@@ -49,7 +49,7 @@ object Form1: TForm1
     ClientHeight = 38
     ClientWidth = 1351
     TabOrder = 2
-    object Label1: TLabel
+    object lblFileNames: TLabel
       AnchorSideLeft.Control = Panel1
       AnchorSideTop.Control = Panel1
       AnchorSideTop.Side = asrCenter
@@ -60,8 +60,8 @@ object Form1: TForm1
       BorderSpacing.Around = 6
       Caption = 'File name'
     end
-    object ComboBox1: TComboBox
-      AnchorSideLeft.Control = Label1
+    object cbFileNames: TComboBox
+      AnchorSideLeft.Control = lblFileNames
       AnchorSideLeft.Side = asrBottom
       AnchorSideTop.Control = Panel1
       AnchorSideTop.Side = asrCenter
@@ -74,44 +74,8 @@ object Form1: TForm1
       BorderSpacing.Around = 6
       DropDownCount = 50
       ItemHeight = 15
-      Items.Strings = (
-        '../../../other/chart/bars.ods'
-        '../../../other/chart/bars-rotated.ods'
-        '../../../other/chart/bars-stacked.ods'
-        '../../../other/chart/bars-stacked-rotated.ods'
-        '../../../other/chart/bars-stacked-percentage.ods'
-        '../../../other/chart/bars-stacked-percentage-rotated.ods'
-        '../../../other/chart/bars-2axes.ods'
-        '../../../other/chart/bars-2axes-rotated.ods'
-        '../../../other/chart/bubble.ods'
-        '../../../other/chart/errorbars-percentage.ods'
-        '../../../other/chart/errorbars-range.ods'
-        '../../../other/chart/pie.ods'
-        '../../../other/chart/radar.ods'
-        '../../../other/chart/regression.ods'
-        '../../../other/chart/regression-rotated.ods'
-        '../../../other/chart/scatter-lin.ods'
-        '../../../other/chart/scatter-log.ods'
-        '../../../other/chart/scatter-loglog.ods'
-        '../../../other/chart/stock-candlestick.ods'
-        '../../../other/chart/stock-candlestick-rotated.ods'
-        '../../../other/chart/stock-hlc.ods'
-        '../../../other/chart/stock-hlc-rotated.ods'
-        '../../../other/chart/stock-vol-candlestick-area.ods'
-        '../../../other/chart/stock-vol-candlestick-area-rotated.ods'
-        '../../../other/chart/stock-vol-candlestick-bars.ods'
-        '../../../other/chart/stock-vol-candlestick-bars-rotated.ods'
-        '../../../other/chart/stock-vol-candlestick-line.ods'
-        '../../../other/chart/stock-vol-candlestick-line-rotated.ods'
-        '../../../other/chart/stock-vol-hlc-area.ods'
-        '../../../other/chart/stock-vol-hlc-area-rotated.ods'
-        '../../../other/chart/stock-vol-hlc-bars.ods'
-        '../../../other/chart/stock-vol-hlc-bars-rotated.ods'
-        '../../../other/chart/stock-vol-hlc-line.ods'
-        '../../../other/chart/stock-vol-hlc-line-rotated.ods'
-      )
       TabOrder = 0
-      OnCloseUp = ComboBox1CloseUp
+      OnSelect = cbFileNamesSelect
     end
     object btnBrowse: TButton
       AnchorSideTop.Control = Panel1
@@ -156,7 +120,7 @@ object Form1: TForm1
     ClientHeight = 489
     ClientWidth = 523
     TabOrder = 3
-    object sWorksheetGrid1: TsWorksheetGrid
+    object sWorksheetGrid: TsWorksheetGrid
       Left = 1
       Height = 375
       Top = 1
@@ -167,7 +131,7 @@ object Form1: TForm1
       PageBreakPen.Style = psDash
       ReadFormulas = False
       TextOverflow = True
-      WorkbookSource = sWorkbookSource1
+      WorkbookSource = sWorkbookSource
       Align = alClient
       AutoAdvance = aaDown
       Color = clWhite
@@ -176,7 +140,7 @@ object Form1: TForm1
       Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goSmoothScroll]
       TabOrder = 0
     end
-    object Memo1: TMemo
+    object Memo: TMemo
       Left = 1
       Height = 112
       Top = 376
@@ -185,22 +149,22 @@ object Form1: TForm1
       TabOrder = 1
     end
   end
-  object sWorkbookSource1: TsWorkbookSource
+  object sWorkbookSource: TsWorkbookSource
     FileFormat = sfUser
     Options = [boAutoCalc, boReadFormulas]
-    OnError = sWorkbookSource1Error
+    OnError = sWorkbookSourceError
     Left = 176
     Top = 152
   end
-  object OpenDialog1: TOpenDialog
+  object OpenDialog: TOpenDialog
     DefaultExt = '.ods'
     Filter = 'Spreadsheet files|*.xlsx;*.ods|Excel 2007+ files|*.xlsx|OpenDocument Spreadsheet Files|*.ods'
     Options = [ofFileMustExist, ofEnableSizing, ofViewDetail]
     Left = 976
     Top = 56
   end
-  object ListChartSource1: TListChartSource
-    Left = 327
+  object ListChartSource: TListChartSource
+    Left = 328
     Top = 152
   end
 end
