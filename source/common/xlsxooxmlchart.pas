@@ -358,7 +358,6 @@ var
   n: LongInt;
   x: Single;
   node: TDOMNode;
-  srcLinked: Boolean;
 begin
   if ANode = nil then
     exit;
@@ -400,23 +399,19 @@ begin
         ReadChartTitle(ANode.FirstChild, AChartAxis.Title);
       'c:numFmt':
         begin
-       //   srcLinked := GetAttrValue(ANode, 'sourceLinked') = '1';
-       //   if not srcLinked then
+          s := GetAttrValue(ANode, 'formatCode');
+          if (s = 'm/d/yyyy') or (s = 'mm/dd/yyyy') then
+            AChartAxis.LabelFormat := FReader.Workbook.FormatSettings.ShortDateFormat
+          else
+          if IsDateTimeFormat(s) then
           begin
-            s := GetAttrValue(ANode, 'formatCode');
-            if s = 'm/d/yyyy' then
-              AChartAxis.LabelFormat := FReader.Workbook.FormatSettings.ShortDateFormat
-            else
-            if IsDateTimeFormat(s) then
-            begin
-              AChartAxis.DateTime := true;
-              AChartAxis.LabelFormatDateTime := s;
-            end else
-            if s = 'General' then
-              AChartAxis.LabelFormat := ''
-            else
-              AChartAxis.LabelFormat := s;
-          end;
+            AChartAxis.DateTime := true;
+            AChartAxis.LabelFormatDateTime := s;
+          end else
+          if s = 'General' then
+            AChartAxis.LabelFormat := ''
+          else
+            AChartAxis.LabelFormat := s;
         end;
       'c:majorTickMark':
         AChartAxis.MajorTicks := ReadChartAxisTickMarks(ANode);
@@ -1547,10 +1542,14 @@ begin
             0: begin
                  ReadChartAxis(workNode.FirstChild, AChart, AChart.XAxis, FXAxisID, FXAxisDelete);
                  AChart.XAxis.DateTime := true;
+                 if AChart.XAxis.LabelFormatDateTime = '' then
+                   AChart.XAxis.LabelFormatDateTime := 'yyyy-mm';
                end;
             1: begin
                  ReadChartAxis(workNode.FirstChild, AChart, AChart.X2Axis, FX2AxisID, FX2AxisDelete);
                  AChart.X2Axis.DateTime := true;
+                 if AChart.X2Axis.LabelFormatDateTime = '' then
+                   AChart.X2Axis.LabelFormatDateTime := 'yyyy-mm';
                end;
           end;
           inc(dateAxCounter);
@@ -2033,8 +2032,9 @@ begin
         ReadChartSeriesTitle(ANode.FirstChild, ASeries);
       'c:cat':       // Category axis
         begin
-          ReadChartSeriesRange(ANode.FirstChild, ASeries.LabelRange, fmt);
           ax := ASeries.GetXAxis;
+          ReadChartSeriesRange(ANode.FirstChild, ASeries.LabelRange, fmt);
+          if ax.DateTime then ASeries.XRange.CopyFrom(ASeries.LabelRange);
           if IsDateTimeFormat(fmt) then
           begin
             if ax.LabelFormatDateTime = '' then
@@ -2140,27 +2140,6 @@ begin
       end;
     end;
     ANode := ANode.NextSibling;
-
-      (*
-      ANode := ANode.FindNode('c:f');
-      if ANode <> nil then
-      begin
-        s := GetNodeValue(ANode);
-        if ParseCellRangeString(s, sheet1, sheet2, r1, c1, r2, c2, flags) then
-        begin
-          if sheet2 = '' then sheet2 := sheet1;
-          ARange.Sheet1 := sheet1;
-          ARange.Sheet2 := sheet2;
-          ARange.Row1 := r1;
-          ARange.Col1 := c1;
-          ARange.Row2 := R2;
-          ARange.Col2 := C2;
-          exit;
-        end;
-      end;
-    end;
-    ANode := ANode.NextSibling;
-    *)
   end;
 end;
 
@@ -2306,8 +2285,8 @@ begin
             case nodeName of
               {
               'c:cat':  // is read by ReadChartSeriesProps
-                ReadChartSeriesRange(child.FirstChild, ser.LabelRange);
-                }
+                ReadChartSeriesRange(child.FirstChild, ser.LabelRange, fmt);
+              }
               'c:val':
                 if ser.CloseRange.IsEmpty then
                   ReadChartSeriesRange(child.FirstChild, ser.CloseRange, fmt)
@@ -3983,7 +3962,7 @@ var
   delete: Integer = 0;
   axAlign: TsChartAxisAlignment;
   rotAxID: DWord;
-  rotAxis: TsChartAxis;
+  fmt: String;
 begin
   indent := DupeString(' ', AIndent);
   chart := Axis.Chart;
@@ -4042,8 +4021,13 @@ begin
     if crosses <> '' then crosses := indent + crosses + LE;
   end;
 
+  if Axis.DateTime then
+    fmt := 'mm/dd/yyyy'
+  else
+    fmt := 'General';
+
   AppendToStream(AStream, Format(
-    indent + '  <c:numFmt formatCode="General" sourceLinked="1"/>' + LE +
+    indent + '  <c:numFmt formatCode="%s" sourceLinked="1"/>' + LE +
     indent + '  <c:majorTickMark val="%s"/>' + LE +
     indent + '  <c:minorTickMark val="%s"/>' + LE +
     indent + '  <c:tickLblPos val="nextTo"/>' + LE +
@@ -4052,6 +4036,7 @@ begin
 //    indent + '  <c:auto val="1"/>' + LE +
     indent + '</%s>' + LE,
     [
+      fmt,
       GetTickMarkStr(Axis.MajorTicks),  // <c:majorTickMark>
       GetTickMarkStr(Axis.MinorTicks),  // <c:minorTickMark>
       rotAxID,                          // <c:crossAx>

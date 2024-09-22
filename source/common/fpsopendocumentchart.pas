@@ -1548,14 +1548,14 @@ begin
   else
     ReadChartCellRange(ANode, 'chart:values-cell-range-address', series.YRange);
 
-  if series.XRange.IsEmpty then
-    series.XRange.CopyFrom(series.Chart.XAxis.CategoryRange);
-
   s := GetAttrValue(ANode, 'chart:attached-axis');
   if s = 'primary-y' then
     series.YAxis := calPrimary
   else if s = 'secondary-y' then
     series.YAxis := calSecondary;
+
+  if series.XRange.IsEmpty then
+    series.XRange.CopyFrom(series.Chart.XAxis.CategoryRange);
 
   xyCounter := 0;
   subnode := ANode.FirstChild;

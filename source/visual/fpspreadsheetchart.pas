@@ -1314,6 +1314,7 @@ begin
           src.YCount := 4;
           src.IntegerX := true;
           src.SetLabelRange(TsStockSeries(ASeries).LabelRange);
+          src.SetXRange(0, TsStockSeries(ASeries).LabelRange);
           src.SetYRange(0, TsStockSeries(ASeries).LowRange);   // 0=Low
           src.SetYRange(1, TsStockSeries(ASeries).OpenRange);  // 1=Open
           src.SetYRange(2, TsStockSeries(ASeries).CloseRange); // 2=Close (= Y)
@@ -1338,7 +1339,7 @@ begin
       src.SetColorRange(ASeries.FillColorRange);
     src.SetTitleAddr(ASeries.TitleAddr);
 
-    // Send pie offsets to chart soruce...
+    // Send pie offsets to chart source...
     src.CheckPieSeriesMode(ASeries);
     // ... as well as datapoint styles/colors
     CreateChartStylesFromDatapoints(ASeries, src.Styles);
