@@ -1620,7 +1620,11 @@ begin
     subnode := subNode.NextSibling;
   end;
 
-  if series.LabelRange.IsEmpty then series.LabelRange.CopyFrom(AChart.XAxis.CategoryRange);
+  if series.XRange.IsEmpty and (AChart.Series.Count > 0) then
+    series.XRange.CopyFrom(AChart.Series[0].XRange);
+
+  if series.LabelRange.IsEmpty then
+    series.LabelRange.CopyFrom(AChart.XAxis.CategoryRange);
 
   s := GetAttrValue(ANode, 'chart:style-name');
   if s <> '' then
@@ -1675,6 +1679,12 @@ begin
             TsRadarSeries(ASeries).SymbolFill.Color := ASeries.Line.Color;
             TsRadarSeries(ASeries).SymbolBorder.Style := clsNoLine;
           end else
+          if (ASeries is TsScatterSeries) then
+            GetChartFillProps(AStyleNode, AChart, TsScatterSeries(ASeries).SymbolFill)
+          else
+          if (ASeries is TsLineSeries) then
+            GetChartFillProps(AStyleNode, AChart, TsLineSeries(ASeries).SymbolFill)
+          else
             GetChartFillProps(AStyleNode, AChart, ASeries.Fill);
         end;
       'style:text-properties':
@@ -2942,6 +2952,8 @@ begin
   lineProps := GetChartLineStyleGraphicPropsAsXML(AChart, series.Line, forceNoLine);
   if (series is TsLineSeries) and (series.ChartType <> ctFilledRadar) then
   begin
+    // NOTE: In LibreOffice lines and symbols have the same color. When different
+    // colors are written here, the line color dominates.
     lineSer := TsOpenedCustomLineSeries(series);
     fillProps := GetChartFillStyleGraphicPropsAsXML(AChart, lineser.SymbolFill);
     if lineSer.ShowSymbols then
