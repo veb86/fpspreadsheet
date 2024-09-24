@@ -302,6 +302,10 @@ begin
   end;
 end;
 
+function ModifyColor(AColor: TsChartColor; AIntensity: double): TsChartColor;
+begin
+  Result.Color := LumModOff(AColor.Color, AIntensity, 0.0);
+end;
 
 {------------------------------------------------------------------------------}
 {                        internal number formats                               }
@@ -2016,10 +2020,12 @@ begin
   s := GetAttrValue(ANode, 'draw:start-intensity');
   if not TryPercentStrToFloat(s, startIntensity) then
     startIntensity := 1.0;
+  startIntensity := EnsureRange(startIntensity, 0.0, 1.0);
 
   s := GetAttrValue(ANode, 'draw:end-intensity');
   if not TryPercentStrToFloat(s, endIntensity) then
     endIntensity := 1.0;
+  endIntensity := EnsureRange(endIntensity, 0.0, 1.0);
 
   s := GetAttrValue(ANode, 'draw:border');
   if not TryPercentStrToFloat(s, border) then
@@ -2032,7 +2038,7 @@ begin
     angle := StrToFloatDef(s, 0.0, FPointSeparatorSettings);
     { ods has angle=0 in vertical direction, and orientation is CW
       --> We must transform to fps angular orientations (0° horizontal, CCW) }
-    angle := (90.0 - angle) mod 360;
+    angle := (90.0 + angle) mod 360;
   end;
 
   s := GetAttrValue(ANode, 'draw:cx');
@@ -2043,8 +2049,9 @@ begin
   if not TryPercentStrToFloat(s, centerY) then
     centerY := 0.0;
 
-  AChart.Gradients.AddGradient(styleName, gradientStyle,
-    startColor, endColor, startIntensity, endIntensity,
+  i := AChart.Gradients.AddGradient(styleName, gradientStyle,
+    ModifyColor(startColor, startIntensity),
+    ModifyColor(endColor, endIntensity),
     border, centerX, centerY, angle);
 end;
 
@@ -3547,7 +3554,7 @@ begin
       [ ASCIIName(gradient.Name), gradient.Name,
         GRADIENT_STYLES[gradient.Style],
         ColorToHTMLColorStr(gradient.StartColor.Color), ColorToHTMLColorStr(gradient.EndColor.Color),
-        gradient.StartIntensity * 100, gradient.EndIntensity * 100,
+        100.0, 100.0,
         gradient.Border * 100
       ]
     );
@@ -3555,7 +3562,7 @@ begin
       cgsLinear, cgsAxial:
         style := style + Format(
           'draw:angle="%.0fdeg" ',
-          [ (90 - gradient.Angle) mod 360 ],   // transform to fps angle orientations
+          [ (90 + gradient.Angle) mod 360 ],   // transform to fps angle orientations
           FPointSeparatorSettings
         );
       cgsElliptic, cgsSquare, cgsRectangular:

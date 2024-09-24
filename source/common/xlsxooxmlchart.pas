@@ -231,6 +231,12 @@ begin
   Result := nil;
 end;
 
+function PositiveAngle(Angle: Double): Double;
+begin
+  Result := Angle;
+  while Result < 0 do
+    Result := Result + 360.0;
+end;
 
 type
   TsOpenedCustomLineSeries = class(TsCustomLineSeries)
@@ -751,7 +757,7 @@ begin
               value := StrToFloatDef(s, 0.0, FPointSeparatorSettings) / FACTOR_MULTIPLIER;
               color := ChartColor(scWhite);
               ReadChartColor(child.FirstChild, color);
-              gradient.AddStep(value, color, 1.0);
+              gradient.AddStep(value, color);
             end;
             child := child.NextSibling;
           end;
@@ -761,7 +767,7 @@ begin
           gradient.Style := cgsLinear;
           s := GetAttrValue(ANode, 'ang');
           if TryStrToFloat(s, value, FPointSeparatorSettings) then
-            gradient.Angle := value / ANGLE_MULTIPLIER;
+            gradient.Angle := -value / ANGLE_MULTIPLIER;     // xlsx CW, fps CCW
         end;
       'a:path':
         begin
@@ -3542,7 +3548,7 @@ begin
           case gradient.Style of
             cgsLinear:
               gStyle := indent + Format('  <a:lin ang="%.0f" scaled="1"/>',
-                [ gradient.Angle * ANGLE_MULTIPLIER ]
+                [ PositiveAngle(-gradient.Angle) * ANGLE_MULTIPLIER ]   // xlsx gradient direction is CW, fps CCW
               );
             cgsAxial,
             cgsRadial,
