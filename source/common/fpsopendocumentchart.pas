@@ -2052,7 +2052,7 @@ begin
   i := AChart.Gradients.AddGradient(styleName, gradientStyle,
     ModifyColor(startColor, startIntensity),
     ModifyColor(endColor, endIntensity),
-    border, centerX, centerY, angle);
+    centerX, centerY, angle, border, 1.0);
 end;
 
 { Read the hatch pattern stored in the "draw:hatch" nodes of the chart's
@@ -3555,7 +3555,7 @@ begin
         GRADIENT_STYLES[gradient.Style],
         ColorToHTMLColorStr(gradient.StartColor.Color), ColorToHTMLColorStr(gradient.EndColor.Color),
         100.0, 100.0,
-        gradient.Border * 100
+        gradient.StartBorder * 100
       ]
     );
     case gradient.Style of

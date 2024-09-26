@@ -195,8 +195,8 @@ begin
     ser.SetYRange(1, 2, 7, 2);
 
     // Vertical background gradient (angle = 0) from sky-blue to white:
-    ch.PlotArea.Background.Style := cfsGradient;
-    ch.PlotArea.Background.Gradient := ch.Gradients.AddLinearGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0);
+//    ch.PlotArea.Background.Style := cfsGradient;
+//    ch.PlotArea.Background.Gradient := ch.Gradients.AddLinearGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0);
 //    ch.PlotArea.Background.Gradient := ch.Gradients.AddAxialGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0);
 //    ch.PlotArea.Background.Gradient := ch.Gradients.AddEllipticGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5, 45);
 //    ch.PlotArea.Background.Gradient := ch.Gradients.AddRadialGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5);
