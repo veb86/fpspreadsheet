@@ -182,7 +182,7 @@ begin
     end;
 
     // Create the chart
-    ch := book.AddChart(sheet3, 1, 3, 125, 95);
+    ch := book.AddChart(sheet3, 180, 90, 1, 3);
 
     // Add two series
     ser := TsLineSeries.Create(ch);
@@ -195,13 +195,15 @@ begin
     ser.SetYRange(1, 2, 7, 2);
 
     // Vertical background gradient (angle = 0) from sky-blue to white:
-//    ch.PlotArea.Background.Style := cfsGradient;
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddLinearGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddAxialGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddEllipticGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5, 45);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddRadialGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddRectangularGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5, 0);
-//    ch.PlotArea.Background.Gradient := ch.Gradients.AddSquareGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 1, 1, 0, 0.5, 0.5, 0);
+    ch.PlotArea.Background.Style := cfsGradient;
+    i := ch.Gradients.AddLinearGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 35);
+//    i := ch.Gradients.AddAxialGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 30);
+//    i := ch.Gradients.AddEllipticGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 30, 0.5, 0.5);
+//    i := ch.Gradients.AddRadialGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 0.5, 0.5);
+//    i := ch.Gradients.AddRectangularGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 30, 0.5, 0.5);
+//    i := ch.Gradients.AddSquareGradient('Sky', ChartColor($F0CAA6), ChartColor($FFFFFF), 30, 0.5, 0.5);
+    ch.Gradients[i].StartBorder := 0.5;
+    ch.PlotArea.Background.Gradient := i;
 
     ch.Border.Style := clsNoLine;
     ch.Title.Caption := 'HALLO';

@@ -99,20 +99,20 @@ type
   public
     function AddGradient(AName: String; AGradient: TsChartGradient): Integer;
     function AddGradient(AName: String; AStyle: TsChartGradientStyle;
-      AStartColor, AEndColor: TsChartColor; ACenterX, ACenterY, AAngle: Double;
+      AStartColor, AEndColor: TsChartColor; AAngle, ACenterX, ACenterY: Double;
       AStartBorder: Double = 0.0; AEndBorder: Double = 1.0): Integer;
     function AddAxialGradient(AName: String; AStartColor, AEndColor: TsChartColor;
       AAngle: Double): Integer;
     function AddEllipticGradient(AName: String; AStartColor, AEndColor: TsChartColor;
-      ACenterX, ACenterY, AAngle: Double): Integer;
+      AAngle, ACenterX, ACenterY: Double): Integer;
     function AddLinearGradient(AName: String; AStartColor, AEndColor: TsChartColor;
       AAngle: Double): Integer;
     function AddRadialGradient(AName: String; AStartColor, AEndColor: TsChartColor;
       ACenterX, ACenterY: Double): Integer;
     function AddRectangularGradient(AName: String; AStartColor, AEndColor: TsChartColor;
-      ACenterX, ACenterY, AAngle: Double): Integer;
+      AAngle, ACenterX, ACenterY: Double): Integer;
     function AddSquareGradient(AName: String; AStartColor, AEndColor: TsChartColor;
-      ACenterX, ACenterY, AAngle: Double): Integer;
+      AAngle, ACenterX, ACenterY: Double): Integer;
     function IndexOfName(AName: String): Integer;
     function FindByName(AName: String): TsChartGradient;
     property Items[AIndex: Integer]: TsChartGradient read GetItem write SetItem; default;
@@ -1067,24 +1067,56 @@ end;
 
 { TsChartGradientList }
 
+{@@ ----------------------------------------------------------------------------
+  Creates an axial gradient and adds it to the gradient list.
+  This kind of gradient combines two linear gradient running from the outside and meeting at the center of shape
+
+  Not supported by xlsx where it is replaced by a rectangular gradient.
+
+  @param  AName   Name of the gradient. Must be unique. If a gradient with the same name already exists its parameters will be replaced by the new ones.
+  @param  AStartColor  Color of the outermost gradient line
+  @param  AEndColor    Color in the center of the gradient
+  @param  AAngle       Rotation angle of the lines, in degrees. Measured relative to x axis and increases in CCW direction.
+  @returns Index of the gradient in the gradient list.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.AddAxialGradient(AName: String;
   AStartColor, AEndColor: TsChartColor; AAngle: Double): Integer;
 begin
   Result := AddGradient(AName, cgsAxial,
     AStartColor, AEndColor,
-    0.0, 0.0, AAngle
+    AAngle, 0.0, 0.0
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates an elliptical gradient and adds it to the gradient list.
+  In this kind of gradient the lines of constant color are ellipses shrinking towards the center.
+
+  @param  AName   Name of the gradient. Must be unique. If a gradient with the same name already exists its parameters will be replaced by the new ones.
+  @param  AStartColor  Color of the outermost gradient ellipse
+  @param  AEndColor    Color in the center of the gradient ellipse
+  @param  ACenterX     Horizontal center point of the ellipses. Relative to the width of the filled shape (0.0 ... 1.0)
+  @param  ACenterY     Vertical center point of the ellipses. Relative to the height of the filled shape (0.0 ... 1.0)
+  @param  AAngle       Rotation angle of the ellipses, in degrees. Measured relative to x axis and increases in CCW direction.
+  @returns Index of the gradient in the gradient list.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.AddEllipticGradient(AName: String;
-  AStartColor, AEndColor: TsChartColor; ACenterX, ACenterY, AAngle: Double): Integer;
+  AStartColor, AEndColor: TsChartColor; AAngle, ACenterX, ACenterY: Double): Integer;
 begin
-  Result := AddGradient(AName, cgsElliptic,
+  Result := AddGradient(AName, cgsRectangular,
     AStartColor, AEndColor,
-    ACenterX, ACenterY, AAngle
+    AAngle,  // is ignored in xlsx
+    ACenterX, ACenterY
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Adds a pre-created gradient to the gradient list.
+
+  @param  AName   Name of the gradient. Must be unique. If a gradient with the same name already exists its parameters will be replaced by the new ones.
+  @param  AGradient    Instance of the gradient to be added.
+  @returns Index of the gradient in the gradient list.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.AddGradient(AName: String; AGradient: TsChartGradient): Integer;
 begin
   if AName = '' then
@@ -1096,8 +1128,24 @@ begin
     Items[Result].CopyFrom(AGradient);
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a general gradient and adds it to the gradient list.
+
+  Not supported by xlsx where it is replaced by the radial gradient.
+
+  @param  AName   Name of the gradient. Must be unique. If a gradient with the same name already exists its parameters will be replaced by the new ones.
+  @param  AStyle  Kind of gradient (linear, radial, rectangular, ...).
+  @param  AStartColor  Color at the position where the gradient starts
+  @param  AEndColor    Color at the position where the gradient ends
+  @param  ACenterX     Horizontal center point of the gradient. Relative to the width of the filled shape (0.0 ... 1.0). Ignored by some gradient types.
+  @param  ACenterY     Vertical center point of the gradient. Relative to the height of the filled shape (0.0 ... 1.0). Ignored by some gradient types.
+  @param  AAngle       Direction of the color change, in degrees, increasing in CCW direction. Ignored by some gradient types.
+  @param  AStartBorder Relative position along the gradient direction across the shape where the gradient starts.
+  @param  AEndBorder   Relative position along the gradient direction across the shape where the gradient ends.
+  @returns Index of the gradient in the gradient list.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.AddGradient(AName: String; AStyle: TsChartGradientStyle;
-  AStartColor, AEndColor: TsChartColor; ACenterX, ACenterY, AAngle: Double;
+  AStartColor, AEndColor: TsChartColor; AAngle, ACenterX, ACenterY: Double;
   AStartBorder: Double = 0.0; AEndBorder: Double = 1.0): Integer;
 var
   item: TsChartGradient;
@@ -1120,38 +1168,87 @@ begin
   item.CenterY := ACenterY;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a linear gradient and adds it to the gradient list.
+  In this kind of gradient the contours of constant color are straight lines.
+
+  @param  AName   Name of the gradient. Must be unique. If a gradient with the same name already exists its parameters will be replaced by the new ones.
+  @param  AStartColor  Color at the position where the gradient starts
+  @param  AEndColor    Color at the position where the gradient ends
+  @param  AAngle       Direction of the color change, in degrees. When 0 the gradient begins at the left and ends at the right side of the filled shape. The angle increases in CCW direction.
+  @returns Index of the gradient in the gradient list.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.AddLinearGradient(AName: String;
   AStartColor, AEndColor: TsChartColor; AAngle: Double): Integer;
 begin
   Result := AddGradient(AName, cgsLinear,
-    AStartColor, AEndColor, 0.0, 0.0, AAngle
+    AStartColor, AEndColor, AAngle, 0.0, 0.0
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a radial gradient and adds it to the gradient list.
+  In this kind of gradient the lines of constant color are circles around a given center shrinking towards the center.
+
+  @param  AName   Name of the gradient. Must be unique. If a gradient with the same name already exists its parameters will be replaced by the new ones.
+  @param  AStartColor  Color of the outermost gradient circle
+  @param  AEndColor    Color in the center of the gradient circles
+  @param  ACenterX     Horizontal center point of the circles. Relative to the width of the filled shape (0.0 ... 1.0)
+  @param  ACenterY     Vertical center point of the circles. Relative to the height of the filled shape (0.0 ... 1.0)
+  @returns Index of the gradient in the gradient list.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.AddRadialGradient(AName: String;
   AStartColor, AEndColor: TsChartColor; ACenterX, ACenterY: Double): Integer;
 begin
   Result := AddGradient(AName, cgsRadial,
     AStartColor, AEndColor,
-    ACenterX, ACenterY, 0
+    0,
+    ACenterX, ACenterY
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a rectangular gradient and adds it to the gradient list.
+  In this kind of gradient the lines of constant color are rectangles like the bounds of the shape shrinking towards the center.
+
+  @param  AName   Name of the gradient. Must be unique. If a gradient with the same name already exists its parameters will be replaced by the new ones.
+  @param  AStartColor  Color of the outermost gradient rectangle
+  @param  AEndColor    Color in the center of the gradient rectangles
+  @param  ACenterX     Horizontal center point of the rectangles. Relative to the width of the filled shape (0.0 ... 1.0)
+  @param  ACenterY     Vertical center point of the rectangles. Relative to the height of the filled shape (0.0 ... 1.0)
+  @param  AAngle       Rotation angle of the rectangles, in degrees. Measured relative to x axis and increases in CCW direction. Ignored by xlsx.
+  @returns Index of the gradient in the gradient list.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.AddRectangularGradient(AName: String;
-  AStartColor, AEndColor: TsChartColor; ACenterX, ACenterY, AAngle: Double): Integer;
+  AStartColor, AEndColor: TsChartColor; AAngle, ACenterX, ACenterY: Double): Integer;
 begin
   Result := AddGradient(AName, cgsRectangular,
     AStartColor, AEndColor,
-    ACenterX, ACenterY, AAngle
+    AAngle,  // is ignored in xlsx
+    ACenterX, ACenterY
   );
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Creates a square gradient and adds it to the gradient list.
+  In this kind of gradient the lines of constant color are squares with size shrinking towards the center.
+
+  Not supported by xlsx where it is replaced by a rectangular gradient.
+
+  @param  AName   Name of the gradient. Must be unique. If a gradient with the same name already exists its parameters will be replaced by the new ones.
+  @param  AStartColor  Color of the outermost gradient square
+  @param  AEndColor    Color in the center of the gradient square
+  @param  ACenterX     Horizontal center point of the squares. Relative to the width of the filled shape (0.0 ... 1.0)
+  @param  ACenterY     Vertical center point of the square. Relative to the height of the filled shape (0.0 ... 1.0)
+  @param  AAngle       Rotation angle of the squares, in degrees. Measured relative to x axis and increases in CCW direction.
+  @returns Index of the gradient in the gradient list.
+-------------------------------------------------------------------------------}
 function TsChartGradientList.AddSquareGradient(AName: String;
-  AStartColor, AEndColor: TsChartColor; ACenterX, ACenterY, AAngle: Double): Integer;
+  AStartColor, AEndColor: TsChartColor; AAngle, ACenterX, ACenterY: Double): Integer;
 begin
   Result := AddGradient(AName, cgsSquare,
     AStartColor, AEndColor,
-    ACenterX, ACenterY, AAngle
+    AAngle, ACenterX, ACenterY
   );
 end;
 

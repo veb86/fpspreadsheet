@@ -307,6 +307,15 @@ begin
   Result.Color := LumModOff(AColor.Color, AIntensity, 0.0);
 end;
 
+procedure SwapColors(var AColor1, AColor2: TsChartColor);
+var
+  tmp: TsChartColor;
+begin
+  tmp := AColor1;
+  AColor1 := AColor2;
+  AColor2 := tmp;
+end;
+
 {------------------------------------------------------------------------------}
 {                        internal number formats                               }
 {------------------------------------------------------------------------------}
@@ -2037,8 +2046,12 @@ begin
       if not (s[i] in ['0'..'9', '.', '+', '-']) then Delete(s, i, 1);
     angle := StrToFloatDef(s, 0.0, FPointSeparatorSettings);
     { ods has angle=0 in vertical direction, and orientation is CW
-      --> We must transform to fps angular orientations (0° horizontal, CCW) }
-    angle := (90.0 + angle) mod 360;
+      --> We must transform to fps angular orientations (0° horizontal, CCW)
+      But axial gradient uses "normal" angle }
+    if gradientstyle <> cgsAxial then
+      angle := (90.0 + angle) mod 360
+    else
+      angle := angle mod 360;
   end;
 
   s := GetAttrValue(ANode, 'draw:cx');
@@ -2049,10 +2062,16 @@ begin
   if not TryPercentStrToFloat(s, centerY) then
     centerY := 0.0;
 
-  i := AChart.Gradients.AddGradient(styleName, gradientStyle,
-    ModifyColor(startColor, startIntensity),
-    ModifyColor(endColor, endIntensity),
-    centerX, centerY, angle, border, 1.0);
+  if gradientStyle <> cgsAxial then
+    AChart.Gradients.AddGradient(styleName, gradientStyle,
+      ModifyColor(startColor, startIntensity),
+      ModifyColor(endColor, endIntensity),
+      angle, centerX, centerY, border, 1.0)
+  else
+    AChart.Gradients.AddGradient(styleName, gradientStyle,
+      ModifyColor(endColor, startIntensity),
+      ModifyColor(startColor, endIntensity),
+      angle, centerX, centerY, border, 1.0)
 end;
 
 { Read the hatch pattern stored in the "draw:hatch" nodes of the chart's
@@ -3540,11 +3559,16 @@ var
   gradient: TsChartGradient;
   style: String;
   indent: String;
+  clr1, clr2: TsChartColor;
 begin
   indent := DupeString(' ', AIndent);
   for i := 0 to AChart.Gradients.Count-1 do
   begin
     gradient := AChart.Gradients[i];
+    clr1 := gradient.Startcolor;
+    clr2 := gradient.EndColor;
+    if gradient.Style = cgsAxial then
+      SwapColors(clr1, clr2);
     style := indent + Format(
       '<draw:gradient draw:name="%s" draw:display-name="%s" ' +
         'draw:style="%s" ' +
@@ -3553,16 +3577,22 @@ begin
         'draw:border="%.0f%%" ',
       [ ASCIIName(gradient.Name), gradient.Name,
         GRADIENT_STYLES[gradient.Style],
-        ColorToHTMLColorStr(gradient.StartColor.Color), ColorToHTMLColorStr(gradient.EndColor.Color),
+        ColorToHTMLColorStr(clr1.Color), ColorToHTMLColorStr(clr2.Color),
         100.0, 100.0,
         gradient.StartBorder * 100
       ]
     );
     case gradient.Style of
-      cgsLinear, cgsAxial:
+      cgsLinear:
         style := style + Format(
           'draw:angle="%.0fdeg" ',
           [ (90 + gradient.Angle) mod 360 ],   // transform to fps angle orientations
+          FPointSeparatorSettings
+        );
+      cgsAxial:
+        style := style + Format(
+          'draw:angle="%.0fdeg" ',
+          [ (gradient.Angle) mod 360 ],
           FPointSeparatorSettings
         );
       cgsElliptic, cgsSquare, cgsRectangular:

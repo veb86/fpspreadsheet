@@ -740,6 +740,7 @@ begin
 
   AFill.Style := cfsGradient;
   gradient := TsChartGradient.Create;   // Do not destroy gradient, it will be added to the chart.
+
   ANode := ANode.FirstChild;
   while Assigned(ANode) do
   begin
@@ -3537,11 +3538,12 @@ begin
           for i := 0 to gradient.NumSteps - 1 do
           begin
             step := gradient.Steps[i];
+            if gradient.Style <> cgsLinear then step.Value := 1.0 - step.Value;
             gSteps := gSteps + Format(
               indent + '    <a:gs pos="%.0f">' + LE +
               indent + '      %s' + LE +
               indent + '    </a:gs>' + LE,
-              [ step.Value * FACTOR_MULTIPLIER, GetChartColorXML(step.Color) ]
+              [ step.Value * FACTOR_MULTIPLIER, GetChartColorXML(step.Color) ]  // gradient in xlsx runs opposite to fps
             );
           end;
           gSteps := gSteps + indent + '  </a:gsLst>' + LE;
