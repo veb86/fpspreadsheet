@@ -316,6 +316,7 @@ begin
   AColor2 := tmp;
 end;
 
+
 {------------------------------------------------------------------------------}
 {                        internal number formats                               }
 {------------------------------------------------------------------------------}
@@ -2049,9 +2050,9 @@ begin
       --> We must transform to fps angular orientations (0° horizontal, CCW)
       But axial gradient uses "normal" angle }
     if gradientstyle <> cgsAxial then
-      angle := (90.0 + angle) mod 360
+      angle := FMod(90.0 + angle, 360.0)
     else
-      angle := angle mod 360;
+      angle := FMod(angle, 360.0);
   end;
 
   s := GetAttrValue(ANode, 'draw:cx');
@@ -3586,13 +3587,13 @@ begin
       cgsLinear:
         style := style + Format(
           'draw:angle="%.0fdeg" ',
-          [ (90 + gradient.Angle) mod 360 ],   // transform to fps angle orientations
+          [ FMod(90 + gradient.Angle, 360.0) ],   // transform to fps angle orientations
           FPointSeparatorSettings
         );
       cgsAxial:
         style := style + Format(
           'draw:angle="%.0fdeg" ',
-          [ (gradient.Angle) mod 360 ],
+          [ FMod(gradient.Angle, 360.0) ],
           FPointSeparatorSettings
         );
       cgsElliptic, cgsSquare, cgsRectangular:

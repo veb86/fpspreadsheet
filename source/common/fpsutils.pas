@@ -254,6 +254,10 @@ function Range(ARow, ACol: Cardinal): TsCellRange; overload;
 function Range(ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange; overload;
 function Range3D(ASheetIdx1, ASheetIdx2: Integer; ARow1, ACol1, ARow2, ACol2: Cardinal): TsCellRange3D;
 
+{$IF FPC_FullVersion < 30200}
+function FMod(const a, b: Double): Double; inline; overload;
+{$IFEND}
+
 function CellBorderStyle(const AColor: TsColor = scBlack;
   const ALineStyle: TsLineStyle = lsThin): TsCellBorderStyle;
 
@@ -3033,6 +3037,13 @@ begin
   Result.Sheet2 := ASheetIdx2;
 end;
 
+{$IF FPC_FullVersion < 30200}
+function FMod(const a, b: Double): Double;
+begin
+  Result := a-b * Int(a/b);
+end;
+{$IFEND}
+
 
 {@@ ----------------------------------------------------------------------------
   Combines the relevant font properties into a string
@@ -3043,7 +3054,8 @@ begin
     Result := ''
   else begin
     Result := Format('%s; size %.1g; %s', [
-      AFont.FontName, AFont.Size, GetColorName(AFont.Color)]);
+      AFont.FontName, AFont.Size, GetColorName(AFont.Color)
+    ]);
     if (fssBold in AFont.Style) then Result := Result + '; bold';
     if (fssItalic in AFont.Style) then Result := Result + '; italic';
     if (fssUnderline in AFont.Style) then Result := Result + '; underline';

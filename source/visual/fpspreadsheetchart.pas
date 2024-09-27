@@ -1529,23 +1529,23 @@ begin
   ABrush.Color := Convert_sColor_to_Color(hatch.PatternColor.Color);
   case hatch.Style of
     chsSingle:
-      if InRange(hatch.PatternAngle mod 180, -22.5, 22.5) then  // horizontal "approximation"
+      if InRange(FMod(hatch.PatternAngle, 180.0), -22.5, 22.5) then  // horizontal "approximation"
         ABrush.Style := bsHorizontal
       else
-      if InRange((hatch.PatternAngle - 90) mod 180, -22.5, 22.5) then  // vertical
+      if InRange(FMod(hatch.PatternAngle - 90, 180.0), -22.5, 22.5) then  // vertical
         ABrush.Style := bsVertical
       else
-      if Inrange((hatch.PatternAngle - 45) mod 180, -22.5, 22.5) then  // diagonal up
+      if Inrange(FMod(hatch.PatternAngle - 45, 180.0), -22.5, 22.5) then  // diagonal up
         ABrush.Style := bsBDiagonal
       else
-      if InRange((hatch.PatternAngle + 45) mod 180, -22.5, 22.5) then  // diagonal down
+      if InRange(FMod(hatch.PatternAngle + 45, 180.0), -22.5, 22.5) then  // diagonal down
         ABrush.Style := bsFDiagonal;
     chsDouble,
     chsTriple:   // no triple hatches in LCL - fall-back to double hatch
-      if InRange(hatch.PatternAngle mod 180, -22.5, 22.5) then   // +++
+      if InRange(FMod(hatch.PatternAngle, 180.0), -22.5, 22.5) then   // +++
         ABrush.Style := bsCross
       else
-      if InRange((hatch.PatternAngle - 45) mod 180, -22.5, 22.5) then // xxx
+      if InRange(FMod(hatch.PatternAngle - 45, 180.0), -22.5, 22.5) then // xxx
         ABrush.Style := bsDiagCross;
   end;
 end;
@@ -1660,7 +1660,7 @@ begin
       end;
     chsDouble, chsTriple:
       begin  // +++
-        if InRange(hatch.PatternAngle mod 180, -22.5, 22.5) then
+        if InRange(FMod(hatch.PatternAngle, 180.0), -22.5, 22.5) then
         begin
           PrepareCanvas(w, w, lw);
           png.Canvas.Line(0, w div 2, w, w div 2);
@@ -1669,7 +1669,7 @@ begin
             png.Canvas.Line(0, 0, w, w);
         end else
         // xxx
-        if InRange((hatch.PatternAngle-45) mod 180, -22.5, 22.5) then
+        if InRange(FMod(hatch.PatternAngle-45, 180.0), -22.5, 22.5) then
         begin
           w := round(w * sqrt(2));
           PrepareCanvas(w, w, lw);
@@ -2359,7 +2359,9 @@ begin
     axis := FChart.LeftAxis
   else
     axis := FChart.BottomAxis;
+  {$IF LCL_FullVersion >= 2020000}
   axis.Marks.SourceExchangeXY := AWorkbookChart.RotatedAxes;
+  {$IFEND}
 
   case AWorkbookChart.GetChartType of
     ctScatter, ctBubble:
@@ -2539,7 +2541,9 @@ begin
     ALegend.UseSidebar := not AWorkbookLegend.CanOverlapPlotArea;
     ALegend.Visible := AWorkbookLegend.Visible;
     ALegend.TextFormat := tfHTML;
+    {$IF LCL_FullVersion >= 3990000}
     ALegend.ColumnCount := 0;
+    {$IFEND}
   end;
 end;
 
