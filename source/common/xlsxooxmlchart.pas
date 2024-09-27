@@ -646,6 +646,8 @@ procedure TsSpreadOOXMLChartReader.ReadChartColor(ANode: TDOMNode;
     case AColorName of
       'tx1': if DARK_MODE then Result := 'lt1' else Result := 'dk1';
       'tx2': if DARK_MODE then Result := 'lt2' else Result := 'dk2';
+      'bg1': if DARK_MODE then Result := 'dk1' else Result := 'lt1';
+      'bg2': if DARK_MODE then Result := 'dk2' else Result := 'lt2';
       else   Result := AColorName;
     end;
   end;
