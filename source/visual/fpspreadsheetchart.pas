@@ -2539,6 +2539,7 @@ begin
     ALegend.UseSidebar := not AWorkbookLegend.CanOverlapPlotArea;
     ALegend.Visible := AWorkbookLegend.Visible;
     ALegend.TextFormat := tfHTML;
+    ALegend.ColumnCount := 0;
   end;
 end;
 
