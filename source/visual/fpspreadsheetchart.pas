@@ -1958,6 +1958,11 @@ begin
         Result := false;
         exit;
       end;
+      if (ser is TsLineSeries) and (TsLineSeries(ser).Interpolation in [ciCubicSpline, ciBSpline]) then
+      begin
+        Result := false;
+        exit;
+      end;
     end;
   end;
 end;

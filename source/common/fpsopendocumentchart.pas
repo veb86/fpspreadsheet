@@ -1524,7 +1524,10 @@ begin
             TsPieSeries(series).InnerRadiusPercent := 50;
         end;
       'chart:line':
-        series := TsLineSeries.Create(AChart);
+        begin
+          series := TsLineSeries.Create(AChart);
+          TsLineSeries(series).Interpolation := AChart.Interpolation;
+        end;
       'chart:radar':
         series := TsRadarSeries.Create(AChart);
         // Note: In ods, line and symbol colors are equal!
