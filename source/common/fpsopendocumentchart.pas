@@ -1873,7 +1873,7 @@ begin
       begin
         nodeName := childNode.NodeName;
         case nodeName of
-          '#text':
+          '#text', 'text:span':
             s := s + childNode.TextContent;
           'text:s':
             s := s + ' ';
