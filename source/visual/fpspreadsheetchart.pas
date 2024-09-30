@@ -1969,6 +1969,8 @@ end;
 
 procedure TsWorkbookChartLink.ListenerNotification(AChangedItems: TsNotificationItems;
   AData: Pointer = nil);
+var
+  charts: TsChartArray;
 begin
   Unused(AData);
 
@@ -1977,6 +1979,19 @@ begin
   begin
     ClearChart;
     UpdateChart;
+  end;
+
+  // Another worksheet is selected --> Select the first chart of the worksheet
+  if (lniWorksheet in AChangedItems) and (WorkbookSource <> nil) then
+  begin
+    charts := WorkbookSource.Worksheet.GetCharts;
+    if Length(charts) > 0 then
+      WorkbookChartIndex := WorkbookSource.Workbook.GetChartIndex(charts[0])
+    else
+      WorkbookChartIndex := -1;
+    ClearChart;
+    UpdateChart;
+    FChart.Visible := WorkbookChartIndex > -1;
   end;
 end;
 

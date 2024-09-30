@@ -26,8 +26,10 @@ type
     OpenDialog: TOpenDialog;
     Panel1: TPanel;
     Panel2: TPanel;
+    Panel3: TPanel;
     Splitter1: TSplitter;
     sWorkbookSource: TsWorkbookSource;
+    sWorkbookTabControl1: TsWorkbookTabControl;
     sWorksheetGrid: TsWorksheetGrid;
     procedure btnBrowseClick(Sender: TObject);
     procedure btnOpenClick(Sender: TObject);
@@ -52,7 +54,7 @@ implementation
 
 uses
   TypInfo,
-  TAChartUtils, TAChartAxis, TAChartAxisUtils, TACustomSeries, TATransformations;
+  TAChartUtils, TAChartAxis, TACustomSeries, TATransformations;
 
 
 { TForm1 }

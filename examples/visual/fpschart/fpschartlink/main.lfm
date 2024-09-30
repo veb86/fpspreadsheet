@@ -14,30 +14,6 @@ object Form1: TForm1
     Top = 38
     Width = 5
   end
-  object Chart: TChart
-    Left = 528
-    Height = 489
-    Top = 38
-    Width = 823
-    AxisList = <    
-      item
-        Marks.LabelBrush.Style = bsClear
-        Minors = <>
-        Title.LabelFont.Orientation = 900
-        Title.LabelBrush.Style = bsClear
-      end    
-      item
-        Alignment = calBottom
-        Marks.LabelBrush.Style = bsClear
-        Minors = <>
-        Title.LabelBrush.Style = bsClear
-      end>
-    Legend.SymbolWidth = 40
-    Title.Text.Strings = (
-      'TAChart'
-    )
-    Align = alClient
-  end
   object Panel1: TPanel
     Left = 0
     Height = 38
@@ -48,7 +24,7 @@ object Form1: TForm1
     BevelOuter = bvNone
     ClientHeight = 38
     ClientWidth = 1351
-    TabOrder = 2
+    TabOrder = 1
     object lblFileNames: TLabel
       AnchorSideLeft.Control = Panel1
       AnchorSideTop.Control = Panel1
@@ -119,34 +95,83 @@ object Form1: TForm1
     Caption = 'Panel2'
     ClientHeight = 489
     ClientWidth = 523
-    TabOrder = 3
-    object sWorksheetGrid: TsWorksheetGrid
-      Left = 1
-      Height = 375
-      Top = 1
-      Width = 521
-      FrozenCols = 0
-      FrozenRows = 0
-      PageBreakPen.Color = clBlue
-      PageBreakPen.Style = psDash
-      ReadFormulas = False
-      TextOverflow = True
-      WorkbookSource = sWorkbookSource
-      Align = alClient
-      AutoAdvance = aaDown
-      Color = clWhite
-      DefaultColWidth = 64
-      DefaultRowHeight = 22
-      Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goSmoothScroll]
-      TabOrder = 0
-    end
+    TabOrder = 2
     object Memo: TMemo
       Left = 1
       Height = 112
       Top = 376
       Width = 521
       Align = alBottom
+      TabOrder = 0
+    end
+    object sWorkbookTabControl1: TsWorkbookTabControl
+      Left = 1
+      Height = 375
+      Top = 1
+      Width = 521
+      TabIndex = 0
+      Tabs.Strings = (
+        'Sheet1'
+      )
+      Align = alClient
       TabOrder = 1
+      WorkbookSource = sWorkbookSource
+      object sWorksheetGrid: TsWorksheetGrid
+        Left = 2
+        Height = 350
+        Top = 23
+        Width = 517
+        FrozenCols = 0
+        FrozenRows = 0
+        PageBreakPen.Color = clBlue
+        PageBreakPen.Style = psDash
+        ReadFormulas = False
+        TextOverflow = True
+        WorkbookSource = sWorkbookSource
+        Align = alClient
+        AutoAdvance = aaDown
+        Color = clWhite
+        DefaultColWidth = 64
+        DefaultRowHeight = 22
+        Options = [goFixedVertLine, goFixedHorzLine, goVertLine, goHorzLine, goRangeSelect, goRowSizing, goColSizing, goEditing, goSmoothScroll]
+        TabOrder = 1
+      end
+    end
+  end
+  object Panel3: TPanel
+    Left = 528
+    Height = 489
+    Top = 38
+    Width = 823
+    Align = alClient
+    BevelOuter = bvNone
+    Caption = 'No chart on this worksheet'
+    ClientHeight = 489
+    ClientWidth = 823
+    TabOrder = 3
+    object Chart: TChart
+      Left = 0
+      Height = 489
+      Top = 0
+      Width = 823
+      AxisList = <      
+        item
+          Marks.LabelBrush.Style = bsClear
+          Minors = <>
+          Title.LabelFont.Orientation = 900
+          Title.LabelBrush.Style = bsClear
+        end      
+        item
+          Alignment = calBottom
+          Marks.LabelBrush.Style = bsClear
+          Minors = <>
+          Title.LabelBrush.Style = bsClear
+        end>
+      Legend.SymbolWidth = 40
+      Title.Text.Strings = (
+        'TAChart'
+      )
+      Align = alClient
     end
   end
   object sWorkbookSource: TsWorkbookSource

@@ -912,6 +912,8 @@ type
     property Items[AIndex: Integer]: TsChart read GetItem write SetItem; default;
   end;
 
+  TsChartArray = array of TsChart;
+
 
 function ChartColor(AColor: TsColor; ATransparency: Single = 0.0): TsChartColor;
 

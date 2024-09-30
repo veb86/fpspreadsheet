@@ -647,6 +647,7 @@ type
     function AddChart(AWidth, AHeight: Double; ARow, ACol: Cardinal;
       AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
     function GetChartCount: Integer;
+    function GetCharts: TsChartArray;
     procedure RemoveAllCharts;
     procedure RemoveChart(AChart: TsChart);
    {$endif}
@@ -949,6 +950,7 @@ type
       ARow, ACol: Cardinal; AOffsetX: Double = 0.0; AOffsetY: Double = 0.0): TsChart;
     function GetChartByIndex(AIndex: Integer): TsChart;
     function GetChartCount: Integer;
+    function GetChartIndex(AChart: TsChart): Integer;
    {$endif}
 
     { Utilities }
