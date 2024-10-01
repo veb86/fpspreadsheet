@@ -19,7 +19,9 @@ interface
 
 {$ifdef FPS_CHARTS}
 
-uses                        lazloggerbase,
+uses
+  lazloggerbase,
+
   // RTL/FCL
   Classes, Contnrs, SysUtils, Types, FPCanvas,
   // LCL
@@ -1976,10 +1978,7 @@ begin
 
   // Workbook has been successfully loaded, all sheets are ready
   if (lniWorkbook in AChangedItems) then
-  begin
-    ClearChart;
     UpdateChart;
-  end;
 
   // Another worksheet is selected --> Select the first chart of the worksheet
   if (lniWorksheet in AChangedItems) and (WorkbookSource <> nil) then
@@ -1989,8 +1988,6 @@ begin
       WorkbookChartIndex := WorkbookSource.Workbook.GetChartIndex(charts[0])
     else
       WorkbookChartIndex := -1;
-    ClearChart;
-    UpdateChart;
     FChart.Visible := WorkbookChartIndex > -1;
   end;
 end;
@@ -2128,13 +2125,11 @@ var
   ch: TsChart;
   i: Integer;
 begin
-  if (FChart = nil) then
+  ClearChart;
+
+  if (FChart = nil) or (FWorkbookSource = nil) or (FWorkbookChartIndex < 0) then
     exit;
-  if (FWorkbookSource = nil) or (FWorkbookChartIndex < 0) then
-  begin
-    ClearChart;
-    exit;
-  end;
+
   FChart.Proportional := false;
   FChart.ExpandPercentage := 0;
 
