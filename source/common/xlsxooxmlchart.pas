@@ -2519,7 +2519,7 @@ begin
         ;
       'a:p':
         begin
-          child1 := ANode.FirstChild;
+          child1 := ANode.FindNode('a:pPr'); //ANode.FirstChild;
           if Assigned(child1) then
           begin
             child2 := child1.FindNode('a:defRPr');
