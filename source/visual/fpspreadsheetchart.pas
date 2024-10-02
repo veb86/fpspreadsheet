@@ -689,22 +689,25 @@ begin
   cell := FWorksheets[ARangeIndex, AListIndex].FindCell(row, col);
 
   if cell <> nil then
+  begin
     case cell^.ContentType of
       cctUTF8String:
         begin
           ANumber := APointIndex;
-          AText := FWorksheets[ARangeIndex, AListIndex].ReadAsText(cell);
+//          AText := FWorksheets[ARangeIndex, AListIndex].ReadAsText(cell);
         end;
       cctDateTime:
         begin
           if not FWorksheets[ARangeIndex, AListIndex].ReadAsDateTime(cell, ANumber) then
             ANumber := APointIndex;
-          AText := FWorksheets[ARangeIndex, AListIndex].ReadAsText(cell);
+  //        AText := FWorksheets[ARangeIndex, AListIndex].ReadAsText(cell);
         end;
       else
         ANumber := FWorksheets[ARangeIndex, AListIndex].ReadAsNumber(cell);
-        AText := '';
+//        AText := '';
     end;
+    AText := FWorksheets[ARangeIndex, AListIndex].ReadAsText(cell);
+  end;
 end;
 
 {@@ ----------------------------------------------------------------------------
@@ -2354,7 +2357,7 @@ begin
   if FChart.SeriesCount = 0 then
     exit;
 
-  if AWorkbookChart.GetChartType in [ctScatter, ctBubble] then
+  if (AWorkbookChart.GetChartType in [ctScatter, ctBubble]) then
   begin
     FLogLabelSource.Clear;
     value := 1E-15;
