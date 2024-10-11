@@ -826,7 +826,7 @@ begin
 
           s := GetAttrValue(AStyleNode, 'chart:axis-position');
           case s of
-            'start':
+            'start', '0':
               Axis.Position := capStart;
             'end':
               Axis.Position := capEnd;
