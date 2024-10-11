@@ -1016,7 +1016,7 @@ begin
     AFont.Style := AFont.Style + [fssItalic];
 
   s := GetAttrValue(ANode, 'u');
-  if not ((s = '') or (s = '0')) then
+  if not ((s = '') or (s = '0') or (s = 'none')) then
     AFont.Style := AFont.Style + [fssUnderline];
 
   s := GetAttrValue(ANode, 'strike');
