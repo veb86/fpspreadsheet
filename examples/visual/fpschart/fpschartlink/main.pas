@@ -5,11 +5,11 @@ unit main;
 interface
 
 uses
-  Classes, SysUtils,
+  Classes, Spin, SysUtils,
   LCLVersion, Forms, Controls, Graphics, Dialogs, ExtCtrls, StdCtrls, FileUtil, LazFileUtils,
   TAGraph, TASources,
   fpSpreadsheet, fpsTypes, fpsOpenDocument, xlsxOOXML,
-  fpSpreadsheetCtrls, fpSpreadsheetGrid, fpSpreadsheetChart;
+  fpSpreadsheetCtrls, fpSpreadsheetGrid, fpSpreadsheetChart, fpsChart;
 
 type
 
@@ -20,6 +20,7 @@ type
     btnOpen: TButton;
     Chart: TChart;
     cbFileNames: TComboBox;
+    Label1: TLabel;
     lblFileNames: TLabel;
     ListChartSource: TListChartSource;
     Memo: TMemo;
@@ -27,6 +28,8 @@ type
     Panel1: TPanel;
     Panel2: TPanel;
     Panel3: TPanel;
+    Panel4: TPanel;
+    seChartIndex: TSpinEdit;
     Splitter1: TSplitter;
     sWorkbookSource: TsWorkbookSource;
     sWorkbookTabControl1: TsWorkbookTabControl;
@@ -35,7 +38,9 @@ type
     procedure btnOpenClick(Sender: TObject);
     procedure cbFileNamesSelect(Sender:TObject);
     procedure FormCreate(Sender: TObject);
+    procedure seChartIndexChange(Sender: TObject);
     procedure sWorkbookSourceError(Sender: TObject; const AMsg: String);
+    procedure sWorkbookTabControl1Change(Sender: TObject);
   private
     FDir: String;
     sChartLink: TsWorkbookChartLink;
@@ -121,9 +126,38 @@ begin
   end;
 end;
 
+procedure TForm1.seChartIndexChange(Sender: TObject);
+var
+  charts: TsChartArray;
+  i: Integer;
+begin
+  charts := sWorkbookSource.Worksheet.GetCharts;
+  i := seChartIndex.Value;
+  if i < 0 then i := 0;
+  if i > High(charts) then i := High(charts);
+  sChartLink.WorkbookChartIndex := charts[i].Index;
+end;
+
 procedure TForm1.sWorkbookSourceError(Sender: TObject; const AMsg: String);
 begin
   Memo.Lines.Add(AMsg);
+end;
+
+procedure TForm1.sWorkbookTabControl1Change(Sender: TObject);
+var
+  charts: TsChartArray;
+  n: Integer;
+begin
+  charts := sWorkbookSource.Worksheet.GetCharts;
+  n := Length(charts);
+  if n > 1 then
+  begin
+    Panel4.Show;
+    seChartIndex.MaxValue := n - 1;
+    seChartIndex.Value := 0;
+    sChartLink.WorkbookChartIndex := charts[0].Index;
+  end else
+    Panel4.Hide;
 end;
 
 procedure TForm1.LoadFile(AFileName: String);
@@ -156,7 +190,8 @@ begin
   sChartLink := TsWorkbookChartLink.Create(self);
   sChartLink.Chart := Chart;
   sChartLink.WorkbookSource := sWorkbookSource;
-  sChartLink.WorkbookChartIndex := 0;
+
+  sWorkbookTabControl1Change(nil);
 end;
 
 end.

@@ -6,7 +6,7 @@ object Form1: TForm1
   Caption = 'Form1'
   ClientHeight = 527
   ClientWidth = 1351
-  LCLVersion = '3.99.0.0'
+  LCLVersion = '4.99.0.0'
   OnCreate = FormCreate
   object Splitter1: TSplitter
     Left = 523
@@ -109,6 +109,8 @@ object Form1: TForm1
       Height = 375
       Top = 1
       Width = 521
+      OnChange = sWorkbookTabControl1Change
+      TabHeight = 25
       TabIndex = 0
       Tabs.Strings = (
         'Sheet1'
@@ -118,8 +120,8 @@ object Form1: TForm1
       WorkbookSource = sWorkbookSource
       object sWorksheetGrid: TsWorksheetGrid
         Left = 2
-        Height = 350
-        Top = 23
+        Height = 348
+        Top = 25
         Width = 517
         FrozenCols = 0
         FrozenRows = 0
@@ -151,8 +153,8 @@ object Form1: TForm1
     TabOrder = 3
     object Chart: TChart
       Left = 0
-      Height = 489
-      Top = 0
+      Height = 464
+      Top = 25
       Width = 823
       AxisList = <      
         item
@@ -172,6 +174,38 @@ object Form1: TForm1
         'TAChart'
       )
       Align = alClient
+    end
+    object Panel4: TPanel
+      Left = 0
+      Height = 25
+      Top = 0
+      Width = 823
+      Align = alTop
+      BevelOuter = bvNone
+      ClientHeight = 25
+      ClientWidth = 823
+      TabOrder = 1
+      Visible = False
+      object Label1: TLabel
+        AnchorSideTop.Control = Panel4
+        AnchorSideTop.Side = asrCenter
+        Left = 0
+        Height = 15
+        Top = 5
+        Width = 39
+        Caption = 'Chart #'
+      end
+      object seChartIndex: TSpinEdit
+        AnchorSideTop.Control = Panel4
+        AnchorSideTop.Side = asrCenter
+        Left = 48
+        Height = 23
+        Top = 1
+        Width = 74
+        Alignment = taRightJustify
+        TabOrder = 0
+        OnChange = seChartIndexChange
+      end
     end
   end
   object sWorkbookSource: TsWorkbookSource
