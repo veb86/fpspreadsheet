@@ -2268,13 +2268,14 @@ begin
     logTransf.Enabled := AWorkbookAxis.Logarithmic;
   if AWorkbookAxis.Logarithmic then
   begin
-    axis.Intervals.Options := axis.Intervals.Options + [aipGraphCoords{$IF LCL_FullVersion >= 3990000}, aipInteger{$IFEND}];
+    // Next line is not needed because we provide log labels in a ListChartSource now.
+//    axis.Intervals.Options := axis.Intervals.Options + [aipGraphCoords{$IF LCL_FullVersion >= 3990000}, aipInteger{$IFEND}];
     axis.Intervals.MaxLength := 150;
     axis.Intervals.MinLength := 30;
     axis.Intervals.Tolerance := 30;
   end else
   begin
-    axis.Intervals.Options := axis.Intervals.Options - [aipGraphCoords{$IF LCL_FullVersion >= 3990000}, aipInteger{$IFEND}];
+//    axis.Intervals.Options := axis.Intervals.Options - [aipGraphCoords{$IF LCL_FullVersion >= 3990000}, aipInteger{$IFEND}];
     axis.Intervals.MaxLength := 100;
     axis.Intervals.MinLength := 20;
     axis.Intervals.Tolerance := 0;
@@ -2360,9 +2361,9 @@ begin
   if (AWorkbookChart.GetChartType in [ctScatter, ctBubble]) then
   begin
     FLogLabelSource.Clear;
-    value := 1E-15;
-    i := -15;
-    while value < 1E300 do
+    value := 1E-20;
+    i := -20;
+    while value < 1E20 do
     begin
       FLogLabelSource.Add(value, value, Format('10<sup>%d</sup>', [i]));
       value := value * 10;
