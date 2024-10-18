@@ -1179,11 +1179,18 @@ begin
   C := CurrentChar;
   isQuoted := C = '''';
   isInSqBr := C = '[';
+  ok := true;
 
   while ((not IsWordDelim(C)) or IsQuoted or IsR1C1Char(C)) and (C <> cNULL) do
   begin
     FToken := FToken + C;
     C := NextPos;
+
+    if C = cError then begin
+      Result := DoError;
+      exit;
+    end;
+
     if C = '''' then isQuoted := false;
     if (FParser.Dialect = fdExcelR1C1) then begin
       if (C = '[') then
@@ -1376,7 +1383,7 @@ begin
   NextPos;
 end;
 
-{ The scanner gets into this procedure in case of invalid characters inthe
+{ The scanner gets into this procedure in case of invalid characters in the
   expression or - in case of Excel A1 dialect sheet names containing UTF8
   codepoints. }
 function TsExpressionScanner.DoTestExcelSheetName(C: Char): TsTokenType;
