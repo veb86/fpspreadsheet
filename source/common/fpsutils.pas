@@ -1785,8 +1785,8 @@ begin
 end;
 
 {@@ ----------------------------------------------------------------------------
-  Converts a string to a floating point number. No assumption on decimal and
-  thousand separator are made.
+  Converts a string to a floating point number. No assumptions on decimal and
+  thousand separators are made.
   
   Is needed for reading CSV files.
 -------------------------------------------------------------------------------}

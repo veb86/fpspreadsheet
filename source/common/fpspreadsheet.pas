@@ -4648,7 +4648,8 @@ begin
   end;
 
   // Check for a "number" value (floating point, or integer)
-  if TryStrToFloat(AValue, number, AFormatSettings) then
+  // BUT: val() (and TryStsrToFloat) assumes that a string beginning with 'E' is a valid number
+  if not (AValue[1] in ['E', 'e']) and TryStrToFloat(AValue, number, AFormatSettings) then
   begin
     if (soAutoDetectCellType in FOptions) then begin
       if isPercent then
