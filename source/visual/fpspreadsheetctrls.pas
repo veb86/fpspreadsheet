@@ -70,6 +70,7 @@ type
     FPendingSelection: TsCellRangeArray;
     FPendingOperation: TsCopyOperation;
     FOptions: TsWorkbookOptions;
+    FUsesBuiltinWorkbook: Boolean;
     FOnError: TsWorkbookSourceErrorEvent;
     FOnQueryPassword: TsOnQueryPassword;
 
@@ -160,6 +161,8 @@ type
       Unlike the published property "FileFormat" the FileFormatID also takes
       care of user-defined formats. }
     property FileFormatID: TsSpreadFormatID read FFileFormatID write SetFileFormatID;
+
+    property UsesBuiltinWorkbook: Boolean read FUsesBuiltinWorkbook;
 
   published
     {@@ Automatically detects the fileformat when loading the spreadsheet file
@@ -872,6 +875,7 @@ begin
   FListeners := TFPList.Create;
   FFileFormatID := ord(sfOOXML);
   FAutoDetectFormat := True;
+  FUsesBuiltinWorkbook := true;
   CreateNewWorkbook;
 end;
 
@@ -1166,7 +1170,7 @@ begin
     book.Options := FOptions;
     book.OnQueryPassword := @DoQueryPassword;
     if AAutoDetect then
-      book.ReadfromFile(AFileName, APassword)
+      book.ReadFromFile(AFileName, APassword)
     else
       book.ReadFromFile(AFileName, AFormatID, APassword);
     InternalLoadFromWorkbook(book, AWorksheetIndex);
@@ -1196,6 +1200,8 @@ begin
       AWorksheetIndex := 0;
   end;
   SelectWorksheet(FWorkbook.GetWorksheetByIndex(AWorksheetIndex));
+
+  FUsesBuiltinWorkbook := false;
 
   AWorkbook.EnableNotifications;
 

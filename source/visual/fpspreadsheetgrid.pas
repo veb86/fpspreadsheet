@@ -4897,6 +4897,8 @@ var
 
 begin
   Unused(AData);
+  if WorkbookSource.UsesBuiltinWorkbook then
+    exit;
 
   {$IFDEF GRID_DEBUG}
   if Worksheet <> nil then
