@@ -1984,14 +1984,15 @@ begin
     UpdateChart;
 
   // Another worksheet is selected --> Select the first chart of the worksheet
-  if (lniWorksheet in AChangedItems) and (WorkbookSource <> nil) and (FChart <> nil) then
+  if (lniWorksheet in AChangedItems) and (WorkbookSource <> nil) then
   begin
     charts := WorkbookSource.Worksheet.GetCharts;
     if Length(charts) > 0 then
       WorkbookChartIndex := WorkbookSource.Workbook.GetChartIndex(charts[0])
     else
       WorkbookChartIndex := -1;
-    FChart.Visible := WorkbookChartIndex > -1;
+    if Assigned(FChart) then
+      FChart.Visible := WorkbookChartIndex > -1;
   end;
 end;
 
