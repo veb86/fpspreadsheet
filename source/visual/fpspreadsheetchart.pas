@@ -1984,7 +1984,7 @@ begin
     UpdateChart;
 
   // Another worksheet is selected --> Select the first chart of the worksheet
-  if (lniWorksheet in AChangedItems) and (WorkbookSource <> nil) then
+  if (lniWorksheet in AChangedItems) and (WorkbookSource <> nil) and (FChart <> nil) then
   begin
     charts := WorkbookSource.Worksheet.GetCharts;
     if Length(charts) > 0 then
