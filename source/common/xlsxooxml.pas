@@ -3801,6 +3801,14 @@ begin
   s := GetAttrValue(ANode, 'gridLines');
   if StrIsTrue(s) then 
     with sheet.PageLayout do Options := Options + [poPrintGridLines];
+
+  s := GetAttrValue(ANode, 'horizontalCentered');
+  if StrIsTrue(s) then
+    with sheet.PageLayout do Options := Options + [poHorCentered];
+
+  s := GetAttrValue(ANode, 'verticalCentered');
+  if StrIsTrue(s) then
+    with sheet.PageLayout do Options := Options + [poVertCentered];
 end;
 
 procedure TsSpreadOOXMLReader.ReadRels(AStream: TStream; ARelsFile: String;
@@ -5966,13 +5974,19 @@ end;
 procedure TsSpreadOOXMLWriter.WritePrintOptions(AStream: TStream;
   AWorksheet: TsBasicWorksheet);
 var
+  sheet: TsWorksheet;
   s: String;
 begin
+  sheet := AWorksheet as TsWorksheet;
   s := '';
-  if poPrintGridLines in (AWorksheet as TsWorksheet).PageLayout.Options then
+  if poPrintGridLines in sheet.PageLayout.Options then
     s := s + ' gridLines="1"';
-  if poPrintHeaders in (AWorksheet as TsWorksheet).PageLayout.Options then
+  if poPrintHeaders in sheet.PageLayout.Options then
     s := s + ' headings="1"';
+  if poHorCentered in sheet.PageLayout.Options then
+    s := s + ' horizontalCentered="1"';
+  if poVertCentered in sheet.PageLayout.Options then
+    s := s + ' verticalCentered="1"';
 
   if s <> '' then
     AppendToStream(AStream,

@@ -925,9 +925,10 @@ uses
 { TsChartColor }
 
 {@@ Helper function to create a record with a color for the fpspreadsheet charts.
-  The record contains a Transparency field.
+  The record contains a Transparency field in addition to the standard TsColor
+  field.
 
-  @param    AColor   RGB color
+  @param    AColor         RGB color
   @param    ATransparency  Transparency of the color, value between 0.0 and 1.0
 
   @returns  A TsChartColor record

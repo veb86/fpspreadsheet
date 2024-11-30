@@ -9074,16 +9074,24 @@ function TsSpreadOpenDocWriter.WritePageLayoutXMLAsString(AStyleName: String;
       APageLayout.FooterMargin, APageLayout.BottomMargin);
 
     Result := Format(
-        'fo:page-width="%.2fmm" fo:page-height="%.2fmm" '+
         'fo:margin-top="%.2fmm" fo:margin-bottom="%.2fmm" '+
         'fo:margin-left="%.2fmm" fo:margin-right="%.2fmm" ', [
-        APageLayout.PageWidth, APageLayout.PageHeight,
         topmargin, bottommargin,
         APageLayout.LeftMargin, APageLayout.RightMargin
       ], FPointSeparatorSettings);
 
     if APageLayout.Orientation = spoLandscape then
-      Result := Result + 'style:print-orientation="landscape" ';
+      Result := Result + Format(
+        'fo:page-width="%.2fmm" fo:page-height="%.2fmm" '+
+        'style:print-orientation="landscape" ', [
+        APageLayout.PageHeight, APagelayout.PageWidth        // Width and hight must be exchanged
+      ], FPointSeparatorSettings)
+    else
+      Result := Result + Format(
+        'fo:page-width="%.2fmm" fo:page-height="%.2fmm" ', [
+        APageLayout.PageWidth, APageLayout.PageHeight
+      ], FPointSeparatorSettings);
+
 
     if poPrintPagesByRows in APageLayout.Options then
       Result := Result + 'style:print-page-order="ltr" ';
