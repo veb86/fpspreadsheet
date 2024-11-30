@@ -20,6 +20,11 @@ This folder contains various demo applications:
 - images/demo_write_images: shows how to create workbooks/worksheets with
   embedded images.
 
+- pagelayout/demo_pagelayout: show a few cases how the page layout can be
+  configured for printing and print preview. After loading the created file into
+  Excel or Calc switch to the print preview to see the effect of the selected
+  parameters.
+  
 - protection/demo_protection: demonstrates cell and sheet protection
   supported by FPSpreadsheet.
 

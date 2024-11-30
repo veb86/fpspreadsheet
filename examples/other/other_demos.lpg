@@ -103,6 +103,11 @@
           <Mode Name="Default"/>
         </BuildModes>
       </Target>
+      <Target FileName="pagelayout\demo_pagelayout.lpi">
+        <BuildModes>
+          <Mode Name="Default"/>
+        </BuildModes>
+      </Target>
     </Targets>
   </ProjectGroup>
 </CONFIG>

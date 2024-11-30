@@ -9,6 +9,7 @@ hyperlinkdemo\collectlinks -quit
 ignore_formulas\demo_ignore_formula -quit
 images\demo_write_images -quit
 metadata\demo_metadata -quit
+pagelayout\demo_pagelayout -quit
 protection\demo_protection -quit
 recursive_calculation\demo_recursive_calc -quit
 richtext\demo_richtext_utf8 -quit
