@@ -3916,6 +3916,10 @@ begin
   // Read comment
   comment := Worksheet.ReadComment(cell);
 
+  // Avoid splitting the comment at the '|': draw a unicode character which looks similar.
+  if pos('|', comment) > 0 then
+    comment := StringReplace(comment, '|', #$E2#$94#$82, [rfReplaceAll]);
+
   // Read hyperlink info
   if Worksheet.HasHyperlink(cell) then begin
     hlink := Worksheet.FindHyperlink(cell);
