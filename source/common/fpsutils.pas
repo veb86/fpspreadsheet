@@ -1296,14 +1296,16 @@ end;
   @returns @TRUE when the sheet name must be quoted, @FALSE otherwise
 -------------------------------------------------------------------------------}
 function SheetNameNeedsQuotes(ASheet: String): Boolean;
+const
+  FORMULA_CHARS = ['+', '-', '*', '/', '^'];
 var
   i: Integer;
 begin
   if ASheet <> '' then begin
     Result := true;
-    if (ASheet[1] in ['0'..'9', '.']) then exit;
+    if (ASheet[1] in (['0'..'9', '.'] + FORMULA_CHARS)) then exit;
     for i := 1 to Length(ASheet) do
-      if (ASheet[i] in [' ', '<', '>', '=']) then exit;
+      if (ASheet[i] in ([' ', '<', '>', '='] + FORMULA_CHARS)) then exit;
   end;
   Result := false;
 end;

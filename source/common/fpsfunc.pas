@@ -2840,6 +2840,11 @@ begin
     rtCell:
       begin
         cell := ArgToCell(Args[0]);
+        if cell = nil then
+        begin
+          Result := ErrorResult(errWrongType);
+          exit;
+        end;
         case cell^.ContentType of
           cctUTF8String: searchString := cell^.UTF8StringValue;
           cctNumber: numSearchValue := cell^.NumberValue;
