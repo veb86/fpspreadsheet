@@ -2720,6 +2720,7 @@ begin
     case Args[0].ResultType of
       rtCell   : Result := CellResult(ArgToString(Args[0]));
       rtString : Result := CellResult(Args[0].ResString);
+      rtError  : Result := ErrorResult(Args[0].ResError);
     end;
   (*
   if Length(Args) = 0 then
@@ -2842,7 +2843,7 @@ begin
         cell := ArgToCell(Args[0]);
         if cell = nil then
         begin
-          Result := ErrorResult(errWrongType);
+          Result := ErrorResult(errArgError);
           exit;
         end;
         case cell^.ContentType of
@@ -2850,8 +2851,8 @@ begin
           cctNumber: numSearchValue := cell^.NumberValue;
           cctDateTime: numSearchValue := cell^.DateTimeValue;
           cctBool: numSearchValue := ord(cell^.BoolValue);
-          cctEmpty: begin Result := ErrorResult(errWrongType); exit; end;
-          cctError: begin Result := ErrorResult(errWrongType); exit; end;
+          cctEmpty: begin Result := ErrorResult(errArgError); exit; end;
+          cctError: begin Result := ErrorResult(cell^.ErrorValue); exit; end;
         end;
       end;
     else
