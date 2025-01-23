@@ -490,6 +490,8 @@ begin
 
   if Length(FArgs) = 1 then
   begin
+    if IsError(FArgs[0], AValue) then
+      exit;
     AValue := ErrorResult(errArgError);
     exit;
   end;
@@ -564,6 +566,9 @@ procedure fpsABS(var Result: TsExpressionResult; const Args: TsExprParameterArra
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -575,6 +580,9 @@ procedure fpsACOS(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -589,6 +597,9 @@ procedure fpsACOSH(var Result: TsExpressionResult; const Args: TsExprParameterAr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -603,6 +614,9 @@ procedure fpsASIN(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -617,6 +631,9 @@ procedure fpsASINH(var Result: TsExpressionResult; const Args: TsExprParameterAr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -628,6 +645,9 @@ procedure fpsATAN(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -639,6 +659,9 @@ procedure fpsATANH(var Result: TsExpressionResult; const Args: TsExprParameterAr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -649,27 +672,49 @@ begin
     Result := ErrorResult(errOverflow);   // #NUM!
 end;
 
+{    CEILING( number, significance )
+
+  Returns a number rounded up to a multiple of significance
+
+  - If either argument is nonnumeric, CEILING returns the #VALUE! error value.
+  - Regardless of the sign of number, a value is rounded up when adjusted
+    away from zero.
+  - If number is an exact multiple of significance, no rounding occurs.
+  - If number and significance have different signs, CEILING returns the #NUM! error value.
+}
 procedure fpsCEILING(var Result: TsExpressionResult; const Args: TsExprParameterArray);
-// CEILING( number, significance )
-// returns a number rounded up to a multiple of significance
 var
   num, sig: TsExprFloat;
 begin
-  num := ArgToFloat(Args[0]);
-  sig := ArgToFloat(Args[1]);
-  if IsNaN(num) or IsNaN(sig) then
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+
+  num := ArgToFloatOrNaN(Args[0]);
+  sig := ArgToFloatOrNaN(Args[1]);
+  if IsNaN(num) or IsNaN(sig) then      // non-numeric --> #VALUE!
     Result := ErrorResult(errWrongType)
   else
-  if sig = 0 then
-    Result := ErrorResult(errDivideByZero)
+  if num*sig < 0 then
+    Result := ErrorResult(errOverflow)  // arguments must have same sign, otherwise #NUM!
   else
+  if sig = 0 then
+    Result := FloatResult(0.0)           // as tested in Excel...
+  else
+  begin
+    if sig < 0 then sig := -sig;
     Result := FloatResult(ceil(num/sig)*sig);
+  end;
 end;
 
 procedure fpsCOS(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -681,6 +726,9 @@ procedure fpsCOSH(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -692,6 +740,9 @@ procedure fpsDEGREES(var Result: TsExpressionResult; const Args: TsExprParameter
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -707,32 +758,37 @@ var
   x: TsExprFloat;
   n: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
+  Result := ErrorResult(errWrongType);
   if Args[0].ResultType in [rtCell, rtInteger, rtFloat, rtDateTime, rtEmpty] then begin
     x := ArgToFloat(Args[0]);
-    if IsNaN(x) then
-      Result := ErrorResult(errWrongType)
-    else
-    if x > 0 then
+    if not IsNaN(x) then
     begin
-      n := Trunc(x) + 1;
-      if odd(n) then inc(n);
-    end else
-    if x < 0 then
-    begin
-      n := Trunc(x) - 1;
-      if odd(n) then dec(n);
-    end else
-      n := 0;
-    Result := IntegerResult(n);
-  end
-  else
-    Result := ErrorResult(errWrongType);
+      if x > 0 then
+      begin
+        n := Trunc(x) + 1;
+        if odd(n) then inc(n);
+      end else
+      if x < 0 then
+      begin
+        n := Trunc(x) - 1;
+        if odd(n) then dec(n);
+      end else
+        n := 0;
+      Result := IntegerResult(n);
+    end;
+  end;
 end;
 
 procedure fpsEXP(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -747,6 +803,9 @@ var
   res: TsExprFloat;
   i, n: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   if Args[0].ResultType in [rtCell, rtInteger, rtFloat, rtEmpty, rtDateTime] then
   begin
     res := 1.0;
@@ -765,27 +824,50 @@ begin
     Result := ErrorResult(errWrongType);
 end;
 
+{  FLOOR( number, significance )
+  returns a number rounded down to a multiple of significance
+
+  - If either argument is nonnumeric, FLOOR returns the #VALUE! error value.
+  - If number is positive and significance is negative, FLOOR returns the
+    #NUM! error value.
+  - If the sign of number is positive, a value is rounded down and adjusted
+    toward zero.
+  - If the sign of number is negative, a value is rounded down and adjusted
+    away from zero.
+  - If number is an exact multiple of significance, no rounding occurs.
+}
 procedure fpsFLOOR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
-// FLOOR( number, significance )
-// returns a number rounded down to a multiple of significance
 var
   num, sig: TsExprFloat;
 begin
-  num := ArgToFloat(Args[0]);
-  sig := ArgToFloat(Args[1]);
-  if IsNaN(num) or IsNaN(sig) then
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+
+  num := ArgToFloatOrNaN(Args[0]);
+  sig := ArgToFloatOrNaN(Args[1]);
+  if IsNaN(num) or IsNaN(sig) then      // non-numeric --> #VALUE!
     Result := ErrorResult(errWrongType)
   else
   if sig = 0 then
-    Result := ErrorResult(errDivideByZero)
+    Result := FloatResult(0.0)         // as tested in Excel...
   else
+  if (num > 0) and (sig < 0) then
+    Result := ErrorResult(errOverflow)
+  else
+  begin
     Result := FloatResult(floor(num/sig)*sig);
+  end;
 end;
 
 procedure fpsINT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -797,6 +879,9 @@ procedure fpsLN(var Result: TsExpressionResult; const Args: TsExprParameterArray
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -813,6 +898,9 @@ var
   x: TsExprFloat;
   base: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then begin
     Result := ErrorResult(errWrongType);
@@ -850,6 +938,9 @@ procedure fpsLOG10(var Result: TsExpressionResult; const Args: TsExprParameterAr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)    // #VALUE!
@@ -866,6 +957,11 @@ procedure fpsMOD(var Result: TsExpressionResult; const Args: TsExprParameterArra
 var
   n, m: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+
   n := ArgToInt(Args[0]);
   m := ArgToInt(Args[1]);
   if m = 0 then
@@ -882,6 +978,9 @@ var
   x: TsExprFloat;
   n: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   if Args[0].ResultType in [rtCell, rtInteger, rtFloat, rtDateTime, rtEmpty] then
   begin
     x := ArgToFloat(Args[0]);
@@ -913,6 +1012,11 @@ procedure fpsPOWER(var Result: TsExpressionResult; const Args: TsExprParameterAr
 var
   x, y: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   y := ArgToFloat(Args[1]);
   if IsNaN(x) or IsNaN(y) then
@@ -929,6 +1033,9 @@ procedure fpsRADIANS(var Result: TsExpressionResult; const Args: TsExprParameter
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -956,6 +1063,11 @@ var
   x: TsExprFloat;
   n: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+
   x := ArgToFloat(Args[1]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -993,6 +1105,11 @@ var
   x: TsExprFloat;
   n: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+
   x := ArgToFloat(Args[1]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -1029,6 +1146,11 @@ var
   x: TsExprFloat;
   n: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+
   x := ArgToFloat(Args[1]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -1046,6 +1168,9 @@ procedure fpsSIGN(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -1057,6 +1182,9 @@ procedure fpsSIN(var Result: TsExpressionResult; const Args: TsExprParameterArra
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -1068,6 +1196,9 @@ procedure fpsSINH(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -1079,6 +1210,9 @@ procedure fpsSQRT(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -1093,6 +1227,9 @@ procedure fpsTAN(var Result: TsExpressionResult; const Args: TsExprParameterArra
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -1107,6 +1244,9 @@ procedure fpsTANH(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   x: TsExprFloat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   x := ArgToFloat(Args[0]);
   if IsNaN(x) then
     Result := ErrorResult(errWrongType)
@@ -1119,17 +1259,81 @@ end;
 {   Built-in date/time functions                                               }
 {------------------------------------------------------------------------------}
 
+{ DATE( year, month, day )
+  - If year is between 0 (zero) and 1899 (inclusive), Excel adds that value to
+    1900 to calculate the year.
+    Example, DATE(108,1,2) returns January 2, 2008 (1900+108).
+
+  - If year is less than 0 or is 10000 or greater, Excel returns the #NUM! error value.
+
+  - If month is greater than 12, month adds that number of months to the first
+    month in the year specified.
+    Example, DATE(2008,14,2) returns the serial number representing February 2, 2009.
+
+  - If month is less than 1, month subtracts the magnitude of that number of
+    months, plus 1, from the first month in the year specified.
+    Example, DATE(2008,-3,2) returns the serial number representing September 2, 2007
+
+  - day is greater than the number of days in the month specified, day adds
+    that number of days to the first day in the month.
+    Example, DATE(2008,1,35) returns the serial number representing February 4, 2008.
+
+  - If day is less than 1, day subtracts the magnitude that number of days, plus one,
+    from the first day of the month specified.
+    Example, DATE(2008,1,-15) returns the serial number representing December 16, 2007
+}
 procedure fpsDATE(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
-// DATE( year, month, day )
+var
+  refDate: TDate;
+  yr, mn, dy, tmp, daysInMon: Integer;
+  y, m, d: Word;
 begin
-  Result := DateTimeResult(
-    EncodeDate(ArgToInt(Args[0]), ArgToInt(Args[1]), ArgToInt(Args[2]))
-  );
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+  if IsError(Args[2], Result) then
+    exit;
+
+  yr := ArgToInt(Args[0]);
+  mn := ArgToInt(Args[1]);
+  dy := ArgToInt(Args[2]);
+
+  // Handle 2-digit years and "overflow" years
+  if (yr < 0) or (yr > 9999) then
+  begin
+    Result := ErrorResult(errOverFlow);
+    exit;
+  end;
+  if (yr < 1900) then
+    inc(yr, 1900);
+
+  // Handle "normal, correct" date
+  if InRange(mn, 1, 12) and InRange(dy, 1, DaysInMonth(mn)) then
+  begin
+    refDate := EncodeDate(yr, mn, dy);
+  end
+  else
+  // No month overflow, but day overflow
+  if InRange(mn, 1, 12) then
+    refDate := EncodeDate(yr, mn, 1) + dy-1
+  else
+  begin
+    // Month overflow
+    y := yr;
+    m := 1;
+    d := 1;
+    IncAMonth(y, m, d, mn-1);
+    refDate := Encodedate(y, m, d);
+    if InRange(dy, 1, DaysInMonth(m)) then  // No day overflow
+      refDate := refdate + (dy - d)
+    else // day overflow
+      refDate := refdate + dy - 1;
+  end;
+  Result := DateTimeResult(refDate);
 end;
 
-procedure fpsDATEDIF(var Result: TsExpressionResult;
-  const Args: TsExprParameterArray);
 { DATEDIF( start_date, end_date, interval )
     start_date <= end_date !
     interval = Y  - The number of complete years.
@@ -1138,10 +1342,19 @@ procedure fpsDATEDIF(var Result: TsExpressionResult;
              = MD - The difference between the days (months and years are ignored).
              = YM - The difference between the months (days and years are ignored).
              = YD - The difference between the days (years and dates are ignored). }
+procedure fpsDATEDIF(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
 var
   interval: String;
   start_date, end_date: TDate;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+  if IsError(Args[2], Result) then
+    exit;
+
   start_date := ArgToDateTime(Args[0]);
   end_date := ArgToDateTime(Args[1]);
   if IsNaN(start_date) or IsNaN(end_date) then begin
@@ -1162,25 +1375,31 @@ begin
     Result := ErrorResult(errFormulaNotSupported);
 end;
 
-procedure fpsDATEVALUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // Returns the serial number of a date. Input is a string.
 // DATE( date_string )
+procedure fpsDATEVALUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   d: TDateTime;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   if TryStrToDate(Args[0].ResString, d) then
     Result := DateTimeResult(d)
   else
-    Result := ErrorResult(errWrongType);
+    Result := ErrorResult(errWrongType);      // #VALUE!
 end;
 
-procedure fpsDAY(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // DAY( date_value )
 // date_value can be a serial number or a string
+procedure fpsDAY(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   y,m,d: Word;
   dt: TDateTime;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := ErrorResult(errWrongType);
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
@@ -1192,13 +1411,16 @@ begin
   end;
 end;
 
-procedure fpsHOUR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // HOUR( time_value )
 // time_value can be a number or a string.
+procedure fpsHOUR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   h, m, s, ms: Word;
   dt: TDateTime;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := ErrorResult(errWrongType);
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
@@ -1210,12 +1432,15 @@ begin
   end;
 end;
 
-procedure fpsMINUTE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // MINUTE( serial_number or string )
+procedure fpsMINUTE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   h, m, s, ms: Word;
   dt: TDateTime;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := ErrorResult(errWrongType);
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
@@ -1233,6 +1458,9 @@ var
   y,m,d: Word;
   dt: TDateTime;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := ErrorResult(errWrongType);
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
@@ -1259,6 +1487,9 @@ var
   h, m, s, ms: Word;
   dt: TDateTime;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := ErrorResult(errWrongType);
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
@@ -1270,12 +1501,37 @@ begin
   end;
 end;
 
+{ TIME( hour, minute, second)
+  - hour: A number from 0 (zero) to 32767 representing the hour. Any value >23
+     will be divided by 24 and the remainder will be treated as the hour value.
+     For example, TIME(27,0,0) = TIME(3,0,0) = .125 or 3:00 AM.
+  - minute: A number from 0 to 32767 representing the minute. Any value > 59
+     will be converted to hours and minutes.
+     For example, TIME(0,750,0) = TIME(12,30,0) = .520833 or 12:30 PM.
+  - second: A number from 0 to 32767 representing the second. Any value > 59
+     will be converted to hours, minutes, and seconds.
+     For example, TIME(0,0,2000) = TIME(0,33,22) = .023148 or 12:33:20 AM }
 procedure fpsTIME(var Result: TsExpressionResult; const Args: TsExprParameterArray);
-// TIME( hour, minute, second)
+var
+  hr, min, sec: Integer;
+  t: Double;
 begin
-  Result := DateTimeResult(
-    EncodeTime(ArgToInt(Args[0]), ArgToInt(Args[1]), ArgToInt(Args[2]), 0)
-  );
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+  if IsError(Args[2], Result) then
+    exit;
+
+  hr := ArgToInt(Args[0]);
+  min := ArgToInt(Args[1]);
+  sec := ArgToInt(Args[2]);
+
+  t := (hr + min/60 + sec/3600) / 24;
+  if t >= 0 then
+    Result := DateTimeResult(t)
+  else
+    Result := ErrorResult(errOverFlow);  // #NUM!
 end;
 
 procedure fpsTIMEVALUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -1284,6 +1540,9 @@ procedure fpsTIMEVALUE(var Result: TsExpressionResult; const Args: TsExprParamet
 var
   t: TDateTime;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   if TryStrToTime(Args[0].ResString, t) then
     Result := DateTimeResult(t)
   else
@@ -1309,10 +1568,15 @@ var
   dow: Integer;
   dt: TDateTime;
 begin
+  if IsError(Args[0], Result) then
+    exit;
   Result := ErrorResult(errWrongType);
   if Length(Args) = 2 then
-    n := ArgToInt(Args[1])
-  else
+  begin
+    if IsError(Args[1], Result) then
+      exit;
+    n := ArgToInt(Args[1]);
+  end else
     n := 1;
   dt := NaN;
   if Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtCell, rtString] then
@@ -1335,6 +1599,9 @@ var
   y,m,d: Word;
   dt: TDateTime;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := ErrorResult(errWrongType);
   if (Args[0].ResultType in [rtDateTime, rtFloat, rtInteger, rtString, rtCell]) then
   begin
@@ -1357,6 +1624,9 @@ procedure fpsCHAR(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   arg: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := ErrorResult(errWrongType);
   case Args[0].ResultType of
     rtInteger, rtFloat:
@@ -1380,6 +1650,9 @@ var
   s: String;
   ch: Char;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   s := ArgToString(Args[0]);
   if s = '' then
     Result := ErrorResult(errWrongType)
@@ -1400,11 +1673,8 @@ begin
   s := '';
   for i:=0 to Length(Args)-1 do
   begin
-    if Args[i].ResultType = rtError then
-    begin
-      Result := ErrorResult(Args[i].ResError);
+    if IsError(Args[i], Result) then
       exit;
-    end;
     s := s + ArgToString(Args[i]);
   end;
   Result := StringResult(s);
@@ -1416,6 +1686,11 @@ procedure fpsEXACT(var Result: TsExpressionResult; const Args: TsExprParameterAr
 var
   s1, s2: String;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+
   s1 := ArgToString(Args[0]);
   s2 := ArgToString(Args[1]);
   Result := BooleanResult(s1 = s2);
@@ -1428,6 +1703,11 @@ var
   s: String;
   count: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if (Length(Args) > 1) and IsError(Args[1], Result) then
+    exit;
+
   s := ArgToString(Args[0]);
   if s = '' then
     Result := EmptyResult
@@ -1451,6 +1731,8 @@ procedure fpsLEN(var Result: TsExpressionResult; const Args: TsExprParameterArra
 // LEN( text )
 //  returns the length of the specified string.
 begin
+  if IsError(Args[0], Result) then
+    exit;
   Result := IntegerResult(UTF8Length(ArgToString(Args[0])));
 end;
 
@@ -1459,6 +1741,8 @@ procedure fpsLOWER(var Result: TsExpressionResult; const Args: TsExprParameterAr
 // converts all letters in the specified string to lowercase. If there are
 // characters in the string that are not letters, they are not affected.
 begin
+  if IsError(Args[0], Result) then
+    exit;
   Result := StringResult(UTF8Lowercase(ArgToString(Args[0])));
 end;
 
@@ -1466,6 +1750,12 @@ procedure fpsMID(var Result: TsExpressionResult; const Args: TsExprParameterArra
 // MID( text, start_position, number_of_characters )
 // extracts a substring from a string (starting at any position).
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+  if IsError(Args[2], Result) then
+    exit;
   Result := StringResult(UTF8Copy(ArgToString(Args[0]), ArgToInt(Args[1]), ArgToInt(Args[2])));
 end;
 
@@ -1477,6 +1767,14 @@ var
   start: Integer;
   count: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+  if IsError(Args[2], Result) then
+    exit;
+  if IsError(Args[3], Result) then
+    exit;
   sOld := Args[0].ResString;
   start := ArgToInt(Args[1]);
   count := ArgToInt(Args[2]);
@@ -1493,6 +1791,10 @@ var
   s: String;
   count: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
   s := ArgToString(Args[0]);
   if s = '' then
     Result.ResultType := rtEmpty
@@ -1510,6 +1812,11 @@ var
   s: String;
   count: Integer;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if (Length(Args) > 1) and IsError(Args[1], Result) then
+    exit;
+
   s := ArgToString(Args[0]);
   if s = '' then
     Result := EmptyResult
@@ -1540,11 +1847,20 @@ var
   s: String;
   p: Integer;
 begin
-  s := ArgToString(Args[0]);
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+  if IsError(Args[2], Result) then
+    exit;
+  if (Length(Args) > 3) and IsError(Args[3], Result) then
+    exit;
   sOld := ArgToString(Args[1]);
   sNew := ArgToString(Args[2]);
   if Length(Args) = 4 then
   begin
+    if IsError(Args[3], Result) then
+      exit;
     n := ArgToInt(Args[3]);               // THIS PART NOT YET CHECKED !!!!!!
     if n <= 0 then
     begin
@@ -1573,6 +1889,10 @@ var
   fmt: String;
   value: double;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
   value := ArgToFloat(Args[0]);
   fmt := ArgToString(Args[1]);
   if IsDateTimeFormat(fmt) then
@@ -1585,6 +1905,8 @@ procedure fpsTRIM(var Result: TsExpressionResult; const Args: TsExprParameterArr
 // TRIM( text )
 // Returns a text value with the leading and trailing spaces removed
 begin
+  if IsError(Args[0], Result) then
+    exit;
   Result := StringResult(UTF8Trim(ArgToString(Args[0])));
 end;
 
@@ -1593,6 +1915,8 @@ procedure fpsUPPER(var Result: TsExpressionResult; const Args: TsExprParameterAr
 // converts all letters in the specified string to uppercase. If there are
 // characters in the string that are not letters, they are not affected.
 begin
+  if IsError(Args[0], Result) then
+    exit;
   Result := StringResult(UTF8Uppercase(ArgToString(Args[0])));
 end;
 
@@ -1604,6 +1928,8 @@ var
   n: Integer;
   s: String;
 begin
+  if IsError(Args[0], Result) then
+    exit;
   s := ArgToString(Args[0]);
   if TryStrToInt(s, n) then
     Result := IntegerResult(n)
@@ -1622,34 +1948,45 @@ end;
 {    Built-in logical functions                                                }
 {------------------------------------------------------------------------------}
 
-procedure fpsAND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // AND( condition1, [condition2], ... )
 // up to 30 parameters. At least 1 parameter.
+procedure fpsAND(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   i: Integer;
   b: Boolean;
 begin
   b := true;
   for i:=0 to High(Args) do
+  begin
+    if IsError(Args[i], Result) then
+      exit;
     if not ArgToBoolean(Args[i]) then begin
       b := false;
       break;
     end;
+  end;
   Result.ResBoolean := b;
 end;
 
-procedure fpsFALSE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // FALSE ()
+procedure fpsFALSE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
   Unused(Args);
   Result.ResBoolean := false;
 end;
 
-procedure fpsIF(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // IF( condition, value_if_true, [value_if_false] )
+procedure fpsIF(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+
   if Length(Args) > 2 then
   begin
+    if IsError(Args[2], Result) then
+      exit;
     if ArgToBoolean(Args[0]) then
       Result := Args[1]
     else
@@ -1673,6 +2010,8 @@ begin
     exit;                            // --> If not, exit with argument eror
   i:=0;
   while(i < Length(Args)-1) do begin
+    if IsError(Args[i], Result) then
+      exit;
     if ArgToBoolean(Args[i]) then
     begin
       Result := Args[i+1];
@@ -1682,30 +2021,36 @@ begin
   end;
 end;
 
-procedure fpsNOT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // NOT( condition )
+procedure fpsNOT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
+  if IsError(Args[0], Result) then
+    exit;
   Result.ResBoolean := not ArgToBoolean(Args[0]);
 end;
 
-procedure fpsOR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // OR( condition1, [condition2], ... )
 // up to 30 parameters. At least 1 parameter.
+procedure fpsOR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   i: Integer;
   b: Boolean;
 begin
   b := false;
   for i:=0 to High(Args) do
+  begin
+    if IsError(Args[i], Result) then
+      exit;
     if ArgToBoolean(Args[i]) then begin
       b := true;
       break;
     end;
+  end;
   Result.ResBoolean := b;
 end;
 
-procedure fpsTRUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // TRUE()
+procedure fpsTRUE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
   Unused(Args);
   Result.ResBoolean := true;
@@ -1716,9 +2061,9 @@ end;
 {    Built-in statistical functions                                            }
 {------------------------------------------------------------------------------}
 
-procedure fpsAVEDEV(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // Average value of absolute deviations of data from their mean.
 // AVEDEV( value1, [value2, ... value_n] )
+procedure fpsAVEDEV(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   data: TsExprFloatArray;
   m: TsExprFloat;
@@ -1752,10 +2097,10 @@ begin
     Result.ResFloat := Mean(data);
 end;
 
-procedure fpsCOUNT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 { counts the number of cells that contain numbers as well as the number of
   arguments that contain numbers.
     COUNT( value1, [value2, ... value_n] )  }
+procedure fpsCOUNT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   data: TsExprFloatArray;
   err: TsErrorValue;
@@ -1767,10 +2112,10 @@ begin
     Result.ResInteger := Length(data);
 end;
 
-procedure fpsCOUNTA(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // Counts the number of cells that are not empty as well as the number of
 // arguments that contain values
 //   COUNTA( value1, [value2, ... value_n] )
+procedure fpsCOUNTA(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   i, n: Integer;
   r, c: Cardinal;
@@ -1784,6 +2129,8 @@ begin
   for i:=0 to High(Args) do
   begin
     arg := Args[i];
+    if IsError(arg, Result) then
+      exit;
     case arg.ResultType of
       rtInteger, rtFloat, rtDateTime, rtBoolean:
         inc(n);
@@ -1825,15 +2172,17 @@ begin
   Result.ResInteger := n;
 end;
 
-procedure fpsCOUNTBLANK(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 { Counts the number of empty cells in a range.
     COUNTBLANK( range )
   "range" is the range of cells to count empty cells. }
+procedure fpsCOUNTBLANK(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   n: Integer;
   r, c: Cardinal;
   cell: PCell;
 begin
+  if IsError(Args[0], Result) then
+    exit;
   n := 0;
   case Args[0].ResultType of
     rtEmpty:
@@ -1867,7 +2216,6 @@ begin
   Result.ResInteger := n;
 end;
 
-procedure fpsAVERAGEIF(var AResult: TsExpressionresult; const Args: TsExprParameterArray);
 { Calculates the average value of the cell values if they meet a given condition.
     AVERAGEIF( range, condition, [ave_range] )
   - "range" is the cell range to be analyzed
@@ -1875,6 +2223,7 @@ procedure fpsAVERAGEIF(var AResult: TsExpressionresult; const Args: TsExprParame
     (in the former two cases a value is counted if equal to the criteria value)
   - "ave_range" - option for the values to be added; if missing the values in
     "range" are used.}
+procedure fpsAVERAGEIF(var AResult: TsExpressionresult; const Args: TsExprParameterArray);
 var
   cmp: TsFuncComparer;
   vr, cr, c: Integer;
@@ -1909,12 +2258,12 @@ begin
   end;
 end;
 
-procedure fpsCOUNTIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray);
 { Counts the number of cells in a range that meets a given condition.
     COUNTIF( range, condition )
   - "range" is the cell range to be analyzed
   - "condition" can be a cell, a value or a string starting with a symbol like ">" etc.
     (in the former two cases a value is counted if equal to the criteria value) }
+procedure fpsCOUNTIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cmp: TsFuncComparer;
 begin
@@ -1926,7 +2275,6 @@ begin
   end;
 end;
 
-procedure fpsCOUNTIFS(var AResult: TsExpressionresult; const Args: TsExprParameterArray);
 { Calculates the count value of the (numeric) cell values if they meet the specified condition.
     COUNTIFS(count_range, criteria_range, criteria [, criteria_range, criteria, ...])
   - "count_range" is the range over which the cells are counted.
@@ -1934,6 +2282,7 @@ procedure fpsCOUNTIFS(var AResult: TsExpressionresult; const Args: TsExprParamet
   - "criteria" can be a cell, a value or a string starting with a symbol like ">" etc.
     (in the former two cases a value is counted if equal to the criteria value)
 }
+procedure fpsCOUNTIFS(var AResult: TsExpressionresult; const Args: TsExprParameterArray);
 var
   cmp: TsFuncComparer;
 begin
@@ -1945,7 +2294,6 @@ begin
   end;
 end;
 
-procedure fpsSUMIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray);
 { Adds the cell values if they meet a given condition.
     SUMIF( range, condition, [sum_range] )
   - "range" is the cell range to be analyzed
@@ -1953,10 +2301,18 @@ procedure fpsSUMIF(var AResult: TsExpressionResult; const Args: TsExprParameterA
     (in the former two cases a value is counted if equal to the criteria value)
   - "sum_range" - option for the values to be added; if missing the values in
     "range" are used.}
+procedure fpsSUMIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cmp: TsFuncComparer;
   vr, cr, c: Integer;
 begin
+  if IsError(Args[0], AResult) then
+    exit;
+  if IsError(Args[1], AResult) then
+    exit;
+  if (Length(Args) = 3) and IsError(Args[0], AResult) then
+    exit;
+
   cr := 0;   // First criteria range arg index
   c := 1;    // First criteria arg index
   if Length(Args) = 2 then
@@ -2229,6 +2585,11 @@ var
   cell: PCell;
   cellfmt: TsCellFormat;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if (Length(Args) = 2) and IsError(Args[1], Result) then
+    exit;
+
   if Length(Args)=1 then
   begin
     // This case is not supported by us, but it is by Excel.
@@ -2355,11 +2716,11 @@ begin
     Result := ErrorResult(errWrongType);
 end;
 
-procedure fpsERRORTYPE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 //  ERROR.TYPE(value)
 // returns the numeric representation of one of the errors in Excel.
 // "value" can be one of the following Excel error values
-//   #NULL! 	#DIV/0! 	#VALUE! 	#REF! 	#NAME? 	#NUM!   #N/A 	#GETTING_DATA
+//   #NULL!  #DIV/0!  #VALUE!  #REF!  #NAME?  #NUM!  #N/A  #GETTING_DATA
+procedure fpsERRORTYPE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
   if (Args[0].ResultType = rtError) and (ord(Args[0].ResError) <= ord(errArgError))
   then
@@ -2368,15 +2729,18 @@ begin
     Result := EmptyResult; //ErrorResult(errArgError);
 end;
 
-procedure fpsISBLANK(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 //  ISBLANK( value )
 // Checks for blank or null values.
 // "value" is the value that you want to test.
 // If "value" is blank, this function will return TRUE.
 // If "value" is not blank, the function will return FALSE.
+procedure fpsISBLANK(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cell: PCell;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := BooleanResult(false);
   case Args[0].ResultType of
     rtEmpty : Result := BooleanResult(true);
@@ -2389,10 +2753,10 @@ begin
   end;
 end;
 
-procedure fpsISERR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // ISERR( value )
 // If "value" is an error value (except #N/A), this function will return TRUE.
 // Otherwise, it will return FALSE.
+procedure fpsISERR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cell: PCell;
 begin
@@ -2407,10 +2771,10 @@ begin
     Result := BooleanResult(true);
 end;
 
-procedure fpsISERROR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // ISERROR( value )
 // If "value" is an error value (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?
 // or #NULL), this function will return TRUE. Otherwise, it will return FALSE.
+procedure fpsISERROR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cell: PCell;
 begin
@@ -2425,10 +2789,10 @@ begin
     Result := BooleanResult(true);
 end;
 
-procedure fpsIFERROR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // IFERROR( value; value_if_error )
 // If "value" is an error value (#N/A, #VALUE!, #REF!, #DIV/0!, #NUM!, #NAME?
 // or #NULL), this function will return Args[1]. Otherwise, it will return Args[0].
+procedure fpsIFERROR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cell: PCell;
 begin
@@ -2445,11 +2809,14 @@ begin
     Result := Args[0];
 end;
 
-procedure fpsISLOGICAL(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // ISLOGICAL( value )
+procedure fpsISLOGICAL(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cell: PCell;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := BooleanResult(false);
   if (Args[0].ResultType = rtCell) then
   begin
@@ -2461,10 +2828,10 @@ begin
     Result := BooleanResult(true);
 end;
 
-procedure fpsISNA(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // ISNA( value )
 // If "value" is a #N/A error value , this function will return TRUE.
 // Otherwise, it will return FALSE.
+procedure fpsISNA(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cell: PCell;
 begin
@@ -2479,11 +2846,14 @@ begin
     Result := BooleanResult(true);
 end;
 
-procedure fpsISNONTEXT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // ISNONTEXT( value )
+procedure fpsISNONTEXT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cell: PCell;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := BooleanResult(false);
   if (Args[0].ResultType = rtCell) then
   begin
@@ -2495,12 +2865,15 @@ begin
     Result := BooleanResult(true);
 end;
 
-procedure fpsISNUMBER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // ISNUMBER( value )
 // Tests "value" for a number (or date/time - checked with Excel).
+procedure fpsISNUMBER(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cell: PCell;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+
   Result := BooleanResult(false);
   if (Args[0].ResultType = rtCell) then
   begin
@@ -2512,17 +2885,21 @@ begin
     Result := BooleanResult(true);
 end;
 
-procedure fpsISREF(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // ISREF( value )
+procedure fpsISREF(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
+  if IsError(Args[0], Result) then
+    exit;
   Result := BooleanResult(Args[0].ResultType in [rtCell, rtCellRange]);
 end;
 
-procedure fpsISTEXT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // ISTEXT( value )
+procedure fpsISTEXT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
   cell: PCell;
 begin
+  if IsError(Args[0], Result) then
+    exit;
   Result := BooleanResult(false);
   if (Args[0].ResultType = rtCell) then
   begin
@@ -2539,16 +2916,16 @@ end;
 {    Builtin lookup/reference functions                                        }
 {------------------------------------------------------------------------------}
 
-procedure fpsADDRESS(var Result: TsExpressionResult;
-  const ARgs: TsExprParameterArray);
 { ADDRESS(row, column, [ref_type], [ref_style], [sheet_name] )
   Returns a text representation of a cell address.
-  "row" and "col": row and column indices, 1-based.
+  "row" and "column": row and column indices, 1-based.
   "ref_type" is the type of reference to use: 1=absolute, 2=rel col, abs row,
     3= abs col, rel row, 4=relative; if omitted, 1 (absolute) is assumed.
   "ref_style" if true (default) means: address in A1 dialect, otherwise in R1C1.
   "sheet_name": name of the worksheet. Note, when sheet_name is used the
     address is presented in Excel dialects only. }
+procedure fpsADDRESS(var Result: TsExpressionResult;
+  const ARgs: TsExprParameterArray);
 var
   c, r: Integer;
   flags: TsRelFlags;
@@ -2556,6 +2933,17 @@ var
   resStr: String;
   A1Dialect: Boolean;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+  if (Length(Args) > 2) and IsError(Args[2], Result) then
+    exit;
+  if (Length(Args) > 3) and IsError(Args[3], Result) then
+    exit;
+  if (Length(Args) > 4) and IsError(Args[4], Result) then
+    exit;
+
   Result := ErrorResult(errArgError);
   if Length(Args) < 2 then
     exit;
@@ -2590,14 +2978,16 @@ begin
   Result := StringResult(resStr);
 end;
 
-procedure fpsCOLUMN(var Result: TsExpressionResult;
-  const Args: TsExprParameterArray);
 { COLUMN( [reference] )
   Returns the column number of a cell reference (starting at 1!)
   "reference" is a reference to a cell or range of cells.
   If omitted, it is assumed that the reference is the cell address in which the
   COLUMN function has been entered in. }
+procedure fpsCOLUMN(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
 begin
+  if IsError(Args[0], Result) then
+    exit;
   Result := ErrorResult(errArgError);
   if Length(Args) = 0 then
     exit;  // We don't know here which cell contains the formula.
@@ -2611,7 +3001,12 @@ end;
 procedure fpsHYPERLINK(var Result: TsExpressionResult;
   const Args: TsExprParameterArray);
 begin
-  if Args[0].ResultType = rtError then
+  if IsError(Args[0], Result) then
+    exit;
+  if (Length(Args) > 1) and IsError(Args[1], Result) then
+    exit;
+
+{  if Args[0].ResultType = rtError then
   begin
     Result := ErrorResult(errWrongType);
     exit;
@@ -2621,6 +3016,7 @@ begin
     Result := ErrorResult(errWrongType);
     exit;
   end;
+  }
   Result.ResString := ArgToString(Args[0]);
   if Length(Args) > 1 then Result.ResString := Result.ResString + HYPERLINK_SEPARATOR + ArgToString(Args[1]);
   Result.ResultType := rtHyperlink;
@@ -2639,6 +3035,13 @@ var
   row: Int64;  // dto.
   book: TsWorkbook;
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if IsError(Args[1], Result) then
+    exit;
+  if (Length(Args) > 2) and IsError(Args[2], Result) then
+    exit;
+
   Result := ErrorResult(errArgError);
   if Length(Args) < 2 then
     exit;
@@ -2698,8 +3101,6 @@ begin
   Result.ResSheetName := book.GetWorksheetByIndex(rng.Sheet1).Name;
 end;
 
-procedure fpsINDIRECT(var Result: TsExpressionResult;
-  const Args: TsExprParameterArray);
 { INDIRECT(string_reference, [ref_style])
   returns the reference to a cell based on its string representation
   "string_reference": textual representation of a cell reference.
@@ -2708,13 +3109,14 @@ procedure fpsINDIRECT(var Result: TsExpressionResult;
   interpreted as an R1C1-style reference.
 
   NOTE: ref_style and mixing of A1 and R1C1 notation is not supported. }
-{
-var
-  sheet: TsWorksheet;
-  book: TsWorkbook;
-  addr: String;
-}
+procedure fpsINDIRECT(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
 begin
+  if IsError(Args[0], Result) then
+    exit;
+  if (Length(Args) > 1) and IsError(Args[1], Result) then
+    exit;
+
   Result := ErrorResult(errArgError);
   if Length(Args) > 0 then
     case Args[0].ResultType of
@@ -2722,30 +3124,8 @@ begin
       rtString : Result := CellResult(Args[0].ResString);
       rtError  : Result := ErrorResult(Args[0].ResError);
     end;
-  (*
-  if Length(Args) = 0 then
-    exit;
-
-  if (Args[0].ResultType = rtCell) then begin
-    if Args[0].ResSheetIndex = -1 then
-      sheet := TsWorksheet(Args[0].Worksheet)
-    else
-    begin
-      book := TsWorksheet(Args[0].Worksheet).Workbook;
-      sheet := book.GetWorksheetByIndex(Args[0].ResSheetIndex);
-      Result.Worksheet := sheet;
-    end;
-    addr := sheet.ReadAsText(Args[0].ResRow, Args[0].ResCol);
-    Result := CellResult(addr);
-  end else
-  if (Args[0].ResultType = rtString) then
-    Result := CellResult(Args[0].ResString);
-   *)
 end;
 
-
-procedure fpsMATCH(var Result: TsExpressionResult;
-  const Args: TsExprParameterArray);
 { MATCH( value, array, [match_type]
    match_type = 1 (default): The MATCH function will find the largest value
      that is less than or equal to value. You should be sure to sort your
@@ -2755,7 +3135,10 @@ procedure fpsMATCH(var Result: TsExpressionResult;
    match_type = -1: The MATCH function will find the smallest value that is
      greater than or equal to value. You should be sure to sort your array in
      descending order.
-   Return value is the 1-based index in the array. }
+   Return value is the 1-based index in the array.
+}
+procedure fpsMATCH(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
 var
   match_type: Integer;
   searchString: String;
@@ -2803,9 +3186,18 @@ var
 begin
   Result := ErrorResult(errArgError);
 
+  if Length(Args) > 0 then
+    if IsError(Args[0], Result) then
+      exit;
+  if Length(Args) > 1 then
+    if IsError(Args[1], Result) then
+      exit;
   if Length(Args) > 2 then
+  begin
+    if IsError(Args[2], Result) then
+      exit;
     match_type := ArgToInt(Args[2])
-  else
+  end else
     match_type := 1;
   if not ((match_type in [0, 1]) or (match_type = -1)) then
     match_type := 1;
@@ -2882,17 +3274,19 @@ begin
   // If the procedure gets here, not match has been found --> return error #N/A
 end;
 
-procedure fpsROW(var Result: TsExpressionResult;
-  const Args: TsExprParameterArray);
 { ROW( [reference] )
   Returns the row number of a cell reference (starting at 1!)
   "reference" is a reference to a cell or range of cells.
   If omitted, it is assumed that the reference is the cell address in which the
   ROW function has been entered in. }
+procedure fpsROW(var Result: TsExpressionResult;
+  const Args: TsExprParameterArray);
 begin
   Result := ErrorResult(errArgError);
   if Length(Args) = 0 then
     exit;  // We don't know here which cell contains the formula.
+  if IsError(Args[0], Result) then
+    exit;
   case Args[0].ResultType of
     rtCell     : Result := IntegerResult(Args[0].ResRow + 1);
     rtCellRange: Result := IntegerResult(Args[0].ResCellRange.Row1 + 1);

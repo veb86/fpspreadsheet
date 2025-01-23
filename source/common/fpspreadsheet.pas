@@ -194,6 +194,7 @@ type
     function  ReadBiDiMode(ACell: PCell): TsBiDiMode;
     function  ReadCellProtection(ACell: PCell): TsCellProtections;
     function  ReadDoNotPrintCell(ACell: PCell): Boolean;
+    function  IsTrueValue(ACell: PCell): Boolean;
 
     function IsEmpty: Boolean;
 

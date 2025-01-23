@@ -118,6 +118,13 @@ begin
   end;
 end;
 
+{@@ ----------------------------------------------------------------------------
+  Returns TRUE only if the cell value is a boolean with value TRUE.
+-------------------------------------------------------------------------------}
+function TsWorksheet.IsTrueValue(ACell: PCell): Boolean;
+begin
+  Result := (ACell <> nil) and (ACell^.ContentType = cctBool) and ACell^.BoolValue;
+end;
 
 {@@ ----------------------------------------------------------------------------
   Determines which borders are drawn around a specific cell

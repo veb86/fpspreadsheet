@@ -522,7 +522,7 @@ type
     FArgumentNodes: TsExprArgumentArray;
     FargumentParams: TsExprParameterArray;
   protected
-    function CalcParams: TsErrorValue;
+    procedure CalcParams;
   public
     constructor CreateFunction(AParser: TsExpressionParser;
       AID: TsExprIdentifierDef; const Args: TsExprArgumentArray); virtual;
@@ -858,9 +858,9 @@ function BuiltinIdentifiers: TsBuiltInExpressionManager;
 function ArgToBoolean(Arg: TsExpressionResult): Boolean;
 function ArgToCell(Arg: TsExpressionResult): PCell;
 function ArgToDateTime(Arg: TsExpressionResult): TDateTime;
-function ArgToError(Arg: TsExpressionResult): TsErrorValue;
 function ArgToInt(Arg: TsExpressionResult): Integer;
 function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
+function ArgToFloatOrNaN(Arg: TsExpressionResult): TsExprFloat;
 function ArgToString(Arg: TsExpressionResult): String;
 procedure ArgsToFloatArray(const Args: TsExprParameterArray;
   out AData: TsExprFloatArray; out AError: TsErrorValue);
@@ -875,6 +875,7 @@ function ErrorResult(const AValue: TsErrorValue): TsExpressionResult;
 function FloatResult(const AValue: TsExprFloat): TsExpressionResult;
 function IntegerResult(const AValue: Integer): TsExpressionResult;
 function IsBlank(const AValue: TsExpressionResult): Boolean;
+function IsError(const AValue: TsExpressionResult; out AError: TsExpressionResult): boolean;
 function IsInteger(const AValue: TsExpressionResult): Boolean;
 function IsString(const AValue: TsExpressionResult): Boolean;
 function StringResult(const AValue: String): TsExpressionResult;
@@ -4134,21 +4135,13 @@ begin
   Result := FID.Name + S;
 end;
 
-function TsFunctionExprNode.CalcParams: TsErrorValue;
+procedure TsFunctionExprNode.CalcParams;
 var
   i : Integer;
 begin
   for i := 0 to Length(FArgumentParams)-1 do
     if FArgumentNodes[i] <> nil then
-    begin
       FArgumentNodes[i].GetNodeValue(FArgumentParams[i]);
-      if FArgumentParams[i].ResultType = rtError then
-      begin
-        Result := FArgumentParams[i].ResError;
-        exit;
-      end;
-    end;
-  Result := errOK;
 end;
 
 procedure TsFunctionExprNode.Check;
@@ -4219,19 +4212,10 @@ begin
 end;
 
 procedure TsFunctionCallBackExprNode.GetNodeValue(out AResult: TsExpressionResult);
-var
-  err: TsErrorValue = errOK;
 begin
   AResult.ResultType := NodeType;
   if Length(FArgumentParams) > 0 then
-  begin
-    err := CalcParams;
-    if err <> errOK then
-    begin
-      AResult := ErrorResult(err);
-      exit;
-    end;
-  end;
+    CalcParams;
   FCallBack(AResult, FArgumentParams)
 end;
 
@@ -4246,19 +4230,10 @@ begin
 end;
 
 procedure TFPFunctionEventHandlerExprNode.GetNodeValue(out AResult: TsExpressionResult);
-var
-  err: TsErrorValue = errOK;
 begin
   AResult.ResultType := NodeType;
   if Length(FArgumentParams) > 0 then
-  begin
-    err := CalcParams;
-    if err <> errOK then
-    begin
-      AResult := ErrorResult(err);
-      exit;
-    end;
-  end;
+    CalcParams;
   FCallBack(AResult, FArgumentParams)
 end;
 
@@ -4874,7 +4849,7 @@ begin
     rtInteger   : result := Arg.ResInteger;
     rtDateTime  : result := Arg.ResDateTime;
     rtFloat     : result := Arg.ResFloat;
-    rtBoolean   : if Arg.ResBoolean then Result := 1.0;
+    rtBoolean   : if Arg.ResBoolean then Result := 1.0 else Result := 0.0;
     rtString,
     rtHyperlink : TryStrToFloat(ArgToString(Arg), Result);
     rtError     : Result := NaN;
@@ -4887,7 +4862,7 @@ begin
                         cctDateTime:
                           Result := cell^.DateTimeValue;
                         cctBool:
-                          if cell^.BoolValue then result := 1.0;
+                          if cell^.BoolValue then Result := 1.0 else Result := 0.0;
                         cctUTF8String:
                           begin
                             fs := (Arg.Worksheet as TsWorksheet).Workbook.FormatSettings;
@@ -4899,6 +4874,47 @@ begin
                           Result := NaN;
                        end;
                   end;
+  end;
+end;
+
+{ Converts the expression result to a floating point value. Unlike ArgToFloat,
+  the return value is NaN in case of non-numeric results.
+  Booleans are rejected, strings are accepted only when they represent a number.
+  DateTimes are accepted. }
+function ArgToFloatOrNaN(Arg: TsExpressionResult): TsExprFloat;
+var
+  cell: PCell;
+  s: String;
+  fs: TFormatSettings;
+begin
+  Result := NaN;
+  case Arg.ResultType of
+    rtInteger   : Result := Arg.ResInteger;
+    rtDateTime  : Result := Arg.ResDateTime;
+    rtFloat     : Result := Arg.ResFloat;
+    rtString,
+    rtHyperlink : if not TryStrToFloat(ArgToString(Arg), Result, fs) then Result := NaN;
+    rtCell      : begin
+                    cell := ArgToCell(Arg);
+                    if Assigned(cell) then
+                      case cell^.ContentType of
+                        cctNumber:
+                          Result := cell^.NumberValue;
+                        cctDateTime:
+                          Result := cell^.DateTimeValue;
+                        cctUTF8String:
+                          begin
+                            fs := (Arg.Worksheet as TsWorksheet).Workbook.FormatSettings;
+                            s := cell^.UTF8StringValue;
+                            if not TryStrToFloat(s, Result, fs) then
+                              Result := NaN;
+                          end;
+                        otherwise      // bool, error
+                          ;
+                       end;
+                  end;
+    otherwise  // bool, error
+      ;
   end;
 end;
 
@@ -4927,20 +4943,29 @@ begin
   end;
 end;
 
-function ArgToError(Arg: TsExpressionResult): TsErrorValue;
+{ Returns true, if AValue contains an error result, and the error result code
+  is passed on to AError.
+  Otherweise the return value is false, and AError is undefined. }
+function IsError(const AValue: TsExpressionResult; out AError: TsExpressionResult): Boolean;
 var
   cell: PCell;
 begin
-  Result := errOK;
-  if Arg.ResultType = rtError then
-    Result := Arg.ResError
-  else
-  if Arg.ResultType = rtCell then
+  Result := true;
+  if AValue.ResultType = rtError then
   begin
-    cell := ArgToCell(Arg);
-    if Assigned(cell) and (cell^.ContentType = cctError) then
-      Result := cell^.ErrorValue;
+    AError := ErrorResult(AValue.ResError);
+    exit;
   end;
+  if AValue.ResultType = rtCell then
+  begin
+    cell := ArgToCell(AValue);
+    if Assigned(cell) and (cell^.ContentType = cctError) then
+    begin
+      AError := ErrorResult(cell^.ErrorValue);
+      exit;
+    end;
+  end;
+  Result := false;
 end;
 
 function ArgToString(Arg: TsExpressionResult): String;
