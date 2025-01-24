@@ -2070,7 +2070,7 @@ var
   i: Integer;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
+  ArgsToFloatArray(Args, true, data, err);
   if err <> errOK then begin
     Result := ErrorResult(err);
     exit;
@@ -2087,14 +2087,14 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
+  ArgsToFloatArray(Args, true, data, err);
   if Length(data) = 0 then
     Result := ErrorResult(errDivideByZero)
   else
-  if err <> errOK then
-    Result := ErrorResult(err)
+  if err = errOK then
+    Result.ResFloat := Mean(data)
   else
-    Result.ResFloat := Mean(data);
+    Result := ErrorResult(err);
 end;
 
 { counts the number of cells that contain numbers as well as the number of
@@ -2105,11 +2105,8 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
-  if err <> errOK then
-    Result := ErrorResult(err)
-  else
-    Result.ResInteger := Length(data);
+  ArgsToFloatArray(Args, false, data, err);
+  Result := IntegerResult(Length(data));
 end;
 
 // Counts the number of cells that are not empty as well as the number of
@@ -2352,11 +2349,11 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
-  if err <> errOK then
-    Result := ErrorResult(err)
+  ArgsToFloatArray(Args, true, data, err);
+  if err = errOK then
+    Result.ResFloat := MaxValue(data)
   else
-    Result.ResFloat := MaxValue(data);
+    Result := ErrorResult(err);
 end;
 
 procedure fpsMIN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2365,11 +2362,11 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
-  if err <> errOK then
-    Result := ErrorResult(err)
+  ArgsToFloatArray(Args, true, data, err);
+  if err = errOK then
+    Result.ResFloat := MinValue(data)
   else
-    Result.ResFloat := MinValue(data);
+    Result := ErrorResult(err);
 end;
 
 procedure fpsPRODUCT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2380,7 +2377,7 @@ var
   p: TsExprFloat;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
+  ArgsToFloatArray(Args, true, data, err);
   if err <> errOK then begin
     Result := ErrorResult(err);
     exit;
@@ -2400,7 +2397,7 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
+  ArgsToFloatArray(Args, true, data, err);
   if err <> errOK then begin
     Result := ErrorResult(err);
     exit;
@@ -2422,7 +2419,7 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
+  ArgsToFloatArray(Args, true, data, err);
   if err <> errOK then begin
     Result := ErrorResult(err);
     exit;
@@ -2443,11 +2440,11 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
-  if err <> errOK then
-    Result := ErrorResult(err)
+  ArgsToFloatArray(Args, true, data, err);
+  if err = errOK then
+    Result.ResFloat := Sum(data)
   else
-    Result.ResFloat := Sum(data);
+    Result := ErrorResult(err);
 end;
 
 procedure fpsSUMSQ(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2457,11 +2454,11 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
-  if err <> errOK then
-    Result := ErrorResult(err)
+  ArgsToFloatArray(Args, true, data, err);
+  if err = errOK then
+    Result.ResFloat := SumOfSquares(data)
   else
-    Result.ResFloat := SumOfSquares(data);
+    Result := ErrorResult(err);
 end;
 
 procedure fpsVAR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2471,7 +2468,7 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
+  ArgsToFloatArray(Args,true,  data, err);
   if err <> errOK then
   begin
     Result := ErrorResult(err);
@@ -2494,7 +2491,7 @@ var
   data: TsExprFloatArray;
   err: TsErrorValue;
 begin
-  ArgsToFloatArray(Args, data, err);
+  ArgsToFloatArray(Args, true, data, err);
   if err <> errOK then
   begin
     Result := ErrorResult(err);
@@ -2719,14 +2716,15 @@ end;
 //  ERROR.TYPE(value)
 // returns the numeric representation of one of the errors in Excel.
 // "value" can be one of the following Excel error values
-//   #NULL!  #DIV/0!  #VALUE!  #REF!  #NAME?  #NUM!  #N/A  #GETTING_DATA
+//   #NULL!  #DIV/0!  #VALUE!  #REF!  #NAME?  #NUM!  #N/A  // #GETTING_DATA and newer ones -- not supported
+// When there is no error in the argument the function reports a #N/A error!
 procedure fpsERRORTYPE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
   if (Args[0].ResultType = rtError) and (ord(Args[0].ResError) <= ord(errArgError))
   then
     Result := IntegerResult(ord(Args[0].ResError))
   else
-    Result := EmptyResult; //ErrorResult(errArgError);
+    Result := ErrorResult(errArgError);
 end;
 
 //  ISBLANK( value )
@@ -2738,8 +2736,7 @@ procedure fpsISBLANK(var Result: TsExpressionResult; const Args: TsExprParameter
 var
   cell: PCell;
 begin
-  if IsError(Args[0], Result) then
-    exit;
+  // No check for errors in Args here!
 
   Result := BooleanResult(false);
   case Args[0].ResultType of
@@ -2814,8 +2811,7 @@ procedure fpsISLOGICAL(var Result: TsExpressionResult; const Args: TsExprParamet
 var
   cell: PCell;
 begin
-  if IsError(Args[0], Result) then
-    exit;
+  // No check for errors in Args here!
 
   Result := BooleanResult(false);
   if (Args[0].ResultType = rtCell) then
@@ -2835,6 +2831,8 @@ procedure fpsISNA(var Result: TsExpressionResult; const Args: TsExprParameterArr
 var
   cell: PCell;
 begin
+  // No check for errors in Args here!
+
   Result := BooleanResult(false);
   if (Args[0].ResultType = rtCell) then
   begin
@@ -2851,8 +2849,7 @@ procedure fpsISNONTEXT(var Result: TsExpressionResult; const Args: TsExprParamet
 var
   cell: PCell;
 begin
-  if IsError(Args[0], Result) then
-    exit;
+  // No check for errors in Args here!
 
   Result := BooleanResult(false);
   if (Args[0].ResultType = rtCell) then
@@ -2871,8 +2868,7 @@ procedure fpsISNUMBER(var Result: TsExpressionResult; const Args: TsExprParamete
 var
   cell: PCell;
 begin
-  if IsError(Args[0], Result) then
-    exit;
+  // No check for errors in Args here!
 
   Result := BooleanResult(false);
   if (Args[0].ResultType = rtCell) then
@@ -2888,8 +2884,7 @@ end;
 // ISREF( value )
 procedure fpsISREF(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 begin
-  if IsError(Args[0], Result) then
-    exit;
+  // No check for errors in Args here!
   Result := BooleanResult(Args[0].ResultType in [rtCell, rtCellRange]);
 end;
 
@@ -2898,8 +2893,8 @@ procedure fpsISTEXT(var Result: TsExpressionResult; const Args: TsExprParameterA
 var
   cell: PCell;
 begin
-  if IsError(Args[0], Result) then
-    exit;
+  // No check for errors in Args here!
+
   Result := BooleanResult(false);
   if (Args[0].ResultType = rtCell) then
   begin

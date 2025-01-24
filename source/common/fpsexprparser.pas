@@ -862,7 +862,7 @@ function ArgToInt(Arg: TsExpressionResult): Integer;
 function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
 function ArgToFloatOrNaN(Arg: TsExpressionResult): TsExprFloat;
 function ArgToString(Arg: TsExpressionResult): String;
-procedure ArgsToFloatArray(const Args: TsExprParameterArray;
+procedure ArgsToFloatArray(const Args: TsExprParameterArray; AbortOnError: Boolean;
   out AData: TsExprFloatArray; out AError: TsErrorValue);
 function BooleanResult(AValue: Boolean): TsExpressionResult;
 function CellRangeResult(AWorksheet: TsBasicWorksheet; ASheet1Index, ASheet2Index: Integer;
@@ -3074,14 +3074,14 @@ begin
   Result := false;
 
   FLeft.GetNodeValue(ALeft);
-  if ALeft.ResultType = rtError then
+  if IsError(ALeft, AError) then
   begin
     AError := ErrorResult(ALeft.ResError);
     exit;
   end;
 
   FRight.GetNodeValue(ARight);
-  if ARight.ResultType = rtError then
+  if IsError(ARight, AError) then
   begin
     AError := ErrorResult(ARight.ResError);
     exit;
@@ -5014,7 +5014,7 @@ begin
   end;
 end;
 
-procedure ArgsToFloatArray(const Args: TsExprParameterArray;
+procedure ArgsToFloatArray(const Args: TsExprParameterArray; AbortOnError: Boolean;
   out AData: TsExprFloatArray; out AError: TsErrorValue);
 const
   BLOCKSIZE = 128;
@@ -5023,6 +5023,7 @@ var
   r, c: Cardinal;
   cell: PCell;
   sheet: TsWorksheet;
+  book: TsWorkbook;
   arg: TsExpressionResult;
   idx, idx1, idx2: Integer;
 begin
@@ -5032,10 +5033,40 @@ begin
   for i:=Low(Args) to High(Args) do
   begin
     arg := Args[i];
-    if arg.ResultType = rtError then begin
+    if (arg.ResultType = rtError) and AbortOnError then
+    begin
       AError := arg.ResError;
+      AData := nil;
       exit;
-    end;
+    end else
+    if arg.ResultType = rtCell then
+    begin
+      sheet := arg.Worksheet as TsWorksheet;
+      if arg.ResSheetName <> '' then
+      begin
+        book := sheet.Workbook as TsWorkbook;
+        sheet := book.GetWorksheetByName(arg.ResSheetName);
+      end;
+      cell := sheet.FindCell(arg.ResRow, arg.ResCol);
+      if (cell <> nil) and (cell^.ContentType in [cctNumber, cctDateTime]) then
+      begin
+        case cell^.ContentType of
+          cctNumber:
+            AData[n] := cell^.NumberValue;
+          cctDateTime:
+            AData[n] := cell^.DateTimeValue;
+          cctError:
+            if AbortOnError then
+            begin
+              AError := cell^.ErrorValue;
+              AData := nil;
+              exit;
+            end;
+        end;
+        inc(n);
+        if n = Length(AData) then SetLength(AData, Length(AData) + BLOCKSIZE);
+      end;
+    end else
     if arg.ResultType = rtCellRange then begin
       idx1 := arg.ResCellRange.Sheet1;
       idx2 := arg.ResCellRange.Sheet2;
@@ -5049,8 +5080,17 @@ begin
             if (cell <> nil) and (cell^.ContentType in [cctNumber, cctDateTime]) then
             begin
               case cell^.ContentType of
-                cctNumber   : AData[n] := cell^.NumberValue;
-                cctDateTime : AData[n] := cell^.DateTimeValue
+                cctNumber:
+                  AData[n] := cell^.NumberValue;
+                cctDateTime:
+                  AData[n] := cell^.DateTimeValue;
+                cctError:
+                  if AbortOnError then
+                  begin
+                    AError := cell^.ErrorValue;
+                    AData := nil;
+                    exit;
+                  end;
               end;
               inc(n);
               if n = Length(AData) then SetLength(AData, Length(AData) + BLOCKSIZE);
@@ -5058,7 +5098,7 @@ begin
           end
       end;
     end else
-    if (arg.ResultType in [rtInteger, rtFloat, rtDateTime, rtCell, rtBoolean]) then
+    if (arg.ResultType in [rtInteger, rtFloat, rtDateTime, rtBoolean]) then
     begin
       AData[n] := ArgToFloat(arg);
       inc(n);
