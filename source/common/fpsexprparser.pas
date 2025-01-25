@@ -863,7 +863,7 @@ function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
 function ArgToFloatOrNaN(Arg: TsExpressionResult): TsExprFloat;
 function ArgToString(Arg: TsExpressionResult): String;
 procedure ArgsToFloatArray(const Args: TsExprParameterArray; AbortOnError: Boolean;
-  out AData: TsExprFloatArray; out AError: TsErrorValue);
+  out AData: TsExprFloatArray; out AError: TsErrorValue; out HasLiteralStrings: Boolean);
 function BooleanResult(AValue: Boolean): TsExpressionResult;
 function CellRangeResult(AWorksheet: TsBasicWorksheet; ASheet1Index, ASheet2Index: Integer;
   ARow1, ACol1, ARow2, ACol2: Cardinal): TsExpressionResult; overload;
@@ -4789,15 +4789,28 @@ end;
 function ArgToBoolean(Arg: TsExpressionResult): Boolean;
 var
   cell: PCell;
+  x: Double;
 begin
   Result := false;
+  if Arg.ResultType = rtString then  // All strings result in a #VALUE! error
+    exit;
   if Arg.ResultType = rtBoolean then
     Result := Arg.ResBoolean
   else
   if (Arg.ResultType = rtCell) then begin
     cell := ArgToCell(Arg);
-    if (cell <> nil) and (cell^.ContentType = cctBool) then
-      Result := cell^.BoolValue;
+    if (cell <> nil) then
+      case cell^.ContentType of
+        cctBool:
+          Result := cell^.BoolValue;
+        else
+          x := ArgToFloatOrNaN(Arg);
+          Result := not IsNaN(x) and (x <> 0.0);
+      end;
+  end else
+  begin
+    x := ArgToFloatOrNaN(Arg);
+    Result := not IsNaN(x) and (x <> 0.0);
   end;
 end;
 
@@ -4949,6 +4962,7 @@ end;
 function IsError(const AValue: TsExpressionResult; out AError: TsExpressionResult): Boolean;
 var
   cell: PCell;
+  i, j: Integer;
 begin
   Result := true;
   if AValue.ResultType = rtError then
@@ -5014,8 +5028,18 @@ begin
   end;
 end;
 
+{ Extracts an array of float values (AData) from the expression arguments Args.
+  The variable AError set to an error code when the conversion cannot be
+  performed (errWrongType); when the input argument already contains an error
+  this error code is passed through.
+  AbortOnError determines how arguments with literal string values are handled:
+  When a string cannot be converted to a numerical value and AbortOnError is true
+  the procedure exits with AError = errWrongType; when AbortError is false this
+  argument simply is ignored, but the flag variable HasLiteralstrings is set to true.
+  Non-numeric cell strings are always ignored, AbortOnError is not operative here.
+}
 procedure ArgsToFloatArray(const Args: TsExprParameterArray; AbortOnError: Boolean;
-  out AData: TsExprFloatArray; out AError: TsErrorValue);
+  out AData: TsExprFloatArray; out AError: TsErrorValue; out HasLiteralStrings: Boolean);
 const
   BLOCKSIZE = 128;
 var
@@ -5026,8 +5050,10 @@ var
   book: TsWorkbook;
   arg: TsExpressionResult;
   idx, idx1, idx2: Integer;
+  value: Double;
 begin
   AError := errOK;
+  HasLiteralStrings := false;
   SetLength(AData{%H-}, BLOCKSIZE);
   n := 0;
   for i:=Low(Args) to High(Args) do
@@ -5048,20 +5074,28 @@ begin
         sheet := book.GetWorksheetByName(arg.ResSheetName);
       end;
       cell := sheet.FindCell(arg.ResRow, arg.ResCol);
-      if (cell <> nil) and (cell^.ContentType in [cctNumber, cctDateTime]) then
+      if (cell <> nil) then
       begin
         case cell^.ContentType of
           cctNumber:
             AData[n] := cell^.NumberValue;
           cctDateTime:
             AData[n] := cell^.DateTimeValue;
+          cctUTF8String:
+            if TryStrToFloat(cell^.UTF8StringValue, value) then
+              AData[n] := value
+            else
+              // non-numeric strings in cells are ignored by Excel
+              Continue;
           cctError:
             if AbortOnError then
             begin
               AError := cell^.ErrorValue;
               AData := nil;
               exit;
-            end;
+            end else
+              Continue;
+          else ;
         end;
         inc(n);
         if n = Length(AData) then SetLength(AData, Length(AData) + BLOCKSIZE);
@@ -5077,20 +5111,28 @@ begin
           for c := arg.ResCellRange.Col1 to arg.ResCellRange.Col2 do
           begin
             cell := sheet.FindCell(r, c);
-            if (cell <> nil) and (cell^.ContentType in [cctNumber, cctDateTime]) then
+            if (cell <> nil) then
             begin
               case cell^.ContentType of
                 cctNumber:
                   AData[n] := cell^.NumberValue;
                 cctDateTime:
                   AData[n] := cell^.DateTimeValue;
+                cctUTF8String:
+                  if TryStrToFloat(cell^.UTF8StringValue, value) then
+                    AData[n] := value
+                  else
+                    // non-numeric strings in cells are ignored by Excel
+                    Continue;
                 cctError:
                   if AbortOnError then
                   begin
                     AError := cell^.ErrorValue;
                     AData := nil;
                     exit;
-                  end;
+                  end else
+                    Continue;
+                else ;
               end;
               inc(n);
               if n = Length(AData) then SetLength(AData, Length(AData) + BLOCKSIZE);
@@ -5103,6 +5145,22 @@ begin
       AData[n] := ArgToFloat(arg);
       inc(n);
       if n = Length(AData) then SetLength(AData, Length(AData) + BLOCKSIZE);
+    end else
+    if (arg.ResultType = rtString) then
+    begin
+      HasLiteralStrings := true;
+      if TryStrToFloat(arg.ResString, value) then
+      begin
+        AData[n] := value;
+        inc(n);
+        if n = Length(AData) then SetLength(AData, Length(AData) + BLOCKSIZE);
+      end else
+      if AbortOnError then
+      begin
+        AError := errWrongType;
+        AData := Nil;
+        exit;
+      end;
     end;
   end;
   SetLength(AData, n);

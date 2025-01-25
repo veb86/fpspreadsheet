@@ -20,16 +20,20 @@ type
     procedure TearDown; override;
   published
     procedure Test_ABS;
+    procedure Test_AND;
     procedure Test_AVEDEV;
     procedure Test_AVERAGE;
     procedure Test_CEILING;
     procedure Test_COUNT;
+    procedure Test_COUNTA;
+    procedure Test_COUNTBLANK;
     procedure Test_DATE;
     procedure Test_ERRORTYPE;
     procedure Test_EVEN;
     procedure Test_FLOOR;
     procedure Test_IF;
     procedure Test_IFERROR;
+    procedure Test_INDEX;
     procedure Test_ISBLANK;
     procedure Test_ISERR;
     procedure Test_ISERROR;
@@ -42,6 +46,8 @@ type
     procedure Test_MATCH;
     procedure Test_MAX;
     procedure Test_MIN;
+    procedure Test_NOT;
+    procedure Test_OR;
     procedure Test_PRODUCT;
     procedure Test_ROUND;
     procedure Test_STDEV;
@@ -49,6 +55,8 @@ type
     procedure Test_SUM;
     procedure Test_SUMSQ;
     procedure Test_TIME;
+    procedure Test_VAR;
+    procedure Test_VARP;
   end;
 
 implementation
@@ -91,76 +99,225 @@ begin
   CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula ABS([blank_cell]) result mismatch');
 end;
 
-procedure TCalcFormulaTests.Test_AVEDEV;
+procedure TCalcFormulaTests.Test_AND;
+var
+  cell: PCell;
 begin
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(1=1,2=2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(true, FWorksheet.IsTrueValue(cell), 'Formula #1 AND(1=1,2=2) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(1=2,2=2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #2 AND(1=2,2=2) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(1=1,2=1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #3 AND(1=1,2=1) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(1=2,2=1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #4 AND(1=2,2=1) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(1/0,2=2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(cell), 'Formula #5 AND(1/0,2=2) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(1,TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(true, FWorksheet.IsTrueValue(cell), 'Formula #6 AND(1,TRUE) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(0,TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #7 AND(0,TRUE) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND("0",TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(cell), 'Formula #8 AND("0",TRUE) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND("abc",TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(cell), 'Formula #9 AND("abc",TRUE) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(1/0,1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(cell), 'Formula #10 AND(1/0,1/0) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_AVEDEV;
+const
+  EPS = 1E-8;
+begin
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 1);
+  FWorksheet.WriteNumber (1, 0, -2);
+  FWorksheet.WriteNumber (2, 0, -3);
+  FWorksheet.WriteText   (3, 0, '4');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
   FWorksheet.WriteFormula(0, 1, '=AVEDEV(1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 AVEDEV(1) result mismatch');
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 AVEDEV(1) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=AVEDEV(1,-2,-3,4)');
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(1,-2)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.5, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 AVEDEV(1,-2,-3,4) result mismatch');
+  CheckEquals(1.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #2 AVEDEV(1,-2) result mismatch');
 
-  FWorksheet.WriteNumber(0, 0, 1);
-  FWorksheet.WriteNumber(1, 0, -2);
-  FWorksheet.WriteNumber(2, 0, -3);
-  FWorksheet.WriteNumber(3, 0, 4);
-
-  FWorksheet.WriteFormula(4, 0, '=AVEDEV(A1)');
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV("4")');     // although string considered to be numeric
   FWorksheet.CalcFormulas;
-  CheckEquals(0, FWorksheet.ReadAsNumber(4, 0), 'Formula #3 AVEDEV(A1) result mismatch');
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 AVEDEV("4") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=AVEDEV(A1,A2)');
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(1,-2,-3,"4")');
   FWorksheet.CalcFormulas;
-  CheckEquals(1.5, FWorksheet.ReadAsNumber(4, 0), 'Formula #4 AVEDEV(A1,A2) result mismatch');
+  CheckEquals(2.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #4 AVEDEV(1,2,3,"4") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=AVEDEV(A1:A4)');
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV("abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.5, FWorksheet.ReadAsNumber(4, 0), 'Formula #5 AVEDEV(A1:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 AVEDEV("abc") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=AVEDEV(A1,A2:A4)');
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV("")');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.5, FWorksheet.ReadAsNumber(4, 0), 'Formula #6 AVEDEV(A1,A2:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 AVEDEV("") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=AVEDEV(A1, 1/0, A2)');
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(1,-2,-3,"abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 AVEDEV(A1, 1/0, A2) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 AVEDEV(1,-2,-3,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 AVEDEV(1/0) result mismatch');
+
+  // Cell references
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 AVEDEV(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #8 AVEDEV(A10)(A10=empty) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #9 AVEDEV(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.555555556, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #10 AVEDEV(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.555555556, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #11 AVEDEV(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #12 AVEDEV(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #13 AVEDEV(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #14 AVEDEV(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 AVEDEV(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVEDEV(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 AVEDEV(A1:A6) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_AVERAGE;
 begin
-  FWorksheet.WriteFormula(0, 1, '=AVERAGE(1)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 AVERAGE(1) result mismatch');
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 10);
+  FWorksheet.WriteNumber (1, 0, 20);
+  FWorksheet.WriteNumber (2, 0, 30);
+  FWorksheet.WriteText   (3, 0, '40');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
 
-  FWorksheet.WriteFormula(0, 1, '=AVERAGE(1,2,3,4)');
+  // Literal values
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(10)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.5, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 AVERAGE(1,2,3,4) result mismatch');
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 AVERAGE(10) result mismatch');
 
-  FWorksheet.WriteNumber(0, 0, 1);
-  FWorksheet.WriteNumber(1, 0, 2);
-  FWorksheet.WriteNumber(2, 0, 3);
-  FWorksheet.WriteNumber(3, 0, 4);
-
-  FWorksheet.WriteFormula(4, 0, '=AVERAGE(A1)');
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(10,20)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(4, 0), 'Formula #3 AVERAGE(A1) result mismatch');
+  CheckEquals(15, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 AVERAGE(10,20) result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=AVERAGE(A1,A2)');
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE("40")');     // although string considered to be numeric
   FWorksheet.CalcFormulas;
-  CheckEquals(1.5, FWorksheet.ReadAsNumber(4, 0), 'Formula #4 AVERAGE(A1,A2) result mismatch');
+  CheckEquals(40, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 AVERAGE("40") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=AVERAGE(A1:A4)');
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(10,20,30,"40")');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.5, FWorksheet.ReadAsNumber(4, 0), 'Formula #5 AVERAGE(A1:A4) result mismatch');
+  CheckEquals(25, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 AVERAGE(10,20,30,"40") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=AVERAGE(A1,A2:A4)');
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE("abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.5, FWorksheet.ReadAsNumber(4, 0), 'Formula #6 AVERAGE(A1,A2:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 AVERAGE("abc") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=AVERAGE(A1, 1/0, A2)');
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE("")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 AVERAGE(A1, 1/0, A2) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 AVERAGE("") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(10,20,30,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 AVERAGE(10,20,30,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 AVERAGE(1/0) result mismatch');
+
+  // Cell references
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 AVERAGE(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 AVERAGE(A10)(A10=empty) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(15, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 AVERAGE(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(20, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 AVERAGE(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(20, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 AVERAGE(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(25, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 AVERAGE(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(25, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 AVERAGE(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(25, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 AVERAGE(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 AVERAGE(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 AVERAGE(A:A6) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_CEILING;
@@ -220,52 +377,165 @@ end;
 
 procedure TCalcFormulaTests.Test_COUNT;
 begin
-{
-  FWorksheet.WriteFormula(0, 1, '=COUNT("")');
-  FWorksheet.CalcFormulas;
-  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 COUNT("") result mismatch');
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 10);
+  FWorksheet.WriteNumber (1, 0, 20);
+  FWorksheet.WriteNumber (2, 0, 30);
+  FWorksheet.WriteText   (3, 0, '40');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
 
+  // Count literal values
   FWorksheet.WriteFormula(0, 1, '=COUNT(10)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 COUNT(10) result mismatch');
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 COUNT(10) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=COUNT(20,10,"abc",40)');
   FWorksheet.CalcFormulas;
-  CheckEquals(3, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 COUNT(20,10,"abc",40) result mismatch');
-  }
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 COUNT(20,10,"abc",40) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT("40")');        // although string considered to be numeric
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 COUNT("40") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 COUNT("abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT("")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #5 COUNT("") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT(1/0)');   // argument error does NOT propagate to formula result
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #6 COUNT(1/0) result mismatch');
+
+  // Count in cell references
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 COUNT(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #8 COUNT(A10) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 COUNT(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 COUNT(A1:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1:A4)');   // "real" and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 COUNT(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1:A5)');   // "real" and string  values
+  FWorksheet.CalcFormulas;
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 COUNT(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1:A5,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 COUNT(A1:A5,A8:A10) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1,A2:A5)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 COUNT(A1,A2:A5) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #15 COUNT(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNT(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #15 COUNT(A1:A6) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_COUNTA;
+begin
+  FWorksheet.WriteFormula(0, 1, '=COUNTA("")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 COUNTA("") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNTA(10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 COUNTA(10) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNTA(20,10,"abc",40)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 COUNTA(20,10,"abc",40) result mismatch');
 
   FWorksheet.WriteNumber(0, 0, 20);
   FWorksheet.WriteNumber(1, 0, 10);
   FWorksheet.WriteText(2, 0, 'abc');
   FWorksheet.WriteNumber(3, 0, 40);
 
-  FWorksheet.WriteFormula(4, 1, '=COUNT(A1)');
+  FWorksheet.WriteFormula(4, 1, '=COUNTA(A1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(4, 1), 'Formula #4 COUNT(A1) result mismatch');
+  CheckEquals(1, FWorksheet.ReadAsNumber(4, 1), 'Formula #4 COUNTA(A1) result mismatch');
 
-  FWorksheet.WriteFormula(4, 1, '=COUNT(A10)');
+  FWorksheet.WriteFormula(4, 1, '=COUNTA(A10)');        // A10 is empty
   FWorksheet.CalcFormulas;
-  CheckEquals(0, FWorksheet.ReadAsNumber(4, 1), 'Formula #5 COUNT(A10) result mismatch');
+  CheckEquals(0, FWorksheet.ReadAsNumber(4, 1), 'Formula #5 COUNTA(A10) result mismatch');
 
-  FWorksheet.WriteFormula(4, 1, '=COUNT(A1,A2)');
+  FWorksheet.WriteFormula(4, 1, '=COUNTA(A2,A3)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(4, 1), 'Formula #6 COUNT(A1,A2) result mismatch');
+  CheckEquals(2, FWorksheet.ReadAsNumber(4, 1), 'Formula #6 COUNTA(A2,A3) result mismatch');
 
-  FWorksheet.WriteFormula(4, 1, '=COUNT(A1:A4)');
+  FWorksheet.WriteFormula(4, 1, '=COUNTA(A1:A4)');
   FWorksheet.CalcFormulas;
-  CheckEquals(3, FWorksheet.ReadAsNumber(4, 1), 'Formula #7 COUNT(A1:A4) result mismatch');
+  CheckEquals(4, FWorksheet.ReadAsNumber(4, 1), 'Formula #7 COUNTA(A1:A4) result mismatch');
 
-  FWorksheet.WriteFormula(4, 1, '=COUNT(A1:A10)');
+  FWorksheet.WriteFormula(4, 1, '=COUNTA(A1:A10)');
   FWorksheet.CalcFormulas;
-  CheckEquals(3, FWorksheet.ReadAsNumber(4, 1), 'Formula #8 COUNT(A1:A10) result mismatch');
+  CheckEquals(4, FWorksheet.ReadAsNumber(4, 1), 'Formula #8 COUNTA(A1:A10) result mismatch');
 
-  FWorksheet.WriteFormula(4, 1, '=COUNT(A1,A2:A10)');
+  FWorksheet.WriteFormula(4, 1, '=COUNTA(A1,A2:A10)');
   FWorksheet.CalcFormulas;
-  CheckEquals(3, FWorksheet.ReadAsNumber(4, 1), 'Formula #9 COUNT(A1,A2:A10) result mismatch');
+  CheckEquals(4, FWorksheet.ReadAsNumber(4, 1), 'Formula #9 COUNTA(A1,A2:A10) result mismatch');
 
-  FWorksheet.WriteFormula(4, 1, '=COUNT(A1, 1/0, A2)');
+  FWorksheet.WriteFormula(4, 1, '=COUNTA(A1, 1/0, A3)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(4, 1), 'Formula #10 COUNT(A1, 1/0, A2) result mismatch');
+  CheckEquals(3, FWorksheet.ReadAsNumber(4, 1), 'Formula #10 COUNTA(A1, 1/0, A3) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_COUNTBLANK;
+begin
+  // The next 2 tests are successful, but not accepted by Excel which only wants
+  // a "range" as argument in COUNTBLANK.
+
+  FWorksheet.WriteFormula(0, 1, '=COUNTBLANK("")');     // empty string is not "blank"
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 COUNTBLANK("") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=COUNTBLANK(10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 COUNTBLANK(10) result mismatch');
+
+  // The following tests are conformal to Excel.
+
+  FWorksheet.WriteNumber(0, 0, 20);
+  FWorksheet.WriteText(1, 0, 'abc');
+
+  FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(4, 1), 'Formula #3 COUNTBLANK(A1) result mismatch');
+
+  FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A10)');        // A10 is empty
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(4, 1), 'Formula #4 COUNTBLANK(A10) result mismatch');
+
+  FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A1:A4)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(4, 1), 'Formula #5 COUNTBLANK(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(2, 0, '=1/0');
+  FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A1:A4)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(4, 1), 'Formula #6 COUNTBLANK(A1:A4) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_DATE;
@@ -529,30 +799,42 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals('not ok', FWorksheet.ReadAsText(0, 1), 'Formula #2 IF(A1<100,"ok","not ok") result mismatch');
 
+  FWorksheet.WriteFormula(0, 1, '=IF(1,"ok","not ok")');
+  FWorksheet.CalcFormulas;
+  CheckEquals('ok', FWorksheet.ReadAsText(0, 1), 'Formula #3 IF(1,"ok","not ok") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=IF(0,"ok","not ok")');
+  FWorksheet.CalcFormulas;
+  CheckEquals('not ok', FWorksheet.ReadAsText(0, 1), 'Formula #4 IF(0,"ok","not ok") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=IF("1","ok","not ok")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 IF("1","ok","not ok") result mismatch');
+
   // 2 arguments
   FWorksheet.WriteFormula(0, 1, '=IF(A1>=100,"ok")');
   FWorksheet.CalcFormulas;
-  CheckEquals('ok', FWorksheet.ReadAsText(0, 1), 'Formula #3 IF(A1>=100,"ok") result mismatch');
+  CheckEquals('ok', FWorksheet.ReadAsText(0, 1), 'Formula #6 IF(A1>=100,"ok") result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=IF(A1<100,"ok")');
   FWorksheet.CalcFormulas;
-  CheckEquals('FALSE', FWorksheet.ReadAsText(0, 1), 'Formula #4 IF(A1<100,"ok") result mismatch');
+  CheckEquals('FALSE', FWorksheet.ReadAsText(0, 1), 'Formula #7 IF(A1<100,"ok") result mismatch');
 
   // Error propagation: error in 3rd argument
   FWorksheet.WriteFormula(0, 1, '=IF(A1>=100, "ok", 1/0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #5 IF(A1>=100,"ok",1/0) result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 IF(A1>=100,"ok",1/0) result mismatch');
 
   // Error propagation: error in 2nd argument
   FWorksheet.WriteFormula(0, 1, '=IF(A1>=100, 1/0,"not ok")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #6 IF(A1>=100,1/0,"not ok") result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #9 IF(A1>=100,1/0,"not ok") result mismatch');
 
   // Error propagaton: error in 1st argument
   FWorksheet.WriteFormula(0, 0, '=1/0');
   FWorksheet.WriteFormula(0, 1, '=IF(A1>=100,"ok","not ok")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #7 IF(A1>=100,"ok","not ok") with A1=1/0 result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #10 IF(A1>=100,"ok","not ok") with A1=1/0 result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_IFERROR;
@@ -568,6 +850,62 @@ begin
   FWorksheet.WriteFormula(0, 1, '=IFERROR(#N/A, #DIV/0!)');
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #3 IFERROR(#N/A,#DIV/0!) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_INDEX;
+var
+  sh: TsWorksheet;
+begin
+  // Sample adapted from https://www.ionos.de/digitalguide/online-marketing/verkaufen-im-internet/excel-index-funktion/
+  sh := FWorksheet;
+  sh.WriteText(0, 0, 'Name');   sh.WriteText  (0, 1, '1991');  sh.WriteText  (0, 2, '1992');
+  sh.WriteText(1, 0, 'Peter');  sh.WriteNumber(1, 1, 78);      sh.WriteNumber(1, 2, 81);
+  sh.WriteText(2, 0, 'Frank');  sh.WriteNumber(2, 1, 55);      sh.WriteNumber(2, 2, 66);
+  sh.WriteText(3, 0, 'Louise'); sh.WriteNumber(3, 1, 42);      sh.WriteNumber(3, 2, 59);
+  sh.WriteText(4, 0, 'Valery'); sh.WriteNumber(4, 1, 12);      sh.WriteNumber(4, 2, 33);
+  sh.Writetext(5, 0, 'Eva');    sh.WriteNumber(5, 1, 40);      sh.WriteNumber(5, 2, 66);
+
+  // Cell at third row and first column in range B2:C6
+  FWorksheet.WriteFormula(10, 0, '=INDEX(B2:C6,3,1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(42, FWorksheet.ReadAsNumber(10,0), 'Formula #1 INDEX(B2:F3,3,1) result mismatch');
+
+  // Sample similar to that in unit formulattests:
+
+  FWorksheet.Clear;
+  FWorksheet.WriteText  (0, 0, 'A');     // A1
+  FWorksheet.WriteText  (0, 1, 'B');     // B1
+  FWorksheet.WriteText  (0, 2, 'C');     // C1
+  FWorksheet.WriteNumber(1, 0,  10);     // A2
+  FWorksheet.WriteNumber(1, 1,  20);     // B2
+  FWorksheet.WriteNumber(1, 2,  30);     // C2
+  FWorksheet.WriteNumber(2, 0,  11);     // A3
+  FWorksheet.WriteNumber(2, 1,  22);     // B3
+  FWorksheet.WriteNumber(2, 2,  33);     // C4
+
+  FWorksheet.WriteFormula(0, 5, 'INDEX(A1:C3,1,1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('A', FWorksheet.ReadAsText(0, 5), 'Formula #1 INDEX(A1:C3,1,1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 5, 'INDEX(A1:C1,3)');
+  FWorksheet.CalcFormulas;
+  CheckEquals('C', FWorksheet.ReadAsText(0, 5), 'Formula #2 INDEX(A1:C1,3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 5, 'INDEX(A1:A3,2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 5), 'Formula #3 INDEX(A1:A3,3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 5, 'INDEX(A1:C2,1,10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 5), 'Formula #4 INDEX(A1:C2,1,10) result mismatch');
+
+  FWorksheet.WriteFormula(0, 5, 'SUM(INDEX(A1:C3,0,2))');  // Sum of numbers in 2nd column of A1:C3
+  FWorksheet.CalcFormulas;
+  CheckEquals(42, FWorksheet.ReadAsNumber(0, 5), 'Formula #5 SUM(INDEX(A1:C3,0,2)) result mismatch');
+
+  FWorksheet.WriteFormula(0, 5, 'SUM(INDEX(A1:C3,2,0))');  // Sum of numbers in 2nd row of A1:C3
+  FWorksheet.CalcFormulas;
+  CheckEquals(60, FWorksheet.ReadAsNumber(0, 5), 'Formula #5 SUM(INDEX(A1:C3,2,0)) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_ISBLANK;
@@ -1163,78 +1501,349 @@ begin
     // ArgError because search value is not found
 end;
 
-procedure TCalcFormulaTests.Test_MIN;
-begin
-  FWorksheet.WriteFormula(0, 1, '=MIN(10)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 MIN(10) result mismatch');
-
-  FWorksheet.WriteFormula(0, 1, '=MIN(20,10,30,40)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 MIN(10,20,30,40) result mismatch');
-
-  FWorksheet.WriteNumber(0, 0, 20);
-  FWorksheet.WriteNumber(1, 0, 10);
-  FWorksheet.WriteNumber(2, 0, 30);
-  FWorksheet.WriteNumber(3, 0, 40);
-
-  FWorksheet.WriteFormula(4, 0, '=MIN(A1)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(20, FWorksheet.ReadAsNumber(4, 0), 'Formula #3 MIN(A1) result mismatch');
-
-  FWorksheet.WriteFormula(4, 0, '=MIN(A1,A2)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(10, FWorksheet.ReadAsNumber(4, 0), 'Formula #4 MIN(A1,A2) result mismatch');
-
-  FWorksheet.WriteFormula(4, 0, '=MIN(A1:A4)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(10, FWorksheet.ReadAsNumber(4, 0), 'Formula #5 MIN(A1:A4) result mismatch');
-
-  FWorksheet.WriteFormula(4, 0, '=MIN(A1,A2:A4)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(10, FWorksheet.ReadAsNumber(4, 0), 'Formula #6 MIN(A1,A2:A4) result mismatch');
-
-  FWorksheet.WriteFormula(4, 0, '=MIN(A1, 1/0, A2)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 MIN(A1, 1/0, A2) result mismatch');
-end;
-
 procedure TCalcFormulaTests.Test_MAX;
 begin
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 10);
+  FWorksheet.WriteNumber (1, 0, 20);
+  FWorksheet.WriteNumber (2, 0, 30);
+  FWorksheet.WriteText   (3, 0, '40');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
   FWorksheet.WriteFormula(0, 1, '=MAX(10)');
   FWorksheet.CalcFormulas;
   CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 MAX(10) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=MAX(20,10,30,40)');
+  FWorksheet.WriteFormula(0, 1, '=MAX(10,20)');
   FWorksheet.CalcFormulas;
-  CheckEquals(40, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 MAX(10,20,30,40) result mismatch');
+  CheckEquals(20, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 MAX(10,20) result mismatch');
 
-  FWorksheet.WriteNumber(0, 0, 20);
-  FWorksheet.WriteNumber(1, 0, 10);
-  FWorksheet.WriteNumber(2, 0, 30);
-  FWorksheet.WriteNumber(3, 0, 40);
-
-  FWorksheet.WriteFormula(4, 0, '=MAX(A1)');
+  FWorksheet.WriteFormula(0, 1, '=MAX("40")');     // although string considered to be numeric
   FWorksheet.CalcFormulas;
-  CheckEquals(20, FWorksheet.ReadAsNumber(4, 0), 'Formula #3 MAX(A1) result mismatch');
+  CheckEquals(40, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 MAX("40") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=MAX(A1,A2)');
+  FWorksheet.WriteFormula(0, 1, '=MAX(10,20,30,"40")');
   FWorksheet.CalcFormulas;
-  CheckEquals(20, FWorksheet.ReadAsNumber(4, 0), 'Formula #4 MAX(A1,A2) result mismatch');
+  CheckEquals(40, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 MAX(10,20,30,"40") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=MAX(A1:A4)');
+  FWorksheet.WriteFormula(0, 1, '=MAX("abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(40, FWorksheet.ReadAsNumber(4, 0), 'Formula #5 MAX(A1:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 MAX("abc") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=MAX(A1,A2:A4)');
+  FWorksheet.WriteFormula(0, 1, '=MAX("")');
   FWorksheet.CalcFormulas;
-  CheckEquals(40, FWorksheet.ReadAsNumber(4, 0), 'Formula #6 MAX(A1,A2:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 MAX("") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=MAX(A1, 1/0, A2)');
+  FWorksheet.WriteFormula(0, 1, '=MAX(10,20,30,"abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 MAX(A1, 1/0, A2) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 MAX(10,20,30,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MAX(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 MAX(1/0) result mismatch');
+
+  // Cell references
+  FWorksheet.WriteFormula(0, 1, '=MAX(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 MAX(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MAX(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #8 MAX(A10) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MAX(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(20, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 MAX(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MAX(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 MAX(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MAX(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 MAX(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=MAX(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(40, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 MAX(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MAX(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(40, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 MAX(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MAX(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(40, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 MAX(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=MAX(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 MAX(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MAX(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 MAX(A:A6) result mismatch');
 end;
 
+procedure TCalcFormulaTests.Test_MIN;
+begin
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 10);
+  FWorksheet.WriteNumber (1, 0, 20);
+  FWorksheet.WriteNumber (2, 0, 30);
+  FWorksheet.WriteText   (3, 0, '-40');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
+  FWorksheet.WriteFormula(0, 1, '=MIN(10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 MIN(10) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(10,20)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 MIN(10,20) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN("40")');     // although string considered to be numeric
+  FWorksheet.CalcFormulas;
+  CheckEquals(40, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 MIN("40") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(10,20,30,"40")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 MIN(10,20,30,"40") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 MIN("abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN("")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 MIN("") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(10,20,30,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 MIN(10,20,30,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MAX(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 MAX(1/0) result mismatch');
+
+  // Cell references
+  FWorksheet.WriteFormula(0, 1, '=MIN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 MIN(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #8 MIN(A10) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 MIN(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 MIN(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 MIN(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=MIN(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(-40, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 MIN(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(-40, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 MIN(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(-40, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 MIN(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=MIN(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 MIN(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=MIN(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 MIN(A:A6) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_NOT;
+var
+  cell: PCell;
+begin
+  cell := FWorksheet.WriteFormula(0, 1, 'NOT(1=1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #1 NOT(1=1) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'NOT(1=2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(true, FWorksheet.IsTrueValue(cell), 'Formula #2 NOT(1=2) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'NOT(0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(true, FWorksheet.IsTrueValue(cell), 'Formula #3 NOT(0) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'NOT(1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #4 NOT(1) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'NOT(12)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #5 NOT(12) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'NOT("0")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(cell), 'Formula #6 NOT("0") result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'NOT("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(cell), 'Formula #7 NOT("abc") result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'NOT(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(cell), 'Formula #8 NOT(1/0) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_OR;
+var
+  cell: PCell;
+begin
+  cell := FWorksheet.WriteFormula(0, 1, 'OR(1=1,2=2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(true, FWorksheet.IsTrueValue(cell), 'Formula #1 OR(1=1,2=2) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'OR(1=2,2=2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(true, FWorksheet.IsTrueValue(cell), 'Formula #2 OR(1=2,2=2) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'OR(1=1,2=1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(true, FWorksheet.IsTrueValue(cell), 'Formula #3 OR(1=1,2=1) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'OR(1=2,2=1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #4 OR(1=2,2=1) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'OR(1/0,2=2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(cell), 'Formula #5 OR(1/0,2=2) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'OR(1,TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(true, FWorksheet.IsTrueValue(cell), 'Formula #6 OR(1,TRUE) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'OR(0,FALSE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(false, FWorksheet.IsTrueValue(cell), 'Formula #7 OR(0,TRUE) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'OR("0",TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(cell), 'Formula #8 OR("0",TRUE) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'OR("abc",TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(cell), 'Formula #9 OR("abc",TRUE) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'OR(1/0,1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(cell), 'Formula #10 OR(1/0,1/0) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_PRODUCT;
+begin
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 1);
+  FWorksheet.WriteNumber (1, 0, 2);
+  FWorksheet.WriteNumber (2, 0, 3);
+  FWorksheet.WriteText   (3, 0, '4');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 PRODUCT(1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(1,2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 PRODUCT(1,2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT("4")');     // although string considered to be numeric
+  FWorksheet.CalcFormulas;
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 PRODUCT("4") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(1,2,3,"4")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(24, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 PRODUCT(1,2,3,"4") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 PRODUCT("abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT("")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 PRODUCT("") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(1,2,3,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 PRODUCT(1,2,3,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 PRODUCT(1/0) result mismatch');
+
+  // Count in cell references
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 PRODUCT(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #8 PRODUCT(A10) (A10 = empty) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 PRODUCT(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(6, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 PRODUCT(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(6, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 PRODUCT(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(24, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 PRODUCT(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(24, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 PRODUCT(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(24, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 PRODUCT(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 PRODUCT(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 PRODUCT(A:A6) result mismatch');
+end;
+(*
 procedure TCalcFormulaTests.Test_PRODUCT;
 begin
   FWorksheet.WriteFormula(0, 1, '=PRODUCT(1)');
@@ -1270,7 +1879,7 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 PRODUCT(A1, 1/0, A2) result mismatch');
 end;
-
+     *)
 procedure TCalcFormulaTests.Test_ROUND;
 begin
   // Round positive value.
@@ -1315,147 +1924,357 @@ begin
 end;
 
 procedure TCalcFormulaTests.Test_STDEV;
+const
+  EPS = 1E-8;
 begin
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 1);
+  FWorksheet.WriteNumber (1, 0, -2);
+  FWorksheet.WriteNumber (2, 0, -3);
+  FWorksheet.WriteText   (3, 0, '4');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
   FWorksheet.WriteFormula(0, 1, '=STDEV(1)');
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #1 STDEV(1) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=STDEV(1,-2,-3,4)');
+  FWorksheet.WriteFormula(0, 1, '=STDEV(1,-2)');
   FWorksheet.CalcFormulas;
-  CheckEquals(3.16227766, FWorksheet.ReadAsNumber(0, 1), 1E-8, 'Formula #2 STDEV(1,-2,-3,4) result mismatch');
+  CheckEquals(2.121320344, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #2 STDEV(1,-2) result mismatch');
 
-  FWorksheet.WriteNumber(0, 0, 1);
-  FWorksheet.WriteNumber(1, 0, -2);
-  FWorksheet.WriteNumber(2, 0, -3);
-  FWorksheet.WriteNumber(3, 0, 4);
-
-  FWorksheet.WriteFormula(4, 0, '=STDEV(A1)');
+  FWorksheet.WriteFormula(0, 1, '=STDEV("4")');     // although string considered to be numeric
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #3 STDEV(A1) result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #3 STDEV("4") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=STDEV(A1,A2)');
+  FWorksheet.WriteFormula(0, 1, '=STDEV(1,-2,-3,"4")');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.121320344, FWorksheet.ReadAsNumber(4, 0), 1E-8, 'Formula #4 STDEV(A1,A2) result mismatch');
+  CheckEquals(3.16227766, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #4 STDEV(1,2,3,"4") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=STDEV(A1:A4)');
+  FWorksheet.WriteFormula(0, 1, '=STDEV("abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(3.16227766, FWorksheet.ReadAsNumber(4, 0), 1E-8, 'Formula #5 STDEV(A1:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 STDEV("abc") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=STDEV(A1,A2:A4)');
+  FWorksheet.WriteFormula(0, 1, '=STDEV("")');
   FWorksheet.CalcFormulas;
-  CheckEquals(3.16227766, FWorksheet.ReadAsNumber(4, 0), 1E-8, 'Formula #6 STDEV(A1,A2:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 STDEV("") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=STDEV(A1, 1/0, A2)');
+  FWorksheet.WriteFormula(0, 1, '=STDEV(1,-2,-3,"abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 STDEV(A1, 1/0, A2) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 STDEV(1,-2,-3,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEV(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 STDEV(1/0) result mismatch');
+
+  // Cell references
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #7 STDEV(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 STDEV(A10)(A10=empty) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.121320344, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #9 STDEV(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.081665999, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #10 STDEV(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.081665999, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #11 STDEV(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(3.16227766, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #12 STDEV(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(3.16227766, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #13 STDEV(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(3.16227766, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #14 STDEV(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 STDEV(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEV(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 STDEV(A:A6) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_STDEVP;
+const
+  EPS = 1E-8;
 begin
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 1);
+  FWorksheet.WriteNumber (1, 0, -2);
+  FWorksheet.WriteNumber (2, 0, -3);
+  FWorksheet.WriteText   (3, 0, '4');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
   FWorksheet.WriteFormula(0, 1, '=STDEVP(1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 STDEVP(1) result mismatch');
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 STDEVP(1) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=STDEVP(1,-2,-3,4)');
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(1,-2)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.738612788, FWorksheet.ReadAsNumber(0, 1), 1E-8, 'Formula #2 STDEVP(1,-2,-3,4) result mismatch');
+  CheckEquals(1.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #2 STDEVP(1,-2) result mismatch');
 
-  FWorksheet.WriteNumber(0, 0, 1);
-  FWorksheet.WriteNumber(1, 0, -2);
-  FWorksheet.WriteNumber(2, 0, -3);
-  FWorksheet.WriteNumber(3, 0, 4);
-
-  FWorksheet.WriteFormula(4, 0, '=STDEVP(A1)');
+  FWorksheet.WriteFormula(0, 1, '=STDEVP("4")');     // although string considered to be numeric
   FWorksheet.CalcFormulas;
-  CheckEquals(0, FWorksheet.ReadAsNumber(4, 0), 'Formula #3 STDEVP(A1) result mismatch');
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 STDEVP("4") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=STDEVP(A1,A2)');
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(1,-2,-3,"4")');
   FWorksheet.CalcFormulas;
-  CheckEquals(1.5, FWorksheet.ReadAsNumber(4, 0), 1E-8, 'Formula #4 STDEVP(A1,A2) result mismatch');
+  CheckEquals(2.738612788, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #4 STDEVP(1,2,3,"4") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=STDEVP(A1:A4)');
+  FWorksheet.WriteFormula(0, 1, '=STDEVP("abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.738612788, FWorksheet.ReadAsNumber(4, 0), 1E-8, 'Formula #5 STDEVP(A1:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 STDEVP("abc") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=STDEVP(A1,A2:A4)');
+  FWorksheet.WriteFormula(0, 1, '=STDEVP("")');
   FWorksheet.CalcFormulas;
-  CheckEquals(2.738612788, FWorksheet.ReadAsNumber(4, 0), 1E-8, 'Formula #6 STDEVP(A1,A2:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 STDEVP("") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=STDEVP(A1, 1/0, A2)');
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(1,-2,-3,"abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 STDEVP(A1, 1/0, A2) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 STDEVP(1,-2,-3,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 STDEVP(1/0) result mismatch');
+
+  // Cell references
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 STDEVP(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 STDEVP(A10)(A10=empty) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #9 STDEVP(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.699673171, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #10 STDEVP(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(1.699673171, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #11 STDEVP(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.738612788, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #12 STDEVP(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.738612788, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #13 STDEVP(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.738612788, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #14 STDEVP(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 STDEVP(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=STDEVP(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 STDEVP(A:A6) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_SUM;
 begin
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 10);
+  FWorksheet.WriteNumber (1, 0, 20);
+  FWorksheet.WriteNumber (2, 0, 30);
+  FWorksheet.WriteText   (3, 0, '40');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
   FWorksheet.WriteFormula(0, 1, '=SUM(10)');
   FWorksheet.CalcFormulas;
   CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 SUM(10) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=SUM(10,20,30,40)');
+  FWorksheet.WriteFormula(0, 1, '=SUM(10,20)');
   FWorksheet.CalcFormulas;
-  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 SUM(10,20,30,40) result mismatch');
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 SUM(10,20) result mismatch');
 
-  FWorksheet.WriteNumber(0, 0, 10);
-  FWorksheet.WriteNumber(1, 0, 20);
-  FWorksheet.WriteNumber(2, 0, 30);
-  FWorksheet.WriteNumber(3, 0, 40);
-
-  FWorksheet.WriteFormula(4, 0, '=SUM(A1)');
+  FWorksheet.WriteFormula(0, 1, '=SUM("40")');     // although string considered to be numeric
   FWorksheet.CalcFormulas;
-  CheckEquals(10, FWorksheet.ReadAsNumber(4, 0), 'Formula #3 SUM(A1) result mismatch');
+  CheckEquals(40, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 SUM("40") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=SUM(A1,A2)');
+  FWorksheet.WriteFormula(0, 1, '=SUM(10,20,30,"40")');
   FWorksheet.CalcFormulas;
-  CheckEquals(30, FWorksheet.ReadAsNumber(4, 0), 'Formula #4 SUM(A1,A2) result mismatch');
+  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 SUM(10,20,30,"40") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=SUM(A1:A4)');
+  FWorksheet.WriteFormula(0, 1, '=SUM("abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(100, FWorksheet.ReadAsNumber(4, 0), 'Formula #5 SUM(A1:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 SUM("abc") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=SUM(A1,A2:A4)');
+  FWorksheet.WriteFormula(0, 1, '=SUM("")');
   FWorksheet.CalcFormulas;
-  CheckEquals(100, FWorksheet.ReadAsNumber(4, 0), 'Formula #6 SUM(A1,A2:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 SUM("") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=SUM(A1, 1/0, A2)');
+  FWorksheet.WriteFormula(0, 1, '=SUM(10,20,30,"abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 SUM(A1, 1/0, A2) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 SUM(10,20,30,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 SUM(1/0) result mismatch');
+
+  // Count in cell references
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 SUM(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #8 SUM(A10) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 SUM(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(60, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 SUM(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(60, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 SUM(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 SUM(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 SUM(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(100, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 SUM(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 SUM(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUM(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 SUM(A:A6) result mismatch');
 end;
 
+{ Counts the sum of numeric elements.
+  Cases checked with Excel }
 procedure TCalcFormulaTests.Test_SUMSQ;
 begin
+  // Test data
+  FWorksheet.WriteNumber(0, 0, 1);
+  FWorksheet.WriteNumber(1, 0, 2);
+  FWorksheet.WriteNumber(2, 0, 3);
+  FWorksheet.WriteText  (3, 0, '4');
+  FWorksheet.WriteText  (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
   FWorksheet.WriteFormula(0, 1, '=SUMSQ(1)');
   FWorksheet.CalcFormulas;
   CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 SUMSQ(1) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=SUMSQ(1,2,3,4)');
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(1,2)');
   FWorksheet.CalcFormulas;
-  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 SUMSQ(1,2,3,4) result mismatch');
+  CheckEquals(5, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 SUMSQ(1,2) result mismatch');
 
-  FWorksheet.WriteNumber(0, 0, 1);
-  FWorksheet.WriteNumber(1, 0, 2);
-  FWorksheet.WriteNumber(2, 0, 3);
-  FWorksheet.WriteNumber(3, 0, 4);
-
-  FWorksheet.WriteFormula(4, 0, '=SUMSQ(A1)');
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ("4")');     // although string considered to be numeric
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(4, 0), 'Formula #3 SUMSQ(A1) result mismatch');
+  CheckEquals(16, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 SUMSQ("4") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=SUMSQ(A1,A2)');
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(1,2,3,"4")');
   FWorksheet.CalcFormulas;
-  CheckEquals(5, FWorksheet.ReadAsNumber(4, 0), 'Formula #4 SUMSQ(A1,A2) result mismatch');
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 SUMSQ(1,2,3,"4") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=SUMSQ(A1:A4)');
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ("abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(30, FWorksheet.ReadAsNumber(4, 0), 'Formula #5 SUMSQ(A1:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 SUMSQ("abc") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=SUMSQ(A1,A2:A4)');
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ("")');
   FWorksheet.CalcFormulas;
-  CheckEquals(30, FWorksheet.ReadAsNumber(4, 0), 'Formula #6 SUMSQ(A1,A2:A4) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 SUMSQ("") result mismatch');
 
-  FWorksheet.WriteFormula(4, 0, '=SUMSQ(A1, 1/0, A2)');
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(1,2,3,"abc")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 SUMSQ(A1, 1/0, A2) result mismatch');
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 SUMSQ(1,2,3,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 SUMSQ(1/0) result mismatch');
+
+  // Count in cell references
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 SUMSQ(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #8 SUMSQ(A10) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(5, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 SUMSQ(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(14, FWorksheet.ReadAsNumber(0, 1), 'Formula #10 SUMSQ(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(14, FWorksheet.ReadAsNumber(0, 1), 'Formula #11 SUMSQ(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A4)');   // "real" and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #12 SUMSQ(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A5)');   // "real" and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #13 SUMSQ(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(30, FWorksheet.ReadAsNumber(0, 1), 'Formula #14 SUMSQ(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A5,1/0)');     // error in argument --> error in result
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 SUMSQ(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=SUMSQ(A1:A6)');        // error in cell --> error in result
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 SUMSQ(A1:A6) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_TIME;
@@ -1523,6 +2342,184 @@ begin
   FWorksheet.WriteFormula(0, 1, '=Time(6,32,1/0)');
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #10 TIME(6,32,1/0) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_VAR;
+const
+  EPS = 1E-8;
+begin
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 1);
+  FWorksheet.WriteNumber (1, 0, -2);
+  FWorksheet.WriteNumber (2, 0, -3);
+  FWorksheet.WriteText   (3, 0, '4');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
+  FWorksheet.WriteFormula(0, 1, '=VAR(1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #1 VAR(1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(1,-2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(4.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #2 VAR(1,-2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR("4")');     // although string considered to be numeric
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #3 VAR("4") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(1,-2,-3,"4")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #4 VAR(1,-2,-3,"4") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 VAR("abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR("")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 VAR("") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(1,-2,-3,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 VAR(1,-2,-3,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 VAR(1/0) result mismatch');
+
+  // Cell references
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #7 VAR(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 VAR(A10)(A10=empty) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(4.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #9 VAR(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(4.333333333, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #10 VAR(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(4.333333333, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #11 VAR(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #12 VAR(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #13 VAR(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #14 VAR(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 VAR(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VAR(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 VAR(A:A6) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_VARP;
+const
+  EPS = 1E-8;
+begin
+  // Test data
+  FWorksheet.WriteNumber (0, 0, 1);
+  FWorksheet.WriteNumber (1, 0, -2);
+  FWorksheet.WriteNumber (2, 0, -3);
+  FWorksheet.WriteText   (3, 0, '4');
+  FWorksheet.WriteText   (4, 0, 'abc');
+  FWorksheet.WriteFormula(5, 0, '=1/0');
+
+  // Literal values
+  FWorksheet.WriteFormula(0, 1, '=VARP(1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #1 VAR(1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(1,-2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.25, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #2 VARP(1,-2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP("4")');     // although string considered to be numeric
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #3 VARP("4") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(1,-2,-3,"4")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(7.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #4 VARP(1,-2,-3,"4") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 VARP("abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP("")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 VARP("") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(1,-2,-3,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 VARP(1,-2,-3,"abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 VARP(1/0) result mismatch');
+
+  // Cell references
+  FWorksheet.WriteFormula(0, 1, '=VARP(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0.0, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #7 VARP(A1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(A10)');     // empty cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 VARP(A10)(A10=empty) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(A1,A2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.25, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #9 VARP(A1,A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(A1:A3)');   // "real" numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.888888889, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #10 VARP(A1:A3) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(A1,A2:A3)');    // several ranges
+  FWorksheet.CalcFormulas;
+  CheckEquals(2.888888889, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #11 VARP(A1,A2:A3) result mismatch');
+
+  // Cell references pointing to string cells
+  FWorksheet.WriteFormula(0, 1, '=VARP(A1:A4)');   // real and string numeric values
+  FWorksheet.CalcFormulas;
+  CheckEquals(7.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #12 VARP(A1:A4) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(A1:A5)');   // real and string values --> ignore string
+  FWorksheet.CalcFormulas;
+  CheckEquals(7.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #13 VARP(A1:A5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(A1:A4,A8:A10)');   // real and string values and blanks
+  FWorksheet.CalcFormulas;
+  CheckEquals(7.5, FWorksheet.ReadAsNumber(0, 1), EPS, 'Formula #14 VARP(A1:A4,A8:A10) result mismatch');
+
+  // Error propagation
+  FWorksheet.WriteFormula(0, 1, '=VARP(A1, 1/0, A2)');     // error in argument
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #15 VARP(A1, 1/0, A2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=VARP(A1:A6)');     // error in cell
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 VARP(A:A6) result mismatch');
 end;
 
 initialization

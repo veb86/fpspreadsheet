@@ -1960,6 +1960,11 @@ begin
   begin
     if IsError(Args[i], Result) then
       exit;
+    if (Args[0].ResultType = rtString) then
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
     if not ArgToBoolean(Args[i]) then begin
       b := false;
       break;
@@ -1982,6 +1987,11 @@ begin
     exit;
   if IsError(Args[1], Result) then
     exit;
+  if (Args[0].ResultType = rtString) then
+  begin
+    Result := ErrorResult(errWrongType);
+    exit;
+  end;
 
   if Length(Args) > 2 then
   begin
@@ -2007,11 +2017,16 @@ var
 begin
   Result := ErrorResult(errArgError);
   if (Length(Args) mod 2 <> 0) then   // We always need pairs of args
-    exit;                            // --> If not, exit with argument eror
+    exit;                             // --> If not, exit with argument eror
   i:=0;
   while(i < Length(Args)-1) do begin
     if IsError(Args[i], Result) then
       exit;
+    if (Args[0].ResultType = rtString) then  // A string never represents a boolean value in Excel
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
     if ArgToBoolean(Args[i]) then
     begin
       Result := Args[i+1];
@@ -2026,7 +2041,10 @@ procedure fpsNOT(var Result: TsExpressionResult; const Args: TsExprParameterArra
 begin
   if IsError(Args[0], Result) then
     exit;
-  Result.ResBoolean := not ArgToBoolean(Args[0]);
+  if (Args[0].ResultType = rtString) then
+    Result := ErrorResult(errWrongType)
+  else
+    Result.ResBoolean := not ArgToBoolean(Args[0]);
 end;
 
 // OR( condition1, [condition2], ... )
@@ -2041,6 +2059,11 @@ begin
   begin
     if IsError(Args[i], Result) then
       exit;
+    if (Args[0].ResultType = rtString) then
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
     if ArgToBoolean(Args[i]) then begin
       b := true;
       break;
@@ -2065,32 +2088,50 @@ end;
 // AVEDEV( value1, [value2, ... value_n] )
 procedure fpsAVEDEV(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   m: TsExprFloat;
   i: Integer;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
-  if err <> errOK then begin
+  for i := 0 to Length(Args)-1 do
+    if IsError(Args[i], Result) then
+      exit;
+
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
+
+  if err = errOK then
+  begin
+    if Length(data) = 0 then
+    begin
+      Result := ErrorResult(errWrongType);
+      exit;
+    end;
+
+    m := Mean(data);
+    for i:=0 to High(data) do      // replace data by their average deviation from the mean
+      data[i] := abs(data[i] - m);
+    Result.ResFloat := Mean(data);
+  end else
     Result := ErrorResult(err);
-    exit;
-  end;
-  m := Mean(data);
-  for i:=0 to High(data) do      // replace data by their average deviation from the mean
-    data[i] := abs(data[i] - m);
-  Result.ResFloat := Mean(data);
 end;
 
 procedure fpsAVERAGE(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // AVERAGE( value1, [value2, ... value_n] )
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
-  if Length(data) = 0 then
-    Result := ErrorResult(errDivideByZero)
-  else
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
+
+  if (Length(data) = 0) then
+    if not hasLiteralStrings then
+    begin
+      Result := ErrorResult(errDivideByZero);
+      exit;
+    end;
+
   if err = errOK then
     Result.ResFloat := Mean(data)
   else
@@ -2102,10 +2143,11 @@ end;
     COUNT( value1, [value2, ... value_n] )  }
 procedure fpsCOUNT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, false, data, err);
+  ArgsToFloatArray(Args, false, data, err, hasLiteralStrings);
   Result := IntegerResult(Length(data));
 end;
 
@@ -2126,8 +2168,6 @@ begin
   for i:=0 to High(Args) do
   begin
     arg := Args[i];
-    if IsError(arg, Result) then
-      exit;
     case arg.ResultType of
       rtInteger, rtFloat, rtDateTime, rtBoolean:
         inc(n);
@@ -2295,7 +2335,7 @@ end;
     SUMIF( range, condition, [sum_range] )
   - "range" is the cell range to be analyzed
   - "condition" can be a cell, a value or a string starting with a symbol like ">" etc.
-    (in the former two cases a value is counted if equal to the criteria value)
+    (in the former two cases a value is added if equal to the criteria value)
   - "sum_range" - option for the values to be added; if missing the values in
     "range" are used.}
 procedure fpsSUMIF(var AResult: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2346,47 +2386,63 @@ end;
 procedure fpsMAX(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // MAX( value1, [value2, ... value_n] )
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
   if err = errOK then
-    Result.ResFloat := MaxValue(data)
-  else
+  begin
+    if Length(data) > 0 then
+      Result.ResFloat := MaxValue(data)
+    else
+      Result.ResFloat := 0;
+  end else
     Result := ErrorResult(err);
 end;
 
 procedure fpsMIN(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // MIN( value1, [value2, ... value_n] )
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
   if err = errOK then
-    Result.ResFloat := MinValue(data)
-  else
+  begin
+    if Length(data) > 0 then
+      Result.ResFloat := MinValue(data)
+    else
+      Result.ResFloat := 0;
+  end else
     Result := ErrorResult(err);
 end;
 
 procedure fpsPRODUCT(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // PRODUCT( value1, [value2, ... value_n] )
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   i: Integer;
   p: TsExprFloat;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
   if err <> errOK then begin
     Result := ErrorResult(err);
     exit;
   end;
 
-  p := 1.0;
-  for i := 0 to High(data) do
-    p := p * data[i];
-  Result.ResFloat := p;
+  if Length(data) = 0 then
+    Result.ResFloat := 0.0
+  else
+  begin
+    p := 1.0;
+    for i := 0 to High(data) do
+      p := p * data[i];
+    Result.ResFloat := p;
+  end;
 end;
 
 procedure fpsSTDEV(var Result: TsExpressionResult; const Args: TsExprParameterArray);
@@ -2394,10 +2450,11 @@ procedure fpsSTDEV(var Result: TsExpressionResult; const Args: TsExprParameterAr
 // of numbers.
 //   STDEV( value1, [value2, ... value_n] )
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
   if err <> errOK then begin
     Result := ErrorResult(err);
     exit;
@@ -2416,10 +2473,11 @@ procedure fpsSTDEVP(var Result: TsExpressionResult; const Args: TsExprParameterA
 // Returns the standard deviation of a population based on an entire population
 // STDEVP( value1, [value2, ... value_n] )
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
   if err <> errOK then begin
     Result := ErrorResult(err);
     exit;
@@ -2434,41 +2492,44 @@ begin
   end;
 end;
 
-procedure fpsSUM(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // SUM( value1, [value2, ... value_n] )
+procedure fpsSUM(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
   if err = errOK then
     Result.ResFloat := Sum(data)
   else
     Result := ErrorResult(err);
 end;
 
-procedure fpsSUMSQ(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // Returns the sum of the squares of a series of values.
 // SUMSQ( value1, [value2, ... value_n] )
+procedure fpsSUMSQ(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
   if err = errOK then
     Result.ResFloat := SumOfSquares(data)
   else
     Result := ErrorResult(err);
 end;
 
-procedure fpsVAR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 // Returns the variance of a population based on a sample of numbers.
 // VAR( value1, [value2, ... value_n] )
+procedure fpsVAR(var Result: TsExpressionResult; const Args: TsExprParameterArray);
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args,true,  data, err);
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
   if err <> errOK then
   begin
     Result := ErrorResult(err);
@@ -2488,10 +2549,11 @@ procedure fpsVARP(var Result: TsExpressionResult; const Args: TsExprParameterArr
 // Returns the variance of a population based on an entire population of numbers.
 // VARP( value1, [value2, ... value_n] )
 var
-  data: TsExprFloatArray;
+  data: TsExprFloatArray = nil;
   err: TsErrorValue;
+  hasLiteralStrings: Boolean;
 begin
-  ArgsToFloatArray(Args, true, data, err);
+  ArgsToFloatArray(Args, true, data, err, hasLiteralStrings);
   if err <> errOK then
   begin
     Result := ErrorResult(err);
