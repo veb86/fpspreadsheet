@@ -75,7 +75,7 @@ end;
 
 type
   TsFuncType = (ftCountIF, ftCountIFS, ftSumIF, ftSUMIFS, ftAverageIF, ftAverageIFS);
-  TsCompareType = (ctNumber, ctString, ctEmpty);
+  TsCompareType = (ctNumber, ctString, ctBoolean, ctEmpty, ctError);
 
   { Helper class for calculating COUNTIF(S) or SUMIF(S) or AVERAGEIF(S) formulas.
 
@@ -101,14 +101,19 @@ type
     FCompareOperation: TsCompareOperation;
     FCompareType: TsCompareType;
     FCompareNumber: Double;
+    FCompareBoolean: Boolean;
+    FCompareError: TsErrorValue;
     FCompareString: String;
     FFormatSettings: TFormatSettings;
+    FError: TsErrorValue;
   protected
     function CompareArg(ArgIndex: Integer): Boolean;
+    function CompareBoolean(AValue: Boolean): Boolean;
     function CompareCell(ASheet: TsBasicWorksheet; ARow, ACol: Integer): Boolean;
+    function CompareEmpty(AEmpty: Boolean): Boolean;
+    function CompareError(AError: TsErrorValue): Boolean;
     function CompareNumber(ANumber: Double): Boolean;
     function CompareString(AString: String): Boolean;
-    function CompareEmpty(AEmpty: Boolean): Boolean;
     function GetArgValue(ArgIndex: Integer): Double;
     function GetCellValue(ASheet: TsBasicWorksheet; ARow, ACol: Integer): Double;
     procedure GetCompareParams(ArgIndex: Integer);
@@ -134,6 +139,21 @@ begin
   FCriteriaRangeIndex := ACriteriaRangeIndex;
   FCriteriaIndex := ACriteriaIndex;
   FFuncType := AFuncType;
+end;
+
+function TsFuncComparer.CompareBoolean(AValue: Boolean): Boolean;
+var
+  val: Double;
+begin
+  Result := false;
+  case FCompareOperation of
+    coEqual        : if AValue = FCompareBoolean then Result := true;
+    coLess         : if AValue < FCompareBoolean then Result := true;
+    coGreater      : if AValue > FCompareBoolean then Result := true;
+    coLessEqual    : if AValue <= FCompareBoolean then Result := true;
+    coGreaterEqual : if AValue >= FCompareBoolean then Result := true;
+    coNotEqual     : if AValue <> FCompareBoolean then Result := true;
+  end;
 end;
 
 function TsFuncComparer.CompareNumber(ANumber: Double): Boolean;
@@ -172,12 +192,23 @@ begin
   end;
 end;
 
+function TsFuncComparer.CompareError(AError: TsErrorValue): Boolean;
+begin
+  Result := false;
+  case FCompareOperation of
+    coEqual : Result := AError = FCompareError;
+    coNotEqual: Result := AError <> FCompareError;
+  end;
+end;
+
 function TsFuncComparer.CompareArg(ArgIndex: Integer): Boolean;
 begin
   case FCompareType of
     ctNumber : Result := CompareNumber(ArgToFloat(FArgs[ArgIndex]));
     ctString : Result := CompareString(ArgToString(FArgs[ArgIndex]));
+    ctBoolean: Result := CompareBoolean(ArgToBoolean(FArgs[ArgIndex], true));
     ctEmpty  : Result := CompareEmpty((ArgToString(FArgs[ArgIndex])) = '');
+    ctError  : Result := CompareError(ArgToError(FArgs[ArgIndex]));
     else       Result := false;
   end
 end;
@@ -185,6 +216,7 @@ end;
 function TsFuncComparer.CompareCell(ASheet: TsBasicWorksheet; ARow, ACol: Integer): Boolean;
 var
   cell: PCell;
+  value: Double;
 begin
   Result := false;
   cell := TsWorksheet(ASheet).FindCell(ARow, ACol);
@@ -203,7 +235,17 @@ begin
           cctDateTime:
             Result := CompareNumber(cell^.DateTimeValue);
           cctBool:
-            Result := CompareNumber(IfThen(cell^.Boolvalue, 1, 0));
+            if FFuncType <> ftCountIF then
+              Result := CompareBoolean(cell^.Boolvalue);
+          cctUTF8String:
+            begin
+              if TryStrToFloat(cell^.UTF8StringValue, value) then
+                Result := CompareNumber(value);
+                {
+              if not TryStrToFloat(cell^.UTF8StringValue, value) then value := 0.0;
+              Result := CompareNumber(value);
+              }
+            end;
         end;
       end;
     ctString:
@@ -215,8 +257,20 @@ begin
         if (cell^.ContentType = cctUTF8String) then
           Result := CompareString(cell^.Utf8StringValue);
       end;
+    ctBoolean:
+      if (FCompareOperation = coNotEqual) and ((cell = nil) or (cell^.ContentType <> cctBool)) then
+        Result := true
+      else
+      if (cell <> nil) and (cell^.ContentType = cctBool) then
+        Result := CompareBoolean(cell^.BoolValue);
     ctEmpty:
       Result := CompareEmpty((cell = nil) or ((cell <> nil) and (cell^.ContentType = cctEmpty)));
+    ctError:
+      if (FCompareOperation = coNotEqual) and ((cell = nil) or (cell^.ContentType <> cctError)) then
+        Result := true
+      else
+      if (cell <> nil) and (cell^.ContentType = cctError) then
+        REsult := CompareError(cell^.ErrorValue);
   end;
 end;
 
@@ -231,9 +285,10 @@ var
   valueSheet: TsBasicWorksheet;
   matches: Boolean;
   count: Integer;
-  sum: Double;
+  val, sum: Double;
 begin
   Result := ErrorResult(errArgError);
+  FError := errOK;
 
   if not ValidParams(Result) then
     exit;
@@ -304,7 +359,16 @@ begin
         inc(count);
         case FArgs[FValueRangeIndex].ResultType of
           rtCell: sum := sum + GetArgValue(FValueRangeIndex);
-          rtCellRange: sum := sum + GetCellValue(valuesheet, r, c);
+          rtCellRange:
+            begin
+              val := GetCellValue(valuesheet, r, c);
+              if not (FFuncType in [ftCountIF, ftCountIFS]) and (FError <> errOK) then
+              begin
+                Result := ErrorResult(FError);
+                exit;
+              end;
+              sum := sum + val;
+            end;
         end;
       end;
     end;  // for c
@@ -342,6 +406,8 @@ begin
         cctNumber  : Result := cell^.NumberValue;
         cctDateTime: Result := cell^.DateTimeValue;
         cctBool    : if cell^.BoolValue then Result := 1.0;
+        cctUTF8String  : if not TryStrToFloat(cell^.UTF8StringValue, Result) then Result := 0.0;
+        cctError: FError := cell^.ErrorValue;
       end;
   end;
 end;
@@ -377,8 +443,8 @@ begin
           end;
         cctBool:
           begin
-            if cell^.BoolValue then FCompareNumber := 1.0 else FCompareNumber := 0.0;
-            FCompareType := ctNumber;
+            FCompareBoolean := cell^.BoolValue;
+            FCompareType := ctBoolean;
           end;
         cctUTF8String:
           begin
@@ -390,7 +456,10 @@ begin
             FCompareType := ctEmpty;
           end;
         cctError:
-          ; // what to do here?
+          begin
+            FCompareError := cell^.ErrorValue;
+            FCompareType := ctError;
+          end;
       end;
   end else
   begin
@@ -400,6 +469,16 @@ begin
     if s = '' then
       FCompareType := ctEmpty
     else
+    if (FArgs[ArgIndex].ResultType = rtError) then
+    begin
+      FCompareError := FArgs[ArgIndex].ResError;
+      FCompareType := ctError;
+    end else
+    if (FArgs[ArgIndex].ResultType = rtBoolean) then
+    begin
+      FCompareBoolean := FArgs[ArgIndex].ResBoolean;
+      FCompareType := ctBoolean;
+    end else
     if TryStrToInt(s, n) then
     begin
       FCompareNumber := n;
@@ -1965,7 +2044,7 @@ begin
       Result := ErrorResult(errWrongType);
       exit;
     end;
-    if not ArgToBoolean(Args[i]) then begin
+    if not ArgToBoolean(Args[i], false) then begin
       b := false;
       break;
     end;
@@ -1997,13 +2076,13 @@ begin
   begin
     if IsError(Args[2], Result) then
       exit;
-    if ArgToBoolean(Args[0]) then
+    if ArgToBoolean(Args[0], false) then
       Result := Args[1]
     else
       Result := Args[2];
   end else
   begin
-    if ArgToBoolean(Args[0]) then
+    if ArgToBoolean(Args[0], false) then
       Result := Args[1]
     else
       Result.ResBoolean := false;
@@ -2027,7 +2106,7 @@ begin
       Result := ErrorResult(errWrongType);
       exit;
     end;
-    if ArgToBoolean(Args[i]) then
+    if ArgToBoolean(Args[i], false) then
     begin
       Result := Args[i+1];
       break;
@@ -2044,7 +2123,7 @@ begin
   if (Args[0].ResultType = rtString) then
     Result := ErrorResult(errWrongType)
   else
-    Result.ResBoolean := not ArgToBoolean(Args[0]);
+    Result.ResBoolean := not ArgToBoolean(Args[0], false);
 end;
 
 // OR( condition1, [condition2], ... )
@@ -2064,7 +2143,7 @@ begin
       Result := ErrorResult(errWrongType);
       exit;
     end;
-    if ArgToBoolean(Args[i]) then begin
+    if ArgToBoolean(Args[i], false) then begin
       b := true;
       break;
     end;
@@ -2345,8 +2424,10 @@ var
 begin
   if IsError(Args[0], AResult) then
     exit;
+  { Excel still calculates the formula if the "condition" argument contains an error
   if IsError(Args[1], AResult) then
     exit;
+  }
   if (Length(Args) = 3) and IsError(Args[0], AResult) then
     exit;
 
@@ -3018,7 +3099,7 @@ begin
 
   A1Dialect := true;
   if (Length(Args) > 3) and (Args[3].ResultType <> rtMissingArg) then
-    A1Dialect := ArgToBoolean(Args[3]);
+    A1Dialect := ArgToBoolean(Args[3], false);
 
   sheet := '';
   if Length(Args) > 4 then

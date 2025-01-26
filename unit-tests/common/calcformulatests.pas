@@ -27,6 +27,7 @@ type
     procedure Test_COUNT;
     procedure Test_COUNTA;
     procedure Test_COUNTBLANK;
+    procedure Test_COUNTIF;
     procedure Test_DATE;
     procedure Test_ERRORTYPE;
     procedure Test_EVEN;
@@ -53,6 +54,7 @@ type
     procedure Test_STDEV;
     procedure Test_STDEVP;
     procedure Test_SUM;
+    procedure Test_SUMIF;
     procedure Test_SUMSQ;
     procedure Test_TIME;
     procedure Test_VAR;
@@ -87,10 +89,10 @@ begin
   CheckEquals(10, FWorksheet.ReadAsNumber(0, 1), 'Formula ABS(-10) result mismatch');
 
   // Error propagation
-  FWorksheet.WriteFormula(0, 0, '=1/0');
+  FWorksheet.WriteErrorValue(0, 0, errIllegalRef);
   FWorksheet.WriteFormula(0, 1, 'ABS(A1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula ABS(1/0) result mismatch');
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula ABS(1/0) result mismatch');
 
   // Empty argument
   FWorksheet.WriteBlank(0, 0);
@@ -139,9 +141,13 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(cell), 'Formula #9 AND("abc",TRUE) result mismatch');
 
-  cell := FWorksheet.WriteFormula(0, 1, 'AND(1/0,1/0)');
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(1/0,0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(cell), 'Formula #10 AND(1/0,1/0) result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(cell), 'Formula #10 AND(1/0,0) result mismatch');
+
+  cell := FWorksheet.WriteFormula(0, 1, 'AND(#REF!,#DIV/0!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(cell), 'Formula #11 AND(#REF!,#DIV/0!) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_AVEDEV;
@@ -536,6 +542,74 @@ begin
   FWorksheet.WriteFormula(4, 1, '=COUNTBLANK(A1:A4)');
   FWorksheet.CalcFormulas;
   CheckEquals(1, FWorksheet.ReadAsNumber(4, 1), 'Formula #6 COUNTBLANK(A1:A4) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_COUNTIF;
+begin
+  // Test data, range A1:B5
+  FWorksheet.WriteNumber (0, 0, 10);          FWorksheet.WriteFormula(0, 1, '=SQRT(-1)');   // --> #NUM!
+  FWorksheet.WriteNumber (1, 0, -20);         FWorksheet.WriteBlank  (1, 1);
+  FWorksheet.WriteFormula(2, 0, '=(1=1)');    FWorksheet.WriteNumber (2, 1,  0);
+  FWorksheet.WriteText   (3, 0, '');          FWorksheet.WriteText   (3, 1, '5');
+  FWorksheet.WriteText   (4, 0, 'abc');       FWorksheet.WriteText   (4, 1, 'ABC');
+  FWorksheet.WriteBoolValue(5, 0, false);     FWorksheet.WriteErrorValue(5, 1, errOverflow);   // --> #NUM!
+
+  // Counts the elements in A1:B6 which are equal to "abc" (case-insensitive)
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #1 COUNTIF(A1:B6,"abc") result mismatch');
+
+  // Counts the elements in A1:B6 which are < 0
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,"<0")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #2 COUNTIF(A1:B6,"<0") result mismatch');
+
+  // Counts empty elements in A1:B6
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,"")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #3 COUNTIF(A1:B6,"") result mismatch');
+
+  // Counts the elements in A1:B6 which are equal to 0
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #4 COUNTIF(A1:B6,0) result mismatch');
+
+  // Counts the elements in A1:B6 which are TRUE
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #5 COUNTIF(A1:B6,TRUE) result mismatch');
+
+  // Counts the elements in A1:B6 which are FALSE
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,FALSE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #4 COUNTIF(A1:B6,FALSE) result mismatch');
+
+  // Counts the elements in A1:B5 which are #NUM!
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,#NUM!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #6 COUNTIF(A1:B6,#NUM!) result mismatch');
+
+  // Count the elements in A1:B6 which are equal to cell A15 (empty)
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #7 COUNTIF(A1:B6,A15) (A15 empty) result mismatch');
+
+  // Count the elements in A1:B6 which are equal to cell A15 (value 10)
+  FWorksheet.WriteNumber(14, 0, 10);
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #8 COUNTIF(A1:B6,A15) (A15 = 10) result mismatch');
+
+  // Count the elements in A1:B6 which are < cell A15 (value 10)
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,"<"&A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula #9 COUNTIF(A1:B6,"<"&A15) (A15 = 10) result mismatch');
+
+  // Count the elements in A1:B6 which are equal to cell A15 (error value #NUM!)
+  FWorksheet.WriteErrorValue(14, 0, errOverflow);
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #10 COUNTIF(A1:B6,A15) (A15 = #NUM!) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_DATE;
@@ -1843,43 +1917,7 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 PRODUCT(A:A6) result mismatch');
 end;
-(*
-procedure TCalcFormulaTests.Test_PRODUCT;
-begin
-  FWorksheet.WriteFormula(0, 1, '=PRODUCT(1)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 PRODUCT(1) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=PRODUCT(1,2,3,4)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(24, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 PRODUCT(1,2,3,4) result mismatch');
-
-  FWorksheet.WriteNumber(0, 0, 1);
-  FWorksheet.WriteNumber(1, 0, 2);
-  FWorksheet.WriteNumber(2, 0, 3);
-  FWorksheet.WriteNumber(3, 0, 4);
-
-  FWorksheet.WriteFormula(4, 0, '=PRODUCT(A1)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(4, 0), 'Formula #3 PRODUCT(A1) result mismatch');
-
-  FWorksheet.WriteFormula(4, 0, '=PRODUCT(A1,A2)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(4, 0), 'Formula #4 PRODUCT(A1,A2) result mismatch');
-
-  FWorksheet.WriteFormula(4, 0, '=PRODUCT(A1:A4)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(24, FWorksheet.ReadAsNumber(4, 0), 'Formula #5 PRODUCT(A1:A4) result mismatch');
-
-  FWorksheet.WriteFormula(4, 0, '=PRODUCT(A1,A2:A4)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(24, FWorksheet.ReadAsNumber(4, 0), 'Formula #6 PRODUCT(A1,A2:A4) result mismatch');
-
-  FWorksheet.WriteFormula(4, 0, '=PRODUCT(A1, 1/0, A2)');
-  FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(4, 0), 'Formula #7 PRODUCT(A1, 1/0, A2) result mismatch');
-end;
-     *)
 procedure TCalcFormulaTests.Test_ROUND;
 begin
   // Round positive value.
@@ -2188,8 +2226,137 @@ begin
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 SUM(A:A6) result mismatch');
 end;
 
-{ Counts the sum of numeric elements.
-  Cases checked with Excel }
+procedure TCalcFormulaTests.Test_SUMIF;
+begin
+  // Test data, range A1:B5
+  FWorksheet.WriteNumber (0, 0, 10);          FWorksheet.WriteNumber (0, 1, -1);
+  FWorksheet.WriteNumber (1, 0, 20);          FWorksheet.WriteNumber (1, 1, -2);
+  FWorksheet.WriteNumber (2, 0, 40);          FWorksheet.WriteNumber (2, 1,  6);
+  FWorksheet.WriteText   (3, 0, '-40');       FWorksheet.WriteText   (3, 1, '5');
+  FWorksheet.WriteText   (4, 0, 'abc');       FWorksheet.WriteText   (4, 1, 'ABC');
+
+  // Work data, range A8:B12
+  FWorksheet.WriteNumber ( 7, 0, 100);         FWorksheet.WriteNumber ( 7, 1, -100);
+  FWorksheet.WriteNumber ( 8, 0, 200);         FWorksheet.WriteNumber ( 8, 1, -200);
+  FWorksheet.WriteNumber ( 9, 0, 300);         FWorksheet.WriteNumber ( 9, 1, -300);
+  FWorksheet.WriteText   (10, 0, '400');       FWorksheet.WriteText   (10, 1, '-500');
+  FWorksheet.WriteText   (11, 0, 'xyz');       FWorksheet.WriteText   (11, 1, 'XYZ');
+
+
+  // *** Range contains numbers only ***
+
+  // Calculate sum of the elements in A1:B3 which are equal to 0
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B3,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 2), 'Formula #1 SUMIF(A1:B3,0) result mismatch');
+
+  // Calculate sum of the elements in A1:B3 which are < 0
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B3,"<0")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-3, FWorksheet.ReadAsNumber(0, 2), 'Formula #2 SUMIF(A1:B3,"<0") result mismatch');
+
+  // Calculate sum of the elements in A8:B10 for which the elements in A1:B3 are equal to 10
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B3,10,A8:B10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(100, FWorksheet.ReadAsNumber(0, 2), 'Formula #3 SUMIF(A1:B3,10,A8:B10) result mismatch');
+
+  // Compare cell A15
+  FWorksheet.WriteNumber( 14, 0, 10);
+
+  // Calculate sum of the elements in A1:B3 which are equal to cell A15 (value 10)
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B3,A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(10, FWorksheet.ReadAsNumber(0, 2), 'Formula #4 SUMIF(A1:B3,A15) result mismatch');
+
+  // Calculate sum of the elements in A1:B3 which are < cell A15
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B3,"<"&A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula #5 SUMIF(A1:B3,"<"&A15) result mismatch');
+
+  // Calculate sum of the elements in A8:B10 for which the elements in A1:B3 are equal to 10
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B3,"<"&A15,A8:B10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-600, FWorksheet.ReadAsNumber(0, 2), 'Formula #6 SUMIF(A1:B3,"<"&A15,A8:B10) result mismatch');
+
+
+  // *** Range contains also numeric strings ***
+
+  // Calculate sum of the elements in A1:B4 which are equal to -40
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B4,-40)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-40, FWorksheet.ReadAsNumber(0, 2), 'Formula #7 SUMIF(A1:B4,-40) result mismatch');
+
+  // Calculate sum of the elements in A1:B4 which are < 0
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B4,"<0")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-43, FWorksheet.ReadAsNumber(0, 2), 'Formula #8 SUMIF(A1:B4,"<0") result mismatch');
+
+  // Calculate sum of the elements in A8:B11 for which the elements in A1:B4 are equal to -40
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B4,-40,A8:B11)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(400, FWorksheet.ReadAsNumber(0, 2), 'Formula #9 SUMIF(A1:B4,-40,A8:B11) result mismatch');
+
+  // Compare cell A15
+  FWorksheet.WriteNumber( 14, 0, -40);
+
+  // Calculate sum of the elements in A1:B4 which are equal to cell A15
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B4,A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-40, FWorksheet.ReadAsNumber(0, 2), 'Formula #10 SUMIF(A1:B4,A15) result mismatch');
+
+  // Calculate sum of the elements in A1:B4 which are equal <= cell A15
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B4,"<="&A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-40, FWorksheet.ReadAsNumber(0, 2), 'Formula #11 SUMIF(A1:B4,"<="&A15) result mismatch');
+
+  // Calculate sum of the elements in A8:B11 for which the elements in A1:B4 are equal to cell A15
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B4,A15,A8:B11)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(400, FWorksheet.ReadAsNumber(0, 2), 'Formula #12 SUMIF(A1:B4,A15,A8:B11) result mismatch');
+
+
+  // *** Range contains also non-numeric strings ***
+
+  // Calculate sum of the elements in A1:B5 which are equal to -40
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,-40)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-40, FWorksheet.ReadAsNumber(0, 2), 'Formula #13 SUMIF(A1:B5,-40) result mismatch');
+
+  // Calculate sum of the elements in A1:B5 which are < 0
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,"<0")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-43, FWorksheet.ReadAsNumber(0, 2), 'Formula #14 SUMIF(A1:B5,"<0") result mismatch');
+
+  // Calculate sum of the elements in A8:B12 for which the elements in A1:B5 are equal to -40
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,-40,A8:B12)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(400, FWorksheet.ReadAsNumber(0, 2), 'Formula #15 SUMIF(A1:B5,-40,A8:B12) result mismatch');
+
+
+  // *** Range contains also error cells ***
+
+  // Calculate sum of the elements in A1:B5 which are equal to -40  --> error cell must be ignored
+  FWorksheet.WriteErrorValue(0, 0, errIllegalRef);  // add error to A1
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,-40)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-40, FWorksheet.ReadAsNumber(0, 2), 'Formula #16 SUMIF(A1:B5,-40) result mismatch');
+
+  // Calculate sum of the elements in A8:B13 for which the elements in A1:B6 are equal to 40
+  FWorksheet.WriteErrorValue(9, 0, errIllegalRef);   // The value corresponding to 40 is an error now
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,40,A8:B12)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #17 SUMIF(A1:B5,40,A8:B12) result mismatch');
+
+
+  // *** Compare cell contains an error (A15)
+  FWorksheet.WriteFormula( 14, 0, '=1/0');
+
+  // Calculate sum of the elements in A1:B5 which are equal to cell A15 (containing #DIV/0!)
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,A15)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 2), 'Formula #18 SUMIF(A1:B5,A15) result mismatch');
+end;
+
 procedure TCalcFormulaTests.Test_SUMSQ;
 begin
   // Test data

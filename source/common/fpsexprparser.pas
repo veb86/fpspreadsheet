@@ -855,10 +855,11 @@ function TokenName(AToken: TsTokenType): String;
 function ResultTypeName(AResult: TsResultType): String;
 function CharToResultType(C: Char): TsResultType;
 function BuiltinIdentifiers: TsBuiltInExpressionManager;
-function ArgToBoolean(Arg: TsExpressionResult): Boolean;
+function ArgToBoolean(Arg: TsExpressionResult; Strict: Boolean): Boolean;
 function ArgToCell(Arg: TsExpressionResult): PCell;
 function ArgToDateTime(Arg: TsExpressionResult): TDateTime;
 function ArgToInt(Arg: TsExpressionResult): Integer;
+function ArgToError(Arg: TsExpressionResult): TsErrorValue;
 function ArgToFloat(Arg: TsExpressionResult): TsExprFloat;
 function ArgToFloatOrNaN(Arg: TsExpressionResult): TsExprFloat;
 function ArgToString(Arg: TsExpressionResult): String;
@@ -4786,7 +4787,7 @@ end;
 {   Conversion of arguments to simple data types                               }
 {------------------------------------------------------------------------------}
 
-function ArgToBoolean(Arg: TsExpressionResult): Boolean;
+function ArgToBoolean(Arg: TsExpressionResult; Strict: Boolean): Boolean;
 var
   cell: PCell;
   x: Double;
@@ -4804,10 +4805,14 @@ begin
         cctBool:
           Result := cell^.BoolValue;
         else
-          x := ArgToFloatOrNaN(Arg);
-          Result := not IsNaN(x) and (x <> 0.0);
+          if not Strict then
+          begin
+            x := ArgToFloatOrNaN(Arg);
+            Result := not IsNaN(x) and (x <> 0.0);
+          end;
       end;
   end else
+  if not Strict then
   begin
     x := ArgToFloatOrNaN(Arg);
     Result := not IsNaN(x) and (x <> 0.0);
@@ -4845,6 +4850,23 @@ begin
                                          then Result := 0;
                       end;
                   end;
+  end;
+end;
+
+function ArgToError(Arg: TsExpressionResult): TsErrorValue;
+var
+  cell: PCell;
+begin
+  Result := errOK;
+  case Arg.ResultType of
+    rtError:
+      Result := Arg.ResError;
+    rtCell:
+      begin
+        cell := ArgToCell(Arg);
+        if Assigned(cell) and (cell^.ContentType = cctError) then
+          Result := cell^.ErrorValue;
+      end;
   end;
 end;
 
