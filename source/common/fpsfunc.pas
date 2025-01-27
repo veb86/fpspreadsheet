@@ -241,11 +241,9 @@ begin
             begin
               if TryStrToFloat(cell^.UTF8StringValue, value) then
                 Result := CompareNumber(value);
-                {
-              if not TryStrToFloat(cell^.UTF8StringValue, value) then value := 0.0;
-              Result := CompareNumber(value);
-              }
             end;
+          cctError:
+            Result := false;
         end;
       end;
     ctString:
@@ -270,7 +268,7 @@ begin
         Result := true
       else
       if (cell <> nil) and (cell^.ContentType = cctError) then
-        REsult := CompareError(cell^.ErrorValue);
+        Result := CompareError(cell^.ErrorValue);
   end;
 end;
 
@@ -367,7 +365,10 @@ begin
                 Result := ErrorResult(FError);
                 exit;
               end;
-              sum := sum + val;
+              if IsNaN(val) then
+                dec(count)
+              else
+                sum := sum + val;
             end;
         end;
       end;
@@ -402,12 +403,20 @@ begin
   begin
     cell := TsWorksheet(ASheet).FindCell(ARow, ACol);
     if cell <> nil then
-      case cell^.Contenttype of
-        cctNumber  : Result := cell^.NumberValue;
-        cctDateTime: Result := cell^.DateTimeValue;
-        cctBool    : if cell^.BoolValue then Result := 1.0;
-        cctUTF8String  : if not TryStrToFloat(cell^.UTF8StringValue, Result) then Result := 0.0;
-        cctError: FError := cell^.ErrorValue;
+      case cell^.ContentType of
+        cctNumber:
+          Result := cell^.NumberValue;
+        cctDateTime:
+          Result := cell^.DateTimeValue;
+        cctBool:
+          Result := NaN;
+        cctUTF8String:
+          if not TryStrToFloat(cell^.UTF8StringValue, Result) then Result := NaN;
+        cctError:
+          begin
+            FError := cell^.ErrorValue;
+            Result := NaN;
+          end;
       end;
   end;
 end;
@@ -464,7 +473,7 @@ begin
   end else
   begin
     s := ArgToString(FArgs[ArgIndex]);
-    if (Length(s) > 1) and (s[1] in ['=', '<', '>']) then
+    if (Length(s) >= 1) and (s[1] in ['=', '<', '>']) then
       s := AnalyzeCompareStr(s, FCompareOperation);
     if s = '' then
       FCompareType := ctEmpty

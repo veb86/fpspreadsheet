@@ -2462,6 +2462,9 @@ begin
       else  RemoveChars(0, coEqual);
     end
   else
+  if AString = '=' then
+    RemoveChars(1, coEqual)
+  else
     RemoveChars(0, coEqual);
 end;
 

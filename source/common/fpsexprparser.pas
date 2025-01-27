@@ -5026,6 +5026,7 @@ begin
                   end;
     rtInteger   : Result := IntToStr(Arg.ResInteger);
     rtFloat     : Result := FloatToStr(Arg.ResFloat);
+    rtDateTime  : Result := FloatToStr(Arg.ResDateTime);
     rtBoolean   : if Arg.ResBoolean then Result := '1' else Result := '0';
     rtCell      : begin
                     cell := ArgToCell(Arg);

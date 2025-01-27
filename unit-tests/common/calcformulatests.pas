@@ -23,6 +23,7 @@ type
     procedure Test_AND;
     procedure Test_AVEDEV;
     procedure Test_AVERAGE;
+    procedure Test_AVERAGEIF;
     procedure Test_CEILING;
     procedure Test_COUNT;
     procedure Test_COUNTA;
@@ -324,6 +325,111 @@ begin
   FWorksheet.WriteFormula(0, 1, '=AVERAGE(A1:A6)');     // error in cell
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 AVERAGE(A:A6) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_AVERAGEIF;
+const
+  EPS = 1E-8;
+begin
+  // Test data, value range A1:B9
+  // A1:A9 - compare values                             // B1:B9 -- calculation values
+  FWorksheet.WriteText(0, 0, 'Abc');                    FWorksheet.WriteNumber (0, 1, 100);
+  FWorksheet.WriteText(1, 0, 'Abc');                    FWorksheet.WriteNumber (1, 1, 200);
+  FWorksheet.WriteText(2, 0, 'bc');                     FWorksheet.WriteNumber (2, 1, 300);
+  FWorksheet.WriteText(3, 0, 'a');                      FWorksheet.WriteNumber (3, 1, 400);
+  FWorksheet.WriteText(4, 0, 'bc');                     FWorksheet.WriteText   (4, 1, '500');
+  FWorksheet.WriteText(5, 0, 'abc');                    FWorksheet.WriteText   (5, 1, 'no number');
+  FWorksheet.WriteText(6, 0, '');                       FWorksheet.WriteNumber (6, 1, 600);
+  FWorksheet.WriteDateTime(7, 0, EncodeDate(2025,2,1)); FWorksheet.WriteNumber (7, 1, 700);
+  FWorksheet.WriteText(8, 0, 'abc');                    FWorksheet.WriteBoolValue (8, 1, TRUE);
+  FWorksheet.WriteText(9, 0, 'abc');                    FWorksheet.WriteErrorValue(9, 1, errIllegalRef);
+
+  // *** two-argument calls
+
+  // Average value of all cells in the second column with are <=200
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(B1:B8,"<=200")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(150, FWorksheet.ReadAsNumber(0, 2), 'Formula #1 AVERAGEIF(B1:B8,"<=200") result mismatch');
+
+  // Average value of all cells in the second column with are >=400
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(B1:B8,">=400")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(550, FWorksheet.ReadAsNumber(0, 2), 'Formula #2 AVERAGEIF(B1:B8,">=400") result mismatch');
+
+  // Average value of all cells in the second column with are <0
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(B1:B9,"<0")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #3 AVERAGEIF(B1:B9,"<0") result mismatch');
+
+  // *** three-argument calls
+
+  // Average value of all cells in the second column for which the first column cell is 'abc' (case-insensitive)'
+  // ... numeric cells only (incl numeric text cell)
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A5,"abc",B1:B5)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(150, FWorksheet.ReadAsNumber(0, 2), 'Formula #4 AVERAGEIF(A1:A5,"abc",B1:B5) result mismatch');
+
+  // ... dto, but check case-insensitivity of search phrase
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A5,"ABC",B1:B5)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(150, FWorksheet.ReadAsNumber(0, 2), 'Formula #5 AVERAGEIF(A1:A5,"ABC",B1:B5) result mismatch');
+
+  // ... including non-numeric text cell
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A7,"abc",B1:B7)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(150, FWorksheet.ReadAsNumber(0, 2), 'Formula #6 AVERAGEIF(A1:A7,"abc",B1:B7) result mismatch');
+
+  // ... including boolean cell
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A9,"abc",B1:B9)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(150, FWorksheet.ReadAsNumber(0, 2), 'Formula #7 AVERAGEIF(A1:A9,"abc",B1:B9) result mismatch');
+
+  // ... including error cell
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A10,"abc",B1:B10)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #8 AVERAGEIF(A1:A10,"abc",B1:B10) result mismatch');
+
+  // ToDo: CompareStringsWithWildcards does not handle a mask such as "*b" like Excel
+  {
+  // Search for text cells by wildcards
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A8,"*bc",B1:B8)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(275, FWorksheet.ReadAsNumber(0, 2), 'Formula #9 AVERAGEIF(A1:A8,"*bc",B1:B8) result mismatch');
+  }
+
+  // Search for date cells (matching cell found)
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A8,DATE(2025,2,1),B1:B8)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(700, FWorksheet.ReadAsNumber(0, 2), 'Formula #9 AVERAGEIF(A1:A8,DATE(2025,2,1),B1:B8) result mismatch');
+
+  // Search for date cell (no matching cell found)
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A8,DATE(2000,2,1),B1:B8)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #9 AVERAGEIF(A1:A8,DATE(2000,2,1),B1:B8) result mismatch');
+
+  // Search for empty cells
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A8,"",B1:B8)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(600, FWorksheet.ReadAsNumber(0, 2), 'Formula #10 AVERAGEIF(A1:A8,"",B1:B8) result mismatch');
+
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A8,"=",B1:B8)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(600, FWorksheet.ReadAsNumber(0, 2), 'Formula #11 AVERAGEIF(A1:A8,"Abc",B1:B8) result mismatch');
+
+  // Search for non-empty cells
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A8,"<>",B1:B8)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2200/6, FWorksheet.ReadAsNumber(0, 2), EPS, 'Formula #12 AVERAGEIF(A1:A8,"<>",B1:B8) result mismatch');
+
+  // Compare with reference cell A20
+  FWorksheet.WriteText(19, 0, 'abc');  // A20 = "abc"
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A9,A20,B1:B9)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(150, FWorksheet.ReadAsNumber(0, 2), 'Formula #13 AVERAGEIF(A1:A9,A20,B1:B9) (A20="abc") result mismatch');
+
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A9,"<>"&A20,B1:B9)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(500, FWorksheet.ReadAsNumber(0, 2), 'Formula #13 AVERAGEIF(A1:A9,"<>"&A20,B1:B9) (A20="abc") result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_CEILING;
