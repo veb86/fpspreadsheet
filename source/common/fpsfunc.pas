@@ -2070,29 +2070,25 @@ end;
 
 // IF( condition, value_if_true, [value_if_false] )
 procedure fpsIF(var Result: TsExpressionResult; const Args: TsExprParameterArray);
+var
+  res: Boolean;
 begin
   if IsError(Args[0], Result) then
     exit;
-  if IsError(Args[1], Result) then
-    exit;
+
   if (Args[0].ResultType = rtString) then
   begin
     Result := ErrorResult(errWrongType);
     exit;
   end;
 
-  if Length(Args) > 2 then
+  res := ArgToBoolean(Args[0], false);
+  if res then
+    Result := Args[1]
+  else
   begin
-    if IsError(Args[2], Result) then
-      exit;
-    if ArgToBoolean(Args[0], false) then
-      Result := Args[1]
-    else
-      Result := Args[2];
-  end else
-  begin
-    if ArgToBoolean(Args[0], false) then
-      Result := Args[1]
+    if Length(Args) > 2 then
+      Result := Args[2]
     else
       Result.ResBoolean := false;
   end;

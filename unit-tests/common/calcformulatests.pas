@@ -1158,21 +1158,31 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals('FALSE', FWorksheet.ReadAsText(0, 1), 'Formula #7 IF(A1<100,"ok") result mismatch');
 
-  // Error propagation: error in 3rd argument
+  // Error propagation: error in 3rd argument - result is non-error argument
   FWorksheet.WriteFormula(0, 1, '=IF(A1>=100, "ok", 1/0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #8 IF(A1>=100,"ok",1/0) result mismatch');
+  CheckEquals('ok', FWorksheet.ReadAsText(0, 1), 'Formula #8 IF(A1>=100,"ok",1/0) result mismatch');
 
-  // Error propagation: error in 2nd argument
-  FWorksheet.WriteFormula(0, 1, '=IF(A1>=100, 1/0,"not ok")');
+  // Error propagation: error in 3rd argument - result is error argument
+  FWorksheet.WriteFormula(0, 1, '=IF(A1<100, "ok", 1/0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #9 IF(A1>=100,1/0,"not ok") result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #9 IF(A1<100,"ok",1/0) result mismatch');
+
+  // Error propagation: error in 2nd argument - result is error argument
+  FWorksheet.WriteFormula(0, 1, '=IF(A1>=100, 1/0,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #10 IF(A1>=100,1/0,"abc") result mismatch');
+
+  // Error propagation: error in 2nd argument - result is 3rd argument
+  FWorksheet.WriteFormula(0, 1, '=IF(A1<100, 1/0,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals('abc', FWorksheet.ReadAsText(0, 1), 'Formula #11 IF(A1<100,1/0,"abc") result mismatch');
 
   // Error propagaton: error in 1st argument
   FWorksheet.WriteFormula(0, 0, '=1/0');
   FWorksheet.WriteFormula(0, 1, '=IF(A1>=100,"ok","not ok")');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #10 IF(A1>=100,"ok","not ok") with A1=1/0 result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #12 IF(A1>=100,"ok","not ok") with A1=1/0 result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_IFERROR;
