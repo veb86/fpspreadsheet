@@ -3286,7 +3286,7 @@ var
   match_type: Integer;
   searchString: String;
   numSearchValue: Double = 0.0;
-  r1,c1,r2,c2: Cardinal;
+  r1, c1, r2, c2: Cardinal;
   r, c: Integer;
   IsCol: Boolean;
   arg: TsExpressionResult;
@@ -3400,17 +3400,39 @@ begin
 
   if IsCol then
   begin
-    for r := r2 downto r1 do
-      if Matches(sheet.FindCell(r, c1)) then begin
-        Result := IntegerResult(r - integer(r1) + 1);
-        exit;
-      end;
+    if match_type = 0 then
+    begin
+      for r := r1 to r2 do
+        if Matches(sheet.Findcell(r, c1)) then
+        begin
+          Result := IntegerResult(r - integer(r1) + 1);
+          exit;
+        end;
+    end else
+    begin
+      for r := r2 downto r1 do
+        if Matches(sheet.FindCell(r, c1)) then begin
+          Result := IntegerResult(r - integer(r1) + 1);
+          exit;
+        end;
+    end;
   end else
   begin
-    for c := c2 downto c1 do
-      if Matches(sheet.FindCell(r1, c)) then begin
-        Result := IntegerResult(c - Integer(c1) + 1);
-        exit;
+    if match_type = 0 then
+    begin
+      for c := c1 to c2 do
+        if Matches(sheet.Findcell(r1, c)) then
+        begin
+          Result := IntegerResult(c - Integer(c1) + 1);
+          exit;
+        end;
+    end else
+    begin
+      for c := c2 downto c1 do
+        if Matches(sheet.FindCell(r1, c)) then begin
+          Result := IntegerResult(c - Integer(c1) + 1);
+          exit;
+      end;
     end;
   end;
 

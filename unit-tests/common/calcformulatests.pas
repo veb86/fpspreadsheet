@@ -1786,45 +1786,50 @@ end;
 
 procedure TCalcFormulaTests.Test_MATCH;
 begin
-  // *** Match_Type 0, unsorted data in search range
+  // *** Match_Type 0, unsorted data in search range, find first value
 
   // Search range to be checked: B1:B4
   FWorksheet.WriteNumber(0, 1, 10);
   FWorksheet.WriteNumber(1, 1, 20);
   FWorksheet.WriteNumber(2, 1, 30);
   FWorksheet.WriteNumber(3, 1, 15);
+  FWorksheet.WriteNumber(4, 1, 20);
 
   // Search for constant, contained in search range
-  FWorksheet.WriteFormula(0, 2, '=MATCH(10, B1:B4, 0)');
+  FWorksheet.WriteFormula(0, 2, '=MATCH(10, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #1 MATCH mismatch, match_type 0, in range');
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #1 MATCH(10,B1_B5,0) mismatch, value in range');
+
+  // Search for constant, contained several times in search range
+  FWorksheet.WriteFormula(0, 2, '=MATCH(20, B1:B5, 0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #2 MATCH(20,B1:B5,0) mismatch, value above range');
 
   // Search for constant, below search range
-  FWorksheet.WriteFormula(0, 2, '=MATCH(0, B1:B4, 0)');
+  FWorksheet.WriteFormula(0, 2, '=MATCH(0, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #2 MATCH mismatch, match_type 0, below range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #3 MATCH(0,B1:B5,0) mismatch, value below range');
 
   // Search for constant, above search range
-  FWorksheet.WriteFormula(0, 2, '=MATCH(90, B1:B4, 0)');
+  FWorksheet.WriteFormula(0, 2, '=MATCH(90, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #3 MATCH mismatch, match_type 0, above range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #4 MATCH(90,B1:B5,0) mismatch, value above range');
 
   // Search for cell with value in range
   FWorksheet.WriteNumber(0, 0, 20);
-  FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B4, 0)');
+  FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #4 MATCH mismatch, match_type 0, cell in range');
-  FWorksheet.WriteBlank(0, 0);
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #5 MATCH(A1,B1:B5,0) mismatch, cell value in range');
 
   // Search for cell, but cell is empty
-  FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B4, 0)');
+  FWorksheet.WriteFormula(0, 2, '=MATCH(A99, B1:B5, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #5 MATCH mismatch, match_type 0, empty cell');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #6 MATCH(A99,B1:B5,0) mismatch, empty cell');
 
   // Search range is empty
   FWorksheet.WriteFormula(0, 2, '=MATCH(28, D1:D3, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #6 MATCH mismatch, match_type -1, empty search range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #7 MATCH mismatch, match_type -1, empty search range');
 
 
   // *** Match_Type 1 (find largest value in range <= value), ascending values in search range
@@ -1838,35 +1843,35 @@ begin
   // Search for constant, contained in search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(28, B1:B3, 1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #7 MATCH mismatch, match_type 1, in range');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #8 MATCH mismatch, match_type 1, in range');
 
   // Search for constant,  below search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(8, B1:B3, 1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #8 MATCH mismatch, match_type 1, below range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #9 MATCH mismatch, match_type 1, below range');
 
   // Search for constant, above search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(123, B1:B3, 1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula MATCH #9 mismatch, match_type 1, above range');
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula MATCH #10 mismatch, match_type 1, above range');
 
   // Search for cell with value in range
   FWorksheet.WriteNumber(0, 0, 28);
   FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B3, 1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula MATCH #10 mismatch, match_type 1, cell in range');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula MATCH #11 mismatch, match_type 1, cell in range');
   FWorksheet.WriteBlank(0, 0);
 
   // Search for cell, but cell is empty
   FWorksheet.WriteBlank(0, 0);
   FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B3, 1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #11 MATCH mismatch, match_type 1, empty cell');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #12 MATCH mismatch, match_type 1, empty cell');
 
   // Search range is empty
   FWorksheet.WriteFormula(0, 2, '=MATCH(28, D1:D3, -1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula MATCH #12 mismatch, match_type -1, empty search range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula MATCH #13 mismatch, match_type -1, empty search range');
 
 
   // *** Match_Type -1 (find smallest value in range >= value), descending values in search range
@@ -1879,35 +1884,35 @@ begin
   // Search for constant, contained in search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(28, B1:B3, -1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #13 MATCH mismatch, match_type -1, in range');
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #14 MATCH mismatch, match_type -1, in range');
 
   // Search for constant,  below search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(8, B1:B3, -1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula #14 MATCH mismatch, match_type -1, below range');
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula #15 MATCH mismatch, match_type -1, below range');
 
   // Search for constant, above search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(123, B1:B3, -1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #15 MATCH mismatch, match_type -1, above range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #16 MATCH mismatch, match_type -1, above range');
 
   // Search for cell with value in range
   FWorksheet.WriteNumber(0, 0, 28);
   FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B3, -1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #16 MATCH mismatch, match_type -1, cell in range');
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #17 MATCH mismatch, match_type -1, cell in range');
   FWorksheet.WriteBlank(0, 0);
 
   // Search for cell, but cell is empty
   FWorksheet.WriteBlank(0, 0);
   FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B3, -1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #17 MATCH mismatch, match_type -1, empty cell');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #18 MATCH mismatch, match_type -1, empty cell');
 
   // Search range is empty
   FWorksheet.WriteFormula(0, 2, '=MATCH(28, D1:D3, -1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #18 MATCH mismatch, match_type -1, empty search range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #19 MATCH mismatch, match_type -1, empty search range');
 
 
   // **** Error propagation
@@ -1918,14 +1923,14 @@ begin
   FWorksheet.WriteNumber(2, 1, 30);
   FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B4, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #19 MATCH mismatch, match_type 0, error cell');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #20 MATCH mismatch, match_type 0, error cell');
 
   // Match_type parameter contains error
   FWorksheet.WriteNumber(0, 1, 10);
   FWorksheet.WriteFormula(0, 5, '=1/0');    // F1
   FWorksheet.WriteFormula(0, 2, '=MATCH(A1, B1:B3, F1)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #20 MATCH mismatch, match_type 0, error in search range');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #21 MATCH mismatch, match_type 0, error in search range');
 
   // Cell range contains error
   FWorksheet.WriteNumber(0, 1, 10);
@@ -1934,7 +1939,7 @@ begin
   // Search for constant, contained in search range
   FWorksheet.WriteFormula(0, 2, '=MATCH(20, B1:B3, 0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #21 MATCH mismatch, match_type 0, error in search range');
+  CheckEquals(STR_ERR_ARG_ERROR, FWorksheet.ReadAsText(0, 2), 'Formula #22 MATCH mismatch, match_type 0, error in search range');
     // ArgError because search value is not found
 end;
 
