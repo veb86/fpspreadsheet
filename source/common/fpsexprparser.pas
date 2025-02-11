@@ -47,6 +47,7 @@
 {$mode objfpc}
 {$H+}
 {.$DEFINE debugexpr}
+{$DEFINE CIRCULAR_REF_EXCEPTION}
 
 unit fpsExprParser;
 
@@ -4361,6 +4362,7 @@ var
   cell: PCell;
   formula: PsFormula;
   sheet: TsWorksheet;
+  msg: String;
 begin
   if FError <> errOK then begin
     AResult := ErrorResult(FError);
@@ -4382,7 +4384,16 @@ begin
       csNotCalculated:
         sheet.CalcFormula(formula);
       csCalculating:
-        raise ECalcEngine.CreateFmt(rsCircularReference, [GetCellString(cell^.Row, cell^.Col)]);
+        begin
+          msg := Format(rsCircularReference, [GetCellString(cell^.Row, cell^.Col)]);
+         {$IFDEF CIRCULAR_REF_EXCEPTION}
+          raise ECalcEngine.Create(msg);
+         {$ELSE}
+          sheet.Workbook.AddErrorMsg(msg);
+          AResult := ErrorResult(errIllegalRef); // sheet.WriteErrorVa(cell^.Row, cell^.Col, errIllegalRef);
+          exit;
+         {$ENDIF}
+        end;
     end;
     if cell^.ContentType = cctError then
     begin
@@ -4660,6 +4671,7 @@ var
   i: TsCellRangeIndex;
   sheet: TsWorksheet;
   formula: PsFormula;
+  msg: String;
 begin
   if FError <> errOK then begin
     AResult := ErrorResult(FError);
@@ -4692,7 +4704,16 @@ begin
           csNotCalculated:
             sheet.CalcFormula(formula);
           csCalculating:
-            raise ECalcEngine.Create(rsCircularReference);
+            begin
+              msg := Format(rsCircularReference, [GetCellString(formula^.Row, formula^.Col)]);
+             {$IFDEF CIRCULAR_REF_EXCEPTION}
+              raise ECalcEngine.Create(msg);
+             {$ELSE}
+              sheet.Workbook.AddErrorMsg(msg);
+              AResult := ErrorResult(errIllegalRef);
+              exit;
+             {$ENDIF}
+            end;
         end;
   end;
 

@@ -435,6 +435,21 @@ begin
   FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A9,"<>"&A20,B1:B9)');
   FWorksheet.CalcFormulas;
   CheckEquals(500, FWorksheet.ReadAsNumber(0, 2), 'Formula #13 AVERAGEIF(A1:A9,"<>"&A20,B1:B9) (A20="abc") result mismatch');
+
+  // Error in first argument
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(#DIV/0!,"<10")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #14 AVERAGEIF(#DIV/0,"<10") result mismatch');
+
+  // Error in second argument
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A9,#DIV/0!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #15 AVERAGEIF(A1:A9,#DIV/0) result mismatch');
+
+  // Error in third argument
+  FWorksheet.WriteFormula(0, 2, '=AVERAGEIF(A1:A9,"=",#DIV/0!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #16 AVERAGEIF(A1:A9,"=",#DIV/0) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_CEILING;
@@ -753,27 +768,37 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #6 COUNTIF(A1:B6,#NUM!) result mismatch');
 
+  // Error in 1st argument
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(#REF!,1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #7 COUNTIF(#REF!,1) result mismatch');
+
+  // Error in both arguments
+  FWorksheet.WriteFormula(0, 2, '=COUNTIF(#REF!,#REF!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #8 COUNTIF(#REF!,#REF!) result mismatch');
+
   // Count the elements in A1:B6 which are equal to cell A15 (empty)
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #7 COUNTIF(A1:B6,A15) (A15 empty) result mismatch');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #9 COUNTIF(A1:B6,A15) (A15 empty) result mismatch');
 
   // Count the elements in A1:B6 which are equal to cell A15 (value 10)
   FWorksheet.WriteNumber(14, 0, 10);
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #8 COUNTIF(A1:B6,A15) (A15 = 10) result mismatch');
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 2), 'Formula #10 COUNTIF(A1:B6,A15) (A15 = 10) result mismatch');
 
   // Count the elements in A1:B6 which are < cell A15 (value 10)
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,"<"&A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula #9 COUNTIF(A1:B6,"<"&A15) (A15 = 10) result mismatch');
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 2), 'Formula #11 COUNTIF(A1:B6,"<"&A15) (A15 = 10) result mismatch');
 
   // Count the elements in A1:B6 which are equal to cell A15 (error value #NUM!)
   FWorksheet.WriteErrorValue(14, 0, errOverflow);
   FWorksheet.WriteFormula(0, 2, '=COUNTIF(A1:B6,A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #10 COUNTIF(A1:B6,A15) (A15 = #NUM!) result mismatch');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 2), 'Formula #12 COUNTIF(A1:B6,A15) (A15 = #NUM!) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_DATE;
@@ -2715,24 +2740,42 @@ begin
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 2), 'Formula #17 SUMIF(A1:B5,40,A8:B12) result mismatch');
 
+  // *** Error in arguments
 
-  // *** Compare cell contains an error (A15)
+  // Error in first argument
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(#DIV/0!,"<10")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #18 SUMIF(#DIV/0,"<10") result mismatch');
+
+  // Error in second argument
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:A9,#DIV/0!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #19 SUMIF(A1:A9,#DIV/0) result mismatch');
+
+  // Error in third argument
+  FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:A9,"=",#DIV/0!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #20 SUMIF(A1:A9,"=",#DIV/0) result mismatch');
+
+  // Write compare cell to contain an error (A15)
   FWorksheet.WriteFormula( 14, 0, '=1/0');
 
   // Calculate sum of the elements in A1:B5 which are equal to cell A15 (containing #DIV/0!)
+  // but this error does not exist in A1:B5
   FWorksheet.WriteFormula(0, 2, '=SUMIF(A1:B5,A15)');
   FWorksheet.CalcFormulas;
-  CheckEquals(0, FWorksheet.ReadAsNumber(0, 2), 'Formula #18 SUMIF(A1:B5,A15) result mismatch');
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 2), 'Formula #21 SUMIF(A1:B5,A15) (A15=#DIV/0!) result mismatch');
+
 end;
 
 procedure TCalcFormulaTests.Test_SUMSQ;
 begin
   // Test data
-  FWorksheet.WriteNumber(0, 0, 1);
-  FWorksheet.WriteNumber(1, 0, 2);
-  FWorksheet.WriteNumber(2, 0, 3);
-  FWorksheet.WriteText  (3, 0, '4');
-  FWorksheet.WriteText  (4, 0, 'abc');
+  FWorksheet.WriteNumber (0, 0, 1);
+  FWorksheet.WriteNumber (1, 0, 2);
+  FWorksheet.WriteNumber (2, 0, 3);
+  FWorksheet.WriteText   (3, 0, '4');
+  FWorksheet.WriteText   (4, 0, 'abc');
   FWorksheet.WriteFormula(5, 0, '=1/0');
 
   // Literal values

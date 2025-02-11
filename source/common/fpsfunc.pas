@@ -570,6 +570,7 @@ var
   i: Integer;
 begin
   Result := false;
+
   if Length(FArgs) = 0 then
   begin
     AValue := IntegerResult(0);
@@ -584,10 +585,23 @@ begin
     exit;
   end;
 
-  // Special requirement for xxxIFS operations
-
-  // Pairs of criteria range and criteria arguments required in addition to valuerange
   case FFuncType of
+    // Error propagation
+    ftCOUNTIF:
+      if FArgs[0].ResultType = rtError then
+      begin
+        AValue := ErrorResult(FArgs[0].ResError);
+        exit;
+      end;
+    ftSUMIF, ftAVERAGEIF:
+      for i := 0 to High(FArgs) do
+        if FArgs[i].ResultType = rtError then
+        begin
+          AValue := ErrorResult(FArgs[i].ResError);
+          exit;
+        end;
+
+    // Pairs of criteria range and criteria arguments required in addition to valuerange
     ftCOUNTIFS:
       if (Length(FArgs) mod 2) <> 0 then
       begin
