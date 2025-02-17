@@ -4920,7 +4920,7 @@ begin
     rtFloat     : result := Arg.ResFloat;
     rtBoolean   : if Arg.ResBoolean then Result := 1.0 else Result := 0.0;
     rtString,
-    rtHyperlink : TryStrToFloat(ArgToString(Arg), Result);
+    rtHyperlink : if not TryStrToFloat(ArgToString(Arg), Result) then Result := NaN;
     rtError     : Result := NaN;
     rtCell      : begin
                     cell := ArgToCell(Arg);

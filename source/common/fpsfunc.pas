@@ -1152,6 +1152,9 @@ begin
   if IsNaN(x) or IsNaN(y) then
     Result := ErrorResult(errWrongType)
   else
+  if (x = 0) and (y = 0) then
+    Result := ErrorResult(errOverflow)
+  else
     try
       Result := FloatResult(Power(x, y));
     except

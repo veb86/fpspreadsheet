@@ -20,6 +20,7 @@ type
     procedure TearDown; override;
   published
     procedure Test_ABS;
+    procedure Test_ACOS;
     procedure Test_AND;
     procedure Test_AVEDEV;
     procedure Test_AVERAGE;
@@ -56,8 +57,11 @@ type
     procedure Test_MAX;
     procedure Test_MIN;
     procedure Test_NOT;
+    procedure Test_ODD;
     procedure Test_OR;
+    procedure Test_POWER;
     procedure Test_PRODUCT;
+    procedure Test_RADIANS;
     procedure Test_ROUND;
     procedure Test_ROW;
     procedure Test_STDEV;
@@ -109,6 +113,88 @@ begin
   FWorksheet.WriteFormula(0, 1, 'ABS(A1)');
   FWorksheet.CalcFormulas;
   CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula ABS([blank_cell]) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_ACOS;
+begin
+  FWorksheet.WriteFormula(0, 1, '=ACOS(0.5)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/3, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #1 ACOS(0.5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ACOS(0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #2 ACOS(0) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ACOS(1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #3 ACOS(1) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ACOS(-1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #4 ACOS(-1) result mismatch');
+
+  // Out-of-domain
+  FWorksheet.WriteFormula(0, 1, '=ACOS(2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #5 ACOS(2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ACOS(-2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #6 ACOS(-2) result mismatch');
+
+  // Boolean argument
+  FWorksheet.WriteFormula(0, 1, '=ACOS(FALSE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #7 ACOS(FALSE) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ACOS(TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #8 ACOS(TRUE) result mismatch');
+
+  // Numeric string
+  FWorksheet.WriteFormula(0, 1, '=ACOS("1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #9 ACOS("1") result mismatch');
+
+  // Non-numeric string
+  FWorksheet.WriteFormula(0, 1, '=ACOS("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #10 ACOS("abc") result mismatch');
+
+  // Error argument
+  FWorksheet.WriteFormula(0, 1, '=ACOS(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #11 ACOS(1/0) result mismatch');
+
+  // Cell with boolean value
+  FWorksheet.WriteFormula(0, 0, '=(1=1)');
+  FWorksheet.WriteFormula(0, 1, '=ACOS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #12 ACOS(A1) (A1: (1=1)) result mismatch');
+
+  // Cell with numeric string
+  FWorksheet.WriteText(0, 0, '1');
+  FWorksheet.WriteFormula(0, 1, '=ACOS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #13 ACOS(A1) (A1: "1") result mismatch');
+
+  // Cell with non-numeric string
+  FWorksheet.WriteText(0, 0, 'abc');
+  FWorksheet.WriteFormula(0, 1, '=ACOS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #14 ACOS(A1) (A1: "abc") result mismatch');
+
+  // Empty cell
+  FWorksheet.WriteBlank(0, 0);                    // Empty A1
+  FWorksheet.WriteFormula(0, 1, '=ACOS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 'Formula #15 ACOS(A1) (A1: empty) result mismatch');
+
+  // Cell with error
+  FWorksheet.WriteErrorValue(0, 0, errIllegalRef);
+  FWorksheet.WriteFormula(0, 1, '=ACOS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #10 ACOS(A1) (A1: #REF!) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_AND;
@@ -1006,23 +1092,44 @@ procedure TCalcFormulaTests.Test_EVEN;
 begin
   FWorksheet.WriteFormula(0, 1, '=EVEN(1.23)');
   FWorksheet.CalcFormulas;
-  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula EVEN(1.23) result mismatch');
+  CheckEquals(2, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 EVEN(1.23) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=EVEN(2.34)');
   FWorksheet.CalcFormulas;
-  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula EVEN(2.34) result mismatch');
+  CheckEquals(4, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 EVEN(2.34) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=EVEN(-1.23)');
   FWorksheet.CalcFormulas;
-  CheckEquals(-2, FWorksheet.ReadAsNumber(0, 1), 'Formula EVEN(-1.23) result mismatch');
+  CheckEquals(-2, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 EVEN(-1.23) result mismatch');
 
   FWorksheet.WriteFormula(0, 1, '=EVEN(-2.34)');
   FWorksheet.CalcFormulas;
-  CheckEquals(-4, FWorksheet.ReadAsNumber(0, 1), 'Formula EVEN(-2.34) result mismatch');
+  CheckEquals(-4, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 EVEN(-2.34) result mismatch');
 
-  FWorksheet.WriteFormula(0, 1, '=EVEN(1/0)');
+  FWorksheet.WriteFormula(0, 1, '=EVEN(0.0)');
   FWorksheet.CalcFormulas;
-  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula EVEN(1/0) result mismatch');
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #5 EVEN(0.0) result mismatch');
+
+  // String as argument
+  FWorksheet.WriteFormula(0, 1, '=EVEN("1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 EVEN("1") result mismatch');
+
+  // Empty argument
+  FWorksheet.WriteFormula(0, 1, '=EVEN()');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #7 EVEND() result mismatch');
+
+  // Error in argument
+  FWorksheet.WriteFormula(0, 1, '=EVEN(#REF!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #8 EVEN(#REF!) result mismatch');
+
+  // Error in argument cell
+  FWorksheet.WriteErrorValue(0, 0, errIllegalRef);
+  FWorksheet.WriteFormula(0, 1, '=EVEN(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #9 EVEN(A1) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_EXACT;
@@ -2305,6 +2412,46 @@ begin
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(cell), 'Formula #8 NOT(1/0) result mismatch');
 end;
 
+procedure TCalcFormulaTests.Test_ODD;
+begin
+  FWorksheet.WriteFormula(0, 1, '=ODD(0.5)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 ODD(0.5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ODD(1.5)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(3, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 ODD(1.5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ODD(-0.5)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(-1, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 ODD(-0.5) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=ODD(0.0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 ODD(0.0) result mismatch');
+
+  // String as argument
+  FWorksheet.WriteFormula(0, 1, '=ODD("1")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #5 ODD("1") result mismatch');
+
+  // Empty as argument
+  FWorksheet.WriteFormula(0, 1, '=ODD()');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #6 ODD() result mismatch');
+
+  // Error in argument
+  FWorksheet.WriteFormula(0, 1, '=ODD(#REF!)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #7 ODD(#REF!) result mismatch');
+
+  // Error in argument cell
+  FWorksheet.WriteErrorValue(0, 0, errIllegalRef);
+  FWorksheet.WriteFormula(0, 1, '=ODD(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #8 ODD(A1) result mismatch');
+end;
+
 procedure TCalcFormulaTests.Test_OR;
 var
   cell: PCell;
@@ -2348,6 +2495,55 @@ begin
   cell := FWorksheet.WriteFormula(0, 1, 'OR(1/0,1/0)');
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(cell), 'Formula #10 OR(1/0,1/0) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_POWER;
+begin
+  FWorksheet.WriteFormula(0, 1, '=POWER(3,2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(9, FWorksheet.ReadAsNumber(0, 1), 'Formula #1 POWER(3,2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=POWER(2,-3)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1/8, FWorksheet.ReadAsNumber(0, 1), 'Formula #2 POWER(2,-3) result mismatch');
+
+  // x^0
+  FWorksheet.WriteFormula(0, 1, '=POWER(2,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #3 POWER(2,0) result mismatch');
+
+  // 0^x
+  FWorksheet.WriteFormula(0, 1, '=POWER(0,2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #4 POWER(0,2) result mismatch');
+
+  // 0^0
+  FWorksheet.WriteFormula(0, 1, '=POWER(0,0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_OVERFLOW, FWorksheet.ReadAsText(0, 1), 'Formula #5 POWER(0,0) result mismatch');
+
+  // Boolean argument
+  FWorksheet.WriteFormula(0, 1, '=POWER(TRUE,"2")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(1, FWorksheet.ReadAsNumber(0, 1), 'Formula #6 POWER(TRUE,"2") result mismatch');
+
+  // Numeric string arguments
+  FWorksheet.WriteFormula(0, 1, '=POWER("3",2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(9, FWorksheet.ReadAsNumber(0, 1), 'Formula #7 POWER("3",2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=POWER(3,"2")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(9, FWorksheet.ReadAsNumber(0, 1), 'Formula #8 POWER(3,"2") result mismatch');
+
+  // Non-numeric string arguments
+  FWorksheet.WriteFormula(0, 1, '=POWER("abc",2)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #9 POWER("abc",2) result mismatch');
+
+  FWorksheet.WriteFormula(0, 1, '=POWER(3,"abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #10 POWER(3,"abc") result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_PRODUCT;
@@ -2435,6 +2631,63 @@ begin
   FWorksheet.WriteFormula(0, 1, '=PRODUCT(A1:A6)');     // error in cell
   FWorksheet.CalcFormulas;
   CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #16 PRODUCT(A:A6) result mismatch');
+end;
+
+procedure TCalcFormulaTests.Test_RADIANS;
+begin
+  FWorksheet.WriteFormula(0, 1, '=RADIANS(90)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #1 RADIANS(90) result mismatch');
+
+  // Boolean argument
+  FWorksheet.WriteFormula(0, 1, '=RADIANS(TRUE)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi*1/180, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #2 RADIANS(TRUE) result mismatch');
+
+  // Numeric string
+  FWorksheet.WriteFormula(0, 1, '=RADIANS("90")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #3 RADIANS("90") result mismatch');
+
+  // Non-numeric string
+  FWorksheet.WriteFormula(0, 1, '=RADIANS("abc")');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #4 RADIANS("abc") result mismatch');
+
+  // Error argument
+  FWorksheet.WriteFormula(0, 1, '=RADIANS(1/0)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_DIVIDE_BY_ZERO, FWorksheet.ReadAsText(0, 1), 'Formula #5 RADIANS(1/0) result mismatch');
+
+  // Cell with boolean value
+  FWorksheet.WriteFormula(0, 0, '=(1=1)');
+  FWorksheet.WriteFormula(0, 1, '=RADIANS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi*1/180, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #6 RADIANS(A1) (A1: (1=1)) result mismatch');
+
+  // Cell with numeric string
+  FWorksheet.WriteText(0, 0, '90');
+  FWorksheet.WriteFormula(0, 1, '=RADIANS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(pi/2, FWorksheet.ReadAsNumber(0, 1), 1e-8, 'Formula #7 RADIANS(A1) (A1: "90") result mismatch');
+
+  // Cell with non-numeric string
+  FWorksheet.WriteText(0, 0, 'abc');
+  FWorksheet.WriteFormula(0, 1, '=RADIANS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_WRONG_TYPE, FWorksheet.ReadAsText(0, 1), 'Formula #8 RADIANS(A1) (A1: "abc") result mismatch');
+
+  // Empty cell
+  FWorksheet.WriteBlank(0, 0);                    // Empty A1
+  FWorksheet.WriteFormula(0, 1, '=RADIANS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(0, FWorksheet.ReadAsNumber(0, 1), 'Formula #9 RADIANS(A1) (A1: empty) result mismatch');
+
+  // Cell with error
+  FWorksheet.WriteErrorValue(0, 0, errIllegalRef);
+  FWorksheet.WriteFormula(0, 1, '=RADIANS(A1)');
+  FWorksheet.CalcFormulas;
+  CheckEquals(STR_ERR_ILLEGAL_REF, FWorksheet.ReadAsText(0, 1), 'Formula #10 RADIANS(A1) (A1: #REF!) result mismatch');
 end;
 
 procedure TCalcFormulaTests.Test_ROUND;
